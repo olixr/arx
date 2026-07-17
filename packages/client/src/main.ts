@@ -241,11 +241,11 @@ game.onTileChange = (tx, ty, prev, next) => {
     const dir = own.x <= tx + 0.5 ? 1 : -1;
     renderer.addFallingTree(tx, ty, prev === Tile.TreeOak, dir);
     sfx.treeFall();
-    // Impact lands at ~34% of the 3.1s fall timeline.
+    // Impact lands at ~720ms of the 3.2s fall timeline.
     window.setTimeout(() => {
       sfx.treeImpact();
       input.rumble(0.45, 0.3, 150);
-    }, 1050);
+    }, 720);
   }
 };
 

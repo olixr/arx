@@ -118,40 +118,42 @@ export declare class Renderer {
      */
     private wallItem;
     /**
-     * The forest is a character, not a texture. Five species with bespoke
-     * trunks and multi-lobe canopies, all riding one WORLD-SPACE wind
-     * field — waves long enough that a grove sways together and you can
-     * watch a gust travel across the treeline.
+     * The forest is a character, not a texture. Trees stand 3-4× the
+     * player's height in six bespoke species — each with a real curved,
+     * forked, or gnarled trunk, root flares, boughs, and a layered
+     * low-poly crown — and the whole treeline breathes on ONE coherent
+     * wind field so neighbours sway together, never against each other.
      */
     /**
-     * The wind field, sampled in WORLD coordinates (never screen — tying
-     * phase to the camera made walking "gust" the forest). Two traveling
-     * waves (λ ≈ 26 and 63 tiles) keep neighbouring trees in near-phase;
-     * a slow smooth gust envelope swells and fades over ~10s and adds a
-     * downwind lean as it peaks. There is no squared term and no random
-     * phase — nothing can snap.
+     * Coherent wind field: a smooth value in ~[-0.6, 1.4] (biased
+     * downwind) sampled from world position + time. Two slow swells
+     * travel along the wind direction over a slowly breathing gust
+     * envelope — no `sin²` spikes, no per-tree randomness. Nearby trees
+     * read nearly the same phase (they group); distant trees lag as the
+     * front sweeps across, exactly like real wind moving through a wood.
      */
-    private windAt;
-    /**
-     * Species: canopy lobes + limbs in tile units, a bespoke trunk style,
-     * and their own bark/leaf palettes. Tile.Tree picks 0-3 by hash;
-     * Tile.TreeOak is always the oak.
-     */
+    private windField;
     private static readonly TREE_SPECIES;
+    private static speciesOf;
+    /** Fill a tapered spine (centreline + width profile) as a bark shape. */
+    private fillSpine;
+    /**
+     * Build a trunk/branch centreline from base to a target, curving with
+     * `bow` (sideways bulge), `lean` (constant), and `gnarl` (deterministic
+     * wobble), then displaced by the wind cantilever `disp(hf)`.
+     */
+    private spine;
     private drawTree;
-    /** Bespoke trunk painters — every species stands differently. */
-    private drawTrunk;
+    /** Average centre of a lobe cluster (tiles), for fork branch targets. */
+    private clusterCentre;
     private drawTreeShadow;
     /**
-     * Felled trees: the cut bites (shudder) → gravity takes it (topple,
-     * with per-tree final angle and a north/south drift so no two falls
-     * match) → the crown lands (bounce, leaf burst, heavy rolling dust)
-     * → the log RESTS on the ground → it breaks down into chunky debris
-     * and dust and is gone. ~3.1 s of consequence, not a blink.
+     * A felled tree: shudder → topple (varied azimuth) → impact with a
+     * rolling wall of dust → it lies on the ground for a beat → it breaks
+     * apart into log chunks and a last billow of dust. Timeline in ms.
      */
     private readonly fallingTrees;
     addFallingTree(tx: number, ty: number, oak: boolean, dir: number): void;
-    private static readonly FALL_MS;
     private collectFallingTrees;
     /** Trees, rocks, stations — the object layer, redrawn with character. */
     private objectItem;
