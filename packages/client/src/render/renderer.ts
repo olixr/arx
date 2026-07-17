@@ -1083,6 +1083,40 @@ export class Renderer {
     return table;
   })();
 
+  /**
+   * SQUARE-CORNER contour variant, used for dual cells that touch a
+   * stair tile. A beveled (diagonal) corner cuts a quarter-tile into
+   * the neighbouring column — beside a stair that hangs the corner's
+   * curtain over the flight. Square corners hug the tile boundary, so
+   * the stair's column stays sacrosanct: walls turn AT its edge, with
+   * an edge-on side piece (M = cell center = the shared tile corner).
+   */
+  private static readonly SQUARE_SEGS: Array<Array<{ a: [number, number]; b: [number, number]; n: [number, number] }>> = (() => {
+    const T: [number, number] = [0, -0.5];
+    const R: [number, number] = [0.5, 0];
+    const B: [number, number] = [0, 0.5];
+    const L: [number, number] = [-0.5, 0];
+    const M: [number, number] = [0, 0];
+    const seg = (a: [number, number], b: [number, number], n: [number, number]) => ({ a, b, n });
+    const t: Array<Array<{ a: [number, number]; b: [number, number]; n: [number, number] }>> = [];
+    t[0] = []; t[15] = [];
+    t[3] = [seg(L, R, [0, 1])];
+    t[12] = [seg(L, R, [0, -1])];
+    t[9] = [seg(T, B, [1, 0])];
+    t[6] = [seg(T, B, [-1, 0])];
+    t[1] = [seg(T, M, [1, 0]), seg(M, L, [0, 1])];
+    t[14] = [seg(T, M, [-1, 0]), seg(M, L, [0, -1])];
+    t[2] = [seg(T, M, [-1, 0]), seg(M, R, [0, 1])];
+    t[13] = [seg(T, M, [1, 0]), seg(M, R, [0, -1])];
+    t[4] = [seg(R, M, [0, -1]), seg(M, B, [-1, 0])];
+    t[11] = [seg(R, M, [0, 1]), seg(M, B, [1, 0])];
+    t[8] = [seg(L, M, [0, -1]), seg(M, B, [1, 0])];
+    t[7] = [seg(L, M, [0, 1]), seg(M, B, [-1, 0])];
+    t[5] = [...t[1]!, ...t[4]!];
+    t[10] = [...t[2]!, ...t[8]!];
+    return t;
+  })();
+
   private collectCliffFaces(game: ClientGame, items: DrawItem[]): void {
     const ctx = this.ctx;
     const s = this.camera.scale;
@@ -1130,7 +1164,12 @@ export class Renderer {
             (member(i, j - 1) ? 2 : 0) |
             (member(i, j) ? 4 : 0) |
             (member(i - 1, j) ? 8 : 0);
-          const segs = Renderer.FACE_SEGS[mask]!;
+          // Cells touching a stair turn with SQUARE corners — a bevel
+          // here would cut into the flight's column and hang its
+          // curtain over the treads. Must match the crown bake's rule.
+          const nearStair =
+            owningRamp(i - 1, j - 1) || owningRamp(i, j - 1) || owningRamp(i, j) || owningRamp(i - 1, j);
+          const segs = (nearStair ? Renderer.SQUARE_SEGS : Renderer.FACE_SEGS)[mask]!;
           if (segs.length === 0) continue;
           for (const sg of segs) {
             const ax = i + sg.a[0];
@@ -1169,12 +1208,22 @@ export class Renderer {
         const x = Number(xStr);
         spans.sort((p, q) => p[0] - q[0]);
         let [y0, y1] = spans[0]!;
+        const emitRun = (a: number, b: number): void => {
+          // One slice per world row: caps land on the run's true ends,
+          // while each slice y-sorts independently so props and
+          // entities along the wall line draw over their own stretch.
+          for (let r = Math.floor(a); r < b; r++) {
+            const s0 = Math.max(a, r);
+            const s1 = Math.min(b, r + 1);
+            items.push(this.cliffSideItem(x, s0, s1, nx, level, s0 === a, s1 === b));
+          }
+        };
         for (let k = 1; k <= spans.length; k++) {
           const next = spans[k];
           if (next && next[0] <= y1 + 0.001) {
             y1 = Math.max(y1, next[1]);
           } else {
-            items.push(this.cliffSideItem(x, y0, y1, nx, level));
+            emitRun(y0, y1);
             if (next) [y0, y1] = next;
           }
         }
@@ -1303,59 +1352,79 @@ export class Renderer {
   }
 
   /**
-   * Wall THICKNESS for an unbroken north-south run of rim (world x,
-   * world y0..y1). The plane itself is edge-on to the orthographic
-   * camera, so we cheat a chunky strip of the wall's outward flank
-   * into view: faces terminate into it instead of cutting off naked,
-   * jogged rims read as one continuous mass, and a long straight run
-   * reads as a deliberate wall edge rather than a stray line. Detail
-   * is world-anchored so nothing swims as the camera moves.
+   * Wall THICKNESS for one row-slice of a north-south rim run (world
+   * x, world y s0..s1, flags marking the run's true ends). The plane
+   * itself is edge-on to the orthographic camera, so we cheat a strip
+   * of the wall's outward flank into view: faces terminate into it and
+   * jogged rims read as one continuous mass. Slices partition the
+   * run's screen extent exactly (each covers [wts(s0)-topLift,
+   * wts(s1)-topLift]; the bottom slice extends to the base), so the
+   * flat fill tiles seamlessly. Each slice sorts EARLY — a zero-width
+   * plane must lose every overlap contest against rocks, props and
+   * entities standing beside it; only the sky above them shows wall.
    */
-  private cliffSideItem(x: number, y0: number, y1: number, nx: number, level: number): DrawItem {
+  private cliffSideItem(
+    x: number,
+    s0: number,
+    s1: number,
+    nx: number,
+    level: number,
+    isTop: boolean,
+    isBottom: boolean,
+  ): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const topLift = level * ELEV_H * s;
     const baseLift = (level - 1) * ELEV_H * s;
     return {
-      sortY: y1 + 0.001,
+      sortY: s0 - (level * ELEV_H) / this.camera.yScale,
       drawShadow:
         level - 1 === 0 && nx >= 0
           ? () => {
               // The shaded (east) flank grounds itself with a contact
               // shadow hugging the wall line, like every south face.
-              const A = this.camera.worldToScreen(x, y0, this.w, this.h);
-              const B = this.camera.worldToScreen(x, y1, this.w, this.h);
+              const A = this.camera.worldToScreen(x, s0, this.w, this.h);
+              const B = this.camera.worldToScreen(x, s1, this.w, this.h);
+              // Rounded slice bounds tile exactly — an overlap would
+              // double-blend the alpha into a visible seam line.
+              const ya = Math.round(A.y) - (isTop ? 1 : 0);
+              const yb = Math.round(B.y) + (isBottom ? s * 0.2 : 0);
               ctx.fillStyle = SHADOW_COLOR;
-              ctx.fillRect(Math.round(A.x), A.y - 1, Math.max(3, s * 0.24), B.y - A.y + s * 0.2);
+              ctx.fillRect(Math.round(A.x), ya, Math.max(3, s * 0.24), yb - ya);
             }
           : undefined,
       draw: () => {
-        const A = this.camera.worldToScreen(x, y0, this.w, this.h);
-        const B = this.camera.worldToScreen(x, y1, this.w, this.h);
+        const A = this.camera.worldToScreen(x, s0, this.w, this.h);
+        const B = this.camera.worldToScreen(x, s1, this.w, this.h);
         const sx = Math.round(A.x);
         const w2 = Math.max(3, s * 0.13);
         const x0 = nx >= 0 ? sx : sx - w2;
-        const yTop = A.y - topLift - 1.5;
-        const yBot = B.y - baseLift;
-        // Body: deeper shade than any face tone — the flank in shadow.
-        ctx.fillStyle = nx >= 0 ? '#3f394b' : '#4a4457';
+        const yTop = Math.round(A.y - topLift) - (isTop ? 1.5 : 0);
+        const yBot = isBottom ? B.y - baseLift : Math.round(B.y - topLift);
+        // Body: the face palette's own mid-tones, pushed into shade —
+        // kin to the walls it joins, not a black bar fighting them.
+        ctx.fillStyle = nx >= 0 ? '#494259' : '#544d64';
         ctx.fillRect(x0, yTop, w2, yBot - yTop);
-        // Coursing ticks at world-anchored heights: the strata beds
-        // wrapping around the corner onto the wall's flank.
-        ctx.fillStyle = 'rgba(29, 23, 40, 0.4)';
+        // Coursing ticks at world-anchored heights along the crown
+        // line — each slice draws only ticks landing inside its rect.
+        ctx.fillStyle = 'rgba(29, 23, 40, 0.3)';
         const tickH = Math.max(1.5, s * 0.035);
-        for (let wy = Math.ceil(y0 * 2) / 2; wy <= y1 + 0.001; wy += 0.5) {
-          const py = this.camera.worldToScreen(x, wy, this.w, this.h).y - topLift + (topLift - baseLift) * 0.45;
-          if (py > yTop + tickH && py < yBot - tickH) ctx.fillRect(x0, py, w2, tickH);
+        for (let wy = Math.ceil((s0 - 1) * 2) / 2; wy <= s1 + 1; wy += 0.5) {
+          const py = this.camera.worldToScreen(x, wy, this.w, this.h).y - topLift + s * 0.4;
+          if (py >= yTop + tickH && py < yBot - tickH) ctx.fillRect(x0, py, w2, tickH);
         }
-        // Crisp arris on the outward silhouette edge.
-        ctx.fillStyle = 'rgba(24, 18, 34, 0.45)';
+        // Arris on the outward silhouette edge.
+        ctx.fillStyle = 'rgba(24, 18, 34, 0.3)';
         ctx.fillRect(nx >= 0 ? x0 + w2 - 1.5 : x0, yTop, 1.5, yBot - yTop);
-        // Brink shade under the crown lip; AO where the run meets the
-        // ground at its true south end.
-        ctx.fillRect(x0, yTop, w2, Math.max(2, s * 0.06));
-        ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
-        ctx.fillRect(x0, yBot - Math.max(2, s * 0.05), w2, Math.max(2, s * 0.05));
+        // Brink shade at the run's crown end; AO where it meets ground.
+        if (isTop) {
+          ctx.fillStyle = 'rgba(24, 18, 34, 0.35)';
+          ctx.fillRect(x0, yTop, w2, Math.max(2, s * 0.06));
+        }
+        if (isBottom) {
+          ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+          ctx.fillRect(x0, yBot - Math.max(2, s * 0.05), w2, Math.max(2, s * 0.05));
+        }
       },
     };
   }

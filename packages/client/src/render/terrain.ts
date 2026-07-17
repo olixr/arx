@@ -341,6 +341,16 @@ export function bakeElevated(
   const ctx = canvas.getContext('2d')!;
 
   // The plateau-top silhouette, contoured between tile centers.
+  // Cells touching a stair of THIS level turn with square corners
+  // (quadrant rects) — a beveled crown would overhang the flight's
+  // column with no face beneath it. Must match collectCliffFaces.
+  const ownRamp = (tx: number, ty: number): boolean =>
+    ground(tx, ty) === Tile.Ramp && elev(tx, ty) === level;
+  const nearStair = (i: number, j: number): boolean =>
+    ownRamp(baseX + i - 1, baseY + j - 1) ||
+    ownRamp(baseX + i, baseY + j - 1) ||
+    ownRamp(baseX + i, baseY + j) ||
+    ownRamp(baseX + i - 1, baseY + j);
   const path = new Path2D();
   const maskAt = (i: number, j: number): number =>
     (member(baseX + i - 1, baseY + j - 1) ? 1 : 0) |
@@ -350,7 +360,9 @@ export function bakeElevated(
   for (let j = 0; j <= CHUNK_SIZE; j++) {
     for (let i = 0; i <= CHUNK_SIZE; i++) {
       const mask = maskAt(i, j);
-      if (mask !== 0) maskPolygon(path, mask, (i - 0.5) * px, (j - 0.5) * px, px);
+      if (mask === 0) continue;
+      if (nearStair(i, j)) maskQuadrants(path, mask, (i - 0.5) * px, (j - 0.5) * px, px);
+      else maskPolygon(path, mask, (i - 0.5) * px, (j - 0.5) * px, px);
     }
   }
 
@@ -408,7 +420,8 @@ export function bakeElevated(
     for (let i = 0; i <= CHUNK_SIZE; i++) {
       const mask = maskAt(i, j);
       if (mask === 0 || mask === 15) continue;
-      for (const [x0, y0, x1, y1] of contourSegs(mask)) {
+      const segs = nearStair(i, j) ? contourSegsSquare(mask) : contourSegs(mask);
+      for (const [x0, y0, x1, y1] of segs) {
         const ax = (i + x0 - 0.5 + 0.5) * px;
         const ay = (j + y0 - 0.5 + 0.5) * px;
         const bx = (i + x1 - 0.5 + 0.5) * px;
@@ -448,6 +461,40 @@ function contourSegs(mask: number): Array<[number, number, number, number]> {
     case 5: return [seg(T, R), seg(B, L)];
     default: return [seg(T, L), seg(R, B)]; // 10
   }
+}
+
+/**
+ * Square-corner contour of a marching-squares cell: a boundary piece
+ * exists wherever two adjacent quadrants differ in membership. Cell-
+ * local units matching contourSegs (center at 0,0, edge midpoints ±0.5).
+ */
+function contourSegsSquare(mask: number): Array<[number, number, number, number]> {
+  const bit = (b: number): boolean => (mask & b) !== 0;
+  const out: Array<[number, number, number, number]> = [];
+  if (bit(1) !== bit(2)) out.push([0, -0.5, 0, 0]);
+  if (bit(8) !== bit(4)) out.push([0, 0, 0, 0.5]);
+  if (bit(1) !== bit(8)) out.push([-0.5, 0, 0, 0]);
+  if (bit(2) !== bit(4)) out.push([0, 0, 0.5, 0]);
+  return out;
+}
+
+/**
+ * Square-corner variant of maskPolygon: one quadrant rect per set
+ * corner bit. Used for cells touching a stair, where a beveled corner
+ * would encroach on the flight's column.
+ */
+function maskQuadrants(
+  ctx: CanvasRenderingContext2D | Path2D,
+  mask: number,
+  x0: number,
+  y0: number,
+  size: number,
+): void {
+  const m = size / 2;
+  if (mask & 1) ctx.rect(x0, y0, m, m);
+  if (mask & 2) ctx.rect(x0 + m, y0, m, m);
+  if (mask & 4) ctx.rect(x0 + m, y0 + m, m, m);
+  if (mask & 8) ctx.rect(x0, y0 + m, m, m);
 }
 
 /** Fill the marching-squares union of `member` tiles with one color. */

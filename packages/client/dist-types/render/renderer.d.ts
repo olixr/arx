@@ -158,17 +158,29 @@ export declare class Renderer {
     /** Contour segments per marching-squares mask, with outward normals.
      *  Endpoints in dual-cell units: T(0,-.5) R(.5,0) B(0,.5) L(-.5,0). */
     private static readonly FACE_SEGS;
+    /**
+     * SQUARE-CORNER contour variant, used for dual cells that touch a
+     * stair tile. A beveled (diagonal) corner cuts a quarter-tile into
+     * the neighbouring column — beside a stair that hangs the corner's
+     * curtain over the flight. Square corners hug the tile boundary, so
+     * the stair's column stays sacrosanct: walls turn AT its edge, with
+     * an edge-on side piece (M = cell center = the shared tile corner).
+     */
+    private static readonly SQUARE_SEGS;
     private collectCliffFaces;
     /** One contour segment extruded into a face curtain (level -> level-1). */
     private cliffFaceItem;
     /**
-     * Wall THICKNESS for an unbroken north-south run of rim (world x,
-     * world y0..y1). The plane itself is edge-on to the orthographic
-     * camera, so we cheat a chunky strip of the wall's outward flank
-     * into view: faces terminate into it instead of cutting off naked,
-     * jogged rims read as one continuous mass, and a long straight run
-     * reads as a deliberate wall edge rather than a stray line. Detail
-     * is world-anchored so nothing swims as the camera moves.
+     * Wall THICKNESS for one row-slice of a north-south rim run (world
+     * x, world y s0..s1, flags marking the run's true ends). The plane
+     * itself is edge-on to the orthographic camera, so we cheat a strip
+     * of the wall's outward flank into view: faces terminate into it and
+     * jogged rims read as one continuous mass. Slices partition the
+     * run's screen extent exactly (each covers [wts(s0)-topLift,
+     * wts(s1)-topLift]; the bottom slice extends to the base), so the
+     * flat fill tiles seamlessly. Each slice sorts EARLY — a zero-width
+     * plane must lose every overlap contest against rocks, props and
+     * entities standing beside it; only the sky above them shows wall.
      */
     private cliffSideItem;
     /**
