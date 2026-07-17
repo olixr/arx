@@ -41,11 +41,40 @@ export declare class Renderer {
         valid: boolean;
         color: string;
     } | null;
+    /** Emissive glow requests queued during the frame, composited last. */
+    private readonly glows;
+    /**
+     * Perspective lean: how far a point `heightTiles` above the ground at
+     * screen column `screenX` shifts sideways. Tops lean away from the
+     * screen center like a camera hovering over the scene.
+     */
+    private lean;
     constructor(canvas: HTMLCanvasElement);
     shake(amount: number): void;
     private animFor;
     private resize;
     render(game: ClientGame, frameDt: number): void;
+    /**
+     * Emissive bloom: campfires, furnace mouths, portals, and magic bolts
+     * pour additive light over the scene. Sold with plain radial
+     * gradients under `lighter` compositing — no shader required.
+     */
+    private drawGlows;
+    /** A magic projectile advertises its own glow (called during collect). */
+    queueGlow(x: number, y: number, r: number, rgb: string, a: number): void;
+    /**
+     * Tilt-shift: the top and bottom of the frame soften like a macro
+     * photo of a miniature — the single cheapest "this is a diorama with
+     * real depth" signal there is. Overlapping self-drawImage strips with
+     * canvas blur filters; skipped cleanly where filters are unsupported.
+     */
+    private applyTiltShift;
+    /**
+     * Color grade: warm light from the top of the frame, cool settle at
+     * the bottom, plus a quiet corner vignette. Together with tilt-shift
+     * this is the "curated camera" over the raw painter output.
+     */
+    private drawGrade;
     /**
      * While the bow is drawn, a dotted guide extends along the aim showing
      * how far the arrow will fly at the current charge — it grows and

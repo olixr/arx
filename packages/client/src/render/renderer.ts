@@ -23,6 +23,18 @@ import { bakeChunk, drawLiveGround } from './terrain.js';
 const SHADOW_COLOR = 'rgba(24, 14, 32, 0.32)';
 const SHADOW_OFFSET = 0.16; // tiles, toward bottom-right
 
+/**
+ * The 2.5D depth pass. The ground stays a flat top-down plane (so all
+ * collision, aim, and netcode math is untouched), but everything with
+ * height EXTRUDES upward on screen and leans away from the screen
+ * center — a fake tilted camera. Paired with the per-item y-sort this
+ * buys true walk-behind occlusion: a wall or canopy south of you draws
+ * over you, one north of you slides behind.
+ */
+const WALL_H = 0.85; // wall extrusion height, in tiles
+/** Horizontal lean per tile of height at the screen edge (fraction). */
+const PERSP_LEAN = 0.055;
+
 const PLAYER_COLORS = ['#c4553d', '#3d78c4', '#3da865', '#c4a03d', '#8a55c4', '#3da8a0', '#c47a3d'];
 
 interface AnimState {
@@ -114,6 +126,18 @@ export class Renderer {
 
   /** Placement preview set by the build mode; null when inactive. */
   buildGhost: { tx: number; ty: number; valid: boolean; color: string } | null = null;
+
+  /** Emissive glow requests queued during the frame, composited last. */
+  private readonly glows: Array<{ x: number; y: number; r: number; rgb: string; a: number }> = [];
+
+  /**
+   * Perspective lean: how far a point `heightTiles` above the ground at
+   * screen column `screenX` shifts sideways. Tops lean away from the
+   * screen center like a camera hovering over the scene.
+   */
+  private lean(screenX: number, heightTiles: number): number {
+    return (screenX - this.w / 2) * PERSP_LEAN * heightTiles;
+  }
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
@@ -224,6 +248,12 @@ export class Renderer {
     );
     this.drawRings();
 
+    // Depth & atmosphere: emissive bloom, then the tilted-camera
+    // tilt-shift bands, then the grade. HUD stays crisp above them.
+    this.drawGlows(game, bounds);
+    this.applyTiltShift();
+    this.drawGrade();
+
     this.drawBuildGhost();
     this.drawActionProgress(game);
     this.drawFloaties(game);
@@ -231,6 +261,113 @@ export class Renderer {
     this.drawVignette();
     this.evictBaked();
     this.evictAnims();
+  }
+
+  /**
+   * Emissive bloom: campfires, furnace mouths, portals, and magic bolts
+   * pour additive light over the scene. Sold with plain radial
+   * gradients under `lighter` compositing — no shader required.
+   */
+  private drawGlows(game: ClientGame, bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number }): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const t = performance.now() / 1000;
+    for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
+      for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
+        const tile = game.world.groundAt(tx, ty);
+        if (tile === Tile.Campfire) {
+          const flick = 0.85 + Math.sin(t * 11 + tx * 3.1) * 0.1 + Math.sin(t * 23 + ty) * 0.05;
+          this.glows.push({ x: tx + 0.5, y: ty + 0.32, r: 1.6 * flick, rgb: '235, 140, 52', a: 0.3 * flick });
+        } else if (tile === Tile.Furnace) {
+          const pulse = 0.8 + Math.sin(t * 5 + tx) * 0.2;
+          this.glows.push({ x: tx + 0.5, y: ty + 0.75, r: 1.15, rgb: '232, 108, 45', a: 0.24 * pulse });
+        } else if (tile === Tile.PortalDown || tile === Tile.PortalUp) {
+          const pulse = 0.85 + Math.sin(t * 2.2 + tx) * 0.15;
+          this.glows.push({ x: tx + 0.5, y: ty + 0.5, r: 1.5 * pulse, rgb: '164, 134, 232', a: 0.26 });
+        }
+      }
+    }
+    if (this.glows.length === 0) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const g of this.glows) {
+      const p = this.camera.worldToScreen(g.x, g.y, this.w, this.h);
+      const r = g.r * s;
+      const grad = ctx.createRadialGradient(p.x, p.y, r * 0.08, p.x, p.y, r);
+      grad.addColorStop(0, `rgba(${g.rgb}, ${g.a})`);
+      grad.addColorStop(0.55, `rgba(${g.rgb}, ${g.a * 0.38})`);
+      grad.addColorStop(1, `rgba(${g.rgb}, 0)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+    }
+    ctx.restore();
+    this.glows.length = 0;
+  }
+
+  /** A magic projectile advertises its own glow (called during collect). */
+  queueGlow(x: number, y: number, r: number, rgb: string, a: number): void {
+    this.glows.push({ x, y, r, rgb, a });
+  }
+
+  /**
+   * Tilt-shift: the top and bottom of the frame soften like a macro
+   * photo of a miniature — the single cheapest "this is a diorama with
+   * real depth" signal there is. Overlapping self-drawImage strips with
+   * canvas blur filters; skipped cleanly where filters are unsupported.
+   */
+  private applyTiltShift(): void {
+    const ctx = this.ctx;
+    if (typeof ctx.filter !== 'string') return;
+    const dpr = window.devicePixelRatio || 1;
+    // [yCss, hCss, blurPx, alpha] — top three bands, bottom two.
+    const bands: Array<[number, number, number, number]> = [
+      [0, this.h * 0.1, 3.2, 0.8],
+      [this.h * 0.08, this.h * 0.07, 1.8, 0.55],
+      [this.h * 0.14, this.h * 0.05, 0.9, 0.3],
+      [this.h * 0.88, this.h * 0.06, 1.1, 0.4],
+      [this.h * 0.93, this.h * 0.07, 2.4, 0.7],
+    ];
+    for (const [y, bandH, blur, alpha] of bands) {
+      const pad = blur * 3;
+      const sy = Math.max(0, (y - pad) * dpr);
+      const sh = Math.min(this.canvas.height - sy, (bandH + pad * 2) * dpr);
+      ctx.save();
+      ctx.filter = `blur(${blur}px)`;
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(this.canvas, 0, sy, this.canvas.width, sh, 0, sy / dpr, this.w, sh / dpr);
+      ctx.restore();
+    }
+    ctx.filter = 'none';
+  }
+
+  /**
+   * Color grade: warm light from the top of the frame, cool settle at
+   * the bottom, plus a quiet corner vignette. Together with tilt-shift
+   * this is the "curated camera" over the raw painter output.
+   */
+  private drawGrade(): void {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.globalCompositeOperation = 'soft-light';
+    const grad = ctx.createLinearGradient(0, 0, 0, this.h);
+    grad.addColorStop(0, 'rgba(255, 214, 150, 0.36)');
+    grad.addColorStop(0.45, 'rgba(255, 236, 210, 0.1)');
+    grad.addColorStop(1, 'rgba(64, 84, 148, 0.3)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, this.w, this.h);
+    ctx.restore();
+    const vig = ctx.createRadialGradient(
+      this.w / 2,
+      this.h * 0.46,
+      Math.min(this.w, this.h) * 0.42,
+      this.w / 2,
+      this.h * 0.5,
+      Math.max(this.w, this.h) * 0.72,
+    );
+    vig.addColorStop(0, 'rgba(20, 12, 28, 0)');
+    vig.addColorStop(1, 'rgba(20, 12, 28, 0.26)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, this.w, this.h);
   }
 
   /**
@@ -360,7 +497,9 @@ export class Renderer {
     return {
       minTx: Math.floor(this.camera.x - this.w / 2 / s) - 1,
       maxTx: Math.floor(this.camera.x + this.w / 2 / s) + 1,
-      minTy: Math.floor(this.camera.y - this.h / 2 / s) - 2,
+      // Extra head-room above: tall prisms and canopies reach ~2 tiles
+      // over their base and must draw while their base is off-screen.
+      minTy: Math.floor(this.camera.y - this.h / 2 / s) - 3,
       maxTy: Math.floor(this.camera.y + this.h / 2 / s) + 2,
     };
   }
@@ -470,53 +609,97 @@ export class Renderer {
       !sw && !w ? r : 0,
     ];
     const off = SHADOW_OFFSET * s;
+    const hs = WALL_H * s;
+    // The whole prism leans away from the screen center — fake camera.
+    const shear = this.lean(p.x + s / 2, WALL_H);
+    // Adjacent columns shear slightly differently; bleed the top faces
+    // a touch so continuous runs never crack.
+    const bleed = 1.5;
 
     return {
       sortY: ty + 1,
       drawShadow: sw
         ? undefined
         : () => {
+            // A body this tall throws a real shadow across the ground.
             ctx.fillStyle = SHADOW_COLOR;
             ctx.beginPath();
-            chamferRect(ctx, p.x + off, p.y + s * 0.5 + off, s + 0.5, s * 0.55, [0, 0, radii[2], radii[3]]);
+            chamferRect(ctx, p.x + off * 1.7, p.y + s * 0.3 + off, s + 0.5, s * 0.72, [0, 0, radii[2], radii[3]]);
             ctx.fill();
           },
       draw: () => {
-        if (sw) {
-          ctx.fillStyle = top;
-          ctx.beginPath();
-          chamferRect(ctx, p.x - 0.25, p.y - 0.25, s + 0.5, s + 0.5, radii);
-          ctx.fill();
-        } else {
-          // Top face + front face split.
-          ctx.fillStyle = top;
-          ctx.beginPath();
-          chamferRect(ctx, p.x - 0.25, p.y - 0.25, s + 0.5, s * 0.62, [radii[0], radii[1], 0, 0]);
-          ctx.fill();
+        const yBase = p.y + s; // south edge at ground level
+        const yTop = yBase - hs; // south edge, lifted to the wall crown
+        // South face: a full-height quad — this is what you walk behind.
+        if (!sw) {
           ctx.fillStyle = face;
           ctx.beginPath();
-          chamferRect(ctx, p.x - 0.25, p.y + s * 0.55, s + 0.5, s * 0.45 + 0.25, [0, 0, radii[2], radii[3]]);
+          ctx.moveTo(p.x - bleed, yBase + 0.5);
+          ctx.lineTo(p.x + s + bleed, yBase + 0.5);
+          ctx.lineTo(p.x + s + bleed + shear, yTop);
+          ctx.lineTo(p.x - bleed + shear, yTop);
+          ctx.closePath();
           ctx.fill();
-          // Material hint on the front face.
+          // Material detail, full height with the lean.
           if (tile === Tile.WallWood) {
             ctx.strokeStyle = 'rgba(36, 22, 10, 0.4)';
             ctx.lineWidth = Math.max(1, s * 0.035);
-            for (const fx of [0.33, 0.66]) {
+            for (const fx of [0.3, 0.62]) {
               ctx.beginPath();
-              ctx.moveTo(p.x + s * fx, p.y + s * 0.58);
-              ctx.lineTo(p.x + s * fx, p.y + s * 0.97);
+              ctx.moveTo(p.x + s * fx, yBase);
+              ctx.lineTo(p.x + s * fx + shear, yTop + s * 0.02);
               ctx.stroke();
             }
           } else {
             ctx.strokeStyle = 'rgba(20, 14, 28, 0.35)';
             ctx.lineWidth = Math.max(1, s * 0.03);
-            ctx.beginPath();
-            ctx.moveTo(p.x + s * 0.1, p.y + s * 0.78);
-            ctx.lineTo(p.x + s * 0.55, p.y + s * 0.78);
-            ctx.moveTo(p.x + s * 0.55, p.y + s * 0.78);
-            ctx.lineTo(p.x + s * 0.55, p.y + s * 0.97);
-            ctx.stroke();
+            for (const fy of [0.36, 0.7]) {
+              const yy = yBase - hs * fy;
+              const sh = shear * fy;
+              ctx.beginPath();
+              ctx.moveTo(p.x + sh, yy);
+              ctx.lineTo(p.x + s + sh, yy);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(p.x + s * (fy > 0.5 ? 0.3 : 0.62) + sh, yy);
+              ctx.lineTo(p.x + s * (fy > 0.5 ? 0.3 : 0.62) + shear * (fy + 0.34), yy - hs * 0.34);
+              ctx.stroke();
+            }
           }
+          // Ambient-occlusion seam where the face meets the ground.
+          ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
+          ctx.fillRect(p.x - bleed, yBase - s * 0.05, s + bleed * 2, s * 0.07);
+        }
+        // Side face revealed by the lean (never on joined runs).
+        const sideCol = shade(tile === Tile.WallWood ? '#6f4d26' : tile === Tile.WallStone ? '#6f697c' : '#2b2536', -8);
+        if (shear > 1 && !e) {
+          ctx.fillStyle = sideCol;
+          ctx.beginPath();
+          ctx.moveTo(p.x + s, p.y);
+          ctx.lineTo(p.x + s, yBase);
+          ctx.lineTo(p.x + s + shear, yTop);
+          ctx.lineTo(p.x + s + shear, p.y - hs);
+          ctx.closePath();
+          ctx.fill();
+        } else if (shear < -1 && !w) {
+          ctx.fillStyle = sideCol;
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x, yBase);
+          ctx.lineTo(p.x + shear, yTop);
+          ctx.lineTo(p.x + shear, p.y - hs);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // Crown: the chamfered top face, lifted and leaned.
+        ctx.fillStyle = top;
+        ctx.beginPath();
+        chamferRect(ctx, p.x - bleed + shear, p.y - bleed - hs, s + bleed * 2, s + bleed * 2, radii);
+        ctx.fill();
+        // Lit south lip of the crown grounds the height read.
+        if (!sw) {
+          ctx.fillStyle = shade(top, 16);
+          ctx.fillRect(p.x - bleed + shear + radii[3] * 0.8, yTop - s * 0.085, s + bleed * 2 - (radii[2] + radii[3]) * 0.8, s * 0.085);
         }
       },
     };
@@ -538,25 +721,45 @@ export class Renderer {
         const base = oak ? '#2c5c31' : ['#35773a', '#3a8140', '#317238'][h % 3]!;
         const size = oak ? 1.18 : 0.95 + ((h >> 4) % 20) / 100;
         const sway = Math.sin(t * 0.9 + (h % 30) * 0.3) * 0.02 * s;
-        const cx = p.x + sway;
-        const cy = p.y - s * 0.18;
+        // Real height: the canopy floats over a tall trunk, and the
+        // whole crown leans away from the screen center. Walking north
+        // of a tree puts you squarely behind it.
+        const canopyH = 0.6 + 0.4 * size; // tiles above the base
+        const treeLean = this.lean(p.x, canopyH) + sway;
+        const trunkBaseY = p.y + s * 0.3;
+        const trunkTopY = p.y - s * 0.42;
+        const cx = p.x + treeLean;
+        const cy = p.y - s * canopyH;
         return {
           sortY: ty + 0.9,
           drawShadow: () => {
             ctx.fillStyle = SHADOW_COLOR;
             ctx.beginPath();
-            facetBlob(ctx, p.x + off, p.y + s * 0.32 + off * 0.5, s * 0.48 * size, h ^ 0x33, 7, 0.52);
+            facetBlob(ctx, p.x + off * 1.5, p.y + s * 0.3 + off * 0.5, s * 0.5 * size, h ^ 0x33, 7, 0.5);
             ctx.fill();
           },
           draw: () => {
-            // Trunk: a squared post with a chamfered foot.
+            // Trunk: a leaning tapered post from the ground to the crown.
             ctx.fillStyle = '#6b4a26';
             ctx.beginPath();
-            chamferRect(ctx, p.x - s * 0.07, p.y - s * 0.05, s * 0.14, s * 0.42, s * 0.035);
+            ctx.moveTo(p.x - s * 0.13, trunkBaseY);
+            ctx.lineTo(p.x + s * 0.13, trunkBaseY);
+            ctx.lineTo(p.x + s * 0.085 + treeLean * 0.72, trunkTopY);
+            ctx.lineTo(p.x - s * 0.085 + treeLean * 0.72, trunkTopY);
+            ctx.closePath();
+            ctx.fill();
+            // Lit trunk edge.
+            ctx.fillStyle = shade('#6b4a26', 14);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.13, trunkBaseY);
+            ctx.lineTo(p.x - s * 0.06, trunkBaseY);
+            ctx.lineTo(p.x - s * 0.03 + treeLean * 0.72, trunkTopY);
+            ctx.lineTo(p.x - s * 0.085 + treeLean * 0.72, trunkTopY);
+            ctx.closePath();
             ctx.fill();
             // Canopy: one jittered low-poly mass — same dialect as the
             // boulders — with a hard lit facet on the upper-left.
-            const cr = s * 0.52 * size;
+            const cr = s * 0.66 * size;
             ctx.fillStyle = base;
             ctx.beginPath();
             facetBlob(ctx, cx, cy, cr, h, oak ? 9 : 8, 0.88);
@@ -1228,6 +1431,7 @@ export class Renderer {
         }
         if (style === 'magic') {
           // A cut shard of magic — faceted, spinning with its heading.
+          this.queueGlow(s.x, s.y, 0.85, '180, 154, 240', 0.42);
           ctx.fillStyle = 'rgba(154, 122, 224, 0.35)';
           ctx.beginPath();
           facetCircle(ctx, p.x - Math.cos(s.dir) * scale * 0.18, p.y - Math.sin(s.dir) * scale * 0.18, scale * 0.1, 6, s.dir);
