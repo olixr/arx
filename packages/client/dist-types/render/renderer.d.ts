@@ -162,6 +162,13 @@ export declare class Renderer {
     /** One contour segment extruded into a face curtain (level -> level-1). */
     private cliffFaceItem;
     /**
+     * Wall THICKNESS for a north-south contour edge. The plane itself is
+     * edge-on to the orthographic camera, so we cheat a thin dark sliver
+     * onto the outward side: faces terminate into it instead of cutting
+     * off naked, and jogged rims read as one continuous mass.
+     */
+    private cliffSideItem;
+    /**
      * A stone stair crossing the cliff line - real STEPPED PRISMS, not a
      * striped slab. Flights climbing away from the camera show receding
      * tread tops with hard step edges; flights climbing toward the

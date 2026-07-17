@@ -117,10 +117,12 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
     const cards = [n, e, s, w];
     const lower = cards.filter((c) => c < lvl);
     if (lower.length !== 1 || lower[0] !== lvl - 1) return false;
-    // Only NORTH/SOUTH flights: at this camera an east-west stair cut
-    // through a north-south rim hides behind its own south flank wall.
-    // Stairs that face the camera axis read as stairs.
-    if (cards.indexOf(lower[0]!) % 2 === 1) return false;
+    // Only SOUTH-DESCENDING flights (low mouth on the south side): an
+    // east-west stair notched through a north-south rim hides behind
+    // its own south flank at this camera, and a north-descending stair
+    // sits on the plateau's FAR slope — the viewer would be looking at
+    // its back. Camera-facing flights are the only ones that read.
+    if (cards.indexOf(lower[0]!) !== 2) return false;
     // The two flanking cardinals stay at level → the stair is framed by
     // cliff; the opposite cardinal must be interior so the stair tops
     // out on open ground, not another wall.
@@ -133,7 +135,7 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
     const sy = flank[1]!;
     if (L(lx + sx, ly + sy) !== lvl || L(lx - sx, ly - sy) !== lvl) return false;
     if (L(lx + ox, ly + oy) !== lvl || isRim(lx + ox, ly + oy)) return false;
-    return hashCoords(seed ^ 0x5aca1e, baseX + lx, baseY + ly) % 6 === 0;
+    return hashCoords(seed ^ 0x5aca1e, baseX + lx, baseY + ly) % 4 === 0;
   };
 
   /** Is a cardinal neighbor a ramp? Those tiles stay clear (stair mouths). */

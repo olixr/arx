@@ -1089,8 +1089,10 @@ export class Renderer {
     const b = this.visibleTileBounds();
     const world = game.world;
     for (let level = 1; level <= 2; level++) {
-      const member = (tx: number, ty: number): boolean =>
-        world.elevAt(tx, ty) >= level && world.groundAt(tx, ty) !== Tile.Ramp;
+      // Ramps COUNT as mass here (unlike the crown bake): the contour
+      // must not wrap around a stair notch, or mouth-corner cells hang
+      // little curtains over the flight.
+      const member = (tx: number, ty: number): boolean => world.elevAt(tx, ty) >= level;
       for (let j = b.minTy - 2; j <= b.maxTy + 2; j++) {
         for (let i = b.minTx - 1; i <= b.maxTx + 2; i++) {
           const mask =
@@ -1101,20 +1103,28 @@ export class Renderer {
           const segs = Renderer.FACE_SEGS[mask]!;
           if (segs.length === 0) continue;
           for (const sg of segs) {
-            if (sg.n[1] <= 0.01) continue; // only downhill-facing curtains
             const ax = i + sg.a[0];
             const ay = j + sg.a[1];
             const bx = i + sg.b[0];
             const by = j + sg.b[1];
-            // Never hang a curtain into a stair notch: if the tile just
-            // downhill of this segment is the Ramp, the stair owns that
-            // opening.
-            const ox = Math.floor((ax + bx) / 2 + sg.n[0] * 0.5);
-            const oy = Math.floor((ay + by) / 2 + sg.n[1] * 0.5);
-            if (world.groundAt(ox, oy) === Tile.Ramp) continue;
-            items.push(
-              this.cliffFaceItem(game, ax, ay, bx, by, sg.n[0], level, i, j),
-            );
+            // The stair owns its opening: skip any segment with the
+            // Ramp on EITHER side (its mouth edge and its top edge).
+            const mx = (ax + bx) / 2;
+            const my = (ay + by) / 2;
+            if (
+              world.groundAt(Math.floor(mx + sg.n[0] * 0.5), Math.floor(my + sg.n[1] * 0.5)) === Tile.Ramp ||
+              world.groundAt(Math.floor(mx - sg.n[0] * 0.5), Math.floor(my - sg.n[1] * 0.5)) === Tile.Ramp
+            ) {
+              continue;
+            }
+            if (sg.n[1] > 0.01) {
+              items.push(this.cliffFaceItem(game, ax, ay, bx, by, sg.n[0], level, i, j));
+            } else if (Math.abs(sg.n[1]) <= 0.01) {
+              // Pure east/west edge: edge-on to the camera, but a naked
+              // cut reads as floating geometry — give the mass a thin
+              // SIDE SLIVER of wall thickness so jogged rims stay solid.
+              items.push(this.cliffSideItem(ax, ay, bx, by, sg.n[0], level));
+            }
           }
         }
       }
@@ -1152,15 +1162,18 @@ export class Renderer {
       drawShadow:
         level - 1 === 0
           ? () => {
+              // Contact shadow: the top edge sits EXACTLY on the base
+              // line (the face itself covers any overdraw above it),
+              // skewing south-east as it falls across the ground.
               const A = this.camera.worldToScreen(ax, ay, this.w, this.h);
               const B = this.camera.worldToScreen(bx, by, this.w, this.h);
               const off = SHADOW_OFFSET * s;
               ctx.fillStyle = SHADOW_COLOR;
               ctx.beginPath();
-              ctx.moveTo(A.x + off, A.y - baseLift + off * 0.4);
-              ctx.lineTo(B.x + off, B.y - baseLift + off * 0.4);
-              ctx.lineTo(B.x + off * 2.6, B.y - baseLift + s * 0.5);
-              ctx.lineTo(A.x + off * 2.6, A.y - baseLift + s * 0.5);
+              ctx.moveTo(A.x, A.y - baseLift - 1);
+              ctx.lineTo(B.x, B.y - baseLift - 1);
+              ctx.lineTo(B.x + off * 2.2, B.y - baseLift + s * 0.42);
+              ctx.lineTo(A.x + off * 2.2, A.y - baseLift + s * 0.42);
               ctx.closePath();
               ctx.fill();
             }
@@ -1234,6 +1247,43 @@ export class Renderer {
             ctx.fill();
           }
         }
+      },
+    };
+  }
+
+  /**
+   * Wall THICKNESS for a north-south contour edge. The plane itself is
+   * edge-on to the orthographic camera, so we cheat a thin dark sliver
+   * onto the outward side: faces terminate into it instead of cutting
+   * off naked, and jogged rims read as one continuous mass.
+   */
+  private cliffSideItem(
+    ax: number,
+    ay: number,
+    bx: number,
+    by: number,
+    nx: number,
+    level: number,
+  ): DrawItem {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const topLift = level * ELEV_H * s;
+    const baseLift = (level - 1) * ELEV_H * s;
+    return {
+      sortY: Math.max(ay, by) + 0.001,
+      draw: () => {
+        const A = this.camera.worldToScreen(ax, ay, this.w, this.h);
+        const B = this.camera.worldToScreen(bx, by, this.w, this.h);
+        const x = Math.round(A.x);
+        const w2 = Math.max(2, s * 0.09) * (nx >= 0 ? 1 : -1);
+        const y0 = Math.min(A.y, B.y) - topLift - 1.5;
+        const y1 = Math.max(A.y, B.y) - baseLift;
+        // Outward-side sliver, darker than any face tone.
+        ctx.fillStyle = nx >= 0 ? '#3c3646' : '#453f52';
+        ctx.fillRect(x, y0, w2, y1 - y0);
+        // Crisp arris line where the sliver meets the crown edge.
+        ctx.fillStyle = 'rgba(24, 18, 34, 0.4)';
+        ctx.fillRect(x + (nx >= 0 ? 0 : -1.5), y0, 1.5, y1 - y0);
       },
     };
   }
