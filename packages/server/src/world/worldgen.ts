@@ -135,7 +135,17 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
     const sy = flank[1]!;
     if (L(lx + sx, ly + sy) !== lvl || L(lx - sx, ly - sy) !== lvl) return false;
     if (L(lx + ox, ly + oy) !== lvl || isRim(lx + ox, ly + oy)) return false;
-    return hashCoords(seed ^ 0x5aca1e, baseX + lx, baseY + ly) % 4 === 0;
+    // STRAIGHT-EDGE RULE (how tile-based games have always placed
+    // stairs: stair pieces exist only for straight cliff edges). The
+    // flight needs a locally straight rim three tiles wide — both
+    // mouth diagonals one level down (the flanks are true south faces,
+    // not corner turns that would crowd the flight) and both top
+    // diagonals solid (the stair tops out onto straight crown, not a
+    // corner point). A stair jammed into a 45-degree turn can never
+    // read as anything but a broken notch at this camera.
+    if (L(lx - 1, ly + 1) !== lvl - 1 || L(lx + 1, ly + 1) !== lvl - 1) return false;
+    if (L(lx - 1, ly - 1) < lvl || L(lx + 1, ly - 1) < lvl) return false;
+    return hashCoords(seed ^ 0x5aca1e, baseX + lx, baseY + ly) % 3 === 0;
   };
 
   /** Is a cardinal neighbor a ramp? Those tiles stay clear (stair mouths). */

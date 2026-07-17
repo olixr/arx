@@ -14,6 +14,17 @@ export declare class Camera {
      * height with the world, not overhead.
      */
     readonly yScale = 0.6;
+    /**
+     * The camera's screen-space origin, SNAPPED to whole pixels. Every
+     * layer then translates by the same integer each frame — terrain
+     * blits, wall geometry and sprites move in lockstep. With a subpixel
+     * origin, anything that pixel-rounds its own coordinates (walls,
+     * stair seams) crosses pixel boundaries on different frames than the
+     * smoothly-resampled ground and appears to oscillate on its own
+     * layer. Standard pixel-camera discipline: snap once, at the source.
+     */
+    private originX;
+    private originY;
     worldToScreen(wx: number, wy: number, w: number, h: number): Vec2;
     screenToWorld(sx: number, sy: number, w: number, h: number): Vec2;
 }
@@ -194,6 +205,22 @@ export declare class Renderer {
      * treads is invisible at gait speed.
      */
     private rampItem;
+    /**
+     * The worn LANDING where a south-descending flight opens onto the
+     * crown: a dirt patch painted over the lifted surface just north of
+     * the stair top, so the path visibly continues onto the plateau
+     * instead of the grass stopping dead at the top tread. Its own item:
+     * it must draw after that row's crown slice but BEFORE anything
+     * standing on it.
+     */
+    private rampLandingItem;
+    /**
+     * The worn APRON where the flight's mouth meets the ground below: a
+     * fan of packed earth spilling from the bottom step. Its own item
+     * (mirror of the landing) — sorted just after the mouth row's ground
+     * so it survives elevated shelves, but before anything standing on it.
+     */
+    private rampApronItem;
     private static readonly ORE_STYLES;
     /** Irregular low-poly mass: dark face, lifted flat cap, lit NW facet. */
     private rockMass;

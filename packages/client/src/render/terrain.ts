@@ -413,29 +413,48 @@ export function bakeElevated(
   }
   ctx.restore();
 
-  // The brink: a sunlit lip along the rim contour, with a hair of shade
-  // beneath it — the edge you read from fifty tiles away.
-  ctx.lineCap = 'round';
+  // The rim SHOULDER: a chunky bordered edge along the whole crown
+  // contour — the exposed-rock lip every classic cliff tileset gives
+  // its edges. This is what makes a level change read as a ledge on
+  // ALL sides, including the north back edge and east/west edges that
+  // are edge-on to the camera (where the wall face itself is nearly
+  // invisible). Layered strokes clipped to the crown: only the inner
+  // half of each stroke shows, so the band sits entirely on top.
+  const rim = new Path2D();
   for (let j = 0; j <= CHUNK_SIZE; j++) {
     for (let i = 0; i <= CHUNK_SIZE; i++) {
       const mask = maskAt(i, j);
       if (mask === 0 || mask === 15) continue;
       const segs = nearStair(i, j) ? contourSegsSquare(mask) : contourSegs(mask);
       for (const [x0, y0, x1, y1] of segs) {
-        const ax = (i + x0 - 0.5 + 0.5) * px;
-        const ay = (j + y0 - 0.5 + 0.5) * px;
-        const bx = (i + x1 - 0.5 + 0.5) * px;
-        const by = (j + y1 - 0.5 + 0.5) * px;
-        ctx.strokeStyle = 'rgba(255, 244, 214, 0.2)';
-        ctx.lineWidth = Math.max(1.5, px * 0.07);
-        ctx.beginPath();
-        ctx.moveTo(ax, ay);
-        ctx.lineTo(bx, by);
-        ctx.stroke();
+        rim.moveTo((i + x0) * px, (j + y0) * px);
+        rim.lineTo((i + x1) * px, (j + y1) * px);
       }
     }
   }
+  ctx.save();
+  ctx.clip(path);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  // Soft shade band fading in from the edge (inner ~0.26 tile).
+  ctx.strokeStyle = 'rgba(45, 38, 58, 0.18)';
+  ctx.lineWidth = px * 0.52;
+  ctx.stroke(rim);
+  // Rock shoulder: the worn stone border itself (inner ~0.16 tile).
+  ctx.strokeStyle = 'rgba(74, 67, 88, 0.5)';
+  ctx.lineWidth = px * 0.32;
+  ctx.stroke(rim);
+  // Dark crease just inside the lip (inner ~0.08 tile).
+  ctx.strokeStyle = 'rgba(28, 22, 40, 0.35)';
+  ctx.lineWidth = px * 0.16;
+  ctx.stroke(rim);
+  // Sunlit lip at the very edge.
+  ctx.strokeStyle = 'rgba(255, 244, 214, 0.3)';
+  ctx.lineWidth = Math.max(2, px * 0.07);
+  ctx.stroke(rim);
   ctx.lineCap = 'butt';
+  ctx.lineJoin = 'miter';
+  ctx.restore();
 
   return { canvas, rows };
 }

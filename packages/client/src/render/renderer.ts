@@ -87,17 +87,34 @@ export class Camera {
    */
   readonly yScale = 0.6;
 
+  /**
+   * The camera's screen-space origin, SNAPPED to whole pixels. Every
+   * layer then translates by the same integer each frame — terrain
+   * blits, wall geometry and sprites move in lockstep. With a subpixel
+   * origin, anything that pixel-rounds its own coordinates (walls,
+   * stair seams) crosses pixel boundaries on different frames than the
+   * smoothly-resampled ground and appears to oscillate on its own
+   * layer. Standard pixel-camera discipline: snap once, at the source.
+   */
+  private originX(w: number): number {
+    return Math.round(w / 2 - this.x * this.scale);
+  }
+
+  private originY(h: number): number {
+    return Math.round(h / 2 - this.y * this.scale * this.yScale);
+  }
+
   worldToScreen(wx: number, wy: number, w: number, h: number): Vec2 {
     return {
-      x: (wx - this.x) * this.scale + w / 2,
-      y: (wy - this.y) * this.scale * this.yScale + h / 2,
+      x: wx * this.scale + this.originX(w),
+      y: wy * this.scale * this.yScale + this.originY(h),
     };
   }
 
   screenToWorld(sx: number, sy: number, w: number, h: number): Vec2 {
     return {
-      x: (sx - w / 2) / this.scale + this.x,
-      y: (sy - h / 2) / (this.scale * this.yScale) + this.y,
+      x: (sx - this.originX(w)) / this.scale,
+      y: (sy - this.originY(h)) / (this.scale * this.yScale),
     };
   }
 }
@@ -359,44 +376,51 @@ export class Renderer {
         const baked = this.baked.get(`${cx},${cy}`);
         if (!baked || baked.lifted.length === 0) continue;
         for (const layer of baked.lifted) {
+          // ONE item per ROW, not per band: a band spanning many rows
+          // sorts at its first row, so a player standing in a gap of
+          // the band's row range (behind a mass that starts further
+          // south at their x) would draw first and then poke through
+          // the crown. Per-row granularity makes walk-behind exact.
           for (const [r0, r1] of layer.bands) {
-            const worldTy = cy * CHUNK_SIZE + r0;
-            const rowCount = r1 - r0 + 1;
-            const level = layer.level;
-            items.push({
-              sortY: worldTy - 0.01,
-              draw: () => {
-                const p = this.camera.worldToScreen(cx * CHUNK_SIZE, worldTy, this.w, this.h);
-                this.ctx.drawImage(
-                  layer.canvas,
-                  0,
-                  r0 * TILE_PX,
-                  CHUNK_SIZE * TILE_PX,
-                  rowCount * TILE_PX,
-                  p.x,
-                  p.y - level * ELEV_H * s,
-                  CHUNK_SIZE * s + 0.5,
-                  rowCount * s * this.camera.yScale + 0.5,
-                );
-                // The plateau's own breeze layer: blades and flowers on
-                // the lifted surface, drawn right on top of the band.
-                drawLiveGround(
-                  this.ctx,
-                  (tx, ty) =>
-                    game.world.elevAt(tx, ty) === level ? game.world.groundAt(tx, ty) : undefined,
-                  (tx, ty) => this.detailAt(game, tx, ty),
-                  {
-                    minTx: Math.max(b.minTx, cx * CHUNK_SIZE),
-                    maxTx: Math.min(b.maxTx, cx * CHUNK_SIZE + CHUNK_SIZE - 1),
-                    minTy: worldTy,
-                    maxTy: cy * CHUNK_SIZE + r1,
-                  },
-                  this.liftedWTS,
-                  s,
-                  performance.now(),
-                );
-              },
-            });
+            for (let r = r0; r <= r1; r++) {
+              const worldTy = cy * CHUNK_SIZE + r;
+              if (worldTy > b.maxTy || worldTy < b.minTy - ELEV_H * 2 - 1) continue;
+              const level = layer.level;
+              items.push({
+                sortY: worldTy - 0.01,
+                draw: () => {
+                  const p = this.camera.worldToScreen(cx * CHUNK_SIZE, worldTy, this.w, this.h);
+                  this.ctx.drawImage(
+                    layer.canvas,
+                    0,
+                    r * TILE_PX,
+                    CHUNK_SIZE * TILE_PX,
+                    TILE_PX,
+                    p.x,
+                    p.y - level * ELEV_H * s,
+                    CHUNK_SIZE * s + 0.5,
+                    s * this.camera.yScale + 0.5,
+                  );
+                  // The plateau's own breeze layer: blades and flowers
+                  // on the lifted surface, drawn on top of the row.
+                  drawLiveGround(
+                    this.ctx,
+                    (tx, ty) =>
+                      game.world.elevAt(tx, ty) === level ? game.world.groundAt(tx, ty) : undefined,
+                    (tx, ty) => this.detailAt(game, tx, ty),
+                    {
+                      minTx: Math.max(b.minTx, cx * CHUNK_SIZE),
+                      maxTx: Math.min(b.maxTx, cx * CHUNK_SIZE + CHUNK_SIZE - 1),
+                      minTy: worldTy,
+                      maxTy: worldTy,
+                    },
+                    this.liftedWTS,
+                    s,
+                    performance.now(),
+                  );
+                },
+              });
+            }
           }
         }
       }
@@ -880,6 +904,10 @@ export class Renderer {
         if (ground === Tile.Cliff) continue; // faces come from collectCliffFaces
         if (ground === Tile.Ramp) {
           items.push(this.rampItem(tx, ty, game));
+          const landing = this.rampLandingItem(tx, ty, game);
+          if (landing) items.push(landing);
+          const apron = this.rampApronItem(tx, ty, game);
+          if (apron) items.push(apron);
           continue;
         }
         if (Renderer.WALL_TILES.has(ground)) {
@@ -1379,18 +1407,20 @@ export class Renderer {
     return {
       sortY: s0 - (level * ELEV_H) / this.camera.yScale,
       drawShadow:
-        level - 1 === 0 && nx >= 0
+        level - 1 === 0
           ? () => {
-              // The shaded (east) flank grounds itself with a contact
-              // shadow hugging the wall line, like every south face.
+              // The shaded (east) flank casts a real contact shadow;
+              // the sunlit (west) flank still gets a narrow ambient
+              // seam — every wall foot is attached to its ground.
               const A = this.camera.worldToScreen(x, s0, this.w, this.h);
               const B = this.camera.worldToScreen(x, s1, this.w, this.h);
               // Rounded slice bounds tile exactly — an overlap would
               // double-blend the alpha into a visible seam line.
               const ya = Math.round(A.y) - (isTop ? 1 : 0);
               const yb = Math.round(B.y) + (isBottom ? s * 0.2 : 0);
+              const wS = nx >= 0 ? Math.max(3, s * 0.24) : Math.max(2, s * 0.09);
               ctx.fillStyle = SHADOW_COLOR;
-              ctx.fillRect(Math.round(A.x), ya, Math.max(3, s * 0.24), yb - ya);
+              ctx.fillRect(Math.round(A.x) - (nx >= 0 ? 0 : wS), ya, wS, yb - ya);
             }
           : undefined,
       draw: () => {
@@ -1469,23 +1499,53 @@ export class Renderer {
         const x1 = Math.round(wts(tx + 1, ty).x);
         const edgeW = Math.max(1.5, s * 0.04);
         if (dir[1] === 1) {
-          // Climbing NORTH (away): tread tops recede up-screen, each
-          // with a full riser face under its south nose.
+          // Climbing NORTH (away): a RECESSED stairwell, not stripes
+          // painted on the wall plane. Cheek walls (the cut sides of
+          // the notch) frame a narrowed flight; a worn dirt apron
+          // spills from the mouth onto the low ground and a matching
+          // landing opens onto the crown (separate item) — the stair
+          // is carved into the terrain and attached to both grounds.
+          const cw = Math.max(3, s * 0.11);
+          const ix0 = x0 + cw;
+          const ix1 = x1 - cw;
+          const yTopFlight = wts(tx, ty).y - baseLift - ELEV_H * s;
+          const yMouth = wts(tx, ty + 1).y - baseLift;
+          // (The worn mouth apron is its own item — see rampApronItem —
+          // because an elevated mouth's crown row would repaint it.)
+          // Treads recede up-screen between the cheeks, each with a
+          // full riser face under its south nose.
           for (let i = N - 1; i >= 0; i--) {
             const lift = baseLift + (i + 1) * step;
             const ySouth = wts(tx, ty + 1 - i / N).y - lift;
             const yNorth = wts(tx, ty + 1 - (i + 1) / N).y - lift;
             ctx.fillStyle = i % 2 === 0 ? TOP_A : TOP_B;
-            ctx.fillRect(x0, yNorth, x1 - x0, ySouth - yNorth + 0.5);
+            ctx.fillRect(ix0, yNorth, ix1 - ix0, ySouth - yNorth + 0.5);
             // Riser under the nose.
             ctx.fillStyle = RISER;
-            ctx.fillRect(x0, ySouth, x1 - x0, step + 0.5);
+            ctx.fillRect(ix0, ySouth, ix1 - ix0, step + 0.5);
             // Lit nose lip + shadow line under it.
             ctx.fillStyle = LIP;
-            ctx.fillRect(x0, ySouth - edgeW, x1 - x0, edgeW);
+            ctx.fillRect(ix0, ySouth - edgeW, ix1 - ix0, edgeW);
             ctx.fillStyle = 'rgba(26, 20, 36, 0.3)';
-            ctx.fillRect(x0, ySouth + step - edgeW, x1 - x0, edgeW);
+            ctx.fillRect(ix0, ySouth + step - edgeW, ix1 - ix0, edgeW);
           }
+          // Center wear: the path feet actually take, slightly lighter.
+          ctx.fillStyle = 'rgba(236, 232, 240, 0.08)';
+          ctx.fillRect((ix0 + ix1) / 2 - (ix1 - ix0) * 0.19, yTopFlight, (ix1 - ix0) * 0.38, yMouth - yTopFlight);
+          // Cheek walls: the notch's cut sides. The west cheek shows
+          // its east-facing (shaded) inner side, the east cheek its
+          // west-facing (sunlit) inner side. AO seam against treads.
+          ctx.fillStyle = '#443e52';
+          ctx.fillRect(x0, yTopFlight, cw, yMouth - yTopFlight);
+          ctx.fillStyle = '#5b5468';
+          ctx.fillRect(ix1, yTopFlight, cw, yMouth - yTopFlight);
+          ctx.fillStyle = 'rgba(20, 15, 30, 0.35)';
+          ctx.fillRect(ix0 - 1.5, yTopFlight, 1.5, yMouth - yTopFlight);
+          ctx.fillRect(ix1, yTopFlight, 1.5, yMouth - yTopFlight);
+          // Lit caps where the cheeks meet the crown light.
+          ctx.fillStyle = 'rgba(255, 244, 214, 0.22)';
+          ctx.fillRect(x0, yTopFlight, cw, Math.max(1.5, s * 0.035));
+          ctx.fillRect(ix1, yTopFlight, cw, Math.max(1.5, s * 0.035));
         } else if (dir[1] === -1) {
           // Climbing SOUTH (toward camera): seen from behind-above -
           // receding tops with a hard drop edge at each step's back.
@@ -1530,6 +1590,92 @@ export class Renderer {
           ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
           ctx.fillRect(x0, yFaceBase - edgeW, x1 - x0, edgeW);
         }
+      },
+    };
+  }
+
+  /**
+   * The worn LANDING where a south-descending flight opens onto the
+   * crown: a dirt patch painted over the lifted surface just north of
+   * the stair top, so the path visibly continues onto the plateau
+   * instead of the grass stopping dead at the top tread. Its own item:
+   * it must draw after that row's crown slice but BEFORE anything
+   * standing on it.
+   */
+  private rampLandingItem(tx: number, ty: number, game: ClientGame): DrawItem | null {
+    const lvl = game.world.elevAt(tx, ty);
+    if (lvl <= 0 || game.world.elevAt(tx, ty + 1) >= lvl) return null; // south-descending only
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const lift = lvl * ELEV_H * s;
+    return {
+      sortY: ty - 1 + 0.02,
+      draw: () => {
+        const wts = (wx: number, wy: number) => this.camera.worldToScreen(wx, wy, this.w, this.h);
+        const x0 = Math.round(wts(tx, ty).x);
+        const x1 = Math.round(wts(tx + 1, ty).x);
+        const yTop = wts(tx, ty).y - lift;
+        const inset = s * 0.09;
+        const reach = s * 0.32; // how far the worn patch spills north
+        ctx.fillStyle = '#6d5642';
+        ctx.beginPath();
+        ctx.moveTo(x0 + inset * 0.5, yTop + 1);
+        ctx.lineTo(x1 - inset * 0.5, yTop + 1);
+        ctx.lineTo(x1 - inset * 1.6, yTop - reach * 0.6);
+        ctx.lineTo(x1 - inset * 3.2, yTop - reach);
+        ctx.lineTo(x0 + inset * 3.2, yTop - reach);
+        ctx.lineTo(x0 + inset * 1.6, yTop - reach * 0.6);
+        ctx.closePath();
+        ctx.fill();
+        // Center wear continuing the flight's path line.
+        ctx.fillStyle = 'rgba(126, 103, 80, 0.5)';
+        const mid = (x0 + x1) / 2;
+        ctx.fillRect(mid - (x1 - x0) * 0.17, yTop - reach * 0.8, (x1 - x0) * 0.34, reach * 0.8);
+        // Faint shade where the landing meets the top tread.
+        ctx.fillStyle = 'rgba(38, 28, 22, 0.2)';
+        ctx.fillRect(x0 + inset * 0.5, yTop, x1 - x0 - inset, Math.max(1.5, s * 0.035));
+      },
+    };
+  }
+
+  /**
+   * The worn APRON where the flight's mouth meets the ground below: a
+   * fan of packed earth spilling from the bottom step. Its own item
+   * (mirror of the landing) — sorted just after the mouth row's ground
+   * so it survives elevated shelves, but before anything standing on it.
+   */
+  private rampApronItem(tx: number, ty: number, game: ClientGame): DrawItem | null {
+    const lvl = game.world.elevAt(tx, ty);
+    if (lvl <= 0 || game.world.elevAt(tx, ty + 1) >= lvl) return null; // south-descending only
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const baseLift = (lvl - 1) * ELEV_H * s;
+    return {
+      sortY: ty + 1 + 0.02,
+      draw: () => {
+        const wts = (wx: number, wy: number) => this.camera.worldToScreen(wx, wy, this.w, this.h);
+        const x0 = Math.round(wts(tx, ty).x);
+        const x1 = Math.round(wts(tx + 1, ty).x);
+        const yMouth = wts(tx, ty + 1).y - baseLift;
+        const fan = s * 0.34;
+        const flare = s * 0.12;
+        ctx.fillStyle = '#6d5642';
+        ctx.beginPath();
+        ctx.moveTo(x0 - flare * 0.4, yMouth - 1);
+        ctx.lineTo(x1 + flare * 0.4, yMouth - 1);
+        ctx.lineTo(x1 + flare, yMouth + fan * 0.55);
+        ctx.lineTo(x1 - flare, yMouth + fan);
+        ctx.lineTo(x0 + flare, yMouth + fan);
+        ctx.lineTo(x0 - flare, yMouth + fan * 0.55);
+        ctx.closePath();
+        ctx.fill();
+        // Shade tucked under the bottom riser; center wear continuing
+        // the flight's path line out onto the ground.
+        ctx.fillStyle = 'rgba(38, 28, 22, 0.25)';
+        ctx.fillRect(x0 - flare * 0.4, yMouth - 1, x1 - x0 + flare * 0.8, Math.max(1.5, s * 0.04));
+        ctx.fillStyle = 'rgba(126, 103, 80, 0.5)';
+        const mid = (x0 + x1) / 2;
+        ctx.fillRect(mid - (x1 - x0) * 0.17, yMouth, (x1 - x0) * 0.34, fan * 0.6);
       },
     };
   }
