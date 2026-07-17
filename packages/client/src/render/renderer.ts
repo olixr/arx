@@ -629,7 +629,7 @@ export class Renderer {
         }
         const def = tileDef(ground);
         if (!def.raised && ground !== Tile.Stump) continue;
-        items.push(this.objectItem(ground as Tile, tx, ty));
+        items.push(this.objectItem(ground as Tile, tx, ty, game));
       }
     }
   }
@@ -777,7 +777,7 @@ export class Renderer {
   }
 
   /** Trees, rocks, stations — the object layer, redrawn with character. */
-  private objectItem(tile: Tile, tx: number, ty: number): DrawItem {
+  private objectItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
@@ -939,26 +939,60 @@ export class Renderer {
         };
 
       case Tile.Fence: {
+        // Connected fencing: one post per tile, rails reaching toward
+        // every fence/wall neighbor so runs read as continuous built
+        // structure — never a row of disconnected pickets.
+        const isF = (t2: number | undefined): boolean =>
+          t2 === Tile.Fence || t2 === Tile.WallWood || t2 === Tile.WallStone;
+        const cn = isF(game.world.groundAt(tx, ty - 1));
+        const ce = isF(game.world.groundAt(tx + 1, ty));
+        const cs = isF(game.world.groundAt(tx, ty + 1));
+        const cw = isF(game.world.groundAt(tx - 1, ty));
+        const isolated = !cn && !ce && !cs && !cw;
+        const syT = s * this.camera.yScale;
+        const postC = '#7a552e';
+        const railC = '#94693a';
         return {
           sortY: ty + 0.8,
           drawShadow: () => {
             ctx.fillStyle = SHADOW_COLOR;
-            ctx.fillRect(p.x - s * 0.4 + off, p.y - s * 0.05 + off, s * 0.8, s * 0.28);
+            ctx.beginPath();
+            facetCircle(ctx, p.x + off * 0.8, p.y + syT * 0.16, s * 0.16, 6, 0.3, 0.5);
+            ctx.fill();
           },
           draw: () => {
-            // Posts with pointed chamfer tops; squared rails.
-            ctx.fillStyle = '#7a552e';
-            for (const fx of [-0.32, 0.32]) {
-              ctx.beginPath();
-              chamferRect(ctx, p.x + fx * s - s * 0.05, p.y - s * 0.34, s * 0.1, s * 0.5, [s * 0.04, s * 0.04, 0, 0]);
-              ctx.fill();
+            const baseY = p.y + syT * 0.14;
+            const postH = 0.54 * s;
+            const railT = Math.max(2, s * 0.06);
+            // North-south rails: the run marches in depth, so its two
+            // rails read as parallel vertical lines through the posts.
+            ctx.fillStyle = railC;
+            if (cn || cs) {
+              const yTop = cn ? p.y - syT * 0.5 : p.y;
+              const yBot = cs ? p.y + syT * 0.5 : p.y;
+              for (const rx of [-0.085, 0.085]) {
+                ctx.fillRect(
+                  p.x + rx * s - railT / 2,
+                  yTop - postH * 0.52,
+                  railT,
+                  yBot - yTop,
+                );
+              }
             }
-            ctx.fillStyle = '#94693a';
-            for (const ry of [-0.22, -0.02]) {
-              ctx.beginPath();
-              chamferRect(ctx, p.x - s * 0.5, p.y + ry * s, s, s * 0.09, s * 0.025);
-              ctx.fill();
+            // East-west rails: two horizontal bars at fence height.
+            if (ce || cw || isolated) {
+              const xw = cw || isolated ? p.x - s * 0.5 : p.x;
+              const xe = ce || isolated ? p.x + s * 0.5 : p.x;
+              ctx.fillRect(xw, baseY - postH * 0.74, xe - xw, railT);
+              ctx.fillRect(xw, baseY - postH * 0.4, xe - xw, railT);
             }
+            // The post: a chamfer-topped picket with a lit cap.
+            ctx.fillStyle = postC;
+            ctx.beginPath();
+            chamferRect(ctx, p.x - s * 0.06, baseY - postH, s * 0.12, postH, [s * 0.035, s * 0.035, 0, 0]);
+            ctx.fill();
+            ctx.fillStyle = shade(postC, 16);
+            ctx.fillRect(p.x - s * 0.045, baseY - postH + s * 0.015, s * 0.09, s * 0.045);
           },
         };
       }

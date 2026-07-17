@@ -27,8 +27,6 @@ interface BlobLayer {
   /** Does this ground id belong to the layer? */
   match: (t: number) => boolean;
   color: (t: number, tx: number, ty: number) => string;
-  /** Corner radius in tile fractions. */
-  radius: number;
 }
 
 /** Region-scale two-tone variation — smooth patches, never per-tile. */
@@ -41,52 +39,42 @@ const BLOB_LAYERS: BlobLayer[] = [
   {
     match: (t) => t === Tile.Dirt,
     color: (_t, tx, ty) => patch('#96744c', '#8f6e47', tx, ty, 31),
-    radius: 0.5,
   },
   {
     match: (t) => t === Tile.Swamp,
     color: () => '#556b3e',
-    radius: 0.5,
   },
   {
     match: (t) => t === Tile.Path,
     color: (_t, tx, ty) => patch('#c2a26e', '#bc9d69', tx, ty, 33),
-    radius: 0.55,
   },
   {
     match: (t) => t === Tile.Sand,
     color: (_t, tx, ty) => patch('#ddc98d', '#d6c286', tx, ty, 35),
-    radius: 0.5,
   },
   {
     match: (t) => t === Tile.StoneFloor,
     color: (_t, tx, ty) => patch('#a09aa8', '#99939f', tx, ty, 37),
-    radius: 0.42,
   },
   {
     match: (t) => t === Tile.WoodFloor || t === Tile.Bridge,
     color: (_t, tx, ty) => patch('#a87e46', '#a37943', tx, ty, 39),
-    radius: 0.3,
   },
   {
     match: (t) => t === Tile.CaveFloor || t === Tile.PortalDown || t === Tile.PortalUp,
     color: (_t, tx, ty) => patch(CAVE_TONES[0]!, CAVE_TONES[1]!, tx, ty, 41),
-    radius: 0.45,
   },
   {
     match: (t) => t === Tile.Snow,
     color: () => '#e9edf3',
-    radius: 0.5,
   },
   {
     match: (t) => t === Tile.Water || t === Tile.FishingSpot,
     color: () => '#4979b8',
-    radius: 0.55,
   },
   {
     match: (t) => t === Tile.WaterDeep,
     color: () => '#3a629e',
-    radius: 0.55,
   },
 ];
 
@@ -145,7 +133,12 @@ export function bakeChunk(
     if (t === Tile.Workbench || t === Tile.BankChest || t === Tile.ShopCounter) {
       return nearestFloor(ground, tx, ty);
     }
-    if (t === Tile.WallStone || t === Tile.WallWood || t === Tile.CaveWall) return t;
+    // Floors run UNDER walls: the prism covers its own tile, and the
+    // floor skin meeting the wall base edge-on leaves no gap to peek
+    // through beside it.
+    if (t === Tile.WallWood) return Tile.WoodFloor;
+    if (t === Tile.WallStone) return Tile.StoneFloor;
+    if (t === Tile.CaveWall) return Tile.CaveFloor;
     return t;
   };
 
@@ -167,10 +160,8 @@ export function bakeChunk(
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
-  // 2. Material blobs, lowest to highest.
-  for (const layer of BLOB_LAYERS) {
-    drawBlobLayer(ctx, layer, g, baseX, baseY, px);
-  }
+  // 2. Material skins, lowest to highest, contoured on the dual grid.
+  drawLayerSkins(ctx, g, baseX, baseY, px);
 
   // 3. Wood-floor plank seams (subtle, flat).
   drawPlanks(ctx, g, baseX, baseY, px);
@@ -180,6 +171,37 @@ export function bakeChunk(
     for (let lx = 0; lx < CHUNK_SIZE; lx++) {
       const tx = baseX + lx;
       const ty = baseY + ly;
+      // Material grain: sparse deterministic flecks so the ground
+      // carries the same detail density as the props above it.
+      const m = g(tx, ty);
+      const hg = hashCoords(83, tx, ty);
+      const gx = lx * px;
+      const gy = ly * px;
+      if (m === Tile.StoneFloor && hg % 3 === 0) {
+        ctx.fillStyle = 'rgba(28, 24, 42, 0.09)';
+        ctx.fillRect(gx + ((hg >> 3) % 60) / 100 * px, gy + ((hg >> 8) % 60) / 100 * px, px * 0.16, px * 0.05);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.fillRect(gx + ((hg >> 5) % 60) / 100 * px, gy + ((hg >> 11) % 60) / 100 * px, px * 0.1, px * 0.04);
+      } else if (m === Tile.Path && hg % 4 === 0) {
+        ctx.fillStyle = 'rgba(94, 70, 40, 0.18)';
+        for (let k = 0; k < 2; k++) {
+          const hh = hashCoords(89 + k, tx, ty);
+          ctx.fillRect(gx + (hh % 70) / 100 * px, gy + ((hh >> 7) % 70) / 100 * px, px * 0.06, px * 0.05);
+        }
+      } else if (m === Tile.Sand && hg % 3 === 0) {
+        ctx.fillStyle = 'rgba(150, 116, 62, 0.2)';
+        for (let k = 0; k < 3; k++) {
+          const hh = hashCoords(97 + k, tx, ty);
+          ctx.fillRect(gx + (hh % 80) / 100 * px, gy + ((hh >> 7) % 80) / 100 * px, px * 0.04, px * 0.04);
+        }
+      } else if (m === Tile.CaveFloor && hg % 5 === 0) {
+        ctx.strokeStyle = 'rgba(20, 16, 32, 0.22)';
+        ctx.lineWidth = Math.max(1, px * 0.03);
+        ctx.beginPath();
+        ctx.moveTo(gx + (hg % 50) / 100 * px, gy + ((hg >> 6) % 60) / 100 * px);
+        ctx.lineTo(gx + ((hg % 50) + 30) / 100 * px, gy + (((hg >> 6) % 60) + 25) / 100 * px);
+        ctx.stroke();
+      }
       const d = detail(tx, ty);
       if (d === Detail.Pebbles) {
         // Angular stone chips, rotated apart so they never tile.
@@ -235,48 +257,120 @@ function nearestFloor(ground: GroundSampler, tx: number, ty: number): number {
   return Tile.Grass;
 }
 
+/** Which skin layer a tile belongs to, or -1 for the grass base. */
+function layerIndexOf(t: number): number {
+  for (let i = 0; i < BLOB_LAYERS.length; i++) {
+    if (BLOB_LAYERS[i]!.match(t)) return i;
+  }
+  return -1;
+}
+
 /**
- * Union-of-chamfered-cells with NEIGHBOR-AWARE corners: a cell only
- * cuts a corner when no same-material neighbor continues through it,
- * so region edges run straight and only true convex corners chamfer.
- * Interior edges are exactly shared — no bridge strips, no sawtooth
- * at junctions, and one fill per cell.
+ * DUAL-GRID MARCHING SQUARES — the terrain skin.
+ *
+ * Regions are contoured from the corners BETWEEN tiles: each dual cell
+ * (a square spanning four tile centers) looks at which of its corner
+ * tiles belong to the layer and draws one of 16 polygons. Diagonal
+ * steps in the tile data become clean 45° edges instead of staircases,
+ * straight edges stay straight, and the grid disappears while the
+ * geometry stays deliberately blocky.
+ *
+ * Layer membership is CUMULATIVE: a layer counts every tile whose
+ * material paints ABOVE it as its own, so lower materials extend under
+ * higher ones and the base can never peek through a boundary. Painted
+ * lowest → highest, higher skins cover the underlap.
  */
-function drawBlobLayer(
+function drawLayerSkins(
   ctx: CanvasRenderingContext2D,
-  layer: BlobLayer,
   g: GroundSampler,
   baseX: number,
   baseY: number,
   px: number,
 ): void {
-  const r = layer.radius * px;
-  const matches = (tx: number, ty: number): boolean => {
-    const t = g(tx, ty);
-    return t !== undefined && layer.match(t);
-  };
+  // Precompute the layer index of every tile touching this chunk once.
+  const N = CHUNK_SIZE + 2;
+  const idx = new Int8Array(N * N);
   for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
     for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
-      const tx = baseX + lx;
-      const ty = baseY + ly;
-      const t = g(tx, ty);
-      if (t === undefined || !layer.match(t)) continue;
-      const n = matches(tx, ty - 1);
-      const e = matches(tx + 1, ty);
-      const s = matches(tx, ty + 1);
-      const w = matches(tx - 1, ty);
-      const x = lx * px;
-      const y = ly * px;
-      ctx.fillStyle = layer.color(t, tx, ty);
-      ctx.beginPath();
-      chamferRect(ctx, x - 0.25, y - 0.25, px + 0.5, px + 0.5, [
-        !n && !w ? r : 0,
-        !n && !e ? r : 0,
-        !s && !e ? r : 0,
-        !s && !w ? r : 0,
-      ]);
-      ctx.fill();
+      idx[lx + 1 + (ly + 1) * N] = layerIndexOf(g(baseX + lx, baseY + ly) ?? Tile.Grass);
     }
+  }
+  const at = (lx: number, ly: number): number => idx[lx + 1 + (ly + 1) * N]!;
+
+  for (let li = 0; li < BLOB_LAYERS.length; li++) {
+    const layer = BLOB_LAYERS[li]!;
+    for (let j = 0; j <= CHUNK_SIZE; j++) {
+      for (let i = 0; i <= CHUNK_SIZE; i++) {
+        // Corner tiles of this dual cell.
+        const tl = at(i - 1, j - 1);
+        const tr = at(i, j - 1);
+        const br = at(i, j);
+        const bl = at(i - 1, j);
+        const mask =
+          (tl >= li && tl !== -1 ? 1 : 0) |
+          (tr >= li && tr !== -1 ? 2 : 0) |
+          (br >= li && br !== -1 ? 4 : 0) |
+          (bl >= li && bl !== -1 ? 8 : 0);
+        if (mask === 0) continue;
+        // Color from a corner that is truly of this layer if possible
+        // (members-by-underlap sit above and will repaint themselves).
+        let ctx2 = -1;
+        let cty = -1;
+        if (tl === li) { ctx2 = i - 1; cty = j - 1; }
+        else if (tr === li) { ctx2 = i; cty = j - 1; }
+        else if (bl === li) { ctx2 = i - 1; cty = j; }
+        else if (br === li) { ctx2 = i; cty = j; }
+        else { ctx2 = i; cty = j; }
+        ctx.fillStyle = layer.color(0, baseX + ctx2, baseY + cty);
+        ctx.beginPath();
+        maskPolygon(ctx, mask, (i - 0.5) * px, (j - 0.5) * px, px);
+        ctx.fill();
+        // Hairline same-color stroke kills antialiasing seams between
+        // adjacent cells of one region.
+        ctx.strokeStyle = ctx.fillStyle;
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+/**
+ * The 16 marching-squares cases as polygon subpaths. Corner bits:
+ * TL=1, TR=2, BR=4, BL=8. Diagonal pairs draw a CONNECTED band so
+ * touching-at-a-corner regions read as one flow, never a pinch.
+ */
+function maskPolygon(
+  ctx: CanvasRenderingContext2D,
+  mask: number,
+  x0: number,
+  y0: number,
+  size: number,
+): void {
+  const m = size / 2;
+  const x1 = x0 + size;
+  const y1 = y0 + size;
+  const poly = (pts: number[][]): void => {
+    ctx.moveTo(pts[0]![0]!, pts[0]![1]!);
+    for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k]![0]!, pts[k]![1]!);
+    ctx.closePath();
+  };
+  switch (mask) {
+    case 15: ctx.rect(x0, y0, size, size); break;
+    case 1: poly([[x0, y0], [x0 + m, y0], [x0, y0 + m]]); break;
+    case 2: poly([[x0 + m, y0], [x1, y0], [x1, y0 + m]]); break;
+    case 4: poly([[x1, y0 + m], [x1, y1], [x0 + m, y1]]); break;
+    case 8: poly([[x0, y0 + m], [x0 + m, y1], [x0, y1]]); break;
+    case 3: ctx.rect(x0, y0, size, m); break;
+    case 12: ctx.rect(x0, y0 + m, size, m); break;
+    case 9: ctx.rect(x0, y0, m, size); break;
+    case 6: ctx.rect(x0 + m, y0, m, size); break;
+    case 7: poly([[x0, y0], [x1, y0], [x1, y1], [x0 + m, y1], [x0, y0 + m]]); break;
+    case 11: poly([[x0, y0], [x1, y0], [x1, y0 + m], [x0 + m, y1], [x0, y1]]); break;
+    case 13: poly([[x0, y0], [x0 + m, y0], [x1, y0 + m], [x1, y1], [x0, y1]]); break;
+    case 14: poly([[x0 + m, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0 + m]]); break;
+    case 5: poly([[x0, y0], [x0 + m, y0], [x1, y0 + m], [x1, y1], [x0 + m, y1], [x0, y0 + m]]); break;
+    case 10: poly([[x0 + m, y0], [x1, y0], [x1, y0 + m], [x0 + m, y1], [x0, y1], [x0, y0 + m]]); break;
   }
 }
 
@@ -319,6 +413,7 @@ export function drawLiveGround(
   timeMs: number,
 ): void {
   const t = timeMs / 1000;
+  drawShorelines(ctx, ground, bounds, worldToScreen, s, t);
   for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
     for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
       const tile = ground(tx, ty);
@@ -369,6 +464,80 @@ export function drawLiveGround(
       }
     }
   }
+}
+
+/** Water tiles that share a shoreline (no foam between each other). */
+function isWaterTile(t: number | undefined): boolean {
+  return t === Tile.Water || t === Tile.WaterDeep || t === Tile.FishingSpot;
+}
+
+/**
+ * Shoreline dressing: a dark waterline plus slow-breathing foam dashes
+ * that slide along the shore. Runs on the SAME dual-grid contour as
+ * the water skin (marching squares over tile corners), so the line
+ * follows the drawn diagonals exactly — never staircase ticks.
+ */
+function drawShorelines(
+  ctx: CanvasRenderingContext2D,
+  ground: GroundSampler,
+  bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number },
+  worldToScreen: (wx: number, wy: number) => { x: number; y: number },
+  s: number,
+  t: number,
+): void {
+  ctx.lineCap = 'round';
+  for (let j = bounds.minTy; j <= bounds.maxTy + 1; j++) {
+    for (let i = bounds.minTx; i <= bounds.maxTx + 1; i++) {
+      const mask =
+        (isWaterTile(ground(i - 1, j - 1)) ? 1 : 0) |
+        (isWaterTile(ground(i, j - 1)) ? 2 : 0) |
+        (isWaterTile(ground(i, j)) ? 4 : 0) |
+        (isWaterTile(ground(i - 1, j)) ? 8 : 0);
+      if (mask === 0 || mask === 15) continue;
+      // Contour endpoints: midpoints of this dual cell's edges.
+      const top: [number, number] = [i, j - 0.5];
+      const right: [number, number] = [i + 0.5, j];
+      const bottom: [number, number] = [i, j + 0.5];
+      const left: [number, number] = [i - 0.5, j];
+      let segs: Array<[[number, number], [number, number]]>;
+      switch (mask) {
+        case 1: case 14: segs = [[top, left]]; break;
+        case 2: case 13: segs = [[top, right]]; break;
+        case 4: case 11: segs = [[right, bottom]]; break;
+        case 8: case 7: segs = [[left, bottom]]; break;
+        case 3: case 12: segs = [[left, right]]; break;
+        case 6: case 9: segs = [[top, bottom]]; break;
+        case 5: segs = [[top, right], [bottom, left]]; break;
+        default: segs = [[top, left], [right, bottom]]; break; // 10
+      }
+      for (let k = 0; k < segs.length; k++) {
+        const a = worldToScreen(segs[k]![0]![0], segs[k]![0]![1]);
+        const b = worldToScreen(segs[k]![1]![0], segs[k]![1]![1]);
+        // Waterline: constant dark edge along the visual shore.
+        ctx.strokeStyle = 'rgba(26, 48, 96, 0.32)';
+        ctx.lineWidth = Math.max(1.5, s * 0.055);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+        // Foam: a dash sliding along the segment, breathing in and out.
+        const hh = hashCoords(71 + k, i, j);
+        const alpha = Math.sin(((t * 0.45 + (hh % 40) / 40) % 1) * Math.PI);
+        if (alpha < 0.12) continue;
+        const u = (t * 0.1 + (hh % 100) / 100) % 0.75;
+        const u1 = u + 0.25;
+        ctx.strokeStyle = '#dcebfb';
+        ctx.lineWidth = Math.max(1.5, s * 0.05);
+        ctx.globalAlpha = alpha * 0.65;
+        ctx.beginPath();
+        ctx.moveTo(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u);
+        ctx.lineTo(a.x + (b.x - a.x) * u1, a.y + (b.y - a.y) * u1);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+  ctx.lineCap = 'butt';
 }
 
 function drawBlades(
