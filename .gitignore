@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.tsbuildinfo
+data/*.db
+data/*.db-*
+data/worldcache/
+.DS_Store
+.playwright-mcp/

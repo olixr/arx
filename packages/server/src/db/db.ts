@@ -1,0 +1,117 @@
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { config } from '../config.js';
+
+/**
+ * SQLite via node:sqlite (no native deps). WAL mode; simple forward-only
+ * migrations keyed by user_version. Every later phase appends a
+ * migration rather than editing an old one.
+ */
+
+const MIGRATIONS: string[] = [
+  // 1 — accounts, sessions, characters
+  `
+  CREATE TABLE accounts (
+    id INTEGER PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    pass_hash BLOB NOT NULL,
+    pass_salt BLOB NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE TABLE sessions (
+    token TEXT PRIMARY KEY,
+    account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL
+  );
+  CREATE INDEX idx_sessions_account ON sessions(account_id);
+  CREATE TABLE characters (
+    id INTEGER PRIMARY KEY,
+    account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    x REAL NOT NULL,
+    y REAL NOT NULL,
+    hp INTEGER NOT NULL DEFAULT 10,
+    created_at INTEGER NOT NULL,
+    last_seen INTEGER NOT NULL
+  );
+  CREATE INDEX idx_characters_account ON characters(account_id);
+  `,
+  // 2 — skills and inventory
+  `
+  CREATE TABLE character_skills (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    skill TEXT NOT NULL,
+    xp INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (character_id, skill)
+  );
+  CREATE TABLE inventory_slots (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    slot INTEGER NOT NULL,
+    item_id TEXT NOT NULL,
+    qty INTEGER NOT NULL,
+    PRIMARY KEY (character_id, slot)
+  );
+  `,
+  // 3 — worn equipment
+  `
+  CREATE TABLE equipment (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    slot TEXT NOT NULL,
+    item_id TEXT NOT NULL,
+    PRIMARY KEY (character_id, slot)
+  );
+  `,
+  // 4 — bank storage (everything stacks in the bank)
+  `
+  CREATE TABLE bank_items (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    item_id TEXT NOT NULL,
+    qty INTEGER NOT NULL,
+    PRIMARY KEY (character_id, item_id)
+  );
+  `,
+  // 5 — player-built world tiles (construction)
+  `
+  CREATE TABLE built_tiles (
+    tx INTEGER NOT NULL,
+    ty INTEGER NOT NULL,
+    tile INTEGER NOT NULL,
+    owner_character_id INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (tx, ty)
+  );
+  `,
+];
+
+export function openDb(path?: string): DatabaseSync {
+  let dbPath = path;
+  if (!dbPath) {
+    mkdirSync(config.dataDir, { recursive: true });
+    dbPath = join(config.dataDir, 'devcraft.db');
+  }
+  const db = new DatabaseSync(dbPath);
+  db.exec('PRAGMA journal_mode = WAL;');
+  db.exec('PRAGMA foreign_keys = ON;');
+  migrate(db);
+  return db;
+}
+
+function migrate(db: DatabaseSync): void {
+  const row = db.prepare('PRAGMA user_version').get() as { user_version: number };
+  let version = row.user_version;
+  while (version < MIGRATIONS.length) {
+    db.exec('BEGIN');
+    try {
+      db.exec(MIGRATIONS[version]!);
+      version++;
+      db.exec(`PRAGMA user_version = ${version}`);
+      db.exec('COMMIT');
+      console.log(`[db] migrated to schema v${version}`);
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+  }
+}

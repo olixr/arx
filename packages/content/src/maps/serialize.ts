@@ -1,0 +1,72 @@
+import type { ZoneDef } from './types.js';
+
+/**
+ * Zone <-> JSON. Tile arrays are base64-encoded little-endian u16 so
+ * zone files stay compact and diff-friendly enough. Used by the map
+ * editor (export) and the server (loading data/maps/*.json overrides).
+ */
+
+export interface ZoneJson {
+  id: string;
+  name: string;
+  origin: { x: number; y: number };
+  width: number;
+  height: number;
+  ground: string;
+  detail: string;
+  spawn?: { x: number; y: number };
+}
+
+function u16ToBase64(arr: Uint16Array): string {
+  const bytes = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);
+  // btoa in browsers, Buffer in Node.
+  return typeof btoa === 'function' ? btoa(bin) : Buffer.from(bytes).toString('base64');
+}
+
+function base64ToU16(s: string, expected: number): Uint16Array {
+  let bytes: Uint8Array;
+  if (typeof atob === 'function') {
+    const bin = atob(s);
+    bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  } else {
+    bytes = new Uint8Array(Buffer.from(s, 'base64'));
+  }
+  const arr = new Uint16Array(bytes.buffer, 0, bytes.byteLength / 2);
+  if (arr.length !== expected) {
+    throw new Error(`zone tile data length ${arr.length}, expected ${expected}`);
+  }
+  return new Uint16Array(arr); // copy to a tightly-owned buffer
+}
+
+export function zoneToJson(zone: ZoneDef): ZoneJson {
+  return {
+    id: zone.id,
+    name: zone.name,
+    origin: zone.origin,
+    width: zone.width,
+    height: zone.height,
+    ground: u16ToBase64(zone.ground),
+    detail: u16ToBase64(zone.detail),
+    spawn: zone.spawn,
+  };
+}
+
+export function zoneFromJson(json: ZoneJson): ZoneDef {
+  const size = json.width * json.height;
+  if (!Number.isInteger(size) || size <= 0 || size > 4096 * 4096) {
+    throw new Error('invalid zone dimensions');
+  }
+  return {
+    id: json.id,
+    name: json.name,
+    origin: json.origin,
+    width: json.width,
+    height: json.height,
+    ground: base64ToU16(json.ground, size),
+    detail: base64ToU16(json.detail, size),
+    spawn: json.spawn,
+  };
+}

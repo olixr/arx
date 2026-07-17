@@ -1,0 +1,516 @@
+:root {
+  --ink: #1c1426;
+  --parchment: #efe3c2;
+  --parchment-dim: #cdbf9c;
+  --gold: #d9a441;
+  --gold-bright: #e8b64c;
+  --wood-dark: #2c1f15;
+  --wood: #45321f;
+  --wood-light: #5d452c;
+  --wood-edge: #6e5233;
+  --red: #c4553d;
+  --green: #4fc06a;
+  --shadow: rgba(18, 10, 6, 0.75);
+  font-family: 'Trebuchet MS', 'Verdana', sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #141020;
+  touch-action: none;
+}
+
+#game {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.hidden {
+  display: none !important;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* ---------------------------------- carved panel language */
+
+.panel,
+.side-panel {
+  background: linear-gradient(180deg, var(--wood) 0%, var(--wood-dark) 100%);
+  border: 2px solid var(--wood-dark);
+  border-radius: 3px;
+  /* Gold inner trim + the signature hard offset shadow. */
+  box-shadow:
+    inset 0 0 0 2px rgba(217, 164, 65, 0.55),
+    inset 0 0 0 5px rgba(44, 31, 21, 0.9),
+    6px 6px 0 var(--shadow);
+  color: var(--parchment);
+  padding: 16px;
+}
+
+h1,
+h3 {
+  color: var(--gold-bright);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-size: 15px;
+  text-shadow: 2px 2px 0 rgba(18, 10, 6, 0.8);
+  margin-bottom: 10px;
+}
+
+/* ---------------------------------- login */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, #232c1c 0%, #141020 85%);
+  z-index: 20;
+}
+
+.login-panel {
+  text-align: center;
+  min-width: 340px;
+  padding: 30px 38px;
+}
+
+.login-panel h1 {
+  font-size: 42px;
+  letter-spacing: 3px;
+  color: var(--gold-bright);
+  text-shadow: 4px 4px 0 rgba(18, 10, 6, 0.85);
+  margin-bottom: 2px;
+}
+
+.login-panel .tagline {
+  margin: 0 0 22px;
+  color: var(--parchment-dim);
+  font-style: italic;
+  font-size: 13px;
+}
+
+.login-panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-panel input,
+#chat-input {
+  background: rgba(18, 10, 6, 0.55);
+  border: 1px solid var(--wood-edge);
+  border-radius: 2px;
+  color: var(--parchment);
+  padding: 10px 12px;
+  font-size: 15px;
+  outline: none;
+}
+
+.login-panel input:focus,
+#chat-input:focus {
+  border-color: var(--gold);
+}
+
+.login-panel button[type='submit'] {
+  background: linear-gradient(180deg, var(--gold-bright) 0%, #b8822b 100%);
+  border: 1px solid #8a5f1c;
+  border-radius: 2px;
+  box-shadow: 4px 4px 0 var(--shadow);
+  color: var(--wood-dark);
+  font-size: 17px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  padding: 11px;
+  cursor: pointer;
+}
+
+.login-panel button[type='submit']:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--shadow);
+}
+
+.link-button {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--parchment-dim) !important;
+  font-size: 13px !important;
+  font-weight: normal !important;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 2px !important;
+}
+
+.error {
+  margin-top: 14px;
+  color: #ff8f75;
+}
+
+.status {
+  margin-top: 14px;
+  color: var(--parchment-dim);
+}
+
+/* ---------------------------------- HUD */
+
+#hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#chat {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  width: min(420px, 68vw);
+  pointer-events: auto;
+}
+
+#chat-log {
+  max-height: 150px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 22%);
+  mask-image: linear-gradient(to bottom, transparent, black 22%);
+}
+
+.chat-line {
+  color: var(--parchment);
+  font-size: 13.5px;
+  text-shadow: 1.5px 1.5px 0 rgba(18, 10, 6, 0.85);
+  word-break: break-word;
+}
+
+.chat-line .who {
+  color: var(--gold-bright);
+  font-weight: bold;
+}
+
+.chat-line.system {
+  color: #a8cde8;
+  font-style: italic;
+}
+
+#chat-input {
+  width: 100%;
+  font-size: 13.5px;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+  box-shadow: 3px 3px 0 var(--shadow);
+}
+
+#chat-input:focus {
+  opacity: 1;
+}
+
+#debug {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  color: var(--parchment);
+  font-family: 'Menlo', 'Consolas', monospace;
+  font-size: 11px;
+  text-align: right;
+  text-shadow: 1.5px 1.5px 0 rgba(18, 10, 6, 0.85);
+  white-space: pre;
+  opacity: 0.65;
+}
+
+/* ---------------------------------- touch controls */
+
+#touch-controls {
+  position: absolute;
+  right: 18px;
+  bottom: 92px;
+  pointer-events: auto;
+}
+
+#touch-attack {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--wood-light) 0%, var(--wood-dark) 100%);
+  border: 2px solid var(--wood-dark);
+  box-shadow:
+    inset 0 0 0 2px rgba(217, 164, 65, 0.5),
+    5px 5px 0 var(--shadow);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#touch-attack img {
+  width: 44px;
+  height: 44px;
+  pointer-events: none;
+}
+
+#touch-attack:active {
+  transform: translate(2px, 2px);
+  box-shadow:
+    inset 0 0 0 2px rgba(217, 164, 65, 0.5),
+    3px 3px 0 var(--shadow);
+}
+
+/* ---------------------------------- dock buttons */
+
+#panel-buttons {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 9px;
+  pointer-events: auto;
+}
+
+#panel-buttons button {
+  width: 52px;
+  height: 52px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--wood-light) 0%, var(--wood-dark) 100%);
+  border: 2px solid var(--wood-dark);
+  box-shadow:
+    inset 0 0 0 2px rgba(217, 164, 65, 0.45),
+    4px 4px 0 var(--shadow);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#panel-buttons button img {
+  width: 34px;
+  height: 34px;
+  pointer-events: none;
+}
+
+#panel-buttons button:hover {
+  box-shadow:
+    inset 0 0 0 2px rgba(232, 182, 76, 0.85),
+    4px 4px 0 var(--shadow);
+}
+
+#panel-buttons button:active {
+  transform: translate(2px, 2px);
+  box-shadow:
+    inset 0 0 0 2px rgba(232, 182, 76, 0.85),
+    2px 2px 0 var(--shadow);
+}
+
+/* ---------------------------------- side panels */
+
+.side-panel {
+  position: absolute;
+  right: 12px;
+  bottom: 74px;
+  width: 258px;
+  pointer-events: auto;
+}
+
+.side-panel.wide {
+  width: 330px;
+  right: 280px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.hint-inline {
+  font-size: 10.5px;
+  color: var(--parchment-dim);
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: 0.2px;
+}
+
+/* Inventory grid */
+
+#inventory-grid,
+#equipment-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+#equipment-row {
+  grid-template-columns: repeat(6, 1fr);
+  margin-bottom: 12px;
+}
+
+.inv-slot {
+  aspect-ratio: 1;
+  background: rgba(18, 10, 6, 0.5);
+  border: 1px solid var(--wood-edge);
+  border-radius: 2px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inv-slot.clickable {
+  cursor: pointer;
+}
+
+.inv-slot.clickable:hover {
+  border-color: var(--gold);
+  background: rgba(217, 164, 65, 0.12);
+}
+
+.inv-item {
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.inv-qty {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--gold-bright);
+  text-shadow: 1.5px 1.5px 0 rgba(18, 10, 6, 0.9);
+}
+
+.equip-label {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 7.5px;
+  color: var(--parchment-dim);
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+/* List rows (craft / bank / shop / build) */
+
+.row-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: rgba(18, 10, 6, 0.45);
+  border: 1px solid var(--wood-edge);
+  border-radius: 2px;
+  padding: 7px 9px;
+  font-size: 13px;
+}
+
+.list-row.disabled {
+  opacity: 0.4;
+}
+
+.swatch-mini {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.tile-swatch {
+  border-radius: 2px;
+  border: 1px solid rgba(18, 10, 6, 0.6);
+  box-shadow: 2px 2px 0 rgba(18, 10, 6, 0.5);
+}
+
+.list-row .row-name {
+  flex: 1;
+  min-width: 0;
+  color: var(--parchment);
+}
+
+.list-row .row-sub {
+  display: block;
+  font-size: 10.5px;
+  color: var(--parchment-dim);
+}
+
+.list-row button {
+  background: linear-gradient(180deg, var(--gold-bright) 0%, #b8822b 100%);
+  border: 1px solid #8a5f1c;
+  border-radius: 2px;
+  color: var(--wood-dark);
+  font-weight: bold;
+  font-size: 11.5px;
+  padding: 5px 9px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 rgba(18, 10, 6, 0.55);
+}
+
+.list-row button:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 rgba(18, 10, 6, 0.55);
+}
+
+.list-row button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Skills */
+
+.skill-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+  font-size: 12.5px;
+}
+
+.skill-row .skill-name {
+  width: 96px;
+  text-transform: capitalize;
+  color: var(--parchment);
+}
+
+.skill-row .skill-level {
+  width: 30px;
+  text-align: right;
+  color: var(--gold-bright);
+  font-weight: bold;
+}
+
+.skill-bar {
+  flex: 1;
+  height: 9px;
+  background: rgba(18, 10, 6, 0.6);
+  border: 1px solid var(--wood-edge);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.skill-bar .fill {
+  height: 100%;
+  background: linear-gradient(180deg, var(--gold-bright), #b8822b);
+}

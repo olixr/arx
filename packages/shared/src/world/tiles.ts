@@ -1,0 +1,144 @@
+/**
+ * Tile registry. Tiles are u16 ids on the wire; defs drive collision
+ * (shared) and rendering (client). Detail-layer tiles are cosmetic only.
+ */
+
+export enum Tile {
+  Void = 0,
+  Grass = 1,
+  GrassTall = 2,
+  Dirt = 3,
+  Path = 4,
+  Sand = 5,
+  Water = 6,
+  WaterDeep = 7,
+  StoneFloor = 8,
+  WoodFloor = 9,
+  WallStone = 10,
+  WallWood = 11,
+  Tree = 12,
+  Rock = 13,
+  Stump = 14,
+  Fence = 15,
+  Bridge = 16,
+  Snow = 17,
+  Swamp = 18,
+  TreeOak = 19,
+  RockCopper = 20,
+  RockIron = 21,
+  RockDepleted = 22,
+  FishingSpot = 23,
+  Campfire = 24,
+  Furnace = 25,
+  Anvil = 26,
+  Workbench = 27,
+  BankChest = 28,
+  ShopCounter = 29,
+  CaveWall = 30,
+  CaveFloor = 31,
+  PortalDown = 32,
+  PortalUp = 33,
+}
+
+export enum Detail {
+  None = 0,
+  Flowers = 1,
+  Tuft = 2,
+  Pebbles = 3,
+  Mushroom = 4,
+}
+
+export interface TileDef {
+  name: string;
+  solid: boolean;
+  /** Base fill color; variants add per-tile hash variation. */
+  color: string;
+  variants?: string[];
+  /** Drawn as a raised block with a top highlight + hard shadow. */
+  raised?: boolean;
+  topColor?: string;
+}
+
+export const TILE_DEFS: Record<Tile, TileDef> = {
+  [Tile.Void]: { name: 'void', solid: true, color: '#141020' },
+  [Tile.Grass]: {
+    name: 'grass',
+    solid: false,
+    color: '#5d8a3e',
+    variants: ['#578339', '#649247'],
+  },
+  [Tile.GrassTall]: { name: 'tall grass', solid: false, color: '#4f7c35', variants: ['#4a7632'] },
+  [Tile.Dirt]: { name: 'dirt', solid: false, color: '#96744c', variants: ['#8f6e47'] },
+  [Tile.Path]: { name: 'path', solid: false, color: '#c2a26e', variants: ['#bb9c68'] },
+  [Tile.Sand]: { name: 'sand', solid: false, color: '#ddc98d', variants: ['#d6c286'] },
+  [Tile.Water]: { name: 'water', solid: true, color: '#4979b8', variants: ['#4472ae'] },
+  [Tile.WaterDeep]: { name: 'deep water', solid: true, color: '#3a629e', variants: ['#355c94'] },
+  [Tile.StoneFloor]: {
+    name: 'stone floor',
+    solid: false,
+    color: '#a09aa8',
+    variants: ['#98929f', '#a8a2b0'],
+  },
+  [Tile.WoodFloor]: { name: 'wood floor', solid: false, color: '#a87e46', variants: ['#a07641'] },
+  [Tile.WallStone]: {
+    name: 'stone wall',
+    solid: true,
+    color: '#4a4554',
+    raised: true,
+    topColor: '#767181',
+  },
+  [Tile.WallWood]: {
+    name: 'wood wall',
+    solid: true,
+    color: '#54391c',
+    raised: true,
+    topColor: '#7d5a2e',
+  },
+  [Tile.Tree]: { name: 'tree', solid: true, color: '#3f7d3a', raised: true, topColor: '#2d6631' },
+  [Tile.Rock]: { name: 'rock', solid: true, color: '#6e6a75', raised: true, topColor: '#827e8a' },
+  [Tile.Stump]: { name: 'stump', solid: false, color: '#8a6a45' },
+  [Tile.Fence]: { name: 'fence', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
+  [Tile.Bridge]: { name: 'bridge', solid: false, color: '#96703c', variants: ['#8e6836'] },
+  [Tile.Snow]: { name: 'snow', solid: false, color: '#e8ecf2', variants: ['#dfe4ec'] },
+  [Tile.Swamp]: { name: 'swamp', solid: false, color: '#4d6b3c', variants: ['#476339'] },
+  [Tile.TreeOak]: { name: 'oak tree', solid: true, color: '#3f7d3a', raised: true, topColor: '#1f5426' },
+  [Tile.RockCopper]: { name: 'copper rock', solid: true, color: '#6e6a75', raised: true, topColor: '#b87333' },
+  [Tile.RockIron]: { name: 'iron rock', solid: true, color: '#6e6a75', raised: true, topColor: '#8d9299' },
+  [Tile.RockDepleted]: { name: 'depleted rock', solid: true, color: '#57535f', raised: true, topColor: '#615d69' },
+  [Tile.FishingSpot]: { name: 'fishing spot', solid: true, color: '#3d6fb8', variants: ['#3a69ae'] },
+  [Tile.Campfire]: { name: 'campfire', solid: true, color: '#8a6a45', raised: true, topColor: '#e8823d' },
+  [Tile.Furnace]: { name: 'furnace', solid: true, color: '#55505e', raised: true, topColor: '#e8573d' },
+  [Tile.Anvil]: { name: 'anvil', solid: true, color: '#55505e', raised: true, topColor: '#3a363f' },
+  [Tile.Workbench]: { name: 'workbench', solid: true, color: '#7d5a2e', raised: true, topColor: '#a5793f' },
+  [Tile.BankChest]: { name: 'bank chest', solid: true, color: '#7d5a2e', raised: true, topColor: '#e8a33d' },
+  [Tile.ShopCounter]: { name: 'shop counter', solid: true, color: '#7d5a2e', raised: true, topColor: '#96703c' },
+  [Tile.CaveWall]: { name: 'cave wall', solid: true, color: '#2e2937', raised: true, topColor: '#3d3749' },
+  [Tile.CaveFloor]: { name: 'cave floor', solid: false, color: '#4d4757', variants: ['#48424f', '#524c5e'] },
+  [Tile.PortalDown]: { name: 'cave entrance', solid: false, color: '#1a1626', variants: ['#221c30'] },
+  [Tile.PortalUp]: { name: 'way out', solid: false, color: '#5b4f7a', variants: ['#65588a'] },
+};
+
+/** Crafting stations, keyed by what recipes call them. */
+export type StationType = 'fire' | 'furnace' | 'anvil' | 'workbench';
+
+export const STATION_TILES: Record<StationType, Tile> = {
+  fire: Tile.Campfire,
+  furnace: Tile.Furnace,
+  anvil: Tile.Anvil,
+  workbench: Tile.Workbench,
+};
+
+export function stationAtTile(tile: number): StationType | null {
+  for (const [station, t] of Object.entries(STATION_TILES)) {
+    if (t === tile) return station as StationType;
+  }
+  return null;
+}
+
+export function tileDef(id: number): TileDef {
+  return TILE_DEFS[id as Tile] ?? TILE_DEFS[Tile.Void];
+}
+
+export function isSolidTile(id: number): boolean {
+  return tileDef(id).solid;
+}

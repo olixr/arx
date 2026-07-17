@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>DevCraft</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+
+    <div id="login" class="overlay">
+      <div class="panel login-panel">
+        <h1>DevCraft</h1>
+        <p class="tagline">an open world, forged by hand</p>
+        <form id="login-form">
+          <input
+            id="login-user"
+            type="text"
+            maxlength="20"
+            minlength="3"
+            placeholder="Username"
+            autocomplete="username"
+            required
+          />
+          <input
+            id="login-pass"
+            type="password"
+            maxlength="100"
+            minlength="6"
+            placeholder="Password"
+            autocomplete="current-password"
+            required
+          />
+          <input
+            id="login-charname"
+            class="hidden"
+            type="text"
+            maxlength="16"
+            minlength="2"
+            placeholder="Adventurer name"
+            autocomplete="off"
+          />
+          <button type="submit" id="login-submit">Enter World</button>
+          <button type="button" id="login-toggle" class="link-button">
+            New here? Create an account
+          </button>
+        </form>
+        <p id="login-error" class="error hidden"></p>
+        <p id="login-status" class="status hidden">Connecting…</p>
+      </div>
+    </div>
+
+    <div id="hud" class="hidden">
+      <div id="chat">
+        <div id="chat-log"></div>
+        <input id="chat-input" type="text" maxlength="200" placeholder="Press Enter to chat" />
+      </div>
+      <div id="debug"></div>
+
+      <div id="touch-controls" class="hidden">
+        <button id="touch-attack" aria-label="Attack"></button>
+      </div>
+
+      <div id="panel-buttons">
+        <button id="btn-inventory" title="Pack (I)"></button>
+        <button id="btn-skills" title="Skills (K)"></button>
+        <button id="btn-craft" title="Handiwork (C)"></button>
+        <button id="btn-build" title="Build (B)"></button>
+      </div>
+
+      <div id="inventory-panel" class="side-panel hidden">
+        <h3>Worn</h3>
+        <div id="equipment-row"></div>
+        <h3>Pack</h3>
+        <div id="inventory-grid"></div>
+      </div>
+
+      <div id="skills-panel" class="side-panel hidden">
+        <h3>Skills</h3>
+        <div id="skills-list"></div>
+      </div>
+
+      <div id="craft-panel" class="side-panel wide hidden">
+        <h3 id="craft-title">Crafting</h3>
+        <div id="craft-list" class="row-list"></div>
+      </div>
+
+      <div id="bank-panel" class="side-panel wide hidden">
+        <h3>Bank <span class="hint-inline">(click pack items to deposit)</span></h3>
+        <div id="bank-list" class="row-list"></div>
+      </div>
+
+      <div id="shop-panel" class="side-panel wide hidden">
+        <h3>General Store <span class="hint-inline">(click pack items to sell)</span></h3>
+        <div id="shop-list" class="row-list"></div>
+      </div>
+
+      <div id="build-panel" class="side-panel wide hidden">
+        <h3>Build <span class="hint-inline">(pick, then click the ground · X+click to demolish)</span></h3>
+        <div id="build-list" class="row-list"></div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
