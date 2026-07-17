@@ -82,6 +82,15 @@ export class Sfx {
     this.noise(0.06, 0.28);
   }
 
+  /** A mined-out node collapses: low crunch + settling stone clatter. */
+  rockCrumble(): void {
+    this.tone(72, 0.24, { type: 'square', slide: -30, volume: 0.4 });
+    this.noise(0.28, 0.3);
+    this.tone(190, 0.05, { type: 'square', slide: -60, volume: 0.18, delay: 0.09 });
+    this.tone(150, 0.05, { type: 'square', slide: -50, volume: 0.14, delay: 0.17 });
+    this.noise(0.06, 0.14, 0.13);
+  }
+
   /** Hammer rings the anvil: a bright ping over a body knock. */
   anvilClang(): void {
     this.tone(1180, 0.28, { type: 'triangle', slide: -160, volume: 0.24 });

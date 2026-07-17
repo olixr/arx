@@ -117,6 +117,10 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
     const cards = [n, e, s, w];
     const lower = cards.filter((c) => c < lvl);
     if (lower.length !== 1 || lower[0] !== lvl - 1) return false;
+    // Only NORTH/SOUTH flights: at this camera an east-west stair cut
+    // through a north-south rim hides behind its own south flank wall.
+    // Stairs that face the camera axis read as stairs.
+    if (cards.indexOf(lower[0]!) % 2 === 1) return false;
     // The two flanking cardinals stay at level → the stair is framed by
     // cliff; the opposite cardinal must be interior so the stair tops
     // out on open ground, not another wall.

@@ -15,6 +15,8 @@ export declare class Sfx {
     chop(): void;
     /** Pick meets rock: a hard stony knock with a metallic tick on top. */
     mineClink(): void;
+    /** A mined-out node collapses: low crunch + settling stone clatter. */
+    rockCrumble(): void;
     /** Hammer rings the anvil: a bright ping over a body knock. */
     anvilClang(): void;
     /** The furnace draws breath: a soft roaring swell of hot air. */

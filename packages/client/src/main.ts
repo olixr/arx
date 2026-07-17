@@ -287,6 +287,27 @@ game.onTileChange = (tx, ty, prev, next) => {
       sfx.treeImpact();
       input.rumble(0.45, 0.3, 150);
     }, 720);
+  } else if (
+    prev !== undefined &&
+    ROCK_TILES.includes(prev) &&
+    prev !== Tile.RockDepleted &&
+    next === Tile.RockDepleted
+  ) {
+    // A worked-out node crumbles instead of blinking to its husk.
+    renderer.addRockBreak(tx, ty, prev);
+    sfx.rockCrumble();
+    input.rumble(0.35, 0.3, 140);
+  } else if (prev === Tile.RockDepleted && ROCK_TILES.includes(next)) {
+    // Respawn: the fresh rock surfaces under a small dust puff.
+    renderer.particles.burst(tx + 0.5, ty + 0.6, 7, ['#a89880', '#bcae94'], {
+      speed: 0.9,
+      life: 0.7,
+      size: 0.1,
+      gravity: 0.4,
+      drag: 2.5,
+      grow: 0.1,
+      spread: 2.6,
+    });
   }
 };
 

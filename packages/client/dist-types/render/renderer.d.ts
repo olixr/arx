@@ -1,4 +1,4 @@
-import { type Vec2 } from '@devcraft/shared';
+import { Tile, type Vec2 } from '@devcraft/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import { Particles } from './particles.js';
 export declare class Camera {
@@ -144,32 +144,60 @@ export declare class Renderer {
      */
     private wallItem;
     /**
-     * A cliff face: the exposed south wall of a plateau rim tile,
-     * dropping (myLevel − southLevel)·ELEV_H to the ground below. The
-     * crown is NOT drawn here — the lifted terrain band paints the
-     * plateau surface right over the rim, marching-squares contour and
-     * all — so the face is pure landform: bedded strata, cracks, a
-     * shadowed base with scree. Rim tiles with no southern exposure
-     * return null (nothing of them is visible but the crown).
+     * CLIFF FACES, extruded from the crown contour itself. The plateau
+     * top is contoured by marching squares over dual cells; every
+     * downhill-facing contour segment here extrudes into a vertical
+     * curtain hanging one level (level -> level-1; taller drops stack
+     * levels). Because faces and crown come from the SAME segments, a
+     * diagonal crown edge gets a matching diagonal face - the geometry
+     * cannot disagree. Facing is read off the segment normal: due-south
+     * faces take the base palette, south-east turns fall into shade,
+     * south-west turns catch the light - the three tones that make a
+     * turned corner read as a solid mass.
      */
-    private cliffItem;
+    /** Contour segments per marching-squares mask, with outward normals.
+     *  Endpoints in dual-cell units: T(0,-.5) R(.5,0) B(0,.5) L(-.5,0). */
+    private static readonly FACE_SEGS;
+    private collectCliffFaces;
+    /** One contour segment extruded into a face curtain (level -> level-1). */
+    private cliffFaceItem;
     /**
-     * A stone stair crossing the cliff line: chamfered treads climbing
-     * from the low mouth to the plateau brink, framed by the flanking
-     * cliff faces. Entities standing on the tile ride renderLift(), so
-     * feet land tread by tread.
+     * A stone stair crossing the cliff line - real STEPPED PRISMS, not a
+     * striped slab. Flights climbing away from the camera show receding
+     * tread tops with hard step edges; flights climbing toward the
+     * camera show full riser faces under each tread; sideways flights
+     * show their south stringer as a zigzag of stepped faces with a lit
+     * lip on every tread nose. Entities still ride the smooth
+     * renderLift() gradient - a half-step of float against the drawn
+     * treads is invisible at gait speed.
      */
     private rampItem;
     private static readonly ORE_STYLES;
+    /** Irregular low-poly mass: dark face, lifted flat cap, lit NW facet. */
+    private rockMass;
     /**
-     * A mining node is a FORMATION, not a pebble: a squat faceted outcrop
-     * of two or three boulders in the same shape language as the cliffs —
-     * dark south faces under flat lit caps — with the metal laid into the
-     * main face as an angular seam of chunky nuggets. Every metal reads
-     * at a glance: warm copper with verdigris flecks, pale flat tin,
-     * rust-banded iron, glossy black coal, and gold that catches the sun
-     * on a slow pulse. Depleted formations keep their mass but go dull,
-     * cracked, and empty.
+     * One BIG faceted ore block: deep-toned frame, bright crystal face,
+     * specular slab. The blocks are the protagonists of a node - sized
+     * to read from across the screen, several of them jutting past the
+     * host rock's silhouette.
+     */
+    private oreBlock;
+    /** A four-point star twinkle - the "this is mineable" beacon. */
+    private sparkle;
+    /** Staggered twinkle window: brief flash once per period. */
+    private static twinkle;
+    /** Loose chips scattered at a formation's feet - grounds the mass. */
+    private baseScatter;
+    /**
+     * MINING NODES - each metal is a bespoke landmark, not a palette
+     * swap. Copper: a wide rust-warm outcrop with thick slabs of raw
+     * copper bursting through a seam, weeping verdigris. Tin: cool stone
+     * carrying a stack of cubic silver crystals. Iron: banded ironstone
+     * slabs stacked like broken masonry, studded with rust wedges and a
+     * black magnetite block. Coal: a glossy black seam-mass wedged
+     * between grey shoulders. Gold: a milky quartz band splitting the
+     * rock, packed with fat nuggets. All of them twinkle at idle - the
+     * eye finds a minable node before the tooltip does.
      */
     private drawRockFormation;
     /**
@@ -209,6 +237,14 @@ export declare class Renderer {
      */
     private readonly fallingTrees;
     addFallingTree(tx: number, ty: number, oak: boolean, dir: number): void;
+    private readonly breakingRocks;
+    /**
+     * A mined-out node doesn't blink into its depleted state — it
+     * CRUMBLES: the formation shudders, sinks, and shatters into flying
+     * fragments and a rolling dust cloud that covers the tile swap.
+     */
+    addRockBreak(tx: number, ty: number, tile: Tile): void;
+    private collectBreakingRocks;
     private collectFallingTrees;
     /** Trees, rocks, stations — the object layer, redrawn with character. */
     private objectItem;
