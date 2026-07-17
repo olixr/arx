@@ -491,8 +491,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const hScale = 1 + (1 - wS) * 0.55;
   const weapon = itemDef(rig.weaponItem ?? '');
   const isBow = weapon !== undefined && weapon.id.includes('bow');
+  // Axes and pickaxes get the full two-handed chop cycle; other gather
+  // tools (the rod) keep the gentle working sway.
+  const chopping =
+    rig.pose === PoseState.Gather && weapon !== undefined && weapon.id.includes('axe');
   const gatherSwing =
-    rig.pose === PoseState.Gather ? Math.sin(rig.gatherPhase * 5.5) * 0.5 : 0;
+    rig.pose === PoseState.Gather && !chopping ? Math.sin(rig.gatherPhase * 5.5) * 0.5 : 0;
 
   // Torso proportions (needed for shoulders before the torso is drawn).
   const tw = 0.185 * s; // shoulder half-width
@@ -563,7 +567,41 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const drawing = isBow && !loosing && (drawT > 0 || rig.pose === PoseState.Draw);
   if (drawing) lean = -Math.sign(fx || 1) * 0.07 * drawT; // braced back
 
-  const reach = 0.25 * s;
+  let reach = 0.25 * s;
+  // The chop: raise the axe up over the shoulder, slam it down into the
+  // node, hold through the bite, recover — every beat readable.
+  if (chopping) {
+    const u = (rig.nowMs % 700) / 700;
+    let rel: number;
+    if (u < 0.42) {
+      // Windup: haul the axe up and back over the shoulder.
+      const p2 = u / 0.42;
+      const e2 = 1 - (1 - p2) * (1 - p2);
+      rel = 0.35 - 2.4 * e2;
+      reach = (0.2 - 0.02 * e2) * s;
+      lean = -0.08 * e2;
+    } else if (u < 0.54) {
+      // Strike: fast, whole body tips into it.
+      const p2 = (u - 0.42) / 0.12;
+      const e2 = p2 * p2;
+      rel = -2.05 + 2.4 * e2;
+      reach = (0.2 + 0.13 * e2) * s;
+      lean = -0.08 + 0.24 * e2;
+    } else if (u < 0.72) {
+      // The bite: blade buried, arms extended, a shiver of effort.
+      rel = 0.35 + Math.sin(rig.nowMs * 0.15) * 0.02;
+      reach = 0.33 * s;
+      lean = 0.16 - ((u - 0.54) / 0.18) * 0.06;
+    } else {
+      // Recover toward the next windup.
+      const p2 = (u - 0.72) / 0.28;
+      rel = 0.35;
+      reach = (0.33 - 0.1 * p2) * s;
+      lean = 0.1 * (1 - p2);
+    }
+    swingOffset = rel;
+    lean *= Math.sign(fx || 1);
+  }
   const armY = hipY - 0.26 * s;
   const shoulderY = hipY - th * hScale + 0.06 * s;
   const mainAngle = rig.dir + swingOffset;
@@ -581,7 +619,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // during swings/casts it rides the counterbalance circle instead.
   let offX: number;
   let offY: number;
-  if (meleeStage === -1 && rig.pose !== PoseState.Cast) {
+  if (chopping) {
+    // Two-handed grip: the free hand chokes up the haft behind the
+    // striking hand.
+    offX = mainX - Math.cos(mainAngle) * 0.16 * s;
+    offY = mainY - Math.sin(mainAngle) * 0.16 * s + 0.03 * s;
+  } else if (meleeStage === -1 && rig.pose !== PoseState.Cast) {
     offX = rig.x - Math.cos(mainAngle) * 0.15 * s * wS;
     offY = armY + 0.13 * s;
   } else {

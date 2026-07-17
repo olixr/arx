@@ -1,5 +1,5 @@
 import { EntityKind, PoseState, Tile, tileDef } from '@devcraft/shared';
-import { BUILDABLES, BUILDABLE_GROUND, npcDef } from '@devcraft/content';
+import { BUILDABLES, BUILDABLE_GROUND, itemDef, npcDef } from '@devcraft/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
 import { Renderer } from './render/renderer.js';
@@ -233,6 +233,35 @@ game.onDodgeFx = (x, y, mx, my) => {
   input.rumble(0.15, 0.4, 90);
 };
 
+/**
+ * Tool belt: starting a gather auto-equips the right tool from the
+ * pack (axe for trees, pickaxe for rock, rod for fishing) so the swing
+ * you see is the tool doing the work.
+ */
+function autoEquipTool(): void {
+  const own = game.predictor.pos;
+  let need: string | null = null;
+  for (let ty = Math.floor(own.y) - 2; ty <= Math.floor(own.y) + 2 && !need; ty++) {
+    for (let tx = Math.floor(own.x) - 2; tx <= Math.floor(own.x) + 2 && !need; tx++) {
+      const t = game.world.groundAt(tx, ty);
+      if (t === Tile.Tree || t === Tile.TreeOak) need = 'axe';
+      else if (t === Tile.Rock || t === Tile.RockCopper || t === Tile.RockIron) need = 'pickaxe';
+      else if (t === Tile.FishingSpot) need = 'rod';
+    }
+  }
+  if (!need) return;
+  const worn = game.equipment.tool ? itemDef(game.equipment.tool)?.tool?.type : undefined;
+  if (worn === need) return;
+  const idx = game.inventory.findIndex((s) => s !== null && itemDef(s.item)?.tool?.type === need);
+  if (idx >= 0) game.useSlot(idx);
+}
+
+// Each bite of the tool: a chop knock and a tap of rumble.
+renderer.onGatherImpact = () => {
+  sfx.chop();
+  input.rumble(0.22, 0.32, 60);
+};
+
 // A felled tree topples away from whoever cut it, groans, and lands
 // with a thud you can feel.
 game.onTileChange = (tx, ty, prev, next) => {
@@ -411,6 +440,7 @@ function frame(now: number): void {
   // Swing/cast sounds on pose transitions (combo swings pitch up the
   // chain; the finisher also thumps the pad).
   if (game.ownPose !== lastOwnPose) {
+    if (game.ownPose === PoseState.Gather) autoEquipTool();
     if (game.ownPose === PoseState.Attack) sfx.swingCombo(0);
     else if (game.ownPose === PoseState.Attack2) sfx.swingCombo(1);
     else if (game.ownPose === PoseState.Attack3) {

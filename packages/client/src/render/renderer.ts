@@ -53,6 +53,8 @@ interface AnimState {
   legs?: LegSolver;
   /** Per-leg knee-sign hysteresis for the pole constraint. */
   kneeMemory: [number, number];
+  /** Last chop cycle that spawned impact chips (gathering). */
+  lastChopHit?: number;
 }
 
 export class Camera {
@@ -174,6 +176,41 @@ export class Renderer {
     this.ctx = canvas.getContext('2d')!;
   }
 
+  /** The game being rendered this frame (for world lookups in painters). */
+  private game: ClientGame | null = null;
+
+  /** Fires once per tool-impact while someone gathers ('tree' | 'rock'). */
+  onGatherImpact: ((kind: string) => void) | null = null;
+
+  /** Nearest gatherable node around a world position, if any. */
+  private findGatherNode(
+    x: number,
+    y: number,
+  ): { tx: number; ty: number; kind: 'tree' | 'rock' | 'fish' } | null {
+    const game = this.game;
+    if (!game) return null;
+    const cx = Math.floor(x);
+    const cy = Math.floor(y);
+    let best: { tx: number; ty: number; kind: 'tree' | 'rock' | 'fish'; d: number } | null = null;
+    for (let ty = cy - 2; ty <= cy + 2; ty++) {
+      for (let tx = cx - 2; tx <= cx + 2; tx++) {
+        const t = game.world.groundAt(tx, ty);
+        const kind =
+          t === Tile.Tree || t === Tile.TreeOak
+            ? ('tree' as const)
+            : t === Tile.Rock || t === Tile.RockCopper || t === Tile.RockIron
+              ? ('rock' as const)
+              : t === Tile.FishingSpot
+                ? ('fish' as const)
+                : null;
+        if (!kind) continue;
+        const d = Math.hypot(tx + 0.5 - x, ty + 0.5 - y);
+        if (!best || d < best.d) best = { tx, ty, kind, d };
+      }
+    }
+    return best;
+  }
+
   shake(amount: number): void {
     this.shakeAmount = Math.min(12, this.shakeAmount + amount);
   }
@@ -218,6 +255,7 @@ export class Renderer {
   }
 
   render(game: ClientGame, frameDt: number): void {
+    this.game = game;
     this.resize();
     // Hitstop slows animation + particles to a crawl for a few frames;
     // the camera and network keep real time.
@@ -993,6 +1031,7 @@ export class Renderer {
     const topTile = Math.max(...sp.lobes.map((l) => -l[1] + l[2] * 0.4));
 
     // --- Trunk (+ fork branches) as bespoke curved spines.
+    let trunkPts: Array<[number, number]> | null = null;
     if (sp.fork !== null) {
       const forkY = groundY - topTile * sp.fork * k;
       const forkX = bx + disp(sp.fork);
@@ -1015,6 +1054,7 @@ export class Renderer {
         bx, groundY, topX, groundY - topTile * 0.82 * k, k,
         sp.bow, sp.lean, sp.gnarl, bowSign, rnd, disp, 0, 0.82, 6,
       );
+      trunkPts = trunk;
       this.fillSpine(trunk, sp.trunkW * k, sp.trunkW * k * sp.tipW, sp.flare, bark, litBark);
       // Bark seam texture.
       ctx.strokeStyle = shade(bark, -20);
@@ -1039,9 +1079,23 @@ export class Renderer {
     }
 
     // --- Limbs: tapered boughs reaching out toward leaf clusters.
+    // Anchored by SAMPLING the built trunk polyline — a bough can never
+    // float off a bowed, leaning, or gnarled trunk.
     for (const [sh, ex, ey] of sp.limbs) {
-      const ax = bx + disp(sh) + bowSign * sp.bow * Math.sin(sh * Math.PI) * k;
-      const ay = groundY - topTile * sh * k;
+      let ax: number;
+      let ay: number;
+      if (trunkPts) {
+        const uPt = Math.min(1, sh / 0.82) * (trunkPts.length - 1);
+        const i0 = Math.floor(uPt);
+        const fr = uPt - i0;
+        const q0 = trunkPts[i0]!;
+        const q1 = trunkPts[Math.min(trunkPts.length - 1, i0 + 1)]!;
+        ax = q0[0] + (q1[0] - q0[0]) * fr;
+        ay = q0[1] + (q1[1] - q0[1]) * fr;
+      } else {
+        ax = bx + disp(sh) + bowSign * sp.bow * Math.sin(sh * Math.PI) * k;
+        ay = groundY - topTile * sh * k;
+      }
       const limb = this.spine(
         ax, ay, bx + ex * k, groundY + ey * k, k, 0.12, 0, sp.gnarl, ex < 0 ? -1 : 1,
         rnd, disp, sh, Math.min(1, -ey / topTile), 3,
@@ -1759,8 +1813,13 @@ export class Renderer {
     } else if (e.pose === PoseState.Cast) {
       lunge = 0.05 * Math.max(0, 1 - poseT / 0.4); // push into the cast
     }
-    const bodyX = p.x + Math.cos(e.dir) * lunge * s;
-    const bodyY = p.y + Math.sin(e.dir) * lunge * s;
+    // Gathering: square up to the node and swing the belt tool at it.
+    let dir = e.dir;
+    const gather = e.pose === PoseState.Gather ? this.findGatherNode(e.x, e.y) : null;
+    if (gather) dir = Math.atan2(gather.ty + 0.5 - e.y, gather.tx + 0.5 - e.x);
+
+    const bodyX = p.x + Math.cos(dir) * lunge * s;
+    const bodyY = p.y + Math.sin(dir) * lunge * s;
 
     return {
       sortY: e.y,
@@ -1771,11 +1830,36 @@ export class Renderer {
         ctx.fill();
       },
       draw: () => {
+        // Tool impacts: chips fly off the node at the strike beat.
+        const toolId = e.equip.tool ?? '';
+        if (gather && gather.kind !== 'fish' && toolId.includes('axe')) {
+          const cycle = Math.floor(performance.now() / 700);
+          const u = (performance.now() % 700) / 700;
+          if (u >= 0.54 && anim.lastChopHit !== cycle) {
+            anim.lastChopHit = cycle;
+            const chipX = gather.tx + 0.5 - Math.cos(dir) * 0.38;
+            const chipY = gather.ty + 0.5 - Math.sin(dir) * 0.38;
+            const colors =
+              gather.kind === 'tree'
+                ? ['#a5793f', '#c9b083', '#8a6a45']
+                : ['#c9ccd4', '#9aa2ac', '#847e91'];
+            this.particles.burst(chipX, chipY, 7, colors, {
+              speed: 2.4,
+              life: 0.5,
+              size: 0.07,
+              gravity: 7,
+              dir: dir + Math.PI,
+              spread: 1.3,
+            });
+            this.onGatherImpact?.(gather.kind);
+          }
+        }
+
         drawHumanoid(ctx, {
           x: bodyX,
           y: bodyY,
           scale: s,
-          dir: e.dir,
+          dir,
           pose: drawT > 0 && e.pose !== PoseState.Loose ? PoseState.Draw : e.pose,
           poseT,
           drawT,
@@ -1791,7 +1875,11 @@ export class Renderer {
           bodyColor: e.color,
           hurt: e.hurt ?? false,
           isOwn: e.isOwn,
-          weaponItem: e.equip.weapon ?? (e.pose === PoseState.Gather ? e.equip.tool : undefined),
+          // During a gather the BELT tool is what's in the hands.
+          weaponItem:
+            e.pose === PoseState.Gather
+              ? (e.equip.tool ?? e.equip.weapon)
+              : e.equip.weapon,
           bodyItem: e.equip.body,
           size: e.size,
           skinColor: e.skinColor,

@@ -592,7 +592,15 @@ export class GameServer {
       sys(`You need ${node.skill} level ${node.levelReq} for this ${node.name.toLowerCase()}.`);
       return;
     }
-    const tool = node.tool ? bestTool(player.inventory, node.tool) : { item: '', power: 1 };
+    // The tool belt counts: an equipped tool works alongside anything
+    // still carried in the pack (best of the two wins).
+    let tool = node.tool ? bestTool(player.inventory, node.tool) : { item: '', power: 1 };
+    if (node.tool && player.equipment.tool) {
+      const worn = itemDef(player.equipment.tool)?.tool;
+      if (worn && worn.type === node.tool && (!tool || worn.power >= tool.power)) {
+        tool = { item: player.equipment.tool, power: worn.power };
+      }
+    }
     if (!tool) {
       sys(`You need a ${node.tool} to work this ${node.name.toLowerCase()}.`);
       return;

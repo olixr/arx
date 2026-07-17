@@ -68,6 +68,12 @@ export declare class Renderer {
      */
     private beginHeightLayer;
     constructor(canvas: HTMLCanvasElement);
+    /** The game being rendered this frame (for world lookups in painters). */
+    private game;
+    /** Fires once per tool-impact while someone gathers ('tree' | 'rock'). */
+    onGatherImpact: ((kind: string) => void) | null;
+    /** Nearest gatherable node around a world position, if any. */
+    private findGatherNode;
     shake(amount: number): void;
     private animFor;
     private resize;
