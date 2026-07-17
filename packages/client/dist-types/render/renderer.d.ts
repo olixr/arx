@@ -117,6 +117,25 @@ export declare class Renderer {
      * front face where the wall meets open ground, and a hard shadow.
      */
     private wallItem;
+    /**
+     * The forest is a character, not a texture. Trees are 3-4× the
+     * player's height, in four distinct silhouettes (round crown, tall
+     * poplar, forked twin-crown, and the broad dark oak), with visible
+     * limbs, root flares, and multi-lobe canopies whose lobes ride the
+     * wind on their own phases. A traveling gust breathes through the
+     * whole treeline.
+     */
+    private windAt;
+    /** Canopy lobes per species: [ox, oy, r] in tile units from the base. */
+    private static readonly TREE_LOBES;
+    /** Limbs per species: [trunk height, reach x, reach y] in tiles. */
+    private static readonly TREE_LIMBS;
+    private drawTree;
+    private drawTreeShadow;
+    /** Felled trees mid-fall: shudder → topple → impact bounce → fade. */
+    private readonly fallingTrees;
+    addFallingTree(tx: number, ty: number, oak: boolean, dir: number): void;
+    private collectFallingTrees;
     /** Trees, rocks, stations — the object layer, redrawn with character. */
     private objectItem;
     private collectEntities;

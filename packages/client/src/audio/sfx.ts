@@ -75,6 +75,18 @@ export class Sfx {
     this.noise(0.05, 0.25);
   }
 
+  /** The long groan of a felled trunk tipping over. */
+  treeFall(): void {
+    this.tone(150, 0.7, { type: 'sawtooth', slide: -95, volume: 0.22 });
+    this.tone(96, 0.6, { type: 'sawtooth', slide: -50, volume: 0.16, delay: 0.1 });
+  }
+
+  /** The crown hits the ground: deep thud + leaf wash. */
+  treeImpact(): void {
+    this.tone(55, 0.22, { type: 'sine', slide: -18, volume: 0.5 });
+    this.noise(0.3, 0.3);
+  }
+
   collect(): void {
     this.tone(520, 0.07, { type: 'triangle', volume: 0.3 });
     this.tone(780, 0.09, { type: 'triangle', volume: 0.3, delay: 0.06 });

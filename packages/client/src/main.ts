@@ -1,4 +1,4 @@
-import { EntityKind, PoseState, tileDef } from '@devcraft/shared';
+import { EntityKind, PoseState, Tile, tileDef } from '@devcraft/shared';
 import { BUILDABLES, BUILDABLE_GROUND, npcDef } from '@devcraft/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
@@ -231,6 +231,21 @@ game.onDodgeFx = (x, y, mx, my) => {
   renderer.addRing(x, y, '#efe3c2', 0.35);
   sfx.dash();
   input.rumble(0.15, 0.4, 90);
+};
+
+// A felled tree topples away from whoever cut it, groans, and lands
+// with a thud you can feel.
+game.onTileChange = (tx, ty, prev, next) => {
+  if ((prev === Tile.Tree || prev === Tile.TreeOak) && next === Tile.Stump) {
+    const own = game.predictor.pos;
+    const dir = own.x <= tx + 0.5 ? 1 : -1;
+    renderer.addFallingTree(tx, ty, prev === Tile.TreeOak, dir);
+    sfx.treeFall();
+    window.setTimeout(() => {
+      sfx.treeImpact();
+      input.rumble(0.45, 0.3, 150);
+    }, 780);
+  }
 };
 
 // Loosing an arrow: instant, local, and scaled by the charge — string

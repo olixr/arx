@@ -13,6 +13,10 @@ export declare class Sfx {
     hurt(): void;
     swing(): void;
     chop(): void;
+    /** The long groan of a felled trunk tipping over. */
+    treeFall(): void;
+    /** The crown hits the ground: deep thud + leaf wash. */
+    treeImpact(): void;
     collect(): void;
     levelUp(): void;
     portal(): void;

@@ -378,11 +378,17 @@ export class ClientGame {
     this.worldVersion++;
   }
 
+  /** Fires with (tx, ty, previous, next) whenever a tile mutates. */
+  onTileChange: ((tx: number, ty: number, prev: number | undefined, next: number) => void) | null =
+    null;
+
   private handleTilePatch(patch: TilePatch): void {
+    const prev = this.world.groundAt(patch.tx, patch.ty);
     this.world.setGround(patch.tx, patch.ty, patch.ground);
     // Blob rendering blends across tiles — rebake the neighborhood.
     this.touchNeighbors(Math.floor(patch.tx / CHUNK_SIZE), Math.floor(patch.ty / CHUNK_SIZE));
     this.worldVersion++;
+    this.onTileChange?.(patch.tx, patch.ty, prev, patch.ground);
   }
 
   /** Bump neighboring chunks' revs so organic borders re-bake. */

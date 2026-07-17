@@ -136,6 +136,8 @@ export declare class ClientGame {
     get sessionToken(): string | null;
     private handleMessage;
     private handleChunk;
+    /** Fires with (tx, ty, previous, next) whenever a tile mutates. */
+    onTileChange: ((tx: number, ty: number, prev: number | undefined, next: number) => void) | null;
     private handleTilePatch;
     /** Bump neighboring chunks' revs so organic borders re-bake. */
     private touchNeighbors;

@@ -264,6 +264,7 @@ export class Renderer {
 
     const items: DrawItem[] = [];
     this.collectRaisedTiles(game, items);
+    this.collectFallingTrees(items);
     this.collectEntities(game, items);
 
     for (const item of items) item.drawShadow?.();
@@ -543,11 +544,11 @@ export class Renderer {
   private visibleTileBounds(): { minTx: number; maxTx: number; minTy: number; maxTy: number } {
     const s = this.camera.scale;
     return {
-      minTx: Math.floor(this.camera.x - this.w / 2 / s) - 1,
-      maxTx: Math.floor(this.camera.x + this.w / 2 / s) + 1,
-      // Extra head-room above: tall prisms and canopies reach ~2 tiles
-      // over their base and must draw while their base is off-screen.
-      minTy: Math.floor(this.camera.y - this.h / 2 / (s * this.camera.yScale)) - 4,
+      // Canopies overhang ~1.3 tiles sideways and reach ~3.5 tiles
+      // above their base — pad so off-screen bases still draw.
+      minTx: Math.floor(this.camera.x - this.w / 2 / s) - 2,
+      maxTx: Math.floor(this.camera.x + this.w / 2 / s) + 2,
+      minTy: Math.floor(this.camera.y - this.h / 2 / (s * this.camera.yScale)) - 5,
       maxTy: Math.floor(this.camera.y + this.h / 2 / (s * this.camera.yScale)) + 2,
     };
   }
@@ -776,6 +777,249 @@ export class Renderer {
     };
   }
 
+  // -------------------------------------------------------------- trees
+
+  /**
+   * The forest is a character, not a texture. Trees are 3-4× the
+   * player's height, in four distinct silhouettes (round crown, tall
+   * poplar, forked twin-crown, and the broad dark oak), with visible
+   * limbs, root flares, and multi-lobe canopies whose lobes ride the
+   * wind on their own phases. A traveling gust breathes through the
+   * whole treeline.
+   */
+  private windAt(tSec: number, phase: number): number {
+    const gust = 0.5 + 0.5 * Math.sin(tSec * 0.29 + phase * 0.07) ** 2;
+    return (
+      (Math.sin(tSec * 1.1 + phase * 1.7) * 0.6 + Math.sin(tSec * 0.43 + phase * 0.9) * 0.4) * gust
+    );
+  }
+
+  /** Canopy lobes per species: [ox, oy, r] in tile units from the base. */
+  private static readonly TREE_LOBES: Array<Array<[number, number, number]>> = [
+    // 0 — round crown
+    [[0.55, -1.6, 0.5], [-0.15, -2.45, 0.55], [0, -1.95, 0.92]],
+    // 1 — tall poplar
+    [[0.1, -2.75, 0.5], [0, -2.3, 0.72], [0.08, -1.7, 0.58]],
+    // 2 — forked twin-crown
+    [[0, -2.4, 0.5], [-0.5, -2.0, 0.68], [0.5, -1.82, 0.62]],
+    // 3 — oak: broad, layered
+    [[0.1, -2.9, 0.5], [-0.85, -1.85, 0.66], [0.8, -1.9, 0.7], [0, -2.3, 1.0]],
+  ];
+
+  /** Limbs per species: [trunk height, reach x, reach y] in tiles. */
+  private static readonly TREE_LIMBS: Array<Array<[number, number, number]>> = [
+    [],
+    [],
+    [[-1.1, 0.5, -1.6]],
+    [[-1.0, -0.8, -1.55], [-1.25, 0.72, -1.6]],
+  ];
+
+  private drawTree(
+    bx: number,
+    by: number,
+    h: number,
+    oak: boolean,
+    tSec: number,
+    windMul: number,
+  ): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    const v = oak ? 3 : h % 3;
+    const k = (oak ? 1.12 : 0.88 + ((h >> 4) % 26) / 100) * s;
+    const groundY = by + syT * 0.3;
+    const bark = oak ? '#5d4022' : '#6b4a26';
+    const leaf = oak
+      ? ['#2c5c31', '#2f6135', '#295830'][h % 3]!
+      : ['#35773a', '#3a8140', '#317238', '#3f8a3c'][h % 4]!;
+    const basePhase = bx / s + (h % 17);
+    const wind = this.windAt(tSec, basePhase) * windMul;
+
+    // Trunk: tapered, root-flared, tip buried in the main lobe.
+    const lobes = Renderer.TREE_LOBES[v]!;
+    const main = lobes[lobes.length - 1]!;
+    const tipY = groundY + (main[1] + main[2] * 0.4) * k;
+    const tipX = bx + main[0] * k * 0.5 + wind * 0.055 * s;
+    const wb = (oak ? 0.16 : 0.12) * k;
+    ctx.fillStyle = bark;
+    ctx.beginPath();
+    ctx.moveTo(bx - wb * 1.7, groundY);
+    ctx.lineTo(bx - wb, groundY - 0.22 * k);
+    ctx.lineTo(tipX - wb * 0.5, tipY);
+    ctx.lineTo(tipX + wb * 0.5, tipY);
+    ctx.lineTo(bx + wb, groundY - 0.22 * k);
+    ctx.lineTo(bx + wb * 1.7, groundY);
+    ctx.closePath();
+    ctx.fill();
+    // Lit west edge + a bark seam.
+    ctx.fillStyle = shade(bark, 16);
+    ctx.beginPath();
+    ctx.moveTo(bx - wb * 1.7, groundY);
+    ctx.lineTo(bx - wb * 0.9, groundY);
+    ctx.lineTo(tipX - wb * 0.14, tipY);
+    ctx.lineTo(tipX - wb * 0.5, tipY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = shade(bark, -18);
+    ctx.lineWidth = Math.max(1, s * 0.03);
+    ctx.beginPath();
+    ctx.moveTo(bx + wb * 0.3, groundY - 0.1 * k);
+    ctx.lineTo(tipX + wb * 0.12, tipY + 0.2 * k);
+    ctx.stroke();
+
+    // Limbs: tapered boughs reaching toward their leaf clusters.
+    for (const [lh, lx2, ly2] of Renderer.TREE_LIMBS[v]!) {
+      const ax = bx + wind * 0.02 * s;
+      const ay = groundY + lh * k;
+      const ex = bx + lx2 * k * 0.8 + wind * 0.05 * s;
+      const ey = groundY + ly2 * k;
+      ctx.fillStyle = bark;
+      ctx.beginPath();
+      ctx.moveTo(ax - 0.055 * k, ay + 0.05 * k);
+      ctx.lineTo(ax + 0.055 * k, ay - 0.05 * k);
+      ctx.lineTo(ex, ey);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Canopy lobes, back-to-front; each rides its own wind phase.
+    for (let i = 0; i < lobes.length; i++) {
+      const [ox, oy, r] = lobes[i]!;
+      const wi = this.windAt(tSec, basePhase + i * 2.3) * windMul;
+      const sway = (0.045 + 0.02 * (i % 2)) * s * wi + (-oy / 3) * wind * 0.04 * s;
+      const lx3 = bx + ox * k + sway;
+      const ly3 = groundY + oy * k;
+      const lr = r * k;
+      const seed = h ^ (i * 0x9e37);
+      // Under-shade, mass, lit facet — no clipping, offsets stay inside.
+      ctx.fillStyle = shade(leaf, -16);
+      ctx.beginPath();
+      facetBlob(ctx, lx3 + lr * 0.12, ly3 + lr * 0.14, lr * 0.94, seed, 8, 0.92);
+      ctx.fill();
+      ctx.fillStyle = leaf;
+      ctx.beginPath();
+      facetBlob(ctx, lx3, ly3, lr * 0.92, seed, 8, 0.92);
+      ctx.fill();
+      ctx.fillStyle = shade(leaf, 18);
+      ctx.beginPath();
+      facetBlob(ctx, lx3 - lr * 0.26 + wi * 0.015 * s, ly3 - lr * 0.3, lr * 0.5, seed ^ 0x55, 6, 0.9);
+      ctx.fill();
+    }
+
+    // Life: the wind occasionally shakes a leaf loose.
+    if (Math.random() < 0.0011 * windMul * (1 + Math.abs(wind))) {
+      const [ox, oy, r] = lobes[Math.floor(Math.random() * lobes.length)]!;
+      const wpt = this.camera.screenToWorld(
+        bx + ox * k + (Math.random() - 0.5) * r * k,
+        groundY + oy * k + r * k * 0.4,
+        this.w,
+        this.h,
+      );
+      this.particles.burst(wpt.x, wpt.y, 1, [shade(leaf, 24), '#c9a441'], {
+        speed: 0.35,
+        life: 1.9,
+        size: 0.055,
+        gravity: 0.55,
+      });
+    }
+  }
+
+  private drawTreeShadow(bx: number, by: number, h: number, oak: boolean): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    const k = (oak ? 1.12 : 0.88 + ((h >> 4) % 26) / 100) * s;
+    ctx.fillStyle = SHADOW_COLOR;
+    ctx.beginPath();
+    facetBlob(ctx, bx + SHADOW_OFFSET * s * 1.6, by + syT * 0.3 + SHADOW_OFFSET * s * 0.5, k * (oak ? 0.95 : 0.78), h ^ 0x33, 7, 0.4);
+    ctx.fill();
+  }
+
+  /** Felled trees mid-fall: shudder → topple → impact bounce → fade. */
+  private readonly fallingTrees: Array<{
+    tx: number;
+    ty: number;
+    oak: boolean;
+    h: number;
+    dir: number;
+    born: number;
+    impacted: boolean;
+  }> = [];
+
+  addFallingTree(tx: number, ty: number, oak: boolean, dir: number): void {
+    this.fallingTrees.push({
+      tx,
+      ty,
+      oak,
+      h: hashCoords(41, tx, ty),
+      dir: Math.sign(dir) || 1,
+      born: performance.now(),
+      impacted: false,
+    });
+  }
+
+  private collectFallingTrees(items: DrawItem[]): void {
+    const now = performance.now();
+    const tSec = now / 1000;
+    for (let i = this.fallingTrees.length - 1; i >= 0; i--) {
+      const ft = this.fallingTrees[i]!;
+      const f = (now - ft.born) / 1350;
+      if (f >= 1.1) {
+        this.fallingTrees.splice(i, 1);
+        continue;
+      }
+      // Impact: leaves burst where the crown lands, dust at the root.
+      if (f >= 0.72 && !ft.impacted) {
+        ft.impacted = true;
+        this.shake(2.4);
+        const landX = ft.tx + 0.5 + ft.dir * 2.1;
+        this.particles.burst(landX, ft.ty + 0.55, 16, ['#3a8140', '#35773a', '#c9a441'], {
+          speed: 2.2,
+          life: 0.7,
+          size: 0.08,
+          up: true,
+          gravity: 4,
+        });
+        this.particles.burst(ft.tx + 0.5, ft.ty + 0.6, 8, ['#9b8a70', '#b5a488'], {
+          speed: 1.4,
+          life: 0.45,
+          size: 0.07,
+          gravity: 3,
+        });
+      }
+      items.push({
+        sortY: ft.ty + 0.9,
+        draw: () => {
+          const ctx = this.ctx;
+          const p = this.camera.worldToScreen(ft.tx + 0.5, ft.ty + 0.5, this.w, this.h);
+          const syT = this.camera.scale * this.camera.yScale;
+          const pivotY = p.y + syT * 0.3;
+          let angle: number;
+          let windMul = 1;
+          if (f < 0.16) {
+            // The cut bites: the whole tree shudders.
+            angle = Math.sin(now * 0.09) * 0.03 * (f / 0.16);
+            windMul = 2.6;
+          } else if (f < 0.72) {
+            const u = (f - 0.16) / 0.56;
+            angle = 1.52 * u * u; // gravity takes it
+          } else {
+            const u = (f - 0.72) / 0.38;
+            angle = 1.52 + Math.sin(Math.min(1, u) * Math.PI) * 0.05 * (1 - u);
+          }
+          ctx.save();
+          if (f > 0.85) ctx.globalAlpha = Math.max(0, 1 - (f - 0.85) / 0.25);
+          ctx.translate(p.x, pivotY);
+          ctx.rotate(ft.dir * angle);
+          ctx.translate(-p.x, -pivotY);
+          this.drawTree(p.x, p.y, ft.h, ft.oak, tSec, windMul);
+          ctx.restore();
+          ctx.globalAlpha = 1;
+        },
+      });
+    }
+  }
+
   /** Trees, rocks, stations — the object layer, redrawn with character. */
   private objectItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
     const ctx = this.ctx;
@@ -789,72 +1033,10 @@ export class Renderer {
       case Tile.Tree:
       case Tile.TreeOak: {
         const oak = tile === Tile.TreeOak;
-        const base = oak ? '#2c5c31' : ['#35773a', '#3a8140', '#317238'][h % 3]!;
-        const size = oak ? 1.18 : 0.95 + ((h >> 4) % 20) / 100;
-        const sway = Math.sin(t * 0.9 + (h % 30) * 0.3) * 0.02 * s;
-        // Real height: the canopy floats over a tall trunk, and the
-        // whole crown leans away from the screen center. Walking north
-        // of a tree puts you squarely behind it.
-        // Tall for the pitched camera; the trunk tip is constructed
-        // inside the canopy — by construction the two can't separate.
-        const sK = s;
-        const canopyH = 0.8 + 0.5 * size; // tiles above the base
-        const syT = s * this.camera.yScale;
-        const cr = sK * 0.66 * size;
-        const cy = p.y - s * canopyH;
-        const cx = p.x + sway;
-        const trunkBaseY = p.y + syT * 0.3;
-        const tipY = cy + cr * 0.42;
-        const tipX = p.x + sway * 0.7;
         return {
           sortY: ty + 0.9,
-          drawShadow: () => {
-            ctx.fillStyle = SHADOW_COLOR;
-            ctx.beginPath();
-            facetBlob(ctx, p.x + off * 1.5, p.y + syT * 0.3 + off * 0.5, sK * 0.5 * size, h ^ 0x33, 7, 0.45);
-            ctx.fill();
-          },
-          draw: () => {
-            // Trunk: a tapered post from the ground into the crown.
-            ctx.fillStyle = '#6b4a26';
-            ctx.beginPath();
-            ctx.moveTo(p.x - sK * 0.13, trunkBaseY);
-            ctx.lineTo(p.x + sK * 0.13, trunkBaseY);
-            ctx.lineTo(tipX + sK * 0.075, tipY);
-            ctx.lineTo(tipX - sK * 0.075, tipY);
-            ctx.closePath();
-            ctx.fill();
-            // Lit trunk edge.
-            ctx.fillStyle = shade('#6b4a26', 14);
-            ctx.beginPath();
-            ctx.moveTo(p.x - sK * 0.13, trunkBaseY);
-            ctx.lineTo(p.x - sK * 0.06, trunkBaseY);
-            ctx.lineTo(tipX - sK * 0.025, tipY);
-            ctx.lineTo(tipX - sK * 0.075, tipY);
-            ctx.closePath();
-            ctx.fill();
-            // Canopy: one jittered low-poly mass — same dialect as the
-            // boulders — with a hard lit facet on the upper-left.
-            ctx.fillStyle = base;
-            ctx.beginPath();
-            facetBlob(ctx, cx, cy, cr, h, oak ? 9 : 8, 0.88);
-            ctx.fill();
-            // Lit facet: a smaller offset poly clipped to the canopy.
-            ctx.save();
-            ctx.beginPath();
-            facetBlob(ctx, cx, cy, cr, h, oak ? 9 : 8, 0.88);
-            ctx.clip();
-            ctx.fillStyle = shade(base, 20);
-            ctx.beginPath();
-            facetBlob(ctx, cx - cr * 0.3, cy - cr * 0.34, cr * 0.62, h ^ 0x1f, 6, 0.9);
-            ctx.fill();
-            // Hard under-shade grounds the mass.
-            ctx.fillStyle = shade(base, -16);
-            ctx.beginPath();
-            facetBlob(ctx, cx + cr * 0.22, cy + cr * 0.42, cr * 0.55, h ^ 0x2e, 6, 0.7);
-            ctx.fill();
-            ctx.restore();
-          },
+          drawShadow: () => this.drawTreeShadow(p.x, p.y, h, oak),
+          draw: () => this.drawTree(p.x, p.y, h, oak, t, 1),
         };
       }
 
