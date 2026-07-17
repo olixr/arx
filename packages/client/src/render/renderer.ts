@@ -780,239 +780,483 @@ export class Renderer {
   // -------------------------------------------------------------- trees
 
   /**
-   * The forest is a character, not a texture. Trees are 3-4× the
-   * player's height, in four distinct silhouettes (round crown, tall
-   * poplar, forked twin-crown, and the broad dark oak), with visible
-   * limbs, root flares, and multi-lobe canopies whose lobes ride the
-   * wind on their own phases. A traveling gust breathes through the
-   * whole treeline.
+   * The forest is a character, not a texture. Trees stand 3-4× the
+   * player's height in six bespoke species — each with a real curved,
+   * forked, or gnarled trunk, root flares, boughs, and a layered
+   * low-poly crown — and the whole treeline breathes on ONE coherent
+   * wind field so neighbours sway together, never against each other.
    */
-  private windAt(tSec: number, phase: number): number {
-    const gust = 0.5 + 0.5 * Math.sin(tSec * 0.29 + phase * 0.07) ** 2;
-    return (
-      (Math.sin(tSec * 1.1 + phase * 1.7) * 0.6 + Math.sin(tSec * 0.43 + phase * 0.9) * 0.4) * gust
-    );
+
+  /**
+   * Coherent wind field: a smooth value in ~[-0.6, 1.4] (biased
+   * downwind) sampled from world position + time. Two slow swells
+   * travel along the wind direction over a slowly breathing gust
+   * envelope — no `sin²` spikes, no per-tree randomness. Nearby trees
+   * read nearly the same phase (they group); distant trees lag as the
+   * front sweeps across, exactly like real wind moving through a wood.
+   */
+  private windField(wx: number, wy: number, tSec: number): number {
+    const along = wx * 0.94 + wy * 0.34; // distance along the wind
+    const gust = 0.6 + 0.4 * Math.sin(along * 0.05 - tSec * 0.34);
+    const sway =
+      0.72 * Math.sin(along * 0.12 - tSec * 1.25) +
+      0.28 * Math.sin(along * 0.2 - tSec * 1.9 + 0.7);
+    return gust * (0.4 + sway);
   }
 
-  /** Canopy lobes per species: [ox, oy, r] in tile units from the base. */
-  private static readonly TREE_LOBES: Array<Array<[number, number, number]>> = [
-    // 0 — round crown
-    [[0.55, -1.6, 0.5], [-0.15, -2.45, 0.55], [0, -1.95, 0.92]],
-    // 1 — tall poplar
-    [[0.1, -2.75, 0.5], [0, -2.3, 0.72], [0.08, -1.7, 0.58]],
-    // 2 — forked twin-crown
-    [[0, -2.4, 0.5], [-0.5, -2.0, 0.68], [0.5, -1.82, 0.62]],
-    // 3 — oak: broad, layered
-    [[0.1, -2.9, 0.5], [-0.85, -1.85, 0.66], [0.8, -1.9, 0.7], [0, -2.3, 1.0]],
+  private static readonly TREE_SPECIES: Array<{
+    trunk: string;
+    leaves: string[];
+    hMin: number;
+    hMax: number;
+    trunkW: number; // base half-width, tile fraction of k
+    tipW: number; // tip half-width fraction of trunkW
+    bow: number; // sideways trunk curve (± by hash)
+    lean: number; // constant windswept lean
+    fork: number | null; // fork height fraction, or null
+    gnarl: number; // trunk edge waviness
+    flare: number; // root-flare boost
+    sides: number; // canopy facet count
+    // Crowns: clusters of [ox, oy(up=neg), r] tiles. Fork species use
+    // two clusters (indices split by `crownSplit`).
+    lobes: Array<[number, number, number]>;
+    crownSplit: number; // lobes[0..split) = left branch crown
+    limbs: Array<[number, number, number]>; // [startHf, endOx, endOy]
+  }> = [
+    // 0 — Maple: sturdy, slightly bowed, full round crown.
+    {
+      trunk: '#6b4a26', leaves: ['#3a8140', '#35773a', '#3f8a3c'],
+      hMin: 1.0, hMax: 1.28, trunkW: 0.1, tipW: 0.4, bow: 0.14, lean: 0,
+      fork: null, gnarl: 0.03, flare: 0.9, sides: 8,
+      lobes: [[0.5, -2.0, 0.6], [-0.5, -2.05, 0.62], [0, -2.55, 0.7], [0, -2.15, 0.95]],
+      crownSplit: 0, limbs: [],
+    },
+    // 1 — Birch: tall, slim, pale, gentle S-curve, airy vertical crown.
+    {
+      trunk: '#d7d2c4', leaves: ['#5a9b48', '#63a850', '#579544'],
+      hMin: 1.25, hMax: 1.55, trunkW: 0.06, tipW: 0.5, bow: 0.22, lean: 0,
+      fork: null, gnarl: 0.02, flare: 0.5, sides: 7,
+      lobes: [[0.12, -3.1, 0.42], [-0.1, -2.6, 0.55], [0.06, -2.1, 0.5], [0.02, -3.5, 0.34]],
+      crownSplit: 0, limbs: [[0.55, -0.6, -2.2], [0.68, 0.55, -2.6]],
+    },
+    // 2 — Twin: trunk forks into a Y, two separate crowns.
+    {
+      trunk: '#66492a', leaves: ['#3a8140', '#348a3f', '#31763a'],
+      hMin: 1.05, hMax: 1.3, trunkW: 0.1, tipW: 0.45, bow: 0.06, lean: 0,
+      fork: 0.42, gnarl: 0.04, flare: 0.8, sides: 8,
+      lobes: [[-0.85, -2.3, 0.62], [-0.5, -2.7, 0.5], [0.85, -2.15, 0.64], [0.55, -2.55, 0.5]],
+      crownSplit: 2, limbs: [],
+    },
+    // 3 — Windswept: leans hard, crown streaming downwind, layered.
+    {
+      trunk: '#6b4a26', leaves: ['#3f8a3c', '#479243', '#3a8140'],
+      hMin: 1.05, hMax: 1.3, trunkW: 0.095, tipW: 0.42, bow: 0.1, lean: 0.42,
+      fork: null, gnarl: 0.05, flare: 0.85, sides: 8,
+      lobes: [[0.75, -2.35, 0.66], [0.3, -2.0, 0.56], [1.1, -2.05, 0.5], [0.55, -2.65, 0.52]],
+      crownSplit: 0, limbs: [[0.5, -0.55, -1.7]],
+    },
+    // 4 — Bushy broadleaf: short thick trunk, wide low crown, boughs.
+    {
+      trunk: '#6f5030', leaves: ['#48924a', '#3f8a3c', '#4f9a4e'],
+      hMin: 0.85, hMax: 1.05, trunkW: 0.14, tipW: 0.5, bow: 0.05, lean: 0,
+      fork: null, gnarl: 0.04, flare: 1.1, sides: 9,
+      lobes: [[-0.95, -1.7, 0.66], [0.95, -1.7, 0.66], [0, -2.15, 0.85], [-0.4, -1.5, 0.55], [0.45, -1.5, 0.55]],
+      crownSplit: 0, limbs: [[0.4, -0.9, -1.5], [0.45, 0.9, -1.5]],
+    },
+    // 5 — Ancient oak: thick gnarled trunk, heavy boughs, dark canopy.
+    {
+      trunk: '#5d4022', leaves: ['#2c5c31', '#2f6135', '#295830'],
+      hMin: 1.15, hMax: 1.42, trunkW: 0.19, tipW: 0.5, bow: 0.08, lean: 0,
+      fork: null, gnarl: 0.09, flare: 1.3, sides: 9,
+      lobes: [[-0.95, -2.15, 0.72], [0.9, -2.2, 0.74], [0, -2.75, 0.78], [0, -2.25, 1.05], [-0.45, -1.75, 0.58], [0.5, -1.8, 0.58]],
+      crownSplit: 0, limbs: [[0.5, -1.15, -1.9], [0.55, 1.1, -1.95], [0.62, -0.4, -2.3]],
+    },
   ];
 
-  /** Limbs per species: [trunk height, reach x, reach y] in tiles. */
-  private static readonly TREE_LIMBS: Array<Array<[number, number, number]>> = [
-    [],
-    [],
-    [[-1.1, 0.5, -1.6]],
-    [[-1.0, -0.8, -1.55], [-1.25, 0.72, -1.6]],
-  ];
+  private static speciesOf(h: number, oak: boolean): number {
+    return oak ? 5 : h % 5;
+  }
+
+  /** Fill a tapered spine (centreline + width profile) as a bark shape. */
+  private fillSpine(
+    pts: Array<[number, number]>,
+    wBase: number,
+    wTip: number,
+    flare: number,
+    color: string,
+    litColor: string,
+  ): void {
+    const ctx = this.ctx;
+    const n = pts.length;
+    const left: Array<[number, number]> = [];
+    const right: Array<[number, number]> = [];
+    for (let i = 0; i < n; i++) {
+      const a = pts[Math.max(0, i - 1)]!;
+      const b = pts[Math.min(n - 1, i + 1)]!;
+      let tx = b[0] - a[0];
+      let ty = b[1] - a[1];
+      const len = Math.hypot(tx, ty) || 1;
+      tx /= len;
+      ty /= len;
+      const nx = -ty;
+      const ny = tx;
+      const u = i / (n - 1);
+      let w = wBase + (wTip - wBase) * u;
+      if (u < 0.2) w *= 1 + flare * ((0.2 - u) / 0.2);
+      left.push([pts[i]![0] + nx * w, pts[i]![1] + ny * w]);
+      right.push([pts[i]![0] - nx * w, pts[i]![1] - ny * w]);
+    }
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(left[0]![0], left[0]![1]);
+    for (let i = 1; i < n; i++) ctx.lineTo(left[i]![0], left[i]![1]);
+    for (let i = n - 1; i >= 0; i--) ctx.lineTo(right[i]![0], right[i]![1]);
+    ctx.closePath();
+    ctx.fill();
+    // Lit west edge.
+    ctx.strokeStyle = litColor;
+    ctx.lineWidth = Math.max(1, wBase * 0.5);
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(left[0]![0], left[0]![1]);
+    for (let i = 1; i < n; i++) ctx.lineTo(left[i]![0], left[i]![1]);
+    ctx.stroke();
+  }
+
+  /**
+   * Build a trunk/branch centreline from base to a target, curving with
+   * `bow` (sideways bulge), `lean` (constant), and `gnarl` (deterministic
+   * wobble), then displaced by the wind cantilever `disp(hf)`.
+   */
+  private spine(
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    k: number,
+    bow: number,
+    lean: number,
+    gnarl: number,
+    bowSign: number,
+    rnd: (i: number) => number,
+    disp: (hf: number) => number,
+    hf0: number,
+    hf1: number,
+    segs: number,
+  ): Array<[number, number]> {
+    const pts: Array<[number, number]> = [];
+    for (let i = 0; i <= segs; i++) {
+      const u = i / segs;
+      const e = u * u * (3 - 2 * u);
+      const hf = hf0 + (hf1 - hf0) * u;
+      let x = x0 + (x1 - x0) * e;
+      x += bowSign * bow * Math.sin(u * Math.PI) * k;
+      x += lean * e * k;
+      x += (rnd(i + 3) - 0.5) * gnarl * k;
+      x += disp(hf);
+      pts.push([x, y0 + (y1 - y0) * u]);
+    }
+    return pts;
+  }
 
   private drawTree(
     bx: number,
     by: number,
+    wx: number,
+    wy: number,
     h: number,
     oak: boolean,
     tSec: number,
-    windMul: number,
+    bendOverride: number | undefined,
   ): void {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
-    const v = oak ? 3 : h % 3;
-    const k = (oak ? 1.12 : 0.88 + ((h >> 4) % 26) / 100) * s;
+    const sp = Renderer.TREE_SPECIES[Renderer.speciesOf(h, oak)]!;
+    const rnd = (i: number): number => (hashCoords(7, h & 0xffff, i) % 1000) / 1000;
+    const k = (sp.hMin + (sp.hMax - sp.hMin) * rnd(1)) * s;
     const groundY = by + syT * 0.3;
-    const bark = oak ? '#5d4022' : '#6b4a26';
-    const leaf = oak
-      ? ['#2c5c31', '#2f6135', '#295830'][h % 3]!
-      : ['#35773a', '#3a8140', '#317238', '#3f8a3c'][h % 4]!;
-    const basePhase = bx / s + (h % 17);
-    const wind = this.windAt(tSec, basePhase) * windMul;
+    const bark = sp.trunk;
+    const litBark = shade(bark, bark === '#d7d2c4' ? 10 : 16);
+    const leaf = sp.leaves[h % sp.leaves.length]!;
+    const bowSign = rnd(2) < 0.5 ? -1 : 1;
 
-    // Trunk: tapered, root-flared, tip buried in the main lobe.
-    const lobes = Renderer.TREE_LOBES[v]!;
-    const main = lobes[lobes.length - 1]!;
-    const tipY = groundY + (main[1] + main[2] * 0.4) * k;
-    const tipX = bx + main[0] * k * 0.5 + wind * 0.055 * s;
-    const wb = (oak ? 0.16 : 0.12) * k;
-    ctx.fillStyle = bark;
-    ctx.beginPath();
-    ctx.moveTo(bx - wb * 1.7, groundY);
-    ctx.lineTo(bx - wb, groundY - 0.22 * k);
-    ctx.lineTo(tipX - wb * 0.5, tipY);
-    ctx.lineTo(tipX + wb * 0.5, tipY);
-    ctx.lineTo(bx + wb, groundY - 0.22 * k);
-    ctx.lineTo(bx + wb * 1.7, groundY);
-    ctx.closePath();
-    ctx.fill();
-    // Lit west edge + a bark seam.
-    ctx.fillStyle = shade(bark, 16);
-    ctx.beginPath();
-    ctx.moveTo(bx - wb * 1.7, groundY);
-    ctx.lineTo(bx - wb * 0.9, groundY);
-    ctx.lineTo(tipX - wb * 0.14, tipY);
-    ctx.lineTo(tipX - wb * 0.5, tipY);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = shade(bark, -18);
-    ctx.lineWidth = Math.max(1, s * 0.03);
-    ctx.beginPath();
-    ctx.moveTo(bx + wb * 0.3, groundY - 0.1 * k);
-    ctx.lineTo(tipX + wb * 0.12, tipY + 0.2 * k);
-    ctx.stroke();
+    // Coherent wind → a horizontal bend that grows with height (a
+    // cantilever: base planted, crown swaying most). One value for the
+    // whole tree, so it moves as a unit and never fights itself.
+    const windVal = bendOverride !== undefined ? bendOverride : this.windField(wx, wy, tSec);
+    const bend = windVal * 0.17 * k;
+    const disp = (hf: number): number => bend * Math.pow(Math.max(0, hf), 1.4);
+    const shimMag = (0.4 + Math.min(1.2, Math.abs(windVal))) * 0.014 * k;
 
-    // Limbs: tapered boughs reaching toward their leaf clusters.
-    for (const [lh, lx2, ly2] of Renderer.TREE_LIMBS[v]!) {
-      const ax = bx + wind * 0.02 * s;
-      const ay = groundY + lh * k;
-      const ex = bx + lx2 * k * 0.8 + wind * 0.05 * s;
-      const ey = groundY + ly2 * k;
-      ctx.fillStyle = bark;
+    // Crown attach heights (tiles up from ground → screen y).
+    const topTile = Math.max(...sp.lobes.map((l) => -l[1] + l[2] * 0.4));
+
+    // --- Trunk (+ fork branches) as bespoke curved spines.
+    if (sp.fork !== null) {
+      const forkY = groundY - topTile * sp.fork * k;
+      const forkX = bx + disp(sp.fork);
+      // Shared lower trunk.
+      const lower = this.spine(bx, groundY, forkX, forkY, k, sp.bow * 0.5, 0, sp.gnarl, bowSign, rnd, disp, 0, sp.fork, 4);
+      this.fillSpine(lower, sp.trunkW * k, sp.trunkW * k * 0.8, sp.flare, bark, litBark);
+      // Two branches to the two crown centres.
+      const lC = this.clusterCentre(sp, 0, sp.crownSplit);
+      const rC = this.clusterCentre(sp, sp.crownSplit, sp.lobes.length);
+      for (const [cxT, cyT] of [lC, rC]) {
+        const bxr = this.spine(
+          forkX, forkY, bx + cxT * k, groundY + cyT * k + 0.35 * k, k,
+          sp.bow, 0, sp.gnarl, cxT < 0 ? -1 : 1, rnd, disp, sp.fork, 0.92, 4,
+        );
+        this.fillSpine(bxr, sp.trunkW * k * 0.72, sp.trunkW * k * 0.4, 0.2, bark, litBark);
+      }
+    } else {
+      const topX = bx + sp.lean * k * 0.5;
+      const trunk = this.spine(
+        bx, groundY, topX, groundY - topTile * 0.82 * k, k,
+        sp.bow, sp.lean, sp.gnarl, bowSign, rnd, disp, 0, 0.82, 6,
+      );
+      this.fillSpine(trunk, sp.trunkW * k, sp.trunkW * k * sp.tipW, sp.flare, bark, litBark);
+      // Bark seam texture.
+      ctx.strokeStyle = shade(bark, -20);
+      ctx.lineWidth = Math.max(1, s * 0.025);
       ctx.beginPath();
-      ctx.moveTo(ax - 0.055 * k, ay + 0.05 * k);
-      ctx.lineTo(ax + 0.055 * k, ay - 0.05 * k);
-      ctx.lineTo(ex, ey);
+      for (let i = 1; i < trunk.length - 1; i += 2) {
+        ctx.moveTo(trunk[i]![0] + sp.trunkW * k * 0.2, trunk[i]![1]);
+        ctx.lineTo(trunk[i]![0] + sp.trunkW * k * 0.2, trunk[i]![1] - k * 0.14);
+      }
+      ctx.stroke();
+    }
+
+    // Root flares: a couple of short buttress roots at the base.
+    ctx.fillStyle = shade(bark, -8);
+    for (const rs of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(bx + rs * sp.trunkW * k * (1 + sp.flare), groundY - sp.trunkW * k * 0.4);
+      ctx.lineTo(bx + rs * sp.trunkW * k * (2.2 + sp.flare), groundY + syT * 0.02);
+      ctx.lineTo(bx + rs * sp.trunkW * k * 0.5, groundY + syT * 0.03);
       ctx.closePath();
       ctx.fill();
     }
 
-    // Canopy lobes, back-to-front; each rides its own wind phase.
-    for (let i = 0; i < lobes.length; i++) {
-      const [ox, oy, r] = lobes[i]!;
-      const wi = this.windAt(tSec, basePhase + i * 2.3) * windMul;
-      const sway = (0.045 + 0.02 * (i % 2)) * s * wi + (-oy / 3) * wind * 0.04 * s;
-      const lx3 = bx + ox * k + sway;
+    // --- Limbs: tapered boughs reaching out toward leaf clusters.
+    for (const [sh, ex, ey] of sp.limbs) {
+      const ax = bx + disp(sh) + bowSign * sp.bow * Math.sin(sh * Math.PI) * k;
+      const ay = groundY - topTile * sh * k;
+      const limb = this.spine(
+        ax, ay, bx + ex * k, groundY + ey * k, k, 0.12, 0, sp.gnarl, ex < 0 ? -1 : 1,
+        rnd, disp, sh, Math.min(1, -ey / topTile), 3,
+      );
+      this.fillSpine(limb, sp.trunkW * k * 0.5, sp.trunkW * k * 0.18, 0, bark, litBark);
+    }
+
+    // --- Canopy: layered lobes, painted back-to-front. All share the
+    // one bend; a tiny coherent shimmer adds leaf flutter without ever
+    // sending lobes in opposite directions.
+    const order = sp.lobes
+      .map((l, i) => ({ l, i }))
+      .sort((a, b) => a.l[1] - b.l[1]); // higher (more negative oy) first
+    for (const { l, i } of order) {
+      const [ox, oy, r] = l;
+      const hf = -oy / topTile;
+      const shimmer = Math.sin(tSec * 2.3 + wx * 0.5 + wy * 0.3 + i) * shimMag;
+      const lx3 = bx + ox * k + disp(hf) + shimmer;
       const ly3 = groundY + oy * k;
       const lr = r * k;
       const seed = h ^ (i * 0x9e37);
-      // Under-shade, mass, lit facet — no clipping, offsets stay inside.
       ctx.fillStyle = shade(leaf, -16);
       ctx.beginPath();
-      facetBlob(ctx, lx3 + lr * 0.12, ly3 + lr * 0.14, lr * 0.94, seed, 8, 0.92);
+      facetBlob(ctx, lx3 + lr * 0.12, ly3 + lr * 0.14, lr * 0.95, seed, sp.sides, 0.92);
       ctx.fill();
       ctx.fillStyle = leaf;
       ctx.beginPath();
-      facetBlob(ctx, lx3, ly3, lr * 0.92, seed, 8, 0.92);
+      facetBlob(ctx, lx3, ly3, lr * 0.93, seed, sp.sides, 0.92);
       ctx.fill();
       ctx.fillStyle = shade(leaf, 18);
       ctx.beginPath();
-      facetBlob(ctx, lx3 - lr * 0.26 + wi * 0.015 * s, ly3 - lr * 0.3, lr * 0.5, seed ^ 0x55, 6, 0.9);
+      facetBlob(ctx, lx3 - lr * 0.26 + shimmer * 0.5, ly3 - lr * 0.3, lr * 0.5, seed ^ 0x55, 6, 0.9);
       ctx.fill();
     }
 
-    // Life: the wind occasionally shakes a leaf loose.
-    if (Math.random() < 0.0011 * windMul * (1 + Math.abs(wind))) {
-      const [ox, oy, r] = lobes[Math.floor(Math.random() * lobes.length)]!;
+    // Life: strong gusts shake the occasional leaf loose (skipped while
+    // felling — the fall spawns its own debris).
+    if (bendOverride === undefined && Math.random() < 0.0009 * (0.5 + Math.abs(windVal))) {
+      const l = sp.lobes[Math.floor(rnd(9) * sp.lobes.length)]!;
       const wpt = this.camera.screenToWorld(
-        bx + ox * k + (Math.random() - 0.5) * r * k,
-        groundY + oy * k + r * k * 0.4,
+        bx + l[0] * k + (Math.random() - 0.5) * l[2] * k,
+        groundY + l[1] * k + l[2] * k * 0.4,
         this.w,
         this.h,
       );
       this.particles.burst(wpt.x, wpt.y, 1, [shade(leaf, 24), '#c9a441'], {
-        speed: 0.35,
-        life: 1.9,
-        size: 0.055,
-        gravity: 0.55,
+        speed: 0.4 + Math.max(0, windVal) * 0.5,
+        life: 2.2,
+        size: 0.05,
+        gravity: 0.5,
+        drag: 0.7,
+        dir: 0.2,
+        spread: 1.4,
       });
     }
+  }
+
+  /** Average centre of a lobe cluster (tiles), for fork branch targets. */
+  private clusterCentre(
+    sp: { lobes: Array<[number, number, number]> },
+    from: number,
+    to: number,
+  ): [number, number] {
+    let sx = 0;
+    let sy = 0;
+    for (let i = from; i < to; i++) {
+      sx += sp.lobes[i]![0];
+      sy += sp.lobes[i]![1];
+    }
+    const n = to - from || 1;
+    return [sx / n, sy / n];
   }
 
   private drawTreeShadow(bx: number, by: number, h: number, oak: boolean): void {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
-    const k = (oak ? 1.12 : 0.88 + ((h >> 4) % 26) / 100) * s;
+    const sp = Renderer.TREE_SPECIES[Renderer.speciesOf(h, oak)]!;
+    const rnd = (i: number): number => (hashCoords(7, h & 0xffff, i) % 1000) / 1000;
+    const k = (sp.hMin + (sp.hMax - sp.hMin) * rnd(1)) * s;
+    const spread = Math.max(...sp.lobes.map((l) => Math.abs(l[0]) + l[2])) * 0.7;
     ctx.fillStyle = SHADOW_COLOR;
     ctx.beginPath();
-    facetBlob(ctx, bx + SHADOW_OFFSET * s * 1.6, by + syT * 0.3 + SHADOW_OFFSET * s * 0.5, k * (oak ? 0.95 : 0.78), h ^ 0x33, 7, 0.4);
+    facetBlob(ctx, bx + SHADOW_OFFSET * s * 1.6, by + syT * 0.3 + SHADOW_OFFSET * s * 0.5, k * spread, h ^ 0x33, 7, 0.4);
     ctx.fill();
   }
 
-  /** Felled trees mid-fall: shudder → topple → impact bounce → fade. */
+  /**
+   * A felled tree: shudder → topple (varied azimuth) → impact with a
+   * rolling wall of dust → it lies on the ground for a beat → it breaks
+   * apart into log chunks and a last billow of dust. Timeline in ms.
+   */
   private readonly fallingTrees: Array<{
     tx: number;
     ty: number;
     oak: boolean;
     h: number;
     dir: number;
+    tilt: number; // extra screen-plane tilt for azimuth variance
+    lie: number; // final lie angle magnitude
+    az: number; // world fall azimuth (debris direction)
     born: number;
     impacted: boolean;
+    brokeUp: boolean;
   }> = [];
 
   addFallingTree(tx: number, ty: number, oak: boolean, dir: number): void {
+    const h = hashCoords(41, tx, ty);
+    const sign = Math.sign(dir) || 1;
+    const r = (n: number): number => (hashCoords(17, h & 0xffff, n) % 1000) / 1000;
     this.fallingTrees.push({
       tx,
       ty,
       oak,
-      h: hashCoords(41, tx, ty),
-      dir: Math.sign(dir) || 1,
+      h,
+      dir: sign,
+      // Azimuth variance: mostly sideways, but each fall differs.
+      tilt: (r(1) - 0.5) * 0.5,
+      lie: 1.45 + (r(2) - 0.3) * 0.28,
+      az: sign > 0 ? 0.15 + (r(3) - 0.5) * 0.9 : Math.PI - 0.15 + (r(3) - 0.5) * 0.9,
       born: performance.now(),
       impacted: false,
+      brokeUp: false,
     });
   }
 
   private collectFallingTrees(items: DrawItem[]): void {
     const now = performance.now();
     const tSec = now / 1000;
+    // Timeline (ms): shudder 0-180, topple 180-720, bounce 720-900,
+    // lie 900-2500, breakup 2500-3200.
+    const END = 3200;
     for (let i = this.fallingTrees.length - 1; i >= 0; i--) {
       const ft = this.fallingTrees[i]!;
-      const f = (now - ft.born) / 1350;
-      if (f >= 1.1) {
+      const ms = now - ft.born;
+      if (ms >= END) {
         this.fallingTrees.splice(i, 1);
         continue;
       }
-      // Impact: leaves burst where the crown lands, dust at the root.
-      if (f >= 0.72 && !ft.impacted) {
+      const cx = ft.tx + 0.5;
+      const cy = ft.ty + 0.5;
+      const cosA = Math.cos(ft.az);
+      const sinA = Math.sin(ft.az) * this.camera.yScale;
+
+      // Impact: a wall of dust rolls out along the fall, plus a leaf
+      // burst where the crown slams down.
+      if (ms >= 720 && !ft.impacted) {
         ft.impacted = true;
-        this.shake(2.4);
-        const landX = ft.tx + 0.5 + ft.dir * 2.1;
-        this.particles.burst(landX, ft.ty + 0.55, 16, ['#3a8140', '#35773a', '#c9a441'], {
-          speed: 2.2,
-          life: 0.7,
-          size: 0.08,
-          up: true,
-          gravity: 4,
+        this.shake(3);
+        const lx = cx + cosA * 2.4;
+        const ly = cy + sinA * 2.4;
+        // Rolling dust: big, slow, billowing blocks that settle.
+        this.particles.burst(lx, ly, 22, ['#a89880', '#bcae94', '#9b8a70', '#c8bca4'], {
+          speed: 2.6, life: 1.1, size: 0.14, gravity: 0.6, drag: 3.2,
+          grow: 0.18, dir: ft.az, spread: 1.5,
         });
-        this.particles.burst(ft.tx + 0.5, ft.ty + 0.6, 8, ['#9b8a70', '#b5a488'], {
-          speed: 1.4,
-          life: 0.45,
-          size: 0.07,
-          gravity: 3,
+        this.particles.burst(cx + cosA, cy + sinA, 12, ['#9b8a70', '#b5a488'], {
+          speed: 1.6, life: 0.9, size: 0.12, gravity: 0.5, drag: 3, grow: 0.14,
+        });
+        // Crown leaf spray.
+        this.particles.burst(lx, ly - 0.2, 20, ['#3a8140', '#35773a', '#2f6135', '#c9a441'], {
+          speed: 2.4, life: 0.9, size: 0.07, up: true, gravity: 3.5, drag: 1.2,
         });
       }
+
+      // Breakup: the trunk splits into tumbling log chunks + a last
+      // dust billow instead of just vanishing.
+      if (ms >= 2500 && !ft.brokeUp) {
+        ft.brokeUp = true;
+        const bark = ft.oak ? '#5d4022' : '#6b4a26';
+        for (let c = 0; c < 5; c++) {
+          const along = 0.6 + c * 0.7;
+          this.particles.burst(cx + cosA * along, cy + sinA * along, 1, [bark, shade(bark, 14)], {
+            speed: 1.4, life: 0.8, size: 0.2, gravity: 6, drag: 1.5, dir: -Math.PI / 2, spread: 1.6,
+          });
+        }
+        this.particles.burst(cx + cosA * 1.6, cy + sinA * 1.6, 14, ['#a89880', '#bcae94', '#9b8a70'], {
+          speed: 1.8, life: 1.0, size: 0.15, gravity: 0.4, drag: 3, grow: 0.16, dir: ft.az, spread: 2,
+        });
+      }
+
       items.push({
         sortY: ft.ty + 0.9,
         draw: () => {
           const ctx = this.ctx;
-          const p = this.camera.worldToScreen(ft.tx + 0.5, ft.ty + 0.5, this.w, this.h);
+          const p = this.camera.worldToScreen(cx, cy, this.w, this.h);
           const syT = this.camera.scale * this.camera.yScale;
           const pivotY = p.y + syT * 0.3;
           let angle: number;
-          let windMul = 1;
-          if (f < 0.16) {
-            // The cut bites: the whole tree shudders.
-            angle = Math.sin(now * 0.09) * 0.03 * (f / 0.16);
-            windMul = 2.6;
-          } else if (f < 0.72) {
-            const u = (f - 0.16) / 0.56;
-            angle = 1.52 * u * u; // gravity takes it
+          let bend: number | undefined;
+          if (ms < 180) {
+            // The cut bites: the tree shudders in place.
+            const u = ms / 180;
+            angle = 0;
+            bend = Math.sin(now * 0.08) * 0.5 * u;
+          } else if (ms < 720) {
+            const u = (ms - 180) / 540;
+            angle = ft.lie * u * u; // gravity accelerates the topple
+            bend = 0;
+          } else if (ms < 900) {
+            const u = (ms - 720) / 180;
+            angle = ft.lie - Math.sin(u * Math.PI) * 0.06; // settle bounce
+            bend = 0;
           } else {
-            const u = (f - 0.72) / 0.38;
-            angle = 1.52 + Math.sin(Math.min(1, u) * Math.PI) * 0.05 * (1 - u);
+            angle = ft.lie; // lying on the ground
+            bend = 0;
           }
+          // Breakup fade only at the very end.
+          const alpha = ms > 2600 ? Math.max(0, 1 - (ms - 2600) / 600) : 1;
           ctx.save();
-          if (f > 0.85) ctx.globalAlpha = Math.max(0, 1 - (f - 0.85) / 0.25);
+          if (alpha < 1) ctx.globalAlpha = alpha;
           ctx.translate(p.x, pivotY);
-          ctx.rotate(ft.dir * angle);
+          ctx.rotate(ft.dir * angle + ft.tilt * Math.min(1, angle / ft.lie));
           ctx.translate(-p.x, -pivotY);
-          this.drawTree(p.x, p.y, ft.h, ft.oak, tSec, windMul);
+          this.drawTree(p.x, p.y, cx, cy, ft.h, ft.oak, tSec, bend);
           ctx.restore();
           ctx.globalAlpha = 1;
         },
@@ -1036,7 +1280,7 @@ export class Renderer {
         return {
           sortY: ty + 0.9,
           drawShadow: () => this.drawTreeShadow(p.x, p.y, h, oak),
-          draw: () => this.drawTree(p.x, p.y, h, oak, t, 1),
+          draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, oak, t, undefined),
         };
       }
 

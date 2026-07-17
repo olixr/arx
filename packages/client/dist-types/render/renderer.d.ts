@@ -118,21 +118,40 @@ export declare class Renderer {
      */
     private wallItem;
     /**
-     * The forest is a character, not a texture. Trees are 3-4× the
-     * player's height, in four distinct silhouettes (round crown, tall
-     * poplar, forked twin-crown, and the broad dark oak), with visible
-     * limbs, root flares, and multi-lobe canopies whose lobes ride the
-     * wind on their own phases. A traveling gust breathes through the
-     * whole treeline.
+     * The forest is a character, not a texture. Trees stand 3-4× the
+     * player's height in six bespoke species — each with a real curved,
+     * forked, or gnarled trunk, root flares, boughs, and a layered
+     * low-poly crown — and the whole treeline breathes on ONE coherent
+     * wind field so neighbours sway together, never against each other.
      */
-    private windAt;
-    /** Canopy lobes per species: [ox, oy, r] in tile units from the base. */
-    private static readonly TREE_LOBES;
-    /** Limbs per species: [trunk height, reach x, reach y] in tiles. */
-    private static readonly TREE_LIMBS;
+    /**
+     * Coherent wind field: a smooth value in ~[-0.6, 1.4] (biased
+     * downwind) sampled from world position + time. Two slow swells
+     * travel along the wind direction over a slowly breathing gust
+     * envelope — no `sin²` spikes, no per-tree randomness. Nearby trees
+     * read nearly the same phase (they group); distant trees lag as the
+     * front sweeps across, exactly like real wind moving through a wood.
+     */
+    private windField;
+    private static readonly TREE_SPECIES;
+    private static speciesOf;
+    /** Fill a tapered spine (centreline + width profile) as a bark shape. */
+    private fillSpine;
+    /**
+     * Build a trunk/branch centreline from base to a target, curving with
+     * `bow` (sideways bulge), `lean` (constant), and `gnarl` (deterministic
+     * wobble), then displaced by the wind cantilever `disp(hf)`.
+     */
+    private spine;
     private drawTree;
+    /** Average centre of a lobe cluster (tiles), for fork branch targets. */
+    private clusterCentre;
     private drawTreeShadow;
-    /** Felled trees mid-fall: shudder → topple → impact bounce → fade. */
+    /**
+     * A felled tree: shudder → topple (varied azimuth) → impact with a
+     * rolling wall of dust → it lies on the ground for a beat → it breaks
+     * apart into log chunks and a last billow of dust. Timeline in ms.
+     */
     private readonly fallingTrees;
     addFallingTree(tx: number, ty: number, oak: boolean, dir: number): void;
     private collectFallingTrees;
