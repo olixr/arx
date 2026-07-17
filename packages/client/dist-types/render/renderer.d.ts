@@ -6,28 +6,14 @@ export declare class Camera {
     y: number;
     scale: number;
     /**
-     * Camera pitch: base foreshortening of the ground plane. Vertical
-     * heights are NOT compressed — that contrast is the tilt.
+     * Camera pitch: an orthographic camera tilted down at the flat world
+     * compresses the ground plane UNIFORMLY (cos of the pitch angle) —
+     * every row the same, which is why the ground reads flat and stable.
+     * Vertical heights render at full scale; that contrast IS the tilt.
+     * ~0.6 ≈ a camera at ~37° above the horizon — down at shoulder
+     * height with the world, not overhead.
      */
-    readonly yScale = 0.66;
-    /**
-     * Perspective: rows COMPRESS progressively toward the top of the
-     * screen (projective, with a real horizon asymptote at -S/rowPersp px)
-     * and stay linear toward the camera. Paired with distance scaling
-     * this is what turns "map seen from above" into "ground seen from a
-     * low camera".
-     */
-    readonly rowPersp = 0.045;
-    /** Screen-y offset for a ground point `dy` tiles from the camera row. */
-    projectDy(dy: number): number;
-    /** Inverse of projectDy; clamps just short of the horizon. */
-    unprojectDy(py: number): number;
-    /**
-     * Apparent-size factor at `dy` tiles from the camera row: 1 on the
-     * camera row, shrinking with distance up-screen. Billboards, tree
-     * crowns, and wall heights multiply by this.
-     */
-    depthK(dy: number): number;
+    readonly yScale = 0.6;
     worldToScreen(wx: number, wy: number, w: number, h: number): Vec2;
     screenToWorld(sx: number, sy: number, w: number, h: number): Vec2;
 }

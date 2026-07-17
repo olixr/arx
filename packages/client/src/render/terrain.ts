@@ -393,10 +393,13 @@ function drawBlades(
     // The breeze: tips sway together on a slow travelling wave.
     const sway = Math.sin(t * 1.6 + bx * 0.7 + by * 0.35 + (hh % 10) * 0.2) * 0.09;
     const base = worldToScreen(bx, by);
-    const tip = worldToScreen(bx + sway, by - height);
+    // Blades are VERTICAL: they rise in screen space at full height —
+    // only their ground anchor foreshortens with the camera pitch.
+    const tipX = base.x + sway * s;
+    const tipY = base.y - height * s;
     ctx.beginPath();
     ctx.moveTo(base.x, base.y);
-    ctx.quadraticCurveTo(base.x, (base.y + tip.y) / 2, tip.x, tip.y);
+    ctx.quadraticCurveTo(base.x, (base.y + tipY) / 2, tipX, tipY);
     ctx.stroke();
   }
   ctx.lineCap = 'butt';
@@ -418,7 +421,8 @@ function drawFlowers(
     const by = ty + 0.25 + ((hh >> 9) % 60) / 100;
     const sway = Math.sin(t * 1.6 + bx * 0.7 + (hh % 7) * 0.3) * 0.05;
     const base = worldToScreen(bx, by);
-    const head = worldToScreen(bx + sway, by - 0.16);
+    // Stems are vertical — full screen-space height, like the blades.
+    const head = { x: base.x + sway * s, y: base.y - 0.16 * s };
     ctx.strokeStyle = '#4a7433';
     ctx.lineWidth = Math.max(1, s * 0.035);
     ctx.beginPath();

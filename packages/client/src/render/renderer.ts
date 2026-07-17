@@ -31,9 +31,15 @@ const SHADOW_OFFSET = 0.16; // tiles, toward bottom-right
  * buys true walk-behind occlusion: a wall or canopy south of you draws
  * over you, one north of you slides behind.
  */
-const WALL_H = 0.9; // wall extrusion height, in tiles
-/** Horizontal lean per tile of height at the screen edge (fraction). */
-const PERSP_LEAN = 0.065;
+const WALL_H = 1.15; // wall extrusion height, in tiles
+/**
+ * Horizontal lean per tile of height. ZERO: verticals rise straight on
+ * screen, exactly like the billboard sprites — the classic 3/4-view
+ * contract. Leaning tops read as a warped world, not a moved camera
+ * (tried, rejected). The machinery stays for a possible future
+ * cutscene-camera, but gameplay is straight-vertical.
+ */
+const PERSP_LEAN = 0;
 
 const PLAYER_COLORS = ['#c4553d', '#3d78c4', '#3da865', '#c4a03d', '#8a55c4', '#3da8a0', '#c47a3d'];
 
@@ -54,53 +60,26 @@ export class Camera {
   y = 0;
   scale = TILE_PX * 1.25;
   /**
-   * Camera pitch: base foreshortening of the ground plane. Vertical
-   * heights are NOT compressed — that contrast is the tilt.
+   * Camera pitch: an orthographic camera tilted down at the flat world
+   * compresses the ground plane UNIFORMLY (cos of the pitch angle) —
+   * every row the same, which is why the ground reads flat and stable.
+   * Vertical heights render at full scale; that contrast IS the tilt.
+   * ~0.6 ≈ a camera at ~37° above the horizon — down at shoulder
+   * height with the world, not overhead.
    */
-  readonly yScale = 0.66;
-  /**
-   * Perspective: rows COMPRESS progressively toward the top of the
-   * screen (projective, with a real horizon asymptote at -S/rowPersp px)
-   * and stay linear toward the camera. Paired with distance scaling
-   * this is what turns "map seen from above" into "ground seen from a
-   * low camera".
-   */
-  readonly rowPersp = 0.045;
-
-  /** Screen-y offset for a ground point `dy` tiles from the camera row. */
-  projectDy(dy: number): number {
-    const S = this.scale * this.yScale;
-    return dy < 0 ? (S * dy) / (1 - this.rowPersp * dy) : S * dy;
-  }
-
-  /** Inverse of projectDy; clamps just short of the horizon. */
-  unprojectDy(py: number): number {
-    const S = this.scale * this.yScale;
-    if (py >= 0) return py / S;
-    const safe = Math.max(py, (-S / this.rowPersp) * 0.95);
-    return safe / (S + this.rowPersp * safe);
-  }
-
-  /**
-   * Apparent-size factor at `dy` tiles from the camera row: 1 on the
-   * camera row, shrinking with distance up-screen. Billboards, tree
-   * crowns, and wall heights multiply by this.
-   */
-  depthK(dy: number): number {
-    return dy < 0 ? 1 / (1 - this.rowPersp * dy) : 1;
-  }
+  readonly yScale = 0.6;
 
   worldToScreen(wx: number, wy: number, w: number, h: number): Vec2 {
     return {
       x: (wx - this.x) * this.scale + w / 2,
-      y: this.projectDy(wy - this.y) + h / 2,
+      y: (wy - this.y) * this.scale * this.yScale + h / 2,
     };
   }
 
   screenToWorld(sx: number, sy: number, w: number, h: number): Vec2 {
     return {
       x: (sx - w / 2) / this.scale + this.x,
-      y: this.unprojectDy(sy - h / 2) + this.y,
+      y: (sy - h / 2) / (this.scale * this.yScale) + this.y,
     };
   }
 }
@@ -451,7 +430,7 @@ export class Renderer {
     const p0 = this.camera.worldToScreen(own.x + dirX * 0.55, own.y + dirY * 0.55, this.w, this.h);
     const p1 = this.camera.worldToScreen(own.x + dirX * rangeT, own.y + dirY * rangeT, this.w, this.h);
     const lift0 = 0.45 * s;
-    const lift1 = 0.45 * s * this.camera.depthK(own.y + dirY * rangeT - this.camera.y);
+    const lift1 = lift0;
 
     ctx.save();
     ctx.setLineDash([0.12 * s, 0.14 * s]);
@@ -568,8 +547,8 @@ export class Renderer {
       maxTx: Math.floor(this.camera.x + this.w / 2 / s) + 1,
       // Extra head-room above: tall prisms and canopies reach ~2 tiles
       // over their base and must draw while their base is off-screen.
-      minTy: Math.floor(this.camera.y + this.camera.unprojectDy(-this.h / 2)) - 3,
-      maxTy: Math.floor(this.camera.y + this.camera.unprojectDy(this.h / 2)) + 2,
+      minTy: Math.floor(this.camera.y - this.h / 2 / (s * this.camera.yScale)) - 4,
+      maxTy: Math.floor(this.camera.y + this.h / 2 / (s * this.camera.yScale)) + 2,
     };
   }
 
@@ -604,28 +583,9 @@ export class Renderer {
         const p = this.camera.worldToScreen(cx * CHUNK_SIZE, cy * CHUNK_SIZE, this.w, this.h);
         const size = CHUNK_SIZE * s;
         this.ctx.imageSmoothingEnabled = true;
-        // Chunks are baked square and re-projected in per-row strips:
-        // near rows draw deep, far rows compress toward the horizon.
-        const baseWy = cy * CHUNK_SIZE - this.camera.y;
-        let syPrev = p.y;
-        for (let row = 0; row < CHUNK_SIZE; row++) {
-          const syNext = this.camera.projectDy(baseWy + row + 1) + this.h / 2;
-          const stripH = syNext - syPrev;
-          if (syNext > -2 && syPrev < this.h + 2) {
-            this.ctx.drawImage(
-              baked.canvas,
-              0,
-              row * TILE_PX,
-              baked.canvas.width,
-              TILE_PX,
-              p.x,
-              syPrev,
-              size + 0.5,
-              stripH + 0.5,
-            );
-          }
-          syPrev = syNext;
-        }
+        // Chunks are baked square and drawn uniformly foreshortened —
+        // the ground compresses evenly while heights stay full.
+        this.ctx.drawImage(baked.canvas, p.x, p.y, size + 0.5, size * this.camera.yScale + 0.5);
       }
     }
   }
@@ -701,13 +661,9 @@ export class Renderer {
       0,
     ];
     const off = SHADOW_OFFSET * s;
-    // Projected tile depth at THIS row, and the wall's apparent height —
-    // both shrink toward the horizon.
-    const syT = this.camera.projectDy(ty + 1 - this.camera.y) - this.camera.projectDy(ty - this.camera.y);
-    const kD = this.camera.depthK(ty + 1 - this.camera.y);
-    const wallH = WALL_H * kD;
-    const hs = wallH * s;
-    const lx = (x: number): number => this.leanX(x, wallH);
+    const syT = s * this.camera.yScale; // foreshortened tile depth
+    const hs = WALL_H * s;
+    const lx = (x: number): number => this.leanX(x, WALL_H);
     const x0 = p.x - 0.25;
     const x1 = p.x + s + 0.25;
     const sideCol = shade(tile === Tile.WallWood ? '#6f4d26' : tile === Tile.WallStone ? '#6f697c' : '#2b2536', -8);
@@ -805,7 +761,7 @@ export class Renderer {
         }
         // Crown: the whole top layer drawn in the leaned height frame —
         // footprint coordinates in, coherent lifted geometry out.
-        this.beginHeightLayer(wallH);
+        this.beginHeightLayer(WALL_H);
         ctx.fillStyle = top;
         ctx.beginPath();
         chamferRect(ctx, x0, p.y - 0.25, s + 0.5, syT + 0.5, radii);
@@ -839,20 +795,17 @@ export class Renderer {
         // Real height: the canopy floats over a tall trunk, and the
         // whole crown leans away from the screen center. Walking north
         // of a tree puts you squarely behind it.
-        // Taller for the pitched camera; the trunk tip sits ON the same
-        // lean line as the canopy center and reaches INTO the canopy —
-        // by construction the two can never separate. The whole tree
-        // scales with distance toward the horizon.
-        const kD = this.camera.depthK(ty + 0.5 - this.camera.y);
-        const sK = s * kD;
-        const canopyH = (0.72 + 0.45 * size) * kD; // tiles above the base
-        const syT = this.camera.projectDy(ty + 1 - this.camera.y) - this.camera.projectDy(ty - this.camera.y);
+        // Tall for the pitched camera; the trunk tip is constructed
+        // inside the canopy — by construction the two can't separate.
+        const sK = s;
+        const canopyH = 0.8 + 0.5 * size; // tiles above the base
+        const syT = s * this.camera.yScale;
         const cr = sK * 0.66 * size;
         const cy = p.y - s * canopyH;
-        const cx = this.leanX(p.x, canopyH) + sway;
+        const cx = p.x + sway;
         const trunkBaseY = p.y + syT * 0.3;
         const tipY = cy + cr * 0.42;
-        const tipX = this.leanX(p.x, (p.y - tipY) / s) + sway * 0.7;
+        const tipX = p.x + sway * 0.7;
         return {
           sortY: ty + 0.9,
           drawShadow: () => {
@@ -911,7 +864,7 @@ export class Renderer {
       case Tile.RockDepleted: {
         const depleted = tile === Tile.RockDepleted;
         const ore = tile === Tile.RockCopper ? '#d08a45' : tile === Tile.RockIron ? '#c2c8d2' : null;
-        const size = (depleted ? 0.62 : 0.86) * this.camera.depthK(ty + 0.5 - this.camera.y);
+        const size = depleted ? 0.62 : 0.86;
         // Low-poly boulder: jittered hexagon with a lit facet.
         const verts: Array<[number, number]> = [];
         for (let i = 0; i < 6; i++) {
@@ -1304,8 +1257,7 @@ export class Renderer {
     drawTOverride?: number;
   }): DrawItem {
     const ctx = this.ctx;
-    // Billboards shrink with distance toward the horizon.
-    const s = this.camera.scale * this.camera.depthK(e.y - this.camera.y);
+    const s = this.camera.scale;
     const now = performance.now();
     const anim = this.animFor(e.eid, e.x, e.y, e.pose, now);
     if (!anim.legs) anim.legs = new LegSolver();
@@ -1445,7 +1397,7 @@ export class Renderer {
 
     const ctx = this.ctx;
     const def = npcDef(defId);
-    const scale = this.camera.scale * this.camera.depthK(s.y - this.camera.y);
+    const scale = this.camera.scale;
     const r = (def?.radius ?? 0.3) * scale;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     const anim = this.animFor(eid, s.x, s.y, s.pose, performance.now());
