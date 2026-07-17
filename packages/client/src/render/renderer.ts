@@ -31,7 +31,7 @@ const SHADOW_OFFSET = 0.16; // tiles, toward bottom-right
  * buys true walk-behind occlusion: a wall or canopy south of you draws
  * over you, one north of you slides behind.
  */
-const WALL_H = 0.85; // wall extrusion height, in tiles
+const WALL_H = 0.9; // wall extrusion height, in tiles
 /** Horizontal lean per tile of height at the screen edge (fraction). */
 const PERSP_LEAN = 0.055;
 
@@ -53,18 +53,24 @@ export class Camera {
   x = 0;
   y = 0;
   scale = TILE_PX * 1.25;
+  /**
+   * Camera pitch, faked: the ground plane is foreshortened in Y so the
+   * view reads as a tilted bird's-eye, not a straight-down satellite.
+   * Vertical heights are NOT compressed — that contrast is the tilt.
+   */
+  readonly yScale = 0.8;
 
   worldToScreen(wx: number, wy: number, w: number, h: number): Vec2 {
     return {
       x: (wx - this.x) * this.scale + w / 2,
-      y: (wy - this.y) * this.scale + h / 2,
+      y: (wy - this.y) * this.scale * this.yScale + h / 2,
     };
   }
 
   screenToWorld(sx: number, sy: number, w: number, h: number): Vec2 {
     return {
       x: (sx - w / 2) / this.scale + this.x,
-      y: (sy - h / 2) / this.scale + this.y,
+      y: (sy - h / 2) / (this.scale * this.yScale) + this.y,
     };
   }
 }
@@ -131,12 +137,28 @@ export class Renderer {
   private readonly glows: Array<{ x: number; y: number; r: number; rgb: string; a: number }> = [];
 
   /**
-   * Perspective lean: how far a point `heightTiles` above the ground at
-   * screen column `screenX` shifts sideways. Tops lean away from the
-   * screen center like a camera hovering over the scene.
+   * Perspective lean, applied PER VERTEX: a point `heightTiles` above
+   * the ground at screen column `x` lands at `leanX(x, h)` — an affine
+   * horizontal scale of that height-layer about the screen center.
+   * Because it's affine, two structures sharing an edge share exactly
+   * the same leaned edge: runs of walls, trunks meeting canopies, and
+   * abutting crowns can never crack, at any lean strength.
    */
-  private lean(screenX: number, heightTiles: number): number {
-    return (screenX - this.w / 2) * PERSP_LEAN * heightTiles;
+  private leanX(x: number, heightTiles: number): number {
+    return x + (x - this.w / 2) * PERSP_LEAN * heightTiles;
+  }
+
+  /**
+   * Enter the leaned frame for a whole layer at a given height: after
+   * this transform, drawing FOOTPRINT coordinates paints them lifted by
+   * `heightTiles` and leaned coherently. Pair with ctx.restore().
+   */
+  private beginHeightLayer(heightTiles: number): void {
+    const k = 1 + PERSP_LEAN * heightTiles;
+    this.ctx.save();
+    this.ctx.translate(this.w / 2, -heightTiles * this.camera.scale);
+    this.ctx.scale(k, 1);
+    this.ctx.translate(-this.w / 2, 0);
   }
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -385,7 +407,9 @@ export class Renderer {
     const own = game.predictor.renderPos();
     const p = this.camera.worldToScreen(own.x, own.y, this.w, this.h);
     const fx = Math.cos(game.aim);
-    const fy = Math.sin(game.aim);
+    // The guide lives on the ground plane: its vertical run compresses
+    // with the camera pitch so it lands where arrows actually land.
+    const fy = Math.sin(game.aim) * this.camera.yScale;
     const range = weapon.range * (0.55 + 0.45 * drawT) * s;
     const y0 = p.y - 0.45 * s;
 
@@ -494,13 +518,14 @@ export class Renderer {
 
   private visibleTileBounds(): { minTx: number; maxTx: number; minTy: number; maxTy: number } {
     const s = this.camera.scale;
+    const sy = s * this.camera.yScale;
     return {
       minTx: Math.floor(this.camera.x - this.w / 2 / s) - 1,
       maxTx: Math.floor(this.camera.x + this.w / 2 / s) + 1,
       // Extra head-room above: tall prisms and canopies reach ~2 tiles
       // over their base and must draw while their base is off-screen.
-      minTy: Math.floor(this.camera.y - this.h / 2 / s) - 3,
-      maxTy: Math.floor(this.camera.y + this.h / 2 / s) + 2,
+      minTy: Math.floor(this.camera.y - this.h / 2 / sy) - 3,
+      maxTy: Math.floor(this.camera.y + this.h / 2 / sy) + 2,
     };
   }
 
@@ -535,7 +560,9 @@ export class Renderer {
         const p = this.camera.worldToScreen(cx * CHUNK_SIZE, cy * CHUNK_SIZE, this.w, this.h);
         const size = CHUNK_SIZE * s;
         this.ctx.imageSmoothingEnabled = true;
-        this.ctx.drawImage(baked.canvas, p.x, p.y, size + 0.5, size + 0.5);
+        // Chunks are baked square and drawn foreshortened — the ground
+        // plane compresses while heights stay full, which IS the pitch.
+        this.ctx.drawImage(baked.canvas, p.x, p.y, size + 0.5, size * this.camera.yScale + 0.5);
       }
     }
   }
@@ -601,20 +628,22 @@ export class Renderer {
     const top = tile === Tile.WallWood ? '#8a6234' : tile === Tile.WallStone ? '#8c8798' : '#3a3444';
     const face = tile === Tile.WallWood ? '#5e3f1e' : tile === Tile.WallStone ? '#5b5566' : '#221d2c';
     const r = s * 0.26;
-    // Chamfer only corners exposed on both sides — 45° cuts, not curves.
+    // Chamfer only NORTH corners exposed on both sides. South crown
+    // corners stay square: they sit flush on the south face, and a cut
+    // there opens a sliver of ground between crown and face.
     const radii: [number, number, number, number] = [
       !n && !w ? r : 0,
       !n && !e ? r : 0,
-      !sw && !e ? r : 0,
-      !sw && !w ? r : 0,
+      0,
+      0,
     ];
     const off = SHADOW_OFFSET * s;
+    const syT = s * this.camera.yScale; // foreshortened tile depth
     const hs = WALL_H * s;
-    // The whole prism leans away from the screen center — fake camera.
-    const shear = this.lean(p.x + s / 2, WALL_H);
-    // Adjacent columns shear slightly differently; bleed the top faces
-    // a touch so continuous runs never crack.
-    const bleed = 1.5;
+    const lx = (x: number): number => this.leanX(x, WALL_H);
+    const x0 = p.x - 0.25;
+    const x1 = p.x + s + 0.25;
+    const sideCol = shade(tile === Tile.WallWood ? '#6f4d26' : tile === Tile.WallStone ? '#6f697c' : '#2b2536', -8);
 
     return {
       sortY: ty + 1,
@@ -624,83 +653,102 @@ export class Renderer {
             // A body this tall throws a real shadow across the ground.
             ctx.fillStyle = SHADOW_COLOR;
             ctx.beginPath();
-            chamferRect(ctx, p.x + off * 1.7, p.y + s * 0.3 + off, s + 0.5, s * 0.72, [0, 0, radii[2], radii[3]]);
+            chamferRect(ctx, p.x + off * 1.7, p.y + syT * 0.3 + off, s + 0.5, syT * 0.75, [0, 0, radii[2], radii[3]]);
             ctx.fill();
           },
       draw: () => {
-        const yBase = p.y + s; // south edge at ground level
-        const yTop = yBase - hs; // south edge, lifted to the wall crown
-        // South face: a full-height quad — this is what you walk behind.
+        const yBase = p.y + syT; // south edge at ground level
+        const yTop = yBase - hs; // south edge, lifted to the crown
+        const tx0 = lx(x0);
+        const tx1 = lx(x1);
+        // Flank revealed by the lean: a prism right of the screen
+        // center leans right, showing its WEST side (and vice versa).
+        // Skipped inside joined runs.
+        if (tx0 > x0 + 0.5 && !w) {
+          ctx.fillStyle = sideCol;
+          ctx.beginPath();
+          ctx.moveTo(x0, p.y);
+          ctx.lineTo(x0, yBase);
+          ctx.lineTo(tx0, yTop);
+          ctx.lineTo(tx0, p.y - hs);
+          ctx.closePath();
+          ctx.fill();
+        } else if (tx1 < x1 - 0.5 && !e) {
+          ctx.fillStyle = sideCol;
+          ctx.beginPath();
+          ctx.moveTo(x1, p.y);
+          ctx.lineTo(x1, yBase);
+          ctx.lineTo(tx1, yTop);
+          ctx.lineTo(tx1, p.y - hs);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // South face: base edge on the ground, top edge leaned — the
+        // vertical surface you walk behind.
         if (!sw) {
           ctx.fillStyle = face;
           ctx.beginPath();
-          ctx.moveTo(p.x - bleed, yBase + 0.5);
-          ctx.lineTo(p.x + s + bleed, yBase + 0.5);
-          ctx.lineTo(p.x + s + bleed + shear, yTop);
-          ctx.lineTo(p.x - bleed + shear, yTop);
+          ctx.moveTo(x0, yBase + 0.5);
+          ctx.lineTo(x1, yBase + 0.5);
+          ctx.lineTo(tx1, yTop);
+          ctx.lineTo(tx0, yTop);
           ctx.closePath();
           ctx.fill();
-          // Material detail, full height with the lean.
+          // Material detail inside the face's own skewed frame, so
+          // courses and plank seams follow the lean coherently.
+          const skew = (lx(p.x + s / 2) - (p.x + s / 2)) / -hs;
+          ctx.save();
+          ctx.translate(0, yBase);
+          ctx.transform(1, 0, skew, 1, 0, 0);
           if (tile === Tile.WallWood) {
             ctx.strokeStyle = 'rgba(36, 22, 10, 0.4)';
             ctx.lineWidth = Math.max(1, s * 0.035);
             for (const fx of [0.3, 0.62]) {
               ctx.beginPath();
-              ctx.moveTo(p.x + s * fx, yBase);
-              ctx.lineTo(p.x + s * fx + shear, yTop + s * 0.02);
+              ctx.moveTo(p.x + s * fx, -hs * 0.97);
+              ctx.lineTo(p.x + s * fx, 0);
               ctx.stroke();
             }
           } else {
+            // Running-bond masonry: two mortar rows, joints alternating.
             ctx.strokeStyle = 'rgba(20, 14, 28, 0.35)';
             ctx.lineWidth = Math.max(1, s * 0.03);
-            for (const fy of [0.36, 0.7]) {
-              const yy = yBase - hs * fy;
-              const sh = shear * fy;
+            for (const fy of [0.34, 0.67]) {
               ctx.beginPath();
-              ctx.moveTo(p.x + sh, yy);
-              ctx.lineTo(p.x + s + sh, yy);
+              ctx.moveTo(p.x, -hs * fy);
+              ctx.lineTo(p.x + s, -hs * fy);
               ctx.stroke();
+            }
+            for (const [jx, ry0, ry1] of [
+              [0.5, 0, 0.34],
+              [0.25, 0.34, 0.67],
+              [0.75, 0.34, 0.67],
+              [0.5, 0.67, 1],
+            ] as const) {
               ctx.beginPath();
-              ctx.moveTo(p.x + s * (fy > 0.5 ? 0.3 : 0.62) + sh, yy);
-              ctx.lineTo(p.x + s * (fy > 0.5 ? 0.3 : 0.62) + shear * (fy + 0.34), yy - hs * 0.34);
+              ctx.moveTo(p.x + s * jx, -hs * ry0);
+              ctx.lineTo(p.x + s * jx, -hs * ry1);
               ctx.stroke();
             }
           }
           // Ambient-occlusion seam where the face meets the ground.
           ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
-          ctx.fillRect(p.x - bleed, yBase - s * 0.05, s + bleed * 2, s * 0.07);
+          ctx.fillRect(x0, -s * 0.06, s + 0.5, s * 0.06);
+          ctx.restore();
         }
-        // Side face revealed by the lean (never on joined runs).
-        const sideCol = shade(tile === Tile.WallWood ? '#6f4d26' : tile === Tile.WallStone ? '#6f697c' : '#2b2536', -8);
-        if (shear > 1 && !e) {
-          ctx.fillStyle = sideCol;
-          ctx.beginPath();
-          ctx.moveTo(p.x + s, p.y);
-          ctx.lineTo(p.x + s, yBase);
-          ctx.lineTo(p.x + s + shear, yTop);
-          ctx.lineTo(p.x + s + shear, p.y - hs);
-          ctx.closePath();
-          ctx.fill();
-        } else if (shear < -1 && !w) {
-          ctx.fillStyle = sideCol;
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p.x, yBase);
-          ctx.lineTo(p.x + shear, yTop);
-          ctx.lineTo(p.x + shear, p.y - hs);
-          ctx.closePath();
-          ctx.fill();
-        }
-        // Crown: the chamfered top face, lifted and leaned.
+        // Crown: the whole top layer drawn in the leaned height frame —
+        // footprint coordinates in, coherent lifted geometry out.
+        this.beginHeightLayer(WALL_H);
         ctx.fillStyle = top;
         ctx.beginPath();
-        chamferRect(ctx, p.x - bleed + shear, p.y - bleed - hs, s + bleed * 2, s + bleed * 2, radii);
+        chamferRect(ctx, x0, p.y - 0.25, s + 0.5, syT + 0.5, radii);
         ctx.fill();
         // Lit south lip of the crown grounds the height read.
         if (!sw) {
           ctx.fillStyle = shade(top, 16);
-          ctx.fillRect(p.x - bleed + shear + radii[3] * 0.8, yTop - s * 0.085, s + bleed * 2 - (radii[2] + radii[3]) * 0.8, s * 0.085);
+          ctx.fillRect(x0 + radii[3] * 0.8, p.y + syT - s * 0.08, s + 0.5 - (radii[2] + radii[3]) * 0.8, s * 0.08);
         }
+        ctx.restore();
       },
     };
   }
@@ -724,28 +772,33 @@ export class Renderer {
         // Real height: the canopy floats over a tall trunk, and the
         // whole crown leans away from the screen center. Walking north
         // of a tree puts you squarely behind it.
-        const canopyH = 0.6 + 0.4 * size; // tiles above the base
-        const treeLean = this.lean(p.x, canopyH) + sway;
-        const trunkBaseY = p.y + s * 0.3;
-        const trunkTopY = p.y - s * 0.42;
-        const cx = p.x + treeLean;
+        // Taller for the pitched camera; the trunk tip sits ON the same
+        // lean line as the canopy center and reaches INTO the canopy —
+        // by construction the two can never separate.
+        const canopyH = 0.72 + 0.45 * size; // tiles above the base
+        const syT = s * this.camera.yScale;
+        const cr = s * 0.66 * size;
         const cy = p.y - s * canopyH;
+        const cx = this.leanX(p.x, canopyH) + sway;
+        const trunkBaseY = p.y + syT * 0.3;
+        const tipY = cy + cr * 0.42;
+        const tipX = this.leanX(p.x, (p.y - tipY) / s) + sway * 0.7;
         return {
           sortY: ty + 0.9,
           drawShadow: () => {
             ctx.fillStyle = SHADOW_COLOR;
             ctx.beginPath();
-            facetBlob(ctx, p.x + off * 1.5, p.y + s * 0.3 + off * 0.5, s * 0.5 * size, h ^ 0x33, 7, 0.5);
+            facetBlob(ctx, p.x + off * 1.5, p.y + syT * 0.3 + off * 0.5, s * 0.5 * size, h ^ 0x33, 7, 0.45);
             ctx.fill();
           },
           draw: () => {
-            // Trunk: a leaning tapered post from the ground to the crown.
+            // Trunk: a tapered post from the ground into the crown.
             ctx.fillStyle = '#6b4a26';
             ctx.beginPath();
             ctx.moveTo(p.x - s * 0.13, trunkBaseY);
             ctx.lineTo(p.x + s * 0.13, trunkBaseY);
-            ctx.lineTo(p.x + s * 0.085 + treeLean * 0.72, trunkTopY);
-            ctx.lineTo(p.x - s * 0.085 + treeLean * 0.72, trunkTopY);
+            ctx.lineTo(tipX + s * 0.075, tipY);
+            ctx.lineTo(tipX - s * 0.075, tipY);
             ctx.closePath();
             ctx.fill();
             // Lit trunk edge.
@@ -753,13 +806,12 @@ export class Renderer {
             ctx.beginPath();
             ctx.moveTo(p.x - s * 0.13, trunkBaseY);
             ctx.lineTo(p.x - s * 0.06, trunkBaseY);
-            ctx.lineTo(p.x - s * 0.03 + treeLean * 0.72, trunkTopY);
-            ctx.lineTo(p.x - s * 0.085 + treeLean * 0.72, trunkTopY);
+            ctx.lineTo(tipX - s * 0.025, tipY);
+            ctx.lineTo(tipX - s * 0.075, tipY);
             ctx.closePath();
             ctx.fill();
             // Canopy: one jittered low-poly mass — same dialect as the
             // boulders — with a hard lit facet on the upper-left.
-            const cr = s * 0.66 * size;
             ctx.fillStyle = base;
             ctx.beginPath();
             facetBlob(ctx, cx, cy, cr, h, oak ? 9 : 8, 0.88);
@@ -1473,16 +1525,17 @@ export class Renderer {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(this.buildGhost.tx, this.buildGhost.ty, this.w, this.h);
+    const sy = s * this.camera.yScale;
     ctx.globalAlpha = 0.5;
     ctx.fillStyle = this.buildGhost.color;
     ctx.beginPath();
-    chamferRect(ctx, p.x + 1, p.y + 1, s - 2, s - 2, s * 0.16);
+    chamferRect(ctx, p.x + 1, p.y + 1, s - 2, sy - 2, s * 0.16);
     ctx.fill();
     ctx.globalAlpha = 1;
     ctx.lineWidth = 3;
     ctx.strokeStyle = this.buildGhost.valid ? '#4fc06a' : '#c4553d';
     ctx.beginPath();
-    chamferRect(ctx, p.x + 1, p.y + 1, s - 2, s - 2, s * 0.16);
+    chamferRect(ctx, p.x + 1, p.y + 1, s - 2, sy - 2, s * 0.16);
     ctx.stroke();
   }
 

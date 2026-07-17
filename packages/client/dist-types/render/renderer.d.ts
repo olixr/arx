@@ -5,6 +5,12 @@ export declare class Camera {
     x: number;
     y: number;
     scale: number;
+    /**
+     * Camera pitch, faked: the ground plane is foreshortened in Y so the
+     * view reads as a tilted bird's-eye, not a straight-down satellite.
+     * Vertical heights are NOT compressed — that contrast is the tilt.
+     */
+    readonly yScale = 0.8;
     worldToScreen(wx: number, wy: number, w: number, h: number): Vec2;
     screenToWorld(sx: number, sy: number, w: number, h: number): Vec2;
 }
@@ -44,11 +50,20 @@ export declare class Renderer {
     /** Emissive glow requests queued during the frame, composited last. */
     private readonly glows;
     /**
-     * Perspective lean: how far a point `heightTiles` above the ground at
-     * screen column `screenX` shifts sideways. Tops lean away from the
-     * screen center like a camera hovering over the scene.
+     * Perspective lean, applied PER VERTEX: a point `heightTiles` above
+     * the ground at screen column `x` lands at `leanX(x, h)` — an affine
+     * horizontal scale of that height-layer about the screen center.
+     * Because it's affine, two structures sharing an edge share exactly
+     * the same leaned edge: runs of walls, trunks meeting canopies, and
+     * abutting crowns can never crack, at any lean strength.
      */
-    private lean;
+    private leanX;
+    /**
+     * Enter the leaned frame for a whole layer at a given height: after
+     * this transform, drawing FOOTPRINT coordinates paints them lifted by
+     * `heightTiles` and leaned coherently. Pair with ctx.restore().
+     */
+    private beginHeightLayer;
     constructor(canvas: HTMLCanvasElement);
     shake(amount: number): void;
     private animFor;

@@ -440,7 +440,12 @@ function frame(now: number): void {
       const axes = input.moveAxes();
       const own = game.predictor.renderPos();
       const p = renderer.camera.worldToScreen(own.x, own.y, canvas.clientWidth, canvas.clientHeight);
-      const mouseAim = Math.atan2(input.mouseY - p.y, input.mouseX - p.x);
+      // Undo the camera's ground foreshortening so the world-space aim
+      // points exactly where the cursor sits on the ground plane.
+      const mouseAim = Math.atan2(
+        (input.mouseY - p.y) / renderer.camera.yScale,
+        input.mouseX - p.x,
+      );
       // On touch devices the mouse never moves — face the walk direction.
       if (input.touchMoveX !== 0 || input.touchMoveY !== 0) {
         game.aim = Math.atan2(axes.my, axes.mx);

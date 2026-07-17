@@ -236,9 +236,11 @@ function nearestFloor(ground: GroundSampler, tx: number, ty: number): number {
 }
 
 /**
- * Union-of-chamfered-cells: the whole trick behind the faceted look.
- * Each material cell is a block with 45°-cut corners; bridge strips
- * span cell boundaries so adjoining cells fuse into one region.
+ * Union-of-chamfered-cells with NEIGHBOR-AWARE corners: a cell only
+ * cuts a corner when no same-material neighbor continues through it,
+ * so region edges run straight and only true convex corners chamfer.
+ * Interior edges are exactly shared — no bridge strips, no sawtooth
+ * at junctions, and one fill per cell.
  */
 function drawBlobLayer(
   ctx: CanvasRenderingContext2D,
@@ -249,28 +251,31 @@ function drawBlobLayer(
   px: number,
 ): void {
   const r = layer.radius * px;
+  const matches = (tx: number, ty: number): boolean => {
+    const t = g(tx, ty);
+    return t !== undefined && layer.match(t);
+  };
   for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
     for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
       const tx = baseX + lx;
       const ty = baseY + ly;
       const t = g(tx, ty);
       if (t === undefined || !layer.match(t)) continue;
+      const n = matches(tx, ty - 1);
+      const e = matches(tx + 1, ty);
+      const s = matches(tx, ty + 1);
+      const w = matches(tx - 1, ty);
       const x = lx * px;
       const y = ly * px;
       ctx.fillStyle = layer.color(t, tx, ty);
       ctx.beginPath();
-      chamferRect(ctx, x, y, px + 0.5, px + 0.5, r);
+      chamferRect(ctx, x - 0.25, y - 0.25, px + 0.5, px + 0.5, [
+        !n && !w ? r : 0,
+        !n && !e ? r : 0,
+        !s && !e ? r : 0,
+        !s && !w ? r : 0,
+      ]);
       ctx.fill();
-      // Bridge strips span ACROSS the boundary so adjoining cells fuse
-      // into one continuous region (this is what erases the tile grid).
-      const east = g(tx + 1, ty);
-      if (east !== undefined && layer.match(east)) {
-        ctx.fillRect(x + px - r, y, r * 2 + 0.5, px + 0.5);
-      }
-      const south = g(tx, ty + 1);
-      if (south !== undefined && layer.match(south)) {
-        ctx.fillRect(x, y + px - r, px + 0.5, r * 2 + 0.5);
-      }
     }
   }
 }
