@@ -10,10 +10,6 @@ export interface Particle {
   size: number; // in tiles
   color: string;
   gravity: number;
-  /** Per-second velocity damping — lets dust billow out and settle. */
-  drag: number;
-  /** 0 = shrink over life (default); >0 = grow by this many tiles/sec. */
-  grow: number;
 }
 
 export class Particles {
@@ -33,10 +29,6 @@ export class Particles {
       /** Emit in a cone around this angle (radians) instead of a circle. */
       dir?: number;
       spread?: number;
-      /** Per-second velocity damping (dust rolls out and stops). */
-      drag?: number;
-      /** Tiles/sec the block grows instead of shrinking (billowing dust). */
-      grow?: number;
     } = {},
   ): void {
     const speed = opts.speed ?? 2.5;
@@ -58,12 +50,10 @@ export class Particles {
         size: (opts.size ?? 0.08) * (0.7 + Math.random() * 0.6),
         color: colors[Math.floor(Math.random() * colors.length)]!,
         gravity: opts.gravity ?? 6,
-        drag: opts.drag ?? 0,
-        grow: opts.grow ?? 0,
       });
     }
     // Hard cap so bursts can never run away.
-    if (this.pool.length > 500) this.pool.splice(0, this.pool.length - 500);
+    if (this.pool.length > 400) this.pool.splice(0, this.pool.length - 400);
   }
 
   update(dt: number): void {
@@ -75,14 +65,8 @@ export class Particles {
         continue;
       }
       p.vy += p.gravity * dt;
-      if (p.drag > 0) {
-        const d = Math.max(0, 1 - p.drag * dt);
-        p.vx *= d;
-        p.vy *= d;
-      }
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      if (p.grow > 0) p.size += p.grow * dt;
     }
   }
 
@@ -92,22 +76,11 @@ export class Particles {
     scale: number,
   ): void {
     for (const p of this.pool) {
-      const t = p.life / p.maxLife;
-      // Growing blocks (dust) hold size and fade via alpha; shrinking
-      // blocks (default) taper to nothing. Both keep hard edges.
+      const frac = 1 - p.life / p.maxLife;
       const s = worldToScreen(p.x, p.y);
-      let size: number;
-      let alpha = 1;
-      if (p.grow > 0) {
-        size = Math.max(2, p.size * scale);
-        alpha = t < 0.25 ? t / 0.25 : 1 - (t - 0.25) / 0.75;
-      } else {
-        size = Math.max(2, p.size * scale * (1 - t));
-      }
-      if (alpha < 1) ctx.globalAlpha = Math.max(0, alpha);
+      const size = Math.max(2, p.size * scale * frac);
       ctx.fillStyle = p.color;
       ctx.fillRect(s.x - size / 2, s.y - size / 2, size, size);
-      if (alpha < 1) ctx.globalAlpha = 1;
     }
   }
 }
