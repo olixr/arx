@@ -1093,6 +1093,36 @@ export class Renderer {
       // must not wrap around a stair notch, or mouth-corner cells hang
       // little curtains over the flight.
       const member = (tx: number, ty: number): boolean => world.elevAt(tx, ty) >= level;
+      // A ramp owns the opening in ITS OWN level's cliff line — its
+      // mouth and top edges belong to the flight drawing. A ramp of a
+      // different level is ordinary mass to this contour.
+      const owningRamp = (tx: number, ty: number): boolean =>
+        world.groundAt(tx, ty) === Tile.Ramp && world.elevAt(tx, ty) === level;
+      // Contour segments span a whole dual cell, but ramp ownership is
+      // tile-aligned — HALF a segment can front a flight while the
+      // other half fronts solid cliff. Test each half against its own
+      // flanking tiles (quarter-offset samples stay inside the right
+      // tile) so curtains end exactly at the stair's edge: no curtain
+      // overhanging the flight, no hole beside it.
+      const halfOwned = (
+        hax: number,
+        hay: number,
+        hbx: number,
+        hby: number,
+        n: [number, number],
+      ): boolean => {
+        const qx = (hax + hbx) / 2;
+        const qy = (hay + hby) / 2;
+        return (
+          owningRamp(Math.floor(qx + n[0] * 0.25), Math.floor(qy + n[1] * 0.25)) ||
+          owningRamp(Math.floor(qx - n[0] * 0.25), Math.floor(qy - n[1] * 0.25))
+        );
+      };
+      // Pure north-south edges are edge-on to the camera; they render
+      // as SIDE pieces of wall thickness. Collected here and merged
+      // into unbroken runs first — a lone cell-tall sliver reads as a
+      // stray line, one solid piece per run reads as architecture.
+      const sideRuns = new Map<string, Array<[number, number]>>();
       for (let j = b.minTy - 2; j <= b.maxTy + 2; j++) {
         for (let i = b.minTx - 1; i <= b.maxTx + 2; i++) {
           const mask =
@@ -1107,24 +1137,45 @@ export class Renderer {
             const ay = j + sg.a[1];
             const bx = i + sg.b[0];
             const by = j + sg.b[1];
-            // The stair owns its opening: skip any segment with the
-            // Ramp on EITHER side (its mouth edge and its top edge).
             const mx = (ax + bx) / 2;
             const my = (ay + by) / 2;
-            if (
-              world.groundAt(Math.floor(mx + sg.n[0] * 0.5), Math.floor(my + sg.n[1] * 0.5)) === Tile.Ramp ||
-              world.groundAt(Math.floor(mx - sg.n[0] * 0.5), Math.floor(my - sg.n[1] * 0.5)) === Tile.Ramp
-            ) {
-              continue;
+            const dropA = halfOwned(ax, ay, mx, my, sg.n);
+            const dropB = halfOwned(mx, my, bx, by, sg.n);
+            if (dropA && dropB) continue;
+            // Whole segments stay whole (stable detail hashing); only
+            // stair-adjacent segments get clipped to their live half.
+            const parts: Array<[number, number, number, number]> =
+              !dropA && !dropB
+                ? [[ax, ay, bx, by]]
+                : dropA
+                  ? [[mx, my, bx, by]]
+                  : [[ax, ay, mx, my]];
+            for (const [pax, pay, pbx, pby] of parts) {
+              if (sg.n[1] > 0.01) {
+                items.push(this.cliffFaceItem(game, pax, pay, pbx, pby, sg.n[0], level, i, j));
+              } else if (Math.abs(sg.n[1]) <= 0.01) {
+                const key = `${sg.n[0] >= 0 ? 1 : 0}|${pax}`;
+                let runs = sideRuns.get(key);
+                if (!runs) sideRuns.set(key, (runs = []));
+                runs.push([Math.min(pay, pby), Math.max(pay, pby)]);
+              }
             }
-            if (sg.n[1] > 0.01) {
-              items.push(this.cliffFaceItem(game, ax, ay, bx, by, sg.n[0], level, i, j));
-            } else if (Math.abs(sg.n[1]) <= 0.01) {
-              // Pure east/west edge: edge-on to the camera, but a naked
-              // cut reads as floating geometry — give the mass a thin
-              // SIDE SLIVER of wall thickness so jogged rims stay solid.
-              items.push(this.cliffSideItem(ax, ay, bx, by, sg.n[0], level));
-            }
+          }
+        }
+      }
+      for (const [key, spans] of sideRuns) {
+        const [sideStr, xStr] = key.split('|');
+        const nx = sideStr === '1' ? 1 : -1;
+        const x = Number(xStr);
+        spans.sort((p, q) => p[0] - q[0]);
+        let [y0, y1] = spans[0]!;
+        for (let k = 1; k <= spans.length; k++) {
+          const next = spans[k];
+          if (next && next[0] <= y1 + 0.001) {
+            y1 = Math.max(y1, next[1]);
+          } else {
+            items.push(this.cliffSideItem(x, y0, y1, nx, level));
+            if (next) [y0, y1] = next;
           }
         }
       }
@@ -1252,38 +1303,59 @@ export class Renderer {
   }
 
   /**
-   * Wall THICKNESS for a north-south contour edge. The plane itself is
-   * edge-on to the orthographic camera, so we cheat a thin dark sliver
-   * onto the outward side: faces terminate into it instead of cutting
-   * off naked, and jogged rims read as one continuous mass.
+   * Wall THICKNESS for an unbroken north-south run of rim (world x,
+   * world y0..y1). The plane itself is edge-on to the orthographic
+   * camera, so we cheat a chunky strip of the wall's outward flank
+   * into view: faces terminate into it instead of cutting off naked,
+   * jogged rims read as one continuous mass, and a long straight run
+   * reads as a deliberate wall edge rather than a stray line. Detail
+   * is world-anchored so nothing swims as the camera moves.
    */
-  private cliffSideItem(
-    ax: number,
-    ay: number,
-    bx: number,
-    by: number,
-    nx: number,
-    level: number,
-  ): DrawItem {
+  private cliffSideItem(x: number, y0: number, y1: number, nx: number, level: number): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const topLift = level * ELEV_H * s;
     const baseLift = (level - 1) * ELEV_H * s;
     return {
-      sortY: Math.max(ay, by) + 0.001,
+      sortY: y1 + 0.001,
+      drawShadow:
+        level - 1 === 0 && nx >= 0
+          ? () => {
+              // The shaded (east) flank grounds itself with a contact
+              // shadow hugging the wall line, like every south face.
+              const A = this.camera.worldToScreen(x, y0, this.w, this.h);
+              const B = this.camera.worldToScreen(x, y1, this.w, this.h);
+              ctx.fillStyle = SHADOW_COLOR;
+              ctx.fillRect(Math.round(A.x), A.y - 1, Math.max(3, s * 0.24), B.y - A.y + s * 0.2);
+            }
+          : undefined,
       draw: () => {
-        const A = this.camera.worldToScreen(ax, ay, this.w, this.h);
-        const B = this.camera.worldToScreen(bx, by, this.w, this.h);
-        const x = Math.round(A.x);
-        const w2 = Math.max(2, s * 0.09) * (nx >= 0 ? 1 : -1);
-        const y0 = Math.min(A.y, B.y) - topLift - 1.5;
-        const y1 = Math.max(A.y, B.y) - baseLift;
-        // Outward-side sliver, darker than any face tone.
-        ctx.fillStyle = nx >= 0 ? '#3c3646' : '#453f52';
-        ctx.fillRect(x, y0, w2, y1 - y0);
-        // Crisp arris line where the sliver meets the crown edge.
-        ctx.fillStyle = 'rgba(24, 18, 34, 0.4)';
-        ctx.fillRect(x + (nx >= 0 ? 0 : -1.5), y0, 1.5, y1 - y0);
+        const A = this.camera.worldToScreen(x, y0, this.w, this.h);
+        const B = this.camera.worldToScreen(x, y1, this.w, this.h);
+        const sx = Math.round(A.x);
+        const w2 = Math.max(3, s * 0.13);
+        const x0 = nx >= 0 ? sx : sx - w2;
+        const yTop = A.y - topLift - 1.5;
+        const yBot = B.y - baseLift;
+        // Body: deeper shade than any face tone — the flank in shadow.
+        ctx.fillStyle = nx >= 0 ? '#3f394b' : '#4a4457';
+        ctx.fillRect(x0, yTop, w2, yBot - yTop);
+        // Coursing ticks at world-anchored heights: the strata beds
+        // wrapping around the corner onto the wall's flank.
+        ctx.fillStyle = 'rgba(29, 23, 40, 0.4)';
+        const tickH = Math.max(1.5, s * 0.035);
+        for (let wy = Math.ceil(y0 * 2) / 2; wy <= y1 + 0.001; wy += 0.5) {
+          const py = this.camera.worldToScreen(x, wy, this.w, this.h).y - topLift + (topLift - baseLift) * 0.45;
+          if (py > yTop + tickH && py < yBot - tickH) ctx.fillRect(x0, py, w2, tickH);
+        }
+        // Crisp arris on the outward silhouette edge.
+        ctx.fillStyle = 'rgba(24, 18, 34, 0.45)';
+        ctx.fillRect(nx >= 0 ? x0 + w2 - 1.5 : x0, yTop, 1.5, yBot - yTop);
+        // Brink shade under the crown lip; AO where the run meets the
+        // ground at its true south end.
+        ctx.fillRect(x0, yTop, w2, Math.max(2, s * 0.06));
+        ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+        ctx.fillRect(x0, yBot - Math.max(2, s * 0.05), w2, Math.max(2, s * 0.05));
       },
     };
   }
@@ -1322,8 +1394,10 @@ export class Renderer {
       sortY: ty,
       draw: () => {
         const wts = (wx: number, wy: number) => this.camera.worldToScreen(wx, wy, this.w, this.h);
-        const x0 = wts(tx, ty).x;
-        const x1 = wts(tx + 1, ty).x;
+        // Rounded to whole pixels like the flanking curtains' endpoints,
+        // so the flight meets its cheek walls without a hairline seam.
+        const x0 = Math.round(wts(tx, ty).x);
+        const x1 = Math.round(wts(tx + 1, ty).x);
         const edgeW = Math.max(1.5, s * 0.04);
         if (dir[1] === 1) {
           // Climbing NORTH (away): tread tops recede up-screen, each

@@ -162,10 +162,13 @@ export declare class Renderer {
     /** One contour segment extruded into a face curtain (level -> level-1). */
     private cliffFaceItem;
     /**
-     * Wall THICKNESS for a north-south contour edge. The plane itself is
-     * edge-on to the orthographic camera, so we cheat a thin dark sliver
-     * onto the outward side: faces terminate into it instead of cutting
-     * off naked, and jogged rims read as one continuous mass.
+     * Wall THICKNESS for an unbroken north-south run of rim (world x,
+     * world y0..y1). The plane itself is edge-on to the orthographic
+     * camera, so we cheat a chunky strip of the wall's outward flank
+     * into view: faces terminate into it instead of cutting off naked,
+     * jogged rims read as one continuous mass, and a long straight run
+     * reads as a deliberate wall edge rather than a stray line. Detail
+     * is world-anchored so nothing swims as the camera moves.
      */
     private cliffSideItem;
     /**

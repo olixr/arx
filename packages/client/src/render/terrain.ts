@@ -316,8 +316,12 @@ export function bakeElevated(
 ): ElevatedBake | null {
   const baseX = cx * CHUNK_SIZE;
   const baseY = cy * CHUNK_SIZE;
-  const member = (tx: number, ty: number): boolean =>
-    elev(tx, ty) >= level && ground(tx, ty) !== Tile.Ramp;
+  // Ramps count as mass, matching the cliff-face contour EXACTLY: the
+  // flight repaints its own tile top-to-base after this band, so the
+  // crown never shows through — but the shared silhouette means no
+  // pinched notch above a stair, and the crown edge lands flush on the
+  // faces beside it.
+  const member = (tx: number, ty: number): boolean => elev(tx, ty) >= level;
 
   const rows: boolean[] = new Array(CHUNK_SIZE).fill(false);
   let any = false;
