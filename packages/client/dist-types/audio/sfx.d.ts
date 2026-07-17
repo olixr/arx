@@ -13,6 +13,12 @@ export declare class Sfx {
     hurt(): void;
     swing(): void;
     chop(): void;
+    /** Pick meets rock: a hard stony knock with a metallic tick on top. */
+    mineClink(): void;
+    /** Hammer rings the anvil: a bright ping over a body knock. */
+    anvilClang(): void;
+    /** The furnace draws breath: a soft roaring swell of hot air. */
+    furnaceRoar(): void;
     /** The long groan of a felled trunk tipping over. */
     treeFall(): void;
     /** The crown hits the ground: deep thud + leaf wash. */

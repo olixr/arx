@@ -17,6 +17,7 @@ import { chamferRect } from './shapes.js';
 
 export type GroundSampler = (tx: number, ty: number) => number | undefined;
 export type DetailSampler = (tx: number, ty: number) => number;
+export type ElevSampler = (tx: number, ty: number) => number;
 
 // ---------------------------------------------------------------- palette
 
@@ -88,6 +89,16 @@ const GRASS_LIKE = new Set<number>([
   Tile.Campfire,
 ]);
 
+const ROCKY = new Set<number>([
+  Tile.Rock,
+  Tile.RockCopper,
+  Tile.RockTin,
+  Tile.RockIron,
+  Tile.RockCoal,
+  Tile.RockGold,
+  Tile.RockDepleted,
+]);
+
 /** What lies visually beneath objects that sit on the ground. */
 function isCaveGround(t: number | undefined): boolean {
   return (
@@ -100,26 +111,13 @@ function isCaveGround(t: number | undefined): boolean {
 
 // ---------------------------------------------------------------- baking
 
-export function bakeChunk(
-  ground: GroundSampler,
-  detail: DetailSampler,
-  cx: number,
-  cy: number,
-  px: number,
-): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-  canvas.width = CHUNK_SIZE * px;
-  canvas.height = CHUNK_SIZE * px;
-  const ctx = canvas.getContext('2d')!;
-  const baseX = cx * CHUNK_SIZE;
-  const baseY = cy * CHUNK_SIZE;
-
-  // Effective ground for blob purposes: objects show what's under them.
+/** Effective ground for blob purposes: objects show what's under them. */
+function effectiveGround(ground: GroundSampler): GroundSampler {
   const g = (tx: number, ty: number): number => {
     const t = ground(tx, ty);
     if (t === undefined) return Tile.Grass;
     if (GRASS_LIKE.has(t)) return Tile.Grass;
-    if (t === Tile.Rock || t === Tile.RockCopper || t === Tile.RockIron || t === Tile.RockDepleted) {
+    if (ROCKY.has(t)) {
       // Rocks sit on whatever region they're in.
       return isCaveGround(ground(tx, ty + 1)) || isCaveGround(ground(tx, ty - 1))
         ? Tile.CaveFloor
@@ -139,8 +137,30 @@ export function bakeChunk(
     if (t === Tile.WallWood) return Tile.WoodFloor;
     if (t === Tile.WallStone) return Tile.StoneFloor;
     if (t === Tile.CaveWall) return Tile.CaveFloor;
+    // Stairs read as stone; the bespoke step prop draws over it.
+    if (t === Tile.Ramp) return Tile.StoneFloor;
+    if (t === Tile.Cliff) return Tile.StoneFloor;
     return t;
   };
+  return g;
+}
+
+export function bakeChunk(
+  ground: GroundSampler,
+  detail: DetailSampler,
+  elev: ElevSampler,
+  cx: number,
+  cy: number,
+  px: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = CHUNK_SIZE * px;
+  canvas.height = CHUNK_SIZE * px;
+  const ctx = canvas.getContext('2d')!;
+  const baseX = cx * CHUNK_SIZE;
+  const baseY = cy * CHUNK_SIZE;
+
+  const g = effectiveGround(ground);
 
   // 1. Meadow base: large soft noise patches, no per-tile checker.
   const cell = Math.max(4, Math.floor(px / 4));
@@ -163,6 +183,19 @@ export function bakeChunk(
   // 2. Material skins, lowest to highest, contoured on the dual grid.
   drawLayerSkins(ctx, g, baseX, baseY, px);
 
+  // 2b. Ground under raised terrain: the lifted plateau surface and the
+  // cliff faces cover almost all of it, but any sliver that survives a
+  // seam must read as shadowed rock — never sunny grass peeking out
+  // from inside a mountain.
+  fillMask(
+    ctx,
+    (tx, ty) => elev(tx, ty) > 0,
+    baseX,
+    baseY,
+    px,
+    '#282334',
+  );
+
   // 3. Wood-floor plank seams (subtle, flat).
   drawPlanks(ctx, g, baseX, baseY, px);
 
@@ -171,12 +204,33 @@ export function bakeChunk(
     for (let lx = 0; lx < CHUNK_SIZE; lx++) {
       const tx = baseX + lx;
       const ty = baseY + ly;
-      // Material grain: sparse deterministic flecks so the ground
-      // carries the same detail density as the props above it.
-      const m = g(tx, ty);
-      const hg = hashCoords(83, tx, ty);
-      const gx = lx * px;
-      const gy = ly * px;
+      // Raised tiles' details belong to the lifted layer, not the base.
+      if (elev(tx, ty) > 0) continue;
+      drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px);
+    }
+  }
+
+  return canvas;
+}
+
+/**
+ * Material grain + static micro-props for one tile: sparse deterministic
+ * flecks so the ground carries the same detail density as the props
+ * above it. Shared by the base and lifted-terrain bakes.
+ */
+function drawTileDetail(
+  ctx: CanvasRenderingContext2D,
+  m: number,
+  d: number,
+  tx: number,
+  ty: number,
+  lx: number,
+  ly: number,
+  px: number,
+): void {
+  const hg = hashCoords(83, tx, ty);
+  const gx = lx * px;
+  const gy = ly * px;
       if (m === Tile.StoneFloor && hg % 3 === 0) {
         ctx.fillStyle = 'rgba(28, 24, 42, 0.09)';
         ctx.fillRect(gx + ((hg >> 3) % 60) / 100 * px, gy + ((hg >> 8) % 60) / 100 * px, px * 0.16, px * 0.05);
@@ -202,7 +256,6 @@ export function bakeChunk(
         ctx.lineTo(gx + ((hg % 50) + 30) / 100 * px, gy + (((hg >> 6) % 60) + 25) / 100 * px);
         ctx.stroke();
       }
-      const d = detail(tx, ty);
       if (d === Detail.Pebbles) {
         // Angular stone chips, rotated apart so they never tile.
         const h = hashCoords(29, tx, ty);
@@ -234,10 +287,191 @@ export function bakeChunk(
         ctx.closePath();
         ctx.fill();
       }
+}
+
+/**
+ * Bake the LIFTED terrain surface of one chunk at one elevation level:
+ * every tile at `level` or higher (ramps excluded — they get bespoke
+ * stair props) painted with the full material-skin pipeline, clipped to
+ * a marching-squares contour so the plateau top has the same crisp
+ * 45°-cut coastline as every other material — then finished with a
+ * sunlit brink line along the rim. The renderer draws this canvas
+ * shifted UP by level·ELEV_H and y-sorted, which is what makes the
+ * plateau a solid mass you can walk behind.
+ */
+export interface ElevatedBake {
+  canvas: HTMLCanvasElement;
+  /** Chunk rows (local ly) containing any lifted content at this level. */
+  rows: boolean[];
+}
+
+export function bakeElevated(
+  ground: GroundSampler,
+  detail: DetailSampler,
+  elev: ElevSampler,
+  cx: number,
+  cy: number,
+  px: number,
+  level: number,
+): ElevatedBake | null {
+  const baseX = cx * CHUNK_SIZE;
+  const baseY = cy * CHUNK_SIZE;
+  const member = (tx: number, ty: number): boolean =>
+    elev(tx, ty) >= level && ground(tx, ty) !== Tile.Ramp;
+
+  const rows: boolean[] = new Array(CHUNK_SIZE).fill(false);
+  let any = false;
+  for (let ly = 0; ly < CHUNK_SIZE; ly++) {
+    for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+      if (member(baseX + lx, baseY + ly)) {
+        rows[ly] = true;
+        any = true;
+      }
+    }
+  }
+  if (!any) return null;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = CHUNK_SIZE * px;
+  canvas.height = CHUNK_SIZE * px;
+  const ctx = canvas.getContext('2d')!;
+
+  // The plateau-top silhouette, contoured between tile centers.
+  const path = new Path2D();
+  const maskAt = (i: number, j: number): number =>
+    (member(baseX + i - 1, baseY + j - 1) ? 1 : 0) |
+    (member(baseX + i, baseY + j - 1) ? 2 : 0) |
+    (member(baseX + i, baseY + j) ? 4 : 0) |
+    (member(baseX + i - 1, baseY + j) ? 8 : 0);
+  for (let j = 0; j <= CHUNK_SIZE; j++) {
+    for (let i = 0; i <= CHUNK_SIZE; i++) {
+      const mask = maskAt(i, j);
+      if (mask !== 0) maskPolygon(path, mask, (i - 0.5) * px, (j - 0.5) * px, px);
     }
   }
 
-  return canvas;
+  // Cliff crowns and stairs read as the surface they carry.
+  const gInner = (tx: number, ty: number): number | undefined => {
+    const t = ground(tx, ty);
+    if (t === Tile.Cliff || t === Tile.Ramp) {
+      for (const [dx, dy] of [[0, -1], [1, 0], [-1, 0], [0, 1]] as const) {
+        const t2 = ground(tx + dx, ty + dy);
+        if (
+          t2 !== undefined &&
+          t2 !== Tile.Cliff &&
+          t2 !== Tile.Ramp &&
+          elev(tx + dx, ty + dy) >= level
+        ) {
+          return t2;
+        }
+      }
+      return Tile.StoneFloor;
+    }
+    return t;
+  };
+  const g = effectiveGround(gInner);
+
+  ctx.save();
+  ctx.clip(path);
+
+  // Meadow base under the skins, same recipe as the ground floor.
+  const cell = Math.max(4, Math.floor(px / 4));
+  for (let y = 0; y < canvas.height; y += cell) {
+    for (let x = 0; x < canvas.width; x += cell) {
+      const wx = baseX + x / px;
+      const wy = baseY + y / px;
+      const n = valueNoise(1234, wx * 0.055, wy * 0.055) * 0.7 + valueNoise(777, wx * 0.021, wy * 0.021) * 0.3;
+      const idx = n < 0.38 ? 3 : n < 0.52 ? 1 : n < 0.72 ? 0 : 2;
+      ctx.fillStyle = GRASS_TONES[idx]!;
+      ctx.fillRect(x, y, cell, cell);
+    }
+  }
+  drawLayerSkins(ctx, g, baseX, baseY, px);
+  for (let ly = 0; ly < CHUNK_SIZE; ly++) {
+    for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+      const tx = baseX + lx;
+      const ty = baseY + ly;
+      if (!member(tx, ty)) continue;
+      drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px);
+    }
+  }
+  ctx.restore();
+
+  // The brink: a sunlit lip along the rim contour, with a hair of shade
+  // beneath it — the edge you read from fifty tiles away.
+  ctx.lineCap = 'round';
+  for (let j = 0; j <= CHUNK_SIZE; j++) {
+    for (let i = 0; i <= CHUNK_SIZE; i++) {
+      const mask = maskAt(i, j);
+      if (mask === 0 || mask === 15) continue;
+      for (const [x0, y0, x1, y1] of contourSegs(mask)) {
+        const ax = (i + x0 - 0.5 + 0.5) * px;
+        const ay = (j + y0 - 0.5 + 0.5) * px;
+        const bx = (i + x1 - 0.5 + 0.5) * px;
+        const by = (j + y1 - 0.5 + 0.5) * px;
+        ctx.strokeStyle = 'rgba(255, 244, 214, 0.2)';
+        ctx.lineWidth = Math.max(1.5, px * 0.07);
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(bx, by);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.lineCap = 'butt';
+
+  return { canvas, rows };
+}
+
+/**
+ * Contour segments of a marching-squares cell in cell-local units
+ * (edge midpoints at ±0.5 around the cell center at 0,0).
+ */
+function contourSegs(mask: number): Array<[number, number, number, number]> {
+  const T: [number, number] = [0, -0.5];
+  const R: [number, number] = [0.5, 0];
+  const B: [number, number] = [0, 0.5];
+  const L: [number, number] = [-0.5, 0];
+  const seg = (a: [number, number], b: [number, number]): [number, number, number, number] =>
+    [a[0], a[1], b[0], b[1]];
+  switch (mask) {
+    case 1: case 14: return [seg(T, L)];
+    case 2: case 13: return [seg(T, R)];
+    case 4: case 11: return [seg(R, B)];
+    case 8: case 7: return [seg(L, B)];
+    case 3: case 12: return [seg(L, R)];
+    case 6: case 9: return [seg(T, B)];
+    case 5: return [seg(T, R), seg(B, L)];
+    default: return [seg(T, L), seg(R, B)]; // 10
+  }
+}
+
+/** Fill the marching-squares union of `member` tiles with one color. */
+function fillMask(
+  ctx: CanvasRenderingContext2D,
+  member: (tx: number, ty: number) => boolean,
+  baseX: number,
+  baseY: number,
+  px: number,
+  color: string,
+): void {
+  const path = new Path2D();
+  let any = false;
+  for (let j = 0; j <= CHUNK_SIZE; j++) {
+    for (let i = 0; i <= CHUNK_SIZE; i++) {
+      const mask =
+        (member(baseX + i - 1, baseY + j - 1) ? 1 : 0) |
+        (member(baseX + i, baseY + j - 1) ? 2 : 0) |
+        (member(baseX + i, baseY + j) ? 4 : 0) |
+        (member(baseX + i - 1, baseY + j) ? 8 : 0);
+      if (mask === 0) continue;
+      any = true;
+      maskPolygon(path, mask, (i - 0.5) * px, (j - 0.5) * px, px);
+    }
+  }
+  if (!any) return;
+  ctx.fillStyle = color;
+  ctx.fill(path);
 }
 
 function neighborsStone(ground: GroundSampler, tx: number, ty: number): boolean {
@@ -341,7 +575,7 @@ function drawLayerSkins(
  * touching-at-a-corner regions read as one flow, never a pinch.
  */
 function maskPolygon(
-  ctx: CanvasRenderingContext2D,
+  ctx: CanvasRenderingContext2D | Path2D,
   mask: number,
   x0: number,
   y0: number,

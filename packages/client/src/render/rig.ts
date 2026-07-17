@@ -317,7 +317,22 @@ export interface RigPose {
   skinColor?: string;
   /** Time-based swing driver for the gather pose. */
   gatherPhase: number;
+  /**
+   * Which station a Craft pose is working: picks the choreography
+   * (hammer-and-tongs, furnace stoking, fire tending, bench work) and
+   * the bespoke props that go with it.
+   */
+  craftKind?: 'anvil' | 'furnace' | 'fire' | 'workbench' | null;
 }
+
+/** Duration of one mining swing (windup→heave→strike→pry), ms. */
+export const MINE_CYCLE_MS = 880;
+/** Duration of one woodcutting chop, ms. */
+export const CHOP_CYCLE_MS = 700;
+/** Duration of one anvil hammer blow, ms. */
+export const ANVIL_CYCLE_MS = 640;
+/** Duration of one furnace stoking push, ms. */
+export const FURNACE_CYCLE_MS = 1700;
 
 /** Arm segment length (upper = fore), in tile units. */
 const ARM_LEN = 0.17;
@@ -491,12 +506,17 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const hScale = 1 + (1 - wS) * 0.55;
   const weapon = itemDef(rig.weaponItem ?? '');
   const isBow = weapon !== undefined && weapon.id.includes('bow');
-  // Axes and pickaxes get the full two-handed chop cycle; other gather
-  // tools (the rod) keep the gentle working sway.
-  const chopping =
-    rig.pose === PoseState.Gather && weapon !== undefined && weapon.id.includes('axe');
+  // The tool TYPE picks the work cycle: an axe chops, a pick heaves
+  // overhead and pries — different rhythms, different bodies. Rods (and
+  // bare hands) keep the gentle working sway.
+  const toolType = weapon?.tool?.type;
+  const chopping = rig.pose === PoseState.Gather && toolType === 'axe';
+  const mining = rig.pose === PoseState.Gather && toolType === 'pickaxe';
+  const craftKind = rig.pose === PoseState.Craft ? (rig.craftKind ?? 'workbench') : null;
   const gatherSwing =
-    rig.pose === PoseState.Gather && !chopping ? Math.sin(rig.gatherPhase * 5.5) * 0.5 : 0;
+    rig.pose === PoseState.Gather && !chopping && !mining
+      ? Math.sin(rig.gatherPhase * 5.5) * 0.5
+      : 0;
 
   // Torso proportions (needed for shoulders before the torso is drawn).
   const tw = 0.185 * s; // shoulder half-width
@@ -571,7 +591,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // The chop: raise the axe up over the shoulder, slam it down into the
   // node, hold through the bite, recover — every beat readable.
   if (chopping) {
-    const u = (rig.nowMs % 700) / 700;
+    const u = (rig.nowMs % CHOP_CYCLE_MS) / CHOP_CYCLE_MS;
     let rel: number;
     if (u < 0.42) {
       // Windup: haul the axe up and back over the shoulder.
@@ -602,6 +622,114 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     swingOffset = rel;
     lean *= Math.sign(fx || 1);
   }
+  // The mine: a pick is NOT an axe. Haul it straight overhead with the
+  // whole back, hang at the top of the heave, drive it down into the
+  // seam, then LEVER it back out — the pry is what says "rock".
+  if (mining) {
+    const u = (rig.nowMs % MINE_CYCLE_MS) / MINE_CYCLE_MS;
+    let rel: number;
+    if (u < 0.32) {
+      // Windup: the pick climbs past the shoulder to straight overhead.
+      const p2 = u / 0.32;
+      const e2 = 1 - (1 - p2) * (1 - p2);
+      rel = 0.4 - 2.9 * e2;
+      reach = (0.22 - 0.06 * e2) * s;
+      lean = -0.11 * e2;
+    } else if (u < 0.44) {
+      // The heave: hanging at the top, gathering weight.
+      const p2 = (u - 0.32) / 0.12;
+      rel = -2.5 + Math.sin(rig.nowMs * 0.02) * 0.03;
+      reach = 0.16 * s;
+      lean = -0.11 - 0.03 * p2;
+    } else if (u < 0.54) {
+      // The drive: everything comes down at once.
+      const p2 = (u - 0.44) / 0.1;
+      const e2 = p2 * p2;
+      rel = -2.5 + 2.95 * e2;
+      reach = (0.16 + 0.2 * e2) * s;
+      lean = -0.14 + 0.42 * e2;
+    } else if (u < 0.7) {
+      // Buried: point deep in the seam, shoulders hunched, quivering.
+      rel = 0.45 + Math.sin(rig.nowMs * 0.16) * 0.018;
+      reach = 0.36 * s;
+      lean = 0.28 - ((u - 0.54) / 0.16) * 0.1;
+    } else if (u < 0.86) {
+      // The pry: lever the head back out of the rock.
+      const p2 = (u - 0.7) / 0.16;
+      const e2 = p2 * p2 * (3 - 2 * p2);
+      rel = 0.45 - 0.55 * e2;
+      reach = (0.36 - 0.08 * e2) * s;
+      lean = 0.18 - 0.2 * e2;
+    } else {
+      // Recover into the next lift.
+      const p2 = (u - 0.86) / 0.14;
+      rel = -0.1 + 0.5 * p2;
+      reach = (0.28 - 0.06 * p2) * s;
+      lean = -0.02 * (1 - p2);
+    }
+    swingOffset = rel;
+    lean *= Math.sign(fx || 1);
+  }
+  // Station work: each craft station has its own body language.
+  if (craftKind === 'anvil') {
+    // Hammer blows: raise over the shoulder, ring it off the billet the
+    // tongs hold on the anvil face, let the head bounce, reset.
+    const u = (rig.nowMs % ANVIL_CYCLE_MS) / ANVIL_CYCLE_MS;
+    let rel: number;
+    if (u < 0.3) {
+      const p2 = u / 0.3;
+      const e2 = 1 - (1 - p2) * (1 - p2);
+      rel = 0.2 - 2.1 * e2;
+      reach = (0.26 - 0.06 * e2) * s;
+      lean = -0.05 * e2;
+    } else if (u < 0.42) {
+      const p2 = (u - 0.3) / 0.12;
+      const e2 = p2 * p2;
+      rel = -1.9 + 1.68 * e2;
+      reach = (0.2 + 0.14 * e2) * s;
+      lean = -0.05 + 0.16 * e2;
+    } else if (u < 0.58) {
+      // The ring: a crisp rebound off the metal.
+      const p2 = (u - 0.42) / 0.16;
+      rel = -0.22 - 0.5 * Math.sin(p2 * Math.PI) * (1 - p2 * 0.5);
+      reach = (0.34 - 0.05 * Math.sin(p2 * Math.PI)) * s;
+      lean = 0.11 - 0.07 * p2;
+    } else {
+      const p2 = (u - 0.58) / 0.42;
+      rel = -0.22 + 0.42 * p2 * p2 * (3 - 2 * p2);
+      reach = (0.29 - 0.03 * p2) * s;
+      lean = 0.04 * (1 - p2);
+    }
+    swingOffset = rel;
+    lean *= Math.sign(fx || 1);
+  } else if (craftKind === 'furnace') {
+    // Stoking: lean in and feed the mouth with both hands, hold against
+    // the heat, pull back.
+    const u = (rig.nowMs % FURNACE_CYCLE_MS) / FURNACE_CYCLE_MS;
+    let push: number;
+    if (u < 0.38) {
+      const p2 = u / 0.38;
+      push = p2 * p2 * (3 - 2 * p2);
+    } else if (u < 0.6) {
+      push = 1;
+    } else {
+      const p2 = (u - 0.6) / 0.4;
+      push = 1 - p2 * p2 * (3 - 2 * p2);
+    }
+    swingOffset = 0.1;
+    reach = (0.18 + 0.19 * push) * s;
+    lean = 0.13 * push * Math.sign(fx || 1);
+  } else if (craftKind === 'fire') {
+    // Tending the pot: a slow, patient stir.
+    swingOffset = 0.45 + Math.sin(rig.gatherPhase * 2.4) * 0.28;
+    reach = (0.26 + Math.sin(rig.gatherPhase * 4.8) * 0.02) * s;
+  } else if (craftKind === 'workbench') {
+    // Bench work: short, busy taps over the surface.
+    const u = (rig.nowMs % 900) / 900;
+    swingOffset = 0.32 + Math.sin(u * Math.PI * 2) * 0.2;
+    reach = (0.27 + 0.035 * Math.sin(u * Math.PI * 4)) * s;
+    lean = 0.03 * Math.sin(u * Math.PI * 2 + 0.8) * Math.sign(fx || 1);
+  }
   const armY = hipY - 0.26 * s;
   const shoulderY = hipY - th * hScale + 0.06 * s;
   const mainAngle = rig.dir + swingOffset;
@@ -619,11 +747,22 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // during swings/casts it rides the counterbalance circle instead.
   let offX: number;
   let offY: number;
-  if (chopping) {
+  if (chopping || mining) {
     // Two-handed grip: the free hand chokes up the haft behind the
-    // striking hand.
-    offX = mainX - Math.cos(mainAngle) * 0.16 * s;
-    offY = mainY - Math.sin(mainAngle) * 0.16 * s + 0.03 * s;
+    // striking hand — further down for the heavier pick.
+    const choke = mining ? 0.2 : 0.16;
+    offX = mainX - Math.cos(mainAngle) * choke * s;
+    offY = mainY - Math.sin(mainAngle) * choke * s + 0.03 * s;
+  } else if (craftKind === 'anvil') {
+    // Tongs hand: planted toward the anvil, holding the work steady
+    // while the hammer arm does everything else.
+    const tongsAngle = rig.dir - 0.32;
+    offX = rig.x + Math.cos(tongsAngle) * 0.31 * s * wS;
+    offY = armY + Math.sin(tongsAngle) * 0.31 * s + 0.04 * s;
+  } else if (craftKind === 'furnace') {
+    // Both hands carry the charge into the mouth together.
+    offX = mainX - Math.sin(rig.dir) * 0.13 * s;
+    offY = mainY + Math.cos(rig.dir) * 0.13 * s * 0.5 + 0.02 * s;
   } else if (meleeStage === -1 && rig.pose !== PoseState.Cast) {
     offX = rig.x - Math.cos(mainAngle) * 0.15 * s * wS;
     offY = armY + 0.13 * s;
@@ -779,6 +918,61 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       s,
     );
   const paintWeapon = (): void => {
+    // Station props: the smith's own kit, drawn regardless of loadout.
+    if (craftKind === 'anvil') {
+      // Tongs gripping a glowing billet — the work in progress.
+      const tang = Math.atan2(offY - (armY + 0.02 * s), offX - rig.x);
+      const glow = 0.72 + Math.sin(rig.nowMs * 0.006) * 0.16;
+      ctx.save();
+      ctx.translate(offX, offY);
+      ctx.rotate(tang);
+      ctx.strokeStyle = '#4a4554';
+      ctx.lineWidth = Math.max(2, s * 0.045);
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(-0.06 * s, side * 0.012 * s);
+        ctx.lineTo(0.12 * s, side * 0.035 * s);
+        ctx.stroke();
+      }
+      ctx.fillStyle = `rgba(255, 176, 82, ${glow})`;
+      ctx.beginPath();
+      chamferRect(ctx, 0.1 * s, -0.038 * s, 0.2 * s, 0.076 * s, 0.02 * s);
+      ctx.fill();
+      ctx.fillStyle = `rgba(255, 236, 180, ${glow * 0.85})`;
+      ctx.fillRect(0.13 * s, -0.016 * s, 0.1 * s, 0.032 * s);
+      ctx.restore();
+      // The smith's hammer in the striking hand.
+      ctx.save();
+      ctx.translate(mainX, mainY);
+      ctx.rotate(mainAngle);
+      ctx.fillStyle = '#7a552e';
+      ctx.beginPath();
+      ctx.roundRect(-0.06 * s, -0.02 * s, 0.3 * s, 0.04 * s, 0.015 * s);
+      ctx.fill();
+      ctx.fillStyle = '#9aa2ac';
+      ctx.beginPath();
+      chamferRect(ctx, 0.18 * s, -0.075 * s, 0.11 * s, 0.15 * s, 0.03 * s);
+      ctx.fill();
+      ctx.fillStyle = '#c9ccd4';
+      ctx.fillRect(0.18 * s, -0.075 * s, 0.11 * s, 0.045 * s);
+      ctx.restore();
+      return;
+    }
+    if (craftKind === 'furnace') {
+      // A charged crucible carried in both hands, mouth aglow.
+      const cx2 = (mainX + offX) / 2;
+      const cy2 = (mainY + offY) / 2 - 0.02 * s;
+      const glow = 0.6 + Math.sin(rig.nowMs * 0.008) * 0.2;
+      ctx.fillStyle = '#4a4554';
+      ctx.beginPath();
+      chamferRect(ctx, cx2 - 0.11 * s, cy2 - 0.07 * s, 0.22 * s, 0.13 * s, 0.03 * s);
+      ctx.fill();
+      ctx.fillStyle = `rgba(255, 158, 66, ${glow})`;
+      ctx.beginPath();
+      chamferRect(ctx, cx2 - 0.08 * s, cy2 - 0.065 * s, 0.16 * s, 0.045 * s, 0.015 * s);
+      ctx.fill();
+      return;
+    }
     if (!weapon) return;
     if (bowX !== null) {
       drawHeldItem(ctx, weapon.id, weapon.color, bowX, bowY, rig.dir, s, rig, {

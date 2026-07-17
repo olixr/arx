@@ -75,6 +75,27 @@ export class Sfx {
     this.noise(0.05, 0.25);
   }
 
+  /** Pick meets rock: a hard stony knock with a metallic tick on top. */
+  mineClink(): void {
+    this.tone(120, 0.05, { type: 'square', slide: -50, volume: 0.35 });
+    this.tone(1750, 0.06, { type: 'triangle', slide: -420, volume: 0.14, delay: 0.008 });
+    this.noise(0.06, 0.28);
+  }
+
+  /** Hammer rings the anvil: a bright ping over a body knock. */
+  anvilClang(): void {
+    this.tone(1180, 0.28, { type: 'triangle', slide: -160, volume: 0.24 });
+    this.tone(1770, 0.16, { type: 'triangle', slide: -220, volume: 0.12, delay: 0.004 });
+    this.tone(220, 0.07, { type: 'square', slide: -90, volume: 0.3 });
+    this.noise(0.04, 0.22);
+  }
+
+  /** The furnace draws breath: a soft roaring swell of hot air. */
+  furnaceRoar(): void {
+    this.noise(0.55, 0.2);
+    this.tone(70, 0.5, { type: 'sine', slide: 26, volume: 0.22 });
+  }
+
   /** The long groan of a felled trunk tipping over. */
   treeFall(): void {
     this.tone(150, 0.7, { type: 'sawtooth', slide: -95, volume: 0.22 });

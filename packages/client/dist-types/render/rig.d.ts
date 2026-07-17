@@ -105,7 +105,21 @@ export interface RigPose {
     skinColor?: string;
     /** Time-based swing driver for the gather pose. */
     gatherPhase: number;
+    /**
+     * Which station a Craft pose is working: picks the choreography
+     * (hammer-and-tongs, furnace stoking, fire tending, bench work) and
+     * the bespoke props that go with it.
+     */
+    craftKind?: 'anvil' | 'furnace' | 'fire' | 'workbench' | null;
 }
+/** Duration of one mining swing (windup→heave→strike→pry), ms. */
+export declare const MINE_CYCLE_MS = 880;
+/** Duration of one woodcutting chop, ms. */
+export declare const CHOP_CYCLE_MS = 700;
+/** Duration of one anvil hammer blow, ms. */
+export declare const ANVIL_CYCLE_MS = 640;
+/** Duration of one furnace stoking push, ms. */
+export declare const FURNACE_CYCLE_MS = 1700;
 /**
  * One two-segment arm: shoulder → elbow (sleeve) → forearm (skin) →
  * hand, solved by the same two-bone IK as the legs. The preference

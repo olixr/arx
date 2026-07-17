@@ -1,4 +1,4 @@
-import { EntityKind, PoseState, Tile, tileDef } from '@devcraft/shared';
+import { EntityKind, PoseState, ROCK_TILES, Tile, tileDef } from '@devcraft/shared';
 import { BUILDABLES, BUILDABLE_GROUND, itemDef, npcDef } from '@devcraft/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
@@ -245,7 +245,7 @@ function autoEquipTool(): void {
     for (let tx = Math.floor(own.x) - 2; tx <= Math.floor(own.x) + 2 && !need; tx++) {
       const t = game.world.groundAt(tx, ty);
       if (t === Tile.Tree || t === Tile.TreeOak) need = 'axe';
-      else if (t === Tile.Rock || t === Tile.RockCopper || t === Tile.RockIron) need = 'pickaxe';
+      else if (t !== undefined && ROCK_TILES.includes(t)) need = 'pickaxe';
       else if (t === Tile.FishingSpot) need = 'rod';
     }
   }
@@ -256,10 +256,22 @@ function autoEquipTool(): void {
   if (idx >= 0) game.useSlot(idx);
 }
 
-// Each bite of the tool: a chop knock and a tap of rumble.
-renderer.onGatherImpact = () => {
-  sfx.chop();
-  input.rumble(0.22, 0.32, 60);
+// Each beat of work lands in the hands: chop knocks, pick clinks,
+// anvil rings, and the furnace's hot breath — each with its own rumble.
+renderer.onGatherImpact = (kind) => {
+  if (kind === 'rock') {
+    sfx.mineClink();
+    input.rumble(0.3, 0.38, 70);
+  } else if (kind === 'anvil') {
+    sfx.anvilClang();
+    input.rumble(0.34, 0.42, 80);
+  } else if (kind === 'furnace') {
+    sfx.furnaceRoar();
+    input.rumble(0.12, 0.2, 160);
+  } else {
+    sfx.chop();
+    input.rumble(0.22, 0.32, 60);
+  }
 };
 
 // A felled tree topples away from whoever cut it, groans, and lands
@@ -364,12 +376,7 @@ window.addEventListener('keydown', (e) => {
 // click places the picked buildable; X+click demolishes your work.
 canvas.addEventListener('mousedown', (e) => {
   if (game.ownEid === null) return;
-  const w = renderer.camera.screenToWorld(
-    e.clientX,
-    e.clientY,
-    canvas.clientWidth,
-    canvas.clientHeight,
-  );
+  const w = renderer.pickWorld(e.clientX, e.clientY);
   const tx = Math.floor(w.x);
   const ty = Math.floor(w.y);
   if (buildMode) {
@@ -487,12 +494,7 @@ function frame(now: number): void {
       const own = game.predictor.renderPos();
       // Invert the full camera projection so the world-space aim points
       // exactly at the ground tile under the cursor.
-      const cursor = renderer.camera.screenToWorld(
-        input.mouseX,
-        input.mouseY,
-        canvas.clientWidth,
-        canvas.clientHeight,
-      );
+      const cursor = renderer.pickWorld(input.mouseX, input.mouseY);
       const mouseAim = Math.atan2(cursor.y - own.y, cursor.x - own.x);
       // On touch devices the mouse never moves — face the walk direction.
       if (input.touchMoveX !== 0 || input.touchMoveY !== 0) {
@@ -506,12 +508,7 @@ function frame(now: number): void {
   // Build-mode ghost follows the mouse tile.
   if (buildMode && game.ownEid !== null) {
     const def = BUILDABLES.get(buildMode);
-    const w = renderer.camera.screenToWorld(
-      input.mouseX,
-      input.mouseY,
-      canvas.clientWidth,
-      canvas.clientHeight,
-    );
+    const w = renderer.pickWorld(input.mouseX, input.mouseY);
     const tx = Math.floor(w.x);
     const ty = Math.floor(w.y);
     const ground = game.world.groundAt(tx, ty);

@@ -14,10 +14,19 @@ import {
 } from '@devcraft/shared';
 import { itemDef, npcDef } from '@devcraft/content';
 import type { ClientGame } from '../game/clientGame.js';
-import { LegSolver, drawBeast, drawHumanoid, shade } from './rig.js';
+import {
+  ANVIL_CYCLE_MS,
+  CHOP_CYCLE_MS,
+  FURNACE_CYCLE_MS,
+  LegSolver,
+  MINE_CYCLE_MS,
+  drawBeast,
+  drawHumanoid,
+  shade,
+} from './rig.js';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import { Particles } from './particles.js';
-import { bakeChunk, drawLiveGround } from './terrain.js';
+import { bakeChunk, bakeElevated, drawLiveGround } from './terrain.js';
 
 /** Signature style: shadows are solid and sharp — never blurred. */
 const SHADOW_COLOR = 'rgba(24, 14, 32, 0.32)';
@@ -32,6 +41,13 @@ const SHADOW_OFFSET = 0.16; // tiles, toward bottom-right
  * over you, one north of you slides behind.
  */
 const WALL_H = 1.15; // wall extrusion height, in tiles
+/**
+ * Height of ONE terrain elevation level, in tiles of screen rise.
+ * Taller than a wall on purpose: cliffs are landforms, not masonry.
+ * Everything derives from this one number — lifted ground bands, cliff
+ * faces, stair treads, and the rise of anything standing up there.
+ */
+const ELEV_H = 1.35;
 /**
  * Horizontal lean per tile of height. ZERO: verticals rise straight on
  * screen, exactly like the billboard sprites — the classic 3/4-view
@@ -90,12 +106,30 @@ interface BakedChunk {
   canvas: HTMLCanvasElement;
   data: ChunkData;
   rev: number;
+  /**
+   * Lifted-terrain layers, one per elevation level present in the
+   * chunk. Bands are contiguous row runs [startRow, endRow] (inclusive,
+   * padded a row each way for the contour bleed) — each becomes one
+   * y-sorted DrawItem so plateaus occlude what stands behind them.
+   */
+  lifted: Array<{
+    level: number;
+    canvas: HTMLCanvasElement;
+    bands: Array<[number, number]>;
+  }>;
 }
 
 interface DrawItem {
   sortY: number;
   draw: () => void;
   drawShadow?: () => void;
+  /**
+   * Standing on lifted terrain: the shadow must land ON the plateau
+   * surface, so it draws in sorted order (just before the sprite)
+   * instead of in the ground-level shadow prepass — otherwise the
+   * plateau band, drawn later, would paint it out.
+   */
+  elevated?: boolean;
 }
 
 export class Renderer {
@@ -182,6 +216,38 @@ export class Renderer {
   /** Fires once per tool-impact while someone gathers ('tree' | 'rock'). */
   onGatherImpact: ((kind: string) => void) | null = null;
 
+  /** Nearest crafting station around a world position, if any. */
+  private findStation(
+    x: number,
+    y: number,
+  ): { tx: number; ty: number; kind: 'anvil' | 'furnace' | 'fire' | 'workbench' } | null {
+    const game = this.game;
+    if (!game) return null;
+    const cx = Math.floor(x);
+    const cy = Math.floor(y);
+    let best: { tx: number; ty: number; kind: 'anvil' | 'furnace' | 'fire' | 'workbench'; d: number } | null =
+      null;
+    for (let ty = cy - 2; ty <= cy + 2; ty++) {
+      for (let tx = cx - 2; tx <= cx + 2; tx++) {
+        const t = game.world.groundAt(tx, ty);
+        const kind =
+          t === Tile.Anvil
+            ? ('anvil' as const)
+            : t === Tile.Furnace
+              ? ('furnace' as const)
+              : t === Tile.Campfire
+                ? ('fire' as const)
+                : t === Tile.Workbench
+                  ? ('workbench' as const)
+                  : null;
+        if (!kind) continue;
+        const d = Math.hypot(tx + 0.5 - x, ty + 0.5 - y);
+        if (!best || d < best.d) best = { tx, ty, kind, d };
+      }
+    }
+    return best;
+  }
+
   /** Nearest gatherable node around a world position, if any. */
   private findGatherNode(
     x: number,
@@ -198,7 +264,12 @@ export class Renderer {
         const kind =
           t === Tile.Tree || t === Tile.TreeOak
             ? ('tree' as const)
-            : t === Tile.Rock || t === Tile.RockCopper || t === Tile.RockIron
+            : t === Tile.Rock ||
+                t === Tile.RockCopper ||
+                t === Tile.RockTin ||
+                t === Tile.RockIron ||
+                t === Tile.RockCoal ||
+                t === Tile.RockGold
               ? ('rock' as const)
               : t === Tile.FishingSpot
                 ? ('fish' as const)
@@ -213,6 +284,123 @@ export class Renderer {
 
   shake(amount: number): void {
     this.shakeAmount = Math.min(12, this.shakeAmount + amount);
+  }
+
+  // ------------------------------------------------------- elevation
+
+  /**
+   * Screen-space rise (in TILES; multiply by scale for px) of the
+   * ground under a world position. Plateau tops rise level·ELEV_H; a
+   * stair tile interpolates from its low mouth to its high edge, so
+   * feet climb tread by tread. Everything drawn in the world asks this
+   * one function.
+   */
+  renderLift(x: number, y: number): number {
+    const game = this.game;
+    if (!game) return 0;
+    const tx = Math.floor(x);
+    const ty = Math.floor(y);
+    const lvl = game.world.elevAt(tx, ty);
+    if (game.world.groundAt(tx, ty) === Tile.Ramp) {
+      // Ascend toward the cardinal neighbor a level down — the mouth.
+      for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) {
+        if (game.world.elevAt(tx + dx, ty + dy) < lvl) {
+          // Fraction across the tile away from the low edge.
+          const u =
+            dx !== 0
+              ? dx > 0
+                ? 1 - (x - tx)
+                : x - tx
+              : dy > 0
+                ? 1 - (y - ty)
+                : y - ty;
+          return (lvl - 1 + Math.min(1, Math.max(0, u))) * ELEV_H;
+        }
+      }
+    }
+    return lvl * ELEV_H;
+  }
+
+  /** worldToScreen that also rides the terrain lift under the point. */
+  private liftedWTS = (wx: number, wy: number): Vec2 => {
+    const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
+    p.y -= this.renderLift(wx, wy) * this.camera.scale;
+    return p;
+  };
+
+  /**
+   * Screen → world with elevation: a click on a plateau top must land
+   * on the plateau, not on the (hidden) ground two tiles south. Try
+   * each level's inverse and accept the one whose terrain agrees.
+   */
+  pickWorld(sx: number, sy: number): Vec2 {
+    const game = this.game;
+    const cam = this.camera;
+    for (let lvl = 2; lvl >= 1; lvl--) {
+      const wy = cam.y + (sy - this.h / 2 + lvl * ELEV_H * cam.scale) / (cam.scale * cam.yScale);
+      const wx = cam.x + (sx - this.w / 2) / cam.scale;
+      if (game && game.world.elevAt(Math.floor(wx), Math.floor(wy)) === lvl) {
+        return { x: wx, y: wy };
+      }
+    }
+    return cam.screenToWorld(sx, sy, this.w, this.h);
+  }
+
+  /** Lifted plateau surfaces as y-sorted items (real occluders). */
+  private collectElevatedGround(game: ClientGame, items: DrawItem[]): void {
+    const b = this.visibleTileBounds();
+    const s = this.camera.scale;
+    const minCx = Math.floor(b.minTx / CHUNK_SIZE);
+    const maxCx = Math.floor(b.maxTx / CHUNK_SIZE);
+    const minCy = Math.floor((b.minTy - ELEV_H * 2 - 1) / CHUNK_SIZE);
+    const maxCy = Math.floor(b.maxTy / CHUNK_SIZE);
+    for (let cy = minCy; cy <= maxCy; cy++) {
+      for (let cx = minCx; cx <= maxCx; cx++) {
+        const baked = this.baked.get(`${cx},${cy}`);
+        if (!baked || baked.lifted.length === 0) continue;
+        for (const layer of baked.lifted) {
+          for (const [r0, r1] of layer.bands) {
+            const worldTy = cy * CHUNK_SIZE + r0;
+            const rowCount = r1 - r0 + 1;
+            const level = layer.level;
+            items.push({
+              sortY: worldTy - 0.01,
+              draw: () => {
+                const p = this.camera.worldToScreen(cx * CHUNK_SIZE, worldTy, this.w, this.h);
+                this.ctx.drawImage(
+                  layer.canvas,
+                  0,
+                  r0 * TILE_PX,
+                  CHUNK_SIZE * TILE_PX,
+                  rowCount * TILE_PX,
+                  p.x,
+                  p.y - level * ELEV_H * s,
+                  CHUNK_SIZE * s + 0.5,
+                  rowCount * s * this.camera.yScale + 0.5,
+                );
+                // The plateau's own breeze layer: blades and flowers on
+                // the lifted surface, drawn right on top of the band.
+                drawLiveGround(
+                  this.ctx,
+                  (tx, ty) =>
+                    game.world.elevAt(tx, ty) === level ? game.world.groundAt(tx, ty) : undefined,
+                  (tx, ty) => this.detailAt(game, tx, ty),
+                  {
+                    minTx: Math.max(b.minTx, cx * CHUNK_SIZE),
+                    maxTx: Math.min(b.maxTx, cx * CHUNK_SIZE + CHUNK_SIZE - 1),
+                    minTy: worldTy,
+                    maxTy: cy * CHUNK_SIZE + r1,
+                  },
+                  this.liftedWTS,
+                  s,
+                  performance.now(),
+                );
+              },
+            });
+          }
+        }
+      }
+    }
   }
 
   private animFor(key: number | 'own', x: number, y: number, pose: number, now: number): AnimState {
@@ -288,12 +476,14 @@ export class Renderer {
 
     // The breeze layer: swaying blades, glints, ripples, portal swirls.
     const bounds = this.visibleTileBounds();
+    // Ground-level tiles only: lifted tiles get their own live layer
+    // drawn OVER their plateau band (see collectElevatedGround).
     drawLiveGround(
       this.ctx,
-      (tx, ty) => game.world.groundAt(tx, ty),
+      (tx, ty) => (game.world.elevAt(tx, ty) > 0 ? undefined : game.world.groundAt(tx, ty)),
       (tx, ty) => this.detailAt(game, tx, ty),
       bounds,
-      (wx, wy) => this.camera.worldToScreen(wx, wy, this.w, this.h),
+      this.liftedWTS,
       this.camera.scale,
       performance.now(),
     );
@@ -301,21 +491,23 @@ export class Renderer {
     this.drawAimGuide(game);
 
     const items: DrawItem[] = [];
+    this.collectElevatedGround(game, items);
     this.collectRaisedTiles(game, items);
     this.collectFallingTrees(items);
     this.collectEntities(game, items);
 
-    for (const item of items) item.drawShadow?.();
+    for (const item of items) {
+      if (!item.elevated) item.drawShadow?.();
+    }
     items.sort((a, b) => a.sortY - b.sortY);
-    for (const item of items) item.draw();
+    for (const item of items) {
+      if (item.elevated) item.drawShadow?.();
+      item.draw();
+    }
 
     this.drawDeathGhosts();
     this.particles.update(this.frameDt);
-    this.particles.draw(
-      this.ctx,
-      (wx, wy) => this.camera.worldToScreen(wx, wy, this.w, this.h),
-      this.camera.scale,
-    );
+    this.particles.draw(this.ctx, this.liftedWTS, this.camera.scale);
     this.drawRings();
 
     // Depth & atmosphere: emissive bloom, then the tilted-camera
@@ -361,7 +553,7 @@ export class Renderer {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (const g of this.glows) {
-      const p = this.camera.worldToScreen(g.x, g.y, this.w, this.h);
+      const p = this.liftedWTS(g.x, g.y);
       const r = g.r * s;
       const grad = ctx.createRadialGradient(p.x, p.y, r * 0.08, p.x, p.y, r);
       grad.addColorStop(0, `rgba(${g.rgb}, ${g.a})`);
@@ -466,8 +658,8 @@ export class Renderer {
     const rangeT = weapon.range * (0.55 + 0.45 * drawT);
     const dirX = Math.cos(game.aim);
     const dirY = Math.sin(game.aim);
-    const p0 = this.camera.worldToScreen(own.x + dirX * 0.55, own.y + dirY * 0.55, this.w, this.h);
-    const p1 = this.camera.worldToScreen(own.x + dirX * rangeT, own.y + dirY * rangeT, this.w, this.h);
+    const p0 = this.liftedWTS(own.x + dirX * 0.55, own.y + dirY * 0.55);
+    const p1 = this.liftedWTS(own.x + dirX * rangeT, own.y + dirY * rangeT);
     const lift0 = 0.45 * s;
     const lift1 = lift0;
 
@@ -511,7 +703,7 @@ export class Renderer {
         continue;
       }
       const t = age / LIFE;
-      const p = this.camera.worldToScreen(g.x, g.y, this.w, this.h);
+      const p = this.liftedWTS(g.x, g.y);
       const r = g.radius * this.camera.scale;
       const hop = Math.sin(Math.min(1, t * 2.2) * Math.PI) * r * 0.5;
       ctx.globalAlpha = (1 - t) * 0.65;
@@ -544,7 +736,7 @@ export class Renderer {
         continue;
       }
       const t = age / LIFE;
-      const p = this.camera.worldToScreen(ring.x, ring.y, this.w, this.h);
+      const p = this.liftedWTS(ring.x, ring.y);
       ctx.globalAlpha = (1 - t) * 0.8;
       ctx.strokeStyle = ring.color;
       ctx.lineWidth = Math.max(1.5, this.camera.scale * 0.07 * (1 - t));
@@ -606,16 +798,37 @@ export class Renderer {
         const key = `${cx},${cy}`;
         let baked = this.baked.get(key);
         if (!baked || baked.data !== data || baked.rev !== (data.rev ?? 0)) {
+          const ground = (tx: number, ty: number) => game.world.groundAt(tx, ty);
+          const detail = (tx: number, ty: number) => this.detailAt(game, tx, ty);
+          const elev = (tx: number, ty: number) => game.world.elevAt(tx, ty);
+          let maxLevel = 0;
+          for (let i = 0; i < data.elev.length; i++) {
+            if (data.elev[i]! > maxLevel) maxLevel = data.elev[i]!;
+          }
+          const lifted: BakedChunk['lifted'] = [];
+          for (let level = 1; level <= maxLevel; level++) {
+            const bake = bakeElevated(ground, detail, elev, cx, cy, TILE_PX, level);
+            if (!bake) continue;
+            // Contiguous row runs, merged across small gaps, padded one
+            // row each way for the half-tile contour bleed.
+            const bands: Array<[number, number]> = [];
+            for (let r = 0; r < CHUNK_SIZE; r++) {
+              if (!bake.rows[r]) continue;
+              const last = bands[bands.length - 1];
+              if (last && r - last[1] <= 3) last[1] = r;
+              else bands.push([r, r]);
+            }
+            for (const band of bands) {
+              band[0] = Math.max(0, band[0] - 1);
+              band[1] = Math.min(CHUNK_SIZE - 1, band[1] + 1);
+            }
+            lifted.push({ level, canvas: bake.canvas, bands });
+          }
           baked = {
-            canvas: bakeChunk(
-              (tx, ty) => game.world.groundAt(tx, ty),
-              (tx, ty) => this.detailAt(game, tx, ty),
-              cx,
-              cy,
-              TILE_PX,
-            ),
+            canvas: bakeChunk(ground, detail, elev, cx, cy, TILE_PX),
             data,
             rev: data.rev ?? 0,
+            lifted,
           };
           this.baked.set(key, baked);
         }
@@ -662,13 +875,26 @@ export class Renderer {
       for (let tx = b.minTx; tx <= b.maxTx; tx++) {
         const ground = game.world.groundAt(tx, ty);
         if (ground === undefined) continue;
+        if (ground === Tile.Cliff) {
+          const item = this.cliffItem(tx, ty, game);
+          if (item) items.push(item);
+          continue;
+        }
+        if (ground === Tile.Ramp) {
+          items.push(this.rampItem(tx, ty, game));
+          continue;
+        }
         if (Renderer.WALL_TILES.has(ground)) {
-          items.push(this.wallItem(ground as Tile, tx, ty, game));
+          const item = this.wallItem(ground as Tile, tx, ty, game);
+          if (game.world.elevAt(tx, ty) > 0) item.elevated = true;
+          items.push(item);
           continue;
         }
         const def = tileDef(ground);
         if (!def.raised && ground !== Tile.Stump) continue;
-        items.push(this.objectItem(ground as Tile, tx, ty, game));
+        const item = this.objectItem(ground as Tile, tx, ty, game);
+        if (game.world.elevAt(tx, ty) > 0) item.elevated = true;
+        items.push(item);
       }
     }
   }
@@ -681,6 +907,7 @@ export class Renderer {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const isWall = (t: number | undefined) => t !== undefined && Renderer.WALL_TILES.has(t);
     const n = isWall(game.world.groundAt(tx, ty - 1));
     const e = isWall(game.world.groundAt(tx + 1, ty));
@@ -813,6 +1040,477 @@ export class Renderer {
         ctx.restore();
       },
     };
+  }
+
+  // -------------------------------------------------------------- cliffs
+
+  /**
+   * A cliff face: the exposed south wall of a plateau rim tile,
+   * dropping (myLevel − southLevel)·ELEV_H to the ground below. The
+   * crown is NOT drawn here — the lifted terrain band paints the
+   * plateau surface right over the rim, marching-squares contour and
+   * all — so the face is pure landform: bedded strata, cracks, a
+   * shadowed base with scree. Rim tiles with no southern exposure
+   * return null (nothing of them is visible but the crown).
+   */
+  private cliffItem(tx: number, ty: number, game: ClientGame): DrawItem | null {
+    const myL = game.world.elevAt(tx, ty);
+    const southL = game.world.elevAt(tx, ty + 1);
+    if (southL >= myL) return null;
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
+    const syT = s * this.camera.yScale;
+    const h = hashCoords(53, tx, ty);
+    const drop = myL - southL;
+    const hs = drop * ELEV_H * s;
+    const southIsCliff = game.world.groundAt(tx, ty + 1) === Tile.Cliff;
+    // Which vertical edges turn a convex corner (neighbor also lower)?
+    const wOpen = game.world.elevAt(tx - 1, ty) < myL && game.world.groundAt(tx - 1, ty) !== Tile.Cliff;
+    const eOpen = game.world.elevAt(tx + 1, ty) < myL && game.world.groundAt(tx + 1, ty) !== Tile.Cliff;
+    const x0 = p.x - 0.25;
+    const x1 = p.x + s + 0.25;
+
+    return {
+      sortY: ty + 1,
+      drawShadow: southIsCliff
+        ? undefined
+        : () => {
+            // A landform's shadow: long, thrown across the lower ground.
+            const off = SHADOW_OFFSET * s;
+            const yG = p.y + syT - southL * ELEV_H * s;
+            ctx.fillStyle = SHADOW_COLOR;
+            ctx.beginPath();
+            chamferRect(ctx, p.x + off * 2.2, yG + off * 0.4, s + 0.5, syT * 0.9, [0, 0, s * 0.2, 0]);
+            ctx.fill();
+          },
+      draw: () => {
+        const yBase = p.y + syT - southL * ELEV_H * s; // foot of the face
+        const yTop = yBase - hs; // meets the lifted crown surface
+        // Base rock, two vertical tones — faces catch light on the west.
+        const grad = ctx.createLinearGradient(0, yTop, 0, yBase);
+        grad.addColorStop(0, '#6d6577');
+        grad.addColorStop(0.55, '#5f5769');
+        grad.addColorStop(1, '#4d4757');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(x0, yBase + 0.5);
+        ctx.lineTo(x1, yBase + 0.5);
+        ctx.lineTo(x1, yTop);
+        ctx.lineTo(x0, yTop);
+        ctx.closePath();
+        ctx.fill();
+        // Bedded strata: continuous along the rim (fractions keyed by
+        // row + band, never by tx) — thin dark partings with one warm
+        // sediment seam.
+        for (let k = 0; k < 2 + drop; k++) {
+          const f = 0.22 + ((hashCoords(157 + k, 0, ty) >> 4) % 56) / 100;
+          const yB = yBase - hs * f;
+          ctx.fillStyle = 'rgba(34, 27, 44, 0.34)';
+          ctx.fillRect(x0, yB, x1 - x0, Math.max(1.5, s * 0.045));
+        }
+        const warmF = 0.3 + ((hashCoords(191, 0, ty) >> 5) % 30) / 100;
+        ctx.fillStyle = 'rgba(196, 150, 96, 0.13)';
+        ctx.fillRect(x0, yBase - hs * warmF - s * 0.1, x1 - x0, s * 0.1);
+        // Cracks: one or two jagged verticals per tile.
+        ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
+        ctx.lineWidth = Math.max(1, s * 0.035);
+        const cracks = 1 + (h % 2);
+        for (let k = 0; k < cracks; k++) {
+          const cx = p.x + s * (0.22 + ((h >> (4 + k * 5)) % 56) / 100);
+          const jog = s * (0.05 + ((h >> (k * 7)) % 10) / 120) * ((h >> k) % 2 === 0 ? 1 : -1);
+          const yA = yTop + hs * 0.12;
+          const yMid = yTop + hs * (0.4 + ((h >> (k * 3)) % 20) / 100);
+          ctx.beginPath();
+          ctx.moveTo(cx, yA);
+          ctx.lineTo(cx + jog, yMid);
+          ctx.lineTo(cx + jog * 0.4, yBase - hs * 0.08);
+          ctx.stroke();
+        }
+        // Corner bevels where the rim turns: a darker turning strip.
+        if (wOpen) {
+          ctx.fillStyle = 'rgba(30, 24, 42, 0.3)';
+          ctx.beginPath();
+          ctx.moveTo(x0, yTop);
+          ctx.lineTo(x0 + s * 0.14, yTop);
+          ctx.lineTo(x0, yBase * 0.35 + yTop * 0.65);
+          ctx.closePath();
+          ctx.fill();
+        }
+        if (eOpen) {
+          ctx.fillStyle = 'rgba(255, 244, 214, 0.08)';
+          ctx.beginPath();
+          ctx.moveTo(x1, yTop);
+          ctx.lineTo(x1 - s * 0.14, yTop);
+          ctx.lineTo(x1, yBase * 0.35 + yTop * 0.65);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // Shadowed lip right under the crown, then AO + scree at the
+        // foot — the face reads grounded at both ends.
+        ctx.fillStyle = 'rgba(24, 18, 34, 0.35)';
+        ctx.fillRect(x0, yTop, x1 - x0, s * 0.07);
+        ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+        ctx.fillRect(x0, yBase - s * 0.07, x1 - x0, s * 0.07);
+        ctx.fillStyle = '#6a6375';
+        for (let k = 0; k < 2; k++) {
+          const px2 = p.x + s * (0.15 + ((h >> (9 + k * 6)) % 60) / 100);
+          const pw = s * (0.07 + ((h >> (k * 4)) % 6) / 100);
+          ctx.beginPath();
+          chamferRect(ctx, px2, yBase - pw * 0.7, pw, pw * 0.7, pw * 0.3);
+          ctx.fill();
+        }
+      },
+    };
+  }
+
+  /**
+   * A stone stair crossing the cliff line: chamfered treads climbing
+   * from the low mouth to the plateau brink, framed by the flanking
+   * cliff faces. Entities standing on the tile ride renderLift(), so
+   * feet land tread by tread.
+   */
+  private rampItem(tx: number, ty: number, game: ClientGame): DrawItem {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const lvl = game.world.elevAt(tx, ty);
+    // Descent direction: the cardinal neighbor a level down.
+    let dir: [number, number] = [0, 1];
+    for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) {
+      if (game.world.elevAt(tx + dx, ty + dy) < lvl) {
+        dir = [dx, dy];
+        break;
+      }
+    }
+    const STEPS = 5;
+    const baseLift = (lvl - 1) * ELEV_H * s;
+
+    // The stair is ONE inclined slab: each tile corner rides the same
+    // renderLift() gradient the walker's feet use, so the drawn surface
+    // and the climb are the same geometry. Treads are slices of the
+    // slab with riser lines between them.
+    const cornerAt = (wx: number, wy: number): Vec2 => {
+      const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
+      const ix = Math.min(tx + 0.98, Math.max(tx + 0.02, wx));
+      const iy = Math.min(ty + 0.98, Math.max(ty + 0.02, wy));
+      p.y -= this.renderLift(ix, iy) * s;
+      return p;
+    };
+    // Low-edge corner pair (L0→L1) and high-edge pair (H0→H1), wound so
+    // f interpolates low→high across the slab.
+    let L0: Vec2;
+    let L1: Vec2;
+    let H0: Vec2;
+    let H1: Vec2;
+    if (dir[1] === 1) {
+      L0 = cornerAt(tx, ty + 1); L1 = cornerAt(tx + 1, ty + 1);
+      H0 = cornerAt(tx, ty); H1 = cornerAt(tx + 1, ty);
+    } else if (dir[1] === -1) {
+      L0 = cornerAt(tx, ty); L1 = cornerAt(tx + 1, ty);
+      H0 = cornerAt(tx, ty + 1); H1 = cornerAt(tx + 1, ty + 1);
+    } else if (dir[0] === 1) {
+      L0 = cornerAt(tx + 1, ty); L1 = cornerAt(tx + 1, ty + 1);
+      H0 = cornerAt(tx, ty); H1 = cornerAt(tx, ty + 1);
+    } else {
+      L0 = cornerAt(tx, ty); L1 = cornerAt(tx, ty + 1);
+      H0 = cornerAt(tx + 1, ty); H1 = cornerAt(tx + 1, ty + 1);
+    }
+    const lerp = (a: Vec2, b: Vec2, f: number): Vec2 => ({
+      x: a.x + (b.x - a.x) * f,
+      y: a.y + (b.y - a.y) * f,
+    });
+
+    return {
+      sortY: ty,
+      draw: () => {
+        // Undercarriage wedge: the slab's south edge dropped to the
+        // lower ground level, so the incline reads as solid stone mass.
+        const sA = this.camera.worldToScreen(tx, ty + 1, this.w, this.h);
+        const sB = this.camera.worldToScreen(tx + 1, ty + 1, this.w, this.h);
+        const eA = cornerAt(tx, ty + 1);
+        const eB = cornerAt(tx + 1, ty + 1);
+        ctx.fillStyle = '#6a6375';
+        ctx.beginPath();
+        ctx.moveTo(eA.x, eA.y);
+        ctx.lineTo(eB.x, eB.y);
+        ctx.lineTo(sB.x, sB.y - baseLift);
+        ctx.lineTo(sA.x, sA.y - baseLift);
+        ctx.closePath();
+        ctx.fill();
+        // Tread slices, low to high.
+        for (let i = 0; i < STEPS; i++) {
+          const f0 = i / STEPS;
+          const f1 = (i + 1) / STEPS;
+          const a0 = lerp(L0, H0, f0);
+          const b0 = lerp(L1, H1, f0);
+          const a1 = lerp(L0, H0, f1);
+          const b1 = lerp(L1, H1, f1);
+          ctx.fillStyle = i % 2 === 0 ? '#a8a2b0' : '#9c96a5';
+          ctx.beginPath();
+          ctx.moveTo(a0.x, a0.y);
+          ctx.lineTo(b0.x, b0.y);
+          ctx.lineTo(b1.x, b1.y);
+          ctx.lineTo(a1.x, a1.y);
+          ctx.closePath();
+          ctx.fill();
+          // Riser line at the slice's low edge.
+          ctx.strokeStyle = 'rgba(38, 32, 52, 0.4)';
+          ctx.lineWidth = Math.max(1.5, s * 0.045);
+          ctx.beginPath();
+          ctx.moveTo(a0.x, a0.y);
+          ctx.lineTo(b0.x, b0.y);
+          ctx.stroke();
+        }
+        // Side stringer shadows seam the stair to its flanking cliffs.
+        ctx.strokeStyle = 'rgba(26, 20, 36, 0.35)';
+        ctx.lineWidth = Math.max(2, s * 0.06);
+        ctx.beginPath();
+        ctx.moveTo(L0.x, L0.y);
+        ctx.lineTo(H0.x, H0.y);
+        ctx.moveTo(L1.x, L1.y);
+        ctx.lineTo(H1.x, H1.y);
+        ctx.stroke();
+      },
+    };
+  }
+
+  // --------------------------------------------------------- rock nodes
+
+  private static readonly ORE_STYLES: Partial<
+    Record<number, { nug: string; deep: string; accent: string; chunky?: boolean; sparkle?: boolean }>
+  > = {
+    [Tile.RockCopper]: { nug: '#d08a45', deep: '#8a4f2a', accent: '#4fae96' },
+    [Tile.RockTin]: { nug: '#cfd3dc', deep: '#8f95a3', accent: '#f4f6fa' },
+    [Tile.RockIron]: { nug: '#b0705a', deep: '#6f4638', accent: '#4a4f5c' },
+    [Tile.RockCoal]: { nug: '#2c2933', deep: '#191621', accent: '#8a86a0', chunky: true },
+    [Tile.RockGold]: { nug: '#f2c94c', deep: '#a8801f', accent: '#fff7d9', sparkle: true },
+  };
+
+  /**
+   * A mining node is a FORMATION, not a pebble: a squat faceted outcrop
+   * of two or three boulders in the same shape language as the cliffs —
+   * dark south faces under flat lit caps — with the metal laid into the
+   * main face as an angular seam of chunky nuggets. Every metal reads
+   * at a glance: warm copper with verdigris flecks, pale flat tin,
+   * rust-banded iron, glossy black coal, and gold that catches the sun
+   * on a slow pulse. Depleted formations keep their mass but go dull,
+   * cracked, and empty.
+   */
+  private drawRockFormation(
+    px: number,
+    py: number,
+    s: number,
+    h: number,
+    tile: Tile,
+    tSec: number,
+  ): void {
+    const ctx = this.ctx;
+    const depleted = tile === Tile.RockDepleted;
+    const style = depleted ? undefined : Renderer.ORE_STYLES[tile];
+    const face = depleted ? '#524d5e' : '#5f596b';
+    const cap = depleted ? '#615c6e' : '#847e91';
+    const capLit = depleted ? '#6a6577' : '#918b9e';
+
+    // Composition: one dominant boulder, satellites tucked south-east /
+    // south-west so the cluster reads in depth.
+    const boulders: Array<{ ox: number; oy: number; r: number; seed: number }> = [
+      { ox: -0.02, oy: -0.04, r: depleted ? 0.36 : 0.44, seed: h },
+    ];
+    if (h % 3 !== 2) {
+      boulders.push({
+        ox: 0.3 + ((h >> 6) % 10) / 100,
+        oy: 0.14,
+        r: 0.2 + ((h >> 9) % 8) / 100,
+        seed: h ^ 0x9e37,
+      });
+    }
+    if ((h >> 4) % 3 !== 1) {
+      boulders.push({
+        ox: -0.32 - ((h >> 11) % 8) / 100,
+        oy: 0.16,
+        r: 0.17 + ((h >> 13) % 8) / 100,
+        seed: h ^ 0x51f3,
+      });
+    }
+    boulders.sort((a, b) => a.oy - b.oy);
+
+    const outline = (
+      cx: number,
+      cy: number,
+      r: number,
+      seed: number,
+      squash: number,
+    ): Array<[number, number]> => {
+      const pts: Array<[number, number]> = [];
+      const n = 7;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 - Math.PI / 2 + (((seed >> (i * 2)) & 3) - 1.5) * 0.07;
+        const rad = r * (0.84 + (((seed >> (i * 3)) & 7) / 7) * 0.28);
+        pts.push([cx + Math.cos(a) * rad, cy + Math.sin(a) * rad * squash]);
+      }
+      return pts;
+    };
+    const fillPoly = (pts: Array<[number, number]>): void => {
+      ctx.beginPath();
+      pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+      ctx.closePath();
+      ctx.fill();
+    };
+
+    let mainPts: Array<[number, number]> | null = null;
+    let mainCap: Array<[number, number]> | null = null;
+    for (const b of boulders) {
+      const cx = px + b.ox * s;
+      const cy = py - s * 0.1 + b.oy * s;
+      const pts = outline(cx, cy, b.r * s, b.seed, 0.85);
+      // South face mass.
+      ctx.fillStyle = face;
+      fillPoly(pts);
+      // Flat cap: the same silhouette pulled toward its center and
+      // lifted — the mini-mesa read that ties nodes to the cliffs.
+      const lift = b.r * s * 0.34;
+      const capPts = pts.map(
+        ([x, y]): [number, number] => [cx + (x - cx) * 0.86, cy + (y - cy) * 0.8 - lift],
+      );
+      ctx.fillStyle = cap;
+      fillPoly(capPts);
+      // Lit north-west facet on the cap.
+      ctx.fillStyle = capLit;
+      ctx.beginPath();
+      const c0 = capPts[5]!;
+      const c1 = capPts[6]!;
+      const c2 = capPts[0]!;
+      ctx.moveTo(c0[0], c0[1]);
+      ctx.lineTo(c1[0], c1[1]);
+      ctx.lineTo(c2[0], c2[1]);
+      ctx.lineTo(cx, cy - lift);
+      ctx.closePath();
+      ctx.fill();
+      // AO seam where the face meets the ground.
+      ctx.fillStyle = 'rgba(18, 12, 26, 0.25)';
+      ctx.fillRect(cx - b.r * s * 0.62, cy + b.r * s * 0.62, b.r * s * 1.24, Math.max(1.5, s * 0.045));
+      if (!mainPts) {
+        mainPts = pts;
+        mainCap = capPts;
+      }
+    }
+
+    const mainB = boulders[0]!;
+    const mcx = px + mainB.ox * s;
+    const mcy = py - s * 0.1 + mainB.oy * s;
+    const mr = mainB.r * s;
+
+    if (depleted) {
+      // Hollowed and cracked: the seam is spent.
+      ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+      ctx.lineWidth = Math.max(1.5, s * 0.04);
+      for (let k = 0; k < 2; k++) {
+        const a0 = ((h >> (k * 5)) % 100) / 100 * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(mcx + Math.cos(a0) * mr * 0.2, mcy + Math.sin(a0) * mr * 0.15);
+        ctx.lineTo(mcx + Math.cos(a0 + 0.5) * mr * 0.6, mcy + Math.sin(a0 + 0.5) * mr * 0.5);
+        ctx.lineTo(mcx + Math.cos(a0 + 0.4) * mr * 0.95, mcy + Math.sin(a0 + 0.4) * mr * 0.8);
+        ctx.stroke();
+      }
+      // Rubble the pick left behind.
+      ctx.fillStyle = '#4a4556';
+      for (let k = 0; k < 3; k++) {
+        const rx = mcx + (((h >> (k * 6)) % 120) - 60) / 100 * s * 0.55;
+        const rw = s * (0.05 + ((h >> (k * 4)) % 5) / 100);
+        ctx.beginPath();
+        chamferRect(ctx, rx, mcy + mr * 0.72, rw, rw * 0.7, rw * 0.3);
+        ctx.fill();
+      }
+      return;
+    }
+
+    if (!style) {
+      // Barren stone: a pale quartz streak on some formations.
+      if (h % 3 === 0 && mainPts) {
+        ctx.strokeStyle = 'rgba(228, 224, 236, 0.4)';
+        ctx.lineWidth = Math.max(1.5, s * 0.045);
+        ctx.beginPath();
+        ctx.moveTo(mcx - mr * 0.5, mcy + mr * 0.1);
+        ctx.lineTo(mcx - mr * 0.1, mcy - mr * 0.15);
+        ctx.lineTo(mcx + mr * 0.45, mcy + mr * 0.05);
+        ctx.stroke();
+      }
+      return;
+    }
+
+    // The seam: an angular vein across the main face, studded with
+    // chunky faceted nuggets.
+    const seamY = mcy + mr * 0.28;
+    ctx.strokeStyle = style.deep;
+    ctx.lineWidth = Math.max(2, s * 0.055);
+    ctx.lineJoin = 'miter';
+    ctx.beginPath();
+    ctx.moveTo(mcx - mr * 0.72, seamY + mr * 0.08);
+    ctx.lineTo(mcx - mr * 0.3, seamY - mr * 0.16);
+    ctx.lineTo(mcx + mr * 0.08, seamY + mr * 0.05);
+    ctx.lineTo(mcx + mr * 0.48, seamY - mr * 0.2);
+    ctx.lineTo(mcx + mr * 0.74, seamY - mr * 0.05);
+    ctx.stroke();
+    const nuggets = style.chunky ? 5 : 4;
+    for (let k = 0; k < nuggets; k++) {
+      const f = (k + 0.5) / nuggets;
+      const nx = mcx - mr * 0.72 + f * mr * 1.44 + (((h >> (k * 3)) % 8) - 4) / 100 * s;
+      const ny = seamY - Math.sin(f * Math.PI * 1.7) * mr * 0.16 + (((h >> (k * 5)) % 10) - 5) / 100 * s;
+      const nr = s * (style.chunky ? 0.085 : 0.07) * (0.8 + ((h >> (k * 4)) % 6) / 10);
+      ctx.save();
+      ctx.translate(nx, ny);
+      ctx.rotate(((h >> (k * 2)) % 12) / 12 * Math.PI);
+      ctx.fillStyle = style.deep;
+      ctx.beginPath();
+      chamferRect(ctx, -nr, -nr * 0.85, nr * 2, nr * 1.7, nr * 0.55);
+      ctx.fill();
+      ctx.fillStyle = style.nug;
+      ctx.beginPath();
+      chamferRect(ctx, -nr * 0.72, -nr * 0.62, nr * 1.44, nr * 1.24, nr * 0.4);
+      ctx.fill();
+      // Specular tick on the upper-left corner facet.
+      ctx.fillStyle = style.accent;
+      ctx.fillRect(-nr * 0.5, -nr * 0.45, nr * 0.42, nr * 0.3);
+      ctx.restore();
+    }
+    // A couple of loose accent flecks off the seam (verdigris, rust...).
+    ctx.fillStyle = style.accent;
+    for (let k = 0; k < 2; k++) {
+      const fx = mcx + (((h >> (7 + k * 5)) % 140) - 70) / 100 * mr;
+      const fy = mcy + (((h >> (3 + k * 7)) % 90) - 55) / 100 * mr * 0.8;
+      ctx.globalAlpha = 0.55;
+      ctx.fillRect(fx, fy, Math.max(1.5, s * 0.03), Math.max(1.5, s * 0.03));
+      ctx.globalAlpha = 1;
+    }
+    // Gold catches the light: one nugget flares on a slow pulse.
+    if (style.sparkle && mainCap) {
+      const phase = (tSec * 0.9 + (h % 100) / 100) % 1;
+      const a = Math.max(0, Math.sin(phase * Math.PI) - 0.55) / 0.45;
+      if (a > 0) {
+        const gx = mcx + mr * 0.1;
+        const gy = seamY - mr * 0.05;
+        const gr = s * 0.12 * a;
+        ctx.fillStyle = `rgba(255, 247, 217, ${0.85 * a})`;
+        ctx.beginPath();
+        ctx.moveTo(gx, gy - gr);
+        ctx.lineTo(gx + gr * 0.3, gy - gr * 0.3);
+        ctx.lineTo(gx + gr, gy);
+        ctx.lineTo(gx + gr * 0.3, gy + gr * 0.3);
+        ctx.lineTo(gx, gy + gr);
+        ctx.lineTo(gx - gr * 0.3, gy + gr * 0.3);
+        ctx.lineTo(gx - gr, gy);
+        ctx.lineTo(gx - gr * 0.3, gy - gr * 0.3);
+        ctx.closePath();
+        ctx.fill();
+        this.queueGlow(
+          (gx - this.w / 2) / s + this.camera.x,
+          (gy - this.h / 2) / (s * this.camera.yScale) + this.camera.y,
+          0.5 * a,
+          '242, 201, 76',
+          0.2 * a,
+        );
+      }
+    }
   }
 
   // -------------------------------------------------------------- trees
@@ -1279,9 +1977,11 @@ export class Renderer {
 
       items.push({
         sortY: ft.ty + 0.9,
+        elevated: this.renderLift(cx, cy) > 0,
         draw: () => {
           const ctx = this.ctx;
           const p = this.camera.worldToScreen(cx, cy, this.w, this.h);
+          p.y -= this.renderLift(cx, cy) * this.camera.scale;
           const syT = this.camera.scale * this.camera.yScale;
           const pivotY = p.y + syT * 0.3;
           let angle: number;
@@ -1323,6 +2023,7 @@ export class Renderer {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const off = SHADOW_OFFSET * s;
     const h = hashCoords(41, tx, ty);
     const t = performance.now() / 1000;
@@ -1340,60 +2041,22 @@ export class Renderer {
 
       case Tile.Rock:
       case Tile.RockCopper:
+      case Tile.RockTin:
       case Tile.RockIron:
+      case Tile.RockCoal:
+      case Tile.RockGold:
       case Tile.RockDepleted: {
         const depleted = tile === Tile.RockDepleted;
-        const ore = tile === Tile.RockCopper ? '#d08a45' : tile === Tile.RockIron ? '#c2c8d2' : null;
-        const size = depleted ? 0.62 : 0.86;
-        // Low-poly boulder: jittered hexagon with a lit facet.
-        const verts: Array<[number, number]> = [];
-        for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
-          const jr = 0.32 + (((h >> (i * 4)) & 15) / 15) * 0.12;
-          verts.push([Math.cos(a) * jr * size, Math.sin(a) * jr * size * 0.8]);
-        }
+        const size = depleted ? 0.8 : 1;
         return {
           sortY: ty + 0.85,
           drawShadow: () => {
             ctx.fillStyle = SHADOW_COLOR;
             ctx.beginPath();
-            facetCircle(ctx, p.x + off, p.y + s * 0.14 + off * 0.5, s * 0.42 * size, 7, 0.3, 0.57);
+            facetCircle(ctx, p.x + off, p.y + s * 0.16 + off * 0.5, s * 0.46 * size, 7, 0.3, 0.55);
             ctx.fill();
           },
-          draw: () => {
-            ctx.fillStyle = depleted ? '#575263' : '#6e6879';
-            ctx.beginPath();
-            verts.forEach(([vx, vy], i) => {
-              const x = p.x + vx * s;
-              const y = p.y - s * 0.06 + vy * s;
-              if (i === 0) ctx.moveTo(x, y);
-              else ctx.lineTo(x, y);
-            });
-            ctx.closePath();
-            ctx.fill();
-            // Lit facet: top-left half of the polygon.
-            ctx.fillStyle = depleted ? '#615c6e' : '#847e91';
-            ctx.beginPath();
-            ctx.moveTo(p.x + verts[0]![0] * s, p.y - s * 0.06 + verts[0]![1] * s);
-            ctx.lineTo(p.x + verts[5]![0] * s, p.y - s * 0.06 + verts[5]![1] * s);
-            ctx.lineTo(p.x + verts[4]![0] * s, p.y - s * 0.06 + verts[4]![1] * s);
-            ctx.lineTo(p.x, p.y - s * 0.06);
-            ctx.closePath();
-            ctx.fill();
-            if (ore) {
-              ctx.fillStyle = ore;
-              for (let i = 0; i < 3; i++) {
-                const ox = (((h >> (i * 6)) % 40) - 20) / 60;
-                const oy = (((h >> (i * 6 + 3)) % 30) - 5) / 80;
-                ctx.beginPath();
-                ctx.moveTo(p.x + ox * s, p.y + oy * s - s * 0.1);
-                ctx.lineTo(p.x + ox * s + s * 0.07, p.y + oy * s - s * 0.02);
-                ctx.lineTo(p.x + ox * s - s * 0.05, p.y + oy * s);
-                ctx.closePath();
-                ctx.fill();
-              }
-            }
-          },
+          draw: () => this.drawRockFormation(p.x, p.y, s, h, tile, t),
         };
       }
 
@@ -1787,9 +2450,15 @@ export class Renderer {
           ? Math.min(1, (now - anim.poseStartedAt) / (DRAW_FULL_TICKS * TICK_MS))
           : 0;
 
+    // Terrain rise: the body rides the ground under it, and each foot
+    // rides the ground under ITSELF — that difference is what makes a
+    // stair climb read step by step.
+    const terrainLift = this.renderLift(e.x, e.y) * s;
     const p = this.camera.worldToScreen(e.x, e.y, this.w, this.h);
+    p.y -= terrainLift;
     const feet = legPose.feet.map((f) => {
       const fp = this.camera.worldToScreen(f.x, f.y, this.w, this.h);
+      fp.y -= this.renderLift(f.x, f.y) * s;
       return { x: fp.x, y: fp.y, lift: f.lift };
     });
 
@@ -1814,15 +2483,19 @@ export class Renderer {
       lunge = 0.05 * Math.max(0, 1 - poseT / 0.4); // push into the cast
     }
     // Gathering: square up to the node and swing the belt tool at it.
+    // Crafting: square up to the station and work it.
     let dir = e.dir;
     const gather = e.pose === PoseState.Gather ? this.findGatherNode(e.x, e.y) : null;
     if (gather) dir = Math.atan2(gather.ty + 0.5 - e.y, gather.tx + 0.5 - e.x);
+    const station = e.pose === PoseState.Craft ? this.findStation(e.x, e.y) : null;
+    if (station) dir = Math.atan2(station.ty + 0.5 - e.y, station.tx + 0.5 - e.x);
 
     const bodyX = p.x + Math.cos(dir) * lunge * s;
     const bodyY = p.y + Math.sin(dir) * lunge * s;
 
     return {
       sortY: e.y,
+      elevated: terrainLift > 0,
       drawShadow: () => {
         ctx.fillStyle = SHADOW_COLOR;
         ctx.beginPath();
@@ -1830,20 +2503,17 @@ export class Renderer {
         ctx.fill();
       },
       draw: () => {
-        // Tool impacts: chips fly off the node at the strike beat.
-        const toolId = e.equip.tool ?? '';
-        if (gather && gather.kind !== 'fish' && toolId.includes('axe')) {
-          const cycle = Math.floor(performance.now() / 700);
-          const u = (performance.now() % 700) / 700;
+        // Tool impacts: debris flies off the node at each strike beat,
+        // timed to the tool's own cycle.
+        const toolType = itemDef(e.equip.tool ?? '')?.tool?.type;
+        if (gather && gather.kind === 'tree' && toolType === 'axe') {
+          const cycle = Math.floor(performance.now() / CHOP_CYCLE_MS);
+          const u = (performance.now() % CHOP_CYCLE_MS) / CHOP_CYCLE_MS;
           if (u >= 0.54 && anim.lastChopHit !== cycle) {
             anim.lastChopHit = cycle;
             const chipX = gather.tx + 0.5 - Math.cos(dir) * 0.38;
             const chipY = gather.ty + 0.5 - Math.sin(dir) * 0.38;
-            const colors =
-              gather.kind === 'tree'
-                ? ['#a5793f', '#c9b083', '#8a6a45']
-                : ['#c9ccd4', '#9aa2ac', '#847e91'];
-            this.particles.burst(chipX, chipY, 7, colors, {
+            this.particles.burst(chipX, chipY, 7, ['#a5793f', '#c9b083', '#8a6a45'], {
               speed: 2.4,
               life: 0.5,
               size: 0.07,
@@ -1851,7 +2521,76 @@ export class Renderer {
               dir: dir + Math.PI,
               spread: 1.3,
             });
-            this.onGatherImpact?.(gather.kind);
+            this.onGatherImpact?.('tree');
+          }
+        } else if (gather && gather.kind === 'rock' && toolType === 'pickaxe') {
+          const cycle = Math.floor(performance.now() / MINE_CYCLE_MS);
+          const u = (performance.now() % MINE_CYCLE_MS) / MINE_CYCLE_MS;
+          if (u >= 0.54 && anim.lastChopHit !== cycle) {
+            anim.lastChopHit = cycle;
+            const chipX = gather.tx + 0.5 - Math.cos(dir) * 0.42;
+            const chipY = gather.ty + 0.5 - Math.sin(dir) * 0.42;
+            // Stone chips off the face...
+            this.particles.burst(chipX, chipY, 6, ['#c9ccd4', '#9aa2ac', '#847e91'], {
+              speed: 2.2,
+              life: 0.5,
+              size: 0.065,
+              gravity: 7,
+              dir: dir + Math.PI,
+              spread: 1.2,
+            });
+            // ...plus the metal-on-rock SPARKS that make it mining, in
+            // the seam's own color when the rock carries ore.
+            const nodeTile = this.game?.world.groundAt(gather.tx, gather.ty);
+            const style = nodeTile !== undefined ? Renderer.ORE_STYLES[nodeTile] : undefined;
+            this.particles.burst(chipX, chipY, 4, ['#fff3c9', '#ffd77a', style?.nug ?? '#ffe9a8'], {
+              speed: 3.4,
+              life: 0.24,
+              size: 0.04,
+              gravity: 4,
+              up: true,
+              spread: 2,
+            });
+            this.onGatherImpact?.('rock');
+          }
+        } else if (station?.kind === 'anvil') {
+          const cycle = Math.floor(performance.now() / ANVIL_CYCLE_MS);
+          const u = (performance.now() % ANVIL_CYCLE_MS) / ANVIL_CYCLE_MS;
+          if (u >= 0.42 && anim.lastChopHit !== cycle) {
+            anim.lastChopHit = cycle;
+            // Sparks ring off the billet between smith and anvil.
+            const sx = e.x + Math.cos(dir) * 0.42;
+            const sy = e.y + Math.sin(dir) * 0.42;
+            this.particles.burst(sx, sy, 9, ['#fff3c9', '#ffd77a', '#ff9a3d'], {
+              speed: 3,
+              life: 0.38,
+              size: 0.045,
+              gravity: 9,
+              up: true,
+              spread: 2.4,
+            });
+            this.queueGlow(sx, sy, 0.7, '255, 176, 82', 0.3);
+            this.onGatherImpact?.('anvil');
+          }
+        } else if (station?.kind === 'furnace') {
+          const cycle = Math.floor(performance.now() / FURNACE_CYCLE_MS);
+          const u = (performance.now() % FURNACE_CYCLE_MS) / FURNACE_CYCLE_MS;
+          if (u >= 0.42 && anim.lastChopHit !== cycle) {
+            anim.lastChopHit = cycle;
+            // The mouth flares and a swarm of embers climbs the draft.
+            const fx2 = station.tx + 0.5;
+            const fy2 = station.ty + 0.6;
+            this.particles.burst(fx2, fy2, 10, ['#ff9e42', '#ffd77a', '#c4553d'], {
+              speed: 0.9,
+              life: 1.0,
+              size: 0.05,
+              gravity: -1.6,
+              drag: 1.2,
+              spread: 1.4,
+              dir: -Math.PI / 2,
+            });
+            this.queueGlow(fx2, fy2, 1.4, '255, 138, 52', 0.4);
+            this.onGatherImpact?.('furnace');
           }
         }
 
@@ -1875,15 +2614,19 @@ export class Renderer {
           bodyColor: e.color,
           hurt: e.hurt ?? false,
           isOwn: e.isOwn,
-          // During a gather the BELT tool is what's in the hands.
+          // During a gather the BELT tool is what's in the hands; at a
+          // station the smith's own kit replaces the weapon entirely.
           weaponItem:
-            e.pose === PoseState.Gather
-              ? (e.equip.tool ?? e.equip.weapon)
-              : e.equip.weapon,
+            e.pose === PoseState.Craft
+              ? undefined
+              : e.pose === PoseState.Gather
+                ? (e.equip.tool ?? e.equip.weapon)
+                : e.equip.weapon,
           bodyItem: e.equip.body,
           size: e.size,
           skinColor: e.skinColor,
           gatherPhase: now / 1000,
+          craftKind: station?.kind ?? null,
         });
 
         const topY = p.y - (1.1 * (e.size ?? 1)) * s;
@@ -1947,7 +2690,9 @@ export class Renderer {
     const def = npcDef(defId);
     const scale = this.camera.scale;
     const r = (def?.radius ?? 0.3) * scale;
+    const terrainLift = this.renderLift(s.x, s.y) * scale;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
+    p.y -= terrainLift;
     const anim = this.animFor(eid, s.x, s.y, s.pose, performance.now());
     const attackT =
       s.pose === PoseState.Attack
@@ -1955,6 +2700,7 @@ export class Renderer {
         : 0;
     return {
       sortY: s.y,
+      elevated: terrainLift > 0,
       drawShadow: () => {
         ctx.fillStyle = SHADOW_COLOR;
         ctx.beginPath();
@@ -1997,11 +2743,14 @@ export class Renderer {
     const ctx = this.ctx;
     const def = itemDef(itemId);
     const scale = this.camera.scale;
+    const terrainLift = this.renderLift(s.x, s.y) * scale;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
+    p.y -= terrainLift;
     const bob = Math.sin(now / 320 + s.x * 7) * scale * 0.05;
     const size = scale * 0.3;
     return {
       sortY: s.y - 0.2,
+      elevated: terrainLift > 0,
       drawShadow: () => {
         ctx.fillStyle = SHADOW_COLOR;
         ctx.beginPath();
@@ -2033,6 +2782,7 @@ export class Renderer {
     const ctx = this.ctx;
     const scale = this.camera.scale;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
+    p.y -= this.renderLift(s.x, s.y) * scale;
     return {
       sortY: s.y + 10,
       draw: () => {
@@ -2097,6 +2847,7 @@ export class Renderer {
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(this.buildGhost.tx, this.buildGhost.ty, this.w, this.h);
     const sy = this.camera.worldToScreen(this.buildGhost.tx, this.buildGhost.ty + 1, this.w, this.h).y - p.y;
+    p.y -= this.renderLift(this.buildGhost.tx + 0.5, this.buildGhost.ty + 0.5) * s;
     ctx.globalAlpha = 0.5;
     ctx.fillStyle = this.buildGhost.color;
     ctx.beginPath();
@@ -2119,7 +2870,7 @@ export class Renderer {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const own = game.predictor.renderPos();
-    const p = this.camera.worldToScreen(own.x, own.y, this.w, this.h);
+    const p = this.liftedWTS(own.x, own.y);
     const bw = s * 1.0;
     const bh = Math.max(4, s * 0.1);
     const bx = p.x - bw / 2;
@@ -2143,7 +2894,7 @@ export class Renderer {
         continue;
       }
       const frac = age / LIFE;
-      const p = this.camera.worldToScreen(f.x, f.y - frac * 0.8, this.w, this.h);
+      const p = this.liftedWTS(f.x, f.y - frac * 0.8);
       ctx.globalAlpha = 1 - frac * frac;
       // Pop: numbers land big and settle — impact you can read.
       const pop = 1 + 0.55 * Math.max(0, 1 - age / 130);

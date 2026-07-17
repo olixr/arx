@@ -710,7 +710,7 @@ export class GameServer {
       return;
     }
     player.action = { kind: 'craft', recipe, remaining: qty, ticksLeft: recipe.ticks };
-    this.poses.set(eid, PoseState.Gather);
+    this.poses.set(eid, PoseState.Craft);
     player.session.sendJson({ t: 'action', state: 'start', ticks: recipe.ticks });
   }
 
@@ -1687,7 +1687,12 @@ export class GameServer {
     } else if (this.tickCount < player.poseUntilTick) {
       // Hold a transient combat pose (attack/hurt) briefly.
     } else if (player.action) {
-      this.poses.set(eid, PoseState.Gather);
+      // Craft reads as station work (hammering, stoking); everything
+      // else keeps the tool-swinging gather pose.
+      this.poses.set(
+        eid,
+        player.action.kind === 'craft' ? PoseState.Craft : PoseState.Gather,
+      );
     } else {
       this.poses.set(eid, moved ? PoseState.Walk : PoseState.Idle);
     }

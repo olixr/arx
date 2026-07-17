@@ -46,7 +46,10 @@ const defs: ItemDef[] = [
 
   // Ores
   { id: 'copper_ore', name: 'Copper ore', stackable: false, value: 6, color: '#b87333', code: 'Cu' },
+  { id: 'tin_ore', name: 'Tin ore', stackable: false, value: 6, color: '#c9c4cf', code: 'Sn' },
   { id: 'iron_ore', name: 'Iron ore', stackable: false, value: 18, color: '#8d9299', code: 'Fe' },
+  { id: 'coal', name: 'Coal', stackable: false, value: 22, color: '#2e2b33', code: 'Co' },
+  { id: 'gold_ore', name: 'Gold ore', stackable: false, value: 45, color: '#e8b64c', code: 'Au' },
 
   // Fish & food
   { id: 'raw_trout', name: 'Raw trout', stackable: false, value: 8, color: '#7fb2d9', code: 'Tr' },
@@ -60,8 +63,10 @@ const defs: ItemDef[] = [
   { id: 'burnt_food', name: 'Burnt food', stackable: false, value: 1, color: '#3a363f', code: 'Bt' },
 
   // Metal bars
-  { id: 'bronze_bar', name: 'Bronze bar', stackable: false, value: 12, color: '#a4744b', code: 'Bb' },
+  { id: 'bronze_bar', name: 'Bronze bar', stackable: false, value: 16, color: '#a4744b', code: 'Bb' },
   { id: 'iron_bar', name: 'Iron bar', stackable: false, value: 30, color: '#8d9299', code: 'Ib' },
+  { id: 'steel_bar', name: 'Steel bar', stackable: false, value: 80, color: '#b8bec8', code: 'Sb' },
+  { id: 'gold_bar', name: 'Gold bar', stackable: false, value: 95, color: '#f2c94c', code: 'Gb' },
 
   // Crafting materials & gear
   { id: 'leather', name: 'Leather', stackable: false, value: 12, color: '#b08a5c', code: 'Le' },
@@ -86,6 +91,18 @@ const defs: ItemDef[] = [
     color: '#8d9299',
     code: 'Is',
   },
+  {
+    id: 'steel_sword',
+    name: 'Steel sword',
+    stackable: false,
+    value: 240,
+    equipSlot: 'weapon',
+    weapon: { style: 'melee', damage: 7, cooldownTicks: 24, range: 2.05 },
+    color: '#b8bec8',
+    code: 'Ss',
+  },
+  // Smithed valuables — the goldsmith's vendor line.
+  { id: 'gold_ring', name: 'Gold ring', stackable: false, value: 180, color: '#f2c94c', code: 'Gr' },
 
   // Monster drops
   { id: 'bones', name: 'Bones', stackable: false, value: 2, color: '#e6e0d0', code: 'Bn' },

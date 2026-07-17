@@ -54,12 +54,37 @@ export function generateDelve(seed: number, origin: Vec2, returnTo: Vec2): Delve
     carve(b.cx - 1, y0, 3, y1 - y0 + 2);
   }
 
-  // Scatter ore veins along walls of carved space.
-  for (let i = 0; i < 6; i++) {
-    const room = rng.pick(rooms);
-    const ix = rng.int(room.x, room.x + room.w - 1);
-    const iy = rng.int(room.y, room.y + room.h - 1);
-    ground[iy * SIZE + ix] = rng.chance(0.5) ? Tile.RockIron : Tile.RockCopper;
+  // Ore veins hug the cavern walls — the deep rock is where the good
+  // metal lives: iron and coal seams everywhere, gold in the deepest
+  // rooms under the champion's nose.
+  const wallAdjacent = (ix: number, iy: number): boolean => {
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      if (ground[(iy + dy) * SIZE + ix + dx] === Tile.CaveWall) return true;
+    }
+    return false;
+  };
+  for (let ri = 0; ri < rooms.length; ri++) {
+    const room = rooms[ri]!;
+    const deep = ri >= rooms.length - 2;
+    const veins = rng.int(2, 4);
+    for (let v = 0; v < veins; v++) {
+      // Walk the room's edge tiles looking for a wall-hugging spot.
+      for (let attempt = 0; attempt < 12; attempt++) {
+        const ix = rng.int(room.x, room.x + room.w - 1);
+        const iy = rng.int(room.y, room.y + room.h - 1);
+        const idx = iy * SIZE + ix;
+        if (ground[idx] !== Tile.CaveFloor || !wallAdjacent(ix, iy)) continue;
+        ground[idx] = deep
+          ? rng.chance(0.4) ? Tile.RockGold
+            : rng.chance(0.5) ? Tile.RockCoal
+            : Tile.RockIron
+          : rng.chance(0.45) ? Tile.RockIron
+            : rng.chance(0.5) ? Tile.RockCoal
+            : rng.chance(0.5) ? Tile.RockCopper
+            : Tile.RockTin;
+        break;
+      }
+    }
   }
 
   const entryRoom = rooms[0]!;

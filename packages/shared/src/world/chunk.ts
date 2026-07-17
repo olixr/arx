@@ -10,6 +10,13 @@ export interface ChunkData {
   cy: number;
   ground: Uint16Array; // CHUNK_TILES entries
   detail: Uint16Array;
+  /**
+   * Elevation LEVEL per tile (0..3). Render-only: plateau tops draw
+   * lifted and entities standing on them rise with the ground. It never
+   * affects collision — worldgen guarantees every level change is
+   * fenced by solid Cliff tiles except where a walkable Ramp crosses.
+   */
+  elev: Uint8Array;
   /** Bumped on in-place mutation so render caches can invalidate. */
   rev?: number;
 }
@@ -24,6 +31,7 @@ export function emptyChunk(cx: number, cy: number): ChunkData {
     cy,
     ground: new Uint16Array(CHUNK_TILES),
     detail: new Uint16Array(CHUNK_TILES),
+    elev: new Uint8Array(CHUNK_TILES),
   };
 }
 
@@ -35,12 +43,13 @@ export function tileIndex(tx: number, ty: number): number {
 }
 
 export function encodeChunk(chunk: ChunkData): ArrayBuffer {
-  const w = new ByteWriter(16 + CHUNK_TILES * 4);
+  const w = new ByteWriter(16 + CHUNK_TILES * 5);
   w.u8(BinaryMsgType.Chunk);
   w.i32(chunk.cx);
   w.i32(chunk.cy);
   for (let i = 0; i < CHUNK_TILES; i++) w.u16(chunk.ground[i]!);
   for (let i = 0; i < CHUNK_TILES; i++) w.u16(chunk.detail[i]!);
+  for (let i = 0; i < CHUNK_TILES; i++) w.u8(chunk.elev[i]!);
   return w.finish();
 }
 
@@ -69,9 +78,11 @@ export function decodeChunk(r: ByteReader): ChunkData {
   const cy = r.i32();
   const ground = new Uint16Array(CHUNK_TILES);
   const detail = new Uint16Array(CHUNK_TILES);
+  const elev = new Uint8Array(CHUNK_TILES);
   for (let i = 0; i < CHUNK_TILES; i++) ground[i] = r.u16();
   for (let i = 0; i < CHUNK_TILES; i++) detail[i] = r.u16();
-  return { cx, cy, ground, detail };
+  for (let i = 0; i < CHUNK_TILES; i++) elev[i] = r.u8();
+  return { cx, cy, ground, detail, elev };
 }
 
 /**
@@ -110,6 +121,12 @@ export class ChunkStore implements CollisionSource {
   groundAt(tx: number, ty: number): number | undefined {
     const chunk = this.get(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
     return chunk?.ground[tileIndex(tx, ty)];
+  }
+
+  /** Elevation level of a tile; unloaded space is ground level. */
+  elevAt(tx: number, ty: number): number {
+    const chunk = this.get(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    return chunk?.elev[tileIndex(tx, ty)] ?? 0;
   }
 
   /** Mutate one ground tile in place (no-op if the chunk isn't loaded). */

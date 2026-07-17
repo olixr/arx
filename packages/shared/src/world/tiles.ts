@@ -38,6 +38,13 @@ export enum Tile {
   CaveFloor = 31,
   PortalDown = 32,
   PortalUp = 33,
+  /** Solid rock face forming the rim of an elevated plateau. */
+  Cliff = 34,
+  /** Walkable stone stair connecting two elevation levels. */
+  Ramp = 35,
+  RockTin = 36,
+  RockCoal = 37,
+  RockGold = 38,
 }
 
 export enum Detail {
@@ -116,7 +123,32 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.CaveFloor]: { name: 'cave floor', solid: false, color: '#4d4757', variants: ['#48424f', '#524c5e'] },
   [Tile.PortalDown]: { name: 'cave entrance', solid: false, color: '#1a1626', variants: ['#221c30'] },
   [Tile.PortalUp]: { name: 'way out', solid: false, color: '#5b4f7a', variants: ['#65588a'] },
+  [Tile.Cliff]: { name: 'cliff', solid: true, color: '#5b5566', raised: true, topColor: '#8c8798' },
+  [Tile.Ramp]: { name: 'stone stair', solid: false, color: '#8a8494', variants: ['#847e8e'] },
+  [Tile.RockTin]: { name: 'tin rock', solid: true, color: '#6e6a75', raised: true, topColor: '#c9c4cf' },
+  [Tile.RockCoal]: { name: 'coal rock', solid: true, color: '#6e6a75', raised: true, topColor: '#2e2b33' },
+  [Tile.RockGold]: { name: 'gold rock', solid: true, color: '#6e6a75', raised: true, topColor: '#e8b64c' },
 };
+
+/** Every mineable/mined rock formation tile, ore-bearing or not. */
+export const ROCK_TILES: readonly Tile[] = [
+  Tile.Rock,
+  Tile.RockCopper,
+  Tile.RockTin,
+  Tile.RockIron,
+  Tile.RockCoal,
+  Tile.RockGold,
+  Tile.RockDepleted,
+];
+
+/** Ore-bearing rocks only — the ones a pickaxe gets something out of. */
+export const ORE_TILES: readonly Tile[] = [
+  Tile.RockCopper,
+  Tile.RockTin,
+  Tile.RockIron,
+  Tile.RockCoal,
+  Tile.RockGold,
+];
 
 /** Crafting stations, keyed by what recipes call them. */
 export type StationType = 'fire' | 'furnace' | 'anvil' | 'workbench';

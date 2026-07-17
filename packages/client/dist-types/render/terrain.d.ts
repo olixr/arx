@@ -7,7 +7,24 @@
  */
 export type GroundSampler = (tx: number, ty: number) => number | undefined;
 export type DetailSampler = (tx: number, ty: number) => number;
-export declare function bakeChunk(ground: GroundSampler, detail: DetailSampler, cx: number, cy: number, px: number): HTMLCanvasElement;
+export type ElevSampler = (tx: number, ty: number) => number;
+export declare function bakeChunk(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number): HTMLCanvasElement;
+/**
+ * Bake the LIFTED terrain surface of one chunk at one elevation level:
+ * every tile at `level` or higher (ramps excluded — they get bespoke
+ * stair props) painted with the full material-skin pipeline, clipped to
+ * a marching-squares contour so the plateau top has the same crisp
+ * 45°-cut coastline as every other material — then finished with a
+ * sunlit brink line along the rim. The renderer draws this canvas
+ * shifted UP by level·ELEV_H and y-sorted, which is what makes the
+ * plateau a solid mass you can walk behind.
+ */
+export interface ElevatedBake {
+    canvas: HTMLCanvasElement;
+    /** Chunk rows (local ly) containing any lifted content at this level. */
+    rows: boolean[];
+}
+export declare function bakeElevated(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, level: number): ElevatedBake | null;
 /**
  * The breeze layer: swaying grass blades, drifting water glints, pulsing
  * ripples and portal swirls. Drawn every frame over the baked ground —

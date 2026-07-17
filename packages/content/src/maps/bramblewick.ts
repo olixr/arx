@@ -106,9 +106,14 @@ export function buildBramblewick(): ZoneDef {
   }
 
   // Mining outcrop north-east of the plaza + ore by the smithy yard.
+  // Copper AND tin together — bronze needs both, so the starter mine
+  // teaches the pairing.
   b.set(56, 36, Tile.RockCopper);
   b.set(57, 36, Tile.RockCopper);
   b.set(56, 37, Tile.RockIron);
+  b.set(58, 36, Tile.RockTin);
+  b.set(58, 37, Tile.RockTin);
+  b.set(59, 35, Tile.Rock);
 
   // The mouth of Gloomhollow Cave, framed in rock.
   b.set(58, 33, Tile.Rock);

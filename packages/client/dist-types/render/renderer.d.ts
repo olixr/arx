@@ -72,9 +72,29 @@ export declare class Renderer {
     private game;
     /** Fires once per tool-impact while someone gathers ('tree' | 'rock'). */
     onGatherImpact: ((kind: string) => void) | null;
+    /** Nearest crafting station around a world position, if any. */
+    private findStation;
     /** Nearest gatherable node around a world position, if any. */
     private findGatherNode;
     shake(amount: number): void;
+    /**
+     * Screen-space rise (in TILES; multiply by scale for px) of the
+     * ground under a world position. Plateau tops rise level·ELEV_H; a
+     * stair tile interpolates from its low mouth to its high edge, so
+     * feet climb tread by tread. Everything drawn in the world asks this
+     * one function.
+     */
+    renderLift(x: number, y: number): number;
+    /** worldToScreen that also rides the terrain lift under the point. */
+    private liftedWTS;
+    /**
+     * Screen → world with elevation: a click on a plateau top must land
+     * on the plateau, not on the (hidden) ground two tiles south. Try
+     * each level's inverse and accept the one whose terrain agrees.
+     */
+    pickWorld(sx: number, sy: number): Vec2;
+    /** Lifted plateau surfaces as y-sorted items (real occluders). */
+    private collectElevatedGround;
     private animFor;
     private resize;
     render(game: ClientGame, frameDt: number): void;
@@ -123,6 +143,35 @@ export declare class Renderer {
      * front face where the wall meets open ground, and a hard shadow.
      */
     private wallItem;
+    /**
+     * A cliff face: the exposed south wall of a plateau rim tile,
+     * dropping (myLevel − southLevel)·ELEV_H to the ground below. The
+     * crown is NOT drawn here — the lifted terrain band paints the
+     * plateau surface right over the rim, marching-squares contour and
+     * all — so the face is pure landform: bedded strata, cracks, a
+     * shadowed base with scree. Rim tiles with no southern exposure
+     * return null (nothing of them is visible but the crown).
+     */
+    private cliffItem;
+    /**
+     * A stone stair crossing the cliff line: chamfered treads climbing
+     * from the low mouth to the plateau brink, framed by the flanking
+     * cliff faces. Entities standing on the tile ride renderLift(), so
+     * feet land tread by tread.
+     */
+    private rampItem;
+    private static readonly ORE_STYLES;
+    /**
+     * A mining node is a FORMATION, not a pebble: a squat faceted outcrop
+     * of two or three boulders in the same shape language as the cliffs —
+     * dark south faces under flat lit caps — with the metal laid into the
+     * main face as an angular seam of chunky nuggets. Every metal reads
+     * at a glance: warm copper with verdigris flecks, pale flat tin,
+     * rust-banded iron, glossy black coal, and gold that catches the sun
+     * on a slow pulse. Depleted formations keep their mass but go dull,
+     * cracked, and empty.
+     */
+    private drawRockFormation;
     /**
      * The forest is a character, not a texture. Trees stand 3-4× the
      * player's height in six bespoke species — each with a real curved,

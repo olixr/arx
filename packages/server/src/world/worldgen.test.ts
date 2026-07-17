@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CHUNK_SIZE, Tile, isSolidTile } from '@devcraft/shared';
+import {
+  ByteReader,
+  CHUNK_SIZE,
+  Tile,
+  decodeChunk,
+  encodeChunk,
+  isSolidTile,
+} from '@devcraft/shared';
 import { buildBramblewick } from '@devcraft/content';
 import { generateChunk } from './worldgen.js';
 import { WorldSource } from './worldSource.js';
@@ -70,6 +77,70 @@ test('town interiors are enterable: every building has a door', () => {
   for (const [x, y] of [[1, 48], [94, 48], [48, 1], [48, 94]] as const) {
     assert.ok(seen.has(`${x},${y}`), `road mouth (${x},${y}) blocked`);
   }
+});
+
+test('plateaus are fenced: no walkable step between levels except ramps', () => {
+  // The elevation layer is render-only, so this invariant IS the
+  // collision story: any two cardinally-adjacent walkable tiles at
+  // different levels must involve a Ramp.
+  const seed = 1337;
+  for (const [cx, cy] of [[3, 3], [-4, 2], [7, -6], [12, 12], [-9, -9]] as const) {
+    // Generate a 3×3 block so cross-chunk adjacency is checked too.
+    const tiles = new Map<string, { g: number; e: number }>();
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const c = generateChunk(seed, cx + dx, cy + dy);
+        for (let ly = 0; ly < CHUNK_SIZE; ly++) {
+          for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+            const i = ly * CHUNK_SIZE + lx;
+            tiles.set(`${(cx + dx) * CHUNK_SIZE + lx},${(cy + dy) * CHUNK_SIZE + ly}`, {
+              g: c.ground[i]!,
+              e: c.elev[i]!,
+            });
+          }
+        }
+      }
+    }
+    for (const [key, t] of tiles) {
+      if (isSolidTile(t.g) || t.g === Tile.Ramp) continue;
+      const [x, y] = key.split(',').map(Number);
+      for (const [dx, dy] of [[1, 0], [0, 1]] as const) {
+        const n = tiles.get(`${x! + dx},${y! + dy}`);
+        if (!n || isSolidTile(n.g) || n.g === Tile.Ramp) continue;
+        assert.equal(
+          t.e,
+          n.e,
+          `walkable level step at (${x},${y})→(${x! + dx},${y! + dy}): ${t.e} vs ${n.e}`,
+        );
+      }
+    }
+  }
+});
+
+test('ramps exist and connect a lower walkable tile to a higher one', () => {
+  // Scan a broad band of wilderness for ramps; every ramp must have a
+  // walkable mouth below and open ground above.
+  const seed = 1337;
+  let ramps = 0;
+  for (let cy = -8; cy <= 8; cy++) {
+    for (let cx = -8; cx <= 8; cx++) {
+      const c = generateChunk(seed, cx, cy);
+      for (let i = 0; i < c.ground.length; i++) {
+        if (c.ground[i] === Tile.Ramp) ramps++;
+      }
+    }
+  }
+  assert.ok(ramps > 0, 'no ramps generated anywhere in the scanned band');
+});
+
+test('chunk codec round-trips the elevation layer', () => {
+  const chunk = generateChunk(99, 6, 6);
+  const encoded = encodeChunk(chunk);
+  const r = new ByteReader(encoded);
+  r.u8(); // discriminator
+  const decoded = decodeChunk(r);
+  assert.deepEqual(Array.from(decoded.elev), Array.from(chunk.elev));
+  assert.deepEqual(Array.from(decoded.ground), Array.from(chunk.ground));
 });
 
 test('chunk boundaries are seamless (tiles agree across the seam)', () => {

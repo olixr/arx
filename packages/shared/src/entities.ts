@@ -25,6 +25,12 @@ export enum PoseState {
   /** Melee combo stages: 2 = forehand, 9 = backhand, 10 = finisher. */
   Attack2 = 9,
   Attack3 = 10,
+  /**
+   * Working a crafting station. The client reads the nearest station
+   * tile to pick the choreography — hammer-and-tongs at an anvil,
+   * stoking at a furnace — so the wire stays one byte.
+   */
+  Craft = 11,
 }
 
 /**
