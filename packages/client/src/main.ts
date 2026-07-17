@@ -439,13 +439,15 @@ function frame(now: number): void {
     } else {
       const axes = input.moveAxes();
       const own = game.predictor.renderPos();
-      const p = renderer.camera.worldToScreen(own.x, own.y, canvas.clientWidth, canvas.clientHeight);
-      // Undo the camera's ground foreshortening so the world-space aim
-      // points exactly where the cursor sits on the ground plane.
-      const mouseAim = Math.atan2(
-        (input.mouseY - p.y) / renderer.camera.yScale,
-        input.mouseX - p.x,
+      // Invert the full camera projection so the world-space aim points
+      // exactly at the ground tile under the cursor.
+      const cursor = renderer.camera.screenToWorld(
+        input.mouseX,
+        input.mouseY,
+        canvas.clientWidth,
+        canvas.clientHeight,
       );
+      const mouseAim = Math.atan2(cursor.y - own.y, cursor.x - own.x);
       // On touch devices the mouse never moves — face the walk direction.
       if (input.touchMoveX !== 0 || input.touchMoveY !== 0) {
         game.aim = Math.atan2(axes.my, axes.mx);
