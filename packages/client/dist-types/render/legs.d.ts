@@ -114,6 +114,15 @@ export declare class LegRig {
     update(bx: number, by: number, dirRaw: number, rawDt: number): LegPose;
 }
 /**
+ * Which side of the root→target chord a joint bends toward, with
+ * hysteresis. `cx, cy` is one unit perpendicular of the chord; the
+ * preference vector is the anatomical pole (normalized internally).
+ * A borderline score never overturns the standing choice — this is
+ * what stops a knee snapping 180° when a turning body carries the
+ * pole past perpendicular to a planted leg's chord. Returns ±1.
+ */
+export declare function chooseLimbSign(cx: number, cy: number, prefX: number, prefY: number, memory: number): number;
+/**
  * Pure two-bone limb solve, the one IK in the game: clamps the target
  * into reach and places the joint on whichever side of the root→target
  * line the preference vector points. Legs, arms, whatever bends.

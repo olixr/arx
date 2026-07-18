@@ -238,12 +238,19 @@ export class LegRig {
     // Which groups are airborne right now — the gait gate.
     let airGroup = -1;
     let airMixed = false;
+    let airCount = 0;
     for (let i = 0; i < cfg.legs.length; i++) {
       if (!this.step[i]) continue;
+      airCount++;
       const g = cfg.legs[i]!.group;
       if (airGroup === -1) airGroup = g;
       else if (airGroup !== g) airMixed = true;
     }
+    // Standing, legs reposition independently (a shuffling animal is
+    // not trotting) — gate only on total airborne so pivots resolve in
+    // quick natural steps instead of stranding a stretched pair while
+    // it waits for its diagonal partner's turn.
+    const idleAirCap = Math.max(1, Math.ceil(cfg.legs.length / 2));
 
     let bob = 0;
     for (let i = 0; i < cfg.legs.length; i++) {
@@ -267,8 +274,11 @@ export class LegRig {
       } else {
         f.lift = 0;
         const behind = Math.hypot(f.x - homeX, f.y - homeY);
-        // The group gate: step only while no OTHER group is airborne.
-        const groupClear = !airMixed && (airGroup === -1 || airGroup === leg.group);
+        // Moving: the group gate — step only while no OTHER group is
+        // airborne. Idle: independent shuffle steps under the air cap.
+        const groupClear = moving
+          ? !airMixed && (airGroup === -1 || airGroup === leg.group)
+          : airCount < idleAirCap;
         // Eager threshold when a groupmate is already swinging — pairs
         // launch together, so a trot stays a trot.
         const mate = airGroup === leg.group;
@@ -276,10 +286,14 @@ export class LegRig {
           ? stride * (mate ? 0.3 : 0.5)
           : idleThresh * (mate ? 0.6 : 1);
         const turnStep = !moving && this.turnPending > 0;
-        const due = (behind > dueDist || turnStep) && groupClear;
-        // Emergency bound: past reach the foot snaps forward NOW,
-        // whatever the group state — never noodle-stretch.
-        const emergency = behind > reach * 1.12;
+        // Standing, an overstretched leg is urgent but still respects
+        // the air cap — otherwise a fast pivot launches every leg at
+        // once and the animal HOPS. Bounding falls to the drag below.
+        const idleUrgent = !moving && behind > reach * 0.95;
+        const due = (behind > dueDist || turnStep || idleUrgent) && groupClear;
+        // Moving emergency bound: past reach the foot snaps forward
+        // NOW, whatever the group state — never noodle-stretch.
+        const emergency = moving && behind > reach * 1.12;
         if (due || emergency) {
           if (turnStep) this.turnPending--;
           // Land where the home will be when the swing completes, plus
@@ -293,6 +307,16 @@ export class LegRig {
             dur: swing,
           };
           if (airGroup === -1) airGroup = leg.group;
+          airCount++;
+        } else if (!moving && behind > reach * 0.7) {
+          // Weight-shift drag: a planted foot that is gated from
+          // stepping while the body pivots above it TWISTS toward its
+          // home instead of winding up to full stretch — exactly what
+          // a real animal's grounded feet do in a turn on the spot.
+          // Zero below 0.8·reach, so a settled stance stays rock-solid.
+          const k = Math.min(1, dt * 30 * (behind / reach - 0.7));
+          f.x += (homeX - f.x) * k;
+          f.y += (homeY - f.y) * k;
         }
       }
 
@@ -319,6 +343,28 @@ export class LegRig {
       poleStrength: Math.min(1, speed / 1.2),
     };
   }
+}
+
+/**
+ * Which side of the root→target chord a joint bends toward, with
+ * hysteresis. `cx, cy` is one unit perpendicular of the chord; the
+ * preference vector is the anatomical pole (normalized internally).
+ * A borderline score never overturns the standing choice — this is
+ * what stops a knee snapping 180° when a turning body carries the
+ * pole past perpendicular to a planted leg's chord. Returns ±1.
+ */
+export function chooseLimbSign(
+  cx: number,
+  cy: number,
+  prefX: number,
+  prefY: number,
+  memory: number,
+): number {
+  const m = Math.hypot(prefX, prefY) || 1;
+  const score = (cx * prefX + cy * prefY) / m;
+  const target = score >= 0 ? 1 : -1;
+  if (memory !== 0 && target !== memory && Math.abs(score) < 0.35) return memory;
+  return target;
 }
 
 /**

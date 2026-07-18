@@ -1,7 +1,7 @@
 import { PoseState } from '@devcraft/shared';
 import { itemDef } from '@devcraft/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
-import { LegRig, solveLimb, type LegPose, type LegRigConfig } from './legs.js';
+import { LegRig, chooseLimbSign, solveLimb, type LegPose, type LegRigConfig } from './legs.js';
 
 export type { LegPose } from './legs.js';
 
@@ -111,7 +111,7 @@ export interface RigPose {
   poleY: number;
   poleStrength: number;
   /** Per-leg knee-sign hysteresis, owned by the caller's anim state. */
-  kneeMemory: [number, number];
+  kneeMemory: number[];
   bodyColor: string;
   hurt: boolean;
   isOwn: boolean;
@@ -1127,18 +1127,18 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
   cow: {
     rig: {
       legs: quadLegs(0.26, 0.15),
-      legLen: 0.36,
-      rise: 0.3,
+      legLen: 0.31,
+      rise: 0.26,
       liftAmp: 0.06,
       runSpeed: 1.8,
       turnRate: 4.5,
     },
     bodyLen: 0.44,
-    bodyRise: 0.38,
+    bodyRise: 0.34,
     kneeFwd: [1, 1, -1, -1],
     hipFwd: 0.9,
     hipSide: 0.55,
-    legW: 0.075,
+    legW: 0.088,
     foot: 'hoof',
   },
   wolf: {
@@ -1155,7 +1155,7 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     kneeFwd: [1, 1, -1, -1],
     hipFwd: 0.9,
     hipSide: 0.55,
-    legW: 0.06,
+    legW: 0.068,
     foot: 'paw',
   },
   rat: {
@@ -1245,6 +1245,8 @@ export function drawBeast(
     yScale: number;
     walkPhase: number;
     hurt: boolean;
+    /** Per-leg joint-side hysteresis, owned by the caller's anim state. */
+    kneeMemory: number[];
     /** 0..1 through an attack: crouch back, then pounce. */
     attackT?: number;
   },
@@ -1306,13 +1308,36 @@ export function drawBeast(
     const hipY = by + wy * s * ys - opts.pose.rise * s;
     const footY = foot.y - foot.lift * s;
     // Anatomical joint preference: along the facing (front knees bow
-    // forward, hocks and bird ankles backward), with a lateral-outward
-    // tiebreak so up/down-screen facings stay deterministic.
+    // forward, hocks and bird ankles backward) plus a SCREEN-space
+    // outward lean from whichever side of the body this hip actually
+    // sits on — front-on legs bow outward, never across the belly.
+    // The outward sign comes from the projected hip, not the body
+    // frame: body-frame lateral flips meaning as the facing crosses
+    // the screen axis, which is what twisted knees mid-turn.
     const bow = spec.kneeFwd[i] ?? 1;
-    const out = Math.sign(leg.side) || 1;
-    const prefX = bow * fx + px * out * 0.35;
-    const prefY = (bow * fy + py * out * 0.35) * ys;
-    const { ex, ey, kx, ky } = solveLimb(hipX, hipY, foot.x, footY, L, stretch, prefX, prefY);
+    const out = Math.sign(hipX - bx) || Math.sign(leg.side) || 1;
+    const prefX = bow * fx * 0.9 + out * 0.45;
+    const prefY = bow * fy * ys * 0.9;
+    // Chord perpendicular, then a REMEMBERED side choice: hysteresis
+    // stops the joint snapping 180° while a turning body carries the
+    // pole past perpendicular to a still-planted leg.
+    let ddx = foot.x - hipX;
+    let ddy = footY - hipY;
+    const dd = Math.hypot(ddx, ddy) || 1e-4;
+    const cxn = -ddy / dd;
+    const cyn = ddx / dd;
+    const sign = chooseLimbSign(cxn, cyn, prefX, prefY, opts.kneeMemory[i] ?? 0);
+    opts.kneeMemory[i] = sign;
+    const { ex, ey, kx, ky } = solveLimb(
+      hipX,
+      hipY,
+      foot.x,
+      footY,
+      L,
+      stretch,
+      cxn * sign,
+      cyn * sign,
+    );
 
     ctx.lineCap = 'round';
     ctx.strokeStyle = legColor;
@@ -1344,94 +1369,119 @@ export function drawBeast(
       }
       ctx.lineCap = 'butt';
     } else if (spec.foot === 'hoof') {
+      // Hoof block seated square on the shin's own axis.
       const hw = spec.legW * s * 1.5;
+      const shinA = Math.atan2(ey - ky, ex - kx);
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(shinA - Math.PI / 2);
       ctx.fillStyle = footColor;
       ctx.beginPath();
-      chamferRect(ctx, ex - hw / 2, ey - hw * 0.55, hw, hw * 0.62, hw * 0.18);
+      chamferRect(ctx, -hw / 2, -hw * 0.35, hw, hw * 0.62, hw * 0.18);
       ctx.fill();
+      ctx.restore();
     } else {
+      // Paw chip aligned with the shin.
       const pw = spec.legW * s * 1.35;
+      const shinA = Math.atan2(ey - ky, ex - kx);
       ctx.fillStyle = footColor;
       ctx.beginPath();
-      ctx.ellipse(ex, ey - pw * 0.18, pw * 0.62, pw * 0.4, 0, 0, Math.PI * 2);
+      ctx.ellipse(ex, ey, pw * 0.62, pw * 0.42, shinA - Math.PI / 2, 0, Math.PI * 2);
       ctx.fill();
     }
   };
-  // Split by projected world-y of the hip: up-screen legs are FAR.
+  // Depth split by where each foot ACTUALLY is, not its rest pose —
+  // during a turn a planted foot can be anywhere around the body, and
+  // classifying by home spec is what drew legs across faces.
   const farLegs: number[] = [];
   const nearLegs: number[] = [];
   for (let i = 0; i < spec.rig.legs.length; i++) {
-    const leg = spec.rig.legs[i]!;
-    const wy = fy * leg.fwd + fx * leg.side;
-    (wy < 0 ? farLegs : nearLegs).push(i);
+    ((opts.feet[i]?.y ?? opts.y) < opts.y ? farLegs : nearLegs).push(i);
   }
-  for (const i of farLegs) drawLeg(i);
-
-  // Body: faceted low-poly mass along the facing — same dialect as the
-  // boulders and canopies.
+  // ---- paint closures, composed in true depth order below.
   let seed = 0;
   for (let i = 0; i < opts.defId.length; i++) {
     seed = (seed * 31 + opts.defId.charCodeAt(i)) | 0;
   }
-  ctx.fillStyle = color;
-  ctx.strokeStyle = OUTLINE;
-  ctx.lineWidth = Math.max(1.5, s * 0.04);
-  ctx.save();
-  ctx.translate(bx, bodyY);
-  ctx.rotate(opts.dir + roll);
-  ctx.beginPath();
-  facetBlob(ctx, 0, 0, len, seed, 9, (r * 0.78) / len, 0.4);
-  ctx.fill();
-  ctx.stroke();
-  // Flat back highlight facet.
-  ctx.fillStyle = opts.hurt ? '#ffffff' : shade(opts.color, 14);
-  ctx.beginPath();
-  facetBlob(ctx, -len * 0.15, -r * 0.25, len * 0.5, seed ^ 0x5f5f, 7, (r * 0.32) / (len * 0.5), 1.1);
-  ctx.fill();
-  ctx.restore();
-
-  if (opts.defId === 'cow' && !opts.hurt) {
-    ctx.fillStyle = '#5b4632';
+  const paintBody = (): void => {
+    // Faceted low-poly mass along the facing — same dialect as the
+    // boulders and canopies.
+    ctx.fillStyle = color;
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(1.5, s * 0.04);
+    ctx.save();
+    ctx.translate(bx, bodyY);
+    ctx.rotate(opts.dir + roll);
     ctx.beginPath();
-    facetCircle(ctx, bx - fx * len * 0.35, bodyY + py * r * 0.15, r * 0.32, 6, opts.dir + 0.5, 0.72);
+    facetBlob(ctx, 0, 0, len, seed, 9, (r * 0.78) / len, 0.4);
     ctx.fill();
-  }
+    ctx.stroke();
+    // Flat back highlight facet.
+    ctx.fillStyle = opts.hurt ? '#ffffff' : shade(opts.color, 14);
+    ctx.beginPath();
+    facetBlob(ctx, -len * 0.15, -r * 0.25, len * 0.5, seed ^ 0x5f5f, 7, (r * 0.32) / (len * 0.5), 1.1);
+    ctx.fill();
+    ctx.restore();
+    if (opts.defId === 'cow' && !opts.hurt) {
+      ctx.fillStyle = '#5b4632';
+      ctx.beginPath();
+      facetCircle(ctx, bx - fx * len * 0.35, bodyY + py * r * 0.15, r * 0.32, 6, opts.dir + 0.5, 0.72);
+      ctx.fill();
+    }
+  };
 
-  // Head: a faceted chunk, one flat side toward the travel. A chicken
-  // pecks its head forward with each step — the bob rides the gait.
+  // Head anchor: a chicken pecks its head forward with each step.
   const peck = opts.defId === 'chicken' ? opts.pose.bob * 1.6 : 0;
   const headX = bx + fx * (len * 0.92 + peck * s);
   const headY = bodyY + fy * (len * 0.35 + peck * s * ys) - r * 0.15;
   const headR = r * (opts.defId === 'chicken' ? 0.5 : 0.55);
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  facetCircle(ctx, headX, headY, headR, 6, opts.dir + Math.PI / 6);
-  ctx.fill();
-  ctx.stroke();
-
-  if (opts.defId === 'chicken') {
-    ctx.fillStyle = '#e8a33d';
-    ctx.beginPath();
-    ctx.moveTo(headX + fx * headR * 0.8 - py * headR * 0.25, headY + fy * headR * 0.8 - py * headR * 0.25);
-    ctx.lineTo(headX + fx * headR * 1.8, headY + fy * headR * 1.8);
-    ctx.lineTo(headX + fx * headR * 0.8 + py * headR * 0.25, headY + fy * headR * 0.8 + py * headR * 0.25);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#d95763';
-    ctx.beginPath();
-    ctx.arc(headX - fx * headR * 0.1, headY - headR * 0.85, headR * 0.28, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (opts.defId === 'wolf' || opts.defId === 'rat') {
+  const paintHead = (): void => {
     ctx.fillStyle = color;
-    for (const side of [-1, 1]) {
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(1.5, s * 0.04);
+    ctx.beginPath();
+    facetCircle(ctx, headX, headY, headR, 6, opts.dir + Math.PI / 6);
+    ctx.fill();
+    ctx.stroke();
+    if (opts.defId === 'chicken') {
+      ctx.fillStyle = '#e8a33d';
       ctx.beginPath();
-      ctx.moveTo(headX + px * side * headR * 0.4, headY - headR * 0.3);
-      ctx.lineTo(headX + px * side * headR * 0.85, headY - headR * 1.15);
-      ctx.lineTo(headX + px * side * headR * 0.95, headY - headR * 0.2);
+      ctx.moveTo(headX + fx * headR * 0.8 - py * headR * 0.25, headY + fy * headR * 0.8 - py * headR * 0.25);
+      ctx.lineTo(headX + fx * headR * 1.8, headY + fy * headR * 1.8);
+      ctx.lineTo(headX + fx * headR * 0.8 + py * headR * 0.25, headY + fy * headR * 0.8 + py * headR * 0.25);
       ctx.closePath();
       ctx.fill();
-      ctx.stroke();
+      ctx.fillStyle = '#d95763';
+      ctx.beginPath();
+      ctx.arc(headX - fx * headR * 0.1, headY - headR * 0.85, headR * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (opts.defId === 'wolf' || opts.defId === 'rat') {
+      ctx.fillStyle = color;
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(headX + px * side * headR * 0.4, headY - headR * 0.3);
+        ctx.lineTo(headX + px * side * headR * 0.85, headY - headR * 1.15);
+        ctx.lineTo(headX + px * side * headR * 0.95, headY - headR * 0.2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
     }
+    // Eyes track the facing — and a head facing away from the camera
+    // SHOWS NO EYES. Painting them regardless put eyes on the back of
+    // the skull whenever an animal looked up-screen.
+    if (fy > -0.45) {
+      ctx.fillStyle = OUTLINE;
+      for (const es of [-1, 1]) {
+        const eex = headX + fx * headR * 0.42 + es * px * headR * 0.35;
+        const eey = headY + fy * headR * 0.42 + es * py * headR * 0.35;
+        ctx.fillRect(eex - headR * 0.13, eey - headR * 0.15, headR * 0.26, headR * 0.3);
+      }
+    }
+  };
+
+  const paintTail = (): void => {
+    if (opts.defId !== 'wolf' && opts.defId !== 'rat') return;
     const wag = Math.sin(opts.walkPhase * Math.PI * 4) * 0.14;
     ctx.strokeStyle = opts.defId === 'rat' ? '#c9a68a' : color;
     ctx.lineWidth = Math.max(2, s * (opts.defId === 'rat' ? 0.035 : 0.07));
@@ -1446,16 +1496,21 @@ export function drawBeast(
     );
     ctx.stroke();
     ctx.lineCap = 'butt';
-  }
+  };
 
-  // Eyes: square chips, tracking the facing.
-  ctx.fillStyle = OUTLINE;
-  for (const es of [-1, 1]) {
-    const eex = headX + fx * headR * 0.42 + es * px * headR * 0.35;
-    const eey = headY + fy * headR * 0.42 + es * py * headR * 0.35;
-    ctx.fillRect(eex - headR * 0.13, eey - headR * 0.15, headR * 0.26, headR * 0.3);
-  }
-
-  // Near-side legs pass in front of the body mass.
+  // ---- compose in depth order. The facing decides where head and
+  // tail sit relative to the mass: facing down-screen the head is the
+  // closest thing (nothing may paint over the face); facing up-screen
+  // it tucks behind the body and the tail comes forward.
+  const headFront = fy > 0.2;
+  const headBack = fy < -0.25;
+  const tailFront = fy < -0.2;
+  if (!tailFront) paintTail();
+  if (headBack) paintHead();
+  for (const i of farLegs) drawLeg(i);
+  paintBody();
+  if (!headBack && !headFront) paintHead();
   for (const i of nearLegs) drawLeg(i);
+  if (headFront) paintHead();
+  if (tailFront) paintTail();
 }

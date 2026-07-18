@@ -90,8 +90,8 @@ interface AnimState {
   legs?: LegRig;
   /** Which rig `legs` was built for; a mismatch (eid reuse) rebuilds. */
   rigKey?: string;
-  /** Per-leg knee-sign hysteresis for the pole constraint. */
-  kneeMemory: [number, number];
+  /** Per-leg joint-side hysteresis (2 for humanoids, N for beasts). */
+  kneeMemory: number[];
   /** Last chop cycle that spawned impact chips (gathering). */
   lastChopHit?: number;
 }
@@ -3776,6 +3776,7 @@ export class Renderer {
     if (!anim.legs || anim.rigKey !== defId) {
       anim.legs = new LegRig(spec.rig);
       anim.rigKey = defId;
+      anim.kneeMemory.length = 0;
     }
     const legPose = anim.legs.update(s.x, s.y, s.dir, this.frameDt);
     const feet = legPose.feet.map((f) => {
@@ -3808,6 +3809,7 @@ export class Renderer {
           yScale: this.camera.yScale,
           walkPhase: anim.walkPhase,
           hurt,
+          kneeMemory: anim.kneeMemory,
           attackT,
         });
 

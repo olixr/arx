@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LegRig, solveLimb, type LegRigConfig } from './legs.js';
+import { LegRig, chooseLimbSign, solveLimb, type LegRigConfig } from './legs.js';
 
 /**
  * Universal-rig laws, probed on a wolf-like quadruped. The biped case
@@ -125,6 +125,55 @@ test('teleports snap every foot instead of stretching across the map', () => {
     const d = Math.hypot(f.x - 500, f.y - 500);
     assert.ok(d <= 0.6, `post-teleport foot at ${d.toFixed(3)}`);
   }
+});
+
+test('a pivot never strands a stretched leg — idle emergency re-plants', () => {
+  const rig = makeRig();
+  for (let t = 0; t < 1.5; t += DT) rig.update(0, 0, 0, DT);
+  // Idle reach at rest rise.
+  const reach = Math.sqrt((QUAD.legLen * 1.15) ** 2 - QUAD.rise ** 2);
+  let maxBehind = 0;
+  let dir = 0;
+  for (let t = 0; t < 2; t += DT) {
+    dir = Math.min(Math.PI, dir + 7 * DT); // ride the slew rate
+    const pose = rig.update(0, 0, Math.PI, DT);
+    const fxD = Math.cos(pose.dir);
+    const fyD = Math.sin(pose.dir);
+    pose.feet.forEach((f, i) => {
+      if (f.lift > 0) return; // mid-swing legs are travelling, not stuck
+      const leg = QUAD.legs[i]!;
+      const hx = fxD * leg.fwd - fyD * leg.side;
+      const hy = fyD * leg.fwd + fxD * leg.side;
+      maxBehind = Math.max(maxBehind, Math.hypot(f.x - hx, f.y - hy));
+    });
+  }
+  assert.ok(
+    maxBehind <= reach * 1.2,
+    `leg stretched to ${maxBehind.toFixed(3)} (reach ${reach.toFixed(3)}) mid-pivot`,
+  );
+});
+
+test('idle shuffles are independent but capped — never a full-body hop', () => {
+  const rig = makeRig();
+  for (let t = 0; t < 1.5; t += DT) rig.update(0, 0, 0, DT);
+  let maxAir = 0;
+  for (let t = 0; t < 2; t += DT) {
+    const pose = rig.update(0, 0, Math.PI, DT);
+    maxAir = Math.max(maxAir, pose.feet.filter((f) => f.lift > 0).length);
+  }
+  assert.ok(maxAir >= 1, 'the pivot must actually step');
+  assert.ok(maxAir <= 2, `${maxAir} legs airborne at once while standing`);
+});
+
+test('chooseLimbSign: hysteresis holds through weak reversals, yields to strong', () => {
+  // Standing choice +1; weakly contrary score keeps it.
+  assert.equal(chooseLimbSign(-0.2, 0.98, 1, 0, 1), 1);
+  // Strongly contrary score overturns it.
+  assert.equal(chooseLimbSign(-0.9, 0.43, 1, 0, 1), -1);
+  // No memory: raw preference decides immediately.
+  assert.equal(chooseLimbSign(-0.2, 0.98, 1, 0, 0), -1);
+  // Preference magnitude is normalized — a tiny pole still decides.
+  assert.equal(chooseLimbSign(0.7, 0.71, 0.01, 0, 0), 1);
 });
 
 test('solveLimb: joint lands on the preferred side and reach is clamped', () => {

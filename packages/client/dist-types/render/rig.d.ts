@@ -44,7 +44,7 @@ export interface RigPose {
     poleY: number;
     poleStrength: number;
     /** Per-leg knee-sign hysteresis, owned by the caller's anim state. */
-    kneeMemory: [number, number];
+    kneeMemory: number[];
     bodyColor: string;
     hurt: boolean;
     isOwn: boolean;
@@ -146,6 +146,8 @@ export declare function drawBeast(ctx: CanvasRenderingContext2D, opts: {
     yScale: number;
     walkPhase: number;
     hurt: boolean;
+    /** Per-leg joint-side hysteresis, owned by the caller's anim state. */
+    kneeMemory: number[];
     /** 0..1 through an attack: crouch back, then pounce. */
     attackT?: number;
 }): void;
