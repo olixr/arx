@@ -13,6 +13,12 @@ function iconEl(itemId: string): HTMLImageElement {
 /**
  * Craft / bank / shop panels. Opened by interacting with the matching
  * world tile; every action is validated server-side — these are views.
+ *
+ * A world-anchored panel (bank chest, station, shop counter) belongs
+ * to its tile: walk out of reach and it closes itself, exactly when
+ * the server would start refusing its actions — a panel must never
+ * outlive the interaction it fronts. Every panel also closes from a
+ * ✕ button and from clicking the world.
  */
 export class StationPanels {
   private readonly craftPanel = document.getElementById('craft-panel')!;
@@ -26,13 +32,24 @@ export class StationPanels {
   private readonly buildList = document.getElementById('build-list')!;
 
   private lastBank: Record<string, number> = {};
+  /** World tile center the open panel is bound to (null = untethered). */
+  private anchor: { x: number; y: number } | null = null;
 
   constructor(
     private readonly onCraft: (recipe: string, qty: number) => void,
     private readonly onBank: (op: 'deposit' | 'withdraw', item: string, qty: number) => void,
     private readonly onShop: (op: 'buy' | 'sell', item: string, qty: number) => void,
     private readonly onPickBuildable: (id: string) => void,
-  ) {}
+  ) {
+    for (const panel of [this.craftPanel, this.bankPanel, this.shopPanel, this.buildPanel]) {
+      const btn = document.createElement('button');
+      btn.className = 'panel-close';
+      btn.textContent = '✕';
+      btn.title = 'Close (Esc)';
+      btn.addEventListener('click', () => this.closeAll());
+      panel.querySelector('h3')!.appendChild(btn);
+    }
+  }
 
   get bankOpen(): boolean {
     return !this.bankPanel.classList.contains('hidden');
@@ -42,11 +59,33 @@ export class StationPanels {
     return !this.shopPanel.classList.contains('hidden');
   }
 
+  get anyOpen(): boolean {
+    return (
+      this.bankOpen ||
+      this.shopOpen ||
+      !this.craftPanel.classList.contains('hidden') ||
+      !this.buildPanel.classList.contains('hidden')
+    );
+  }
+
   closeAll(): void {
     this.craftPanel.classList.add('hidden');
     this.bankPanel.classList.add('hidden');
     this.shopPanel.classList.add('hidden');
     this.buildPanel.classList.add('hidden');
+    this.anchor = null;
+  }
+
+  /**
+   * Called every frame with the player's position: an anchored panel
+   * closes once its station is out of reach (a little past the 2.2
+   * interaction radius, so standing at the edge doesn't flicker it).
+   */
+  enforceAnchor(px: number, py: number): void {
+    if (!this.anchor || !this.anyOpen) return;
+    const dx = this.anchor.x - px;
+    const dy = this.anchor.y - py;
+    if (dx * dx + dy * dy > 3 * 3) this.closeAll();
   }
 
   // ------------------------------------------------------------ build
@@ -82,8 +121,9 @@ export class StationPanels {
 
   // ------------------------------------------------------------ craft
 
-  openCraft(station: StationType | null, skills: SkillXp): void {
+  openCraft(station: StationType | null, skills: SkillXp, at?: { tx: number; ty: number }): void {
     this.closeAll();
+    if (at) this.anchor = { x: at.tx + 0.5, y: at.ty + 0.5 };
     const labels: Record<string, string> = {
       fire: 'Cooking',
       furnace: 'Smelting',
@@ -123,9 +163,10 @@ export class StationPanels {
 
   // ------------------------------------------------------------- bank
 
-  openBank(items: Record<string, number>): void {
+  openBank(items: Record<string, number>, at?: { tx: number; ty: number }): void {
     this.lastBank = items;
     this.closeAll();
+    if (at) this.anchor = { x: at.tx + 0.5, y: at.ty + 0.5 };
     this.renderBank();
     this.bankPanel.classList.remove('hidden');
   }
@@ -165,8 +206,9 @@ export class StationPanels {
 
   // ------------------------------------------------------------- shop
 
-  openShop(): void {
+  openShop(at?: { tx: number; ty: number }): void {
     this.closeAll();
+    if (at) this.anchor = { x: at.tx + 0.5, y: at.ty + 0.5 };
     this.shopList.innerHTML = '';
     for (const entry of GENERAL_STORE) {
       const def = itemDef(entry.item);

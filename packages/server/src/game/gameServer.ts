@@ -2767,7 +2767,28 @@ export class GameServer {
       const [, xRaw, yRaw] = text.split(/\s+/);
       const x = Number.parseFloat(xRaw ?? '');
       const y = Number.parseFloat(yRaw ?? '');
-      if (Number.isFinite(x) && Number.isFinite(y)) this.teleport(eid, x, y);
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        // Land on the CENTER of the nearest walkable tile. A raw corner
+        // teleport can overlap the player's radius into a solid
+        // neighbor — an embedded body fails every movement candidate
+        // and freezes in place with zero feedback.
+        const tx0 = Math.floor(x);
+        const ty0 = Math.floor(y);
+        outer: for (let r = 0; r <= 4; r++) {
+          for (let dy = -r; dy <= r; dy++) {
+            for (let dx = -r; dx <= r; dx++) {
+              if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+              const tx = tx0 + dx;
+              const ty = ty0 + dy;
+              this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+              if (!this.world.isSolid(tx, ty)) {
+                this.teleport(eid, tx + 0.5, ty + 0.5);
+                break outer;
+              }
+            }
+          }
+        }
+      }
       return;
     }
     if (config.devCommands && text.startsWith('/time')) {

@@ -57,6 +57,8 @@ const chat = new ChatUI(
 );
 input.setTypingCheck(() => chat.isTyping);
 let buildMode: string | null = null;
+/** The bank chest tile that asked the server for the vault — anchors the panel. */
+let lastBankAnchor: { tx: number; ty: number } | null = null;
 
 const stationPanels = new StationPanels(
   (recipe, qty) => game.craft(recipe, qty),
@@ -206,7 +208,7 @@ const game = new ClientGame(input, {
   onBank: (items) => {
     if (stationPanels.bankOpen) stationPanels.refreshBank(items);
     else {
-      stationPanels.openBank(items);
+      stationPanels.openBank(items, lastBankAnchor ?? undefined);
       panels.showInventory();
     }
   },
@@ -415,10 +417,11 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       game.interact(target.tx, target.ty);
       break;
     case 'station':
-      stationPanels.openCraft(target.station, game.skills);
+      stationPanels.openCraft(target.station, game.skills, target);
       panels.showInventory();
       break;
     case 'bank':
+      lastBankAnchor = { tx: target.tx, ty: target.ty };
       game.interact(target.tx, target.ty); // server replies with the vault
       break;
     case 'portal':
@@ -426,7 +429,7 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       sfx.portal();
       break;
     case 'shop':
-      stationPanels.openShop();
+      stationPanels.openShop(target);
       panels.showInventory();
       break;
   }
@@ -458,6 +461,10 @@ canvas.addEventListener('mousedown', (e) => {
     game.buildSend(buildMode, tx, ty);
     return;
   }
+  // Clicking the world dismisses any open station panel — the click
+  // means "I'm doing something else now". Interacting with another
+  // station below simply reopens the right panel.
+  if (stationPanels.anyOpen) stationPanels.closeAll();
   if (input.isDown('KeyX')) {
     game.demolishSend(tx, ty);
     return;
@@ -516,8 +523,19 @@ function nearestNpcAim(): number | null {
 }
 
 function frame(now: number): void {
+  // Schedule the next frame FIRST: one thrown exception in a render
+  // pass must never kill the loop for good (it silently freezes
+  // prediction and input — the game looks alive but nothing moves).
+  requestAnimationFrame(frame);
   const frameDt = Math.min(0.25, (now - lastFrame) / 1000);
   lastFrame = now;
+
+  // A station panel is a conversation with a place: walking out of
+  // reach ends it (the server would refuse its actions anyway).
+  if (game.ownEid !== null) {
+    const pos = game.predictor.pos;
+    stationPanels.enforceAnchor(pos.x, pos.y);
+  }
 
   // Swing/cast sounds on pose transitions (combo swings pitch up the
   // chain; the finisher also thumps the pad).
@@ -621,7 +639,5 @@ function frame(now: number): void {
       `${game.entities.size + (game.ownEid !== null ? 1 : 0)} entities`,
     ].join('\n');
   }
-
-  requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
