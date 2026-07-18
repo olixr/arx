@@ -53,59 +53,58 @@ const PAINTERS: Record<string, IconPainter> = {
     dot(c, '#fff2cc', -0.415, -0.015, 0.012);
   },
   axe: (c, col) => {
-    // A woodsman's axe: thick grained haft, and a TRUE bit — concave
-    // shoulders flaring into a crescent cutting edge.
-    c.translate(0.5, 0.53);
-    c.rotate(-Math.PI / 3.6);
-    bar(c, '#7a5a38', -0.4, -0.048, 0.58, 0.096);
+    // A woodsman's axe with the head mounted the way heads mount:
+    // ACROSS the haft. The bit hangs off the eye perpendicular, horns
+    // spanning sideways, the honed crescent facing away.
+    c.translate(0.5, 0.55);
+    c.rotate(-Math.PI / 4);
+    // Haft runs low-left to the eye; a nub pokes past the head.
+    bar(c, '#7a5a38', -0.38, -0.048, 0.53, 0.096);
     c.strokeStyle = shade('#7a5a38', -22);
     c.lineWidth = 0.017;
     c.beginPath();
-    c.moveTo(-0.36, 0.005);
-    c.lineTo(0.06, 0.005);
+    c.moveTo(-0.34, 0.005);
+    c.lineTo(0.0, 0.005);
     c.stroke();
-    // The head: eye collar at the haft, shoulders sweeping deeply
-    // concave out to two long horns, joined by the curved edge.
+    // The head, perpendicular to the haft: concave shoulders rise from
+    // the eye to two horns, joined by the cutting crescent on top.
     c.fillStyle = col;
     c.strokeStyle = OUTLINE;
     c.lineWidth = 0.033;
     c.beginPath();
-    c.moveTo(0.1, -0.1);
-    c.quadraticCurveTo(0.19, -0.09, 0.3, -0.3);
-    c.quadraticCurveTo(0.55, -0.13, 0.55, 0.0);
-    c.quadraticCurveTo(0.55, 0.13, 0.3, 0.3);
-    c.quadraticCurveTo(0.19, 0.09, 0.1, 0.1);
+    c.moveTo(0.02, -0.04);
+    c.quadraticCurveTo(-0.04, -0.16, -0.22, -0.26);
+    c.quadraticCurveTo(0.05, -0.47, 0.32, -0.31);
+    c.quadraticCurveTo(0.23, -0.18, 0.2, -0.04);
     c.closePath();
     c.fill();
     c.stroke();
-    // Honed crescent along the edge, catching the light hard.
+    // Honed crescent along the top edge.
     c.fillStyle = shade(col, 50);
     c.beginPath();
-    c.moveTo(0.3, -0.3);
-    c.quadraticCurveTo(0.55, -0.13, 0.55, 0.0);
-    c.quadraticCurveTo(0.55, 0.13, 0.3, 0.3);
-    c.quadraticCurveTo(0.46, 0.12, 0.46, 0.0);
-    c.quadraticCurveTo(0.46, -0.12, 0.3, -0.3);
+    c.moveTo(-0.22, -0.26);
+    c.quadraticCurveTo(0.05, -0.47, 0.32, -0.31);
+    c.quadraticCurveTo(0.05, -0.38, -0.22, -0.26);
     c.closePath();
     c.fill();
-    // Cheek shading below the midline.
+    // Cheek shading on the trailing half.
     c.fillStyle = shade(col, -20);
     c.beginPath();
-    c.moveTo(0.12, 0.08);
-    c.quadraticCurveTo(0.2, 0.08, 0.29, 0.26);
-    c.quadraticCurveTo(0.35, 0.12, 0.44, 0.06);
-    c.quadraticCurveTo(0.28, 0.05, 0.12, 0.04);
+    c.moveTo(0.2, -0.05);
+    c.quadraticCurveTo(0.23, -0.17, 0.33, -0.28);
+    c.quadraticCurveTo(0.24, -0.26, 0.16, -0.2);
+    c.quadraticCurveTo(0.13, -0.12, 0.12, -0.05);
     c.closePath();
     c.fill();
-    // Eye collar lashed to the haft.
-    bar(c, '#6b4a26', 0.045, -0.095, 0.075, 0.19);
+    // Eye collar lashing where the head grips the haft.
+    bar(c, '#6b4a26', 0.0, -0.075, 0.21, 0.15);
     c.strokeStyle = '#a8874f';
     c.lineWidth = 0.016;
     c.beginPath();
-    c.moveTo(0.05, -0.07);
-    c.lineTo(0.115, 0.05);
-    c.moveTo(0.05, 0.01);
-    c.lineTo(0.115, 0.09);
+    c.moveTo(0.03, -0.05);
+    c.lineTo(0.1, 0.06);
+    c.moveTo(0.1, -0.05);
+    c.lineTo(0.17, 0.06);
     c.stroke();
   },
   pickaxe: (c, col) => {
