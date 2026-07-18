@@ -96,10 +96,40 @@ interface AnimState {
   lastChopHit?: number;
 }
 
+/** Player zoom bounds: 1 = the classic framing (also the default). */
+export const ZOOM_MIN = 0.85;
+export const ZOOM_MAX = 2.0;
+
 export class Camera {
   x = 0;
   y = 0;
   scale = TILE_PX * 1.25;
+  /** The scale zoom multiplies — never changes. */
+  readonly baseScale = TILE_PX * 1.25;
+  /**
+   * Player zoom: 1 = the classic framing, >1 pulls in for intimate
+   * play (bigger targets, more readable for kids), slightly <1 widens.
+   * `zoom` glides toward `targetZoom` each frame; everything downstream
+   * reads `scale`, so the whole world breathes with it.
+   */
+  zoom = 1;
+  targetZoom = 1;
+
+  setZoom(z: number): void {
+    this.targetZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+  }
+
+  stepZoom(factor: number): void {
+    this.setZoom(this.targetZoom * factor);
+  }
+
+  /** Per-frame glide toward the target; call once, before drawing. */
+  tickZoom(dt: number): void {
+    this.zoom += (this.targetZoom - this.zoom) * (1 - Math.exp(-9 * dt));
+    if (Math.abs(this.zoom - this.targetZoom) < 0.0015) this.zoom = this.targetZoom;
+    this.scale = this.baseScale * this.zoom;
+  }
+
   /**
    * Camera pitch: an orthographic camera tilted down at the flat world
    * compresses the ground plane UNIFORMLY (cos of the pitch angle) —
@@ -146,6 +176,8 @@ interface BakedChunk {
   canvas: HTMLCanvasElement;
   data: ChunkData;
   rev: number;
+  /** Pixels per tile this bake was rendered at (zoom-tier dependent). */
+  px: number;
   /**
    * Lifted-terrain layers, one per elevation level present in the
    * chunk. Bands are contiguous row runs [startRow, endRow] (inclusive,
@@ -638,12 +670,13 @@ export class Renderer {
                 sortY: worldTy - 0.01,
                 draw: () => {
                   const p = this.camera.worldToScreen(cx * CHUNK_SIZE, worldTy, this.w, this.h);
+                  const px = baked.px;
                   this.ctx.drawImage(
                     layer.canvas,
                     0,
-                    r * TILE_PX,
-                    CHUNK_SIZE * TILE_PX,
-                    TILE_PX,
+                    r * px,
+                    CHUNK_SIZE * px,
+                    px,
                     p.x,
                     p.y - level * ELEV_H * s,
                     CHUNK_SIZE * s + 0.5,
@@ -725,6 +758,9 @@ export class Renderer {
     // Hitstop slows animation + particles to a crawl for a few frames;
     // the camera and network keep real time.
     this.frameDt = performance.now() < this.hitstopUntil ? frameDt * 0.12 : frameDt;
+
+    // Player zoom glides first — every projection this frame reads it.
+    this.camera.tickZoom(frameDt);
 
     const own = game.predictor.renderPos();
     const k = 1 - Math.exp(-8 * frameDt);
@@ -1177,6 +1213,15 @@ export class Renderer {
     };
   }
 
+  /**
+   * Bake resolution follows the zoom tier: past ~1.05× the 32px bakes
+   * would upscale into mush, so chunks re-bake at 64px/tile. Keyed off
+   * targetZoom (not the gliding zoom) so a zoom flips the tier once.
+   */
+  private bakePx(): number {
+    return this.camera.targetZoom > 1.05 ? TILE_PX * 2 : TILE_PX;
+  }
+
   private drawGroundChunks(game: ClientGame): void {
     const s = this.camera.scale;
     const b = this.visibleTileBounds();
@@ -1184,6 +1229,11 @@ export class Renderer {
     const maxCx = Math.floor(b.maxTx / CHUNK_SIZE);
     const minCy = Math.floor(b.minTy / CHUNK_SIZE);
     const maxCy = Math.floor(b.maxTy / CHUNK_SIZE);
+    const bakePx = this.bakePx();
+    // Resolution-only rebakes are budgeted per frame: a zoom-tier flip
+    // re-bakes visible chunks over a few frames (the stale-res bake is
+    // still correct content) instead of hitching on one.
+    let resBudget = 3;
 
     for (let cy = minCy; cy <= maxCy; cy++) {
       for (let cx = minCx; cx <= maxCx; cx++) {
@@ -1191,7 +1241,11 @@ export class Renderer {
         if (!data) continue;
         const key = `${cx},${cy}`;
         let baked = this.baked.get(key);
-        if (!baked || baked.data !== data || baked.rev !== (data.rev ?? 0)) {
+        const contentStale =
+          !baked || baked.data !== data || baked.rev !== (data.rev ?? 0);
+        const resStale = !contentStale && baked!.px !== bakePx && resBudget > 0;
+        if (contentStale || resStale) {
+          if (resStale) resBudget--;
           const ground = (tx: number, ty: number) => game.world.groundAt(tx, ty);
           const detail = (tx: number, ty: number) => this.detailAt(game, tx, ty);
           const elev = (tx: number, ty: number) => game.world.elevAt(tx, ty);
@@ -1201,7 +1255,7 @@ export class Renderer {
           }
           const lifted: BakedChunk['lifted'] = [];
           for (let level = 1; level <= maxLevel; level++) {
-            const bake = bakeElevated(ground, detail, elev, cx, cy, TILE_PX, level);
+            const bake = bakeElevated(ground, detail, elev, cx, cy, bakePx, level);
             if (!bake) continue;
             // Contiguous row runs, merged across small gaps, padded one
             // row each way for the half-tile contour bleed.
@@ -1219,13 +1273,15 @@ export class Renderer {
             lifted.push({ level, canvas: bake.canvas, bands });
           }
           baked = {
-            canvas: bakeChunk(ground, detail, elev, cx, cy, TILE_PX),
+            canvas: bakeChunk(ground, detail, elev, cx, cy, bakePx),
             data,
             rev: data.rev ?? 0,
+            px: bakePx,
             lifted,
           };
           this.baked.set(key, baked);
         }
+        if (!baked) continue; // unreachable: contentStale covers !baked
         const p = this.camera.worldToScreen(cx * CHUNK_SIZE, cy * CHUNK_SIZE, this.w, this.h);
         const size = CHUNK_SIZE * s;
         this.ctx.imageSmoothingEnabled = true;
@@ -1237,13 +1293,16 @@ export class Renderer {
   }
 
   private evictBaked(): void {
-    if (this.baked.size <= 80) return;
+    // Hi-res bakes are 4× the pixels — keep far fewer of them around.
+    const hiRes = this.bakePx() > TILE_PX;
+    const cap = hiRes ? 28 : 80;
+    if (this.baked.size <= cap) return;
     const ccx = this.camera.x / CHUNK_SIZE;
     const ccy = this.camera.y / CHUNK_SIZE;
     for (const [key] of this.baked) {
       const [cx, cy] = key.split(',').map(Number);
       if (Math.abs(cx! - ccx) > 4 || Math.abs(cy! - ccy) > 4) this.baked.delete(key);
-      if (this.baked.size <= 60) break;
+      if (this.baked.size <= (hiRes ? 20 : 60)) break;
     }
   }
 

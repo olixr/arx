@@ -72,6 +72,43 @@ let authReady = false;
 const input = new InputManager(canvas);
 const renderer = new Renderer(canvas);
 
+// Player zoom: restore the saved framing, then persist every change.
+// 1 = the classic distance; zooming in is the intimate mode (bigger,
+// more readable targets), a slight zoom-out widens the field.
+const storedZoom = parseFloat(localStorage.getItem('devcraft.zoom') ?? '');
+if (Number.isFinite(storedZoom)) {
+  renderer.camera.setZoom(storedZoom);
+  renderer.camera.zoom = renderer.camera.targetZoom;
+}
+const saveZoom = (): void =>
+  localStorage.setItem('devcraft.zoom', renderer.camera.targetZoom.toFixed(3));
+
+// Mouse wheel: smooth, exponential — equal scroll = equal feel at any depth.
+canvas.addEventListener(
+  'wheel',
+  (e) => {
+    e.preventDefault();
+    renderer.camera.stepZoom(Math.exp(-e.deltaY * 0.0012));
+    saveZoom();
+  },
+  { passive: false },
+);
+
+/** Pad zoom presets, cycled by d-pad ◀: Standard → Near → Close → Wide. */
+const ZOOM_PRESETS = [1, 1.4, 1.8, 0.87];
+function cycleZoom(): void {
+  const cur = renderer.camera.targetZoom;
+  let next = ZOOM_PRESETS[0]!;
+  for (let i = 0; i < ZOOM_PRESETS.length; i++) {
+    if (Math.abs(ZOOM_PRESETS[i]! - cur) < 0.01) {
+      next = ZOOM_PRESETS[(i + 1) % ZOOM_PRESETS.length]!;
+      break;
+    }
+  }
+  renderer.camera.setZoom(next);
+  saveZoom();
+}
+
 const chat = new ChatUI(
   (text) => game.sendChat(text),
   () => !hud.classList.contains('hidden'),
@@ -512,6 +549,14 @@ window.addEventListener('keydown', (e) => {
     renderer.buildGhost = null;
   }
   if (e.code === 'KeyF') activateTarget(game.findNearbyTarget());
+  if (e.code === 'Equal' || e.code === 'NumpadAdd') {
+    renderer.camera.stepZoom(1.15);
+    saveZoom();
+  }
+  if (e.code === 'Minus' || e.code === 'NumpadSubtract') {
+    renderer.camera.stepZoom(1 / 1.15);
+    saveZoom();
+  }
 });
 
 // Click an interactable tile within reach to use it; in build mode the
@@ -549,7 +594,7 @@ setupTouch(input, game, renderer, canvas, (tx, ty) => {
   if (!target) return false;
   activateTarget(target);
   return true;
-});
+}, saveZoom);
 
 // Connect immediately; a stored session token skips the login form.
 game.connect(localStorage.getItem('devcraft.token'));
@@ -761,6 +806,9 @@ function frame(now: number): void {
     padBuildCur = null;
     renderer.buildGhost = null;
   }
+  // d-pad ◀ cycles the camera (free in gameplay and build mode; in
+  // menus it navigates, so uiCapture wins).
+  if (padEdge(14) && !input.uiCapture) cycleZoom();
   padPrevBtns = padBtns;
 
   game.update(now);

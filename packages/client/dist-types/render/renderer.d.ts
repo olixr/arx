@@ -1,10 +1,27 @@
 import { Tile, type Vec2 } from '@devcraft/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import { Particles } from './particles.js';
+/** Player zoom bounds: 1 = the classic framing (also the default). */
+export declare const ZOOM_MIN = 0.85;
+export declare const ZOOM_MAX = 2;
 export declare class Camera {
     x: number;
     y: number;
     scale: number;
+    /** The scale zoom multiplies — never changes. */
+    readonly baseScale: number;
+    /**
+     * Player zoom: 1 = the classic framing, >1 pulls in for intimate
+     * play (bigger targets, more readable for kids), slightly <1 widens.
+     * `zoom` glides toward `targetZoom` each frame; everything downstream
+     * reads `scale`, so the whole world breathes with it.
+     */
+    zoom: number;
+    targetZoom: number;
+    setZoom(z: number): void;
+    stepZoom(factor: number): void;
+    /** Per-frame glide toward the target; call once, before drawing. */
+    tickZoom(dt: number): void;
     /**
      * Camera pitch: an orthographic camera tilted down at the flat world
      * compresses the ground plane UNIFORMLY (cos of the pitch angle) —
@@ -224,6 +241,12 @@ export declare class Renderer {
     private drawVignette;
     private detailAt;
     private visibleTileBounds;
+    /**
+     * Bake resolution follows the zoom tier: past ~1.05× the 32px bakes
+     * would upscale into mush, so chunks re-bake at 64px/tile. Keyed off
+     * targetZoom (not the gliding zoom) so a zoom flips the tier once.
+     */
+    private bakePx;
     private drawGroundChunks;
     private evictBaked;
     private evictAnims;
