@@ -1,13 +1,13 @@
 import { itemDef } from '@devcraft/content';
 import { shade } from './rig.js';
-import { GLYPHS } from './iconPaths.js';
 
 /**
- * The icon set. Item icons are game-icons.net glyphs (CC BY 3.0 —
- * credits in iconPaths.ts) re-rendered through the house pipeline:
- * item-color tint, two-tone shading band, dilated dark outline, one
- * hard drop shadow. UI glyphs stay hand-painted. Rendered once per
- * (icon, size) and cached as data URLs for the DOM.
+ * The icon set: every item and UI glyph is drawn in code, in the same
+ * language as the world art — chunky flat shapes, two to four colors
+ * per icon, facet highlights, one bold dark outline, one hard drop
+ * shadow. No imported silhouettes: single-color glyphs go hazy where
+ * this game pops. Rendered once per (icon, size) and cached as data
+ * URLs for the DOM.
  */
 
 const OUTLINE = '#241a2e';
@@ -273,6 +273,545 @@ const PAINTERS: Record<string, IconPainter> = {
     dot(c, '#66606e', 0.4, 0.46, 0.04);
     dot(c, '#66606e', 0.58, 0.54, 0.03);
   },
+  cape: (c, col) => {
+    // The wardrobe's own silhouette: shoulder collar, billowing cloth,
+    // notched hem — the world capes shrunk to a chip.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.35, 0.17);
+    c.quadraticCurveTo(0.5, 0.1, 0.65, 0.17);
+    c.quadraticCurveTo(0.8, 0.42, 0.75, 0.82);
+    c.lineTo(0.62, 0.72);
+    c.lineTo(0.51, 0.84);
+    c.lineTo(0.4, 0.72);
+    c.lineTo(0.26, 0.82);
+    c.quadraticCurveTo(0.2, 0.42, 0.35, 0.17);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // Light catches the left fold; the right turns away.
+    c.fillStyle = shade(col, 20);
+    c.beginPath();
+    c.moveTo(0.37, 0.2);
+    c.quadraticCurveTo(0.31, 0.45, 0.33, 0.72);
+    c.lineTo(0.4, 0.68);
+    c.quadraticCurveTo(0.4, 0.44, 0.44, 0.2);
+    c.closePath();
+    c.fill();
+    c.fillStyle = shade(col, -24);
+    c.beginPath();
+    c.moveTo(0.6, 0.2);
+    c.quadraticCurveTo(0.68, 0.46, 0.66, 0.74);
+    c.lineTo(0.58, 0.68);
+    c.quadraticCurveTo(0.58, 0.44, 0.54, 0.2);
+    c.closePath();
+    c.fill();
+    // Collar clasp.
+    bar(c, shade(col, -32), 0.38, 0.14, 0.24, 0.06);
+    dot(c, '#d9a441', 0.5, 0.17, 0.035);
+  },
+  banner: (c, col) => {
+    // A warband pennant on its crossbar, swallowtail cut.
+    bar(c, '#6b4a26', 0.2, 0.13, 0.6, 0.055);
+    dot(c, '#d9a441', 0.22, 0.157, 0.035);
+    dot(c, '#d9a441', 0.78, 0.157, 0.035);
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.3, 0.19);
+    c.lineTo(0.7, 0.19);
+    c.lineTo(0.7, 0.78);
+    c.lineTo(0.5, 0.66);
+    c.lineTo(0.3, 0.78);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 22);
+    c.fillRect(0.44, 0.21, 0.12, 0.44);
+    c.fillStyle = shade(col, -26);
+    c.fillRect(0.63, 0.21, 0.05, 0.5);
+  },
+  helm: (c, col) => {
+    // Rounded dome, cheek plates, dark eye slit, a proud crest ridge.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.26, 0.52);
+    c.quadraticCurveTo(0.24, 0.2, 0.5, 0.18);
+    c.quadraticCurveTo(0.76, 0.2, 0.74, 0.52);
+    c.lineTo(0.72, 0.78);
+    c.lineTo(0.6, 0.7);
+    c.lineTo(0.4, 0.7);
+    c.lineTo(0.28, 0.78);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 24);
+    c.beginPath();
+    c.moveTo(0.44, 0.16);
+    c.quadraticCurveTo(0.5, 0.12, 0.56, 0.16);
+    c.lineTo(0.56, 0.5);
+    c.lineTo(0.44, 0.5);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = '#170f1c';
+    c.beginPath();
+    c.roundRect(0.32, 0.5, 0.36, 0.085, 0.03);
+    c.fill();
+  },
+  legs: (c, col) => {
+    // A pair of greaves, splayed at the boots.
+    for (const side of [-1, 1]) {
+      c.save();
+      c.translate(0.5 + side * 0.115, 0.5);
+      c.rotate(side * 0.08);
+      c.fillStyle = col;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.035;
+      c.beginPath();
+      c.roundRect(-0.085, -0.32, 0.17, 0.62, 0.06);
+      c.fill();
+      c.stroke();
+      c.fillStyle = shade(col, side < 0 ? 18 : -20);
+      c.fillRect(-0.05, -0.28, 0.1, 0.5);
+      c.fillStyle = shade(col, -30);
+      c.beginPath();
+      c.roundRect(-0.085, -0.05, 0.17, 0.07, 0.03);
+      c.fill();
+      c.restore();
+    }
+    bar(c, shade(col, -26), 0.3, 0.14, 0.4, 0.09);
+  },
+  shield: (c, col) => {
+    // Spiked buckler: rim, boss, and four teeth that mean business.
+    for (const a of [-Math.PI / 4, Math.PI / 4, (Math.PI * 3) / 4, (-Math.PI * 3) / 4]) {
+      const sx = 0.5 + Math.cos(a) * 0.46;
+      const sy = 0.5 + Math.sin(a) * 0.46;
+      poly(c, '#dde2ea', [
+        [0.5 + Math.cos(a + 0.42) * 0.27, 0.5 + Math.sin(a + 0.42) * 0.27],
+        [sx, sy],
+        [0.5 + Math.cos(a - 0.42) * 0.27, 0.5 + Math.sin(a - 0.42) * 0.27],
+      ]);
+    }
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.arc(0.5, 0.5, 0.3, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.strokeStyle = shade(col, -28);
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.arc(0.5, 0.5, 0.225, 0, Math.PI * 2);
+    c.stroke();
+    c.fillStyle = shade(col, 22);
+    c.beginPath();
+    c.arc(0.42, 0.42, 0.09, 0, Math.PI * 2);
+    c.fill();
+    dot(c, '#d9a441', 0.5, 0.5, 0.075);
+    dot(c, '#fff2cc', 0.475, 0.475, 0.026);
+  },
+  gem: (c, col) => {
+    // A cut stone with a live heart — relic-grade sparkle.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.5, 0.12);
+    c.lineTo(0.78, 0.42);
+    c.lineTo(0.5, 0.88);
+    c.lineTo(0.22, 0.42);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    poly(c, shade(col, 30), [[0.5, 0.12], [0.64, 0.42], [0.36, 0.42]]);
+    poly(c, shade(col, -24), [[0.64, 0.42], [0.78, 0.42], [0.5, 0.88]]);
+    dot(c, '#fff2cc', 0.42, 0.3, 0.035);
+  },
+  totem: (c, col) => {
+    // Carved watcher: stacked faces and spread wings.
+    poly(c, shade(col, -18), [[0.14, 0.4], [0.36, 0.32], [0.36, 0.5], [0.16, 0.52]]);
+    poly(c, shade(col, -18), [[0.86, 0.4], [0.64, 0.32], [0.64, 0.5], [0.84, 0.52]]);
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.roundRect(0.36, 0.14, 0.28, 0.72, 0.05);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 20);
+    c.fillRect(0.4, 0.16, 0.08, 0.66);
+    // Two carved faces: brows and hollow eyes.
+    c.fillStyle = shade(col, -34);
+    c.fillRect(0.38, 0.3, 0.24, 0.045);
+    c.fillRect(0.38, 0.6, 0.24, 0.045);
+    dot(c, '#170f1c', 0.44, 0.42, 0.032);
+    dot(c, '#170f1c', 0.56, 0.42, 0.032);
+    dot(c, '#170f1c', 0.44, 0.72, 0.032);
+    dot(c, '#170f1c', 0.56, 0.72, 0.032);
+  },
+  trap: (c, col) => {
+    // A snare's sprung jaws: two toothed arcs over a base plate.
+    c.fillStyle = '#6a6274';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.ellipse(0.5, 0.72, 0.3, 0.11, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    for (const side of [-1, 1]) {
+      // Open jaw arc with three bright teeth pointing inward.
+      c.fillStyle = col;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.033;
+      c.beginPath();
+      c.moveTo(0.5 + side * 0.06, 0.7);
+      c.quadraticCurveTo(0.5 + side * 0.36, 0.62, 0.5 + side * 0.34, 0.28);
+      c.quadraticCurveTo(0.5 + side * 0.24, 0.4, 0.5 + side * 0.16, 0.52);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      for (let i = 0; i < 3; i++) {
+        const t = 0.3 + i * 0.28;
+        const bx = 0.5 + side * (0.33 - t * 0.16);
+        const by = 0.3 + t * 0.36;
+        poly(c, '#e6e0d0', [
+          [bx, by],
+          [bx - side * 0.09, by - 0.02],
+          [bx - side * 0.015, by + 0.075],
+        ]);
+      }
+    }
+    // Trigger plate + anchor ring.
+    dot(c, shade(col, 24), 0.5, 0.7, 0.065);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.arc(0.5, 0.7, 0.065, 0, Math.PI * 2);
+    c.stroke();
+    c.strokeStyle = '#c9ccd4';
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.arc(0.5, 0.87, 0.055, 0, Math.PI * 2);
+    c.stroke();
+  },
+  bell: (c, col) => {
+    // Storm bell mid-ring.
+    bar(c, '#6b4a26', 0.38, 0.1, 0.24, 0.07);
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.42, 0.18);
+    c.quadraticCurveTo(0.42, 0.14, 0.5, 0.14);
+    c.quadraticCurveTo(0.58, 0.14, 0.58, 0.18);
+    c.quadraticCurveTo(0.6, 0.44, 0.7, 0.58);
+    c.lineTo(0.7, 0.66);
+    c.lineTo(0.3, 0.66);
+    c.lineTo(0.3, 0.58);
+    c.quadraticCurveTo(0.4, 0.44, 0.42, 0.18);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 24);
+    c.beginPath();
+    c.moveTo(0.45, 0.18);
+    c.quadraticCurveTo(0.44, 0.44, 0.38, 0.58);
+    c.lineTo(0.45, 0.62);
+    c.quadraticCurveTo(0.49, 0.4, 0.5, 0.18);
+    c.closePath();
+    c.fill();
+    c.fillStyle = shade(col, -26);
+    c.fillRect(0.3, 0.6, 0.4, 0.06);
+    dot(c, shade(col, -35), 0.5, 0.74, 0.055);
+    // Ring-out ticks.
+    c.strokeStyle = '#fff2cc';
+    c.lineWidth = 0.028;
+    for (const side of [-1, 1]) {
+      c.beginPath();
+      c.arc(0.5, 0.42, 0.36, side === -1 ? Math.PI * 0.8 : -Math.PI * 0.2, side === -1 ? Math.PI * 1.0 : 0);
+      c.stroke();
+    }
+  },
+  decoy: (c, col) => {
+    // You, allegedly: crossed poles and a stuffed shirt.
+    bar(c, '#8a6a45', 0.47, 0.2, 0.06, 0.68);
+    bar(c, '#8a6a45', 0.22, 0.34, 0.56, 0.055);
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.36, 0.4);
+    c.lineTo(0.64, 0.4);
+    c.lineTo(0.6, 0.72);
+    c.lineTo(0.4, 0.72);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, -20);
+    c.fillRect(0.54, 0.42, 0.07, 0.28);
+    // Straw head with sprigs.
+    dot(c, '#d4b36a', 0.5, 0.26, 0.11);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.arc(0.5, 0.26, 0.11, 0, Math.PI * 2);
+    c.stroke();
+    c.strokeStyle = '#b8933e';
+    c.lineWidth = 0.025;
+    for (const [x1, y1, x2, y2] of [
+      [0.5, 0.14, 0.47, 0.06],
+      [0.56, 0.16, 0.6, 0.08],
+      [0.42, 0.17, 0.37, 0.1],
+    ] as const) {
+      c.beginPath();
+      c.moveTo(x1, y1);
+      c.lineTo(x2, y2);
+      c.stroke();
+    }
+  },
+  tome: (c, col) => {
+    // A clasped grimoire wearing its element on the cover.
+    c.fillStyle = shade(col, -32);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.roundRect(0.2, 0.16, 0.6, 0.68, 0.05);
+    c.fill();
+    c.stroke();
+    c.fillStyle = col;
+    c.beginPath();
+    c.roundRect(0.28, 0.16, 0.52, 0.68, 0.05);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 16);
+    c.fillRect(0.31, 0.19, 0.46, 0.09);
+    // Clasp.
+    bar(c, '#d9a441', 0.72, 0.44, 0.1, 0.12);
+    // Flame sigil.
+    c.fillStyle = '#ffd77a';
+    c.beginPath();
+    c.moveTo(0.5, 0.32);
+    c.quadraticCurveTo(0.62, 0.46, 0.54, 0.6);
+    c.quadraticCurveTo(0.5, 0.66, 0.46, 0.6);
+    c.quadraticCurveTo(0.38, 0.46, 0.5, 0.32);
+    c.fill();
+    c.fillStyle = '#e8823d';
+    c.beginPath();
+    c.moveTo(0.5, 0.42);
+    c.quadraticCurveTo(0.55, 0.5, 0.51, 0.58);
+    c.quadraticCurveTo(0.46, 0.54, 0.47, 0.48);
+    c.fill();
+  },
+  quiver: (c, col) => {
+    // Canted quiver, three shafts ready.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(0.35);
+    for (const off of [-0.09, 0, 0.09]) {
+      c.strokeStyle = '#8a6a45';
+      c.lineWidth = 0.035;
+      c.beginPath();
+      c.moveTo(off, -0.18);
+      c.lineTo(off * 1.4, -0.42);
+      c.stroke();
+      poly(c, '#e6e0d0', [
+        [off * 1.4 - 0.045, -0.38],
+        [off * 1.4, -0.5],
+        [off * 1.4 + 0.045, -0.38],
+      ]);
+    }
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.roundRect(-0.16, -0.22, 0.32, 0.62, 0.09);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 20);
+    c.fillRect(-0.11, -0.18, 0.09, 0.52);
+    c.fillStyle = shade(col, -24);
+    c.beginPath();
+    c.roundRect(-0.16, -0.22, 0.32, 0.1, 0.05);
+    c.fill();
+    c.stroke();
+    bar(c, '#6b4a26', -0.18, 0.05, 0.36, 0.06);
+    c.restore();
+  },
+  skull: (c, col) => {
+    // The fallen champion's sigil: a crowned skull.
+    poly(c, col, [
+      [0.32, 0.3],
+      [0.32, 0.14],
+      [0.41, 0.22],
+      [0.5, 0.12],
+      [0.59, 0.22],
+      [0.68, 0.14],
+      [0.68, 0.3],
+    ]);
+    c.fillStyle = '#efe8d8';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.arc(0.5, 0.48, 0.22, Math.PI * 0.95, Math.PI * 0.05);
+    c.quadraticCurveTo(0.72, 0.66, 0.62, 0.68);
+    c.lineTo(0.62, 0.76);
+    c.lineTo(0.38, 0.76);
+    c.lineTo(0.38, 0.68);
+    c.quadraticCurveTo(0.28, 0.66, 0.28, 0.48);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    dot(c, '#170f1c', 0.42, 0.5, 0.052);
+    dot(c, '#170f1c', 0.58, 0.5, 0.052);
+    poly(c, '#170f1c', [[0.5, 0.58], [0.535, 0.64], [0.465, 0.64]]);
+    c.strokeStyle = shade('#efe8d8', -35);
+    c.lineWidth = 0.022;
+    for (const x of [0.44, 0.5, 0.56]) {
+      c.beginPath();
+      c.moveTo(x, 0.7);
+      c.lineTo(x, 0.76);
+      c.stroke();
+    }
+  },
+  ring: (c, col) => {
+    // A jeweler's band catching the light.
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.14;
+    c.beginPath();
+    c.arc(0.5, 0.56, 0.22, 0, Math.PI * 2);
+    c.stroke();
+    c.strokeStyle = col;
+    c.lineWidth = 0.085;
+    c.beginPath();
+    c.arc(0.5, 0.56, 0.22, 0, Math.PI * 2);
+    c.stroke();
+    c.strokeStyle = shade(col, 26);
+    c.lineWidth = 0.04;
+    c.beginPath();
+    c.arc(0.5, 0.56, 0.25, Math.PI * 0.85, Math.PI * 1.35);
+    c.stroke();
+    // The stone.
+    poly(c, '#8ac4e8', [[0.5, 0.14], [0.6, 0.26], [0.5, 0.38], [0.4, 0.26]]);
+    poly(c, '#c8e6f8', [[0.5, 0.14], [0.55, 0.26], [0.45, 0.26]]);
+  },
+  nuggets: (c, col) => {
+    // Chunks of the good stuff.
+    for (const [x, y, r] of [
+      [0.34, 0.62, 0.17],
+      [0.66, 0.64, 0.15],
+      [0.5, 0.4, 0.16],
+    ] as const) {
+      c.fillStyle = col;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.033;
+      c.beginPath();
+      c.moveTo(x - r, y);
+      c.lineTo(x - r * 0.5, y - r * 0.9);
+      c.lineTo(x + r * 0.6, y - r * 0.8);
+      c.lineTo(x + r, y + r * 0.2);
+      c.lineTo(x + r * 0.4, y + r * 0.8);
+      c.lineTo(x - r * 0.6, y + r * 0.7);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      poly(c, shade(col, 28), [
+        [x - r * 0.4, y - r * 0.7],
+        [x + r * 0.4, y - r * 0.6],
+        [x, y - r * 0.1],
+      ]);
+    }
+    dot(c, '#fff2cc', 0.56, 0.3, 0.03);
+  },
+  chicken: (c, col) => {
+    // The whole bird, honest and plucked.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.ellipse(0.5, 0.5, 0.27, 0.21, -0.15, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    // Drumstick knuckles.
+    for (const side of [-1, 1]) {
+      c.strokeStyle = shade(col, -18);
+      c.lineWidth = 0.05;
+      c.beginPath();
+      c.moveTo(0.5 + side * 0.1, 0.66);
+      c.lineTo(0.5 + side * 0.17, 0.8);
+      c.stroke();
+      dot(c, '#efe8d8', 0.5 + side * 0.19, 0.82, 0.035);
+    }
+    // Wing fold + neck stump.
+    c.fillStyle = shade(col, 18);
+    c.beginPath();
+    c.ellipse(0.44, 0.44, 0.12, 0.07, -0.3, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.028;
+    c.stroke();
+    dot(c, shade(col, -14), 0.24, 0.36, 0.05);
+  },
+  chickenleg: (c, col) => {
+    // The classic drumstick.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(-Math.PI / 5);
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.ellipse(-0.08, 0, 0.2, 0.16, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 20);
+    c.beginPath();
+    c.ellipse(-0.12, -0.05, 0.1, 0.06, 0, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = '#efe8d8';
+    c.lineWidth = 0.06;
+    c.beginPath();
+    c.moveTo(0.1, 0);
+    c.lineTo(0.28, 0);
+    c.stroke();
+    dot(c, '#efe8d8', 0.32, -0.045, 0.045);
+    dot(c, '#efe8d8', 0.32, 0.045, 0.045);
+    c.restore();
+  },
+  coalpile: (c, col) => {
+    // Facet-cut black lumps with a cold sheen.
+    for (const [x, y, r] of [
+      [0.35, 0.6, 0.18],
+      [0.65, 0.62, 0.16],
+      [0.5, 0.4, 0.17],
+    ] as const) {
+      c.fillStyle = col;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.033;
+      c.beginPath();
+      c.moveTo(x - r, y + r * 0.2);
+      c.lineTo(x - r * 0.4, y - r * 0.9);
+      c.lineTo(x + r * 0.7, y - r * 0.7);
+      c.lineTo(x + r, y + r * 0.3);
+      c.lineTo(x + r * 0.2, y + r * 0.85);
+      c.lineTo(x - r * 0.7, y + r * 0.7);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      poly(c, shade(col, 30), [
+        [x - r * 0.3, y - r * 0.6],
+        [x + r * 0.35, y - r * 0.5],
+        [x, y],
+      ]);
+    }
+  },
+
   // ------------------------------------------------------- UI glyphs
   backpack: (c, col) => {
     c.fillStyle = col;
@@ -388,147 +927,73 @@ function dot(c: CanvasRenderingContext2D, color: string, x: number, y: number, r
 }
 
 /**
- * Which glyph + tint each item renders. EVERY item gets a real glyph —
- * no more tinted-lump fallbacks. Tints follow the item's identity
- * color, lifted where the raw color would sink into the dark slots.
+ * Which painter + tint each item renders. EVERY item gets real art;
+ * families (capes, bars, ores) share a painter and speak through their
+ * identity color, exactly like the world sprites do.
  */
-const ITEM_GLYPH: Record<string, { glyph: string; color: string }> = {
-  coins: { glyph: 'two-coins', color: '#f2c94c' },
-  log: { glyph: 'log', color: '#a5794e' },
-  oak_log: { glyph: 'half-log', color: '#8a6234' },
-  copper_ore: { glyph: 'ore', color: '#c47b3d' },
-  tin_ore: { glyph: 'ore', color: '#cfd3dc' },
-  iron_ore: { glyph: 'ore', color: '#aeb4bd' },
-  coal: { glyph: 'coal-pile', color: '#6a6274' },
-  gold_ore: { glyph: 'gold-nuggets', color: '#f2c94c' },
-  raw_trout: { glyph: 'flatfish', color: '#8fb7d9' },
-  trout: { glyph: 'fish-cooked', color: '#d99a6a' },
-  raw_chicken: { glyph: 'chicken', color: '#ecd3bd' },
-  cooked_chicken: { glyph: 'chicken-leg', color: '#d99a52' },
-  raw_beef: { glyph: 'steak', color: '#c4645a' },
-  cooked_beef: { glyph: 'meat', color: '#b06a3a' },
-  burnt_food: { glyph: 'burning-embers', color: '#66606e' },
-  bronze_bar: { glyph: 'metal-bar', color: '#b0793f' },
-  iron_bar: { glyph: 'metal-bar', color: '#9aa2ac' },
-  steel_bar: { glyph: 'metal-bar', color: '#c4cad4' },
-  gold_bar: { glyph: 'metal-bar', color: '#f2c94c' },
-  gold_ring: { glyph: 'ring', color: '#f2c94c' },
-  leather: { glyph: 'animal-hide', color: '#b08a5c' },
-  cowhide: { glyph: 'animal-hide', color: '#a08468' },
-  wolf_fur: { glyph: 'animal-hide', color: '#8a90a0' },
-  leather_body: { glyph: 'leather-armor', color: '#b08a5c' },
-  bones: { glyph: 'pelvis-bone', color: '#efe8d8' },
-  feather: { glyph: 'feather', color: '#f4efe4' },
-  bronze_axe: { glyph: 'battered-axe', color: '#b0793f' },
-  bronze_pickaxe: { glyph: 'war-pick', color: '#b0793f' },
-  fishing_rod: { glyph: 'fishing-pole', color: '#c4a35a' },
-  bronze_sword: { glyph: 'broadsword', color: '#c98d4b' },
-  iron_sword: { glyph: 'broadsword', color: '#b6bcc6' },
-  steel_sword: { glyph: 'two-handed-sword', color: '#d6dce6' },
-  oak_shortbow: { glyph: 'bow-arrow', color: '#a5794e' },
-  willow_longbow: { glyph: 'bow-arrow', color: '#7fa46a' },
-  arrow: { glyph: 'broadhead-arrow', color: '#c4b590' },
-  apprentice_staff: { glyph: 'wizard-staff', color: '#9a7ae0' },
-  ember_staff: { glyph: 'crystal-wand', color: '#e8823d' },
-  ember_charm: { glyph: 'fire-gem', color: '#ff8a3c' },
-  verdant_totem: { glyph: 'totem', color: '#7ac47a' },
-  snare_kit: { glyph: 'wolf-trap', color: '#b0a05a' },
-  storm_bell: { glyph: 'ringing-bell', color: '#e8e06a' },
-  straw_decoy: { glyph: 'straw-bale', color: '#d4b36a' },
-  sigil_fallen_champion: { glyph: 'crowned-skull', color: '#efe8d8' },
-  spiked_buckler: { glyph: 'spiked-shield', color: '#a5874e' },
-  frost_quiver: { glyph: 'quiver', color: '#8ac4e8' },
-  tome_of_embers: { glyph: 'burning-book', color: '#e8763c' },
-  wolf_pelt_cloak: { glyph: 'cape', color: '#8a90a0' },
-  cape_traveler: { glyph: 'cape', color: '#7da35a' },
-  cape_emberweave: { glyph: 'cape', color: '#c4553d' },
-  cape_champion: { glyph: 'cape', color: '#b04a5c' },
-  cape_ragged: { glyph: 'cape', color: '#8a7a5f' },
-  cape_banner: { glyph: 'vertical-banner', color: '#a34434' },
-  cape_huntsman: { glyph: 'cape', color: '#5c8a54' },
-  cape_midnight: { glyph: 'cape', color: '#5c5478' },
-  cape_gilded: { glyph: 'cape', color: '#c9a23c' },
-  cape_storm: { glyph: 'cape', color: '#6a7ea0' },
-  cape_royal: { glyph: 'cape', color: '#8a5cc4' },
-  cape_celestial: { glyph: 'cape', color: '#6a70b8' },
-  cape_phoenix: { glyph: 'cape', color: '#e05438' },
+const ITEM_ICON: Record<string, { icon: string; color: string }> = {
+  coins: { icon: 'coins', color: '#e8b64c' },
+  log: { icon: 'log', color: '#96744c' },
+  oak_log: { icon: 'log', color: '#74522f' },
+  copper_ore: { icon: 'ore', color: '#c47b3d' },
+  tin_ore: { icon: 'ore', color: '#cfd3dc' },
+  iron_ore: { icon: 'ore', color: '#aeb4bd' },
+  coal: { icon: 'coalpile', color: '#4a4456' },
+  gold_ore: { icon: 'nuggets', color: '#e8b64c' },
+  raw_trout: { icon: 'fish', color: '#8fb7d9' },
+  trout: { icon: 'fish', color: '#d99a6a' },
+  raw_chicken: { icon: 'chicken', color: '#ecd3bd' },
+  cooked_chicken: { icon: 'chickenleg', color: '#d9a052' },
+  raw_beef: { icon: 'meat', color: '#c4645a' },
+  cooked_beef: { icon: 'meat', color: '#a05a3a' },
+  burnt_food: { icon: 'burnt', color: '#413c4a' },
+  bronze_bar: { icon: 'bar', color: '#b0793f' },
+  iron_bar: { icon: 'bar', color: '#9aa2ac' },
+  steel_bar: { icon: 'bar', color: '#c4cad4' },
+  gold_bar: { icon: 'bar', color: '#f2c94c' },
+  gold_ring: { icon: 'ring', color: '#f2c94c' },
+  leather: { icon: 'hide', color: '#b08a5c' },
+  cowhide: { icon: 'hide', color: '#a08468' },
+  wolf_fur: { icon: 'hide', color: '#8a90a0' },
+  leather_body: { icon: 'armor', color: '#b08a5c' },
+  bones: { icon: 'bones', color: '#efe8d8' },
+  feather: { icon: 'feather', color: '#f4efe4' },
+  bronze_axe: { icon: 'axe', color: '#b0793f' },
+  bronze_pickaxe: { icon: 'pickaxe', color: '#b0793f' },
+  fishing_rod: { icon: 'rod', color: '#c4a35a' },
+  bronze_sword: { icon: 'sword', color: '#c98d4b' },
+  iron_sword: { icon: 'sword', color: '#b6bcc6' },
+  steel_sword: { icon: 'sword', color: '#e2e8f0' },
+  oak_shortbow: { icon: 'bow', color: '#8a6a45' },
+  willow_longbow: { icon: 'bow', color: '#7fa46a' },
+  arrow: { icon: 'arrow', color: '#c4b590' },
+  apprentice_staff: { icon: 'staff', color: '#9a7ae0' },
+  ember_staff: { icon: 'staff', color: '#ff8a3c' },
+  ember_charm: { icon: 'gem', color: '#ff8a3c' },
+  verdant_totem: { icon: 'totem', color: '#7ab06a' },
+  snare_kit: { icon: 'trap', color: '#b0a05a' },
+  storm_bell: { icon: 'bell', color: '#e8d06a' },
+  straw_decoy: { icon: 'decoy', color: '#c4a35a' },
+  sigil_fallen_champion: { icon: 'skull', color: '#e8b64c' },
+  spiked_buckler: { icon: 'shield', color: '#a5794e' },
+  frost_quiver: { icon: 'quiver', color: '#8ac4e8' },
+  tome_of_embers: { icon: 'tome', color: '#b0543a' },
+  wolf_pelt_cloak: { icon: 'cape', color: '#8a90a0' },
+  cape_traveler: { icon: 'cape', color: '#7da35a' },
+  cape_emberweave: { icon: 'cape', color: '#c4553d' },
+  cape_champion: { icon: 'cape', color: '#b04a5c' },
+  cape_ragged: { icon: 'cape', color: '#8a7a5f' },
+  cape_banner: { icon: 'banner', color: '#a34434' },
+  cape_huntsman: { icon: 'cape', color: '#5c8a54' },
+  cape_midnight: { icon: 'cape', color: '#565080' },
+  cape_gilded: { icon: 'cape', color: '#c9a23c' },
+  cape_storm: { icon: 'cape', color: '#6a7ea0' },
+  cape_royal: { icon: 'cape', color: '#8a5cc4' },
+  cape_celestial: { icon: 'cape', color: '#7078c4' },
+  cape_phoenix: { icon: 'cape', color: '#e05438' },
 };
 
 const cache = new Map<string, string>();
-
-/**
- * The glyph pipeline: fill the 512-box path with the tint, band it
- * two-tone (light crown, heavy base), then wrap a dilated dark outline
- * and one hard drop shadow — the same silhouette language as the world.
- */
-function renderGlyph(glyphKey: string, color: string, size: number): string {
-  const key = `g|${glyphKey}|${color}|${size}`;
-  const hit = cache.get(key);
-  if (hit) return hit;
-  const glyph = GLYPHS[glyphKey]!;
-  const path = new Path2D(glyph.d);
-  const pad = size * 0.09;
-  const s = (size - pad * 2) / 512;
-
-  // Tinted art layer.
-  const art = document.createElement('canvas');
-  art.width = size;
-  art.height = size;
-  const a = art.getContext('2d')!;
-  a.save();
-  a.translate(pad, pad);
-  a.scale(s, s);
-  a.fillStyle = color;
-  a.fill(path);
-  // Two-tone banding, clipped to the glyph.
-  a.clip(path);
-  a.fillStyle = shade(color, 18);
-  a.fillRect(0, 0, 512, 512 * 0.34);
-  a.fillStyle = shade(color, -20);
-  a.fillRect(0, 512 * 0.72, 512, 512 * 0.28);
-  a.restore();
-
-  // Silhouette (for outline dilation + shadow).
-  const sil = document.createElement('canvas');
-  sil.width = size;
-  sil.height = size;
-  const sc = sil.getContext('2d')!;
-  sc.save();
-  sc.translate(pad, pad);
-  sc.scale(s, s);
-  sc.fillStyle = OUTLINE;
-  sc.fill(path);
-  sc.restore();
-
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d')!;
-  // Hard drop shadow first.
-  ctx.save();
-  ctx.globalAlpha = 0.45;
-  ctx.drawImage(sil, size * 0.05, size * 0.055);
-  ctx.restore();
-  // Dilated outline: the silhouette stamped in a ring.
-  const o = Math.max(1, size * 0.02);
-  for (const [dx, dy] of [
-    [o, 0],
-    [-o, 0],
-    [0, o],
-    [0, -o],
-    [o * 0.7, o * 0.7],
-    [-o * 0.7, o * 0.7],
-    [o * 0.7, -o * 0.7],
-    [-o * 0.7, -o * 0.7],
-  ] as const) {
-    ctx.drawImage(sil, dx, dy);
-  }
-  ctx.drawImage(art, 0, 0);
-
-  const url = canvas.toDataURL();
-  cache.set(key, url);
-  return url;
-}
 
 function renderIcon(icon: string, color: string, size: number): string {
   const key = `${icon}|${color}|${size}`;
@@ -571,8 +1036,8 @@ function renderIcon(icon: string, color: string, size: number): string {
 
 /** Data URL for an item's icon. */
 export function itemIconUrl(itemId: string, size = 48): string {
-  const spec = ITEM_GLYPH[itemId];
-  if (spec && GLYPHS[spec.glyph]) return renderGlyph(spec.glyph, spec.color, size);
+  const spec = ITEM_ICON[itemId];
+  if (spec) return renderIcon(spec.icon, spec.color, size);
   // Unknown item: tinted lump so a missing mapping is loud in review.
   return renderIcon('burnt', itemDef(itemId)?.color ?? '#888', size);
 }
@@ -580,17 +1045,17 @@ export function itemIconUrl(itemId: string, size = 48): string {
 /** Dim placeholder glyph telling an empty equipment slot's purpose. */
 export function slotGlyphUrl(slot: string, size = 40): string {
   const map: Record<string, string> = {
-    head: 'closed-barbute',
-    body: 'leather-armor',
-    legs: 'leg-armor',
-    weapon: 'broadsword',
-    offhand: 'spiked-shield',
-    tool: 'battered-axe',
-    relic: 'fire-gem',
-    sigil: 'crowned-skull',
+    head: 'helm',
+    body: 'armor',
+    legs: 'legs',
+    weapon: 'sword',
+    offhand: 'shield',
+    tool: 'axe',
+    relic: 'gem',
+    sigil: 'skull',
     cape: 'cape',
   };
-  return renderGlyph(map[slot] ?? 'swap-bag', '#6e5a40', size);
+  return renderIcon(map[slot] ?? 'backpack', '#6e5a40', size);
 }
 
 /** Data URL for a UI glyph. */
