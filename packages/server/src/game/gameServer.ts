@@ -2358,6 +2358,15 @@ export class GameServer {
     if (killer) {
       // Kill bonus xp on top of damage xp.
       this.grantXp(killerEid, killer, 'vitality', Math.round(npc.def.xpReward * 0.5));
+      // Battle Rush: each kill feeds the next chase.
+      if (this.hasPassive(killer, 'battle_rush')) {
+        killer.buffs.push({
+          speedMult: 1.25,
+          shieldHp: 0,
+          meleeLifesteal: 0,
+          untilTick: this.tickCount + 50,
+        });
+      }
     }
 
     // Roll the loot table onto the ground.
@@ -2421,6 +2430,22 @@ export class GameServer {
     health.hp -= dmg;
     this.grantXp(eid, player, 'defence', dmg * 3);
     this.setPose(eid, PoseState.Hurt, 4);
+    // Second Wind: fires only on the CROSSING into danger, so a string
+    // of low hits can't re-trigger it every tick.
+    const swLine = health.maxHp * 0.3;
+    if (
+      health.hp > 0 &&
+      health.hp < swLine &&
+      health.hp + dmg >= swLine &&
+      this.hasPassive(player, 'second_wind')
+    ) {
+      player.buffs.push({
+        speedMult: 1.35,
+        shieldHp: 0,
+        meleeLifesteal: 0,
+        untilTick: this.tickCount + 60,
+      });
+    }
 
     if (health.hp <= 0) {
       const spawn = this.world.spawn;
@@ -2911,6 +2936,7 @@ export class GameServer {
         ? player.speed * DRAW_MOVE_FACTOR
         : player.speed;
       for (const b of player.buffs) speed *= b.speedMult;
+      if (this.hasPassive(player, 'fleet_footed')) speed *= 1.08;
       if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
       if (casting) speed = 0; // committed to the cast
       const next = stepMovement(pos, frame, speed, TICK_DT, this.world);

@@ -318,11 +318,46 @@ const defs: ItemDef[] = [
     name: 'Wolf-pelt cloak',
     stackable: false,
     value: 220,
-    equipSlot: 'body',
+    equipSlot: 'cape',
     armor: 1,
     passive: 'dodge_haste',
     color: '#6a6f7d',
     code: 'Wc',
+  },
+
+  // Capes — worn gear with real properties, never mere decoration.
+  // Each has its own cloth character on the back: weight, length, flow.
+  {
+    id: 'cape_traveler',
+    name: "Traveler's cape",
+    stackable: false,
+    value: 140,
+    equipSlot: 'cape',
+    passive: 'fleet_footed',
+    color: '#7da35a',
+    code: 'Tc',
+  },
+  {
+    id: 'cape_emberweave',
+    name: 'Emberweave cape',
+    stackable: false,
+    value: 320,
+    equipSlot: 'cape',
+    armor: 1,
+    passive: 'second_wind',
+    color: '#c4553d',
+    code: 'Ec',
+  },
+  {
+    id: 'cape_champion',
+    name: "Champion's mantle",
+    stackable: false,
+    value: 620,
+    equipSlot: 'cape',
+    armor: 1,
+    passive: 'battle_rush',
+    color: '#8a2f3c',
+    code: 'Cm',
   },
 
   // Tools

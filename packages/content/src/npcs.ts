@@ -181,6 +181,7 @@ const defs: NpcDef[] = [
       { item: 'coins', qty: [5, 25], chance: 0.7 },
       { item: 'iron_ore', qty: [1, 1], chance: 0.15 },
       { item: 'ember_charm', qty: [1, 1], chance: 0.03 },
+      { item: 'cape_emberweave', qty: [1, 1], chance: 0.04 },
     ],
     respawnSec: 30,
     color: '#d8d4c8',
@@ -211,6 +212,8 @@ const defs: NpcDef[] = [
       { item: 'willow_longbow', qty: [1, 1], chance: 0.1 },
       { item: 'sigil_fallen_champion', qty: [1, 1], chance: 0.25 },
       { item: 'tome_of_embers', qty: [1, 1], chance: 0.15 },
+      // He wears it into battle; beat him and it's yours.
+      { item: 'cape_champion', qty: [1, 1], chance: 0.2 },
     ],
     respawnSec: 90,
     color: '#e8e2d0',

@@ -31,7 +31,8 @@ import {
 import { LegRig } from './legs.js';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import { Particles } from './particles.js';
-import { GrassSystem, windScalarAt, type Disturber } from './grass.js';
+import { GrassSystem, windAt, windScalarAt, type Disturber } from './grass.js';
+import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
 import { bakeChunk, bakeElevated, drawLiveGround } from './terrain.js';
 
@@ -94,6 +95,10 @@ interface AnimState {
   kneeMemory: number[];
   /** Last chop cycle that spawned impact chips (gathering). */
   lastChopHit?: number;
+  /** The entity's cape cloth sim — present only while one is worn. */
+  cape?: CapeSim;
+  /** Which cape item `cape` was built for; a change rebuilds the cloth. */
+  capeKey?: string;
 }
 
 /** Player zoom bounds: 1 = the classic framing (also the default). */
@@ -3630,6 +3635,48 @@ export class Renderer {
     const bodyX = p.x + Math.cos(dir) * lunge * s;
     const bodyY = p.y + Math.sin(dir) * lunge * s;
 
+    // Cape cloth: world-space verlet ticked once per frame, worked by
+    // the same wind the grass and trees obey. Its lifecycle rides the
+    // anim map — despawn evicts the cloth with everything else.
+    const capeItem = e.equip.cape;
+    const capeK = e.size ?? 1;
+    let capeSim: CapeSim | null = null;
+    if (capeItem) {
+      if (!anim.cape || anim.capeKey !== capeItem) {
+        anim.cape = new CapeSim(capeStyle(capeItem), typeof e.eid === 'number' ? e.eid : 7);
+        anim.capeKey = capeItem;
+      }
+      capeSim = anim.cape;
+      const hSc = 1 + (1 - legPose.wScale) * 0.55;
+      const az = (legPose.rise + legPose.bob * 0.45 + 0.44 * hSc) * capeK;
+      capeSim.update(
+        e.x + Math.cos(dir) * lunge,
+        e.y + Math.sin(dir) * lunge,
+        az,
+        dir,
+        this.frameDt,
+        windAt(e.x, e.y, now / 1000),
+        now / 1000,
+        capeK,
+      );
+    } else if (anim.cape) {
+      anim.cape = undefined;
+      anim.capeKey = undefined;
+    }
+    // Depth-true: the cloth draws in front of the body only when the
+    // simulation actually put it there (facing away, or mid-whirl).
+    const capeFront = capeSim !== null && capeSim.meanY() > e.y + 0.02;
+    const paintCape =
+      capeSim !== null && capeItem
+        ? () => {
+            const capePts = capeSim.nodes.map((nd) => {
+              const sp = this.camera.worldToScreen(nd.x, nd.y, this.w, this.h);
+              return { x: sp.x, y: sp.y - terrainLift - nd.z * s };
+            });
+            drawCape(ctx, capePts, capeStyle(capeItem), s * capeK, e.hurt ?? false);
+          }
+        : null;
+
     return {
       sortY: e.y,
       elevated: terrainLift > 0,
@@ -3728,6 +3775,7 @@ export class Renderer {
           }
         }
 
+        if (paintCape && !capeFront) paintCape();
         drawHumanoid(ctx, {
           x: bodyX,
           y: bodyY,
@@ -3762,6 +3810,7 @@ export class Renderer {
           gatherPhase: now / 1000,
           craftKind: station?.kind ?? null,
         });
+        if (paintCape && capeFront) paintCape();
 
         const topY = p.y - (1.1 * (e.size ?? 1)) * s;
         if (e.name) {
@@ -3813,7 +3862,13 @@ export class Renderer {
         level: meta.level,
         isOwn: false,
         hurt,
-        equip: defId === 'goblin' ? { weapon: 'bronze_sword' } : {},
+        equip:
+          defId === 'goblin'
+            ? { weapon: 'bronze_sword' }
+            : defId === 'skeleton_champion'
+              ? // The boss wears the mantle he drops — the drop is a story.
+                { cape: 'cape_champion' }
+              : {},
         color: def?.color ?? '#999',
         skinColor: defId.startsWith('goblin') ? '#7aa74a' : '#e3ddcc',
         size: defId === 'skeleton_champion' ? 1.25 : 0.85,

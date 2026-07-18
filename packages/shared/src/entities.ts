@@ -68,7 +68,8 @@ export type EquipSlot =
   | 'offhand'
   | 'tool'
   | 'relic'
-  | 'sigil';
+  | 'sigil'
+  | 'cape';
 
 export const EQUIP_SLOTS: readonly EquipSlot[] = [
   'head',
@@ -79,4 +80,5 @@ export const EQUIP_SLOTS: readonly EquipSlot[] = [
   'tool',
   'relic',
   'sigil',
+  'cape',
 ];

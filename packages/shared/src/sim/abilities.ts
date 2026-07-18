@@ -289,7 +289,13 @@ export type PassiveId =
   /** Your heavy (third) bolt also burns. */
   | 'ember_bolt'
   /** Dodging grants a burst of speed. */
-  | 'dodge_haste';
+  | 'dodge_haste'
+  /** Constant stride bonus while worn. */
+  | 'fleet_footed'
+  /** Dropping below 30% health triggers a burst of speed. */
+  | 'second_wind'
+  /** Kills grant a short surge of speed. */
+  | 'battle_rush';
 
 export interface PassiveMeta {
   name: string;
@@ -322,5 +328,23 @@ export const PASSIVES: Record<PassiveId, PassiveMeta> = {
     desc: 'Dodging grants +35% speed for 1.5 s.',
     color: '#6a6f7d',
     code: 'Wr',
+  },
+  fleet_footed: {
+    name: 'Fleet Footed',
+    desc: '+8% movement speed while worn.',
+    color: '#7da35a',
+    code: 'Ff',
+  },
+  second_wind: {
+    name: 'Second Wind',
+    desc: 'Dropping below 30% health grants +35% speed for 3 s.',
+    color: '#e8763c',
+    code: 'Sw',
+  },
+  battle_rush: {
+    name: 'Battle Rush',
+    desc: 'Kills grant +25% speed for 2.5 s.',
+    color: '#c43d55',
+    code: 'Br',
   },
 };
