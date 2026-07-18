@@ -248,15 +248,15 @@ export function generateGrassTile(
 // ------------------------------------------------------------- palette
 
 /**
- * Base tones, deep → light. THE FLOOR LAW: every tone sits at or above
- * the baked ground greens (GRASS_TONES peak at #608e45) — a blade that
- * renders darker than the turf under it reads as a hole, and the whole
- * effect is lost. Shade never dips below these; light lifts from here.
+ * Base tones, deep → light. THE FLOOR LAW: the DARKEST possible blade
+ * is still a visible step lighter than the LIGHTEST ground green
+ * (GRASS_TONES peak at #608e45). The ramp only ever LIFTS from these —
+ * there is no downward shade mix at all, because a blade that fades
+ * into the turf color reads as transparent and the effect is lost.
  */
-const TONE_BASE = ['#618e44', '#679549', '#6d9c4e', '#74a453', '#7bab58'];
+const TONE_BASE = ['#6f9e4e', '#74a452', '#79a956', '#7eae5a', '#83b35e'];
 const LIT_TARGET = '#d9e37f'; // sun catching a bent blade
-const SHADE_TARGET = '#4f7a38'; // the trough barely grazes the turf
-const ROOT_COLOR = '#517a39';
+const ROOT_COLOR = '#699a49';
 const FLOWER_PALS = ['#e88a9e', '#f0d264', '#efe3c2'];
 const FLOWER_CORE = '#f7efd8';
 
@@ -279,12 +279,10 @@ function mixHex(a: string, b: string, t: number): string {
 const LIGHTS = 7;
 const BLADE_FILLS: string[] = TONE_BASE.flatMap((tone) =>
   Array.from({ length: LIGHTS }, (_, i) => {
+    // Lift-only ramp: the trough IS the base tone (already above the
+    // turf), and the swell adds a modest glow on top. Never downward.
     const t = i / (LIGHTS - 1);
-    // Compressed range: a gentle dip at the trough, a modest lift at
-    // the crest — presence over spectacle.
-    return t < 0.4
-      ? mixHex(tone, SHADE_TARGET, 0.5 * (1 - t / 0.4))
-      : mixHex(tone, LIT_TARGET, 0.2 * ((t - 0.4) / 0.6));
+    return mixHex(tone, LIT_TARGET, 0.22 * t);
   }),
 );
 
@@ -299,7 +297,7 @@ const BUCKET_FILLS: string[] = [
   ROOT_COLOR,
   ...FLOWER_PALS,
   FLOWER_CORE,
-  mixHex(TONE_BASE[1]!, SHADE_TARGET, 0.3), // stems
+  TONE_BASE[0]!, // stems: the deepest blade green — never below the turf
 ];
 
 // -------------------------------------------------------------- physics
