@@ -128,7 +128,7 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     if (t === Tile.Furnace || t === Tile.Anvil) {
       return isCaveGround(ground(tx, ty + 1)) ? Tile.CaveFloor : nearestFloor(ground, tx, ty);
     }
-    if (t === Tile.Workbench || t === Tile.BankChest || t === Tile.ShopCounter) {
+    if (t === Tile.Workbench || t === Tile.BankChest || t === Tile.ShopCounter || t === Tile.LampPost) {
       return nearestFloor(ground, tx, ty);
     }
     // Floors run UNDER walls: the prism covers its own tile, and the

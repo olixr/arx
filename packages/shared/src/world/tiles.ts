@@ -45,6 +45,8 @@ export enum Tile {
   RockTin = 36,
   RockCoal = 37,
   RockGold = 38,
+  /** An iron lantern on a post — a warm town light after dark. */
+  LampPost = 39,
 }
 
 export enum Detail {
@@ -128,6 +130,7 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.RockTin]: { name: 'tin rock', solid: true, color: '#6e6a75', raised: true, topColor: '#c9c4cf' },
   [Tile.RockCoal]: { name: 'coal rock', solid: true, color: '#6e6a75', raised: true, topColor: '#2e2b33' },
   [Tile.RockGold]: { name: 'gold rock', solid: true, color: '#6e6a75', raised: true, topColor: '#e8b64c' },
+  [Tile.LampPost]: { name: 'lamp post', solid: true, color: '#3a3444', raised: true, topColor: '#e8c06a' },
 };
 
 /** Every mineable/mined rock formation tile, ore-bearing or not. */

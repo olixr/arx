@@ -33,6 +33,17 @@ export declare class Renderer {
     readonly camera: Camera;
     readonly particles: Particles;
     private readonly grass;
+    private readonly lighting;
+    /** The frame's sky sample — every shadow and light reads this. */
+    private sky;
+    /** Scene lights gathered this frame (tiles, projectiles, flames). */
+    private readonly lights;
+    /** Ground shadows batch here, composited once at the sky's alpha. */
+    private readonly shadowLayer;
+    private readonly shadowLayerCtx;
+    /** Where shadow helpers draw right now (batch layer or the frame). */
+    private sdw;
+    private sdwLayerAlpha;
     private readonly ctx;
     private readonly baked;
     private readonly anims;
@@ -99,6 +110,25 @@ export declare class Renderer {
     renderLift(x: number, y: number): number;
     /** worldToScreen that also rides the terrain lift under the point. */
     private liftedWTS;
+    /** Screen-px offset of a shadow cast from `hTiles` above the ground. */
+    private castOffset;
+    /** Arm the shadow target for a cast fill; null while nothing casts. */
+    private beginCastFill;
+    /** Arm for a grounding contact fill — never fully disappears. */
+    private beginContactFill;
+    /**
+     * A mass `hTiles` up throws its silhouette along the sun: a
+     * flattened blob at the projected spot, tied to the footprint by a
+     * smear quad (the trunk's own shadow). One path, one fill — the
+     * blob and smear can never double-darken each other.
+     */
+    private castBlob;
+    /** A prism's ground shadow: its base edge extruded along the sun. */
+    private castEdgeQuad;
+    /** A body's grounding: foot ellipse + a low lobe cast sunward. */
+    private castBody;
+    /** A small thing's plain contact ellipse (drops, summons). */
+    private castContact;
     /**
      * Screen → world with elevation: a click on a plateau top must land
      * on the plateau, not on the (hidden) ground two tiles south. Try
@@ -111,12 +141,23 @@ export declare class Renderer {
     private resize;
     render(game: ClientGame, frameDt: number): void;
     /**
+     * The frame's standing light sources, from one tile scan: each pushes
+     * an emissive glow (additive bloom) AND a WorldLight (lightmap punch,
+     * flame-gated so man-made fire only carries the scene after dark).
+     * Bloom alpha swells with darkness — fires read hotter at night.
+     */
+    private collectStaticLights;
+    /**
      * Emissive bloom: campfires, furnace mouths, portals, and magic bolts
      * pour additive light over the scene. Sold with plain radial
      * gradients under `lighter` compositing — no shader required.
      */
     private drawGlows;
-    /** A magic projectile advertises its own glow (called during collect). */
+    /**
+     * A magic projectile (or totem, or spark) advertises its own glow.
+     * After dark the same source also lights the ground around it — a
+     * bolt streaking across a night field carries its own pool of light.
+     */
     queueGlow(x: number, y: number, r: number, rgb: string, a: number): void;
     /**
      * Tilt-shift: the top and bottom of the frame soften like a macro
@@ -126,9 +167,10 @@ export declare class Renderer {
      */
     private applyTiltShift;
     /**
-     * Color grade: warm light from the top of the frame, cool settle at
-     * the bottom, plus a quiet corner vignette. Together with tilt-shift
-     * this is the "curated camera" over the raw painter output.
+     * Color grade: the "curated camera" over the raw painter output,
+     * and it tells the time. The horizon haze burns orange at dawn and
+     * dusk and sinks to indigo at night; the warm top-light lives and
+     * dies with the sun; the vignette closes in after dark.
      */
     private drawGrade;
     /**

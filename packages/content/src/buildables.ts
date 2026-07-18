@@ -67,6 +67,15 @@ const defs: BuildableDef[] = [
     ticks: 35,
   },
   {
+    id: 'lamp_post',
+    name: 'Lamp post',
+    tile: Tile.LampPost,
+    levelReq: 8,
+    xp: 35,
+    materials: [{ item: 'log', qty: 1 }, { item: 'coal', qty: 1 }],
+    ticks: 30,
+  },
+  {
     id: 'furnace',
     name: 'Furnace',
     tile: Tile.Furnace,

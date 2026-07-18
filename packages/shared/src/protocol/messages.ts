@@ -291,6 +291,16 @@ export interface S2CFx {
   text?: string;
 }
 
+/**
+ * World-clock offset in ticks (see sim/daylight). Sent on join and
+ * whenever a dev `/time` command bends the clock; the client derives
+ * the whole sky from (interpolated tick + ofs).
+ */
+export interface S2CTime {
+  t: 'time';
+  ofs: number;
+}
+
 /** The player's chosen techniques per style (sent on join + change). */
 export interface S2CTechniques {
   t: 'techniques';
@@ -317,6 +327,7 @@ export type S2CMessage =
   | S2CBank
   | S2CCooldowns
   | S2CFx
+  | S2CTime
   | S2CTechniques;
 
 // ------------------------------------------------------- validation

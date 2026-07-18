@@ -78,6 +78,15 @@ export function buildBramblewick(): ZoneDef {
   b.set(40, 26, Tile.BankChest);
   b.set(53, 57, Tile.Campfire);
 
+  // Lamp posts: plaza corners + the bank path and the inn's road door.
+  // After dark these carry the town — warm pools against the night.
+  b.set(43, 44, Tile.LampPost);
+  b.set(54, 44, Tile.LampPost);
+  b.set(43, 53, Tile.LampPost);
+  b.set(54, 53, Tile.LampPost);
+  b.set(39, 35, Tile.LampPost);
+  b.set(36, 51, Tile.LampPost);
+
   // Pond in the south-east corner, sand-rimmed, with a fishing jetty.
   b.fillEllipse(78, 78, 10, 8, Tile.Sand);
   b.fillEllipse(78, 78, 8, 6, Tile.Water);

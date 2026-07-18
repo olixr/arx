@@ -9,6 +9,7 @@ import {
   PLAYER_SPEED,
   PROTOCOL_VERSION,
   TICK_MS,
+  clockHours,
   Tile,
   findPath,
   stationAtTile,
@@ -112,6 +113,8 @@ export class ClientGame {
   aim = 0;
   rttMs = 0;
   serverTick = 0;
+  /** World-clock offset in ticks (dev /time); see sim/daylight. */
+  timeOfs = 0;
 
   inventory: InvSlot[] = [];
   skills: SkillXp = {};
@@ -508,6 +511,10 @@ export class ClientGame {
         this.onTechniques?.();
         break;
       }
+      case 'time': {
+        this.timeOfs = msg.ofs;
+        break;
+      }
       case 'fx': {
         const fx: ActiveFx = {
           kind: msg.kind,
@@ -675,6 +682,17 @@ export class ClientGame {
         status: e.status,
       });
     }
+  }
+
+  /**
+   * Smooth game-clock hours for the sky. Rides the same slewed
+   * clockOffset as entity interpolation, so the sun never stutters
+   * on snapshot arrival.
+   */
+  clockHoursNow(): number {
+    const serverMs =
+      this.clockOffset === null ? this.serverTick * TICK_MS : performance.now() + this.clockOffset;
+    return clockHours(serverMs + this.timeOfs * TICK_MS);
   }
 
   /** Server-timeline timestamp remote entities should be rendered at. */

@@ -10,7 +10,9 @@ import {
   hashCoords,
   hashString,
   tileDef,
+  daylightAt,
   type ChunkData,
+  type DaylightSample,
   type Vec2,
 } from '@devcraft/shared';
 import { itemDef, npcDef } from '@devcraft/content';
@@ -28,11 +30,25 @@ import {
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import { Particles } from './particles.js';
 import { GrassSystem, windScalarAt, type Disturber } from './grass.js';
+import { LightingSystem, type WorldLight } from './lighting.js';
 import { bakeChunk, bakeElevated, drawLiveGround } from './terrain.js';
 
-/** Signature style: shadows are solid and sharp — never blurred. */
-const SHADOW_COLOR = 'rgba(24, 14, 32, 0.32)';
-const SHADOW_OFFSET = 0.16; // tiles, toward bottom-right
+/**
+ * Signature style: shadows are solid and sharp — never blurred. They
+ * are CAST by the sky: direction, length and depth all ride the
+ * daylight law (sim/daylight), sweeping with the sun and going faint
+ * and blue under the moon. Two families:
+ * - CAST shadows (trees, walls, rocks, stations) — the silhouette
+ *   thrown along the sun, gone entirely through the twilight gap.
+ * - CONTACT shadows (feet of characters, drops, cliff seams) — the
+ *   grounding ellipse that never fully disappears.
+ * Ground-level shadows batch onto one layer per frame so overlapping
+ * dusk shadows merge instead of stacking darker.
+ */
+const SHADOW_SUN = '#180e20';
+const SHADOW_MOON = '#0e1430';
+const CONTACT_MIN = 0.15;
+const CONTACT_MAX = 0.3;
 
 /**
  * The 2.5D depth pass. The ground stays a flat top-down plane (so all
@@ -155,6 +171,17 @@ export class Renderer {
   readonly camera = new Camera();
   readonly particles = new Particles();
   private readonly grass = new GrassSystem();
+  private readonly lighting = new LightingSystem();
+  /** The frame's sky sample — every shadow and light reads this. */
+  private sky: DaylightSample = daylightAt(12);
+  /** Scene lights gathered this frame (tiles, projectiles, flames). */
+  private readonly lights: WorldLight[] = [];
+  /** Ground shadows batch here, composited once at the sky's alpha. */
+  private readonly shadowLayer = document.createElement('canvas');
+  private readonly shadowLayerCtx = this.shadowLayer.getContext('2d')!;
+  /** Where shadow helpers draw right now (batch layer or the frame). */
+  private sdw: CanvasRenderingContext2D = this.shadowLayerCtx;
+  private sdwLayerAlpha = 1;
   private readonly ctx: CanvasRenderingContext2D;
   private readonly baked = new Map<string, BakedChunk>();
   private readonly anims = new Map<number | 'own', AnimState>();
@@ -348,6 +375,104 @@ export class Renderer {
     return p;
   };
 
+  // ------------------------------------------------------- shadows
+
+  /** Screen-px offset of a shadow cast from `hTiles` above the ground. */
+  private castOffset(hTiles: number): Vec2 {
+    const len = this.sky.shadowLen * hTiles * this.camera.scale;
+    return {
+      x: this.sky.shadowX * len,
+      y: this.sky.shadowY * len * this.camera.yScale,
+    };
+  }
+
+  /** Arm the shadow target for a cast fill; null while nothing casts. */
+  private beginCastFill(): CanvasRenderingContext2D | null {
+    if (this.sky.shadowAlpha < 0.02) return null;
+    const c = this.sdw;
+    c.globalAlpha = Math.min(1, this.sky.shadowAlpha / this.sdwLayerAlpha);
+    c.fillStyle = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
+    return c;
+  }
+
+  /** Arm for a grounding contact fill — never fully disappears. */
+  private beginContactFill(): CanvasRenderingContext2D {
+    const c = this.sdw;
+    const a = Math.min(CONTACT_MAX, Math.max(CONTACT_MIN, this.sky.shadowAlpha));
+    c.globalAlpha = Math.min(1, a / this.sdwLayerAlpha);
+    c.fillStyle = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
+    return c;
+  }
+
+  /**
+   * A mass `hTiles` up throws its silhouette along the sun: a
+   * flattened blob at the projected spot, tied to the footprint by a
+   * smear quad (the trunk's own shadow). One path, one fill — the
+   * blob and smear can never double-darken each other.
+   */
+  private castBlob(bx: number, by: number, hTiles: number, r: number, seed: number, smearW = 0): void {
+    const c = this.beginCastFill();
+    if (!c) return;
+    const off = this.castOffset(hTiles);
+    c.beginPath();
+    if (smearW > 0) {
+      c.moveTo(bx - smearW, by);
+      c.lineTo(bx + smearW, by);
+      c.lineTo(bx + off.x + smearW * 0.7, by + off.y);
+      c.lineTo(bx + off.x - smearW * 0.7, by + off.y);
+      c.closePath();
+    }
+    c.save();
+    c.translate(bx + off.x, by + off.y);
+    c.scale(1, 0.62);
+    facetBlob(c, 0, 0, r, seed, 7, 0.35);
+    c.restore();
+    c.fill();
+    c.globalAlpha = 1;
+  }
+
+  /** A prism's ground shadow: its base edge extruded along the sun. */
+  private castEdgeQuad(x0: number, y0: number, x1: number, y1: number, hTiles: number): void {
+    const c = this.beginCastFill();
+    if (!c) return;
+    const off = this.castOffset(hTiles);
+    c.beginPath();
+    c.moveTo(x0, y0);
+    c.lineTo(x1, y1);
+    c.lineTo(x1 + off.x, y1 + off.y);
+    c.lineTo(x0 + off.x, y0 + off.y);
+    c.closePath();
+    c.fill();
+    c.globalAlpha = 1;
+  }
+
+  /** A body's grounding: foot ellipse + a low lobe cast sunward. */
+  private castBody(px: number, py: number, r: number): void {
+    const c = this.beginContactFill();
+    c.beginPath();
+    c.ellipse(px, py, r, r * 0.45, 0, 0, Math.PI * 2);
+    c.fill();
+    if (this.sky.shadowAlpha >= 0.02) {
+      const off = this.castOffset(0.42);
+      c.globalAlpha = Math.min(1, (this.sky.shadowAlpha / this.sdwLayerAlpha) * 0.75);
+      const ang = Math.atan2(off.y, off.x);
+      const len = Math.hypot(off.x, off.y);
+      c.beginPath();
+      c.ellipse(px + off.x * 0.55, py + off.y * 0.55, r * 0.5 + len * 0.5, r * 0.4, ang, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.globalAlpha = 1;
+  }
+
+  /** A small thing's plain contact ellipse (drops, summons). */
+  private castContact(px: number, py: number, rx: number, ry: number): void {
+    const c = this.beginContactFill();
+    c.beginPath();
+    c.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
+    c.fill();
+    c.globalAlpha = 1;
+  }
+
   /**
    * Screen → world with elevation: a click on a plateau top must land
    * on the plateau, not on the (hidden) ground two tiles south. Try
@@ -475,6 +600,8 @@ export class Renderer {
   render(game: ClientGame, frameDt: number): void {
     this.game = game;
     this.resize();
+    // The sky rules the frame: shadows, exposure, grade all read it.
+    this.sky = daylightAt(game.clockHoursNow());
     // Hitstop slows animation + particles to a crawl for a few frames;
     // the camera and network keep real time.
     this.frameDt = performance.now() < this.hitstopUntil ? frameDt * 0.12 : frameDt;
@@ -555,9 +682,29 @@ export class Renderer {
     this.collectFallingTrees(items);
     this.collectEntities(game, items);
 
+    // Ground shadow prepass, batched: every shape lands opaque on one
+    // layer, composited once at the sky's alpha — overlapping dusk
+    // shadows merge into a single density instead of stacking.
+    const dpr = window.devicePixelRatio || 1;
+    if (this.shadowLayer.width !== this.canvas.width || this.shadowLayer.height !== this.canvas.height) {
+      this.shadowLayer.width = this.canvas.width;
+      this.shadowLayer.height = this.canvas.height;
+    }
+    const sc = this.shadowLayerCtx;
+    sc.setTransform(dpr, 0, 0, dpr, 0, 0);
+    sc.clearRect(0, 0, this.w, this.h);
+    this.sdw = sc;
+    this.sdwLayerAlpha = Math.min(1, Math.max(this.sky.shadowAlpha, CONTACT_MIN));
     for (const item of items) {
       if (!item.elevated) item.drawShadow?.();
     }
+    this.ctx.save();
+    this.ctx.globalAlpha = this.sdwLayerAlpha;
+    this.ctx.drawImage(this.shadowLayer, 0, 0, this.shadowLayer.width, this.shadowLayer.height, 0, 0, this.w, this.h);
+    this.ctx.restore();
+    // In-sort (plateau) shadows draw straight into the frame.
+    this.sdw = this.ctx;
+    this.sdwLayerAlpha = 1;
     items.sort((a, b) => a.sortY - b.sortY);
     for (const item of items) {
       if (item.elevated) item.drawShadow?.();
@@ -570,9 +717,23 @@ export class Renderer {
     this.drawRings();
     this.drawCombatFx(game);
 
-    // Depth & atmosphere: emissive bloom, then the tilted-camera
-    // tilt-shift bands, then the grade. HUD stays crisp above them.
-    this.drawGlows(game, bounds);
+    // Depth & atmosphere: the exposure pass (multiply lightmap) sets
+    // the scene's darkness, THEN emissive bloom pops over it, then the
+    // tilted-camera tilt-shift bands and the grade. HUD stays crisp.
+    this.collectStaticLights(game, bounds);
+    const origin = this.camera.worldToScreen(0, 0, this.w, this.h);
+    this.lighting.draw(
+      this.ctx,
+      { w: this.w, h: this.h, scale: this.camera.scale, yScale: this.camera.yScale, ox: origin.x, oy: origin.y },
+      this.sky,
+      this.lights,
+      (tx, ty) => {
+        const t = game.world.groundAt(tx, ty);
+        return t !== undefined && (Renderer.WALL_TILES.has(t) || t === Tile.Cliff);
+      },
+    );
+    this.lights.length = 0;
+    this.drawGlows();
     this.applyTiltShift();
     this.drawGrade();
 
@@ -586,29 +747,52 @@ export class Renderer {
   }
 
   /**
-   * Emissive bloom: campfires, furnace mouths, portals, and magic bolts
-   * pour additive light over the scene. Sold with plain radial
-   * gradients under `lighter` compositing — no shader required.
+   * The frame's standing light sources, from one tile scan: each pushes
+   * an emissive glow (additive bloom) AND a WorldLight (lightmap punch,
+   * flame-gated so man-made fire only carries the scene after dark).
+   * Bloom alpha swells with darkness — fires read hotter at night.
    */
-  private drawGlows(game: ClientGame, bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number }): void {
-    const ctx = this.ctx;
-    const s = this.camera.scale;
+  private collectStaticLights(
+    game: ClientGame,
+    bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number },
+  ): void {
     const t = performance.now() / 1000;
+    const flame = this.sky.flame;
+    const boost = 1 + 0.8 * this.sky.darkness;
     for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
       for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
         const tile = game.world.groundAt(tx, ty);
         if (tile === Tile.Campfire) {
           const flick = 0.85 + Math.sin(t * 11 + tx * 3.1) * 0.1 + Math.sin(t * 23 + ty) * 0.05;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.32, r: 1.6 * flick, rgb: '235, 140, 52', a: 0.3 * flick });
+          this.glows.push({ x: tx + 0.5, y: ty + 0.32, r: 1.6 * flick, rgb: '235, 140, 52', a: 0.3 * flick * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 4.4 * flick, rgb: [255, 186, 110], intensity: 0.9 * flame * flick, occlude: true });
         } else if (tile === Tile.Furnace) {
           const pulse = 0.8 + Math.sin(t * 5 + tx) * 0.2;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.75, r: 1.15, rgb: '232, 108, 45', a: 0.24 * pulse });
+          this.glows.push({ x: tx + 0.5, y: ty + 0.75, r: 1.15, rgb: '232, 108, 45', a: 0.24 * pulse * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.8, r: 2.8, rgb: [255, 148, 82], intensity: 0.65 * flame * pulse, occlude: true });
         } else if (tile === Tile.PortalDown || tile === Tile.PortalUp) {
           const pulse = 0.85 + Math.sin(t * 2.2 + tx) * 0.15;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.5, r: 1.5 * pulse, rgb: '164, 134, 232', a: 0.26 });
+          this.glows.push({ x: tx + 0.5, y: ty + 0.5, r: 1.5 * pulse, rgb: '164, 134, 232', a: 0.26 * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 3.6, rgb: [172, 140, 240], intensity: 0.55 * pulse, occlude: true });
+        } else if (tile === Tile.LampPost) {
+          const flick = 0.92 + Math.sin(t * 9 + tx * 2.3 + ty) * 0.05 + Math.sin(t * 17 + ty * 1.7) * 0.03;
+          if (flame > 0.05) {
+            this.glows.push({ x: tx + 0.5, y: ty + 0.18, r: 1.3 * flick, rgb: '255, 205, 130', a: 0.28 * flame * flick });
+            this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 5 * flick, rgb: [255, 205, 135], intensity: 0.9 * flame * flick, occlude: true });
+          }
         }
       }
     }
+  }
+
+  /**
+   * Emissive bloom: campfires, furnace mouths, portals, and magic bolts
+   * pour additive light over the scene. Sold with plain radial
+   * gradients under `lighter` compositing — no shader required.
+   */
+  private drawGlows(): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
     if (this.glows.length === 0) return;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -626,9 +810,17 @@ export class Renderer {
     this.glows.length = 0;
   }
 
-  /** A magic projectile advertises its own glow (called during collect). */
+  /**
+   * A magic projectile (or totem, or spark) advertises its own glow.
+   * After dark the same source also lights the ground around it — a
+   * bolt streaking across a night field carries its own pool of light.
+   */
   queueGlow(x: number, y: number, r: number, rgb: string, a: number): void {
     this.glows.push({ x, y, r, rgb, a });
+    if (this.sky.darkness > 0.04) {
+      const [rr = 255, gg = 255, bb = 255] = rgb.split(',').map((v) => Number.parseInt(v, 10));
+      this.lights.push({ x, y, r: r * 1.6, rgb: [rr, gg, bb], intensity: Math.min(0.55, a * 1.6) });
+    }
   }
 
   /**
@@ -663,26 +855,32 @@ export class Renderer {
   }
 
   /**
-   * Color grade: warm light from the top of the frame, cool settle at
-   * the bottom, plus a quiet corner vignette. Together with tilt-shift
-   * this is the "curated camera" over the raw painter output.
+   * Color grade: the "curated camera" over the raw painter output,
+   * and it tells the time. The horizon haze burns orange at dawn and
+   * dusk and sinks to indigo at night; the warm top-light lives and
+   * dies with the sun; the vignette closes in after dark.
    */
   private drawGrade(): void {
     const ctx = this.ctx;
-    // Atmospheric haze: the far field washes toward a pale sky at the
-    // top of the frame — the horizon you feel from a low camera.
+    const day = this.sky;
+    // Atmospheric haze: the far field washes toward the hour's sky at
+    // the top of the frame — the horizon you feel from a low camera.
+    const [hr, hg, hb] = day.sky;
+    const ha = day.skyAlpha;
     const sky = ctx.createLinearGradient(0, 0, 0, this.h * 0.34);
-    sky.addColorStop(0, 'rgba(190, 205, 235, 0.42)');
-    sky.addColorStop(0.5, 'rgba(196, 208, 232, 0.16)');
-    sky.addColorStop(1, 'rgba(200, 210, 230, 0)');
+    sky.addColorStop(0, `rgba(${hr | 0}, ${hg | 0}, ${hb | 0}, ${ha})`);
+    sky.addColorStop(0.5, `rgba(${hr | 0}, ${hg | 0}, ${hb | 0}, ${ha * 0.38})`);
+    sky.addColorStop(1, `rgba(${hr | 0}, ${hg | 0}, ${hb | 0}, 0)`);
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, this.w, this.h * 0.34);
     ctx.save();
     ctx.globalCompositeOperation = 'soft-light';
+    const warm = 0.36 * (0.2 + 0.8 * day.sun);
+    const cool = 0.3 + 0.18 * day.darkness;
     const grad = ctx.createLinearGradient(0, 0, 0, this.h);
-    grad.addColorStop(0, 'rgba(255, 214, 150, 0.36)');
-    grad.addColorStop(0.45, 'rgba(255, 236, 210, 0.1)');
-    grad.addColorStop(1, 'rgba(64, 84, 148, 0.3)');
+    grad.addColorStop(0, `rgba(255, 214, 150, ${warm})`);
+    grad.addColorStop(0.45, `rgba(255, 236, 210, ${warm * 0.28})`);
+    grad.addColorStop(1, `rgba(64, 84, 148, ${cool})`);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, this.w, this.h);
     ctx.restore();
@@ -695,7 +893,7 @@ export class Renderer {
       Math.max(this.w, this.h) * 0.72,
     );
     vig.addColorStop(0, 'rgba(20, 12, 28, 0)');
-    vig.addColorStop(1, 'rgba(20, 12, 28, 0.26)');
+    vig.addColorStop(1, `rgba(20, 12, 28, ${0.26 + 0.14 * day.darkness})`);
     ctx.fillStyle = vig;
     ctx.fillRect(0, 0, this.w, this.h);
   }
@@ -986,7 +1184,6 @@ export class Renderer {
       0,
       0,
     ];
-    const off = SHADOW_OFFSET * s;
     const syT = s * this.camera.yScale; // foreshortened tile depth
     const hs = WALL_H * s;
     const lx = (x: number): number => this.leanX(x, WALL_H);
@@ -999,11 +1196,9 @@ export class Renderer {
       drawShadow: sw
         ? undefined
         : () => {
-            // A body this tall throws a real shadow across the ground.
-            ctx.fillStyle = SHADOW_COLOR;
-            ctx.beginPath();
-            chamferRect(ctx, p.x + off * 1.7, p.y + syT * 0.3 + off, s + 0.5, syT * 0.75, [0, 0, radii[2], radii[3]]);
-            ctx.fill();
+            // A body this tall throws a real shadow across the ground,
+            // cast from its south base edge along the sun.
+            this.castEdgeQuad(p.x - 0.25, p.y + syT, p.x + s + 0.25, p.y + syT, WALL_H);
           },
       draw: () => {
         const yBase = p.y + syT; // south edge at ground level
@@ -1326,18 +1521,20 @@ export class Renderer {
           ? () => {
               // Contact shadow: the top edge sits EXACTLY on the base
               // line (the face itself covers any overdraw above it),
-              // skewing south-east as it falls across the ground.
+              // its skew leaning with the sun as it falls across the
+              // ground — clamped so the seam never detaches.
               const A = this.camera.worldToScreen(ax, ay, this.w, this.h);
               const B = this.camera.worldToScreen(bx, by, this.w, this.h);
-              const off = SHADOW_OFFSET * s;
-              ctx.fillStyle = SHADOW_COLOR;
-              ctx.beginPath();
-              ctx.moveTo(A.x, A.y - baseLift - 1);
-              ctx.lineTo(B.x, B.y - baseLift - 1);
-              ctx.lineTo(B.x + off * 2.2, B.y - baseLift + s * 0.42);
-              ctx.lineTo(A.x + off * 2.2, A.y - baseLift + s * 0.42);
-              ctx.closePath();
-              ctx.fill();
+              const skew = Math.max(-s * 0.6, Math.min(s * 0.6, this.castOffset(0.5).x));
+              const c = this.beginContactFill();
+              c.beginPath();
+              c.moveTo(A.x, A.y - baseLift - 1);
+              c.lineTo(B.x, B.y - baseLift - 1);
+              c.lineTo(B.x + skew, B.y - baseLift + s * 0.42);
+              c.lineTo(A.x + skew, A.y - baseLift + s * 0.42);
+              c.closePath();
+              c.fill();
+              c.globalAlpha = 1;
             }
           : undefined,
       draw: () => {
@@ -1453,8 +1650,9 @@ export class Renderer {
               const ya = Math.round(A.y) - (isTop ? 1 : 0);
               const yb = Math.round(B.y) + (isBottom ? s * 0.2 : 0);
               const wS = nx >= 0 ? Math.max(3, s * 0.24) : Math.max(2, s * 0.09);
-              ctx.fillStyle = SHADOW_COLOR;
-              ctx.fillRect(Math.round(A.x) - (nx >= 0 ? 0 : wS), ya, wS, yb - ya);
+              const c = this.beginContactFill();
+              c.fillRect(Math.round(A.x) - (nx >= 0 ? 0 : wS), ya, wS, yb - ya);
+              c.globalAlpha = 1;
             }
           : undefined,
       draw: () => {
@@ -2469,17 +2667,15 @@ export class Renderer {
   }
 
   private drawTreeShadow(bx: number, by: number, h: number, oak: boolean): void {
-    const ctx = this.ctx;
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
     const sp = Renderer.TREE_SPECIES[Renderer.speciesOf(h, oak)]!;
     const rnd = (i: number): number => (hashCoords(7, h & 0xffff, i) % 1000) / 1000;
     const k = (sp.hMin + (sp.hMax - sp.hMin) * rnd(1)) * s;
     const spread = Math.max(...sp.lobes.map((l) => Math.abs(l[0]) + l[2])) * 0.7;
-    ctx.fillStyle = SHADOW_COLOR;
-    ctx.beginPath();
-    facetBlob(ctx, bx + SHADOW_OFFSET * s * 1.6, by + syT * 0.3 + SHADOW_OFFSET * s * 0.5, k * spread, h ^ 0x33, 7, 0.4);
-    ctx.fill();
+    // The canopy's silhouette thrown from its height, the trunk's
+    // smear tying it to the roots — long at dawn, tucked in at noon.
+    this.castBlob(bx, by + syT * 0.18, oak ? 1.7 : 1.4, k * spread * 0.9, h ^ 0x33, s * 0.09);
   }
 
   /**
@@ -2692,7 +2888,6 @@ export class Renderer {
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
-    const off = SHADOW_OFFSET * s;
     const h = hashCoords(41, tx, ty);
     const t = performance.now() / 1000;
 
@@ -2719,10 +2914,7 @@ export class Renderer {
         return {
           sortY: ty + 0.85,
           drawShadow: () => {
-            ctx.fillStyle = SHADOW_COLOR;
-            ctx.beginPath();
-            facetCircle(ctx, p.x + off, p.y + s * 0.16 + off * 0.5, s * 0.46 * size, 7, 0.3, 0.55);
-            ctx.fill();
+            this.castBlob(p.x, p.y + s * 0.18, 0.5 * size, s * 0.44 * size, h ^ 0x11);
           },
           draw: () => this.drawRockFormation(p.x, p.y, s, h, tile, t),
         };
@@ -2749,6 +2941,61 @@ export class Renderer {
           },
         };
 
+      case Tile.LampPost: {
+        // An iron lantern on a post: cold black metal by day, a warm
+        // caged flame after dark (the light itself lives in the
+        // lightmap + glow passes — this is just the fixture).
+        const syT = s * this.camera.yScale;
+        return {
+          sortY: ty + 0.8,
+          drawShadow: () => {
+            const baseY = p.y + syT * 0.12;
+            this.castEdgeQuad(p.x - s * 0.05, baseY, p.x + s * 0.05, baseY, 1.15);
+          },
+          draw: () => {
+            const baseY = p.y + syT * 0.12;
+            const lit = this.sky.flame;
+            // Stone foot.
+            ctx.fillStyle = '#5b5566';
+            ctx.beginPath();
+            facetCircle(ctx, p.x, baseY, s * 0.13, 6, 0.2, 0.6);
+            ctx.fill();
+            // The post, slightly tapered.
+            ctx.fillStyle = '#2c2836';
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.045, baseY);
+            ctx.lineTo(p.x + s * 0.045, baseY);
+            ctx.lineTo(p.x + s * 0.03, baseY - s * 0.95);
+            ctx.lineTo(p.x - s * 0.03, baseY - s * 0.95);
+            ctx.closePath();
+            ctx.fill();
+            // Lantern cage: chamfered glass box under a peaked cap.
+            const ly = baseY - s * 1.12;
+            const flick = 0.92 + Math.sin(performance.now() / 90 + tx * 2.3) * 0.05;
+            ctx.fillStyle = lit > 0.05 ? `rgba(255, 205, 130, ${(0.45 + 0.55 * lit) * flick})` : '#7d84a0';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - s * 0.11, ly, s * 0.22, s * 0.24, s * 0.03);
+            ctx.fill();
+            if (lit > 0.05) {
+              // The flame core.
+              ctx.fillStyle = `rgba(255, 244, 200, ${0.85 * lit * flick})`;
+              ctx.beginPath();
+              facetCircle(ctx, p.x, ly + s * 0.12, s * 0.05, 6, Math.PI / 6);
+              ctx.fill();
+            }
+            // Cage bars + cap.
+            ctx.fillStyle = '#2c2836';
+            ctx.fillRect(p.x - s * 0.02, ly, s * 0.04, s * 0.24);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.15, ly);
+            ctx.lineTo(p.x + s * 0.15, ly);
+            ctx.lineTo(p.x, ly - s * 0.12);
+            ctx.closePath();
+            ctx.fill();
+          },
+        };
+      }
+
       case Tile.Fence: {
         // Connected fencing: one post per tile, rails reaching toward
         // every fence/wall neighbor so runs read as continuous built
@@ -2766,10 +3013,9 @@ export class Renderer {
         return {
           sortY: ty + 0.8,
           drawShadow: () => {
-            ctx.fillStyle = SHADOW_COLOR;
-            ctx.beginPath();
-            facetCircle(ctx, p.x + off * 0.8, p.y + syT * 0.16, s * 0.16, 6, 0.3, 0.5);
-            ctx.fill();
+            // The post's thin cast line — fences read by their posts.
+            const baseY = p.y + syT * 0.16;
+            this.castEdgeQuad(p.x - s * 0.055, baseY, p.x + s * 0.055, baseY, 0.55);
           },
           draw: () => {
             const baseY = p.y + syT * 0.14;
@@ -2855,10 +3101,7 @@ export class Renderer {
         return {
           sortY: ty + 1,
           drawShadow: () => {
-            ctx.fillStyle = SHADOW_COLOR;
-            ctx.beginPath();
-            chamferRect(ctx, p.x - s * 0.4 + off, p.y - s * 0.3 + off, s * 0.8, s * 0.72, s * 0.12);
-            ctx.fill();
+            this.castEdgeQuad(p.x - s * 0.4, p.y + s * 0.42, p.x + s * 0.4, p.y + s * 0.42, 0.85);
           },
           draw: () => {
             // A kiln block with a chamfered crown — masonry, not dough.
@@ -2893,10 +3136,7 @@ export class Renderer {
         return {
           sortY: ty + 0.85,
           drawShadow: () => {
-            ctx.fillStyle = SHADOW_COLOR;
-            ctx.beginPath();
-            facetCircle(ctx, p.x + off, p.y + s * 0.2 + off * 0.5, s * 0.36, 7, 0.3, 0.4);
-            ctx.fill();
+            this.castBlob(p.x, p.y + s * 0.18, 0.42, s * 0.32, tx ^ (ty << 3));
           },
           draw: () => {
             // Base, waist, top with horn.
@@ -2923,8 +3163,7 @@ export class Renderer {
         return {
           sortY: ty + 0.9,
           drawShadow: () => {
-            ctx.fillStyle = SHADOW_COLOR;
-            ctx.fillRect(p.x - s * 0.4 + off, p.y - s * 0.1 + off, s * 0.8, s * 0.34);
+            this.castEdgeQuad(p.x - s * 0.4, p.y + s * 0.25, p.x + s * 0.4, p.y + s * 0.25, 0.5);
           },
           draw: () => {
             ctx.fillStyle = '#7a552e';
@@ -2957,10 +3196,7 @@ export class Renderer {
         return {
           sortY: ty + 0.85,
           drawShadow: () => {
-            ctx.fillStyle = SHADOW_COLOR;
-            ctx.beginPath();
-            chamferRect(ctx, p.x - s * 0.34 + off, p.y - s * 0.12 + off, s * 0.68, s * 0.4, s * 0.06);
-            ctx.fill();
+            this.castEdgeQuad(p.x - s * 0.34, p.y + s * 0.28, p.x + s * 0.34, p.y + s * 0.28, 0.5);
           },
           draw: () => {
             // A strongbox: chamfered chest with a peaked, banded lid.
@@ -2986,8 +3222,7 @@ export class Renderer {
         return {
           sortY: ty + 0.9,
           drawShadow: () => {
-            ctx.fillStyle = SHADOW_COLOR;
-            ctx.fillRect(p.x - s * 0.42 + off, p.y - s * 0.05 + off, s * 0.84, s * 0.3);
+            this.castEdgeQuad(p.x - s * 0.42, p.y + s * 0.21, p.x + s * 0.42, p.y + s * 0.21, 0.45);
           },
           draw: () => {
             ctx.fillStyle = '#5e3f1e';
@@ -3201,10 +3436,7 @@ export class Renderer {
       sortY: e.y,
       elevated: terrainLift > 0,
       drawShadow: () => {
-        ctx.fillStyle = SHADOW_COLOR;
-        ctx.beginPath();
-        facetCircle(ctx, p.x + SHADOW_OFFSET * s * 0.7, p.y + s * 0.05, 0.26 * s * (e.size ?? 1), 7, 0.3, 0.54);
-        ctx.fill();
+        this.castBody(p.x, p.y + s * 0.05, 0.26 * s * (e.size ?? 1));
       },
       draw: () => {
         // Tool impacts: debris flies off the node at each strike beat,
@@ -3406,10 +3638,7 @@ export class Renderer {
       sortY: s.y,
       elevated: terrainLift > 0,
       drawShadow: () => {
-        ctx.fillStyle = SHADOW_COLOR;
-        ctx.beginPath();
-        facetCircle(ctx, p.x + SHADOW_OFFSET * scale * 0.7, p.y + r * 0.25, r * 1.15, 7, 0.3, 0.52);
-        ctx.fill();
+        this.castBody(p.x, p.y + r * 0.25, r * 1.05);
       },
       draw: () => {
         drawBeast(ctx, {
@@ -3456,10 +3685,7 @@ export class Renderer {
       sortY: s.y - 0.2,
       elevated: terrainLift > 0,
       drawShadow: () => {
-        ctx.fillStyle = SHADOW_COLOR;
-        ctx.beginPath();
-        facetCircle(ctx, p.x + SHADOW_OFFSET * scale * 0.5, p.y + scale * 0.08, size * 0.6, 6, 0.3, 0.5);
-        ctx.fill();
+        this.castContact(p.x, p.y + scale * 0.08, size * 0.6, size * 0.28);
       },
       draw: () => {
         // A little bundle: chamfered gem-cut diamond in the item's color.
@@ -3633,10 +3859,7 @@ export class Renderer {
     return {
       sortY: s.y,
       drawShadow: () => {
-        ctx.fillStyle = SHADOW_COLOR;
-        ctx.beginPath();
-        ctx.ellipse(p.x + sc * SHADOW_OFFSET, p.y + sc * 0.06, sc * 0.24, sc * 0.1, 0, 0, Math.PI * 2);
-        ctx.fill();
+        this.castContact(p.x, p.y + sc * 0.06, sc * 0.24, sc * 0.1);
       },
       draw: () => {
         if (defId === 'summon_heal_totem') {

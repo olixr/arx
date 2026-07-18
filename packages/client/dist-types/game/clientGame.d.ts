@@ -106,6 +106,8 @@ export declare class ClientGame {
     aim: number;
     rttMs: number;
     serverTick: number;
+    /** World-clock offset in ticks (dev /time); see sim/daylight. */
+    timeOfs: number;
     inventory: InvSlot[];
     skills: SkillXp;
     equipment: Partial<Record<string, string>>;
@@ -213,6 +215,12 @@ export declare class ClientGame {
     buildSend(buildable: string, tx: number, ty: number): void;
     demolishSend(tx: number, ty: number): void;
     private handleSnapshot;
+    /**
+     * Smooth game-clock hours for the sky. Rides the same slewed
+     * clockOffset as entity interpolation, so the sun never stutters
+     * on snapshot arrival.
+     */
+    clockHoursNow(): number;
     /** Server-timeline timestamp remote entities should be rendered at. */
     renderTime(): number;
     sendChat(text: string): void;

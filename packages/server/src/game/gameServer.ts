@@ -9,7 +9,10 @@ import {
   RECONNECT_GRACE_MS,
   TICK_DT,
   TICK_MS,
+  TIME_NAMES,
   chunkKey,
+  clockHoursAtTick,
+  ofsForHours,
   encodeChunk,
   encodeSnapshot,
   encodeTilePatch,
@@ -322,6 +325,8 @@ function rollBasic(maxHit: number): { dmg: number; crit: boolean } {
 
 export class GameServer {
   tickCount = 0;
+  /** World-clock offset in ticks; only the dev `/time` command bends it. */
+  timeOfsTicks = 0;
 
   private readonly ecs = new EcsWorld();
   readonly kinds = this.ecs.register<EntityKind>();
@@ -601,6 +606,7 @@ export class GameServer {
     session.sendJson({ t: 'inv', slots: player.inventory });
     session.sendJson({ t: 'equip', equipment: player.equipment });
     session.sendJson({ t: 'techniques', chosen: player.techniques });
+    session.sendJson({ t: 'time', ofs: this.timeOfsTicks });
     this.sendCooldowns(player);
   }
 
@@ -2762,6 +2768,22 @@ export class GameServer {
       const x = Number.parseFloat(xRaw ?? '');
       const y = Number.parseFloat(yRaw ?? '');
       if (Number.isFinite(x) && Number.isFinite(y)) this.teleport(eid, x, y);
+      return;
+    }
+    if (config.devCommands && text.startsWith('/time')) {
+      const arg = text.split(/\s+/)[1] ?? '';
+      const target = TIME_NAMES[arg] ?? Number.parseFloat(arg);
+      if (Number.isFinite(target) && target >= 0 && target < 24) {
+        this.timeOfsTicks += ofsForHours(this.tickCount + this.timeOfsTicks, target);
+        for (const s of this.sessions) s.sendJson({ t: 'time', ofs: this.timeOfsTicks });
+        const now = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
+        const hh = Math.floor(now);
+        const mm = Math.floor((now - hh) * 60);
+        this.systemChatAll(`Time set: ${hh}:${String(mm).padStart(2, '0')}`);
+      } else {
+        const names = Object.keys(TIME_NAMES).join(', ');
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: `/time <0-24 | ${names}>` });
+      }
       return;
     }
     if (config.devCommands && text.startsWith('/give ')) {
