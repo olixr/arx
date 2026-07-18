@@ -21,13 +21,25 @@ export class Panels {
   private techniques: Record<string, string> = {};
   private lastSkills: SkillXp = {};
 
+  // ---- pointer drag state (mouse drag & drop between pack slots).
+  private drag: {
+    from: number;
+    startX: number;
+    startY: number;
+    active: boolean;
+    ghost: HTMLElement | null;
+  } | null = null;
+
   constructor(
     private readonly onUseSlot: (slot: number) => void,
     private readonly onUnequip: (slot: EquipSlot) => void,
     private readonly onTechnique: (style: string, ability: string) => void = () => {},
+    private readonly onInvMove: (from: number, to: number) => void = () => {},
   ) {
     document.getElementById('btn-inventory')!.addEventListener('click', () => this.toggleInventory());
     document.getElementById('btn-skills')!.addEventListener('click', () => this.toggleSkills());
+    window.addEventListener('pointermove', (e) => this.dragMove(e));
+    window.addEventListener('pointerup', (e) => this.dragEnd(e));
   }
 
   toggleInventory(): void {
@@ -45,28 +57,108 @@ export class Panels {
     this.invPanel.classList.add('hidden');
   }
 
+  closeAll(): void {
+    this.invPanel.classList.add('hidden');
+    this.skillsPanel.classList.add('hidden');
+  }
+
+  get anyOpen(): boolean {
+    return (
+      !this.invPanel.classList.contains('hidden') ||
+      !this.skillsPanel.classList.contains('hidden')
+    );
+  }
+
+  // ---- drag & drop --------------------------------------------------
+
+  private dragMove(e: PointerEvent): void {
+    const d = this.drag;
+    if (!d) return;
+    if (!d.active) {
+      if (Math.hypot(e.clientX - d.startX, e.clientY - d.startY) < 7) return;
+      // Threshold crossed: this press is a DRAG, not a click.
+      d.active = true;
+      const src = this.invGrid.querySelector<HTMLElement>(`[data-invslot="${d.from}"]`);
+      const img = src?.querySelector('img');
+      src?.classList.add('drag-src');
+      const ghost = document.createElement('div');
+      ghost.id = 'drag-ghost';
+      if (img) {
+        const copy = img.cloneNode(true) as HTMLImageElement;
+        ghost.appendChild(copy);
+      }
+      document.body.appendChild(ghost);
+      d.ghost = ghost;
+    }
+    d.ghost!.style.transform = `translate(${e.clientX - 26}px, ${e.clientY - 26}px)`;
+    // Highlight the slot under the pointer.
+    this.invGrid
+      .querySelectorAll('.drop-hover')
+      .forEach((el) => el.classList.remove('drop-hover'));
+    this.slotUnder(e)?.classList.add('drop-hover');
+  }
+
+  private dragEnd(e: PointerEvent): void {
+    const d = this.drag;
+    this.drag = null;
+    if (!d) return;
+    if (!d.active) {
+      // A plain click: the contextual use/deposit/sell action.
+      this.onUseSlot(d.from);
+      return;
+    }
+    d.ghost?.remove();
+    this.invGrid.querySelectorAll('.drag-src, .drop-hover').forEach((el) => {
+      el.classList.remove('drag-src');
+      el.classList.remove('drop-hover');
+    });
+    const target = this.slotUnder(e);
+    if (target) {
+      const to = Number(target.dataset.invslot);
+      if (to !== d.from) this.onInvMove(d.from, to);
+    }
+  }
+
+  private slotUnder(e: PointerEvent): HTMLElement | null {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    return (el?.closest('[data-invslot]') as HTMLElement | null) ?? null;
+  }
+
+  // ---- rendering ----------------------------------------------------
+
   renderInventory(slots: InvSlot[]): void {
     this.invGrid.innerHTML = '';
     const count = Math.max(28, slots.length);
     for (let i = 0; i < count; i++) {
       const cell = document.createElement('div');
       cell.className = 'inv-slot';
+      cell.dataset.nav = '';
+      cell.dataset.navkey = `inv:${i}`;
+      cell.dataset.invslot = String(i);
       const slot = slots[i];
       if (slot) {
         const def = itemDef(slot.item);
         cell.classList.add('clickable');
-        cell.addEventListener('click', () => this.onUseSlot(i));
+        cell.dataset.filled = '1';
+        cell.dataset.tipname = def?.name ?? slot.item;
+        cell.dataset.tipsub = def?.equipSlot
+          ? `Equip · ${def.equipSlot}`
+          : def?.heals
+            ? `Eat — restores ${def.heals} HP`
+            : slot.qty > 1
+              ? `${slot.qty.toLocaleString()} in pack`
+              : '';
+        cell.dataset.acta = def?.equipSlot ? 'Equip' : def?.heals ? 'Eat' : 'Use';
+        // Click (no drag) fires in dragEnd; pointerdown arms both paths.
+        cell.addEventListener('pointerdown', (e) => {
+          if (e.button !== 0) return;
+          e.preventDefault();
+          this.drag = { from: i, startX: e.clientX, startY: e.clientY, active: false, ghost: null };
+        });
         const item = document.createElement('img');
         item.className = 'inv-item';
         item.src = itemIconUrl(slot.item, 44);
         item.draggable = false;
-        item.title = def
-          ? def.equipSlot
-            ? `${def.name} — click to equip`
-            : def.heals
-              ? `${def.name} — click to eat`
-              : def.name
-          : slot.item;
         cell.appendChild(item);
         if (slot.qty > 1) {
           const qty = document.createElement('span');
@@ -74,6 +166,12 @@ export class Panels {
           qty.textContent = slot.qty > 9999 ? `${Math.floor(slot.qty / 1000)}k` : String(slot.qty);
           cell.appendChild(qty);
         }
+        // Pad Ⓐ path: a real click event lands here.
+        cell.addEventListener('click', (e) => {
+          // Pointer-driven clicks are handled by dragEnd; synthetic
+          // (pad) clicks carry no pointer state.
+          if (e.detail === 0) this.onUseSlot(i);
+        });
       }
       this.invGrid.appendChild(cell);
     }
@@ -92,7 +190,11 @@ export class Panels {
       if (worn) {
         const def = itemDef(worn);
         cell.classList.add('clickable');
-        cell.title = `${def?.name ?? worn} — click to remove`;
+        cell.dataset.nav = '';
+        cell.dataset.navkey = `equip:${slot}`;
+        cell.dataset.tipname = def?.name ?? worn;
+        cell.dataset.tipsub = `Worn · ${slot}`;
+        cell.dataset.acta = 'Remove';
         cell.addEventListener('click', () => this.onUnequip(slot));
         const item = document.createElement('img');
         item.className = 'inv-item';
@@ -154,10 +256,15 @@ export class Panels {
           if (!unlocked) {
             chip.classList.add('locked');
             chip.textContent = `${ab.name} (lv ${tech.unlockLevel})`;
-            chip.title = `${ab.desc} — unlocks at ${skill} level ${tech.unlockLevel}`;
+            chip.dataset.tipname = ab.name;
+            chip.dataset.tipsub = `${ab.desc} — unlocks at ${skill} level ${tech.unlockLevel}`;
           } else {
             chip.textContent = ab.name;
-            chip.title = `${ab.desc} — click to equip on R`;
+            chip.dataset.nav = '';
+            chip.dataset.navkey = `tech:${skill}:${tech.ability}`;
+            chip.dataset.tipname = ab.name;
+            chip.dataset.tipsub = ab.desc;
+            chip.dataset.acta = 'Equip';
             if (this.techniques[skill] === tech.ability) chip.classList.add('active');
             chip.addEventListener('click', () => this.onTechnique(skill, tech.ability));
           }

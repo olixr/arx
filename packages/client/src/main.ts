@@ -7,17 +7,19 @@ import { ChatUI } from './ui/chat.js';
 import { Hotbar } from './ui/hotbar.js';
 import { Panels } from './ui/panels.js';
 import { StationPanels } from './ui/stationPanels.js';
+import { UiNav } from './ui/padUI.js';
 import { Sfx } from './audio/sfx.js';
 import { setupTouch } from './input/touch.js';
 import { uiIconUrl } from './render/icons.js';
 
-// Painted UI glyphs — no emoji anywhere in the universe.
-for (const [id, kind] of [
-  ['btn-inventory', 'backpack'],
-  ['btn-skills', 'scroll'],
-  ['btn-craft', 'hammer'],
-  ['btn-build', 'house'],
-  ['touch-attack', 'attack'],
+// Painted UI glyphs — no emoji anywhere in the universe. Each dock
+// button wears a device-aware shortcut badge (letter or pad glyph).
+for (const [id, kind, tip, kbKey, padCls, padLabel] of [
+  ['btn-inventory', 'backpack', 'Pack', 'I', 'start', '☰'],
+  ['btn-skills', 'scroll', 'Skills', 'K', 'select', '⧉'],
+  ['btn-craft', 'hammer', 'Handiwork', 'C', '', ''],
+  ['btn-build', 'house', 'Build', 'B', '', ''],
+  ['touch-attack', 'attack', '', '', '', ''],
 ] as const) {
   const btn = document.getElementById(id);
   if (btn) {
@@ -25,6 +27,25 @@ for (const [id, kind] of [
     img.src = uiIconUrl(kind, 44);
     img.draggable = false;
     btn.appendChild(img);
+    if (tip) {
+      btn.dataset.nav = '';
+      btn.dataset.navkey = `dock:${id}`;
+      btn.dataset.tipname = tip;
+      btn.dataset.acta = 'Open';
+      const badge = document.createElement('span');
+      badge.className = 'dock-badge';
+      const kb = document.createElement('span');
+      kb.className = 'kb-glyph small';
+      kb.textContent = kbKey;
+      badge.appendChild(kb);
+      if (padCls) {
+        const pad = document.createElement('span');
+        pad.className = `pad-glyph ${padCls}`;
+        pad.textContent = padLabel;
+        badge.appendChild(pad);
+      }
+      btn.appendChild(badge);
+    }
   }
 }
 
@@ -60,6 +81,18 @@ let buildMode: string | null = null;
 /** The bank chest tile that asked the server for the vault — anchors the panel. */
 let lastBankAnchor: { tx: number; ty: number } | null = null;
 
+/** Interact-prompt verbs by target kind / station type. */
+const PROMPT_LABELS: Record<string, string> = {
+  node: 'Gather',
+  bank: 'Open Bank',
+  shop: 'Browse Wares',
+  portal: 'Enter',
+  fire: 'Cook',
+  furnace: 'Smelt',
+  anvil: 'Smith',
+  workbench: 'Craft',
+};
+
 const stationPanels = new StationPanels(
   (recipe, qty) => game.craft(recipe, qty),
   (op, item, qty) => game.bankSend(op, item, qty),
@@ -87,7 +120,29 @@ const panels = new Panels(
   },
   (slot) => game.unequip(slot),
   (style, ability) => game.sendTechnique(style, ability),
+  (from, to) => game.invMove(from, to),
 );
+
+// Gamepad-first UI navigation: focus ring, action strip, tooltips, and
+// the world interact prompt all live here.
+const nav = new UiNav(input, {
+  onInvMove: (from, to) => game.invMove(from, to),
+  onCloseAll: () => {
+    stationPanels.closeAll();
+    panels.closeAll();
+  },
+  onToggleInventory: () => panels.toggleInventory(),
+  onToggleSkills: () => panels.toggleSkills(),
+  packActionLabel: () =>
+    stationPanels.bankOpen ? 'Deposit' : stationPanels.shopOpen ? 'Sell' : null,
+});
+
+// One delegated hover path drives the shared tooltip for every panel.
+document.addEventListener('pointerover', (e) => {
+  const el = (e.target as HTMLElement | null)?.closest?.('[data-tipname]');
+  if (el) nav.showTooltipFor(el as HTMLElement);
+  else nav.hideTooltip();
+});
 
 document.getElementById('btn-craft')!.addEventListener('click', () => {
   stationPanels.openCraft(null, game.skills);
@@ -444,6 +499,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyB') stationPanels.openBuild(game.skills);
   if (e.code === 'Escape') {
     stationPanels.closeAll();
+    panels.closeAll();
     buildMode = null;
     renderer.buildGhost = null;
   }
@@ -564,11 +620,29 @@ function frame(now: number): void {
 
   // Gamepad: poll sticks; X button interacts (edge-triggered).
   input.pollGamepad();
+  const uiOpen =
+    document.querySelector('.side-panel:not(.hidden)') !== null;
+  nav.update(now, uiOpen);
   const padInteract = input.padInteractPressed();
   if (padInteract && !padInteractWasDown && game.ownEid !== null) {
     activateTarget(game.findNearbyTarget());
   }
   padInteractWasDown = padInteract;
+
+  // World interact prompt: a glyph chip floating over whatever the
+  // Interact button would use — the console-native "press Ⓧ" read.
+  if (game.ownEid !== null && !uiOpen && !buildMode) {
+    const target = game.findNearbyTarget();
+    if (target) {
+      const p = renderer.camera.worldToScreen(target.tx + 0.5, target.ty + 0.5, window.innerWidth, window.innerHeight);
+      p.y -= renderer.renderLift(target.tx + 0.5, target.ty + 0.5) * renderer.camera.scale;
+      nav.setPrompt({ sx: p.x, sy: p.y - renderer.camera.scale * 1.5, label: PROMPT_LABELS[target.kind === 'station' ? target.station : target.kind] ?? 'Use' });
+    } else {
+      nav.setPrompt(null);
+    }
+  } else {
+    nav.setPrompt(null);
+  }
 
   // Aim: gamepad right stick wins; with the stick idle, pad players get
   // soft aim-assist onto the nearest monster (falling back to the walk

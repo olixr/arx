@@ -4,6 +4,7 @@ export declare class Panels {
     private readonly onUseSlot;
     private readonly onUnequip;
     private readonly onTechnique;
+    private readonly onInvMove;
     private readonly invPanel;
     private readonly invGrid;
     private readonly equipRow;
@@ -12,10 +13,16 @@ export declare class Panels {
     /** The chosen technique per style, mirrored from the server. */
     private techniques;
     private lastSkills;
-    constructor(onUseSlot: (slot: number) => void, onUnequip: (slot: EquipSlot) => void, onTechnique?: (style: string, ability: string) => void);
+    private drag;
+    constructor(onUseSlot: (slot: number) => void, onUnequip: (slot: EquipSlot) => void, onTechnique?: (style: string, ability: string) => void, onInvMove?: (from: number, to: number) => void);
     toggleInventory(): void;
     showInventory(): void;
     toggleSkills(): void;
+    closeAll(): void;
+    get anyOpen(): boolean;
+    private dragMove;
+    private dragEnd;
+    private slotUnder;
     renderInventory(slots: InvSlot[]): void;
     renderEquipment(equipment: Partial<Record<string, string>>): void;
     /** Server-confirmed technique choices; re-renders the picker. */

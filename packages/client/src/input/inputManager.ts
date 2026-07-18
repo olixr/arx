@@ -27,6 +27,12 @@ export class InputManager {
   gamepadAim: number | null = null;
   /** True when a gamepad supplied the most recent input. */
   private padUsed = false;
+  /**
+   * While the pad is driving MENUS, its sticks and buttons must not
+   * leak into gameplay — navigating a bank must never swing a sword.
+   * The UI layer (UiNav) owns this flag.
+   */
+  uiCapture = false;
 
   /** While a DOM field (chat) has focus, movement keys are ignored. */
   private typingCheck: () => boolean = () => false;
@@ -42,7 +48,9 @@ export class InputManager {
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => this.keys.clear());
-    target.addEventListener('mousemove', (e) => {
+    // Window-level so moving the mouse over UI panels also reclaims
+    // the device (glyphs flip back to keyboard immediately).
+    window.addEventListener('mousemove', (e) => {
       this.mouseX = e.clientX;
       this.mouseY = e.clientY;
       this.padUsed = false; // the mouse reclaims aiming
@@ -71,13 +79,25 @@ export class InputManager {
   pollGamepad(): void {
     const pad = this.pad();
     this.gamepadAim = null;
-    if (!pad) return;
+    if (!pad || this.uiCapture) return;
     const ax = pad.axes[2] ?? 0;
     const ay = pad.axes[3] ?? 0;
     if (Math.hypot(ax, ay) > 0.35) {
       this.gamepadAim = Math.atan2(ay, ax);
       this.padUsed = true;
     }
+  }
+
+  /** Raw pad state for the UI navigation layer (edge-detects itself). */
+  padSnapshot(): { buttons: readonly GamepadButton[]; axes: readonly number[] } | null {
+    const pad = this.pad();
+    if (!pad) return null;
+    return { buttons: pad.buttons, axes: pad.axes };
+  }
+
+  /** Any pad activity at all — flips the HUD into pad mode. */
+  notePadActivity(): void {
+    this.padUsed = true;
   }
 
   /** Movement axes in [-1, 1] — keyboard, gamepad, or touch stick. */
@@ -89,7 +109,7 @@ export class InputManager {
     if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) my -= 1;
     if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) my += 1;
 
-    if (mx === 0 && my === 0) {
+    if (mx === 0 && my === 0 && !this.uiCapture) {
       const pad = this.pad();
       if (pad) {
         const px = pad.axes[0] ?? 0;
@@ -116,7 +136,7 @@ export class InputManager {
 
   buttons(): number {
     let b = 0;
-    const pad = this.pad();
+    const pad = this.uiCapture ? null : this.pad();
     // RT / A hold to attack on pads; LB/RB/Y/D-up fire the abilities.
     const padAttack =
       pad !== null &&
@@ -141,6 +161,7 @@ export class InputManager {
 
   /** X button (west) on the pad — polled for interact edge detection. */
   padInteractPressed(): boolean {
+    if (this.uiCapture) return false;
     const pad = this.pad();
     return pad !== null && (pad.buttons[2]?.pressed ?? false);
   }

@@ -4,6 +4,13 @@ import type { ClientGame } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
 
 const SLOT_KEYS = ['Q', 'E', 'R', 'T'] as const;
+/** Pad bindings for the same four slots: LB, RB, Y, d-pad up. */
+const SLOT_PAD = [
+  ['lb', 'LB'],
+  ['rb', 'RB'],
+  ['y', 'Y'],
+  ['dup', '▲'],
+] as const;
 const EMPTY_HINTS = [
   'Equip a weapon to gain its Art',
   'Wear a relic to gain its power',
@@ -44,9 +51,18 @@ export class Hotbar {
       wipe.className = 'hotbar-wipe';
       slot.appendChild(wipe);
 
+      // Device-aware key badge: keyboard letter or pad glyph, swapped
+      // by body.pad-mode so the HUD always speaks the player's device.
       const key = document.createElement('span');
       key.className = 'hotbar-key';
-      key.textContent = SLOT_KEYS[i]!;
+      const kb = document.createElement('span');
+      kb.className = 'kb-glyph small';
+      kb.textContent = SLOT_KEYS[i]!;
+      const [padCls, padLabel] = SLOT_PAD[i]!;
+      const pad = document.createElement('span');
+      pad.className = `pad-glyph ${padCls}`;
+      pad.textContent = padLabel;
+      key.append(kb, pad);
       slot.appendChild(key);
 
       // Press-and-release drives the same input bit the keyboard does;

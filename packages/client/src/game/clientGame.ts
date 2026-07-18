@@ -643,6 +643,16 @@ export class ClientGame {
     this.conn?.send({ t: 'bank', op, item, qty });
   }
 
+  invMove(from: number, to: number): void {
+    if (from === to) return;
+    // Optimistic swap — the server echoes the authoritative pack.
+    const inv = this.inventory;
+    const tmp = inv[from] ?? null;
+    inv[from] = inv[to] ?? null;
+    inv[to] = tmp;
+    this.conn?.send({ t: 'invmove', from, to });
+  }
+
   shopSend(op: 'buy' | 'sell', item: string, qty: number): void {
     this.conn?.send({ t: 'shop', op, item, qty });
   }

@@ -75,6 +75,13 @@ export interface C2SUnequip {
   slot: EquipSlot;
 }
 
+/** Reorder the pack: swap the contents of two inventory slots. */
+export interface C2SInvMove {
+  t: 'invmove';
+  from: number;
+  to: number;
+}
+
 /** Craft a recipe (validated against station adjacency server-side). */
 export interface C2SCraft {
   t: 'craft';
@@ -128,6 +135,7 @@ export type C2SMessage =
   | C2SInteract
   | C2SUseItem
   | C2SUnequip
+  | C2SInvMove
   | C2SCraft
   | C2SBank
   | C2SShop
@@ -416,6 +424,13 @@ export function parseC2S(raw: string): C2SMessage | null {
       const slot = msg.slot as EquipSlot;
       if (!EQUIP_SLOTS.includes(slot)) return null;
       return { t: 'unequip', slot };
+    }
+    case 'invmove': {
+      if (!isFiniteNum(msg.from) || !Number.isInteger(msg.from)) return null;
+      if (!isFiniteNum(msg.to) || !Number.isInteger(msg.to)) return null;
+      if (msg.from < 0 || msg.from >= 64 || msg.to < 0 || msg.to >= 64) return null;
+      if (msg.from === msg.to) return null;
+      return { t: 'invmove', from: msg.from, to: msg.to };
     }
     case 'craft': {
       if (typeof msg.recipe !== 'string' || msg.recipe.length > 64) return null;

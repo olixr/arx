@@ -1148,6 +1148,19 @@ export class GameServer {
   // ------------------------------------------------------- equipment
 
   /** Equip or eat the item in an inventory slot. */
+  /** Reorder the pack: swap two slots (drag-drop / pad carry mode). */
+  invMove(eid: EntityId, from: number, to: number): void {
+    const player = this.players.get(eid);
+    if (!player) return;
+    const inv = player.inventory;
+    if (from < 0 || to < 0 || from >= inv.length || to >= inv.length) return;
+    if (!inv[from] && !inv[to]) return;
+    const tmp = inv[from] ?? null;
+    inv[from] = inv[to] ?? null;
+    inv[to] = tmp;
+    player.session?.sendJson({ t: 'inv', slots: inv });
+  }
+
   useItem(eid: EntityId, slotIndex: number): void {
     const player = this.players.get(eid);
     if (!player || slotIndex >= player.inventory.length) return;

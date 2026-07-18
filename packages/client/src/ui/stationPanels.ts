@@ -46,6 +46,9 @@ export class StationPanels {
       btn.className = 'panel-close';
       btn.textContent = '✕';
       btn.title = 'Close (Esc)';
+      btn.dataset.nav = '';
+      btn.dataset.navkey = `close:${panel.id}`;
+      btn.dataset.acta = 'Close';
       btn.addEventListener('click', () => this.closeAll());
       panel.querySelector('h3')!.appendChild(btn);
     }
@@ -111,6 +114,9 @@ export class StationPanels {
       if (!locked) {
         const btn = document.createElement('button');
         btn.textContent = 'Place';
+        btn.dataset.nav = '';
+        btn.dataset.navkey = `build:${def.id}`;
+        btn.dataset.acta = 'Place';
         btn.addEventListener('click', () => this.onPickBuildable(def.id));
         row.appendChild(btn);
       }
@@ -152,6 +158,9 @@ export class StationPanels {
         for (const qty of [1, 5, 28]) {
           const btn = document.createElement('button');
           btn.textContent = qty === 28 ? 'All' : `×${qty}`;
+          btn.dataset.nav = '';
+          btn.dataset.navkey = `craft:${recipe.id}:${qty}`;
+          btn.dataset.acta = 'Craft';
           btn.addEventListener('click', () => this.onCraft(recipe.id, qty));
           row.appendChild(btn);
         }
@@ -197,6 +206,9 @@ export class StationPanels {
       for (const [label, n] of [['×1', 1], ['×5', 5], ['All', qty]] as const) {
         const btn = document.createElement('button');
         btn.textContent = label;
+        btn.dataset.nav = '';
+        btn.dataset.navkey = `bank:${item}:${label}`;
+        btn.dataset.acta = 'Withdraw';
         btn.addEventListener('click', () => this.onBank('withdraw', item, n));
         row.appendChild(btn);
       }
@@ -222,6 +234,9 @@ export class StationPanels {
       for (const [label, n] of [['Buy 1', 1], ['Buy 5', 5]] as const) {
         const btn = document.createElement('button');
         btn.textContent = label;
+        btn.dataset.nav = '';
+        btn.dataset.navkey = `shop:${entry.item}:${n}`;
+        btn.dataset.acta = 'Buy';
         btn.addEventListener('click', () => this.onShop('buy', entry.item, n));
         row.appendChild(btn);
       }

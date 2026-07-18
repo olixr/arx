@@ -21,6 +21,12 @@ export declare class InputManager {
     gamepadAim: number | null;
     /** True when a gamepad supplied the most recent input. */
     private padUsed;
+    /**
+     * While the pad is driving MENUS, its sticks and buttons must not
+     * leak into gameplay — navigating a bank must never swing a sword.
+     * The UI layer (UiNav) owns this flag.
+     */
+    uiCapture: boolean;
     /** While a DOM field (chat) has focus, movement keys are ignored. */
     private typingCheck;
     constructor(target: HTMLElement);
@@ -29,6 +35,13 @@ export declare class InputManager {
     private pad;
     /** Poll gamepad sticks; call once per frame before sampling. */
     pollGamepad(): void;
+    /** Raw pad state for the UI navigation layer (edge-detects itself). */
+    padSnapshot(): {
+        buttons: readonly GamepadButton[];
+        axes: readonly number[];
+    } | null;
+    /** Any pad activity at all — flips the HUD into pad mode. */
+    notePadActivity(): void;
     /** Movement axes in [-1, 1] — keyboard, gamepad, or touch stick. */
     moveAxes(): {
         mx: number;

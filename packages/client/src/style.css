@@ -681,3 +681,269 @@ h3 {
   box-shadow: inset 0 0 0 1.5px rgba(217, 164, 65, 0.55);
   color: #f2c94c;
 }
+
+/* ==================================================================
+   Gamepad-first UI layer: glyph language, focus ring, action strip,
+   tooltip, interact prompt, drag & drop. The HUD speaks the player's
+   device: body.pad-mode swaps every shortcut badge from key caps to
+   controller glyphs.
+   ================================================================== */
+
+/* ---- glyph chips: the one button language everywhere ---- */
+
+.pad-glyph,
+.kb-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--parchment);
+  background: linear-gradient(180deg, #241a2e 0%, #171021 100%);
+  border: 1.5px solid var(--wood-edge);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 1px 0 rgba(239, 227, 194, 0.14),
+    1.5px 1.5px 0 var(--shadow);
+  text-shadow: 1px 1px 0 rgba(18, 10, 6, 0.9);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Face buttons carry their console color as a rim accent. */
+.pad-glyph.a { border-color: #5da865; color: #a8e0b0; }
+.pad-glyph.b { border-color: #c4553d; color: #f0b0a0; }
+.pad-glyph.x { border-color: #4d7fc4; color: #a8c8f0; }
+.pad-glyph.y { border-color: #d9a441; color: #f2d894; }
+
+/* Bumpers, triggers, start/select: wide angular chips, not circles. */
+.pad-glyph.lb,
+.pad-glyph.rb,
+.pad-glyph.lt,
+.pad-glyph.rt,
+.pad-glyph.start,
+.pad-glyph.select {
+  border-radius: 3px;
+  font-size: 9.5px;
+  min-width: 26px;
+  height: 17px;
+}
+
+.pad-glyph.dup {
+  border-radius: 3px;
+  font-size: 10px;
+}
+
+/* Key caps: square chips with the classic keyboard read. */
+.kb-glyph {
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--wood-light) 0%, var(--wood-dark) 100%);
+  border-color: var(--wood-edge);
+}
+
+.kb-glyph.small {
+  min-width: 17px;
+  height: 17px;
+  font-size: 10px;
+}
+
+/* Device swap: only one shortcut language is visible at a time. */
+body.pad-mode .kb-glyph { display: none; }
+body:not(.pad-mode) .pad-glyph { display: none; }
+/* Inside the action strip / prompt (pad-only surfaces) always show. */
+#ui-action-strip .pad-glyph,
+#ui-interact-prompt .pad-glyph { display: inline-flex; }
+
+/* ---- hotbar + dock badges ---- */
+
+.hotbar-key .kb-glyph,
+.hotbar-key .pad-glyph {
+  box-shadow: 1.5px 1.5px 0 var(--shadow);
+}
+
+.dock-badge {
+  position: absolute;
+  right: -5px;
+  top: -7px;
+  pointer-events: none;
+}
+
+#panel-buttons button {
+  position: relative;
+}
+
+/* ---- focus ring: the pad cursor ---- */
+
+#ui-focus-ring {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 60;
+  pointer-events: none;
+  border: 2.5px solid var(--gold-bright);
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 2px rgba(18, 10, 6, 0.65),
+    inset 0 0 0 1.5px rgba(18, 10, 6, 0.5),
+    0 0 14px rgba(232, 182, 76, 0.35);
+  transition:
+    transform 0.11s cubic-bezier(0.3, 1.2, 0.5, 1),
+    width 0.11s ease-out,
+    height 0.11s ease-out;
+  animation: focus-breathe 1.6s ease-in-out infinite;
+}
+
+#ui-focus-ring.carrying {
+  border-color: #a8c8f0;
+  box-shadow:
+    0 0 0 2px rgba(18, 10, 6, 0.65),
+    0 0 16px rgba(120, 160, 230, 0.5);
+}
+
+@keyframes focus-breathe {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(18, 10, 6, 0.65), 0 0 10px rgba(232, 182, 76, 0.28); }
+  50% { box-shadow: 0 0 0 2px rgba(18, 10, 6, 0.65), 0 0 18px rgba(232, 182, 76, 0.5); }
+}
+
+/* ---- contextual action strip ---- */
+
+#ui-action-strip {
+  position: fixed;
+  left: 50%;
+  bottom: 86px;
+  transform: translateX(-50%);
+  z-index: 55;
+  display: flex;
+  gap: 14px;
+  padding: 6px 14px;
+  background: linear-gradient(180deg, rgba(44, 31, 21, 0.94) 0%, rgba(28, 19, 12, 0.94) 100%);
+  border: 2px solid var(--wood-dark);
+  border-radius: 3px;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(217, 164, 65, 0.4),
+    4px 4px 0 var(--shadow);
+  pointer-events: none;
+}
+
+#ui-action-strip .strip-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--parchment);
+  text-shadow: 1px 1px 0 rgba(18, 10, 6, 0.8);
+}
+
+/* ---- shared tooltip ---- */
+
+#ui-tooltip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 70;
+  max-width: 240px;
+  padding: 7px 11px;
+  background: linear-gradient(180deg, rgba(36, 26, 46, 0.97) 0%, rgba(23, 16, 33, 0.97) 100%);
+  border: 2px solid var(--wood-edge);
+  border-radius: 3px;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(217, 164, 65, 0.35),
+    4px 4px 0 var(--shadow);
+  pointer-events: none;
+}
+
+#ui-tooltip .tip-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--gold-bright);
+  letter-spacing: 0.4px;
+}
+
+#ui-tooltip .tip-sub {
+  font-size: 11px;
+  color: var(--parchment-dim);
+  margin-top: 2px;
+}
+
+/* ---- world interact prompt ---- */
+
+#ui-interact-prompt {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px 5px 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--parchment);
+  text-shadow: 1px 1px 0 rgba(18, 10, 6, 0.85);
+  background: linear-gradient(180deg, rgba(44, 31, 21, 0.92) 0%, rgba(28, 19, 12, 0.92) 100%);
+  border: 2px solid var(--wood-dark);
+  border-radius: 3px;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(217, 164, 65, 0.45),
+    3px 3px 0 var(--shadow);
+  pointer-events: none;
+  animation: prompt-bob 1.4s ease-in-out infinite;
+}
+
+@keyframes prompt-bob {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: -4px; }
+}
+
+/* ---- inventory hover / drag & drop ---- */
+
+.inv-slot.clickable {
+  transition: transform 0.08s ease-out, box-shadow 0.08s ease-out;
+}
+
+.inv-slot.clickable:hover {
+  border-color: var(--gold-bright);
+  background: rgba(217, 164, 65, 0.16);
+  transform: translateY(-1.5px);
+  box-shadow:
+    0 0 0 1.5px rgba(232, 182, 76, 0.4),
+    0 3px 6px rgba(18, 10, 6, 0.5);
+  z-index: 2;
+}
+
+.inv-slot.drag-src {
+  opacity: 0.35;
+}
+
+.inv-slot.drop-hover {
+  border-color: #a8c8f0;
+  background: rgba(120, 160, 230, 0.18);
+  box-shadow: 0 0 0 2px rgba(120, 160, 230, 0.5);
+}
+
+.inv-slot.carry-src {
+  border-color: #a8c8f0;
+  background: rgba(120, 160, 230, 0.16);
+  opacity: 0.55;
+}
+
+#drag-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 80;
+  width: 52px;
+  height: 52px;
+  pointer-events: none;
+  filter: drop-shadow(3px 4px 3px rgba(18, 10, 6, 0.6));
+}
+
+#drag-ghost img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}

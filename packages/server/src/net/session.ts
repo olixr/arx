@@ -137,6 +137,12 @@ export class Session {
         this.game.unequip(this.playerEid, msg.slot);
         return;
       }
+      case 'invmove': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.invMove(this.playerEid, msg.from, msg.to);
+        return;
+      }
       case 'craft': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
