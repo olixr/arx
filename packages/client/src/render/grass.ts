@@ -145,12 +145,14 @@ function makeBlade(
   let bx: number;
   let by: number;
   if (clumpAt) {
-    // Clump members fan out of a shared crown.
+    // Cluster members fan out of a shared crown.
     bx = clumpAt.x + (rand01(h, 2) - 0.5) * 0.34;
     by = clumpAt.y + (rand01(h, 12) - 0.5) * 0.2;
   } else {
-    bx = tx + 0.08 + rand01(h, 2) * 0.84;
-    by = ty + 0.08 + rand01(h, 12) * 0.84;
+    // Full-tile scatter, edges included: margins carve grout lines
+    // along tile borders and the whole meadow starts reading as a grid.
+    bx = tx + rand01(h, 2);
+    by = ty + rand01(h, 12);
   }
   const height = tall
     ? 0.36 + rand01(h, 5) * 0.28
@@ -206,16 +208,30 @@ export function generateGrassTile(
     return geom;
   }
 
-  // Short grass: the coverage hand. Counts stay lean — width and the
-  // baked stubble carry density; the live blades carry the motion.
+  // Short grass, dealt as TUFTLETS: cluster seeds land anywhere in the
+  // tile (edges included, so groups straddle borders), each growing 1-3
+  // blades — and the budget jitters tile to tile on top of the meadow
+  // coverage. Uniform per-tile counts are what make a lattice read.
   const clump = detailId === DETAIL_TUFT || cov > 0.74;
-  const count = clump ? 0 : cov < 0.32 ? (hashCoords(167, tx, ty) % 2) : cov < 0.56 ? 2 : 3;
-  for (let i = 0; i < count; i++) geom.under.push(makeBlade(tx, ty, 173, i, false, null, tileTone));
-
-  if (clump) {
+  if (!clump) {
+    const hc = hashCoords(167, tx, ty);
+    const budget = cov < 0.32 ? hc % 2 : cov < 0.56 ? 1 + (hc % 3) : 2 + (hc % 4);
+    let placed = 0;
+    let seed = 0;
+    while (placed < budget) {
+      const hs = hashCoords(211 + seed * 13, tx, ty);
+      const size = Math.min(budget - placed, 1 + (hs % 3));
+      const at = size > 1 ? { x: tx + rand01(hs, 3), y: ty + rand01(hs, 13) } : null;
+      for (let i = 0; i < size; i++) {
+        geom.under.push(makeBlade(tx, ty, 173 + seed * 29, i, false, at, tileTone));
+      }
+      placed += size;
+      seed++;
+    }
+  } else {
     const h = hashCoords(179, tx, ty);
-    const cx = tx + 0.3 + rand01(h, 3) * 0.4;
-    const cy = ty + 0.3 + rand01(h, 13) * 0.4;
+    const cx = tx + 0.1 + rand01(h, 3) * 0.8;
+    const cy = ty + 0.1 + rand01(h, 13) * 0.8;
     geom.roots.push({ x: cx, y: cy, w: 0.16 + rand01(h, 7) * 0.06 });
     const members = 5 + (h % 3);
     for (let i = 0; i < members; i++) {
@@ -227,20 +243,34 @@ export function generateGrassTile(
     geom.under.push(makeBlade(tx, ty, 191, 0, false, null, tileTone));
   }
 
-  // Flowers: authored patches bloom hard; meadow noise drifts the rest.
+  // Flowers grow as PATCHES: a seed point lands anywhere (edges too),
+  // and blooms scatter in a loose ring around it — drifts that straddle
+  // tile borders, never one-bloom-per-cell lattices. Meadow noise adds
+  // the occasional lone stray.
   const meadow = valueNoise(903, tx * 0.06, ty * 0.06);
   const flowerCount =
-    detailId === DETAIL_FLOWERS ? 3 + (hashCoords(193, tx, ty) % 3) : meadow > 0.78 && cov > 0.4 ? 1 : 0;
-  for (let i = 0; i < flowerCount; i++) {
-    const h = hashCoords(197 + i * 5, tx, ty);
-    geom.flowers.push({
-      bx: tx + 0.12 + rand01(h, 2) * 0.76,
-      by: ty + 0.12 + rand01(h, 12) * 0.76,
-      h: 0.2 + rand01(h, 6) * 0.12,
-      size: 0.05 + rand01(h, 9) * 0.025,
-      pal: h % 3,
-      phase: rand01(h, 17),
-    });
+    detailId === DETAIL_FLOWERS
+      ? 3 + (hashCoords(193, tx, ty) % 3)
+      : meadow > 0.78 && cov > 0.4
+        ? hashCoords(194, tx, ty) % 2
+        : 0;
+  if (flowerCount > 0) {
+    const hp = hashCoords(197, tx, ty);
+    const pcx = tx + rand01(hp, 3);
+    const pcy = ty + rand01(hp, 13);
+    for (let i = 0; i < flowerCount; i++) {
+      const h = hashCoords(199 + i * 5, tx, ty);
+      const ang = rand01(h, 3) * 6.283;
+      const rad = 0.08 + rand01(h, 13) * 0.3;
+      geom.flowers.push({
+        bx: pcx + Math.cos(ang) * rad,
+        by: pcy + Math.sin(ang) * rad * 0.8,
+        h: 0.2 + rand01(h, 6) * 0.12,
+        size: 0.05 + rand01(h, 9) * 0.025,
+        pal: h % 3,
+        phase: rand01(h, 17),
+      });
+    }
   }
   return geom;
 }
