@@ -4,6 +4,16 @@ export interface UiNavHooks {
     onInvMove: (from: number, to: number) => void;
     /** Drop the carried pack slot onto the ground (Ⓨ while carrying). */
     onDropToWorld: (slot: number) => void;
+    /**
+     * Focus landed on an element — show the item inspect card for it if
+     * it's an item cell. Return true when a card is showing (the small
+     * tooltip stands down). Called with null when pad UI ends.
+     */
+    onInspect?: (el: HTMLElement | null) => boolean;
+    /** Ⓨ on a focused item cell: open its verb menu. */
+    onItemMenu?: (el: HTMLElement) => void;
+    /** Close an open verb menu; true if one was open (Ⓑ eats the press). */
+    closeItemMenu?: () => boolean;
     /** Close all station panels + side panels (the Ⓑ backstop). */
     onCloseAll: () => void;
     /** Toggle the inventory / skills panels (Start / Select). */
@@ -29,6 +39,8 @@ export declare class UiNav {
     private readonly prompt;
     private prevPressed;
     private wasUiActive;
+    /** Where focus returns when the item verb menu closes. */
+    private menuReturnKey;
     /** Direction held when UI capture began — inert until released. */
     private swallowDir;
     private navHeldSince;

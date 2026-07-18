@@ -1,10 +1,13 @@
 import { itemDef } from '@devcraft/content';
 import { shade } from './rig.js';
+import { GLYPHS } from './iconPaths.js';
 
 /**
- * The icon set: every item and UI glyph is drawn in code on a unit
- * canvas — flat shapes, dark outline, one hard drop shadow. Rendered
- * once per (icon, size) and cached as data URLs for the DOM.
+ * The icon set. Item icons are game-icons.net glyphs (CC BY 3.0 —
+ * credits in iconPaths.ts) re-rendered through the house pipeline:
+ * item-color tint, two-tone shading band, dilated dark outline, one
+ * hard drop shadow. UI glyphs stay hand-painted. Rendered once per
+ * (icon, size) and cached as data URLs for the DOM.
  */
 
 const OUTLINE = '#241a2e';
@@ -384,46 +387,148 @@ function dot(c: CanvasRenderingContext2D, color: string, x: number, y: number, r
   c.fill();
 }
 
-/** Which painter + tint an item uses. */
-const ITEM_ICON: Record<string, { icon: string; color: string }> = {
-  coins: { icon: 'coins', color: '#e8b64c' },
-  log: { icon: 'log', color: '#96744c' },
-  oak_log: { icon: 'log', color: '#74522f' },
-  copper_ore: { icon: 'ore', color: '#c47b3d' },
-  tin_ore: { icon: 'ore', color: '#cfd3dc' },
-  iron_ore: { icon: 'ore', color: '#aeb4bd' },
-  coal: { icon: 'ore', color: '#39343f' },
-  gold_ore: { icon: 'ore', color: '#e8b64c' },
-  raw_trout: { icon: 'fish', color: '#8fb7d9' },
-  trout: { icon: 'fish', color: '#d99a6a' },
-  raw_chicken: { icon: 'meat', color: '#ecd3bd' },
-  cooked_chicken: { icon: 'meat', color: '#d99a52' },
-  raw_beef: { icon: 'meat', color: '#c4645a' },
-  cooked_beef: { icon: 'meat', color: '#a05a3a' },
-  burnt_food: { icon: 'burnt', color: '#413c4a' },
-  bronze_bar: { icon: 'bar', color: '#b0793f' },
-  iron_bar: { icon: 'bar', color: '#9aa2ac' },
-  steel_bar: { icon: 'bar', color: '#c4cad4' },
-  gold_bar: { icon: 'bar', color: '#f2c94c' },
-  gold_ring: { icon: 'coins', color: '#f2c94c' },
-  leather: { icon: 'hide', color: '#b08a5c' },
-  cowhide: { icon: 'hide', color: '#a08468' },
-  wolf_fur: { icon: 'hide', color: '#6a6f7d' },
-  leather_body: { icon: 'armor', color: '#b08a5c' },
-  bones: { icon: 'bones', color: '#efe8d8' },
-  feather: { icon: 'feather', color: '#f4efe4' },
-  bronze_axe: { icon: 'axe', color: '#b0793f' },
-  bronze_pickaxe: { icon: 'pickaxe', color: '#b0793f' },
-  fishing_rod: { icon: 'rod', color: '#c4a35a' },
-  bronze_sword: { icon: 'sword', color: '#c98d4b' },
-  iron_sword: { icon: 'sword', color: '#b6bcc6' },
-  steel_sword: { icon: 'sword', color: '#d6dce6' },
-  oak_shortbow: { icon: 'bow', color: '#8a6a45' },
-  arrow: { icon: 'arrow', color: '#c4b590' },
-  apprentice_staff: { icon: 'staff', color: '#9a7ae0' },
+/**
+ * Which glyph + tint each item renders. EVERY item gets a real glyph —
+ * no more tinted-lump fallbacks. Tints follow the item's identity
+ * color, lifted where the raw color would sink into the dark slots.
+ */
+const ITEM_GLYPH: Record<string, { glyph: string; color: string }> = {
+  coins: { glyph: 'two-coins', color: '#f2c94c' },
+  log: { glyph: 'log', color: '#a5794e' },
+  oak_log: { glyph: 'half-log', color: '#8a6234' },
+  copper_ore: { glyph: 'ore', color: '#c47b3d' },
+  tin_ore: { glyph: 'ore', color: '#cfd3dc' },
+  iron_ore: { glyph: 'ore', color: '#aeb4bd' },
+  coal: { glyph: 'coal-pile', color: '#6a6274' },
+  gold_ore: { glyph: 'gold-nuggets', color: '#f2c94c' },
+  raw_trout: { glyph: 'flatfish', color: '#8fb7d9' },
+  trout: { glyph: 'fish-cooked', color: '#d99a6a' },
+  raw_chicken: { glyph: 'chicken', color: '#ecd3bd' },
+  cooked_chicken: { glyph: 'chicken-leg', color: '#d99a52' },
+  raw_beef: { glyph: 'steak', color: '#c4645a' },
+  cooked_beef: { glyph: 'meat', color: '#b06a3a' },
+  burnt_food: { glyph: 'burning-embers', color: '#66606e' },
+  bronze_bar: { glyph: 'metal-bar', color: '#b0793f' },
+  iron_bar: { glyph: 'metal-bar', color: '#9aa2ac' },
+  steel_bar: { glyph: 'metal-bar', color: '#c4cad4' },
+  gold_bar: { glyph: 'metal-bar', color: '#f2c94c' },
+  gold_ring: { glyph: 'ring', color: '#f2c94c' },
+  leather: { glyph: 'animal-hide', color: '#b08a5c' },
+  cowhide: { glyph: 'animal-hide', color: '#a08468' },
+  wolf_fur: { glyph: 'animal-hide', color: '#8a90a0' },
+  leather_body: { glyph: 'leather-armor', color: '#b08a5c' },
+  bones: { glyph: 'pelvis-bone', color: '#efe8d8' },
+  feather: { glyph: 'feather', color: '#f4efe4' },
+  bronze_axe: { glyph: 'battered-axe', color: '#b0793f' },
+  bronze_pickaxe: { glyph: 'war-pick', color: '#b0793f' },
+  fishing_rod: { glyph: 'fishing-pole', color: '#c4a35a' },
+  bronze_sword: { glyph: 'broadsword', color: '#c98d4b' },
+  iron_sword: { glyph: 'broadsword', color: '#b6bcc6' },
+  steel_sword: { glyph: 'two-handed-sword', color: '#d6dce6' },
+  oak_shortbow: { glyph: 'bow-arrow', color: '#a5794e' },
+  willow_longbow: { glyph: 'bow-arrow', color: '#7fa46a' },
+  arrow: { glyph: 'broadhead-arrow', color: '#c4b590' },
+  apprentice_staff: { glyph: 'wizard-staff', color: '#9a7ae0' },
+  ember_staff: { glyph: 'crystal-wand', color: '#e8823d' },
+  ember_charm: { glyph: 'fire-gem', color: '#ff8a3c' },
+  verdant_totem: { glyph: 'totem', color: '#7ac47a' },
+  snare_kit: { glyph: 'wolf-trap', color: '#b0a05a' },
+  storm_bell: { glyph: 'ringing-bell', color: '#e8e06a' },
+  straw_decoy: { glyph: 'straw-bale', color: '#d4b36a' },
+  sigil_fallen_champion: { glyph: 'crowned-skull', color: '#efe8d8' },
+  spiked_buckler: { glyph: 'spiked-shield', color: '#a5874e' },
+  frost_quiver: { glyph: 'quiver', color: '#8ac4e8' },
+  tome_of_embers: { glyph: 'burning-book', color: '#e8763c' },
+  wolf_pelt_cloak: { glyph: 'cape', color: '#8a90a0' },
+  cape_traveler: { glyph: 'cape', color: '#7da35a' },
+  cape_emberweave: { glyph: 'cape', color: '#c4553d' },
+  cape_champion: { glyph: 'cape', color: '#b04a5c' },
+  cape_ragged: { glyph: 'cape', color: '#8a7a5f' },
+  cape_banner: { glyph: 'vertical-banner', color: '#a34434' },
+  cape_huntsman: { glyph: 'cape', color: '#5c8a54' },
+  cape_midnight: { glyph: 'cape', color: '#5c5478' },
+  cape_gilded: { glyph: 'cape', color: '#c9a23c' },
+  cape_storm: { glyph: 'cape', color: '#6a7ea0' },
+  cape_royal: { glyph: 'cape', color: '#8a5cc4' },
+  cape_celestial: { glyph: 'cape', color: '#6a70b8' },
+  cape_phoenix: { glyph: 'cape', color: '#e05438' },
 };
 
 const cache = new Map<string, string>();
+
+/**
+ * The glyph pipeline: fill the 512-box path with the tint, band it
+ * two-tone (light crown, heavy base), then wrap a dilated dark outline
+ * and one hard drop shadow — the same silhouette language as the world.
+ */
+function renderGlyph(glyphKey: string, color: string, size: number): string {
+  const key = `g|${glyphKey}|${color}|${size}`;
+  const hit = cache.get(key);
+  if (hit) return hit;
+  const glyph = GLYPHS[glyphKey]!;
+  const path = new Path2D(glyph.d);
+  const pad = size * 0.09;
+  const s = (size - pad * 2) / 512;
+
+  // Tinted art layer.
+  const art = document.createElement('canvas');
+  art.width = size;
+  art.height = size;
+  const a = art.getContext('2d')!;
+  a.save();
+  a.translate(pad, pad);
+  a.scale(s, s);
+  a.fillStyle = color;
+  a.fill(path);
+  // Two-tone banding, clipped to the glyph.
+  a.clip(path);
+  a.fillStyle = shade(color, 18);
+  a.fillRect(0, 0, 512, 512 * 0.34);
+  a.fillStyle = shade(color, -20);
+  a.fillRect(0, 512 * 0.72, 512, 512 * 0.28);
+  a.restore();
+
+  // Silhouette (for outline dilation + shadow).
+  const sil = document.createElement('canvas');
+  sil.width = size;
+  sil.height = size;
+  const sc = sil.getContext('2d')!;
+  sc.save();
+  sc.translate(pad, pad);
+  sc.scale(s, s);
+  sc.fillStyle = OUTLINE;
+  sc.fill(path);
+  sc.restore();
+
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  // Hard drop shadow first.
+  ctx.save();
+  ctx.globalAlpha = 0.45;
+  ctx.drawImage(sil, size * 0.05, size * 0.055);
+  ctx.restore();
+  // Dilated outline: the silhouette stamped in a ring.
+  const o = Math.max(1, size * 0.02);
+  for (const [dx, dy] of [
+    [o, 0],
+    [-o, 0],
+    [0, o],
+    [0, -o],
+    [o * 0.7, o * 0.7],
+    [-o * 0.7, o * 0.7],
+    [o * 0.7, -o * 0.7],
+    [-o * 0.7, -o * 0.7],
+  ] as const) {
+    ctx.drawImage(sil, dx, dy);
+  }
+  ctx.drawImage(art, 0, 0);
+
+  const url = canvas.toDataURL();
+  cache.set(key, url);
+  return url;
+}
 
 function renderIcon(icon: string, color: string, size: number): string {
   const key = `${icon}|${color}|${size}`;
@@ -464,10 +569,28 @@ function renderIcon(icon: string, color: string, size: number): string {
   return url;
 }
 
-/** Data URL for an item's icon (falls back to a tinted lump). */
+/** Data URL for an item's icon. */
 export function itemIconUrl(itemId: string, size = 48): string {
-  const spec = ITEM_ICON[itemId] ?? { icon: 'burnt', color: itemDef(itemId)?.color ?? '#888' };
-  return renderIcon(spec.icon, spec.color, size);
+  const spec = ITEM_GLYPH[itemId];
+  if (spec && GLYPHS[spec.glyph]) return renderGlyph(spec.glyph, spec.color, size);
+  // Unknown item: tinted lump so a missing mapping is loud in review.
+  return renderIcon('burnt', itemDef(itemId)?.color ?? '#888', size);
+}
+
+/** Dim placeholder glyph telling an empty equipment slot's purpose. */
+export function slotGlyphUrl(slot: string, size = 40): string {
+  const map: Record<string, string> = {
+    head: 'closed-barbute',
+    body: 'leather-armor',
+    legs: 'leg-armor',
+    weapon: 'broadsword',
+    offhand: 'spiked-shield',
+    tool: 'battered-axe',
+    relic: 'fire-gem',
+    sigil: 'crowned-skull',
+    cape: 'cape',
+  };
+  return renderGlyph(map[slot] ?? 'swap-bag', '#6e5a40', size);
 }
 
 /** Data URL for a UI glyph. */

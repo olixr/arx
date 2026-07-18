@@ -44,6 +44,16 @@ export interface UiNavHooks {
   onInvMove: (from: number, to: number) => void;
   /** Drop the carried pack slot onto the ground (Ⓨ while carrying). */
   onDropToWorld: (slot: number) => void;
+  /**
+   * Focus landed on an element — show the item inspect card for it if
+   * it's an item cell. Return true when a card is showing (the small
+   * tooltip stands down). Called with null when pad UI ends.
+   */
+  onInspect?: (el: HTMLElement | null) => boolean;
+  /** Ⓨ on a focused item cell: open its verb menu. */
+  onItemMenu?: (el: HTMLElement) => void;
+  /** Close an open verb menu; true if one was open (Ⓑ eats the press). */
+  closeItemMenu?: () => boolean;
   /** Close all station panels + side panels (the Ⓑ backstop). */
   onCloseAll: () => void;
   /** Toggle the inventory / skills panels (Start / Select). */
@@ -71,6 +81,8 @@ export class UiNav {
 
   private prevPressed = new Set<number>();
   private wasUiActive = false;
+  /** Where focus returns when the item verb menu closes. */
+  private menuReturnKey: string | null = null;
   /** Direction held when UI capture began — inert until released. */
   private swallowDir: 'up' | 'down' | 'left' | 'right' | null = null;
   private navHeldSince = 0;
@@ -112,8 +124,12 @@ export class UiNav {
 
   /** All currently-visible navigable elements. */
   private navigables(): HTMLElement[] {
+    // An open item verb menu is MODAL: focus stays inside it until it
+    // closes — spatial nav must never wander back into the pack grid.
+    const menu = document.getElementById('item-menu');
+    const scope = menu && !menu.classList.contains('hidden') ? menu : document;
     const out: HTMLElement[] = [];
-    for (const el of document.querySelectorAll<HTMLElement>('[data-nav]')) {
+    for (const el of scope.querySelectorAll<HTMLElement>('[data-nav]')) {
       if (el.closest('.hidden')) continue;
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) continue;
@@ -209,10 +225,16 @@ export class UiNav {
 
     if (!uiActive) {
       this.carrying = null;
-      this.wasUiActive = false;
       this.swallowDir = null;
       this.ring.classList.add('hidden');
-      this.hideTooltip();
+      // Hide pad-driven UI once, on the TRANSITION out — hiding every
+      // frame would also kill the mouse's hover tooltip and card.
+      if (this.wasUiActive) {
+        this.hideTooltip();
+        this.hooks.onInspect?.(null);
+        this.hooks.closeItemMenu?.();
+      }
+      this.wasUiActive = false;
       // A gameplay mode (building) may pin its own action strip; it is
       // modal, so the global panel shortcuts stand down while it runs.
       if (this.modeStrip) this.renderStrip(this.modeStrip.key, this.modeStrip.items);
@@ -290,14 +312,41 @@ export class UiNav {
       }
     }
     if (edge(BTN.x)) this.handleCarry();
-    if (edge(BTN.y) && this.carrying !== null) {
-      // Carrying + Ⓨ: let it go — the item lands at your feet.
-      this.hooks.onDropToWorld(this.carrying);
-      this.carrying = null;
+    if (edge(BTN.y)) {
+      if (this.carrying !== null) {
+        // Carrying + Ⓨ: let it go — the item lands at your feet.
+        this.hooks.onDropToWorld(this.carrying);
+        this.carrying = null;
+      } else {
+        // Ⓨ on an item: its verb menu, focus jumping inside.
+        const el = this.focused();
+        if (el?.dataset.filled === '1') {
+          this.hooks.onItemMenu?.(el);
+          const menu = document.getElementById('item-menu');
+          if (menu && !menu.classList.contains('hidden')) {
+            this.menuReturnKey = this.focusKey;
+            this.focusKey = 'menu:0';
+          }
+        }
+      }
     }
     if (edge(BTN.b)) {
-      if (this.carrying !== null) this.carrying = null;
-      else this.hooks.onCloseAll();
+      if (this.hooks.closeItemMenu?.()) {
+        // Menu eaten — focus walks back to the item it came from.
+        this.focusKey = this.menuReturnKey ?? this.focusKey;
+      } else if (this.carrying !== null) {
+        this.carrying = null;
+      } else {
+        this.hooks.onCloseAll();
+      }
+    }
+    // Any close path (Ⓐ on an entry, outside click): when the menu is
+    // gone but focus still points into it, walk focus home.
+    if (this.focusKey?.startsWith('menu:')) {
+      const menu = document.getElementById('item-menu');
+      if (!menu || menu.classList.contains('hidden')) {
+        this.focusKey = this.menuReturnKey ?? null;
+      }
     }
     if (edge(BTN.start)) this.hooks.onToggleInventory();
     if (edge(BTN.select)) this.hooks.onToggleSkills();
@@ -376,8 +425,13 @@ export class UiNav {
     } else if (el?.dataset.invslot !== undefined) {
       const ctx = this.hooks.packActionLabel?.() ?? null;
       actions.push(['a', ctx ?? el.dataset.acta ?? 'Use']);
-      if (el.dataset.filled === '1') actions.push(['x', 'Move']);
+      if (el.dataset.filled === '1') {
+        actions.push(['x', 'Move']);
+        actions.push(['y', 'Options']);
+      }
       actions.push(['b', 'Close']);
+    } else if (el?.dataset.equipslot !== undefined && el.dataset.filled === '1') {
+      actions.push(['a', 'Remove'], ['y', 'Options'], ['b', 'Close']);
     } else {
       if (el) actions.push(['a', el.dataset.acta ?? 'Select']);
       actions.push(['b', 'Close']);
@@ -461,6 +515,12 @@ export class UiNav {
 
   private updateTooltip(): void {
     const el = this.focused();
+    // Item cells get the full inspect card; the small tooltip serves
+    // everything else (dock buttons, technique chips, empty sockets).
+    if (el && this.hooks.onInspect?.(el)) {
+      this.hideTooltip();
+      return;
+    }
     if (el?.dataset.tipname) this.showTooltipFor(el);
     else this.hideTooltip();
   }

@@ -165,6 +165,17 @@ const panels = new Panels(
   (style, ability) => game.sendTechnique(style, ability),
   (from, to) => game.invMove(from, to),
   (slot) => dropSlot(slot),
+  // Explicit verbs from the item context menu — no station guessing.
+  (slot, action) => {
+    const item = game.inventory[slot];
+    if (!item) return;
+    if (action === 'drop') dropSlot(slot);
+    else if (action === 'deposit') game.bankSend('deposit', item.item, item.qty);
+    else if (action === 'sell') game.shopSend('sell', item.item, 1);
+    else game.useSlot(slot);
+  },
+  () => (stationPanels.bankOpen ? 'bank' : stationPanels.shopOpen ? 'shop' : null),
+  (): 'kb' | 'pad' => nav.mode,
 );
 
 /** Drop a whole pack slot onto the ground (drag-out / pad Ⓨ). */
@@ -179,6 +190,11 @@ function dropSlot(slot: number): void {
 const nav = new UiNav(input, {
   onInvMove: (from, to) => game.invMove(from, to),
   onDropToWorld: (slot) => dropSlot(slot),
+  onInspect: (el): boolean => panels.showCardFor(el),
+  onItemMenu: (el): void => {
+    panels.openMenuFor(el);
+  },
+  closeItemMenu: (): boolean => panels.closeMenu(),
   onCloseAll: () => {
     stationPanels.closeAll();
     panels.closeAll();
@@ -191,9 +207,18 @@ const nav = new UiNav(input, {
     stationPanels.bankOpen ? 'Deposit' : stationPanels.shopOpen ? 'Sell' : null,
 });
 
-// One delegated hover path drives the shared tooltip for every panel.
+// One delegated hover path drives item inspection for the mouse: item
+// cells raise the full detail card, everything else the small tooltip.
 document.addEventListener('pointerover', (e) => {
-  const el = (e.target as HTMLElement | null)?.closest?.('[data-tipname]');
+  if (nav.mode === 'pad') return; // pad focus owns the card there
+  const target = e.target as HTMLElement | null;
+  const itemCell = target?.closest?.('[data-invslot][data-filled], [data-equipslot][data-filled]');
+  if (itemCell && panels.showCardFor(itemCell as HTMLElement)) {
+    nav.hideTooltip();
+    return;
+  }
+  panels.hideCard();
+  const el = target?.closest?.('[data-tipname]');
   if (el) nav.showTooltipFor(el as HTMLElement);
   else nav.hideTooltip();
 });
