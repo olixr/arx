@@ -2,6 +2,8 @@ import type { InputManager } from '../input/inputManager.js';
 export interface UiNavHooks {
     /** Swap two pack slots (pad carry mode). */
     onInvMove: (from: number, to: number) => void;
+    /** Drop the carried pack slot onto the ground (Ⓨ while carrying). */
+    onDropToWorld: (slot: number) => void;
     /** Close all station panels + side panels (the Ⓑ backstop). */
     onCloseAll: () => void;
     /** Toggle the inventory / skills panels (Start / Select). */

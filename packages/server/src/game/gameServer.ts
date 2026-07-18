@@ -166,6 +166,12 @@ interface DropComp {
   ownerEid: EntityId | null;
   ownerUntil: number;
   despawnAt: number;
+  /**
+   * No walk-over pickup before this — freshly killed loot gets a beat
+   * to land visually, and a player-dropped bag doesn't teleport
+   * straight back into the pack it just left.
+   */
+  pickupAfter: number;
 }
 
 interface ProjectileComp {
@@ -1159,6 +1165,46 @@ export class GameServer {
     inv[from] = inv[to] ?? null;
     inv[to] = tmp;
     player.session?.sendJson({ t: 'inv', slots: inv });
+  }
+
+  /**
+   * Toss an inventory slot onto the ground in front of the player.
+   * The bag belongs to nobody — any player may take it — and it decays
+   * after 12 minutes. A short pickup delay stops the dropper's own
+   * walk-over pickup from vacuuming it straight back up.
+   */
+  dropItem(eid: EntityId, slotIndex: number, qty: number): void {
+    const player = this.players.get(eid);
+    if (!player || slotIndex < 0 || slotIndex >= player.inventory.length) return;
+    const slot = player.inventory[slotIndex];
+    if (!slot || !itemDef(slot.item)) return;
+    const n = Math.max(1, Math.min(qty, slot.qty));
+    const item = slot.item;
+    slot.qty -= n;
+    if (slot.qty <= 0) player.inventory[slotIndex] = null;
+
+    // Land the bag a step ahead of the player; a wall in the way puts
+    // it at their feet instead of inside the masonry.
+    const pos = this.positions.must(eid);
+    let dx = pos.x + Math.cos(pos.dir) * 0.9;
+    let dy = pos.y + Math.sin(pos.dir) * 0.9;
+    if (this.world.isSolid(Math.floor(dx), Math.floor(dy))) {
+      dx = pos.x;
+      dy = pos.y;
+    }
+    const dropEid = this.ecs.create();
+    this.kinds.set(dropEid, EntityKind.ItemDrop);
+    this.positions.set(dropEid, { x: dx, y: dy, dir: 0 });
+    this.drops.set(dropEid, {
+      item,
+      qty: n,
+      ownerEid: null,
+      ownerUntil: 0,
+      despawnAt: Date.now() + 12 * 60_000,
+      pickupAfter: Date.now() + 2000,
+    });
+    this.updateChunkMembership(dropEid);
+    player.session?.sendJson({ t: 'inv', slots: player.inventory });
   }
 
   useItem(eid: EntityId, slotIndex: number): void {
@@ -2383,6 +2429,7 @@ export class GameServer {
         ownerEid: killerEid,
         ownerUntil: Date.now() + 30_000,
         despawnAt: Date.now() + 90_000,
+        pickupAfter: Date.now() + 400,
       });
       this.updateChunkMembership(dropEid);
     }
@@ -2765,6 +2812,7 @@ export class GameServer {
         this.ecs.destroy(eid);
         continue;
       }
+      if (drop.pickupAfter > now) continue;
       const pos = this.positions.must(eid);
       for (const [playerEid, player] of this.players) {
         if (player.session === null) continue;
@@ -3184,7 +3232,10 @@ export class GameServer {
       meta.level = npc.def.level;
     }
     const drop = this.drops.get(eid);
-    if (drop) meta.defId = drop.item;
+    if (drop) {
+      meta.defId = drop.item;
+      meta.qty = drop.qty;
+    }
     const proj = this.projectiles.get(eid);
     if (proj) meta.defId = proj.heavy ? `${proj.style}_heavy` : proj.style;
     const summon = this.summons.get(eid);

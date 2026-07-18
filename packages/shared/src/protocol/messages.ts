@@ -82,6 +82,16 @@ export interface C2SInvMove {
   to: number;
 }
 
+/**
+ * Drop an inventory slot onto the ground where you stand. The item
+ * becomes a world drop anyone may take; it decays after a few minutes.
+ */
+export interface C2SDropItem {
+  t: 'dropitem';
+  slot: number;
+  qty: number;
+}
+
 /** Craft a recipe (validated against station adjacency server-side). */
 export interface C2SCraft {
   t: 'craft';
@@ -136,6 +146,7 @@ export type C2SMessage =
   | C2SUseItem
   | C2SUnequip
   | C2SInvMove
+  | C2SDropItem
   | C2SCraft
   | C2SBank
   | C2SShop
@@ -431,6 +442,13 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (msg.from < 0 || msg.from >= 64 || msg.to < 0 || msg.to >= 64) return null;
       if (msg.from === msg.to) return null;
       return { t: 'invmove', from: msg.from, to: msg.to };
+    }
+    case 'dropitem': {
+      if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot)) return null;
+      if (msg.slot < 0 || msg.slot >= 64) return null;
+      if (!isFiniteNum(msg.qty) || !Number.isInteger(msg.qty)) return null;
+      if (msg.qty < 1 || msg.qty > 100000) return null;
+      return { t: 'dropitem', slot: msg.slot, qty: msg.qty };
     }
     case 'craft': {
       if (typeof msg.recipe !== 'string' || msg.recipe.length > 64) return null;

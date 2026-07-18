@@ -104,6 +104,19 @@ export declare class Renderer {
         valid: boolean;
         color: string;
     } | null;
+    /**
+     * Loot HUD inputs, fed by main.ts each frame: the pointer (for
+     * hovering bags), and the reveal hold (Alt / left trigger) that pops
+     * a label over every drop on screen.
+     */
+    lootHud: {
+        mx: number;
+        my: number;
+        mouse: boolean;
+        showAll: boolean;
+    };
+    /** Visible drops this frame — the loot-label pass reads these. */
+    private frameLoot;
     /** Emissive glow requests queued during the frame, composited last. */
     private readonly glows;
     /**
@@ -410,7 +423,24 @@ export declare class Renderer {
     private humanoidItem;
     private drawMiniHp;
     private npcItem;
+    /**
+     * Ground loot. Coins pile up as actual gold; everything else is a
+     * cinched leather loot bag whose topper tells you the cargo at a
+     * glance — a blade for weapons and tools, arrow shafts for ammo, a
+     * draped cloth for wearables, a round loaf for food, a stitched
+     * patch in the item's color for raw goods. High-value drops shimmer.
+     */
     private dropItem;
+    /**
+     * Loot labels — the "what is that" layer over ground drops:
+     * - hovering a bag with the mouse names it instantly;
+     * - anything within arm's reach fades its label in (the read that
+     *   works with no pointer at all — pads and touch);
+     * - holding the reveal (Alt / left trigger) names every drop on
+     *   screen, the ARPG sweep-the-battlefield gesture.
+     * Labels stack upward when drops share a column so none overlap.
+     */
+    private drawLootLabels;
     private projectileItem;
     /**
      * Ambient status VFX riding an entity: embers for burn, drifting

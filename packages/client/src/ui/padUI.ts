@@ -42,6 +42,8 @@ const STICK_NAV_THRESHOLD = 0.55;
 export interface UiNavHooks {
   /** Swap two pack slots (pad carry mode). */
   onInvMove: (from: number, to: number) => void;
+  /** Drop the carried pack slot onto the ground (Ⓨ while carrying). */
+  onDropToWorld: (slot: number) => void;
   /** Close all station panels + side panels (the Ⓑ backstop). */
   onCloseAll: () => void;
   /** Toggle the inventory / skills panels (Start / Select). */
@@ -288,6 +290,11 @@ export class UiNav {
       }
     }
     if (edge(BTN.x)) this.handleCarry();
+    if (edge(BTN.y) && this.carrying !== null) {
+      // Carrying + Ⓨ: let it go — the item lands at your feet.
+      this.hooks.onDropToWorld(this.carrying);
+      this.carrying = null;
+    }
     if (edge(BTN.b)) {
       if (this.carrying !== null) this.carrying = null;
       else this.hooks.onCloseAll();
@@ -365,7 +372,7 @@ export class UiNav {
     const el = this.focused();
     const actions: Array<[string, string]> = [];
     if (this.carrying !== null) {
-      actions.push(['a', 'Place'], ['x', 'Place'], ['b', 'Cancel']);
+      actions.push(['a', 'Place'], ['x', 'Place'], ['y', 'Drop'], ['b', 'Cancel']);
     } else if (el?.dataset.invslot !== undefined) {
       const ctx = this.hooks.packActionLabel?.() ?? null;
       actions.push(['a', ctx ?? el.dataset.acta ?? 'Use']);

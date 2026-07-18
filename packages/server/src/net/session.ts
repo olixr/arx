@@ -143,6 +143,12 @@ export class Session {
         this.game.invMove(this.playerEid, msg.from, msg.to);
         return;
       }
+      case 'dropitem': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.dropItem(this.playerEid, msg.slot, msg.qty);
+        return;
+      }
       case 'craft': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

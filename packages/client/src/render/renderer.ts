@@ -281,6 +281,24 @@ export class Renderer {
   /** Placement preview set by the build mode; null when inactive. */
   buildGhost: { tx: number; ty: number; valid: boolean; color: string } | null = null;
 
+  /**
+   * Loot HUD inputs, fed by main.ts each frame: the pointer (for
+   * hovering bags), and the reveal hold (Alt / left trigger) that pops
+   * a label over every drop on screen.
+   */
+  lootHud = { mx: 0, my: 0, mouse: false, showAll: false };
+
+  /** Visible drops this frame — the loot-label pass reads these. */
+  private frameLoot: Array<{
+    x: number;
+    y: number;
+    sx: number;
+    sy: number;
+    itemId: string;
+    qty: number;
+    hovered: boolean;
+  }> = [];
+
   /** Emissive glow requests queued during the frame, composited last. */
   private readonly glows: Array<{ x: number; y: number; r: number; rgb: string; a: number }> = [];
 
@@ -915,6 +933,7 @@ export class Renderer {
     this.drawBuildGhost();
     this.drawActionProgress(game);
     this.drawFloaties(game);
+    this.drawLootLabels(game);
     this.drawHpBar(game);
     this.drawVignette();
     this.evictBaked();
@@ -3475,6 +3494,7 @@ export class Renderer {
   private collectEntities(game: ClientGame, items: DrawItem[]): void {
     const t = game.renderTime();
     const now = performance.now();
+    this.frameLoot.length = 0;
 
     for (const [eid, remote] of game.entities) {
       const s = remote.buffer.sampleAt(t) ?? {
@@ -3511,7 +3531,7 @@ export class Renderer {
           items.push(this.npcItem(eid, remote.meta.defId ?? '', remote.meta, s, hurt));
           break;
         case EntityKind.ItemDrop:
-          items.push(this.dropItem(remote.meta.defId ?? '', s, now));
+          items.push(this.dropItem(eid, remote.meta.defId ?? '', remote.meta.qty ?? 1, s, now));
           break;
         case EntityKind.Projectile:
           items.push(this.projectileItem(remote.meta.defId ?? '', s));
@@ -3954,40 +3974,371 @@ export class Renderer {
     };
   }
 
-  private dropItem(itemId: string, s: { x: number; y: number }, now: number): DrawItem {
+  /**
+   * Ground loot. Coins pile up as actual gold; everything else is a
+   * cinched leather loot bag whose topper tells you the cargo at a
+   * glance — a blade for weapons and tools, arrow shafts for ammo, a
+   * draped cloth for wearables, a round loaf for food, a stitched
+   * patch in the item's color for raw goods. High-value drops shimmer.
+   */
+  private dropItem(
+    eid: number,
+    itemId: string,
+    qty: number,
+    s: { x: number; y: number },
+    now: number,
+  ): DrawItem {
     const ctx = this.ctx;
     const def = itemDef(itemId);
-    const scale = this.camera.scale;
-    const terrainLift = this.renderLift(s.x, s.y) * scale;
+    const col = def?.color ?? '#b0a49a';
+    const k = this.camera.scale;
+    const terrainLift = this.renderLift(s.x, s.y) * k;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= terrainLift;
-    const bob = Math.sin(now / 320 + s.x * 7) * scale * 0.05;
-    const size = scale * 0.3;
+
+    const cat: 'gold' | 'gear' | 'ammo' | 'wear' | 'eat' | 'stuff' =
+      itemId === 'coins'
+        ? 'gold'
+        : itemId === 'arrow'
+          ? 'ammo'
+          : def?.weapon || def?.tool
+            ? 'gear'
+            : def?.equipSlot
+              ? 'wear'
+              : def?.heals
+                ? 'eat'
+                : 'stuff';
+
+    // Landing pop: freshly spawned loot drops in and settles with a
+    // small overshoot. animFor's poseStartedAt is its first-seen time.
+    const anim = this.animFor(eid, s.x, s.y, 0, now);
+    const age = (now - anim.poseStartedAt) / 1000;
+    const landT = Math.min(1, age / 0.32);
+    const pop = landT >= 1 ? 1 : 0.55 + 0.45 * landT + 0.16 * Math.sin(landT * Math.PI);
+    const fall = (1 - landT) * (1 - landT) * k * 0.55;
+    const bob = Math.sin(now / 460 + eid * 1.7) * k * 0.028;
+
+    // Deterministic per-drop scatter for coin piles and glint timing.
+    const rnd = (i: number): number => {
+      const v = Math.sin(eid * 12.9898 + i * 78.233) * 43758.5453;
+      return v - Math.floor(v);
+    };
+
+    // Pointer hover: label pops instantly and the bag brightens.
+    const hovered =
+      this.lootHud.mouse &&
+      Math.hypot(this.lootHud.mx - p.x, this.lootHud.my - (p.y - k * 0.2)) < k * 0.45;
+    this.frameLoot.push({ x: s.x, y: s.y, sx: p.x, sy: p.y - k * 0.55, itemId, qty, hovered });
+
+    // Premium cargo announces itself: a soft glow in the item's color.
+    if (cat === 'gold' && qty >= 25) {
+      this.queueGlow(s.x, s.y, 0.7, '232, 182, 76', 0.1);
+    } else if ((def?.value ?? 0) >= 300) {
+      const c = parseInt(col.slice(1), 16);
+      this.queueGlow(s.x, s.y, 0.7, `${(c >> 16) & 255}, ${(c >> 8) & 255}, ${c & 255}`, 0.12);
+    }
+
+    const outline = hovered ? '#f6ecd4' : '#241a2e';
+    const lw = Math.max(1.5, k * 0.042);
+
+    const drawGold = (): void => {
+      // Real gold on the ground: a pile that grows with the sum.
+      const n = qty >= 200 ? 9 : qty >= 50 ? 6 : qty >= 10 ? 4 : 3;
+      ctx.strokeStyle = outline;
+      ctx.lineWidth = Math.max(1.2, k * 0.032);
+      for (let i = 0; i < n; i++) {
+        // Rows stack back-to-front; jitter keeps piles individual.
+        const row = i < Math.ceil(n / 2) ? 0 : i < n - 1 ? 1 : 2;
+        const inRow = row === 0 ? i : row === 1 ? i - Math.ceil(n / 2) : 0;
+        const rowN = row === 0 ? Math.ceil(n / 2) : Math.max(1, n - 1 - Math.ceil(n / 2));
+        const cx = (inRow - (rowN - 1) / 2) * k * 0.13 + (rnd(i) - 0.5) * k * 0.05;
+        const cy = -row * k * 0.075 + (rnd(i + 9) - 0.5) * k * 0.02;
+        ctx.fillStyle = row === 2 ? '#f2cd5e' : row === 1 ? '#e8b64c' : '#d9a441';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, k * 0.085, k * 0.055, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(122, 84, 30, 0.75)';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, k * 0.048, k * 0.028, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = Math.max(1.2, k * 0.032);
+      }
+      // A wandering twinkle so gold catches the eye across a field.
+      const tw = Math.sin(now / 260 + eid * 2.3);
+      if (tw > 0.55) {
+        const a = (tw - 0.55) / 0.45;
+        const gx = (rnd(31) - 0.5) * k * 0.3;
+        const gy = -k * 0.07 - rnd(32) * k * 0.08;
+        ctx.fillStyle = `rgba(255, 244, 214, ${0.9 * a})`;
+        const gr = k * 0.045 * a;
+        ctx.beginPath();
+        ctx.moveTo(gx, gy - gr);
+        ctx.lineTo(gx + gr * 0.4, gy);
+        ctx.lineTo(gx, gy + gr);
+        ctx.lineTo(gx - gr * 0.4, gy);
+        ctx.closePath();
+        ctx.fill();
+      }
+    };
+
+    const drawBag = (): void => {
+      const bw = k * 0.34;
+
+      // Toppers that live BEHIND the bag mouth rise first.
+      if (cat === 'gear') {
+        // A blade left leaning out of the bag — unmistakably arms.
+        ctx.save();
+        ctx.translate(k * 0.015, -k * 0.31);
+        ctx.rotate(-0.32);
+        ctx.fillStyle = col;
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = lw * 0.8;
+        ctx.beginPath();
+        ctx.moveTo(-k * 0.035, 0);
+        ctx.lineTo(-k * 0.035, -k * 0.3);
+        ctx.lineTo(0, -k * 0.4);
+        ctx.lineTo(k * 0.035, -k * 0.3);
+        ctx.lineTo(k * 0.035, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.strokeStyle = shade(col, 30);
+        ctx.lineWidth = Math.max(1, k * 0.02);
+        ctx.beginPath();
+        ctx.moveTo(0, -k * 0.05);
+        ctx.lineTo(0, -k * 0.34);
+        ctx.stroke();
+        ctx.fillStyle = '#6b4a26';
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = lw * 0.8;
+        ctx.beginPath();
+        chamferRect(ctx, -k * 0.075, -k * 0.01, k * 0.15, k * 0.045, k * 0.015);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      } else if (cat === 'ammo') {
+        // Fanned arrow shafts, fletching up.
+        for (let i = -1; i <= 1; i++) {
+          ctx.save();
+          ctx.translate(i * k * 0.045, -k * 0.32);
+          ctx.rotate(i * 0.22);
+          ctx.strokeStyle = '#8a6a45';
+          ctx.lineWidth = Math.max(1.4, k * 0.028);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(0, -k * 0.3);
+          ctx.stroke();
+          ctx.fillStyle = i === 0 ? shade(col, 14) : col;
+          ctx.strokeStyle = outline;
+          ctx.lineWidth = Math.max(1, k * 0.02);
+          ctx.beginPath();
+          ctx.moveTo(0, -k * 0.36);
+          ctx.lineTo(k * 0.038, -k * 0.26);
+          ctx.lineTo(0, -k * 0.29);
+          ctx.lineTo(-k * 0.038, -k * 0.26);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      // The bag: a squarish leather pouch, cinched with a rope tie,
+      // gathered mouth puffing above the knot.
+      const leather = '#8f6c46';
+      ctx.fillStyle = leather;
+      ctx.strokeStyle = outline;
+      ctx.lineWidth = lw;
+      ctx.beginPath();
+      chamferRect(ctx, -bw / 2, -k * 0.31, bw, k * 0.31, k * 0.07);
+      ctx.fill();
+      ctx.stroke();
+      // Gathered mouth above the tie.
+      ctx.fillStyle = shade(leather, -8);
+      ctx.beginPath();
+      chamferRect(ctx, -k * 0.1, -k * 0.415, k * 0.2, k * 0.1, k * 0.035);
+      ctx.fill();
+      ctx.stroke();
+      // Rope cinch + knot.
+      ctx.fillStyle = '#c4a35a';
+      ctx.beginPath();
+      chamferRect(ctx, -k * 0.115, -k * 0.345, k * 0.23, k * 0.05, k * 0.02);
+      ctx.fill();
+      ctx.stroke();
+      // Base weight band + top-left light facet: brutalist two-tone.
+      ctx.fillStyle = shade(leather, -22);
+      ctx.beginPath();
+      chamferRect(ctx, -bw / 2 + k * 0.025, -k * 0.085, bw - k * 0.05, k * 0.06, k * 0.02);
+      ctx.fill();
+      ctx.fillStyle = shade(leather, 20);
+      ctx.beginPath();
+      chamferRect(ctx, -bw / 2 + k * 0.035, -k * 0.28, k * 0.1, k * 0.055, k * 0.02);
+      ctx.fill();
+
+      // Front-of-bag cargo tells.
+      if (cat === 'stuff') {
+        // A stitched patch dyed in the goods' color.
+        ctx.fillStyle = col;
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = Math.max(1, k * 0.022);
+        ctx.beginPath();
+        chamferRect(ctx, -k * 0.065, -k * 0.225, k * 0.13, k * 0.115, k * 0.025);
+        ctx.fill();
+        ctx.stroke();
+        ctx.strokeStyle = shade(col, -34);
+        ctx.setLineDash([k * 0.022, k * 0.022]);
+        ctx.beginPath();
+        chamferRect(ctx, -k * 0.048, -k * 0.208, k * 0.096, k * 0.08, k * 0.018);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else if (cat === 'wear') {
+        // A folded garment draped over the rim.
+        ctx.fillStyle = col;
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = Math.max(1, k * 0.024);
+        ctx.beginPath();
+        ctx.moveTo(-k * 0.155, -k * 0.315);
+        ctx.lineTo(-k * 0.005, -k * 0.315);
+        ctx.lineTo(-k * 0.005, -k * 0.15);
+        ctx.quadraticCurveTo(-k * 0.045, -k * 0.115, -k * 0.08, -k * 0.15);
+        ctx.quadraticCurveTo(-k * 0.115, -k * 0.11, -k * 0.155, -k * 0.155);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.strokeStyle = shade(col, -28);
+        ctx.lineWidth = Math.max(1, k * 0.018);
+        ctx.beginPath();
+        ctx.moveTo(-k * 0.08, -k * 0.3);
+        ctx.lineTo(-k * 0.08, -k * 0.16);
+        ctx.stroke();
+      } else if (cat === 'eat') {
+        // A round loaf resting in the mouth.
+        ctx.fillStyle = col;
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = Math.max(1, k * 0.024);
+        ctx.beginPath();
+        ctx.ellipse(k * 0.02, -k * 0.43, k * 0.085, k * 0.07, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = shade(col, 24);
+        ctx.beginPath();
+        ctx.ellipse(k * 0.0, -k * 0.455, k * 0.038, k * 0.022, -0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+
     return {
       sortY: s.y - 0.2,
       elevated: terrainLift > 0,
       drawShadow: () => {
-        this.castContact(p.x, p.y + scale * 0.08, size * 0.6, size * 0.28);
+        const spread = cat === 'gold' ? 0.75 : 0.6;
+        this.castContact(p.x, p.y + k * 0.05, k * 0.3 * spread * pop, k * 0.13 * pop);
       },
       draw: () => {
-        // A little bundle: chamfered gem-cut diamond in the item's color.
         ctx.save();
-        ctx.translate(p.x, p.y - scale * 0.14 + bob);
-        ctx.rotate(Math.PI / 4);
-        ctx.fillStyle = def?.color ?? '#ccc';
-        ctx.strokeStyle = '#241a2e';
-        ctx.lineWidth = Math.max(1.5, scale * 0.04);
-        ctx.beginPath();
-        chamferRect(ctx, -size / 2, -size / 2, size, size, size * 0.22);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = shade(def?.color ?? '#cccccc', 26);
-        ctx.beginPath();
-        chamferRect(ctx, -size / 2 + size * 0.12, -size / 2 + size * 0.12, size * 0.4, size * 0.4, size * 0.12);
-        ctx.fill();
+        ctx.translate(p.x, p.y + bob - fall);
+        ctx.scale(pop, pop);
+        if (cat === 'gold') drawGold();
+        else drawBag();
+        if (hovered) {
+          // Grounding ring: "this is the one under your cursor".
+          ctx.strokeStyle = 'rgba(246, 236, 212, 0.75)';
+          ctx.lineWidth = Math.max(1.2, k * 0.03);
+          ctx.beginPath();
+          ctx.ellipse(0, k * 0.06 - bob + fall, k * 0.31, k * 0.135, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
         ctx.restore();
       },
     };
+  }
+
+  /**
+   * Loot labels — the "what is that" layer over ground drops:
+   * - hovering a bag with the mouse names it instantly;
+   * - anything within arm's reach fades its label in (the read that
+   *   works with no pointer at all — pads and touch);
+   * - holding the reveal (Alt / left trigger) names every drop on
+   *   screen, the ARPG sweep-the-battlefield gesture.
+   * Labels stack upward when drops share a column so none overlap.
+   */
+  private drawLootLabels(game: ClientGame): void {
+    if (this.frameLoot.length === 0 || game.ownEid === null) return;
+    const ctx = this.ctx;
+    const own = game.predictor.renderPos();
+    const showAll = this.lootHud.showAll;
+
+    interface Plate {
+      sx: number;
+      sy: number;
+      text: string;
+      col: string;
+      alpha: number;
+    }
+    const plates: Plate[] = [];
+    for (const d of this.frameLoot) {
+      const dist = Math.hypot(d.x - own.x, d.y - own.y);
+      let alpha: number;
+      if (d.hovered || showAll) alpha = 1;
+      else alpha = Math.max(0, Math.min(1, (2.6 - dist) / 0.9));
+      if (alpha <= 0.03) continue;
+      const def = itemDef(d.itemId);
+      const name = def?.name ?? d.itemId;
+      plates.push({
+        sx: d.sx,
+        sy: d.sy,
+        text: d.qty > 1 ? `${name} × ${d.qty.toLocaleString()}` : name,
+        col: def?.color ?? '#b0a49a',
+        alpha,
+      });
+    }
+    if (plates.length === 0) return;
+    // Nearest labels claim their spot first; the rest climb.
+    plates.sort((a, b) => b.sy - a.sy);
+    if (plates.length > 14) plates.length = 14;
+
+    ctx.save();
+    ctx.font = "600 12px 'Trebuchet MS', sans-serif";
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const h = 20;
+    const placed: Array<{ x0: number; x1: number; y0: number; y1: number }> = [];
+    for (const pl of plates) {
+      const w = ctx.measureText(pl.text).width + 22;
+      let x = Math.max(w / 2 + 4, Math.min(this.w - w / 2 - 4, pl.sx));
+      let y = pl.sy;
+      // Climb out of any occupied rect.
+      let moved = true;
+      while (moved) {
+        moved = false;
+        for (const r of placed) {
+          if (x + w / 2 > r.x0 && x - w / 2 < r.x1 && y + h / 2 > r.y0 && y - h / 2 < r.y1) {
+            y = r.y0 - h / 2 - 2;
+            moved = true;
+          }
+        }
+      }
+      placed.push({ x0: x - w / 2, x1: x + w / 2, y0: y - h / 2, y1: y + h / 2 });
+
+      ctx.globalAlpha = pl.alpha;
+      ctx.fillStyle = 'rgba(24, 16, 30, 0.86)';
+      ctx.strokeStyle = pl.col;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(x - w / 2, y - h / 2, w, h, 5);
+      ctx.fill();
+      ctx.stroke();
+      // Color swatch chip: the item's identity at a squint.
+      ctx.fillStyle = pl.col;
+      ctx.beginPath();
+      ctx.roundRect(x - w / 2 + 5, y - 4, 8, 8, 2);
+      ctx.fill();
+      ctx.fillStyle = '#f4efe4';
+      ctx.fillText(pl.text, x + 7, y + 0.5);
+    }
+    ctx.restore();
   }
 
   private projectileItem(style: string, s: { x: number; y: number; dir: number }): DrawItem {

@@ -35,6 +35,7 @@ export class Panels {
     private readonly onUnequip: (slot: EquipSlot) => void,
     private readonly onTechnique: (style: string, ability: string) => void = () => {},
     private readonly onInvMove: (from: number, to: number) => void = () => {},
+    private readonly onDropToWorld: (slot: number) => void = () => {},
   ) {
     document.getElementById('btn-inventory')!.addEventListener('click', () => this.toggleInventory());
     document.getElementById('btn-skills')!.addEventListener('click', () => this.toggleSkills());
@@ -96,6 +97,14 @@ export class Panels {
       .querySelectorAll('.drop-hover')
       .forEach((el) => el.classList.remove('drop-hover'));
     this.slotUnder(e)?.classList.add('drop-hover');
+    // Over open world the ghost arms itself: release here drops the
+    // item on the ground at your feet.
+    d.ghost!.classList.toggle('drop-armed', this.overWorld(e));
+  }
+
+  /** True when the pointer floats over the game canvas, not any UI. */
+  private overWorld(e: PointerEvent): boolean {
+    return (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.id === 'game';
   }
 
   private dragEnd(e: PointerEvent): void {
@@ -116,6 +125,9 @@ export class Panels {
     if (target) {
       const to = Number(target.dataset.invslot);
       if (to !== d.from) this.onInvMove(d.from, to);
+    } else if (this.overWorld(e)) {
+      // Dragged out of the pack onto the world: let it go.
+      this.onDropToWorld(d.from);
     }
   }
 

@@ -212,6 +212,8 @@ export declare class ClientGame {
     craft(recipe: string, qty: number): void;
     bankSend(op: 'deposit' | 'withdraw', item: string, qty: number): void;
     invMove(from: number, to: number): void;
+    /** Drop a pack slot onto the ground where you stand. */
+    dropSend(slot: number, qty: number): void;
     shopSend(op: 'buy' | 'sell', item: string, qty: number): void;
     buildSend(buildable: string, tx: number, ty: number): void;
     demolishSend(tx: number, ty: number): void;

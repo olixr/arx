@@ -164,12 +164,21 @@ const panels = new Panels(
   (slot) => game.unequip(slot),
   (style, ability) => game.sendTechnique(style, ability),
   (from, to) => game.invMove(from, to),
+  (slot) => dropSlot(slot),
 );
+
+/** Drop a whole pack slot onto the ground (drag-out / pad Ⓨ). */
+function dropSlot(slot: number): void {
+  const item = game.inventory[slot];
+  if (!item) return;
+  game.dropSend(slot, item.qty);
+}
 
 // Gamepad-first UI navigation: focus ring, action strip, tooltips, and
 // the world interact prompt all live here.
 const nav = new UiNav(input, {
   onInvMove: (from, to) => game.invMove(from, to),
+  onDropToWorld: (slot) => dropSlot(slot),
   onCloseAll: () => {
     stationPanels.closeAll();
     panels.closeAll();
@@ -810,6 +819,15 @@ function frame(now: number): void {
   // menus it navigates, so uiCapture wins).
   if (padEdge(14) && !input.uiCapture) cycleZoom();
   padPrevBtns = padBtns;
+
+  // Loot HUD: hovering names a bag; holding Alt (or the left trigger)
+  // names every drop on screen. Proximity labels need no input at all.
+  renderer.lootHud = {
+    mx: input.mouseX,
+    my: input.mouseY,
+    mouse: !input.padPrimary(),
+    showAll: input.isDown('AltLeft') || input.isDown('AltRight') || padBtns.has(6),
+  };
 
   game.update(now);
   renderer.render(game, frameDt);

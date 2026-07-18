@@ -653,6 +653,11 @@ export class ClientGame {
     this.conn?.send({ t: 'invmove', from, to });
   }
 
+  /** Drop a pack slot onto the ground where you stand. */
+  dropSend(slot: number, qty: number): void {
+    this.conn?.send({ t: 'dropitem', slot, qty });
+  }
+
   shopSend(op: 'buy' | 'sell', item: string, qty: number): void {
     this.conn?.send({ t: 'shop', op, item, qty });
   }

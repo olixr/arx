@@ -47,8 +47,13 @@ export class InputManager {
     window.addEventListener('keydown', (e) => {
       if (this.typingCheck()) return;
       this.keys.add(e.code);
-      // Keep the page from scrolling on space/arrows.
-      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+      // Keep the page from scrolling on space/arrows; Alt is the loot
+      // reveal, so it must not focus the browser's menu bar.
+      if (
+        ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'AltLeft', 'AltRight'].includes(
+          e.code,
+        )
+      ) {
         e.preventDefault();
       }
     });

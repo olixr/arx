@@ -52,6 +52,8 @@ export interface EntityMeta {
   appearance?: AppearanceData;
   /** Combat level or node level requirement, for nameplates. */
   level?: number;
+  /** Stack size for item drops — drives loot labels and pile sizes. */
+  qty?: number;
 }
 
 export interface AppearanceData {
