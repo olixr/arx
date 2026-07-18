@@ -177,7 +177,9 @@ export class CapeSim {
     }
 
     const h = Math.min(0.05, Math.max(0.001, dt));
-    const ret = Math.exp(-2.6 * h); // velocity retention — cloth, not rope
+    // HEAVY CLOTH: strong damping is what makes fabric read as weighty —
+    // it swings with the wearer and settles, it never flails.
+    const ret = Math.exp(-3.8 * h);
     const hh = h * h;
 
     // Anchor speed: a sprint lifts the hem so the cape STREAMS.
@@ -197,10 +199,12 @@ export class CapeSim {
       nd.pz = nd.z;
 
       // Scene wind (the same field the grass and trees obey) + a private
-      // flutter ripple travelling down the cloth.
-      const windK = st.windMul * (0.35 + 0.65 * ti) * 2.1;
-      const rip = Math.sin(tSec * (5.1 + st.flutter * 1.3) + this.phase + i * 1.9);
-      const flut = st.flutter * 1.5 * ti * rip;
+      // flutter ripple travelling down the cloth. Both are kept modest:
+      // a wool mantle stirs in a gust, it doesn't thrash — the drama
+      // comes from the wearer's own motion.
+      const windK = st.windMul * (0.35 + 0.65 * ti) * 1.1;
+      const rip = Math.sin(tSec * (3.6 + st.flutter * 1.1) + this.phase + i * 1.9);
+      const flut = st.flutter * 0.8 * ti * rip;
       let gx = wind.bx * windK - fy * flut;
       let gy = wind.by * windK + fx * flut;
       // THE SIDE-VIEW LIE: a top-down side profile is a forced
@@ -213,7 +217,7 @@ export class CapeSim {
       gx += -fx * 3.2 * sideK * (0.5 + 0.5 * ti);
       gy += (cy - nd.y) * 2.8 * sideK * (1 - 0.4 * ti);
       // Gravity vs the running billow: speed converts hang into stream.
-      const gz = -20 * st.weight + spd * (1.5 + 0.9 * ti) + Math.abs(wind.bx + wind.by) * 0.9 * ti;
+      const gz = -26 * st.weight + spd * (1.4 + 0.8 * ti) + Math.abs(wind.bx + wind.by) * 0.4 * ti;
 
       nd.x += vx + gx * hh;
       nd.y += vy + gy * hh;
