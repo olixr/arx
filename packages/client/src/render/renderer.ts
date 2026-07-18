@@ -3663,10 +3663,10 @@ export class Renderer {
       anim.cape = undefined;
       anim.capeKey = undefined;
     }
-    // Depth-true with hysteresis: the cloth draws in front of the body
-    // only when the simulation clearly put it there (facing away, or
-    // mid-whirl) — side profiles hold their side instead of flickering.
-    const capeFront = capeSim !== null && capeSim.front(e.y);
+    // Paint side follows the FACING (the beast head/tail convention):
+    // the back — and the cloth on it — is toward the camera only when
+    // facing up-screen. Hysteresis in front() keeps the flip steady.
+    const capeFront = capeSim !== null && capeSim.front(Math.sin(dir));
     const paintCape =
       capeSim !== null && capeItem
         ? () => {
@@ -3674,15 +3674,16 @@ export class Renderer {
               const sp = this.camera.worldToScreen(nd.x, nd.y, this.w, this.h);
               return { x: sp.x, y: sp.y - terrainLift - nd.z * s };
             });
-            const capeFx = Math.cos(dir);
-            const capeFy = Math.sin(dir);
+            // Foreshortening: the projected length of the shoulder bar
+            // the cloth hangs from — 1 facing up/down, 0.45 in profile.
+            const breadthK = Math.hypot(Math.sin(dir), Math.cos(dir) * 0.45);
             drawCape(
               ctx,
               capePts,
               capeStyle(capeItem),
               s * capeK,
               e.hurt ?? false,
-              Math.abs(capeFx) * (1 - Math.abs(capeFy)),
+              breadthK,
               Math.min(1, capeSim.hemSpd / 4.5),
             );
           }

@@ -270,24 +270,19 @@ export class CapeSim {
     this.hemSpd = Math.hypot(hem.x - hem.px, hem.y - hem.py, hem.z - hem.pz) / h;
   }
 
-  /** Where the cloth actually is, for depth-true front/behind sorting. */
-  meanY(): number {
-    let sum = 0;
-    for (let i = 1; i < this.nodes.length; i++) sum += this.nodes[i]!.y;
-    return sum / Math.max(1, this.nodes.length - 1);
-  }
-
   /**
-   * Depth-true paint side with HYSTERESIS: the cloth must be clearly
-   * toward the camera to come in front, and clearly away to go back —
-   * inside the band it keeps its last side. Side profiles hover near
-   * zero, and without the band they flickered between paint orders
-   * every frame.
+   * Paint side is a FACING law, not a cloth-position law — the same
+   * convention as the beast head/tail and the weapon-behind rule. The
+   * cloth hangs on the back, and the back is toward the camera exactly
+   * when the facing points up-screen. Cloth position near the side
+   * boundary is pure noise (that's what caused the paint flicker);
+   * facing is definitive. Hysteresis band so the flip never dithers,
+   * placed just above horizontal where the cape is slim and tucked —
+   * the swap is invisible there.
    */
-  front(eY: number): boolean {
-    const d = this.meanY() - eY;
-    if (d > 0.09) this.isFront = true;
-    else if (d < 0.02) this.isFront = false;
+  front(fy: number): boolean {
+    if (fy < -0.22) this.isFront = true;
+    else if (fy > -0.1) this.isFront = false;
     return this.isFront;
   }
 }
@@ -296,12 +291,17 @@ export class CapeSim {
  * Paint the projected ribbon: base fill, hard-shade fold half, lit
  * shoulder mantle, trim hem, outline — the tunic's own dialect, in cloth.
  * `pts` are the nodes projected to screen by the caller; `wk` is the
- * width scale (camera scale × body size). `sideK` is how side-on the
- * facing is (0 front/back → 1 pure profile): the clasp is seen edge-on
- * in profile so the top narrows, while the hem swings toward the camera
- * and flares FULLER — the forced perspective that makes the cloth read
- * as turning in space with the character. `hemGlow` (0..1, from hem
- * speed) lets a fast-moving trim catch the light.
+ * width scale (camera scale × body size).
+ *
+ * `breadthK` is THE FORESHORTENING LAW — the projected length of the
+ * shoulder bar the cloth hangs from (1 facing up/down, ~0.45 in pure
+ * profile, continuous through all 360°). The clasp is welded to the
+ * body plane so it foreshortens fully; free cloth twists back toward
+ * the camera down its length, so each rung recovers breadth toward the
+ * hem. This is what makes the cape read as a surface turning in 3D
+ * space with the character instead of a full-width banner pasted on
+ * from every angle. `hemGlow` (0..1, from hem speed) lets a
+ * fast-moving trim catch the light.
  */
 export function drawCape(
   ctx: CanvasRenderingContext2D,
@@ -309,18 +309,18 @@ export function drawCape(
   style: CapeStyle,
   wk: number,
   hurt: boolean,
-  sideK = 0,
+  breadthK = 1,
   hemGlow = 0,
 ): void {
   const n = pts.length;
   if (n < 3) return;
 
   // Lateral direction at each node = screen-perpendicular of the chain
-  // tangent; widths taper out from shoulder to a flared hem.
+  // tangent; widths taper out from shoulder to a flared hem, scaled by
+  // the foreshortening law (full clasp weld → hem twist recovery).
   const left: Array<{ x: number; y: number }> = [];
   const right: Array<{ x: number; y: number }> = [];
-  const topK = 1 - 0.3 * sideK; // clasp edge-on in profile
-  const hemK = 1 + 0.22 * sideK; // hem swings out toward the camera
+  const widths: number[] = [];
   for (let i = 0; i < n; i++) {
     const a = pts[Math.max(0, i - 1)]!;
     const b = pts[Math.min(n - 1, i + 1)]!;
@@ -330,8 +330,9 @@ export function drawCape(
     tx /= tl;
     ty /= tl;
     const t = i / (n - 1);
-    const persp = topK + (hemK - topK) * t;
+    const persp = breadthK + (1 - breadthK) * 0.45 * t;
     const w = (style.shoulderW + (style.hemW - style.shoulderW) * t) * wk * persp;
+    widths.push(w);
     left.push({ x: pts[i]!.x - -ty * w, y: pts[i]!.y - tx * w });
     right.push({ x: pts[i]!.x + -ty * w, y: pts[i]!.y + tx * w });
   }
@@ -378,9 +379,11 @@ export function drawCape(
     trace([left[n - 2]!, left[n - 1]!], [right[n - 2]!, right[n - 1]!]);
     ctx.fill();
     if (style.emblem && n >= 4) {
-      // Champion chevron: a hard triangle stitched below the mantle.
+      // Champion chevron: a hard triangle stitched below the mantle —
+      // sized from the cloth's actual rung there, so it foreshortens
+      // with the fabric it's sewn onto.
       const m = pts[2]!;
-      const cw = style.shoulderW * wk * 0.8;
+      const cw = widths[2]! * 0.72;
       ctx.fillStyle = style.trim;
       ctx.beginPath();
       ctx.moveTo(m.x - cw, m.y - cw * 0.5);
