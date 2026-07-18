@@ -1,9 +1,10 @@
 :root {
   --ink: #1c1426;
-  --parchment: #efe3c2;
-  --parchment-dim: #cdbf9c;
+  --parchment: #f4e9cb;
+  --parchment-dim: #d4c6a2;
   --gold: #d9a441;
   --gold-bright: #e8b64c;
+  --gold-hot: #ffe9a8;
   --wood-dark: #2c1f15;
   --wood: #45321f;
   --wood-light: #5d452c;
@@ -11,6 +12,10 @@
   --red: #c4553d;
   --green: #4fc06a;
   --shadow: rgba(18, 10, 6, 0.75);
+  /* The one text shadow: sharp, offset, never blurred. */
+  --punch: 2px 2px 0 rgba(10, 6, 3, 0.95);
+  --punch-small: 1.5px 1.5px 0 rgba(10, 6, 3, 0.95);
+  --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   font-family: 'Trebuchet MS', 'Verdana', sans-serif;
 }
 
@@ -45,46 +50,85 @@ button {
   font-family: inherit;
 }
 
-/* ---------------------------------- carved panel language */
+/* ---------------------------------- the chrome language
+   Every panel is cut from the same cloth: woven linen ground, an
+   ornate 9-slice gold frame painted in code (ui/chrome.ts), serif
+   plaque headers, and sharp offset shadows — nothing flat, nothing
+   blurred. */
 
 .panel,
 .side-panel {
-  background: linear-gradient(180deg, var(--wood) 0%, var(--wood-dark) 100%);
-  border: 2px solid var(--wood-dark);
-  border-radius: 3px;
-  /* Gold inner trim + the signature hard offset shadow. */
-  box-shadow:
-    inset 0 0 0 2px rgba(217, 164, 65, 0.55),
-    inset 0 0 0 5px rgba(44, 31, 21, 0.9),
-    6px 6px 0 var(--shadow);
+  background-color: #1d1209;
+  background-image:
+    radial-gradient(ellipse 130% 60% at 50% -8%, rgba(214, 158, 78, 0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 120% 90% at 50% 108%, rgba(8, 4, 2, 0.55) 0%, transparent 55%),
+    var(--tex-linen);
+  border: var(--frame-border) solid transparent;
+  border-image: var(--ui-frame) 110 / var(--frame-border);
+  border-radius: 0;
+  box-shadow: 9px 11px 0 rgba(10, 6, 4, 0.5);
   color: var(--parchment);
-  padding: 16px;
+  padding: 6px 10px 10px;
 }
 
 h1,
 h3 {
-  color: var(--gold-bright);
-  letter-spacing: 1.5px;
+  font-family: var(--serif);
+  font-weight: 700;
+  letter-spacing: 3px;
   text-transform: uppercase;
-  font-size: 15px;
-  text-shadow: 2px 2px 0 rgba(18, 10, 6, 0.8);
+  font-size: 19px;
   margin-bottom: 10px;
+  /* Molten-gold lettering over its own hard shadow. */
+  background: linear-gradient(180deg, var(--gold-hot) 0%, var(--gold-bright) 48%, #b8822b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(2px 2px 0 rgba(10, 6, 3, 0.95));
+}
+
+/* Panel plaques: header rules sweeping out to the frame, meeting the
+   title at small gold studs. */
+.side-panel > h3,
+.panel > h1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.side-panel > h3::before,
+.side-panel > h3::after,
+.panel > h1::before,
+.panel > h1::after {
+  content: '';
+  flex: 1;
+  height: 3px;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(217, 164, 65, 0.75) 55%, rgba(217, 164, 65, 0.75) 100%);
+  clip-path: polygon(0 50%, 6px 0, 100% 0, 100% 100%, 6px 100%);
+}
+
+.side-panel > h3::after,
+.panel > h1::after {
+  transform: scaleX(-1);
 }
 
 /* Sharp corner chip that dismisses a panel. */
 .panel-close {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 24px;
-  height: 24px;
+  top: 4px;
+  right: 4px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   line-height: 1;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--parchment);
-  background: rgba(44, 31, 21, 0.85);
-  border: 2px solid rgba(217, 164, 65, 0.55);
+  text-shadow: var(--punch-small);
+  background: linear-gradient(180deg, #4a341f 0%, #2c1f15 100%);
+  border: 2px solid rgba(217, 164, 65, 0.6);
   border-radius: 2px;
   cursor: pointer;
 }
@@ -310,14 +354,18 @@ h3 {
 }
 
 #panel-buttons button {
-  width: 52px;
-  height: 52px;
-  border-radius: 3px;
-  background: linear-gradient(180deg, var(--wood-light) 0%, var(--wood-dark) 100%);
-  border: 2px solid var(--wood-dark);
+  width: 60px;
+  height: 60px;
+  border-radius: 4px;
+  background:
+    radial-gradient(circle at 50% 30%, #55402a 0%, #241710 78%),
+    var(--tex-linen);
+  border: 2px solid #0d0805;
   box-shadow:
-    inset 0 0 0 2px rgba(217, 164, 65, 0.45),
-    4px 4px 0 var(--shadow);
+    inset 0 0 0 2.5px rgba(217, 164, 65, 0.6),
+    inset 0 0 0 4.5px rgba(20, 12, 7, 0.9),
+    inset 0 10px 12px rgba(255, 226, 160, 0.07),
+    4px 5px 0 var(--shadow);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -325,8 +373,8 @@ h3 {
 }
 
 #panel-buttons button img {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   pointer-events: none;
 }
 
@@ -348,31 +396,37 @@ h3 {
 .side-panel {
   position: absolute;
   right: 12px;
-  bottom: 74px;
-  width: 258px;
+  bottom: 84px;
+  width: 302px;
   pointer-events: auto;
 }
 
 .side-panel.wide {
-  width: 330px;
-  right: 280px;
-  max-height: 70vh;
+  width: 380px;
+  right: 368px;
+  max-height: 72vh;
   overflow-y: auto;
 }
 
 .hint-inline {
-  font-size: 10.5px;
+  font-family: 'Trebuchet MS', 'Verdana', sans-serif;
+  font-size: 11.5px;
   color: var(--parchment-dim);
   font-weight: normal;
   text-transform: none;
   letter-spacing: 0.2px;
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  filter: none;
+  text-shadow: var(--punch-small);
 }
 
 /* Inventory: the pack is the game's second home — big targets,
    carved sockets, and an inspect layer that explains everything. */
 
 .side-panel.inv-panel {
-  width: 322px;
+  width: 344px;
 }
 
 #inventory-grid {
@@ -393,14 +447,18 @@ h3 {
     'relic head cape'
     'weapon body offhand'
     'sigil legs tool';
-  grid-template-columns: repeat(3, 64px);
-  grid-auto-rows: 64px;
-  gap: 7px;
+  grid-template-columns: repeat(3, 70px);
+  grid-auto-rows: 70px;
+  gap: 8px;
   justify-content: center;
   margin-bottom: 12px;
-  padding: 10px 0;
-  background: rgba(18, 10, 6, 0.35);
-  border: 1px solid rgba(110, 82, 51, 0.55);
+  padding: 12px 0;
+  background:
+    radial-gradient(ellipse 90% 80% at 50% 50%, rgba(93, 69, 44, 0.22) 0%, rgba(10, 6, 3, 0.5) 100%);
+  border: 1px solid rgba(13, 8, 5, 0.9);
+  box-shadow:
+    inset 0 0 0 1px rgba(217, 164, 65, 0.28),
+    inset 0 4px 10px rgba(10, 6, 3, 0.6);
   border-radius: 3px;
 }
 
@@ -417,11 +475,11 @@ h3 {
 #coin-readout {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 13px;
+  gap: 6px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--gold-bright);
-  text-shadow: 1.5px 1.5px 0 rgba(18, 10, 6, 0.9);
+  text-shadow: var(--punch-small);
 }
 
 #coin-readout img {
@@ -432,10 +490,14 @@ h3 {
 .inv-slot {
   aspect-ratio: 1;
   background:
-    radial-gradient(circle at 50% 42%, rgba(93, 69, 44, 0.35) 0%, rgba(18, 10, 6, 0.55) 78%);
-  border: 1px solid var(--wood-edge);
+    radial-gradient(circle at 50% 40%, rgba(99, 73, 46, 0.4) 0%, rgba(14, 8, 4, 0.6) 80%);
+  border: 1px solid #0f0906;
   border-radius: 3px;
-  box-shadow: inset 0 2px 4px rgba(18, 10, 6, 0.55);
+  box-shadow:
+    inset 0 0 0 1px rgba(217, 164, 65, 0.16),
+    inset 0 3px 6px rgba(10, 6, 3, 0.65),
+    inset 0 -2px 3px rgba(255, 226, 160, 0.05),
+    0 1px 0 rgba(255, 226, 160, 0.06);
   position: relative;
   display: flex;
   align-items: center;
@@ -479,10 +541,10 @@ h3 {
   position: absolute;
   right: 4px;
   bottom: 2px;
-  font-size: 11.5px;
+  font-size: 13px;
   font-weight: bold;
   color: var(--gold-bright);
-  text-shadow: 1.5px 1.5px 0 rgba(18, 10, 6, 0.9);
+  text-shadow: var(--punch-small);
 }
 
 /* ---- item inspect card ---- */
@@ -492,15 +554,15 @@ h3 {
   left: 0;
   top: 0;
   z-index: 60;
-  width: 252px;
-  padding: 12px 14px;
-  background: linear-gradient(180deg, var(--wood) 0%, var(--wood-dark) 100%);
-  border: 2px solid var(--wood-dark);
-  border-radius: 3px;
-  box-shadow:
-    inset 0 0 0 2px rgba(217, 164, 65, 0.55),
-    inset 0 0 0 5px rgba(44, 31, 21, 0.9),
-    6px 6px 0 var(--shadow);
+  width: 296px;
+  padding: 8px 12px 12px;
+  background-color: #1d1209;
+  background-image:
+    radial-gradient(ellipse 130% 60% at 50% -8%, rgba(214, 158, 78, 0.14) 0%, transparent 60%),
+    var(--tex-linen);
+  border: var(--frame-border) solid transparent;
+  border-image: var(--ui-frame) 110 / var(--frame-border);
+  box-shadow: 8px 10px 0 rgba(10, 6, 4, 0.5);
   color: var(--parchment);
   pointer-events: none;
 }
@@ -508,93 +570,111 @@ h3 {
 .card-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: 12px;
+  margin-bottom: 9px;
 }
 
 .card-head img {
-  width: 52px;
-  height: 52px;
+  width: 58px;
+  height: 58px;
   flex: none;
+  padding: 4px;
+  background: radial-gradient(circle at 50% 40%, rgba(99, 73, 46, 0.45) 0%, rgba(14, 8, 4, 0.6) 82%);
+  border: 1px solid rgba(217, 164, 65, 0.35);
+  border-radius: 3px;
+  box-shadow: inset 0 3px 6px rgba(10, 6, 3, 0.6);
 }
 
 .card-name {
-  font-size: 14px;
+  font-family: var(--serif);
+  font-size: 18px;
   font-weight: 700;
-  color: var(--gold-bright);
-  letter-spacing: 0.4px;
-  text-shadow: 1.5px 1.5px 0 rgba(18, 10, 6, 0.8);
+  letter-spacing: 0.6px;
+  background: linear-gradient(180deg, var(--gold-hot) 0%, var(--gold-bright) 55%, #c08a2e 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(2px 2px 0 rgba(10, 6, 3, 0.95));
 }
 
 .card-cat {
-  font-size: 10.5px;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--parchment-dim);
   text-transform: uppercase;
-  letter-spacing: 0.8px;
-  margin-top: 2px;
+  letter-spacing: 1.2px;
+  margin-top: 3px;
+  text-shadow: var(--punch-small);
 }
 
 .card-stat {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  padding: 2.5px 0;
+  gap: 8px;
+  font-size: 13.5px;
+  padding: 3px 0;
+  text-shadow: var(--punch-small);
 }
 
 .stat-chip {
   flex: none;
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 2px;
-  border: 1px solid rgba(18, 10, 6, 0.7);
+  border: 1px solid rgba(10, 6, 3, 0.85);
+  box-shadow: 1px 1px 0 rgba(10, 6, 3, 0.7);
 }
 
 .stat-label {
   color: var(--parchment-dim);
-  min-width: 62px;
+  min-width: 70px;
 }
 
 .card-passive-desc {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--parchment-dim);
-  padding: 1px 0 2px 15px;
+  padding: 1px 0 3px 17px;
+  text-shadow: var(--punch-small);
 }
 
 .card-flavor {
-  font-size: 11.5px;
+  font-family: var(--serif);
+  font-size: 13px;
   font-style: italic;
   color: var(--parchment-dim);
-  border-top: 1px solid rgba(110, 82, 51, 0.55);
-  margin-top: 7px;
-  padding-top: 7px;
+  border-top: 1px solid rgba(217, 164, 65, 0.3);
+  margin-top: 8px;
+  padding-top: 8px;
+  text-shadow: var(--punch-small);
 }
 
 .card-foot {
-  margin-top: 7px;
-  font-size: 11.5px;
+  margin-top: 8px;
+  font-size: 13px;
 }
 
 .card-value {
   color: var(--gold-bright);
   font-weight: 700;
+  text-shadow: var(--punch-small);
 }
 
 .card-hints {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 10px;
-  border-top: 1px solid rgba(110, 82, 51, 0.55);
-  margin-top: 8px;
-  padding-top: 7px;
+  gap: 5px 12px;
+  border-top: 1px solid rgba(217, 164, 65, 0.3);
+  margin-top: 9px;
+  padding-top: 8px;
 }
 
 .hint-item {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 10.5px;
+  gap: 6px;
+  font-size: 11.5px;
   color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
 }
 
 /* ---- item context menu ---- */
@@ -604,14 +684,16 @@ h3 {
   left: 0;
   top: 0;
   z-index: 75;
-  min-width: 132px;
-  padding: 5px;
-  background: linear-gradient(180deg, var(--wood) 0%, var(--wood-dark) 100%);
-  border: 2px solid var(--wood-dark);
+  min-width: 158px;
+  padding: 6px;
+  background-color: #1f1309;
+  background-image: var(--tex-linen);
+  border: 3px solid #0d0805;
   border-radius: 3px;
   box-shadow:
-    inset 0 0 0 2px rgba(217, 164, 65, 0.55),
-    4px 4px 0 var(--shadow);
+    inset 0 0 0 2px rgba(217, 164, 65, 0.65),
+    inset 0 0 0 4px rgba(20, 12, 7, 0.9),
+    5px 6px 0 var(--shadow);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -621,11 +703,12 @@ h3 {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 8px 14px;
-  font-size: 13px;
+  padding: 10px 16px;
+  font-size: 14.5px;
   font-weight: 700;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
   color: var(--parchment);
+  text-shadow: var(--punch-small);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 2px;
@@ -659,12 +742,17 @@ h3 {
 .list-row {
   display: flex;
   align-items: center;
-  gap: 9px;
-  background: rgba(18, 10, 6, 0.45);
-  border: 1px solid var(--wood-edge);
-  border-radius: 2px;
-  padding: 7px 9px;
-  font-size: 13px;
+  gap: 10px;
+  background:
+    linear-gradient(180deg, rgba(99, 73, 46, 0.16) 0%, rgba(14, 8, 4, 0.5) 100%);
+  border: 1px solid #0f0906;
+  box-shadow:
+    inset 0 0 0 1px rgba(217, 164, 65, 0.14),
+    inset 0 2px 4px rgba(10, 6, 3, 0.5);
+  border-radius: 3px;
+  padding: 9px 11px;
+  font-size: 14px;
+  text-shadow: var(--punch-small);
 }
 
 .list-row.disabled {
@@ -692,20 +780,25 @@ h3 {
 
 .list-row .row-sub {
   display: block;
-  font-size: 10.5px;
+  font-size: 11.5px;
   color: var(--parchment-dim);
 }
 
 .list-row button {
-  background: linear-gradient(180deg, var(--gold-bright) 0%, #b8822b 100%);
-  border: 1px solid #8a5f1c;
+  background: linear-gradient(180deg, var(--gold-hot) 0%, var(--gold-bright) 40%, #b8822b 100%);
+  border: 1.5px solid #0d0805;
   border-radius: 2px;
-  color: var(--wood-dark);
+  color: #241610;
   font-weight: bold;
-  font-size: 11.5px;
-  padding: 5px 9px;
+  font-size: 12.5px;
+  letter-spacing: 0.4px;
+  padding: 6px 12px;
   cursor: pointer;
-  box-shadow: 2px 2px 0 rgba(18, 10, 6, 0.55);
+  text-shadow: 0 1px 0 rgba(255, 240, 200, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 214, 0.65),
+    inset 0 -2px 0 rgba(110, 70, 20, 0.55),
+    2px 3px 0 rgba(18, 10, 6, 0.6);
 }
 
 .list-row button:active {
@@ -723,9 +816,10 @@ h3 {
 .skill-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 7px;
-  font-size: 12.5px;
+  gap: 9px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  text-shadow: var(--punch-small);
 }
 
 .skill-row .skill-name {
@@ -743,16 +837,18 @@ h3 {
 
 .skill-bar {
   flex: 1;
-  height: 9px;
-  background: rgba(18, 10, 6, 0.6);
-  border: 1px solid var(--wood-edge);
-  border-radius: 1px;
+  height: 12px;
+  background: rgba(10, 6, 3, 0.7);
+  border: 1px solid #0f0906;
+  box-shadow: inset 0 2px 3px rgba(10, 6, 3, 0.7);
+  border-radius: 2px;
   overflow: hidden;
 }
 
 .skill-bar .fill {
   height: 100%;
-  background: linear-gradient(180deg, var(--gold-bright), #b8822b);
+  background: linear-gradient(180deg, var(--gold-hot) 0%, var(--gold-bright) 45%, #b8822b 100%);
+  box-shadow: inset 0 -2px 0 rgba(110, 70, 20, 0.5);
 }
 
 /* ---------------------------------- hotbar */
@@ -769,15 +865,18 @@ h3 {
 
 .hotbar-slot {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: 62px;
+  height: 62px;
   padding: 0;
-  border-radius: 3px;
-  background: linear-gradient(180deg, var(--wood-light) 0%, var(--wood-dark) 100%);
-  border: 2px solid var(--wood-dark);
+  border-radius: 4px;
+  background:
+    radial-gradient(circle at 50% 32%, #55402a 0%, #241710 80%),
+    var(--tex-linen);
+  border: 2px solid #0d0805;
   box-shadow:
-    inset 0 0 0 2px rgba(217, 164, 65, 0.45),
-    4px 4px 0 var(--shadow);
+    inset 0 0 0 2.5px rgba(217, 164, 65, 0.55),
+    inset 0 0 0 4.5px rgba(20, 12, 7, 0.9),
+    4px 5px 0 var(--shadow);
   cursor: pointer;
   overflow: hidden;
   touch-action: none;
@@ -813,12 +912,12 @@ h3 {
 
 .hotbar-key {
   position: absolute;
-  right: 3px;
-  bottom: 1px;
-  font-size: 11px;
+  right: 4px;
+  bottom: 2px;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--parchment);
-  text-shadow: 1px 1px 0 rgba(18, 10, 6, 0.9);
+  text-shadow: var(--punch-small);
   pointer-events: none;
 }
 
@@ -877,11 +976,14 @@ h3 {
 }
 
 .technique-chip {
-  padding: 3px 8px;
-  font-size: 11.5px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+  font-weight: 700;
   color: var(--parchment);
+  text-shadow: var(--punch-small);
   background: linear-gradient(180deg, var(--wood) 0%, var(--wood-dark) 100%);
-  border: 1.5px solid var(--wood-edge);
+  border: 1.5px solid #0f0906;
+  box-shadow: inset 0 0 0 1px rgba(217, 164, 65, 0.2);
   border-radius: 2px;
   cursor: pointer;
   -webkit-user-select: none;
@@ -1039,28 +1141,31 @@ body.pad-mode .hint-inline { display: none; }
 #ui-action-strip {
   position: fixed;
   left: 50%;
-  bottom: 86px;
+  bottom: 92px;
   transform: translateX(-50%);
   z-index: 55;
   display: flex;
-  gap: 14px;
-  padding: 6px 14px;
-  background: linear-gradient(180deg, rgba(44, 31, 21, 0.94) 0%, rgba(28, 19, 12, 0.94) 100%);
-  border: 2px solid var(--wood-dark);
+  gap: 16px;
+  padding: 8px 18px;
+  background-color: rgba(29, 18, 9, 0.96);
+  background-image: var(--tex-linen);
+  border: 2.5px solid #0d0805;
   border-radius: 3px;
   box-shadow:
-    inset 0 0 0 1.5px rgba(217, 164, 65, 0.4),
-    4px 4px 0 var(--shadow);
+    inset 0 0 0 2px rgba(217, 164, 65, 0.55),
+    inset 0 0 0 3.5px rgba(20, 12, 7, 0.9),
+    4px 5px 0 var(--shadow);
   pointer-events: none;
 }
 
 #ui-action-strip .strip-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 7px;
+  font-size: 13.5px;
+  font-weight: 700;
   color: var(--parchment);
-  text-shadow: 1px 1px 0 rgba(18, 10, 6, 0.8);
+  text-shadow: var(--punch-small);
 }
 
 /* ---- shared tooltip ---- */
@@ -1070,28 +1175,33 @@ body.pad-mode .hint-inline { display: none; }
   left: 0;
   top: 0;
   z-index: 70;
-  max-width: 240px;
-  padding: 7px 11px;
-  background: linear-gradient(180deg, rgba(36, 26, 46, 0.97) 0%, rgba(23, 16, 33, 0.97) 100%);
-  border: 2px solid var(--wood-edge);
+  max-width: 270px;
+  padding: 9px 13px;
+  background-color: rgba(29, 18, 9, 0.97);
+  background-image: var(--tex-linen);
+  border: 2.5px solid #0d0805;
   border-radius: 3px;
   box-shadow:
-    inset 0 0 0 1.5px rgba(217, 164, 65, 0.35),
-    4px 4px 0 var(--shadow);
+    inset 0 0 0 2px rgba(217, 164, 65, 0.5),
+    inset 0 0 0 3.5px rgba(20, 12, 7, 0.9),
+    4px 5px 0 var(--shadow);
   pointer-events: none;
 }
 
 #ui-tooltip .tip-name {
-  font-size: 12.5px;
+  font-family: var(--serif);
+  font-size: 15px;
   font-weight: 700;
   color: var(--gold-bright);
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
+  text-shadow: var(--punch-small);
 }
 
 #ui-tooltip .tip-sub {
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--parchment-dim);
-  margin-top: 2px;
+  margin-top: 3px;
+  text-shadow: var(--punch-small);
 }
 
 /* ---- world interact prompt ---- */
@@ -1103,14 +1213,15 @@ body.pad-mode .hint-inline { display: none; }
   z-index: 40;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 5px 11px 5px 6px;
-  font-size: 12.5px;
+  gap: 8px;
+  padding: 6px 13px 6px 7px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--parchment);
-  text-shadow: 1px 1px 0 rgba(18, 10, 6, 0.85);
-  background: linear-gradient(180deg, rgba(44, 31, 21, 0.92) 0%, rgba(28, 19, 12, 0.92) 100%);
-  border: 2px solid var(--wood-dark);
+  text-shadow: var(--punch-small);
+  background-color: rgba(29, 18, 9, 0.95);
+  background-image: var(--tex-linen);
+  border: 2px solid #0d0805;
   border-radius: 3px;
   box-shadow:
     inset 0 0 0 1.5px rgba(217, 164, 65, 0.45),

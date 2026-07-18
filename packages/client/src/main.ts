@@ -11,6 +11,11 @@ import { UiNav } from './ui/padUI.js';
 import { Sfx } from './audio/sfx.js';
 import { setupTouch } from './input/touch.js';
 import { uiIconUrl } from './render/icons.js';
+import { installChrome } from './ui/chrome.js';
+
+// Paint the HUD's chrome (linen weave + ornate frame) before any panel
+// shows — the stylesheet reads it from CSS custom properties.
+installChrome();
 
 // Painted UI glyphs — no emoji anywhere in the universe. Each dock
 // button wears a device-aware shortcut badge (letter or pad glyph).
