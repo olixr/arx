@@ -259,6 +259,45 @@ const defs: RecipeDef[] = [
     output: { item: 'cape_traveler', qty: 1 },
     ticks: 60,
   },
+  {
+    id: 'craft_cape_ragged',
+    name: 'Ragged cloak',
+    skill: 'crafting',
+    levelReq: 2,
+    xp: 30,
+    station: 'workbench',
+    inputs: [{ item: 'leather', qty: 2 }],
+    output: { item: 'cape_ragged', qty: 1 },
+    ticks: 40,
+  },
+  {
+    id: 'craft_cape_huntsman',
+    name: "Huntsman's drape",
+    skill: 'crafting',
+    levelReq: 20,
+    xp: 150,
+    station: 'workbench',
+    inputs: [
+      { item: 'leather', qty: 3 },
+      { item: 'wolf_fur', qty: 2 },
+    ],
+    output: { item: 'cape_huntsman', qty: 1 },
+    ticks: 80,
+  },
+  {
+    id: 'craft_cape_gilded',
+    name: 'Gilded cape',
+    skill: 'crafting',
+    levelReq: 26,
+    xp: 210,
+    station: 'workbench',
+    inputs: [
+      { item: 'leather', qty: 2 },
+      { item: 'gold_bar', qty: 2 },
+    ],
+    output: { item: 'cape_gilded', qty: 1 },
+    ticks: 90,
+  },
 ];
 
 export const RECIPES: ReadonlyMap<string, RecipeDef> = new Map(defs.map((d) => [d.id, d]));

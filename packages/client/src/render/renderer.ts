@@ -3677,15 +3677,13 @@ export class Renderer {
             // Foreshortening: the projected length of the shoulder bar
             // the cloth hangs from — 1 facing up/down, 0.45 in profile.
             const breadthK = Math.hypot(Math.sin(dir), Math.cos(dir) * 0.45);
-            drawCape(
-              ctx,
-              capePts,
-              capeStyle(capeItem),
-              s * capeK,
-              e.hurt ?? false,
+            drawCape(ctx, capePts, capeStyle(capeItem), s * capeK, {
+              hurt: e.hurt ?? false,
               breadthK,
-              Math.min(1, capeSim.hemSpd / 4.5),
-            );
+              hemGlow: Math.min(1, capeSim.hemSpd / 4.5),
+              tSec: now / 1000,
+              phase: capeSim.phase,
+            });
           }
         : null;
 

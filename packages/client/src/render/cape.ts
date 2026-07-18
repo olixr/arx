@@ -28,26 +28,38 @@ export interface CapeStyle {
   windMul: number;
   /** High-frequency edge flutter amplitude. */
   flutter: number;
-  /** Champion chevron stitched at the shoulders. */
-  emblem?: boolean;
+  /** Mark stitched below the mantle. */
+  emblem?: 'chevron' | 'diamond' | 'bolt';
+  /** Bottom-edge cut: torn rags, dress scallops, a banner's tails. */
+  hem?: 'tattered' | 'scallop' | 'swallowtail';
+  /** Woven pattern across the cloth. */
+  pattern?: 'stripe' | 'bands' | 'border' | 'patch';
+  /** Animated prestige effect, clipped to the cloth. */
+  fx?: 'ember' | 'storm' | 'stars' | 'shimmer' | 'aurora';
+  /** Effect accent color (defaults to trim). */
+  fxColor?: string;
 }
 
 /**
- * Each cape is a different piece of cloth, not a recolor: the wolf pelt
- * is short heavy fur, emberweave is light and restless, the champion's
- * mantle is long and stately.
+ * The cape wardrobe — every entry is its OWN garment: geometry, cloth
+ * behavior, cut, pattern, and (for the prestige tier) a living effect.
+ * Never homogenous recolors. Progression arc: torn rags → workmanlike
+ * cloth → storied drops → animated luxury.
  */
 const CAPE_STYLES: Record<string, CapeStyle> = {
-  wolf_pelt_cloak: {
-    color: '#6a6f7d',
-    trim: '#494e5c',
-    segs: 5,
+  // ---- starter tier: humble, patched, honest.
+  cape_ragged: {
+    color: '#8a7a5f',
+    trim: '#6e6049',
+    segs: 4,
     segLen: 0.115,
-    shoulderW: 0.175,
-    hemW: 0.21,
-    weight: 1.2,
-    windMul: 0.65,
-    flutter: 0.5,
+    shoulderW: 0.15,
+    hemW: 0.2,
+    weight: 1.1,
+    windMul: 0.9,
+    flutter: 0.8,
+    hem: 'tattered',
+    pattern: 'patch',
   },
   cape_traveler: {
     color: '#7da35a',
@@ -59,6 +71,59 @@ const CAPE_STYLES: Record<string, CapeStyle> = {
     weight: 0.92,
     windMul: 1.1,
     flutter: 1.0,
+    pattern: 'border',
+  },
+  wolf_pelt_cloak: {
+    color: '#6a6f7d',
+    trim: '#494e5c',
+    segs: 5,
+    segLen: 0.115,
+    shoulderW: 0.175,
+    hemW: 0.21,
+    weight: 1.2,
+    windMul: 0.65,
+    flutter: 0.5,
+    hem: 'tattered',
+    pattern: 'bands',
+  },
+  // ---- low tier: capes with a story.
+  cape_banner: {
+    color: '#a34434',
+    trim: '#d9c496',
+    segs: 7,
+    segLen: 0.125,
+    shoulderW: 0.15,
+    hemW: 0.2,
+    weight: 0.95,
+    windMul: 1.15,
+    flutter: 1.0,
+    hem: 'swallowtail',
+    pattern: 'stripe',
+  },
+  cape_huntsman: {
+    color: '#3f6b3a',
+    trim: '#b7a06a',
+    segs: 6,
+    segLen: 0.12,
+    shoulderW: 0.165,
+    hemW: 0.235,
+    weight: 1.0,
+    windMul: 0.9,
+    flutter: 0.7,
+    hem: 'scallop',
+    emblem: 'diamond',
+  },
+  cape_midnight: {
+    color: '#2e2a3e',
+    trim: '#4a4462',
+    segs: 7,
+    segLen: 0.125,
+    shoulderW: 0.145,
+    hemW: 0.195,
+    weight: 1.0,
+    windMul: 0.8,
+    flutter: 0.6,
+    pattern: 'border',
   },
   cape_emberweave: {
     color: '#c4553d',
@@ -70,6 +135,35 @@ const CAPE_STYLES: Record<string, CapeStyle> = {
     weight: 0.78,
     windMul: 1.35,
     flutter: 1.4,
+    fx: 'ember',
+  },
+  // ---- high tier: gear you're seen in.
+  cape_gilded: {
+    color: '#c9a23c',
+    trim: '#8a6a1f',
+    segs: 6,
+    segLen: 0.12,
+    shoulderW: 0.17,
+    hemW: 0.24,
+    weight: 1.05,
+    windMul: 0.8,
+    flutter: 0.6,
+    fx: 'shimmer',
+    fxColor: '#fff0c0',
+  },
+  cape_storm: {
+    color: '#3c4a66',
+    trim: '#9fd8ff',
+    segs: 7,
+    segLen: 0.125,
+    shoulderW: 0.165,
+    hemW: 0.25,
+    weight: 0.95,
+    windMul: 1.1,
+    flutter: 0.9,
+    hem: 'tattered',
+    fx: 'storm',
+    fxColor: '#9fd8ff',
   },
   cape_champion: {
     color: '#8a2f3c',
@@ -81,7 +175,54 @@ const CAPE_STYLES: Record<string, CapeStyle> = {
     weight: 1.05,
     windMul: 0.9,
     flutter: 0.7,
-    emblem: true,
+    emblem: 'chevron',
+    fx: 'shimmer',
+    fxColor: '#ffe9b0',
+  },
+  // ---- prestige tier: living cloth.
+  cape_royal: {
+    color: '#6b3fa0',
+    trim: '#e8b64c',
+    segs: 7,
+    segLen: 0.13,
+    shoulderW: 0.185,
+    hemW: 0.275,
+    weight: 1.1,
+    windMul: 0.75,
+    flutter: 0.55,
+    hem: 'scallop',
+    pattern: 'border',
+    emblem: 'diamond',
+    fx: 'shimmer',
+    fxColor: '#ffe9b0',
+  },
+  cape_celestial: {
+    color: '#1f2247',
+    trim: '#8f9fd8',
+    segs: 8,
+    segLen: 0.125,
+    shoulderW: 0.17,
+    hemW: 0.26,
+    weight: 0.9,
+    windMul: 0.85,
+    flutter: 0.7,
+    fx: 'stars',
+    fxColor: '#e8ecff',
+  },
+  cape_phoenix: {
+    color: '#c4372a',
+    trim: '#ffb43c',
+    segs: 7,
+    segLen: 0.13,
+    shoulderW: 0.17,
+    hemW: 0.26,
+    weight: 0.82,
+    windMul: 1.05,
+    flutter: 1.1,
+    hem: 'tattered',
+    pattern: 'stripe',
+    fx: 'ember',
+    fxColor: '#ffd77a',
   },
 };
 
@@ -121,8 +262,8 @@ const GROUND_Z = 0.03;
 
 export class CapeSim {
   readonly nodes: CapeNode[] = [];
-  /** Per-cape flutter phase — no two capes ripple in sync. */
-  private readonly phase: number;
+  /** Per-cape phase — no two capes ripple (or twinkle) in sync. */
+  readonly phase: number;
   private lastAx = 0;
   private lastAy = 0;
   private live = false;
@@ -291,39 +432,59 @@ export class CapeSim {
   }
 }
 
+interface Pt {
+  x: number;
+  y: number;
+}
+
+export interface CapeDrawOpts {
+  hurt: boolean;
+  /**
+   * THE FORESHORTENING LAW — the projected length of the shoulder bar
+   * the cloth hangs from (1 facing up/down, ~0.45 in pure profile,
+   * continuous through all 360°). The clasp is welded to the body plane
+   * so it foreshortens fully; free cloth twists back toward the camera
+   * down its length, recovering breadth toward the hem.
+   */
+  breadthK: number;
+  /** 0..1 from hem speed — a fast-moving trim catches the light. */
+  hemGlow: number;
+  /** Wall-clock seconds + per-cape phase drive the living effects. */
+  tSec: number;
+  phase: number;
+}
+
+const lerpPt = (a: Pt, b: Pt, t: number): Pt => ({
+  x: a.x + (b.x - a.x) * t,
+  y: a.y + (b.y - a.y) * t,
+});
+const fract = (x: number): number => x - Math.floor(x);
+
 /**
- * Paint the projected ribbon: base fill, hard-shade fold half, lit
- * shoulder mantle, trim hem, outline — the tunic's own dialect, in cloth.
- * `pts` are the nodes projected to screen by the caller; `wk` is the
- * width scale (camera scale × body size).
- *
- * `breadthK` is THE FORESHORTENING LAW — the projected length of the
- * shoulder bar the cloth hangs from (1 facing up/down, ~0.45 in pure
- * profile, continuous through all 360°). The clasp is welded to the
- * body plane so it foreshortens fully; free cloth twists back toward
- * the camera down its length, so each rung recovers breadth toward the
- * hem. This is what makes the cape read as a surface turning in 3D
- * space with the character instead of a full-width banner pasted on
- * from every angle. `hemGlow` (0..1, from hem speed) lets a
- * fast-moving trim catch the light.
+ * Paint the projected ribbon: base fill, hard-shade fold half, spine
+ * crease, lit shoulder mantle, trim hem, then the style's own voice —
+ * shaped hem cuts, woven patterns, an emblem, and for the prestige
+ * tier a living effect clipped to the cloth. The tunic's own dialect,
+ * in fabric. `pts` are the nodes projected to screen by the caller;
+ * `wk` is the width scale (camera scale × body size).
  */
 export function drawCape(
   ctx: CanvasRenderingContext2D,
-  pts: Array<{ x: number; y: number }>,
+  pts: Pt[],
   style: CapeStyle,
   wk: number,
-  hurt: boolean,
-  breadthK = 1,
-  hemGlow = 0,
+  opts: CapeDrawOpts,
 ): void {
   const n = pts.length;
   if (n < 3) return;
+  const { hurt, breadthK, tSec, phase } = opts;
+  let hemGlow = opts.hemGlow;
 
   // Lateral direction at each node = screen-perpendicular of the chain
   // tangent; widths taper out from shoulder to a flared hem, scaled by
   // the foreshortening law (full clasp weld → hem twist recovery).
-  const left: Array<{ x: number; y: number }> = [];
-  const right: Array<{ x: number; y: number }> = [];
+  const left: Pt[] = [];
+  const right: Pt[] = [];
   const widths: number[] = [];
   for (let i = 0; i < n; i++) {
     const a = pts[Math.max(0, i - 1)]!;
@@ -337,11 +498,53 @@ export function drawCape(
     const persp = breadthK + (1 - breadthK) * 0.45 * t;
     const w = (style.shoulderW + (style.hemW - style.shoulderW) * t) * wk * persp;
     widths.push(w);
-    left.push({ x: pts[i]!.x - -ty * w, y: pts[i]!.y - tx * w });
-    right.push({ x: pts[i]!.x + -ty * w, y: pts[i]!.y + tx * w });
+    left.push({ x: pts[i]!.x + ty * w, y: pts[i]!.y - tx * w });
+    right.push({ x: pts[i]!.x - ty * w, y: pts[i]!.y + tx * w });
   }
 
-  const trace = (edgeA: Array<{ x: number; y: number }>, edgeB: Array<{ x: number; y: number }>) => {
+  // The hem edge: straight, or CUT — torn rags, dress scallops, a
+  // banner's split tails. Points run left-hem → right-hem, with the
+  // cuts biting inward along the cloth (toward the second-to-last row).
+  const hemL = left[n - 1]!;
+  const hemR = right[n - 1]!;
+  const inX = pts[n - 2]!.x - pts[n - 1]!.x;
+  const inY = pts[n - 2]!.y - pts[n - 1]!.y;
+  const inLen = Math.hypot(inX, inY) || 1;
+  const bite = Math.min(inLen * 0.55, wk * 0.09);
+  const inward = (p: Pt, d: number): Pt => ({ x: p.x + (inX / inLen) * d, y: p.y + (inY / inLen) * d });
+  const hemPts: Pt[] = [hemL];
+  if (style.hem === 'tattered') {
+    // Uneven teeth — every tear a different depth, fixed per cape.
+    for (let k = 1; k <= 5; k++) {
+      const base = lerpPt(hemL, hemR, k / 6);
+      const deep = k % 2 === 1 ? bite * (0.7 + 0.3 * Math.sin(phase * 3 + k * 2.3)) : bite * 0.1;
+      hemPts.push(inward(base, deep));
+    }
+  } else if (style.hem === 'scallop') {
+    // Regular shallow V-cuts — tailored, not torn.
+    for (let k = 1; k <= 7; k++) {
+      const base = lerpPt(hemL, hemR, k / 8);
+      hemPts.push(inward(base, k % 2 === 1 ? bite * 0.45 : 0));
+    }
+  } else if (style.hem === 'swallowtail') {
+    // A banner's split: the center sweeps up, leaving two tails.
+    hemPts.push(inward(lerpPt(hemL, hemR, 0.3), bite * 0.25));
+    hemPts.push(inward(lerpPt(hemL, hemR, 0.5), bite * 1.35));
+    hemPts.push(inward(lerpPt(hemL, hemR, 0.7), bite * 0.25));
+  }
+  hemPts.push(hemR);
+
+  // One silhouette path: down the left edge, across the hem cut, back
+  // up the right — used for the base fill, the interior clip, and the
+  // outline, so every layer agrees on the same cloth.
+  const path = new Path2D();
+  path.moveTo(left[0]!.x, left[0]!.y);
+  for (let i = 1; i < n; i++) path.lineTo(left[i]!.x, left[i]!.y);
+  for (const p of hemPts) path.lineTo(p.x, p.y);
+  for (let i = n - 1; i >= 0; i--) path.lineTo(right[i]!.x, right[i]!.y);
+  path.closePath();
+
+  const trace = (edgeA: Pt[], edgeB: Pt[]) => {
     ctx.beginPath();
     ctx.moveTo(edgeA[0]!.x, edgeA[0]!.y);
     for (let i = 1; i < edgeA.length; i++) ctx.lineTo(edgeA[i]!.x, edgeA[i]!.y);
@@ -349,56 +552,241 @@ export function drawCape(
     ctx.closePath();
   };
 
-  const base = hurt ? '#ffffff' : style.color;
-  ctx.fillStyle = base;
+  // A point ON the cloth: t down the spine (0 clasp → 1 hem), q across
+  // it (−1 left edge → 1 right edge). Anchors patterns and effects to
+  // the fabric so they ride every fold and swing.
+  const clothPoint = (t: number, q: number): Pt => {
+    const fi = Math.max(0, Math.min(n - 1.001, t * (n - 1)));
+    const i0 = Math.floor(fi);
+    const f = fi - i0;
+    const base = lerpPt(pts[i0]!, pts[i0 + 1]!, f);
+    const edge = q >= 0 ? lerpPt(right[i0]!, right[i0 + 1]!, f) : lerpPt(left[i0]!, left[i0 + 1]!, f);
+    return lerpPt(base, edge, Math.abs(q));
+  };
+
+  ctx.fillStyle = hurt ? '#ffffff' : style.color;
   ctx.strokeStyle = OUTLINE;
   ctx.lineJoin = 'round';
   ctx.lineWidth = Math.max(1.5, wk * 0.045);
-  trace(left, right);
-  ctx.fill();
-  ctx.stroke();
+  ctx.fill(path);
+  ctx.stroke(path);
+  if (hurt) return;
 
-  if (!hurt) {
-    // Hard fold shade down one half — flat art, no gradients.
-    ctx.fillStyle = shade(style.color, -16);
-    trace(pts, right);
+  // Everything decorative stays inside the silhouette.
+  ctx.save();
+  ctx.clip(path);
+
+  // ---- woven pattern, under the shading so the fold reads over it.
+  if (style.pattern === 'stripe') {
+    // A herald's center stripe running the cloth's full length.
+    ctx.fillStyle = style.trim;
+    ctx.beginPath();
+    ctx.moveTo(clothPoint(0, -0.3).x, clothPoint(0, -0.3).y);
+    for (let i = 0; i < n; i++) {
+      const p = clothPoint(i / (n - 1), -0.3);
+      ctx.lineTo(p.x, p.y);
+    }
+    for (let i = n - 1; i >= 0; i--) {
+      const p = clothPoint(i / (n - 1), 0.3);
+      ctx.lineTo(p.x, p.y);
+    }
+    ctx.closePath();
     ctx.fill();
-    // Spine crease: one dark fold line down the middle of the cloth —
-    // the cheapest cut that makes a flat ribbon read as draped fabric.
-    if (n >= 4) {
-      ctx.strokeStyle = shade(style.color, -30);
-      ctx.lineWidth = Math.max(1, wk * 0.022);
+  } else if (style.pattern === 'bands') {
+    // Shaggy fur rows — alternate rungs darkened.
+    for (let i = 1; i < n - 1; i += 2) {
+      ctx.fillStyle = shade(style.color, -10);
+      trace([left[i]!, left[i + 1]!], [right[i]!, right[i + 1]!]);
+      ctx.fill();
+    }
+  } else if (style.pattern === 'border') {
+    // A woven edge running the full length of both sides.
+    ctx.strokeStyle = style.trim;
+    ctx.lineWidth = Math.max(1.5, wk * 0.05);
+    for (const edge of [left, right]) {
       ctx.beginPath();
-      ctx.moveTo(pts[1]!.x, pts[1]!.y);
-      for (let i = 2; i < n - 1; i++) ctx.lineTo(pts[i]!.x, pts[i]!.y);
+      ctx.moveTo(edge[0]!.x, edge[0]!.y);
+      for (let i = 1; i < n; i++) ctx.lineTo(edge[i]!.x, edge[i]!.y);
       ctx.stroke();
     }
-    // Lit mantle plane across the shoulders.
-    ctx.fillStyle = shade(style.color, 12);
-    trace([left[0]!, left[1]!], [right[0]!, right[1]!]);
+  } else if (style.pattern === 'patch') {
+    // One honest repair, stitched on slightly askew.
+    const a = clothPoint(0.42, 0.12);
+    const b = clothPoint(0.42, 0.62);
+    const c = clothPoint(0.68, 0.66);
+    const d = clothPoint(0.68, 0.08);
+    ctx.fillStyle = shade(style.color, 16);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.lineTo(c.x, c.y);
+    ctx.lineTo(d.x, d.y);
+    ctx.closePath();
     ctx.fill();
-    // Trim hem — the accent that names the cape at a glance. A hem
-    // moving fast catches the light: the kick that sells the swing.
-    ctx.fillStyle = shade(style.trim, Math.round(hemGlow * 22));
-    trace([left[n - 2]!, left[n - 1]!], [right[n - 2]!, right[n - 1]!]);
-    ctx.fill();
-    if (style.emblem && n >= 4) {
-      // Champion chevron: a hard triangle stitched below the mantle —
-      // sized from the cloth's actual rung there, so it foreshortens
-      // with the fabric it's sewn onto.
-      const m = pts[2]!;
-      const cw = widths[2]! * 0.72;
-      ctx.fillStyle = style.trim;
-      ctx.beginPath();
+    ctx.strokeStyle = shade(style.color, -22);
+    ctx.lineWidth = Math.max(1, wk * 0.018);
+    ctx.setLineDash([wk * 0.035, wk * 0.03]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // ---- hard fold shade down one half — flat art, no gradients.
+  ctx.fillStyle = shade(style.color, -16);
+  ctx.globalAlpha = 0.82;
+  trace(pts, right);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Spine crease: one dark fold line down the middle of the cloth —
+  // the cheapest cut that makes a flat ribbon read as draped fabric.
+  if (n >= 4) {
+    ctx.strokeStyle = shade(style.color, -30);
+    ctx.lineWidth = Math.max(1, wk * 0.022);
+    ctx.beginPath();
+    ctx.moveTo(pts[1]!.x, pts[1]!.y);
+    for (let i = 2; i < n - 1; i++) ctx.lineTo(pts[i]!.x, pts[i]!.y);
+    ctx.stroke();
+  }
+
+  // ---- lit mantle plane across the shoulders.
+  ctx.fillStyle = shade(style.color, 12);
+  trace([left[0]!, left[1]!], [right[0]!, right[1]!]);
+  ctx.fill();
+
+  // ---- living effects: the prestige tier breathes. All deterministic
+  // from time + the cape's own phase, all riding the actual cloth.
+  const fxc = style.fxColor ?? style.trim;
+  if (style.fx === 'ember' || style.fx === 'storm') {
+    // These cloths smoulder/charge even at rest: the hem pulses.
+    hemGlow = Math.max(hemGlow, 0.35 + 0.35 * Math.sin(tSec * 2.3 + phase));
+  }
+
+  // ---- trim hem — the accent that names the cape at a glance.
+  ctx.fillStyle = shade(style.trim, Math.round(hemGlow * 22));
+  trace([left[n - 2]!, left[n - 1]!], [right[n - 2]!, right[n - 1]!]);
+  ctx.fill();
+
+  // ---- emblem, stitched below the mantle and sized from the rung
+  // it's sewn onto so it foreshortens with the fabric.
+  if (style.emblem && n >= 4) {
+    const m = pts[2]!;
+    const cw = widths[2]! * 0.72;
+    ctx.fillStyle = style.trim;
+    ctx.beginPath();
+    if (style.emblem === 'chevron') {
       ctx.moveTo(m.x - cw, m.y - cw * 0.5);
       ctx.lineTo(m.x + cw, m.y - cw * 0.5);
       ctx.lineTo(m.x, m.y + cw * 0.9);
+    } else if (style.emblem === 'diamond') {
+      ctx.moveTo(m.x, m.y - cw * 0.8);
+      ctx.lineTo(m.x + cw * 0.6, m.y);
+      ctx.lineTo(m.x, m.y + cw * 0.8);
+      ctx.lineTo(m.x - cw * 0.6, m.y);
+    } else {
+      // bolt
+      ctx.moveTo(m.x - cw * 0.25, m.y - cw * 0.8);
+      ctx.lineTo(m.x + cw * 0.35, m.y - cw * 0.15);
+      ctx.lineTo(m.x + cw * 0.05, m.y - 0.05 * cw);
+      ctx.lineTo(m.x + cw * 0.3, m.y + cw * 0.8);
+      ctx.lineTo(m.x - 0.35 * cw, m.y + cw * 0.05);
+      ctx.lineTo(m.x - 0.02 * cw, m.y - cw * 0.1);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  if (style.fx === 'ember') {
+    // Sparks born at the hem climb the cloth and die as they cool.
+    for (let k = 0; k < 6; k++) {
+      const u = fract(tSec * (0.3 + ((k * 37) % 10) / 33) + k * 0.618 + phase);
+      const t = 0.95 - u * 0.75;
+      const q = (((k * 53) % 100) / 50 - 1) * 0.75;
+      const p = clothPoint(t, q);
+      const sz = wk * 0.05 * (1 - u * 0.55);
+      ctx.globalAlpha = (1 - u) * 0.9;
+      ctx.fillStyle = k % 2 === 0 ? fxc : '#ff9a3d';
+      ctx.fillRect(p.x - sz / 2, p.y - sz / 2, sz, sz);
+    }
+    ctx.globalAlpha = 1;
+  } else if (style.fx === 'storm') {
+    // A charge crackles across the weave in stuttering arcs.
+    const beat = tSec * 5.7 + phase * 4;
+    if (Math.sin(beat) > 0.78) {
+      const cell = Math.floor(beat / Math.PI);
+      const t0 = 0.2 + ((cell * 29) % 50) / 100;
+      const q0 = ((cell * 61) % 100) / 60 - 0.8;
+      const p1 = clothPoint(t0, q0);
+      const p2 = clothPoint(t0 + 0.18, q0 + 0.45);
+      const p3 = clothPoint(t0 + 0.32, q0 - 0.2);
+      ctx.strokeStyle = fxc;
+      ctx.lineWidth = Math.max(1.5, wk * 0.032);
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.stroke();
+    }
+  } else if (style.fx === 'stars') {
+    // A constellation sewn into the cloth, each star on its own
+    // twinkle clock — plus a slow aurora breathing across the weave.
+    const au = fract(tSec * 0.1 + phase * 0.2);
+    const t1 = au * 1.3 - 0.15;
+    const b1 = clothPoint(Math.max(0, Math.min(1, t1)), 0);
+    const b2 = clothPoint(Math.max(0, Math.min(1, t1 + 0.22)), 0);
+    ctx.fillStyle = `hsl(${Math.round(fract(tSec * 0.05 + phase) * 360)} 60% 70% / 0.14)`;
+    ctx.fillRect(
+      Math.min(b1.x, b2.x) - wk * 0.3,
+      Math.min(b1.y, b2.y),
+      Math.abs(b2.x - b1.x) + wk * 0.6,
+      Math.max(4, Math.abs(b2.y - b1.y)),
+    );
+    for (let k = 0; k < 8; k++) {
+      const t = 0.12 + ((k * 29) % 70) / 85;
+      const q = ((((k * 61) % 160) / 80 - 1) * 0.8);
+      const p = clothPoint(t, q);
+      const tw = 0.5 + 0.5 * Math.sin(tSec * (1.3 + (k % 5) * 0.55) + k * 2.1 + phase);
+      const sz = wk * 0.032 * (0.7 + 0.7 * tw);
+      ctx.globalAlpha = 0.35 + 0.65 * tw;
+      ctx.fillStyle = fxc;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - sz);
+      ctx.lineTo(p.x + sz, p.y);
+      ctx.lineTo(p.x, p.y + sz);
+      ctx.lineTo(p.x - sz, p.y);
       ctx.closePath();
       ctx.fill();
     }
-    // Outline again over the shading so the silhouette stays crisp.
-    ctx.strokeStyle = OUTLINE;
-    trace(left, right);
-    ctx.stroke();
+    ctx.globalAlpha = 1;
+  } else if (style.fx === 'shimmer' || style.fx === 'aurora') {
+    // A glint band sweeping slowly down the cloth; aurora cycles hue.
+    const u = fract(tSec * 0.2 + phase * 0.3);
+    const t1 = Math.max(0, Math.min(1, u * 1.4 - 0.2));
+    const t2 = Math.max(0, Math.min(1, t1 + 0.16));
+    if (t2 > t1) {
+      ctx.fillStyle =
+        style.fx === 'aurora'
+          ? `hsl(${Math.round(fract(tSec * 0.06 + phase) * 360)} 65% 70% / 0.2)`
+          : fxc;
+      ctx.globalAlpha = style.fx === 'aurora' ? 1 : 0.22;
+      const a1 = clothPoint(t1, -1);
+      const a2 = clothPoint(t1, 1);
+      const a3 = clothPoint(t2, 1);
+      const a4 = clothPoint(t2, -1);
+      ctx.beginPath();
+      ctx.moveTo(a1.x, a1.y);
+      ctx.lineTo(a2.x, a2.y);
+      ctx.lineTo(a3.x, a3.y);
+      ctx.lineTo(a4.x, a4.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
   }
+
+  ctx.restore();
+
+  // Outline restated over the decor so the silhouette stays crisp.
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = Math.max(1.5, wk * 0.045);
+  ctx.stroke(path);
 }

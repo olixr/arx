@@ -156,6 +156,8 @@ const defs: NpcDef[] = [
       { item: 'coins', qty: [4, 20], chance: 0.8 },
       { item: 'arrow', qty: [6, 14], chance: 0.5 },
       { item: 'straw_decoy', qty: [1, 1], chance: 0.05 },
+      // Throwers carry the warband's colors.
+      { item: 'cape_banner', qty: [1, 1], chance: 0.06 },
     ],
     respawnSec: 30,
     color: '#6a9a3a',
@@ -182,6 +184,7 @@ const defs: NpcDef[] = [
       { item: 'iron_ore', qty: [1, 1], chance: 0.15 },
       { item: 'ember_charm', qty: [1, 1], chance: 0.03 },
       { item: 'cape_emberweave', qty: [1, 1], chance: 0.04 },
+      { item: 'cape_midnight', qty: [1, 1], chance: 0.035 },
     ],
     respawnSec: 30,
     color: '#d8d4c8',
@@ -214,6 +217,11 @@ const defs: NpcDef[] = [
       { item: 'tome_of_embers', qty: [1, 1], chance: 0.15 },
       // He wears it into battle; beat him and it's yours.
       { item: 'cape_champion', qty: [1, 1], chance: 0.2 },
+      // The prestige wardrobe: rare colors worth the delve.
+      { item: 'cape_storm', qty: [1, 1], chance: 0.1 },
+      { item: 'cape_royal', qty: [1, 1], chance: 0.08 },
+      { item: 'cape_celestial', qty: [1, 1], chance: 0.05 },
+      { item: 'cape_phoenix', qty: [1, 1], chance: 0.04 },
     ],
     respawnSec: 90,
     color: '#e8e2d0',
