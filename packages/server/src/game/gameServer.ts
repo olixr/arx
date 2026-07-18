@@ -310,6 +310,16 @@ function rollDamage(maxHit: number): { dmg: number; crit: boolean } {
   return { dmg: Math.floor(Math.random() * (maxHit + 1)), crit: false };
 }
 
+/**
+ * Basic-attack roll: a landed basic ALWAYS chips at least 1. At
+ * hack-and-slash cadence a stream of zero-rolls reads as broken, and
+ * reliable chips are what make on-hit haste a rhythm you can trust.
+ */
+function rollBasic(maxHit: number): { dmg: number; crit: boolean } {
+  const roll = rollDamage(maxHit);
+  return { dmg: Math.max(1, roll.dmg), crit: roll.crit };
+}
+
 export class GameServer {
   tickCount = 0;
 
@@ -1314,7 +1324,7 @@ export class GameServer {
     if (sweepAll) {
       // The finisher clears the crowd — everyone in the arc eats it.
       for (const npcEid of inArc) {
-        const { dmg, crit } = rollDamage(maxHit);
+        const { dmg, crit } = rollBasic(maxHit);
         this.damageNpc(npcEid, dmg, eid, 'melee', { crit, knockbackMult, basic: true });
       }
       return;
@@ -1331,7 +1341,7 @@ export class GameServer {
       );
     }
     if (bestTarget !== null) {
-      const { dmg, crit } = rollDamage(maxHit);
+      const { dmg, crit } = rollBasic(maxHit);
       this.damageNpc(bestTarget, dmg, eid, 'melee', { crit, knockbackMult, basic: true });
     }
   }
@@ -2161,7 +2171,7 @@ export class GameServer {
           const dx = npos.x - pos.x;
           const dy = npos.y - pos.y;
           if (dx * dx + dy * dy < (npc.def.radius + 0.25) ** 2) {
-            const { dmg, crit } = rollDamage(proj.maxHit);
+            const { dmg, crit } = proj.basic ? rollBasic(proj.maxHit) : rollDamage(proj.maxHit);
             this.damageNpc(npcEid, dmg, proj.ownerEid, proj.style, {
               crit,
               basic: proj.basic,

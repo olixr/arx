@@ -33,7 +33,7 @@ export function snapShot(
   range: number,
 ): { maxHit: number; speed: number; range: number } {
   return {
-    maxHit: Math.max(1, Math.round(maxHit * 0.45)),
+    maxHit: Math.max(1, Math.round(maxHit * 0.3)),
     speed: speed * 0.85,
     range: range * 0.55,
   };
@@ -51,8 +51,8 @@ export function nextSnapStage(prevStage: number, withinGrace: boolean): number {
  * Staff basics are a 1-2-HEAVY rhythm: two quick bolts, then a slow
  * fat orb that splashes and shoves. Same chain law as the melee combo.
  */
-export const HEAVY_BOLT_MULT = 2.0;
-export const HEAVY_BOLT_RECOVERY_MULT = 1.8;
+export const HEAVY_BOLT_MULT = 3.0;
+export const HEAVY_BOLT_RECOVERY_MULT = 2.25;
 export const HEAVY_BOLT_SPLASH = 1.2; // tiles around the impact
 export const HEAVY_BOLT_KNOCKBACK = 1.6;
 
@@ -95,10 +95,14 @@ export function isDrawSlowed(frame: Pick<InputFrame, 'buttons'>, style: string |
 export const COMBO_STAGES = 3;
 /** Ticks after an attack's cooldown ends during which the chain holds. */
 export const COMBO_GRACE_TICKS = 14; // 0.7s to continue the string
-/** The finisher hits harder, shoves harder, and needs a longer recovery. */
-export const FINISHER_DAMAGE_MULT = 1.5;
+/**
+ * Hack-and-slash cadence: the string flows fast — swing, swing,
+ * FINISHER, breath. Each swing chips small; the finisher is the
+ * payoff, and its longer recovery is the rhythm's rest note.
+ */
+export const FINISHER_DAMAGE_MULT = 2.5;
 export const FINISHER_KNOCKBACK_MULT = 1.8;
-export const FINISHER_RECOVERY_MULT = 1.6;
+export const FINISHER_RECOVERY_MULT = 2.0;
 
 /**
  * Next combo stage given the stage of the previous swing and whether the

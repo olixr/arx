@@ -152,8 +152,10 @@ export function reactionDamage(oldPower: number, newPower: number, r: ReactionDe
  * cooldowns forward. Charged shots at full draw pull harder — the
  * patient archer gets her volley back in two arrows.
  */
-export const HASTE_ON_HIT_TICKS = 8; // 0.4 s per landed basic
-export const HASTE_FULL_DRAW_TICKS = 16;
+// Retuned for hack-and-slash cadence: basics land ~3× as often now, so
+// each landed hit pulls less — total haste per second stays similar.
+export const HASTE_ON_HIT_TICKS = 4; // 0.2 s per landed basic
+export const HASTE_FULL_DRAW_TICKS = 12;
 
 export function hasteOnHit(cooldownLeft: number, fullDraw = false): number {
   const chunk = fullDraw ? HASTE_FULL_DRAW_TICKS : HASTE_ON_HIT_TICKS;

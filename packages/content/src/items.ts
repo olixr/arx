@@ -95,7 +95,7 @@ const defs: ItemDef[] = [
     value: 90,
     equipSlot: 'weapon',
     // Better metal, longer blade: reach is part of the upgrade.
-    weapon: { style: 'melee', damage: 5, cooldownTicks: 24, range: 1.95, art: 'lunge' },
+    weapon: { style: 'melee', damage: 2, cooldownTicks: 7, range: 1.95, art: 'lunge' },
     color: '#8d9299',
     code: 'Is',
   },
@@ -105,7 +105,7 @@ const defs: ItemDef[] = [
     stackable: false,
     value: 240,
     equipSlot: 'weapon',
-    weapon: { style: 'melee', damage: 7, cooldownTicks: 24, range: 2.05, art: 'shockwave' },
+    weapon: { style: 'melee', damage: 3, cooldownTicks: 7, range: 2.05, art: 'shockwave' },
     color: '#b8bec8',
     code: 'Ss',
   },
@@ -125,7 +125,9 @@ const defs: ItemDef[] = [
     stackable: false,
     value: 32,
     equipSlot: 'weapon',
-    weapon: { style: 'melee', damage: 3, cooldownTicks: 24, range: 1.7, art: 'crescent_sweep' },
+    // Hack-and-slash cadence: swings every 0.35 s that chip small; the
+    // combo finisher and Arts carry the big numbers.
+    weapon: { style: 'melee', damage: 1, cooldownTicks: 7, range: 1.7, art: 'crescent_sweep' },
     color: '#a4744b',
     code: 'Sw',
   },
@@ -139,7 +141,7 @@ const defs: ItemDef[] = [
     // is just release recovery — pacing lives in the draw itself.
     weapon: {
       style: 'archery',
-      damage: 6,
+      damage: 5,
       cooldownTicks: 8,
       range: 7,
       ammo: 'arrow',
@@ -164,11 +166,11 @@ const defs: ItemDef[] = [
     value: 45,
     equipSlot: 'weapon',
     weapon: {
-      // Quick weak bolt — magic's basic is a rhythm keeper; its power
-      // lives in the Art (statuses, AoE, reactions).
+      // Rapid chip bolts — the wand rhythm is bolt-bolt-HEAVY; its real
+      // power lives in the heavy beat and the Art (statuses, reactions).
       style: 'magic',
-      damage: 2,
-      cooldownTicks: 14,
+      damage: 1,
+      cooldownTicks: 8,
       range: 7,
       projectileSpeed: 13,
       art: 'frost_nova',
@@ -184,8 +186,8 @@ const defs: ItemDef[] = [
     equipSlot: 'weapon',
     weapon: {
       style: 'magic',
-      damage: 3,
-      cooldownTicks: 14,
+      damage: 2,
+      cooldownTicks: 8,
       range: 7,
       projectileSpeed: 13,
       art: 'fireburst',
@@ -201,7 +203,7 @@ const defs: ItemDef[] = [
     equipSlot: 'weapon',
     weapon: {
       style: 'archery',
-      damage: 7,
+      damage: 6,
       cooldownTicks: 9,
       range: 8,
       ammo: 'arrow',

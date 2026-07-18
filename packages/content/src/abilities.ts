@@ -21,7 +21,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 130, // 6.5 s
     castFreezeTicks: 5,
     shape: 'nova',
-    damage: 4,
+    damage: 6,
     radius: 1.9,
     knockback: 1.2,
     status: { status: 'bleed', power: 1, durationTicks: 70 },
@@ -34,7 +34,7 @@ const defs: AbilityDef[] = [
     code: 'Lu',
     cooldownTicks: 150, // 7.5 s
     shape: 'dash_strike',
-    damage: 6,
+    damage: 8,
     dashTiles: 3.4,
     status: { status: 'bleed', power: 1, durationTicks: 70 },
   },
@@ -47,7 +47,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 180, // 9 s
     castFreezeTicks: 6,
     shape: 'nova',
-    damage: 8,
+    damage: 11,
     radius: 2.4,
     knockback: 2.6,
   },
@@ -59,7 +59,7 @@ const defs: AbilityDef[] = [
     code: 'Vo',
     cooldownTicks: 160, // 8 s
     shape: 'projectile_fan',
-    damage: 4,
+    damage: 6,
     range: 7,
     projectiles: 5,
     spreadArc: 0.55,
@@ -73,7 +73,7 @@ const defs: AbilityDef[] = [
     code: 'Pb',
     cooldownTicks: 170, // 8.5 s
     shape: 'projectile_fan',
-    damage: 9,
+    damage: 12,
     range: 9,
     projectiles: 1,
     projectileSpeed: 19,
@@ -88,7 +88,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 150, // 7.5 s
     castFreezeTicks: 5,
     shape: 'nova',
-    damage: 3,
+    damage: 4,
     radius: 2.6,
     status: { status: 'chill', power: 1, durationTicks: 80 },
   },
@@ -100,7 +100,7 @@ const defs: AbilityDef[] = [
     code: 'Fb',
     cooldownTicks: 170, // 8.5 s
     shape: 'ground_aoe',
-    damage: 7,
+    damage: 10,
     range: 6,
     radius: 1.8,
     fuseTicks: 16, // 0.8 s telegraph
@@ -116,7 +116,7 @@ const defs: AbilityDef[] = [
     code: 'Ed',
     cooldownTicks: 240, // 12 s
     shape: 'dash_strike',
-    damage: 3,
+    damage: 4,
     dashTiles: 3.0,
     status: { status: 'burn', power: 1, durationTicks: 60 },
   },
@@ -139,7 +139,7 @@ const defs: AbilityDef[] = [
     code: 'Sn',
     cooldownTicks: 300, // 15 s
     shape: 'summon',
-    damage: 3,
+    damage: 4,
     summon: { kind: 'snare_trap', durationTicks: 600, radius: 1.1, power: 1 },
   },
   {
@@ -151,7 +151,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 320, // 16 s
     castFreezeTicks: 4,
     shape: 'nova',
-    damage: 3,
+    damage: 4,
     radius: 2.4,
     // Stun caps at SHOCK_MAX_TICKS; the rest is lingering static charge
     // that reaction follow-ups can detonate at human speed.
@@ -181,7 +181,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 170, // 8.5 s
     castFreezeTicks: 6,
     shape: 'melee_arc',
-    damage: 7,
+    damage: 10,
     range: 2.2,
     arc: 1.1,
     knockback: 2.8,
@@ -194,7 +194,7 @@ const defs: AbilityDef[] = [
     code: 'Ww',
     cooldownTicks: 240, // 12 s
     shape: 'pulse_nova',
-    damage: 3,
+    damage: 4,
     radius: 1.8,
     pulses: 3,
     pulseEveryTicks: 8,
@@ -219,7 +219,7 @@ const defs: AbilityDef[] = [
     code: 'Ts',
     cooldownTicks: 160, // 8 s
     shape: 'dash_strike',
-    damage: 5,
+    damage: 7,
     dashTiles: -2.6, // away from the aim — the disengage tool
     projectiles: 1, // ...and the arrow flies at whatever you fled
     projectileSpeed: 16,
@@ -233,7 +233,7 @@ const defs: AbilityDef[] = [
     code: 'Ra',
     cooldownTicks: 220, // 11 s
     shape: 'ground_aoe',
-    damage: 6,
+    damage: 9,
     range: 6,
     radius: 2.0,
     fuseTicks: 18,
@@ -246,7 +246,7 @@ const defs: AbilityDef[] = [
     code: 'Tw',
     cooldownTicks: 180, // 9 s
     shape: 'projectile_fan',
-    damage: 7,
+    damage: 10,
     range: 8,
     projectiles: 2,
     spreadArc: 0.12,
@@ -261,7 +261,7 @@ const defs: AbilityDef[] = [
     code: 'Ab',
     cooldownTicks: 160, // 8 s
     shape: 'chain_zap',
-    damage: 5,
+    damage: 7,
     range: 6,
     radius: 3.0,
     chainTargets: 3,
@@ -286,7 +286,7 @@ const defs: AbilityDef[] = [
     code: 'Ms',
     cooldownTicks: 260, // 13 s
     shape: 'ground_aoe',
-    damage: 9,
+    damage: 13,
     range: 6,
     radius: 2.2,
     fuseTicks: 20,
@@ -304,7 +304,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 900, // 45 s — an ultimate earns its moment
     castFreezeTicks: 6,
     shape: 'pulse_nova',
-    damage: 6,
+    damage: 9,
     radius: 2.8,
     pulses: 3,
     pulseEveryTicks: 12,
