@@ -14,5 +14,7 @@ export const config = {
   /** Guest (accountless) joins — on by default for local dev and bots. */
   allowGuest: process.env.ALLOW_GUEST !== '0',
   worldSeed: envInt('WORLD_SEED', 1337),
+  /** Dev chat commands (/give) — on for local dev, off in production. */
+  devCommands: process.env.DEV_COMMANDS !== '0',
   dataDir: process.env.DATA_DIR ?? new URL('../../../data/', import.meta.url).pathname,
 };

@@ -36,6 +36,12 @@ export class Predictor {
   private errX = 0;
   private errY = 0;
   private lastDodgeSeq = -999;
+  /** Most recent locally-committed ability cast, mirrored from the
+   * server's rules so casts don't rubber-band: movement freezes for the
+   * commitment window, and dash Arts move the body on the cast frame. */
+  private lastCastSeq = -999;
+  private lastCastFreeze = 0;
+  private lastCastDash: { tiles: number; aim: number } | null = null;
   /** Fires when a dodge impulse applies locally (for whoosh/trail FX). */
   onDodge: ((x: number, y: number, mx: number, my: number) => void) | null = null;
   /**
@@ -57,10 +63,33 @@ export class Predictor {
     this.errX = 0;
     this.errY = 0;
     this.lastDodgeSeq = -999;
+    this.lastCastSeq = -999;
+    this.lastCastDash = null;
+  }
+
+  /** ClientGame commits a cast on input frame `seq`. */
+  registerCast(seq: number, freezeTicks: number, dash: { tiles: number; aim: number } | null): void {
+    this.lastCastSeq = seq;
+    this.lastCastFreeze = freezeTicks;
+    this.lastCastDash = dash;
+  }
+
+  private applyCastDash(pos: Vec2, dash: { tiles: number; aim: number }): Vec2 {
+    const frame = { mx: Math.cos(dash.aim), my: Math.sin(dash.aim) };
+    let out = pos;
+    const steps = Math.ceil(dash.tiles / 0.4);
+    for (let i = 0; i < steps; i++) {
+      out = stepMovement(out, frame, dash.tiles / steps, 1, this.collision);
+    }
+    return out;
   }
 
   /** Per-frame speed — drawing a bow brakes exactly like the server. */
   private frameSpeed(frame: InputFrame): number {
+    // Rooted while committed to a cast (the frames after the cast frame).
+    if (frame.seq > this.lastCastSeq && frame.seq <= this.lastCastSeq + this.lastCastFreeze) {
+      return 0;
+    }
     return isDrawSlowed(frame, this.weaponStyle)
       ? this.speed * DRAW_MOVE_FACTOR
       : this.speed;
@@ -80,6 +109,9 @@ export class Predictor {
       }
       out = applyDodge(out, frame.mx, frame.my, this.collision);
     }
+    if (frame.seq === this.lastCastSeq && this.lastCastDash) {
+      out = this.applyCastDash(out, this.lastCastDash);
+    }
     return out;
   }
 
@@ -97,9 +129,12 @@ export class Predictor {
     let pos = { ...authoritative };
     for (const frame of this.pending) {
       pos = stepMovement(pos, frame, this.frameSpeed(frame), TICK_DT, this.collision);
-      // Replay the committed dodge impulse on its exact frame.
+      // Replay the committed dodge/cast impulses on their exact frames.
       if (frame.seq === this.lastDodgeSeq) {
         pos = applyDodge(pos, frame.mx, frame.my, this.collision);
+      }
+      if (frame.seq === this.lastCastSeq && this.lastCastDash) {
+        pos = this.applyCastDash(pos, this.lastCastDash);
       }
     }
     this.pos = pos;

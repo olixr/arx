@@ -180,6 +180,32 @@ export class Sfx {
     }
   }
 
+  /** Weapon Art / relic cast — a rising committed whoomph. */
+  art(): void {
+    this.tone(190, 0.16, { type: 'sawtooth', slide: 260, volume: 0.3 });
+    this.tone(520, 0.2, { type: 'sine', slide: 340, volume: 0.22, delay: 0.03 });
+    this.noise(0.1, 0.12);
+  }
+
+  /** A status reaction detonating — the combo payoff sting. */
+  reaction(): void {
+    this.tone(740, 0.1, { type: 'square', volume: 0.3 });
+    this.tone(990, 0.16, { type: 'square', slide: -420, volume: 0.26, delay: 0.05 });
+    this.noise(0.14, 0.2, 0.02);
+  }
+
+  /** Telegraphed blast landing. */
+  blast(): void {
+    this.tone(120, 0.24, { type: 'sawtooth', slide: -70, volume: 0.4 });
+    this.noise(0.2, 0.3);
+  }
+
+  /** The hotbar radial refilling to ready — a soft affirmative tick. */
+  abilityReady(): void {
+    this.tone(660, 0.06, { type: 'sine', volume: 0.16, detune: false });
+    this.tone(880, 0.09, { type: 'sine', volume: 0.14, delay: 0.05, detune: false });
+  }
+
   zap(): void {
     this.tone(520, 0.14, { type: 'sawtooth', slide: -300, volume: 0.28 });
     this.tone(780, 0.1, { type: 'sine', slide: -400, volume: 0.2, delay: 0.02 });

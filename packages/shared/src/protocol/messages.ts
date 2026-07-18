@@ -1,3 +1,4 @@
+import { EQUIP_SLOTS } from '../entities.js';
 import type { EntityId, EntityMeta, EquipSlot } from '../entities.js';
 import type { InputFrame } from '../sim/input.js';
 import type { SkillId, SkillXp } from '../skills.js';
@@ -248,6 +249,37 @@ export interface S2CBank {
   items: Record<string, number>;
 }
 
+/**
+ * Own-player ability cooldowns, remaining ticks per slot. Sent on every
+ * change event (cast, on-hit haste, equip swap); the client counts down
+ * between messages so the hotbar radial stays smooth.
+ */
+export interface S2CCooldowns {
+  t: 'cooldowns';
+  /** [art, relic] remaining ticks. */
+  cd: [number, number];
+  /** [art, relic] full durations, for the radial fraction. */
+  max: [number, number];
+}
+
+/**
+ * A combat effect the client should render — one generic event for
+ * ability shapes, ground telegraphs, and status reactions so the wire
+ * vocabulary stays small while the VFX vocabulary grows freely.
+ */
+export interface S2CFx {
+  t: 'fx';
+  kind: 'nova' | 'telegraph' | 'blast' | 'reaction' | 'summon';
+  x: number;
+  y: number;
+  radius: number;
+  /** telegraph: ticks until detonation; summon: lifetime. */
+  ticks?: number;
+  color?: string;
+  /** reaction: floaty name, e.g. "Thermal Shock". */
+  text?: string;
+}
+
 export type S2CMessage =
   | S2CWelcome
   | S2CReject
@@ -265,7 +297,9 @@ export type S2CMessage =
   | S2CHit
   | S2CDeath
   | S2CUpdate
-  | S2CBank;
+  | S2CBank
+  | S2CCooldowns
+  | S2CFx;
 
 // ------------------------------------------------------- validation
 
@@ -351,7 +385,7 @@ export function parseC2S(raw: string): C2SMessage | null {
     case 'unequip': {
       if (typeof msg.slot !== 'string') return null;
       const slot = msg.slot as EquipSlot;
-      if (!['head', 'body', 'legs', 'weapon', 'offhand', 'tool'].includes(slot)) return null;
+      if (!EQUIP_SLOTS.includes(slot)) return null;
       return { t: 'unequip', slot };
     }
     case 'craft': {

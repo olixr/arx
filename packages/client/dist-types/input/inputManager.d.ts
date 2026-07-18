@@ -13,6 +13,8 @@ export declare class InputManager {
     touchMoveY: number;
     /** Held state of on-screen touch buttons. */
     touchAttack: boolean;
+    touchAbility1: boolean;
+    touchAbility2: boolean;
     /** Gamepad right-stick aim, radians; null when the stick is idle. */
     gamepadAim: number | null;
     /** True when a gamepad supplied the most recent input. */

@@ -1,8 +1,24 @@
+import type { StatusApply, StatusId } from '@devcraft/shared';
+
 /** Loot: each entry rolls independently; qty is [min, max]. */
 export interface LootEntry {
   item: string;
   qty: [number, number];
   chance: number;
+}
+
+/** A telegraphed special attack, run through the ability interpreter. */
+export interface NpcSpecial {
+  /** AbilityDef id (content/abilities.ts). */
+  ability: string;
+  /** Minimum ticks between uses (the NPC also needs a target in range). */
+  everyTicks: number;
+}
+
+/** Thrown/shot basic attack instead of a melee lunge. */
+export interface NpcRanged {
+  range: number;
+  projectileSpeed: number;
 }
 
 export interface NpcDef {
@@ -28,6 +44,16 @@ export interface NpcDef {
   /** Rendering: body color + radius in tiles. */
   color: string;
   radius: number;
+  /** Telegraphed special attack for higher-tier threats. */
+  special?: NpcSpecial;
+  /** Basic attacks are projectiles with this flight profile. */
+  ranged?: NpcRanged;
+  /** Status carried by this NPC's basic attacks (wolves make you bleed). */
+  attackStatus?: StatusApply;
+  /** Statuses this NPC shrugs off entirely. */
+  resist?: readonly StatusId[];
+  /** Statuses that hit this NPC twice as hard. */
+  weak?: readonly StatusId[];
 }
 
 const defs: NpcDef[] = [
@@ -107,10 +133,36 @@ const defs: NpcDef[] = [
       { item: 'coins', qty: [3, 18], chance: 0.8 },
       { item: 'bronze_sword', qty: [1, 1], chance: 0.08 },
       { item: 'arrow', qty: [4, 12], chance: 0.25 },
+      { item: 'snare_kit', qty: [1, 1], chance: 0.04 },
     ],
     respawnSec: 25,
     color: '#5c8a3a',
     radius: 0.3,
+  },
+  {
+    id: 'goblin_thrower',
+    name: 'Goblin thrower',
+    level: 6,
+    maxHp: 7,
+    damage: 2,
+    attackRange: 5.5,
+    attackCooldownTicks: 56,
+    aggroRange: 6,
+    leashRange: 12,
+    speed: 3.2,
+    xpReward: 60,
+    loot: [
+      { item: 'bones', qty: [1, 1], chance: 1 },
+      { item: 'coins', qty: [4, 20], chance: 0.8 },
+      { item: 'arrow', qty: [6, 14], chance: 0.5 },
+      { item: 'straw_decoy', qty: [1, 1], chance: 0.05 },
+    ],
+    respawnSec: 30,
+    color: '#6a9a3a',
+    radius: 0.28,
+    // Keeps its distance and lobs rocks — punishes standing still,
+    // rewards closing the gap or trading at range.
+    ranged: { range: 5.5, projectileSpeed: 9 },
   },
   {
     id: 'skeleton',
@@ -128,10 +180,14 @@ const defs: NpcDef[] = [
       { item: 'bones', qty: [1, 2], chance: 1 },
       { item: 'coins', qty: [5, 25], chance: 0.7 },
       { item: 'iron_ore', qty: [1, 1], chance: 0.15 },
+      { item: 'ember_charm', qty: [1, 1], chance: 0.03 },
     ],
     respawnSec: 30,
     color: '#d8d4c8',
     radius: 0.3,
+    // Dry bones: nothing to bleed, everything to burn.
+    resist: ['bleed'],
+    weak: ['burn'],
   },
   {
     id: 'skeleton_champion',
@@ -150,10 +206,17 @@ const defs: NpcDef[] = [
       { item: 'coins', qty: [40, 120], chance: 1 },
       { item: 'iron_sword', qty: [1, 1], chance: 0.4 },
       { item: 'iron_bar', qty: [1, 2], chance: 0.5 },
+      { item: 'storm_bell', qty: [1, 1], chance: 0.12 },
+      { item: 'ember_staff', qty: [1, 1], chance: 0.1 },
+      { item: 'willow_longbow', qty: [1, 1], chance: 0.1 },
     ],
     respawnSec: 90,
     color: '#e8e2d0',
     radius: 0.42,
+    resist: ['bleed'],
+    weak: ['burn'],
+    // The boss move: a telegraphed floor slam you dodge on reaction.
+    special: { ability: 'ground_slam', everyTicks: 160 },
   },
   {
     id: 'wolf',
@@ -170,10 +233,13 @@ const defs: NpcDef[] = [
     loot: [
       { item: 'bones', qty: [1, 1], chance: 1 },
       { item: 'wolf_fur', qty: [1, 1], chance: 0.9 },
+      { item: 'verdant_totem', qty: [1, 1], chance: 0.05 },
     ],
     respawnSec: 35,
     color: '#6a6f7d',
     radius: 0.34,
+    // Wolf bites tear — running from a wolf keeps costing you.
+    attackStatus: { status: 'bleed', power: 1, durationTicks: 60 },
   },
 ];
 
@@ -202,6 +268,7 @@ export const TOWN_SPAWNS: readonly SpawnPoint[] = [
   // Goblins camp south of town.
   { npc: 'goblin', x: 44, y: 110, radius: 8, count: 4 },
   { npc: 'goblin', x: 60, y: 116, radius: 8, count: 3 },
+  { npc: 'goblin_thrower', x: 52, y: 113, radius: 8, count: 2 },
   // Wolves in the western woods.
   { npc: 'wolf', x: -18, y: 40, radius: 8, count: 2 },
   { npc: 'wolf', x: -24, y: 60, radius: 8, count: 2 },

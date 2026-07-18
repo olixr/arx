@@ -514,3 +514,92 @@ h3 {
   height: 100%;
   background: linear-gradient(180deg, var(--gold-bright), #b8822b);
 }
+
+/* ---------------------------------- hotbar */
+
+#hotbar {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.hotbar-slot {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--wood-light) 0%, var(--wood-dark) 100%);
+  border: 2px solid var(--wood-dark);
+  box-shadow:
+    inset 0 0 0 2px rgba(217, 164, 65, 0.45),
+    4px 4px 0 var(--shadow);
+  cursor: pointer;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.hotbar-slot.empty {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.hotbar-icon {
+  position: absolute;
+  inset: 6px;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: 19px;
+  font-weight: 700;
+  color: rgba(18, 10, 6, 0.82);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 0 0 1.5px rgba(18, 10, 6, 0.35);
+}
+
+.hotbar-wipe {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hotbar-key {
+  position: absolute;
+  right: 3px;
+  bottom: 1px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--parchment);
+  text-shadow: 1px 1px 0 rgba(18, 10, 6, 0.9);
+  pointer-events: none;
+}
+
+.hotbar-slot.cooling .hotbar-icon {
+  filter: saturate(0.4) brightness(0.8);
+}
+
+.hotbar-slot.flash {
+  animation: hotbar-flash 0.35s ease-out;
+}
+
+@keyframes hotbar-flash {
+  0% {
+    box-shadow:
+      inset 0 0 0 2px rgba(255, 244, 214, 0.95),
+      0 0 14px 3px rgba(242, 201, 76, 0.75),
+      4px 4px 0 var(--shadow);
+  }
+  100% {
+    box-shadow:
+      inset 0 0 0 2px rgba(217, 164, 65, 0.45),
+      4px 4px 0 var(--shadow);
+  }
+}

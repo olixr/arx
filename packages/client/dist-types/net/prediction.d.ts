@@ -25,6 +25,12 @@ export declare class Predictor {
     private errX;
     private errY;
     private lastDodgeSeq;
+    /** Most recent locally-committed ability cast, mirrored from the
+     * server's rules so casts don't rubber-band: movement freezes for the
+     * commitment window, and dash Arts move the body on the cast frame. */
+    private lastCastSeq;
+    private lastCastFreeze;
+    private lastCastDash;
     /** Fires when a dodge impulse applies locally (for whoosh/trail FX). */
     onDodge: ((x: number, y: number, mx: number, my: number) => void) | null;
     /**
@@ -35,6 +41,12 @@ export declare class Predictor {
     weaponStyle: string | null;
     constructor(collision: CollisionSource, speed: number);
     reset(pos: Vec2): void;
+    /** ClientGame commits a cast on input frame `seq`. */
+    registerCast(seq: number, freezeTicks: number, dash: {
+        tiles: number;
+        aim: number;
+    } | null): void;
+    private applyCastDash;
     /** Per-frame speed — drawing a bow brakes exactly like the server. */
     private frameSpeed;
     /** The shared per-frame move: normal step + optional dodge impulse. */

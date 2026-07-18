@@ -1,4 +1,5 @@
 import { ChunkStore, type EntityId, type EntityMeta, type EquipSlot, type InvSlot, type SkillXp, type StationType } from '@devcraft/shared';
+import type { AbilityDef } from '@devcraft/shared';
 export type InteractTarget = {
     kind: 'node';
     tx: number;
@@ -43,6 +44,18 @@ export interface ChatLine {
     channel: 'local' | 'system';
     from?: string;
     text: string;
+}
+/** A combat effect in flight (nova ring, telegraph, blast, reaction). */
+export interface ActiveFx {
+    kind: 'nova' | 'telegraph' | 'blast' | 'reaction' | 'summon';
+    x: number;
+    y: number;
+    radius: number;
+    /** telegraph: fuse length in server ticks. */
+    ticks?: number;
+    color?: string;
+    text?: string;
+    bornAt: number;
 }
 export interface GameEvents {
     onChat(line: ChatLine): void;
@@ -94,6 +107,20 @@ export declare class ClientGame {
     } | null;
     /** Damage numbers floating up; pruned by the renderer. */
     readonly floaties: Floaty[];
+    /** Combat effects in flight; pruned by the renderer. */
+    readonly fx: ActiveFx[];
+    /** Hotbar state: performance.now() when each slot comes off cooldown. */
+    readonly abilityReadyAt: [number, number];
+    /** Full cooldowns in ticks (0 = nothing equipped in that slot). */
+    abilityMax: [number, number];
+    /** Fires when the local player commits a cast (FX + audio hooks). */
+    onCastFx: ((slot: 0 | 1, ab: AbilityDef) => void) | null;
+    /** Fires for every arriving combat effect (audio/shake hooks). */
+    onFx: ((fx: ActiveFx) => void) | null;
+    /** Buttons of the previous outgoing frame — press-edge detection. */
+    private prevSentButtons;
+    /** Local player's status bits from the latest snapshot. */
+    ownStatus: number;
     /** Tap-to-move autopilot; cancelled by any manual movement input. */
     private autoPath;
     /** Own hit-flash timer. */
@@ -122,6 +149,16 @@ export declare class ClientGame {
     /** 0..1 charge of the local player's in-progress bow draw. */
     get ownDrawT(): number;
     private equippedWeaponDef;
+    /** The ability granted by a hotbar slot: 0 = weapon Art, 1 = relic. */
+    slotAbilityDef(slot: 0 | 1): AbilityDef | null;
+    /** Remaining cooldown fraction for a hotbar slot, 0 = ready. */
+    abilityCdFraction(slot: 0 | 1, now?: number): number;
+    /**
+     * Local press-edge cast mirror: starts the radial instantly, roots the
+     * predictor for the commitment window, and applies dash Arts so the
+     * server's authoritative version lands where we already are.
+     */
+    private trackOwnCasts;
     /**
      * Local mirror of the server's draw state machine, driven by the same
      * input frames — gives zero-latency draw/release feedback while the

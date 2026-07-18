@@ -31,6 +31,8 @@ export enum PoseState {
    * stoking at a furnace — so the wire stays one byte.
    */
   Craft = 11,
+  /** Firing a weapon Art or relic active — big committed animation. */
+  Art = 12,
 }
 
 /**
@@ -58,7 +60,7 @@ export interface AppearanceData {
   equip: Partial<Record<EquipSlot, string>>;
 }
 
-export type EquipSlot = 'head' | 'body' | 'legs' | 'weapon' | 'offhand' | 'tool';
+export type EquipSlot = 'head' | 'body' | 'legs' | 'weapon' | 'offhand' | 'tool' | 'relic';
 
 export const EQUIP_SLOTS: readonly EquipSlot[] = [
   'head',
@@ -67,4 +69,5 @@ export const EQUIP_SLOTS: readonly EquipSlot[] = [
   'weapon',
   'offhand',
   'tool',
+  'relic',
 ];

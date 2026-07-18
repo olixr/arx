@@ -4,6 +4,7 @@ import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
 import { Renderer } from './render/renderer.js';
 import { ChatUI } from './ui/chat.js';
+import { Hotbar } from './ui/hotbar.js';
 import { Panels } from './ui/panels.js';
 import { StationPanels } from './ui/stationPanels.js';
 import { Sfx } from './audio/sfx.js';
@@ -108,7 +109,7 @@ const game = new ClientGame(input, {
       if (!localStorage.getItem('devcraft.tipsShown')) {
         localStorage.setItem('devcraft.tipsShown', '1');
         for (const tip of [
-          'Move with WASD. Click or press E to chop, mine, fish, and use things.',
+          'Move with WASD. Click or press F to chop, mine, fish, and use things. Q and E fire your abilities.',
           'Press I for your pack — click a tool or weapon to wield it.',
           'A cave lurks in the rocks north-east of the plaza. Bring a sword.',
         ]) {
@@ -219,6 +220,37 @@ const game = new ClientGame(input, {
 });
 
 // Dodge dash feedback: whoosh + a streak of dust kicked out behind.
+const hotbar = new Hotbar(input);
+hotbar.onReady = () => sfx.abilityReady();
+
+// Committing to a cast: sound, hands, and a wind-up ring at the feet.
+game.onCastFx = (_slot, ab) => {
+  sfx.art();
+  input.rumble(0.35, 0.5, 110);
+  const own = game.predictor.renderPos();
+  renderer.addRing(own.x, own.y, ab.color, 0.55);
+};
+
+// Server combat FX → audio + camera feel, scaled by how close they land.
+game.onFx = (fx) => {
+  const own = game.predictor.renderPos();
+  const dist = Math.hypot(fx.x - own.x, fx.y - own.y);
+  if (fx.kind === 'blast') {
+    sfx.blast();
+    if (dist < 7) renderer.shake(dist < fx.radius + 0.5 ? 9 : 5);
+  } else if (fx.kind === 'reaction' && fx.text && fx.text !== 'Resist' && !fx.text.startsWith('+')) {
+    sfx.reaction();
+    renderer.hitstop(0.055);
+    renderer.particles.burst(fx.x, fx.y - 0.3, 18, [fx.color ?? '#f4efe4', '#f4efe4'], {
+      speed: 3.2,
+      life: 0.5,
+    });
+  } else if (fx.kind === 'nova' && dist > 0.9) {
+    // Someone else's nova — a softer report at a distance.
+    sfx.zap();
+  }
+};
+
 game.onDodgeFx = (x, y, mx, my) => {
   const back = Math.atan2(-my, -mx);
   renderer.particles.burst(x, y, 10, ['#cfd6c4', '#efe3c2', '#a8b096'], {
@@ -390,7 +422,7 @@ window.addEventListener('keydown', (e) => {
     buildMode = null;
     renderer.buildGhost = null;
   }
-  if (e.code === 'KeyE') activateTarget(game.findNearbyTarget());
+  if (e.code === 'KeyF') activateTarget(game.findNearbyTarget());
 });
 
 // Click an interactable tile within reach to use it; in build mode the
@@ -551,6 +583,7 @@ function frame(now: number): void {
 
   game.update(now);
   renderer.render(game, frameDt);
+  hotbar.update(game);
 
   fpsCounter++;
   if (now - fpsWindowStart > 1000) {

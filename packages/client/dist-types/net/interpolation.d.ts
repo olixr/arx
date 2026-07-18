@@ -6,6 +6,8 @@ export interface InterpSample {
     dir: number;
     pose: number;
     hpPct: number;
+    /** STATUS_BIT bitfield (burn/chill/shock/bleed VFX). */
+    status: number;
 }
 /**
  * Per-remote-entity buffer of authoritative samples. Rendering samples

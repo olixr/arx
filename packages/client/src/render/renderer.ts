@@ -3,6 +3,7 @@ import {
   DRAW_FULL_TICKS,
   EntityKind,
   PoseState,
+  STATUS_BIT,
   TICK_MS,
   TILE_PX,
   Tile,
@@ -535,6 +536,7 @@ export class Renderer {
     this.particles.update(this.frameDt);
     this.particles.draw(this.ctx, this.liftedWTS, this.camera.scale);
     this.drawRings();
+    this.drawCombatFx(game);
 
     // Depth & atmosphere: emissive bloom, then the tilted-camera
     // tilt-shift bands, then the grade. HUD stays crisp above them.
@@ -2994,8 +2996,10 @@ export class Renderer {
         dir: 0,
         pose: PoseState.Idle,
         hpPct: 255,
+        status: 0,
       };
       const hurt = (remote.hurtUntil ?? 0) > now;
+      if (s.status) this.statusAmbience(s.x, s.y, s.status);
 
       switch (remote.meta.kind) {
         case EntityKind.Player:
@@ -3025,6 +3029,11 @@ export class Renderer {
         case EntityKind.Projectile:
           items.push(this.projectileItem(remote.meta.defId ?? '', s));
           break;
+        case EntityKind.Prop:
+          if (remote.meta.defId?.startsWith('summon_')) {
+            items.push(this.summonItem(remote.meta.defId, s, now));
+          }
+          break;
         default:
           break;
       }
@@ -3032,6 +3041,7 @@ export class Renderer {
 
     if (game.ownEid !== null) {
       const own = game.predictor.renderPos();
+      if (game.ownStatus) this.statusAmbience(own.x, own.y, game.ownStatus);
       items.push(
         this.humanoidItem({
           eid: 'own',
@@ -3117,6 +3127,12 @@ export class Renderer {
       lunge = -0.07 * Math.max(0, 1 - poseT / 0.4); // release recoil
     } else if (e.pose === PoseState.Cast) {
       lunge = 0.05 * Math.max(0, 1 - poseT / 0.4); // push into the cast
+    } else if (e.pose === PoseState.Art) {
+      // Weapon Art: a deep plant-and-coil, then the whole body unleashes.
+      lunge =
+        poseT < 0.3
+          ? -0.12 * (poseT / 0.3)
+          : 0.26 * (1 - (poseT - 0.3) / 0.7);
     }
     // Gathering: square up to the node and swing the belt tool at it.
     // Crafting: square up to the station and work it.
@@ -3475,6 +3491,229 @@ export class Renderer {
     };
   }
 
+  // ----------------------------------------------------- combat fx
+
+  /**
+   * Ambient status VFX riding an entity: embers for burn, drifting
+   * frost for chill, spark jitter for shock, falling drips for bleed.
+   * Spawn rates are frame-time scaled so effect density is fps-stable.
+   */
+  private statusAmbience(x: number, y: number, bits: number): void {
+    const dt = this.frameDt;
+    if (bits & STATUS_BIT.burn) {
+      this.queueGlow(x, y - 0.3, 0.9, '255, 138, 60', 0.3);
+      if (Math.random() < dt * 14) {
+        this.particles.burst(x + (Math.random() - 0.5) * 0.4, y - 0.2, 1, ['#ff8a3c', '#e8763c', '#ffd24a'], {
+          speed: 0.7,
+          life: 0.5,
+          size: 0.08,
+          gravity: -2.2,
+        });
+      }
+    }
+    if (bits & STATUS_BIT.chill) {
+      this.queueGlow(x, y - 0.3, 0.8, '138, 196, 232', 0.22);
+      if (Math.random() < dt * 8) {
+        this.particles.burst(x + (Math.random() - 0.5) * 0.5, y - 0.7, 1, ['#c8ecff', '#8ac4e8'], {
+          speed: 0.25,
+          life: 0.7,
+          size: 0.07,
+          gravity: 0.8,
+        });
+      }
+    }
+    if (bits & STATUS_BIT.shock) {
+      this.queueGlow(x, y - 0.3, 0.9, '232, 224, 106', 0.35);
+      if (Math.random() < dt * 22) {
+        this.particles.burst(x, y - 0.4, 1, ['#e8e06a', '#fff8c8'], {
+          speed: 2.6,
+          life: 0.16,
+          size: 0.06,
+          gravity: 0,
+        });
+      }
+    }
+    if (bits & STATUS_BIT.bleed) {
+      if (Math.random() < dt * 9) {
+        this.particles.burst(x + (Math.random() - 0.5) * 0.3, y - 0.35, 1, ['#c4372a', '#8e2015'], {
+          speed: 0.3,
+          life: 0.45,
+          size: 0.07,
+          gravity: 4.5,
+        });
+      }
+    }
+  }
+
+  /** Placed summons: totem, snare trap, straw decoy. */
+  private summonItem(
+    defId: string,
+    s: { x: number; y: number; hpPct: number },
+    now: number,
+  ): DrawItem {
+    const ctx = this.ctx;
+    const sc = this.camera.scale;
+    const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
+    p.y -= this.renderLift(s.x, s.y) * sc;
+    return {
+      sortY: s.y,
+      drawShadow: () => {
+        ctx.fillStyle = SHADOW_COLOR;
+        ctx.beginPath();
+        ctx.ellipse(p.x + sc * SHADOW_OFFSET, p.y + sc * 0.06, sc * 0.24, sc * 0.1, 0, 0, Math.PI * 2);
+        ctx.fill();
+      },
+      draw: () => {
+        if (defId === 'summon_heal_totem') {
+          // A carved post crowned with a pulsing green gem.
+          const pulse = 0.7 + 0.3 * Math.sin(now / 260);
+          this.queueGlow(s.x, s.y - 0.5, 1.5, '122, 196, 122', 0.3 * pulse);
+          ctx.fillStyle = '#5d452c';
+          ctx.fillRect(p.x - sc * 0.09, p.y - sc * 0.72, sc * 0.18, sc * 0.72);
+          ctx.fillStyle = '#6e5233';
+          ctx.fillRect(p.x - sc * 0.14, p.y - sc * 0.5, sc * 0.28, sc * 0.1);
+          ctx.fillStyle = '#7ac47a';
+          ctx.beginPath();
+          facetCircle(ctx, p.x, p.y - sc * 0.82, sc * (0.13 + 0.02 * pulse), 6, now / 900);
+          ctx.fill();
+          ctx.fillStyle = '#c8f0c8';
+          ctx.beginPath();
+          facetCircle(ctx, p.x, p.y - sc * 0.82, sc * 0.055, 4, now / 900);
+          ctx.fill();
+        } else if (defId === 'summon_snare_trap') {
+          // Low and easy to miss — exactly what a trap should be.
+          ctx.strokeStyle = 'rgba(160, 138, 74, 0.75)';
+          ctx.lineWidth = Math.max(2, sc * 0.05);
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y - sc * 0.04, sc * 0.3, sc * 0.14, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = '#8a744a';
+          for (let i = 0; i < 5; i++) {
+            const a = (i / 5) * Math.PI * 2 + 0.5;
+            const tx = p.x + Math.cos(a) * sc * 0.26;
+            const ty = p.y - sc * 0.04 + Math.sin(a) * sc * 0.12;
+            ctx.beginPath();
+            ctx.moveTo(tx - sc * 0.03, ty);
+            ctx.lineTo(tx, ty - sc * 0.12);
+            ctx.lineTo(tx + sc * 0.03, ty);
+            ctx.closePath();
+            ctx.fill();
+          }
+        } else if (defId === 'summon_decoy') {
+          // The straw double, arms out, taking it like a champ.
+          ctx.fillStyle = '#5d452c';
+          ctx.fillRect(p.x - sc * 0.05, p.y - sc * 0.66, sc * 0.1, sc * 0.66);
+          ctx.fillRect(p.x - sc * 0.32, p.y - sc * 0.52, sc * 0.64, sc * 0.08);
+          ctx.fillStyle = '#c4a35a';
+          ctx.beginPath();
+          facetBlob(ctx, p.x, p.y - sc * 0.42, sc * 0.2, 7, 11);
+          ctx.fill();
+          ctx.fillStyle = '#d9bc78';
+          ctx.beginPath();
+          facetCircle(ctx, p.x, p.y - sc * 0.78, sc * 0.15, 6, 0.3);
+          ctx.fill();
+          if (s.hpPct < 255) this.drawMiniHp(p.x, p.y - sc * 1.05, sc * 0.66, s.hpPct);
+        }
+      },
+    };
+  }
+
+  /** Server combat FX: telegraphs, novas, blasts, reactions, summons. */
+  private drawCombatFx(game: ClientGame): void {
+    const ctx = this.ctx;
+    const sc = this.camera.scale;
+    const now = performance.now();
+    for (let i = game.fx.length - 1; i >= 0; i--) {
+      const fx = game.fx[i]! as (typeof game.fx)[number] & { spawned?: boolean };
+      const age = now - fx.bornAt;
+      const life =
+        fx.kind === 'telegraph'
+          ? (fx.ticks ?? 12) * TICK_MS
+          : fx.kind === 'nova'
+            ? 460
+            : fx.kind === 'blast'
+              ? 420
+              : 380;
+      if (age > life) {
+        game.fx.splice(i, 1);
+        continue;
+      }
+      const t = age / life;
+      const p = this.camera.worldToScreen(fx.x, fx.y, this.w, this.h);
+      p.y -= this.renderLift(fx.x, fx.y) * sc;
+      const color = fx.color ?? '#f4efe4';
+      const rPx = fx.radius * sc;
+      // Ground circles are drawn in the ground's squashed perspective.
+      const squash = 0.62;
+
+      if (fx.kind === 'telegraph') {
+        // The danger circle: rim + a filling disc that races the fuse.
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(2, sc * 0.06);
+        ctx.setLineDash([sc * 0.18, sc * 0.12]);
+        ctx.lineDashOffset = -now / 30;
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, rPx, rPx * squash, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 0.16 + 0.22 * t;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, rPx * t, rPx * t * squash, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else if (fx.kind === 'nova' || fx.kind === 'summon') {
+        const rr = fx.kind === 'summon' ? rPx * (0.4 + 0.6 * t) : rPx * Math.sqrt(t);
+        ctx.save();
+        ctx.globalAlpha = (1 - t) * 0.8;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(2, sc * 0.09 * (1 - t) + 1);
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, rr, rr * squash, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = (1 - t) * 0.25;
+        ctx.lineWidth = Math.max(1, sc * 0.03);
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, rr * 0.82, rr * 0.82 * squash, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      } else if (fx.kind === 'blast') {
+        if (!fx.spawned) {
+          fx.spawned = true;
+          this.particles.burst(fx.x, fx.y - 0.2, 20, [color, '#f4efe4'], {
+            speed: 3.4,
+            life: 0.5,
+            up: true,
+          });
+          this.addRing(fx.x, fx.y, color, fx.radius);
+        }
+        this.queueGlow(fx.x, fx.y, fx.radius * 1.6 * (1 - t), '255, 178, 92', 0.5 * (1 - t));
+        ctx.save();
+        ctx.globalAlpha = (1 - t) * 0.4;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, rPx * (0.6 + 0.4 * t), rPx * (0.6 + 0.4 * t) * squash, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else if (fx.kind === 'reaction') {
+        if (!fx.spawned) fx.spawned = true;
+        if (fx.radius > 0) {
+          const rr = rPx * Math.sqrt(t);
+          ctx.save();
+          ctx.globalAlpha = (1 - t) * 0.6;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = Math.max(2, sc * 0.07);
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y, rr, rr * squash, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    }
+  }
+
   // ------------------------------------------------------------ overlay
 
   private drawBuildGhost(): void {
@@ -3550,7 +3789,8 @@ export class Renderer {
     const bw = Math.min(260, this.w * 0.36);
     const bh = 14;
     const bx = this.w / 2 - bw / 2;
-    const by = this.h - 32;
+    // Sits just above the hotbar (56px slots + 14px inset).
+    const by = this.h - 96;
     // The main vitality gauge: a chamfered block, framed hard.
     ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
     ctx.beginPath();

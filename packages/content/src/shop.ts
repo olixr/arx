@@ -13,4 +13,7 @@ export const GENERAL_STORE: readonly ShopEntry[] = [
   { item: 'oak_shortbow', price: 50 },
   { item: 'arrow', price: 3 },
   { item: 'apprentice_staff', price: 55 },
+  // One starter relic on the shelf so the E slot is discoverable
+  // without a lucky drop; the rest are monster-hunted.
+  { item: 'snare_kit', price: 300 },
 ];

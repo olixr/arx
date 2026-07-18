@@ -8,6 +8,8 @@ export interface InterpSample {
   dir: number;
   pose: number;
   hpPct: number;
+  /** STATUS_BIT bitfield (burn/chill/shock/bleed VFX). */
+  status: number;
 }
 
 const KEEP_MS = 2000;
@@ -61,6 +63,7 @@ export class InterpBuffer {
           dir: lerpAngle(a.dir, b.dir, f),
           pose: b.pose === PoseState.Idle && a.pose === PoseState.Walk ? a.pose : b.pose,
           hpPct: b.hpPct,
+          status: b.status,
         };
       }
     }

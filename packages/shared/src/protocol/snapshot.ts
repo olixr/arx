@@ -13,6 +13,8 @@ export interface SnapshotEntity {
   pose: number;
   /** 0..255 health fraction (255 = full). Non-combatants send 255. */
   hpPct: number;
+  /** STATUS_BIT bitfield — burn/chill/shock/bleed VFX flags. */
+  status: number;
 }
 
 export interface Snapshot {
@@ -37,6 +39,7 @@ export function encodeSnapshot(snap: Snapshot): ArrayBuffer {
     w.u8(Math.round((((e.dir % TAU) + TAU) % TAU) / TAU * 255) & 0xff);
     w.u8(e.pose & 0xff);
     w.u8(e.hpPct & 0xff);
+    w.u8(e.status & 0xff);
   }
   return w.finish();
 }
@@ -54,6 +57,7 @@ export function decodeSnapshot(r: ByteReader): Snapshot {
       dir: (r.u8() / 255) * TAU,
       pose: r.u8(),
       hpPct: r.u8(),
+      status: r.u8(),
     };
   }
   return { serverTick, lastInputSeq, entities };

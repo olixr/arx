@@ -42,6 +42,14 @@ export declare class Sfx {
     loose(charge: number): void;
     /** Combo swings pitch up the chain; the finisher lands with a thud. */
     swingCombo(stage: number): void;
+    /** Weapon Art / relic cast — a rising committed whoomph. */
+    art(): void;
+    /** A status reaction detonating — the combo payoff sting. */
+    reaction(): void;
+    /** Telegraphed blast landing. */
+    blast(): void;
+    /** The hotbar radial refilling to ready — a soft affirmative tick. */
+    abilityReady(): void;
     zap(): void;
     /** Dodge dash: a short breathy whoosh. */
     dash(): void;

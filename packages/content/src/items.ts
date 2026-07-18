@@ -15,6 +15,8 @@ export interface WeaponStats {
   ammo?: string;
   /** Projectile speed, tiles/sec (ranged styles). */
   projectileSpeed?: number;
+  /** Weapon Art — the signature ability this weapon grants (Q). */
+  art?: string;
 }
 
 export interface ItemDef {
@@ -31,6 +33,8 @@ export interface ItemDef {
   armor?: number;
   /** HP restored when eaten. */
   heals?: number;
+  /** Relic active ability granted while worn in the relic slot (E). */
+  relic?: string;
   /** Short display color for the placeholder icon. */
   color: string;
   /** Two-letter icon code until real icons land. */
@@ -87,7 +91,7 @@ const defs: ItemDef[] = [
     value: 90,
     equipSlot: 'weapon',
     // Better metal, longer blade: reach is part of the upgrade.
-    weapon: { style: 'melee', damage: 5, cooldownTicks: 24, range: 1.95 },
+    weapon: { style: 'melee', damage: 5, cooldownTicks: 24, range: 1.95, art: 'lunge' },
     color: '#8d9299',
     code: 'Is',
   },
@@ -97,7 +101,7 @@ const defs: ItemDef[] = [
     stackable: false,
     value: 240,
     equipSlot: 'weapon',
-    weapon: { style: 'melee', damage: 7, cooldownTicks: 24, range: 2.05 },
+    weapon: { style: 'melee', damage: 7, cooldownTicks: 24, range: 2.05, art: 'shockwave' },
     color: '#b8bec8',
     code: 'Ss',
   },
@@ -117,7 +121,7 @@ const defs: ItemDef[] = [
     stackable: false,
     value: 32,
     equipSlot: 'weapon',
-    weapon: { style: 'melee', damage: 3, cooldownTicks: 24, range: 1.7 },
+    weapon: { style: 'melee', damage: 3, cooldownTicks: 24, range: 1.7, art: 'crescent_sweep' },
     color: '#a4744b',
     code: 'Sw',
   },
@@ -136,6 +140,7 @@ const defs: ItemDef[] = [
       range: 7,
       ammo: 'arrow',
       projectileSpeed: 16,
+      art: 'volley',
     },
     color: '#8a6a45',
     code: 'Bw',
@@ -155,14 +160,106 @@ const defs: ItemDef[] = [
     value: 45,
     equipSlot: 'weapon',
     weapon: {
+      // Quick weak bolt — magic's basic is a rhythm keeper; its power
+      // lives in the Art (statuses, AoE, reactions).
       style: 'magic',
-      damage: 4,
-      cooldownTicks: 50,
+      damage: 2,
+      cooldownTicks: 14,
       range: 7,
       projectileSpeed: 13,
+      art: 'frost_nova',
     },
     color: '#7a5ac4',
     code: 'St',
+  },
+  {
+    id: 'ember_staff',
+    name: 'Ember staff',
+    stackable: false,
+    value: 210,
+    equipSlot: 'weapon',
+    weapon: {
+      style: 'magic',
+      damage: 3,
+      cooldownTicks: 14,
+      range: 7,
+      projectileSpeed: 13,
+      art: 'fireburst',
+    },
+    color: '#c4623c',
+    code: 'Es',
+  },
+  {
+    id: 'willow_longbow',
+    name: 'Willow longbow',
+    stackable: false,
+    value: 190,
+    equipSlot: 'weapon',
+    weapon: {
+      style: 'archery',
+      damage: 7,
+      cooldownTicks: 9,
+      range: 8,
+      ammo: 'arrow',
+      projectileSpeed: 17,
+      art: 'piercing_bolt',
+    },
+    color: '#6b8a5a',
+    code: 'Wl',
+  },
+
+  // Relics — worn actives (E). The Minecraft-Dungeons-artifact slot:
+  // your second ability comes from the trinket you hunt down, so build
+  // identity is a loot chase, not a menu pick.
+  {
+    id: 'ember_charm',
+    name: 'Ember charm',
+    stackable: false,
+    value: 260,
+    equipSlot: 'relic',
+    relic: 'ember_dash',
+    color: '#ff8a3c',
+    code: 'Ec',
+  },
+  {
+    id: 'verdant_totem',
+    name: 'Verdant totem',
+    stackable: false,
+    value: 320,
+    equipSlot: 'relic',
+    relic: 'healing_totem',
+    color: '#7ac47a',
+    code: 'Vt',
+  },
+  {
+    id: 'snare_kit',
+    name: 'Snare kit',
+    stackable: false,
+    value: 220,
+    equipSlot: 'relic',
+    relic: 'snare_trap',
+    color: '#a08a4a',
+    code: 'Sk',
+  },
+  {
+    id: 'storm_bell',
+    name: 'Storm bell',
+    stackable: false,
+    value: 340,
+    equipSlot: 'relic',
+    relic: 'storm_bell',
+    color: '#e8e06a',
+    code: 'Sb',
+  },
+  {
+    id: 'straw_decoy',
+    name: 'Straw decoy',
+    stackable: false,
+    value: 200,
+    equipSlot: 'relic',
+    relic: 'hunters_decoy',
+    color: '#c4a35a',
+    code: 'Sd',
   },
 
   // Tools

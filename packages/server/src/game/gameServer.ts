@@ -34,6 +34,7 @@ import {
   RECIPES,
   STARTER_KIT,
   TOWN_SPAWNS,
+  abilityDef,
   itemDef,
   type BuildableDef,
   type NodeDef,
@@ -51,16 +52,30 @@ import {
   FINISHER_DAMAGE_MULT,
   FINISHER_KNOCKBACK_MULT,
   FINISHER_RECOVERY_MULT,
+  BURN_TICK_EVERY,
+  BLEED_TICK_EVERY,
+  CHILL_SPEED_FACTOR,
   InputButton,
+  SHOCK_MAX_TICKS,
+  SLOT_ART,
+  SLOT_RELIC,
   STATION_TILES,
+  STATUS_BIT,
   applyDodge,
   chargedShot,
   circleHitsSolid,
   drawCharge,
   hasButton,
+  hasteOnHit,
   isDrawSlowed,
   nextComboStage,
+  reactionDamage,
+  reactionFor,
+  type AbilityDef,
+  type ActiveStatus,
   type EquipSlot,
+  type S2CFx,
+  type StatusApply,
 } from '@devcraft/shared';
 import { config } from '../config.js';
 import { Session, sanitizeName } from '../net/session.js';
@@ -121,6 +136,8 @@ interface NpcComp {
   /** Index into spawnPoints to free on death. */
   spawnIndex: number;
   poseUntilTick: number;
+  /** Ticks until the special attack may fire again. */
+  specialCooldown: number;
 }
 
 interface DropComp {
@@ -140,6 +157,50 @@ interface ProjectileComp {
   dirY: number;
   speed: number;
   distLeft: number;
+  /** Basic attacks feed on-hit haste; ability projectiles do not. */
+  basic?: boolean;
+  /** Full-draw arrows haste harder on hit. */
+  fullDraw?: boolean;
+  /** Status carried onto whatever this hits. */
+  status?: StatusApply;
+  /** Punches through targets instead of stopping at the first. */
+  pierce?: boolean;
+  /** Targets already struck (pierce double-hit guard). */
+  hitEids?: Set<EntityId>;
+  /** NPC-fired: seeks players (and decoys) instead of NPCs. */
+  fromNpc?: boolean;
+}
+
+/** A status riding an entity, remembering who put it there. */
+interface ServerStatus extends ActiveStatus {
+  sourceEid: EntityId;
+  /** Shock only: remaining hard-stun ticks (shorter than the status). */
+  stunLeft?: number;
+}
+
+/** A placed totem/trap/decoy. */
+interface SummonComp {
+  kind: 'heal_totem' | 'snare_trap' | 'decoy';
+  ownerEid: EntityId;
+  radius: number;
+  power: number;
+  ticksLeft: number;
+}
+
+/** A telegraphed blast waiting on its fuse. */
+interface PendingBlast {
+  x: number;
+  y: number;
+  radius: number;
+  damage: number;
+  knockback: number;
+  status?: StatusApply;
+  fuseLeft: number;
+  ownerEid: EntityId;
+  style: SkillId;
+  /** NPC blasts hurt players; player blasts hurt NPCs. */
+  fromNpc: boolean;
+  color: string;
 }
 
 interface SpawnState {
@@ -189,6 +250,14 @@ interface PlayerComp {
   comboStage: number;
   /** Swinging again before this tick continues the combo string. */
   comboGraceUntilTick: number;
+  /** Remaining cooldown ticks: [weapon Art, relic]. */
+  abilityCd: [number, number];
+  /** Buttons of the last processed frame — abilities fire on press edge. */
+  prevButtons: number;
+  /** Rooted mid-cast until this tick (ability commitment window). */
+  castFreezeUntilTick: number;
+  /** Active self buff from an ability, if any. */
+  buff: { speedMult: number; shieldHp: number; untilTick: number } | null;
 }
 
 const MAX_QUEUED_INPUTS = 8;
@@ -215,6 +284,11 @@ export class GameServer {
   readonly npcs = this.ecs.register<NpcComp>();
   readonly drops = this.ecs.register<DropComp>();
   readonly projectiles = this.ecs.register<ProjectileComp>();
+  readonly statuses = this.ecs.register<ServerStatus[]>();
+  readonly summons = this.ecs.register<SummonComp>();
+
+  /** Telegraphed blasts (ground AoEs) waiting to detonate. */
+  private readonly pendingBlasts: PendingBlast[] = [];
 
   private readonly spawnPoints: SpawnState[] = [];
 
@@ -428,6 +502,10 @@ export class GameServer {
       drawTicks: 0,
       comboStage: 0,
       comboGraceUntilTick: 0,
+      abilityCd: [0, 0],
+      prevButtons: 0,
+      castFreezeUntilTick: 0,
+      buff: null,
     });
     this.characterEids.set(character.id, eid);
     this.updateChunkMembership(eid);
@@ -469,6 +547,7 @@ export class GameServer {
     session.sendJson({ t: 'skills', xp: player.skills });
     session.sendJson({ t: 'inv', slots: player.inventory });
     session.sendJson({ t: 'equip', equipment: player.equipment });
+    this.sendCooldowns(player);
   }
 
   onSessionClosed(session: Session): void {
@@ -1056,6 +1135,8 @@ export class GameServer {
   private onEquipmentChanged(eid: EntityId, player: PlayerComp): void {
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
     player.session?.sendJson({ t: 'equip', equipment: player.equipment });
+    // A new weapon or relic means new abilities on the hotbar.
+    this.sendCooldowns(player);
     // Appearance changed — update everyone who can see this player.
     const meta = this.buildMeta(eid);
     for (const s of this.sessions) {
@@ -1130,6 +1211,7 @@ export class GameServer {
         dirY: Math.sin(aim),
         speed: weapon.projectileSpeed ?? 12,
         distLeft: weapon.range,
+        basic: true,
       });
       this.updateChunkMembership(proj);
     }
@@ -1177,7 +1259,622 @@ export class GameServer {
     }
     if (bestTarget !== null) {
       const { dmg, crit } = rollDamage(maxHit);
-      this.damageNpc(bestTarget, dmg, eid, 'melee', crit, knockbackMult);
+      this.damageNpc(bestTarget, dmg, eid, 'melee', { crit, knockbackMult, basic: true });
+    }
+  }
+
+  // --------------------------------------------------------- abilities
+
+  /**
+   * Resolve the ability in a hotbar slot from worn equipment: slot 0 is
+   * the weapon's Art, slot 1 the relic's active. No item, no ability —
+   * your loadout IS your kit.
+   */
+  private slotAbility(player: PlayerComp, slot: 0 | 1): AbilityDef | null {
+    if (slot === SLOT_ART) {
+      const artId = this.equippedWeapon(player)?.weapon.art;
+      return artId ? (abilityDef(artId) ?? null) : null;
+    }
+    const relicItem = itemDef(player.equipment.relic ?? '');
+    return relicItem?.relic ? (abilityDef(relicItem.relic) ?? null) : null;
+  }
+
+  private sendCooldowns(player: PlayerComp): void {
+    if (!player.session) return;
+    const art = this.slotAbility(player, SLOT_ART);
+    const relic = this.slotAbility(player, SLOT_RELIC);
+    player.session.sendJson({
+      t: 'cooldowns',
+      cd: [player.abilityCd[0], player.abilityCd[1]],
+      max: [art?.cooldownTicks ?? 0, relic?.cooldownTicks ?? 0],
+    });
+  }
+
+  /** Combat FX go to every session close enough to possibly see them. */
+  private broadcastFx(fx: S2CFx): void {
+    for (const s of this.sessions) {
+      if (s.playerEid === null) continue;
+      const pos = this.positions.get(s.playerEid);
+      if (!pos) continue;
+      if (Math.abs(pos.x - fx.x) < 40 && Math.abs(pos.y - fx.y) < 40) s.sendJson(fx);
+    }
+  }
+
+  private tryCastAbility(eid: EntityId, player: PlayerComp, slot: 0 | 1, aim: number): void {
+    const ab = this.slotAbility(player, slot);
+    if (!ab) return;
+    if (player.abilityCd[slot] > 0) return;
+    if (this.tickCount < player.castFreezeUntilTick) return;
+
+    player.abilityCd[slot] = ab.cooldownTicks;
+    player.castFreezeUntilTick = this.tickCount + (ab.castFreezeTicks ?? 0);
+    player.lastCombatAt = Date.now();
+    player.drawTicks = 0; // casting lets the bowstring down
+    if (player.action) this.cancelAction(eid, player, 'cast');
+    this.setPose(eid, PoseState.Art, Math.max(6, (ab.castFreezeTicks ?? 0) + 4));
+
+    const style = this.equippedWeapon(player)?.weapon.style ?? 'melee';
+    const level = levelForXp(player.skills[style] ?? 0);
+    this.castAbility(eid, ab, aim, style, level, false);
+    this.sendCooldowns(player);
+  }
+
+  /**
+   * The one ability interpreter: player Arts, relic actives, and NPC
+   * specials all execute through here, so a new ability is pure data.
+   */
+  private castAbility(
+    casterEid: EntityId,
+    ab: AbilityDef,
+    aim: number,
+    style: SkillId,
+    level: number,
+    fromNpc: boolean,
+    /** ground_aoe with range 0 detonates on this point (NPC slams). */
+    targetPos?: { x: number; y: number },
+  ): void {
+    const pos = this.positions.must(casterEid);
+    const maxHit = ab.damage > 0 ? Math.max(1, Math.round(ab.damage * (1 + level * 0.05))) : 0;
+    const knockbackMult = ab.knockback ?? 1;
+
+    switch (ab.shape) {
+      case 'melee_arc': {
+        const arc = ab.arc ?? Math.PI / 3;
+        const range = ab.range ?? 2;
+        for (const [npcEid, npc] of this.npcs) {
+          const npos = this.positions.get(npcEid);
+          if (!npos) continue;
+          const dx = npos.x - pos.x;
+          const dy = npos.y - pos.y;
+          const dist = Math.hypot(dx, dy) - npc.def.radius;
+          if (dist > range) continue;
+          let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
+          if (diff > Math.PI) diff = Math.PI * 2 - diff;
+          if (diff > arc && dist > 0.9) continue;
+          const { dmg, crit } = rollDamage(maxHit);
+          this.damageNpc(npcEid, dmg, casterEid, style, {
+            crit,
+            knockbackMult,
+            status: ab.status,
+          });
+        }
+        break;
+      }
+
+      case 'nova': {
+        const radius = ab.radius ?? 2;
+        this.broadcastFx({ t: 'fx', kind: 'nova', x: pos.x, y: pos.y, radius, color: ab.color });
+        if (fromNpc) {
+          this.blastPlayers(pos.x, pos.y, radius, maxHit, ab.status);
+        } else {
+          for (const [npcEid, npc] of this.npcs) {
+            const npos = this.positions.get(npcEid);
+            if (!npos) continue;
+            const dx = npos.x - pos.x;
+            const dy = npos.y - pos.y;
+            if (Math.hypot(dx, dy) - npc.def.radius > radius) continue;
+            const { dmg, crit } = rollDamage(maxHit);
+            this.damageNpc(npcEid, dmg, casterEid, style, {
+              crit,
+              knockbackMult,
+              status: ab.status,
+            });
+          }
+        }
+        break;
+      }
+
+      case 'dash_strike': {
+        // Carve forward through the world, wounding everything passed.
+        const dashTiles = ab.dashTiles ?? 3;
+        const dirX = Math.cos(aim);
+        const dirY = Math.sin(aim);
+        const struck = new Set<EntityId>();
+        const steps = Math.ceil(dashTiles / 0.4);
+        for (let i = 0; i < steps; i++) {
+          const next = stepMovement(
+            pos,
+            { mx: dirX, my: dirY },
+            dashTiles / steps,
+            1,
+            this.world,
+          );
+          pos.x = next.x;
+          pos.y = next.y;
+          for (const [npcEid, npc] of this.npcs) {
+            if (struck.has(npcEid)) continue;
+            const npos = this.positions.get(npcEid);
+            if (!npos) continue;
+            if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > 0.8) continue;
+            struck.add(npcEid);
+            const { dmg, crit } = rollDamage(maxHit);
+            this.damageNpc(npcEid, dmg, casterEid, style, {
+              crit,
+              knockbackMult,
+              status: ab.status,
+            });
+          }
+        }
+        this.updateChunkMembership(casterEid);
+        break;
+      }
+
+      case 'projectile_fan': {
+        const count = ab.projectiles ?? 1;
+        const spread = ab.spreadArc ?? 0;
+        for (let i = 0; i < count; i++) {
+          const angle = count === 1 ? aim : aim - spread / 2 + (spread * i) / (count - 1);
+          const proj = this.ecs.create();
+          this.kinds.set(proj, EntityKind.Projectile);
+          this.positions.set(proj, { x: pos.x, y: pos.y, dir: angle });
+          this.projectiles.set(proj, {
+            ownerEid: casterEid,
+            style: style === 'magic' ? 'magic' : 'archery',
+            maxHit,
+            dirX: Math.cos(angle),
+            dirY: Math.sin(angle),
+            speed: ab.projectileSpeed ?? 14,
+            distLeft: ab.range ?? 7,
+            status: ab.status,
+            pierce: ab.pierce,
+            fromNpc,
+          });
+          this.updateChunkMembership(proj);
+        }
+        break;
+      }
+
+      case 'ground_aoe': {
+        // Aim-assisted placement: snap to the nearest enemy in the aim
+        // cone so gamepad and touch don't need pixel-perfect targeting.
+        let bx: number;
+        let by: number;
+        if (targetPos) {
+          bx = targetPos.x;
+          by = targetPos.y;
+        } else {
+          const range = ab.range ?? 4;
+          let best: { x: number; y: number } | null = null;
+          let bestDist = Infinity;
+          for (const [npcEid, npc] of this.npcs) {
+            void npc;
+            const npos = this.positions.get(npcEid);
+            if (!npos) continue;
+            const dx = npos.x - pos.x;
+            const dy = npos.y - pos.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > range) continue;
+            let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
+            if (diff > Math.PI) diff = Math.PI * 2 - diff;
+            if (diff > 0.65) continue;
+            if (dist < bestDist) {
+              bestDist = dist;
+              best = { x: npos.x, y: npos.y };
+            }
+          }
+          bx = best ? best.x : pos.x + Math.cos(aim) * range * 0.6;
+          by = best ? best.y : pos.y + Math.sin(aim) * range * 0.6;
+        }
+        const fuse = ab.fuseTicks ?? 12;
+        const radius = ab.radius ?? 1.5;
+        this.pendingBlasts.push({
+          x: bx,
+          y: by,
+          radius,
+          damage: maxHit,
+          knockback: knockbackMult,
+          status: ab.status,
+          fuseLeft: fuse,
+          ownerEid: casterEid,
+          style,
+          fromNpc,
+          color: ab.color,
+        });
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'telegraph',
+          x: bx,
+          y: by,
+          radius,
+          ticks: fuse,
+          color: ab.color,
+        });
+        break;
+      }
+
+      case 'self_buff': {
+        const player = this.players.get(casterEid);
+        const self = ab.self;
+        if (!player || !self) break;
+        if (self.heal) {
+          const health = this.healths.must(casterEid);
+          health.hp = Math.min(health.maxHp, health.hp + self.heal);
+        }
+        if (self.speedMult !== undefined || self.shieldHp !== undefined) {
+          player.buff = {
+            speedMult: self.speedMult ?? 1,
+            shieldHp: self.shieldHp ?? 0,
+            untilTick: this.tickCount + self.durationTicks,
+          };
+        }
+        break;
+      }
+
+      case 'summon': {
+        const spec = ab.summon;
+        if (!spec) break;
+        const eid = this.ecs.create();
+        this.kinds.set(eid, EntityKind.Prop);
+        this.positions.set(eid, { x: pos.x, y: pos.y, dir: aim });
+        this.summons.set(eid, {
+          kind: spec.kind,
+          ownerEid: casterEid,
+          radius: spec.radius,
+          power: spec.power > 0 ? spec.power : maxHit,
+          ticksLeft: spec.durationTicks,
+        });
+        if (spec.kind === 'decoy') this.healths.set(eid, { hp: 12, maxHp: 12 });
+        this.updateChunkMembership(eid);
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'summon',
+          x: pos.x,
+          y: pos.y,
+          radius: spec.radius,
+          ticks: spec.durationTicks,
+          color: ab.color,
+        });
+        // A decoy is only useful if it takes the heat NOW.
+        if (spec.kind === 'decoy') {
+          for (const [npcEid, npc] of this.npcs) {
+            const npos = this.positions.get(npcEid);
+            if (!npos) continue;
+            if (Math.hypot(npos.x - pos.x, npos.y - pos.y) > spec.radius) continue;
+            if (npc.def.damage <= 0) continue;
+            npc.state = 'chase';
+            npc.targetEid = eid;
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  /** NPC-owned blast: hits players and straw decoys. */
+  private blastPlayers(x: number, y: number, radius: number, maxHit: number, status?: StatusApply): void {
+    for (const [playerEid, player] of this.players) {
+      if (player.session === null && player.disconnectedAt !== null) continue;
+      const ppos = this.positions.get(playerEid);
+      if (!ppos) continue;
+      if (Math.hypot(ppos.x - x, ppos.y - y) > radius) continue;
+      this.damagePlayer(playerEid, Math.floor(Math.random() * (maxHit + 1)), { status });
+    }
+    for (const [sumEid, sum] of this.summons) {
+      if (sum.kind !== 'decoy') continue;
+      const spos = this.positions.get(sumEid);
+      if (!spos) continue;
+      if (Math.hypot(spos.x - x, spos.y - y) > radius) continue;
+      this.damageSummon(sumEid, Math.floor(Math.random() * (maxHit + 1)));
+    }
+  }
+
+  // ----------------------------------------------------------- statuses
+
+  /**
+   * Apply a status to an NPC — the reaction law lives here. A different
+   * status already riding the target DETONATES: burst damage plus the
+   * pair's combined effect, and both statuses are consumed. Same status
+   * refreshes. Resists shrug it off; weaknesses double it.
+   */
+  private applyStatusToNpc(
+    npcEid: EntityId,
+    apply: StatusApply,
+    sourceEid: EntityId,
+    style: SkillId,
+  ): void {
+    const npc = this.npcs.get(npcEid);
+    if (!npc) return;
+    if (npc.def.resist?.includes(apply.status)) {
+      const pos = this.positions.get(npcEid);
+      if (pos) {
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'reaction',
+          x: pos.x,
+          y: pos.y,
+          radius: 0,
+          color: '#9a94a8',
+          text: 'Resist',
+        });
+      }
+      return;
+    }
+    let power = apply.power;
+    let duration = apply.durationTicks;
+    if (npc.def.weak?.includes(apply.status)) {
+      power *= 2;
+      duration = Math.round(duration * 1.5);
+    }
+
+    const list = this.statuses.get(npcEid) ?? [];
+    const other = list.find((s) => s.id !== apply.status);
+    const reaction = other ? reactionFor(other.id, apply.status) : null;
+
+    if (other && reaction) {
+      // Detonate: both statuses consumed in the flash.
+      list.splice(list.indexOf(other), 1);
+      const pos = this.positions.get(npcEid);
+      if (pos) {
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'reaction',
+          x: pos.x,
+          y: pos.y,
+          radius: reaction.radius,
+          color: reaction.color,
+          text: reaction.name,
+        });
+      }
+      const dmg = reactionDamage(other.power, power, reaction);
+      this.damageNpc(npcEid, dmg, sourceEid, style, {});
+      if (pos) {
+        switch (reaction.effect) {
+          case 'aoe':
+          case 'chain': {
+            // Arc/blast into everything else nearby.
+            for (const [otherEid, otherNpc] of this.npcs) {
+              if (otherEid === npcEid) continue;
+              const opos = this.positions.get(otherEid);
+              if (!opos) continue;
+              if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - otherNpc.def.radius > reaction.radius) {
+                continue;
+              }
+              this.damageNpc(otherEid, dmg, sourceEid, style, {});
+            }
+            break;
+          }
+          case 'spread': {
+            // The fire finds new fuel.
+            const burn: StatusApply =
+              apply.status === 'burn'
+                ? { status: 'burn', power: apply.power, durationTicks: apply.durationTicks }
+                : { status: 'burn', power: other.power, durationTicks: 60 };
+            for (const [otherEid, otherNpc] of this.npcs) {
+              if (otherEid === npcEid) continue;
+              const opos = this.positions.get(otherEid);
+              if (!opos) continue;
+              if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - otherNpc.def.radius > reaction.radius) {
+                continue;
+              }
+              this.applyStatusToNpc(otherEid, burn, sourceEid, style);
+            }
+            break;
+          }
+          case 'stun': {
+            list.push({
+              id: 'shock',
+              power: 0,
+              ticksLeft: SHOCK_MAX_TICKS,
+              sourceEid,
+              stunLeft: SHOCK_MAX_TICKS,
+            });
+            break;
+          }
+          case 'burst':
+            break;
+        }
+      }
+      this.statuses.set(npcEid, list);
+      return;
+    }
+
+    const same = list.find((s) => s.id === apply.status);
+    if (same) {
+      same.ticksLeft = Math.max(same.ticksLeft, duration);
+      same.power = Math.max(same.power, power);
+      if (apply.status === 'shock') {
+        same.stunLeft = Math.max(same.stunLeft ?? 0, Math.min(duration, SHOCK_MAX_TICKS));
+      }
+    } else {
+      list.push({
+        id: apply.status,
+        power,
+        ticksLeft: duration,
+        sourceEid,
+        // The stagger is brief; the charge rides on as reaction fodder.
+        stunLeft: apply.status === 'shock' ? Math.min(duration, SHOCK_MAX_TICKS) : undefined,
+      });
+    }
+    this.statuses.set(npcEid, list);
+  }
+
+  /** Players only receive simple statuses (wolf bleed) — no reactions. */
+  private applyStatusToPlayer(eid: EntityId, apply: StatusApply, sourceEid: EntityId): void {
+    const list = this.statuses.get(eid) ?? [];
+    const same = list.find((s) => s.id === apply.status);
+    if (same) {
+      same.ticksLeft = Math.max(same.ticksLeft, apply.durationTicks);
+      same.power = Math.max(same.power, apply.power);
+    } else {
+      list.push({ id: apply.status, power: apply.power, ticksLeft: apply.durationTicks, sourceEid });
+    }
+    this.statuses.set(eid, list);
+  }
+
+  private statusBits(eid: EntityId): number {
+    const list = this.statuses.get(eid);
+    if (!list || list.length === 0) return 0;
+    let bits = 0;
+    for (const s of list) bits |= STATUS_BIT[s.id];
+    return bits;
+  }
+
+  private isShocked(eid: EntityId): boolean {
+    return this.statuses.get(eid)?.some((s) => s.id === 'shock' && (s.stunLeft ?? 0) > 0) ?? false;
+  }
+
+  private isChilled(eid: EntityId): boolean {
+    return this.statuses.get(eid)?.some((s) => s.id === 'chill') ?? false;
+  }
+
+  private tickStatuses(): void {
+    for (const [eid, list] of this.statuses) {
+      for (let i = list.length - 1; i >= 0; i--) {
+        const s = list[i]!;
+        s.ticksLeft--;
+        if (s.stunLeft !== undefined && s.stunLeft > 0) s.stunLeft--;
+        const dot = s.id === 'burn' || s.id === 'bleed';
+        const every = s.id === 'burn' ? BURN_TICK_EVERY : BLEED_TICK_EVERY;
+        if (dot && s.ticksLeft > 0 && s.ticksLeft % every === 0) {
+          if (this.npcs.has(eid)) {
+            this.dotNpc(eid, s.power, s.sourceEid, s.id as 'burn' | 'bleed');
+          } else if (this.players.has(eid)) {
+            this.damagePlayer(eid, s.power, { pierceArmor: true });
+          }
+        }
+        if (s.ticksLeft <= 0) list.splice(i, 1);
+      }
+      if (list.length === 0) this.statuses.delete(eid);
+    }
+  }
+
+  /**
+   * DoT damage: hurts without flinching the target — a burning goblin
+   * still fights; only direct hits interrupt windups.
+   */
+  private dotNpc(npcEid: EntityId, dmg: number, sourceEid: EntityId, kind: 'burn' | 'bleed'): void {
+    const npc = this.npcs.get(npcEid);
+    const health = this.healths.get(npcEid);
+    if (!npc || !health || dmg <= 0) return;
+    this.broadcastHit(npcEid, dmg);
+    health.hp -= dmg;
+    const source = this.players.get(sourceEid);
+    if (source) {
+      const style: SkillId = kind === 'burn' ? 'magic' : 'melee';
+      this.grantXp(sourceEid, source, style, dmg * 2);
+    }
+    if (health.hp <= 0) this.killNpc(npcEid, npc, sourceEid);
+  }
+
+  // ------------------------------------------------------------ summons
+
+  private damageSummon(eid: EntityId, dmg: number): void {
+    const health = this.healths.get(eid);
+    if (!health || dmg <= 0) return;
+    this.broadcastHit(eid, dmg);
+    health.hp -= dmg;
+    if (health.hp <= 0) {
+      this.removeFromChunks(eid);
+      this.ecs.destroy(eid);
+    }
+  }
+
+  private tickSummons(): void {
+    for (const [eid, sum] of this.summons) {
+      sum.ticksLeft--;
+      if (sum.ticksLeft <= 0) {
+        this.removeFromChunks(eid);
+        this.ecs.destroy(eid);
+        continue;
+      }
+      const pos = this.positions.must(eid);
+
+      if (sum.kind === 'heal_totem') {
+        // A steady pulse of mending for everyone standing close.
+        if (sum.ticksLeft % 40 === 0) {
+          for (const [playerEid, player] of this.players) {
+            if (player.session === null && player.disconnectedAt !== null) continue;
+            const ppos = this.positions.get(playerEid);
+            if (!ppos) continue;
+            if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > sum.radius) continue;
+            const health = this.healths.must(playerEid);
+            if (health.hp < health.maxHp) {
+              health.hp = Math.min(health.maxHp, health.hp + sum.power);
+              this.broadcastFx({
+                t: 'fx',
+                kind: 'reaction',
+                x: ppos.x,
+                y: ppos.y,
+                radius: 0,
+                color: '#7ac47a',
+                text: `+${sum.power}`,
+              });
+            }
+          }
+        }
+      } else if (sum.kind === 'snare_trap') {
+        for (const [npcEid, npc] of this.npcs) {
+          if (npc.def.damage <= 0 && npc.def.aggroRange === 0) continue; // livestock won't spring it
+          const npos = this.positions.get(npcEid);
+          if (!npos) continue;
+          if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > sum.radius) continue;
+          // Sprung: bite, chill, and the trap is spent.
+          const owner = this.players.get(sum.ownerEid);
+          const level = owner ? levelForXp(owner.skills.melee ?? 0) : 1;
+          const dmg = Math.max(1, Math.round(3 * (1 + level * 0.05)));
+          this.damageNpc(npcEid, dmg, sum.ownerEid, 'melee', {
+            status: { status: 'chill', power: sum.power, durationTicks: 80 },
+          });
+          this.removeFromChunks(eid);
+          this.ecs.destroy(eid);
+          break;
+        }
+      }
+      // Decoys just stand there being extremely punchable.
+    }
+  }
+
+  private tickBlasts(): void {
+    for (let i = this.pendingBlasts.length - 1; i >= 0; i--) {
+      const blast = this.pendingBlasts[i]!;
+      blast.fuseLeft--;
+      if (blast.fuseLeft > 0) continue;
+      this.pendingBlasts.splice(i, 1);
+      this.broadcastFx({
+        t: 'fx',
+        kind: 'blast',
+        x: blast.x,
+        y: blast.y,
+        radius: blast.radius,
+        color: blast.color,
+      });
+      if (blast.fromNpc) {
+        this.blastPlayers(blast.x, blast.y, blast.radius, blast.damage, blast.status);
+      } else {
+        for (const [npcEid, npc] of this.npcs) {
+          const npos = this.positions.get(npcEid);
+          if (!npos) continue;
+          if (Math.hypot(npos.x - blast.x, npos.y - blast.y) - npc.def.radius > blast.radius) {
+            continue;
+          }
+          const { dmg, crit } = rollDamage(blast.damage);
+          this.damageNpc(npcEid, dmg, blast.ownerEid, blast.style, {
+            crit,
+            knockbackMult: blast.knockback,
+            status: blast.status,
+          });
+        }
+      }
     }
   }
 
@@ -1191,17 +1888,57 @@ export class GameServer {
 
       let dead = proj.distLeft <= 0 || this.world.isSolid(Math.floor(pos.x), Math.floor(pos.y));
 
-      if (!dead) {
+      if (!dead && proj.fromNpc) {
+        // NPC shots seek players (and straw decoys, which exist to eat them).
+        for (const [playerEid, player] of this.players) {
+          if (player.session === null && player.disconnectedAt !== null) continue;
+          const ppos = this.positions.get(playerEid);
+          if (!ppos) continue;
+          const dx = ppos.x - pos.x;
+          const dy = ppos.y - pos.y;
+          if (dx * dx + dy * dy < 0.45 ** 2) {
+            this.damagePlayer(playerEid, Math.floor(Math.random() * (proj.maxHit + 1)), {
+              status: proj.status,
+            });
+            dead = true;
+            break;
+          }
+        }
+        if (!dead) {
+          for (const [sumEid, sum] of this.summons) {
+            if (sum.kind !== 'decoy') continue;
+            const spos = this.positions.get(sumEid);
+            if (!spos) continue;
+            const dx = spos.x - pos.x;
+            const dy = spos.y - pos.y;
+            if (dx * dx + dy * dy < 0.5 ** 2) {
+              this.damageSummon(sumEid, Math.floor(Math.random() * (proj.maxHit + 1)));
+              dead = true;
+              break;
+            }
+          }
+        }
+      } else if (!dead) {
         for (const [npcEid, npc] of this.npcs) {
+          if (proj.hitEids?.has(npcEid)) continue;
           const npos = this.positions.get(npcEid);
           if (!npos) continue;
           const dx = npos.x - pos.x;
           const dy = npos.y - pos.y;
           if (dx * dx + dy * dy < (npc.def.radius + 0.25) ** 2) {
             const { dmg, crit } = rollDamage(proj.maxHit);
-            this.damageNpc(npcEid, dmg, proj.ownerEid, proj.style, crit);
-            dead = true;
-            break;
+            this.damageNpc(npcEid, dmg, proj.ownerEid, proj.style, {
+              crit,
+              basic: proj.basic,
+              fullDraw: proj.fullDraw,
+              status: proj.status,
+            });
+            if (proj.pierce) {
+              (proj.hitEids ??= new Set()).add(npcEid);
+            } else {
+              dead = true;
+              break;
+            }
           }
         }
       }
@@ -1220,12 +1957,41 @@ export class GameServer {
     dmg: number,
     attackerEid: EntityId,
     style: SkillId,
-    crit = false,
-    knockbackMult = 1,
+    opts: {
+      crit?: boolean;
+      knockbackMult?: number;
+      /** Landed basic attacks feed on-hit haste. */
+      basic?: boolean;
+      fullDraw?: boolean;
+      /** Status carried by the hit (weapon arts, relics, projectiles). */
+      status?: StatusApply;
+    } = {},
   ): void {
+    const crit = opts.crit ?? false;
+    const knockbackMult = opts.knockbackMult ?? 1;
     const npc = this.npcs.get(npcEid);
     const health = this.healths.get(npcEid);
     if (!npc || !health) return;
+
+    // The rhythm engine: every landed basic pulls both ability
+    // cooldowns forward. Whiffs never count — you have to CONNECT.
+    if (opts.basic) {
+      const attacker = this.players.get(attackerEid);
+      if (attacker) {
+        const before0 = attacker.abilityCd[0];
+        const before1 = attacker.abilityCd[1];
+        attacker.abilityCd[0] = hasteOnHit(attacker.abilityCd[0], opts.fullDraw);
+        attacker.abilityCd[1] = hasteOnHit(attacker.abilityCd[1], opts.fullDraw);
+        if (attacker.abilityCd[0] !== before0 || attacker.abilityCd[1] !== before1) {
+          this.sendCooldowns(attacker);
+        }
+      }
+    }
+
+    if (opts.status) this.applyStatusToNpc(npcEid, opts.status, attackerEid, style);
+    // The status may have detonated a reaction that already killed the
+    // target (and cascaded further) — never strike a corpse.
+    if (!this.ecs.isAlive(npcEid) || !this.npcs.has(npcEid)) return;
 
     this.broadcastHit(npcEid, dmg, crit);
     if (dmg <= 0) return;
@@ -1268,7 +2034,11 @@ export class GameServer {
   }
 
   private killNpc(npcEid: EntityId, npc: NpcComp, killerEid: EntityId): void {
-    const pos = this.positions.must(npcEid);
+    // Idempotent: reaction cascades can route two lethal blows into the
+    // same tick — the second finds the entity already gone.
+    if (!this.ecs.isAlive(npcEid)) return;
+    const pos = this.positions.get(npcEid);
+    if (!pos) return;
     // Everyone watching sees the death burst.
     for (const s of this.sessions) {
       if (s.playerEid === npcEid || s.knownEntities.has(npcEid)) {
@@ -1308,7 +2078,11 @@ export class GameServer {
     this.ecs.destroy(npcEid);
   }
 
-  private damagePlayer(eid: EntityId, raw: number): void {
+  private damagePlayer(
+    eid: EntityId,
+    raw: number,
+    opts: { status?: StatusApply; pierceArmor?: boolean; sourceEid?: EntityId } = {},
+  ): void {
     const player = this.players.get(eid);
     const health = this.healths.get(eid);
     if (!player || !health) return;
@@ -1318,8 +2092,18 @@ export class GameServer {
     for (const worn of Object.values(player.equipment)) {
       armor += itemDef(worn ?? '')?.armor ?? 0;
     }
-    // Defence + armor shave hits down, never below 0.
-    const dmg = Math.max(0, raw - Math.floor(defLevel / 10) - Math.floor(armor / 2));
+    // Defence + armor shave hits down, never below 0. DoTs pierce —
+    // the wound is already inside the armor.
+    let dmg = opts.pierceArmor
+      ? raw
+      : Math.max(0, raw - Math.floor(defLevel / 10) - Math.floor(armor / 2));
+    if (opts.status) this.applyStatusToPlayer(eid, opts.status, opts.sourceEid ?? 0);
+    // An ability shield soaks damage before flesh does.
+    if (player.buff && player.buff.shieldHp > 0 && dmg > 0) {
+      const soaked = Math.min(player.buff.shieldHp, dmg);
+      player.buff.shieldHp -= soaked;
+      dmg -= soaked;
+    }
     this.broadcastHit(eid, dmg);
     player.lastCombatAt = Date.now();
     if (dmg <= 0) return;
@@ -1334,6 +2118,8 @@ export class GameServer {
       pos.x = spawn.x;
       pos.y = spawn.y;
       health.hp = health.maxHp;
+      this.statuses.delete(eid); // death is at least a clean slate
+      player.buff = null;
       this.updateChunkMembership(eid);
       this.cancelAction(eid, player);
       player.session?.sendJson({
@@ -1401,9 +2187,35 @@ export class GameServer {
         windupTicks: 0,
         spawnIndex: i,
         poseUntilTick: 0,
+        specialCooldown: 60, // never open with the special
       });
       spawn.eid = eid;
       this.updateChunkMembership(eid);
+    }
+  }
+
+  /** Resolve an NPC's chase target: a live player or a straw decoy. */
+  private npcTargetPos(targetEid: EntityId): { x: number; y: number } | null {
+    const player = this.players.get(targetEid);
+    if (player) {
+      if (player.session === null && player.disconnectedAt !== null) return null;
+      return this.positions.get(targetEid) ?? null;
+    }
+    if (this.summons.get(targetEid)?.kind === 'decoy') {
+      return this.positions.get(targetEid) ?? null;
+    }
+    return null;
+  }
+
+  /** Land an NPC's basic on whatever it is chasing. */
+  private npcStrike(npc: NpcComp, targetEid: EntityId, raw: number): void {
+    if (this.players.has(targetEid)) {
+      this.damagePlayer(targetEid, raw, {
+        status: npc.def.attackStatus,
+        sourceEid: npc.targetEid ?? 0,
+      });
+    } else {
+      this.damageSummon(targetEid, raw);
     }
   }
 
@@ -1411,6 +2223,13 @@ export class GameServer {
     for (const [eid, npc] of this.npcs) {
       const pos = this.positions.must(eid);
       if (npc.attackCooldown > 0) npc.attackCooldown--;
+      if (npc.specialCooldown > 0) npc.specialCooldown--;
+
+      // Shock is a hard stagger: no thinking, no moving, no swinging.
+      if (this.isShocked(eid)) {
+        npc.windupTicks = 0;
+        continue;
+      }
 
       // Aggro scan (cheap: only when idle, every 5 ticks).
       if (npc.state === 'idle' && npc.def.aggroRange > 0 && (this.tickCount + eid) % 5 === 0) {
@@ -1432,11 +2251,9 @@ export class GameServer {
       let moveY = 0;
 
       if (npc.state === 'chase' && npc.targetEid !== null) {
-        const target = this.players.get(npc.targetEid);
-        const tpos = this.positions.get(npc.targetEid);
-        const offline = !target || (target.session === null && target.disconnectedAt !== null);
+        const tpos = this.npcTargetPos(npc.targetEid);
         const fromOrigin = Math.hypot(pos.x - npc.originX, pos.y - npc.originY);
-        if (offline || !tpos || fromOrigin > npc.def.leashRange) {
+        if (!tpos || fromOrigin > npc.def.leashRange) {
           npc.state = 'return';
           npc.targetEid = null;
           npc.windupTicks = 0;
@@ -1445,43 +2262,91 @@ export class GameServer {
           const dy = tpos.y - pos.y;
           const dist = Math.hypot(dx, dy);
 
+          // Boss move: a telegraphed special the moment it is in reach.
+          if (
+            npc.def.special &&
+            npc.specialCooldown === 0 &&
+            npc.windupTicks === 0 &&
+            dist < 4.5
+          ) {
+            const ab = abilityDef(npc.def.special.ability);
+            if (ab) {
+              npc.specialCooldown = npc.def.special.everyTicks;
+              this.setNpcPose(eid, npc, PoseState.Art, 10);
+              this.castAbility(eid, ab, Math.atan2(dy, dx), 'melee', npc.def.level, true, {
+                x: tpos.x,
+                y: tpos.y,
+              });
+            }
+          }
+
           if (npc.windupTicks > 0) {
             // Mid-telegraph: planted, tracking the target with its eyes.
             pos.dir = Math.atan2(dy, dx);
             npc.windupTicks--;
             if (npc.windupTicks === 0) {
-              // Wolves LEAP out of the crouch — a real gap-closer.
-              if (npc.def.id === 'wolf' && dist > 0.6) {
-                const leap = Math.min(1.3, dist - 0.4);
-                for (let step = 0; step < 4; step++) {
-                  const next = stepMovement(
-                    pos,
-                    { mx: dx / dist, my: dy / dist },
-                    leap,
-                    1 / 4,
-                    this.world,
-                    npc.def.radius,
-                  );
-                  pos.x = next.x;
-                  pos.y = next.y;
+              if (npc.def.ranged) {
+                // Loose the throw at where the target stands NOW.
+                const proj = this.ecs.create();
+                const angle = Math.atan2(dy, dx);
+                this.kinds.set(proj, EntityKind.Projectile);
+                this.positions.set(proj, { x: pos.x, y: pos.y, dir: angle });
+                this.projectiles.set(proj, {
+                  ownerEid: eid,
+                  style: 'archery',
+                  maxHit: npc.def.damage,
+                  dirX: Math.cos(angle),
+                  dirY: Math.sin(angle),
+                  speed: npc.def.ranged.projectileSpeed,
+                  distLeft: npc.def.ranged.range + 1,
+                  status: npc.def.attackStatus,
+                  fromNpc: true,
+                });
+                this.updateChunkMembership(proj);
+              } else {
+                // Wolves LEAP out of the crouch — a real gap-closer.
+                if (npc.def.id === 'wolf' && dist > 0.6) {
+                  const leap = Math.min(1.3, dist - 0.4);
+                  for (let step = 0; step < 4; step++) {
+                    const next = stepMovement(
+                      pos,
+                      { mx: dx / dist, my: dy / dist },
+                      leap,
+                      1 / 4,
+                      this.world,
+                      npc.def.radius,
+                    );
+                    pos.x = next.x;
+                    pos.y = next.y;
+                  }
+                  this.updateChunkMembership(eid);
                 }
-                this.updateChunkMembership(eid);
+                // The blow lands only if the target is still in reach —
+                // stepping (or dodge-dashing) out of a windup is a dodge.
+                const ndx = tpos.x - pos.x;
+                const ndy = tpos.y - pos.y;
+                if (Math.hypot(ndx, ndy) <= npc.def.attackRange + 0.55) {
+                  this.npcStrike(npc, npc.targetEid, Math.floor(Math.random() * (npc.def.damage + 1)));
+                }
               }
-              // The blow lands only if the target is still in reach —
-              // stepping (or dodge-dashing) out of a windup is a dodge.
-              const ndx = tpos.x - pos.x;
-              const ndy = tpos.y - pos.y;
-              if (Math.hypot(ndx, ndy) <= npc.def.attackRange + 0.55) {
-                this.damagePlayer(npc.targetEid, Math.floor(Math.random() * (npc.def.damage + 1)));
-              }
+            }
+          } else if (npc.def.ranged && dist < 2.2) {
+            // Throwers back away from anything closing the gap.
+            pos.dir = Math.atan2(dy, dx);
+            moveX = -dx / dist;
+            moveY = -dy / dist;
+            if (npc.attackCooldown === 0 && dist <= npc.def.attackRange + 0.3) {
+              npc.attackCooldown = npc.def.attackCooldownTicks;
+              npc.windupTicks = 8;
+              this.setNpcPose(eid, npc, PoseState.Attack, 10);
             }
           } else if (dist <= npc.def.attackRange + 0.3) {
             pos.dir = Math.atan2(dy, dx);
             if (npc.attackCooldown === 0) {
               npc.attackCooldown = npc.def.attackCooldownTicks;
-              // Telegraph: wind up for 6 ticks (300ms) before striking.
-              npc.windupTicks = 6;
-              this.setNpcPose(eid, npc, PoseState.Attack, 8);
+              // Telegraph: wind up before striking (throws wind longer).
+              npc.windupTicks = npc.def.ranged ? 8 : 6;
+              this.setNpcPose(eid, npc, PoseState.Attack, npc.def.ranged ? 10 : 8);
             }
           } else {
             moveX = dx / dist;
@@ -1524,7 +2389,8 @@ export class GameServer {
       }
 
       if (moveX !== 0 || moveY !== 0) {
-        const speed = npc.state === 'chase' ? npc.def.speed : npc.def.speed * 0.6;
+        let speed = npc.state === 'chase' ? npc.def.speed : npc.def.speed * 0.6;
+        if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
         const next = stepMovement(pos, { mx: moveX, my: moveY }, speed, TICK_DT, this.world, npc.def.radius);
         const moved = next.x !== pos.x || next.y !== pos.y;
         if (moved) {
@@ -1586,6 +2452,27 @@ export class GameServer {
   chat(eid: EntityId, text: string): void {
     const player = this.players.get(eid);
     if (!player) return;
+    // Dev-only utility commands, never broadcast.
+    if (config.devCommands && text.startsWith('/tp ')) {
+      const [, xRaw, yRaw] = text.split(/\s+/);
+      const x = Number.parseFloat(xRaw ?? '');
+      const y = Number.parseFloat(yRaw ?? '');
+      if (Number.isFinite(x) && Number.isFinite(y)) this.teleport(eid, x, y);
+      return;
+    }
+    if (config.devCommands && text.startsWith('/give ')) {
+      const [, item, qtyRaw] = text.split(/\s+/);
+      const def = itemDef(item ?? '');
+      const qty = Math.max(1, Math.min(1000, Number.parseInt(qtyRaw ?? '1', 10) || 1));
+      if (def && hasSpaceFor(player.inventory, def.id)) {
+        addItem(player.inventory, def.id, qty);
+        player.session?.sendJson({ t: 'inv', slots: player.inventory });
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: `Given: ${def.name} ×${qty}` });
+      } else {
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: `Can't give '${item}'.` });
+      }
+      return;
+    }
     for (const s of this.sessions) {
       if (s.playerEid === eid || s.knownEntities.has(eid)) {
         s.sendJson({ t: 'chat', channel: 'local', from: player.name, eid, text });
@@ -1615,6 +2502,9 @@ export class GameServer {
     this.tickSpawns(now);
     this.tickNpcs();
     this.tickProjectiles();
+    this.tickStatuses();
+    this.tickSummons();
+    this.tickBlasts();
     this.tickDrops(now);
     this.tickRegen(now);
 
@@ -1639,25 +2529,38 @@ export class GameServer {
   private processPlayerInputs(eid: EntityId, player: PlayerComp): void {
     const pos = this.positions.must(eid);
     if (player.attackCooldown > 0) player.attackCooldown--;
+    if (player.abilityCd[0] > 0) player.abilityCd[0]--;
+    if (player.abilityCd[1] > 0) player.abilityCd[1]--;
+    if (player.buff && this.tickCount >= player.buff.untilTick) player.buff = null;
     const equipped = this.equippedWeapon(player);
     const style = equipped?.weapon.style ?? null;
     let moved = false;
     let frames = 0;
     while (frames < MAX_INPUTS_PER_TICK && player.inputQueue.length > 0) {
       const frame = player.inputQueue.shift()!;
+      const casting = this.tickCount < player.castFreezeUntilTick;
       // Moving cancels any in-progress gather.
       if (player.action && (Math.abs(frame.mx) > 0.01 || Math.abs(frame.my) > 0.01)) {
         this.cancelAction(eid, player, 'moved');
       }
       // Drawing a bow is a braced stance — same rule the client predicts.
-      const speed = isDrawSlowed(frame, style)
+      let speed = isDrawSlowed(frame, style)
         ? player.speed * DRAW_MOVE_FACTOR
         : player.speed;
+      if (player.buff) speed *= player.buff.speedMult;
+      if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
+      if (casting) speed = 0; // committed to the cast
       const next = stepMovement(pos, frame, speed, TICK_DT, this.world);
       if (next.x !== pos.x || next.y !== pos.y) moved = true;
       pos.x = next.x;
       pos.y = next.y;
       pos.dir = frame.aim;
+
+      // Abilities fire on the press edge — holding Q is one cast.
+      const pressed = frame.buttons & ~player.prevButtons;
+      player.prevButtons = frame.buttons;
+      if (pressed & InputButton.Ability1) this.tryCastAbility(eid, player, 0, frame.aim);
+      if (pressed & InputButton.Ability2) this.tryCastAbility(eid, player, 1, frame.aim);
       // Dodge dash: same seq-cooldown rule the client predicts with.
       if (
         hasButton(frame.buttons, InputButton.Dodge) &&
@@ -1673,7 +2576,9 @@ export class GameServer {
       }
       player.lastProcessedSeq = frame.seq;
 
-      const attackHeld = hasButton(frame.buttons, InputButton.Attack);
+      // A cast this frame (or one still resolving) holds the basic back.
+      const stillCasting = this.tickCount < player.castFreezeUntilTick;
+      const attackHeld = hasButton(frame.buttons, InputButton.Attack) && !stillCasting;
       if (style === 'archery') {
         this.tickBowDraw(eid, player, equipped!.weapon, attackHeld, frame.aim);
       } else if (attackHeld) {
@@ -1756,6 +2661,8 @@ export class GameServer {
       dirY: Math.sin(aim),
       speed: shot.speed,
       distLeft: shot.range,
+      basic: true,
+      fullDraw: ticks >= DRAW_FULL_TICKS,
     });
     this.updateChunkMembership(proj);
   }
@@ -1853,6 +2760,8 @@ export class GameServer {
     if (drop) meta.defId = drop.item;
     const proj = this.projectiles.get(eid);
     if (proj) meta.defId = proj.style;
+    const summon = this.summons.get(eid);
+    if (summon) meta.defId = `summon_${summon.kind}`;
     return meta;
   }
 
@@ -1871,6 +2780,7 @@ export class GameServer {
         dir: pos.dir,
         pose: this.poses.get(eid) ?? PoseState.Idle,
         hpPct: health ? Math.round((health.hp / health.maxHp) * 255) : 255,
+        status: this.statusBits(eid),
       });
     }
     session.sendBinary(

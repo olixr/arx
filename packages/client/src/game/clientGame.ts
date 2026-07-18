@@ -25,7 +25,8 @@ import {
   type TilePatch,
   type Vec2,
 } from '@devcraft/shared';
-import { NODES_BY_TILE, itemDef } from '@devcraft/content';
+import { NODES_BY_TILE, abilityDef, itemDef } from '@devcraft/content';
+import type { AbilityDef } from '@devcraft/shared';
 
 export type InteractTarget =
   | { kind: 'node'; tx: number; ty: number }
@@ -59,6 +60,19 @@ export interface ChatLine {
   channel: 'local' | 'system';
   from?: string;
   text: string;
+}
+
+/** A combat effect in flight (nova ring, telegraph, blast, reaction). */
+export interface ActiveFx {
+  kind: 'nova' | 'telegraph' | 'blast' | 'reaction' | 'summon';
+  x: number;
+  y: number;
+  radius: number;
+  /** telegraph: fuse length in server ticks. */
+  ticks?: number;
+  color?: string;
+  text?: string;
+  bornAt: number;
 }
 
 export interface GameEvents {
@@ -97,6 +111,21 @@ export class ClientGame {
   action: { startedAt: number; durationMs: number } | null = null;
   /** Damage numbers floating up; pruned by the renderer. */
   readonly floaties: Floaty[] = [];
+  /** Combat effects in flight; pruned by the renderer. */
+  readonly fx: ActiveFx[] = [];
+
+  /** Hotbar state: performance.now() when each slot comes off cooldown. */
+  readonly abilityReadyAt: [number, number] = [0, 0];
+  /** Full cooldowns in ticks (0 = nothing equipped in that slot). */
+  abilityMax: [number, number] = [0, 0];
+  /** Fires when the local player commits a cast (FX + audio hooks). */
+  onCastFx: ((slot: 0 | 1, ab: AbilityDef) => void) | null = null;
+  /** Fires for every arriving combat effect (audio/shake hooks). */
+  onFx: ((fx: ActiveFx) => void) | null = null;
+  /** Buttons of the previous outgoing frame — press-edge detection. */
+  private prevSentButtons = 0;
+  /** Local player's status bits from the latest snapshot. */
+  ownStatus = 0;
 
   /** Tap-to-move autopilot; cancelled by any manual movement input. */
   private autoPath: Vec2[] | null = null;
@@ -144,6 +173,54 @@ export class ClientGame {
   private equippedWeaponDef() {
     const id = this.equipment.weapon;
     return id ? itemDef(id)?.weapon ?? null : null;
+  }
+
+  /** The ability granted by a hotbar slot: 0 = weapon Art, 1 = relic. */
+  slotAbilityDef(slot: 0 | 1): AbilityDef | null {
+    if (slot === 0) {
+      const artId = this.equippedWeaponDef()?.art;
+      return artId ? (abilityDef(artId) ?? null) : null;
+    }
+    const relic = itemDef(this.equipment.relic ?? '');
+    return relic?.relic ? (abilityDef(relic.relic) ?? null) : null;
+  }
+
+  /** Remaining cooldown fraction for a hotbar slot, 0 = ready. */
+  abilityCdFraction(slot: 0 | 1, now = performance.now()): number {
+    const max = this.abilityMax[slot];
+    if (max <= 0) return 0;
+    const left = this.abilityReadyAt[slot] - now;
+    if (left <= 0) return 0;
+    return Math.min(1, left / (max * TICK_MS));
+  }
+
+  /**
+   * Local press-edge cast mirror: starts the radial instantly, roots the
+   * predictor for the commitment window, and applies dash Arts so the
+   * server's authoritative version lands where we already are.
+   */
+  private trackOwnCasts(frame: InputFrame): void {
+    const pressed = frame.buttons & ~this.prevSentButtons;
+    this.prevSentButtons = frame.buttons;
+    const now = performance.now();
+    const slots: Array<[number, 0 | 1]> = [
+      [InputButton.Ability1, 0],
+      [InputButton.Ability2, 1],
+    ];
+    for (const [bit, slot] of slots) {
+      if (!(pressed & bit)) continue;
+      const ab = this.slotAbilityDef(slot);
+      if (!ab || now < this.abilityReadyAt[slot]) continue;
+      this.abilityReadyAt[slot] = now + ab.cooldownTicks * TICK_MS;
+      this.abilityMax[slot] = ab.cooldownTicks;
+      this.drawStartAt = 0; // casting lets the bowstring down
+      this.predictor.registerCast(
+        frame.seq,
+        ab.castFreezeTicks ?? 0,
+        ab.shape === 'dash_strike' ? { tiles: ab.dashTiles ?? 3, aim: frame.aim } : null,
+      );
+      this.onCastFx?.(slot, ab);
+    }
   }
 
   /**
@@ -369,6 +446,40 @@ export class ClientGame {
         this.events.onDeath({ x: msg.x, y: msg.y, defId: msg.defId });
         break;
       }
+      case 'cooldowns': {
+        const now = performance.now();
+        this.abilityMax = [msg.max[0], msg.max[1]];
+        this.abilityReadyAt[0] = now + msg.cd[0] * TICK_MS;
+        this.abilityReadyAt[1] = now + msg.cd[1] * TICK_MS;
+        break;
+      }
+      case 'fx': {
+        const fx: ActiveFx = {
+          kind: msg.kind,
+          x: msg.x,
+          y: msg.y,
+          radius: msg.radius,
+          ticks: msg.ticks,
+          color: msg.color,
+          text: msg.text,
+          bornAt: performance.now(),
+        };
+        this.fx.push(fx);
+        if (this.fx.length > 48) this.fx.shift();
+        this.onFx?.(fx);
+        // Reactions announce themselves — the name IS the reward.
+        if (msg.kind === 'reaction' && msg.text) {
+          this.floaties.push({
+            x: msg.x,
+            y: msg.y - 0.8,
+            text: msg.text,
+            color: msg.color ?? '#f4efe4',
+            bornAt: performance.now(),
+            sizeMul: msg.text.startsWith('+') || msg.text === 'Resist' ? 0.9 : 1.45,
+          });
+        }
+        break;
+      }
     }
   }
 
@@ -493,6 +604,7 @@ export class ClientGame {
       if (e.eid === this.ownEid) {
         this.ownHpPct = e.hpPct;
         this.ownPose = e.pose;
+        this.ownStatus = e.status;
         this.predictor.reconcile({ x: e.x, y: e.y }, snap.lastInputSeq);
         continue;
       }
@@ -505,6 +617,7 @@ export class ClientGame {
         dir: e.dir,
         pose: e.pose,
         hpPct: e.hpPct,
+        status: e.status,
       });
     }
   }
@@ -555,6 +668,7 @@ export class ClientGame {
         aim: this.aim,
         buttons: this.input.buttons(),
       };
+      this.trackOwnCasts(frame);
       this.conn.send({ t: 'input', frame });
       this.predictor.applyInput(frame);
       this.trackOwnDraw(frame, now);

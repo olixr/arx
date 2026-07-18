@@ -303,6 +303,16 @@ export declare class Renderer {
     private npcItem;
     private dropItem;
     private projectileItem;
+    /**
+     * Ambient status VFX riding an entity: embers for burn, drifting
+     * frost for chill, spark jitter for shock, falling drips for bleed.
+     * Spawn rates are frame-time scaled so effect density is fps-stable.
+     */
+    private statusAmbience;
+    /** Placed summons: totem, snare trap, straw decoy. */
+    private summonItem;
+    /** Server combat FX: telegraphs, novas, blasts, reactions, summons. */
+    private drawCombatFx;
     private drawBuildGhost;
     private drawActionProgress;
     private drawFloaties;

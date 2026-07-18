@@ -1,0 +1,239 @@
+/**
+ * Ability & status laws — the shared heart of hybrid combat.
+ *
+ * The model: every weapon carries a signature Art (Q), a worn relic
+ * grants a second active (E). Both run on cooldowns, and every basic
+ * attack you LAND shaves ticks off both — autos are the engine that
+ * fuels abilities, so aggression is always rewarded and the rhythm
+ * weaves basics and abilities together.
+ *
+ * Abilities are pure data (AbilityDef) interpreted by one executor on
+ * the server; NPCs' special attacks run through the same interpreter.
+ * The client uses the same types for hotbar icons and cooldown mirrors.
+ */
+
+// ------------------------------------------------------------- status
+
+export type StatusId = 'burn' | 'chill' | 'shock' | 'bleed';
+
+export const STATUS_IDS: readonly StatusId[] = ['burn', 'chill', 'shock', 'bleed'];
+
+/** Snapshot wire bits (u8 bitfield per entity). */
+export const STATUS_BIT: Record<StatusId, number> = {
+  burn: 1 << 0,
+  chill: 1 << 1,
+  shock: 1 << 2,
+  bleed: 1 << 3,
+};
+
+/** A status being applied by an ability or attack. */
+export interface StatusApply {
+  status: StatusId;
+  /** Magnitude — DoT tick damage for burn/bleed, unused for chill/shock. */
+  power: number;
+  durationTicks: number;
+}
+
+/** A status currently riding on an entity. */
+export interface ActiveStatus {
+  id: StatusId;
+  power: number;
+  ticksLeft: number;
+}
+
+/** Burn deals its power every this many ticks (0.5 s at 20 Hz). */
+export const BURN_TICK_EVERY = 10;
+/** Bleed bleeds slower but is refreshed easily by melee. */
+export const BLEED_TICK_EVERY = 14;
+/** Movement/attack speed factor while chilled. */
+export const CHILL_SPEED_FACTOR = 0.55;
+/**
+ * Shock stuns hard but briefly (a stagger, not a lockdown). The status
+ * itself may ride LONGER than the stun — static charge lingering as
+ * reaction fodder, so shock combos are playable at human speed.
+ */
+export const SHOCK_MAX_TICKS = 14;
+
+// ---------------------------------------------------------- reactions
+
+/**
+ * The one reaction law: applying a DIFFERENT status to a target that
+ * already carries one DETONATES the old status — burst damage plus a
+ * combined effect. Order doesn't matter (pairs are symmetric), so the
+ * table has one entry per unordered pair.
+ */
+export type ReactionEffect =
+  /** Extra burst on the target only. */
+  | 'burst'
+  /** Blast damage to everything near the target. */
+  | 'aoe'
+  /** Damage arcs to the nearest other enemies. */
+  | 'chain'
+  /** The detonation re-applies a hard stun. */
+  | 'stun'
+  /** The burn spreads to nearby enemies. */
+  | 'spread';
+
+export interface ReactionDef {
+  name: string;
+  /** Burst damage = round((oldPower + newPower) * mult). */
+  mult: number;
+  effect: ReactionEffect;
+  /** Radius for aoe/chain/spread effects, tiles. */
+  radius: number;
+  /** Floaty color. */
+  color: string;
+}
+
+function pairKey(a: StatusId, b: StatusId): string {
+  return a < b ? `${a}+${b}` : `${b}+${a}`;
+}
+
+const REACTION_TABLE: Record<string, ReactionDef> = {
+  [pairKey('burn', 'chill')]: {
+    name: 'Thermal Shock',
+    mult: 2.2,
+    effect: 'aoe',
+    radius: 2.2,
+    color: '#ffb35c',
+  },
+  [pairKey('burn', 'shock')]: {
+    name: 'Combust',
+    mult: 3.0,
+    effect: 'burst',
+    radius: 0,
+    color: '#ff8a3c',
+  },
+  [pairKey('burn', 'bleed')]: {
+    name: 'Immolate',
+    mult: 1.8,
+    effect: 'spread',
+    radius: 2.6,
+    color: '#ff6a4a',
+  },
+  [pairKey('chill', 'shock')]: {
+    name: 'Shatter',
+    mult: 2.4,
+    effect: 'stun',
+    radius: 0,
+    color: '#a8e4ff',
+  },
+  [pairKey('chill', 'bleed')]: {
+    name: 'Frostbite',
+    mult: 2.0,
+    effect: 'burst',
+    radius: 0,
+    color: '#c8ecff',
+  },
+  [pairKey('shock', 'bleed')]: {
+    name: 'Arc Surge',
+    mult: 1.6,
+    effect: 'chain',
+    radius: 3.2,
+    color: '#e8e06a',
+  },
+};
+
+/** The reaction for detonating `oldStatus` with `incoming`, if any. */
+export function reactionFor(oldStatus: StatusId, incoming: StatusId): ReactionDef | null {
+  if (oldStatus === incoming) return null;
+  return REACTION_TABLE[pairKey(oldStatus, incoming)] ?? null;
+}
+
+/** Burst damage a detonation deals before effect-specific behavior. */
+export function reactionDamage(oldPower: number, newPower: number, r: ReactionDef): number {
+  return Math.max(1, Math.round((oldPower + newPower) * r.mult));
+}
+
+// -------------------------------------------------------------- haste
+
+/**
+ * On-hit haste: every basic attack that LANDS pulls both ability
+ * cooldowns forward. Charged shots at full draw pull harder — the
+ * patient archer gets her volley back in two arrows.
+ */
+export const HASTE_ON_HIT_TICKS = 8; // 0.4 s per landed basic
+export const HASTE_FULL_DRAW_TICKS = 16;
+
+export function hasteOnHit(cooldownLeft: number, fullDraw = false): number {
+  const chunk = fullDraw ? HASTE_FULL_DRAW_TICKS : HASTE_ON_HIT_TICKS;
+  return Math.max(0, cooldownLeft - chunk);
+}
+
+// ---------------------------------------------------------- abilities
+
+export type AbilityShape =
+  /** Swing in an arc around the caster's aim. */
+  | 'melee_arc'
+  /** Dash forward, damaging everything passed through. */
+  | 'dash_strike'
+  /** Loose a fan of projectiles. */
+  | 'projectile_fan'
+  /** Damage ring expanding from the caster. */
+  | 'nova'
+  /** Telegraphed blast at an aimed ground point. */
+  | 'ground_aoe'
+  /** Buff/heal the caster only. */
+  | 'self_buff'
+  /** Place a stationary helper: totem, trap, or decoy. */
+  | 'summon';
+
+export interface AbilitySelf {
+  heal?: number;
+  /** Movement multiplier while active. */
+  speedMult?: number;
+  /** Flat damage soaked before HP. */
+  shieldHp?: number;
+  durationTicks: number;
+}
+
+export interface AbilitySummon {
+  kind: 'heal_totem' | 'snare_trap' | 'decoy';
+  durationTicks: number;
+  /** Effect radius around the summon. */
+  radius: number;
+  /** Heal per pulse / snare chill power / decoy taunt radius weight. */
+  power: number;
+}
+
+export interface AbilityDef {
+  id: string;
+  name: string;
+  /** One line for the hotbar tooltip. */
+  desc: string;
+  /** Icon language matches items: a color chip + two-letter code. */
+  color: string;
+  code: string;
+  cooldownTicks: number;
+  /** Ticks the caster is rooted in the cast (commitment window). */
+  castFreezeTicks?: number;
+  shape: AbilityShape;
+  /** Max hit before style-level scaling. 0 for pure utility. */
+  damage: number;
+  /** Reach / flight range / max ground-target distance, tiles. */
+  range?: number;
+  /** melee_arc half-angle in radians (default ~60°). */
+  arc?: number;
+  /** Blast radius for nova / ground_aoe, tiles. */
+  radius?: number;
+  /** projectile_fan count. */
+  projectiles?: number;
+  /** Total fan spread in radians. */
+  spreadArc?: number;
+  projectileSpeed?: number;
+  /** Projectiles punch through targets instead of stopping. */
+  pierce?: boolean;
+  /** dash_strike distance, tiles. */
+  dashTiles?: number;
+  status?: StatusApply;
+  self?: AbilitySelf;
+  knockback?: number;
+  /** ground_aoe: ticks between telegraph and detonation. */
+  fuseTicks?: number;
+  summon?: AbilitySummon;
+}
+
+/** Ability slot indices — slot 0 is the weapon Art, slot 1 the relic. */
+export const SLOT_ART = 0;
+export const SLOT_RELIC = 1;
+export type AbilitySlot = typeof SLOT_ART | typeof SLOT_RELIC;

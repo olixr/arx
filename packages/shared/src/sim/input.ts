@@ -14,6 +14,10 @@ export enum InputButton {
   Attack = 1 << 0,
   Interact = 1 << 1,
   Dodge = 1 << 2,
+  /** Weapon Art (Q) — fires on press edge, not hold. */
+  Ability1 = 1 << 3,
+  /** Relic active (E) — fires on press edge, not hold. */
+  Ability2 = 1 << 4,
 }
 
 export function hasButton(buttons: number, b: InputButton): boolean {

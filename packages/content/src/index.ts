@@ -3,6 +3,7 @@
  * Items, NPCs, skills, recipes, loot tables, maps, and spawn tables all
  * live here as typed data, validated at build time by tools/validate.
  */
+export * from './abilities.js';
 export * from './items.js';
 export * from './nodes.js';
 export * from './npcs.js';
