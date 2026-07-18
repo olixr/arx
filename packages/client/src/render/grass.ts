@@ -246,19 +246,27 @@ function mixHex(a: string, b: string, t: number): string {
   return `#${((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, '0')}`;
 }
 
-/** tone*3 + {0: shade, 1: base, 2: lit} */
-const BLADE_FILLS: string[] = TONE_BASE.flatMap((t) => [
-  mixHex(t, SHADE_TARGET, 0.44),
-  t,
-  mixHex(t, LIT_TARGET, 0.42),
-]);
+/**
+ * Shimmer ramp: LIGHTS graded steps per tone, shade → base → lit. Many
+ * small steps (dithered further by per-blade lumJit) is what makes a
+ * passing gust GLIDE across the field — three coarse steps popped.
+ */
+const LIGHTS = 7;
+const BLADE_FILLS: string[] = TONE_BASE.flatMap((tone) =>
+  Array.from({ length: LIGHTS }, (_, i) => {
+    const t = i / (LIGHTS - 1);
+    return t < 0.45
+      ? mixHex(tone, SHADE_TARGET, 0.42 * (1 - t / 0.45))
+      : mixHex(tone, LIT_TARGET, 0.38 * ((t - 0.45) / 0.55));
+  }),
+);
 
-// Bucket layout: [0..14] blades, 15 roots, 16..18 petals, 19 cores, 20 stems.
-const B_ROOT = 15;
-const B_PETAL0 = 16;
-const B_CORE = 19;
-const B_STEM = 20;
-const BUCKETS = 21;
+// Bucket layout: blade ramp first, then roots, petals, cores, stems.
+const B_ROOT = TONE_BASE.length * LIGHTS;
+const B_PETAL0 = B_ROOT + 1;
+const B_CORE = B_PETAL0 + 3;
+const B_STEM = B_CORE + 1;
+const BUCKETS = B_STEM + 1;
 const BUCKET_FILLS: string[] = [
   ...BLADE_FILLS,
   ROOT_COLOR,
@@ -479,9 +487,11 @@ export class GrassSystem {
       if (e > 0) tipDx += this.wakeWobble[b.bin]! * e * e;
     }
 
-    // Shimmer: the front relights the blade as it passes.
-    const lum = wind.s + b.lumJit;
-    const bucket = b.tone * 3 + (lum > 0.85 ? 2 : lum < 0 ? 0 : 1);
+    // Shimmer: the front relights the blade as it passes — mapped onto
+    // the graded ramp so the change is a glide, never a pop.
+    const lum = (wind.s + b.lumJit + 0.35) / 1.5;
+    const level = lum <= 0 ? 0 : lum >= 1 ? LIGHTS - 1 : Math.floor(lum * LIGHTS);
+    const bucket = b.tone * LIGHTS + level;
     const path = (this.paths as Path2D[])[bucket]!;
     this.mark(bucket);
 
@@ -582,17 +592,17 @@ export class GrassSystem {
   private flush(ctx: CanvasRenderingContext2D): void {
     const paths = this.paths as Path2D[];
     // Roots under blades under flowers: painter's order inside the batch.
-    if (this.touched.indexOf(B_ROOT) !== -1) {
+    if (this.touchedFlag[B_ROOT]) {
       ctx.fillStyle = BUCKET_FILLS[B_ROOT]!;
       ctx.fill(paths[B_ROOT]!);
     }
-    for (let i = 0; i < 15; i++) {
-      if (this.touched.indexOf(i) === -1) continue;
+    for (let i = 0; i < B_ROOT; i++) {
+      if (!this.touchedFlag[i]) continue;
       ctx.fillStyle = BUCKET_FILLS[i]!;
       ctx.fill(paths[i]!);
     }
     for (const i of [B_STEM, B_PETAL0, B_PETAL0 + 1, B_PETAL0 + 2, B_CORE]) {
-      if (this.touched.indexOf(i) === -1) continue;
+      if (!this.touchedFlag[i]) continue;
       ctx.fillStyle = BUCKET_FILLS[i]!;
       ctx.fill(paths[i]!);
     }
