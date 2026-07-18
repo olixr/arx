@@ -33,6 +33,7 @@ import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import { Particles } from './particles.js';
 import { GrassSystem, windAt, windScalarAt, type Disturber } from './grass.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
+import { rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
 import { bakeChunk, bakeElevated, drawLiveGround } from './terrain.js';
 
@@ -4275,6 +4276,7 @@ export class Renderer {
       sy: number;
       text: string;
       col: string;
+      nameCol: string;
       alpha: number;
     }
     const plates: Plate[] = [];
@@ -4291,6 +4293,8 @@ export class Renderer {
         sy: d.sy,
         text: d.qty > 1 ? `${name} × ${d.qty.toLocaleString()}` : name,
         col: def?.color ?? '#b0a49a',
+        // Rarity speaks on the ground too — the ARPG loot-name law.
+        nameCol: rarityColor(d.itemId) ?? '#f4efe4',
         alpha,
       });
     }
@@ -4335,7 +4339,7 @@ export class Renderer {
       ctx.beginPath();
       ctx.roundRect(x - w / 2 + 5, y - 4, 8, 8, 2);
       ctx.fill();
-      ctx.fillStyle = '#f4efe4';
+      ctx.fillStyle = pl.nameCol;
       ctx.fillText(pl.text, x + 7, y + 0.5);
     }
     ctx.restore();

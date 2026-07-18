@@ -10,6 +10,7 @@ import {
 } from '@devcraft/shared';
 import { abilityDef, itemDef, techniquesFor, type ItemDef } from '@devcraft/content';
 import { itemIconUrl, slotGlyphUrl } from '../render/icons.js';
+import { RARITY_COLORS, rarityOf } from './rarity.js';
 
 /** Explicit verbs the item context menu can dispatch. */
 export type SlotAction = 'use' | 'deposit' | 'sell' | 'drop';
@@ -268,11 +269,22 @@ export class Panels {
     const name = document.createElement('div');
     name.className = 'card-name';
     name.textContent = def.name;
+    // Rarity speaks through the nameplate; legendary keeps the molten
+    // gold treatment from the stylesheet.
+    const tier = rarityOf(itemId);
+    const rc = RARITY_COLORS[tier];
+    if (tier !== 'legendary' && rc) {
+      name.classList.add('rarity-name');
+      name.style.color = rc;
+    } else if (tier === 'common') {
+      name.classList.add('rarity-name');
+      name.style.color = 'var(--parchment)';
+    }
     const cat = document.createElement('div');
     cat.className = 'card-cat';
     cat.textContent = wornSlot
-      ? `${Panels.categoryLine(def)} · worn (${wornSlot})`
-      : Panels.categoryLine(def);
+      ? `${Panels.categoryLine(def)} · worn (${wornSlot}) · ${tier}`
+      : `${Panels.categoryLine(def)} · ${tier}`;
     title.append(name, cat);
     head.append(icon, title);
     this.card.appendChild(head);
@@ -453,6 +465,8 @@ export class Panels {
         const def = itemDef(slot.item);
         if (slot.item === 'coins') coins += slot.qty;
         cell.classList.add('clickable');
+        const tier = rarityOf(slot.item);
+        if (tier !== 'common') cell.classList.add(`rarity-${tier}`);
         cell.dataset.filled = '1';
         cell.dataset.tipname = def?.name ?? slot.item;
         cell.dataset.acta = def?.equipSlot ? 'Equip' : def?.heals ? 'Eat' : 'Use';
@@ -517,6 +531,8 @@ export class Panels {
       if (worn) {
         const def = itemDef(worn);
         cell.classList.add('clickable', 'equipped');
+        const tier = rarityOf(worn);
+        if (tier !== 'common') cell.classList.add(`rarity-${tier}`);
         cell.dataset.filled = '1';
         cell.dataset.nav = '';
         cell.dataset.navkey = `equip:${slot}`;

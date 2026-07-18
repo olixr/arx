@@ -20,53 +20,188 @@ const PAINTERS: Record<string, IconPainter> = {
   sword: (c, col) => {
     c.translate(0.5, 0.5);
     c.rotate(-Math.PI / 4);
-    poly(c, col, [[-0.22, -0.05], [0.26, -0.05], [0.38, 0], [0.26, 0.05], [-0.22, 0.05]]);
-    c.fillStyle = shade(col, 34);
-    c.fillRect(-0.2, -0.04, 0.44, 0.035);
-    bar(c, '#6b4a26', -0.27, -0.13, 0.055, 0.26);
-    dot(c, '#d9a441', -0.34, 0, 0.05);
+    // Blade with a bright edge and a dark fuller down the middle.
+    poly(c, col, [[-0.18, -0.055], [0.28, -0.055], [0.41, 0], [0.28, 0.055], [-0.18, 0.055]]);
+    c.fillStyle = shade(col, 40);
+    c.beginPath();
+    c.moveTo(-0.17, -0.045);
+    c.lineTo(0.27, -0.045);
+    c.lineTo(0.36, -0.005);
+    c.lineTo(-0.17, -0.005);
+    c.closePath();
+    c.fill();
+    c.strokeStyle = shade(col, -30);
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.moveTo(-0.15, 0.01);
+    c.lineTo(0.26, 0.01);
+    c.stroke();
+    // Crossguard, wrapped grip, gem pommel.
+    bar(c, '#8a5f1c', -0.235, -0.115, 0.055, 0.23);
+    bar(c, '#d9a441', -0.225, -0.1, 0.035, 0.2);
+    bar(c, '#5b4028', -0.36, -0.045, 0.13, 0.09);
+    c.strokeStyle = '#8a6a45';
+    c.lineWidth = 0.02;
+    for (const x of [-0.335, -0.295, -0.255]) {
+      c.beginPath();
+      c.moveTo(x, -0.045);
+      c.lineTo(x, 0.045);
+      c.stroke();
+    }
+    dot(c, '#d9a441', -0.4, 0, 0.055);
+    dot(c, '#c4553d', -0.4, 0, 0.03);
+    dot(c, '#fff2cc', -0.415, -0.015, 0.012);
   },
   axe: (c, col) => {
-    c.translate(0.5, 0.5);
-    c.rotate(-Math.PI / 4);
-    bar(c, '#8a6a45', -0.34, -0.035, 0.6, 0.07);
-    poly(c, col, [[0.14, -0.2], [0.4, -0.1], [0.38, 0.14], [0.14, 0.1]]);
-  },
-  pickaxe: (c, col) => {
-    c.translate(0.5, 0.5);
-    c.rotate(-Math.PI / 4);
-    bar(c, '#8a6a45', -0.34, -0.035, 0.56, 0.07);
+    // A woodsman's axe: thick grained haft, and a TRUE bit — concave
+    // shoulders flaring into a crescent cutting edge.
+    c.translate(0.5, 0.53);
+    c.rotate(-Math.PI / 3.6);
+    bar(c, '#7a5a38', -0.4, -0.048, 0.58, 0.096);
+    c.strokeStyle = shade('#7a5a38', -22);
+    c.lineWidth = 0.017;
+    c.beginPath();
+    c.moveTo(-0.36, 0.005);
+    c.lineTo(0.06, 0.005);
+    c.stroke();
+    // The head: eye collar at the haft, shoulders sweeping deeply
+    // concave out to two long horns, joined by the curved edge.
     c.fillStyle = col;
     c.strokeStyle = OUTLINE;
-    c.lineWidth = 0.03;
+    c.lineWidth = 0.033;
     c.beginPath();
-    c.moveTo(0.18, -0.26);
-    c.quadraticCurveTo(0.44, 0, 0.18, 0.26);
-    c.quadraticCurveTo(0.28, 0, 0.18, -0.26);
+    c.moveTo(0.1, -0.1);
+    c.quadraticCurveTo(0.19, -0.09, 0.3, -0.3);
+    c.quadraticCurveTo(0.55, -0.13, 0.55, 0.0);
+    c.quadraticCurveTo(0.55, 0.13, 0.3, 0.3);
+    c.quadraticCurveTo(0.19, 0.09, 0.1, 0.1);
+    c.closePath();
     c.fill();
+    c.stroke();
+    // Honed crescent along the edge, catching the light hard.
+    c.fillStyle = shade(col, 50);
+    c.beginPath();
+    c.moveTo(0.3, -0.3);
+    c.quadraticCurveTo(0.55, -0.13, 0.55, 0.0);
+    c.quadraticCurveTo(0.55, 0.13, 0.3, 0.3);
+    c.quadraticCurveTo(0.46, 0.12, 0.46, 0.0);
+    c.quadraticCurveTo(0.46, -0.12, 0.3, -0.3);
+    c.closePath();
+    c.fill();
+    // Cheek shading below the midline.
+    c.fillStyle = shade(col, -20);
+    c.beginPath();
+    c.moveTo(0.12, 0.08);
+    c.quadraticCurveTo(0.2, 0.08, 0.29, 0.26);
+    c.quadraticCurveTo(0.35, 0.12, 0.44, 0.06);
+    c.quadraticCurveTo(0.28, 0.05, 0.12, 0.04);
+    c.closePath();
+    c.fill();
+    // Eye collar lashed to the haft.
+    bar(c, '#6b4a26', 0.045, -0.095, 0.075, 0.19);
+    c.strokeStyle = '#a8874f';
+    c.lineWidth = 0.016;
+    c.beginPath();
+    c.moveTo(0.05, -0.07);
+    c.lineTo(0.115, 0.05);
+    c.moveTo(0.05, 0.01);
+    c.lineTo(0.115, 0.09);
+    c.stroke();
+  },
+  pickaxe: (c, col) => {
+    // A miner's pick: stout grained haft, a broad double-pointed head
+    // with real thickness and a lit crown.
+    c.translate(0.5, 0.53);
+    c.rotate(-Math.PI / 3.6);
+    bar(c, '#8a6a45', -0.4, -0.048, 0.58, 0.096);
+    c.strokeStyle = shade('#8a6a45', -22);
+    c.lineWidth = 0.017;
+    c.beginPath();
+    c.moveTo(-0.36, 0.005);
+    c.lineTo(0.06, 0.005);
+    c.stroke();
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.033;
+    c.beginPath();
+    c.moveTo(0.16, -0.34);
+    c.quadraticCurveTo(0.4, -0.22, 0.46, 0);
+    c.quadraticCurveTo(0.4, 0.22, 0.16, 0.34);
+    c.quadraticCurveTo(0.3, 0.16, 0.31, 0);
+    c.quadraticCurveTo(0.3, -0.16, 0.16, -0.34);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // Crown highlight on the upper spur.
+    c.fillStyle = shade(col, 34);
+    c.beginPath();
+    c.moveTo(0.18, -0.3);
+    c.quadraticCurveTo(0.38, -0.2, 0.43, -0.02);
+    c.quadraticCurveTo(0.39, -0.16, 0.22, -0.26);
+    c.closePath();
+    c.fill();
+    // Eye collar lashed to the haft.
+    bar(c, '#6b4a26', 0.13, -0.095, 0.075, 0.19);
+    c.strokeStyle = '#a8874f';
+    c.lineWidth = 0.016;
+    c.beginPath();
+    c.moveTo(0.135, -0.07);
+    c.lineTo(0.2, 0.05);
+    c.moveTo(0.135, 0.01);
+    c.lineTo(0.2, 0.09);
     c.stroke();
   },
   bow: (c, col) => {
-    c.strokeStyle = col;
-    c.lineWidth = 0.07;
+    // A recurve at full profile, arrow nocked and ready.
     c.lineCap = 'round';
-    c.beginPath();
-    c.arc(0.36, 0.5, 0.34, -Math.PI / 2.4, Math.PI / 2.4);
+    // Limbs: outline pass, wood pass, highlight pass.
+    const limbs = (): void => {
+      c.beginPath();
+      c.moveTo(0.56, 0.1);
+      c.quadraticCurveTo(0.72, 0.16, 0.7, 0.34);
+      c.quadraticCurveTo(0.68, 0.46, 0.66, 0.5);
+      c.quadraticCurveTo(0.68, 0.54, 0.7, 0.66);
+      c.quadraticCurveTo(0.72, 0.84, 0.56, 0.9);
+    };
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.1;
+    limbs();
     c.stroke();
+    c.strokeStyle = col;
+    c.lineWidth = 0.062;
+    limbs();
+    c.stroke();
+    c.strokeStyle = shade(col, 26);
+    c.lineWidth = 0.022;
+    limbs();
+    c.stroke();
+    // Wrapped grip at the riser.
+    bar(c, '#6b4a26', 0.62, 0.44, 0.085, 0.12);
+    // Recurved tips.
+    for (const side of [-1, 1]) {
+      c.strokeStyle = shade(col, -24);
+      c.lineWidth = 0.045;
+      c.beginPath();
+      c.moveTo(0.56, 0.5 + side * 0.4);
+      c.quadraticCurveTo(0.5, 0.5 + side * 0.42, 0.48, 0.5 + side * 0.36);
+      c.stroke();
+    }
+    // String, and the nocked arrow across it.
     c.strokeStyle = '#e6e0d0';
-    c.lineWidth = 0.028;
-    const ty = Math.sin(Math.PI / 2.4) * 0.34;
+    c.lineWidth = 0.024;
     c.beginPath();
-    c.moveTo(0.36 + Math.cos(Math.PI / 2.4) * 0.34, 0.5 - ty);
-    c.lineTo(0.3, 0.5);
-    c.lineTo(0.36 + Math.cos(Math.PI / 2.4) * 0.34, 0.5 + ty);
+    c.moveTo(0.49, 0.145);
+    c.lineTo(0.38, 0.5);
+    c.lineTo(0.49, 0.855);
     c.stroke();
-    c.strokeStyle = '#c4b590';
-    c.lineWidth = 0.04;
+    c.strokeStyle = '#8a6a45';
+    c.lineWidth = 0.032;
     c.beginPath();
-    c.moveTo(0.3, 0.5);
-    c.lineTo(0.78, 0.5);
+    c.moveTo(0.38, 0.5);
+    c.lineTo(0.76, 0.5);
     c.stroke();
+    poly(c, '#9aa2ac', [[0.76, 0.455], [0.87, 0.5], [0.76, 0.545]]);
+    poly(c, '#e6e0d0', [[0.33, 0.455], [0.42, 0.5], [0.33, 0.545], [0.38, 0.5]]);
     c.lineCap = 'butt';
   },
   arrow: (c, col) => {
@@ -82,11 +217,76 @@ const PAINTERS: Record<string, IconPainter> = {
     poly(c, '#e6e0d0', [[-0.38, -0.09], [-0.22, 0], [-0.38, 0.09], [-0.3, 0]]);
   },
   staff: (c, col) => {
+    // A caster's staff: gnarled dark shaft, wire-wrapped grip, forked
+    // crown cradling a levitating faceted focus that leaks light.
     c.translate(0.5, 0.5);
     c.rotate(-Math.PI / 4);
-    bar(c, '#5b4632', -0.36, -0.035, 0.58, 0.07);
-    dot(c, col, 0.3, 0, 0.12);
-    dot(c, '#efe3ff', 0.27, -0.03, 0.04);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.1;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.38, 0.03);
+    c.quadraticCurveTo(-0.05, -0.045, 0.17, 0.005);
+    c.stroke();
+    c.strokeStyle = '#5b4632';
+    c.lineWidth = 0.068;
+    c.stroke();
+    c.strokeStyle = shade('#5b4632', 20);
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.moveTo(-0.36, 0.015);
+    c.quadraticCurveTo(-0.05, -0.06, 0.15, -0.01);
+    c.stroke();
+    // Gold wire wraps at the grip.
+    c.strokeStyle = '#d9a441';
+    c.lineWidth = 0.02;
+    for (const x of [-0.26, -0.22, -0.18]) {
+      c.beginPath();
+      c.moveTo(x, -0.05);
+      c.lineTo(x + 0.025, 0.055);
+      c.stroke();
+    }
+    // The fork: two prongs reaching around the focus.
+    c.strokeStyle = '#5b4632';
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.moveTo(0.16, 0);
+    c.quadraticCurveTo(0.22, -0.1, 0.33, -0.11);
+    c.moveTo(0.16, 0);
+    c.quadraticCurveTo(0.22, 0.1, 0.33, 0.11);
+    c.stroke();
+    c.lineCap = 'butt';
+    // The focus: glow halo, faceted stone, hot core, escaping sparks.
+    dot(c, shade(col, -18), 0.31, 0, 0.155);
+    c.globalAlpha = 0.35;
+    dot(c, col, 0.31, 0, 0.19);
+    c.globalAlpha = 1;
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(0.31, -0.13);
+    c.lineTo(0.42, 0);
+    c.lineTo(0.31, 0.13);
+    c.lineTo(0.2, 0);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    poly(c, shade(col, 34), [[0.31, -0.13], [0.37, 0], [0.25, 0]]);
+    dot(c, '#fff2cc', 0.29, -0.035, 0.028);
+    // Sparks drifting off the stone.
+    for (const [sx, sy, r] of [
+      [0.4, -0.16, 0.02],
+      [0.46, 0.08, 0.016],
+      [0.24, -0.19, 0.014],
+    ] as const) {
+      c.save();
+      c.translate(sx, sy);
+      c.rotate(Math.PI / 4);
+      c.fillStyle = '#fff2cc';
+      c.fillRect(-r, -r, r * 2, r * 2);
+      c.restore();
+    }
   },
   rod: (c, col) => {
     c.strokeStyle = col;
@@ -128,11 +328,67 @@ const PAINTERS: Record<string, IconPainter> = {
     c.stroke();
     c.restore();
   },
-  ore: (c, col) => {
-    poly(c, '#7d7887', [[0.2, 0.75], [0.14, 0.5], [0.32, 0.3], [0.62, 0.26], [0.84, 0.48], [0.76, 0.75]]);
-    poly(c, '#928d99', [[0.32, 0.3], [0.62, 0.26], [0.7, 0.42], [0.4, 0.48]]);
-    poly(c, col, [[0.36, 0.62], [0.44, 0.48], [0.54, 0.6]]);
-    poly(c, shade(col, 26), [[0.56, 0.5], [0.64, 0.4], [0.7, 0.54]]);
+  // Each ore is its own find: copper blooms in round nodules, tin
+  // grows cubic crystals, iron runs in rusted veins.
+  ore_copper: (c, col) => {
+    oreRock(c);
+    for (const [x, y, r] of [
+      [0.42, 0.55, 0.085],
+      [0.58, 0.45, 0.07],
+      [0.6, 0.62, 0.06],
+    ] as const) {
+      dot(c, col, x, y, r);
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.024;
+      c.beginPath();
+      c.arc(x, y, r, 0, Math.PI * 2);
+      c.stroke();
+      dot(c, shade(col, 30), x - r * 0.3, y - r * 0.3, r * 0.38);
+    }
+  },
+  ore_tin: (c, col) => {
+    oreRock(c);
+    for (const [x, y, r, a] of [
+      [0.44, 0.52, 0.085, 0.2],
+      [0.6, 0.56, 0.07, -0.25],
+    ] as const) {
+      c.save();
+      c.translate(x, y);
+      c.rotate(a);
+      c.fillStyle = col;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.024;
+      c.fillRect(-r, -r, r * 2, r * 2);
+      c.strokeRect(-r, -r, r * 2, r * 2);
+      c.fillStyle = shade(col, 28);
+      c.fillRect(-r, -r, r * 2, r * 0.8);
+      c.fillStyle = shade(col, -20);
+      c.fillRect(-r, r * 0.35, r * 2, r * 0.65);
+      c.restore();
+    }
+    dot(c, '#fff2cc', 0.41, 0.46, 0.02);
+  },
+  ore_iron: (c, col) => {
+    oreRock(c);
+    // Rust-red veins run diagonally through the stone.
+    c.strokeStyle = col;
+    c.lineWidth = 0.05;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(0.3, 0.62);
+    c.quadraticCurveTo(0.46, 0.5, 0.52, 0.38);
+    c.moveTo(0.46, 0.68);
+    c.quadraticCurveTo(0.6, 0.58, 0.68, 0.44);
+    c.stroke();
+    c.strokeStyle = shade(col, 22);
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(0.33, 0.58);
+    c.quadraticCurveTo(0.46, 0.48, 0.5, 0.4);
+    c.stroke();
+    c.lineCap = 'butt';
+    dot(c, shade(col, -18), 0.62, 0.6, 0.028);
+    dot(c, shade(col, -18), 0.38, 0.44, 0.022);
   },
   bar: (c, col) => {
     poly(c, col, [[0.2, 0.62], [0.3, 0.42], [0.74, 0.42], [0.84, 0.62]]);
@@ -140,19 +396,120 @@ const PAINTERS: Record<string, IconPainter> = {
     poly(c, shade(col, 30), [[0.3, 0.42], [0.74, 0.42], [0.7, 0.48], [0.34, 0.48]]);
   },
   fish: (c, col) => {
+    // A river trout with real anatomy: forked tail, dorsal fin, gill
+    // line, pale belly, and a scatter of spots.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(-0.08);
+    // Dorsal fin first, tucked behind the body.
+    poly(c, shade(col, -16), [[-0.1, -0.13], [0.02, -0.26], [0.12, -0.13]]);
+    // Body: nose to tail-root.
     c.fillStyle = col;
     c.strokeStyle = OUTLINE;
     c.lineWidth = 0.035;
     c.beginPath();
-    c.ellipse(0.44, 0.5, 0.28, 0.16, -0.15, 0, Math.PI * 2);
+    c.moveTo(-0.34, 0.02);
+    c.quadraticCurveTo(-0.24, -0.15, 0.0, -0.15);
+    c.quadraticCurveTo(0.18, -0.14, 0.26, -0.03);
+    c.quadraticCurveTo(0.18, 0.08, 0.0, 0.13);
+    c.quadraticCurveTo(-0.24, 0.15, -0.34, 0.02);
+    c.closePath();
     c.fill();
     c.stroke();
-    poly(c, col, [[0.66, 0.44], [0.88, 0.3], [0.84, 0.52], [0.88, 0.72], [0.66, 0.56]]);
-    dot(c, OUTLINE, 0.26, 0.46, 0.035);
-    c.fillStyle = shade(col, 24);
+    // Forked tail.
+    c.fillStyle = col;
     c.beginPath();
-    c.ellipse(0.42, 0.42, 0.16, 0.06, -0.2, 0, Math.PI * 2);
+    c.moveTo(0.24, -0.02);
+    c.lineTo(0.4, -0.15);
+    c.lineTo(0.36, 0.0);
+    c.lineTo(0.42, 0.14);
+    c.lineTo(0.24, 0.03);
+    c.closePath();
     c.fill();
+    c.stroke();
+    // Pale belly band.
+    c.fillStyle = shade(col, 30);
+    c.beginPath();
+    c.moveTo(-0.3, 0.045);
+    c.quadraticCurveTo(-0.1, 0.125, 0.12, 0.075);
+    c.quadraticCurveTo(-0.1, 0.075, -0.3, 0.045);
+    c.closePath();
+    c.fill();
+    // Gill line + eye + spots + side fin.
+    c.strokeStyle = shade(col, -26);
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.arc(-0.19, 0.0, 0.09, -Math.PI * 0.4, Math.PI * 0.4);
+    c.stroke();
+    dot(c, '#170f1c', -0.26, -0.045, 0.026);
+    dot(c, '#fff2cc', -0.268, -0.052, 0.009);
+    for (const [sx, sy] of [
+      [-0.06, -0.06],
+      [0.05, -0.03],
+      [-0.02, 0.02],
+      [0.13, -0.06],
+    ] as const) {
+      dot(c, shade(col, -20), sx, sy, 0.018);
+    }
+    poly(c, shade(col, -14), [[-0.12, 0.05], [-0.02, 0.12], [-0.13, 0.12]]);
+    c.restore();
+  },
+  fishcooked: (c, col) => {
+    // Off the fire on its skewer, char-striped and steaming.
+    // The skewer runs nose to tail.
+    c.strokeStyle = '#6b4a26';
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.08, 0.72);
+    c.lineTo(0.92, 0.42);
+    c.stroke();
+    c.save();
+    c.translate(0.5, 0.56);
+    c.rotate(-0.33);
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(-0.3, 0.01);
+    c.quadraticCurveTo(-0.2, -0.13, 0.0, -0.13);
+    c.quadraticCurveTo(0.16, -0.12, 0.23, -0.02);
+    c.quadraticCurveTo(0.16, 0.07, 0.0, 0.11);
+    c.quadraticCurveTo(-0.2, 0.13, -0.3, 0.01);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(0.21, -0.015);
+    c.lineTo(0.34, -0.12);
+    c.lineTo(0.31, 0.0);
+    c.lineTo(0.35, 0.11);
+    c.lineTo(0.21, 0.025);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // Char stripes across the flank.
+    c.strokeStyle = shade(col, -34);
+    c.lineWidth = 0.03;
+    for (const x of [-0.16, -0.04, 0.08]) {
+      c.beginPath();
+      c.moveTo(x, -0.09);
+      c.lineTo(x + 0.03, 0.08);
+      c.stroke();
+    }
+    dot(c, '#170f1c', -0.23, -0.035, 0.022);
+    c.restore();
+    // Steam curls rising.
+    c.strokeStyle = 'rgba(244, 239, 228, 0.75)';
+    c.lineWidth = 0.026;
+    c.lineCap = 'round';
+    for (const x of [0.38, 0.52]) {
+      c.beginPath();
+      c.moveTo(x, 0.3);
+      c.quadraticCurveTo(x + 0.05, 0.22, x, 0.15);
+      c.stroke();
+    }
+    c.lineCap = 'butt';
   },
   meat: (c, col) => {
     c.fillStyle = col;
@@ -897,6 +1254,13 @@ const PAINTERS: Record<string, IconPainter> = {
   },
 };
 
+/** The shared host stone every ore variant grows out of. */
+function oreRock(c: CanvasRenderingContext2D): void {
+  poly(c, '#7d7887', [[0.2, 0.76], [0.14, 0.5], [0.32, 0.3], [0.62, 0.26], [0.84, 0.48], [0.76, 0.76]]);
+  poly(c, '#928d99', [[0.32, 0.3], [0.62, 0.26], [0.72, 0.42], [0.42, 0.46]]);
+  poly(c, '#67626f', [[0.24, 0.72], [0.72, 0.72], [0.76, 0.62], [0.2, 0.6]]);
+}
+
 function poly(c: CanvasRenderingContext2D, color: string, pts: Array<[number, number]>): void {
   c.fillStyle = color;
   c.strokeStyle = OUTLINE;
@@ -935,13 +1299,13 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   coins: { icon: 'coins', color: '#e8b64c' },
   log: { icon: 'log', color: '#96744c' },
   oak_log: { icon: 'log', color: '#74522f' },
-  copper_ore: { icon: 'ore', color: '#c47b3d' },
-  tin_ore: { icon: 'ore', color: '#cfd3dc' },
-  iron_ore: { icon: 'ore', color: '#aeb4bd' },
+  copper_ore: { icon: 'ore_copper', color: '#c47b3d' },
+  tin_ore: { icon: 'ore_tin', color: '#cfd3dc' },
+  iron_ore: { icon: 'ore_iron', color: '#a05038' },
   coal: { icon: 'coalpile', color: '#4a4456' },
   gold_ore: { icon: 'nuggets', color: '#e8b64c' },
   raw_trout: { icon: 'fish', color: '#8fb7d9' },
-  trout: { icon: 'fish', color: '#d99a6a' },
+  trout: { icon: 'fishcooked', color: '#d99a6a' },
   raw_chicken: { icon: 'chicken', color: '#ecd3bd' },
   cooked_chicken: { icon: 'chickenleg', color: '#d9a052' },
   raw_beef: { icon: 'meat', color: '#c4645a' },
