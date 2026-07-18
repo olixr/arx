@@ -3663,9 +3663,10 @@ export class Renderer {
       anim.cape = undefined;
       anim.capeKey = undefined;
     }
-    // Depth-true: the cloth draws in front of the body only when the
-    // simulation actually put it there (facing away, or mid-whirl).
-    const capeFront = capeSim !== null && capeSim.meanY() > e.y + 0.02;
+    // Depth-true with hysteresis: the cloth draws in front of the body
+    // only when the simulation clearly put it there (facing away, or
+    // mid-whirl) — side profiles hold their side instead of flickering.
+    const capeFront = capeSim !== null && capeSim.front(e.y);
     const paintCape =
       capeSim !== null && capeItem
         ? () => {
@@ -3673,7 +3674,17 @@ export class Renderer {
               const sp = this.camera.worldToScreen(nd.x, nd.y, this.w, this.h);
               return { x: sp.x, y: sp.y - terrainLift - nd.z * s };
             });
-            drawCape(ctx, capePts, capeStyle(capeItem), s * capeK, e.hurt ?? false);
+            const capeFx = Math.cos(dir);
+            const capeFy = Math.sin(dir);
+            drawCape(
+              ctx,
+              capePts,
+              capeStyle(capeItem),
+              s * capeK,
+              e.hurt ?? false,
+              Math.abs(capeFx) * (1 - Math.abs(capeFy)),
+              Math.min(1, capeSim.hemSpd / 4.5),
+            );
           }
         : null;
 

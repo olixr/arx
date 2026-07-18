@@ -36,6 +36,9 @@ export declare class CapeSim {
     private lastAx;
     private lastAy;
     private live;
+    private isFront;
+    /** Hem velocity (tiles/s) — drives the kick-light on the trim. */
+    hemSpd: number;
     constructor(style: CapeStyle, seed: number);
     /**
      * Advance the cloth one frame. (ax, ay) is the wearer's world position
@@ -48,16 +51,29 @@ export declare class CapeSim {
     }, tSec: number, sizeK: number): void;
     /** Where the cloth actually is, for depth-true front/behind sorting. */
     meanY(): number;
+    /**
+     * Depth-true paint side with HYSTERESIS: the cloth must be clearly
+     * toward the camera to come in front, and clearly away to go back —
+     * inside the band it keeps its last side. Side profiles hover near
+     * zero, and without the band they flickered between paint orders
+     * every frame.
+     */
+    front(eY: number): boolean;
 }
 /**
  * Paint the projected ribbon: base fill, hard-shade fold half, lit
  * shoulder mantle, trim hem, outline — the tunic's own dialect, in cloth.
  * `pts` are the nodes projected to screen by the caller; `wk` is the
- * width scale (camera scale × body size).
+ * width scale (camera scale × body size). `sideK` is how side-on the
+ * facing is (0 front/back → 1 pure profile): the clasp is seen edge-on
+ * in profile so the top narrows, while the hem swings toward the camera
+ * and flares FULLER — the forced perspective that makes the cloth read
+ * as turning in space with the character. `hemGlow` (0..1, from hem
+ * speed) lets a fast-moving trim catch the light.
  */
 export declare function drawCape(ctx: CanvasRenderingContext2D, pts: Array<{
     x: number;
     y: number;
-}>, style: CapeStyle, wk: number, hurt: boolean): void;
+}>, style: CapeStyle, wk: number, hurt: boolean, sideK?: number, hemGlow?: number): void;
 export {};
 //# sourceMappingURL=cape.d.ts.map

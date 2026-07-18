@@ -126,6 +126,9 @@ export class CapeSim {
   private lastAx = 0;
   private lastAy = 0;
   private live = false;
+  private isFront = false;
+  /** Hem velocity (tiles/s) — drives the kick-light on the trim. */
+  hemSpd = 0;
 
   constructor(
     private readonly style: CapeStyle,
@@ -198,8 +201,17 @@ export class CapeSim {
       const windK = st.windMul * (0.35 + 0.65 * ti) * 2.1;
       const rip = Math.sin(tSec * (5.1 + st.flutter * 1.3) + this.phase + i * 1.9);
       const flut = st.flutter * 1.5 * ti * rip;
-      const gx = wind.bx * windK - fy * flut;
-      const gy = wind.by * windK + fx * flut;
+      let gx = wind.bx * windK - fy * flut;
+      let gy = wind.by * windK + fx * flut;
+      // THE SIDE-VIEW LIE: a top-down side profile is a forced
+      // perspective — the cape must commit to the side-scroller read,
+      // streaming behind the facing on the character's own depth lane.
+      // As the facing goes horizontal the cloth is pushed back along it
+      // and gently centered toward the clasp's lane, so it can't wander
+      // toward/away from the camera and dither around the body.
+      const sideK = Math.abs(fx) * (1 - Math.abs(fy));
+      gx += -fx * 3.2 * sideK * (0.5 + 0.5 * ti);
+      gy += (cy - nd.y) * 2.8 * sideK * (1 - 0.4 * ti);
       // Gravity vs the running billow: speed converts hang into stream.
       const gz = -20 * st.weight + spd * (1.5 + 0.9 * ti) + Math.abs(wind.bx + wind.by) * 0.9 * ti;
 
@@ -253,6 +265,9 @@ export class CapeSim {
         }
       }
     }
+
+    const hem = this.nodes[lastI]!;
+    this.hemSpd = Math.hypot(hem.x - hem.px, hem.y - hem.py, hem.z - hem.pz) / h;
   }
 
   /** Where the cloth actually is, for depth-true front/behind sorting. */
@@ -261,13 +276,32 @@ export class CapeSim {
     for (let i = 1; i < this.nodes.length; i++) sum += this.nodes[i]!.y;
     return sum / Math.max(1, this.nodes.length - 1);
   }
+
+  /**
+   * Depth-true paint side with HYSTERESIS: the cloth must be clearly
+   * toward the camera to come in front, and clearly away to go back —
+   * inside the band it keeps its last side. Side profiles hover near
+   * zero, and without the band they flickered between paint orders
+   * every frame.
+   */
+  front(eY: number): boolean {
+    const d = this.meanY() - eY;
+    if (d > 0.09) this.isFront = true;
+    else if (d < 0.02) this.isFront = false;
+    return this.isFront;
+  }
 }
 
 /**
  * Paint the projected ribbon: base fill, hard-shade fold half, lit
  * shoulder mantle, trim hem, outline — the tunic's own dialect, in cloth.
  * `pts` are the nodes projected to screen by the caller; `wk` is the
- * width scale (camera scale × body size).
+ * width scale (camera scale × body size). `sideK` is how side-on the
+ * facing is (0 front/back → 1 pure profile): the clasp is seen edge-on
+ * in profile so the top narrows, while the hem swings toward the camera
+ * and flares FULLER — the forced perspective that makes the cloth read
+ * as turning in space with the character. `hemGlow` (0..1, from hem
+ * speed) lets a fast-moving trim catch the light.
  */
 export function drawCape(
   ctx: CanvasRenderingContext2D,
@@ -275,6 +309,8 @@ export function drawCape(
   style: CapeStyle,
   wk: number,
   hurt: boolean,
+  sideK = 0,
+  hemGlow = 0,
 ): void {
   const n = pts.length;
   if (n < 3) return;
@@ -283,6 +319,8 @@ export function drawCape(
   // tangent; widths taper out from shoulder to a flared hem.
   const left: Array<{ x: number; y: number }> = [];
   const right: Array<{ x: number; y: number }> = [];
+  const topK = 1 - 0.3 * sideK; // clasp edge-on in profile
+  const hemK = 1 + 0.22 * sideK; // hem swings out toward the camera
   for (let i = 0; i < n; i++) {
     const a = pts[Math.max(0, i - 1)]!;
     const b = pts[Math.min(n - 1, i + 1)]!;
@@ -292,7 +330,8 @@ export function drawCape(
     tx /= tl;
     ty /= tl;
     const t = i / (n - 1);
-    const w = (style.shoulderW + (style.hemW - style.shoulderW) * t) * wk;
+    const persp = topK + (hemK - topK) * t;
+    const w = (style.shoulderW + (style.hemW - style.shoulderW) * t) * wk * persp;
     left.push({ x: pts[i]!.x - -ty * w, y: pts[i]!.y - tx * w });
     right.push({ x: pts[i]!.x + -ty * w, y: pts[i]!.y + tx * w });
   }
@@ -319,12 +358,23 @@ export function drawCape(
     ctx.fillStyle = shade(style.color, -16);
     trace(pts, right);
     ctx.fill();
+    // Spine crease: one dark fold line down the middle of the cloth —
+    // the cheapest cut that makes a flat ribbon read as draped fabric.
+    if (n >= 4) {
+      ctx.strokeStyle = shade(style.color, -30);
+      ctx.lineWidth = Math.max(1, wk * 0.022);
+      ctx.beginPath();
+      ctx.moveTo(pts[1]!.x, pts[1]!.y);
+      for (let i = 2; i < n - 1; i++) ctx.lineTo(pts[i]!.x, pts[i]!.y);
+      ctx.stroke();
+    }
     // Lit mantle plane across the shoulders.
     ctx.fillStyle = shade(style.color, 12);
     trace([left[0]!, left[1]!], [right[0]!, right[1]!]);
     ctx.fill();
-    // Trim hem — the accent that names the cape at a glance.
-    ctx.fillStyle = style.trim;
+    // Trim hem — the accent that names the cape at a glance. A hem
+    // moving fast catches the light: the kick that sells the swing.
+    ctx.fillStyle = shade(style.trim, Math.round(hemGlow * 22));
     trace([left[n - 2]!, left[n - 1]!], [right[n - 2]!, right[n - 1]!]);
     ctx.fill();
     if (style.emblem && n >= 4) {
