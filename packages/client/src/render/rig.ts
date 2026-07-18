@@ -46,6 +46,8 @@ const HUMANOID_LEG_CFG: LegRigConfig = {
   runSpeed: RUN_SPEED,
   stretch: STRETCH,
   billboard: true,
+  // Bipeds RUN: at full tilt the gait goes airborne between strides.
+  flight: true,
 };
 
 export class LegSolver extends LegRig {
@@ -55,32 +57,38 @@ export class LegSolver extends LegRig {
 }
 
 /**
- * Knee pole constraint. While running, BOTH knees must bow toward the
- * travel direction (a knee bent against the run reads as a broken,
- * inverted leg). At rest the natural screen rule applies — up-ish, else
- * outward — where mismatched knees are fine. The speed blend prevents
- * popping at gait transitions, and per-leg hysteresis (`memory`) keeps a
- * borderline choice from flickering mid-stride.
+ * Knee pole constraint — ANATOMICAL, never kinematic. The knee bends
+ * toward the body's FACING (industry rigs parent the pole target to
+ * the pelvis), so a backpedaling or strafing character keeps forward
+ * knees while the feet stride along the travel — bending knees toward
+ * velocity is what drew broken, inverted legs the moment aim and
+ * travel disagreed. Side-on, the sagittal term dominates and knees bow
+ * with the facing; front/back-on the flexion is edge-on to the camera,
+ * so a gentle down-screen + outward preference takes over — one
+ * continuous law with no speed blend, so the choice is deterministic
+ * from the pose alone. Per-leg hysteresis (`memory`) still smooths the
+ * boundary between regimes.
  *
  * `cx, cy` is one unit perpendicular of the hip→foot line (screen);
- * returns +1 to use it, -1 to use its negation.
+ * `fx, fy` is the facing unit; returns +1 to use the perpendicular,
+ * -1 to use its negation.
  */
 export function chooseKneeSign(
   cx: number,
   cy: number,
-  poleX: number,
-  poleY: number,
-  poleStrength: number,
+  fx: number,
+  fy: number,
   sideSgn: number,
   memory: number,
 ): number {
-  // Moving preference: knee offset should align with travel.
-  const moveScore = cx * poleX + cy * poleY;
-  // Idle preference: the classic up-ish / outward rule.
-  const idleSign =
-    cy > 0.15 || (Math.abs(cy) <= 0.15 && Math.sign(cx) !== sideSgn) ? -1 : 1;
-  const m = poleStrength;
-  const score = m * moveScore + (1 - m) * idleSign * 0.5;
+  const frontal = 1 - Math.abs(fx);
+  // Sagittal: bow with the facing. Frontal: bow down-screen (toward
+  // the camera) with only a whisper of outward — down must DOMINATE
+  // front-on, or steep chords let the outward term flip a knee upward.
+  const prefX = fx * 0.9 + sideSgn * 0.1 * frontal;
+  const prefY = 0.38 * frontal + Math.max(0, fy) * 0.25;
+  const m = Math.hypot(prefX, prefY) || 1;
+  const score = (cx * prefX + cy * prefY) / m;
   const target = score >= 0 ? 1 : -1;
   // Hysteresis: a weak winner doesn't overturn the standing choice.
   if (memory !== 0 && target !== memory && Math.abs(score) < 0.18) return memory;
@@ -106,10 +114,14 @@ export interface RigPose {
   rise: number;
   /** Fake-3D squash factor from the solver. */
   wScale: number;
-  /** Knee pole constraint from the solver. */
+  /** Unit travel direction + strength from the solver (arm swing). */
   poleX: number;
   poleY: number;
   poleStrength: number;
+  /** Gait blend from the solver: 0 walk mechanics → 1 sprint. */
+  runF: number;
+  /** Travel·facing alignment: 1 forward, -1 backpedal. */
+  align: number;
   /** Per-leg knee-sign hysteresis, owned by the caller's anim state. */
   kneeMemory: number[];
   bodyColor: string;
@@ -245,18 +257,17 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       d = dMax;
     }
 
-    // Knee: pole-constrained. Running bows both knees toward travel;
-    // idle uses the natural up-ish/outward rule; hysteresis stops
-    // borderline flicker mid-stride.
+    // Knee: anatomical pole — bends with the FACING (sagittal side-on,
+    // gentle down/outward front-on), never with travel, so backpedal
+    // and strafe keep honest knees; hysteresis smooths the boundary.
     const bend = Math.sqrt(Math.max(0, L * L - (d / 2) ** 2));
     const cxn = -ey / d;
     const cyn = ex / d;
     const sign = chooseKneeSign(
       cxn,
       cyn,
-      rig.poleX,
-      rig.poleY,
-      rig.poleStrength,
+      fx,
+      fy,
       sgn,
       rig.kneeMemory[i] ?? 0,
     );
@@ -562,11 +573,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Walking: arms swing counter to the legs along the travel direction.
   if (rig.pose === PoseState.Walk || rig.pose === PoseState.Idle) {
     const sw = ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP;
-    const amp = 0.07 * s * Math.min(1, rig.poleStrength);
+    // Arms pump harder as the walk becomes a run.
+    const amp = (0.07 + 0.055 * rig.runF) * s * Math.min(1, rig.poleStrength);
     mainX += rig.poleX * sw * amp;
-    mainY += rig.poleY * sw * amp * 0.5;
+    mainY += rig.poleY * sw * amp * 0.5 - Math.abs(sw) * rig.runF * 0.03 * s;
     offX -= rig.poleX * sw * amp;
-    offY -= rig.poleY * sw * amp * 0.5;
+    offY -= rig.poleY * sw * amp * 0.5 - Math.abs(sw) * rig.runF * 0.03 * s;
     // Standing breath: the hands ride a slow offset sine so the figure
     // is never a freeze-frame — alive even when idle.
     const rest = 1 - Math.min(1, rig.poleStrength);
@@ -788,6 +800,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     paintWeapon();
     paintMainArm();
   }
+
+  // Sprint lean: the torso tips into a full-tilt forward run — reads
+  // side-on only (fx), and never when backpedaling against the aim.
+  lean += 0.09 * rig.runF * Math.max(0, rig.align) * fx;
 
   // ---- torso + head, drawn in a local frame at the hip line with the
   // fake-3D squash: narrow side profile, full front/back profile, height

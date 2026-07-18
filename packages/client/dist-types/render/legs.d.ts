@@ -13,9 +13,22 @@
  *   drifts over it; when a foot's home drifts too far away, that foot
  *   commits to a STEP — an animated re-plant. Walking is a side effect
  *   of planted feet, never a looping animation.
- * - CADENCE FROM FIRST PRINCIPLES. stride = f(leg reach) and
- *   swing = stride / (2 · speed): step rate scales exactly with how
- *   fast the body moves. No walk-cycle timer anywhere.
+ * - THE STRIDE WHEEL. Stride length GROWS with speed and swing time is
+ *   near-constant — the two invariants of real gait. A slow amble takes
+ *   short lazy steps; a sprint covers ground with long bounding strides
+ *   at only a modestly faster cadence. Deriving swing from
+ *   stride/(2·speed) alone is what minced the run into a 15 Hz jitter.
+ * - DUTY FACTOR DEFINES THE GAIT. Walking means a foot is always
+ *   planted (duty ≥ 0.5). Running means it isn't: flight rigs may put
+ *   EVERY foot in the air for a beat mid-stride (duty < 0.5) — the
+ *   aerial phase is what makes a long stride geometrically possible.
+ *   Grounded rigs instead cap swing time to stance time so a strict
+ *   gait gate never strands a stretched partner.
+ * - STRIDES FOLLOW TRAVEL, KNEES FOLLOW FACING. Feet stride along the
+ *   velocity, but joint-bend preferences are anatomical — anchored to
+ *   the body's facing, never to travel (industry rigs parent the knee
+ *   pole to the pelvis). Backpedaling and strafing shorten the stride
+ *   instead of flipping the knees.
  * - ANTICIPATION. A step lands where the home will be WHEN THE SWING
  *   ENDS (home + velocity · swing). Aiming at where home is now lands
  *   behind a moving body — the dangling-feet bug.
@@ -59,10 +72,20 @@ export interface LegRigConfig {
      * Oriented rigs rotate their homes with the facing.
      */
     billboard?: boolean;
-    /** stride = reach · strideScale (default 1.65). */
+    /** Full-speed planted sweep = reach · strideScale (default 1.65). */
     strideScale?: number;
     /** Speed above which the rig counts as moving (default 0.35). */
     moveThreshold?: number;
+    /**
+     * Flight rigs may go fully airborne at speed: near full tilt a leg is
+     * allowed to launch while its counterpart is still descending, so the
+     * duty factor drops below 0.5 and the gait becomes a genuine run with
+     * an aerial phase. Grounded rigs (default) instead cap swing time to
+     * stance time and never leave the ground.
+     */
+    flight?: boolean;
+    /** Full-run swing duration in seconds (default 0.4 · √legLen). */
+    swingRef?: number;
     /**
      * Max facing slew (rad/s) for oriented rigs — bodies can't rotate
      * instantly, and the slewed homes turn a pivot into a sequenced
@@ -87,11 +110,15 @@ export interface LegPose {
     rise: number;
     /** Fake-3D squash (billboard rigs; 1 for oriented rigs). */
     wScale: number;
-    /** Knee pole vector: unit travel direction (world axes). */
+    /** Unit travel direction (world axes) — drives arm swing, NOT knees. */
     poleX: number;
     poleY: number;
-    /** 0 idle → 1 running: how strongly the pole constrains the knees. */
+    /** 0 idle → 1 moving: movement strength for secondary motion. */
     poleStrength: number;
+    /** 0 walk mechanics → 1 sprint mechanics (the gait blend). */
+    runF: number;
+    /** cos(angle between travel and facing): 1 forward, -1 backpedal. */
+    align: number;
 }
 export declare class LegRig {
     private readonly cfg;

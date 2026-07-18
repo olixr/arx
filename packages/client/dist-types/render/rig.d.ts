@@ -5,17 +5,23 @@ export declare class LegSolver extends LegRig {
     constructor();
 }
 /**
- * Knee pole constraint. While running, BOTH knees must bow toward the
- * travel direction (a knee bent against the run reads as a broken,
- * inverted leg). At rest the natural screen rule applies — up-ish, else
- * outward — where mismatched knees are fine. The speed blend prevents
- * popping at gait transitions, and per-leg hysteresis (`memory`) keeps a
- * borderline choice from flickering mid-stride.
+ * Knee pole constraint — ANATOMICAL, never kinematic. The knee bends
+ * toward the body's FACING (industry rigs parent the pole target to
+ * the pelvis), so a backpedaling or strafing character keeps forward
+ * knees while the feet stride along the travel — bending knees toward
+ * velocity is what drew broken, inverted legs the moment aim and
+ * travel disagreed. Side-on, the sagittal term dominates and knees bow
+ * with the facing; front/back-on the flexion is edge-on to the camera,
+ * so a gentle down-screen + outward preference takes over — one
+ * continuous law with no speed blend, so the choice is deterministic
+ * from the pose alone. Per-leg hysteresis (`memory`) still smooths the
+ * boundary between regimes.
  *
  * `cx, cy` is one unit perpendicular of the hip→foot line (screen);
- * returns +1 to use it, -1 to use its negation.
+ * `fx, fy` is the facing unit; returns +1 to use the perpendicular,
+ * -1 to use its negation.
  */
-export declare function chooseKneeSign(cx: number, cy: number, poleX: number, poleY: number, poleStrength: number, sideSgn: number, memory: number): number;
+export declare function chooseKneeSign(cx: number, cy: number, fx: number, fy: number, sideSgn: number, memory: number): number;
 export interface RigPose {
     /** Screen position of the body's ground point. */
     x: number;
@@ -39,10 +45,14 @@ export interface RigPose {
     rise: number;
     /** Fake-3D squash factor from the solver. */
     wScale: number;
-    /** Knee pole constraint from the solver. */
+    /** Unit travel direction + strength from the solver (arm swing). */
     poleX: number;
     poleY: number;
     poleStrength: number;
+    /** Gait blend from the solver: 0 walk mechanics → 1 sprint. */
+    runF: number;
+    /** Travel·facing alignment: 1 forward, -1 backpedal. */
+    align: number;
     /** Per-leg knee-sign hysteresis, owned by the caller's anim state. */
     kneeMemory: number[];
     bodyColor: string;

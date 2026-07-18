@@ -53,13 +53,38 @@ test('feet stay near the body through sharp zig-zags', () => {
   assert.ok(maxD <= FOOT_LIMIT, `zig-zag stretched to ${maxD.toFixed(3)} tiles`);
 });
 
-test('strictly-one-foot-airborne rule holds outside emergencies', () => {
+test('full-tilt running has a real flight phase (duty factor < 0.5)', () => {
   const solver = new LegSolver();
   const { bothInFlight, frames } = run(solver, (t) => ({ x: 5 * t, y: 0, dir: 0 }), 3);
+  const frac = bothInFlight / frames;
+  assert.ok(frac > 0.08, `sprint never left the ground (${(frac * 100).toFixed(1)}% flight)`);
+  assert.ok(frac < 0.6, `sprint is leaping, not running (${(frac * 100).toFixed(1)}% flight)`);
+});
+
+test('walking pace keeps one foot planted — no flight below the run blend', () => {
+  const solver = new LegSolver();
+  const { bothInFlight, frames } = run(solver, (t) => ({ x: 1.8 * t, y: 0, dir: 0 }), 3);
   assert.ok(
     bothInFlight <= frames * 0.05,
-    `both feet airborne ${bothInFlight}/${frames} frames`,
+    `walk went airborne ${bothInFlight}/${frames} frames`,
   );
+});
+
+test('sprint cadence is a bound, not a jitter: step rate stays humanly plausible', () => {
+  const solver = new LegSolver();
+  // Count foot-0 launches over 2 s of settled full-tilt running.
+  for (let t = 0; t < 1; t += DT) solver.update(5 * t, 0, 0, DT);
+  let launches = 0;
+  let wasAir = false;
+  for (let t = 1; t < 3; t += DT) {
+    const pose = solver.update(5 * t, 0, 0, DT);
+    const air = pose.feet[0]!.lift > 0;
+    if (air && !wasAir) launches++;
+    wasAir = air;
+  }
+  const perSec = launches / 2;
+  assert.ok(perSec >= 1.5, `foot cycles ${perSec}/s — gait stalled`);
+  assert.ok(perSec <= 4, `foot cycles ${perSec}/s — Energizer-Bunny mincing is back`);
 });
 
 test('feet settle under the body after stopping', () => {

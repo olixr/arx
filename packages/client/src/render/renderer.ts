@@ -3823,6 +3823,8 @@ export class Renderer {
           poleX: legPose.poleX,
           poleY: legPose.poleY,
           poleStrength: legPose.poleStrength,
+          runF: legPose.runF,
+          align: legPose.align,
           kneeMemory: anim.kneeMemory,
           bodyColor: e.color,
           hurt: e.hurt ?? false,

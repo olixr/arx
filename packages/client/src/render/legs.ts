@@ -13,9 +13,22 @@
  *   drifts over it; when a foot's home drifts too far away, that foot
  *   commits to a STEP — an animated re-plant. Walking is a side effect
  *   of planted feet, never a looping animation.
- * - CADENCE FROM FIRST PRINCIPLES. stride = f(leg reach) and
- *   swing = stride / (2 · speed): step rate scales exactly with how
- *   fast the body moves. No walk-cycle timer anywhere.
+ * - THE STRIDE WHEEL. Stride length GROWS with speed and swing time is
+ *   near-constant — the two invariants of real gait. A slow amble takes
+ *   short lazy steps; a sprint covers ground with long bounding strides
+ *   at only a modestly faster cadence. Deriving swing from
+ *   stride/(2·speed) alone is what minced the run into a 15 Hz jitter.
+ * - DUTY FACTOR DEFINES THE GAIT. Walking means a foot is always
+ *   planted (duty ≥ 0.5). Running means it isn't: flight rigs may put
+ *   EVERY foot in the air for a beat mid-stride (duty < 0.5) — the
+ *   aerial phase is what makes a long stride geometrically possible.
+ *   Grounded rigs instead cap swing time to stance time so a strict
+ *   gait gate never strands a stretched partner.
+ * - STRIDES FOLLOW TRAVEL, KNEES FOLLOW FACING. Feet stride along the
+ *   velocity, but joint-bend preferences are anatomical — anchored to
+ *   the body's facing, never to travel (industry rigs parent the knee
+ *   pole to the pelvis). Backpedaling and strafing shorten the stride
+ *   instead of flipping the knees.
  * - ANTICIPATION. A step lands where the home will be WHEN THE SWING
  *   ENDS (home + velocity · swing). Aiming at where home is now lands
  *   behind a moving body — the dangling-feet bug.
@@ -61,10 +74,20 @@ export interface LegRigConfig {
    * Oriented rigs rotate their homes with the facing.
    */
   billboard?: boolean;
-  /** stride = reach · strideScale (default 1.65). */
+  /** Full-speed planted sweep = reach · strideScale (default 1.65). */
   strideScale?: number;
   /** Speed above which the rig counts as moving (default 0.35). */
   moveThreshold?: number;
+  /**
+   * Flight rigs may go fully airborne at speed: near full tilt a leg is
+   * allowed to launch while its counterpart is still descending, so the
+   * duty factor drops below 0.5 and the gait becomes a genuine run with
+   * an aerial phase. Grounded rigs (default) instead cap swing time to
+   * stance time and never leave the ground.
+   */
+  flight?: boolean;
+  /** Full-run swing duration in seconds (default 0.4 · √legLen). */
+  swingRef?: number;
   /**
    * Max facing slew (rad/s) for oriented rigs — bodies can't rotate
    * instantly, and the slewed homes turn a pivot into a sequenced
@@ -95,11 +118,15 @@ export interface LegPose {
   rise: number;
   /** Fake-3D squash (billboard rigs; 1 for oriented rigs). */
   wScale: number;
-  /** Knee pole vector: unit travel direction (world axes). */
+  /** Unit travel direction (world axes) — drives arm swing, NOT knees. */
   poleX: number;
   poleY: number;
-  /** 0 idle → 1 running: how strongly the pole constrains the knees. */
+  /** 0 idle → 1 moving: movement strength for secondary motion. */
   poleStrength: number;
+  /** 0 walk mechanics → 1 sprint mechanics (the gait blend). */
+  runF: number;
+  /** cos(angle between travel and facing): 1 forward, -1 backpedal. */
+  align: number;
 }
 
 export class LegRig {
@@ -163,6 +190,8 @@ export class LegRig {
     const moving = speed > this.moveThreshold;
     const dx = moving ? this.vx / speed : 0;
     const dy = moving ? this.vy / speed : 0;
+    const fxDir = Math.cos(dir);
+    const fyDir = Math.sin(dir);
 
     // Fake-3D squash (billboard only): orientation comes from travel
     // while moving and from the aim/facing while standing.
@@ -174,16 +203,39 @@ export class LegRig {
 
     // Run crouch: hips dip with speed, freeing horizontal reach.
     const speedF = Math.min(1, speed / cfg.runSpeed);
+    // Gait blend: walk mechanics below ~half tilt, sprint mechanics at
+    // full tilt, smoothly interpolated between.
+    const rf = Math.min(1, Math.max(0, (speedF - 0.45) / 0.5));
+    const runF = rf * rf * (3 - 2 * rf);
     this.rise = cfg.rise * (1 - 0.15 * speedF);
     // Horizontal reach available given the hip height.
     const reach = Math.sqrt(
       Math.max(0.01, (cfg.legLen * this.stretch) ** 2 - this.rise ** 2),
     );
-    const stride = reach * this.strideScale;
-    // Cadence scales exactly with speed.
-    const swing = moving
-      ? Math.min(0.2, Math.max(0.06, stride / (2 * speed)))
-      : 0.12;
+    // Backpedal and strafe take shorter, quicker steps — the stride
+    // never flips, it just tightens when travel fights the facing.
+    const align = moving ? dx * fxDir + dy * fyDir : 1;
+    const alignK = 1 - 0.18 * Math.max(0, -align) - 0.08 * (1 - Math.abs(align));
+    // The stride wheel: the planted sweep (how far a foot rides under
+    // the body, landing `lead` ahead and launching `trail` behind its
+    // home) GROWS with speed. Short amble steps, long sprint strides.
+    const sweep = reach * this.strideScale * (0.4 + 0.6 * speedF) * alignK;
+    const lead = sweep * 0.45;
+    const trail = sweep * 0.55;
+    // Swing time: distance-derived at a walk, blending to near-constant
+    // at a run (real swing time barely changes with speed — stance time
+    // is what shrinks). Grounded rigs cap swing to stance so the gait
+    // gate never strands a stretched partner; flight rigs let swing
+    // outlast stance — that surplus IS the aerial phase.
+    const stance = moving ? sweep / speed : Infinity;
+    const swingRun = cfg.swingRef ?? 0.4 * Math.sqrt(cfg.legLen);
+    let swing = 0.12;
+    if (moving) {
+      const swingWalk = stance * 0.82;
+      swing = swingWalk + (swingRun - swingWalk) * runF;
+      swing = Math.min(swing, cfg.flight ? stance * 2.1 : stance * 0.95);
+      swing = Math.min(0.35, Math.max(0.06, swing));
+    }
     const idleThresh = cfg.legLen * 0.2;
 
     // Billboard rigs owe the feet a shuffle after a big enough pivot
@@ -207,8 +259,8 @@ export class LegRig {
     this.lastDir = dir;
 
     // Homes for every foot.
-    const fxD = Math.cos(dir);
-    const fyD = Math.sin(dir);
+    const fxD = fxDir;
+    const fyD = fyDir;
     const idleF = 1 - Math.min(1, speed / 1.2);
     const homes: Array<{ x: number; y: number }> = [];
     for (const leg of cfg.legs) {
@@ -235,13 +287,17 @@ export class LegRig {
       this.feet = homes.map((h) => ({ x: h.x, y: h.y, lift: 0 }));
     }
 
-    // Which groups are airborne right now — the gait gate.
+    // Which groups are airborne right now — the gait gate — plus the
+    // least-finished swing, which times the aerial-phase handoff.
     let airGroup = -1;
     let airMixed = false;
     let airCount = 0;
+    let airMinT = 1;
     for (let i = 0; i < cfg.legs.length; i++) {
-      if (!this.step[i]) continue;
+      const st = this.step[i];
+      if (!st) continue;
       airCount++;
+      airMinT = Math.min(airMinT, st.t);
       const g = cfg.legs[i]!.group;
       if (airGroup === -1) airGroup = g;
       else if (airGroup !== g) airMixed = true;
@@ -263,10 +319,24 @@ export class LegRig {
       if (st) {
         st.t += dt / st.dur;
         const t = Math.min(1, st.t);
+        if (t < 1 && moving) {
+          // Mid-swing retargeting: the airborne foot keeps aiming at
+          // where its home will be at touchdown. Real swings are long
+          // enough that a hard turn mid-stride would otherwise plant a
+          // stale, wrong-way foot a tile off the new line of travel.
+          // At steady speed this is a no-op (the target already sits at
+          // the prediction); commitment near touchdown comes from the
+          // ease curve, which has spent its travel by then.
+          const ix = homeX + this.vx * st.dur * (1 - t) + dx * lead;
+          const iy = homeY + this.vy * st.dur * (1 - t) + dy * lead;
+          const kR = Math.min(1, dt * 20);
+          st.tx += (ix - st.tx) * kR;
+          st.ty += (iy - st.ty) * kR;
+        }
         const e = t * t * (3 - 2 * t); // smoothstep
         f.x = st.fx + (st.tx - st.fx) * e;
         f.y = st.fy + (st.ty - st.fy) * e;
-        f.lift = Math.sin(t * Math.PI) * cfg.liftAmp * (0.6 + 1.1 * speedF);
+        f.lift = Math.sin(t * Math.PI) * cfg.liftAmp * (0.55 + 0.95 * speedF + 0.4 * runF);
         if (t >= 1) {
           this.step[i] = null;
           f.lift = 0;
@@ -275,15 +345,20 @@ export class LegRig {
         f.lift = 0;
         const behind = Math.hypot(f.x - homeX, f.y - homeY);
         // Moving: the group gate — step only while no OTHER group is
-        // airborne. Idle: independent shuffle steps under the air cap.
+        // airborne — EXCEPT that a flight rig at speed may launch while
+        // its counterpart is still descending (past mid-swing): duty
+        // drops below 0.5 and the gait leaves the ground for a beat.
+        // Idle: independent shuffle steps under the air cap.
+        const flightOK =
+          cfg.flight === true && runF > 0.35 && airMinT > 0.45 && airCount < cfg.legs.length;
         const groupClear = moving
-          ? !airMixed && (airGroup === -1 || airGroup === leg.group)
+          ? (!airMixed && (airGroup === -1 || airGroup === leg.group)) || flightOK
           : airCount < idleAirCap;
         // Eager threshold when a groupmate is already swinging — pairs
         // launch together, so a trot stays a trot.
         const mate = airGroup === leg.group;
         const dueDist = moving
-          ? stride * (mate ? 0.3 : 0.5)
+          ? trail * (mate ? 0.6 : 1)
           : idleThresh * (mate ? 0.6 : 1);
         const turnStep = !moving && this.turnPending > 0;
         // Standing, an overstretched leg is urgent but still respects
@@ -296,18 +371,19 @@ export class LegRig {
         const emergency = moving && behind > reach * 1.12;
         if (due || emergency) {
           if (turnStep) this.turnPending--;
-          // Land where the home will be when the swing completes, plus
-          // a small overshoot so the planted phase centers on the home.
+          // Land `lead` ahead of where the home will be when the swing
+          // completes — the strike point of the stride wheel.
           this.step[i] = {
             fx: f.x,
             fy: f.y,
-            tx: homeX + this.vx * swing + dx * reach * 0.3,
-            ty: homeY + this.vy * swing + dy * reach * 0.3,
+            tx: homeX + this.vx * swing + dx * lead,
+            ty: homeY + this.vy * swing + dy * lead,
             t: 0,
             dur: swing,
           };
           if (airGroup === -1) airGroup = leg.group;
           airCount++;
+          airMinT = 0; // one launch per frame — never a same-frame hop
         } else if (!moving && behind > reach * 0.7) {
           // Weight-shift drag: a planted foot that is gated from
           // stepping while the body pivots above it TWISTS toward its
@@ -339,8 +415,10 @@ export class LegRig {
       wScale: cfg.billboard ? this.wScale : 1,
       poleX: dx,
       poleY: dy,
-      // Full knee constraint by an easy walking pace.
+      // Full secondary motion (arm swing) by an easy walking pace.
       poleStrength: Math.min(1, speed / 1.2),
+      runF,
+      align,
     };
   }
 }
