@@ -241,7 +241,9 @@ function drawTileDetail(
           const sx = gx + ((hh % 88) / 100) * px;
           const sy = gy + (((hh >> 7) % 88) / 100) * px;
           const stub = px * (0.05 + ((hh >> 3) % 4) * 0.014);
-          ctx.fillStyle = hh & 1 ? 'rgba(38, 66, 31, 0.30)' : 'rgba(215, 227, 140, 0.14)';
+          // Floor law: turf detail is never DARKER than the ground —
+          // dark flecks read as holes. Two grades of lighter green only.
+          ctx.fillStyle = hh & 1 ? 'rgba(148, 178, 96, 0.18)' : 'rgba(215, 227, 140, 0.15)';
           ctx.fillRect(sx, sy - stub, Math.max(1, px * 0.045), stub);
         }
       }

@@ -15,9 +15,10 @@ import { Tile, hashCoords, valueNoise } from '@devcraft/shared';
  *   wind field. Gust fronts are CURVED (the front's phase is bent by a
  *   slow cross-wave) and a perpendicular meander makes swaths snake
  *   across the field — fluid motion without a fluid sim.
- * - SHIMMER: the passing front relights blades from a precomputed
- *   shade/base/lit ramp, so bright bands sweep the meadow exactly like
- *   sun catching bent grass.
+ * - SHIMMER: a long-wavelength luminance swell relights blades from a
+ *   graded ramp — broad swaths of light rolling through the meadow.
+ *   THE FLOOR LAW: grass never renders darker than the turf beneath
+ *   it; light lifts from the ground tone, never digs holes in it.
  * - INHABITED: tall grass y-sorts around entities (you walk THROUGH
  *   it), bodies part and flatten nearby blades, and a passage leaves a
  *   springy rustle wobble + leaf specks behind.
@@ -38,6 +39,12 @@ export interface WindSample {
   by: number;
   /** Scalar strength ~[-0.6, 1.4] — what the trees lean on. */
   s: number;
+  /**
+   * Luminance wave ~[-1, 1]: a much LONGER-wavelength signal than the
+   * bend, so the shimmer arrives as broad rolling swaths of light —
+   * never per-blade sparkle or screen-sized blotches.
+   */
+  l: number;
 }
 
 /**
@@ -56,10 +63,16 @@ export function windAt(wx: number, wy: number, tSec: number): WindSample {
     0.28 * Math.sin(along * 0.2 - tSec * 1.9 + 0.7);
   const s = gust * (0.4 + sway);
   const meander = 0.3 * Math.sin(across * 0.14 - tSec * 0.7 + along * 0.05);
+  // Light travels in far bigger swells than the bend: ~180- and ~90-tile
+  // wavelengths, gently curved by the same front bend.
+  const l =
+    0.62 * Math.sin(along * 0.035 - tSec * 0.3 + 0.5 * frontBend) +
+    0.38 * Math.sin(along * 0.07 - tSec * 0.75 + across * 0.02);
   return {
     bx: WX * s - WY * meander,
     by: WY * s + WX * meander,
     s,
+    l,
   };
 }
 
@@ -126,6 +139,7 @@ function makeBlade(
   i: number,
   tall: boolean,
   clumpAt: { x: number; y: number } | null,
+  tileTone: number,
 ): Blade {
   const h = hashCoords(salt + i * 7, tx, ty);
   let bx: number;
@@ -151,8 +165,12 @@ function makeBlade(
     lean: (rand01(h, 15) - 0.42) * 0.1,
     phase,
     bin: Math.min(31, Math.floor(phase * 32)),
-    lumJit: (rand01(h, 21) - 0.5) * 0.55,
-    tone: h % 5,
+    // Small jitter: just enough to dither ramp thresholds — big values
+    // shred the light swaths into per-blade sparkle.
+    lumJit: (rand01(h, 21) - 0.5) * 0.18,
+    // Tone follows the tile's patch, drifting ±1 — meadow-scale color
+    // regions, not per-blade confetti.
+    tone: Math.max(0, Math.min(4, tileTone + (h % 3) - 1)),
     seg2: tall && height > 0.42,
   };
 }
@@ -173,16 +191,18 @@ export function generateGrassTile(
   const tall = tileId === Tile.GrassTall;
   const cov =
     valueNoise(901, tx * 0.13, ty * 0.13) * 0.6 + valueNoise(902, tx * 0.045, ty * 0.045) * 0.4;
+  // Tone patches at meadow scale — neighbouring tiles share a palette.
+  const tileTone = Math.min(4, Math.floor(valueNoise(905, tx * 0.05, ty * 0.05) * 5));
 
   if (tall) {
     // A tall tile is a thicket: dense long slabs + a little underbrush.
     const h = hashCoords(151, tx, ty);
     const count = 9 + (h % 5);
     for (let i = 0; i < count; i++) {
-      const b = makeBlade(tx, ty, 157, i, true, null);
+      const b = makeBlade(tx, ty, 157, i, true, null, tileTone);
       (b.by < ty + 0.5 ? geom.north : geom.south).push(b);
     }
-    for (let i = 0; i < 2; i++) geom.under.push(makeBlade(tx, ty, 163, i, false, null));
+    for (let i = 0; i < 2; i++) geom.under.push(makeBlade(tx, ty, 163, i, false, null, tileTone));
     return geom;
   }
 
@@ -190,7 +210,7 @@ export function generateGrassTile(
   // baked stubble carry density; the live blades carry the motion.
   const clump = detailId === DETAIL_TUFT || cov > 0.74;
   const count = clump ? 0 : cov < 0.32 ? (hashCoords(167, tx, ty) % 2) : cov < 0.56 ? 2 : 3;
-  for (let i = 0; i < count; i++) geom.under.push(makeBlade(tx, ty, 173, i, false, null));
+  for (let i = 0; i < count; i++) geom.under.push(makeBlade(tx, ty, 173, i, false, null, tileTone));
 
   if (clump) {
     const h = hashCoords(179, tx, ty);
@@ -199,12 +219,12 @@ export function generateGrassTile(
     geom.roots.push({ x: cx, y: cy, w: 0.16 + rand01(h, 7) * 0.06 });
     const members = 5 + (h % 3);
     for (let i = 0; i < members; i++) {
-      const b = makeBlade(tx, ty, 181, i, false, { x: cx, y: cy });
+      const b = makeBlade(tx, ty, 181, i, false, { x: cx, y: cy }, tileTone);
       b.h += 0.08; // clumps stand proud of the lawn
       geom.under.push(b);
     }
     // A satellite strand beside the clump.
-    geom.under.push(makeBlade(tx, ty, 191, 0, false, null));
+    geom.under.push(makeBlade(tx, ty, 191, 0, false, null, tileTone));
   }
 
   // Flowers: authored patches bloom hard; meadow noise drifts the rest.
@@ -227,11 +247,16 @@ export function generateGrassTile(
 
 // ------------------------------------------------------------- palette
 
-/** Base tones, deep → light: the meadow's dealt greens. */
-const TONE_BASE = ['#476f31', '#527c38', '#5d8a3f', '#699847', '#76a650'];
+/**
+ * Base tones, deep → light. THE FLOOR LAW: every tone sits at or above
+ * the baked ground greens (GRASS_TONES peak at #608e45) — a blade that
+ * renders darker than the turf under it reads as a hole, and the whole
+ * effect is lost. Shade never dips below these; light lifts from here.
+ */
+const TONE_BASE = ['#618e44', '#679549', '#6d9c4e', '#74a453', '#7bab58'];
 const LIT_TARGET = '#d9e37f'; // sun catching a bent blade
-const SHADE_TARGET = '#26421f'; // the trough of the wave
-const ROOT_COLOR = '#3a5c2b';
+const SHADE_TARGET = '#4f7a38'; // the trough barely grazes the turf
+const ROOT_COLOR = '#517a39';
 const FLOWER_PALS = ['#e88a9e', '#f0d264', '#efe3c2'];
 const FLOWER_CORE = '#f7efd8';
 
@@ -255,9 +280,11 @@ const LIGHTS = 7;
 const BLADE_FILLS: string[] = TONE_BASE.flatMap((tone) =>
   Array.from({ length: LIGHTS }, (_, i) => {
     const t = i / (LIGHTS - 1);
-    return t < 0.45
-      ? mixHex(tone, SHADE_TARGET, 0.42 * (1 - t / 0.45))
-      : mixHex(tone, LIT_TARGET, 0.38 * ((t - 0.45) / 0.55));
+    // Compressed range: a gentle dip at the trough, a modest lift at
+    // the crest — presence over spectacle.
+    return t < 0.4
+      ? mixHex(tone, SHADE_TARGET, 0.5 * (1 - t / 0.4))
+      : mixHex(tone, LIT_TARGET, 0.2 * ((t - 0.4) / 0.6));
   }),
 );
 
@@ -487,9 +514,9 @@ export class GrassSystem {
       if (e > 0) tipDx += this.wakeWobble[b.bin]! * e * e;
     }
 
-    // Shimmer: the front relights the blade as it passes — mapped onto
-    // the graded ramp so the change is a glide, never a pop.
-    const lum = (wind.s + b.lumJit + 0.35) / 1.5;
+    // Shimmer: the LONG luminance swell (not the busy bend signal)
+    // relights the blade — broad swaths of light rolling through.
+    const lum = (wind.l + b.lumJit + 1) / 2;
     const level = lum <= 0 ? 0 : lum >= 1 ? LIGHTS - 1 : Math.floor(lum * LIGHTS);
     const bucket = b.tone * LIGHTS + level;
     const path = (this.paths as Path2D[])[bucket]!;

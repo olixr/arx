@@ -4,6 +4,12 @@ export interface WindSample {
     by: number;
     /** Scalar strength ~[-0.6, 1.4] — what the trees lean on. */
     s: number;
+    /**
+     * Luminance wave ~[-1, 1]: a much LONGER-wavelength signal than the
+     * bend, so the shimmer arrives as broad rolling swaths of light —
+     * never per-blade sparkle or screen-sized blotches.
+     */
+    l: number;
 }
 /**
  * Coherent vector wind: two travelling swells over a breathing gust
