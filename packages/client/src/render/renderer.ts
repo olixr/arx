@@ -23,10 +23,12 @@ import {
   FURNACE_CYCLE_MS,
   LegSolver,
   MINE_CYCLE_MS,
+  beastSpec,
   drawBeast,
   drawHumanoid,
   shade,
 } from './rig.js';
+import { LegRig } from './legs.js';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import { Particles } from './particles.js';
 import { GrassSystem, windScalarAt, type Disturber } from './grass.js';
@@ -84,7 +86,10 @@ interface AnimState {
   lastPose: number;
   poseStartedAt: number;
   lastSeen: number;
-  legs?: LegSolver;
+  /** The entity's leg rig — LegSolver for humanoids, species rig for beasts. */
+  legs?: LegRig;
+  /** Which rig `legs` was built for; a mismatch (eid reuse) rebuilds. */
+  rigKey?: string;
   /** Per-leg knee-sign hysteresis for the pole constraint. */
   kneeMemory: [number, number];
   /** Last chop cycle that spawned impact chips (gathering). */
@@ -3501,7 +3506,10 @@ export class Renderer {
     const s = this.camera.scale;
     const now = performance.now();
     const anim = this.animFor(e.eid, e.x, e.y, e.pose, now);
-    if (!anim.legs) anim.legs = new LegSolver();
+    if (!anim.legs || anim.rigKey !== 'humanoid') {
+      anim.legs = new LegSolver();
+      anim.rigKey = 'humanoid';
+    }
     const legPose = anim.legs.update(e.x, e.y, e.dir, this.frameDt);
     const poseT = Math.min(1, (now - anim.poseStartedAt) / 280);
     // Bow draw charge: the local player reads its own live input; remotes
@@ -3733,7 +3741,7 @@ export class Renderer {
     hurt: boolean,
   ): DrawItem {
     // Humanoid monsters use the full IK rig with size/skin overrides.
-    if (defId === 'goblin' || defId.startsWith('skeleton')) {
+    if (defId.startsWith('goblin') || defId.startsWith('skeleton')) {
       const def = npcDef(defId);
       return this.humanoidItem({
         eid,
@@ -3748,7 +3756,7 @@ export class Renderer {
         hurt,
         equip: defId === 'goblin' ? { weapon: 'bronze_sword' } : {},
         color: def?.color ?? '#999',
-        skinColor: defId === 'goblin' ? '#7aa74a' : '#e3ddcc',
+        skinColor: defId.startsWith('goblin') ? '#7aa74a' : '#e3ddcc',
         size: defId === 'skeleton_champion' ? 1.25 : 0.85,
       });
     }
@@ -3761,6 +3769,20 @@ export class Renderer {
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= terrainLift;
     const anim = this.animFor(eid, s.x, s.y, s.pose, performance.now());
+    // Beasts walk on the universal rig: solved in world space so the
+    // feet plant on real ground, each foot riding the terrain under
+    // ITSELF — animals climb stairs step by step like players do.
+    const spec = beastSpec(defId, def?.radius ?? 0.3, def?.speed ?? 2);
+    if (!anim.legs || anim.rigKey !== defId) {
+      anim.legs = new LegRig(spec.rig);
+      anim.rigKey = defId;
+    }
+    const legPose = anim.legs.update(s.x, s.y, s.dir, this.frameDt);
+    const feet = legPose.feet.map((f) => {
+      const fp = this.camera.worldToScreen(f.x, f.y, this.w, this.h);
+      fp.y -= this.renderLift(f.x, f.y) * scale;
+      return { x: fp.x, y: fp.y, lift: f.lift };
+    });
     const attackT =
       s.pose === PoseState.Attack
         ? Math.min(1, (performance.now() - anim.poseStartedAt) / 420)
@@ -3776,12 +3798,15 @@ export class Renderer {
           x: p.x,
           y: p.y,
           scale,
-          dir: s.dir,
+          dir: legPose.dir,
           radius: def?.radius ?? 0.3,
           color: def?.color ?? '#999',
           defId,
+          spec,
+          pose: legPose,
+          feet,
+          yScale: this.camera.yScale,
           walkPhase: anim.walkPhase,
-          moving: s.pose === PoseState.Walk,
           hurt,
           attackT,
         });

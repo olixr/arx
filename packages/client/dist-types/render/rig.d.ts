@@ -1,58 +1,8 @@
 import { PoseState } from '@devcraft/shared';
-export interface LegPose {
-    /** World-space feet + lift (tiles). */
-    feet: Array<{
-        x: number;
-        y: number;
-        lift: number;
-    }>;
-    /** Sum of lifts — the body rides this bob. */
-    bob: number;
-    /** Current hip height above the ground point (tiles). */
-    rise: number;
-    /**
-     * Fake-3D squash: <1 when facing/travelling sideways (narrow side
-     * profile), >1 facing up/down (full front profile). Height compensates
-     * inversely so the turn reads as orientation, not shrinking.
-     */
-    wScale: number;
-    /** Knee pole vector: unit travel direction (world axes). */
-    poleX: number;
-    poleY: number;
-    /** 0 idle → 1 running: how strongly the pole constrains the knees. */
-    poleStrength: number;
-}
-/**
- * The herotown gait, the version that finally nailed it (their notes,
- * kept true here):
- *
- * - Characters are BILLBOARDS. Hips are FIXED on the screen X axis
- *   (left hip, right hip, always); feet stride along the movement
- *   direction from those fixed hips. Rotating the hip line with
- *   velocity throws the legs sideways — never do it.
- * - Cadence from first principles: stride = f(leg reach), and
- *   swing = stride / (2 · speed), so step rate scales EXACTLY with
- *   how fast the body moves. No walk-cycle timer.
- * - Anticipation: a step lands where the hip will be WHEN THE SWING
- *   ENDS (home + velocity · swing). Aiming at where home is now
- *   guarantees landing behind a moving body — the dangling-feet bug.
- * - Strictly one foot in the air; the planted foot carries the body.
- *   Exception: a foot past reach snaps forward NOW — never noodles.
- */
-export declare class LegSolver {
-    private feet;
-    private step;
-    private lastX;
-    private lastY;
-    private vx;
-    private vy;
-    private rise;
-    private wScale;
-    /** Signed idle-turn accumulator; a big enough pivot owes a shuffle. */
-    private lastDir;
-    private turnDebt;
-    private turnPending;
-    update(bx: number, by: number, dir: number, rawDt: number): LegPose;
+import { LegRig, type LegPose, type LegRigConfig } from './legs.js';
+export type { LegPose } from './legs.js';
+export declare class LegSolver extends LegRig {
+    constructor();
 }
 /**
  * Knee pole constraint. While running, BOTH knees must bow toward the
@@ -141,19 +91,60 @@ export declare function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose
 /** Darken/lighten a hex color by a flat amount — flat-art shading. */
 export declare function shade(hex: string, amount: number): string;
 /**
- * Beast rig for four-legged / critter NPCs. Goblins and skeletons use
- * the humanoid rig with size + skin overrides instead.
+ * Beast bodies: every non-humanoid NPC walks on the same universal
+ * LegRig as the player — planted feet, committed steps, two-segment
+ * IK. Each species is a spec: where its legs live under the body,
+ * how its joints bend, and what its feet look like.
+ *
+ * Joint law: front legs bow FORWARD at the knee, hind legs bow
+ * BACKWARD at the hock — the classic quadruped silhouette. Birds bow
+ * BACKWARD (the visible joint on a bird leg is the ankle). The
+ * preference is anatomical and constant; it never flips with travel.
  */
+export interface BeastSpec {
+    rig: LegRigConfig;
+    /** Half-length of the body mass along the facing (tiles). */
+    bodyLen: number;
+    /** Body-mass center height above ground (tiles). */
+    bodyRise: number;
+    /** Per-leg joint bow along the facing: +1 forward, -1 backward. */
+    kneeFwd: number[];
+    /** Where legs attach, as fractions of the leg spec offsets. */
+    hipFwd: number;
+    hipSide: number;
+    /** Upper-leg thickness (tiles). */
+    legW: number;
+    foot: 'hoof' | 'paw' | 'claw';
+    /** Bare shanks (chicken) instead of body-shaded legs. */
+    legColor?: string;
+}
+/**
+ * Spec for a beast id — named species get their tuned rig; anything
+ * new walks on a generic quadruped scaled from its collision radius,
+ * so future creatures have working legs before they have a look.
+ */
+export declare function beastSpec(defId: string, radius: number, speed: number): BeastSpec;
 export declare function drawBeast(ctx: CanvasRenderingContext2D, opts: {
+    /** Screen position of the body's ground point. */
     x: number;
     y: number;
     scale: number;
+    /** Slewed facing from the rig pose — body and legs agree. */
     dir: number;
     radius: number;
     color: string;
     defId: string;
+    spec: BeastSpec;
+    pose: LegPose;
+    /** Feet already projected to screen (terrain lift applied). */
+    feet: Array<{
+        x: number;
+        y: number;
+        lift: number;
+    }>;
+    /** Camera y foreshorten for body-frame offsets. */
+    yScale: number;
     walkPhase: number;
-    moving: boolean;
     hurt: boolean;
     /** 0..1 through an attack: crouch back, then pounce. */
     attackT?: number;

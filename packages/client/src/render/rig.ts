@@ -1,16 +1,16 @@
 import { PoseState } from '@devcraft/shared';
 import { itemDef } from '@devcraft/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
+import { LegRig, solveLimb, type LegPose, type LegRigConfig } from './legs.js';
+
+export type { LegPose } from './legs.js';
 
 /**
- * Procedural humanoid rig with genuine two-segment IK legs.
- *
- * Feet are planted in *world space*. When the body drifts past a
- * threshold from a foot's rest pose, that foot commits to a step: it
- * animates to a new plant ahead of the body while the other foot stays
- * planted. Knees solve by isoceles two-bone IK. The result is walking
- * that reads as walking — feet stick to the ground, stride adapts to
- * speed, and stopping settles the feet naturally under the body.
+ * Procedural rigs with genuine two-segment IK legs — the humanoid
+ * puppet and the beast bodies both walk on the universal LegRig
+ * (legs.ts): feet planted in world space, steps committed when the
+ * body drifts, knees solved by two-bone IK. Everything here is the
+ * PAINT over that shared skeleton.
  */
 
 const OUTLINE = '#241a2e';
@@ -29,223 +29,28 @@ const LIFT_AMP = HEIGHT * 0.14;
 const STRETCH = 1.15; // legs may straighten slightly past 2L — bounding
 const RUN_SPEED = 5; // full-tilt reference speed (tiles/sec)
 
-interface StepState {
-  fx: number;
-  fy: number;
-  tx: number;
-  ty: number;
-  t: number;
-  dur: number;
-}
-
-export interface LegPose {
-  /** World-space feet + lift (tiles). */
-  feet: Array<{ x: number; y: number; lift: number }>;
-  /** Sum of lifts — the body rides this bob. */
-  bob: number;
-  /** Current hip height above the ground point (tiles). */
-  rise: number;
-  /**
-   * Fake-3D squash: <1 when facing/travelling sideways (narrow side
-   * profile), >1 facing up/down (full front profile). Height compensates
-   * inversely so the turn reads as orientation, not shrinking.
-   */
-  wScale: number;
-  /** Knee pole vector: unit travel direction (world axes). */
-  poleX: number;
-  poleY: number;
-  /** 0 idle → 1 running: how strongly the pole constrains the knees. */
-  poleStrength: number;
-}
-
 /**
- * The herotown gait, the version that finally nailed it (their notes,
- * kept true here):
- *
- * - Characters are BILLBOARDS. Hips are FIXED on the screen X axis
- *   (left hip, right hip, always); feet stride along the movement
- *   direction from those fixed hips. Rotating the hip line with
- *   velocity throws the legs sideways — never do it.
- * - Cadence from first principles: stride = f(leg reach), and
- *   swing = stride / (2 · speed), so step rate scales EXACTLY with
- *   how fast the body moves. No walk-cycle timer.
- * - Anticipation: a step lands where the hip will be WHEN THE SWING
- *   ENDS (home + velocity · swing). Aiming at where home is now
- *   guarantees landing behind a moving body — the dangling-feet bug.
- * - Strictly one foot in the air; the planted foot carries the body.
- *   Exception: a foot past reach snaps forward NOW — never noodles.
+ * The humanoid gait is the herotown construction that finally nailed
+ * it, now expressed as a CONFIG of the universal rig: a billboard
+ * biped — hips fixed on the screen X axis, feet striding along the
+ * travel from those fixed hips, alternating one-at-a-time.
  */
-export class LegSolver {
-  private feet: Array<{ x: number; y: number; lift: number }> | null = null;
-  private step: Array<StepState | null> = [null, null];
-  private lastX: number | null = null;
-  private lastY: number | null = null;
-  private vx = 0;
-  private vy = 0;
-  private rise = LEG_RISE;
-  private wScale = 1;
-  /** Signed idle-turn accumulator; a big enough pivot owes a shuffle. */
-  private lastDir: number | null = null;
-  private turnDebt = 0;
-  private turnPending = 0;
+const HUMANOID_LEG_CFG: LegRigConfig = {
+  legs: [
+    { fwd: 0, side: -HIP_HALF, group: 0 },
+    { fwd: 0, side: HIP_HALF, group: 1 },
+  ],
+  legLen: LEG_LEN,
+  rise: LEG_RISE,
+  liftAmp: LIFT_AMP,
+  runSpeed: RUN_SPEED,
+  stretch: STRETCH,
+  billboard: true,
+};
 
-  update(bx: number, by: number, dir: number, rawDt: number): LegPose {
-    const dt = Math.min(0.05, Math.max(0.001, rawDt));
-
-    // Any non-finite state resets instead of poisoning every frame.
-    if (!Number.isFinite(this.vx + this.vy)) {
-      this.vx = 0;
-      this.vy = 0;
-      this.feet = null;
-      this.step = [null, null];
-    }
-
-    // Velocity from position deltas — identical for self/remotes/NPCs.
-    const rawVx = this.lastX === null ? 0 : (bx - this.lastX) / dt;
-    const rawVy = this.lastY === null ? 0 : (by - this.lastY) / dt;
-    this.lastX = bx;
-    this.lastY = by;
-    const k = Math.min(1, dt * 20);
-    this.vx += (rawVx - this.vx) * k;
-    this.vy += (rawVy - this.vy) * k;
-    const speed = Math.hypot(this.vx, this.vy);
-    const moving = speed > 0.35;
-    const dx = moving ? this.vx / speed : 0;
-    const dy = moving ? this.vy / speed : 0;
-
-    // Fake-3D squash: orientation comes from travel while moving and
-    // from the aim/facing while standing, so turning in place reads too.
-    const horiz = moving ? Math.abs(this.vx) / speed : Math.abs(Math.cos(dir));
-    const wTarget = 1 + 0.05 * (1 - horiz) - 0.09 * horiz;
-    this.wScale += (wTarget - this.wScale) * Math.min(1, dt * 9);
-
-    // Run crouch: hips dip with speed, freeing horizontal reach.
-    const speedF = Math.min(1, speed / RUN_SPEED);
-    this.rise = LEG_RISE * (1 - 0.15 * speedF);
-    // Horizontal reach available given the hip height.
-    const reach = Math.sqrt(
-      Math.max(0.01, (LEG_LEN * STRETCH) ** 2 - this.rise ** 2),
-    );
-    const stride = reach * 1.65;
-    // Cadence scales exactly with speed.
-    const swing = moving
-      ? Math.min(0.2, Math.max(0.06, stride / (2 * speed)))
-      : 0.12;
-
-    // Turning in place owes the feet a shuffle. Accumulate the SIGNED
-    // facing delta while idle (signed so aim jitter cancels instead of
-    // building up); past ~a third of a turn, both feet re-plant in
-    // sequence — a real pivot-shuffle, never a frozen slide.
-    if (this.lastDir !== null) {
-      let dd = dir - this.lastDir;
-      dd = Math.atan2(Math.sin(dd), Math.cos(dd));
-      if (moving) {
-        this.turnDebt = 0;
-        this.turnPending = 0;
-      } else {
-        this.turnDebt += dd;
-        if (Math.abs(this.turnDebt) > 0.55) {
-          this.turnPending = 2;
-          this.turnDebt = 0;
-        }
-      }
-    }
-    this.lastDir = dir;
-
-    // Idle stance turns with the facing: the foot on the facing side
-    // leads along the aim, the stance narrows side-on. Because homes
-    // shift when `dir` changes, turning in place re-plants the feet
-    // through the normal step logic — a real shuffle, not a slide.
-    // Blends out with speed so the gait laws stay untouched on the move.
-    const idleF = 1 - Math.min(1, speed / 1.2);
-    const fxD = Math.cos(dir);
-    const fyD = Math.sin(dir);
-    const stanceW = HIP_HALF * (1 - 0.3 * Math.abs(fxD) * idleF);
-    // Homes: under the screen-fixed hips, plus the idle facing stagger
-    // (large enough that a stance change always clears the idle step
-    // threshold — the feet re-plant rather than teleporting their rest).
-    const homes: Array<{ x: number; y: number }> = [];
-    for (let side = 0; side < 2; side++) {
-      const sgn = side === 0 ? -1 : 1;
-      const lead = sgn * Math.sign(fxD || 1);
-      const stag = 0.14 * Math.abs(fxD) * idleF * lead;
-      homes.push({ x: bx + sgn * stanceW + fxD * stag, y: by + fyD * stag * 0.6 });
-    }
-
-    if (!this.feet) {
-      this.feet = homes.map((h) => ({ x: h.x, y: h.y, lift: 0 }));
-    }
-
-    let bob = 0;
-    for (let side = 0; side < 2; side++) {
-      const sgn = side === 0 ? -1 : 1;
-      const homeX = homes[side]!.x;
-      const homeY = homes[side]!.y;
-      const f = this.feet[side]!;
-
-      const st = this.step[side];
-      if (st) {
-        st.t += dt / st.dur;
-        const t = Math.min(1, st.t);
-        const e = t * t * (3 - 2 * t); // smoothstep
-        f.x = st.fx + (st.tx - st.fx) * e;
-        f.y = st.fy + (st.ty - st.fy) * e;
-        f.lift = Math.sin(t * Math.PI) * LIFT_AMP * (0.6 + 1.1 * speedF);
-        if (t >= 1) {
-          this.step[side] = null;
-          f.lift = 0;
-        }
-      } else {
-        f.lift = 0;
-        const behind = Math.hypot(f.x - homeX, f.y - homeY);
-        const otherPlanted = !this.step[1 - side];
-        // Emergency bound: past reach the foot snaps forward NOW, even
-        // if the other foot is mid-swing — never noodle-stretch.
-        // Idle threshold sits under the turn-stagger delta (~0.13+) so
-        // a stance change always earns a re-planting shuffle; a paid-off
-        // pivot (`turnPending`) forces one even when the home barely
-        // moved — the feet visibly pick up and re-set.
-        const turnStep = !moving && this.turnPending > 0;
-        const due =
-          ((moving ? behind > stride * 0.5 : behind > 0.09) || turnStep) &&
-          otherPlanted;
-        const emergency = behind > reach * 1.12;
-        if (due || emergency) {
-          if (turnStep) this.turnPending--;
-          // Land where the hip will be when the swing completes, plus a
-          // small overshoot so the planted phase centers under the hip.
-          this.step[side] = {
-            fx: f.x,
-            fy: f.y,
-            tx: homeX + this.vx * swing + dx * reach * 0.3,
-            ty: homeY + this.vy * swing + dy * reach * 0.3,
-            t: 0,
-            dur: swing,
-          };
-        }
-      }
-
-      // Teleport / reconciliation-snap guard — beyond ~2× reach there is
-      // no graceful step; snap rather than stretch.
-      if ((f.x - homeX) ** 2 + (f.y - homeY) ** 2 > (LEG_LEN * 2.2) ** 2) {
-        f.x = homeX;
-        f.y = homeY;
-        this.step[side] = null;
-        f.lift = 0;
-      }
-      bob += f.lift;
-    }
-
-    return {
-      feet: this.feet,
-      bob,
-      rise: this.rise,
-      wScale: this.wScale,
-      poleX: dx,
-      poleY: dy,
-      // Full knee constraint by an easy walking pace.
-      poleStrength: Math.min(1, speed / 1.2),
-    };
+export class LegSolver extends LegRig {
+  constructor() {
+    super(HUMANOID_LEG_CFG);
   }
 }
 
@@ -357,25 +162,8 @@ export function solveArm(
   prefX: number,
   prefY: number,
 ): { ex: number; ey: number; kx: number; ky: number } {
-  let dx = hx - sx;
-  let dy = hy - sy;
-  let d = Math.hypot(dx, dy) || 1e-4;
-  const dMax = L * 2 * 1.08; // may straighten just a touch past full
-  if (d > dMax) {
-    dx *= dMax / d;
-    dy *= dMax / d;
-    d = dMax;
-  }
-  const bend = Math.sqrt(Math.max(0, L * L - (d / 2) ** 2));
-  const cx = -dy / d;
-  const cy = dx / d;
-  const sign = cx * prefX + cy * prefY >= 0 ? 1 : -1;
-  return {
-    ex: sx + dx, // reach-clamped hand
-    ey: sy + dy,
-    kx: sx + dx / 2 + cx * sign * bend,
-    ky: sy + dy / 2 + cy * sign * bend,
-  };
+  // Arms may straighten just a touch past full extension.
+  return solveLimb(sx, sy, hx, hy, L, 1.08, prefX, prefY);
 }
 
 function drawArm(
@@ -1297,21 +1085,165 @@ function drawHeldItem(
 }
 
 /**
- * Beast rig for four-legged / critter NPCs. Goblins and skeletons use
- * the humanoid rig with size + skin overrides instead.
+ * Beast bodies: every non-humanoid NPC walks on the same universal
+ * LegRig as the player — planted feet, committed steps, two-segment
+ * IK. Each species is a spec: where its legs live under the body,
+ * how its joints bend, and what its feet look like.
+ *
+ * Joint law: front legs bow FORWARD at the knee, hind legs bow
+ * BACKWARD at the hock — the classic quadruped silhouette. Birds bow
+ * BACKWARD (the visible joint on a bird leg is the ankle). The
+ * preference is anatomical and constant; it never flips with travel.
  */
+export interface BeastSpec {
+  rig: LegRigConfig;
+  /** Half-length of the body mass along the facing (tiles). */
+  bodyLen: number;
+  /** Body-mass center height above ground (tiles). */
+  bodyRise: number;
+  /** Per-leg joint bow along the facing: +1 forward, -1 backward. */
+  kneeFwd: number[];
+  /** Where legs attach, as fractions of the leg spec offsets. */
+  hipFwd: number;
+  hipSide: number;
+  /** Upper-leg thickness (tiles). */
+  legW: number;
+  foot: 'hoof' | 'paw' | 'claw';
+  /** Bare shanks (chicken) instead of body-shaded legs. */
+  legColor?: string;
+}
+
+/** Diagonal trot pairs: FL+BR swing together, FR+BL together. */
+function quadLegs(fwd: number, side: number): LegRigConfig['legs'] {
+  return [
+    { fwd, side: -side, group: 0 },
+    { fwd, side, group: 1 },
+    { fwd: -fwd, side: -side, group: 1 },
+    { fwd: -fwd, side, group: 0 },
+  ];
+}
+
+const BEAST_SPECS: Record<string, BeastSpec> = {
+  cow: {
+    rig: {
+      legs: quadLegs(0.26, 0.15),
+      legLen: 0.36,
+      rise: 0.3,
+      liftAmp: 0.06,
+      runSpeed: 1.8,
+      turnRate: 4.5,
+    },
+    bodyLen: 0.44,
+    bodyRise: 0.38,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.075,
+    foot: 'hoof',
+  },
+  wolf: {
+    rig: {
+      legs: quadLegs(0.28, 0.12),
+      legLen: 0.38,
+      rise: 0.325,
+      liftAmp: 0.1,
+      runSpeed: 4.6,
+      turnRate: 8,
+    },
+    bodyLen: 0.44,
+    bodyRise: 0.4,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.06,
+    foot: 'paw',
+  },
+  rat: {
+    rig: {
+      legs: quadLegs(0.19, 0.13),
+      legLen: 0.17,
+      rise: 0.13,
+      liftAmp: 0.05,
+      runSpeed: 3.2,
+      turnRate: 10,
+    },
+    bodyLen: 0.34,
+    bodyRise: 0.19,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.042,
+    foot: 'paw',
+  },
+  chicken: {
+    rig: {
+      legs: [
+        { fwd: -0.02, side: -0.075, group: 0 },
+        { fwd: -0.02, side: 0.075, group: 1 },
+      ],
+      legLen: 0.2,
+      rise: 0.17,
+      liftAmp: 0.07,
+      runSpeed: 2,
+      turnRate: 9,
+    },
+    bodyLen: 0.28,
+    bodyRise: 0.28,
+    kneeFwd: [-1, -1], // bird ankles bow backward
+    hipFwd: 0.9,
+    hipSide: 0.9,
+    legW: 0.035,
+    foot: 'claw',
+    legColor: '#e8a33d',
+  },
+};
+
+/**
+ * Spec for a beast id — named species get their tuned rig; anything
+ * new walks on a generic quadruped scaled from its collision radius,
+ * so future creatures have working legs before they have a look.
+ */
+export function beastSpec(defId: string, radius: number, speed: number): BeastSpec {
+  const known = BEAST_SPECS[defId];
+  if (known) return known;
+  return {
+    rig: {
+      legs: quadLegs(radius * 0.8, radius * 0.42),
+      legLen: radius * 1.1,
+      rise: radius * 0.92,
+      liftAmp: radius * 0.26,
+      runSpeed: Math.max(1, speed),
+      turnRate: 7,
+    },
+    bodyLen: radius * 1.3,
+    bodyRise: radius * 1.15,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: radius * 0.2,
+    foot: 'paw',
+  };
+}
+
 export function drawBeast(
   ctx: CanvasRenderingContext2D,
   opts: {
+    /** Screen position of the body's ground point. */
     x: number;
     y: number;
     scale: number;
+    /** Slewed facing from the rig pose — body and legs agree. */
     dir: number;
     radius: number;
     color: string;
     defId: string;
+    spec: BeastSpec;
+    pose: LegPose;
+    /** Feet already projected to screen (terrain lift applied). */
+    feet: Array<{ x: number; y: number; lift: number }>;
+    /** Camera y foreshorten for body-frame offsets. */
+    yScale: number;
     walkPhase: number;
-    moving: boolean;
     hurt: boolean;
     /** 0..1 through an attack: crouch back, then pounce. */
     attackT?: number;
@@ -1319,41 +1251,121 @@ export function drawBeast(
 ): void {
   const s = opts.scale;
   const r = opts.radius * s;
+  const spec = opts.spec;
+  const ys = opts.yScale;
   const fx = Math.cos(opts.dir);
   const fy = Math.sin(opts.dir);
+  const px = -fy;
+  const py = fx;
 
   // Telegraphed pounce: rock back through the windup (matching the
-  // server's 300ms telegraph), then snap forward for the strike.
+  // server's 300ms telegraph), then snap forward for the strike. Only
+  // the BODY lunges — the feet stay planted and the IK legs stretch
+  // into the strike, which is what sells the weight.
   const at = opts.attackT ?? 0;
+  let bx = opts.x;
+  let by = opts.y;
   if (at > 0) {
     const pounce =
       at < 0.7
         ? -0.12 * (at / 0.7) // crouch away
         : 0.3 * Math.sin(Math.PI * Math.min(1, (at - 0.7) / 0.3)); // strike!
-    opts = { ...opts, x: opts.x + fx * pounce * s, y: opts.y + fy * pounce * s };
+    bx += fx * pounce * s;
+    by += fy * pounce * s * ys;
   }
-  const px = -fy;
-  const py = fx;
   const color = opts.hurt ? '#ffffff' : opts.color;
-  const trot = opts.moving ? Math.sin(opts.walkPhase * Math.PI * 2) : 0;
-  const bodyY = opts.y - r * 0.55 - Math.abs(trot) * 0.03 * s;
+  const len = spec.bodyLen * s;
 
-  // Trotting stub legs (two visible pairs, counter-phased).
-  ctx.strokeStyle = opts.hurt ? '#ffffff' : shade(opts.color, -35);
-  ctx.lineWidth = Math.max(2, s * 0.06);
-  ctx.lineCap = 'round';
-  const len = r * 1.3;
-  for (const pair of [-0.55, 0.55]) {
-    for (const side of [-1, 1]) {
-      const phase = trot * side * (pair > 0 ? 1 : -1);
-      const lx = opts.x + fx * len * pair + px * side * r * 0.45 + fx * phase * 0.1 * s;
-      ctx.beginPath();
-      ctx.moveTo(lx, bodyY + r * 0.3);
-      ctx.lineTo(lx + fx * phase * 0.06 * s, opts.y + r * 0.12);
-      ctx.stroke();
-    }
+  // The body rides the legs: height from the spec, dipping with bob,
+  // plus a subtle roll toward whichever side is mid-swing.
+  const bodyY = by - (spec.bodyRise + opts.pose.bob * 0.35) * s;
+  let roll = 0;
+  for (let i = 0; i < spec.rig.legs.length; i++) {
+    roll += (opts.feet[i]?.lift ?? 0) * -Math.sign(spec.rig.legs[i]!.side);
   }
-  ctx.lineCap = 'butt';
+  roll *= 0.2;
+
+  // ---- legs: two-segment IK from body-frame hips to planted feet.
+  // Far-side legs draw behind the body mass, near-side in front.
+  const L = (spec.rig.legLen / 2) * s;
+  const stretch = spec.rig.stretch ?? 1.15;
+  const legColor = opts.hurt ? '#ffffff' : (spec.legColor ?? shade(opts.color, -35));
+  const shinColor = opts.hurt ? '#ffffff' : (spec.legColor ?? shade(opts.color, -22));
+  const footColor = opts.hurt ? '#ffffff' : shade(spec.legColor ?? opts.color, -55);
+  const drawLeg = (i: number): void => {
+    const foot = opts.feet[i];
+    const leg = spec.rig.legs[i];
+    if (!foot || !leg) return;
+    // Hip: body-frame attach point, projected like the world plane and
+    // raised to the rig's (crouch-scaled) hip height.
+    const hf = leg.fwd * spec.hipFwd;
+    const hs = leg.side * spec.hipSide;
+    const wx = fx * hf - fy * hs;
+    const wy = fy * hf + fx * hs;
+    const hipX = bx + wx * s;
+    const hipY = by + wy * s * ys - opts.pose.rise * s;
+    const footY = foot.y - foot.lift * s;
+    // Anatomical joint preference: along the facing (front knees bow
+    // forward, hocks and bird ankles backward), with a lateral-outward
+    // tiebreak so up/down-screen facings stay deterministic.
+    const bow = spec.kneeFwd[i] ?? 1;
+    const out = Math.sign(leg.side) || 1;
+    const prefX = bow * fx + px * out * 0.35;
+    const prefY = (bow * fy + py * out * 0.35) * ys;
+    const { ex, ey, kx, ky } = solveLimb(hipX, hipY, foot.x, footY, L, stretch, prefX, prefY);
+
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = legColor;
+    ctx.lineWidth = Math.max(2, spec.legW * s);
+    ctx.beginPath();
+    ctx.moveTo(hipX, hipY);
+    ctx.lineTo(kx, ky);
+    ctx.stroke();
+    ctx.strokeStyle = shinColor;
+    ctx.lineWidth = Math.max(1.5, spec.legW * s * 0.78);
+    ctx.beginPath();
+    ctx.moveTo(kx, ky);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+
+    // Feet: the species' contact chip.
+    if (spec.foot === 'claw') {
+      // Splayed bird toes, fanning along the facing.
+      ctx.strokeStyle = footColor;
+      ctx.lineWidth = Math.max(1.5, spec.legW * s * 0.7);
+      ctx.lineCap = 'round';
+      for (const t of [-0.55, 0, 0.55]) {
+        const ta = opts.dir + t;
+        ctx.beginPath();
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex + Math.cos(ta) * 0.07 * s, ey + Math.sin(ta) * 0.07 * s * ys);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+    } else if (spec.foot === 'hoof') {
+      const hw = spec.legW * s * 1.5;
+      ctx.fillStyle = footColor;
+      ctx.beginPath();
+      chamferRect(ctx, ex - hw / 2, ey - hw * 0.55, hw, hw * 0.62, hw * 0.18);
+      ctx.fill();
+    } else {
+      const pw = spec.legW * s * 1.35;
+      ctx.fillStyle = footColor;
+      ctx.beginPath();
+      ctx.ellipse(ex, ey - pw * 0.18, pw * 0.62, pw * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+  // Split by projected world-y of the hip: up-screen legs are FAR.
+  const farLegs: number[] = [];
+  const nearLegs: number[] = [];
+  for (let i = 0; i < spec.rig.legs.length; i++) {
+    const leg = spec.rig.legs[i]!;
+    const wy = fy * leg.fwd + fx * leg.side;
+    (wy < 0 ? farLegs : nearLegs).push(i);
+  }
+  for (const i of farLegs) drawLeg(i);
 
   // Body: faceted low-poly mass along the facing — same dialect as the
   // boulders and canopies.
@@ -1365,8 +1377,8 @@ export function drawBeast(
   ctx.strokeStyle = OUTLINE;
   ctx.lineWidth = Math.max(1.5, s * 0.04);
   ctx.save();
-  ctx.translate(opts.x, bodyY);
-  ctx.rotate(opts.dir);
+  ctx.translate(bx, bodyY);
+  ctx.rotate(opts.dir + roll);
   ctx.beginPath();
   facetBlob(ctx, 0, 0, len, seed, 9, (r * 0.78) / len, 0.4);
   ctx.fill();
@@ -1381,13 +1393,15 @@ export function drawBeast(
   if (opts.defId === 'cow' && !opts.hurt) {
     ctx.fillStyle = '#5b4632';
     ctx.beginPath();
-    facetCircle(ctx, opts.x - fx * len * 0.35, bodyY + py * r * 0.15, r * 0.32, 6, opts.dir + 0.5, 0.72);
+    facetCircle(ctx, bx - fx * len * 0.35, bodyY + py * r * 0.15, r * 0.32, 6, opts.dir + 0.5, 0.72);
     ctx.fill();
   }
 
-  // Head: a faceted chunk, one flat side toward the travel.
-  const headX = opts.x + fx * len * 0.92;
-  const headY = bodyY + fy * len * 0.35 - r * 0.15;
+  // Head: a faceted chunk, one flat side toward the travel. A chicken
+  // pecks its head forward with each step — the bob rides the gait.
+  const peck = opts.defId === 'chicken' ? opts.pose.bob * 1.6 : 0;
+  const headX = bx + fx * (len * 0.92 + peck * s);
+  const headY = bodyY + fy * (len * 0.35 + peck * s * ys) - r * 0.15;
   const headR = r * (opts.defId === 'chicken' ? 0.5 : 0.55);
   ctx.fillStyle = color;
   ctx.beginPath();
@@ -1423,11 +1437,11 @@ export function drawBeast(
     ctx.lineWidth = Math.max(2, s * (opts.defId === 'rat' ? 0.035 : 0.07));
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(opts.x - fx * len * 0.95, bodyY - fy * len * 0.3);
+    ctx.moveTo(bx - fx * len * 0.95, bodyY - fy * len * 0.3);
     ctx.quadraticCurveTo(
-      opts.x - fx * len * 1.45 + px * wag * s,
+      bx - fx * len * 1.45 + px * wag * s,
       bodyY - fy * len * 0.6 + py * wag * s - r * 0.3,
-      opts.x - fx * len * 1.75 + px * wag * s * 1.6,
+      bx - fx * len * 1.75 + px * wag * s * 1.6,
       bodyY - fy * len * 0.7 + py * wag * s * 1.6,
     );
     ctx.stroke();
@@ -1441,4 +1455,7 @@ export function drawBeast(
     const eey = headY + fy * headR * 0.42 + es * py * headR * 0.35;
     ctx.fillRect(eex - headR * 0.13, eey - headR * 0.15, headR * 0.26, headR * 0.3);
   }
+
+  // Near-side legs pass in front of the body mass.
+  for (const i of nearLegs) drawLeg(i);
 }
