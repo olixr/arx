@@ -50,12 +50,15 @@ describe('daylight laws', () => {
     assert.ok(noon.flame < 0.05, 'lamps are cold at noon');
   });
 
-  it('morning shadows point west, evening shadows point east', () => {
-    assert.ok(daylightAt(8).shadowX < -0.5);
-    assert.ok(daylightAt(18).shadowX > 0.5);
-    // And both stay south-leaning — never up-screen into their casters.
+  it('morning shadows point southwest, evening southeast — the fan stays south', () => {
+    assert.ok(daylightAt(8).shadowX < -0.35);
+    assert.ok(daylightAt(18).shadowX > 0.35);
+    // The whole fan stays SOUTH of the caster (light from the northern
+    // sky, consistent with the art's lit crowns) — never up-screen,
+    // and never hard side-light.
     for (const h of [6, 8, 10, 12, 14, 16, 18, 20, 22, 2]) {
-      assert.ok(daylightAt(h).shadowY > 0.1, `shadow at ${h}h leans south`);
+      const s = daylightAt(h);
+      assert.ok(s.shadowY > 0.6, `shadow at ${h}h falls south, not sideways`);
     }
   });
 

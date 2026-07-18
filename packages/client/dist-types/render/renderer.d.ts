@@ -44,6 +44,20 @@ export declare class Renderer {
     /** Where shadow helpers draw right now (batch layer or the frame). */
     private sdw;
     private sdwLayerAlpha;
+    /**
+     * Point lights that CAST this frame (screen space, strongest first).
+     * Bodies and organic props near one throw an extra shadow lobe away
+     * from it — walk between two lamps and you drag two shadows.
+     */
+    private frameLights;
+    /**
+     * Moving lights (projectiles, totems, blasts) announce themselves
+     * via queueGlow DURING the draw pass — too late for this frame's
+     * shadow prepass, so they cast one frame later. At 120fps the lag
+     * is invisible; the fireball's shadow sweep is not.
+     */
+    private prevDynamic;
+    private nextDynamic;
     private readonly ctx;
     private readonly baked;
     private readonly anims;
@@ -112,20 +126,43 @@ export declare class Renderer {
     private liftedWTS;
     /** Screen-px offset of a shadow cast from `hTiles` above the ground. */
     private castOffset;
+    /**
+     * Gather the frame's shadow-casting lights: strong scene lights plus
+     * last frame's dynamic ones, gated by darkness (point-light shadows
+     * only read once the sun stops washing them out), strongest first,
+     * capped so a lamp-ringed plaza stays cheap.
+     */
+    private buildFrameLights;
+    /**
+     * The shadow throws a point at screen (px, py) receives from nearby
+     * lights: world-space unit direction AWAY from each light, a length
+     * that stretches as the object sits deeper in the pool's falloff,
+     * and an alpha that dies at the pool's rim. `minD` excludes a
+     * fixture shadowing itself (props) while letting a body stand right
+     * up against a fire (entities).
+     */
+    private lightThrows;
     /** Arm the shadow target for a cast fill; null while nothing casts. */
     private beginCastFill;
     /** Arm for a grounding contact fill — never fully disappears. */
     private beginContactFill;
+    /** One silhouette throw: flattened blob + footprint smear, one path. */
+    private blobShadowPath;
     /**
-     * A mass `hTiles` up throws its silhouette along the sun: a
-     * flattened blob at the projected spot, tied to the footprint by a
-     * smear quad (the trunk's own shadow). One path, one fill — the
-     * blob and smear can never double-darken each other.
+     * A mass `hTiles` up throws its silhouette: once along the sun (or
+     * moon), and once away from each nearby pool of light — a tree by a
+     * lamp wears both. Each throw is one path, one fill, so a blob and
+     * its smear can never double-darken each other.
      */
     private castBlob;
     /** A prism's ground shadow: its base edge extruded along the sun. */
     private castEdgeQuad;
-    /** A body's grounding: foot ellipse + a low lobe cast sunward. */
+    /**
+     * A body's grounding: foot ellipse, a low lobe cast along the sun,
+     * and a lobe away from every nearby light — step up to a campfire
+     * and your shadow leans back from the flames; stand between two
+     * lamps and you drag a pair.
+     */
     private castBody;
     /** A small thing's plain contact ellipse (drops, summons). */
     private castContact;

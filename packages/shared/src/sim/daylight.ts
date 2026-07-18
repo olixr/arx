@@ -126,11 +126,16 @@ function smoothstep(lo: number, hi: number, x: number): number {
 
 /**
  * Shadow azimuth for a body's transit fraction u (0 rise → 1 set):
- * west-southwest at rise, due south at zenith, east-southeast at set.
- * Linear in angle, so direction sweeps at a steady, readable pace.
+ * southwest at rise, due south at zenith, southeast at set. The whole
+ * fan stays SOUTH of the caster — the sun crosses the NORTHERN sky,
+ * behind the tilted camera, which is the only direction consistent
+ * with the art: prop crowns are painted lit and south faces shaded,
+ * so light must come from up-screen at every hour. Hard side-light
+ * would contradict every baked highlight in the game. Linear in
+ * angle, so direction sweeps at a steady, readable pace.
  */
-const AZ_RISE = 2.8; // ≈160°: shadows point west, nudged south
-const AZ_SET = Math.PI - AZ_RISE; // mirror: east, nudged south
+const AZ_RISE = 2.4; // ≈137°: dawn shadows point southwest
+const AZ_SET = Math.PI - AZ_RISE; // mirror: southeast at dusk
 
 function transitShadow(u: number): { x: number; y: number } {
   const phi = AZ_RISE + (AZ_SET - AZ_RISE) * u;

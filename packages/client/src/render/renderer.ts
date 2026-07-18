@@ -182,6 +182,20 @@ export class Renderer {
   /** Where shadow helpers draw right now (batch layer or the frame). */
   private sdw: CanvasRenderingContext2D = this.shadowLayerCtx;
   private sdwLayerAlpha = 1;
+  /**
+   * Point lights that CAST this frame (screen space, strongest first).
+   * Bodies and organic props near one throw an extra shadow lobe away
+   * from it — walk between two lamps and you drag two shadows.
+   */
+  private frameLights: Array<{ sx: number; sy: number; r: number; a: number }> = [];
+  /**
+   * Moving lights (projectiles, totems, blasts) announce themselves
+   * via queueGlow DURING the draw pass — too late for this frame's
+   * shadow prepass, so they cast one frame later. At 120fps the lag
+   * is invisible; the fireball's shadow sweep is not.
+   */
+  private prevDynamic: Array<{ x: number; y: number; r: number; a: number }> = [];
+  private nextDynamic: Array<{ x: number; y: number; r: number; a: number }> = [];
   private readonly ctx: CanvasRenderingContext2D;
   private readonly baked = new Map<string, BakedChunk>();
   private readonly anims = new Map<number | 'own', AnimState>();
@@ -386,6 +400,64 @@ export class Renderer {
     };
   }
 
+  /**
+   * Gather the frame's shadow-casting lights: strong scene lights plus
+   * last frame's dynamic ones, gated by darkness (point-light shadows
+   * only read once the sun stops washing them out), strongest first,
+   * capped so a lamp-ringed plaza stays cheap.
+   */
+  private buildFrameLights(): void {
+    this.frameLights.length = 0;
+    const gate = Math.min(1, this.sky.darkness * 2.6);
+    if (gate < 0.05) return;
+    const cand: Array<{ sx: number; sy: number; r: number; a: number }> = [];
+    for (const L of this.lights) {
+      const a = Math.min(0.42, L.intensity * gate * 0.55);
+      if (a < 0.05) continue;
+      const p = this.liftedWTS(L.x, L.y);
+      cand.push({ sx: p.x, sy: p.y, r: L.r, a });
+    }
+    for (const D of this.prevDynamic) {
+      const a = Math.min(0.38, D.a * gate * 0.6);
+      if (a < 0.05) continue;
+      const p = this.liftedWTS(D.x, D.y);
+      cand.push({ sx: p.x, sy: p.y, r: D.r, a });
+    }
+    cand.sort((u, v) => v.a - u.a);
+    for (let i = 0; i < Math.min(6, cand.length); i++) this.frameLights.push(cand[i]!);
+  }
+
+  /**
+   * The shadow throws a point at screen (px, py) receives from nearby
+   * lights: world-space unit direction AWAY from each light, a length
+   * that stretches as the object sits deeper in the pool's falloff,
+   * and an alpha that dies at the pool's rim. `minD` excludes a
+   * fixture shadowing itself (props) while letting a body stand right
+   * up against a fire (entities).
+   */
+  private lightThrows(
+    px: number,
+    py: number,
+    minD: number,
+  ): Array<{ ux: number; uy: number; len: number; alpha: number }> {
+    const out: Array<{ ux: number; uy: number; len: number; alpha: number }> = [];
+    if (this.frameLights.length === 0) return out;
+    const s = this.camera.scale;
+    const ys = this.camera.yScale;
+    for (const L of this.frameLights) {
+      const wx = (px - L.sx) / s;
+      const wy = (py - L.sy) / (s * ys);
+      const d = Math.hypot(wx, wy);
+      if (d < minD || d >= L.r) continue;
+      const t = d / L.r;
+      const alpha = L.a * (1 - t) ** 1.5;
+      if (alpha < 0.03) continue;
+      out.push({ ux: wx / d, uy: wy / d, len: 1.9 - t, alpha });
+      if (out.length === 2) break; // two strongest reads; more is mud
+    }
+    return out;
+  }
+
   /** Arm the shadow target for a cast fill; null while nothing casts. */
   private beginCastFill(): CanvasRenderingContext2D | null {
     if (this.sky.shadowAlpha < 0.02) return null;
@@ -404,31 +476,61 @@ export class Renderer {
     return c;
   }
 
-  /**
-   * A mass `hTiles` up throws its silhouette along the sun: a
-   * flattened blob at the projected spot, tied to the footprint by a
-   * smear quad (the trunk's own shadow). One path, one fill — the
-   * blob and smear can never double-darken each other.
-   */
-  private castBlob(bx: number, by: number, hTiles: number, r: number, seed: number, smearW = 0): void {
-    const c = this.beginCastFill();
-    if (!c) return;
-    const off = this.castOffset(hTiles);
+  /** One silhouette throw: flattened blob + footprint smear, one path. */
+  private blobShadowPath(
+    c: CanvasRenderingContext2D,
+    bx: number,
+    by: number,
+    ox: number,
+    oy: number,
+    r: number,
+    seed: number,
+    smearW: number,
+  ): void {
     c.beginPath();
     if (smearW > 0) {
       c.moveTo(bx - smearW, by);
       c.lineTo(bx + smearW, by);
-      c.lineTo(bx + off.x + smearW * 0.7, by + off.y);
-      c.lineTo(bx + off.x - smearW * 0.7, by + off.y);
+      c.lineTo(bx + ox + smearW * 0.7, by + oy);
+      c.lineTo(bx + ox - smearW * 0.7, by + oy);
       c.closePath();
     }
     c.save();
-    c.translate(bx + off.x, by + off.y);
+    c.translate(bx + ox, by + oy);
     c.scale(1, 0.62);
     facetBlob(c, 0, 0, r, seed, 7, 0.35);
     c.restore();
-    c.fill();
-    c.globalAlpha = 1;
+  }
+
+  /**
+   * A mass `hTiles` up throws its silhouette: once along the sun (or
+   * moon), and once away from each nearby pool of light — a tree by a
+   * lamp wears both. Each throw is one path, one fill, so a blob and
+   * its smear can never double-darken each other.
+   */
+  private castBlob(bx: number, by: number, hTiles: number, r: number, seed: number, smearW = 0): void {
+    const sunC = this.beginCastFill();
+    if (sunC) {
+      const off = this.castOffset(hTiles);
+      this.blobShadowPath(sunC, bx, by, off.x, off.y, r, seed, smearW);
+      sunC.fill();
+      sunC.globalAlpha = 1;
+    }
+    const throws = this.lightThrows(bx, by, 0.6);
+    if (throws.length > 0) {
+      const c = this.sdw;
+      const s = this.camera.scale;
+      const ys = this.camera.yScale;
+      c.fillStyle = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
+      for (const th of throws) {
+        c.globalAlpha = Math.min(1, th.alpha / this.sdwLayerAlpha);
+        const ox = th.ux * th.len * hTiles * s;
+        const oy = th.uy * th.len * hTiles * s * ys;
+        this.blobShadowPath(c, bx, by, ox, oy, r * 0.92, seed, smearW);
+        c.fill();
+      }
+      c.globalAlpha = 1;
+    }
   }
 
   /** A prism's ground shadow: its base edge extruded along the sun. */
@@ -446,20 +548,33 @@ export class Renderer {
     c.globalAlpha = 1;
   }
 
-  /** A body's grounding: foot ellipse + a low lobe cast sunward. */
+  /**
+   * A body's grounding: foot ellipse, a low lobe cast along the sun,
+   * and a lobe away from every nearby light — step up to a campfire
+   * and your shadow leans back from the flames; stand between two
+   * lamps and you drag a pair.
+   */
   private castBody(px: number, py: number, r: number): void {
     const c = this.beginContactFill();
     c.beginPath();
     c.ellipse(px, py, r, r * 0.45, 0, 0, Math.PI * 2);
     c.fill();
+    const lobe = (ox: number, oy: number, alpha: number): void => {
+      c.globalAlpha = Math.min(1, alpha / this.sdwLayerAlpha);
+      const ang = Math.atan2(oy, ox);
+      const len = Math.hypot(ox, oy);
+      c.beginPath();
+      c.ellipse(px + ox * 0.55, py + oy * 0.55, r * 0.5 + len * 0.5, r * 0.4, ang, 0, Math.PI * 2);
+      c.fill();
+    };
     if (this.sky.shadowAlpha >= 0.02) {
       const off = this.castOffset(0.42);
-      c.globalAlpha = Math.min(1, (this.sky.shadowAlpha / this.sdwLayerAlpha) * 0.75);
-      const ang = Math.atan2(off.y, off.x);
-      const len = Math.hypot(off.x, off.y);
-      c.beginPath();
-      c.ellipse(px + off.x * 0.55, py + off.y * 0.55, r * 0.5 + len * 0.5, r * 0.4, ang, 0, Math.PI * 2);
-      c.fill();
+      lobe(off.x, off.y, this.sky.shadowAlpha * 0.75);
+    }
+    const s = this.camera.scale;
+    const ys = this.camera.yScale;
+    for (const th of this.lightThrows(px, py, 0.15)) {
+      lobe(th.ux * th.len * 0.42 * s, th.uy * th.len * 0.42 * s * ys, th.alpha);
     }
     c.globalAlpha = 1;
   }
@@ -655,6 +770,10 @@ export class Renderer {
 
     // The breeze layer: water glints, ripples, portal swirls.
     const bounds = this.visibleTileBounds();
+    // Standing lights gather FIRST: the shadow prepass needs to know
+    // every pool before anything casts. (Moving lights announce via
+    // queueGlow during the draw pass and cast one frame later.)
+    this.collectStaticLights(game, bounds);
     // Ground-level tiles only: lifted tiles get their own live layer
     // drawn OVER their plateau band (see collectElevatedGround).
     drawLiveGround(this.ctx, groundLvl0, bounds, this.liftedWTS, this.camera.scale, performance.now());
@@ -694,7 +813,13 @@ export class Renderer {
     sc.setTransform(dpr, 0, 0, dpr, 0, 0);
     sc.clearRect(0, 0, this.w, this.h);
     this.sdw = sc;
-    this.sdwLayerAlpha = Math.min(1, Math.max(this.sky.shadowAlpha, CONTACT_MIN));
+    this.buildFrameLights();
+    // The layer composites at the DEEPEST shadow this frame needs —
+    // sky, contact floor, or the strongest light throw.
+    this.sdwLayerAlpha = Math.min(
+      1,
+      Math.max(this.sky.shadowAlpha, CONTACT_MIN, this.frameLights[0]?.a ?? 0),
+    );
     for (const item of items) {
       if (!item.elevated) item.drawShadow?.();
     }
@@ -720,7 +845,6 @@ export class Renderer {
     // Depth & atmosphere: the exposure pass (multiply lightmap) sets
     // the scene's darkness, THEN emissive bloom pops over it, then the
     // tilted-camera tilt-shift bands and the grade. HUD stays crisp.
-    this.collectStaticLights(game, bounds);
     const origin = this.camera.worldToScreen(0, 0, this.w, this.h);
     this.lighting.draw(
       this.ctx,
@@ -733,6 +857,11 @@ export class Renderer {
       },
     );
     this.lights.length = 0;
+    // Moving lights hand their positions to next frame's shadow pass.
+    const swap = this.prevDynamic;
+    this.prevDynamic = this.nextDynamic;
+    this.nextDynamic = swap;
+    this.nextDynamic.length = 0;
     this.drawGlows();
     this.applyTiltShift();
     this.drawGrade();
@@ -819,7 +948,9 @@ export class Renderer {
     this.glows.push({ x, y, r, rgb, a });
     if (this.sky.darkness > 0.04) {
       const [rr = 255, gg = 255, bb = 255] = rgb.split(',').map((v) => Number.parseInt(v, 10));
-      this.lights.push({ x, y, r: r * 1.6, rgb: [rr, gg, bb], intensity: Math.min(0.55, a * 1.6) });
+      const intensity = Math.min(0.55, a * 1.6);
+      this.lights.push({ x, y, r: r * 1.6, rgb: [rr, gg, bb], intensity });
+      this.nextDynamic.push({ x, y, r: r * 2.2, a: intensity });
     }
   }
 
@@ -3963,6 +4094,14 @@ export class Renderer {
         ctx.fill();
         ctx.restore();
       } else if (fx.kind === 'nova' || fx.kind === 'summon') {
+        if (fx.kind === 'nova') {
+          // The expanding ring is a real light: it flashes the ground
+          // and (after dark) kicks every nearby shadow outward.
+          const cr = Number.parseInt(color.slice(1, 3), 16) || 244;
+          const cg = Number.parseInt(color.slice(3, 5), 16) || 239;
+          const cb = Number.parseInt(color.slice(5, 7), 16) || 228;
+          this.queueGlow(fx.x, fx.y, fx.radius * (0.5 + 0.7 * t), `${cr}, ${cg}, ${cb}`, 0.5 * (1 - t));
+        }
         const rr = fx.kind === 'summon' ? rPx * (0.4 + 0.6 * t) : rPx * Math.sqrt(t);
         ctx.save();
         ctx.globalAlpha = (1 - t) * 0.8;
