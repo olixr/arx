@@ -256,6 +256,11 @@ export class Panels {
           if (!unlocked) {
             chip.classList.add('locked');
             chip.textContent = `${ab.name} (lv ${tech.unlockLevel})`;
+            // Navigable even though locked: pad players can focus it to
+            // read what it does and what unlocks it.
+            chip.dataset.nav = '';
+            chip.dataset.navkey = `tech:${skill}:${tech.ability}`;
+            chip.dataset.acta = 'Locked';
             chip.dataset.tipname = ab.name;
             chip.dataset.tipsub = `${ab.desc} — unlocks at ${skill} level ${tech.unlockLevel}`;
           } else {

@@ -17,8 +17,8 @@ import { uiIconUrl } from './render/icons.js';
 for (const [id, kind, tip, kbKey, padCls, padLabel] of [
   ['btn-inventory', 'backpack', 'Pack', 'I', 'start', '☰'],
   ['btn-skills', 'scroll', 'Skills', 'K', 'select', '⧉'],
-  ['btn-craft', 'hammer', 'Handiwork', 'C', '', ''],
-  ['btn-build', 'house', 'Build', 'B', '', ''],
+  ['btn-craft', 'hammer', 'Handiwork', 'C', 'ddown', '▼'],
+  ['btn-build', 'house', 'Build', 'B', 'dright', '▶'],
   ['touch-attack', 'attack', '', '', '', ''],
 ] as const) {
   const btn = document.getElementById(id);
@@ -100,7 +100,13 @@ const stationPanels = new StationPanels(
   (buildable) => {
     buildMode = buildable;
     stationPanels.closeAll();
-    chat.addLine({ channel: 'system', text: 'Click the ground to place. Esc to stop building.' });
+    chat.addLine({
+      channel: 'system',
+      text:
+        nav.mode === 'pad'
+          ? 'Steer the ghost with the right stick — Ⓐ place, Ⓨ demolish, Ⓑ done.'
+          : 'Click the ground to place. X+click demolishes. Esc to stop building.',
+    });
   },
 );
 
@@ -133,6 +139,8 @@ const nav = new UiNav(input, {
   },
   onToggleInventory: () => panels.toggleInventory(),
   onToggleSkills: () => panels.toggleSkills(),
+  onOpenCraft: () => stationPanels.openCraft(null, game.skills),
+  onOpenBuild: () => stationPanels.openBuild(game.skills),
   packActionLabel: () =>
     stationPanels.bankOpen ? 'Deposit' : stationPanels.shopOpen ? 'Sell' : null,
 });
@@ -556,6 +564,15 @@ let fpsWindowStart = performance.now();
 let lastOwnPose = 0;
 let padInteractWasDown = false;
 let lastDrawT = 0;
+/** Pad button state last frame — build-mode verbs edge off this. */
+let padPrevBtns = new Set<number>();
+/**
+ * The pad's build cursor: a sticky offset from the player (in tiles),
+ * steered by the right stick — deflection direction aims it, deflection
+ * depth sets the reach. It keeps its place when the stick is released,
+ * so you can walk while the ghost holds position.
+ */
+let padBuildCur: { dx: number; dy: number } | null = null;
 
 /** Soft aim assist: the nearest live NPC within reach, for pad players. */
 function nearestNpcAim(): number | null {
@@ -619,10 +636,29 @@ function frame(now: number): void {
   lastDrawT = drawT;
 
   // Gamepad: poll sticks; X button interacts (edge-triggered).
+  input.buildCapture = buildMode !== null;
   input.pollGamepad();
   const uiOpen =
     document.querySelector('.side-panel:not(.hidden)') !== null;
-  nav.update(now, uiOpen);
+  // Build mode pins the action strip with its verbs — on both devices.
+  if (buildMode) {
+    if (nav.mode === 'pad') {
+      nav.showModeStrip('build:pad', [
+        ['pad-glyph a', 'A', 'Place'],
+        ['pad-glyph y', 'Y', 'Demolish'],
+        ['pad-glyph b', 'B', 'Done'],
+      ]);
+    } else {
+      nav.showModeStrip('build:kb', [
+        ['kb-glyph', 'Click', 'Place'],
+        ['kb-glyph', 'X+Click', 'Demolish'],
+        ['kb-glyph', 'Esc', 'Done'],
+      ]);
+    }
+  } else {
+    nav.clearModeStrip();
+  }
+  nav.update(now, uiOpen, buildMode !== null);
   const padInteract = input.padInteractPressed();
   if (padInteract && !padInteractWasDown && game.ownEid !== null) {
     activateTarget(game.findNearbyTarget());
@@ -674,14 +710,42 @@ function frame(now: number): void {
     }
   }
 
-  // Build-mode ghost follows the mouse tile.
+  // Build-mode ghost: rides the mouse tile — or, on pad, the sticky
+  // right-stick cursor, with Ⓐ place / Ⓨ demolish / Ⓑ done.
+  const padSnap = input.padSnapshot();
+  const padBtns = new Set<number>();
+  padSnap?.buttons.forEach((b, i) => {
+    if (b.pressed) padBtns.add(i);
+  });
+  const padEdge = (i: number): boolean => padBtns.has(i) && !padPrevBtns.has(i);
   if (buildMode && game.ownEid !== null) {
-    const def = BUILDABLES.get(buildMode);
-    const w = renderer.pickWorld(input.mouseX, input.mouseY);
-    const tx = Math.floor(w.x);
-    const ty = Math.floor(w.y);
-    const ground = game.world.groundAt(tx, ty);
     const pos = game.predictor.pos;
+    let tx: number;
+    let ty: number;
+    if (input.padPrimary() && padSnap) {
+      padBuildCur ??= { dx: Math.cos(game.aim) * 1.6, dy: Math.sin(game.aim) * 1.6 };
+      const rx = padSnap.axes[2] ?? 0;
+      const ry = padSnap.axes[3] ?? 0;
+      const mag = Math.hypot(rx, ry);
+      if (mag > 0.3) {
+        // Deflection depth maps to reach: a nudge builds at your feet,
+        // full tilt reaches the placement rim.
+        const r = 0.9 + Math.min(1, (mag - 0.3) / 0.65) * 2;
+        padBuildCur.dx = (rx / mag) * r;
+        padBuildCur.dy = (ry / mag) * r;
+      }
+      tx = Math.floor(pos.x + padBuildCur.dx);
+      ty = Math.floor(pos.y + padBuildCur.dy);
+      if (padEdge(0) || padEdge(2)) game.buildSend(buildMode, tx, ty);
+      if (padEdge(3)) game.demolishSend(tx, ty);
+      if (padEdge(1)) buildMode = null;
+    } else {
+      const w = renderer.pickWorld(input.mouseX, input.mouseY);
+      tx = Math.floor(w.x);
+      ty = Math.floor(w.y);
+    }
+    const def = buildMode ? BUILDABLES.get(buildMode) : undefined;
+    const ground = game.world.groundAt(tx, ty);
     const dx = tx + 0.5 - pos.x;
     const dy = ty + 0.5 - pos.y;
     const dist2 = dx * dx + dy * dy;
@@ -694,8 +758,10 @@ function frame(now: number): void {
       ? { tx, ty, valid, color: tileDef(def.tile).topColor ?? tileDef(def.tile).color }
       : null;
   } else {
+    padBuildCur = null;
     renderer.buildGhost = null;
   }
+  padPrevBtns = padBtns;
 
   game.update(now);
   renderer.render(game, frameDt);

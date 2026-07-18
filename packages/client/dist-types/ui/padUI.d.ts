@@ -7,6 +7,9 @@ export interface UiNavHooks {
     /** Toggle the inventory / skills panels (Start / Select). */
     onToggleInventory: () => void;
     onToggleSkills: () => void;
+    /** Open the Handiwork / Build panels (d-pad down / right). */
+    onOpenCraft: () => void;
+    onOpenBuild: () => void;
     /** Contextual Ⓐ label for pack items (Deposit at bank, Sell in shop). */
     packActionLabel?: () => string | null;
 }
@@ -23,11 +26,18 @@ export declare class UiNav {
     private readonly tooltip;
     private readonly prompt;
     private prevPressed;
+    private wasUiActive;
+    /** Direction held when UI capture began — inert until released. */
+    private swallowDir;
     private navHeldSince;
     private navLastStep;
     private navHeldDir;
     private stripKey;
+    /** A gameplay MODE's action strip (build mode) — overrides focus strip. */
+    private modeStrip;
     private promptKey;
+    /** Which side panels are open — focus re-lands when this changes. */
+    private panelSig;
     /** Ring layout reads are throttled — forced layout every frame tanks fps. */
     private ringKey;
     private ringCarry;
@@ -44,11 +54,23 @@ export declare class UiNav {
     /** Pick up / place the focused pack slot (Ⓧ). */
     private handleCarry;
     /** Per-frame drive. Call after input.pollGamepad(). */
-    update(nowMs: number, uiOpen: boolean): void;
-    /** Start/Select work OUTSIDE menus too — that's how pads get in. */
+    update(nowMs: number, uiOpen: boolean, buildActive?: boolean): void;
+    /**
+     * Start/Select/d-pad work OUTSIDE menus too — that's how pads get
+     * in: Start Pack, Select Skills, d-pad ▼ Handiwork, d-pad ▶ Build.
+     * (D-pad ▲ stays an ability; down/right are free in gameplay.)
+     */
     private handleGlobalButtons;
     private positionRing;
     private updateStrip;
+    /**
+     * Pin the strip to a gameplay mode's verbs (build mode) — shown on
+     * BOTH devices, with the caller picking glyph chips per device.
+     * Cleared when the mode ends; while set it outranks the focus strip.
+     */
+    showModeStrip(key: string, items: Array<[cls: string, glyph: string, label: string]>): void;
+    clearModeStrip(): void;
+    private renderStrip;
     private hideStrip;
     /** Show the shared tooltip for an element (mouse hover path). */
     showTooltipFor(el: HTMLElement): void;

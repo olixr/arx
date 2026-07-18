@@ -27,6 +27,12 @@ export declare class InputManager {
      * The UI layer (UiNav) owns this flag.
      */
     uiCapture: boolean;
+    /**
+     * Build mode claims the pad's combat buttons (A/X/Y become place /
+     * place / demolish) but keeps movement and the aim stick — you walk
+     * and steer the ghost while you build. main.ts owns this flag.
+     */
+    buildCapture: boolean;
     /** While a DOM field (chat) has focus, movement keys are ignored. */
     private typingCheck;
     constructor(target: HTMLElement);

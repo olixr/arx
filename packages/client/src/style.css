@@ -733,7 +733,9 @@ h3 {
   height: 17px;
 }
 
-.pad-glyph.dup {
+.pad-glyph.dup,
+.pad-glyph.ddown,
+.pad-glyph.dright {
   border-radius: 3px;
   font-size: 10px;
 }
@@ -754,9 +756,15 @@ h3 {
 /* Device swap: only one shortcut language is visible at a time. */
 body.pad-mode .kb-glyph { display: none; }
 body:not(.pad-mode) .pad-glyph { display: none; }
-/* Inside the action strip / prompt (pad-only surfaces) always show. */
+/* Inside the action strip / prompt the caller picks the device's
+   glyphs itself (build mode shows kb chips too) — always show both. */
 #ui-action-strip .pad-glyph,
+#ui-action-strip .kb-glyph,
 #ui-interact-prompt .pad-glyph { display: inline-flex; }
+
+/* Mouse-language panel hints have no meaning on a pad — the action
+   strip teaches those verbs instead. */
+body.pad-mode .hint-inline { display: none; }
 
 /* ---- hotbar + dock badges ---- */
 

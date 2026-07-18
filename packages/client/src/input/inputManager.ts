@@ -33,6 +33,12 @@ export class InputManager {
    * The UI layer (UiNav) owns this flag.
    */
   uiCapture = false;
+  /**
+   * Build mode claims the pad's combat buttons (A/X/Y become place /
+   * place / demolish) but keeps movement and the aim stick — you walk
+   * and steer the ghost while you build. main.ts owns this flag.
+   */
+  buildCapture = false;
 
   /** While a DOM field (chat) has focus, movement keys are ignored. */
   private typingCheck: () => boolean = () => false;
@@ -136,7 +142,7 @@ export class InputManager {
 
   buttons(): number {
     let b = 0;
-    const pad = this.uiCapture ? null : this.pad();
+    const pad = this.uiCapture || this.buildCapture ? null : this.pad();
     // RT / A hold to attack on pads; LB/RB/Y/D-up fire the abilities.
     const padAttack =
       pad !== null &&
@@ -161,7 +167,7 @@ export class InputManager {
 
   /** X button (west) on the pad — polled for interact edge detection. */
   padInteractPressed(): boolean {
-    if (this.uiCapture) return false;
+    if (this.uiCapture || this.buildCapture) return false;
     const pad = this.pad();
     return pad !== null && (pad.buttons[2]?.pressed ?? false);
   }

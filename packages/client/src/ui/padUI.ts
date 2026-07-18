@@ -47,6 +47,9 @@ export interface UiNavHooks {
   /** Toggle the inventory / skills panels (Start / Select). */
   onToggleInventory: () => void;
   onToggleSkills: () => void;
+  /** Open the Handiwork / Build panels (d-pad down / right). */
+  onOpenCraft: () => void;
+  onOpenBuild: () => void;
   /** Contextual Ⓐ label for pack items (Deposit at bank, Sell in shop). */
   packActionLabel?: () => string | null;
 }
@@ -65,11 +68,19 @@ export class UiNav {
   private readonly prompt: HTMLElement;
 
   private prevPressed = new Set<number>();
+  private wasUiActive = false;
+  /** Direction held when UI capture began — inert until released. */
+  private swallowDir: 'up' | 'down' | 'left' | 'right' | null = null;
   private navHeldSince = 0;
   private navLastStep = 0;
   private navHeldDir: string | null = null;
   private stripKey = '';
+  /** A gameplay MODE's action strip (build mode) — overrides focus strip. */
+  private modeStrip: { key: string; items: Array<[cls: string, glyph: string, label: string]> } | null =
+    null;
   private promptKey = '';
+  /** Which side panels are open — focus re-lands when this changes. */
+  private panelSig = '';
   /** Ring layout reads are throttled — forced layout every frame tanks fps. */
   private ringKey: string | null = null;
   private ringCarry = false;
@@ -175,7 +186,7 @@ export class UiNav {
   }
 
   /** Per-frame drive. Call after input.pollGamepad(). */
-  update(nowMs: number, uiOpen: boolean): void {
+  update(nowMs: number, uiOpen: boolean, buildActive = false): void {
     const snap = this.input.padSnapshot();
 
     // Device mode: any pad button/stick flips to pad; the mouse flips
@@ -196,10 +207,15 @@ export class UiNav {
 
     if (!uiActive) {
       this.carrying = null;
+      this.wasUiActive = false;
+      this.swallowDir = null;
       this.ring.classList.add('hidden');
-      this.hideStrip();
       this.hideTooltip();
-      if (snap) this.handleGlobalButtons(snap);
+      // A gameplay mode (building) may pin its own action strip; it is
+      // modal, so the global panel shortcuts stand down while it runs.
+      if (this.modeStrip) this.renderStrip(this.modeStrip.key, this.modeStrip.items);
+      else this.hideStrip();
+      if (snap && !buildActive) this.handleGlobalButtons(snap);
       this.prevPressed = snap
         ? new Set(snap.buttons.map((b, i) => (b.pressed ? i : -1)).filter((i) => i >= 0))
         : new Set();
@@ -222,6 +238,17 @@ export class UiNav {
     else if (pressed.has(BTN.left) || ax < -STICK_NAV_THRESHOLD) dir = 'left';
     else if (pressed.has(BTN.right) || ax > STICK_NAV_THRESHOLD) dir = 'right';
 
+    // The press that OPENED this panel (a d-pad shortcut) is still
+    // held on the first UI frame — swallow it until released, so
+    // opening Build with d-pad ▶ doesn't also navigate right.
+    if (!this.wasUiActive) {
+      this.wasUiActive = true;
+      this.swallowDir = dir;
+    }
+    if (this.swallowDir !== null) {
+      if (dir === this.swallowDir) dir = null;
+      else this.swallowDir = null;
+    }
     if (dir === null) {
       this.navHeldDir = null;
     } else if (dir !== this.navHeldDir) {
@@ -237,12 +264,17 @@ export class UiNav {
       this.moveFocus(dir);
     }
 
-    // First frame of UI mode with nothing focused: land INSIDE the
-    // open panel (the dock is reachable but never the landing spot).
-    if (!this.focused()) {
+    // A freshly opened panel owns the cursor: whenever the set of open
+    // panels changes (or nothing is focused), land on the new panel's
+    // first ROW — never the dock, never the ✕ chip.
+    const sig = Array.from(document.querySelectorAll('.side-panel:not(.hidden)'))
+      .map((p) => p.id)
+      .join('|');
+    if (sig !== this.panelSig || !this.focused()) {
+      this.panelSig = sig;
       const items = this.navigables();
-      const inPanel = items.find((el) => el.closest('.side-panel'));
-      const first = inPanel ?? items[0];
+      const inPanel = items.filter((el) => el.closest('.side-panel'));
+      const first = inPanel.find((el) => !el.classList.contains('panel-close')) ?? inPanel[0] ?? items[0];
       if (first) this.setFocus(first);
     }
 
@@ -273,7 +305,11 @@ export class UiNav {
     }
   }
 
-  /** Start/Select work OUTSIDE menus too — that's how pads get in. */
+  /**
+   * Start/Select/d-pad work OUTSIDE menus too — that's how pads get
+   * in: Start Pack, Select Skills, d-pad ▼ Handiwork, d-pad ▶ Build.
+   * (D-pad ▲ stays an ability; down/right are free in gameplay.)
+   */
   private handleGlobalButtons(snap: {
     buttons: readonly GamepadButton[];
   }): void {
@@ -282,6 +318,8 @@ export class UiNav {
     if (this.mode !== 'pad') return;
     if (edge(BTN.start)) this.hooks.onToggleInventory();
     if (edge(BTN.select)) this.hooks.onToggleSkills();
+    if (edge(BTN.down)) this.hooks.onOpenCraft();
+    if (edge(BTN.right)) this.hooks.onOpenBuild();
   }
 
   private positionRing(nowMs: number): void {
@@ -337,17 +375,36 @@ export class UiNav {
       if (el) actions.push(['a', el.dataset.acta ?? 'Select']);
       actions.push(['b', 'Close']);
     }
-    const key = actions.map((a) => a.join(':')).join('|');
+    this.renderStrip(
+      actions.map((a) => a.join(':')).join('|'),
+      actions.map(([btn, label]) => [`pad-glyph ${btn}`, btn.toUpperCase(), label]),
+    );
+  }
+
+  /**
+   * Pin the strip to a gameplay mode's verbs (build mode) — shown on
+   * BOTH devices, with the caller picking glyph chips per device.
+   * Cleared when the mode ends; while set it outranks the focus strip.
+   */
+  showModeStrip(key: string, items: Array<[cls: string, glyph: string, label: string]>): void {
+    this.modeStrip = { key, items };
+  }
+
+  clearModeStrip(): void {
+    this.modeStrip = null;
+  }
+
+  private renderStrip(key: string, items: Array<[cls: string, glyph: string, label: string]>): void {
     if (key === this.stripKey) return;
     this.stripKey = key;
     this.strip.classList.remove('hidden');
     this.strip.innerHTML = '';
-    for (const [btn, label] of actions) {
+    for (const [cls, glyphText, label] of items) {
       const item = document.createElement('span');
       item.className = 'strip-item';
       const glyph = document.createElement('span');
-      glyph.className = `pad-glyph ${btn}`;
-      glyph.textContent = btn.toUpperCase();
+      glyph.className = cls;
+      glyph.textContent = glyphText;
       const text = document.createElement('span');
       text.textContent = label;
       item.append(glyph, text);
