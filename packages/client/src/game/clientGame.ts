@@ -26,7 +26,7 @@ import {
   type Vec2,
 } from '@devcraft/shared';
 import { NODES_BY_TILE, abilityDef, itemDef } from '@devcraft/content';
-import type { AbilityDef } from '@devcraft/shared';
+import type { AbilityDef, AbilitySlot } from '@devcraft/shared';
 
 export type InteractTarget =
   | { kind: 'node'; tx: number; ty: number }
@@ -88,6 +88,15 @@ export interface GameEvents {
   onBank(items: Record<string, number>): void;
   onHit(hit: { x: number; y: number; dmg: number; isOwn: boolean; crit: boolean }): void;
   onDeath(death: { x: number; y: number; defId: string }): void;
+  /** A damaging blow with a knock direction — directional impact FX. */
+  onImpact?(impact: {
+    x: number;
+    y: number;
+    kx: number;
+    ky: number;
+    crit: boolean;
+    isOwnTarget: boolean;
+  }): void;
 }
 
 export class ClientGame {
@@ -115,11 +124,15 @@ export class ClientGame {
   readonly fx: ActiveFx[] = [];
 
   /** Hotbar state: performance.now() when each slot comes off cooldown. */
-  readonly abilityReadyAt: [number, number] = [0, 0];
+  readonly abilityReadyAt: [number, number, number, number] = [0, 0, 0, 0];
   /** Full cooldowns in ticks (0 = nothing equipped in that slot). */
-  abilityMax: [number, number] = [0, 0];
+  abilityMax: [number, number, number, number] = [0, 0, 0, 0];
+  /** Chosen technique ability per combat style (server-confirmed). */
+  techniques: Record<string, string> = {};
   /** Fires when the local player commits a cast (FX + audio hooks). */
-  onCastFx: ((slot: 0 | 1, ab: AbilityDef) => void) | null = null;
+  onCastFx: ((slot: AbilitySlot, ab: AbilityDef) => void) | null = null;
+  /** Fires when the technique loadout changes (UI refresh). */
+  onTechniques: (() => void) | null = null;
   /** Fires for every arriving combat effect (audio/shake hooks). */
   onFx: ((fx: ActiveFx) => void) | null = null;
   /** Buttons of the previous outgoing frame — press-edge detection. */
@@ -175,18 +188,40 @@ export class ClientGame {
     return id ? itemDef(id)?.weapon ?? null : null;
   }
 
-  /** The ability granted by a hotbar slot: 0 = weapon Art, 1 = relic. */
-  slotAbilityDef(slot: 0 | 1): AbilityDef | null {
-    if (slot === 0) {
-      const artId = this.equippedWeaponDef()?.art;
-      return artId ? (abilityDef(artId) ?? null) : null;
+  /** The combat style of the equipped weapon (bare fists = melee). */
+  currentStyle(): string {
+    return this.equippedWeaponDef()?.style ?? 'melee';
+  }
+
+  /** The ability granted by a hotbar slot: Art, relic, technique, sigil. */
+  slotAbilityDef(slot: AbilitySlot): AbilityDef | null {
+    switch (slot) {
+      case 0: {
+        const artId = this.equippedWeaponDef()?.art;
+        return artId ? (abilityDef(artId) ?? null) : null;
+      }
+      case 1: {
+        const relic = itemDef(this.equipment.relic ?? '');
+        return relic?.relic ? (abilityDef(relic.relic) ?? null) : null;
+      }
+      case 2: {
+        const chosen = this.techniques[this.currentStyle()];
+        return chosen ? (abilityDef(chosen) ?? null) : null;
+      }
+      case 3: {
+        const sigil = itemDef(this.equipment.sigil ?? '');
+        return sigil?.sigil ? (abilityDef(sigil.sigil) ?? null) : null;
+      }
     }
-    const relic = itemDef(this.equipment.relic ?? '');
-    return relic?.relic ? (abilityDef(relic.relic) ?? null) : null;
+  }
+
+  /** Choose a technique for a style (server validates the unlock). */
+  sendTechnique(style: string, ability: string): void {
+    this.conn?.send({ t: 'technique', style, ability });
   }
 
   /** Remaining cooldown fraction for a hotbar slot, 0 = ready. */
-  abilityCdFraction(slot: 0 | 1, now = performance.now()): number {
+  abilityCdFraction(slot: AbilitySlot, now = performance.now()): number {
     const max = this.abilityMax[slot];
     if (max <= 0) return 0;
     const left = this.abilityReadyAt[slot] - now;
@@ -203,9 +238,11 @@ export class ClientGame {
     const pressed = frame.buttons & ~this.prevSentButtons;
     this.prevSentButtons = frame.buttons;
     const now = performance.now();
-    const slots: Array<[number, 0 | 1]> = [
+    const slots: Array<[number, AbilitySlot]> = [
       [InputButton.Ability1, 0],
       [InputButton.Ability2, 1],
+      [InputButton.Ability3, 2],
+      [InputButton.Ability4, 3],
     ];
     for (const [bit, slot] of slots) {
       if (!(pressed & bit)) continue;
@@ -251,6 +288,10 @@ export class ClientGame {
     if (heldMs >= DRAW_MIN_TICKS * TICK_MS) {
       this.drawReadyAt = now + weapon.cooldownTicks * TICK_MS;
       this.onLoose?.(charge, this.aim);
+    } else {
+      // Snap shot — instant hip-fire, quick recovery, rapid-tap rhythm.
+      this.drawReadyAt = now + 6 * TICK_MS;
+      this.onLoose?.(0, this.aim);
     }
   }
 
@@ -412,6 +453,16 @@ export class ClientGame {
         }
         if (x !== undefined && y !== undefined) {
           const crit = msg.crit === true;
+          if (msg.dmg > 0 && (msg.kx !== undefined || msg.ky !== undefined)) {
+            this.events.onImpact?.({
+              x,
+              y,
+              kx: msg.kx ?? 0,
+              ky: msg.ky ?? 0,
+              crit,
+              isOwnTarget: msg.eid !== this.ownEid,
+            });
+          }
           this.floaties.push({
             x: x + (Math.random() - 0.5) * 0.3,
             y: y - 0.4,
@@ -448,9 +499,13 @@ export class ClientGame {
       }
       case 'cooldowns': {
         const now = performance.now();
-        this.abilityMax = [msg.max[0], msg.max[1]];
-        this.abilityReadyAt[0] = now + msg.cd[0] * TICK_MS;
-        this.abilityReadyAt[1] = now + msg.cd[1] * TICK_MS;
+        this.abilityMax = [msg.max[0], msg.max[1], msg.max[2], msg.max[3]];
+        for (let i = 0; i < 4; i++) this.abilityReadyAt[i] = now + msg.cd[i]! * TICK_MS;
+        break;
+      }
+      case 'techniques': {
+        this.techniques = msg.chosen;
+        this.onTechniques?.();
         break;
       }
       case 'fx': {

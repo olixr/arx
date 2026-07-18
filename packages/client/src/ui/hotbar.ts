@@ -1,24 +1,37 @@
+import { EQUIP_SLOTS, PASSIVES, type AbilitySlot } from '@devcraft/shared';
+import { itemDef } from '@devcraft/content';
 import type { ClientGame } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
 
+const SLOT_KEYS = ['Q', 'E', 'R', 'T'] as const;
+const EMPTY_HINTS = [
+  'Equip a weapon to gain its Art',
+  'Wear a relic to gain its power',
+  'Learn a Technique in the Skills panel (K)',
+  'Claim a Sigil from a fallen boss',
+] as const;
+
 /**
- * The combat hotbar: two ability slots — [Q] weapon Art, [E] relic —
- * each with a radial cooldown wipe, a ready flash, and a tooltip.
- * Slots are also buttons: pressing one casts, so touch and mouse
- * players get abilities without a keyboard.
+ * The combat hotbar: four ability slots — [Q] weapon Art, [E] relic,
+ * [R] learned Technique, [T] boss Sigil — each with a radial cooldown
+ * wipe, a ready flash, and a tooltip, plus a tray of the passives your
+ * worn gear grants. Slots are also buttons: pressing one casts, so
+ * touch and mouse players get abilities without a keyboard.
  */
 export class Hotbar {
   private readonly root = document.getElementById('hotbar')!;
+  private readonly tray = document.getElementById('passive-tray')!;
   private readonly slots: HTMLElement[] = [];
   private readonly wipes: HTMLElement[] = [];
   private readonly icons: HTMLElement[] = [];
-  private readonly names: string[] = ['', ''];
-  private readonly wasReady: boolean[] = [true, true];
+  private readonly names: string[] = ['', '', '', ''];
+  private readonly wasReady: boolean[] = [true, true, true, true];
+  private trayKey = '';
   /** Fires when a slot transitions to ready (for the soft tick). */
   onReady: (() => void) | null = null;
 
   constructor(input: InputManager) {
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 4; i++) {
       const slot = document.createElement('button');
       slot.className = 'hotbar-slot empty';
       slot.type = 'button';
@@ -33,14 +46,16 @@ export class Hotbar {
 
       const key = document.createElement('span');
       key.className = 'hotbar-key';
-      key.textContent = i === 0 ? 'Q' : 'E';
+      key.textContent = SLOT_KEYS[i]!;
       slot.appendChild(key);
 
       // Press-and-release drives the same input bit the keyboard does;
       // the server's edge detection turns it into exactly one cast.
       const set = (down: boolean) => {
         if (i === 0) input.touchAbility1 = down;
-        else input.touchAbility2 = down;
+        else if (i === 1) input.touchAbility2 = down;
+        else if (i === 2) input.touchAbility3 = down;
+        else input.touchAbility4 = down;
       };
       slot.addEventListener('pointerdown', (e) => {
         e.preventDefault();
@@ -60,8 +75,8 @@ export class Hotbar {
   /** Called once per frame — cheap DOM writes only on change. */
   update(game: ClientGame): void {
     const now = performance.now();
-    for (const slot of [0, 1] as const) {
-      const ab = game.slotAbilityDef(slot);
+    for (const slot of [0, 1, 2, 3] as const) {
+      const ab = game.slotAbilityDef(slot as AbilitySlot);
       const el = this.slots[slot]!;
       const icon = this.icons[slot]!;
 
@@ -69,10 +84,10 @@ export class Hotbar {
         if (this.names[slot] !== '') {
           this.names[slot] = '';
           el.classList.add('empty');
-          el.title = slot === 0 ? 'Equip a weapon to gain its Art' : 'Wear a relic to gain its power';
           icon.textContent = '';
           icon.style.background = 'transparent';
         }
+        el.title = EMPTY_HINTS[slot]!;
         this.wipes[slot]!.style.background = 'none';
         continue;
       }
@@ -85,7 +100,7 @@ export class Hotbar {
         icon.style.background = ab.color;
       }
 
-      const frac = game.abilityCdFraction(slot, now);
+      const frac = game.abilityCdFraction(slot as AbilitySlot, now);
       const ready = frac <= 0;
       if (ready) {
         this.wipes[slot]!.style.background = 'none';
@@ -105,6 +120,29 @@ export class Hotbar {
         this.onReady?.();
       }
       this.wasReady[slot] = ready;
+    }
+
+    // Passive tray: the quiet half of the build, rebuilt only when the
+    // worn passives actually change.
+    let key = '';
+    for (const slot of EQUIP_SLOTS) {
+      const p = itemDef(game.equipment[slot] ?? '')?.passive;
+      if (p) key += p + '|';
+    }
+    if (key !== this.trayKey) {
+      this.trayKey = key;
+      this.tray.innerHTML = '';
+      for (const id of key.split('|')) {
+        if (!id) continue;
+        const meta = PASSIVES[id as keyof typeof PASSIVES];
+        if (!meta) continue;
+        const chip = document.createElement('div');
+        chip.className = 'passive-chip';
+        chip.title = `${meta.name} — ${meta.desc}`;
+        chip.textContent = meta.code;
+        chip.style.background = meta.color;
+        this.tray.appendChild(chip);
+      }
     }
   }
 }

@@ -9,10 +9,52 @@ import { InputButton, hasButton } from './input.js';
 
 /** Ticks of holding Attack to reach a full draw (20 Hz). */
 export const DRAW_FULL_TICKS = 14; // 0.7s
-/** Below this the release is a fumble — no arrow flies. */
+/** Below this the release is a SNAP SHOT, not a charged arrow. */
 export const DRAW_MIN_TICKS = 3;
 /** Movement speed multiplier while drawing a bow. */
 export const DRAW_MOVE_FACTOR = 0.55;
+
+// ---------------------------------------------------------- snap shots
+
+/**
+ * Tap-fire: releasing under DRAW_MIN_TICKS looses an instant weak
+ * arrow from the hip. Tap-tap-tap IS rapid fire — mobile, scrappy,
+ * ~70% of a charge cycle's damage but you never stop moving.
+ */
+export const SNAP_RECOVERY_TICKS = 6; // 0.3 s between snaps
+/** Snap shots in the rhythm chain; the third fires a two-arrow fan. */
+export const SNAP_CHAIN = 3;
+/** Grace after recovery to continue the snap rhythm. */
+export const SNAP_GRACE_TICKS = 10;
+
+export function snapShot(
+  maxHit: number,
+  speed: number,
+  range: number,
+): { maxHit: number; speed: number; range: number } {
+  return {
+    maxHit: Math.max(1, Math.round(maxHit * 0.45)),
+    speed: speed * 0.85,
+    range: range * 0.55,
+  };
+}
+
+/** Next snap-chain stage; the fan stage always resets. */
+export function nextSnapStage(prevStage: number, withinGrace: boolean): number {
+  if (!withinGrace) return 0;
+  return (prevStage + 1) % SNAP_CHAIN;
+}
+
+// ---------------------------------------------------------- wand rhythm
+
+/**
+ * Staff basics are a 1-2-HEAVY rhythm: two quick bolts, then a slow
+ * fat orb that splashes and shoves. Same chain law as the melee combo.
+ */
+export const HEAVY_BOLT_MULT = 2.0;
+export const HEAVY_BOLT_RECOVERY_MULT = 1.8;
+export const HEAVY_BOLT_SPLASH = 1.2; // tiles around the impact
+export const HEAVY_BOLT_KNOCKBACK = 1.6;
 
 /** 0..1 charge from ticks spent drawing. */
 export function drawCharge(ticks: number): number {

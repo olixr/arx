@@ -60,6 +60,14 @@ test('on-hit haste pulls cooldowns forward and clamps at zero', () => {
   assert.ok(HASTE_FULL_DRAW_TICKS > HASTE_ON_HIT_TICKS, 'patience pays');
 });
 
+test('passive metadata is complete for every passive id', async () => {
+  const { PASSIVES } = await import('./abilities.js');
+  for (const [id, meta] of Object.entries(PASSIVES)) {
+    assert.ok(meta.name.length > 0 && meta.desc.length > 0, `${id} meta incomplete`);
+    assert.ok(meta.code.length === 2, `${id} icon code must be 2 chars`);
+  }
+});
+
 test('status wire bits are distinct single bits that fit a u8', () => {
   const seen = new Set<number>();
   for (const id of STATUS_IDS) {

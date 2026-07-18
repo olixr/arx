@@ -42,6 +42,12 @@ export declare class Sfx {
     loose(charge: number): void;
     /** Combo swings pitch up the chain; the finisher lands with a thud. */
     swingCombo(stage: number): void;
+    /** Snap shot — a quick dry pip from the hip. */
+    snapShot(): void;
+    /** The wand's heavy third bolt leaving — a fat slow whomp. */
+    heavyBolt(): void;
+    /** Chain lightning crackle. */
+    chainZap(): void;
     /** Weapon Art / relic cast — a rising committed whoomph. */
     art(): void;
     /** A status reaction detonating — the combo payoff sting. */

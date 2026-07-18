@@ -1,5 +1,5 @@
 import { ChunkStore, type EntityId, type EntityMeta, type EquipSlot, type InvSlot, type SkillXp, type StationType } from '@devcraft/shared';
-import type { AbilityDef } from '@devcraft/shared';
+import type { AbilityDef, AbilitySlot } from '@devcraft/shared';
 export type InteractTarget = {
     kind: 'node';
     tx: number;
@@ -82,6 +82,15 @@ export interface GameEvents {
         y: number;
         defId: string;
     }): void;
+    /** A damaging blow with a knock direction — directional impact FX. */
+    onImpact?(impact: {
+        x: number;
+        y: number;
+        kx: number;
+        ky: number;
+        crit: boolean;
+        isOwnTarget: boolean;
+    }): void;
 }
 export declare class ClientGame {
     private readonly input;
@@ -110,11 +119,15 @@ export declare class ClientGame {
     /** Combat effects in flight; pruned by the renderer. */
     readonly fx: ActiveFx[];
     /** Hotbar state: performance.now() when each slot comes off cooldown. */
-    readonly abilityReadyAt: [number, number];
+    readonly abilityReadyAt: [number, number, number, number];
     /** Full cooldowns in ticks (0 = nothing equipped in that slot). */
-    abilityMax: [number, number];
+    abilityMax: [number, number, number, number];
+    /** Chosen technique ability per combat style (server-confirmed). */
+    techniques: Record<string, string>;
     /** Fires when the local player commits a cast (FX + audio hooks). */
-    onCastFx: ((slot: 0 | 1, ab: AbilityDef) => void) | null;
+    onCastFx: ((slot: AbilitySlot, ab: AbilityDef) => void) | null;
+    /** Fires when the technique loadout changes (UI refresh). */
+    onTechniques: (() => void) | null;
     /** Fires for every arriving combat effect (audio/shake hooks). */
     onFx: ((fx: ActiveFx) => void) | null;
     /** Buttons of the previous outgoing frame — press-edge detection. */
@@ -149,10 +162,14 @@ export declare class ClientGame {
     /** 0..1 charge of the local player's in-progress bow draw. */
     get ownDrawT(): number;
     private equippedWeaponDef;
-    /** The ability granted by a hotbar slot: 0 = weapon Art, 1 = relic. */
-    slotAbilityDef(slot: 0 | 1): AbilityDef | null;
+    /** The combat style of the equipped weapon (bare fists = melee). */
+    currentStyle(): string;
+    /** The ability granted by a hotbar slot: Art, relic, technique, sigil. */
+    slotAbilityDef(slot: AbilitySlot): AbilityDef | null;
+    /** Choose a technique for a style (server validates the unlock). */
+    sendTechnique(style: string, ability: string): void;
     /** Remaining cooldown fraction for a hotbar slot, 0 = ready. */
-    abilityCdFraction(slot: 0 | 1, now?: number): number;
+    abilityCdFraction(slot: AbilitySlot, now?: number): number;
     /**
      * Local press-edge cast mirror: starts the radial instantly, roots the
      * predictor for the commitment window, and applies dash Arts so the

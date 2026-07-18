@@ -204,6 +204,47 @@ const defs: RecipeDef[] = [
     output: { item: 'oak_shortbow', qty: 1 },
     ticks: 60,
   },
+
+  // Passive gear — craftable builds, not just lucky drops.
+  {
+    id: 'smith_spiked_buckler',
+    name: 'Spiked buckler',
+    skill: 'smithing',
+    levelReq: 18,
+    xp: 120,
+    station: 'anvil',
+    inputs: [{ item: 'iron_bar', qty: 2 }],
+    output: { item: 'spiked_buckler', qty: 1 },
+    ticks: 70,
+  },
+  {
+    id: 'craft_wolf_pelt_cloak',
+    name: 'Wolf-pelt cloak',
+    skill: 'crafting',
+    levelReq: 14,
+    xp: 110,
+    station: 'workbench',
+    inputs: [
+      { item: 'wolf_fur', qty: 3 },
+      { item: 'leather', qty: 1 },
+    ],
+    output: { item: 'wolf_pelt_cloak', qty: 1 },
+    ticks: 70,
+  },
+  {
+    id: 'craft_frost_quiver',
+    name: 'Frost quiver',
+    skill: 'crafting',
+    levelReq: 20,
+    xp: 140,
+    station: 'workbench',
+    inputs: [
+      { item: 'leather', qty: 2 },
+      { item: 'gold_bar', qty: 1 },
+    ],
+    output: { item: 'frost_quiver', qty: 1 },
+    ticks: 80,
+  },
 ];
 
 export const RECIPES: ReadonlyMap<string, RecipeDef> = new Map(defs.map((d) => [d.id, d]));

@@ -36,6 +36,7 @@ import {
   TOWN_SPAWNS,
   abilityDef,
   itemDef,
+  techniqueDef,
   type BuildableDef,
   type NodeDef,
   type NpcDef,
@@ -52,13 +53,23 @@ import {
   FINISHER_DAMAGE_MULT,
   FINISHER_KNOCKBACK_MULT,
   FINISHER_RECOVERY_MULT,
+  ABILITY_SLOTS,
   BURN_TICK_EVERY,
   BLEED_TICK_EVERY,
   CHILL_SPEED_FACTOR,
+  COMBAT_STYLES,
+  HEAVY_BOLT_KNOCKBACK,
+  HEAVY_BOLT_MULT,
+  HEAVY_BOLT_RECOVERY_MULT,
+  HEAVY_BOLT_SPLASH,
   InputButton,
   SHOCK_MAX_TICKS,
   SLOT_ART,
   SLOT_RELIC,
+  SLOT_SIGIL,
+  SLOT_TECHNIQUE,
+  SNAP_GRACE_TICKS,
+  SNAP_RECOVERY_TICKS,
   STATION_TILES,
   STATUS_BIT,
   applyDodge,
@@ -69,11 +80,16 @@ import {
   hasteOnHit,
   isDrawSlowed,
   nextComboStage,
+  nextSnapStage,
   reactionDamage,
   reactionFor,
+  snapShot,
   type AbilityDef,
+  type AbilitySlot,
   type ActiveStatus,
+  type CombatStyleId,
   type EquipSlot,
+  type PassiveId,
   type S2CFx,
   type StatusApply,
 } from '@devcraft/shared';
@@ -169,6 +185,10 @@ interface ProjectileComp {
   hitEids?: Set<EntityId>;
   /** NPC-fired: seeks players (and decoys) instead of NPCs. */
   fromNpc?: boolean;
+  /** The wand's heavy third bolt — fat visual, shove on impact. */
+  heavy?: boolean;
+  /** Splash damage radius around the impact point. */
+  splashRadius?: number;
 }
 
 /** A status riding an entity, remembering who put it there. */
@@ -201,6 +221,8 @@ interface PendingBlast {
   /** NPC blasts hurt players; player blasts hurt NPCs. */
   fromNpc: boolean;
   color: string;
+  /** pulse_nova: burst at the caster's LIVE position (spin that moves). */
+  followCaster?: boolean;
 }
 
 interface SpawnState {
@@ -250,14 +272,30 @@ interface PlayerComp {
   comboStage: number;
   /** Swinging again before this tick continues the combo string. */
   comboGraceUntilTick: number;
-  /** Remaining cooldown ticks: [weapon Art, relic]. */
-  abilityCd: [number, number];
+  /** Remaining cooldown ticks: [Art, relic, technique, sigil]. */
+  abilityCd: [number, number, number, number];
   /** Buttons of the last processed frame — abilities fire on press edge. */
   prevButtons: number;
   /** Rooted mid-cast until this tick (ability commitment window). */
   castFreezeUntilTick: number;
-  /** Active self buff from an ability, if any. */
-  buff: { speedMult: number; shieldHp: number; untilTick: number } | null;
+  /** Active self buffs (ability + passive sources stack). */
+  buffs: PlayerBuff[];
+  /** Chosen technique ability per combat style. */
+  techniques: Record<string, string>;
+  /** Snap-shot rhythm: stage of the last snap and its grace window. */
+  snapStage: number;
+  snapGraceUntilTick: number;
+  /** Stage of the previous staff bolt (wand 1-2-HEAVY rhythm). */
+  boltStage: number;
+  boltGraceUntilTick: number;
+}
+
+/** A timed self-effect; multiple can ride at once (speeds multiply). */
+interface PlayerBuff {
+  speedMult: number;
+  shieldHp: number;
+  meleeLifesteal: number;
+  untilTick: number;
 }
 
 const MAX_QUEUED_INPUTS = 8;
@@ -502,10 +540,15 @@ export class GameServer {
       drawTicks: 0,
       comboStage: 0,
       comboGraceUntilTick: 0,
-      abilityCd: [0, 0],
+      abilityCd: [0, 0, 0, 0],
       prevButtons: 0,
       castFreezeUntilTick: 0,
-      buff: null,
+      buffs: [],
+      techniques: character.id > 0 ? this.accounts.loadTechniques(character.id) : {},
+      snapStage: 0,
+      snapGraceUntilTick: 0,
+      boltStage: 0,
+      boltGraceUntilTick: 0,
     });
     this.characterEids.set(character.id, eid);
     this.updateChunkMembership(eid);
@@ -547,6 +590,7 @@ export class GameServer {
     session.sendJson({ t: 'skills', xp: player.skills });
     session.sendJson({ t: 'inv', slots: player.inventory });
     session.sendJson({ t: 'equip', equipment: player.equipment });
+    session.sendJson({ t: 'techniques', chosen: player.techniques });
     this.sendCooldowns(player);
   }
 
@@ -1173,7 +1217,8 @@ export class GameServer {
     if (weapon.style === 'melee') {
       // Combo string: forehand → backhand → heavy finisher. Swinging
       // again inside the grace window continues the chain; the finisher
-      // hits and shoves harder but demands a longer recovery.
+      // hits harder, shoves harder, CLEARS THE WHOLE ARC, and demands a
+      // longer recovery — the crowd-control payoff beat.
       const stage = nextComboStage(
         player.comboStage,
         this.tickCount <= player.comboGraceUntilTick,
@@ -1195,10 +1240,20 @@ export class GameServer {
         aim,
         weapon.range,
         finisher ? Math.round(maxHit * FINISHER_DAMAGE_MULT) : maxHit,
-        finisher ? FINISHER_KNOCKBACK_MULT : 1,
+        finisher ? FINISHER_KNOCKBACK_MULT : stage === 1 ? 1.1 : 1,
+        finisher, // the finisher sweeps everyone, not just the best target
       );
     } else {
-      this.setPose(eid, PoseState.Cast, 6);
+      // Wand rhythm: bolt → bolt → HEAVY. The third cast is a fat slow
+      // orb that splashes and shoves — the punch beat wands were missing.
+      const stage = nextComboStage(player.boltStage, this.tickCount <= player.boltGraceUntilTick);
+      player.boltStage = stage;
+      const heavy = stage === COMBO_STAGES - 1;
+      if (heavy) {
+        player.attackCooldown = Math.round(weapon.cooldownTicks * HEAVY_BOLT_RECOVERY_MULT);
+      }
+      player.boltGraceUntilTick = this.tickCount + player.attackCooldown + COMBO_GRACE_TICKS;
+      this.setPose(eid, heavy ? PoseState.Attack3 : PoseState.Cast, heavy ? 8 : 6);
       const pos = this.positions.must(eid);
       const proj = this.ecs.create();
       this.kinds.set(proj, EntityKind.Projectile);
@@ -1206,12 +1261,19 @@ export class GameServer {
       this.projectiles.set(proj, {
         ownerEid: eid,
         style: weapon.style,
-        maxHit,
+        maxHit: heavy ? Math.round(maxHit * HEAVY_BOLT_MULT) : maxHit,
         dirX: Math.cos(aim),
         dirY: Math.sin(aim),
-        speed: weapon.projectileSpeed ?? 12,
+        speed: (weapon.projectileSpeed ?? 12) * (heavy ? 0.8 : 1),
         distLeft: weapon.range,
         basic: true,
+        heavy: heavy || undefined,
+        splashRadius: heavy ? HEAVY_BOLT_SPLASH : undefined,
+        // Ember Bolt passive: the payoff beat sets things burning.
+        status:
+          heavy && this.hasPassive(player, 'ember_bolt')
+            ? { status: 'burn', power: 1, durationTicks: 60 }
+            : undefined,
       });
       this.updateChunkMembership(proj);
     }
@@ -1224,10 +1286,12 @@ export class GameServer {
     range: number,
     maxHit: number,
     knockbackMult = 1,
+    sweepAll = false,
   ): void {
     const pos = this.positions.must(eid);
     let bestTarget: EntityId | null = null;
     let bestDist = Infinity;
+    const inArc: EntityId[] = [];
     for (const [npcEid, npc] of this.npcs) {
       const npos = this.positions.get(npcEid);
       if (!npos) continue;
@@ -1241,10 +1305,19 @@ export class GameServer {
       let diff = Math.abs(angleTo - aim) % (Math.PI * 2);
       if (diff > Math.PI) diff = Math.PI * 2 - diff;
       if (diff > Math.PI / 3 && dist > 0.9) continue;
+      inArc.push(npcEid);
       if (dist < bestDist) {
         bestDist = dist;
         bestTarget = npcEid;
       }
+    }
+    if (sweepAll) {
+      // The finisher clears the crowd — everyone in the arc eats it.
+      for (const npcEid of inArc) {
+        const { dmg, crit } = rollDamage(maxHit);
+        this.damageNpc(npcEid, dmg, eid, 'melee', { crit, knockbackMult, basic: true });
+      }
+      return;
     }
     if (process.env.COMBAT_DEBUG) {
       let nearest = Infinity;
@@ -1265,29 +1338,91 @@ export class GameServer {
 
   // --------------------------------------------------------- abilities
 
+  /** The combat style of the equipped weapon (bare fists count melee). */
+  private currentStyle(player: PlayerComp): CombatStyleId {
+    return (this.equippedWeapon(player)?.weapon.style ?? 'melee') as CombatStyleId;
+  }
+
   /**
-   * Resolve the ability in a hotbar slot from worn equipment: slot 0 is
-   * the weapon's Art, slot 1 the relic's active. No item, no ability —
-   * your loadout IS your kit.
+   * Resolve the ability in a hotbar slot. Each slot is a different
+   * progression axis: Art = weapon (gear chase), relic (loot hunt),
+   * technique (skill grind), sigil (boss trophies). No source, no
+   * ability — your loadout IS your kit.
    */
-  private slotAbility(player: PlayerComp, slot: 0 | 1): AbilityDef | null {
-    if (slot === SLOT_ART) {
-      const artId = this.equippedWeapon(player)?.weapon.art;
-      return artId ? (abilityDef(artId) ?? null) : null;
+  private slotAbility(player: PlayerComp, slot: AbilitySlot): AbilityDef | null {
+    switch (slot) {
+      case SLOT_ART: {
+        const artId = this.equippedWeapon(player)?.weapon.art;
+        return artId ? (abilityDef(artId) ?? null) : null;
+      }
+      case SLOT_RELIC: {
+        const relicItem = itemDef(player.equipment.relic ?? '');
+        return relicItem?.relic ? (abilityDef(relicItem.relic) ?? null) : null;
+      }
+      case SLOT_TECHNIQUE: {
+        const chosen = player.techniques[this.currentStyle(player)];
+        return chosen ? (abilityDef(chosen) ?? null) : null;
+      }
+      case SLOT_SIGIL: {
+        const sigilItem = itemDef(player.equipment.sigil ?? '');
+        return sigilItem?.sigil ? (abilityDef(sigilItem.sigil) ?? null) : null;
+      }
     }
-    const relicItem = itemDef(player.equipment.relic ?? '');
-    return relicItem?.relic ? (abilityDef(relicItem.relic) ?? null) : null;
   }
 
   private sendCooldowns(player: PlayerComp): void {
     if (!player.session) return;
-    const art = this.slotAbility(player, SLOT_ART);
-    const relic = this.slotAbility(player, SLOT_RELIC);
+    const max = [0, 0, 0, 0] as [number, number, number, number];
+    for (let slot = 0; slot < ABILITY_SLOTS; slot++) {
+      max[slot] = this.slotAbility(player, slot as AbilitySlot)?.cooldownTicks ?? 0;
+    }
     player.session.sendJson({
       t: 'cooldowns',
-      cd: [player.abilityCd[0], player.abilityCd[1]],
-      max: [art?.cooldownTicks ?? 0, relic?.cooldownTicks ?? 0],
+      cd: [player.abilityCd[0], player.abilityCd[1], player.abilityCd[2], player.abilityCd[3]],
+      max,
     });
+  }
+
+  /** Passives contributed by worn gear. */
+  private passiveIds(player: PlayerComp): PassiveId[] {
+    const out: PassiveId[] = [];
+    for (const worn of Object.values(player.equipment)) {
+      const p = itemDef(worn ?? '')?.passive;
+      if (p) out.push(p);
+    }
+    return out;
+  }
+
+  private hasPassive(player: PlayerComp, id: PassiveId): boolean {
+    for (const worn of Object.values(player.equipment)) {
+      if (itemDef(worn ?? '')?.passive === id) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Choose the equipped Technique for a style. Server-validated against
+   * the unlock ladder; respec is always free.
+   */
+  setTechnique(eid: EntityId, style: string, ability: string): void {
+    const player = this.players.get(eid);
+    if (!player) return;
+    if (!(COMBAT_STYLES as readonly string[]).includes(style)) return;
+    const tech = techniqueDef(ability);
+    if (!tech || tech.style !== style) return;
+    const level = levelForXp(player.skills[tech.style] ?? 0);
+    if (level < tech.unlockLevel) {
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `${abilityDef(ability)?.name ?? ability} unlocks at ${tech.style} level ${tech.unlockLevel}.`,
+      });
+      return;
+    }
+    player.techniques[style] = ability;
+    if (player.characterId > 0) this.accounts.saveTechnique(player.characterId, style, ability);
+    player.session?.sendJson({ t: 'techniques', chosen: player.techniques });
+    this.sendCooldowns(player);
   }
 
   /** Combat FX go to every session close enough to possibly see them. */
@@ -1300,7 +1435,7 @@ export class GameServer {
     }
   }
 
-  private tryCastAbility(eid: EntityId, player: PlayerComp, slot: 0 | 1, aim: number): void {
+  private tryCastAbility(eid: EntityId, player: PlayerComp, slot: AbilitySlot, aim: number): void {
     const ab = this.slotAbility(player, slot);
     if (!ab) return;
     if (player.abilityCd[slot] > 0) return;
@@ -1313,7 +1448,7 @@ export class GameServer {
     if (player.action) this.cancelAction(eid, player, 'cast');
     this.setPose(eid, PoseState.Art, Math.max(6, (ab.castFreezeTicks ?? 0) + 4));
 
-    const style = this.equippedWeapon(player)?.weapon.style ?? 'melee';
+    const style = this.currentStyle(player);
     const level = levelForXp(player.skills[style] ?? 0);
     this.castAbility(eid, ab, aim, style, level, false);
     this.sendCooldowns(player);
@@ -1385,22 +1520,20 @@ export class GameServer {
       }
 
       case 'dash_strike': {
-        // Carve forward through the world, wounding everything passed.
+        // Carve through the world, wounding everything passed. Negative
+        // dash tiles roll AWAY from the aim (the disengage tools).
         const dashTiles = ab.dashTiles ?? 3;
-        const dirX = Math.cos(aim);
-        const dirY = Math.sin(aim);
+        const sign = Math.sign(dashTiles) || 1;
+        const dist = Math.abs(dashTiles);
+        const dirX = Math.cos(aim) * sign;
+        const dirY = Math.sin(aim) * sign;
         const struck = new Set<EntityId>();
-        const steps = Math.ceil(dashTiles / 0.4);
+        const steps = Math.ceil(dist / 0.4);
         for (let i = 0; i < steps; i++) {
-          const next = stepMovement(
-            pos,
-            { mx: dirX, my: dirY },
-            dashTiles / steps,
-            1,
-            this.world,
-          );
+          const next = stepMovement(pos, { mx: dirX, my: dirY }, dist / steps, 1, this.world);
           pos.x = next.x;
           pos.y = next.y;
+          if (maxHit <= 0) continue;
           for (const [npcEid, npc] of this.npcs) {
             if (struck.has(npcEid)) continue;
             const npos = this.positions.get(npcEid);
@@ -1416,6 +1549,97 @@ export class GameServer {
           }
         }
         this.updateChunkMembership(casterEid);
+        // Tumble Shot: the arrow flies at what you rolled away from.
+        if (ab.projectiles && maxHit > 0) {
+          const proj = this.ecs.create();
+          this.kinds.set(proj, EntityKind.Projectile);
+          this.positions.set(proj, { x: pos.x, y: pos.y, dir: aim });
+          this.projectiles.set(proj, {
+            ownerEid: casterEid,
+            style: style === 'magic' ? 'magic' : 'archery',
+            maxHit,
+            dirX: Math.cos(aim),
+            dirY: Math.sin(aim),
+            speed: ab.projectileSpeed ?? 14,
+            distLeft: ab.range ?? 6,
+            status: ab.status,
+            fromNpc,
+          });
+          this.updateChunkMembership(proj);
+        }
+        break;
+      }
+
+      case 'chain_zap': {
+        // Strike the nearest enemy in the aim cone, then arc onward.
+        const range = ab.range ?? 6;
+        const chainRadius = ab.radius ?? 3;
+        const maxTargets = ab.chainTargets ?? 3;
+        let from = { x: pos.x, y: pos.y };
+        const zapped = new Set<EntityId>();
+        for (let hop = 0; hop < maxTargets; hop++) {
+          let best: EntityId | null = null;
+          let bestDist = Infinity;
+          for (const [npcEid, npc] of this.npcs) {
+            if (zapped.has(npcEid)) continue;
+            const npos = this.positions.get(npcEid);
+            if (!npos) continue;
+            const dx = npos.x - from.x;
+            const dy = npos.y - from.y;
+            const d = Math.hypot(dx, dy) - npc.def.radius;
+            if (hop === 0) {
+              if (d > range) continue;
+              let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
+              if (diff > Math.PI) diff = Math.PI * 2 - diff;
+              if (diff > 0.8 && d > 1) continue;
+            } else if (d > chainRadius) {
+              continue;
+            }
+            if (d < bestDist) {
+              bestDist = d;
+              best = npcEid;
+            }
+          }
+          if (best === null) break;
+          zapped.add(best);
+          const tpos = this.positions.must(best);
+          this.broadcastFx({
+            t: 'fx',
+            kind: 'reaction',
+            x: (from.x + tpos.x) / 2,
+            y: (from.y + tpos.y) / 2,
+            radius: Math.hypot(tpos.x - from.x, tpos.y - from.y),
+            color: ab.color,
+          });
+          from = { x: tpos.x, y: tpos.y };
+          const { dmg, crit } = rollDamage(maxHit);
+          this.damageNpc(best, dmg, casterEid, style, { crit, status: ab.status });
+        }
+        break;
+      }
+
+      case 'pulse_nova': {
+        // Repeated rings centered on the caster; you keep moving —
+        // Whirlwind, Bone Tempest, and every future storm.
+        const pulses = ab.pulses ?? 3;
+        const every = ab.pulseEveryTicks ?? 8;
+        const radius = ab.radius ?? 2;
+        for (let i = 0; i < pulses; i++) {
+          this.pendingBlasts.push({
+            x: pos.x, // updated to the caster's live position at burst
+            y: pos.y,
+            radius,
+            damage: maxHit,
+            knockback: knockbackMult,
+            status: ab.status,
+            fuseLeft: 1 + i * every,
+            ownerEid: casterEid,
+            style,
+            fromNpc,
+            color: ab.color,
+            followCaster: true,
+          });
+        }
         break;
       }
 
@@ -1510,12 +1734,17 @@ export class GameServer {
           const health = this.healths.must(casterEid);
           health.hp = Math.min(health.maxHp, health.hp + self.heal);
         }
-        if (self.speedMult !== undefined || self.shieldHp !== undefined) {
-          player.buff = {
+        if (
+          self.speedMult !== undefined ||
+          self.shieldHp !== undefined ||
+          self.meleeLifesteal !== undefined
+        ) {
+          player.buffs.push({
             speedMult: self.speedMult ?? 1,
             shieldHp: self.shieldHp ?? 0,
+            meleeLifesteal: self.meleeLifesteal ?? 0,
             untilTick: this.tickCount + self.durationTicks,
-          };
+          });
         }
         break;
       }
@@ -1850,6 +2079,12 @@ export class GameServer {
       blast.fuseLeft--;
       if (blast.fuseLeft > 0) continue;
       this.pendingBlasts.splice(i, 1);
+      if (blast.followCaster) {
+        const cpos = this.positions.get(blast.ownerEid);
+        if (!cpos) continue; // the storm dies with its caster
+        blast.x = cpos.x;
+        blast.y = cpos.y;
+      }
       this.broadcastFx({
         t: 'fx',
         kind: 'blast',
@@ -1932,7 +2167,33 @@ export class GameServer {
               basic: proj.basic,
               fullDraw: proj.fullDraw,
               status: proj.status,
+              knockbackMult: proj.heavy ? HEAVY_BOLT_KNOCKBACK : proj.fullDraw ? 1.4 : 1,
             });
+            // Heavy orbs burst on impact, splashing everything close.
+            if (proj.splashRadius) {
+              this.broadcastFx({
+                t: 'fx',
+                kind: 'blast',
+                x: pos.x,
+                y: pos.y,
+                radius: proj.splashRadius,
+                color: '#b49af0',
+              });
+              const splashHit = Math.max(1, Math.round(proj.maxHit * 0.5));
+              for (const [otherEid, other] of this.npcs) {
+                if (otherEid === npcEid) continue;
+                const opos = this.positions.get(otherEid);
+                if (!opos) continue;
+                if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - other.def.radius > proj.splashRadius) {
+                  continue;
+                }
+                const roll = rollDamage(splashHit);
+                this.damageNpc(otherEid, roll.dmg, proj.ownerEid, proj.style, {
+                  crit: roll.crit,
+                  status: proj.status,
+                });
+              }
+            }
             if (proj.pierce) {
               (proj.hitEids ??= new Set()).add(npcEid);
             } else {
@@ -1993,23 +2254,31 @@ export class GameServer {
     // target (and cascaded further) — never strike a corpse.
     if (!this.ecs.isAlive(npcEid) || !this.npcs.has(npcEid)) return;
 
-    this.broadcastHit(npcEid, dmg, crit);
+    // Knockback: shove the target away from the attacker (crits shove
+    // harder), respecting collision. The direction also travels to
+    // clients so impact sparks fly the way the blow landed.
+    let kx = 0;
+    let ky = 0;
+    const apos = this.positions.get(attackerEid);
+    const nposPre = this.positions.get(npcEid);
+    if (apos && nposPre) {
+      const kdx = nposPre.x - apos.x;
+      const kdy = nposPre.y - apos.y;
+      const kd = Math.hypot(kdx, kdy) || 1;
+      kx = kdx / kd;
+      ky = kdy / kd;
+    }
+    this.broadcastHit(npcEid, dmg, crit, kx, ky);
     if (dmg <= 0) return;
     health.hp -= dmg;
     this.setNpcPose(npcEid, npc, PoseState.Hurt, 4);
     npc.windupTicks = 0; // a solid hit interrupts a wound-up attack
 
-    // Knockback: shove the target away from the attacker (crits shove
-    // harder), respecting collision.
-    const apos = this.positions.get(attackerEid);
     const npos = this.positions.get(npcEid);
-    if (apos && npos) {
-      const kdx = npos.x - apos.x;
-      const kdy = npos.y - apos.y;
-      const kd = Math.hypot(kdx, kdy) || 1;
-      const push = (crit ? 0.45 : 0.28) * knockbackMult;
-      const nx = npos.x + (kdx / kd) * push;
-      const ny = npos.y + (kdy / kd) * push;
+    if (npos && (kx !== 0 || ky !== 0)) {
+      const push = (crit ? 0.55 : 0.35) * knockbackMult;
+      const nx = npos.x + kx * push;
+      const ny = npos.y + ky * push;
       if (!circleHitsSolid(this.world, nx, ny, npc.def.radius)) {
         npos.x = nx;
         npos.y = ny;
@@ -2022,6 +2291,17 @@ export class GameServer {
       attacker.lastCombatAt = Date.now();
       this.grantXp(attackerEid, attacker, style, dmg * 4);
       this.grantXp(attackerEid, attacker, 'vitality', dmg * 2);
+      // Bloodlust: melee wounds feed the wounder.
+      if (style === 'melee') {
+        let steal = 0;
+        for (const b of attacker.buffs) steal = Math.max(steal, b.meleeLifesteal);
+        if (steal > 0) {
+          const ahealth = this.healths.get(attackerEid);
+          if (ahealth && ahealth.hp < ahealth.maxHp) {
+            ahealth.hp = Math.min(ahealth.maxHp, ahealth.hp + Math.max(1, Math.round(dmg * steal)));
+          }
+        }
+      }
     }
 
     // Fight back!
@@ -2098,10 +2378,11 @@ export class GameServer {
       ? raw
       : Math.max(0, raw - Math.floor(defLevel / 10) - Math.floor(armor / 2));
     if (opts.status) this.applyStatusToPlayer(eid, opts.status, opts.sourceEid ?? 0);
-    // An ability shield soaks damage before flesh does.
-    if (player.buff && player.buff.shieldHp > 0 && dmg > 0) {
-      const soaked = Math.min(player.buff.shieldHp, dmg);
-      player.buff.shieldHp -= soaked;
+    // Ability shields soak damage before flesh does.
+    for (const b of player.buffs) {
+      if (b.shieldHp <= 0 || dmg <= 0) continue;
+      const soaked = Math.min(b.shieldHp, dmg);
+      b.shieldHp -= soaked;
       dmg -= soaked;
     }
     this.broadcastHit(eid, dmg);
@@ -2119,7 +2400,7 @@ export class GameServer {
       pos.y = spawn.y;
       health.hp = health.maxHp;
       this.statuses.delete(eid); // death is at least a clean slate
-      player.buff = null;
+      player.buffs = [];
       this.updateChunkMembership(eid);
       this.cancelAction(eid, player);
       player.session?.sendJson({
@@ -2130,10 +2411,18 @@ export class GameServer {
     }
   }
 
-  private broadcastHit(eid: EntityId, dmg: number, crit = false): void {
+  private broadcastHit(eid: EntityId, dmg: number, crit = false, kx = 0, ky = 0): void {
+    const hasDir = kx !== 0 || ky !== 0;
     for (const s of this.sessions) {
       if (s.playerEid === eid || s.knownEntities.has(eid)) {
-        s.sendJson({ t: 'hit', eid, dmg, crit: crit || undefined });
+        s.sendJson({
+          t: 'hit',
+          eid,
+          dmg,
+          crit: crit || undefined,
+          kx: hasDir ? Math.round(kx * 100) / 100 : undefined,
+          ky: hasDir ? Math.round(ky * 100) / 100 : undefined,
+        });
       }
     }
   }
@@ -2208,12 +2497,17 @@ export class GameServer {
   }
 
   /** Land an NPC's basic on whatever it is chasing. */
-  private npcStrike(npc: NpcComp, targetEid: EntityId, raw: number): void {
-    if (this.players.has(targetEid)) {
+  private npcStrike(npcEid: EntityId, npc: NpcComp, targetEid: EntityId, raw: number): void {
+    const player = this.players.get(targetEid);
+    if (player) {
       this.damagePlayer(targetEid, raw, {
         status: npc.def.attackStatus,
-        sourceEid: npc.targetEid ?? 0,
+        sourceEid: npcEid,
       });
+      // Thorns: biting the buckler costs a point.
+      if (this.hasPassive(player, 'thorns')) {
+        this.damageNpc(npcEid, 1, targetEid, 'defence', {});
+      }
     } else {
       this.damageSummon(targetEid, raw);
     }
@@ -2326,7 +2620,7 @@ export class GameServer {
                 const ndx = tpos.x - pos.x;
                 const ndy = tpos.y - pos.y;
                 if (Math.hypot(ndx, ndy) <= npc.def.attackRange + 0.55) {
-                  this.npcStrike(npc, npc.targetEid, Math.floor(Math.random() * (npc.def.damage + 1)));
+                  this.npcStrike(eid, npc, npc.targetEid, Math.floor(Math.random() * (npc.def.damage + 1)));
                 }
               }
             }
@@ -2529,9 +2823,12 @@ export class GameServer {
   private processPlayerInputs(eid: EntityId, player: PlayerComp): void {
     const pos = this.positions.must(eid);
     if (player.attackCooldown > 0) player.attackCooldown--;
-    if (player.abilityCd[0] > 0) player.abilityCd[0]--;
-    if (player.abilityCd[1] > 0) player.abilityCd[1]--;
-    if (player.buff && this.tickCount >= player.buff.untilTick) player.buff = null;
+    for (let i = 0; i < ABILITY_SLOTS; i++) {
+      if (player.abilityCd[i]! > 0) player.abilityCd[i]!--;
+    }
+    if (player.buffs.length > 0) {
+      player.buffs = player.buffs.filter((b) => this.tickCount < b.untilTick);
+    }
     const equipped = this.equippedWeapon(player);
     const style = equipped?.weapon.style ?? null;
     let moved = false;
@@ -2547,7 +2844,7 @@ export class GameServer {
       let speed = isDrawSlowed(frame, style)
         ? player.speed * DRAW_MOVE_FACTOR
         : player.speed;
-      if (player.buff) speed *= player.buff.speedMult;
+      for (const b of player.buffs) speed *= b.speedMult;
       if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
       if (casting) speed = 0; // committed to the cast
       const next = stepMovement(pos, frame, speed, TICK_DT, this.world);
@@ -2561,6 +2858,8 @@ export class GameServer {
       player.prevButtons = frame.buttons;
       if (pressed & InputButton.Ability1) this.tryCastAbility(eid, player, 0, frame.aim);
       if (pressed & InputButton.Ability2) this.tryCastAbility(eid, player, 1, frame.aim);
+      if (pressed & InputButton.Ability3) this.tryCastAbility(eid, player, 2, frame.aim);
+      if (pressed & InputButton.Ability4) this.tryCastAbility(eid, player, 3, frame.aim);
       // Dodge dash: same seq-cooldown rule the client predicts with.
       if (
         hasButton(frame.buttons, InputButton.Dodge) &&
@@ -2573,6 +2872,15 @@ export class GameServer {
         pos.y = dashed.y;
         moved = true;
         player.drawTicks = 0; // dodging lets the string down
+        // Wolf Reflexes: the dodge itself becomes an engage/escape tool.
+        if (this.hasPassive(player, 'dodge_haste')) {
+          player.buffs.push({
+            speedMult: 1.35,
+            shieldHp: 0,
+            meleeLifesteal: 0,
+            untilTick: this.tickCount + 30,
+          });
+        }
       }
       player.lastProcessedSeq = frame.seq;
 
@@ -2632,7 +2940,57 @@ export class GameServer {
     if (player.drawTicks === 0) return;
     const ticks = player.drawTicks;
     player.drawTicks = 0;
-    if (ticks < DRAW_MIN_TICKS) return; // fumbled tap — string let down
+
+    const level = levelForXp(player.skills.archery ?? 0);
+    const base = Math.max(1, Math.round(weapon.damage * (1 + level * 0.05)));
+    const pos = this.positions.must(eid);
+    const fire = (shot: { maxHit: number; speed: number; range: number }, angle: number, fullDraw: boolean) => {
+      const proj = this.ecs.create();
+      this.kinds.set(proj, EntityKind.Projectile);
+      this.positions.set(proj, { x: pos.x, y: pos.y, dir: angle });
+      this.projectiles.set(proj, {
+        ownerEid: eid,
+        style: 'archery',
+        maxHit: shot.maxHit,
+        dirX: Math.cos(angle),
+        dirY: Math.sin(angle),
+        speed: shot.speed,
+        distLeft: shot.range,
+        basic: true,
+        fullDraw,
+        // Biting Draw passive: a full draw carries the cold with it.
+        status:
+          fullDraw && this.hasPassive(player, 'chill_charged')
+            ? { status: 'chill', power: 1, durationTicks: 80 }
+            : undefined,
+      });
+      this.updateChunkMembership(proj);
+    };
+
+    if (ticks < DRAW_MIN_TICKS) {
+      // SNAP SHOT — tap-fire from the hip. Weak, short, instant, and
+      // chainable: tap-tap-tap is rapid fire, and the third tap in
+      // rhythm looses a two-arrow fan.
+      if (weapon.ammo) {
+        if (removeItem(player.inventory, weapon.ammo, 1) === 0) return;
+        player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      }
+      const stage = nextSnapStage(player.snapStage, this.tickCount <= player.snapGraceUntilTick);
+      player.snapStage = stage;
+      player.attackCooldown = SNAP_RECOVERY_TICKS;
+      player.snapGraceUntilTick = this.tickCount + SNAP_RECOVERY_TICKS + SNAP_GRACE_TICKS;
+      player.lastCombatAt = Date.now();
+      this.setPose(eid, PoseState.Loose, 4);
+      const shot = snapShot(base, weapon.projectileSpeed ?? 12, weapon.range);
+      fire(shot, aim, false);
+      if (stage === 2) {
+        // The rhythm reward: a second arrow rides the third tap.
+        fire(shot, aim + 0.14, false);
+      }
+      return;
+    }
+
+    player.snapStage = 0; // a drawn shot resets the snap rhythm
     if (weapon.ammo) {
       if (removeItem(player.inventory, weapon.ammo, 1) === 0) return;
       player.session?.sendJson({ t: 'inv', slots: player.inventory });
@@ -2640,31 +2998,8 @@ export class GameServer {
     player.attackCooldown = weapon.cooldownTicks;
     player.lastCombatAt = Date.now();
     this.setPose(eid, PoseState.Loose, 6);
-
-    const level = levelForXp(player.skills.archery ?? 0);
-    const base = Math.max(1, Math.round(weapon.damage * (1 + level * 0.05)));
-    const shot = chargedShot(
-      drawCharge(ticks),
-      base,
-      weapon.projectileSpeed ?? 12,
-      weapon.range,
-    );
-    const pos = this.positions.must(eid);
-    const proj = this.ecs.create();
-    this.kinds.set(proj, EntityKind.Projectile);
-    this.positions.set(proj, { x: pos.x, y: pos.y, dir: aim });
-    this.projectiles.set(proj, {
-      ownerEid: eid,
-      style: 'archery',
-      maxHit: shot.maxHit,
-      dirX: Math.cos(aim),
-      dirY: Math.sin(aim),
-      speed: shot.speed,
-      distLeft: shot.range,
-      basic: true,
-      fullDraw: ticks >= DRAW_FULL_TICKS,
-    });
-    this.updateChunkMembership(proj);
+    const shot = chargedShot(drawCharge(ticks), base, weapon.projectileSpeed ?? 12, weapon.range);
+    fire(shot, aim, ticks >= DRAW_FULL_TICKS);
   }
 
   // ------------------------------------------------- interest management
@@ -2759,7 +3094,7 @@ export class GameServer {
     const drop = this.drops.get(eid);
     if (drop) meta.defId = drop.item;
     const proj = this.projectiles.get(eid);
-    if (proj) meta.defId = proj.style;
+    if (proj) meta.defId = proj.heavy ? `${proj.style}_heavy` : proj.style;
     const summon = this.summons.get(eid);
     if (summon) meta.defId = `summon_${summon.kind}`;
     return meta;

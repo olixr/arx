@@ -3438,6 +3438,29 @@ export class Renderer {
     return {
       sortY: s.y + 10,
       draw: () => {
+        if (style === 'magic_heavy') {
+          // The heavy orb: fat, slow, unmistakably the payoff beat.
+          this.particles.burst(s.x, s.y, 1, ['#b49af0', '#8f76d4', '#efe3ff'], {
+            speed: 0.4,
+            life: 0.45,
+            size: 0.12,
+            gravity: 0,
+          });
+          this.queueGlow(s.x, s.y, 1.5, '180, 154, 240', 0.6);
+          ctx.fillStyle = 'rgba(122, 90, 196, 0.4)';
+          ctx.beginPath();
+          facetCircle(ctx, p.x, p.y, scale * 0.3, 7, s.dir * 0.5);
+          ctx.fill();
+          ctx.fillStyle = '#b49af0';
+          ctx.beginPath();
+          facetCircle(ctx, p.x, p.y, scale * 0.22, 7, -s.dir * 0.7);
+          ctx.fill();
+          ctx.fillStyle = '#efe3ff';
+          ctx.beginPath();
+          facetCircle(ctx, p.x, p.y, scale * 0.1, 5, s.dir);
+          ctx.fill();
+          return;
+        }
         // Trail: a breadcrumb particle per frame sells the speed.
         if (style === 'magic') {
           this.particles.burst(s.x, s.y, 1, ['#b49af0', '#8f76d4'], {

@@ -180,6 +180,25 @@ export class Sfx {
     }
   }
 
+  /** Snap shot — a quick dry pip from the hip. */
+  snapShot(): void {
+    this.tone(520, 0.05, { type: 'triangle', slide: -160, volume: 0.22 });
+    this.noise(0.04, 0.1);
+  }
+
+  /** The wand's heavy third bolt leaving — a fat slow whomp. */
+  heavyBolt(): void {
+    this.tone(160, 0.2, { type: 'sawtooth', slide: 120, volume: 0.32 });
+    this.tone(420, 0.16, { type: 'sine', slide: -180, volume: 0.2, delay: 0.02 });
+  }
+
+  /** Chain lightning crackle. */
+  chainZap(): void {
+    this.tone(880, 0.05, { type: 'square', volume: 0.2, detune: false });
+    this.tone(1240, 0.06, { type: 'square', slide: -500, volume: 0.18, delay: 0.04 });
+    this.noise(0.08, 0.14, 0.02);
+  }
+
   /** Weapon Art / relic cast — a rising committed whoomph. */
   art(): void {
     this.tone(190, 0.16, { type: 'sawtooth', slide: 260, volume: 0.3 });

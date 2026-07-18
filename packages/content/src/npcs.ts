@@ -209,6 +209,8 @@ const defs: NpcDef[] = [
       { item: 'storm_bell', qty: [1, 1], chance: 0.12 },
       { item: 'ember_staff', qty: [1, 1], chance: 0.1 },
       { item: 'willow_longbow', qty: [1, 1], chance: 0.1 },
+      { item: 'sigil_fallen_champion', qty: [1, 1], chance: 0.25 },
+      { item: 'tome_of_embers', qty: [1, 1], chance: 0.15 },
     ],
     respawnSec: 90,
     color: '#e8e2d0',

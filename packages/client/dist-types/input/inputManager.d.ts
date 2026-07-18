@@ -15,6 +15,8 @@ export declare class InputManager {
     touchAttack: boolean;
     touchAbility1: boolean;
     touchAbility2: boolean;
+    touchAbility3: boolean;
+    touchAbility4: boolean;
     /** Gamepad right-stick aim, radians; null when the stick is idle. */
     gamepadAim: number | null;
     /** True when a gamepad supplied the most recent input. */

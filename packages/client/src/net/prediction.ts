@@ -75,11 +75,14 @@ export class Predictor {
   }
 
   private applyCastDash(pos: Vec2, dash: { tiles: number; aim: number }): Vec2 {
-    const frame = { mx: Math.cos(dash.aim), my: Math.sin(dash.aim) };
+    // Mirrors the server: negative tiles dash AWAY from the aim.
+    const sign = Math.sign(dash.tiles) || 1;
+    const dist = Math.abs(dash.tiles);
+    const frame = { mx: Math.cos(dash.aim) * sign, my: Math.sin(dash.aim) * sign };
     let out = pos;
-    const steps = Math.ceil(dash.tiles / 0.4);
+    const steps = Math.ceil(dist / 0.4);
     for (let i = 0; i < steps; i++) {
-      out = stepMovement(out, frame, dash.tiles / steps, 1, this.collision);
+      out = stepMovement(out, frame, dist / steps, 1, this.collision);
     }
     return out;
   }

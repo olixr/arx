@@ -1,4 +1,4 @@
-import type { EquipSlot } from '@devcraft/shared';
+import type { EquipSlot, PassiveId } from '@devcraft/shared';
 
 export type ToolType = 'axe' | 'pickaxe' | 'rod';
 export type CombatStyle = 'melee' | 'archery' | 'magic';
@@ -35,6 +35,10 @@ export interface ItemDef {
   heals?: number;
   /** Relic active ability granted while worn in the relic slot (E). */
   relic?: string;
+  /** Sigil ultimate granted while worn in the sigil slot (T). */
+  sigil?: string;
+  /** Gear-carried passive (shown in the hotbar tray while worn). */
+  passive?: PassiveId;
   /** Short display color for the placeholder icon. */
   color: string;
   /** Two-letter icon code until real icons land. */
@@ -260,6 +264,63 @@ const defs: ItemDef[] = [
     relic: 'hunters_decoy',
     color: '#c4a35a',
     code: 'Sd',
+  },
+
+  // Sigils — boss-trophy ultimates (T). One per boss, forever.
+  {
+    id: 'sigil_fallen_champion',
+    name: 'Sigil of the Fallen Champion',
+    stackable: false,
+    value: 1200,
+    equipSlot: 'sigil',
+    sigil: 'bone_tempest',
+    color: '#e8e2d0',
+    code: 'Sc',
+  },
+
+  // Passive gear — the offhand slot carries your style passive; a
+  // crafted cloak covers the scrapper. Build layering, not stat sticks.
+  {
+    id: 'spiked_buckler',
+    name: 'Spiked buckler',
+    stackable: false,
+    value: 180,
+    equipSlot: 'offhand',
+    armor: 1,
+    passive: 'thorns',
+    color: '#8a744a',
+    code: 'Sb',
+  },
+  {
+    id: 'frost_quiver',
+    name: 'Frost quiver',
+    stackable: false,
+    value: 240,
+    equipSlot: 'offhand',
+    passive: 'chill_charged',
+    color: '#8ac4e8',
+    code: 'Fq',
+  },
+  {
+    id: 'tome_of_embers',
+    name: 'Tome of Embers',
+    stackable: false,
+    value: 260,
+    equipSlot: 'offhand',
+    passive: 'ember_bolt',
+    color: '#e8763c',
+    code: 'Te',
+  },
+  {
+    id: 'wolf_pelt_cloak',
+    name: 'Wolf-pelt cloak',
+    stackable: false,
+    value: 220,
+    equipSlot: 'body',
+    armor: 1,
+    passive: 'dodge_haste',
+    color: '#6a6f7d',
+    code: 'Wc',
   },
 
   // Tools

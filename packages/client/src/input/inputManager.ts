@@ -20,6 +20,8 @@ export class InputManager {
   touchAttack = false;
   touchAbility1 = false;
   touchAbility2 = false;
+  touchAbility3 = false;
+  touchAbility4 = false;
 
   /** Gamepad right-stick aim, radians; null when the stick is idle. */
   gamepadAim: number | null = null;
@@ -115,19 +117,23 @@ export class InputManager {
   buttons(): number {
     let b = 0;
     const pad = this.pad();
-    // RT / A hold to attack on pads; LB/RB fire the two abilities.
+    // RT / A hold to attack on pads; LB/RB/Y/D-up fire the abilities.
     const padAttack =
       pad !== null &&
       ((pad.buttons[7]?.pressed ?? false) || (pad.buttons[0]?.pressed ?? false));
     const padAb1 = pad !== null && (pad.buttons[4]?.pressed ?? false);
     const padAb2 = pad !== null && (pad.buttons[5]?.pressed ?? false);
-    if (padAttack || padAb1 || padAb2) this.padUsed = true;
+    const padAb3 = pad !== null && (pad.buttons[3]?.pressed ?? false);
+    const padAb4 = pad !== null && (pad.buttons[12]?.pressed ?? false);
+    if (padAttack || padAb1 || padAb2 || padAb3 || padAb4) this.padUsed = true;
     if (this.mouseDown || this.keys.has('Space') || padAttack || this.touchAttack) {
       b |= InputButton.Attack;
     }
-    // Q = weapon Art, E = relic — prime real estate for the fun buttons.
+    // Q/E/R/T — Art, relic, technique, sigil: the fun row.
     if (this.keys.has('KeyQ') || padAb1 || this.touchAbility1) b |= InputButton.Ability1;
     if (this.keys.has('KeyE') || padAb2 || this.touchAbility2) b |= InputButton.Ability2;
+    if (this.keys.has('KeyR') || padAb3 || this.touchAbility3) b |= InputButton.Ability3;
+    if (this.keys.has('KeyT') || padAb4 || this.touchAbility4) b |= InputButton.Ability4;
     if (this.keys.has('KeyF')) b |= InputButton.Interact;
     if (this.keys.has('ShiftLeft')) b |= InputButton.Dodge;
     return b;

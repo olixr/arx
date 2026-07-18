@@ -167,6 +167,12 @@ export class Session {
         this.game.demolish(this.playerEid, msg.tx, msg.ty);
         return;
       }
+      case 'technique': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.setTechnique(this.playerEid, msg.style, msg.ability);
+        return;
+      }
     }
   }
 

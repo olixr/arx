@@ -44,3 +44,30 @@ test('combo chain advances inside grace, finisher wraps, gap resets', () => {
   assert.equal(nextComboStage(1, false), 0, 'a pause drops the string');
   assert.ok(COMBO_STAGES === 3);
 });
+
+test('snap shots are weak, short, and never zero', async () => {
+  const { snapShot } = await import('./combat.js');
+  const s = snapShot(6, 16, 7);
+  assert.ok(s.maxHit >= 1 && s.maxHit < 6, 'weaker than a full arrow');
+  assert.ok(s.range < 7 * 0.6, 'short reach');
+  assert.equal(snapShot(1, 16, 7).maxHit, 1, 'floor at 1');
+});
+
+test('snap rhythm chains to the fan on the third, gap resets', async () => {
+  const { SNAP_CHAIN, nextSnapStage } = await import('./combat.js');
+  let stage = 0;
+  stage = nextSnapStage(stage, true);
+  stage = nextSnapStage(stage, true);
+  assert.equal(stage, SNAP_CHAIN - 1, 'third tap reaches the fan stage');
+  assert.equal(nextSnapStage(stage, true), 0, 'fan resets the chain');
+  assert.equal(nextSnapStage(1, false), 0, 'dropping the rhythm resets');
+});
+
+test('heavy bolt laws: big, slow, splashy', async () => {
+  const { HEAVY_BOLT_MULT, HEAVY_BOLT_RECOVERY_MULT, HEAVY_BOLT_SPLASH } = await import(
+    './combat.js'
+  );
+  assert.ok(HEAVY_BOLT_MULT >= 1.5, 'the payoff beat must hit hard');
+  assert.ok(HEAVY_BOLT_RECOVERY_MULT > 1, 'and cost recovery');
+  assert.ok(HEAVY_BOLT_SPLASH > 0, 'and splash');
+});

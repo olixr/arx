@@ -60,7 +60,15 @@ export interface AppearanceData {
   equip: Partial<Record<EquipSlot, string>>;
 }
 
-export type EquipSlot = 'head' | 'body' | 'legs' | 'weapon' | 'offhand' | 'tool' | 'relic';
+export type EquipSlot =
+  | 'head'
+  | 'body'
+  | 'legs'
+  | 'weapon'
+  | 'offhand'
+  | 'tool'
+  | 'relic'
+  | 'sigil';
 
 export const EQUIP_SLOTS: readonly EquipSlot[] = [
   'head',
@@ -70,4 +78,5 @@ export const EQUIP_SLOTS: readonly EquipSlot[] = [
   'offhand',
   'tool',
   'relic',
+  'sigil',
 ];

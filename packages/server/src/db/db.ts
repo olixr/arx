@@ -83,6 +83,15 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (tx, ty)
   );
   `,
+  // 6 — chosen combat techniques (one per style, free respec)
+  `
+  CREATE TABLE character_techniques (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    style TEXT NOT NULL,
+    ability TEXT NOT NULL,
+    PRIMARY KEY (character_id, style)
+  );
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

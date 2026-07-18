@@ -111,6 +111,13 @@ export interface C2SDemolish {
   ty: number;
 }
 
+/** Choose the equipped Technique for a combat style (free respec). */
+export interface C2STechnique {
+  t: 'technique';
+  style: string;
+  ability: string;
+}
+
 export type C2SMessage =
   | C2SHello
   | C2SLogin
@@ -125,7 +132,8 @@ export type C2SMessage =
   | C2SBank
   | C2SShop
   | C2SBuild
-  | C2SDemolish;
+  | C2SDemolish
+  | C2STechnique;
 
 // ---------------------------------------------------------------- S2C
 
@@ -226,6 +234,9 @@ export interface S2CHit {
   dmg: number;
   /** Critical hit — bigger everything client-side. */
   crit?: boolean;
+  /** Normalized knock direction — drives directional impact sparks. */
+  kx?: number;
+  ky?: number;
 }
 
 /** An NPC died (killed by someone) — drives the death effect. */
@@ -256,10 +267,10 @@ export interface S2CBank {
  */
 export interface S2CCooldowns {
   t: 'cooldowns';
-  /** [art, relic] remaining ticks. */
-  cd: [number, number];
-  /** [art, relic] full durations, for the radial fraction. */
-  max: [number, number];
+  /** [art, relic, technique, sigil] remaining ticks. */
+  cd: [number, number, number, number];
+  /** [art, relic, technique, sigil] full durations, for the radials. */
+  max: [number, number, number, number];
 }
 
 /**
@@ -278,6 +289,12 @@ export interface S2CFx {
   color?: string;
   /** reaction: floaty name, e.g. "Thermal Shock". */
   text?: string;
+}
+
+/** The player's chosen techniques per style (sent on join + change). */
+export interface S2CTechniques {
+  t: 'techniques';
+  chosen: Record<string, string>;
 }
 
 export type S2CMessage =
@@ -299,7 +316,8 @@ export type S2CMessage =
   | S2CUpdate
   | S2CBank
   | S2CCooldowns
-  | S2CFx;
+  | S2CFx
+  | S2CTechniques;
 
 // ------------------------------------------------------- validation
 
@@ -420,6 +438,11 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;
       if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;
       return { t: 'demolish', tx: msg.tx, ty: msg.ty };
+    }
+    case 'technique': {
+      if (typeof msg.style !== 'string' || msg.style.length > 16) return null;
+      if (typeof msg.ability !== 'string' || msg.ability.length > 64) return null;
+      return { t: 'technique', style: msg.style, ability: msg.ability };
     }
     default:
       return null;

@@ -7,7 +7,7 @@ import {
   type InvSlot,
   type SkillXp,
 } from '@devcraft/shared';
-import { itemDef } from '@devcraft/content';
+import { abilityDef, itemDef, techniquesFor } from '@devcraft/content';
 import { itemIconUrl } from '../render/icons.js';
 
 /** Inventory + skills side panels (DOM overlay UI). */
@@ -17,10 +17,14 @@ export class Panels {
   private readonly equipRow = document.getElementById('equipment-row')!;
   private readonly skillsPanel = document.getElementById('skills-panel')!;
   private readonly skillsList = document.getElementById('skills-list')!;
+  /** The chosen technique per style, mirrored from the server. */
+  private techniques: Record<string, string> = {};
+  private lastSkills: SkillXp = {};
 
   constructor(
     private readonly onUseSlot: (slot: number) => void,
     private readonly onUnequip: (slot: EquipSlot) => void,
+    private readonly onTechnique: (style: string, ability: string) => void = () => {},
   ) {
     document.getElementById('btn-inventory')!.addEventListener('click', () => this.toggleInventory());
     document.getElementById('btn-skills')!.addEventListener('click', () => this.toggleSkills());
@@ -100,7 +104,14 @@ export class Panels {
     }
   }
 
+  /** Server-confirmed technique choices; re-renders the picker. */
+  setTechniques(chosen: Record<string, string>): void {
+    this.techniques = chosen;
+    this.renderSkills(this.lastSkills);
+  }
+
   renderSkills(xp: SkillXp): void {
+    this.lastSkills = xp;
     this.skillsList.innerHTML = '';
     for (const skill of SKILL_IDS) {
       const value = xp[skill] ?? 0;
@@ -128,6 +139,32 @@ export class Panels {
 
       row.append(name, bar, lvl);
       this.skillsList.appendChild(row);
+
+      // Combat skills carry their Technique ladder: pick your R.
+      const techs = techniquesFor(skill);
+      if (techs.length > 0) {
+        const techRow = document.createElement('div');
+        techRow.className = 'technique-row';
+        for (const tech of techs) {
+          const ab = abilityDef(tech.ability);
+          if (!ab) continue;
+          const chip = document.createElement('span');
+          chip.className = 'technique-chip';
+          const unlocked = level >= tech.unlockLevel;
+          if (!unlocked) {
+            chip.classList.add('locked');
+            chip.textContent = `${ab.name} (lv ${tech.unlockLevel})`;
+            chip.title = `${ab.desc} — unlocks at ${skill} level ${tech.unlockLevel}`;
+          } else {
+            chip.textContent = ab.name;
+            chip.title = `${ab.desc} — click to equip on R`;
+            if (this.techniques[skill] === tech.ability) chip.classList.add('active');
+            chip.addEventListener('click', () => this.onTechnique(skill, tech.ability));
+          }
+          techRow.appendChild(chip);
+        }
+        this.skillsList.appendChild(techRow);
+      }
     }
   }
 }

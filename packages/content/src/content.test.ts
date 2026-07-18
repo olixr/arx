@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ABILITIES, abilityDef } from './abilities.js';
+import { PASSIVES } from '@devcraft/shared';
+import { ABILITIES, TECHNIQUES, abilityDef } from './abilities.js';
 import { ITEMS } from './items.js';
 import { NPCS, TOWN_SPAWNS } from './npcs.js';
+import { RECIPES } from './recipes.js';
 
 /**
  * Cross-reference integrity: every id that content points at must
@@ -48,15 +50,66 @@ test('npc loot, specials, and spawns all resolve', () => {
   }
 });
 
+test('techniques resolve, ladder is sane, and each style has a tree', () => {
+  const styles = new Map<string, number[]>();
+  for (const t of TECHNIQUES) {
+    assert.ok(abilityDef(t.ability), `technique '${t.ability}' missing`);
+    assert.ok(t.unlockLevel >= 1 && t.unlockLevel <= 99);
+    const levels = styles.get(t.style) ?? [];
+    levels.push(t.unlockLevel);
+    styles.set(t.style, levels);
+  }
+  for (const style of ['melee', 'archery', 'magic']) {
+    const levels = styles.get(style);
+    assert.ok(levels && levels.length >= 3, `${style} needs a technique tree`);
+    assert.ok(Math.min(...levels) <= 5, `${style} needs an early unlock`);
+  }
+});
+
+test('sigils and passives on items resolve', () => {
+  let sigils = 0;
+  let passives = 0;
+  for (const [id, item] of ITEMS) {
+    if (item.sigil) {
+      sigils++;
+      assert.ok(abilityDef(item.sigil), `${id} sigil '${item.sigil}' missing`);
+      assert.equal(item.equipSlot, 'sigil', `${id} grants an ultimate but is not sigil-slotted`);
+    }
+    if (item.passive) {
+      passives++;
+      assert.ok(PASSIVES[item.passive], `${id} passive '${item.passive}' missing`);
+      assert.ok(item.equipSlot, `${id} passive rides unequippable gear`);
+    }
+  }
+  assert.ok(sigils >= 1, 'at least one boss sigil at launch');
+  assert.ok(passives >= 4, 'at least four passive gear pieces at launch');
+});
+
+test('recipes reference real items', () => {
+  for (const r of RECIPES.values()) {
+    for (const input of r.inputs) assert.ok(ITEMS.has(input.item), `${r.id} input missing`);
+    assert.ok(ITEMS.has(r.output.item), `${r.id} output '${r.output.item}' missing`);
+    if (r.burnResult) assert.ok(ITEMS.has(r.burnResult), `${r.id} burn result missing`);
+  }
+});
+
 test('summon abilities define their summon; damage shapes define reach', () => {
   for (const [id, ab] of ABILITIES) {
     if (ab.shape === 'summon') assert.ok(ab.summon, `${id} summons nothing`);
     if (ab.shape === 'projectile_fan') {
       assert.ok((ab.projectiles ?? 0) >= 1 && (ab.range ?? 0) > 0, `${id} fan malformed`);
     }
-    if (ab.shape === 'nova' || ab.shape === 'ground_aoe') {
+    if (ab.shape === 'nova' || ab.shape === 'ground_aoe' || ab.shape === 'pulse_nova') {
       assert.ok((ab.radius ?? 0) > 0, `${id} has no radius`);
     }
-    if (ab.shape === 'dash_strike') assert.ok((ab.dashTiles ?? 0) > 0, `${id} has no dash`);
+    if (ab.shape === 'pulse_nova') {
+      assert.ok((ab.pulses ?? 0) >= 2 && (ab.pulseEveryTicks ?? 0) > 0, `${id} pulses malformed`);
+    }
+    if (ab.shape === 'chain_zap') {
+      assert.ok((ab.chainTargets ?? 0) >= 1 && (ab.radius ?? 0) > 0, `${id} chain malformed`);
+    }
+    if (ab.shape === 'dash_strike') {
+      assert.ok((ab.dashTiles ?? 0) !== 0, `${id} has no dash`);
+    }
   }
 });

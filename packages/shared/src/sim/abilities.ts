@@ -176,7 +176,11 @@ export type AbilityShape =
   /** Buff/heal the caster only. */
   | 'self_buff'
   /** Place a stationary helper: totem, trap, or decoy. */
-  | 'summon';
+  | 'summon'
+  /** Zap the nearest target in aim, arcing on to nearby enemies. */
+  | 'chain_zap'
+  /** Repeated novas from the caster over time (you can keep moving). */
+  | 'pulse_nova';
 
 export interface AbilitySelf {
   heal?: number;
@@ -184,6 +188,8 @@ export interface AbilitySelf {
   speedMult?: number;
   /** Flat damage soaked before HP. */
   shieldHp?: number;
+  /** Fraction of melee damage dealt returned as healing while active. */
+  meleeLifesteal?: number;
   durationTicks: number;
 }
 
@@ -223,8 +229,13 @@ export interface AbilityDef {
   projectileSpeed?: number;
   /** Projectiles punch through targets instead of stopping. */
   pierce?: boolean;
-  /** dash_strike distance, tiles. */
+  /** dash_strike distance, tiles. Negative = away from the aim. */
   dashTiles?: number;
+  /** chain_zap: how many targets the arc can jump to. */
+  chainTargets?: number;
+  /** pulse_nova: pulse count and spacing. */
+  pulses?: number;
+  pulseEveryTicks?: number;
   status?: StatusApply;
   self?: AbilitySelf;
   knockback?: number;
@@ -233,7 +244,81 @@ export interface AbilityDef {
   summon?: AbilitySummon;
 }
 
-/** Ability slot indices — slot 0 is the weapon Art, slot 1 the relic. */
+/**
+ * Ability slot indices. Four actives, each fed by a different
+ * progression axis: Art (gear chase), relic (loot hunt), technique
+ * (skill grind), sigil (boss trophies).
+ */
 export const SLOT_ART = 0;
 export const SLOT_RELIC = 1;
-export type AbilitySlot = typeof SLOT_ART | typeof SLOT_RELIC;
+export const SLOT_TECHNIQUE = 2;
+export const SLOT_SIGIL = 3;
+export const ABILITY_SLOTS = 4;
+export type AbilitySlot = 0 | 1 | 2 | 3;
+
+// --------------------------------------------------------- techniques
+
+/** A combat style that carries a technique loadout. */
+export type CombatStyleId = 'melee' | 'archery' | 'magic';
+
+export const COMBAT_STYLES: readonly CombatStyleId[] = ['melee', 'archery', 'magic'];
+
+/**
+ * A learnable active: unlocked by raising the style's skill, chosen
+ * freely among unlocked options (respec is always free — experiment!).
+ */
+export interface TechniqueDef {
+  ability: string;
+  style: CombatStyleId;
+  unlockLevel: number;
+}
+
+// ----------------------------------------------------------- passives
+
+/**
+ * Gear-carried passives (Minecraft-Dungeons-enchant energy): worn
+ * items may each contribute one, hooked at named combat moments.
+ */
+export type PassiveId =
+  /** Melee attackers take a point of damage back. */
+  | 'thorns'
+  /** Full-draw arrows also chill. */
+  | 'chill_charged'
+  /** Your heavy (third) bolt also burns. */
+  | 'ember_bolt'
+  /** Dodging grants a burst of speed. */
+  | 'dodge_haste';
+
+export interface PassiveMeta {
+  name: string;
+  desc: string;
+  color: string;
+  code: string;
+}
+
+export const PASSIVES: Record<PassiveId, PassiveMeta> = {
+  thorns: {
+    name: 'Thorns',
+    desc: 'Melee attackers take 1 damage back.',
+    color: '#8a744a',
+    code: 'Th',
+  },
+  chill_charged: {
+    name: 'Biting Draw',
+    desc: 'Fully-drawn arrows also chill their target.',
+    color: '#8ac4e8',
+    code: 'Bd',
+  },
+  ember_bolt: {
+    name: 'Ember Bolt',
+    desc: 'Your heavy third bolt sets targets burning.',
+    color: '#e8763c',
+    code: 'Eb',
+  },
+  dodge_haste: {
+    name: 'Wolf Reflexes',
+    desc: 'Dodging grants +35% speed for 1.5 s.',
+    color: '#6a6f7d',
+    code: 'Wr',
+  },
+};

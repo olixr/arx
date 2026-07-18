@@ -214,6 +214,24 @@ export class AccountStore {
     }
   }
 
+  loadTechniques(characterId: number): Record<string, string> {
+    const rows = this.db
+      .prepare('SELECT style, ability FROM character_techniques WHERE character_id = ?')
+      .all(characterId) as Array<{ style: string; ability: string }>;
+    const out: Record<string, string> = {};
+    for (const row of rows) out[row.style] = row.ability;
+    return out;
+  }
+
+  saveTechnique(characterId: number, style: string, ability: string): void {
+    this.db
+      .prepare(
+        `INSERT INTO character_techniques (character_id, style, ability) VALUES (?, ?, ?)
+         ON CONFLICT (character_id, style) DO UPDATE SET ability = excluded.ability`,
+      )
+      .run(characterId, style, ability);
+  }
+
   saveInventory(characterId: number, slots: Array<{ item: string; qty: number } | null>): void {
     this.db.exec('BEGIN');
     try {

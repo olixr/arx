@@ -84,6 +84,7 @@ const panels = new Panels(
     }
   },
   (slot) => game.unequip(slot),
+  (style, ability) => game.sendTechnique(style, ability),
 );
 
 document.getElementById('btn-craft')!.addEventListener('click', () => {
@@ -169,6 +170,24 @@ const game = new ClientGame(input, {
       if (hit.dmg > 0) input.rumble(0.3, 0.45, 80);
     }
   },
+  onImpact: (impact) => {
+    // The blow's true direction from the server: a tight spark streak
+    // and a skewed crack-flash flying the way the hit landed.
+    const dir = Math.atan2(impact.ky, impact.kx);
+    renderer.particles.burst(
+      impact.x,
+      impact.y - 0.3,
+      impact.crit ? 10 : 6,
+      ['#fff3d0', '#f4efe4'],
+      { speed: impact.crit ? 5.5 : 4, life: 0.22, dir, spread: 0.4 },
+    );
+    renderer.addRing(
+      impact.x + impact.kx * 0.2,
+      impact.y - 0.3 + impact.ky * 0.2,
+      'rgba(255, 243, 208, 0.9)',
+      impact.crit ? 0.5 : 0.32,
+    );
+  },
   onDeath: (death) => {
     const def = npcDef(death.defId);
     const color = def?.color ?? '#c9ccd4';
@@ -222,10 +241,12 @@ const game = new ClientGame(input, {
 // Dodge dash feedback: whoosh + a streak of dust kicked out behind.
 const hotbar = new Hotbar(input);
 hotbar.onReady = () => sfx.abilityReady();
+game.onTechniques = () => panels.setTechniques(game.techniques);
 
 // Committing to a cast: sound, hands, and a wind-up ring at the feet.
 game.onCastFx = (_slot, ab) => {
-  sfx.art();
+  if (ab.shape === 'chain_zap') sfx.chainZap();
+  else sfx.art();
   input.rumble(0.35, 0.5, 110);
   const own = game.predictor.renderPos();
   renderer.addRing(own.x, own.y, ab.color, 0.55);
@@ -347,8 +368,9 @@ game.onTileChange = (tx, ty, prev, next) => {
 // snap sound, a recoil kick, and a muzzle puff down the aim line.
 game.onLoose = (charge, aim) => {
   const own = game.predictor.renderPos();
-  sfx.loose(charge);
-  renderer.shake(1.5 + charge * 4);
+  if (charge <= 0) sfx.snapShot();
+  else sfx.loose(charge);
+  renderer.shake(charge <= 0 ? 0.8 : 1.5 + charge * 4);
   renderer.particles.burst(
     own.x + Math.cos(aim) * 0.5,
     own.y - 0.45 + Math.sin(aim) * 0.5,
@@ -504,7 +526,9 @@ function frame(now: number): void {
     if (game.ownPose === PoseState.Attack) sfx.swingCombo(0);
     else if (game.ownPose === PoseState.Attack2) sfx.swingCombo(1);
     else if (game.ownPose === PoseState.Attack3) {
-      sfx.swingCombo(2);
+      // The finisher beat — a heavy orb for wands, the big swing for steel.
+      if (game.currentStyle() === 'magic') sfx.heavyBolt();
+      else sfx.swingCombo(2);
       input.rumble(0.55, 0.3, 130);
     } else if (game.ownPose === PoseState.Cast) sfx.zap();
     lastOwnPose = game.ownPose;

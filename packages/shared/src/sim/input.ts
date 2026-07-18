@@ -18,6 +18,10 @@ export enum InputButton {
   Ability1 = 1 << 3,
   /** Relic active (E) — fires on press edge, not hold. */
   Ability2 = 1 << 4,
+  /** Learned Technique (R) — fires on press edge. */
+  Ability3 = 1 << 5,
+  /** Sigil ultimate (T) — fires on press edge. */
+  Ability4 = 1 << 6,
 }
 
 export function hasButton(buttons: number, b: InputButton): boolean {
