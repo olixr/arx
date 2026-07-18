@@ -26,11 +26,11 @@ export interface ElevatedBake {
 }
 export declare function bakeElevated(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, level: number): ElevatedBake | null;
 /**
- * The breeze layer: swaying grass blades, drifting water glints, pulsing
- * ripples and portal swirls. Drawn every frame over the baked ground —
- * this is what makes the meadow feel alive.
+ * The breeze layer: drifting water glints, pulsing ripples, shoreline
+ * foam and portal swirls. Drawn every frame over the baked ground.
+ * (Grass and flowers have their own system — see grass.ts.)
  */
-export declare function drawLiveGround(ctx: CanvasRenderingContext2D, ground: GroundSampler, detail: DetailSampler, bounds: {
+export declare function drawLiveGround(ctx: CanvasRenderingContext2D, ground: GroundSampler, bounds: {
     minTx: number;
     maxTx: number;
     minTy: number;

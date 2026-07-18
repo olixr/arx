@@ -231,6 +231,20 @@ function drawTileDetail(
   const hg = hashCoords(83, tx, ty);
   const gx = lx * px;
   const gy = ly * px;
+      if (m === Tile.Grass || m === Tile.GrassTall) {
+        // Baked turf stubble: static vertical flecks, dark and sunlit,
+        // so the ground under the live blades reads as dense mown grass
+        // instead of flat paint. Costs nothing — baked once per chunk.
+        const n = 3 + (hg % 3);
+        for (let k = 0; k < n; k++) {
+          const hh = hashCoords(101 + k, tx, ty);
+          const sx = gx + ((hh % 88) / 100) * px;
+          const sy = gy + (((hh >> 7) % 88) / 100) * px;
+          const stub = px * (0.05 + ((hh >> 3) % 4) * 0.014);
+          ctx.fillStyle = hh & 1 ? 'rgba(38, 66, 31, 0.30)' : 'rgba(215, 227, 140, 0.14)';
+          ctx.fillRect(sx, sy - stub, Math.max(1, px * 0.045), stub);
+        }
+      }
       if (m === Tile.StoneFloor && hg % 3 === 0) {
         ctx.fillStyle = 'rgba(28, 24, 42, 0.09)';
         ctx.fillRect(gx + ((hg >> 3) % 60) / 100 * px, gy + ((hg >> 8) % 60) / 100 * px, px * 0.16, px * 0.05);
@@ -703,14 +717,13 @@ function drawPlanks(
 // ------------------------------------------------------ live decorations
 
 /**
- * The breeze layer: swaying grass blades, drifting water glints, pulsing
- * ripples and portal swirls. Drawn every frame over the baked ground —
- * this is what makes the meadow feel alive.
+ * The breeze layer: drifting water glints, pulsing ripples, shoreline
+ * foam and portal swirls. Drawn every frame over the baked ground.
+ * (Grass and flowers have their own system — see grass.ts.)
  */
 export function drawLiveGround(
   ctx: CanvasRenderingContext2D,
   ground: GroundSampler,
-  detail: DetailSampler,
   bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number },
   worldToScreen: (wx: number, wy: number) => { x: number; y: number },
   s: number,
@@ -724,18 +737,9 @@ export function drawLiveGround(
       if (tile === undefined) continue;
       const h = hashCoords(59, tx, ty);
 
-      if (tile === Tile.Grass || tile === Tile.GrassTall) {
-        const isTall = tile === Tile.GrassTall;
-        // A fraction of tiles grow visible blades.
-        if (!isTall && h % 5 !== 0) {
-          // Some of the rest get swaying flowers from the detail layer.
-          const d = detail(tx, ty);
-          if (d === Detail.Flowers) drawFlowers(ctx, tx, ty, worldToScreen, s, t, h);
-          else if (d === Detail.Tuft) drawBlades(ctx, tx, ty, worldToScreen, s, t, h, 2, false);
-          continue;
-        }
-        drawBlades(ctx, tx, ty, worldToScreen, s, t, h, isTall ? 5 : 3, isTall);
-      } else if (tile === Tile.Water || tile === Tile.WaterDeep) {
+      // Grass and flowers live in the bespoke GrassSystem (grass.ts) —
+      // this layer keeps the water, portals, and shorelines breathing.
+      if (tile === Tile.Water || tile === Tile.WaterDeep) {
         if (h % 6 === 0) {
           // Drifting glint: a short dash that slides and fades.
           const phase = (t * 0.35 + (h % 100) / 100) % 1;
@@ -844,78 +848,6 @@ function drawShorelines(
   ctx.lineCap = 'butt';
 }
 
-function drawBlades(
-  ctx: CanvasRenderingContext2D,
-  tx: number,
-  ty: number,
-  worldToScreen: (wx: number, wy: number) => { x: number; y: number },
-  s: number,
-  t: number,
-  h: number,
-  count: number,
-  tall: boolean,
-): void {
-  ctx.strokeStyle = tall ? '#4a7433' : '#6b9a4e';
-  ctx.lineWidth = Math.max(1.2, s * 0.045);
-  ctx.lineCap = 'round';
-  for (let i = 0; i < count; i++) {
-    const hh = hashCoords(61 + i, tx, ty);
-    const bx = tx + 0.15 + ((hh >> 3) % 70) / 100;
-    const by = ty + 0.2 + ((hh >> 10) % 70) / 100;
-    const height = (tall ? 0.3 : 0.2) * (0.8 + ((hh >> 5) % 40) / 100);
-    // The breeze: tips sway together on a slow travelling wave.
-    const sway = Math.sin(t * 1.6 + bx * 0.7 + by * 0.35 + (hh % 10) * 0.2) * 0.09;
-    const base = worldToScreen(bx, by);
-    // Blades are VERTICAL: they rise in screen space at full height —
-    // only their ground anchor foreshortens with the camera pitch.
-    const tipX = base.x + sway * s;
-    const tipY = base.y - height * s;
-    ctx.beginPath();
-    ctx.moveTo(base.x, base.y);
-    ctx.quadraticCurveTo(base.x, (base.y + tipY) / 2, tipX, tipY);
-    ctx.stroke();
-  }
-  ctx.lineCap = 'butt';
-}
-
-function drawFlowers(
-  ctx: CanvasRenderingContext2D,
-  tx: number,
-  ty: number,
-  worldToScreen: (wx: number, wy: number) => { x: number; y: number },
-  s: number,
-  t: number,
-  h: number,
-): void {
-  const colors = ['#e88a9e', '#f0d264', '#efe3c2'];
-  for (let i = 0; i < 2; i++) {
-    const hh = hashCoords(67 + i, tx, ty);
-    const bx = tx + 0.2 + ((hh >> 3) % 60) / 100;
-    const by = ty + 0.25 + ((hh >> 9) % 60) / 100;
-    const sway = Math.sin(t * 1.6 + bx * 0.7 + (hh % 7) * 0.3) * 0.05;
-    const base = worldToScreen(bx, by);
-    // Stems are vertical — full screen-space height, like the blades.
-    const head = { x: base.x + sway * s, y: base.y - 0.16 * s };
-    ctx.strokeStyle = '#4a7433';
-    ctx.lineWidth = Math.max(1, s * 0.035);
-    ctx.beginPath();
-    ctx.moveTo(base.x, base.y);
-    ctx.lineTo(head.x, head.y);
-    ctx.stroke();
-    // Diamond bloom — four petals as one faceted chip.
-    const pr = s * 0.07;
-    ctx.fillStyle = colors[hh % colors.length]!;
-    ctx.beginPath();
-    ctx.moveTo(head.x, head.y - pr);
-    ctx.lineTo(head.x + pr, head.y);
-    ctx.lineTo(head.x, head.y + pr);
-    ctx.lineTo(head.x - pr, head.y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#f7efd8';
-    ctx.fillRect(head.x - s * 0.02, head.y - s * 0.02, s * 0.04, s * 0.04);
-  }
-}
 
 function drawPortal(
   ctx: CanvasRenderingContext2D,

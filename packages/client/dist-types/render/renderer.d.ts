@@ -32,6 +32,7 @@ export declare class Renderer {
     private readonly canvas;
     readonly camera: Camera;
     readonly particles: Particles;
+    private readonly grass;
     private readonly ctx;
     private readonly baked;
     private readonly anims;
@@ -297,6 +298,12 @@ export declare class Renderer {
     private collectFallingTrees;
     /** Trees, rocks, stations — the object layer, redrawn with character. */
     private objectItem;
+    /**
+     * Every body the grass should feel: players and NPCs, own player
+     * included. The grass system derives velocities itself (it remembers
+     * last positions per id), so this is just who-is-where.
+     */
+    private collectDisturbers;
     private collectEntities;
     private humanoidItem;
     private drawMiniHp;

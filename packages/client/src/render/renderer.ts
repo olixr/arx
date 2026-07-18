@@ -27,6 +27,7 @@ import {
 } from './rig.js';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import { Particles } from './particles.js';
+import { GrassSystem, windScalarAt, type Disturber } from './grass.js';
 import { bakeChunk, bakeElevated, drawLiveGround } from './terrain.js';
 
 /** Signature style: shadows are solid and sharp — never blurred. */
@@ -153,6 +154,7 @@ interface DrawItem {
 export class Renderer {
   readonly camera = new Camera();
   readonly particles = new Particles();
+  private readonly grass = new GrassSystem();
   private readonly ctx: CanvasRenderingContext2D;
   private readonly baked = new Map<string, BakedChunk>();
   private readonly anims = new Map<number | 'own', AnimState>();
@@ -402,22 +404,25 @@ export class Renderer {
                     CHUNK_SIZE * s + 0.5,
                     s * this.camera.yScale + 0.5,
                   );
-                  // The plateau's own breeze layer: blades and flowers
-                  // on the lifted surface, drawn on top of the row.
-                  drawLiveGround(
+                  // The plateau's own living layer: grass and flowers on
+                  // the lifted surface, drawn on top of the row (already
+                  // y-granular, so tall blades go down in the same pass).
+                  const rowGround = (tx: number, ty: number) =>
+                    game.world.elevAt(tx, ty) === level ? game.world.groundAt(tx, ty) : undefined;
+                  const rowBounds = {
+                    minTx: Math.max(b.minTx, cx * CHUNK_SIZE),
+                    maxTx: Math.min(b.maxTx, cx * CHUNK_SIZE + CHUNK_SIZE - 1),
+                    minTy: worldTy,
+                    maxTy: worldTy,
+                  };
+                  drawLiveGround(this.ctx, rowGround, rowBounds, this.liftedWTS, s, performance.now());
+                  this.grass.drawRow(
                     this.ctx,
-                    (tx, ty) =>
-                      game.world.elevAt(tx, ty) === level ? game.world.groundAt(tx, ty) : undefined,
+                    rowGround,
                     (tx, ty) => this.detailAt(game, tx, ty),
-                    {
-                      minTx: Math.max(b.minTx, cx * CHUNK_SIZE),
-                      maxTx: Math.min(b.maxTx, cx * CHUNK_SIZE + CHUNK_SIZE - 1),
-                      minTy: worldTy,
-                      maxTy: worldTy,
-                    },
+                    rowBounds,
                     this.liftedWTS,
                     s,
-                    performance.now(),
                   );
                 },
               });
@@ -499,23 +504,50 @@ export class Renderer {
 
     this.drawGroundChunks(game);
 
-    // The breeze layer: swaying blades, glints, ripples, portal swirls.
+    // The grass system wakes up first: it needs every moving body this
+    // frame to part blades, flatten them underfoot, and rustle thickets.
+    const groundLvl0 = (tx: number, ty: number) =>
+      game.world.elevAt(tx, ty) > 0 ? undefined : game.world.groundAt(tx, ty);
+    const detail = (tx: number, ty: number) => this.detailAt(game, tx, ty);
+    this.grass.beginFrame(
+      performance.now(),
+      this.frameDt,
+      this.collectDisturbers(game),
+      (tx, ty) => game.world.groundAt(tx, ty),
+      (x, y) =>
+        this.particles.burst(x, y - 0.2, 3, ['#527c38', '#76a650', '#a4b860'], {
+          speed: 1.1,
+          life: 0.5,
+          size: 0.045,
+          up: true,
+          gravity: 2.5,
+        }),
+      this.camera.x,
+      this.camera.y,
+    );
+
+    // The breeze layer: water glints, ripples, portal swirls.
     const bounds = this.visibleTileBounds();
     // Ground-level tiles only: lifted tiles get their own live layer
     // drawn OVER their plateau band (see collectElevatedGround).
-    drawLiveGround(
-      this.ctx,
-      (tx, ty) => (game.world.elevAt(tx, ty) > 0 ? undefined : game.world.groundAt(tx, ty)),
-      (tx, ty) => this.detailAt(game, tx, ty),
-      bounds,
-      this.liftedWTS,
-      this.camera.scale,
-      performance.now(),
-    );
+    drawLiveGround(this.ctx, groundLvl0, bounds, this.liftedWTS, this.camera.scale, performance.now());
+
+    // The meadow under everyone's feet: short blades, clumps, flowers.
+    // Grass bounds are TIGHT — blades reach < 1 tile up, so the 5-row
+    // canopy padding in visibleTileBounds would be ~150 wasted tiles.
+    const grassBounds = {
+      minTx: bounds.minTx + 1,
+      maxTx: bounds.maxTx - 1,
+      minTy: bounds.minTy + 3,
+      maxTy: bounds.maxTy - 1,
+    };
+    this.grass.drawUnder(this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
 
     this.drawAimGuide(game);
 
     const items: DrawItem[] = [];
+    // Tall thickets y-sort with the world: you walk THROUGH them.
+    this.grass.collectTall(items, this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
     this.collectElevatedGround(game, items);
     this.collectCliffFaces(game, items);
     this.collectRaisedTiles(game, items);
@@ -2103,12 +2135,10 @@ export class Renderer {
    * front sweeps across, exactly like real wind moving through a wood.
    */
   private windField(wx: number, wy: number, tSec: number): number {
-    const along = wx * 0.94 + wy * 0.34; // distance along the wind
-    const gust = 0.6 + 0.4 * Math.sin(along * 0.05 - tSec * 0.34);
-    const sway =
-      0.72 * Math.sin(along * 0.12 - tSec * 1.25) +
-      0.28 * Math.sin(along * 0.2 - tSec * 1.9 + 0.7);
-    return gust * (0.4 + sway);
+    // ONE weather system: the treeline rides the same vector wind field
+    // as the grass (grass.ts), so gust fronts sweep canopy and meadow
+    // together — a squall you can watch cross the whole scene.
+    return windScalarAt(wx, wy, tSec);
   }
 
   private static readonly TREE_SPECIES: Array<{
@@ -2984,6 +3014,28 @@ export class Renderer {
   }
 
   // ---------------------------------------------------------- entities
+
+  /**
+   * Every body the grass should feel: players and NPCs, own player
+   * included. The grass system derives velocities itself (it remembers
+   * last positions per id), so this is just who-is-where.
+   */
+  private collectDisturbers(game: ClientGame): Disturber[] {
+    const out: Disturber[] = [];
+    const t = game.renderTime();
+    for (const [eid, remote] of game.entities) {
+      const kind = remote.meta.kind;
+      if (kind !== EntityKind.Player && kind !== EntityKind.Npc) continue;
+      const s = remote.buffer.sampleAt(t);
+      const radius = kind === EntityKind.Npc ? (npcDef(remote.meta.defId ?? '')?.radius ?? 0.3) : 0.3;
+      out.push({ id: eid, x: s?.x ?? remote.meta.x, y: s?.y ?? remote.meta.y, r: radius });
+    }
+    if (game.ownEid !== null) {
+      const own = game.predictor.renderPos();
+      out.push({ id: 'own', x: own.x, y: own.y, r: 0.3 });
+    }
+    return out;
+  }
 
   private collectEntities(game: ClientGame, items: DrawItem[]): void {
     const t = game.renderTime();
