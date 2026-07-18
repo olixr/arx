@@ -105,6 +105,13 @@ export interface RigPose {
   poseT: number;
   /** 0..1 bow-draw charge (own: live input; remotes: time in Draw pose). */
   drawT: number;
+  /**
+   * 0..1 settle into rest carriage — time since leaving the last
+   * non-restful pose. Runs on its own clock so Idle↔Walk transitions
+   * never reset it (poseT resets on EVERY pose change, and blending
+   * carriage on it made the weapon re-settle at each stop and start).
+   */
+  restT: number;
   /** Wall-clock ms for micro-motion (full-draw tremble, string buzz). */
   nowMs: number;
   /** Solved feet in screen space (already projected by the caller). */
@@ -129,6 +136,8 @@ export interface RigPose {
   isOwn: boolean;
   weaponItem?: string;
   bodyItem?: string;
+  /** Equipped head gear — drawn as a real helmet over the skull. */
+  headItem?: string;
   /** Overall size multiplier (goblins ~0.8, champions ~1.2). */
   size?: number;
   skinColor?: string;
@@ -140,6 +149,11 @@ export interface RigPose {
    * the bespoke props that go with it.
    */
   craftKind?: 'anvil' | 'furnace' | 'fire' | 'workbench' | null;
+}
+
+/** Shortest signed rotation from angle `a` to angle `b` (radians). */
+function angleDelta(a: number, b: number): number {
+  return Math.atan2(Math.sin(b - a), Math.cos(b - a));
 }
 
 /** Duration of one mining swing (windup→heave→strike→pry), ms. */
@@ -532,7 +546,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const armY = hipY - 0.26 * s;
   const shoulderY = hipY - th * hScale + 0.06 * s;
   const mainAngle = rig.dir + swingOffset;
-  const offAngle = rig.dir - 0.55;
+  // The free arm counter-swings a melee strike instead of floating on
+  // a fixed circle — two arms in the fight, not one.
+  const offAngle =
+    meleeStage === 0 || meleeStage === 1 ? rig.dir - swingOffset * 0.55 : rig.dir - 0.55;
   let mainX: number;
   let mainY: number;
   if (thrustR !== null) {
@@ -546,7 +563,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // during swings/casts it rides the counterbalance circle instead.
   let offX: number;
   let offY: number;
-  if (chopping || mining) {
+  if (thrustR !== null) {
+    // Finisher: the free arm hauls back behind the hip — the counter-
+    // weight of the ram.
+    offX = rig.x - fx * 0.17 * s * wS;
+    offY = armY + 0.09 * s;
+  } else if (chopping || mining) {
     // Two-handed grip: the free hand chokes up the haft behind the
     // striking hand — further down for the heavier pick.
     const choke = mining ? 0.2 : 0.16;
@@ -570,13 +592,58 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     offY = armY + Math.sin(offAngle) * reach;
   }
 
+  // ---- rest carriage: out of combat the weapon comes DOWN. Idle and
+  // travel are where the character actually lives, so this is its own
+  // vocabulary: hands hanging just outside the silhouette (BOTH arms
+  // visible), a blade lowered with its tip trailing, a bow upright at
+  // the side — and the staff planted as a true walking stick at rest,
+  // leveling out into a low run carry as the gait becomes a sprint.
+  // Everything blends on poseT, so a combat follow-through settles
+  // into carriage over the same 280 ms every pose change uses.
+  const isStaff = weapon !== undefined && weapon.id.includes('staff');
+  let heldAngle = thrustR !== null ? rig.dir : mainAngle;
+  let staffGrip = 0.34; // combat default: gripped low, business end forward
+  let armSwingK = 1;
+  let restSettle = 0;
+  let restSide = Math.sign(fx) || 1;
+  if ((rig.pose === PoseState.Walk || rig.pose === PoseState.Idle) && !drawing && !loosing) {
+    restSettle = rig.restT * rig.restT * (3 - 2 * rig.restT);
+    const wSide = restSide;
+    const runK = rig.runF;
+    let hx = rig.x + wSide * tw * 1.02 * wS;
+    let hy = armY + 0.17 * s;
+    let hAngle = Math.PI / 2 + wSide * (0.3 + 0.35 * runK); // tip down, trailing
+    if (isStaff) {
+      // Walking stick ↔ run carry, blended on the gait itself.
+      const carry = runK * runK * (3 - 2 * runK);
+      const sw = ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP;
+      // Planted stick rocks with the steps — the stride works the staff.
+      const rock = -sw * 0.2 * rig.poleX * (1 - carry) * Math.min(1, rig.poleStrength);
+      const up = -Math.PI / 2 + rock;
+      const level = wSide > 0 ? -0.3 : -Math.PI + 0.3; // orb forward, held low
+      hAngle = up + (level - up) * carry;
+      hx = rig.x + wSide * (0.15 + 0.03 * carry) * s * wS + fx * 0.04 * s;
+      hy = armY + (-0.04 + 0.2 * carry) * s;
+      staffGrip = 0.72 - 0.3 * carry; // high grip on the stick, mid on the carry
+      armSwingK = 0.3 + 0.7 * carry; // a planted hand doesn't pump
+    } else if (isBow) {
+      hAngle = -Math.PI / 2 + wSide * 0.3; // limbs upright at the side
+      hy = armY + 0.14 * s;
+    }
+    mainX += (hx - mainX) * restSettle;
+    mainY += (hy - mainY) * restSettle;
+    heldAngle += angleDelta(heldAngle, hAngle) * restSettle;
+    offX += (rig.x - wSide * tw * 1.02 * wS - offX) * restSettle;
+    offY += (armY + 0.17 * s - offY) * restSettle;
+  }
+
   // Walking: arms swing counter to the legs along the travel direction.
   if (rig.pose === PoseState.Walk || rig.pose === PoseState.Idle) {
     const sw = ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP;
     // Arms pump harder as the walk becomes a run.
     const amp = (0.07 + 0.055 * rig.runF) * s * Math.min(1, rig.poleStrength);
-    mainX += rig.poleX * sw * amp;
-    mainY += rig.poleY * sw * amp * 0.5 - Math.abs(sw) * rig.runF * 0.03 * s;
+    mainX += rig.poleX * sw * amp * armSwingK;
+    mainY += (rig.poleY * sw * amp * 0.5 - Math.abs(sw) * rig.runF * 0.03 * s) * armSwingK;
     offX -= rig.poleX * sw * amp;
     offY -= rig.poleY * sw * amp * 0.5 - Math.abs(sw) * rig.runF * 0.03 * s;
     // Standing breath: the hands ride a slow offset sine so the figure
@@ -683,12 +750,17 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // string arm on the rear shoulder, the bow arm on the front.
   const sleeve = rig.hurt ? '#ffffff' : shade(bodyColor, -12);
   const archer = drawing || loosing;
-  const mainShX = archer
+  // Shoulders: slide along the shoulder bar with an active swing, but
+  // settle onto fixed anatomical anchors at rest — a hanging arm hangs
+  // from its own shoulder, not from wherever the last swing left it.
+  let mainShX = archer
     ? rig.x - fx * tw * 0.7 * wS
     : rig.x + Math.cos(mainAngle) * tw * 0.8 * wS;
-  const offShX = archer
+  let offShX = archer
     ? rig.x + fx * tw * 0.8 * wS
     : rig.x + Math.cos(offAngle) * tw * 0.8 * wS;
+  mainShX += (rig.x + restSide * tw * 0.85 * wS - mainShX) * restSettle;
+  offShX += (rig.x - restSide * tw * 0.85 * wS - offShX) * restSettle;
   // Aiming up-and-away puts the gear behind the body.
   const weaponBehind = fy < -0.35;
   const paintOffArm = (): void =>
@@ -698,7 +770,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       shoulderY,
       offX,
       offY,
-      archer ? fx * 0.2 : Math.cos(offAngle) * 0.4,
+      (archer ? fx * 0.2 : Math.cos(offAngle) * 0.4) * (1 - restSettle) -
+        restSide * 0.45 * restSettle,
       1,
       sleeve,
       skin,
@@ -711,7 +784,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       shoulderY,
       mainX,
       mainY,
-      archer ? -fx : Math.cos(mainAngle) * 0.4,
+      (archer ? -fx : Math.cos(mainAngle) * 0.4) * (1 - restSettle) +
+        restSide * 0.45 * restSettle,
       archer ? -0.6 : 1,
       sleeve,
       skin,
@@ -780,16 +854,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         loose: loosing ? rig.poseT : undefined,
       });
     } else {
-      drawHeldItem(
-        ctx,
-        weapon.id,
-        weapon.color,
-        mainX,
-        mainY,
-        thrustR !== null ? rig.dir : mainAngle,
-        s,
-        rig,
-      );
+      drawHeldItem(ctx, weapon.id, weapon.color, mainX, mainY, heldAngle, s, rig, {
+        grip: staffGrip,
+      });
     }
   };
 
@@ -852,14 +919,23 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   }
 
   // ---- head (inside the squash frame so turning carries it too).
-  // A chamfered block, not a ball — the brutalist read, kept friendly
-  // by proportion and the face.
+  // A chamfered block, not a ball — and a BILLBOARD FACE, not a dial:
+  // the head reads in bands (front, three-quarter, profile, back).
+  // Eyes live on one fixed eye line and slide only horizontally with
+  // the facing; the pair narrows through three-quarter, the far eye
+  // slips around the corner at profile, and the back of the head shows
+  // hair, not features. Sliding features vertically with fy is what
+  // made the old head read top-down.
   const headR = 0.15 * s;
   const headX = fx * 0.05 * s;
   const headY = -th - headR * 0.82;
   const hw = headR * 1.04; // half-width
   const hh = headR * 1.0; // half-height
   const cut = headR * 0.34;
+  const profileK = Math.abs(fx);
+  const backK = Math.max(0, Math.min(1, (-fy - 0.2) / 0.35)); // 1 = facing away
+  const lead = fx >= 0 ? 1 : -1;
+  const helm = itemDef(rig.headItem ?? '');
   ctx.fillStyle = skin;
   ctx.strokeStyle = OUTLINE;
   ctx.lineWidth = Math.max(1.5, s * 0.04);
@@ -867,49 +943,119 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   chamferRect(ctx, headX - hw, headY - hh, hw * 2, hh * 2, cut);
   ctx.fill();
   ctx.stroke();
-  // Hair: a flat slab with a straight fringe and one stepped notch —
-  // crisp, angular, and it still reads as a haircut.
-  ctx.fillStyle = rig.hurt ? '#ffffff' : shade(bodyColor, -24);
-  ctx.beginPath();
-  chamferRect(ctx, headX - hw * 0.96, headY - hh * 0.98, hw * 1.92, hh * 0.6, [
-    cut * 0.85,
-    cut * 0.85,
-    0,
-    0,
-  ]);
-  ctx.fill();
-  // Fringe notch drops on the side away from the facing — kept high so
-  // it never crowds the eyes.
-  const notchSide = fx >= 0 ? -1 : 1;
-  ctx.fillRect(
-    headX + notchSide * hw * 0.55 - hw * 0.28,
-    headY - hh * 0.44,
-    hw * 0.56,
-    hh * 0.24,
-  );
-
-  // Eyes track facing: bold vertical slits, not dots.
-  const eyeW = headR * 0.2;
-  const eyeH = headR * 0.38;
-  ctx.fillStyle = OUTLINE;
-  for (const es of [-1, 1]) {
-    ctx.fillRect(
-      headX + fx * headR * 0.45 + es * px * headR * 0.4 - eyeW / 2,
-      headY + fy * headR * 0.32 + es * py * headR * 0.4 - eyeH / 2,
-      eyeW,
-      eyeH,
-    );
+  // Hair (skipped under a helmet — the dome owns the skull).
+  if (!helm) {
+    ctx.fillStyle = rig.hurt ? '#ffffff' : shade(bodyColor, -24);
+    if (backK > 0.55) {
+      // Back of the skull: the mop covers nearly everything, with one
+      // stepped hem so it still reads as a haircut.
+      ctx.beginPath();
+      chamferRect(ctx, headX - hw * 0.96, headY - hh * 0.98, hw * 1.92, hh * 1.52, [
+        cut * 0.85,
+        cut * 0.85,
+        0,
+        0,
+      ]);
+      ctx.fill();
+      ctx.fillRect(headX - lead * hw * 0.5 - hw * 0.28, headY + hh * 0.46, hw * 0.56, hh * 0.22);
+    } else {
+      // Fringe slab with its stepped notch on the trailing side.
+      ctx.beginPath();
+      chamferRect(ctx, headX - hw * 0.96, headY - hh * 0.98, hw * 1.92, hh * 0.6, [
+        cut * 0.85,
+        cut * 0.85,
+        0,
+        0,
+      ]);
+      ctx.fill();
+      ctx.fillRect(headX - lead * hw * 0.55 - hw * 0.28, headY - hh * 0.44, hw * 0.56, hh * 0.24);
+      // Profile: a side-lock behind the ear grounds the turned head.
+      if (profileK > 0.45) {
+        const k = Math.min(1, (profileK - 0.45) / 0.35);
+        ctx.fillRect(
+          headX - lead * hw * 0.96,
+          headY - hh * 0.5,
+          hw * 0.34 * k,
+          hh * 1.05,
+        );
+      }
+    }
   }
-  // Rosy cheeks: small soft chips under the eyes, kid-friendly.
-  if (!rig.hurt) {
-    ctx.fillStyle = 'rgba(214, 118, 96, 0.45)';
+
+  // Face — only where a face actually is.
+  if (backK <= 0.55) {
+    const faceK = 1 - Math.max(0, Math.min(1, (-fy - 0.05) / 0.25)) * 0.35; // dim up-facing
+    // One fixed eye line: a whisper of vertical drift for life, never
+    // a slide onto the scalp or chin.
+    const eyeLineY = headY + headR * 0.1 + fy * headR * 0.06;
+    const pairX = headX + fx * headR * 0.36;
+    const sep = headR * (0.42 - 0.16 * profileK);
+    const eyeW = headR * 0.19;
+    const eyeH = headR * 0.36;
+    ctx.fillStyle = OUTLINE;
     for (const es of [-1, 1]) {
-      ctx.fillRect(
-        headX + fx * headR * 0.28 + es * px * headR * 0.66 - headR * 0.14,
-        headY + fy * headR * 0.3 + es * py * headR * 0.66,
-        headR * 0.28,
-        headR * 0.17,
-      );
+      // The far eye narrows through three-quarter and disappears
+      // around the corner at strong profile.
+      const far = es !== lead;
+      const wK = far ? Math.max(0, 1 - Math.max(0, (profileK - 0.5) / 0.28)) : 1;
+      if (wK <= 0.02) continue;
+      const w = eyeW * wK;
+      ctx.fillRect(pairX + es * sep - w / 2, eyeLineY - eyeH / 2, w, eyeH * faceK);
+    }
+    // Profile nose: a small skin wedge off the leading edge — the one
+    // mark that makes a side view a side view.
+    if (profileK > 0.55) {
+      const nk = Math.min(1, (profileK - 0.55) / 0.3);
+      const nx = headX + lead * hw * 0.98;
+      ctx.fillStyle = rig.hurt ? '#ffffff' : shade(skin, -14);
+      ctx.beginPath();
+      ctx.moveTo(nx, eyeLineY + headR * 0.06);
+      ctx.lineTo(nx + lead * headR * 0.16 * nk, eyeLineY + headR * 0.17);
+      ctx.lineTo(nx, eyeLineY + headR * 0.28);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Rosy cheeks under the eyes, riding the same face bands.
+    if (!rig.hurt) {
+      ctx.fillStyle = 'rgba(214, 118, 96, 0.45)';
+      for (const es of [-1, 1]) {
+        const far = es !== lead;
+        const wK = far ? Math.max(0, 1 - Math.max(0, (profileK - 0.5) / 0.28)) : 1;
+        if (wK <= 0.02) continue;
+        ctx.fillRect(
+          pairX + es * sep - headR * 0.14 * wK,
+          eyeLineY + headR * 0.24,
+          headR * 0.28 * wK,
+          headR * 0.16,
+        );
+      }
+    }
+  }
+
+  // Helmet: real head gear over the skull — dome, brow band, and a
+  // nose guard when the face is toward the camera. Colors come from
+  // the item, so every future helm is already dressed.
+  if (helm) {
+    const mc = rig.hurt ? '#ffffff' : helm.color;
+    ctx.fillStyle = mc;
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(1.5, s * 0.04);
+    ctx.beginPath();
+    chamferRect(ctx, headX - hw * 1.06, headY - hh * 1.1, hw * 2.12, hh * 1.06, cut);
+    ctx.fill();
+    ctx.stroke();
+    // Lit crown facet.
+    ctx.fillStyle = rig.hurt ? '#ffffff' : shade(mc, 16);
+    ctx.fillRect(headX - hw * 0.8, headY - hh * 1.0, hw * 1.6, hh * 0.26);
+    // Brow band, darker steel.
+    ctx.fillStyle = rig.hurt ? '#ffffff' : shade(mc, -22);
+    ctx.fillRect(headX - hw * 1.06, headY - hh * 0.16, hw * 2.12, headR * 0.2);
+    // Nose guard toward the camera; at profile an ear guard flanks the
+    // face opening from BEHIND — never over the eye.
+    if (backK < 0.4 && profileK < 0.6) {
+      ctx.fillRect(headX + fx * headR * 0.36 - headR * 0.09, headY - hh * 0.16, headR * 0.18, hh * 0.62);
+    } else if (backK < 0.4) {
+      ctx.fillRect(headX - lead * hw * 1.02, headY - hh * 0.16, hw * 0.58, hh * 0.6);
     }
   }
   ctx.restore();
@@ -940,8 +1086,8 @@ function drawHeldItem(
   angle: number,
   s: number,
   rig: RigPose,
-  /** Bow extras: string pull-back distance (px) and release progress. */
-  extra?: { pull?: number; loose?: number },
+  /** Bow: string pull-back (px) + release progress. Staff: grip height. */
+  extra?: { pull?: number; loose?: number; grip?: number },
 ): void {
   ctx.save();
   ctx.translate(hx, hy);
@@ -1053,27 +1199,74 @@ function drawHeldItem(
       }
     }
   } else if (itemId.includes('staff')) {
+    // A REAL staff: body-tall hardwood with wire wraps, a shod butt,
+    // and a forked crown holding the focus. The grip slides with the
+    // carriage — high on a planted walking stick, mid-shaft when the
+    // business end levels at something.
     const castT = rig.pose === PoseState.Cast ? rig.poseT : 0;
-    ctx.fillStyle = '#5b4632';
+    const LEN = 0.98 * s;
+    const grip = extra?.grip ?? 0.34; // fraction of length below the hand
+    const butt = -grip * LEN;
+    const top = (1 - grip) * LEN;
+    ctx.lineCap = 'round';
+    // 3-pass shaft: outline, wood, edge light.
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(2.5, s * 0.075);
     ctx.beginPath();
-    ctx.roundRect(-0.12 * s, -0.026 * s, 0.52 * s, 0.052 * s, 0.03 * s);
-    ctx.fill();
+    ctx.moveTo(butt, 0);
+    ctx.lineTo(top - 0.1 * s, 0);
     ctx.stroke();
-    // Orb in a claw.
-    ctx.fillStyle = color;
+    ctx.strokeStyle = '#6b4a2c';
+    ctx.lineWidth = Math.max(2, s * 0.052);
     ctx.beginPath();
-    ctx.arc(0.44 * s, 0, (0.075 + castT * 0.04) * s, 0, Math.PI * 2);
+    ctx.moveTo(butt + 0.008 * s, 0);
+    ctx.lineTo(top - 0.105 * s, 0);
+    ctx.stroke();
+    ctx.strokeStyle = '#8a6642';
+    ctx.lineWidth = Math.max(1, s * 0.018);
+    ctx.beginPath();
+    ctx.moveTo(butt + 0.03 * s, -0.012 * s);
+    ctx.lineTo(top - 0.14 * s, -0.012 * s);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+    // Iron ferrule shoeing the butt — a stick that gets WALKED on.
+    ctx.fillStyle = '#4a4554';
+    ctx.fillRect(butt, -0.03 * s, 0.05 * s, 0.06 * s);
+    // Gold wire wraps: one at the hand, one below the crown.
+    ctx.strokeStyle = '#d9a441';
+    ctx.lineWidth = Math.max(1.5, s * 0.03);
+    for (const wx of [0.05 * s, top - 0.22 * s]) {
+      ctx.beginPath();
+      ctx.moveTo(wx, -0.03 * s);
+      ctx.lineTo(wx, 0.03 * s);
+      ctx.stroke();
+    }
+    // Forked crown cradling the focus.
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(2, s * 0.045);
+    for (const fs of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(top - 0.13 * s, fs * 0.012 * s);
+      ctx.quadraticCurveTo(top - 0.04 * s, fs * 0.075 * s, top + 0.015 * s, fs * 0.05 * s);
+      ctx.stroke();
+    }
+    // The focus: faceted orb with its glint, flaring on a cast.
+    ctx.fillStyle = color;
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(1, s * 0.028);
+    ctx.beginPath();
+    ctx.arc(top, 0, (0.078 + castT * 0.04) * s, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = '#efe3ff';
     ctx.beginPath();
-    ctx.arc(0.42 * s, -0.02 * s, 0.028 * s, 0, Math.PI * 2);
+    ctx.arc(top - 0.022 * s, -0.022 * s, 0.028 * s, 0, Math.PI * 2);
     ctx.fill();
     if (castT > 0) {
       ctx.globalAlpha = 0.4;
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(0.44 * s, 0, (0.13 + castT * 0.1) * s, 0, Math.PI * 2);
+      ctx.arc(top, 0, (0.13 + castT * 0.1) * s, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
     }

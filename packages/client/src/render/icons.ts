@@ -1325,6 +1325,7 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   bronze_pickaxe: { icon: 'pickaxe', color: '#b0793f' },
   fishing_rod: { icon: 'rod', color: '#c4a35a' },
   bronze_sword: { icon: 'sword', color: '#c98d4b' },
+  iron_helm: { icon: 'helm', color: '#9aa2ac' },
   iron_sword: { icon: 'sword', color: '#b6bcc6' },
   steel_sword: { icon: 'sword', color: '#e2e8f0' },
   oak_shortbow: { icon: 'bow', color: '#8a6a45' },

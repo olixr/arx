@@ -14,6 +14,14 @@ export const TILE_PX = 32;
 /** Base player movement speed, tiles per second. */
 export const PLAYER_SPEED = 5;
 
+/**
+ * Walk mode scales the input axes to this fraction of full tilt —
+ * movement stays one analog quantity end to end, so prediction and
+ * server agree for free. A future forced-walk zone (towns) enforces
+ * the same factor by clamping input magnitude server-side.
+ */
+export const WALK_FACTOR = 0.34;
+
 /** Collision radius for humanoid entities, in tiles. */
 export const BODY_RADIUS = 0.35;
 

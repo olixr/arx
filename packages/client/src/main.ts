@@ -650,6 +650,7 @@ let padInteractWasDown = false;
 let lastDrawT = 0;
 /** Pad button state last frame — build-mode verbs edge off this. */
 let padPrevBtns = new Set<number>();
+let lastWalkMode = false;
 /**
  * The pad's build cursor: a sticky offset from the player (in tiles),
  * steered by the right stick — deflection direction aims it, deflection
@@ -849,6 +850,15 @@ function frame(now: number): void {
   // menus it navigates, so uiCapture wins).
   if (padEdge(14) && !input.uiCapture) cycleZoom();
   padPrevBtns = padBtns;
+
+  // Walk latch feedback: one quiet system line per toggle.
+  if (input.walkMode !== lastWalkMode) {
+    lastWalkMode = input.walkMode;
+    chat.addLine({
+      channel: 'system',
+      text: input.walkMode ? 'Walking. (Z to run)' : 'Running. (Z to walk)',
+    });
+  }
 
   // Loot HUD: hovering names a bag; holding Alt (or the left trigger)
   // names every drop on screen. Proximity labels need no input at all.

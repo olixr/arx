@@ -35,6 +35,11 @@ export declare class InputManager {
     buildCapture: boolean;
     /** While a DOM field (chat) has focus, movement keys are ignored. */
     private typingCheck;
+    /**
+     * Walk mode: keyboards have no analog stick, so Z toggles a scaled
+     * input vector instead — the stick's half-tilt, as a latch.
+     */
+    walkMode: boolean;
     constructor(target: HTMLElement);
     setTypingCheck(fn: () => boolean): void;
     isDown(code: string): boolean;

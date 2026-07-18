@@ -32,6 +32,13 @@ export interface RigPose {
     poseT: number;
     /** 0..1 bow-draw charge (own: live input; remotes: time in Draw pose). */
     drawT: number;
+    /**
+     * 0..1 settle into rest carriage — time since leaving the last
+     * non-restful pose. Runs on its own clock so Idle↔Walk transitions
+     * never reset it (poseT resets on EVERY pose change, and blending
+     * carriage on it made the weapon re-settle at each stop and start).
+     */
+    restT: number;
     /** Wall-clock ms for micro-motion (full-draw tremble, string buzz). */
     nowMs: number;
     /** Solved feet in screen space (already projected by the caller). */
@@ -60,6 +67,8 @@ export interface RigPose {
     isOwn: boolean;
     weaponItem?: string;
     bodyItem?: string;
+    /** Equipped head gear — drawn as a real helmet over the skull. */
+    headItem?: string;
     /** Overall size multiplier (goblins ~0.8, champions ~1.2). */
     size?: number;
     skinColor?: string;

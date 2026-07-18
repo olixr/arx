@@ -87,6 +87,8 @@ interface AnimState {
   lastY: number;
   lastPose: number;
   poseStartedAt: number;
+  /** When the pose last entered the restful set (Idle/Walk) from outside it. */
+  restfulSince?: number;
   lastSeen: number;
   /** The entity's leg rig — LegSolver for humanoids, species rig for beasts. */
   legs?: LegRig;
@@ -3597,6 +3599,14 @@ export class Renderer {
     }
     const legPose = anim.legs.update(e.x, e.y, e.dir, this.frameDt);
     const poseT = Math.min(1, (now - anim.poseStartedAt) / 280);
+    // Rest-carriage clock: survives Idle↔Walk flips, resets only when
+    // returning from a non-restful pose (combat, gathering, drawing).
+    const restfulPose = e.pose === PoseState.Idle || e.pose === PoseState.Walk;
+    if (!restfulPose) anim.restfulSince = undefined;
+    else if (anim.restfulSince === undefined) anim.restfulSince = now;
+    const restT = restfulPose
+      ? Math.min(1, (now - (anim.restfulSince ?? now)) / 280)
+      : 0;
     // Bow draw charge: the local player reads its own live input; remotes
     // charge with time spent in the Draw pose (the server holds it while
     // the string is back).
@@ -3815,6 +3825,7 @@ export class Renderer {
           pose: drawT > 0 && e.pose !== PoseState.Loose ? PoseState.Draw : e.pose,
           poseT,
           drawT,
+          restT,
           nowMs: now,
           feet,
           bob: legPose.bob,
@@ -3838,6 +3849,7 @@ export class Renderer {
                 ? (e.equip.tool ?? e.equip.weapon)
                 : e.equip.weapon,
           bodyItem: e.equip.body,
+          headItem: e.equip.head,
           size: e.size,
           skinColor: e.skinColor,
           gatherPhase: now / 1000,

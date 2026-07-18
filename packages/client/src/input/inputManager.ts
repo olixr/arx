@@ -1,4 +1,4 @@
-import { InputButton } from '@devcraft/shared';
+import { InputButton, WALK_FACTOR } from '@devcraft/shared';
 
 const STICK_DEADZONE = 0.22;
 
@@ -43,9 +43,16 @@ export class InputManager {
   /** While a DOM field (chat) has focus, movement keys are ignored. */
   private typingCheck: () => boolean = () => false;
 
+  /**
+   * Walk mode: keyboards have no analog stick, so Z toggles a scaled
+   * input vector instead — the stick's half-tilt, as a latch.
+   */
+  walkMode = false;
+
   constructor(target: HTMLElement) {
     window.addEventListener('keydown', (e) => {
       if (this.typingCheck()) return;
+      if (e.code === 'KeyZ' && !e.repeat) this.walkMode = !this.walkMode;
       this.keys.add(e.code);
       // Keep the page from scrolling on space/arrows; Alt is the loot
       // reveal, so it must not focus the browser's menu bar.
@@ -141,6 +148,12 @@ export class InputManager {
     if (len > 1) {
       mx /= len;
       my /= len;
+    }
+    // Walk latch: same wire format, smaller vector — the server and
+    // the prediction never need to know a mode exists.
+    if (this.walkMode) {
+      mx *= WALK_FACTOR;
+      my *= WALK_FACTOR;
     }
     return { mx, my };
   }

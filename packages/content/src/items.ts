@@ -92,6 +92,17 @@ const defs: ItemDef[] = [
     code: 'LB',
   },
   {
+    id: 'iron_helm',
+    name: 'Iron helm',
+    stackable: false,
+    value: 120,
+    equipSlot: 'head',
+    armor: 2,
+    desc: 'A dented dome that has already saved one skull. Yours next.',
+    color: '#8d9299',
+    code: 'Ih',
+  },
+  {
     id: 'iron_sword',
     name: 'Iron sword',
     stackable: false,
