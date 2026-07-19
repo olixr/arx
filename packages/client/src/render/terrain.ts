@@ -1276,6 +1276,20 @@ function maskPolygon(
   }
 }
 
+/** Warm board tones — one per plank by world hash, never per-tile noise. */
+const PLANK_TONES = ['#a87e46', '#a0763f', '#b0864d', '#997039'];
+
+/**
+ * RUNNING-BOND PLANK FLOOR: boards are big flat rectangles — three
+ * courses per tile, two tiles long, each course offset a full tile
+ * from the one above, the same bond as laid masonry but cut in wood.
+ * Every board picks its own tone by world hash so the floor reads as
+ * individual lumber; butt joints get a dark seam, a lit end-grain
+ * sliver and a peg pair; depth is one lit edge and one shadow bed per
+ * course. All geometry is world-keyed, so a chunk seam can never
+ * break a board, and edges that meet another material get their own
+ * worn shading (the opaque boards paint over the contour band).
+ */
 function drawPlanks(
   ctx: CanvasRenderingContext2D,
   g: GroundSampler,
@@ -1283,18 +1297,61 @@ function drawPlanks(
   baseY: number,
   px: number,
 ): void {
-  ctx.strokeStyle = 'rgba(58, 40, 22, 0.25)';
-  ctx.lineWidth = Math.max(1, px * 0.04);
+  const isPlank = (t: number | undefined): boolean => t === Tile.WoodFloor || t === Tile.Bridge;
+  const jointW = Math.max(1, px * 0.035);
   // One tile of margin fills the gutter (see bakeGutter).
   for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
     for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
-      const t = g(baseX + lx, baseY + ly);
-      if (t !== Tile.WoodFloor && t !== Tile.Bridge) continue;
-      const y = ly * px + px * (0.33 + (hashCoords(43, baseX + lx, baseY + ly) % 3) * 0.17);
-      ctx.beginPath();
-      ctx.moveTo(lx * px, y);
-      ctx.lineTo(lx * px + px, y);
-      ctx.stroke();
+      const tx = baseX + lx;
+      const ty = baseY + ly;
+      if (!isPlank(g(tx, ty))) continue;
+      const gx = lx * px;
+      const gy = ly * px;
+      const rowH = px / 3;
+      for (let r = 0; r < 3; r++) {
+        const row = ty * 3 + r;
+        const off = ((row % 2) + 2) % 2; // running bond: odd courses shift one tile
+        const pid = Math.floor((tx + off) / 2);
+        const y0 = gy + r * rowH;
+        const h1 = hashCoords(217, pid, row);
+        ctx.fillStyle = PLANK_TONES[(h1 >>> 2) % PLANK_TONES.length]!;
+        ctx.fillRect(gx, y0, px, rowH);
+        // The course's depth read: lit top edge, shadow bed beneath.
+        ctx.fillStyle = 'rgba(255, 235, 200, 0.08)';
+        ctx.fillRect(gx, y0, px, Math.max(1, px * 0.025));
+        ctx.fillStyle = 'rgba(56, 38, 20, 0.4)';
+        ctx.fillRect(gx, y0 + rowH - Math.max(1, px * 0.03), px, Math.max(1, px * 0.03));
+        // The tile that starts a board owns its butt joint; a hashed
+        // nudge keeps ends hand-laid, never gridded.
+        if ((((tx + off) % 2) + 2) % 2 === 0) {
+          const jx = gx + ((hashCoords(223, tx, row) % 14) / 100) * px;
+          ctx.fillStyle = 'rgba(50, 34, 18, 0.55)';
+          ctx.fillRect(jx, y0, jointW, rowH);
+          ctx.fillStyle = 'rgba(255, 235, 200, 0.09)';
+          ctx.fillRect(jx + jointW, y0, px * 0.03, rowH);
+          ctx.fillStyle = 'rgba(45, 30, 16, 0.5)';
+          ctx.fillRect(jx + px * 0.09, y0 + rowH * 0.22, px * 0.035, px * 0.035);
+          ctx.fillRect(jx + px * 0.09, y0 + rowH * 0.62, px * 0.035, px * 0.035);
+        }
+        // Sparse grain tick; the rare knot.
+        if ((h1 & 15) === 5) {
+          ctx.fillStyle = 'rgba(56, 38, 20, 0.18)';
+          ctx.fillRect(gx + (((h1 >>> 5) % 55) / 100) * px, y0 + rowH * 0.45, px * 0.3, Math.max(1, px * 0.02));
+        }
+        if (hashCoords(229, tx, row) % 13 === 4) {
+          ctx.fillStyle = 'rgba(90, 62, 32, 0.6)';
+          ctx.beginPath();
+          ctx.ellipse(gx + (0.25 + (h1 % 50) / 100) * px, y0 + rowH * 0.5, px * 0.035, px * 0.025, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      // Worn shading where the boards end against another material.
+      const edge = Math.max(1, px * 0.14);
+      ctx.fillStyle = 'rgba(58, 40, 22, 0.3)';
+      if (!isPlank(g(tx, ty - 1))) ctx.fillRect(gx, gy, px, edge);
+      if (!isPlank(g(tx, ty + 1))) ctx.fillRect(gx, gy + px - edge, px, edge);
+      if (!isPlank(g(tx - 1, ty))) ctx.fillRect(gx, gy, edge, px);
+      if (!isPlank(g(tx + 1, ty))) ctx.fillRect(gx + px - edge, gy, edge, px);
     }
   }
 }

@@ -1550,6 +1550,14 @@ export class Renderer {
   private static readonly WALL_TILES = new Set<number>(WALL_RUN_TILES);
   /** What stops lamplight — shared law (tiles.ts). */
   private static readonly LIGHT_BLOCKERS = new Set<number>(LIGHT_BLOCKING_TILES);
+  /**
+   * Hewn-timber course tones: every squared log in a wall picks one by
+   * world hash, so a facade reads as stacked individual timbers — the
+   * variation is subtle enough that the wall stays one material.
+   */
+  private static readonly WOOD_COURSE_TONES = ['#5e3f1e', '#644323', '#583a1b', '#67471f', '#5b3d20'];
+  /** The stone plinth every timber wall stands on. */
+  private static readonly PLINTH_COL = '#6e6779';
 
   private collectRaisedTiles(game: ClientGame, items: DrawItem[]): void {
     const b = this.visibleTileBounds();
@@ -1696,7 +1704,28 @@ export class Renderer {
         const tx1 = lx(x1);
         // Flank revealed by the lean: a prism right of the screen
         // center leans right, showing its WEST side (and vice versa).
-        // Skipped inside joined runs.
+        // Skipped inside joined runs. Timber flanks carry the course
+        // seams and stone plinth around the corner so the same logs
+        // wrap the building — a face is never a different material
+        // than its own side.
+        const flankDetail = (xa: number, txa: number): void => {
+          if (mat !== Tile.WallWood) return;
+          const f0 = Math.min(0.9, 0.26 / whT);
+          const xf0 = xa + (txa - xa) * f0;
+          ctx.fillStyle = shade(Renderer.PLINTH_COL, -12);
+          ctx.beginPath();
+          ctx.moveTo(xa, p.y);
+          ctx.lineTo(xa, yBase);
+          ctx.lineTo(xf0, yBase - hs * f0);
+          ctx.lineTo(xf0, p.y - hs * f0);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = 'rgba(26, 15, 7, 0.35)';
+          for (let f = (0.26 + 0.365) / whT; f < 1 - 0.12 / whT; f += 0.365 / whT) {
+            const xf = xa + (txa - xa) * f;
+            ctx.fillRect(xf - s * 0.015, p.y - hs * f, Math.max(1, s * 0.03), yBase - p.y);
+          }
+        };
         if (tx0 > x0 + 0.5 && !w) {
           ctx.fillStyle = sideCol;
           ctx.beginPath();
@@ -1706,6 +1735,7 @@ export class Renderer {
           ctx.lineTo(tx0, p.y - hs);
           ctx.closePath();
           ctx.fill();
+          flankDetail(x0, tx0);
         } else if (tx1 < x1 - 0.5 && !e) {
           ctx.fillStyle = sideCol;
           ctx.beginPath();
@@ -1715,6 +1745,7 @@ export class Renderer {
           ctx.lineTo(tx1, p.y - hs);
           ctx.closePath();
           ctx.fill();
+          flankDetail(x1, tx1);
         }
         // South face: base edge on the ground, top edge leaned — the
         // vertical surface you walk behind.
@@ -1765,22 +1796,87 @@ export class Renderer {
             ctx.clip(guard, 'evenodd');
           }
           if (mat === Tile.WallWood) {
-            // Timber framing: plank verticals, a waist girt, and a
-            // darker sill course at the foot — a built wall, not paint.
-            ctx.strokeStyle = 'rgba(36, 22, 10, 0.4)';
-            ctx.lineWidth = Math.max(1, s * 0.035);
-            for (const fx of [0.3, 0.62]) {
-              ctx.beginPath();
-              ctx.moveTo(p.x + s * fx, -hs * 0.97);
-              ctx.lineTo(p.x + s * fx, 0);
-              ctx.stroke();
+            // SQUARED-LOG COURSES: the wall is a stack of big hewn
+            // timbers on a stone plinth, capped by a wall plate.
+            // Course heights are ABSOLUTE (a 2-story facade lays more
+            // timbers, it doesn't stretch them) and run edge-to-edge,
+            // so a whole wall run reads as continuous logs whose butt
+            // joints stagger tile to tile. Depth is flat-vector law:
+            // one lit lip and one shadow seam per timber, no gradients.
+            const plinthH = s * 0.26;
+            const plateH = s * 0.14;
+            const courseH = s * 0.365;
+            // Stone plinth: the masonry foundation the timber sits on.
+            ctx.fillStyle = Renderer.PLINTH_COL;
+            ctx.fillRect(x0, -plinthH, x1 - x0, plinthH);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillRect(x0, -plinthH, x1 - x0, s * 0.035);
+            ctx.fillStyle = 'rgba(20, 14, 28, 0.35)';
+            for (let k = 0; k < 2; k++) {
+              const hj = hashCoords(211 + k, tx, ty);
+              ctx.fillRect(
+                p.x + s * (0.12 + (hj % 76) / 100),
+                -plinthH + s * 0.05,
+                Math.max(1, s * 0.03),
+                plinthH - s * 0.08,
+              );
             }
-            if (hs > s * 1.2) {
-              ctx.fillStyle = 'rgba(36, 22, 10, 0.28)';
-              ctx.fillRect(p.x, -s * 1.06, s, s * 0.045);
+            const topY = -(hs - plateH);
+            let ci = 0;
+            for (let yc = -plinthH; yc > topY + 0.5; yc -= courseH, ci++) {
+              const yTopC = Math.max(yc - courseH, topY);
+              const tones = Renderer.WOOD_COURSE_TONES;
+              ctx.fillStyle = tones[(hashCoords(151, ci, ty) >>> 3) % tones.length]!;
+              ctx.fillRect(x0, yTopC, x1 - x0, yc - yTopC);
+              // The timber's depth read: lit top lip, shadowed bed seam.
+              ctx.fillStyle = 'rgba(255, 226, 180, 0.13)';
+              ctx.fillRect(x0, yTopC, x1 - x0, s * 0.04);
+              ctx.fillStyle = 'rgba(26, 15, 7, 0.4)';
+              ctx.fillRect(x0, yc - s * 0.035, x1 - x0, s * 0.035);
+              // One staggered butt joint per tile per course — long
+              // logs ending in different places, never a grid.
+              const hj = hashCoords(157 + ci, tx, ty);
+              const jx = p.x + s * (0.08 + (hj % 78) / 100);
+              ctx.fillStyle = 'rgba(24, 14, 6, 0.5)';
+              ctx.fillRect(jx, yTopC + s * 0.03, Math.max(1, s * 0.035), yc - yTopC - s * 0.065);
+              ctx.fillStyle = 'rgba(255, 226, 180, 0.09)';
+              ctx.fillRect(jx + s * 0.035, yTopC + s * 0.03, s * 0.05, yc - yTopC - s * 0.065);
+              // Sparse grain tick in the odd timber.
+              if ((hj & 7) === 3) {
+                ctx.fillStyle = 'rgba(26, 15, 7, 0.16)';
+                ctx.fillRect(
+                  p.x + (s * ((hj >>> 5) % 55)) / 100,
+                  (yTopC + yc) / 2,
+                  s * 0.3,
+                  Math.max(1, s * 0.025),
+                );
+              }
             }
-            ctx.fillStyle = 'rgba(20, 12, 6, 0.22)';
-            ctx.fillRect(p.x, -s * 0.27, s, s * 0.27);
+            // Wall plate: the lit beam the crown mass sits on, pegged.
+            ctx.fillStyle = shade(face, 24);
+            ctx.fillRect(x0, -hs, x1 - x0, plateH);
+            ctx.fillStyle = 'rgba(26, 15, 7, 0.35)';
+            ctx.fillRect(x0, -hs + plateH - s * 0.03, x1 - x0, s * 0.03);
+            const hp = hashCoords(163, tx, ty);
+            ctx.fillStyle = 'rgba(40, 24, 10, 0.5)';
+            ctx.fillRect(p.x + s * (0.2 + (hp % 60) / 100), -hs + plateH * 0.28, s * 0.045, plateH * 0.45);
+            // Corner posts close exposed run ends — a wall end looks
+            // BUILT (a standing timber), never sliced-off paint.
+            const postW = s * 0.17;
+            for (const [open, px0, inner] of [
+              [!w, x0, x0 + postW - s * 0.03],
+              [!e, x1 - postW, x1 - postW],
+            ] as const) {
+              if (!open) continue;
+              ctx.fillStyle = shade(face, -9);
+              ctx.fillRect(px0, -hs, postW, hs - plinthH);
+              ctx.fillStyle = shade(face, 15);
+              ctx.fillRect(inner, -hs, s * 0.03, hs - plinthH);
+              ctx.fillStyle = 'rgba(40, 24, 10, 0.5)';
+              const pcx = px0 + postW / 2 - s * 0.025;
+              ctx.fillRect(pcx, -hs + s * 0.3, s * 0.05, s * 0.05);
+              ctx.fillRect(pcx, -plinthH - s * 0.34, s * 0.05, s * 0.05);
+            }
           } else {
             // Running-bond masonry: four mortar courses over the taller
             // face, joints alternating band to band, and a heavier
@@ -1823,11 +1919,24 @@ export class Renderer {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
                 ctx.fillRect(shx + s * 0.045, wy + s * 0.02, s * 0.025, wh2 - s * 0.04);
               }
-              // Timber lintel + sill boards.
+              // Timber lintel + sill boards, pegged into the wall.
               ctx.fillStyle = '#6a4a24';
               ctx.fillRect(wx - s * 0.18, wy - s * 0.085, ww + s * 0.36, s * 0.055);
+              ctx.fillStyle = 'rgba(40, 24, 10, 0.55)';
+              ctx.fillRect(wx - s * 0.15, wy - s * 0.078, s * 0.04, s * 0.04);
+              ctx.fillRect(wx + ww + s * 0.11, wy - s * 0.078, s * 0.04, s * 0.04);
               ctx.fillStyle = shade('#6a4a24', 18);
               ctx.fillRect(wx - s * 0.18, wy + wh2 + s * 0.035, ww + s * 0.36, s * 0.06);
+              // Knee braces under the sill ends root it to the wall.
+              ctx.fillStyle = shade('#6a4a24', -8);
+              for (const bx of [wx - s * 0.08, wx + ww - s * 0.02]) {
+                ctx.beginPath();
+                ctx.moveTo(bx, wy + wh2 + s * 0.095);
+                ctx.lineTo(bx + s * 0.1, wy + wh2 + s * 0.095);
+                ctx.lineTo(bx + s * 0.1, wy + wh2 + s * 0.21);
+                ctx.closePath();
+                ctx.fill();
+              }
             } else {
               // Dressed stone: shadowed lintel block, lit sill course.
               ctx.fillStyle = shade(face, -14);
@@ -1902,6 +2011,7 @@ export class Renderer {
         ctx.beginPath();
         chamferRect(ctx, x0, p.y - 0.25, s + 0.5, syT + 0.5, radii);
         ctx.fill();
+        if (mat === Tile.WallWood) this.woodCrownGrain(p, syT, s, x0, x1, tx, ty);
         // Lit south lip of the crown grounds the height read.
         if (!sw) {
           ctx.fillStyle = shade(top, 16);
@@ -1910,6 +2020,38 @@ export class Renderer {
         ctx.restore();
       },
     };
+  }
+
+  /**
+   * Beam grain over a wood crown: two lengthwise seams split the top
+   * into three long timbers (dark north beam, lit south beam) with one
+   * per-tile butt tick — the wall top is built from the same big
+   * rectangles as its face. Clips to the current crown path, so grain
+   * never spills off a chamfered corner. Call with the chamferRect
+   * path still current, immediately after its fill.
+   */
+  private woodCrownGrain(
+    p: { x: number; y: number },
+    syT: number,
+    s: number,
+    x0: number,
+    x1: number,
+    tx: number,
+    ty: number,
+  ): void {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = 'rgba(20, 12, 6, 0.08)';
+    ctx.fillRect(x0, p.y - 0.25, x1 - x0, syT * 0.35 + 0.25);
+    ctx.fillStyle = 'rgba(255, 230, 180, 0.06)';
+    ctx.fillRect(x0, p.y + syT * 0.68, x1 - x0, syT * 0.32 + 0.25);
+    ctx.fillStyle = 'rgba(40, 24, 10, 0.3)';
+    ctx.fillRect(x0, p.y + syT * 0.35, x1 - x0, Math.max(1, s * 0.028));
+    ctx.fillRect(x0, p.y + syT * 0.68, x1 - x0, Math.max(1, s * 0.028));
+    const hj = hashCoords(177, tx, ty);
+    ctx.fillRect(p.x + s * (0.1 + (hj % 75) / 100), p.y + syT * 0.35, Math.max(1, s * 0.03), syT * 0.33);
+    ctx.restore();
   }
 
   /**
@@ -2020,12 +2162,16 @@ export class Renderer {
           ctx.closePath();
           ctx.fill();
         } else if (hh > s * 0.05) {
-          // A visible timber lintel beam with end grain.
+          // A visible timber lintel beam with end grain, pegged where
+          // it lands on the jambs — the same joinery as the walls.
           ctx.fillStyle = shade(trim, 12);
           ctx.fillRect(x0 + s * 0.02, -hs + hh - s * 0.075, x1 - x0 - s * 0.04, s * 0.075);
           ctx.fillStyle = 'rgba(36, 22, 10, 0.4)';
           ctx.fillRect(x0 + jw + s * 0.02, -hs + hh * 0.45, s * 0.03, hh * 0.35);
           ctx.fillRect(x1 - jw - s * 0.05, -hs + hh * 0.45, s * 0.03, hh * 0.35);
+          ctx.fillStyle = 'rgba(40, 24, 10, 0.55)';
+          ctx.fillRect(x0 + jw * 0.4, -hs + hh - s * 0.155, s * 0.045, s * 0.045);
+          ctx.fillRect(x1 - jw * 0.4 - s * 0.045, -hs + hh - s * 0.155, s * 0.045, s * 0.045);
         }
         // Story trim carries across the door column of tall facades.
         if (whT > WALL_H + 0.01) {
@@ -2056,6 +2202,7 @@ export class Renderer {
         ctx.beginPath();
         chamferRect(ctx, x0, p.y - 0.25, s + 0.5, syT + 0.5, radii);
         ctx.fill();
+        if (!stone) this.woodCrownGrain(p, syT, s, x0, x1, tx, ty);
         if (!sw) {
           ctx.fillStyle = shade(top, 16);
           ctx.fillRect(x0, p.y + syT - s * 0.08, s + 0.5, s * 0.08);

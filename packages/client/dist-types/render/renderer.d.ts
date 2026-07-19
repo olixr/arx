@@ -52,15 +52,10 @@ export declare class Renderer {
     readonly particles: Particles;
     private readonly grass;
     private readonly lighting;
-    /** Derived building-interior regions (roofs, indoor light, facades). */
+    /** Derived building-interior regions (cutaway, facades, windows). */
     readonly interiors: InteriorMap;
-    /** Baked roof rings keyed by footprint signature (stable across
-     *  worldVersion bumps so an unchanged house never re-bakes). */
-    private readonly roofBakes;
-    /** Per-roof fade state: eases to 0.12 while you stand inside. */
-    private readonly roofAlpha;
     private localRegion;
-    /** Regions discovered in view this frame (feeds interior lighting). */
+    /** Regions discovered in view this frame (feeds the shadow shelter). */
     private visibleRegions;
     /** The frame's sky sample — every shadow and light reads this. */
     private sky;
@@ -309,12 +304,29 @@ export declare class Renderer {
     private static readonly WALL_TILES;
     /** What stops lamplight — shared law (tiles.ts). */
     private static readonly LIGHT_BLOCKERS;
+    /**
+     * Hewn-timber course tones: every squared log in a wall picks one by
+     * world hash, so a facade reads as stacked individual timbers — the
+     * variation is subtle enough that the wall stays one material.
+     */
+    private static readonly WOOD_COURSE_TONES;
+    /** The stone plinth every timber wall stands on. */
+    private static readonly PLINTH_COL;
     private collectRaisedTiles;
     /**
      * Walls: continuous top mass with rounded exposed corners, a darker
      * front face where the wall meets open ground, and a hard shadow.
      */
     private wallItem;
+    /**
+     * Beam grain over a wood crown: two lengthwise seams split the top
+     * into three long timbers (dark north beam, lit south beam) with one
+     * per-tile butt tick — the wall top is built from the same big
+     * rectangles as its face. Clips to the current crown path, so grain
+     * never spills off a chamfered corner. Call with the chamferRect
+     * path still current, immediately after its fill.
+     */
+    private woodCrownGrain;
     /**
      * How veiled a doorway's dark interior fill is: 1 far away, easing
      * to 0 as any body nears the threshold — the door "opens" for
@@ -354,13 +366,13 @@ export declare class Renderer {
      *  enclosed floor claims it (per-frame cached in the InteriorMap). */
     private wallRegion;
     /**
-     * Roofs as y-sorted per-row strips — the plateau-crown law applied
-     * to architecture. Each ring canvas slices per footprint row and
-     * blits lifted by wall height + ring rise: entities inside vanish
-     * beneath it, entities south draw over it, and the whole mass fades
-     * to a ghost while YOU are the one inside.
+     * Discover the interior regions in view this frame. They feed the
+     * shadow-layer shelter punch (a wall never casts sun into its own
+     * room). Buildings render OPEN — no roof layer; the cutaway front
+     * wall, facades, and doorframes carry the "building" read while the
+     * whole interior stays visible.
      */
-    private collectRoofs;
+    private collectInteriorRegions;
     /**
      * CLIFF FACES, extruded from the crown contour itself. The plateau
      * top is contoured by marching squares over dual cells; every
