@@ -87,6 +87,9 @@ const PLAYER_COLORS = ['#c4553d', '#3d78c4', '#3da865', '#c4a03d', '#8a55c4', '#
 const PROJ_AIR = 0.62;
 /** How long a landed arrow stands in the world before fading. */
 const STUCK_ARROW_MS = 90_000;
+/** Ragdoll rest: how long a settled corpse lies, then how long it fades. */
+const CORPSE_LIE_MS = 850;
+const CORPSE_FADE_MS = 600;
 
 interface AnimState {
   walkPhase: number;
@@ -278,7 +281,29 @@ export class Renderer {
   private vignetteUntil = 0;
   private zoomPulseAmount = 0;
   private readonly rings: Array<{ x: number; y: number; color: string; bornAt: number; maxR: number }> = [];
-  private readonly deathGhosts: Array<{ x: number; y: number; color: string; radius: number; bornAt: number }> = [];
+  /**
+   * Ragdoll corpses: the death beat. The body launches along the
+   * killing blow, tumbles through the air with flailing limbs, bounces
+   * in a dust kick, lies where it stops, and fades as its soul wisps
+   * away. Physics run on frameDt, so the kill's hitstop gives every
+   * ragdoll a slow-motion launch for free.
+   */
+  private readonly corpses: Array<{
+    color: string;
+    radius: number;
+    humanoid: boolean;
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    /** Height above the ground (tiles) + vertical speed. */
+    z: number;
+    vz: number;
+    angle: number;
+    spin: number;
+    bounces: number;
+    settledAt: number | null;
+  }> = [];
 
   /** A quick camera zoom kick — the killing-blow exclamation point. */
   zoomPulse(amount = 0.045): void {
@@ -286,11 +311,6 @@ export class Renderer {
   }
 
   /** A fading, flattening silhouette where something died. */
-  addDeathGhost(x: number, y: number, color: string, radius: number): void {
-    this.deathGhosts.push({ x, y, color, radius, bornAt: performance.now() });
-    if (this.deathGhosts.length > 12) this.deathGhosts.shift();
-  }
-
   /** Freeze-frame: animation and particles crawl for a beat on impact. */
   hitstop(seconds: number): void {
     this.hitstopUntil = Math.max(this.hitstopUntil, performance.now() + seconds * 1000);
@@ -960,7 +980,6 @@ export class Renderer {
       item.drawLabel?.();
     }
 
-    this.drawDeathGhosts();
     this.particles.update(this.frameDt);
     this.particles.draw(this.ctx, this.liftedWTS, this.camera.scale);
     this.drawRings();
@@ -1202,39 +1221,6 @@ export class Renderer {
     ctx.lineTo(cx - ux * 0.14 * s + uy * 0.12 * s, cy - uy * 0.14 * s - ux * 0.12 * s);
     ctx.stroke();
     ctx.restore();
-  }
-
-  /** Fallen silhouettes: pop up slightly, then flatten and fade away. */
-  private drawDeathGhosts(): void {
-    const ctx = this.ctx;
-    const now = performance.now();
-    const LIFE = 480;
-    for (let i = this.deathGhosts.length - 1; i >= 0; i--) {
-      const g = this.deathGhosts[i]!;
-      const age = now - g.bornAt;
-      if (age > LIFE) {
-        this.deathGhosts.splice(i, 1);
-        continue;
-      }
-      const t = age / LIFE;
-      const p = this.liftedWTS(g.x, g.y);
-      const r = g.radius * this.camera.scale;
-      const hop = Math.sin(Math.min(1, t * 2.2) * Math.PI) * r * 0.5;
-      ctx.globalAlpha = (1 - t) * 0.65;
-      ctx.fillStyle = g.color;
-      ctx.beginPath();
-      ctx.ellipse(
-        p.x,
-        p.y - hop,
-        r * (1 + t * 0.5),
-        r * Math.max(0.12, 0.8 - t * 0.7),
-        0,
-        0,
-        Math.PI * 2,
-      );
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    }
   }
 
   /** Expanding impact rings — crisp stroked circles, quick and gone. */
@@ -4325,6 +4311,10 @@ export class Renderer {
     // Arrows standing where they landed — the field remembers the fight.
     for (const a of this.stuckArrows) items.push(this.stuckArrowItem(a, now));
 
+    // Ragdolls mid-tumble and corpses at rest.
+    this.tickCorpses(game, now);
+    for (const c of this.corpses) items.push(this.corpseItem(c, now));
+
     if (game.ownEid !== null) {
       const own = game.predictor.renderPos();
       if (game.ownStatus) this.statusAmbience(own.x, own.y, game.ownStatus);
@@ -5544,8 +5534,9 @@ export class Renderer {
     }
     game.projectileEnds.length = 0;
 
-    // A felled NPC sheds its arrows around the corpse.
+    // A felled NPC becomes a ragdoll and sheds its arrows around it.
     for (const death of game.npcDeaths) {
+      this.spawnCorpse(death);
       const pins = this.npcArrows.get(death.eid);
       if (pins) {
         for (const pin of pins) {
@@ -5576,6 +5567,167 @@ export class Renderer {
         if (!game.entities.has(eid)) this.projSeen.delete(eid);
       }
     }
+  }
+
+  /** Launch a tumbling body along the killing blow's direction. */
+  private spawnCorpse(death: { defId: string; x: number; y: number; kx: number; ky: number; crit: boolean }): void {
+    const def = npcDef(death.defId);
+    if (!def) return;
+    let kx = death.kx;
+    let ky = death.ky;
+    const kl = Math.hypot(kx, ky);
+    if (kl < 0.01) {
+      const a = Math.random() * Math.PI * 2;
+      kx = Math.cos(a);
+      ky = Math.sin(a);
+    } else {
+      kx /= kl;
+      ky /= kl;
+    }
+    const speed = 3.4 + Math.random() * 1.2 + (death.crit ? 1.8 : 0);
+    this.corpses.push({
+      color: def.color,
+      radius: def.radius,
+      humanoid: death.defId.includes('goblin') || death.defId.includes('skeleton'),
+      x: death.x,
+      y: death.y,
+      vx: kx * speed,
+      vy: ky * speed,
+      z: 0.45,
+      vz: 2.5 + Math.random() * 0.7 + (death.crit ? 0.9 : 0),
+      angle: Math.atan2(ky, kx),
+      spin: (5.5 + Math.random() * 4) * (Math.random() < 0.5 ? -1 : 1),
+      bounces: 0,
+      settledAt: null,
+    });
+    if (this.corpses.length > 10) this.corpses.shift();
+  }
+
+  /** Ragdoll physics: fly, bounce with dust, come to rest, fade away. */
+  private tickCorpses(game: ClientGame, now: number): void {
+    const dt = this.frameDt;
+    for (let i = this.corpses.length - 1; i >= 0; i--) {
+      const c = this.corpses[i]!;
+      if (c.settledAt !== null) {
+        if (now - c.settledAt > CORPSE_LIE_MS + CORPSE_FADE_MS) this.corpses.splice(i, 1);
+        continue;
+      }
+      // Walls stop the slide — reflect the offending axis, cheaply.
+      const nx = c.x + c.vx * dt;
+      const ny = c.y + c.vy * dt;
+      if (game.world.isSolid(Math.floor(nx), Math.floor(c.y))) c.vx *= -0.45;
+      else c.x = nx;
+      if (game.world.isSolid(Math.floor(c.x), Math.floor(ny))) c.vy *= -0.45;
+      else c.y = ny;
+      c.z += c.vz * dt;
+      c.vz -= 10.5 * dt;
+      c.angle += c.spin * dt;
+      if (c.z <= 0 && c.vz < 0) {
+        c.z = 0;
+        this.particles.burst(c.x, c.y, c.bounces === 0 ? 7 : 4, ['#a89880', '#bcae94'], {
+          speed: 1.4,
+          life: 0.35,
+          size: 0.07,
+          up: true,
+          drag: 3.5,
+        });
+        c.bounces++;
+        if (c.vz < -1.6 && c.bounces < 3) {
+          c.vz = -c.vz * 0.42;
+          c.vx *= 0.55;
+          c.vy *= 0.55;
+          c.spin *= 0.55;
+        } else {
+          c.vz = 0;
+          c.settledAt = now;
+        }
+      }
+    }
+  }
+
+  /** The tumbling body itself — flat, chunky, limbs flailing. */
+  private corpseItem(c: (typeof this.corpses)[number], now: number): DrawItem {
+    const ctx = this.ctx;
+    const scale = this.camera.scale;
+    return {
+      sortY: c.y,
+      draw: () => {
+        const p = this.liftedWTS(c.x, c.y);
+        const lieAge = c.settledAt === null ? 0 : now - c.settledAt;
+        const alpha = Math.max(0, Math.min(1, 1 - (lieAge - CORPSE_LIE_MS) / CORPSE_FADE_MS));
+        if (alpha <= 0) return;
+        // Soul wisps drift up off the body as it fades.
+        if (lieAge > CORPSE_LIE_MS && Math.random() < this.frameDt * 9) {
+          this.particles.burst(c.x + (Math.random() - 0.5) * 0.3, c.y - 0.1, 1, ['#efe3ff', '#c8c2d8'], {
+            speed: 0.5,
+            life: 0.8,
+            size: 0.07,
+            gravity: -1.4,
+          });
+        }
+        const L = Math.max(0.55, c.radius * 2.6) * scale;
+        // Ground shadow tightens as the body rises.
+        const shrink = 1 / (1 + c.z * 0.9);
+        ctx.globalAlpha = alpha * 0.26 * shrink;
+        ctx.fillStyle = '#141020';
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, L * 0.42 * shrink, L * 0.16 * shrink, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = alpha;
+        ctx.save();
+        // Heights render at full scale — that contrast IS the camera tilt.
+        ctx.translate(p.x, p.y - (c.z + 0.14) * scale);
+        ctx.rotate(c.angle);
+        ctx.lineCap = 'round';
+        if (c.humanoid) {
+          // Splayed limbs flail with the tumble.
+          ctx.strokeStyle = shade(c.color, -30);
+          ctx.lineWidth = Math.max(2, L * 0.13);
+          for (let i = 0; i < 4; i++) {
+            const base = (i / 4) * Math.PI * 2 + 0.6;
+            const flail = Math.sin(c.angle * 2 + i * 1.7) * 0.5;
+            const ax = Math.cos(base + flail);
+            const ay = Math.sin(base + flail);
+            ctx.beginPath();
+            ctx.moveTo(ax * L * 0.14, ay * L * 0.1);
+            ctx.lineTo(ax * L * 0.42, ay * L * 0.34);
+            ctx.stroke();
+          }
+          ctx.fillStyle = c.color;
+          ctx.beginPath();
+          ctx.roundRect(-L * 0.3, -L * 0.16, L * 0.58, L * 0.32, L * 0.08);
+          ctx.fill();
+          ctx.fillStyle = shade(c.color, 22);
+          ctx.beginPath();
+          ctx.arc(L * 0.38, 0, L * 0.15, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Beasts: a chunky body blob, head, and stubby legs.
+          ctx.strokeStyle = shade(c.color, -35);
+          ctx.lineWidth = Math.max(2, L * 0.11);
+          for (let i = 0; i < 4; i++) {
+            const base = (i / 4) * Math.PI * 2 + 0.9;
+            const ax = Math.cos(base);
+            const ay = Math.sin(base);
+            ctx.beginPath();
+            ctx.moveTo(ax * L * 0.2, ay * L * 0.14);
+            ctx.lineTo(ax * L * 0.36, ay * L * 0.26);
+            ctx.stroke();
+          }
+          ctx.fillStyle = c.color;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, L * 0.34, L * 0.22, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(c.color, 18);
+          ctx.beginPath();
+          ctx.arc(L * 0.34, -L * 0.04, L * 0.13, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      },
+    };
   }
 
   /** One arrow standing where it landed, angled with its flight line. */

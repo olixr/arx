@@ -45,6 +45,13 @@ export interface RemoteEntity {
     buffer: InterpBuffer;
     /** Hit-flash timer (performance.now ms). */
     hurtUntil?: number;
+    /** Direction of the last damaging hit — launches the death ragdoll. */
+    lastKnock?: {
+        kx: number;
+        ky: number;
+        at: number;
+        crit: boolean;
+    };
 }
 export interface Floaty {
     x: number;
@@ -149,11 +156,16 @@ export declare class ClientGame {
         dir: number;
         style: string;
     }>;
-    /** NPC deaths this frame — the renderer drops their stuck arrows. */
+    /** NPC deaths this frame — drives the ragdoll + stuck-arrow scatter. */
     readonly npcDeaths: Array<{
         eid: EntityId;
         x: number;
         y: number;
+        defId: string;
+        /** Knock direction of the killing blow (0,0 = unknown). */
+        kx: number;
+        ky: number;
+        crit: boolean;
     }>;
     /** Combat effects in flight; pruned by the renderer. */
     readonly fx: ActiveFx[];

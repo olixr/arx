@@ -364,7 +364,6 @@ const game = new ClientGame(input, {
       gravity: 5,
     });
     renderer.addRing(death.x, death.y - 0.2, color, 0.8);
-    renderer.addDeathGhost(death.x, death.y, color, def?.radius ?? 0.3);
     renderer.hitstop(0.07);
     renderer.zoomPulse();
     sfx.kill();

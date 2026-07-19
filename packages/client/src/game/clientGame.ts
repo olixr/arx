@@ -50,6 +50,8 @@ export interface RemoteEntity {
   buffer: InterpBuffer;
   /** Hit-flash timer (performance.now ms). */
   hurtUntil?: number;
+  /** Direction of the last damaging hit — launches the death ragdoll. */
+  lastKnock?: { kx: number; ky: number; at: number; crit: boolean };
 }
 
 export interface Floaty {
@@ -139,8 +141,17 @@ export class ClientGame {
    * consumed by the renderer for impact bursts and stuck arrows.
    */
   readonly projectileEnds: Array<{ x: number; y: number; dir: number; style: string }> = [];
-  /** NPC deaths this frame — the renderer drops their stuck arrows. */
-  readonly npcDeaths: Array<{ eid: EntityId; x: number; y: number }> = [];
+  /** NPC deaths this frame — drives the ragdoll + stuck-arrow scatter. */
+  readonly npcDeaths: Array<{
+    eid: EntityId;
+    x: number;
+    y: number;
+    defId: string;
+    /** Knock direction of the killing blow (0,0 = unknown). */
+    kx: number;
+    ky: number;
+    crit: boolean;
+  }> = [];
   /** Combat effects in flight; pruned by the renderer. */
   readonly fx: ActiveFx[] = [];
 
@@ -492,7 +503,19 @@ export class ClientGame {
             const latest = remote.buffer.latest();
             x = latest?.x ?? remote.meta.x;
             y = latest?.y ?? remote.meta.y;
-            if (msg.dmg > 0) remote.hurtUntil = performance.now() + 180;
+            if (msg.dmg > 0) {
+              remote.hurtUntil = performance.now() + 180;
+              // Remember the blow's direction: if this hit kills, the
+              // ragdoll flies the way the weapon sent it.
+              if (msg.kx !== undefined || msg.ky !== undefined) {
+                remote.lastKnock = {
+                  kx: msg.kx ?? 0,
+                  ky: msg.ky ?? 0,
+                  at: performance.now(),
+                  crit: msg.crit === true,
+                };
+              }
+            }
           }
         }
         if (x !== undefined && y !== undefined) {
@@ -538,7 +561,19 @@ export class ClientGame {
         break;
       }
       case 'death': {
-        if (this.npcDeaths.length < 32) this.npcDeaths.push({ eid: msg.eid, x: msg.x, y: msg.y });
+        if (this.npcDeaths.length < 32) {
+          const k = this.entities.get(msg.eid)?.lastKnock;
+          const fresh = k && performance.now() - k.at < 700 ? k : null;
+          this.npcDeaths.push({
+            eid: msg.eid,
+            x: msg.x,
+            y: msg.y,
+            defId: msg.defId,
+            kx: fresh?.kx ?? 0,
+            ky: fresh?.ky ?? 0,
+            crit: fresh?.crit ?? false,
+          });
+        }
         this.events.onDeath({ x: msg.x, y: msg.y, defId: msg.defId });
         break;
       }

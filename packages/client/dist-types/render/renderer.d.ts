@@ -97,11 +97,17 @@ export declare class Renderer {
     private vignetteUntil;
     private zoomPulseAmount;
     private readonly rings;
-    private readonly deathGhosts;
+    /**
+     * Ragdoll corpses: the death beat. The body launches along the
+     * killing blow, tumbles through the air with flailing limbs, bounces
+     * in a dust kick, lies where it stops, and fades as its soul wisps
+     * away. Physics run on frameDt, so the kill's hitstop gives every
+     * ragdoll a slow-motion launch for free.
+     */
+    private readonly corpses;
     /** A quick camera zoom kick — the killing-blow exclamation point. */
     zoomPulse(amount?: number): void;
     /** A fading, flattening silhouette where something died. */
-    addDeathGhost(x: number, y: number, color: string, radius: number): void;
     /** Freeze-frame: animation and particles crawl for a beat on impact. */
     hitstop(seconds: number): void;
     /** Red edge flash when the local player takes damage. */
@@ -272,8 +278,6 @@ export declare class Renderer {
      * firms up as the draw deepens. Essential for right-stick aiming.
      */
     private drawAimGuide;
-    /** Fallen silhouettes: pop up slightly, then flatten and fade away. */
-    private drawDeathGhosts;
     /** Expanding impact rings — crisp stroked circles, quick and gone. */
     private drawRings;
     /** Hard red edge bands when the local player is hurt. */
@@ -504,6 +508,12 @@ export declare class Renderer {
      * Dead NPCs shed their arrows onto the ground where they fell.
      */
     private consumeProjectileAftermath;
+    /** Launch a tumbling body along the killing blow's direction. */
+    private spawnCorpse;
+    /** Ragdoll physics: fly, bounce with dust, come to rest, fade away. */
+    private tickCorpses;
+    /** The tumbling body itself — flat, chunky, limbs flailing. */
+    private corpseItem;
     /** One arrow standing where it landed, angled with its flight line. */
     private stuckArrowItem;
     /** The pincushion overlay: arrows riding a living NPC's body. */
