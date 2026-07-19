@@ -521,6 +521,8 @@ export declare class Renderer {
     /**
      * Screen-space arrow-in-a-surface: buried head at (sx, sy), shaft
      * rising back against the flight line, red fletching at the tail.
+     * `dir` is the WORLD flight angle — the tail leans back along its
+     * SCREEN projection, so the stick angle references the actual shot.
      */
     private drawStuckArrow;
     /**

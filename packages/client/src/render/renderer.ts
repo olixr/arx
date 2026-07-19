@@ -5347,8 +5347,14 @@ export class Renderer {
     return {
       sortY: s.y + 10,
       draw: () => {
-        const fx = Math.cos(s.dir);
-        const fy = Math.sin(s.dir);
+        // The sprite must lie along the SCREEN flight line: the camera
+        // pitch squashes world-y, so a world 45° travels ~31° on screen
+        // — drawing the raw world angle skews every diagonal shot.
+        const wfx = Math.cos(s.dir);
+        const wfy = Math.sin(s.dir) * this.camera.yScale;
+        const il = Math.hypot(wfx, wfy) || 1;
+        const fx = wfx / il;
+        const fy = wfy / il;
         // Ground shadow: a small dark tick racing along under the shot
         // sells the height of the flight line.
         ctx.fillStyle = 'rgba(20, 16, 28, 0.2)';
@@ -5514,10 +5520,12 @@ export class Renderer {
       if (hitEid >= 0) {
         const pins = this.npcArrows.get(hitEid) ?? [];
         if (pins.length < 8) {
+          // The pin keeps the shot's TRUE angle — where you shot from
+          // is where the shaft points back to.
           pins.push({
-            dir: end.dir + (Math.random() - 0.5) * 0.3,
+            dir: end.dir,
             hy: 0.35 + Math.random() * 0.35,
-            ox: 0.1 + Math.random() * 0.15,
+            ox: 0.12 + Math.random() * 0.12,
           });
           this.npcArrows.set(hitEid, pins);
         }
@@ -5760,8 +5768,13 @@ export class Renderer {
         const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
         p.y -= this.renderLift(s.x, s.y) * scale;
         for (const pin of pins) {
-          const bx = p.x - Math.cos(pin.dir) * pin.ox * scale;
-          const by = p.y - pin.hy * scale;
+          // Entry point sits on the side the arrow came FROM, along
+          // the screen projection of its true flight line.
+          const wfx = Math.cos(pin.dir);
+          const wfy = Math.sin(pin.dir) * this.camera.yScale;
+          const il = Math.hypot(wfx, wfy) || 1;
+          const bx = p.x - (wfx / il) * pin.ox * scale;
+          const by = p.y - pin.hy * scale - (wfy / il) * pin.ox * scale;
           this.drawStuckArrow(ctx, bx, by, pin.dir, scale * 0.92, true);
         }
       },
@@ -5771,6 +5784,8 @@ export class Renderer {
   /**
    * Screen-space arrow-in-a-surface: buried head at (sx, sy), shaft
    * rising back against the flight line, red fletching at the tail.
+   * `dir` is the WORLD flight angle — the tail leans back along its
+   * SCREEN projection, so the stick angle references the actual shot.
    */
   private drawStuckArrow(
     ctx: CanvasRenderingContext2D,
@@ -5780,11 +5795,16 @@ export class Renderer {
     scale: number,
     inBody = false,
   ): void {
-    const fx = Math.cos(dir);
-    // The shaft leans back along where it came from and UP out of the
-    // surface — a planted 50° stick, not a flat line on the floor.
-    const bx = -fx * 0.24 * scale;
-    const by = -0.3 * scale;
+    const wfx = Math.cos(dir);
+    const wfy = Math.sin(dir) * this.camera.yScale;
+    const il = Math.hypot(wfx, wfy) || 1;
+    const ux = wfx / il;
+    const uy = wfy / il;
+    // The shaft leans back along where it came from and — in dirt —
+    // UP out of the surface: the lodge pitch of a falling shot.
+    const back = (inBody ? 0.28 : 0.2) * scale;
+    const bx = -ux * back;
+    const by = -uy * back - (inBody ? 0.08 : 0.28) * scale;
     if (!inBody) {
       // Dirt shadow pooling at the entry point.
       ctx.fillStyle = 'rgba(20, 16, 28, 0.22)';
