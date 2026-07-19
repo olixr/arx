@@ -1852,38 +1852,59 @@ export class Renderer {
             ctx.fillRect(x0, -hs + plateH - s * 0.03, x1 - x0, s * 0.03);
             // CROSSED-CORNER LOG ENDS: at a corner, the crossing
             // wall's logs run out of the north and their sawn ends
-            // ARE this tile's face — FLAT end-grain panels, one per
-            // course, spanning the full tile width so they align
-            // exactly with the crossing wall and the crown band
-            // above. Flat vector: no lit steps, no shadow bands, no
-            // proud/shy jitter — a thin dark seam parts end grain
-            // from side grain, and one faint growth ring with a
-            // quiet centred pith says "sawn".
+            // ARE this tile's face — full-tile-width panels aligned
+            // with the crossing wall's crown and this wall's course
+            // grooves. Each end PROTRUDES from the wall plane, and
+            // at this camera a protruding stub obeys the same 45°
+            // grammar as every crown and cliff in the game: a
+            // sky-lit TOP band (the barrel of the log seen from
+            // above), the sawn disc pushed down-screen by the
+            // protrusion depth, and a cast shadow under its lip.
+            // Courses alternate deep/shallow the way interlocked
+            // corners do, so the stack reads as built, not applied.
             if (n && (!w || !e)) {
               const wF = x1 - x0;
-              for (let yb = -plinthH; yb > topY + 0.5; yb -= logH) {
+              let li3 = 0;
+              for (let yb = -plinthH; yb > topY + 0.5; yb -= logH, li3++) {
                 const yt = Math.max(yb - logH, topY);
                 const h2 = yb - yt;
                 if (h2 < logH * 0.55) break; // no sliver at the plate
+                const prot = syT * (li3 % 2 === 0 ? 0.17 : 0.07);
                 const cut = h2 * 0.18;
                 const rim = Math.max(1, s * 0.02);
+                // Silhouette + seam ring around top band and disc.
                 ctx.fillStyle = 'rgba(38, 22, 9, 0.5)';
                 ctx.beginPath();
-                chamferRect(ctx, x0, yt, wF, h2, cut);
+                chamferRect(ctx, x0, yt, wF, h2 + prot, cut);
                 ctx.fill();
-                // The flat sawn face, a shade lighter than the bark.
+                // Sky-lit barrel top between wall plane and the rim.
+                ctx.fillStyle = '#9d7643';
+                ctx.beginPath();
+                chamferRect(ctx, x0 + rim, yt + rim, wF - rim * 2, prot + cut, cut * 0.6);
+                ctx.fill();
+                // The sawn disc, pushed south of the wall plane —
+                // lighter than the bark, darker than the lit top.
                 ctx.fillStyle = '#8f6a38';
                 ctx.beginPath();
-                chamferRect(ctx, x0 + rim, yt + rim, wF - rim * 2, h2 - rim * 2, cut * 0.85);
+                chamferRect(ctx, x0 + rim, yt + prot, wF - rim * 2, h2 - rim, cut * 0.85);
                 ctx.fill();
+                // Growth ring + pith drift off-centre per end — a
+                // tree's heart is never dead centre, and the drift
+                // kills the machined concentric-target read.
+                const hc = hashCoords(191 + li3, tx, ty);
+                const jx = wF * (((hc % 13) - 6) / 100);
+                const jy = h2 * ((((hc >>> 4) % 11) - 5) / 100);
                 ctx.fillStyle = 'rgba(74, 48, 22, 0.12)';
                 ctx.beginPath();
-                chamferRect(ctx, x0 + wF * 0.2, yt + h2 * 0.2, wF * 0.6, h2 * 0.6, cut * 0.6);
+                chamferRect(ctx, x0 + wF * 0.2 + jx, yt + prot + h2 * 0.18 + jy, wF * 0.6, h2 * 0.6, cut * 0.6);
                 ctx.fill();
                 ctx.fillStyle = 'rgba(74, 48, 22, 0.32)';
                 ctx.beginPath();
-                chamferRect(ctx, x0 + wF * 0.39, yt + h2 * 0.4, wF * 0.22, h2 * 0.2, cut * 0.3);
+                chamferRect(ctx, x0 + wF * 0.39 + jx * 1.6, yt + prot + h2 * 0.38 + jy * 1.6, wF * 0.22, h2 * 0.2, cut * 0.3);
                 ctx.fill();
+                // Cast shadow under the protruding lip.
+                ctx.fillStyle = 'rgba(24, 15, 6, 0.25)';
+                ctx.fillRect(x0 + cut, yb + prot, wF - cut * 2, Math.max(1, s * 0.04));
               }
             }
           } else {
