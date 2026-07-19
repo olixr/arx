@@ -623,14 +623,18 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     let hAngle = Math.PI / 2 + wSide * (0.3 + 0.35 * runK); // tip down, trailing
     if (isSword) {
       if (rig.carryStyle === 'rogue') {
-        // Reverse grip: blade raked hard down-back along the forearm,
-        // hand riding a touch higher — the rogue's low-line carry.
-        hAngle = Math.PI / 2 + wSide * (0.92 + 0.08 * runK);
-        hy = armY + 0.1 * s;
+        // Reverse grip: blade hanging down-back past the hip, tip
+        // toward the heel — the rogue's low-line carry, one flick from
+        // an icepick stab.
+        hAngle = Math.PI / 2 + wSide * (0.72 + 0.08 * runK);
+        hx += wSide * 0.04 * s * wS;
+        hy = armY + 0.12 * s;
       } else {
-        // Standard carry: blade lowered nearly vertical at the side,
-        // only a whisper of trail so the point never wanders.
-        hAngle = Math.PI / 2 + wSide * (0.1 + 0.12 * runK);
+        // Standard carry: blade angled down-FORWARD off the leg so the
+        // guard and taper read as a sword, easing back toward vertical
+        // as the run trails it.
+        hAngle = Math.PI / 2 - wSide * (0.32 - 0.18 * runK);
+        hx += wSide * 0.05 * s * wS;
       }
     }
     if (isStaff) {
