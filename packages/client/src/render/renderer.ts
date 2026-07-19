@@ -41,7 +41,7 @@ import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
-import { ROOF_STEP, bakeRoof, type RoofBake } from './roofs.js';
+import { ROOF_RECEDE, ROOF_STEP, bakeRoof, type RoofBake } from './roofs.js';
 import { bakeChunk, bakeElevated, bakeGutter, drawLiveGround } from './terrain.js';
 
 /**
@@ -1565,7 +1565,19 @@ export class Renderer {
         // rails/arches are raised or walkable tiles with bespoke items.
         if (ground === Tile.DoorwayStone || ground === Tile.DoorwayWood) {
           const dregion = this.wallRegion(game, tx, ty);
-          const item = this.doorwayItem(ground, tx, ty, game, this.wallHeightFor(dregion?.stories ?? 1));
+          // CUTAWAY LAW: fronting your own room, the frame drops to a
+          // stub so the room is yours to see.
+          const dcut =
+            this.localRegion !== null &&
+            dregion === this.localRegion &&
+            this.localRegion.tiles.has(packTile(tx, ty - 1));
+          const item = this.doorwayItem(
+            ground,
+            tx,
+            ty,
+            game,
+            dcut ? 0.62 : this.wallHeightFor(dregion?.stories ?? 1),
+          );
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
@@ -1590,8 +1602,22 @@ export class Renderer {
         }
         if (Renderer.WALL_TILES.has(ground)) {
           const wregion = this.wallRegion(game, tx, ty);
-          const st = wregion?.stories ?? 1;
-          const item = this.wallItem(ground as Tile, tx, ty, game, this.wallHeightFor(st), st, wregion?.hasHearth ?? false);
+          // CUTAWAY LAW: the wall run between you and the camera drops
+          // to a knee-high stub while you stand inside its room.
+          const wcut =
+            this.localRegion !== null &&
+            wregion === this.localRegion &&
+            this.localRegion.tiles.has(packTile(tx, ty - 1));
+          const st = wcut ? 1 : (wregion?.stories ?? 1);
+          const item = this.wallItem(
+            ground as Tile,
+            tx,
+            ty,
+            game,
+            wcut ? 0.62 : this.wallHeightFor(st),
+            st,
+            wregion?.hasHearth ?? false,
+          );
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
@@ -1627,7 +1653,7 @@ export class Renderer {
     // into the south face — resolve to the base material for colors.
     const mat =
       tile === Tile.WallWoodWindow ? Tile.WallWood : tile === Tile.WallStoneWindow ? Tile.WallStone : tile;
-    const window = mat !== tile;
+    const window = mat !== tile && whT > 1; // stubs carry no glazing
     const top = mat === Tile.WallWood ? '#8a6234' : mat === Tile.WallStone ? '#8c8798' : '#3a3444';
     const face = mat === Tile.WallWood ? '#5e3f1e' : mat === Tile.WallStone ? '#5b5566' : '#221d2c';
     const r = s * 0.26;
@@ -1711,8 +1737,10 @@ export class Renderer {
               ctx.lineTo(p.x + s * fx, 0);
               ctx.stroke();
             }
-            ctx.fillStyle = 'rgba(36, 22, 10, 0.28)';
-            ctx.fillRect(p.x, -s * 1.06, s, s * 0.045);
+            if (hs > s * 1.2) {
+              ctx.fillStyle = 'rgba(36, 22, 10, 0.28)';
+              ctx.fillRect(p.x, -s * 1.06, s, s * 0.045);
+            }
             ctx.fillStyle = 'rgba(20, 12, 6, 0.22)';
             ctx.fillRect(p.x, -s * 0.27, s, s * 0.27);
           } else {
@@ -1889,6 +1917,9 @@ export class Renderer {
     const stone = tile === Tile.DoorwayStone;
     const top = stone ? '#8c8798' : '#8a6234';
     const face = stone ? '#5b5566' : '#5e3f1e';
+    // Frame trim reads two steps lighter than the wall it pierces —
+    // entrances must be findable at a glance from across the plaza.
+    const trim = stone ? '#8a8496' : '#96703c';
     const syT = s * this.camera.yScale;
     const hs = whT * s;
     const x0 = p.x - 0.25;
@@ -1914,18 +1945,19 @@ export class Renderer {
         ctx.transform(1, 0, skew, 1, 0, 0);
         // The dark interior seen through the opening; melts away as
         // anyone approaches the threshold.
-        const veil = this.doorVeil(game, tx + 0.5, ty + 0.5);
+        const hh = Math.max(0, hs - s * 1.56); // opening is FIXED height; the header grows (stubs have none)
+        const veil = hh > s * 0.05 ? this.doorVeil(game, tx + 0.5, ty + 0.5) : 0;
         if (veil > 0.01) {
           ctx.fillStyle = `rgba(14, 10, 22, ${0.5 * veil})`;
           ctx.fillRect(x0 + jw, -hs, x1 - x0 - jw * 2, hs);
         }
         // Header across the top: the opening below it clears ~1.56
         // tiles — the body walks UNDER the frame with real headroom.
-        const hh = hs - s * 1.56; // the opening height is FIXED; the header grows
-        ctx.fillStyle = face;
+        ctx.fillStyle = trim;
         ctx.fillRect(x0, -hs, x1 - x0, hh);
-        if (stone) {
+        if (stone && hh > s * 0.05) {
           // 45° haunches and a proud keystone — the brutalist arch.
+          ctx.fillStyle = trim;
           const hy = -hs + hh;
           const cut = s * 0.2;
           for (const [jx, dir] of [
@@ -1939,7 +1971,7 @@ export class Renderer {
             ctx.closePath();
             ctx.fill();
           }
-          ctx.fillStyle = shade(face, 12);
+          ctx.fillStyle = shade(trim, 14);
           ctx.beginPath();
           ctx.moveTo(p.x + s * 0.38, -hs + hh + s * 0.02);
           ctx.lineTo(p.x + s * 0.62, -hs + hh + s * 0.02);
@@ -1947,9 +1979,9 @@ export class Renderer {
           ctx.lineTo(p.x + s * 0.43, -hs + s * 0.02);
           ctx.closePath();
           ctx.fill();
-        } else {
+        } else if (hh > s * 0.05) {
           // A visible timber lintel beam with end grain.
-          ctx.fillStyle = shade(face, 10);
+          ctx.fillStyle = shade(trim, 12);
           ctx.fillRect(x0 + s * 0.02, -hs + hh - s * 0.075, x1 - x0 - s * 0.04, s * 0.075);
           ctx.fillStyle = 'rgba(36, 22, 10, 0.4)';
           ctx.fillRect(x0 + jw + s * 0.02, -hs + hh * 0.45, s * 0.03, hh * 0.35);
@@ -1965,17 +1997,17 @@ export class Renderer {
         ctx.fillRect(x0 + jw, -hs + hh, x1 - x0 - jw * 2, s * 0.05);
         // Jambs: full-height posts with lit inner edges and base
         // plinth blocks that root the frame to the ground.
-        ctx.fillStyle = face;
+        ctx.fillStyle = trim;
         ctx.fillRect(x0, -hs, jw, hs);
         ctx.fillRect(x1 - jw, -hs, jw, hs);
-        ctx.fillStyle = shade(face, 14);
+        ctx.fillStyle = shade(trim, 16);
         ctx.fillRect(x0 + jw - s * 0.035, -hs * 0.72, s * 0.035, hs * 0.72);
         ctx.fillRect(x1 - jw, -hs * 0.72, s * 0.035, hs * 0.72);
-        ctx.fillStyle = shade(face, -10);
+        ctx.fillStyle = shade(trim, -14);
         ctx.fillRect(x0 - s * 0.015, -hs * 0.12, jw + s * 0.03, hs * 0.12);
         ctx.fillRect(x1 - jw - s * 0.015, -hs * 0.12, jw + s * 0.03, hs * 0.12);
         // Threshold: a worn step across the opening.
-        ctx.fillStyle = shade(face, stone ? 22 : 30);
+        ctx.fillStyle = shade(trim, stone ? 22 : 30);
         ctx.fillRect(x0 + jw, -s * 0.07, x1 - x0 - jw * 2, s * 0.07);
         ctx.restore();
         // Crown: the run's top mass continues unbroken over the door.
@@ -2344,7 +2376,9 @@ export class Renderer {
       if (a < 0.015) continue;
       const whT = this.wallHeightFor(region.stories);
       for (const ring of bake.rings) {
-        const lift = Math.round((whT + ring.k * ROOF_STEP) * s);
+        const lift = Math.round(
+          (whT + ring.k * ROOF_STEP) * s + ring.k * ROOF_RECEDE * s * this.camera.yScale,
+        );
         for (let r = 0; r < bake.hTiles; r++) {
           // A row participates for its own content or the fascia that
           // bleeds one row south of it.

@@ -1,6 +1,13 @@
 import type { InteriorRegion } from './interiors.js';
 /** Vertical rise of each roof ring, in tiles of screen height. */
 export declare const ROOF_STEP = 0.5;
+/**
+ * PERSPECTIVE LAW: each ring also steps NORTH in plan. The camera
+ * tilts from the south, so a real sloped roof shows a WIDE south
+ * slope and a ridge set back toward the far edge — concentric rings
+ * read as a flat ziggurat; receding rings read as pitch.
+ */
+export declare const ROOF_RECEDE = 0.55;
 /** Fascia board depth under each ring's south edges. */
 export declare const ROOF_FASCIA = 0.16;
 export interface RoofBake {

@@ -18,6 +18,13 @@ import { chamferRect } from './shapes.js';
 
 /** Vertical rise of each roof ring, in tiles of screen height. */
 export const ROOF_STEP = 0.5;
+/**
+ * PERSPECTIVE LAW: each ring also steps NORTH in plan. The camera
+ * tilts from the south, so a real sloped roof shows a WIDE south
+ * slope and a ridge set back toward the far edge — concentric rings
+ * read as a flat ziggurat; receding rings read as pitch.
+ */
+export const ROOF_RECEDE = 0.55;
 /** Fascia board depth under each ring's south edges. */
 export const ROOF_FASCIA = 0.16;
 /** Eave overhang past the wall face, in tiles. */
@@ -188,6 +195,24 @@ export function bakeRoof(region: InteriorRegion, px: number, yScale: number): Ro
     ctx.restore();
     ctx.fillStyle = surface;
     ctx.fill(path);
+
+    // SLOPE LIGHT: the sun rakes from the south, so each pitch runs
+    // shadowed at its ridge side down to a sunlit hem — a vertical
+    // gradient pair clipped to the plane sells the tilt that flat
+    // fills never could.
+    ctx.save();
+    ctx.clip(path);
+    const shadeG = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    shadeG.addColorStop(0, 'rgba(22, 18, 34, 0.24)');
+    shadeG.addColorStop(0.55, 'rgba(22, 18, 34, 0)');
+    ctx.fillStyle = shadeG;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const sunG = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    sunG.addColorStop(0.55, 'rgba(255, 238, 200, 0)');
+    sunG.addColorStop(1, 'rgba(255, 238, 200, 0.13)');
+    ctx.fillStyle = sunG;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
 
     // Material skin, clipped to the plane.
     ctx.save();
