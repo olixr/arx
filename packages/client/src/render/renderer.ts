@@ -486,6 +486,18 @@ export class Renderer {
     return p;
   };
 
+  /**
+   * World-y whose liftedWTS projection sits PROJ_AIR tiles of SCREEN
+   * height above the ground point at `y`. World-y offsets render
+   * squashed by the camera pitch (yScale), so anything that must align
+   * with a screen-lifted sprite (projectile trails, muzzle/impact
+   * bursts, glows) divides the squash back out — a raw `y - PROJ_AIR`
+   * rides ~40% low and the trail visibly detaches from the shot.
+   */
+  private projAirWorldY(y: number): number {
+    return y - PROJ_AIR / this.camera.yScale;
+  }
+
   // ------------------------------------------------------- shadows
 
   /** Screen-px offset of a shadow cast from `hTiles` above the ground. */
@@ -5311,7 +5323,7 @@ export class Renderer {
     const groundY = p.y;
     p.y -= PROJ_AIR * scale;
     const ax = s.x;
-    const ay = s.y - PROJ_AIR;
+    const ay = this.projAirWorldY(s.y);
     const magic = style.startsWith('magic');
 
     // Muzzle flash — the first frame we see a shot, it POPS out of the
@@ -5472,14 +5484,15 @@ export class Renderer {
     for (const end of game.projectileEnds) {
       if (end.style.startsWith('magic')) {
         const heavy = end.style === 'magic_heavy';
-        this.particles.burst(end.x, end.y - PROJ_AIR, heavy ? 16 : 8, ['#b49af0', '#8f76d4', '#efe3ff', '#fff8c8'], {
+        const fy = this.projAirWorldY(end.y);
+        this.particles.burst(end.x, fy, heavy ? 16 : 8, ['#b49af0', '#8f76d4', '#efe3ff', '#fff8c8'], {
           speed: heavy ? 3.2 : 2.2,
           life: 0.4,
           size: heavy ? 0.11 : 0.08,
           gravity: 0,
           drag: 3.5,
         });
-        this.queueGlow(end.x, end.y - PROJ_AIR, heavy ? 2.2 : 1.4, '180, 154, 240', 0.8);
+        this.queueGlow(end.x, fy, heavy ? 2.2 : 1.4, '180, 154, 240', 0.8);
         continue;
       }
       // Arrow down. Into a body if one is close enough, else the dirt.

@@ -171,6 +171,15 @@ export declare class Renderer {
     renderLift(x: number, y: number): number;
     /** worldToScreen that also rides the terrain lift under the point. */
     private liftedWTS;
+    /**
+     * World-y whose liftedWTS projection sits PROJ_AIR tiles of SCREEN
+     * height above the ground point at `y`. World-y offsets render
+     * squashed by the camera pitch (yScale), so anything that must align
+     * with a screen-lifted sprite (projectile trails, muzzle/impact
+     * bursts, glows) divides the squash back out — a raw `y - PROJ_AIR`
+     * rides ~40% low and the trail visibly detaches from the shot.
+     */
+    private projAirWorldY;
     /** Screen-px offset of a shadow cast from `hTiles` above the ground. */
     private castOffset;
     /**
