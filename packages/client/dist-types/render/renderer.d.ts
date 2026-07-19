@@ -347,12 +347,6 @@ export declare class Renderer {
      * merge with rails only — a railing never joins a wall mass.
      */
     private railItem;
-    /**
-     * Row-run rects of every enclosed interior in view + the indoor
-     * ambient: a roof blocks the sky, so rooms sit at a dim cool base
-     * with a whisper of daylight — lamps and hearths carry the rest.
-     */
-    private interiorLighting;
     /** Story count → facade wall height in tiles (upper floors run a
      *  touch shorter than the ground story, as real buildings do). */
     private wallHeightFor;

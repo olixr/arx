@@ -63,17 +63,8 @@ export class LightingSystem {
     sky: DaylightSample,
     lights: WorldLight[],
     blocks: (tx: number, ty: number) => boolean,
-    interior?: {
-      /** World-space row-run rects of enclosed interiors in view. */
-      rects: Array<{ x: number; y: number; w: number; h: number }>;
-      /** The indoor base exposure — a roof blocks the sky. */
-      ambient: [number, number, number];
-    } | null,
   ): void {
-    // DAYLIGHT IS FREE — unless an interior is on screen: a roofed
-    // room is dim at noon, so the pass must run to shade it. This is
-    // the one deliberate amendment to the free-noon law.
-    if (sky.darkness < 0.02 && (!interior || interior.rects.length === 0)) return;
+    if (sky.darkness < 0.02) return; // full daylight: multiply-by-white
     const mw = Math.max(1, Math.ceil(view.w / MAP_DOWNSCALE));
     const mh = Math.max(1, Math.ceil(view.h / MAP_DOWNSCALE));
     if (this.map.width !== mw || this.map.height !== mh) {
@@ -93,17 +84,6 @@ export class LightingSystem {
     const sy = view.scale * view.yScale * k;
     const tx = view.ox * k;
     const ty = view.oy * k;
-
-    if (interior && interior.rects.length > 0) {
-      // Interior geography gets its own exposure BEFORE the point
-      // lights composite: lamps and hearths then punch warmth back in
-      // through the same one-map law as everywhere else.
-      const [ir, ig, ib] = interior.ambient;
-      m.setTransform(sx, 0, 0, sy, tx, ty);
-      m.fillStyle = `rgb(${ir | 0}, ${ig | 0}, ${ib | 0})`;
-      for (const r of interior.rects) m.fillRect(r.x, r.y, r.w, r.h);
-      m.setTransform(1, 0, 0, 1, 0, 0);
-    }
 
     for (const light of lights) {
       if (light.intensity <= 0.01) continue;

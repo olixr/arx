@@ -1077,7 +1077,6 @@ export class Renderer {
         const t = game.world.groundAt(tx, ty);
         return t !== undefined && (Renderer.LIGHT_BLOCKERS.has(t) || t === Tile.Cliff);
       },
-      this.interiorLighting(),
     );
     this.lights.length = 0;
     // Moving lights hand their positions to next frame's shadow pass.
@@ -1168,18 +1167,6 @@ export class Renderer {
           }
           if (!inside || !region) continue;
           windowLights++;
-          const sun = this.sky.sun;
-          if (sun > 0.15) {
-            // A cool daylight shaft falls INTO the room — non-occluding
-            // and placed past the wall so its own pane can't shadow it.
-            this.lights.push({
-              x: tx + 0.5 + inside[0] * 0.9,
-              y: ty + 0.5 + inside[1] * 0.9,
-              r: 2.2,
-              rgb: [220, 228, 255],
-              intensity: 0.4 * sun,
-            });
-          }
           if (flame > 0.05 && region.hasHearth) {
             // Hearthlight spills OUT of the pane after dark; the pool
             // sits south of the wall so its shadow never bites it.
@@ -2296,49 +2283,6 @@ export class Renderer {
   }
 
   // --------------------------------------------------------------- roofs
-
-  /**
-   * Row-run rects of every enclosed interior in view + the indoor
-   * ambient: a roof blocks the sky, so rooms sit at a dim cool base
-   * with a whisper of daylight — lamps and hearths carry the rest.
-   */
-  private interiorLighting(): {
-    rects: Array<{ x: number; y: number; w: number; h: number }>;
-    ambient: [number, number, number];
-  } | null {
-    // Only the LOCAL region dims: every other interior hides under an
-    // opaque roof, so its exposure is invisible — and because the
-    // lightmap is ground geography, dimming a covered room would
-    // stripe its own roof. The one room you can see into is the one
-    // whose roof has faded for you.
-    if (!this.localRegion) return null;
-    const rects: Array<{ x: number; y: number; w: number; h: number }> = [];
-    for (const region of [this.localRegion]) {
-      // Dim the WHOLE room. The old wallHeight row-exclusion guarded
-      // the south facade from ground-geography dimming, but the local
-      // region's front wall is a cutaway stub now — its rows are
-      // visible floor, and excluding them left a bright seam band
-      // across the room.
-      for (let ty = region.y0; ty <= region.y1; ty++) {
-        let run = -1;
-        for (let tx = region.x0; tx <= region.x1 + 1; tx++) {
-          const inside = tx <= region.x1 && region.tiles.has(packTile(tx, ty));
-          if (inside && run < 0) run = tx;
-          else if (!inside && run >= 0) {
-            rects.push({ x: run, y: ty, w: tx - run, h: 1 });
-            run = -1;
-          }
-        }
-      }
-    }
-    const sun = this.sky.sun;
-    // Dim, not nocturnal: a roofed room at noon sits near 60% exposure
-    // with a cool cast — doorways and windows pour the daylight in.
-    return {
-      rects,
-      ambient: [70 + 82 * sun, 66 + 78 * sun, 84 + 68 * sun],
-    };
-  }
 
   /** Story count → facade wall height in tiles (upper floors run a
    *  touch shorter than the ground story, as real buildings do). */
