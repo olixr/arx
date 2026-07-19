@@ -82,6 +82,11 @@ const ELEV_H = 1.35;
 const PERSP_LEAN = 0;
 
 const PLAYER_COLORS = ['#c4553d', '#3d78c4', '#3da865', '#c4a03d', '#8a55c4', '#3da8a0', '#c47a3d'];
+/** Flight height of projectiles above their ground point, in tiles —
+ * arrows leave the bow's nock and bolts the staff's crown, chest-high. */
+const PROJ_AIR = 0.62;
+/** How long a landed arrow stands in the world before fading. */
+const STUCK_ARROW_MS = 90_000;
 
 interface AnimState {
   walkPhase: number;
@@ -325,6 +330,14 @@ export class Renderer {
 
   /** Emissive glow requests queued during the frame, composited last. */
   private readonly glows: Array<{ x: number; y: number; r: number; rgb: string; a: number }> = [];
+
+  // ---- projectile aftermath: the world remembers your arrows. ----
+  /** Arrows standing in the ground/walls; fade out near `until`. */
+  private readonly stuckArrows: Array<{ x: number; y: number; dir: number; until: number }> = [];
+  /** Arrows riding a living NPC (offsets in tiles off its ground point). */
+  private readonly npcArrows = new Map<number, Array<{ dir: number; hy: number; ox: number }>>();
+  /** Projectiles already given their muzzle flash. */
+  private readonly projSeen = new Set<number>();
 
   /**
    * Perspective lean, applied PER VERTEX: a point `heightTiles` above
@@ -4239,6 +4252,7 @@ export class Renderer {
     const t = game.renderTime();
     const now = performance.now();
     this.frameLoot.length = 0;
+    this.consumeProjectileAftermath(game, now);
 
     for (const [eid, remote] of game.entities) {
       const s = remote.buffer.sampleAt(t) ?? {
@@ -4274,14 +4288,17 @@ export class Renderer {
             }),
           );
           break;
-        case EntityKind.Npc:
+        case EntityKind.Npc: {
           items.push(this.npcItem(eid, remote.meta.defId ?? '', remote.meta, s, hurt));
+          const pins = this.npcArrows.get(eid);
+          if (pins && pins.length > 0) items.push(this.npcArrowsItem(pins, s));
           break;
+        }
         case EntityKind.ItemDrop:
           items.push(this.dropItem(eid, remote.meta.defId ?? '', remote.meta.qty ?? 1, s, now));
           break;
         case EntityKind.Projectile:
-          items.push(this.projectileItem(remote.meta.defId ?? '', s));
+          items.push(this.projectileItem(eid, remote.meta.defId ?? '', s));
           break;
         case EntityKind.Prop:
           if (remote.meta.defId?.startsWith('summon_')) {
@@ -4292,6 +4309,9 @@ export class Renderer {
           break;
       }
     }
+
+    // Arrows standing where they landed — the field remembers the fight.
+    for (const a of this.stuckArrows) items.push(this.stuckArrowItem(a, now));
 
     if (game.ownEid !== null) {
       const own = game.predictor.renderPos();
@@ -5280,88 +5300,340 @@ export class Renderer {
     ctx.restore();
   }
 
-  private projectileItem(style: string, s: { x: number; y: number; dir: number }): DrawItem {
+  private projectileItem(eid: number, style: string, s: { x: number; y: number; dir: number }): DrawItem {
     const ctx = this.ctx;
     const scale = this.camera.scale;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= this.renderLift(s.x, s.y) * scale;
+    // Shots fly at CHEST height — leaving the bow's nock / the staff's
+    // crown, not skimming the grass. The particles/glow ride the same
+    // airborne y so the whole effect lives up there together.
+    const groundY = p.y;
+    p.y -= PROJ_AIR * scale;
+    const ax = s.x;
+    const ay = s.y - PROJ_AIR;
+    const magic = style.startsWith('magic');
+
+    // Muzzle flash — the first frame we see a shot, it POPS out of the
+    // weapon: a directional spray of shards + a glow spike.
+    if (!this.projSeen.has(eid)) {
+      this.projSeen.add(eid);
+      if (magic) {
+        this.particles.burst(ax, ay, 10, ['#b49af0', '#8f76d4', '#efe3ff', '#fff8c8'], {
+          speed: 2.6,
+          life: 0.32,
+          size: 0.09,
+          gravity: 0,
+          dir: s.dir,
+          spread: 1.5,
+          drag: 3,
+        });
+        this.queueGlow(ax, ay, 1.6, '180, 154, 240', 0.75);
+      } else {
+        this.particles.burst(ax, ay, 5, ['#e6e0d0', '#c4b590'], {
+          speed: 1.6,
+          life: 0.2,
+          size: 0.06,
+          gravity: 0,
+          dir: s.dir,
+          spread: 0.9,
+          drag: 4,
+        });
+      }
+    }
+
     return {
       sortY: s.y + 10,
       draw: () => {
+        const fx = Math.cos(s.dir);
+        const fy = Math.sin(s.dir);
+        // Ground shadow: a small dark tick racing along under the shot
+        // sells the height of the flight line.
+        ctx.fillStyle = 'rgba(20, 16, 28, 0.2)';
+        ctx.beginPath();
+        ctx.ellipse(p.x, groundY, scale * 0.16, scale * 0.06, 0, 0, Math.PI * 2);
+        ctx.fill();
+
         if (style === 'magic_heavy') {
-          // The heavy orb: fat, slow, unmistakably the payoff beat.
-          this.particles.burst(s.x, s.y, 1, ['#b49af0', '#8f76d4', '#efe3ff'], {
-            speed: 0.4,
-            life: 0.45,
+          // The heavy orb: fat, slow, unmistakably the payoff beat —
+          // a churning faceted core shedding embers as it goes.
+          this.particles.burst(ax, ay, 2, ['#b49af0', '#8f76d4', '#efe3ff'], {
+            speed: 0.6,
+            life: 0.5,
             size: 0.12,
             gravity: 0,
+            dir: s.dir + Math.PI,
+            spread: 1.2,
           });
-          this.queueGlow(s.x, s.y, 1.5, '180, 154, 240', 0.6);
+          this.queueGlow(ax, ay, 1.7, '180, 154, 240', 0.65);
           ctx.fillStyle = 'rgba(122, 90, 196, 0.4)';
           ctx.beginPath();
-          facetCircle(ctx, p.x, p.y, scale * 0.3, 7, s.dir * 0.5);
+          facetCircle(ctx, p.x, p.y, scale * 0.32, 7, s.dir * 0.5);
           ctx.fill();
           ctx.fillStyle = '#b49af0';
           ctx.beginPath();
-          facetCircle(ctx, p.x, p.y, scale * 0.22, 7, -s.dir * 0.7);
+          facetCircle(ctx, p.x, p.y, scale * 0.23, 7, -s.dir * 0.7);
           ctx.fill();
           ctx.fillStyle = '#efe3ff';
           ctx.beginPath();
-          facetCircle(ctx, p.x, p.y, scale * 0.1, 5, s.dir);
+          facetCircle(ctx, p.x, p.y, scale * 0.11, 5, s.dir);
           ctx.fill();
           return;
         }
-        // Trail: a breadcrumb particle per frame sells the speed.
-        if (style === 'magic') {
-          this.particles.burst(s.x, s.y, 1, ['#b49af0', '#8f76d4'], {
-            speed: 0.15,
-            life: 0.3,
-            size: 0.07,
+
+        if (magic) {
+          // A cut shard of magic streaking nose-first: layered diamond
+          // with a hot core, shedding a violet wake + white flecks.
+          this.particles.burst(ax, ay, 1, ['#b49af0', '#8f76d4'], {
+            speed: 0.35,
+            life: 0.34,
+            size: 0.08,
             gravity: 0,
+            dir: s.dir + Math.PI,
+            spread: 0.8,
           });
+          if (Math.random() < this.frameDt * 22) {
+            this.particles.burst(ax, ay, 1, ['#fff8c8', '#efe3ff'], {
+              speed: 1.4,
+              life: 0.25,
+              size: 0.05,
+              gravity: 0,
+            });
+          }
+          this.queueGlow(ax, ay, 1.0, '180, 154, 240', 0.5);
+          const nose = 0.3 * scale;
+          const tail = 0.26 * scale;
+          const half = 0.09 * scale;
+          const diamond = (k: number, color: string): void => {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(p.x + fx * nose * k, p.y + fy * nose * k);
+            ctx.lineTo(p.x - fy * half * k, p.y + fx * half * k);
+            ctx.lineTo(p.x - fx * tail * k, p.y - fy * tail * k);
+            ctx.lineTo(p.x + fy * half * k, p.y - fx * half * k);
+            ctx.closePath();
+            ctx.fill();
+          };
+          diamond(1.5, 'rgba(122, 90, 196, 0.3)');
+          diamond(1.0, '#b49af0');
+          diamond(0.48, '#efe3ff');
         } else {
-          this.particles.burst(s.x, s.y, 1, ['rgba(230, 224, 208, 0.5)'], {
-            speed: 0.05,
-            life: 0.12,
+          // An arrow you can read at speed: streak, shaft, iron head,
+          // red fletching — and a wisp of slipstream behind it.
+          this.particles.burst(ax, ay, 1, ['rgba(230, 224, 208, 0.5)'], {
+            speed: 0.1,
+            life: 0.16,
             size: 0.05,
             gravity: 0,
           });
-        }
-        if (style === 'magic') {
-          // A cut shard of magic — faceted, spinning with its heading.
-          this.queueGlow(s.x, s.y, 0.85, '180, 154, 240', 0.42);
-          ctx.fillStyle = 'rgba(154, 122, 224, 0.35)';
+          const len = scale * 0.46;
+          ctx.strokeStyle = 'rgba(230, 224, 208, 0.28)';
+          ctx.lineWidth = Math.max(1.5, scale * 0.035);
           ctx.beginPath();
-          facetCircle(ctx, p.x - Math.cos(s.dir) * scale * 0.18, p.y - Math.sin(s.dir) * scale * 0.18, scale * 0.1, 6, s.dir);
-          ctx.fill();
-          ctx.fillStyle = '#b49af0';
-          ctx.beginPath();
-          facetCircle(ctx, p.x, p.y, scale * 0.12, 6, s.dir);
-          ctx.fill();
-          ctx.fillStyle = '#efe3ff';
-          ctx.beginPath();
-          facetCircle(ctx, p.x, p.y, scale * 0.05, 4, s.dir);
-          ctx.fill();
-        } else {
-          const len = scale * 0.42;
-          const fx = Math.cos(s.dir);
-          const fy = Math.sin(s.dir);
+          ctx.moveTo(p.x - fx * len * 1.1, p.y - fy * len * 1.1);
+          ctx.lineTo(p.x - fx * len * 0.5, p.y - fy * len * 0.5);
+          ctx.stroke();
           ctx.strokeStyle = '#c4b590';
           ctx.lineWidth = Math.max(2, scale * 0.05);
           ctx.beginPath();
           ctx.moveTo(p.x - fx * len * 0.5, p.y - fy * len * 0.5);
           ctx.lineTo(p.x + fx * len * 0.4, p.y + fy * len * 0.4);
           ctx.stroke();
+          // Fletching: two red vanes at the tail.
+          ctx.strokeStyle = '#d95763';
+          ctx.lineWidth = Math.max(1.5, scale * 0.04);
+          for (const sv of [-1, 1]) {
+            ctx.beginPath();
+            ctx.moveTo(p.x - fx * len * 0.34, p.y - fy * len * 0.34);
+            ctx.lineTo(
+              p.x - fx * len * 0.52 - fy * sv * scale * 0.07,
+              p.y - fy * len * 0.52 + fx * sv * scale * 0.07,
+            );
+            ctx.stroke();
+          }
           ctx.fillStyle = '#9aa2ac';
           ctx.beginPath();
-          ctx.moveTo(p.x + fx * len * 0.55, p.y + fy * len * 0.55);
-          ctx.lineTo(p.x + fx * len * 0.3 - fy * scale * 0.05, p.y + fy * len * 0.3 + fx * scale * 0.05);
-          ctx.lineTo(p.x + fx * len * 0.3 + fy * scale * 0.05, p.y + fy * len * 0.3 - fx * scale * 0.05);
+          ctx.moveTo(p.x + fx * len * 0.58, p.y + fy * len * 0.58);
+          ctx.lineTo(p.x + fx * len * 0.3 - fy * scale * 0.06, p.y + fy * len * 0.3 + fx * scale * 0.06);
+          ctx.lineTo(p.x + fx * len * 0.3 + fy * scale * 0.06, p.y + fy * len * 0.3 - fx * scale * 0.06);
           ctx.closePath();
           ctx.fill();
         }
       },
     };
+  }
+
+  /**
+   * Settle every projectile that ended flight this frame: arrows stand
+   * in the ground (or ride the NPC they hit), magic fizzles in a burst.
+   * Dead NPCs shed their arrows onto the ground where they fell.
+   */
+  private consumeProjectileAftermath(game: ClientGame, now: number): void {
+    for (const end of game.projectileEnds) {
+      if (end.style.startsWith('magic')) {
+        const heavy = end.style === 'magic_heavy';
+        this.particles.burst(end.x, end.y - PROJ_AIR, heavy ? 16 : 8, ['#b49af0', '#8f76d4', '#efe3ff', '#fff8c8'], {
+          speed: heavy ? 3.2 : 2.2,
+          life: 0.4,
+          size: heavy ? 0.11 : 0.08,
+          gravity: 0,
+          drag: 3.5,
+        });
+        this.queueGlow(end.x, end.y - PROJ_AIR, heavy ? 2.2 : 1.4, '180, 154, 240', 0.8);
+        continue;
+      }
+      // Arrow down. Into a body if one is close enough, else the dirt.
+      // The last client sample lags the server impact by up to a step,
+      // so probe the end point AND half a tile further down the line.
+      const ex2 = end.x + Math.cos(end.dir) * 0.6;
+      const ey2 = end.y + Math.sin(end.dir) * 0.6;
+      let hitEid = -1;
+      let hitDist = Infinity;
+      for (const [eid, remote] of game.entities) {
+        if (remote.meta.kind !== EntityKind.Npc) continue;
+        const sNow = remote.buffer.latest();
+        const nx = sNow?.x ?? remote.meta.x;
+        const ny = sNow?.y ?? remote.meta.y;
+        const r = (npcDef(remote.meta.defId ?? '')?.radius ?? 0.35) + 0.6;
+        const d = Math.min(Math.hypot(nx - end.x, ny - end.y), Math.hypot(nx - ex2, ny - ey2));
+        if (d < r && d < hitDist) {
+          hitDist = d;
+          hitEid = eid;
+        }
+      }
+      if (hitEid >= 0) {
+        const pins = this.npcArrows.get(hitEid) ?? [];
+        if (pins.length < 8) {
+          pins.push({
+            dir: end.dir + (Math.random() - 0.5) * 0.3,
+            hy: 0.35 + Math.random() * 0.35,
+            ox: 0.1 + Math.random() * 0.15,
+          });
+          this.npcArrows.set(hitEid, pins);
+        }
+      } else if (this.stuckArrows.length < 100) {
+        this.stuckArrows.push({ x: end.x, y: end.y, dir: end.dir, until: now + STUCK_ARROW_MS });
+        this.particles.burst(end.x, end.y, 4, ['#b9a582', '#8a7a5c'], {
+          speed: 1.1,
+          life: 0.3,
+          size: 0.06,
+          up: true,
+          drag: 3,
+        });
+      }
+    }
+    game.projectileEnds.length = 0;
+
+    // A felled NPC sheds its arrows around the corpse.
+    for (const death of game.npcDeaths) {
+      const pins = this.npcArrows.get(death.eid);
+      if (pins) {
+        for (const pin of pins) {
+          if (this.stuckArrows.length >= 100) break;
+          this.stuckArrows.push({
+            x: death.x + (Math.random() - 0.5) * 0.7,
+            y: death.y + (Math.random() - 0.5) * 0.45,
+            dir: pin.dir,
+            until: now + STUCK_ARROW_MS,
+          });
+        }
+        this.npcArrows.delete(death.eid);
+      }
+    }
+    game.npcDeaths.length = 0;
+
+    // Expire old shafts; drop bookkeeping for entities that left view.
+    for (let i = this.stuckArrows.length - 1; i >= 0; i--) {
+      if (this.stuckArrows[i]!.until <= now) this.stuckArrows.splice(i, 1);
+    }
+    if (this.npcArrows.size > 0) {
+      for (const eid of this.npcArrows.keys()) {
+        if (!game.entities.has(eid)) this.npcArrows.delete(eid);
+      }
+    }
+    if (this.projSeen.size > 0) {
+      for (const eid of this.projSeen) {
+        if (!game.entities.has(eid)) this.projSeen.delete(eid);
+      }
+    }
+  }
+
+  /** One arrow standing where it landed, angled with its flight line. */
+  private stuckArrowItem(a: { x: number; y: number; dir: number; until: number }, now: number): DrawItem {
+    const ctx = this.ctx;
+    const scale = this.camera.scale;
+    const p = this.camera.worldToScreen(a.x, a.y, this.w, this.h);
+    p.y -= this.renderLift(a.x, a.y) * scale;
+    const alpha = Math.min(1, (a.until - now) / 6000);
+    return {
+      sortY: a.y,
+      draw: () => {
+        ctx.globalAlpha = alpha;
+        this.drawStuckArrow(ctx, p.x, p.y, a.dir, scale);
+        ctx.globalAlpha = 1;
+      },
+    };
+  }
+
+  /** The pincushion overlay: arrows riding a living NPC's body. */
+  private npcArrowsItem(
+    pins: Array<{ dir: number; hy: number; ox: number }>,
+    s: { x: number; y: number },
+  ): DrawItem {
+    const ctx = this.ctx;
+    const scale = this.camera.scale;
+    return {
+      sortY: s.y + 0.02,
+      draw: () => {
+        const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
+        p.y -= this.renderLift(s.x, s.y) * scale;
+        for (const pin of pins) {
+          const bx = p.x - Math.cos(pin.dir) * pin.ox * scale;
+          const by = p.y - pin.hy * scale;
+          this.drawStuckArrow(ctx, bx, by, pin.dir, scale * 0.92, true);
+        }
+      },
+    };
+  }
+
+  /**
+   * Screen-space arrow-in-a-surface: buried head at (sx, sy), shaft
+   * rising back against the flight line, red fletching at the tail.
+   */
+  private drawStuckArrow(
+    ctx: CanvasRenderingContext2D,
+    sx: number,
+    sy: number,
+    dir: number,
+    scale: number,
+    inBody = false,
+  ): void {
+    const fx = Math.cos(dir);
+    // The shaft leans back along where it came from and UP out of the
+    // surface — a planted 50° stick, not a flat line on the floor.
+    const bx = -fx * 0.24 * scale;
+    const by = -0.3 * scale;
+    if (!inBody) {
+      // Dirt shadow pooling at the entry point.
+      ctx.fillStyle = 'rgba(20, 16, 28, 0.22)';
+      ctx.beginPath();
+      ctx.ellipse(sx, sy + 0.02 * scale, scale * 0.11, scale * 0.045, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#c4b590';
+    ctx.lineWidth = Math.max(2, scale * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + bx, sy + by);
+    ctx.stroke();
+    ctx.strokeStyle = '#d95763';
+    ctx.lineWidth = Math.max(1.5, scale * 0.045);
+    for (const sv of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(sx + bx * 0.82, sy + by * 0.82);
+      ctx.lineTo(sx + bx * 1.12 + sv * 0.05 * scale, sy + by * 1.12 + sv * 0.028 * scale);
+      ctx.stroke();
+    }
   }
 
   // ----------------------------------------------------- combat fx

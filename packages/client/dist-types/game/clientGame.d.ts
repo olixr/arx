@@ -139,6 +139,22 @@ export declare class ClientGame {
     } | null;
     /** Damage numbers floating up; pruned by the renderer. */
     readonly floaties: Floaty[];
+    /**
+     * Projectiles that just ended flight (hit, expired, or left view) —
+     * consumed by the renderer for impact bursts and stuck arrows.
+     */
+    readonly projectileEnds: Array<{
+        x: number;
+        y: number;
+        dir: number;
+        style: string;
+    }>;
+    /** NPC deaths this frame — the renderer drops their stuck arrows. */
+    readonly npcDeaths: Array<{
+        eid: EntityId;
+        x: number;
+        y: number;
+    }>;
     /** Combat effects in flight; pruned by the renderer. */
     readonly fx: ActiveFx[];
     /** Hotbar state: performance.now() when each slot comes off cooldown. */

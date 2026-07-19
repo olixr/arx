@@ -130,6 +130,12 @@ export declare class Renderer {
     private frameLoot;
     /** Emissive glow requests queued during the frame, composited last. */
     private readonly glows;
+    /** Arrows standing in the ground/walls; fade out near `until`. */
+    private readonly stuckArrows;
+    /** Arrows riding a living NPC (offsets in tiles off its ground point). */
+    private readonly npcArrows;
+    /** Projectiles already given their muzzle flash. */
+    private readonly projSeen;
     /**
      * Perspective lean, applied PER VERTEX: a point `heightTiles` above
      * the ground at screen column `x` lands at `leanX(x, h)` — an affine
@@ -483,6 +489,21 @@ export declare class Renderer {
      */
     private drawLootLabels;
     private projectileItem;
+    /**
+     * Settle every projectile that ended flight this frame: arrows stand
+     * in the ground (or ride the NPC they hit), magic fizzles in a burst.
+     * Dead NPCs shed their arrows onto the ground where they fell.
+     */
+    private consumeProjectileAftermath;
+    /** One arrow standing where it landed, angled with its flight line. */
+    private stuckArrowItem;
+    /** The pincushion overlay: arrows riding a living NPC's body. */
+    private npcArrowsItem;
+    /**
+     * Screen-space arrow-in-a-surface: buried head at (sx, sy), shaft
+     * rising back against the flight line, red fletching at the tail.
+     */
+    private drawStuckArrow;
     /**
      * Ambient status VFX riding an entity: embers for burn, drifting
      * frost for chill, spark jitter for shock, falling drips for bleed.

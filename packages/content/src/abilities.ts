@@ -60,7 +60,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 160, // 8 s
     shape: 'projectile_fan',
     damage: 6,
-    range: 7,
+    range: 14,
     projectiles: 5,
     spreadArc: 0.55,
     projectileSpeed: 15,
@@ -74,7 +74,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 170, // 8.5 s
     shape: 'projectile_fan',
     damage: 12,
-    range: 9,
+    range: 18,
     projectiles: 1,
     projectileSpeed: 19,
     pierce: true,
@@ -101,7 +101,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 170, // 8.5 s
     shape: 'ground_aoe',
     damage: 10,
-    range: 6,
+    range: 12,
     radius: 1.8,
     fuseTicks: 16, // 0.8 s telegraph
     status: { status: 'burn', power: 1, durationTicks: 60 },
@@ -223,7 +223,7 @@ const defs: AbilityDef[] = [
     dashTiles: -2.6, // away from the aim — the disengage tool
     projectiles: 1, // ...and the arrow flies at whatever you fled
     projectileSpeed: 16,
-    range: 6,
+    range: 12,
   },
   {
     id: 'rain_of_arrows',
@@ -234,7 +234,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 220, // 11 s
     shape: 'ground_aoe',
     damage: 9,
-    range: 6,
+    range: 12,
     radius: 2.0,
     fuseTicks: 18,
   },
@@ -247,7 +247,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 180, // 9 s
     shape: 'projectile_fan',
     damage: 10,
-    range: 8,
+    range: 16,
     projectiles: 2,
     spreadArc: 0.12,
     projectileSpeed: 18,
@@ -262,7 +262,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 160, // 8 s
     shape: 'chain_zap',
     damage: 7,
-    range: 6,
+    range: 12,
     radius: 3.0,
     chainTargets: 3,
     status: { status: 'shock', power: 1, durationTicks: 70 },
@@ -287,7 +287,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 260, // 13 s
     shape: 'ground_aoe',
     damage: 13,
-    range: 6,
+    range: 12,
     radius: 2.2,
     fuseTicks: 20,
     knockback: 1.6,

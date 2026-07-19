@@ -3434,6 +3434,12 @@ export class GameServer {
     this.tickCount++;
     const now = Date.now();
 
+    // Projectiles move FIRST, before this tick's inputs can spawn new
+    // ones — a shot always survives to the interest update at the end
+    // of its birth tick, so clients see even point-blank arrows (and
+    // can render their impacts) instead of them dying unseen.
+    this.tickProjectiles();
+
     for (const [eid, player] of this.players) {
       if (player.session === null && player.disconnectedAt !== null) {
         if (now - player.disconnectedAt > RECONNECT_GRACE_MS) this.despawnPlayer(eid);
@@ -3445,7 +3451,6 @@ export class GameServer {
 
     this.tickSpawns(now);
     this.tickNpcs(now);
-    this.tickProjectiles();
     this.tickStatuses();
     this.tickSummons();
     this.tickBlasts();

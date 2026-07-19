@@ -134,6 +134,13 @@ export class ClientGame {
   action: { startedAt: number; durationMs: number } | null = null;
   /** Damage numbers floating up; pruned by the renderer. */
   readonly floaties: Floaty[] = [];
+  /**
+   * Projectiles that just ended flight (hit, expired, or left view) —
+   * consumed by the renderer for impact bursts and stuck arrows.
+   */
+  readonly projectileEnds: Array<{ x: number; y: number; dir: number; style: string }> = [];
+  /** NPC deaths this frame — the renderer drops their stuck arrows. */
+  readonly npcDeaths: Array<{ eid: EntityId; x: number; y: number }> = [];
   /** Combat effects in flight; pruned by the renderer. */
   readonly fx: ActiveFx[] = [];
 
@@ -409,7 +416,21 @@ export class ClientGame {
         break;
       }
       case 'leave': {
-        for (const eid of msg.eids) this.entities.delete(eid);
+        for (const eid of msg.eids) {
+          const e = this.entities.get(eid);
+          // A projectile leaving the world is an impact (or a spent
+          // shaft) — hand its last known flight state to the renderer.
+          if (e?.meta.kind === EntityKind.Projectile && this.projectileEnds.length < 64) {
+            const last = e.buffer.latest();
+            this.projectileEnds.push({
+              x: last?.x ?? e.meta.x,
+              y: last?.y ?? e.meta.y,
+              dir: last?.dir ?? 0,
+              style: e.meta.defId ?? '',
+            });
+          }
+          this.entities.delete(eid);
+        }
         break;
       }
       case 'chat': {
@@ -517,6 +538,7 @@ export class ClientGame {
         break;
       }
       case 'death': {
+        if (this.npcDeaths.length < 32) this.npcDeaths.push({ eid: msg.eid, x: msg.x, y: msg.y });
         this.events.onDeath({ x: msg.x, y: msg.y, defId: msg.defId });
         break;
       }
