@@ -304,12 +304,6 @@ export declare class Renderer {
     private static readonly WALL_TILES;
     /** What stops lamplight — shared law (tiles.ts). */
     private static readonly LIGHT_BLOCKERS;
-    /**
-     * Hewn-timber course tones: every squared log in a wall picks one by
-     * world hash, so a facade reads as stacked individual timbers — the
-     * variation is subtle enough that the wall stays one material.
-     */
-    private static readonly WOOD_COURSE_TONES;
     /** The stone plinth every timber wall stands on. */
     private static readonly PLINTH_COL;
     private collectRaisedTiles;

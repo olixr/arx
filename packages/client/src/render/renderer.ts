@@ -1550,12 +1550,6 @@ export class Renderer {
   private static readonly WALL_TILES = new Set<number>(WALL_RUN_TILES);
   /** What stops lamplight — shared law (tiles.ts). */
   private static readonly LIGHT_BLOCKERS = new Set<number>(LIGHT_BLOCKING_TILES);
-  /**
-   * Hewn-timber course tones: every squared log in a wall picks one by
-   * world hash, so a facade reads as stacked individual timbers — the
-   * variation is subtle enough that the wall stays one material.
-   */
-  private static readonly WOOD_COURSE_TONES = ['#5e3f1e', '#644323', '#583a1b', '#67471f', '#5b3d20'];
   /** The stone plinth every timber wall stands on. */
   private static readonly PLINTH_COL = '#6e6779';
 
@@ -1710,7 +1704,7 @@ export class Renderer {
         // than its own side.
         const flankDetail = (xa: number, txa: number): void => {
           if (mat !== Tile.WallWood) return;
-          const f0 = Math.min(0.9, 0.26 / whT);
+          const f0 = Math.min(0.9, 0.22 / whT);
           const xf0 = xa + (txa - xa) * f0;
           ctx.fillStyle = shade(Renderer.PLINTH_COL, -12);
           ctx.beginPath();
@@ -1721,7 +1715,7 @@ export class Renderer {
           ctx.closePath();
           ctx.fill();
           ctx.fillStyle = 'rgba(26, 15, 7, 0.35)';
-          for (let f = (0.26 + 0.365) / whT; f < 1 - 0.12 / whT; f += 0.365 / whT) {
+          for (let f = (0.22 + 0.3) / whT; f < 1 - 0.11 / whT; f += 0.3 / whT) {
             const xf = xa + (txa - xa) * f;
             ctx.fillRect(xf - s * 0.015, p.y - hs * f, Math.max(1, s * 0.03), yBase - p.y);
           }
@@ -1796,86 +1790,92 @@ export class Renderer {
             ctx.clip(guard, 'evenodd');
           }
           if (mat === Tile.WallWood) {
-            // SQUARED-LOG COURSES: the wall is a stack of big hewn
-            // timbers on a stone plinth, capped by a wall plate.
-            // Course heights are ABSOLUTE (a 2-story facade lays more
-            // timbers, it doesn't stretch them) and run edge-to-edge,
-            // so a whole wall run reads as continuous logs whose butt
-            // joints stagger tile to tile. Depth is flat-vector law:
-            // one lit lip and one shadow seam per timber, no gradients.
-            const plinthH = s * 0.26;
-            const plateH = s * 0.14;
-            const courseH = s * 0.365;
-            // Stone plinth: the masonry foundation the timber sits on.
+            // STACKED-LOG WALL: full-width logs, one per course, and
+            // NO vertical joints — masonry breaks into blocks; wood
+            // runs in long unbroken lines. Each log is a cylinder in
+            // flat vector: a lit crown band, a shadowed belly, one
+            // dark groove where it beds on the log below. The tone is
+            // ONE warm timber with a whisper of alternation — a log
+            // wall is cut from one forest, not quarried in blocks.
+            const plinthH = s * 0.22;
+            const plateH = s * 0.13;
+            const logH = s * 0.3;
+            // Stone plinth: the foundation the log stack sits on.
             ctx.fillStyle = Renderer.PLINTH_COL;
             ctx.fillRect(x0, -plinthH, x1 - x0, plinthH);
             ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.fillRect(x0, -plinthH, x1 - x0, s * 0.035);
+            ctx.fillRect(x0, -plinthH, x1 - x0, s * 0.03);
             ctx.fillStyle = 'rgba(20, 14, 28, 0.35)';
             for (let k = 0; k < 2; k++) {
               const hj = hashCoords(211 + k, tx, ty);
               ctx.fillRect(
                 p.x + s * (0.12 + (hj % 76) / 100),
-                -plinthH + s * 0.05,
+                -plinthH + s * 0.04,
                 Math.max(1, s * 0.03),
-                plinthH - s * 0.08,
+                plinthH - s * 0.07,
               );
             }
+            // Logs at ABSOLUTE height — a 2-story facade stacks more
+            // logs, it doesn't stretch them.
             const topY = -(hs - plateH);
-            let ci = 0;
-            for (let yc = -plinthH; yc > topY + 0.5; yc -= courseH, ci++) {
-              const yTopC = Math.max(yc - courseH, topY);
-              const tones = Renderer.WOOD_COURSE_TONES;
-              ctx.fillStyle = tones[(hashCoords(151, ci, ty) >>> 3) % tones.length]!;
-              ctx.fillRect(x0, yTopC, x1 - x0, yc - yTopC);
-              // The timber's depth read: lit top lip, shadowed bed seam.
-              ctx.fillStyle = 'rgba(255, 226, 180, 0.13)';
-              ctx.fillRect(x0, yTopC, x1 - x0, s * 0.04);
-              ctx.fillStyle = 'rgba(26, 15, 7, 0.4)';
-              ctx.fillRect(x0, yc - s * 0.035, x1 - x0, s * 0.035);
-              // One staggered butt joint per tile per course — long
-              // logs ending in different places, never a grid.
-              const hj = hashCoords(157 + ci, tx, ty);
-              const jx = p.x + s * (0.08 + (hj % 78) / 100);
-              ctx.fillStyle = 'rgba(24, 14, 6, 0.5)';
-              ctx.fillRect(jx, yTopC + s * 0.03, Math.max(1, s * 0.035), yc - yTopC - s * 0.065);
-              ctx.fillStyle = 'rgba(255, 226, 180, 0.09)';
-              ctx.fillRect(jx + s * 0.035, yTopC + s * 0.03, s * 0.05, yc - yTopC - s * 0.065);
-              // Sparse grain tick in the odd timber.
-              if ((hj & 7) === 3) {
-                ctx.fillStyle = 'rgba(26, 15, 7, 0.16)';
+            let li2 = 0;
+            for (let yb = -plinthH; yb > topY + 0.5; yb -= logH, li2++) {
+              const yt = Math.max(yb - logH, topY);
+              const h2 = yb - yt;
+              ctx.fillStyle = li2 % 2 === 0 ? '#6d4a25' : '#684627';
+              ctx.fillRect(x0, yt, x1 - x0, h2);
+              // The cylinder read: lit crown, shadowed belly, groove.
+              ctx.fillStyle = 'rgba(255, 214, 160, 0.16)';
+              ctx.fillRect(x0, yt + h2 * 0.08, x1 - x0, h2 * 0.3);
+              ctx.fillStyle = 'rgba(30, 18, 8, 0.28)';
+              ctx.fillRect(x0, yb - h2 * 0.24, x1 - x0, h2 * 0.24);
+              ctx.fillStyle = 'rgba(20, 12, 5, 0.5)';
+              ctx.fillRect(x0, yb - Math.max(1, s * 0.025), x1 - x0, Math.max(1, s * 0.025));
+              // A long grain streak in the odd log — wood, not paint.
+              const hg2 = hashCoords(157 + li2, tx, ty);
+              if ((hg2 & 3) === 1) {
+                ctx.fillStyle = 'rgba(46, 28, 12, 0.22)';
                 ctx.fillRect(
-                  p.x + (s * ((hj >>> 5) % 55)) / 100,
-                  (yTopC + yc) / 2,
-                  s * 0.3,
-                  Math.max(1, s * 0.025),
+                  p.x + (s * (hg2 % 40)) / 100,
+                  yt + h2 * 0.52,
+                  s * (0.35 + ((hg2 >>> 6) % 40) / 100),
+                  Math.max(1, s * 0.028),
                 );
               }
             }
-            // Wall plate: the lit beam the crown mass sits on, pegged.
-            ctx.fillStyle = shade(face, 24);
+            // Wall plate: the squared top log the crown sits on.
+            ctx.fillStyle = shade(face, 22);
             ctx.fillRect(x0, -hs, x1 - x0, plateH);
             ctx.fillStyle = 'rgba(26, 15, 7, 0.35)';
             ctx.fillRect(x0, -hs + plateH - s * 0.03, x1 - x0, s * 0.03);
-            const hp = hashCoords(163, tx, ty);
-            ctx.fillStyle = 'rgba(40, 24, 10, 0.5)';
-            ctx.fillRect(p.x + s * (0.2 + (hp % 60) / 100), -hs + plateH * 0.28, s * 0.045, plateH * 0.45);
-            // Corner posts close exposed run ends — a wall end looks
-            // BUILT (a standing timber), never sliced-off paint.
-            const postW = s * 0.17;
-            for (const [open, px0, inner] of [
-              [!w, x0, x0 + postW - s * 0.03],
-              [!e, x1 - postW, x1 - postW],
+            // CROSSED-CORNER LOG ENDS: at an exposed run end the
+            // crossing wall's logs show their sawn faces — a stack of
+            // end-grain discs, alternating proud and shy, the one
+            // silhouette that reads "log-built" from across a meadow.
+            for (const [open, ex] of [
+              [!w, x0 + s * 0.09],
+              [!e, x1 - s * 0.09],
             ] as const) {
               if (!open) continue;
-              ctx.fillStyle = shade(face, -9);
-              ctx.fillRect(px0, -hs, postW, hs - plinthH);
-              ctx.fillStyle = shade(face, 15);
-              ctx.fillRect(inner, -hs, s * 0.03, hs - plinthH);
-              ctx.fillStyle = 'rgba(40, 24, 10, 0.5)';
-              const pcx = px0 + postW / 2 - s * 0.025;
-              ctx.fillRect(pcx, -hs + s * 0.3, s * 0.05, s * 0.05);
-              ctx.fillRect(pcx, -plinthH - s * 0.34, s * 0.05, s * 0.05);
+              let li3 = 0;
+              for (let yb = -plinthH; yb > topY + 0.5; yb -= logH, li3++) {
+                const yt = Math.max(yb - logH, topY);
+                if (yb - yt < logH * 0.55) break; // no sliver disc at the plate
+                const cy2 = (yt + yb) / 2;
+                const rr = logH * (li3 % 2 === 0 ? 0.62 : 0.52);
+                ctx.fillStyle = '#4c3315';
+                ctx.beginPath();
+                facetCircle(ctx, ex, cy2, rr, 8);
+                ctx.fill();
+                ctx.fillStyle = li3 % 2 === 0 ? '#96703c' : '#8a6234';
+                ctx.beginPath();
+                facetCircle(ctx, ex, cy2, rr * 0.68, 8);
+                ctx.fill();
+                ctx.fillStyle = 'rgba(74, 48, 22, 0.8)';
+                ctx.beginPath();
+                facetCircle(ctx, ex, cy2, rr * 0.26, 6);
+                ctx.fill();
+              }
             }
           } else {
             // Running-bond masonry: four mortar courses over the taller

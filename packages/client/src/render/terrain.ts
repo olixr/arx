@@ -1276,8 +1276,9 @@ function maskPolygon(
   }
 }
 
-/** Warm board tones — one per plank by world hash, never per-tile noise. */
-const PLANK_TONES = ['#a87e46', '#a0763f', '#b0864d', '#997039'];
+/** Warm board tones — one per plank by world hash, kept close: a laid
+ *  floor is one lumber order, not a patchwork. */
+const PLANK_TONES = ['#a87e46', '#a37842', '#ad834a', '#9f7440'];
 
 /**
  * RUNNING-BOND PLANK FLOOR: boards are big flat rectangles — three
@@ -1310,8 +1311,11 @@ function drawPlanks(
       const rowH = px / 3;
       for (let r = 0; r < 3; r++) {
         const row = ty * 3 + r;
-        const off = ((row % 2) + 2) % 2; // running bond: odd courses shift one tile
-        const pid = Math.floor((tx + off) / 2);
+        // Boards run three tiles, each course shifted one tile from
+        // the last — joints stagger diagonally like laid floorboards,
+        // never the half-brick bond of masonry.
+        const off = ((row % 3) + 3) % 3;
+        const pid = Math.floor((tx + off) / 3);
         const y0 = gy + r * rowH;
         const h1 = hashCoords(217, pid, row);
         ctx.fillStyle = PLANK_TONES[(h1 >>> 2) % PLANK_TONES.length]!;
@@ -1323,7 +1327,7 @@ function drawPlanks(
         ctx.fillRect(gx, y0 + rowH - Math.max(1, px * 0.03), px, Math.max(1, px * 0.03));
         // The tile that starts a board owns its butt joint; a hashed
         // nudge keeps ends hand-laid, never gridded.
-        if ((((tx + off) % 2) + 2) % 2 === 0) {
+        if ((((tx + off) % 3) + 3) % 3 === 0) {
           const jx = gx + ((hashCoords(223, tx, row) % 14) / 100) * px;
           ctx.fillStyle = 'rgba(50, 34, 18, 0.55)';
           ctx.fillRect(jx, y0, jointW, rowH);
