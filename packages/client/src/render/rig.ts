@@ -630,11 +630,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         hx += wSide * 0.04 * s * wS;
         hy = armY + 0.12 * s;
       } else {
-        // Standard carry: blade angled down-FORWARD off the leg so the
-        // guard and taper read as a sword, easing back toward vertical
-        // as the run trails it.
-        hAngle = Math.PI / 2 - wSide * (0.32 - 0.18 * runK);
-        hx += wSide * 0.05 * s * wS;
+        // Standard carry: at rest the blade angles down-FORWARD off
+        // the leg so the guard and taper read as a sword; as the gait
+        // becomes a run the whole blade swings UP into the ready carry
+        // — point up-forward, clear of the body — the way a sword is
+        // actually run with. Blended on the gait itself so a jog only
+        // half-raises it.
+        const lift = runK * runK * (3 - 2 * runK);
+        hAngle = Math.PI / 2 - wSide * (0.32 + lift * (Math.PI / 2 + 0.18));
+        hx += wSide * (0.05 + 0.04 * lift) * s * wS;
+        hy = armY + (0.17 - 0.05 * lift) * s;
       }
     }
     if (isStaff) {
