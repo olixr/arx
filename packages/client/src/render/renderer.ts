@@ -67,10 +67,18 @@ const CONTACT_MAX = 0.3;
  * buys true walk-behind occlusion: a wall or canopy south of you draws
  * over you, one north of you slides behind.
  */
-const WALL_H = 1.15; // wall extrusion height, in tiles
+/**
+ * Wall extrusion height, in tiles. SCALE ANCHOR: the character rig
+ * crowns at ~1.15 tiles, so a story wall at 2.05 reads ~1.8x the
+ * player — real architecture you walk INTO, not a dollhouse parapet.
+ * Doorway openings, window sills, and every prop's height key off the
+ * body, and the body keys off this ratio.
+ */
+const WALL_H = 2.05;
 /**
  * Height of ONE terrain elevation level, in tiles of screen rise.
- * Taller than a wall on purpose: cliffs are landforms, not masonry.
+ * Deliberately shorter than a story wall: a cliff STEP is a landform
+ * increment (levels stack to any height), masonry is a built story.
  * Everything derives from this one number — lifted ground bands, cliff
  * faces, stair treads, and the rise of anything standing up there.
  */
@@ -1076,7 +1084,16 @@ export class Renderer {
         } else if (tile === Tile.LampPost) {
           const flick = 0.92 + Math.sin(t * 9 + tx * 2.3 + ty) * 0.05 + Math.sin(t * 17 + ty * 1.7) * 0.03;
           if (flame > 0.05) {
-            this.glows.push({ x: tx + 0.5, y: ty + 0.18, r: 1.3 * flick, rgb: '255, 205, 130', a: 0.28 * flame * flick });
+            // The bloom rides the lantern cage, not the post's foot —
+            // world-y offset divides the camera squash back out so the
+            // glow lands on the raised fixture (the projAir law).
+            this.glows.push({
+              x: tx + 0.5,
+              y: ty + 0.62 - 1.4 / this.camera.yScale,
+              r: 1.3 * flick,
+              rgb: '255, 205, 130',
+              a: 0.28 * flame * flick,
+            });
             this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 5 * flick, rgb: [255, 205, 135], intensity: 0.9 * flame * flick, occlude: true });
           }
         }
@@ -1603,6 +1620,8 @@ export class Renderer {
           ctx.translate(0, yBase);
           ctx.transform(1, 0, skew, 1, 0, 0);
           if (mat === Tile.WallWood) {
+            // Timber framing: plank verticals, a waist girt, and a
+            // darker sill course at the foot — a built wall, not paint.
             ctx.strokeStyle = 'rgba(36, 22, 10, 0.4)';
             ctx.lineWidth = Math.max(1, s * 0.035);
             for (const fx of [0.3, 0.62]) {
@@ -1611,37 +1630,51 @@ export class Renderer {
               ctx.lineTo(p.x + s * fx, 0);
               ctx.stroke();
             }
+            ctx.fillStyle = 'rgba(36, 22, 10, 0.28)';
+            ctx.fillRect(p.x, -hs * 0.52, s, s * 0.045);
+            ctx.fillStyle = 'rgba(20, 12, 6, 0.22)';
+            ctx.fillRect(p.x, -hs * 0.13, s, hs * 0.13);
           } else {
-            // Running-bond masonry: two mortar rows, joints alternating.
+            // Running-bond masonry: four mortar courses over the taller
+            // face, joints alternating band to band, and a heavier
+            // foundation course at the base.
             ctx.strokeStyle = 'rgba(20, 14, 28, 0.35)';
             ctx.lineWidth = Math.max(1, s * 0.03);
-            for (const fy of [0.34, 0.67]) {
+            for (const fy of [0.19, 0.38, 0.57, 0.76]) {
               ctx.beginPath();
               ctx.moveTo(p.x, -hs * fy);
               ctx.lineTo(p.x + s, -hs * fy);
               ctx.stroke();
             }
             for (const [jx, ry0, ry1] of [
-              [0.5, 0, 0.34],
-              [0.25, 0.34, 0.67],
-              [0.75, 0.34, 0.67],
-              [0.5, 0.67, 1],
+              [0.5, 0, 0.19],
+              [0.25, 0.19, 0.38],
+              [0.75, 0.19, 0.38],
+              [0.5, 0.38, 0.57],
+              [0.25, 0.57, 0.76],
+              [0.75, 0.57, 0.76],
+              [0.5, 0.76, 0.97],
             ] as const) {
               ctx.beginPath();
               ctx.moveTo(p.x + s * jx, -hs * ry0);
               ctx.lineTo(p.x + s * jx, -hs * ry1);
               ctx.stroke();
             }
+            ctx.fillStyle = 'rgba(20, 12, 26, 0.2)';
+            ctx.fillRect(p.x, -hs * 0.1, s, hs * 0.1);
           }
           if (window) {
-            // The glazed opening: recessed reveal, chamfered pane —
-            // cold glass by day, warm lamplight after dark — a mullion
-            // cross, a shadowed lintel, and a lit sill.
-            const wx = p.x + s * 0.3;
-            const ww = s * 0.4;
-            const wy = -hs * 0.72;
-            const wh2 = hs * 0.38;
-            ctx.fillStyle = shade(face, -20);
+            // The glazed opening, set at the body's eye line: sill at
+            // ~0.9 tiles, head at ~1.6 — a window a person stands at.
+            // Cold glass by day, warm lamplight after dark, a mullion
+            // cross, and material-true dressing: timber walls hang
+            // plank shutters, masonry beds a stone sill and lintel.
+            const wood2 = mat === Tile.WallWood;
+            const wx = p.x + s * 0.28;
+            const ww = s * 0.44;
+            const wy = -hs * 0.78;
+            const wh2 = hs * 0.34;
+            ctx.fillStyle = shade(face, -22);
             ctx.fillRect(wx - s * 0.035, wy - s * 0.035, ww + s * 0.07, wh2 + s * 0.07);
             const warm = this.sky.flame;
             ctx.fillStyle =
@@ -1649,14 +1682,45 @@ export class Renderer {
             ctx.beginPath();
             chamferRect(ctx, wx, wy, ww, wh2, s * 0.05);
             ctx.fill();
-            ctx.fillStyle = shade(face, -8);
-            ctx.fillRect(wx + ww / 2 - s * 0.02, wy, s * 0.04, wh2);
-            ctx.fillRect(wx, wy + wh2 / 2 - s * 0.02, ww, s * 0.04);
-            // Lintel shadow above, sunlit sill below.
-            ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
-            ctx.fillRect(wx - s * 0.05, wy - s * 0.075, ww + s * 0.1, s * 0.04);
-            ctx.fillStyle = shade(face, 20);
-            ctx.fillRect(wx - s * 0.06, wy + wh2 + s * 0.035, ww + s * 0.12, s * 0.055);
+            // Daylight catches the upper panes; the room falls dark
+            // toward the sill — glass with depth behind it.
+            if (warm <= 0.05) {
+              ctx.fillStyle = 'rgba(178, 196, 226, 0.35)';
+              ctx.beginPath();
+              ctx.moveTo(wx + s * 0.03, wy + s * 0.03);
+              ctx.lineTo(wx + ww * 0.55, wy + s * 0.03);
+              ctx.lineTo(wx + s * 0.03, wy + wh2 * 0.6);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // Mullion cross.
+            ctx.fillStyle = wood2 ? '#4a3016' : shade(face, -8);
+            ctx.fillRect(wx + ww / 2 - s * 0.022, wy, s * 0.044, wh2);
+            ctx.fillRect(wx, wy + wh2 * 0.46 - s * 0.02, ww, s * 0.04);
+            if (wood2) {
+              // Plank shutters pinned open against the wall.
+              for (const shx of [wx - s * 0.15, wx + ww + s * 0.03]) {
+                ctx.fillStyle = '#4a3016';
+                ctx.beginPath();
+                chamferRect(ctx, shx, wy - s * 0.02, s * 0.12, wh2 + s * 0.04, s * 0.02);
+                ctx.fill();
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+                ctx.fillRect(shx + s * 0.045, wy + s * 0.02, s * 0.025, wh2 - s * 0.04);
+              }
+              // Timber lintel + sill boards.
+              ctx.fillStyle = '#6a4a24';
+              ctx.fillRect(wx - s * 0.18, wy - s * 0.085, ww + s * 0.36, s * 0.055);
+              ctx.fillStyle = shade('#6a4a24', 18);
+              ctx.fillRect(wx - s * 0.18, wy + wh2 + s * 0.035, ww + s * 0.36, s * 0.06);
+            } else {
+              // Dressed stone: shadowed lintel block, lit sill course.
+              ctx.fillStyle = shade(face, -14);
+              ctx.fillRect(wx - s * 0.09, wy - s * 0.1, ww + s * 0.18, s * 0.07);
+              ctx.fillStyle = shade(face, 22);
+              ctx.fillRect(wx - s * 0.1, wy + wh2 + s * 0.035, ww + s * 0.2, s * 0.065);
+              ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+              ctx.fillRect(wx - s * 0.1, wy + wh2 + s * 0.1, ww + s * 0.2, s * 0.03);
+            }
           }
           // Ambient-occlusion seam where the face meets the ground.
           ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
@@ -1755,13 +1819,15 @@ export class Renderer {
           ctx.fillStyle = `rgba(14, 10, 22, ${0.5 * veil})`;
           ctx.fillRect(x0 + jw, -hs, x1 - x0 - jw * 2, hs);
         }
-        // Header beam across the top of the opening.
-        const hh = hs * 0.38;
+        // Header across the top: the opening below it clears ~1.56
+        // tiles — the body walks UNDER the frame with real headroom.
+        const hh = hs * 0.24;
         ctx.fillStyle = face;
         ctx.fillRect(x0, -hs, x1 - x0, hh);
         if (stone) {
+          // 45° haunches and a proud keystone — the brutalist arch.
           const hy = -hs + hh;
-          const cut = s * 0.16;
+          const cut = s * 0.2;
           for (const [jx, dir] of [
             [x0 + jw, 1],
             [x1 - jw, -1],
@@ -1773,17 +1839,36 @@ export class Renderer {
             ctx.closePath();
             ctx.fill();
           }
+          ctx.fillStyle = shade(face, 12);
+          ctx.beginPath();
+          ctx.moveTo(p.x + s * 0.38, -hs + hh + s * 0.02);
+          ctx.lineTo(p.x + s * 0.62, -hs + hh + s * 0.02);
+          ctx.lineTo(p.x + s * 0.57, -hs + s * 0.02);
+          ctx.lineTo(p.x + s * 0.43, -hs + s * 0.02);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          // A visible timber lintel beam with end grain.
+          ctx.fillStyle = shade(face, 10);
+          ctx.fillRect(x0 + s * 0.02, -hs + hh - s * 0.075, x1 - x0 - s * 0.04, s * 0.075);
+          ctx.fillStyle = 'rgba(36, 22, 10, 0.4)';
+          ctx.fillRect(x0 + jw + s * 0.02, -hs + hh * 0.45, s * 0.03, hh * 0.35);
+          ctx.fillRect(x1 - jw - s * 0.05, -hs + hh * 0.45, s * 0.03, hh * 0.35);
         }
         // Underside shadow grounds the header over the opening.
         ctx.fillStyle = 'rgba(18, 12, 26, 0.35)';
-        ctx.fillRect(x0 + jw, -hs + hh, x1 - x0 - jw * 2, s * 0.045);
-        // Jambs: full-height posts with lit inner edges.
+        ctx.fillRect(x0 + jw, -hs + hh, x1 - x0 - jw * 2, s * 0.05);
+        // Jambs: full-height posts with lit inner edges and base
+        // plinth blocks that root the frame to the ground.
         ctx.fillStyle = face;
         ctx.fillRect(x0, -hs, jw, hs);
         ctx.fillRect(x1 - jw, -hs, jw, hs);
         ctx.fillStyle = shade(face, 14);
-        ctx.fillRect(x0 + jw - s * 0.035, -hs * 0.62, s * 0.035, hs * 0.62);
-        ctx.fillRect(x1 - jw, -hs * 0.62, s * 0.035, hs * 0.62);
+        ctx.fillRect(x0 + jw - s * 0.035, -hs * 0.72, s * 0.035, hs * 0.72);
+        ctx.fillRect(x1 - jw, -hs * 0.72, s * 0.035, hs * 0.72);
+        ctx.fillStyle = shade(face, -10);
+        ctx.fillRect(x0 - s * 0.015, -hs * 0.12, jw + s * 0.03, hs * 0.12);
+        ctx.fillRect(x1 - jw - s * 0.015, -hs * 0.12, jw + s * 0.03, hs * 0.12);
         // Threshold: a worn step across the opening.
         ctx.fillStyle = shade(face, stone ? 22 : 30);
         ctx.fillRect(x0 + jw, -s * 0.07, x1 - x0 - jw * 2, s * 0.07);
@@ -1837,37 +1922,37 @@ export class Renderer {
         ctx.save();
         ctx.translate(0, yBase);
         ctx.transform(1, 0, skew, 1, 0, 0);
-        // Lintel band spanning the tile (continuous through a run).
-        const hh = hs * 0.3;
+        // Lintel band spanning the tile (continuous through a run),
+        // with a course line so the entablature reads as laid stone.
+        const hh = hs * 0.26;
         ctx.fillStyle = face;
         ctx.fillRect(x0, -hs, x1 - x0, hh);
+        ctx.fillStyle = 'rgba(20, 14, 28, 0.3)';
+        ctx.fillRect(x0, -hs + hh * 0.5, x1 - x0, s * 0.03);
         ctx.fillStyle = 'rgba(18, 12, 26, 0.35)';
-        ctx.fillRect(x0 + (aw ? 0 : pw), -hs + hh, x1 - x0 - (aw ? 0 : pw) - (ae ? 0 : pw), s * 0.045);
-        // Piers at run ends only, with 45° haunches and capitals.
-        ctx.fillStyle = face;
-        if (!aw) {
-          ctx.fillRect(x0, -hs, pw, hs);
-          ctx.beginPath();
-          ctx.moveTo(x0 + pw, -hs + hh);
-          ctx.lineTo(x0 + pw + s * 0.14, -hs + hh);
-          ctx.lineTo(x0 + pw, -hs + hh + s * 0.14);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = shade(face, 16);
-          ctx.fillRect(x0, -hs + hh, pw + s * 0.03, s * 0.05);
+        ctx.fillRect(x0 + (aw ? 0 : pw), -hs + hh, x1 - x0 - (aw ? 0 : pw) - (ae ? 0 : pw), s * 0.05);
+        // Piers at run ends only: plinth-rooted, hauched, lit capital.
+        const pier = (px0: number, dir: 1 | -1): void => {
           ctx.fillStyle = face;
-        }
-        if (!ae) {
-          ctx.fillRect(x1 - pw, -hs, pw, hs);
+          ctx.fillRect(px0, -hs, pw, hs);
           ctx.beginPath();
-          ctx.moveTo(x1 - pw, -hs + hh);
-          ctx.lineTo(x1 - pw - s * 0.14, -hs + hh);
-          ctx.lineTo(x1 - pw, -hs + hh + s * 0.14);
+          const inner = dir > 0 ? px0 + pw : px0;
+          ctx.moveTo(inner, -hs + hh);
+          ctx.lineTo(inner + s * 0.18 * dir, -hs + hh);
+          ctx.lineTo(inner, -hs + hh + s * 0.18);
           ctx.closePath();
           ctx.fill();
+          // Capital + base plinth.
           ctx.fillStyle = shade(face, 16);
-          ctx.fillRect(x1 - pw - s * 0.03, -hs + hh, pw + s * 0.03, s * 0.05);
-        }
+          ctx.fillRect(px0 - s * 0.02, -hs + hh, pw + s * 0.04, s * 0.06);
+          ctx.fillStyle = shade(face, -10);
+          ctx.fillRect(px0 - s * 0.02, -hs * 0.12, pw + s * 0.04, hs * 0.12);
+          // A sunlit arris up the pier's west edge.
+          ctx.fillStyle = shade(face, 12);
+          ctx.fillRect(px0 + s * 0.015, -hs * 0.7, s * 0.035, hs * 0.58);
+        };
+        if (!aw) pier(x0, 1);
+        if (!ae) pier(x1 - pw, -1);
         ctx.restore();
         // Crown: the arch's own top slab.
         this.beginHeightLayer(WALL_H);
@@ -1893,47 +1978,85 @@ export class Renderer {
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const syT = s * this.camera.yScale;
-    const H = 0.95;
+    const H = 1.7;
     return {
       sortY: ty + 0.8,
       drawShadow: () => {
         const baseY = p.y + syT * 0.16;
-        this.castEdgeQuad(p.x - s * 0.15, baseY, p.x + s * 0.15, baseY, H);
+        this.castEdgeQuad(p.x - s * 0.17, baseY, p.x + s * 0.17, baseY, H);
       },
       draw: () => {
         const baseY = p.y + syT * 0.16;
         const topX = this.leanX(p.x, H);
         const topY = baseY - H * s;
-        // Plinth: a faceted stone foot.
+        // Contact shade roots the column to the pavement.
+        ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+        ctx.beginPath();
+        ctx.ellipse(p.x, baseY + s * 0.02, s * 0.26, s * 0.09, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Plinth: a two-step faceted stone foot.
         ctx.fillStyle = '#4f4a5c';
         ctx.beginPath();
-        facetCircle(ctx, p.x, baseY - s * 0.04, s * 0.2, 6, 0.25, 0.55);
+        facetCircle(ctx, p.x, baseY - s * 0.04, s * 0.24, 6, 0.25, 0.55);
         ctx.fill();
-        // Tapered shaft, leaning with the fake camera.
+        ctx.fillStyle = '#5d5768';
+        ctx.beginPath();
+        facetCircle(ctx, p.x, baseY - s * 0.1, s * 0.19, 6, 0.25, 0.55);
+        ctx.fill();
+        // Tapered shaft, leaning with the fake camera, with a banded
+        // drum joint like the masonry it stands among.
         ctx.fillStyle = '#6f697c';
         ctx.beginPath();
-        ctx.moveTo(p.x - s * 0.13, baseY - s * 0.06);
-        ctx.lineTo(p.x + s * 0.13, baseY - s * 0.06);
-        ctx.lineTo(topX + s * 0.1, topY + s * 0.14);
-        ctx.lineTo(topX - s * 0.1, topY + s * 0.14);
+        ctx.moveTo(p.x - s * 0.15, baseY - s * 0.1);
+        ctx.lineTo(p.x + s * 0.15, baseY - s * 0.1);
+        ctx.lineTo(topX + s * 0.11, topY + s * 0.16);
+        ctx.lineTo(topX - s * 0.11, topY + s * 0.16);
         ctx.closePath();
         ctx.fill();
-        // Sunlit western arris keeps the shaft round-read.
+        ctx.strokeStyle = 'rgba(20, 14, 28, 0.28)';
+        ctx.lineWidth = Math.max(1, s * 0.03);
+        for (const f of [0.38, 0.68]) {
+          const jy = baseY - s * 0.1 + (topY + s * 0.16 - (baseY - s * 0.1)) * f;
+          const jx = p.x + (topX - p.x) * f;
+          const jw2 = s * (0.15 - 0.04 * f);
+          ctx.beginPath();
+          ctx.moveTo(jx - jw2, jy);
+          ctx.lineTo(jx + jw2, jy);
+          ctx.stroke();
+        }
+        // Sunlit western arris keeps the shaft round-read; the east
+        // side falls into shade.
         ctx.fillStyle = shade('#6f697c', 14);
         ctx.beginPath();
-        ctx.moveTo(p.x - s * 0.13, baseY - s * 0.06);
-        ctx.lineTo(p.x - s * 0.075, baseY - s * 0.06);
-        ctx.lineTo(topX - s * 0.055, topY + s * 0.14);
-        ctx.lineTo(topX - s * 0.1, topY + s * 0.14);
+        ctx.moveTo(p.x - s * 0.15, baseY - s * 0.1);
+        ctx.lineTo(p.x - s * 0.09, baseY - s * 0.1);
+        ctx.lineTo(topX - s * 0.065, topY + s * 0.16);
+        ctx.lineTo(topX - s * 0.11, topY + s * 0.16);
         ctx.closePath();
         ctx.fill();
-        // Capital: chamfered slab with a lit lip.
+        ctx.fillStyle = shade('#6f697c', -10);
+        ctx.beginPath();
+        ctx.moveTo(p.x + s * 0.1, baseY - s * 0.1);
+        ctx.lineTo(p.x + s * 0.15, baseY - s * 0.1);
+        ctx.lineTo(topX + s * 0.11, topY + s * 0.16);
+        ctx.lineTo(topX + s * 0.07, topY + s * 0.16);
+        ctx.closePath();
+        ctx.fill();
+        // Capital: abacus over an echinus flare, both lit.
+        ctx.fillStyle = '#7f7990';
+        ctx.beginPath();
+        ctx.moveTo(topX - s * 0.12, topY + s * 0.16);
+        ctx.lineTo(topX + s * 0.12, topY + s * 0.16);
+        ctx.lineTo(topX + s * 0.16, topY + s * 0.06);
+        ctx.lineTo(topX - s * 0.16, topY + s * 0.06);
+        ctx.closePath();
+        ctx.fill();
         ctx.fillStyle = '#8c8798';
         ctx.beginPath();
-        chamferRect(ctx, topX - s * 0.17, topY, s * 0.34, s * 0.15, s * 0.045);
+        chamferRect(ctx, topX - s * 0.19, topY - s * 0.06, s * 0.38, s * 0.12, s * 0.03);
         ctx.fill();
         ctx.fillStyle = shade('#8c8798', 16);
-        ctx.fillRect(topX - s * 0.14, topY + s * 0.015, s * 0.28, s * 0.045);
+        ctx.fillRect(topX - s * 0.16, topY - s * 0.045, s * 0.32, s * 0.04);
       },
     };
   }
@@ -1947,7 +2070,8 @@ export class Renderer {
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
-    const RAIL_H = 0.42;
+    // Hip height on the 1.15-tile body — a rail you'd rest a hand on.
+    const RAIL_H = 0.52;
     const isRail = (t: number | undefined) => t === Tile.RailWood;
     const rn = isRail(game.world.groundAt(tx, ty - 1));
     const re = isRail(game.world.groundAt(tx + 1, ty));
@@ -4116,7 +4240,7 @@ export class Renderer {
           sortY: ty + 0.8,
           drawShadow: () => {
             const baseY = p.y + syT * 0.12;
-            this.castEdgeQuad(p.x - s * 0.05, baseY, p.x + s * 0.05, baseY, 1.15);
+            this.castEdgeQuad(p.x - s * 0.05, baseY, p.x + s * 0.05, baseY, 1.55);
           },
           draw: () => {
             const baseY = p.y + syT * 0.12;
@@ -4131,12 +4255,12 @@ export class Renderer {
             ctx.beginPath();
             ctx.moveTo(p.x - s * 0.045, baseY);
             ctx.lineTo(p.x + s * 0.045, baseY);
-            ctx.lineTo(p.x + s * 0.03, baseY - s * 0.95);
-            ctx.lineTo(p.x - s * 0.03, baseY - s * 0.95);
+            ctx.lineTo(p.x + s * 0.03, baseY - s * 1.32);
+            ctx.lineTo(p.x - s * 0.03, baseY - s * 1.32);
             ctx.closePath();
             ctx.fill();
             // Lantern cage: chamfered glass box under a peaked cap.
-            const ly = baseY - s * 1.12;
+            const ly = baseY - s * 1.52;
             const flick = 0.92 + Math.sin(performance.now() / 90 + tx * 2.3) * 0.05;
             ctx.fillStyle = lit > 0.05 ? `rgba(255, 205, 130, ${(0.45 + 0.55 * lit) * flick})` : '#7d84a0';
             ctx.beginPath();
@@ -4167,7 +4291,11 @@ export class Renderer {
         // every fence/wall neighbor so runs read as continuous built
         // structure — never a row of disconnected pickets.
         const isF = (t2: number | undefined): boolean =>
-          t2 === Tile.Fence || t2 === Tile.WallWood || t2 === Tile.WallStone;
+          t2 === Tile.Fence ||
+          t2 === Tile.WallWood ||
+          t2 === Tile.WallStone ||
+          t2 === Tile.WallWoodWindow ||
+          t2 === Tile.WallStoneWindow;
         const cn = isF(game.world.groundAt(tx, ty - 1));
         const ce = isF(game.world.groundAt(tx + 1, ty));
         const cs = isF(game.world.groundAt(tx, ty + 1));
@@ -4223,14 +4351,20 @@ export class Renderer {
       case Tile.Barrel: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.18;
-        const wr = s * 0.24;
-        const bh = s * 0.52;
+        // Waist-high on the 1.15-tile body — a barrel you'd lean on.
+        const wr = s * 0.28;
+        const bh = s * 0.78;
         // Some barrels are rain butts — an open water top sells "used".
         const water = h % 3 === 0;
         return {
           sortY: ty + 0.7,
-          drawShadow: () => this.castBlob(p.x, baseY, 0.3, s * 0.2, h ^ 0x21),
+          drawShadow: () => this.castBlob(p.x, baseY, 0.34, s * 0.24, h ^ 0x21),
           draw: () => {
+            // Contact shade roots it to the floor.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.015, wr * 1.05, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
             // Coopered trunk: straight-cut bulge, brutalist not round.
             ctx.fillStyle = '#7a552e';
             ctx.beginPath();
@@ -4244,25 +4378,40 @@ export class Renderer {
             ctx.lineTo(p.x + wr * 0.8, baseY);
             ctx.closePath();
             ctx.fill();
-            // Stave seams + sunlit west edge.
+            // Stave seams; the west flank catches sun, the east falls
+            // into shade — a turned form, not a flat card.
             ctx.fillStyle = 'rgba(36, 22, 10, 0.35)';
-            ctx.fillRect(p.x - wr * 0.3, baseY - bh, s * 0.03, bh);
-            ctx.fillRect(p.x + wr * 0.35, baseY - bh, s * 0.03, bh);
+            ctx.fillRect(p.x - wr * 0.32, baseY - bh * 0.96, s * 0.03, bh * 0.94);
+            ctx.fillRect(p.x + wr * 0.34, baseY - bh * 0.96, s * 0.03, bh * 0.94);
             ctx.fillStyle = shade('#7a552e', 14);
-            ctx.fillRect(p.x - wr * 0.86, baseY - bh * 0.9, s * 0.05, bh * 0.8);
-            // Iron bands.
+            ctx.fillRect(p.x - wr * 0.88, baseY - bh * 0.92, s * 0.06, bh * 0.84);
+            ctx.fillStyle = shade('#7a552e', -12);
+            ctx.fillRect(p.x + wr * 0.8, baseY - bh * 0.92, s * 0.06, bh * 0.84);
+            // Iron bands, riveted, with a lit upper edge each.
             ctx.fillStyle = '#3a3444';
-            ctx.fillRect(p.x - wr * 0.97, baseY - bh * 0.36, wr * 1.94, s * 0.055);
-            ctx.fillRect(p.x - wr * 0.97, baseY - bh * 0.74, wr * 1.94, s * 0.055);
-            // Lid: lit rim, and open water for the rain butt.
+            ctx.fillRect(p.x - wr * 0.99, baseY - bh * 0.3, wr * 1.98, s * 0.06);
+            ctx.fillRect(p.x - wr * 0.99, baseY - bh * 0.76, wr * 1.98, s * 0.06);
+            ctx.fillStyle = '#565064';
+            ctx.fillRect(p.x - wr * 0.99, baseY - bh * 0.3, wr * 1.98, s * 0.02);
+            ctx.fillRect(p.x - wr * 0.99, baseY - bh * 0.76, wr * 1.98, s * 0.02);
+            // Lid: lit rim over a shaded inset, or standing water.
             ctx.fillStyle = '#94693a';
             ctx.beginPath();
-            facetCircle(ctx, p.x, baseY - bh, wr * 0.82, 6, 0.3, 0.55);
+            facetCircle(ctx, p.x, baseY - bh, wr * 0.84, 6, 0.3, 0.55);
             ctx.fill();
             if (water) {
-              ctx.fillStyle = '#4979b8';
+              ctx.fillStyle = '#3a629e';
               ctx.beginPath();
-              facetCircle(ctx, p.x, baseY - bh, wr * 0.6, 6, 0.3, 0.55);
+              facetCircle(ctx, p.x, baseY - bh, wr * 0.62, 6, 0.3, 0.55);
+              ctx.fill();
+              // A live glint drifts across the water.
+              const gx2 = p.x - wr * 0.3 + ((t * 0.2 + h * 0.13) % 1) * wr * 0.5;
+              ctx.fillStyle = 'rgba(214, 230, 255, 0.5)';
+              ctx.fillRect(gx2, baseY - bh - s * 0.01, s * 0.07, s * 0.02);
+            } else {
+              ctx.fillStyle = shade('#94693a', -10);
+              ctx.beginPath();
+              facetCircle(ctx, p.x, baseY - bh + s * 0.015, wr * 0.6, 6, 0.3, 0.55);
               ctx.fill();
             }
           },
@@ -4273,36 +4422,52 @@ export class Renderer {
       case Tile.CrateGoods: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.2;
-        const cw = s * 0.56;
-        const chh = s * 0.42;
+        // Knee-to-thigh height, shoulder-wide — cargo, not a hatbox.
+        const cw = s * 0.66;
+        const chh = s * 0.56;
         const goods = tile === Tile.CrateGoods;
         return {
           sortY: ty + 0.7,
           drawShadow: () => {
-            this.castEdgeQuad(p.x - cw / 2, baseY, p.x + cw / 2, baseY, 0.45);
+            this.castEdgeQuad(p.x - cw / 2, baseY, p.x + cw / 2, baseY, 0.55);
           },
           draw: () => {
-            // Front face with plank seams and a corner brace.
+            // Contact shade under the box edge.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+            ctx.fillRect(p.x - cw / 2 - s * 0.02, baseY - s * 0.015, cw + s * 0.04, s * 0.05);
+            // Front face: planks, corner posts, and a diagonal brace —
+            // built joinery, with shaded east edge and lit west.
             ctx.fillStyle = '#8a6534';
             ctx.fillRect(p.x - cw / 2, baseY - chh, cw, chh);
             ctx.fillStyle = 'rgba(36, 22, 10, 0.3)';
-            ctx.fillRect(p.x - cw / 2, baseY - chh * 0.55, cw, s * 0.03);
-            ctx.fillRect(p.x - cw * 0.08, baseY - chh, s * 0.03, chh);
-            ctx.fillStyle = shade('#8a6534', -10);
-            ctx.fillRect(p.x - cw / 2, baseY - chh, s * 0.045, chh);
-            ctx.fillRect(p.x + cw / 2 - s * 0.045, baseY - chh, s * 0.045, chh);
+            ctx.fillRect(p.x - cw / 2, baseY - chh * 0.62, cw, s * 0.03);
+            ctx.fillRect(p.x - cw / 2, baseY - chh * 0.28, cw, s * 0.03);
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(p.x - cw / 2, baseY - chh, cw, chh);
+            ctx.clip();
+            ctx.translate(p.x, baseY - chh / 2);
+            ctx.rotate(-0.5);
+            ctx.fillRect(-cw, -s * 0.02, cw * 2, s * 0.04);
+            ctx.restore();
+            ctx.fillStyle = shade('#8a6534', 10);
+            ctx.fillRect(p.x - cw / 2, baseY - chh, s * 0.055, chh);
+            ctx.fillStyle = shade('#8a6534', -12);
+            ctx.fillRect(p.x + cw / 2 - s * 0.055, baseY - chh, s * 0.055, chh);
             // Top: lit lid slab.
             ctx.fillStyle = '#a5793f';
             ctx.beginPath();
-            chamferRect(ctx, p.x - cw / 2 - s * 0.02, baseY - chh - syT * 0.3, cw + s * 0.04, syT * 0.3, s * 0.03);
+            chamferRect(ctx, p.x - cw / 2 - s * 0.02, baseY - chh - syT * 0.32, cw + s * 0.04, syT * 0.32, s * 0.03);
             ctx.fill();
+            ctx.fillStyle = shade('#a5793f', 14);
+            ctx.fillRect(p.x - cw / 2, baseY - chh - s * 0.035, cw, s * 0.035);
             if (goods) {
               // Market produce heaped over the rim.
               const carrots = h % 2 === 0;
-              for (let k = 0; k < 5; k++) {
+              for (let k = 0; k < 6; k++) {
                 const hh = hashCoords(53 + k, tx, ty);
-                const ox = p.x + ((hh % 100) / 100 - 0.5) * cw * 0.7;
-                const oy = baseY - chh - syT * 0.16 - ((hh >> 7) % 40) / 100 * s * 0.1;
+                const ox = p.x + ((hh % 100) / 100 - 0.5) * cw * 0.72;
+                const oy = baseY - chh - syT * 0.2 - ((hh >> 7) % 40) / 100 * s * 0.12;
                 if (carrots) {
                   ctx.fillStyle = hh & 1 ? '#d9772e' : '#c96a28';
                   ctx.beginPath();
@@ -4337,7 +4502,8 @@ export class Renderer {
         const je = isRun(game.world.groundAt(tx + 1, ty));
         const js = isRun(game.world.groundAt(tx, ty + 1));
         const jw = isRun(game.world.groundAt(tx - 1, ty));
-        const th = counter ? s * 0.6 : s * 0.44;
+        // Counters meet the body at the waist; tables just below it.
+        const th = counter ? s * 0.82 : s * 0.52;
         const topC = counter ? '#94693a' : '#a5793f';
         const legC = counter ? '#6f4d26' : '#7a552e';
         // The slab reaches to the tile edge on joined sides so runs
@@ -4410,7 +4576,8 @@ export class Renderer {
         const isRun = (t2: number | undefined) => t2 === Tile.Bench;
         const je = isRun(game.world.groundAt(tx + 1, ty));
         const jw = isRun(game.world.groundAt(tx - 1, ty));
-        const th = s * 0.3;
+        // Knee height — a seat, not a curb.
+        const th = s * 0.38;
         const xL = p.x - s * 0.5 + (jw ? -0.5 : s * 0.12);
         const xR = p.x + s * 0.5 + (je ? 0.5 : -s * 0.12);
         const yB = p.y + syT * 0.22;
@@ -4451,12 +4618,19 @@ export class Renderer {
                 ? 'e'
                 : 'n';
         const baseY = p.y + syT * 0.2;
-        const sw = s * 0.34;
-        const sh = s * 0.26;
-        const bhh = s * 0.56;
+        // Seat at the knee, back to the shoulder blades.
+        const sw = s * 0.4;
+        const sh = s * 0.36;
+        const bhh = s * 0.82;
         return {
           sortY: ty + 0.68,
+          drawShadow: () => this.castEdgeQuad(p.x - sw / 2, baseY, p.x + sw / 2, baseY, 0.5),
           draw: () => {
+            // Contact shade under the legs.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, sw * 0.62, s * 0.06, 0, 0, Math.PI * 2);
+            ctx.fill();
             // Back board first when it faces north (behind the seat).
             const backBoard = (bx: number, by: number, w2: number, h2: number) => {
               ctx.fillStyle = '#6f4d26';
@@ -4493,13 +4667,18 @@ export class Renderer {
           sortY: ty + 0.72,
           drawShadow: () => this.castEdgeQuad(x0, yBot, x1, yBot, 0.3),
           draw: () => {
-            // Headboard: a tall board at the north end.
+            // Contact shade along the frame's foot.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.fillRect(x0 - s * 0.05, yBot + s * 0.12, x1 - x0 + s * 0.1, s * 0.05);
+            // Headboard: a tall paneled board at the north end.
             ctx.fillStyle = '#6f4d26';
             ctx.beginPath();
-            chamferRect(ctx, x0 - s * 0.03, yTop - s * 0.42, x1 - x0 + s * 0.06, s * 0.42, [s * 0.05, s * 0.05, 0, 0]);
+            chamferRect(ctx, x0 - s * 0.03, yTop - s * 0.62, x1 - x0 + s * 0.06, s * 0.62, [s * 0.06, s * 0.06, 0, 0]);
             ctx.fill();
             ctx.fillStyle = shade('#6f4d26', 12);
-            ctx.fillRect(x0, yTop - s * 0.4, x1 - x0, s * 0.05);
+            ctx.fillRect(x0, yTop - s * 0.59, x1 - x0, s * 0.05);
+            ctx.fillStyle = 'rgba(36, 22, 10, 0.3)';
+            ctx.fillRect(p.x - s * 0.02, yTop - s * 0.52, s * 0.04, s * 0.4);
             // Frame + mattress plane.
             ctx.fillStyle = '#7a552e';
             ctx.fillRect(x0 - s * 0.03, yTop, x1 - x0 + s * 0.06, yBot - yTop + s * 0.12);
@@ -4531,33 +4710,54 @@ export class Renderer {
         const shelf = tile === Tile.Bookshelf;
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.22;
-        const uw = s * 0.72;
-        const uh = shelf ? s * 1.2 : s * 0.72;
+        // A bookcase stands OVER the body; a cabinet meets its chest.
+        const uw = shelf ? s * 0.8 : s * 0.74;
+        const uh = shelf ? s * 1.65 : s * 0.95;
         const frame = shelf ? '#5e3f1e' : '#6f4d26';
         return {
           sortY: ty + 0.72,
-          drawShadow: () => this.castEdgeQuad(p.x - uw / 2, baseY, p.x + uw / 2, baseY, shelf ? 1.1 : 0.7),
+          drawShadow: () => this.castEdgeQuad(p.x - uw / 2, baseY, p.x + uw / 2, baseY, shelf ? 1.55 : 0.9),
           draw: () => {
+            // Contact shade at the plinth.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+            ctx.fillRect(p.x - uw / 2 - s * 0.02, baseY - s * 0.015, uw + s * 0.04, s * 0.05);
             ctx.fillStyle = frame;
             ctx.beginPath();
             chamferRect(ctx, p.x - uw / 2, baseY - uh, uw, uh, [s * 0.04, s * 0.04, 0, 0]);
             ctx.fill();
+            // Lit west stile, shaded east stile — casework depth.
+            ctx.fillStyle = shade(frame, 10);
+            ctx.fillRect(p.x - uw / 2 + s * 0.015, baseY - uh + s * 0.04, s * 0.04, uh - s * 0.08);
+            ctx.fillStyle = shade(frame, -12);
+            ctx.fillRect(p.x + uw / 2 - s * 0.055, baseY - uh + s * 0.04, s * 0.04, uh - s * 0.08);
             if (shelf) {
-              // Three cavities of hand-bound spines.
+              // Four cavities of hand-bound spines, some leaning.
               const SPINES = ['#a8433a', '#31589c', '#4d6b3c', '#c9962e', '#7a3f8f', '#996242'];
-              for (let row = 0; row < 3; row++) {
-                const cy0 = baseY - uh + s * (0.1 + row * 0.37);
+              for (let row = 0; row < 4; row++) {
+                const cy0 = baseY - uh + s * (0.1 + row * 0.38);
                 ctx.fillStyle = '#2c2030';
-                ctx.fillRect(p.x - uw / 2 + s * 0.06, cy0, uw - s * 0.12, s * 0.3);
-                let bx = p.x - uw / 2 + s * 0.08;
-                for (let k = 0; bx < p.x + uw / 2 - s * 0.12; k++) {
+                ctx.fillRect(p.x - uw / 2 + s * 0.07, cy0, uw - s * 0.14, s * 0.31);
+                let bx = p.x - uw / 2 + s * 0.09;
+                for (let k = 0; bx < p.x + uw / 2 - s * 0.13; k++) {
                   const hh = hashCoords(59 + row * 7 + k, tx, ty);
                   const bw2 = s * (0.06 + (hh % 3) * 0.02);
-                  const bh2 = s * (0.24 + ((hh >> 4) % 3) * 0.02);
+                  const bh2 = s * (0.24 + ((hh >> 4) % 3) * 0.025);
                   ctx.fillStyle = SPINES[hh % SPINES.length]!;
-                  ctx.fillRect(bx, cy0 + s * 0.3 - bh2, bw2, bh2);
+                  if ((hh & 7) === 0) {
+                    // The odd leaning volume breaks the soldier row.
+                    ctx.save();
+                    ctx.translate(bx + bw2 / 2, cy0 + s * 0.31);
+                    ctx.rotate(0.16);
+                    ctx.fillRect(-bw2 / 2, -bh2, bw2, bh2);
+                    ctx.restore();
+                  } else {
+                    ctx.fillRect(bx, cy0 + s * 0.31 - bh2, bw2, bh2);
+                  }
                   bx += bw2 + s * 0.015;
                 }
+                // Shelf-lip shadow under each row of books.
+                ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
+                ctx.fillRect(p.x - uw / 2 + s * 0.07, cy0 + s * 0.31, uw - s * 0.14, s * 0.025);
               }
             } else {
               // Two inset doors with turned knobs.
@@ -4578,62 +4778,101 @@ export class Renderer {
       case Tile.Hearth: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.24;
-        const hw = s * 0.86;
-        const hh2 = s * 1.0;
+        // A full chimney piece: firebox at the body, mantel at the
+        // shoulder, breast climbing past head height.
+        const hw = s * 0.95;
+        const hh2 = s * 1.7;
         return {
           sortY: ty + 0.75,
-          drawShadow: () => this.castEdgeQuad(p.x - hw / 2, baseY, p.x + hw / 2, baseY, 0.95),
+          drawShadow: () => this.castEdgeQuad(p.x - hw / 2, baseY, p.x + hw / 2, baseY, 1.6),
           draw: () => {
+            // Contact shade at the hearthstone.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+            ctx.fillRect(p.x - hw / 2 - s * 0.03, baseY - s * 0.01, hw + s * 0.06, s * 0.05);
             // Chimney breast tapers above the mantel.
             ctx.fillStyle = '#55505e';
             ctx.beginPath();
             ctx.moveTo(p.x - hw / 2, baseY);
-            ctx.lineTo(p.x - hw / 2, baseY - hh2 * 0.62);
-            ctx.lineTo(p.x - hw * 0.32, baseY - hh2 * 0.78);
-            ctx.lineTo(p.x - hw * 0.32, baseY - hh2);
-            ctx.lineTo(p.x + hw * 0.32, baseY - hh2);
-            ctx.lineTo(p.x + hw * 0.32, baseY - hh2 * 0.78);
-            ctx.lineTo(p.x + hw / 2, baseY - hh2 * 0.62);
+            ctx.lineTo(p.x - hw / 2, baseY - hh2 * 0.48);
+            ctx.lineTo(p.x - hw * 0.3, baseY - hh2 * 0.62);
+            ctx.lineTo(p.x - hw * 0.3, baseY - hh2);
+            ctx.lineTo(p.x + hw * 0.3, baseY - hh2);
+            ctx.lineTo(p.x + hw * 0.3, baseY - hh2 * 0.62);
+            ctx.lineTo(p.x + hw / 2, baseY - hh2 * 0.48);
             ctx.lineTo(p.x + hw / 2, baseY);
             ctx.closePath();
             ctx.fill();
-            // Mortar courses.
+            // Flue shading: the stack's east side turns from the sun.
+            ctx.fillStyle = shade('#55505e', -10);
+            ctx.fillRect(p.x + hw * 0.19, baseY - hh2, hw * 0.11, hh2 * 0.38);
+            ctx.fillStyle = shade('#55505e', 10);
+            ctx.fillRect(p.x - hw * 0.3, baseY - hh2, hw * 0.09, hh2 * 0.38);
+            // Mortar courses on breast and stack.
             ctx.fillStyle = 'rgba(20, 14, 28, 0.3)';
-            ctx.fillRect(p.x - hw / 2, baseY - hh2 * 0.4, hw, s * 0.03);
-            ctx.fillRect(p.x - hw * 0.32, baseY - hh2 * 0.88, hw * 0.64, s * 0.03);
-            // Mantel shelf.
+            ctx.fillRect(p.x - hw / 2, baseY - hh2 * 0.3, hw, s * 0.03);
+            ctx.fillRect(p.x - hw * 0.3, baseY - hh2 * 0.74, hw * 0.6, s * 0.03);
+            ctx.fillRect(p.x - hw * 0.3, baseY - hh2 * 0.88, hw * 0.6, s * 0.03);
+            // Crown lip on the stack.
+            ctx.fillStyle = shade('#55505e', 16);
+            ctx.fillRect(p.x - hw * 0.33, baseY - hh2, hw * 0.66, s * 0.06);
+            // Mantel shelf at the shoulder line.
             ctx.fillStyle = shade('#55505e', 18);
-            ctx.fillRect(p.x - hw / 2 - s * 0.04, baseY - hh2 * 0.62, hw + s * 0.08, s * 0.07);
-            // Firebox: dark mouth with 45-degree shoulders.
+            ctx.fillRect(p.x - hw / 2 - s * 0.05, baseY - hh2 * 0.48, hw + s * 0.1, s * 0.08);
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+            ctx.fillRect(p.x - hw / 2 - s * 0.05, baseY - hh2 * 0.48 + s * 0.08, hw + s * 0.1, s * 0.03);
+            // Firebox: dark mouth with 45-degree shoulders, tall
+            // enough to stack a real fire in.
             ctx.fillStyle = '#1c1524';
             ctx.beginPath();
-            ctx.moveTo(p.x - hw * 0.3, baseY);
-            ctx.lineTo(p.x - hw * 0.3, baseY - hh2 * 0.38);
-            ctx.lineTo(p.x - hw * 0.18, baseY - hh2 * 0.5);
-            ctx.lineTo(p.x + hw * 0.18, baseY - hh2 * 0.5);
-            ctx.lineTo(p.x + hw * 0.3, baseY - hh2 * 0.38);
-            ctx.lineTo(p.x + hw * 0.3, baseY);
+            ctx.moveTo(p.x - hw * 0.32, baseY);
+            ctx.lineTo(p.x - hw * 0.32, baseY - hh2 * 0.28);
+            ctx.lineTo(p.x - hw * 0.2, baseY - hh2 * 0.38);
+            ctx.lineTo(p.x + hw * 0.2, baseY - hh2 * 0.38);
+            ctx.lineTo(p.x + hw * 0.32, baseY - hh2 * 0.28);
+            ctx.lineTo(p.x + hw * 0.32, baseY);
             ctx.closePath();
             ctx.fill();
-            // The fire: three flickering tongues over a log.
+            // Firelight licks the firebox reveal — the opening glows
+            // from within before the flames even draw.
             const flick = 0.85 + Math.sin(t * 9 + tx * 2.7) * 0.12 + Math.sin(t * 21 + ty) * 0.06;
+            ctx.fillStyle = `rgba(232, 130, 61, ${0.16 * flick})`;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.28, baseY);
+            ctx.lineTo(p.x - hw * 0.28, baseY - hh2 * 0.3);
+            ctx.lineTo(p.x + hw * 0.28, baseY - hh2 * 0.3);
+            ctx.lineTo(p.x + hw * 0.28, baseY);
+            ctx.closePath();
+            ctx.fill();
+            // Andiron logs + the fire: three flickering tongues whose
+            // tips wander independently (primary flame, secondary sway).
             ctx.fillStyle = '#6f4d26';
-            ctx.fillRect(p.x - hw * 0.2, baseY - s * 0.09, hw * 0.4, s * 0.06);
+            ctx.fillRect(p.x - hw * 0.22, baseY - s * 0.1, hw * 0.44, s * 0.07);
+            ctx.fillStyle = '#5a3d1e';
+            ctx.fillRect(p.x - hw * 0.16, baseY - s * 0.16, hw * 0.32, s * 0.07);
             for (const [ox, fh, col] of [
-              [-0.1, 0.3, '#e8823d'],
-              [0.08, 0.26, '#e8823d'],
-              [0, 0.4, '#f4b13d'],
+              [-0.11, 0.38, '#e8823d'],
+              [0.09, 0.33, '#e8823d'],
+              [0, 0.52, '#f4b13d'],
             ] as const) {
               ctx.fillStyle = col;
               const fx = p.x + ox * hw;
-              const top = baseY - s * 0.08 - s * fh * flick;
+              const top = baseY - s * 0.14 - s * fh * flick;
               ctx.beginPath();
-              ctx.moveTo(fx - s * 0.07, baseY - s * 0.07);
-              ctx.lineTo(fx + s * 0.07, baseY - s * 0.07);
-              ctx.lineTo(fx + Math.sin(t * 7 + ox * 20) * s * 0.03, top);
+              ctx.moveTo(fx - s * 0.08, baseY - s * 0.12);
+              ctx.lineTo(fx + s * 0.08, baseY - s * 0.12);
+              ctx.lineTo(fx + Math.sin(t * 7 + ox * 20) * s * 0.04, top);
               ctx.closePath();
               ctx.fill();
             }
+            // A drifting ember above the flames.
+            const ey2 = (t * 0.5 + h * 0.07) % 1;
+            ctx.fillStyle = `rgba(255, 190, 110, ${(1 - ey2) * 0.7})`;
+            ctx.fillRect(
+              p.x + Math.sin(t * 3 + h) * s * 0.06,
+              baseY - s * 0.2 - ey2 * s * 0.3,
+              s * 0.025,
+              s * 0.025,
+            );
           },
         };
       }
@@ -4646,52 +4885,64 @@ export class Renderer {
         const baseY = p.y + syT * 0.42;
         const xL = p.x - s * 0.5 - (jw ? 0.5 : 0);
         const xR = p.x + s * 0.5 + (je ? 0.5 : 0);
-        const th = s * 0.55;
-        const canTop = baseY - s * 1.32;
-        const canFront = baseY - s * 0.98;
+        // Waist-high counter under a canopy you walk beneath.
+        const th = s * 0.8;
+        const canTop = baseY - s * 1.95;
+        const canFront = baseY - s * 1.48;
         return {
           sortY: ty + 0.78,
-          drawShadow: () => this.castEdgeQuad(xL, baseY + syT * 0.05, xR, baseY + syT * 0.05, 0.6),
+          drawShadow: () => this.castEdgeQuad(xL, baseY + syT * 0.05, xR, baseY + syT * 0.05, 0.85),
           draw: () => {
+            // Contact shade under the stand.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+            ctx.fillRect(p.x - s * 0.5, baseY - s * 0.01, s, s * 0.05);
             // Corner poles only at run ends — a row shares its frame.
             ctx.fillStyle = '#5e3f1e';
-            if (!jw) ctx.fillRect(xL + s * 0.03, canTop, s * 0.07, baseY - canTop);
-            if (!je) ctx.fillRect(xR - s * 0.1, canTop, s * 0.07, baseY - canTop);
+            if (!jw) ctx.fillRect(xL + s * 0.03, canTop, s * 0.08, baseY - canTop);
+            if (!je) ctx.fillRect(xR - s * 0.11, canTop, s * 0.08, baseY - canTop);
             // Counter base: solid front, plank seams, lit top.
             ctx.fillStyle = '#6f4d26';
             ctx.fillRect(p.x - s * 0.5, baseY - th, s, th);
             ctx.fillStyle = 'rgba(36, 22, 10, 0.3)';
             ctx.fillRect(p.x - s * 0.16, baseY - th, s * 0.03, th);
             ctx.fillRect(p.x + s * 0.18, baseY - th, s * 0.03, th);
+            ctx.fillStyle = shade('#6f4d26', -10);
+            ctx.fillRect(p.x - s * 0.5, baseY - s * 0.12, s, s * 0.12);
             ctx.fillStyle = '#94693a';
             ctx.beginPath();
-            chamferRect(ctx, p.x - s * 0.52, baseY - th - syT * 0.26, s * 1.04, syT * 0.26, s * 0.03);
+            chamferRect(ctx, p.x - s * 0.52, baseY - th - syT * 0.28, s * 1.04, syT * 0.28, s * 0.03);
             ctx.fill();
+            ctx.fillStyle = shade('#94693a', 14);
+            ctx.fillRect(p.x - s * 0.5, baseY - th - s * 0.035, s, s * 0.035);
             // Striped canopy: 4 even bands per tile so runs stripe
-            // continuously; a scalloped hem reads as cloth.
+            // continuously; the scalloped hem breathes in the wind —
+            // primary slope, secondary flutter.
             const stripes = ['#b5493e', '#e8dfc8'];
             const bandW = s / 4;
             for (let k = 0; k < 4; k++) {
               ctx.fillStyle = stripes[k % 2]!;
               const bx = p.x - s * 0.5 + k * bandW;
+              const flut = Math.sin(t * 2.1 + tx * 1.3 + k * 1.7) * s * 0.022;
               ctx.beginPath();
               ctx.moveTo(bx, canTop);
               ctx.lineTo(bx + bandW, canTop);
-              ctx.lineTo(bx + bandW + s * 0.05, canFront);
-              ctx.lineTo(bx + s * 0.05, canFront);
+              ctx.lineTo(bx + bandW + s * 0.06, canFront + flut * 0.5);
+              ctx.lineTo(bx + s * 0.06, canFront + flut * 0.5);
               ctx.closePath();
               ctx.fill();
-              // Scallop: a hanging half-hex under each band.
+              // Scallop: a hanging half-hex whose tip drifts a beat
+              // behind the hem it hangs from.
+              const lag = Math.sin(t * 2.1 + tx * 1.3 + k * 1.7 - 0.7) * s * 0.03;
               ctx.beginPath();
-              ctx.moveTo(bx + s * 0.05, canFront);
-              ctx.lineTo(bx + bandW + s * 0.05, canFront);
-              ctx.lineTo(bx + bandW * 0.5 + s * 0.05, canFront + s * 0.09);
+              ctx.moveTo(bx + s * 0.06, canFront + flut * 0.5);
+              ctx.lineTo(bx + bandW + s * 0.06, canFront + flut * 0.5);
+              ctx.lineTo(bx + bandW * 0.5 + s * 0.06 + lag * 0.6, canFront + s * 0.11 + lag);
               ctx.closePath();
               ctx.fill();
             }
-            // Canopy under-shadow line.
+            // Shade the canopy underside; goods sit in that shadow.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.25)';
-            ctx.fillRect(p.x - s * 0.45, canFront + s * 0.09, s * 0.95, s * 0.04);
+            ctx.fillRect(p.x - s * 0.45, canFront + s * 0.1, s * 0.95, s * 0.045);
           },
         };
       }
@@ -4700,56 +4951,90 @@ export class Renderer {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.14;
         const pal = (['#7a3f8f', '#a8433a', '#2e7d72', '#31589c'] as const)[h % 4]!;
-        const ph = s * 1.15;
+        // A civic standard: the crossarm rides well above head height.
+        const ph = s * 1.85;
         return {
           sortY: ty + 0.8,
           drawShadow: () => {
-            this.castEdgeQuad(p.x - s * 0.05, baseY, p.x + s * 0.05, baseY, 1.1);
+            this.castEdgeQuad(p.x - s * 0.05, baseY, p.x + s * 0.05, baseY, 1.75);
           },
           draw: () => {
-            // Stone foot + tapered iron pole with a finial.
+            // Contact shade + two-step stone foot.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.17, s * 0.06, 0, 0, Math.PI * 2);
+            ctx.fill();
             ctx.fillStyle = '#5b5566';
             ctx.beginPath();
-            facetCircle(ctx, p.x, baseY, s * 0.12, 6, 0.2, 0.6);
+            facetCircle(ctx, p.x, baseY, s * 0.14, 6, 0.2, 0.6);
             ctx.fill();
+            ctx.fillStyle = '#6a6577';
+            ctx.beginPath();
+            facetCircle(ctx, p.x, baseY - s * 0.05, s * 0.1, 6, 0.2, 0.6);
+            ctx.fill();
+            // Tapered iron pole, west edge catching light, crossarm
+            // with a brace, gold finial.
             ctx.fillStyle = '#2c2836';
             ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.04, baseY);
-            ctx.lineTo(p.x + s * 0.04, baseY);
-            ctx.lineTo(p.x + s * 0.028, baseY - ph);
-            ctx.lineTo(p.x - s * 0.028, baseY - ph);
+            ctx.moveTo(p.x - s * 0.045, baseY);
+            ctx.lineTo(p.x + s * 0.045, baseY);
+            ctx.lineTo(p.x + s * 0.03, baseY - ph);
+            ctx.lineTo(p.x - s * 0.03, baseY - ph);
             ctx.closePath();
             ctx.fill();
-            ctx.fillRect(p.x - s * 0.03, baseY - ph, s * 0.3, s * 0.045);
+            ctx.fillStyle = '#454052';
+            ctx.fillRect(p.x - s * 0.035, baseY - ph * 0.92, s * 0.02, ph * 0.84);
+            ctx.fillStyle = '#2c2836';
+            ctx.fillRect(p.x - s * 0.03, baseY - ph, s * 0.42, s * 0.05);
+            ctx.beginPath();
+            ctx.moveTo(p.x + s * 0.03, baseY - ph + s * 0.16);
+            ctx.lineTo(p.x + s * 0.22, baseY - ph + s * 0.05);
+            ctx.lineTo(p.x + s * 0.22, baseY - ph + s * 0.1);
+            ctx.lineTo(p.x + s * 0.05, baseY - ph + s * 0.2);
+            ctx.closePath();
+            ctx.fill();
             ctx.fillStyle = '#c9962e';
             ctx.beginPath();
-            facetCircle(ctx, p.x, baseY - ph - s * 0.04, s * 0.045, 6, 0.5);
+            facetCircle(ctx, p.x, baseY - ph - s * 0.05, s * 0.05, 6, 0.5);
             ctx.fill();
-            // The banner: hung from the crossarm, swallowtail hem,
-            // breathing gently in the wind.
-            const sway = Math.sin(t * 1.4 + tx * 1.7 + ty) * s * 0.035;
-            const bx0 = p.x + s * 0.06;
-            const bw2 = s * 0.26;
-            const by0 = baseY - ph + s * 0.05;
-            const bl = s * 0.62;
+            // The banner: a long swallowtail drop. The hoist swings as
+            // one (primary); the tails trail a beat behind (secondary)
+            // so the cloth ripples instead of stiffly tilting.
+            const sway = Math.sin(t * 1.4 + tx * 1.7 + ty) * s * 0.045;
+            const lag = Math.sin(t * 1.4 + tx * 1.7 + ty - 0.8) * s * 0.055;
+            const bx0 = p.x + s * 0.07;
+            const bw2 = s * 0.34;
+            const by0 = baseY - ph + s * 0.06;
+            const bl = s * 1.05;
             ctx.fillStyle = pal;
             ctx.beginPath();
             ctx.moveTo(bx0, by0);
             ctx.lineTo(bx0 + bw2, by0);
-            ctx.lineTo(bx0 + bw2 + sway, by0 + bl);
-            ctx.lineTo(bx0 + bw2 * 0.5 + sway, by0 + bl - s * 0.12);
-            ctx.lineTo(bx0 + sway, by0 + bl);
+            ctx.lineTo(bx0 + bw2 + sway * 0.5, by0 + bl * 0.55);
+            ctx.lineTo(bx0 + bw2 + lag, by0 + bl);
+            ctx.lineTo(bx0 + bw2 * 0.5 + lag, by0 + bl - s * 0.16);
+            ctx.lineTo(bx0 + lag, by0 + bl);
+            ctx.lineTo(bx0 + sway * 0.5, by0 + bl * 0.55);
             ctx.closePath();
             ctx.fill();
-            // A lighter chevron emblem.
+            // The cloth folds: a shaded inner panel below the emblem.
+            ctx.fillStyle = shade(pal, -12);
+            ctx.beginPath();
+            ctx.moveTo(bx0 + bw2 * 0.32, by0 + bl * 0.55);
+            ctx.lineTo(bx0 + bw2 * 0.44, by0 + bl * 0.55);
+            ctx.lineTo(bx0 + bw2 * 0.4 + lag * 0.7, by0 + bl * 0.9);
+            ctx.lineTo(bx0 + bw2 * 0.28 + lag * 0.7, by0 + bl * 0.9);
+            ctx.closePath();
+            ctx.fill();
+            // A lighter chevron emblem at the hoist.
             ctx.fillStyle = shade(pal, 26);
             ctx.beginPath();
-            ctx.moveTo(bx0 + bw2 * 0.2, by0 + bl * 0.3);
-            ctx.lineTo(bx0 + bw2 * 0.5, by0 + bl * 0.48);
-            ctx.lineTo(bx0 + bw2 * 0.8, by0 + bl * 0.3);
-            ctx.lineTo(bx0 + bw2 * 0.8, by0 + bl * 0.42);
-            ctx.lineTo(bx0 + bw2 * 0.5, by0 + bl * 0.6);
-            ctx.lineTo(bx0 + bw2 * 0.2, by0 + bl * 0.42);
+            ctx.moveTo(bx0 + bw2 * 0.2, by0 + bl * 0.18);
+            ctx.lineTo(bx0 + bw2 * 0.5, by0 + bl * 0.32);
+            ctx.lineTo(bx0 + bw2 * 0.8, by0 + bl * 0.18);
+            ctx.lineTo(bx0 + bw2 * 0.8, by0 + bl * 0.27);
+            ctx.lineTo(bx0 + bw2 * 0.5, by0 + bl * 0.41);
+            ctx.lineTo(bx0 + bw2 * 0.2, by0 + bl * 0.27);
             ctx.closePath();
             ctx.fill();
           },
@@ -4759,43 +5044,64 @@ export class Renderer {
       case Tile.HangingSign: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.14;
-        const ph = s * 0.95;
+        // The shingle hangs above head height, as a shop sign must.
+        const ph = s * 1.55;
         return {
           sortY: ty + 0.8,
+          drawShadow: () => this.castEdgeQuad(p.x - s * 0.18, baseY, p.x - s * 0.06, baseY, 1.45),
           draw: () => {
-            // Post + bracket arm.
+            // Contact shade at the post foot.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(p.x - s * 0.12, baseY + s * 0.015, s * 0.12, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Post + bracket arm with a 45° knee brace.
             ctx.fillStyle = '#5e3f1e';
-            ctx.fillRect(p.x - s * 0.16, baseY - ph, s * 0.08, ph);
-            ctx.fillRect(p.x - s * 0.16, baseY - ph, s * 0.42, s * 0.06);
+            ctx.fillRect(p.x - s * 0.16, baseY - ph, s * 0.09, ph);
+            ctx.fillRect(p.x - s * 0.16, baseY - ph, s * 0.5, s * 0.065);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.07, baseY - ph + s * 0.28);
+            ctx.lineTo(p.x + s * 0.14, baseY - ph + s * 0.07);
+            ctx.lineTo(p.x + s * 0.14, baseY - ph + s * 0.13);
+            ctx.lineTo(p.x - s * 0.07, baseY - ph + s * 0.34);
+            ctx.closePath();
+            ctx.fill();
             ctx.fillStyle = shade('#5e3f1e', 14);
-            ctx.fillRect(p.x - s * 0.14, baseY - ph + s * 0.01, s * 0.04, ph - s * 0.02);
-            // The shingle swings on two short ropes.
-            const swing = Math.sin(t * 1.6 + tx * 2.3) * 0.06;
-            const ax = p.x + s * 0.16;
-            const ay = baseY - ph + s * 0.06;
+            ctx.fillRect(p.x - s * 0.145, baseY - ph + s * 0.01, s * 0.04, ph - s * 0.02);
+            // The shingle swings on two ropes; the board lags a
+            // fraction behind the arm's phase so it feels hung, not
+            // welded (secondary motion).
+            const swing = Math.sin(t * 1.6 + tx * 2.3) * 0.07;
+            const bob = Math.sin(t * 1.6 + tx * 2.3 - 0.5) * s * 0.012;
+            const ax = p.x + s * 0.2;
+            const ay = baseY - ph + s * 0.065;
             ctx.save();
-            ctx.translate(ax, ay);
+            ctx.translate(ax, ay + bob);
             ctx.rotate(swing);
             ctx.strokeStyle = '#b8a888';
-            ctx.lineWidth = Math.max(1, s * 0.025);
+            ctx.lineWidth = Math.max(1, s * 0.028);
             ctx.beginPath();
-            ctx.moveTo(-s * 0.1, 0);
-            ctx.lineTo(-s * 0.1, s * 0.09);
-            ctx.moveTo(s * 0.1, 0);
-            ctx.lineTo(s * 0.1, s * 0.09);
+            ctx.moveTo(-s * 0.13, 0);
+            ctx.lineTo(-s * 0.13, s * 0.11);
+            ctx.moveTo(s * 0.13, 0);
+            ctx.lineTo(s * 0.13, s * 0.11);
             ctx.stroke();
             ctx.fillStyle = '#a5793f';
             ctx.beginPath();
-            chamferRect(ctx, -s * 0.17, s * 0.09, s * 0.34, s * 0.24, s * 0.03);
+            chamferRect(ctx, -s * 0.22, s * 0.11, s * 0.44, s * 0.32, s * 0.04);
             ctx.fill();
+            ctx.fillStyle = shade('#a5793f', 14);
+            ctx.fillRect(-s * 0.2, s * 0.12, s * 0.4, s * 0.03);
             ctx.fillStyle = shade('#a5793f', -14);
             ctx.beginPath();
-            chamferRect(ctx, -s * 0.13, s * 0.13, s * 0.26, s * 0.16, s * 0.02);
+            chamferRect(ctx, -s * 0.17, s * 0.16, s * 0.34, s * 0.22, s * 0.025);
             ctx.fill();
-            // The device: a simple tankard silhouette.
+            // The device: a simple tankard silhouette with a handle.
             ctx.fillStyle = '#e8dfc8';
-            ctx.fillRect(-s * 0.045, s * 0.16, s * 0.08, s * 0.1);
-            ctx.fillRect(s * 0.04, s * 0.18, s * 0.03, s * 0.05);
+            ctx.fillRect(-s * 0.055, s * 0.2, s * 0.1, s * 0.13);
+            ctx.fillRect(s * 0.05, s * 0.23, s * 0.035, s * 0.06);
+            ctx.fillStyle = 'rgba(36, 22, 10, 0.35)';
+            ctx.fillRect(-s * 0.055, s * 0.215, s * 0.1, s * 0.02);
             ctx.restore();
           },
         };
@@ -4808,23 +5114,37 @@ export class Renderer {
         return {
           sortY: ty + 0.6,
           draw: () => {
+            // Contact shade + planter on little feet.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
+            ctx.fillRect(p.x - s * 0.36, baseY - s * 0.005, s * 0.72, s * 0.04);
             ctx.fillStyle = '#6f4d26';
             ctx.beginPath();
-            chamferRect(ctx, p.x - s * 0.34, baseY - s * 0.2, s * 0.68, s * 0.2, s * 0.03);
+            chamferRect(ctx, p.x - s * 0.36, baseY - s * 0.24, s * 0.72, s * 0.24, s * 0.03);
             ctx.fill();
             ctx.fillStyle = shade('#6f4d26', 12);
-            ctx.fillRect(p.x - s * 0.34, baseY - s * 0.2, s * 0.68, s * 0.04);
+            ctx.fillRect(p.x - s * 0.36, baseY - s * 0.24, s * 0.72, s * 0.04);
             ctx.fillStyle = '#4a3520';
-            ctx.fillRect(p.x - s * 0.3, baseY - s * 0.17, s * 0.6, s * 0.045);
-            for (let k = 0; k < 4; k++) {
+            ctx.fillRect(p.x - s * 0.32, baseY - s * 0.2, s * 0.64, s * 0.05);
+            // Five blooms nodding gently out of phase — alive, not
+            // plastic. Stems lean with their flower heads.
+            for (let k = 0; k < 5; k++) {
               const hh = hashCoords(61 + k, tx, ty);
-              const fx = p.x - s * 0.24 + k * s * 0.16 + ((hh % 5) - 2) * s * 0.01;
-              const fy = baseY - s * 0.26 - ((hh >> 4) % 4) * s * 0.02;
-              ctx.fillStyle = '#5f8a44';
-              ctx.fillRect(fx - s * 0.012, fy, s * 0.024, s * 0.1);
+              const nod = Math.sin(t * 1.8 + hh * 0.3) * s * 0.012;
+              const fx = p.x - s * 0.26 + k * s * 0.13 + ((hh % 5) - 2) * s * 0.01;
+              const fy = baseY - s * 0.32 - ((hh >> 4) % 4) * s * 0.025;
+              ctx.strokeStyle = '#5f8a44';
+              ctx.lineWidth = Math.max(1, s * 0.024);
+              ctx.beginPath();
+              ctx.moveTo(fx, baseY - s * 0.2);
+              ctx.lineTo(fx + nod, fy + s * 0.02);
+              ctx.stroke();
               ctx.fillStyle = BLOOMS[hh % BLOOMS.length]!;
               ctx.beginPath();
-              facetCircle(ctx, fx, fy, s * 0.05, 6, (hh % 7) * 0.3);
+              facetCircle(ctx, fx + nod, fy, s * 0.055, 6, (hh % 7) * 0.3);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(255, 244, 200, 0.7)';
+              ctx.beginPath();
+              facetCircle(ctx, fx + nod, fy, s * 0.018, 6, (hh % 7) * 0.3);
               ctx.fill();
             }
           },
@@ -4836,11 +5156,12 @@ export class Renderer {
         const weapons = tile === Tile.WeaponRack;
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.2;
-        const bw = s * 0.74;
-        const bh2 = s * 0.92;
+        // Shoulder-high boards; the tools hang at reachable height.
+        const bw = s * 0.8;
+        const bh2 = s * 1.35;
         return {
           sortY: ty + 0.72,
-          drawShadow: () => this.castEdgeQuad(p.x - bw / 2, baseY, p.x + bw / 2, baseY, 0.85),
+          drawShadow: () => this.castEdgeQuad(p.x - bw / 2, baseY, p.x + bw / 2, baseY, 1.25),
           draw: () => {
             // The board on two stub feet.
             ctx.fillStyle = '#5e3f1e';
@@ -4915,13 +5236,16 @@ export class Renderer {
       case Tile.Vault: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.24;
-        const vw = s * 0.78;
-        const vh = s * 0.95;
+        // A strongroom door of a thing — taller than the teller.
+        const vw = s * 0.88;
+        const vh = s * 1.45;
         return {
           sortY: ty + 0.75,
-          drawShadow: () => this.castEdgeQuad(p.x - vw / 2, baseY, p.x + vw / 2, baseY, 0.9),
+          drawShadow: () => this.castEdgeQuad(p.x - vw / 2, baseY, p.x + vw / 2, baseY, 1.35),
           draw: () => {
-            // Iron mass on stub feet, gold-banded, dial centered.
+            // Contact shade, then the iron mass on stub feet.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+            ctx.fillRect(p.x - vw / 2 - s * 0.02, baseY - s * 0.01, vw + s * 0.04, s * 0.05);
             ctx.fillStyle = '#2c2836';
             ctx.fillRect(p.x - vw / 2 + s * 0.05, baseY - s * 0.06, s * 0.1, s * 0.06);
             ctx.fillRect(p.x + vw / 2 - s * 0.15, baseY - s * 0.06, s * 0.1, s * 0.06);
@@ -4973,39 +5297,41 @@ export class Renderer {
             ctx.fill();
             ctx.fillStyle = '#6f4d26';
             ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.07, baseY - s * 0.06);
-            ctx.lineTo(p.x + s * 0.07, baseY - s * 0.06);
-            ctx.lineTo(p.x + s * 0.05, baseY - s * 0.52);
-            ctx.lineTo(p.x - s * 0.05, baseY - s * 0.52);
+            ctx.moveTo(p.x - s * 0.08, baseY - s * 0.06);
+            ctx.lineTo(p.x + s * 0.08, baseY - s * 0.06);
+            ctx.lineTo(p.x + s * 0.055, baseY - s * 0.78);
+            ctx.lineTo(p.x - s * 0.055, baseY - s * 0.78);
             ctx.closePath();
             ctx.fill();
-            // Slanted desk plate.
+            ctx.fillStyle = shade('#6f4d26', 12);
+            ctx.fillRect(p.x - s * 0.055, baseY - s * 0.74, s * 0.03, s * 0.62);
+            // Slanted desk plate at the reader's ribs.
             ctx.fillStyle = '#8a6534';
             ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.22, baseY - s * 0.5);
-            ctx.lineTo(p.x + s * 0.22, baseY - s * 0.5);
-            ctx.lineTo(p.x + s * 0.19, baseY - s * 0.66);
-            ctx.lineTo(p.x - s * 0.19, baseY - s * 0.66);
+            ctx.moveTo(p.x - s * 0.26, baseY - s * 0.76);
+            ctx.lineTo(p.x + s * 0.26, baseY - s * 0.76);
+            ctx.lineTo(p.x + s * 0.22, baseY - s * 0.95);
+            ctx.lineTo(p.x - s * 0.22, baseY - s * 0.95);
             ctx.closePath();
             ctx.fill();
             // The open tome: two pages and a dark spine crease.
             ctx.fillStyle = '#e8dfc8';
             ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.17, baseY - s * 0.53);
-            ctx.lineTo(p.x - s * 0.01, baseY - s * 0.56);
-            ctx.lineTo(p.x - s * 0.01, baseY - s * 0.66);
-            ctx.lineTo(p.x - s * 0.15, baseY - s * 0.63);
+            ctx.moveTo(p.x - s * 0.2, baseY - s * 0.8);
+            ctx.lineTo(p.x - s * 0.01, baseY - s * 0.83);
+            ctx.lineTo(p.x - s * 0.01, baseY - s * 0.95);
+            ctx.lineTo(p.x - s * 0.18, baseY - s * 0.92);
             ctx.closePath();
             ctx.fill();
             ctx.beginPath();
-            ctx.moveTo(p.x + s * 0.01, baseY - s * 0.56);
-            ctx.lineTo(p.x + s * 0.17, baseY - s * 0.53);
-            ctx.lineTo(p.x + s * 0.15, baseY - s * 0.63);
-            ctx.lineTo(p.x + s * 0.01, baseY - s * 0.66);
+            ctx.moveTo(p.x + s * 0.01, baseY - s * 0.83);
+            ctx.lineTo(p.x + s * 0.2, baseY - s * 0.8);
+            ctx.lineTo(p.x + s * 0.18, baseY - s * 0.92);
+            ctx.lineTo(p.x + s * 0.01, baseY - s * 0.95);
             ctx.closePath();
             ctx.fill();
             ctx.fillStyle = 'rgba(36, 22, 10, 0.4)';
-            ctx.fillRect(p.x - s * 0.012, baseY - s * 0.66, s * 0.024, s * 0.11);
+            ctx.fillRect(p.x - s * 0.012, baseY - s * 0.95, s * 0.024, s * 0.13);
           },
         };
       }
@@ -5016,21 +5342,25 @@ export class Renderer {
         return {
           sortY: ty + 0.62,
           draw: () => {
-            // Stone trough with standing water.
+            // Contact shade + stone trough with standing water.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+            ctx.fillRect(p.x - s * 0.42, baseY - s * 0.01, s * 0.84, s * 0.045);
             ctx.fillStyle = '#5b5566';
             ctx.beginPath();
-            chamferRect(ctx, p.x - s * 0.38, baseY - s * 0.34, s * 0.76, s * 0.34, s * 0.06);
+            chamferRect(ctx, p.x - s * 0.42, baseY - s * 0.42, s * 0.84, s * 0.42, s * 0.06);
             ctx.fill();
+            ctx.fillStyle = shade('#5b5566', -10);
+            ctx.fillRect(p.x - s * 0.42, baseY - s * 0.1, s * 0.84, s * 0.1);
             ctx.fillStyle = shade('#5b5566', 16);
-            ctx.fillRect(p.x - s * 0.36, baseY - s * 0.34, s * 0.72, s * 0.05);
+            ctx.fillRect(p.x - s * 0.4, baseY - s * 0.42, s * 0.8, s * 0.05);
             ctx.fillStyle = '#3d6fb8';
             ctx.beginPath();
-            chamferRect(ctx, p.x - s * 0.3, baseY - s * 0.29, s * 0.6, s * 0.14, s * 0.04);
+            chamferRect(ctx, p.x - s * 0.33, baseY - s * 0.36, s * 0.66, s * 0.16, s * 0.04);
             ctx.fill();
             // A drifting glint keeps the water alive.
-            const gx2 = p.x - s * 0.2 + ((t * 0.15 + h * 0.1) % 1) * s * 0.34;
+            const gx2 = p.x - s * 0.24 + ((t * 0.15 + h * 0.1) % 1) * s * 0.4;
             ctx.fillStyle = 'rgba(214, 230, 255, 0.5)';
-            ctx.fillRect(gx2, baseY - s * 0.25, s * 0.09, s * 0.025);
+            ctx.fillRect(gx2, baseY - s * 0.31, s * 0.09, s * 0.025);
           },
         };
       }
