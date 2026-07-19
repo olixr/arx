@@ -1012,6 +1012,33 @@ export class Renderer {
     for (const item of items) {
       if (!item.elevated) item.drawShadow?.();
     }
+    // ROOFED ROOMS RECEIVE NO SKY: punch every visible interior out of
+    // the shadow layer before it composites. A wall must not cast into
+    // its own sheltered room, nor a tree through a roof — the dark
+    // wedge on an inn floor was the north wall's sun shadow falling
+    // "indoors".
+    if (this.visibleRegions.length > 0) {
+      const s2 = this.camera.scale;
+      sc.globalCompositeOperation = 'destination-out';
+      sc.fillStyle = '#000';
+      for (const region of this.visibleRegions) {
+        const lift = region.elevLevel * ELEV_H * s2;
+        for (let ty = region.y0; ty <= region.y1; ty++) {
+          let run = -1;
+          for (let tx = region.x0; tx <= region.x1 + 1; tx++) {
+            const inside = tx <= region.x1 && region.tiles.has(packTile(tx, ty));
+            if (inside && run < 0) run = tx;
+            else if (!inside && run >= 0) {
+              const a = this.camera.worldToScreen(run, ty, this.w, this.h);
+              const b = this.camera.worldToScreen(tx, ty + 1, this.w, this.h);
+              sc.fillRect(a.x, a.y - lift, b.x - a.x, b.y - a.y);
+              run = -1;
+            }
+          }
+        }
+      }
+      sc.globalCompositeOperation = 'source-over';
+    }
     this.ctx.save();
     this.ctx.globalAlpha = this.sdwLayerAlpha;
     this.ctx.drawImage(this.shadowLayer, 0, 0, this.shadowLayer.width, this.shadowLayer.height, 0, 0, this.w, this.h);
