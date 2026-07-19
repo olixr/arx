@@ -57,12 +57,12 @@ export const COTTAGE_SMALL: StructureTemplate = compileTemplate({
     '#..d..#',
     '##WDW##',
   ],
-  meta: { stories: 1, roof: 'thatch', chimney: { x: 5, y: 0 }, label: 'Small Cottage' },
+  meta: { label: 'Small Cottage' },
 });
 
 /** A family home: two beds, a north-wall hearth, ledger shelf. */
-export const COTTAGE_TWO_STORY: StructureTemplate = compileTemplate({
-  id: 'cottage_two_story',
+export const COTTAGE_LARGE: StructureTemplate = compileTemplate({
+  id: 'cottage_large',
   legend: {
     ...wood,
     B: { tile: Tile.Bed },
@@ -79,7 +79,7 @@ export const COTTAGE_TWO_STORY: StructureTemplate = compileTemplate({
     '#...d...#',
     '###WDW###',
   ],
-  meta: { stories: 2, roof: 'wood', chimney: { x: 4, y: 0 }, label: 'Two-Story Cottage' },
+  meta: { label: 'Large Cottage' },
 });
 
 /**
@@ -106,7 +106,7 @@ export const SMITHY: StructureTemplate = compileTemplate({
     '#.......#',
     '##W###W##',
   ],
-  meta: { stories: 1, roof: 'slate', label: 'Smithy' },
+  meta: { label: 'Smithy' },
 });
 
 /** A shopfront: west door, 3-run counter, stock shelves, goods by the door. */
@@ -129,7 +129,7 @@ export const SHOP_SMALL: StructureTemplate = compileTemplate({
     '#........#',
     '###W##W###',
   ],
-  meta: { stories: 2, roof: 'wood', label: 'Small Shop' },
+  meta: { label: 'Small Shop' },
 });
 
 /**
@@ -149,13 +149,13 @@ export const MARKET_STALL: StructureTemplate = compileTemplate({
     '...',
     '..o',
   ],
-  meta: { stories: 1, roof: 'none', label: 'Market Stall' },
+  meta: { label: 'Market Stall' },
 });
 
 /**
- * The big common house: paired north doors, west-wall hearth under the
- * chimney, four table clusters, a 4-run bar in the south, three beds
- * at the east end.
+ * The big common house: paired north doors, west-wall hearth, four
+ * table clusters, a 4-run bar in the south, three beds at the east
+ * end.
  */
 export const INN_LARGE: StructureTemplate = compileTemplate({
   id: 'inn_large',
@@ -181,7 +181,7 @@ export const INN_LARGE: StructureTemplate = compileTemplate({
     '#............#',
     '###W####W#####',
   ],
-  meta: { stories: 2, roof: 'thatch', chimney: { x: 0, y: 2 }, label: 'Inn' },
+  meta: { label: 'Inn' },
 });
 
 /**
@@ -211,7 +211,7 @@ export const CHAPEL: StructureTemplate = compileTemplate({
     '#..dd..#',
     '###DD###',
   ],
-  meta: { stories: 1, roof: 'slate', label: 'Chapel' },
+  meta: { label: 'Chapel' },
 });
 
 /**
@@ -228,7 +228,7 @@ export const COLONNADE_SEG: StructureTemplate = compileTemplate({
     'P..',
     '...',
   ],
-  meta: { stories: 1, roof: 'none', label: 'Colonnade' },
+  meta: { label: 'Colonnade' },
 });
 
 /**
@@ -252,12 +252,12 @@ export const WELL_PLAZA: StructureTemplate = compileTemplate({
     ' .BB.L ',
     '  ...  ',
   ],
-  meta: { stories: 1, roof: 'none', label: 'Well Plaza' },
+  meta: { label: 'Well Plaza' },
 });
 
 export const STRUCTURE_TEMPLATES: readonly StructureTemplate[] = [
   COTTAGE_SMALL,
-  COTTAGE_TWO_STORY,
+  COTTAGE_LARGE,
   SMITHY,
   SHOP_SMALL,
   MARKET_STALL,

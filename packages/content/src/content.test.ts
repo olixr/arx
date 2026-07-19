@@ -287,17 +287,6 @@ test('bramblewick: anchors, unique stations, and story markers hold', () => {
     assert.equal(counts.get(tile) ?? 0, 1, `town needs exactly one ${name}`);
   }
   assert.equal(counts.get(Tile.Campfire) ?? 0, 1, 'town campfire missing');
-  // A story marker on a solid tile would draw a facade over a wall.
-  for (let i = 0; i < z.detail.length; i++) {
-    const d = z.detail[i]!;
-    if (d === Detail.Story2 || d === Detail.Story3) {
-      assert.equal(
-        TILE_DEFS[z.ground[i]! as Tile].solid,
-        false,
-        `story marker at (${i % z.width},${Math.floor(i / z.width)}) rides a solid tile`,
-      );
-    }
-  }
 });
 
 test('bramblewick: every doorway is walkable from the spawn', () => {

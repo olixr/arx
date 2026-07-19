@@ -12,7 +12,7 @@
  * world changes (worldVersion bump ⇒ full clear; recompute is bounded
  * by MAX_REGION and only runs for tiles actually asked about).
  */
-import { Detail, INTERIOR_BOUNDARY_TILES, Tile, hashCoords } from '@devcraft/shared';
+import { INTERIOR_BOUNDARY_TILES, Tile, hashCoords } from '@devcraft/shared';
 import type { ClientGame } from '../game/clientGame.js';
 
 export interface InteriorRegion {
@@ -28,8 +28,6 @@ export interface InteriorRegion {
   doorTiles: Array<{ tx: number; ty: number }>;
   /** Majority boundary material (facade dressing follows it). */
   wallMaterial: Tile;
-  /** Facade story count from authored Detail.Story markers. */
-  stories: 1 | 2 | 3;
   /** A hearth/campfire/furnace inside: windows glow warm at night. */
   hasHearth: boolean;
   elevLevel: number;
@@ -85,7 +83,6 @@ export class InteriorMap {
     let y1 = sy;
     let stone = 0;
     let wood = 0;
-    let stories: 1 | 2 | 3 = 1;
     let hasHearth = false;
     const elevLevel = world.elevAt(sx, sy);
     let outdoor = false;
@@ -96,9 +93,6 @@ export class InteriorMap {
       if (ground === Tile.Hearth || ground === Tile.Campfire || ground === Tile.Furnace) {
         hasHearth = true;
       }
-      const d = world.detailAt(cx, cy);
-      if (d === Detail.Story3) stories = 3;
-      else if (d === Detail.Story2 && stories < 3) stories = 2;
       for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) {
         const nx = cx + dx;
         const ny = cy + dy;
@@ -152,7 +146,6 @@ export class InteriorMap {
       y1,
       doorTiles,
       wallMaterial: stone >= wood ? Tile.WallStone : Tile.WallWood,
-      stories,
       hasHearth,
       elevLevel,
       seed: hashCoords(131, x0, y0) ^ (x1 - x0) ^ ((y1 - y0) << 8),

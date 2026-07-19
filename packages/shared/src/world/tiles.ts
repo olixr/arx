@@ -139,10 +139,6 @@ export enum Detail {
   Doormat = 7,
   Sawdust = 8,
   Straw = 9,
-  /** Authored story markers: stamped on one interior tile so the
-   *  renderer knows a building presents a 2- or 3-story facade. */
-  Story2 = 10,
-  Story3 = 11,
 }
 
 export interface TileDef {

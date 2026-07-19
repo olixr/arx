@@ -29,14 +29,6 @@ export interface StructureTemplate {
   /** Row-major, all rows the same length. */
   rows: string[];
   meta?: {
-    /** Stamps Detail.Story2/3 on an interior floor cell for the facade renderer. */
-    stories?: 1 | 2 | 3;
-    /** Authoring metadata only — the roof render layer was removed
-     *  (open-interior direction); kept for a future cosmetic pass. */
-    roof?: 'thatch' | 'slate' | 'wood' | 'none';
-    /** Template-local chimney cell; mirrored by flipX. Unused since
-     *  the roof layer's removal. */
-    chimney?: { x: number; y: number };
     label?: string;
   };
 }

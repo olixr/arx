@@ -29,16 +29,15 @@ export function buildBramblewick(): ZoneDef {
   b.fillEllipse(48, 48, 9, 7, Tile.StoneFloor);
   b.fillRect(47, 47, 2, 2, Tile.WallStone); // the well
 
-  // Bank — stone, two-story, north-west of the plaza (clear of the
-  // north road). Inside: a teller counter fronts the chest with a
-  // walk-through gap on the door axis, the vault sits against the
-  // north wall beside the ledger shelves, and a rug aisle leads in.
+  // Bank — stone, north-west of the plaza (clear of the north road).
+  // Inside: a teller counter fronts the chest with a walk-through gap
+  // on the door axis, the vault sits against the north wall beside
+  // the ledger shelves, and a rug aisle leads in.
   b.building(34, 24, 12, 9, {
     wall: Tile.WallStone,
     floor: Tile.StoneFloor,
     doors: [{ side: 's', at: 6 }],
     windows: [{ side: 's', at: 3 }, { side: 's', at: 9 }, { side: 'e', at: 4 }],
-    stories: 2,
   });
   b.set(36, 25, Tile.Bookshelf).set(37, 25, Tile.Bookshelf); // ledgers
   b.set(44, 25, Tile.Vault);
@@ -49,15 +48,14 @@ export function buildBramblewick(): ZoneDef {
   b.set(39, 33, Tile.PillarStone).set(41, 33, Tile.PillarStone);
   b.path({ x: 40, y: 33 }, { x: 40, y: 43 }, 1);
 
-  // General store — east, two-story, west door facing the plaza. The
-  // Counter run extends the ShopCounter station into one service bar;
-  // the teller row stays reachable around its east end.
+  // General store — east, west door facing the plaza. The Counter
+  // run extends the ShopCounter station into one service bar; the
+  // teller row stays reachable around its east end.
   b.building(62, 42, 10, 8, {
     wall: Tile.WallWood,
     floor: Tile.WoodFloor,
     doors: [{ side: 'w', at: 4 }],
     windows: [{ side: 'w', at: 2 }, { side: 's', at: 3 }, { side: 's', at: 6 }],
-    stories: 2,
   });
   b.set(67, 43, Tile.Bookshelf).set(68, 43, Tile.Cabinet); // stock wall
   b.set(63, 44, Tile.Counter).set(64, 44, Tile.Counter);
@@ -86,8 +84,8 @@ export function buildBramblewick(): ZoneDef {
   b.set(69, 60, Tile.Barrel).set(67, 65, Tile.Crate);
 
   // The Gilded Antler inn — the inn template: paired north doors on
-  // the road, hearth on the west wall under the chimney, table
-  // clusters, the bar, beds at the east end.
+  // the road, hearth on the west wall, table clusters, the bar, beds
+  // at the east end.
   b.stamp(INN_LARGE, 22, 52);
   b.set(26, 51, Tile.HangingSign);
   b.set(25, 51, Tile.FlowerBox).set(32, 51, Tile.FlowerBox); // under the windows

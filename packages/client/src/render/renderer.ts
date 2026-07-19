@@ -1580,13 +1580,7 @@ export class Renderer {
             this.localRegion !== null &&
             dregion === this.localRegion &&
             this.localRegion.tiles.has(packTile(tx, ty - 1));
-          const item = this.doorwayItem(
-            ground,
-            tx,
-            ty,
-            game,
-            dcut ? 0.62 : this.wallHeightFor(dregion?.stories ?? 1),
-          );
+          const item = this.doorwayItem(ground, tx, ty, game, dcut ? 0.62 : WALL_H);
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
@@ -1617,14 +1611,12 @@ export class Renderer {
             this.localRegion !== null &&
             wregion === this.localRegion &&
             this.localRegion.tiles.has(packTile(tx, ty - 1));
-          const st = wcut ? 1 : (wregion?.stories ?? 1);
           const item = this.wallItem(
             ground as Tile,
             tx,
             ty,
             game,
-            wcut ? 0.62 : this.wallHeightFor(st),
-            st,
+            wcut ? 0.62 : WALL_H,
             wregion?.hasHearth ?? false,
           );
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
@@ -1647,7 +1639,7 @@ export class Renderer {
    * Walls: continuous top mass with rounded exposed corners, a darker
    * front face where the wall meets open ground, and a hard shadow.
    */
-  private wallItem(tile: Tile, tx: number, ty: number, game: ClientGame, whT: number, stories: number, hearth = false): DrawItem {
+  private wallItem(tile: Tile, tx: number, ty: number, game: ClientGame, whT: number, hearth = false): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
@@ -1947,30 +1939,6 @@ export class Renderer {
               ctx.fillRect(wx - s * 0.1, wy + wh2 + s * 0.1, ww + s * 0.2, s * 0.03);
             }
           }
-          // Upper stories: a floor-line trim at each story boundary
-          // and hash-placed panes — the facade promises rooms above.
-          for (let st = 2; st <= stories; st++) {
-            const fy0 = -s * (WALL_H + 1.45 * (st - 2));
-            ctx.fillStyle = shade(face, 14);
-            ctx.fillRect(p.x, fy0 - s * 0.05, s, s * 0.05);
-            if (hashCoords(97 + st, tx, ty) % 3 !== 0) {
-              const uy = fy0 - s * 0.95;
-              const uw2 = s * 0.36;
-              const ux = p.x + s * 0.32;
-              ctx.fillStyle = shade(face, -20);
-              ctx.fillRect(ux - s * 0.03, uy - s * 0.03, uw2 + s * 0.06, s * 0.58);
-              const warm2 = hearth ? this.sky.flame : 0;
-              ctx.fillStyle =
-                warm2 > 0.05 && (hashCoords(41, tx, ty) & 1) === 1
-                  ? `rgba(255, 205, 130, ${0.3 + 0.4 * warm2})`
-                  : '#2b3350';
-              ctx.beginPath();
-              chamferRect(ctx, ux, uy, uw2, s * 0.52, s * 0.04);
-              ctx.fill();
-              ctx.fillStyle = shade(face, -8);
-              ctx.fillRect(ux + uw2 / 2 - s * 0.018, uy, s * 0.036, s * 0.52);
-            }
-          }
           // Ambient-occlusion seam where the face meets the ground.
           ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
           ctx.fillRect(x0, -s * 0.06, s + 0.5, s * 0.06);
@@ -2172,11 +2140,6 @@ export class Renderer {
           ctx.fillStyle = 'rgba(40, 24, 10, 0.55)';
           ctx.fillRect(x0 + jw * 0.4, -hs + hh - s * 0.155, s * 0.045, s * 0.045);
           ctx.fillRect(x1 - jw * 0.4 - s * 0.045, -hs + hh - s * 0.155, s * 0.045, s * 0.045);
-        }
-        // Story trim carries across the door column of tall facades.
-        if (whT > WALL_H + 0.01) {
-          ctx.fillStyle = shade(face, 14);
-          ctx.fillRect(x0, -s * WALL_H - s * 0.05, x1 - x0, s * 0.05);
         }
         // Underside shadow grounds the header over the opening.
         ctx.fillStyle = 'rgba(18, 12, 26, 0.35)';
@@ -2456,12 +2419,6 @@ export class Renderer {
   }
 
   // ----------------------------------------------------------- interiors
-
-  /** Story count → facade wall height in tiles (upper floors run a
-   *  touch shorter than the ground story, as real buildings do). */
-  private wallHeightFor(stories: number): number {
-    return WALL_H + 1.45 * (stories - 1);
-  }
 
   /** The interior region a wall-run tile fronts: any adjacent
    *  enclosed floor claims it (per-frame cached in the InteriorMap). */

@@ -195,12 +195,10 @@ export class ZoneBuilder {
 
   /**
    * A building: outer walls, inner floor, framed doorways, and
-   * optionally windows and a facade story count. Doors/windows are
-   * local offsets along a wall, e.g. { side: 's', at: 3 }. Doorways are
-   * REAL walkable doorway tiles (the renderer frames them and interior
-   * detection treats them as enclosure); windows are windowed wall
-   * tiles; stories > 1 stamps a Detail.Story marker on an interior
-   * tile for the facade renderer.
+   * optionally windows. Doors/windows are local offsets along a wall,
+   * e.g. { side: 's', at: 3 }. Doorways are REAL walkable doorway
+   * tiles (the renderer frames them and interior detection treats
+   * them as enclosure); windows are windowed wall tiles.
    */
   building(
     x: number,
@@ -212,7 +210,6 @@ export class ZoneBuilder {
       floor: Tile;
       doors: Array<{ side: 'n' | 's' | 'e' | 'w'; at: number }>;
       windows?: Array<{ side: 'n' | 's' | 'e' | 'w'; at: number }>;
-      stories?: 1 | 2 | 3;
     },
   ): this {
     this.fillRect(x, y, w, h, opts.floor);
@@ -235,9 +232,6 @@ export class ZoneBuilder {
     for (const win of opts.windows ?? []) {
       const p = wallSpot(win);
       this.set(p.x, p.y, windowT);
-    }
-    if ((opts.stories ?? 1) > 1) {
-      this.setDetail(x + 1, y + 1, opts.stories === 3 ? Detail.Story3 : Detail.Story2);
     }
     return this;
   }

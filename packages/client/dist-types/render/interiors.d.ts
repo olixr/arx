@@ -30,8 +30,6 @@ export interface InteriorRegion {
     }>;
     /** Majority boundary material (facade dressing follows it). */
     wallMaterial: Tile;
-    /** Facade story count from authored Detail.Story markers. */
-    stories: 1 | 2 | 3;
     /** A hearth/campfire/furnace inside: windows glow warm at night. */
     hasHearth: boolean;
     elevLevel: number;

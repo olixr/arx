@@ -1,4 +1,4 @@
-import { Detail, Tile } from '@devcraft/shared';
+import { Tile } from '@devcraft/shared';
 import type { ZoneBuilder } from '../maps/builder.js';
 import type { StructureTemplate } from './types.js';
 
@@ -18,9 +18,6 @@ export function templateHeight(tpl: StructureTemplate): number {
 }
 
 const DOORWAY_TILES: readonly Tile[] = [Tile.DoorwayStone, Tile.DoorwayWood];
-
-/** Floors the story marker may ride on — interior cells by definition. */
-const FLOOR_TILES: readonly Tile[] = [Tile.WoodFloor, Tile.StoneFloor];
 
 /**
  * Validate a template, throwing with the template id and reason.
@@ -59,38 +56,25 @@ export function compileTemplate(tpl: StructureTemplate): StructureTemplate {
       }
     }
   }
-  const chimney = tpl.meta?.chimney;
-  if (chimney && (chimney.x < 0 || chimney.y < 0 || chimney.x >= w || chimney.y >= h)) {
-    fail(`chimney at (${chimney.x},${chimney.y}) is outside the ${w}x${h} footprint`);
-  }
   return tpl;
 }
 
 /**
- * Mirror a template left-right: each row string reverses and the
- * chimney x follows. flipX ONLY — no rotation exists, because the
- * renderer presents south faces and a rotated building would face away
- * from the camera.
+ * Mirror a template left-right: each row string reverses. flipX ONLY —
+ * no rotation exists, because the renderer presents south faces and a
+ * rotated building would face away from the camera.
  */
 export function flipTemplate(tpl: StructureTemplate): StructureTemplate {
-  const w = templateWidth(tpl);
   return {
     ...tpl,
     rows: tpl.rows.map((row) => [...row].reverse().join('')),
-    meta: tpl.meta && {
-      ...tpl.meta,
-      chimney: tpl.meta.chimney && { x: w - 1 - tpl.meta.chimney.x, y: tpl.meta.chimney.y },
-    },
   };
 }
 
 /**
  * Stamp a template onto a zone at local coords. Space cells are skipped
  * entirely — the ground beneath them survives, which is what makes open
- * corners and L-shapes composable. If the template declares stories,
- * the Story2/3 marker lands on the first interior floor cell that
- * carries no authored detail (never clobber a doormat or rug — the
- * facade renderer only needs ONE marker somewhere inside).
+ * corners and L-shapes composable.
  */
 export function stampTemplate(
   b: ZoneBuilder,
@@ -109,20 +93,6 @@ export function stampTemplate(
       const cell = t.legend[ch]!;
       if (cell.tile !== undefined) b.set(x + tx, y + ty, cell.tile);
       if (cell.detail !== undefined) b.setDetail(x + tx, y + ty, cell.detail);
-    }
-  }
-  const stories = t.meta?.stories ?? 1;
-  if (stories > 1) {
-    marker: for (let ty = 0; ty < h; ty++) {
-      for (let tx = 0; tx < w; tx++) {
-        const ch = t.rows[ty]![tx]!;
-        if (ch === ' ') continue;
-        const cell = t.legend[ch]!;
-        if (cell.tile !== undefined && FLOOR_TILES.includes(cell.tile) && cell.detail === undefined) {
-          b.setDetail(x + tx, y + ty, stories === 3 ? Detail.Story3 : Detail.Story2);
-          break marker;
-        }
-      }
     }
   }
 }

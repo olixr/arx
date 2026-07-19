@@ -353,9 +353,6 @@ export declare class Renderer {
      * merge with rails only — a railing never joins a wall mass.
      */
     private railItem;
-    /** Story count → facade wall height in tiles (upper floors run a
-     *  touch shorter than the ground story, as real buildings do). */
-    private wallHeightFor;
     /** The interior region a wall-run tile fronts: any adjacent
      *  enclosed floor claims it (per-frame cached in the InteriorMap). */
     private wallRegion;

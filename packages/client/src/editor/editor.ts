@@ -33,8 +33,6 @@ const DETAIL_LABELS: Record<Detail, string> = {
   [Detail.Doormat]: 'doormat',
   [Detail.Sawdust]: 'sawdust',
   [Detail.Straw]: 'straw',
-  [Detail.Story2]: '2-story',
-  [Detail.Story3]: '3-story',
 };
 
 let zone: ZoneDef = newZone();
