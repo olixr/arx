@@ -60,6 +60,8 @@ export interface AppearanceData {
   bodyColor: string;
   /** Equipment part ids by slot, drives combinatorial rendering. */
   equip: Partial<Record<EquipSlot, string>>;
+  /** Player-chosen base look (palette indices) — see shared/look.ts. */
+  look?: import('./look.js').Look;
 }
 
 export type EquipSlot =

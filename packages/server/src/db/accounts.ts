@@ -1,5 +1,6 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
+import { sanitizeLook, type Look } from '@devcraft/shared';
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const SCRYPT_KEYLEN = 64;
@@ -212,6 +213,24 @@ export class AccountStore {
       this.db.exec('ROLLBACK');
       throw err;
     }
+  }
+
+  loadLook(characterId: number): Look | null {
+    const row = this.db
+      .prepare('SELECT look FROM characters WHERE id = ?')
+      .get(characterId) as { look: string | null } | undefined;
+    if (!row?.look) return null;
+    try {
+      return sanitizeLook(JSON.parse(row.look));
+    } catch {
+      return null;
+    }
+  }
+
+  saveLook(characterId: number, look: Look): void {
+    this.db
+      .prepare('UPDATE characters SET look = ? WHERE id = ?')
+      .run(JSON.stringify(look), characterId);
   }
 
   loadTechniques(characterId: number): Record<string, string> {

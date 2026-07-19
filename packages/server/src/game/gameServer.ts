@@ -22,6 +22,7 @@ import {
   type EntityId,
   type EntityMeta,
   type InputFrame,
+  type Look,
   type InvSlot,
   type SkillId,
   type SkillXp,
@@ -255,6 +256,8 @@ interface DelveInstance {
 interface PlayerComp {
   name: string;
   speed: number;
+  /** Chosen base look; null until the player has been through creation. */
+  look: Look | null;
   /** DB character id; negative for ephemeral guests. */
   characterId: number;
   accountId: number | null;
@@ -541,6 +544,7 @@ export class GameServer {
     this.players.set(eid, {
       name: character.name,
       speed: PLAYER_SPEED,
+      look: character.id > 0 ? this.accounts.loadLook(character.id) : null,
       characterId: character.id,
       accountId,
       token,
@@ -607,6 +611,7 @@ export class GameServer {
       tick: this.tickCount,
       token: player.token,
       motd: config.motd,
+      look: player.look ?? undefined,
     });
     session.sendJson({ t: 'skills', xp: player.skills });
     session.sendJson({ t: 'inv', slots: player.inventory });
@@ -1249,6 +1254,29 @@ export class GameServer {
     addItem(player.inventory, worn, 1);
     delete player.equipment[slot];
     this.onEquipmentChanged(eid, player);
+  }
+
+  /**
+   * Character creation: accept the look ONCE, then lock. The lock is
+   * server law — a future makeover NPC selectively lifts it here, not
+   * in any client.
+   */
+  setLook(eid: EntityId, look: Look): void {
+    const player = this.players.get(eid);
+    if (!player) return;
+    if (player.look) {
+      player.session?.sendJson({ t: 'chat', channel: 'system', text: 'Your look is already set.' });
+      return;
+    }
+    player.look = look;
+    if (player.characterId > 0) this.accounts.saveLook(player.characterId, look);
+    // Everyone who can see this player learns the new face.
+    const meta = this.buildMeta(eid);
+    for (const s of this.sessions) {
+      if (s.playerEid === eid || s.knownEntities.has(eid)) {
+        s.sendJson({ t: 'update', entities: [meta] });
+      }
+    }
   }
 
   private onEquipmentChanged(eid: EntityId, player: PlayerComp): void {
@@ -3223,7 +3251,7 @@ export class GameServer {
     const player = this.players.get(eid);
     if (player) {
       meta.name = player.name;
-      meta.appearance = { bodyColor: '', equip: { ...player.equipment } };
+      meta.appearance = { bodyColor: '', equip: { ...player.equipment }, look: player.look ?? undefined };
     }
     const npc = this.npcs.get(eid);
     if (npc) {

@@ -1,5 +1,6 @@
 import {
   CHUNK_SIZE,
+  CLOTH_COLORS,
   DRAW_FULL_TICKS,
   EntityKind,
   PoseState,
@@ -13,6 +14,7 @@ import {
   daylightAt,
   type ChunkData,
   type DaylightSample,
+  type Look,
   type Vec2,
 } from '@devcraft/shared';
 import { itemDef, npcDef } from '@devcraft/content';
@@ -3525,8 +3527,10 @@ export class Renderer {
               isOwn: false,
               hurt,
               equip: remote.meta.appearance?.equip ?? {},
-              color:
-                PLAYER_COLORS[hashString(remote.meta.name ?? String(eid)) % PLAYER_COLORS.length]!,
+              look: remote.meta.appearance?.look,
+              color: remote.meta.appearance?.look
+                ? CLOTH_COLORS[remote.meta.appearance.look.shirt]!
+                : PLAYER_COLORS[hashString(remote.meta.name ?? String(eid)) % PLAYER_COLORS.length]!,
             }),
           );
           break;
@@ -3564,7 +3568,10 @@ export class Renderer {
           isOwn: true,
           hurt: game.ownHurtUntil > now,
           equip: game.equipment,
-          color: PLAYER_COLORS[hashString(game.ownName) % PLAYER_COLORS.length]!,
+          look: game.ownLook ?? undefined,
+          color: game.ownLook
+            ? CLOTH_COLORS[game.ownLook.shirt]!
+            : PLAYER_COLORS[hashString(game.ownName) % PLAYER_COLORS.length]!,
           drawTOverride: game.ownDrawT,
         }),
       );
@@ -3586,6 +3593,8 @@ export class Renderer {
     size?: number;
     skinColor?: string;
     level?: number;
+    /** Player-chosen base look (skin/hair/beard/cloth). */
+    look?: Look;
     /** Live local bow-draw charge (own player only). */
     drawTOverride?: number;
   }): DrawItem {
@@ -3852,6 +3861,7 @@ export class Renderer {
           headItem: e.equip.head,
           size: e.size,
           skinColor: e.skinColor,
+          look: e.look,
           gatherPhase: now / 1000,
           craftKind: station?.kind ?? null,
         });

@@ -92,6 +92,10 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (character_id, style)
   );
   `,
+  // 7 — chosen base look (JSON of palette indices; NULL = not chosen yet)
+  `
+  ALTER TABLE characters ADD COLUMN look TEXT;
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

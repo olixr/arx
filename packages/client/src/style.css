@@ -1338,3 +1338,129 @@ body.pad-mode .hint-inline { display: none; }
   transform: rotate(12deg) scale(1.08);
   transition: transform 120ms ease;
 }
+
+/* ---- character creation (the RuneScape mirror) ---- */
+#look-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 6, 16, 0.6);
+}
+#look-panel.hidden {
+  display: none;
+}
+#look-card {
+  width: 392px;
+  max-height: 94vh;
+  overflow-y: auto;
+  background-color: #1d1209;
+  background-image:
+    radial-gradient(ellipse 130% 60% at 50% -8%, rgba(214, 158, 78, 0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 120% 90% at 50% 108%, rgba(8, 4, 2, 0.55) 0%, transparent 55%),
+    var(--tex-linen);
+  border: var(--frame-border) solid transparent;
+  border-image: var(--ui-frame) 110 / var(--frame-border);
+  box-shadow: 12px 14px 0 rgba(10, 6, 4, 0.55);
+  color: var(--parchment);
+  padding: 8px 14px 14px;
+}
+#look-preview {
+  display: block;
+  margin: 4px auto 10px;
+  border: 2px solid #4a341f;
+  image-rendering: auto;
+}
+.look-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 7px 0;
+}
+.look-label {
+  flex: 0 0 84px;
+  font-family: var(--serif);
+  font-size: 14.5px;
+  color: #e2c07a;
+  text-shadow: var(--punch-small);
+}
+.look-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.look-swatch {
+  width: 26px;
+  height: 26px;
+  border: 2px solid #17100b;
+  box-shadow: inset 0 0 0 1px rgba(255, 240, 200, 0.18), 2px 2px 0 rgba(10, 6, 4, 0.5);
+  cursor: pointer;
+  padding: 0;
+}
+.look-swatch.selected,
+.look-swatch:focus-visible,
+.look-swatch.nav-focus {
+  outline: none;
+  border-color: #e8b64c;
+  box-shadow: 0 0 0 2px rgba(232, 182, 76, 0.55), 2px 2px 0 rgba(10, 6, 4, 0.5);
+}
+.look-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.look-stepper button {
+  width: 30px;
+  height: 26px;
+  background: #2c1d10;
+  color: #e2c07a;
+  border: 1px solid #4a341f;
+  cursor: pointer;
+  font-size: 13px;
+  text-shadow: var(--punch-small);
+}
+.look-stepper button:hover,
+.look-stepper button.nav-focus {
+  background: #3a2815;
+  border-color: #e8b64c;
+}
+.look-value {
+  min-width: 96px;
+  text-align: center;
+  font-size: 14px;
+  text-shadow: var(--punch-small);
+}
+.look-note {
+  margin: 10px 0 8px;
+  font-size: 12.5px;
+  font-style: italic;
+  color: #b89b6a;
+  text-shadow: var(--punch-small);
+}
+.look-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+.look-actions button {
+  font-family: var(--serif);
+  font-size: 15px;
+  padding: 8px 14px;
+  background: #2c1d10;
+  color: #f0d9a0;
+  border: 2px solid #4a341f;
+  cursor: pointer;
+  text-shadow: var(--punch-small);
+  box-shadow: 3px 3px 0 rgba(10, 6, 4, 0.5);
+}
+.look-actions button:hover,
+.look-actions button.nav-focus {
+  border-color: #e8b64c;
+  background: #3a2815;
+}
+#look-confirm {
+  background: linear-gradient(180deg, #6b4a1c, #4a3010);
+  border-color: #e8b64c;
+}

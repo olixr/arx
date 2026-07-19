@@ -27,7 +27,7 @@ import {
   type Vec2,
 } from '@devcraft/shared';
 import { NODES_BY_TILE, abilityDef, itemDef } from '@devcraft/content';
-import type { AbilityDef, AbilitySlot } from '@devcraft/shared';
+import type { AbilityDef, AbilitySlot, Look } from '@devcraft/shared';
 
 export type InteractTarget =
   | { kind: 'node'; tx: number; ty: number }
@@ -98,6 +98,8 @@ export interface GameEvents {
     crit: boolean;
     isOwnTarget: boolean;
   }): void;
+  /** This character has never chosen a look — open the creator. */
+  onNeedLook?(): void;
 }
 
 export class ClientGame {
@@ -110,6 +112,8 @@ export class ClientGame {
 
   ownEid: EntityId | null = null;
   ownName = '';
+  /** Chosen base look; null until creation completes. */
+  ownLook: Look | null = null;
   aim = 0;
   rttMs = 0;
   serverTick = 0;
@@ -348,6 +352,7 @@ export class ClientGame {
       case 'welcome': {
         this.ownEid = msg.eid;
         this.ownName = msg.name;
+        this.ownLook = msg.look ?? null;
         this.token = msg.token;
         this.serverTick = msg.tick;
         this.entities.clear();
@@ -355,6 +360,7 @@ export class ClientGame {
         this.reconnectDelay = 500;
         this.events.onStatus('ingame');
         if (msg.motd) this.events.onChat({ channel: 'system', text: msg.motd });
+        if (!this.ownLook) this.events.onNeedLook?.();
         if (this.pingTimer) clearInterval(this.pingTimer);
         this.pingTimer = setInterval(() => {
           this.conn?.send({ t: 'ping', ct: performance.now() });
@@ -656,6 +662,13 @@ export class ClientGame {
   /** Drop a pack slot onto the ground where you stand. */
   dropSend(slot: number, qty: number): void {
     this.conn?.send({ t: 'dropitem', slot, qty });
+  }
+
+  /** Confirm character creation (optimistic — the server locks it). */
+  setLookSend(look: Look): void {
+    if (this.ownLook) return; // locked — the server would refuse anyway
+    this.ownLook = look;
+    this.conn?.send({ t: 'setlook', look });
   }
 
   shopSend(op: 'buy' | 'sell', item: string, qty: number): void {

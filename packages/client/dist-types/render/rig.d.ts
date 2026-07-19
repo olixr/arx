@@ -1,4 +1,4 @@
-import { PoseState } from '@devcraft/shared';
+import { PoseState, type Look } from '@devcraft/shared';
 import { LegRig, type LegPose, type LegRigConfig } from './legs.js';
 export type { LegPose } from './legs.js';
 export declare class LegSolver extends LegRig {
@@ -69,6 +69,8 @@ export interface RigPose {
     bodyItem?: string;
     /** Equipped head gear — drawn as a real helmet over the skull. */
     headItem?: string;
+    /** Player-chosen base look (skin/hair/beard/cloth palettes). */
+    look?: Look;
     /** Overall size multiplier (goblins ~0.8, champions ~1.2). */
     size?: number;
     skinColor?: string;

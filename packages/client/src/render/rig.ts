@@ -1,4 +1,4 @@
-import { PoseState } from '@devcraft/shared';
+import { CLOTH_COLORS, HAIR_COLORS, PoseState, SKIN_TONES, type Look } from '@devcraft/shared';
 import { itemDef } from '@devcraft/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import { LegRig, chooseLimbSign, solveLimb, type LegPose, type LegRigConfig } from './legs.js';
@@ -138,6 +138,8 @@ export interface RigPose {
   bodyItem?: string;
   /** Equipped head gear — drawn as a real helmet over the skull. */
   headItem?: string;
+  /** Player-chosen base look (skin/hair/beard/cloth palettes). */
+  look?: Look;
   /** Overall size multiplier (goblins ~0.8, champions ~1.2). */
   size?: number;
   skinColor?: string;
@@ -238,7 +240,9 @@ function drawArm(
 export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void {
   const k = rig.size ?? 1;
   const s = rig.scale * k;
-  const skin = rig.hurt ? '#ffffff' : (rig.skinColor ?? SKIN);
+  const skin = rig.hurt
+    ? '#ffffff'
+    : (rig.skinColor ?? (rig.look ? SKIN_TONES[rig.look.skin]! : SKIN));
   const bodyColor = rig.hurt ? '#ffffff' : (itemDef(rig.bodyItem ?? '')?.color ?? rig.bodyColor);
 
   const fx = Math.cos(rig.dir);
@@ -289,7 +293,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const kx = hipX + ex / 2 + cxn * sign * bend;
     const ky = hipY + ey / 2 + cyn * sign * bend;
 
-    ctx.strokeStyle = rig.hurt ? '#ffffff' : shade(bodyColor, -28);
+    ctx.strokeStyle = rig.hurt
+      ? '#ffffff'
+      : rig.look
+        ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
+        : shade(bodyColor, -28);
     ctx.lineWidth = Math.max(2, s * 0.09);
     ctx.beginPath();
     ctx.moveTo(hipX, hipY);
@@ -943,34 +951,60 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   chamferRect(ctx, headX - hw, headY - hh, hw * 2, hh * 2, cut);
   ctx.fill();
   ctx.stroke();
-  // Hair (skipped under a helmet — the dome owns the skull).
-  if (!helm) {
-    ctx.fillStyle = rig.hurt ? '#ffffff' : shade(bodyColor, -24);
+  // Hair (skipped under a helmet — the dome owns the skull). Style and
+  // color come from the chosen look; NPC humanoids keep the classic
+  // crop tinted from their body color.
+  const hairStyle = rig.look?.hair ?? 0;
+  const hairCol = rig.hurt
+    ? '#ffffff'
+    : rig.look
+      ? HAIR_COLORS[rig.look.hairColor]!
+      : shade(bodyColor, -24);
+  const BALD = hairStyle === 1;
+  const LONG = hairStyle === 2;
+  const KNOT = hairStyle === 3;
+  if (!helm && !BALD) {
+    ctx.fillStyle = hairCol;
     if (backK > 0.55) {
       // Back of the skull: the mop covers nearly everything, with one
-      // stepped hem so it still reads as a haircut.
+      // stepped hem so it still reads as a haircut. Long hair falls
+      // past the jaw; a topknot crops high.
+      const mopH = LONG ? hh * 1.95 : KNOT ? hh * 1.1 : hh * 1.52;
       ctx.beginPath();
-      chamferRect(ctx, headX - hw * 0.96, headY - hh * 0.98, hw * 1.92, hh * 1.52, [
+      chamferRect(ctx, headX - hw * 0.96, headY - hh * 0.98, hw * 1.92, mopH, [
         cut * 0.85,
         cut * 0.85,
         0,
         0,
       ]);
       ctx.fill();
-      ctx.fillRect(headX - lead * hw * 0.5 - hw * 0.28, headY + hh * 0.46, hw * 0.56, hh * 0.22);
+      ctx.fillRect(
+        headX - lead * hw * 0.5 - hw * 0.28,
+        headY - hh * 0.98 + mopH - hh * 0.06,
+        hw * 0.56,
+        hh * 0.22,
+      );
     } else {
       // Fringe slab with its stepped notch on the trailing side.
+      const fringeH = KNOT ? hh * 0.45 : hh * 0.6;
       ctx.beginPath();
-      chamferRect(ctx, headX - hw * 0.96, headY - hh * 0.98, hw * 1.92, hh * 0.6, [
+      chamferRect(ctx, headX - hw * 0.96, headY - hh * 0.98, hw * 1.92, fringeH, [
         cut * 0.85,
         cut * 0.85,
         0,
         0,
       ]);
       ctx.fill();
-      ctx.fillRect(headX - lead * hw * 0.55 - hw * 0.28, headY - hh * 0.44, hw * 0.56, hh * 0.24);
-      // Profile: a side-lock behind the ear grounds the turned head.
-      if (profileK > 0.45) {
+      if (!KNOT) {
+        ctx.fillRect(headX - lead * hw * 0.55 - hw * 0.28, headY - hh * 0.44, hw * 0.56, hh * 0.24);
+      }
+      if (LONG) {
+        // Curtains framing the face on both sides, past the jawline.
+        for (const es of [-1, 1]) {
+          ctx.fillRect(headX + es * hw * 0.68, headY - hh * 0.6, hw * 0.3, hh * 1.75);
+        }
+      } else if (profileK > 0.45) {
+        // Crop: a side-lock behind the ear grounds the turned head.
         const k = Math.min(1, (profileK - 0.45) / 0.35);
         ctx.fillRect(
           headX - lead * hw * 0.96,
@@ -979,6 +1013,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           hh * 1.05,
         );
       }
+    }
+    if (KNOT) {
+      // The knob rides the crown in every band.
+      ctx.beginPath();
+      chamferRect(ctx, headX - hw * 0.2, headY - hh * 1.34, hw * 0.4, hh * 0.36, cut * 0.4);
+      ctx.fill();
     }
   }
 
@@ -1028,6 +1068,42 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           headR * 0.28 * wK,
           headR * 0.16,
         );
+      }
+    }
+    // Facial hair: chunky slabs in the hair color, tracking the same
+    // face shift so a turned head carries its beard around with it.
+    const beard = rig.look?.beard ?? 0;
+    if (beard > 0) {
+      ctx.fillStyle = hairCol;
+      const bK = 1 - 0.25 * profileK; // beards narrow a touch at profile
+      if (beard === 1) {
+        // Mustache: one confident bar under the nose line.
+        ctx.fillRect(pairX - headR * 0.32 * bK, eyeLineY + headR * 0.26, headR * 0.64 * bK, headR * 0.14);
+      } else if (beard === 2) {
+        // Goatee: a chin spike dropping past the jaw.
+        ctx.beginPath();
+        chamferRect(
+          ctx,
+          pairX - headR * 0.15 * bK,
+          headY + hh * 0.58,
+          headR * 0.3 * bK,
+          hh * 0.62,
+          cut * 0.3,
+        );
+        ctx.fill();
+      } else {
+        // Full beard: mustache bar plus a jaw slab below the face.
+        ctx.fillRect(pairX - headR * 0.32 * bK, eyeLineY + headR * 0.26, headR * 0.64 * bK, headR * 0.14);
+        ctx.beginPath();
+        chamferRect(
+          ctx,
+          pairX - hw * 0.62 * bK,
+          headY + hh * 0.42,
+          hw * 1.24 * bK,
+          hh * 0.85,
+          [0, 0, cut * 0.8, cut * 0.8],
+        );
+        ctx.fill();
       }
     }
   }

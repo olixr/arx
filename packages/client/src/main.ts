@@ -12,6 +12,7 @@ import { Sfx } from './audio/sfx.js';
 import { setupTouch } from './input/touch.js';
 import { uiIconUrl } from './render/icons.js';
 import { installChrome } from './ui/chrome.js';
+import { LookCreator } from './ui/lookCreator.js';
 
 // Paint the HUD's chrome (linen weave + ornate frame) before any panel
 // shows — the stylesheet reads it from CSS custom properties.
@@ -118,7 +119,7 @@ const chat = new ChatUI(
   (text) => game.sendChat(text),
   () => !hud.classList.contains('hidden'),
 );
-input.setTypingCheck(() => chat.isTyping);
+input.setTypingCheck(() => chat.isTyping || looks.open);
 let buildMode: string | null = null;
 /** The bank chest tile that asked the server for the vault — anchors the panel. */
 let lastBankAnchor: { tx: number; ty: number } | null = null;
@@ -241,8 +242,14 @@ function showLoginError(text: string): void {
   loginStatus.classList.add('hidden');
 }
 
+const looks = new LookCreator((look) => {
+  game.setLookSend(look);
+  chat.addLine({ channel: 'system', text: 'Your look is set. Welcome to the world.' });
+});
+
 const game = new ClientGame(input, {
   onChat: (line) => chat.addLine(line),
+  onNeedLook: () => looks.show(),
   onStatus: (status, detail) => {
     if (status === 'ingame') {
       loginOverlay.classList.add('hidden');
@@ -724,7 +731,7 @@ function frame(now: number): void {
   input.buildCapture = buildMode !== null;
   input.pollGamepad();
   const uiOpen =
-    document.querySelector('.side-panel:not(.hidden)') !== null;
+    document.querySelector('.side-panel:not(.hidden)') !== null || looks.open;
   // Build mode pins the action strip with its verbs — on both devices.
   if (buildMode) {
     if (nav.mode === 'pad') {

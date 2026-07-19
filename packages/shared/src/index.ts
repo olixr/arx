@@ -1,5 +1,6 @@
 export * from './constants.js';
 export * from './entities.js';
+export * from './look.js';
 export * from './skills.js';
 export * from './math/vec.js';
 export * from './math/rng.js';

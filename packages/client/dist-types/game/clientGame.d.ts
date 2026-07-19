@@ -1,5 +1,5 @@
 import { ChunkStore, type EntityId, type EntityMeta, type EquipSlot, type InvSlot, type SkillXp, type StationType } from '@devcraft/shared';
-import type { AbilityDef, AbilitySlot } from '@devcraft/shared';
+import type { AbilityDef, AbilitySlot, Look } from '@devcraft/shared';
 export type InteractTarget = {
     kind: 'node';
     tx: number;
@@ -91,6 +91,8 @@ export interface GameEvents {
         crit: boolean;
         isOwnTarget: boolean;
     }): void;
+    /** This character has never chosen a look — open the creator. */
+    onNeedLook?(): void;
 }
 export declare class ClientGame {
     private readonly input;
@@ -103,6 +105,8 @@ export declare class ClientGame {
     readonly predictor: Predictor;
     ownEid: EntityId | null;
     ownName: string;
+    /** Chosen base look; null until creation completes. */
+    ownLook: Look | null;
     aim: number;
     rttMs: number;
     serverTick: number;
@@ -214,6 +218,8 @@ export declare class ClientGame {
     invMove(from: number, to: number): void;
     /** Drop a pack slot onto the ground where you stand. */
     dropSend(slot: number, qty: number): void;
+    /** Confirm character creation (optimistic — the server locks it). */
+    setLookSend(look: Look): void;
     shopSend(op: 'buy' | 'sell', item: string, qty: number): void;
     buildSend(buildable: string, tx: number, ty: number): void;
     demolishSend(tx: number, ty: number): void;

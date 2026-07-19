@@ -126,8 +126,15 @@ export class UiNav {
   private navigables(): HTMLElement[] {
     // An open item verb menu is MODAL: focus stays inside it until it
     // closes — spatial nav must never wander back into the pack grid.
+    // Character creation is modal the same way.
     const menu = document.getElementById('item-menu');
-    const scope = menu && !menu.classList.contains('hidden') ? menu : document;
+    const lookPanel = document.getElementById('look-panel');
+    const scope =
+      menu && !menu.classList.contains('hidden')
+        ? menu
+        : lookPanel && !lookPanel.classList.contains('hidden')
+          ? lookPanel
+          : document;
     const out: HTMLElement[] = [];
     for (const el of scope.querySelectorAll<HTMLElement>('[data-nav]')) {
       if (el.closest('.hidden')) continue;

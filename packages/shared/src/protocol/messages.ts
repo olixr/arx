@@ -1,5 +1,6 @@
 import { EQUIP_SLOTS } from '../entities.js';
 import type { EntityId, EntityMeta, EquipSlot } from '../entities.js';
+import { sanitizeLook, type Look } from '../look.js';
 import type { InputFrame } from '../sim/input.js';
 import type { SkillId, SkillXp } from '../skills.js';
 
@@ -135,6 +136,12 @@ export interface C2STechnique {
   ability: string;
 }
 
+/** Choose the character's base look — accepted once, then locked. */
+export interface C2SSetLook {
+  t: 'setlook';
+  look: Look;
+}
+
 export type C2SMessage =
   | C2SHello
   | C2SLogin
@@ -152,7 +159,8 @@ export type C2SMessage =
   | C2SShop
   | C2SBuild
   | C2SDemolish
-  | C2STechnique;
+  | C2STechnique
+  | C2SSetLook;
 
 // ---------------------------------------------------------------- S2C
 
@@ -165,6 +173,8 @@ export interface S2CWelcome {
   /** Session token for graceful reconnect. */
   token: string;
   motd?: string;
+  /** The character's chosen look; absent = not chosen yet (show creator). */
+  look?: Look;
 }
 
 export interface S2CReject {
@@ -487,6 +497,11 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (typeof msg.style !== 'string' || msg.style.length > 16) return null;
       if (typeof msg.ability !== 'string' || msg.ability.length > 64) return null;
       return { t: 'technique', style: msg.style, ability: msg.ability };
+    }
+    case 'setlook': {
+      const look = sanitizeLook(msg.look);
+      if (!look) return null;
+      return { t: 'setlook', look };
     }
     default:
       return null;
