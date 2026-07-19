@@ -1858,12 +1858,14 @@ export class Renderer {
                 const h2 = yb - yt;
                 if (h2 < logH * 0.55) break; // no sliver cap at the plate
                 const proud = li3 % 2 === 0;
-                const capW = logH * (proud ? 1.04 : 0.9);
-                const capH = h2 * (proud ? 0.72 : 0.64);
+                // Full course height — each cap beds on the one below
+                // it, the way stacked logs actually meet; only the
+                // width whispers proud/shy so the stack still reads
+                // hand-hewn, not machined.
+                const capW = logH * (proud ? 1.06 : 0.98);
+                const capH = h2;
                 const cx2 = ex - capW / 2;
-                // Nudged below the log's centre: a downward camera
-                // pushes a side-facing plane toward the belly.
-                const cyT = (yt + yb) / 2 + h2 * 0.06 - capH / 2;
+                const cyT = yt;
                 const cut = capH * 0.2;
                 const rim = Math.max(1, s * 0.018);
                 ctx.fillStyle = 'rgba(38, 22, 9, 0.55)';
