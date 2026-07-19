@@ -349,31 +349,52 @@ export declare class Renderer {
      */
     private rampApronItem;
     private static readonly ORE_STYLES;
-    /** Irregular low-poly mass: dark face, lifted flat cap, lit NW facet. */
-    private rockMass;
+    private static readonly BARREN_STONE;
+    private static readonly BARREN_DIM;
+    private static readonly ROCK_TILES;
     /**
-     * One BIG faceted ore block: deep-toned frame, bright crystal face,
-     * specular slab. The blocks are the protagonists of a node - sized
-     * to read from across the screen, several of them jutting past the
-     * host rock's silhouette.
+     * One rectangular stone block, spoken in the cliff dialect: broad
+     * front face, lit cap strip across the top, shaded lane down the
+     * off-light flank — hard 45° top chamfers, flat fills, one crisp
+     * dark outline. `lean` shears the top edge sideways so stacked
+     * blocks read geologic, never machined. Returns the silhouette so
+     * callers can clip veins INTO the stone.
      */
-    private oreBlock;
+    private stoneBlock;
+    /**
+     * One TALL hewn monolith: a single tapering silhouette with a
+     * stepped ledge on each flank — the "you walk up against it"
+     * landmark mass. Same flat grammar as stoneBlock (lit cap, shaded
+     * lane, one outline) but drawn as ONE rock, so height never reads
+     * as a pancake tower of crates. Returns the silhouette so callers
+     * can clip veins INTO the stone.
+     */
+    private monolith;
+    /**
+     * One BIG rectangular ore node: a deep-toned frame around a bright
+     * mineral face, capped with a hard square glint. The nodes are the
+     * protagonists of a deposit — blocky, rigid, sized to read from
+     * across the screen, planted proud of the host stone.
+     */
+    private oreNode;
     /** A four-point star twinkle - the "this is mineable" beacon. */
     private sparkle;
     /** Staggered twinkle window: brief flash once per period. */
     private static twinkle;
-    /** Loose chips scattered at a formation's feet - grounds the mass. */
-    private baseScatter;
+    /** Blocky spall scattered at a formation's feet - grounds the mass. */
+    private rubble;
     /**
-     * MINING NODES - each metal is a bespoke landmark, not a palette
-     * swap. Copper: a wide rust-warm outcrop with thick slabs of raw
-     * copper bursting through a seam, weeping verdigris. Tin: cool stone
-     * carrying a stack of cubic silver crystals. Iron: banded ironstone
-     * slabs stacked like broken masonry, studded with rust wedges and a
-     * black magnetite block. Coal: a glossy black seam-mass wedged
-     * between grey shoulders. Gold: a milky quartz band splitting the
-     * rock, packed with fat nuggets. All of them twinkle at idle - the
-     * eye finds a minable node before the tooltip does.
+     * MINING NODES — every metal is a bespoke LANDMARK in the brutalist
+     * dialect: rectangular blocks, hard chamfers, flat fills, no
+     * pebble-circles. Copper raises a rust obelisk with a seam of raw
+     * metal climbing its full height. Tin lays an oblong ridge crested
+     * by a march of cubic crystals. Iron stacks banded slabs into a
+     * natural anvil. Coal drives a jagged black seam-wall up between
+     * grey shoulders. Gold splits a standing pillar with a quartz vein
+     * crowned in nuggets. Deposits stand player-tall or better, and all
+     * of them twinkle at idle — the eye finds a mineable node before
+     * the tooltip does. Every formation mirrors and resizes off its
+     * world hash so no two reads stamped.
      */
     private drawRockFormation;
     /**

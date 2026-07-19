@@ -327,67 +327,38 @@ const PAINTERS: Record<string, IconPainter> = {
     c.stroke();
     c.restore();
   },
-  // Each ore is its own find: copper blooms in round nodules, tin
-  // grows cubic crystals, iron runs in rusted veins.
+  // Each ore is its own find, cut in the game's blocky node language:
+  // a deep-toned frame, a bright mineral face, one hard square glint —
+  // the icon IS the chunk the deposit gives up, no generic host rock.
   ore_copper: (c, col) => {
-    oreRock(c);
-    for (const [x, y, r] of [
-      [0.42, 0.55, 0.085],
-      [0.58, 0.45, 0.07],
-      [0.6, 0.62, 0.06],
-    ] as const) {
-      dot(c, col, x, y, r);
-      c.strokeStyle = OUTLINE;
-      c.lineWidth = 0.024;
-      c.beginPath();
-      c.arc(x, y, r, 0, Math.PI * 2);
-      c.stroke();
-      dot(c, shade(col, 30), x - r * 0.3, y - r * 0.3, r * 0.38);
-    }
+    // A hewn block of raw copper, verdigris kissing its shadowed flank.
+    oreChunk(c, 0.46, 0.5, 0.5, -0.1, col);
+    oreChunk(c, 0.72, 0.72, 0.27, 0.18, col);
+    c.save();
+    c.translate(0.46, 0.5);
+    c.rotate(-0.1);
+    c.fillStyle = '#3fa98e';
+    c.fillRect(-0.14, 0.05, 0.1, 0.09);
+    c.fillRect(-0.02, 0.11, 0.07, 0.05);
+    c.restore();
   },
   ore_tin: (c, col) => {
-    oreRock(c);
-    for (const [x, y, r, a] of [
-      [0.44, 0.52, 0.085, 0.2],
-      [0.6, 0.56, 0.07, -0.25],
-    ] as const) {
-      c.save();
-      c.translate(x, y);
-      c.rotate(a);
-      c.fillStyle = col;
-      c.strokeStyle = OUTLINE;
-      c.lineWidth = 0.024;
-      c.fillRect(-r, -r, r * 2, r * 2);
-      c.strokeRect(-r, -r, r * 2, r * 2);
-      c.fillStyle = shade(col, 28);
-      c.fillRect(-r, -r, r * 2, r * 0.8);
-      c.fillStyle = shade(col, -20);
-      c.fillRect(-r, r * 0.35, r * 2, r * 0.65);
-      c.restore();
-    }
-    dot(c, '#fff2cc', 0.41, 0.46, 0.02);
+    // Twin cubic crystals leaning shoulder to shoulder.
+    oreChunk(c, 0.4, 0.58, 0.42, -0.16, col, '#ffffff');
+    oreChunk(c, 0.68, 0.5, 0.32, 0.22, col, '#ffffff');
+    dot(c, '#ffffff', 0.33, 0.42, 0.022);
   },
   ore_iron: (c, col) => {
-    oreRock(c);
-    // Rust-red veins run diagonally through the stone.
-    c.strokeStyle = col;
-    c.lineWidth = 0.05;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.moveTo(0.3, 0.62);
-    c.quadraticCurveTo(0.46, 0.5, 0.52, 0.38);
-    c.moveTo(0.46, 0.68);
-    c.quadraticCurveTo(0.6, 0.58, 0.68, 0.44);
-    c.stroke();
-    c.strokeStyle = shade(col, 22);
-    c.lineWidth = 0.02;
-    c.beginPath();
-    c.moveTo(0.33, 0.58);
-    c.quadraticCurveTo(0.46, 0.48, 0.5, 0.4);
-    c.stroke();
-    c.lineCap = 'butt';
-    dot(c, shade(col, -18), 0.62, 0.6, 0.028);
-    dot(c, shade(col, -18), 0.38, 0.44, 0.022);
+    // A banded ironstone block with a black magnetite corner.
+    oreChunk(c, 0.48, 0.52, 0.54, 0.08, col);
+    c.save();
+    c.translate(0.48, 0.52);
+    c.rotate(0.08);
+    c.fillStyle = shade(col, -28);
+    c.fillRect(-0.2, -0.02, 0.4, 0.05);
+    c.fillRect(-0.17, 0.09, 0.34, 0.04);
+    c.restore();
+    oreChunk(c, 0.74, 0.72, 0.23, -0.14, '#3a3d46', '#9fb2c8');
   },
   bar: (c, col) => {
     poly(c, col, [[0.2, 0.62], [0.3, 0.42], [0.74, 0.42], [0.84, 0.62]]);
@@ -1058,32 +1029,11 @@ const PAINTERS: Record<string, IconPainter> = {
     poly(c, '#c8e6f8', [[0.5, 0.14], [0.55, 0.26], [0.45, 0.26]]);
   },
   nuggets: (c, col) => {
-    // Chunks of the good stuff.
-    for (const [x, y, r] of [
-      [0.34, 0.62, 0.17],
-      [0.66, 0.64, 0.15],
-      [0.5, 0.4, 0.16],
-    ] as const) {
-      c.fillStyle = col;
-      c.strokeStyle = OUTLINE;
-      c.lineWidth = 0.033;
-      c.beginPath();
-      c.moveTo(x - r, y);
-      c.lineTo(x - r * 0.5, y - r * 0.9);
-      c.lineTo(x + r * 0.6, y - r * 0.8);
-      c.lineTo(x + r, y + r * 0.2);
-      c.lineTo(x + r * 0.4, y + r * 0.8);
-      c.lineTo(x - r * 0.6, y + r * 0.7);
-      c.closePath();
-      c.fill();
-      c.stroke();
-      poly(c, shade(col, 28), [
-        [x - r * 0.4, y - r * 0.7],
-        [x + r * 0.4, y - r * 0.6],
-        [x, y - r * 0.1],
-      ]);
-    }
-    dot(c, '#fff2cc', 0.56, 0.3, 0.03);
+    // Fat blocky nuggets of the good stuff, stacked like a hoard.
+    oreChunk(c, 0.36, 0.62, 0.33, 0.12, col);
+    oreChunk(c, 0.67, 0.64, 0.29, -0.1, col);
+    oreChunk(c, 0.5, 0.38, 0.31, -0.18, col);
+    dot(c, '#fff2cc', 0.6, 0.27, 0.028);
   },
   chicken: (c, col) => {
     // The whole bird, honest and plucked.
@@ -1141,31 +1091,10 @@ const PAINTERS: Record<string, IconPainter> = {
     c.restore();
   },
   coalpile: (c, col) => {
-    // Facet-cut black lumps with a cold sheen.
-    for (const [x, y, r] of [
-      [0.35, 0.6, 0.18],
-      [0.65, 0.62, 0.16],
-      [0.5, 0.4, 0.17],
-    ] as const) {
-      c.fillStyle = col;
-      c.strokeStyle = OUTLINE;
-      c.lineWidth = 0.033;
-      c.beginPath();
-      c.moveTo(x - r, y + r * 0.2);
-      c.lineTo(x - r * 0.4, y - r * 0.9);
-      c.lineTo(x + r * 0.7, y - r * 0.7);
-      c.lineTo(x + r, y + r * 0.3);
-      c.lineTo(x + r * 0.2, y + r * 0.85);
-      c.lineTo(x - r * 0.7, y + r * 0.7);
-      c.closePath();
-      c.fill();
-      c.stroke();
-      poly(c, shade(col, 30), [
-        [x - r * 0.3, y - r * 0.6],
-        [x + r * 0.35, y - r * 0.5],
-        [x, y],
-      ]);
-    }
+    // Blocky coal lumps, each glossed with one cold flat facet.
+    oreChunk(c, 0.36, 0.62, 0.35, 0.1, col, '#8a86a0');
+    oreChunk(c, 0.67, 0.64, 0.31, -0.16, col, '#8a86a0');
+    oreChunk(c, 0.5, 0.39, 0.33, 0.06, col, '#8a86a0');
   },
 
   // ------------------------------------------------------- UI glyphs
@@ -1253,11 +1182,53 @@ const PAINTERS: Record<string, IconPainter> = {
   },
 };
 
-/** The shared host stone every ore variant grows out of. */
-function oreRock(c: CanvasRenderingContext2D): void {
-  poly(c, '#7d7887', [[0.2, 0.76], [0.14, 0.5], [0.32, 0.3], [0.62, 0.26], [0.84, 0.48], [0.76, 0.76]]);
-  poly(c, '#928d99', [[0.32, 0.3], [0.62, 0.26], [0.72, 0.42], [0.42, 0.46]]);
-  poly(c, '#67626f', [[0.24, 0.72], [0.72, 0.72], [0.76, 0.62], [0.2, 0.6]]);
+/**
+ * One blocky ore chunk — the icon-scale twin of the world's oreNode:
+ * a chamfered deep-toned frame, a bright mineral face biased to the
+ * lit top-left, a flat lighter cap band, one hard square glint.
+ */
+function oreChunk(
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  rot: number,
+  col: string,
+  glint = '#fff6d8',
+): void {
+  c.save();
+  c.translate(x, y);
+  c.rotate(rot);
+  const hh = w * 0.8;
+  const cut = w * 0.22;
+  poly(c, shade(col, -32), [
+    [-w / 2 + cut, -hh / 2],
+    [w / 2 - cut, -hh / 2],
+    [w / 2, -hh / 2 + cut],
+    [w / 2, hh / 2 - cut],
+    [w / 2 - cut, hh / 2],
+    [-w / 2 + cut, hh / 2],
+    [-w / 2, hh / 2 - cut],
+    [-w / 2, -hh / 2 + cut],
+  ]);
+  // Bright face, biased toward the light.
+  c.fillStyle = col;
+  c.beginPath();
+  c.moveTo(-w * 0.36 + cut * 0.6, -hh * 0.42);
+  c.lineTo(w * 0.34 - cut * 0.6, -hh * 0.42);
+  c.lineTo(w * 0.34, -hh * 0.42 + cut * 0.6);
+  c.lineTo(w * 0.34, hh * 0.24);
+  c.lineTo(w * 0.34 - cut * 0.6, hh * 0.26);
+  c.lineTo(-w * 0.36, hh * 0.26);
+  c.lineTo(-w * 0.36, -hh * 0.42 + cut * 0.6);
+  c.closePath();
+  c.fill();
+  // Flat lit cap band + one hard square glint.
+  c.fillStyle = shade(col, 24);
+  c.fillRect(-w * 0.33, -hh * 0.38, w * 0.64, hh * 0.18);
+  c.fillStyle = glint;
+  c.fillRect(-w * 0.26, -hh * 0.32, w * 0.2, hh * 0.15);
+  c.restore();
 }
 
 function poly(c: CanvasRenderingContext2D, color: string, pts: Array<[number, number]>): void {

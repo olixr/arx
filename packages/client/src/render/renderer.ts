@@ -2193,80 +2193,231 @@ export class Renderer {
   // --------------------------------------------------------- rock nodes
 
   private static readonly ORE_STYLES: Partial<
-    Record<number, { nug: string; deep: string; accent: string }>
+    Record<
+      number,
+      {
+        nug: string;
+        deep: string;
+        accent: string;
+        stone: { face: string; top: string; side: string };
+      }
+    >
   > = {
-    [Tile.RockCopper]: { nug: '#e0954a', deep: '#7c4520', accent: '#3fa98e' },
-    [Tile.RockTin]: { nug: '#d8dce6', deep: '#767c8c', accent: '#ffffff' },
-    [Tile.RockIron]: { nug: '#c26f3e', deep: '#6f4638', accent: '#3a3d46' },
-    [Tile.RockCoal]: { nug: '#2c2933', deep: '#191621', accent: '#8a86a0' },
-    [Tile.RockGold]: { nug: '#f4c84f', deep: '#a87c1c', accent: '#fff3c9' },
+    [Tile.RockCopper]: {
+      nug: '#e0954a',
+      deep: '#7c4520',
+      accent: '#3fa98e',
+      stone: { face: '#6b5a50', top: '#8a7668', side: '#544740' },
+    },
+    [Tile.RockTin]: {
+      nug: '#dde1ea',
+      deep: '#767c8c',
+      accent: '#ffffff',
+      stone: { face: '#5d5966', top: '#7b7787', side: '#4b4754' },
+    },
+    [Tile.RockIron]: {
+      nug: '#c26f3e',
+      deep: '#6f4638',
+      accent: '#3a3d46',
+      stone: { face: '#5e524e', top: '#786a60', side: '#4b403c' },
+    },
+    [Tile.RockCoal]: {
+      nug: '#2c2933',
+      deep: '#17141f',
+      accent: '#8a86a0',
+      stone: { face: '#5a5466', top: '#6e6879', side: '#494452' },
+    },
+    [Tile.RockGold]: {
+      nug: '#f4c84f',
+      deep: '#a87c1c',
+      accent: '#fff3c9',
+      stone: { face: '#565064', top: '#6e687c', side: '#454051' },
+    },
   };
 
-  // ---- shared rock-formation vocabulary --------------------------------
+  private static readonly BARREN_STONE = { face: '#5f596b', top: '#767083', side: '#4c475a' };
+  private static readonly BARREN_DIM = { face: '#555061', top: '#696377', side: '#443f52' };
 
-  /** Irregular low-poly mass: dark face, lifted flat cap, lit NW facet. */
-  private rockMass(
+  private static readonly ROCK_TILES: ReadonlySet<number> = new Set([
+    Tile.Rock,
+    Tile.RockCopper,
+    Tile.RockTin,
+    Tile.RockIron,
+    Tile.RockCoal,
+    Tile.RockGold,
+    Tile.RockDepleted,
+  ]);
+
+  // ---- shared monolith vocabulary --------------------------------------
+
+  /**
+   * One rectangular stone block, spoken in the cliff dialect: broad
+   * front face, lit cap strip across the top, shaded lane down the
+   * off-light flank — hard 45° top chamfers, flat fills, one crisp
+   * dark outline. `lean` shears the top edge sideways so stacked
+   * blocks read geologic, never machined. Returns the silhouette so
+   * callers can clip veins INTO the stone.
+   */
+  private stoneBlock(
     cx: number,
-    cy: number,
-    rx: number,
-    ry: number,
-    seed: number,
-    face: string,
-    cap: string,
-    capLit: string,
-    spiky = 0.28,
-  ): { sil: Array<[number, number]>; cap: Array<[number, number]> } {
+    yb: number,
+    w: number,
+    hgt: number,
+    lean: number,
+    pal: { face: string; top: string; side: string },
+    seed = 0,
+    taperK = 1,
+  ): Array<[number, number]> {
     const ctx = this.ctx;
-    const n = 8;
-    const pts: Array<[number, number]> = [];
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2 - Math.PI / 2 + (((seed >> (i * 2)) & 3) - 1.5) * 0.08;
-      const rr = 0.84 + (((seed >> (i * 3)) & 7) / 7) * spiky;
-      pts.push([cx + Math.cos(a) * rx * rr, cy + Math.sin(a) * ry * rr]);
-    }
-    const fill = (p: Array<[number, number]>): void => {
+    const yt = yb - hgt;
+    // Hewn-boulder silhouette: the top is narrower than the base
+    // (seeded taper — soften via taperK for masonry-slab reads), the
+    // two top chamfers are unequal, and each flank carries a shoulder
+    // vertex partway up — eight hard points that read quarried, never
+    // packaged.
+    const tl = 1 - (0.38 - ((seed >> 2) & 3) * 0.06) * taperK; // top-left half-width factor
+    const tr = 1 - (0.38 - ((seed >> 4) & 3) * 0.06) * taperK;
+    const cSm = Math.min(w, hgt) * 0.1;
+    const cBg = Math.min(w, hgt) * (0.24 + ((seed >> 6) & 3) * 0.05);
+    const [cL, cR] = ((seed >> 8) & 1) === 0 ? [cSm, cBg] : [cBg, cSm];
+    const shL = yb - hgt * (0.3 + ((seed >> 9) & 3) * 0.05); // shoulder heights
+    const shR = yb - hgt * (0.28 + ((seed >> 11) & 3) * 0.05);
+    const wl = w / 2;
+    const sil: Array<[number, number]> = [
+      [cx - wl, yb],
+      [cx - wl - w * 0.04, shL],
+      [cx - wl * tl + lean, yt + cL],
+      [cx - wl * tl + lean + cL, yt],
+      [cx + wl * tr + lean - cR, yt],
+      [cx + wl * tr + lean, yt + cR],
+      [cx + wl + w * 0.03, shR],
+      [cx + wl, yb],
+    ];
+    const trace = (): void => {
       ctx.beginPath();
-      p.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+      sil.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
       ctx.closePath();
-      ctx.fill();
     };
-    ctx.fillStyle = face;
-    fill(pts);
-    // Grounding outline: keeps the mass readable on stone floors where
-    // grey-on-grey would swallow it.
-    ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
-    ctx.lineWidth = Math.max(1.5, rx * 0.07);
-    ctx.beginPath();
-    pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
-    ctx.closePath();
-    ctx.stroke();
-    const lift = ry * 0.42;
-    const capPts = pts.map(
-      ([x, y]): [number, number] => [cx + (x - cx) * 0.87, cy + (y - cy) * 0.8 - lift],
-    );
-    ctx.fillStyle = cap;
-    fill(capPts);
-    ctx.fillStyle = capLit;
-    ctx.beginPath();
-    ctx.moveTo(capPts[5]![0], capPts[5]![1]);
-    ctx.lineTo(capPts[6]![0], capPts[6]![1]);
-    ctx.lineTo(capPts[7]![0], capPts[7]![1]);
-    ctx.lineTo(cx, cy - lift);
-    ctx.closePath();
+    ctx.fillStyle = pal.face;
+    trace();
     ctx.fill();
-    // AO seam at the ground line.
-    ctx.fillStyle = 'rgba(18, 12, 26, 0.25)';
-    ctx.fillRect(cx - rx * 0.7, cy + ry * 0.7, rx * 1.4, Math.max(1.5, rx * 0.09));
-    return { sil: pts, cap: capPts };
+    ctx.save();
+    trace();
+    ctx.clip();
+    // Shade lane hugging the off-light flank, then the lit cap wins
+    // the top — both flat fills, both clipped to the silhouette.
+    ctx.strokeStyle = pal.side;
+    ctx.lineWidth = w * 0.24;
+    ctx.beginPath();
+    ctx.moveTo(cx + wl - w * 0.09, yb + 1);
+    ctx.lineTo(cx + wl * tr + lean - w * 0.09, yt + cR);
+    ctx.stroke();
+    ctx.fillStyle = pal.top;
+    const capH = Math.min(hgt * 0.32, w * 0.28);
+    ctx.save();
+    ctx.translate(cx + lean, yt);
+    ctx.rotate(((seed >> 3) & 1) === 0 ? -0.05 : 0.05);
+    ctx.fillRect(-w, -w * 0.5, w * 2, w * 0.5 + capH);
+    ctx.restore();
+    ctx.restore();
+    trace();
+    ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
+    ctx.lineWidth = Math.max(1.5, w * 0.04);
+    ctx.stroke();
+    // Crisp parting shadow where the block meets whatever bears it.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+    ctx.fillRect(cx - w * 0.4, yb - Math.max(1.5, hgt * 0.045), w * 0.8, Math.max(1.5, hgt * 0.045));
+    return sil;
   }
 
   /**
-   * One BIG faceted ore block: deep-toned frame, bright crystal face,
-   * specular slab. The blocks are the protagonists of a node - sized
-   * to read from across the screen, several of them jutting past the
-   * host rock's silhouette.
+   * One TALL hewn monolith: a single tapering silhouette with a
+   * stepped ledge on each flank — the "you walk up against it"
+   * landmark mass. Same flat grammar as stoneBlock (lit cap, shaded
+   * lane, one outline) but drawn as ONE rock, so height never reads
+   * as a pancake tower of crates. Returns the silhouette so callers
+   * can clip veins INTO the stone.
    */
-  private oreBlock(
+  private monolith(
+    cx: number,
+    yb: number,
+    w: number,
+    hgt: number,
+    m: number,
+    pal: { face: string; top: string; side: string },
+    seed = 0,
+  ): Array<[number, number]> {
+    const ctx = this.ctx;
+    const yt = yb - hgt;
+    const r = (bits: number, lo: number, hi: number): number =>
+      lo + (((seed >> bits) & 7) / 7) * (hi - lo);
+    const lean = w * r(0, -0.06, 0.06) * m;
+    const c = w * 0.1;
+    const wl = w / 2;
+    // Seeded ledge heights and a top that narrows to roughly half.
+    const lY = yb - hgt * r(3, 0.42, 0.55);
+    const rY = yb - hgt * r(6, 0.36, 0.5);
+    const tw = wl * r(9, 0.5, 0.62);
+    const sil: Array<[number, number]> = [
+      [cx - wl, yb],
+      [cx - wl - w * 0.025, yb - hgt * 0.2],
+      [cx - wl * 0.8 + lean * 0.5, lY],
+      [cx - wl * 0.66 + lean * 0.5, lY - hgt * 0.05],
+      [cx - tw + lean, yt + c],
+      [cx - tw + lean + c, yt],
+      [cx + tw + lean - c * 1.6, yt],
+      [cx + tw + lean, yt + c * 1.6],
+      [cx + wl * 0.7 + lean * 0.5, rY - hgt * 0.045],
+      [cx + wl * 0.84 + lean * 0.5, rY],
+      [cx + wl + w * 0.03, yb - hgt * 0.16],
+      [cx + wl, yb],
+    ];
+    const trace = (): void => {
+      ctx.beginPath();
+      sil.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+      ctx.closePath();
+    };
+    ctx.fillStyle = pal.face;
+    trace();
+    ctx.fill();
+    ctx.save();
+    trace();
+    ctx.clip();
+    // Shaded lane tracing the off-light profile, lit cap up top, and
+    // a lit sill on each ledge so the steps read as flats in the sun.
+    ctx.strokeStyle = pal.side;
+    ctx.lineWidth = w * 0.2;
+    ctx.beginPath();
+    ctx.moveTo(cx + wl - w * 0.09, yb + 1);
+    ctx.lineTo(cx + wl * 0.84 + lean * 0.5 - w * 0.08, rY);
+    ctx.lineTo(cx + tw + lean - w * 0.08, yt + c);
+    ctx.stroke();
+    ctx.fillStyle = pal.top;
+    const capH = Math.min(hgt * 0.14, w * 0.26);
+    ctx.save();
+    ctx.translate(cx + lean, yt);
+    ctx.rotate(((seed >> 3) & 1) === 0 ? -0.045 : 0.045);
+    ctx.fillRect(-w, -w * 0.5, w * 2, w * 0.5 + capH);
+    ctx.restore();
+    ctx.fillRect(cx - wl * 0.84 + lean * 0.5, lY - hgt * 0.052, wl * 0.22, hgt * 0.032);
+    ctx.fillRect(cx + wl * 0.58 + lean * 0.5, rY - hgt * 0.048, wl * 0.28, hgt * 0.03);
+    ctx.restore();
+    trace();
+    ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
+    ctx.lineWidth = Math.max(1.5, w * 0.04);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+    ctx.fillRect(cx - w * 0.4, yb - Math.max(1.5, hgt * 0.03), w * 0.8, Math.max(1.5, hgt * 0.03));
+    return sil;
+  }
+
+  /**
+   * One BIG rectangular ore node: a deep-toned frame around a bright
+   * mineral face, capped with a hard square glint. The nodes are the
+   * protagonists of a deposit — blocky, rigid, sized to read from
+   * across the screen, planted proud of the host stone.
+   */
+  private oreNode(
     x: number,
     y: number,
     w: number,
@@ -2277,26 +2428,23 @@ export class Renderer {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(rot);
-    const hh = w * 0.82;
+    const hh = w * 0.8;
+    const cut = w * 0.13;
     ctx.fillStyle = pal.deep;
     ctx.beginPath();
-    chamferRect(ctx, -w / 2, -hh / 2, w, hh, w * 0.26);
+    chamferRect(ctx, -w / 2, -hh / 2, w, hh, cut);
     ctx.fill();
+    ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+    ctx.lineWidth = Math.max(1.4, w * 0.08);
+    ctx.stroke();
+    // Bright face biased toward the lit top-left.
     ctx.fillStyle = pal.nug;
     ctx.beginPath();
-    chamferRect(ctx, -w * 0.38, -hh * 0.36, w * 0.76, hh * 0.72, w * 0.2);
+    chamferRect(ctx, -w * 0.4, -hh * 0.42, w * 0.74, hh * 0.68, cut * 0.8);
     ctx.fill();
-    // Specular slab across the upper-left facet.
+    // Hard square glint — flat, no gradient.
     ctx.fillStyle = pal.accent;
-    ctx.globalAlpha = 0.9;
-    ctx.beginPath();
-    ctx.moveTo(-w * 0.3, -hh * 0.28);
-    ctx.lineTo(w * 0.05, -hh * 0.28);
-    ctx.lineTo(-w * 0.08, -hh * 0.02);
-    ctx.lineTo(-w * 0.3, -hh * 0.02);
-    ctx.closePath();
-    ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.fillRect(-w * 0.32, -hh * 0.34, w * 0.28, hh * 0.22);
     ctx.restore();
   }
 
@@ -2326,30 +2474,32 @@ export class Renderer {
     return phase < DUR ? Math.sin((phase / DUR) * Math.PI) : 0;
   }
 
-  /** Loose chips scattered at a formation's feet - grounds the mass. */
-  private baseScatter(px: number, py: number, s: number, h: number, colors: string[]): void {
+  /** Blocky spall scattered at a formation's feet - grounds the mass. */
+  private rubble(px: number, py: number, s: number, h: number, colors: string[]): void {
     const ctx = this.ctx;
-    for (let k = 0; k < 3; k++) {
-      const cx = px + (((h >> (k * 6)) % 160) - 80) / 100 * s * 0.55;
-      const cy = py + s * 0.32 + (((h >> (k * 4 + 2)) % 30) - 10) / 100 * s;
-      const cw = s * (0.045 + ((h >> (k * 5)) % 5) / 130);
+    for (let k = 0; k < 4; k++) {
+      const cx = px + (((h >> (k * 6)) % 200) - 100) / 100 * s * 0.62;
+      const cy = py + s * 0.3 + (((h >> (k * 4 + 2)) % 24) - 8) / 100 * s;
+      const cw = s * (0.05 + ((h >> (k * 5)) % 5) / 110);
       ctx.fillStyle = colors[k % colors.length]!;
       ctx.beginPath();
-      chamferRect(ctx, cx, cy, cw, cw * 0.75, cw * 0.3);
+      chamferRect(ctx, cx, cy, cw * 1.3, cw * 0.8, cw * 0.2);
       ctx.fill();
     }
   }
 
   /**
-   * MINING NODES - each metal is a bespoke landmark, not a palette
-   * swap. Copper: a wide rust-warm outcrop with thick slabs of raw
-   * copper bursting through a seam, weeping verdigris. Tin: cool stone
-   * carrying a stack of cubic silver crystals. Iron: banded ironstone
-   * slabs stacked like broken masonry, studded with rust wedges and a
-   * black magnetite block. Coal: a glossy black seam-mass wedged
-   * between grey shoulders. Gold: a milky quartz band splitting the
-   * rock, packed with fat nuggets. All of them twinkle at idle - the
-   * eye finds a minable node before the tooltip does.
+   * MINING NODES — every metal is a bespoke LANDMARK in the brutalist
+   * dialect: rectangular blocks, hard chamfers, flat fills, no
+   * pebble-circles. Copper raises a rust obelisk with a seam of raw
+   * metal climbing its full height. Tin lays an oblong ridge crested
+   * by a march of cubic crystals. Iron stacks banded slabs into a
+   * natural anvil. Coal drives a jagged black seam-wall up between
+   * grey shoulders. Gold splits a standing pillar with a quartz vein
+   * crowned in nuggets. Deposits stand player-tall or better, and all
+   * of them twinkle at idle — the eye finds a mineable node before
+   * the tooltip does. Every formation mirrors and resizes off its
+   * world hash so no two reads stamped.
    */
   private drawRockFormation(
     px: number,
@@ -2358,221 +2508,241 @@ export class Renderer {
     h: number,
     tile: Tile,
     tSec: number,
+    crowded = false,
   ): void {
     const ctx = this.ctx;
-    const cy0 = py - s * 0.08;
+    const m = ((h >> 5) & 1) === 0 ? 1 : -1; // mirror variant
+    const S = s * (0.94 + (((h >> 11) & 7) / 7) * 0.14); // size jitter
+    const base = py + s * 0.28; // ground contact line
+    const X = (dx: number): number => px + dx * m;
+    // Crowded formations (another rock immediately in front) stay low.
+    const H = crowded ? 0.55 : 1;
 
     if (tile === Tile.RockDepleted) {
-      // Worked out: the mass remains, cracked open around an empty
-      // cavity, rubble at its feet.
-      this.rockMass(px, cy0 + s * 0.04, s * 0.4, s * 0.3, h, '#514c5c', '#5f5a6b', '#676274');
+      // Worked out: the block remains, cracked open around a stepped
+      // rectangular cavity, spall at its feet.
+      this.stoneBlock(X(-0.03 * S), base, S * 0.92, S * 0.64, 0.04 * S * m, Renderer.BARREN_DIM, h);
+      const cavW = S * 0.46;
+      const cavH = S * 0.36;
       ctx.fillStyle = '#332f3d';
       ctx.beginPath();
-      facetCircle(ctx, px - s * 0.05, cy0 - s * 0.02, s * 0.16, 7, 0.4, 0.72);
+      chamferRect(ctx, X(-0.05 * S) - cavW / 2, base - S * 0.44, cavW, cavH, cavW * 0.16);
       ctx.fill();
-      ctx.fillStyle = '#262230';
+      ctx.fillStyle = '#221f2b';
       ctx.beginPath();
-      facetCircle(ctx, px - s * 0.02, cy0, s * 0.09, 6, 0.2, 0.7);
+      chamferRect(ctx, X(-0.02 * S) - cavW * 0.32, base - S * 0.38, cavW * 0.64, cavH * 0.62, cavW * 0.1);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+      // Hard cracks running off the cavity corners.
+      ctx.strokeStyle = 'rgba(26, 20, 36, 0.55)';
       ctx.lineWidth = Math.max(1.5, s * 0.035);
-      for (let k = 0; k < 3; k++) {
-        const a0 = ((h >> (k * 5)) % 100) / 100 * Math.PI * 2;
-        ctx.beginPath();
-        ctx.moveTo(px + Math.cos(a0) * s * 0.12, cy0 + Math.sin(a0) * s * 0.08);
-        ctx.lineTo(px + Math.cos(a0 + 0.5) * s * 0.3, cy0 + Math.sin(a0 + 0.5) * s * 0.22);
-        ctx.stroke();
-      }
-      this.baseScatter(px, py, s, h, ['#4a4556', '#3f3b4a']);
+      ctx.beginPath();
+      ctx.moveTo(X(-0.22 * S), base - S * 0.4);
+      ctx.lineTo(X(-0.34 * S), base - S * 0.18);
+      ctx.moveTo(X(0.14 * S), base - S * 0.42);
+      ctx.lineTo(X(0.3 * S), base - S * 0.3);
+      ctx.lineTo(X(0.34 * S), base - S * 0.1);
+      ctx.moveTo(X(0.02 * S), base - S * 0.14);
+      ctx.lineTo(X(-0.06 * S), base - S * 0.02);
+      ctx.stroke();
+      this.rubble(px, py, s, h, ['#4a4556', '#3f3b4a']);
       return;
     }
 
     if (tile === Tile.Rock) {
-      // Barren stone: honest boulders, the occasional quartz streak.
-      if ((h >> 7) % 3 !== 2) {
-        this.rockMass(px + s * 0.3, cy0 + s * 0.1, s * 0.22, s * 0.17, h ^ 0x9e37, '#5a5466', '#6e6879', '#787284');
+      // Barren stone: honest blocky boulders — low, wide, flat-capped.
+      if (((h >> 7) & 3) !== 3) {
+        this.stoneBlock(X(0.38 * S), base, S * 0.44, S * 0.3, 0.03 * S * m, Renderer.BARREN_DIM, h ^ 0x9e37);
       }
-      this.rockMass(px - s * 0.04, cy0, s * 0.4, s * 0.3, h, '#5f596b', '#767083', '#827c8e');
+      this.stoneBlock(X(-0.08 * S), base, S * 0.84, S * 0.52, -0.05 * S * m, Renderer.BARREN_STONE, h);
       if (h % 3 === 0) {
-        ctx.strokeStyle = 'rgba(228, 224, 236, 0.4)';
-        ctx.lineWidth = Math.max(1.5, s * 0.045);
+        // A quartz streak — one hard zigzag, not a squiggle.
+        ctx.strokeStyle = 'rgba(228, 224, 236, 0.5)';
+        ctx.lineWidth = Math.max(1.5, s * 0.04);
         ctx.beginPath();
-        ctx.moveTo(px - s * 0.22, cy0 + s * 0.05);
-        ctx.lineTo(px - s * 0.02, cy0 - s * 0.07);
-        ctx.lineTo(px + s * 0.2, cy0 + s * 0.02);
+        ctx.moveTo(X(-0.34 * S), base - S * 0.12);
+        ctx.lineTo(X(-0.1 * S), base - S * 0.3);
+        ctx.lineTo(X(0.18 * S), base - S * 0.22);
         ctx.stroke();
       }
-      this.baseScatter(px, py, s, h, ['#6a6375', '#5a5466']);
+      this.rubble(px, py, s, h, ['#6a6375', '#5a5466']);
       return;
     }
 
     const pal = Renderer.ORE_STYLES[tile]!;
-    // Chunk anchors double as sparkle sites, collected per metal.
+    // Node anchors double as sparkle sites, collected per metal.
     const sites: Array<[number, number]> = [];
 
     if (tile === Tile.RockCopper) {
-      // Tilted slab shoulder behind the main outcrop.
+      // THE RUST OBELISK — a leaning tower of warm stone with one deep
+      // seam of raw copper climbing its full height.
+      this.stoneBlock(X(0.52 * S), base, S * 0.52, S * 0.44 * H, 0.04 * S * m, Renderer.BARREN_DIM, h ^ 0x51f3);
+      const cSil = this.monolith(X(-0.05 * S), base, S * 1.18, S * 1.6 * H, m, pal.stone, h);
+      // The seam lives IN the stone — clipped to the monolith.
       ctx.save();
-      ctx.translate(px + s * 0.34, cy0 - s * 0.02);
-      ctx.rotate(-0.22);
-      ctx.fillStyle = '#5e524c';
+      const seamClip = new Path2D();
+      cSil.forEach(([x, y], i) => (i === 0 ? seamClip.moveTo(x, y) : seamClip.lineTo(x, y)));
+      seamClip.closePath();
+      ctx.clip(seamClip);
+      ctx.fillStyle = pal.deep;
       ctx.beginPath();
-      chamferRect(ctx, -s * 0.17, -s * 0.12, s * 0.34, s * 0.24, s * 0.07);
-      ctx.fill();
-      ctx.fillStyle = '#6f625a';
-      ctx.beginPath();
-      chamferRect(ctx, -s * 0.14, -s * 0.12, s * 0.28, s * 0.1, s * 0.05);
+      ctx.moveTo(X(-0.28 * S), base);
+      ctx.lineTo(X(0.02 * S), base);
+      ctx.lineTo(X(-0.06 * S), base - S * 1.66 * H);
+      ctx.lineTo(X(-0.28 * S), base - S * 1.66 * H);
+      ctx.closePath();
       ctx.fill();
       ctx.restore();
-      this.rockMass(px - s * 0.04, cy0, s * 0.48, s * 0.34, h, '#6b5c55', '#877669', '#948377');
-      // The seam: a thick dark band the copper erupts from.
-      ctx.strokeStyle = pal.deep;
-      ctx.lineWidth = Math.max(3, s * 0.09);
-      ctx.beginPath();
-      ctx.moveTo(px - s * 0.42, cy0 + s * 0.16);
-      ctx.lineTo(px - s * 0.08, cy0 - s * 0.04);
-      ctx.lineTo(px + s * 0.34, cy0 + s * 0.1);
-      ctx.stroke();
-      // Big raw copper blocks: one bursting past the silhouette.
-      const c1: [number, number] = [px - s * 0.3, cy0 - s * 0.28];
-      const c2: [number, number] = [px - s * 0.14, cy0 + s * 0.04];
-      const c3: [number, number] = [px + s * 0.2, cy0 + s * 0.06];
-      this.oreBlock(c1[0], c1[1], s * 0.26, -0.3, pal);
-      this.oreBlock(c2[0], c2[1], s * 0.22, 0.18, pal);
-      this.oreBlock(c3[0], c3[1], s * 0.2, -0.12, pal);
-      sites.push(c1, c3);
-      // Verdigris weeping under the seam.
+      // Raw copper blocks erupting along the seam — one near the top.
+      const c1: [number, number] = [X(-0.14 * S), base - S * 1.34 * H];
+      const c3: [number, number] = [X(-0.16 * S), base - S * 0.3];
+      this.oreNode(c1[0], c1[1], S * 0.38, -0.16 * m, pal);
+      if (!crowded) {
+        const c2: [number, number] = [X(-0.06 * S), base - S * 0.82];
+        this.oreNode(c2[0], c2[1], S * 0.32, 0.12 * m, pal);
+        sites.push(c2);
+      }
+      this.oreNode(c3[0], c3[1], S * 0.36, -0.08 * m, pal);
+      sites.push(c1);
+      // Verdigris: flat teal stains weeping under the metal.
       ctx.fillStyle = pal.accent;
       ctx.globalAlpha = 0.5;
-      ctx.fillRect(px - s * 0.2, cy0 + s * 0.1, s * 0.045, s * 0.14);
-      ctx.fillRect(px + s * 0.08, cy0 + s * 0.14, s * 0.04, s * 0.1);
+      ctx.fillRect(X(-0.1 * S) - S * 0.03, base - S * 0.68 * H, S * 0.06, S * 0.2 * H);
+      ctx.fillRect(X(-0.24 * S) - S * 0.025, base - S * 0.16, S * 0.05, S * 0.14);
       ctx.globalAlpha = 1;
-      this.baseScatter(px, py, s, h, [pal.nug, '#6a6375', pal.deep]);
+      this.rubble(px, py, s, h, [pal.nug, '#6a6375', pal.deep]);
     } else if (tile === Tile.RockTin) {
-      this.rockMass(px + s * 0.16, cy0 + s * 0.02, s * 0.36, s * 0.29, h, '#5d5a66', '#7d7a88', '#888594');
-      // Cubic crystal habit: a stack of silver cubes on the west
-      // shoulder, one perched on top.
-      const cubes: Array<[number, number, number, number]> = [
-        [px - s * 0.3, cy0 + s * 0.1, s * 0.24, 0.1],
-        [px - s * 0.4, cy0 - s * 0.08, s * 0.2, -0.14],
-        [px - s * 0.16, cy0 - s * 0.1, s * 0.18, 0.05],
-        [px + s * 0.08, cy0 - s * 0.32, s * 0.17, -0.08],
-      ];
-      for (const [cx2, cy2, w2, r2] of cubes) this.oreBlock(cx2, cy2, w2, r2, pal);
-      sites.push([cubes[1]![0], cubes[1]![1]], [cubes[3]![0], cubes[3]![1]]);
-      this.baseScatter(px, py, s, h, [pal.nug, '#6a6375']);
+      // THE SHARD RIDGE — an oblong spine of cool stone crested with a
+      // march of cubic tin crystals along its skyline.
+      const tH = crowded ? 0.72 : 1;
+      this.stoneBlock(X(-0.5 * S), base, S * 0.6, S * 0.5 * tH, -0.05 * S * m, pal.stone, h ^ 0x51f3);
+      this.stoneBlock(X(0.48 * S), base, S * 0.54, S * 0.38 * tH, 0.05 * S * m, Renderer.BARREN_DIM, h ^ 0x9e37);
+      this.stoneBlock(X(0), base, S * 0.74, S * 0.78 * tH, 0.04 * S * m, pal.stone, h);
+      const t1: [number, number] = [X(-0.52 * S), base - S * 0.62 * tH];
+      const t2: [number, number] = [X(0), base - S * 0.92 * tH];
+      const t3: [number, number] = [X(0.22 * S), base - S * 0.32];
+      const t4: [number, number] = [X(0.5 * S), base - S * 0.5 * tH];
+      this.oreNode(t1[0], t1[1], S * 0.3, -0.18 * m, pal);
+      this.oreNode(t2[0], t2[1], S * 0.36, 0.1 * m, pal);
+      this.oreNode(t3[0], t3[1], S * 0.26, -0.08 * m, pal);
+      this.oreNode(t4[0], t4[1], S * 0.22, 0.2 * m, pal);
+      sites.push(t2, t4);
+      this.rubble(px, py, s, h, [pal.nug, '#6a6375']);
     } else if (tile === Tile.RockIron) {
-      // Banded ironstone: three stacked slabs, offset like broken
-      // masonry, rust bands running across each.
-      const slabs: Array<[number, number, number, number]> = [
-        [px - s * 0.46, cy0 + s * 0.06, s * 0.92, s * 0.3],
-        [px - s * 0.38, cy0 - s * 0.16, s * 0.68, s * 0.24],
-        [px - s * 0.1, cy0 - s * 0.34, s * 0.44, s * 0.2],
-      ];
-      for (let k = 0; k < slabs.length; k++) {
-        const [sx, sy, sw, sh] = slabs[k]!;
-        ctx.fillStyle = k % 2 === 0 ? '#5f4a42' : '#564440';
-        ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
-        ctx.lineWidth = Math.max(1.5, s * 0.03);
-        ctx.beginPath();
-        chamferRect(ctx, sx, sy, sw, sh, s * 0.06);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = k % 2 === 0 ? '#75594c' : '#6d5348';
-        ctx.beginPath();
-        chamferRect(ctx, sx + sw * 0.05, sy, sw * 0.9, sh * 0.32, s * 0.05);
-        ctx.fill();
-        // Rust parting under the cap.
-        ctx.fillStyle = 'rgba(163, 92, 51, 0.55)';
-        ctx.fillRect(sx + sw * 0.08, sy + sh * 0.44, sw * 0.84, Math.max(1.5, s * 0.035));
-      }
-      const w1: [number, number] = [px - s * 0.26, cy0 - s * 0.04];
-      const w2: [number, number] = [px + s * 0.22, cy0 + s * 0.14];
-      this.oreBlock(w1[0], w1[1], s * 0.24, 0.14, pal);
-      this.oreBlock(w2[0], w2[1], s * 0.21, -0.2, pal);
-      // Magnetite block: near-black with a cold specular.
-      this.oreBlock(px + s * 0.06, cy0 - s * 0.24, s * 0.19, 0.08, {
+      // THE BANDED BUTTE — one tall mass of banded ironstone: dark
+      // strata beds running flat THROUGH a single hewn silhouette
+      // with rust partings between them, studded with rust blocks and
+      // a magnetite crown. Bands on one rock, never a stack of crates.
+      this.stoneBlock(X(0.5 * S), base, S * 0.5, S * 0.4, 0.04 * S * m, Renderer.BARREN_DIM, h ^ 0x51f3);
+      const iSil = this.monolith(X(-0.04 * S), base, S * 1.16, S * 1.38 * H, m, pal.stone, h);
+      ctx.save();
+      const bedClip = new Path2D();
+      iSil.forEach(([x, y], i) => (i === 0 ? bedClip.moveTo(x, y) : bedClip.lineTo(x, y)));
+      bedClip.closePath();
+      ctx.clip(bedClip);
+      ctx.translate(px, 0);
+      ctx.rotate(m * -0.045);
+      ctx.fillStyle = '#55423c';
+      ctx.fillRect(-S, base - S * 0.5 * H, S * 2, S * 0.16 * H);
+      ctx.fillRect(-S, base - S * 0.98 * H, S * 2, S * 0.12 * H);
+      ctx.fillStyle = '#a35c33';
+      ctx.fillRect(-S, base - S * 0.52 * H, S * 2, Math.max(1.5, S * 0.035));
+      ctx.fillRect(-S, base - S * 1 * H, S * 2, Math.max(1.5, S * 0.03));
+      ctx.restore();
+      const w1: [number, number] = [X(-0.36 * S), base - S * 0.46 * H];
+      const w2: [number, number] = [X(0.3 * S), base - S * 0.2];
+      const mag: [number, number] = [X(0.08 * S), base - S * 1.16 * H];
+      this.oreNode(w1[0], w1[1], S * 0.34, -0.16 * m, pal);
+      this.oreNode(w2[0], w2[1], S * 0.36, 0.12 * m, pal);
+      // Magnetite: near-black with a cold specular.
+      this.oreNode(mag[0], mag[1], S * 0.3, 0.08 * m, {
         nug: '#3a3d46',
         deep: '#23252c',
         accent: '#9fb2c8',
       });
-      sites.push(w1, [px + s * 0.06, cy0 - s * 0.24]);
-      this.baseScatter(px, py, s, h, [pal.nug, '#5f4a42']);
+      sites.push(w1, mag);
+      this.rubble(px, py, s, h, [pal.nug, '#5f4a42']);
     } else if (tile === Tile.RockCoal) {
-      // Grey shoulders bracketing one huge glossy seam-mass.
-      this.rockMass(px - s * 0.36, cy0 + s * 0.06, s * 0.24, s * 0.2, h ^ 0x51f3, '#5a5466', '#6e6879', '#787284');
-      this.rockMass(px + s * 0.38, cy0 + s * 0.08, s * 0.2, s * 0.17, h ^ 0x9e37, '#5a5466', '#6e6879', '#787284');
-      // The seam itself: jagged, black, glossy.
-      const n = 9;
+      // THE SEAM WALL — a jagged black face driven up between grey
+      // stone shoulders, glossed with hard angular facets.
+      this.stoneBlock(X(-0.6 * S), base, S * 0.5, S * 0.52, -0.05 * S * m, Renderer.BARREN_STONE, h ^ 0x51f3);
+      this.stoneBlock(X(0.58 * S), base, S * 0.46, S * 0.42, 0.05 * S * m, Renderer.BARREN_DIM, h ^ 0x9e37);
+      // Stepped rectangular battlements, heights off the hash.
+      const cH = crowded ? 0.7 : 1;
+      const s0 = (0.78 + ((h >> 3) & 3) * 0.07) * cH;
+      const s1 = (1.06 + ((h >> 6) & 3) * 0.06) * cH;
+      const s2 = (0.84 + ((h >> 9) & 3) * 0.07) * cH;
       ctx.fillStyle = pal.nug;
       ctx.beginPath();
-      for (let i = 0; i < n; i++) {
-        const a = (i / n) * Math.PI * 2 - Math.PI / 2;
-        const rr = (0.72 + (((h >> (i * 3)) & 7) / 7) * 0.5) * s * 0.36;
-        const x = px + Math.cos(a) * rr * 1.15;
-        const y = cy0 + Math.sin(a) * rr * 0.78;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
+      ctx.moveTo(X(-0.5 * S), base);
+      ctx.lineTo(X(-0.53 * S), base - S * s0);
+      ctx.lineTo(X(-0.17 * S), base - S * s0);
+      ctx.lineTo(X(-0.14 * S), base - S * s1);
+      ctx.lineTo(X(0.19 * S), base - S * s1);
+      ctx.lineTo(X(0.22 * S), base - S * s2);
+      ctx.lineTo(X(0.48 * S), base - S * s2);
+      ctx.lineTo(X(0.5 * S), base);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
-      ctx.lineWidth = Math.max(1.5, s * 0.03);
+      ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+      ctx.lineWidth = Math.max(1.5, s * 0.035);
       ctx.stroke();
-      // Angular gloss facets + hard glint ticks.
-      ctx.fillStyle = '#3d3a48';
+      // Angular gloss facets + hard glint ticks — coal shines flat.
+      ctx.fillStyle = '#44404f';
       ctx.beginPath();
-      ctx.moveTo(px - s * 0.22, cy0 - s * 0.1);
-      ctx.lineTo(px + s * 0.02, cy0 - s * 0.24);
-      ctx.lineTo(px + s * 0.1, cy0 - s * 0.02);
-      ctx.lineTo(px - s * 0.1, cy0 + s * 0.06);
+      ctx.moveTo(X(-0.43 * S), base - S * 0.6 * cH);
+      ctx.lineTo(X(-0.22 * S), base - S * 0.74 * cH);
+      ctx.lineTo(X(-0.22 * S), base - S * 0.36 * cH);
+      ctx.lineTo(X(-0.43 * S), base - S * 0.24 * cH);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(X(0), base - S * (s1 - 0.07 * cH));
+      ctx.lineTo(X(0.17 * S), base - S * (s1 - 0.14 * cH));
+      ctx.lineTo(X(0.17 * S), base - S * 0.46 * cH);
+      ctx.lineTo(X(0), base - S * 0.4 * cH);
       ctx.closePath();
       ctx.fill();
       ctx.fillStyle = pal.accent;
-      ctx.fillRect(px - s * 0.14, cy0 - s * 0.14, s * 0.1, Math.max(1.5, s * 0.03));
-      ctx.fillRect(px + s * 0.08, cy0 + s * 0.06, s * 0.07, Math.max(1.5, s * 0.026));
-      sites.push([px - s * 0.1, cy0 - s * 0.12], [px + s * 0.12, cy0 + s * 0.04]);
-      // Soot at the feet.
-      ctx.fillStyle = 'rgba(20, 17, 26, 0.35)';
-      ctx.beginPath();
-      ctx.ellipse(px, py + s * 0.3, s * 0.4, s * 0.09, 0, 0, Math.PI * 2);
-      ctx.fill();
-      this.baseScatter(px, py, s, h, ['#232028', '#3d3a48']);
+      ctx.fillRect(X(-0.36 * S), base - S * 0.66 * cH, S * 0.12, Math.max(1.5, S * 0.03));
+      ctx.fillRect(X(0.05 * S), base - S * 0.86 * cH, S * 0.1, Math.max(1.5, S * 0.028));
+      // Tumbled coal blocks at the foot.
+      this.oreNode(X(-0.34 * S), base - S * 0.09, S * 0.24, 0.1 * m, pal);
+      this.oreNode(X(0.4 * S), base - S * 0.07, S * 0.2, -0.14 * m, pal);
+      sites.push([X(-0.28 * S), base - S * 0.62 * cH], [X(0.1 * S), base - S * 0.8 * cH]);
+      this.rubble(px, py, s, h, ['#232028', '#3d3a48']);
     } else {
-      // Gold: a milky quartz band splitting the rock, fat nuggets
-      // inside. The band lives IN the stone — clipped to the mass so
-      // it reads as a vein, never a plank laid across it.
-      const mass = this.rockMass(px - s * 0.02, cy0, s * 0.45, s * 0.33, h, '#524c5f', '#665f74', '#716a7f');
+      // THE CROWNED VEIN — a standing pillar split by a milky quartz
+      // band, fat gold blocks studding the vein and one crowning the
+      // top. The band lives IN the stone — clipped to the stack so it
+      // reads as a vein, never a plank laid across it.
+      const gSil = this.monolith(X(0), base, S * 1.08, S * 1.32 * H, m, pal.stone, h);
       ctx.save();
-      const clipPath = new Path2D();
-      const both = [mass.sil, mass.cap];
-      for (const poly of both) {
-        poly.forEach(([x, y], i2) => (i2 === 0 ? clipPath.moveTo(x, y) : clipPath.lineTo(x, y)));
-        clipPath.closePath();
-      }
-      ctx.clip(clipPath);
-      ctx.translate(px, cy0);
-      ctx.rotate(-0.32);
+      const veinClip = new Path2D();
+      gSil.forEach(([x, y], i) => (i === 0 ? veinClip.moveTo(x, y) : veinClip.lineTo(x, y)));
+      veinClip.closePath();
+      ctx.clip(veinClip);
+      ctx.translate(px, base - S * 0.56 * H);
+      ctx.rotate(-0.38 * m);
       ctx.fillStyle = '#c9c2d4';
-      ctx.fillRect(-s * 0.6, -s * 0.11, s * 1.2, s * 0.22);
+      ctx.fillRect(-S * 0.8, -S * 0.12, S * 1.6, S * 0.24);
       ctx.fillStyle = '#efeaf2';
-      ctx.fillRect(-s * 0.6, -s * 0.08, s * 1.2, s * 0.16);
+      ctx.fillRect(-S * 0.8, -S * 0.08, S * 1.6, S * 0.16);
       ctx.restore();
-      const g1: [number, number] = [px - s * 0.24, cy0 + s * 0.1];
-      const g2: [number, number] = [px + s * 0.05, cy0 - s * 0.015];
-      const g3: [number, number] = [px + s * 0.3, cy0 - s * 0.12];
-      const g4: [number, number] = [px - s * 0.06, cy0 - s * 0.34];
-      this.oreBlock(g1[0], g1[1], s * 0.2, 0.2, pal);
-      this.oreBlock(g2[0], g2[1], s * 0.23, -0.1, pal);
-      this.oreBlock(g3[0], g3[1], s * 0.18, 0.28, pal);
-      this.oreBlock(g4[0], g4[1], s * 0.16, -0.2, pal);
+      const g1: [number, number] = [X(-0.34 * S), base - S * 0.26];
+      const g2: [number, number] = [X(0.02 * S), base - S * 0.58 * H];
+      const g3: [number, number] = [X(0.3 * S), base - S * 0.88 * H];
+      const g4: [number, number] = [X(0), base - S * 1.34 * H]; // the crown
+      this.oreNode(g1[0], g1[1], S * 0.26, 0.18 * m, pal);
+      this.oreNode(g2[0], g2[1], S * 0.3, -0.1 * m, pal);
+      this.oreNode(g3[0], g3[1], S * 0.24, 0.12 * m, pal);
+      this.oreNode(g4[0], g4[1], S * 0.28, -0.08 * m, pal);
       sites.push(g2, g3, g4);
-      this.baseScatter(px, py, s, h, [pal.nug, '#6a6375']);
+      this.rubble(px, py, s, h, [pal.nug, '#6a6375']);
       // The hoard glows: a slow warm pulse.
       const pulse = 0.6 + Math.sin(tSec * 1.7 + (h % 10)) * 0.4;
       this.queueGlow(
         (px - this.w / 2) / s + this.camera.x,
-        (cy0 - this.h / 2) / (s * this.camera.yScale) + this.camera.y,
+        (base - S * 0.6 - this.h / 2) / (s * this.camera.yScale) + this.camera.y,
         0.7,
         '242, 201, 76',
         0.14 * pulse,
@@ -3188,13 +3358,22 @@ export class Renderer {
       case Tile.RockGold:
       case Tile.RockDepleted: {
         const depleted = tile === Tile.RockDepleted;
-        const size = depleted ? 0.8 : 1;
+        // Ore deposits are landmarks now — their cast shadow matches
+        // the wider, taller mass; barren stone stays modest.
+        const size = depleted ? 0.8 : tile === Tile.Rock ? 0.9 : 1.15;
+        // Cluster law: worldgen lays ore in runs. A formation with
+        // another rock tile directly south (which y-sorts in front and
+        // buries it) keeps low, so a run reads as ONE sprawling deposit
+        // with a dominant face — not a totem line of clone towers.
+        const south = game.world.groundAt(tx, ty + 1);
+        const crowded =
+          south !== undefined && Renderer.ROCK_TILES.has(south) && game.world.elevAt(tx, ty + 1) === game.world.elevAt(tx, ty);
         return {
           sortY: ty + 0.85,
           drawShadow: () => {
-            this.castBlob(p.x, p.y + s * 0.18, 0.5 * size, s * 0.44 * size, h ^ 0x11);
+            this.castBlob(p.x, p.y + s * 0.2, 0.55 * size, s * 0.46 * size, h ^ 0x11);
           },
-          draw: () => this.drawRockFormation(p.x, p.y, s, h, tile, t),
+          draw: () => this.drawRockFormation(p.x, p.y, s, h, tile, t, crowded),
         };
       }
 
@@ -4146,18 +4325,20 @@ export class Renderer {
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= terrainLift;
 
-    const cat: 'gold' | 'gear' | 'ammo' | 'wear' | 'eat' | 'stuff' =
+    const cat: 'gold' | 'ore' | 'gear' | 'ammo' | 'wear' | 'eat' | 'stuff' =
       itemId === 'coins'
         ? 'gold'
-        : itemId === 'arrow'
-          ? 'ammo'
-          : def?.weapon || def?.tool
-            ? 'gear'
-            : def?.equipSlot
-              ? 'wear'
-              : def?.heals
-                ? 'eat'
-                : 'stuff';
+        : itemId.endsWith('_ore') || itemId === 'coal'
+          ? 'ore'
+          : itemId === 'arrow'
+            ? 'ammo'
+            : def?.weapon || def?.tool
+              ? 'gear'
+              : def?.equipSlot
+                ? 'wear'
+                : def?.heals
+                  ? 'eat'
+                  : 'stuff';
 
     // Landing pop: freshly spawned loot drops in and settles with a
     // small overshoot. animFor's poseStartedAt is its first-seen time.
@@ -4230,6 +4411,74 @@ export class Renderer {
         ctx.lineTo(gx - gr * 0.4, gy);
         ctx.closePath();
         ctx.fill();
+      }
+    };
+
+    const drawOre = (): void => {
+      // Raw stone on the ground reads as stone — no bag pretends
+      // otherwise. One hefty chunk plus spall, cut in the same blocky
+      // node language as the deposits, in the metal's identity colors
+      // (the same hues its icon speaks, not the item-list grey).
+      const ORE_DROP: Record<string, string> = {
+        copper_ore: '#c47b3d',
+        tin_ore: '#cfd3dc',
+        iron_ore: '#a05038',
+        coal: '#4a4456',
+        gold_ore: '#e8b64c',
+      };
+      const oreCol = ORE_DROP[itemId] ?? col;
+      const accent =
+        itemId === 'coal' ? '#8a86a0' : itemId === 'tin_ore' ? '#ffffff' : '#fff6d8';
+      const chunk = (cx: number, cy: number, w: number, rot: number): void => {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(rot);
+        const hh = w * 0.8;
+        const cut = w * 0.2;
+        ctx.fillStyle = shade(oreCol, -32);
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = Math.max(1.4, k * 0.038);
+        ctx.beginPath();
+        chamferRect(ctx, -w / 2, -hh / 2, w, hh, cut);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = oreCol;
+        ctx.beginPath();
+        chamferRect(ctx, -w * 0.38, -hh * 0.4, w * 0.72, hh * 0.66, cut * 0.7);
+        ctx.fill();
+        ctx.fillStyle = accent;
+        ctx.fillRect(-w * 0.28, -hh * 0.3, w * 0.24, hh * 0.18);
+        ctx.restore();
+      };
+      chunk(-k * 0.1, -k * 0.14, k * 0.36, -0.1);
+      chunk(k * 0.17, -k * 0.07, k * 0.24, 0.16);
+      if (itemId === 'copper_ore') {
+        // Verdigris kiss on the big chunk's shadowed flank.
+        ctx.fillStyle = '#3fa98e';
+        ctx.globalAlpha = 0.6;
+        ctx.fillRect(-k * 0.2, -k * 0.08, k * 0.07, k * 0.06);
+        ctx.globalAlpha = 1;
+      } else if (itemId === 'iron_ore') {
+        // One rust band across the face.
+        ctx.fillStyle = shade(oreCol, -24);
+        ctx.fillRect(-k * 0.24, -k * 0.16, k * 0.26, Math.max(1.2, k * 0.032));
+      } else if (itemId === 'gold_ore') {
+        // Gold catches the eye across a field — same twinkle law as coins.
+        const tw = Math.sin(now / 260 + eid * 2.3);
+        if (tw > 0.55) {
+          const a = (tw - 0.55) / 0.45;
+          const gx = (rnd(31) - 0.5) * k * 0.3;
+          const gy = -k * 0.2 - rnd(32) * k * 0.08;
+          ctx.fillStyle = `rgba(255, 244, 214, ${0.9 * a})`;
+          const gr = k * 0.045 * a;
+          ctx.beginPath();
+          ctx.moveTo(gx, gy - gr);
+          ctx.lineTo(gx + gr * 0.4, gy);
+          ctx.lineTo(gx, gy + gr);
+          ctx.lineTo(gx - gr * 0.4, gy);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
     };
 
@@ -4391,6 +4640,7 @@ export class Renderer {
         ctx.translate(p.x, p.y + bob - fall);
         ctx.scale(pop, pop);
         if (cat === 'gold') drawGold();
+        else if (cat === 'ore') drawOre();
         else drawBag();
         if (hovered) {
           // Grounding ring: "this is the one under your cursor".
