@@ -51,7 +51,17 @@ export declare class LightingSystem {
      * Paint the frame's exposure. `blocks` answers whether a tile stops
      * light (walls, cliffs); it is only consulted near occluding lights.
      */
-    draw(ctx: CanvasRenderingContext2D, view: LightView, sky: DaylightSample, lights: WorldLight[], blocks: (tx: number, ty: number) => boolean): void;
+    draw(ctx: CanvasRenderingContext2D, view: LightView, sky: DaylightSample, lights: WorldLight[], blocks: (tx: number, ty: number) => boolean, interior?: {
+        /** World-space row-run rects of enclosed interiors in view. */
+        rects: Array<{
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+        }>;
+        /** The indoor base exposure — a roof blocks the sky. */
+        ambient: [number, number, number];
+    } | null): void;
     /** The light's radial falloff, in the ctx's world-space frame. */
     private gradient;
     /**

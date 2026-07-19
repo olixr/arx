@@ -9,7 +9,7 @@
  * 45°. Per-corner sizes follow CSS order [tl, tr, br, bl]; pass a
  * single number for a uniform cut.
  */
-export declare function chamferRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, cut: number | [number, number, number, number]): void;
+export declare function chamferRect(ctx: CanvasRenderingContext2D | Path2D, x: number, y: number, w: number, h: number, cut: number | [number, number, number, number]): void;
 /**
  * Adds a faceted "circle" subpath: a regular polygon standing in for a
  * disc. `squashY` flattens it into a ground ellipse; `rot` picks which

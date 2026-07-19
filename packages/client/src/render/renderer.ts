@@ -40,6 +40,8 @@ import { GrassSystem, windAt, windScalarAt, type Disturber } from './grass.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
+import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
+import { ROOF_STEP, bakeRoof, type RoofBake } from './roofs.js';
 import { bakeChunk, bakeElevated, bakeGutter, drawLiveGround } from './terrain.js';
 
 /**
@@ -251,6 +253,16 @@ export class Renderer {
   readonly particles = new Particles();
   private readonly grass = new GrassSystem();
   private readonly lighting = new LightingSystem();
+  /** Derived building-interior regions (roofs, indoor light, facades). */
+  readonly interiors = new InteriorMap();
+  /** Baked roof rings keyed by footprint signature (stable across
+   *  worldVersion bumps so an unchanged house never re-bakes). */
+  private readonly roofBakes = new Map<string, RoofBake>();
+  /** Per-roof fade state: eases to 0.12 while you stand inside. */
+  private readonly roofAlpha = new Map<string, number>();
+  private localRegion: InteriorRegion | null = null;
+  /** Regions discovered in view this frame (feeds interior lighting). */
+  private visibleRegions: InteriorRegion[] = [];
   /** The frame's sky sample — every shadow and light reads this. */
   private sky: DaylightSample = daylightAt(12);
   /** Scene lights gathered this frame (tiles, projectiles, flames). */
@@ -935,6 +947,17 @@ export class Renderer {
 
     // The breeze layer: water glints, ripples, portal swirls.
     const bounds = this.visibleTileBounds();
+    // Interior regions resolve before lights and roofs: the version
+    // gate clears on any world change, then this frame's queries
+    // rebuild lazily. The local player's region drives the roof fade
+    // and the indoor ambient.
+    this.interiors.beginFrame(game.worldVersion);
+    if (game.ownEid !== null) {
+      const own = game.predictor.renderPos();
+      this.localRegion = this.interiors.regionAt(game, Math.floor(own.x), Math.floor(own.y));
+    } else {
+      this.localRegion = null;
+    }
     // Standing lights gather FIRST: the shadow prepass needs to know
     // every pool before anything casts. (Moving lights announce via
     // queueGlow during the draw pass and cast one frame later.)
@@ -962,6 +985,7 @@ export class Renderer {
     this.collectElevatedGround(game, items);
     this.collectCliffFaces(game, items);
     this.collectRaisedTiles(game, items);
+    this.collectRoofs(game, items);
     this.collectBreakingRocks(game, items);
     this.collectFallingTrees(items);
     this.collectEntities(game, items);
@@ -1026,6 +1050,7 @@ export class Renderer {
         const t = game.world.groundAt(tx, ty);
         return t !== undefined && (Renderer.LIGHT_BLOCKERS.has(t) || t === Tile.Cliff);
       },
+      this.interiorLighting(),
     );
     this.lights.length = 0;
     // Moving lights hand their positions to next frame's shadow pass.
@@ -1060,6 +1085,9 @@ export class Renderer {
     const t = performance.now() / 1000;
     const flame = this.sky.flame;
     const boost = 1 + 0.8 * this.sky.darkness;
+    // Windows are fake emitters (the pane itself blocks in the shadow
+    // math): capped so a city block can't flood the light pass.
+    let windowLights = 0;
     for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
       for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
         const tile = game.world.groundAt(tx, ty);
@@ -1095,6 +1123,56 @@ export class Renderer {
               a: 0.28 * flame * flick,
             });
             this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 5 * flick, rgb: [255, 205, 135], intensity: 0.9 * flame * flick, occlude: true });
+          }
+        } else if (tile === Tile.WallStoneWindow || tile === Tile.WallWoodWindow) {
+          if (windowLights >= 24) continue;
+          // Which side is indoors? The enclosed region claims it.
+          let inside: readonly [number, number] | null = null;
+          let region: InteriorRegion | null = null;
+          for (const d of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+            const nt = game.world.groundAt(tx + d[0], ty + d[1]);
+            if (nt === undefined || Renderer.WALL_TILES.has(nt)) continue;
+            const r = this.interiors.regionAt(game, tx + d[0], ty + d[1]);
+            if (r) {
+              inside = d;
+              region = r;
+              break;
+            }
+          }
+          if (!inside || !region) continue;
+          windowLights++;
+          const sun = this.sky.sun;
+          if (sun > 0.15) {
+            // A cool daylight shaft falls INTO the room — non-occluding
+            // and placed past the wall so its own pane can't shadow it.
+            this.lights.push({
+              x: tx + 0.5 + inside[0] * 0.9,
+              y: ty + 0.5 + inside[1] * 0.9,
+              r: 2.2,
+              rgb: [220, 228, 255],
+              intensity: 0.4 * sun,
+            });
+          }
+          if (flame > 0.05 && region.hasHearth) {
+            // Hearthlight spills OUT of the pane after dark; the pool
+            // sits south of the wall so its shadow never bites it.
+            this.lights.push({
+              x: tx + 0.5 - inside[0] * 1.4,
+              y: ty + 0.5 - inside[1] * 1.4,
+              r: 3,
+              rgb: [255, 205, 135],
+              intensity: 0.5 * flame,
+            });
+            if (inside[1] === -1) {
+              // Only south-facing panes are painted — only they bloom.
+              this.glows.push({
+                x: tx + 0.5,
+                y: ty + 0.55 - 1.15 / this.camera.yScale,
+                r: 0.8,
+                rgb: '255, 205, 130',
+                a: 0.2 * flame,
+              });
+            }
           }
         }
       }
@@ -1486,7 +1564,8 @@ export class Renderer {
         // with them) but draw their own framed opening, and pillars/
         // rails/arches are raised or walkable tiles with bespoke items.
         if (ground === Tile.DoorwayStone || ground === Tile.DoorwayWood) {
-          const item = this.doorwayItem(ground, tx, ty, game);
+          const dregion = this.wallRegion(game, tx, ty);
+          const item = this.doorwayItem(ground, tx, ty, game, this.wallHeightFor(dregion?.stories ?? 1));
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
@@ -1510,7 +1589,9 @@ export class Renderer {
           continue;
         }
         if (Renderer.WALL_TILES.has(ground)) {
-          const item = this.wallItem(ground as Tile, tx, ty, game);
+          const wregion = this.wallRegion(game, tx, ty);
+          const st = wregion?.stories ?? 1;
+          const item = this.wallItem(ground as Tile, tx, ty, game, this.wallHeightFor(st), st, wregion?.hasHearth ?? false);
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
@@ -1531,7 +1612,7 @@ export class Renderer {
    * Walls: continuous top mass with rounded exposed corners, a darker
    * front face where the wall meets open ground, and a hard shadow.
    */
-  private wallItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
+  private wallItem(tile: Tile, tx: number, ty: number, game: ClientGame, whT: number, stories: number, hearth = false): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
@@ -1560,8 +1641,8 @@ export class Renderer {
       0,
     ];
     const syT = s * this.camera.yScale; // foreshortened tile depth
-    const hs = WALL_H * s;
-    const lx = (x: number): number => this.leanX(x, WALL_H);
+    const hs = whT * s;
+    const lx = (x: number): number => this.leanX(x, whT);
     const x0 = p.x - 0.25;
     const x1 = p.x + s + 0.25;
     const sideCol = shade(mat === Tile.WallWood ? '#6f4d26' : mat === Tile.WallStone ? '#6f697c' : '#2b2536', -8);
@@ -1573,7 +1654,7 @@ export class Renderer {
         : () => {
             // A body this tall throws a real shadow across the ground,
             // cast from its south base edge along the sun.
-            this.castEdgeQuad(p.x - 0.25, p.y + syT, p.x + s + 0.25, p.y + syT, WALL_H);
+            this.castEdgeQuad(p.x - 0.25, p.y + syT, p.x + s + 0.25, p.y + syT, whT);
           },
       draw: () => {
         const yBase = p.y + syT; // south edge at ground level
@@ -1631,34 +1712,29 @@ export class Renderer {
               ctx.stroke();
             }
             ctx.fillStyle = 'rgba(36, 22, 10, 0.28)';
-            ctx.fillRect(p.x, -hs * 0.52, s, s * 0.045);
+            ctx.fillRect(p.x, -s * 1.06, s, s * 0.045);
             ctx.fillStyle = 'rgba(20, 12, 6, 0.22)';
-            ctx.fillRect(p.x, -hs * 0.13, s, hs * 0.13);
+            ctx.fillRect(p.x, -s * 0.27, s, s * 0.27);
           } else {
             // Running-bond masonry: four mortar courses over the taller
             // face, joints alternating band to band, and a heavier
             // foundation course at the base.
             ctx.strokeStyle = 'rgba(20, 14, 28, 0.35)';
             ctx.lineWidth = Math.max(1, s * 0.03);
-            for (const fy of [0.19, 0.38, 0.57, 0.76]) {
+            // Courses at ABSOLUTE stone height — a 2-story facade lays
+            // more courses, it doesn't stretch them.
+            let band = 0;
+            for (let cy2 = s * 0.39; cy2 < hs * 0.96; cy2 += s * 0.39, band++) {
               ctx.beginPath();
-              ctx.moveTo(p.x, -hs * fy);
-              ctx.lineTo(p.x + s, -hs * fy);
+              ctx.moveTo(p.x, -cy2);
+              ctx.lineTo(p.x + s, -cy2);
               ctx.stroke();
-            }
-            for (const [jx, ry0, ry1] of [
-              [0.5, 0, 0.19],
-              [0.25, 0.19, 0.38],
-              [0.75, 0.19, 0.38],
-              [0.5, 0.38, 0.57],
-              [0.25, 0.57, 0.76],
-              [0.75, 0.57, 0.76],
-              [0.5, 0.76, 0.97],
-            ] as const) {
-              ctx.beginPath();
-              ctx.moveTo(p.x + s * jx, -hs * ry0);
-              ctx.lineTo(p.x + s * jx, -hs * ry1);
-              ctx.stroke();
+              for (const fx of band % 2 === 0 ? [0.25, 0.75] : [0.5]) {
+                ctx.beginPath();
+                ctx.moveTo(p.x + s * fx, -cy2);
+                ctx.lineTo(p.x + s * fx, -Math.min(hs * 0.96, cy2 + s * 0.39));
+                ctx.stroke();
+              }
             }
             ctx.fillStyle = 'rgba(20, 12, 26, 0.2)';
             ctx.fillRect(p.x, -hs * 0.1, s, hs * 0.1);
@@ -1672,11 +1748,11 @@ export class Renderer {
             const wood2 = mat === Tile.WallWood;
             const wx = p.x + s * 0.28;
             const ww = s * 0.44;
-            const wy = -hs * 0.78;
-            const wh2 = hs * 0.34;
+            const wy = -s * 1.62;
+            const wh2 = s * 0.7;
             ctx.fillStyle = shade(face, -22);
             ctx.fillRect(wx - s * 0.035, wy - s * 0.035, ww + s * 0.07, wh2 + s * 0.07);
-            const warm = this.sky.flame;
+            const warm = hearth ? this.sky.flame : 0;
             ctx.fillStyle =
               warm > 0.05 ? `rgba(255, 205, 130, ${0.4 + 0.45 * warm})` : '#2b3350';
             ctx.beginPath();
@@ -1722,6 +1798,30 @@ export class Renderer {
               ctx.fillRect(wx - s * 0.1, wy + wh2 + s * 0.1, ww + s * 0.2, s * 0.03);
             }
           }
+          // Upper stories: a floor-line trim at each story boundary
+          // and hash-placed panes — the facade promises rooms above.
+          for (let st = 2; st <= stories; st++) {
+            const fy0 = -s * (WALL_H + 1.45 * (st - 2));
+            ctx.fillStyle = shade(face, 14);
+            ctx.fillRect(p.x, fy0 - s * 0.05, s, s * 0.05);
+            if (hashCoords(97 + st, tx, ty) % 3 !== 0) {
+              const uy = fy0 - s * 0.95;
+              const uw2 = s * 0.36;
+              const ux = p.x + s * 0.32;
+              ctx.fillStyle = shade(face, -20);
+              ctx.fillRect(ux - s * 0.03, uy - s * 0.03, uw2 + s * 0.06, s * 0.58);
+              const warm2 = hearth ? this.sky.flame : 0;
+              ctx.fillStyle =
+                warm2 > 0.05 && (hashCoords(41, tx, ty) & 1) === 1
+                  ? `rgba(255, 205, 130, ${0.3 + 0.4 * warm2})`
+                  : '#2b3350';
+              ctx.beginPath();
+              chamferRect(ctx, ux, uy, uw2, s * 0.52, s * 0.04);
+              ctx.fill();
+              ctx.fillStyle = shade(face, -8);
+              ctx.fillRect(ux + uw2 / 2 - s * 0.018, uy, s * 0.036, s * 0.52);
+            }
+          }
           // Ambient-occlusion seam where the face meets the ground.
           ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
           ctx.fillRect(x0, -s * 0.06, s + 0.5, s * 0.06);
@@ -1729,7 +1829,7 @@ export class Renderer {
         }
         // Crown: the whole top layer drawn in the leaned height frame —
         // footprint coordinates in, coherent lifted geometry out.
-        this.beginHeightLayer(WALL_H);
+        this.beginHeightLayer(whT);
         ctx.fillStyle = top;
         ctx.beginPath();
         chamferRect(ctx, x0, p.y - 0.25, s + 0.5, syT + 0.5, radii);
@@ -1776,7 +1876,7 @@ export class Renderer {
    * player stays visible through the opening and ducks behind the
    * header. The pass-under read falls out of the existing y-sort.
    */
-  private doorwayItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
+  private doorwayItem(tile: Tile, tx: number, ty: number, game: ClientGame, whT: number): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
@@ -1790,20 +1890,20 @@ export class Renderer {
     const top = stone ? '#8c8798' : '#8a6234';
     const face = stone ? '#5b5566' : '#5e3f1e';
     const syT = s * this.camera.yScale;
-    const hs = WALL_H * s;
+    const hs = whT * s;
     const x0 = p.x - 0.25;
     const x1 = p.x + s + 0.25;
     const jw = s * 0.15;
     const r = s * 0.26;
     const radii: [number, number, number, number] = [!n && !w ? r : 0, !n && !e ? r : 0, 0, 0];
-    const skew = (this.leanX(p.x + s / 2, WALL_H) - (p.x + s / 2)) / -hs;
+    const skew = (this.leanX(p.x + s / 2, whT) - (p.x + s / 2)) / -hs;
     return {
       sortY: ty + 1,
       drawShadow: () => {
         // Only the jambs cast — light passes through the opening.
         const yB = p.y + syT;
-        this.castEdgeQuad(x0, yB, x0 + jw, yB, WALL_H);
-        this.castEdgeQuad(x1 - jw, yB, x1, yB, WALL_H);
+        this.castEdgeQuad(x0, yB, x0 + jw, yB, whT);
+        this.castEdgeQuad(x1 - jw, yB, x1, yB, whT);
       },
       draw: () => {
         const yBase = p.y + syT;
@@ -1821,7 +1921,7 @@ export class Renderer {
         }
         // Header across the top: the opening below it clears ~1.56
         // tiles — the body walks UNDER the frame with real headroom.
-        const hh = hs * 0.24;
+        const hh = hs - s * 1.56; // the opening height is FIXED; the header grows
         ctx.fillStyle = face;
         ctx.fillRect(x0, -hs, x1 - x0, hh);
         if (stone) {
@@ -1855,6 +1955,11 @@ export class Renderer {
           ctx.fillRect(x0 + jw + s * 0.02, -hs + hh * 0.45, s * 0.03, hh * 0.35);
           ctx.fillRect(x1 - jw - s * 0.05, -hs + hh * 0.45, s * 0.03, hh * 0.35);
         }
+        // Story trim carries across the door column of tall facades.
+        if (whT > WALL_H + 0.01) {
+          ctx.fillStyle = shade(face, 14);
+          ctx.fillRect(x0, -s * WALL_H - s * 0.05, x1 - x0, s * 0.05);
+        }
         // Underside shadow grounds the header over the opening.
         ctx.fillStyle = 'rgba(18, 12, 26, 0.35)';
         ctx.fillRect(x0 + jw, -hs + hh, x1 - x0 - jw * 2, s * 0.05);
@@ -1874,7 +1979,7 @@ export class Renderer {
         ctx.fillRect(x0 + jw, -s * 0.07, x1 - x0 - jw * 2, s * 0.07);
         ctx.restore();
         // Crown: the run's top mass continues unbroken over the door.
-        this.beginHeightLayer(WALL_H);
+        this.beginHeightLayer(whT);
         ctx.fillStyle = top;
         ctx.beginPath();
         chamferRect(ctx, x0, p.y - 0.25, s + 0.5, syT + 0.5, radii);
@@ -2129,6 +2234,148 @@ export class Renderer {
         }
       },
     };
+  }
+
+  // --------------------------------------------------------------- roofs
+
+  /**
+   * Row-run rects of every enclosed interior in view + the indoor
+   * ambient: a roof blocks the sky, so rooms sit at a dim cool base
+   * with a whisper of daylight — lamps and hearths carry the rest.
+   */
+  private interiorLighting(): {
+    rects: Array<{ x: number; y: number; w: number; h: number }>;
+    ambient: [number, number, number];
+  } | null {
+    // Only the LOCAL region dims: every other interior hides under an
+    // opaque roof, so its exposure is invisible — and because the
+    // lightmap is ground geography, dimming a covered room would
+    // stripe its own roof. The one room you can see into is the one
+    // whose roof has faded for you.
+    if (!this.localRegion) return null;
+    const rects: Array<{ x: number; y: number; w: number; h: number }> = [];
+    for (const region of [this.localRegion]) {
+      // The lightmap is GROUND geography: the south wall's face occupies
+      // the same screen rows as the last ~wallHeight interior rows, and
+      // dimming them would shade the facade (and the roof's south
+      // slope). Those rows hide behind the face from this camera
+      // anyway — leave them out of the rects. Exact by construction:
+      // a face of height H covers H world-rows of screen behind it.
+      const yEnd = Math.max(region.y0, region.y1 - Math.ceil(this.wallHeightFor(region.stories)));
+      for (let ty = region.y0; ty <= yEnd; ty++) {
+        let run = -1;
+        for (let tx = region.x0; tx <= region.x1 + 1; tx++) {
+          const inside = tx <= region.x1 && region.tiles.has(packTile(tx, ty));
+          if (inside && run < 0) run = tx;
+          else if (!inside && run >= 0) {
+            rects.push({ x: run, y: ty, w: tx - run, h: 1 });
+            run = -1;
+          }
+        }
+      }
+    }
+    const sun = this.sky.sun;
+    // Dim, not nocturnal: a roofed room at noon sits near 60% exposure
+    // with a cool cast — doorways and windows pour the daylight in.
+    return {
+      rects,
+      ambient: [70 + 82 * sun, 66 + 78 * sun, 84 + 68 * sun],
+    };
+  }
+
+  /** Story count → facade wall height in tiles (upper floors run a
+   *  touch shorter than the ground story, as real buildings do). */
+  private wallHeightFor(stories: number): number {
+    return WALL_H + 1.45 * (stories - 1);
+  }
+
+  /** The interior region a wall-run tile fronts: any adjacent
+   *  enclosed floor claims it (per-frame cached in the InteriorMap). */
+  private wallRegion(game: ClientGame, tx: number, ty: number): InteriorRegion | null {
+    for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+      const t = game.world.groundAt(tx + dx, ty + dy);
+      if (t === undefined || Renderer.WALL_TILES.has(t)) continue;
+      const r = this.interiors.regionAt(game, tx + dx, ty + dy);
+      if (r) return r;
+    }
+    return null;
+  }
+
+  /**
+   * Roofs as y-sorted per-row strips — the plateau-crown law applied
+   * to architecture. Each ring canvas slices per footprint row and
+   * blits lifted by wall height + ring rise: entities inside vanish
+   * beneath it, entities south draw over it, and the whole mass fades
+   * to a ghost while YOU are the one inside.
+   */
+  private collectRoofs(game: ClientGame, items: DrawItem[]): void {
+    const b = this.visibleTileBounds();
+    const s = this.camera.scale;
+    this.visibleRegions = [];
+    const seen = new Set<number>();
+    // Discovery probes only authored/built floors — the only tiles
+    // that can be inside a building — so outdoor flood cost stays nil.
+    const pad = Math.ceil(WALL_H * 3);
+    for (let ty = b.minTy; ty <= b.maxTy + pad; ty++) {
+      for (let tx = b.minTx; tx <= b.maxTx; tx++) {
+        const g = game.world.groundAt(tx, ty);
+        if (g !== Tile.WoodFloor && g !== Tile.StoneFloor) continue;
+        const region = this.interiors.regionAt(game, tx, ty);
+        if (!region || seen.has(region.id)) continue;
+        seen.add(region.id);
+        this.visibleRegions.push(region);
+      }
+    }
+    for (const region of this.visibleRegions) {
+      const px = this.bakePx();
+      const key = `${region.x0},${region.y0},${region.x1},${region.y1},${region.wallMaterial},${region.stories},${region.hasHearth ? 1 : 0},${px}`;
+      let bake = this.roofBakes.get(key);
+      if (!bake) {
+        bake = bakeRoof(region, px, this.camera.yScale);
+        if (this.roofBakes.size > 48) this.roofBakes.clear();
+        this.roofBakes.set(key, bake);
+      }
+      // Fade: ease toward hidden while the local player is inside; new
+      // roofs fade IN from 0 so chunk streaming never pops one on.
+      const target = this.localRegion && this.localRegion.id === region.id ? 0.08 : 1;
+      const cur = this.roofAlpha.get(key) ?? 0;
+      const a = cur + (target - cur) * (1 - Math.exp(-10 * this.frameDt));
+      this.roofAlpha.set(key, a);
+      if (a < 0.015) continue;
+      const whT = this.wallHeightFor(region.stories);
+      for (const ring of bake.rings) {
+        const lift = Math.round((whT + ring.k * ROOF_STEP) * s);
+        for (let r = 0; r < bake.hTiles; r++) {
+          // A row participates for its own content or the fascia that
+          // bleeds one row south of it.
+          if (!ring.rows[r] && !(r > 0 && ring.rows[r - 1])) continue;
+          const worldTy = bake.origY + r;
+          if (worldTy > b.maxTy + pad || worldTy < b.minTy - pad) continue;
+          const bk = bake;
+          items.push({
+            sortY: worldTy + 1.02,
+            alpha: a < 0.999 ? a : undefined,
+            draw: () => {
+              const pA = this.camera.worldToScreen(bk.origX, worldTy, this.w, this.h);
+              const pB = this.camera.worldToScreen(bk.origX + bk.wTiles, worldTy + 1, this.w, this.h);
+              const x0 = Math.round(pA.x);
+              const y0 = Math.round(pA.y) - lift;
+              this.ctx.drawImage(
+                ring.canvas,
+                0,
+                r * bk.px * bk.yScale,
+                bk.wTiles * bk.px,
+                bk.px * bk.yScale,
+                x0,
+                y0,
+                Math.round(pB.x) - x0,
+                Math.round(pB.y) - lift - y0,
+              );
+            },
+          });
+        }
+      }
+    }
   }
 
   // -------------------------------------------------------------- cliffs

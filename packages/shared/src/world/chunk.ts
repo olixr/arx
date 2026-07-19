@@ -132,6 +132,12 @@ export class ChunkStore implements CollisionSource {
     return chunk?.elev[tileIndex(tx, ty)] ?? 0;
   }
 
+  /** Detail-layer id of a tile; unloaded space has none. */
+  detailAt(tx: number, ty: number): number {
+    const chunk = this.get(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    return chunk?.detail[tileIndex(tx, ty)] ?? 0;
+  }
+
   /** Mutate one ground tile in place (no-op if the chunk isn't loaded). */
   setGround(tx: number, ty: number, tile: number): boolean {
     const chunk = this.get(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));

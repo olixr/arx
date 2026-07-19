@@ -11,7 +11,7 @@
  * single number for a uniform cut.
  */
 export function chamferRect(
-  ctx: CanvasRenderingContext2D,
+  ctx: CanvasRenderingContext2D | Path2D,
   x: number,
   y: number,
   w: number,

@@ -1,6 +1,7 @@
 import { Tile, type Vec2 } from '@devcraft/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import { Particles } from './particles.js';
+import { InteriorMap } from './interiors.js';
 /** Player zoom bounds: 1 = the classic framing (also the default). */
 export declare const ZOOM_MIN = 0.85;
 export declare const ZOOM_MAX = 2;
@@ -51,6 +52,16 @@ export declare class Renderer {
     readonly particles: Particles;
     private readonly grass;
     private readonly lighting;
+    /** Derived building-interior regions (roofs, indoor light, facades). */
+    readonly interiors: InteriorMap;
+    /** Baked roof rings keyed by footprint signature (stable across
+     *  worldVersion bumps so an unchanged house never re-bakes). */
+    private readonly roofBakes;
+    /** Per-roof fade state: eases to 0.12 while you stand inside. */
+    private readonly roofAlpha;
+    private localRegion;
+    /** Regions discovered in view this frame (feeds interior lighting). */
+    private visibleRegions;
     /** The frame's sky sample — every shadow and light reads this. */
     private sky;
     /** Scene lights gathered this frame (tiles, projectiles, flames). */
@@ -336,6 +347,26 @@ export declare class Renderer {
      * merge with rails only — a railing never joins a wall mass.
      */
     private railItem;
+    /**
+     * Row-run rects of every enclosed interior in view + the indoor
+     * ambient: a roof blocks the sky, so rooms sit at a dim cool base
+     * with a whisper of daylight — lamps and hearths carry the rest.
+     */
+    private interiorLighting;
+    /** Story count → facade wall height in tiles (upper floors run a
+     *  touch shorter than the ground story, as real buildings do). */
+    private wallHeightFor;
+    /** The interior region a wall-run tile fronts: any adjacent
+     *  enclosed floor claims it (per-frame cached in the InteriorMap). */
+    private wallRegion;
+    /**
+     * Roofs as y-sorted per-row strips — the plateau-crown law applied
+     * to architecture. Each ring canvas slices per footprint row and
+     * blits lifted by wall height + ring rise: entities inside vanish
+     * beneath it, entities south draw over it, and the whole mass fades
+     * to a ghost while YOU are the one inside.
+     */
+    private collectRoofs;
     /**
      * CLIFF FACES, extruded from the crown contour itself. The plateau
      * top is contoured by marching squares over dual cells; every
