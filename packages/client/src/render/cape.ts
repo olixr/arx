@@ -9,8 +9,6 @@ import { shade } from './rig.js';
  * paints a faceted two-tone ribbon in the brutalist dialect.
  */
 
-const OUTLINE = '#241a2e';
-
 export interface CapeStyle {
   color: string;
   /** Hem band + clasp color — the cape's signature accent. */
@@ -783,9 +781,4 @@ export function drawCape(
   }
 
   ctx.restore();
-
-  // Outline restated over the decor so the silhouette stays crisp.
-  ctx.strokeStyle = OUTLINE;
-  ctx.lineWidth = Math.max(1.5, wk * 0.045);
-  ctx.stroke(path);
 }

@@ -1,3 +1,10 @@
+/**
+ * Capes: a verlet chain simulated in WORLD space plus a height axis, so
+ * the cloth genuinely lives behind the body — turn and it swings around
+ * you, run and it lifts and streams, stop and it settles with the wind
+ * still working the hem. The renderer projects the simulated nodes and
+ * paints a faceted two-tone ribbon in the brutalist dialect.
+ */
 export interface CapeStyle {
     color: string;
     /** Hem band + clasp color — the cape's signature accent. */
