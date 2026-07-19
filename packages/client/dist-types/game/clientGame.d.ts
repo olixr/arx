@@ -162,6 +162,8 @@ export declare class ClientGame {
         x: number;
         y: number;
         defId: string;
+        /** Facing at the moment of death — the ragdoll snapshot's pose. */
+        dir: number;
         /** Knock direction of the killing blow (0,0 = unknown). */
         kx: number;
         ky: number;

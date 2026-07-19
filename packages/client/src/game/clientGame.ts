@@ -147,6 +147,8 @@ export class ClientGame {
     x: number;
     y: number;
     defId: string;
+    /** Facing at the moment of death — the ragdoll snapshot's pose. */
+    dir: number;
     /** Knock direction of the killing blow (0,0 = unknown). */
     kx: number;
     ky: number;
@@ -562,13 +564,15 @@ export class ClientGame {
       }
       case 'death': {
         if (this.npcDeaths.length < 32) {
-          const k = this.entities.get(msg.eid)?.lastKnock;
+          const remote = this.entities.get(msg.eid);
+          const k = remote?.lastKnock;
           const fresh = k && performance.now() - k.at < 700 ? k : null;
           this.npcDeaths.push({
             eid: msg.eid,
             x: msg.x,
             y: msg.y,
             defId: msg.defId,
+            dir: remote?.buffer.latest()?.dir ?? 0,
             kx: fresh?.kx ?? 0,
             ky: fresh?.ky ?? 0,
             crit: fresh?.crit ?? false,

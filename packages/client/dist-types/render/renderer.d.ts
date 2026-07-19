@@ -98,11 +98,12 @@ export declare class Renderer {
     private zoomPulseAmount;
     private readonly rings;
     /**
-     * Ragdoll corpses: the death beat. The body launches along the
-     * killing blow, tumbles through the air with flailing limbs, bounces
-     * in a dust kick, lies where it stops, and fades as its soul wisps
-     * away. Physics run on frameDt, so the kill's hitstop gives every
-     * ragdoll a slow-motion launch for free.
+     * Ragdoll corpses: the death beat. At the death instant the victim's
+     * ACTUAL rendered body (same painters, same outline pass — a true
+     * 1:1) is captured into a sprite, which then launches along the
+     * killing blow, tumbles, bounces in dust kicks, eases flat where it
+     * stops, and fades as its soul wisps away. Physics run on frameDt,
+     * so the kill's hitstop gives every ragdoll a slow-motion launch.
      */
     private readonly corpses;
     /** A quick camera zoom kick — the killing-blow exclamation point. */
@@ -508,11 +509,17 @@ export declare class Renderer {
      * Dead NPCs shed their arrows onto the ground where they fell.
      */
     private consumeProjectileAftermath;
-    /** Launch a tumbling body along the killing blow's direction. */
+    /**
+     * Freeze the victim's exact on-screen body — painters plus the
+     * dilated outline ring — into a standalone sprite, anchored to its
+     * ground point. The same scratch pipeline as paintOutlined.
+     */
+    private captureBodySprite;
+    /** Turn the defeated body itself into a ragdoll along the blow. */
     private spawnCorpse;
     /** Ragdoll physics: fly, bounce with dust, come to rest, fade away. */
     private tickCorpses;
-    /** The tumbling body itself — flat, chunky, limbs flailing. */
+    /** The tumbling body itself — the captured 1:1 sprite in flight. */
     private corpseItem;
     /** One arrow standing where it landed, angled with its flight line. */
     private stuckArrowItem;

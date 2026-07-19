@@ -282,16 +282,21 @@ export class Renderer {
   private zoomPulseAmount = 0;
   private readonly rings: Array<{ x: number; y: number; color: string; bornAt: number; maxR: number }> = [];
   /**
-   * Ragdoll corpses: the death beat. The body launches along the
-   * killing blow, tumbles through the air with flailing limbs, bounces
-   * in a dust kick, lies where it stops, and fades as its soul wisps
-   * away. Physics run on frameDt, so the kill's hitstop gives every
-   * ragdoll a slow-motion launch for free.
+   * Ragdoll corpses: the death beat. At the death instant the victim's
+   * ACTUAL rendered body (same painters, same outline pass — a true
+   * 1:1) is captured into a sprite, which then launches along the
+   * killing blow, tumbles, bounces in dust kicks, eases flat where it
+   * stops, and fades as its soul wisps away. Physics run on frameDt,
+   * so the kill's hitstop gives every ragdoll a slow-motion launch.
    */
   private readonly corpses: Array<{
-    color: string;
+    /** The captured body — outline and all, exactly as it stood. */
+    sprite: HTMLCanvasElement;
+    /** Sprite top-left relative to the ground point, at capture scale. */
+    dx: number;
+    dy: number;
+    capScale: number;
     radius: number;
-    humanoid: boolean;
     x: number;
     y: number;
     vx: number;
@@ -5577,10 +5582,75 @@ export class Renderer {
     }
   }
 
-  /** Launch a tumbling body along the killing blow's direction. */
-  private spawnCorpse(death: { defId: string; x: number; y: number; kx: number; ky: number; crit: boolean }): void {
+  /**
+   * Freeze the victim's exact on-screen body — painters plus the
+   * dilated outline ring — into a standalone sprite, anchored to its
+   * ground point. The same scratch pipeline as paintOutlined.
+   */
+  private captureBodySprite(item: DrawItem): { canvas: HTMLCanvasElement; ox: number; oy: number } | null {
+    const b = item.body;
+    if (!b) return null;
+    const r = Math.max(1.25, this.camera.scale * 0.04);
+    const m = Math.ceil(r) + 2;
+    const w = Math.ceil(b.w) + m * 2;
+    const h = Math.ceil(b.h) + m * 2;
+    if (this.outlineA.width < w) this.outlineA.width = this.outlineB.width = w;
+    if (this.outlineA.height < h) this.outlineA.height = this.outlineB.height = h;
+    const a = this.outlineACtx;
+    const o = this.outlineBCtx;
+    a.clearRect(0, 0, w, h);
+    a.save();
+    a.translate(m - b.x, m - b.y);
+    const prev = this.ctx;
+    this.ctx = a;
+    try {
+      item.draw();
+    } finally {
+      this.ctx = prev;
+      a.restore();
+    }
+    o.clearRect(0, 0, w, h);
+    for (const [tx, ty] of Renderer.OUTLINE_TAPS) {
+      o.drawImage(this.outlineA, 0, 0, w, h, tx * r, ty * r, w, h);
+    }
+    o.globalCompositeOperation = 'source-in';
+    o.fillStyle = '#241a2e';
+    o.fillRect(0, 0, w, h);
+    o.globalCompositeOperation = 'source-over';
+    const out = document.createElement('canvas');
+    out.width = w;
+    out.height = h;
+    const octx = out.getContext('2d')!;
+    octx.drawImage(this.outlineB, 0, 0, w, h, 0, 0, w, h);
+    octx.drawImage(this.outlineA, 0, 0, w, h, 0, 0, w, h);
+    return { canvas: out, ox: b.x - m, oy: b.y - m };
+  }
+
+  /** Turn the defeated body itself into a ragdoll along the blow. */
+  private spawnCorpse(death: {
+    eid: number;
+    defId: string;
+    x: number;
+    y: number;
+    dir: number;
+    kx: number;
+    ky: number;
+    crit: boolean;
+  }): void {
     const def = npcDef(death.defId);
     if (!def) return;
+    // Re-render the victim exactly as it stood (its anim state is
+    // still warm) and freeze that into the ragdoll's sprite.
+    const item = this.npcItem(
+      death.eid,
+      death.defId,
+      {},
+      { x: death.x, y: death.y, dir: death.dir, hpPct: 255, pose: PoseState.Idle },
+      false,
+    );
+    const cap = this.captureBodySprite(item);
+    if (!cap) return;
+    const p0 = this.liftedWTS(death.x, death.y);
     let kx = death.kx;
     let ky = death.ky;
     const kl = Math.hypot(kx, ky);
@@ -5594,17 +5664,21 @@ export class Renderer {
     }
     const speed = 3.4 + Math.random() * 1.2 + (death.crit ? 1.8 : 0);
     this.corpses.push({
-      color: def.color,
+      sprite: cap.canvas,
+      dx: cap.ox - p0.x,
+      dy: cap.oy - p0.y,
+      capScale: this.camera.scale,
       radius: def.radius,
-      humanoid: death.defId.includes('goblin') || death.defId.includes('skeleton'),
       x: death.x,
       y: death.y,
       vx: kx * speed,
       vy: ky * speed,
-      z: 0.45,
+      z: 0.35,
       vz: 2.5 + Math.random() * 0.7 + (death.crit ? 0.9 : 0),
-      angle: Math.atan2(ky, kx),
-      spin: (5.5 + Math.random() * 4) * (Math.random() < 0.5 ? -1 : 1),
+      angle: 0,
+      // Tumble forward over the direction of travel — reads as the
+      // body cartwheeling away from the blow.
+      spin: (5 + Math.random() * 3) * (kx >= 0 ? 1 : -1),
       bounces: 0,
       settledAt: null,
     });
@@ -5617,6 +5691,10 @@ export class Renderer {
     for (let i = this.corpses.length - 1; i >= 0; i--) {
       const c = this.corpses[i]!;
       if (c.settledAt !== null) {
+        // Ease the body over onto its side — the ragdoll comes to rest
+        // lying down, whatever attitude it landed in.
+        const lie = Math.round((c.angle - Math.PI / 2) / Math.PI) * Math.PI + Math.PI / 2;
+        c.angle += (lie - c.angle) * Math.min(1, dt * 9);
         if (now - c.settledAt > CORPSE_LIE_MS + CORPSE_FADE_MS) this.corpses.splice(i, 1);
         continue;
       }
@@ -5653,7 +5731,7 @@ export class Renderer {
     }
   }
 
-  /** The tumbling body itself — flat, chunky, limbs flailing. */
+  /** The tumbling body itself — the captured 1:1 sprite in flight. */
   private corpseItem(c: (typeof this.corpses)[number], now: number): DrawItem {
     const ctx = this.ctx;
     const scale = this.camera.scale;
@@ -5673,65 +5751,29 @@ export class Renderer {
             gravity: -1.4,
           });
         }
-        const L = Math.max(0.55, c.radius * 2.6) * scale;
+        const k = scale / c.capScale;
+        const w = c.sprite.width * k;
+        const h = c.sprite.height * k;
+        // The pivot is the body's visual center at capture time.
+        const cx = (c.dx + c.sprite.width / 2) * k;
+        const cy = (c.dy + c.sprite.height / 2) * k;
         // Ground shadow tightens as the body rises.
         const shrink = 1 / (1 + c.z * 0.9);
+        const shR = Math.max(0.4, c.radius * 2) * scale;
         ctx.globalAlpha = alpha * 0.26 * shrink;
         ctx.fillStyle = '#141020';
         ctx.beginPath();
-        ctx.ellipse(p.x, p.y, L * 0.42 * shrink, L * 0.16 * shrink, 0, 0, Math.PI * 2);
+        ctx.ellipse(p.x, p.y, shR * 0.6 * shrink, shR * 0.22 * shrink, 0, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.globalAlpha = alpha;
         ctx.save();
         // Heights render at full scale — that contrast IS the camera tilt.
-        ctx.translate(p.x, p.y - (c.z + 0.14) * scale);
+        ctx.translate(p.x + cx, p.y - c.z * scale + cy);
         ctx.rotate(c.angle);
-        ctx.lineCap = 'round';
-        if (c.humanoid) {
-          // Splayed limbs flail with the tumble.
-          ctx.strokeStyle = shade(c.color, -30);
-          ctx.lineWidth = Math.max(2, L * 0.13);
-          for (let i = 0; i < 4; i++) {
-            const base = (i / 4) * Math.PI * 2 + 0.6;
-            const flail = Math.sin(c.angle * 2 + i * 1.7) * 0.5;
-            const ax = Math.cos(base + flail);
-            const ay = Math.sin(base + flail);
-            ctx.beginPath();
-            ctx.moveTo(ax * L * 0.14, ay * L * 0.1);
-            ctx.lineTo(ax * L * 0.42, ay * L * 0.34);
-            ctx.stroke();
-          }
-          ctx.fillStyle = c.color;
-          ctx.beginPath();
-          ctx.roundRect(-L * 0.3, -L * 0.16, L * 0.58, L * 0.32, L * 0.08);
-          ctx.fill();
-          ctx.fillStyle = shade(c.color, 22);
-          ctx.beginPath();
-          ctx.arc(L * 0.38, 0, L * 0.15, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          // Beasts: a chunky body blob, head, and stubby legs.
-          ctx.strokeStyle = shade(c.color, -35);
-          ctx.lineWidth = Math.max(2, L * 0.11);
-          for (let i = 0; i < 4; i++) {
-            const base = (i / 4) * Math.PI * 2 + 0.9;
-            const ax = Math.cos(base);
-            const ay = Math.sin(base);
-            ctx.beginPath();
-            ctx.moveTo(ax * L * 0.2, ay * L * 0.14);
-            ctx.lineTo(ax * L * 0.36, ay * L * 0.26);
-            ctx.stroke();
-          }
-          ctx.fillStyle = c.color;
-          ctx.beginPath();
-          ctx.ellipse(0, 0, L * 0.34, L * 0.22, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = shade(c.color, 18);
-          ctx.beginPath();
-          ctx.arc(L * 0.34, -L * 0.04, L * 0.13, 0, Math.PI * 2);
-          ctx.fill();
-        }
+        // A touch of shear while airborne — the rag in the ragdoll.
+        if (c.settledAt === null) ctx.transform(1, Math.sin(c.angle * 1.6) * 0.09, 0, 1, 0, 0);
+        ctx.drawImage(c.sprite, -w / 2, -h / 2, w, h);
         ctx.restore();
         ctx.globalAlpha = 1;
       },
