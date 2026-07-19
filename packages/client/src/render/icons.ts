@@ -1158,6 +1158,659 @@ const PAINTERS: Record<string, IconPainter> = {
     oreChunk(c, 0.5, 0.39, 0.33, 0.06, col, '#8a86a0');
   },
 
+  // ------------------------------------------- construction buildables
+  // Icons for the build panel: each buildable drawn as the OBJECT it
+  // places, in the same chunky flat language as the item art. Wood and
+  // stone variants share a painter and speak through their tint.
+  floortile: (c, col) => {
+    // A laid floor square seen at a slight tilt, boards/flags scored in.
+    c.save();
+    c.translate(0.5, 0.52);
+    c.rotate(-0.12);
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.rect(-0.32, -0.28, 0.64, 0.56);
+    c.fill();
+    c.stroke();
+    // Course lines + one offset butt joint per course, like real decking.
+    c.strokeStyle = shade(col, -26);
+    c.lineWidth = 0.025;
+    for (const y of [-0.09, 0.09]) {
+      c.beginPath();
+      c.moveTo(-0.32, y);
+      c.lineTo(0.32, y);
+      c.stroke();
+    }
+    for (const [x, y0, y1] of [[-0.08, -0.28, -0.09], [0.12, -0.09, 0.09], [-0.04, 0.09, 0.28]] as const) {
+      c.beginPath();
+      c.moveTo(x, y0);
+      c.lineTo(x, y1);
+      c.stroke();
+    }
+    c.fillStyle = shade(col, 22);
+    c.fillRect(-0.32, -0.28, 0.64, 0.07);
+    c.restore();
+  },
+  wallblock: (c, col) => {
+    // A run of coursed masonry with a bright cap — the world wall's
+    // raised-top read, shrunk to an icon.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.rect(0.18, 0.26, 0.64, 0.54);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 34);
+    c.fillRect(0.18, 0.26, 0.64, 0.1);
+    c.strokeStyle = shade(col, -28);
+    c.lineWidth = 0.024;
+    for (const y of [0.5, 0.66]) {
+      c.beginPath();
+      c.moveTo(0.18, y);
+      c.lineTo(0.82, y);
+      c.stroke();
+    }
+    // Staggered head joints sell the bond pattern.
+    for (const [x, y0, y1] of [[0.44, 0.36, 0.5], [0.62, 0.5, 0.66], [0.36, 0.66, 0.8], [0.66, 0.66, 0.8]] as const) {
+      c.beginPath();
+      c.moveTo(x, y0);
+      c.lineTo(x, y1);
+      c.stroke();
+    }
+  },
+  windowframe: (c, col) => {
+    // A wall block pierced by a cross-mullioned window, glass catching sky.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.rect(0.18, 0.24, 0.64, 0.56);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 34);
+    c.fillRect(0.18, 0.24, 0.64, 0.09);
+    c.fillStyle = shade(col, -22);
+    c.beginPath();
+    c.roundRect(0.3, 0.4, 0.4, 0.32, 0.03);
+    c.fill();
+    c.fillStyle = '#9fc4e0';
+    c.beginPath();
+    c.roundRect(0.33, 0.43, 0.34, 0.26, 0.02);
+    c.fill();
+    c.fillStyle = '#c9e2f2';
+    poly(c, '#c9e2f2', [[0.34, 0.55], [0.44, 0.43], [0.5, 0.43], [0.36, 0.6]]);
+    // Mullion cross in the frame's own wood/stone.
+    c.strokeStyle = shade(col, -22);
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(0.5, 0.43);
+    c.lineTo(0.5, 0.69);
+    c.moveTo(0.33, 0.56);
+    c.lineTo(0.67, 0.56);
+    c.stroke();
+  },
+  doorframe: (c, col) => {
+    // A framed walk-through opening: jambs, a proud lintel, and dark
+    // interior beyond — the icon reads "hole you may pass".
+    c.fillStyle = '#241a2e';
+    c.beginPath();
+    c.rect(0.34, 0.36, 0.32, 0.44);
+    c.fill();
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    for (const x of [0.22, 0.66]) {
+      c.beginPath();
+      c.rect(x, 0.3, 0.12, 0.5);
+      c.fill();
+      c.stroke();
+    }
+    c.beginPath();
+    c.rect(0.16, 0.18, 0.68, 0.14);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 30);
+    c.fillRect(0.16, 0.18, 0.68, 0.05);
+    c.fillStyle = shade(col, -24);
+    c.fillRect(0.28, 0.3, 0.06, 0.5);
+    c.fillRect(0.72, 0.3, 0.06, 0.5);
+  },
+  archway: (c, col) => {
+    // A freestanding arch: two piers and a keystoned curve over open air.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.18, 0.82);
+    c.lineTo(0.18, 0.4);
+    c.quadraticCurveTo(0.18, 0.16, 0.5, 0.16);
+    c.quadraticCurveTo(0.82, 0.16, 0.82, 0.4);
+    c.lineTo(0.82, 0.82);
+    c.lineTo(0.68, 0.82);
+    c.lineTo(0.68, 0.44);
+    c.quadraticCurveTo(0.68, 0.3, 0.5, 0.3);
+    c.quadraticCurveTo(0.32, 0.3, 0.32, 0.44);
+    c.lineTo(0.32, 0.82);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // Keystone + springer joints.
+    c.strokeStyle = shade(col, -26);
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.moveTo(0.5, 0.16);
+    c.lineTo(0.5, 0.3);
+    c.moveTo(0.24, 0.32);
+    c.lineTo(0.34, 0.4);
+    c.moveTo(0.76, 0.32);
+    c.lineTo(0.66, 0.4);
+    c.stroke();
+    c.fillStyle = shade(col, 26);
+    c.fillRect(0.44, 0.17, 0.12, 0.06);
+  },
+  pillar: (c, col) => {
+    // A column with capital and base; one bright flute keeps it round.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.rect(0.4, 0.28, 0.2, 0.44);
+    c.fill();
+    c.stroke();
+    bar(c, shade(col, 18), 0.32, 0.16, 0.36, 0.12);
+    bar(c, shade(col, 10), 0.3, 0.72, 0.4, 0.13);
+    c.fillStyle = shade(col, 26);
+    c.fillRect(0.43, 0.28, 0.05, 0.44);
+    c.fillStyle = shade(col, -22);
+    c.fillRect(0.54, 0.28, 0.04, 0.44);
+  },
+  railing: (c, col) => {
+    // Two turned posts carrying a top rail and a lower stringer.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    for (const x of [0.26, 0.66]) {
+      c.beginPath();
+      c.roundRect(x, 0.3, 0.09, 0.5, 0.03);
+      c.fill();
+      c.stroke();
+    }
+    bar(c, shade(col, 18), 0.14, 0.32, 0.72, 0.09);
+    bar(c, shade(col, -12), 0.18, 0.56, 0.64, 0.07);
+    // Post caps.
+    dot(c, shade(col, 30), 0.305, 0.3, 0.045);
+    dot(c, shade(col, 30), 0.705, 0.3, 0.045);
+  },
+  barrel: (c, col) => {
+    // Bulged oak staves bound by two dark iron hoops.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.3, 0.22);
+    c.quadraticCurveTo(0.2, 0.5, 0.3, 0.8);
+    c.lineTo(0.7, 0.8);
+    c.quadraticCurveTo(0.8, 0.5, 0.7, 0.22);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // Stave seams follow the bulge.
+    c.strokeStyle = shade(col, -24);
+    c.lineWidth = 0.024;
+    for (const x of [0.42, 0.58]) {
+      c.beginPath();
+      c.moveTo(x, 0.23);
+      c.quadraticCurveTo(x + (x < 0.5 ? -0.03 : 0.03), 0.5, x, 0.79);
+      c.stroke();
+    }
+    c.fillStyle = shade(col, 24);
+    c.beginPath();
+    c.moveTo(0.32, 0.22);
+    c.quadraticCurveTo(0.27, 0.35, 0.29, 0.45);
+    c.lineTo(0.36, 0.45);
+    c.quadraticCurveTo(0.35, 0.33, 0.38, 0.22);
+    c.closePath();
+    c.fill();
+    // Iron hoops.
+    c.fillStyle = '#3a3644';
+    c.fillRect(0.245, 0.32, 0.51, 0.055);
+    c.fillRect(0.245, 0.62, 0.51, 0.055);
+    bar(c, shade(col, 14), 0.3, 0.16, 0.4, 0.09);
+  },
+  crate: (c, col) => {
+    // A planked shipping box with a cross-brace face.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.rect(0.22, 0.26, 0.56, 0.54);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 24);
+    c.fillRect(0.22, 0.26, 0.56, 0.08);
+    // Diagonal brace, then the frame rails over it.
+    c.strokeStyle = shade(col, -22);
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(0.26, 0.76);
+    c.lineTo(0.74, 0.36);
+    c.stroke();
+    c.fillStyle = shade(col, -14);
+    c.fillRect(0.22, 0.26, 0.07, 0.54);
+    c.fillRect(0.71, 0.26, 0.07, 0.54);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.024;
+    c.strokeRect(0.29, 0.34, 0.42, 0.46);
+  },
+  table: (c, col) => {
+    // A proper board on two sturdy legs, seen from the side.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    for (const x of [0.28, 0.62]) {
+      c.beginPath();
+      c.rect(x, 0.46, 0.1, 0.32);
+      c.fill();
+      c.stroke();
+    }
+    c.beginPath();
+    c.roundRect(0.14, 0.32, 0.72, 0.13, 0.03);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 26);
+    c.fillRect(0.16, 0.33, 0.68, 0.05);
+    // Stretcher between the legs.
+    bar(c, shade(col, -14), 0.34, 0.6, 0.32, 0.05);
+  },
+  chair: (c, col) => {
+    // Side profile: tall back post, seat, two legs.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.roundRect(0.34, 0.14, 0.11, 0.44, 0.03);
+    c.fill();
+    c.stroke();
+    c.beginPath();
+    c.roundRect(0.3, 0.5, 0.42, 0.11, 0.03);
+    c.fill();
+    c.stroke();
+    for (const x of [0.34, 0.6]) {
+      c.beginPath();
+      c.rect(x, 0.61, 0.09, 0.24);
+      c.fill();
+      c.stroke();
+    }
+    c.fillStyle = shade(col, 26);
+    c.fillRect(0.32, 0.51, 0.38, 0.04);
+    c.fillRect(0.36, 0.16, 0.04, 0.4);
+  },
+  bench: (c, col) => {
+    // The table lowered and lightened: a long backless seat.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    for (const x of [0.22, 0.68]) {
+      c.beginPath();
+      c.rect(x, 0.56, 0.1, 0.24);
+      c.fill();
+      c.stroke();
+    }
+    c.beginPath();
+    c.roundRect(0.12, 0.44, 0.76, 0.12, 0.03);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 26);
+    c.fillRect(0.14, 0.45, 0.72, 0.045);
+    bar(c, shade(col, -14), 0.28, 0.66, 0.44, 0.05);
+  },
+  bed: (c, col) => {
+    // Headboard, white pillow, and a blanket in the bed's own color.
+    c.fillStyle = '#8a6534';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.roundRect(0.14, 0.22, 0.14, 0.5, 0.04);
+    c.fill();
+    c.stroke();
+    // Mattress slab.
+    c.fillStyle = '#e8e4da';
+    c.beginPath();
+    c.roundRect(0.24, 0.4, 0.62, 0.24, 0.05);
+    c.fill();
+    c.stroke();
+    // Blanket tucked over the foot half.
+    c.fillStyle = col;
+    c.beginPath();
+    c.roundRect(0.44, 0.38, 0.42, 0.28, 0.05);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 22);
+    c.fillRect(0.46, 0.4, 0.06, 0.24);
+    // Pillow.
+    c.fillStyle = '#f4f2ec';
+    c.beginPath();
+    c.roundRect(0.28, 0.34, 0.16, 0.14, 0.05);
+    c.fill();
+    c.stroke();
+    // Foot leg.
+    bar(c, '#8a6534', 0.78, 0.62, 0.08, 0.16);
+  },
+  bookshelf: (c, col) => {
+    // A tall case, two shelves, spines in library colors.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.rect(0.24, 0.14, 0.52, 0.7);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 20);
+    c.fillRect(0.24, 0.14, 0.52, 0.07);
+    c.fillStyle = shade(col, -32);
+    c.fillRect(0.3, 0.24, 0.4, 0.26);
+    c.fillRect(0.3, 0.54, 0.4, 0.24);
+    // Spines: varied heights, a couple leaning.
+    const spines: Array<[number, number, number, string]> = [
+      [0.31, 0.28, 0.07, '#a34434'], [0.39, 0.26, 0.06, '#4c6a9c'], [0.46, 0.3, 0.07, '#7a8a4a'],
+      [0.54, 0.27, 0.08, '#8a5cc4'], [0.31, 0.58, 0.08, '#c9a23c'], [0.4, 0.56, 0.06, '#4c6a9c'],
+      [0.47, 0.6, 0.07, '#a34434'], [0.55, 0.57, 0.07, '#3f7d6a'],
+    ];
+    for (const [x, y, w, color] of spines) {
+      c.fillStyle = color;
+      c.fillRect(x, y, w, y < 0.5 ? 0.5 - y : 0.78 - y);
+    }
+  },
+  counter: (c, col) => {
+    // A service counter: overhanging bright top, paneled front.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.rect(0.22, 0.42, 0.56, 0.38);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, -22);
+    c.beginPath();
+    c.roundRect(0.28, 0.5, 0.19, 0.22, 0.02);
+    c.fill();
+    c.beginPath();
+    c.roundRect(0.53, 0.5, 0.19, 0.22, 0.02);
+    c.fill();
+    c.fillStyle = shade(col, 34);
+    c.strokeStyle = OUTLINE;
+    c.beginPath();
+    c.roundRect(0.14, 0.3, 0.72, 0.13, 0.03);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 12);
+    c.fillRect(0.16, 0.38, 0.68, 0.04);
+  },
+  hearth: (c, col) => {
+    // A stone firebox with a live flame — the home's warm heart.
+    c.fillStyle = '#6e6a75';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.rect(0.18, 0.3, 0.64, 0.5);
+    c.fill();
+    c.stroke();
+    bar(c, '#827e8a', 0.12, 0.2, 0.76, 0.12);
+    // Mortar joints.
+    c.strokeStyle = shade('#6e6a75', -24);
+    c.lineWidth = 0.022;
+    for (const [x, y0, y1] of [[0.3, 0.32, 0.42], [0.62, 0.32, 0.42], [0.24, 0.66, 0.78], [0.72, 0.66, 0.78]] as const) {
+      c.beginPath();
+      c.moveTo(x, y0);
+      c.lineTo(x, y1);
+      c.stroke();
+    }
+    // Arched firebox, then the flame in the buildable's ember color.
+    c.fillStyle = '#241a2e';
+    c.beginPath();
+    c.moveTo(0.32, 0.78);
+    c.lineTo(0.32, 0.55);
+    c.quadraticCurveTo(0.5, 0.42, 0.68, 0.55);
+    c.lineTo(0.68, 0.78);
+    c.closePath();
+    c.fill();
+    poly(c, col, [[0.42, 0.76], [0.46, 0.6], [0.5, 0.68], [0.55, 0.56], [0.6, 0.76]]);
+    poly(c, '#f2d060', [[0.46, 0.76], [0.5, 0.68], [0.55, 0.76]]);
+  },
+  signpost: (c, col) => {
+    // A post and bracket with a shingle swinging on two twine drops.
+    c.fillStyle = '#5e3f1e';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.roundRect(0.26, 0.14, 0.1, 0.7, 0.03);
+    c.fill();
+    c.stroke();
+    bar(c, '#5e3f1e', 0.26, 0.18, 0.5, 0.07);
+    // Twine drops.
+    c.strokeStyle = '#b0a068';
+    c.lineWidth = 0.025;
+    for (const x of [0.48, 0.68]) {
+      c.beginPath();
+      c.moveTo(x, 0.25);
+      c.lineTo(x, 0.36);
+      c.stroke();
+    }
+    // The shingle itself carries the tint.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.roundRect(0.4, 0.36, 0.36, 0.24, 0.04);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 22);
+    c.fillRect(0.42, 0.38, 0.32, 0.05);
+    c.strokeStyle = shade(col, -30);
+    c.lineWidth = 0.025;
+    c.beginPath();
+    c.moveTo(0.46, 0.48);
+    c.lineTo(0.7, 0.48);
+    c.moveTo(0.46, 0.54);
+    c.lineTo(0.64, 0.54);
+    c.stroke();
+  },
+  flowerbox: (c, col) => {
+    // A timber trough with three blooms nodding over the rim.
+    // Stems first so the box overlaps them.
+    c.strokeStyle = '#4f7c35';
+    c.lineWidth = 0.035;
+    for (const x of [0.32, 0.5, 0.68]) {
+      c.beginPath();
+      c.moveTo(x, 0.52);
+      c.lineTo(x, 0.4);
+      c.stroke();
+    }
+    for (const [i, x] of [0.32, 0.5, 0.68].entries()) {
+      dot(c, col, x, 0.34, 0.075);
+      dot(c, shade(col, i === 1 ? 45 : 30), x, 0.34, 0.032);
+    }
+    c.fillStyle = '#6f4d26';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.2, 0.52);
+    c.lineTo(0.8, 0.52);
+    c.lineTo(0.74, 0.76);
+    c.lineTo(0.26, 0.76);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade('#6f4d26', 22);
+    c.fillRect(0.22, 0.53, 0.56, 0.06);
+    c.strokeStyle = shade('#6f4d26', -24);
+    c.lineWidth = 0.024;
+    for (const x of [0.4, 0.6]) {
+      c.beginPath();
+      c.moveTo(x, 0.6);
+      c.lineTo(x, 0.75);
+      c.stroke();
+    }
+  },
+  stallcanopy: (c, col) => {
+    // A market stall: striped awning pitched over a plank counter.
+    c.fillStyle = '#7a552e';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    for (const x of [0.22, 0.72]) {
+      c.beginPath();
+      c.rect(x, 0.32, 0.06, 0.42);
+      c.fill();
+      c.stroke();
+    }
+    c.beginPath();
+    c.roundRect(0.16, 0.58, 0.68, 0.2, 0.03);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade('#7a552e', 24);
+    c.fillRect(0.18, 0.59, 0.64, 0.06);
+    // Awning: canted sheet with a scalloped drop edge, striped in col.
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(0.12, 0.36);
+    c.lineTo(0.5, 0.16);
+    c.lineTo(0.88, 0.36);
+    c.lineTo(0.84, 0.44);
+    c.quadraticCurveTo(0.775, 0.38, 0.71, 0.44);
+    c.quadraticCurveTo(0.645, 0.38, 0.58, 0.44);
+    c.quadraticCurveTo(0.5, 0.38, 0.42, 0.44);
+    c.quadraticCurveTo(0.355, 0.38, 0.29, 0.44);
+    c.quadraticCurveTo(0.225, 0.38, 0.16, 0.44);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = '#f2efe6';
+    for (const x of [0.29, 0.55]) {
+      c.fillRect(x, 0.245, 0.11, 0.155);
+    }
+  },
+  campfirebuild: (c, col) => {
+    // Crossed logs under a fat flame — the tile's warm invitation.
+    for (const flip of [1, -1]) {
+      c.save();
+      c.translate(0.5, 0.74);
+      c.rotate(0.35 * flip);
+      c.fillStyle = '#8a6a45';
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.035;
+      c.beginPath();
+      c.roundRect(-0.3, -0.05, 0.6, 0.11, 0.05);
+      c.fill();
+      c.stroke();
+      c.restore();
+    }
+    poly(c, col, [[0.34, 0.66], [0.4, 0.42], [0.47, 0.52], [0.5, 0.26], [0.58, 0.48], [0.63, 0.4], [0.66, 0.66]]);
+    poly(c, '#f2d060', [[0.43, 0.66], [0.5, 0.44], [0.58, 0.66]]);
+  },
+  furnacebuild: (c, col) => {
+    // A squat stone kiln with a glowing mouth and a chimney stub.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.24, 0.8);
+    c.lineTo(0.24, 0.36);
+    c.quadraticCurveTo(0.24, 0.24, 0.4, 0.22);
+    c.lineTo(0.6, 0.22);
+    c.quadraticCurveTo(0.76, 0.24, 0.76, 0.36);
+    c.lineTo(0.76, 0.8);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    bar(c, shade(col, -14), 0.42, 0.1, 0.16, 0.14);
+    c.fillStyle = shade(col, 22);
+    c.fillRect(0.28, 0.26, 0.2, 0.07);
+    // Mortar joints.
+    c.strokeStyle = shade(col, -26);
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.moveTo(0.26, 0.44);
+    c.lineTo(0.74, 0.44);
+    c.moveTo(0.4, 0.44);
+    c.lineTo(0.4, 0.55);
+    c.moveTo(0.6, 0.44);
+    c.lineTo(0.6, 0.55);
+    c.stroke();
+    // The mouth, banked with fire.
+    c.fillStyle = '#241a2e';
+    c.beginPath();
+    c.moveTo(0.36, 0.8);
+    c.lineTo(0.36, 0.62);
+    c.quadraticCurveTo(0.5, 0.52, 0.64, 0.62);
+    c.lineTo(0.64, 0.8);
+    c.closePath();
+    c.fill();
+    poly(c, '#e8573d', [[0.42, 0.78], [0.46, 0.64], [0.5, 0.7], [0.55, 0.62], [0.59, 0.78]]);
+    poly(c, '#f2c94c', [[0.46, 0.78], [0.5, 0.7], [0.55, 0.78]]);
+  },
+  anvilbuild: (c, col) => {
+    // The classic profile: horn, face, waist, block base.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.14, 0.34);
+    c.quadraticCurveTo(0.14, 0.46, 0.3, 0.48);
+    c.lineTo(0.42, 0.48);
+    c.lineTo(0.4, 0.58);
+    c.lineTo(0.32, 0.62);
+    c.lineTo(0.32, 0.66);
+    c.lineTo(0.68, 0.66);
+    c.lineTo(0.68, 0.62);
+    c.lineTo(0.6, 0.58);
+    c.lineTo(0.58, 0.48);
+    c.lineTo(0.84, 0.46);
+    c.quadraticCurveTo(0.86, 0.32, 0.66, 0.3);
+    c.lineTo(0.3, 0.3);
+    c.quadraticCurveTo(0.14, 0.3, 0.14, 0.34);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 30);
+    c.fillRect(0.28, 0.31, 0.5, 0.05);
+    // Wooden stump base.
+    c.fillStyle = '#6b4a26';
+    c.beginPath();
+    c.roundRect(0.28, 0.66, 0.44, 0.16, 0.03);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade('#6b4a26', -22);
+    c.fillRect(0.34, 0.7, 0.05, 0.12);
+    c.fillRect(0.6, 0.7, 0.05, 0.12);
+  },
+  lamppostbuild: (c, col) => {
+    // An iron post crowned by a warm glass lantern.
+    c.fillStyle = '#3a3444';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.roundRect(0.45, 0.34, 0.1, 0.52, 0.03);
+    c.fill();
+    c.stroke();
+    bar(c, '#3a3444', 0.36, 0.82, 0.28, 0.07);
+    // Lantern cage: cap, glass, base.
+    poly(c, '#3a3444', [[0.34, 0.18], [0.5, 0.1], [0.66, 0.18]]);
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(0.37, 0.18);
+    c.lineTo(0.63, 0.18);
+    c.lineTo(0.6, 0.34);
+    c.lineTo(0.4, 0.34);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    dot(c, '#fff2cc', 0.5, 0.255, 0.05);
+    bar(c, '#3a3444', 0.38, 0.33, 0.24, 0.05);
+  },
+
   // ------------------------------------------------------- UI glyphs
   backpack: (c, col) => {
     c.fillStyle = col;
@@ -1992,6 +2645,46 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   watering_can: { icon: 'wateringcan', color: '#7a8fa5' },
 };
 
+/**
+ * Which painter + tint each BUILDABLE renders in the build panel.
+ * Wood/stone families share a painter and differ by tint, exactly like
+ * item families; tints echo the placed tile's world colors so the icon
+ * promises what the ghost delivers.
+ */
+const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
+  wood_floor: { icon: 'floortile', color: '#a87e46' },
+  stone_floor: { icon: 'floortile', color: '#a09aa8' },
+  wood_wall: { icon: 'wallblock', color: '#7d5a2e' },
+  stone_wall: { icon: 'wallblock', color: '#767181' },
+  wood_window: { icon: 'windowframe', color: '#7d5a2e' },
+  stone_window: { icon: 'windowframe', color: '#767181' },
+  wood_doorway: { icon: 'doorframe', color: '#7d5a2e' },
+  stone_doorway: { icon: 'doorframe', color: '#767181' },
+  fence: { icon: 'railing', color: '#8a6534' },
+  wood_railing: { icon: 'railing', color: '#a5793f' },
+  campfire: { icon: 'campfirebuild', color: '#e8823d' },
+  furnace: { icon: 'furnacebuild', color: '#6e6a75' },
+  anvil: { icon: 'anvilbuild', color: '#55505e' },
+  lamp_post: { icon: 'lamppostbuild', color: '#e8c06a' },
+  workbench: { icon: 'hammer', color: '#9aa2ac' },
+  garden_plot: { icon: 'seeds', color: '#79a355' },
+  alembic: { icon: 'bottle', color: '#7fc9b3' },
+  barrel: { icon: 'barrel', color: '#94693a' },
+  crate: { icon: 'crate', color: '#a5793f' },
+  chair: { icon: 'chair', color: '#94693a' },
+  table: { icon: 'table', color: '#a5793f' },
+  bench: { icon: 'bench', color: '#94693a' },
+  bed: { icon: 'bed', color: '#a34b52' },
+  bookshelf: { icon: 'bookshelf', color: '#7a552e' },
+  counter: { icon: 'counter', color: '#94693a' },
+  hearth: { icon: 'hearth', color: '#e8823d' },
+  hanging_sign: { icon: 'signpost', color: '#a5793f' },
+  flower_box: { icon: 'flowerbox', color: '#d977a8' },
+  banner_pole: { icon: 'banner', color: '#7a3f8f' },
+  stone_pillar: { icon: 'pillar', color: '#8c8798' },
+  stone_arch: { icon: 'archway', color: '#8c8798' },
+};
+
 const cache = new Map<string, string>();
 
 function renderIcon(icon: string, color: string, size: number): string {
@@ -2039,6 +2732,16 @@ export function itemIconUrl(itemId: string, size = 48): string {
   if (spec) return renderIcon(spec.icon, spec.color, size);
   // Unknown item: tinted lump so a missing mapping is loud in review.
   return renderIcon('burnt', itemDef(itemId)?.color ?? '#888', size);
+}
+
+/**
+ * Data URL for a buildable's build-panel icon, or null when a buildable
+ * has no art yet — the panel falls back to its tile color swatch, so a
+ * missing mapping degrades instead of breaking.
+ */
+export function buildableIconUrl(buildableId: string, size: number): string | null {
+  const spec = BUILDABLE_ICON[buildableId];
+  return spec ? renderIcon(spec.icon, spec.color, size) : null;
 }
 
 /** Dim placeholder glyph telling an empty equipment slot's purpose. */

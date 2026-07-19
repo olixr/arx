@@ -33,7 +33,7 @@ import {
 } from '@devcraft/shared';
 import {
   BUILDABLES,
-  BUILDABLE_GROUND,
+  buildableGround,
   CROP_BY_SEED,
   CROPS,
   GENERAL_STORE,
@@ -1290,7 +1290,7 @@ export class GameServer {
     }
     this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
     const ground = this.world.groundAt(tx, ty);
-    if (ground === undefined || !BUILDABLE_GROUND.includes(ground as Tile)) {
+    if (ground === undefined || !buildableGround(def).includes(ground as Tile)) {
       sys("You can't build there.");
       return;
     }
@@ -1322,7 +1322,7 @@ export class GameServer {
 
     // Final re-validation before mutating the world.
     const ground = this.world.groundAt(action.tx, action.ty);
-    if (ground === undefined || !BUILDABLE_GROUND.includes(ground as Tile)) {
+    if (ground === undefined || !buildableGround(def).includes(ground as Tile)) {
       this.cancelAction(eid, player, 'blocked');
       return;
     }
@@ -1332,8 +1332,12 @@ export class GameServer {
     }
     for (const m of def.materials) removeItem(player.inventory, m.item, m.qty);
 
-    this.world.registerBuilt(action.tx, action.ty, def.tile, player.characterId);
-    this.accounts.saveBuiltTile(action.tx, action.ty, def.tile, player.characterId);
+    // The ground being replaced is what demolish will restore. When
+    // building over an earlier construction the register/save layers
+    // keep the original capture, so 'ground' here is only the first
+    // link in the chain.
+    this.world.registerBuilt(action.tx, action.ty, def.tile, player.characterId, ground);
+    this.accounts.saveBuiltTile(action.tx, action.ty, def.tile, player.characterId, ground);
     this.setWorldTile(action.tx, action.ty, def.tile);
     this.grantXp(eid, player, def.skill ?? 'construction', def.xp);
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
@@ -1367,7 +1371,9 @@ export class GameServer {
 
     this.world.unregisterBuilt(tx, ty);
     this.accounts.deleteBuiltTile(tx, ty);
-    this.setWorldTile(tx, ty, Tile.Grass);
+    // Give back the ground the construction was built on — a wall cut
+    // into a stone floor tears down to stone floor, not to grass.
+    this.setWorldTile(tx, ty, built.prevTile);
   }
 
   // ------------------------------------------------------ bank & shop

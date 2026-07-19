@@ -33,7 +33,7 @@ const db = openDb();
 const accounts = new AccountStore(db);
 const world = new WorldSource(config.worldSeed, zones);
 for (const built of accounts.loadBuiltTiles()) {
-  world.registerBuilt(built.tx, built.ty, built.tile, built.owner);
+  world.registerBuilt(built.tx, built.ty, built.tile, built.owner, built.prevTile);
 }
 const game = new GameServer(world, accounts);
 game.loadCrops(accounts.loadCrops());

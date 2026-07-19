@@ -1,5 +1,5 @@
 import { EntityKind, PoseState, ROCK_TILES, Tile, tileDef } from '@devcraft/shared';
-import { BUILDABLES, BUILDABLE_GROUND, itemDef, npcDef } from '@devcraft/content';
+import { BUILDABLES, buildableGround, itemDef, npcDef } from '@devcraft/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
 import { Renderer } from './render/renderer.js';
@@ -893,9 +893,12 @@ function frame(now: number): void {
     const dx = tx + 0.5 - pos.x;
     const dy = ty + 0.5 - pos.y;
     const dist2 = dx * dx + dy * dy;
+    // Mirror of the server's placement rule: per-buildable ground
+    // allowlist, so the ghost goes red exactly where build() refuses.
     const valid =
+      def !== undefined &&
       ground !== undefined &&
-      BUILDABLE_GROUND.includes(ground) &&
+      buildableGround(def).includes(ground) &&
       dist2 <= 3 * 3 &&
       dist2 >= 0.8 * 0.8;
     renderer.buildGhost = def

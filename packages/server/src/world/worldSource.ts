@@ -72,10 +72,14 @@ export class WorldSource extends ChunkStore {
   }
 
   /** Player-built tiles, reapplied whenever a chunk regenerates. */
-  private readonly builtTiles = new Map<string, { tile: number; owner: number }>();
+  private readonly builtTiles = new Map<string, { tile: number; owner: number; prevTile: number }>();
 
-  registerBuilt(tx: number, ty: number, tile: number, owner: number): void {
-    this.builtTiles.set(`${tx},${ty}`, { tile, owner });
+  registerBuilt(tx: number, ty: number, tile: number, owner: number, prevTile: number): void {
+    // Building over an existing construction (a wall onto your own
+    // floor) keeps the FIRST capture: demolish returns the natural
+    // ground, never an intermediate build that no longer exists.
+    const existing = this.builtTiles.get(`${tx},${ty}`);
+    this.builtTiles.set(`${tx},${ty}`, { tile, owner, prevTile: existing?.prevTile ?? prevTile });
     this.setGround(tx, ty, tile);
   }
 
@@ -83,7 +87,7 @@ export class WorldSource extends ChunkStore {
     this.builtTiles.delete(`${tx},${ty}`);
   }
 
-  builtAt(tx: number, ty: number): { tile: number; owner: number } | undefined {
+  builtAt(tx: number, ty: number): { tile: number; owner: number; prevTile: number } | undefined {
     return this.builtTiles.get(`${tx},${ty}`);
   }
 

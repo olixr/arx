@@ -1,5 +1,11 @@
 /** Data URL for an item's icon. */
 export declare function itemIconUrl(itemId: string, size?: number): string;
+/**
+ * Data URL for a buildable's build-panel icon, or null when a buildable
+ * has no art yet — the panel falls back to its tile color swatch, so a
+ * missing mapping degrades instead of breaking.
+ */
+export declare function buildableIconUrl(buildableId: string, size: number): string | null;
 /** Dim placeholder glyph telling an empty equipment slot's purpose. */
 export declare function slotGlyphUrl(slot: string, size?: number): string;
 /** Data URL for the HUD sneak-state eye chip. */

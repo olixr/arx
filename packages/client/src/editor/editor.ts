@@ -28,6 +28,11 @@ const DETAIL_LABELS: Record<Detail, string> = {
   [Detail.Tuft]: 'tuft',
   [Detail.Pebbles]: 'pebbles',
   [Detail.Mushroom]: 'shroom',
+  [Detail.Rug]: 'rug',
+  [Detail.RugRound]: 'round rug',
+  [Detail.Doormat]: 'doormat',
+  [Detail.Sawdust]: 'sawdust',
+  [Detail.Straw]: 'straw',
   [Detail.Story2]: '2-story',
   [Detail.Story3]: '3-story',
 };

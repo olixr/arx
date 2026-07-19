@@ -113,6 +113,12 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE characters ADD COLUMN carry_style TEXT;
   `,
+  // 10 — the ground a construction replaced, so demolish can restore
+  // it instead of stamping Grass (default 1 = Tile.Grass, matching the
+  // old hardcoded behaviour for rows built before this migration)
+  `
+  ALTER TABLE built_tiles ADD COLUMN prev_tile INTEGER NOT NULL DEFAULT 1;
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

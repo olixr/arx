@@ -142,21 +142,26 @@ export class AccountStore {
     return slots;
   }
 
-  loadBuiltTiles(): Array<{ tx: number; ty: number; tile: number; owner: number }> {
+  loadBuiltTiles(): Array<{ tx: number; ty: number; tile: number; owner: number; prevTile: number }> {
     return (
       this.db
-        .prepare('SELECT tx, ty, tile, owner_character_id AS owner FROM built_tiles')
-        .all() as Array<{ tx: number; ty: number; tile: number; owner: number }>
+        .prepare(
+          'SELECT tx, ty, tile, owner_character_id AS owner, prev_tile AS prevTile FROM built_tiles',
+        )
+        .all() as Array<{ tx: number; ty: number; tile: number; owner: number; prevTile: number }>
     );
   }
 
-  saveBuiltTile(tx: number, ty: number, tile: number, owner: number): void {
+  saveBuiltTile(tx: number, ty: number, tile: number, owner: number, prevTile: number): void {
+    // On rebuild-over-a-build, prev_tile keeps the ORIGINAL ground the
+    // conflict row captured — demolishing a replaced piece should still
+    // return the natural terrain, not the intermediate construction.
     this.db
       .prepare(
-        'INSERT INTO built_tiles (tx, ty, tile, owner_character_id, created_at) VALUES (?, ?, ?, ?, ?) ' +
+        'INSERT INTO built_tiles (tx, ty, tile, owner_character_id, created_at, prev_tile) VALUES (?, ?, ?, ?, ?, ?) ' +
           'ON CONFLICT(tx, ty) DO UPDATE SET tile = excluded.tile, owner_character_id = excluded.owner_character_id',
       )
-      .run(tx, ty, tile, owner, Date.now());
+      .run(tx, ty, tile, owner, Date.now(), prevTile);
   }
 
   deleteBuiltTile(tx: number, ty: number): void {

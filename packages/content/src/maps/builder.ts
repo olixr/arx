@@ -1,4 +1,6 @@
 import { Detail, Rng, Tile, hashString, type Vec2 } from '@devcraft/shared';
+import { stampTemplate } from '../structures/stamp.js';
+import type { StructureTemplate } from '../structures/types.js';
 import type { PortalDef, ZoneDef, ZoneSpawn } from './types.js';
 
 /**
@@ -138,6 +140,16 @@ export class ZoneBuilder {
     if ((opts.stories ?? 1) > 1) {
       this.setDetail(x + 1, y + 1, opts.stories === 3 ? Detail.Story3 : Detail.Story2);
     }
+    return this;
+  }
+
+  /**
+   * Stamp a structure template at local coords. Space cells in the
+   * template are transparent; flipX mirrors it (never rotates — the
+   * renderer presents south faces). See structures/stamp.ts.
+   */
+  stamp(tpl: StructureTemplate, x: number, y: number, opts?: { flipX?: boolean }): this {
+    stampTemplate(this, tpl, x, y, opts);
     return this;
   }
 

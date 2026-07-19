@@ -5,7 +5,7 @@ import {
   hashCoords,
   valueNoise,
 } from '@devcraft/shared';
-import { chamferRect } from './shapes.js';
+import { chamferRect, facetCircle } from './shapes.js';
 
 /**
  * ORGANIC terrain rendering. Tiles are authored on a grid but the grid
@@ -249,6 +249,8 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     ) {
       return nearestFloor(ground, tx, ty);
     }
+    // Props stand ON a floor, they aren't ground materials themselves.
+    if (t >= Tile.Barrel && t <= Tile.Basin) return nearestFloor(ground, tx, ty);
     // Stairs read as stone; the bespoke step prop draws over it.
     if (t === Tile.Ramp) return Tile.StoneFloor;
     if (t === Tile.Cliff) return Tile.StoneFloor;
@@ -501,8 +503,85 @@ function drawTileDetail(
         ctx.lineTo(mx + px * 0.13, my - px * 0.02);
         ctx.closePath();
         ctx.fill();
+      } else if (d === Detail.Rug) {
+        // A woven rug: border, field, and a diamond motif — palette
+        // hash-picked so a town's rugs aren't uniforms.
+        const pal = RUG_PALETTES[hashCoords(211, tx, ty) % RUG_PALETTES.length]!;
+        ctx.fillStyle = pal[0];
+        ctx.beginPath();
+        chamferRect(ctx, gx + px * 0.07, gy + px * 0.09, px * 0.86, px * 0.82, px * 0.05);
+        ctx.fill();
+        ctx.fillStyle = pal[1];
+        ctx.beginPath();
+        chamferRect(ctx, gx + px * 0.16, gy + px * 0.18, px * 0.68, px * 0.64, px * 0.04);
+        ctx.fill();
+        ctx.fillStyle = pal[0];
+        const dx0 = gx + px * 0.5;
+        const dy0 = gy + px * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(dx0, dy0 - px * 0.14);
+        ctx.lineTo(dx0 + px * 0.17, dy0);
+        ctx.lineTo(dx0, dy0 + px * 0.14);
+        ctx.lineTo(dx0 - px * 0.17, dy0);
+        ctx.closePath();
+        ctx.fill();
+      } else if (d === Detail.RugRound) {
+        const pal = RUG_PALETTES[hashCoords(223, tx, ty) % RUG_PALETTES.length]!;
+        ctx.fillStyle = pal[0];
+        ctx.beginPath();
+        facetCircle(ctx, gx + px * 0.5, gy + px * 0.5, px * 0.44, 8, 0.2);
+        ctx.fill();
+        ctx.fillStyle = pal[1];
+        ctx.beginPath();
+        facetCircle(ctx, gx + px * 0.5, gy + px * 0.5, px * 0.3, 8, 0.2);
+        ctx.fill();
+      } else if (d === Detail.Doormat) {
+        // A worn coir mat with weave lines.
+        ctx.fillStyle = '#a08a5a';
+        ctx.beginPath();
+        chamferRect(ctx, gx + px * 0.16, gy + px * 0.26, px * 0.68, px * 0.48, px * 0.04);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(94, 74, 40, 0.5)';
+        ctx.lineWidth = Math.max(1, px * 0.03);
+        for (const fy of [0.4, 0.52, 0.64]) {
+          ctx.beginPath();
+          ctx.moveTo(gx + px * 0.22, gy + px * fy);
+          ctx.lineTo(gx + px * 0.78, gy + px * fy);
+          ctx.stroke();
+        }
+      } else if (d === Detail.Sawdust) {
+        // Workshop grime: pale shaving flecks drifted into a patch.
+        ctx.fillStyle = 'rgba(216, 192, 142, 0.4)';
+        for (let k = 0; k < 6; k++) {
+          const hh = hashCoords(227 + k, tx, ty);
+          ctx.fillRect(
+            gx + (0.1 + (hh % 75) / 100) * px,
+            gy + (0.1 + ((hh >> 7) % 75) / 100) * px,
+            px * (0.05 + ((hh >> 3) % 3) * 0.02),
+            px * 0.04,
+          );
+        }
+      } else if (d === Detail.Straw) {
+        // Scattered straw: short angled stalks, stable-floor yellow.
+        for (let k = 0; k < 5; k++) {
+          const hh = hashCoords(229 + k, tx, ty);
+          ctx.fillStyle = hh & 1 ? '#d9b95c' : '#c4a34a';
+          ctx.save();
+          ctx.translate(gx + (0.12 + (hh % 70) / 100) * px, gy + (0.15 + ((hh >> 7) % 70) / 100) * px);
+          ctx.rotate((((hh >> 4) % 100) / 100 - 0.5) * 1.6);
+          ctx.fillRect(-px * 0.09, -px * 0.015, px * 0.18, px * 0.03);
+          ctx.restore();
+        }
       }
 }
+
+/** Rug colorways: [border, field] — deep, cloth-dyed, never neon. */
+const RUG_PALETTES: ReadonlyArray<readonly [string, string]> = [
+  ['#6e3440', '#96586a'],
+  ['#35526e', '#54789c'],
+  ['#44603a', '#67875a'],
+  ['#6e5a2e', '#9c8452'],
+];
 
 /**
  * Bake the LIFTED terrain surface of one chunk at one elevation level:

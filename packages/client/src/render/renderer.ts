@@ -1061,6 +1061,12 @@ export class Renderer {
           const pulse = 0.8 + Math.sin(t * 5 + tx) * 0.2;
           this.glows.push({ x: tx + 0.5, y: ty + 0.75, r: 1.15, rgb: '232, 108, 45', a: 0.24 * pulse * boost });
           this.lights.push({ x: tx + 0.5, y: ty + 0.8, r: 2.8, rgb: [255, 148, 82], intensity: 0.65 * flame * pulse, occlude: true });
+        } else if (tile === Tile.Hearth) {
+          // The heart of a home: a wide, steady warm pool — less
+          // flicker than a campfire, more reach than a furnace mouth.
+          const pulse = 0.9 + Math.sin(t * 6 + tx * 1.9) * 0.08;
+          this.glows.push({ x: tx + 0.5, y: ty + 0.45, r: 1.4 * pulse, rgb: '235, 150, 62', a: 0.26 * pulse * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.7, r: 4.2, rgb: [255, 190, 120], intensity: 0.85 * flame * pulse, occlude: true });
         } else if (tile === Tile.PortalDown || tile === Tile.PortalUp) {
           const pulse = 0.85 + Math.sin(t * 2.2 + tx) * 0.15;
           this.glows.push({ x: tx + 0.5, y: ty + 0.5, r: 1.5 * pulse, rgb: '164, 134, 232', a: 0.26 * boost });
@@ -4187,6 +4193,821 @@ export class Renderer {
             ctx.fill();
             ctx.fillStyle = shade(postC, 16);
             ctx.fillRect(p.x - s * 0.045, baseY - postH + s * 0.015, s * 0.09, s * 0.045);
+          },
+        };
+      }
+
+      case Tile.Barrel: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        const wr = s * 0.24;
+        const bh = s * 0.52;
+        // Some barrels are rain butts — an open water top sells "used".
+        const water = h % 3 === 0;
+        return {
+          sortY: ty + 0.7,
+          drawShadow: () => this.castBlob(p.x, baseY, 0.3, s * 0.2, h ^ 0x21),
+          draw: () => {
+            // Coopered trunk: straight-cut bulge, brutalist not round.
+            ctx.fillStyle = '#7a552e';
+            ctx.beginPath();
+            ctx.moveTo(p.x - wr * 0.8, baseY);
+            ctx.lineTo(p.x - wr, baseY - bh * 0.32);
+            ctx.lineTo(p.x - wr, baseY - bh * 0.68);
+            ctx.lineTo(p.x - wr * 0.8, baseY - bh);
+            ctx.lineTo(p.x + wr * 0.8, baseY - bh);
+            ctx.lineTo(p.x + wr, baseY - bh * 0.68);
+            ctx.lineTo(p.x + wr, baseY - bh * 0.32);
+            ctx.lineTo(p.x + wr * 0.8, baseY);
+            ctx.closePath();
+            ctx.fill();
+            // Stave seams + sunlit west edge.
+            ctx.fillStyle = 'rgba(36, 22, 10, 0.35)';
+            ctx.fillRect(p.x - wr * 0.3, baseY - bh, s * 0.03, bh);
+            ctx.fillRect(p.x + wr * 0.35, baseY - bh, s * 0.03, bh);
+            ctx.fillStyle = shade('#7a552e', 14);
+            ctx.fillRect(p.x - wr * 0.86, baseY - bh * 0.9, s * 0.05, bh * 0.8);
+            // Iron bands.
+            ctx.fillStyle = '#3a3444';
+            ctx.fillRect(p.x - wr * 0.97, baseY - bh * 0.36, wr * 1.94, s * 0.055);
+            ctx.fillRect(p.x - wr * 0.97, baseY - bh * 0.74, wr * 1.94, s * 0.055);
+            // Lid: lit rim, and open water for the rain butt.
+            ctx.fillStyle = '#94693a';
+            ctx.beginPath();
+            facetCircle(ctx, p.x, baseY - bh, wr * 0.82, 6, 0.3, 0.55);
+            ctx.fill();
+            if (water) {
+              ctx.fillStyle = '#4979b8';
+              ctx.beginPath();
+              facetCircle(ctx, p.x, baseY - bh, wr * 0.6, 6, 0.3, 0.55);
+              ctx.fill();
+            }
+          },
+        };
+      }
+
+      case Tile.Crate:
+      case Tile.CrateGoods: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        const cw = s * 0.56;
+        const chh = s * 0.42;
+        const goods = tile === Tile.CrateGoods;
+        return {
+          sortY: ty + 0.7,
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - cw / 2, baseY, p.x + cw / 2, baseY, 0.45);
+          },
+          draw: () => {
+            // Front face with plank seams and a corner brace.
+            ctx.fillStyle = '#8a6534';
+            ctx.fillRect(p.x - cw / 2, baseY - chh, cw, chh);
+            ctx.fillStyle = 'rgba(36, 22, 10, 0.3)';
+            ctx.fillRect(p.x - cw / 2, baseY - chh * 0.55, cw, s * 0.03);
+            ctx.fillRect(p.x - cw * 0.08, baseY - chh, s * 0.03, chh);
+            ctx.fillStyle = shade('#8a6534', -10);
+            ctx.fillRect(p.x - cw / 2, baseY - chh, s * 0.045, chh);
+            ctx.fillRect(p.x + cw / 2 - s * 0.045, baseY - chh, s * 0.045, chh);
+            // Top: lit lid slab.
+            ctx.fillStyle = '#a5793f';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - cw / 2 - s * 0.02, baseY - chh - syT * 0.3, cw + s * 0.04, syT * 0.3, s * 0.03);
+            ctx.fill();
+            if (goods) {
+              // Market produce heaped over the rim.
+              const carrots = h % 2 === 0;
+              for (let k = 0; k < 5; k++) {
+                const hh = hashCoords(53 + k, tx, ty);
+                const ox = p.x + ((hh % 100) / 100 - 0.5) * cw * 0.7;
+                const oy = baseY - chh - syT * 0.16 - ((hh >> 7) % 40) / 100 * s * 0.1;
+                if (carrots) {
+                  ctx.fillStyle = hh & 1 ? '#d9772e' : '#c96a28';
+                  ctx.beginPath();
+                  ctx.moveTo(ox - s * 0.08, oy - s * 0.045);
+                  ctx.lineTo(ox + s * 0.08, oy - s * 0.02);
+                  ctx.lineTo(ox - s * 0.06, oy + s * 0.045);
+                  ctx.closePath();
+                  ctx.fill();
+                } else {
+                  ctx.fillStyle = hh & 1 ? '#b5493e' : '#a33d33';
+                  ctx.beginPath();
+                  facetCircle(ctx, ox, oy, s * 0.07, 6, (hh % 7) * 0.3);
+                  ctx.fill();
+                }
+              }
+            } else {
+              // Stencil mark: a shipped crate, not a prop cube.
+              ctx.fillStyle = 'rgba(36, 22, 10, 0.4)';
+              ctx.fillRect(p.x - s * 0.09, baseY - chh * 0.36, s * 0.18, s * 0.035);
+              ctx.fillRect(p.x - s * 0.06, baseY - chh * 0.24, s * 0.12, s * 0.035);
+            }
+          },
+        };
+      }
+
+      case Tile.Table:
+      case Tile.Counter: {
+        const counter = tile === Tile.Counter;
+        const syT = s * this.camera.yScale;
+        const isRun = (t2: number | undefined) => t2 === tile;
+        const jn = isRun(game.world.groundAt(tx, ty - 1));
+        const je = isRun(game.world.groundAt(tx + 1, ty));
+        const js = isRun(game.world.groundAt(tx, ty + 1));
+        const jw = isRun(game.world.groundAt(tx - 1, ty));
+        const th = counter ? s * 0.6 : s * 0.44;
+        const topC = counter ? '#94693a' : '#a5793f';
+        const legC = counter ? '#6f4d26' : '#7a552e';
+        // The slab reaches to the tile edge on joined sides so runs
+        // read as ONE piece of furniture; free sides inset.
+        const xL = p.x - s * 0.5 + (jw ? -0.5 : s * 0.09);
+        const xR = p.x + s * 0.5 + (je ? 0.5 : -s * 0.09);
+        const yT = p.y - syT * 0.5 + (jn ? -0.5 : syT * 0.12);
+        const yB = p.y + syT * 0.5 + (js ? 0.5 : -syT * 0.1);
+        return {
+          sortY: ty + 0.72,
+          drawShadow: js
+            ? undefined
+            : () => this.castEdgeQuad(xL, yB + syT * 0.08, xR, yB + syT * 0.08, counter ? 0.55 : 0.4),
+          draw: () => {
+            if (counter) {
+              // Solid service front, plank-seamed — you can't crawl
+              // under a counter.
+              if (!js) {
+                ctx.fillStyle = legC;
+                ctx.fillRect(xL, yB - th, xR - xL, th + syT * 0.08);
+                ctx.fillStyle = 'rgba(36, 22, 10, 0.3)';
+                for (let fx = xL + s * 0.3; fx < xR - s * 0.1; fx += s * 0.34) {
+                  ctx.fillRect(fx, yB - th, s * 0.03, th);
+                }
+              }
+            } else {
+              // Legs only where the run ends.
+              ctx.fillStyle = legC;
+              const lh = th + syT * 0.05;
+              if (!jw) {
+                ctx.fillRect(xL + s * 0.02, yB - lh, s * 0.07, lh);
+                if (!jn) ctx.fillRect(xL + s * 0.02, yT + syT * 0.16 - lh, s * 0.07, lh * 0.92);
+              }
+              if (!je) {
+                ctx.fillRect(xR - s * 0.09, yB - lh, s * 0.07, lh);
+                if (!jn) ctx.fillRect(xR - s * 0.09, yT + syT * 0.16 - lh, s * 0.07, lh * 0.92);
+              }
+              // Apron under the front rim ties the legs together.
+              if (!js) {
+                ctx.fillStyle = shade(legC, -8);
+                ctx.fillRect(xL, yB - th, xR - xL, s * 0.09);
+              }
+            }
+            // The top slab, lifted by the piece's height.
+            ctx.fillStyle = topC;
+            ctx.beginPath();
+            chamferRect(ctx, xL - s * 0.02, yT - th, xR - xL + s * 0.04, yB - yT, [
+              jn || jw ? 0 : s * 0.05,
+              jn || je ? 0 : s * 0.05,
+              js || je ? 0 : s * 0.05,
+              js || jw ? 0 : s * 0.05,
+            ]);
+            ctx.fill();
+            // Lit south lip grounds the height read.
+            if (!js) {
+              ctx.fillStyle = shade(topC, 14);
+              ctx.fillRect(xL - s * 0.02, yB - th - s * 0.045, xR - xL + s * 0.04, s * 0.045);
+            }
+            if (counter && !jn) {
+              // Back-edge shading: the barkeep's side falls away.
+              ctx.fillStyle = shade(topC, -8);
+              ctx.fillRect(xL - s * 0.02, yT - th, xR - xL + s * 0.04, s * 0.04);
+            }
+          },
+        };
+      }
+
+      case Tile.Bench: {
+        const syT = s * this.camera.yScale;
+        const isRun = (t2: number | undefined) => t2 === Tile.Bench;
+        const je = isRun(game.world.groundAt(tx + 1, ty));
+        const jw = isRun(game.world.groundAt(tx - 1, ty));
+        const th = s * 0.3;
+        const xL = p.x - s * 0.5 + (jw ? -0.5 : s * 0.12);
+        const xR = p.x + s * 0.5 + (je ? 0.5 : -s * 0.12);
+        const yB = p.y + syT * 0.22;
+        return {
+          sortY: ty + 0.68,
+          drawShadow: () => this.castEdgeQuad(xL, yB + syT * 0.05, xR, yB + syT * 0.05, 0.28),
+          draw: () => {
+            ctx.fillStyle = '#7a552e';
+            if (!jw) ctx.fillRect(xL + s * 0.02, yB - th, s * 0.07, th);
+            if (!je) ctx.fillRect(xR - s * 0.09, yB - th, s * 0.07, th);
+            ctx.fillStyle = '#94693a';
+            ctx.beginPath();
+            chamferRect(ctx, xL, yB - th - syT * 0.22, xR - xL, syT * 0.22, [
+              jw ? 0 : s * 0.04,
+              je ? 0 : s * 0.04,
+              je ? 0 : s * 0.04,
+              jw ? 0 : s * 0.04,
+            ]);
+            ctx.fill();
+            ctx.fillStyle = shade('#94693a', 14);
+            ctx.fillRect(xL, yB - th - s * 0.04, xR - xL, s * 0.04);
+          },
+        };
+      }
+
+      case Tile.Chair: {
+        const syT = s * this.camera.yScale;
+        // The back turns away from an adjacent table — a chair is FOR
+        // sitting at something.
+        const isT = (t2: number | undefined) => t2 === Tile.Table || t2 === Tile.Counter;
+        const back = isT(game.world.groundAt(tx, ty - 1))
+          ? 's'
+          : isT(game.world.groundAt(tx, ty + 1))
+            ? 'n'
+            : isT(game.world.groundAt(tx + 1, ty))
+              ? 'w'
+              : isT(game.world.groundAt(tx - 1, ty))
+                ? 'e'
+                : 'n';
+        const baseY = p.y + syT * 0.2;
+        const sw = s * 0.34;
+        const sh = s * 0.26;
+        const bhh = s * 0.56;
+        return {
+          sortY: ty + 0.68,
+          draw: () => {
+            // Back board first when it faces north (behind the seat).
+            const backBoard = (bx: number, by: number, w2: number, h2: number) => {
+              ctx.fillStyle = '#6f4d26';
+              ctx.beginPath();
+              chamferRect(ctx, bx, by, w2, h2, [s * 0.04, s * 0.04, 0, 0]);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(36, 22, 10, 0.3)';
+              ctx.fillRect(bx + w2 * 0.3, by + s * 0.04, s * 0.03, h2 - s * 0.08);
+              ctx.fillRect(bx + w2 * 0.62, by + s * 0.04, s * 0.03, h2 - s * 0.08);
+            };
+            if (back === 'n') backBoard(p.x - sw / 2, baseY - bhh, sw, bhh - sh * 0.4);
+            if (back === 'e') backBoard(p.x + sw * 0.28, baseY - bhh, s * 0.12, bhh);
+            if (back === 'w') backBoard(p.x - sw * 0.28 - s * 0.12, baseY - bhh, s * 0.12, bhh);
+            // Seat box.
+            ctx.fillStyle = '#7a552e';
+            ctx.fillRect(p.x - sw / 2, baseY - sh, sw, sh);
+            ctx.fillStyle = '#94693a';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - sw / 2 - s * 0.015, baseY - sh - syT * 0.2, sw + s * 0.03, syT * 0.2, s * 0.03);
+            ctx.fill();
+            if (back === 's') backBoard(p.x - sw / 2, baseY - bhh, sw, bhh);
+          },
+        };
+      }
+
+      case Tile.Bed: {
+        const syT = s * this.camera.yScale;
+        const pal = (['#a34b52', '#4a6a9c', '#5a7d4a', '#8a6aa0'] as const)[h % 4]!;
+        const x0 = p.x - s * 0.42;
+        const x1 = p.x + s * 0.42;
+        const yTop = p.y - syT * 0.48;
+        const yBot = p.y + syT * 0.46;
+        return {
+          sortY: ty + 0.72,
+          drawShadow: () => this.castEdgeQuad(x0, yBot, x1, yBot, 0.3),
+          draw: () => {
+            // Headboard: a tall board at the north end.
+            ctx.fillStyle = '#6f4d26';
+            ctx.beginPath();
+            chamferRect(ctx, x0 - s * 0.03, yTop - s * 0.42, x1 - x0 + s * 0.06, s * 0.42, [s * 0.05, s * 0.05, 0, 0]);
+            ctx.fill();
+            ctx.fillStyle = shade('#6f4d26', 12);
+            ctx.fillRect(x0, yTop - s * 0.4, x1 - x0, s * 0.05);
+            // Frame + mattress plane.
+            ctx.fillStyle = '#7a552e';
+            ctx.fillRect(x0 - s * 0.03, yTop, x1 - x0 + s * 0.06, yBot - yTop + s * 0.12);
+            ctx.fillStyle = '#e8dfc8';
+            ctx.beginPath();
+            chamferRect(ctx, x0, yTop - s * 0.06, x1 - x0, yBot - yTop, s * 0.04);
+            ctx.fill();
+            // Pillow.
+            ctx.fillStyle = '#f4efe0';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - s * 0.22, yTop + syT * 0.04, s * 0.44, syT * 0.22, s * 0.05);
+            ctx.fill();
+            // Blanket tucked over the lower two-thirds, with a fold.
+            ctx.fillStyle = pal;
+            ctx.beginPath();
+            chamferRect(ctx, x0, yTop + (yBot - yTop) * 0.34, x1 - x0, (yBot - yTop) * 0.66, s * 0.04);
+            ctx.fill();
+            ctx.fillStyle = shade(pal, 16);
+            ctx.fillRect(x0, yTop + (yBot - yTop) * 0.34, x1 - x0, s * 0.06);
+            // Footboard lip.
+            ctx.fillStyle = '#6f4d26';
+            ctx.fillRect(x0 - s * 0.03, yBot + s * 0.06, x1 - x0 + s * 0.06, s * 0.07);
+          },
+        };
+      }
+
+      case Tile.Bookshelf:
+      case Tile.Cabinet: {
+        const shelf = tile === Tile.Bookshelf;
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.22;
+        const uw = s * 0.72;
+        const uh = shelf ? s * 1.2 : s * 0.72;
+        const frame = shelf ? '#5e3f1e' : '#6f4d26';
+        return {
+          sortY: ty + 0.72,
+          drawShadow: () => this.castEdgeQuad(p.x - uw / 2, baseY, p.x + uw / 2, baseY, shelf ? 1.1 : 0.7),
+          draw: () => {
+            ctx.fillStyle = frame;
+            ctx.beginPath();
+            chamferRect(ctx, p.x - uw / 2, baseY - uh, uw, uh, [s * 0.04, s * 0.04, 0, 0]);
+            ctx.fill();
+            if (shelf) {
+              // Three cavities of hand-bound spines.
+              const SPINES = ['#a8433a', '#31589c', '#4d6b3c', '#c9962e', '#7a3f8f', '#996242'];
+              for (let row = 0; row < 3; row++) {
+                const cy0 = baseY - uh + s * (0.1 + row * 0.37);
+                ctx.fillStyle = '#2c2030';
+                ctx.fillRect(p.x - uw / 2 + s * 0.06, cy0, uw - s * 0.12, s * 0.3);
+                let bx = p.x - uw / 2 + s * 0.08;
+                for (let k = 0; bx < p.x + uw / 2 - s * 0.12; k++) {
+                  const hh = hashCoords(59 + row * 7 + k, tx, ty);
+                  const bw2 = s * (0.06 + (hh % 3) * 0.02);
+                  const bh2 = s * (0.24 + ((hh >> 4) % 3) * 0.02);
+                  ctx.fillStyle = SPINES[hh % SPINES.length]!;
+                  ctx.fillRect(bx, cy0 + s * 0.3 - bh2, bw2, bh2);
+                  bx += bw2 + s * 0.015;
+                }
+              }
+            } else {
+              // Two inset doors with turned knobs.
+              ctx.fillStyle = shade(frame, -10);
+              ctx.fillRect(p.x - uw / 2 + s * 0.06, baseY - uh + s * 0.08, uw / 2 - s * 0.09, uh - s * 0.16);
+              ctx.fillRect(p.x + s * 0.03, baseY - uh + s * 0.08, uw / 2 - s * 0.09, uh - s * 0.16);
+              ctx.fillStyle = '#c9962e';
+              ctx.fillRect(p.x - s * 0.07, baseY - uh * 0.55, s * 0.035, s * 0.035);
+              ctx.fillRect(p.x + s * 0.035, baseY - uh * 0.55, s * 0.035, s * 0.035);
+            }
+            // Lit top slab.
+            ctx.fillStyle = shade(frame, 16);
+            ctx.fillRect(p.x - uw / 2, baseY - uh, uw, s * 0.05);
+          },
+        };
+      }
+
+      case Tile.Hearth: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.24;
+        const hw = s * 0.86;
+        const hh2 = s * 1.0;
+        return {
+          sortY: ty + 0.75,
+          drawShadow: () => this.castEdgeQuad(p.x - hw / 2, baseY, p.x + hw / 2, baseY, 0.95),
+          draw: () => {
+            // Chimney breast tapers above the mantel.
+            ctx.fillStyle = '#55505e';
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw / 2, baseY);
+            ctx.lineTo(p.x - hw / 2, baseY - hh2 * 0.62);
+            ctx.lineTo(p.x - hw * 0.32, baseY - hh2 * 0.78);
+            ctx.lineTo(p.x - hw * 0.32, baseY - hh2);
+            ctx.lineTo(p.x + hw * 0.32, baseY - hh2);
+            ctx.lineTo(p.x + hw * 0.32, baseY - hh2 * 0.78);
+            ctx.lineTo(p.x + hw / 2, baseY - hh2 * 0.62);
+            ctx.lineTo(p.x + hw / 2, baseY);
+            ctx.closePath();
+            ctx.fill();
+            // Mortar courses.
+            ctx.fillStyle = 'rgba(20, 14, 28, 0.3)';
+            ctx.fillRect(p.x - hw / 2, baseY - hh2 * 0.4, hw, s * 0.03);
+            ctx.fillRect(p.x - hw * 0.32, baseY - hh2 * 0.88, hw * 0.64, s * 0.03);
+            // Mantel shelf.
+            ctx.fillStyle = shade('#55505e', 18);
+            ctx.fillRect(p.x - hw / 2 - s * 0.04, baseY - hh2 * 0.62, hw + s * 0.08, s * 0.07);
+            // Firebox: dark mouth with 45-degree shoulders.
+            ctx.fillStyle = '#1c1524';
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.3, baseY);
+            ctx.lineTo(p.x - hw * 0.3, baseY - hh2 * 0.38);
+            ctx.lineTo(p.x - hw * 0.18, baseY - hh2 * 0.5);
+            ctx.lineTo(p.x + hw * 0.18, baseY - hh2 * 0.5);
+            ctx.lineTo(p.x + hw * 0.3, baseY - hh2 * 0.38);
+            ctx.lineTo(p.x + hw * 0.3, baseY);
+            ctx.closePath();
+            ctx.fill();
+            // The fire: three flickering tongues over a log.
+            const flick = 0.85 + Math.sin(t * 9 + tx * 2.7) * 0.12 + Math.sin(t * 21 + ty) * 0.06;
+            ctx.fillStyle = '#6f4d26';
+            ctx.fillRect(p.x - hw * 0.2, baseY - s * 0.09, hw * 0.4, s * 0.06);
+            for (const [ox, fh, col] of [
+              [-0.1, 0.3, '#e8823d'],
+              [0.08, 0.26, '#e8823d'],
+              [0, 0.4, '#f4b13d'],
+            ] as const) {
+              ctx.fillStyle = col;
+              const fx = p.x + ox * hw;
+              const top = baseY - s * 0.08 - s * fh * flick;
+              ctx.beginPath();
+              ctx.moveTo(fx - s * 0.07, baseY - s * 0.07);
+              ctx.lineTo(fx + s * 0.07, baseY - s * 0.07);
+              ctx.lineTo(fx + Math.sin(t * 7 + ox * 20) * s * 0.03, top);
+              ctx.closePath();
+              ctx.fill();
+            }
+          },
+        };
+      }
+
+      case Tile.MarketStall: {
+        const syT = s * this.camera.yScale;
+        const isRun = (t2: number | undefined) => t2 === Tile.MarketStall;
+        const je = isRun(game.world.groundAt(tx + 1, ty));
+        const jw = isRun(game.world.groundAt(tx - 1, ty));
+        const baseY = p.y + syT * 0.42;
+        const xL = p.x - s * 0.5 - (jw ? 0.5 : 0);
+        const xR = p.x + s * 0.5 + (je ? 0.5 : 0);
+        const th = s * 0.55;
+        const canTop = baseY - s * 1.32;
+        const canFront = baseY - s * 0.98;
+        return {
+          sortY: ty + 0.78,
+          drawShadow: () => this.castEdgeQuad(xL, baseY + syT * 0.05, xR, baseY + syT * 0.05, 0.6),
+          draw: () => {
+            // Corner poles only at run ends — a row shares its frame.
+            ctx.fillStyle = '#5e3f1e';
+            if (!jw) ctx.fillRect(xL + s * 0.03, canTop, s * 0.07, baseY - canTop);
+            if (!je) ctx.fillRect(xR - s * 0.1, canTop, s * 0.07, baseY - canTop);
+            // Counter base: solid front, plank seams, lit top.
+            ctx.fillStyle = '#6f4d26';
+            ctx.fillRect(p.x - s * 0.5, baseY - th, s, th);
+            ctx.fillStyle = 'rgba(36, 22, 10, 0.3)';
+            ctx.fillRect(p.x - s * 0.16, baseY - th, s * 0.03, th);
+            ctx.fillRect(p.x + s * 0.18, baseY - th, s * 0.03, th);
+            ctx.fillStyle = '#94693a';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - s * 0.52, baseY - th - syT * 0.26, s * 1.04, syT * 0.26, s * 0.03);
+            ctx.fill();
+            // Striped canopy: 4 even bands per tile so runs stripe
+            // continuously; a scalloped hem reads as cloth.
+            const stripes = ['#b5493e', '#e8dfc8'];
+            const bandW = s / 4;
+            for (let k = 0; k < 4; k++) {
+              ctx.fillStyle = stripes[k % 2]!;
+              const bx = p.x - s * 0.5 + k * bandW;
+              ctx.beginPath();
+              ctx.moveTo(bx, canTop);
+              ctx.lineTo(bx + bandW, canTop);
+              ctx.lineTo(bx + bandW + s * 0.05, canFront);
+              ctx.lineTo(bx + s * 0.05, canFront);
+              ctx.closePath();
+              ctx.fill();
+              // Scallop: a hanging half-hex under each band.
+              ctx.beginPath();
+              ctx.moveTo(bx + s * 0.05, canFront);
+              ctx.lineTo(bx + bandW + s * 0.05, canFront);
+              ctx.lineTo(bx + bandW * 0.5 + s * 0.05, canFront + s * 0.09);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // Canopy under-shadow line.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.25)';
+            ctx.fillRect(p.x - s * 0.45, canFront + s * 0.09, s * 0.95, s * 0.04);
+          },
+        };
+      }
+
+      case Tile.BannerPole: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.14;
+        const pal = (['#7a3f8f', '#a8433a', '#2e7d72', '#31589c'] as const)[h % 4]!;
+        const ph = s * 1.15;
+        return {
+          sortY: ty + 0.8,
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - s * 0.05, baseY, p.x + s * 0.05, baseY, 1.1);
+          },
+          draw: () => {
+            // Stone foot + tapered iron pole with a finial.
+            ctx.fillStyle = '#5b5566';
+            ctx.beginPath();
+            facetCircle(ctx, p.x, baseY, s * 0.12, 6, 0.2, 0.6);
+            ctx.fill();
+            ctx.fillStyle = '#2c2836';
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.04, baseY);
+            ctx.lineTo(p.x + s * 0.04, baseY);
+            ctx.lineTo(p.x + s * 0.028, baseY - ph);
+            ctx.lineTo(p.x - s * 0.028, baseY - ph);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillRect(p.x - s * 0.03, baseY - ph, s * 0.3, s * 0.045);
+            ctx.fillStyle = '#c9962e';
+            ctx.beginPath();
+            facetCircle(ctx, p.x, baseY - ph - s * 0.04, s * 0.045, 6, 0.5);
+            ctx.fill();
+            // The banner: hung from the crossarm, swallowtail hem,
+            // breathing gently in the wind.
+            const sway = Math.sin(t * 1.4 + tx * 1.7 + ty) * s * 0.035;
+            const bx0 = p.x + s * 0.06;
+            const bw2 = s * 0.26;
+            const by0 = baseY - ph + s * 0.05;
+            const bl = s * 0.62;
+            ctx.fillStyle = pal;
+            ctx.beginPath();
+            ctx.moveTo(bx0, by0);
+            ctx.lineTo(bx0 + bw2, by0);
+            ctx.lineTo(bx0 + bw2 + sway, by0 + bl);
+            ctx.lineTo(bx0 + bw2 * 0.5 + sway, by0 + bl - s * 0.12);
+            ctx.lineTo(bx0 + sway, by0 + bl);
+            ctx.closePath();
+            ctx.fill();
+            // A lighter chevron emblem.
+            ctx.fillStyle = shade(pal, 26);
+            ctx.beginPath();
+            ctx.moveTo(bx0 + bw2 * 0.2, by0 + bl * 0.3);
+            ctx.lineTo(bx0 + bw2 * 0.5, by0 + bl * 0.48);
+            ctx.lineTo(bx0 + bw2 * 0.8, by0 + bl * 0.3);
+            ctx.lineTo(bx0 + bw2 * 0.8, by0 + bl * 0.42);
+            ctx.lineTo(bx0 + bw2 * 0.5, by0 + bl * 0.6);
+            ctx.lineTo(bx0 + bw2 * 0.2, by0 + bl * 0.42);
+            ctx.closePath();
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.HangingSign: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.14;
+        const ph = s * 0.95;
+        return {
+          sortY: ty + 0.8,
+          draw: () => {
+            // Post + bracket arm.
+            ctx.fillStyle = '#5e3f1e';
+            ctx.fillRect(p.x - s * 0.16, baseY - ph, s * 0.08, ph);
+            ctx.fillRect(p.x - s * 0.16, baseY - ph, s * 0.42, s * 0.06);
+            ctx.fillStyle = shade('#5e3f1e', 14);
+            ctx.fillRect(p.x - s * 0.14, baseY - ph + s * 0.01, s * 0.04, ph - s * 0.02);
+            // The shingle swings on two short ropes.
+            const swing = Math.sin(t * 1.6 + tx * 2.3) * 0.06;
+            const ax = p.x + s * 0.16;
+            const ay = baseY - ph + s * 0.06;
+            ctx.save();
+            ctx.translate(ax, ay);
+            ctx.rotate(swing);
+            ctx.strokeStyle = '#b8a888';
+            ctx.lineWidth = Math.max(1, s * 0.025);
+            ctx.beginPath();
+            ctx.moveTo(-s * 0.1, 0);
+            ctx.lineTo(-s * 0.1, s * 0.09);
+            ctx.moveTo(s * 0.1, 0);
+            ctx.lineTo(s * 0.1, s * 0.09);
+            ctx.stroke();
+            ctx.fillStyle = '#a5793f';
+            ctx.beginPath();
+            chamferRect(ctx, -s * 0.17, s * 0.09, s * 0.34, s * 0.24, s * 0.03);
+            ctx.fill();
+            ctx.fillStyle = shade('#a5793f', -14);
+            ctx.beginPath();
+            chamferRect(ctx, -s * 0.13, s * 0.13, s * 0.26, s * 0.16, s * 0.02);
+            ctx.fill();
+            // The device: a simple tankard silhouette.
+            ctx.fillStyle = '#e8dfc8';
+            ctx.fillRect(-s * 0.045, s * 0.16, s * 0.08, s * 0.1);
+            ctx.fillRect(s * 0.04, s * 0.18, s * 0.03, s * 0.05);
+            ctx.restore();
+          },
+        };
+      }
+
+      case Tile.FlowerBox: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.24;
+        const BLOOMS = ['#d977a8', '#e8c06a', '#f0ede4', '#8f9ed6'];
+        return {
+          sortY: ty + 0.6,
+          draw: () => {
+            ctx.fillStyle = '#6f4d26';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - s * 0.34, baseY - s * 0.2, s * 0.68, s * 0.2, s * 0.03);
+            ctx.fill();
+            ctx.fillStyle = shade('#6f4d26', 12);
+            ctx.fillRect(p.x - s * 0.34, baseY - s * 0.2, s * 0.68, s * 0.04);
+            ctx.fillStyle = '#4a3520';
+            ctx.fillRect(p.x - s * 0.3, baseY - s * 0.17, s * 0.6, s * 0.045);
+            for (let k = 0; k < 4; k++) {
+              const hh = hashCoords(61 + k, tx, ty);
+              const fx = p.x - s * 0.24 + k * s * 0.16 + ((hh % 5) - 2) * s * 0.01;
+              const fy = baseY - s * 0.26 - ((hh >> 4) % 4) * s * 0.02;
+              ctx.fillStyle = '#5f8a44';
+              ctx.fillRect(fx - s * 0.012, fy, s * 0.024, s * 0.1);
+              ctx.fillStyle = BLOOMS[hh % BLOOMS.length]!;
+              ctx.beginPath();
+              facetCircle(ctx, fx, fy, s * 0.05, 6, (hh % 7) * 0.3);
+              ctx.fill();
+            }
+          },
+        };
+      }
+
+      case Tile.ToolRack:
+      case Tile.WeaponRack: {
+        const weapons = tile === Tile.WeaponRack;
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        const bw = s * 0.74;
+        const bh2 = s * 0.92;
+        return {
+          sortY: ty + 0.72,
+          drawShadow: () => this.castEdgeQuad(p.x - bw / 2, baseY, p.x + bw / 2, baseY, 0.85),
+          draw: () => {
+            // The board on two stub feet.
+            ctx.fillStyle = '#5e3f1e';
+            ctx.fillRect(p.x - bw / 2 + s * 0.04, baseY - s * 0.08, s * 0.08, s * 0.08);
+            ctx.fillRect(p.x + bw / 2 - s * 0.12, baseY - s * 0.08, s * 0.08, s * 0.08);
+            ctx.beginPath();
+            chamferRect(ctx, p.x - bw / 2, baseY - bh2, bw, bh2 - s * 0.06, s * 0.04);
+            ctx.fill();
+            ctx.fillStyle = shade('#5e3f1e', 12);
+            ctx.fillRect(p.x - bw / 2 + s * 0.03, baseY - bh2 + s * 0.03, bw - s * 0.06, s * 0.04);
+            if (weapons) {
+              // Two crossed spears and a hung sword.
+              ctx.fillStyle = '#8a6534';
+              ctx.save();
+              ctx.translate(p.x - s * 0.14, baseY - bh2 * 0.5);
+              ctx.rotate(0.16);
+              ctx.fillRect(-s * 0.025, -bh2 * 0.36, s * 0.05, bh2 * 0.72);
+              ctx.fillStyle = '#b6bcc6';
+              ctx.beginPath();
+              ctx.moveTo(-s * 0.05, -bh2 * 0.36);
+              ctx.lineTo(s * 0.05, -bh2 * 0.36);
+              ctx.lineTo(0, -bh2 * 0.48);
+              ctx.closePath();
+              ctx.fill();
+              ctx.restore();
+              ctx.fillStyle = '#8a6534';
+              ctx.save();
+              ctx.translate(p.x + s * 0.02, baseY - bh2 * 0.5);
+              ctx.rotate(-0.16);
+              ctx.fillRect(-s * 0.025, -bh2 * 0.36, s * 0.05, bh2 * 0.72);
+              ctx.fillStyle = '#b6bcc6';
+              ctx.beginPath();
+              ctx.moveTo(-s * 0.05, -bh2 * 0.36);
+              ctx.lineTo(s * 0.05, -bh2 * 0.36);
+              ctx.lineTo(0, -bh2 * 0.48);
+              ctx.closePath();
+              ctx.fill();
+              ctx.restore();
+              // The sword: blade, guard, grip.
+              ctx.fillStyle = '#b6bcc6';
+              ctx.fillRect(p.x + s * 0.2, baseY - bh2 * 0.78, s * 0.05, bh2 * 0.44);
+              ctx.fillStyle = '#c9962e';
+              ctx.fillRect(p.x + s * 0.14, baseY - bh2 * 0.36, s * 0.17, s * 0.04);
+              ctx.fillStyle = '#6f4d26';
+              ctx.fillRect(p.x + s * 0.205, baseY - bh2 * 0.32, s * 0.04, s * 0.12);
+            } else {
+              // Hammer, tongs, and a hook row — a smith's wall.
+              ctx.fillStyle = '#8a6534';
+              ctx.fillRect(p.x - s * 0.22, baseY - bh2 * 0.72, s * 0.05, bh2 * 0.4);
+              ctx.fillStyle = '#8a8a95';
+              ctx.fillRect(p.x - s * 0.29, baseY - bh2 * 0.78, s * 0.19, s * 0.09);
+              ctx.fillStyle = '#8a8a95';
+              ctx.save();
+              ctx.translate(p.x + s * 0.1, baseY - bh2 * 0.55);
+              ctx.rotate(0.12);
+              ctx.fillRect(-s * 0.02, -bh2 * 0.22, s * 0.04, bh2 * 0.44);
+              ctx.restore();
+              ctx.save();
+              ctx.translate(p.x + s * 0.16, baseY - bh2 * 0.55);
+              ctx.rotate(-0.12);
+              ctx.fillRect(-s * 0.02, -bh2 * 0.22, s * 0.04, bh2 * 0.44);
+              ctx.restore();
+              ctx.fillStyle = '#2c2836';
+              for (const hx of [-0.08, 0.26]) {
+                ctx.fillRect(p.x + hx * s, baseY - bh2 * 0.88, s * 0.04, s * 0.04);
+              }
+            }
+          },
+        };
+      }
+
+      case Tile.Vault: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.24;
+        const vw = s * 0.78;
+        const vh = s * 0.95;
+        return {
+          sortY: ty + 0.75,
+          drawShadow: () => this.castEdgeQuad(p.x - vw / 2, baseY, p.x + vw / 2, baseY, 0.9),
+          draw: () => {
+            // Iron mass on stub feet, gold-banded, dial centered.
+            ctx.fillStyle = '#2c2836';
+            ctx.fillRect(p.x - vw / 2 + s * 0.05, baseY - s * 0.06, s * 0.1, s * 0.06);
+            ctx.fillRect(p.x + vw / 2 - s * 0.15, baseY - s * 0.06, s * 0.1, s * 0.06);
+            ctx.fillStyle = '#3f3a4a';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - vw / 2, baseY - vh, vw, vh - s * 0.04, s * 0.06);
+            ctx.fill();
+            ctx.fillStyle = shade('#3f3a4a', 14);
+            ctx.fillRect(p.x - vw / 2 + s * 0.04, baseY - vh + s * 0.04, vw - s * 0.08, s * 0.05);
+            ctx.fillStyle = '#c9962e';
+            ctx.fillRect(p.x - vw / 2, baseY - vh * 0.78, vw, s * 0.05);
+            ctx.fillRect(p.x - vw / 2, baseY - vh * 0.3, vw, s * 0.05);
+            // The dial and its handle spokes.
+            ctx.fillStyle = '#8f96a3';
+            ctx.beginPath();
+            facetCircle(ctx, p.x, baseY - vh * 0.54, s * 0.14, 8, 0.4);
+            ctx.fill();
+            ctx.fillStyle = '#2c2836';
+            ctx.beginPath();
+            facetCircle(ctx, p.x, baseY - vh * 0.54, s * 0.06, 6, 0.4);
+            ctx.fill();
+            ctx.fillStyle = '#8f96a3';
+            ctx.fillRect(p.x - s * 0.02, baseY - vh * 0.54 - s * 0.2, s * 0.04, s * 0.4);
+            ctx.fillRect(p.x - s * 0.2, baseY - vh * 0.54 - s * 0.02, s * 0.4, s * 0.04);
+            // Rivets.
+            ctx.fillStyle = '#6a6577';
+            for (const [rx, ry] of [
+              [-0.42, -0.9],
+              [0.38, -0.9],
+              [-0.42, -0.12],
+              [0.38, -0.12],
+            ] as const) {
+              ctx.fillRect(p.x + rx * vw * 0.9, baseY + ry * vh, s * 0.045, s * 0.045);
+            }
+          },
+        };
+      }
+
+      case Tile.Lectern: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        return {
+          sortY: ty + 0.68,
+          draw: () => {
+            // Foot, tapered column, slanted desk, open tome.
+            ctx.fillStyle = '#5e3f1e';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - s * 0.16, baseY - s * 0.07, s * 0.32, s * 0.07, s * 0.02);
+            ctx.fill();
+            ctx.fillStyle = '#6f4d26';
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.07, baseY - s * 0.06);
+            ctx.lineTo(p.x + s * 0.07, baseY - s * 0.06);
+            ctx.lineTo(p.x + s * 0.05, baseY - s * 0.52);
+            ctx.lineTo(p.x - s * 0.05, baseY - s * 0.52);
+            ctx.closePath();
+            ctx.fill();
+            // Slanted desk plate.
+            ctx.fillStyle = '#8a6534';
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.22, baseY - s * 0.5);
+            ctx.lineTo(p.x + s * 0.22, baseY - s * 0.5);
+            ctx.lineTo(p.x + s * 0.19, baseY - s * 0.66);
+            ctx.lineTo(p.x - s * 0.19, baseY - s * 0.66);
+            ctx.closePath();
+            ctx.fill();
+            // The open tome: two pages and a dark spine crease.
+            ctx.fillStyle = '#e8dfc8';
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.17, baseY - s * 0.53);
+            ctx.lineTo(p.x - s * 0.01, baseY - s * 0.56);
+            ctx.lineTo(p.x - s * 0.01, baseY - s * 0.66);
+            ctx.lineTo(p.x - s * 0.15, baseY - s * 0.63);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(p.x + s * 0.01, baseY - s * 0.56);
+            ctx.lineTo(p.x + s * 0.17, baseY - s * 0.53);
+            ctx.lineTo(p.x + s * 0.15, baseY - s * 0.63);
+            ctx.lineTo(p.x + s * 0.01, baseY - s * 0.66);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = 'rgba(36, 22, 10, 0.4)';
+            ctx.fillRect(p.x - s * 0.012, baseY - s * 0.66, s * 0.024, s * 0.11);
+          },
+        };
+      }
+
+      case Tile.Basin: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        return {
+          sortY: ty + 0.62,
+          draw: () => {
+            // Stone trough with standing water.
+            ctx.fillStyle = '#5b5566';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - s * 0.38, baseY - s * 0.34, s * 0.76, s * 0.34, s * 0.06);
+            ctx.fill();
+            ctx.fillStyle = shade('#5b5566', 16);
+            ctx.fillRect(p.x - s * 0.36, baseY - s * 0.34, s * 0.72, s * 0.05);
+            ctx.fillStyle = '#3d6fb8';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - s * 0.3, baseY - s * 0.29, s * 0.6, s * 0.14, s * 0.04);
+            ctx.fill();
+            // A drifting glint keeps the water alive.
+            const gx2 = p.x - s * 0.2 + ((t * 0.15 + h * 0.1) % 1) * s * 0.34;
+            ctx.fillStyle = 'rgba(214, 230, 255, 0.5)';
+            ctx.fillRect(gx2, baseY - s * 0.25, s * 0.09, s * 0.025);
           },
         };
       }

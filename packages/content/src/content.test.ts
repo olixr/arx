@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PASSIVES, Tile, TILE_DEFS } from '@devcraft/shared';
+import { Detail, PASSIVES, Tile, TILE_DEFS } from '@devcraft/shared';
+import { ZoneBuilder } from './maps/builder.js';
+import { buildBramblewick } from './maps/bramblewick.js';
+import { compileTemplate, templateHeight, templateWidth } from './structures/stamp.js';
+import { templateFromJson, templateToJson } from './structures/serialize.js';
+import { COTTAGE_SMALL, STRUCTURE_TEMPLATES, WELL_PLAZA } from './structures/templates.js';
 import { ABILITIES, TECHNIQUES, abilityDef } from './abilities.js';
 import { ITEMS } from './items.js';
 import { NPCS, TOWN_SPAWNS } from './npcs.js';
@@ -203,6 +208,126 @@ test('summon abilities define their summon; damage shapes define reach', () => {
       assert.ok((ab.dashTiles ?? 0) !== 0, `${id} has no dash`);
     }
   }
+});
+
+test('structure templates: whole roster compiles with real tiles', () => {
+  assert.ok(STRUCTURE_TEMPLATES.length >= 9, 'starter roster incomplete');
+  const ids = new Set<string>();
+  for (const tpl of STRUCTURE_TEMPLATES) {
+    assert.doesNotThrow(() => compileTemplate(tpl), `${tpl.id} does not compile`);
+    assert.ok(!ids.has(tpl.id), `duplicate template id '${tpl.id}'`);
+    ids.add(tpl.id);
+    for (const [ch, cell] of Object.entries(tpl.legend)) {
+      assert.equal(ch.length, 1, `${tpl.id} legend key '${ch}' is not a single char`);
+      if (cell.tile !== undefined) {
+        assert.ok(TILE_DEFS[cell.tile], `${tpl.id} char '${ch}' tile has no def`);
+      }
+    }
+  }
+});
+
+test('structure stamping: flipX keeps the doorway on the perimeter', () => {
+  const b = new ZoneBuilder('scratch', 'Scratch', { x: 0, y: 0 }, 24, 24, Tile.Grass);
+  const ox = 4;
+  const oy = 4;
+  b.stamp(COTTAGE_SMALL, ox, oy, { flipX: true });
+  const w = templateWidth(COTTAGE_SMALL);
+  const h = templateHeight(COTTAGE_SMALL);
+  const doors: Array<{ x: number; y: number }> = [];
+  for (let y = oy; y < oy + h; y++) {
+    for (let x = ox; x < ox + w; x++) {
+      if (b.get(x, y) === Tile.DoorwayWood) doors.push({ x, y });
+    }
+  }
+  assert.equal(doors.length, 1, 'cottage must stamp exactly one doorway');
+  const d = doors[0]!;
+  assert.ok(
+    d.x === ox || d.y === oy || d.x === ox + w - 1 || d.y === oy + h - 1,
+    `doorway at (${d.x},${d.y}) is not on the stamped footprint perimeter`,
+  );
+});
+
+test('structure stamping: space cells are transparent', () => {
+  const b = new ZoneBuilder('scratch', 'Scratch', { x: 0, y: 0 }, 24, 24, Tile.Grass);
+  b.stamp(WELL_PLAZA, 2, 2);
+  // The plaza disc's corners are spaces — the grass beneath survives.
+  assert.equal(b.get(2, 2), Tile.Grass);
+  assert.equal(b.get(8, 8), Tile.Grass);
+  // ...while the disc itself landed.
+  assert.equal(b.get(5, 5), Tile.WallStone); // the well
+  assert.equal(b.get(4, 2), Tile.StoneFloor);
+});
+
+test('structure templates: JSON round-trip is lossless and re-validated', () => {
+  for (const tpl of STRUCTURE_TEMPLATES) {
+    const back = templateFromJson(templateToJson(tpl));
+    assert.deepEqual(back, tpl, `${tpl.id} did not survive the round trip`);
+  }
+  assert.throws(() => templateFromJson('{"id":"bad","legend":{},"rows":["x"]}'));
+});
+
+test('bramblewick: anchors, unique stations, and story markers hold', () => {
+  const z = buildBramblewick();
+  const at = (x: number, y: number): Tile => z.ground[y * z.width + x]! as Tile;
+  assert.deepEqual(z.spawn, { x: 48.5, y: 52.5 });
+  assert.equal(TILE_DEFS[at(48, 52)].solid, false, 'spawn tile must be walkable');
+  assert.equal(at(59, 33), Tile.PortalDown, 'cave mouth moved');
+  const counts = new Map<number, number>();
+  for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
+  const stations: Array<[string, Tile]> = [
+    ['bank chest', Tile.BankChest],
+    ['shop counter', Tile.ShopCounter],
+    ['furnace', Tile.Furnace],
+    ['anvil', Tile.Anvil],
+    ['workbench', Tile.Workbench],
+  ];
+  for (const [name, tile] of stations) {
+    assert.equal(counts.get(tile) ?? 0, 1, `town needs exactly one ${name}`);
+  }
+  assert.equal(counts.get(Tile.Campfire) ?? 0, 1, 'town campfire missing');
+  // A story marker on a solid tile would draw a facade over a wall.
+  for (let i = 0; i < z.detail.length; i++) {
+    const d = z.detail[i]!;
+    if (d === Detail.Story2 || d === Detail.Story3) {
+      assert.equal(
+        TILE_DEFS[z.ground[i]! as Tile].solid,
+        false,
+        `story marker at (${i % z.width},${Math.floor(i / z.width)}) rides a solid tile`,
+      );
+    }
+  }
+});
+
+test('bramblewick: every doorway is walkable from the spawn', () => {
+  const z = buildBramblewick();
+  const walkable = (x: number, y: number): boolean =>
+    x >= 0 && y >= 0 && x < z.width && y < z.height &&
+    !TILE_DEFS[z.ground[y * z.width + x]! as Tile].solid;
+  const seen = new Uint8Array(z.width * z.height);
+  const queue: number[] = [52 * z.width + 48]; // the spawn tile
+  seen[queue[0]!] = 1;
+  while (queue.length > 0) {
+    const i = queue.pop()!;
+    const x = i % z.width;
+    const y = Math.floor(i / z.width);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      const ni = ny * z.width + nx;
+      if (walkable(nx, ny) && !seen[ni]) {
+        seen[ni] = 1;
+        queue.push(ni);
+      }
+    }
+  }
+  const unreachable: string[] = [];
+  for (let i = 0; i < z.ground.length; i++) {
+    const t = z.ground[i];
+    if ((t === Tile.DoorwayStone || t === Tile.DoorwayWood) && !seen[i]) {
+      unreachable.push(`(${i % z.width},${Math.floor(i / z.width)})`);
+    }
+  }
+  assert.deepEqual(unreachable, [], `doorways cut off from spawn: ${unreachable.join(' ')}`);
 });
 
 test('daggers: backstab multiplier, fast cadence, and a real Art', () => {

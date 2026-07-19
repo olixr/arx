@@ -1,6 +1,6 @@
 import { levelForXp, tileDef, type InvSlot, type SkillXp, type StationType } from '@devcraft/shared';
 import { BUILDABLES, CROP_BY_SEED, GENERAL_STORE, itemDef, recipesForStation } from '@devcraft/content';
-import { itemIconUrl } from '../render/icons.js';
+import { buildableIconUrl, itemIconUrl } from '../render/icons.js';
 
 function iconEl(itemId: string): HTMLImageElement {
   const img = document.createElement('img');
@@ -102,9 +102,21 @@ export class StationPanels {
       const locked = level < def.levelReq;
       const row = document.createElement('div');
       row.className = 'list-row' + (locked ? ' disabled' : '');
-      const swatch = document.createElement('div');
-      swatch.className = 'swatch-mini tile-swatch';
-      swatch.style.background = tileDef(def.tile).topColor ?? tileDef(def.tile).color;
+      // Real art for every buildable; the tile-color swatch survives as
+      // the fallback so an unmapped buildable still shows something.
+      const iconUrl = buildableIconUrl(def.id, 32);
+      let swatch: HTMLElement;
+      if (iconUrl) {
+        const img = document.createElement('img');
+        img.className = 'swatch-mini';
+        img.src = iconUrl;
+        img.draggable = false;
+        swatch = img;
+      } else {
+        swatch = document.createElement('div');
+        swatch.className = 'swatch-mini tile-swatch';
+        swatch.style.background = tileDef(def.tile).topColor ?? tileDef(def.tile).color;
+      }
       const name = document.createElement('div');
       name.className = 'row-name';
       const mats = def.materials

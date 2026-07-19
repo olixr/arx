@@ -83,6 +83,47 @@ export enum Tile {
   PillarStone = 64,
   /** Half-height railing — porches, jetties, balconies. */
   RailWood = 65,
+  // 66-79 reserved for future wall vocabulary.
+  /** A banded oak barrel — the workhorse of clutter. */
+  Barrel = 80,
+  /** A plank shipping crate. */
+  Crate = 81,
+  /** A crate heaped with market produce. */
+  CrateGoods = 82,
+  /** A table — adjacent tables merge into one long board. */
+  Table = 83,
+  /** A chair; its back turns away from any adjacent table. */
+  Chair = 84,
+  /** A bench/pew — east-west runs merge. */
+  Bench = 85,
+  /** A bed: frame, mattress, pillow, blanket. */
+  Bed = 86,
+  /** A tall bookshelf full of spines. */
+  Bookshelf = 87,
+  /** A low two-door cabinet. */
+  Cabinet = 88,
+  /** A service counter — runs merge; NOT the shop counter station. */
+  Counter = 89,
+  /** A stone hearth with a live fire — warm light after dark. */
+  Hearth = 90,
+  /** A canopied market stall — 2-wide runs share one canopy. */
+  MarketStall = 91,
+  /** A pole flying a hanging cloth banner. */
+  BannerPole = 92,
+  /** A post with a swinging shingle sign. */
+  HangingSign = 93,
+  /** A low planter box in bloom. */
+  FlowerBox = 94,
+  /** A board of smithing tools. */
+  ToolRack = 95,
+  /** A rack of spears and blades. */
+  WeaponRack = 96,
+  /** A massive iron strongbox — the bank's set-piece. */
+  Vault = 97,
+  /** A slim stand bearing an open tome. */
+  Lectern = 98,
+  /** A stone water trough. */
+  Basin = 99,
 }
 
 export enum Detail {
@@ -91,7 +132,13 @@ export enum Detail {
   Tuft = 2,
   Pebbles = 3,
   Mushroom = 4,
-  // 5-9 reserved for baked floor decor (rugs, doormats, sawdust…).
+  // Baked floor decor — authored-only, walkable, painted into the
+  // terrain bake (players place solid prop tiles, never detail).
+  Rug = 5,
+  RugRound = 6,
+  Doormat = 7,
+  Sawdust = 8,
+  Straw = 9,
   /** Authored story markers: stamped on one interior tile so the
    *  renderer knows a building presents a 2- or 3-story facade. */
   Story2 = 10,
@@ -210,6 +257,26 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.ArchStone]: { name: 'stone arch', solid: false, color: '#5b5566' },
   [Tile.PillarStone]: { name: 'stone pillar', solid: true, color: '#5b5566', raised: true, topColor: '#8c8798' },
   [Tile.RailWood]: { name: 'wood railing', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
+  [Tile.Barrel]: { name: 'barrel', solid: true, color: '#7a552e', raised: true, topColor: '#94693a' },
+  [Tile.Crate]: { name: 'crate', solid: true, color: '#8a6534', raised: true, topColor: '#a5793f' },
+  [Tile.CrateGoods]: { name: 'goods crate', solid: true, color: '#8a6534', raised: true, topColor: '#d98e3c' },
+  [Tile.Table]: { name: 'table', solid: true, color: '#7a552e', raised: true, topColor: '#a5793f' },
+  [Tile.Chair]: { name: 'chair', solid: true, color: '#7a552e', raised: true, topColor: '#94693a' },
+  [Tile.Bench]: { name: 'bench', solid: true, color: '#7a552e', raised: true, topColor: '#94693a' },
+  [Tile.Bed]: { name: 'bed', solid: true, color: '#7a552e', raised: true, topColor: '#a34b52' },
+  [Tile.Bookshelf]: { name: 'bookshelf', solid: true, color: '#5e3f1e', raised: true, topColor: '#7a552e' },
+  [Tile.Cabinet]: { name: 'cabinet', solid: true, color: '#6f4d26', raised: true, topColor: '#8a6534' },
+  [Tile.Counter]: { name: 'counter', solid: true, color: '#6f4d26', raised: true, topColor: '#94693a' },
+  [Tile.Hearth]: { name: 'hearth', solid: true, color: '#55505e', raised: true, topColor: '#e8823d' },
+  [Tile.MarketStall]: { name: 'market stall', solid: true, color: '#7a552e', raised: true, topColor: '#b5493e' },
+  [Tile.BannerPole]: { name: 'banner pole', solid: true, color: '#3a3444', raised: true, topColor: '#7a3f8f' },
+  [Tile.HangingSign]: { name: 'hanging sign', solid: true, color: '#5e3f1e', raised: true, topColor: '#a5793f' },
+  [Tile.FlowerBox]: { name: 'flower box', solid: true, color: '#6f4d26', raised: true, topColor: '#d977a8' },
+  [Tile.ToolRack]: { name: 'tool rack', solid: true, color: '#5e3f1e', raised: true, topColor: '#8a8a95' },
+  [Tile.WeaponRack]: { name: 'weapon rack', solid: true, color: '#5e3f1e', raised: true, topColor: '#b6bcc6' },
+  [Tile.Vault]: { name: 'vault', solid: true, color: '#3f3a4a', raised: true, topColor: '#e8a33d' },
+  [Tile.Lectern]: { name: 'lectern', solid: true, color: '#6f4d26', raised: true, topColor: '#e8dfc8' },
+  [Tile.Basin]: { name: 'basin', solid: true, color: '#5b5566', raised: true, topColor: '#4979b8' },
 };
 
 /**
