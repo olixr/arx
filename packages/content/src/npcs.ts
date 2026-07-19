@@ -44,6 +44,13 @@ export interface NpcDef {
   /** Rendering: body color + radius in tiles. */
   color: string;
   radius: number;
+  /**
+   * How far the visual body extends NORTH of the ground point in
+   * world-y tiles (screen height ÷ camera pitch). Projectiles test a
+   * feet→crown band, not a circle at the feet — a shot that visually
+   * crosses the chest or head must connect. See npcHitHeight().
+   */
+  hitHeight?: number;
   /** Telegraphed special attack for higher-tier threats. */
   special?: NpcSpecial;
   /** Basic attacks are projectiles with this flight profile. */
@@ -81,6 +88,7 @@ const defs: NpcDef[] = [
     respawnSec: 15,
     color: '#f4efe4',
     radius: 0.22,
+    hitHeight: 0.7,
     lays: { item: 'egg', minSec: 180, maxSec: 300, xp: 4 },
   },
   {
@@ -103,6 +111,7 @@ const defs: NpcDef[] = [
     respawnSec: 20,
     color: '#c9b8a8',
     radius: 0.34,
+    hitHeight: 1.4,
     produce: { item: 'milk', cooldownSec: 180, xp: 8 },
   },
   {
@@ -121,6 +130,7 @@ const defs: NpcDef[] = [
     respawnSec: 15,
     color: '#8a7a6a',
     radius: 0.26,
+    hitHeight: 0.6,
   },
   {
     id: 'goblin',
@@ -144,6 +154,7 @@ const defs: NpcDef[] = [
     respawnSec: 25,
     color: '#5c8a3a',
     radius: 0.3,
+    hitHeight: 2.0,
   },
   {
     id: 'goblin_thrower',
@@ -168,6 +179,7 @@ const defs: NpcDef[] = [
     respawnSec: 30,
     color: '#6a9a3a',
     radius: 0.28,
+    hitHeight: 2.0,
     // Keeps its distance and lobs rocks — punishes standing still,
     // rewards closing the gap or trading at range.
     ranged: { range: 5.5, projectileSpeed: 9 },
@@ -195,6 +207,7 @@ const defs: NpcDef[] = [
     respawnSec: 30,
     color: '#d8d4c8',
     radius: 0.3,
+    hitHeight: 2.0,
     // Dry bones: nothing to bleed, everything to burn.
     resist: ['bleed'],
     weak: ['burn'],
@@ -232,6 +245,7 @@ const defs: NpcDef[] = [
     respawnSec: 90,
     color: '#e8e2d0',
     radius: 0.42,
+    hitHeight: 2.6,
     resist: ['bleed'],
     weak: ['burn'],
     // The boss move: a telegraphed floor slam you dodge on reaction.
@@ -257,12 +271,32 @@ const defs: NpcDef[] = [
     respawnSec: 35,
     color: '#6a6f7d',
     radius: 0.34,
+    hitHeight: 1.0,
     // Wolf bites tear — running from a wolf keeps costing you.
     attackStatus: { status: 'bleed', power: 1, durationTicks: 60 },
   },
 ];
 
 export const NPCS: ReadonlyMap<string, NpcDef> = new Map(defs.map((d) => [d.id, d]));
+
+/**
+ * World-y extent of the visual body above the ground point. Projectile
+ * hit tests (and the client's stuck-arrow attach) measure against the
+ * feet→crown band [y − hitHeight, y], never a bare circle at the feet —
+ * otherwise shots that visually cross the chest or head sail through.
+ */
+export function npcHitHeight(def: NpcDef): number {
+  return def.hitHeight ?? Math.max(0.6, def.radius * 3);
+}
+
+/**
+ * Y-distance from `y` to the nearest lip of an NPC's feet→crown band.
+ * Zero while inside the band; pairs with the x-gap for the hit test.
+ */
+export function bandDy(y: number, npcY: number, hitHeight: number): number {
+  const dyRaw = npcY - y;
+  return dyRaw < 0 ? -dyRaw : Math.max(0, dyRaw - hitHeight);
+}
 
 export function npcDef(id: string): NpcDef | undefined {
   return NPCS.get(id);

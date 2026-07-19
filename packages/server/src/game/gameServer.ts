@@ -43,9 +43,11 @@ import {
   STARTER_KIT,
   TOWN_SPAWNS,
   abilityDef,
+  bandDy,
   growMs,
   isCropTile,
   itemDef,
+  npcHitHeight,
   stageEndMs,
   stageForElapsed,
   techniqueDef,
@@ -379,6 +381,9 @@ function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): PlayerBuf
 const MAX_QUEUED_INPUTS = 8;
 const MAX_INPUTS_PER_TICK = 2;
 const SAVE_INTERVAL_TICKS = 600; // 30s
+/** World-y extent of the player's visual body above its ground point
+ * (screen height ÷ camera pitch) — NPC shots test the feet→crown band. */
+const PLAYER_HIT_HEIGHT = 1.9;
 
 /** Damage roll with a 10% crit chance (guaranteed heavy hit). */
 function rollDamage(maxHit: number): { dmg: number; crit: boolean } {
@@ -2640,7 +2645,7 @@ export class GameServer {
           const ppos = this.positions.get(playerEid);
           if (!ppos) continue;
           const dx = ppos.x - pos.x;
-          const dy = ppos.y - pos.y;
+          const dy = bandDy(pos.y, ppos.y, PLAYER_HIT_HEIGHT);
           if (dx * dx + dy * dy < 0.45 ** 2) {
             this.damagePlayer(playerEid, Math.floor(Math.random() * (proj.maxHit + 1)), {
               status: proj.status,
@@ -2669,7 +2674,9 @@ export class GameServer {
           const npos = this.positions.get(npcEid);
           if (!npos) continue;
           const dx = npos.x - pos.x;
-          const dy = npos.y - pos.y;
+          // The visual body rises north of the ground point — test the
+          // feet→crown band so a shot crossing the chest or head lands.
+          const dy = bandDy(pos.y, npos.y, npcHitHeight(npc.def));
           if (dx * dx + dy * dy < (npc.def.radius + 0.25) ** 2) {
             const { dmg, crit } = proj.basic ? rollBasic(proj.maxHit) : rollDamage(proj.maxHit);
             this.damageNpc(npcEid, dmg, proj.ownerEid, proj.style, {

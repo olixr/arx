@@ -17,7 +17,7 @@ import {
   type Look,
   type Vec2,
 } from '@devcraft/shared';
-import { itemDef, npcDef } from '@devcraft/content';
+import { bandDy, itemDef, npcDef, npcHitHeight } from '@devcraft/content';
 import type { ClientGame } from '../game/clientGame.js';
 import {
   ANVIL_CYCLE_MS,
@@ -5504,11 +5504,18 @@ export class Renderer {
       let hitDist = Infinity;
       for (const [eid, remote] of game.entities) {
         if (remote.meta.kind !== EntityKind.Npc) continue;
+        const def = npcDef(remote.meta.defId ?? '');
         const sNow = remote.buffer.latest();
         const nx = sNow?.x ?? remote.meta.x;
         const ny = sNow?.y ?? remote.meta.y;
-        const r = (npcDef(remote.meta.defId ?? '')?.radius ?? 0.35) + 0.6;
-        const d = Math.min(Math.hypot(nx - end.x, ny - end.y), Math.hypot(nx - ex2, ny - ey2));
+        const r = (def?.radius ?? 0.35) + 0.6;
+        // Same feet→crown band the server hits against — a head shot
+        // must pin to the body, not fall to the dirt behind it.
+        const hh = def ? npcHitHeight(def) : 1.0;
+        const d = Math.min(
+          Math.hypot(nx - end.x, bandDy(end.y, ny, hh)),
+          Math.hypot(nx - ex2, bandDy(ey2, ny, hh)),
+        );
         if (d < r && d < hitDist) {
           hitDist = d;
           hitEid = eid;
