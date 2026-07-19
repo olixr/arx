@@ -75,7 +75,18 @@ export declare class Renderer {
      */
     private prevDynamic;
     private nextDynamic;
-    private readonly ctx;
+    private ctx;
+    /**
+     * The outline "shader": entities paint FLAT (no baked strokes), and
+     * this post-pass rings each living body's silhouette by dilating its
+     * alpha — one uniform line around character, cape, staff, and legs
+     * alike, applied dynamically so it's a player preference, not paint.
+     */
+    outlineOn: boolean;
+    private readonly outlineA;
+    private readonly outlineB;
+    private readonly outlineACtx;
+    private readonly outlineBCtx;
     private readonly baked;
     private readonly anims;
     private shakeAmount;
@@ -422,6 +433,9 @@ export declare class Renderer {
     private collectEntities;
     private humanoidItem;
     private drawMiniHp;
+    /** Eight-tap alpha dilate → tinted ring under the sprite. */
+    private static readonly OUTLINE_TAPS;
+    private paintOutlined;
     private npcItem;
     /**
      * Ground loot. Coins pile up as actual gold; everything else is a

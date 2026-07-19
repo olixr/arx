@@ -564,12 +564,11 @@ export function drawCape(
     return lerpPt(base, edge, Math.abs(q));
   };
 
+  // Flat cloth: no baked outline — silhouette lines belong to the
+  // renderer's outline pass, where they're uniform and optional.
   ctx.fillStyle = hurt ? '#ffffff' : style.color;
-  ctx.strokeStyle = OUTLINE;
   ctx.lineJoin = 'round';
-  ctx.lineWidth = Math.max(1.5, wk * 0.045);
   ctx.fill(path);
-  ctx.stroke(path);
   if (hurt) return;
 
   // Everything decorative stays inside the silhouette.

@@ -116,9 +116,22 @@ function cycleZoom(): void {
 }
 
 const chat = new ChatUI(
-  (text) => game.sendChat(text),
+  (text) => {
+    // Client-side commands: render preferences never touch the server.
+    if (text.trim().toLowerCase() === '/outline') {
+      renderer.outlineOn = !renderer.outlineOn;
+      localStorage.setItem('devcraft.outline', renderer.outlineOn ? 'on' : 'off');
+      chat.addLine({
+        channel: 'system',
+        text: renderer.outlineOn ? 'Outlines on.' : 'Outlines off — pure flat.',
+      });
+      return;
+    }
+    game.sendChat(text);
+  },
   () => !hud.classList.contains('hidden'),
 );
+renderer.outlineOn = localStorage.getItem('devcraft.outline') !== 'off';
 input.setTypingCheck(() => chat.isTyping || looks.open);
 let buildMode: string | null = null;
 /** The bank chest tile that asked the server for the vault — anchors the panel. */

@@ -225,15 +225,12 @@ function drawArm(
   ctx.lineCap = 'butt';
   // Hand: a squared mitt aligned with the forearm — blocky, not a ball.
   ctx.fillStyle = skin;
-  ctx.strokeStyle = OUTLINE;
-  ctx.lineWidth = Math.max(1, s * 0.028);
   ctx.save();
   ctx.translate(ex, ey);
   ctx.rotate(Math.atan2(ey - ky, ex - kx));
   ctx.beginPath();
   chamferRect(ctx, -0.055 * s, -0.06 * s, 0.13 * s, 0.12 * s, 0.03 * s);
   ctx.fill();
-  ctx.stroke();
   ctx.restore();
 }
 
@@ -894,8 +891,6 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Rectangular tunic: shoulders tapering to the waist — kept trim so
   // the silhouette reads lithe rather than broad.
   ctx.fillStyle = bodyColor;
-  ctx.strokeStyle = rig.isOwn ? '#e8b64c' : OUTLINE;
-  ctx.lineWidth = Math.max(1.5, s * 0.045);
   ctx.beginPath();
   ctx.moveTo(-tw, -th);
   ctx.lineTo(tw, -th);
@@ -903,7 +898,6 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   ctx.lineTo(-ww, 0.02 * s);
   ctx.closePath();
   ctx.fill();
-  ctx.stroke();
   // Hard shade half — the flat-art form read.
   if (!rig.hurt) {
     ctx.fillStyle = shade(bodyColor, -18);
@@ -947,12 +941,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const lead = fx >= 0 ? 1 : -1;
   const helm = itemDef(rig.headItem ?? '');
   ctx.fillStyle = skin;
-  ctx.strokeStyle = OUTLINE;
-  ctx.lineWidth = Math.max(1.5, s * 0.04);
   ctx.beginPath();
   chamferRect(ctx, headX - hw, headY - hh, hw * 2, hh * 2, cut);
   ctx.fill();
-  ctx.stroke();
   // Hair (skipped under a helmet — the dome owns the skull). Style and
   // color come from the chosen look; NPC humanoids keep the classic
   // crop tinted from their body color.
@@ -1116,12 +1107,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   if (helm) {
     const mc = rig.hurt ? '#ffffff' : helm.color;
     ctx.fillStyle = mc;
-    ctx.strokeStyle = OUTLINE;
-    ctx.lineWidth = Math.max(1.5, s * 0.04);
     ctx.beginPath();
     chamferRect(ctx, headX - hw * 1.06, headY - hh * 1.1, hw * 2.12, hh * 1.06, cut);
     ctx.fill();
-    ctx.stroke();
     // Lit crown facet.
     ctx.fillStyle = rig.hurt ? '#ffffff' : shade(mc, 16);
     ctx.fillRect(headX - hw * 0.8, headY - hh * 1.0, hw * 1.6, hh * 0.26);
@@ -1170,8 +1158,6 @@ function drawHeldItem(
   ctx.save();
   ctx.translate(hx, hy);
   ctx.rotate(angle);
-  ctx.strokeStyle = OUTLINE;
-  ctx.lineWidth = Math.max(1, s * 0.028);
 
   if (itemId.includes('sword')) {
     // Blade with a tapered tip, crossguard, pommel.
@@ -1184,7 +1170,6 @@ function drawHeldItem(
     ctx.lineTo(0.04 * s, 0.038 * s);
     ctx.closePath();
     ctx.fill();
-    ctx.stroke();
     ctx.fillStyle = shade(color, 30);
     ctx.fillRect(0.06 * s, -0.03 * s, 0.36 * s, 0.026 * s);
     ctx.fillStyle = '#6b4a26';
@@ -1198,7 +1183,6 @@ function drawHeldItem(
     ctx.beginPath();
     ctx.roundRect(-0.05 * s, -0.024 * s, 0.46 * s, 0.048 * s, 0.02 * s);
     ctx.fill();
-    ctx.stroke();
     ctx.fillStyle = color;
     if (itemId.includes('pickaxe')) {
       ctx.beginPath();
@@ -1206,7 +1190,6 @@ function drawHeldItem(
       ctx.quadraticCurveTo(0.55 * s, 0, 0.36 * s, 0.16 * s);
       ctx.quadraticCurveTo(0.44 * s, 0, 0.36 * s, -0.16 * s);
       ctx.fill();
-      ctx.stroke();
     } else {
       ctx.beginPath();
       ctx.moveTo(0.36 * s, -0.13 * s);
@@ -1214,7 +1197,6 @@ function drawHeldItem(
       ctx.lineTo(0.36 * s, 0.06 * s);
       ctx.closePath();
       ctx.fill();
-      ctx.stroke();
     }
   } else if (itemId.includes('bow')) {
     // The bow flexes with the pull: limbs bend deeper as the string
@@ -1287,18 +1269,13 @@ function drawHeldItem(
     const butt = -grip * LEN;
     const top = (1 - grip) * LEN;
     ctx.lineCap = 'round';
-    // 3-pass shaft: outline, wood, edge light.
-    ctx.strokeStyle = OUTLINE;
-    ctx.lineWidth = Math.max(2.5, s * 0.075);
+    // Flat 2-pass shaft: hardwood core with an edge light — silhouette
+    // outlining is the outline pass's job, not the painter's.
+    ctx.strokeStyle = '#5f4226';
+    ctx.lineWidth = Math.max(2.5, s * 0.062);
     ctx.beginPath();
     ctx.moveTo(butt, 0);
     ctx.lineTo(top - 0.1 * s, 0);
-    ctx.stroke();
-    ctx.strokeStyle = '#6b4a2c';
-    ctx.lineWidth = Math.max(2, s * 0.052);
-    ctx.beginPath();
-    ctx.moveTo(butt + 0.008 * s, 0);
-    ctx.lineTo(top - 0.105 * s, 0);
     ctx.stroke();
     ctx.strokeStyle = '#8a6642';
     ctx.lineWidth = Math.max(1, s * 0.018);
@@ -1319,8 +1296,8 @@ function drawHeldItem(
       ctx.lineTo(wx, 0.03 * s);
       ctx.stroke();
     }
-    // Forked crown cradling the focus.
-    ctx.strokeStyle = OUTLINE;
+    // Forked crown cradling the focus — gilded claw, flat.
+    ctx.strokeStyle = '#b8863f';
     ctx.lineWidth = Math.max(2, s * 0.045);
     for (const fs of [-1, 1]) {
       ctx.beginPath();
@@ -1330,12 +1307,9 @@ function drawHeldItem(
     }
     // The focus: faceted orb with its glint, flaring on a cast.
     ctx.fillStyle = color;
-    ctx.strokeStyle = OUTLINE;
-    ctx.lineWidth = Math.max(1, s * 0.028);
     ctx.beginPath();
     ctx.arc(top, 0, (0.078 + castT * 0.04) * s, 0, Math.PI * 2);
     ctx.fill();
-    ctx.stroke();
     ctx.fillStyle = '#efe3ff';
     ctx.beginPath();
     ctx.arc(top - 0.022 * s, -0.022 * s, 0.028 * s, 0, Math.PI * 2);
@@ -1366,7 +1340,6 @@ function drawHeldItem(
     ctx.beginPath();
     ctx.roundRect(0.04 * s, -0.05 * s, 0.16 * s, 0.1 * s, 0.03 * s);
     ctx.fill();
-    ctx.stroke();
   }
   ctx.restore();
 }
@@ -1694,15 +1667,12 @@ export function drawBeast(
     // Faceted low-poly mass along the facing — same dialect as the
     // boulders and canopies.
     ctx.fillStyle = color;
-    ctx.strokeStyle = OUTLINE;
-    ctx.lineWidth = Math.max(1.5, s * 0.04);
     ctx.save();
     ctx.translate(bx, bodyY);
     ctx.rotate(opts.dir + roll);
     ctx.beginPath();
     facetBlob(ctx, 0, 0, len, seed, 9, (r * 0.78) / len, 0.4);
     ctx.fill();
-    ctx.stroke();
     // Flat back highlight facet.
     ctx.fillStyle = opts.hurt ? '#ffffff' : shade(opts.color, 14);
     ctx.beginPath();
@@ -1724,12 +1694,9 @@ export function drawBeast(
   const headR = r * (opts.defId === 'chicken' ? 0.5 : 0.55);
   const paintHead = (): void => {
     ctx.fillStyle = color;
-    ctx.strokeStyle = OUTLINE;
-    ctx.lineWidth = Math.max(1.5, s * 0.04);
     ctx.beginPath();
     facetCircle(ctx, headX, headY, headR, 6, opts.dir + Math.PI / 6);
     ctx.fill();
-    ctx.stroke();
     if (opts.defId === 'chicken') {
       ctx.fillStyle = '#e8a33d';
       ctx.beginPath();
@@ -1751,7 +1718,6 @@ export function drawBeast(
         ctx.lineTo(headX + px * side * headR * 0.95, headY - headR * 0.2);
         ctx.closePath();
         ctx.fill();
-        ctx.stroke();
       }
     }
     // Eyes track the facing — and a head facing away from the camera

@@ -206,6 +206,14 @@ interface DrawItem {
   draw: () => void;
   drawShadow?: () => void;
   /**
+   * Screen-space bounds of the body paint. Present = this entity is a
+   * living silhouette the outline pass may ring (player preference);
+   * labels are excluded via drawLabel.
+   */
+  body?: { x: number; y: number; w: number; h: number };
+  /** Nameplates/HP — drawn on the main canvas AFTER any outline pass. */
+  drawLabel?: () => void;
+  /**
    * Standing on lifted terrain: the shadow must land ON the plateau
    * surface, so it draws in sorted order (just before the sprite)
    * instead of in the ground-level shadow prepass — otherwise the
@@ -243,7 +251,18 @@ export class Renderer {
    */
   private prevDynamic: Array<{ x: number; y: number; r: number; a: number }> = [];
   private nextDynamic: Array<{ x: number; y: number; r: number; a: number }> = [];
-  private readonly ctx: CanvasRenderingContext2D;
+  private ctx: CanvasRenderingContext2D;
+  /**
+   * The outline "shader": entities paint FLAT (no baked strokes), and
+   * this post-pass rings each living body's silhouette by dilating its
+   * alpha — one uniform line around character, cape, staff, and legs
+   * alike, applied dynamically so it's a player preference, not paint.
+   */
+  outlineOn = true;
+  private readonly outlineA = document.createElement('canvas');
+  private readonly outlineB = document.createElement('canvas');
+  private readonly outlineACtx = this.outlineA.getContext('2d')!;
+  private readonly outlineBCtx = this.outlineB.getContext('2d')!;
   private readonly baked = new Map<string, BakedChunk>();
   private readonly anims = new Map<number | 'own', AnimState>();
   private shakeAmount = 0;
@@ -902,7 +921,9 @@ export class Renderer {
     items.sort((a, b) => a.sortY - b.sortY);
     for (const item of items) {
       if (item.elevated) item.drawShadow?.();
-      item.draw();
+      if (this.outlineOn && item.body) this.paintOutlined(item);
+      else item.draw();
+      item.drawLabel?.();
     }
 
     this.drawDeathGhosts();
@@ -3598,7 +3619,6 @@ export class Renderer {
     /** Live local bow-draw charge (own player only). */
     drawTOverride?: number;
   }): DrawItem {
-    const ctx = this.ctx;
     const s = this.camera.scale;
     const now = performance.now();
     const anim = this.animFor(e.eid, e.x, e.y, e.pose, now);
@@ -3709,7 +3729,7 @@ export class Renderer {
     const capeFront = capeSim !== null && capeSim.front(Math.sin(dir));
     const paintCape =
       capeSim !== null && capeItem
-        ? () => {
+        ? (ctx: CanvasRenderingContext2D) => {
             const capePts = capeSim.nodes.map((nd) => {
               const sp = this.camera.worldToScreen(nd.x, nd.y, this.w, this.h);
               return { x: sp.x, y: sp.y - terrainLift - nd.z * s };
@@ -3734,6 +3754,7 @@ export class Renderer {
         this.castBody(p.x, p.y + s * 0.05, 0.26 * s * (e.size ?? 1));
       },
       draw: () => {
+        const ctx = this.ctx;
         // Tool impacts: debris flies off the node at each strike beat,
         // timed to the tool's own cycle.
         const toolType = itemDef(e.equip.tool ?? '')?.tool?.type;
@@ -3825,7 +3846,7 @@ export class Renderer {
           }
         }
 
-        if (paintCape && !capeFront) paintCape();
+        if (paintCape && !capeFront) paintCape(ctx);
         drawHumanoid(ctx, {
           x: bodyX,
           y: bodyY,
@@ -3865,11 +3886,19 @@ export class Renderer {
           gatherPhase: now / 1000,
           craftKind: station?.kind ?? null,
         });
-        if (paintCape && capeFront) paintCape();
-
+        if (paintCape && capeFront) paintCape(ctx);
+      },
+      body: {
+        x: p.x - 1.55 * s * capeK,
+        y: p.y - 1.75 * s * capeK,
+        w: 3.1 * s * capeK,
+        h: 2.7 * s * capeK,
+      },
+      drawLabel: () => {
+        const ctx = this.ctx;
         // Nameplate baseline: clear of the tallest headwear (helmet
         // crown, topknot) with real air underneath — never resting on
-        // the skull.
+        // the skull. Drawn OUTSIDE the outline pass: text gets no ring.
         const topY = p.y - (1.32 * (e.size ?? 1)) * s;
         if (e.name) {
           ctx.font = `600 ${Math.max(11, s * 0.28)}px 'Trebuchet MS', sans-serif`;
@@ -3897,6 +3926,55 @@ export class Renderer {
     ctx.fillRect(x - w / 2, y, w, h);
     ctx.fillStyle = '#4fc06a';
     ctx.fillRect(x - w / 2, y, Math.max(2, w * (hpPct / 255)), h);
+  }
+
+  /** Eight-tap alpha dilate → tinted ring under the sprite. */
+  private static readonly OUTLINE_TAPS: ReadonlyArray<readonly [number, number]> = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [0.71, 0.71],
+    [-0.71, 0.71],
+    [0.71, -0.71],
+    [-0.71, -0.71],
+  ];
+
+  private paintOutlined(item: DrawItem): void {
+    const b = item.body!;
+    const r = Math.max(1.25, this.camera.scale * 0.04);
+    const m = Math.ceil(r) + 2;
+    const w = Math.ceil(b.w) + m * 2;
+    const h = Math.ceil(b.h) + m * 2;
+    if (this.outlineA.width < w) this.outlineA.width = this.outlineB.width = w;
+    if (this.outlineA.height < h) this.outlineA.height = this.outlineB.height = h;
+    const a = this.outlineACtx;
+    const o = this.outlineBCtx;
+    // 1. The entity paints itself into scratch A, believing it is the
+    // frame — the main ctx is swapped out from under its closures.
+    a.clearRect(0, 0, w, h);
+    a.save();
+    a.translate(m - b.x, m - b.y);
+    const prev = this.ctx;
+    this.ctx = a;
+    try {
+      item.draw();
+    } finally {
+      this.ctx = prev;
+      a.restore();
+    }
+    // 2. Scratch B becomes the dilated, tinted silhouette.
+    o.clearRect(0, 0, w, h);
+    for (const [tx, ty] of Renderer.OUTLINE_TAPS) {
+      o.drawImage(this.outlineA, 0, 0, w, h, tx * r, ty * r, w, h);
+    }
+    o.globalCompositeOperation = 'source-in';
+    o.fillStyle = '#241a2e';
+    o.fillRect(0, 0, w, h);
+    o.globalCompositeOperation = 'source-over';
+    // 3. Ring first, sprite on top.
+    this.ctx.drawImage(this.outlineB, 0, 0, w, h, b.x - m, b.y - m, w, h);
+    this.ctx.drawImage(this.outlineA, 0, 0, w, h, b.x - m, b.y - m, w, h);
   }
 
   private npcItem(
@@ -3933,7 +4011,6 @@ export class Renderer {
       });
     }
 
-    const ctx = this.ctx;
     const def = npcDef(defId);
     const scale = this.camera.scale;
     const r = (def?.radius ?? 0.3) * scale;
@@ -3967,7 +4044,7 @@ export class Renderer {
         this.castBody(p.x, p.y + r * 0.25, r * 1.05);
       },
       draw: () => {
-        drawBeast(ctx, {
+        drawBeast(this.ctx, {
           x: p.x,
           y: p.y,
           scale,
@@ -3984,7 +4061,10 @@ export class Renderer {
           kneeMemory: anim.kneeMemory,
           attackT,
         });
-
+      },
+      body: { x: p.x - r * 3.4, y: p.y - r * 3.4, w: r * 6.8, h: r * 4.6 },
+      drawLabel: () => {
+        const ctx = this.ctx;
         if (meta.name) {
           const topY = p.y - r * 2.6;
           ctx.font = `600 ${Math.max(10, scale * 0.24)}px 'Trebuchet MS', sans-serif`;
