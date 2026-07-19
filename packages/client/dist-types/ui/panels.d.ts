@@ -21,6 +21,9 @@ export declare class Panels {
     private readonly stationContext;
     /** Active input device — the card's action hints speak its glyphs. */
     private readonly deviceMode;
+    /** Cosmetic sword-carry preference: read current + toggle. */
+    private readonly carryStyle;
+    private readonly onCarryStyle;
     private readonly invPanel;
     private readonly invGrid;
     private readonly equipDoll;
@@ -41,7 +44,9 @@ export declare class Panels {
     /** Which station conversation is open — labels the menu verbs. */
     stationContext?: () => 'bank' | 'shop' | null, 
     /** Active input device — the card's action hints speak its glyphs. */
-    deviceMode?: () => 'kb' | 'pad');
+    deviceMode?: () => 'kb' | 'pad', 
+    /** Cosmetic sword-carry preference: read current + toggle. */
+    carryStyle?: () => 'normal' | 'rogue', onCarryStyle?: (style: 'normal' | 'rogue') => void);
     toggleInventory(): void;
     showInventory(): void;
     toggleSkills(): void;

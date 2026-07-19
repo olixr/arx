@@ -130,6 +130,8 @@ export declare class ClientGame {
     inventory: InvSlot[];
     skills: SkillXp;
     equipment: Partial<Record<string, string>>;
+    /** Cosmetic idle weapon-carry preference (server-confirmed). */
+    carryStyle: 'normal' | 'rogue';
     /** Running gather action, for the progress bar. */
     action: {
         startedAt: number;
@@ -226,6 +228,8 @@ export declare class ClientGame {
     interact(tx: number, ty: number): void;
     /** Use (equip/eat) the item in an inventory slot. */
     useSlot(slot: number): void;
+    /** Set the cosmetic idle carry style (optimistic; server confirms). */
+    setCarryStyle(style: 'normal' | 'rogue'): void;
     unequip(slot: EquipSlot): void;
     /** Classify what an interact on this tile would do, if anything. */
     targetAt(tx: number, ty: number): InteractTarget | null;

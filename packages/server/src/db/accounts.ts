@@ -274,6 +274,19 @@ export class AccountStore {
       .run(JSON.stringify(look), characterId);
   }
 
+  loadCarryStyle(characterId: number): 'normal' | 'rogue' {
+    const row = this.db
+      .prepare('SELECT carry_style FROM characters WHERE id = ?')
+      .get(characterId) as { carry_style: string | null } | undefined;
+    return row?.carry_style === 'rogue' ? 'rogue' : 'normal';
+  }
+
+  saveCarryStyle(characterId: number, style: 'normal' | 'rogue'): void {
+    this.db
+      .prepare('UPDATE characters SET carry_style = ? WHERE id = ?')
+      .run(style === 'rogue' ? 'rogue' : null, characterId);
+  }
+
   loadTechniques(characterId: number): Record<string, string> {
     const rows = this.db
       .prepare('SELECT style, ability FROM character_techniques WHERE character_id = ?')

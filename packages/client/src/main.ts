@@ -199,6 +199,8 @@ const panels = new Panels(
   },
   () => (stationPanels.bankOpen ? 'bank' : stationPanels.shopOpen ? 'shop' : null),
   (): 'kb' | 'pad' => nav.mode,
+  () => game.carryStyle,
+  (style) => game.setCarryStyle(style),
 );
 
 /** Drop a whole pack slot onto the ground (drag-out / pad Ⓨ). */

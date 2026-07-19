@@ -1,5 +1,5 @@
 import { EQUIP_SLOTS } from '../entities.js';
-import type { EntityId, EntityMeta, EquipSlot } from '../entities.js';
+import type { CarryStyle, EntityId, EntityMeta, EquipSlot } from '../entities.js';
 import { sanitizeLook, type Look } from '../look.js';
 import type { InputFrame } from '../sim/input.js';
 import type { SkillId, SkillXp } from '../skills.js';
@@ -157,6 +157,12 @@ export interface C2SSetLook {
   look: Look;
 }
 
+/** Set the cosmetic idle weapon-carry style (standard vs rogue). */
+export interface C2SCarryStyle {
+  t: 'carrystyle';
+  style: CarryStyle;
+}
+
 export type C2SMessage =
   | C2SHello
   | C2SLogin
@@ -177,7 +183,8 @@ export type C2SMessage =
   | C2SPlant
   | C2SInteractNpc
   | C2STechnique
-  | C2SSetLook;
+  | C2SSetLook
+  | C2SCarryStyle;
 
 // ---------------------------------------------------------------- S2C
 
@@ -271,6 +278,8 @@ export interface S2CAction {
 export interface S2CEquipment {
   t: 'equip';
   equipment: Partial<Record<EquipSlot, string>>;
+  /** Cosmetic idle carry preference; absent = standard. */
+  carry?: CarryStyle;
 }
 
 /** Something took damage (for floaties/flashes). */
@@ -547,6 +556,10 @@ export function parseC2S(raw: string): C2SMessage | null {
       const look = sanitizeLook(msg.look);
       if (!look) return null;
       return { t: 'setlook', look };
+    }
+    case 'carrystyle': {
+      if (msg.style !== 'normal' && msg.style !== 'rogue') return null;
+      return { t: 'carrystyle', style: msg.style };
     }
     default:
       return null;

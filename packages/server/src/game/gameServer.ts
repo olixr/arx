@@ -23,6 +23,7 @@ import {
   type EntityId,
   type EntityMeta,
   type InputFrame,
+  type CarryStyle,
   type Look,
   type InvSlot,
   type SkillId,
@@ -296,6 +297,8 @@ interface PlayerComp {
   speed: number;
   /** Chosen base look; null until the player has been through creation. */
   look: Look | null;
+  /** Cosmetic idle weapon-carry preference ('rogue' = reverse grip). */
+  carryStyle: CarryStyle;
   /** DB character id; negative for ephemeral guests. */
   characterId: number;
   accountId: number | null;
@@ -646,6 +649,7 @@ export class GameServer {
       name: character.name,
       speed: PLAYER_SPEED,
       look: character.id > 0 ? this.accounts.loadLook(character.id) : null,
+      carryStyle: character.id > 0 ? this.accounts.loadCarryStyle(character.id) : 'normal',
       characterId: character.id,
       accountId,
       token,
@@ -716,7 +720,7 @@ export class GameServer {
     });
     session.sendJson({ t: 'skills', xp: player.skills });
     session.sendJson({ t: 'inv', slots: player.inventory });
-    session.sendJson({ t: 'equip', equipment: player.equipment });
+    session.sendJson({ t: 'equip', equipment: player.equipment, carry: player.carryStyle });
     session.sendJson({ t: 'techniques', chosen: player.techniques });
     session.sendJson({ t: 'time', ofs: this.timeOfsTicks });
     this.sendCooldowns(player);
@@ -1662,6 +1666,21 @@ export class GameServer {
     player.look = look;
     if (player.characterId > 0) this.accounts.saveLook(player.characterId, look);
     // Everyone who can see this player learns the new face.
+    this.broadcastMetaUpdate(eid);
+  }
+
+  /** Cosmetic idle carry preference — persisted, visible to everyone. */
+  setCarryStyle(eid: EntityId, style: CarryStyle): void {
+    const player = this.players.get(eid);
+    if (!player || player.carryStyle === style) return;
+    player.carryStyle = style;
+    if (player.characterId > 0) this.accounts.saveCarryStyle(player.characterId, style);
+    player.session?.sendJson({ t: 'equip', equipment: player.equipment, carry: style });
+    this.broadcastMetaUpdate(eid);
+  }
+
+  /** Re-send an entity's meta to every session that can see it. */
+  private broadcastMetaUpdate(eid: EntityId): void {
     const meta = this.buildMeta(eid);
     for (const s of this.sessions) {
       if (s.playerEid === eid || s.knownEntities.has(eid)) {
@@ -1672,16 +1691,11 @@ export class GameServer {
 
   private onEquipmentChanged(eid: EntityId, player: PlayerComp): void {
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
-    player.session?.sendJson({ t: 'equip', equipment: player.equipment });
+    player.session?.sendJson({ t: 'equip', equipment: player.equipment, carry: player.carryStyle });
     // A new weapon or relic means new abilities on the hotbar.
     this.sendCooldowns(player);
     // Appearance changed — update everyone who can see this player.
-    const meta = this.buildMeta(eid);
-    for (const s of this.sessions) {
-      if (s.playerEid === eid || s.knownEntities.has(eid)) {
-        s.sendJson({ t: 'update', entities: [meta] });
-      }
-    }
+    this.broadcastMetaUpdate(eid);
   }
 
   // ----------------------------------------------------------- combat
@@ -3719,7 +3733,12 @@ export class GameServer {
     const player = this.players.get(eid);
     if (player) {
       meta.name = player.name;
-      meta.appearance = { bodyColor: '', equip: { ...player.equipment }, look: player.look ?? undefined };
+      meta.appearance = {
+        bodyColor: '',
+        equip: { ...player.equipment },
+        look: player.look ?? undefined,
+        carry: player.carryStyle === 'rogue' ? 'rogue' : undefined,
+      };
     }
     const npc = this.npcs.get(eid);
     if (npc) {

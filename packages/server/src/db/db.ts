@@ -109,6 +109,10 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (tx, ty)
   );
   `,
+  // 9 — cosmetic idle weapon-carry preference (NULL = standard)
+  `
+  ALTER TABLE characters ADD COLUMN carry_style TEXT;
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

@@ -62,7 +62,15 @@ export interface AppearanceData {
   equip: Partial<Record<EquipSlot, string>>;
   /** Player-chosen base look (palette indices) — see shared/look.ts. */
   look?: import('./look.js').Look;
+  /**
+   * Cosmetic weapon carriage at rest: 'rogue' = reverse grip, blade
+   * raked down-back. Absent = standard carry. Purely visual.
+   */
+  carry?: CarryStyle;
 }
+
+/** Cosmetic idle weapon-carry preference (never affects combat). */
+export type CarryStyle = 'normal' | 'rogue';
 
 export type EquipSlot =
   | 'head'

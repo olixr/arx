@@ -203,6 +203,12 @@ export class Session {
         this.game.setLook(this.playerEid, msg.look);
         return;
       }
+      case 'carrystyle': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.setCarryStyle(this.playerEid, msg.style);
+        return;
+      }
     }
   }
 

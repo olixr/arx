@@ -4266,6 +4266,7 @@ export class Renderer {
               isOwn: false,
               hurt,
               equip: remote.meta.appearance?.equip ?? {},
+              carry: remote.meta.appearance?.carry,
               look: remote.meta.appearance?.look,
               color: remote.meta.appearance?.look
                 ? CLOTH_COLORS[remote.meta.appearance.look.shirt]!
@@ -4307,6 +4308,7 @@ export class Renderer {
           isOwn: true,
           hurt: game.ownHurtUntil > now,
           equip: game.equipment,
+          carry: game.carryStyle,
           look: game.ownLook ?? undefined,
           color: game.ownLook
             ? CLOTH_COLORS[game.ownLook.shirt]!
@@ -4329,6 +4331,8 @@ export class Renderer {
     hpPct: number;
     hurt?: boolean;
     equip: Partial<Record<string, string>>;
+    /** Cosmetic idle carry preference ('rogue' = reverse grip). */
+    carry?: 'normal' | 'rogue';
     size?: number;
     skinColor?: string;
     level?: number;
@@ -4596,6 +4600,7 @@ export class Renderer {
               : e.pose === PoseState.Gather
                 ? (e.equip.tool ?? e.equip.weapon)
                 : e.equip.weapon,
+          carryStyle: e.carry,
           bodyItem: e.equip.body,
           headItem: e.equip.head,
           size: e.size,

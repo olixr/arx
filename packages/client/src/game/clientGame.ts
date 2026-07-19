@@ -128,6 +128,8 @@ export class ClientGame {
   inventory: InvSlot[] = [];
   skills: SkillXp = {};
   equipment: Partial<Record<string, string>> = {};
+  /** Cosmetic idle weapon-carry preference (server-confirmed). */
+  carryStyle: 'normal' | 'rogue' = 'normal';
   /** Running gather action, for the progress bar. */
   action: { startedAt: number; durationMs: number } | null = null;
   /** Damage numbers floating up; pruned by the renderer. */
@@ -449,6 +451,7 @@ export class ClientGame {
       }
       case 'equip': {
         this.equipment = msg.equipment;
+        if (msg.carry) this.carryStyle = msg.carry;
         // Prediction must brake during a draw exactly like the server.
         this.predictor.weaponStyle = this.equippedWeaponDef()?.style ?? null;
         this.events.onEquipment(msg.equipment);
@@ -606,6 +609,12 @@ export class ClientGame {
   /** Use (equip/eat) the item in an inventory slot. */
   useSlot(slot: number): void {
     this.conn?.send({ t: 'use', slot });
+  }
+
+  /** Set the cosmetic idle carry style (optimistic; server confirms). */
+  setCarryStyle(style: 'normal' | 'rogue'): void {
+    this.carryStyle = style;
+    this.conn?.send({ t: 'carrystyle', style });
   }
 
   unequip(slot: EquipSlot): void {

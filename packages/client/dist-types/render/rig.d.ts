@@ -66,6 +66,8 @@ export interface RigPose {
     hurt: boolean;
     isOwn: boolean;
     weaponItem?: string;
+    /** Cosmetic idle carry: 'rogue' rakes a blade down-back, reverse grip. */
+    carryStyle?: 'normal' | 'rogue';
     bodyItem?: string;
     /** Equipped head gear — drawn as a real helmet over the skull. */
     headItem?: string;

@@ -135,6 +135,8 @@ export interface RigPose {
   hurt: boolean;
   isOwn: boolean;
   weaponItem?: string;
+  /** Cosmetic idle carry: 'rogue' rakes a blade down-back, reverse grip. */
+  carryStyle?: 'normal' | 'rogue';
   bodyItem?: string;
   /** Equipped head gear — drawn as a real helmet over the skull. */
   headItem?: string;
@@ -606,6 +608,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Everything blends on poseT, so a combat follow-through settles
   // into carriage over the same 280 ms every pose change uses.
   const isStaff = weapon !== undefined && weapon.id.includes('staff');
+  const isSword = weapon !== undefined && weapon.id.includes('sword');
   let heldAngle = thrustR !== null ? rig.dir : mainAngle;
   let staffGrip = 0.34; // combat default: gripped low, business end forward
   let armSwingK = 1;
@@ -618,6 +621,18 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     let hx = rig.x + wSide * tw * 1.02 * wS;
     let hy = armY + 0.17 * s;
     let hAngle = Math.PI / 2 + wSide * (0.3 + 0.35 * runK); // tip down, trailing
+    if (isSword) {
+      if (rig.carryStyle === 'rogue') {
+        // Reverse grip: blade raked hard down-back along the forearm,
+        // hand riding a touch higher — the rogue's low-line carry.
+        hAngle = Math.PI / 2 + wSide * (0.92 + 0.08 * runK);
+        hy = armY + 0.1 * s;
+      } else {
+        // Standard carry: blade lowered nearly vertical at the side,
+        // only a whisper of trail so the point never wanders.
+        hAngle = Math.PI / 2 + wSide * (0.1 + 0.12 * runK);
+      }
+    }
     if (isStaff) {
       // Walking stick ↔ run carry, blended on the gait itself.
       const carry = runK * runK * (3 - 2 * runK);
@@ -634,8 +649,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       staffGrip = 0.72 - 0.3 * carry; // high grip on the stick, mid on the carry
       armSwingK = 0.3 + 0.7 * carry; // a planted hand doesn't pump
     } else if (isBow) {
-      hAngle = -Math.PI / 2 + wSide * 0.3; // limbs upright at the side
-      hy = armY + 0.14 * s;
+      // Carried by the wooden grip at the side: limbs near-vertical
+      // and clear of the silhouette, belly resting in against the arm,
+      // top tip raked back — never dangled by the string. drawHeldItem
+      // slides the grip wrap into the fist on the same settle blend.
+      hAngle = wSide > 0 ? Math.PI + 0.3 : -0.3;
+      hy = armY + 0.16 * s;
     }
     mainX += (hx - mainX) * restSettle;
     mainY += (hy - mainY) * restSettle;
@@ -863,6 +882,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     } else {
       drawHeldItem(ctx, weapon.id, weapon.color, mainX, mainY, heldAngle, s, rig, {
         grip: staffGrip,
+        carry: isBow ? restSettle : 0,
       });
     }
   };
@@ -1152,12 +1172,17 @@ function drawHeldItem(
   angle: number,
   s: number,
   rig: RigPose,
-  /** Bow: string pull-back (px) + release progress. Staff: grip height. */
-  extra?: { pull?: number; loose?: number; grip?: number },
+  /**
+   * Bow: string pull-back (px), release progress, and rest-carry blend
+   * (0 aiming → 1 settled: slides the grip wrap into the fist so the
+   * bow is carried by the wood, not the string). Staff: grip height.
+   */
+  extra?: { pull?: number; loose?: number; grip?: number; carry?: number },
 ): void {
   ctx.save();
   ctx.translate(hx, hy);
   ctx.rotate(angle);
+  if (extra?.carry) ctx.translate(-0.29 * s * extra.carry, 0);
 
   if (itemId.includes('sword')) {
     // Blade with a tapered tip, crossguard, pommel.

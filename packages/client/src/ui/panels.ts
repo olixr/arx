@@ -61,6 +61,9 @@ export class Panels {
     private readonly stationContext: () => 'bank' | 'shop' | null = () => null,
     /** Active input device — the card's action hints speak its glyphs. */
     private readonly deviceMode: () => 'kb' | 'pad' = () => 'kb',
+    /** Cosmetic sword-carry preference: read current + toggle. */
+    private readonly carryStyle: () => 'normal' | 'rogue' = () => 'normal',
+    private readonly onCarryStyle: (style: 'normal' | 'rogue') => void = () => {},
   ) {
     document.getElementById('btn-inventory')!.addEventListener('click', () => this.toggleInventory());
     document.getElementById('btn-skills')!.addEventListener('click', () => this.toggleSkills());
@@ -405,8 +408,17 @@ export class Panels {
       entries.push({ label: 'Drop', act: () => this.onSlotAction(idx, 'drop'), danger: true });
     } else if (el.dataset.equipslot !== undefined) {
       const slot = el.dataset.equipslot as EquipSlot;
-      if (!this.lastEquipment[slot]) return false;
+      const worn = this.lastEquipment[slot];
+      if (!worn) return false;
       entries.push({ label: 'Remove', act: () => this.onUnequip(slot) });
+      if (slot === 'weapon' && worn.includes('sword')) {
+        // Cosmetic carry preference: how the blade rides at rest.
+        const rogue = this.carryStyle() === 'rogue';
+        entries.push({
+          label: rogue ? 'Carry: standard grip' : 'Carry: rogue grip',
+          act: () => this.onCarryStyle(rogue ? 'normal' : 'rogue'),
+        });
+      }
     } else {
       return false;
     }
