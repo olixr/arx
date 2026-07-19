@@ -69,7 +69,7 @@ export interface ChatLine {
 }
 /** A combat effect in flight (nova ring, telegraph, blast, reaction). */
 export interface ActiveFx {
-    kind: 'nova' | 'telegraph' | 'blast' | 'reaction' | 'summon';
+    kind: 'nova' | 'telegraph' | 'blast' | 'reaction' | 'summon' | 'vanish';
     x: number;
     y: number;
     radius: number;
@@ -98,6 +98,7 @@ export interface GameEvents {
         dmg: number;
         isOwn: boolean;
         crit: boolean;
+        backstab?: boolean;
     }): void;
     onDeath(death: {
         x: number;
@@ -193,6 +194,12 @@ export declare class ClientGame {
     private prevSentButtons;
     /** Local player's status bits from the latest snapshot. */
     ownStatus: number;
+    /** Crouch latch — mirrors the input toggle for HUD/render. */
+    get isSneaking(): boolean;
+    /** Server-confirmed full stealth (own snapshot bit). */
+    get isHidden(): boolean;
+    /** A hostile NPC is currently chasing us (own snapshot bit). */
+    get isDetected(): boolean;
     /** Tap-to-move autopilot; cancelled by any manual movement input. */
     private autoPath;
     /** Own hit-flash timer. */

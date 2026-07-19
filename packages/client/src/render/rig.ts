@@ -249,8 +249,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const px = -fy;
   const py = fx;
 
+  // Sneak crouch: dropping the hip line shortens the leg chain so the IK
+  // bends the knees for free, and the whole arm frame (armY/shoulderY)
+  // hangs off hipY so the weapon carriage ducks with the body.
+  const crouch = rig.pose === PoseState.Sneak ? Math.min(1, rig.poseT) : 0;
+
   // The body rides the hip line, which rides the gait bob.
-  const hipY = rig.y - (rig.rise + rig.bob * 0.45) * s;
+  const hipY = rig.y - (rig.rise + rig.bob * 0.45) * s + 0.11 * s * crouch;
 
   // ---- legs: two-bone IK from SCREEN-FIXED hips to planted feet.
   const L = (LEG_LEN / 2) * s;
@@ -341,14 +346,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Torso proportions (needed for shoulders before the torso is drawn).
   const tw = 0.185 * s; // shoulder half-width
   const ww = 0.125 * s; // waist half-width
-  const th = 0.46 * s; // hip line → shoulders
+  const th = 0.46 * s * (1 - 0.12 * crouch); // hip line → shoulders
 
   // Melee combo stages: forehand sweep, backhand sweep, lunging thrust.
   // Each is anticipation → strike → follow-through, never a plain pivot.
   let swingOffset = 0.5 + gatherSwing;
   let strikeSweep: { from: number; to: number } | null = null;
   let thrustR: number | null = null; // finisher: radial thrust (tiles)
-  let lean = 0; // torso lean (radians) inside the squash frame
+  // Sneaking hunches forward along facing; no other pose branch runs in
+  // Sneak, so this baseline survives to the torso draw.
+  let lean = 0.15 * crouch * Math.sign(fx || 1); // torso lean (radians) inside the squash frame
   const meleeStage =
     rig.pose === PoseState.Attack
       ? 0
@@ -608,13 +615,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Everything blends on poseT, so a combat follow-through settles
   // into carriage over the same 280 ms every pose change uses.
   const isStaff = weapon !== undefined && weapon.id.includes('staff');
-  const isSword = weapon !== undefined && weapon.id.includes('sword');
+  // Daggers share the sword carriage (incl. the rogue reverse grip).
+  const isSword =
+    weapon !== undefined && (weapon.id.includes('sword') || weapon.id.includes('dagger'));
   let heldAngle = thrustR !== null ? rig.dir : mainAngle;
   let staffGrip = 0.34; // combat default: gripped low, business end forward
   let armSwingK = 1;
   let restSettle = 0;
   let restSide = Math.sign(fx) || 1;
-  if ((rig.pose === PoseState.Walk || rig.pose === PoseState.Idle) && !drawing && !loosing) {
+  if (
+    (rig.pose === PoseState.Walk || rig.pose === PoseState.Idle || rig.pose === PoseState.Sneak) &&
+    !drawing &&
+    !loosing
+  ) {
     restSettle = rig.restT * rig.restT * (3 - 2 * rig.restT);
     const wSide = restSide;
     const runK = rig.runF;
@@ -1199,7 +1212,25 @@ function drawHeldItem(
   // fist, or the bow reads as resting on the wrist.
   if (extra?.carry) ctx.translate(-0.18 * s * extra.carry, 0);
 
-  if (itemId.includes('sword')) {
+  if (itemId.includes('dagger')) {
+    // The sword language compressed: a short wicked blade, slim wrapped
+    // grip, no pommel gem — a tool, not an heirloom.
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(0.03 * s, -0.032 * s);
+    ctx.lineTo(0.2 * s, -0.032 * s);
+    ctx.lineTo(0.29 * s, 0);
+    ctx.lineTo(0.2 * s, 0.032 * s);
+    ctx.lineTo(0.03 * s, 0.032 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = shade(color, 30);
+    ctx.fillRect(0.04 * s, -0.024 * s, 0.17 * s, 0.02 * s);
+    ctx.fillStyle = '#4a3a2a';
+    ctx.fillRect(0.0 * s, -0.06 * s, 0.035 * s, 0.12 * s);
+    ctx.fillStyle = '#6b4a26';
+    ctx.fillRect(-0.07 * s, -0.028 * s, 0.07 * s, 0.056 * s);
+  } else if (itemId.includes('sword')) {
     // Blade with a tapered tip, crossguard, pommel.
     ctx.fillStyle = color;
     ctx.beginPath();

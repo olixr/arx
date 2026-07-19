@@ -17,6 +17,8 @@ export interface WeaponStats {
   projectileSpeed?: number;
   /** Weapon Art — the signature ability this weapon grants (Q). */
   art?: string;
+  /** Backstab damage multiplier — daggers carry a big one; other melee falls back to the default. */
+  backstabMult?: number;
 }
 
 /**
@@ -276,6 +278,30 @@ const defs: ItemDef[] = [
     desc: 'Every hero\'s first blade. Swings quick, bites small.',
     color: '#a4744b',
     code: 'Sw',
+  },
+  // Daggers — the rogue's line: fastest cadence, shortest reach, and the
+  // payoff lives in the backstab, not the base hit.
+  {
+    id: 'bronze_dagger',
+    name: 'Bronze dagger',
+    stackable: false,
+    value: 28,
+    equipSlot: 'weapon',
+    weapon: { style: 'melee', damage: 1, cooldownTicks: 5, range: 1.35, art: 'shadowstep', backstabMult: 2.5 },
+    desc: 'Light enough to forget, sharp enough to remember.',
+    color: '#a4744b',
+    code: 'Bd',
+  },
+  {
+    id: 'iron_dagger',
+    name: 'Iron dagger',
+    stackable: false,
+    value: 85,
+    equipSlot: 'weapon',
+    weapon: { style: 'melee', damage: 2, cooldownTicks: 5, range: 1.45, art: 'shadowstep', backstabMult: 2.5 },
+    desc: 'A quiet argument, settled from behind.',
+    color: '#8d9299',
+    code: 'Id',
   },
   {
     id: 'oak_shortbow',

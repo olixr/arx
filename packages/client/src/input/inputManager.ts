@@ -1,4 +1,4 @@
-import { InputButton, WALK_FACTOR } from '@devcraft/shared';
+import { InputButton, SNEAK_FACTOR, WALK_FACTOR } from '@devcraft/shared';
 
 const STICK_DEADZONE = 0.22;
 
@@ -49,10 +49,17 @@ export class InputManager {
    */
   walkMode = false;
 
+  /**
+   * Sneak mode: the crouch-walk latch. Scales the input vector like walk
+   * AND raises the held Sneak bit so the server tracks stealth state.
+   */
+  sneakMode = false;
+
   constructor(target: HTMLElement) {
     window.addEventListener('keydown', (e) => {
       if (this.typingCheck()) return;
       if (e.code === 'KeyZ' && !e.repeat) this.walkMode = !this.walkMode;
+      if (e.code === 'KeyC' && !e.repeat) this.sneakMode = !this.sneakMode;
       this.keys.add(e.code);
       // Keep the page from scrolling on space/arrows; Alt is the loot
       // reveal, so it must not focus the browser's menu bar.
@@ -149,9 +156,15 @@ export class InputManager {
       mx /= len;
       my /= len;
     }
-    // Walk latch: same wire format, smaller vector — the server and
-    // the prediction never need to know a mode exists.
-    if (this.walkMode) {
+    // Walk/sneak latches: same wire format, smaller vector — prediction
+    // never needs to know a mode exists. Sneak wins when both are on.
+    if (this.sneakMode) {
+      const cur = Math.min(len, 1); // magnitude after the unit clamp above
+      if (cur > SNEAK_FACTOR) {
+        mx = (mx / cur) * SNEAK_FACTOR;
+        my = (my / cur) * SNEAK_FACTOR;
+      }
+    } else if (this.walkMode) {
       mx *= WALK_FACTOR;
       my *= WALK_FACTOR;
     }
@@ -180,6 +193,7 @@ export class InputManager {
     if (this.keys.has('KeyT') || padAb4 || this.touchAbility4) b |= InputButton.Ability4;
     if (this.keys.has('KeyF')) b |= InputButton.Interact;
     if (this.keys.has('ShiftLeft')) b |= InputButton.Dodge;
+    if (this.sneakMode) b |= InputButton.Sneak;
     return b;
   }
 

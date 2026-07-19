@@ -26,6 +26,15 @@ export const STATUS_BIT: Record<StatusId, number> = {
   bleed: 1 << 3,
 };
 
+/** Mask of the DoT/CC bits above — ambience particles must not react to the sneak bits. */
+export const STATUS_AMBIENCE_MASK = 0x0f;
+
+/** Snapshot bit: this entity is fully hidden (only ever seen on your OWN entity). */
+export const SNEAK_HIDDEN_BIT = 1 << 4;
+
+/** Snapshot bit: a hostile NPC is currently chasing this entity. */
+export const SNEAK_DETECTED_BIT = 1 << 5;
+
 /** A status being applied by an ability or attack. */
 export interface StatusApply {
   status: StatusId;

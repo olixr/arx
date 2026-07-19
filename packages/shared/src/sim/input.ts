@@ -1,3 +1,5 @@
+import { SNEAK_FACTOR } from './sneak.js';
+
 /** One tick of player intent. Client-numbered for reconciliation. */
 export interface InputFrame {
   seq: number;
@@ -22,6 +24,8 @@ export enum InputButton {
   Ability3 = 1 << 5,
   /** Sigil ultimate (T) — fires on press edge. */
   Ability4 = 1 << 6,
+  /** Crouch-walk latch — HELD while the client's sneak toggle is on, not an edge. */
+  Sneak = 1 << 7,
 }
 
 export function hasButton(buttons: number, b: InputButton): boolean {
@@ -37,6 +41,12 @@ export function sanitizeInputFrame(f: InputFrame): InputFrame {
   if (len > 1) {
     mx /= len;
     my /= len;
+  }
+  // Sneaking caps movement speed: honest clients already scaled their axes,
+  // so this only bites a client claiming stealth at full tilt.
+  if ((f.buttons & InputButton.Sneak) !== 0 && len > SNEAK_FACTOR) {
+    mx = (mx / len) * SNEAK_FACTOR;
+    my = (my / len) * SNEAK_FACTOR;
   }
   return {
     seq: f.seq >>> 0,

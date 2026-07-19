@@ -40,6 +40,11 @@ export declare class InputManager {
      * input vector instead — the stick's half-tilt, as a latch.
      */
     walkMode: boolean;
+    /**
+     * Sneak mode: the crouch-walk latch. Scales the input vector like walk
+     * AND raises the held Sneak bit so the server tracks stealth state.
+     */
+    sneakMode: boolean;
     constructor(target: HTMLElement);
     setTypingCheck(fn: () => boolean): void;
     isDown(code: string): boolean;

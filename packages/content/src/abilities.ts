@@ -39,6 +39,17 @@ const defs: AbilityDef[] = [
     status: { status: 'bleed', power: 1, durationTicks: 70 },
   },
   {
+    id: 'shadowstep',
+    name: 'Shadowstep',
+    desc: 'Melt forward through the dark — the knife arrives before you do.',
+    color: '#7a68a8',
+    code: 'Sp',
+    cooldownTicks: 160, // 8 s
+    shape: 'dash_strike',
+    damage: 5,
+    dashTiles: 3.0,
+  },
+  {
     id: 'shockwave',
     name: 'Shockwave',
     desc: 'Slam the ground, hurling nearby enemies away.',

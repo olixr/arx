@@ -61,7 +61,11 @@ export class InterpBuffer {
           x: a.x + (b.x - a.x) * f,
           y: a.y + (b.y - a.y) * f,
           dir: lerpAngle(a.dir, b.dir, f),
-          pose: b.pose === PoseState.Idle && a.pose === PoseState.Walk ? a.pose : b.pose,
+          pose:
+            b.pose === PoseState.Idle &&
+            (a.pose === PoseState.Walk || a.pose === PoseState.Sneak)
+              ? a.pose
+              : b.pose,
           hpPct: b.hpPct,
           status: b.status,
         };

@@ -13,6 +13,10 @@ export declare class Hotbar {
     private readonly buffTray;
     private buffKey;
     private readonly buffSecsEls;
+    /** Stealth-state eye chip (sneaking / hidden / detected). */
+    private readonly sneakChip;
+    private readonly sneakEye;
+    private sneakState;
     private readonly slots;
     private readonly wipes;
     private readonly icons;

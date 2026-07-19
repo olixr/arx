@@ -33,6 +33,8 @@ export enum PoseState {
   Craft = 11,
   /** Firing a weapon Art or relic active — big committed animation. */
   Art = 12,
+  /** Crouch-walk stealth carriage — covers both sneak-moving and sneak-idle. */
+  Sneak = 13,
 }
 
 /**

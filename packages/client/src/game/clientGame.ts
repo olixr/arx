@@ -8,6 +8,8 @@ import {
   hasButton,
   PLAYER_SPEED,
   PROTOCOL_VERSION,
+  SNEAK_DETECTED_BIT,
+  SNEAK_HIDDEN_BIT,
   TICK_MS,
   clockHours,
   Tile,
@@ -72,7 +74,7 @@ export interface ChatLine {
 
 /** A combat effect in flight (nova ring, telegraph, blast, reaction). */
 export interface ActiveFx {
-  kind: 'nova' | 'telegraph' | 'blast' | 'reaction' | 'summon';
+  kind: 'nova' | 'telegraph' | 'blast' | 'reaction' | 'summon' | 'vanish';
   x: number;
   y: number;
   radius: number;
@@ -94,7 +96,7 @@ export interface GameEvents {
   onXp(msg: { skill: string; gained: number; level: number; levelledUp: boolean }): void;
   onEquipment(equipment: Partial<Record<string, string>>): void;
   onBank(items: Record<string, number>): void;
-  onHit(hit: { x: number; y: number; dmg: number; isOwn: boolean; crit: boolean }): void;
+  onHit(hit: { x: number; y: number; dmg: number; isOwn: boolean; crit: boolean; backstab?: boolean }): void;
   onDeath(death: { x: number; y: number; defId: string }): void;
   /** A damaging blow with a knock direction — directional impact FX. */
   onImpact?(impact: {
@@ -179,6 +181,21 @@ export class ClientGame {
   private prevSentButtons = 0;
   /** Local player's status bits from the latest snapshot. */
   ownStatus = 0;
+
+  /** Crouch latch — mirrors the input toggle for HUD/render. */
+  get isSneaking(): boolean {
+    return this.input.sneakMode;
+  }
+
+  /** Server-confirmed full stealth (own snapshot bit). */
+  get isHidden(): boolean {
+    return (this.ownStatus & SNEAK_HIDDEN_BIT) !== 0;
+  }
+
+  /** A hostile NPC is currently chasing us (own snapshot bit). */
+  get isDetected(): boolean {
+    return (this.ownStatus & SNEAK_DETECTED_BIT) !== 0;
+  }
 
   /** Tap-to-move autopilot; cancelled by any manual movement input. */
   private autoPath: Vec2[] | null = null;
@@ -546,7 +563,17 @@ export class ClientGame {
             bornAt: performance.now(),
             sizeMul: crit ? 1.6 : 1,
           });
-          this.events.onHit({ x, y, dmg: msg.dmg, isOwn: msg.eid === this.ownEid, crit });
+          if (msg.bs) {
+            this.floaties.push({
+              x,
+              y: y - 0.9,
+              text: 'Backstab!',
+              color: '#b49af0',
+              bornAt: performance.now(),
+              sizeMul: 1.3,
+            });
+          }
+          this.events.onHit({ x, y, dmg: msg.dmg, isOwn: msg.eid === this.ownEid, crit, backstab: msg.bs === true });
         }
         break;
       }

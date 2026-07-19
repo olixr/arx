@@ -204,3 +204,14 @@ test('summon abilities define their summon; damage shapes define reach', () => {
     }
   }
 });
+
+test('daggers: backstab multiplier, fast cadence, and a real Art', () => {
+  for (const id of ['bronze_dagger', 'iron_dagger']) {
+    const item = ITEMS.get(id);
+    assert.ok(item?.weapon, `${id} missing`);
+    assert.ok((item.weapon.backstabMult ?? 0) > 1, `${id} has no backstab payoff`);
+    assert.ok(item.weapon.cooldownTicks < 7, `${id} should swing faster than swords`);
+    assert.ok(item.weapon.range < 1.7, `${id} should reach shorter than swords`);
+    assert.ok(item.weapon.art && abilityDef(item.weapon.art), `${id} art unresolved`);
+  }
+});

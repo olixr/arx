@@ -52,6 +52,67 @@ const PAINTERS: Record<string, IconPainter> = {
     dot(c, '#c4553d', -0.4, 0, 0.03);
     dot(c, '#fff2cc', -0.415, -0.015, 0.012);
   },
+  dagger: (c, col) => {
+    // The sword compressed: a short wicked blade, slim wrapped grip,
+    // no gem — a working knife, drawn bigger in frame to stay readable.
+    c.translate(0.5, 0.5);
+    c.rotate(-Math.PI / 4);
+    poly(c, col, [[-0.06, -0.07], [0.2, -0.07], [0.38, 0], [0.2, 0.07], [-0.06, 0.07]]);
+    c.fillStyle = shade(col, 40);
+    c.beginPath();
+    c.moveTo(-0.05, -0.055);
+    c.lineTo(0.19, -0.055);
+    c.lineTo(0.32, -0.005);
+    c.lineTo(-0.05, -0.005);
+    c.closePath();
+    c.fill();
+    // Straight guard + dark wrapped grip.
+    bar(c, '#8a5f1c', -0.11, -0.115, 0.05, 0.23);
+    bar(c, '#4a3a2a', -0.3, -0.05, 0.19, 0.1);
+    c.strokeStyle = '#6b5238';
+    c.lineWidth = 0.02;
+    for (const x of [-0.26, -0.21, -0.16]) {
+      c.beginPath();
+      c.moveTo(x, -0.05);
+      c.lineTo(x, 0.05);
+      c.stroke();
+    }
+  },
+  eye_open: (c, col) => {
+    // Alert almond eye — "something sees you."
+    c.translate(0.5, 0.5);
+    poly(c, '#f4efe4', [[-0.34, 0], [-0.12, -0.17], [0.12, -0.17], [0.34, 0], [0.12, 0.17], [-0.12, 0.17]]);
+    dot(c, col, 0, 0, 0.13);
+    dot(c, '#241a2e', 0, 0, 0.06);
+    dot(c, '#ffffff', -0.04, -0.05, 0.025);
+  },
+  eye_half: (c, col) => {
+    // Half-lidded — watchful, unseen so far.
+    c.translate(0.5, 0.5);
+    poly(c, '#d8d2c4', [[-0.34, 0], [-0.12, -0.17], [0.12, -0.17], [0.34, 0], [0.12, 0.17], [-0.12, 0.17]]);
+    dot(c, col, 0, 0.03, 0.12);
+    dot(c, '#241a2e', 0, 0.03, 0.055);
+    // The lid drops over the top half.
+    poly(c, shade(col, -25), [[-0.34, 0], [-0.12, -0.17], [0.12, -0.17], [0.34, 0], [0.12, -0.02], [-0.12, -0.02]]);
+  },
+  eye_closed: (c, col) => {
+    // A closed lid with lashes — gone from the world.
+    c.translate(0.5, 0.5);
+    c.strokeStyle = col;
+    c.lineWidth = 0.07;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.32, -0.03);
+    c.quadraticCurveTo(0, 0.18, 0.32, -0.03);
+    c.stroke();
+    c.lineWidth = 0.05;
+    for (const [x, y] of [[-0.24, 0.09], [-0.08, 0.15], [0.08, 0.15], [0.24, 0.09]] as const) {
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x * 1.25, y + 0.1);
+      c.stroke();
+    }
+  },
   axe: (c, col) => {
     // A woodsman's axe with the head mounted the way heads mount:
     // ACROSS the haft. The bit hangs off the eye perpendicular, horns
@@ -1866,6 +1927,8 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   bronze_axe: { icon: 'axe', color: '#b0793f' },
   bronze_pickaxe: { icon: 'pickaxe', color: '#b0793f' },
   fishing_rod: { icon: 'rod', color: '#c4a35a' },
+  bronze_dagger: { icon: 'dagger', color: '#c98d4b' },
+  iron_dagger: { icon: 'dagger', color: '#b6bcc6' },
   bronze_sword: { icon: 'sword', color: '#c98d4b' },
   iron_helm: { icon: 'helm', color: '#9aa2ac' },
   iron_sword: { icon: 'sword', color: '#b6bcc6' },
@@ -1992,6 +2055,16 @@ export function slotGlyphUrl(slot: string, size = 40): string {
     cape: 'cape',
   };
   return renderIcon(map[slot] ?? 'backpack', '#6e5a40', size);
+}
+
+/** Data URL for the HUD sneak-state eye chip. */
+export function sneakEyeUrl(state: 'sneaking' | 'hidden' | 'detected', size = 34): string {
+  const spec = {
+    sneaking: { icon: 'eye_half', color: '#7a8fa5' },
+    hidden: { icon: 'eye_closed', color: '#8a7fae' },
+    detected: { icon: 'eye_open', color: '#c4553d' },
+  }[state];
+  return renderIcon(spec.icon, spec.color, size);
 }
 
 /** Data URL for a UI glyph. */

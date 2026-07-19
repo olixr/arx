@@ -86,6 +86,18 @@ import {
   SLOT_TECHNIQUE,
   SNAP_GRACE_TICKS,
   SNAP_RECOVERY_TICKS,
+  SNEAK_HIDDEN_BIT,
+  SNEAK_DETECTED_BIT,
+  SNEAK_HIDE_LEVEL,
+  SNEAK_MOVE_HIDE_LEVEL,
+  SNEAK_STILL_TICKS,
+  SNEAK_REVEAL_LOCK_TICKS,
+  SNEAK_XP_PERIOD_TICKS,
+  SNEAK_XP_MIN_MOVE,
+  SNEAK_XP_RADIUS,
+  BACKSTAB_MULT_DEFAULT,
+  BACKSTAB_XP_BASE,
+  sneakDetectionFactor,
   STATION_TILES,
   STATUS_BIT,
   applyDodge,
@@ -95,6 +107,7 @@ import {
   hasButton,
   hasteOnHit,
   isDrawSlowed,
+  isBehind,
   nextComboStage,
   nextSnapStage,
   reactionDamage,
@@ -343,6 +356,16 @@ interface PlayerComp {
   /** Stage of the previous staff bolt (wand 1-2-HEAVY rhythm). */
   boltStage: number;
   boltGraceUntilTick: number;
+  /** Crouch latch from the last processed frame (held bit, survives empty ticks). */
+  sneaking: boolean;
+  /** Consecutive ticks without movement while sneaking. */
+  sneakStillTicks: number;
+  /** Fully hidden from other players and NPCs. */
+  hidden: boolean;
+  /** Re-hiding is locked until this tick (attacked / took damage). */
+  revealLockUntilTick: number;
+  /** Tiles moved while sneaking since the last XP pulse (anti-AFK gate). */
+  sneakMoveAccum: number;
 }
 
 /** A timed self-effect; multiple can ride at once (speeds multiply). */
@@ -438,6 +461,9 @@ export class GameServer {
 
   /** Depleted nodes waiting to come back. */
   private readonly respawnQueue: Array<{ at: number; tx: number; ty: number; tile: Tile }> = [];
+
+  /** Players some NPC is chasing this tick — drives the DETECTED status bit. */
+  private readonly chasedPlayers = new Set<EntityId>();
 
   /** Planted crops by "tx,ty". */
   private readonly crops = new Map<string, CropState>();
@@ -684,6 +710,11 @@ export class GameServer {
       snapGraceUntilTick: 0,
       boltStage: 0,
       boltGraceUntilTick: 0,
+      sneaking: false,
+      sneakStillTicks: 0,
+      hidden: false,
+      revealLockUntilTick: 0,
+      sneakMoveAccum: 0,
     });
     this.characterEids.set(character.id, eid);
     this.updateChunkMembership(eid);
@@ -710,6 +741,13 @@ export class GameServer {
     player.lastProcessedSeq = 0;
     player.lastDodgeSeq = -999;
     player.drawTicks = 0;
+    // The rejoining client's toggles start fresh — stale prevButtons would
+    // phantom-latch the held sneak bit (and eat the first ability edge).
+    player.prevButtons = 0;
+    player.sneaking = false;
+    player.sneakStillTicks = 0;
+    player.sneakMoveAccum = 0;
+    if (player.hidden) this.setHidden(eid, player, false);
     session.playerEid = eid;
     session.knownEntities.clear();
     session.knownChunks.clear();
@@ -739,6 +777,9 @@ export class GameServer {
     if (!player || player.session !== session) return;
     player.session = null;
     player.disconnectedAt = Date.now();
+    // No unpiloted invisible bodies during the reconnect grace window.
+    player.sneaking = false;
+    if (player.hidden) this.setHidden(eid, player, false);
     this.savePlayer(eid);
     console.log(`[game] ${player.name} disconnected, grace ${RECONNECT_GRACE_MS}ms`);
   }
@@ -1723,6 +1764,10 @@ export class GameServer {
 
     player.attackCooldown = weapon.cooldownTicks;
     player.lastCombatAt = Date.now();
+    // Backstab eligibility is judged at the moment of the swing — capture
+    // stealth BEFORE the attack reveals us.
+    const wasHidden = player.hidden;
+    this.revealPlayer(eid, player);
 
     const level = levelForXp(player.skills[weapon.style] ?? 0);
     const maxHit = Math.max(1, Math.round(weapon.damage * (1 + level * 0.05)));
@@ -1755,6 +1800,8 @@ export class GameServer {
         finisher ? Math.round(maxHit * FINISHER_DAMAGE_MULT) : maxHit,
         finisher ? FINISHER_KNOCKBACK_MULT : stage === 1 ? 1.1 : 1,
         finisher, // the finisher sweeps everyone, not just the best target
+        wasHidden,
+        weapon.backstabMult ?? BACKSTAB_MULT_DEFAULT,
       );
     } else {
       // Wand rhythm: bolt → bolt → HEAVY. The third cast is a fat slow
@@ -1800,8 +1847,14 @@ export class GameServer {
     maxHit: number,
     knockbackMult = 1,
     sweepAll = false,
+    wasHidden = false,
+    backstabMult = BACKSTAB_MULT_DEFAULT,
   ): void {
     const pos = this.positions.must(eid);
+    // A strike out of full stealth backstabs from any angle; otherwise a
+    // sneaking attacker must be inside the cone behind the target's facing.
+    const backstabs = (npos: PositionComp): boolean =>
+      wasHidden || (player.sneaking && isBehind(pos.x, pos.y, npos.x, npos.y, npos.dir));
     let bestTarget: EntityId | null = null;
     let bestDist = Infinity;
     const inArc: EntityId[] = [];
@@ -1827,8 +1880,9 @@ export class GameServer {
     if (sweepAll) {
       // The finisher clears the crowd — everyone in the arc eats it.
       for (const npcEid of inArc) {
-        const { dmg, crit } = rollBasic(maxHit);
-        this.damageNpc(npcEid, dmg, eid, 'melee', { crit, knockbackMult, basic: true });
+        const backstab = backstabs(this.positions.must(npcEid));
+        const { dmg, crit } = rollBasic(backstab ? Math.round(maxHit * backstabMult) : maxHit);
+        this.damageNpc(npcEid, dmg, eid, 'melee', { crit, knockbackMult, basic: true, backstab });
       }
       return;
     }
@@ -1844,8 +1898,9 @@ export class GameServer {
       );
     }
     if (bestTarget !== null) {
-      const { dmg, crit } = rollBasic(maxHit);
-      this.damageNpc(bestTarget, dmg, eid, 'melee', { crit, knockbackMult, basic: true });
+      const backstab = backstabs(this.positions.must(bestTarget));
+      const { dmg, crit } = rollBasic(backstab ? Math.round(maxHit * backstabMult) : maxHit);
+      this.damageNpc(bestTarget, dmg, eid, 'melee', { crit, knockbackMult, basic: true, backstab });
     }
   }
 
@@ -1938,6 +1993,26 @@ export class GameServer {
     this.sendCooldowns(player);
   }
 
+  /**
+   * Flip full-stealth on or off. The vanish puff fires at the last visible
+   * position BEFORE interest drops the entity, so viewers read an
+   * intentional disappearance instead of a netcode pop.
+   */
+  private setHidden(eid: EntityId, player: PlayerComp, hidden: boolean): void {
+    player.hidden = hidden;
+    const pos = this.positions.get(eid);
+    if (pos) {
+      this.broadcastFx({ t: 'fx', kind: 'vanish', x: pos.x, y: pos.y, radius: 0.6, color: '#8a7fae' });
+    }
+  }
+
+  /** Attacking or taking damage drops stealth and locks re-hiding briefly. */
+  private revealPlayer(eid: EntityId, player: PlayerComp): void {
+    player.revealLockUntilTick = this.tickCount + SNEAK_REVEAL_LOCK_TICKS;
+    player.sneakStillTicks = 0;
+    if (player.hidden) this.setHidden(eid, player, false);
+  }
+
   /** Combat FX go to every session close enough to possibly see them. */
   private broadcastFx(fx: S2CFx): void {
     for (const s of this.sessions) {
@@ -1957,6 +2032,7 @@ export class GameServer {
     player.abilityCd[slot] = ab.cooldownTicks;
     player.castFreezeUntilTick = this.tickCount + (ab.castFreezeTicks ?? 0);
     player.lastCombatAt = Date.now();
+    this.revealPlayer(eid, player);
     player.drawTicks = 0; // casting lets the bowstring down
     if (player.action) this.cancelAction(eid, player, 'cast');
     this.setPose(eid, PoseState.Art, Math.max(6, (ab.castFreezeTicks ?? 0) + 4));
@@ -2466,10 +2542,17 @@ export class GameServer {
   }
 
   private statusBits(eid: EntityId): number {
-    const list = this.statuses.get(eid);
-    if (!list || list.length === 0) return 0;
     let bits = 0;
-    for (const s of list) bits |= STATUS_BIT[s.id];
+    const list = this.statuses.get(eid);
+    if (list) for (const s of list) bits |= STATUS_BIT[s.id];
+    // Stealth bits ride the same byte. Snapshots for a hidden player only
+    // ever reach their own session (interest suppression), so HIDDEN is
+    // effectively owner-only; DETECTED drives the own eye chip.
+    const player = this.players.get(eid);
+    if (player) {
+      if (player.hidden) bits |= SNEAK_HIDDEN_BIT;
+      if (this.chasedPlayers.has(eid)) bits |= SNEAK_DETECTED_BIT;
+    }
     return bits;
   }
 
@@ -2743,6 +2826,8 @@ export class GameServer {
       fullDraw?: boolean;
       /** Status carried by the hit (weapon arts, relics, projectiles). */
       status?: StatusApply;
+      /** Struck from stealth or from behind while sneaking (damage already multiplied). */
+      backstab?: boolean;
     } = {},
   ): void {
     const crit = opts.crit ?? false;
@@ -2785,7 +2870,7 @@ export class GameServer {
       kx = kdx / kd;
       ky = kdy / kd;
     }
-    this.broadcastHit(npcEid, dmg, crit, kx, ky);
+    this.broadcastHit(npcEid, dmg, crit, kx, ky, opts.backstab);
     if (dmg <= 0) return;
     health.hp -= dmg;
     this.setNpcPose(npcEid, npc, PoseState.Hurt, 4);
@@ -2808,6 +2893,9 @@ export class GameServer {
       attacker.lastCombatAt = Date.now();
       this.grantXp(attackerEid, attacker, style, dmg * 4);
       this.grantXp(attackerEid, attacker, 'vitality', dmg * 2);
+      if (opts.backstab) {
+        this.grantXp(attackerEid, attacker, 'sneak', BACKSTAB_XP_BASE + dmg * 3);
+      }
       // Bloodlust: melee wounds feed the wounder.
       if (style === 'melee') {
         let steal = 0;
@@ -2889,6 +2977,10 @@ export class GameServer {
     const health = this.healths.get(eid);
     if (!player || !health) return;
 
+    // Getting hit blows your cover even if armor soaks the damage to 0 —
+    // and it must land before NPC retaliation picks a target.
+    if (raw > 0) this.revealPlayer(eid, player);
+
     const defLevel = levelForXp(player.skills.defence ?? 0);
     let armor = 0;
     for (const worn of Object.values(player.equipment)) {
@@ -2944,7 +3036,7 @@ export class GameServer {
     }
   }
 
-  private broadcastHit(eid: EntityId, dmg: number, crit = false, kx = 0, ky = 0): void {
+  private broadcastHit(eid: EntityId, dmg: number, crit = false, kx = 0, ky = 0, backstab = false): void {
     const hasDir = kx !== 0 || ky !== 0;
     for (const s of this.sessions) {
       if (s.playerEid === eid || s.knownEntities.has(eid)) {
@@ -2955,6 +3047,7 @@ export class GameServer {
           crit: crit || undefined,
           kx: hasDir ? Math.round(kx * 100) / 100 : undefined,
           ky: hasDir ? Math.round(ky * 100) / 100 : undefined,
+          bs: backstab || undefined,
         });
       }
     }
@@ -3025,6 +3118,9 @@ export class GameServer {
     const player = this.players.get(targetEid);
     if (player) {
       if (player.session === null && player.disconnectedAt !== null) return null;
+      // A target that melts into full stealth is simply gone — the chase
+      // breaks through the same leash path as a vanished decoy.
+      if (player.hidden) return null;
       return this.positions.get(targetEid) ?? null;
     }
     if (this.summons.get(targetEid)?.kind === 'decoy') {
@@ -3090,11 +3186,18 @@ export class GameServer {
       if (npc.state === 'idle' && npc.def.aggroRange > 0 && (this.tickCount + eid) % 5 === 0) {
         for (const [playerEid, player] of this.players) {
           if (player.session === null && player.disconnectedAt !== null) continue;
+          if (player.hidden) continue;
           const ppos = this.positions.get(playerEid);
           if (!ppos) continue;
           const dx = ppos.x - pos.x;
           const dy = ppos.y - pos.y;
-          if (dx * dx + dy * dy < npc.def.aggroRange ** 2) {
+          // Sneaking shrinks how close this NPC lets you get — the whole
+          // point of the skill below the invisibility tiers.
+          let aggro = npc.def.aggroRange;
+          if (player.sneaking) {
+            aggro *= sneakDetectionFactor(levelForXp(player.skills.sneak ?? 0));
+          }
+          if (dx * dx + dy * dy < aggro * aggro) {
             npc.state = 'chase';
             npc.targetEid = playerEid;
             break;
@@ -3260,6 +3363,44 @@ export class GameServer {
       } else if (this.tickCount >= npc.poseUntilTick) {
         this.poses.set(eid, PoseState.Idle);
       }
+    }
+
+    // Fresh detection state for this tick's snapshots (the eye chip).
+    this.chasedPlayers.clear();
+    for (const [, npc] of this.npcs) {
+      if (npc.state === 'chase' && npc.targetEid !== null && this.players.has(npc.targetEid)) {
+        this.chasedPlayers.add(npc.targetEid);
+      }
+    }
+  }
+
+  /**
+   * Passive sneak XP: a pulse per second while crouched close to hostile
+   * NPCs that have NOT noticed you. Gated on distance actually sneaked
+   * since the last pulse — standing still earns safety, not XP.
+   */
+  private tickSneakXp(): void {
+    for (const [eid, player] of this.players) {
+      if ((this.tickCount + eid) % SNEAK_XP_PERIOD_TICKS !== 0) continue;
+      if (!player.sneaking || player.session === null) continue;
+      const movedEnough = player.sneakMoveAccum >= SNEAK_XP_MIN_MOVE;
+      player.sneakMoveAccum = 0;
+      if (!movedEnough) continue;
+      const pos = this.positions.get(eid);
+      if (!pos) continue;
+      let best = 0;
+      for (const [npcEid, npc] of this.npcs) {
+        if (npc.def.aggroRange <= 0 || npc.def.damage <= 0) continue;
+        if (npc.state === 'chase' && npc.targetEid === eid) continue;
+        const npos = this.positions.get(npcEid);
+        if (!npos) continue;
+        const dist = Math.hypot(npos.x - pos.x, npos.y - pos.y);
+        if (dist > SNEAK_XP_RADIUS) continue;
+        // Closer and stronger threats teach more.
+        const xp = Math.ceil(npc.def.level * (1.25 - dist / SNEAK_XP_RADIUS));
+        best = Math.max(best, Math.min(25, xp));
+      }
+      if (best > 0) this.grantXp(eid, player, 'sneak', best);
     }
   }
 
@@ -3458,6 +3599,7 @@ export class GameServer {
 
     this.tickSpawns(now);
     this.tickNpcs(now);
+    this.tickSneakXp();
     this.tickStatuses();
     this.tickSummons();
     this.tickBlasts();
@@ -3515,7 +3657,10 @@ export class GameServer {
       if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
       if (casting) speed = 0; // committed to the cast
       const next = stepMovement(pos, frame, speed, TICK_DT, this.world);
-      if (next.x !== pos.x || next.y !== pos.y) moved = true;
+      if (next.x !== pos.x || next.y !== pos.y) {
+        moved = true;
+        player.sneakMoveAccum += Math.hypot(next.x - pos.x, next.y - pos.y);
+      }
       pos.x = next.x;
       pos.y = next.y;
       pos.dir = frame.aim;
@@ -3556,6 +3701,25 @@ export class GameServer {
       }
       frames++;
     }
+
+    // Stealth: the latch is a pure function of the last processed frame's
+    // held bit, so it survives empty ticks and packet loss. Hidden is
+    // strictly layered on top: hidden ⇒ sneaking.
+    player.sneaking = hasButton(player.prevButtons, InputButton.Sneak);
+    if (player.sneaking) {
+      player.sneakStillTicks = moved ? 0 : player.sneakStillTicks + 1;
+    } else {
+      player.sneakStillTicks = 0;
+      player.sneakMoveAccum = 0;
+    }
+    const sneakLevel = levelForXp(player.skills.sneak ?? 0);
+    const wantHidden =
+      player.sneaking &&
+      this.tickCount >= player.revealLockUntilTick &&
+      (sneakLevel >= SNEAK_MOVE_HIDE_LEVEL ||
+        (sneakLevel >= SNEAK_HIDE_LEVEL && player.sneakStillTicks >= SNEAK_STILL_TICKS));
+    if (wantHidden !== player.hidden) this.setHidden(eid, player, wantHidden);
+
     if (player.drawTicks > 0) {
       // Drawing overrides everything else visually until release.
       this.setPose(eid, PoseState.Draw, 2);
@@ -3569,7 +3733,10 @@ export class GameServer {
         player.action.kind === 'craft' ? PoseState.Craft : PoseState.Gather,
       );
     } else {
-      this.poses.set(eid, moved ? PoseState.Walk : PoseState.Idle);
+      this.poses.set(
+        eid,
+        player.sneaking ? PoseState.Sneak : moved ? PoseState.Walk : PoseState.Idle,
+      );
     }
     if (moved) this.updateChunkMembership(eid);
   }
@@ -3602,6 +3769,8 @@ export class GameServer {
     if (player.drawTicks === 0) return;
     const ticks = player.drawTicks;
     player.drawTicks = 0;
+    // Loosing the arrow is the giveaway, not drawing the string.
+    this.revealPlayer(eid, player);
 
     const level = levelForXp(player.skills.archery ?? 0);
     const base = Math.max(1, Math.round(weapon.damage * (1 + level * 0.05)));
@@ -3717,6 +3886,13 @@ export class GameServer {
     }
     for (const key of session.knownChunks) {
       if (!windowKeys.has(key)) session.knownChunks.delete(key);
+    }
+
+    // Fully-hidden players simply aren't there to anyone else: the diff
+    // below issues the leave (and later the fresh re-enter) for free, and
+    // snapshots only iterate knownEntities so nothing leaks meanwhile.
+    for (const e of visible) {
+      if (e !== eid && this.players.get(e)?.hidden) visible.delete(e);
     }
 
     const enters: EntityMeta[] = [];

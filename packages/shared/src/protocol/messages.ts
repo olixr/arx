@@ -292,6 +292,8 @@ export interface S2CHit {
   /** Normalized knock direction — drives directional impact sparks. */
   kx?: number;
   ky?: number;
+  /** Backstab — struck from stealth or from behind while sneaking. */
+  bs?: boolean;
 }
 
 /** An NPC died (killed by someone) — drives the death effect. */
@@ -335,7 +337,7 @@ export interface S2CCooldowns {
  */
 export interface S2CFx {
   t: 'fx';
-  kind: 'nova' | 'telegraph' | 'blast' | 'reaction' | 'summon';
+  kind: 'nova' | 'telegraph' | 'blast' | 'reaction' | 'summon' | 'vanish';
   x: number;
   y: number;
   radius: number;

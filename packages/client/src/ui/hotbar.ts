@@ -2,7 +2,7 @@ import { EQUIP_SLOTS, PASSIVES, type AbilitySlot } from '@devcraft/shared';
 import { itemDef } from '@devcraft/content';
 import type { ClientGame } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
-import { itemIconUrl } from '../render/icons.js';
+import { itemIconUrl, sneakEyeUrl } from '../render/icons.js';
 
 const SLOT_KEYS = ['Q', 'E', 'R', 'T'] as const;
 /** Pad bindings for the same four slots: LB, RB, Y, d-pad up. */
@@ -32,6 +32,10 @@ export class Hotbar {
   private readonly buffTray = document.getElementById('buff-tray')!;
   private buffKey = '';
   private readonly buffSecsEls: HTMLElement[] = [];
+  /** Stealth-state eye chip (sneaking / hidden / detected). */
+  private readonly sneakChip = document.createElement('div');
+  private readonly sneakEye = document.createElement('img');
+  private sneakState = '';
   private readonly slots: HTMLElement[] = [];
   private readonly wipes: HTMLElement[] = [];
   private readonly icons: HTMLElement[] = [];
@@ -90,6 +94,15 @@ export class Hotbar {
       this.wipes.push(wipe);
       this.icons.push(icon);
     }
+
+    // The stealth eye lives beside the buff chips, shown only while the
+    // sneak latch is on: half-lidded = sneaking, closed = hidden, open
+    // red = an NPC has you.
+    this.sneakChip.className = 'buff-chip sneak-eye';
+    this.sneakChip.style.display = 'none';
+    this.sneakEye.draggable = false;
+    this.sneakChip.appendChild(this.sneakEye);
+    this.buffTray.appendChild(this.sneakChip);
   }
 
   /** Called once per frame — cheap DOM writes only on change. */
@@ -170,6 +183,8 @@ export class Hotbar {
     if (bKey !== this.buffKey) {
       this.buffKey = bKey;
       this.buffTray.innerHTML = '';
+      // The eye chip is a permanent resident — survive the rebuild.
+      this.buffTray.appendChild(this.sneakChip);
       this.buffSecsEls.length = 0;
       for (const b of game.buffs) {
         const chip = document.createElement('div');
@@ -190,6 +205,31 @@ export class Hotbar {
       const left = Math.max(0, Math.round(b.secsLeft - (now - game.buffsAt) / 1000));
       const text = left >= 60 ? `${Math.floor(left / 60)}m${String(left % 60).padStart(2, '0')}` : `${left}s`;
       if (this.buffSecsEls[i]!.textContent !== text) this.buffSecsEls[i]!.textContent = text;
+    }
+
+    // Stealth eye chip — state changes are rare; DOM writes only then.
+    const state = !game.isSneaking
+      ? ''
+      : game.isDetected
+        ? 'detected'
+        : game.isHidden
+          ? 'hidden'
+          : 'sneaking';
+    if (state !== this.sneakState) {
+      this.sneakState = state;
+      if (state === '') {
+        this.sneakChip.style.display = 'none';
+      } else {
+        this.sneakChip.style.display = '';
+        this.sneakChip.classList.toggle('hidden-pulse', state === 'hidden');
+        this.sneakEye.src = sneakEyeUrl(state as 'sneaking' | 'hidden' | 'detected');
+        this.sneakChip.title =
+          state === 'hidden'
+            ? 'Hidden — no one can see you'
+            : state === 'detected'
+              ? 'Detected — a hostile has found you'
+              : 'Sneaking — harder to notice (lvl 50: vanish while still; lvl 90: vanish while moving)';
+      }
     }
   }
 }

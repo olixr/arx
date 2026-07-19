@@ -435,6 +435,17 @@ game.onFx = (fx) => {
   } else if (fx.kind === 'nova' && dist > 0.9) {
     // Someone else's nova — a softer report at a distance.
     sfx.zap();
+  } else if (fx.kind === 'vanish') {
+    // A stealth flip: a soft gray-violet puff where the body was (or
+    // reappears) so the interest pop reads as intentional.
+    renderer.particles.burst(fx.x, fx.y - 0.5, 14, ['#8a7fae', '#b4aacb', '#5e5678'], {
+      speed: 1.4,
+      life: 0.55,
+      size: 0.1,
+      gravity: -1.2,
+    });
+    renderer.addRing(fx.x, fx.y - 0.3, '#8a7fae', 0.5);
+    if (dist < 10) sfx.dash();
   }
 };
 
@@ -682,6 +693,7 @@ let fpsWindowStart = performance.now();
 
 let lastOwnPose = 0;
 let padInteractWasDown = false;
+let padSneakWasDown = false;
 let lastDrawT = 0;
 /** Pad button state last frame — build-mode verbs edge off this. */
 let padPrevBtns = new Set<number>();
@@ -742,6 +754,7 @@ function frame(now: number): void {
       else sfx.swingCombo(2);
       input.rumble(0.55, 0.3, 130);
     } else if (game.ownPose === PoseState.Cast) sfx.zap();
+    else if (game.ownPose === PoseState.Sneak) sfx.dash(); // soft cloth rustle into the crouch
     lastOwnPose = game.ownPose;
   }
 
@@ -784,6 +797,12 @@ function frame(now: number): void {
     activateTarget(game.findNearbyTarget());
   }
   padInteractWasDown = padInteract;
+
+  // L3 (left-stick click) toggles the sneak latch on pads.
+  const padSneak =
+    !input.uiCapture && (input.padSnapshot()?.buttons[10]?.pressed ?? false);
+  if (padSneak && !padSneakWasDown) input.sneakMode = !input.sneakMode;
+  padSneakWasDown = padSneak;
 
   // World interact prompt: a glyph chip floating over whatever the
   // Interact button would use — the console-native "press Ⓧ" read.

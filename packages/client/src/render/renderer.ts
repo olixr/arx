@@ -4,6 +4,7 @@ import {
   DRAW_FULL_TICKS,
   EntityKind,
   PoseState,
+  STATUS_AMBIENCE_MASK,
   STATUS_BIT,
   TICK_MS,
   TILE_PX,
@@ -228,6 +229,11 @@ interface DrawItem {
    * plateau band, drawn later, would paint it out.
    */
   elevated?: boolean;
+  /**
+   * Whole-sprite translucency (the own player's stealth ghost). Applied
+   * OUTSIDE the outline pass so the silhouette ring fades with the body.
+   */
+  alpha?: number;
 }
 
 export class Renderer {
@@ -979,9 +985,14 @@ export class Renderer {
     this.sdwLayerAlpha = 1;
     items.sort((a, b) => a.sortY - b.sortY);
     for (const item of items) {
+      // Stealth ghost: wrap OUTSIDE the outline pass so the dilated
+      // silhouette ring fades with the body (alpha inside draw() would
+      // leave the ring solid). The nameplate stays opaque.
+      if (item.alpha !== undefined) this.ctx.globalAlpha = item.alpha;
       if (item.elevated) item.drawShadow?.();
       if (this.outlineOn && item.body) this.paintOutlined(item);
       else item.draw();
+      if (item.alpha !== undefined) this.ctx.globalAlpha = 1;
       item.drawLabel?.();
     }
 
@@ -4323,26 +4334,28 @@ export class Renderer {
     if (game.ownEid !== null) {
       const own = game.predictor.renderPos();
       if (game.ownStatus) this.statusAmbience(own.x, own.y, game.ownStatus);
-      items.push(
-        this.humanoidItem({
-          eid: 'own',
-          x: own.x,
-          y: own.y,
-          dir: game.aim,
-          pose: game.ownPose,
-          hpPct: 255,
-          name: game.ownName,
-          isOwn: true,
-          hurt: game.ownHurtUntil > now,
-          equip: game.equipment,
-          carry: game.carryStyle,
-          look: game.ownLook ?? undefined,
-          color: game.ownLook
-            ? CLOTH_COLORS[game.ownLook.shirt]!
-            : PLAYER_COLORS[hashString(game.ownName) % PLAYER_COLORS.length]!,
-          drawTOverride: game.ownDrawT,
-        }),
-      );
+      const ownItem = this.humanoidItem({
+        eid: 'own',
+        x: own.x,
+        y: own.y,
+        dir: game.aim,
+        pose: game.ownPose,
+        hpPct: 255,
+        name: game.ownName,
+        isOwn: true,
+        hurt: game.ownHurtUntil > now,
+        equip: game.equipment,
+        carry: game.carryStyle,
+        look: game.ownLook ?? undefined,
+        color: game.ownLook
+          ? CLOTH_COLORS[game.ownLook.shirt]!
+          : PLAYER_COLORS[hashString(game.ownName) % PLAYER_COLORS.length]!,
+        drawTOverride: game.ownDrawT,
+      });
+      // Only WE see ourselves while stealthed — a ghost of our own body.
+      if (game.isHidden) ownItem.alpha = 0.45;
+      else if (game.isSneaking) ownItem.alpha = 0.8;
+      items.push(ownItem);
     }
   }
 
@@ -4379,7 +4392,8 @@ export class Renderer {
     const poseT = Math.min(1, (now - anim.poseStartedAt) / 280);
     // Rest-carriage clock: survives Idle↔Walk flips, resets only when
     // returning from a non-restful pose (combat, gathering, drawing).
-    const restfulPose = e.pose === PoseState.Idle || e.pose === PoseState.Walk;
+    const restfulPose =
+      e.pose === PoseState.Idle || e.pose === PoseState.Walk || e.pose === PoseState.Sneak;
     if (!restfulPose) anim.restfulSince = undefined;
     else if (anim.restfulSince === undefined) anim.restfulSince = now;
     const restT = restfulPose
@@ -5878,6 +5892,9 @@ export class Renderer {
    * Spawn rates are frame-time scaled so effect density is fps-stable.
    */
   private statusAmbience(x: number, y: number, bits: number): void {
+    // Stealth bits ride the same byte — only DoT/CC bits make weather.
+    bits &= STATUS_AMBIENCE_MASK;
+    if (bits === 0) return;
     const dt = this.frameDt;
     if (bits & STATUS_BIT.burn) {
       this.queueGlow(x, y - 0.3, 0.9, '255, 138, 60', 0.3);
