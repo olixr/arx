@@ -2314,14 +2314,12 @@ export class Renderer {
     if (!this.localRegion) return null;
     const rects: Array<{ x: number; y: number; w: number; h: number }> = [];
     for (const region of [this.localRegion]) {
-      // The lightmap is GROUND geography: the south wall's face occupies
-      // the same screen rows as the last ~wallHeight interior rows, and
-      // dimming them would shade the facade (and the roof's south
-      // slope). Those rows hide behind the face from this camera
-      // anyway — leave them out of the rects. Exact by construction:
-      // a face of height H covers H world-rows of screen behind it.
-      const yEnd = Math.max(region.y0, region.y1 - Math.ceil(this.wallHeightFor(region.stories)));
-      for (let ty = region.y0; ty <= yEnd; ty++) {
+      // Dim the WHOLE room. The old wallHeight row-exclusion guarded
+      // the south facade from ground-geography dimming, but the local
+      // region's front wall is a cutaway stub now — its rows are
+      // visible floor, and excluding them left a bright seam band
+      // across the room.
+      for (let ty = region.y0; ty <= region.y1; ty++) {
         let run = -1;
         for (let tx = region.x0; tx <= region.x1 + 1; tx++) {
           const inside = tx <= region.x1 && region.tiles.has(packTile(tx, ty));
@@ -2394,9 +2392,12 @@ export class Renderer {
         if (this.roofBakes.size > 48) this.roofBakes.clear();
         this.roofBakes.set(key, bake);
       }
-      // Fade: ease toward hidden while the local player is inside; new
-      // roofs fade IN from 0 so chunk streaming never pops one on.
-      const target = this.localRegion && this.localRegion.id === region.id ? 0.08 : 1;
+      // Fade: ease to FULLY hidden while the local player is inside —
+      // even a faint ghost shows the fascia steps as dark bands across
+      // the floor; the dim ambient and the cutaway wall carry the
+      // "indoors" read. New roofs fade IN from 0 so chunk streaming
+      // never pops one on.
+      const target = this.localRegion && this.localRegion.id === region.id ? 0 : 1;
       const cur = this.roofAlpha.get(key) ?? 0;
       const a = cur + (target - cur) * (1 - Math.exp(-10 * this.frameDt));
       this.roofAlpha.set(key, a);
