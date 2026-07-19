@@ -6,6 +6,7 @@
 export * from './abilities.js';
 export * from './items.js';
 export * from './nodes.js';
+export * from './crops.js';
 export * from './npcs.js';
 export * from './recipes.js';
 export * from './shop.js';

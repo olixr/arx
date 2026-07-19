@@ -47,6 +47,28 @@ export enum Tile {
   RockGold = 38,
   /** An iron lantern on a post — a warm town light after dark. */
   LampPost = 39,
+  /** Player-built garden plot: dark furrowed soil, ready for seeds. */
+  Tilled = 40,
+  /** Freshly planted — a generic green shoot; the crop record knows what it is. */
+  CropSprout = 41,
+  CarrotMid = 42,
+  CarrotRipe = 43,
+  SagewortMid = 44,
+  SagewortRipe = 45,
+  SunflowerMid = 46,
+  SunflowerRipe = 47,
+  WheatMid = 48,
+  WheatRipe = 49,
+  CottonMid = 50,
+  CottonRipe = 51,
+  MoonbellMid = 52,
+  MoonbellRipe = 53,
+  /** Herbalism station: a workbench of glass retorts and bubbling beakers. */
+  Alembic = 54,
+  BerryBush = 55,
+  FibrePlant = 56,
+  WildSagewort = 57,
+  WildMoonbell = 58,
 }
 
 export enum Detail {
@@ -131,6 +153,25 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.RockCoal]: { name: 'coal rock', solid: true, color: '#6e6a75', raised: true, topColor: '#2e2b33' },
   [Tile.RockGold]: { name: 'gold rock', solid: true, color: '#6e6a75', raised: true, topColor: '#e8b64c' },
   [Tile.LampPost]: { name: 'lamp post', solid: true, color: '#3a3444', raised: true, topColor: '#e8c06a' },
+  [Tile.Tilled]: { name: 'garden plot', solid: false, color: '#6b4f33', variants: ['#654a30', '#715436'] },
+  [Tile.CropSprout]: { name: 'sprout', solid: false, color: '#6b4f33', variants: ['#654a30'] },
+  [Tile.CarrotMid]: { name: 'carrots', solid: false, color: '#6b4f33', variants: ['#654a30'] },
+  [Tile.CarrotRipe]: { name: 'ripe carrots', solid: false, color: '#6b4f33', variants: ['#654a30'] },
+  [Tile.SagewortMid]: { name: 'sagewort', solid: false, color: '#6b4f33', variants: ['#654a30'] },
+  [Tile.SagewortRipe]: { name: 'ripe sagewort', solid: false, color: '#6b4f33', variants: ['#654a30'] },
+  [Tile.SunflowerMid]: { name: 'sunflowers', solid: false, color: '#6b4f33', variants: ['#654a30'] },
+  [Tile.SunflowerRipe]: { name: 'ripe sunflowers', solid: false, color: '#6b4f33', variants: ['#654a30'] },
+  [Tile.WheatMid]: { name: 'wheat', solid: false, color: '#6b4f33', variants: ['#654a30'] },
+  [Tile.WheatRipe]: { name: 'ripe wheat', solid: false, color: '#6b4f33', variants: ['#654a30'] },
+  [Tile.CottonMid]: { name: 'cotton', solid: false, color: '#6b4f33', variants: ['#654a30'] },
+  [Tile.CottonRipe]: { name: 'ripe cotton', solid: false, color: '#6b4f33', variants: ['#654a30'] },
+  [Tile.MoonbellMid]: { name: 'moonbell', solid: false, color: '#6b4f33', variants: ['#654a30'] },
+  [Tile.MoonbellRipe]: { name: 'ripe moonbell', solid: false, color: '#6b4f33', variants: ['#654a30'] },
+  [Tile.Alembic]: { name: 'alembic bench', solid: true, color: '#7d5a2e', raised: true, topColor: '#7fc9b3' },
+  [Tile.BerryBush]: { name: 'berry bush', solid: true, color: '#3a6d38', raised: true, topColor: '#2f5c32' },
+  [Tile.FibrePlant]: { name: 'fibre plant', solid: true, color: '#5f8a44', raised: true, topColor: '#79a355' },
+  [Tile.WildSagewort]: { name: 'wild sagewort', solid: true, color: '#5b8a5e', raised: true, topColor: '#8fb083' },
+  [Tile.WildMoonbell]: { name: 'wild moonbell', solid: true, color: '#4c5578', raised: true, topColor: '#8f9ed6' },
 };
 
 /** Every mineable/mined rock formation tile, ore-bearing or not. */
@@ -154,13 +195,14 @@ export const ORE_TILES: readonly Tile[] = [
 ];
 
 /** Crafting stations, keyed by what recipes call them. */
-export type StationType = 'fire' | 'furnace' | 'anvil' | 'workbench';
+export type StationType = 'fire' | 'furnace' | 'anvil' | 'workbench' | 'alembic';
 
 export const STATION_TILES: Record<StationType, Tile> = {
   fire: Tile.Campfire,
   furnace: Tile.Furnace,
   anvil: Tile.Anvil,
   workbench: Tile.Workbench,
+  alembic: Tile.Alembic,
 };
 
 export function stationAtTile(tile: number): StationType | null {

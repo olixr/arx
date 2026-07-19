@@ -226,9 +226,12 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
             if (ground === Tile.StoneFloor && roll > 0.88) detail = Detail.Pebbles;
           } else {
             // Hardy highland meadow: sparse windswept trees, thin soil.
+            // Moonbell only opens up here, near the sky.
+            const flora = hashCoords(seed ^ 0xf10a5, tx, ty) / 4294967296;
             ground =
               roll < 0.02 ? Tile.Tree
               : roll < 0.028 ? Tile.Rock
+              : flora < 0.006 ? Tile.WildMoonbell
               : moisture < 0.4 ? Tile.StoneFloor
               : roll < 0.14 ? Tile.GrassTall
               : Tile.Grass;
@@ -262,10 +265,17 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
         if (ground === Tile.Grass && roll > 0.55) detail = Detail.Pebbles;
       } else if (moisture > 0.62) {
         // Forest: tree density scales with moisture; some trees are oaks.
+        // The understory hides the herbalist's plants — sagewort in the
+        // shade, moonbell only in the deepest damp, fibre at the edges.
         const treeDensity = 0.10 + (moisture - 0.62) * 1.4;
         const oakRoll = hashCoords(seed ^ 0x0acc0de, tx, ty) / 4294967296;
+        const flora = hashCoords(seed ^ 0xf10a5, tx, ty) / 4294967296;
         ground =
-          roll < treeDensity ? (oakRoll < 0.18 ? Tile.TreeOak : Tile.Tree) : Tile.Grass;
+          roll < treeDensity ? (oakRoll < 0.18 ? Tile.TreeOak : Tile.Tree)
+          : flora < 0.008 ? Tile.WildSagewort
+          : flora < 0.012 && moisture > 0.75 ? Tile.WildMoonbell
+          : flora < 0.017 ? Tile.FibrePlant
+          : Tile.Grass;
         if (ground === Tile.Grass && roll > 0.93) detail = Detail.Mushroom;
       } else if (moisture < 0.34) {
         // Dry meadow: bare grass except for the odd rocky knoll — a
@@ -282,7 +292,14 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
           ground = roll < 0.006 ? Tile.Rock : roll < 0.09 ? Tile.GrassTall : Tile.Grass;
         }
       } else {
-        ground = roll < 0.015 ? Tile.Tree : roll < 0.06 ? Tile.GrassTall : Tile.Grass;
+        // Open meadow: berry bushes and fibre plants for the forager.
+        const flora = hashCoords(seed ^ 0xf10a5, tx, ty) / 4294967296;
+        ground =
+          roll < 0.015 ? Tile.Tree
+          : flora < 0.005 ? Tile.BerryBush
+          : flora < 0.009 ? Tile.FibrePlant
+          : roll < 0.06 ? Tile.GrassTall
+          : Tile.Grass;
         if (ground === Tile.Grass && roll > 0.9) {
           detail = roll > 0.96 ? Detail.Flowers : Detail.Tuft;
         }

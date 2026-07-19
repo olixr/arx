@@ -10,6 +10,9 @@ import type { InputManager } from '../input/inputManager.js';
 export declare class Hotbar {
     private readonly root;
     private readonly tray;
+    private readonly buffTray;
+    private buffKey;
+    private readonly buffSecsEls;
     private readonly slots;
     private readonly wipes;
     private readonly icons;

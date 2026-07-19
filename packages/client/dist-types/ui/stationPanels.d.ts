@@ -1,4 +1,4 @@
-import { type SkillXp, type StationType } from '@devcraft/shared';
+import { type InvSlot, type SkillXp, type StationType } from '@devcraft/shared';
 /**
  * Craft / bank / shop panels. Opened by interacting with the matching
  * world tile; every action is validated server-side — these are views.
@@ -38,6 +38,13 @@ export declare class StationPanels {
      */
     enforceAnchor(px: number, py: number): void;
     openBuild(skills: SkillXp): void;
+    /** Set by main: sends the plant intent for a chosen seed. */
+    onPlant: ((tx: number, ty: number, seed: string) => void) | null;
+    /** Seed picker for a tilled plot: lists the seeds you carry. */
+    openPlant(tx: number, ty: number, inventory: InvSlot[], skills: SkillXp, at?: {
+        tx: number;
+        ty: number;
+    }): void;
     openCraft(station: StationType | null, skills: SkillXp, at?: {
         tx: number;
         ty: number;

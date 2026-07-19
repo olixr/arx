@@ -1,5 +1,5 @@
-import { levelForXp, tileDef, type SkillXp, type StationType } from '@devcraft/shared';
-import { BUILDABLES, GENERAL_STORE, itemDef, recipesForStation } from '@devcraft/content';
+import { levelForXp, tileDef, type InvSlot, type SkillXp, type StationType } from '@devcraft/shared';
+import { BUILDABLES, CROP_BY_SEED, GENERAL_STORE, itemDef, recipesForStation } from '@devcraft/content';
 import { itemIconUrl } from '../render/icons.js';
 
 function iconEl(itemId: string): HTMLImageElement {
@@ -96,8 +96,9 @@ export class StationPanels {
   openBuild(skills: SkillXp): void {
     this.closeAll();
     this.buildList.innerHTML = '';
-    const level = levelForXp(skills.construction ?? 0);
     for (const def of BUILDABLES.values()) {
+      const skill = def.skill ?? 'construction';
+      const level = levelForXp(skills[skill] ?? 0);
       const locked = level < def.levelReq;
       const row = document.createElement('div');
       row.className = 'list-row' + (locked ? ' disabled' : '');
@@ -109,7 +110,9 @@ export class StationPanels {
       const mats = def.materials
         .map((m) => `${m.qty}× ${itemDef(m.item)?.name ?? m.item}`)
         .join(', ');
-      name.innerHTML = `${def.name}<span class="row-sub">${mats} · lvl ${def.levelReq}</span>`;
+      name.innerHTML = `${def.name}<span class="row-sub">${
+        mats ? `${mats} · ` : ''
+      }lvl ${def.levelReq} ${skill}</span>`;
       row.append(swatch, name);
       if (!locked) {
         const btn = document.createElement('button');
@@ -125,6 +128,66 @@ export class StationPanels {
     this.buildPanel.classList.remove('hidden');
   }
 
+  // ------------------------------------------------------------ plant
+
+  /** Set by main: sends the plant intent for a chosen seed. */
+  onPlant: ((tx: number, ty: number, seed: string) => void) | null = null;
+
+  /** Seed picker for a tilled plot: lists the seeds you carry. */
+  openPlant(
+    tx: number,
+    ty: number,
+    inventory: InvSlot[],
+    skills: SkillXp,
+    at?: { tx: number; ty: number },
+  ): void {
+    this.closeAll();
+    this.anchor = at ? { x: at.tx + 0.5, y: at.ty + 0.5 } : { x: tx + 0.5, y: ty + 0.5 };
+    this.craftTitle.textContent = 'Planting';
+    this.craftList.innerHTML = '';
+    const level = levelForXp(skills.farming ?? 0);
+
+    // Tally the seed pouches in the pack.
+    const held = new Map<string, number>();
+    for (const slot of inventory) {
+      if (slot && CROP_BY_SEED.has(slot.item)) {
+        held.set(slot.item, (held.get(slot.item) ?? 0) + slot.qty);
+      }
+    }
+    if (held.size === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'list-row';
+      empty.textContent = 'No seeds in your pack — buy some at the shop, or forage wild herbs.';
+      this.craftList.appendChild(empty);
+    }
+    for (const [seed, qty] of held) {
+      const crop = CROP_BY_SEED.get(seed)!;
+      const locked = level < crop.levelReq;
+      const row = document.createElement('div');
+      row.className = 'list-row' + (locked ? ' disabled' : '');
+      const swatch = iconEl(seed);
+      const name = document.createElement('div');
+      name.className = 'row-name';
+      name.innerHTML =
+        `${crop.name}<span class="row-sub">×${qty} · ~${crop.growMinutes} min · lvl ${crop.levelReq} farming</span>`;
+      row.append(swatch, name);
+      if (!locked) {
+        const btn = document.createElement('button');
+        btn.textContent = 'Plant';
+        btn.dataset.nav = '';
+        btn.dataset.navkey = `plant:${seed}`;
+        btn.dataset.acta = 'Plant';
+        btn.addEventListener('click', () => {
+          this.onPlant?.(tx, ty, seed);
+          this.closeAll();
+        });
+        row.appendChild(btn);
+      }
+      this.craftList.appendChild(row);
+    }
+    this.craftPanel.classList.remove('hidden');
+  }
+
   // ------------------------------------------------------------ craft
 
   openCraft(station: StationType | null, skills: SkillXp, at?: { tx: number; ty: number }): void {
@@ -135,6 +198,7 @@ export class StationPanels {
       furnace: 'Smelting',
       anvil: 'Smithing',
       workbench: 'Crafting',
+      alembic: 'Herbalism',
     };
     this.craftTitle.textContent = station ? labels[station]! : 'Handiwork';
     this.craftList.innerHTML = '';

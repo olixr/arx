@@ -1180,6 +1180,577 @@ const PAINTERS: Record<string, IconPainter> = {
       c.restore();
     }
   },
+  seeds: (c, col) => {
+    // A tied burlap seed pouch, three seeds spilled at its foot in the
+    // crop's identity color — the family painter for every seed.
+    poly(c, '#a5824e', [
+      [0.3, 0.34], [0.7, 0.34], [0.78, 0.56], [0.72, 0.76], [0.28, 0.76], [0.22, 0.56],
+    ]);
+    c.fillStyle = shade('#a5824e', 22);
+    c.beginPath();
+    c.moveTo(0.32, 0.38);
+    c.lineTo(0.66, 0.38);
+    c.lineTo(0.7, 0.52);
+    c.lineTo(0.3, 0.52);
+    c.closePath();
+    c.fill();
+    // Cinched neck + tie.
+    bar(c, '#7d5a2e', 0.4, 0.24, 0.2, 0.12);
+    bar(c, col, 0.38, 0.28, 0.24, 0.045);
+    // Spilled seeds: chunky teardrop kernels.
+    for (const [x, y, r] of [[0.24, 0.86, 0.05], [0.44, 0.9, 0.055], [0.66, 0.87, 0.05]] as const) {
+      c.fillStyle = col;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.028;
+      c.beginPath();
+      c.ellipse(x, y, r * 1.25, r, -0.4, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      c.fillStyle = shade(col, 30);
+      c.beginPath();
+      c.ellipse(x - r * 0.3, y - r * 0.3, r * 0.4, r * 0.28, -0.4, 0, Math.PI * 2);
+      c.fill();
+    }
+  },
+  carrot: (c, col) => {
+    c.save();
+    c.translate(0.5, 0.55);
+    c.rotate(0.5);
+    // Tapered root with rib lines.
+    poly(c, col, [[-0.3, -0.12], [0.05, -0.14], [0.34, -0.03], [0.34, 0.03], [0.05, 0.14], [-0.3, 0.12]]);
+    c.fillStyle = shade(col, 26);
+    c.beginPath();
+    c.moveTo(-0.28, -0.09);
+    c.lineTo(0.08, -0.1);
+    c.lineTo(0.26, -0.03);
+    c.lineTo(-0.28, -0.03);
+    c.closePath();
+    c.fill();
+    c.strokeStyle = shade(col, -24);
+    c.lineWidth = 0.024;
+    for (const x of [-0.16, -0.02, 0.12]) {
+      c.beginPath();
+      c.moveTo(x, -0.1 + Math.abs(x) * 0.14);
+      c.lineTo(x + 0.03, 0.1 - Math.abs(x) * 0.14);
+      c.stroke();
+    }
+    // Frilly green top.
+    for (const a of [-0.5, 0, 0.5]) {
+      poly(c, '#5f9c46', [[-0.3, 0], [-0.46 - 0.06 * Math.cos(a), -0.16 * a - 0.1], [-0.38, 0.02]]);
+    }
+    c.restore();
+  },
+  herb: (c, col) => {
+    // A cut sprig: central stem, paired chunky leaves, one lit leaf.
+    c.strokeStyle = shade(col, -28);
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.moveTo(0.5, 0.88);
+    c.quadraticCurveTo(0.46, 0.5, 0.52, 0.14);
+    c.stroke();
+    const leaf = (x: number, y: number, rot: number, s: number, tint: number) => {
+      c.save();
+      c.translate(x, y);
+      c.rotate(rot);
+      poly(c, shade(col, tint), [[0, 0], [s, -s * 0.42], [s * 1.7, 0], [s, s * 0.42]]);
+      c.restore();
+    };
+    leaf(0.49, 0.7, Math.PI - 0.5, 0.15, 0);
+    leaf(0.5, 0.68, -0.5, 0.15, -12);
+    leaf(0.48, 0.5, Math.PI - 0.35, 0.14, 10);
+    leaf(0.5, 0.46, -0.4, 0.14, 0);
+    leaf(0.5, 0.3, Math.PI - 0.3, 0.12, 22);
+    leaf(0.51, 0.26, -0.3, 0.12, 32);
+    dot(c, shade(col, 44), 0.52, 0.15, 0.035);
+  },
+  sunflower: (c, col) => {
+    // Stem + one leaf.
+    c.strokeStyle = '#5f8a44';
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(0.5, 0.92);
+    c.quadraticCurveTo(0.54, 0.66, 0.5, 0.46);
+    c.stroke();
+    poly(c, '#5f9c46', [[0.52, 0.72], [0.68, 0.62], [0.74, 0.72], [0.6, 0.78]]);
+    // Petal ring: chunky diamonds around the head.
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      c.save();
+      c.translate(0.5 + Math.cos(a) * 0.19, 0.34 + Math.sin(a) * 0.19);
+      c.rotate(a);
+      poly(c, i % 2 ? col : shade(col, 16), [[-0.02, -0.05], [0.12, 0], [-0.02, 0.05]]);
+      c.restore();
+    }
+    // Seed heart with a lit crescent.
+    dot(c, '#6b4a26', 0.5, 0.34, 0.13);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.arc(0.5, 0.34, 0.13, 0, Math.PI * 2);
+    c.stroke();
+    dot(c, '#8a6534', 0.47, 0.31, 0.07);
+  },
+  wheat: (c, col) => {
+    // A tied sheaf of three stalks, heads heavy with grain.
+    c.strokeStyle = shade(col, -20);
+    c.lineWidth = 0.04;
+    for (const [x0, x1] of [[0.36, 0.3], [0.5, 0.5], [0.64, 0.7]] as const) {
+      c.beginPath();
+      c.moveTo(0.5, 0.88);
+      c.quadraticCurveTo(x0, 0.6, x1, 0.36);
+      c.stroke();
+    }
+    bar(c, '#8a6534', 0.4, 0.68, 0.2, 0.08);
+    // Grain heads: stacked kernel pairs.
+    for (const [hx, hy] of [[0.3, 0.36], [0.5, 0.5], [0.7, 0.36]] as const) {
+      for (let i = 0; i < 4; i++) {
+        const y = hy - i * 0.075;
+        const s = 0.055 - i * 0.007;
+        for (const side of [-1, 1]) {
+          c.fillStyle = i % 2 ? col : shade(col, 18);
+          c.strokeStyle = OUTLINE;
+          c.lineWidth = 0.022;
+          c.beginPath();
+          c.ellipse(hx + side * s * 0.8, y, s, s * 0.55, side * 0.7, 0, Math.PI * 2);
+          c.fill();
+          c.stroke();
+        }
+      }
+    }
+  },
+  cottonpuff: (c, col) => {
+    // A dry branched stem holding three fat bolls.
+    c.strokeStyle = '#8a6534';
+    c.lineWidth = 0.04;
+    c.beginPath();
+    c.moveTo(0.5, 0.9);
+    c.lineTo(0.5, 0.6);
+    c.moveTo(0.5, 0.66);
+    c.lineTo(0.3, 0.44);
+    c.moveTo(0.5, 0.6);
+    c.lineTo(0.7, 0.42);
+    c.stroke();
+    for (const [x, y, r] of [[0.3, 0.36, 0.13], [0.7, 0.34, 0.13], [0.5, 0.5, 0.14]] as const) {
+      // Boll cup.
+      poly(c, '#7d5a2e', [[x - r * 0.7, y + r * 0.5], [x, y + r * 1.1], [x + r * 0.7, y + r * 0.5]]);
+      // Puff: three lobes + lit crown.
+      c.fillStyle = col;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.028;
+      c.beginPath();
+      c.arc(x - r * 0.5, y + r * 0.15, r * 0.6, 0, Math.PI * 2);
+      c.arc(x + r * 0.5, y + r * 0.15, r * 0.6, 0, Math.PI * 2);
+      c.arc(x, y - r * 0.25, r * 0.7, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      dot(c, '#ffffff', x - r * 0.25, y - r * 0.4, r * 0.28);
+    }
+  },
+  bells: (c, col) => {
+    // Moonbell: an arched stem with hanging bells, faintly aglow.
+    c.strokeStyle = '#5b7a52';
+    c.lineWidth = 0.04;
+    c.beginPath();
+    c.moveTo(0.3, 0.9);
+    c.quadraticCurveTo(0.34, 0.3, 0.72, 0.24);
+    c.stroke();
+    for (const [x, y, s] of [[0.42, 0.5, 0.1], [0.56, 0.4, 0.11], [0.72, 0.34, 0.12]] as const) {
+      c.strokeStyle = '#5b7a52';
+      c.lineWidth = 0.026;
+      c.beginPath();
+      c.moveTo(x, y - s * 0.9);
+      c.lineTo(x, y - s * 0.4);
+      c.stroke();
+      poly(c, col, [
+        [x - s * 0.55, y - s * 0.45],
+        [x + s * 0.55, y - s * 0.45],
+        [x + s * 0.75, y + s * 0.55],
+        [x + s * 0.3, y + s * 0.35],
+        [x, y + s * 0.6],
+        [x - s * 0.3, y + s * 0.35],
+        [x - s * 0.75, y + s * 0.55],
+      ]);
+      c.fillStyle = shade(col, 26);
+      c.fillRect(x - s * 0.4, y - s * 0.38, s * 0.5, s * 0.3);
+      dot(c, '#e8ecff', x, y + s * 0.62, s * 0.16);
+    }
+  },
+  berries: (c, col) => {
+    // A plump cluster with two leaves.
+    poly(c, '#5f9c46', [[0.42, 0.3], [0.6, 0.16], [0.7, 0.3], [0.52, 0.38]]);
+    poly(c, '#4c8039', [[0.42, 0.32], [0.28, 0.2], [0.2, 0.34], [0.36, 0.42]]);
+    for (const [x, y, r] of [
+      [0.36, 0.56, 0.14], [0.62, 0.52, 0.14], [0.5, 0.74, 0.15], [0.5, 0.44, 0.12],
+    ] as const) {
+      c.fillStyle = col;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.03;
+      c.beginPath();
+      c.arc(x, y, r, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      dot(c, shade(col, 34), x - r * 0.3, y - r * 0.35, r * 0.32);
+    }
+  },
+  fibre: (c, col) => {
+    // A hank of long strands folded over a knot.
+    bar(c, shade(col, -18), 0.38, 0.42, 0.24, 0.12);
+    c.lineWidth = 0.045;
+    for (const [dx, tint] of [[-0.14, -10], [-0.05, 8], [0.04, 0], [0.13, 18]] as const) {
+      c.strokeStyle = shade(col, tint);
+      c.beginPath();
+      c.moveTo(0.5 + dx, 0.18);
+      c.quadraticCurveTo(0.5 + dx * 1.8, 0.5, 0.5 + dx * 1.3, 0.86);
+      c.stroke();
+    }
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.028;
+    c.strokeRect(0.38, 0.42, 0.24, 0.12);
+  },
+  twine: (c, col) => {
+    // A wound coil with a loose tail.
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.32;
+    c.beginPath();
+    c.arc(0.5, 0.46, 0.2, 0, Math.PI * 2);
+    c.stroke();
+    c.strokeStyle = col;
+    c.lineWidth = 0.26;
+    c.beginPath();
+    c.arc(0.5, 0.46, 0.2, 0, Math.PI * 2);
+    c.stroke();
+    // Wrap ridges.
+    c.strokeStyle = shade(col, -26);
+    c.lineWidth = 0.03;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      c.beginPath();
+      c.moveTo(0.5 + Math.cos(a) * 0.1, 0.46 + Math.sin(a) * 0.1);
+      c.lineTo(0.5 + Math.cos(a) * 0.31, 0.46 + Math.sin(a) * 0.31);
+      c.stroke();
+    }
+    c.strokeStyle = shade(col, 20);
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(0.62, 0.62);
+    c.quadraticCurveTo(0.76, 0.74, 0.7, 0.88);
+    c.stroke();
+  },
+  clothbolt: (c, col) => {
+    // A rolled bolt: fabric unrolling toward the viewer, the fat roll
+    // behind with a spiral end-cap — unmistakably cloth, not paper.
+    poly(c, shade(col, -14), [[0.3, 0.5], [0.86, 0.5], [0.9, 0.66], [0.34, 0.66]]);
+    poly(c, col, [[0.34, 0.66], [0.9, 0.66], [0.86, 0.82], [0.3, 0.82]]);
+    // Weave shadow at the fold.
+    c.fillStyle = shade(col, -34);
+    c.fillRect(0.33, 0.645, 0.55, 0.025);
+    // The roll.
+    bar(c, shade(col, 8), 0.24, 0.26, 0.58, 0.24);
+    c.fillStyle = shade(col, 24);
+    c.fillRect(0.28, 0.29, 0.5, 0.07);
+    // Spiral end-cap.
+    dot(c, shade(col, -26), 0.3, 0.38, 0.115);
+    dot(c, col, 0.3, 0.38, 0.08);
+    dot(c, shade(col, -26), 0.3, 0.38, 0.045);
+    dot(c, shade(col, 18), 0.31, 0.365, 0.02);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.arc(0.3, 0.38, 0.115, 0, Math.PI * 2);
+    c.stroke();
+  },
+  floursack: (c, col) => {
+    // A plump sack rolled open at the top, flour heaped over the rim.
+    poly(c, '#c9b690', [
+      [0.28, 0.4], [0.72, 0.4], [0.8, 0.66], [0.74, 0.88], [0.26, 0.88], [0.2, 0.66],
+    ]);
+    c.fillStyle = shade('#c9b690', 18);
+    c.beginPath();
+    c.moveTo(0.3, 0.44);
+    c.lineTo(0.6, 0.44);
+    c.lineTo(0.62, 0.7);
+    c.lineTo(0.28, 0.7);
+    c.closePath();
+    c.fill();
+    // Rolled rim.
+    bar(c, '#a5824e', 0.24, 0.34, 0.52, 0.11);
+    // The heap.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.arc(0.4, 0.32, 0.09, 0, Math.PI * 2);
+    c.arc(0.56, 0.3, 0.1, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    dot(c, '#ffffff', 0.52, 0.26, 0.04);
+  },
+  milkpail: (c, col) => {
+    // A banded wooden pail, milk risen to the brim.
+    poly(c, '#8a6534', [[0.28, 0.38], [0.72, 0.38], [0.66, 0.84], [0.34, 0.84]]);
+    c.fillStyle = shade('#8a6534', 16);
+    c.beginPath();
+    c.moveTo(0.31, 0.42);
+    c.lineTo(0.48, 0.42);
+    c.lineTo(0.46, 0.8);
+    c.lineTo(0.36, 0.8);
+    c.closePath();
+    c.fill();
+    bar(c, '#55505e', 0.28, 0.52, 0.44, 0.05);
+    bar(c, '#55505e', 0.3, 0.7, 0.4, 0.05);
+    // Handle arc.
+    c.strokeStyle = '#55505e';
+    c.lineWidth = 0.04;
+    c.beginPath();
+    c.arc(0.5, 0.38, 0.26, Math.PI, 0);
+    c.stroke();
+    // The milk.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.ellipse(0.5, 0.38, 0.22, 0.08, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    dot(c, '#ffffff', 0.42, 0.36, 0.045);
+  },
+  egg: (c, col) => {
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.ellipse(0.5, 0.54, 0.24, 0.3, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 22);
+    c.beginPath();
+    c.ellipse(0.42, 0.42, 0.09, 0.12, -0.4, 0, Math.PI * 2);
+    c.fill();
+    dot(c, '#ffffff', 0.4, 0.38, 0.035);
+  },
+  bread: (c, col) => {
+    // A crusty oval loaf with three score marks.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.ellipse(0.5, 0.56, 0.32, 0.22, -0.15, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 22);
+    c.beginPath();
+    c.ellipse(0.44, 0.46, 0.2, 0.1, -0.2, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = shade(col, -32);
+    c.lineWidth = 0.035;
+    for (const t of [-0.14, 0, 0.14]) {
+      c.beginPath();
+      c.moveTo(0.42 + t, 0.42 + t * 0.2);
+      c.lineTo(0.56 + t, 0.56 + t * 0.2);
+      c.stroke();
+    }
+  },
+  friedegg: (c, col) => {
+    // Sunny side up: a wobbly white, a proud yolk.
+    c.fillStyle = '#f6f2e8';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(0.24, 0.5);
+    c.quadraticCurveTo(0.2, 0.28, 0.44, 0.26);
+    c.quadraticCurveTo(0.64, 0.2, 0.74, 0.38);
+    c.quadraticCurveTo(0.84, 0.56, 0.68, 0.7);
+    c.quadraticCurveTo(0.52, 0.82, 0.34, 0.72);
+    c.quadraticCurveTo(0.22, 0.64, 0.24, 0.5);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    dot(c, col, 0.5, 0.5, 0.14);
+    c.strokeStyle = shade(col, -28);
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.arc(0.5, 0.5, 0.14, 0, Math.PI * 2);
+    c.stroke();
+    dot(c, '#fff6d8', 0.45, 0.44, 0.045);
+  },
+  stew: (c, col) => {
+    // A steaming bowl with chunks breaking the surface.
+    poly(c, '#7d5a2e', [[0.2, 0.5], [0.8, 0.5], [0.72, 0.78], [0.28, 0.78]]);
+    c.fillStyle = shade('#7d5a2e', 16);
+    c.fillRect(0.24, 0.53, 0.2, 0.16);
+    // Broth.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.ellipse(0.5, 0.5, 0.28, 0.09, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    // Chunks: carrot and beef above the surface.
+    bar(c, '#e8873d', 0.36, 0.43, 0.1, 0.07);
+    bar(c, '#8a4a3a', 0.54, 0.42, 0.11, 0.08);
+    // Steam curls.
+    c.strokeStyle = 'rgba(244, 239, 228, 0.75)';
+    c.lineWidth = 0.035;
+    for (const x of [0.42, 0.58]) {
+      c.beginPath();
+      c.moveTo(x, 0.34);
+      c.quadraticCurveTo(x + 0.05, 0.26, x, 0.18);
+      c.stroke();
+    }
+  },
+  cakeicon: (c, col) => {
+    // A two-tier iced cake with a berry on top.
+    poly(c, '#e8d9b0', [[0.24, 0.56], [0.76, 0.56], [0.76, 0.8], [0.24, 0.8]]);
+    poly(c, '#e8d9b0', [[0.32, 0.36], [0.68, 0.36], [0.68, 0.56], [0.32, 0.56]]);
+    // Icing drips.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(0.24, 0.56);
+    for (let i = 0; i < 4; i++) {
+      const x = 0.24 + (i + 0.5) * 0.13;
+      c.quadraticCurveTo(x, 0.68, x + 0.065, 0.56);
+    }
+    c.lineTo(0.76, 0.5);
+    c.lineTo(0.24, 0.5);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 14);
+    c.beginPath();
+    c.moveTo(0.32, 0.36);
+    for (let i = 0; i < 3; i++) {
+      const x = 0.32 + (i + 0.5) * 0.12;
+      c.quadraticCurveTo(x, 0.46, x + 0.06, 0.36);
+    }
+    c.lineTo(0.68, 0.31);
+    c.lineTo(0.32, 0.31);
+    c.closePath();
+    c.fill();
+    dot(c, '#a04a6e', 0.5, 0.27, 0.06);
+    dot(c, shade('#a04a6e', 36), 0.48, 0.25, 0.022);
+  },
+  bottle: (c, col) => {
+    // The herbalist's rounded flask: cork, slim neck, bright liquid.
+    bar(c, '#a5824e', 0.44, 0.12, 0.12, 0.1);
+    poly(c, 'rgba(210, 224, 235, 0.5)', [
+      [0.45, 0.2], [0.55, 0.2], [0.55, 0.34], [0.68, 0.46], [0.7, 0.62],
+      [0.62, 0.8], [0.38, 0.8], [0.3, 0.62], [0.32, 0.46], [0.45, 0.34],
+    ]);
+    // The draught inside.
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(0.335, 0.52);
+    c.lineTo(0.665, 0.52);
+    c.lineTo(0.69, 0.62);
+    c.lineTo(0.615, 0.775);
+    c.lineTo(0.385, 0.775);
+    c.lineTo(0.31, 0.62);
+    c.closePath();
+    c.fill();
+    c.fillStyle = shade(col, 26);
+    c.beginPath();
+    c.ellipse(0.5, 0.52, 0.165, 0.045, 0, 0, Math.PI * 2);
+    c.fill();
+    // Glasswork glint.
+    c.strokeStyle = '#f4f8ff';
+    c.lineWidth = 0.04;
+    c.beginPath();
+    c.moveTo(0.4, 0.42);
+    c.quadraticCurveTo(0.34, 0.52, 0.37, 0.66);
+    c.stroke();
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(0.45, 0.2);
+    c.lineTo(0.55, 0.2);
+    c.lineTo(0.55, 0.34);
+    c.lineTo(0.68, 0.46);
+    c.lineTo(0.7, 0.62);
+    c.lineTo(0.62, 0.8);
+    c.lineTo(0.38, 0.8);
+    c.lineTo(0.3, 0.62);
+    c.lineTo(0.32, 0.46);
+    c.lineTo(0.45, 0.34);
+    c.closePath();
+    c.stroke();
+  },
+  jar: (c, col) => {
+    // A squat salve pot with a waxed lid.
+    poly(c, '#c9b690', [[0.3, 0.4], [0.7, 0.4], [0.76, 0.6], [0.68, 0.82], [0.32, 0.82], [0.24, 0.6]]);
+    c.fillStyle = shade('#c9b690', 18);
+    c.beginPath();
+    c.moveTo(0.33, 0.44);
+    c.lineTo(0.52, 0.44);
+    c.lineTo(0.5, 0.78);
+    c.lineTo(0.35, 0.78);
+    c.closePath();
+    c.fill();
+    // Salve band showing through a dipped stripe.
+    bar(c, col, 0.3, 0.56, 0.4, 0.12);
+    // Lid + tied cloth.
+    bar(c, col, 0.34, 0.26, 0.32, 0.12);
+    bar(c, shade(col, 24), 0.36, 0.28, 0.16, 0.05);
+    c.strokeStyle = '#7d5a2e';
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.3, 0.4);
+    c.lineTo(0.7, 0.4);
+    c.stroke();
+  },
+  flowercrown: (c, col) => {
+    // A woven circlet dotted with blooms.
+    c.strokeStyle = '#8a6534';
+    c.lineWidth = 0.1;
+    c.beginPath();
+    c.ellipse(0.5, 0.55, 0.3, 0.2, 0, 0, Math.PI * 2);
+    c.stroke();
+    c.strokeStyle = '#5f9c46';
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.ellipse(0.5, 0.55, 0.3, 0.2, 0, 0.4, Math.PI * 1.3);
+    c.stroke();
+    for (const [x, y, s] of [
+      [0.24, 0.48, 0.075], [0.5, 0.36, 0.09], [0.76, 0.48, 0.075], [0.36, 0.72, 0.065], [0.64, 0.72, 0.065],
+    ] as const) {
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2 - 0.3;
+        dot(c, col, x + Math.cos(a) * s, y + Math.sin(a) * s * 0.85, s * 0.55);
+      }
+      dot(c, '#c4553d', x, y, s * 0.45);
+      dot(c, '#fff2cc', x - s * 0.15, y - s * 0.15, s * 0.16);
+    }
+  },
+  wateringcan: (c, col) => {
+    // Body, high handle, long spout ending in a rose.
+    poly(c, col, [[0.3, 0.42], [0.62, 0.42], [0.66, 0.82], [0.26, 0.82]]);
+    c.fillStyle = shade(col, 20);
+    c.beginPath();
+    c.moveTo(0.33, 0.46);
+    c.lineTo(0.46, 0.46);
+    c.lineTo(0.44, 0.78);
+    c.lineTo(0.3, 0.78);
+    c.closePath();
+    c.fill();
+    // Spout.
+    poly(c, shade(col, -10), [[0.3, 0.52], [0.14, 0.32], [0.08, 0.38], [0.28, 0.62]]);
+    bar(c, shade(col, -22), 0.05, 0.3, 0.1, 0.1);
+    // Handle.
+    c.strokeStyle = shade(col, -18);
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.arc(0.5, 0.42, 0.2, Math.PI, 0);
+    c.stroke();
+    // Drops from the rose.
+    for (const [x, y] of [[0.06, 0.48], [0.12, 0.52], [0.08, 0.58]] as const) {
+      dot(c, '#7fb2d9', x, y, 0.028);
+    }
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.strokeRect(0.3, 0.42, 0.32, 0.4);
+  },
 };
 
 /**
@@ -1326,6 +1897,36 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   cape_royal: { icon: 'cape', color: '#8a5cc4' },
   cape_celestial: { icon: 'cape', color: '#7078c4' },
   cape_phoenix: { icon: 'cape', color: '#e05438' },
+  carrot_seed: { icon: 'seeds', color: '#e8873d' },
+  sagewort_seed: { icon: 'seeds', color: '#8fb083' },
+  sunflower_seed: { icon: 'seeds', color: '#e8c04c' },
+  wheat_seed: { icon: 'seeds', color: '#d9b45c' },
+  cotton_seed: { icon: 'seeds', color: '#e8e4da' },
+  moonbell_seed: { icon: 'seeds', color: '#8f9ed6' },
+  carrot: { icon: 'carrot', color: '#e8873d' },
+  sagewort: { icon: 'herb', color: '#8fb083' },
+  sunflower: { icon: 'sunflower', color: '#e8c04c' },
+  wheat: { icon: 'wheat', color: '#d9b45c' },
+  cotton: { icon: 'cottonpuff', color: '#f2efe6' },
+  moonbell: { icon: 'bells', color: '#8f9ed6' },
+  berries: { icon: 'berries', color: '#a04a6e' },
+  plant_fibre: { icon: 'fibre', color: '#79a355' },
+  twine: { icon: 'twine', color: '#b0a068' },
+  cloth: { icon: 'clothbolt', color: '#e8e4da' },
+  flour: { icon: 'floursack', color: '#f2efe6' },
+  milk: { icon: 'milkpail', color: '#f4f2ec' },
+  egg: { icon: 'egg', color: '#e8d9b0' },
+  bread: { icon: 'bread', color: '#c49a5c' },
+  fried_egg: { icon: 'friedegg', color: '#f2c04c' },
+  hearty_stew: { icon: 'stew', color: '#b06a4a' },
+  cake: { icon: 'cakeicon', color: '#e8b6c9' },
+  healing_tincture: { icon: 'bottle', color: '#d65a5a' },
+  gatherers_brew: { icon: 'bottle', color: '#7fc9b3' },
+  swiftness_tonic: { icon: 'bottle', color: '#8fd0e8' },
+  ironbark_tonic: { icon: 'bottle', color: '#9c7440' },
+  mending_salve: { icon: 'jar', color: '#c9a8e8' },
+  flower_crown: { icon: 'flowercrown', color: '#e8c04c' },
+  watering_can: { icon: 'wateringcan', color: '#7a8fa5' },
 };
 
 const cache = new Map<string, string>();

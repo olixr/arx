@@ -68,6 +68,15 @@ const BLOB_LAYERS: BlobLayer[] = [
     fringe: true,
   },
   {
+    // Tilled garden soil: dug by hand — near-straight edges, a deep
+    // worked-earth band. All crop stages resolve to this material.
+    match: (t) => t === Tile.Tilled,
+    color: (_t, tx, ty) => patch('#6b4f33', '#654a30', tx, ty, 43),
+    wobble: 0.08,
+    band: 'rgba(38, 26, 16, 0.4)',
+    fringe: true,
+  },
+  {
     match: (t) => t === Tile.Swamp,
     color: () => '#556b3e',
     wobble: 0.24,
@@ -146,6 +155,32 @@ const GRASS_LIKE = new Set<number>([
   Tile.Stump,
   Tile.Fence,
   Tile.Campfire,
+  Tile.BerryBush,
+  Tile.FibrePlant,
+  Tile.WildSagewort,
+  Tile.WildMoonbell,
+]);
+
+/**
+ * The soil family: a tilled plot and every crop growth stage share ONE
+ * ground material, so a field contours as a single dug bed — no seams
+ * between a plot and the plant standing in it.
+ */
+export const SOIL_TILES = new Set<number>([
+  Tile.Tilled,
+  Tile.CropSprout,
+  Tile.CarrotMid,
+  Tile.CarrotRipe,
+  Tile.SagewortMid,
+  Tile.SagewortRipe,
+  Tile.SunflowerMid,
+  Tile.SunflowerRipe,
+  Tile.WheatMid,
+  Tile.WheatRipe,
+  Tile.CottonMid,
+  Tile.CottonRipe,
+  Tile.MoonbellMid,
+  Tile.MoonbellRipe,
 ]);
 
 const ROCKY = new Set<number>([
@@ -176,6 +211,7 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     const t = ground(tx, ty);
     if (t === undefined) return Tile.Grass;
     if (GRASS_LIKE.has(t)) return Tile.Grass;
+    if (SOIL_TILES.has(t)) return Tile.Tilled;
     if (ROCKY.has(t)) {
       // Rocks sit on whatever region they're in.
       return isCaveGround(ground(tx, ty + 1)) || isCaveGround(ground(tx, ty - 1))
@@ -187,7 +223,13 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     if (t === Tile.Furnace || t === Tile.Anvil) {
       return isCaveGround(ground(tx, ty + 1)) ? Tile.CaveFloor : nearestFloor(ground, tx, ty);
     }
-    if (t === Tile.Workbench || t === Tile.BankChest || t === Tile.ShopCounter || t === Tile.LampPost) {
+    if (
+      t === Tile.Workbench ||
+      t === Tile.BankChest ||
+      t === Tile.ShopCounter ||
+      t === Tile.LampPost ||
+      t === Tile.Alembic
+    ) {
       return nearestFloor(ground, tx, ty);
     }
     // Floors run UNDER walls: the prism covers its own tile, and the
@@ -305,6 +347,27 @@ function drawTileDetail(
   const hg = hashCoords(83, tx, ty);
   const gx = lx * px;
   const gy = ly * px;
+  // Tilled soil overrides any old grass detail (a plot dug over a
+  // flowered meadow must not keep phantom blooms) and gets furrows.
+  if (m === Tile.Tilled) {
+    d = Detail.None;
+    // Three worked furrow rows, slightly ragged, plus a couple clods.
+    ctx.fillStyle = 'rgba(32, 22, 13, 0.35)';
+    for (let r = 0; r < 3; r++) {
+      const fy = gy + px * (0.2 + r * 0.28) + ((hg >> (r * 3)) % 3 - 1) * px * 0.02;
+      ctx.fillRect(gx + px * 0.06, fy, px * 0.88, Math.max(1, px * 0.07));
+    }
+    ctx.fillStyle = 'rgba(150, 116, 76, 0.5)';
+    for (let k = 0; k < 2; k++) {
+      const hh = hashCoords(191 + k, tx, ty);
+      ctx.fillRect(
+        gx + (0.12 + (hh % 70) / 100) * px,
+        gy + (0.1 + ((hh >> 7) % 75) / 100) * px,
+        px * 0.07,
+        px * 0.05,
+      );
+    }
+  }
       if (m === Tile.Grass || m === Tile.GrassTall) {
         // Baked turf stubble: static vertical flecks, dark and sunlit,
         // so the ground under the live blades reads as dense mown grass

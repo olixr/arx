@@ -2,6 +2,7 @@ import { EQUIP_SLOTS, PASSIVES, type AbilitySlot } from '@devcraft/shared';
 import { itemDef } from '@devcraft/content';
 import type { ClientGame } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
+import { itemIconUrl } from '../render/icons.js';
 
 const SLOT_KEYS = ['Q', 'E', 'R', 'T'] as const;
 /** Pad bindings for the same four slots: LB, RB, Y, d-pad up. */
@@ -28,6 +29,9 @@ const EMPTY_HINTS = [
 export class Hotbar {
   private readonly root = document.getElementById('hotbar')!;
   private readonly tray = document.getElementById('passive-tray')!;
+  private readonly buffTray = document.getElementById('buff-tray')!;
+  private buffKey = '';
+  private readonly buffSecsEls: HTMLElement[] = [];
   private readonly slots: HTMLElement[] = [];
   private readonly wipes: HTMLElement[] = [];
   private readonly icons: HTMLElement[] = [];
@@ -159,6 +163,33 @@ export class Hotbar {
         chip.style.background = meta.color;
         this.tray.appendChild(chip);
       }
+    }
+
+    // Consumable buff chips: rebuilt on list change, countdown every frame.
+    const bKey = game.buffs.map((b) => `${b.id}:${b.channel}`).join('|');
+    if (bKey !== this.buffKey) {
+      this.buffKey = bKey;
+      this.buffTray.innerHTML = '';
+      this.buffSecsEls.length = 0;
+      for (const b of game.buffs) {
+        const chip = document.createElement('div');
+        chip.className = `buff-chip ${b.channel}`;
+        chip.title = `${b.name} — ${b.channel === 'food' ? 'well fed' : 'tonic'}`;
+        const img = document.createElement('img');
+        img.src = itemIconUrl(b.id, 34);
+        img.draggable = false;
+        const secs = document.createElement('span');
+        secs.className = 'buff-secs';
+        chip.append(img, secs);
+        this.buffTray.appendChild(chip);
+        this.buffSecsEls.push(secs);
+      }
+    }
+    for (let i = 0; i < game.buffs.length && i < this.buffSecsEls.length; i++) {
+      const b = game.buffs[i]!;
+      const left = Math.max(0, Math.round(b.secsLeft - (now - game.buffsAt) / 1000));
+      const text = left >= 60 ? `${Math.floor(left / 60)}m${String(left % 60).padStart(2, '0')}` : `${left}s`;
+      if (this.buffSecsEls[i]!.textContent !== text) this.buffSecsEls[i]!.textContent = text;
     }
   }
 }

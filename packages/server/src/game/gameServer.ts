@@ -16,6 +16,7 @@ import {
   encodeChunk,
   encodeSnapshot,
   encodeTilePatch,
+  isSkillId,
   levelForXp,
   stepMovement,
   xpForLevel,
@@ -32,6 +33,8 @@ import {
 import {
   BUILDABLES,
   BUILDABLE_GROUND,
+  CROP_BY_SEED,
+  CROPS,
   GENERAL_STORE,
   NODES_BY_TILE,
   NPCS,
@@ -39,9 +42,15 @@ import {
   STARTER_KIT,
   TOWN_SPAWNS,
   abilityDef,
+  growMs,
+  isCropTile,
   itemDef,
+  stageEndMs,
+  stageForElapsed,
   techniqueDef,
+  tileForStage,
   type BuildableDef,
+  type CropDef,
   type NodeDef,
   type NpcDef,
   type RecipeDef,
@@ -138,7 +147,30 @@ interface BuildAction {
   ticksLeft: number;
 }
 
-type PlayerAction = GatherAction | CraftAction | BuildAction;
+interface HarvestAction {
+  kind: 'harvest';
+  tx: number;
+  ty: number;
+  ticksLeft: number;
+}
+
+type PlayerAction = GatherAction | CraftAction | BuildAction | HarvestAction;
+
+/** A planted crop; stage derives from (now − plantedAt + boostMs). */
+interface CropState {
+  def: CropDef;
+  tx: number;
+  ty: number;
+  plantedAt: number;
+  /** Watering credit in ms, added to elapsed time. */
+  boostMs: number;
+  /** Bitmask of stages already watered (bit 0 = sprout, bit 1 = mid). */
+  watered: number;
+  /** Owner character id — only they may harvest. */
+  owner: number;
+  /** Last stage broadcast, so the grower only patches transitions. */
+  lastStage: 0 | 1 | 2;
+}
 
 interface NpcComp {
   def: NpcDef;
@@ -158,6 +190,10 @@ interface NpcComp {
   poseUntilTick: number;
   /** Ticks until the special attack may fire again. */
   specialCooldown: number;
+  /** Livestock: earliest wall-clock ms this animal may be milked again. */
+  nextProduceAt: number;
+  /** Livestock: next wall-clock ms this animal lays (0 = never). */
+  nextLayAt: number;
 }
 
 interface DropComp {
@@ -173,6 +209,8 @@ interface DropComp {
    * straight back into the pack it just left.
    */
   pickupAfter: number;
+  /** Skill XP granted to whoever picks this up (laid eggs). */
+  xpOnPickup?: { skill: SkillId; xp: number };
 }
 
 interface ProjectileComp {
@@ -307,7 +345,32 @@ interface PlayerBuff {
   speedMult: number;
   shieldHp: number;
   meleeLifesteal: number;
+  /** Gathering speed multiplier (best across buffs wins). */
+  gatherSpeed: number;
+  /** HP restored every 4 seconds (best across buffs wins). */
+  regenPer4s: number;
   untilTick: number;
+  /**
+   * Consumable channel: one 'tonic' + one 'food' buff may be active at
+   * a time; a new drink/meal replaces its channel. Combat buffs
+   * (abilities, passives) leave this unset and stack freely.
+   */
+  channel?: 'tonic' | 'food';
+  /** Item that granted it + display name — drives the HUD chip. */
+  itemId?: string;
+  name?: string;
+}
+
+/** Buff with the passive-combat defaults filled in. */
+function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): PlayerBuff {
+  return {
+    speedMult: 1,
+    shieldHp: 0,
+    meleeLifesteal: 0,
+    gatherSpeed: 1,
+    regenPer4s: 0,
+    ...partial,
+  };
 }
 
 const MAX_QUEUED_INPUTS = 8;
@@ -368,6 +431,9 @@ export class GameServer {
   /** Depleted nodes waiting to come back. */
   private readonly respawnQueue: Array<{ at: number; tx: number; ty: number; tile: Tile }> = [];
 
+  /** Planted crops by "tx,ty". */
+  private readonly crops = new Map<string, CropState>();
+
   private timer: NodeJS.Timeout | null = null;
 
   /** Active per-character delve instances. */
@@ -379,6 +445,41 @@ export class GameServer {
     private readonly accounts: AccountStore,
   ) {
     this.registerSpawns(TOWN_SPAWNS);
+  }
+
+  /**
+   * Load persisted crops at boot. Stage is computed fresh from the
+   * timestamps, so fields kept growing the whole time the server (or
+   * the farmer) was away.
+   */
+  loadCrops(
+    rows: Array<{
+      tx: number;
+      ty: number;
+      crop: string;
+      plantedAt: number;
+      boostMs: number;
+      watered: number;
+      owner: number;
+    }>,
+  ): void {
+    const now = Date.now();
+    for (const row of rows) {
+      const def = CROPS.get(row.crop);
+      if (!def) continue; // a removed crop id — let the row rot
+      const stage = stageForElapsed(def, now - row.plantedAt + row.boostMs);
+      this.crops.set(`${row.tx},${row.ty}`, {
+        def,
+        tx: row.tx,
+        ty: row.ty,
+        plantedAt: row.plantedAt,
+        boostMs: row.boostMs,
+        watered: row.watered,
+        owner: row.owner,
+        lastStage: stage,
+      });
+      this.world.registerCropTile(row.tx, row.ty, tileForStage(def, stage));
+    }
   }
 
   /** Expand spawn tables into scattered points; returns their indexes. */
@@ -734,6 +835,14 @@ export class GameServer {
       return;
     }
 
+    // Garden plots: planting runs through the seed-picker → C2SPlant.
+    if (ground === Tile.Tilled) return;
+    // A planted crop: water it, harvest it, or hear how it's doing.
+    if (ground !== undefined && isCropTile(ground as Tile)) {
+      this.interactCrop(eid, player, tx, ty, sys);
+      return;
+    }
+
     const node = ground === undefined ? undefined : NODES_BY_TILE.get(ground as Tile);
     if (!node) return;
 
@@ -760,12 +869,20 @@ export class GameServer {
       return;
     }
 
-    // Faster with better tools and higher levels.
-    const speedup = 1 + (tool.power - 1) * 0.25 + (level - node.levelReq) * 0.01;
+    // Faster with better tools, higher levels, and a gatherer's brew.
+    const speedup =
+      (1 + (tool.power - 1) * 0.25 + (level - node.levelReq) * 0.01) * this.gatherSpeedOf(player);
     const ticks = Math.max(20, Math.round(node.baseTicks / speedup));
     player.action = { kind: 'gather', tx, ty, node, ticksLeft: ticks };
     this.poses.set(eid, PoseState.Gather);
     player.session.sendJson({ t: 'action', state: 'start', ticks });
+  }
+
+  /** Best gathering-speed multiplier across active buffs. */
+  private gatherSpeedOf(player: PlayerComp): number {
+    let mult = 1;
+    for (const b of player.buffs) mult = Math.max(mult, b.gatherSpeed);
+    return mult;
   }
 
   private cancelAction(eid: EntityId, player: PlayerComp, reason?: string): void {
@@ -779,6 +896,7 @@ export class GameServer {
     const kind = player.action!.kind;
     if (kind === 'gather') this.tickGather(eid, player);
     else if (kind === 'craft') this.tickCraft(eid, player);
+    else if (kind === 'harvest') this.tickHarvest(eid, player);
     else this.tickBuild(eid, player);
   }
 
@@ -798,6 +916,10 @@ export class GameServer {
       return;
     }
     this.grantXp(eid, player, node.skill, node.xp);
+    // Occasional extra find (wild herbs shed seeds).
+    if (node.bonusYield && Math.random() < node.bonusYield.chance) {
+      addItem(player.inventory, node.bonusYield.item, 1);
+    }
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
 
     if (node.depletedTile !== null && Math.random() < node.depleteChance) {
@@ -811,9 +933,193 @@ export class GameServer {
       this.cancelAction(eid, player, 'done');
     } else {
       // Keep gathering the same node.
-      action.ticksLeft = Math.max(20, node.baseTicks);
+      action.ticksLeft = Math.max(20, Math.round(node.baseTicks / this.gatherSpeedOf(player)));
       player.session?.sendJson({ t: 'action', state: 'start', ticks: action.ticksLeft });
     }
+  }
+
+  // ----------------------------------------------------------- farming
+
+  /**
+   * Interacting with a planted crop: harvest if ripe, water if you
+   * carry a can and it's thirsty, otherwise report the wait.
+   */
+  private interactCrop(
+    eid: EntityId,
+    player: PlayerComp,
+    tx: number,
+    ty: number,
+    sys: (text: string) => void,
+  ): void {
+    const key = `${tx},${ty}`;
+    const state = this.crops.get(key);
+    if (!state) {
+      // A crop tile with no record (stale data) — repair back to soil.
+      this.world.unregisterCropTile(tx, ty);
+      this.setWorldTile(tx, ty, Tile.Tilled);
+      return;
+    }
+    const now = Date.now();
+    const effective = now - state.plantedAt + state.boostMs;
+    const stage = stageForElapsed(state.def, effective);
+
+    if (stage === 2) {
+      if (state.owner !== player.characterId) {
+        sys(`This ${state.def.name.toLowerCase()} patch isn't yours to harvest.`);
+        return;
+      }
+      if (!hasSpaceFor(player.inventory, state.def.yield.item)) {
+        sys('Your pack is full.');
+        return;
+      }
+      const ticks = Math.max(10, Math.round(15 / this.gatherSpeedOf(player)));
+      player.action = { kind: 'harvest', tx, ty, ticksLeft: ticks };
+      this.poses.set(eid, PoseState.Gather);
+      player.session!.sendJson({ t: 'action', state: 'start', ticks });
+      return;
+    }
+
+    // Growing. Watering credits 35% of the current stage's remainder.
+    const hasCan = countItem(player.inventory, 'watering_can') > 0;
+    const bit = 1 << stage;
+    if (hasCan && !(state.watered & bit)) {
+      const stageEnd = stageEndMs(state.def, stage as 0 | 1);
+      const credit = Math.max(0, Math.round((stageEnd - effective) * 0.35));
+      state.watered |= bit;
+      state.boostMs += credit;
+      this.accounts.upsertCrop(
+        tx, ty, state.def.id, state.plantedAt, state.boostMs, state.watered, state.owner,
+      );
+      sys(`You water the ${state.def.name.toLowerCase()}. It perks up.`);
+      return;
+    }
+    const minsLeft = Math.max(1, Math.ceil((growMs(state.def) - effective) / 60_000));
+    sys(
+      state.watered & bit
+        ? `The ${state.def.name.toLowerCase()} is well watered — about ${minsLeft} min to go.`
+        : `The ${state.def.name.toLowerCase()} is still growing — about ${minsLeft} min to go.`,
+    );
+  }
+
+  /** Plant a seed into a tilled plot (instant; the growing takes time). */
+  plant(eid: EntityId, tx: number, ty: number, seed: string): void {
+    const player = this.players.get(eid);
+    const pos = this.positions.get(eid);
+    if (!player || !pos || player.session === null) return;
+    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
+
+    if (player.characterId < 0) {
+      sys('Guests cannot plant crops — make an account!');
+      return;
+    }
+    const dx = tx + 0.5 - pos.x;
+    const dy = ty + 0.5 - pos.y;
+    if (dx * dx + dy * dy > 2.2 * 2.2) return;
+
+    this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    if (this.world.groundAt(tx, ty) !== Tile.Tilled) {
+      sys('Seeds need a tilled garden plot.');
+      return;
+    }
+    const key = `${tx},${ty}`;
+    if (this.crops.has(key)) return; // someone beat you to the plot
+    const def = CROP_BY_SEED.get(seed);
+    if (!def) return;
+    const level = levelForXp(player.skills.farming ?? 0);
+    if (level < def.levelReq) {
+      sys(`You need farming level ${def.levelReq} to plant ${def.name.toLowerCase()}.`);
+      return;
+    }
+    if (removeItem(player.inventory, seed, 1) === 0) return;
+
+    const state: CropState = {
+      def,
+      tx,
+      ty,
+      plantedAt: Date.now(),
+      boostMs: 0,
+      watered: 0,
+      owner: player.characterId,
+      lastStage: 0,
+    };
+    this.crops.set(key, state);
+    this.world.registerCropTile(tx, ty, Tile.CropSprout);
+    this.accounts.upsertCrop(tx, ty, def.id, state.plantedAt, 0, 0, state.owner);
+    this.setWorldTile(tx, ty, Tile.CropSprout);
+    this.grantXp(eid, player, 'farming', Math.max(1, Math.ceil(def.xp / 4)));
+    player.session.sendJson({ t: 'inv', slots: player.inventory });
+    sys(`You plant ${def.name.toLowerCase()}. Ready in about ${def.growMinutes} min.`);
+  }
+
+  private tickHarvest(eid: EntityId, player: PlayerComp): void {
+    const action = player.action! as HarvestAction;
+    const key = `${action.tx},${action.ty}`;
+    const state = this.crops.get(key);
+    // Demolished, /grow-raced, or otherwise gone from under us.
+    if (!state || this.world.groundAt(action.tx, action.ty) !== state.def.matureTile) {
+      this.cancelAction(eid, player, 'gone');
+      return;
+    }
+    if (--action.ticksLeft > 0) return;
+
+    const def = state.def;
+    const roll = (min: number, max: number) => min + Math.floor(Math.random() * (max - min + 1));
+    // Pack overflow spills onto the plot rather than vanishing.
+    const giveOrDrop = (item: string, qty: number) => {
+      const added = addItem(player.inventory, item, qty);
+      if (added < qty) {
+        this.spawnDrop(item, qty - added, action.tx + 0.5, action.ty + 0.5, eid);
+      }
+    };
+    giveOrDrop(def.yield.item, roll(def.yield.min, def.yield.max));
+    const seeds = roll(def.seedReturn.min, def.seedReturn.max);
+    if (seeds > 0) giveOrDrop(def.seedItem, seeds);
+    this.grantXp(eid, player, 'farming', def.xp);
+
+    this.crops.delete(key);
+    this.accounts.deleteCrop(action.tx, action.ty);
+    this.world.unregisterCropTile(action.tx, action.ty);
+    this.setWorldTile(action.tx, action.ty, Tile.Tilled);
+    player.session?.sendJson({ t: 'inv', slots: player.inventory });
+    this.cancelAction(eid, player, 'done');
+  }
+
+  /** Advance planted crops; the slow tick calls this every 2s. */
+  private tickCrops(now: number): void {
+    for (const state of this.crops.values()) {
+      const stage = stageForElapsed(state.def, now - state.plantedAt + state.boostMs);
+      if (stage > state.lastStage) {
+        state.lastStage = stage;
+        const tile = tileForStage(state.def, stage);
+        this.world.registerCropTile(state.tx, state.ty, tile);
+        this.setWorldTile(state.tx, state.ty, tile);
+      }
+    }
+  }
+
+  /** Spawn a free-for-all ground drop (harvest overflow, laid eggs). */
+  private spawnDrop(
+    item: string,
+    qty: number,
+    x: number,
+    y: number,
+    _byEid: EntityId | null,
+    xpOnPickup?: { skill: SkillId; xp: number },
+  ): EntityId {
+    const dropEid = this.ecs.create();
+    this.kinds.set(dropEid, EntityKind.ItemDrop);
+    this.positions.set(dropEid, { x, y, dir: 0 });
+    this.drops.set(dropEid, {
+      item,
+      qty,
+      ownerEid: null,
+      ownerUntil: 0,
+      despawnAt: Date.now() + 12 * 60_000,
+      pickupAfter: Date.now() + 400,
+      xpOnPickup,
+    });
+    this.updateChunkMembership(dropEid);
+    return dropEid;
   }
 
   // ---------------------------------------------------------- crafting
@@ -926,9 +1232,10 @@ export class GameServer {
       return;
     }
 
-    const level = levelForXp(player.skills.construction ?? 0);
+    const skill = def.skill ?? 'construction';
+    const level = levelForXp(player.skills[skill] ?? 0);
     if (level < def.levelReq) {
-      sys(`You need construction level ${def.levelReq} for a ${def.name.toLowerCase()}.`);
+      sys(`You need ${skill} level ${def.levelReq} for a ${def.name.toLowerCase()}.`);
       return;
     }
     this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
@@ -978,9 +1285,16 @@ export class GameServer {
     this.world.registerBuilt(action.tx, action.ty, def.tile, player.characterId);
     this.accounts.saveBuiltTile(action.tx, action.ty, def.tile, player.characterId);
     this.setWorldTile(action.tx, action.ty, def.tile);
-    this.grantXp(eid, player, 'construction', def.xp);
+    this.grantXp(eid, player, def.skill ?? 'construction', def.xp);
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
     this.cancelAction(eid, player, 'done');
+    // A depleted forage node may have queued a respawn for this very
+    // tile (they deplete to buildable Grass) — a late respawn would
+    // stomp the new construction and desync it from built_tiles.
+    for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
+      const entry = this.respawnQueue[i]!;
+      if (entry.tx === action.tx && entry.ty === action.ty) this.respawnQueue.splice(i, 1);
+    }
   }
 
   demolish(eid: EntityId, tx: number, ty: number): void {
@@ -996,6 +1310,10 @@ export class GameServer {
     const dx = tx + 0.5 - pos.x;
     const dy = ty + 0.5 - pos.y;
     if (dx * dx + dy * dy > 3 * 3) return;
+    if (this.crops.has(`${tx},${ty}`)) {
+      player.session.sendJson({ t: 'chat', channel: 'system', text: 'Harvest the crop first.' });
+      return;
+    }
 
     this.world.unregisterBuilt(tx, ty);
     this.accounts.deleteBuiltTile(tx, ty);
@@ -1220,6 +1538,33 @@ export class GameServer {
     const def = itemDef(slot.item);
     if (!def) return;
 
+    // Buff consumables (tonics, buff food) — one active per channel; a
+    // new drink replaces your drink, a new meal replaces your meal.
+    if (def.buff) {
+      const b = def.buff;
+      removeItem(player.inventory, slot.item, 1);
+      if (def.heals) {
+        const health = this.healths.must(eid);
+        health.hp = Math.min(health.maxHp, health.hp + def.heals);
+      }
+      player.buffs = player.buffs.filter((x) => x.channel !== b.channel);
+      player.buffs.push(
+        mkBuff({
+          speedMult: b.speedMult ?? 1,
+          shieldHp: b.shieldHp ?? 0,
+          gatherSpeed: b.gatherSpeed ?? 1,
+          regenPer4s: b.regenPer4s ?? 0,
+          untilTick: this.tickCount + b.durationSec * 20,
+          channel: b.channel,
+          itemId: def.id,
+          name: b.name,
+        }),
+      );
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      this.sendBuffs(player);
+      return;
+    }
+
     if (def.heals) {
       const health = this.healths.must(eid);
       if (health.hp >= health.maxHp) {
@@ -1240,6 +1585,52 @@ export class GameServer {
       player.equipment[def.equipSlot] = slot.item;
       this.onEquipmentChanged(eid, player);
     }
+  }
+
+  /** The HUD chip row: named consumable buffs only. */
+  private sendBuffs(player: PlayerComp): void {
+    const buffs = player.buffs
+      .filter((b) => b.channel && b.itemId && b.name)
+      .map((b) => ({
+        id: b.itemId!,
+        name: b.name!,
+        channel: b.channel!,
+        secsLeft: Math.max(0, Math.ceil((b.untilTick - this.tickCount) / 20)),
+      }));
+    player.session?.sendJson({ t: 'buffs', buffs });
+  }
+
+  /** Non-combat NPC interaction: milk the cow, one day pet the wolf. */
+  interactNpc(eid: EntityId, targetEid: EntityId): void {
+    const player = this.players.get(eid);
+    const pos = this.positions.get(eid);
+    if (!player || !pos || player.session === null) return;
+    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
+
+    const npc = this.npcs.get(targetEid);
+    const npos = this.positions.get(targetEid);
+    if (!npc || !npos || !npc.def.produce) return;
+    const dx = npos.x - pos.x;
+    const dy = npos.y - pos.y;
+    if (dx * dx + dy * dy > 2.2 * 2.2) return;
+
+    const produce = npc.def.produce;
+    const now = Date.now();
+    if (now < npc.nextProduceAt) {
+      const secs = Math.ceil((npc.nextProduceAt - now) / 1000);
+      sys(`The ${npc.def.name.toLowerCase()} has nothing to give yet (${secs}s).`);
+      return;
+    }
+    if (!hasSpaceFor(player.inventory, produce.item)) {
+      sys('Your pack is full.');
+      return;
+    }
+    npc.nextProduceAt = now + produce.cooldownSec * 1000;
+    addItem(player.inventory, produce.item, 1);
+    this.grantXp(eid, player, 'beastcraft', produce.xp);
+    this.setPose(eid, PoseState.Gather, 8);
+    player.session.sendJson({ t: 'inv', slots: player.inventory });
+    sys(`You collect ${itemDef(produce.item)?.name.toLowerCase() ?? produce.item} from the ${npc.def.name.toLowerCase()}.`);
   }
 
   unequip(eid: EntityId, slot: EquipSlot): void {
@@ -1842,12 +2233,14 @@ export class GameServer {
           self.shieldHp !== undefined ||
           self.meleeLifesteal !== undefined
         ) {
-          player.buffs.push({
-            speedMult: self.speedMult ?? 1,
-            shieldHp: self.shieldHp ?? 0,
-            meleeLifesteal: self.meleeLifesteal ?? 0,
-            untilTick: this.tickCount + self.durationTicks,
-          });
+          player.buffs.push(
+            mkBuff({
+              speedMult: self.speedMult ?? 1,
+              shieldHp: self.shieldHp ?? 0,
+              meleeLifesteal: self.meleeLifesteal ?? 0,
+              untilTick: this.tickCount + self.durationTicks,
+            }),
+          );
         }
         break;
       }
@@ -2434,12 +2827,7 @@ export class GameServer {
       this.grantXp(killerEid, killer, 'vitality', Math.round(npc.def.xpReward * 0.5));
       // Battle Rush: each kill feeds the next chase.
       if (this.hasPassive(killer, 'battle_rush')) {
-        killer.buffs.push({
-          speedMult: 1.25,
-          shieldHp: 0,
-          meleeLifesteal: 0,
-          untilTick: this.tickCount + 50,
-        });
+        killer.buffs.push(mkBuff({ speedMult: 1.25, untilTick: this.tickCount + 50 }));
       }
     }
 
@@ -2514,12 +2902,7 @@ export class GameServer {
       health.hp + dmg >= swLine &&
       this.hasPassive(player, 'second_wind')
     ) {
-      player.buffs.push({
-        speedMult: 1.35,
-        shieldHp: 0,
-        meleeLifesteal: 0,
-        untilTick: this.tickCount + 60,
-      });
+      player.buffs.push(mkBuff({ speedMult: 1.35, untilTick: this.tickCount + 60 }));
     }
 
     if (health.hp <= 0) {
@@ -2606,6 +2989,10 @@ export class GameServer {
         spawnIndex: i,
         poseUntilTick: 0,
         specialCooldown: 60, // never open with the special
+        nextProduceAt: 0,
+        nextLayAt: def.lays
+          ? now + (def.lays.minSec + Math.random() * (def.lays.maxSec - def.lays.minSec)) * 1000
+          : 0,
       });
       spawn.eid = eid;
       this.updateChunkMembership(eid);
@@ -2642,11 +3029,35 @@ export class GameServer {
     }
   }
 
-  private tickNpcs(): void {
+  private tickNpcs(now: number): void {
     for (const [eid, npc] of this.npcs) {
       const pos = this.positions.must(eid);
       if (npc.attackCooldown > 0) npc.attackCooldown--;
       if (npc.specialCooldown > 0) npc.specialCooldown--;
+
+      // Hens lay while someone is around to hear the cluck. A skipped
+      // lay (nobody near / egg pile) just re-rolls — no backlog.
+      if (npc.def.lays && npc.nextLayAt > 0 && now >= npc.nextLayAt) {
+        const lays = npc.def.lays;
+        npc.nextLayAt = now + (lays.minSec + Math.random() * (lays.maxSec - lays.minSec)) * 1000;
+        const key = this.entityChunk.get(eid);
+        let watched = false;
+        if (key) {
+          for (const s of this.sessions) {
+            if (s.knownChunks.has(key)) {
+              watched = true;
+              break;
+            }
+          }
+        }
+        if (watched && this.nearbyDropCount(lays.item, pos.x, pos.y, 6) < 4) {
+          const scatter = () => (Math.random() - 0.5) * 0.7;
+          this.spawnDrop(lays.item, 1, pos.x + scatter(), pos.y + scatter(), null, {
+            skill: 'beastcraft',
+            xp: lays.xp,
+          });
+        }
+      }
 
       // Shock is a hard stagger: no thinking, no moving, no swinging.
       if (this.isShocked(eid)) {
@@ -2833,6 +3244,20 @@ export class GameServer {
 
   // ------------------------------------------------------------- drops
 
+  /** How many drops of an item lie within `radius` tiles (egg-pile cap). */
+  private nearbyDropCount(item: string, x: number, y: number, radius: number): number {
+    let count = 0;
+    for (const [eid, drop] of this.drops) {
+      if (drop.item !== item) continue;
+      const pos = this.positions.get(eid);
+      if (!pos) continue;
+      const dx = pos.x - x;
+      const dy = pos.y - y;
+      if (dx * dx + dy * dy <= radius * radius) count++;
+    }
+    return count;
+  }
+
   private tickDrops(now: number): void {
     for (const [eid, drop] of this.drops) {
       if (drop.despawnAt <= now) {
@@ -2854,6 +3279,9 @@ export class GameServer {
         if (dx * dx + dy * dy > 0.55 * 0.55) continue;
         if (!hasSpaceFor(player.inventory, drop.item)) continue;
         addItem(player.inventory, drop.item, drop.qty);
+        if (drop.xpOnPickup) {
+          this.grantXp(playerEid, player, drop.xpOnPickup.skill, drop.xpOnPickup.xp);
+        }
         player.session.sendJson({ t: 'inv', slots: player.inventory });
         this.removeFromChunks(eid);
         this.ecs.destroy(eid);
@@ -2862,8 +3290,20 @@ export class GameServer {
     }
   }
 
-  /** Slow out-of-combat regen: 1 hp / 5s. */
+  /** Slow out-of-combat regen: 1 hp / 5s. Buff regen works in combat. */
   private tickRegen(now: number): void {
+    // Hearty food / mending salve: every 4s, best regen buff wins.
+    if (this.tickCount % 80 === 0) {
+      for (const [eid, player] of this.players) {
+        if (player.session === null) continue;
+        let regen = 0;
+        for (const b of player.buffs) regen = Math.max(regen, b.regenPer4s);
+        if (regen > 0) {
+          const health = this.healths.must(eid);
+          if (health.hp < health.maxHp) health.hp = Math.min(health.maxHp, health.hp + regen);
+        }
+      }
+    }
     if (this.tickCount % 100 !== 0) return;
     for (const [eid, player] of this.players) {
       if (player.session === null) continue;
@@ -2921,6 +3361,35 @@ export class GameServer {
       }
       return;
     }
+    if (config.devCommands && text.startsWith('/xp ')) {
+      const [, skillRaw, amountRaw] = text.split(/\s+/);
+      const amount = Math.max(1, Math.min(10_000_000, Number.parseInt(amountRaw ?? '0', 10) || 0));
+      if (skillRaw && isSkillId(skillRaw) && amount > 0) {
+        this.grantXp(eid, player, skillRaw, amount);
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: `+${amount} ${skillRaw} xp` });
+      } else {
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: '/xp <skill> <amount>' });
+      }
+      return;
+    }
+    if (config.devCommands && text.startsWith('/grow')) {
+      const pos = this.positions.get(eid);
+      const now = Date.now();
+      let grown = 0;
+      for (const state of this.crops.values()) {
+        if (pos && Math.hypot(state.tx + 0.5 - pos.x, state.ty + 0.5 - pos.y) > 20) continue;
+        const remaining = growMs(state.def) - (now - state.plantedAt + state.boostMs);
+        if (remaining <= 0) continue;
+        state.boostMs += remaining;
+        this.accounts.upsertCrop(
+          state.tx, state.ty, state.def.id, state.plantedAt, state.boostMs, state.watered, state.owner,
+        );
+        grown++;
+      }
+      this.tickCrops(now);
+      player.session?.sendJson({ t: 'chat', channel: 'system', text: `Ripened ${grown} crops.` });
+      return;
+    }
     if (config.devCommands && text.startsWith('/give ')) {
       const [, item, qtyRaw] = text.split(/\s+/);
       const def = itemDef(item ?? '');
@@ -2961,13 +3430,14 @@ export class GameServer {
     }
 
     this.tickSpawns(now);
-    this.tickNpcs();
+    this.tickNpcs(now);
     this.tickProjectiles();
     this.tickStatuses();
     this.tickSummons();
     this.tickBlasts();
     this.tickDrops(now);
     this.tickRegen(now);
+    if (this.tickCount % 40 === 0) this.tickCrops(now);
 
     // Respawn depleted nodes.
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
@@ -2994,7 +3464,10 @@ export class GameServer {
       if (player.abilityCd[i]! > 0) player.abilityCd[i]!--;
     }
     if (player.buffs.length > 0) {
+      const expired = player.buffs.some((b) => this.tickCount >= b.untilTick && b.channel);
       player.buffs = player.buffs.filter((b) => this.tickCount < b.untilTick);
+      // A tonic or meal ran out — clear its HUD chip.
+      if (expired) this.sendBuffs(player);
     }
     const equipped = this.equippedWeapon(player);
     const style = equipped?.weapon.style ?? null;
@@ -3042,12 +3515,7 @@ export class GameServer {
         player.drawTicks = 0; // dodging lets the string down
         // Wolf Reflexes: the dodge itself becomes an engage/escape tool.
         if (this.hasPassive(player, 'dodge_haste')) {
-          player.buffs.push({
-            speedMult: 1.35,
-            shieldHp: 0,
-            meleeLifesteal: 0,
-            untilTick: this.tickCount + 30,
-          });
+          player.buffs.push(mkBuff({ speedMult: 1.35, untilTick: this.tickCount + 30 }));
         }
       }
       player.lastProcessedSeq = frame.seq;

@@ -96,6 +96,19 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE characters ADD COLUMN look TEXT;
   `,
+  // 8 — planted crops (stage derives from planted_at + boost_ms at read time)
+  `
+  CREATE TABLE crops (
+    tx INTEGER NOT NULL,
+    ty INTEGER NOT NULL,
+    crop TEXT NOT NULL,
+    planted_at INTEGER NOT NULL,
+    boost_ms INTEGER NOT NULL DEFAULT 0,
+    watered INTEGER NOT NULL DEFAULT 0,
+    owner_character_id INTEGER NOT NULL,
+    PRIMARY KEY (tx, ty)
+  );
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

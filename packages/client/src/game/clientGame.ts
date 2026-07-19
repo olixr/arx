@@ -17,6 +17,7 @@ import {
   type EntityId,
   type EntityMeta,
   type EquipSlot,
+  type BuffInfo,
   type InputFrame,
   type InvSlot,
   type S2CMessage,
@@ -26,7 +27,8 @@ import {
   type TilePatch,
   type Vec2,
 } from '@devcraft/shared';
-import { NODES_BY_TILE, abilityDef, itemDef } from '@devcraft/content';
+import { MATURE_TILES, NODES_BY_TILE, isCropTile, abilityDef, itemDef, npcDef } from '@devcraft/content';
+import { EntityKind } from '@devcraft/shared';
 import type { AbilityDef, AbilitySlot, Look } from '@devcraft/shared';
 
 export type InteractTarget =
@@ -34,7 +36,10 @@ export type InteractTarget =
   | { kind: 'station'; tx: number; ty: number; station: StationType }
   | { kind: 'bank'; tx: number; ty: number }
   | { kind: 'shop'; tx: number; ty: number }
-  | { kind: 'portal'; tx: number; ty: number };
+  | { kind: 'portal'; tx: number; ty: number }
+  | { kind: 'plot'; tx: number; ty: number }
+  | { kind: 'crop'; tx: number; ty: number; mature: boolean }
+  | { kind: 'npc'; tx: number; ty: number; eid: EntityId; verb: string };
 import { Connection } from '../net/connection.js';
 import { InterpBuffer } from '../net/interpolation.js';
 import { Predictor } from '../net/prediction.js';
@@ -136,6 +141,12 @@ export class ClientGame {
   abilityMax: [number, number, number, number] = [0, 0, 0, 0];
   /** Chosen technique ability per combat style (server-confirmed). */
   techniques: Record<string, string> = {};
+  /** Active consumable buffs (tonic/food) for the HUD chip row. */
+  buffs: BuffInfo[] = [];
+  /** performance.now() when the buffs snapshot arrived (chips count down). */
+  buffsAt = 0;
+  /** Fires when the buff list changes (HUD refresh). */
+  onBuffs: (() => void) | null = null;
   /** Fires when the local player commits a cast (FX + audio hooks). */
   onCastFx: ((slot: AbilitySlot, ab: AbilityDef) => void) | null = null;
   /** Fires when the technique loadout changes (UI refresh). */
@@ -517,6 +528,12 @@ export class ClientGame {
         this.onTechniques?.();
         break;
       }
+      case 'buffs': {
+        this.buffs = msg.buffs;
+        this.buffsAt = performance.now();
+        this.onBuffs?.();
+        break;
+      }
       case 'time': {
         this.timeOfs = msg.ofs;
         break;
@@ -600,6 +617,10 @@ export class ClientGame {
     const ground = this.world.groundAt(tx, ty);
     if (ground === undefined) return null;
     if (NODES_BY_TILE.has(ground)) return { kind: 'node', tx, ty };
+    if (ground === Tile.Tilled) return { kind: 'plot', tx, ty };
+    if (isCropTile(ground)) {
+      return { kind: 'crop', tx, ty, mature: MATURE_TILES.has(ground) };
+    }
     const station = stationAtTile(ground);
     if (station) return { kind: 'station', tx, ty, station };
     if (ground === Tile.BankChest) return { kind: 'bank', tx, ty };
@@ -608,7 +629,7 @@ export class ClientGame {
     return null;
   }
 
-  /** The nearest interactable tile within reach, or null. */
+  /** The nearest interactable tile (or gatherable animal) in reach. */
   findNearbyTarget(): InteractTarget | null {
     if (this.ownEid === null) return null;
     const pos = this.predictor.pos;
@@ -623,6 +644,24 @@ export class ClientGame {
         const dy = ty + 0.5 - pos.y;
         const d = dx * dx + dy * dy;
         if (d <= 2.2 * 2.2 && (!best || d < best.d)) best = { target, d };
+      }
+    }
+    // Livestock: a cow in milking range beats a further-away tile.
+    for (const [eid, remote] of this.entities) {
+      if (remote.meta.kind !== EntityKind.Npc) continue;
+      const def = npcDef(remote.meta.defId ?? '');
+      if (!def?.produce) continue;
+      const latest = remote.buffer.latest();
+      const x = latest?.x ?? remote.meta.x;
+      const y = latest?.y ?? remote.meta.y;
+      const dx = x - pos.x;
+      const dy = y - pos.y;
+      const d = dx * dx + dy * dy;
+      if (d <= 2.2 * 2.2 && (!best || d < best.d)) {
+        best = {
+          target: { kind: 'npc', tx: Math.floor(x), ty: Math.floor(y), eid, verb: 'Milk' },
+          d,
+        };
       }
     }
     return best?.target ?? null;
@@ -643,6 +682,16 @@ export class ClientGame {
 
   craft(recipe: string, qty: number): void {
     this.conn?.send({ t: 'craft', recipe, qty });
+  }
+
+  /** Plant a seed into a tilled plot. */
+  plantSend(tx: number, ty: number, seed: string): void {
+    this.conn?.send({ t: 'plant', tx, ty, seed });
+  }
+
+  /** Interact with a living NPC (milk a cow). */
+  interactNpc(eid: EntityId): void {
+    this.conn?.send({ t: 'interactnpc', eid });
   }
 
   bankSend(op: 'deposit' | 'withdraw', item: string, qty: number): void {

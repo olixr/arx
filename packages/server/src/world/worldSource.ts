@@ -87,6 +87,21 @@ export class WorldSource extends ChunkStore {
     return this.builtTiles.get(`${tx},${ty}`);
   }
 
+  /**
+   * Planted-crop stage tiles, applied over builtTiles so a crop wins
+   * over its plot's stored Tilled ground when a chunk regenerates.
+   */
+  private readonly cropTiles = new Map<string, number>();
+
+  registerCropTile(tx: number, ty: number, tile: number): void {
+    this.cropTiles.set(`${tx},${ty}`, tile);
+    this.setGround(tx, ty, tile);
+  }
+
+  unregisterCropTile(tx: number, ty: number): void {
+    this.cropTiles.delete(`${tx},${ty}`);
+  }
+
   ensure(cx: number, cy: number): ChunkData {
     const existing = this.get(cx, cy);
     if (existing) return existing;
@@ -99,6 +114,13 @@ export class WorldSource extends ChunkStore {
       const [tx, ty] = key.split(',').map(Number);
       if (tx! >= baseX && tx! < baseX + CHUNK_SIZE && ty! >= baseY && ty! < baseY + CHUNK_SIZE) {
         chunk.ground[tileIndex(tx!, ty!)] = built.tile;
+      }
+    }
+    // Crops overwrite their plot's Tilled ground.
+    for (const [key, tile] of this.cropTiles) {
+      const [tx, ty] = key.split(',').map(Number);
+      if (tx! >= baseX && tx! < baseX + CHUNK_SIZE && ty! >= baseY && ty! < baseY + CHUNK_SIZE) {
+        chunk.ground[tileIndex(tx!, ty!)] = tile;
       }
     }
     this.set(chunk);

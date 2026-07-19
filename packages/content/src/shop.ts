@@ -16,4 +16,10 @@ export const GENERAL_STORE: readonly ShopEntry[] = [
   // One starter relic on the shelf so the E slot is discoverable
   // without a lucky drop; the rest are monster-hunted.
   { item: 'snare_kit', price: 300 },
+  // Starter farming: herb seeds are foraging-only finds.
+  { item: 'carrot_seed', price: 5 },
+  { item: 'sunflower_seed', price: 15 },
+  { item: 'wheat_seed', price: 20 },
+  { item: 'cotton_seed', price: 30 },
+  { item: 'watering_can', price: 30 },
 ];

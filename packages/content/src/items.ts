@@ -19,6 +19,26 @@ export interface WeaponStats {
   art?: string;
 }
 
+/**
+ * A consumable buff. One buff may be active per channel: drinking a new
+ * tonic replaces your tonic buff, eating new buff food replaces your food
+ * buff — the two channels stack with each other.
+ */
+export interface ConsumableBuff {
+  /** Display name, e.g. "Sugar Rush". */
+  name: string;
+  channel: 'tonic' | 'food';
+  durationSec: number;
+  /** Movement speed multiplier. */
+  speedMult?: number;
+  /** Damage soaked before HP is touched. */
+  shieldHp?: number;
+  /** Gathering speed multiplier (mining, woodcutting, foraging, ...). */
+  gatherSpeed?: number;
+  /** HP restored every 4 seconds. */
+  regenPer4s?: number;
+}
+
 export interface ItemDef {
   id: string;
   name: string;
@@ -33,6 +53,8 @@ export interface ItemDef {
   armor?: number;
   /** HP restored when eaten. */
   heals?: number;
+  /** Timed buff granted when consumed (may accompany heals). */
+  buff?: ConsumableBuff;
   /** Relic active ability granted while worn in the relic slot (E). */
   relic?: string;
   /** Sigil ultimate granted while worn in the sigil slot (T). */
@@ -71,6 +93,113 @@ const defs: ItemDef[] = [
   { id: 'cooked_chicken', name: 'Cooked chicken', stackable: false, value: 7, heals: 3, desc: 'Simple food that keeps an adventurer standing.', color: '#d9a86a', code: 'Ch' },
   { id: 'cooked_beef', name: 'Cooked beef', stackable: false, value: 8, heals: 4, desc: 'A proper meal after a proper fight.', color: '#b06a4a', code: 'Bf' },
   { id: 'burnt_food', name: 'Burnt food', stackable: false, value: 1, desc: 'You looked away for one moment. It noticed.', color: '#3a363f', code: 'Bt' },
+
+  // Seeds — the start of every field
+  { id: 'carrot_seed', name: 'Carrot seeds', stackable: true, value: 2, desc: 'Fast, forgiving, and sweet. Every farm starts here.', color: '#e8873d', code: 'Cs' },
+  { id: 'sagewort_seed', name: 'Sagewort seeds', stackable: true, value: 5, desc: 'Papery seeds smelling faintly of medicine.', color: '#8fb083', code: 'Ss' },
+  { id: 'sunflower_seed', name: 'Sunflower seeds', stackable: true, value: 7, desc: 'Plant a little sun. Harvest a tall one.', color: '#e8c04c', code: 'Fs' },
+  { id: 'wheat_seed', name: 'Wheat seeds', stackable: true, value: 8, desc: 'A handful of gold-to-be.', color: '#d9b45c', code: 'Ws' },
+  { id: 'cotton_seed', name: 'Cotton seeds', stackable: true, value: 12, desc: 'Fluff futures, sold by the pinch.', color: '#e8e4da', code: 'Ct' },
+  { id: 'moonbell_seed', name: 'Moonbell seeds', stackable: true, value: 20, desc: 'They only sprout for patient hands.', color: '#8f9ed6', code: 'Ms' },
+
+  // Produce & foraged goods
+  { id: 'carrot', name: 'Carrot', stackable: false, value: 4, heals: 2, desc: 'Crunchy straight from the soil.', color: '#e8873d', code: 'Ca' },
+  { id: 'sagewort', name: 'Sagewort', stackable: false, value: 10, desc: 'A healer\'s herb — bitter leaf, kind intentions.', color: '#8fb083', code: 'Sw' },
+  { id: 'sunflower', name: 'Sunflower', stackable: false, value: 8, desc: 'Follows the light. So do we all.', color: '#e8c04c', code: 'Sf' },
+  { id: 'wheat', name: 'Wheat', stackable: false, value: 6, desc: 'A sheaf of ripe grain, ready for the mill.', color: '#d9b45c', code: 'Wh' },
+  { id: 'cotton', name: 'Cotton', stackable: false, value: 10, desc: 'A cloud you can spin.', color: '#f2efe6', code: 'Cn' },
+  { id: 'moonbell', name: 'Moonbell', stackable: false, value: 25, desc: 'Pale blue bells that glow faintly after dusk.', color: '#8f9ed6', code: 'Mb' },
+  { id: 'berries', name: 'Berries', stackable: true, value: 3, heals: 2, desc: 'Sweet, wild, and occasionally shared with birds.', color: '#a04a6e', code: 'Br' },
+  { id: 'plant_fibre', name: 'Plant fibre', stackable: true, value: 3, desc: 'Tough green strands, good for twisting into twine.', color: '#79a355', code: 'Pf' },
+
+  // Farm-processed materials
+  { id: 'twine', name: 'Twine', stackable: true, value: 8, desc: 'Fibre twisted until it agrees to hold things together.', color: '#b0a068', code: 'Tw' },
+  { id: 'cloth', name: 'Cloth', stackable: false, value: 24, desc: 'A tidy bolt of woven cotton.', color: '#e8e4da', code: 'Cl' },
+  { id: 'flour', name: 'Flour', stackable: true, value: 10, desc: 'Ground wheat. The quiet half of every bakery.', color: '#f2efe6', code: 'Fl' },
+  { id: 'milk', name: 'Milk', stackable: false, value: 8, desc: 'A pail of fresh milk, still warm from the cow.', color: '#f4f2ec', code: 'Mk' },
+  { id: 'egg', name: 'Egg', stackable: true, value: 4, desc: 'Laid this morning, judging by the smugness of the hen.', color: '#e8d9b0', code: 'Eg' },
+
+  // Homestead cooking
+  { id: 'bread', name: 'Bread', stackable: false, value: 14, heals: 6, desc: 'A warm loaf with a crust worth fighting over.', color: '#c49a5c', code: 'Bd' },
+  { id: 'fried_egg', name: 'Fried egg', stackable: false, value: 6, heals: 3, desc: 'Sunny side up, like all good mornings.', color: '#f2d98a', code: 'Fe' },
+  {
+    id: 'hearty_stew',
+    name: 'Hearty stew',
+    stackable: false,
+    value: 22,
+    heals: 8,
+    buff: { name: 'Hearty', channel: 'food', durationSec: 240, regenPer4s: 1 },
+    desc: 'Beef and carrots that keep mending you long after the bowl.',
+    color: '#b06a4a',
+    code: 'Hs',
+  },
+  {
+    id: 'cake',
+    name: 'Cake',
+    stackable: false,
+    value: 40,
+    heals: 10,
+    buff: { name: 'Sugar Rush', channel: 'food', durationSec: 180, speedMult: 1.08 },
+    desc: 'Flour, egg, milk, and a spring in your step.',
+    color: '#e8b6c9',
+    code: 'Ck',
+  },
+
+  // Herbalism — tinctures and tonics from the alembic bench
+  { id: 'healing_tincture', name: 'Healing tincture', stackable: false, value: 30, heals: 8, desc: 'Sagewort distilled to its kindest form.', color: '#d65a5a', code: 'Ht' },
+  {
+    id: 'gatherers_brew',
+    name: 'Gatherer\'s brew',
+    stackable: false,
+    value: 45,
+    buff: { name: 'Gatherer\'s Eye', channel: 'tonic', durationSec: 180, gatherSpeed: 1.25 },
+    desc: 'The world gives up its goods a little faster.',
+    color: '#7fc9b3',
+    code: 'Gb',
+  },
+  {
+    id: 'swiftness_tonic',
+    name: 'Swiftness tonic',
+    stackable: false,
+    value: 60,
+    buff: { name: 'Swiftness', channel: 'tonic', durationSec: 60, speedMult: 1.2 },
+    desc: 'Tastes like wind. Works like it too.',
+    color: '#8fd0e8',
+    code: 'St',
+  },
+  {
+    id: 'ironbark_tonic',
+    name: 'Ironbark tonic',
+    stackable: false,
+    value: 70,
+    buff: { name: 'Ironbark', channel: 'tonic', durationSec: 120, shieldHp: 6 },
+    desc: 'Your skin remembers being a tree.',
+    color: '#9c7440',
+    code: 'It',
+  },
+  {
+    id: 'mending_salve',
+    name: 'Mending salve',
+    stackable: false,
+    value: 90,
+    buff: { name: 'Mending', channel: 'tonic', durationSec: 40, regenPer4s: 2 },
+    desc: 'Moonbell and milk, whipped into quiet miracles.',
+    color: '#c9a8e8',
+    code: 'Msv',
+  },
+
+  // Homestead sundries
+  {
+    id: 'flower_crown',
+    name: 'Flower crown',
+    stackable: false,
+    value: 35,
+    equipSlot: 'head',
+    desc: 'Sunflowers woven with twine. Armor value: joy.',
+    color: '#e8c04c',
+    code: 'Fc',
+  },
+  { id: 'watering_can', name: 'Watering can', stackable: false, value: 30, desc: 'Carry a little rain wherever you garden.', color: '#7a8fa5', code: 'Wc' },
 
   // Metal bars
   { id: 'bronze_bar', name: 'Bronze bar', stackable: false, value: 16, desc: 'The classic alloy — one part copper, one part tin.', color: '#a4744b', code: 'Bb' },

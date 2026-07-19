@@ -54,6 +54,10 @@ export interface NpcDef {
   resist?: readonly StatusId[];
   /** Statuses that hit this NPC twice as hard. */
   weak?: readonly StatusId[];
+  /** Livestock: what interacting yields (milking), on a per-animal cooldown. */
+  produce?: { item: string; cooldownSec: number; xp: number };
+  /** Livestock: lays this item on the ground every minSec–maxSec while players are near. */
+  lays?: { item: string; minSec: number; maxSec: number; xp: number };
 }
 
 const defs: NpcDef[] = [
@@ -77,6 +81,7 @@ const defs: NpcDef[] = [
     respawnSec: 15,
     color: '#f4efe4',
     radius: 0.22,
+    lays: { item: 'egg', minSec: 180, maxSec: 300, xp: 4 },
   },
   {
     id: 'cow',
@@ -98,6 +103,7 @@ const defs: NpcDef[] = [
     respawnSec: 20,
     color: '#c9b8a8',
     radius: 0.34,
+    produce: { item: 'milk', cooldownSec: 180, xp: 8 },
   },
   {
     id: 'rat',

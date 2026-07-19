@@ -443,6 +443,12 @@ export declare class Renderer {
     addRockBreak(tx: number, ty: number, tile: Tile): void;
     private collectBreakingRocks;
     private collectFallingTrees;
+    /**
+     * A growing crop plant. Flat vector language: triangle blades, facet
+     * blooms, chunky puffs — every species reads at a glance, and ripe
+     * stages visibly ask to be picked.
+     */
+    private drawCropPlant;
     /** Trees, rocks, stations — the object layer, redrawn with character. */
     private objectItem;
     /**

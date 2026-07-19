@@ -147,6 +147,8 @@ const PROMPT_LABELS: Record<string, string> = {
   furnace: 'Smelt',
   anvil: 'Smith',
   workbench: 'Craft',
+  alembic: 'Brew',
+  plot: 'Plant',
 };
 
 const stationPanels = new StationPanels(
@@ -165,6 +167,8 @@ const stationPanels = new StationPanels(
     });
   },
 );
+
+stationPanels.onPlant = (tx, ty, seed) => game.plantSend(tx, ty, seed);
 
 const panels = new Panels(
   (slot) => {
@@ -591,6 +595,16 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       stationPanels.openShop(target);
       panels.showInventory();
       break;
+    case 'plot':
+      stationPanels.openPlant(target.tx, target.ty, game.inventory, game.skills, target);
+      break;
+    case 'crop':
+      // The server decides: harvest if ripe, water if thirsty, else status.
+      game.interact(target.tx, target.ty);
+      break;
+    case 'npc':
+      game.interactNpc(target.eid);
+      break;
   }
 }
 
@@ -777,7 +791,12 @@ function frame(now: number): void {
     if (target) {
       const p = renderer.camera.worldToScreen(target.tx + 0.5, target.ty + 0.5, window.innerWidth, window.innerHeight);
       p.y -= renderer.renderLift(target.tx + 0.5, target.ty + 0.5) * renderer.camera.scale;
-      nav.setPrompt({ sx: p.x, sy: p.y - renderer.camera.scale * 1.5, label: PROMPT_LABELS[target.kind === 'station' ? target.station : target.kind] ?? 'Use' });
+      const label =
+        target.kind === 'station' ? PROMPT_LABELS[target.station]
+        : target.kind === 'npc' ? target.verb
+        : target.kind === 'crop' ? (target.mature ? 'Harvest' : 'Tend')
+        : PROMPT_LABELS[target.kind];
+      nav.setPrompt({ sx: p.x, sy: p.y - renderer.camera.scale * 1.5, label: label ?? 'Use' });
     } else {
       nav.setPrompt(null);
     }

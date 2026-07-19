@@ -1,4 +1,4 @@
-/** The twelve launch skills. Classless: everyone can train everything. */
+/** The sixteen launch skills. Classless: everyone can train everything. */
 export type SkillId =
   | 'vitality'
   | 'melee'
@@ -11,7 +11,11 @@ export type SkillId =
   | 'smithing'
   | 'crafting'
   | 'cooking'
-  | 'construction';
+  | 'construction'
+  | 'farming'
+  | 'foraging'
+  | 'herbalism'
+  | 'beastcraft';
 
 export const SKILL_IDS: readonly SkillId[] = [
   'vitality',
@@ -26,6 +30,10 @@ export const SKILL_IDS: readonly SkillId[] = [
   'crafting',
   'cooking',
   'construction',
+  'farming',
+  'foraging',
+  'herbalism',
+  'beastcraft',
 ];
 
 export const MAX_LEVEL = 99;

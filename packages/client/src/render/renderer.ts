@@ -1427,7 +1427,10 @@ export class Renderer {
           continue;
         }
         const def = tileDef(ground);
-        if (!def.raised && ground !== Tile.Stump) continue;
+        // Crops are walkable flat ground, but the PLANT standing on it
+        // is a y-sorted object you pass behind.
+        const isCrop = ground >= Tile.CropSprout && ground <= Tile.MoonbellRipe;
+        if (!def.raised && ground !== Tile.Stump && !isCrop) continue;
         const item = this.objectItem(ground as Tile, tx, ty, game);
         if (game.world.elevAt(tx, ty) > 0) item.elevated = true;
         items.push(item);
@@ -3330,6 +3333,270 @@ export class Renderer {
     }
   }
 
+  /**
+   * A growing crop plant. Flat vector language: triangle blades, facet
+   * blooms, chunky puffs — every species reads at a glance, and ripe
+   * stages visibly ask to be picked.
+   */
+  private drawCropPlant(px: number, py: number, s: number, h: number, tile: Tile, t: number): void {
+    const ctx = this.ctx;
+    const m = (h >> 4) & 1 ? -1 : 1;
+    const sway = Math.sin(t * 1.5 + (h % 31) * 0.45) * s * 0.03;
+    const X = (dx: number) => px + dx * m * s;
+    const Y = (dy: number) => py + dy * s;
+    /** One leaning leaf blade, base-anchored. */
+    const blade = (bx: number, by: number, w: number, hgt: number, lean: number, col: string) => {
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(bx - w / 2, by);
+      ctx.lineTo(bx + w / 2, by);
+      ctx.lineTo(bx + lean * s + sway, by - hgt);
+      ctx.closePath();
+      ctx.fill();
+    };
+
+    if (tile === Tile.CropSprout) {
+      // A dug mound with the first hopeful shoots.
+      ctx.fillStyle = '#57402a';
+      ctx.beginPath();
+      ctx.ellipse(px, Y(0.1), s * 0.17, s * 0.07, 0, 0, Math.PI * 2);
+      ctx.fill();
+      blade(X(-0.07), Y(0.08), s * 0.05, s * 0.17, -0.03, '#8fc46a');
+      blade(X(0.02), Y(0.08), s * 0.05, s * 0.22, 0.02, '#a3d47c');
+      blade(X(0.09), Y(0.08), s * 0.045, s * 0.14, 0.05, '#8fc46a');
+      return;
+    }
+
+    switch (tile) {
+      case Tile.CarrotMid: {
+        for (const [dx, hgt, lean] of [
+          [-0.12, 0.24, -0.09], [-0.04, 0.3, -0.03], [0.04, 0.32, 0.03], [0.12, 0.22, 0.09],
+        ] as const) {
+          blade(X(dx), Y(0.1), s * 0.06, s * hgt, lean, dx < 0 ? '#5f9c46' : '#6fae52');
+        }
+        break;
+      }
+      case Tile.CarrotRipe: {
+        // Orange crowns shoulder out of the soil under a full head.
+        for (const dx of [-0.11, 0.02, 0.13]) {
+          ctx.fillStyle = '#e8873d';
+          ctx.beginPath();
+          ctx.ellipse(X(dx), Y(0.1), s * 0.055, s * 0.04, 0, Math.PI, 0);
+          ctx.fill();
+        }
+        for (const [dx, hgt, lean] of [
+          [-0.14, 0.3, -0.1], [-0.05, 0.38, -0.03], [0.03, 0.4, 0.03], [0.12, 0.3, 0.1], [0.18, 0.2, 0.13],
+        ] as const) {
+          blade(X(dx), Y(0.08), s * 0.06, s * hgt, lean, dx < 0 ? '#5f9c46' : '#6fae52');
+        }
+        break;
+      }
+      case Tile.SagewortMid:
+      case Tile.SagewortRipe: {
+        const ripe = tile === Tile.SagewortRipe;
+        const n = ripe ? 7 : 4;
+        const rad = ripe ? 0.2 : 0.14;
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * Math.PI * 2 + m * 0.4;
+          const lx = px + Math.cos(a) * s * rad;
+          const ly = Y(0.06) + Math.sin(a) * s * rad * 0.5;
+          ctx.save();
+          ctx.translate(lx + sway * 0.4, ly);
+          ctx.rotate(Math.atan2(ly - Y(0.16), lx - px) + Math.PI / 2);
+          ctx.fillStyle = i % 2 ? '#8fb083' : '#7ba070';
+          ctx.beginPath();
+          ctx.ellipse(0, -s * (ripe ? 0.13 : 0.09), s * 0.05, s * (ripe ? 0.15 : 0.1), 0, 0, Math.PI * 2);
+          ctx.fill();
+          if (ripe) {
+            ctx.fillStyle = '#c2d8b0';
+            ctx.beginPath();
+            ctx.ellipse(0, -s * 0.24, s * 0.028, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+        break;
+      }
+      case Tile.SunflowerMid: {
+        ctx.strokeStyle = '#5f8a44';
+        ctx.lineWidth = Math.max(1.5, s * 0.045);
+        ctx.beginPath();
+        ctx.moveTo(px, Y(0.12));
+        ctx.quadraticCurveTo(px + sway, Y(-0.18), px + sway + m * s * 0.02, Y(-0.4));
+        ctx.stroke();
+        blade(X(-0.03), Y(0), s * 0.05, s * 0.16, -0.12, '#5f9c46');
+        blade(X(0.05), Y(-0.06), s * 0.05, s * 0.14, 0.12, '#6fae52');
+        // Closed bud.
+        ctx.fillStyle = '#7ba54c';
+        ctx.beginPath();
+        facetCircle(ctx, px + sway + m * s * 0.02, Y(-0.46), s * 0.08, 6, 0.3, 0.75);
+        ctx.fill();
+        ctx.fillStyle = '#a9c25c';
+        ctx.beginPath();
+        facetCircle(ctx, px + sway + m * s * 0.02, Y(-0.48), s * 0.045, 6, 0.3, 0.75);
+        ctx.fill();
+        break;
+      }
+      case Tile.SunflowerRipe: {
+        const hx = px + sway + m * s * 0.05;
+        const hy = Y(-0.72);
+        ctx.strokeStyle = '#5f8a44';
+        ctx.lineWidth = Math.max(1.5, s * 0.055);
+        ctx.beginPath();
+        ctx.moveTo(px, Y(0.12));
+        ctx.quadraticCurveTo(px + sway * 0.6, Y(-0.3), hx, hy + s * 0.1);
+        ctx.stroke();
+        blade(X(-0.04), Y(0.02), s * 0.06, s * 0.2, -0.14, '#5f9c46');
+        blade(X(0.06), Y(-0.08), s * 0.06, s * 0.18, 0.14, '#6fae52');
+        // The bloom: chunky petal diamonds around a seed heart.
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2 + m * 0.2;
+          ctx.save();
+          ctx.translate(hx + Math.cos(a) * s * 0.14, hy + Math.sin(a) * s * 0.14);
+          ctx.rotate(a);
+          ctx.fillStyle = i % 2 ? '#e8c04c' : '#f2d264';
+          ctx.beginPath();
+          ctx.moveTo(-s * 0.015, -s * 0.04);
+          ctx.lineTo(s * 0.1, 0);
+          ctx.lineTo(-s * 0.015, s * 0.04);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.fillStyle = '#6b4a26';
+        ctx.beginPath();
+        facetCircle(ctx, hx, hy, s * 0.09, 7, 0.2, 0.8);
+        ctx.fill();
+        ctx.fillStyle = '#8a6534';
+        ctx.beginPath();
+        facetCircle(ctx, hx - s * 0.025, hy - s * 0.025, s * 0.045, 6, 0.2, 0.8);
+        ctx.fill();
+        break;
+      }
+      case Tile.WheatMid: {
+        for (const [dx, hgt, lean] of [
+          [-0.15, 0.3, -0.05], [-0.07, 0.36, -0.02], [0.01, 0.4, 0.01], [0.09, 0.34, 0.04], [0.16, 0.26, 0.07],
+        ] as const) {
+          blade(X(dx), Y(0.1), s * 0.045, s * hgt, lean, dx < 0 ? '#7ba54c' : '#8fbc59');
+        }
+        break;
+      }
+      case Tile.WheatRipe: {
+        // A standing golden sheaf, heads nodding with the wind.
+        for (const [dx, hgt] of [
+          [-0.16, 0.42], [-0.08, 0.52], [0, 0.58], [0.08, 0.5], [0.16, 0.4],
+        ] as const) {
+          const bx = X(dx);
+          const tipX = bx + sway * 1.6 + m * s * 0.03;
+          const tipY = Y(0.1) - s * hgt;
+          ctx.strokeStyle = '#c9a24c';
+          ctx.lineWidth = Math.max(1, s * 0.028);
+          ctx.beginPath();
+          ctx.moveTo(bx, Y(0.1));
+          ctx.quadraticCurveTo(bx + sway * 0.7, Y(0.1) - s * hgt * 0.6, tipX, tipY);
+          ctx.stroke();
+          // Kernel head: stacked pairs.
+          for (let k = 0; k < 3; k++) {
+            const ky = tipY + k * s * 0.045;
+            ctx.fillStyle = k % 2 ? '#e0b955' : '#edc968';
+            ctx.beginPath();
+            ctx.ellipse(tipX - s * 0.025, ky, s * 0.028, s * 0.018, -0.6, 0, Math.PI * 2);
+            ctx.ellipse(tipX + s * 0.025, ky, s * 0.028, s * 0.018, 0.6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        break;
+      }
+      case Tile.CottonMid: {
+        ctx.fillStyle = '#4c8039';
+        ctx.beginPath();
+        facetBlob(ctx, px, Y(-0.04), s * 0.17, h, 7, 0.7);
+        ctx.fill();
+        ctx.fillStyle = '#5f9c46';
+        ctx.beginPath();
+        facetBlob(ctx, px - m * s * 0.03, Y(-0.09), s * 0.12, h ^ 5, 6, 0.75);
+        ctx.fill();
+        break;
+      }
+      case Tile.CottonRipe: {
+        ctx.fillStyle = '#4c8039';
+        ctx.beginPath();
+        facetBlob(ctx, px, Y(-0.05), s * 0.19, h, 7, 0.68);
+        ctx.fill();
+        for (const [dx, dy, r] of [
+          [-0.12, -0.1, 0.075], [0.1, -0.13, 0.08], [0, 0.0, 0.085],
+        ] as const) {
+          const cxp = X(dx);
+          const cyp = Y(dy);
+          ctx.fillStyle = '#f2efe6';
+          ctx.beginPath();
+          ctx.arc(cxp - s * r * 0.5, cyp + s * r * 0.15, s * r * 0.6, 0, Math.PI * 2);
+          ctx.arc(cxp + s * r * 0.5, cyp + s * r * 0.15, s * r * 0.6, 0, Math.PI * 2);
+          ctx.arc(cxp, cyp - s * r * 0.3, s * r * 0.7, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(cxp - s * r * 0.2, cyp - s * r * 0.4, s * r * 0.28, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      }
+      case Tile.MoonbellMid:
+      case Tile.MoonbellRipe: {
+        const ripe = tile === Tile.MoonbellRipe;
+        const lit = this.sky.flame;
+        for (const dir of [-1, 1]) {
+          const bx = px + dir * s * 0.05;
+          ctx.strokeStyle = '#5b7a52';
+          ctx.lineWidth = Math.max(1, s * 0.035);
+          ctx.beginPath();
+          ctx.moveTo(bx, Y(0.12));
+          ctx.quadraticCurveTo(
+            bx + dir * s * 0.16 + sway,
+            Y(-0.28),
+            bx + dir * s * (ripe ? 0.3 : 0.22) + sway,
+            Y(ripe ? -0.3 : -0.2),
+          );
+          ctx.stroke();
+        }
+        if (ripe) {
+          const bell = (bxp: number, byp: number, bs: number) => {
+            ctx.fillStyle = lit > 0.05 ? '#aab8ec' : '#8f9ed6';
+            ctx.beginPath();
+            ctx.moveTo(bxp - bs * 0.5, byp - bs * 0.4);
+            ctx.lineTo(bxp + bs * 0.5, byp - bs * 0.4);
+            ctx.lineTo(bxp + bs * 0.68, byp + bs * 0.5);
+            ctx.lineTo(bxp, byp + bs * 0.3);
+            ctx.lineTo(bxp - bs * 0.68, byp + bs * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = lit > 0.05 ? '#e8ecff' : '#c2ccf2';
+            ctx.fillRect(bxp - bs * 0.3, byp - bs * 0.32, bs * 0.35, bs * 0.22);
+            if (lit > 0.05) {
+              // A soft night halo — the garden's lantern flowers.
+              ctx.fillStyle = `rgba(170, 190, 255, ${0.18 * lit})`;
+              ctx.beginPath();
+              ctx.arc(bxp, byp, bs * 1.6, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          };
+          bell(px - m * s * 0.24 + sway, Y(-0.26), s * 0.09);
+          bell(px + m * s * 0.28 + sway, Y(-0.24), s * 0.1);
+          bell(px + m * s * 0.06 + sway * 1.3, Y(-0.38), s * 0.08);
+        } else {
+          // Unopened buds at the stem tips.
+          ctx.fillStyle = '#7d8cc0';
+          for (const dir of [-1, 1]) {
+            ctx.beginPath();
+            ctx.ellipse(px + dir * s * 0.24 + sway, Y(-0.21), s * 0.035, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        break;
+      }
+    }
+  }
+
   /** Trees, rocks, stations — the object layer, redrawn with character. */
   private objectItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
     const ctx = this.ctx;
@@ -3548,6 +3815,245 @@ export class Renderer {
             ctx.quadraticCurveTo(p.x, p.y - s * 0.18 * flicker, p.x + s * 0.02, p.y - s * 0.22 * flicker);
             ctx.quadraticCurveTo(p.x + s * 0.07, p.y - s * 0.1, p.x + s * 0.07 * flicker, p.y + s * 0.03);
             ctx.closePath();
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.CropSprout:
+      case Tile.CarrotMid:
+      case Tile.CarrotRipe:
+      case Tile.SagewortMid:
+      case Tile.SagewortRipe:
+      case Tile.SunflowerMid:
+      case Tile.SunflowerRipe:
+      case Tile.WheatMid:
+      case Tile.WheatRipe:
+      case Tile.CottonMid:
+      case Tile.CottonRipe:
+      case Tile.MoonbellMid:
+      case Tile.MoonbellRipe:
+        // Walk-through plants: no cast shadow (they're low and leafy),
+        // y-sorted so you wade behind the tall ripe ones.
+        return {
+          sortY: ty + 0.75,
+          draw: () => this.drawCropPlant(p.x, p.y, s, h, tile, t),
+        };
+
+      case Tile.BerryBush: {
+        return {
+          sortY: ty + 0.8,
+          drawShadow: () => this.castBlob(p.x, p.y + s * 0.15, 0.42, s * 0.3, h ^ 0x2f),
+          draw: () => {
+            // A stout double-lobed bush heavy with fruit.
+            ctx.fillStyle = '#2f5c32';
+            ctx.beginPath();
+            facetBlob(ctx, p.x, p.y - s * 0.1, s * 0.34, h, 8, 0.76);
+            ctx.fill();
+            ctx.fillStyle = '#3f7d3a';
+            ctx.beginPath();
+            facetBlob(ctx, p.x - s * 0.07, p.y - s * 0.2, s * 0.24, h ^ 9, 7, 0.75);
+            ctx.fill();
+            ctx.fillStyle = '#54934a';
+            ctx.beginPath();
+            facetBlob(ctx, p.x - s * 0.11, p.y - s * 0.26, s * 0.13, h ^ 21, 6, 0.7);
+            ctx.fill();
+            for (let i = 0; i < 6; i++) {
+              const hh = hashCoords(211 + i, tx, ty);
+              const bx = p.x + (((hh % 100) / 100) - 0.5) * s * 0.52;
+              const by = p.y - s * 0.12 + ((((hh >> 7) % 100) / 100) - 0.5) * s * 0.34;
+              ctx.fillStyle = '#a04a6e';
+              ctx.beginPath();
+              ctx.arc(bx, by, s * 0.038, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#c9718f';
+              ctx.beginPath();
+              ctx.arc(bx - s * 0.012, by - s * 0.012, s * 0.014, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          },
+        };
+      }
+
+      case Tile.FibrePlant: {
+        return {
+          sortY: ty + 0.75,
+          draw: () => {
+            // A tall fan of flax strands, seed tips catching the light.
+            const sway = Math.sin(t * 1.7 + (h % 23) * 0.6) * s * 0.04;
+            for (let i = 0; i < 7; i++) {
+              const u = i / 6 - 0.5;
+              const bx = p.x + u * s * 0.26;
+              const hgt = s * (0.42 + Math.sin(i * 2.1 + h) * 0.08);
+              const tipX = bx + u * s * 0.22 + sway;
+              ctx.strokeStyle = i % 2 ? '#79a355' : '#8cb464';
+              ctx.lineWidth = Math.max(1, s * 0.03);
+              ctx.beginPath();
+              ctx.moveTo(bx, p.y + s * 0.12);
+              ctx.quadraticCurveTo(bx + u * s * 0.1, p.y - hgt * 0.6, tipX, p.y + s * 0.12 - hgt);
+              ctx.stroke();
+              ctx.fillStyle = '#d9c98a';
+              ctx.beginPath();
+              ctx.ellipse(tipX, p.y + s * 0.12 - hgt, s * 0.025, s * 0.045, u * 0.8, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          },
+        };
+      }
+
+      case Tile.WildSagewort: {
+        return {
+          sortY: ty + 0.72,
+          draw: () => {
+            // A silver-green healer's mound — leaf spears radiating out.
+            const n = 8;
+            for (let i = 0; i < n; i++) {
+              const a = (i / n) * Math.PI * 2 + (h % 7) * 0.3;
+              const lx = p.x + Math.cos(a) * s * 0.2;
+              const ly = p.y + Math.sin(a) * s * 0.11;
+              ctx.save();
+              ctx.translate(lx, ly);
+              ctx.rotate(Math.atan2(ly - p.y - s * 0.14, lx - p.x) + Math.PI / 2);
+              ctx.fillStyle = i % 2 ? '#8fb083' : '#7ba070';
+              ctx.beginPath();
+              ctx.ellipse(0, -s * 0.14, s * 0.055, s * 0.16, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#c2d8b0';
+              ctx.beginPath();
+              ctx.ellipse(0, -s * 0.26, s * 0.03, s * 0.055, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+            ctx.fillStyle = '#5b8a5e';
+            ctx.beginPath();
+            facetCircle(ctx, p.x, p.y, s * 0.09, 6, 0.4, 0.75);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.WildMoonbell: {
+        const lit = this.sky.flame;
+        return {
+          sortY: ty + 0.75,
+          draw: () => {
+            const sway = Math.sin(t * 1.3 + (h % 19) * 0.7) * s * 0.04;
+            for (const dir of [-1, 1]) {
+              const bx = p.x + dir * s * 0.06;
+              ctx.strokeStyle = '#4c6a54';
+              ctx.lineWidth = Math.max(1, s * 0.04);
+              ctx.beginPath();
+              ctx.moveTo(bx, p.y + s * 0.12);
+              ctx.quadraticCurveTo(bx + dir * s * 0.2 + sway, p.y - s * 0.42, bx + dir * s * 0.34 + sway, p.y - s * 0.3);
+              ctx.stroke();
+            }
+            const bell = (bxp: number, byp: number, bs: number) => {
+              if (lit > 0.05) {
+                ctx.fillStyle = `rgba(170, 190, 255, ${0.22 * lit})`;
+                ctx.beginPath();
+                ctx.arc(bxp, byp, bs * 1.8, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              ctx.fillStyle = lit > 0.05 ? '#aab8ec' : '#8f9ed6';
+              ctx.beginPath();
+              ctx.moveTo(bxp - bs * 0.5, byp - bs * 0.4);
+              ctx.lineTo(bxp + bs * 0.5, byp - bs * 0.4);
+              ctx.lineTo(bxp + bs * 0.68, byp + bs * 0.5);
+              ctx.lineTo(bxp, byp + bs * 0.3);
+              ctx.lineTo(bxp - bs * 0.68, byp + bs * 0.5);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = lit > 0.05 ? '#e8ecff' : '#c2ccf2';
+              ctx.fillRect(bxp - bs * 0.3, byp - bs * 0.32, bs * 0.35, bs * 0.22);
+            };
+            const sw = Math.sin(t * 1.3 + (h % 19) * 0.7) * s * 0.04;
+            bell(p.x - s * 0.3 + sw, p.y - s * 0.28, s * 0.1);
+            bell(p.x + s * 0.34 + sw, p.y - s * 0.26, s * 0.11);
+            bell(p.x + s * 0.02 + sw * 1.4, p.y - s * 0.44, s * 0.09);
+          },
+        };
+      }
+
+      case Tile.Alembic: {
+        return {
+          sortY: ty + 1,
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - s * 0.42, p.y + s * 0.32, p.x + s * 0.42, p.y + s * 0.32, 0.7);
+          },
+          draw: () => {
+            const benchY = p.y - s * 0.1;
+            // Sturdy legs, then the slab: an apothecary's workbench.
+            ctx.fillStyle = '#5b4028';
+            ctx.fillRect(p.x - s * 0.36, benchY, s * 0.09, s * 0.42);
+            ctx.fillRect(p.x + s * 0.27, benchY, s * 0.09, s * 0.42);
+            ctx.fillStyle = '#7a552e';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - s * 0.44, benchY - s * 0.12, s * 0.88, s * 0.16, s * 0.035);
+            ctx.fill();
+            ctx.fillStyle = '#94693a';
+            ctx.fillRect(p.x - s * 0.4, benchY - s * 0.1, s * 0.8, s * 0.05);
+
+            // Burner flame under the retort — always working, softly.
+            const flick = 0.85 + Math.sin(t * 11 + h) * 0.12;
+            ctx.fillStyle = '#8a8494';
+            ctx.fillRect(p.x - s * 0.26, benchY - s * 0.16, s * 0.14, s * 0.045);
+            ctx.fillStyle = `rgba(232, 130, 61, ${0.8 * flick})`;
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.24, benchY - s * 0.16);
+            ctx.quadraticCurveTo(p.x - s * 0.19, benchY - s * 0.3 * flick, p.x - s * 0.15, benchY - s * 0.16);
+            ctx.closePath();
+            ctx.fill();
+
+            // The retort: a round-bellied flask of teal brew...
+            const rx = p.x - s * 0.19;
+            const ry = benchY - s * 0.36;
+            ctx.fillStyle = 'rgba(214, 228, 240, 0.55)';
+            ctx.beginPath();
+            facetCircle(ctx, rx, ry, s * 0.14, 8, 0.3, 0.85);
+            ctx.fill();
+            ctx.fillStyle = '#7fc9b3';
+            ctx.beginPath();
+            ctx.moveTo(rx - s * 0.115, ry + s * 0.02);
+            ctx.lineTo(rx + s * 0.115, ry + s * 0.02);
+            ctx.lineTo(rx + s * 0.09, ry + s * 0.115);
+            ctx.lineTo(rx - s * 0.09, ry + s * 0.115);
+            ctx.closePath();
+            ctx.fill();
+            // ...its neck and coiled copper condenser arcing to a vial.
+            ctx.fillStyle = 'rgba(214, 228, 240, 0.55)';
+            ctx.fillRect(rx - s * 0.03, ry - s * 0.26, s * 0.06, s * 0.14);
+            ctx.strokeStyle = '#b87333';
+            ctx.lineWidth = Math.max(1.5, s * 0.045);
+            ctx.beginPath();
+            ctx.moveTo(rx, ry - s * 0.26);
+            ctx.quadraticCurveTo(p.x + s * 0.12, ry - s * 0.4, p.x + s * 0.26, ry - s * 0.18);
+            ctx.quadraticCurveTo(p.x + s * 0.34, ry - s * 0.04, p.x + s * 0.3, benchY - s * 0.24);
+            ctx.stroke();
+            // Coil rings on the downpipe.
+            ctx.lineWidth = Math.max(1, s * 0.028);
+            for (let i = 0; i < 3; i++) {
+              const cy2 = ry - s * 0.16 + i * s * 0.1;
+              ctx.beginPath();
+              ctx.arc(p.x + s * 0.29, cy2, s * 0.045, -0.6, Math.PI + 0.6);
+              ctx.stroke();
+            }
+            // Receiving vial + two bench beakers in house colors.
+            const vial = (vx: number, vy: number, vw: number, vh: number, col: string) => {
+              ctx.fillStyle = 'rgba(214, 228, 240, 0.5)';
+              ctx.fillRect(vx - vw / 2, vy - vh, vw, vh);
+              ctx.fillStyle = col;
+              ctx.fillRect(vx - vw / 2 + s * 0.012, vy - vh * 0.55, vw - s * 0.024, vh * 0.55 - s * 0.012);
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+              ctx.fillRect(vx - vw / 2 + s * 0.012, vy - vh + s * 0.012, s * 0.018, vh * 0.4);
+            };
+            vial(p.x + s * 0.3, benchY - s * 0.13, s * 0.08, s * 0.12, '#8fd0e8');
+            vial(p.x + s * 0.08, benchY - s * 0.13, s * 0.1, s * 0.18, '#d65a5a');
+            vial(p.x - s * 0.38, benchY - s * 0.14, s * 0.09, s * 0.15, '#c9a8e8');
+            // Bubbles climbing out of the retort's brew.
+            const bt = (t * 0.7 + h * 0.13) % 1;
+            ctx.fillStyle = `rgba(230, 244, 240, ${0.6 * (1 - bt)})`;
+            ctx.beginPath();
+            ctx.arc(rx + Math.sin(t * 2 + h) * s * 0.03, ry - s * 0.02 - bt * s * 0.1, s * 0.022, 0, Math.PI * 2);
             ctx.fill();
           },
         };
@@ -4325,20 +4831,22 @@ export class Renderer {
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= terrainLift;
 
-    const cat: 'gold' | 'ore' | 'gear' | 'ammo' | 'wear' | 'eat' | 'stuff' =
+    const cat: 'gold' | 'ore' | 'egg' | 'gear' | 'ammo' | 'wear' | 'eat' | 'stuff' =
       itemId === 'coins'
         ? 'gold'
         : itemId.endsWith('_ore') || itemId === 'coal'
           ? 'ore'
-          : itemId === 'arrow'
-            ? 'ammo'
-            : def?.weapon || def?.tool
-              ? 'gear'
-              : def?.equipSlot
-                ? 'wear'
-                : def?.heals
-                  ? 'eat'
-                  : 'stuff';
+          : itemId === 'egg'
+            ? 'egg'
+            : itemId === 'arrow'
+              ? 'ammo'
+              : def?.weapon || def?.tool
+                ? 'gear'
+                : def?.equipSlot
+                  ? 'wear'
+                  : def?.heals
+                    ? 'eat'
+                    : 'stuff';
 
     // Landing pop: freshly spawned loot drops in and settles with a
     // small overshoot. animFor's poseStartedAt is its first-seen time.
@@ -4410,6 +4918,28 @@ export class Renderer {
         ctx.lineTo(gx, gy + gr);
         ctx.lineTo(gx - gr * 0.4, gy);
         ctx.closePath();
+        ctx.fill();
+      }
+    };
+
+    const drawEgg = (): void => {
+      // A hen's egg lying where it was laid — no bag, just the egg
+      // (or a small clutch for a stack), nestled in a grass shadow.
+      const n = Math.min(3, qty);
+      ctx.strokeStyle = outline;
+      ctx.lineWidth = Math.max(1.2, k * 0.034);
+      for (let i = 0; i < n; i++) {
+        const ex = (i - (n - 1) / 2) * k * 0.15 + (rnd(i + 3) - 0.5) * k * 0.04;
+        const ey = (rnd(i + 7) - 0.5) * k * 0.05;
+        const rot = (rnd(i + 11) - 0.5) * 0.7;
+        ctx.fillStyle = i % 2 ? '#efe3c8' : '#e8d9b0';
+        ctx.beginPath();
+        ctx.ellipse(ex, ey, k * 0.075, k * 0.095, rot, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#f8f2e0';
+        ctx.beginPath();
+        ctx.ellipse(ex - k * 0.02, ey - k * 0.035, k * 0.026, k * 0.034, rot, 0, Math.PI * 2);
         ctx.fill();
       }
     };
@@ -4641,6 +5171,7 @@ export class Renderer {
         ctx.scale(pop, pop);
         if (cat === 'gold') drawGold();
         else if (cat === 'ore') drawOre();
+        else if (cat === 'egg') drawEgg();
         else drawBag();
         if (hovered) {
           // Grounding ring: "this is the one under your cursor".

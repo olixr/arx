@@ -1,4 +1,4 @@
-import { ChunkStore, type EntityId, type EntityMeta, type EquipSlot, type InvSlot, type SkillXp, type StationType } from '@devcraft/shared';
+import { ChunkStore, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type SkillXp, type StationType } from '@devcraft/shared';
 import type { AbilityDef, AbilitySlot, Look } from '@devcraft/shared';
 export type InteractTarget = {
     kind: 'node';
@@ -21,6 +21,21 @@ export type InteractTarget = {
     kind: 'portal';
     tx: number;
     ty: number;
+} | {
+    kind: 'plot';
+    tx: number;
+    ty: number;
+} | {
+    kind: 'crop';
+    tx: number;
+    ty: number;
+    mature: boolean;
+} | {
+    kind: 'npc';
+    tx: number;
+    ty: number;
+    eid: EntityId;
+    verb: string;
 };
 import { InterpBuffer } from '../net/interpolation.js';
 import { Predictor } from '../net/prediction.js';
@@ -130,6 +145,12 @@ export declare class ClientGame {
     abilityMax: [number, number, number, number];
     /** Chosen technique ability per combat style (server-confirmed). */
     techniques: Record<string, string>;
+    /** Active consumable buffs (tonic/food) for the HUD chip row. */
+    buffs: BuffInfo[];
+    /** performance.now() when the buffs snapshot arrived (chips count down). */
+    buffsAt: number;
+    /** Fires when the buff list changes (HUD refresh). */
+    onBuffs: (() => void) | null;
     /** Fires when the local player commits a cast (FX + audio hooks). */
     onCastFx: ((slot: AbilitySlot, ab: AbilityDef) => void) | null;
     /** Fires when the technique loadout changes (UI refresh). */
@@ -208,12 +229,16 @@ export declare class ClientGame {
     unequip(slot: EquipSlot): void;
     /** Classify what an interact on this tile would do, if anything. */
     targetAt(tx: number, ty: number): InteractTarget | null;
-    /** The nearest interactable tile within reach, or null. */
+    /** The nearest interactable tile (or gatherable animal) in reach. */
     findNearbyTarget(): InteractTarget | null;
     /** Pathfind and auto-walk to a tile. Returns false if unreachable. */
     walkTo(tx: number, ty: number): boolean;
     get isAutoWalking(): boolean;
     craft(recipe: string, qty: number): void;
+    /** Plant a seed into a tilled plot. */
+    plantSend(tx: number, ty: number, seed: string): void;
+    /** Interact with a living NPC (milk a cow). */
+    interactNpc(eid: EntityId): void;
     bankSend(op: 'deposit' | 'withdraw', item: string, qty: number): void;
     invMove(from: number, to: number): void;
     /** Drop a pack slot onto the ground where you stand. */

@@ -163,6 +163,47 @@ export class AccountStore {
     this.db.prepare('DELETE FROM built_tiles WHERE tx = ? AND ty = ?').run(tx, ty);
   }
 
+  loadCrops(): Array<{
+    tx: number;
+    ty: number;
+    crop: string;
+    plantedAt: number;
+    boostMs: number;
+    watered: number;
+    owner: number;
+  }> {
+    return this.db
+      .prepare(
+        'SELECT tx, ty, crop, planted_at AS plantedAt, boost_ms AS boostMs, watered, ' +
+          'owner_character_id AS owner FROM crops',
+      )
+      .all() as ReturnType<AccountStore['loadCrops']>;
+  }
+
+  upsertCrop(
+    tx: number,
+    ty: number,
+    crop: string,
+    plantedAt: number,
+    boostMs: number,
+    watered: number,
+    owner: number,
+  ): void {
+    this.db
+      .prepare(
+        'INSERT INTO crops (tx, ty, crop, planted_at, boost_ms, watered, owner_character_id) ' +
+          'VALUES (?, ?, ?, ?, ?, ?, ?) ' +
+          'ON CONFLICT(tx, ty) DO UPDATE SET crop = excluded.crop, ' +
+          'planted_at = excluded.planted_at, boost_ms = excluded.boost_ms, ' +
+          'watered = excluded.watered, owner_character_id = excluded.owner_character_id',
+      )
+      .run(tx, ty, crop, plantedAt, boostMs, watered, owner);
+  }
+
+  deleteCrop(tx: number, ty: number): void {
+    this.db.prepare('DELETE FROM crops WHERE tx = ? AND ty = ?').run(tx, ty);
+  }
+
   loadBank(characterId: number): Record<string, number> {
     const rows = this.db
       .prepare('SELECT item_id, qty FROM bank_items WHERE character_id = ?')

@@ -17,6 +17,8 @@ export interface NodeDef {
   /** What the tile becomes while depleted (null = never depletes). */
   depletedTile: Tile | null;
   respawnSec: number;
+  /** Occasional extra find alongside the main yield (e.g. seeds). */
+  bonusYield?: { item: string; chance: number };
 }
 
 export const NODES: readonly NodeDef[] = [
@@ -123,6 +125,60 @@ export const NODES: readonly NodeDef[] = [
     depleteChance: 0,
     depletedTile: null,
     respawnSec: 0,
+  },
+  {
+    tile: Tile.BerryBush,
+    name: 'Berry bush',
+    skill: 'foraging',
+    levelReq: 1,
+    xp: 20,
+    yieldItem: 'berries',
+    tool: null,
+    baseTicks: 45,
+    depleteChance: 1,
+    depletedTile: Tile.Grass,
+    respawnSec: 60,
+  },
+  {
+    tile: Tile.FibrePlant,
+    name: 'Fibre plant',
+    skill: 'foraging',
+    levelReq: 1,
+    xp: 22,
+    yieldItem: 'plant_fibre',
+    tool: null,
+    baseTicks: 45,
+    depleteChance: 1,
+    depletedTile: Tile.Grass,
+    respawnSec: 60,
+  },
+  {
+    tile: Tile.WildSagewort,
+    name: 'Wild sagewort',
+    skill: 'foraging',
+    levelReq: 5,
+    xp: 40,
+    yieldItem: 'sagewort',
+    tool: null,
+    baseTicks: 55,
+    depleteChance: 1,
+    depletedTile: Tile.Grass,
+    respawnSec: 75,
+    bonusYield: { item: 'sagewort_seed', chance: 0.35 },
+  },
+  {
+    tile: Tile.WildMoonbell,
+    name: 'Wild moonbell',
+    skill: 'foraging',
+    levelReq: 20,
+    xp: 75,
+    yieldItem: 'moonbell',
+    tool: null,
+    baseTicks: 65,
+    depleteChance: 1,
+    depletedTile: Tile.Grass,
+    respawnSec: 90,
+    bonusYield: { item: 'moonbell_seed', chance: 0.35 },
   },
 ];
 

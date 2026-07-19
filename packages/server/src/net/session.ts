@@ -179,6 +179,18 @@ export class Session {
         this.game.demolish(this.playerEid, msg.tx, msg.ty);
         return;
       }
+      case 'plant': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.plant(this.playerEid, msg.tx, msg.ty, msg.seed);
+        return;
+      }
+      case 'interactnpc': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.interactNpc(this.playerEid, msg.eid);
+        return;
+      }
       case 'technique': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

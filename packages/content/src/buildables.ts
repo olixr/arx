@@ -1,4 +1,4 @@
-import { Tile } from '@devcraft/shared';
+import { Tile, type SkillId } from '@devcraft/shared';
 
 /** Something a player can construct in the open world. */
 export interface BuildableDef {
@@ -9,6 +9,8 @@ export interface BuildableDef {
   xp: number;
   materials: Array<{ item: string; qty: number }>;
   ticks: number;
+  /** Which skill gates and earns the build (default: construction). */
+  skill?: SkillId;
 }
 
 const defs: BuildableDef[] = [
@@ -92,6 +94,29 @@ const defs: BuildableDef[] = [
     xp: 200,
     materials: [{ item: 'iron_bar', qty: 4 }],
     ticks: 80,
+  },
+  {
+    id: 'garden_plot',
+    name: 'Garden plot',
+    tile: Tile.Tilled,
+    levelReq: 1,
+    xp: 3,
+    materials: [],
+    ticks: 30,
+    skill: 'farming',
+  },
+  {
+    id: 'alembic',
+    name: 'Alembic bench',
+    tile: Tile.Alembic,
+    levelReq: 8,
+    xp: 90,
+    materials: [
+      { item: 'log', qty: 2 },
+      { item: 'bronze_bar', qty: 1 },
+      { item: 'cloth', qty: 1 },
+    ],
+    ticks: 60,
   },
 ];
 

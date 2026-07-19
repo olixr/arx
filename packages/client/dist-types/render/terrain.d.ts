@@ -23,6 +23,12 @@ export type GroundSampler = (tx: number, ty: number) => number | undefined;
 export type DetailSampler = (tx: number, ty: number) => number;
 export type ElevSampler = (tx: number, ty: number) => number;
 /**
+ * The soil family: a tilled plot and every crop growth stage share ONE
+ * ground material, so a field contours as a single dug bed — no seams
+ * between a plot and the plant standing in it.
+ */
+export declare const SOIL_TILES: Set<number>;
+/**
  * GUTTER LAW: chunk bakes carry a margin of real neighbor content on
  * every side, and the renderer blits from the inset source rect.
  * Scaled drawImage filtering samples beyond the source rect at its

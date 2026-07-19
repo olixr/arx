@@ -129,6 +129,21 @@ export interface C2SDemolish {
   ty: number;
 }
 
+/** Plant a seed into a tilled garden plot. */
+export interface C2SPlant {
+  t: 'plant';
+  tx: number;
+  ty: number;
+  /** Seed item id from the player's pack. */
+  seed: string;
+}
+
+/** Interact with a living NPC (milk a cow, ...). */
+export interface C2SInteractNpc {
+  t: 'interactnpc';
+  eid: EntityId;
+}
+
 /** Choose the equipped Technique for a combat style (free respec). */
 export interface C2STechnique {
   t: 'technique';
@@ -159,6 +174,8 @@ export type C2SMessage =
   | C2SShop
   | C2SBuild
   | C2SDemolish
+  | C2SPlant
+  | C2SInteractNpc
   | C2STechnique
   | C2SSetLook;
 
@@ -336,6 +353,23 @@ export interface S2CTechniques {
   chosen: Record<string, string>;
 }
 
+/** One active consumable buff, for the HUD chip row. */
+export interface BuffInfo {
+  /** Item id that granted it (drives the chip icon). */
+  id: string;
+  /** Display name, e.g. "Sugar Rush". */
+  name: string;
+  /** 'tonic' | 'food' — one active buff per channel. */
+  channel: string;
+  secsLeft: number;
+}
+
+/** The player's active consumable buffs (sent on gain + expiry). */
+export interface S2CBuffs {
+  t: 'buffs';
+  buffs: BuffInfo[];
+}
+
 export type S2CMessage =
   | S2CWelcome
   | S2CReject
@@ -357,7 +391,8 @@ export type S2CMessage =
   | S2CCooldowns
   | S2CFx
   | S2CTime
-  | S2CTechniques;
+  | S2CTechniques
+  | S2CBuffs;
 
 // ------------------------------------------------------- validation
 
@@ -492,6 +527,16 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;
       if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;
       return { t: 'demolish', tx: msg.tx, ty: msg.ty };
+    }
+    case 'plant': {
+      if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;
+      if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;
+      if (typeof msg.seed !== 'string' || msg.seed.length > 64) return null;
+      return { t: 'plant', tx: msg.tx, ty: msg.ty, seed: msg.seed };
+    }
+    case 'interactnpc': {
+      if (!isFiniteNum(msg.eid) || !Number.isInteger(msg.eid) || msg.eid < 0) return null;
+      return { t: 'interactnpc', eid: msg.eid };
     }
     case 'technique': {
       if (typeof msg.style !== 'string' || msg.style.length > 16) return null;

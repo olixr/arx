@@ -36,6 +36,7 @@ for (const built of accounts.loadBuiltTiles()) {
   world.registerBuilt(built.tx, built.ty, built.tile, built.owner);
 }
 const game = new GameServer(world, accounts);
+game.loadCrops(accounts.loadCrops());
 for (const zone of zones) {
   if (zone.spawns && zone.spawns.length > 0) game.registerSpawns(zone.spawns);
 }
