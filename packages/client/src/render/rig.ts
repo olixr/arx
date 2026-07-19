@@ -630,7 +630,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       const up = -Math.PI / 2 + rock;
       const level = wSide > 0 ? -0.3 : -Math.PI + 0.3; // orb forward, held low
       hAngle = up + (level - up) * carry;
-      hx = rig.x + wSide * (0.15 + 0.03 * carry) * s * wS + fx * 0.04 * s;
+      // Held at arm's distance — the planted staff stands clear of the
+      // torso silhouette, the way a person actually leans on a stick.
+      hx = rig.x + wSide * (0.27 + 0.02 * carry) * s * wS + fx * 0.05 * s;
       hy = armY + (-0.04 + 0.2 * carry) * s;
       staffGrip = 0.72 - 0.3 * carry; // high grip on the stick, mid on the carry
       armSwingK = 0.3 + 0.7 * carry; // a planted hand doesn't pump
