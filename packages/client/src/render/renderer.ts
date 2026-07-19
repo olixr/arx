@@ -1719,20 +1719,51 @@ export class Renderer {
         // South face: base edge on the ground, top edge leaned — the
         // vertical surface you walk behind.
         if (!sw) {
+          // TRUE GLASS: a window is a HOLE in the face, not a painted
+          // pane. Whatever the frame already holds behind this wall —
+          // the room inside through a facade, the meadow beyond
+          // through a back wall — shows through the opening; a breath
+          // of tint and a glint then say "glass". The hole is carved
+          // with an evenodd fill and held open by an evenodd clip
+          // through the whole detail pass.
+          const skew = (lx(p.x + s / 2) - (p.x + s / 2)) / -hs;
+          // The glazed opening, set at the body's eye line: sill at
+          // ~0.9 tiles, head at ~1.6 — a window a person stands at.
+          const wx = p.x + s * 0.28;
+          const ww = s * 0.44;
+          const wy = -s * 1.62;
+          const wh2 = s * 0.7;
+          let hole: Path2D | null = null;
+          if (window) {
+            hole = new Path2D();
+            chamferRect(hole, wx, wy, ww, wh2, s * 0.05);
+          }
+          // The skewed face frame as a matrix: detail coordinates in,
+          // leaned screen geometry out — it maps the hole into the
+          // face fill below and the tint pass after.
+          const frame = new DOMMatrix([1, 0, skew, 1, 0, yBase]);
           ctx.fillStyle = face;
-          ctx.beginPath();
-          ctx.moveTo(x0, yBase + 0.5);
-          ctx.lineTo(x1, yBase + 0.5);
-          ctx.lineTo(tx1, yTop);
-          ctx.lineTo(tx0, yTop);
-          ctx.closePath();
-          ctx.fill();
+          const facePath = new Path2D();
+          facePath.moveTo(x0, yBase + 0.5);
+          facePath.lineTo(x1, yBase + 0.5);
+          facePath.lineTo(tx1, yTop);
+          facePath.lineTo(tx0, yTop);
+          facePath.closePath();
+          if (hole) facePath.addPath(hole, frame);
+          ctx.fill(facePath, 'evenodd');
           // Material detail inside the face's own skewed frame, so
           // courses and plank seams follow the lean coherently.
-          const skew = (lx(p.x + s / 2) - (p.x + s / 2)) / -hs;
           ctx.save();
           ctx.translate(0, yBase);
           ctx.transform(1, 0, skew, 1, 0, 0);
+          if (hole) {
+            // Courses, girts, and seams must never paint across the
+            // glass — clip them to the face minus the opening.
+            const guard = new Path2D();
+            guard.rect(x0 - s * 2, -hs - s * 2, x1 - x0 + s * 4, hs + s * 3);
+            guard.addPath(hole);
+            ctx.clip(guard, 'evenodd');
+          }
           if (mat === Tile.WallWood) {
             // Timber framing: plank verticals, a waist girt, and a
             // darker sill course at the foot — a built wall, not paint.
@@ -1775,39 +1806,13 @@ export class Renderer {
             ctx.fillRect(p.x, -hs * 0.1, s, hs * 0.1);
           }
           if (window) {
-            // The glazed opening, set at the body's eye line: sill at
-            // ~0.9 tiles, head at ~1.6 — a window a person stands at.
-            // Cold glass by day, warm lamplight after dark, a mullion
-            // cross, and material-true dressing: timber walls hang
+            // Frame dressing AROUND the see-through opening: a dark
+            // reveal ring and material-true trim — timber walls hang
             // plank shutters, masonry beds a stone sill and lintel.
+            // The clip keeps every stroke of it off the glass.
             const wood2 = mat === Tile.WallWood;
-            const wx = p.x + s * 0.28;
-            const ww = s * 0.44;
-            const wy = -s * 1.62;
-            const wh2 = s * 0.7;
             ctx.fillStyle = shade(face, -22);
             ctx.fillRect(wx - s * 0.035, wy - s * 0.035, ww + s * 0.07, wh2 + s * 0.07);
-            const warm = hearth ? this.sky.flame : 0;
-            ctx.fillStyle =
-              warm > 0.05 ? `rgba(255, 205, 130, ${0.4 + 0.45 * warm})` : '#2b3350';
-            ctx.beginPath();
-            chamferRect(ctx, wx, wy, ww, wh2, s * 0.05);
-            ctx.fill();
-            // Daylight catches the upper panes; the room falls dark
-            // toward the sill — glass with depth behind it.
-            if (warm <= 0.05) {
-              ctx.fillStyle = 'rgba(178, 196, 226, 0.35)';
-              ctx.beginPath();
-              ctx.moveTo(wx + s * 0.03, wy + s * 0.03);
-              ctx.lineTo(wx + ww * 0.55, wy + s * 0.03);
-              ctx.lineTo(wx + s * 0.03, wy + wh2 * 0.6);
-              ctx.closePath();
-              ctx.fill();
-            }
-            // Mullion cross.
-            ctx.fillStyle = wood2 ? '#4a3016' : shade(face, -8);
-            ctx.fillRect(wx + ww / 2 - s * 0.022, wy, s * 0.044, wh2);
-            ctx.fillRect(wx, wy + wh2 * 0.46 - s * 0.02, ww, s * 0.04);
             if (wood2) {
               // Plank shutters pinned open against the wall.
               for (const shx of [wx - s * 0.15, wx + ww + s * 0.03]) {
@@ -1861,6 +1866,34 @@ export class Renderer {
           ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
           ctx.fillRect(x0, -s * 0.06, s + 0.5, s * 0.06);
           ctx.restore();
+          if (hole) {
+            // The glass itself, over the open hole: cold daylight
+            // tint (warm lamplight after dark when the room has a
+            // hearth), a diagonal glint, and the mullion cross
+            // sitting proud of the pane.
+            ctx.save();
+            ctx.translate(0, yBase);
+            ctx.transform(1, 0, skew, 1, 0, 0);
+            const warm = hearth ? this.sky.flame : 0;
+            ctx.fillStyle =
+              warm > 0.05
+                ? `rgba(255, 205, 130, ${0.18 + 0.3 * warm})`
+                : 'rgba(168, 192, 228, 0.16)';
+            ctx.fill(hole);
+            if (warm <= 0.05) {
+              ctx.fillStyle = 'rgba(214, 228, 248, 0.22)';
+              ctx.beginPath();
+              ctx.moveTo(wx + s * 0.03, wy + s * 0.03);
+              ctx.lineTo(wx + ww * 0.55, wy + s * 0.03);
+              ctx.lineTo(wx + s * 0.03, wy + wh2 * 0.6);
+              ctx.closePath();
+              ctx.fill();
+            }
+            ctx.fillStyle = mat === Tile.WallWood ? '#4a3016' : shade(face, -8);
+            ctx.fillRect(wx + ww / 2 - s * 0.022, wy, s * 0.044, wh2);
+            ctx.fillRect(wx, wy + wh2 * 0.46 - s * 0.02, ww, s * 0.04);
+            ctx.restore();
+          }
         }
         // Crown: the whole top layer drawn in the leaned height frame —
         // footprint coordinates in, coherent lifted geometry out.

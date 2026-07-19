@@ -50,7 +50,7 @@ export const COTTAGE_SMALL: StructureTemplate = compileTemplate({
     C: { tile: Tile.Chair },
   },
   rows: [
-    '#######',
+    '##W#W##',
     '#B...A#',
     '#.r.TC#',
     '#.r...#',
@@ -70,7 +70,7 @@ export const COTTAGE_TWO_STORY: StructureTemplate = compileTemplate({
     S: { tile: Tile.Bookshelf },
   },
   rows: [
-    '#########',
+    '##W###W##',
     '#B..H..B#',
     'W.......W',
     '#..rr..S#',
@@ -120,7 +120,7 @@ export const SHOP_SMALL: StructureTemplate = compileTemplate({
     g: { tile: Tile.CrateGoods },
   },
   rows: [
-    '##########',
+    '###W##W###',
     '#KA.KA...#',
     'W........W',
     '#..CCC...#',
@@ -198,7 +198,7 @@ export const CHAPEL: StructureTemplate = compileTemplate({
     q: { tile: Tile.StoneFloor, detail: Detail.RugRound },
   },
   rows: [
-    '########',
+    '##W##W##',
     '#..L...#',
     '#..q...#',
     'W......W',
