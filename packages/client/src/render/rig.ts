@@ -1185,7 +1185,10 @@ function drawHeldItem(
   ctx.save();
   ctx.translate(hx, hy);
   ctx.rotate(angle);
-  if (extra?.carry) ctx.translate(-0.29 * s * extra.carry, 0);
+  // Mid-arc wood point: the bow's quadratic (tips 0.06s, belly control
+  // 0.3s) passes through x = 0.18s at grip height — align THAT to the
+  // fist, or the bow reads as resting on the wrist.
+  if (extra?.carry) ctx.translate(-0.18 * s * extra.carry, 0);
 
   if (itemId.includes('sword')) {
     // Blade with a tapered tip, crossguard, pommel.
@@ -1241,12 +1244,12 @@ function drawHeldItem(
     ctx.moveTo(tipX, -tipY);
     ctx.quadraticCurveTo(limbR, 0, tipX, tipY);
     ctx.stroke();
-    // Grip wrap.
+    // Grip wrap — sits ON the wood: the arc passes x≈0.18s at midline.
     ctx.strokeStyle = shade(color, -30);
     ctx.lineWidth = Math.max(2, s * 0.06);
     ctx.beginPath();
-    ctx.moveTo(0.29 * s, -0.05 * s);
-    ctx.lineTo(0.29 * s, 0.05 * s);
+    ctx.moveTo(0.18 * s, -0.05 * s);
+    ctx.lineTo(0.18 * s, 0.05 * s);
     ctx.stroke();
     // String: taut → hauled to the nock point → buzzing on release.
     ctx.strokeStyle = '#e6e0d0';
