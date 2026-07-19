@@ -649,12 +649,15 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       staffGrip = 0.72 - 0.3 * carry; // high grip on the stick, mid on the carry
       armSwingK = 0.3 + 0.7 * carry; // a planted hand doesn't pump
     } else if (isBow) {
-      // Carried by the wooden grip at the side: limbs near-vertical
-      // and clear of the silhouette, belly resting in against the arm,
-      // top tip raked back — never dangled by the string. drawHeldItem
-      // slides the grip wrap into the fist on the same settle blend.
-      hAngle = wSide > 0 ? Math.PI + 0.3 : -0.3;
-      hy = armY + 0.16 * s;
+      // Carried by the wooden grip at the side: limbs near-vertical,
+      // the belly's curve facing OUT and the string riding in toward
+      // the body — never dangled by the string. The fist sits a shade
+      // outside the silhouette so the string tucks along the arm line.
+      // drawHeldItem slides the grip wrap into the fist on the same
+      // settle blend.
+      hAngle = wSide > 0 ? -0.12 : Math.PI + 0.12;
+      hx += wSide * 0.09 * s * wS;
+      hy = armY + 0.18 * s;
     }
     mainX += (hx - mainX) * restSettle;
     mainY += (hy - mainY) * restSettle;
