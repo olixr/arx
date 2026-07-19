@@ -3867,7 +3867,10 @@ export class Renderer {
         });
         if (paintCape && capeFront) paintCape();
 
-        const topY = p.y - (1.1 * (e.size ?? 1)) * s;
+        // Nameplate baseline: clear of the tallest headwear (helmet
+        // crown, topknot) with real air underneath — never resting on
+        // the skull.
+        const topY = p.y - (1.32 * (e.size ?? 1)) * s;
         if (e.name) {
           ctx.font = `600 ${Math.max(11, s * 0.28)}px 'Trebuchet MS', sans-serif`;
           ctx.textAlign = 'center';
