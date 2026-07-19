@@ -2,10 +2,11 @@
  * INTERIOR DETECTION — derived, never authored. A building is any
  * region of tiles fully enclosed by INTERIOR_BOUNDARY_TILES (walls,
  * windowed walls, and doorways — a doorway-closed ring encloses;
- * arches and railings deliberately never bound a roof). Because the
+ * arches and railings deliberately never bound a room). Because the
  * regions are flood-filled from the live tile grid, player-built
- * enclosures earn roofs and interior light with zero server work, and
- * a demolished wall un-rooms the space the moment the patch lands.
+ * enclosures earn the cutaway wall, sun-shadow shelter, and warm
+ * windows with zero server work, and a demolished wall un-rooms the
+ * space the moment the patch lands.
  *
  * Regions are computed lazily per queried tile and cached until the
  * world changes (worldVersion bump ⇒ full clear; recompute is bounded
@@ -25,7 +26,7 @@ export interface InteriorRegion {
   x1: number;
   y1: number;
   doorTiles: Array<{ tx: number; ty: number }>;
-  /** Majority boundary material — picks the roof palette. */
+  /** Majority boundary material (facade dressing follows it). */
   wallMaterial: Tile;
   /** Facade story count from authored Detail.Story markers. */
   stories: 1 | 2 | 3;

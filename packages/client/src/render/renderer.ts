@@ -41,7 +41,6 @@ import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
-import { ROOF_RECEDE, ROOF_STEP, bakeRoof, type RoofBake } from './roofs.js';
 import { bakeChunk, bakeElevated, bakeGutter, drawLiveGround } from './terrain.js';
 
 /**
@@ -253,15 +252,10 @@ export class Renderer {
   readonly particles = new Particles();
   private readonly grass = new GrassSystem();
   private readonly lighting = new LightingSystem();
-  /** Derived building-interior regions (roofs, indoor light, facades). */
+  /** Derived building-interior regions (cutaway, facades, windows). */
   readonly interiors = new InteriorMap();
-  /** Baked roof rings keyed by footprint signature (stable across
-   *  worldVersion bumps so an unchanged house never re-bakes). */
-  private readonly roofBakes = new Map<string, RoofBake>();
-  /** Per-roof fade state: eases to 0.12 while you stand inside. */
-  private readonly roofAlpha = new Map<string, number>();
   private localRegion: InteriorRegion | null = null;
-  /** Regions discovered in view this frame (feeds interior lighting). */
+  /** Regions discovered in view this frame (feeds the shadow shelter). */
   private visibleRegions: InteriorRegion[] = [];
   /** The frame's sky sample — every shadow and light reads this. */
   private sky: DaylightSample = daylightAt(12);
@@ -947,10 +941,10 @@ export class Renderer {
 
     // The breeze layer: water glints, ripples, portal swirls.
     const bounds = this.visibleTileBounds();
-    // Interior regions resolve before lights and roofs: the version
-    // gate clears on any world change, then this frame's queries
-    // rebuild lazily. The local player's region drives the roof fade
-    // and the indoor ambient.
+    // Interior regions resolve before lights: the version gate clears
+    // on any world change, then this frame's queries rebuild lazily.
+    // The local player's region drives the cutaway wall and hearth-
+    // gated window warmth.
     this.interiors.beginFrame(game.worldVersion);
     if (game.ownEid !== null) {
       const own = game.predictor.renderPos();
@@ -985,7 +979,7 @@ export class Renderer {
     this.collectElevatedGround(game, items);
     this.collectCliffFaces(game, items);
     this.collectRaisedTiles(game, items);
-    this.collectRoofs(game, items);
+    this.collectInteriorRegions(game);
     this.collectBreakingRocks(game, items);
     this.collectFallingTrees(items);
     this.collectEntities(game, items);
@@ -1012,11 +1006,10 @@ export class Renderer {
     for (const item of items) {
       if (!item.elevated) item.drawShadow?.();
     }
-    // ROOFED ROOMS RECEIVE NO SKY: punch every visible interior out of
-    // the shadow layer before it composites. A wall must not cast into
-    // its own sheltered room, nor a tree through a roof — the dark
-    // wedge on an inn floor was the north wall's sun shadow falling
-    // "indoors".
+    // SHELTERED ROOMS RECEIVE NO SKY: punch every visible interior out
+    // of the shadow layer before it composites. A wall must not cast
+    // into its own room — the dark wedge on an inn floor was the north
+    // wall's sun shadow falling "indoors".
     if (this.visibleRegions.length > 0) {
       const s2 = this.camera.scale;
       sc.globalCompositeOperation = 'destination-out';
@@ -2282,7 +2275,7 @@ export class Renderer {
     };
   }
 
-  // --------------------------------------------------------------- roofs
+  // ----------------------------------------------------------- interiors
 
   /** Story count → facade wall height in tiles (upper floors run a
    *  touch shorter than the ground story, as real buildings do). */
@@ -2303,15 +2296,14 @@ export class Renderer {
   }
 
   /**
-   * Roofs as y-sorted per-row strips — the plateau-crown law applied
-   * to architecture. Each ring canvas slices per footprint row and
-   * blits lifted by wall height + ring rise: entities inside vanish
-   * beneath it, entities south draw over it, and the whole mass fades
-   * to a ghost while YOU are the one inside.
+   * Discover the interior regions in view this frame. They feed the
+   * shadow-layer shelter punch (a wall never casts sun into its own
+   * room). Buildings render OPEN — no roof layer; the cutaway front
+   * wall, facades, and doorframes carry the "building" read while the
+   * whole interior stays visible.
    */
-  private collectRoofs(game: ClientGame, items: DrawItem[]): void {
+  private collectInteriorRegions(game: ClientGame): void {
     const b = this.visibleTileBounds();
-    const s = this.camera.scale;
     this.visibleRegions = [];
     const seen = new Set<number>();
     // Discovery probes only authored/built floors — the only tiles
@@ -2325,61 +2317,6 @@ export class Renderer {
         if (!region || seen.has(region.id)) continue;
         seen.add(region.id);
         this.visibleRegions.push(region);
-      }
-    }
-    for (const region of this.visibleRegions) {
-      const px = this.bakePx();
-      const key = `${region.x0},${region.y0},${region.x1},${region.y1},${region.wallMaterial},${region.stories},${region.hasHearth ? 1 : 0},${px}`;
-      let bake = this.roofBakes.get(key);
-      if (!bake) {
-        bake = bakeRoof(region, px, this.camera.yScale);
-        if (this.roofBakes.size > 48) this.roofBakes.clear();
-        this.roofBakes.set(key, bake);
-      }
-      // Fade: ease to FULLY hidden while the local player is inside —
-      // even a faint ghost shows the fascia steps as dark bands across
-      // the floor; the dim ambient and the cutaway wall carry the
-      // "indoors" read. New roofs fade IN from 0 so chunk streaming
-      // never pops one on.
-      const target = this.localRegion && this.localRegion.id === region.id ? 0 : 1;
-      const cur = this.roofAlpha.get(key) ?? 0;
-      const a = cur + (target - cur) * (1 - Math.exp(-10 * this.frameDt));
-      this.roofAlpha.set(key, a);
-      if (a < 0.015) continue;
-      const whT = this.wallHeightFor(region.stories);
-      for (const ring of bake.rings) {
-        const lift = Math.round(
-          (whT + ring.k * ROOF_STEP) * s + ring.k * ROOF_RECEDE * s * this.camera.yScale,
-        );
-        for (let r = 0; r < bake.hTiles; r++) {
-          // A row participates for its own content or the fascia that
-          // bleeds one row south of it.
-          if (!ring.rows[r] && !(r > 0 && ring.rows[r - 1])) continue;
-          const worldTy = bake.origY + r;
-          if (worldTy > b.maxTy + pad || worldTy < b.minTy - pad) continue;
-          const bk = bake;
-          items.push({
-            sortY: worldTy + 1.02,
-            alpha: a < 0.999 ? a : undefined,
-            draw: () => {
-              const pA = this.camera.worldToScreen(bk.origX, worldTy, this.w, this.h);
-              const pB = this.camera.worldToScreen(bk.origX + bk.wTiles, worldTy + 1, this.w, this.h);
-              const x0 = Math.round(pA.x);
-              const y0 = Math.round(pA.y) - lift;
-              this.ctx.drawImage(
-                ring.canvas,
-                0,
-                r * bk.px * bk.yScale,
-                bk.wTiles * bk.px,
-                bk.px * bk.yScale,
-                x0,
-                y0,
-                Math.round(pB.x) - x0,
-                Math.round(pB.y) - lift - y0,
-              );
-            },
-          });
-        }
       }
     }
   }

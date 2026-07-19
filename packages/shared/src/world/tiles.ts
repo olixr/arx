@@ -295,10 +295,9 @@ export const WALL_RUN_TILES: readonly Tile[] = [
 ];
 
 /**
- * Tiles that bound an interior region (the roof/interior enclosure
- * test). Doorways count — a doorway-closed ring encloses. Arches and
- * railings deliberately do NOT: a colonnade plaza must never earn a
- * roof.
+ * Tiles that bound an interior region (the room enclosure test).
+ * Doorways count — a doorway-closed ring encloses. Arches and
+ * railings deliberately do NOT: a colonnade plaza is never a room.
  */
 export const INTERIOR_BOUNDARY_TILES: readonly Tile[] = [...WALL_RUN_TILES];
 
