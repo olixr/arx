@@ -27,6 +27,7 @@ export function buildBramblewick(): ZoneDef {
     wall: Tile.WallStone,
     floor: Tile.StoneFloor,
     doors: [{ side: 's', at: 6 }],
+    windows: [{ side: 's', at: 3 }, { side: 's', at: 9 }, { side: 'e', at: 4 }],
   });
   b.path({ x: 40, y: 33 }, { x: 40, y: 43 }, 1);
 
@@ -35,6 +36,7 @@ export function buildBramblewick(): ZoneDef {
     wall: Tile.WallWood,
     floor: Tile.WoodFloor,
     doors: [{ side: 'w', at: 4 }],
+    windows: [{ side: 'w', at: 2 }, { side: 's', at: 3 }, { side: 's', at: 6 }],
   });
 
   // Smithy — south-east of plaza, with a dirt work-yard.
@@ -43,6 +45,7 @@ export function buildBramblewick(): ZoneDef {
     wall: Tile.WallStone,
     floor: Tile.StoneFloor,
     doors: [{ side: 'n', at: 4 }, { side: 'w', at: 3 }],
+    windows: [{ side: 's', at: 2 }, { side: 's', at: 6 }],
   });
 
   // The Gilded Antler inn — south of the west road, doors facing it.
@@ -50,6 +53,12 @@ export function buildBramblewick(): ZoneDef {
     wall: Tile.WallWood,
     floor: Tile.WoodFloor,
     doors: [{ side: 'n', at: 6 }, { side: 'n', at: 7 }],
+    windows: [
+      { side: 'n', at: 3 },
+      { side: 'n', at: 10 },
+      { side: 's', at: 4 },
+      { side: 's', at: 9 },
+    ],
   });
 
   // Houses — north-east and south-west.
@@ -57,17 +66,32 @@ export function buildBramblewick(): ZoneDef {
     wall: Tile.WallWood,
     floor: Tile.WoodFloor,
     doors: [{ side: 's', at: 3 }],
+    windows: [{ side: 's', at: 5 }],
   });
   b.building(32, 66, 8, 7, {
     wall: Tile.WallWood,
     floor: Tile.WoodFloor,
     doors: [{ side: 'n', at: 4 }],
+    windows: [{ side: 'n', at: 2 }, { side: 's', at: 4 }],
   });
   b.building(41, 63, 7, 6, {
     wall: Tile.WallWood,
     floor: Tile.WoodFloor,
     doors: [{ side: 'n', at: 3 }],
+    windows: [{ side: 'n', at: 1 }, { side: 's', at: 3 }],
   });
+
+  // Plaza gateways: walk-through arch runs over the north and south
+  // road mouths, and pillar pairs framing the east and west entries —
+  // the town centre reads as built civic space, not painted ground.
+  for (const ax of [47, 48, 49]) {
+    b.set(ax, 41, Tile.ArchStone);
+    b.set(ax, 55, Tile.ArchStone);
+  }
+  b.set(39, 46, Tile.PillarStone);
+  b.set(39, 50, Tile.PillarStone);
+  b.set(57, 46, Tile.PillarStone);
+  b.set(57, 50, Tile.PillarStone);
 
   // Stations: furnace + anvil in the smithy, workbench + counter in the
   // store, chest in the bank, campfire by the plaza's south road.
@@ -92,6 +116,11 @@ export function buildBramblewick(): ZoneDef {
   b.fillEllipse(78, 78, 8, 6, Tile.Water);
   b.fillEllipse(78, 78, 5, 3, Tile.WaterDeep);
   b.fillRect(77, 70, 2, 4, Tile.Bridge);
+  // Railings flanking the jetty planks.
+  for (let ry = 71; ry <= 73; ry++) {
+    b.set(76, ry, Tile.RailWood);
+    b.set(79, ry, Tile.RailWood);
+  }
 
   // Farm plots behind the inn, fenced.
   b.fillRect(14, 24, 12, 10, Tile.Dirt);

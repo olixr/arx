@@ -235,9 +235,20 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     // Floors run UNDER walls: the prism covers its own tile, and the
     // floor skin meeting the wall base edge-on leaves no gap to peek
     // through beside it.
-    if (t === Tile.WallWood) return Tile.WoodFloor;
-    if (t === Tile.WallStone) return Tile.StoneFloor;
+    if (t === Tile.WallWood || t === Tile.WallWoodWindow) return Tile.WoodFloor;
+    if (t === Tile.WallStone || t === Tile.WallStoneWindow) return Tile.StoneFloor;
     if (t === Tile.CaveWall) return Tile.CaveFloor;
+    // Walk-through structure: the ground continues under the frame —
+    // a doorway's threshold carries the room's floor to the outside.
+    if (
+      t === Tile.DoorwayWood ||
+      t === Tile.DoorwayStone ||
+      t === Tile.ArchStone ||
+      t === Tile.PillarStone ||
+      t === Tile.RailWood
+    ) {
+      return nearestFloor(ground, tx, ty);
+    }
     // Stairs read as stone; the bespoke step prop draws over it.
     if (t === Tile.Ramp) return Tile.StoneFloor;
     if (t === Tile.Cliff) return Tile.StoneFloor;

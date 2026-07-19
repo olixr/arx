@@ -294,13 +294,48 @@ export declare class Renderer {
     private drawGroundChunks;
     private evictBaked;
     private evictAnims;
+    /** Wall-run auto-tiler membership — shared law (tiles.ts). */
     private static readonly WALL_TILES;
+    /** What stops lamplight — shared law (tiles.ts). */
+    private static readonly LIGHT_BLOCKERS;
     private collectRaisedTiles;
     /**
      * Walls: continuous top mass with rounded exposed corners, a darker
      * front face where the wall meets open ground, and a hard shadow.
      */
     private wallItem;
+    /**
+     * How veiled a doorway's dark interior fill is: 1 far away, easing
+     * to 0 as any body nears the threshold — the door "opens" for
+     * whoever approaches, no swinging leaf needed.
+     */
+    private doorVeil;
+    /**
+     * A WALKABLE framed opening in a wall run: jambs, a header beam
+     * (stone gets 45°-cut haunches — the brutalist arch), and the run's
+     * unbroken crown. The frame sorts at ty+1 like its wall neighbours,
+     * and a body standing in the door tile sorts BEFORE that — so the
+     * player stays visible through the opening and ducks behind the
+     * header. The pass-under read falls out of the existing y-sort.
+     */
+    private doorwayItem;
+    /**
+     * A freestanding walk-through arch: thicker piers than a doorway,
+     * capital blocks, its own crown. Adjacent arches merge into
+     * colonnades (piers on the shared edge are skipped).
+     */
+    private archItem;
+    /**
+     * A freestanding column: faceted plinth, tapered shaft that leans
+     * with the camera, chamfered capital. Solid, walk-around, y-sorted
+     * like a prop.
+     */
+    private pillarItem;
+    /**
+     * A half-height railing: posts, a top rail, baluster slats. Rails
+     * merge with rails only — a railing never joins a wall mass.
+     */
+    private railItem;
     /**
      * CLIFF FACES, extruded from the crown contour itself. The plateau
      * top is contoured by marching squares over dual cells; every

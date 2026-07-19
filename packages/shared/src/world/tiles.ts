@@ -69,6 +69,20 @@ export enum Tile {
   FibrePlant = 56,
   WildSagewort = 57,
   WildMoonbell = 58,
+  /** A stone wall with a glazed window — merges into wall runs. */
+  WallStoneWindow = 59,
+  /** A wood wall with a shuttered window — merges into wall runs. */
+  WallWoodWindow = 60,
+  /** WALKABLE framed opening in a stone wall run — a real doorway. */
+  DoorwayStone = 61,
+  /** WALKABLE framed opening in a wood wall run. */
+  DoorwayWood = 62,
+  /** WALKABLE freestanding arch — colonnades, plaza gateways. */
+  ArchStone = 63,
+  /** Freestanding column you walk around — porches, colonnades. */
+  PillarStone = 64,
+  /** Half-height railing — porches, jetties, balconies. */
+  RailWood = 65,
 }
 
 export enum Detail {
@@ -77,6 +91,11 @@ export enum Detail {
   Tuft = 2,
   Pebbles = 3,
   Mushroom = 4,
+  // 5-9 reserved for baked floor decor (rugs, doormats, sawdust…).
+  /** Authored story markers: stamped on one interior tile so the
+   *  renderer knows a building presents a 2- or 3-story facade. */
+  Story2 = 10,
+  Story3 = 11,
 }
 
 export interface TileDef {
@@ -172,7 +191,63 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.FibrePlant]: { name: 'fibre plant', solid: true, color: '#5f8a44', raised: true, topColor: '#79a355' },
   [Tile.WildSagewort]: { name: 'wild sagewort', solid: true, color: '#5b8a5e', raised: true, topColor: '#8fb083' },
   [Tile.WildMoonbell]: { name: 'wild moonbell', solid: true, color: '#4c5578', raised: true, topColor: '#8f9ed6' },
+  [Tile.WallStoneWindow]: {
+    name: 'stone wall window',
+    solid: true,
+    color: '#4a4554',
+    raised: true,
+    topColor: '#767181',
+  },
+  [Tile.WallWoodWindow]: {
+    name: 'wood wall window',
+    solid: true,
+    color: '#54391c',
+    raised: true,
+    topColor: '#7d5a2e',
+  },
+  [Tile.DoorwayStone]: { name: 'stone doorway', solid: false, color: '#4a4554' },
+  [Tile.DoorwayWood]: { name: 'wood doorway', solid: false, color: '#54391c' },
+  [Tile.ArchStone]: { name: 'stone arch', solid: false, color: '#5b5566' },
+  [Tile.PillarStone]: { name: 'stone pillar', solid: true, color: '#5b5566', raised: true, topColor: '#8c8798' },
+  [Tile.RailWood]: { name: 'wood railing', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
 };
+
+/**
+ * Tiles that merge into continuous wall runs for the renderer's
+ * auto-tiler: solid walls, windowed walls, and walkable doorways all
+ * join the same mass so a building reads as one structure.
+ */
+export const WALL_RUN_TILES: readonly Tile[] = [
+  Tile.WallStone,
+  Tile.WallWood,
+  Tile.CaveWall,
+  Tile.WallStoneWindow,
+  Tile.WallWoodWindow,
+  Tile.DoorwayStone,
+  Tile.DoorwayWood,
+];
+
+/**
+ * Tiles that bound an interior region (the roof/interior enclosure
+ * test). Doorways count — a doorway-closed ring encloses. Arches and
+ * railings deliberately do NOT: a colonnade plaza must never earn a
+ * roof.
+ */
+export const INTERIOR_BOUNDARY_TILES: readonly Tile[] = [...WALL_RUN_TILES];
+
+/**
+ * Tiles that stop lamplight in the lightmap. Doorways and arches let
+ * light spill through openings; windows block (their glow is faked
+ * with placed emitters instead).
+ */
+export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
+  Tile.WallStone,
+  Tile.WallWood,
+  Tile.CaveWall,
+  Tile.WallStoneWindow,
+  Tile.WallWoodWindow,
+  Tile.PillarStone,
+];
 
 /** Every mineable/mined rock formation tile, ore-bearing or not. */
 export const ROCK_TILES: readonly Tile[] = [

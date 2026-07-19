@@ -93,8 +93,13 @@ export class ZoneBuilder {
   }
 
   /**
-   * A building: outer walls, inner floor, and door gaps. Doors are given
-   * as local offsets along the wall, e.g. { side: 's', at: 3 }.
+   * A building: outer walls, inner floor, framed doorways, and
+   * optionally windows and a facade story count. Doors/windows are
+   * local offsets along a wall, e.g. { side: 's', at: 3 }. Doorways are
+   * REAL walkable doorway tiles (the renderer frames them and interior
+   * detection treats them as enclosure); windows are windowed wall
+   * tiles; stories > 1 stamps a Detail.Story marker on an interior
+   * tile for the facade renderer.
    */
   building(
     x: number,
@@ -105,15 +110,33 @@ export class ZoneBuilder {
       wall: Tile;
       floor: Tile;
       doors: Array<{ side: 'n' | 's' | 'e' | 'w'; at: number }>;
+      windows?: Array<{ side: 'n' | 's' | 'e' | 'w'; at: number }>;
+      stories?: 1 | 2 | 3;
     },
   ): this {
     this.fillRect(x, y, w, h, opts.floor);
     this.outlineRect(x, y, w, h, opts.wall);
+    const wood = opts.wall !== Tile.WallStone;
+    const doorway = wood ? Tile.DoorwayWood : Tile.DoorwayStone;
+    const windowT = wood ? Tile.WallWoodWindow : Tile.WallStoneWindow;
+    const wallSpot = (o: { side: 'n' | 's' | 'e' | 'w'; at: number }): Vec2 =>
+      o.side === 'n'
+        ? { x: x + o.at, y }
+        : o.side === 's'
+          ? { x: x + o.at, y: y + h - 1 }
+          : o.side === 'w'
+            ? { x, y: y + o.at }
+            : { x: x + w - 1, y: y + o.at };
     for (const door of opts.doors) {
-      if (door.side === 'n') this.set(x + door.at, y, opts.floor);
-      if (door.side === 's') this.set(x + door.at, y + h - 1, opts.floor);
-      if (door.side === 'w') this.set(x, y + door.at, opts.floor);
-      if (door.side === 'e') this.set(x + w - 1, y + door.at, opts.floor);
+      const p = wallSpot(door);
+      this.set(p.x, p.y, doorway);
+    }
+    for (const win of opts.windows ?? []) {
+      const p = wallSpot(win);
+      this.set(p.x, p.y, windowT);
+    }
+    if ((opts.stories ?? 1) > 1) {
+      this.setDetail(x + 1, y + 1, opts.stories === 3 ? Detail.Story3 : Detail.Story2);
     }
     return this;
   }

@@ -28,6 +28,8 @@ const DETAIL_LABELS: Record<Detail, string> = {
   [Detail.Tuft]: 'tuft',
   [Detail.Pebbles]: 'pebbles',
   [Detail.Mushroom]: 'shroom',
+  [Detail.Story2]: '2-story',
+  [Detail.Story3]: '3-story',
 };
 
 let zone: ZoneDef = newZone();

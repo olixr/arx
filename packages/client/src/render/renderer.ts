@@ -6,9 +6,11 @@ import {
   PoseState,
   STATUS_AMBIENCE_MASK,
   STATUS_BIT,
+  LIGHT_BLOCKING_TILES,
   TICK_MS,
   TILE_PX,
   Tile,
+  WALL_RUN_TILES,
   hashCoords,
   hashString,
   tileDef,
@@ -1012,7 +1014,7 @@ export class Renderer {
       this.lights,
       (tx, ty) => {
         const t = game.world.groundAt(tx, ty);
-        return t !== undefined && (Renderer.WALL_TILES.has(t) || t === Tile.Cliff);
+        return t !== undefined && (Renderer.LIGHT_BLOCKERS.has(t) || t === Tile.Cliff);
       },
     );
     this.lights.length = 0;
@@ -1426,11 +1428,10 @@ export class Renderer {
 
   // ------------------------------------------------------- raised tiles
 
-  private static readonly WALL_TILES = new Set<number>([
-    Tile.WallStone,
-    Tile.WallWood,
-    Tile.CaveWall,
-  ]);
+  /** Wall-run auto-tiler membership — shared law (tiles.ts). */
+  private static readonly WALL_TILES = new Set<number>(WALL_RUN_TILES);
+  /** What stops lamplight — shared law (tiles.ts). */
+  private static readonly LIGHT_BLOCKERS = new Set<number>(LIGHT_BLOCKING_TILES);
 
   private collectRaisedTiles(game: ClientGame, items: DrawItem[]): void {
     const b = this.visibleTileBounds();
@@ -1445,6 +1446,34 @@ export class Renderer {
           if (landing) items.push(landing);
           const apron = this.rampApronItem(tx, ty, game);
           if (apron) items.push(apron);
+          continue;
+        }
+        // Structural vocabulary routes before the generic wall/object
+        // paths: doorways are IN the wall-run set (so neighbours merge
+        // with them) but draw their own framed opening, and pillars/
+        // rails/arches are raised or walkable tiles with bespoke items.
+        if (ground === Tile.DoorwayStone || ground === Tile.DoorwayWood) {
+          const item = this.doorwayItem(ground, tx, ty, game);
+          if (game.world.elevAt(tx, ty) > 0) item.elevated = true;
+          items.push(item);
+          continue;
+        }
+        if (ground === Tile.ArchStone) {
+          const item = this.archItem(tx, ty, game);
+          if (game.world.elevAt(tx, ty) > 0) item.elevated = true;
+          items.push(item);
+          continue;
+        }
+        if (ground === Tile.PillarStone) {
+          const item = this.pillarItem(tx, ty, game);
+          if (game.world.elevAt(tx, ty) > 0) item.elevated = true;
+          items.push(item);
+          continue;
+        }
+        if (ground === Tile.RailWood) {
+          const item = this.railItem(tx, ty, game);
+          if (game.world.elevAt(tx, ty) > 0) item.elevated = true;
+          items.push(item);
           continue;
         }
         if (Renderer.WALL_TILES.has(ground)) {
@@ -1480,8 +1509,13 @@ export class Renderer {
     const sw = isWall(game.world.groundAt(tx, ty + 1));
     const w = isWall(game.world.groundAt(tx - 1, ty));
 
-    const top = tile === Tile.WallWood ? '#8a6234' : tile === Tile.WallStone ? '#8c8798' : '#3a3444';
-    const face = tile === Tile.WallWood ? '#5e3f1e' : tile === Tile.WallStone ? '#5b5566' : '#221d2c';
+    // Windowed walls are the same masonry with a glazed opening set
+    // into the south face — resolve to the base material for colors.
+    const mat =
+      tile === Tile.WallWoodWindow ? Tile.WallWood : tile === Tile.WallStoneWindow ? Tile.WallStone : tile;
+    const window = mat !== tile;
+    const top = mat === Tile.WallWood ? '#8a6234' : mat === Tile.WallStone ? '#8c8798' : '#3a3444';
+    const face = mat === Tile.WallWood ? '#5e3f1e' : mat === Tile.WallStone ? '#5b5566' : '#221d2c';
     const r = s * 0.26;
     // Chamfer only NORTH corners exposed on both sides. South crown
     // corners stay square: they sit flush on the south face, and a cut
@@ -1497,7 +1531,7 @@ export class Renderer {
     const lx = (x: number): number => this.leanX(x, WALL_H);
     const x0 = p.x - 0.25;
     const x1 = p.x + s + 0.25;
-    const sideCol = shade(tile === Tile.WallWood ? '#6f4d26' : tile === Tile.WallStone ? '#6f697c' : '#2b2536', -8);
+    const sideCol = shade(mat === Tile.WallWood ? '#6f4d26' : mat === Tile.WallStone ? '#6f697c' : '#2b2536', -8);
 
     return {
       sortY: ty + 1,
@@ -1552,7 +1586,7 @@ export class Renderer {
           ctx.save();
           ctx.translate(0, yBase);
           ctx.transform(1, 0, skew, 1, 0, 0);
-          if (tile === Tile.WallWood) {
+          if (mat === Tile.WallWood) {
             ctx.strokeStyle = 'rgba(36, 22, 10, 0.4)';
             ctx.lineWidth = Math.max(1, s * 0.035);
             for (const fx of [0.3, 0.62]) {
@@ -1583,6 +1617,31 @@ export class Renderer {
               ctx.stroke();
             }
           }
+          if (window) {
+            // The glazed opening: recessed reveal, chamfered pane —
+            // cold glass by day, warm lamplight after dark — a mullion
+            // cross, a shadowed lintel, and a lit sill.
+            const wx = p.x + s * 0.3;
+            const ww = s * 0.4;
+            const wy = -hs * 0.72;
+            const wh2 = hs * 0.38;
+            ctx.fillStyle = shade(face, -20);
+            ctx.fillRect(wx - s * 0.035, wy - s * 0.035, ww + s * 0.07, wh2 + s * 0.07);
+            const warm = this.sky.flame;
+            ctx.fillStyle =
+              warm > 0.05 ? `rgba(255, 205, 130, ${0.4 + 0.45 * warm})` : '#2b3350';
+            ctx.beginPath();
+            chamferRect(ctx, wx, wy, ww, wh2, s * 0.05);
+            ctx.fill();
+            ctx.fillStyle = shade(face, -8);
+            ctx.fillRect(wx + ww / 2 - s * 0.02, wy, s * 0.04, wh2);
+            ctx.fillRect(wx, wy + wh2 / 2 - s * 0.02, ww, s * 0.04);
+            // Lintel shadow above, sunlit sill below.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+            ctx.fillRect(wx - s * 0.05, wy - s * 0.075, ww + s * 0.1, s * 0.04);
+            ctx.fillStyle = shade(face, 20);
+            ctx.fillRect(wx - s * 0.06, wy + wh2 + s * 0.035, ww + s * 0.12, s * 0.055);
+          }
           // Ambient-occlusion seam where the face meets the ground.
           ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
           ctx.fillRect(x0, -s * 0.06, s + 0.5, s * 0.06);
@@ -1601,6 +1660,333 @@ export class Renderer {
           ctx.fillRect(x0 + radii[3] * 0.8, p.y + syT - s * 0.08, s + 0.5 - (radii[2] + radii[3]) * 0.8, s * 0.08);
         }
         ctx.restore();
+      },
+    };
+  }
+
+  /**
+   * How veiled a doorway's dark interior fill is: 1 far away, easing
+   * to 0 as any body nears the threshold — the door "opens" for
+   * whoever approaches, no swinging leaf needed.
+   */
+  private doorVeil(game: ClientGame, cx: number, cy: number): number {
+    let d2 = Infinity;
+    if (game.ownEid !== null) {
+      const own = game.predictor.renderPos();
+      d2 = (own.x - cx) ** 2 + (own.y - cy) ** 2;
+    }
+    const t = game.renderTime();
+    for (const [, remote] of game.entities) {
+      const kind = remote.meta.kind;
+      if (kind !== EntityKind.Player && kind !== EntityKind.Npc) continue;
+      const sm = remote.buffer.sampleAt(t);
+      const ex = sm?.x ?? remote.meta.x;
+      const ey = sm?.y ?? remote.meta.y;
+      const dd = (ex - cx) ** 2 + (ey - cy) ** 2;
+      if (dd < d2) d2 = dd;
+    }
+    return Math.min(1, Math.max(0, (Math.sqrt(d2) - 0.7) / 0.9));
+  }
+
+  /**
+   * A WALKABLE framed opening in a wall run: jambs, a header beam
+   * (stone gets 45°-cut haunches — the brutalist arch), and the run's
+   * unbroken crown. The frame sorts at ty+1 like its wall neighbours,
+   * and a body standing in the door tile sorts BEFORE that — so the
+   * player stays visible through the opening and ducks behind the
+   * header. The pass-under read falls out of the existing y-sort.
+   */
+  private doorwayItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const isWall = (t: number | undefined) => t !== undefined && Renderer.WALL_TILES.has(t);
+    const n = isWall(game.world.groundAt(tx, ty - 1));
+    const e = isWall(game.world.groundAt(tx + 1, ty));
+    const sw = isWall(game.world.groundAt(tx, ty + 1));
+    const w = isWall(game.world.groundAt(tx - 1, ty));
+    const stone = tile === Tile.DoorwayStone;
+    const top = stone ? '#8c8798' : '#8a6234';
+    const face = stone ? '#5b5566' : '#5e3f1e';
+    const syT = s * this.camera.yScale;
+    const hs = WALL_H * s;
+    const x0 = p.x - 0.25;
+    const x1 = p.x + s + 0.25;
+    const jw = s * 0.15;
+    const r = s * 0.26;
+    const radii: [number, number, number, number] = [!n && !w ? r : 0, !n && !e ? r : 0, 0, 0];
+    const skew = (this.leanX(p.x + s / 2, WALL_H) - (p.x + s / 2)) / -hs;
+    return {
+      sortY: ty + 1,
+      drawShadow: () => {
+        // Only the jambs cast — light passes through the opening.
+        const yB = p.y + syT;
+        this.castEdgeQuad(x0, yB, x0 + jw, yB, WALL_H);
+        this.castEdgeQuad(x1 - jw, yB, x1, yB, WALL_H);
+      },
+      draw: () => {
+        const yBase = p.y + syT;
+        // All face-work in the leaned frame so jambs, header, and the
+        // neighbouring walls' faces agree on the same skew.
+        ctx.save();
+        ctx.translate(0, yBase);
+        ctx.transform(1, 0, skew, 1, 0, 0);
+        // The dark interior seen through the opening; melts away as
+        // anyone approaches the threshold.
+        const veil = this.doorVeil(game, tx + 0.5, ty + 0.5);
+        if (veil > 0.01) {
+          ctx.fillStyle = `rgba(14, 10, 22, ${0.5 * veil})`;
+          ctx.fillRect(x0 + jw, -hs, x1 - x0 - jw * 2, hs);
+        }
+        // Header beam across the top of the opening.
+        const hh = hs * 0.38;
+        ctx.fillStyle = face;
+        ctx.fillRect(x0, -hs, x1 - x0, hh);
+        if (stone) {
+          const hy = -hs + hh;
+          const cut = s * 0.16;
+          for (const [jx, dir] of [
+            [x0 + jw, 1],
+            [x1 - jw, -1],
+          ] as const) {
+            ctx.beginPath();
+            ctx.moveTo(jx, hy);
+            ctx.lineTo(jx + cut * dir, hy);
+            ctx.lineTo(jx, hy + cut);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+        // Underside shadow grounds the header over the opening.
+        ctx.fillStyle = 'rgba(18, 12, 26, 0.35)';
+        ctx.fillRect(x0 + jw, -hs + hh, x1 - x0 - jw * 2, s * 0.045);
+        // Jambs: full-height posts with lit inner edges.
+        ctx.fillStyle = face;
+        ctx.fillRect(x0, -hs, jw, hs);
+        ctx.fillRect(x1 - jw, -hs, jw, hs);
+        ctx.fillStyle = shade(face, 14);
+        ctx.fillRect(x0 + jw - s * 0.035, -hs * 0.62, s * 0.035, hs * 0.62);
+        ctx.fillRect(x1 - jw, -hs * 0.62, s * 0.035, hs * 0.62);
+        // Threshold: a worn step across the opening.
+        ctx.fillStyle = shade(face, stone ? 22 : 30);
+        ctx.fillRect(x0 + jw, -s * 0.07, x1 - x0 - jw * 2, s * 0.07);
+        ctx.restore();
+        // Crown: the run's top mass continues unbroken over the door.
+        this.beginHeightLayer(WALL_H);
+        ctx.fillStyle = top;
+        ctx.beginPath();
+        chamferRect(ctx, x0, p.y - 0.25, s + 0.5, syT + 0.5, radii);
+        ctx.fill();
+        if (!sw) {
+          ctx.fillStyle = shade(top, 16);
+          ctx.fillRect(x0, p.y + syT - s * 0.08, s + 0.5, s * 0.08);
+        }
+        ctx.restore();
+      },
+    };
+  }
+
+  /**
+   * A freestanding walk-through arch: thicker piers than a doorway,
+   * capital blocks, its own crown. Adjacent arches merge into
+   * colonnades (piers on the shared edge are skipped).
+   */
+  private archItem(tx: number, ty: number, game: ClientGame): DrawItem {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const isArch = (t: number | undefined) => t === Tile.ArchStone;
+    const ae = isArch(game.world.groundAt(tx + 1, ty));
+    const aw = isArch(game.world.groundAt(tx - 1, ty));
+    const top = '#8c8798';
+    const face = '#5b5566';
+    const syT = s * this.camera.yScale;
+    const hs = WALL_H * s;
+    const x0 = p.x - 0.25;
+    const x1 = p.x + s + 0.25;
+    const pw = s * 0.2;
+    const r = s * 0.26;
+    const skew = (this.leanX(p.x + s / 2, WALL_H) - (p.x + s / 2)) / -hs;
+    return {
+      sortY: ty + 1,
+      drawShadow: () => {
+        const yB = p.y + syT;
+        if (!aw) this.castEdgeQuad(x0, yB, x0 + pw, yB, WALL_H);
+        if (!ae) this.castEdgeQuad(x1 - pw, yB, x1, yB, WALL_H);
+      },
+      draw: () => {
+        const yBase = p.y + syT;
+        ctx.save();
+        ctx.translate(0, yBase);
+        ctx.transform(1, 0, skew, 1, 0, 0);
+        // Lintel band spanning the tile (continuous through a run).
+        const hh = hs * 0.3;
+        ctx.fillStyle = face;
+        ctx.fillRect(x0, -hs, x1 - x0, hh);
+        ctx.fillStyle = 'rgba(18, 12, 26, 0.35)';
+        ctx.fillRect(x0 + (aw ? 0 : pw), -hs + hh, x1 - x0 - (aw ? 0 : pw) - (ae ? 0 : pw), s * 0.045);
+        // Piers at run ends only, with 45° haunches and capitals.
+        ctx.fillStyle = face;
+        if (!aw) {
+          ctx.fillRect(x0, -hs, pw, hs);
+          ctx.beginPath();
+          ctx.moveTo(x0 + pw, -hs + hh);
+          ctx.lineTo(x0 + pw + s * 0.14, -hs + hh);
+          ctx.lineTo(x0 + pw, -hs + hh + s * 0.14);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = shade(face, 16);
+          ctx.fillRect(x0, -hs + hh, pw + s * 0.03, s * 0.05);
+          ctx.fillStyle = face;
+        }
+        if (!ae) {
+          ctx.fillRect(x1 - pw, -hs, pw, hs);
+          ctx.beginPath();
+          ctx.moveTo(x1 - pw, -hs + hh);
+          ctx.lineTo(x1 - pw - s * 0.14, -hs + hh);
+          ctx.lineTo(x1 - pw, -hs + hh + s * 0.14);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = shade(face, 16);
+          ctx.fillRect(x1 - pw - s * 0.03, -hs + hh, pw + s * 0.03, s * 0.05);
+        }
+        ctx.restore();
+        // Crown: the arch's own top slab.
+        this.beginHeightLayer(WALL_H);
+        ctx.fillStyle = top;
+        ctx.beginPath();
+        chamferRect(ctx, x0, p.y - 0.25, s + 0.5, syT + 0.5, [aw ? 0 : r, ae ? 0 : r, 0, 0]);
+        ctx.fill();
+        ctx.fillStyle = shade(top, 16);
+        ctx.fillRect(x0, p.y + syT - s * 0.08, s + 0.5, s * 0.08);
+        ctx.restore();
+      },
+    };
+  }
+
+  /**
+   * A freestanding column: faceted plinth, tapered shaft that leans
+   * with the camera, chamfered capital. Solid, walk-around, y-sorted
+   * like a prop.
+   */
+  private pillarItem(tx: number, ty: number, game: ClientGame): DrawItem {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const syT = s * this.camera.yScale;
+    const H = 0.95;
+    return {
+      sortY: ty + 0.8,
+      drawShadow: () => {
+        const baseY = p.y + syT * 0.16;
+        this.castEdgeQuad(p.x - s * 0.15, baseY, p.x + s * 0.15, baseY, H);
+      },
+      draw: () => {
+        const baseY = p.y + syT * 0.16;
+        const topX = this.leanX(p.x, H);
+        const topY = baseY - H * s;
+        // Plinth: a faceted stone foot.
+        ctx.fillStyle = '#4f4a5c';
+        ctx.beginPath();
+        facetCircle(ctx, p.x, baseY - s * 0.04, s * 0.2, 6, 0.25, 0.55);
+        ctx.fill();
+        // Tapered shaft, leaning with the fake camera.
+        ctx.fillStyle = '#6f697c';
+        ctx.beginPath();
+        ctx.moveTo(p.x - s * 0.13, baseY - s * 0.06);
+        ctx.lineTo(p.x + s * 0.13, baseY - s * 0.06);
+        ctx.lineTo(topX + s * 0.1, topY + s * 0.14);
+        ctx.lineTo(topX - s * 0.1, topY + s * 0.14);
+        ctx.closePath();
+        ctx.fill();
+        // Sunlit western arris keeps the shaft round-read.
+        ctx.fillStyle = shade('#6f697c', 14);
+        ctx.beginPath();
+        ctx.moveTo(p.x - s * 0.13, baseY - s * 0.06);
+        ctx.lineTo(p.x - s * 0.075, baseY - s * 0.06);
+        ctx.lineTo(topX - s * 0.055, topY + s * 0.14);
+        ctx.lineTo(topX - s * 0.1, topY + s * 0.14);
+        ctx.closePath();
+        ctx.fill();
+        // Capital: chamfered slab with a lit lip.
+        ctx.fillStyle = '#8c8798';
+        ctx.beginPath();
+        chamferRect(ctx, topX - s * 0.17, topY, s * 0.34, s * 0.15, s * 0.045);
+        ctx.fill();
+        ctx.fillStyle = shade('#8c8798', 16);
+        ctx.fillRect(topX - s * 0.14, topY + s * 0.015, s * 0.28, s * 0.045);
+      },
+    };
+  }
+
+  /**
+   * A half-height railing: posts, a top rail, baluster slats. Rails
+   * merge with rails only — a railing never joins a wall mass.
+   */
+  private railItem(tx: number, ty: number, game: ClientGame): DrawItem {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const RAIL_H = 0.42;
+    const isRail = (t: number | undefined) => t === Tile.RailWood;
+    const rn = isRail(game.world.groundAt(tx, ty - 1));
+    const re = isRail(game.world.groundAt(tx + 1, ty));
+    const rs = isRail(game.world.groundAt(tx, ty + 1));
+    const rw = isRail(game.world.groundAt(tx - 1, ty));
+    const horizontal = re || rw || (!rn && !rs);
+    const post = '#6f4d26';
+    const rail = '#8a6534';
+    const syT = s * this.camera.yScale;
+    const hr = RAIL_H * s;
+    const x0 = p.x - 0.25;
+    const x1 = p.x + s + 0.25;
+    return {
+      sortY: ty + 1,
+      drawShadow: horizontal
+        ? () => this.castEdgeQuad(x0, p.y + syT, x1, p.y + syT, RAIL_H)
+        : undefined,
+      draw: () => {
+        const yBase = p.y + syT;
+        if (horizontal) {
+          // Balusters under the rail; end posts where the run stops.
+          ctx.fillStyle = post;
+          for (const fx of [0.28, 0.72]) {
+            ctx.fillRect(p.x + s * fx - s * 0.035, yBase - hr, s * 0.07, hr);
+          }
+          if (!rw) ctx.fillRect(x0, yBase - hr, s * 0.1, hr);
+          if (!re) ctx.fillRect(x1 - s * 0.1, yBase - hr, s * 0.1, hr);
+          // Top rail in the height frame so runs read as one member.
+          this.beginHeightLayer(RAIL_H);
+          ctx.fillStyle = rail;
+          ctx.beginPath();
+          chamferRect(ctx, x0, p.y + syT * 0.3, s + 0.5, syT * 0.4, s * 0.04);
+          ctx.fill();
+          ctx.fillStyle = shade(rail, 14);
+          ctx.fillRect(x0, p.y + syT * 0.3, s + 0.5, s * 0.045);
+          ctx.restore();
+        } else {
+          // North-south run marching in depth: the fence law at rail
+          // height — twin thin rails through chamfer-topped posts.
+          const cx = p.x + s * 0.5;
+          const cy = p.y + syT * 0.5;
+          const yTop = rn ? cy - syT : cy;
+          const yBot = rs ? cy + syT : cy;
+          const railT = Math.max(2, s * 0.07);
+          ctx.fillStyle = rail;
+          for (const rx of [-0.09, 0.09]) {
+            ctx.fillRect(cx + rx * s - railT / 2, yTop - hr * 0.88, railT, yBot - yTop + railT);
+          }
+          ctx.fillStyle = post;
+          ctx.beginPath();
+          chamferRect(ctx, cx - s * 0.07, cy - hr, s * 0.14, hr, [s * 0.04, s * 0.04, 0, 0]);
+          ctx.fill();
+          ctx.fillStyle = shade(post, 16);
+          ctx.fillRect(cx - s * 0.05, cy - hr + s * 0.015, s * 0.1, s * 0.05);
+        }
       },
     };
   }
