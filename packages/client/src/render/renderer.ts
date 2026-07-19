@@ -1841,9 +1841,12 @@ export class Renderer {
             ctx.fillStyle = 'rgba(26, 15, 7, 0.35)';
             ctx.fillRect(x0, -hs + plateH - s * 0.03, x1 - x0, s * 0.03);
             // CROSSED-CORNER LOG ENDS: at an exposed run end the
-            // crossing wall's logs show their sawn faces — a stack of
-            // end-grain discs, alternating proud and shy, the one
-            // silhouette that reads "log-built" from across a meadow.
+            // crossing wall's logs show their sawn ends — squared
+            // low-poly caps in the chamfer dialect, wider than tall
+            // because the sky camera foreshortens a face that points
+            // sideways, with a thin shadow seam instead of an outline
+            // ring. The cap sits inside the log band so the cylinder's
+            // own crown/belly shading wraps around it.
             for (const [open, ex] of [
               [!w, x0 + s * 0.09],
               [!e, x1 - s * 0.09],
@@ -1852,20 +1855,37 @@ export class Renderer {
               let li3 = 0;
               for (let yb = -plinthH; yb > topY + 0.5; yb -= logH, li3++) {
                 const yt = Math.max(yb - logH, topY);
-                if (yb - yt < logH * 0.55) break; // no sliver disc at the plate
-                const cy2 = (yt + yb) / 2;
-                const rr = logH * (li3 % 2 === 0 ? 0.62 : 0.52);
-                ctx.fillStyle = '#4c3315';
+                const h2 = yb - yt;
+                if (h2 < logH * 0.55) break; // no sliver cap at the plate
+                const proud = li3 % 2 === 0;
+                const capW = logH * (proud ? 1.04 : 0.9);
+                const capH = h2 * (proud ? 0.72 : 0.64);
+                const cx2 = ex - capW / 2;
+                // Nudged below the log's centre: a downward camera
+                // pushes a side-facing plane toward the belly.
+                const cyT = (yt + yb) / 2 + h2 * 0.06 - capH / 2;
+                const cut = capH * 0.2;
+                const rim = Math.max(1, s * 0.018);
+                ctx.fillStyle = 'rgba(38, 22, 9, 0.55)';
                 ctx.beginPath();
-                facetCircle(ctx, ex, cy2, rr, 8);
+                chamferRect(ctx, cx2, cyT, capW, capH, cut);
                 ctx.fill();
-                ctx.fillStyle = li3 % 2 === 0 ? '#96703c' : '#8a6234';
+                // Sawn end grain, a shade lighter than the bark face.
+                ctx.fillStyle = proud ? '#96703c' : '#8a6234';
                 ctx.beginPath();
-                facetCircle(ctx, ex, cy2, rr * 0.68, 8);
+                chamferRect(ctx, cx2 + rim, cyT + rim, capW - rim * 2, capH - rim * 2, cut * 0.8);
                 ctx.fill();
-                ctx.fillStyle = 'rgba(74, 48, 22, 0.8)';
+                // Perspective bands: a solid lighter top step — the
+                // upper rim of the sawn face tips toward the sky —
+                // and a shadowed lower edge.
+                ctx.fillStyle = proud ? '#b18a4e' : '#a37c44';
+                ctx.fillRect(cx2 + cut, cyT + rim, capW - cut * 2, capH * 0.26);
+                ctx.fillStyle = 'rgba(30, 18, 8, 0.24)';
+                ctx.fillRect(cx2 + cut, cyT + capH - rim - capH * 0.18, capW - cut * 2, capH * 0.18);
+                // Squared heart, low of centre for the same tilt.
+                ctx.fillStyle = 'rgba(74, 48, 22, 0.55)';
                 ctx.beginPath();
-                facetCircle(ctx, ex, cy2, rr * 0.26, 6);
+                chamferRect(ctx, ex - capW * 0.15, cyT + capH * 0.5, capW * 0.3, capH * 0.22, capH * 0.07);
                 ctx.fill();
               }
             }
