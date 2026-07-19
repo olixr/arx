@@ -37,7 +37,7 @@ import { GrassSystem, windAt, windScalarAt, type Disturber } from './grass.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
-import { bakeChunk, bakeElevated, drawLiveGround } from './terrain.js';
+import { bakeChunk, bakeElevated, bakeGutter, drawLiveGround } from './terrain.js';
 
 /**
  * Signature style: shadows are solid and sharp — never blurred. They
@@ -716,18 +716,27 @@ export class Renderer {
               items.push({
                 sortY: worldTy - 0.01,
                 draw: () => {
-                  const p = this.camera.worldToScreen(cx * CHUNK_SIZE, worldTy, this.w, this.h);
+                  // Shared-corner snap law (see drawGroundChunks): row
+                  // slices round their shared row edges to the same
+                  // integers, and the lift is rounded ONCE per level so
+                  // every row of a plateau rides the same offset.
+                  const pA = this.camera.worldToScreen(cx * CHUNK_SIZE, worldTy, this.w, this.h);
+                  const pB = this.camera.worldToScreen((cx + 1) * CHUNK_SIZE, worldTy + 1, this.w, this.h);
+                  const lift = Math.round(level * ELEV_H * s);
+                  const x0 = Math.round(pA.x);
+                  const y0 = Math.round(pA.y) - lift;
                   const px = baked.px;
+                  const gut = bakeGutter(px);
                   this.ctx.drawImage(
                     layer.canvas,
-                    0,
-                    r * px,
+                    gut,
+                    gut + r * px,
                     CHUNK_SIZE * px,
                     px,
-                    p.x,
-                    p.y - level * ELEV_H * s,
-                    CHUNK_SIZE * s + 0.5,
-                    s * this.camera.yScale + 0.5,
+                    x0,
+                    y0,
+                    Math.round(pB.x) - x0,
+                    Math.round(pB.y) - lift - y0,
                   );
                   // The plateau's own living layer: grass and flowers on
                   // the lifted surface, drawn on top of the row (already
@@ -1332,12 +1341,36 @@ export class Renderer {
           this.baked.set(key, baked);
         }
         if (!baked) continue; // unreachable: contentStale covers !baked
-        const p = this.camera.worldToScreen(cx * CHUNK_SIZE, cy * CHUNK_SIZE, this.w, this.h);
-        const size = CHUNK_SIZE * s;
+        // SHARED-CORNER SNAP LAW: each chunk's destination rect comes
+        // from rounding its corner projections — the same corner a
+        // neighbor rounds to the same integer, so adjacent blits share
+        // pixel edges EXACTLY. A float destination antialiases its edge
+        // rows to partial alpha and a hairline seam shows at chunk
+        // boundaries; a "+0.5 overdraw" only hides gaps, not the
+        // half-covered darkened edge pixels.
+        const p0 = this.camera.worldToScreen(cx * CHUNK_SIZE, cy * CHUNK_SIZE, this.w, this.h);
+        const p1 = this.camera.worldToScreen((cx + 1) * CHUNK_SIZE, (cy + 1) * CHUNK_SIZE, this.w, this.h);
+        const x0 = Math.round(p0.x);
+        const y0 = Math.round(p0.y);
         this.ctx.imageSmoothingEnabled = true;
         // Chunks are baked square and drawn uniformly foreshortened —
-        // the ground compresses evenly while heights stay full.
-        this.ctx.drawImage(baked.canvas, p.x, p.y, size + 0.5, size * this.camera.yScale + 0.5);
+        // the ground compresses evenly while heights stay full. The
+        // source rect is inset by the bake gutter, so edge filtering
+        // samples real neighbor content, never a transparent canvas
+        // edge (the old hairline-seam bug).
+        const gut = bakeGutter(baked.px);
+        const srcSz = CHUNK_SIZE * baked.px;
+        this.ctx.drawImage(
+          baked.canvas,
+          gut,
+          gut,
+          srcSz,
+          srcSz,
+          x0,
+          y0,
+          Math.round(p1.x) - x0,
+          Math.round(p1.y) - y0,
+        );
       }
     }
   }

@@ -22,6 +22,17 @@
 export type GroundSampler = (tx: number, ty: number) => number | undefined;
 export type DetailSampler = (tx: number, ty: number) => number;
 export type ElevSampler = (tx: number, ty: number) => number;
+/**
+ * GUTTER LAW: chunk bakes carry a margin of real neighbor content on
+ * every side, and the renderer blits from the inset source rect.
+ * Scaled drawImage filtering samples beyond the source rect at its
+ * edges — against a bare canvas edge that blend pulls in TRANSPARENT
+ * pixels and paints a hairline dark seam along every chunk boundary.
+ * With a gutter the kernel lands on true world content instead. The
+ * painters already draw world-keyed content past the chunk bounds
+ * (the canvas merely clipped it), so the gutter costs only pixels.
+ */
+export declare function bakeGutter(px: number): number;
 export declare function bakeChunk(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number): HTMLCanvasElement;
 /**
  * Bake the LIFTED terrain surface of one chunk at one elevation level:

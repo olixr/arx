@@ -204,6 +204,20 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
   return g;
 }
 
+/**
+ * GUTTER LAW: chunk bakes carry a margin of real neighbor content on
+ * every side, and the renderer blits from the inset source rect.
+ * Scaled drawImage filtering samples beyond the source rect at its
+ * edges — against a bare canvas edge that blend pulls in TRANSPARENT
+ * pixels and paints a hairline dark seam along every chunk boundary.
+ * With a gutter the kernel lands on true world content instead. The
+ * painters already draw world-keyed content past the chunk bounds
+ * (the canvas merely clipped it), so the gutter costs only pixels.
+ */
+export function bakeGutter(px: number): number {
+  return Math.max(4, px >> 3);
+}
+
 export function bakeChunk(
   ground: GroundSampler,
   detail: DetailSampler,
@@ -212,10 +226,12 @@ export function bakeChunk(
   cy: number,
   px: number,
 ): HTMLCanvasElement {
+  const G = bakeGutter(px);
   const canvas = document.createElement('canvas');
-  canvas.width = CHUNK_SIZE * px;
-  canvas.height = CHUNK_SIZE * px;
+  canvas.width = CHUNK_SIZE * px + G * 2;
+  canvas.height = CHUNK_SIZE * px + G * 2;
   const ctx = canvas.getContext('2d')!;
+  ctx.translate(G, G);
   const baseX = cx * CHUNK_SIZE;
   const baseY = cy * CHUNK_SIZE;
 
@@ -223,8 +239,8 @@ export function bakeChunk(
 
   // 1. Meadow base: large soft noise patches, no per-tile checker.
   const cell = Math.max(4, Math.floor(px / 4));
-  for (let y = 0; y < canvas.height; y += cell) {
-    for (let x = 0; x < canvas.width; x += cell) {
+  for (let y = -G; y < CHUNK_SIZE * px + G; y += cell) {
+    for (let x = -G; x < CHUNK_SIZE * px + G; x += cell) {
       ctx.fillStyle = meadowTone(baseX + x / px, baseY + y / px);
       ctx.fillRect(x, y, cell, cell);
     }
@@ -232,7 +248,7 @@ export function bakeChunk(
   // Dark band chunks get a cave-rock base instead.
   if (baseY >= 512) {
     ctx.fillStyle = '#2e2938';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(-G, -G, canvas.width, canvas.height);
   }
 
   // 2. Material skins, lowest to highest, contoured on the dual grid.
@@ -255,8 +271,11 @@ export function bakeChunk(
   drawPlanks(ctx, g, baseX, baseY, px);
 
   // 4. Baked micro-details (static ones only; swaying ones are live).
-  for (let ly = 0; ly < CHUNK_SIZE; ly++) {
-    for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+  // One tile of margin so flecks straddling a chunk edge reach into
+  // the gutter — the neighbor bakes the identical fleck at the same
+  // world position, so both sides agree.
+  for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
+    for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
       const tx = baseX + lx;
       const ty = baseY + ly;
       // Raised tiles' details belong to the lifted layer, not the base.
@@ -457,10 +476,16 @@ export function bakeElevated(
   }
   if (!any) return null;
 
+  // Same gutter as the base bake (see bakeGutter): the row-slice blits
+  // sample real content instead of a transparent canvas edge. The
+  // crown contour cells already reach half a tile past the chunk, so
+  // the margin content exists without widening any contour loop.
+  const G = bakeGutter(px);
   const canvas = document.createElement('canvas');
-  canvas.width = CHUNK_SIZE * px;
-  canvas.height = CHUNK_SIZE * px;
+  canvas.width = CHUNK_SIZE * px + G * 2;
+  canvas.height = CHUNK_SIZE * px + G * 2;
   const ctx = canvas.getContext('2d')!;
+  ctx.translate(G, G);
 
   // The plateau-top silhouette, contoured between tile centers.
   // Cells touching a stair of THIS level turn with square corners
@@ -514,15 +539,15 @@ export function bakeElevated(
 
   // Meadow base under the skins, same recipe as the ground floor.
   const cell = Math.max(4, Math.floor(px / 4));
-  for (let y = 0; y < canvas.height; y += cell) {
-    for (let x = 0; x < canvas.width; x += cell) {
+  for (let y = -G; y < CHUNK_SIZE * px + G; y += cell) {
+    for (let x = -G; x < CHUNK_SIZE * px + G; x += cell) {
       ctx.fillStyle = meadowTone(baseX + x / px, baseY + y / px);
       ctx.fillRect(x, y, cell, cell);
     }
   }
   drawLayerSkins(ctx, g, baseX, baseY, px);
-  for (let ly = 0; ly < CHUNK_SIZE; ly++) {
-    for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+  for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
+    for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
       const tx = baseX + lx;
       const ty = baseY + ly;
       if (!member(tx, ty)) continue;
@@ -1079,8 +1104,9 @@ function drawPlanks(
 ): void {
   ctx.strokeStyle = 'rgba(58, 40, 22, 0.25)';
   ctx.lineWidth = Math.max(1, px * 0.04);
-  for (let ly = 0; ly < CHUNK_SIZE; ly++) {
-    for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+  // One tile of margin fills the gutter (see bakeGutter).
+  for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
+    for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
       const t = g(baseX + lx, baseY + ly);
       if (t !== Tile.WoodFloor && t !== Tile.Bridge) continue;
       const y = ly * px + px * (0.33 + (hashCoords(43, baseX + lx, baseY + ly) % 3) * 0.17);
