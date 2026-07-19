@@ -4062,7 +4062,16 @@ export class Renderer {
           attackT,
         });
       },
-      body: { x: p.x - r * 3.4, y: p.y - r * 3.4, w: r * 6.8, h: r * 4.6 },
+      // Bounds from the SPECIES SPEC, not the collision radius: a
+      // chicken's head and a wolf's tail reach far beyond `radius`,
+      // and a clipped sprite gives the dilate a hard rectangle edge
+      // to ring — the "seeping border" bug.
+      body: (() => {
+        const halfW = (spec.bodyLen * 2.0 + 0.35) * scale + r;
+        const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2) * scale + r;
+        const bottom = (spec.rig.legLen + 0.7) * scale;
+        return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };
+      })(),
       drawLabel: () => {
         const ctx = this.ctx;
         if (meta.name) {
