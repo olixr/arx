@@ -14,6 +14,8 @@ export interface ZoneJson {
   height: number;
   ground: string;
   detail: string;
+  /** Base64 of the signed Int8 elevation layer; absent ⇒ flat 0. */
+  elev?: string;
   spawn?: { x: number; y: number };
 }
 
@@ -41,6 +43,30 @@ function base64ToU16(s: string, expected: number): Uint16Array {
   return new Uint16Array(arr); // copy to a tightly-owned buffer
 }
 
+function i8ToBase64(arr: Int8Array): string {
+  // Reinterpret the bytes: base64 doesn't care about sign, only the
+  // decoder's view does.
+  const bytes = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);
+  return typeof btoa === 'function' ? btoa(bin) : Buffer.from(bytes).toString('base64');
+}
+
+function base64ToI8(s: string, expected: number): Int8Array {
+  let bytes: Uint8Array;
+  if (typeof atob === 'function') {
+    const bin = atob(s);
+    bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  } else {
+    bytes = new Uint8Array(Buffer.from(s, 'base64'));
+  }
+  if (bytes.length !== expected) {
+    throw new Error(`zone elev data length ${bytes.length}, expected ${expected}`);
+  }
+  return new Int8Array(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + expected));
+}
+
 export function zoneToJson(zone: ZoneDef): ZoneJson {
   return {
     id: zone.id,
@@ -50,6 +76,7 @@ export function zoneToJson(zone: ZoneDef): ZoneJson {
     height: zone.height,
     ground: u16ToBase64(zone.ground),
     detail: u16ToBase64(zone.detail),
+    elev: zone.elev ? i8ToBase64(zone.elev) : undefined,
     spawn: zone.spawn,
   };
 }
@@ -67,6 +94,9 @@ export function zoneFromJson(json: ZoneJson): ZoneDef {
     height: json.height,
     ground: base64ToU16(json.ground, size),
     detail: base64ToU16(json.detail, size),
+    // Zero-fill when absent: a flat legacy zone and one that never
+    // mentions elevation decode identically.
+    elev: json.elev ? base64ToI8(json.elev, size) : new Int8Array(size),
     spawn: json.spawn,
   };
 }

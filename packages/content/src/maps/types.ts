@@ -20,18 +20,27 @@ export interface ZoneSpawn {
 
 /**
  * An authored zone: a rectangle of tiles stamped over the procedural
- * world. Origin must be chunk-aligned so zones overlay cleanly.
+ * world. The overlay clips per chunk, so origin and size need no chunk
+ * alignment — small zones stamp only their own rectangle.
  */
 export interface ZoneDef {
   id: string;
   name: string;
-  /** World-tile coordinates of the top-left corner (chunk-aligned). */
+  /** World-tile coordinates of the top-left corner. */
   origin: Vec2;
-  /** Size in tiles (multiples of CHUNK_SIZE). */
+  /** Size in tiles. */
   width: number;
   height: number;
   ground: Uint16Array;
   detail: Uint16Array;
+  /**
+   * Signed elevation levels (−2..3), same semantics as ChunkData.elev.
+   * Absent ⇒ the zone is flat ground at level 0 (existing zones carry
+   * no layer and stamp flat). ZoneBuilder validates at build time that
+   * every level change is fenced by Cliff/Ramp, so the overlay can
+   * stamp it verbatim.
+   */
+  elev?: Int8Array;
   /** World-tile spawn point, if this zone hosts one. */
   spawn?: Vec2;
   portals?: PortalDef[];

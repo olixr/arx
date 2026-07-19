@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { Detail, PASSIVES, Tile, TILE_DEFS } from '@devcraft/shared';
 import { ZoneBuilder } from './maps/builder.js';
 import { buildBramblewick } from './maps/bramblewick.js';
+import { buildHollowStair } from './maps/hollowstair.js';
+import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { compileTemplate, templateHeight, templateWidth } from './structures/stamp.js';
 import { templateFromJson, templateToJson } from './structures/serialize.js';
 import { COTTAGE_SMALL, STRUCTURE_TEMPLATES, WELL_PLAZA } from './structures/templates.js';
@@ -339,4 +341,102 @@ test('daggers: backstab multiplier, fast cadence, and a real Art', () => {
     assert.ok(item.weapon.range < 1.7, `${id} should reach shorter than swords`);
     assert.ok(item.weapon.art && abilityDef(item.weapon.art), `${id} art unresolved`);
   }
+});
+
+// ------------------------------------------------------------------
+// Signed elevation authoring: the builder grows the cliff fence itself
+// and validates stairs/borders/reachability at build time, so every
+// invalid arrangement below must fail loudly with coordinates.
+// ------------------------------------------------------------------
+
+/** A 24×24 grass shelf with one −1 sink; callers add stairs/conflicts. */
+function sunkenZone(): ZoneBuilder {
+  const b = new ZoneBuilder('t_sunken', 'Sunken Test', { x: 0, y: 4096 }, 24, 24, Tile.Grass);
+  b.spawn(4, 4);
+  b.sink(8, 8, 8, 8, 1);
+  return b;
+}
+
+test('auto-fence: a sunken rect grows a complete cliff ring except stairs', () => {
+  const z = sunkenZone().stairs(11, 7).build();
+  assert.ok(z.elev, 'elev layer missing from a zone with sinks');
+  // The level-0 lip around the sink (x7..16 × y7..16 perimeter) is the
+  // high side of the boundary, so it carries the fence.
+  for (let x = 7; x <= 16; x++) {
+    for (const y of [7, 16]) {
+      const g = z.ground[y * 24 + x];
+      if (x === 11 && y === 7) assert.equal(g, Tile.Ramp, 'stair replaced by fence');
+      else assert.equal(g, Tile.Cliff, `fence gap at (${x},${y})`);
+    }
+  }
+  for (let y = 8; y <= 15; y++) {
+    for (const x of [7, 16]) {
+      assert.equal(z.ground[y * 24 + x], Tile.Cliff, `fence gap at (${x},${y})`);
+    }
+  }
+  // The floor itself stays open grass at −1.
+  assert.equal(z.elev[10 * 24 + 10], -1);
+  assert.equal(z.ground[10 * 24 + 10], Tile.Grass);
+  // The lip is level 0 — the fence stands ON the high side.
+  assert.equal(z.elev[7 * 24 + 8], 0);
+});
+
+test('stairs validation rejects flights that break the straight-edge rule', () => {
+  // West rim: the lower tile is EAST, not south — flights face the camera.
+  assert.throws(() => sunkenZone().stairs(7, 11).build(), /SOUTH neighbor/);
+  // Corner of the ring: the west mouth diagonal is not one level lower.
+  assert.throws(() => sunkenZone().stairs(8, 7).build(), /mouth diagonals/);
+  // A stair later buried under another tile is a layout conflict.
+  assert.throws(() => {
+    const b = sunkenZone().stairs(11, 7);
+    b.set(11, 7, Tile.Grass);
+    b.build();
+  }, /overwritten/);
+});
+
+test('auto-fence refuses to bury authored tiles under cliffs', () => {
+  const b = sunkenZone().stairs(11, 7);
+  b.set(9, 7, Tile.Barrel); // an authored prop right on the rim
+  assert.throws(() => b.build(), /auto-fence at \(9,7\)/);
+});
+
+test('nonzero elevation hugging the zone border throws', () => {
+  const b = new ZoneBuilder('t_border', 'Border Test', { x: 0, y: 4096 }, 24, 24, Tile.Grass);
+  b.spawn(12, 12);
+  b.sink(1, 8, 6, 6, 1); // reaches x=1: inside the flat apron
+  assert.throws(() => b.build(), /border/);
+});
+
+test('a sunken region with no stairs is unreachable and throws', () => {
+  assert.throws(() => sunkenZone().build(), /unreachable/);
+});
+
+test('zone JSON round-trips signed elevation; flat zones export none', () => {
+  const z = sunkenZone().stairs(11, 7).build();
+  const back = zoneFromJson(zoneToJson(z));
+  assert.deepEqual(Array.from(back.elev!), Array.from(z.elev!));
+  assert.ok(Array.from(back.elev!).some((v) => v < 0), 'negatives lost in transit');
+  // Legacy zones carry no elev blob and decode zero-filled — the JSON
+  // for every pre-elevation zone stays byte-identical.
+  const json = zoneToJson(buildBramblewick());
+  assert.equal(json.elev, undefined);
+  assert.ok(zoneFromJson(json).elev!.every((v) => v === 0));
+});
+
+test('the Hollow Stair: descend twice before you find the dungeon entrance', () => {
+  const z = buildHollowStair();
+  const at = (x: number, y: number): number => z.ground[y * z.width + x]!;
+  const lv = (x: number, y: number): number => z.elev![y * z.width + x]!;
+  // Dell (−1) with a quarry core (−2).
+  assert.equal(lv(11, 9), -1);
+  assert.equal(lv(12, 14), -2);
+  // One south-descending flight per level, framed by the auto-fence.
+  assert.equal(at(11, 7), Tile.Ramp);
+  assert.equal(at(11, 11), Tile.Ramp);
+  assert.equal(at(10, 7), Tile.Cliff);
+  assert.equal(at(10, 11), Tile.Cliff);
+  // The delve mouth waits on the quarry floor.
+  assert.equal(at(12, 14), Tile.PortalDown);
+  const portal = z.portals?.find((p) => p.delve);
+  assert.deepEqual({ x: portal?.x, y: portal?.y }, { x: 132, y: 22 });
 });

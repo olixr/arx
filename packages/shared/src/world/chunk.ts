@@ -11,12 +11,15 @@ export interface ChunkData {
   ground: Uint16Array; // CHUNK_TILES entries
   detail: Uint16Array;
   /**
-   * Elevation LEVEL per tile (0..3). Render-only: plateau tops draw
-   * lifted and entities standing on them rise with the ground. It never
-   * affects collision — worldgen guarantees every level change is
-   * fenced by solid Cliff tiles except where a walkable Ramp crosses.
+   * Elevation LEVEL per tile, SIGNED (−2..3): plateaus rise above the
+   * meadow, dells and quarries sink below it. Render-only: tops draw
+   * lifted (or dropped) and entities standing on them move with the
+   * ground. It never affects collision — worldgen guarantees every
+   * level change is fenced by solid Cliff tiles except where a walkable
+   * Ramp crosses, and the ring always sits on the HIGH side of the
+   * boundary, whatever the sign.
    */
-  elev: Uint8Array;
+  elev: Int8Array;
   /** Bumped on in-place mutation so render caches can invalidate. */
   rev?: number;
 }
@@ -31,7 +34,7 @@ export function emptyChunk(cx: number, cy: number): ChunkData {
     cy,
     ground: new Uint16Array(CHUNK_TILES),
     detail: new Uint16Array(CHUNK_TILES),
-    elev: new Uint8Array(CHUNK_TILES),
+    elev: new Int8Array(CHUNK_TILES),
   };
 }
 
@@ -49,7 +52,7 @@ export function encodeChunk(chunk: ChunkData): ArrayBuffer {
   w.i32(chunk.cy);
   for (let i = 0; i < CHUNK_TILES; i++) w.u16(chunk.ground[i]!);
   for (let i = 0; i < CHUNK_TILES; i++) w.u16(chunk.detail[i]!);
-  for (let i = 0; i < CHUNK_TILES; i++) w.u8(chunk.elev[i]!);
+  for (let i = 0; i < CHUNK_TILES; i++) w.i8(chunk.elev[i]!);
   return w.finish();
 }
 
@@ -78,10 +81,10 @@ export function decodeChunk(r: ByteReader): ChunkData {
   const cy = r.i32();
   const ground = new Uint16Array(CHUNK_TILES);
   const detail = new Uint16Array(CHUNK_TILES);
-  const elev = new Uint8Array(CHUNK_TILES);
+  const elev = new Int8Array(CHUNK_TILES);
   for (let i = 0; i < CHUNK_TILES; i++) ground[i] = r.u16();
   for (let i = 0; i < CHUNK_TILES; i++) detail[i] = r.u16();
-  for (let i = 0; i < CHUNK_TILES; i++) elev[i] = r.u8();
+  for (let i = 0; i < CHUNK_TILES; i++) elev[i] = r.i8();
   return { cx, cy, ground, detail, elev };
 }
 

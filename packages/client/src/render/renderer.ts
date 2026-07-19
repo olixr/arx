@@ -738,7 +738,9 @@ export class Renderer {
   pickWorld(sx: number, sy: number): Vec2 {
     const game = this.game;
     const cam = this.camera;
-    for (let lvl = 2; lvl >= 1; lvl--) {
+    // High levels first (nearer the camera), then pits; 0 is the
+    // fallback flat inverse.
+    for (const lvl of [3, 2, 1, -1, -2]) {
       const wy = cam.y + (sy - this.h / 2 + lvl * ELEV_H * cam.scale) / (cam.scale * cam.yScale);
       const wx = cam.x + (sx - this.w / 2) / cam.scale;
       if (game && game.world.elevAt(Math.floor(wx), Math.floor(wy)) === lvl) {
@@ -754,7 +756,7 @@ export class Renderer {
     const s = this.camera.scale;
     const minCx = Math.floor(b.minTx / CHUNK_SIZE);
     const maxCx = Math.floor(b.maxTx / CHUNK_SIZE);
-    const minCy = Math.floor((b.minTy - ELEV_H * 2 - 1) / CHUNK_SIZE);
+    const minCy = Math.floor((b.minTy - ELEV_H * 3 - 1) / CHUNK_SIZE);
     const maxCy = Math.floor(b.maxTy / CHUNK_SIZE);
     for (let cy = minCy; cy <= maxCy; cy++) {
       for (let cx = minCx; cx <= maxCx; cx++) {
@@ -769,7 +771,7 @@ export class Renderer {
           for (const [r0, r1] of layer.bands) {
             for (let r = r0; r <= r1; r++) {
               const worldTy = cy * CHUNK_SIZE + r;
-              if (worldTy > b.maxTy || worldTy < b.minTy - ELEV_H * 2 - 1) continue;
+              if (worldTy > b.maxTy || worldTy < b.minTy - ELEV_H * 3 - 1) continue;
               const level = layer.level;
               items.push({
                 sortY: worldTy - 0.01,
@@ -904,7 +906,7 @@ export class Renderer {
     // The grass system wakes up first: it needs every moving body this
     // frame to part blades, flatten them underfoot, and rustle thickets.
     const groundLvl0 = (tx: number, ty: number) =>
-      game.world.elevAt(tx, ty) > 0 ? undefined : game.world.groundAt(tx, ty);
+      game.world.elevAt(tx, ty) !== 0 ? undefined : game.world.groundAt(tx, ty);
     const detail = (tx: number, ty: number) => this.detailAt(game, tx, ty);
     this.grass.beginFrame(
       performance.now(),
@@ -1344,11 +1346,19 @@ export class Renderer {
           const detail = (tx: number, ty: number) => this.detailAt(game, tx, ty);
           const elev = (tx: number, ty: number) => game.world.elevAt(tx, ty);
           let maxLevel = 0;
+          let minLevel = 0;
           for (let i = 0; i < data.elev.length; i++) {
-            if (data.elev[i]! > maxLevel) maxLevel = data.elev[i]!;
+            const e = data.elev[i]!;
+            if (e > maxLevel) maxLevel = e;
+            if (e < minLevel) minLevel = e;
           }
           const lifted: BakedChunk['lifted'] = [];
-          for (let level = 1; level <= maxLevel; level++) {
+          // Levels bake in ASCENDING order — same-row crown items tie
+          // on sortY and rely on stable sort, so 0 must paint over −1's
+          // down-shifted spill, −1 over −2's. A chunk without pits
+          // skips the level-0 layer entirely: the flat base blit is it.
+          for (let level = minLevel; level <= maxLevel; level++) {
+            if (level === 0 && minLevel >= 0) continue;
             const bake = bakeElevated(ground, detail, elev, cx, cy, bakePx, level);
             if (!bake) continue;
             // Contiguous row runs, merged across small gaps, padded one
@@ -1460,31 +1470,31 @@ export class Renderer {
         // rails/arches are raised or walkable tiles with bespoke items.
         if (ground === Tile.DoorwayStone || ground === Tile.DoorwayWood) {
           const item = this.doorwayItem(ground, tx, ty, game);
-          if (game.world.elevAt(tx, ty) > 0) item.elevated = true;
+          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
         }
         if (ground === Tile.ArchStone) {
           const item = this.archItem(tx, ty, game);
-          if (game.world.elevAt(tx, ty) > 0) item.elevated = true;
+          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
         }
         if (ground === Tile.PillarStone) {
           const item = this.pillarItem(tx, ty, game);
-          if (game.world.elevAt(tx, ty) > 0) item.elevated = true;
+          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
         }
         if (ground === Tile.RailWood) {
           const item = this.railItem(tx, ty, game);
-          if (game.world.elevAt(tx, ty) > 0) item.elevated = true;
+          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
         }
         if (Renderer.WALL_TILES.has(ground)) {
           const item = this.wallItem(ground as Tile, tx, ty, game);
-          if (game.world.elevAt(tx, ty) > 0) item.elevated = true;
+          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
         }
@@ -1494,7 +1504,7 @@ export class Renderer {
         const isCrop = ground >= Tile.CropSprout && ground <= Tile.MoonbellRipe;
         if (!def.raised && ground !== Tile.Stump && !isCrop) continue;
         const item = this.objectItem(ground as Tile, tx, ty, game);
-        if (game.world.elevAt(tx, ty) > 0) item.elevated = true;
+        if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
         items.push(item);
       }
     }
@@ -2079,7 +2089,19 @@ export class Renderer {
     const s = this.camera.scale;
     const b = this.visibleTileBounds();
     const world = game.world;
-    for (let level = 1; level <= 2; level++) {
+    // Boundaries are RELATIVE: every seam between L−1 and L gets faces
+    // owned by the ≥L side, whatever the sign — a pit's rim is the same
+    // law as a plateau's edge. Scan the visible levels once.
+    let visMin = 0;
+    let visMax = 0;
+    for (let ty = b.minTy; ty <= b.maxTy; ty++) {
+      for (let tx = b.minTx; tx <= b.maxTx; tx++) {
+        const e = world.elevAt(tx, ty);
+        if (e > visMax) visMax = e;
+        if (e < visMin) visMin = e;
+      }
+    }
+    for (let level = visMin + 1; level <= visMax; level++) {
       // Ramps COUNT as mass here (unlike the crown bake): the contour
       // must not wrap around a stair notch, or mouth-corner cells hang
       // little curtains over the flight.
@@ -2293,8 +2315,9 @@ export class Renderer {
         // Shade under the brink; AO where the face meets the ground.
         line(0.035, Math.max(2, s * 0.07), 'rgba(24, 18, 34, 0.35)');
         line(0.97, Math.max(2, s * 0.06), 'rgba(18, 12, 26, 0.3)');
-        // Scree at the foot of straight faces.
-        if (!diagonal && level - 1 === 0 && (h & 3) !== 0) {
+        // Scree at the foot of straight faces — pit floors included
+        // (drawn in-sort, so the sunken floor rows can't erase it).
+        if (!diagonal && level - 1 <= 0 && (h & 3) !== 0) {
           ctx.fillStyle = shade('#6a6375', tone);
           for (let k = 0; k < 2; k++) {
             const f = 0.2 + ((h >> (7 + k * 5)) % 60) / 100;
@@ -2536,7 +2559,7 @@ export class Renderer {
    */
   private rampLandingItem(tx: number, ty: number, game: ClientGame): DrawItem | null {
     const lvl = game.world.elevAt(tx, ty);
-    if (lvl <= 0 || game.world.elevAt(tx, ty + 1) >= lvl) return null; // south-descending only
+    if (game.world.elevAt(tx, ty + 1) >= lvl) return null; // south-descending only
     const ctx = this.ctx;
     const s = this.camera.scale;
     const lift = lvl * ELEV_H * s;
@@ -2578,7 +2601,7 @@ export class Renderer {
    */
   private rampApronItem(tx: number, ty: number, game: ClientGame): DrawItem | null {
     const lvl = game.world.elevAt(tx, ty);
-    if (lvl <= 0 || game.world.elevAt(tx, ty + 1) >= lvl) return null; // south-descending only
+    if (game.world.elevAt(tx, ty + 1) >= lvl) return null; // south-descending only
     const ctx = this.ctx;
     const s = this.camera.scale;
     const baseLift = (lvl - 1) * ELEV_H * s;
@@ -3633,7 +3656,7 @@ export class Renderer {
       items.push({
         // A hair above the depleted rock underneath, which it hides.
         sortY: br.ty + 0.86,
-        elevated: lift > 0,
+        elevated: lift !== 0,
         draw: () => {
           const ctx = this.ctx;
           const s = this.camera.scale;
@@ -3711,7 +3734,7 @@ export class Renderer {
 
       items.push({
         sortY: ft.ty + 0.9,
-        elevated: this.renderLift(cx, cy) > 0,
+        elevated: this.renderLift(cx, cy) !== 0,
         draw: () => {
           const ctx = this.ctx;
           const p = this.camera.worldToScreen(cx, cy, this.w, this.h);
@@ -5719,7 +5742,7 @@ export class Renderer {
 
     return {
       sortY: e.y,
-      elevated: terrainLift > 0,
+      elevated: terrainLift !== 0,
       drawShadow: () => {
         this.castBody(p.x, p.y + s * 0.05, 0.26 * s * (e.size ?? 1));
       },
@@ -6010,7 +6033,7 @@ export class Renderer {
         : 0;
     return {
       sortY: s.y,
-      elevated: terrainLift > 0,
+      elevated: terrainLift !== 0,
       drawShadow: () => {
         this.castBody(p.x, p.y + r * 0.25, r * 1.05);
       },
@@ -6413,7 +6436,7 @@ export class Renderer {
 
     return {
       sortY: s.y - 0.2,
-      elevated: terrainLift > 0,
+      elevated: terrainLift !== 0,
       drawShadow: () => {
         const spread = cat === 'gold' ? 0.75 : 0.6;
         this.castContact(p.x, p.y + k * 0.05, k * 0.3 * spread * pop, k * 0.13 * pop);

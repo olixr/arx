@@ -18,13 +18,16 @@ import {
  * starter wilderness.
  *
  * TERRAIN LEVELS: where the elevation field crests, the land steps up
- * into true plateaus (level 1) and mesas (level 2). Every level change
- * is fenced by a ring of solid Cliff tiles except where a walkable Ramp
- * stair crosses — that ring is the WHOLE collision story, so the
- * per-tile `elev` layer stays render-only and the editor/procgen never
- * have to agree about slopes. Ore lives where rock is exposed: talus
- * boulders at cliff feet, formations along plateau rims, and the richest
- * veins up on the mesas.
+ * into true plateaus (level 1) and mesas (level 2); where the basin
+ * field crests over flat inland ground, it steps DOWN into dells
+ * (level −1) and quarries (level −2). Down is the same law as up,
+ * relative: every level change is fenced by a ring of solid Cliff tiles
+ * on the HIGH side of the boundary except where a walkable Ramp stair
+ * crosses — that ring is the WHOLE collision story, so the per-tile
+ * `elev` layer stays render-only and the editor/procgen never have to
+ * agree about slopes. Ore lives where rock is exposed: talus boulders
+ * at cliff feet, formations along plateau rims, the richest veins up on
+ * the mesas, and a modest bonus seam on the quarry floors.
  */
 function elevationAt(seed: number, tx: number, ty: number): number {
   let elevation = fbm(seed, tx * 0.015, ty * 0.015, 4);
@@ -49,9 +52,46 @@ function plateauFieldAt(seed: number, tx: number, ty: number): number {
   return f - Math.max(0, 1 - distFromTown / 130) * 0.45;
 }
 
-function levelOf(pf: number, elevation: number): number {
+/**
+ * The basins field mirrors the plateau field with its own seed offset:
+ * where it crests over ordinary flat ground the land sinks into a dell
+ * (−1) with, at the crest's heart, a quarry core (−2) — each ring gets
+ * its own cliff fence and straight-edge stair, a stepped two-level
+ * descent. Thresholds sit high on purpose: a few nice dells and
+ * quarries, not swiss cheese.
+ *
+ * Suppression is stronger than the plateaus': a sink's cliff fence
+ * lives on the HIGH side of its boundary, so a basin lapping an
+ * authored zone's border would put the fence tile INSIDE the zone where
+ * the overlay erases it (plateaus are safe — their fence is outside, on
+ * their own crown). Basins therefore keep a generous distance from
+ * every overworld authored site: the town and the Hollow Stair shelf.
+ */
+const BASIN_T1 = 0.72;
+const BASIN_T2 = 0.8;
+
+/** Exported for tests: they search this field to find chunks with sinks. */
+export function basinFieldAt(seed: number, tx: number, ty: number): number {
+  if (ty >= DARK_BAND_Y) return 0; // caves carve the underworld, not basins
+  const f = fbm(seed + 77713, tx * 0.012, ty * 0.012, 3);
+  const distFromTown = Math.hypot(tx - 48, ty - 48);
+  const distFromHollow = Math.hypot(tx - 132, ty - 20);
+  return (
+    f -
+    Math.max(0, 1 - distFromTown / 200) * 0.6 -
+    Math.max(0, 1 - distFromHollow / 60) * 0.6
+  );
+}
+
+function levelOf(pf: number, bf: number, elevation: number): number {
   if (elevation < 0.42) return 0; // no mesas rising out of the sea
-  return pf > PLATEAU_T2 ? 2 : pf > PLATEAU_T1 ? 1 : 0;
+  if (pf > PLATEAU_T2) return 2;
+  if (pf > PLATEAU_T1) return 1;
+  // Sinks only cut ordinary dry land: never water, shoreline sand
+  // (< 0.4), or the skirt of a plateau — a basin overlapping a rim
+  // would fight the plateau's own fence for the same tiles.
+  if (elevation < 0.45) return 0;
+  return bf > BASIN_T2 ? -2 : bf > BASIN_T1 ? -1 : 0;
 }
 
 /** Below this world-y everything defaults to solid cave (dungeon land). */
@@ -76,22 +116,29 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
   // margin — rims, ramps, and talus all read the neighborhood.
   const N = CHUNK_SIZE + M * 2;
   const el = new Float64Array(N * N);
-  const lv = new Uint8Array(N * N);
+  const lv = new Int8Array(N * N); // signed: sinks store negative levels
   for (let ly = -M; ly < CHUNK_SIZE + M; ly++) {
     for (let lx = -M; lx < CHUNK_SIZE + M; lx++) {
       const e = elevationAt(seed, baseX + lx, baseY + ly);
       const i = lx + M + (ly + M) * N;
       el[i] = e;
-      lv[i] = levelOf(plateauFieldAt(seed, baseX + lx, baseY + ly), e);
+      lv[i] = levelOf(
+        plateauFieldAt(seed, baseX + lx, baseY + ly),
+        basinFieldAt(seed, baseX + lx, baseY + ly),
+        e,
+      );
     }
   }
   const L = (lx: number, ly: number): number => lv[lx + M + (ly + M) * N]!;
   const E = (lx: number, ly: number): number => el[lx + M + (ly + M) * N]!;
 
-  /** Rim tile: raised, with at least one lower tile in its 8-neighborhood. */
+  /**
+   * Rim tile: at least one LOWER tile in the 8-neighborhood. Signed and
+   * relative — a plateau's crown edge and a pit's level-0 lip are the
+   * same thing: the high side of a boundary, and it carries the fence.
+   */
   const isRim = (lx: number, ly: number): boolean => {
     const lvl = L(lx, ly);
-    if (lvl === 0) return false;
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         if ((dx !== 0 || dy !== 0) && L(lx + dx, ly + dy) < lvl) return true;
@@ -103,13 +150,16 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
   /**
    * Ramp: a rim tile on a STRAIGHT run — exactly one cardinal neighbor a
    * level below, the opposite cardinal safely interior — picked by hash
-   * so most plateaus get a few stairs (and the odd unclimbable mesa
-   * stays scenic). Pure function of position: the lowland pass asks the
-   * same question about the tile above it to keep stair feet clear.
+   * so most plateaus AND pits get a few stairs (and the odd unclimbable
+   * mesa or sheer quarry stays scenic). Every check is a RELATIVE level
+   * comparison, so a pit's north lip (level 0 over a −1 dell) carries a
+   * stair by the same rule as a mesa's crown. Pure function of position:
+   * the low-side pass asks the same question about the tile above it to
+   * keep stair feet clear.
    */
   const isRamp = (lx: number, ly: number): boolean => {
     const lvl = L(lx, ly);
-    if (lvl === 0 || !isRim(lx, ly)) return false;
+    if (!isRim(lx, ly)) return false;
     const n = L(lx, ly - 1);
     const e = L(lx + 1, ly);
     const s = L(lx, ly + 1);
@@ -188,11 +238,14 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
       let detail = Detail.None;
       chunk.elev[i] = lvl;
 
-      if (lvl > 0) {
+      if (isRim(lx, ly)) {
+        // The fence itself: solid Cliff (or its Ramp gate) on the high
+        // side of every boundary REGARDLESS of sign — a pit's level-0
+        // lip is fenced exactly like a mesa's crown edge.
+        ground = isRamp(lx, ly) ? Tile.Ramp : Tile.Cliff;
+      } else if (lvl > 0) {
         // ---------------------------------------- raised terrain
-        if (isRim(lx, ly)) {
-          ground = isRamp(lx, ly) ? Tile.Ramp : Tile.Cliff;
-        } else if (nearRamp(lx, ly)) {
+        if (nearRamp(lx, ly)) {
           // Stair tops stay open.
           ground = lvl >= 2 ? Tile.StoneFloor : Tile.Grass;
         } else {
@@ -239,6 +292,44 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
             if (ground === Tile.StoneFloor && roll > 0.9) detail = Detail.Pebbles;
           }
         }
+      } else if (lvl < 0) {
+        // ---------------------------------------- sunken terrain
+        if (nearRamp(lx, ly)) {
+          // Stair mouths on the sunken floor stay open.
+          ground = lvl <= -2 ? Tile.StoneFloor : Tile.Grass;
+        } else if (lvl <= -2) {
+          // Quarry core: bare cut rock seeded with the deep ores — a
+          // bonus mining spot for whoever climbs down twice, tuned well
+          // below the mesa formations (this is a dell's cellar, not a
+          // jackpot).
+          ground =
+            roll < 0.05 ? Tile.RockIron
+            : roll < 0.09 ? Tile.RockCoal
+            : roll < 0.12 ? Tile.RockGold
+            : roll < 0.38 ? Tile.Rock
+            : Tile.StoneFloor;
+          if (ground === Tile.StoneFloor && roll > 0.85) detail = Detail.Pebbles;
+        } else if (atCliffBase(lx, ly)) {
+          // Talus at the dell wall's foot, same law as the overworld
+          // cliff bases: tumbled boulders with the shallow ores.
+          ground =
+            roll < 0.07 ? Tile.RockCopper
+            : roll < 0.14 ? Tile.RockTin
+            : roll < 0.3 ? Tile.Rock
+            : Tile.Grass;
+          if (ground === Tile.Grass && roll > 0.55) detail = Detail.Pebbles;
+        } else {
+          // Dell floor: sheltered and damp — lush grass where the wind
+          // can't reach, the odd moisture-loving herb.
+          const flora = hashCoords(seed ^ 0xf10a5, tx, ty) / 4294967296;
+          ground =
+            flora < 0.008 ? Tile.WildSagewort
+            : roll < 0.22 ? Tile.GrassTall
+            : Tile.Grass;
+          if (ground === Tile.Grass && roll > 0.85) {
+            detail = roll > 0.95 ? Detail.Flowers : Detail.Tuft;
+          }
+        }
       } else if (elevation < 0.3) {
         ground = Tile.WaterDeep;
       } else if (elevation < 0.37) {
@@ -263,6 +354,11 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
           : roll < 0.3 ? Tile.Rock
           : Tile.Grass;
         if (ground === Tile.Grass && roll > 0.55) detail = Detail.Pebbles;
+      } else if (nearRamp(lx, ly)) {
+        // The level-0 tile at a sink stair's TOP stays open — the same
+        // courtesy the raised branches pay their stair tops, or a tree
+        // could grow across the only way down into a dell.
+        ground = Tile.Grass;
       } else if (moisture > 0.62) {
         // Forest: tree density scales with moisture; some trees are oaks.
         // The understory hides the herbalist's plants — sagewort in the

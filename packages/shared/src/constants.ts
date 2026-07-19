@@ -1,4 +1,6 @@
-export const PROTOCOL_VERSION = 2;
+// v3: chunk elev bytes became SIGNED (Int8, sunken levels) — old clients
+// would misread −1 as 255, so the bump rejects them cleanly.
+export const PROTOCOL_VERSION = 3;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;
@@ -7,6 +9,17 @@ export const TICK_DT = 1 / TICK_RATE;
 
 /** World distances are measured in tiles (floating point). */
 export const CHUNK_SIZE = 32;
+
+/**
+ * Signed terrain level range. DOWN is the same law as UP, relative: for
+ * every boundary the higher side owns the crown and the faces, and the
+ * Cliff-ring + Ramp collision story is identical for sinks and
+ * plateaus. Positive levels are plateaus/mesas, negative are dells and
+ * quarries sunk below the meadow. (TERRAIN in the name: MAX_LEVEL is
+ * already the skill cap in skills.ts.)
+ */
+export const MIN_TERRAIN_LEVEL = -2;
+export const MAX_TERRAIN_LEVEL = 3;
 
 /** Client rendering: pixels per tile at zoom 1. */
 export const TILE_PX = 32;

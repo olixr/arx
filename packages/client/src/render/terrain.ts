@@ -309,13 +309,14 @@ export function bakeChunk(
   // 2. Material skins, lowest to highest, contoured on the dual grid.
   drawLayerSkins(ctx, g, baseX, baseY, px);
 
-  // 2b. Ground under raised terrain: the lifted plateau surface and the
+  // 2b. Ground under raised OR sunken terrain: the lifted surfaces and
   // cliff faces cover almost all of it, but any sliver that survives a
   // seam must read as shadowed rock — never sunny grass peeking out
-  // from inside a mountain.
+  // from inside a mountain, and a pit mouth reads as darkness before
+  // its floor paints over it.
   fillMask(
     ctx,
-    (tx, ty) => elev(tx, ty) > 0,
+    (tx, ty) => elev(tx, ty) !== 0,
     baseX,
     baseY,
     px,
@@ -333,8 +334,8 @@ export function bakeChunk(
     for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
       const tx = baseX + lx;
       const ty = baseY + ly;
-      // Raised tiles' details belong to the lifted layer, not the base.
-      if (elev(tx, ty) > 0) continue;
+      // Raised/sunken tiles' details belong to their lifted layer.
+      if (elev(tx, ty) !== 0) continue;
       drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px);
     }
   }
@@ -619,9 +620,36 @@ export function bakeElevated(
 
   const rows: boolean[] = new Array(CHUNK_SIZE).fill(false);
   let any = false;
-  for (let ly = 0; ly < CHUNK_SIZE; ly++) {
-    for (let lx = 0; lx < CHUNK_SIZE; lx++) {
-      if (member(baseX + lx, baseY + ly)) {
+  if (level > 0) {
+    for (let ly = 0; ly < CHUNK_SIZE; ly++) {
+      for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+        if (member(baseX + lx, baseY + ly)) {
+          rows[ly] = true;
+          any = true;
+        }
+      }
+    }
+  } else {
+    // LEVELS ≤ 0 — the pit law. Membership (elev >= level) covers
+    // nearly the whole chunk, but the flat base blit already paints
+    // everything far from a pit; emitting rows there would turn all
+    // ordinary ground into per-row draw items. So a row participates
+    // only near a sunken tile: the pit rows themselves (the floor and
+    // the annulus whose crown contour rims the hole) plus SINK_SPILL
+    // rows south — a floor at −2 draws shifted 2·ELEV_H down-screen,
+    // and the level-0 rows south of the pit must repaint over that
+    // spill or the hole would smear across flat ground. The scan uses
+    // the world-space sampler: a pit hugging the chunk's north seam
+    // still claims this chunk's spill rows.
+    const SINK_SPILL = 6;
+    for (let ly = 0; ly < CHUNK_SIZE; ly++) {
+      let near = false;
+      for (let wy = baseY + ly - SINK_SPILL; wy <= baseY + ly + 1 && !near; wy++) {
+        for (let lx = -1; lx <= CHUNK_SIZE && !near; lx++) {
+          if (elev(baseX + lx, wy) < 0) near = true;
+        }
+      }
+      if (near) {
         rows[ly] = true;
         any = true;
       }

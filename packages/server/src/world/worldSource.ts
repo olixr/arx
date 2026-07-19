@@ -150,9 +150,11 @@ export class WorldSource extends ChunkStore {
         const ci = tileIndex(tx, ty);
         chunk.ground[ci] = zone.ground[zi]!;
         chunk.detail[ci] = zone.detail[zi]!;
-        // Authored zones are flat ground: any generated plateau under
-        // them is levelled (zones don't carry cliffs to fence it).
-        chunk.elev[ci] = 0;
+        // A zone without an elev layer is flat ground: any generated
+        // plateau under it is levelled (it carries no cliffs to fence
+        // one). Zones WITH a layer stamp it verbatim — ZoneBuilder
+        // already validated its fencing at build time.
+        chunk.elev[ci] = zone.elev ? zone.elev[zi]! : 0;
       }
     }
   }

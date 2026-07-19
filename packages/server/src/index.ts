@@ -4,6 +4,7 @@ import { WebSocketServer } from 'ws';
 import {
   buildBramblewick,
   buildGloomhollow,
+  buildHollowStair,
   zoneFromJson,
   type ZoneDef,
   type ZoneJson,
@@ -17,7 +18,9 @@ import { WorldSource } from './world/worldSource.js';
 
 // Authored zones: built-ins from content, plus editor-exported JSON
 // dropped into data/maps/. Later zones win where they overlap.
-const zones: ZoneDef[] = [buildBramblewick(), buildGloomhollow()];
+// Bramblewick stays first: WorldSource takes the world spawn from the
+// first zone that declares one.
+const zones: ZoneDef[] = [buildBramblewick(), buildGloomhollow(), buildHollowStair()];
 try {
   const mapsDir = join(config.dataDir, 'maps');
   for (const file of readdirSync(mapsDir).filter((f) => f.endsWith('.json')).sort()) {
