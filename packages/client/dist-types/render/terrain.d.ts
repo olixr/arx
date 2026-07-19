@@ -1,9 +1,23 @@
 /**
- * Faceted terrain rendering. Tiles are authored on a grid but drawn as
- * unions of CHAMFERED cells: every material region gets crisp 45°-cut
- * coastlines — angular and deliberate, never pixel-grid, never soft
- * pills. Ground shading comes from low-frequency noise — big soft
- * meadows, no checkerboard.
+ * ORGANIC terrain rendering. Tiles are authored on a grid but the grid
+ * must disappear on screen: material regions are contoured on the dual
+ * grid (marching squares over tile corners), then every edge crossing
+ * slides along its edge by a deterministic world-keyed hash and every
+ * boundary run bows into a quadratic curve. Nature never cuts a 45°
+ * chamfer — roads wander, meadows bite into sand, shorelines meander.
+ * Masonry still may: layers with wobble 0 keep ruler-straight cuts
+ * (stone plazas, wood floors), so man-made ground reads deliberate
+ * while wild ground flows.
+ *
+ * Where two materials meet they BLEND, the way hand-drawn transition
+ * tiles do: a worn shade band just inside the edge, grass tufts
+ * overhanging the boundary, and crumbs of the material scattered out
+ * onto the turf. Ground shading comes from low-frequency noise — big
+ * soft meadows, no checkerboard.
+ *
+ * All jitter is keyed on WORLD tile coordinates, so the same curve
+ * falls out of every chunk bake, every resolution tier, and the live
+ * shoreline pass — geometry agrees everywhere by construction.
  */
 export type GroundSampler = (tx: number, ty: number) => number | undefined;
 export type DetailSampler = (tx: number, ty: number) => number;

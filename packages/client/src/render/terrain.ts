@@ -8,11 +8,25 @@ import {
 import { chamferRect } from './shapes.js';
 
 /**
- * Faceted terrain rendering. Tiles are authored on a grid but drawn as
- * unions of CHAMFERED cells: every material region gets crisp 45°-cut
- * coastlines — angular and deliberate, never pixel-grid, never soft
- * pills. Ground shading comes from low-frequency noise — big soft
- * meadows, no checkerboard.
+ * ORGANIC terrain rendering. Tiles are authored on a grid but the grid
+ * must disappear on screen: material regions are contoured on the dual
+ * grid (marching squares over tile corners), then every edge crossing
+ * slides along its edge by a deterministic world-keyed hash and every
+ * boundary run bows into a quadratic curve. Nature never cuts a 45°
+ * chamfer — roads wander, meadows bite into sand, shorelines meander.
+ * Masonry still may: layers with wobble 0 keep ruler-straight cuts
+ * (stone plazas, wood floors), so man-made ground reads deliberate
+ * while wild ground flows.
+ *
+ * Where two materials meet they BLEND, the way hand-drawn transition
+ * tiles do: a worn shade band just inside the edge, grass tufts
+ * overhanging the boundary, and crumbs of the material scattered out
+ * onto the turf. Ground shading comes from low-frequency noise — big
+ * soft meadows, no checkerboard.
+ *
+ * All jitter is keyed on WORLD tile coordinates, so the same curve
+ * falls out of every chunk bake, every resolution tier, and the live
+ * shoreline pass — geometry agrees everywhere by construction.
  */
 
 export type GroundSampler = (tx: number, ty: number) => number | undefined;
@@ -28,6 +42,15 @@ interface BlobLayer {
   /** Does this ground id belong to the layer? */
   match: (t: number) => boolean;
   color: (t: number, tx: number, ty: number) => string;
+  /**
+   * Contour wobble amplitude in tiles. 0 = ruler-straight 45° cuts
+   * (masonry: cut stone, laid planks); >0 = organic meander (nature).
+   */
+  wobble: number;
+  /** Worn shade band just inside the region edge, or null for none. */
+  band: string | null;
+  /** Turf creeps over this material's edge where it borders grass. */
+  fringe: boolean;
 }
 
 /** Region-scale two-tone variation — smooth patches, never per-tile. */
@@ -40,44 +63,80 @@ const BLOB_LAYERS: BlobLayer[] = [
   {
     match: (t) => t === Tile.Dirt,
     color: (_t, tx, ty) => patch('#96744c', '#8f6e47', tx, ty, 31),
+    wobble: 0.22,
+    band: 'rgba(70, 50, 30, 0.3)',
+    fringe: true,
   },
   {
     match: (t) => t === Tile.Swamp,
     color: () => '#556b3e',
+    wobble: 0.24,
+    band: 'rgba(30, 42, 24, 0.35)',
+    fringe: true,
   },
   {
     match: (t) => t === Tile.Path,
     color: (_t, tx, ty) => patch('#c2a26e', '#bc9d69', tx, ty, 33),
+    wobble: 0.2,
+    band: 'rgba(105, 78, 44, 0.3)',
+    fringe: true,
   },
   {
     match: (t) => t === Tile.Sand,
     color: (_t, tx, ty) => patch('#ddc98d', '#d6c286', tx, ty, 35),
+    wobble: 0.2,
+    band: 'rgba(158, 128, 74, 0.32)',
+    fringe: true,
   },
   {
+    // Hand-laid flagstone: a light wobble — tighter than wild ground,
+    // looser than a laser cut.
     match: (t) => t === Tile.StoneFloor,
     color: (_t, tx, ty) => patch('#a09aa8', '#99939f', tx, ty, 37),
+    wobble: 0.11,
+    band: 'rgba(40, 34, 56, 0.28)',
+    fringe: true,
   },
   {
     match: (t) => t === Tile.WoodFloor || t === Tile.Bridge,
     color: (_t, tx, ty) => patch('#a87e46', '#a37943', tx, ty, 39),
+    wobble: 0,
+    band: 'rgba(58, 40, 22, 0.3)',
+    fringe: false,
   },
   {
     match: (t) => t === Tile.CaveFloor || t === Tile.PortalDown || t === Tile.PortalUp,
     color: (_t, tx, ty) => patch(CAVE_TONES[0]!, CAVE_TONES[1]!, tx, ty, 41),
+    wobble: 0.18,
+    band: 'rgba(18, 14, 28, 0.35)',
+    fringe: false,
   },
   {
     match: (t) => t === Tile.Snow,
     color: () => '#e9edf3',
+    wobble: 0.22,
+    band: 'rgba(150, 166, 200, 0.3)',
+    fringe: true,
   },
   {
     match: (t) => t === Tile.Water || t === Tile.FishingSpot,
     color: () => '#4979b8',
+    wobble: 0.14,
+    // The live shoreline pass draws the waterline — no baked band.
+    band: null,
+    fringe: false,
   },
   {
     match: (t) => t === Tile.WaterDeep,
     color: () => '#3a629e',
+    wobble: 0.2,
+    band: 'rgba(24, 42, 80, 0.4)',
+    fringe: false,
   },
 ];
+
+/** Layer index of the water skin — the live shoreline follows it. */
+const WATER_LI = BLOB_LAYERS.findIndex((l) => l.match(Tile.Water));
 
 const GRASS_LIKE = new Set<number>([
   Tile.Grass,
@@ -166,11 +225,7 @@ export function bakeChunk(
   const cell = Math.max(4, Math.floor(px / 4));
   for (let y = 0; y < canvas.height; y += cell) {
     for (let x = 0; x < canvas.width; x += cell) {
-      const wx = baseX + x / px;
-      const wy = baseY + y / px;
-      const n = valueNoise(1234, wx * 0.055, wy * 0.055) * 0.7 + valueNoise(777, wx * 0.021, wy * 0.021) * 0.3;
-      const idx = n < 0.38 ? 3 : n < 0.52 ? 1 : n < 0.72 ? 0 : 2;
-      ctx.fillStyle = GRASS_TONES[idx]!;
+      ctx.fillStyle = meadowTone(baseX + x / px, baseY + y / px);
       ctx.fillRect(x, y, cell, cell);
     }
   }
@@ -252,11 +307,46 @@ function drawTileDetail(
         ctx.fillRect(gx + ((hg >> 3) % 60) / 100 * px, gy + ((hg >> 8) % 60) / 100 * px, px * 0.16, px * 0.05);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
         ctx.fillRect(gx + ((hg >> 5) % 60) / 100 * px, gy + ((hg >> 11) % 60) / 100 * px, px * 0.1, px * 0.04);
-      } else if (m === Tile.Path && hg % 4 === 0) {
-        ctx.fillStyle = 'rgba(94, 70, 40, 0.18)';
-        for (let k = 0; k < 2; k++) {
-          const hh = hashCoords(89 + k, tx, ty);
-          ctx.fillRect(gx + (hh % 70) / 100 * px, gy + ((hh >> 7) % 70) / 100 * px, px * 0.06, px * 0.05);
+      } else if (m === Tile.Path) {
+        if (hg % 4 === 0) {
+          ctx.fillStyle = 'rgba(94, 70, 40, 0.18)';
+          for (let k = 0; k < 2; k++) {
+            const hh = hashCoords(89 + k, tx, ty);
+            ctx.fillRect(gx + (hh % 70) / 100 * px, gy + ((hh >> 7) % 70) / 100 * px, px * 0.06, px * 0.05);
+          }
+        }
+        // Weeds breaking through the packed dirt: a road that gets
+        // walked, not printed. Sparse opaque tufts, never at the same
+        // spot twice.
+        if (hg % 7 === 2) {
+          const hh = hashCoords(163, tx, ty);
+          const wx0 = gx + (0.15 + (hh % 60) / 100) * px;
+          const wy0 = gy + (0.2 + ((hh >> 7) % 60) / 100) * px;
+          const tone = meadowTone(tx, ty);
+          for (let bl = 0; bl < 2 + (hh % 2); bl++) {
+            const hb = hashCoords(167 + bl, tx, ty);
+            const bx = wx0 + ((hb % 100) / 100 - 0.5) * px * 0.16;
+            const lean = (((hb >> 5) % 100) / 100 - 0.5) * 0.6;
+            const tall = px * (0.08 + ((hb >> 9) % 100) / 100 * 0.06);
+            ctx.fillStyle = hb & 1 ? tone : '#79a556';
+            ctx.beginPath();
+            ctx.moveTo(bx - px * 0.024, wy0);
+            ctx.lineTo(bx + px * 0.024, wy0);
+            ctx.lineTo(bx + lean * tall, wy0 - tall);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+        // The odd embedded stone worn smooth by feet.
+        if (hg % 9 === 4) {
+          const hh = hashCoords(173, tx, ty);
+          ctx.fillStyle = hh & 1 ? '#ab9a76' : '#9f8e6c';
+          const sx = gx + (0.2 + (hh % 55) / 100) * px;
+          const sy = gy + (0.2 + ((hh >> 6) % 55) / 100) * px;
+          const r = px * (0.035 + ((hh >> 11) % 3) * 0.012);
+          ctx.beginPath();
+          ctx.ellipse(sx, sy, r * 1.3, r, ((hh >> 3) % 7) * 0.4, 0, Math.PI * 2);
+          ctx.fill();
         }
       } else if (m === Tile.Sand && hg % 3 === 0) {
         ctx.fillStyle = 'rgba(150, 116, 62, 0.2)';
@@ -271,6 +361,22 @@ function drawTileDetail(
         ctx.moveTo(gx + (hg % 50) / 100 * px, gy + ((hg >> 6) % 60) / 100 * px);
         ctx.lineTo(gx + ((hg % 50) + 30) / 100 * px, gy + (((hg >> 6) % 60) + 25) / 100 * px);
         ctx.stroke();
+      }
+      // Moss creeping between flagstones — old towns, not showrooms.
+      if (m === Tile.StoneFloor && hg % 11 === 5) {
+        const hh = hashCoords(179, tx, ty);
+        ctx.fillStyle = 'rgba(96, 138, 70, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(
+          gx + (0.2 + (hh % 60) / 100) * px,
+          gy + (0.2 + ((hh >> 6) % 60) / 100) * px,
+          px * (0.05 + ((hh >> 11) % 3) * 0.02),
+          px * 0.04,
+          ((hh >> 3) % 7) * 0.45,
+          0,
+          Math.PI * 2,
+        );
+        ctx.fill();
       }
       if (d === Detail.Pebbles) {
         // Angular stone chips, rotated apart so they never tile.
@@ -410,11 +516,7 @@ export function bakeElevated(
   const cell = Math.max(4, Math.floor(px / 4));
   for (let y = 0; y < canvas.height; y += cell) {
     for (let x = 0; x < canvas.width; x += cell) {
-      const wx = baseX + x / px;
-      const wy = baseY + y / px;
-      const n = valueNoise(1234, wx * 0.055, wy * 0.055) * 0.7 + valueNoise(777, wx * 0.021, wy * 0.021) * 0.3;
-      const idx = n < 0.38 ? 3 : n < 0.52 ? 1 : n < 0.72 ? 0 : 2;
-      ctx.fillStyle = GRASS_TONES[idx]!;
+      ctx.fillStyle = meadowTone(baseX + x / px, baseY + y / px);
       ctx.fillRect(x, y, cell, cell);
     }
   }
@@ -585,6 +687,239 @@ function layerIndexOf(t: number): number {
   return -1;
 }
 
+// ------------------------------------------------- organic contours
+
+type Pt = [number, number];
+
+/**
+ * One boundary run through a dual cell: a quadratic curve from a to b
+ * with control point c, all in WORLD tile coordinates. `ox, oy` is the
+ * unit outward direction (away from the material), `pair` identifies
+ * which edge pair the run connects (stable hash key), and `I, J` are
+ * the dual cell's world coordinates.
+ */
+interface Bnd {
+  ax: number; ay: number;
+  cx: number; cy: number;
+  bx: number; by: number;
+  ox: number; oy: number;
+  pair: number;
+  I: number; J: number;
+}
+
+const rnd01 = (seed: number, x: number, y: number): number =>
+  hashCoords(seed, x, y) / 4294967296;
+
+/**
+ * Where the contour crosses a dual-cell edge, as a param 0..1 along
+ * the edge. Keyed on the edge's world identity so the two cells
+ * sharing the edge (and every chunk/tier/live pass) agree exactly.
+ */
+function crossT(li: number, wob: number, kx: number, ky: number, vert: number): number {
+  if (wob === 0) return 0.5;
+  return 0.5 + (rnd01(7717 + li * 131 + vert * 67, kx, ky) - 0.5) * 2 * wob;
+}
+
+/** Crossing point on one edge of dual cell (I, J). 0=T 1=R 2=B 3=L. */
+function edgeCross(li: number, wob: number, I: number, J: number, edge: number): Pt {
+  switch (edge) {
+    case 0: return [I - 0.5 + crossT(li, wob, I - 1, J - 1, 0), J - 0.5];
+    case 1: return [I + 0.5, J - 0.5 + crossT(li, wob, I, J - 1, 1)];
+    case 2: return [I - 0.5 + crossT(li, wob, I - 1, J, 0), J + 0.5];
+    default: return [I - 0.5, J - 0.5 + crossT(li, wob, I - 1, J - 1, 1)];
+  }
+}
+
+/** Edge pairs: 0=T·L 1=T·R 2=R·B 3=B·L 4=L·R 5=T·B. */
+function bndCurve(
+  li: number,
+  wob: number,
+  I: number,
+  J: number,
+  pair: number,
+  a: Pt,
+  b: Pt,
+  ox: number,
+  oy: number,
+): Bnd {
+  let cx = (a[0] + b[0]) / 2;
+  let cy = (a[1] + b[1]) / 2;
+  if (wob > 0) {
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const len = Math.hypot(dx, dy) || 1;
+    const d = (rnd01(8117 + li * 131 + pair * 29, I, J) - 0.5) * 2 * wob * len;
+    cx += (-dy / len) * d;
+    cy += (dx / len) * d;
+  }
+  return { ax: a[0], ay: a[1], cx, cy, bx: b[0], by: b[1], ox, oy, pair, I, J };
+}
+
+const RT2 = Math.SQRT1_2;
+
+/**
+ * The boundary runs of a marching-squares dual cell in world coords —
+ * the single source of truth shared by the baked fills, the worn-edge
+ * bands, the turf fringe, and the live shoreline.
+ */
+function boundaryCurvesFor(li: number, wob: number, I: number, J: number, mask: number): Bnd[] {
+  if (mask === 0 || mask === 15) return [];
+  const cT = edgeCross(li, wob, I, J, 0);
+  const cR = edgeCross(li, wob, I, J, 1);
+  const cB = edgeCross(li, wob, I, J, 2);
+  const cL = edgeCross(li, wob, I, J, 3);
+  const b = (pair: number, a: Pt, z: Pt, ox: number, oy: number): Bnd =>
+    bndCurve(li, wob, I, J, pair, a, z, ox, oy);
+  switch (mask) {
+    case 1: return [b(0, cT, cL, RT2, RT2)];
+    case 14: return [b(0, cT, cL, -RT2, -RT2)];
+    case 2: return [b(1, cT, cR, -RT2, RT2)];
+    case 13: return [b(1, cT, cR, RT2, -RT2)];
+    case 4: return [b(2, cR, cB, -RT2, -RT2)];
+    case 11: return [b(2, cR, cB, RT2, RT2)];
+    case 8: return [b(3, cB, cL, RT2, -RT2)];
+    case 7: return [b(3, cB, cL, -RT2, RT2)];
+    case 3: return [b(4, cL, cR, 0, 1)];
+    case 12: return [b(4, cL, cR, 0, -1)];
+    case 9: return [b(5, cT, cB, 1, 0)];
+    case 6: return [b(5, cT, cB, -1, 0)];
+    // Diagonal bands: two runs, each facing its own excluded corner.
+    case 5: return [b(1, cT, cR, RT2, -RT2), b(3, cB, cL, -RT2, RT2)];
+    default: return [b(2, cR, cB, RT2, RT2), b(0, cT, cL, -RT2, -RT2)]; // 10
+  }
+}
+
+/** Point on a boundary run's quadratic at param t. */
+function qpoint(b: Bnd, t: number): Pt {
+  const u = 1 - t;
+  return [
+    u * u * b.ax + 2 * u * t * b.cx + t * t * b.bx,
+    u * u * b.ay + 2 * u * t * b.cy + t * t * b.by,
+  ];
+}
+
+/**
+ * The filled region of a dual cell with organic boundaries. Cell edges
+ * stay straight (interior — adjacent cells overlap seamlessly); the
+ * boundary runs curve through the shared Bnd geometry.
+ */
+function organicCellPath(
+  path: Path2D,
+  li: number,
+  wob: number,
+  I: number,
+  J: number,
+  mask: number,
+  bnds: Bnd[],
+  toX: (wx: number) => number,
+  toY: (wy: number) => number,
+): void {
+  const x0 = toX(I - 0.5);
+  const y0 = toY(J - 0.5);
+  const x1 = toX(I + 0.5);
+  const y1 = toY(J + 0.5);
+  if (mask === 15) {
+    path.rect(x0, y0, x1 - x0, y1 - y0);
+    return;
+  }
+  const cT = edgeCross(li, wob, I, J, 0);
+  const cR = edgeCross(li, wob, I, J, 1);
+  const cB = edgeCross(li, wob, I, J, 2);
+  const cL = edgeCross(li, wob, I, J, 3);
+  const M = (p: Pt): void => path.moveTo(toX(p[0]), toY(p[1]));
+  const L = (p: Pt): void => path.lineTo(toX(p[0]), toY(p[1]));
+  const Lc = (x: number, y: number): void => path.lineTo(x, y);
+  // Quadratic to `end` through the stored control point — direction-
+  // independent, so fill and band strokes trace identical geometry.
+  const Q = (k: number, end: Pt): void => {
+    const bd = bnds[k]!;
+    path.quadraticCurveTo(toX(bd.cx), toY(bd.cy), toX(end[0]), toY(end[1]));
+  };
+  switch (mask) {
+    case 1: M(cT); Q(0, cL); Lc(x0, y0); break;
+    case 2: M(cT); Lc(x1, y0); L(cR); Q(0, cT); break;
+    case 4: M(cR); Lc(x1, y1); L(cB); Q(0, cR); break;
+    case 8: M(cL); Lc(x0, y1); L(cB); Q(0, cL); break;
+    case 3: M(cL); Lc(x0, y0); Lc(x1, y0); L(cR); Q(0, cL); break;
+    case 12: M(cL); Q(0, cR); Lc(x1, y1); Lc(x0, y1); break;
+    case 9: M(cT); Q(0, cB); Lc(x0, y1); Lc(x0, y0); break;
+    case 6: M(cT); Lc(x1, y0); Lc(x1, y1); L(cB); Q(0, cT); break;
+    case 7: M(cL); Lc(x0, y0); Lc(x1, y0); Lc(x1, y1); L(cB); Q(0, cL); break;
+    case 11: M(cR); Q(0, cB); Lc(x0, y1); Lc(x0, y0); Lc(x1, y0); L(cR); break;
+    case 13: M(cT); Q(0, cR); Lc(x1, y1); Lc(x0, y1); Lc(x0, y0); L(cT); break;
+    case 14: M(cT); Lc(x1, y0); Lc(x1, y1); Lc(x0, y1); L(cL); Q(0, cT); break;
+    case 5: M(cT); Q(0, cR); Lc(x1, y1); L(cB); Q(1, cL); Lc(x0, y0); break;
+    default: M(cR); Q(0, cB); Lc(x0, y1); L(cL); Q(1, cT); Lc(x1, y0); break; // 10
+  }
+  path.closePath();
+}
+
+/** The meadow's noise-driven grass tone at a world position. */
+function meadowTone(wx: number, wy: number): string {
+  const n =
+    valueNoise(1234, wx * 0.055, wy * 0.055) * 0.7 +
+    valueNoise(777, wx * 0.021, wy * 0.021) * 0.3;
+  const idx = n < 0.38 ? 3 : n < 0.52 ? 1 : n < 0.72 ? 0 : 2;
+  return GRASS_TONES[idx]!;
+}
+
+/**
+ * Turf fringe where a material borders grass: tufts of blades leaning
+ * over the boundary from the grass side, plus crumbs of the material
+ * scattered out onto the turf — the two-way blend hand-drawn
+ * transition tiles get for free.
+ */
+function drawGrassFringe(
+  ctx: CanvasRenderingContext2D,
+  bnd: Bnd,
+  matColor: string,
+  toX: (wx: number) => number,
+  toY: (wy: number) => number,
+  px: number,
+): void {
+  const seed = 9313 + bnd.pair * 17;
+  for (let k = 0; k < 3; k++) {
+    const h = hashCoords(seed + k * 293, bnd.I, bnd.J);
+    if (h % 100 < 42) continue;
+    const t = 0.16 + k * 0.32 + ((h >> 6) % 100) / 100 * 0.18;
+    const p = qpoint(bnd, Math.min(0.92, t));
+    // Tuft roots just INSIDE the material so blades overhang the edge.
+    const rx = p[0] - bnd.ox * 0.055;
+    const ry = p[1] - bnd.oy * 0.055;
+    const blades = 2 + ((h >> 9) % 3);
+    const tone = meadowTone(rx, ry);
+    for (let bl = 0; bl < blades; bl++) {
+      const hb = hashCoords(seed + k * 293 + 31 * (bl + 1), bnd.I, bnd.J);
+      const bx = toX(rx) + ((hb % 100) / 100 - 0.5) * px * 0.22;
+      const by = toY(ry) + (((hb >> 7) % 100) / 100 - 0.5) * px * 0.1;
+      const lean = (((hb >> 3) % 100) / 100 - 0.5) * 0.7;
+      const tall = px * (0.1 + ((hb >> 11) % 100) / 100 * 0.09);
+      const w = px * 0.05;
+      ctx.fillStyle = hb & 1 ? tone : '#79a556';
+      ctx.beginPath();
+      ctx.moveTo(bx - w / 2, by);
+      ctx.lineTo(bx + w / 2, by);
+      ctx.lineTo(bx + lean * tall, by - tall);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Material crumbs spilling outward onto the grass.
+    if ((h >> 4) % 3 !== 0) {
+      ctx.fillStyle = matColor;
+      const crumbs = 2 + ((h >> 13) % 2);
+      for (let c = 0; c < crumbs; c++) {
+        const hc = hashCoords(seed + k * 293 + 71 * (c + 1), bnd.I, bnd.J);
+        const d = 0.07 + ((hc % 100) / 100) * 0.2;
+        const along = (((hc >> 7) % 100) / 100 - 0.5) * 0.24;
+        const sx = toX(p[0] + bnd.ox * d - bnd.oy * along);
+        const sy = toY(p[1] + bnd.oy * d + bnd.ox * along);
+        const r = px * (0.028 + ((hc >> 13) % 3) * 0.011);
+        ctx.fillRect(sx - r, sy - r, r * 2, r * 2);
+      }
+    }
+  }
+}
+
 /**
  * DUAL-GRID MARCHING SQUARES — the terrain skin.
  *
@@ -617,8 +952,16 @@ function drawLayerSkins(
   }
   const at = (lx: number, ly: number): number => idx[lx + 1 + (ly + 1) * N]!;
 
+  const toX = (wx: number): number => (wx - baseX) * px;
+  const toY = (wy: number): number => (wy - baseY) * px;
+
   for (let li = 0; li < BLOB_LAYERS.length; li++) {
     const layer = BLOB_LAYERS[li]!;
+    const wob = layer.wobble;
+    const region = new Path2D();
+    const bands = new Path2D();
+    let hasBands = false;
+    const fringe: Array<{ bnd: Bnd; color: string }> = [];
     for (let j = 0; j <= CHUNK_SIZE; j++) {
       for (let i = 0; i <= CHUNK_SIZE; i++) {
         // Corner tiles of this dual cell.
@@ -641,17 +984,50 @@ function drawLayerSkins(
         else if (bl === li) { ctx2 = i - 1; cty = j; }
         else if (br === li) { ctx2 = i; cty = j; }
         else { ctx2 = i; cty = j; }
-        ctx.fillStyle = layer.color(0, baseX + ctx2, baseY + cty);
-        ctx.beginPath();
-        maskPolygon(ctx, mask, (i - 0.5) * px, (j - 0.5) * px, px);
-        ctx.fill();
+        const I = baseX + i;
+        const J = baseY + j;
+        const bnds = boundaryCurvesFor(li, wob, I, J, mask);
+        const cell = new Path2D();
+        organicCellPath(cell, li, wob, I, J, mask, bnds, toX, toY);
+        const col = layer.color(0, baseX + ctx2, baseY + cty);
+        ctx.fillStyle = col;
+        ctx.fill(cell);
         // Hairline same-color stroke kills antialiasing seams between
         // adjacent cells of one region.
-        ctx.strokeStyle = ctx.fillStyle;
+        ctx.strokeStyle = col;
         ctx.lineWidth = 0.8;
-        ctx.stroke();
+        ctx.stroke(cell);
+        region.addPath(cell);
+        for (const b of bnds) {
+          bands.moveTo(toX(b.ax), toY(b.ay));
+          bands.quadraticCurveTo(toX(b.cx), toY(b.cy), toX(b.bx), toY(b.by));
+          hasBands = true;
+          // Turf fringe wherever the outside of this run is base grass.
+          if (layer.fringe && (tl === -1 || tr === -1 || br === -1 || bl === -1)) {
+            fringe.push({ bnd: b, color: col });
+          }
+        }
       }
     }
+    // Worn shade band settling the material into its edge: two strokes
+    // clipped to the region so only the inner half shows.
+    if (layer.band && hasBands) {
+      ctx.save();
+      ctx.clip(region);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = layer.band;
+      ctx.globalAlpha = 0.45;
+      ctx.lineWidth = px * 0.34;
+      ctx.stroke(bands);
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = px * 0.15;
+      ctx.stroke(bands);
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'miter';
+      ctx.restore();
+    }
+    for (const f of fringe) drawGrassFringe(ctx, f.bnd, f.color, toX, toY, px);
   }
 }
 
@@ -783,9 +1159,9 @@ function isWaterTile(t: number | undefined): boolean {
 
 /**
  * Shoreline dressing: a dark waterline plus slow-breathing foam dashes
- * that slide along the shore. Runs on the SAME dual-grid contour as
- * the water skin (marching squares over tile corners), so the line
- * follows the drawn diagonals exactly — never staircase ticks.
+ * that slide along the shore. Traces the SAME organic curves as the
+ * baked water skin (shared boundaryCurvesFor geometry), so the line
+ * hugs the painted meander exactly — never a straight ghost of it.
  */
 function drawShorelines(
   ctx: CanvasRenderingContext2D,
@@ -795,6 +1171,7 @@ function drawShorelines(
   s: number,
   t: number,
 ): void {
+  const wob = BLOB_LAYERS[WATER_LI]!.wobble;
   ctx.lineCap = 'round';
   for (let j = bounds.minTy; j <= bounds.maxTy + 1; j++) {
     for (let i = bounds.minTx; i <= bounds.maxTx + 1; i++) {
@@ -804,44 +1181,38 @@ function drawShorelines(
         (isWaterTile(ground(i, j)) ? 4 : 0) |
         (isWaterTile(ground(i - 1, j)) ? 8 : 0);
       if (mask === 0 || mask === 15) continue;
-      // Contour endpoints: midpoints of this dual cell's edges.
-      const top: [number, number] = [i, j - 0.5];
-      const right: [number, number] = [i + 0.5, j];
-      const bottom: [number, number] = [i, j + 0.5];
-      const left: [number, number] = [i - 0.5, j];
-      let segs: Array<[[number, number], [number, number]]>;
-      switch (mask) {
-        case 1: case 14: segs = [[top, left]]; break;
-        case 2: case 13: segs = [[top, right]]; break;
-        case 4: case 11: segs = [[right, bottom]]; break;
-        case 8: case 7: segs = [[left, bottom]]; break;
-        case 3: case 12: segs = [[left, right]]; break;
-        case 6: case 9: segs = [[top, bottom]]; break;
-        case 5: segs = [[top, right], [bottom, left]]; break;
-        default: segs = [[top, left], [right, bottom]]; break; // 10
-      }
-      for (let k = 0; k < segs.length; k++) {
-        const a = worldToScreen(segs[k]![0]![0], segs[k]![0]![1]);
-        const b = worldToScreen(segs[k]![1]![0], segs[k]![1]![1]);
+      const bnds = boundaryCurvesFor(WATER_LI, wob, i, j, mask);
+      for (let k = 0; k < bnds.length; k++) {
+        const bnd = bnds[k]!;
+        // Sample the quadratic into a short screen polyline.
+        const STEPS = 6;
+        const pts: Array<{ x: number; y: number }> = [];
+        for (let n = 0; n <= STEPS; n++) {
+          const p = qpoint(bnd, n / STEPS);
+          pts.push(worldToScreen(p[0], p[1]));
+        }
         // Waterline: constant dark edge along the visual shore.
         ctx.strokeStyle = 'rgba(26, 48, 96, 0.32)';
         ctx.lineWidth = Math.max(1.5, s * 0.055);
         ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
+        ctx.moveTo(pts[0]!.x, pts[0]!.y);
+        for (let n = 1; n <= STEPS; n++) ctx.lineTo(pts[n]!.x, pts[n]!.y);
         ctx.stroke();
-        // Foam: a dash sliding along the segment, breathing in and out.
+        // Foam: a dash sliding along the curve, breathing in and out.
         const hh = hashCoords(71 + k, i, j);
         const alpha = Math.sin(((t * 0.45 + (hh % 40) / 40) % 1) * Math.PI);
         if (alpha < 0.12) continue;
         const u = (t * 0.1 + (hh % 100) / 100) % 0.75;
-        const u1 = u + 0.25;
         ctx.strokeStyle = '#dcebfb';
         ctx.lineWidth = Math.max(1.5, s * 0.05);
         ctx.globalAlpha = alpha * 0.65;
         ctx.beginPath();
-        ctx.moveTo(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u);
-        ctx.lineTo(a.x + (b.x - a.x) * u1, a.y + (b.y - a.y) * u1);
+        for (let n = 0; n <= 4; n++) {
+          const p = qpoint(bnd, u + (n / 4) * 0.25);
+          const sp = worldToScreen(p[0], p[1]);
+          if (n === 0) ctx.moveTo(sp.x, sp.y);
+          else ctx.lineTo(sp.x, sp.y);
+        }
         ctx.stroke();
         ctx.globalAlpha = 1;
       }
