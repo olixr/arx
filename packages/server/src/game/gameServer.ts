@@ -267,6 +267,12 @@ interface ProjectileComp {
   heavy?: boolean;
   /** Splash damage radius around the impact point. */
   splashRadius?: number;
+  /**
+   * Magic school riding the shot — cosmetic. Reaches clients as a
+   * `magic:<element>` defId suffix; the renderer tints bolt, flash,
+   * and impact from it.
+   */
+  element?: string;
 }
 
 /** A status riding an entity, remembering who put it there. */
@@ -1979,6 +1985,7 @@ export class GameServer {
         speed: (weapon.projectileSpeed ?? 12) * (heavy ? 0.8 : 1),
         distLeft: weapon.range,
         basic: true,
+        element: weapon.element,
         heavy: heavy || undefined,
         splashRadius: heavy ? HEAVY_BOLT_SPLASH : undefined,
         // Ember Bolt passive: the payoff beat sets things burning.
@@ -2222,6 +2229,15 @@ export class GameServer {
     const maxHit =
       ab.damage > 0 ? Math.max(1, Math.round(ab.damage * (1 + level * 0.05) * gearMult)) : 0;
     const knockbackMult = ab.knockback ?? 1;
+    // Magic Art projectiles fly in the caster's staff school — the
+    // element is a weapon fact, so a Frost Nova from an ember staff
+    // still novas blue, but its bolts stay the staff's own fire.
+    const element = fromNpc
+      ? undefined
+      : (() => {
+          const player = this.players.get(casterEid);
+          return player ? this.equippedWeapon(player)?.weapon.element : undefined;
+        })();
 
     switch (ab.shape) {
       case 'melee_arc': {
@@ -2315,6 +2331,7 @@ export class GameServer {
             distLeft: ab.range ?? 6,
             status: ab.status,
             fromNpc,
+            element: style === 'magic' ? element : undefined,
           });
           this.updateChunkMembership(proj);
         }
@@ -2413,6 +2430,7 @@ export class GameServer {
             status: ab.status,
             pierce: ab.pierce,
             fromNpc,
+            element: style === 'magic' ? element : undefined,
           });
           this.updateChunkMembership(proj);
         }
@@ -4141,7 +4159,10 @@ export class GameServer {
       meta.roll = drop.roll;
     }
     const proj = this.projectiles.get(eid);
-    if (proj) meta.defId = proj.heavy ? `${proj.style}_heavy` : proj.style;
+    if (proj) {
+      const base = proj.heavy ? `${proj.style}_heavy` : proj.style;
+      meta.defId = proj.element ? `${base}:${proj.element}` : base;
+    }
     const summon = this.summons.get(eid);
     if (summon) meta.defId = `summon_${summon.kind}`;
     return meta;

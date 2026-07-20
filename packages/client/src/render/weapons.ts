@@ -1763,3 +1763,902 @@ export function drawBow(
     }
   }
 }
+
+// ======================================================================
+// The archmage's roster — staff visual styles.
+//
+// A staff is three statements stacked on one line: the SHAFT (what the
+// world gave), the CROWN (what the maker did with it), and the FOCUS
+// (what lives there now). Records are pure data over one painter; the
+// living fx channel rides nowMs like the blades', and every focus
+// flares on a cast — the staff is the spell's mouth, and it should
+// visibly speak.
+//
+// Frame: origin at the fist, +x runs hand → crown, the butt trails at
+// −x. The rig slides the grip with carriage (planted walking stick ↔
+// leveled at something), so all geometry hangs off a grip-relative
+// span, never absolute x.
+// ======================================================================
+
+export type StaffShaft =
+  | 'straight'  // clean tapered hardwood with an edge light
+  | 'gnarled'   // kinked wild wood, knot bumps
+  | 'twisted'   // two strands wound around each other (the carved line)
+  | 'bone'      // stacked vertebrae on an iron thread
+  | 'iron'      // drawn metal rod, collared
+  | 'obsidian'; // faceted volcanic glass, lit from inside
+
+export type StaffCrown =
+  | 'fork'      // gilded claw cradling the focus (the classic)
+  | 'orb'       // collared socket holding a bare focus
+  | 'crook'     // the shepherd's hook
+  | 'crescent'  // a moon of metal or glass cupping the focus
+  | 'skull'     // a small skull, flame standing where thought was
+  | 'twinprong' // two straight lightning prongs, focus arcing between
+  | 'sundisc'   // a rayed disc with the focus at heart
+  | 'coil'      // twin serpents crossing, focus held at the mouths
+  | 'thorns'    // a briar spiral armed with thorns around the focus
+  | 'lantern'   // a little cage, the focus burning inside
+  | 'shard'     // crystal shards clustered around (or AS) the focus
+  | 'ring'      // an annulus, the focus floating dead center
+  | 'knot'      // a fist of rootwood, runes lit across it
+  | 'branch'    // living twigs and a leaf — barely a staff at all
+  | 'wisp';     // no cradle: the focus simply follows the staff
+
+export type StaffFx =
+  | 'embers'  // rising fire motes off the crown
+  | 'frost'   // falling frost-fog dots
+  | 'sparks'  // hard electric flickers
+  | 'motes'   // slow orbiting arcana
+  | 'leaves'  // green flecks drifting off
+  | 'drip'    // beads running off the crown (blood runs UP)
+  | 'rays'    // breathing sun rays
+  | 'stars'   // twinkling pinpricks inside/around the focus
+  | 'runes'   // rune lights pulsing in sequence down the shaft
+  | 'aurora'; // slow ribbons of many-colored light
+
+export interface StaffStyle {
+  shaft: StaffShaft;
+  /** Shaft body color. Edge light defaults to shade(+28). */
+  color: string;
+  edge?: string;
+  /** Fittings: wire wraps, collars, crown metal. */
+  metal?: string;
+  crown: StaffCrown;
+  /** Crown structure color (defaults to metal). */
+  crownColor?: string;
+  /** The focus — the element made visible. */
+  gem?: string;
+  /** Hot core / glint inside the focus. */
+  gemCore?: string;
+  /** Length multiplier (1 ≈ body-tall). */
+  len?: number;
+  /** Iron shoe at the butt — a stick that gets WALKED on. */
+  ferrule?: boolean;
+  fx?: StaffFx;
+  fxColor?: string;
+}
+
+export const STAFF_STYLES: Record<string, StaffStyle> = {
+  // ---- the carving ladder: one twisted-strand design, four woods.
+  // The strands wind tighter and the arcana wakes as the wood deepens.
+  carved_staff: {
+    shaft: 'twisted', color: '#8a6a45', metal: '#8d9299',
+    crown: 'orb', gem: '#b49af0', ferrule: true,
+  },
+  oak_staff: {
+    shaft: 'twisted', color: '#6b4a26', metal: '#8d9299',
+    crown: 'orb', gem: '#b49af0', ferrule: true, fx: 'motes', fxColor: '#b49af0',
+  },
+  willow_staff: {
+    shaft: 'twisted', color: '#8a9455', edge: '#b8c284', metal: '#d9a441',
+    crown: 'orb', gem: '#b49af0', ferrule: true, fx: 'motes', fxColor: '#c8b4f4',
+  },
+  yew_staff: {
+    shaft: 'twisted', color: '#7d4436', edge: '#a86a52', metal: '#d9a441',
+    crown: 'fork', gem: '#b49af0', gemCore: '#efe3ff', ferrule: true,
+    fx: 'motes', fxColor: '#c8b4f4', len: 1.05,
+  },
+
+  // ---- the battlestaff frame: ONE willow war-build, four gems. Same
+  // dark shaft, same iron claw — the gem owns the identity.
+  ember_battlestaff: {
+    shaft: 'straight', color: '#4e3a28', edge: '#6e563c', metal: '#4a4554',
+    crown: 'fork', crownColor: '#4a4554', gem: '#ff8a4a', gemCore: '#ffe8b0',
+    ferrule: true, fx: 'embers', fxColor: '#ff9a5a', len: 1.05,
+  },
+  frost_battlestaff: {
+    shaft: 'straight', color: '#4e3a28', edge: '#6e563c', metal: '#4a4554',
+    crown: 'fork', crownColor: '#4a4554', gem: '#8ac4e8', gemCore: '#f0faff',
+    ferrule: true, fx: 'frost', fxColor: '#c8e8f8', len: 1.05,
+  },
+  storm_battlestaff: {
+    shaft: 'straight', color: '#4e3a28', edge: '#6e563c', metal: '#4a4554',
+    crown: 'fork', crownColor: '#4a4554', gem: '#ffe86a', gemCore: '#fffdf0',
+    ferrule: true, fx: 'sparks', fxColor: '#fff0a0', len: 1.05,
+  },
+  verdant_battlestaff: {
+    shaft: 'straight', color: '#4e3a28', edge: '#6e563c', metal: '#4a4554',
+    crown: 'fork', crownColor: '#4a4554', gem: '#7ac46a', gemCore: '#eaffd8',
+    ferrule: true, fx: 'leaves', fxColor: '#9ad088', len: 1.05,
+  },
+
+  // ---- the adopted classics.
+  apprentice_staff: {
+    shaft: 'straight', color: '#5f4226', edge: '#8a6642', metal: '#d9a441',
+    crown: 'fork', crownColor: '#b8863f', gem: '#7a5ac4', gemCore: '#efe3ff',
+    ferrule: true,
+  },
+  ember_staff: {
+    shaft: 'gnarled', color: '#4a3430', edge: '#6e4a3c', metal: '#4a4554',
+    crown: 'orb', gem: '#ff8a4a', gemCore: '#ffe8b0',
+    ferrule: true, fx: 'embers', fxColor: '#ff9a5a',
+  },
+
+  // ---- the bespoke crafts.
+  hearthwarden: {
+    shaft: 'straight', color: '#7a5432', edge: '#a0784a', metal: '#4a4554',
+    crown: 'lantern', crownColor: '#4a4554', gem: '#ffb44a', gemCore: '#ffe8b0',
+    ferrule: true, fx: 'embers', fxColor: '#ff9a5a',
+  },
+  tidebinder: {
+    shaft: 'gnarled', color: '#a89e86', edge: '#ccc2a8', metal: '#5a8ab0',
+    crown: 'crescent', crownColor: '#7a94a0', gem: '#6ab4dc', gemCore: '#f0faff',
+    ferrule: false, fx: 'drip', fxColor: '#8ac4e8',
+  },
+  stormcaller: {
+    shaft: 'straight', color: '#4e3a30', edge: '#6e5644', metal: '#b87333',
+    crown: 'twinprong', crownColor: '#8d9299', gem: '#ffe86a', gemCore: '#ffffff',
+    ferrule: true, fx: 'sparks', fxColor: '#fff0a0', len: 1.1,
+  },
+
+  // ---- the wild finds.
+  hazel_switch: {
+    shaft: 'gnarled', color: '#96784f', edge: '#b89a6c',
+    crown: 'branch', crownColor: '#7a9a4a', gem: '#a0c46a',
+    ferrule: false, len: 0.85,
+  },
+  shepherds_crook: {
+    shaft: 'straight', color: '#a08a5c', edge: '#c4ae7c', metal: '#8d9299',
+    crown: 'crook', crownColor: '#a08a5c',
+    ferrule: true, fx: 'leaves', fxColor: '#9ad088',
+  },
+  witchlight: {
+    shaft: 'gnarled', color: '#6e5a40', edge: '#948060',
+    crown: 'wisp', gem: '#f4ecc0', gemCore: '#ffffff',
+    ferrule: false, fx: 'motes', fxColor: '#efe8c0',
+  },
+  gravewood: {
+    shaft: 'gnarled', color: '#524a3e', edge: '#6e6454',
+    crown: 'skull', crownColor: '#d8d2be', gem: '#8ec89a', gemCore: '#eaffd8',
+    ferrule: false, fx: 'motes', fxColor: '#8ec89a',
+  },
+  hexthorn: {
+    shaft: 'twisted', color: '#4a3a52', edge: '#685478', metal: '#3a2e42',
+    crown: 'thorns', crownColor: '#5a4668', gem: '#b070d8', gemCore: '#e8d0ff',
+    ferrule: false, fx: 'motes', fxColor: '#9a6ab8',
+  },
+  serpentcoil: {
+    shaft: 'straight', color: '#3e3428', edge: '#5c4e3a', metal: '#b87333',
+    crown: 'coil', crownColor: '#b87333', gem: '#8ad05a', gemCore: '#eaffd8',
+    ferrule: true, fx: 'motes', fxColor: '#a0c050',
+  },
+  glacierbite: {
+    shaft: 'straight', color: '#5c5448', edge: '#7c7260', metal: '#7a94a0',
+    crown: 'shard', crownColor: '#b0d8e8', gem: '#8ac4e8', gemCore: '#f0faff',
+    ferrule: true, fx: 'frost', fxColor: '#c8e8f8', len: 1.08,
+  },
+  pyreheart: {
+    shaft: 'obsidian', color: '#3a3038', edge: '#584a54', metal: '#e85a2c',
+    crown: 'shard', crownColor: '#78566a', gem: '#ff6a2c', gemCore: '#ffb45a',
+    ferrule: false, fx: 'embers', fxColor: '#ff8a3c',
+  },
+  runegnarl: {
+    shaft: 'gnarled', color: '#5e5244', edge: '#7e7060', metal: '#b0a0d8',
+    crown: 'knot', crownColor: '#483e34', gem: '#c8b8f0', gemCore: '#e8e0ff',
+    ferrule: false, fx: 'runes', fxColor: '#b0a0d8',
+  },
+  sunwrought: {
+    shaft: 'straight', color: '#d8ccb0', edge: '#f0e8d0', metal: '#d9a441',
+    crown: 'sundisc', crownColor: '#e8b84a', gem: '#ffd98a', gemCore: '#ffffff',
+    ferrule: true, fx: 'rays', fxColor: '#ffd98a', len: 1.05,
+  },
+  boneharrow: {
+    shaft: 'bone', color: '#d8d2be', edge: '#f0ecdc', metal: '#4a4554',
+    crown: 'lantern', crownColor: '#c8c2ac', gem: '#8ec89a', gemCore: '#eaffd8',
+    ferrule: false, fx: 'motes', fxColor: '#8ec89a', len: 1.05,
+  },
+  bloodmoon: {
+    shaft: 'straight', color: '#3e2a30', edge: '#5e4048', metal: '#8d5a64',
+    crown: 'crescent', crownColor: '#c84a5a', gem: '#ff6a7a', gemCore: '#ffd0d4',
+    ferrule: true, fx: 'drip', fxColor: '#d95763',
+  },
+  nightwell: {
+    shaft: 'iron', color: '#3a3648', edge: '#565064', metal: '#6a6480',
+    crown: 'crescent', crownColor: '#565064', gem: '#1e1a2e', gemCore: '#8a80c8',
+    ferrule: true, fx: 'stars', fxColor: '#c8c2ee', len: 1.05,
+  },
+  tempest_crown: {
+    shaft: 'iron', color: '#7a828e', edge: '#a0a8b4', metal: '#c8ccd4',
+    crown: 'ring', crownColor: '#c8ccd4', gem: '#ffe86a', gemCore: '#ffffff',
+    ferrule: true, fx: 'sparks', fxColor: '#e8f0ff', len: 1.05,
+  },
+  worldsplinter: {
+    shaft: 'straight', color: '#b8c8c4', edge: '#dceee8', metal: '#d9a441',
+    crown: 'shard', crownColor: '#9ae8de', gem: '#9ae8de', gemCore: '#ffffff',
+    ferrule: false, fx: 'aurora', fxColor: '#9ae8de', len: 1.12,
+  },
+};
+
+const STAFF_FALLBACKS = new Map<string, StaffStyle>();
+
+/**
+ * Resolve a held item to its staff style. Registry hits first; unknown
+ * '*staff' ids get the classic fork-and-orb in the item color. Null
+ * means "not a staff" — the rig's isStaff and drawHeldItem key off it.
+ */
+export function staffStyle(itemId: string | undefined, color?: string): StaffStyle | null {
+  if (!itemId) return null;
+  const st = STAFF_STYLES[itemId];
+  if (st) return st;
+  if (!itemId.includes('staff')) return null;
+  let fb = STAFF_FALLBACKS.get(itemId);
+  if (!fb) {
+    fb = {
+      shaft: 'straight', color: '#5f4226', edge: '#8a6642', metal: '#d9a441',
+      crown: 'fork', crownColor: '#b8863f', gem: color ?? '#b49af0',
+      gemCore: '#efe3ff', ferrule: true,
+    };
+    STAFF_FALLBACKS.set(itemId, fb);
+  }
+  return fb;
+}
+
+/**
+ * Paint a staff in the held-item frame (origin at the fist, +x toward
+ * the crown). `grip` is the fraction of length trailing below the hand
+ * — the rig slides it with carriage. `castT` flares the focus while
+ * the spell leaves.
+ */
+export function drawStaff(
+  ctx: CanvasRenderingContext2D,
+  st: StaffStyle,
+  s: number,
+  nowMs: number,
+  hurt?: boolean,
+  grip = 0.34,
+  castT = 0,
+): void {
+  const LEN = 0.98 * s * (st.len ?? 1);
+  const butt = -grip * LEN;
+  const top = (1 - grip) * LEN;
+  const wood = hurt ? '#ffffff' : st.color;
+  const edge = hurt ? '#ffffff' : (st.edge ?? shade(st.color, 28));
+  const metal = hurt ? '#ffffff' : (st.metal ?? '#8d9299');
+  const crownC = hurt ? '#ffffff' : (st.crownColor ?? metal);
+  const gem = hurt ? '#ffffff' : (st.gem ?? '#b49af0');
+  const gemCore = hurt ? '#ffffff' : (st.gemCore ?? '#efe3ff');
+  const lw = Math.max(2.5, s * 0.062);
+  // Where the wood ends and the crown begins.
+  const neck = top - 0.1 * s;
+
+  ctx.lineCap = 'round';
+
+  // ------------------------------------------------------------ shaft
+  if (st.shaft === 'twisted') {
+    // Two strands wound around each other — the carver's brag. Each
+    // strand is a gentle opposed sine; they trade the light.
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw * 0.62;
+    for (const ph of [0, Math.PI]) {
+      ctx.beginPath();
+      const steps = 9;
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = butt + (neck - butt) * t;
+        const y = Math.sin(t * Math.PI * 3 + ph) * 0.024 * s;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      if (ph === Math.PI) ctx.strokeStyle = hurt ? '#ffffff' : shade(st.color, 16);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = Math.max(1, s * 0.014);
+    ctx.beginPath();
+    ctx.moveTo(butt + 0.04 * s, -0.02 * s);
+    ctx.lineTo(neck - 0.04 * s, -0.02 * s);
+    ctx.stroke();
+  } else if (st.shaft === 'gnarled') {
+    // Wild wood keeps its kinks; knots swell where branches argued.
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw * 0.92;
+    ctx.beginPath();
+    ctx.moveTo(butt, 0.01 * s);
+    ctx.lineTo(butt + (neck - butt) * 0.3, -0.022 * s);
+    ctx.lineTo(butt + (neck - butt) * 0.58, 0.018 * s);
+    ctx.lineTo(butt + (neck - butt) * 0.85, -0.012 * s);
+    ctx.lineTo(neck, 0);
+    ctx.stroke();
+    if (!hurt) {
+      ctx.fillStyle = shade(st.color, -18);
+      ctx.beginPath();
+      ctx.arc(butt + (neck - butt) * 0.3, -0.022 * s, lw * 0.5, 0, Math.PI * 2);
+      ctx.arc(butt + (neck - butt) * 0.58, 0.018 * s, lw * 0.44, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      ctx.moveTo(butt + (neck - butt) * 0.34, -0.038 * s);
+      ctx.lineTo(butt + (neck - butt) * 0.8, -0.028 * s);
+      ctx.stroke();
+    }
+  } else if (st.shaft === 'bone') {
+    // Vertebrae threaded on an iron rod, biggest mid-shaft.
+    ctx.strokeStyle = metal;
+    ctx.lineWidth = Math.max(1.5, s * 0.02);
+    ctx.beginPath();
+    ctx.moveTo(butt, 0);
+    ctx.lineTo(neck, 0);
+    ctx.stroke();
+    const n = 10;
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      const x = butt + (neck - butt) * t;
+      const r = (0.02 + 0.016 * Math.sin(Math.PI * t)) * s;
+      ctx.fillStyle = wood;
+      ctx.beginPath();
+      ctx.arc(x, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = edge;
+        ctx.beginPath();
+        ctx.arc(x + r * 0.3, -r * 0.25, r * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  } else if (st.shaft === 'iron') {
+    // Drawn metal, cold and even; collars break the length.
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(butt, 0);
+    ctx.lineTo(neck, 0);
+    ctx.stroke();
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = Math.max(1, s * 0.016);
+    ctx.beginPath();
+    ctx.moveTo(butt + 0.03 * s, -0.014 * s);
+    ctx.lineTo(neck - 0.03 * s, -0.014 * s);
+    ctx.stroke();
+    if (!hurt) {
+      ctx.fillStyle = metal;
+      for (const t of [0.3, 0.72]) {
+        ctx.fillRect(butt + (neck - butt) * t - 0.014 * s, -0.036 * s, 0.028 * s, 0.072 * s);
+      }
+    }
+  } else if (st.shaft === 'obsidian') {
+    // Volcanic glass in facet segments; the vein inside breathes.
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.moveTo(butt, 0);
+    ctx.lineTo(neck, 0);
+    ctx.stroke();
+    if (!hurt) {
+      // Magma cracks: short bright nicks, brightening on the cast.
+      const glowK = 0.6 + 0.4 * Math.sin(nowMs * 0.003) + castT * 0.8;
+      ctx.strokeStyle = st.metal ?? '#e85a2c';
+      ctx.globalAlpha = Math.min(1, 0.45 + glowK * 0.3);
+      ctx.lineWidth = Math.max(1, s * 0.018);
+      for (const t of [0.2, 0.45, 0.66, 0.88]) {
+        const x = butt + (neck - butt) * t;
+        ctx.beginPath();
+        ctx.moveTo(x - 0.02 * s, 0.016 * s);
+        ctx.lineTo(x + 0.02 * s, -0.016 * s);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      ctx.moveTo(butt + 0.05 * s, -0.022 * s);
+      ctx.lineTo(neck - 0.05 * s, -0.022 * s);
+      ctx.stroke();
+    }
+  } else {
+    // straight: the honest two-pass hardwood the wand line shipped with.
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.moveTo(butt, 0);
+    ctx.lineTo(neck, 0);
+    ctx.stroke();
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = Math.max(1, s * 0.018);
+    ctx.beginPath();
+    ctx.moveTo(butt + 0.03 * s, -0.012 * s);
+    ctx.lineTo(neck - 0.04 * s, -0.012 * s);
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+
+  // Ferrule shoeing the butt.
+  if (st.ferrule && !hurt) {
+    ctx.fillStyle = '#4a4554';
+    ctx.fillRect(butt, -0.03 * s, 0.05 * s, 0.06 * s);
+  }
+  // Wire wrap at the hand (skipped on bone/obsidian — nothing to bind).
+  if (!hurt && st.shaft !== 'bone' && st.shaft !== 'obsidian') {
+    ctx.strokeStyle = metal;
+    ctx.lineWidth = Math.max(1.5, s * 0.03);
+    ctx.beginPath();
+    ctx.moveTo(0.05 * s, -0.032 * s);
+    ctx.lineTo(0.05 * s, 0.032 * s);
+    ctx.stroke();
+  }
+
+  // ------------------------------------------------------------ crown
+  // The focus flares while the spell leaves — shared by every crown.
+  const gemR = (0.078 + castT * 0.04) * s;
+  const drawFocus = (x: number, y: number, r: number): void => {
+    ctx.fillStyle = gem;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = gemCore;
+      ctx.beginPath();
+      ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.36, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (castT > 0) {
+      ctx.globalAlpha = 0.4;
+      ctx.fillStyle = gem;
+      ctx.beginPath();
+      ctx.arc(x, y, r * (1.7 + castT * 1.2), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  };
+
+  switch (st.crown) {
+    case 'fork': {
+      // Gilded claw cradling the focus.
+      ctx.strokeStyle = crownC;
+      ctx.lineWidth = Math.max(2, s * 0.045);
+      for (const fs of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(top - 0.13 * s, fs * 0.012 * s);
+        ctx.quadraticCurveTo(top - 0.04 * s, fs * 0.075 * s, top + 0.015 * s, fs * 0.05 * s);
+        ctx.stroke();
+      }
+      drawFocus(top, 0, gemR);
+      break;
+    }
+    case 'orb': {
+      // A collar, then the bare focus standing on it.
+      ctx.fillStyle = crownC;
+      ctx.fillRect(neck - 0.01 * s, -0.034 * s, 0.036 * s, 0.068 * s);
+      drawFocus(top - 0.02 * s, 0, gemR);
+      break;
+    }
+    case 'crook': {
+      // The shepherd's hook, curling back over the shaft.
+      ctx.strokeStyle = hurt ? '#ffffff' : crownC;
+      ctx.lineWidth = lw * 0.8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(neck, 0);
+      ctx.quadraticCurveTo(top + 0.09 * s, -0.012 * s, top + 0.06 * s, -0.11 * s);
+      ctx.quadraticCurveTo(top + 0.02 * s, -0.17 * s, top - 0.06 * s, -0.13 * s);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      if (!hurt) {
+        // The little iron bell that told the flock where home was.
+        ctx.fillStyle = st.metal ?? '#8d9299';
+        ctx.beginPath();
+        ctx.arc(top - 0.06 * s, -0.1 * s, 0.026 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
+    case 'crescent': {
+      // A moon cupping the focus. Structure first, focus floating in.
+      ctx.strokeStyle = crownC;
+      ctx.lineWidth = Math.max(2, s * 0.042);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(top + 0.01 * s, 0, 0.115 * s, Math.PI * 0.62, Math.PI * 1.38, false);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      drawFocus(top + 0.02 * s, 0, gemR * 0.92);
+      break;
+    }
+    case 'skull': {
+      // A small skull facing the viewer: dome leading +x (skyward when
+      // planted), jaw stepping back toward the shaft, and the focus
+      // burning as a standing flame beyond the crown of the head.
+      ctx.fillStyle = crownC;
+      ctx.fillRect(top - 0.075 * s, -0.036 * s, 0.05 * s, 0.072 * s);
+      ctx.beginPath();
+      ctx.arc(top - 0.01 * s, 0, 0.07 * s, 0, Math.PI * 2);
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = '#2e2a26';
+        ctx.beginPath();
+        ctx.arc(top - 0.018 * s, -0.03 * s, 0.018 * s, 0, Math.PI * 2);
+        ctx.arc(top - 0.018 * s, 0.03 * s, 0.018 * s, 0, Math.PI * 2);
+        ctx.fill();
+        // Teeth nicks along the jaw's shaft edge.
+        ctx.fillRect(top - 0.075 * s, -0.02 * s, 0.012 * s, 0.012 * s);
+        ctx.fillRect(top - 0.075 * s, 0.008 * s, 0.012 * s, 0.012 * s);
+      }
+      // The flame: a teardrop standing off the dome, leaning with time.
+      if (!hurt) {
+        const lean = Math.sin(nowMs * 0.004) * 0.016 * s;
+        const tipX = top + 0.19 * s + castT * 0.05 * s;
+        ctx.fillStyle = gem;
+        ctx.beginPath();
+        ctx.moveTo(tipX, lean);
+        ctx.quadraticCurveTo(top + 0.13 * s, 0.032 * s, top + 0.085 * s, 0);
+        ctx.quadraticCurveTo(top + 0.13 * s, -0.032 * s, tipX, lean);
+        ctx.fill();
+        ctx.fillStyle = gemCore;
+        ctx.beginPath();
+        ctx.arc(top + 0.115 * s, 0, 0.018 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
+    case 'twinprong': {
+      // Two straight lightning rods; the focus arcs in the gap.
+      ctx.strokeStyle = crownC;
+      ctx.lineWidth = Math.max(2, s * 0.04);
+      for (const fs of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(neck, fs * 0.015 * s);
+        ctx.lineTo(top + 0.02 * s, fs * 0.07 * s);
+        ctx.lineTo(top + 0.09 * s, fs * 0.075 * s);
+        ctx.stroke();
+      }
+      drawFocus(top + 0.035 * s, 0, gemR * 0.8);
+      if (!hurt) {
+        // A live arc jumping prong-to-prong, flickering on its own clock.
+        if (Math.sin(nowMs * 0.021) > 0.2) {
+          ctx.strokeStyle = gemCore;
+          ctx.lineWidth = Math.max(1, s * 0.016);
+          ctx.beginPath();
+          ctx.moveTo(top + 0.06 * s, -0.072 * s);
+          ctx.lineTo(top + 0.02 * s, -0.02 * s);
+          ctx.lineTo(top + 0.08 * s, 0.014 * s);
+          ctx.lineTo(top + 0.05 * s, 0.073 * s);
+          ctx.stroke();
+        }
+      }
+      break;
+    }
+    case 'sundisc': {
+      // The rayed disc; rays breathe, the focus is the sun's heart.
+      if (!hurt) {
+        const breath = 1 + 0.1 * Math.sin(nowMs * 0.0024) + castT * 0.4;
+        ctx.strokeStyle = crownC;
+        ctx.lineWidth = Math.max(1.5, s * 0.028);
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+          ctx.beginPath();
+          ctx.moveTo(top + Math.cos(a) * 0.1 * s, Math.sin(a) * 0.1 * s);
+          ctx.lineTo(top + Math.cos(a) * 0.15 * s * breath, Math.sin(a) * 0.15 * s * breath);
+          ctx.stroke();
+        }
+      }
+      ctx.fillStyle = crownC;
+      ctx.beginPath();
+      ctx.arc(top, 0, 0.095 * s, 0, Math.PI * 2);
+      ctx.fill();
+      drawFocus(top, 0, gemR * 0.82);
+      break;
+    }
+    case 'coil': {
+      // Twin serpents crossing up the neck, mouths meeting at the focus.
+      ctx.strokeStyle = crownC;
+      ctx.lineWidth = Math.max(2, s * 0.036);
+      ctx.lineCap = 'round';
+      for (const fs of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(neck - 0.05 * s, 0);
+        ctx.quadraticCurveTo(neck + 0.03 * s, fs * 0.085 * s, top - 0.015 * s, fs * 0.02 * s);
+        ctx.quadraticCurveTo(top + 0.02 * s, fs * -0.05 * s, top + 0.05 * s, fs * 0.028 * s);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+      if (!hurt) {
+        // Heads: two wedges facing the held gem.
+        ctx.fillStyle = shade(st.crownColor ?? '#b87333', 22);
+        for (const fs of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(top + 0.05 * s, fs * 0.028 * s);
+          ctx.lineTo(top + 0.095 * s, fs * 0.045 * s);
+          ctx.lineTo(top + 0.085 * s, fs * 0.006 * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      drawFocus(top + 0.1 * s, 0, gemR * 0.68);
+      break;
+    }
+    case 'thorns': {
+      // A briar spiral around the focus, armed outward — the curse
+      // light burns first, the bramble cages it.
+      drawFocus(top + 0.05 * s, 0, gemR * 0.9);
+      ctx.strokeStyle = crownC;
+      ctx.lineWidth = Math.max(2, s * 0.036);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(neck, 0);
+      ctx.quadraticCurveTo(top + 0.03 * s, -0.14 * s, top + 0.13 * s, -0.03 * s);
+      ctx.quadraticCurveTo(top + 0.15 * s, 0.11 * s, top - 0.02 * s, 0.105 * s);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      if (!hurt) {
+        ctx.fillStyle = crownC;
+        const thorns: Array<[number, number, number, number]> = [
+          [top - 0.0 * s, -0.11 * s, 0.4, -1],
+          [top + 0.12 * s, -0.075 * s, 1, -0.5],
+          [top + 0.145 * s, 0.055 * s, 1, 0.5],
+          [top + 0.035 * s, 0.115 * s, -0.2, 1],
+        ];
+        for (const [tx2, ty2, dx2, dy2] of thorns) {
+          // Thorn wedge pointing (dx2, dy2) away from the spiral.
+          const nx = -dy2, ny = dx2;
+          ctx.beginPath();
+          ctx.moveTo(tx2 + nx * 0.018 * s, ty2 + ny * 0.018 * s);
+          ctx.lineTo(tx2 - nx * 0.018 * s, ty2 - ny * 0.018 * s);
+          ctx.lineTo(tx2 + dx2 * 0.065 * s, ty2 + dy2 * 0.065 * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      break;
+    }
+    case 'lantern': {
+      // A little cage; the focus burns inside, never quite still.
+      const cx2 = top + 0.01 * s;
+      if (!hurt) {
+        const flick = 0.9 + 0.1 * Math.sin(nowMs * 0.009);
+        drawFocus(cx2, 0, gemR * 0.72 * flick);
+      } else {
+        drawFocus(cx2, 0, gemR * 0.72);
+      }
+      ctx.strokeStyle = crownC;
+      ctx.lineWidth = Math.max(1.5, s * 0.026);
+      // Cage ribs: an ellipse read as three verticals + cap and base.
+      ctx.beginPath();
+      ctx.moveTo(cx2 - 0.075 * s, -0.06 * s);
+      ctx.quadraticCurveTo(cx2, -0.115 * s, cx2 + 0.075 * s, -0.06 * s);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx2 - 0.075 * s, 0.06 * s);
+      ctx.quadraticCurveTo(cx2, 0.115 * s, cx2 + 0.075 * s, 0.06 * s);
+      ctx.stroke();
+      for (const fx2 of [-0.075, 0, 0.075]) {
+        ctx.beginPath();
+        ctx.moveTo(cx2 + fx2 * s, -0.06 * s + Math.abs(fx2) * 0.2 * s);
+        ctx.lineTo(cx2 + fx2 * s, 0.06 * s - Math.abs(fx2) * 0.2 * s);
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'shard': {
+      // Crystal shards clustered at the crown — the focus made solid.
+      // The center shard leads along +x; wings flank it.
+      const shards: Array<[number, number, number, number]> = [
+        [top + 0.02 * s, 0, 0.15 * s, 0.045 * s],
+        [top - 0.01 * s, -0.055 * s, 0.1 * s, 0.032 * s],
+        [top - 0.01 * s, 0.055 * s, 0.1 * s, 0.032 * s],
+      ];
+      for (const [sx, sy, sl, sw] of shards) {
+        ctx.fillStyle = hurt ? '#ffffff' : (st.crownColor ?? gem);
+        ctx.beginPath();
+        ctx.moveTo(sx + sl, sy);
+        ctx.lineTo(sx, sy - sw);
+        ctx.lineTo(sx - sl * 0.4, sy);
+        ctx.lineTo(sx, sy + sw);
+        ctx.closePath();
+        ctx.fill();
+        if (!hurt) {
+          ctx.fillStyle = gemCore;
+          ctx.beginPath();
+          ctx.moveTo(sx + sl * 0.6, sy);
+          ctx.lineTo(sx, sy - sw * 0.4);
+          ctx.lineTo(sx - sl * 0.2, sy);
+          ctx.lineTo(sx, sy + sw * 0.4);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      // The molten heart glowing between the shards.
+      if (!hurt) {
+        ctx.fillStyle = gem;
+        ctx.beginPath();
+        ctx.arc(top - 0.005 * s, 0, 0.032 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (castT > 0) {
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = gem;
+        ctx.beginPath();
+        ctx.arc(top + 0.02 * s, 0, (0.16 + castT * 0.1) * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      break;
+    }
+    case 'ring': {
+      // An annulus; the focus floats dead center, touching nothing.
+      ctx.strokeStyle = crownC;
+      ctx.lineWidth = Math.max(2, s * 0.036);
+      ctx.beginPath();
+      ctx.arc(top + 0.02 * s, 0, 0.105 * s, 0, Math.PI * 2);
+      ctx.stroke();
+      const bob = hurt ? 0 : Math.sin(nowMs * 0.0032) * 0.012 * s;
+      drawFocus(top + 0.02 * s, bob, gemR * 0.66);
+      break;
+    }
+    case 'knot': {
+      // A fist of rootwood; runes surface across it in sequence.
+      ctx.fillStyle = crownC;
+      ctx.beginPath();
+      ctx.arc(top - 0.01 * s, 0, 0.088 * s, 0, Math.PI * 2);
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = shade(st.crownColor ?? st.color, 20);
+        ctx.beginPath();
+        ctx.arc(top - 0.035 * s, -0.03 * s, 0.036 * s, 0, Math.PI * 2);
+        ctx.fill();
+        // Three rune nicks lighting in order, brightening on the cast.
+        ctx.strokeStyle = gem;
+        ctx.lineWidth = Math.max(1.5, s * 0.022);
+        for (let i = 0; i < 3; i++) {
+          const on = (Math.sin(nowMs * 0.0035 - i * 1.4) + 1) / 2;
+          ctx.globalAlpha = 0.5 + 0.5 * Math.max(on * on, castT);
+          const rx = top - 0.05 * s + i * 0.045 * s;
+          ctx.beginPath();
+          ctx.moveTo(rx, 0.02 * s);
+          ctx.lineTo(rx + 0.02 * s, -0.03 * s);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
+      break;
+    }
+    case 'branch': {
+      // Barely worked at all: two twigs and one leaf that refuses to fall.
+      ctx.strokeStyle = wood;
+      ctx.lineWidth = Math.max(1.5, s * 0.026);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(neck, 0);
+      ctx.lineTo(top + 0.05 * s, -0.035 * s);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(top - 0.04 * s, 0);
+      ctx.lineTo(top + 0.015 * s, 0.05 * s);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      if (!hurt) {
+        ctx.fillStyle = st.crownColor ?? '#7a9a4a';
+        ctx.beginPath();
+        ctx.moveTo(top + 0.05 * s, -0.035 * s);
+        ctx.quadraticCurveTo(top + 0.11 * s, -0.075 * s, top + 0.12 * s, -0.02 * s);
+        ctx.quadraticCurveTo(top + 0.08 * s, -0.005 * s, top + 0.05 * s, -0.035 * s);
+        ctx.fill();
+      }
+      break;
+    }
+    case 'wisp': {
+      // No cradle at all: the light follows the staff at a polite
+      // distance, bobbing on its own time. It is not attached. It is
+      // ACCOMPANYING.
+      const bobX = hurt ? 0 : Math.sin(nowMs * 0.0021) * 0.02 * s;
+      const bobY = hurt ? 0 : Math.sin(nowMs * 0.0034) * 0.026 * s;
+      drawFocus(top + 0.08 * s + bobX, -0.05 * s + bobY, gemR * 0.62);
+      break;
+    }
+  }
+
+  // --------------------------------------------------------------- fx
+  // The living channel: cheap, deterministic, riding nowMs. All fx hang
+  // around the crown; runes walk the shaft instead.
+  if (!hurt && st.fx) {
+    const c = st.fxColor ?? gem;
+    ctx.fillStyle = c;
+    const fxX = top + 0.02 * s;
+    if (st.fx === 'runes') {
+      // Rune lights pulsing in sequence DOWN the shaft.
+      ctx.strokeStyle = c;
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      for (let i = 0; i < 4; i++) {
+        const on = (Math.sin(nowMs * 0.003 - i * 1.1) + 1) / 2;
+        ctx.globalAlpha = 0.15 + 0.6 * on * on;
+        const x = butt + (neck - butt) * (0.25 + i * 0.18);
+        ctx.beginPath();
+        ctx.moveTo(x - 0.012 * s, 0.018 * s);
+        ctx.lineTo(x + 0.012 * s, -0.018 * s);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    } else if (st.fx === 'rays') {
+      // Handled structurally by the sundisc; add a faint outer breath.
+      ctx.globalAlpha = 0.2 + 0.14 * Math.sin(nowMs * 0.0024);
+      ctx.beginPath();
+      ctx.arc(fxX, 0, 0.19 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    } else if (st.fx === 'aurora') {
+      // Slow ribbons: three arcs of shifted hue orbiting the crown.
+      const AURORA = ['#9ae8de', '#c8b0ff', '#ffd0e8'];
+      for (let i = 0; i < 3; i++) {
+        const ph = nowMs * 0.0011 + (i * Math.PI * 2) / 3;
+        ctx.strokeStyle = AURORA[i]!;
+        ctx.globalAlpha = 0.4 + 0.25 * Math.sin(ph * 2.3);
+        ctx.lineWidth = Math.max(1, s * 0.018);
+        ctx.beginPath();
+        ctx.arc(fxX, 0, (0.15 + 0.03 * Math.sin(ph)) * s, ph, ph + 1.6);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    } else {
+      // Particle-dot channels share one loop; motion picks the school.
+      for (let i = 0; i < 4; i++) {
+        const phase = ((nowMs * 0.00042 + i * 0.31) % 1 + 1) % 1;
+        let x = fxX;
+        let y = 0;
+        let r = Math.max(1, 0.016 * s);
+        ctx.globalAlpha = 0.75 * (1 - phase * 0.6);
+        switch (st.fx) {
+          case 'embers': // climb past the crown, shrinking
+            x += 0.05 * s + phase * 0.15 * s;
+            y = Math.sin(i * 2.4) * 0.05 * s;
+            r *= 1 - phase * 0.55;
+            break;
+          case 'frost': // sink below the crown, drifting
+            x -= 0.02 * s + phase * 0.13 * s;
+            y = Math.sin(phase * Math.PI * 2 + i * 2.1) * 0.05 * s;
+            break;
+          case 'sparks': // hard flickers, mostly off
+            if (Math.sin(nowMs * 0.019 + i * 2.6) < 0.5) continue;
+            x += Math.sin(i * 3.1) * 0.09 * s;
+            y = Math.cos(i * 2.2) * 0.07 * s;
+            break;
+          case 'leaves': // drift off and sink, swaying
+            x -= phase * 0.08 * s;
+            y = (i % 2 === 0 ? 1 : -1) * (0.03 * s + phase * 0.08 * s) +
+              Math.sin(phase * Math.PI * 3 + i) * 0.02 * s;
+            break;
+          case 'drip': { // beads run down the wood; blood runs UP
+            const down = st.gem === '#ff6a7a' ? 1 : -1;
+            x += down * (0.05 * s + phase * 0.14 * s);
+            y = Math.sin(i * 2.8) * 0.05 * s;
+            r *= 1 - phase * 0.4;
+            break;
+          }
+          case 'stars': // pinpricks inside the focus, twinkling
+            x += Math.sin(i * 2.51 + 0.8) * 0.045 * s;
+            y = Math.cos(i * 1.73) * 0.04 * s;
+            r *= 0.5 + 0.6 * Math.abs(Math.sin(nowMs * 0.0045 + i * 1.7));
+            break;
+          default: // motes: slow orbit around the crown
+            x += Math.cos(nowMs * 0.0016 + (i * Math.PI) / 2) * 0.1 * s;
+            y = Math.sin(nowMs * 0.0016 + (i * Math.PI) / 2) * 0.08 * s;
+            break;
+        }
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+}

@@ -77,7 +77,7 @@ test('equipment defs round-trip through JSON', () => {
 
 test('rolledStats is deterministic and null for non-gear', () => {
   assert.equal(rolledStats('coins'), null);
-  assert.equal(rolledStats('apprentice_staff'), null); // staffs roll only once migrated
+  assert.equal(rolledStats('coal'), null); // plain materials never roll
   // Swords ARE migrated: the blade roster rolls, damage carries the base.
   assert.equal(rolledStats('bronze_sword')?.damage, 1);
   for (let seed = 0; seed < 200; seed++) {
@@ -432,7 +432,7 @@ test('early-game leather sets: four dye lots each, colorways mirror their base',
 test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates hold', async () => {
   const { ABILITIES } = await import('./abilities.js');
   const weapons = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
-  assert.equal(weapons.length, 94, 'swords 32 + daggers 33 + bows 29');
+  assert.equal(weapons.length, 122, 'swords 32 + daggers 33 + bows 29 + staves 28');
   const swords = weapons.filter((d) => d.weapon?.style === 'melee');
   assert.equal(swords.length, 65, 'swords 32 + daggers 33');
   for (const s of swords) {
@@ -553,4 +553,63 @@ test('archer roster: 20 bow designs, wood ladders climb, arts resolve, chase ste
   for (const log of logs) {
     assert.ok(NODES.some((n) => n.yieldItem === log), `${log} grows on a real tree`);
   }
+});
+
+test('archmage roster: 22 staff designs, elements ride every bolt, gem swaps craft, chase steepens', async () => {
+  const { ABILITIES } = await import('./abilities.js');
+  const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
+  const staves = [
+    'carved_staff', 'oak_staff', 'willow_staff', 'yew_staff',
+    'ember_battlestaff', 'frost_battlestaff', 'storm_battlestaff', 'verdant_battlestaff',
+    'apprentice_staff', 'ember_staff',
+    'hearthwarden', 'tidebinder', 'stormcaller',
+    'hazel_switch', 'shepherds_crook', 'witchlight', 'gravewood', 'hexthorn',
+    'serpentcoil', 'glacierbite', 'pyreheart', 'runegnarl', 'sunwrought',
+    'boneharrow', 'bloodmoon', 'nightwell', 'tempest_crown', 'worldsplinter',
+  ];
+  assert.equal(staves.length, 28, '1 ladder x4 + 4 gem battlestaffs + 2 classics + 3 crafts + 15 finds');
+  for (const id of staves) {
+    const d = byId.get(id);
+    assert.ok(d, `${id} exists`);
+    assert.equal(d!.weapon?.style, 'magic');
+    assert.equal(d!.weapon!.ammo, undefined, `${id} needs no ammo — the staff IS the source`);
+    assert.ok(d!.weapon!.element, `${id} belongs to a school`);
+    assert.ok(d!.weapon!.art && ABILITIES.has(d!.weapon!.art), `${id} art resolves`);
+    assert.ok(d!.desc && d!.desc.length > 20, `${id} carries a real story`);
+  }
+  // The carving ladder climbs the same woods the bowyers cut.
+  const logs = ['log', 'oak_log', 'willow_log', 'yew_log'];
+  const line = ['carved_staff', 'oak_staff', 'willow_staff', 'yew_staff'].map((id) => byId.get(id)!);
+  for (let i = 1; i < line.length; i++) {
+    assert.ok(line[i]!.weapon!.damage > line[i - 1]!.weapon!.damage, 'staff damage climbs');
+    assert.ok(line[i]!.value > line[i - 1]!.value, 'staff value climbs');
+    assert.ok(line[i]!.recipe!.levelReq > line[i - 1]!.recipe!.levelReq, 'staff crafting climbs');
+    assert.equal(line[i]!.levelReq!.skill, 'magic', 'staff gates on magic');
+  }
+  line.forEach((d, i) => assert.ok(d.recipe!.inputs.some((inp) => inp.item === logs[i]), `${d.id} carved from ${logs[i]}`));
+  // The gem swap system: one battlestaff frame, four element stones,
+  // and every gem is truly gatherable (mined or foraged bonus find).
+  const gems: Record<string, string> = {
+    ember_battlestaff: 'emberstone',
+    frost_battlestaff: 'frostshard',
+    storm_battlestaff: 'stormpearl',
+    verdant_battlestaff: 'bloomstone',
+  };
+  const { NODES } = await import('./nodes.js');
+  for (const [id, gem] of Object.entries(gems)) {
+    const d = byId.get(id)!;
+    assert.ok(d.recipe!.inputs.some((inp) => inp.item === gem), `${id} socketed with ${gem}`);
+    assert.equal(d.id.split('_')[0], d.weapon!.element, `${id} school follows its gem`);
+    assert.ok(NODES.some((n) => n.bonusYield?.item === gem), `${gem} hides in a gather node`);
+    assert.ok(itemDef(gem), `${gem} is a real item`);
+  }
+  // Every school is spoken for across the roster.
+  const schools = new Set(staves.map((id) => byId.get(id)!.weapon!.element));
+  for (const el of ['arcane', 'ember', 'frost', 'storm', 'verdant', 'void', 'radiant', 'blood', 'astral']) {
+    assert.ok(schools.has(el as never), `a staff carries the ${el} school`);
+  }
+  // The chase steepens; the Worldsplinter only exists legendary.
+  assert.deepEqual(byId.get('pyreheart')!.rarities, ['rare', 'epic', 'legendary']);
+  assert.deepEqual(byId.get('nightwell')!.rarities, ['epic', 'legendary']);
+  assert.deepEqual(byId.get('worldsplinter')!.rarities, ['legendary']);
 });

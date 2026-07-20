@@ -101,6 +101,44 @@ const PLAYER_COLORS = ['#c4553d', '#3d78c4', '#3da865', '#c4a03d', '#8a55c4', '#
 /** Flight height of projectiles above their ground point, in tiles —
  * arrows leave the bow's nock and bolts the staff's crown, chest-high. */
 const PROJ_AIR = 0.62;
+
+/**
+ * The schools of magic, as paint. A projectile defId of `magic:<element>`
+ * (or `magic_heavy:<element>`) picks its palette here — bolt layers,
+ * muzzle flash, wake, glow, and impact burst all draw from one tint so
+ * every staff's fire reads as ITS fire. Unsuffixed magic stays arcane.
+ */
+interface ElementTint {
+  /** Hot center of the bolt. */
+  core: string;
+  /** Main body color. */
+  mid: string;
+  /** Shadow tone as 'r, g, b' — soft halos and the trailing wake. */
+  deep: string;
+  /** White-hot fleck accent shed in flight. */
+  fleck: string;
+  /** queueGlow tint as 'r, g, b'. */
+  glow: string;
+}
+
+const ELEMENT_TINTS: Record<string, ElementTint> = {
+  arcane: { core: '#efe3ff', mid: '#b49af0', deep: '122, 90, 196', fleck: '#fff8c8', glow: '180, 154, 240' },
+  ember: { core: '#ffe8b0', mid: '#ff8a4a', deep: '196, 74, 30', fleck: '#ffd98a', glow: '255, 138, 74' },
+  frost: { core: '#f0faff', mid: '#8ac4e8', deep: '74, 130, 180', fleck: '#d8f0fc', glow: '138, 196, 232' },
+  storm: { core: '#fffdf0', mid: '#ffe86a', deep: '170, 150, 60', fleck: '#ffffff', glow: '255, 232, 106' },
+  verdant: { core: '#eaffd8', mid: '#7ac46a', deep: '58, 122, 58', fleck: '#d8ffb0', glow: '122, 196, 106' },
+  // Void runs inverted: a dark heart in a pale shell — the one school
+  // whose flecks are darker than its body.
+  void: { core: '#c8b0e8', mid: '#7a5adf', deep: '46, 32, 84', fleck: '#38284e', glow: '122, 90, 223' },
+  radiant: { core: '#ffffff', mid: '#ffd98a', deep: '196, 150, 70', fleck: '#fff2c8', glow: '255, 217, 138' },
+  blood: { core: '#ffb0a8', mid: '#d95763', deep: '134, 38, 48', fleck: '#ff8a8a', glow: '217, 87, 99' },
+  astral: { core: '#ffffff', mid: '#9ae8de', deep: '90, 140, 180', fleck: '#e8b0ff', glow: '154, 232, 222' },
+};
+
+/** Palette for a projectile style string ('magic:ember' → ember). */
+function elementTint(style: string): ElementTint {
+  return ELEMENT_TINTS[style.split(':')[1] ?? 'arcane'] ?? ELEMENT_TINTS['arcane']!;
+}
 /** How long a landed arrow stands in the world before fading. */
 const STUCK_ARROW_MS = 90_000;
 /** The spent shot's terminal arc: duration and forward carry (tiles). */
@@ -8319,13 +8357,14 @@ export class Renderer {
     const ax = s.x;
     const ay = this.projAirWorldY(s.y);
     const magic = style.startsWith('magic');
+    const tint = elementTint(style);
 
     // Muzzle flash — the first frame we see a shot, it POPS out of the
     // weapon: a directional spray of shards + a glow spike.
     if (!this.projSeen.has(eid)) {
       this.projSeen.add(eid);
       if (magic) {
-        this.particles.burst(ax, ay, 10, ['#b49af0', '#8f76d4', '#efe3ff', '#fff8c8'], {
+        this.particles.burst(ax, ay, 10, [tint.mid, `rgb(${tint.deep})`, tint.core, tint.fleck], {
           speed: 2.6,
           life: 0.32,
           size: 0.09,
@@ -8334,7 +8373,7 @@ export class Renderer {
           spread: 1.5,
           drag: 3,
         });
-        this.queueGlow(ax, ay, 1.6, '180, 154, 240', 0.75);
+        this.queueGlow(ax, ay, 1.6, tint.glow, 0.75);
       } else {
         this.particles.burst(ax, ay, 5, ['#e6e0d0', '#c4b590'], {
           speed: 1.6,
@@ -8366,10 +8405,10 @@ export class Renderer {
         ctx.ellipse(p.x, groundY, scale * 0.16, scale * 0.06, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        if (style === 'magic_heavy') {
+        if (style.split(':')[0] === 'magic_heavy') {
           // The heavy orb: fat, slow, unmistakably the payoff beat —
           // a churning faceted core shedding embers as it goes.
-          this.particles.burst(ax, ay, 2, ['#b49af0', '#8f76d4', '#efe3ff'], {
+          this.particles.burst(ax, ay, 2, [tint.mid, `rgb(${tint.deep})`, tint.core], {
             speed: 0.6,
             life: 0.5,
             size: 0.12,
@@ -8377,16 +8416,16 @@ export class Renderer {
             dir: s.dir + Math.PI,
             spread: 1.2,
           });
-          this.queueGlow(ax, ay, 1.7, '180, 154, 240', 0.65);
-          ctx.fillStyle = 'rgba(122, 90, 196, 0.4)';
+          this.queueGlow(ax, ay, 1.7, tint.glow, 0.65);
+          ctx.fillStyle = `rgba(${tint.deep}, 0.4)`;
           ctx.beginPath();
           facetCircle(ctx, p.x, p.y, scale * 0.32, 7, s.dir * 0.5);
           ctx.fill();
-          ctx.fillStyle = '#b49af0';
+          ctx.fillStyle = tint.mid;
           ctx.beginPath();
           facetCircle(ctx, p.x, p.y, scale * 0.23, 7, -s.dir * 0.7);
           ctx.fill();
-          ctx.fillStyle = '#efe3ff';
+          ctx.fillStyle = tint.core;
           ctx.beginPath();
           facetCircle(ctx, p.x, p.y, scale * 0.11, 5, s.dir);
           ctx.fill();
@@ -8396,7 +8435,7 @@ export class Renderer {
         if (magic) {
           // A cut shard of magic streaking nose-first: layered diamond
           // with a hot core, shedding a violet wake + white flecks.
-          this.particles.burst(ax, ay, 1, ['#b49af0', '#8f76d4'], {
+          this.particles.burst(ax, ay, 1, [tint.mid, `rgb(${tint.deep})`], {
             speed: 0.35,
             life: 0.34,
             size: 0.08,
@@ -8405,14 +8444,14 @@ export class Renderer {
             spread: 0.8,
           });
           if (Math.random() < this.frameDt * 22) {
-            this.particles.burst(ax, ay, 1, ['#fff8c8', '#efe3ff'], {
+            this.particles.burst(ax, ay, 1, [tint.fleck, tint.core], {
               speed: 1.4,
               life: 0.25,
               size: 0.05,
               gravity: 0,
             });
           }
-          this.queueGlow(ax, ay, 1.0, '180, 154, 240', 0.5);
+          this.queueGlow(ax, ay, 1.0, tint.glow, 0.5);
           const nose = 0.3 * scale;
           const tail = 0.26 * scale;
           const half = 0.09 * scale;
@@ -8426,9 +8465,9 @@ export class Renderer {
             ctx.closePath();
             ctx.fill();
           };
-          diamond(1.5, 'rgba(122, 90, 196, 0.3)');
-          diamond(1.0, '#b49af0');
-          diamond(0.48, '#efe3ff');
+          diamond(1.5, `rgba(${tint.deep}, 0.3)`);
+          diamond(1.0, tint.mid);
+          diamond(0.48, tint.core);
         } else {
           // An arrow you can read at speed: streak, shaft, iron head,
           // red fletching — and a wisp of slipstream behind it.
@@ -8483,16 +8522,17 @@ export class Renderer {
   private consumeProjectileAftermath(game: ClientGame, now: number): void {
     for (const end of game.projectileEnds) {
       if (end.style.startsWith('magic')) {
-        const heavy = end.style === 'magic_heavy';
+        const heavy = end.style.split(':')[0] === 'magic_heavy';
+        const t = elementTint(end.style);
         const fy = this.projAirWorldY(end.y);
-        this.particles.burst(end.x, fy, heavy ? 16 : 8, ['#b49af0', '#8f76d4', '#efe3ff', '#fff8c8'], {
+        this.particles.burst(end.x, fy, heavy ? 16 : 8, [t.mid, `rgb(${t.deep})`, t.core, t.fleck], {
           speed: heavy ? 3.2 : 2.2,
           life: 0.4,
           size: heavy ? 0.11 : 0.08,
           gravity: 0,
           drag: 3.5,
         });
-        this.queueGlow(end.x, fy, heavy ? 2.2 : 1.4, '180, 154, 240', 0.8);
+        this.queueGlow(end.x, fy, heavy ? 2.2 : 1.4, t.glow, 0.8);
         continue;
       }
       // Arrow down. Into a body if one is close enough, else the dirt.

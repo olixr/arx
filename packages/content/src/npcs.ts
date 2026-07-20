@@ -156,6 +156,8 @@ const defs: NpcDef[] = [
       // Bows of the gutter: a child's first try, and a poacher's last.
       { item: 'stickbow', qty: [1, 1], chance: 0.03 },
       { item: 'poachers_friend', qty: [1, 1], chance: 0.015 },
+      // A hedge-witch's lost switch, dragged in for the nest walls.
+      { item: 'hazel_switch', qty: [1, 1], chance: 0.025 },
     ],
     respawnSec: 15,
     color: '#8a7a6a',
@@ -217,6 +219,12 @@ const defs: NpcDef[] = [
       { item: 'stickbow', qty: [1, 1], chance: 0.03 },
       { item: 'knucklebow', qty: [1, 1], chance: 0.025 },
       { item: 'bramblethorn', qty: [1, 1], chance: 0.015 },
+      // Camp staves: stolen hedge-magic and a caged light that bides.
+      { item: 'hazel_switch', qty: [1, 1], chance: 0.03 },
+      { item: 'witchlight', qty: [1, 1], chance: 0.012 },
+      // Pried gems — the warband robs ore carts too.
+      { item: 'emberstone', qty: [1, 1], chance: 0.012 },
+      { item: 'bloomstone', qty: [1, 1], chance: 0.012 },
     ],
     respawnSec: 25,
     color: '#5c8a3a',
@@ -284,6 +292,12 @@ const defs: NpcDef[] = [
       { item: 'driftwood', qty: [1, 1], chance: 0.02 },
       { item: 'fishspine', qty: [1, 1], chance: 0.015 },
       { item: 'bramblethorn', qty: [1, 1], chance: 0.012 },
+      // Staves off the raided coast: the wisp cage, a shepherd's hook,
+      // and twin bronze serpents nobody in camp will touch twice.
+      { item: 'witchlight', qty: [1, 1], chance: 0.02 },
+      { item: 'shepherds_crook', qty: [1, 1], chance: 0.02 },
+      { item: 'serpentcoil', qty: [1, 1], chance: 0.008 },
+      { item: 'stormpearl', qty: [1, 1], chance: 0.01 },
     ],
     respawnSec: 30,
     color: '#6a9a3a',
@@ -394,6 +408,12 @@ const defs: NpcDef[] = [
       { item: 'marrowpoint', qty: [1, 1], chance: 0.015 },
       { item: 'whisperwind', qty: [1, 1], chance: 0.012 },
       { item: 'emberglow', qty: [1, 1], chance: 0.006 },
+      // Crypt staves: the branch that grew a skull, the knotted curse,
+      // and — deep rows — bone thread on iron.
+      { item: 'gravewood', qty: [1, 1], chance: 0.03 },
+      { item: 'hexthorn', qty: [1, 1], chance: 0.012 },
+      { item: 'boneharrow', qty: [1, 1], chance: 0.004 },
+      { item: 'frostshard', qty: [1, 1], chance: 0.012 },
     ],
     respawnSec: 30,
     color: '#d8d4c8',
@@ -493,6 +513,17 @@ const defs: NpcDef[] = [
       { item: 'kingswood', qty: [1, 1], chance: 0.025 },
       { item: 'starcall', qty: [1, 1], chance: 0.012 },
       { item: 'skyrender', qty: [1, 1], chance: 0.005 },
+      // The Champion's rack of staves — every school that came for him.
+      // The Worldsplinter only exists legendary: the mage's white whale.
+      { item: 'glacierbite', qty: [1, 1], chance: 0.05 },
+      { item: 'pyreheart', qty: [1, 1], chance: 0.04 },
+      { item: 'runegnarl', qty: [1, 1], chance: 0.04 },
+      { item: 'sunwrought', qty: [1, 1], chance: 0.04 },
+      { item: 'boneharrow', qty: [1, 1], chance: 0.03 },
+      { item: 'bloodmoon', qty: [1, 1], chance: 0.025 },
+      { item: 'nightwell', qty: [1, 1], chance: 0.02 },
+      { item: 'tempest_crown', qty: [1, 1], chance: 0.02 },
+      { item: 'worldsplinter', qty: [1, 1], chance: 0.005 },
     ],
     respawnSec: 90,
     color: '#e8e2d0',
@@ -574,6 +605,11 @@ const defs: NpcDef[] = [
       { item: 'poachers_friend', qty: [1, 1], chance: 0.02 },
       { item: 'wolfsong', qty: [1, 1], chance: 0.02 },
       { item: 'rimewood', qty: [1, 1], chance: 0.008 },
+      // The pack's staves: a crook off a shepherd who argued, and the
+      // ice spear the midwinter packs den around.
+      { item: 'shepherds_crook', qty: [1, 1], chance: 0.03 },
+      { item: 'glacierbite', qty: [1, 1], chance: 0.006 },
+      { item: 'bloomstone', qty: [1, 1], chance: 0.015 },
     ],
     respawnSec: 35,
     color: '#6a6f7d',

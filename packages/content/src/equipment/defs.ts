@@ -875,6 +875,15 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // finds up to the legendary-only Skyrender. Longbows slow and heavy,
   // shortbows quick and close, recurves the hunter's middle path.
   ...bowDefs(),
+
+  // =================================================== the archmage's roster
+  // Twenty-two bespoke staves. The wizard's arsenal: every staff carries
+  // an ELEMENT that tints its bolts and names its school, and a Weapon
+  // Art from that school. One carving design climbs the wood ladder,
+  // one battlestaff frame takes four swappable element gems (mined and
+  // foraged from the land), three bespoke crafts, and a trail of wild
+  // finds rising to the legendary-only Worldsplinter.
+  ...staffDefs(),
 ];
 
 // ---------------------------------------------------------- set makers
@@ -3531,6 +3540,326 @@ function bowDefs(): EquipmentDef[] {
   shortbow[0]!.acquisition = { craft: true, shop: true };
 
   return [...shortbow, ...longbow, ...hunting, ...crafts, ...finds];
+}
+
+function staffDefs(): EquipmentDef[] {
+  // Pools: every staff leans magic; the flavor stats tell its school.
+  const MAGE_POOL: AffixPoolEntry[] = [
+    { stat: 'magic', w: 3 },
+    { stat: 'vitality' },
+    { stat: 'herbalism' },
+    { stat: 'maxHp' },
+  ];
+  const SAGE_POOL: AffixPoolEntry[] = [
+    { stat: 'magic', w: 3 },
+    { stat: 'herbalism', w: 2 },
+    { stat: 'regen' },
+    { stat: 'maxHp' },
+  ];
+  const WARMAGE_POOL: AffixPoolEntry[] = [
+    { stat: 'magic', w: 3 },
+    { stat: 'defence' },
+    { stat: 'vitality' },
+    { stat: 'maxHp' },
+  ];
+
+  // ---- the carving ladder: one walking-staff design, four woods. The
+  // generalist's line — arcane school, honest numbers, always craftable.
+  const carved: EquipmentDef[] = (
+    [
+      { wood: 'plain', name: 'Carved staff', log: 'log', color: '#8a6a45', damage: 1,
+        magReq: 0, craftReq: 6, xp: 45, value: 28, code: 'Cv',
+        desc: 'A straight length of ash with a beginner\'s spiral cut. It hums if you listen.' },
+      { wood: 'oak', name: 'Oak staff', log: 'oak_log', color: '#6b4a26', damage: 2,
+        magReq: 10, craftReq: 14, xp: 85, value: 105, code: 'Oz',
+        desc: 'Dense oak takes a deeper carving and a stronger charge.' },
+      { wood: 'willow', name: 'Willow staff', log: 'willow_log', color: '#8a9455', damage: 3,
+        magReq: 24, craftReq: 28, xp: 200, value: 310, code: 'Wu',
+        desc: 'Willow bends around the current instead of fighting it.' },
+      { wood: 'yew', name: 'Yew staff', log: 'yew_log', color: '#7d4436', damage: 4,
+        magReq: 40, craftReq: 44, xp: 350, value: 720, code: 'Yw',
+        desc: 'Graveyard yew. It already knows the words to most spells.' },
+    ] as const
+  ).map((w) => {
+    const def: EquipmentDef = {
+      id: w.wood === 'plain' ? 'carved_staff' : `${w.wood}_staff`,
+      name: w.name,
+      slot: 'weapon',
+      weapon: {
+        style: 'magic', damage: w.damage, cooldownTicks: 8, range: 14,
+        projectileSpeed: 13, art: 'arcane_ring', element: 'arcane',
+      },
+      affixPool: MAGE_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'crafting', levelReq: w.craftReq, xp: w.xp, station: null,
+        ticks: 55, inputs: [{ item: w.log, qty: 2 }],
+      },
+      value: w.value, color: w.color, code: w.code, desc: w.desc,
+    };
+    if (w.magReq > 0) def.levelReq = { skill: 'magic', level: w.magReq };
+    return def;
+  });
+
+  // ---- battlestaffs: ONE willow war-frame, four element gems. The gem
+  // is the recipe's swap stone — mined or foraged, socketed at the
+  // crown, and the whole school follows it: bolts, Art, and glow.
+  const battlestaffs: EquipmentDef[] = (
+    [
+      { el: 'ember', gem: 'emberstone', name: 'Ember battlestaff', color: '#e8683c',
+        art: 'cinderstorm', code: 'Bz',
+        desc: 'An emberstone burns in the iron claw. The wood never chars; everything else does.' },
+      { el: 'frost', gem: 'frostshard', name: 'Frost battlestaff', color: '#9ad0ec',
+        art: 'glaciate', code: 'Bv',
+        desc: 'The frostshard sweats a fog that falls instead of rising. Winter, portable.' },
+      { el: 'storm', gem: 'stormpearl', name: 'Storm battlestaff', color: '#e8e29a',
+        art: 'galvanic_arc', code: 'Vz',
+        desc: 'The stormpearl ticks like far thunder. Hold it away from your teeth.' },
+      { el: 'verdant', gem: 'bloomstone', name: 'Verdant battlestaff', color: '#7ac46a',
+        art: 'overgrowth', code: 'Vx',
+        desc: 'The bloomstone put out roots into the shaft. The staff is technically getting stronger.' },
+    ] as const
+  ).map((g) => ({
+    id: `${g.el}_battlestaff`,
+    name: g.name,
+    slot: 'weapon' as const,
+    levelReq: { skill: 'magic' as const, level: 30 },
+    weapon: {
+      style: 'magic' as const, damage: 5, cooldownTicks: 9, range: 14,
+      projectileSpeed: 13, art: g.art, element: g.el,
+    },
+    affixPool: WARMAGE_POOL,
+    acquisition: { craft: true },
+    recipe: {
+      skill: 'crafting' as const, levelReq: 36, xp: 260, station: null, ticks: 80,
+      inputs: [{ item: 'willow_log', qty: 2 }, { item: g.gem, qty: 1 }, { item: 'gold_bar', qty: 1 }],
+    },
+    value: 620, color: g.color, code: g.code,
+    desc: g.desc,
+  }));
+
+  // ---- adopted classics: the two staves the game shipped with keep
+  // their ids (existing DB rows become common/seed-0 rolls) and join
+  // the roster as real gear.
+  const classics: EquipmentDef[] = [
+    {
+      id: 'apprentice_staff', name: 'Apprentice staff', slot: 'weapon',
+      weapon: { style: 'magic', damage: 1, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'frost_nova', element: 'arcane' },
+      affixPool: MAGE_POOL,
+      acquisition: { shop: true },
+      value: 45, color: '#7a5ac4', code: 'St',
+      desc: 'A student\'s wand — bolt, bolt, then the heavy beat.',
+    },
+    {
+      id: 'ember_staff', name: 'Ember staff', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 8 },
+      weapon: { style: 'magic', damage: 2, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'fireburst', element: 'ember' },
+      affixPool: MAGE_POOL,
+      rarities: ['common', 'uncommon', 'rare'],
+      acquisition: { drop: true },
+      value: 210, color: '#c4623c', code: 'Es',
+      desc: 'Warm to the touch. Its bolts leave scorch marks.',
+    },
+  ];
+
+  // ---- bespoke crafts: three staves with recipes and reputations.
+  const crafts: EquipmentDef[] = [
+    {
+      id: 'hearthwarden', name: 'Hearthwarden', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 16 },
+      weapon: { style: 'magic', damage: 4, cooldownTicks: 9, range: 13, projectileSpeed: 13, art: 'hearth_flare', element: 'ember' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'cooking' }, { stat: 'vitality' }, { stat: 'regen' }],
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'crafting', levelReq: 22, xp: 180, station: null, ticks: 70,
+        inputs: [{ item: 'oak_log', qty: 2 }, { item: 'coal', qty: 2 }, { item: 'emberstone', qty: 1 }],
+      },
+      value: 340, color: '#d08a4a', code: 'Hw',
+      desc: 'A fireplace on a stick — the village wizard\'s answer to winter, wolves, and undercooked stew.',
+    },
+    {
+      id: 'tidebinder', name: 'Tidebinder', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 26 },
+      weapon: { style: 'magic', damage: 5, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'undertow', element: 'frost' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'fishing', w: 2 }, { stat: 'defence' }, { stat: 'maxHp' }],
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'crafting', levelReq: 32, xp: 230, station: null, ticks: 75,
+        inputs: [{ item: 'willow_log', qty: 2 }, { item: 'raw_trout', qty: 3 }, { item: 'frostshard', qty: 1 }],
+      },
+      value: 520, color: '#5a8ab0', code: 'Td',
+      desc: 'Driftwood bound in netting-cord, holding one drop of the sea that never falls. The tide does what it says now.',
+    },
+    {
+      id: 'stormcaller', name: 'Stormcaller', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 42 },
+      weapon: { style: 'magic', damage: 7, cooldownTicks: 10, range: 15, projectileSpeed: 14, art: 'stormlash', element: 'storm' },
+      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'smithing' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'crafting', levelReq: 47, xp: 400, station: null, ticks: 90,
+        inputs: [{ item: 'yew_log', qty: 2 }, { item: 'stormpearl', qty: 2 }, { item: 'gold_bar', qty: 1 }],
+      },
+      value: 980, color: '#c8c86a', code: 'Zl',
+      desc: 'Twin iron prongs on a yew mast, wired to weather that owes the maker a favor. Point it up and apologize.',
+    },
+  ];
+
+  // ---- drop-only wild finds: the staves the world already carries,
+  // rarities steepening toward the champion's legendary.
+  const finds: EquipmentDef[] = [
+    {
+      id: 'hazel_switch', name: 'Hazel switch', slot: 'weapon',
+      weapon: { style: 'magic', damage: 1, cooldownTicks: 7, range: 12, projectileSpeed: 12, art: 'arcane_ring', element: 'arcane' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'foraging' }, { stat: 'maxHp' }],
+      rarities: ['common', 'uncommon'],
+      acquisition: { drop: true },
+      value: 12, color: '#96784f', code: 'Hz',
+      desc: 'A bent hazel rod some hedge-witch lost. Still finds water; occasionally finds trouble.',
+    },
+    {
+      id: 'shepherds_crook', name: 'Shepherd\'s crook', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 5 },
+      weapon: { style: 'magic', damage: 2, cooldownTicks: 8, range: 13, projectileSpeed: 12, art: 'overgrowth', element: 'verdant' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'beastcraft', w: 2 }, { stat: 'regen' }],
+      rarities: ['common', 'uncommon', 'rare'],
+      acquisition: { drop: true },
+      value: 90, color: '#a08a5c', code: 'Kk',
+      desc: 'The hook has pulled lambs from ravines and wolves off lambs. It has opinions about flocks.',
+    },
+    {
+      id: 'witchlight', name: 'Witchlight', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 7 },
+      weapon: { style: 'magic', damage: 2, cooldownTicks: 7, range: 14, projectileSpeed: 14, art: 'wisp_flare', element: 'radiant' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'sneak' }, { stat: 'maxHp' }],
+      rarities: ['common', 'uncommon', 'rare'],
+      acquisition: { drop: true },
+      value: 130, color: '#e8e0b0', code: 'Xy',
+      desc: 'A cage of twigs holding a wisp that followed someone home. It is not tame. It is patient.',
+    },
+    {
+      id: 'gravewood', name: 'Gravewood', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 10 },
+      weapon: { style: 'magic', damage: 3, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'grave_chill', element: 'void' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'sneak' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['common', 'uncommon', 'rare'],
+      acquisition: { drop: true },
+      value: 200, color: '#6a6454', code: 'Gx',
+      desc: 'Cut from the tree that grows where nothing should. The skull on top came WITH the branch.',
+    },
+    {
+      id: 'hexthorn', name: 'Hexthorn', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 14 },
+      weapon: { style: 'magic', damage: 4, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'hex_burst', element: 'void' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'herbalism' }, { stat: 'sneak' }, { stat: 'maxHp' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 300, color: '#7a5a8a', code: 'Hx',
+      desc: 'Briar wound so tight it knotted into a curse. Every thorn points at somebody.',
+    },
+    {
+      id: 'serpentcoil', name: 'Serpentcoil', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 18 },
+      weapon: { style: 'magic', damage: 4, cooldownTicks: 7, range: 14, projectileSpeed: 14, art: 'venom_lash', element: 'verdant' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'herbalism', w: 2 }, { stat: 'sneak' }, { stat: 'maxHp' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 420, color: '#8aa050', code: 'Qn',
+      desc: 'Two bronze serpents climbing a blackwood spine, mouths open at the crown. One of them is real. Guess.',
+    },
+    {
+      id: 'glacierbite', name: 'Glacierbite', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 22 },
+      weapon: { style: 'magic', damage: 5, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'shatterfrost', element: 'frost' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'fishing' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 600, color: '#b0d8e8', code: 'Gq',
+      desc: 'A spear of blue ice on an old pine haft. It has not melted in living memory, and it is not planning to.',
+    },
+    {
+      id: 'pyreheart', name: 'Pyreheart', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 24 },
+      weapon: { style: 'magic', damage: 6, cooldownTicks: 10, range: 13, projectileSpeed: 12, art: 'magma_orb', element: 'ember' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'smithing', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 640, color: '#3a3038', code: 'Py',
+      desc: 'Obsidian over a live magma vein. The cracks glow brighter when it is about to be used, like a held breath.',
+    },
+    {
+      id: 'runegnarl', name: 'Runegnarl', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 28 },
+      weapon: { style: 'magic', damage: 5, cooldownTicks: 9, range: 15, projectileSpeed: 13, art: 'rune_echo', element: 'arcane' },
+      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'crafting' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 720, color: '#8a7a9e', code: 'Rq',
+      desc: 'A fist of rootwood cut with runes older than the alphabet they retired. They light up in order. Then again, louder.',
+    },
+    {
+      id: 'sunwrought', name: 'Sunwrought', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 30 },
+      weapon: { style: 'magic', damage: 6, cooldownTicks: 9, range: 15, projectileSpeed: 15, art: 'solar_lance', element: 'radiant' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'farming' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 800, color: '#e8b84a', code: 'Sx',
+      desc: 'A gold sun-disc on a white ash stave, taken from a temple that outlived its god. Dawn, whenever you want it.',
+    },
+    {
+      id: 'boneharrow', name: 'Boneharrow', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 32 },
+      weapon: { style: 'magic', damage: 6, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'marrow_pulse', element: 'void' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'sneak', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1100, color: '#d8d2be', code: 'Hy',
+      desc: 'Vertebrae threaded on iron, crowned with a ribcage lantern. The dead lend it out; they expect it back.',
+    },
+    {
+      id: 'bloodmoon', name: 'Bloodmoon', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 34 },
+      weapon: { style: 'magic', damage: 7, cooldownTicks: 9, range: 14, projectileSpeed: 13, art: 'red_eclipse', element: 'blood' },
+      affixPool: [{ stat: 'magic', w: 2 }, { stat: 'melee' }, { stat: 'vitality', w: 2 }, { stat: 'maxHp' }],
+      rarities: ['epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1250, color: '#a83a4a', code: 'Bm',
+      desc: 'A crescent of red glass that drips upward. Astronomers deny it. The crescent does not care.',
+    },
+    {
+      id: 'nightwell', name: 'Nightwell', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 36 },
+      weapon: { style: 'magic', damage: 7, cooldownTicks: 10, range: 15, projectileSpeed: 13, art: 'void_rift', element: 'void' },
+      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'sneak' }, { stat: 'maxHp' }],
+      rarities: ['epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1300, color: '#3a3252', code: 'Nw',
+      desc: 'An iron crescent cradling a sphere of finished night. Stars float in it. Not reflections — tenants.',
+    },
+    {
+      id: 'tempest_crown', name: 'Tempest Crown', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 38 },
+      weapon: { style: 'magic', damage: 6, cooldownTicks: 8, range: 15, projectileSpeed: 15, art: 'eye_of_the_storm', element: 'storm' },
+      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1400, color: '#b0b8d8', code: 'Tx',
+      desc: 'A ring of gale-bent silver that a storm wore as a crown until someone impertinent collected it.',
+    },
+    {
+      id: 'worldsplinter', name: 'The Worldsplinter', slot: 'weapon',
+      levelReq: { skill: 'magic', level: 50 },
+      weapon: { style: 'magic', damage: 10, cooldownTicks: 9, range: 16, projectileSpeed: 16, art: 'realm_rend', element: 'astral' },
+      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'vitality' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      value: 2000, color: '#9ae8de', code: 'Wx',
+      desc: 'A shard of the sky that fell before there were words for falling, socketed in whatever could hold it. Reality thins politely around the tip.',
+    },
+  ];
+
+  return [...carved, ...battlestaffs, ...classics, ...crafts, ...finds];
 }
 
 /** Compiled once at module load — throws loudly on any malformed def. */

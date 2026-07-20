@@ -81,6 +81,7 @@ export const NODES: readonly NodeDef[] = [
     levelReq: 1,
     xp: 30,
     yieldItem: 'copper_ore',
+    bonusYield: { item: 'emberstone', chance: 0.05 }, // warm seams hide warm stones
     tool: 'pickaxe',
     baseTicks: 60,
     depleteChance: 1,
@@ -107,6 +108,7 @@ export const NODES: readonly NodeDef[] = [
     levelReq: 15,
     xp: 70,
     yieldItem: 'iron_ore',
+    bonusYield: { item: 'frostshard', chance: 0.05 }, // cold metal weeps cold glass
     tool: 'pickaxe',
     baseTicks: 80,
     depleteChance: 1,
@@ -133,6 +135,7 @@ export const NODES: readonly NodeDef[] = [
     levelReq: 40,
     xp: 130,
     yieldItem: 'gold_ore',
+    bonusYield: { item: 'stormpearl', chance: 0.06 }, // lightning finds gold first
     tool: 'pickaxe',
     baseTicks: 110,
     depleteChance: 1,
@@ -159,6 +162,7 @@ export const NODES: readonly NodeDef[] = [
     levelReq: 1,
     xp: 20,
     yieldItem: 'berries',
+    bonusYield: { item: 'bloomstone', chance: 0.04 }, // a seed that chose stone
     tool: null,
     baseTicks: 45,
     depleteChance: 1,

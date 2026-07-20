@@ -5,6 +5,25 @@ import type { ArmorClass, GearSlot } from './equipment/types.js';
 export type ToolType = 'axe' | 'pickaxe' | 'rod';
 export type CombatStyle = 'melee' | 'archery' | 'magic';
 
+/**
+ * The elemental schools of magic. A staff's element rides its bolts —
+ * the client tints every projectile, muzzle flash, and impact from
+ * this — and names the school its Art belongs to. Purely cosmetic on
+ * the wire (`magic:<element>` in the projectile defId); the gameplay
+ * lives in the Art and status the weapon carries.
+ */
+export type MagicElement =
+  | 'arcane'
+  | 'ember'
+  | 'frost'
+  | 'storm'
+  | 'verdant'
+  | 'void'
+  | 'radiant'
+  | 'blood'
+  /** The legendary school: starlight from before the sky settled. */
+  | 'astral';
+
 export interface WeaponStats {
   style: CombatStyle;
   /** Max hit before level scaling. */
@@ -21,6 +40,8 @@ export interface WeaponStats {
   art?: string;
   /** Backstab damage multiplier — daggers carry a big one; other melee falls back to the default. */
   backstabMult?: number;
+  /** Magic school (staves) — tints bolts, flashes, and impacts. */
+  element?: MagicElement;
 }
 
 /**
@@ -244,43 +265,49 @@ const defs: ItemDef[] = [
     color: '#c4b590',
     code: 'Ar',
   },
+  // Staves live in equipment/defs.ts (the archmage's roster) — rolled
+  // gear. apprentice_staff and ember_staff adopted their shipped ids.
+  // Wand rhythm law: rapid chip bolts, bolt-bolt-HEAVY; the real power
+  // lives in the heavy beat and the Art (statuses, reactions).
+
+  // Elemental gems — the battlestaff swap stones. The land itself sheds
+  // them: ore seams and berry roots give them up as rare bonus finds,
+  // and the wilder NPCs hoard them.
   {
-    id: 'apprentice_staff',
-    name: 'Apprentice staff',
+    id: 'emberstone',
+    name: 'Emberstone',
     stackable: false,
-    value: 45,
-    equipSlot: 'weapon',
-    weapon: {
-      // Rapid chip bolts — the wand rhythm is bolt-bolt-HEAVY; its real
-      // power lives in the heavy beat and the Art (statuses, reactions).
-      style: 'magic',
-      damage: 1,
-      cooldownTicks: 8,
-      range: 14,
-      projectileSpeed: 13,
-      art: 'frost_nova',
-    },
-    desc: 'A student\'s wand — bolt, bolt, then the heavy beat.',
-    color: '#7a5ac4',
-    code: 'St',
+    value: 120,
+    desc: 'A red gem, warm as a held coal. Copper seams hide them.',
+    color: '#e8683c',
+    code: 'Eo',
   },
   {
-    id: 'ember_staff',
-    name: 'Ember staff',
+    id: 'frostshard',
+    name: 'Frostshard',
     stackable: false,
-    value: 210,
-    equipSlot: 'weapon',
-    weapon: {
-      style: 'magic',
-      damage: 2,
-      cooldownTicks: 8,
-      range: 14,
-      projectileSpeed: 13,
-      art: 'fireburst',
-    },
-    desc: 'Warm to the touch. Its bolts leave scorch marks.',
-    color: '#c4623c',
-    code: 'Es',
+    value: 120,
+    desc: 'Blue crystal, cold through the glove. Iron veins weep them.',
+    color: '#9ad0ec',
+    code: 'Fd',
+  },
+  {
+    id: 'stormpearl',
+    name: 'Stormpearl',
+    stackable: false,
+    value: 120,
+    desc: 'It hums faintly and lifts the hair on your arm. Struck gold seams grow them.',
+    color: '#e8e29a',
+    code: 'Zq',
+  },
+  {
+    id: 'bloomstone',
+    name: 'Bloomstone',
+    stackable: false,
+    value: 120,
+    desc: 'A green seed that chose stone over sprouting. Found among old roots.',
+    color: '#7ac46a',
+    code: 'Bq',
   },
   // Relics — worn actives (E). The Minecraft-Dungeons-artifact slot:
   // your second ability comes from the trinket you hunt down, so build

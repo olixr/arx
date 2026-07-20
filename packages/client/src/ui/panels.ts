@@ -29,6 +29,19 @@ const CLASS_COLORS: Record<string, string> = {
   plate: '#9aa2ac',
 };
 
+/** Card chip tints for a staff's magic school — matched to its bolts. */
+const ELEMENT_CHIPS: Record<string, string> = {
+  arcane: '#b49af0',
+  ember: '#ff8a4a',
+  frost: '#8ac4e8',
+  storm: '#ffe86a',
+  verdant: '#7ac46a',
+  void: '#8a6ac8',
+  radiant: '#ffd98a',
+  blood: '#d95763',
+  astral: '#9ae8de',
+};
+
 /** Human name for an affix stat ('magic' → 'Magic', 'maxHp' → 'Max HP'). */
 function affixName(stat: string): string {
   if (stat === 'maxHp') return 'Max HP';
@@ -343,6 +356,14 @@ export class Panels {
       stat('Damage', `${dmgText} · ${Panels.speedWord(w.cooldownTicks)}`, '#c4553d');
       stat(w.style === 'melee' ? 'Reach' : 'Range', `${w.range} tiles`, '#c9a23c');
       if (w.ammo) stat('Ammo', itemDef(w.ammo)?.name ?? w.ammo, '#c4b590');
+      // Staves declare their school — the color matches their bolts.
+      if (w.element) {
+        stat(
+          'School',
+          w.element.charAt(0).toUpperCase() + w.element.slice(1),
+          ELEMENT_CHIPS[w.element] ?? '#b49af0',
+        );
+      }
       const art = w.art ? abilityDef(w.art) : undefined;
       if (art) stat('Art (Q)', art.name, '#9a7ae0');
     }

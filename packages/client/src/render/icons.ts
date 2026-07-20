@@ -1,6 +1,6 @@
 import { itemDef } from '@devcraft/content';
 import { shade } from './rig.js';
-import { BOW_STYLES, DAGGER_STYLES, SWORD_STYLES, drawBow, drawSword } from './weapons.js';
+import { BOW_STYLES, DAGGER_STYLES, STAFF_STYLES, SWORD_STYLES, drawBow, drawStaff, drawSword } from './weapons.js';
 
 /**
  * The icon set: every item and UI glyph is drawn in code, in the same
@@ -3064,6 +3064,11 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   apprentice_staff: { icon: 'staff', color: '#9a7ae0' },
   ember_staff: { icon: 'staff', color: '#ff8a3c' },
   ember_charm: { icon: 'gem', color: '#ff8a3c' },
+  // The battlestaff swap stones — one gem painter, four schools.
+  emberstone: { icon: 'gem', color: '#e8683c' },
+  frostshard: { icon: 'gem', color: '#9ad0ec' },
+  stormpearl: { icon: 'gem', color: '#e8e29a' },
+  bloomstone: { icon: 'gem', color: '#7ac46a' },
   verdant_totem: { icon: 'totem', color: '#7ab06a' },
   snare_kit: { icon: 'trap', color: '#b0a05a' },
   storm_bell: { icon: 'bell', color: '#e8d06a' },
@@ -3396,6 +3401,25 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
       drawBow(c, st, scale, 5234, false, 0, undefined);
     };
     ITEM_ICON[id] = { icon: `bow:${id}`, color: st.color };
+  }
+}
+
+// ---- the archmage's roster: every staff's icon IS its world painter on
+// the sword diagonal, gripped at mid-shaft so butt and crown share the
+// box. Long builds render smaller so the whole silhouette fits.
+{
+  for (const [id, st] of Object.entries(STAFF_STYLES)) {
+    const scale = (st.len ?? 1) > 1.04 ? 52 : 58;
+    PAINTERS[`staff:${id}`] = (c) => {
+      c.translate(0.5, 0.5);
+      c.rotate(-Math.PI / 4);
+      c.scale(1 / 64, 1 / 64);
+      // Mid-shaft grip centers the mass; nudge down so crown fx clear
+      // the corner.
+      c.translate(-0.08 * scale, 0);
+      drawStaff(c, st, scale, 5234, false, 0.5, 0);
+    };
+    ITEM_ICON[id] = { icon: `staff:${id}`, color: st.gem ?? st.color };
   }
 }
 

@@ -1,7 +1,7 @@
 import { CLOTH_COLORS, HAIR_COLORS, PoseState, SKIN_TONES, type Look } from '@devcraft/shared';
 import { itemDef } from '@devcraft/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
-import { bladeStyle, bowStyle, drawBow, drawSword } from './weapons.js';
+import { bladeStyle, bowStyle, drawBow, drawSword, drawStaff, staffStyle } from './weapons.js';
 import { LegRig, chooseLimbSign, solveLimb, type LegPose, type LegRigConfig } from './legs.js';
 import {
   bodyStyle,
@@ -1055,7 +1055,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // leveling out into a low run carry as the gait becomes a sprint.
   // Everything blends on poseT, so a combat follow-through settles
   // into carriage over the same 280 ms every pose change uses.
-  const isStaff = weapon !== undefined && weapon.id.includes('staff');
+  // Staves resolve through the style registry too — roster ids
+  // (stormcaller, worldsplinter, ...) don't all say 'staff'.
+  const isStaff = weapon !== undefined && staffStyle(weapon.id) !== null;
   // Blades — swords and daggers both — share the low carriage (incl.
   // the rogue reverse grip). Identity comes from the style registry;
   // roster ids (falchion, hush, ...) don't all say 'sword'/'dagger'.
@@ -1748,70 +1750,14 @@ function drawHeldItem(
     // painter keeps the classic behaviors: limbs flex with the pull,
     // the string hauls to the nock, release buzzes it straight.
     drawBow(ctx, bowStyle(itemId, color)!, s, rig.nowMs, rig.hurt, extra?.pull ?? 0, extra?.loose);
-  } else if (itemId.includes('staff')) {
-    // A REAL staff: body-tall hardwood with wire wraps, a shod butt,
-    // and a forked crown holding the focus. The grip slides with the
-    // carriage — high on a planted walking stick, mid-shaft when the
-    // business end levels at something.
+  } else if (staffStyle(itemId, color)) {
+    // The archmage's roster: every staff resolves a style — shaft
+    // grammar, signature crown, element focus, living fx. The grip
+    // slides with the carriage — high on a planted walking stick,
+    // mid-shaft when the business end levels at something — and the
+    // focus flares while a cast leaves.
     const castT = rig.pose === PoseState.Cast ? rig.poseT : 0;
-    const LEN = 0.98 * s;
-    const grip = extra?.grip ?? 0.34; // fraction of length below the hand
-    const butt = -grip * LEN;
-    const top = (1 - grip) * LEN;
-    ctx.lineCap = 'round';
-    // Flat 2-pass shaft: hardwood core with an edge light — silhouette
-    // outlining is the outline pass's job, not the painter's.
-    ctx.strokeStyle = '#5f4226';
-    ctx.lineWidth = Math.max(2.5, s * 0.062);
-    ctx.beginPath();
-    ctx.moveTo(butt, 0);
-    ctx.lineTo(top - 0.1 * s, 0);
-    ctx.stroke();
-    ctx.strokeStyle = '#8a6642';
-    ctx.lineWidth = Math.max(1, s * 0.018);
-    ctx.beginPath();
-    ctx.moveTo(butt + 0.03 * s, -0.012 * s);
-    ctx.lineTo(top - 0.14 * s, -0.012 * s);
-    ctx.stroke();
-    ctx.lineCap = 'butt';
-    // Iron ferrule shoeing the butt — a stick that gets WALKED on.
-    ctx.fillStyle = '#4a4554';
-    ctx.fillRect(butt, -0.03 * s, 0.05 * s, 0.06 * s);
-    // Gold wire wraps: one at the hand, one below the crown.
-    ctx.strokeStyle = '#d9a441';
-    ctx.lineWidth = Math.max(1.5, s * 0.03);
-    for (const wx of [0.05 * s, top - 0.22 * s]) {
-      ctx.beginPath();
-      ctx.moveTo(wx, -0.03 * s);
-      ctx.lineTo(wx, 0.03 * s);
-      ctx.stroke();
-    }
-    // Forked crown cradling the focus — gilded claw, flat.
-    ctx.strokeStyle = '#b8863f';
-    ctx.lineWidth = Math.max(2, s * 0.045);
-    for (const fs of [-1, 1]) {
-      ctx.beginPath();
-      ctx.moveTo(top - 0.13 * s, fs * 0.012 * s);
-      ctx.quadraticCurveTo(top - 0.04 * s, fs * 0.075 * s, top + 0.015 * s, fs * 0.05 * s);
-      ctx.stroke();
-    }
-    // The focus: faceted orb with its glint, flaring on a cast.
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(top, 0, (0.078 + castT * 0.04) * s, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#efe3ff';
-    ctx.beginPath();
-    ctx.arc(top - 0.022 * s, -0.022 * s, 0.028 * s, 0, Math.PI * 2);
-    ctx.fill();
-    if (castT > 0) {
-      ctx.globalAlpha = 0.4;
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(top, 0, (0.13 + castT * 0.1) * s, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    }
+    drawStaff(ctx, staffStyle(itemId, color)!, s, rig.nowMs, rig.hurt, extra?.grip ?? 0.34, castT);
   } else if (itemId.includes('rod')) {
     ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(2, s * 0.04);
