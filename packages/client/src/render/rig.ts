@@ -12,6 +12,7 @@ import {
   type StaffFx,
 } from './weapons.js';
 import { LegRig, chooseLimbSign, solveLimb, type LegPose, type LegRigConfig } from './legs.js';
+import { FLOURISH_OFF_PHASE_MS, bladeCarriage, idleFlourish, type Grip } from './carriage.js';
 import {
   bodyStyle,
   bootStyle,
@@ -1082,6 +1083,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   let armSwingK = 1;
   let restSettle = 0;
   let restSide = Math.sign(fx) || 1;
+  // Per-fist grips: each hand resolves its own carriage. Flip is a
+  // property of the GRIP, constant through swings — a reversed fist
+  // keeps its edge orientation mid-combo, so it can never pop.
+  const mainGrip: Grip = rig.carryStyle === 'rogue' ? 'rogue' : 'normal';
+  const offGrip: Grip = rig.carryOff === 'rogue' ? 'rogue' : 'normal';
+  const mainFlip = isSword && mainGrip === 'rogue';
+  const offBlade = offSt?.kind === 'weapon' && rig.offhandItem !== undefined;
+  const offFlip = offBlade && offGrip === 'rogue';
+  // Off-blade baseline: the raised guard read it keeps through combat.
+  let offBladeAngle = -Math.PI / 2 + restSide * 0.35;
   if (
     (rig.pose === PoseState.Walk || rig.pose === PoseState.Idle || rig.pose === PoseState.Sneak) &&
     !drawing &&
@@ -1093,25 +1104,25 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     let hx = rig.x + wSide * tw * 1.02 * wS;
     let hy = armY + 0.17 * s;
     let hAngle = Math.PI / 2 + wSide * (0.3 + 0.35 * runK); // tip down, trailing
+    // How "at rest" the rest really is: flourishes and wrist life only
+    // play when the figure is planted (no gait, no sneak crouch) —
+    // a sneaking rogue does not twirl knives.
+    const idleK = (1 - Math.min(1, rig.poleStrength)) * (1 - crouch);
     if (isSword) {
-      if (rig.carryStyle === 'rogue') {
-        // Reverse grip: blade hanging down-back past the hip, tip
-        // toward the heel — the rogue's low-line carry, one flick from
-        // an icepick stab.
-        hAngle = Math.PI / 2 + wSide * (0.72 + 0.08 * runK);
-        hx += wSide * 0.04 * s * wS;
-        hy = armY + 0.12 * s;
-      } else {
-        // Standard carry: at rest the blade angles down-FORWARD off
-        // the leg so the guard and taper read as a sword; as the gait
-        // becomes a run the whole blade swings UP into the ready carry
-        // — point up-forward, clear of the body — the way a sword is
-        // actually run with. Blended on the gait itself so a jog only
-        // half-raises it.
-        const lift = runK * runK * (3 - 2 * runK);
-        hAngle = Math.PI / 2 - wSide * (0.32 + lift * (Math.PI / 2 + 0.18));
-        hx += wSide * (0.05 + 0.04 * lift) * s * wS;
-        hy = armY + (0.17 - 0.05 * lift) * s;
+      const c = bladeCarriage(mainGrip, wSide, runK);
+      hAngle = c.angle;
+      hx += c.dx * s * wS;
+      hy = armY + (0.17 + c.dy) * s;
+      if (idleK > 0) {
+        // Continuous wrist life: the resting blade breathes with the
+        // hands instead of freezing — and every few seconds the fist
+        // plays with it (a rogue wrist-spin, a standard tip-raise).
+        hAngle += Math.sin(rig.nowMs * 0.0011) * 0.045 * idleK;
+        const fl = idleFlourish(rig.nowMs, 0, mainGrip, wSide);
+        if (fl) {
+          hAngle += fl.spin * idleK;
+          hy -= fl.lift * s * idleK;
+        }
       }
     }
     if (isStaff) {
@@ -1143,8 +1154,30 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     mainX += (hx - mainX) * restSettle;
     mainY += (hy - mainY) * restSettle;
     heldAngle += angleDelta(heldAngle, hAngle) * restSettle;
-    offX += (rig.x - wSide * tw * 1.02 * wS - offX) * restSettle;
-    offY += (armY + 0.17 * s - offY) * restSettle;
+    // The off fist: bare hands hang; a dual wielder's second blade gets
+    // the same grip vocabulary as the main — its own side, its own
+    // grip, its own flourish phase (the two never twirl in sync). The
+    // hand rides a touch higher and tighter than the main: the trailing
+    // blade of a paired stance, not a mirror image.
+    let ox = rig.x - wSide * tw * 1.02 * wS;
+    let oy = armY + 0.17 * s;
+    if (offBlade) {
+      const oc = bladeCarriage(offGrip, -wSide, runK);
+      let oAngle = oc.angle;
+      ox += oc.dx * s * wS;
+      oy = armY + (0.15 + oc.dy) * s;
+      if (idleK > 0) {
+        oAngle += Math.sin(rig.nowMs * 0.0011 + 2.1) * 0.045 * idleK;
+        const fl = idleFlourish(rig.nowMs, FLOURISH_OFF_PHASE_MS, offGrip, -wSide);
+        if (fl) {
+          oAngle += fl.spin * idleK;
+          oy -= fl.lift * s * idleK;
+        }
+      }
+      offBladeAngle += angleDelta(offBladeAngle, oAngle) * restSettle;
+    }
+    offX += (ox - offX) * restSettle;
+    offY += (oy - offY) * restSettle;
   }
 
   // Walking: arms swing counter to the legs along the travel direction.
@@ -1296,19 +1329,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // busy holding the bow — the shield sits this one out.
     if (offSt && offSt.kind !== 'quiver' && !archer) {
       if (offSt.kind === 'weapon' && rig.offhandItem) {
-        // DUAL WIELD: the off blade is the real weapon, gripped in the
-        // off fist in a near-vertical low carry — the rogue's second
-        // edge, unmistakable at a glance.
+        // DUAL WIELD: the off blade is the real weapon, carried by the
+        // off fist in its OWN grip — raised guard in combat, settling
+        // into its full carriage (standard or reversed) at rest.
         drawHeldItem(
           ctx,
           rig.offhandItem,
           offSt.color,
           offX,
           offY,
-          -Math.PI / 2 + restSide * 0.35,
+          offBladeAngle,
           s,
           rig,
-          { ench: rig.offhandEnch },
+          { ench: rig.offhandEnch, flip: offFlip },
         );
       } else {
         drawOffhandOnArm(ctx, offSt, joints, s, profileK, rig.hurt);
@@ -1423,6 +1456,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         grip: staffGrip,
         carry: isBow ? restSettle : 0,
         ench: rig.weaponEnch,
+        flip: mainFlip,
       });
     }
   };
@@ -1795,12 +1829,22 @@ function drawHeldItem(
    * (0 aiming → 1 settled: slides the grip wrap into the fist so the
    * bow is carried by the wood, not the string). Staff: grip height.
    * ench: enchant id riding this instance — overlays its fx channel.
+   * flip: mirror across the long axis — a reversed fist turns the
+   * edge (and any guard/blade asymmetry) the other way.
    */
-  extra?: { pull?: number; loose?: number; grip?: number; carry?: number; ench?: string },
+  extra?: {
+    pull?: number;
+    loose?: number;
+    grip?: number;
+    carry?: number;
+    ench?: string;
+    flip?: boolean;
+  },
 ): void {
   ctx.save();
   ctx.translate(hx, hy);
   ctx.rotate(angle);
+  if (extra?.flip) ctx.scale(1, -1);
   // Mid-arc wood point: the bow's quadratic (tips 0.06s, belly control
   // 0.3s) passes through x = 0.18s at grip height — align THAT to the
   // fist, or the bow reads as resting on the wrist.
