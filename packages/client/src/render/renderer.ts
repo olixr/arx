@@ -190,6 +190,8 @@ interface AnimState {
   rigKey?: string;
   /** Per-leg joint-side hysteresis (2 for humanoids, N for beasts). */
   kneeMemory: number[];
+  /** Dual-wield profile-flip hysteresis (main arm behind the torso). */
+  armDepth?: { mainBehind: boolean };
   /** Last chop cycle that spawned impact chips (gathering). */
   lastChopHit?: number;
   /** The entity's cape cloth sim — present only while one is worn. */
@@ -8039,6 +8041,7 @@ export class Renderer {
           runF: legPose.runF,
           align: legPose.align,
           kneeMemory: anim.kneeMemory,
+          depthMemory: (anim.armDepth ??= { mainBehind: false }),
           bodyColor: e.color,
           hurt: e.hurt ?? false,
           isOwn: e.isOwn,

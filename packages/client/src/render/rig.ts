@@ -156,6 +156,12 @@ export interface RigPose {
   align: number;
   /** Per-leg knee-sign hysteresis, owned by the caller's anim state. */
   kneeMemory: number[];
+  /**
+   * Arm-depth hysteresis (caller-owned, like kneeMemory): whether the
+   * main arm is currently riding BEHIND the torso — the dual-wield
+   * profile flip. Absent = stateless single-threshold fallback.
+   */
+  depthMemory?: { mainBehind: boolean };
   bodyColor: string;
   hurt: boolean;
   isOwn: boolean;
@@ -1113,6 +1119,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       hAngle = c.angle;
       hx += c.dx * s * wS;
       hy = armY + (0.17 + c.dy) * s;
+      // DUAL-WIELD PROFILE FLIP (position half): side-on you cannot see
+      // both hilts, and it is the MAIN fist that reads as the body's
+      // far hand — it slides in toward the body center as the facing
+      // turns profile, and the paint order below drops it behind the
+      // torso. The off hand keeps its visible hang at the side.
+      if (offBlade) {
+        const t = Math.max(0, Math.min(1, (profileK - 0.6) / 0.35));
+        const tuckK = t * t * (3 - 2 * t);
+        hx = rig.x + (hx - rig.x) * (1 - 0.82 * tuckK);
+      }
       if (idleK > 0) {
         // Continuous wrist life: the resting blade breathes with the
         // hands instead of freezing — and every few seconds the fist
@@ -1167,13 +1183,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // while the blade angles stay true to forward/backward.
       const oc = bladeCarriage(offGrip, wSide, runK);
       let oAngle = oc.angle;
-      // PROFILE TUCK: side-on you cannot see both hilts — the trailing
-      // fist slides in behind the torso silhouette (it already paints
-      // under the torso, so occlusion is free once it overlaps), and
-      // its blade peeks out past the body instead of hanging beside it
-      // in front. Front/back facings keep the full two-blade spread.
-      const tuck = 1 - 0.72 * profileK;
-      ox = rig.x - (wSide * tw * 1.02 * wS + oc.dx * s * wS) * tuck;
+      // The off fist stays at its visible outward hang from every
+      // facing — side-on it is the NEAR arm ("one of the arms still
+      // appears at the side"); the main fist is the one that tucks.
+      ox -= oc.dx * s * wS;
       oy = armY + (0.15 + oc.dy) * s;
       if (idleK > 0) {
         oAngle += Math.sin(rig.nowMs * 0.0011 + 2.1) * 0.045 * idleK;
@@ -1468,8 +1481,21 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
 
   // Far arm always sits behind the torso; the weapon + striking arm go
   // in front unless the character is aiming up and away.
+  // DUAL-WIELD PROFILE FLIP (depth half): side-on, the tucked main arm
+  // and its blade paint BEFORE the torso — occluded, peeking past the
+  // body — while the off arm stays the visible near arm. Hysteresis on
+  // profileK (cape front/back pattern, memory caller-owned) so aim
+  // jitter at the boundary can never flicker the layering.
+  const mem = rig.depthMemory;
+  const flipAt = mem ? (mem.mainBehind ? 0.78 : 0.86) : 0.82;
+  const mainBehind = offBlade && restSettle > 0.5 && profileK > flipAt;
+  if (mem) mem.mainBehind = mainBehind;
+  if (mainBehind) {
+    paintWeapon();
+    paintMainArm();
+  }
   paintOffArm();
-  if (weaponBehind) {
+  if (weaponBehind && !mainBehind) {
     paintWeapon();
     paintMainArm();
   }
@@ -1727,8 +1753,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // A back-facing quiver reads over the torso, like a cape's front side.
   if (quiverFront) paintQuiver();
 
-  // ---- weapon + striking arm in front of the torso (the bold read).
-  if (!weaponBehind) {
+  // ---- weapon + striking arm in front of the torso (the bold read) —
+  // unless the dual-wield profile flip already painted them behind it.
+  if (!weaponBehind && !mainBehind) {
     paintWeapon();
     paintMainArm();
   }
