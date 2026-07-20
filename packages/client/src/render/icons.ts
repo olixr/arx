@@ -809,6 +809,273 @@ const PAINTERS: Record<string, IconPainter> = {
       c.restore();
     }
   },
+  robe: (c, col) => {
+    // A-line robe falling to a wide hem, sash, center stitch.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.34, 0.14);
+    c.lineTo(0.66, 0.14);
+    c.lineTo(0.72, 0.3);
+    c.lineTo(0.68, 0.42);
+    c.lineTo(0.78, 0.86);
+    c.lineTo(0.22, 0.86);
+    c.lineTo(0.32, 0.42);
+    c.lineTo(0.28, 0.3);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, -22);
+    c.beginPath();
+    c.moveTo(0.5, 0.14);
+    c.lineTo(0.66, 0.14);
+    c.lineTo(0.72, 0.3);
+    c.lineTo(0.68, 0.42);
+    c.lineTo(0.78, 0.86);
+    c.lineTo(0.5, 0.86);
+    c.closePath();
+    c.fill();
+    c.fillStyle = shade(col, -38);
+    c.fillRect(0.3, 0.44, 0.4, 0.07);
+    c.strokeStyle = shade(col, 30);
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(0.5, 0.18);
+    c.lineTo(0.5, 0.42);
+    c.stroke();
+    c.fillStyle = shade(col, 26);
+    c.fillRect(0.24, 0.8, 0.52, 0.05);
+  },
+  jerkin: (c, col) => {
+    // Sleeveless leather vest: diagonal strap, buckle, stitched hem.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.3, 0.18);
+    c.lineTo(0.7, 0.18);
+    c.lineTo(0.76, 0.34);
+    c.lineTo(0.7, 0.44);
+    c.lineTo(0.7, 0.8);
+    c.quadraticCurveTo(0.5, 0.88, 0.3, 0.8);
+    c.lineTo(0.3, 0.44);
+    c.lineTo(0.24, 0.34);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, -20);
+    c.beginPath();
+    c.moveTo(0.5, 0.18);
+    c.lineTo(0.7, 0.18);
+    c.lineTo(0.76, 0.34);
+    c.lineTo(0.7, 0.44);
+    c.lineTo(0.7, 0.8);
+    c.quadraticCurveTo(0.6, 0.84, 0.5, 0.85);
+    c.closePath();
+    c.fill();
+    c.strokeStyle = shade(col, -35);
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(0.32, 0.24);
+    c.lineTo(0.66, 0.62);
+    c.stroke();
+    c.fillStyle = '#c9a23c';
+    c.fillRect(0.46, 0.4, 0.07, 0.07);
+    c.strokeStyle = shade(col, -30);
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(0.32, 0.76);
+    c.lineTo(0.68, 0.76);
+    c.stroke();
+  },
+  platebody: (c, col) => {
+    // Cuirass with pauldron lobes, bright chest facet, dark fauld.
+    c.fillStyle = shade(col, -14);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    for (const side of [-1, 1]) {
+      c.beginPath();
+      c.roundRect(0.5 + side * 0.24 - 0.14, 0.14, 0.28, 0.18, 0.06);
+      c.fill();
+      c.stroke();
+    }
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(0.3, 0.2);
+    c.lineTo(0.7, 0.2);
+    c.lineTo(0.74, 0.4);
+    c.lineTo(0.68, 0.82);
+    c.quadraticCurveTo(0.5, 0.9, 0.32, 0.82);
+    c.lineTo(0.26, 0.4);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 22);
+    c.beginPath();
+    c.roundRect(0.38, 0.28, 0.24, 0.26, 0.04);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, -30);
+    c.fillRect(0.3, 0.66, 0.4, 0.09);
+    c.fillStyle = shade(col, -18);
+    c.fillRect(0.32, 0.75, 0.36, 0.07);
+  },
+  hood: (c, col) => {
+    // A draped cowl: peaked crown, deep shadowed face opening.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.5, 0.1);
+    c.quadraticCurveTo(0.24, 0.2, 0.22, 0.52);
+    c.quadraticCurveTo(0.2, 0.78, 0.3, 0.86);
+    c.lineTo(0.7, 0.86);
+    c.quadraticCurveTo(0.8, 0.78, 0.78, 0.52);
+    c.quadraticCurveTo(0.76, 0.2, 0.5, 0.1);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = '#170f1c';
+    c.beginPath();
+    c.moveTo(0.34, 0.44);
+    c.quadraticCurveTo(0.5, 0.36, 0.66, 0.44);
+    c.lineTo(0.64, 0.74);
+    c.quadraticCurveTo(0.5, 0.8, 0.36, 0.74);
+    c.closePath();
+    c.fill();
+    c.fillStyle = shade(col, 20);
+    c.beginPath();
+    c.moveTo(0.5, 0.12);
+    c.quadraticCurveTo(0.32, 0.2, 0.3, 0.4);
+    c.lineTo(0.38, 0.4);
+    c.quadraticCurveTo(0.4, 0.24, 0.52, 0.17);
+    c.closePath();
+    c.fill();
+  },
+  greathelm: (c, col) => {
+    // Full-face bucket: flat crown, breathing slits, dark eye slot.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.28, 0.2);
+    c.lineTo(0.72, 0.2);
+    c.lineTo(0.74, 0.78);
+    c.quadraticCurveTo(0.5, 0.86, 0.26, 0.78);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 22);
+    c.fillRect(0.3, 0.22, 0.4, 0.09);
+    c.fillStyle = '#170f1c';
+    c.beginPath();
+    c.roundRect(0.3, 0.42, 0.4, 0.09, 0.03);
+    c.fill();
+    c.fillStyle = shade(col, -26);
+    for (const x of [0.4, 0.5, 0.6]) c.fillRect(x - 0.014, 0.6, 0.028, 0.12);
+    c.fillStyle = '#8a2f3c';
+    c.beginPath();
+    c.moveTo(0.42, 0.2);
+    c.quadraticCurveTo(0.5, 0.04, 0.58, 0.2);
+    c.closePath();
+    c.fill();
+    c.stroke();
+  },
+  circlet: (c, col) => {
+    // A thin crown band with a center bloom/gem.
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.fillStyle = col;
+    c.beginPath();
+    c.ellipse(0.5, 0.55, 0.3, 0.2, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.fillStyle = '#241a2e';
+    c.beginPath();
+    c.ellipse(0.5, 0.55, 0.21, 0.12, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = shade(col, 26);
+    c.beginPath();
+    c.ellipse(0.42, 0.48, 0.1, 0.05, -0.5, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#79a355';
+    c.beginPath();
+    c.arc(0.5, 0.34, 0.09, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade('#79a355', 30);
+    c.beginPath();
+    c.arc(0.47, 0.31, 0.035, 0, Math.PI * 2);
+    c.fill();
+  },
+  kiteshield: (c, col) => {
+    // Tall kite: pointed foot, chevron blazon, bright rim edge.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.26, 0.18);
+    c.lineTo(0.74, 0.18);
+    c.lineTo(0.72, 0.5);
+    c.lineTo(0.5, 0.88);
+    c.lineTo(0.28, 0.5);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, -22);
+    c.beginPath();
+    c.moveTo(0.5, 0.18);
+    c.lineTo(0.74, 0.18);
+    c.lineTo(0.72, 0.5);
+    c.lineTo(0.5, 0.88);
+    c.closePath();
+    c.fill();
+    c.fillStyle = '#a4744b';
+    c.beginPath();
+    c.moveTo(0.32, 0.34);
+    c.lineTo(0.5, 0.52);
+    c.lineTo(0.68, 0.34);
+    c.lineTo(0.68, 0.44);
+    c.lineTo(0.5, 0.62);
+    c.lineTo(0.32, 0.44);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 20);
+    c.fillRect(0.26, 0.18, 0.48, 0.045);
+  },
+  orb: (c, col) => {
+    // A faceted focus sphere on a small claw stand, glinting.
+    c.fillStyle = '#6b5a38';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.36, 0.84);
+    c.lineTo(0.64, 0.84);
+    c.lineTo(0.56, 0.68);
+    c.lineTo(0.44, 0.68);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = col;
+    c.beginPath();
+    c.arc(0.5, 0.46, 0.26, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, -24);
+    c.beginPath();
+    c.arc(0.5, 0.46, 0.26, -Math.PI * 0.25, Math.PI * 0.75);
+    c.fill();
+    c.fillStyle = shade(col, 34);
+    c.beginPath();
+    c.ellipse(0.41, 0.36, 0.09, 0.06, -0.6, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#f4efe4';
+    c.beginPath();
+    c.arc(0.38, 0.32, 0.03, 0, Math.PI * 2);
+    c.fill();
+  },
   shield: (c, col) => {
     // Spiked buckler: rim, boss, and four teeth that mean business.
     for (const a of [-Math.PI / 4, Math.PI / 4, (Math.PI * 3) / 4, (-Math.PI * 3) / 4]) {
@@ -2608,7 +2875,7 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   leather: { icon: 'hide', color: '#b08a5c' },
   cowhide: { icon: 'hide', color: '#a08468' },
   wolf_fur: { icon: 'hide', color: '#8a90a0' },
-  leather_body: { icon: 'armor', color: '#b08a5c' },
+  leather_body: { icon: 'jerkin', color: '#b08a5c' },
   bones: { icon: 'bones', color: '#efe8d8' },
   feather: { icon: 'feather', color: '#f4efe4' },
   bronze_axe: { icon: 'axe', color: '#b0793f' },
@@ -2634,6 +2901,27 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   spiked_buckler: { icon: 'shield', color: '#a5794e' },
   frost_quiver: { icon: 'quiver', color: '#8ac4e8' },
   tome_of_embers: { icon: 'tome', color: '#b0543a' },
+  oak_kiteshield: { icon: 'kiteshield', color: '#8a6234' },
+  arcane_orb: { icon: 'orb', color: '#8f9ed6' },
+  // Rolled armor roster — one painter per silhouette family, tinted.
+  apprentice_robe: { icon: 'robe', color: '#5a6ea0' },
+  emberweave_robe: { icon: 'robe', color: '#c4553d' },
+  huntsman_jerkin: { icon: 'jerkin', color: '#3f6b3a' },
+  iron_platebody: { icon: 'platebody', color: '#8d9299' },
+  steel_platebody: { icon: 'platebody', color: '#b8bec8' },
+  leather_hood: { icon: 'hood', color: '#8a6a45' },
+  wolfhide_hood: { icon: 'hood', color: '#6a6f7d' },
+  runecloth_cowl: { icon: 'hood', color: '#7a5ac4' },
+  steel_greathelm: { icon: 'greathelm', color: '#b8bec8' },
+  horned_raider_helm: { icon: 'helm', color: '#7d6a52' },
+  woven_trousers: { icon: 'legs', color: '#8f9ed6' },
+  leather_chaps: { icon: 'legs', color: '#b08a5c' },
+  iron_greaves: { icon: 'legs', color: '#8d9299' },
+  steel_greaves: { icon: 'legs', color: '#b8bec8' },
+  swiftstep_boots: { icon: 'boots', color: '#7fc9b3' },
+  leather_boots: { icon: 'boots', color: '#6b4a26' },
+  wanderer_boots: { icon: 'boots', color: '#8a6a45' },
+  iron_sabatons: { icon: 'boots', color: '#8d9299' },
   wolf_pelt_cloak: { icon: 'cape', color: '#8a90a0' },
   cape_traveler: { icon: 'cape', color: '#7da35a' },
   cape_emberweave: { icon: 'cape', color: '#c4553d' },
