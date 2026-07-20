@@ -152,4 +152,9 @@ export class ChunkStore implements CollisionSource {
     if (ground === undefined) return true;
     return isSolidTile(ground);
   }
+
+  /** CollisionSource shape hook — lets trees/rocks collide as circles. */
+  tileAt(tx: number, ty: number): number | undefined {
+    return this.groundAt(tx, ty);
+  }
 }

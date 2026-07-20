@@ -136,6 +136,11 @@ export class WorldSource extends ChunkStore {
     return super.isSolid(tx, ty);
   }
 
+  override tileAt(tx: number, ty: number): number | undefined {
+    this.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    return super.tileAt(tx, ty);
+  }
+
   private overlayZone(chunk: ChunkData, zone: ZoneDef): void {
     const baseX = chunk.cx * CHUNK_SIZE;
     const baseY = chunk.cy * CHUNK_SIZE;

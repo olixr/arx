@@ -114,6 +114,7 @@ import {
   applyDodge,
   chargedShot,
   circleHitsSolid,
+  pointHitsSolid,
   drawCharge,
   hasButton,
   hasteOnHit,
@@ -2878,13 +2879,15 @@ export class GameServer {
       const step = proj.speed * TICK_DT;
       // Sub-step the advance so the shot dies AT the wall face, not up
       // to a full step past it (fast arrows cover >1 tile per tick and
-      // could tunnel straight through a thin wall).
+      // could tunnel straight through a thin wall). pointHitsSolid is
+      // shape-aware: a shot crossing a tree's tile only dies on the
+      // TRUNK — grazes slip past the canopy corners.
       const subs = Math.max(1, Math.ceil(step / 0.25));
       let dead = false;
       for (let i = 0; i < subs && !dead; i++) {
         pos.x += proj.dirX * (step / subs);
         pos.y += proj.dirY * (step / subs);
-        if (this.world.isSolid(Math.floor(pos.x), Math.floor(pos.y))) dead = true;
+        if (pointHitsSolid(this.world, pos.x, pos.y)) dead = true;
       }
       proj.distLeft -= step;
       dead = dead || proj.distLeft <= 0;

@@ -13,6 +13,7 @@ import {
   WALL_RUN_TILES,
   hashCoords,
   hashString,
+  pointHitsSolid,
   tileDef,
   daylightAt,
   type ChunkData,
@@ -3988,9 +3989,11 @@ export class Renderer {
       crownSplit: 0, limbs: [],
     },
     // 1 — Birch: tall, slim, pale, gentle S-curve, airy vertical crown.
+    // trunkW nudged up so the slimmest trunk still reads as the tile's
+    // obstacle now that bodies and arrows collide with the trunk circle.
     {
       trunk: '#d7d2c4', leaves: ['#5a9b48', '#63a850', '#579544'],
-      hMin: 1.25, hMax: 1.55, trunkW: 0.06, tipW: 0.5, bow: 0.22, lean: 0,
+      hMin: 1.25, hMax: 1.55, trunkW: 0.08, tipW: 0.5, bow: 0.22, lean: 0,
       fork: null, gnarl: 0.02, flare: 0.5, sides: 7,
       lobes: [[0.12, -3.1, 0.42], [-0.1, -2.6, 0.55], [0.06, -2.1, 0.5], [0.02, -3.5, 0.34]],
       crownSplit: 0, limbs: [[0.55, -0.6, -2.2], [0.68, 0.55, -2.6]],
@@ -8613,45 +8616,45 @@ export class Renderer {
   private probeWallStick(game: ClientGame, x: number, y: number, dir: number, now: number): boolean {
     const dx = Math.cos(dir);
     const dy = Math.sin(dir);
-    let px = Math.floor(x);
-    let py = Math.floor(y);
-    // Already inside a solid (server killed the shot in the face tile):
-    // back out to the entry boundary first, then re-enter.
+    // pointHitsSolid carries the shape law: full block for walls, a
+    // centered circle for trees/rocks — the shaft lodges in the TRUNK,
+    // never in the invisible box around it.
     for (let d = 0.06; d <= WALL_PROBE_TILES; d += 0.06) {
       const nx = x + dx * d;
       const ny = y + dy * d;
+      if (!pointHitsSolid(game.world, nx, ny)) continue;
+      if (this.stuckArrows.length >= 100) return true;
+      // Stick just shy of the surface, head embedded in it.
+      const sx = x + dx * (d - 0.03);
+      const sy = y + dy * (d - 0.03);
       const tx = Math.floor(nx);
       const ty = Math.floor(ny);
-      if ((tx !== px || ty !== py) && game.world.isSolid(tx, ty)) {
-        if (this.stuckArrows.length >= 100) return true;
-        // Stick just shy of the boundary, head embedded in the face.
-        const sx = x + dx * (d - 0.03);
-        const sy = y + dy * (d - 0.03);
-        const tile = game.world.groundAt(tx, ty);
-        const low = tile !== undefined && LOW_STICK_TILES.has(tile);
-        const h = low ? 0.24 + Math.random() * 0.08 : 0.46 + Math.random() * 0.24;
-        // Face law: crossing DOWN into the tile row (moving south) hits
-        // the hidden north face — the wall occludes the shaft. Every
-        // other approach reads on a visible face and paints in front.
-        const fromNorth = ty > py;
-        const sortY = fromNorth ? ty - 0.06 : ty + 0.96;
-        this.stuckArrows.push({ x: sx, y: sy, dir, until: now + STUCK_ARROW_MS, wall: { h, sortY } });
-        // Impact chips in the surface's own material color.
-        const base = tile !== undefined ? tileDef(tile).color : '#9aa2ac';
-        const airY = sy - h / this.camera.yScale;
-        this.particles.burst(sx, airY, 6, [base, shade(base, 22), shade(base, -16)], {
-          speed: 1.6,
-          life: 0.32,
-          size: 0.06,
-          gravity: 5,
-          dir: dir + Math.PI,
-          spread: 1.3,
-          drag: 2.5,
-        });
-        return true;
-      }
-      px = tx;
-      py = ty;
+      const tile = game.world.groundAt(tx, ty);
+      const h = tile !== undefined && LOW_STICK_TILES.has(tile)
+        ? 0.24 + Math.random() * 0.08
+        : tile !== undefined && Renderer.ROCK_TILES.has(tile)
+          ? 0.3 + Math.random() * 0.2
+          : 0.46 + Math.random() * 0.24;
+      // Face law: a mostly-southward shot buries in the hidden north
+      // face and the mass occludes the shaft; every other approach
+      // reads on a visible face (or the trunk's flank) and paints in
+      // front of it.
+      const fromNorth = dy > 0.35;
+      const sortY = fromNorth ? ty - 0.06 : ty + 0.96;
+      this.stuckArrows.push({ x: sx, y: sy, dir, until: now + STUCK_ARROW_MS, wall: { h, sortY } });
+      // Impact chips in the surface's own material color.
+      const base = tile !== undefined ? tileDef(tile).color : '#9aa2ac';
+      const airY = sy - h / this.camera.yScale;
+      this.particles.burst(sx, airY, 6, [base, shade(base, 22), shade(base, -16)], {
+        speed: 1.6,
+        life: 0.32,
+        size: 0.06,
+        gravity: 5,
+        dir: dir + Math.PI,
+        spread: 1.3,
+        drag: 2.5,
+      });
+      return true;
     }
     return false;
   }
@@ -8773,11 +8776,13 @@ export class Renderer {
         continue;
       }
       // Walls stop the slide — reflect the offending axis, cheaply.
+      // Shape-aware: a ragdoll skids past a tree's tile corner and only
+      // thumps off the actual trunk.
       const nx = c.x + c.vx * dt;
       const ny = c.y + c.vy * dt;
-      if (game.world.isSolid(Math.floor(nx), Math.floor(c.y))) c.vx *= -0.45;
+      if (pointHitsSolid(game.world, nx, c.y)) c.vx *= -0.45;
       else c.x = nx;
-      if (game.world.isSolid(Math.floor(c.x), Math.floor(ny))) c.vy *= -0.45;
+      if (pointHitsSolid(game.world, c.x, ny)) c.vy *= -0.45;
       else c.y = ny;
       c.z += c.vz * dt;
       c.vz -= 10.5 * dt;

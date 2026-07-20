@@ -362,3 +362,31 @@ export function tileDef(id: number): TileDef {
 export function isSolidTile(id: number): boolean {
   return tileDef(id).solid;
 }
+
+/**
+ * Sub-tile colliders: solid tiles whose visual mass is a centered
+ * column (tree trunks, the lamp post) or boulder pile rather than a
+ * full block. Movement and projectiles collide with a circle of this
+ * radius at the tile centre — bodies brush past the canopy's tile
+ * corners and arrows bury in the trunk, not an invisible box.
+ * Pathfinding still treats the whole tile as blocked.
+ */
+const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
+  [Tile.Tree, 0.3],
+  [Tile.TreeOak, 0.36],
+  [Tile.TreeWillow, 0.32],
+  [Tile.TreeYew, 0.38],
+  [Tile.Rock, 0.4],
+  [Tile.RockCopper, 0.46],
+  [Tile.RockTin, 0.46],
+  [Tile.RockIron, 0.46],
+  [Tile.RockCoal, 0.46],
+  [Tile.RockGold, 0.46],
+  [Tile.RockDepleted, 0.36],
+  [Tile.LampPost, 0.2],
+]);
+
+/** Collider radius for a centered-mass tile, or null for full-block solids. */
+export function tileColliderRadius(id: number): number | null {
+  return TILE_COLLIDER_RADIUS.get(id as Tile) ?? null;
+}
