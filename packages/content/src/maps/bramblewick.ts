@@ -151,6 +151,15 @@ export function buildBramblewick(): ZoneDef {
   b.set(66, 55, Tile.Alembic);
   b.set(62, 55, Tile.Barrel).set(70, 55, Tile.Crate);
 
+  // The Arcanum — the enchanter's stone-floored study nook east of the
+  // crafters' yard: enchanting table flanked by a bookshelf wall and a
+  // reading lectern. High magic lives one polite step off the dirt.
+  b.fillRect(72, 52, 4, 4, Tile.StoneFloor);
+  b.set(72, 52, Tile.Bookshelf).set(73, 52, Tile.Bookshelf).set(74, 52, Tile.Bookshelf);
+  b.set(73, 54, Tile.EnchantingTable);
+  b.set(75, 54, Tile.Lectern);
+  b.set(72, 55, Tile.FlowerBox);
+
   // Lamp posts: plaza corners + the bank path and the inn's road door.
   // After dark these carry the town — warm pools against the night.
   b.set(43, 44, Tile.LampPost);

@@ -376,6 +376,53 @@ export const ELEMENT_GEM: Partial<Record<MagicElement, string>> = {
   verdant: 'bloomstone',
 };
 
+/** Identity hex per element — scroll items, card rows, loot labels. */
+export const ELEMENT_COLORS: Record<MagicElement, string> = {
+  arcane: '#b8a8e0',
+  ember: '#e8683c',
+  frost: '#9ad0ec',
+  storm: '#e8e29a',
+  verdant: '#7ac46a',
+  void: '#8a78b0',
+  radiant: '#f2d98a',
+  blood: '#c04848',
+  astral: '#9ae8de',
+};
+
+/** One-line human reading of an effect — cards, scroll tooltips. */
+export function describeEffect(fx: EnchantEffect): string {
+  switch (fx.kind) {
+    case 'skill':
+      return `+${fx.amount} ${fx.skill}`;
+    case 'maxHp':
+      return `+${fx.amount} max HP`;
+    case 'regen':
+      return `+${fx.amount} regeneration`;
+    case 'armor':
+      return `+${fx.amount} armor`;
+    case 'styleDmg':
+      return `+${fx.pct}% ${fx.style} damage`;
+    case 'elementDmg':
+      return `+${fx.pct}% ${fx.element} damage`;
+    case 'cooldown':
+      return `−${fx.pct}% ability cooldowns`;
+    case 'speed':
+      return `+${fx.pct}% move speed`;
+    case 'thorns':
+      return `attackers take ${fx.amount} damage`;
+    case 'crit':
+      return `+${fx.pct}% critical chance`;
+    case 'onKillHaste':
+      return `kills hasten your abilities`;
+    case 'onHitStatus':
+      return `${Math.round(fx.chance * 100)}% chance to ${fx.status} on hit`;
+    case 'lifesteal':
+      return `heal ${Math.round(fx.frac * 100)}% of damage dealt`;
+    case 'backstab':
+      return `backstabs +${Math.round(fx.bonus * 100)}% crueler`;
+  }
+}
+
 /** Effects granted by an instance = native gear effects + its enchant. */
 export function instanceEffects(
   nativeEffects: EnchantEffect[] | undefined,

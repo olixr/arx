@@ -565,7 +565,8 @@ export class Renderer {
                     t === Tile.Alembic ||
                     t === Tile.TanningRack ||
                     t === Tile.Loom ||
-                    t === Tile.CarvingBench
+                    t === Tile.CarvingBench ||
+                    t === Tile.EnchantingTable
                   ? ('workbench' as const)
                   : null;
         if (!kind) continue;
@@ -702,6 +703,7 @@ export class Renderer {
     Tile.TanningRack,
     Tile.Loom,
     Tile.CarvingBench,
+    Tile.EnchantingTable,
     Tile.BankChest,
     Tile.ShopCounter,
   ]);

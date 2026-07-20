@@ -134,6 +134,8 @@ export enum Tile {
   Loom = 103,
   /** A shaving-strewn bowyer's bench with vise and drawknife — the woodworker's station. */
   CarvingBench = 104,
+  /** A rune-carved worktable bearing an open tome and cradled focus stone — the enchanter's station. */
+  EnchantingTable = 105,
 }
 
 export enum Detail {
@@ -288,6 +290,7 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.TanningRack]: { name: 'tanning rack', solid: true, color: '#6f4d26', raised: true, topColor: '#b08a5c' },
   [Tile.Loom]: { name: 'loom', solid: true, color: '#6f4d26', raised: true, topColor: '#d8cbb0' },
   [Tile.CarvingBench]: { name: 'carving bench', solid: true, color: '#7d5a2e', raised: true, topColor: '#9b7440' },
+  [Tile.EnchantingTable]: { name: 'enchanting table', solid: true, color: '#4a3f5e', raised: true, topColor: '#7a6aa8' },
 };
 
 /**
@@ -355,7 +358,8 @@ export type StationType =
   | 'alembic'
   | 'tanning_rack'
   | 'loom'
-  | 'carving_bench';
+  | 'carving_bench'
+  | 'enchanting_table';
 
 export const STATION_TILES: Record<StationType, Tile> = {
   fire: Tile.Campfire,
@@ -366,6 +370,7 @@ export const STATION_TILES: Record<StationType, Tile> = {
   tanning_rack: Tile.TanningRack,
   loom: Tile.Loom,
   carving_bench: Tile.CarvingBench,
+  enchanting_table: Tile.EnchantingTable,
 };
 
 export function stationAtTile(tile: number): StationType | null {

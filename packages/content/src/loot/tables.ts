@@ -81,7 +81,12 @@ const defs: LootTableDef[] = [
   {
     id: 'rat',
     desc: 'Nest basics.',
-    entries: [{ item: 'bones' }, { item: 'venom_gland', chance: 0.3 }, { item: 'scrap_hide', qty: [1, 2], chance: 0.5 }],
+    entries: [
+      { item: 'bones' },
+      { item: 'venom_gland', chance: 0.3 },
+      { item: 'scrap_hide', qty: [1, 2], chance: 0.5 },
+      { item: 'crimson_essence', chance: 0.08 },
+    ],
   },
   {
     id: 'rat_wardrobe',
@@ -121,6 +126,8 @@ const defs: LootTableDef[] = [
       { item: 'linen_scrap', qty: [1, 3], chance: 0.4 },
       { item: 'emberstone', chance: 0.012 },
       { item: 'bloomstone', chance: 0.012 },
+      { item: 'ember_essence', qty: [1, 2], chance: 0.15 },
+      { item: 'arcane_dust', chance: 0.1 },
     ],
   },
   {
@@ -160,6 +167,8 @@ const defs: LootTableDef[] = [
       { item: 'linen_scrap', qty: [1, 3], chance: 0.45 },
       { item: 'stormpearl', chance: 0.01 },
       { item: 'fang_band', chance: 0.03 },
+      { item: 'storm_essence', qty: [1, 2], chance: 0.16 },
+      { item: 'arcane_dust', chance: 0.1 },
     ],
   },
   {
@@ -210,6 +219,8 @@ const defs: LootTableDef[] = [
       { item: 'iron_sabatons', chance: 0.04 },
       { item: 'iron_gauntlets', chance: 0.04 },
       { item: 'frostshard', chance: 0.012 },
+      { item: 'arcane_dust', qty: [1, 2], chance: 0.35 },
+      { item: 'frost_essence', chance: 0.14 },
     ],
   },
   {
@@ -266,6 +277,9 @@ const defs: LootTableDef[] = [
       { item: 'willow_longbow', chance: 0.1 },
       { item: 'sigil_fallen_champion', chance: 0.25 },
       { item: 'tome_of_embers', chance: 0.15 },
+      { item: 'arcane_dust', qty: [3, 6], chance: 0.8 },
+      { item: 'storm_essence', qty: [1, 3], chance: 0.5 },
+      { item: 'frost_essence', qty: [1, 3], chance: 0.5 },
     ],
   },
   {
@@ -343,6 +357,8 @@ const defs: LootTableDef[] = [
       { item: 'verdant_totem', chance: 0.05 },
       { item: 'bramble_band', chance: 0.04 },
       { item: 'bloomstone', chance: 0.015 },
+      { item: 'crimson_essence', qty: [1, 2], chance: 0.14 },
+      { item: 'verdant_essence', chance: 0.12 },
     ],
   },
   {

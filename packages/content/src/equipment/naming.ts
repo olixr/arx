@@ -1,5 +1,6 @@
 import type { ItemRoll } from '@devcraft/shared';
 import { itemDef } from '../items.js';
+import { enchantDef } from './enchants.js';
 import { rolledStats } from './roll.js';
 import type { AffixStat } from './types.js';
 
@@ -32,6 +33,7 @@ export const AFFIX_EPITHETS: Record<AffixStat, string> = {
   farming: 'of the Harvest',
   foraging: 'of the Wilds',
   herbalism: 'of the Grove',
+  enchanting: 'of the Sigil',
   beastcraft: 'of the Wildheart',
   sneak: 'of Shadows',
   // Hidden-skill law: dualwield never rolls in an affix pool — the key
@@ -52,10 +54,14 @@ export function rollEpithet(itemId: string, roll?: ItemRoll): string | null {
 
 /**
  * The display name for an item instance. Non-gear items and affixless
- * rolls keep the plain definition name.
+ * rolls keep the plain definition name. An enchant PREPENDS its
+ * adjective the way the dominant affix appends its epithet:
+ * "Kindled Iron sword of Strength" — forged, rolled, then enchanted.
  */
 export function instanceName(itemId: string, roll?: ItemRoll): string {
   const base = itemDef(itemId)?.name ?? itemId;
   const epithet = rollEpithet(itemId, roll);
-  return epithet ? `${base} ${epithet}` : base;
+  const prefix = enchantDef(roll?.ench)?.prefix;
+  const named = epithet ? `${base} ${epithet}` : base;
+  return prefix ? `${prefix} ${named}` : named;
 }

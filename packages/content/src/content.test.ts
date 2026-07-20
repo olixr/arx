@@ -104,7 +104,7 @@ test('the sneak ladder is reachable — daggers carry techStyle, the tanto absta
 test('trade-skill law: every recipe belongs to a named trade, at that trade\'s station', () => {
   // No generic "crafting" — a recipe trains the profession that makes
   // its kind of thing, and each trade works at its own bench.
-  const TRADES = ['smithing', 'woodworking', 'leatherworking', 'tailoring', 'cooking', 'herbalism'];
+  const TRADES = ['smithing', 'woodworking', 'leatherworking', 'tailoring', 'cooking', 'herbalism', 'enchanting'];
   const HOME: Record<string, string[]> = {
     smithing: ['furnace', 'anvil'],
     woodworking: ['carving_bench'],
@@ -112,6 +112,7 @@ test('trade-skill law: every recipe belongs to a named trade, at that trade\'s s
     tailoring: ['loom'],
     cooking: ['fire', 'workbench'],
     herbalism: ['alembic'],
+    enchanting: ['enchanting_table'],
   };
   for (const r of RECIPES.values()) {
     assert.ok(TRADES.includes(r.skill), `${r.id}: '${r.skill}' is not a trade skill`);
@@ -194,6 +195,57 @@ test('weapon oils: valid statuses, every vial is brewable, potency climbs the sk
       venoms[i]!.coating!.durationSec > venoms[i - 1]!.coating!.durationSec,
       'coat duration must climb the ladder',
     );
+  }
+});
+
+test('enchanting: every enchant is inscribable, every reagent is obtainable', async () => {
+  const { ENCHANT_DEFS, ELEMENT_REAGENT } = await import('./equipment/enchants.js');
+  const { NODES } = await import('./nodes.js');
+  const { CROPS } = await import('./crops.js');
+  const dropped = new Set<string>();
+  for (const t of LOOT_TABLES.values()) {
+    for (const e of t.entries) if (e.item) dropped.add(e.item);
+  }
+  const gathered = new Set<string | undefined>([
+    ...NODES.map((n) => n.bonusYield?.item),
+    ...NODES.map((n) => n.yieldItem),
+    ...[...CROPS.values()].map((c) => c.yield.item),
+  ]);
+  for (const e of ENCHANT_DEFS) {
+    // Scroll item exists and points back at its enchant.
+    const scroll = ITEMS.get(`scroll_${e.id}`);
+    assert.ok(scroll, `${e.id} has no scroll item`);
+    assert.equal(scroll!.enchant, e.id);
+    assert.ok(scroll!.stackable, `${scroll!.id} must stack — scrolls are trade goods`);
+    // Inscribe recipe exists, trains enchanting at the table, gates at the def's level.
+    const r = RECIPES.get(`inscribe_${e.id}`);
+    assert.ok(r, `${e.id} has no inscribe recipe`);
+    assert.equal(r!.skill, 'enchanting');
+    assert.equal(r!.station, 'enchanting_table');
+    assert.equal(r!.levelReq, e.level);
+    assert.equal(r!.output.item, scroll!.id);
+    // Every input resolves and is obtainable (dropped, gathered, or itself craftable).
+    for (const inp of r!.inputs) {
+      assert.ok(ITEMS.has(inp.item), `${r!.id} input ${inp.item} missing`);
+      const craftable = [...RECIPES.values()].some((x) => x.output.item === inp.item);
+      assert.ok(
+        dropped.has(inp.item) || gathered.has(inp.item) || craftable,
+        `${r!.id} input ${inp.item} is unobtainable`,
+      );
+    }
+  }
+  // The binder and every essence flow from the world.
+  assert.ok(dropped.has('arcane_dust'), 'arcane dust drops from no one');
+  for (const reagent of Object.values(ELEMENT_REAGENT)) {
+    const craftable = [...RECIPES.values()].some((x) => x.output.item === reagent);
+    assert.ok(
+      dropped.has(reagent!) || gathered.has(reagent!) || craftable,
+      `${reagent} is unobtainable`,
+    );
+  }
+  // Gem grinding gives every element gem a second life as dust.
+  for (const gem of ['emberstone', 'frostshard', 'stormpearl', 'bloomstone']) {
+    assert.ok(RECIPES.has(`grind_${gem}`), `${gem} cannot be ground`);
   }
 });
 
@@ -481,6 +533,7 @@ test('bramblewick: anchors, unique stations, and story markers hold', () => {
     ['loom', Tile.Loom],
     ['carving bench', Tile.CarvingBench],
     ['alembic', Tile.Alembic],
+    ['enchanting table', Tile.EnchantingTable],
   ];
   for (const [name, tile] of stations) {
     assert.equal(counts.get(tile) ?? 0, 1, `town needs exactly one ${name}`);

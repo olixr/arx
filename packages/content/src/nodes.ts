@@ -180,6 +180,7 @@ export const NODES: readonly NodeDef[] = [
     levelReq: 1,
     xp: 22,
     yieldItem: 'plant_fibre',
+    bonusYield: { item: 'verdant_essence', chance: 0.08 }, // the wild's vigor, pressed green
     tool: null,
     baseTicks: 45,
     depleteChance: 1,

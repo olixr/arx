@@ -1,5 +1,6 @@
 import type { SkillId, StationType } from '@devcraft/shared';
 import { COMPILED_EQUIPMENT } from './equipment/defs.js';
+import { ELEMENT_GEM, ELEMENT_REAGENT, ENCHANT_DEFS } from './equipment/enchants.js';
 
 export interface RecipeDef {
   id: string;
@@ -549,7 +550,53 @@ const defs: RecipeDef[] = [
   },
 ];
 
-const allRecipes: RecipeDef[] = [...defs, ...COMPILED_EQUIPMENT.recipes];
+/**
+ * Enchanting recipes, generated from the enchant roster. Reagent law:
+ * every scroll takes arcane dust (the universal binder, scaling by
+ * tier), elemental scrolls add their element's essence, and tier-3
+ * capstones demand the element's gem (or a gold bar where no gem
+ * exists) — the dungeon-chase ingredient.
+ */
+const DUST_BY_TIER: Record<1 | 2 | 3, number> = { 1: 2, 2: 4, 3: 8 };
+const ESSENCE_BY_TIER: Record<1 | 2 | 3, number> = { 1: 1, 2: 2, 3: 4 };
+const XP_BY_TIER: Record<1 | 2 | 3, number> = { 1: 30, 2: 75, 3: 150 };
+const TICKS_BY_TIER: Record<1 | 2 | 3, number> = { 1: 35, 2: 50, 3: 65 };
+
+const enchantRecipes: RecipeDef[] = ENCHANT_DEFS.map((e) => {
+  const inputs: Array<{ item: string; qty: number }> = [
+    { item: 'arcane_dust', qty: DUST_BY_TIER[e.tier] },
+  ];
+  const reagent = ELEMENT_REAGENT[e.element];
+  if (reagent) inputs.push({ item: reagent, qty: ESSENCE_BY_TIER[e.tier] });
+  if (e.tier === 3) inputs.push({ item: ELEMENT_GEM[e.element] ?? 'gold_bar', qty: 1 });
+  return {
+    id: `inscribe_${e.id}`,
+    name: `${e.name} Scroll`,
+    skill: 'enchanting' as SkillId,
+    levelReq: e.level,
+    xp: XP_BY_TIER[e.tier],
+    station: 'enchanting_table' as StationType,
+    inputs,
+    output: { item: `scroll_${e.id}`, qty: 1 },
+    ticks: TICKS_BY_TIER[e.tier],
+  };
+});
+
+// Gem grinding — the entry rung and the gem sink: any element gem
+// crushes into binder dust.
+const grindRecipes: RecipeDef[] = Object.entries(ELEMENT_GEM).map(([, gem]) => ({
+  id: `grind_${gem}`,
+  name: `Grind ${gem.replace(/_/g, ' ')}`,
+  skill: 'enchanting' as SkillId,
+  levelReq: 1,
+  xp: 15,
+  station: 'enchanting_table' as StationType,
+  inputs: [{ item: gem, qty: 1 }],
+  output: { item: 'arcane_dust', qty: 3 },
+  ticks: 25,
+}));
+
+const allRecipes: RecipeDef[] = [...defs, ...enchantRecipes, ...grindRecipes, ...COMPILED_EQUIPMENT.recipes];
 
 export const RECIPES: ReadonlyMap<string, RecipeDef> = new Map(allRecipes.map((d) => [d.id, d]));
 

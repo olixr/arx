@@ -1,10 +1,11 @@
 /**
- * The nineteen skills. Classless: everyone can train everything.
+ * The twenty visible skills (plus hidden arts below). Classless:
+ * everyone can train everything.
  *
  * Trade-skill law: there is no generic "crafting" skill. Every recipe
  * belongs to a named trade (smithing, woodworking, leatherworking,
- * tailoring, cooking, herbalism) so a player can LIVE that profession —
- * gathering skills stay separate from producing skills.
+ * tailoring, cooking, herbalism, enchanting) so a player can LIVE that
+ * profession — gathering skills stay separate from producing skills.
  */
 export type SkillId =
   | 'vitality'
@@ -24,6 +25,7 @@ export type SkillId =
   | 'farming'
   | 'foraging'
   | 'herbalism'
+  | 'enchanting'
   | 'beastcraft'
   | 'sneak'
   | 'dualwield';
@@ -46,6 +48,7 @@ export const SKILL_IDS: readonly SkillId[] = [
   'farming',
   'foraging',
   'herbalism',
+  'enchanting',
   'beastcraft',
   'sneak',
   'dualwield',

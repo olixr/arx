@@ -1,6 +1,6 @@
 import type { EquipSlot, PassiveId, RarityTier, SkillId, StatusApply } from '@devcraft/shared';
 import { COMPILED_EQUIPMENT } from './equipment/defs.js';
-import type { EnchantEffect } from './equipment/enchants.js';
+import { ELEMENT_COLORS, ENCHANT_DEFS, type EnchantEffect } from './equipment/enchants.js';
 import type { ArmorClass, GearSlot } from './equipment/types.js';
 
 export type ToolType = 'axe' | 'pickaxe' | 'rod';
@@ -122,6 +122,13 @@ export interface ItemDef {
   buff?: ConsumableBuff;
   /** Weapon oil: coats the equipped melee/archery weapon when used. */
   coating?: CoatingDef;
+  /**
+   * Enchant scroll: using it bonds this EnchantDef id onto the gear
+   * worn in the enchant's target slot. Scrolls are ordinary tradeable
+   * items — inscribing them is the enchanter's craft, applying one
+   * takes no skill at all (that's how you enchant a friend's blade).
+   */
+  enchant?: string;
   /** Relic active ability granted while worn in the relic slot (E). */
   relic?: string;
   /** Sigil ultimate granted while worn in the sigil slot (T). */
@@ -407,6 +414,64 @@ const defs: ItemDef[] = [
     desc: 'A green seed that chose stone over sprouting. Found among old roots.',
     color: '#7ac46a',
     code: 'Bq',
+  },
+  // Enchanting reagents. Arcane dust is the universal binder — crypt
+  // bones shed it, and any elemental gem grinds down into it at the
+  // enchanting table. The essences are the elements themselves, shaken
+  // loose from the creatures (and countryside) that embody them.
+  {
+    id: 'arcane_dust',
+    name: 'Arcane dust',
+    stackable: true,
+    value: 14,
+    desc: 'Glittering grit that was recently something magical. Every enchantment starts here.',
+    color: '#b8a8e0',
+    code: 'xd',
+  },
+  {
+    id: 'ember_essence',
+    name: 'Ember essence',
+    stackable: true,
+    value: 26,
+    desc: 'A drop of stubborn fire in a bead of glass. Goblin camps reek of it.',
+    color: '#e8683c',
+    code: 'xe',
+  },
+  {
+    id: 'frost_essence',
+    name: 'Frost essence',
+    stackable: true,
+    value: 26,
+    desc: 'Cold that learned to keep. The crypt air condenses it on old bones.',
+    color: '#9ad0ec',
+    code: 'xf',
+  },
+  {
+    id: 'storm_essence',
+    name: 'Storm essence',
+    stackable: true,
+    value: 26,
+    desc: 'A sealed argument between two clouds. Throwers and champions carry them like coin.',
+    color: '#e8e29a',
+    code: 'xs',
+  },
+  {
+    id: 'verdant_essence',
+    name: 'Verdant essence',
+    stackable: true,
+    value: 26,
+    desc: 'Green vigor pressed from the living wild. The meadows part with it grudgingly.',
+    color: '#7ac46a',
+    code: 'xv',
+  },
+  {
+    id: 'crimson_essence',
+    name: 'Crimson essence',
+    stackable: true,
+    value: 26,
+    desc: 'Vitality itself, drawn off warm. Wolves are unreasonably rich in it.',
+    color: '#c04848',
+    code: 'xc',
   },
   // Relics — worn actives (E). The Minecraft-Dungeons-artifact slot:
   // your second ability comes from the trinket you hunt down, so build
@@ -764,7 +829,23 @@ const defs: ItemDef[] = [
   },
 ];
 
-const allDefs: ItemDef[] = [...defs, ...COMPILED_EQUIPMENT.items];
+// Enchant scrolls — one per EnchantDef, pure generation. A scroll is a
+// plain stackable trade good: the enchanter's skill went into
+// INSCRIBING it (see recipes.ts); anyone may apply one, which is how a
+// specialist enchanter powers up the whole town's gear.
+const SCROLL_VALUE_BY_TIER: Record<1 | 2 | 3, number> = { 1: 90, 2: 260, 3: 700 };
+const scrollDefs: ItemDef[] = ENCHANT_DEFS.map((e, i) => ({
+  id: `scroll_${e.id}`,
+  name: `${e.name} Scroll`,
+  stackable: true,
+  value: SCROLL_VALUE_BY_TIER[e.tier],
+  enchant: e.id,
+  desc: `${e.desc} Use to bond onto your equipped ${e.slot === 'weapon' ? 'weapon' : e.slot + ' gear'}.`,
+  color: ELEMENT_COLORS[e.element],
+  code: `x${i.toString(36).toUpperCase()}`,
+}));
+
+const allDefs: ItemDef[] = [...defs, ...scrollDefs, ...COMPILED_EQUIPMENT.items];
 
 export const ITEMS: ReadonlyMap<string, ItemDef> = new Map(allDefs.map((d) => [d.id, d]));
 

@@ -272,6 +272,19 @@ const defs: BuildableDef[] = [
     ticks: 55,
   },
   {
+    id: 'enchanting_table',
+    name: 'Enchanting table',
+    tile: Tile.EnchantingTable,
+    levelReq: 14,
+    xp: 100,
+    materials: [
+      { item: 'oak_log', qty: 2 },
+      { item: 'gold_bar', qty: 1 },
+      { item: 'arcane_dust', qty: 4 },
+    ],
+    ticks: 60,
+  },
+  {
     id: 'bed',
     name: 'Bed',
     tile: Tile.Bed,

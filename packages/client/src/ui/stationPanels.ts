@@ -240,6 +240,7 @@ export class StationPanels {
       tanning_rack: 'Leatherworking',
       loom: 'Tailoring',
       carving_bench: 'Woodworking',
+      enchanting_table: 'Enchanting',
     };
     this.craftTitle.textContent = station ? labels[station]! : 'Handiwork';
     this.craftList.innerHTML = '';

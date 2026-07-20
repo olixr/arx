@@ -13,8 +13,11 @@ import {
 } from '@devcraft/shared';
 import {
   ARMOR_CLASS_BLURB,
+  ELEMENT_COLORS,
   abilityDef,
+  describeEffect,
   effectiveReq,
+  enchantDef,
   instanceName,
   itemDef,
   rolledStats,
@@ -399,6 +402,19 @@ export class Panels {
       for (const a of rolled.affixes) {
         stat(affixName(a.stat), `+${a.value}`, '#7dc46a');
       }
+      // Native traits — what the def itself DOES beyond stats.
+      if (def.gear?.effects?.length) {
+        stat('Trait', def.gear.effects.map(describeEffect).join(' · '), '#e8c04c');
+      }
+      // The bonded enchantment — permanent, tier-colored, spelled out.
+      const ench = enchantDef(roll?.ench);
+      if (ench) {
+        stat('Enchant', ench.name, ELEMENT_COLORS[ench.element]);
+        const ed = document.createElement('div');
+        ed.className = 'card-passive-desc';
+        ed.textContent = ench.effects.map(describeEffect).join(' · ');
+        this.card.appendChild(ed);
+      }
       // A re-issued instance wears its power openly — the heirloom row.
       const native = def.gear?.levelReq?.level ?? 1;
       if (roll?.pwr !== undefined && roll.pwr > native) {
@@ -433,6 +449,18 @@ export class Panels {
       cd.textContent =
         'Coats your equipped melee weapon or bow — every landed basic applies it. Magic takes no oil.';
       this.card.appendChild(cd);
+    }
+    // Scroll cards spell out the enchantment they carry.
+    if (def.enchant) {
+      const se = enchantDef(def.enchant);
+      if (se) {
+        stat('Enchant', `${se.name} · tier ${se.tier}`, ELEMENT_COLORS[se.element]);
+        stat('Applies to', se.slot === 'weapon' ? 'weapons' : `${se.slot} gear`, '#c4b590');
+        const sd = document.createElement('div');
+        sd.className = 'card-passive-desc';
+        sd.textContent = se.effects.map(describeEffect).join(' · ');
+        this.card.appendChild(sd);
+      }
     }
     const relicAb = def.relic ? abilityDef(def.relic) : undefined;
     if (relicAb) stat('Relic (E)', relicAb.name, '#7ac47a');

@@ -708,10 +708,7 @@ test('enchant registry is coherent', async () => {
     }
     // Reagent themes resolve to real items.
     const reagent = ELEMENT_REAGENT[e.element];
-    if (reagent) {
-      // Essence items land in the profession commit; existing reagents must resolve now.
-      if (!reagent.endsWith('_essence')) assert.ok(itemDef(reagent), `${e.id} reagent ${reagent} exists`);
-    }
+    if (reagent) assert.ok(itemDef(reagent), `${e.id} reagent ${reagent} exists`);
   }
   // Tiers climb the inscribe ladder within each slot's roster.
   for (const slot of GEAR_SLOTS) {

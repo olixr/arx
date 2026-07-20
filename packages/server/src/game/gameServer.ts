@@ -59,6 +59,7 @@ import {
   npcHitHeight,
   GEM_BATTLESTAFFS,
   pickRarity,
+  enchantDef,
   rollLoot,
   rolledStats,
   trinketPowerMult,
@@ -1802,6 +1803,51 @@ export class GameServer {
         t: 'chat',
         channel: 'system',
         text: `You work the ${c.name} into the ${itemDef(worn.id)?.name ?? 'weapon'}.`,
+      });
+      return;
+    }
+
+    // Enchant scrolls: bond the enchant onto whatever is worn in the
+    // enchant's target slot. No skill gate on APPLYING — the enchanter's
+    // craft went into inscribing the scroll, so scrolls are how a
+    // specialist enchants the whole town's gear. Re-enchanting replaces
+    // the old work outright.
+    if (def.enchant) {
+      const ench = enchantDef(def.enchant);
+      if (!ench) return;
+      const worn = player.equipment[ench.slot];
+      if (!worn) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `The ${ench.name} wants a ${ench.slot === 'weapon' ? 'weapon' : `${ench.slot} piece`} on your body — equip one first.`,
+        });
+        return;
+      }
+      if (worn.roll?.ench === ench.id) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `The ${itemDef(worn.id)?.name ?? 'item'} already bears that enchantment.`,
+        });
+        return;
+      }
+      const replaced = enchantDef(worn.roll?.ench);
+      removeItem(player.inventory, slot.item, 1);
+      // Legacy-grace materialization: an unrolled instance IS common/0.
+      const roll = worn.roll ?? { rar: 'common' as const, seed: 0 };
+      roll.ench = ench.id;
+      worn.roll = roll;
+      // Enchants move aggregate stats (maxHp, speed, cooldowns...) —
+      // recompute exactly like an equip change.
+      this.onEquipmentChanged(eid, player);
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: replaced
+          ? `The ${replaced.name} fades as the ${ench.name} takes its place on the ${itemDef(worn.id)?.name ?? 'item'}.`
+          : `The scroll crumbles as the ${ench.name} sinks into the ${itemDef(worn.id)?.name ?? 'item'}. It ${ench.tier >= 3 ? 'blazes with power' : ench.tier === 2 ? 'hums quietly' : 'glints, just once'}.`,
       });
       return;
     }
@@ -4529,10 +4575,10 @@ export class GameServer {
       return;
     }
     if (config.devCommands && text.startsWith('/give ')) {
-      // /give <item> [qty] [rarity] [power] — gear/trinkets mint a
-      // fresh roll at the requested tier and item power. The Playwright
-      // lever.
-      const [, item, qtyRaw, rarRaw, pwrRaw] = text.split(/\s+/);
+      // /give <item> [qty] [rarity] [power] [enchant] — gear/trinkets
+      // mint a fresh roll at the requested tier, item power, and
+      // enchant. The Playwright lever.
+      const [, item, qtyRaw, rarRaw, pwrRaw, enchRaw] = text.split(/\s+/);
       const def = itemDef(item ?? '');
       const qty = Math.max(1, Math.min(1000, Number.parseInt(qtyRaw ?? '1', 10) || 1));
       const rar = isRarityTier(rarRaw ?? '') ? (rarRaw as ItemRoll['rar']) : undefined;
@@ -4541,11 +4587,13 @@ export class GameServer {
         Number.isInteger(pwrParsed) && pwrParsed >= 1 && pwrParsed <= MAX_ITEM_POWER
           ? pwrParsed
           : undefined;
+      const ench = enchantDef(enchRaw)?.id;
       if (def && hasSpaceFor(player.inventory, def.id)) {
         if (def.gear || def.relic || def.sigil) {
           for (let i = 0; i < qty; i++) {
             const roll = makeRoll(rar ?? 'common');
             roll.pwr = pwr;
+            roll.ench = ench;
             addItem(player.inventory, def.id, 1, roll);
           }
         } else {

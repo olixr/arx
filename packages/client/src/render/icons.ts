@@ -1,4 +1,4 @@
-import { itemDef } from '@devcraft/content';
+import { ELEMENT_COLORS, ENCHANT_DEFS, itemDef } from '@devcraft/content';
 import { shade } from './rig.js';
 import { BOW_STYLES, DAGGER_STYLES, STAFF_STYLES, SWORD_STYLES, drawBow, drawStaff, drawSword } from './weapons.js';
 
@@ -3075,6 +3075,13 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   frostshard: { icon: 'gem', color: '#9ad0ec' },
   stormpearl: { icon: 'gem', color: '#e8e29a' },
   bloomstone: { icon: 'gem', color: '#7ac46a' },
+  // Enchanting reagents — dust on the nugget pile, essences on the gem.
+  arcane_dust: { icon: 'nuggets', color: '#b8a8e0' },
+  ember_essence: { icon: 'gem', color: '#e8885c' },
+  frost_essence: { icon: 'gem', color: '#b8e0f4' },
+  storm_essence: { icon: 'gem', color: '#f0eab8' },
+  verdant_essence: { icon: 'gem', color: '#9ad48a' },
+  crimson_essence: { icon: 'gem', color: '#d06868' },
   verdant_totem: { icon: 'totem', color: '#7ab06a' },
   snare_kit: { icon: 'trap', color: '#b0a05a' },
   storm_bell: { icon: 'bell', color: '#e8d06a' },
@@ -3440,6 +3447,14 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   }
 }
 
+// ---- enchant scrolls: one scroll painter, tinted by each enchant's
+// element — new enchants get icons for free.
+{
+  for (const e of ENCHANT_DEFS) {
+    ITEM_ICON[`scroll_${e.id}`] = { icon: 'scroll', color: ELEMENT_COLORS[e.element] };
+  }
+}
+
 /**
  * Which painter + tint each BUILDABLE renders in the build panel.
  * Wood/stone families share a painter and differ by tint, exactly like
@@ -3467,6 +3482,7 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   tanning_rack: { icon: 'hide', color: '#b08a5c' },
   loom: { icon: 'clothbolt', color: '#d8cbb0' },
   carving_bench: { icon: 'bow', color: '#9b7440' },
+  enchanting_table: { icon: 'tome', color: '#7a6aa8' },
   barrel: { icon: 'barrel', color: '#94693a' },
   crate: { icon: 'crate', color: '#a5793f' },
   chair: { icon: 'chair', color: '#94693a' },
