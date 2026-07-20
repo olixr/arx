@@ -75,12 +75,15 @@ export interface BodyStyle {
 export interface HelmStyle {
   color: string;
   trim: string;
-  kind: 'dome' | 'greathelm' | 'hood' | 'circlet' | 'horned' | 'wizard';
+  /** `bascinet` is the pig-faced full helm: face covered by a
+   *  protruding snout box with an eye slit and breath holes. */
+  kind: 'dome' | 'greathelm' | 'bascinet' | 'hood' | 'circlet' | 'horned' | 'wizard';
   noseGuard?: boolean;
   visor?: 'slit' | 'cross';
   plume?: { color: string };
-  /** `curl` bends the sweep into a ram's spiral beside the temples. */
-  horns?: { color: string; size: number; curl?: boolean };
+  /** `curl` bends the sweep into a ram's spiral beside the temples;
+   *  `tine` forks a second point off each horn — the bramble read. */
+  horns?: { color: string; size: number; curl?: boolean; tine?: boolean };
   /** Up-curved boar tusks flanking the jaw — the charge read. */
   tusks?: { color: string };
   /** A row of forged spikes riding the crown centerline, front-to-back
@@ -480,11 +483,11 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
   // boar, crested-and-plumed hero, ram spiral, thorn crown, spiked
   // greathelm. A knight's helm is half the knight.
   tuskguard_helm: {
-    color: '#a4744b', trim: '#6e4a30', kind: 'dome', noseGuard: true,
-    tusks: { color: '#e8dcc0' }, crest: { color: '#38281c' },
+    color: '#a4744b', trim: '#6e4a30', kind: 'bascinet',
+    tusks: { color: '#e8dcc0' }, spikesCrown: { color: '#38281c' },
   },
   valiant_helm: {
-    color: '#c9ccd4', trim: '#c9a23c', kind: 'dome', noseGuard: true,
+    color: '#c9ccd4', trim: '#c9a23c', kind: 'greathelm', visor: 'slit',
     crest: { color: '#b8bec8' }, plume: { color: '#a83a38' },
   },
   ramwall_helm: {
@@ -493,7 +496,7 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
   },
   briarplate_helm: {
     color: '#3e4a38', trim: '#8a9a6e', kind: 'horned', noseGuard: true,
-    horns: { color: '#8a9a6e', size: 1.25 }, jaw: '#55644c',
+    horns: { color: '#8a9a6e', size: 1.25, tine: true }, jaw: '#55644c',
   },
   sentinel_greathelm: {
     color: '#55607a', trim: '#d4c28a', kind: 'greathelm', visor: 'cross',
@@ -841,9 +844,9 @@ registerColorways(BODY_STYLES, 'tuskguard_platebody', {
   ashen: { color: '#4a4644', trim: '#332f2e', metal: '#6a6462', pauldronColor: '#54504e', pauldronTrim: '#7d7674' },
 });
 registerColorways(HELM_STYLES, 'tuskguard_helm', {
-  ironshod: { color: '#8d9299', trim: '#6a6f7d', crest: { color: '#4a4f58' } },
-  gilded: { color: '#d8ac44', trim: '#a4772c', tusks: { color: '#f4ecd8' }, crest: { color: '#8a6a24' } },
-  ashen: { color: '#4a4644', trim: '#332f2e', crest: { color: '#2c2928' } },
+  ironshod: { color: '#8d9299', trim: '#6a6f7d', spikesCrown: { color: '#3a3e46' } },
+  gilded: { color: '#d8ac44', trim: '#a4772c', tusks: { color: '#f4ecd8' }, spikesCrown: { color: '#8a6a24' } },
+  ashen: { color: '#4a4644', trim: '#332f2e', spikesCrown: { color: '#211e1d' } },
 });
 registerColorways(LEG_STYLES, 'tuskguard_greaves', {
   ironshod: { thigh: '#5c5460', shin: '#8d9299', kneeColor: '#b0b6be' },
@@ -916,9 +919,9 @@ registerColorways(BODY_STYLES, 'briarplate_platebody', {
   nightbriar: { color: '#38304a', trim: '#9a8ab8', metal: '#4a4060', pauldronColor: '#2e2740', pauldronTrim: '#9a8ab8' },
 });
 registerColorways(HELM_STYLES, 'briarplate_helm', {
-  bloodbriar: { color: '#5c3230', trim: '#c9a88a', horns: { color: '#c9a88a', size: 1.25 }, jaw: '#744240' },
-  bonebriar: { color: '#b0a890', trim: '#e6e0d0', horns: { color: '#e6e0d0', size: 1.5 }, jaw: '#c4bca4' },
-  nightbriar: { color: '#38304a', trim: '#9a8ab8', horns: { color: '#9a8ab8', size: 1.25 }, jaw: '#4a4060' },
+  bloodbriar: { color: '#5c3230', trim: '#c9a88a', horns: { color: '#c9a88a', size: 1.25, tine: true }, jaw: '#744240' },
+  bonebriar: { color: '#b0a890', trim: '#e6e0d0', horns: { color: '#e6e0d0', size: 1.5, tine: true }, jaw: '#c4bca4' },
+  nightbriar: { color: '#38304a', trim: '#9a8ab8', horns: { color: '#9a8ab8', size: 1.25, tine: true }, jaw: '#4a4060' },
 });
 registerColorways(LEG_STYLES, 'briarplate_greaves', {
   bloodbriar: { thigh: '#442624', shin: '#5c3230', kneeColor: '#c9a88a' },
@@ -1476,18 +1479,19 @@ export function drawTorsoGarment(
         if (st.ridges) {
           // Gothic fluting: three channels hammered down the plate,
           // converging toward the waist — each a shadow stroke with a
-          // catch-light beside it, so the steel reads worked, not flat.
+          // catch-light beside it, both FAT enough to survive world
+          // zoom (hairline fluting reads as scratches, not smithing).
+          ctx.lineWidth = Math.max(1.5, s * 0.02);
           for (const rx of [-0.26, 0, 0.26]) {
-            ctx.strokeStyle = shade(metal, -20);
-            ctx.lineWidth = Math.max(1, s * 0.014);
+            ctx.strokeStyle = shade(metal, -22);
             ctx.beginPath();
             ctx.moveTo(tw * rx, -th * 0.8);
             ctx.lineTo(tw * rx * 0.55, -th * 0.4);
             ctx.stroke();
-            ctx.strokeStyle = shade(metal, 20);
+            ctx.strokeStyle = shade(metal, 22);
             ctx.beginPath();
-            ctx.moveTo(tw * rx + 0.012 * s, -th * 0.8);
-            ctx.lineTo(tw * rx * 0.55 + 0.012 * s, -th * 0.4);
+            ctx.moveTo(tw * rx + 0.016 * s, -th * 0.8);
+            ctx.lineTo(tw * rx * 0.55 + 0.016 * s, -th * 0.4);
             ctx.stroke();
           }
         }
@@ -2499,8 +2503,9 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     return;
   }
 
-  // Metal family: dome (original), greathelm (full face), horned.
-  const full = st.kind === 'greathelm';
+  // Metal family: dome (original), greathelm/bascinet (full face),
+  // horned. A full helm OWNS the face — that is the whole point.
+  const full = st.kind === 'greathelm' || st.kind === 'bascinet';
   ctx.fillStyle = mc;
   ctx.beginPath();
   chamferRect(ctx, headX - hw * 1.06, headY - hh * 1.1, hw * 2.12, hh * (full ? 2.08 : 1.06), cut);
@@ -2520,12 +2525,34 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     if (!hurt && backK <= 0.55) {
       // Visor cut tracks the face like the eyes do (the pairX law).
       const vx = headX + fx * headR * 0.36;
-      ctx.fillStyle = '#170f1c';
-      if (st.visor === 'cross') {
+      const sw = 1 - profileK * 0.45;
+      if (st.kind === 'bascinet') {
+        // The pig-face: an eye slit above a PROTRUDING snout box with
+        // breath holes — the muzzle is the helmet's whole identity, so
+        // it is drawn fat, bright-edged, and never as a thin line.
+        ctx.fillStyle = '#170f1c';
+        ctx.fillRect(vx - headR * 0.44 * sw, headY - hh * 0.28, headR * 0.88 * sw, hh * 0.17);
+        ctx.fillStyle = shade(st.color, 12);
+        ctx.beginPath();
+        chamferRect(ctx, vx - headR * 0.4 * sw, headY - hh * 0.02, headR * 0.8 * sw, hh * 0.66, cut * 0.6);
+        ctx.fill();
+        // The muzzle's top plane catches the sun; its underside sits
+        // in contact shade so the box reads as sticking OUT.
+        ctx.fillStyle = shade(st.color, 30);
+        ctx.fillRect(vx - headR * 0.4 * sw, headY - hh * 0.02, headR * 0.8 * sw, hh * 0.12);
+        ctx.fillStyle = shade(st.color, -22);
+        ctx.fillRect(vx - headR * 0.4 * sw, headY + hh * 0.52, headR * 0.8 * sw, hh * 0.12);
+        // Breath holes: a row of fat punched dots, never pinpricks.
+        ctx.fillStyle = shade(st.color, -34);
+        for (const bx of [-0.2, 0, 0.2]) {
+          ctx.fillRect(vx + bx * headR * sw - headR * 0.045, headY + hh * 0.24, headR * 0.09, headR * 0.09);
+        }
+      } else if (st.visor === 'cross') {
+        ctx.fillStyle = '#170f1c';
         ctx.fillRect(vx - headR * 0.07, headY - hh * 0.05, headR * 0.14, hh * 0.6);
         ctx.fillRect(vx - headR * 0.4, headY + hh * 0.08, headR * 0.8, hh * 0.16);
       } else {
-        const sw = 1 - profileK * 0.45;
+        ctx.fillStyle = '#170f1c';
         ctx.fillRect(vx - headR * 0.42 * sw, headY + hh * 0.02, headR * 0.84 * sw, hh * 0.15);
       }
     } else if (!hurt) {
@@ -2623,54 +2650,61 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
   if (st.horns && !hurt) {
     const hz = st.horns.size;
     if (st.horns.curl) {
-      // Ram horns: a thick spiral hugging the temples, stroked round
-      // so it reads as horn mass, ribbed like the living animal. The
-      // far horn narrows with the facing like the far eye.
+      // Ram horns: a thick spiral hugging each temple. Drawn in a
+      // per-side MIRRORED local frame (translate + scale) so left and
+      // right curl toward the face symmetrically and stay oriented as
+      // the head turns — a spiral painted once and flipped can never
+      // point the wrong way. The far horn narrows like the far eye.
       ctx.lineCap = 'round';
       for (const es of [-1, 1]) {
         const far = es !== lead;
         const wK = far ? Math.max(0.3, 1 - profileK * 0.65) : 1;
-        const cxx = headX + es * hw * 0.98 * wK;
-        const cyy = headY - hh * 0.42;
         const rr = hh * 0.52 * hz;
-        // The spiral: from the crown root, over the top, down past the
-        // cheek and curling forward — one thick arc plus a tighter tail.
+        ctx.save();
+        ctx.translate(headX + es * hw * 0.98 * wK, headY - hh * 0.42);
+        ctx.scale(es * wK, 1);
+        // Root sweep: from the crown, up over the top and down the
+        // cheek — the fat outer curl.
         ctx.strokeStyle = st.horns.color;
-        ctx.lineWidth = Math.max(2.5, s * 0.052 * hz) * (far ? wK : 1);
+        ctx.lineWidth = Math.max(2.5, s * 0.052 * hz);
         ctx.beginPath();
-        ctx.arc(cxx, cyy, rr, -Math.PI * 0.65, Math.PI * 0.62, false);
+        ctx.arc(0, 0, rr, -Math.PI * 0.65, Math.PI * 0.62, false);
         ctx.stroke();
-        ctx.lineWidth = Math.max(2, s * 0.036 * hz) * (far ? wK : 1);
+        // The tail: a tighter inner turn finishing forward, toward
+        // where the face is — how a real ram's horn resolves.
+        ctx.lineWidth = Math.max(2, s * 0.036 * hz);
         ctx.beginPath();
-        ctx.arc(cxx + es * hw * 0.08, cyy + hh * 0.1, rr * 0.55, Math.PI * 0.6, Math.PI * 1.35, false);
+        ctx.arc(hw * 0.08, hh * 0.1, rr * 0.55, Math.PI * 0.6, Math.PI * 1.35, false);
         ctx.stroke();
-        // The spiral's heart: a filled boss so the curl reads as horn
-        // mass, never an empty hoop earring.
+        // The spiral's heart: filled so the curl reads as horn mass,
+        // never an empty hoop earring.
         ctx.fillStyle = shade(st.horns.color, -12);
         ctx.beginPath();
-        ctx.arc(cxx + es * hw * 0.06, cyy + hh * 0.08, rr * 0.3, 0, Math.PI * 2);
+        ctx.arc(hw * 0.06, hh * 0.08, rr * 0.32, 0, Math.PI * 2);
         ctx.fill();
-        // Growth ridges: two short ticks across the outer sweep.
-        ctx.strokeStyle = shade(st.horns.color, -22);
-        ctx.lineWidth = Math.max(1, s * 0.014);
+        // Growth ridges: fat ticks across the outer sweep — readable
+        // at world zoom, never hairlines.
+        ctx.strokeStyle = shade(st.horns.color, -24);
+        ctx.lineWidth = Math.max(1.5, s * 0.022);
         ctx.beginPath();
-        for (const aa of [-0.25, 0.18]) {
-          const tx = cxx + Math.cos(aa) * rr * es;
-          const ty = cyy + Math.sin(aa) * rr;
-          ctx.moveTo(tx - es * hw * 0.09, ty - hh * 0.05);
-          ctx.lineTo(tx + es * hw * 0.09, ty + hh * 0.05);
+        for (const aa of [-0.35, 0.25]) {
+          const tx = Math.cos(aa) * rr;
+          const ty = Math.sin(aa) * rr;
+          ctx.moveTo(tx - hw * 0.11, ty - hh * 0.06);
+          ctx.lineTo(tx + hw * 0.11, ty + hh * 0.06);
         }
         ctx.stroke();
+        ctx.restore();
       }
       ctx.lineCap = 'butt';
     } else {
       // Horns sweep up and out; the far horn narrows like the far eye.
-      ctx.fillStyle = st.horns.color;
       for (const es of [-1, 1]) {
         const far = es !== lead;
         const wK = far ? Math.max(0.25, 1 - profileK * 0.7) : 1;
         const bx = headX + es * hw * 0.9;
         const by = headY - hh * 0.75;
+        ctx.fillStyle = st.horns.color;
         ctx.beginPath();
         ctx.moveTo(bx, by + hh * 0.22 * wK);
         ctx.quadraticCurveTo(
@@ -2682,6 +2716,22 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.lineTo(bx + es * hw * 0.28 * wK, by - hh * 0.2);
         ctx.closePath();
         ctx.fill();
+        if (st.horns.tine) {
+          // The bramble fork: a second, lower point splitting off the
+          // main horn — one fork turns a horn into a thorn branch.
+          ctx.fillStyle = shade(st.horns.color, -12);
+          ctx.beginPath();
+          ctx.moveTo(bx + es * hw * 0.12 * wK, by - hh * 0.02);
+          ctx.quadraticCurveTo(
+            bx + es * hw * 0.7 * wK,
+            by - hh * 0.08 * hz,
+            bx + es * hw * 0.95 * hz * wK,
+            by - hh * 0.3 * hz,
+          );
+          ctx.lineTo(bx + es * hw * 0.4 * wK, by + hh * 0.12);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
     }
   }
