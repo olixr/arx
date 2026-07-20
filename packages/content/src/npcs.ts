@@ -126,7 +126,20 @@ const defs: NpcDef[] = [
     leashRange: 8,
     speed: 3.2,
     xpReward: 20,
-    loot: [{ item: 'bones', qty: [1, 1], chance: 1 }],
+    loot: [
+      { item: 'bones', qty: [1, 1], chance: 1 },
+      // Mothwing: dust-sage cloth chewed out of cellar wardrobes —
+      // the rats keep what the moths started.
+      { item: 'mothwing_cowl', qty: [1, 1], chance: 0.028 },
+      { item: 'mothwing_robe', qty: [1, 1], chance: 0.02 },
+      { item: 'mothwing_skirts', qty: [1, 1], chance: 0.024 },
+      { item: 'mothwing_slippers', qty: [1, 1], chance: 0.028 },
+      // Rustsedge fenwalker: dragged up from the drain-water reeds.
+      { item: 'fenwalker_hood_rustsedge', qty: [1, 1], chance: 0.014 },
+      { item: 'fenwalker_robe_rustsedge', qty: [1, 1], chance: 0.01 },
+      { item: 'fenwalker_skirts_rustsedge', qty: [1, 1], chance: 0.012 },
+      { item: 'fenwalker_slippers_rustsedge', qty: [1, 1], chance: 0.014 },
+    ],
     respawnSec: 15,
     color: '#8a7a6a',
     radius: 0.26,
@@ -153,6 +166,16 @@ const defs: NpcDef[] = [
       // Scavenged armor — the first rolled-gear drops a new fighter sees.
       { item: 'leather_body', qty: [1, 1], chance: 0.05 },
       { item: 'leather_chaps', qty: [1, 1], chance: 0.04 },
+      // Ember mothwing: singed cloth snatched from around campfires.
+      { item: 'mothwing_cowl_ember', qty: [1, 1], chance: 0.018 },
+      { item: 'mothwing_robe_ember', qty: [1, 1], chance: 0.014 },
+      { item: 'mothwing_skirts_ember', qty: [1, 1], chance: 0.016 },
+      { item: 'mothwing_slippers_ember', qty: [1, 1], chance: 0.018 },
+      // Fenwalker: the camps squat on drowned ground; the bog pays rent.
+      { item: 'fenwalker_hood', qty: [1, 1], chance: 0.016 },
+      { item: 'fenwalker_robe', qty: [1, 1], chance: 0.012 },
+      { item: 'fenwalker_skirts', qty: [1, 1], chance: 0.014 },
+      { item: 'fenwalker_slippers', qty: [1, 1], chance: 0.016 },
     ],
     respawnSec: 25,
     color: '#5c8a3a',
@@ -185,6 +208,12 @@ const defs: NpcDef[] = [
       { item: 'tidecaller_robe', qty: [1, 1], chance: 0.015 },
       { item: 'tidecaller_skirts', qty: [1, 1], chance: 0.018 },
       { item: 'tidecaller_slippers', qty: [1, 1], chance: 0.02 },
+      // Mirebloom fenwalker: heather-dyed, picked off the flower fens
+      // the throwers trample on the march.
+      { item: 'fenwalker_hood_mirebloom', qty: [1, 1], chance: 0.014 },
+      { item: 'fenwalker_robe_mirebloom', qty: [1, 1], chance: 0.01 },
+      { item: 'fenwalker_skirts_mirebloom', qty: [1, 1], chance: 0.012 },
+      { item: 'fenwalker_slippers_mirebloom', qty: [1, 1], chance: 0.014 },
     ],
     respawnSec: 30,
     color: '#6a9a3a',
@@ -226,6 +255,21 @@ const defs: NpcDef[] = [
       { item: 'voidwhisper_cowl', qty: [1, 1], chance: 0.02 },
       { item: 'voidwhisper_skirts', qty: [1, 1], chance: 0.018 },
       { item: 'voidwhisper_slippers', qty: [1, 1], chance: 0.02 },
+      // Dusk mothwing: plum-grey wings folded at the crypt door.
+      { item: 'mothwing_cowl_dusk', qty: [1, 1], chance: 0.016 },
+      { item: 'mothwing_robe_dusk', qty: [1, 1], chance: 0.012 },
+      { item: 'mothwing_skirts_dusk', qty: [1, 1], chance: 0.014 },
+      { item: 'mothwing_slippers_dusk', qty: [1, 1], chance: 0.016 },
+      // Graymist fenwalker: fog woven by hands that stopped needing it.
+      { item: 'fenwalker_hood_graymist', qty: [1, 1], chance: 0.012 },
+      { item: 'fenwalker_robe_graymist', qty: [1, 1], chance: 0.009 },
+      { item: 'fenwalker_skirts_graymist', qty: [1, 1], chance: 0.01 },
+      { item: 'fenwalker_slippers_graymist', qty: [1, 1], chance: 0.012 },
+      // Eclipse dawnsworn: the sun, briefly borrowed — never returned.
+      { item: 'dawnsworn_hood_eclipse', qty: [1, 1], chance: 0.012 },
+      { item: 'dawnsworn_robe_eclipse', qty: [1, 1], chance: 0.009 },
+      { item: 'dawnsworn_skirts_eclipse', qty: [1, 1], chance: 0.01 },
+      { item: 'dawnsworn_slippers_eclipse', qty: [1, 1], chance: 0.012 },
     ],
     respawnSec: 30,
     color: '#d8d4c8',
@@ -321,6 +365,12 @@ const defs: NpcDef[] = [
       { item: 'wolfstalker_jerkin', qty: [1, 1], chance: 0.02 },
       { item: 'wolfstalker_chaps', qty: [1, 1], chance: 0.025 },
       { item: 'wolfstalker_boots', qty: [1, 1], chance: 0.03 },
+      // Luna mothwing: pale green dust that only settles by moonlight,
+      // shaken loose wherever the night packs run.
+      { item: 'mothwing_cowl_luna', qty: [1, 1], chance: 0.016 },
+      { item: 'mothwing_robe_luna', qty: [1, 1], chance: 0.012 },
+      { item: 'mothwing_skirts_luna', qty: [1, 1], chance: 0.014 },
+      { item: 'mothwing_slippers_luna', qty: [1, 1], chance: 0.016 },
     ],
     respawnSec: 35,
     color: '#6a6f7d',

@@ -739,6 +739,12 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // -------- Starweaver: midnight and silver, the endgame craft.
   // Orbits its own shoulder-orbs under a floating halo.
   ...starweaverSet(),
+
+  // ========================================== early-game cloth wardrobe
+  // Five sets for the leveling road (magic 2–19), each in FOUR dye lots
+  // via the colorway law — same silhouette record, new palette and a
+  // new place in the world to find it. Low-level never means mundane.
+  ...earlyClothDefs(),
 ];
 
 // ---------------------------------------------------------- set makers
@@ -1357,6 +1363,311 @@ function starweaverSet(): EquipmentDef[] {
       acquisition: { craft: true }, recipe: craft(45, 600, 100, 2, 1, 1),
       value: 1150, color, code: 'Sp',
       desc: 'Curled silver toes. The night sky, fitted for walking.',
+    },
+  ];
+}
+
+// ------------------------------------------------- colorway generator
+
+/**
+ * Colorway variants: the palette-swap law as a def generator. A variant
+ * reuses its base piece wholesale — same slot, gate, armor and value —
+ * and changes only identity: id suffix, dye-name prefix, color, story,
+ * and how the world hands it out. Craft colorways append their dye
+ * ingredient to the base recipe; drop colorways shed the recipe.
+ */
+interface ColorwaySpec {
+  key: string;
+  dye: string;
+  color: string;
+  desc: string;
+  acquisition?: EquipmentDef['acquisition'];
+  dyeInput?: { item: string; qty: number };
+}
+
+function colorways(pieces: EquipmentDef[], specs: ColorwaySpec[]): EquipmentDef[] {
+  return specs.flatMap((cw) => pieces.map((p): EquipmentDef => {
+    const acquisition = cw.acquisition ?? p.acquisition;
+    const v: EquipmentDef = {
+      ...p,
+      id: `${p.id}_${cw.key}`,
+      name: `${cw.dye} ${p.name.charAt(0).toLowerCase()}${p.name.slice(1)}`,
+      color: cw.color,
+      desc: cw.desc,
+      acquisition,
+    };
+    // JSON-safety: absent, never explicitly undefined (round-trip law).
+    if (acquisition.craft && p.recipe) {
+      v.recipe = { ...p.recipe, inputs: cw.dyeInput ? [...p.recipe.inputs, cw.dyeInput] : p.recipe.inputs };
+    } else {
+      delete v.recipe;
+    }
+    return v;
+  }));
+}
+
+function earlyClothDefs(): EquipmentDef[] {
+  const thistledown = thistledownSet();
+  const mothwing = mothwingSet();
+  const dawnsworn = dawnswornSet();
+  const fenwalker = fenwalkerSet();
+  const stormwoven = stormwovenSet();
+  return [
+    // -------- Thistledown: undyed oat linen, big honest patches, a rope
+    // sash. The very first robe — and the town square wears four dyes.
+    ...thistledown,
+    ...colorways(thistledown, [
+      { key: 'madder', dye: 'Madder', color: '#a8524a', dyeInput: { item: 'berries', qty: 2 },
+        desc: 'Dyed in crushed berry-madder — hedge red, honestly earned.' },
+      { key: 'woad', dye: 'Woad', color: '#54688e', dyeInput: { item: 'moonbell', qty: 1 },
+        desc: 'Moonbell-steeped blue. The sky, on a workday.' },
+      { key: 'bracken', dye: 'Bracken', color: '#8a6f4a', dyeInput: { item: 'sagewort', qty: 2 },
+        desc: 'Boiled bracken brown. It never shows the mud.' },
+    ]),
+    // -------- Mothwing: dust-sage cloth under a broad moth device, with
+    // curled antennae on the cowl. Drop-only — each dye lot haunts a
+    // different corner of the low-level world.
+    ...mothwing,
+    ...colorways(mothwing, [
+      { key: 'luna', dye: 'Luna', color: '#9ab88e',
+        desc: 'Pale green dust that only settles by moonlight.' },
+      { key: 'dusk', dye: 'Dusk', color: '#7a6280',
+        desc: 'Plum-grey wings from the crypt door at closing time.' },
+      { key: 'ember', dye: 'Ember', color: '#a8705c',
+        desc: 'Singed rose-copper. It flew too close, and liked it.' },
+    ]),
+    // -------- Dawnsworn: ivory and gold under a blazing sun device, a
+    // brow gem that catches first light. The acolyte's craft line.
+    ...dawnsworn,
+    ...colorways(dawnsworn, [
+      { key: 'duskvow', dye: 'Duskvow', color: '#9a6a86', dyeInput: { item: 'berries', qty: 2 },
+        desc: 'Sworn to the other horizon — rose fading into violet.' },
+      { key: 'highnoon', dye: 'Highnoon', color: '#eae4d2', dyeInput: { item: 'cotton', qty: 2 },
+        desc: 'Bleached bright as noon. Squint and be grateful.' },
+      { key: 'eclipse', dye: 'Eclipse', color: '#4a4550', acquisition: { drop: true },
+        desc: 'Charcoal cloth ringed in gold — the sun, briefly borrowed.' },
+    ]),
+    // -------- Fenwalker: bog-green cloth threaded with wisp-light hem
+    // runes, a reed feather at the temple. Drop-only from the fens.
+    ...fenwalker,
+    ...colorways(fenwalker, [
+      { key: 'mirebloom', dye: 'Mirebloom', color: '#7a5a78',
+        desc: 'Heather-purple from flowers that grow on drowned ground.' },
+      { key: 'rustsedge', dye: 'Rustsedge', color: '#96603c',
+        desc: 'Iron-water rust, cut from the reeds that drink it.' },
+      { key: 'graymist', dye: 'Graymist', color: '#7d8580',
+        desc: 'Woven fog. The bog keeps what it cannot see.' },
+    ]),
+    // -------- Stormwoven: slate cloth around a fat gold bolt, a mantle
+    // like a rolling front. The mid-game craft line with weather in it.
+    ...stormwoven,
+    ...colorways(stormwoven, [
+      { key: 'thunderhead', dye: 'Thunderhead', color: '#3a3f4e', dyeInput: { item: 'iron_bar', qty: 1 },
+        desc: 'Anvil-cloud dark, gold at the seams. Count the seconds.' },
+      { key: 'sunshower', dye: 'Sunshower', color: '#c9a85c', dyeInput: { item: 'sunflower', qty: 2 },
+        desc: 'Rain with the sun still out — luck, wearable.' },
+      { key: 'aurora', dye: 'Aurora', color: '#4e8a7a', dyeInput: { item: 'moonbell', qty: 1 },
+        desc: 'Green fire off a midnight sky, hemmed and hushed.' },
+    ]),
+  ];
+}
+
+function thistledownSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'magic', w: 2 },
+    { stat: 'farming' },
+    { stat: 'foraging' },
+    { stat: 'regen' },
+  ];
+  const color = '#c9bfa3';
+  const craft = (levelReq: number, xp: number, ticks: number, cloth: number) => ({
+    skill: 'crafting' as const,
+    levelReq,
+    xp,
+    station: 'workbench' as const,
+    ticks,
+    inputs: [{ item: 'cloth', qty: cloth }, { item: 'twine', qty: 1 }],
+  });
+  return [
+    {
+      id: 'thistledown_hood', name: 'Thistledown hood', slot: 'head', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 2 }, armor: 1, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(2, 20, 35, 1),
+      value: 30, color, code: 'Lh',
+      desc: 'Oat linen, soft as seed-fluff. Every road starts warm.',
+    },
+    {
+      id: 'thistledown_robe', name: 'Thistledown robe', slot: 'body', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 4 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(5, 40, 50, 2),
+      value: 55, color, code: 'Lr',
+      desc: 'Patched at the elbow, proud of it. The rope belt is load-bearing.',
+    },
+    {
+      id: 'thistledown_skirts', name: 'Thistledown skirts', slot: 'legs', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 3 }, armor: 1, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(3, 30, 40, 1),
+      value: 40, color, code: 'Lk',
+      desc: 'Homespun and hemmed twice. Thorns give up politely.',
+    },
+    {
+      id: 'thistledown_slippers', name: 'Thistledown slippers', slot: 'boots', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 2 }, armor: 1, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(2, 25, 35, 1),
+      value: 35, color, code: 'Lp',
+      desc: 'Quiet as thistle seed on the wind, twice as stubborn.',
+    },
+  ];
+}
+
+function mothwingSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'magic', w: 2 },
+    { stat: 'sneak' },
+    { stat: 'herbalism' },
+    { stat: 'regen' },
+  ];
+  const color = '#8a8a72';
+  const piece = (
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    level: number, armor: number, value: number, code: string, desc: string,
+  ): EquipmentDef => ({
+    id, name, slot, armorClass: 'cloth',
+    levelReq: { skill: 'magic', level }, armor, affixPool: pool,
+    acquisition: { drop: true }, value, color, code, desc,
+  });
+  return [
+    piece('mothwing_cowl', 'Mothwing cowl', 'head', 6, 1, 95, 'Mh',
+      'Curled antennae over the brow. You hear the lamplight now.'),
+    piece('mothwing_robe', 'Mothwing robe', 'body', 8, 3, 140, 'Mr',
+      'Broad dust-pale wings across the chest. Drawn to bright things.'),
+    piece('mothwing_skirts', 'Mothwing skirts', 'legs', 7, 2, 115, 'Mk',
+      'They fold flat and silent, the way wings do at rest.'),
+    piece('mothwing_slippers', 'Mothwing slippers', 'boots', 6, 1, 100, 'Mp',
+      'Powder-soft steps. The candle never sees you coming.'),
+  ];
+}
+
+function dawnswornSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'magic', w: 2 },
+    { stat: 'regen', w: 2 },
+    { stat: 'vitality' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#d9c9a0';
+  const craft = (levelReq: number, xp: number, ticks: number, cloth: number) => ({
+    skill: 'crafting' as const,
+    levelReq,
+    xp,
+    station: 'workbench' as const,
+    ticks,
+    inputs: [{ item: 'cloth', qty: cloth }, { item: 'sunflower', qty: 2 }],
+  });
+  return [
+    {
+      id: 'dawnsworn_hood', name: 'Dawnsworn hood', slot: 'head', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 10 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(12, 85, 55, 2),
+      value: 170, color, code: 'Ah',
+      desc: 'A sunstone at the brow. It warms a minute before sunrise.',
+    },
+    {
+      id: 'dawnsworn_robe', name: 'Dawnsworn robe', slot: 'body', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 12 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(16, 140, 70, 3),
+      value: 240, color, code: 'Ar',
+      desc: 'Ivory cloth behind a blazing sun. First light, sworn in.',
+    },
+    {
+      id: 'dawnsworn_skirts', name: 'Dawnsworn skirts', slot: 'legs', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 11 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(14, 110, 60, 2),
+      value: 205, color, code: 'Ak',
+      desc: 'Gold-hemmed and early to rise. The dew steps aside.',
+    },
+    {
+      id: 'dawnsworn_slippers', name: 'Dawnsworn slippers', slot: 'boots', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 10 }, armor: 1, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(13, 95, 55, 2),
+      value: 180, color, code: 'Ap',
+      desc: 'They face east on their own. Let them lead once in a while.',
+    },
+  ];
+}
+
+function fenwalkerSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'magic', w: 2 },
+    { stat: 'herbalism', w: 2 },
+    { stat: 'fishing' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#4a6b5c';
+  const piece = (
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    level: number, armor: number, value: number, code: string, desc: string,
+  ): EquipmentDef => ({
+    id, name, slot, armorClass: 'cloth',
+    levelReq: { skill: 'magic', level }, armor, affixPool: pool,
+    acquisition: { drop: true }, value, color, code, desc,
+  });
+  return [
+    piece('fenwalker_hood', 'Fenwalker hood', 'head', 14, 2, 280, 'Fh',
+      'A reed feather at the temple. The bog counts you as local.'),
+    piece('fenwalker_robe', 'Fenwalker robe', 'body', 16, 4, 390, 'Fr',
+      'Wisp-light runes ride the hem. They know where the ground lies.'),
+    piece('fenwalker_skirts', 'Fenwalker skirts', 'legs', 15, 3, 330, 'Fk',
+      'Hemmed high over the waterline, weighted low against the wind.'),
+    piece('fenwalker_slippers', 'Fenwalker slippers', 'boots', 14, 2, 300, 'Fp',
+      'Reed-lashed soles. The mud signs for someone else entirely.'),
+  ];
+}
+
+function stormwovenSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'magic', w: 3 },
+    { stat: 'vitality' },
+    { stat: 'regen' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#4e5a78';
+  const craft = (levelReq: number, xp: number, ticks: number, cloth: number) => ({
+    skill: 'crafting' as const,
+    levelReq,
+    xp,
+    station: 'workbench' as const,
+    ticks,
+    inputs: [{ item: 'cloth', qty: cloth }, { item: 'iron_bar', qty: 1 }],
+  });
+  return [
+    {
+      id: 'stormwoven_hood', name: 'Stormwoven hood', slot: 'head', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 17 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(20, 170, 70, 2),
+      value: 360, color, code: 'Zh',
+      desc: 'A storm-eye glints at the brow. Weather answers to it, some days.',
+    },
+    {
+      id: 'stormwoven_robe', name: 'Stormwoven robe', slot: 'body', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 19 }, armor: 4, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(24, 260, 90, 4),
+      value: 500, color, code: 'Zr',
+      desc: 'A fat gold bolt on rolling slate. Thunder, tailored.',
+    },
+    {
+      id: 'stormwoven_skirts', name: 'Stormwoven skirts', slot: 'legs', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 18 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(22, 210, 80, 3),
+      value: 430, color, code: 'Zk',
+      desc: 'Rain-grey wool with a charge in it. Hems mutter like far fronts.',
+    },
+    {
+      id: 'stormwoven_slippers', name: 'Stormwoven slippers', slot: 'boots', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 17 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(21, 180, 70, 2),
+      value: 380, color, code: 'Zp',
+      desc: 'Static in the soles. Doorknobs have learned to flinch.',
     },
   ];
 }

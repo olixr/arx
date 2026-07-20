@@ -3071,7 +3071,53 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   mending_salve: { icon: 'jar', color: '#c9a8e8' },
   flower_crown: { icon: 'flowercrown', color: '#e8c04c' },
   watering_can: { icon: 'wateringcan', color: '#7a8fa5' },
+  // Early-game cloth sets — colorway variants are registered by the
+  // loop below, pulling each dye lot's palette off its item def.
+  thistledown_hood: { icon: 'hood', color: '#c9bfa3' },
+  thistledown_robe: { icon: 'robe', color: '#c9bfa3' },
+  thistledown_skirts: { icon: 'legs', color: '#c9bfa3' },
+  thistledown_slippers: { icon: 'boots', color: '#a89a80' },
+  mothwing_cowl: { icon: 'hood', color: '#8a8a72' },
+  mothwing_robe: { icon: 'robe', color: '#8a8a72' },
+  mothwing_skirts: { icon: 'legs', color: '#8a8a72' },
+  mothwing_slippers: { icon: 'boots', color: '#6e6e5a' },
+  dawnsworn_hood: { icon: 'hood', color: '#d9c9a0' },
+  dawnsworn_robe: { icon: 'robe', color: '#d9c9a0' },
+  dawnsworn_skirts: { icon: 'legs', color: '#d9c9a0' },
+  dawnsworn_slippers: { icon: 'boots', color: '#b8a87e' },
+  fenwalker_hood: { icon: 'hood', color: '#4a6b5c' },
+  fenwalker_robe: { icon: 'robe', color: '#4a6b5c' },
+  fenwalker_skirts: { icon: 'legs', color: '#4a6b5c' },
+  fenwalker_slippers: { icon: 'boots', color: '#3a564a' },
+  stormwoven_hood: { icon: 'hood', color: '#4e5a78' },
+  stormwoven_robe: { icon: 'robe', color: '#4e5a78' },
+  stormwoven_skirts: { icon: 'legs', color: '#4e5a78' },
+  stormwoven_slippers: { icon: 'boots', color: '#4e5a78' },
 };
+
+// Colorway variants inherit their base piece's painter; the tint comes
+// off the item def, so a new dye lot is zero icon work by construction.
+{
+  const CLOTH_COLORWAYS: Record<string, string[]> = {
+    thistledown: ['madder', 'woad', 'bracken'],
+    mothwing: ['luna', 'dusk', 'ember'],
+    dawnsworn: ['duskvow', 'highnoon', 'eclipse'],
+    fenwalker: ['mirebloom', 'rustsedge', 'graymist'],
+    stormwoven: ['thunderhead', 'sunshower', 'aurora'],
+  };
+  const PIECES: Record<string, string[]> = {
+    mothwing: ['cowl', 'robe', 'skirts', 'slippers'],
+  };
+  for (const [set, dyes] of Object.entries(CLOTH_COLORWAYS)) {
+    for (const piece of PIECES[set] ?? ['hood', 'robe', 'skirts', 'slippers']) {
+      const base = ITEM_ICON[`${set}_${piece}`]!;
+      for (const dye of dyes) {
+        const id = `${set}_${piece}_${dye}`;
+        ITEM_ICON[id] = { icon: base.icon, color: itemDef(id)?.color ?? base.color };
+      }
+    }
+  }
+}
 
 /**
  * Which painter + tint each BUILDABLE renders in the build panel.

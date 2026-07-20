@@ -36,7 +36,9 @@ export interface BodyStyle {
   chest: 'none' | 'straps' | 'plate' | 'emblem' | 'stitch' | 'scales';
   /** Hanging leather fringe strips off the chest yoke — the buckskin read. */
   fringe?: boolean;
-  emblem?: 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf' | 'star' | 'moon' | 'eye';
+  /** Big mismatched cloth patches with stitch ticks — the homespun read. */
+  patches?: string;
+  emblem?: 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf' | 'star' | 'moon' | 'eye' | 'moth';
   /** Glowing rune dashes riding the hem trim — the enchanted-cloth read. */
   runes?: string;
   /** A waist sash: band, hip knot, two swinging tails. */
@@ -90,6 +92,8 @@ export interface HelmStyle {
   feather?: { color: string };
   /** Hoods: a half-mask across the lower face — the rogue read. */
   mask?: string;
+  /** Hoods: two bold curled moth feelers off the crown, clubbed tips. */
+  antennae?: { color: string };
   /** Hoods: branched ivory antlers — the forest-king crown. */
   antlers?: { color: string };
   /** Hoods/domes: a cut gem set at the brow band. */
@@ -258,6 +262,35 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     sleeves: 'full', mantle: '#232850', underskirt: '#1e2244',
     motes: '#aebeff',
   },
+  // The early-game cloth sets: five color stories for the leveling
+  // road. Each ships in four dye lots via registerColorways below.
+  thistledown_robe: {
+    color: '#c9bfa3', trim: '#8a7a5c', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'stitch', skirt: 0.3,
+    patches: '#8a9a6a', sash: '#8a7a5c', underskirt: '#b0a688',
+  },
+  mothwing_robe: {
+    color: '#8a8a72', trim: '#d8d4b8', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'moth',
+    skirt: 0.32, sleeves: 'full', underskirt: '#6e6e5a', motes: '#d8d4b8',
+  },
+  dawnsworn_robe: {
+    color: '#d9c9a0', trim: '#c9922f', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'sun',
+    skirt: 0.32, sash: '#b0703c', sleeves: 'full', underskirt: '#b8a87e',
+  },
+  fenwalker_robe: {
+    color: '#4a6b5c', trim: '#a8c8a0', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'leaf',
+    skirt: 0.34, runes: '#9ae8c8', sleeves: 'full', underskirt: '#3a564a',
+    motes: '#9ae8c8',
+  },
+  stormwoven_robe: {
+    color: '#4e5a78', trim: '#e8d878', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'bolt',
+    skirt: 0.34, runes: '#a8c4e8', sleeves: 'full', mantle: '#3e4860',
+    underskirt: '#3c4660',
+  },
 };
 
 export const HELM_STYLES: Record<string, HelmStyle> = {
@@ -331,6 +364,23 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     color: '#c8cee8', trim: '#9db6ff', kind: 'circlet',
     halo: { color: '#c8cee8' },
   },
+  thistledown_hood: { color: '#c9bfa3', trim: '#8a7a5c', kind: 'hood' },
+  mothwing_cowl: {
+    color: '#8a8a72', trim: '#d8d4b8', kind: 'hood',
+    antennae: { color: '#d8d4b8' },
+  },
+  dawnsworn_hood: {
+    color: '#d9c9a0', trim: '#c9922f', kind: 'hood',
+    gem: { color: '#f2c94c' },
+  },
+  fenwalker_hood: {
+    color: '#4a6b5c', trim: '#a8c8a0', kind: 'hood',
+    feather: { color: '#7a9a5c' },
+  },
+  stormwoven_hood: {
+    color: '#4e5a78', trim: '#c9d4e8', kind: 'hood',
+    gem: { color: '#e8d878' },
+  },
 };
 
 export const LEG_STYLES: Record<string, LegStyle> = {
@@ -348,6 +398,11 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   nightveil_leggings: { kind: 'wraps', thigh: '#3a3648', shin: '#302c3c', knee: 'wrap', kneeColor: '#6a5a8c' },
   drakescale_chaps: { kind: 'greaves', thigh: '#6e2f28', shin: '#8c3a32', knee: 'plate', kneeColor: '#d49a4a' },
   stagheart_chaps: { kind: 'wraps', thigh: '#6b5138', shin: '#5a4430', knee: 'wrap', kneeColor: '#3e5a30' },
+  thistledown_skirts: { kind: 'pants', thigh: '#a89a80' },
+  mothwing_skirts: { kind: 'pants', thigh: '#6e6e5a' },
+  dawnsworn_skirts: { kind: 'pants', thigh: '#b8a87e' },
+  fenwalker_skirts: { kind: 'pants', thigh: '#3a564a' },
+  stormwoven_skirts: { kind: 'pants', thigh: '#3c4660' },
   hedgewitch_skirts: { kind: 'pants', thigh: '#4e5c33' },
   tidecaller_skirts: { kind: 'pants', thigh: '#245562' },
   voidwhisper_skirts: { kind: 'pants', thigh: '#332b47' },
@@ -371,6 +426,11 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   nightveil_boots: { color: '#302c3c', height: 0.11, cuff: { color: '#6a5a8c' } },
   drakescale_boots: { color: '#8c3a32', height: 0.13, toe: '#d49a4a', cuff: { color: '#c9713c' } },
   stagheart_boots: { color: '#5a4430', height: 0.14, wrap: { color: '#3e5a30' }, cuff: { color: '#d4a43c' } },
+  thistledown_slippers: { color: '#a89a80', height: 0.07 },
+  mothwing_slippers: { color: '#6e6e5a', height: 0.08, cuff: { color: '#d8d4b8' } },
+  dawnsworn_slippers: { color: '#b8a87e', height: 0.08, cuff: { color: '#c9922f' } },
+  fenwalker_slippers: { color: '#3a564a', height: 0.1, wrap: { color: '#a8c8a0' } },
+  stormwoven_slippers: { color: '#3c4660', height: 0.09, cuff: { color: '#e8d878' } },
   hedgewitch_slippers: { color: '#8a7a3c', height: 0.07, curl: true },
   tidecaller_slippers: { color: '#1f4a55', height: 0.08, cuff: { color: '#bfe8e0' } },
   voidwhisper_slippers: { color: '#2e2740', height: 0.08, cuff: { color: '#b8a8d8' } },
@@ -388,6 +448,136 @@ export const OFFHAND_STYLES: Record<string, OffhandStyle> = {
   hunters_quiver: { kind: 'quiver', color: '#8a6a45', trim: '#3f6b3a' },
   scholars_tome: { kind: 'tome', color: '#4a5a9c', trim: '#c8cee8' },
 };
+
+// ---------------------------------------------------------- colorways
+
+/**
+ * The colorway law as a record generator: a dye lot reuses its base
+ * piece's whole silhouette record and overrides only palette fields.
+ * Every override below is intentional art — trims and accents are
+ * re-picked per dye, never hue-rotated.
+ */
+function registerColorways<T>(
+  table: Record<string, T>,
+  baseId: string,
+  dyes: Record<string, Partial<T>>,
+): void {
+  for (const [key, over] of Object.entries(dyes)) {
+    table[`${baseId}_${key}`] = { ...table[baseId]!, ...over };
+  }
+}
+
+// Thistledown dye lots: patch, rope and hem tones follow the cloth.
+registerColorways(BODY_STYLES, 'thistledown_robe', {
+  madder: { color: '#a8524a', trim: '#d9b08a', patches: '#c98a6a', sash: '#6b4038', underskirt: '#8a4038' },
+  woad: { color: '#54688e', trim: '#c9c4b0', patches: '#7a8aa8', sash: '#3e4c68', underskirt: '#42527a' },
+  bracken: { color: '#8a6f4a', trim: '#c9b088', patches: '#a89060', sash: '#5c4a30', underskirt: '#6e5738' },
+});
+registerColorways(HELM_STYLES, 'thistledown_hood', {
+  madder: { color: '#a8524a', trim: '#d9b08a' },
+  woad: { color: '#54688e', trim: '#c9c4b0' },
+  bracken: { color: '#8a6f4a', trim: '#c9b088' },
+});
+registerColorways(LEG_STYLES, 'thistledown_skirts', {
+  madder: { thigh: '#8a4038' },
+  woad: { thigh: '#42527a' },
+  bracken: { thigh: '#6e5738' },
+});
+registerColorways(BOOT_STYLES, 'thistledown_slippers', {
+  madder: { color: '#8a4038' },
+  woad: { color: '#42527a' },
+  bracken: { color: '#6e5738' },
+});
+
+// Mothwing dye lots: wing dust and antennae follow the moth.
+registerColorways(BODY_STYLES, 'mothwing_robe', {
+  luna: { color: '#9ab88e', trim: '#e2eecc', underskirt: '#7a9670', motes: '#d8eec0' },
+  dusk: { color: '#7a6280', trim: '#d0c0dc', underskirt: '#615068', motes: '#c8b4d8' },
+  ember: { color: '#a8705c', trim: '#e8c8a0', underskirt: '#8a5a48', motes: '#e8b088' },
+});
+registerColorways(HELM_STYLES, 'mothwing_cowl', {
+  luna: { color: '#9ab88e', trim: '#e2eecc', antennae: { color: '#e2eecc' } },
+  dusk: { color: '#7a6280', trim: '#d0c0dc', antennae: { color: '#d0c0dc' } },
+  ember: { color: '#a8705c', trim: '#e8c8a0', antennae: { color: '#e8c8a0' } },
+});
+registerColorways(LEG_STYLES, 'mothwing_skirts', {
+  luna: { thigh: '#7a9670' },
+  dusk: { thigh: '#615068' },
+  ember: { thigh: '#8a5a48' },
+});
+registerColorways(BOOT_STYLES, 'mothwing_slippers', {
+  luna: { color: '#7a9670', cuff: { color: '#e2eecc' } },
+  dusk: { color: '#615068', cuff: { color: '#d0c0dc' } },
+  ember: { color: '#8a5a48', cuff: { color: '#e8c8a0' } },
+});
+
+// Dawnsworn dye lots: the sun device keeps its gold except at noon,
+// when it burns red on bleached white; eclipse rings gold on charcoal.
+registerColorways(BODY_STYLES, 'dawnsworn_robe', {
+  duskvow: { color: '#9a6a86', trim: '#e0b0c0', sash: '#6e4860', underskirt: '#7e5670' },
+  highnoon: { color: '#eae4d2', trim: '#c04a3a', sash: '#b0703c', underskirt: '#c8c2b0' },
+  eclipse: { color: '#4a4550', trim: '#d4a43c', sash: '#38343e', underskirt: '#3a3642' },
+});
+registerColorways(HELM_STYLES, 'dawnsworn_hood', {
+  duskvow: { color: '#9a6a86', trim: '#e0b0c0', gem: { color: '#d97a9a' } },
+  highnoon: { color: '#eae4d2', trim: '#c04a3a', gem: { color: '#e05438' } },
+  eclipse: { color: '#4a4550', trim: '#d4a43c', gem: { color: '#e8c04c' } },
+});
+registerColorways(LEG_STYLES, 'dawnsworn_skirts', {
+  duskvow: { thigh: '#7e5670' },
+  highnoon: { thigh: '#c8c2b0' },
+  eclipse: { thigh: '#3a3642' },
+});
+registerColorways(BOOT_STYLES, 'dawnsworn_slippers', {
+  duskvow: { color: '#7e5670', cuff: { color: '#e0b0c0' } },
+  highnoon: { color: '#c8c2b0', cuff: { color: '#c04a3a' } },
+  eclipse: { color: '#3a3642', cuff: { color: '#d4a43c' } },
+});
+
+// Fenwalker dye lots: wisp runes and reed feather follow the water.
+registerColorways(BODY_STYLES, 'fenwalker_robe', {
+  mirebloom: { color: '#7a5a78', trim: '#d0b0d8', runes: '#e0b0e8', underskirt: '#614760', motes: '#d8b0e0' },
+  rustsedge: { color: '#96603c', trim: '#d9a86a', runes: '#e8c088', underskirt: '#784c30', motes: '#e8c088' },
+  graymist: { color: '#7d8580', trim: '#c8d0cc', runes: '#d0e0dc', underskirt: '#646a66', motes: '#c8d8d4' },
+});
+registerColorways(HELM_STYLES, 'fenwalker_hood', {
+  mirebloom: { color: '#7a5a78', trim: '#d0b0d8', feather: { color: '#a878a0' } },
+  rustsedge: { color: '#96603c', trim: '#d9a86a', feather: { color: '#b8823c' } },
+  graymist: { color: '#7d8580', trim: '#c8d0cc', feather: { color: '#98a49c' } },
+});
+registerColorways(LEG_STYLES, 'fenwalker_skirts', {
+  mirebloom: { thigh: '#614760' },
+  rustsedge: { thigh: '#784c30' },
+  graymist: { thigh: '#646a66' },
+});
+registerColorways(BOOT_STYLES, 'fenwalker_slippers', {
+  mirebloom: { color: '#614760', wrap: { color: '#d0b0d8' } },
+  rustsedge: { color: '#784c30', wrap: { color: '#d9a86a' } },
+  graymist: { color: '#646a66', wrap: { color: '#c8d0cc' } },
+});
+
+// Stormwoven dye lots: the bolt stays gold under every weather but
+// aurora, where the sky itself changes color.
+registerColorways(BODY_STYLES, 'stormwoven_robe', {
+  thunderhead: { color: '#3a3f4e', trim: '#e8c04c', runes: '#8898b8', mantle: '#2e323e', underskirt: '#2e323e' },
+  sunshower: { color: '#c9a85c', trim: '#f4ecd0', runes: '#fff0b0', mantle: '#a8894a', underskirt: '#a8894a' },
+  aurora: { color: '#3e7a6a', trim: '#b8e8d0', runes: '#c8a8e8', mantle: '#326256', underskirt: '#326256' },
+});
+registerColorways(HELM_STYLES, 'stormwoven_hood', {
+  thunderhead: { color: '#3a3f4e', trim: '#e8c04c', gem: { color: '#e8c04c' } },
+  sunshower: { color: '#c9a85c', trim: '#f4ecd0', gem: { color: '#fff0b0' } },
+  aurora: { color: '#3e7a6a', trim: '#b8e8d0', gem: { color: '#c8a8e8' } },
+});
+registerColorways(LEG_STYLES, 'stormwoven_skirts', {
+  thunderhead: { thigh: '#2e323e' },
+  sunshower: { thigh: '#a8894a' },
+  aurora: { thigh: '#326256' },
+});
+registerColorways(BOOT_STYLES, 'stormwoven_slippers', {
+  thunderhead: { color: '#2e323e', cuff: { color: '#e8c04c' } },
+  sunshower: { color: '#a8894a', cuff: { color: '#f4ecd0' } },
+  aurora: { color: '#326256', cuff: { color: '#b8e8d0' } },
+});
 
 // ---------------------------------------------------------- resolvers
 
@@ -640,6 +830,34 @@ export function drawTorsoGarment(
     ctx.lineTo(-tww * 0.9, -th + 0.07 * s);
     ctx.closePath();
     ctx.fill();
+
+    // ---- patches: big honest squares of mismatched cloth crossed by
+    // stitch ticks — the homespun read. Every patch was a lesson.
+    if (st.patches) {
+      const pCol = st.patches;
+      const patch = (px: number, py: number, pr: number, rot: number) => {
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(rot);
+        ctx.fillStyle = pCol;
+        ctx.fillRect(-pr, -pr, pr * 2, pr * 2);
+        // Stitches straddle the patch edge, top and bottom.
+        ctx.strokeStyle = shade(pCol, -26);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        for (let i = -1; i <= 1; i++) {
+          ctx.moveTo(i * pr * 0.55, -pr * 1.28);
+          ctx.lineTo(i * pr * 0.55, -pr * 0.75);
+          ctx.moveTo(i * pr * 0.55, pr * 0.75);
+          ctx.lineTo(i * pr * 0.55, pr * 1.28);
+        }
+        ctx.stroke();
+        ctx.restore();
+      };
+      patch(-tww * 0.48, -th * 0.46, tw * 0.29, -0.1);
+      // A second patch rides the skirt, drifting with the hem drag.
+      if (st.skirt > 0.2) patch(ww * 0.42 + f.dragX * 0.55 * s, 0.17 * s, tw * 0.33, 0.14);
+    }
 
     // ---- waist: cloth belt, or the cuirass' ARTICULATED fauld — two
     // overlapping plates stepping down, a real joint instead of a band.
@@ -911,36 +1129,38 @@ export function drawTorsoGarment(
           }
           ctx.fillRect(-rs * 0.055, ey + rs * 0.12, rs * 0.11, rs * 0.18);
         } else if (st.emblem === 'sun') {
-          // The radiant device: a core diamond ringed by eight rays.
+          // The radiant device: a core diamond ringed by eight rays —
+          // drawn large; a timid sun is a freckle.
           ctx.beginPath();
-          ctx.moveTo(0, ey - r * 0.4);
-          ctx.lineTo(r * 0.34, ey);
-          ctx.lineTo(0, ey + r * 0.4);
-          ctx.lineTo(-r * 0.34, ey);
+          ctx.moveTo(0, ey - r * 0.6);
+          ctx.lineTo(r * 0.5, ey);
+          ctx.lineTo(0, ey + r * 0.6);
+          ctx.lineTo(-r * 0.5, ey);
           ctx.closePath();
           ctx.fill();
           ctx.strokeStyle = st.trim;
-          ctx.lineWidth = Math.max(1, s * 0.016);
+          ctx.lineWidth = Math.max(1.5, s * 0.02);
           ctx.beginPath();
           for (let i = 0; i < 8; i++) {
             const a = (i / 8) * Math.PI * 2;
-            ctx.moveTo(Math.cos(a) * r * 0.52, ey + Math.sin(a) * r * 0.52);
-            ctx.lineTo(Math.cos(a) * r * 0.82, ey + Math.sin(a) * r * 0.82);
+            ctx.moveTo(Math.cos(a) * r * 0.72, ey + Math.sin(a) * r * 0.72);
+            ctx.lineTo(Math.cos(a) * r * 1.12, ey + Math.sin(a) * r * 1.12);
           }
           ctx.stroke();
         } else if (st.emblem === 'leaf') {
-          // The warden device: a single leaf with its center vein.
+          // The warden device: a single leaf with its center vein —
+          // drawn large; a timid leaf reads as lint.
           ctx.beginPath();
-          ctx.moveTo(0, ey - r * 0.55);
-          ctx.quadraticCurveTo(r * 0.52, ey - r * 0.1, 0, ey + r * 0.55);
-          ctx.quadraticCurveTo(-r * 0.52, ey - r * 0.1, 0, ey - r * 0.55);
+          ctx.moveTo(0, ey - r * 0.8);
+          ctx.quadraticCurveTo(r * 0.72, ey - r * 0.14, 0, ey + r * 0.8);
+          ctx.quadraticCurveTo(-r * 0.72, ey - r * 0.14, 0, ey - r * 0.8);
           ctx.closePath();
           ctx.fill();
           ctx.strokeStyle = shade(st.trim, -24);
-          ctx.lineWidth = Math.max(1, s * 0.012);
+          ctx.lineWidth = Math.max(1, s * 0.014);
           ctx.beginPath();
-          ctx.moveTo(0, ey - r * 0.42);
-          ctx.lineTo(0, ey + r * 0.42);
+          ctx.moveTo(0, ey - r * 0.6);
+          ctx.lineTo(0, ey + r * 0.6);
           ctx.stroke();
         } else if (st.emblem === 'star') {
           // The celestial device: a four-point star with two pinprick
@@ -980,6 +1200,50 @@ export function drawTorsoGarment(
           ctx.fill();
           ctx.fillStyle = shade(st.trim, 34);
           ctx.fillRect(r * 0.05, ey - r * 0.2, 0.018 * s, 0.018 * s);
+        } else if (st.emblem === 'moth') {
+          // The moth device: four broad wing lobes about a slender body,
+          // eye-spots in shadow — drawn WIDE; a timid moth is a smudge.
+          const rw = r * 1.35;
+          for (const sx of [-1, 1]) {
+            // Upper lobe: big, swept up and out.
+            ctx.beginPath();
+            ctx.moveTo(sx * r * 0.06, ey - r * 0.14);
+            ctx.quadraticCurveTo(sx * rw * 0.55, ey - r * 1.3, sx * rw, ey - r * 0.5);
+            ctx.quadraticCurveTo(sx * rw * 0.6, ey + r * 0.04, sx * r * 0.06, ey + r * 0.08);
+            ctx.closePath();
+            ctx.fill();
+            // Lower lobe: smaller, hanging.
+            ctx.beginPath();
+            ctx.moveTo(sx * r * 0.08, ey + r * 0.1);
+            ctx.quadraticCurveTo(sx * rw * 0.62, ey + r * 0.3, sx * rw * 0.5, ey + r * 0.85);
+            ctx.quadraticCurveTo(sx * r * 0.2, ey + r * 0.8, sx * r * 0.06, ey + r * 0.26);
+            ctx.closePath();
+            ctx.fill();
+          }
+          // Eye-spots on the upper wings.
+          ctx.fillStyle = shade(st.color, -28);
+          for (const sx of [-1, 1]) {
+            ctx.beginPath();
+            ctx.arc(sx * rw * 0.58, ey - r * 0.55, r * 0.19, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          // The body: a slender taper, antennae curling off the head.
+          ctx.fillStyle = shade(st.trim, -22);
+          ctx.beginPath();
+          ctx.moveTo(0, ey - r * 0.6);
+          ctx.lineTo(r * 0.11, ey + r * 0.15);
+          ctx.lineTo(0, ey + r * 0.75);
+          ctx.lineTo(-r * 0.11, ey + r * 0.15);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = shade(st.trim, -22);
+          ctx.lineWidth = Math.max(1, s * 0.016);
+          ctx.beginPath();
+          ctx.moveTo(0, ey - r * 0.55);
+          ctx.quadraticCurveTo(r * 0.22, ey - r * 0.95, r * 0.4, ey - r * 1.15);
+          ctx.moveTo(0, ey - r * 0.55);
+          ctx.quadraticCurveTo(-r * 0.22, ey - r * 0.95, -r * 0.4, ey - r * 1.15);
+          ctx.stroke();
         } else {
         ctx.beginPath();
         if (st.emblem === 'chevron') {
@@ -1566,6 +1830,32 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
           ctx.fill();
         }
       }
+    }
+    if (st.antennae && !hurt) {
+      // Moth antennae: two bold curled feelers off the crown with
+      // clubbed tips, swaying on their own clock — thin reads as wire,
+      // so these are stroked fat and round-capped.
+      ctx.strokeStyle = st.antennae.color;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(1.5, s * 0.026);
+      const sway = Math.sin(f.nowMs * 0.0031) * hw * 0.05;
+      for (const es of [-1, 1]) {
+        const far = es !== lead;
+        const wK = far ? Math.max(0.35, 1 - profileK * 0.6) : 1;
+        const bx = headX + es * hw * 0.34;
+        const by = headY - hh * 1.0;
+        const txx = bx + es * hw * 0.72 * wK + sway * es;
+        const tyy = by - hh * 0.98;
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.quadraticCurveTo(bx + es * hw * 0.05 * wK, by - hh * 0.75, txx, tyy);
+        ctx.stroke();
+        ctx.fillStyle = st.antennae.color;
+        ctx.beginPath();
+        ctx.arc(txx, tyy, hw * 0.11 * (far ? wK : 1), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.lineCap = 'butt';
     }
     if (st.ruff && !hurt) {
       // A lumpy fur ruff riding the hood's brow edge and falling down
