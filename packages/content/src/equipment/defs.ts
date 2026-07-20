@@ -3609,6 +3609,9 @@ function staffDefs(): EquipmentDef[] {
   // ---- battlestaffs: ONE willow war-frame, four element gems. The gem
   // is the recipe's swap stone — mined or foraged, socketed at the
   // crown, and the whole school follows it: bolts, Art, and glow.
+  // RE-SOCKETING (see GEM_BATTLESTAFFS): using a gem on an EQUIPPED
+  // battlestaff transmutes it in place — same frame, same roll, new
+  // school. The old stone is pried out and lost; the new one is spent.
   const battlestaffs: EquipmentDef[] = (
     [
       { el: 'ember', gem: 'emberstone', name: 'Ember battlestaff', color: '#e8683c',
@@ -3869,3 +3872,17 @@ function staffDefs(): EquipmentDef[] {
 
 /** Compiled once at module load — throws loudly on any malformed def. */
 export const COMPILED_EQUIPMENT = compileEquipment(EQUIPMENT_DEFS);
+
+/**
+ * Gem → battlestaff element map, the re-socketing law. Using one of
+ * these gems while a battlestaff is EQUIPPED swaps the staff's stone in
+ * place: the item id transmutes (same willow frame, same ROLL — rarity,
+ * seed, and power ride through untouched) and the whole school follows.
+ * The consumed gem is spent; the pried-out stone does not come back.
+ */
+export const GEM_BATTLESTAFFS: Record<string, string> = {
+  emberstone: 'ember_battlestaff',
+  frostshard: 'frost_battlestaff',
+  stormpearl: 'storm_battlestaff',
+  bloomstone: 'verdant_battlestaff',
+};

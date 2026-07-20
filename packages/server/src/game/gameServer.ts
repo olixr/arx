@@ -57,6 +57,7 @@ import {
   itemDef,
   makeRoll,
   npcHitHeight,
+  GEM_BATTLESTAFFS,
   pickRarity,
   rollLoot,
   rolledStats,
@@ -1797,6 +1798,43 @@ export class GameServer {
         t: 'chat',
         channel: 'system',
         text: `You work the ${c.name} into the ${itemDef(worn.id)?.name ?? 'weapon'}.`,
+      });
+      return;
+    }
+
+    // Gem re-socketing: an element gem used on an EQUIPPED battlestaff
+    // pries out the old stone and seats the new one — the item id
+    // transmutes in place, the ROLL (rarity/seed/power) rides through
+    // untouched, and the whole school follows the gem. Any other target
+    // refuses and keeps the gem.
+    const socketStaff = GEM_BATTLESTAFFS[def.id];
+    if (socketStaff) {
+      const worn = player.equipment.weapon;
+      const isBattlestaff = worn && Object.values(GEM_BATTLESTAFFS).includes(worn.id);
+      if (!worn || !isBattlestaff) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: 'That stone wants a battlestaff socket — equip one first.',
+        });
+        return;
+      }
+      if (worn.id === socketStaff) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `The ${itemDef(worn.id)?.name ?? 'staff'} already holds that stone.`,
+        });
+        return;
+      }
+      removeItem(player.inventory, slot.item, 1);
+      worn.id = socketStaff;
+      this.onEquipmentChanged(eid, player);
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `You pry the old stone loose and seat the ${def.name}. The ${itemDef(socketStaff)?.name ?? 'staff'} hums anew.`,
       });
       return;
     }
