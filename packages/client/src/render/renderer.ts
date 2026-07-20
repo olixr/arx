@@ -22,7 +22,7 @@ import {
   type Look,
   type Vec2,
 } from '@devcraft/shared';
-import { bandDy, instanceName, itemDef, npcDef, npcHitHeight } from '@devcraft/content';
+import { bandDy, enchantDef, instanceName, itemDef, npcDef, npcHitHeight } from '@devcraft/content';
 import type { ClientGame } from '../game/clientGame.js';
 import {
   ANVIL_CYCLE_MS,
@@ -6778,6 +6778,107 @@ export class Renderer {
         };
       }
 
+      case Tile.EnchantingTable: {
+        return {
+          sortY: ty + 1,
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - s * 0.42, p.y + s * 0.3, p.x + s * 0.42, p.y + s * 0.3, 0.7);
+          },
+          draw: () => {
+            const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
+            const baseY = p.y + s * 0.3;
+            const slabY = baseY - s * 0.44;
+            // Magelight pools under the table — dim at rest, surging
+            // while an inscription is worked. Never fully dark: bound
+            // magic doesn't sleep, it waits.
+            const pulse = 0.5 + 0.5 * Math.sin(t * 1.7 + h);
+            const might = 0.16 + 0.1 * pulse + act * (0.3 + 0.2 * Math.sin(t * 4.2));
+            ctx.fillStyle = `rgba(146, 122, 220, ${might * 0.5})`;
+            ctx.beginPath();
+            facetCircle(ctx, p.x, baseY + s * 0.06, s * 0.46, 8, 0.4, 0.4);
+            ctx.fill();
+            this.queueGlow(tx + 0.5, ty + 0.5, 0.9 + act * 0.4, '146, 122, 220', might * 0.5);
+            // Stout dark legs and the rune-carved slab.
+            ctx.fillStyle = '#372f47';
+            ctx.fillRect(p.x - s * 0.34, slabY, s * 0.1, s * 0.44);
+            ctx.fillRect(p.x + s * 0.24, slabY, s * 0.1, s * 0.44);
+            ctx.fillStyle = '#4a3f5e';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - s * 0.44, slabY - s * 0.15, s * 0.88, s * 0.2, s * 0.045);
+            ctx.fill();
+            ctx.fillStyle = '#5c5178';
+            ctx.fillRect(p.x - s * 0.4, slabY - s * 0.13, s * 0.8, s * 0.055);
+            // Carved runes along the apron — they light in sequence
+            // while the table works, a thought walking the wood.
+            for (let i = 0; i < 5; i++) {
+              const lit = act > 0.05 ? Math.max(0, Math.sin(t * 3.1 - i * 0.9)) * act : 0;
+              ctx.fillStyle = `rgba(186, 162, 255, ${0.25 + 0.6 * lit})`;
+              ctx.fillRect(p.x - s * 0.3 + i * s * 0.14, slabY + s * 0.075, s * 0.05, s * 0.05);
+            }
+            // The open tome: two pale page-blocks over a dark cover,
+            // ribbon marker, and — while working — a mid-turn page
+            // arcing between them.
+            ctx.fillStyle = '#2e2740';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - s * 0.3, slabY - s * 0.245, s * 0.4, s * 0.115, s * 0.02);
+            ctx.fill();
+            ctx.fillStyle = '#e8dfc8';
+            ctx.fillRect(p.x - s * 0.275, slabY - s * 0.23, s * 0.165, s * 0.075);
+            ctx.fillRect(p.x - s * 0.09, slabY - s * 0.23, s * 0.165, s * 0.075);
+            ctx.fillStyle = '#8a4a52';
+            ctx.fillRect(p.x - s * 0.11, slabY - s * 0.155, s * 0.04, s * 0.05);
+            // Faint script lines on the pages.
+            ctx.fillStyle = 'rgba(74, 63, 94, 0.55)';
+            for (let i = 0; i < 2; i++) {
+              ctx.fillRect(p.x - s * 0.255, slabY - s * (0.212 - i * 0.028), s * 0.12, s * 0.012);
+              ctx.fillRect(p.x - s * 0.07, slabY - s * (0.212 - i * 0.028), s * 0.12, s * 0.012);
+            }
+            if (act > 0.05) {
+              const turn = (t * 0.9 + h * 0.17) % 1;
+              ctx.strokeStyle = `rgba(232, 223, 200, ${0.85 * act * Math.sin(turn * Math.PI)})`;
+              ctx.lineWidth = Math.max(1, s * 0.02);
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.09, slabY - s * 0.155);
+              ctx.quadraticCurveTo(
+                p.x - s * (0.09 + 0.14 * turn),
+                slabY - s * 0.3,
+                p.x - s * (0.09 + 0.17 * turn),
+                slabY - s * 0.16,
+              );
+              ctx.stroke();
+            }
+            // The focus crystal hangs above its cradle — a cut stone
+            // that bobs on nothing, spins slowly, and drinks the work.
+            const bob = Math.sin(t * 1.6 + h) * 0.035 + act * Math.sin(t * 5.2) * 0.02;
+            const cx = p.x + s * 0.27;
+            const cy = slabY - s * (0.34 + bob);
+            ctx.fillStyle = '#372f47';
+            ctx.fillRect(cx - s * 0.05, slabY - s * 0.185, s * 0.1, s * 0.04);
+            ctx.fillStyle = `rgba(186, 162, 255, ${0.75 + act * 0.25})`;
+            ctx.beginPath();
+            facetCircle(ctx, cx, cy, s * (0.075 + act * 0.012), 4, t * 0.8, 1.4);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255, 252, 240, 0.9)';
+            ctx.fillRect(cx - s * 0.014, cy - s * (0.05 + bob * 0.4), s * 0.028, s * 0.028);
+            // Rising rune motes while the enchanter works — glyphs
+            // shaken loose from the page, fading as they climb.
+            if (act > 0.05) {
+              for (let i = 0; i < 4; i++) {
+                const mt = (t * (0.5 + i * 0.13) + i * 0.29 + h * 0.41) % 1;
+                const mx = p.x - s * 0.2 + ((i * 47 + h) % 10) * s * 0.045;
+                ctx.fillStyle = `rgba(186, 162, 255, ${0.75 * (1 - mt) * act})`;
+                ctx.fillRect(
+                  mx + Math.sin(t * 2 + i * 2.1) * s * 0.03,
+                  slabY - s * (0.26 + mt * 0.5),
+                  s * 0.035,
+                  s * 0.035,
+                );
+              }
+            }
+          },
+        };
+      }
+
       case Tile.Furnace: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.3;
@@ -7554,6 +7655,8 @@ export class Renderer {
       };
       const hurt = (remote.hurtUntil ?? 0) > now;
       if (s.status) this.statusAmbience(s.x, s.y, s.status);
+      const remoteEnch = remote.meta.appearance?.ench;
+      if (remoteEnch) this.enchantAura(s.x, s.y, remoteEnch);
 
       switch (remote.meta.kind) {
         case EntityKind.Player:
@@ -7569,6 +7672,7 @@ export class Renderer {
               isOwn: false,
               hurt,
               equip: remote.meta.appearance?.equip ?? {},
+              ench: remote.meta.appearance?.ench,
               carry: remote.meta.appearance?.carry,
               look: remote.meta.appearance?.look,
               color: remote.meta.appearance?.look
@@ -7612,11 +7716,19 @@ export class Renderer {
     if (game.ownEid !== null) {
       const own = game.predictor.renderPos();
       if (game.ownStatus) this.statusAmbience(own.x, own.y, game.ownStatus);
-      // The rig only wants item IDS — strip the equip map's rolls.
+      // The rig only wants item IDS — strip the equip map's rolls,
+      // keeping just the enchant ids (they ARE appearance).
       const ownEquip: Partial<Record<string, string>> = {};
+      let ownEnch: Partial<Record<string, string>> | undefined;
       for (const [slot, worn] of Object.entries(game.equipment)) {
-        if (worn) ownEquip[slot] = worn.id;
+        if (!worn) continue;
+        ownEquip[slot] = worn.id;
+        if (worn.roll?.ench) {
+          ownEnch ??= {};
+          ownEnch[slot] = worn.roll.ench;
+        }
       }
+      if (ownEnch) this.enchantAura(own.x, own.y, ownEnch);
       const ownItem = this.humanoidItem({
         eid: 'own',
         x: own.x,
@@ -7628,6 +7740,7 @@ export class Renderer {
         isOwn: true,
         hurt: game.ownHurtUntil > now,
         equip: ownEquip,
+        ench: ownEnch,
         carry: game.carryStyle,
         look: game.ownLook ?? undefined,
         color: game.ownLook
@@ -7654,6 +7767,8 @@ export class Renderer {
     hpPct: number;
     hurt?: boolean;
     equip: Partial<Record<string, string>>;
+    /** Enchant ids by slot — drives blade fx and the tier-3 aura. */
+    ench?: Partial<Record<string, string>>;
     /** Cosmetic idle carry preference ('rogue' = reverse grip). */
     carry?: 'normal' | 'rogue';
     size?: number;
@@ -7923,6 +8038,12 @@ export class Renderer {
               : e.pose === PoseState.Gather
                 ? (e.equip.tool ?? e.equip.weapon)
                 : e.equip.weapon,
+          // Enchant fx ride the real weapons, never the gather tool.
+          weaponEnch:
+            e.pose === PoseState.Craft || e.pose === PoseState.Gather
+              ? undefined
+              : e.ench?.weapon,
+          offhandEnch: e.ench?.offhand,
           carryStyle: e.carry,
           bodyItem: e.equip.body,
           headItem: e.equip.head,
@@ -9401,6 +9522,52 @@ export class Renderer {
           gravity: -1.2,
         });
       }
+    }
+  }
+
+  /**
+   * The tier-3 enchant aura: an energy corona that marks a walking
+   * masterwork. The strongest worn enchant sets the school and the
+   * color; lower tiers stay quiet here (their fx live on the item
+   * itself). Same fps-stable rate-gating as statusAmbience, plus a
+   * breathing glow that becomes a real scene light after dark.
+   */
+  private enchantAura(x: number, y: number, ench: Partial<Record<string, string>>): void {
+    let best: { tier: number; element: string } | null = null;
+    for (const id of Object.values(ench)) {
+      const def = id ? enchantDef(id) : undefined;
+      if (def && (!best || def.tier > best.tier)) best = { tier: def.tier, element: def.element };
+    }
+    if (!best || best.tier < 3) return;
+    const tint = ELEMENT_TINTS[best.element] ?? ELEMENT_TINTS.arcane!;
+    const t = performance.now() / 1000;
+    const dt = this.frameDt;
+    // The corona breathes — never a steady lamp, always a living charge.
+    const breath = 0.5 + 0.5 * Math.sin(t * 2.1 + x * 3.7);
+    this.queueGlow(x, y - 0.45, 1.0 + breath * 0.25, tint.glow, 0.2 + breath * 0.1);
+    // Rising motes on a loose ring around the body — the supercharged read.
+    if (Math.random() < dt * 7) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 0.32 + Math.random() * 0.2;
+      this.particles.burst(x + Math.cos(a) * r, y - 0.15 + Math.sin(a) * r * 0.5, 1, [tint.core, tint.fleck], {
+        speed: 0.12,
+        life: 0.9,
+        size: 0.06,
+        gravity: -1.6,
+        drag: 1.2,
+      });
+    }
+    // The occasional tangential spark whipping around the corona.
+    if (Math.random() < dt * 2.5) {
+      const a = Math.random() * Math.PI * 2;
+      this.particles.burst(x + Math.cos(a) * 0.42, y - 0.3 + Math.sin(a) * 0.2, 1, [tint.fleck], {
+        speed: 1.6,
+        dir: a + Math.PI / 2,
+        spread: 0.3,
+        life: 0.25,
+        size: 0.05,
+        gravity: 0,
+      });
     }
   }
 

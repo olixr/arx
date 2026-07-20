@@ -6,7 +6,9 @@
 // v5: S2CFx grew per-ability identity (id/dir/segment endpoints) and six
 // new kinds (arc/dash/bolt/beam/buff/field) — v4 clients would drop the
 // new kinds silently and miss most combat feedback, so reject cleanly.
-export const PROTOCOL_VERSION = 5;
+// v6: AppearanceData grew per-slot enchant ids — v5 clients would show
+// enchanted blades bare and miss tier-3 auras entirely, so reject cleanly.
+export const PROTOCOL_VERSION = 6;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;

@@ -1,7 +1,16 @@
 import { CLOTH_COLORS, HAIR_COLORS, PoseState, SKIN_TONES, type Look } from '@devcraft/shared';
-import { itemDef } from '@devcraft/content';
+import { ELEMENT_COLORS, enchantDef, itemDef } from '@devcraft/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
-import { bladeStyle, bowStyle, drawBow, drawSword, drawStaff, staffStyle } from './weapons.js';
+import {
+  bladeStyle,
+  bowStyle,
+  drawBow,
+  drawSword,
+  drawStaff,
+  staffStyle,
+  type BladeFx,
+  type StaffFx,
+} from './weapons.js';
 import { LegRig, chooseLimbSign, solveLimb, type LegPose, type LegRigConfig } from './legs.js';
 import {
   bodyStyle,
@@ -150,6 +159,10 @@ export interface RigPose {
   hurt: boolean;
   isOwn: boolean;
   weaponItem?: string;
+  /** Mainhand enchant id — overlays the enchant's fx on the weapon art. */
+  weaponEnch?: string;
+  /** Offhand enchant id — a dual-wielded second blade burns its own hue. */
+  offhandEnch?: string;
   /** Cosmetic idle carry: 'rogue' rakes a blade down-back, reverse grip. */
   carryStyle?: 'normal' | 'rogue';
   bodyItem?: string;
@@ -1293,6 +1306,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           -Math.PI / 2 + restSide * 0.35,
           s,
           rig,
+          { ench: rig.offhandEnch },
         );
       } else {
         drawOffhandOnArm(ctx, offSt, joints, s, profileK, rig.hurt);
@@ -1400,11 +1414,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       drawHeldItem(ctx, weapon.id, weapon.color, bowX, bowY, rig.dir, s, rig, {
         pull: bowPull,
         loose: loosing ? rig.poseT : undefined,
+        ench: rig.weaponEnch,
       });
     } else {
       drawHeldItem(ctx, weapon.id, weapon.color, mainX, mainY, heldAngle, s, rig, {
         grip: staffGrip,
         carry: isBow ? restSettle : 0,
+        ench: rig.weaponEnch,
       });
     }
   };
@@ -1711,6 +1727,58 @@ export function shade(hex: string, amount: number): string {
 }
 
 /** Part library: how each holdable draws in the hand. */
+/**
+ * Enchant fx channels per weapon family. Tier 1 is a colored glint;
+ * tiers 2-3 ride the element's full mote channel. Staffs speak their
+ * own fx dialect, so each element maps twice.
+ */
+const ENCH_BLADE_FX: Record<string, BladeFx> = {
+  ember: 'ember',
+  frost: 'frost',
+  storm: 'storm',
+  blood: 'blood',
+  void: 'void',
+  radiant: 'sun',
+  arcane: 'star',
+  astral: 'star',
+  verdant: 'gleam',
+};
+const ENCH_STAFF_FX: Record<string, StaffFx> = {
+  ember: 'embers',
+  frost: 'frost',
+  storm: 'sparks',
+  blood: 'drip',
+  void: 'motes',
+  radiant: 'rays',
+  arcane: 'runes',
+  astral: 'stars',
+  verdant: 'leaves',
+};
+
+/**
+ * Overlay an enchant's fx channel on a resolved weapon style — the
+ * style object is data, so a shallow clone re-aims the existing mote
+ * painters at the enchant's element without touching the silhouette.
+ */
+function enchantedStyle<T extends { fx?: unknown; fxColor?: string }>(
+  st: T,
+  ench: string | undefined,
+  family: 'blade' | 'staff',
+): T {
+  const def = ench ? enchantDef(ench) : undefined;
+  if (!def) return st;
+  const color = ELEMENT_COLORS[def.element];
+  if (def.tier <= 1) {
+    // A whisper of magic: the traveling glint (staffs: drifting motes).
+    return { ...st, fx: family === 'staff' ? 'motes' : 'gleam', fxColor: color };
+  }
+  const fx =
+    family === 'staff'
+      ? (ENCH_STAFF_FX[def.element] ?? 'motes')
+      : (ENCH_BLADE_FX[def.element] ?? 'gleam');
+  return { ...st, fx, fxColor: color };
+}
+
 function drawHeldItem(
   ctx: CanvasRenderingContext2D,
   itemId: string,
@@ -1724,8 +1792,9 @@ function drawHeldItem(
    * Bow: string pull-back (px), release progress, and rest-carry blend
    * (0 aiming → 1 settled: slides the grip wrap into the fist so the
    * bow is carried by the wood, not the string). Staff: grip height.
+   * ench: enchant id riding this instance — overlays its fx channel.
    */
-  extra?: { pull?: number; loose?: number; grip?: number; carry?: number },
+  extra?: { pull?: number; loose?: number; grip?: number; carry?: number; ench?: string },
 ): void {
   ctx.save();
   ctx.translate(hx, hy);
@@ -1739,7 +1808,7 @@ function drawHeldItem(
     // The blade + rogue rosters: every sword AND dagger resolves a
     // style — bespoke silhouette, guard, pommel, living fx channel.
     // Unknown '*sword'/'*dagger' ids get color-derived fallbacks.
-    drawSword(ctx, bladeStyle(itemId, color)!, s, rig.nowMs, rig.hurt);
+    drawSword(ctx, enchantedStyle(bladeStyle(itemId, color)!, extra?.ench, 'blade'), s, rig.nowMs, rig.hurt);
   } else if (itemId.includes('axe') || itemId.includes('pickaxe')) {
     ctx.fillStyle = '#8a6a45';
     ctx.beginPath();
@@ -1765,7 +1834,7 @@ function drawHeldItem(
     // wood, tip furniture, charms, and the living fx channel. The
     // painter keeps the classic behaviors: limbs flex with the pull,
     // the string hauls to the nock, release buzzes it straight.
-    drawBow(ctx, bowStyle(itemId, color)!, s, rig.nowMs, rig.hurt, extra?.pull ?? 0, extra?.loose);
+    drawBow(ctx, enchantedStyle(bowStyle(itemId, color)!, extra?.ench, 'blade'), s, rig.nowMs, rig.hurt, extra?.pull ?? 0, extra?.loose);
   } else if (staffStyle(itemId, color)) {
     // The archmage's roster: every staff resolves a style — shaft
     // grammar, signature crown, element focus, living fx. The grip
@@ -1773,7 +1842,7 @@ function drawHeldItem(
     // mid-shaft when the business end levels at something — and the
     // focus flares while a cast leaves.
     const castT = rig.pose === PoseState.Cast ? rig.poseT : 0;
-    drawStaff(ctx, staffStyle(itemId, color)!, s, rig.nowMs, rig.hurt, extra?.grip ?? 0.34, castT);
+    drawStaff(ctx, enchantedStyle(staffStyle(itemId, color)!, extra?.ench, 'staff'), s, rig.nowMs, rig.hurt, extra?.grip ?? 0.34, castT);
   } else if (itemId.includes('rod')) {
     ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(2, s * 0.04);

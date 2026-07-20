@@ -64,6 +64,12 @@ export interface AppearanceData {
   bodyColor: string;
   /** Equipment part ids by slot, drives combinatorial rendering. */
   equip: Partial<Record<EquipSlot, string>>;
+  /**
+   * Enchant ids by slot, only for enchanted pieces. The one instance
+   * fact that IS appearance: a flaming blade must burn for everyone,
+   * so unlike rolls/coats this rides the wire to every watcher.
+   */
+  ench?: Partial<Record<EquipSlot, string>>;
   /** Player-chosen base look (palette indices) — see shared/look.ts. */
   look?: import('./look.js').Look;
   /**

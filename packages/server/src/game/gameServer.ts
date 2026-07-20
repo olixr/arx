@@ -4975,13 +4975,22 @@ export class GameServer {
     if (player) {
       meta.name = player.name;
       // Appearance carries item IDS only — rendering never needs rolls.
+      // Enchants are the exception: they change how gear LOOKS, so the
+      // enchanted slots ride along (ids only, still no rolls).
       const equip: Partial<Record<EquipSlot, string>> = {};
+      let ench: Partial<Record<EquipSlot, string>> | undefined;
       for (const [slot, worn] of Object.entries(player.equipment)) {
-        if (worn) equip[slot as EquipSlot] = worn.id;
+        if (!worn) continue;
+        equip[slot as EquipSlot] = worn.id;
+        if (worn.roll?.ench) {
+          ench ??= {};
+          ench[slot as EquipSlot] = worn.roll.ench;
+        }
       }
       meta.appearance = {
         bodyColor: '',
         equip,
+        ench,
         look: player.look ?? undefined,
         carry: player.carryStyle === 'rogue' ? 'rogue' : undefined,
       };
