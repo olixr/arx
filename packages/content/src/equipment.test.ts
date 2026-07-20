@@ -333,3 +333,44 @@ test('early-game cloth sets: four dye lots each, colorways mirror their base', (
     }
   }
 });
+
+test('early-game leather sets: four dye lots each, colorways mirror their base', () => {
+  const SETS: Record<string, { dyes: string[]; pieces: string[] }> = {
+    hareswift: { dyes: ['clover', 'snowmelt', 'sorrel'], pieces: ['hood', 'jerkin', 'chaps', 'boots'] },
+    kingfisher: { dyes: ['reedmace', 'stormgull', 'sundart'], pieces: ['hood', 'jerkin', 'chaps', 'boots'] },
+    cutpurse: { dyes: ['alleyrat', 'moonless', 'redhand'], pieces: ['cowl', 'jerkin', 'leggings', 'boots'] },
+    trapline: { dyes: ['juniper', 'riverclay', 'nightsnare'], pieces: ['hood', 'jerkin', 'chaps', 'boots'] },
+    emberfox: { dyes: ['silverfox', 'shadowfox', 'dawnfox'], pieces: ['hood', 'jerkin', 'leggings', 'boots'] },
+  };
+  const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
+  for (const [set, { dyes, pieces }] of Object.entries(SETS)) {
+    const base = pieces.map((p) => byId.get(`${set}_${p}`)!);
+    assert.equal(base.filter(Boolean).length, 4, `${set} base pieces exist`);
+    assert.deepEqual([...new Set(base.map((p) => p.slot))].sort(), ['body', 'boots', 'head', 'legs']);
+    for (const p of base) {
+      assert.equal(p.armorClass, 'leather', `${p.id} is leather`);
+      // The skirmisher's road: archery gates, sneak for the thieves.
+      assert.ok(p.levelReq && ['archery', 'sneak'].includes(p.levelReq.skill), `${p.id} gates on archery/sneak`);
+      assert.ok((p.levelReq?.level ?? 0) <= 19, `${p.id} is early/mid game`);
+    }
+    for (const dye of dyes) {
+      for (const b of base) {
+        const v = byId.get(`${b.id}_${dye}`);
+        assert.ok(v, `${b.id}_${dye} exists`);
+        // A colorway changes identity, never power or gate.
+        assert.equal(v!.slot, b.slot);
+        assert.equal(v!.armorClass, b.armorClass);
+        assert.deepEqual(v!.levelReq, b.levelReq);
+        assert.equal(v!.armor, b.armor);
+        assert.equal(v!.value, b.value);
+        assert.notEqual(v!.color, b.color, `${v!.id} wears its own palette`);
+        assert.ok(v!.name.endsWith(b.name.charAt(0).toLowerCase() + b.name.slice(1)), `${v!.id} keeps the base name`);
+        if (v!.acquisition.craft) {
+          assert.ok(v!.recipe, `${v!.id} craft colorway keeps a recipe`);
+        } else {
+          assert.equal(v!.recipe, undefined, `${v!.id} drop colorway sheds the recipe`);
+        }
+      }
+    }
+  }
+});

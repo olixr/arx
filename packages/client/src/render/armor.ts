@@ -38,7 +38,7 @@ export interface BodyStyle {
   fringe?: boolean;
   /** Big mismatched cloth patches with stitch ticks — the homespun read. */
   patches?: string;
-  emblem?: 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf' | 'star' | 'moon' | 'eye' | 'moth';
+  emblem?: 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf' | 'star' | 'moon' | 'eye' | 'moth' | 'coin';
   /** Glowing rune dashes riding the hem trim — the enchanted-cloth read. */
   runes?: string;
   /** A waist sash: band, hip knot, two swinging tails. */
@@ -54,6 +54,10 @@ export interface BodyStyle {
   collar?: 'gorget' | 'fur';
   /** A belt pouch on the hip — the adventurer's secondary read. */
   pouch?: boolean;
+  /** A diagonal shoulder-to-hip cord with bone toggles — the trapper. */
+  bandolier?: string;
+  /** A brush tail swinging off the trailing hip — the fox trophy read. */
+  tail?: { color: string; tip: string };
   /** Hem/trim accent that breathes with a slow ember pulse. */
   glowTrim?: string;
   /** Full sleeves: the forearm wears cloth with a belled cuff (robes). */
@@ -86,8 +90,10 @@ export interface HelmStyle {
   charm?: string;
   /** Hoods: a lumpy fur ruff ringing the face opening. */
   ruff?: { color: string };
-  /** Hoods: pricked wolf-ear points on the crown. */
-  ears?: { color: string };
+  /** Hoods: pricked ear points on the crown. `tall` is the hare read
+   *  (long upright blades); `tip` paints the top third — black-tipped
+   *  hare and fox ears both. */
+  ears?: { color: string; tall?: boolean; tip?: string };
   /** Hoods: a swept feather tucked at the temple, trailing back. */
   feather?: { color: string };
   /** Hoods: a half-mask across the lower face — the rogue read. */
@@ -291,6 +297,34 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     skirt: 0.34, runes: '#a8c4e8', sleeves: 'full', mantle: '#3e4860',
     underskirt: '#3c4660',
   },
+  // The early-game leather sets: the skirmisher's leveling road. Each
+  // ships in four dye lots via registerColorways below.
+  hareswift_jerkin: {
+    color: '#c2a878', trim: '#8a6f48', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'none', chest: 'straps', skirt: 0,
+    collar: 'fur', pouch: true,
+  },
+  kingfisher_jerkin: {
+    color: '#2f7a8a', trim: '#d87f3c', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'feathered', pauldronColor: '#57a8b8',
+    chest: 'emblem', emblem: 'chevron', skirt: 0, pouch: true,
+  },
+  cutpurse_jerkin: {
+    color: '#4e4438', trim: '#c9a23c', metal: '#8a7a5c', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'none', chest: 'emblem', emblem: 'coin',
+    skirt: 0, pouch: true,
+  },
+  trapline_jerkin: {
+    color: '#8a7248', trim: '#5a4a34', metal: '#d8cfae', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'layered', pauldronColor: '#6e5a3c',
+    chest: 'none', bandolier: '#5a4a34', skirt: 0, pouch: true,
+  },
+  emberfox_jerkin: {
+    color: '#b05a30', trim: '#e8dcc4', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'fur', pauldronColor: '#c9713c',
+    chest: 'none', collar: 'fur', tail: { color: '#b05a30', tip: '#e8dcc4' },
+    skirt: 0, pouch: true,
+  },
 };
 
 export const HELM_STYLES: Record<string, HelmStyle> = {
@@ -381,6 +415,25 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     color: '#4e5a78', trim: '#c9d4e8', kind: 'hood',
     gem: { color: '#e8d878' },
   },
+  hareswift_hood: {
+    color: '#c2a878', trim: '#8a6f48', kind: 'hood',
+    ears: { color: '#cfc0a0', tall: true, tip: '#4a4038' },
+  },
+  kingfisher_hood: {
+    color: '#2f7a8a', trim: '#d87f3c', kind: 'hood',
+    feather: { color: '#e8a03c' },
+  },
+  cutpurse_cowl: {
+    color: '#4e4438', trim: '#c9a23c', kind: 'hood', mask: '#3a332c',
+  },
+  trapline_hood: {
+    color: '#8a7248', trim: '#5a4a34', kind: 'hood',
+    ruff: { color: '#b8a888' },
+  },
+  emberfox_hood: {
+    color: '#b05a30', trim: '#e8dcc4', kind: 'hood',
+    ears: { color: '#b05a30', tip: '#3a3230' },
+  },
 };
 
 export const LEG_STYLES: Record<string, LegStyle> = {
@@ -408,6 +461,12 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   voidwhisper_skirts: { kind: 'pants', thigh: '#332b47' },
   cindersworn_skirts: { kind: 'pants', thigh: '#3a2d2b' },
   starweaver_skirts: { kind: 'pants', thigh: '#232850' },
+  hareswift_chaps: { kind: 'wraps', thigh: '#c2a878', shin: '#a88f60', knee: 'wrap', kneeColor: '#8a6f48' },
+  kingfisher_chaps: { kind: 'wraps', thigh: '#2f7a8a', shin: '#256575', knee: 'wrap', kneeColor: '#d87f3c' },
+  cutpurse_leggings: { kind: 'wraps', thigh: '#4e4438', shin: '#3e362c', knee: 'wrap', kneeColor: '#6e6050' },
+  trapline_chaps: { kind: 'wraps', thigh: '#8a7248', shin: '#6e5a3c', knee: 'wrap', kneeColor: '#5a4a34' },
+  // The fox's own socks: russet thigh into black shin.
+  emberfox_leggings: { kind: 'wraps', thigh: '#b05a30', shin: '#3a3230', knee: 'wrap', kneeColor: '#8a4526' },
 };
 
 export const BOOT_STYLES: Record<string, BootStyle> = {
@@ -436,6 +495,11 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   voidwhisper_slippers: { color: '#2e2740', height: 0.08, cuff: { color: '#b8a8d8' } },
   cindersworn_slippers: { color: '#332826', height: 0.08, cuff: { color: '#e05438' } },
   starweaver_slippers: { color: '#232850', height: 0.08, curl: true, cuff: { color: '#c8cee8' } },
+  hareswift_boots: { color: '#a88f60', height: 0.1, fur: { color: '#e8e2d4' } },
+  kingfisher_boots: { color: '#256575', height: 0.1, cuff: { color: '#d87f3c' } },
+  cutpurse_boots: { color: '#3a332c', height: 0.09, cuff: { color: '#6e6050' } },
+  trapline_boots: { color: '#6e5a3c', height: 0.13, wrap: { color: '#d8cfae' } },
+  emberfox_boots: { color: '#3a3230', height: 0.11, fur: { color: '#c9713c' } },
 };
 
 export const OFFHAND_STYLES: Record<string, OffhandStyle> = {
@@ -577,6 +641,121 @@ registerColorways(BOOT_STYLES, 'stormwoven_slippers', {
   thunderhead: { color: '#2e323e', cuff: { color: '#e8c04c' } },
   sunshower: { color: '#a8894a', cuff: { color: '#f4ecd0' } },
   aurora: { color: '#326256', cuff: { color: '#b8e8d0' } },
+});
+
+// Hareswift dye lots: the fur stays a coat, the ear tips stay black —
+// a hare is a hare in any season.
+registerColorways(BODY_STYLES, 'hareswift_jerkin', {
+  clover: { color: '#7a9a58', trim: '#4e6a38' },
+  snowmelt: { color: '#cfd2ca', trim: '#9aa096' },
+  sorrel: { color: '#a86a48', trim: '#6e4530' },
+});
+registerColorways(HELM_STYLES, 'hareswift_hood', {
+  clover: { color: '#7a9a58', trim: '#4e6a38', ears: { color: '#8ab868', tall: true, tip: '#3a4a2c' } },
+  snowmelt: { color: '#cfd2ca', trim: '#9aa096', ears: { color: '#e0e2da', tall: true, tip: '#4a4038' } },
+  sorrel: { color: '#a86a48', trim: '#6e4530', ears: { color: '#b87e58', tall: true, tip: '#3a2c24' } },
+});
+registerColorways(LEG_STYLES, 'hareswift_chaps', {
+  clover: { thigh: '#7a9a58', shin: '#62804a', kneeColor: '#4e6a38' },
+  snowmelt: { thigh: '#cfd2ca', shin: '#b0b4aa', kneeColor: '#9aa096' },
+  sorrel: { thigh: '#a86a48', shin: '#8a5638', kneeColor: '#6e4530' },
+});
+registerColorways(BOOT_STYLES, 'hareswift_boots', {
+  clover: { color: '#62804a', fur: { color: '#e8f0d8' } },
+  snowmelt: { color: '#b0b4aa', fur: { color: '#f4f4ee' } },
+  sorrel: { color: '#8a5638', fur: { color: '#e8dcc4' } },
+});
+
+// Kingfisher dye lots: plumage swaps whole — sundart flips the bird,
+// teal feather on gold.
+registerColorways(BODY_STYLES, 'kingfisher_jerkin', {
+  reedmace: { color: '#6a8a4a', trim: '#c9a23c', pauldronColor: '#82a862' },
+  stormgull: { color: '#9aa8b0', trim: '#4e5a64', pauldronColor: '#c0ccd2' },
+  sundart: { color: '#d8a03c', trim: '#2f7a8a', pauldronColor: '#e8bc60' },
+});
+registerColorways(HELM_STYLES, 'kingfisher_hood', {
+  reedmace: { color: '#6a8a4a', trim: '#c9a23c', feather: { color: '#d8b84c' } },
+  stormgull: { color: '#9aa8b0', trim: '#4e5a64', feather: { color: '#e8ecee' } },
+  sundart: { color: '#d8a03c', trim: '#2f7a8a', feather: { color: '#2f7a8a' } },
+});
+registerColorways(LEG_STYLES, 'kingfisher_chaps', {
+  reedmace: { thigh: '#6a8a4a', shin: '#54703a', kneeColor: '#c9a23c' },
+  stormgull: { thigh: '#9aa8b0', shin: '#7e8c94', kneeColor: '#4e5a64' },
+  sundart: { thigh: '#d8a03c', shin: '#b58230', kneeColor: '#2f7a8a' },
+});
+registerColorways(BOOT_STYLES, 'kingfisher_boots', {
+  reedmace: { color: '#54703a', cuff: { color: '#c9a23c' } },
+  stormgull: { color: '#7e8c94', cuff: { color: '#e8ecee' } },
+  sundart: { color: '#b58230', cuff: { color: '#2f7a8a' } },
+});
+
+// Cutpurse dye lots: the coin is the tell — brass on umber and
+// oxblood, silver in the gutter, pale moon-metal after dark.
+registerColorways(BODY_STYLES, 'cutpurse_jerkin', {
+  alleyrat: { color: '#5c5c56', trim: '#b0b6be', metal: '#8a8e96' },
+  moonless: { color: '#33303c', trim: '#a8b0cc', metal: '#5c5a6e' },
+  redhand: { color: '#6e3a34', trim: '#c9a23c', metal: '#8a6a4a' },
+});
+registerColorways(HELM_STYLES, 'cutpurse_cowl', {
+  alleyrat: { color: '#5c5c56', trim: '#b0b6be', mask: '#45453e' },
+  moonless: { color: '#33303c', trim: '#a8b0cc', mask: '#262330' },
+  redhand: { color: '#6e3a34', trim: '#c9a23c', mask: '#4e2a26' },
+});
+registerColorways(LEG_STYLES, 'cutpurse_leggings', {
+  alleyrat: { thigh: '#5c5c56', shin: '#4a4a44', kneeColor: '#767670' },
+  moonless: { thigh: '#33303c', shin: '#28252f', kneeColor: '#4e4a5c' },
+  redhand: { thigh: '#6e3a34', shin: '#582e28', kneeColor: '#8a5a4a' },
+});
+registerColorways(BOOT_STYLES, 'cutpurse_boots', {
+  alleyrat: { color: '#4a4a44', cuff: { color: '#767670' } },
+  moonless: { color: '#28252f', cuff: { color: '#4e4a5c' } },
+  redhand: { color: '#582e28', cuff: { color: '#8a5a4a' } },
+});
+
+// Trapline dye lots: the bone toggles and snare cords stay bone —
+// only the country the line runs through changes.
+registerColorways(BODY_STYLES, 'trapline_jerkin', {
+  juniper: { color: '#4e6a52', trim: '#34483a', bandolier: '#34483a', pauldronColor: '#3e5642' },
+  riverclay: { color: '#96604c', trim: '#6a4034', bandolier: '#6a4034', pauldronColor: '#7a4e3c' },
+  nightsnare: { color: '#3e4450', trim: '#2c303a', bandolier: '#2c303a', pauldronColor: '#333844' },
+});
+registerColorways(HELM_STYLES, 'trapline_hood', {
+  juniper: { color: '#4e6a52', trim: '#34483a', ruff: { color: '#a8c0aa' } },
+  riverclay: { color: '#96604c', trim: '#6a4034', ruff: { color: '#c9ab98' } },
+  nightsnare: { color: '#3e4450', trim: '#2c303a', ruff: { color: '#9aa2b0' } },
+});
+registerColorways(LEG_STYLES, 'trapline_chaps', {
+  juniper: { thigh: '#4e6a52', shin: '#3e5642', kneeColor: '#34483a' },
+  riverclay: { thigh: '#96604c', shin: '#7a4e3c', kneeColor: '#6a4034' },
+  nightsnare: { thigh: '#3e4450', shin: '#333844', kneeColor: '#2c303a' },
+});
+registerColorways(BOOT_STYLES, 'trapline_boots', {
+  juniper: { color: '#3e5642', wrap: { color: '#d8cfae' } },
+  riverclay: { color: '#7a4e3c', wrap: { color: '#d8cfae' } },
+  nightsnare: { color: '#333844', wrap: { color: '#b8c0cc' } },
+});
+
+// Emberfox dye lots: whole pelts, not tints — silver, shadow and dawn
+// foxes each keep the dark socks and the pale-tipped tail.
+registerColorways(BODY_STYLES, 'emberfox_jerkin', {
+  silverfox: { color: '#8a8e96', trim: '#ececf0', pauldronColor: '#a4a8b0', tail: { color: '#8a8e96', tip: '#ececf0' } },
+  shadowfox: { color: '#3a3640', trim: '#b8b4c0', pauldronColor: '#4c4856', tail: { color: '#3a3640', tip: '#b8b4c0' } },
+  dawnfox: { color: '#d8b878', trim: '#f4ecd8', pauldronColor: '#e0c890', tail: { color: '#d8b878', tip: '#f4ecd8' } },
+});
+registerColorways(HELM_STYLES, 'emberfox_hood', {
+  silverfox: { color: '#8a8e96', trim: '#ececf0', ears: { color: '#8a8e96', tip: '#26242c' } },
+  shadowfox: { color: '#3a3640', trim: '#b8b4c0', ears: { color: '#3a3640', tip: '#16141c' } },
+  dawnfox: { color: '#d8b878', trim: '#f4ecd8', ears: { color: '#d8b878', tip: '#6e5838' } },
+});
+registerColorways(LEG_STYLES, 'emberfox_leggings', {
+  silverfox: { thigh: '#8a8e96', shin: '#33303a', kneeColor: '#6a6e78' },
+  shadowfox: { thigh: '#3a3640', shin: '#232028', kneeColor: '#4c4856' },
+  dawnfox: { thigh: '#d8b878', shin: '#6e5838', kneeColor: '#b09258' },
+});
+registerColorways(BOOT_STYLES, 'emberfox_boots', {
+  silverfox: { color: '#33303a', fur: { color: '#a4a8b0' } },
+  shadowfox: { color: '#232028', fur: { color: '#4c4856' } },
+  dawnfox: { color: '#6e5838', fur: { color: '#e0c890' } },
 });
 
 // ---------------------------------------------------------- resolvers
@@ -1244,15 +1423,34 @@ export function drawTorsoGarment(
           ctx.moveTo(0, ey - r * 0.55);
           ctx.quadraticCurveTo(-r * 0.22, ey - r * 0.95, -r * 0.4, ey - r * 1.15);
           ctx.stroke();
+        } else if (st.emblem === 'coin') {
+          // The thief's device: one fat brass coin over the heart —
+          // rim, punched square hole, a glint that never sleeps.
+          // Drawn large; a timid coin is a button.
+          ctx.beginPath();
+          ctx.arc(0, ey, r * 0.95, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = shade(st.trim, -22);
+          ctx.lineWidth = Math.max(1.5, s * 0.02);
+          ctx.beginPath();
+          ctx.arc(0, ey, r * 0.7, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = '#1c1722';
+          ctx.fillRect(-r * 0.19, ey - r * 0.19, r * 0.38, r * 0.38);
+          ctx.fillStyle = shade(st.trim, 34);
+          ctx.fillRect(r * 0.4, ey - r * 0.62, 0.024 * s, 0.024 * s);
         } else {
         ctx.beginPath();
         if (st.emblem === 'chevron') {
-          ctx.moveTo(-r, ey - r * 0.4);
-          ctx.lineTo(0, ey + r * 0.5);
-          ctx.lineTo(r, ey - r * 0.4);
-          ctx.lineTo(r * 0.55, ey - r * 0.55);
-          ctx.lineTo(0, ey);
-          ctx.lineTo(-r * 0.55, ey - r * 0.55);
+          // The breast-band device: drawn WIDE and deep — a timid
+          // chevron is a crumb (the kingfisher's whole chest is orange).
+          const rc = r * 1.5;
+          ctx.moveTo(-rc, ey - rc * 0.45);
+          ctx.lineTo(0, ey + rc * 0.62);
+          ctx.lineTo(rc, ey - rc * 0.45);
+          ctx.lineTo(rc * 0.52, ey - rc * 0.72);
+          ctx.lineTo(0, ey - rc * 0.05);
+          ctx.lineTo(-rc * 0.52, ey - rc * 0.72);
         } else if (st.emblem === 'diamond') {
           ctx.moveTo(0, ey - r * 0.7);
           ctx.lineTo(r * 0.6, ey);
@@ -1302,6 +1500,68 @@ export function drawTorsoGarment(
         ctx.moveTo(0, -th * 0.95);
         ctx.lineTo(0, -0.08 * s);
         ctx.stroke();
+      }
+    }
+
+    // ---- the bandolier: a shoulder-to-hip cord toggled with bone —
+    // the trapline worn as clothing. Front and back both carry it; a
+    // strap that vanished when you turned would break the garment.
+    if (st.bandolier) {
+      const bone = hurt ? '#ffffff' : '#d8cfae';
+      ctx.strokeStyle = hurt ? '#ffffff' : st.bandolier;
+      ctx.lineWidth = Math.max(2.5, s * 0.048);
+      ctx.beginPath();
+      ctx.moveTo(-tw * 0.74, -th * 0.94);
+      ctx.lineTo(ww * 0.56, -0.07 * s);
+      ctx.stroke();
+      if (!back) {
+        // Three bone toggles riding the cord, each a fat crossbar —
+        // timid toggles read as lint on the strap.
+        ctx.fillStyle = bone;
+        for (let i = 0; i < 3; i++) {
+          const u = 0.24 + i * 0.26;
+          const bxx = -tw * 0.74 + (ww * 0.56 + tw * 0.74) * u;
+          const byy = -th * 0.94 + (th * 0.94 - 0.07 * s) * u;
+          ctx.save();
+          ctx.translate(bxx, byy);
+          ctx.rotate(-0.65);
+          ctx.fillRect(-0.011 * s, -0.036 * s, 0.022 * s, 0.072 * s);
+          ctx.restore();
+        }
+      }
+    }
+
+    // ---- the brush tail: a fox trophy swinging off the trailing hip,
+    // kicked by the stride like the fringe — the pelt still has an
+    // opinion about being worn.
+    if (st.tail) {
+      const u = -f.lead;
+      const bx = u * ww * 0.82;
+      const kick =
+        f.strideSw * 0.022 * s +
+        Math.sin(nowMs * 0.0035) * 0.009 * s * (0.3 + 0.7 * runF) +
+        f.dragX * 0.5 * s;
+      const tipX = bx + u * 0.055 * s + kick;
+      const tipY = 0.27 * s;
+      ctx.fillStyle = hurt ? '#ffffff' : st.tail.color;
+      ctx.beginPath();
+      ctx.moveTo(bx - 0.02 * s, -0.03 * s);
+      // Fat through the middle, tapering to the tip — a brush, not a rope.
+      ctx.quadraticCurveTo(bx - 0.055 * s + kick * 0.5, 0.16 * s, tipX - 0.012 * s, tipY);
+      ctx.lineTo(tipX + 0.012 * s, tipY);
+      ctx.quadraticCurveTo(bx + 0.055 * s + kick * 0.5, 0.16 * s, bx + 0.02 * s, -0.03 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The pale tip: the last third dips in cream.
+        ctx.fillStyle = st.tail.tip;
+        ctx.beginPath();
+        ctx.moveTo(bx - 0.045 * s + kick * 0.72, 0.165 * s);
+        ctx.quadraticCurveTo(bx - 0.04 * s + kick * 0.86, 0.225 * s, tipX - 0.012 * s, tipY);
+        ctx.lineTo(tipX + 0.012 * s, tipY);
+        ctx.quadraticCurveTo(bx + 0.045 * s + kick * 0.86, 0.215 * s, bx + 0.045 * s + kick * 0.72, 0.155 * s);
+        ctx.closePath();
+        ctx.fill();
       }
     }
 
@@ -1861,24 +2121,41 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.lineCap = 'butt';
     }
     if (st.ears && !hurt) {
-      // Pricked wolf ears on the crown; dark inner ear when frontal.
+      // Pricked ears on the crown; dark inner ear when frontal. The
+      // tall variant is the hare: long upright blades, a touch closer
+      // to center. A tip color claims the top third — hare and fox
+      // ears alike are black-tipped, and the tip is what sells them.
+      const tall = st.ears.tall ? 1.75 : 1;
       for (const es of [-1, 1]) {
         const far = es !== lead;
         const wK = far ? Math.max(0.3, 1 - profileK * 0.65) : 1;
-        const bx = headX + es * hw * 0.58;
+        const bx = headX + es * hw * (st.ears.tall ? 0.46 : 0.58);
         const by = headY - hh * 1.02;
+        const ax = bx + es * hw * 0.14 * wK;
+        const ay = by - hh * 0.62 * tall;
         ctx.fillStyle = st.ears.color;
         ctx.beginPath();
         ctx.moveTo(bx - es * hw * 0.26 * wK, by);
-        ctx.lineTo(bx + es * hw * 0.14 * wK, by - hh * 0.62);
+        ctx.lineTo(ax, ay);
         ctx.lineTo(bx + es * hw * 0.36 * wK, by + hh * 0.06);
         ctx.closePath();
         ctx.fill();
+        if (st.ears.tip) {
+          // The tip triangle: apex down 35% of each edge — a clean
+          // color break, never a stroked outline.
+          ctx.fillStyle = st.ears.tip;
+          ctx.beginPath();
+          ctx.moveTo(ax, ay);
+          ctx.lineTo(ax + (bx - es * hw * 0.26 * wK - ax) * 0.35, ay + (by - ay) * 0.35);
+          ctx.lineTo(ax + (bx + es * hw * 0.36 * wK - ax) * 0.35, ay + (by + hh * 0.06 - ay) * 0.35);
+          ctx.closePath();
+          ctx.fill();
+        }
         if (backK <= 0.55) {
           ctx.fillStyle = shade(st.ears.color, -26);
           ctx.beginPath();
           ctx.moveTo(bx - es * hw * 0.1 * wK, by - hh * 0.04);
-          ctx.lineTo(bx + es * hw * 0.12 * wK, by - hh * 0.42);
+          ctx.lineTo(bx + es * hw * 0.12 * wK, by - hh * 0.42 * tall);
           ctx.lineTo(bx + es * hw * 0.22 * wK, by);
           ctx.closePath();
           ctx.fill();

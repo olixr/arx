@@ -139,6 +139,11 @@ const defs: NpcDef[] = [
       { item: 'fenwalker_robe_rustsedge', qty: [1, 1], chance: 0.01 },
       { item: 'fenwalker_skirts_rustsedge', qty: [1, 1], chance: 0.012 },
       { item: 'fenwalker_slippers_rustsedge', qty: [1, 1], chance: 0.014 },
+      // Alleyrat cutpurse: the gutters keep the guild's grey colors.
+      { item: 'cutpurse_cowl_alleyrat', qty: [1, 1], chance: 0.014 },
+      { item: 'cutpurse_jerkin_alleyrat', qty: [1, 1], chance: 0.01 },
+      { item: 'cutpurse_leggings_alleyrat', qty: [1, 1], chance: 0.012 },
+      { item: 'cutpurse_boots_alleyrat', qty: [1, 1], chance: 0.014 },
     ],
     respawnSec: 15,
     color: '#8a7a6a',
@@ -176,6 +181,12 @@ const defs: NpcDef[] = [
       { item: 'fenwalker_robe', qty: [1, 1], chance: 0.012 },
       { item: 'fenwalker_skirts', qty: [1, 1], chance: 0.014 },
       { item: 'fenwalker_slippers', qty: [1, 1], chance: 0.016 },
+      // Cutpurse: the camps rob the road; one thief robbed it better
+      // and slower, right up until the goblins found the coin device.
+      { item: 'cutpurse_cowl', qty: [1, 1], chance: 0.016 },
+      { item: 'cutpurse_jerkin', qty: [1, 1], chance: 0.012 },
+      { item: 'cutpurse_leggings', qty: [1, 1], chance: 0.014 },
+      { item: 'cutpurse_boots', qty: [1, 1], chance: 0.016 },
     ],
     respawnSec: 25,
     color: '#5c8a3a',
@@ -214,6 +225,11 @@ const defs: NpcDef[] = [
       { item: 'fenwalker_robe_mirebloom', qty: [1, 1], chance: 0.01 },
       { item: 'fenwalker_skirts_mirebloom', qty: [1, 1], chance: 0.012 },
       { item: 'fenwalker_slippers_mirebloom', qty: [1, 1], chance: 0.014 },
+      // Redhand cutpurse: oxblood leathers, caught once — by a rock.
+      { item: 'cutpurse_cowl_redhand', qty: [1, 1], chance: 0.012 },
+      { item: 'cutpurse_jerkin_redhand', qty: [1, 1], chance: 0.009 },
+      { item: 'cutpurse_leggings_redhand', qty: [1, 1], chance: 0.01 },
+      { item: 'cutpurse_boots_redhand', qty: [1, 1], chance: 0.012 },
     ],
     respawnSec: 30,
     color: '#6a9a3a',
@@ -270,6 +286,16 @@ const defs: NpcDef[] = [
       { item: 'dawnsworn_robe_eclipse', qty: [1, 1], chance: 0.009 },
       { item: 'dawnsworn_skirts_eclipse', qty: [1, 1], chance: 0.01 },
       { item: 'dawnsworn_slippers_eclipse', qty: [1, 1], chance: 0.012 },
+      // Moonless cutpurse: ink on ink — the job in the crypt was real.
+      { item: 'cutpurse_cowl_moonless', qty: [1, 1], chance: 0.012 },
+      { item: 'cutpurse_jerkin_moonless', qty: [1, 1], chance: 0.009 },
+      { item: 'cutpurse_leggings_moonless', qty: [1, 1], chance: 0.01 },
+      { item: 'cutpurse_boots_moonless', qty: [1, 1], chance: 0.012 },
+      // Silverfox emberfox: frost-grey guard hairs, crypt-cold.
+      { item: 'emberfox_hood_silverfox', qty: [1, 1], chance: 0.01 },
+      { item: 'emberfox_jerkin_silverfox', qty: [1, 1], chance: 0.008 },
+      { item: 'emberfox_leggings_silverfox', qty: [1, 1], chance: 0.009 },
+      { item: 'emberfox_boots_silverfox', qty: [1, 1], chance: 0.01 },
     ],
     respawnSec: 30,
     color: '#d8d4c8',
@@ -326,6 +352,12 @@ const defs: NpcDef[] = [
       { item: 'nightveil_jerkin', qty: [1, 1], chance: 0.05 },
       // The Voidwhisper robe: the eye that watched him fall.
       { item: 'voidwhisper_robe', qty: [1, 1], chance: 0.045 },
+      // Shadowfox emberfox: the charcoal pelt that hunts the dark he
+      // guards — the full set rides with the Champion.
+      { item: 'emberfox_hood_shadowfox', qty: [1, 1], chance: 0.04 },
+      { item: 'emberfox_jerkin_shadowfox', qty: [1, 1], chance: 0.03 },
+      { item: 'emberfox_leggings_shadowfox', qty: [1, 1], chance: 0.035 },
+      { item: 'emberfox_boots_shadowfox', qty: [1, 1], chance: 0.04 },
     ],
     respawnSec: 90,
     color: '#e8e2d0',
@@ -371,6 +403,17 @@ const defs: NpcDef[] = [
       { item: 'mothwing_robe_luna', qty: [1, 1], chance: 0.012 },
       { item: 'mothwing_skirts_luna', qty: [1, 1], chance: 0.014 },
       { item: 'mothwing_slippers_luna', qty: [1, 1], chance: 0.016 },
+      // Emberfox: the pack catches the fox; you catch the pack. The
+      // early road's showpiece leathers, russet with the cream tail.
+      { item: 'emberfox_hood', qty: [1, 1], chance: 0.014 },
+      { item: 'emberfox_jerkin', qty: [1, 1], chance: 0.01 },
+      { item: 'emberfox_leggings', qty: [1, 1], chance: 0.012 },
+      { item: 'emberfox_boots', qty: [1, 1], chance: 0.014 },
+      // Dawnfox: pale gold at first light — the dawn patrol's prize.
+      { item: 'emberfox_hood_dawnfox', qty: [1, 1], chance: 0.009 },
+      { item: 'emberfox_jerkin_dawnfox', qty: [1, 1], chance: 0.007 },
+      { item: 'emberfox_leggings_dawnfox', qty: [1, 1], chance: 0.008 },
+      { item: 'emberfox_boots_dawnfox', qty: [1, 1], chance: 0.009 },
     ],
     respawnSec: 35,
     color: '#6a6f7d',

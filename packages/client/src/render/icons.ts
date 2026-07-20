@@ -3093,23 +3093,56 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   stormwoven_robe: { icon: 'robe', color: '#4e5a78' },
   stormwoven_skirts: { icon: 'legs', color: '#4e5a78' },
   stormwoven_slippers: { icon: 'boots', color: '#4e5a78' },
+  // Early-game leather sets — dye lots registered by the same loop.
+  hareswift_hood: { icon: 'hood', color: '#c2a878' },
+  hareswift_jerkin: { icon: 'jerkin', color: '#c2a878' },
+  hareswift_chaps: { icon: 'legs', color: '#c2a878' },
+  hareswift_boots: { icon: 'boots', color: '#a88f60' },
+  kingfisher_hood: { icon: 'hood', color: '#2f7a8a' },
+  kingfisher_jerkin: { icon: 'jerkin', color: '#2f7a8a' },
+  kingfisher_chaps: { icon: 'legs', color: '#2f7a8a' },
+  kingfisher_boots: { icon: 'boots', color: '#256575' },
+  cutpurse_cowl: { icon: 'hood', color: '#4e4438' },
+  cutpurse_jerkin: { icon: 'jerkin', color: '#4e4438' },
+  cutpurse_leggings: { icon: 'legs', color: '#4e4438' },
+  cutpurse_boots: { icon: 'boots', color: '#3a332c' },
+  trapline_hood: { icon: 'hood', color: '#8a7248' },
+  trapline_jerkin: { icon: 'jerkin', color: '#8a7248' },
+  trapline_chaps: { icon: 'legs', color: '#8a7248' },
+  trapline_boots: { icon: 'boots', color: '#6e5a3c' },
+  emberfox_hood: { icon: 'hood', color: '#b05a30' },
+  emberfox_jerkin: { icon: 'jerkin', color: '#b05a30' },
+  emberfox_leggings: { icon: 'legs', color: '#b05a30' },
+  emberfox_boots: { icon: 'boots', color: '#3a3230' },
 };
 
 // Colorway variants inherit their base piece's painter; the tint comes
 // off the item def, so a new dye lot is zero icon work by construction.
 {
-  const CLOTH_COLORWAYS: Record<string, string[]> = {
+  const EARLY_COLORWAYS: Record<string, string[]> = {
     thistledown: ['madder', 'woad', 'bracken'],
     mothwing: ['luna', 'dusk', 'ember'],
     dawnsworn: ['duskvow', 'highnoon', 'eclipse'],
     fenwalker: ['mirebloom', 'rustsedge', 'graymist'],
     stormwoven: ['thunderhead', 'sunshower', 'aurora'],
+    hareswift: ['clover', 'snowmelt', 'sorrel'],
+    kingfisher: ['reedmace', 'stormgull', 'sundart'],
+    cutpurse: ['alleyrat', 'moonless', 'redhand'],
+    trapline: ['juniper', 'riverclay', 'nightsnare'],
+    emberfox: ['silverfox', 'shadowfox', 'dawnfox'],
   };
+  const CLOTH_PIECES = ['hood', 'robe', 'skirts', 'slippers'];
+  const LEATHER_PIECES = ['hood', 'jerkin', 'chaps', 'boots'];
   const PIECES: Record<string, string[]> = {
     mothwing: ['cowl', 'robe', 'skirts', 'slippers'],
+    hareswift: LEATHER_PIECES,
+    kingfisher: LEATHER_PIECES,
+    cutpurse: ['cowl', 'jerkin', 'leggings', 'boots'],
+    trapline: LEATHER_PIECES,
+    emberfox: ['hood', 'jerkin', 'leggings', 'boots'],
   };
-  for (const [set, dyes] of Object.entries(CLOTH_COLORWAYS)) {
-    for (const piece of PIECES[set] ?? ['hood', 'robe', 'skirts', 'slippers']) {
+  for (const [set, dyes] of Object.entries(EARLY_COLORWAYS)) {
+    for (const piece of PIECES[set] ?? CLOTH_PIECES) {
       const base = ITEM_ICON[`${set}_${piece}`]!;
       for (const dye of dyes) {
         const id = `${set}_${piece}_${dye}`;

@@ -745,6 +745,13 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // via the colorway law — same silhouette record, new palette and a
   // new place in the world to find it. Low-level never means mundane.
   ...earlyClothDefs(),
+
+  // ======================================== early-game leather wardrobe
+  // Five sets for the hunters, rogues and thieves of the leveling road
+  // (archery/sneak 2–19), each in FOUR dye lots via the colorway law.
+  // The skirmisher's early pool: hare-swift couriers, river poachers,
+  // guild thieves, trappers and the fox-cloaked showpiece.
+  ...earlyLeatherDefs(),
 ];
 
 // ---------------------------------------------------------- set makers
@@ -1669,6 +1676,276 @@ function stormwovenSet(): EquipmentDef[] {
       value: 380, color, code: 'Zp',
       desc: 'Static in the soles. Doorknobs have learned to flinch.',
     },
+  ];
+}
+
+function earlyLeatherDefs(): EquipmentDef[] {
+  const hareswift = hareswiftSet();
+  const kingfisher = kingfisherSet();
+  const cutpurse = cutpurseSet();
+  const trapline = traplineSet();
+  const emberfox = emberfoxSet();
+  return [
+    // -------- Hareswift: pale oat leather with white hare-fur and tall
+    // black-tipped ears on the hood. The courier's first leathers — fast
+    // feet, faster excuses. The craft line every fletcher starts in.
+    ...hareswift,
+    ...colorways(hareswift, [
+      { key: 'clover', dye: 'Clover', color: '#7a9a58', dyeInput: { item: 'sagewort', qty: 2 },
+        desc: 'Spring-meadow green. Eat, run, repeat.' },
+      { key: 'snowmelt', dye: 'Snowmelt', color: '#cfd2ca', dyeInput: { item: 'cotton', qty: 2 },
+        desc: 'Winter-coat white a week too late. Still lucky.' },
+      { key: 'sorrel', dye: 'Sorrel', color: '#a86a48', dyeInput: { item: 'berries', qty: 2 },
+        desc: 'Warm chestnut-red, the hare the hounds never caught.' },
+    ]),
+    // -------- Kingfisher: teal leather with a flame-orange breast and a
+    // dagger of a feather at the temple. The river poacher's craft line —
+    // patient, bright, gone before the splash lands.
+    ...kingfisher,
+    ...colorways(kingfisher, [
+      { key: 'reedmace', dye: 'Reedmace', color: '#6a8a4a', dyeInput: { item: 'sagewort', qty: 2 },
+        desc: 'Rush-green for waiting in. The river forgets you first.' },
+      { key: 'stormgull', dye: 'Stormgull', color: '#9aa8b0', dyeInput: { item: 'cotton', qty: 2 },
+        desc: 'Spray-grey wings over white water. Loud coast, quiet work.' },
+      { key: 'sundart', dye: 'Sundart', color: '#d8a03c', dyeInput: { item: 'sunflower', qty: 2 },
+        desc: 'The flash the fish sees last.' },
+    ]),
+    // -------- Cutpurse: umber leather under a brass coin device and a
+    // half-mask. Drop-only — the guild does not sell its colors, you
+    // take them off somebody who stopped needing them.
+    ...cutpurse,
+    ...colorways(cutpurse, [
+      { key: 'alleyrat', dye: 'Alleyrat', color: '#5c5c56',
+        desc: 'Gutter-grey. The lamplight owes you nothing and pays it.' },
+      { key: 'moonless', dye: 'Moonless', color: '#33303c',
+        desc: 'Ink on ink. Worn on the nights the job is real.' },
+      { key: 'redhand', dye: 'Redhand', color: '#6e3a34',
+        desc: 'Oxblood leather. Caught once, never twice.' },
+    ]),
+    // -------- Trapline: rawhide and fir hung with a toggled bandolier,
+    // snare-cord wraps and a fur-ruffed hood. The trapper's craft line —
+    // everything on the belt has caught something.
+    ...trapline,
+    ...colorways(trapline, [
+      { key: 'juniper', dye: 'Juniper', color: '#4e6a52', dyeInput: { item: 'sagewort', qty: 2 },
+        desc: 'High-ridge green. The cold keeps the fur honest.' },
+      { key: 'riverclay', dye: 'Riverclay', color: '#96604c', dyeInput: { item: 'berries', qty: 2 },
+        desc: 'Bank-mud red, proof against wet mornings.' },
+      { key: 'nightsnare', dye: 'Nightsnare', color: '#3e4450', dyeInput: { item: 'moonbell', qty: 1 },
+        desc: 'Set at dusk, checked at dawn. Blue-dark in between.' },
+    ]),
+    // -------- Emberfox: russet fox leather with black-socked legs, a
+    // cream bib and a brush tail swinging at the hip. Drop-only — the
+    // early road's showpiece, and it knows it.
+    ...emberfox,
+    ...colorways(emberfox, [
+      { key: 'silverfox', dye: 'Silverfox', color: '#8a8e96',
+        desc: 'Frost-grey guard hairs. Rare in the wild, rarer worn.' },
+      { key: 'shadowfox', dye: 'Shadowfox', color: '#3a3640',
+        desc: 'Charcoal melt. The henhouse never files a report.' },
+      { key: 'dawnfox', dye: 'Dawnfox', color: '#d8b878',
+        desc: 'Pale gold at first light, gone by second.' },
+    ]),
+  ];
+}
+
+function hareswiftSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'archery', w: 2 },
+    { stat: 'sneak' },
+    { stat: 'foraging' },
+    { stat: 'regen' },
+  ];
+  const color = '#c2a878';
+  const craft = (levelReq: number, xp: number, ticks: number, leather: number) => ({
+    skill: 'crafting' as const,
+    levelReq,
+    xp,
+    station: 'workbench' as const,
+    ticks,
+    inputs: [{ item: 'leather', qty: leather }, { item: 'twine', qty: 1 }],
+  });
+  return [
+    {
+      id: 'hareswift_hood', name: 'Hareswift hood', slot: 'head', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 2 }, armor: 1, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(2, 20, 35, 1),
+      value: 30, color, code: 'Jh',
+      desc: 'Tall ears, black at the tips. You hear the bowstring first.',
+    },
+    {
+      id: 'hareswift_jerkin', name: 'Hareswift jerkin', slot: 'body', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 4 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(5, 40, 50, 2),
+      value: 55, color, code: 'Jj',
+      desc: 'Oat-pale leather, fur at the throat. Built for the getaway.',
+    },
+    {
+      id: 'hareswift_chaps', name: 'Hareswift chaps', slot: 'legs', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 3 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(3, 30, 40, 1),
+      value: 40, color, code: 'Jc',
+      desc: 'Wrapped light at the knee. Hedgerows barely notice.',
+    },
+    {
+      id: 'hareswift_boots', name: 'Hareswift boots', slot: 'boots', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 2 }, armor: 1, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(2, 25, 35, 1),
+      value: 35, color, code: 'Jb',
+      desc: 'Fur-topped and spring-loaded. Zigzag comes standard.',
+    },
+  ];
+}
+
+function kingfisherSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'archery', w: 2 },
+    { stat: 'fishing', w: 2 },
+    { stat: 'sneak' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#2f7a8a';
+  const craft = (levelReq: number, xp: number, ticks: number, leather: number) => ({
+    skill: 'crafting' as const,
+    levelReq,
+    xp,
+    station: 'workbench' as const,
+    ticks,
+    inputs: [{ item: 'leather', qty: leather }, { item: 'feather', qty: 2 }],
+  });
+  return [
+    {
+      id: 'kingfisher_hood', name: 'Kingfisher hood', slot: 'head', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 6 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(7, 55, 45, 1),
+      value: 95, color, code: 'Oh',
+      desc: 'A flame feather at the temple. The river reads it as local.',
+    },
+    {
+      id: 'kingfisher_jerkin', name: 'Kingfisher jerkin', slot: 'body', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 8 }, armor: 4, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(11, 90, 60, 2),
+      value: 140, color, code: 'Oj',
+      desc: 'Teal back, orange breast, feathered shoulders. Dive dressed.',
+    },
+    {
+      id: 'kingfisher_chaps', name: 'Kingfisher chaps', slot: 'legs', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 7 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(9, 70, 50, 2),
+      value: 115, color, code: 'Oc',
+      desc: 'Waxed against the spray. Perch anywhere, answer nothing.',
+    },
+    {
+      id: 'kingfisher_boots', name: 'Kingfisher boots', slot: 'boots', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 6 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(8, 60, 45, 1),
+      value: 100, color, code: 'Ob',
+      desc: 'Dry inside, always. The bank mud files a complaint.',
+    },
+  ];
+}
+
+function cutpurseSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'sneak', w: 2 },
+    { stat: 'archery' },
+    { stat: 'crafting' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#4e4438';
+  const piece = (
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    level: number, armor: number, value: number, code: string, desc: string,
+  ): EquipmentDef => ({
+    id, name, slot, armorClass: 'leather',
+    levelReq: { skill: 'sneak', level }, armor, affixPool: pool,
+    acquisition: { drop: true }, value, color, code, desc,
+  });
+  return [
+    piece('cutpurse_cowl', 'Cutpurse cowl', 'head', 10, 2, 170, 'Ph',
+      'Cowl and kerchief. The face is nobody; the hands are famous.'),
+    piece('cutpurse_jerkin', 'Cutpurse jerkin', 'body', 12, 4, 240, 'Pj',
+      'A brass coin over the heart — the only one it ever paid for.'),
+    piece('cutpurse_leggings', 'Cutpurse leggings', 'legs', 11, 3, 205, 'Pc',
+      'Bound at the seams for rooftops. Tiles keep the secret.'),
+    piece('cutpurse_boots', 'Cutpurse boots', 'boots', 10, 2, 180, 'Pb',
+      'Soft-soled and unsigned. Every step is deniable.'),
+  ];
+}
+
+function traplineSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'archery', w: 2 },
+    { stat: 'beastcraft', w: 2 },
+    { stat: 'foraging' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#8a7248';
+  const craft = (levelReq: number, xp: number, ticks: number, leather: number) => ({
+    skill: 'crafting' as const,
+    levelReq,
+    xp,
+    station: 'workbench' as const,
+    ticks,
+    inputs: [{ item: 'leather', qty: leather }, { item: 'twine', qty: 2 }],
+  });
+  return [
+    {
+      id: 'trapline_hood', name: 'Trapline hood', slot: 'head', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 14 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(16, 120, 55, 2),
+      value: 280, color, code: 'Xh',
+      desc: 'Fur-ruffed against the ridge wind. Patience wears it well.',
+    },
+    {
+      id: 'trapline_jerkin', name: 'Trapline jerkin', slot: 'body', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 16 }, armor: 5, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(20, 190, 70, 3),
+      value: 390, color, code: 'Xj',
+      desc: 'A bone-toggled bandolier across rawhide. Every loop earned.',
+    },
+    {
+      id: 'trapline_chaps', name: 'Trapline chaps', slot: 'legs', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 15 }, armor: 4, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(18, 155, 60, 2),
+      value: 330, color, code: 'Xc',
+      desc: 'Waxed to the thigh. The bog and the briar both gave up.',
+    },
+    {
+      id: 'trapline_boots', name: 'Trapline boots', slot: 'boots', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 14 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(17, 130, 55, 2),
+      value: 300, color, code: 'Xb',
+      desc: 'Snare-cord laced to the shin. They walk their own line.',
+    },
+  ];
+}
+
+function emberfoxSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'sneak', w: 2 },
+    { stat: 'archery', w: 2 },
+    { stat: 'herbalism' },
+    { stat: 'regen' },
+  ];
+  const color = '#b05a30';
+  const piece = (
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    level: number, armor: number, value: number, code: string, desc: string,
+  ): EquipmentDef => ({
+    id, name, slot, armorClass: 'leather',
+    levelReq: { skill: 'archery', level }, armor, affixPool: pool,
+    acquisition: { drop: true }, value, color, code, desc,
+  });
+  return [
+    piece('emberfox_hood', 'Emberfox hood', 'head', 17, 3, 360, 'Uh',
+      'Russet ears, black-tipped, always turned the right way.'),
+    piece('emberfox_jerkin', 'Emberfox jerkin', 'body', 19, 6, 500, 'Uj',
+      'Cream at the throat, a brush tail at the hip. Vanity, weaponized.'),
+    piece('emberfox_leggings', 'Emberfox leggings', 'legs', 18, 4, 430, 'Uc',
+      'Black to the knee, the fox\'s own socks. Snow tells no one.'),
+    piece('emberfox_boots', 'Emberfox boots', 'boots', 17, 3, 380, 'Ub',
+      'Four soft points of contact. The ground agrees to lie.'),
   ];
 }
 
