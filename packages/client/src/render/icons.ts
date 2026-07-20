@@ -953,6 +953,43 @@ const PAINTERS: Record<string, IconPainter> = {
     c.closePath();
     c.fill();
   },
+  wizardhat: (c, col) => {
+    // The folded cone over a broad brim — Gandalf, not a traffic cone.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.3, 0.62);
+    c.quadraticCurveTo(0.36, 0.3, 0.58, 0.14);
+    c.quadraticCurveTo(0.4, 0.16, 0.22, 0.1);
+    c.quadraticCurveTo(0.38, 0.26, 0.44, 0.34);
+    c.quadraticCurveTo(0.6, 0.4, 0.7, 0.62);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, -20);
+    c.beginPath();
+    c.moveTo(0.5, 0.6);
+    c.quadraticCurveTo(0.5, 0.34, 0.58, 0.14);
+    c.quadraticCurveTo(0.62, 0.34, 0.7, 0.62);
+    c.closePath();
+    c.fill();
+    // Band + buckle above the brim.
+    c.fillStyle = '#c9a23c';
+    c.fillRect(0.32, 0.56, 0.36, 0.07);
+    c.fillStyle = '#e8d06a';
+    c.fillRect(0.46, 0.545, 0.08, 0.1);
+    // The wide brim, lit on top.
+    c.fillStyle = shade(col, 8);
+    c.beginPath();
+    c.ellipse(0.5, 0.68, 0.34, 0.1, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, -26);
+    c.beginPath();
+    c.ellipse(0.5, 0.71, 0.31, 0.06, 0, 0, Math.PI);
+    c.fill();
+  },
   greathelm: (c, col) => {
     // Full-face bucket: flat crown, breathing slits, dark eye slot.
     c.fillStyle = col;
@@ -2912,6 +2949,7 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   leather_hood: { icon: 'hood', color: '#8a6a45' },
   wolfhide_hood: { icon: 'hood', color: '#6a6f7d' },
   runecloth_cowl: { icon: 'hood', color: '#7a5ac4' },
+  wizards_hat: { icon: 'wizardhat', color: '#4a5a9c' },
   steel_greathelm: { icon: 'greathelm', color: '#b8bec8' },
   horned_raider_helm: { icon: 'helm', color: '#7d6a52' },
   woven_trousers: { icon: 'legs', color: '#8f9ed6' },

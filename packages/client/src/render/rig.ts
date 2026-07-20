@@ -7,6 +7,7 @@ import {
   bootStyle,
   drawHelmet,
   drawOffhandOnArm,
+  drawPauldron,
   drawQuiver,
   drawTorsoGarment,
   helmStyle,
@@ -925,18 +926,22 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     if (offSt && offSt.kind !== 'quiver' && !archer) {
       drawOffhandOnArm(ctx, offSt, joints, s, profileK, rig.hurt);
     }
+    // The far pauldron is a true shoulder joint: it caps THIS arm's
+    // root on its solved anchor, so it rides swings and draws instead
+    // of staying glued to the torso corner.
+    if (bodySt && bodySt.pauldron !== 'none') {
+      const side = Math.sign(offShX - rig.x) || -lead;
+      drawPauldron(ctx, bodySt, offShX, shoulderY, side, s, wS, rig.hurt, false);
+    }
   };
-  // Back-mounted quiver: shoulder line, or the off hip when a cape owns
-  // the back. Depth follows the cape's facing law — behind the torso
-  // when the player faces the camera, in front when they face away.
+  // Back-mounted quiver. Depth follows the cape's facing law — behind
+  // the torso when the player faces the camera, in front when they face
+  // away. With a cape worn the RENDERER owns this call (drawBackGear),
+  // layered over the cloth — gear straps OVER a cape, never under it.
   const quiverFront = offSt?.kind === 'quiver' && fy < -0.16;
   const paintQuiver = (): void => {
-    if (!offSt || offSt.kind !== 'quiver') return;
-    if (rig.hasCape) {
-      drawQuiver(ctx, offSt, rig.x - lead * 0.17 * s * wS, armY + 0.1 * s, s, lead, rig.hurt);
-    } else {
-      drawQuiver(ctx, offSt, rig.x - fx * 0.14 * s, shoulderY - 0.02 * s, s, lead, rig.hurt);
-    }
+    if (!offSt || offSt.kind !== 'quiver' || rig.hasCape) return;
+    drawQuiver(ctx, offSt, rig.x - fx * 0.14 * s, shoulderY - 0.02 * s, s, lead, rig.hurt);
   };
   if (!quiverFront) paintQuiver();
   const paintMainArm = (): void => {
@@ -953,6 +958,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       skin,
       s,
     );
+    // Near pauldron caps the striking arm's root, over everything.
+    if (bodySt && bodySt.pauldron !== 'none') {
+      const side = Math.sign(mainShX - rig.x) || lead;
+      drawPauldron(ctx, bodySt, mainShX, shoulderY, side, s, wS, rig.hurt, true);
+    }
   };
   const paintWeapon = (): void => {
     // Station props: the smith's own kit, drawn regardless of loadout.
@@ -1068,6 +1078,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       backK,
       hurt: rig.hurt,
       strideSw: ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP,
+      nowMs: rig.nowMs,
+      runF: rig.runF,
+      // Cloth trails the travel: the hem drags OPPOSITE the motion,
+      // un-squashed into the local frame so profile runs still read.
+      dragX:
+        (-rig.poleX * Math.min(1, rig.poleStrength) * (0.1 + 0.14 * rig.runF)) /
+        Math.max(0.6, wS),
     },
   );
 
@@ -1103,8 +1120,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const BALD = hairStyle === 1;
   const LONG = hairStyle === 2;
   const KNOT = hairStyle === 3;
-  // A circlet sits ON the hair; every other helm owns the skull.
-  if ((!helm || helmSt?.kind === 'circlet') && !BALD) {
+  // A circlet sits ON the hair, a wizard's brim rides over it (locks
+  // peeking out below); every other helm owns the skull.
+  if ((!helm || helmSt?.kind === 'circlet' || helmSt?.kind === 'wizard') && !BALD) {
     ctx.fillStyle = hairCol;
     if (backK > 0.55) {
       // Back of the skull: the mop covers nearly everything, with one
@@ -1265,6 +1283,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       backK,
       lead,
       hurt: rig.hurt,
+      nowMs: rig.nowMs,
     });
   }
   ctx.restore();
@@ -1277,6 +1296,30 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     paintWeapon();
     paintMainArm();
   }
+}
+
+/**
+ * Back-mounted gear layered relative to the CAPE — called by the
+ * renderer immediately after the cape paints, so a quiver straps OVER
+ * the cloth (gear goes over a cape, never under it). Recomputes the
+ * few shoulder measurements it needs; drawHumanoid skips its internal
+ * quiver whenever hasCape is set.
+ */
+export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void {
+  if (!rig.offhandItem) return;
+  const st = offhandStyle(rig.offhandItem);
+  if (st.kind !== 'quiver') return;
+  const k = rig.size ?? 1;
+  const s = rig.scale * k;
+  const fx = Math.cos(rig.dir);
+  const crouch = rig.pose === PoseState.Sneak ? Math.min(1, rig.poseT) : 0;
+  const hipY = rig.y - (rig.rise + rig.bob * 0.45) * s + 0.11 * s * crouch;
+  const wS = rig.wScale;
+  const hScale = 1 + (1 - wS) * 0.55;
+  const th = 0.46 * s * (1 - 0.12 * crouch);
+  const shoulderY = hipY - th * hScale + 0.06 * s;
+  const lead = fx >= 0 ? 1 : -1;
+  drawQuiver(ctx, st, rig.x - fx * 0.14 * s, shoulderY - 0.02 * s, s, lead, rig.hurt);
 }
 
 /** Darken/lighten a hex color by a flat amount — flat-art shading. */

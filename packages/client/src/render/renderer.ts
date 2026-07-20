@@ -30,9 +30,11 @@ import {
   LegSolver,
   MINE_CYCLE_MS,
   beastSpec,
+  drawBackGear,
   drawBeast,
   drawHumanoid,
   shade,
+  type RigPose,
 } from './rig.js';
 import { LegRig } from './legs.js';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
@@ -7512,8 +7514,7 @@ export class Renderer {
           }
         }
 
-        if (paintCape && !capeFront) paintCape(ctx);
-        drawHumanoid(ctx, {
+        const rigPose: RigPose = {
           x: bodyX,
           y: bodyY,
           scale: s,
@@ -7556,8 +7557,19 @@ export class Renderer {
           look: e.look,
           gatherPhase: now / 1000,
           craftKind: station?.kind ?? null,
-        });
-        if (paintCape && capeFront) paintCape(ctx);
+        };
+        // Layer law with a cape worn: gear straps OVER the cloth, so
+        // the quiver paints immediately after the cape on whichever
+        // side of the body the cape lands this frame.
+        if (paintCape && !capeFront) {
+          paintCape(ctx);
+          if (rigPose.hasCape) drawBackGear(ctx, rigPose);
+        }
+        drawHumanoid(ctx, rigPose);
+        if (paintCape && capeFront) {
+          paintCape(ctx);
+          if (rigPose.hasCape) drawBackGear(ctx, rigPose);
+        }
       },
       body: {
         x: p.x - 1.55 * s * capeK,

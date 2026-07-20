@@ -36,16 +36,24 @@ export interface BodyStyle {
   skirtSlit?: boolean;
   /** drawArm sleeve override. Default shade(color, -12) — today's law. */
   sleeve?: string;
+  /** Neck treatment: plate gorget ring or a fur ruff. */
+  collar?: 'gorget' | 'fur';
+  /** A belt pouch on the hip — the adventurer's secondary read. */
+  pouch?: boolean;
+  /** Hem/trim accent that breathes with a slow ember pulse. */
+  glowTrim?: string;
 }
 
 export interface HelmStyle {
   color: string;
   trim: string;
-  kind: 'dome' | 'greathelm' | 'hood' | 'circlet' | 'horned';
+  kind: 'dome' | 'greathelm' | 'hood' | 'circlet' | 'horned' | 'wizard';
   noseGuard?: boolean;
   visor?: 'slit' | 'cross';
   plume?: { color: string };
   horns?: { color: string; size: number };
+  /** Wizard hats: a band buckle / star charm on the crown. */
+  charm?: string;
 }
 
 export interface LegStyle {
@@ -80,30 +88,32 @@ export interface OffhandStyle {
 export const BODY_STYLES: Record<string, BodyStyle> = {
   apprentice_robe: {
     color: '#5a6ea0', trim: '#c9c4cf', cls: 'cloth',
-    silhouette: 'robe', pauldron: 'none', chest: 'stitch', skirt: 0.24,
+    silhouette: 'robe', pauldron: 'none', chest: 'stitch', skirt: 0.32,
   },
   emberweave_robe: {
     color: '#c4553d', trim: '#e8a23c', cls: 'cloth',
     silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'bolt',
-    skirt: 0.22, skirtSlit: true,
+    skirt: 0.3, skirtSlit: true, glowTrim: '#ffb054',
   },
   leather_body: {
     color: '#b08a5c', trim: '#6b4a26', cls: 'leather',
     silhouette: 'jerkin', pauldron: 'none', chest: 'straps', skirt: 0,
+    pouch: true,
   },
   huntsman_jerkin: {
     color: '#3f6b3a', trim: '#2e4a28', metal: '#6b4a26', cls: 'leather',
     silhouette: 'brigandine', pauldron: 'layered', pauldronColor: '#5a3f1e',
-    chest: 'straps', skirt: 0.1,
+    chest: 'straps', skirt: 0.12, collar: 'fur', pouch: true,
   },
   iron_platebody: {
     color: '#8d9299', trim: '#6a6f7d', metal: '#b0b6be', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'round', chest: 'plate', skirt: 0,
+    collar: 'gorget',
   },
   steel_platebody: {
     color: '#b8bec8', trim: '#c9a23c', metal: '#d4dae2', cls: 'plate',
     silhouette: 'cuirass', pauldron: 'layered', chest: 'plate',
-    emblem: 'diamond', skirt: 0,
+    emblem: 'diamond', skirt: 0, collar: 'gorget',
   },
 };
 
@@ -113,6 +123,7 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
   leather_hood: { color: '#8a6a45', trim: '#6b4a26', kind: 'hood' },
   wolfhide_hood: { color: '#6a6f7d', trim: '#9aa0ae', kind: 'hood' },
   runecloth_cowl: { color: '#7a5ac4', trim: '#c9a8e8', kind: 'hood' },
+  wizards_hat: { color: '#4a5a9c', trim: '#c9a23c', kind: 'wizard', charm: '#e8d06a' },
   steel_greathelm: {
     color: '#b8bec8', trim: '#8d9299', kind: 'greathelm',
     visor: 'slit', plume: { color: '#8a2f3c' },
@@ -200,65 +211,136 @@ export interface TorsoFrame {
   profileK: number;
   backK: number;
   hurt: boolean;
-  /** Foot-lift differential — the gait beat robe hems sway on. */
+  /** Foot-lift differential — the gait beat hems sway on. */
   strideSw: number;
+  /** Wall-clock ms — hem flutter, ember pulses, living details. */
+  nowMs: number;
+  /** Gait blend 0..1 — billow and cloth drag scale with real speed. */
+  runF: number;
+  /**
+   * Cloth drag in local x: the hem trails the direction of travel like
+   * real cloth (screen travel, un-squashed by the caller). Signed.
+   */
+  dragX: number;
 }
 
 /**
- * Torso garment + pauldrons. Replaces the fixed tunic: the `tunic`
- * silhouette with no details is stroke-for-stroke the original body.
+ * Torso garment. Replaces the fixed tunic: the `tunic` silhouette with
+ * no details is stroke-for-stroke the original body. Pauldrons are NOT
+ * drawn here — they are true shoulder joints, painted in screen space
+ * on the solved shoulder anchors (drawPauldron) so they ride the arms.
  */
 export function drawTorsoGarment(
   ctx: CanvasRenderingContext2D,
   st: BodyStyle,
   f: TorsoFrame,
 ): void {
-  const { s, tw, ww, th, hurt } = f;
+  const { s, tw, ww, th, hurt, nowMs, runF, backK } = f;
   const col = hurt ? '#ffffff' : st.color;
   const wide = st.silhouette === 'cuirass' ? 1.04 : 1;
   const tww = tw * wide;
+  const back = backK > 0.55;
+  const metal = st.metal ?? shade(st.color, -20);
 
-  // Robe skirt first — the torso quad and belt seat on top of it. Legs
-  // are already painted (they draw before the torso frame), so the
-  // skirt naturally covers the thighs; capped short so boots read.
+  // ---- the living skirt: a full-length robe hem that DRAGS behind the
+  // travel, billows as the gait becomes a run, and ripples on its own
+  // clock — cloth as motion, not a static trapezoid. Legs painted
+  // earlier are covered naturally; hem stays above the boots.
   if (st.skirt > 0) {
+    const y0 = -0.075 * s;
     const hemY = 0.02 * s + st.skirt * s;
-    const hemW = ww * 1.25;
-    const sway = f.strideSw * 0.03 * s;
+    const hemW = ww * 1.3;
+    const stride = f.strideSw * 0.025 * s;
+    const trail = f.dragX === 0 ? 0 : Math.sign(f.dragX);
+    // Five hem points, left to right; drag bows the middle hardest,
+    // flutter gives each point its own beat, speed lifts the trailing
+    // edge so the cloth planes out behind a sprint.
+    const hem: Array<{ x: number; y: number }> = [];
+    for (let i = 0; i <= 4; i++) {
+      const u = i / 4;
+      const bx = -hemW + u * 2 * hemW;
+      const flutter =
+        Math.sin(nowMs * 0.005 + i * 1.9) * 0.013 * s * (0.3 + 0.7 * runF) +
+        stride * Math.sin(u * Math.PI);
+      const dx = f.dragX * (0.5 + 0.4 * Math.sin(u * Math.PI)) * s + flutter;
+      const lift =
+        runF * 0.055 * s * Math.max(0, (bx * trail) / hemW) +
+        Math.abs(f.dragX) * 0.18 * s * Math.sin(u * Math.PI) * runF;
+      hem.push({ x: bx + dx, y: hemY - lift });
+    }
     ctx.fillStyle = col;
     ctx.beginPath();
-    ctx.moveTo(-ww, -0.075 * s);
-    ctx.lineTo(ww, -0.075 * s);
-    ctx.lineTo(hemW + sway, hemY);
-    ctx.lineTo(-hemW + sway, hemY);
+    ctx.moveTo(-ww, y0);
+    ctx.lineTo(ww, y0);
+    for (let i = 4; i >= 0; i--) ctx.lineTo(hem[i]!.x, hem[i]!.y);
     ctx.closePath();
     ctx.fill();
     if (!hurt) {
-      // Trailing-half shade, matching the torso's x=0 split.
+      // Trailing-half shade keeps the torso's x=0 form split.
       ctx.fillStyle = shade(st.color, -18);
       ctx.beginPath();
-      ctx.moveTo(0, -0.075 * s);
-      ctx.lineTo(ww, -0.075 * s);
-      ctx.lineTo(hemW + sway, hemY);
-      ctx.lineTo(sway * 0.5, hemY);
+      ctx.moveTo(0, y0);
+      ctx.lineTo(ww, y0);
+      ctx.lineTo(hem[4]!.x, hem[4]!.y);
+      ctx.lineTo(hem[3]!.x, hem[3]!.y);
+      ctx.lineTo(hem[2]!.x, hem[2]!.y);
       ctx.closePath();
       ctx.fill();
-      // Hem trim band; a center slit lets the stride read through.
-      ctx.fillStyle = shade(st.trim, -6);
-      ctx.fillRect(-hemW + sway, hemY - 0.028 * s, hemW * 2, 0.028 * s);
-      if (st.skirtSlit) {
+      // A second, deeper fold line rides the drag — the crease that
+      // says the cloth has weight.
+      ctx.strokeStyle = shade(st.color, -28);
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      ctx.moveTo(-ww * 0.4 + f.dragX * 0.3 * s, y0 + 0.05 * s);
+      ctx.quadraticCurveTo(
+        -ww * 0.3 + f.dragX * 0.5 * s,
+        (y0 + hemY) / 2,
+        hem[1]!.x + hemW * 0.18,
+        hem[1]!.y - 0.01 * s,
+      );
+      ctx.stroke();
+      // Hem trim follows the moving hem points.
+      ctx.strokeStyle = st.trim;
+      ctx.lineWidth = Math.max(1.5, s * 0.026);
+      ctx.beginPath();
+      ctx.moveTo(hem[0]!.x, hem[0]!.y - 0.012 * s);
+      for (let i = 1; i <= 4; i++) ctx.lineTo(hem[i]!.x, hem[i]!.y - 0.012 * s);
+      ctx.stroke();
+      // Emberweave-style hems breathe: a warm pulse over the trim.
+      if (st.glowTrim) {
+        const pulse = 0.3 + 0.22 * Math.sin(nowMs * 0.0035);
+        ctx.strokeStyle = st.glowTrim;
+        ctx.globalAlpha = pulse;
+        ctx.lineWidth = Math.max(2, s * 0.04);
+        ctx.beginPath();
+        ctx.moveTo(hem[0]!.x, hem[0]!.y - 0.012 * s);
+        for (let i = 1; i <= 4; i++) ctx.lineTo(hem[i]!.x, hem[i]!.y - 0.012 * s);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      if (st.skirtSlit && !back) {
+        // The center slit lets the stride read through the cloth.
         ctx.fillStyle = 'rgba(24, 15, 26, 0.55)';
         ctx.beginPath();
-        ctx.moveTo(sway * 0.4, hemY - st.skirt * s * 0.55);
-        ctx.lineTo(0.035 * s + sway, hemY);
-        ctx.lineTo(-0.035 * s + sway, hemY);
+        ctx.moveTo(hem[2]!.x * 0.5, hemY - st.skirt * s * 0.6);
+        ctx.lineTo(hem[2]!.x + 0.035 * s, hem[2]!.y);
+        ctx.lineTo(hem[2]!.x - 0.035 * s, hem[2]!.y);
         ctx.closePath();
         ctx.fill();
+      }
+      if (back) {
+        // Back panel seam — robes are tailored, front and back.
+        ctx.strokeStyle = shade(st.color, -24);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(0, y0 + 0.02 * s);
+        ctx.lineTo(hem[2]!.x * 0.8, hem[2]!.y - 0.02 * s);
+        ctx.stroke();
       }
     }
   }
 
-  // Base torso quad — the original tunic geometry (wider for a cuirass).
+  // ---- base torso quad — the original tunic geometry.
   ctx.fillStyle = col;
   ctx.beginPath();
   ctx.moveTo(-tww, -th);
@@ -269,7 +351,6 @@ export function drawTorsoGarment(
   ctx.fill();
 
   if (!hurt) {
-    // Hard shade half — the flat-art form read.
     ctx.fillStyle = shade(st.color, -18);
     ctx.beginPath();
     ctx.moveTo(0, -th);
@@ -278,7 +359,6 @@ export function drawTorsoGarment(
     ctx.lineTo(0, 0.02 * s);
     ctx.closePath();
     ctx.fill();
-    // Lit shoulder cap plane.
     ctx.fillStyle = shade(st.color, 14);
     ctx.beginPath();
     ctx.moveTo(-tww, -th);
@@ -288,21 +368,49 @@ export function drawTorsoGarment(
     ctx.closePath();
     ctx.fill();
 
-    const metal = st.metal ?? shade(st.color, -20);
-    const front = f.backK <= 0.55;
-
-    // Waist: cloth belt, or the cuirass' broader darker fauld band.
+    // ---- waist: cloth belt, or the cuirass' ARTICULATED fauld — two
+    // overlapping plates stepping down, a real joint instead of a band.
     if (st.silhouette === 'cuirass') {
-      ctx.fillStyle = shade(st.color, -30);
-      ctx.fillRect(-ww - 0.014 * s, -0.09 * s, ww * 2 + 0.028 * s, 0.09 * s);
+      ctx.fillStyle = shade(st.color, -24);
+      ctx.beginPath();
+      chamferRect(ctx, -ww - 0.02 * s, -0.115 * s, ww * 2 + 0.04 * s, 0.075 * s, 0.016 * s);
+      ctx.fill();
       ctx.fillStyle = metal;
-      ctx.fillRect(-ww - 0.014 * s, -0.09 * s, ww * 2 + 0.028 * s, 0.02 * s);
+      ctx.fillRect(-ww - 0.02 * s, -0.115 * s, ww * 2 + 0.04 * s, 0.018 * s);
+      ctx.fillStyle = shade(st.color, -34);
+      ctx.beginPath();
+      chamferRect(ctx, -ww * 0.92 - 0.01 * s, -0.052 * s, ww * 1.84 + 0.02 * s, 0.062 * s, 0.014 * s);
+      ctx.fill();
+      // Gold edging on the champion fauld.
+      if (st.trim !== metal) {
+        ctx.fillStyle = st.trim;
+        ctx.fillRect(-ww * 0.92, -0.052 * s, ww * 1.84, 0.012 * s);
+      }
     } else {
       ctx.fillStyle = shade(st.color, -38);
       ctx.fillRect(-ww - 0.008 * s, -0.075 * s, ww * 2 + 0.016 * s, 0.075 * s);
     }
 
-    // Brigandine: riveted horizontal lames across the chest.
+    // ---- collar: the neck joint that ties helmet to breastplate.
+    if (st.collar === 'gorget') {
+      ctx.fillStyle = metal;
+      ctx.beginPath();
+      chamferRect(ctx, -tw * 0.42, -th - 0.028 * s, tw * 0.84, 0.05 * s, 0.014 * s);
+      ctx.fill();
+      ctx.fillStyle = shade(metal, -22);
+      ctx.fillRect(-tw * 0.42, -th + 0.012 * s, tw * 0.84, 0.012 * s);
+    } else if (st.collar === 'fur') {
+      // A lumpy fur ruff across the shoulder line — the huntsman read.
+      ctx.fillStyle = shade(st.trim, 34);
+      for (let i = 0; i < 5; i++) {
+        const u = -1 + i * 0.5;
+        const r = (0.045 + 0.012 * Math.sin(i * 2.7)) * s;
+        ctx.beginPath();
+        ctx.arc(u * tw * 0.82, -th + 0.012 * s + Math.sin(i * 1.9) * 0.008 * s, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
     if (st.silhouette === 'brigandine') {
       ctx.strokeStyle = shade(st.color, -26);
       ctx.lineWidth = Math.max(1, s * 0.016);
@@ -320,8 +428,9 @@ export function drawTorsoGarment(
       }
     }
 
-    // Chest details are front-face marks — skipped when facing away.
-    if (front) {
+    // ---- front and back are DIFFERENT garments: chest marks face the
+    // camera; turn around and you get backplates, crossed straps, seams.
+    if (!back) {
       if (st.chest === 'straps') {
         ctx.strokeStyle = st.trim;
         ctx.lineWidth = Math.max(1.5, s * 0.028);
@@ -332,13 +441,18 @@ export function drawTorsoGarment(
         ctx.fillStyle = metal;
         ctx.fillRect(-tw * 0.16, -th * 0.55, 0.03 * s, 0.03 * s);
       } else if (st.chest === 'plate') {
-        // The bright breastplate facet — plate's hero read.
         ctx.fillStyle = metal;
         ctx.beginPath();
         chamferRect(ctx, -tw * 0.52, -th * 0.86, tw * 1.04, th * 0.52, 0.035 * s);
         ctx.fill();
         ctx.fillStyle = shade(metal, 16);
         ctx.fillRect(-tw * 0.52, -th * 0.86, tw * 1.04, th * 0.1);
+        // Rivets pin the breastplate at its corners.
+        ctx.fillStyle = shade(metal, -26);
+        for (const rx of [-tw * 0.42, tw * 0.42]) {
+          ctx.fillRect(rx - 0.008 * s, -th * 0.82, 0.016 * s, 0.016 * s);
+          ctx.fillRect(rx - 0.008 * s, -th * 0.42, 0.016 * s, 0.016 * s);
+        }
       } else if (st.chest === 'stitch') {
         ctx.strokeStyle = st.trim;
         ctx.lineWidth = Math.max(1, s * 0.014);
@@ -346,6 +460,11 @@ export function drawTorsoGarment(
         ctx.moveTo(0, -th * 0.98);
         ctx.lineTo(0, -0.09 * s);
         ctx.stroke();
+        // Rope belt knot — the apprentice's whole budget.
+        ctx.fillStyle = st.trim;
+        ctx.beginPath();
+        ctx.arc(0, -0.04 * s, 0.022 * s, 0, Math.PI * 2);
+        ctx.fill();
       }
       if (st.emblem && (st.chest === 'emblem' || st.chest === 'plate')) {
         ctx.fillStyle = st.trim;
@@ -365,7 +484,6 @@ export function drawTorsoGarment(
           ctx.lineTo(0, ey + r * 0.7);
           ctx.lineTo(-r * 0.6, ey);
         } else {
-          // bolt
           ctx.moveTo(r * 0.25, ey - r * 0.75);
           ctx.lineTo(-r * 0.3, ey + r * 0.1);
           ctx.lineTo(r * 0.02, ey + r * 0.1);
@@ -376,56 +494,125 @@ export function drawTorsoGarment(
         ctx.closePath();
         ctx.fill();
       }
+    } else {
+      if (st.silhouette === 'cuirass') {
+        // Backplate: spine ridge + shoulder-blade facets + strap line.
+        ctx.fillStyle = shade(st.color, -16);
+        ctx.fillRect(-0.014 * s, -th * 0.96, 0.028 * s, th * 0.88);
+        ctx.fillStyle = shade(st.color, 8);
+        for (const sx of [-1, 1]) {
+          ctx.beginPath();
+          chamferRect(ctx, sx * tw * 0.52 - tw * 0.26, -th * 0.84, tw * 0.52, th * 0.34, 0.03 * s);
+          ctx.fill();
+        }
+        ctx.fillStyle = shade(metal, -18);
+        ctx.fillRect(-tww * 0.9, -th * 0.44, tww * 1.8, 0.016 * s);
+      } else if (st.chest === 'straps' || st.silhouette === 'brigandine') {
+        // Crossed back straps + buckle — how a jerkin actually closes.
+        ctx.strokeStyle = shade(st.trim, -6);
+        ctx.lineWidth = Math.max(1.5, s * 0.026);
+        ctx.beginPath();
+        ctx.moveTo(-tw * 0.7, -th * 0.94);
+        ctx.lineTo(tw * 0.55, -0.11 * s);
+        ctx.moveTo(tw * 0.7, -th * 0.94);
+        ctx.lineTo(-tw * 0.55, -0.11 * s);
+        ctx.stroke();
+        ctx.fillStyle = metal;
+        ctx.fillRect(-0.016 * s, -th * 0.52, 0.032 * s, 0.032 * s);
+      } else if (st.silhouette === 'robe') {
+        ctx.strokeStyle = shade(st.color, -24);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(0, -th * 0.95);
+        ctx.lineTo(0, -0.08 * s);
+        ctx.stroke();
+      }
+    }
+
+    // ---- the belt pouch: gear you LIVE out of, riding the lead hip.
+    if (st.pouch && !back) {
+      const pxx = f.lead * ww * 0.72;
+      ctx.fillStyle = shade(st.trim, 10);
+      ctx.beginPath();
+      chamferRect(ctx, pxx - 0.038 * s, -0.055 * s, 0.076 * s, 0.075 * s, 0.018 * s);
+      ctx.fill();
+      ctx.fillStyle = shade(st.trim, -14);
+      ctx.beginPath();
+      chamferRect(ctx, pxx - 0.042 * s, -0.06 * s, 0.084 * s, 0.032 * s, 0.014 * s);
+      ctx.fill();
     }
   }
+}
 
-  // Pauldrons ride the shoulder corners — drawn last so they cap the
-  // silhouette; the head paints after and overlaps them correctly.
-  // Far shoulder first (shaded), near lit; both read from behind too.
-  if (st.pauldron !== 'none') {
-    const pc = hurt ? '#ffffff' : (st.pauldronColor ?? st.metal ?? shade(st.color, -14));
-    for (const side of [-f.lead, f.lead]) {
-      const near = side === f.lead;
-      const col2 = hurt ? '#ffffff' : near ? shade(pc, 8) : shade(pc, -14);
-      const pxc = side * tww;
-      const pw = tw * 0.42;
-      const ph = 0.1 * s;
-      ctx.fillStyle = col2;
-      if (st.pauldron === 'layered') {
-        // Stacked lames stepping down the arm — max overhang 0.05s.
-        for (let i = 0; i < 3; i++) {
-          const k2 = 1 - i * 0.22;
-          ctx.beginPath();
-          chamferRect(
-            ctx,
-            pxc - pw * k2 + side * (0.03 * s + i * 0.012 * s),
-            -th - ph * 0.55 + i * ph * 0.5,
-            pw * 2 * k2 * 0.8,
-            ph * 0.62,
-            0.02 * s,
-          );
-          ctx.fill();
-        }
-      } else {
+/**
+ * A pauldron as a real shoulder JOINT: painted in screen space on the
+ * solved shoulder anchor, after its arm, so it caps the arm root and
+ * rides swings instead of staying glued to the torso corners. `side`
+ * is the outward direction sign; `squashK` is the body's facing squash.
+ */
+export function drawPauldron(
+  ctx: CanvasRenderingContext2D,
+  st: BodyStyle,
+  x: number,
+  y: number,
+  side: number,
+  s: number,
+  squashK: number,
+  hurt: boolean,
+  near: boolean,
+): void {
+  if (st.pauldron === 'none') return;
+  const base = st.pauldronColor ?? st.metal ?? shade(st.color, -14);
+  const col = hurt ? '#ffffff' : near ? shade(base, 8) : shade(base, -12);
+  ctx.save();
+  ctx.translate(x, y - 0.035 * s);
+  ctx.scale(Math.max(0.55, squashK), 1);
+  if (st.pauldron === 'layered') {
+    // Three lames stepping down the arm — articulation you can read.
+    for (let i = 0; i < 3; i++) {
+      const w = 0.105 * s * (1 - i * 0.16);
+      const yy = -0.02 * s + i * 0.038 * s;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(col, -i * 8);
+      ctx.beginPath();
+      chamferRect(ctx, -w + side * i * 0.012 * s, yy, w * 2, 0.042 * s, 0.014 * s);
+      ctx.fill();
+    }
+    if (!hurt) {
+      ctx.fillStyle = shade(col, 18);
+      ctx.fillRect(-0.08 * s, -0.016 * s, 0.16 * s, 0.014 * s);
+    }
+  } else {
+    // Dome cap over the deltoid, flat base, lit crown, dark rim.
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(-0.105 * s, 0.045 * s);
+    ctx.quadraticCurveTo(-0.115 * s, -0.05 * s, 0, -0.062 * s);
+    ctx.quadraticCurveTo(0.115 * s, -0.05 * s, 0.105 * s, 0.045 * s);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = shade(col, 18);
+      ctx.beginPath();
+      ctx.moveTo(-0.07 * s, -0.028 * s);
+      ctx.quadraticCurveTo(0, -0.055 * s, 0.07 * s, -0.028 * s);
+      ctx.lineTo(0.06 * s, -0.008 * s);
+      ctx.quadraticCurveTo(0, -0.03 * s, -0.06 * s, -0.008 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(col, -24);
+      ctx.fillRect(-0.1 * s, 0.038 * s, 0.2 * s, 0.014 * s);
+      if (st.pauldron === 'spiked') {
+        ctx.fillStyle = col;
         ctx.beginPath();
-        chamferRect(ctx, pxc - pw + side * 0.04 * s, -th - ph * 0.62, pw * 2 * 0.9, ph * 1.25, 0.028 * s);
+        ctx.moveTo(side * 0.06 * s, -0.03 * s);
+        ctx.lineTo(side * 0.16 * s, -0.09 * s);
+        ctx.lineTo(side * 0.095 * s, 0.005 * s);
+        ctx.closePath();
         ctx.fill();
-        if (!hurt) {
-          ctx.fillStyle = shade(col2, 14);
-          ctx.fillRect(pxc - pw * 0.7 + side * 0.04 * s, -th - ph * 0.55, pw * 1.4 * 0.8, ph * 0.32);
-        }
-        if (st.pauldron === 'spiked' && !hurt) {
-          ctx.fillStyle = col2;
-          ctx.beginPath();
-          ctx.moveTo(pxc + side * (pw * 0.7 + 0.04 * s), -th - ph * 0.4);
-          ctx.lineTo(pxc + side * (pw * 0.7 + 0.11 * s), -th - ph * 0.9);
-          ctx.lineTo(pxc + side * (pw * 0.25 + 0.04 * s), -th - ph * 0.6);
-          ctx.closePath();
-          ctx.fill();
-        }
       }
     }
   }
+  ctx.restore();
 }
 
 /** The head local frame (inside the torso squash) drawHelmet works in. */
@@ -442,6 +629,8 @@ export interface HeadFrame {
   backK: number;
   lead: number;
   hurt: boolean;
+  /** Wall-clock ms — hat-tip sway, living micro-motion. */
+  nowMs: number;
 }
 
 /**
@@ -451,6 +640,70 @@ export interface HeadFrame {
 export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: HeadFrame): void {
   const { s, headX, headY, hw, hh, cut, headR, fx, profileK, backK, lead, hurt } = f;
   const mc = hurt ? '#ffffff' : st.color;
+
+  if (st.kind === 'wizard') {
+    // THE wizard hat: a broad brim low on the brow and a tall crown
+    // that folds over and droops toward the trailing side — Gandalf,
+    // not a traffic cone. The tip sways on its own slow clock, so the
+    // hat is always faintly alive; the whole silhouette reads at every
+    // facing because a cone has no face to lose.
+    const bandY = headY - hh * 0.55;
+    const sway = Math.sin(f.nowMs * 0.0021) * hw * 0.14;
+    const tipX = headX - lead * hw * 1.35 + sway;
+    const tipY = bandY - hh * 1.62;
+    // Crown cone with a folded knee: the leading edge climbs near-
+    // vertical, breaks at the knee, then droops to the hanging tip.
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    ctx.moveTo(headX - hw * 0.82, bandY);
+    ctx.quadraticCurveTo(headX - hw * 0.6, bandY - hh * 1.3, headX + lead * hw * 0.12, bandY - hh * 1.72);
+    ctx.quadraticCurveTo(headX - lead * hw * 0.5, bandY - hh * 2.0, tipX, tipY);
+    ctx.quadraticCurveTo(headX - lead * hw * 0.15, bandY - hh * 1.55, headX + lead * hw * 0.35, bandY - hh * 1.28);
+    ctx.quadraticCurveTo(headX + hw * 0.78, bandY - hh * 0.6, headX + hw * 0.82, bandY);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // Hard-shade the trailing half of the cone — the fold's underside.
+      ctx.fillStyle = shade(st.color, -18);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.12, bandY - hh * 1.72);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.5, bandY - hh * 2.0, tipX, tipY);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.15, bandY - hh * 1.55, headX + lead * hw * 0.35, bandY - hh * 1.28);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.2, bandY - hh * 0.9, headX + lead * hw * 0.1, bandY);
+      ctx.lineTo(headX + lead * hw * 0.6, bandY);
+      ctx.closePath();
+      ctx.fill();
+      // A crease line up the cone sells the cloth.
+      ctx.strokeStyle = shade(st.color, -26);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(headX - lead * hw * 0.2, bandY - hh * 0.2);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.05, bandY - hh * 0.9, headX + lead * hw * 0.08, bandY - hh * 1.5);
+      ctx.stroke();
+    }
+    // The brim: a wide slab over the hair, lit on top, shadowed under.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, 6);
+    ctx.beginPath();
+    ctx.ellipse(headX, bandY + hh * 0.06, hw * 1.85, hh * 0.34, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = shade(st.color, -24);
+      ctx.beginPath();
+      ctx.ellipse(headX, bandY + hh * 0.16, hw * 1.78, hh * 0.22, 0, 0, Math.PI);
+      ctx.fill();
+      // Band + buckle charm above the brim, tracking the face.
+      ctx.fillStyle = st.trim;
+      ctx.fillRect(headX - hw * 0.78, bandY - hh * 0.26, hw * 1.56, hh * 0.2);
+      if (backK <= 0.55 && st.charm) {
+        const bxx = headX + fx * headR * 0.36;
+        ctx.fillStyle = st.charm;
+        ctx.beginPath();
+        chamferRect(ctx, bxx - headR * 0.09, bandY - hh * 0.3, headR * 0.18, headR * 0.26, headR * 0.05);
+        ctx.fill();
+      }
+    }
+    return;
+  }
 
   if (st.kind === 'circlet') {
     // A brow band + center gem over the hair — hair stays visible.
@@ -491,6 +744,21 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.fillRect(headX - hw * 0.66, headY - hh * 0.62, hw * 1.32, hh * 0.5);
         ctx.fillStyle = st.trim;
         ctx.fillRect(headX - hw * 0.72, headY - hh * 0.66, hw * 1.44, headR * 0.09);
+      } else {
+        // From behind, the drape tail: the point every hood hangs from.
+        ctx.fillStyle = shade(st.color, -10);
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.34, headY + hh * 0.6);
+        ctx.lineTo(headX + hw * 0.34, headY + hh * 0.6);
+        ctx.lineTo(headX + lead * hw * 0.1, headY + hh * 1.6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, -22);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(headX, headY - hh * 0.8);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.55);
+        ctx.stroke();
       }
     }
     return;
@@ -507,6 +775,11 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     ctx.fillRect(headX - hw * 0.8, headY - hh * 1.0, hw * 1.6, hh * 0.26);
     ctx.fillStyle = shade(st.color, -22);
     ctx.fillRect(headX - hw * 1.06, headY - hh * 0.16, hw * 2.12, headR * 0.2);
+    // Brow rivets pin the band — the smith's signature.
+    ctx.fillStyle = shade(st.color, 26);
+    for (const rx of [-0.62, 0, 0.62]) {
+      ctx.fillRect(headX + rx * hw - headR * 0.035, headY - hh * 0.12, headR * 0.07, headR * 0.07);
+    }
   }
   if (full) {
     if (!hurt && backK <= 0.55) {
