@@ -164,6 +164,16 @@ export interface C2SInteractNpc {
   eid: EntityId;
 }
 
+/**
+ * Take a specific ground drop — the chosen-target pickup (click a
+ * bag, pick a row in the loot panel), as opposed to the walk-over
+ * vacuum which the server runs on its own.
+ */
+export interface C2SPickup {
+  t: 'pickup';
+  eid: EntityId;
+}
+
 /** Choose the equipped Technique for a combat style (free respec). */
 export interface C2STechnique {
   t: 'technique';
@@ -202,6 +212,7 @@ export type C2SMessage =
   | C2SDemolish
   | C2SPlant
   | C2SInteractNpc
+  | C2SPickup
   | C2STechnique
   | C2SSetLook
   | C2SCarryStyle;
@@ -612,6 +623,10 @@ export function parseC2S(raw: string): C2SMessage | null {
     case 'interactnpc': {
       if (!isFiniteNum(msg.eid) || !Number.isInteger(msg.eid) || msg.eid < 0) return null;
       return { t: 'interactnpc', eid: msg.eid };
+    }
+    case 'pickup': {
+      if (!isFiniteNum(msg.eid) || !Number.isInteger(msg.eid) || msg.eid < 0) return null;
+      return { t: 'pickup', eid: msg.eid };
     }
     case 'technique': {
       if (typeof msg.style !== 'string' || msg.style.length > 16) return null;

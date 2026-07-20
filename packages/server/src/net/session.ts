@@ -191,6 +191,12 @@ export class Session {
         this.game.interactNpc(this.playerEid, msg.eid);
         return;
       }
+      case 'pickup': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.pickupDrop(this.playerEid, msg.eid);
+        return;
+      }
       case 'technique': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

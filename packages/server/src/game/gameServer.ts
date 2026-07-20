@@ -153,6 +153,7 @@ import type { AccountStore, CharacterRow } from '../db/accounts.js';
 import type { WorldSource } from '../world/worldSource.js';
 import { delveOrigin, generateDelve } from '../world/dungeonGen.js';
 import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem, takeSlot } from './inventory.js';
+import { DROP_MERGE_RADIUS, canMergeDrop } from './drops.js';
 
 interface PositionComp {
   x: number;
@@ -1263,18 +1264,48 @@ export class GameServer {
     _byEid: EntityId | null,
     xpOnPickup?: { skill: SkillId; xp: number },
   ): EntityId {
-    const dropEid = this.ecs.create();
-    this.kinds.set(dropEid, EntityKind.ItemDrop);
-    this.positions.set(dropEid, { x, y, dir: 0 });
-    this.drops.set(dropEid, {
-      item,
-      qty,
+    return this.placeDrop(item, qty, x, y, {
       ownerEid: null,
       ownerUntil: 0,
       despawnAt: Date.now() + 12 * 60_000,
       pickupAfter: Date.now() + 400,
       xpOnPickup,
     });
+  }
+
+  /**
+   * The one door every ground drop enters through. A landing stack
+   * folds into a matching pile within DROP_MERGE_RADIUS instead of
+   * spawning its own bag — ten kills' bones read "Bones × 10": one
+   * label, one pickup target, one pile to manage. Only true twins
+   * merge (canMergeDrop), so two rolled swords never collapse into
+   * one. A merged contribution keeps the pile alive (timers take the
+   * later of the two) — a pile lives as long as its newest addition.
+   */
+  private placeDrop(
+    item: string,
+    qty: number,
+    x: number,
+    y: number,
+    comp: Omit<DropComp, 'item' | 'qty'>,
+  ): EntityId {
+    for (const [eid, drop] of this.drops) {
+      if (!canMergeDrop(drop, item, comp.roll, comp.ownerEid, comp.xpOnPickup)) continue;
+      const pos = this.positions.get(eid);
+      if (!pos) continue;
+      const dx = pos.x - x;
+      const dy = pos.y - y;
+      if (dx * dx + dy * dy > DROP_MERGE_RADIUS * DROP_MERGE_RADIUS) continue;
+      drop.qty += qty;
+      drop.despawnAt = Math.max(drop.despawnAt, comp.despawnAt);
+      drop.ownerUntil = Math.max(drop.ownerUntil, comp.ownerUntil);
+      drop.pickupAfter = Math.max(drop.pickupAfter, comp.pickupAfter);
+      return eid;
+    }
+    const dropEid = this.ecs.create();
+    this.kinds.set(dropEid, EntityKind.ItemDrop);
+    this.positions.set(dropEid, { x, y, dir: 0 });
+    this.drops.set(dropEid, { ...comp, item, qty });
     this.updateChunkMembership(dropEid);
     return dropEid;
   }
@@ -1753,19 +1784,13 @@ export class GameServer {
       dx = pos.x;
       dy = pos.y;
     }
-    const dropEid = this.ecs.create();
-    this.kinds.set(dropEid, EntityKind.ItemDrop);
-    this.positions.set(dropEid, { x: dx, y: dy, dir: 0 });
-    this.drops.set(dropEid, {
-      item,
-      qty: n,
+    this.placeDrop(item, n, dx, dy, {
       ownerEid: null,
       ownerUntil: 0,
       despawnAt: Date.now() + 12 * 60_000,
       pickupAfter: Date.now() + 2000,
       roll: taken.roll,
     });
-    this.updateChunkMembership(dropEid);
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
   }
 
@@ -3955,20 +3980,14 @@ export class GameServer {
 
     // Roll the loot table onto the ground.
     const dropLoot = (item: string, qty: number, roll?: ItemRoll) => {
-      const dropEid = this.ecs.create();
       const scatter = () => (Math.random() - 0.5) * 0.8;
-      this.kinds.set(dropEid, EntityKind.ItemDrop);
-      this.positions.set(dropEid, { x: pos.x + scatter(), y: pos.y + scatter(), dir: 0 });
-      this.drops.set(dropEid, {
-        item,
-        qty,
+      this.placeDrop(item, qty, pos.x + scatter(), pos.y + scatter(), {
         ownerEid: killerEid,
         ownerUntil: Date.now() + 30_000,
         despawnAt: Date.now() + 90_000,
         pickupAfter: Date.now() + 400,
         roll,
       });
-      this.updateChunkMembership(dropEid);
     };
     // The foe's assigned tables pay out through the one resolver, which
     // owns the rarity and item-power laws (heirlooms included — they're
@@ -4441,6 +4460,43 @@ export class GameServer {
     return count;
   }
 
+  /**
+   * Explicit pickup — the player clicked a bag or chose it from the
+   * loot panel. Range-checked like any interact, but deliberately
+   * ignores the walk-over delay: intent beats the anti-vacuum beat
+   * (a misdropped bag can be clicked straight back into the pack).
+   */
+  pickupDrop(eid: EntityId, dropEid: EntityId): void {
+    const player = this.players.get(eid);
+    if (!player || player.session === null) return;
+    const drop = this.drops.get(dropEid);
+    if (!drop) return;
+    const pos = this.positions.get(dropEid);
+    const ppos = this.positions.get(eid);
+    if (!pos || !ppos) return;
+    const dx = ppos.x - pos.x;
+    const dy = ppos.y - pos.y;
+    // Interact radius plus a little slack for a moving reacher.
+    if (dx * dx + dy * dy > 2.6 * 2.6) return;
+    const now = Date.now();
+    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
+    if (drop.ownerEid !== null && drop.ownerEid !== eid && drop.ownerUntil > now) {
+      sys('That spoil belongs to another for a moment yet.');
+      return;
+    }
+    if (!hasSpaceFor(player.inventory, drop.item)) {
+      sys('Your pack has no room for that.');
+      return;
+    }
+    addItem(player.inventory, drop.item, drop.qty, drop.roll);
+    if (drop.xpOnPickup) {
+      this.grantXp(eid, player, drop.xpOnPickup.skill, drop.xpOnPickup.xp);
+    }
+    player.session.sendJson({ t: 'inv', slots: player.inventory });
+    this.removeFromChunks(dropEid);
+    this.ecs.destroy(dropEid);
+  }
+
   private tickDrops(now: number): void {
     for (const [eid, drop] of this.drops) {
       if (drop.despawnAt <= now) {
@@ -4452,6 +4508,10 @@ export class GameServer {
       const pos = this.positions.must(eid);
       for (const [playerEid, player] of this.players) {
         if (player.session === null) continue;
+        // Sneaking steps lightly — nothing sticks to careful feet. This
+        // is also the deliberate way to stand IN a pile and pick from
+        // it without the walk-over vacuum grabbing the lot.
+        if (player.sneaking) continue;
         if (drop.ownerEid !== null && drop.ownerEid !== playerEid && drop.ownerUntil > now) {
           continue;
         }

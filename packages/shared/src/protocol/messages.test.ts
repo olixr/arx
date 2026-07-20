@@ -24,3 +24,11 @@ test('shop sell accepts an exact pack slot', () => {
   assert.equal(ok?.t === 'shop' && ok.slot, 7);
   assert.equal(parseC2S(JSON.stringify({ t: 'shop', op: 'sell', item: 'x', qty: 1, slot: 99 })), null);
 });
+
+test('pickup targets one drop entity and rejects bad eids', () => {
+  const ok = parseC2S(JSON.stringify({ t: 'pickup', eid: 31 }));
+  assert.deepEqual(ok, { t: 'pickup', eid: 31 });
+  assert.equal(parseC2S(JSON.stringify({ t: 'pickup', eid: -1 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'pickup', eid: 2.5 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'pickup' })), null);
+});
