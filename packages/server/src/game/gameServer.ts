@@ -387,6 +387,8 @@ interface PlayerComp {
   look: Look | null;
   /** Cosmetic idle weapon-carry preference ('rogue' = reverse grip). */
   carryStyle: CarryStyle;
+  /** Off-fist grip preference — a dual wielder sets each hand its own. */
+  carryOff: CarryStyle;
   /** DB character id; negative for ephemeral guests. */
   characterId: number;
   accountId: number | null;
@@ -772,11 +774,16 @@ export class GameServer {
     this.positions.set(eid, { x: spawnX, y: spawnY, dir: 0 });
     this.poses.set(eid, PoseState.Idle);
     this.healths.set(eid, { hp: Math.min(character.hp, maxHp), maxHp });
+    const grips =
+      character.id > 0
+        ? this.accounts.loadCarryStyles(character.id)
+        : { main: 'normal' as CarryStyle, off: 'normal' as CarryStyle };
     this.players.set(eid, {
       name: character.name,
       speed: PLAYER_SPEED,
       look: character.id > 0 ? this.accounts.loadLook(character.id) : null,
-      carryStyle: character.id > 0 ? this.accounts.loadCarryStyle(character.id) : 'normal',
+      carryStyle: grips.main,
+      carryOff: grips.off,
       characterId: character.id,
       accountId,
       token,
@@ -862,7 +869,7 @@ export class GameServer {
     });
     session.sendJson({ t: 'skills', xp: player.skills });
     session.sendJson({ t: 'inv', slots: player.inventory });
-    session.sendJson({ t: 'equip', equipment: player.equipment, carry: player.carryStyle });
+    session.sendJson({ t: 'equip', equipment: player.equipment, carry: player.carryStyle, carryOff: player.carryOff });
     session.sendJson({ t: 'techniques', chosen: player.techniques });
     session.sendJson({ t: 'time', ofs: this.timeOfsTicks });
     this.sendCooldowns(player);
@@ -1823,7 +1830,7 @@ export class GameServer {
       roll.coat = { id: def.id, until: Date.now() + c.durationSec * 1000 };
       worn.roll = roll;
       player.session?.sendJson({ t: 'inv', slots: player.inventory });
-      player.session?.sendJson({ t: 'equip', equipment: player.equipment, carry: player.carryStyle });
+      player.session?.sendJson({ t: 'equip', equipment: player.equipment, carry: player.carryStyle, carryOff: player.carryOff });
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',
@@ -2089,13 +2096,20 @@ export class GameServer {
     this.broadcastMetaUpdate(eid);
   }
 
-  /** Cosmetic idle carry preference — persisted, visible to everyone. */
-  setCarryStyle(eid: EntityId, style: CarryStyle): void {
+  /** Cosmetic grip preference for one fist — persisted, visible to everyone. */
+  setCarryStyle(eid: EntityId, style: CarryStyle, hand: 'main' | 'off' = 'main'): void {
     const player = this.players.get(eid);
-    if (!player || player.carryStyle === style) return;
-    player.carryStyle = style;
-    if (player.characterId > 0) this.accounts.saveCarryStyle(player.characterId, style);
-    player.session?.sendJson({ t: 'equip', equipment: player.equipment, carry: style });
+    if (!player) return;
+    if (hand === 'off' ? player.carryOff === style : player.carryStyle === style) return;
+    if (hand === 'off') player.carryOff = style;
+    else player.carryStyle = style;
+    if (player.characterId > 0) this.accounts.saveCarryStyle(player.characterId, hand, style);
+    player.session?.sendJson({
+      t: 'equip',
+      equipment: player.equipment,
+      carry: player.carryStyle,
+      carryOff: player.carryOff,
+    });
     this.broadcastMetaUpdate(eid);
   }
 
@@ -2134,7 +2148,7 @@ export class GameServer {
   private onEquipmentChanged(eid: EntityId, player: PlayerComp): void {
     this.recomputeGear(eid, player);
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
-    player.session?.sendJson({ t: 'equip', equipment: player.equipment, carry: player.carryStyle });
+    player.session?.sendJson({ t: 'equip', equipment: player.equipment, carry: player.carryStyle, carryOff: player.carryOff });
     // A new weapon or relic means new abilities on the hotbar.
     this.sendCooldowns(player);
     // Appearance changed — update everyone who can see this player.
@@ -5053,6 +5067,7 @@ export class GameServer {
         ench,
         look: player.look ?? undefined,
         carry: player.carryStyle === 'rogue' ? 'rogue' : undefined,
+        carryOff: player.carryOff === 'rogue' ? 'rogue' : undefined,
       };
     }
     const npc = this.npcs.get(eid);

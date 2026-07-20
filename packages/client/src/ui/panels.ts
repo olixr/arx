@@ -104,9 +104,10 @@ export class Panels {
     private readonly stationContext: () => 'bank' | 'shop' | null = () => null,
     /** Active input device — the card's action hints speak its glyphs. */
     private readonly deviceMode: () => 'kb' | 'pad' = () => 'kb',
-    /** Cosmetic sword-carry preference: read current + toggle. */
-    private readonly carryStyle: () => 'normal' | 'rogue' = () => 'normal',
-    private readonly onCarryStyle: (style: 'normal' | 'rogue') => void = () => {},
+    /** Cosmetic per-hand grip preference: read current + set. */
+    private readonly carryStyle: (hand: 'main' | 'off') => 'normal' | 'rogue' = () => 'normal',
+    private readonly onCarryStyle: (style: 'normal' | 'rogue', hand: 'main' | 'off') => void =
+      () => {},
   ) {
     document.getElementById('btn-inventory')!.addEventListener('click', () => this.toggleInventory());
     document.getElementById('btn-skills')!.addEventListener('click', () => this.toggleSkills());
@@ -574,15 +575,18 @@ export class Panels {
       const worn = this.lastEquipment[slot];
       if (!worn) return false;
       entries.push({ label: 'Remove', act: () => this.onUnequip(slot) });
-      // Every melee blade rides the sword carriage (daggers included),
+      // Every melee blade rides the blade carriage (daggers included),
       // so they all earn the grip preference — id substrings can't keep
-      // up with a 20-sword roster.
-      if (slot === 'weapon' && itemDef(worn.id)?.weapon?.style === 'melee') {
-        // Cosmetic carry preference: how the blade rides at rest.
-        const rogue = this.carryStyle() === 'rogue';
+      // up with the rosters. The grip belongs to the HAND, not the
+      // weapon: the mainhand and offhand slots each set their own fist,
+      // so a dual wielder can run standard main / reverse off.
+      const hand: 'main' | 'off' | null =
+        slot === 'weapon' ? 'main' : slot === 'offhand' ? 'off' : null;
+      if (hand && itemDef(worn.id)?.weapon?.style === 'melee') {
+        const rogue = this.carryStyle(hand) === 'rogue';
         entries.push({
-          label: rogue ? 'Carry: standard grip' : 'Carry: rogue grip',
-          act: () => this.onCarryStyle(rogue ? 'normal' : 'rogue'),
+          label: rogue ? 'Grip: standard' : 'Grip: rogue (reversed)',
+          act: () => this.onCarryStyle(rogue ? 'normal' : 'rogue', hand),
         });
       }
     } else {

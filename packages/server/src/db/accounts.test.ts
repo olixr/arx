@@ -186,3 +186,18 @@ test('enchant ids ride every roll path: inventory, equipment, bank gear', () => 
   const bank = store.loadBankGear(cid);
   assert.equal(bank.find((r) => r.id === rowId)?.roll.ench, 'clever', 'bank keeps the enchant');
 });
+
+test('per-hand grip preferences persist independently', () => {
+  const store = makeStore();
+  const reg = store.register('eric', 'hunter22', 'Aeriek', SPAWN);
+  assert.ok(reg.ok);
+  const id = reg.ok ? reg.character.id : -1;
+  // Fresh characters carry standard in both fists.
+  assert.deepEqual(store.loadCarryStyles(id), { main: 'normal', off: 'normal' });
+  // Each fist saves without touching the other.
+  store.saveCarryStyle(id, 'off', 'rogue');
+  assert.deepEqual(store.loadCarryStyles(id), { main: 'normal', off: 'rogue' });
+  store.saveCarryStyle(id, 'main', 'rogue');
+  store.saveCarryStyle(id, 'off', 'normal');
+  assert.deepEqual(store.loadCarryStyles(id), { main: 'rogue', off: 'normal' });
+});

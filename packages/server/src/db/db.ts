@@ -195,6 +195,11 @@ const MIGRATIONS: string[] = [
   ALTER TABLE equipment ADD COLUMN ench_id TEXT;
   ALTER TABLE bank_gear ADD COLUMN ench_id TEXT;
   `,
+  // 17 — grips are per-hand: the off fist gets its own carry preference
+  // (NULL = standard), so a dual wielder can run standard main / rogue off.
+  `
+  ALTER TABLE characters ADD COLUMN carry_style_off TEXT;
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

@@ -7682,6 +7682,7 @@ export class Renderer {
               equip: remote.meta.appearance?.equip ?? {},
               ench: remote.meta.appearance?.ench,
               carry: remote.meta.appearance?.carry,
+              carryOff: remote.meta.appearance?.carryOff,
               look: remote.meta.appearance?.look,
               color: remote.meta.appearance?.look
                 ? CLOTH_COLORS[remote.meta.appearance.look.shirt]!
@@ -7750,6 +7751,7 @@ export class Renderer {
         equip: ownEquip,
         ench: ownEnch,
         carry: game.carryStyle,
+        carryOff: game.carryOff,
         look: game.ownLook ?? undefined,
         color: game.ownLook
           ? CLOTH_COLORS[game.ownLook.shirt]!
@@ -7779,6 +7781,8 @@ export class Renderer {
     ench?: Partial<Record<string, string>>;
     /** Cosmetic idle carry preference ('rogue' = reverse grip). */
     carry?: 'normal' | 'rogue';
+    /** Off-fist grip preference — each hand carries its own way. */
+    carryOff?: 'normal' | 'rogue';
     size?: number;
     skinColor?: string;
     level?: number;
@@ -8053,6 +8057,7 @@ export class Renderer {
               : e.ench?.weapon,
           offhandEnch: e.ench?.offhand,
           carryStyle: e.carry,
+          carryOff: e.carryOff,
           bodyItem: e.equip.body,
           headItem: e.equip.head,
           legsItem: e.equip.legs,

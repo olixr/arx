@@ -165,6 +165,8 @@ export interface RigPose {
   offhandEnch?: string;
   /** Cosmetic idle carry: 'rogue' rakes a blade down-back, reverse grip. */
   carryStyle?: 'normal' | 'rogue';
+  /** Off-fist grip — a dual wielder's second blade rides its own way. */
+  carryOff?: 'normal' | 'rogue';
   bodyItem?: string;
   /** Equipped head gear — drawn as a real helmet over the skull. */
   headItem?: string;

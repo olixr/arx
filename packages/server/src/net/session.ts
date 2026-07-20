@@ -212,7 +212,7 @@ export class Session {
       case 'carrystyle': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
-        this.game.setCarryStyle(this.playerEid, msg.style);
+        this.game.setCarryStyle(this.playerEid, msg.style, msg.hand ?? 'main');
         return;
       }
     }

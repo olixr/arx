@@ -32,3 +32,13 @@ test('pickup targets one drop entity and rejects bad eids', () => {
   assert.equal(parseC2S(JSON.stringify({ t: 'pickup', eid: 2.5 })), null);
   assert.equal(parseC2S(JSON.stringify({ t: 'pickup' })), null);
 });
+
+test('carrystyle sets a grip per fist, defaulting to the main hand', () => {
+  const main = parseC2S(JSON.stringify({ t: 'carrystyle', style: 'rogue' }));
+  assert.deepEqual(main, { t: 'carrystyle', style: 'rogue', hand: undefined });
+  const off = parseC2S(JSON.stringify({ t: 'carrystyle', style: 'normal', hand: 'off' }));
+  assert.deepEqual(off, { t: 'carrystyle', style: 'normal', hand: 'off' });
+  // Unknown hands and styles reject the message.
+  assert.equal(parseC2S(JSON.stringify({ t: 'carrystyle', style: 'rogue', hand: 'left' })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'carrystyle', style: 'icepick' })), null);
+});

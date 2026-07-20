@@ -77,10 +77,18 @@ export interface AppearanceData {
    * raked down-back. Absent = standard carry. Purely visual.
    */
   carry?: CarryStyle;
+  /**
+   * Off-hand grip for dual wielders. Absent = standard. Each fist
+   * carries its own way — grips belong to hands, not to weapons.
+   */
+  carryOff?: CarryStyle;
 }
 
 /** Cosmetic idle weapon-carry preference (never affects combat). */
 export type CarryStyle = 'normal' | 'rogue';
+
+/** Which fist a grip preference belongs to. */
+export type GripHand = 'main' | 'off';
 
 export type EquipSlot =
   | 'head'

@@ -145,6 +145,8 @@ export class ClientGame {
   equipment: Partial<Record<string, EquippedItem>> = {};
   /** Cosmetic idle weapon-carry preference (server-confirmed). */
   carryStyle: 'normal' | 'rogue' = 'normal';
+  /** Off-fist grip preference — each hand carries its own way. */
+  carryOff: 'normal' | 'rogue' = 'normal';
   /** Running gather action, for the progress bar. */
   action: { startedAt: number; durationMs: number } | null = null;
   /** Damage numbers floating up; pruned by the renderer. */
@@ -518,6 +520,7 @@ export class ClientGame {
       case 'equip': {
         this.equipment = msg.equipment;
         if (msg.carry) this.carryStyle = msg.carry;
+        if (msg.carryOff) this.carryOff = msg.carryOff;
         // Prediction must brake during a draw exactly like the server.
         this.predictor.weaponStyle = this.equippedWeaponDef()?.style ?? null;
         this.events.onEquipment(msg.equipment);
@@ -718,10 +721,11 @@ export class ClientGame {
     this.conn?.send({ t: 'use', slot });
   }
 
-  /** Set the cosmetic idle carry style (optimistic; server confirms). */
-  setCarryStyle(style: 'normal' | 'rogue'): void {
-    this.carryStyle = style;
-    this.conn?.send({ t: 'carrystyle', style });
+  /** Set one fist's grip style (optimistic; server confirms). */
+  setCarryStyle(style: 'normal' | 'rogue', hand: 'main' | 'off' = 'main'): void {
+    if (hand === 'off') this.carryOff = style;
+    else this.carryStyle = style;
+    this.conn?.send({ t: 'carrystyle', style, hand });
   }
 
   unequip(slot: EquipSlot): void {

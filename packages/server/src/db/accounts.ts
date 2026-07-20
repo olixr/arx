@@ -379,16 +379,23 @@ export class AccountStore {
       .run(JSON.stringify(look), characterId);
   }
 
-  loadCarryStyle(characterId: number): 'normal' | 'rogue' {
+  /** Per-hand grip preferences: [main fist, off fist]. NULL = standard. */
+  loadCarryStyles(characterId: number): { main: 'normal' | 'rogue'; off: 'normal' | 'rogue' } {
     const row = this.db
-      .prepare('SELECT carry_style FROM characters WHERE id = ?')
-      .get(characterId) as { carry_style: string | null } | undefined;
-    return row?.carry_style === 'rogue' ? 'rogue' : 'normal';
+      .prepare('SELECT carry_style, carry_style_off FROM characters WHERE id = ?')
+      .get(characterId) as
+      | { carry_style: string | null; carry_style_off: string | null }
+      | undefined;
+    return {
+      main: row?.carry_style === 'rogue' ? 'rogue' : 'normal',
+      off: row?.carry_style_off === 'rogue' ? 'rogue' : 'normal',
+    };
   }
 
-  saveCarryStyle(characterId: number, style: 'normal' | 'rogue'): void {
+  saveCarryStyle(characterId: number, hand: 'main' | 'off', style: 'normal' | 'rogue'): void {
+    const col = hand === 'off' ? 'carry_style_off' : 'carry_style';
     this.db
-      .prepare('UPDATE characters SET carry_style = ? WHERE id = ?')
+      .prepare(`UPDATE characters SET ${col} = ? WHERE id = ?`)
       .run(style === 'rogue' ? 'rogue' : null, characterId);
   }
 

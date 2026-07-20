@@ -8,7 +8,10 @@
 // new kinds silently and miss most combat feedback, so reject cleanly.
 // v6: AppearanceData grew per-slot enchant ids — v5 clients would show
 // enchanted blades bare and miss tier-3 auras entirely, so reject cleanly.
-export const PROTOCOL_VERSION = 6;
+// v7: grips became per-hand (AppearanceData.carryOff, C2SCarryStyle.hand)
+// — v6 clients would render a dual wielder's off blade in the wrong grip
+// for every watcher, so reject cleanly.
+export const PROTOCOL_VERSION = 7;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;
