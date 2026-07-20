@@ -775,6 +775,40 @@ const PAINTERS: Record<string, IconPainter> = {
     }
     bar(c, shade(col, -26), 0.3, 0.14, 0.4, 0.09);
   },
+  boots: (c, col) => {
+    // A pair of boots toeing outward — shaft, folded cuff, solid sole.
+    for (const side of [-1, 1]) {
+      c.save();
+      c.translate(0.5 + side * 0.14, 0.52);
+      c.rotate(side * 0.06);
+      c.fillStyle = col;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.035;
+      c.beginPath();
+      c.moveTo(-0.09, -0.3);
+      c.lineTo(0.09, -0.3);
+      c.lineTo(0.09, 0.14);
+      c.lineTo(side * 0.2, 0.14);
+      c.lineTo(side * 0.2, 0.3);
+      c.lineTo(-0.09, 0.3);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      // Lit shaft face + folded cuff + sole.
+      c.fillStyle = shade(col, side < 0 ? 16 : -18);
+      c.fillRect(-0.05, -0.24, 0.1, 0.3);
+      c.fillStyle = shade(col, 26);
+      c.beginPath();
+      c.roundRect(-0.105, -0.32, 0.21, 0.1, 0.03);
+      c.fill();
+      c.stroke();
+      c.fillStyle = '#170f1c';
+      c.beginPath();
+      c.roundRect(Math.min(-0.09, side * 0.2 - 0.02), 0.24, 0.09 + Math.abs(side * 0.2) + 0.02, 0.07, 0.02);
+      c.fill();
+      c.restore();
+    }
+  },
   shield: (c, col) => {
     // Spiked buckler: rim, boss, and four teeth that mean business.
     for (const a of [-Math.PI / 4, Math.PI / 4, (Math.PI * 3) / 4, (-Math.PI * 3) / 4]) {
@@ -2750,6 +2784,7 @@ export function slotGlyphUrl(slot: string, size = 40): string {
     head: 'helm',
     body: 'armor',
     legs: 'legs',
+    boots: 'boots',
     weapon: 'sword',
     offhand: 'shield',
     tool: 'axe',

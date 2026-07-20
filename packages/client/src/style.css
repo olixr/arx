@@ -446,7 +446,8 @@ h3 {
   grid-template-areas:
     'relic head cape'
     'weapon body offhand'
-    'sigil legs tool';
+    'sigil legs tool'
+    '. boots .';
   grid-template-columns: repeat(3, 70px);
   grid-auto-rows: 70px;
   gap: 8px;

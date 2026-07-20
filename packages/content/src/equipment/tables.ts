@@ -1,0 +1,121 @@
+import type { RarityTier } from '@devcraft/shared';
+import type { Rng } from '@devcraft/shared';
+import type { CombatStyle } from '../items.js';
+import type { ArmorClass } from './types.js';
+
+/**
+ * Every equipment balance number lives HERE and only here. When plate
+ * feels too strong or legendary drops feel too common, this is the one
+ * file to tune — rolls re-derive from these tables automatically.
+ */
+
+/** Base armor/damage multiplier per tier — small, affixes carry the chase. */
+export const RARITY_BASE_MULT: Record<RarityTier, number> = {
+  common: 1,
+  uncommon: 1.06,
+  rare: 1.12,
+  epic: 1.18,
+  legendary: 1.25,
+};
+
+/** Vendor value multiplier per tier. */
+export const RARITY_VALUE_MULT: Record<RarityTier, number> = {
+  common: 1,
+  uncommon: 1.7,
+  rare: 2.6,
+  epic: 4.2,
+  legendary: 7,
+};
+
+/** How many affixes a tier rolls (consumes the instance rng). */
+export function affixCount(rar: RarityTier, rng: Rng): number {
+  switch (rar) {
+    case 'common':
+      return rng.chance(0.25) ? 1 : 0;
+    case 'uncommon':
+      return 1;
+    case 'rare':
+      return 2;
+    case 'epic':
+      return rng.chance(0.5) ? 3 : 2;
+    case 'legendary':
+      return 3;
+  }
+}
+
+/**
+ * The biggest +skill a piece can roll, driven by its equip requirement:
+ * ≈ +2 at req 8, ≈ +6 at req 50, +10 from req ~92 (the stated extreme —
+ * with a 99 cap a +10 is a build-defining find).
+ */
+export function affixMagnitudeCap(reqLevel: number): number {
+  return Math.max(1, Math.min(10, Math.round(1 + reqLevel * 0.095)));
+}
+
+/** Fraction of the magnitude cap a tier rolls within (min, max). */
+export const AFFIX_ROLL_FRAC: Record<RarityTier, readonly [number, number]> = {
+  common: [0.25, 0.45],
+  uncommon: [0.35, 0.6],
+  rare: [0.5, 0.75],
+  epic: [0.65, 0.9],
+  legendary: [0.8, 1.0],
+};
+
+/**
+ * Per-piece playstyle modifiers, counted over head/body/legs/boots.
+ * Percentages — a full plate set is +12% melee / −16% magic / −4% move.
+ * Only plate pays for its protection; cloth and leather are pure buffs,
+ * so mixed sets dilute a specialty without punishing the wearer.
+ * Authoring guideline: at equal tier, base armor ≈ plate 3 / leather 2 /
+ * cloth 1 per piece.
+ */
+export const ARMOR_CLASS_MODS: Record<
+  ArmorClass,
+  {
+    /** Additive % to a combat style's max hit, per piece. */
+    dmgPct: Partial<Record<CombatStyle, number>>;
+    /** Additive % to move speed, per piece. */
+    speedPct: number;
+    /** Additive % to ability cooldowns (negative = faster), per piece. */
+    cooldownPct: number;
+  }
+> = {
+  plate: { dmgPct: { melee: 3, magic: -4 }, speedPct: -1, cooldownPct: 0 },
+  leather: { dmgPct: { archery: 3 }, speedPct: 0.5, cooldownPct: 0 },
+  cloth: { dmgPct: { magic: 4 }, speedPct: 0, cooldownPct: -2.5 },
+};
+
+/** Short player-facing blurb per class, shown on the item card. */
+export const ARMOR_CLASS_BLURB: Record<ArmorClass, string> = {
+  plate: 'Plate: +melee damage, −magic damage, slightly slower',
+  leather: 'Leather: +archery damage, slightly faster',
+  cloth: 'Cloth: +magic damage, faster ability cooldowns',
+};
+
+/**
+ * Craft-result rarity weights: crafting above the recipe's requirement
+ * is THE way to chase good rolls — 20 surplus levels roughly triples
+ * your rare-or-better odds versus crafting at-level.
+ */
+export function craftRarityWeights(effLevel: number, recipeReq: number): Record<RarityTier, number> {
+  const s = Math.max(0, Math.min(20, effLevel - recipeReq));
+  return {
+    common: Math.max(30, 100 - 3.5 * s),
+    uncommon: 40 + s,
+    rare: 12 + 0.8 * s,
+    epic: 3 + 0.3 * s,
+    legendary: 0.5 + 0.1 * s,
+  };
+}
+
+/** Drop rarity weights — tougher foes carry better-kept gear. */
+export function dropRarityWeights(npcLevel: number): Record<RarityTier, number> {
+  const k = 1 + Math.max(0, npcLevel) / 25;
+  return {
+    common: 100,
+    uncommon: 25 * k,
+    rare: 6 * k,
+    epic: 1.2 * k,
+    legendary: 0.2 * k,
+  };
+}

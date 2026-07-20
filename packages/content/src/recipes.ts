@@ -1,4 +1,5 @@
 import type { SkillId, StationType } from '@devcraft/shared';
+import { COMPILED_EQUIPMENT } from './equipment/defs.js';
 
 export interface RecipeDef {
   id: string;
@@ -190,17 +191,7 @@ const defs: RecipeDef[] = [
     output: { item: 'leather', qty: 1 },
     ticks: 30,
   },
-  {
-    id: 'craft_leather_body',
-    name: 'Leather body',
-    skill: 'crafting',
-    levelReq: 8,
-    xp: 75,
-    station: 'workbench',
-    inputs: [{ item: 'leather', qty: 3 }],
-    output: { item: 'leather_body', qty: 1 },
-    ticks: 60,
-  },
+  // (leather_body's recipe now generates from equipment/defs.ts)
   {
     id: 'fletch_arrows',
     name: 'Arrows (x10)',
@@ -416,20 +407,7 @@ const defs: RecipeDef[] = [
     output: { item: 'cloth', qty: 1 },
     ticks: 35,
   },
-  {
-    id: 'craft_flower_crown',
-    name: 'Flower crown',
-    skill: 'crafting',
-    levelReq: 5,
-    xp: 35,
-    station: 'workbench',
-    inputs: [
-      { item: 'sunflower', qty: 3 },
-      { item: 'twine', qty: 1 },
-    ],
-    output: { item: 'flower_crown', qty: 1 },
-    ticks: 40,
-  },
+  // (flower_crown's recipe now generates from equipment/defs.ts)
   {
     id: 'smith_watering_can',
     name: 'Watering can',
@@ -515,7 +493,13 @@ const defs: RecipeDef[] = [
   },
 ];
 
-export const RECIPES: ReadonlyMap<string, RecipeDef> = new Map(defs.map((d) => [d.id, d]));
+const allRecipes: RecipeDef[] = [...defs, ...COMPILED_EQUIPMENT.recipes];
+
+export const RECIPES: ReadonlyMap<string, RecipeDef> = new Map(allRecipes.map((d) => [d.id, d]));
+
+if (RECIPES.size !== allRecipes.length) {
+  throw new Error('duplicate recipe id between inline defs and compiled equipment');
+}
 
 export function recipesForStation(station: StationType | null): RecipeDef[] {
   return [...RECIPES.values()].filter((r) => r.station === station);

@@ -78,6 +78,7 @@ export type EquipSlot =
   | 'head'
   | 'body'
   | 'legs'
+  | 'boots'
   | 'weapon'
   | 'offhand'
   | 'tool'
@@ -89,6 +90,7 @@ export const EQUIP_SLOTS: readonly EquipSlot[] = [
   'head',
   'body',
   'legs',
+  'boots',
   'weapon',
   'offhand',
   'tool',

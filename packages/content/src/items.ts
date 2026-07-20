@@ -1,4 +1,6 @@
-import type { EquipSlot, PassiveId } from '@devcraft/shared';
+import type { EquipSlot, PassiveId, RarityTier, SkillId } from '@devcraft/shared';
+import { COMPILED_EQUIPMENT } from './equipment/defs.js';
+import type { ArmorClass, GearSlot } from './equipment/types.js';
 
 export type ToolType = 'axe' | 'pickaxe' | 'rod';
 export type CombatStyle = 'melee' | 'archery' | 'magic';
@@ -41,6 +43,20 @@ export interface ConsumableBuff {
   regenPer4s?: number;
 }
 
+/**
+ * Compiled equipment facts (from an EquipmentDef). Presence of `gear`
+ * is what makes an item ROLL — carry rarity, affixes, requirements.
+ */
+export interface GearInfo {
+  slot: GearSlot;
+  armorClass?: ArmorClass;
+  /** Equip gate, checked against the BASE skill level. */
+  levelReq?: { skill: SkillId; level: number };
+  affixPool: Array<{ stat: SkillId | 'maxHp' | 'regen'; w: number }>;
+  rarities: readonly RarityTier[];
+  acquisition: { drop: boolean; craft: boolean; shop: boolean };
+}
+
 export interface ItemDef {
   id: string;
   name: string;
@@ -69,6 +85,8 @@ export interface ItemDef {
   code: string;
   /** One-line flavor text for the inspect card. */
   desc?: string;
+  /** Rolled-equipment facts — compiled from the equipment schema. */
+  gear?: GearInfo;
 }
 
 const defs: ItemDef[] = [
@@ -190,17 +208,7 @@ const defs: ItemDef[] = [
     code: 'Msv',
   },
 
-  // Homestead sundries
-  {
-    id: 'flower_crown',
-    name: 'Flower crown',
-    stackable: false,
-    value: 35,
-    equipSlot: 'head',
-    desc: 'Sunflowers woven with twine. Armor value: joy.',
-    color: '#e8c04c',
-    code: 'Fc',
-  },
+  // Homestead sundries — flower_crown now lives in equipment/defs.ts.
   { id: 'watering_can', name: 'Watering can', stackable: false, value: 30, desc: 'Carry a little rain wherever you garden.', color: '#7a8fa5', code: 'Wc' },
 
   // Metal bars
@@ -209,30 +217,8 @@ const defs: ItemDef[] = [
   { id: 'steel_bar', name: 'Steel bar', stackable: false, value: 80, desc: 'Iron improved by coal and patience.', color: '#b8bec8', code: 'Sb' },
   { id: 'gold_bar', name: 'Gold bar', stackable: false, value: 95, desc: 'Soft, heavy, and worth its weight in itself.', color: '#f2c94c', code: 'Gb' },
 
-  // Crafting materials & gear
+  // Crafting materials & gear — armor pieces live in equipment/defs.ts.
   { id: 'leather', name: 'Leather', stackable: false, value: 12, desc: 'Cured hide, supple and strong.', color: '#b08a5c', code: 'Le' },
-  {
-    id: 'leather_body',
-    name: 'Leather body',
-    stackable: false,
-    value: 40,
-    equipSlot: 'body',
-    armor: 2,
-    desc: 'Boiled leather that turns a blade\'s first bite.',
-    color: '#b08a5c',
-    code: 'LB',
-  },
-  {
-    id: 'iron_helm',
-    name: 'Iron helm',
-    stackable: false,
-    value: 120,
-    equipSlot: 'head',
-    armor: 2,
-    desc: 'A dented dome that has already saved one skull. Yours next.',
-    color: '#8d9299',
-    code: 'Ih',
-  },
   {
     id: 'iron_sword',
     name: 'Iron sword',
@@ -692,7 +678,13 @@ const defs: ItemDef[] = [
   },
 ];
 
-export const ITEMS: ReadonlyMap<string, ItemDef> = new Map(defs.map((d) => [d.id, d]));
+const allDefs: ItemDef[] = [...defs, ...COMPILED_EQUIPMENT.items];
+
+export const ITEMS: ReadonlyMap<string, ItemDef> = new Map(allDefs.map((d) => [d.id, d]));
+
+if (ITEMS.size !== allDefs.length) {
+  throw new Error('duplicate item id between inline defs and compiled equipment');
+}
 
 export function itemDef(id: string): ItemDef | undefined {
   return ITEMS.get(id);

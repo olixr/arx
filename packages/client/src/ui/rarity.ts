@@ -1,22 +1,20 @@
+import type { ItemRoll, RarityTier } from '@devcraft/shared';
+import { RARITY_COLORS } from '@devcraft/shared';
 import { itemDef } from '@devcraft/content';
 
 /**
- * Rarity tiers, derived from vendor value so the data model stays
- * untouched: the economy already encodes how special a thing is.
- * Common stays quiet; everything above it announces itself — tinted
- * slot glow, colored nameplates, the Diablo "something's in there"
- * glance.
+ * Rarity display helpers. Tier data lives in shared/rarity.ts (the
+ * single source both sides derive rolls from); this module keeps the
+ * client-facing API and adds the resolution rule:
+ *
+ * - Rolled gear: the INSTANCE's tier (its roll) wins, always.
+ * - Everything else: derived from vendor value, so the economy keeps
+ *   tinting relics, sigils, and capes without any new data.
  */
-export type RarityTier = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+export type { RarityTier } from '@devcraft/shared';
+export { RARITY_COLORS } from '@devcraft/shared';
 
-export const RARITY_COLORS: Record<RarityTier, string | null> = {
-  common: null,
-  uncommon: '#7dc46a',
-  rare: '#6fa8ff',
-  epic: '#b47aff',
-  legendary: '#ffb347',
-};
-
+/** Value-derived fallback tier for non-rolled items. */
 export function rarityOf(itemId: string): RarityTier {
   const value = itemDef(itemId)?.value ?? 0;
   if (value >= 1000) return 'legendary';
@@ -24,6 +22,13 @@ export function rarityOf(itemId: string): RarityTier {
   if (value >= 250) return 'rare';
   if (value >= 100) return 'uncommon';
   return 'common';
+}
+
+/** Instance-aware tier: the roll wins; gear without a roll is common. */
+export function rarityOfInstance(itemId: string, roll?: ItemRoll): RarityTier {
+  if (roll) return roll.rar;
+  if (itemDef(itemId)?.gear) return 'common';
+  return rarityOf(itemId);
 }
 
 /** The tier's accent color, or null for common (no treatment). */
