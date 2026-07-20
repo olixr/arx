@@ -25,7 +25,8 @@ export type SkillId =
   | 'foraging'
   | 'herbalism'
   | 'beastcraft'
-  | 'sneak';
+  | 'sneak'
+  | 'dualwield';
 
 export const SKILL_IDS: readonly SkillId[] = [
   'vitality',
@@ -47,7 +48,31 @@ export const SKILL_IDS: readonly SkillId[] = [
   'herbalism',
   'beastcraft',
   'sneak',
+  'dualwield',
 ];
+
+/**
+ * Hidden skills — the secret arts. They never appear in the skills
+ * panel, the affix pools, or any tooltip until a character DISCOVERS
+ * one by doing the deed; there is no in-game hint that they exist.
+ *
+ * The unlock flag is row-presence: a character owns a hidden skill iff
+ * their skills record carries the key (even at 0 xp). The server
+ * creates the row at the moment of discovery; the client hides any
+ * hidden skill whose key is absent. No extra table, no extra protocol.
+ */
+export const HIDDEN_SKILLS: Partial<Record<SkillId, { name: string; discovery: string }>> = {
+  dualwield: {
+    name: 'Dual Wielding',
+    discovery:
+      'Secret skill discovered: Dual Wielding! Your off hand learns the blade — ' +
+      'train it and the second edge will bite nearly as deep as the first.',
+  },
+};
+
+export function isHiddenSkill(s: SkillId): boolean {
+  return s in HIDDEN_SKILLS;
+}
 
 export const MAX_LEVEL = 99;
 

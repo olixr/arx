@@ -873,6 +873,12 @@ h3 {
   color: var(--parchment);
 }
 
+/* A discovered secret skill wears gold — you EARNED knowing it exists. */
+.skill-row.secret-skill .skill-name {
+  color: var(--gold-bright);
+  font-weight: bold;
+}
+
 .skill-row .skill-level {
   width: 30px;
   text-align: right;

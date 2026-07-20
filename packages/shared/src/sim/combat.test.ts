@@ -1,8 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { HIDDEN_SKILLS, SKILL_IDS, isHiddenSkill } from '../skills.js';
 import {
   COMBO_STAGES,
   DRAW_FULL_TICKS,
+  OFFHAND_DMG_BASE,
+  offhandDamageFactor,
   chargedShot,
   drawCharge,
   isDrawSlowed,
@@ -70,4 +73,26 @@ test('heavy bolt laws: big, slow, splashy', async () => {
   assert.ok(HEAVY_BOLT_MULT >= 1.5, 'the payoff beat must hit hard');
   assert.ok(HEAVY_BOLT_RECOVERY_MULT > 1, 'and cost recovery');
   assert.ok(HEAVY_BOLT_SPLASH > 0, 'and splash');
+});
+
+test('dual wield: offhand factor starts clumsy, climbs monotonically, never mirrors', () => {
+  assert.equal(offhandDamageFactor(1), OFFHAND_DMG_BASE);
+  let prev = 0;
+  for (let lvl = 1; lvl <= 99; lvl++) {
+    const f = offhandDamageFactor(lvl);
+    assert.ok(f >= prev, 'factor never regresses');
+    assert.ok(f < 1, 'the off hand never out-hits the main');
+    prev = f;
+  }
+  assert.ok(offhandDamageFactor(99) >= 0.8, 'mastery should nearly mirror the main hand');
+  // Below level 1 (undiscovered edge) clamps to the base.
+  assert.equal(offhandDamageFactor(0), OFFHAND_DMG_BASE);
+});
+
+test('hidden skills are real skills and never leak into the visible roster by default', () => {
+  for (const id of Object.keys(HIDDEN_SKILLS)) {
+    assert.ok((SKILL_IDS as readonly string[]).includes(id), `${id} not a SkillId`);
+  }
+  assert.ok(isHiddenSkill('dualwield'));
+  assert.ok(!isHiddenSkill('melee'));
 });

@@ -1,6 +1,7 @@
 import {
   EQUIP_SLOTS,
   PASSIVES,
+  HIDDEN_SKILLS,
   SKILL_IDS,
   levelForXp,
   xpForLevel,
@@ -715,6 +716,11 @@ export class Panels {
     this.lastSkills = xp;
     this.skillsList.innerHTML = '';
     for (const skill of SKILL_IDS) {
+      // Hidden-skill law: a secret skill simply does not exist in this
+      // panel until the character's skill record carries its key — the
+      // server writes the row only at the moment of discovery.
+      const hidden = HIDDEN_SKILLS[skill];
+      if (hidden && xp[skill] === undefined) continue;
       const value = xp[skill] ?? 0;
       const level = levelForXp(value);
       const floor = xpForLevel(level);
@@ -727,7 +733,11 @@ export class Panels {
 
       const name = document.createElement('span');
       name.className = 'skill-name';
-      name.textContent = skill;
+      name.textContent = hidden ? hidden.name.toLowerCase() : skill;
+      if (hidden) {
+        row.classList.add('secret-skill');
+        row.title += ' — a secret skill, discovered by deed';
+      }
       const bar = document.createElement('div');
       bar.className = 'skill-bar';
       const fill = document.createElement('div');

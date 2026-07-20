@@ -114,6 +114,10 @@ import {
   SNEAK_XP_RADIUS,
   BACKSTAB_MULT_DEFAULT,
   BACKSTAB_XP_BASE,
+  DUALWIELD_UNLOCK_MELEE,
+  HIDDEN_SKILLS,
+  OFFHAND_DELAY_TICKS,
+  offhandDamageFactor,
   sneakDetectionFactor,
   STATION_TILES,
   STATUS_BIT,
@@ -401,6 +405,10 @@ interface PlayerComp {
    */
   gear: GearStats;
   attackCooldown: number;
+  /** Dual wield: ticks until the offhand echo strike lands (0 = none). */
+  offhandEchoTicks: number;
+  /** Aim captured at the mainhand swing its echo mirrors. */
+  offhandEchoAim: number;
   lastCombatAt: number;
   poseUntilTick: number;
   lastDodgeSeq: number;
@@ -777,6 +785,8 @@ export class GameServer {
       equipment,
       gear,
       attackCooldown: 0,
+      offhandEchoTicks: 0,
+      offhandEchoAim: 0,
       lastCombatAt: 0,
       poseUntilTick: 0,
       lastDodgeSeq: -999,
@@ -1844,6 +1854,39 @@ export class GameServer {
         });
         return;
       }
+      // DUAL WIELD — the secret is the act itself. A second one-handed
+      // melee weapon, equipped over a melee mainhand with an empty off
+      // hand, goes TO the off hand instead of swapping — if the arm is
+      // strong enough (melee 10+) or the secret is already yours. The
+      // first time, the hidden skill reveals itself. No menu, no hint:
+      // players find it by trying the obvious rogue thing.
+      if (def.equipSlot === 'weapon' && def.weapon?.style === 'melee') {
+        const main = player.equipment.weapon;
+        const mainWeapon = main ? itemDef(main.id)?.weapon : undefined;
+        const discovered = player.skills.dualwield !== undefined;
+        const meleeLvl = levelForXp(player.skills.melee ?? 0);
+        if (
+          main &&
+          mainWeapon?.style === 'melee' &&
+          !player.equipment.offhand &&
+          (discovered || meleeLvl >= DUALWIELD_UNLOCK_MELEE)
+        ) {
+          const taken = takeSlot(player.inventory, slotIndex, 1);
+          if (!taken) return;
+          player.equipment.offhand = { id: taken.item, roll: taken.roll };
+          if (!discovered) {
+            player.skills.dualwield = 0;
+            this.grantXp(eid, player, 'dualwield', 1);
+            player.session?.sendJson({
+              t: 'chat',
+              channel: 'system',
+              text: HIDDEN_SKILLS.dualwield!.discovery,
+            });
+          }
+          this.onEquipmentChanged(eid, player);
+          return;
+        }
+      }
       const worn = player.equipment[def.equipSlot];
       // Take THIS slot's instance out first so a swap can't overflow
       // the pack — and so the roll that leaves is the roll clicked.
@@ -2001,6 +2044,18 @@ export class GameServer {
     return { id: worn.id, weapon };
   }
 
+  /** The offhand WEAPON, when dual wielding — null for shields/tomes/empty. */
+  private offhandWeapon(player: PlayerComp) {
+    const worn = player.equipment.offhand;
+    if (!worn) return null;
+    const def = itemDef(worn.id);
+    if (!def?.weapon) return null;
+    const rolled = rolledStats(worn.id, worn.roll);
+    const weapon =
+      rolled?.damage !== undefined ? { ...def.weapon, damage: rolled.damage } : def.weapon;
+    return { id: worn.id, weapon };
+  }
+
   private tryPlayerAttack(eid: EntityId, player: PlayerComp, aim: number): void {
     if (player.attackCooldown > 0) return;
     const equipped = this.equippedWeapon(player);
@@ -2054,6 +2109,13 @@ export class GameServer {
         wasHidden,
         weapon.backstabMult ?? BACKSTAB_MULT_DEFAULT,
       );
+      // Dual wield: the off blade echoes every mainhand swing a
+      // half-beat later. Scheduled, not immediate — the one-two rhythm
+      // IS the fantasy.
+      if (this.offhandWeapon(player)) {
+        player.offhandEchoTicks = OFFHAND_DELAY_TICKS;
+        player.offhandEchoAim = aim;
+      }
     } else {
       // Wand rhythm: bolt → bolt → HEAVY. The third cast is a fat slow
       // orb that splashes and shoves — the punch beat wands were missing.
@@ -2091,6 +2153,43 @@ export class GameServer {
     }
   }
 
+  /**
+   * The offhand echo: a second, lighter cut from the off blade. Damage
+   * scales by offhandDamageFactor(dualwield) — clumsy at discovery,
+   * near-mirrored at mastery — and every landed echo trains dualwield
+   * (that's the ONLY way it trains). The base scaling still rides
+   * melee: it is a melee strike, thrown by the weaker hand.
+   */
+  private offhandStrike(eid: EntityId, player: PlayerComp, aim: number): void {
+    const off = this.offhandWeapon(player);
+    if (!off) return;
+    const dwLevel = levelForXp(player.skills.dualwield ?? 0);
+    const level = this.effectiveLevel(player, 'melee');
+    const maxHit = Math.max(
+      1,
+      Math.round(
+        off.weapon.damage *
+          (1 + level * 0.05) *
+          player.gear.styleDmgMult.melee *
+          offhandDamageFactor(dwLevel),
+      ),
+    );
+    // A short second cut on the pose channel sells the one-two.
+    this.setPose(eid, PoseState.Attack2, 4);
+    this.meleeSwing(
+      eid,
+      player,
+      aim,
+      off.weapon.range,
+      maxHit,
+      0.6,
+      false,
+      false,
+      off.weapon.backstabMult ?? BACKSTAB_MULT_DEFAULT,
+      'dualwield',
+    );
+  }
+
   private meleeSwing(
     eid: EntityId,
     player: PlayerComp,
@@ -2101,6 +2200,7 @@ export class GameServer {
     sweepAll = false,
     wasHidden = false,
     backstabMult = BACKSTAB_MULT_DEFAULT,
+    xpStyle: SkillId = 'melee',
   ): void {
     const pos = this.positions.must(eid);
     // A strike out of full stealth backstabs from any angle; otherwise a
@@ -2134,7 +2234,13 @@ export class GameServer {
       for (const npcEid of inArc) {
         const backstab = backstabs(this.positions.must(npcEid));
         const { dmg, crit } = rollBasic(backstab ? Math.round(maxHit * backstabMult) : maxHit);
-        this.damageNpc(npcEid, dmg, eid, 'melee', { crit, knockbackMult, basic: true, backstab });
+        this.damageNpc(npcEid, dmg, eid, xpStyle, {
+          crit,
+          knockbackMult,
+          basic: true,
+          backstab,
+          offhand: xpStyle === 'dualwield',
+        });
       }
       return;
     }
@@ -2152,7 +2258,13 @@ export class GameServer {
     if (bestTarget !== null) {
       const backstab = backstabs(this.positions.must(bestTarget));
       const { dmg, crit } = rollBasic(backstab ? Math.round(maxHit * backstabMult) : maxHit);
-      this.damageNpc(bestTarget, dmg, eid, 'melee', { crit, knockbackMult, basic: true, backstab });
+      this.damageNpc(bestTarget, dmg, eid, xpStyle, {
+        crit,
+        knockbackMult,
+        basic: true,
+        backstab,
+        offhand: xpStyle === 'dualwield',
+      });
     }
   }
 
@@ -3568,6 +3680,8 @@ export class GameServer {
       status?: StatusApply;
       /** Struck from stealth or from behind while sneaking (damage already multiplied). */
       backstab?: boolean;
+      /** Dual-wield echo strike — the OFFHAND blade landed this basic. */
+      offhand?: boolean;
       /**
        * Knock direction origin override — blasts shove from their OWN
        * center, not the caster's position. With a negative knockback
@@ -3607,7 +3721,10 @@ export class GameServer {
     if (opts.basic) {
       const attacker = this.players.get(attackerEid);
       if (attacker) {
-        const coat = attacker.equipment.weapon?.roll?.coat;
+        // The coat rides the blade that LANDED: an offhand echo carries
+        // the offhand instance's oil — two blades, two poisons.
+        const struck = opts.offhand ? attacker.equipment.offhand : attacker.equipment.weapon;
+        const coat = struck?.roll?.coat;
         if (coat && coat.until > Date.now()) {
           const status = itemDef(coat.id)?.coating?.status;
           if (status) this.applyStatusToNpc(npcEid, status, attackerEid, style);
@@ -4422,6 +4539,9 @@ export class GameServer {
   private processPlayerInputs(eid: EntityId, player: PlayerComp): void {
     const pos = this.positions.must(eid);
     if (player.attackCooldown > 0) player.attackCooldown--;
+    if (player.offhandEchoTicks > 0 && --player.offhandEchoTicks === 0) {
+      this.offhandStrike(eid, player, player.offhandEchoAim);
+    }
     for (let i = 0; i < ABILITY_SLOTS; i++) {
       if (player.abilityCd[i]! > 0) player.abilityCd[i]!--;
     }

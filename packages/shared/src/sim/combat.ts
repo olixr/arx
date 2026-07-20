@@ -112,3 +112,26 @@ export function nextComboStage(prevStage: number, withinGrace: boolean): number 
   if (!withinGrace) return 0;
   return (prevStage + 1) % COMBO_STAGES;
 }
+
+// ---------------------------------------------------------- dual wield
+
+/**
+ * Dual wielding — the hidden skill. Discovered by trying the thing:
+ * equip a second one-handed melee weapon (melee level 10+) and the off
+ * hand takes it instead of swapping. Every mainhand swing is echoed a
+ * half-beat later by an offhand strike at a damage fraction that climbs
+ * with the dualwield skill — clumsy at first, near-mirrored at mastery.
+ * The price is structural: that hand held your shield.
+ */
+export const DUALWIELD_UNLOCK_MELEE = 10;
+/** Offhand echo lands this many ticks after the mainhand swing. */
+export const OFFHAND_DELAY_TICKS = 2;
+/** Damage fraction at dualwield level 1. */
+export const OFFHAND_DMG_BASE = 0.35;
+/** Damage fraction gained per dualwield level past 1. */
+export const OFFHAND_DMG_PER_LEVEL = 0.005;
+
+/** The offhand strike's damage fraction for a dualwield level. */
+export function offhandDamageFactor(dualwieldLevel: number): number {
+  return Math.min(0.85, OFFHAND_DMG_BASE + (Math.max(1, dualwieldLevel) - 1) * OFFHAND_DMG_PER_LEVEL);
+}

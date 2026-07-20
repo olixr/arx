@@ -184,7 +184,8 @@ export interface GloveStyle {
 }
 
 export interface OffhandStyle {
-  kind: 'buckler' | 'kite' | 'tower' | 'tome' | 'quiver' | 'orb';
+  /** 'weapon' = a dual-wielded blade: the rig paints the actual weapon. */
+  kind: 'buckler' | 'kite' | 'tower' | 'tome' | 'quiver' | 'orb' | 'weapon';
   color: string;
   trim: string;
   boss?: string;
@@ -1304,6 +1305,9 @@ export function offhandStyle(itemId: string): OffhandStyle {
   const st = OFFHAND_STYLES[itemId];
   if (st) return st;
   const c = itemDef(itemId)?.color ?? '#8a744a';
+  // A dual-wielded weapon in the off hand paints as ITSELF, not as a
+  // fallback shield — the rig routes 'weapon' to the weapon painters.
+  if (itemDef(itemId)?.weapon) return { kind: 'weapon', color: c, trim: shade(c, -20) };
   return { kind: 'buckler', color: c, trim: shade(c, -20) };
 }
 

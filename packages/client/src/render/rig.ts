@@ -1280,7 +1280,23 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // the arm itself so the strap never breaks. An archer's off hand is
     // busy holding the bow — the shield sits this one out.
     if (offSt && offSt.kind !== 'quiver' && !archer) {
-      drawOffhandOnArm(ctx, offSt, joints, s, profileK, rig.hurt);
+      if (offSt.kind === 'weapon' && rig.offhandItem) {
+        // DUAL WIELD: the off blade is the real weapon, gripped in the
+        // off fist in a near-vertical low carry — the rogue's second
+        // edge, unmistakable at a glance.
+        drawHeldItem(
+          ctx,
+          rig.offhandItem,
+          offSt.color,
+          offX,
+          offY,
+          -Math.PI / 2 + restSide * 0.35,
+          s,
+          rig,
+        );
+      } else {
+        drawOffhandOnArm(ctx, offSt, joints, s, profileK, rig.hurt);
+      }
     }
     // The far pauldron is a true shoulder joint: it caps THIS arm's
     // root on its solved anchor, so it rides swings and draws instead
