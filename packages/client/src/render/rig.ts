@@ -279,6 +279,64 @@ function drawArm(
     ctx.closePath();
     ctx.fill();
     ctx.restore();
+  } else if (glove) {
+    // Gloved forearm: armor from ELBOW to wrist — no skin ever shows.
+    // A touch wider than the bare arm so the layer reads as WORN, and
+    // round-capped so the elbow end tucks under the sleeve stroke.
+    ctx.strokeStyle = hurt ? '#ffffff' : (glove.bracer ?? shade(glove.color, -8));
+    ctx.lineWidth = Math.max(2, s * 0.076);
+    ctx.beginPath();
+    ctx.moveTo(kx, ky);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+    // The cuff is the SEAM piece: it sits at the top of the forearm
+    // where glove meets sleeve, so the armor flows up the arm as one
+    // unit instead of stopping at a naked elbow. Local +x = wrist-ward.
+    const cf = glove.cuff;
+    if (cf && !hurt) {
+      ctx.save();
+      ctx.translate(kx, ky);
+      ctx.rotate(Math.atan2(ey - ky, ex - kx));
+      ctx.fillStyle = cf.color;
+      switch (cf.kind) {
+        case 'band':
+          // A buckled strap closing the glove below the elbow.
+          ctx.fillRect(0.012 * s, -0.052 * s, 0.042 * s, 0.104 * s);
+          break;
+        case 'roll':
+          // Folded-over top — quilted cloth or doubled leather.
+          ctx.beginPath();
+          chamferRect(ctx, -0.008 * s, -0.058 * s, 0.056 * s, 0.116 * s, 0.02 * s);
+          ctx.fill();
+          break;
+        case 'flare': {
+          // The vambrace mouth: a forged bell opening up the arm to
+          // swallow the sleeve, bright-rimmed like the pauldron steel.
+          ctx.beginPath();
+          ctx.moveTo(0.075 * s, -0.048 * s);
+          ctx.lineTo(-0.018 * s, -0.078 * s);
+          ctx.lineTo(-0.018 * s, 0.078 * s);
+          ctx.lineTo(0.075 * s, 0.048 * s);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = shade(cf.color, 24);
+          ctx.fillRect(-0.018 * s, -0.078 * s, 0.016 * s, 0.156 * s);
+          // Mouth shadow under the rim — the sleeve disappears INTO it.
+          ctx.fillStyle = 'rgba(24, 15, 26, 0.35)';
+          ctx.fillRect(-0.002 * s, -0.066 * s, 0.012 * s, 0.132 * s);
+          break;
+        }
+        case 'fur':
+          // A pelt roll ringing the elbow — winter kit reads from afar.
+          for (const oy of [-0.048, 0, 0.048]) {
+            ctx.beginPath();
+            ctx.arc((0.02 + (oy === 0 ? -0.012 : 0)) * s, oy * s, Math.max(1.6, 0.042 * s), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+      }
+      ctx.restore();
+    }
   } else {
     // Bare forearm — short-sleeved adventurers.
     ctx.strokeStyle = skin;
@@ -287,132 +345,210 @@ function drawArm(
     ctx.moveTo(kx, ky);
     ctx.lineTo(ex, ey);
     ctx.stroke();
-    // Bracer: the wrist half re-stroked in glove leather (or vambrace
-    // steel), slightly wider than the arm so it reads as WORN.
-    if (glove?.bracer) {
-      ctx.strokeStyle = hurt ? '#ffffff' : glove.bracer;
-      ctx.lineWidth = Math.max(2, s * 0.074);
-      ctx.beginPath();
-      ctx.moveTo((kx + ex) / 2, (ky + ey) / 2);
-      ctx.lineTo(ex, ey);
-      ctx.stroke();
-    }
   }
   ctx.lineCap = 'butt';
-  // Hand: a squared mitt aligned with the forearm — blocky, not a ball.
-  // Gloves dress this frame: local +x runs down the fingers, the wrist
-  // heel sits at −x, so cuffs flare toward the elbow and punch spikes
-  // jut past the fist no matter where the IK put the hand.
-  ctx.fillStyle = glove ? (hurt ? '#ffffff' : glove.color) : skin;
+  // Hand: aligned with the forearm — blocky, not a ball. Gloves own
+  // this frame: local +x runs down the fingers, the wrist heel sits at
+  // −x, so end caps square the fist and talons rake past it no matter
+  // where the IK put the hand.
   ctx.save();
   ctx.translate(ex, ey);
   ctx.rotate(Math.atan2(ey - ky, ex - kx));
-  ctx.beginPath();
-  chamferRect(ctx, -0.055 * s, -0.06 * s, 0.13 * s, 0.12 * s, 0.03 * s);
-  ctx.fill();
-  if (glove && !hurt) {
+  if (!glove || hurt) {
+    ctx.fillStyle = glove ? '#ffffff' : skin;
+    ctx.beginPath();
+    chamferRect(ctx, -0.055 * s, -0.06 * s, 0.13 * s, 0.12 * s, 0.03 * s);
+    ctx.fill();
+  } else {
+    // The hand silhouette IS the glove's first read — four molds, so a
+    // knight's fist and a witch's fingers never share an outline.
+    const base = glove.color;
+    switch (glove.hand ?? 'glove') {
+      case 'gauntlet':
+        // Squared plated fist: broad box, hard-lit end cap, one dark
+        // lame seam — a fist you could knight someone with.
+        ctx.fillStyle = base;
+        ctx.beginPath();
+        chamferRect(ctx, -0.058 * s, -0.068 * s, 0.148 * s, 0.136 * s, 0.014 * s);
+        ctx.fill();
+        ctx.fillStyle = shade(base, 20);
+        ctx.fillRect(0.052 * s, -0.06 * s, 0.034 * s, 0.12 * s);
+        ctx.fillStyle = shade(base, -24);
+        ctx.fillRect(0.016 * s, -0.06 * s, 0.013 * s, 0.12 * s);
+        break;
+      case 'paw':
+        // The beast mitt: rounder, bulkier, split at the toes.
+        ctx.fillStyle = base;
+        ctx.beginPath();
+        chamferRect(ctx, -0.055 * s, -0.07 * s, 0.148 * s, 0.14 * s, 0.045 * s);
+        ctx.fill();
+        ctx.strokeStyle = shade(base, -22);
+        ctx.lineWidth = Math.max(1, 0.015 * s);
+        for (const oy of [-0.024, 0.024]) {
+          ctx.beginPath();
+          ctx.moveTo(0.088 * s, oy * s);
+          ctx.lineTo(0.052 * s, oy * 0.75 * s);
+          ctx.stroke();
+        }
+        break;
+      case 'wrap':
+        // Wound cloth: the tapered hand crossed by binding strips.
+        drawTaperedHand(ctx, base, s);
+        ctx.strokeStyle = shade(base, 16);
+        ctx.lineWidth = Math.max(1, 0.018 * s);
+        for (const ox of [-0.026, 0.014]) {
+          ctx.beginPath();
+          ctx.moveTo((ox - 0.022) * s, -0.058 * s);
+          ctx.lineTo((ox + 0.022) * s, 0.058 * s);
+          ctx.stroke();
+        }
+        break;
+      default:
+        // Fitted glove: tapers toward squared fingers with a seam, so
+        // it reads as a HAND in leather, never a mitten.
+        drawTaperedHand(ctx, base, s);
+        ctx.strokeStyle = shade(base, -22);
+        ctx.lineWidth = Math.max(1, 0.015 * s);
+        ctx.beginPath();
+        ctx.moveTo(0.044 * s, -0.042 * s);
+        ctx.lineTo(0.044 * s, 0.042 * s);
+        ctx.stroke();
+        break;
+    }
     // Fingerless cut: bare fingertips past a knuckle strap.
     if (glove.fingerless) {
       ctx.fillStyle = skin;
-      ctx.fillRect(0.04 * s, -0.048 * s, 0.038 * s, 0.096 * s);
-      ctx.fillStyle = shade(glove.color, -18);
-      ctx.fillRect(0.024 * s, -0.06 * s, 0.018 * s, 0.12 * s);
+      ctx.fillRect(0.044 * s, -0.04 * s, 0.04 * s, 0.08 * s);
+      ctx.fillStyle = shade(base, -18);
+      ctx.fillRect(0.028 * s, -0.052 * s, 0.017 * s, 0.104 * s);
     }
     const kn = glove.knuckle;
     if (kn) {
-      ctx.fillStyle = kn.color;
       switch (kn.kind) {
         case 'studs': {
-          const r = Math.max(1.1, 0.019 * s);
-          for (const oy of [-0.032, 0.032]) {
+          // Riveted knuckle studs, each catching the light.
+          const r = Math.max(1.3, 0.022 * s);
+          for (const oy of [-0.036, 0.036]) {
+            ctx.fillStyle = kn.color;
             ctx.beginPath();
-            ctx.arc(0.024 * s, oy * s, r, 0, Math.PI * 2);
+            ctx.arc(0.028 * s, oy * s, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = shade(kn.color, 42);
+            ctx.beginPath();
+            ctx.arc(0.028 * s - r * 0.32, oy * s - r * 0.32, r * 0.38, 0, Math.PI * 2);
             ctx.fill();
           }
           break;
         }
-        case 'spikes':
-          // Punch spikes past the fist — the brawler's argument.
+        case 'spikes': {
+          // Forged punch spikes: riveted to a knuckle bar, each with a
+          // dark under-facet and a sun-caught top facet — smithed
+          // steel, not paper triangles.
+          ctx.fillStyle = shade(glove.color, -20);
+          ctx.fillRect(0.042 * s, -0.066 * s, 0.026 * s, 0.132 * s);
+          for (const oy of [-0.038, 0.038]) {
+            ctx.fillStyle = shade(kn.color, -16);
+            ctx.beginPath();
+            ctx.moveTo(0.06 * s, (oy - 0.032) * s);
+            ctx.lineTo(0.168 * s, oy * s);
+            ctx.lineTo(0.06 * s, (oy + 0.032) * s);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(kn.color, 24);
+            ctx.beginPath();
+            ctx.moveTo(0.06 * s, (oy - 0.032) * s);
+            ctx.lineTo(0.168 * s, oy * s);
+            ctx.lineTo(0.06 * s, oy * s);
+            ctx.closePath();
+            ctx.fill();
+          }
+          break;
+        }
+        case 'claws': {
+          // Curved talons off the paw: thick at the root, hooked belly,
+          // needle tips — the middle claw reaches furthest.
+          for (const [i, oy] of [-0.048, 0, 0.048].entries()) {
+            const len = i === 1 ? 0.13 : 0.105;
+            ctx.fillStyle = kn.color;
+            ctx.beginPath();
+            ctx.moveTo(0.055 * s, (oy - 0.026) * s);
+            ctx.quadraticCurveTo(
+              (0.07 + len * 0.6) * s, (oy - 0.034) * s,
+              (0.062 + len) * s, (oy + 0.012) * s,
+            );
+            ctx.quadraticCurveTo(
+              (0.065 + len * 0.4) * s, (oy + 0.014) * s,
+              0.055 * s, (oy + 0.026) * s,
+            );
+            ctx.closePath();
+            ctx.fill();
+            // Root shadow seats each talon IN the paw.
+            ctx.fillStyle = shade(kn.color, -28);
+            ctx.fillRect(0.05 * s, (oy - 0.02) * s, 0.014 * s, 0.04 * s);
+          }
+          break;
+        }
+        case 'plate': {
+          // A beveled plate over the back of the hand: lit crown facet
+          // over the base plate, pinned by two rivets.
+          ctx.fillStyle = kn.color;
+          ctx.beginPath();
+          chamferRect(ctx, -0.042 * s, -0.054 * s, 0.074 * s, 0.108 * s, 0.016 * s);
+          ctx.fill();
+          ctx.fillStyle = shade(kn.color, 22);
+          ctx.beginPath();
+          chamferRect(ctx, -0.042 * s, -0.054 * s, 0.036 * s, 0.108 * s, 0.016 * s);
+          ctx.fill();
+          ctx.fillStyle = shade(kn.color, -30);
+          const rr = Math.max(0.9, 0.011 * s);
           for (const oy of [-0.033, 0.033]) {
             ctx.beginPath();
-            ctx.moveTo(0.06 * s, (oy - 0.024) * s);
-            ctx.lineTo(0.135 * s, oy * s);
-            ctx.lineTo(0.06 * s, (oy + 0.024) * s);
-            ctx.closePath();
+            ctx.arc(0.016 * s, oy * s, rr, 0, Math.PI * 2);
             ctx.fill();
           }
           break;
-        case 'claws':
-          // Three raking points — the beast's paw.
-          for (const oy of [-0.042, 0, 0.042]) {
-            ctx.beginPath();
-            ctx.moveTo(0.055 * s, (oy - 0.018) * s);
-            ctx.lineTo(0.15 * s, (oy + 0.006) * s);
-            ctx.lineTo(0.055 * s, (oy + 0.018) * s);
-            ctx.closePath();
-            ctx.fill();
-          }
-          break;
-        case 'plate':
-          // A lit plate over the back of the hand.
-          ctx.beginPath();
-          chamferRect(ctx, -0.038 * s, -0.05 * s, 0.066 * s, 0.1 * s, 0.016 * s);
-          ctx.fill();
-          break;
+        }
         case 'gem': {
-          const r = Math.max(1.4, 0.026 * s);
+          // A set jewel: dark bezel, stone, one hard glint.
+          const r = Math.max(1.4, 0.027 * s);
+          ctx.fillStyle = shade(glove.color, -26);
           ctx.beginPath();
-          ctx.arc(-0.004 * s, 0, r, 0, Math.PI * 2);
+          ctx.arc(-0.002 * s, 0, r * 1.32, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = kn.color;
+          ctx.beginPath();
+          ctx.arc(-0.002 * s, 0, r, 0, Math.PI * 2);
           ctx.fill();
           ctx.fillStyle = shade(kn.color, 45);
           ctx.beginPath();
-          ctx.arc(-0.004 * s - r * 0.3, -r * 0.3, r * 0.35, 0, Math.PI * 2);
+          ctx.arc(-0.002 * s - r * 0.3, -r * 0.3, r * 0.38, 0, Math.PI * 2);
           ctx.fill();
           break;
         }
-      }
-    }
-    // Wrist cuff — skipped under a belled robe sleeve, whose open mouth
-    // already owns the wrist; the mitt lives inside the tube.
-    const cf = glove.cuff;
-    if (cf && !cuff) {
-      ctx.fillStyle = cf.color;
-      switch (cf.kind) {
-        case 'band':
-          ctx.fillRect(-0.094 * s, -0.064 * s, 0.044 * s, 0.128 * s);
-          break;
-        case 'roll':
-          ctx.beginPath();
-          chamferRect(ctx, -0.104 * s, -0.07 * s, 0.052 * s, 0.14 * s, 0.018 * s);
-          ctx.fill();
-          break;
-        case 'flare':
-          // The gauntlet bell, opening toward the elbow — a touch wider
-          // than the mitt, never taller than it.
-          ctx.beginPath();
-          ctx.moveTo(-0.044 * s, -0.056 * s);
-          ctx.lineTo(-0.116 * s, -0.08 * s);
-          ctx.lineTo(-0.116 * s, 0.08 * s);
-          ctx.lineTo(-0.044 * s, 0.056 * s);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = shade(cf.color, 24);
-          ctx.fillRect(-0.116 * s, -0.08 * s, 0.018 * s, 0.16 * s);
-          break;
-        case 'fur':
-          // A lumpy pelt roll ringing the wrist.
-          for (const oy of [-0.05, 0, 0.05]) {
-            ctx.beginPath();
-            ctx.arc(-0.082 * s, oy * s, Math.max(1.6, 0.04 * s), 0, Math.PI * 2);
-            ctx.fill();
-          }
-          break;
       }
     }
   }
   ctx.restore();
   // The solved joints, so gear (shields, tomes) can strap to the bone.
   return { ex, ey, kx, ky };
+}
+
+/**
+ * The fitted-glove hand mold: tapering toward squared fingertips.
+ * Shared by the 'glove' and 'wrap' hand kinds; drawn in the rotated
+ * hand frame (+x = fingers).
+ */
+function drawTaperedHand(ctx: CanvasRenderingContext2D, color: string, s: number): void {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(-0.055 * s, -0.06 * s);
+  ctx.lineTo(0.048 * s, -0.052 * s);
+  ctx.lineTo(0.084 * s, -0.034 * s);
+  ctx.lineTo(0.084 * s, 0.034 * s);
+  ctx.lineTo(0.048 * s, 0.052 * s);
+  ctx.lineTo(-0.055 * s, 0.06 * s);
+  ctx.closePath();
+  ctx.fill();
 }
 
 export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void {

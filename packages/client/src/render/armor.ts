@@ -147,29 +147,36 @@ export interface BootStyle {
 }
 
 /**
- * Gloves dress BOTH solved arms in three zones: the hand mitt recolor,
- * a wrist cuff at the mitt's heel, and an optional bracer re-stroke up
- * the forearm. Devices (spikes, claws, studs, gems) ride the mitt.
- * Robed sleeves win the forearm: under a belled cuff a glove keeps only
- * its mitt and knuckle device — the sleeve is a tube the hand lives in.
+ * Gloves dress BOTH solved arms as one armor unit: the hand (in one of
+ * four silhouette molds), the FULL forearm from elbow to wrist (skin
+ * never shows on a gloved arm), and a cuff at the elbow seam where the
+ * glove flows into the sleeve. Devices (spikes, talons, studs, gems)
+ * ride the hand. Robed sleeves win the forearm: under a belled cuff a
+ * glove keeps only its hand and knuckle device — the sleeve is a tube
+ * the hand lives in.
  */
 export interface GloveStyle {
-  /** The mitt itself. */
+  /** The hand itself. */
   color: string;
-  /** Bracer: the wrist-half of the forearm re-stroked in this color. */
+  /** Hand silhouette: gauntlet = squared plated fist with a hard end
+   * cap, glove = fitted taper with a finger seam, wrap = taper crossed
+   * by binding strips, paw = round beast mitt with toe splits. */
+  hand?: 'glove' | 'gauntlet' | 'wrap' | 'paw';
+  /** Forearm color, elbow to wrist. Absent = shade(color, −8). */
   bracer?: string;
-  /** Wrist treatment where mitt meets arm. */
+  /** The elbow-seam treatment where glove meets sleeve. */
   cuff?: {
     color: string;
-    /** band = strap, flare = plate bell toward the elbow, fur = pelt
-     * roll, roll = fat folded leather. */
+    /** band = buckled strap, flare = forged vambrace mouth, fur = pelt
+     * roll, roll = folded-over top. */
     kind: 'band' | 'flare' | 'fur' | 'roll';
   };
-  /** Device on the back of the mitt / past the knuckles. */
+  /** Device on the back of the hand / past the knuckles. */
   knuckle?: {
     color: string;
-    /** studs = dots, spikes = punch spikes past the fist, claws =
-     * three raking points, plate = lit facet, gem = a single jewel. */
+    /** studs = riveted domes, spikes = forged punch spikes on a
+     * knuckle bar, claws = curved talons, plate = beveled hand plate,
+     * gem = a bezel-set jewel. */
     kind: 'studs' | 'spikes' | 'claws' | 'plate' | 'gem';
   };
   /** Fingertips stay bare — the thief's fingerless cut. */
@@ -619,139 +626,175 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
 export const GLOVE_STYLES: Record<string, GloveStyle> = {
   // Starter basics: the three classes' plainest working pairs.
   leather_gloves: {
-    color: '#b08a5c', cuff: { color: '#6b4a26', kind: 'band' },
+    color: '#b08a5c', hand: 'glove', bracer: '#a17c50',
+    cuff: { color: '#6b4a26', kind: 'band' },
   },
   padded_mitts: {
-    color: '#8a8ab0', bracer: '#6a6a90', cuff: { color: '#c9c4cf', kind: 'roll' },
+    color: '#8a8ab0', hand: 'wrap', bracer: '#7c7ca2',
+    cuff: { color: '#c9c4cf', kind: 'roll' },
   },
   iron_gauntlets: {
-    color: '#8d9299', bracer: '#7a7f8a', cuff: { color: '#b0b6be', kind: 'flare' },
+    color: '#8d9299', hand: 'gauntlet', bracer: '#7a7f8a',
+    cuff: { color: '#b0b6be', kind: 'flare' },
     knuckle: { color: '#b0b6be', kind: 'plate' },
   },
   steel_gauntlets: {
-    color: '#b8bec8', bracer: '#9aa0ac', cuff: { color: '#d4dae2', kind: 'flare' },
+    color: '#b8bec8', hand: 'gauntlet', bracer: '#a4aab6',
+    cuff: { color: '#d4dae2', kind: 'flare' },
     knuckle: { color: '#c9a23c', kind: 'studs' },
   },
   // Themed plate: each gauntlet quotes its set's own devices — copper
   // leaf, rime studs, brass joints, blood spikes, ivory-cuffed gold.
   warden_gauntlets: {
-    color: '#4a7a5a', bracer: '#3f6a4e', cuff: { color: '#5a8a6a', kind: 'flare' },
+    color: '#4a7a5a', hand: 'gauntlet', bracer: '#416c4f',
+    cuff: { color: '#5a8a6a', kind: 'flare' },
     knuckle: { color: '#d69a55', kind: 'plate' },
   },
   frostplate_gauntlets: {
-    color: '#9db6cc', bracer: '#88a2ba', cuff: { color: '#cfe0ee', kind: 'flare' },
+    color: '#9db6cc', hand: 'gauntlet', bracer: '#8ca6bc',
+    cuff: { color: '#cfe0ee', kind: 'flare' },
     knuckle: { color: '#e8f4ff', kind: 'studs' },
   },
   bulwark_gauntlets: {
-    color: '#5a6270', bracer: '#4e5662', cuff: { color: '#787f8e', kind: 'flare' },
+    color: '#5a6270', hand: 'gauntlet', bracer: '#505866',
+    cuff: { color: '#787f8e', kind: 'flare' },
     knuckle: { color: '#b08a3c', kind: 'plate' },
   },
   dreadforge_gauntlets: {
-    color: '#4a4553', bracer: '#3a3542', cuff: { color: '#625c6e', kind: 'flare' },
+    color: '#4a4553', hand: 'gauntlet', bracer: '#403b48',
+    cuff: { color: '#625c6e', kind: 'flare' },
     knuckle: { color: '#a83232', kind: 'spikes' },
   },
   sunforged_gauntlets: {
-    color: '#d4a43c', bracer: '#b8862f', cuff: { color: '#f4e0a0', kind: 'flare' },
+    color: '#d4a43c', hand: 'gauntlet', bracer: '#c09330',
+    cuff: { color: '#f4e0a0', kind: 'flare' },
     knuckle: { color: '#fff2c8', kind: 'plate' },
   },
   // Themed leather: fur, claws, scale rivets and moss — the wilds'
   // own hand-me-downs.
   wayfarer_gloves: {
-    color: '#a8895a', bracer: '#8a6a45', cuff: { color: '#6b4a2e', kind: 'band' },
+    color: '#a8895a', hand: 'glove', bracer: '#8a6a45',
+    cuff: { color: '#6b4a2e', kind: 'band' },
   },
   wolfstalker_gloves: {
-    color: '#5f6470', cuff: { color: '#9aa0ae', kind: 'fur' },
+    color: '#5f6470', hand: 'paw', bracer: '#555a66',
+    cuff: { color: '#9aa0ae', kind: 'fur' },
     knuckle: { color: '#c9c4b4', kind: 'claws' },
   },
   nightveil_gloves: {
-    color: '#302c3c', bracer: '#3a3648', cuff: { color: '#6a5a8c', kind: 'band' },
+    color: '#302c3c', hand: 'glove', bracer: '#3a3648',
+    cuff: { color: '#6a5a8c', kind: 'band' },
   },
   drakescale_gloves: {
-    color: '#8c3a32', bracer: '#6e2f28', cuff: { color: '#c9713c', kind: 'band' },
+    color: '#8c3a32', hand: 'gauntlet', bracer: '#7a332c',
+    cuff: { color: '#c9713c', kind: 'band' },
     knuckle: { color: '#d49a4a', kind: 'studs' },
   },
   stagheart_gloves: {
-    color: '#5a4430', bracer: '#6b5138', cuff: { color: '#4e6a3c', kind: 'fur' },
+    color: '#5a4430', hand: 'glove', bracer: '#4f3c2a',
+    cuff: { color: '#4e6a3c', kind: 'fur' },
     knuckle: { color: '#d4a43c', kind: 'studs' },
   },
   // Themed cloth: the casters keep their fingers free and their
   // devices close — pearl, eye, ember and star ride the hand.
   hedgewitch_gloves: {
-    color: '#5a6b3a', cuff: { color: '#8a7a3c', kind: 'roll' }, fingerless: true,
+    color: '#5a6b3a', hand: 'glove', bracer: '#506033',
+    cuff: { color: '#8a7a3c', kind: 'roll' }, fingerless: true,
   },
   tidecaller_gloves: {
-    color: '#2f6a78', cuff: { color: '#bfe8e0', kind: 'roll' },
+    color: '#2f6a78', hand: 'glove', bracer: '#2a5f6c',
+    cuff: { color: '#bfe8e0', kind: 'roll' },
     knuckle: { color: '#e8e2d4', kind: 'gem' },
   },
   voidwhisper_gloves: {
-    color: '#352c48', cuff: { color: '#6a5a8c', kind: 'band' },
+    color: '#352c48', hand: 'glove', bracer: '#2e2740',
+    cuff: { color: '#6a5a8c', kind: 'band' },
     knuckle: { color: '#b8a8d8', kind: 'gem' },
   },
   cindersworn_gloves: {
-    color: '#332826', cuff: { color: '#e05438', kind: 'band' },
+    color: '#332826', hand: 'glove', bracer: '#3e2f2c',
+    cuff: { color: '#e05438', kind: 'band' },
     knuckle: { color: '#ff9a3c', kind: 'gem' },
   },
   starweaver_gloves: {
-    color: '#2c3260', cuff: { color: '#c8cee8', kind: 'roll' },
+    color: '#2c3260', hand: 'glove', bracer: '#272c54',
+    cuff: { color: '#c8cee8', kind: 'roll' },
     knuckle: { color: '#aab8e8', kind: 'gem' },
   },
   // Early cloth: the leveling road's wraps, in four dye lots each.
   thistledown_wraps: {
-    color: '#c9bfa3', cuff: { color: '#a89a80', kind: 'roll' },
+    color: '#c9bfa3', hand: 'wrap', bracer: '#bcb193',
+    cuff: { color: '#a89a80', kind: 'roll' },
   },
   mothwing_wraps: {
-    color: '#8a8a72', cuff: { color: '#d8d4b8', kind: 'roll' },
+    color: '#8a8a72', hand: 'wrap', bracer: '#7e7e67',
+    cuff: { color: '#d8d4b8', kind: 'roll' },
     knuckle: { color: '#c8c4a0', kind: 'studs' },
   },
   dawnsworn_wraps: {
-    color: '#d9c9a0', cuff: { color: '#c9922f', kind: 'band' },
+    color: '#d9c9a0', hand: 'wrap', bracer: '#ccbc92',
+    cuff: { color: '#c9922f', kind: 'band' },
     knuckle: { color: '#e8b84a', kind: 'gem' },
   },
   fenwalker_wraps: {
-    color: '#4a6b5c', cuff: { color: '#a8c8a0', kind: 'band' },
+    color: '#4a6b5c', hand: 'wrap', bracer: '#426053',
+    cuff: { color: '#a8c8a0', kind: 'band' },
     knuckle: { color: '#a8e8c8', kind: 'gem' },
   },
   stormwoven_wraps: {
-    color: '#4e5a78', cuff: { color: '#e8d878', kind: 'band' },
+    color: '#4e5a78', hand: 'wrap', bracer: '#46516c',
+    cuff: { color: '#e8d878', kind: 'band' },
     knuckle: { color: '#e8d878', kind: 'studs' },
   },
   // Early leather: fur cuffs, the flipped kingfisher, THE fingerless
   // thief pair, snare-cord wrists and the fox's black socks.
   hareswift_gloves: {
-    color: '#c2a878', cuff: { color: '#e8e2d4', kind: 'fur' },
+    color: '#c2a878', hand: 'paw', bracer: '#b0966a',
+    cuff: { color: '#e8e2d4', kind: 'fur' },
   },
   kingfisher_gloves: {
-    color: '#2f7a8a', cuff: { color: '#d87f3c', kind: 'band' },
+    color: '#2f7a8a', hand: 'glove', bracer: '#2a6f7e',
+    cuff: { color: '#d87f3c', kind: 'band' },
   },
   cutpurse_gloves: {
-    color: '#4e4438', cuff: { color: '#6e6050', kind: 'band' }, fingerless: true,
+    color: '#4e4438', hand: 'glove', bracer: '#453c31',
+    cuff: { color: '#6e6050', kind: 'band' }, fingerless: true,
   },
   trapline_gloves: {
-    color: '#8a7248', bracer: '#6e5a3c', cuff: { color: '#d8cfae', kind: 'band' },
+    color: '#8a7248', hand: 'glove', bracer: '#6e5a3c',
+    cuff: { color: '#d8cfae', kind: 'band' },
   },
+  // The fox's black socks: dark paw, russet forearm — the pelt runs
+  // unbroken from the jerkin sleeve down into the hand.
   emberfox_gloves: {
-    color: '#3a3230', cuff: { color: '#c9713c', kind: 'fur' },
+    color: '#3a3230', hand: 'paw', bracer: '#b05a30',
+    cuff: { color: '#c9713c', kind: 'fur' },
   },
   // Early plate: ivory tusk studs, tourney polish, fluted slate,
   // thorned knuckles and the vigil's gold.
   tuskguard_gauntlets: {
-    color: '#a4744b', bracer: '#8a5f3c', cuff: { color: '#c9955c', kind: 'flare' },
+    color: '#a4744b', hand: 'gauntlet', bracer: '#8a5f3c',
+    cuff: { color: '#c9955c', kind: 'flare' },
     knuckle: { color: '#e8dcc0', kind: 'studs' },
   },
   valiant_gauntlets: {
-    color: '#c9ccd4', bracer: '#aab0ba', cuff: { color: '#e8c04c', kind: 'flare' },
+    color: '#c9ccd4', hand: 'gauntlet', bracer: '#b4b9c4',
+    cuff: { color: '#e8c04c', kind: 'flare' },
     knuckle: { color: '#e8ecf2', kind: 'plate' },
   },
   ramwall_gauntlets: {
-    color: '#6a7080', bracer: '#5a6070', cuff: { color: '#7a8294', kind: 'flare' },
+    color: '#6a7080', hand: 'gauntlet', bracer: '#5e6473',
+    cuff: { color: '#7a8294', kind: 'flare' },
     knuckle: { color: '#8a92a4', kind: 'plate' },
   },
   briarplate_gauntlets: {
-    color: '#3e4a38', bracer: '#33402e', cuff: { color: '#55644c', kind: 'band' },
+    color: '#3e4a38', hand: 'gauntlet', bracer: '#374231',
+    cuff: { color: '#55644c', kind: 'band' },
     knuckle: { color: '#8a9a6e', kind: 'spikes' },
   },
   sentinel_gauntlets: {
-    color: '#55607a', bracer: '#48526a', cuff: { color: '#6a7694', kind: 'flare' },
+    color: '#55607a', hand: 'gauntlet', bracer: '#4b556c',
+    cuff: { color: '#6a7694', kind: 'flare' },
     knuckle: { color: '#d4c28a', kind: 'studs' },
   },
 };
@@ -1140,54 +1183,56 @@ registerColorways(BOOT_STYLES, 'sentinel_sabatons', {
 // established palette — furs whiten with the snowmelt hare, the
 // sundart kingfisher flips teal-on-gold, tusk studs stay ivory.
 registerColorways(GLOVE_STYLES, 'thistledown_wraps', {
-  madder: { color: '#a8524a', cuff: { color: '#8a4038', kind: 'roll' } },
-  woad: { color: '#54688e', cuff: { color: '#42527a', kind: 'roll' } },
-  bracken: { color: '#8a6f4a', cuff: { color: '#6e5738', kind: 'roll' } },
+  madder: { color: '#a8524a', bracer: '#9c4a43', cuff: { color: '#8a4038', kind: 'roll' } },
+  woad: { color: '#54688e', bracer: '#4c5e82', cuff: { color: '#42527a', kind: 'roll' } },
+  bracken: { color: '#8a6f4a', bracer: '#7e6543', cuff: { color: '#6e5738', kind: 'roll' } },
 });
 registerColorways(GLOVE_STYLES, 'mothwing_wraps', {
-  luna: { color: '#9ab88e', cuff: { color: '#e2eecc', kind: 'roll' }, knuckle: { color: '#d8eec0', kind: 'studs' } },
-  dusk: { color: '#7a6280', cuff: { color: '#d0c0dc', kind: 'roll' }, knuckle: { color: '#c8b4d8', kind: 'studs' } },
-  ember: { color: '#a8705c', cuff: { color: '#e8c8a0', kind: 'roll' }, knuckle: { color: '#e8b088', kind: 'studs' } },
+  luna: { color: '#9ab88e', bracer: '#8dab82', cuff: { color: '#e2eecc', kind: 'roll' }, knuckle: { color: '#d8eec0', kind: 'studs' } },
+  dusk: { color: '#7a6280', bracer: '#6f5975', cuff: { color: '#d0c0dc', kind: 'roll' }, knuckle: { color: '#c8b4d8', kind: 'studs' } },
+  ember: { color: '#a8705c', bracer: '#9b6653', cuff: { color: '#e8c8a0', kind: 'roll' }, knuckle: { color: '#e8b088', kind: 'studs' } },
 });
 registerColorways(GLOVE_STYLES, 'dawnsworn_wraps', {
-  duskvow: { color: '#9a6a86', cuff: { color: '#e0b0c0', kind: 'band' } },
-  highnoon: { color: '#eae4d2', cuff: { color: '#c04a3a', kind: 'band' } },
-  eclipse: { color: '#4a4550', cuff: { color: '#d4a43c', kind: 'band' } },
+  duskvow: { color: '#9a6a86', bracer: '#8d607a', cuff: { color: '#e0b0c0', kind: 'band' } },
+  highnoon: { color: '#eae4d2', bracer: '#ddd6c1', cuff: { color: '#c04a3a', kind: 'band' } },
+  eclipse: { color: '#4a4550', bracer: '#413d47', cuff: { color: '#d4a43c', kind: 'band' } },
 });
 registerColorways(GLOVE_STYLES, 'fenwalker_wraps', {
-  mirebloom: { color: '#7a5a78', cuff: { color: '#d0b0d8', kind: 'band' }, knuckle: { color: '#e0c0e8', kind: 'gem' } },
-  rustsedge: { color: '#96603c', cuff: { color: '#d9a86a', kind: 'band' }, knuckle: { color: '#f0d0a0', kind: 'gem' } },
-  graymist: { color: '#7d8580', cuff: { color: '#c8d0cc', kind: 'band' }, knuckle: { color: '#e0e8e4', kind: 'gem' } },
+  mirebloom: { color: '#7a5a78', bracer: '#6f516d', cuff: { color: '#d0b0d8', kind: 'band' }, knuckle: { color: '#e0c0e8', kind: 'gem' } },
+  rustsedge: { color: '#96603c', bracer: '#885636', cuff: { color: '#d9a86a', kind: 'band' }, knuckle: { color: '#f0d0a0', kind: 'gem' } },
+  graymist: { color: '#7d8580', bracer: '#727a75', cuff: { color: '#c8d0cc', kind: 'band' }, knuckle: { color: '#e0e8e4', kind: 'gem' } },
 });
 registerColorways(GLOVE_STYLES, 'stormwoven_wraps', {
-  thunderhead: { color: '#3a3f4e', cuff: { color: '#e8c04c', kind: 'band' }, knuckle: { color: '#e8c04c', kind: 'studs' } },
-  sunshower: { color: '#c9a85c', cuff: { color: '#f4ecd0', kind: 'band' }, knuckle: { color: '#f4ecd0', kind: 'studs' } },
-  aurora: { color: '#4e8a7a', cuff: { color: '#b8e8d0', kind: 'band' }, knuckle: { color: '#b8e8d0', kind: 'studs' } },
+  thunderhead: { color: '#3a3f4e', bracer: '#333744', cuff: { color: '#e8c04c', kind: 'band' }, knuckle: { color: '#e8c04c', kind: 'studs' } },
+  sunshower: { color: '#c9a85c', bracer: '#bb9b52', cuff: { color: '#f4ecd0', kind: 'band' }, knuckle: { color: '#f4ecd0', kind: 'studs' } },
+  aurora: { color: '#4e8a7a', bracer: '#467d6e', cuff: { color: '#b8e8d0', kind: 'band' }, knuckle: { color: '#b8e8d0', kind: 'studs' } },
 });
 registerColorways(GLOVE_STYLES, 'hareswift_gloves', {
-  clover: { color: '#7a9a58', cuff: { color: '#e8f0d8', kind: 'fur' } },
-  snowmelt: { color: '#cfd2ca', cuff: { color: '#f4f4ee', kind: 'fur' } },
-  sorrel: { color: '#a86a48', cuff: { color: '#e8dcc4', kind: 'fur' } },
+  clover: { color: '#7a9a58', bracer: '#6e8c4f', cuff: { color: '#e8f0d8', kind: 'fur' } },
+  snowmelt: { color: '#cfd2ca', bracer: '#c0c4bb', cuff: { color: '#f4f4ee', kind: 'fur' } },
+  sorrel: { color: '#a86a48', bracer: '#9a6041', cuff: { color: '#e8dcc4', kind: 'fur' } },
 });
 registerColorways(GLOVE_STYLES, 'kingfisher_gloves', {
-  reedmace: { color: '#6a8a4a', cuff: { color: '#c9a23c', kind: 'band' } },
-  stormgull: { color: '#9aa8b0', cuff: { color: '#4e5a64', kind: 'band' } },
-  sundart: { color: '#d8a03c', cuff: { color: '#2f7a8a', kind: 'band' } },
+  reedmace: { color: '#6a8a4a', bracer: '#5f7d42', cuff: { color: '#c9a23c', kind: 'band' } },
+  stormgull: { color: '#9aa8b0', bracer: '#8c9aa2', cuff: { color: '#4e5a64', kind: 'band' } },
+  sundart: { color: '#d8a03c', bracer: '#c89336', cuff: { color: '#2f7a8a', kind: 'band' } },
 });
 registerColorways(GLOVE_STYLES, 'cutpurse_gloves', {
-  alleyrat: { color: '#5c5c56', cuff: { color: '#767670', kind: 'band' } },
-  moonless: { color: '#33303c', cuff: { color: '#4e4a5c', kind: 'band' } },
-  redhand: { color: '#6e3a34', cuff: { color: '#8a5a4a', kind: 'band' } },
+  alleyrat: { color: '#5c5c56', bracer: '#53534d', cuff: { color: '#767670', kind: 'band' } },
+  moonless: { color: '#33303c', bracer: '#2c2935', cuff: { color: '#4e4a5c', kind: 'band' } },
+  redhand: { color: '#6e3a34', bracer: '#62342e', cuff: { color: '#8a5a4a', kind: 'band' } },
 });
 registerColorways(GLOVE_STYLES, 'trapline_gloves', {
   juniper: { color: '#4e6a52', bracer: '#3e5642' },
   riverclay: { color: '#96604c', bracer: '#7a4e3c' },
   nightsnare: { color: '#3e4450', bracer: '#333844', cuff: { color: '#b8c0cc', kind: 'band' } },
 });
+// Emberfox lots: each pelt keeps the law — dark paw, jerkin-toned
+// forearm, so the sock runs unbroken up into the sleeve.
 registerColorways(GLOVE_STYLES, 'emberfox_gloves', {
-  silverfox: { color: '#33303a', cuff: { color: '#a4a8b0', kind: 'fur' } },
-  shadowfox: { color: '#232028', cuff: { color: '#4c4856', kind: 'fur' } },
-  dawnfox: { color: '#6e5838', cuff: { color: '#e0c890', kind: 'fur' } },
+  silverfox: { color: '#33303a', bracer: '#8a8e96', cuff: { color: '#a4a8b0', kind: 'fur' } },
+  shadowfox: { color: '#232028', bracer: '#3a3640', cuff: { color: '#4c4856', kind: 'fur' } },
+  dawnfox: { color: '#6e5838', bracer: '#d8b878', cuff: { color: '#e0c890', kind: 'fur' } },
 });
 registerColorways(GLOVE_STYLES, 'tuskguard_gauntlets', {
   ironshod: { color: '#8d9299', bracer: '#767b84', cuff: { color: '#b0b6be', kind: 'flare' } },
