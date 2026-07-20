@@ -53,28 +53,34 @@ function smooth(t: number): number {
  */
 export function bladeCarriage(grip: Grip, side: number, runK: number): BladeCarriage {
   const lift = smooth(runK);
+  // THE HOLD-MAINTENANCE LAW (user verdict, twice-earned): a fist holds
+  // a hilt exactly one of two ways — blade-down past the thumb
+  // (standard) or blade-down past the pinky, reversed (rogue) — and
+  // RUNNING NEVER CHANGES THE HOLD. The tip stays BELOW the hand at
+  // every gait; the run only levels the blade toward (never past)
+  // horizontal as the arm pumps. Any sprint carry that sweeps the tip
+  // above the fist reads as stabbing yourself in the chest. The
+  // approved idle angles are the anchors; the run is the same hold,
+  // livelier.
   if (grip === 'rogue') {
-    // Reverse grip: at rest the blade hangs down-back past the hip,
-    // tip toward the heel — the low-line, one flick from an icepick
-    // stab. On the run it sweeps UP-AND-BACK into a raised reverse
-    // carry — the blade riding high over the shoulder line, trailing
-    // the sprint — the exact mirror of the standard ready carry.
-    // (User-picked: this raised trail IS the rogue run.)
+    // Reverse grip: blade down-back past the hip, tip toward the heel
+    // — the low-line, one flick from an icepick stab. On the run it
+    // levels a shade toward horizontal-back and rides a touch higher,
+    // pumping with the arm: carried, not dangling.
     return {
       dx: side * (0.04 + 0.03 * lift),
-      dy: -0.05 - 0.06 * lift,
-      angle: Math.PI / 2 + side * (0.72 + 1.35 * lift),
+      dy: -0.05 - 0.05 * lift,
+      angle: Math.PI / 2 + side * (0.72 + 0.3 * lift),
       flip: true,
     };
   }
-  // Standard: at rest the blade angles down-forward off the leg so the
-  // guard and taper read as a sword; as the gait becomes a run the whole
-  // blade swings UP into the ready carry — point up-forward, clear of
-  // the body — the way a sword is actually run with.
+  // Standard: the blade angles down-forward off the leg so the guard
+  // and taper read as a sword; on the run it levels toward (staying
+  // below) horizontal-forward — a sword carried low and ready.
   return {
     dx: side * (0.05 + 0.04 * lift),
-    dy: -0.05 * lift,
-    angle: Math.PI / 2 - side * (0.32 + lift * (Math.PI / 2 + 0.18)),
+    dy: -0.04 * lift,
+    angle: Math.PI / 2 - side * (0.32 + 0.6 * lift),
     flip: false,
   };
 }

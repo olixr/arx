@@ -30,21 +30,40 @@ test('carriage is continuous across the whole gait — stances never pop', () =>
   }
 });
 
-test('standard grip: blade down-forward at rest, raised ready carry at a sprint', () => {
-  for (const side of SIDES) {
-    const idle = bladeCarriage('normal', side, 0);
-    const run = bladeCarriage('normal', side, 1);
-    // Idle tip points DOWN (+y is down on screen)…
-    assert.ok(Math.sin(idle.angle) > 0.7, 'idle tip hangs down');
-    // …and forward of the hand on the facing side.
-    assert.ok(Math.sign(Math.cos(idle.angle)) === Math.sign(side), 'idle tip leads forward');
-    // Sprint tip points UP-forward — the ready carry.
-    assert.ok(Math.sin(run.angle) < -0.4, 'sprint tip rises above the hand');
-    assert.ok(!idle.flip && !run.flip, 'standard grip never mirrors the edge');
+test('the hold-maintenance law: the tip stays below the hand at EVERY gait, both grips', () => {
+  // A fist holds a hilt one of two ways — blade-down forward or
+  // blade-down reversed — and running never changes the hold. Sweeping
+  // the tip above the fist reads as stabbing your own chest.
+  for (const grip of GRIPS) {
+    for (const side of SIDES) {
+      for (let k = 0; k <= 1.0001; k += 0.05) {
+        const c = bladeCarriage(grip, side, k);
+        assert.ok(
+          Math.sin(c.angle) > 0.35,
+          `${grip}/${side} tip below the hand at runK=${k.toFixed(2)}`,
+        );
+      }
+    }
   }
 });
 
-test('rogue grip: low-line at rest, raised reverse carry at a sprint — always trailing', () => {
+test('standard grip: blade down-forward, leveling (not raising) as the gait builds', () => {
+  for (const side of SIDES) {
+    for (let k = 0; k <= 1.0001; k += 0.05) {
+      const c = bladeCarriage('normal', side, k);
+      // The tip always leads FORWARD of the hand, on the facing side.
+      assert.ok(Math.sign(Math.cos(c.angle)) === Math.sign(side), 'tip leads the facing');
+      assert.ok(!c.flip, 'standard grip never mirrors the edge');
+    }
+    const idle = bladeCarriage('normal', side, 0);
+    const run = bladeCarriage('normal', side, 1);
+    // The run levels the same hold — a real change, but a modest one.
+    const sweep = Math.abs(run.angle - idle.angle);
+    assert.ok(sweep > 0.3 && sweep < 0.9, 'run levels the blade without changing the hold');
+  }
+});
+
+test('rogue grip: reversed low-line, trailing the facing at every gait', () => {
   for (const side of SIDES) {
     for (let k = 0; k <= 1.0001; k += 0.05) {
       const c = bladeCarriage('rogue', side, k);
@@ -53,27 +72,11 @@ test('rogue grip: low-line at rest, raised reverse carry at a sprint — always 
       assert.ok(Math.sign(Math.cos(c.angle)) === -Math.sign(side), 'tip trails the facing');
       assert.ok(c.flip, 'reverse grip turns the edge out');
     }
-    // At rest: the low-line, tip hanging below the hand.
     const idle = bladeCarriage('rogue', side, 0);
-    assert.ok(Math.sin(idle.angle) > 0.5, 'idle tip hangs below the hand');
-    // At a sprint: the blade sweeps UP-AND-BACK over the shoulder line
-    // (the user-picked raised reverse carry), riding higher.
     const run = bladeCarriage('rogue', side, 1);
-    assert.ok(Math.sin(run.angle) < -0.4, 'sprint tip rises above the hand');
-    assert.ok(run.dy < idle.dy, 'run carry rides higher');
-  }
-});
-
-test('sprint carries mirror each other: standard leads forward, rogue trails back', () => {
-  for (const side of SIDES) {
-    const std = bladeCarriage('normal', side, 1);
-    const rog = bladeCarriage('rogue', side, 1);
-    // Both raised…
-    assert.ok(Math.sin(std.angle) < 0 && Math.sin(rog.angle) < 0);
-    // …standard points up-FORWARD, rogue up-BACK, at the same pitch.
-    assert.ok(Math.sign(Math.cos(std.angle)) === Math.sign(side));
-    assert.ok(Math.sign(Math.cos(rog.angle)) === -Math.sign(side));
-    assert.ok(Math.abs(Math.sin(std.angle) - Math.sin(rog.angle)) < 0.05, 'same raise pitch');
+    const sweep = Math.abs(run.angle - idle.angle);
+    assert.ok(sweep > 0.15 && sweep < 0.6, 'run levels the low-line without changing the hold');
+    assert.ok(run.dy < idle.dy, 'run carry rides a touch higher');
   }
 });
 

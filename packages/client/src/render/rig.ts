@@ -1311,6 +1311,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const weaponBehind = fy < -0.35;
   const cuff = bodySt?.sleeves === 'full' ? sleeve : undefined;
   const paintOffArm = (): void => {
+    // DUAL WIELD: the off blade is the real weapon, carried by the off
+    // fist in its OWN grip — raised guard in combat, settling into its
+    // full carriage (standard or reversed) at rest. It paints BEFORE
+    // the arm — weapon, then fist, the main hand's layering — so the
+    // mitt visibly wraps the hilt instead of the grip floating on top
+    // of the hand.
+    const offWeapon = offSt?.kind === 'weapon' && rig.offhandItem !== undefined && !archer;
+    if (offWeapon && offSt) {
+      drawHeldItem(ctx, rig.offhandItem!, offSt.color, offX, offY, offBladeAngle, s, rig, {
+        ench: rig.offhandEnch,
+        flip: offFlip,
+      });
+    }
     const joints = drawArm(
       ctx,
       offShX,
@@ -1330,25 +1343,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // Arm-carried offhand rides the solved forearm, same depth layer as
     // the arm itself so the strap never breaks. An archer's off hand is
     // busy holding the bow — the shield sits this one out.
-    if (offSt && offSt.kind !== 'quiver' && !archer) {
-      if (offSt.kind === 'weapon' && rig.offhandItem) {
-        // DUAL WIELD: the off blade is the real weapon, carried by the
-        // off fist in its OWN grip — raised guard in combat, settling
-        // into its full carriage (standard or reversed) at rest.
-        drawHeldItem(
-          ctx,
-          rig.offhandItem,
-          offSt.color,
-          offX,
-          offY,
-          offBladeAngle,
-          s,
-          rig,
-          { ench: rig.offhandEnch, flip: offFlip },
-        );
-      } else {
-        drawOffhandOnArm(ctx, offSt, joints, s, profileK, rig.hurt);
-      }
+    if (offSt && offSt.kind !== 'quiver' && !archer && !offWeapon) {
+      drawOffhandOnArm(ctx, offSt, joints, s, profileK, rig.hurt);
     }
     // The far pauldron is a true shoulder joint: it caps THIS arm's
     // root on its solved anchor, so it rides swings and draws instead
