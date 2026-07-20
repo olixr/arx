@@ -752,6 +752,14 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // The skirmisher's early pool: hare-swift couriers, river poachers,
   // guild thieves, trappers and the fox-cloaked showpiece.
   ...earlyLeatherDefs(),
+
+  // ========================================== early-game plate wardrobe
+  // Five sets for the knights of the leveling road (defence/melee 2–19),
+  // each in FOUR lots via the colorway law. Craft lots RE-FORGE the same
+  // silhouette from a different bar (swapInput); drop lots haunt the
+  // mobs. Early never means humble — these are the showstoppers a new
+  // knight marches around in.
+  ...earlyPlateDefs(),
 ];
 
 // ---------------------------------------------------------- set makers
@@ -1390,6 +1398,12 @@ interface ColorwaySpec {
   desc: string;
   acquisition?: EquipmentDef['acquisition'];
   dyeInput?: { item: string; qty: number };
+  /**
+   * Re-forge lot: replace a base recipe input (the metal bar) instead of
+   * appending a dye — "the same armor, hammered out of a different ore".
+   * Quantity carries over from the input it replaces.
+   */
+  swapInput?: { from: string; to: string };
 }
 
 function colorways(pieces: EquipmentDef[], specs: ColorwaySpec[]): EquipmentDef[] {
@@ -1405,7 +1419,12 @@ function colorways(pieces: EquipmentDef[], specs: ColorwaySpec[]): EquipmentDef[
     };
     // JSON-safety: absent, never explicitly undefined (round-trip law).
     if (acquisition.craft && p.recipe) {
-      v.recipe = { ...p.recipe, inputs: cw.dyeInput ? [...p.recipe.inputs, cw.dyeInput] : p.recipe.inputs };
+      let inputs = cw.dyeInput ? [...p.recipe.inputs, cw.dyeInput] : [...p.recipe.inputs];
+      if (cw.swapInput) {
+        const { from, to } = cw.swapInput;
+        inputs = inputs.map((inp) => (inp.item === from ? { item: to, qty: inp.qty } : inp));
+      }
+      v.recipe = { ...p.recipe, inputs };
     } else {
       delete v.recipe;
     }
@@ -1946,6 +1965,272 @@ function emberfoxSet(): EquipmentDef[] {
       'Black to the knee, the fox\'s own socks. Snow tells no one.'),
     piece('emberfox_boots', 'Emberfox boots', 'boots', 17, 3, 380, 'Ub',
       'Four soft points of contact. The ground agrees to lie.'),
+  ];
+}
+
+function earlyPlateDefs(): EquipmentDef[] {
+  const tuskguard = tuskguardSet();
+  const valiant = valiantSet();
+  const ramwall = ramwallSet();
+  const briarplate = briarplateSet();
+  const sentinel = sentinelSet();
+  return [
+    // -------- Tuskguard: burnished bronze behind boar tusks and a
+    // bristle crest. The first plate a fighter ever wears — and it
+    // re-forges from every bar the mine gives up.
+    ...tuskguard,
+    ...colorways(tuskguard, [
+      { key: 'ironshod', dye: 'Ironshod', color: '#8d9299', swapInput: { from: 'bronze_bar', to: 'iron_bar' },
+        desc: 'The same boar, hammered from honest iron.' },
+      { key: 'gilded', dye: 'Gilded', color: '#d8ac44', swapInput: { from: 'bronze_bar', to: 'gold_bar' },
+        desc: 'Gold over tusk and brow. Reckless. Magnificent.' },
+      { key: 'ashen', dye: 'Ashen', color: '#4a4644', dyeInput: { item: 'coal', qty: 2 },
+        desc: 'Coal-quenched black. The boar hunts at night now.' },
+    ]),
+    // -------- Valiant: bright tourney plate under a forged crest and a
+    // tall plume — the storybook knight, enameled to order.
+    ...valiant,
+    ...colorways(valiant, [
+      { key: 'crimson', dye: 'Crimson', color: '#a83a38', dyeInput: { item: 'berries', qty: 3 },
+        desc: 'Tourney red enamel. The crowd remembers this one.' },
+      { key: 'azure', dye: 'Azure', color: '#4a5f9c', dyeInput: { item: 'moonbell', qty: 1 },
+        desc: 'Heraldic blue, white at the crest. Sworn to the river keep.' },
+      { key: 'gilded', dye: 'Gilded', color: '#d8ac44', swapInput: { from: 'iron_bar', to: 'gold_bar' },
+        desc: 'The champion\'s finish — gold from crest to heel.' },
+    ]),
+    // -------- Ramwall: fluted slate iron under great curled ram horns.
+    // A walking keep; doors think twice.
+    ...ramwall,
+    ...colorways(ramwall, [
+      { key: 'steelhorn', dye: 'Steelhorn', color: '#b8bec8', swapInput: { from: 'iron_bar', to: 'steel_bar' },
+        desc: 'Bright steel re-forge. The wall, but polished.' },
+      { key: 'goldhorn', dye: 'Goldhorn', color: '#7a7466', dyeInput: { item: 'gold_bar', qty: 1 },
+        desc: 'Gilded horns on storm-grey plate. Rank, worn heavy.' },
+      { key: 'stormram', dye: 'Stormram', color: '#3e4148', dyeInput: { item: 'coal', qty: 2 },
+        desc: 'Coal-dark and spiked at the shoulder. The wall pushes back.' },
+    ]),
+    // -------- Briarplate: thorn-worked green-black plate, drop-only —
+    // grown, the woods insist, not forged.
+    ...briarplate,
+    ...colorways(briarplate, [
+      { key: 'bloodbriar', dye: 'Bloodbriar', color: '#5c3230',
+        desc: 'Rust-red thorns. Something watered them.' },
+      { key: 'bonebriar', dye: 'Bonebriar', color: '#b0a890',
+        desc: 'Pale as winter deadfall, thorned twice as deep.' },
+      { key: 'nightbriar', dye: 'Nightbriar', color: '#38304a',
+        desc: 'Violet-black bramble. The hedge keeps its own hours.' },
+    ]),
+    // -------- Sentinel: gunmetal vigil plate under a spiked crown and
+    // swept fins — the crypt watch's own issue, drop-only.
+    ...sentinel,
+    ...colorways(sentinel, [
+      { key: 'daybreak', dye: 'Daybreak', color: '#cfc4a8',
+        desc: 'Vigil kept until dawn — winged, white-gold, unblinking.' },
+      { key: 'bloodwatch', dye: 'Bloodwatch', color: '#6e3038',
+        desc: 'The watch that ended badly. The plate remembers.' },
+      { key: 'midnight', dye: 'Midnight', color: '#2e3244',
+        desc: 'Third bell. Nothing moves, and it sees all of it.' },
+    ]),
+  ];
+}
+
+function tuskguardSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'melee', w: 2 },
+    { stat: 'defence', w: 2 },
+    { stat: 'mining' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#a4744b';
+  const craft = (levelReq: number, xp: number, ticks: number, bars: number) => ({
+    skill: 'smithing' as const,
+    levelReq,
+    xp,
+    station: 'anvil' as const,
+    ticks,
+    inputs: [{ item: 'bronze_bar', qty: bars }],
+  });
+  return [
+    {
+      id: 'tuskguard_helm', name: 'Tuskguard helm', slot: 'head', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 2 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(2, 25, 40, 1),
+      value: 30, color, code: 'Tg',
+      desc: 'Bronze tusks off the jaw, bristles up the crown. Charge first.',
+    },
+    {
+      id: 'tuskguard_platebody', name: 'Tuskguard platebody', slot: 'body', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 4 }, armor: 4, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(6, 50, 55, 2),
+      value: 55, color, code: 'Tj',
+      desc: 'A boar\'s share of bronze. It has never once backed up.',
+    },
+    {
+      id: 'tuskguard_greaves', name: 'Tuskguard greaves', slot: 'legs', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 3 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(4, 35, 45, 1),
+      value: 40, color, code: 'Tc',
+      desc: 'Bronze to the knee. Underbrush files no further objections.',
+    },
+    {
+      id: 'tuskguard_sabatons', name: 'Tuskguard sabatons', slot: 'boots', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 2 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(3, 30, 40, 1),
+      value: 35, color, code: 'Tb',
+      desc: 'Hoof-heavy bronze. The ground learns your name by heart.',
+    },
+  ];
+}
+
+function valiantSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'melee', w: 2 },
+    { stat: 'defence', w: 2 },
+    { stat: 'vitality' },
+    { stat: 'regen' },
+  ];
+  const color = '#c9ccd4';
+  const craft = (levelReq: number, xp: number, ticks: number, bars: number) => ({
+    skill: 'smithing' as const,
+    levelReq,
+    xp,
+    station: 'anvil' as const,
+    ticks,
+    inputs: [{ item: 'iron_bar', qty: bars }],
+  });
+  return [
+    {
+      id: 'valiant_helm', name: 'Valiant helm', slot: 'head', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 6 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(8, 60, 50, 1),
+      value: 95, color, code: 'Vv',
+      desc: 'Forged crest, tall plume. The storybooks drew it from this.',
+    },
+    {
+      id: 'valiant_platebody', name: 'Valiant platebody', slot: 'body', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 8 }, armor: 5, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(12, 100, 65, 2),
+      value: 140, color, code: 'Vj',
+      desc: 'Mirror-bright plate behind a gold chevron. Stand where it shines.',
+    },
+    {
+      id: 'valiant_greaves', name: 'Valiant greaves', slot: 'legs', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 7 }, armor: 4, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(10, 80, 55, 1),
+      value: 115, color, code: 'Vc',
+      desc: 'Polished to parade order. They march even standing still.',
+    },
+    {
+      id: 'valiant_sabatons', name: 'Valiant sabatons', slot: 'boots', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 6 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(9, 65, 50, 1),
+      value: 100, color, code: 'Vb',
+      desc: 'Gold-toed and certain. Every step files a heroic report.',
+    },
+  ];
+}
+
+function ramwallSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'defence', w: 3 },
+    { stat: 'melee' },
+    { stat: 'smithing' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#6a7080';
+  const craft = (levelReq: number, xp: number, ticks: number, bars: number) => ({
+    skill: 'smithing' as const,
+    levelReq,
+    xp,
+    station: 'anvil' as const,
+    ticks,
+    inputs: [{ item: 'iron_bar', qty: bars }],
+  });
+  return [
+    {
+      id: 'ramwall_helm', name: 'Ramwall helm', slot: 'head', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 10 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(14, 110, 60, 2),
+      value: 170, color, code: 'Rr',
+      desc: 'Great curled horns over cheek plate. Gates negotiate now.',
+    },
+    {
+      id: 'ramwall_platebody', name: 'Ramwall platebody', slot: 'body', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 12 }, armor: 6, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(18, 170, 75, 3),
+      value: 240, color, code: 'Rj',
+      desc: 'Fluted slate iron, tassets to the thigh. A keep that walks.',
+    },
+    {
+      id: 'ramwall_greaves', name: 'Ramwall greaves', slot: 'legs', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 11 }, armor: 4, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(16, 140, 65, 2),
+      value: 205, color, code: 'Rw',
+      desc: 'Pillar-set greaves. Shoving matches end at the knee.',
+    },
+    {
+      id: 'ramwall_sabatons', name: 'Ramwall sabatons', slot: 'boots', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 10 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(15, 120, 60, 2),
+      value: 180, color, code: 'Rb',
+      desc: 'Foundation stones with laces. Braced is the resting state.',
+    },
+  ];
+}
+
+function briarplateSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'melee', w: 3 },
+    { stat: 'defence' },
+    { stat: 'foraging' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#3e4a38';
+  const piece = (
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    level: number, armor: number, value: number, code: string, desc: string,
+  ): EquipmentDef => ({
+    id, name, slot, armorClass: 'plate',
+    levelReq: { skill: 'melee', level }, armor, affixPool: pool,
+    acquisition: { drop: true }, value, color, code, desc,
+  });
+  return [
+    piece('briarplate_helm', 'Briarplate helm', 'head', 14, 4, 280, 'Eh',
+      'Thorn horns off a green-black skull. The hedge crowned somebody.'),
+    piece('briarplate_platebody', 'Briarplate platebody', 'body', 16, 6, 390, 'Ej',
+      'Plate grown over with iron bramble. Grabbing it is the mistake.'),
+    piece('briarplate_greaves', 'Briarplate greaves', 'legs', 15, 5, 330, 'Ec',
+      'Thorn-ridged to the shin. Walk anywhere; the briar signs off.'),
+    piece('briarplate_sabatons', 'Briarplate sabatons', 'boots', 14, 4, 300, 'Eb',
+      'Spiked at the toe like a rose remembers. Kick politely.'),
+  ];
+}
+
+function sentinelSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'defence', w: 2 },
+    { stat: 'melee', w: 2 },
+    { stat: 'vitality' },
+    { stat: 'regen' },
+  ];
+  const color = '#55607a';
+  const piece = (
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    level: number, armor: number, value: number, code: string, desc: string,
+  ): EquipmentDef => ({
+    id, name, slot, armorClass: 'plate',
+    levelReq: { skill: 'defence', level }, armor, affixPool: pool,
+    acquisition: { drop: true }, value, color, code, desc,
+  });
+  return [
+    piece('sentinel_greathelm', 'Sentinel greathelm', 'head', 17, 4, 360, 'Sv',
+      'A spiked crown over a cross visor. The vigil wears its own hours.'),
+    piece('sentinel_platebody', 'Sentinel platebody', 'body', 19, 7, 500, 'Sj',
+      'Gunmetal fluting under bladed shoulders. Night shifts, plural.'),
+    piece('sentinel_greaves', 'Sentinel greaves', 'legs', 18, 5, 430, 'Sq',
+      'Stood so many watches they stand themselves. Heels together.'),
+    piece('sentinel_sabatons', 'Sentinel sabatons', 'boots', 17, 4, 380, 'Se',
+      'Iron soles that have never once fallen asleep on duty.'),
   ];
 }
 

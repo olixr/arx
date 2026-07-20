@@ -45,6 +45,8 @@ export interface BodyStyle {
   sash?: string;
   /** Hip plates hanging from the fauld — the heavy-knight lower read. */
   tassets?: boolean;
+  /** Vertical fluting on the breastplate — the Gothic-plate read. */
+  ridges?: boolean;
   /** Robe/coat skirt length below the belt line, tiles. 0 = none. */
   skirt: number;
   skirtSlit?: boolean;
@@ -77,7 +79,14 @@ export interface HelmStyle {
   noseGuard?: boolean;
   visor?: 'slit' | 'cross';
   plume?: { color: string };
-  horns?: { color: string; size: number };
+  /** `curl` bends the sweep into a ram's spiral beside the temples. */
+  horns?: { color: string; size: number; curl?: boolean };
+  /** Up-curved boar tusks flanking the jaw — the charge read. */
+  tusks?: { color: string };
+  /** A row of forged spikes riding the crown centerline, front-to-back
+   *  — the mohawk of war. Reads as rising points frontal, a full
+   *  spiked ridge at profile. */
+  spikesCrown?: { color: string };
   /** Swept-back side fins — blade silhouettes off the temples. */
   fins?: { color: string };
   /** Upswept feathered wing blades — the valkyrie read. */
@@ -325,6 +334,39 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     chest: 'none', collar: 'fur', tail: { color: '#b05a30', tip: '#e8dcc4' },
     skirt: 0, pouch: true,
   },
+  // The early-game plate sets: the knight's leveling road. Each ships
+  // in four lots via registerColorways below — craft lots are the same
+  // silhouette RE-FORGED from another bar, and some lots change the
+  // structure itself (extra spikes, wings for fins), never just hue.
+  tuskguard_platebody: {
+    color: '#a4744b', trim: '#6e4a30', metal: '#c9955c', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'round', pauldronColor: '#b5854f',
+    pauldronTrim: '#d9a86a', chest: 'plate', skirt: 0, collar: 'gorget',
+  },
+  valiant_platebody: {
+    color: '#c9ccd4', trim: '#c9a23c', metal: '#e2e6ec', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'layered', pauldronColor: '#d4d8e0',
+    pauldronTrim: '#e8c04c', chest: 'plate', emblem: 'chevron', skirt: 0,
+    collar: 'gorget',
+  },
+  ramwall_platebody: {
+    color: '#6a7080', trim: '#4a4f5c', metal: '#8a92a4', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'round', pauldronColor: '#7a8294',
+    pauldronTrim: '#9aa4b8', chest: 'plate', ridges: true, skirt: 0,
+    collar: 'gorget', tassets: true,
+  },
+  briarplate_platebody: {
+    color: '#3e4a38', trim: '#8a9a6e', metal: '#55644c', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'spiked', pauldronColor: '#33402e',
+    pauldronSpikes: 2, pauldronTrim: '#8a9a6e', chest: 'plate', skirt: 0,
+    tassets: true,
+  },
+  sentinel_platebody: {
+    color: '#55607a', trim: '#d4c28a', metal: '#707c9a', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'bladed', pauldronColor: '#606c88',
+    pauldronTrim: '#d4c28a', chest: 'plate', ridges: true, skirt: 0,
+    collar: 'gorget', tassets: true,
+  },
 };
 
 export const HELM_STYLES: Record<string, HelmStyle> = {
@@ -434,6 +476,29 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     color: '#b05a30', trim: '#e8dcc4', kind: 'hood',
     ears: { color: '#b05a30', tip: '#3a3230' },
   },
+  // The early plate helms: every one a different silhouette — tusked
+  // boar, crested-and-plumed hero, ram spiral, thorn crown, spiked
+  // greathelm. A knight's helm is half the knight.
+  tuskguard_helm: {
+    color: '#a4744b', trim: '#6e4a30', kind: 'dome', noseGuard: true,
+    tusks: { color: '#e8dcc0' }, crest: { color: '#38281c' },
+  },
+  valiant_helm: {
+    color: '#c9ccd4', trim: '#c9a23c', kind: 'dome', noseGuard: true,
+    crest: { color: '#b8bec8' }, plume: { color: '#a83a38' },
+  },
+  ramwall_helm: {
+    color: '#6a7080', trim: '#4a4f5c', kind: 'dome', noseGuard: true,
+    horns: { color: '#cfc4a8', size: 1, curl: true }, jaw: '#7a8294',
+  },
+  briarplate_helm: {
+    color: '#3e4a38', trim: '#8a9a6e', kind: 'horned', noseGuard: true,
+    horns: { color: '#8a9a6e', size: 1.25 }, jaw: '#55644c',
+  },
+  sentinel_greathelm: {
+    color: '#55607a', trim: '#d4c28a', kind: 'greathelm', visor: 'cross',
+    spikesCrown: { color: '#d4c28a' }, fins: { color: '#707c9a' },
+  },
 };
 
 export const LEG_STYLES: Record<string, LegStyle> = {
@@ -467,6 +532,11 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   trapline_chaps: { kind: 'wraps', thigh: '#8a7248', shin: '#6e5a3c', knee: 'wrap', kneeColor: '#5a4a34' },
   // The fox's own socks: russet thigh into black shin.
   emberfox_leggings: { kind: 'wraps', thigh: '#b05a30', shin: '#3a3230', knee: 'wrap', kneeColor: '#8a4526' },
+  tuskguard_greaves: { kind: 'greaves', thigh: '#6e5138', shin: '#a4744b', knee: 'plate', kneeColor: '#c9955c' },
+  valiant_greaves: { kind: 'greaves', thigh: '#5c5460', shin: '#c9ccd4', knee: 'plate', kneeColor: '#e8c04c' },
+  ramwall_greaves: { kind: 'greaves', thigh: '#454b58', shin: '#6a7080', knee: 'plate', kneeColor: '#8a92a4' },
+  briarplate_greaves: { kind: 'greaves', thigh: '#2e382a', shin: '#3e4a38', knee: 'plate', kneeColor: '#8a9a6e' },
+  sentinel_greaves: { kind: 'greaves', thigh: '#3e4658', shin: '#55607a', knee: 'plate', kneeColor: '#d4c28a' },
 };
 
 export const BOOT_STYLES: Record<string, BootStyle> = {
@@ -500,6 +570,11 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   cutpurse_boots: { color: '#3a332c', height: 0.09, cuff: { color: '#6e6050' } },
   trapline_boots: { color: '#6e5a3c', height: 0.13, wrap: { color: '#d8cfae' } },
   emberfox_boots: { color: '#3a3230', height: 0.11, fur: { color: '#c9713c' } },
+  tuskguard_sabatons: { color: '#a4744b', height: 0.12, toe: '#c9955c' },
+  valiant_sabatons: { color: '#c9ccd4', height: 0.13, toe: '#e8c04c' },
+  ramwall_sabatons: { color: '#6a7080', height: 0.14, toe: '#8a92a4', cuff: { color: '#7a8294' } },
+  briarplate_sabatons: { color: '#3e4a38', height: 0.13, toe: '#55644c', spike: true },
+  sentinel_sabatons: { color: '#55607a', height: 0.14, toe: '#d4c28a' },
 };
 
 export const OFFHAND_STYLES: Record<string, OffhandStyle> = {
@@ -756,6 +831,130 @@ registerColorways(BOOT_STYLES, 'emberfox_boots', {
   silverfox: { color: '#33303a', fur: { color: '#a4a8b0' } },
   shadowfox: { color: '#232028', fur: { color: '#4c4856' } },
   dawnfox: { color: '#6e5838', fur: { color: '#e0c890' } },
+});
+
+// Tuskguard forge lots: the same boar hammered from iron, gold and
+// coal-quenched bronze — the tusks stay ivory; that IS the helmet.
+registerColorways(BODY_STYLES, 'tuskguard_platebody', {
+  ironshod: { color: '#8d9299', trim: '#6a6f7d', metal: '#b0b6be', pauldronColor: '#9aa0aa', pauldronTrim: '#c9ccd4' },
+  gilded: { color: '#d8ac44', trim: '#a4772c', metal: '#e8c05c', pauldronColor: '#e0b44e', pauldronTrim: '#f4e0a0' },
+  ashen: { color: '#4a4644', trim: '#332f2e', metal: '#6a6462', pauldronColor: '#54504e', pauldronTrim: '#7d7674' },
+});
+registerColorways(HELM_STYLES, 'tuskguard_helm', {
+  ironshod: { color: '#8d9299', trim: '#6a6f7d', crest: { color: '#4a4f58' } },
+  gilded: { color: '#d8ac44', trim: '#a4772c', tusks: { color: '#f4ecd8' }, crest: { color: '#8a6a24' } },
+  ashen: { color: '#4a4644', trim: '#332f2e', crest: { color: '#2c2928' } },
+});
+registerColorways(LEG_STYLES, 'tuskguard_greaves', {
+  ironshod: { thigh: '#5c5460', shin: '#8d9299', kneeColor: '#b0b6be' },
+  gilded: { thigh: '#8a6a2c', shin: '#d8ac44', kneeColor: '#e8c05c' },
+  ashen: { thigh: '#332f2e', shin: '#4a4644', kneeColor: '#6a6462' },
+});
+registerColorways(BOOT_STYLES, 'tuskguard_sabatons', {
+  ironshod: { color: '#8d9299', toe: '#b0b6be' },
+  gilded: { color: '#d8ac44', toe: '#e8c05c' },
+  ashen: { color: '#4a4644', toe: '#6a6462' },
+});
+
+// Valiant tourney lots: enamel over bright iron; every lot re-picks
+// its plume — the heraldry is the point.
+registerColorways(BODY_STYLES, 'valiant_platebody', {
+  crimson: { color: '#a83a38', metal: '#c04a44', pauldronColor: '#b04240', pauldronTrim: '#e8c04c' },
+  azure: { color: '#4a5f9c', metal: '#5a70b0', pauldronColor: '#5468a4', pauldronTrim: '#e8e4da' },
+  gilded: { color: '#d8ac44', trim: '#f4e0a0', metal: '#e8c05c', pauldronColor: '#e0b44e', pauldronTrim: '#f4e0a0' },
+});
+registerColorways(HELM_STYLES, 'valiant_helm', {
+  crimson: { color: '#a83a38', trim: '#e8c04c', crest: { color: '#8a2f2c' }, plume: { color: '#e8e4da' } },
+  azure: { color: '#4a5f9c', trim: '#e8e4da', crest: { color: '#3e5188' }, plume: { color: '#e8e4da' } },
+  gilded: { color: '#d8ac44', trim: '#f4e0a0', crest: { color: '#b8912e' }, plume: { color: '#a83a38' } },
+});
+registerColorways(LEG_STYLES, 'valiant_greaves', {
+  crimson: { thigh: '#6e2a28', shin: '#a83a38', kneeColor: '#e8c04c' },
+  azure: { thigh: '#324070', shin: '#4a5f9c', kneeColor: '#e8e4da' },
+  gilded: { thigh: '#8a6a2c', shin: '#d8ac44', kneeColor: '#f4e0a0' },
+});
+registerColorways(BOOT_STYLES, 'valiant_sabatons', {
+  crimson: { color: '#a83a38', toe: '#e8c04c' },
+  azure: { color: '#4a5f9c', toe: '#e8e4da' },
+  gilded: { color: '#d8ac44', toe: '#f4e0a0' },
+});
+
+// Ramwall lots: steel re-forge, gilded horns for rank, and the
+// stormram — coal-dark with SPIKED shoulders, a structural upgrade.
+registerColorways(BODY_STYLES, 'ramwall_platebody', {
+  steelhorn: { color: '#b8bec8', trim: '#8d9299', metal: '#d4dae2', pauldronColor: '#c4cad4', pauldronTrim: '#e2e6ec' },
+  goldhorn: { color: '#7a7466', trim: '#585349', metal: '#9a927e', pauldronColor: '#8a8272', pauldronTrim: '#e8c04c' },
+  stormram: {
+    color: '#3e4148', trim: '#2c2e34', metal: '#5a5e68',
+    pauldron: 'spiked', pauldronColor: '#4a4d56', pauldronSpikes: 1, pauldronTrim: '#7d8290',
+  },
+});
+registerColorways(HELM_STYLES, 'ramwall_helm', {
+  steelhorn: { color: '#b8bec8', trim: '#8d9299', jaw: '#c4cad4' },
+  goldhorn: { color: '#7a7466', trim: '#585349', horns: { color: '#e8c04c', size: 1, curl: true }, jaw: '#8a8272' },
+  stormram: { color: '#3e4148', trim: '#2c2e34', horns: { color: '#9aa0ae', size: 1.1, curl: true }, jaw: '#4a4d56' },
+});
+registerColorways(LEG_STYLES, 'ramwall_greaves', {
+  steelhorn: { thigh: '#5c5460', shin: '#b8bec8', kneeColor: '#d4dae2' },
+  goldhorn: { thigh: '#585349', shin: '#7a7466', kneeColor: '#e8c04c' },
+  stormram: { thigh: '#2c2e34', shin: '#3e4148', kneeColor: '#7d8290' },
+});
+registerColorways(BOOT_STYLES, 'ramwall_sabatons', {
+  steelhorn: { color: '#b8bec8', toe: '#d4dae2', cuff: { color: '#c4cad4' } },
+  goldhorn: { color: '#7a7466', toe: '#e8c04c', cuff: { color: '#8a8272' } },
+  stormram: { color: '#3e4148', toe: '#7d8290', cuff: { color: '#4a4d56' }, spike: true },
+});
+
+// Briarplate lots: whole hedges, not tints — bonebriar grows a THIRD
+// shoulder thorn and ivory horns; the briar thickens as it pales.
+registerColorways(BODY_STYLES, 'briarplate_platebody', {
+  bloodbriar: { color: '#5c3230', trim: '#c9a88a', metal: '#744240', pauldronColor: '#4c2a28', pauldronTrim: '#c9a88a' },
+  bonebriar: {
+    color: '#b0a890', trim: '#e6e0d0', metal: '#c4bca4',
+    pauldronColor: '#a09880', pauldronSpikes: 3, pauldronTrim: '#e6e0d0',
+  },
+  nightbriar: { color: '#38304a', trim: '#9a8ab8', metal: '#4a4060', pauldronColor: '#2e2740', pauldronTrim: '#9a8ab8' },
+});
+registerColorways(HELM_STYLES, 'briarplate_helm', {
+  bloodbriar: { color: '#5c3230', trim: '#c9a88a', horns: { color: '#c9a88a', size: 1.25 }, jaw: '#744240' },
+  bonebriar: { color: '#b0a890', trim: '#e6e0d0', horns: { color: '#e6e0d0', size: 1.5 }, jaw: '#c4bca4' },
+  nightbriar: { color: '#38304a', trim: '#9a8ab8', horns: { color: '#9a8ab8', size: 1.25 }, jaw: '#4a4060' },
+});
+registerColorways(LEG_STYLES, 'briarplate_greaves', {
+  bloodbriar: { thigh: '#442624', shin: '#5c3230', kneeColor: '#c9a88a' },
+  bonebriar: { thigh: '#8a8270', shin: '#b0a890', kneeColor: '#e6e0d0' },
+  nightbriar: { thigh: '#282238', shin: '#38304a', kneeColor: '#9a8ab8' },
+});
+registerColorways(BOOT_STYLES, 'briarplate_sabatons', {
+  bloodbriar: { color: '#5c3230', toe: '#744240' },
+  bonebriar: { color: '#b0a890', toe: '#c4bca4' },
+  nightbriar: { color: '#38304a', toe: '#4a4060' },
+});
+
+// Sentinel lots: the watch by hour — daybreak trades the fins for
+// WINGS (structural), midnight pales the crown against the dark.
+registerColorways(BODY_STYLES, 'sentinel_platebody', {
+  daybreak: { color: '#cfc4a8', trim: '#e8c04c', metal: '#e0d8c0', pauldronColor: '#d8cfae', pauldronTrim: '#e8c04c' },
+  bloodwatch: { color: '#6e3038', trim: '#d8cfae', metal: '#8a4048', pauldronColor: '#5c2830', pauldronTrim: '#d8cfae' },
+  midnight: { color: '#2e3244', trim: '#aab4d0', metal: '#3e4458', pauldronColor: '#262a3a', pauldronTrim: '#aab4d0' },
+});
+registerColorways(HELM_STYLES, 'sentinel_greathelm', {
+  daybreak: {
+    color: '#cfc4a8', trim: '#e8c04c', spikesCrown: { color: '#e8c04c' },
+    fins: undefined, wings: { color: '#e8e2d0' },
+  },
+  bloodwatch: { color: '#6e3038', trim: '#d8cfae', spikesCrown: { color: '#d8cfae' }, fins: { color: '#8a4048' } },
+  midnight: { color: '#2e3244', trim: '#aab4d0', spikesCrown: { color: '#aab4d0' }, fins: { color: '#3e4458' } },
+});
+registerColorways(LEG_STYLES, 'sentinel_greaves', {
+  daybreak: { thigh: '#a89e84', shin: '#cfc4a8', kneeColor: '#e8c04c' },
+  bloodwatch: { thigh: '#502228', shin: '#6e3038', kneeColor: '#d8cfae' },
+  midnight: { thigh: '#20233a', shin: '#2e3244', kneeColor: '#aab4d0' },
+});
+registerColorways(BOOT_STYLES, 'sentinel_sabatons', {
+  daybreak: { color: '#cfc4a8', toe: '#e8c04c' },
+  bloodwatch: { color: '#6e3038', toe: '#d8cfae' },
+  midnight: { color: '#2e3244', toe: '#aab4d0' },
 });
 
 // ---------------------------------------------------------- resolvers
@@ -1273,6 +1472,24 @@ export function drawTorsoGarment(
         for (const rx of [-tw * 0.42, tw * 0.42]) {
           ctx.fillRect(rx - 0.008 * s, -th * 0.82, 0.016 * s, 0.016 * s);
           ctx.fillRect(rx - 0.008 * s, -th * 0.42, 0.016 * s, 0.016 * s);
+        }
+        if (st.ridges) {
+          // Gothic fluting: three channels hammered down the plate,
+          // converging toward the waist — each a shadow stroke with a
+          // catch-light beside it, so the steel reads worked, not flat.
+          for (const rx of [-0.26, 0, 0.26]) {
+            ctx.strokeStyle = shade(metal, -20);
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            ctx.beginPath();
+            ctx.moveTo(tw * rx, -th * 0.8);
+            ctx.lineTo(tw * rx * 0.55, -th * 0.4);
+            ctx.stroke();
+            ctx.strokeStyle = shade(metal, 20);
+            ctx.beginPath();
+            ctx.moveTo(tw * rx + 0.012 * s, -th * 0.8);
+            ctx.lineTo(tw * rx * 0.55 + 0.012 * s, -th * 0.4);
+            ctx.stroke();
+          }
         }
       } else if (st.chest === 'stitch') {
         ctx.strokeStyle = st.trim;
@@ -2404,26 +2621,123 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     ctx.stroke();
   }
   if (st.horns && !hurt) {
-    // Horns sweep up and out; the far horn narrows like the far eye.
-    ctx.fillStyle = st.horns.color;
     const hz = st.horns.size;
+    if (st.horns.curl) {
+      // Ram horns: a thick spiral hugging the temples, stroked round
+      // so it reads as horn mass, ribbed like the living animal. The
+      // far horn narrows with the facing like the far eye.
+      ctx.lineCap = 'round';
+      for (const es of [-1, 1]) {
+        const far = es !== lead;
+        const wK = far ? Math.max(0.3, 1 - profileK * 0.65) : 1;
+        const cxx = headX + es * hw * 0.98 * wK;
+        const cyy = headY - hh * 0.42;
+        const rr = hh * 0.52 * hz;
+        // The spiral: from the crown root, over the top, down past the
+        // cheek and curling forward — one thick arc plus a tighter tail.
+        ctx.strokeStyle = st.horns.color;
+        ctx.lineWidth = Math.max(2.5, s * 0.052 * hz) * (far ? wK : 1);
+        ctx.beginPath();
+        ctx.arc(cxx, cyy, rr, -Math.PI * 0.65, Math.PI * 0.62, false);
+        ctx.stroke();
+        ctx.lineWidth = Math.max(2, s * 0.036 * hz) * (far ? wK : 1);
+        ctx.beginPath();
+        ctx.arc(cxx + es * hw * 0.08, cyy + hh * 0.1, rr * 0.55, Math.PI * 0.6, Math.PI * 1.35, false);
+        ctx.stroke();
+        // The spiral's heart: a filled boss so the curl reads as horn
+        // mass, never an empty hoop earring.
+        ctx.fillStyle = shade(st.horns.color, -12);
+        ctx.beginPath();
+        ctx.arc(cxx + es * hw * 0.06, cyy + hh * 0.08, rr * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        // Growth ridges: two short ticks across the outer sweep.
+        ctx.strokeStyle = shade(st.horns.color, -22);
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        for (const aa of [-0.25, 0.18]) {
+          const tx = cxx + Math.cos(aa) * rr * es;
+          const ty = cyy + Math.sin(aa) * rr;
+          ctx.moveTo(tx - es * hw * 0.09, ty - hh * 0.05);
+          ctx.lineTo(tx + es * hw * 0.09, ty + hh * 0.05);
+        }
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+    } else {
+      // Horns sweep up and out; the far horn narrows like the far eye.
+      ctx.fillStyle = st.horns.color;
+      for (const es of [-1, 1]) {
+        const far = es !== lead;
+        const wK = far ? Math.max(0.25, 1 - profileK * 0.7) : 1;
+        const bx = headX + es * hw * 0.9;
+        const by = headY - hh * 0.75;
+        ctx.beginPath();
+        ctx.moveTo(bx, by + hh * 0.22 * wK);
+        ctx.quadraticCurveTo(
+          bx + es * hw * 0.55 * hz * wK,
+          by - hh * 0.25 * hz,
+          bx + es * hw * 0.62 * hz * wK,
+          by - hh * 0.85 * hz,
+        );
+        ctx.lineTo(bx + es * hw * 0.28 * wK, by - hh * 0.2);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+  if (st.tusks && !hurt && backK <= 0.55) {
+    // Boar tusks: two fat ivory hooks curving up past the jaw line —
+    // drawn WIDE at the root and TALL past the cheek; timid tusks
+    // read as whiskers and a whiskered knight is no knight.
     for (const es of [-1, 1]) {
       const far = es !== lead;
-      const wK = far ? Math.max(0.25, 1 - profileK * 0.7) : 1;
-      const bx = headX + es * hw * 0.9;
-      const by = headY - hh * 0.75;
+      const wK = far ? Math.max(0.3, 1 - profileK * 0.65) : 1;
+      const bx = headX + es * hw * 0.78 * wK + fx * headR * 0.18;
+      const by = headY + hh * 0.68;
+      ctx.fillStyle = st.tusks.color;
       ctx.beginPath();
-      ctx.moveTo(bx, by + hh * 0.22 * wK);
+      ctx.moveTo(bx - es * hw * 0.24 * wK, by);
       ctx.quadraticCurveTo(
-        bx + es * hw * 0.55 * hz * wK,
-        by - hh * 0.25 * hz,
-        bx + es * hw * 0.62 * hz * wK,
-        by - hh * 0.85 * hz,
+        bx + es * hw * 0.68 * wK, by - hh * 0.04,
+        bx + es * hw * 0.56 * wK, by - hh * 0.98,
       );
-      ctx.lineTo(bx + es * hw * 0.28 * wK, by - hh * 0.2);
+      ctx.quadraticCurveTo(bx + es * hw * 0.24 * wK, by - hh * 0.38, bx + es * hw * 0.1 * wK, by);
+      ctx.closePath();
+      ctx.fill();
+      // Root shade seats the tusk in the jaw instead of floating on it.
+      ctx.fillStyle = shade(st.tusks.color, -18);
+      ctx.beginPath();
+      ctx.moveTo(bx - es * hw * 0.2 * wK, by);
+      ctx.quadraticCurveTo(bx + es * hw * 0.38 * wK, by - hh * 0.08, bx + es * hw * 0.36 * wK, by - hh * 0.4);
+      ctx.lineTo(bx + es * hw * 0.14 * wK, by - hh * 0.12);
       ctx.closePath();
       ctx.fill();
     }
+  }
+  if (st.spikesCrown && !hurt) {
+    // The spiked crown: forged points riding the centerline front-to-
+    // back — rising spikes frontal, a full ridge of war at profile.
+    // The crest grammar with teeth.
+    const arcK = 0.35 + 0.65 * profileK;
+    const baseY = headY - hh * (full ? 1.06 : 0.98);
+    ctx.fillStyle = st.spikesCrown.color;
+    for (let i = 0; i < 4; i++) {
+      const u = (-0.66 + i * 0.44) * arcK;
+      const px = headX + lead * u * hw;
+      // The crown line bows like the skull: center spikes stand tallest.
+      const seat = baseY - hh * 0.22 * (1 - u * u * 1.6);
+      const tall = hh * (0.62 + 0.3 * (1 - Math.abs(u / arcK || 0)));
+      const half = hw * 0.15 * (0.8 + 0.4 * arcK);
+      ctx.beginPath();
+      ctx.moveTo(px - half, seat);
+      ctx.lineTo(px + lead * half * 0.1, seat - tall);
+      ctx.lineTo(px + half, seat);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // A seam bar seats the row on the crown.
+    ctx.fillStyle = shade(st.spikesCrown.color, -20);
+    ctx.fillRect(headX - hw * 0.8 * arcK, baseY - hh * 0.06, hw * 1.6 * arcK, hh * 0.1);
   }
   if (st.plume && !hurt) {
     // Crest: short center fin frontal, full arc at profile (its hero

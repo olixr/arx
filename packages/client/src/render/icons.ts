@@ -3114,6 +3114,27 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   emberfox_jerkin: { icon: 'jerkin', color: '#b05a30' },
   emberfox_leggings: { icon: 'legs', color: '#b05a30' },
   emberfox_boots: { icon: 'boots', color: '#3a3230' },
+  // Early-game plate sets — forge lots registered by the same loop.
+  tuskguard_helm: { icon: 'helm', color: '#a4744b' },
+  tuskguard_platebody: { icon: 'platebody', color: '#a4744b' },
+  tuskguard_greaves: { icon: 'legs', color: '#a4744b' },
+  tuskguard_sabatons: { icon: 'boots', color: '#a4744b' },
+  valiant_helm: { icon: 'helm', color: '#c9ccd4' },
+  valiant_platebody: { icon: 'platebody', color: '#c9ccd4' },
+  valiant_greaves: { icon: 'legs', color: '#c9ccd4' },
+  valiant_sabatons: { icon: 'boots', color: '#c9ccd4' },
+  ramwall_helm: { icon: 'helm', color: '#6a7080' },
+  ramwall_platebody: { icon: 'platebody', color: '#6a7080' },
+  ramwall_greaves: { icon: 'legs', color: '#6a7080' },
+  ramwall_sabatons: { icon: 'boots', color: '#6a7080' },
+  briarplate_helm: { icon: 'helm', color: '#3e4a38' },
+  briarplate_platebody: { icon: 'platebody', color: '#3e4a38' },
+  briarplate_greaves: { icon: 'legs', color: '#3e4a38' },
+  briarplate_sabatons: { icon: 'boots', color: '#3e4a38' },
+  sentinel_greathelm: { icon: 'greathelm', color: '#55607a' },
+  sentinel_platebody: { icon: 'platebody', color: '#55607a' },
+  sentinel_greaves: { icon: 'legs', color: '#55607a' },
+  sentinel_sabatons: { icon: 'boots', color: '#55607a' },
 };
 
 // Colorway variants inherit their base piece's painter; the tint comes
@@ -3130,9 +3151,15 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
     cutpurse: ['alleyrat', 'moonless', 'redhand'],
     trapline: ['juniper', 'riverclay', 'nightsnare'],
     emberfox: ['silverfox', 'shadowfox', 'dawnfox'],
+    tuskguard: ['ironshod', 'gilded', 'ashen'],
+    valiant: ['crimson', 'azure', 'gilded'],
+    ramwall: ['steelhorn', 'goldhorn', 'stormram'],
+    briarplate: ['bloodbriar', 'bonebriar', 'nightbriar'],
+    sentinel: ['daybreak', 'bloodwatch', 'midnight'],
   };
   const CLOTH_PIECES = ['hood', 'robe', 'skirts', 'slippers'];
   const LEATHER_PIECES = ['hood', 'jerkin', 'chaps', 'boots'];
+  const PLATE_PIECES = ['helm', 'platebody', 'greaves', 'sabatons'];
   const PIECES: Record<string, string[]> = {
     mothwing: ['cowl', 'robe', 'skirts', 'slippers'],
     hareswift: LEATHER_PIECES,
@@ -3140,6 +3167,11 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
     cutpurse: ['cowl', 'jerkin', 'leggings', 'boots'],
     trapline: LEATHER_PIECES,
     emberfox: ['hood', 'jerkin', 'leggings', 'boots'],
+    tuskguard: PLATE_PIECES,
+    valiant: PLATE_PIECES,
+    ramwall: PLATE_PIECES,
+    briarplate: PLATE_PIECES,
+    sentinel: ['greathelm', 'platebody', 'greaves', 'sabatons'],
   };
   for (const [set, dyes] of Object.entries(EARLY_COLORWAYS)) {
     for (const piece of PIECES[set] ?? CLOTH_PIECES) {

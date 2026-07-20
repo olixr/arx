@@ -334,6 +334,58 @@ test('early-game cloth sets: four dye lots each, colorways mirror their base', (
   }
 });
 
+test('early-game plate sets: four lots each, forge lots swap the bar', () => {
+  const SETS: Record<string, { dyes: string[]; pieces: string[] }> = {
+    tuskguard: { dyes: ['ironshod', 'gilded', 'ashen'], pieces: ['helm', 'platebody', 'greaves', 'sabatons'] },
+    valiant: { dyes: ['crimson', 'azure', 'gilded'], pieces: ['helm', 'platebody', 'greaves', 'sabatons'] },
+    ramwall: { dyes: ['steelhorn', 'goldhorn', 'stormram'], pieces: ['helm', 'platebody', 'greaves', 'sabatons'] },
+    briarplate: { dyes: ['bloodbriar', 'bonebriar', 'nightbriar'], pieces: ['helm', 'platebody', 'greaves', 'sabatons'] },
+    sentinel: { dyes: ['daybreak', 'bloodwatch', 'midnight'], pieces: ['greathelm', 'platebody', 'greaves', 'sabatons'] },
+  };
+  const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
+  for (const [set, { dyes, pieces }] of Object.entries(SETS)) {
+    const base = pieces.map((p) => byId.get(`${set}_${p}`)!);
+    assert.equal(base.filter(Boolean).length, 4, `${set} base pieces exist`);
+    assert.deepEqual([...new Set(base.map((p) => p.slot))].sort(), ['body', 'boots', 'head', 'legs']);
+    for (const p of base) {
+      assert.equal(p.armorClass, 'plate', `${p.id} is plate`);
+      assert.ok(p.levelReq && ['defence', 'melee'].includes(p.levelReq.skill), `${p.id} gates on defence/melee`);
+      assert.ok((p.levelReq?.level ?? 0) <= 19, `${p.id} is early/mid game`);
+      if (p.acquisition.craft) {
+        assert.equal(p.recipe?.skill, 'smithing', `${p.id} is smithed`);
+        assert.equal(p.recipe?.station, 'anvil', `${p.id} is anvil work`);
+      }
+    }
+    for (const dye of dyes) {
+      for (const b of base) {
+        const v = byId.get(`${b.id}_${dye}`);
+        assert.ok(v, `${b.id}_${dye} exists`);
+        assert.equal(v!.slot, b.slot);
+        assert.equal(v!.armorClass, b.armorClass);
+        assert.deepEqual(v!.levelReq, b.levelReq);
+        assert.equal(v!.armor, b.armor);
+        assert.equal(v!.value, b.value);
+        assert.notEqual(v!.color, b.color, `${v!.id} wears its own finish`);
+        if (v!.acquisition.craft) {
+          assert.ok(v!.recipe, `${v!.id} craft lot keeps a recipe`);
+          // A forge lot must still name a real bar among its inputs.
+          const items = v!.recipe!.inputs.map((i) => i.item);
+          assert.ok(items.some((i) => i.endsWith('_bar')), `${v!.id} is forged from a bar`);
+        } else {
+          assert.equal(v!.recipe, undefined, `${v!.id} drop lot sheds the recipe`);
+        }
+      }
+    }
+  }
+  // The re-forge law: a swapped lot replaces the metal, same quantity.
+  const bronze = byId.get('tuskguard_platebody')!;
+  const gilded = byId.get('tuskguard_platebody_gilded')!;
+  assert.deepEqual(
+    gilded.recipe!.inputs,
+    bronze.recipe!.inputs.map((i) => (i.item === 'bronze_bar' ? { item: 'gold_bar', qty: i.qty } : i)),
+  );
+});
+
 test('early-game leather sets: four dye lots each, colorways mirror their base', () => {
   const SETS: Record<string, { dyes: string[]; pieces: string[] }> = {
     hareswift: { dyes: ['clover', 'snowmelt', 'sorrel'], pieces: ['hood', 'jerkin', 'chaps', 'boots'] },

@@ -187,6 +187,12 @@ const defs: NpcDef[] = [
       { item: 'cutpurse_jerkin', qty: [1, 1], chance: 0.012 },
       { item: 'cutpurse_leggings', qty: [1, 1], chance: 0.014 },
       { item: 'cutpurse_boots', qty: [1, 1], chance: 0.016 },
+      // Bloodbriar: the warband hacked a briar-knight apart and kept
+      // the rust-red pieces. The thorns kept a few goblins back.
+      { item: 'briarplate_helm_bloodbriar', qty: [1, 1], chance: 0.01 },
+      { item: 'briarplate_platebody_bloodbriar', qty: [1, 1], chance: 0.008 },
+      { item: 'briarplate_greaves_bloodbriar', qty: [1, 1], chance: 0.009 },
+      { item: 'briarplate_sabatons_bloodbriar', qty: [1, 1], chance: 0.01 },
     ],
     respawnSec: 25,
     color: '#5c8a3a',
@@ -230,6 +236,12 @@ const defs: NpcDef[] = [
       { item: 'cutpurse_jerkin_redhand', qty: [1, 1], chance: 0.009 },
       { item: 'cutpurse_leggings_redhand', qty: [1, 1], chance: 0.01 },
       { item: 'cutpurse_boots_redhand', qty: [1, 1], chance: 0.012 },
+      // Nightbriar: violet-black bramble plate, thrown at range and
+      // dragged home. The hedge grows back; the throwers do not.
+      { item: 'briarplate_helm_nightbriar', qty: [1, 1], chance: 0.009 },
+      { item: 'briarplate_platebody_nightbriar', qty: [1, 1], chance: 0.007 },
+      { item: 'briarplate_greaves_nightbriar', qty: [1, 1], chance: 0.008 },
+      { item: 'briarplate_sabatons_nightbriar', qty: [1, 1], chance: 0.009 },
     ],
     respawnSec: 30,
     color: '#6a9a3a',
@@ -286,6 +298,12 @@ const defs: NpcDef[] = [
       { item: 'dawnsworn_robe_eclipse', qty: [1, 1], chance: 0.009 },
       { item: 'dawnsworn_skirts_eclipse', qty: [1, 1], chance: 0.01 },
       { item: 'dawnsworn_slippers_eclipse', qty: [1, 1], chance: 0.012 },
+      // Bonebriar: pale as winter deadfall — the crypt's own hedge,
+      // thorned deeper than the living kind.
+      { item: 'briarplate_helm_bonebriar', qty: [1, 1], chance: 0.009 },
+      { item: 'briarplate_platebody_bonebriar', qty: [1, 1], chance: 0.007 },
+      { item: 'briarplate_greaves_bonebriar', qty: [1, 1], chance: 0.008 },
+      { item: 'briarplate_sabatons_bonebriar', qty: [1, 1], chance: 0.009 },
       // Moonless cutpurse: ink on ink — the job in the crypt was real.
       { item: 'cutpurse_cowl_moonless', qty: [1, 1], chance: 0.012 },
       { item: 'cutpurse_jerkin_moonless', qty: [1, 1], chance: 0.009 },
@@ -296,6 +314,17 @@ const defs: NpcDef[] = [
       { item: 'emberfox_jerkin_silverfox', qty: [1, 1], chance: 0.008 },
       { item: 'emberfox_leggings_silverfox', qty: [1, 1], chance: 0.009 },
       { item: 'emberfox_boots_silverfox', qty: [1, 1], chance: 0.01 },
+      // Sentinel: the crypt watch's own issue — the old soldiers still
+      // wear the gunmetal vigil plate they died standing in.
+      { item: 'sentinel_greathelm', qty: [1, 1], chance: 0.01 },
+      { item: 'sentinel_platebody', qty: [1, 1], chance: 0.008 },
+      { item: 'sentinel_greaves', qty: [1, 1], chance: 0.009 },
+      { item: 'sentinel_sabatons', qty: [1, 1], chance: 0.01 },
+      // Bloodwatch sentinel: the watch that ended badly, still posted.
+      { item: 'sentinel_greathelm_bloodwatch', qty: [1, 1], chance: 0.008 },
+      { item: 'sentinel_platebody_bloodwatch', qty: [1, 1], chance: 0.006 },
+      { item: 'sentinel_greaves_bloodwatch', qty: [1, 1], chance: 0.007 },
+      { item: 'sentinel_sabatons_bloodwatch', qty: [1, 1], chance: 0.008 },
     ],
     respawnSec: 30,
     color: '#d8d4c8',
@@ -358,6 +387,16 @@ const defs: NpcDef[] = [
       { item: 'emberfox_jerkin_shadowfox', qty: [1, 1], chance: 0.03 },
       { item: 'emberfox_leggings_shadowfox', qty: [1, 1], chance: 0.035 },
       { item: 'emberfox_boots_shadowfox', qty: [1, 1], chance: 0.04 },
+      // Daybreak and midnight sentinel: the first and last hours of
+      // the vigil, kept by the one who outranks the watch itself.
+      { item: 'sentinel_greathelm_daybreak', qty: [1, 1], chance: 0.035 },
+      { item: 'sentinel_platebody_daybreak', qty: [1, 1], chance: 0.025 },
+      { item: 'sentinel_greaves_daybreak', qty: [1, 1], chance: 0.03 },
+      { item: 'sentinel_sabatons_daybreak', qty: [1, 1], chance: 0.035 },
+      { item: 'sentinel_greathelm_midnight', qty: [1, 1], chance: 0.03 },
+      { item: 'sentinel_platebody_midnight', qty: [1, 1], chance: 0.02 },
+      { item: 'sentinel_greaves_midnight', qty: [1, 1], chance: 0.025 },
+      { item: 'sentinel_sabatons_midnight', qty: [1, 1], chance: 0.03 },
     ],
     respawnSec: 90,
     color: '#e8e2d0',
@@ -414,6 +453,12 @@ const defs: NpcDef[] = [
       { item: 'emberfox_jerkin_dawnfox', qty: [1, 1], chance: 0.007 },
       { item: 'emberfox_leggings_dawnfox', qty: [1, 1], chance: 0.008 },
       { item: 'emberfox_boots_dawnfox', qty: [1, 1], chance: 0.009 },
+      // Briarplate: the woods grew armor once. The packs den where the
+      // briar-knight fell, and pieces surface with the thaw.
+      { item: 'briarplate_helm', qty: [1, 1], chance: 0.012 },
+      { item: 'briarplate_platebody', qty: [1, 1], chance: 0.009 },
+      { item: 'briarplate_greaves', qty: [1, 1], chance: 0.01 },
+      { item: 'briarplate_sabatons', qty: [1, 1], chance: 0.012 },
     ],
     respawnSec: 35,
     color: '#6a6f7d',
