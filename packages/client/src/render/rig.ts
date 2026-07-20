@@ -157,11 +157,13 @@ export interface RigPose {
   /** Per-leg knee-sign hysteresis, owned by the caller's anim state. */
   kneeMemory: number[];
   /**
-   * Arm-depth hysteresis (caller-owned, like kneeMemory): whether the
-   * main arm is currently riding BEHIND the torso — the dual-wield
-   * profile flip. Absent = stateless single-threshold fallback.
+   * Arm-carriage memory (caller-owned, like kneeMemory): the dual-wield
+   * depth flip's hysteresis bit, plus the smoothed rest-side state —
+   * when the facing crosses vertical the hands EASE across the body
+   * over ~240ms instead of mirror-teleporting (the wrist-snap fix).
+   * Absent = stateless fallbacks (single thresholds, instant side).
    */
-  depthMemory?: { mainBehind: boolean };
+  depthMemory?: { mainBehind: boolean; side?: number; prevSide?: number; sideFlipMs?: number };
   bodyColor: string;
   hurt: boolean;
   isOwn: boolean;
@@ -1088,7 +1090,28 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   let staffGrip = 0.34; // combat default: gripped low, business end forward
   let armSwingK = 1;
   let restSettle = 0;
-  let restSide = Math.sign(fx) || 1;
+  const restSide = Math.sign(fx) || 1;
+  // SMOOTHED REST SIDE: sign(fx) flips instantly as the aim crosses
+  // vertical, and every rest anchor mirroring on it used to teleport —
+  // the mid-run "wrists flip around" snap. With caller memory the side
+  // eases ±1→∓1 through 0 over 240ms: the hands PASS across the body
+  // and every carriage angle (all linear in side) sweeps with them.
+  let sideS = restSide;
+  const mem = rig.depthMemory;
+  if (mem) {
+    if (mem.side === undefined) {
+      mem.side = restSide;
+      mem.sideFlipMs = -1e9;
+    }
+    if (mem.side !== restSide) {
+      mem.prevSide = mem.side;
+      mem.side = restSide;
+      mem.sideFlipMs = rig.nowMs;
+    }
+    const t = Math.max(0, Math.min(1, (rig.nowMs - (mem.sideFlipMs ?? -1e9)) / 240));
+    const k = t * t * (3 - 2 * t);
+    sideS = mem.side * k + (mem.prevSide ?? mem.side) * (1 - k);
+  }
   // Per-fist grips: each hand resolves its own carriage. Flip is a
   // property of the GRIP, constant through swings — a reversed fist
   // keeps its edge orientation mid-combo, so it can never pop.
@@ -1097,15 +1120,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const mainFlip = isSword && mainGrip === 'rogue';
   const offBlade = offSt?.kind === 'weapon' && rig.offhandItem !== undefined;
   const offFlip = offBlade && offGrip === 'rogue';
+  // Knives ride tighter to the body than swords — the compact carry.
+  const mainCompact = isSword && (weapon?.weapon?.range ?? 2) <= 1.5 ? 1 : 0;
+  const offCompact =
+    offBlade && (itemDef(rig.offhandItem!)?.weapon?.range ?? 2) <= 1.5 ? 1 : 0;
   // Off-blade baseline: the raised guard read it keeps through combat.
-  let offBladeAngle = -Math.PI / 2 + restSide * 0.35;
+  let offBladeAngle = -Math.PI / 2 + sideS * 0.35;
   if (
     (rig.pose === PoseState.Walk || rig.pose === PoseState.Idle || rig.pose === PoseState.Sneak) &&
     !drawing &&
     !loosing
   ) {
     restSettle = rig.restT * rig.restT * (3 - 2 * rig.restT);
-    const wSide = restSide;
+    const wSide = sideS;
     const runK = rig.runF;
     let hx = rig.x + wSide * tw * 1.02 * wS;
     let hy = armY + 0.17 * s;
@@ -1115,7 +1142,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // a sneaking rogue does not twirl knives.
     const idleK = (1 - Math.min(1, rig.poleStrength)) * (1 - crouch);
     if (isSword) {
-      const c = bladeCarriage(mainGrip, wSide, runK);
+      const c = bladeCarriage(mainGrip, wSide, runK, mainCompact);
       hAngle = c.angle;
       hx += c.dx * s * wS;
       hy = armY + (0.17 + c.dy) * s;
@@ -1144,7 +1171,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     if (isStaff) {
       // Walking stick ↔ run carry, blended on the gait itself.
       const carry = runK * runK * (3 - 2 * runK);
-      const sw = ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP;
+      const sw = Math.max(
+        -1,
+        Math.min(1, ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP),
+      );
       // Planted stick rocks with the steps — the stride works the staff.
       const rock = -sw * 0.2 * rig.poleX * (1 - carry) * Math.min(1, rig.poleStrength);
       const up = -Math.PI / 2 + rock;
@@ -1181,13 +1211,17 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // The carriage mirrors on FACING, not on the hanging side — the
       // off fist trails the facing, so its outward push (dx) mirrors
       // while the blade angles stay true to forward/backward.
-      const oc = bladeCarriage(offGrip, wSide, runK);
+      const oc = bladeCarriage(offGrip, wSide, runK, offCompact);
       let oAngle = oc.angle;
-      // The off fist stays at its visible outward hang from every
-      // facing — side-on it is the NEAR arm ("one of the arms still
-      // appears at the side"); the main fist is the one that tucks.
+      // The off fist is the NEAR arm — visible at the side from every
+      // facing; side-on it pulls part-way onto the body (where a near
+      // arm actually hangs in profile) and the depth flip below paints
+      // it FOREMOST, over the torso.
       ox -= oc.dx * s * wS;
       oy = armY + (0.15 + oc.dy) * s;
+      const tn = Math.max(0, Math.min(1, (profileK - 0.55) / 0.4));
+      const nearK = tn * tn * (3 - 2 * tn);
+      ox = rig.x + (ox - rig.x) * (1 - 0.45 * nearK);
       if (idleK > 0) {
         oAngle += Math.sin(rig.nowMs * 0.0011 + 2.1) * 0.045 * idleK;
         const fl = idleFlourish(rig.nowMs, FLOURISH_OFF_PHASE_MS, offGrip, wSide);
@@ -1204,13 +1238,35 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
 
   // Walking: arms swing counter to the legs along the travel direction.
   if (rig.pose === PoseState.Walk || rig.pose === PoseState.Idle) {
-    const sw = ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP;
-    // Arms pump harder as the walk becomes a run.
+    // sw is CLAMPED: emergency steps and reconcile snaps can spike a
+    // foot's lift past LIFT_AMP for a frame, and an unclamped ratio
+    // used to fling the hands to full arm extension (the "hands fly
+    // out and up" glitch at speed).
+    const sw = Math.max(
+      -1,
+      Math.min(1, ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP),
+    );
+    // Arms pump harder as the walk becomes a run — but a hand carrying
+    // a weapon keeps its vertical pump restrained (the blade shouldn't
+    // ride to chest height on a north-south sprint).
     const amp = (0.07 + 0.055 * rig.runF) * s * Math.min(1, rig.poleStrength);
+    const armed = isSword || isBow || isStaff;
+    const pumpY = 0.5 - (armed ? 0.18 * restSettle : 0);
     mainX += rig.poleX * sw * amp * armSwingK;
-    mainY += (rig.poleY * sw * amp * 0.5 - Math.abs(sw) * rig.runF * 0.03 * s) * armSwingK;
-    offX -= rig.poleX * sw * amp;
-    offY -= rig.poleY * sw * amp * 0.5 - Math.abs(sw) * rig.runF * 0.03 * s;
+    mainY += (rig.poleY * sw * amp * pumpY - Math.abs(sw) * rig.runF * 0.03 * s) * armSwingK;
+    const offSwingK = offBlade ? 0.85 : 1;
+    offX -= rig.poleX * sw * amp * offSwingK;
+    offY -= (rig.poleY * sw * amp * pumpY - Math.abs(sw) * rig.runF * 0.03 * s) * offSwingK;
+    // WRIST-FOLLOW: the blade angle rides the arm swing a few degrees
+    // instead of staying frozen while the fist translates — a frozen
+    // world-angle on a pumping hand reads as a broken wrist. Subtle,
+    // counter-phased between the hands, and it dies with the gait.
+    if (restSettle > 0 && rig.runF > 0.05) {
+      const follow = sw * rig.runF * restSettle;
+      if (isSword) heldAngle += (mainGrip === 'rogue' ? 0.05 : -0.07) * sideS * follow;
+      else if (isBow) heldAngle += -0.04 * sideS * follow;
+      if (offBlade) offBladeAngle += (offGrip === 'rogue' ? -0.05 : 0.07) * sideS * follow;
+    }
     // Standing breath: the hands ride a slow offset sine so the figure
     // is never a freeze-frame — alive even when idle.
     const rest = 1 - Math.min(1, rig.poleStrength);
@@ -1324,8 +1380,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   let offShX = archer
     ? rig.x + fx * tw * 0.8 * wS
     : rig.x + Math.cos(offAngle) * tw * 0.8 * wS;
-  mainShX += (rig.x + restSide * tw * 0.85 * wS - mainShX) * restSettle;
-  offShX += (rig.x - restSide * tw * 0.85 * wS - offShX) * restSettle;
+  mainShX += (rig.x + sideS * tw * 0.85 * wS - mainShX) * restSettle;
+  offShX += (rig.x - sideS * tw * 0.85 * wS - offShX) * restSettle;
   // Aiming up-and-away puts the gear behind the body.
   const weaponBehind = fy < -0.35;
   const cuff = bodySt?.sleeves === 'full' ? sleeve : undefined;
@@ -1350,7 +1406,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       offX,
       offY,
       (archer ? fx * 0.2 : Math.cos(offAngle) * 0.4) * (1 - restSettle) -
-        restSide * 0.45 * restSettle,
+        sideS * 0.45 * restSettle,
       1,
       sleeve,
       skin,
@@ -1391,7 +1447,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       mainX,
       mainY,
       (archer ? -fx : Math.cos(mainAngle) * 0.4) * (1 - restSettle) +
-        restSide * 0.45 * restSettle,
+        sideS * 0.45 * restSettle,
       archer ? -0.6 : 1,
       sleeve,
       skin,
@@ -1481,20 +1537,24 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
 
   // Far arm always sits behind the torso; the weapon + striking arm go
   // in front unless the character is aiming up and away.
-  // DUAL-WIELD PROFILE FLIP (depth half): side-on, the tucked main arm
-  // and its blade paint BEFORE the torso — occluded, peeking past the
-  // body — while the off arm stays the visible near arm. Hysteresis on
-  // profileK (cape front/back pattern, memory caller-owned) so aim
-  // jitter at the boundary can never flicker the layering.
-  const mem = rig.depthMemory;
+  // DUAL-WIELD PROFILE FLIP (depth half) — the screen-side depth law:
+  // facing right, the screen-LEFT hand is the near arm and paints
+  // FOREMOST (after the torso); the screen-RIGHT hand is the far arm
+  // and paints BEHIND it. So at profile the main pair drops before the
+  // torso and the off pair moves after it — ONE flag drives both, so
+  // the arms can never end up on the same layer with both weapons
+  // reading as slung behind the back. Hysteresis on profileK (cape
+  // front/back pattern, memory caller-owned) so aim jitter at the
+  // boundary can never flicker the layering.
   const flipAt = mem ? (mem.mainBehind ? 0.78 : 0.86) : 0.82;
   const mainBehind = offBlade && restSettle > 0.5 && profileK > flipAt;
   if (mem) mem.mainBehind = mainBehind;
   if (mainBehind) {
     paintWeapon();
     paintMainArm();
+  } else {
+    paintOffArm();
   }
-  paintOffArm();
   if (weaponBehind && !mainBehind) {
     paintWeapon();
     paintMainArm();
@@ -1754,11 +1814,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   if (quiverFront) paintQuiver();
 
   // ---- weapon + striking arm in front of the torso (the bold read) —
-  // unless the dual-wield profile flip already painted them behind it.
+  // unless the dual-wield profile flip already painted them behind it,
+  // in which case the NEAR (off) arm is the foremost thing instead.
   if (!weaponBehind && !mainBehind) {
     paintWeapon();
     paintMainArm();
   }
+  if (mainBehind) paintOffArm();
 }
 
 /**

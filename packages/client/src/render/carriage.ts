@@ -51,8 +51,15 @@ function smooth(t: number): number {
  * backward (standard read as rogue and vice versa — the user-caught
  * flip-flop). The caller mirrors `dx` itself for the trailing hand.
  */
-export function bladeCarriage(grip: Grip, side: number, runK: number): BladeCarriage {
+export function bladeCarriage(
+  grip: Grip,
+  side: number,
+  runK: number,
+  /** 1 = knife-class (range ≤ 1.5): rides tighter and steeper than a sword. */
+  compact = 0,
+): BladeCarriage {
   const lift = smooth(runK);
+  const tight = 1 - 0.28 * compact;
   // THE HOLD-MAINTENANCE LAW (user verdict, twice-earned): a fist holds
   // a hilt exactly one of two ways — blade-down past the thumb
   // (standard) or blade-down past the pinky, reversed (rogue) — and
@@ -68,19 +75,21 @@ export function bladeCarriage(grip: Grip, side: number, runK: number): BladeCarr
     // levels a shade toward horizontal-back and rides a touch higher,
     // pumping with the arm: carried, not dangling.
     return {
-      dx: side * (0.04 + 0.03 * lift),
+      dx: side * (0.04 + 0.03 * lift) * tight,
       dy: -0.05 - 0.05 * lift,
-      angle: Math.PI / 2 + side * (0.72 + 0.3 * lift),
+      angle: Math.PI / 2 + side * (0.72 + 0.05 * compact + 0.3 * lift),
       flip: true,
     };
   }
   // Standard: the blade angles down-forward off the leg so the guard
   // and taper read as a sword; on the run it levels toward (staying
-  // below) horizontal-forward — a sword carried low and ready.
+  // below) horizontal-forward — a sword carried low and ready. A knife
+  // hangs steeper and tighter: a short blade at a sword's rake reads
+  // as pointing at nothing.
   return {
-    dx: side * (0.05 + 0.04 * lift),
+    dx: side * (0.05 + 0.04 * lift) * tight,
     dy: -0.04 * lift,
-    angle: Math.PI / 2 - side * (0.32 + 0.6 * lift),
+    angle: Math.PI / 2 - side * (0.32 - 0.07 * compact + 0.6 * lift),
     flip: false,
   };
 }

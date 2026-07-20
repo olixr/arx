@@ -139,3 +139,19 @@ test('rogue flourish is a full wrist spin; standard is a tip-raise', () => {
   }
   assert.ok(peak > 0.3 && peak < 1.0, 'a raise, not a revolution');
 });
+
+test('compact (knife) carriage rides tighter and steeper, same laws', () => {
+  for (const grip of GRIPS) {
+    for (const side of SIDES) {
+      for (let k = 0; k <= 1.0001; k += 0.1) {
+        const sword = bladeCarriage(grip, side, k, 0);
+        const knife = bladeCarriage(grip, side, k, 1);
+        assert.ok(Math.abs(knife.dx) < Math.abs(sword.dx), 'knife hangs tighter');
+        // Every hold law survives the compact variant.
+        assert.ok(Math.sin(knife.angle) > 0.35, 'knife tip below the hand');
+        const lead = Math.sign(Math.cos(knife.angle));
+        assert.equal(lead, grip === 'rogue' ? -Math.sign(side) : Math.sign(side));
+      }
+    }
+  }
+});
