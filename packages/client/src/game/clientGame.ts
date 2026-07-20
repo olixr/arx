@@ -44,7 +44,8 @@ export type InteractTarget =
   | { kind: 'portal'; tx: number; ty: number }
   | { kind: 'plot'; tx: number; ty: number }
   | { kind: 'crop'; tx: number; ty: number; mature: boolean }
-  | { kind: 'npc'; tx: number; ty: number; eid: EntityId; verb: string };
+  | { kind: 'npc'; tx: number; ty: number; eid: EntityId; verb: string }
+  | { kind: 'loot'; tx: number; ty: number; eid: EntityId };
 import { Connection } from '../net/connection.js';
 import { InterpBuffer } from '../net/interpolation.js';
 import { Predictor } from '../net/prediction.js';
@@ -209,6 +210,8 @@ export class ClientGame {
 
   /** Tap-to-move autopilot; cancelled by any manual movement input. */
   private autoPath: Vec2[] | null = null;
+  /** Drop entity to take the moment the auto-walk brings it in reach. */
+  private pendingPickup: EntityId | null = null;
   /** Own hit-flash timer. */
   ownHurtUntil = 0;
   ownHpPct = 255;
@@ -777,7 +780,86 @@ export class ClientGame {
         };
       }
     }
+    // Ground loot joins the interact vocabulary: the nearest bag in
+    // reach is a first-class target (F / pad-Ⓧ), same as any station.
+    for (const [eid, remote] of this.entities) {
+      if (remote.meta.kind !== EntityKind.ItemDrop) continue;
+      const latest = remote.buffer.latest();
+      const x = latest?.x ?? remote.meta.x;
+      const y = latest?.y ?? remote.meta.y;
+      const dx = x - pos.x;
+      const dy = y - pos.y;
+      const d = dx * dx + dy * dy;
+      if (d <= 2.2 * 2.2 && (!best || d < best.d)) {
+        best = { target: { kind: 'loot', tx: Math.floor(x), ty: Math.floor(y), eid }, d };
+      }
+    }
     return best?.target ?? null;
+  }
+
+  /** The drop nearest this tile's center (touch taps land on tiles). */
+  lootAtTile(tx: number, ty: number): EntityId | null {
+    let best: EntityId | null = null;
+    let bestD = 0.75;
+    for (const [eid, remote] of this.entities) {
+      if (remote.meta.kind !== EntityKind.ItemDrop) continue;
+      const latest = remote.buffer.latest();
+      const x = latest?.x ?? remote.meta.x;
+      const y = latest?.y ?? remote.meta.y;
+      const d = Math.hypot(x - (tx + 0.5), y - (ty + 0.5));
+      if (d < bestD) {
+        bestD = d;
+        best = eid;
+      }
+    }
+    return best;
+  }
+
+  /** Where a ground drop lies, if it is still in view. */
+  dropPos(eid: EntityId): Vec2 | null {
+    const remote = this.entities.get(eid);
+    if (!remote || remote.meta.kind !== EntityKind.ItemDrop) return null;
+    const latest = remote.buffer.latest();
+    return { x: latest?.x ?? remote.meta.x, y: latest?.y ?? remote.meta.y };
+  }
+
+  /** All ground drops within `radius` tiles of the player, nearest first. */
+  nearbyLoot(radius: number): Array<{ eid: EntityId; x: number; y: number; d: number }> {
+    const out: Array<{ eid: EntityId; x: number; y: number; d: number }> = [];
+    const pos = this.predictor.pos;
+    for (const [eid, remote] of this.entities) {
+      if (remote.meta.kind !== EntityKind.ItemDrop) continue;
+      const latest = remote.buffer.latest();
+      const x = latest?.x ?? remote.meta.x;
+      const y = latest?.y ?? remote.meta.y;
+      const d = Math.hypot(x - pos.x, y - pos.y);
+      if (d <= radius) out.push({ eid, x, y, d });
+    }
+    out.sort((a, b) => a.d - b.d);
+    return out;
+  }
+
+  /** Take a specific ground drop (server validates reach and claim). */
+  pickup(eid: EntityId): void {
+    this.conn?.send({ t: 'pickup', eid });
+  }
+
+  /**
+   * Click a distant bag: auto-walk toward it and take exactly that
+   * bag on arrival — not whatever the walk-over vacuum happens to
+   * cross first. Manual movement input cancels the errand.
+   */
+  pickupWalk(eid: EntityId): boolean {
+    const p = this.dropPos(eid);
+    if (!p) return false;
+    const pos = this.predictor.pos;
+    if (Math.hypot(p.x - pos.x, p.y - pos.y) <= 2.2) {
+      this.pickup(eid);
+      return true;
+    }
+    if (!this.walkTo(Math.floor(p.x), Math.floor(p.y))) return false;
+    this.pendingPickup = eid;
+    return true;
   }
 
   /** Pathfind and auto-walk to a tile. Returns false if unreachable. */
@@ -909,6 +991,7 @@ export class ClientGame {
       let { mx, my } = this.input.moveAxes();
       if (mx !== 0 || my !== 0) {
         this.autoPath = null; // manual input takes over
+        this.pendingPickup = null;
       } else if (this.autoPath) {
         const pos = this.predictor.pos;
         let waypoint = this.autoPath[0];
@@ -935,6 +1018,20 @@ export class ClientGame {
       this.conn.send({ t: 'input', frame });
       this.predictor.applyInput(frame);
       this.trackOwnDraw(frame, now);
+    }
+    // A walk-to-loot errand completes the moment the bag is in reach
+    // (or dissolves if someone else took it first).
+    if (this.pendingPickup !== null) {
+      const p = this.dropPos(this.pendingPickup);
+      if (!p) {
+        this.pendingPickup = null;
+      } else {
+        const pos = this.predictor.pos;
+        if (Math.hypot(p.x - pos.x, p.y - pos.y) <= 1.9) {
+          this.pickup(this.pendingPickup);
+          this.pendingPickup = null;
+        }
+      }
     }
     // Fraction through the current tick — drives smooth interpolation of
     // the fixed-step prediction at full display refresh.

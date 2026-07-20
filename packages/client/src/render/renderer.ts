@@ -468,6 +468,7 @@ export class Renderer {
 
   /** Visible drops this frame — the loot-label pass reads these. */
   private frameLoot: Array<{
+    eid: number;
     x: number;
     y: number;
     sx: number;
@@ -478,6 +479,13 @@ export class Renderer {
     /** Instance roll — tints the nameplate by the INSTANCE's rarity. */
     roll?: ItemRoll;
   }> = [];
+
+  /**
+   * Screen rects the loot labels landed on last pass — the click
+   * affordance. A label IS its drop's hitbox (bags overlap in a pile;
+   * their labels never do), with the bag sprite as a fallback target.
+   */
+  private lootPlates: Array<{ eid: number; x0: number; x1: number; y0: number; y1: number }> = [];
 
   /** Emissive glow requests queued during the frame, composited last. */
   private readonly glows: Array<{ x: number; y: number; r: number; rgb: string; a: number }> = [];
@@ -8333,7 +8341,7 @@ export class Renderer {
     const hovered =
       this.lootHud.mouse &&
       Math.hypot(this.lootHud.mx - p.x, this.lootHud.my - (p.y - k * 0.2)) < k * 0.45;
-    this.frameLoot.push({ x: s.x, y: s.y, sx: p.x, sy: p.y - k * 0.55, itemId, qty, hovered, roll });
+    this.frameLoot.push({ eid, x: s.x, y: s.y, sx: p.x, sy: p.y - k * 0.55, itemId, qty, hovered, roll });
 
     // Premium cargo announces itself: a soft glow in the item's color.
     if (cat === 'gold' && qty >= 25) {
@@ -8635,10 +8643,26 @@ export class Renderer {
         ctx.save();
         ctx.translate(p.x, p.y + bob - fall);
         ctx.scale(pop, pop);
-        if (cat === 'gold') drawGold();
-        else if (cat === 'ore') drawOre();
-        else if (cat === 'egg') drawEgg();
-        else drawBag();
+        const paint = (): void => {
+          if (cat === 'gold') drawGold();
+          else if (cat === 'ore') drawOre();
+          else if (cat === 'egg') drawEgg();
+          else drawBag();
+        };
+        // A merged stack reads as a HEAP before its label confirms it:
+        // shrunken siblings tucked behind the front bag, one from ×3,
+        // two from ×10. Gold and eggs already draw their own piles.
+        const echoes = cat === 'gold' || cat === 'egg' ? 0 : qty >= 10 ? 2 : qty >= 3 ? 1 : 0;
+        for (let i = echoes; i >= 1; i--) {
+          ctx.save();
+          const side = rnd(40 + i) > 0.5 ? 1 : -1;
+          ctx.translate(side * i * k * (0.16 + rnd(44 + i) * 0.08), -k * 0.03 * i);
+          ctx.scale(0.78, 0.78);
+          ctx.globalAlpha = 0.92;
+          paint();
+          ctx.restore();
+        }
+        paint();
         if (hovered) {
           // Grounding ring: "this is the one under your cursor".
           ctx.strokeStyle = 'rgba(246, 236, 212, 0.75)';
@@ -8662,12 +8686,14 @@ export class Renderer {
    * Labels stack upward when drops share a column so none overlap.
    */
   private drawLootLabels(game: ClientGame): void {
+    this.lootPlates.length = 0;
     if (this.frameLoot.length === 0 || game.ownEid === null) return;
     const ctx = this.ctx;
     const own = game.predictor.renderPos();
     const showAll = this.lootHud.showAll;
 
     interface Plate {
+      eid: number;
       sx: number;
       sy: number;
       text: string;
@@ -8686,6 +8712,7 @@ export class Renderer {
       // Ground loot announces its roll: "Iron helm of Strength".
       const name = instanceName(d.itemId, d.roll);
       plates.push({
+        eid: d.eid,
         sx: d.sx,
         sy: d.sy,
         text: d.qty > 1 ? `${name} × ${d.qty.toLocaleString()}` : name,
@@ -8723,6 +8750,7 @@ export class Renderer {
         }
       }
       placed.push({ x0: x - w / 2, x1: x + w / 2, y0: y - h / 2, y1: y + h / 2 });
+      this.lootPlates.push({ eid: pl.eid, x0: x - w / 2, x1: x + w / 2, y0: y - h / 2, y1: y + h / 2 });
 
       ctx.globalAlpha = pl.alpha;
       ctx.fillStyle = 'rgba(24, 16, 30, 0.86)';
@@ -8741,6 +8769,34 @@ export class Renderer {
       ctx.fillText(pl.text, x + 7, y + 0.5);
     }
     ctx.restore();
+  }
+
+  /**
+   * Which ground drop lives under this screen point? Labels first
+   * (they never overlap, so a stacked pile stays fully clickable),
+   * then the bag sprites themselves. Returns the drop's entity id and
+   * world position, or null.
+   */
+  lootHitTest(sx: number, sy: number): { eid: number; x: number; y: number } | null {
+    for (const pl of this.lootPlates) {
+      if (sx >= pl.x0 && sx <= pl.x1 && sy >= pl.y0 && sy <= pl.y1) {
+        const d = this.frameLoot.find((f) => f.eid === pl.eid);
+        if (d) return { eid: d.eid, x: d.x, y: d.y };
+      }
+    }
+    const k = this.camera.scale;
+    let best: { eid: number; x: number; y: number } | null = null;
+    let bestD = k * 0.45;
+    for (const d of this.frameLoot) {
+      // frameLoot sy is the label anchor (bag top); the sprite's visual
+      // center sits ~0.35 tile below it.
+      const dist = Math.hypot(sx - d.sx, sy - (d.sy + k * 0.35));
+      if (dist < bestD) {
+        bestD = dist;
+        best = { eid: d.eid, x: d.x, y: d.y };
+      }
+    }
+    return best;
   }
 
   private projectileItem(eid: number, style: string, s: { x: number; y: number; dir: number }): DrawItem {

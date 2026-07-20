@@ -141,6 +141,7 @@ let lastBankAnchor: { tx: number; ty: number } | null = null;
 /** Interact-prompt verbs by target kind / station type. */
 const PROMPT_LABELS: Record<string, string> = {
   node: 'Gather',
+  loot: 'Pick up',
   bank: 'Open Bank',
   shop: 'Browse Wares',
   portal: 'Enter',
@@ -635,6 +636,9 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
     case 'npc':
       game.interactNpc(target.eid);
       break;
+    case 'loot':
+      game.pickup(target.eid);
+      break;
   }
 }
 
@@ -681,6 +685,14 @@ canvas.addEventListener('mousedown', (e) => {
     game.demolishSend(tx, ty);
     return;
   }
+  // Ground loot outranks the tile under it: clicking a bag (or its
+  // label) takes exactly that bag — in reach it goes straight to the
+  // pack, out of reach the click is a walk-there-and-take errand.
+  const lootHit = renderer.lootHitTest(e.clientX, e.clientY);
+  if (lootHit) {
+    game.pickupWalk(lootHit.eid);
+    return;
+  }
   const pos = game.predictor.pos;
   const dx = tx + 0.5 - pos.x;
   const dy = ty + 0.5 - pos.y;
@@ -689,6 +701,13 @@ canvas.addEventListener('mousedown', (e) => {
 
 // Touch controls (virtual joystick + tap-to-move) on coarse pointers.
 setupTouch(input, game, renderer, canvas, (tx, ty) => {
+  // A bag on the tapped tile wins over the tile itself — near or far,
+  // the tap means "that one": walk there if needed and take it.
+  const bag = game.lootAtTile(tx, ty);
+  if (bag !== null) {
+    game.pickupWalk(bag);
+    return true;
+  }
   const pos = game.predictor.pos;
   const dx = tx + 0.5 - pos.x;
   const dy = ty + 0.5 - pos.y;
@@ -951,6 +970,9 @@ function frame(now: number): void {
     mouse: !input.padPrimary(),
     showAll: input.isDown('AltLeft') || input.isDown('AltRight') || padBtns.has(6),
   };
+  // A bag (or its label) under the cursor invites the click.
+  canvas.style.cursor =
+    !buildMode && renderer.lootHitTest(input.mouseX, input.mouseY) ? 'pointer' : '';
 
   game.update(now);
   renderer.render(game, frameDt);
