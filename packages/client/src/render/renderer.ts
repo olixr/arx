@@ -102,6 +102,27 @@ const PLAYER_COLORS = ['#c4553d', '#3d78c4', '#3da865', '#c4a03d', '#8a55c4', '#
 const PROJ_AIR = 0.62;
 /** How long a landed arrow stands in the world before fading. */
 const STUCK_ARROW_MS = 90_000;
+/** The spent shot's terminal arc: duration and forward carry (tiles). */
+const FALLING_SHAFT_MS = 260;
+const FALLING_SHAFT_ADVANCE = 0.55;
+/** How far past the last client sample to probe for the wall the server
+ * actually hit — a tick-step of the fastest arrow plus interp slack. */
+const WALL_PROBE_TILES = 1.8;
+/** Solid props too short for a chest-high stick: arrows lodge low. */
+const LOW_STICK_TILES = new Set<number>([
+  Tile.Fence,
+  Tile.RailWood,
+  Tile.Table,
+  Tile.Chair,
+  Tile.Bench,
+  Tile.Bed,
+  Tile.FlowerBox,
+  Tile.Basin,
+  Tile.Barrel,
+  Tile.Crate,
+  Tile.CrateGoods,
+  Tile.FishingSpot,
+]);
 /** Ragdoll rest: how long a settled corpse lies, then how long it fades. */
 const CORPSE_LIE_MS = 850;
 const CORPSE_FADE_MS = 600;
@@ -385,7 +406,19 @@ export class Renderer {
 
   // ---- projectile aftermath: the world remembers your arrows. ----
   /** Arrows standing in the ground/walls; fade out near `until`. */
-  private readonly stuckArrows: Array<{ x: number; y: number; dir: number; until: number }> = [];
+  private readonly stuckArrows: Array<{
+    x: number;
+    y: number;
+    dir: number;
+    until: number;
+    /** Vertical-surface stick: shaft embedded `h` tiles up a wall/trunk
+     *  face, y-sorted against that face (in front of a south face, hidden
+     *  behind a north one). Absent = a ground stick. */
+    wall?: { h: number; sortY: number };
+  }> = [];
+  /** Spent shots arcing down at the end of flight — a quarter-second of
+   *  cosmetic ballistics between "flying" and "standing in the dirt". */
+  private readonly fallingShafts: Array<{ x: number; y: number; dir: number; born: number }> = [];
   /** Arrows riding a living NPC (offsets in tiles off its ground point). */
   private readonly npcArrows = new Map<number, Array<{ dir: number; hy: number; ox: number }>>();
   /** Projectiles already given their muzzle flash. */
@@ -7248,6 +7281,7 @@ export class Renderer {
 
     // Arrows standing where they landed — the field remembers the fight.
     for (const a of this.stuckArrows) items.push(this.stuckArrowItem(a, now));
+    for (const f of this.fallingShafts) items.push(this.fallingShaftItem(f, now));
 
     // Ragdolls mid-tumble and corpses at rest.
     this.tickCorpses(game, now);
@@ -8493,9 +8527,36 @@ export class Renderer {
           });
           this.npcArrows.set(hitEid, pins);
         }
+      } else if (!this.probeWallStick(game, end.x, end.y, end.dir, now)) {
+        // Nothing solid down the line: a spent shot. It doesn't teleport
+        // into the dirt — it arcs down out of the flight line first.
+        if (this.fallingShafts.length < 40) {
+          this.fallingShafts.push({ x: end.x, y: end.y, dir: end.dir, born: now });
+        }
+      }
+    }
+    game.projectileEnds.length = 0;
+
+    // Settle finished falls: the shaft has arced down — stand it in the
+    // dirt where it landed (or swallow it with a splash on water).
+    for (let i = this.fallingShafts.length - 1; i >= 0; i--) {
+      const f = this.fallingShafts[i]!;
+      if (now - f.born < FALLING_SHAFT_MS) continue;
+      const lx = f.x + Math.cos(f.dir) * FALLING_SHAFT_ADVANCE;
+      const ly = f.y + Math.sin(f.dir) * FALLING_SHAFT_ADVANCE;
+      const tile = game.world.groundAt(Math.floor(lx), Math.floor(ly));
+      if (tile === Tile.Water || tile === Tile.WaterDeep) {
+        this.particles.burst(lx, ly, 7, ['#7fb2d9', '#a9d3ec', '#e6f2fa'], {
+          speed: 1.4,
+          life: 0.35,
+          size: 0.07,
+          up: true,
+          gravity: 4,
+          drag: 2,
+        });
       } else if (this.stuckArrows.length < 100) {
-        this.stuckArrows.push({ x: end.x, y: end.y, dir: end.dir, until: now + STUCK_ARROW_MS });
-        this.particles.burst(end.x, end.y, 4, ['#b9a582', '#8a7a5c'], {
+        this.stuckArrows.push({ x: lx, y: ly, dir: f.dir, until: now + STUCK_ARROW_MS });
+        this.particles.burst(lx, ly, 4, ['#b9a582', '#8a7a5c'], {
           speed: 1.1,
           life: 0.3,
           size: 0.06,
@@ -8503,8 +8564,8 @@ export class Renderer {
           drag: 3,
         });
       }
+      this.fallingShafts.splice(i, 1);
     }
-    game.projectileEnds.length = 0;
 
     // A felled NPC becomes a ragdoll and sheds its arrows around it.
     for (const death of game.npcDeaths) {
@@ -8539,6 +8600,60 @@ export class Renderer {
         if (!game.entities.has(eid)) this.projSeen.delete(eid);
       }
     }
+  }
+
+  /**
+   * March down the flight line looking for the solid the server's shot
+   * actually buried itself in — the last client sample lags the impact
+   * by up to a tick-step, which is why arrows used to "fall short" at
+   * the foot of every wall. On contact the arrow sticks INTO the face
+   * at flight height: in front of a south face, poking from a side
+   * edge, hidden behind a north one. Low props take the shaft low.
+   */
+  private probeWallStick(game: ClientGame, x: number, y: number, dir: number, now: number): boolean {
+    const dx = Math.cos(dir);
+    const dy = Math.sin(dir);
+    let px = Math.floor(x);
+    let py = Math.floor(y);
+    // Already inside a solid (server killed the shot in the face tile):
+    // back out to the entry boundary first, then re-enter.
+    for (let d = 0.06; d <= WALL_PROBE_TILES; d += 0.06) {
+      const nx = x + dx * d;
+      const ny = y + dy * d;
+      const tx = Math.floor(nx);
+      const ty = Math.floor(ny);
+      if ((tx !== px || ty !== py) && game.world.isSolid(tx, ty)) {
+        if (this.stuckArrows.length >= 100) return true;
+        // Stick just shy of the boundary, head embedded in the face.
+        const sx = x + dx * (d - 0.03);
+        const sy = y + dy * (d - 0.03);
+        const tile = game.world.groundAt(tx, ty);
+        const low = tile !== undefined && LOW_STICK_TILES.has(tile);
+        const h = low ? 0.24 + Math.random() * 0.08 : 0.46 + Math.random() * 0.24;
+        // Face law: crossing DOWN into the tile row (moving south) hits
+        // the hidden north face — the wall occludes the shaft. Every
+        // other approach reads on a visible face and paints in front.
+        const fromNorth = ty > py;
+        const sortY = fromNorth ? ty - 0.06 : ty + 0.96;
+        this.stuckArrows.push({ x: sx, y: sy, dir, until: now + STUCK_ARROW_MS, wall: { h, sortY } });
+        // Impact chips in the surface's own material color.
+        const base = tile !== undefined ? tileDef(tile).color : '#9aa2ac';
+        const airY = sy - h / this.camera.yScale;
+        this.particles.burst(sx, airY, 6, [base, shade(base, 22), shade(base, -16)], {
+          speed: 1.6,
+          life: 0.32,
+          size: 0.06,
+          gravity: 5,
+          dir: dir + Math.PI,
+          spread: 1.3,
+          drag: 2.5,
+        });
+        return true;
+      }
+      px = tx;
+      py = ty;
+    }
+    return false;
   }
 
   /**
@@ -8740,18 +8855,81 @@ export class Renderer {
   }
 
   /** One arrow standing where it landed, angled with its flight line. */
-  private stuckArrowItem(a: { x: number; y: number; dir: number; until: number }, now: number): DrawItem {
+  private stuckArrowItem(
+    a: { x: number; y: number; dir: number; until: number; wall?: { h: number; sortY: number } },
+    now: number,
+  ): DrawItem {
     const ctx = this.ctx;
     const scale = this.camera.scale;
     const p = this.camera.worldToScreen(a.x, a.y, this.w, this.h);
     p.y -= this.renderLift(a.x, a.y) * scale;
+    if (a.wall) p.y -= a.wall.h * scale;
     const alpha = Math.min(1, (a.until - now) / 6000);
     return {
-      sortY: a.y,
+      sortY: a.wall?.sortY ?? a.y,
       draw: () => {
         ctx.globalAlpha = alpha;
-        this.drawStuckArrow(ctx, p.x, p.y, a.dir, scale);
+        this.drawStuckArrow(ctx, p.x, p.y, a.dir, scale, a.wall ? 'wall' : 'ground');
         ctx.globalAlpha = 1;
+      },
+    };
+  }
+
+  /** A spent shot arcing out of the flight line: it carries forward,
+   *  drops from chest height, and pitches nose-down into the landing. */
+  private fallingShaftItem(f: { x: number; y: number; dir: number; born: number }, now: number): DrawItem {
+    const ctx = this.ctx;
+    const scale = this.camera.scale;
+    const t = Math.min(1, (now - f.born) / FALLING_SHAFT_MS);
+    const adv = FALLING_SHAFT_ADVANCE * (1 - (1 - t) * (1 - t));
+    const wx = f.x + Math.cos(f.dir) * adv;
+    const wy = f.y + Math.sin(f.dir) * adv;
+    const height = PROJ_AIR * (1 - t * t);
+    const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
+    p.y -= this.renderLift(wx, wy) * scale;
+    const groundY = p.y;
+    p.y -= height * scale;
+    return {
+      sortY: wy + 0.35,
+      draw: () => {
+        // Screen flight line, pitched toward screen-down as it falls.
+        const wfx = Math.cos(f.dir);
+        const wfy = Math.sin(f.dir) * this.camera.yScale;
+        const a0 = Math.atan2(wfy, wfx);
+        const droop = Math.atan2(Math.sin(Math.PI / 2 - a0), Math.cos(Math.PI / 2 - a0));
+        const a = a0 + droop * t * t * 0.85;
+        const fx = Math.cos(a);
+        const fy = Math.sin(a);
+        // The racing ground tick converges onto the landing shadow.
+        ctx.fillStyle = 'rgba(20, 16, 28, 0.2)';
+        ctx.beginPath();
+        ctx.ellipse(p.x, groundY, scale * (0.16 - 0.05 * t), scale * (0.06 - 0.015 * t), 0, 0, Math.PI * 2);
+        ctx.fill();
+        const len = scale * 0.44;
+        ctx.strokeStyle = '#c4b590';
+        ctx.lineWidth = Math.max(2, scale * 0.05);
+        ctx.beginPath();
+        ctx.moveTo(p.x - fx * len * 0.5, p.y - fy * len * 0.5);
+        ctx.lineTo(p.x + fx * len * 0.4, p.y + fy * len * 0.4);
+        ctx.stroke();
+        ctx.strokeStyle = '#d95763';
+        ctx.lineWidth = Math.max(1.5, scale * 0.04);
+        for (const sv of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(p.x - fx * len * 0.34, p.y - fy * len * 0.34);
+          ctx.lineTo(
+            p.x - fx * len * 0.52 - fy * sv * scale * 0.07,
+            p.y - fy * len * 0.52 + fx * sv * scale * 0.07,
+          );
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#9aa2ac';
+        ctx.beginPath();
+        ctx.moveTo(p.x + fx * len * 0.58, p.y + fy * len * 0.58);
+        ctx.lineTo(p.x + fx * len * 0.3 - fy * scale * 0.06, p.y + fy * len * 0.3 + fx * scale * 0.06);
+        ctx.lineTo(p.x + fx * len * 0.3 + fy * scale * 0.06, p.y + fy * len * 0.3 - fx * scale * 0.06);
+        ctx.closePath();
+        ctx.fill();
       },
     };
   }
@@ -8776,7 +8954,7 @@ export class Renderer {
           const il = Math.hypot(wfx, wfy) || 1;
           const bx = p.x - (wfx / il) * pin.ox * scale;
           const by = p.y - pin.hy * scale - (wfy / il) * pin.ox * scale;
-          this.drawStuckArrow(ctx, bx, by, pin.dir, scale * 0.92, true);
+          this.drawStuckArrow(ctx, bx, by, pin.dir, scale * 0.92, 'body');
         }
       },
     };
@@ -8794,19 +8972,21 @@ export class Renderer {
     sy: number,
     dir: number,
     scale: number,
-    inBody = false,
+    mode: 'ground' | 'body' | 'wall' = 'ground',
   ): void {
     const wfx = Math.cos(dir);
     const wfy = Math.sin(dir) * this.camera.yScale;
     const il = Math.hypot(wfx, wfy) || 1;
     const ux = wfx / il;
     const uy = wfy / il;
-    // The shaft leans back along where it came from and — in dirt —
-    // UP out of the surface: the lodge pitch of a falling shot.
-    const back = (inBody ? 0.28 : 0.2) * scale;
+    // The shaft leans back along where it came from. In dirt it pitches
+    // UP out of the surface (the lodge of a falling shot); in a wall it
+    // holds the flight line with a slight gravity sag at the tail.
+    const back = (mode === 'ground' ? 0.2 : 0.28) * scale;
+    const drop = mode === 'ground' ? -0.28 : mode === 'body' ? -0.08 : 0.06;
     const bx = -ux * back;
-    const by = -uy * back - (inBody ? 0.08 : 0.28) * scale;
-    if (!inBody) {
+    const by = -uy * back + drop * scale;
+    if (mode === 'ground') {
       // Dirt shadow pooling at the entry point.
       ctx.fillStyle = 'rgba(20, 16, 28, 0.22)';
       ctx.beginPath();

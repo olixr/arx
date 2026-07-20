@@ -2876,11 +2876,18 @@ export class GameServer {
     for (const [eid, proj] of this.projectiles) {
       const pos = this.positions.must(eid);
       const step = proj.speed * TICK_DT;
-      pos.x += proj.dirX * step;
-      pos.y += proj.dirY * step;
+      // Sub-step the advance so the shot dies AT the wall face, not up
+      // to a full step past it (fast arrows cover >1 tile per tick and
+      // could tunnel straight through a thin wall).
+      const subs = Math.max(1, Math.ceil(step / 0.25));
+      let dead = false;
+      for (let i = 0; i < subs && !dead; i++) {
+        pos.x += proj.dirX * (step / subs);
+        pos.y += proj.dirY * (step / subs);
+        if (this.world.isSolid(Math.floor(pos.x), Math.floor(pos.y))) dead = true;
+      }
       proj.distLeft -= step;
-
-      let dead = proj.distLeft <= 0 || this.world.isSolid(Math.floor(pos.x), Math.floor(pos.y));
+      dead = dead || proj.distLeft <= 0;
 
       if (!dead && proj.fromNpc) {
         // NPC shots seek players (and straw decoys, which exist to eat them).
