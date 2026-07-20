@@ -1212,8 +1212,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ? HAIR_COLORS[rig.look.hairColor]!
       : shade(bodyColor, -24);
   const BALD = hairStyle === 1;
-  const LONG = hairStyle === 2;
-  const KNOT = hairStyle === 3;
+  // A hat CONTAINS the hair: under a wizard brim only the fringe locks
+  // peek out — long curtains and topknots would dangle through the
+  // cloth and read as stray cowl strips.
+  const underBrim = helmSt?.kind === 'wizard';
+  const LONG = hairStyle === 2 && !underBrim;
+  const KNOT = hairStyle === 3 && !underBrim;
   // A circlet sits ON the hair, a wizard's brim rides over it (locks
   // peeking out below); every other helm owns the skull.
   if ((!helm || helmSt?.kind === 'circlet' || helmSt?.kind === 'wizard') && !BALD) {

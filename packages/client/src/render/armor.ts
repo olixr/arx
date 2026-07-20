@@ -1721,30 +1721,84 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
   }
 
   if (st.kind === 'hood') {
-    // A soft mantle: the hair-mop geometry in cloth, draping onto the
-    // shoulders, with a shadowed face opening when frontal.
+    // A TRUE cowl: one continuous shell that owns the whole skull —
+    // crown, cheeks and jaw — with the face opening cut clean through
+    // it (even-odd), so from the front only the face shows. The shell
+    // is asymmetric with the facing: the leading edge hugs the brow
+    // while the trailing side swells into the swept-back volume every
+    // hood hangs from; at profile that swell becomes the classic peak
+    // and the opening narrows to a leading-edge window. The back band
+    // closes the opening entirely and hangs the drape tail. One shape
+    // grammar, three reads, no bolted-on side curtains.
+    const t = profileK;
+    const front = backK <= 0.55;
+    // The face opening tracks the face bands exactly like the eyes do.
+    const cx = headX + fx * headR * 0.34;
+    const ohw = hw * 0.74 * (1 - 0.45 * t);
+    const oTop = headY - hh * 0.6;
+    const oBot = headY + hh * 0.84;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.26, headY + hh * 1.2);
+      // Leading edge: hugs the brow line up and over.
+      ctx.quadraticCurveTo(headX + lead * hw * 1.32, headY + hh * 0.2, headX + lead * hw * 1.14, headY - hh * 0.55);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.05, headY - hh * 1.28, headX + lead * hw * 0.3, headY - hh * 1.34);
+      // Crown into the trailing swell — the swept-back drape, deepening
+      // toward profile into the classic hood peak.
+      ctx.quadraticCurveTo(headX - lead * hw * (0.95 + t * 0.45), headY - hh * 1.38, headX - lead * hw * (1.18 + t * 0.55), headY - hh * 0.62);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.32 + t * 0.5), headY + hh * 0.15, headX - lead * hw * 1.3, headY + hh * 1.2);
+      // The hem sags onto the shoulders — the cowl becomes a mantle.
+      ctx.quadraticCurveTo(headX, headY + hh * 1.44, headX + lead * hw * 1.26, headY + hh * 1.2);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+    };
     ctx.fillStyle = mc;
     ctx.beginPath();
-    chamferRect(ctx, headX - hw * 1.08, headY - hh * 1.12, hw * 2.16, hh * (backK > 0.55 ? 2.05 : 0.98), [
-      cut * 1.2,
-      cut * 1.2,
-      cut * 0.4,
-      cut * 0.4,
-    ]);
-    ctx.fill();
-    // Side curtains frame the face and fall toward the shoulders.
-    for (const es of [-1, 1]) {
-      ctx.fillRect(headX + es * hw * 0.72, headY - hh * 0.7, hw * 0.38, hh * 1.85);
-    }
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
     if (!hurt) {
-      ctx.fillStyle = shade(st.color, 12);
-      ctx.fillRect(headX - hw * 0.85, headY - hh * 1.04, hw * 1.7, hh * 0.2);
-      if (backK <= 0.55) {
-        // The cowl's face shadow — deeper the more frontal the read.
-        ctx.fillStyle = `rgba(24, 15, 26, ${0.22 * (1 - profileK * 0.5)})`;
-        ctx.fillRect(headX - hw * 0.66, headY - hh * 0.62, hw * 1.32, hh * 0.5);
+      // Cloth planes, clipped to the shell — the hole in the clip keeps
+      // every shading pass off the face automatically.
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      // Trailing-half shade — the same split the torso lives by.
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
+      // The crown's lit fold.
+      ctx.strokeStyle = shade(st.color, 16);
+      ctx.lineWidth = Math.max(1.5, s * 0.024);
+      ctx.beginPath();
+      ctx.moveTo(headX - hw * 0.72, headY - hh * 0.78);
+      ctx.quadraticCurveTo(headX, headY - hh * 1.52, headX + hw * 0.72, headY - hh * 0.78);
+      ctx.stroke();
+      // One crease down the trailing side — cloth remembers gravity.
+      ctx.strokeStyle = shade(st.color, -24);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(headX - lead * hw * 0.55, headY - hh * 1.1);
+      ctx.quadraticCurveTo(headX - lead * hw * (0.9 + t * 0.3), headY - hh * 0.2, headX - lead * hw * 0.85, headY + hh * 0.9);
+      ctx.stroke();
+      ctx.restore();
+      if (front) {
+        // The opening reads as depth: shadow just inside the rim, the
+        // rolled hem edge on it, and the trim bar across the brow.
+        ctx.strokeStyle = 'rgba(24, 15, 26, 0.32)';
+        ctx.lineWidth = Math.max(2, s * 0.034);
+        ctx.beginPath();
+        chamferRect(ctx, cx - ohw + s * 0.012, oTop + s * 0.012, (ohw - s * 0.012) * 2, oBot - oTop - s * 0.024, cut * 0.7);
+        ctx.stroke();
+        ctx.strokeStyle = shade(st.color, 20);
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        opening();
+        ctx.stroke();
         ctx.fillStyle = st.trim;
-        ctx.fillRect(headX - hw * 0.72, headY - hh * 0.66, hw * 1.44, headR * 0.09);
+        ctx.fillRect(cx - ohw * 0.98, oTop - headR * 0.05, ohw * 1.96, headR * 0.1);
         if (st.gem) {
           // A cut gem at the brow, tracking the face like the eyes do.
           const gx = headX + fx * headR * 0.36;
@@ -1763,16 +1817,16 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         // From behind, the drape tail: the point every hood hangs from.
         ctx.fillStyle = shade(st.color, -10);
         ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.34, headY + hh * 0.6);
-        ctx.lineTo(headX + hw * 0.34, headY + hh * 0.6);
-        ctx.lineTo(headX + lead * hw * 0.1, headY + hh * 1.6);
+        ctx.moveTo(headX - hw * 0.36, headY + hh * 0.9);
+        ctx.lineTo(headX + hw * 0.36, headY + hh * 0.9);
+        ctx.lineTo(headX + lead * hw * 0.1, headY + hh * 1.95);
         ctx.closePath();
         ctx.fill();
         ctx.strokeStyle = shade(st.color, -22);
         ctx.lineWidth = Math.max(1, s * 0.012);
         ctx.beginPath();
-        ctx.moveTo(headX, headY - hh * 0.8);
-        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.55);
+        ctx.moveTo(headX, headY - hh * 1.05);
+        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.85);
         ctx.stroke();
       }
     }
@@ -1858,25 +1912,38 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.lineCap = 'butt';
     }
     if (st.ruff && !hurt) {
-      // A lumpy fur ruff riding the hood's brow edge and falling down
-      // the side curtains — frames the face in winter.
+      // A lumpy fur ruff. From the front it RINGS THE FACE OPENING —
+      // fur trim on the cowl's hem, framing the face in winter; from
+      // behind it stays a band across the crown of the hood.
       ctx.fillStyle = st.ruff.color;
-      for (let i = 0; i < 5; i++) {
-        const u = -1 + i * 0.5;
-        const r = (0.05 + 0.013 * Math.sin(i * 2.7)) * hw * 2;
-        ctx.beginPath();
-        ctx.arc(headX + u * hw * 0.88, headY - hh * 0.92 + Math.sin(i * 1.9) * hh * 0.06, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      for (const es of [-1, 1]) {
-        ctx.beginPath();
-        ctx.arc(headX + es * hw * 0.98, headY - hh * 0.45, hw * 0.16, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = shade(st.ruff.color, -14);
-        ctx.beginPath();
-        ctx.arc(headX + es * hw * 0.95, headY + hh * 0.05, hw * 0.14, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = st.ruff.color;
+      if (front) {
+        // Across the brow hem, hugging the opening's top edge.
+        for (let i = 0; i < 5; i++) {
+          const u = -1 + i * 0.5;
+          const r = (0.05 + 0.013 * Math.sin(i * 2.7)) * hw * 2;
+          ctx.beginPath();
+          ctx.arc(cx + u * ohw * 1.02, oTop + Math.sin(i * 1.9) * hh * 0.05, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // Down the opening's sides, past the cheeks.
+        for (const es of [-1, 1]) {
+          ctx.beginPath();
+          ctx.arc(cx + es * ohw * 1.05, headY + hh * 0.05, hw * 0.15, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(st.ruff.color, -14);
+          ctx.beginPath();
+          ctx.arc(cx + es * ohw * 1.02, headY + hh * 0.52, hw * 0.13, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = st.ruff.color;
+        }
+      } else {
+        for (let i = 0; i < 5; i++) {
+          const u = -1 + i * 0.5;
+          const r = (0.05 + 0.013 * Math.sin(i * 2.7)) * hw * 2;
+          ctx.beginPath();
+          ctx.arc(headX + u * hw * 0.88, headY - hh * 0.92 + Math.sin(i * 1.9) * hh * 0.06, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
     if (st.feather && !hurt) {
