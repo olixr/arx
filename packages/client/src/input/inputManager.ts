@@ -173,7 +173,16 @@ export class InputManager {
 
   buttons(): number {
     let b = 0;
-    const pad = this.uiCapture || this.buildCapture ? null : this.pad();
+    // Build mode holsters the weapons on EVERY device: the click (or
+    // Space, or Q/E/R/T) that places a wall must never double as an
+    // attack or a cast. Only movement-adjacent bits survive — you can
+    // still dodge and sneak around your own site while the ghost is up.
+    if (this.buildCapture) {
+      if (this.keys.has('ShiftLeft')) b |= InputButton.Dodge;
+      if (this.sneakMode) b |= InputButton.Sneak;
+      return b;
+    }
+    const pad = this.uiCapture ? null : this.pad();
     // RT / A hold to attack on pads; LB/RB/Y/D-up fire the abilities.
     const padAttack =
       pad !== null &&
