@@ -50,10 +50,12 @@ import {
   growMs,
   isCropTile,
   aggregateGearStats,
-  emptyGearStats,
+  craftRarityWeights,
+  dropRarityWeights,
   itemDef,
   makeRoll,
   npcHitHeight,
+  pickRarity,
   rolledStats,
   type GearStats,
   stageEndMs,
@@ -1265,7 +1267,26 @@ export class GameServer {
       addItem(player.inventory, recipe.burnResult ?? 'burnt_food', 1);
       player.session?.sendJson({ t: 'chat', channel: 'system', text: 'You burn it. Ah well.' });
     } else {
-      addItem(player.inventory, recipe.output.item, recipe.output.qty);
+      // Crafted gear rolls its rarity, biased by skill SURPLUS over the
+      // recipe's requirement — mastery is the loot chase you train for.
+      const gear = itemDef(recipe.output.item)?.gear;
+      if (gear) {
+        const rar = pickRarity(
+          craftRarityWeights(level, recipe.levelReq),
+          gear.rarities,
+          Math.random,
+        );
+        addItem(player.inventory, recipe.output.item, recipe.output.qty, makeRoll(rar));
+        if (rar !== 'common') {
+          player.session?.sendJson({
+            t: 'chat',
+            channel: 'system',
+            text: `Your hands outdo themselves — a ${rar} ${itemDef(recipe.output.item)?.name ?? recipe.output.item}!`,
+          });
+        }
+      } else {
+        addItem(player.inventory, recipe.output.item, recipe.output.qty);
+      }
       this.grantXp(eid, player, recipe.skill, recipe.xp);
     }
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
@@ -1489,7 +1510,14 @@ export class GameServer {
         return;
       }
       removeItem(player.inventory, 'coins', affordable * entry.price);
-      const added = addItem(player.inventory, item, affordable);
+      // The shop is never a slot machine: bought gear is always the
+      // fixed common baseline instance.
+      const added = addItem(
+        player.inventory,
+        item,
+        affordable,
+        def.gear ? { rar: 'common', seed: 0 } : undefined,
+      );
       if (added < affordable) {
         // Pack filled up — refund what didn't fit.
         addItem(player.inventory, 'coins', (affordable - added) * entry.price);
@@ -3068,6 +3096,12 @@ export class GameServer {
     for (const entry of npc.def.loot) {
       if (Math.random() > entry.chance) continue;
       const qty = entry.qty[0] + Math.floor(Math.random() * (entry.qty[1] - entry.qty[0] + 1));
+      // Dropped gear rolls a rarity weighted by the foe's level —
+      // tougher camps carry better-kept equipment.
+      const gear = itemDef(entry.item)?.gear;
+      const roll = gear?.acquisition.drop
+        ? makeRoll(pickRarity(dropRarityWeights(npc.def.level), gear.rarities, Math.random))
+        : undefined;
       const dropEid = this.ecs.create();
       const scatter = () => (Math.random() - 0.5) * 0.8;
       this.kinds.set(dropEid, EntityKind.ItemDrop);
@@ -3079,6 +3113,7 @@ export class GameServer {
         ownerUntil: Date.now() + 30_000,
         despawnAt: Date.now() + 90_000,
         pickupAfter: Date.now() + 400,
+        roll,
       });
       this.updateChunkMembership(dropEid);
     }

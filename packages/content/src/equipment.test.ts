@@ -182,3 +182,21 @@ test('rarity scales base armor and value', () => {
   assert.ok(legendary.armor > common.armor);
   assert.ok(legendary.value > common.value * 5);
 });
+
+test('acquisition routes are honest: drops in loot tables, shop stock flagged', async () => {
+  const { NPCS } = await import('./npcs.js');
+  const { GENERAL_STORE } = await import('./shop.js');
+  const looted = new Set<string>();
+  for (const npc of NPCS.values()) for (const entry of npc.loot) looted.add(entry.item);
+  for (const def of EQUIPMENT_DEFS) {
+    if (def.acquisition.drop) {
+      assert.ok(looted.has(def.id), `${def.id} declares drop but no NPC drops it`);
+    }
+  }
+  for (const entry of GENERAL_STORE) {
+    const gear = itemDef(entry.item)?.gear;
+    if (gear) assert.ok(gear.acquisition.shop, `${entry.item} sold but not shop-flagged`);
+  }
+  // Loot tables must never point at unknown items.
+  for (const item of looted) assert.ok(ITEMS.has(item), `loot item '${item}' missing`);
+});

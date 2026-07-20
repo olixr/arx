@@ -22,4 +22,8 @@ export const GENERAL_STORE: readonly ShopEntry[] = [
   { item: 'wheat_seed', price: 20 },
   { item: 'cotton_seed', price: 30 },
   { item: 'watering_can', price: 30 },
+  // Basic outfitting — always the fixed common baseline; better rolls
+  // come from the anvil, the workbench, or the wilds.
+  { item: 'leather_boots', price: 60 },
+  { item: 'woven_trousers', price: 55 },
 ];

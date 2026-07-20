@@ -150,6 +150,9 @@ const defs: NpcDef[] = [
       { item: 'bronze_sword', qty: [1, 1], chance: 0.08 },
       { item: 'arrow', qty: [4, 12], chance: 0.25 },
       { item: 'snare_kit', qty: [1, 1], chance: 0.04 },
+      // Scavenged armor — the first rolled-gear drops a new fighter sees.
+      { item: 'leather_body', qty: [1, 1], chance: 0.05 },
+      { item: 'leather_chaps', qty: [1, 1], chance: 0.04 },
     ],
     respawnSec: 25,
     color: '#5c8a3a',
@@ -175,6 +178,7 @@ const defs: NpcDef[] = [
       { item: 'straw_decoy', qty: [1, 1], chance: 0.05 },
       // Throwers carry the warband's colors.
       { item: 'cape_banner', qty: [1, 1], chance: 0.06 },
+      { item: 'apprentice_robe', qty: [1, 1], chance: 0.04 },
     ],
     respawnSec: 30,
     color: '#6a9a3a',
@@ -203,6 +207,10 @@ const defs: NpcDef[] = [
       { item: 'ember_charm', qty: [1, 1], chance: 0.03 },
       { item: 'cape_emberweave', qty: [1, 1], chance: 0.04 },
       { item: 'cape_midnight', qty: [1, 1], chance: 0.035 },
+      // Old soldiers' iron, still serviceable.
+      { item: 'iron_helm', qty: [1, 1], chance: 0.05 },
+      { item: 'iron_greaves', qty: [1, 1], chance: 0.04 },
+      { item: 'iron_sabatons', qty: [1, 1], chance: 0.04 },
     ],
     respawnSec: 30,
     color: '#d8d4c8',
@@ -241,6 +249,11 @@ const defs: NpcDef[] = [
       { item: 'cape_royal', qty: [1, 1], chance: 0.08 },
       { item: 'cape_celestial', qty: [1, 1], chance: 0.05 },
       { item: 'cape_phoenix', qty: [1, 1], chance: 0.04 },
+      // Champion's plunder: the raider helm nobody crafts.
+      { item: 'horned_raider_helm', qty: [1, 1], chance: 0.12 },
+      { item: 'steel_greathelm', qty: [1, 1], chance: 0.06 },
+      { item: 'iron_platebody', qty: [1, 1], chance: 0.15 },
+      { item: 'emberweave_robe', qty: [1, 1], chance: 0.08 },
     ],
     respawnSec: 90,
     color: '#e8e2d0',
@@ -267,6 +280,9 @@ const defs: NpcDef[] = [
       { item: 'bones', qty: [1, 1], chance: 1 },
       { item: 'wolf_fur', qty: [1, 1], chance: 0.9 },
       { item: 'verdant_totem', qty: [1, 1], chance: 0.05 },
+      // The drop-only chase piece: hunt the pack, wear the pack.
+      { item: 'wolfhide_hood', qty: [1, 1], chance: 0.06 },
+      { item: 'wanderer_boots', qty: [1, 1], chance: 0.05 },
     ],
     respawnSec: 35,
     color: '#6a6f7d',
