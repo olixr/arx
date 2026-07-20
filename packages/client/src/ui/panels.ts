@@ -235,6 +235,17 @@ export class Panels {
    * Returns false when the element isn't an inspectable item.
    */
   showCardFor(el: HTMLElement | null): boolean {
+    // Ground loot rows (loot panel) inspect like pack cells — the same
+    // full card, for gear still lying in the grass.
+    const lootEl = el?.closest?.('[data-lootitem]') as HTMLElement | null;
+    if (lootEl?.dataset.lootitem) {
+      const roll = lootEl.dataset.lootroll
+        ? (JSON.parse(lootEl.dataset.lootroll) as ItemRoll)
+        : undefined;
+      this.cardSource = null;
+      this.renderCard(lootEl.dataset.lootitem, Number(lootEl.dataset.lootqty ?? '1'), null, roll);
+      return true;
+    }
     if (!el || el.dataset.filled !== '1') {
       this.hideCard();
       return false;

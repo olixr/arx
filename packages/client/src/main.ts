@@ -8,6 +8,7 @@ import { Hotbar } from './ui/hotbar.js';
 import { Panels } from './ui/panels.js';
 import { StationPanels } from './ui/stationPanels.js';
 import { UiNav } from './ui/padUI.js';
+import { LootPanel } from './ui/lootPanel.js';
 import { Sfx } from './audio/sfx.js';
 import { setupTouch } from './input/touch.js';
 import { uiIconUrl } from './render/icons.js';
@@ -225,6 +226,7 @@ const nav = new UiNav(input, {
   onCloseAll: () => {
     stationPanels.closeAll();
     panels.closeAll();
+    lootPanel.close();
   },
   onToggleInventory: () => panels.toggleInventory(),
   onToggleSkills: () => panels.toggleSkills(),
@@ -239,7 +241,9 @@ const nav = new UiNav(input, {
 document.addEventListener('pointerover', (e) => {
   if (nav.mode === 'pad') return; // pad focus owns the card there
   const target = e.target as HTMLElement | null;
-  const itemCell = target?.closest?.('[data-invslot][data-filled], [data-equipslot][data-filled]');
+  const itemCell = target?.closest?.(
+    '[data-invslot][data-filled], [data-equipslot][data-filled], [data-lootitem]',
+  );
   if (itemCell && panels.showCardFor(itemCell as HTMLElement)) {
     nav.hideTooltip();
     return;
@@ -405,6 +409,9 @@ const game = new ClientGame(input, {
     }
   },
 });
+
+// The ground manager: choose from a pile instead of vacuuming it.
+const lootPanel = new LootPanel(game);
 
 // Dodge dash feedback: whoosh + a streak of dust kicked out behind.
 const hotbar = new Hotbar(input);
@@ -637,7 +644,9 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       game.interactNpc(target.eid);
       break;
     case 'loot':
-      game.pickup(target.eid);
+      // One bag: just take it. A pile: open the ground manager and choose.
+      if (game.nearbyLoot(2.4).length > 1) lootPanel.open();
+      else game.pickup(target.eid);
       break;
   }
 }
@@ -652,10 +661,16 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Escape') {
     stationPanels.closeAll();
     panels.closeAll();
+    lootPanel.close();
     buildMode = null;
     renderer.buildGhost = null;
   }
   if (e.code === 'KeyF') activateTarget(game.findNearbyTarget());
+  // G for "ground": toggle the loot manager over whatever lies in reach.
+  if (e.code === 'KeyG') {
+    if (lootPanel.isOpen) lootPanel.close();
+    else if (game.nearbyLoot(2.4).length > 0) lootPanel.open();
+  }
   if (e.code === 'Equal' || e.code === 'NumpadAdd') {
     renderer.camera.stepZoom(1.15);
     saveZoom();
@@ -687,12 +702,15 @@ canvas.addEventListener('mousedown', (e) => {
   }
   // Ground loot outranks the tile under it: clicking a bag (or its
   // label) takes exactly that bag — in reach it goes straight to the
-  // pack, out of reach the click is a walk-there-and-take errand.
+  // pack, out of reach the click is a walk-there-and-take errand. The
+  // loot panel survives these clicks (taking IS the conversation) and
+  // closes on any other world click.
   const lootHit = renderer.lootHitTest(e.clientX, e.clientY);
   if (lootHit) {
     game.pickupWalk(lootHit.eid);
     return;
   }
+  lootPanel.close();
   const pos = game.predictor.pos;
   const dx = tx + 0.5 - pos.x;
   const dy = ty + 0.5 - pos.y;
@@ -777,6 +795,8 @@ function frame(now: number): void {
   if (game.ownEid !== null) {
     const pos = game.predictor.pos;
     stationPanels.enforceAnchor(pos.x, pos.y);
+    // The loot panel is the same kind of conversation, with the pile.
+    lootPanel.update(pos.x, pos.y);
   }
   // The station being talked to (open panel) animates its in-use
   // choreography — chest lid open, furnace stoked — via renderer heat.

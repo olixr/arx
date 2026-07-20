@@ -824,8 +824,16 @@ export class ClientGame {
   }
 
   /** All ground drops within `radius` tiles of the player, nearest first. */
-  nearbyLoot(radius: number): Array<{ eid: EntityId; x: number; y: number; d: number }> {
-    const out: Array<{ eid: EntityId; x: number; y: number; d: number }> = [];
+  nearbyLoot(radius: number): Array<{
+    eid: EntityId;
+    x: number;
+    y: number;
+    d: number;
+    itemId: string;
+    qty: number;
+    roll?: ItemRoll;
+  }> {
+    const out: ReturnType<ClientGame['nearbyLoot']> = [];
     const pos = this.predictor.pos;
     for (const [eid, remote] of this.entities) {
       if (remote.meta.kind !== EntityKind.ItemDrop) continue;
@@ -833,7 +841,17 @@ export class ClientGame {
       const x = latest?.x ?? remote.meta.x;
       const y = latest?.y ?? remote.meta.y;
       const d = Math.hypot(x - pos.x, y - pos.y);
-      if (d <= radius) out.push({ eid, x, y, d });
+      if (d <= radius) {
+        out.push({
+          eid,
+          x,
+          y,
+          d,
+          itemId: remote.meta.defId ?? '',
+          qty: remote.meta.qty ?? 1,
+          roll: remote.meta.roll,
+        });
+      }
     }
     out.sort((a, b) => a.d - b.d);
     return out;
