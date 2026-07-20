@@ -179,6 +179,12 @@ const defs: NpcDef[] = [
       // Throwers carry the warband's colors.
       { item: 'cape_banner', qty: [1, 1], chance: 0.06 },
       { item: 'apprentice_robe', qty: [1, 1], chance: 0.04 },
+      // Tidecaller: looted off the coast the warband raids — the full
+      // sea-cloth chase set travels with the throwers.
+      { item: 'tidecaller_hood', qty: [1, 1], chance: 0.02 },
+      { item: 'tidecaller_robe', qty: [1, 1], chance: 0.015 },
+      { item: 'tidecaller_skirts', qty: [1, 1], chance: 0.018 },
+      { item: 'tidecaller_slippers', qty: [1, 1], chance: 0.02 },
     ],
     respawnSec: 30,
     color: '#6a9a3a',
@@ -216,6 +222,10 @@ const defs: NpcDef[] = [
       { item: 'nightveil_cowl', qty: [1, 1], chance: 0.025 },
       { item: 'nightveil_leggings', qty: [1, 1], chance: 0.02 },
       { item: 'nightveil_boots', qty: [1, 1], chance: 0.025 },
+      // Voidwhisper: the crypt's other prowler dressed in cloth.
+      { item: 'voidwhisper_cowl', qty: [1, 1], chance: 0.02 },
+      { item: 'voidwhisper_skirts', qty: [1, 1], chance: 0.018 },
+      { item: 'voidwhisper_slippers', qty: [1, 1], chance: 0.02 },
     ],
     respawnSec: 30,
     color: '#d8d4c8',
@@ -270,6 +280,8 @@ const defs: NpcDef[] = [
       { item: 'dreadforge_sabatons', qty: [1, 1], chance: 0.035 },
       // The Nightveil jerkin: the crypt's quietest prize.
       { item: 'nightveil_jerkin', qty: [1, 1], chance: 0.05 },
+      // The Voidwhisper robe: the eye that watched him fall.
+      { item: 'voidwhisper_robe', qty: [1, 1], chance: 0.045 },
     ],
     respawnSec: 90,
     color: '#e8e2d0',

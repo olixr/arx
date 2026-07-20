@@ -652,6 +652,31 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     code: 'Hq',
     desc: 'Oiled leather, a fist of fletching, and no excuses left.',
   },
+  {
+    id: 'scholars_tome',
+    name: "Scholar's tome",
+    slot: 'offhand',
+    levelReq: { skill: 'magic', level: 10 },
+    armor: 0,
+    affixPool: [{ stat: 'magic', w: 3 }, { stat: 'herbalism' }, { stat: 'regen' }],
+    acquisition: { craft: true },
+    recipe: {
+      skill: 'crafting',
+      levelReq: 12,
+      xp: 90,
+      station: 'workbench',
+      ticks: 55,
+      inputs: [
+        { item: 'cloth', qty: 1 },
+        { item: 'leather', qty: 1 },
+        { item: 'moonbell', qty: 1 },
+      ],
+    },
+    value: 190,
+    color: '#4a5a9c',
+    code: 'St',
+    desc: 'Heavily annotated. The margins argue with the text and win.',
+  },
 
   // ================================================ themed plate sets
   // The plate wardrobe: five full sets, each a color story and a shape
@@ -694,6 +719,26 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // -------- Stagheart: bark leather, moss trim, ivory ANTLERS — the
   // endgame forest-king craft. The wilds crown their own.
   ...stagheartSet(),
+
+  // ================================================= themed cloth sets
+  // The cloth wardrobe: the caster's five color stories. Sashes, hem
+  // runes, floating orbs and halos where leather had fur and scale.
+
+  // -------- Hedgewitch: moss and mustard patchwork, the herb-garden
+  // craft line. A pointed hat colorway proves hats obey the law too.
+  ...hedgewitchSet(),
+  // -------- Tidecaller: deep teal and sea-foam, drop-only from the
+  // goblin raiders who loot the coast. The tide keeps its own ledger.
+  ...tidecallerSet(),
+  // -------- Voidwhisper: ink-violet and pale lavender, drop-only from
+  // the crypt. A masked cowl and an unblinking eye device.
+  ...voidwhisperSet(),
+  // -------- Cindersworn: charcoal and live ember, the high craft
+  // line. Hem runes that glow like a banked fire.
+  ...cinderswornSet(),
+  // -------- Starweaver: midnight and silver, the endgame craft.
+  // Orbits its own shoulder-orbs under a floating halo.
+  ...starweaverSet(),
 ];
 
 // ---------------------------------------------------------- set makers
@@ -1107,6 +1152,211 @@ function stagheartSet(): EquipmentDef[] {
       acquisition: { craft: true }, recipe: craft(45, 600, 100, 2, 1, 0),
       value: 1100, color, code: 'Gb',
       desc: 'They remember every path and prefer the unmarked ones.',
+    },
+  ];
+}
+
+function hedgewitchSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'magic', w: 2 },
+    { stat: 'herbalism', w: 2 },
+    { stat: 'farming' },
+    { stat: 'regen' },
+  ];
+  const color = '#5a6b3a';
+  const craft = (levelReq: number, xp: number, ticks: number, cloth: number, extra?: { item: string; qty: number }) => ({
+    skill: 'crafting' as const,
+    levelReq,
+    xp,
+    station: 'workbench' as const,
+    ticks,
+    inputs: extra
+      ? [{ item: 'cloth', qty: cloth }, extra]
+      : [{ item: 'cloth', qty: cloth }],
+  });
+  return [
+    {
+      id: 'hedgewitch_hat', name: 'Hedgewitch hat', slot: 'head', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 12 }, armor: 1, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(14, 100, 55, 2, { item: 'moonbell', qty: 1 }),
+      value: 190, color, code: 'Hh',
+      desc: 'Pointed, patched, and proud of both. Smells faintly of thyme.',
+    },
+    {
+      id: 'hedgewitch_robe', name: 'Hedgewitch robe', slot: 'body', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 14 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(18, 160, 70, 3, { item: 'twine', qty: 2 }),
+      value: 290, color, code: 'Hr',
+      desc: 'Every patch was a lesson. The garden grades generously.',
+    },
+    {
+      id: 'hedgewitch_skirts', name: 'Hedgewitch skirts', slot: 'legs', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 13 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(16, 130, 60, 2, { item: 'twine', qty: 1 }),
+      value: 240, color, code: 'Hs',
+      desc: 'Hemmed high for mud season. The mud appreciates the effort.',
+    },
+    {
+      id: 'hedgewitch_slippers', name: 'Hedgewitch slippers', slot: 'boots', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 12 }, armor: 1, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(15, 110, 55, 2),
+      value: 210, color, code: 'Hp',
+      desc: 'Soft-soled and garden-stained. The cat approves of the toes.',
+    },
+  ];
+}
+
+function tidecallerSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'magic', w: 2 },
+    { stat: 'fishing', w: 2 },
+    { stat: 'regen' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#2f6a78';
+  const piece = (
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    level: number, armor: number, value: number, code: string, desc: string,
+  ): EquipmentDef => ({
+    id, name, slot, armorClass: 'cloth',
+    levelReq: { skill: 'magic', level }, armor, affixPool: pool,
+    acquisition: { drop: true }, value, color, code, desc,
+  });
+  return [
+    piece('tidecaller_hood', 'Tidecaller hood', 'head', 22, 2, 430, 'Th',
+      'A pearl at the brow. The sea pays attention to who wears it.'),
+    piece('tidecaller_robe', 'Tidecaller robe', 'body', 24, 4, 600, 'Tr',
+      'Foam-hemmed teal that always feels a little damp, never cold.'),
+    piece('tidecaller_skirts', 'Tidecaller skirts', 'legs', 22, 3, 510, 'Tk',
+      'They move like slack water and hit like a spring tide.'),
+    piece('tidecaller_slippers', 'Tidecaller slippers', 'boots', 22, 2, 450, 'Tp',
+      'Wet sand keeps no record of them. Neither does anything else.'),
+  ];
+}
+
+function voidwhisperSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'magic', w: 2 },
+    { stat: 'sneak', w: 2 },
+    { stat: 'herbalism' },
+    { stat: 'regen' },
+  ];
+  const color = '#453a5c';
+  const piece = (
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    level: number, armor: number, value: number, code: string, desc: string,
+  ): EquipmentDef => ({
+    id, name, slot, armorClass: 'cloth',
+    levelReq: { skill: 'magic', level }, armor, affixPool: pool,
+    acquisition: { drop: true }, value, color, code, desc,
+  });
+  return [
+    piece('voidwhisper_cowl', 'Voidwhisper cowl', 'head', 27, 3, 580, 'Vh',
+      'Masked to the eyes. The dark finishes your sentences now.'),
+    piece('voidwhisper_robe', 'Voidwhisper robe', 'body', 28, 5, 790, 'Vr',
+      'An unblinking eye on ink-violet cloth. It reads you back.'),
+    piece('voidwhisper_skirts', 'Voidwhisper skirts', 'legs', 27, 3, 680, 'Vk',
+      'Stitched from the quiet between two heartbeats.'),
+    piece('voidwhisper_slippers', 'Voidwhisper slippers', 'boots', 27, 2, 600, 'Vp',
+      'They touch the floor out of politeness, nothing more.'),
+  ];
+}
+
+function cinderswornSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'magic', w: 3 },
+    { stat: 'cooking' },
+    { stat: 'vitality' },
+    { stat: 'regen' },
+  ];
+  const color = '#4a3a38';
+  const craft = (levelReq: number, xp: number, ticks: number, cloth: number, gold: number) => ({
+    skill: 'crafting' as const,
+    levelReq,
+    xp,
+    station: 'workbench' as const,
+    ticks,
+    inputs: [{ item: 'cloth', qty: cloth }, { item: 'wolf_fur', qty: 1 }, { item: 'gold_bar', qty: gold }],
+  });
+  return [
+    {
+      id: 'cindersworn_hood', name: 'Cindersworn hood', slot: 'head', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 33 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(36, 320, 85, 2, 1),
+      value: 720, color, code: 'Ch',
+      desc: 'An ember set at the brow. It has never once gone out.',
+    },
+    {
+      id: 'cindersworn_robe', name: 'Cindersworn robe', slot: 'body', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 34 }, armor: 5, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(40, 460, 100, 4, 2),
+      value: 990, color, code: 'Cr',
+      desc: 'Charcoal cloth, hem runes banked like coals. Warm side out.',
+    },
+    {
+      id: 'cindersworn_skirts', name: 'Cindersworn skirts', slot: 'legs', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 33 }, armor: 4, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(38, 380, 90, 3, 1),
+      value: 850, color, code: 'Ck',
+      desc: 'Ash-grey wool that keeps the heat and spends it later.',
+    },
+    {
+      id: 'cindersworn_slippers', name: 'Cindersworn slippers', slot: 'boots', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 33 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(37, 340, 85, 2, 1),
+      value: 760, color, code: 'Cp',
+      desc: 'Every step leaves the faintest warmth in the floorboards.',
+    },
+  ];
+}
+
+function starweaverSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'magic', w: 3 },
+    { stat: 'herbalism' },
+    { stat: 'vitality' },
+    { stat: 'maxHp' },
+    { stat: 'regen' },
+  ];
+  const color = '#2c3260';
+  const craft = (levelReq: number, xp: number, ticks: number, cloth: number, gold: number, moonbell: number) => ({
+    skill: 'crafting' as const,
+    levelReq,
+    xp,
+    station: 'workbench' as const,
+    ticks,
+    inputs: moonbell > 0
+      ? [{ item: 'cloth', qty: cloth }, { item: 'gold_bar', qty: gold }, { item: 'moonbell', qty: moonbell }]
+      : [{ item: 'cloth', qty: cloth }, { item: 'gold_bar', qty: gold }],
+  });
+  return [
+    {
+      id: 'starweaver_circlet', name: 'Starweaver circlet', slot: 'head', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 40 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(44, 560, 100, 2, 1, 2),
+      value: 1080, color, code: 'Sc',
+      desc: 'A silver band beneath a halo that never quite touches down.',
+    },
+    {
+      id: 'starweaver_robe', name: 'Starweaver robe', slot: 'body', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 42 }, armor: 6, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(48, 780, 120, 4, 2, 3),
+      value: 1450, color, code: 'Sr',
+      desc: 'Midnight cloth, silver star, two orbs in patient orbit.',
+    },
+    {
+      id: 'starweaver_skirts', name: 'Starweaver skirts', slot: 'legs', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 41 }, armor: 5, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(46, 660, 110, 3, 1, 2),
+      value: 1250, color, code: 'Sk',
+      desc: 'Hemmed with constellations nobody has misread yet.',
+    },
+    {
+      id: 'starweaver_slippers', name: 'Starweaver slippers', slot: 'boots', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 40 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(45, 600, 100, 2, 1, 1),
+      value: 1150, color, code: 'Sp',
+      desc: 'Curled silver toes. The night sky, fitted for walking.',
     },
   ];
 }

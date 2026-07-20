@@ -493,6 +493,17 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       chamferRect(ctx, fxx + (lead > 0 ? 0.01 : -0.075) * s, fyy - 0.028 * s, 0.065 * s, 0.055 * s, 0.018 * s);
       ctx.fill();
     }
+    if (bootSt?.curl && !rig.hurt) {
+      // The curled slipper toe — a hook of cloth rising off the tip.
+      ctx.strokeStyle = bootSt.cuff?.color ?? shade(bootCol, 16);
+      ctx.lineWidth = Math.max(2, s * 0.042);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(fxx + lead * 0.06 * s, fyy - 0.004 * s);
+      ctx.quadraticCurveTo(fxx + lead * 0.13 * s, fyy + 0.006 * s, fxx + lead * 0.108 * s, fyy - 0.052 * s);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
   }
   ctx.lineCap = 'butt';
   ctx.lineJoin = 'miter';
@@ -1013,7 +1024,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // of staying glued to the torso corner.
     if (bodySt && bodySt.pauldron !== 'none') {
       const side = Math.sign(offShX - rig.x) || -lead;
-      drawPauldron(ctx, bodySt, offShX, shoulderY, side, s, wS, rig.hurt, false);
+      drawPauldron(ctx, bodySt, offShX, shoulderY, side, s, wS, rig.hurt, false, rig.nowMs);
     }
   };
   // Back-mounted quiver. Depth follows the cape's facing law — behind
@@ -1044,7 +1055,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // Near pauldron caps the striking arm's root, over everything.
     if (bodySt && bodySt.pauldron !== 'none') {
       const side = Math.sign(mainShX - rig.x) || lead;
-      drawPauldron(ctx, bodySt, mainShX, shoulderY, side, s, wS, rig.hurt, true);
+      drawPauldron(ctx, bodySt, mainShX, shoulderY, side, s, wS, rig.hurt, true, rig.nowMs);
     }
   };
   const paintWeapon = (): void => {

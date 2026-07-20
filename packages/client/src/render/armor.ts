@@ -27,7 +27,7 @@ export interface BodyStyle {
   metal?: string;
   cls: ArmorClassStyle;
   silhouette: 'tunic' | 'robe' | 'jerkin' | 'cuirass' | 'brigandine';
-  pauldron: 'none' | 'round' | 'spiked' | 'layered' | 'bladed' | 'fur' | 'feathered';
+  pauldron: 'none' | 'round' | 'spiked' | 'layered' | 'bladed' | 'fur' | 'feathered' | 'orbs';
   pauldronColor?: string;
   /** Bright edge accent on the pauldron rim / blade edge. */
   pauldronTrim?: string;
@@ -36,7 +36,11 @@ export interface BodyStyle {
   chest: 'none' | 'straps' | 'plate' | 'emblem' | 'stitch' | 'scales';
   /** Hanging leather fringe strips off the chest yoke — the buckskin read. */
   fringe?: boolean;
-  emblem?: 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf';
+  emblem?: 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf' | 'star' | 'moon' | 'eye';
+  /** Glowing rune dashes riding the hem trim — the enchanted-cloth read. */
+  runes?: string;
+  /** A waist sash: band, hip knot, two swinging tails. */
+  sash?: string;
   /** Hip plates hanging from the fauld — the heavy-knight lower read. */
   tassets?: boolean;
   /** Robe/coat skirt length below the belt line, tiles. 0 = none. */
@@ -88,6 +92,10 @@ export interface HelmStyle {
   mask?: string;
   /** Hoods: branched ivory antlers — the forest-king crown. */
   antlers?: { color: string };
+  /** Hoods/domes: a cut gem set at the brow band. */
+  gem?: { color: string };
+  /** A floating ring above the crown that never quite touches down. */
+  halo?: { color: string };
 }
 
 export interface LegStyle {
@@ -112,6 +120,8 @@ export interface BootStyle {
   wrap?: { color: string };
   /** A lumpy fur top instead of a clean cuff — winter boots. */
   fur?: { color: string };
+  /** A curled slipper toe — the wizard's footnote. */
+  curl?: boolean;
 }
 
 export interface OffhandStyle {
@@ -215,6 +225,39 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     silhouette: 'jerkin', pauldron: 'feathered', pauldronColor: '#d8cfae',
     chest: 'straps', fringe: true, skirt: 0.14, pouch: true,
   },
+  // The themed cloth sets: sashes, hem runes, orbs and halos — the
+  // caster's wardrobe. Same colorway law as plate and leather.
+  hedgewitch_robe: {
+    color: '#5a6b3a', trim: '#c9a23c', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'stitch', skirt: 0.32,
+    sash: '#c9a23c', sleeves: 'full', underskirt: '#42502c', pouch: true,
+  },
+  tidecaller_robe: {
+    color: '#2f6a78', trim: '#bfe8e0', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'moon',
+    skirt: 0.34, runes: '#bfe8e0', sleeves: 'full',
+    underskirt: '#1f4a55', motes: '#bfe8e0',
+  },
+  voidwhisper_robe: {
+    color: '#453a5c', trim: '#b8a8d8', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'eye',
+    skirt: 0.34, skirtSlit: true, sash: '#2e2740', sleeves: 'full',
+    underskirt: '#332b47', motes: '#9a86c8',
+  },
+  cindersworn_robe: {
+    color: '#4a3a38', trim: '#e05438', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'none', chest: 'stitch', skirt: 0.34,
+    sash: '#8a2f24', glowTrim: '#ff9a4a', runes: '#ff9a4a',
+    sleeves: 'full', mantle: '#3a2d2b', underskirt: '#332826',
+    motes: '#ffb054',
+  },
+  starweaver_robe: {
+    color: '#2c3260', trim: '#c8cee8', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'orbs', pauldronColor: '#9db6ff',
+    chest: 'emblem', emblem: 'star', skirt: 0.36, runes: '#c8cee8',
+    sleeves: 'full', mantle: '#232850', underskirt: '#1e2244',
+    motes: '#aebeff',
+  },
 };
 
 export const HELM_STYLES: Record<string, HelmStyle> = {
@@ -270,6 +313,24 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     color: '#6b5138', trim: '#3e5a30', kind: 'hood',
     antlers: { color: '#e6e0d0' }, ruff: { color: '#8a7a52' },
   },
+  hedgewitch_hat: {
+    color: '#5a6b3a', trim: '#c9a23c', kind: 'wizard', charm: '#e8d06a',
+  },
+  tidecaller_hood: {
+    color: '#2f6a78', trim: '#bfe8e0', kind: 'hood',
+    gem: { color: '#e8f0f4' },
+  },
+  voidwhisper_cowl: {
+    color: '#453a5c', trim: '#b8a8d8', kind: 'hood', mask: '#5a4e78',
+  },
+  cindersworn_hood: {
+    color: '#4a3a38', trim: '#e05438', kind: 'hood',
+    gem: { color: '#ff9a4a' },
+  },
+  starweaver_circlet: {
+    color: '#c8cee8', trim: '#9db6ff', kind: 'circlet',
+    halo: { color: '#c8cee8' },
+  },
 };
 
 export const LEG_STYLES: Record<string, LegStyle> = {
@@ -287,6 +348,11 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   nightveil_leggings: { kind: 'wraps', thigh: '#3a3648', shin: '#302c3c', knee: 'wrap', kneeColor: '#6a5a8c' },
   drakescale_chaps: { kind: 'greaves', thigh: '#6e2f28', shin: '#8c3a32', knee: 'plate', kneeColor: '#d49a4a' },
   stagheart_chaps: { kind: 'wraps', thigh: '#6b5138', shin: '#5a4430', knee: 'wrap', kneeColor: '#3e5a30' },
+  hedgewitch_skirts: { kind: 'pants', thigh: '#4e5c33' },
+  tidecaller_skirts: { kind: 'pants', thigh: '#245562' },
+  voidwhisper_skirts: { kind: 'pants', thigh: '#332b47' },
+  cindersworn_skirts: { kind: 'pants', thigh: '#3a2d2b' },
+  starweaver_skirts: { kind: 'pants', thigh: '#232850' },
 };
 
 export const BOOT_STYLES: Record<string, BootStyle> = {
@@ -305,6 +371,11 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   nightveil_boots: { color: '#302c3c', height: 0.11, cuff: { color: '#6a5a8c' } },
   drakescale_boots: { color: '#8c3a32', height: 0.13, toe: '#d49a4a', cuff: { color: '#c9713c' } },
   stagheart_boots: { color: '#5a4430', height: 0.14, wrap: { color: '#3e5a30' }, cuff: { color: '#d4a43c' } },
+  hedgewitch_slippers: { color: '#8a7a3c', height: 0.07, curl: true },
+  tidecaller_slippers: { color: '#1f4a55', height: 0.08, cuff: { color: '#bfe8e0' } },
+  voidwhisper_slippers: { color: '#2e2740', height: 0.08, cuff: { color: '#b8a8d8' } },
+  cindersworn_slippers: { color: '#332826', height: 0.08, cuff: { color: '#e05438' } },
+  starweaver_slippers: { color: '#232850', height: 0.08, curl: true, cuff: { color: '#c8cee8' } },
 };
 
 export const OFFHAND_STYLES: Record<string, OffhandStyle> = {
@@ -315,6 +386,7 @@ export const OFFHAND_STYLES: Record<string, OffhandStyle> = {
   arcane_orb: { kind: 'orb', color: '#8f9ed6', trim: '#c9c4cf' },
   tower_shield: { kind: 'tower', color: '#8d9299', trim: '#6a6f7d', boss: '#b0b6be' },
   hunters_quiver: { kind: 'quiver', color: '#8a6a45', trim: '#3f6b3a' },
+  scholars_tome: { kind: 'tome', color: '#4a5a9c', trim: '#c8cee8' },
 };
 
 // ---------------------------------------------------------- resolvers
@@ -494,6 +566,31 @@ export function drawTorsoGarment(
         ctx.stroke();
         ctx.globalAlpha = 1;
       }
+      if (st.runes) {
+        // Rune dashes floating just above the hem, each breathing on
+        // its own phase — enchantment as punctuation, not a light show.
+        ctx.strokeStyle = st.runes;
+        ctx.lineWidth = Math.max(1, s * 0.016);
+        for (let i = 0; i < 4; i++) {
+          const p0 = hem[i]!;
+          const p1 = hem[i + 1]!;
+          const mx = (p0.x + p1.x) / 2;
+          const my = (p0.y + p1.y) / 2 - 0.048 * s;
+          ctx.globalAlpha = 0.45 + 0.4 * Math.sin(nowMs * 0.0028 + i * 1.9);
+          ctx.beginPath();
+          ctx.moveTo(mx, my - 0.018 * s);
+          ctx.lineTo(mx, my + 0.018 * s);
+          if (i % 2 === 0) {
+            ctx.moveTo(mx - 0.015 * s, my - 0.004 * s);
+            ctx.lineTo(mx + 0.015 * s, my - 0.004 * s);
+          } else {
+            ctx.moveTo(mx - 0.012 * s, my + 0.012 * s);
+            ctx.lineTo(mx + 0.012 * s, my - 0.014 * s);
+          }
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
       if (st.skirtSlit && !back) {
         // The center slit lets the stride read through the cloth.
         ctx.fillStyle = 'rgba(24, 15, 26, 0.55)';
@@ -565,6 +662,32 @@ export function drawTorsoGarment(
     } else {
       ctx.fillStyle = shade(st.color, -38);
       ctx.fillRect(-ww - 0.008 * s, -0.075 * s, ww * 2 + 0.016 * s, 0.075 * s);
+    }
+
+    // ---- the sash: a wide waist band with a hip knot and two tails
+    // that swing on the stride — how cloth says "belt" with feeling.
+    if (st.sash) {
+      const sCol = st.sash;
+      ctx.fillStyle = sCol;
+      ctx.fillRect(-ww - 0.01 * s, -0.092 * s, ww * 2 + 0.02 * s, 0.056 * s);
+      ctx.fillStyle = shade(sCol, -16);
+      ctx.fillRect(0, -0.092 * s, ww + 0.01 * s, 0.056 * s);
+      const kx = f.lead * ww * 0.6;
+      ctx.fillStyle = shade(sCol, 14);
+      ctx.beginPath();
+      chamferRect(ctx, kx - 0.032 * s, -0.104 * s, 0.064 * s, 0.062 * s, 0.016 * s);
+      ctx.fill();
+      const sway = f.strideSw * 0.02 * s;
+      ctx.fillStyle = shade(sCol, -8);
+      for (const [dx, len] of [[-0.02, 0.15], [0.024, 0.115]] as const) {
+        ctx.beginPath();
+        ctx.moveTo(kx + dx * s - 0.017 * s, -0.05 * s);
+        ctx.lineTo(kx + dx * s + 0.017 * s, -0.05 * s);
+        ctx.lineTo(kx + dx * s + 0.011 * s + sway, len * s - 0.045 * s);
+        ctx.lineTo(kx + dx * s - 0.024 * s + sway, len * s - 0.05 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
 
     // ---- tassets: hip plates hanging off the fauld, swinging a hair
@@ -819,6 +942,44 @@ export function drawTorsoGarment(
           ctx.moveTo(0, ey - r * 0.42);
           ctx.lineTo(0, ey + r * 0.42);
           ctx.stroke();
+        } else if (st.emblem === 'star') {
+          // The celestial device: a four-point star with two pinprick
+          // companions — a constellation, not a logo.
+          ctx.beginPath();
+          ctx.moveTo(0, ey - r * 0.75);
+          ctx.lineTo(r * 0.17, ey - r * 0.17);
+          ctx.lineTo(r * 0.58, ey);
+          ctx.lineTo(r * 0.17, ey + r * 0.17);
+          ctx.lineTo(0, ey + r * 0.75);
+          ctx.lineTo(-r * 0.17, ey + r * 0.17);
+          ctx.lineTo(-r * 0.58, ey);
+          ctx.lineTo(-r * 0.17, ey - r * 0.17);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillRect(r * 0.48, ey - r * 0.66, 0.018 * s, 0.018 * s);
+          ctx.fillRect(-r * 0.68, ey + r * 0.46, 0.018 * s, 0.018 * s);
+        } else if (st.emblem === 'moon') {
+          // The tide device: a waxing crescent, horns to the right —
+          // drawn large; a timid device is no device at all.
+          ctx.beginPath();
+          ctx.arc(0, ey, r * 0.82, -Math.PI * 0.5, Math.PI * 0.5, false);
+          ctx.arc(r * 0.34, ey, r * 0.66, Math.PI * 0.5, -Math.PI * 0.5, true);
+          ctx.closePath();
+          ctx.fill();
+        } else if (st.emblem === 'eye') {
+          // The occult device: an unblinking almond eye. It reads back.
+          ctx.beginPath();
+          ctx.moveTo(-r * 0.88, ey);
+          ctx.quadraticCurveTo(0, ey - r * 0.7, r * 0.88, ey);
+          ctx.quadraticCurveTo(0, ey + r * 0.7, -r * 0.88, ey);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#1c1722';
+          ctx.beginPath();
+          ctx.arc(0, ey, r * 0.27, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(st.trim, 34);
+          ctx.fillRect(r * 0.05, ey - r * 0.2, 0.018 * s, 0.018 * s);
         } else {
         ctx.beginPath();
         if (st.emblem === 'chevron') {
@@ -936,6 +1097,7 @@ export function drawPauldron(
   squashK: number,
   hurt: boolean,
   near: boolean,
+  nowMs = 0,
 ): void {
   if (st.pauldron === 'none') return;
   const base = st.pauldronColor ?? st.metal ?? shade(st.color, -14);
@@ -943,6 +1105,46 @@ export function drawPauldron(
   ctx.save();
   ctx.translate(x, y - 0.035 * s);
   ctx.scale(Math.max(0.55, squashK), 1);
+  if (st.pauldron === 'orbs') {
+    // A conjured orb in patient orbit over each shoulder — floating,
+    // never mounted; the gap between orb and shoulder IS the magic.
+    // Pushed OUTWARD past the skull silhouette: the head paints after
+    // the pauldrons, so an orb hovering straight up simply vanishes.
+    const bob = Math.sin(nowMs * 0.0021 + side * 1.3) * 0.014 * s;
+    const ox = side * 0.14 * s;
+    const oy = -0.095 * s + bob;
+    const orx = 0.072 * s;
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(ox, oy, orx, 0, Math.PI * 2);
+    ctx.fill();
+    if (!hurt) {
+      // Shadowed underside + a hard glint — a sphere, not a dot.
+      ctx.fillStyle = shade(base, -22);
+      ctx.beginPath();
+      ctx.arc(ox, oy, orx, Math.PI * 0.12, Math.PI * 0.88);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(base, 38);
+      ctx.beginPath();
+      ctx.arc(ox - orx * 0.32, oy - orx * 0.34, orx * 0.27, 0, Math.PI * 2);
+      ctx.fill();
+      // One trailing spark falling out of the orbit.
+      ctx.globalAlpha = 0.45 + 0.3 * Math.sin(nowMs * 0.003 + side * 2.1);
+      ctx.fillStyle = shade(base, 20);
+      const spy = oy + orx + 0.03 * s;
+      ctx.beginPath();
+      ctx.moveTo(ox, spy - 0.013 * s);
+      ctx.lineTo(ox + 0.01 * s, spy);
+      ctx.lineTo(ox, spy + 0.013 * s);
+      ctx.lineTo(ox - 0.01 * s, spy);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+    return;
+  }
   if (st.pauldron === 'fur') {
     // A fur mantle over the shoulder: a dark under-row of tufts with a
     // lit row riding on top — mass first, texture second. Lumpy on
@@ -1119,6 +1321,23 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
   const { s, headX, headY, hw, hh, cut, headR, fx, profileK, backK, lead, hurt } = f;
   const mc = hurt ? '#ffffff' : st.color;
 
+  if (st.halo && !hurt) {
+    // The floating ring: hovers on its own slow clock, never touching
+    // the crown, with one glint sliding around the rim. Works at every
+    // facing because a ring has no face to lose.
+    const hy = headY - hh * 1.55 + Math.sin(f.nowMs * 0.0017) * hh * 0.06;
+    ctx.strokeStyle = st.halo.color;
+    ctx.lineWidth = Math.max(1.5, s * 0.022);
+    ctx.beginPath();
+    ctx.ellipse(headX, hy, hw * 0.92, hh * 0.2, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    const ga = f.nowMs * 0.0011;
+    ctx.fillStyle = shade(st.halo.color, 34);
+    ctx.beginPath();
+    ctx.arc(headX + Math.cos(ga) * hw * 0.92, hy + Math.sin(ga) * hh * 0.2, s * 0.016, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   if (st.kind === 'wizard') {
     // THE wizard hat, done properly: a broad down-turned brim, a CHUNKY
     // crown that tapers with gentle concave sides, and the top third
@@ -1262,6 +1481,20 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.fillRect(headX - hw * 0.66, headY - hh * 0.62, hw * 1.32, hh * 0.5);
         ctx.fillStyle = st.trim;
         ctx.fillRect(headX - hw * 0.72, headY - hh * 0.66, hw * 1.44, headR * 0.09);
+        if (st.gem) {
+          // A cut gem at the brow, tracking the face like the eyes do.
+          const gx = headX + fx * headR * 0.36;
+          ctx.fillStyle = st.gem.color;
+          ctx.beginPath();
+          ctx.moveTo(gx, headY - hh * 0.8);
+          ctx.lineTo(gx + headR * 0.1, headY - hh * 0.62);
+          ctx.lineTo(gx, headY - hh * 0.44);
+          ctx.lineTo(gx - headR * 0.1, headY - hh * 0.62);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = shade(st.gem.color, 36);
+          ctx.fillRect(gx - headR * 0.03, headY - hh * 0.74, headR * 0.06, headR * 0.06);
+        }
       } else {
         // From behind, the drape tail: the point every hood hangs from.
         ctx.fillStyle = shade(st.color, -10);
