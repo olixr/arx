@@ -1252,7 +1252,7 @@ function drakescaleSet(): EquipmentDef[] {
     xp,
     station: 'tanning_rack' as const,
     ticks,
-    inputs: [{ item: 'leather', qty: leather }, { item: 'iron_bar', qty: iron }],
+    inputs: [{ item: 'hardened_leather', qty: leather }, { item: 'iron_bar', qty: iron }],
   });
   return [
     {
@@ -1309,8 +1309,8 @@ function stagheartSet(): EquipmentDef[] {
     station: 'tanning_rack' as const,
     ticks,
     inputs: feather > 0
-      ? [{ item: 'leather', qty: leather }, { item: 'gold_bar', qty: gold }, { item: 'feather', qty: feather }]
-      : [{ item: 'leather', qty: leather }, { item: 'gold_bar', qty: gold }],
+      ? [{ item: 'hardened_leather', qty: leather }, { item: 'gold_bar', qty: gold }, { item: 'feather', qty: feather }]
+      : [{ item: 'hardened_leather', qty: leather }, { item: 'gold_bar', qty: gold }],
   });
   return [
     {
@@ -1482,7 +1482,7 @@ function cinderswornSet(): EquipmentDef[] {
     xp,
     station: 'loom' as const,
     ticks,
-    inputs: [{ item: 'cloth', qty: cloth }, { item: 'wolf_fur', qty: 1 }, { item: 'gold_bar', qty: gold }],
+    inputs: [{ item: 'gloomsilk', qty: cloth }, { item: 'wolf_fur', qty: 1 }, { item: 'gold_bar', qty: gold }],
   });
   return [
     {
@@ -1539,8 +1539,8 @@ function starweaverSet(): EquipmentDef[] {
     station: 'loom' as const,
     ticks,
     inputs: moonbell > 0
-      ? [{ item: 'cloth', qty: cloth }, { item: 'gold_bar', qty: gold }, { item: 'moonbell', qty: moonbell }]
-      : [{ item: 'cloth', qty: cloth }, { item: 'gold_bar', qty: gold }],
+      ? [{ item: 'gloomsilk', qty: cloth }, { item: 'gold_bar', qty: gold }, { item: 'moonbell', qty: moonbell }]
+      : [{ item: 'gloomsilk', qty: cloth }, { item: 'gold_bar', qty: gold }],
   });
   return [
     {
@@ -1881,7 +1881,7 @@ function stormwovenSet(): EquipmentDef[] {
     xp,
     station: 'loom' as const,
     ticks,
-    inputs: [{ item: 'cloth', qty: cloth }, { item: 'iron_bar', qty: 1 }],
+    inputs: [{ item: 'linen', qty: cloth }, { item: 'iron_bar', qty: 1 }],
   });
   return [
     {
@@ -3261,7 +3261,9 @@ function woodLine(
       acquisition: { craft: true },
       recipe: {
         skill: 'woodworking', levelReq: w.craftReq, xp: w.xp, station: 'carving_bench',
-        ticks: design.ticks, inputs: [{ item: w.log, qty: design.logs }],
+        // Every bow is strung: the tailor's twine is the bowyer's string.
+        ticks: design.ticks,
+        inputs: [{ item: w.log, qty: design.logs }, { item: 'twine', qty: 1 }],
       },
       value: w.value, color: w.color, code: w.code, desc: w.desc,
     };
@@ -3362,7 +3364,7 @@ function bowDefs(): EquipmentDef[] {
       acquisition: { craft: true },
       recipe: {
         skill: 'woodworking', levelReq: 25, xp: 200, station: 'carving_bench', ticks: 65,
-        inputs: [{ item: 'willow_log', qty: 1 }, { item: 'feather', qty: 8 }, { item: 'leather', qty: 1 }],
+        inputs: [{ item: 'willow_log', qty: 1 }, { item: 'feather', qty: 8 }, { item: 'leather', qty: 1 }, { item: 'twine', qty: 1 }],
       },
       value: 380, color: '#4a8ab8', code: 'Hk',
       desc: 'A fowler\'s recurve, kingfisher-blue, tufted with the feathers of everything it has ever beaten to the sky.',
@@ -3375,7 +3377,7 @@ function bowDefs(): EquipmentDef[] {
       acquisition: { craft: true },
       recipe: {
         skill: 'woodworking', levelReq: 28, xp: 240, station: 'carving_bench', ticks: 75,
-        inputs: [{ item: 'oak_log', qty: 2 }, { item: 'sagewort', qty: 2 }, { item: 'berries', qty: 4 }],
+        inputs: [{ item: 'oak_log', qty: 2 }, { item: 'sagewort', qty: 2 }, { item: 'berries', qty: 4 }, { item: 'twine', qty: 1 }],
       },
       value: 460, color: '#5a9a4a', code: 'He',
       desc: 'Cut from the living heart of a great oak that forgave the bowyer. Leaves still bud along the limbs in spring.',
@@ -3388,7 +3390,7 @@ function bowDefs(): EquipmentDef[] {
       acquisition: { craft: true },
       recipe: {
         skill: 'woodworking', levelReq: 45, xp: 420, station: 'carving_bench', ticks: 90,
-        inputs: [{ item: 'yew_log', qty: 2 }, { item: 'gold_bar', qty: 1 }, { item: 'moonbell', qty: 2 }],
+        inputs: [{ item: 'yew_log', qty: 2 }, { item: 'gold_bar', qty: 1 }, { item: 'moonbell', qty: 2 }, { item: 'twine', qty: 1 }],
       },
       value: 880, color: '#8ab4c8', code: 'Wi',
       desc: 'A yew war bow drilled with song-holes. You hear the note. Then whatever the note was about.',

@@ -133,6 +133,37 @@ test('trade-skill law: every recipe belongs to a named trade, at that trade\'s s
   assert.ok(anywhere.length <= 3, `field-craft list grew: ${anywhere.join(', ')}`);
 });
 
+test('prepared-material law: every trade good has a source and a sink', () => {
+  const dropped = new Set<string>();
+  for (const t of LOOT_TABLES.values()) {
+    for (const e of t.entries) if (e.item) dropped.add(e.item);
+  }
+  // Raw combat drops that feed the tanner and the weaver.
+  for (const raw of ['scrap_hide', 'linen_scrap', 'gloomsilk_thread', 'cowhide', 'wolf_fur']) {
+    assert.ok(ITEMS.has(raw), `${raw} missing`);
+    assert.ok(dropped.has(raw), `${raw} drops from no one`);
+  }
+  // Prepared materials: each has a producing recipe AND a consuming recipe —
+  // raw thing → trade good → product, the profession's whole day.
+  for (const mat of ['leather', 'hardened_leather', 'cloth', 'linen', 'gloomsilk', 'twine']) {
+    assert.ok(ITEMS.has(mat), `${mat} missing`);
+    const makers = [...RECIPES.values()].filter((r) => r.output.item === mat);
+    const users = [...RECIPES.values()].filter((r) => r.inputs.some((i) => i.item === mat));
+    assert.ok(makers.length > 0, `${mat} has no producing recipe`);
+    assert.ok(users.length > 0, `${mat} is consumed by nothing`);
+  }
+  // Every craftable bow is strung with twine.
+  for (const item of ITEMS.values()) {
+    if (item.weapon?.ammo !== 'arrow') continue;
+    const r = [...RECIPES.values()].find((x) => x.output.item === item.id);
+    if (!r) continue; // drop-only finds
+    assert.ok(
+      r.inputs.some((i) => i.item === 'twine'),
+      `${item.id} is a bow with no bowstring`,
+    );
+  }
+});
+
 test('weapon oils: valid statuses, every vial is brewable, potency climbs the skill', () => {
   const vials = [...ITEMS.values()].filter((i) => i.coating);
   assert.ok(vials.length >= 4, 'the poison-maker needs a shelf of vials');
