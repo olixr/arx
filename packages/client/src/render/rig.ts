@@ -2,6 +2,17 @@ import { CLOTH_COLORS, HAIR_COLORS, PoseState, SKIN_TONES, type Look } from '@de
 import { itemDef } from '@devcraft/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import { LegRig, chooseLimbSign, solveLimb, type LegPose, type LegRigConfig } from './legs.js';
+import {
+  bodyStyle,
+  bootStyle,
+  drawHelmet,
+  drawOffhandOnArm,
+  drawQuiver,
+  drawTorsoGarment,
+  helmStyle,
+  legStyle,
+  offhandStyle,
+} from './armor.js';
 
 export type { LegPose } from './legs.js';
 
@@ -140,6 +151,14 @@ export interface RigPose {
   bodyItem?: string;
   /** Equipped head gear — drawn as a real helmet over the skull. */
   headItem?: string;
+  /** Equipped leg armor — recolors/overlays the IK leg strokes. */
+  legsItem?: string;
+  /** Equipped boots — replace the bare foot chip with real footwear. */
+  bootsItem?: string;
+  /** Equipped offhand — shield on the arm, quiver on the back, etc. */
+  offhandItem?: string;
+  /** A cape is worn — back-mounted gear drops to the hip to clear it. */
+  hasCape?: boolean;
   /** Player-chosen base look (skin/hair/beard/cloth palettes). */
   look?: Look;
   /** Overall size multiplier (goblins ~0.8, champions ~1.2). */
@@ -207,7 +226,7 @@ function drawArm(
   sleeve: string,
   skin: string,
   s: number,
-): void {
+): { ex: number; ey: number; kx: number; ky: number } {
   const { ex, ey, kx, ky } = solveArm(sx, sy, hx, hy, ARM_LEN * s, prefX, prefY);
 
   ctx.lineCap = 'round';
@@ -234,6 +253,8 @@ function drawArm(
   chamferRect(ctx, -0.055 * s, -0.06 * s, 0.13 * s, 0.12 * s, 0.03 * s);
   ctx.fill();
   ctx.restore();
+  // The solved joints, so gear (shields, tomes) can strap to the bone.
+  return { ex, ey, kx, ky };
 }
 
 export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void {
@@ -248,6 +269,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const fy = Math.sin(rig.dir);
   const px = -fy;
   const py = fx;
+  // Facing bands, shared by the face, the helmet, and the armor.
+  const profileK = Math.abs(fx);
+  const backK = Math.max(0, Math.min(1, (-fy - 0.2) / 0.35)); // 1 = facing away
+  const lead = fx >= 0 ? 1 : -1;
+
+  // Equipment styles, resolved once per frame (Record lookups).
+  const bodySt = rig.bodyItem ? bodyStyle(rig.bodyItem) : null;
+  const legSt = rig.legsItem ? legStyle(rig.legsItem) : null;
+  const bootSt = rig.bootsItem ? bootStyle(rig.bootsItem) : null;
+  const offSt = rig.offhandItem ? offhandStyle(rig.offhandItem) : null;
 
   // Sneak crouch: dropping the hip line shortens the leg chain so the IK
   // bends the knees for free, and the whole arm frame (armY/shoulderY)
@@ -297,30 +328,90 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const kx = hipX + ex / 2 + cxn * sign * bend;
     const ky = hipY + ey / 2 + cyn * sign * bend;
 
-    ctx.strokeStyle = rig.hurt
-      ? '#ffffff'
-      : rig.look
-        ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
-        : shade(bodyColor, -28);
+    // Leg dressing: thigh and shin as separate strokes so greaves and
+    // wraps can recolor the lower leg; default = today's exact colors.
+    const baseLeg = rig.look
+      ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
+      : shade(bodyColor, -28);
+    const thighCol = rig.hurt ? '#ffffff' : (legSt?.thigh ?? baseLeg);
+    const shinCol = rig.hurt ? '#ffffff' : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
+    const fxx = hipX + ex;
+    const fyy = hipY + ey;
+    ctx.strokeStyle = thighCol;
     ctx.lineWidth = Math.max(2, s * 0.09);
     ctx.beginPath();
     ctx.moveTo(hipX, hipY);
     ctx.lineTo(kx, ky);
-    ctx.lineTo(hipX + ex, hipY + ey);
-    ctx.stroke();
+    if (shinCol === thighCol) {
+      ctx.lineTo(fxx, fyy);
+      ctx.stroke();
+    } else {
+      ctx.stroke();
+      ctx.strokeStyle = shinCol;
+      ctx.beginPath();
+      ctx.moveTo(kx, ky);
+      ctx.lineTo(fxx, fyy);
+      ctx.stroke();
+    }
+    // Knee dressing: a plate chip riding the shin's angle, or wraps.
+    if (legSt?.knee === 'plate' && !rig.hurt) {
+      ctx.save();
+      ctx.translate(kx, ky);
+      ctx.rotate(Math.atan2(fyy - ky, fxx - kx) - Math.PI / 2);
+      ctx.fillStyle = legSt.kneeColor ?? shinCol;
+      ctx.beginPath();
+      chamferRect(ctx, -0.055 * s, -0.045 * s, 0.11 * s, 0.1 * s, 0.025 * s);
+      ctx.fill();
+      ctx.fillStyle = shade(legSt.kneeColor ?? shinCol, 14);
+      ctx.fillRect(-0.04 * s, -0.038 * s, 0.08 * s, 0.028 * s);
+      ctx.restore();
+    } else if (legSt?.knee === 'wrap' && !rig.hurt) {
+      ctx.strokeStyle = legSt.kneeColor ?? shade(shinCol, -16);
+      ctx.lineWidth = Math.max(1.5, s * 0.028);
+      for (const o of [-0.02, 0.025]) {
+        ctx.beginPath();
+        ctx.moveTo(kx - 0.05 * s, ky + o * s - 0.012 * s);
+        ctx.lineTo(kx + 0.05 * s, ky + o * s + 0.012 * s);
+        ctx.stroke();
+      }
+      ctx.lineWidth = Math.max(2, s * 0.09);
+    }
 
-    // Foot chip: a flat blocky boot at the contact point.
-    ctx.fillStyle = rig.hurt ? '#ffffff' : BOOT;
+    // Boots: a shaft climbing the shin, folded cuff, foot, toe cap —
+    // or the bare hardcoded chip when nothing is worn.
+    const bootCol = rig.hurt ? '#ffffff' : (bootSt?.color ?? BOOT);
+    if (bootSt) {
+      const shinLen = Math.hypot(fxx - kx, fyy - ky) || 1;
+      const hK = Math.min(1, (bootSt.height * s) / shinLen);
+      const topX = fxx + (kx - fxx) * hK;
+      const topY = fyy + (ky - fyy) * hK;
+      ctx.strokeStyle = bootCol;
+      ctx.lineWidth = Math.max(2.5, s * 0.1);
+      ctx.beginPath();
+      ctx.moveTo(topX, topY);
+      ctx.lineTo(fxx, fyy);
+      ctx.stroke();
+      if (bootSt.cuff && !rig.hurt) {
+        ctx.strokeStyle = bootSt.cuff.color;
+        ctx.lineWidth = Math.max(2.5, s * 0.115);
+        ctx.beginPath();
+        ctx.moveTo(topX, topY);
+        ctx.lineTo(topX + (fxx - topX) * 0.22, topY + (fyy - topY) * 0.22);
+        ctx.stroke();
+      }
+      ctx.lineWidth = Math.max(2, s * 0.09);
+    }
+    ctx.fillStyle = bootCol;
     ctx.beginPath();
-    chamferRect(
-      ctx,
-      hipX + ex - 0.075 * s,
-      hipY + ey - 0.03 * s,
-      0.15 * s,
-      0.06 * s,
-      0.022 * s,
-    );
+    chamferRect(ctx, fxx - 0.075 * s, fyy - 0.03 * s, 0.15 * s, 0.06 * s, 0.022 * s);
     ctx.fill();
+    if (bootSt?.toe && !rig.hurt) {
+      // Steel toe on the leading half of the foot.
+      ctx.fillStyle = bootSt.toe;
+      ctx.beginPath();
+      chamferRect(ctx, fxx + (lead > 0 ? 0.01 : -0.075) * s, fyy - 0.028 * s, 0.065 * s, 0.055 * s, 0.018 * s);
+      ctx.fill();
+    }
   }
   ctx.lineCap = 'butt';
   ctx.lineJoin = 'miter';
@@ -799,7 +890,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Shoulders slide smoothly along the shoulder line toward each hand
   // (billboard-friendly: continuous, never pops). An archer anchors the
   // string arm on the rear shoulder, the bow arm on the front.
-  const sleeve = rig.hurt ? '#ffffff' : shade(bodyColor, -12);
+  const sleeve = rig.hurt ? '#ffffff' : (bodySt?.sleeve ?? shade(bodyColor, -12));
   const archer = drawing || loosing;
   // Shoulders: slide along the shoulder bar with an active swing, but
   // settle onto fixed anatomical anchors at rest — a hanging arm hangs
@@ -814,8 +905,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   offShX += (rig.x - restSide * tw * 0.85 * wS - offShX) * restSettle;
   // Aiming up-and-away puts the gear behind the body.
   const weaponBehind = fy < -0.35;
-  const paintOffArm = (): void =>
-    drawArm(
+  const paintOffArm = (): void => {
+    const joints = drawArm(
       ctx,
       offShX,
       shoulderY,
@@ -828,7 +919,27 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       skin,
       s,
     );
-  const paintMainArm = (): void =>
+    // Arm-carried offhand rides the solved forearm, same depth layer as
+    // the arm itself so the strap never breaks. An archer's off hand is
+    // busy holding the bow — the shield sits this one out.
+    if (offSt && offSt.kind !== 'quiver' && !archer) {
+      drawOffhandOnArm(ctx, offSt, joints, s, profileK, rig.hurt);
+    }
+  };
+  // Back-mounted quiver: shoulder line, or the off hip when a cape owns
+  // the back. Depth follows the cape's facing law — behind the torso
+  // when the player faces the camera, in front when they face away.
+  const quiverFront = offSt?.kind === 'quiver' && fy < -0.16;
+  const paintQuiver = (): void => {
+    if (!offSt || offSt.kind !== 'quiver') return;
+    if (rig.hasCape) {
+      drawQuiver(ctx, offSt, rig.x - lead * 0.17 * s * wS, armY + 0.1 * s, s, lead, rig.hurt);
+    } else {
+      drawQuiver(ctx, offSt, rig.x - fx * 0.14 * s, shoulderY - 0.02 * s, s, lead, rig.hurt);
+    }
+  };
+  if (!quiverFront) paintQuiver();
+  const paintMainArm = (): void => {
     drawArm(
       ctx,
       mainShX,
@@ -842,6 +953,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       skin,
       s,
     );
+  };
   const paintWeapon = (): void => {
     // Station props: the smith's own kit, drawn regardless of loadout.
     if (craftKind === 'anvil') {
@@ -933,39 +1045,31 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   if (lean !== 0) ctx.rotate(lean);
   ctx.scale(wS, hScale);
 
-  // Rectangular tunic: shoulders tapering to the waist — kept trim so
-  // the silhouette reads lithe rather than broad.
-  ctx.fillStyle = bodyColor;
-  ctx.beginPath();
-  ctx.moveTo(-tw, -th);
-  ctx.lineTo(tw, -th);
-  ctx.lineTo(ww, 0.02 * s);
-  ctx.lineTo(-ww, 0.02 * s);
-  ctx.closePath();
-  ctx.fill();
-  // Hard shade half — the flat-art form read.
-  if (!rig.hurt) {
-    ctx.fillStyle = shade(bodyColor, -18);
-    ctx.beginPath();
-    ctx.moveTo(0, -th);
-    ctx.lineTo(tw, -th);
-    ctx.lineTo(ww, 0.02 * s);
-    ctx.lineTo(0, 0.02 * s);
-    ctx.closePath();
-    ctx.fill();
-    // Lit shoulder cap plane.
-    ctx.fillStyle = shade(bodyColor, 14);
-    ctx.beginPath();
-    ctx.moveTo(-tw, -th);
-    ctx.lineTo(tw, -th);
-    ctx.lineTo(tw * 0.9, -th + 0.07 * s);
-    ctx.lineTo(-tw * 0.9, -th + 0.07 * s);
-    ctx.closePath();
-    ctx.fill();
-    // Belt band grounds the silhouette.
-    ctx.fillStyle = shade(bodyColor, -38);
-    ctx.fillRect(-ww - 0.008 * s, -0.075 * s, ww * 2 + 0.016 * s, 0.075 * s);
-  }
+  // Torso garment: the styled body (robe, jerkin, brigandine, cuirass,
+  // pauldrons) — the bare `tunic` default is the original silhouette.
+  drawTorsoGarment(
+    ctx,
+    bodySt ?? {
+      color: bodyColor,
+      trim: shade(bodyColor, -20),
+      cls: 'cloth',
+      silhouette: 'tunic',
+      pauldron: 'none',
+      chest: 'none',
+      skirt: 0,
+    },
+    {
+      s,
+      tw,
+      ww,
+      th,
+      lead,
+      profileK,
+      backK,
+      hurt: rig.hurt,
+      strideSw: ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP,
+    },
+  );
 
   // ---- head (inside the squash frame so turning carries it too).
   // A chamfered block, not a ball — and a BILLBOARD FACE, not a dial:
@@ -981,10 +1085,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const hw = headR * 1.04; // half-width
   const hh = headR * 1.0; // half-height
   const cut = headR * 0.34;
-  const profileK = Math.abs(fx);
-  const backK = Math.max(0, Math.min(1, (-fy - 0.2) / 0.35)); // 1 = facing away
-  const lead = fx >= 0 ? 1 : -1;
   const helm = itemDef(rig.headItem ?? '');
+  const helmSt = helm ? helmStyle(helm.id) : null;
   ctx.fillStyle = skin;
   ctx.beginPath();
   chamferRect(ctx, headX - hw, headY - hh, hw * 2, hh * 2, cut);
@@ -1001,7 +1103,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const BALD = hairStyle === 1;
   const LONG = hairStyle === 2;
   const KNOT = hairStyle === 3;
-  if (!helm && !BALD) {
+  // A circlet sits ON the hair; every other helm owns the skull.
+  if ((!helm || helmSt?.kind === 'circlet') && !BALD) {
     ctx.fillStyle = hairCol;
     if (backK > 0.55) {
       // Back of the skull: the mop covers nearly everything, with one
@@ -1146,30 +1249,28 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     }
   }
 
-  // Helmet: real head gear over the skull — dome, brow band, and a
-  // nose guard when the face is toward the camera. Colors come from
-  // the item, so every future helm is already dressed.
-  if (helm) {
-    const mc = rig.hurt ? '#ffffff' : helm.color;
-    ctx.fillStyle = mc;
-    ctx.beginPath();
-    chamferRect(ctx, headX - hw * 1.06, headY - hh * 1.1, hw * 2.12, hh * 1.06, cut);
-    ctx.fill();
-    // Lit crown facet.
-    ctx.fillStyle = rig.hurt ? '#ffffff' : shade(mc, 16);
-    ctx.fillRect(headX - hw * 0.8, headY - hh * 1.0, hw * 1.6, hh * 0.26);
-    // Brow band, darker steel.
-    ctx.fillStyle = rig.hurt ? '#ffffff' : shade(mc, -22);
-    ctx.fillRect(headX - hw * 1.06, headY - hh * 0.16, hw * 2.12, headR * 0.2);
-    // Nose guard toward the camera; at profile an ear guard flanks the
-    // face opening from BEHIND — never over the eye.
-    if (backK < 0.4 && profileK < 0.6) {
-      ctx.fillRect(headX + fx * headR * 0.36 - headR * 0.09, headY - hh * 0.16, headR * 0.18, hh * 0.62);
-    } else if (backK < 0.4) {
-      ctx.fillRect(headX - lead * hw * 1.02, headY - hh * 0.16, hw * 0.58, hh * 0.6);
-    }
+  // Head gear: styled kinds (dome, greathelm, hood, circlet, horned) —
+  // the classic dome is the fallback, so every helm is already dressed.
+  if (helmSt) {
+    drawHelmet(ctx, helmSt, {
+      s,
+      headX,
+      headY,
+      hw,
+      hh,
+      cut,
+      headR,
+      fx,
+      profileK,
+      backK,
+      lead,
+      hurt: rig.hurt,
+    });
   }
   ctx.restore();
+
+  // A back-facing quiver reads over the torso, like a cape's front side.
+  if (quiverFront) paintQuiver();
 
   // ---- weapon + striking arm in front of the torso (the bold read).
   if (!weaponBehind) {
