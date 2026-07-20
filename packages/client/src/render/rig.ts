@@ -1167,7 +1167,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // while the blade angles stay true to forward/backward.
       const oc = bladeCarriage(offGrip, wSide, runK);
       let oAngle = oc.angle;
-      ox -= oc.dx * s * wS;
+      // PROFILE TUCK: side-on you cannot see both hilts — the trailing
+      // fist slides in behind the torso silhouette (it already paints
+      // under the torso, so occlusion is free once it overlaps), and
+      // its blade peeks out past the body instead of hanging beside it
+      // in front. Front/back facings keep the full two-blade spread.
+      const tuck = 1 - 0.72 * profileK;
+      ox = rig.x - (wSide * tw * 1.02 * wS + oc.dx * s * wS) * tuck;
       oy = armY + (0.15 + oc.dy) * s;
       if (idleK > 0) {
         oAngle += Math.sin(rig.nowMs * 0.0011 + 2.1) * 0.045 * idleK;
