@@ -163,7 +163,15 @@ export interface RigPose {
    * over ~240ms instead of mirror-teleporting (the wrist-snap fix).
    * Absent = stateless fallbacks (single thresholds, instant side).
    */
-  depthMemory?: { mainBehind: boolean; side?: number; prevSide?: number; sideFlipMs?: number };
+  depthMemory?: {
+    mainBehind: boolean;
+    side?: number;
+    prevSide?: number;
+    sideFlipMs?: number;
+    /** Low-passed arm-swing drive (see the SMOOTHED SWING law). */
+    sw?: number;
+    swMs?: number;
+  };
   bodyColor: string;
   hurt: boolean;
   isOwn: boolean;
@@ -1096,6 +1104,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // the mid-run "wrists flip around" snap. With caller memory the side
   // eases ±1→∓1 through 0 over 240ms: the hands PASS across the body
   // and every carriage angle (all linear in side) sweeps with them.
+  // The flip only REGISTERS once the facing is clearly past vertical
+  // (|fx| > 0.12): walking straight north/south, fx jitters around
+  // zero, and an undebounced sign ping-ponged the hands across the
+  // body every few steps — the "pivoting between two frames" read.
   let sideS = restSide;
   const mem = rig.depthMemory;
   if (mem) {
@@ -1103,7 +1115,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       mem.side = restSide;
       mem.sideFlipMs = -1e9;
     }
-    if (mem.side !== restSide) {
+    if (mem.side !== restSide && Math.abs(fx) > 0.12) {
       mem.prevSide = mem.side;
       mem.side = restSide;
       mem.sideFlipMs = rig.nowMs;
@@ -1111,6 +1123,30 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const t = Math.max(0, Math.min(1, (rig.nowMs - (mem.sideFlipMs ?? -1e9)) / 240));
     const k = t * t * (3 - 2 * t);
     sideS = mem.side * k + (mem.prevSide ?? mem.side) * (1 - k);
+  }
+  // THE FACING-WEIGHT LAW: the carriage rake is a PROFILE read. Side-on
+  // the blade rakes fully forward or back; facing the camera (or away)
+  // there IS no screen-forward, so the rake relaxes toward a near-
+  // vertical hang — floored at 0.35 so the two grips stay readable
+  // front-on. Feeding the full ±1 at every facing is what held swords
+  // sideways and fists high on a north-south run.
+  const sideW = sideS * (0.35 + 0.65 * profileK);
+  // THE SMOOTHED SWING LAW: the raw pump drive — the foot-lift
+  // differential — saturates and kinks at every footfall, and wrists
+  // driven straight off it hinge between two poses. An ~80ms low-pass
+  // turns the drive into a sweep; the lag IS the lag of a relaxed arm.
+  // Stateless callers fall back to the raw drive.
+  const swRaw = Math.max(
+    -1,
+    Math.min(1, ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP),
+  );
+  let swS = swRaw;
+  if (mem) {
+    const dt = Math.max(0, Math.min(120, rig.nowMs - (mem.swMs ?? rig.nowMs)));
+    const prev = mem.sw ?? swRaw;
+    swS = prev + (swRaw - prev) * (1 - Math.exp(-dt / 80));
+    mem.sw = swS;
+    mem.swMs = rig.nowMs;
   }
   // Per-fist grips: each hand resolves its own carriage. Flip is a
   // property of the GRIP, constant through swings — a reversed fist
@@ -1125,7 +1161,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const offCompact =
     offBlade && (itemDef(rig.offhandItem!)?.weapon?.range ?? 2) <= 1.5 ? 1 : 0;
   // Off-blade baseline: the raised guard read it keeps through combat.
-  let offBladeAngle = -Math.PI / 2 + sideS * 0.35;
+  let offBladeAngle = -Math.PI / 2 + sideW * 0.35;
   if (
     (rig.pose === PoseState.Walk || rig.pose === PoseState.Idle || rig.pose === PoseState.Sneak) &&
     !drawing &&
@@ -1136,13 +1172,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const runK = rig.runF;
     let hx = rig.x + wSide * tw * 1.02 * wS;
     let hy = armY + 0.17 * s;
-    let hAngle = Math.PI / 2 + wSide * (0.3 + 0.35 * runK); // tip down, trailing
+    let hAngle = Math.PI / 2 + sideW * (0.3 + 0.35 * runK); // tip down, trailing
     // How "at rest" the rest really is: flourishes and wrist life only
     // play when the figure is planted (no gait, no sneak crouch) —
     // a sneaking rogue does not twirl knives.
     const idleK = (1 - Math.min(1, rig.poleStrength)) * (1 - crouch);
     if (isSword) {
-      const c = bladeCarriage(mainGrip, wSide, runK, mainCompact);
+      const c = bladeCarriage(mainGrip, sideW, runK, mainCompact);
       hAngle = c.angle;
       hx += c.dx * s * wS;
       hy = armY + (0.17 + c.dy) * s;
@@ -1161,7 +1197,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         // hands instead of freezing — and every few seconds the fist
         // plays with it (a rogue wrist-spin, a standard tip-raise).
         hAngle += Math.sin(rig.nowMs * 0.0011) * 0.045 * idleK;
-        const fl = idleFlourish(rig.nowMs, 0, mainGrip, wSide);
+        // Flourishes take the side SIGN, not the weight — a fractional
+        // side would shrink the rogue spin short of its full turn.
+        const fl = idleFlourish(rig.nowMs, 0, mainGrip, sideS >= 0 ? 1 : -1);
         if (fl) {
           hAngle += fl.spin * idleK;
           hy -= fl.lift * s * idleK;
@@ -1171,14 +1209,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     if (isStaff) {
       // Walking stick ↔ run carry, blended on the gait itself.
       const carry = runK * runK * (3 - 2 * runK);
-      const sw = Math.max(
-        -1,
-        Math.min(1, ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP),
-      );
-      // Planted stick rocks with the steps — the stride works the staff.
-      const rock = -sw * 0.2 * rig.poleX * (1 - carry) * Math.min(1, rig.poleStrength);
+      // Planted stick rocks with the steps — the stride works the staff
+      // (on the SMOOTHED swing, so the rock sweeps instead of hinging).
+      const rock = -swS * 0.2 * rig.poleX * (1 - carry) * Math.min(1, rig.poleStrength);
       const up = -Math.PI / 2 + rock;
-      const level = wSide > 0 ? -0.3 : -Math.PI + 0.3; // orb forward, held low
+      // Orb forward, held low — continuous in the facing weight, so the
+      // run carry levels fully at profile and stays near-upright when
+      // the travel is straight toward or away from the camera.
+      const level = -Math.PI / 2 + sideW * (Math.PI / 2 - 0.3);
       hAngle = up + (level - up) * carry;
       // Held at arm's distance — the planted staff stands clear of the
       // torso silhouette, the way a person actually leans on a stick.
@@ -1193,8 +1231,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // toward the shoulder line, lower limb by the thigh, so raising
       // it into the aim is one motion. drawHeldItem slides the grip
       // wrap into the fist on the same settle blend.
-      hAngle = wSide > 0 ? 0.85 : Math.PI - 0.85;
-      hx += wSide * 0.12 * s * wS;
+      // Continuous in the facing weight: at profile the full half-ready
+      // lean (0.85 rad), front/back a near-vertical hang at the side —
+      // and the old binary mirror snap at north/south is gone.
+      hAngle = Math.PI / 2 - sideW * (Math.PI / 2 - 0.85);
+      hx += sideW * 0.12 * s * wS;
       hy = armY + 0.18 * s;
     }
     mainX += (hx - mainX) * restSettle;
@@ -1211,7 +1252,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // The carriage mirrors on FACING, not on the hanging side — the
       // off fist trails the facing, so its outward push (dx) mirrors
       // while the blade angles stay true to forward/backward.
-      const oc = bladeCarriage(offGrip, wSide, runK, offCompact);
+      const oc = bladeCarriage(offGrip, sideW, runK, offCompact);
       let oAngle = oc.angle;
       // The off fist is the NEAR arm — visible at the side from every
       // facing; side-on it pulls part-way onto the body (where a near
@@ -1224,7 +1265,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ox = rig.x + (ox - rig.x) * (1 - 0.45 * nearK);
       if (idleK > 0) {
         oAngle += Math.sin(rig.nowMs * 0.0011 + 2.1) * 0.045 * idleK;
-        const fl = idleFlourish(rig.nowMs, FLOURISH_OFF_PHASE_MS, offGrip, wSide);
+        const fl = idleFlourish(rig.nowMs, FLOURISH_OFF_PHASE_MS, offGrip, sideS >= 0 ? 1 : -1);
         if (fl) {
           oAngle += fl.spin * idleK;
           oy -= fl.lift * s * idleK;
@@ -1238,34 +1279,40 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
 
   // Walking: arms swing counter to the legs along the travel direction.
   if (rig.pose === PoseState.Walk || rig.pose === PoseState.Idle) {
-    // sw is CLAMPED: emergency steps and reconcile snaps can spike a
-    // foot's lift past LIFT_AMP for a frame, and an unclamped ratio
-    // used to fling the hands to full arm extension (the "hands fly
-    // out and up" glitch at speed).
-    const sw = Math.max(
-      -1,
-      Math.min(1, ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP),
-    );
+    // The pump rides the SMOOTHED swing (clamped ±1 at the source):
+    // the raw footfall drive hinges, the low-passed one sweeps.
+    const sw = swS;
     // Arms pump harder as the walk becomes a run — but a hand carrying
-    // a weapon keeps its vertical pump restrained (the blade shouldn't
-    // ride to chest height on a north-south sprint).
+    // a weapon keeps its vertical pump restrained, and MORE so facing
+    // north/south, where the screen pump is purely vertical and used
+    // to carry the fists toward chest height.
     const amp = (0.07 + 0.055 * rig.runF) * s * Math.min(1, rig.poleStrength);
     const armed = isSword || isBow || isStaff;
-    const pumpY = 0.5 - (armed ? 0.18 * restSettle : 0);
+    const pumpY = 0.5 - (armed ? (0.18 + 0.16 * (1 - profileK)) * restSettle : 0);
     mainX += rig.poleX * sw * amp * armSwingK;
     mainY += (rig.poleY * sw * amp * pumpY - Math.abs(sw) * rig.runF * 0.03 * s) * armSwingK;
     const offSwingK = offBlade ? 0.85 : 1;
     offX -= rig.poleX * sw * amp * offSwingK;
     offY -= (rig.poleY * sw * amp * pumpY - Math.abs(sw) * rig.runF * 0.03 * s) * offSwingK;
+    // Front/back travel has no screen-x pump at all (poleX ≈ 0); a
+    // whisper of shared lateral sway — the torso counter-sway of a
+    // real gait — keeps the restrained vertical pump from freezing.
+    const sway = sw * (1 - profileK) * 0.018 * s * Math.min(1, rig.poleStrength);
+    mainX += sway;
+    offX += sway;
     // WRIST-FOLLOW: the blade angle rides the arm swing a few degrees
     // instead of staying frozen while the fist translates — a frozen
     // world-angle on a pumping hand reads as a broken wrist. Subtle,
-    // counter-phased between the hands, and it dies with the gait.
-    if (restSettle > 0 && rig.runF > 0.05) {
-      const follow = sw * rig.runF * restSettle;
-      if (isSword) heldAngle += (mainGrip === 'rogue' ? 0.05 : -0.07) * sideS * follow;
-      else if (isBow) heldAngle += -0.04 * sideS * follow;
-      if (offBlade) offBladeAngle += (offGrip === 'rogue' ? -0.05 : 0.07) * sideS * follow;
+    // counter-phased between the hands, alive from the first walking
+    // step, scaled by the facing weight (quiet wrists on a front/back
+    // gait — the same law the carriage rake follows), and it dies as
+    // the figure stops.
+    if (restSettle > 0 && rig.poleStrength > 0.05) {
+      const follow =
+        sw * (0.3 + 0.7 * rig.runF) * restSettle * Math.min(1, rig.poleStrength);
+      if (isSword) heldAngle += (mainGrip === 'rogue' ? 0.05 : -0.07) * sideW * follow;
+      else if (isBow) heldAngle += -0.04 * sideW * follow;
+      if (offBlade) offBladeAngle += (offGrip === 'rogue' ? -0.05 : 0.07) * sideW * follow;
     }
     // Standing breath: the hands ride a slow offset sine so the figure
     // is never a freeze-frame — alive even when idle.

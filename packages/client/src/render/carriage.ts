@@ -45,8 +45,14 @@ function smooth(t: number): number {
  * runK 0 = standing idle, 1 = full sprint; every returned channel is
  * continuous in runK so the stance never pops as the gait changes.
  *
- * `side` is the FACING sign — which way is forward — for BOTH hands.
- * It is not the side the fist hangs on: the off fist hangs opposite
+ * `side` is the FACING WEIGHT — sign = which way is forward, for BOTH
+ * hands; magnitude = how profile the facing is (1 side-on, shrinking
+ * toward front/back, floored ~0.35 by the caller so grips stay
+ * readable). Every channel is linear in side, so a fractional weight
+ * relaxes the rake toward a near-vertical hang — there is no screen-
+ * forward when the travel runs straight at (or away from) the camera,
+ * and a full-profile rake there held swords sideways and fists high.
+ * It is NOT the side the fist hangs on: the off fist hangs opposite
  * the facing, and feeding it its hanging side mirrors every stance
  * backward (standard read as rogue and vice versa — the user-caught
  * flip-flop). The caller mirrors `dx` itself for the trailing hand.

@@ -140,6 +140,35 @@ test('rogue flourish is a full wrist spin; standard is a tip-raise', () => {
   assert.ok(peak > 0.3 && peak < 1.0, 'a raise, not a revolution');
 });
 
+test('facing-weight law: fractional side relaxes the rake continuously, laws intact', () => {
+  // The caller feeds |side| < 1 when the facing turns toward front/back
+  // — the rake must relax smoothly toward vertical, never jump, and
+  // every hold law must survive at every weight.
+  for (const grip of GRIPS) {
+    for (const sgn of SIDES) {
+      for (const k of [0, 0.5, 1]) {
+        let prev = bladeCarriage(grip, sgn * 0.3, k);
+        for (let w = 0.35; w <= 1.0001; w += 0.05) {
+          const c = bladeCarriage(grip, sgn * w, k);
+          assert.ok(Math.abs(c.angle - prev.angle) < 0.12, `${grip} rake sweeps, never jumps`);
+          assert.ok(Math.sin(c.angle) > 0.35, `${grip} tip stays below the hand at weight ${w}`);
+          // The lead/trail read survives at every weight: the tip still
+          // leans the correct way, just less steeply.
+          const lean = Math.sign(Math.cos(c.angle));
+          assert.equal(lean, grip === 'rogue' ? -sgn : sgn, `${grip} keeps its read at ${w}`);
+          // Rake magnitude grows with the weight — profile is the
+          // strongest read, front/back the most vertical.
+          assert.ok(
+            Math.abs(Math.cos(c.angle)) >= Math.abs(Math.cos(prev.angle)) - 1e-9,
+            `${grip} rake grows with the facing weight`,
+          );
+          prev = c;
+        }
+      }
+    }
+  }
+});
+
 test('compact (knife) carriage rides tighter and steeper, same laws', () => {
   for (const grip of GRIPS) {
     for (const side of SIDES) {
