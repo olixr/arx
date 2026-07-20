@@ -77,7 +77,9 @@ test('equipment defs round-trip through JSON', () => {
 
 test('rolledStats is deterministic and null for non-gear', () => {
   assert.equal(rolledStats('coins'), null);
-  assert.equal(rolledStats('bronze_sword'), null); // weapons roll only once migrated
+  assert.equal(rolledStats('oak_shortbow'), null); // bows/staffs roll only once migrated
+  // Swords ARE migrated: the blade roster rolls, damage carries the base.
+  assert.equal(rolledStats('bronze_sword')?.damage, 1);
   for (let seed = 0; seed < 200; seed++) {
     for (const rar of RARITY_TIERS) {
       const roll: ItemRoll = { rar, seed };
@@ -425,4 +427,35 @@ test('early-game leather sets: four dye lots each, colorways mirror their base',
       }
     }
   }
+});
+
+test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates hold', async () => {
+  const { ABILITIES } = await import('./abilities.js');
+  const swords = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
+  assert.equal(swords.length, 32, 'arming 3 + lines 12 + crafts 5 + finds 12');
+  for (const s of swords) {
+    assert.equal(s.weapon?.style, 'melee');
+    assert.ok(s.weapon!.art && ABILITIES.has(s.weapon!.art), `${s.id} art ${s.weapon!.art} exists`);
+    assert.ok(s.desc && s.desc.length > 20, `${s.id} carries a real story`);
+  }
+  // Metal ladders: damage, gates, value and recipe metal all climb.
+  for (const key of ['falchion', 'gladius', 'scimitar']) {
+    const line = ['', 'iron_', 'steel_', 'gold_'].map((m) => swords.find((s) => s.id === `${m}${key}`)!);
+    assert.ok(line.every(Boolean), `${key} forged in four metals`);
+    for (let i = 1; i < line.length; i++) {
+      assert.ok(line[i]!.weapon!.damage >= line[i - 1]!.weapon!.damage, `${key} damage climbs`);
+      assert.ok(line[i]!.value > line[i - 1]!.value, `${key} value climbs`);
+      assert.ok(line[i]!.recipe!.levelReq > line[i - 1]!.recipe!.levelReq, `${key} smithing climbs`);
+      assert.equal(line[i]!.weapon!.cooldownTicks, line[0]!.weapon!.cooldownTicks, `${key} keeps its cadence`);
+    }
+    const metals = ['bronze_bar', 'iron_bar', 'steel_bar', 'gold_bar'];
+    line.forEach((d, i) => assert.ok(d.recipe!.inputs.some((inp) => inp.item === metals[i]), `${d.id} forged from ${metals[i]}`));
+  }
+  // The chase steepens: legendary-only heirloom, epic+ starmetal.
+  assert.deepEqual(itemDef('oathkeeper')!.gear!.rarities, ['legendary']);
+  assert.deepEqual(itemDef('starfall')!.gear!.rarities, ['epic', 'legendary']);
+  // Rolled damage scales with rarity.
+  const common = rolledStats('dawnbreaker', { rar: 'common', seed: 1 })!;
+  const legendary = rolledStats('dawnbreaker', { rar: 'legendary', seed: 1 })!;
+  assert.ok(legendary.damage! > common.damage!, 'rarity multiplies the edge');
 });

@@ -147,6 +147,8 @@ const defs: NpcDef[] = [
       { item: 'cutpurse_leggings_alleyrat', qty: [1, 1], chance: 0.012 },
       { item: 'cutpurse_boots_alleyrat', qty: [1, 1], chance: 0.014 },
       { item: 'cutpurse_gloves_alleyrat', qty: [1, 1], chance: 0.014 },
+      // Rustbite: something dragged into the nest, years ago.
+      { item: 'rustbite', qty: [1, 1], chance: 0.02 },
     ],
     respawnSec: 15,
     color: '#8a7a6a',
@@ -200,6 +202,9 @@ const defs: NpcDef[] = [
       { item: 'briarplate_greaves_bloodbriar', qty: [1, 1], chance: 0.009 },
       { item: 'briarplate_sabatons_bloodbriar', qty: [1, 1], chance: 0.01 },
       { item: 'briarplate_gauntlets_bloodbriar', qty: [1, 1], chance: 0.01 },
+      // Blades of the camp: scavenged junk and goblin ironwork.
+      { item: 'rustbite', qty: [1, 1], chance: 0.03 },
+      { item: 'gobsplitter', qty: [1, 1], chance: 0.025 },
     ],
     respawnSec: 25,
     color: '#5c8a3a',
@@ -253,6 +258,9 @@ const defs: NpcDef[] = [
       { item: 'briarplate_greaves_nightbriar', qty: [1, 1], chance: 0.008 },
       { item: 'briarplate_sabatons_nightbriar', qty: [1, 1], chance: 0.009 },
       { item: 'briarplate_gauntlets_nightbriar', qty: [1, 1], chance: 0.009 },
+      // The throwers raid the coast AND the fens — their blades say so.
+      { item: 'gobsplitter', qty: [1, 1], chance: 0.02 },
+      { item: 'fenreaper', qty: [1, 1], chance: 0.015 },
     ],
     respawnSec: 30,
     color: '#6a9a3a',
@@ -347,6 +355,11 @@ const defs: NpcDef[] = [
       { item: 'sentinel_greaves_bloodwatch', qty: [1, 1], chance: 0.007 },
       { item: 'sentinel_sabatons_bloodwatch', qty: [1, 1], chance: 0.008 },
       { item: 'sentinel_gauntlets_bloodwatch', qty: [1, 1], chance: 0.008 },
+      // Blades the dead still carry: the fen's harvest, the quiet
+      // sword, and the cleaver with its own red ledger.
+      { item: 'fenreaper', qty: [1, 1], chance: 0.01 },
+      { item: 'gravewhisper', qty: [1, 1], chance: 0.012 },
+      { item: 'bloodletter', qty: [1, 1], chance: 0.008 },
     ],
     respawnSec: 30,
     color: '#d8d4c8',
@@ -423,6 +436,14 @@ const defs: NpcDef[] = [
       { item: 'sentinel_greaves_midnight', qty: [1, 1], chance: 0.025 },
       { item: 'sentinel_sabatons_midnight', qty: [1, 1], chance: 0.03 },
       { item: 'sentinel_gauntlets_midnight', qty: [1, 1], chance: 0.03 },
+      // The Champion's armory: the blades of everyone who tried. The
+      // ladder steepens as it climbs — Oathkeeper only exists legendary.
+      { item: 'duelists_grace', qty: [1, 1], chance: 0.06 },
+      { item: 'bloodletter', qty: [1, 1], chance: 0.04 },
+      { item: 'stormcall', qty: [1, 1], chance: 0.05 },
+      { item: 'sovereign', qty: [1, 1], chance: 0.025 },
+      { item: 'starfall', qty: [1, 1], chance: 0.01 },
+      { item: 'oathkeeper', qty: [1, 1], chance: 0.005 },
     ],
     respawnSec: 90,
     color: '#e8e2d0',
@@ -491,6 +512,10 @@ const defs: NpcDef[] = [
       { item: 'briarplate_greaves', qty: [1, 1], chance: 0.01 },
       { item: 'briarplate_sabatons', qty: [1, 1], chance: 0.012 },
       { item: 'briarplate_gauntlets', qty: [1, 1], chance: 0.012 },
+      // The pack's blades: the fang saber, and — with the deep-winter
+      // packs — the frost-fogged brand itself.
+      { item: 'wolffang', qty: [1, 1], chance: 0.03 },
+      { item: 'frostbrand', qty: [1, 1], chance: 0.01 },
     ],
     respawnSec: 35,
     color: '#6a6f7d',

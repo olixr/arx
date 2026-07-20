@@ -1,6 +1,7 @@
 import { CLOTH_COLORS, HAIR_COLORS, PoseState, SKIN_TONES, type Look } from '@devcraft/shared';
 import { itemDef } from '@devcraft/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
+import { drawSword, swordStyle } from './weapons.js';
 import { LegRig, chooseLimbSign, solveLimb, type LegPose, type LegRigConfig } from './legs.js';
 import {
   bodyStyle,
@@ -1056,8 +1057,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // into carriage over the same 280 ms every pose change uses.
   const isStaff = weapon !== undefined && weapon.id.includes('staff');
   // Daggers share the sword carriage (incl. the rogue reverse grip).
+  // Sword identity comes from the style registry — the blade roster's
+  // ids (falchion, oathkeeper, ...) don't all say 'sword'.
   const isSword =
-    weapon !== undefined && (weapon.id.includes('sword') || weapon.id.includes('dagger'));
+    weapon !== undefined && (swordStyle(weapon.id) !== null || weapon.id.includes('dagger'));
   let heldAngle = thrustR !== null ? rig.dir : mainAngle;
   let staffGrip = 0.34; // combat default: gripped low, business end forward
   let armSwingK = 1;
@@ -1733,25 +1736,11 @@ function drawHeldItem(
     ctx.fillRect(0.0 * s, -0.06 * s, 0.035 * s, 0.12 * s);
     ctx.fillStyle = '#6b4a26';
     ctx.fillRect(-0.07 * s, -0.028 * s, 0.07 * s, 0.056 * s);
-  } else if (itemId.includes('sword')) {
-    // Blade with a tapered tip, crossguard, pommel.
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(0.04 * s, -0.038 * s);
-    ctx.lineTo(0.42 * s, -0.038 * s);
-    ctx.lineTo(0.52 * s, 0);
-    ctx.lineTo(0.42 * s, 0.038 * s);
-    ctx.lineTo(0.04 * s, 0.038 * s);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = shade(color, 30);
-    ctx.fillRect(0.06 * s, -0.03 * s, 0.36 * s, 0.026 * s);
-    ctx.fillStyle = '#6b4a26';
-    ctx.fillRect(0.02 * s, -0.085 * s, 0.045 * s, 0.17 * s);
-    ctx.beginPath();
-    ctx.arc(-0.06 * s, 0, 0.035 * s, 0, Math.PI * 2);
-    ctx.fillStyle = '#d9a441';
-    ctx.fill();
+  } else if (swordStyle(itemId, color)) {
+    // The blade roster: every sword resolves a SwordStyle — bespoke
+    // silhouette, guard, pommel, and a living fx channel. Unknown
+    // '*sword' ids get a color-derived arming blade.
+    drawSword(ctx, swordStyle(itemId, color)!, s, rig.nowMs, rig.hurt);
   } else if (itemId.includes('axe') || itemId.includes('pickaxe')) {
     ctx.fillStyle = '#8a6a45';
     ctx.beginPath();

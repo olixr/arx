@@ -219,29 +219,7 @@ const defs: ItemDef[] = [
 
   // Crafting materials & gear — armor pieces live in equipment/defs.ts.
   { id: 'leather', name: 'Leather', stackable: false, value: 12, desc: 'Cured hide, supple and strong.', color: '#b08a5c', code: 'Le' },
-  {
-    id: 'iron_sword',
-    name: 'Iron sword',
-    stackable: false,
-    value: 90,
-    equipSlot: 'weapon',
-    // Better metal, longer blade: reach is part of the upgrade.
-    weapon: { style: 'melee', damage: 2, cooldownTicks: 7, range: 1.95, art: 'lunge' },
-    desc: 'A longer reach and a colder edge than bronze.',
-    color: '#8d9299',
-    code: 'Is',
-  },
-  {
-    id: 'steel_sword',
-    name: 'Steel sword',
-    stackable: false,
-    value: 240,
-    equipSlot: 'weapon',
-    weapon: { style: 'melee', damage: 3, cooldownTicks: 7, range: 2.05, art: 'shockwave' },
-    desc: 'Anvil-song made solid. It hums when it swings.',
-    color: '#b8bec8',
-    code: 'Ss',
-  },
+  // Swords live in equipment/defs.ts (the blade roster) — rolled gear.
   // Smithed valuables — the goldsmith's vendor line.
   { id: 'gold_ring', name: 'Gold ring', stackable: false, value: 180, desc: 'A goldsmith\'s staple. Vendors adore them.', color: '#f2c94c', code: 'Gr' },
 
@@ -251,20 +229,6 @@ const defs: ItemDef[] = [
   { id: 'cowhide', name: 'Cowhide', stackable: false, value: 8, desc: 'A whole hide, ready for the tanner\'s bench.', color: '#a08468', code: 'Hd' },
   { id: 'wolf_fur', name: 'Wolf fur', stackable: false, value: 20, desc: 'Thick winter fur, smoke-grey and warm.', color: '#6a6f7d', code: 'Wf' },
 
-  // Weapons — one per combat style to start.
-  {
-    id: 'bronze_sword',
-    name: 'Bronze sword',
-    stackable: false,
-    value: 32,
-    equipSlot: 'weapon',
-    // Hack-and-slash cadence: swings every 0.35 s that chip small; the
-    // combo finisher and Arts carry the big numbers.
-    weapon: { style: 'melee', damage: 1, cooldownTicks: 7, range: 1.7, art: 'crescent_sweep' },
-    desc: 'Every hero\'s first blade. Swings quick, bites small.',
-    color: '#a4744b',
-    code: 'Sw',
-  },
   // Daggers — the rogue's line: fastest cadence, shortest reach, and the
   // payoff lives in the backstab, not the base hit.
   {

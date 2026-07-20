@@ -1,5 +1,6 @@
 import { itemDef } from '@devcraft/content';
 import { shade } from './rig.js';
+import { SWORD_STYLES, drawSword } from './weapons.js';
 
 /**
  * The icon set: every item and UI glyph is drawn in code, in the same
@@ -3349,6 +3350,26 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
         ITEM_ICON[id] = { icon: base.icon, color: itemDef(id)?.color ?? base.color };
       }
     }
+  }
+}
+
+// ---- the blade roster: every sword's icon IS its world painter. The
+// same SwordStyle that dresses the hand draws the pack glyph — bespoke
+// silhouettes, guards, and fx with zero art drift, framed on the same
+// diagonal as the classic sword glyph. nowMs is pinned so cached icons
+// hold one deterministic fx frame.
+{
+  for (const [id, st] of Object.entries(SWORD_STYLES)) {
+    PAINTERS[`sword:${id}`] = (c) => {
+      c.translate(0.5, 0.5);
+      c.rotate(-Math.PI / 4);
+      // drawSword thinks in body-scale pixels: render at s = 78 inside
+      // a /64 frame so its px-floor line widths stay subpixel-honest.
+      c.scale(1 / 64, 1 / 64);
+      c.translate(-15, 0);
+      drawSword(c, st, 78, 5234, false);
+    };
+    ITEM_ICON[id] = { icon: `sword:${id}`, color: st.color };
   }
 }
 

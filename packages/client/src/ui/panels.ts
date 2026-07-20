@@ -336,7 +336,11 @@ export class Panels {
 
     const w = def.weapon;
     if (w) {
-      stat('Damage', `${w.damage} · ${Panels.speedWord(w.cooldownTicks)}`, '#c4553d');
+      // Rolled weapons carry rarity in the edge — show the instance's
+      // derived damage, fractional and honest, not the base.
+      const dmg = rolled?.damage !== undefined ? rolled.damage : w.damage;
+      const dmgText = Number.isInteger(dmg) ? `${dmg}` : dmg.toFixed(1);
+      stat('Damage', `${dmgText} · ${Panels.speedWord(w.cooldownTicks)}`, '#c4553d');
       stat(w.style === 'melee' ? 'Reach' : 'Range', `${w.range} tiles`, '#c9a23c');
       if (w.ammo) stat('Ammo', itemDef(w.ammo)?.name ?? w.ammo, '#c4b590');
       const art = w.art ? abilityDef(w.art) : undefined;
@@ -464,7 +468,10 @@ export class Panels {
       const worn = this.lastEquipment[slot];
       if (!worn) return false;
       entries.push({ label: 'Remove', act: () => this.onUnequip(slot) });
-      if (slot === 'weapon' && worn.id.includes('sword')) {
+      // Every melee blade rides the sword carriage (daggers included),
+      // so they all earn the grip preference — id substrings can't keep
+      // up with a 20-sword roster.
+      if (slot === 'weapon' && itemDef(worn.id)?.weapon?.style === 'melee') {
         // Cosmetic carry preference: how the blade rides at rest.
         const rogue = this.carryStyle() === 'rogue';
         entries.push({

@@ -1891,7 +1891,14 @@ export class GameServer {
     const worn = player.equipment.weapon;
     if (!worn) return null;
     const def = itemDef(worn.id);
-    return def?.weapon ? { id: worn.id, weapon: def.weapon } : null;
+    if (!def?.weapon) return null;
+    // Rolled weapons carry rarity in the edge: derive the instance's
+    // damage (fractional — every maxHit site rounds downstream). Weapons
+    // not yet migrated into the gear schema pass through untouched.
+    const rolled = rolledStats(worn.id, worn.roll);
+    const weapon =
+      rolled?.damage !== undefined ? { ...def.weapon, damage: rolled.damage } : def.weapon;
+    return { id: worn.id, weapon };
   }
 
   private tryPlayerAttack(eid: EntityId, player: PlayerComp, aim: number): void {

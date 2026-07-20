@@ -851,6 +851,15 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // mobs. Early never means humble — these are the showstoppers a new
   // knight marches around in.
   ...earlyPlateDefs(),
+
+  // ====================================================== the blade roster
+  // Twenty bespoke one-handed swords. Three smithing DESIGNS each forged
+  // in four metals (a metal ladder is real stat progression, so the lots
+  // are authored defs, not colorways), five bespoke crafts with story
+  // ingredients, and twelve drop-only wild finds climbing all the way to
+  // a legendary-only heirloom. Every signature blade carries its own
+  // Weapon Art — pure data on the one ability executor.
+  ...swordDefs(),
 ];
 
 // ---------------------------------------------------------- set makers
@@ -2473,6 +2482,370 @@ function sentinelSet(): EquipmentDef[] {
     piece('sentinel_gauntlets', 'Sentinel gauntlets', 'gloves', 17, 4, 370, 'Sz',
       'Gunmetal grip, gold-studded knuckles. The watch signs in.'),
   ];
+}
+
+// ------------------------------------------------------ the blade roster
+// Twenty sword designs. Authoring laws: a metal ladder is real stat
+// progression (damage, gates, recipe metal all climb), so smithing lines
+// are generated defs, not colorways; every signature blade names its own
+// Weapon Art; drop-only finds restrict `rarities` as they climb so the
+// chase steepens — the heirloom at the top only exists legendary.
+
+/** One smithing design forged across the metal ladder. */
+interface MetalStep {
+  metal: 'bronze' | 'iron' | 'steel' | 'gold';
+  bar: string;
+  color: string;
+  damage: number;
+  meleeReq: number;
+  smithReq: number;
+  xp: number;
+  value: number;
+  code: string;
+  desc: string;
+}
+
+function metalLine(
+  design: {
+    key: string;
+    name: string;
+    cooldownTicks: number;
+    range: number;
+    art: string;
+    backstabMult?: number;
+    bars: number;
+    ticks: number;
+    pool: AffixPoolEntry[];
+  },
+  steps: MetalStep[],
+): EquipmentDef[] {
+  return steps.map((m) => {
+    const weapon: EquipmentDef['weapon'] = {
+      style: 'melee',
+      damage: m.damage,
+      cooldownTicks: design.cooldownTicks,
+      range: design.range,
+      art: design.art,
+    };
+    if (design.backstabMult) weapon.backstabMult = design.backstabMult;
+    const def: EquipmentDef = {
+      id: m.metal === 'bronze' ? design.key : `${m.metal}_${design.key}`,
+      name: m.metal === 'bronze'
+        ? design.name
+        : `${m.metal.charAt(0).toUpperCase()}${m.metal.slice(1)} ${design.name.toLowerCase()}`,
+      slot: 'weapon',
+      weapon,
+      affixPool: design.pool,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: m.smithReq, xp: m.xp, station: 'anvil',
+        ticks: design.ticks, inputs: [{ item: m.bar, qty: design.bars }],
+      },
+      value: m.value, color: m.color, code: m.code, desc: m.desc,
+    };
+    if (m.meleeReq > 1) def.levelReq = { skill: 'melee', level: m.meleeReq };
+    return def;
+  });
+}
+
+function swordDefs(): EquipmentDef[] {
+  // Pools: every sword leans melee; the flavor stats tell its story.
+  const SOLDIER_POOL: AffixPoolEntry[] = [
+    { stat: 'melee', w: 3 },
+    { stat: 'defence' },
+    { stat: 'vitality' },
+    { stat: 'maxHp' },
+  ];
+  const ROGUE_POOL: AffixPoolEntry[] = [
+    { stat: 'melee', w: 2 },
+    { stat: 'sneak', w: 2 },
+    { stat: 'vitality' },
+    { stat: 'maxHp' },
+  ];
+
+  // ---- the classic arming line, migrated into the schema: same ids,
+  // stats and recipe numbers the game shipped with, now rolled gear.
+  // Existing DB rows adopt gracefully (roll-less ⇒ common/seed 0).
+  const arming: EquipmentDef[] = [
+    {
+      id: 'bronze_sword', name: 'Bronze sword', slot: 'weapon',
+      weapon: { style: 'melee', damage: 1, cooldownTicks: 7, range: 1.7, art: 'crescent_sweep' },
+      affixPool: SOLDIER_POOL,
+      acquisition: { craft: true, shop: true, drop: true },
+      recipe: {
+        skill: 'smithing', levelReq: 4, xp: 60, station: 'anvil', ticks: 60,
+        inputs: [{ item: 'bronze_bar', qty: 2 }],
+      },
+      value: 32, color: '#a4744b', code: 'Sw',
+      desc: 'Every hero\'s first blade. Swings quick, bites small.',
+    },
+    {
+      id: 'iron_sword', name: 'Iron sword', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 10 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 7, range: 1.95, art: 'lunge' },
+      affixPool: SOLDIER_POOL,
+      acquisition: { craft: true, drop: true },
+      recipe: {
+        skill: 'smithing', levelReq: 18, xp: 130, station: 'anvil', ticks: 70,
+        inputs: [{ item: 'iron_bar', qty: 2 }],
+      },
+      value: 90, color: '#8d9299', code: 'Is',
+      desc: 'A longer reach and a colder edge than bronze.',
+    },
+    {
+      id: 'steel_sword', name: 'Steel sword', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 20 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 7, range: 2.05, art: 'shockwave' },
+      affixPool: SOLDIER_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 33, xp: 250, station: 'anvil', ticks: 80,
+        inputs: [{ item: 'steel_bar', qty: 2 }],
+      },
+      value: 240, color: '#b8bec8', code: 'Ss',
+      desc: 'Anvil-song made solid. It hums when it swings.',
+    },
+  ];
+
+  // ---- the three smithing lines: one design, four metals each.
+  const falchion = metalLine(
+    {
+      key: 'falchion', name: 'Falchion', cooldownTicks: 8, range: 1.8,
+      art: 'sundering_chop', bars: 2, ticks: 75, pool: SOLDIER_POOL,
+    },
+    [
+      { metal: 'bronze', bar: 'bronze_bar', color: '#a4744b', damage: 2, meleeReq: 4, smithReq: 8, xp: 55, value: 55, code: 'Fa',
+        desc: 'Half sword, half woodaxe, all argument. The village favorite.' },
+      { metal: 'iron', bar: 'iron_bar', color: '#8d9299', damage: 3, meleeReq: 14, smithReq: 20, xp: 130, value: 150, code: 'Fi',
+        desc: 'Iron gives the chop a voice. Fences and foes both listen.' },
+      { metal: 'steel', bar: 'steel_bar', color: '#b8bec8', damage: 4, meleeReq: 28, smithReq: 36, xp: 280, value: 340, code: 'Fj',
+        desc: 'A steel wedge with manners. It asks once.' },
+      { metal: 'gold', bar: 'gold_bar', color: '#e8c04c', damage: 4, meleeReq: 32, smithReq: 42, xp: 340, value: 780, code: 'Fo',
+        desc: 'Too soft for war, says the smith — swinging it anyway, grinning.' },
+    ],
+  );
+  const gladius = metalLine(
+    {
+      key: 'gladius', name: 'Gladius', cooldownTicks: 6, range: 1.5,
+      art: 'lunge', bars: 1, ticks: 60, pool: SOLDIER_POOL,
+    },
+    [
+      { metal: 'bronze', bar: 'bronze_bar', color: '#a4744b', damage: 1, meleeReq: 2, smithReq: 5, xp: 40, value: 38, code: 'Gd',
+        desc: 'Short, wide, honest. The point does the talking.' },
+      { metal: 'iron', bar: 'iron_bar', color: '#8d9299', damage: 2, meleeReq: 12, smithReq: 18, xp: 110, value: 120, code: 'Gi',
+        desc: 'A legion\'s length of iron. Close means yours.' },
+      { metal: 'steel', bar: 'steel_bar', color: '#b8bec8', damage: 3, meleeReq: 26, smithReq: 34, xp: 240, value: 300, code: 'Gy',
+        desc: 'Steel at parade polish. Steps forward when you do.' },
+      { metal: 'gold', bar: 'gold_bar', color: '#e8c04c', damage: 3, meleeReq: 30, smithReq: 40, xp: 300, value: 700, code: 'Gk',
+        desc: 'A triumph in arm\'s reach. Generals retire onto these.' },
+    ],
+  );
+  const scimitar = metalLine(
+    {
+      key: 'scimitar', name: 'Scimitar', cooldownTicks: 6, range: 1.7,
+      art: 'crescent_sweep', backstabMult: 1.4, bars: 2, ticks: 70, pool: ROGUE_POOL,
+    },
+    [
+      { metal: 'bronze', bar: 'bronze_bar', color: '#a4744b', damage: 1, meleeReq: 6, smithReq: 12, xp: 70, value: 60, code: 'Sx',
+        desc: 'A grin of bronze. Fights sideways, wins sideways.' },
+      { metal: 'iron', bar: 'iron_bar', color: '#8d9299', damage: 2, meleeReq: 16, smithReq: 24, xp: 150, value: 170, code: 'Si',
+        desc: 'The curve finds what a straight edge misses.' },
+      { metal: 'steel', bar: 'steel_bar', color: '#b8bec8', damage: 3, meleeReq: 30, smithReq: 38, xp: 300, value: 380, code: 'Gz',
+        desc: 'Quick as gossip and twice as cutting.' },
+      { metal: 'gold', bar: 'gold_bar', color: '#e8c04c', damage: 3, meleeReq: 34, smithReq: 44, xp: 360, value: 860, code: 'Kq',
+        desc: 'A crescent moon on a velvet night out.' },
+    ],
+  );
+
+  // ---- bespoke crafts: one-off recipes with story ingredients.
+  const crafts: EquipmentDef[] = [
+    {
+      id: 'briarfang', name: 'Briarfang', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 15 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 7, range: 1.9, art: 'thorn_lash' },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'foraging' }, { stat: 'vitality' }, { stat: 'regen' }],
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 20, xp: 180, station: 'anvil', ticks: 80,
+        inputs: [{ item: 'bronze_bar', qty: 2 }, { item: 'oak_log', qty: 1 }, { item: 'berries', qty: 3 }],
+      },
+      value: 260, color: '#5a7a42', code: 'By',
+      desc: 'Bronze quenched in berry-dark sap. The hedge kept one thorn for you.',
+    },
+    {
+      id: 'moonshard', name: 'Moonshard', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 22 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 5, range: 2.05, art: 'lunge', backstabMult: 1.5 },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'sneak' }, { stat: 'magic' }, { stat: 'maxHp' }],
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 30, xp: 260, station: 'anvil', ticks: 90,
+        inputs: [{ item: 'steel_bar', qty: 1 }, { item: 'gold_bar', qty: 1 }, { item: 'moonbell', qty: 2 }],
+      },
+      value: 420, color: '#c9d4e8', code: 'Mn',
+      desc: 'A needle of night-silver with a moonbell set at the pommel. It hums at dusk.',
+    },
+    {
+      id: 'tidereaver', name: 'Tidereaver', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 26 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 6, range: 1.85, art: 'riptide' },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'fishing' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 34, xp: 320, station: 'anvil', ticks: 95,
+        inputs: [{ item: 'steel_bar', qty: 2 }, { item: 'gold_bar', qty: 1 }, { item: 'raw_trout', qty: 1 }],
+      },
+      value: 520, color: '#3d7a78', code: 'Tv',
+      desc: 'Quenched in a living tide — the trout was the tide\'s fee. Shell-guarded, sea-tempered.',
+    },
+    {
+      id: 'emberbrand', name: 'Emberbrand', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 30 },
+      weapon: { style: 'melee', damage: 4, cooldownTicks: 7, range: 1.9, art: 'cinder_arc' },
+      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'smithing' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 38, xp: 420, station: 'anvil', ticks: 105,
+        inputs: [{ item: 'steel_bar', qty: 2 }, { item: 'coal', qty: 4 }, { item: 'gold_bar', qty: 1 }],
+      },
+      value: 680, color: '#c4623c', code: 'Em',
+      desc: 'Forged and never let cool — a seam of live ember runs the fuller. It remembers the furnace.',
+    },
+    {
+      id: 'dawnbreaker', name: 'Dawnbreaker', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 40 },
+      weapon: { style: 'melee', damage: 5, cooldownTicks: 7, range: 2.0, art: 'sunburst' },
+      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }, { stat: 'regen' }],
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 45, xp: 600, station: 'anvil', ticks: 120,
+        inputs: [{ item: 'gold_bar', qty: 3 }, { item: 'steel_bar', qty: 2 }, { item: 'sunflower', qty: 3 }],
+      },
+      value: 1100, color: '#e8b64c', code: 'Db',
+      desc: 'Gold over a steel heart, rayed like the sun coming over a hill. Night files a complaint.',
+    },
+  ];
+
+  // ---- drop-only wild finds: the loot chase, junk-tier to heirloom.
+  const finds: EquipmentDef[] = [
+    {
+      id: 'rustbite', name: 'Rustbite', slot: 'weapon',
+      weapon: { style: 'melee', damage: 1, cooldownTicks: 6, range: 1.6, art: 'crescent_sweep' },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['common', 'uncommon', 'rare'],
+      acquisition: { drop: true },
+      value: 20, color: '#8a6a52', code: 'Rt',
+      desc: 'Pitted, notched, and faintly orange. Still sharp where it counts — mostly.',
+    },
+    {
+      id: 'gobsplitter', name: 'Gobsplitter', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 5 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 8, range: 1.8, art: 'shockwave' },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['common', 'uncommon', 'rare', 'epic'],
+      acquisition: { drop: true },
+      value: 60, color: '#6e7a52', code: 'Gs',
+      desc: 'Goblin ironwork: wrong angles, cruel edge, no apologies. It splits things.',
+    },
+    {
+      id: 'wolffang', name: 'Wolffang', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 12 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 6, range: 1.8, art: 'lunge', backstabMult: 1.6 },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'sneak' }, { stat: 'beastcraft' }, { stat: 'maxHp' }],
+      acquisition: { drop: true },
+      value: 130, color: '#8d939f', code: 'Wa',
+      desc: 'A grey saber with a fang set in the pommel. The pack hunts ahead of the point.',
+    },
+    {
+      id: 'fenreaper', name: 'Fenreaper', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 14 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 8, range: 2.0, art: 'reapers_arc' },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'farming' }, { stat: 'defence' }, { stat: 'regen' }],
+      acquisition: { drop: true },
+      value: 240, color: '#4a5a48', code: 'Fz',
+      desc: 'Bog-iron with a wisp-green light down the fuller. The marsh harvests too.',
+    },
+    {
+      id: 'gravewhisper', name: 'Gravewhisper', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 18 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 6, range: 1.75, art: 'shadowstep', backstabMult: 2.0 },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'sneak', w: 2 }, { stat: 'maxHp' }],
+      acquisition: { drop: true },
+      value: 320, color: '#7a7d88', code: 'Gw',
+      desc: 'Ash-grey steel that makes no sound leaving the sheath. The dead lend quiet.',
+    },
+    {
+      id: 'duelists_grace', name: 'Duelist\'s Grace', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 24 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.9, art: 'quicksilver' },
+      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'sneak' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      acquisition: { drop: true },
+      value: 480, color: '#e6ddc8', code: 'Dl',
+      desc: 'Swept hilt, ivory grip, gold wire. Somebody fought beautifully and lost anyway.',
+    },
+    {
+      id: 'frostbrand', name: 'Frostbrand', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 28 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 7, range: 1.9, art: 'winters_edge' },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 560, color: '#a8c8dc', code: 'Fb',
+      desc: 'Pale steel that fogs the air around it. Wounds close cold and slow.',
+    },
+    {
+      id: 'bloodletter', name: 'Bloodletter', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 32 },
+      weapon: { style: 'melee', damage: 4, cooldownTicks: 8, range: 1.85, art: 'red_harvest' },
+      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'vitality' }, { stat: 'maxHp', w: 2 }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 720, color: '#5a4048', code: 'Bl',
+      desc: 'A dark cleaver with a red seam that never dries. It keeps its own tally.',
+    },
+    {
+      id: 'stormcall', name: 'Stormcall', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 35 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 6, range: 1.9, art: 'storm_brand' },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'magic', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 800, color: '#5a6a9c', code: 'Sm',
+      desc: 'Storm-blue steel under a gold bolt of a guard. Thunder answers the swing, eventually.',
+    },
+    {
+      id: 'sovereign', name: 'Sovereign', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 38 },
+      weapon: { style: 'melee', damage: 4, cooldownTicks: 7, range: 2.05, art: 'kings_decree' },
+      affixPool: [{ stat: 'melee', w: 2 }, { stat: 'defence', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 950, color: '#e8c04c', code: 'Ov',
+      desc: 'A barrow-king\'s blade, gold and unbowed. The crown on the pommel still expects kneeling.',
+    },
+    {
+      id: 'starfall', name: 'Starfall', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 45 },
+      weapon: { style: 'melee', damage: 5, cooldownTicks: 7, range: 2.0, art: 'starfall_strike' },
+      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'magic' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1400, color: '#4a4066', code: 'Fy',
+      desc: 'Iron that fell burning from a night sky, still salted with starlight. It wants to go back.',
+    },
+    {
+      id: 'oathkeeper', name: 'Oathkeeper', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 50 },
+      weapon: { style: 'melee', damage: 5, cooldownTicks: 6, range: 2.0, art: 'vow_unbroken' },
+      affixPool: [{ stat: 'melee', w: 3 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }, { stat: 'regen' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      value: 2000, color: '#e8e8f0', code: 'Oa',
+      desc: 'A plain, perfect blade in white steel. Whoever swore on it kept the promise. Your turn.',
+    },
+  ];
+
+  return [...arming, ...falchion, ...gladius, ...scimitar, ...crafts, ...finds];
 }
 
 /** Compiled once at module load — throws loudly on any malformed def. */
