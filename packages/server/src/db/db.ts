@@ -173,6 +173,20 @@ const MIGRATIONS: string[] = [
   ALTER TABLE bank_gear ADD COLUMN coat_id TEXT;
   ALTER TABLE bank_gear ADD COLUMN coat_until INTEGER;
   `,
+  // 15 — the trade split: generic 'crafting' becomes woodworking /
+  // leatherworking / tailoring. Every character inherits their old
+  // crafting xp into all three trades (they trained a mix of all of
+  // them under one name — nobody loses a recipe they could make
+  // yesterday). The legacy 'crafting' rows are kept, unread, so the
+  // split is reversible.
+  `
+  INSERT OR IGNORE INTO character_skills (character_id, skill, xp)
+    SELECT character_id, 'woodworking', xp FROM character_skills WHERE skill = 'crafting';
+  INSERT OR IGNORE INTO character_skills (character_id, skill, xp)
+    SELECT character_id, 'leatherworking', xp FROM character_skills WHERE skill = 'crafting';
+  INSERT OR IGNORE INTO character_skills (character_id, skill, xp)
+    SELECT character_id, 'tailoring', xp FROM character_skills WHERE skill = 'crafting';
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

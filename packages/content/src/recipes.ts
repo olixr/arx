@@ -126,14 +126,14 @@ const defs: RecipeDef[] = [
     ticks: 60,
   },
 
-  // ------------------------------------------------ crafting
+  // ------------------------------------------------ leatherworking / woodworking / tailoring basics
   {
     id: 'craft_leather',
     name: 'Leather',
-    skill: 'crafting',
+    skill: 'leatherworking',
     levelReq: 1,
     xp: 20,
-    station: 'workbench',
+    station: 'tanning_rack',
     inputs: [{ item: 'cowhide', qty: 1 }],
     output: { item: 'leather', qty: 1 },
     ticks: 30,
@@ -142,7 +142,7 @@ const defs: RecipeDef[] = [
   {
     id: 'fletch_arrows',
     name: 'Arrows (x10)',
-    skill: 'crafting',
+    skill: 'woodworking',
     levelReq: 1,
     xp: 25,
     station: null,
@@ -170,10 +170,10 @@ const defs: RecipeDef[] = [
   {
     id: 'craft_wolf_pelt_cloak',
     name: 'Wolf-pelt cloak',
-    skill: 'crafting',
+    skill: 'leatherworking',
     levelReq: 14,
     xp: 110,
-    station: 'workbench',
+    station: 'tanning_rack',
     inputs: [
       { item: 'wolf_fur', qty: 3 },
       { item: 'leather', qty: 1 },
@@ -184,10 +184,10 @@ const defs: RecipeDef[] = [
   {
     id: 'craft_frost_quiver',
     name: 'Frost quiver',
-    skill: 'crafting',
+    skill: 'leatherworking',
     levelReq: 20,
     xp: 140,
-    station: 'workbench',
+    station: 'tanning_rack',
     inputs: [
       { item: 'leather', qty: 2 },
       { item: 'gold_bar', qty: 1 },
@@ -198,10 +198,10 @@ const defs: RecipeDef[] = [
   {
     id: 'craft_cape_traveler',
     name: "Traveler's cape",
-    skill: 'crafting',
+    skill: 'leatherworking',
     levelReq: 8,
     xp: 80,
-    station: 'workbench',
+    station: 'tanning_rack',
     inputs: [
       { item: 'leather', qty: 2 },
       { item: 'wolf_fur', qty: 1 },
@@ -212,10 +212,10 @@ const defs: RecipeDef[] = [
   {
     id: 'craft_cape_ragged',
     name: 'Ragged cloak',
-    skill: 'crafting',
+    skill: 'leatherworking',
     levelReq: 2,
     xp: 30,
-    station: 'workbench',
+    station: 'tanning_rack',
     inputs: [{ item: 'leather', qty: 2 }],
     output: { item: 'cape_ragged', qty: 1 },
     ticks: 40,
@@ -223,10 +223,10 @@ const defs: RecipeDef[] = [
   {
     id: 'craft_cape_huntsman',
     name: "Huntsman's drape",
-    skill: 'crafting',
+    skill: 'leatherworking',
     levelReq: 20,
     xp: 150,
-    station: 'workbench',
+    station: 'tanning_rack',
     inputs: [
       { item: 'leather', qty: 3 },
       { item: 'wolf_fur', qty: 2 },
@@ -237,10 +237,10 @@ const defs: RecipeDef[] = [
   {
     id: 'craft_cape_gilded',
     name: 'Gilded cape',
-    skill: 'crafting',
+    skill: 'leatherworking',
     levelReq: 26,
     xp: 210,
-    station: 'workbench',
+    station: 'tanning_rack',
     inputs: [
       { item: 'leather', qty: 2 },
       { item: 'gold_bar', qty: 2 },
@@ -325,7 +325,7 @@ const defs: RecipeDef[] = [
   {
     id: 'craft_twine',
     name: 'Twine',
-    skill: 'crafting',
+    skill: 'tailoring',
     levelReq: 1,
     xp: 12,
     station: null,
@@ -336,10 +336,10 @@ const defs: RecipeDef[] = [
   {
     id: 'craft_cloth',
     name: 'Cloth',
-    skill: 'crafting',
+    skill: 'tailoring',
     levelReq: 10,
     xp: 40,
-    station: 'workbench',
+    station: 'loom',
     inputs: [{ item: 'cotton', qty: 2 }],
     output: { item: 'cloth', qty: 1 },
     ticks: 35,

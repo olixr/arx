@@ -551,6 +551,9 @@ export class Renderer {
     for (let ty = cy - 2; ty <= cy + 2; ty++) {
       for (let tx = cx - 2; tx <= cx + 2; tx++) {
         const t = game.world.groundAt(tx, ty);
+        // Bench-like stations (workbench, alembic, tanning rack, loom,
+        // carving bench) all share the busy-hands workbench choreography;
+        // anvil/furnace/fire keep their bespoke cycles.
         const kind =
           t === Tile.Anvil
             ? ('anvil' as const)
@@ -558,7 +561,11 @@ export class Renderer {
               ? ('furnace' as const)
               : t === Tile.Campfire
                 ? ('fire' as const)
-                : t === Tile.Workbench
+                : t === Tile.Workbench ||
+                    t === Tile.Alembic ||
+                    t === Tile.TanningRack ||
+                    t === Tile.Loom ||
+                    t === Tile.CarvingBench
                   ? ('workbench' as const)
                   : null;
         if (!kind) continue;
@@ -692,6 +699,9 @@ export class Renderer {
     Tile.Campfire,
     Tile.Workbench,
     Tile.Alembic,
+    Tile.TanningRack,
+    Tile.Loom,
+    Tile.CarvingBench,
     Tile.BankChest,
     Tile.ShopCounter,
   ]);
@@ -6538,6 +6548,229 @@ export class Renderer {
               const dp = (t * 1.15 + h * 0.19) % 1;
               ctx.fillStyle = `rgba(127, 201, 179, ${0.85 * act})`;
               ctx.fillRect(p.x + s * 0.295, benchY - s * 0.24 + dp * s * 0.1, s * 0.022, s * 0.035);
+            }
+          },
+        };
+      }
+
+      case Tile.TanningRack: {
+        return {
+          sortY: ty + 1,
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - s * 0.4, p.y + s * 0.3, p.x + s * 0.4, p.y + s * 0.3, 0.85);
+          },
+          draw: () => {
+            const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
+            const baseY = p.y + s * 0.3;
+            // A-frame timber poles, crossed at the crown, feet splayed.
+            ctx.strokeStyle = '#5b4028';
+            ctx.lineWidth = Math.max(2, s * 0.075);
+            const topY = baseY - s * 1.02;
+            for (const dir of [-1, 1]) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + dir * s * 0.42, baseY);
+              ctx.lineTo(p.x + dir * s * 0.07, topY);
+              ctx.stroke();
+            }
+            // Crossbar the hide hangs from.
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.34, topY + s * 0.1);
+            ctx.lineTo(p.x + s * 0.34, topY + s * 0.1);
+            ctx.stroke();
+            // The stretched hide: a taut chamfered sheet, lashed at the
+            // corners. It breathes on the wind at rest and shivers with
+            // each scraping pass while someone works it.
+            const shiver = act > 0.05 ? Math.sin(t * 9 + h) * s * 0.016 * act : Math.sin(t * 1.4 + h) * s * 0.008;
+            const hx = p.x;
+            const hyT = topY + s * 0.18;
+            const hw = s * 0.52;
+            const hh = s * 0.56;
+            ctx.fillStyle = '#b08a5c';
+            ctx.beginPath();
+            chamferRect(ctx, hx - hw / 2 + shiver, hyT, hw, hh, s * 0.07);
+            ctx.fill();
+            // Hard-shade half + a pale scraped patch growing off-centre.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            chamferRect(ctx, hx + shiver, hyT, hw / 2, hh, s * 0.07);
+            ctx.fill();
+            ctx.fillStyle = '#d3b183';
+            ctx.beginPath();
+            facetCircle(ctx, hx - s * 0.07 + shiver, hyT + hh * 0.42, s * 0.13, 7, h * 0.7, 0.8);
+            ctx.fill();
+            // Lashing cords to the frame corners.
+            ctx.strokeStyle = '#8a7248';
+            ctx.lineWidth = Math.max(1, s * 0.028);
+            for (const [cx2, cy2, fx2, fy2] of [
+              [hx - hw / 2 + s * 0.04, hyT + s * 0.03, p.x - s * 0.3, topY + s * 0.1],
+              [hx + hw / 2 - s * 0.04, hyT + s * 0.03, p.x + s * 0.3, topY + s * 0.1],
+              [hx - hw / 2 + s * 0.04, hyT + hh - s * 0.03, p.x - s * 0.38, baseY - s * 0.06],
+              [hx + hw / 2 - s * 0.04, hyT + hh - s * 0.03, p.x + s * 0.38, baseY - s * 0.06],
+            ] as const) {
+              ctx.beginPath();
+              ctx.moveTo(cx2 + shiver, cy2);
+              ctx.lineTo(fx2, fy2);
+              ctx.stroke();
+            }
+            // Scudding knife propped on the near leg; flecks fly while
+            // the rack is being worked.
+            ctx.fillStyle = '#8d9299';
+            ctx.fillRect(p.x + s * 0.3, baseY - s * 0.3, s * 0.05, s * 0.2);
+            if (act > 0.05) {
+              for (let i = 0; i < 2; i++) {
+                const ft = (t * (1.3 + i * 0.4) + h * 0.31 + i * 0.5) % 1;
+                ctx.fillStyle = `rgba(211, 177, 131, ${0.7 * (1 - ft) * act})`;
+                ctx.fillRect(hx - s * 0.05 + ft * s * 0.16, hyT + hh * 0.45 + ft * s * 0.22, s * 0.03, s * 0.03);
+              }
+            }
+          },
+        };
+      }
+
+      case Tile.Loom: {
+        return {
+          sortY: ty + 1,
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - s * 0.42, p.y + s * 0.3, p.x + s * 0.42, p.y + s * 0.3, 0.9);
+          },
+          draw: () => {
+            const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
+            const baseY = p.y + s * 0.3;
+            const topY = baseY - s * 1.05;
+            // Upright frame: two posts, head beam, breast beam.
+            ctx.fillStyle = '#5b4028';
+            ctx.fillRect(p.x - s * 0.42, topY, s * 0.09, s * 1.05);
+            ctx.fillRect(p.x + s * 0.33, topY, s * 0.09, s * 1.05);
+            ctx.fillStyle = '#7a552e';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - s * 0.48, topY - s * 0.07, s * 0.96, s * 0.13, s * 0.03);
+            ctx.fill();
+            ctx.fillRect(p.x - s * 0.44, baseY - s * 0.34, s * 0.88, s * 0.1);
+            // Warp threads, head beam down to the fell line.
+            const fellY = baseY - s * 0.36;
+            ctx.strokeStyle = '#d8cbb0';
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            for (let i = 0; i < 9; i++) {
+              const wx2 = p.x - s * 0.3 + (i / 8) * s * 0.6;
+              ctx.beginPath();
+              ctx.moveTo(wx2, topY + s * 0.06);
+              ctx.lineTo(wx2, fellY);
+              ctx.stroke();
+            }
+            // Woven cloth rolling onto the breast beam — house teal.
+            ctx.fillStyle = '#4e8a7a';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - s * 0.3, fellY, s * 0.6, s * 0.26, s * 0.03);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+            for (let i = 0; i < 3; i++) {
+              ctx.fillRect(p.x - s * 0.3, fellY + s * 0.05 + i * s * 0.075, s * 0.6, s * 0.02);
+            }
+            // The shuttle: glides across the fell while weaving, parked
+            // against a post at rest. Its pace rides the work.
+            const gt = act > 0.05 ? (Math.sin(t * (2.2 + act * 2)) + 1) / 2 : 0.04;
+            const shx = p.x - s * 0.26 + gt * s * 0.52;
+            ctx.fillStyle = '#8a5a2e';
+            ctx.beginPath();
+            ctx.moveTo(shx - s * 0.09, fellY - s * 0.035);
+            ctx.lineTo(shx + s * 0.09, fellY - s * 0.035);
+            ctx.lineTo(shx + s * 0.13, fellY);
+            ctx.lineTo(shx + s * 0.09, fellY + s * 0.035);
+            ctx.lineTo(shx - s * 0.09, fellY + s * 0.035);
+            ctx.lineTo(shx - s * 0.13, fellY);
+            ctx.closePath();
+            ctx.fill();
+            // Weft thread trailing the shuttle while it works.
+            if (act > 0.05) {
+              ctx.strokeStyle = '#e8dfc8';
+              ctx.lineWidth = Math.max(1, s * 0.02);
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.26, fellY);
+              ctx.lineTo(shx, fellY);
+              ctx.stroke();
+            }
+            // A basket of yarn cones by the near post.
+            ctx.fillStyle = '#8a7248';
+            ctx.beginPath();
+            facetCircle(ctx, p.x - s * 0.5, baseY - s * 0.09, s * 0.11, 6, 0.3, 0.7);
+            ctx.fill();
+            for (let i = 0; i < 3; i++) {
+              ctx.fillStyle = ['#c05a4a', '#4e8a7a', '#d8cbb0'][i]!;
+              ctx.beginPath();
+              facetCircle(ctx, p.x - s * 0.56 + i * s * 0.06, baseY - s * 0.16, s * 0.038, 5, i, 0.85);
+              ctx.fill();
+            }
+          },
+        };
+      }
+
+      case Tile.CarvingBench: {
+        return {
+          sortY: ty + 1,
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - s * 0.44, p.y + s * 0.3, p.x + s * 0.44, p.y + s * 0.3, 0.7);
+          },
+          draw: () => {
+            const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
+            const baseY = p.y + s * 0.3;
+            const benchY = baseY - s * 0.42;
+            // Stout legs and a thick sawyer's slab.
+            ctx.fillStyle = '#5b4028';
+            ctx.fillRect(p.x - s * 0.36, benchY, s * 0.1, s * 0.42);
+            ctx.fillRect(p.x + s * 0.26, benchY, s * 0.1, s * 0.42);
+            ctx.fillStyle = '#7a552e';
+            ctx.beginPath();
+            chamferRect(ctx, p.x - s * 0.46, benchY - s * 0.14, s * 0.92, s * 0.18, s * 0.04);
+            ctx.fill();
+            ctx.fillStyle = '#9b7440';
+            ctx.fillRect(p.x - s * 0.42, benchY - s * 0.12, s * 0.84, s * 0.055);
+            // The vise jaw on the near corner, holding a working stave.
+            ctx.fillStyle = '#6b6470';
+            ctx.fillRect(p.x - s * 0.4, benchY - s * 0.26, s * 0.1, s * 0.14);
+            ctx.fillStyle = '#8d9299';
+            ctx.fillRect(p.x - s * 0.415, benchY - s * 0.29, s * 0.13, s * 0.05);
+            // The clamped stave: a long limb angled across the bench,
+            // bowing slightly — a bow taking shape. It nods with each
+            // drawknife pass while someone works.
+            const nod = act > 0.05 ? Math.sin(t * 7 + h) * 0.02 * act : 0;
+            ctx.strokeStyle = '#b08a5c';
+            ctx.lineWidth = Math.max(2, s * 0.06);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.36, benchY - s * 0.26);
+            ctx.quadraticCurveTo(
+              p.x + s * 0.05,
+              benchY - s * (0.44 + nod),
+              p.x + s * 0.44,
+              benchY - s * 0.3,
+            );
+            ctx.stroke();
+            // Drawknife resting on the slab: blade + two side handles.
+            ctx.fillStyle = '#8d9299';
+            ctx.fillRect(p.x - s * 0.05, benchY - s * 0.2, s * 0.24, s * 0.045);
+            ctx.fillStyle = '#5b4028';
+            ctx.fillRect(p.x - s * 0.09, benchY - s * 0.21, s * 0.05, s * 0.065);
+            ctx.fillRect(p.x + s * 0.18, benchY - s * 0.21, s * 0.05, s * 0.065);
+            // Shaving curls drift off the stave while the bench works;
+            // a settled drift of them lives at the near leg always.
+            ctx.fillStyle = '#c9a86a';
+            ctx.beginPath();
+            facetCircle(ctx, p.x + s * 0.3, baseY - s * 0.045, s * 0.12, 7, h * 0.4, 0.5);
+            ctx.fill();
+            if (act > 0.05) {
+              for (let i = 0; i < 3; i++) {
+                const ct2 = (t * (1.1 + i * 0.3) + h * 0.23 + i * 0.33) % 1;
+                ctx.strokeStyle = `rgba(201, 168, 106, ${0.8 * (1 - ct2) * act})`;
+                ctx.lineWidth = Math.max(1, s * 0.022);
+                ctx.beginPath();
+                ctx.arc(
+                  p.x + s * 0.05 + ct2 * s * 0.24 + i * s * 0.05,
+                  benchY - s * 0.34 + ct2 * s * 0.3,
+                  s * 0.035,
+                  0.4 + ct2 * 3,
+                  3.4 + ct2 * 3,
+                );
+                ctx.stroke();
+              }
             }
           },
         };

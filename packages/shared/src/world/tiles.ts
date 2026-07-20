@@ -128,6 +128,12 @@ export enum Tile {
   TreeWillow = 100,
   /** An ancient yew — rare, dark, slow-grown; the war-bow wood. */
   TreeYew = 101,
+  /** A hide stretched taut on a timber frame — the leatherworker's station. */
+  TanningRack = 102,
+  /** A warp-strung weaving loom — the tailor's station. */
+  Loom = 103,
+  /** A shaving-strewn bowyer's bench with vise and drawknife — the woodworker's station. */
+  CarvingBench = 104,
 }
 
 export enum Detail {
@@ -279,6 +285,9 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.Vault]: { name: 'vault', solid: true, color: '#3f3a4a', raised: true, topColor: '#e8a33d' },
   [Tile.Lectern]: { name: 'lectern', solid: true, color: '#6f4d26', raised: true, topColor: '#e8dfc8' },
   [Tile.Basin]: { name: 'basin', solid: true, color: '#5b5566', raised: true, topColor: '#4979b8' },
+  [Tile.TanningRack]: { name: 'tanning rack', solid: true, color: '#6f4d26', raised: true, topColor: '#b08a5c' },
+  [Tile.Loom]: { name: 'loom', solid: true, color: '#6f4d26', raised: true, topColor: '#d8cbb0' },
+  [Tile.CarvingBench]: { name: 'carving bench', solid: true, color: '#7d5a2e', raised: true, topColor: '#9b7440' },
 };
 
 /**
@@ -338,7 +347,15 @@ export const ORE_TILES: readonly Tile[] = [
 ];
 
 /** Crafting stations, keyed by what recipes call them. */
-export type StationType = 'fire' | 'furnace' | 'anvil' | 'workbench' | 'alembic';
+export type StationType =
+  | 'fire'
+  | 'furnace'
+  | 'anvil'
+  | 'workbench'
+  | 'alembic'
+  | 'tanning_rack'
+  | 'loom'
+  | 'carving_bench';
 
 export const STATION_TILES: Record<StationType, Tile> = {
   fire: Tile.Campfire,
@@ -346,6 +363,9 @@ export const STATION_TILES: Record<StationType, Tile> = {
   anvil: Tile.Anvil,
   workbench: Tile.Workbench,
   alembic: Tile.Alembic,
+  tanning_rack: Tile.TanningRack,
+  loom: Tile.Loom,
+  carving_bench: Tile.CarvingBench,
 };
 
 export function stationAtTile(tile: number): StationType | null {

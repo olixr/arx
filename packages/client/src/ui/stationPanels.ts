@@ -235,8 +235,11 @@ export class StationPanels {
       fire: 'Cooking',
       furnace: 'Smelting',
       anvil: 'Smithing',
-      workbench: 'Crafting',
+      workbench: 'Handiwork',
       alembic: 'Herbalism',
+      tanning_rack: 'Leatherworking',
+      loom: 'Tailoring',
+      carving_bench: 'Woodworking',
     };
     this.craftTitle.textContent = station ? labels[station]! : 'Handiwork';
     this.craftList.innerHTML = '';

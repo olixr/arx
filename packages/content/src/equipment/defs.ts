@@ -42,10 +42,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: CLOTH_POOL,
     acquisition: { craft: true, drop: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'tailoring',
       levelReq: 6,
       xp: 55,
-      station: 'workbench',
+      station: 'loom',
       ticks: 50,
       inputs: [
         { item: 'cloth', qty: 2 },
@@ -67,10 +67,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: [...CLOTH_POOL, { stat: 'cooking' }],
     acquisition: { craft: true, drop: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'tailoring',
       levelReq: 30,
       xp: 240,
-      station: 'workbench',
+      station: 'loom',
       ticks: 90,
       inputs: [
         { item: 'cloth', qty: 3 },
@@ -93,10 +93,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: LEATHER_POOL,
     acquisition: { craft: true, drop: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'leatherworking',
       levelReq: 8,
       xp: 75,
-      station: 'workbench',
+      station: 'tanning_rack',
       ticks: 60,
       inputs: [{ item: 'leather', qty: 3 }],
     },
@@ -115,10 +115,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: [...LEATHER_POOL, { stat: 'woodcutting' }],
     acquisition: { craft: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'leatherworking',
       levelReq: 16,
       xp: 130,
-      station: 'workbench',
+      station: 'tanning_rack',
       ticks: 70,
       inputs: [
         { item: 'leather', qty: 3 },
@@ -185,10 +185,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: [{ stat: 'farming', w: 2 }, { stat: 'foraging' }, { stat: 'herbalism' }],
     acquisition: { craft: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'tailoring',
       levelReq: 5,
       xp: 35,
-      station: 'workbench',
+      station: 'loom',
       ticks: 40,
       inputs: [
         { item: 'sunflower', qty: 3 },
@@ -232,10 +232,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: LEATHER_POOL,
     acquisition: { craft: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'leatherworking',
       levelReq: 6,
       xp: 50,
-      station: 'workbench',
+      station: 'tanning_rack',
       ticks: 45,
       inputs: [{ item: 'leather', qty: 2 }],
     },
@@ -268,10 +268,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: [{ stat: 'magic', w: 3 }, { stat: 'herbalism' }, { stat: 'vitality' }, { stat: 'regen' }],
     acquisition: { craft: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'tailoring',
       levelReq: 14,
       xp: 110,
-      station: 'workbench',
+      station: 'loom',
       ticks: 60,
       inputs: [
         { item: 'cloth', qty: 2 },
@@ -293,10 +293,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: [{ stat: 'magic', w: 3 }, { stat: 'herbalism' }, { stat: 'regen' }],
     acquisition: { craft: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'tailoring',
       levelReq: 22,
       xp: 190,
-      station: 'workbench',
+      station: 'loom',
       ticks: 80,
       inputs: [
         { item: 'cloth', qty: 3 },
@@ -358,10 +358,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: CLOTH_POOL,
     acquisition: { craft: true, shop: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'tailoring',
       levelReq: 3,
       xp: 30,
-      station: 'workbench',
+      station: 'loom',
       ticks: 40,
       inputs: [
         { item: 'cloth', qty: 1 },
@@ -383,10 +383,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: LEATHER_POOL,
     acquisition: { craft: true, drop: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'leatherworking',
       levelReq: 10,
       xp: 70,
-      station: 'workbench',
+      station: 'tanning_rack',
       ticks: 55,
       inputs: [{ item: 'leather', qty: 2 }],
     },
@@ -451,10 +451,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: [{ stat: 'magic', w: 2 }, { stat: 'sneak' }, { stat: 'regen' }],
     acquisition: { craft: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'tailoring',
       levelReq: 12,
       xp: 80,
-      station: 'workbench',
+      station: 'loom',
       ticks: 50,
       inputs: [{ item: 'cloth', qty: 2 }],
     },
@@ -472,10 +472,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: LEATHER_POOL,
     acquisition: { craft: true, shop: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'leatherworking',
       levelReq: 2,
       xp: 25,
-      station: 'workbench',
+      station: 'tanning_rack',
       ticks: 35,
       inputs: [{ item: 'leather', qty: 1 }],
     },
@@ -494,10 +494,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: [...LEATHER_POOL, { stat: 'fishing' }],
     acquisition: { craft: true, drop: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'leatherworking',
       levelReq: 18,
       xp: 150,
-      station: 'workbench',
+      station: 'tanning_rack',
       ticks: 65,
       inputs: [
         { item: 'leather', qty: 2 },
@@ -564,13 +564,13 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     armorClass: 'cloth',
     levelReq: { skill: 'magic', level: 8 },
     armor: 1,
-    affixPool: [{ stat: 'magic', w: 2 }, { stat: 'crafting' }, { stat: 'regen' }],
+    affixPool: [{ stat: 'magic', w: 2 }, { stat: 'tailoring' }, { stat: 'regen' }],
     acquisition: { craft: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'tailoring',
       levelReq: 10,
       xp: 70,
-      station: 'workbench',
+      station: 'loom',
       ticks: 45,
       inputs: [{ item: 'cloth', qty: 2 }],
     },
@@ -588,10 +588,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: LEATHER_POOL,
     acquisition: { craft: true, shop: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'leatherworking',
       levelReq: 2,
       xp: 25,
-      station: 'workbench',
+      station: 'tanning_rack',
       ticks: 35,
       inputs: [{ item: 'leather', qty: 1 }],
     },
@@ -655,10 +655,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: [{ stat: 'defence', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
     acquisition: { craft: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'woodworking',
       levelReq: 9,
       xp: 85,
-      station: 'workbench',
+      station: 'carving_bench',
       ticks: 60,
       inputs: [
         { item: 'oak_log', qty: 2 },
@@ -679,10 +679,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: [{ stat: 'magic', w: 3 }, { stat: 'vitality' }, { stat: 'regen' }],
     acquisition: { craft: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'smithing',
       levelReq: 24,
       xp: 200,
-      station: 'workbench',
+      station: 'anvil',
       ticks: 75,
       inputs: [
         { item: 'gold_bar', qty: 1 },
@@ -727,10 +727,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: [{ stat: 'archery', w: 3 }, { stat: 'foraging' }, { stat: 'sneak' }],
     acquisition: { craft: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'leatherworking',
       levelReq: 12,
       xp: 90,
-      station: 'workbench',
+      station: 'tanning_rack',
       ticks: 55,
       inputs: [
         { item: 'leather', qty: 2 },
@@ -752,10 +752,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     affixPool: [{ stat: 'magic', w: 3 }, { stat: 'herbalism' }, { stat: 'regen' }],
     acquisition: { craft: true },
     recipe: {
-      skill: 'crafting',
+      skill: 'leatherworking',
       levelReq: 12,
       xp: 90,
-      station: 'workbench',
+      station: 'tanning_rack',
       ticks: 55,
       inputs: [
         { item: 'cloth', qty: 1 },
@@ -1130,10 +1130,10 @@ function wayfarerSet(): EquipmentDef[] {
   ];
   const color = '#a8895a';
   const craft = (levelReq: number, xp: number, ticks: number, leather: number, extra?: { item: string; qty: number }) => ({
-    skill: 'crafting' as const,
+    skill: 'leatherworking' as const,
     levelReq,
     xp,
-    station: 'workbench' as const,
+    station: 'tanning_rack' as const,
     ticks,
     inputs: extra
       ? [{ item: 'leather', qty: leather }, extra]
@@ -1247,10 +1247,10 @@ function drakescaleSet(): EquipmentDef[] {
   ];
   const color = '#8c3a32';
   const craft = (levelReq: number, xp: number, ticks: number, leather: number, iron: number) => ({
-    skill: 'crafting' as const,
+    skill: 'leatherworking' as const,
     levelReq,
     xp,
-    station: 'workbench' as const,
+    station: 'tanning_rack' as const,
     ticks,
     inputs: [{ item: 'leather', qty: leather }, { item: 'iron_bar', qty: iron }],
   });
@@ -1303,10 +1303,10 @@ function stagheartSet(): EquipmentDef[] {
   ];
   const color = '#6b5138';
   const craft = (levelReq: number, xp: number, ticks: number, leather: number, gold: number, feather: number) => ({
-    skill: 'crafting' as const,
+    skill: 'leatherworking' as const,
     levelReq,
     xp,
-    station: 'workbench' as const,
+    station: 'tanning_rack' as const,
     ticks,
     inputs: feather > 0
       ? [{ item: 'leather', qty: leather }, { item: 'gold_bar', qty: gold }, { item: 'feather', qty: feather }]
@@ -1360,10 +1360,10 @@ function hedgemageSet(): EquipmentDef[] {
   ];
   const color = '#5a6b3a';
   const craft = (levelReq: number, xp: number, ticks: number, cloth: number, extra?: { item: string; qty: number }) => ({
-    skill: 'crafting' as const,
+    skill: 'tailoring' as const,
     levelReq,
     xp,
-    station: 'workbench' as const,
+    station: 'loom' as const,
     ticks,
     inputs: extra
       ? [{ item: 'cloth', qty: cloth }, extra]
@@ -1477,10 +1477,10 @@ function cinderswornSet(): EquipmentDef[] {
   ];
   const color = '#4a3a38';
   const craft = (levelReq: number, xp: number, ticks: number, cloth: number, gold: number) => ({
-    skill: 'crafting' as const,
+    skill: 'tailoring' as const,
     levelReq,
     xp,
-    station: 'workbench' as const,
+    station: 'loom' as const,
     ticks,
     inputs: [{ item: 'cloth', qty: cloth }, { item: 'wolf_fur', qty: 1 }, { item: 'gold_bar', qty: gold }],
   });
@@ -1533,10 +1533,10 @@ function starweaverSet(): EquipmentDef[] {
   ];
   const color = '#2c3260';
   const craft = (levelReq: number, xp: number, ticks: number, cloth: number, gold: number, moonbell: number) => ({
-    skill: 'crafting' as const,
+    skill: 'tailoring' as const,
     levelReq,
     xp,
-    station: 'workbench' as const,
+    station: 'loom' as const,
     ticks,
     inputs: moonbell > 0
       ? [{ item: 'cloth', qty: cloth }, { item: 'gold_bar', qty: gold }, { item: 'moonbell', qty: moonbell }]
@@ -1706,10 +1706,10 @@ function thistledownSet(): EquipmentDef[] {
   ];
   const color = '#c9bfa3';
   const craft = (levelReq: number, xp: number, ticks: number, cloth: number) => ({
-    skill: 'crafting' as const,
+    skill: 'tailoring' as const,
     levelReq,
     xp,
-    station: 'workbench' as const,
+    station: 'loom' as const,
     ticks,
     inputs: [{ item: 'cloth', qty: cloth }, { item: 'twine', qty: 1 }],
   });
@@ -1791,10 +1791,10 @@ function dawnswornSet(): EquipmentDef[] {
   ];
   const color = '#d9c9a0';
   const craft = (levelReq: number, xp: number, ticks: number, cloth: number) => ({
-    skill: 'crafting' as const,
+    skill: 'tailoring' as const,
     levelReq,
     xp,
-    station: 'workbench' as const,
+    station: 'loom' as const,
     ticks,
     inputs: [{ item: 'cloth', qty: cloth }, { item: 'sunflower', qty: 2 }],
   });
@@ -1876,10 +1876,10 @@ function stormwovenSet(): EquipmentDef[] {
   ];
   const color = '#4e5a78';
   const craft = (levelReq: number, xp: number, ticks: number, cloth: number) => ({
-    skill: 'crafting' as const,
+    skill: 'tailoring' as const,
     levelReq,
     xp,
-    station: 'workbench' as const,
+    station: 'loom' as const,
     ticks,
     inputs: [{ item: 'cloth', qty: cloth }, { item: 'iron_bar', qty: 1 }],
   });
@@ -2001,10 +2001,10 @@ function hareswiftSet(): EquipmentDef[] {
   ];
   const color = '#c2a878';
   const craft = (levelReq: number, xp: number, ticks: number, leather: number) => ({
-    skill: 'crafting' as const,
+    skill: 'leatherworking' as const,
     levelReq,
     xp,
-    station: 'workbench' as const,
+    station: 'tanning_rack' as const,
     ticks,
     inputs: [{ item: 'leather', qty: leather }, { item: 'twine', qty: 1 }],
   });
@@ -2056,10 +2056,10 @@ function kingfisherSet(): EquipmentDef[] {
   ];
   const color = '#2f7a8a';
   const craft = (levelReq: number, xp: number, ticks: number, leather: number) => ({
-    skill: 'crafting' as const,
+    skill: 'leatherworking' as const,
     levelReq,
     xp,
-    station: 'workbench' as const,
+    station: 'tanning_rack' as const,
     ticks,
     inputs: [{ item: 'leather', qty: leather }, { item: 'feather', qty: 2 }],
   });
@@ -2106,7 +2106,7 @@ function cutpurseSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
     { stat: 'sneak', w: 2 },
     { stat: 'archery' },
-    { stat: 'crafting' },
+    { stat: 'tailoring' },
     { stat: 'maxHp' },
   ];
   const color = '#4e4438';
@@ -2141,10 +2141,10 @@ function traplineSet(): EquipmentDef[] {
   ];
   const color = '#8a7248';
   const craft = (levelReq: number, xp: number, ticks: number, leather: number) => ({
-    skill: 'crafting' as const,
+    skill: 'leatherworking' as const,
     levelReq,
     xp,
-    station: 'workbench' as const,
+    station: 'tanning_rack' as const,
     ticks,
     inputs: [{ item: 'leather', qty: leather }, { item: 'twine', qty: 2 }],
   });
@@ -3260,7 +3260,7 @@ function woodLine(
       affixPool: design.pool,
       acquisition: { craft: true },
       recipe: {
-        skill: 'crafting', levelReq: w.craftReq, xp: w.xp, station: null,
+        skill: 'woodworking', levelReq: w.craftReq, xp: w.xp, station: 'carving_bench',
         ticks: design.ticks, inputs: [{ item: w.log, qty: design.logs }],
       },
       value: w.value, color: w.color, code: w.code, desc: w.desc,
@@ -3361,7 +3361,7 @@ function bowDefs(): EquipmentDef[] {
       affixPool: [{ stat: 'archery', w: 2 }, { stat: 'beastcraft' }, { stat: 'foraging' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
-        skill: 'crafting', levelReq: 25, xp: 200, station: null, ticks: 65,
+        skill: 'woodworking', levelReq: 25, xp: 200, station: 'carving_bench', ticks: 65,
         inputs: [{ item: 'willow_log', qty: 1 }, { item: 'feather', qty: 8 }, { item: 'leather', qty: 1 }],
       },
       value: 380, color: '#4a8ab8', code: 'Hk',
@@ -3374,7 +3374,7 @@ function bowDefs(): EquipmentDef[] {
       affixPool: [{ stat: 'archery', w: 2 }, { stat: 'foraging' }, { stat: 'regen' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
-        skill: 'crafting', levelReq: 28, xp: 240, station: null, ticks: 75,
+        skill: 'woodworking', levelReq: 28, xp: 240, station: 'carving_bench', ticks: 75,
         inputs: [{ item: 'oak_log', qty: 2 }, { item: 'sagewort', qty: 2 }, { item: 'berries', qty: 4 }],
       },
       value: 460, color: '#5a9a4a', code: 'He',
@@ -3387,7 +3387,7 @@ function bowDefs(): EquipmentDef[] {
       affixPool: [{ stat: 'archery', w: 3 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
-        skill: 'crafting', levelReq: 45, xp: 420, station: null, ticks: 90,
+        skill: 'woodworking', levelReq: 45, xp: 420, station: 'carving_bench', ticks: 90,
         inputs: [{ item: 'yew_log', qty: 2 }, { item: 'gold_bar', qty: 1 }, { item: 'moonbell', qty: 2 }],
       },
       value: 880, color: '#8ab4c8', code: 'Wi',
@@ -3595,7 +3595,7 @@ function staffDefs(): EquipmentDef[] {
       affixPool: MAGE_POOL,
       acquisition: { craft: true },
       recipe: {
-        skill: 'crafting', levelReq: w.craftReq, xp: w.xp, station: null,
+        skill: 'woodworking', levelReq: w.craftReq, xp: w.xp, station: 'carving_bench',
         ticks: 55, inputs: [{ item: w.log, qty: 2 }],
       },
       value: w.value, color: w.color, code: w.code, desc: w.desc,
@@ -3634,7 +3634,7 @@ function staffDefs(): EquipmentDef[] {
     affixPool: WARMAGE_POOL,
     acquisition: { craft: true },
     recipe: {
-      skill: 'crafting' as const, levelReq: 36, xp: 260, station: null, ticks: 80,
+      skill: 'woodworking' as const, levelReq: 36, xp: 260, station: 'carving_bench', ticks: 80,
       inputs: [{ item: 'willow_log', qty: 2 }, { item: g.gem, qty: 1 }, { item: 'gold_bar', qty: 1 }],
     },
     value: 620, color: g.color, code: g.code,
@@ -3674,7 +3674,7 @@ function staffDefs(): EquipmentDef[] {
       affixPool: [{ stat: 'magic', w: 2 }, { stat: 'cooking' }, { stat: 'vitality' }, { stat: 'regen' }],
       acquisition: { craft: true },
       recipe: {
-        skill: 'crafting', levelReq: 22, xp: 180, station: null, ticks: 70,
+        skill: 'woodworking', levelReq: 22, xp: 180, station: 'carving_bench', ticks: 70,
         inputs: [{ item: 'oak_log', qty: 2 }, { item: 'coal', qty: 2 }, { item: 'emberstone', qty: 1 }],
       },
       value: 340, color: '#d08a4a', code: 'Hw',
@@ -3687,7 +3687,7 @@ function staffDefs(): EquipmentDef[] {
       affixPool: [{ stat: 'magic', w: 2 }, { stat: 'fishing', w: 2 }, { stat: 'defence' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
-        skill: 'crafting', levelReq: 32, xp: 230, station: null, ticks: 75,
+        skill: 'woodworking', levelReq: 32, xp: 230, station: 'carving_bench', ticks: 75,
         inputs: [{ item: 'willow_log', qty: 2 }, { item: 'raw_trout', qty: 3 }, { item: 'frostshard', qty: 1 }],
       },
       value: 520, color: '#5a8ab0', code: 'Td',
@@ -3700,7 +3700,7 @@ function staffDefs(): EquipmentDef[] {
       affixPool: [{ stat: 'magic', w: 3 }, { stat: 'smithing' }, { stat: 'vitality' }, { stat: 'maxHp' }],
       acquisition: { craft: true },
       recipe: {
-        skill: 'crafting', levelReq: 47, xp: 400, station: null, ticks: 90,
+        skill: 'woodworking', levelReq: 47, xp: 400, station: 'carving_bench', ticks: 90,
         inputs: [{ item: 'yew_log', qty: 2 }, { item: 'stormpearl', qty: 2 }, { item: 'gold_bar', qty: 1 }],
       },
       value: 980, color: '#c8c86a', code: 'Zl',
@@ -3794,7 +3794,7 @@ function staffDefs(): EquipmentDef[] {
       id: 'runegnarl', name: 'Runegnarl', slot: 'weapon',
       levelReq: { skill: 'magic', level: 28 },
       weapon: { style: 'magic', damage: 5, cooldownTicks: 9, range: 15, projectileSpeed: 13, art: 'rune_echo', element: 'arcane' },
-      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'crafting' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      affixPool: [{ stat: 'magic', w: 3 }, { stat: 'tailoring' }, { stat: 'defence' }, { stat: 'maxHp' }],
       rarities: ['rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 720, color: '#8a7a9e', code: 'Rq',

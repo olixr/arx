@@ -1299,7 +1299,8 @@ export class GameServer {
       return;
     }
     if (recipe.station && !this.nearTile(eid, STATION_TILES[recipe.station])) {
-      sys(`You need to stand by a ${recipe.station} for that.`);
+      // 'tanning_rack' → "tanning rack": speak the station's name, not its key.
+      sys(`You need to stand by a ${recipe.station.replace(/_/g, ' ')} for that.`);
       return;
     }
     if (!this.hasInputs(player, recipe)) {

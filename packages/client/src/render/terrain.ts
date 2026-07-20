@@ -230,7 +230,10 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
       t === Tile.BankChest ||
       t === Tile.ShopCounter ||
       t === Tile.LampPost ||
-      t === Tile.Alembic
+      t === Tile.Alembic ||
+      t === Tile.TanningRack ||
+      t === Tile.Loom ||
+      t === Tile.CarvingBench
     ) {
       return nearestFloor(ground, tx, ty);
     }

@@ -140,6 +140,17 @@ export function buildBramblewick(): ZoneDef {
   b.set(40, 26, Tile.BankChest);
   b.set(53, 57, Tile.Campfire);
 
+  // Crafters' yard — the trades row between the store and the smithy:
+  // tanning rack, loom, and carving bench on a packed-dirt pad, with
+  // the herbalist's alembic at its east end. Every trade is taught in
+  // town; the wilderness only ever asks you to rebuild what you've seen.
+  b.fillRect(62, 52, 9, 5, Tile.Dirt);
+  b.set(63, 53, Tile.TanningRack);
+  b.set(66, 53, Tile.Loom);
+  b.set(69, 53, Tile.CarvingBench);
+  b.set(66, 55, Tile.Alembic);
+  b.set(62, 55, Tile.Barrel).set(70, 55, Tile.Crate);
+
   // Lamp posts: plaza corners + the bank path and the inn's road door.
   // After dark these carry the town — warm pools against the night.
   b.set(43, 44, Tile.LampPost);

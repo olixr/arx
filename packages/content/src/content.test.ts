@@ -101,6 +101,38 @@ test('the sneak ladder is reachable — daggers carry techStyle, the tanto absta
   }
 });
 
+test('trade-skill law: every recipe belongs to a named trade, at that trade\'s station', () => {
+  // No generic "crafting" — a recipe trains the profession that makes
+  // its kind of thing, and each trade works at its own bench.
+  const TRADES = ['smithing', 'woodworking', 'leatherworking', 'tailoring', 'cooking', 'herbalism'];
+  const HOME: Record<string, string[]> = {
+    smithing: ['furnace', 'anvil'],
+    woodworking: ['carving_bench'],
+    leatherworking: ['tanning_rack'],
+    tailoring: ['loom'],
+    cooking: ['fire', 'workbench'],
+    herbalism: ['alembic'],
+  };
+  for (const r of RECIPES.values()) {
+    assert.ok(TRADES.includes(r.skill), `${r.id}: '${r.skill}' is not a trade skill`);
+    if (r.station) {
+      assert.ok(
+        HOME[r.skill]!.includes(r.station),
+        `${r.id}: a ${r.skill} recipe at the ${r.station} — wrong bench`,
+      );
+    }
+  }
+  // Every trade has recipes, and the anywhere-craftables stay a short list.
+  const bySkill = new Map<string, number>();
+  const anywhere: string[] = [];
+  for (const r of RECIPES.values()) {
+    bySkill.set(r.skill, (bySkill.get(r.skill) ?? 0) + 1);
+    if (!r.station) anywhere.push(r.id);
+  }
+  for (const tr of TRADES) assert.ok((bySkill.get(tr) ?? 0) > 0, `trade ${tr} has no recipes`);
+  assert.ok(anywhere.length <= 3, `field-craft list grew: ${anywhere.join(', ')}`);
+});
+
 test('weapon oils: valid statuses, every vial is brewable, potency climbs the skill', () => {
   const vials = [...ITEMS.values()].filter((i) => i.coating);
   assert.ok(vials.length >= 4, 'the poison-maker needs a shelf of vials');
@@ -414,6 +446,10 @@ test('bramblewick: anchors, unique stations, and story markers hold', () => {
     ['furnace', Tile.Furnace],
     ['anvil', Tile.Anvil],
     ['workbench', Tile.Workbench],
+    ['tanning rack', Tile.TanningRack],
+    ['loom', Tile.Loom],
+    ['carving bench', Tile.CarvingBench],
+    ['alembic', Tile.Alembic],
   ];
   for (const [name, tile] of stations) {
     assert.equal(counts.get(tile) ?? 0, 1, `town needs exactly one ${name}`);
