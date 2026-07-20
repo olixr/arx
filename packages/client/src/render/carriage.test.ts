@@ -44,22 +44,36 @@ test('standard grip: blade down-forward at rest, raised ready carry at a sprint'
   }
 });
 
-test('rogue grip: the low-line law — the reversed tip stays below the hand at every gait', () => {
+test('rogue grip: low-line at rest, raised reverse carry at a sprint — always trailing', () => {
   for (const side of SIDES) {
     for (let k = 0; k <= 1.0001; k += 0.05) {
       const c = bladeCarriage('rogue', side, k);
-      assert.ok(Math.sin(c.angle) > 0.25, `tip below hand at runK=${k.toFixed(2)}`);
-      // Tip trails BEHIND the facing side — down-back, never skewering
-      // the belly (the >1.0 rad rake verdict).
+      // The reversed tip ALWAYS trails behind the facing — the one
+      // invariant that makes it read as a reverse grip from any gait.
       assert.ok(Math.sign(Math.cos(c.angle)) === -Math.sign(side), 'tip trails the facing');
       assert.ok(c.flip, 'reverse grip turns the edge out');
     }
-    // The run stance is genuinely different from idle: raked further
-    // back and carried higher.
+    // At rest: the low-line, tip hanging below the hand.
     const idle = bladeCarriage('rogue', side, 0);
+    assert.ok(Math.sin(idle.angle) > 0.5, 'idle tip hangs below the hand');
+    // At a sprint: the blade sweeps UP-AND-BACK over the shoulder line
+    // (the user-picked raised reverse carry), riding higher.
     const run = bladeCarriage('rogue', side, 1);
-    assert.ok(Math.abs(run.angle - idle.angle) > 0.2, 'run rake differs from idle');
+    assert.ok(Math.sin(run.angle) < -0.4, 'sprint tip rises above the hand');
     assert.ok(run.dy < idle.dy, 'run carry rides higher');
+  }
+});
+
+test('sprint carries mirror each other: standard leads forward, rogue trails back', () => {
+  for (const side of SIDES) {
+    const std = bladeCarriage('normal', side, 1);
+    const rog = bladeCarriage('rogue', side, 1);
+    // Both raised…
+    assert.ok(Math.sin(std.angle) < 0 && Math.sin(rog.angle) < 0);
+    // …standard points up-FORWARD, rogue up-BACK, at the same pitch.
+    assert.ok(Math.sign(Math.cos(std.angle)) === Math.sign(side));
+    assert.ok(Math.sign(Math.cos(rog.angle)) === -Math.sign(side));
+    assert.ok(Math.abs(Math.sin(std.angle) - Math.sin(rog.angle)) < 0.05, 'same raise pitch');
   }
 });
 

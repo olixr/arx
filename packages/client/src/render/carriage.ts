@@ -44,19 +44,26 @@ function smooth(t: number): number {
  * Where one fist carries a blade at rest, blended across the gait.
  * runK 0 = standing idle, 1 = full sprint; every returned channel is
  * continuous in runK so the stance never pops as the gait changes.
+ *
+ * `side` is the FACING sign — which way is forward — for BOTH hands.
+ * It is not the side the fist hangs on: the off fist hangs opposite
+ * the facing, and feeding it its hanging side mirrors every stance
+ * backward (standard read as rogue and vice versa — the user-caught
+ * flip-flop). The caller mirrors `dx` itself for the trailing hand.
  */
 export function bladeCarriage(grip: Grip, side: number, runK: number): BladeCarriage {
   const lift = smooth(runK);
   if (grip === 'rogue') {
-    // Reverse grip: the blade hangs down-back past the hip, tip toward
-    // the heel — the low-line, one flick from an icepick stab. On the
-    // run it rakes back a shade further and rides higher and tighter to
-    // the body, pumping with the arm swing: a knife carried mid-sprint,
-    // not a knife dangling.
+    // Reverse grip: at rest the blade hangs down-back past the hip,
+    // tip toward the heel — the low-line, one flick from an icepick
+    // stab. On the run it sweeps UP-AND-BACK into a raised reverse
+    // carry — the blade riding high over the shoulder line, trailing
+    // the sprint — the exact mirror of the standard ready carry.
+    // (User-picked: this raised trail IS the rogue run.)
     return {
       dx: side * (0.04 + 0.03 * lift),
-      dy: -0.05 - 0.04 * lift,
-      angle: Math.PI / 2 + side * (0.72 + 0.28 * lift),
+      dy: -0.05 - 0.06 * lift,
+      angle: Math.PI / 2 + side * (0.72 + 1.35 * lift),
       flip: true,
     };
   }

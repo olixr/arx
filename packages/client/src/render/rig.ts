@@ -1162,13 +1162,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     let ox = rig.x - wSide * tw * 1.02 * wS;
     let oy = armY + 0.17 * s;
     if (offBlade) {
-      const oc = bladeCarriage(offGrip, -wSide, runK);
+      // The carriage mirrors on FACING, not on the hanging side — the
+      // off fist trails the facing, so its outward push (dx) mirrors
+      // while the blade angles stay true to forward/backward.
+      const oc = bladeCarriage(offGrip, wSide, runK);
       let oAngle = oc.angle;
-      ox += oc.dx * s * wS;
+      ox -= oc.dx * s * wS;
       oy = armY + (0.15 + oc.dy) * s;
       if (idleK > 0) {
         oAngle += Math.sin(rig.nowMs * 0.0011 + 2.1) * 0.045 * idleK;
-        const fl = idleFlourish(rig.nowMs, FLOURISH_OFF_PHASE_MS, offGrip, -wSide);
+        const fl = idleFlourish(rig.nowMs, FLOURISH_OFF_PHASE_MS, offGrip, wSide);
         if (fl) {
           oAngle += fl.spin * idleK;
           oy -= fl.lift * s * idleK;
