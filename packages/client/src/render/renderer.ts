@@ -453,6 +453,122 @@ export class Renderer {
     return best;
   }
 
+  /**
+   * The stall wardrobe: every market stand draws one bolt of cloth
+   * from this roster, keyed by the run's west-anchor tile hash — so a
+   * merged stall wears one banner, neighbouring stands differ, and
+   * every town's market reads bespoke with zero authoring plumbing.
+   */
+  private static readonly STALL_BANNERS: ReadonlyArray<{
+    kind: 'stripes' | 'solid' | 'chevron';
+    a: string;
+    b: string;
+  }> = [
+    { kind: 'stripes', a: '#b5493e', b: '#e8dfc8' }, // market classic
+    { kind: 'stripes', a: '#3f6f8f', b: '#e8dfc8' }, // harbor blue
+    { kind: 'solid', a: '#5d7f3a', b: '#e8dfc8' }, // herbalist green
+    { kind: 'solid', a: '#7a4a8f', b: '#d9a441' }, // arcanist plum
+    { kind: 'chevron', a: '#c9962e', b: '#6b4a26' }, // gilded trim
+    { kind: 'solid', a: '#8a3d3d', b: '#e8dfc8' }, // vintner wine
+  ];
+
+  /**
+   * One ware on a stall's display top. Kinds: produce, bread, bottles,
+   * cloth bolts, pottery, berry basket — small enough to sit under the
+   * awning window, distinct enough to read at market distance.
+   */
+  private drawStallGood(kind: number, gx: number, gy: number, s: number, seed: number): void {
+    const ctx = this.ctx;
+    switch (kind) {
+      case 0: {
+        // Produce: three faceted rounds in a loose arc.
+        const cols = ['#d97b29', '#b5493e', '#7fae4a'] as const;
+        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = cols[(seed + i) % 3]!;
+          ctx.beginPath();
+          facetCircle(ctx, gx + (i - 1) * s * 0.09, gy - (i % 2) * s * 0.035, s * 0.055, 6, i * 1.1, 0.8);
+          ctx.fill();
+        }
+        break;
+      }
+      case 1: {
+        // Bread: a long loaf with a round propped against it.
+        ctx.fillStyle = '#c99a55';
+        ctx.beginPath();
+        chamferRect(ctx, gx - s * 0.11, gy - s * 0.065, s * 0.22, s * 0.07, s * 0.03);
+        ctx.fill();
+        ctx.fillStyle = '#b3823f';
+        ctx.beginPath();
+        chamferRect(ctx, gx - s * 0.05, gy - s * 0.125, s * 0.15, s * 0.06, s * 0.025);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(122, 85, 46, 0.6)';
+        ctx.fillRect(gx - s * 0.07, gy - s * 0.04, s * 0.14, s * 0.014);
+        break;
+      }
+      case 2: {
+        // Bottled brews: a pair, different fills.
+        for (const [dx, col] of [
+          [-0.05, '#7fc9b3'],
+          [0.05, '#d65a5a'],
+        ] as const) {
+          ctx.fillStyle = 'rgba(214, 228, 240, 0.55)';
+          ctx.fillRect(gx + dx * s - s * 0.035, gy - s * 0.16, s * 0.07, s * 0.16);
+          ctx.fillRect(gx + dx * s - s * 0.014, gy - s * 0.21, s * 0.028, s * 0.05);
+          ctx.fillStyle = col;
+          ctx.fillRect(gx + dx * s - s * 0.028, gy - s * 0.1, s * 0.056, s * 0.09);
+        }
+        break;
+      }
+      case 3: {
+        // Cloth bolts: two dyed rolls, one across the other.
+        for (const [dx, dyc, col] of [
+          [-0.02, 0, '#7a4a8f'],
+          [0.045, -0.05, '#3f6f8f'],
+        ] as const) {
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          chamferRect(ctx, gx + dx * s - s * 0.12, gy + dyc * s - s * 0.05, s * 0.24, s * 0.07, s * 0.03);
+          ctx.fill();
+          ctx.fillStyle = shade(col, 14);
+          ctx.fillRect(gx + dx * s - s * 0.12, gy + dyc * s - s * 0.05, s * 0.24, s * 0.02);
+        }
+        break;
+      }
+      case 4: {
+        // Pottery: a stack of thrown bowls.
+        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = i === 2 ? '#c07347' : '#b3623a';
+          ctx.beginPath();
+          facetCircle(ctx, gx, gy - i * s * 0.045, s * (0.085 - i * 0.012), 6, 0.3 + i, 0.45);
+          ctx.fill();
+        }
+        ctx.fillStyle = 'rgba(70, 36, 20, 0.5)';
+        ctx.fillRect(gx - s * 0.06, gy - s * 0.1, s * 0.12, s * 0.014);
+        break;
+      }
+      default: {
+        // A woven basket heaped with berries.
+        ctx.fillStyle = '#8a6534';
+        ctx.beginPath();
+        ctx.moveTo(gx - s * 0.1, gy - s * 0.09);
+        ctx.lineTo(gx + s * 0.1, gy - s * 0.09);
+        ctx.lineTo(gx + s * 0.07, gy);
+        ctx.lineTo(gx - s * 0.07, gy);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = 'rgba(58, 38, 18, 0.5)';
+        ctx.fillRect(gx - s * 0.09, gy - s * 0.055, s * 0.18, s * 0.013);
+        ctx.fillStyle = '#d65a5a';
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          facetCircle(ctx, gx + (i - 1) * s * 0.045, gy - s * 0.11, s * 0.026, 5, i, 0.85);
+          ctx.fill();
+        }
+        break;
+      }
+    }
+  }
+
   /** Tiles that count as workable stations for interaction heat. */
   private static readonly HEAT_STATION_TILES = new Set<Tile>([
     Tile.Anvil,
@@ -5332,67 +5448,161 @@ export class Renderer {
         const isRun = (t2: number | undefined) => t2 === Tile.MarketStall;
         const je = isRun(game.world.groundAt(tx + 1, ty));
         const jw = isRun(game.world.groundAt(tx - 1, ty));
+        // The banner belongs to the RUN: walk to the west anchor so a
+        // merged stall wears one cloth and neighbouring stands each
+        // draw a different bolt from the roster.
+        let ax = tx;
+        for (let i = 0; i < 8 && isRun(game.world.groundAt(ax - 1, ty)); i++) ax--;
+        const style =
+          Renderer.STALL_BANNERS[hashCoords(97, ax, ty) % Renderer.STALL_BANNERS.length]!;
+        const hg = hashCoords(53, tx, ty);
         const baseY = p.y + syT * 0.42;
         const xL = p.x - s * 0.5 - (jw ? 0.5 : 0);
         const xR = p.x + s * 0.5 + (je ? 0.5 : 0);
-        // Waist-high counter under a canopy you walk beneath.
-        const th = s * 0.8;
-        const canTop = baseY - s * 1.95;
-        const canFront = baseY - s * 1.48;
+        // STALL ARCHITECTURE LAW: chest-high counter with a FULL-TILE
+        // display top, then open air, then the awning high overhead.
+        // The valance hem clears the head of a seller standing one row
+        // north, so the merchant shows hips-to-face through the window
+        // (the same open-interior thinking that removed roofs); their
+        // legs vanish behind the deep top — standing-behind-the-counter
+        // falls out of the geometry, not a special case.
+        const faceH = s * 0.66;
+        const faceTop = baseY - faceH;
+        const topBack = faceTop - syT;
+        const tipY = baseY - s * 2.08;
+        const hemY = baseY - s * 2.3;
+        const canTop = baseY - s * 2.6;
         return {
           sortY: ty + 0.78,
-          drawShadow: () => this.castEdgeQuad(xL, baseY + syT * 0.05, xR, baseY + syT * 0.05, 0.85),
+          drawShadow: () => this.castEdgeQuad(xL, baseY + syT * 0.05, xR, baseY + syT * 0.05, 1.0),
           draw: () => {
+            const wind = windAt(tx + 0.5, ty + 0.5, t);
+            const tileL = p.x - s * 0.5;
+            const tileR = p.x + s * 0.5;
             // Contact shade under the stand.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
-            ctx.fillRect(p.x - s * 0.5, baseY - s * 0.01, s, s * 0.05);
-            // Corner poles only at run ends — a row shares its frame.
+            ctx.fillRect(tileL, baseY - s * 0.01, s, s * 0.05);
+            // Display top first: a full tile of goods room, dimmer at
+            // the back where the awning's shade falls.
+            ctx.fillStyle = '#9a7040';
+            ctx.fillRect(tileL, topBack, s, syT);
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
+            ctx.fillRect(tileL, topBack, s, syT * 0.3);
+            // Counter face: the ShopCounter family's joinery — plinth
+            // and recessed panels — so stalls, counters, and tables
+            // compose into one market vocabulary.
+            ctx.fillStyle = '#4a3116';
+            ctx.fillRect(tileL, baseY - s * 0.07, s, s * 0.07);
             ctx.fillStyle = '#5e3f1e';
-            if (!jw) ctx.fillRect(xL + s * 0.03, canTop, s * 0.08, baseY - canTop);
-            if (!je) ctx.fillRect(xR - s * 0.11, canTop, s * 0.08, baseY - canTop);
-            // Counter base: solid front, plank seams, lit top.
-            ctx.fillStyle = '#6f4d26';
-            ctx.fillRect(p.x - s * 0.5, baseY - th, s, th);
-            ctx.fillStyle = 'rgba(36, 22, 10, 0.3)';
-            ctx.fillRect(p.x - s * 0.16, baseY - th, s * 0.03, th);
-            ctx.fillRect(p.x + s * 0.18, baseY - th, s * 0.03, th);
-            ctx.fillStyle = shade('#6f4d26', -10);
-            ctx.fillRect(p.x - s * 0.5, baseY - s * 0.12, s, s * 0.12);
-            ctx.fillStyle = '#94693a';
-            ctx.beginPath();
-            chamferRect(ctx, p.x - s * 0.52, baseY - th - syT * 0.28, s * 1.04, syT * 0.28, s * 0.03);
-            ctx.fill();
-            ctx.fillStyle = shade('#94693a', 14);
-            ctx.fillRect(p.x - s * 0.5, baseY - th - s * 0.035, s, s * 0.035);
-            // Striped canopy: 4 even bands per tile so runs stripe
-            // continuously; the scalloped hem breathes in the wind —
-            // primary slope, secondary flutter.
-            const stripes = ['#b5493e', '#e8dfc8'];
-            const bandW = s / 4;
-            for (let k = 0; k < 4; k++) {
-              ctx.fillStyle = stripes[k % 2]!;
-              const bx = p.x - s * 0.5 + k * bandW;
-              const flut = Math.sin(t * 2.1 + tx * 1.3 + k * 1.7) * s * 0.022;
-              ctx.beginPath();
-              ctx.moveTo(bx, canTop);
-              ctx.lineTo(bx + bandW, canTop);
-              ctx.lineTo(bx + bandW + s * 0.06, canFront + flut * 0.5);
-              ctx.lineTo(bx + s * 0.06, canFront + flut * 0.5);
-              ctx.closePath();
-              ctx.fill();
-              // Scallop: a hanging half-hex whose tip drifts a beat
-              // behind the hem it hangs from.
-              const lag = Math.sin(t * 2.1 + tx * 1.3 + k * 1.7 - 0.7) * s * 0.03;
-              ctx.beginPath();
-              ctx.moveTo(bx + s * 0.06, canFront + flut * 0.5);
-              ctx.lineTo(bx + bandW + s * 0.06, canFront + flut * 0.5);
-              ctx.lineTo(bx + bandW * 0.5 + s * 0.06 + lag * 0.6, canFront + s * 0.11 + lag);
-              ctx.closePath();
-              ctx.fill();
+            ctx.fillRect(tileL, faceTop, s, faceH - s * 0.07);
+            ctx.fillStyle = shade('#5e3f1e', -12);
+            for (const px2 of [-0.42, 0.04] as const) {
+              ctx.fillRect(p.x + px2 * s, faceTop + s * 0.1, s * 0.38, faceH - s * 0.28);
             }
-            // Shade the canopy underside; goods sit in that shadow.
-            ctx.fillStyle = 'rgba(18, 12, 26, 0.25)';
-            ctx.fillRect(p.x - s * 0.45, canFront + s * 0.1, s * 0.95, s * 0.045);
+            ctx.fillStyle = shade('#5e3f1e', 10);
+            for (const px2 of [-0.42, 0.04] as const) {
+              ctx.fillRect(p.x + px2 * s, faceTop + s * 0.1, s * 0.38, s * 0.025);
+            }
+            // The bright working lip along the top's south edge.
+            ctx.fillStyle = '#b08347';
+            ctx.fillRect(tileL, faceTop - s * 0.035, s, s * 0.05);
+            // Wares: two or three goods per tile, hash-picked so no
+            // two stalls stock the same shelf.
+            const slots = (hg & 1) === 0 ? [-0.28, 0.28] : [-0.3, 0, 0.3];
+            for (let i = 0; i < slots.length; i++) {
+              this.drawStallGood(
+                (hg >>> (i * 5)) % 6,
+                p.x + slots[i]! * s,
+                topBack + syT * (0.52 + (((hg >>> (i * 3)) % 5) - 2) * 0.055),
+                s,
+                hg + i * 977,
+              );
+            }
+            // Corner posts carry the awning — run ends only, so a
+            // merged row reads as one long stand.
+            if (!jw) {
+              ctx.fillStyle = '#5e3f1e';
+              ctx.fillRect(xL + s * 0.03, hemY - s * 0.04, s * 0.09, baseY - hemY + s * 0.04);
+              ctx.fillStyle = shade('#5e3f1e', 12);
+              ctx.fillRect(xL + s * 0.03, hemY - s * 0.04, s * 0.03, baseY - hemY + s * 0.04);
+            }
+            if (!je) {
+              ctx.fillStyle = '#5e3f1e';
+              ctx.fillRect(xR - s * 0.12, hemY - s * 0.04, s * 0.09, baseY - hemY + s * 0.04);
+              ctx.fillStyle = shade('#5e3f1e', 12);
+              ctx.fillRect(xR - s * 0.12, hemY - s * 0.04, s * 0.03, baseY - hemY + s * 0.04);
+            }
+            // The awning slab, styled per the run's banner.
+            const oxL = jw ? tileL - 0.5 : tileL - s * 0.07;
+            const oxR = je ? tileR + 0.5 : tileR + s * 0.07;
+            const bandW = s / 4;
+            if (style.kind === 'stripes') {
+              for (let k = 0; k < 4; k++) {
+                ctx.fillStyle = k % 2 === 0 ? style.a : style.b;
+                ctx.fillRect(tileL + k * bandW, canTop, bandW + 0.5, hemY - canTop);
+              }
+              if (!jw) {
+                ctx.fillStyle = style.a;
+                ctx.fillRect(oxL, canTop, tileL - oxL + 0.5, hemY - canTop);
+              }
+              if (!je) {
+                ctx.fillStyle = style.b;
+                ctx.fillRect(tileR, canTop, oxR - tileR, hemY - canTop);
+              }
+            } else {
+              ctx.fillStyle = style.a;
+              ctx.fillRect(oxL, canTop, oxR - oxL, hemY - canTop);
+              if (style.kind === 'chevron') {
+                ctx.fillStyle = style.b;
+                ctx.fillRect(oxL, hemY - s * 0.08, oxR - oxL, s * 0.08);
+              }
+            }
+            // The cloth answers the same wind the grass feels: broad
+            // shimmer swells, a sun-warmed hem, a shaded back lip.
+            ctx.fillStyle = `rgba(255, 252, 235, ${0.03 + 0.04 * Math.max(0, wind.l)})`;
+            ctx.fillRect(oxL, canTop, oxR - oxL, hemY - canTop);
+            ctx.fillStyle = 'rgba(255, 235, 200, 0.1)';
+            ctx.fillRect(oxL, hemY - s * 0.05, oxR - oxL, s * 0.05);
+            ctx.fillStyle = 'rgba(20, 14, 28, 0.22)';
+            ctx.fillRect(oxL, canTop, oxR - oxL, s * 0.04);
+            // Valance: the hanging hem. Tips lean with the gusts, each
+            // a beat out of phase with its neighbour.
+            const gust = 0.6 + 0.35 * Math.max(0, wind.s);
+            for (let k = 0; k < 4; k++) {
+              const vx = tileL + k * bandW;
+              const lean =
+                (wind.bx * 0.4 + Math.sin(t * 2.2 + tx * 1.3 + k * 1.9) * 0.5) * s * 0.06 * gust;
+              if (style.kind === 'solid') {
+                ctx.fillStyle = style.a;
+                ctx.beginPath();
+                ctx.moveTo(vx, hemY);
+                ctx.lineTo(vx + bandW, hemY);
+                ctx.lineTo(vx + bandW * 0.78 + lean * 0.6, tipY + s * 0.02);
+                ctx.lineTo(vx + bandW * 0.22 + lean, tipY);
+                ctx.closePath();
+                ctx.fill();
+              } else {
+                ctx.fillStyle =
+                  style.kind === 'chevron'
+                    ? k % 2 === 0
+                      ? style.b
+                      : style.a
+                    : k % 2 === 0
+                      ? style.a
+                      : style.b;
+                ctx.beginPath();
+                ctx.moveTo(vx, hemY);
+                ctx.lineTo(vx + bandW, hemY);
+                ctx.lineTo(vx + bandW * 0.5 + lean, tipY);
+                ctx.closePath();
+                ctx.fill();
+              }
+            }
+            if (style.kind === 'solid') {
+              // The trim line the merchant sewed on.
+              ctx.fillStyle = style.b;
+              ctx.fillRect(tileL, hemY - s * 0.018, s, s * 0.036);
+            }
           },
         };
       }
