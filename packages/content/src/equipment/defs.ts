@@ -868,6 +868,13 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // line, three bespoke crafts, and fourteen drop-only finds ending in
   // a legendary-only last word.
   ...daggerDefs(),
+
+  // ==================================================== the archer's roster
+  // Twenty bespoke bows. Three fletching designs climb the wood ladder
+  // (log → oak → willow → yew), three bespoke crafts, fourteen wild
+  // finds up to the legendary-only Skyrender. Longbows slow and heavy,
+  // shortbows quick and close, recurves the hunter's middle path.
+  ...bowDefs(),
 ];
 
 // ---------------------------------------------------------- set makers
@@ -3184,6 +3191,346 @@ function daggerDefs(): EquipmentDef[] {
     ...crafts,
     ...finds,
   ];
+}
+
+// ============================================================ the archer's
+// roster: 20 bespoke bows. Three fletching lines climb the wood ladder
+// (log → oak → willow → yew — the trees are real, go cut them), three
+// bespoke crafts, and fourteen wild finds up to the legendary Skyrender.
+// The dials are cadence, reach, and weight: longbows slow and heavy,
+// shortbows quick and close, recurves the hunter's middle path.
+
+/** One bow design fletched across the four bow woods (metalLine's cousin:
+ *  crafting skill, no station — a bowyer works wherever there's a knee). */
+interface WoodStep {
+  wood: 'plain' | 'oak' | 'willow' | 'yew';
+  log: string;
+  color: string;
+  damage: number;
+  archReq: number;
+  craftReq: number;
+  xp: number;
+  value: number;
+  code: string;
+  desc: string;
+}
+
+function woodLine(
+  design: {
+    key: string;
+    name: string;
+    cooldownTicks: number;
+    range: number;
+    projectileSpeed: number;
+    art: string;
+    logs: number;
+    ticks: number;
+    pool: AffixPoolEntry[];
+  },
+  steps: WoodStep[],
+): EquipmentDef[] {
+  return steps.map((w) => {
+    const def: EquipmentDef = {
+      id: w.wood === 'plain' ? design.key : `${w.wood}_${design.key}`,
+      name: w.wood === 'plain'
+        ? design.name
+        : `${w.wood.charAt(0).toUpperCase()}${w.wood.slice(1)} ${design.name.toLowerCase()}`,
+      slot: 'weapon',
+      weapon: {
+        style: 'archery',
+        damage: w.damage,
+        cooldownTicks: design.cooldownTicks,
+        range: design.range,
+        ammo: 'arrow',
+        projectileSpeed: design.projectileSpeed,
+        art: design.art,
+      },
+      affixPool: design.pool,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'crafting', levelReq: w.craftReq, xp: w.xp, station: null,
+        ticks: design.ticks, inputs: [{ item: w.log, qty: design.logs }],
+      },
+      value: w.value, color: w.color, code: w.code, desc: w.desc,
+    };
+    if (w.archReq > 1) def.levelReq = { skill: 'archery', level: w.archReq };
+    return def;
+  });
+}
+
+function bowDefs(): EquipmentDef[] {
+  // Pools: every bow leans archery; the flavor stats tell its story.
+  const ARCHER_POOL: AffixPoolEntry[] = [
+    { stat: 'archery', w: 3 },
+    { stat: 'defence' },
+    { stat: 'vitality' },
+    { stat: 'maxHp' },
+  ];
+  const HUNTER_POOL: AffixPoolEntry[] = [
+    { stat: 'archery', w: 3 },
+    { stat: 'sneak', w: 2 },
+    { stat: 'foraging' },
+    { stat: 'maxHp' },
+  ];
+  const GHOST_POOL: AffixPoolEntry[] = [
+    { stat: 'archery', w: 2 },
+    { stat: 'sneak', w: 2 },
+    { stat: 'maxHp' },
+  ];
+
+  // Wood steps shared by every line — each design overrides stats/codes.
+  const WOODS = { plain: '#8a6a45', oak: '#6b4a26', willow: '#8a9455', yew: '#7d4436' };
+
+  // ---- shortbow: the skirmisher's bow. Quick to draw, quick to loose.
+  // oak_shortbow is the id the game shipped with — it adopts as the oak
+  // rung (roll-less DB rows become common/seed 0). The starter kit now
+  // hands out the plain rung instead.
+  const shortbow = woodLine(
+    {
+      key: 'shortbow', name: 'Shortbow', cooldownTicks: 7, range: 13,
+      projectileSpeed: 16, art: 'volley', logs: 2, ticks: 55, pool: HUNTER_POOL,
+    },
+    [
+      { wood: 'plain', log: 'log', color: WOODS.plain, damage: 3, archReq: 0, craftReq: 8, xp: 50, value: 30, code: 'Ho',
+        desc: 'A hunter\'s first friend. Light, honest, always strung.' }, // also shop stock (patched below)
+      { wood: 'oak', log: 'oak_log', color: WOODS.oak, damage: 4, archReq: 10, craftReq: 15, xp: 90, value: 110, code: 'Bw',
+        desc: 'Dense oak snaps the arrow out flat and fast.' },
+      { wood: 'willow', log: 'willow_log', color: WOODS.willow, damage: 5, archReq: 24, craftReq: 30, xp: 210, value: 320, code: 'Uw',
+        desc: 'Willow forgives a hurried draw and hides the creak.' },
+      { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 6, archReq: 40, craftReq: 46, xp: 360, value: 740, code: 'Ys',
+        desc: 'Yew in a small frame: a whisper that hits like a shout.' },
+    ],
+  );
+
+  // ---- longbow: the war bow. Man-tall, slow, devastating.
+  // willow_longbow adopts as the willow rung, same name it always had.
+  const longbow = woodLine(
+    {
+      key: 'longbow', name: 'Longbow', cooldownTicks: 11, range: 18,
+      projectileSpeed: 19, art: 'piercing_bolt', logs: 3, ticks: 70, pool: ARCHER_POOL,
+    },
+    [
+      { wood: 'plain', log: 'log', color: WOODS.plain, damage: 5, archReq: 5, craftReq: 12, xp: 70, value: 55, code: 'Lo',
+        desc: 'Taller than its owner and twice as stubborn.' },
+      { wood: 'oak', log: 'oak_log', color: WOODS.oak, damage: 6, archReq: 15, craftReq: 22, xp: 140, value: 170, code: 'Ol',
+        desc: 'An oak stave asks for your whole back, and pays for it.' },
+      { wood: 'willow', log: 'willow_log', color: WOODS.willow, damage: 8, archReq: 30, craftReq: 34, xp: 280, value: 400, code: 'Wl',
+        desc: 'Willow bends far and sends arrows farther.' },
+      { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 10, archReq: 45, craftReq: 50, xp: 420, value: 920, code: 'Yn',
+        desc: 'The wood wars are fought over. A yard of bent thunder.' },
+    ],
+  );
+
+  // ---- hunting bow: the recurve. Curled tips store a heavier strike
+  // in a shorter frame — the tracker's bow.
+  const hunting = woodLine(
+    {
+      key: 'hunting_bow', name: 'Hunting bow', cooldownTicks: 8, range: 15,
+      projectileSpeed: 17, art: 'broadhead', logs: 2, ticks: 62, pool: HUNTER_POOL,
+    },
+    [
+      { wood: 'plain', log: 'log', color: WOODS.plain, damage: 4, archReq: 3, craftReq: 10, xp: 60, value: 42, code: 'Hn',
+        desc: 'Curled tips, quiet cast. Dinner never hears it.' },
+      { wood: 'oak', log: 'oak_log', color: WOODS.oak, damage: 5, archReq: 12, craftReq: 18, xp: 120, value: 140, code: 'Ox',
+        desc: 'Oak recurve — the poacher\'s rank badge, worn on the back.' },
+      { wood: 'willow', log: 'willow_log', color: WOODS.willow, damage: 6, archReq: 26, craftReq: 32, xp: 240, value: 360, code: 'Wr',
+        desc: 'It bends like the river it grew beside. Deer trust rivers.' },
+      { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 8, archReq: 42, craftReq: 48, xp: 390, value: 820, code: 'Yr',
+        desc: 'The last thing the King\'s deer never saw.' },
+    ],
+  );
+
+  // ---- bespoke crafts: three bows with recipes and reputations.
+  const crafts: EquipmentDef[] = [
+    {
+      id: 'sparrowhawk', name: 'Sparrowhawk', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 18 },
+      weapon: { style: 'archery', damage: 5, cooldownTicks: 7, range: 14, ammo: 'arrow', projectileSpeed: 18, art: 'wingbeat' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'beastcraft' }, { stat: 'foraging' }, { stat: 'maxHp' }],
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'crafting', levelReq: 25, xp: 200, station: null, ticks: 65,
+        inputs: [{ item: 'willow_log', qty: 1 }, { item: 'feather', qty: 8 }, { item: 'leather', qty: 1 }],
+      },
+      value: 380, color: '#4a8ab8', code: 'Hk',
+      desc: 'A fowler\'s recurve, kingfisher-blue, tufted with the feathers of everything it has ever beaten to the sky.',
+    },
+    {
+      id: 'heartwood', name: 'Heartwood', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 22 },
+      weapon: { style: 'archery', damage: 6, cooldownTicks: 8, range: 15, ammo: 'arrow', projectileSpeed: 17, art: 'verdant_burst' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'foraging' }, { stat: 'regen' }, { stat: 'maxHp' }],
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'crafting', levelReq: 28, xp: 240, station: null, ticks: 75,
+        inputs: [{ item: 'oak_log', qty: 2 }, { item: 'sagewort', qty: 2 }, { item: 'berries', qty: 4 }],
+      },
+      value: 460, color: '#5a9a4a', code: 'He',
+      desc: 'Cut from the living heart of a great oak that forgave the bowyer. Leaves still bud along the limbs in spring.',
+    },
+    {
+      id: 'windsinger', name: 'Windsinger', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 40 },
+      weapon: { style: 'archery', damage: 9, cooldownTicks: 10, range: 18, ammo: 'arrow', projectileSpeed: 21, art: 'windsong' },
+      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'crafting', levelReq: 45, xp: 420, station: null, ticks: 90,
+        inputs: [{ item: 'yew_log', qty: 2 }, { item: 'gold_bar', qty: 1 }, { item: 'moonbell', qty: 2 }],
+      },
+      value: 880, color: '#8ab4c8', code: 'Wi',
+      desc: 'A yew war bow drilled with song-holes. You hear the note. Then whatever the note was about.',
+    },
+  ];
+
+  // ---- drop-only wild finds: the bows the world already carries.
+  const finds: EquipmentDef[] = [
+    {
+      id: 'stickbow', name: 'Stickbow', slot: 'weapon',
+      weapon: { style: 'archery', damage: 2, cooldownTicks: 7, range: 12, ammo: 'arrow', projectileSpeed: 14, art: 'volley' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'foraging' }, { stat: 'maxHp' }],
+      rarities: ['common', 'uncommon'],
+      acquisition: { drop: true },
+      value: 12, color: '#96784f', code: 'Kt',
+      desc: 'A kinked branch and a length of gutcord. Someone\'s first try. It shoots! Mostly forward.',
+    },
+    {
+      id: 'knucklebow', name: 'Knucklebow', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 4 },
+      weapon: { style: 'archery', damage: 3, cooldownTicks: 7, range: 13, ammo: 'arrow', projectileSpeed: 15, art: 'volley' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'melee' }, { stat: 'maxHp' }],
+      rarities: ['common', 'uncommon', 'rare'],
+      acquisition: { drop: true },
+      value: 55, color: '#8a6f52', code: 'Kx',
+      desc: 'A goblin composite strung with stolen sinew and beaded with knuckle bones. It rattles a war-song.',
+    },
+    {
+      id: 'poachers_friend', name: 'Poacher\'s Friend', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 8 },
+      weapon: { style: 'archery', damage: 4, cooldownTicks: 7, range: 14, ammo: 'arrow', projectileSpeed: 16, art: 'volley' },
+      affixPool: GHOST_POOL,
+      rarities: ['common', 'uncommon', 'rare'],
+      acquisition: { drop: true },
+      value: 150, color: '#7a6a48', code: 'Pn',
+      desc: 'Snare-cord grip, a tally of notches down the belly. It knows the paths the wardens don\'t.',
+    },
+    {
+      id: 'bramblethorn', name: 'Bramblethorn', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 12 },
+      weapon: { style: 'archery', damage: 5, cooldownTicks: 8, range: 14, ammo: 'arrow', projectileSpeed: 16, art: 'thorn_fan' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'foraging' }, { stat: 'herbalism' }, { stat: 'regen' }],
+      rarities: ['common', 'uncommon', 'rare'],
+      acquisition: { drop: true },
+      value: 220, color: '#5a7a3c', code: 'Bx',
+      desc: 'Living briar, still growing, still armed. One berry ripens on the upper limb and never falls.',
+    },
+    {
+      id: 'driftwood', name: 'Driftwood', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 14 },
+      weapon: { style: 'archery', damage: 5, cooldownTicks: 8, range: 15, ammo: 'arrow', projectileSpeed: 16, art: 'piercing_bolt' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'fishing' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['common', 'uncommon', 'rare'],
+      acquisition: { drop: true },
+      value: 260, color: '#b0a894', code: 'Dw',
+      desc: 'A flatbow the sea carved for years and gave back finished. It aims like it remembers the tide.',
+    },
+    {
+      id: 'fishspine', name: 'Fishspine', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 16 },
+      weapon: { style: 'archery', damage: 5, cooldownTicks: 7, range: 14, ammo: 'arrow', projectileSpeed: 17, art: 'volley' },
+      affixPool: [{ stat: 'fishing', w: 2 }, { stat: 'archery', w: 2 }, { stat: 'cooking' }, { stat: 'maxHp' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 300, color: '#c8ccc4', code: 'Fv',
+      desc: 'The ribbed backbone of something deep, strung with sinew. It flexes like it is still swimming.',
+    },
+    {
+      id: 'wolfsong', name: 'Wolfsong', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 18 },
+      weapon: { style: 'archery', damage: 6, cooldownTicks: 8, range: 15, ammo: 'arrow', projectileSpeed: 17, art: 'howling_loose' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'beastcraft', w: 2 }, { stat: 'sneak' }, { stat: 'maxHp' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 420, color: '#8a8f9d', code: 'Wv',
+      desc: 'Fur-gripped, with a howl trapped in the string. Every arrow leaves with the pack behind it.',
+    },
+    {
+      id: 'rimewood', name: 'Rimewood', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 24 },
+      weapon: { style: 'archery', damage: 7, cooldownTicks: 9, range: 16, ammo: 'arrow', projectileSpeed: 17, art: 'hoarfrost' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 640, color: '#a8c8d8', code: 'Rm',
+      desc: 'A limb that froze mid-winter and never thawed. The frost on it is original. So is the cold.',
+    },
+    {
+      id: 'marrowpoint', name: 'Marrowpoint', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 20 },
+      weapon: { style: 'archery', damage: 7, cooldownTicks: 9, range: 16, ammo: 'arrow', projectileSpeed: 17, art: 'piercing_bolt' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'melee' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 480, color: '#d8d2be', code: 'Mo',
+      desc: 'Bone and iron from the crypt armory, fletched in grave-linen. The dead practice archery patiently.',
+    },
+    {
+      id: 'whisperwind', name: 'Whisperwind', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 26 },
+      weapon: { style: 'archery', damage: 6, cooldownTicks: 8, range: 16, ammo: 'arrow', projectileSpeed: 19, art: 'ghost_shaft' },
+      affixPool: GHOST_POOL,
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 560, color: '#9a96ac', code: 'Vn',
+      desc: 'Ghost-grey and silent — the string never twangs, the shaft never whistles. The hit makes no promise it keeps.',
+    },
+    {
+      id: 'emberglow', name: 'Emberglow', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 30 },
+      weapon: { style: 'archery', damage: 8, cooldownTicks: 9, range: 15, ammo: 'arrow', projectileSpeed: 18, art: 'cinder_rain' },
+      affixPool: [{ stat: 'archery', w: 2 }, { stat: 'magic' }, { stat: 'smithing' }, { stat: 'maxHp' }],
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 760, color: '#c86a38', code: 'Ew',
+      desc: 'Fire-hardened heartwood with live coals under the grain. It keeps your hands warm and its own counsel.',
+    },
+    {
+      id: 'kingswood', name: 'Kingswood', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 36 },
+      weapon: { style: 'archery', damage: 8, cooldownTicks: 9, range: 17, ammo: 'arrow', projectileSpeed: 19, art: 'kings_arrow' },
+      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1100, color: '#8a5c30', code: 'Kd',
+      desc: 'Royal yew under gilt fittings — cutting the tree was treason, bending the bow is coronation.',
+    },
+    {
+      id: 'starcall', name: 'Starcall', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 42 },
+      weapon: { style: 'archery', damage: 8, cooldownTicks: 8, range: 17, ammo: 'arrow', projectileSpeed: 19, art: 'starfall_arrows' },
+      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'magic', w: 2 }, { stat: 'maxHp' }],
+      rarities: ['epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1400, color: '#5a5e9e', code: 'Zc',
+      desc: 'Night-blue, chased with silver. Its arrows arc like falling stars, and the sky keeps sending more.',
+    },
+    {
+      id: 'skyrender', name: 'The Skyrender', slot: 'weapon',
+      levelReq: { skill: 'archery', level: 50 },
+      weapon: { style: 'archery', damage: 9, cooldownTicks: 9, range: 18, ammo: 'arrow', projectileSpeed: 22, art: 'skyrend' },
+      affixPool: [{ stat: 'archery', w: 3 }, { stat: 'sneak' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      value: 2000, color: '#dce4ec', code: 'Zy',
+      desc: 'A great recurve of pale sky-wood in gold storm fittings. The horizon flinches when it is strung.',
+    },
+  ];
+
+  // The plain shortbow is general-store stock — always a fixed common
+  // baseline on the shelf; better rolls come from the knee or the wilds.
+  shortbow[0]!.acquisition = { craft: true, shop: true };
+
+  return [...shortbow, ...longbow, ...hunting, ...crafts, ...finds];
 }
 
 /** Compiled once at module load — throws loudly on any malformed def. */

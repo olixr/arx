@@ -153,6 +153,9 @@ const defs: NpcDef[] = [
       // trade blade — the rats keep what beat them.
       { item: 'shiv', qty: [1, 1], chance: 0.03 },
       { item: 'ratter', qty: [1, 1], chance: 0.02 },
+      // Bows of the gutter: a child's first try, and a poacher's last.
+      { item: 'stickbow', qty: [1, 1], chance: 0.03 },
+      { item: 'poachers_friend', qty: [1, 1], chance: 0.015 },
     ],
     respawnSec: 15,
     color: '#8a7a6a',
@@ -210,6 +213,10 @@ const defs: NpcDef[] = [
       { item: 'rustbite', qty: [1, 1], chance: 0.03 },
       { item: 'gobsplitter', qty: [1, 1], chance: 0.025 },
       { item: 'shiv', qty: [1, 1], chance: 0.025 },
+      // Camp bows: goblin bonework and whatever the brambles grew.
+      { item: 'stickbow', qty: [1, 1], chance: 0.03 },
+      { item: 'knucklebow', qty: [1, 1], chance: 0.025 },
+      { item: 'bramblethorn', qty: [1, 1], chance: 0.015 },
     ],
     respawnSec: 25,
     color: '#5c8a3a',
@@ -271,6 +278,12 @@ const defs: NpcDef[] = [
       { item: 'bogsting', qty: [1, 1], chance: 0.018 },
       { item: 'scaler', qty: [1, 1], chance: 0.015 },
       { item: 'redhand', qty: [1, 1], chance: 0.012 },
+      // The throwers' own bows: camp bonework, coast salvage, and the
+      // ribbed spine of something the raiders hauled up and regretted.
+      { item: 'knucklebow', qty: [1, 1], chance: 0.03 },
+      { item: 'driftwood', qty: [1, 1], chance: 0.02 },
+      { item: 'fishspine', qty: [1, 1], chance: 0.015 },
+      { item: 'bramblethorn', qty: [1, 1], chance: 0.012 },
     ],
     respawnSec: 30,
     color: '#6a9a3a',
@@ -376,6 +389,11 @@ const defs: NpcDef[] = [
       { item: 'redhand', qty: [1, 1], chance: 0.01 },
       { item: 'nightthorn', qty: [1, 1], chance: 0.01 },
       { item: 'leech', qty: [1, 1], chance: 0.008 },
+      // Crypt archery: the armory's bone composite, the silent string,
+      // and a bow with coals still live under the grain.
+      { item: 'marrowpoint', qty: [1, 1], chance: 0.015 },
+      { item: 'whisperwind', qty: [1, 1], chance: 0.012 },
+      { item: 'emberglow', qty: [1, 1], chance: 0.006 },
     ],
     respawnSec: 30,
     color: '#d8d4c8',
@@ -467,6 +485,14 @@ const defs: NpcDef[] = [
       { item: 'nightthorn', qty: [1, 1], chance: 0.03 },
       { item: 'kingsbane', qty: [1, 1], chance: 0.02 },
       { item: 'last_word', qty: [1, 1], chance: 0.005 },
+      // The Champion's trophy rack of bows. The Skyrender only exists
+      // legendary — the archer's white whale.
+      { item: 'emberglow', qty: [1, 1], chance: 0.04 },
+      { item: 'whisperwind', qty: [1, 1], chance: 0.04 },
+      { item: 'marrowpoint', qty: [1, 1], chance: 0.05 },
+      { item: 'kingswood', qty: [1, 1], chance: 0.025 },
+      { item: 'starcall', qty: [1, 1], chance: 0.012 },
+      { item: 'skyrender', qty: [1, 1], chance: 0.005 },
     ],
     respawnSec: 90,
     color: '#e8e2d0',
@@ -543,6 +569,11 @@ const defs: NpcDef[] = [
       // candle that walks with the midwinter packs.
       { item: 'fangtooth', qty: [1, 1], chance: 0.03 },
       { item: 'palefire', qty: [1, 1], chance: 0.008 },
+      // The pack's bows: the trapline's friend, the string that howls,
+      // and the limb that froze mid-winter and stayed.
+      { item: 'poachers_friend', qty: [1, 1], chance: 0.02 },
+      { item: 'wolfsong', qty: [1, 1], chance: 0.02 },
+      { item: 'rimewood', qty: [1, 1], chance: 0.008 },
     ],
     respawnSec: 35,
     color: '#6a6f7d',

@@ -95,6 +95,8 @@ const defs: ItemDef[] = [
   // Logs
   { id: 'log', name: 'Logs', stackable: false, value: 4, desc: 'Fresh-cut timber, still smelling of the woods.', color: '#8a6a45', code: 'Lg' },
   { id: 'oak_log', name: 'Oak logs', stackable: false, value: 12, desc: 'Dense oak heartwood — bowyers pay well for it.', color: '#6b4a26', code: 'Ok' },
+  { id: 'willow_log', name: 'Willow logs', stackable: false, value: 24, desc: 'Supple riverside wood that bends without breaking.', color: '#8a9455', code: 'Wq' },
+  { id: 'yew_log', name: 'Yew logs', stackable: false, value: 52, desc: 'Slow-grown heartwood of the war bows. Kings taxed it.', color: '#7d4436', code: 'Yl' },
 
   // Ores
   { id: 'copper_ore', name: 'Copper ore', stackable: false, value: 6, desc: 'Soft red-brown ore. Half of every bronze bar.', color: '#b87333', code: 'Cu' },
@@ -230,27 +232,9 @@ const defs: ItemDef[] = [
   { id: 'wolf_fur', name: 'Wolf fur', stackable: false, value: 20, desc: 'Thick winter fur, smoke-grey and warm.', color: '#6a6f7d', code: 'Wf' },
 
   // Daggers live in equipment/defs.ts (the rogue's roster) — rolled gear.
-  {
-    id: 'oak_shortbow',
-    name: 'Oak shortbow',
-    stackable: false,
-    value: 40,
-    equipSlot: 'weapon',
-    // Hold-to-draw: damage/speed/range scale with the draw; the cooldown
-    // is just release recovery — pacing lives in the draw itself.
-    weapon: {
-      style: 'archery',
-      damage: 5,
-      cooldownTicks: 8,
-      range: 14,
-      ammo: 'arrow',
-      projectileSpeed: 16,
-      art: 'volley',
-    },
-    desc: 'Draw deep and the arrow flies true and hard.',
-    color: '#8a6a45',
-    code: 'Bw',
-  },
+  // Bows live in equipment/defs.ts (the archer's roster) — rolled gear.
+  // Hold-to-draw law: damage/speed/range scale with the draw; cooldown
+  // is just release recovery — pacing lives in the draw itself.
   {
     id: 'arrow',
     name: 'Arrow',
@@ -298,26 +282,6 @@ const defs: ItemDef[] = [
     color: '#c4623c',
     code: 'Es',
   },
-  {
-    id: 'willow_longbow',
-    name: 'Willow longbow',
-    stackable: false,
-    value: 190,
-    equipSlot: 'weapon',
-    weapon: {
-      style: 'archery',
-      damage: 6,
-      cooldownTicks: 9,
-      range: 16,
-      ammo: 'arrow',
-      projectileSpeed: 17,
-      art: 'piercing_bolt',
-    },
-    desc: 'Willow bends far and sends arrows farther.',
-    color: '#6b8a5a',
-    code: 'Wl',
-  },
-
   // Relics — worn actives (E). The Minecraft-Dungeons-artifact slot:
   // your second ability comes from the trinket you hunt down, so build
   // identity is a loot chase, not a menu pick.
@@ -637,7 +601,7 @@ export const STARTER_KIT: Array<{ item: string; qty: number }> = [
   { item: 'bronze_pickaxe', qty: 1 },
   { item: 'fishing_rod', qty: 1 },
   { item: 'bronze_sword', qty: 1 },
-  { item: 'oak_shortbow', qty: 1 },
+  { item: 'shortbow', qty: 1 },
   { item: 'arrow', qty: 50 },
   { item: 'apprentice_staff', qty: 1 },
   { item: 'coins', qty: 25 },

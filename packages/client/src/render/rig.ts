@@ -1,7 +1,7 @@
 import { CLOTH_COLORS, HAIR_COLORS, PoseState, SKIN_TONES, type Look } from '@devcraft/shared';
 import { itemDef } from '@devcraft/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
-import { bladeStyle, drawSword } from './weapons.js';
+import { bladeStyle, bowStyle, drawBow, drawSword } from './weapons.js';
 import { LegRig, chooseLimbSign, solveLimb, type LegPose, type LegRigConfig } from './legs.js';
 import {
   bodyStyle,
@@ -771,7 +771,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const wS = rig.wScale;
   const hScale = 1 + (1 - wS) * 0.55;
   const weapon = itemDef(rig.weaponItem ?? '');
-  const isBow = weapon !== undefined && weapon.id.includes('bow');
+  const isBow = weapon !== undefined && bowStyle(weapon.id) !== null;
   // The tool TYPE picks the work cycle: an axe chops, a pick heaves
   // overhead and pries — different rhythms, different bodies. Rods (and
   // bare hands) keep the gentle working sway.
@@ -1742,66 +1742,12 @@ function drawHeldItem(
       ctx.closePath();
       ctx.fill();
     }
-  } else if (itemId.includes('bow')) {
-    // The bow flexes with the pull: limbs bend deeper as the string
-    // comes back, and on release the string buzzes back to straight.
-    const pull = extra?.pull ?? 0;
-    const flex = Math.min(1, pull / (0.36 * s));
-    const tipA = Math.PI / 2.3;
-    const limbR = (0.3 + flex * 0.045) * s;
-    const tipX = Math.cos(tipA) * 0.3 * s;
-    const tipY = Math.sin(tipA) * 0.3 * s;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = Math.max(2, s * 0.05);
-    ctx.beginPath();
-    ctx.moveTo(tipX, -tipY);
-    ctx.quadraticCurveTo(limbR, 0, tipX, tipY);
-    ctx.stroke();
-    // Grip wrap — sits ON the wood: the arc passes x≈0.18s at midline.
-    ctx.strokeStyle = shade(color, -30);
-    ctx.lineWidth = Math.max(2, s * 0.06);
-    ctx.beginPath();
-    ctx.moveTo(0.18 * s, -0.05 * s);
-    ctx.lineTo(0.18 * s, 0.05 * s);
-    ctx.stroke();
-    // String: taut → hauled to the nock point → buzzing on release.
-    ctx.strokeStyle = '#e6e0d0';
-    ctx.lineWidth = Math.max(1, s * 0.018);
-    ctx.beginPath();
-    ctx.moveTo(tipX, -tipY);
-    if (extra?.loose !== undefined) {
-      const t = extra.loose;
-      const buzz = Math.sin(t * 42) * 0.05 * s * (1 - t);
-      ctx.quadraticCurveTo(-buzz, 0, tipX, tipY);
-    } else {
-      ctx.lineTo(-pull, 0);
-      ctx.lineTo(tipX, tipY);
-    }
-    ctx.stroke();
-    if (pull > 0.06 * s && extra?.loose === undefined) {
-      // Nocked arrow: shaft, a real head, and fletching at the nock.
-      ctx.strokeStyle = '#c4b590';
-      ctx.lineWidth = Math.max(1.5, s * 0.028);
-      ctx.beginPath();
-      ctx.moveTo(-pull, 0);
-      ctx.lineTo(0.36 * s, 0);
-      ctx.stroke();
-      ctx.fillStyle = '#c9ccd4';
-      ctx.beginPath();
-      ctx.moveTo(0.42 * s, 0);
-      ctx.lineTo(0.34 * s, -0.032 * s);
-      ctx.lineTo(0.34 * s, 0.032 * s);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = '#d95763';
-      ctx.lineWidth = Math.max(1, s * 0.02);
-      for (const sy of [-1, 1]) {
-        ctx.beginPath();
-        ctx.moveTo(-pull + 0.01 * s, 0);
-        ctx.lineTo(-pull - 0.045 * s, sy * 0.045 * s);
-        ctx.stroke();
-      }
-    }
+  } else if (bowStyle(itemId, color)) {
+    // The archer's roster: every bow resolves a style — limb kind,
+    // wood, tip furniture, charms, and the living fx channel. The
+    // painter keeps the classic behaviors: limbs flex with the pull,
+    // the string hauls to the nock, release buzzes it straight.
+    drawBow(ctx, bowStyle(itemId, color)!, s, rig.nowMs, rig.hurt, extra?.pull ?? 0, extra?.loose);
   } else if (itemId.includes('staff')) {
     // A REAL staff: body-tall hardwood with wire wraps, a shod butt,
     // and a forked crown holding the focus. The grip slides with the

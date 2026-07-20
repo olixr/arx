@@ -124,6 +124,10 @@ export enum Tile {
   Lectern = 98,
   /** A stone water trough. */
   Basin = 99,
+  /** A weeping willow — damp deep forest; willow logs for bowyers. */
+  TreeWillow = 100,
+  /** An ancient yew — rare, dark, slow-grown; the war-bow wood. */
+  TreeYew = 101,
 }
 
 export enum Detail {
@@ -195,6 +199,8 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.Snow]: { name: 'snow', solid: false, color: '#e8ecf2', variants: ['#dfe4ec'] },
   [Tile.Swamp]: { name: 'swamp', solid: false, color: '#4d6b3c', variants: ['#476339'] },
   [Tile.TreeOak]: { name: 'oak tree', solid: true, color: '#3f7d3a', raised: true, topColor: '#1f5426' },
+  [Tile.TreeWillow]: { name: 'willow tree', solid: true, color: '#3f7d3a', raised: true, topColor: '#5a8a4a' },
+  [Tile.TreeYew]: { name: 'yew tree', solid: true, color: '#3f7d3a', raised: true, topColor: '#1e4028' },
   [Tile.RockCopper]: { name: 'copper rock', solid: true, color: '#6e6a75', raised: true, topColor: '#b87333' },
   [Tile.RockIron]: { name: 'iron rock', solid: true, color: '#6e6a75', raised: true, topColor: '#8d9299' },
   [Tile.RockDepleted]: { name: 'depleted rock', solid: true, color: '#57535f', raised: true, topColor: '#615d69' },

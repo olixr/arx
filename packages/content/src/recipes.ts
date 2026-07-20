@@ -153,17 +153,7 @@ const defs: RecipeDef[] = [
     output: { item: 'arrow', qty: 10 },
     ticks: 40,
   },
-  {
-    id: 'fletch_oak_shortbow',
-    name: 'Oak shortbow',
-    skill: 'crafting',
-    levelReq: 10,
-    xp: 80,
-    station: null,
-    inputs: [{ item: 'oak_log', qty: 2 }],
-    output: { item: 'oak_shortbow', qty: 1 },
-    ticks: 60,
-  },
+  // (bow recipes now generate from equipment/defs.ts — the archer's roster)
 
   // Passive gear — craftable builds, not just lucky drops.
   {

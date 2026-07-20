@@ -1,6 +1,6 @@
 import { itemDef } from '@devcraft/content';
 import { shade } from './rig.js';
-import { DAGGER_STYLES, SWORD_STYLES, drawSword } from './weapons.js';
+import { BOW_STYLES, DAGGER_STYLES, SWORD_STYLES, drawBow, drawSword } from './weapons.js';
 
 /**
  * The icon set: every item and UI glyph is drawn in code, in the same
@@ -3024,6 +3024,8 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   coins: { icon: 'coins', color: '#e8b64c' },
   log: { icon: 'log', color: '#96744c' },
   oak_log: { icon: 'log', color: '#74522f' },
+  willow_log: { icon: 'log', color: '#94a05e' },
+  yew_log: { icon: 'log', color: '#87493a' },
   copper_ore: { icon: 'ore_copper', color: '#c47b3d' },
   tin_ore: { icon: 'ore_tin', color: '#cfd3dc' },
   iron_ore: { icon: 'ore_iron', color: '#a05038' },
@@ -3375,6 +3377,25 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
       drawSword(c, st, scale, 5234, false);
     };
     ITEM_ICON[id] = { icon: `sword:${id}`, color: st.color };
+  }
+}
+
+// ---- the archer's roster: every bow's icon IS its world painter, at
+// rest (string taut, no arrow) on the same diagonal. Longbows are tall
+// — render smaller so the full stave fits the box.
+{
+  for (const [id, st] of Object.entries(BOW_STYLES)) {
+    const tall = st.bow === 'longbow';
+    const scale = tall ? 68 : 82;
+    const shift = -0.15 * scale;
+    PAINTERS[`bow:${id}`] = (c) => {
+      c.translate(0.5, 0.5);
+      c.rotate(-Math.PI / 4);
+      c.scale(1 / 64, 1 / 64);
+      c.translate(shift, 0);
+      drawBow(c, st, scale, 5234, false, 0, undefined);
+    };
+    ITEM_ICON[id] = { icon: `bow:${id}`, color: st.color };
   }
 }
 

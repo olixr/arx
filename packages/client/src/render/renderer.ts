@@ -651,7 +651,7 @@ export class Renderer {
       for (let tx = cx - 2; tx <= cx + 2; tx++) {
         const t = game.world.groundAt(tx, ty);
         const kind =
-          t === Tile.Tree || t === Tile.TreeOak
+          t === Tile.Tree || t === Tile.TreeOak || t === Tile.TreeWillow || t === Tile.TreeYew
             ? ('tree' as const)
             : t === Tile.Rock ||
                 t === Tile.RockCopper ||
@@ -3994,10 +3994,31 @@ export class Renderer {
       lobes: [[-0.95, -2.15, 0.72], [0.9, -2.2, 0.74], [0, -2.75, 0.78], [0, -2.25, 1.05], [-0.45, -1.75, 0.58], [0.5, -1.8, 0.58]],
       crownSplit: 0, limbs: [[0.5, -1.15, -1.9], [0.55, 1.1, -1.95], [0.62, -0.4, -2.3]],
     },
+    // 6 — Weeping willow: grey-green curtain crown hanging low around a
+    // bowed trunk; the droop reads from lobes centred BELOW the crown top.
+    {
+      trunk: '#6f6448', leaves: ['#7aa062', '#6f9a58', '#83aa6a'],
+      hMin: 1.0, hMax: 1.22, trunkW: 0.12, tipW: 0.42, bow: 0.2, lean: 0.12,
+      fork: null, gnarl: 0.07, flare: 1.0, sides: 9,
+      lobes: [[0, -2.3, 0.8], [-1.0, -1.8, 0.66], [1.0, -1.85, 0.66], [-0.6, -1.3, 0.55], [0.65, -1.35, 0.55], [0, -1.55, 0.72]],
+      crownSplit: 0, limbs: [[0.6, -1.35, -0.95], [0.66, 1.35, -1.0]],
+    },
+    // 7 — Ancient yew: red-brown gnarled mass under a dense near-black
+    // crown — the rare war-bow tree, older than the map around it.
+    {
+      trunk: '#7d4436', leaves: ['#274f30', '#224a2c', '#2c5434'],
+      hMin: 1.2, hMax: 1.48, trunkW: 0.17, tipW: 0.5, bow: 0.06, lean: 0,
+      fork: null, gnarl: 0.11, flare: 1.25, sides: 9,
+      lobes: [[-0.8, -2.2, 0.66], [0.8, -2.25, 0.68], [0, -2.9, 0.72], [0, -2.3, 0.95], [-0.4, -1.7, 0.5], [0.45, -1.75, 0.5]],
+      crownSplit: 0, limbs: [[0.5, -1.05, -1.85], [0.55, 1.0, -1.9]],
+    },
   ];
 
-  private static speciesOf(h: number, oak: boolean): number {
-    return oak ? 5 : h % 5;
+  private static speciesOf(h: number, tile: Tile): number {
+    return tile === Tile.TreeOak ? 5
+      : tile === Tile.TreeWillow ? 6
+      : tile === Tile.TreeYew ? 7
+      : h % 5;
   }
 
   /** Fill a tapered spine (centreline + width profile) as a bark shape. */
@@ -4088,14 +4109,14 @@ export class Renderer {
     wx: number,
     wy: number,
     h: number,
-    oak: boolean,
+    tile: Tile,
     tSec: number,
     bendOverride: number | undefined,
   ): void {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
-    const sp = Renderer.TREE_SPECIES[Renderer.speciesOf(h, oak)]!;
+    const sp = Renderer.TREE_SPECIES[Renderer.speciesOf(h, tile)]!;
     const rnd = (i: number): number => (hashCoords(7, h & 0xffff, i) % 1000) / 1000;
     const k = (sp.hMin + (sp.hMax - sp.hMin) * rnd(1)) * s;
     const groundY = by + syT * 0.3;
@@ -4254,16 +4275,16 @@ export class Renderer {
     return [sx / n, sy / n];
   }
 
-  private drawTreeShadow(bx: number, by: number, h: number, oak: boolean): void {
+  private drawTreeShadow(bx: number, by: number, h: number, tile: Tile): void {
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
-    const sp = Renderer.TREE_SPECIES[Renderer.speciesOf(h, oak)]!;
+    const sp = Renderer.TREE_SPECIES[Renderer.speciesOf(h, tile)]!;
     const rnd = (i: number): number => (hashCoords(7, h & 0xffff, i) % 1000) / 1000;
     const k = (sp.hMin + (sp.hMax - sp.hMin) * rnd(1)) * s;
     const spread = Math.max(...sp.lobes.map((l) => Math.abs(l[0]) + l[2])) * 0.7;
     // The canopy's silhouette thrown from its height, the trunk's
     // smear tying it to the roots — long at dawn, tucked in at noon.
-    this.castBlob(bx, by + syT * 0.18, oak ? 1.7 : 1.4, k * spread * 0.9, h ^ 0x33, s * 0.09);
+    this.castBlob(bx, by + syT * 0.18, tile === Tile.TreeOak || tile === Tile.TreeYew ? 1.7 : tile === Tile.TreeWillow ? 1.8 : 1.4, k * spread * 0.9, h ^ 0x33, s * 0.09);
   }
 
   /**
@@ -4274,7 +4295,7 @@ export class Renderer {
   private readonly fallingTrees: Array<{
     tx: number;
     ty: number;
-    oak: boolean;
+    tile: Tile;
     h: number;
     dir: number;
     tilt: number; // extra screen-plane tilt for azimuth variance
@@ -4285,14 +4306,14 @@ export class Renderer {
     brokeUp: boolean;
   }> = [];
 
-  addFallingTree(tx: number, ty: number, oak: boolean, dir: number): void {
+  addFallingTree(tx: number, ty: number, tile: Tile, dir: number): void {
     const h = hashCoords(41, tx, ty);
     const sign = Math.sign(dir) || 1;
     const r = (n: number): number => (hashCoords(17, h & 0xffff, n) % 1000) / 1000;
     this.fallingTrees.push({
       tx,
       ty,
-      oak,
+      tile,
       h,
       dir: sign,
       // Azimuth variance: mostly sideways, but each fall differs.
@@ -4415,7 +4436,7 @@ export class Renderer {
       // dust billow instead of just vanishing.
       if (ms >= 2500 && !ft.brokeUp) {
         ft.brokeUp = true;
-        const bark = ft.oak ? '#5d4022' : '#6b4a26';
+        const bark = Renderer.TREE_SPECIES[Renderer.speciesOf(ft.h, ft.tile)]!.trunk;
         for (let c = 0; c < 5; c++) {
           const along = 0.6 + c * 0.7;
           this.particles.burst(cx + cosA * along, cy + sinA * along, 1, [bark, shade(bark, 14)], {
@@ -4462,7 +4483,7 @@ export class Renderer {
           ctx.translate(p.x, pivotY);
           ctx.rotate(ft.dir * angle + ft.tilt * Math.min(1, angle / ft.lie));
           ctx.translate(-p.x, -pivotY);
-          this.drawTree(p.x, p.y, cx, cy, ft.h, ft.oak, tSec, bend);
+          this.drawTree(p.x, p.y, cx, cy, ft.h, ft.tile, tSec, bend);
           ctx.restore();
           ctx.globalAlpha = 1;
         },
@@ -4745,12 +4766,13 @@ export class Renderer {
 
     switch (tile) {
       case Tile.Tree:
-      case Tile.TreeOak: {
-        const oak = tile === Tile.TreeOak;
+      case Tile.TreeOak:
+      case Tile.TreeWillow:
+      case Tile.TreeYew: {
         return {
           sortY: ty + 0.9,
-          drawShadow: () => this.drawTreeShadow(p.x, p.y, h, oak),
-          draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, oak, t, undefined),
+          drawShadow: () => this.drawTreeShadow(p.x, p.y, h, tile),
+          draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, undefined),
         };
       }
 

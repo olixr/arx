@@ -1230,3 +1230,536 @@ function drawBladeFx(
     ctx.fill();
   }
 }
+
+// ======================================================================
+// The archer's roster — bow visual styles. Same pattern as the blades:
+// pure data records over one painter vocabulary. A bow is a limb
+// silhouette (kind), a wood, tip furniture, a hanging charm, the nocked
+// arrow's fletching color, and an optional living fx channel riding the
+// limb curve. The painter preserves the classic bow behaviors: limbs
+// flex deeper as the string comes back, the string hauls to the nock
+// point, release buzzes, and the belly always passes through x ≈ 0.18 s
+// (the grip law drawHeldItem's carry translate depends on).
+
+export type BowKind =
+  | 'shortbow'  // deep D-curve, compact — the skirmisher's frame
+  | 'longbow'   // tall shallow arc, narrow limbs, man-tall
+  | 'recurve'   // working limbs with tips hooked toward the target
+  | 'flatbow'   // broad paddle limbs, widest at mid-limb
+  | 'composite' // rigid riser, working limbs, angled siyah levers
+  | 'crude'     // a kinked branch with knots — menace by neglect
+  | 'bone';     // ribbed vertebrae strung with sinew
+
+export type BowTip = 'plain' | 'horn' | 'gold' | 'iron' | 'thorn' | 'bone';
+
+export type BowCharm =
+  | 'feathers' // two hanging fletch-feathers off the lower limb
+  | 'beads'    // a short strand of beads
+  | 'teeth'    // knuckle-bone rattle
+  | 'leaves'   // living sprigs budding off the limb
+  | 'fur'      // pelt tufts ringing the grip
+  | 'holes';   // drilled song-holes along the upper limb
+
+export interface BowStyle {
+  bow: BowKind;
+  /** Limb wood. Belly light defaults to shade(+26), wrap to shade(−30). */
+  color: string;
+  belly?: string;
+  wrap?: string;
+  /** Bowstring color (gut, sinew, silk). */
+  string?: string;
+  /** Tip-span multiplier over the kind's natural length. */
+  len?: number;
+  tip?: BowTip;
+  tipColor?: string;
+  charm?: BowCharm;
+  charmColor?: string;
+  /** Fletching color of the nocked arrow — identity at full draw. */
+  fletch?: string;
+  fx?: BladeFx;
+  fxColor?: string;
+}
+
+export const BOW_STYLES: Record<string, BowStyle> = {
+  // ---- shortbow line: the skirmisher's bow, one design in four woods.
+  shortbow: { bow: 'shortbow', color: '#96784f', wrap: '#5b4028' },
+  oak_shortbow: { bow: 'shortbow', color: '#6b4a26', belly: '#8a6534', wrap: '#3e3a44', tip: 'horn', tipColor: '#d8d2c0' },
+  willow_shortbow: { bow: 'shortbow', color: '#8a9455', belly: '#a8b46e', wrap: '#5b4028', tip: 'horn', tipColor: '#e2dcc8' },
+  yew_shortbow: { bow: 'shortbow', color: '#7d4436', belly: '#9a5c44', wrap: '#3a3540', tip: 'gold', tipColor: '#e8c04c' },
+
+  // ---- longbow line: the war bow.
+  longbow: { bow: 'longbow', color: '#96784f', wrap: '#5b4028' },
+  oak_longbow: { bow: 'longbow', color: '#6b4a26', belly: '#8a6534', wrap: '#3e3a44', tip: 'horn', tipColor: '#d8d2c0' },
+  willow_longbow: { bow: 'longbow', color: '#8a9455', belly: '#a8b46e', wrap: '#5b4028', tip: 'horn', tipColor: '#e2dcc8' },
+  yew_longbow: { bow: 'longbow', color: '#7d4436', belly: '#9a5c44', wrap: '#3a3540', tip: 'gold', tipColor: '#e8c04c' },
+
+  // ---- hunting bow line: the recurve.
+  hunting_bow: { bow: 'recurve', color: '#96784f', wrap: '#5b4028', fletch: '#8a9455' },
+  oak_hunting_bow: { bow: 'recurve', color: '#6b4a26', belly: '#8a6534', wrap: '#5b4028', tip: 'horn', tipColor: '#d8d2c0', charm: 'feathers', charmColor: '#c9b88a', fletch: '#8a9455' },
+  willow_hunting_bow: { bow: 'recurve', color: '#8a9455', belly: '#a8b46e', wrap: '#5b4028', tip: 'horn', tipColor: '#e2dcc8', charm: 'feathers', charmColor: '#c9b88a', fletch: '#8a9455' },
+  yew_hunting_bow: { bow: 'recurve', color: '#7d4436', belly: '#9a5c44', wrap: '#3a3540', tip: 'iron', tipColor: '#8d9299', charm: 'feathers', charmColor: '#c9b88a', fletch: '#8a9455' },
+
+  // ---- bespoke crafts.
+  sparrowhawk: {
+    bow: 'recurve', color: '#4a8ab8', belly: '#7ab4d8', wrap: '#2e5a7a',
+    tip: 'horn', tipColor: '#e8e4da', charm: 'feathers', charmColor: '#e8e4da',
+    fletch: '#e8e4da',
+  },
+  heartwood: {
+    bow: 'flatbow', color: '#6a8a4a', belly: '#8aa862', wrap: '#4a3a2a',
+    tip: 'thorn', tipColor: '#5a9a4a', charm: 'leaves', charmColor: '#5a9a4a',
+    fletch: '#a8d87a', fx: 'sun', fxColor: '#c8e89a',
+  },
+  windsinger: {
+    bow: 'longbow', color: '#7d4436', belly: '#9a5c44', wrap: '#b8863f',
+    tip: 'gold', tipColor: '#e8c04c', charm: 'holes', charmColor: '#2e2434',
+    fletch: '#c8dce8', fx: 'storm', fxColor: '#d8ecf4',
+  },
+
+  // ---- wild finds.
+  stickbow: { bow: 'crude', color: '#96784f', string: '#c9b88a', fletch: '#c9b88a' },
+  knucklebow: {
+    bow: 'composite', color: '#8a6f52', belly: '#a8895f', wrap: '#4a3a2a',
+    string: '#d8cba8', tip: 'bone', tipColor: '#e2dcc8', charm: 'teeth', charmColor: '#e2dcc8',
+  },
+  poachers_friend: {
+    bow: 'shortbow', color: '#7a6a48', belly: '#96845c', wrap: '#4a3a2a',
+    charm: 'beads', charmColor: '#8a7a5c', fletch: '#8a9455',
+  },
+  bramblethorn: {
+    bow: 'crude', color: '#5a7a3c', belly: '#78964e', wrap: '#4a3a2a',
+    tip: 'thorn', tipColor: '#78964e', charm: 'beads', charmColor: '#c4553d',
+    fletch: '#78964e',
+  },
+  driftwood: {
+    bow: 'flatbow', color: '#a89e86', belly: '#dcd4c0', wrap: '#55493c',
+    fletch: '#7fb2d9',
+  },
+  fishspine: {
+    bow: 'bone', color: '#c8ccc4', belly: '#e2e4de', string: '#d8cba8',
+    tip: 'bone', tipColor: '#e2e4de', fletch: '#7fb2d9',
+  },
+  wolfsong: {
+    bow: 'shortbow', color: '#8a8f9d', belly: '#b8bdc8', wrap: '#4a4e5a',
+    tip: 'horn', tipColor: '#e2dcc8', charm: 'fur', charmColor: '#b0b5c0',
+    fletch: '#c8d8e8', fx: 'frost', fxColor: '#d8e8f4',
+  },
+  rimewood: {
+    bow: 'longbow', color: '#a8c8d8', belly: '#d8ecf4', wrap: '#5a7a8a',
+    tip: 'iron', tipColor: '#8d9299', fletch: '#d8ecf4', fx: 'frost', fxColor: '#e8f4fa',
+  },
+  marrowpoint: {
+    bow: 'bone', color: '#d8d2be', belly: '#eae4d0', string: '#c9c4b0',
+    tip: 'iron', tipColor: '#5a5f6a', fletch: '#b8b4a4',
+  },
+  whisperwind: {
+    bow: 'recurve', color: '#9a96ac', belly: '#b8b4c8', wrap: '#5a5668',
+    string: '#b8b4c4', fletch: '#c8c4dc', fx: 'void', fxColor: '#c8c4dc',
+  },
+  emberglow: {
+    bow: 'flatbow', color: '#c86a38', belly: '#e8944c', wrap: '#3a2a22',
+    tip: 'iron', tipColor: '#5a5f6a', fletch: '#e8944c', fx: 'ember', fxColor: '#ffb35c',
+  },
+  kingswood: {
+    bow: 'longbow', color: '#8a5c30', belly: '#b07c42', wrap: '#e8c04c',
+    tip: 'gold', tipColor: '#e8c04c', charm: 'beads', charmColor: '#e8c04c',
+    fletch: '#7a4a9e', fx: 'gleam', fxColor: '#ffe9a3',
+  },
+  starcall: {
+    bow: 'recurve', color: '#5a5e9e', belly: '#7a80c4', wrap: '#3a3560',
+    tip: 'gold', tipColor: '#e8c04c', fletch: '#c9cdf4', fx: 'star', fxColor: '#c9cdf4',
+  },
+  skyrender: {
+    bow: 'recurve', len: 1.15, color: '#dce4ec', belly: '#f4f8fc', wrap: '#b8863f',
+    tip: 'gold', tipColor: '#e8c04c', charm: 'beads', charmColor: '#e8c04c',
+    fletch: '#e8c04c', fx: 'storm', fxColor: '#a8d8f4',
+  },
+};
+
+const BOW_FALLBACKS = new Map<string, BowStyle>();
+
+/**
+ * Resolve a held item to its bow style. Registry hits first; unknown
+ * '*bow' ids get a shortbow fallback in the item color. Null means
+ * "not a bow" — the rig's isBow and drawHeldItem both key off this.
+ */
+export function bowStyle(itemId: string | undefined, color?: string): BowStyle | null {
+  if (!itemId) return null;
+  const st = BOW_STYLES[itemId];
+  if (st) return st;
+  if (!itemId.includes('bow')) return null;
+  let fb = BOW_FALLBACKS.get(itemId);
+  if (!fb) {
+    fb = { bow: 'shortbow', color: color ?? '#8a6a45', wrap: '#5b4028' };
+    BOW_FALLBACKS.set(itemId, fb);
+  }
+  return fb;
+}
+
+/** Natural proportions per kind: tip-span factor and tip angle. */
+const BOW_KIND: Record<BowKind, { len: number; ang: number }> = {
+  shortbow: { len: 0.85, ang: Math.PI / 2.3 },
+  longbow: { len: 1.35, ang: Math.PI / 2.12 },
+  recurve: { len: 0.95, ang: Math.PI / 2.42 },
+  flatbow: { len: 1.0, ang: Math.PI / 2.3 },
+  composite: { len: 0.95, ang: Math.PI / 2.35 },
+  crude: { len: 0.9, ang: Math.PI / 2.3 },
+  bone: { len: 0.9, ang: Math.PI / 2.32 },
+};
+
+/**
+ * Paint a bow in the held-item frame (origin at the fist, +x toward the
+ * target). `pull` is the string haul-back in px; `loose` the release
+ * progress. Limbs flex with the pull; the belly passes x ≈ 0.18 s at
+ * midline by construction (ctrlX = 0.36 s − tipX), so the rest-carry
+ * grip translate keeps holding wood for every kind.
+ */
+export function drawBow(
+  ctx: CanvasRenderingContext2D,
+  st: BowStyle,
+  s: number,
+  nowMs: number,
+  hurt?: boolean,
+  pull = 0,
+  loose?: number,
+): void {
+  const kind = BOW_KIND[st.bow];
+  const S = 0.3 * s * (st.len ?? 1) * kind.len;
+  const flex = Math.min(1, pull / (0.36 * s));
+  const tipX = Math.cos(kind.ang) * S;
+  const tipY = Math.sin(kind.ang) * S;
+  const ctrlX = 0.36 * s - tipX + flex * 0.05 * s;
+  const wood = hurt ? '#ffffff' : st.color;
+  const belly = hurt ? '#ffffff' : (st.belly ?? shade(st.color, 26));
+  const lw = Math.max(2, s * (st.bow === 'flatbow' ? 0.05 : st.bow === 'longbow' ? 0.04 : 0.048));
+
+  // Point on the main limb curve, t: 0 = top tip, 1 = bottom tip.
+  const limbX = (t: number): number => {
+    const u = 1 - t;
+    return u * u * tipX + 2 * u * t * ctrlX + t * t * tipX;
+  };
+  const limbY = (t: number): number => {
+    const u = 1 - t;
+    return u * u * -tipY + t * t * tipY;
+  };
+
+  // String attach points (hooks and siyahs reach past the main curve).
+  let ax = tipX;
+  let ayT = -tipY;
+  let ayB = tipY;
+
+  ctx.lineCap = 'round';
+
+  // ---- limbs.
+  if (st.bow === 'recurve') {
+    // Working limbs stop short; tips hook toward the target.
+    const innerY = tipY * 0.86;
+    const hookX = tipX + (0.062 - flex * 0.018) * s;
+    const hookY = tipY * 1.02;
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.moveTo(hookX, -hookY);
+    ctx.quadraticCurveTo(tipX - 0.008 * s, -innerY, limbX(0.5) - 0.0001, 0);
+    ctx.quadraticCurveTo(tipX - 0.008 * s, innerY, hookX, hookY);
+    ctx.stroke();
+    // Belly light hugging the target side.
+    ctx.strokeStyle = belly;
+    ctx.lineWidth = lw * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(hookX + lw * 0.2, -hookY + 0.012 * s);
+    ctx.quadraticCurveTo(ctrlX + lw * 0.32, 0, hookX + lw * 0.2, hookY - 0.012 * s);
+    ctx.stroke();
+    ax = hookX;
+    ayT = -hookY;
+    ayB = hookY;
+  } else if (st.bow === 'composite') {
+    // Rigid riser, working limbs, straight siyah levers.
+    const elbowX = 0.1 * s;
+    const elbowY = tipY * 0.76;
+    const siyahX = 0.148 * s;
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.moveTo(siyahX, -tipY);
+    ctx.lineTo(elbowX, -elbowY);
+    ctx.quadraticCurveTo(ctrlX + 0.02 * s, 0, elbowX, elbowY);
+    ctx.lineTo(siyahX, tipY);
+    ctx.stroke();
+    ctx.strokeStyle = belly;
+    ctx.lineWidth = lw * 0.4;
+    ctx.beginPath();
+    ctx.moveTo(elbowX + lw * 0.3, -elbowY + 0.01 * s);
+    ctx.quadraticCurveTo(ctrlX + 0.02 * s + lw * 0.3, 0, elbowX + lw * 0.3, elbowY - 0.01 * s);
+    ctx.stroke();
+    ax = siyahX;
+  } else if (st.bow === 'crude') {
+    // A kinked branch — asymmetric elbows and knot bumps.
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw * 0.92;
+    ctx.beginPath();
+    ctx.moveTo(tipX + 0.014 * s, -tipY);
+    ctx.lineTo(ctrlX * 0.72, -tipY * 0.52);
+    ctx.lineTo(ctrlX * 0.62 + flex * 0.04 * s, 0.04 * s);
+    ctx.lineTo(ctrlX * 0.78, tipY * 0.46);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+    if (!hurt) {
+      ctx.fillStyle = shade(st.color, -18);
+      ctx.beginPath();
+      ctx.arc(ctrlX * 0.72, -tipY * 0.52, lw * 0.55, 0, Math.PI * 2);
+      ctx.arc(ctrlX * 0.78, tipY * 0.46, lw * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ax = tipX + 0.007 * s;
+  } else if (st.bow === 'bone') {
+    // Vertebrae threaded along the curve, biggest at the grip.
+    const n = 11;
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      const r = (0.016 + 0.017 * Math.sin(Math.PI * t)) * s;
+      ctx.fillStyle = wood;
+      ctx.beginPath();
+      ctx.arc(limbX(t), limbY(t), r, 0, Math.PI * 2);
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = belly;
+        ctx.beginPath();
+        ctx.arc(limbX(t) + r * 0.35, limbY(t), r * 0.42, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  } else if (st.bow === 'flatbow') {
+    // Broad paddle limbs: segment strokes with a width profile.
+    ctx.strokeStyle = wood;
+    for (let i = 0; i < 8; i++) {
+      const t0 = i / 8;
+      const t1 = (i + 1) / 8;
+      ctx.lineWidth = lw * (0.55 + 0.95 * Math.sin(Math.PI * (t0 + t1) * 0.5));
+      ctx.beginPath();
+      ctx.moveTo(limbX(t0), limbY(t0));
+      ctx.lineTo(limbX(t1), limbY(t1));
+      ctx.stroke();
+    }
+    ctx.strokeStyle = belly;
+    ctx.lineWidth = lw * 0.4;
+    ctx.beginPath();
+    ctx.moveTo(tipX + lw * 0.22, -tipY + 0.012 * s);
+    ctx.quadraticCurveTo(ctrlX + lw * 0.35, 0, tipX + lw * 0.22, tipY - 0.012 * s);
+    ctx.stroke();
+  } else {
+    // shortbow / longbow: the classic sprung arc, two-pass.
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.moveTo(tipX, -tipY);
+    ctx.quadraticCurveTo(ctrlX, 0, tipX, tipY);
+    ctx.stroke();
+    ctx.strokeStyle = belly;
+    ctx.lineWidth = lw * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(tipX + lw * 0.22, -tipY + 0.012 * s);
+    ctx.quadraticCurveTo(ctrlX + lw * 0.32, 0, tipX + lw * 0.22, tipY - 0.012 * s);
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+
+  // ---- tip furniture.
+  if (!hurt && st.tip && st.tip !== 'plain') {
+    const tc = st.tipColor ?? '#d8d2c0';
+    ctx.fillStyle = tc;
+    for (const sy of [-1, 1]) {
+      const ty2 = sy < 0 ? ayT : ayB;
+      if (st.tip === 'horn') {
+        ctx.beginPath();
+        ctx.moveTo(ax - 0.022 * s, ty2);
+        ctx.lineTo(ax + 0.022 * s, ty2);
+        ctx.lineTo(ax + 0.004 * s, ty2 + sy * 0.05 * s);
+        ctx.closePath();
+        ctx.fill();
+      } else if (st.tip === 'thorn') {
+        ctx.beginPath();
+        ctx.moveTo(ax, ty2 - sy * 0.01 * s);
+        ctx.lineTo(ax + 0.052 * s, ty2 + sy * 0.014 * s);
+        ctx.lineTo(ax + 0.006 * s, ty2 + sy * 0.026 * s);
+        ctx.closePath();
+        ctx.fill();
+      } else if (st.tip === 'bone') {
+        ctx.beginPath();
+        ctx.arc(ax, ty2, 0.024 * s, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // gold / iron: a metal nock band across the limb end.
+        ctx.fillRect(ax - 0.026 * s, ty2 - sy * 0.008 * s, 0.052 * s, sy * 0.032 * s);
+      }
+    }
+  }
+
+  // ---- grip wrap: a band over the belly where the fist lands.
+  const gripX = 0.18 * s + flex * 0.025 * s;
+  const wrapC = hurt ? '#ffffff' : (st.wrap ?? shade(st.color, -30));
+  ctx.fillStyle = wrapC;
+  ctx.fillRect(gripX - lw * 0.85, -0.055 * s, lw * 1.7, 0.11 * s);
+
+  // ---- charms.
+  if (!hurt && st.charm) {
+    const cc = st.charmColor ?? '#c9b88a';
+    ctx.fillStyle = cc;
+    if (st.charm === 'holes') {
+      // Song-holes drilled along the upper limb.
+      for (const t of [0.22, 0.32, 0.42]) {
+        ctx.beginPath();
+        ctx.arc(limbX(t), limbY(t), Math.max(1, 0.013 * s), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (st.charm === 'fur') {
+      // Pelt tufts ringing the grip band — three spiky teeth per end.
+      for (const sy of [-1, 1]) {
+        for (const k of [-1, 0, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(gripX + (k - 0.5) * lw * 0.62, sy * 0.055 * s);
+          ctx.lineTo(gripX + k * lw * 0.62, sy * (0.055 + 0.042 - Math.abs(k) * 0.01) * s);
+          ctx.lineTo(gripX + (k + 0.5) * lw * 0.62, sy * 0.055 * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    } else {
+      // Hanging charms off the lower limb, swaying gently — offset off
+      // the belly side so they hang in air, never buried in the wood.
+      const hx = limbX(0.74) + 0.024 * s;
+      const hy = limbY(0.74);
+      const sway = Math.sin(nowMs * 0.0022) * 0.012 * s;
+      if (st.charm === 'feathers') {
+        for (const k of [0, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(hx + k * 0.026 * s, hy);
+          ctx.lineTo(hx + k * 0.026 * s + sway - 0.016 * s, hy + 0.095 * s);
+          ctx.lineTo(hx + k * 0.026 * s + sway + 0.014 * s, hy + 0.078 * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+      } else if (st.charm === 'teeth') {
+        for (const k of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(hx + k * 0.014 * s - 0.01 * s, hy + 0.01 * s);
+          ctx.lineTo(hx + k * 0.014 * s + 0.01 * s, hy + 0.01 * s);
+          ctx.lineTo(hx + k * 0.014 * s + sway * 0.6, hy + 0.05 * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+      } else if (st.charm === 'leaves') {
+        for (const t of [0.3, 0.62, 0.78]) {
+          const lx = limbX(t);
+          const ly = limbY(t);
+          ctx.beginPath();
+          ctx.moveTo(lx + 0.012 * s, ly);
+          ctx.lineTo(lx + 0.036 * s, ly - 0.014 * s);
+          ctx.lineTo(lx + 0.052 * s, ly + 0.004 * s);
+          ctx.lineTo(lx + 0.03 * s, ly + 0.016 * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+      } else {
+        // beads: a short strand hanging clear of the limb.
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.arc(hx + 0.006 * s + sway * (i / 3), hy + (0.026 + i * 0.026) * s, Math.max(1, 0.012 * s), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  // ---- string: taut → hauled to the nock → buzzing on release.
+  ctx.strokeStyle = hurt ? '#ffffff' : (st.string ?? '#e6e0d0');
+  ctx.lineWidth = Math.max(1, s * 0.018);
+  ctx.beginPath();
+  ctx.moveTo(ax, ayT);
+  if (loose !== undefined) {
+    const buzz = Math.sin(loose * 42) * 0.05 * s * (1 - loose);
+    ctx.quadraticCurveTo(-buzz, 0, ax, ayB);
+  } else if (pull > 0.5) {
+    ctx.lineTo(-pull, 0);
+    ctx.lineTo(ax, ayB);
+  } else {
+    // At rest the string is a straight brace, tip to tip.
+    ctx.lineTo(ax, ayB);
+  }
+  ctx.stroke();
+
+  // ---- nocked arrow, fletched in the bow's colors.
+  if (pull > 0.06 * s && loose === undefined && !hurt) {
+    ctx.strokeStyle = '#c4b590';
+    ctx.lineWidth = Math.max(1.5, s * 0.028);
+    ctx.beginPath();
+    ctx.moveTo(-pull, 0);
+    ctx.lineTo(0.38 * s, 0);
+    ctx.stroke();
+    ctx.fillStyle = '#c9ccd4';
+    ctx.beginPath();
+    ctx.moveTo(0.44 * s, 0);
+    ctx.lineTo(0.36 * s, -0.032 * s);
+    ctx.lineTo(0.36 * s, 0.032 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = st.fletch ?? '#d95763';
+    ctx.lineWidth = Math.max(1, s * 0.02);
+    for (const sy of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(-pull + 0.01 * s, 0);
+      ctx.lineTo(-pull - 0.045 * s, sy * 0.045 * s);
+      ctx.stroke();
+    }
+  }
+
+  // ---- the living channel, riding the limb curve.
+  if (!hurt && st.fx) {
+    const c = st.fxColor ?? '#ffffff';
+    if (st.fx === 'gleam') {
+      const u = (nowMs % 2600) / 2600;
+      if (u < 0.55) {
+        const t = u / 0.55;
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.arc(limbX(t), limbY(t), Math.max(1, 0.014 * s * Math.sin(Math.PI * t)), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      for (let i = 0; i < 3; i++) {
+        const phase = (nowMs * 0.00045 + i * 0.37) % 1;
+        const t = 0.12 + 0.76 * ((i * 0.31 + phase) % 1);
+        let x = limbX(t);
+        let y = limbY(t);
+        let r = Math.max(1, 0.012 * s);
+        switch (st.fx) {
+          case 'ember':
+            x += 0.014 * s + 0.026 * s * phase;
+            r *= 1 - phase * 0.6;
+            break;
+          case 'frost':
+            x += 0.03 * s * Math.sin(phase * Math.PI * 2 + i * 2.1);
+            break;
+          case 'void':
+            x += 0.018 * s + 0.012 * s * Math.sin(phase * Math.PI * 2);
+            break;
+          case 'storm':
+            if (Math.sin(nowMs * 0.02 + i * 2.6) < 0.55) continue;
+            x += 0.022 * s;
+            break;
+          case 'star':
+            x += 0.024 * s;
+            r *= 0.6 + 0.7 * Math.abs(Math.sin(nowMs * 0.004 + i * 1.7));
+            break;
+          default: // sun / blood: warm sparkles hugging the belly
+            x += 0.02 * s + 0.008 * s * Math.sin(phase * Math.PI * 2 + i);
+            break;
+        }
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+}

@@ -77,7 +77,7 @@ test('equipment defs round-trip through JSON', () => {
 
 test('rolledStats is deterministic and null for non-gear', () => {
   assert.equal(rolledStats('coins'), null);
-  assert.equal(rolledStats('oak_shortbow'), null); // bows/staffs roll only once migrated
+  assert.equal(rolledStats('apprentice_staff'), null); // staffs roll only once migrated
   // Swords ARE migrated: the blade roster rolls, damage carries the base.
   assert.equal(rolledStats('bronze_sword')?.damage, 1);
   for (let seed = 0; seed < 200; seed++) {
@@ -431,7 +431,9 @@ test('early-game leather sets: four dye lots each, colorways mirror their base',
 
 test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates hold', async () => {
   const { ABILITIES } = await import('./abilities.js');
-  const swords = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
+  const weapons = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
+  assert.equal(weapons.length, 94, 'swords 32 + daggers 33 + bows 29');
+  const swords = weapons.filter((d) => d.weapon?.style === 'melee');
   assert.equal(swords.length, 65, 'swords 32 + daggers 33');
   for (const s of swords) {
     assert.equal(s.weapon?.style, 'melee');
@@ -500,4 +502,55 @@ test('rogue roster: 20 dagger designs, sneak gates, backstab dial, ladders climb
   // The Last Word out-backstabs everything.
   const best = Math.max(...daggers.map((id) => byId.get(id)!.weapon!.backstabMult ?? 0));
   assert.equal(byId.get('last_word')!.weapon!.backstabMult, best);
+});
+
+test('archer roster: 20 bow designs, wood ladders climb, arts resolve, chase steepens', async () => {
+  const { ABILITIES } = await import('./abilities.js');
+  const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
+  const bows = [
+    'shortbow', 'oak_shortbow', 'willow_shortbow', 'yew_shortbow',
+    'longbow', 'oak_longbow', 'willow_longbow', 'yew_longbow',
+    'hunting_bow', 'oak_hunting_bow', 'willow_hunting_bow', 'yew_hunting_bow',
+    'sparrowhawk', 'heartwood', 'windsinger',
+    'stickbow', 'knucklebow', 'poachers_friend', 'bramblethorn', 'driftwood',
+    'fishspine', 'wolfsong', 'rimewood', 'marrowpoint', 'whisperwind',
+    'emberglow', 'kingswood', 'starcall', 'skyrender',
+  ];
+  assert.equal(bows.length, 29, '3 ladders x4 + 3 crafts + 14 finds');
+  for (const id of bows) {
+    const d = byId.get(id);
+    assert.ok(d, `${id} exists`);
+    assert.equal(d!.weapon?.style, 'archery');
+    assert.equal(d!.weapon!.ammo, 'arrow', `${id} feeds on arrows`);
+    assert.ok(d!.weapon!.projectileSpeed! >= 14, `${id} shoots a real projectile`);
+    assert.ok(d!.weapon!.art && ABILITIES.has(d!.weapon!.art), `${id} art resolves`);
+    assert.ok(d!.desc && d!.desc.length > 20, `${id} carries a real story`);
+  }
+  // Wood ladders climb through the forests, gated on archery.
+  const logs = ['log', 'oak_log', 'willow_log', 'yew_log'];
+  for (const key of ['shortbow', 'longbow', 'hunting_bow']) {
+    const line = ['', 'oak_', 'willow_', 'yew_'].map((w) => byId.get(`${w}${key}`)!);
+    assert.ok(line.every(Boolean), `${key} fletched in four woods`);
+    for (let i = 1; i < line.length; i++) {
+      assert.ok(line[i]!.weapon!.damage >= line[i - 1]!.weapon!.damage, `${key} damage climbs`);
+      assert.ok(line[i]!.value > line[i - 1]!.value, `${key} value climbs`);
+      assert.ok(line[i]!.recipe!.levelReq > line[i - 1]!.recipe!.levelReq, `${key} crafting climbs`);
+      assert.equal(line[i]!.levelReq!.skill, 'archery', `${key} gates on archery`);
+      assert.equal(line[i]!.weapon!.cooldownTicks, line[0]!.weapon!.cooldownTicks, `${key} keeps its cadence`);
+    }
+    line.forEach((d, i) => assert.ok(d.recipe!.inputs.some((inp) => inp.item === logs[i]), `${d.id} fletched from ${logs[i]}`));
+  }
+  // The bow identity dials: longbows slow and far, shortbows quick and close.
+  assert.ok(byId.get('yew_longbow')!.weapon!.cooldownTicks > byId.get('yew_shortbow')!.weapon!.cooldownTicks);
+  assert.ok(byId.get('yew_longbow')!.weapon!.range > byId.get('yew_shortbow')!.weapon!.range);
+  assert.ok(byId.get('yew_longbow')!.weapon!.damage > byId.get('yew_shortbow')!.weapon!.damage);
+  // The chase steepens; the Skyrender only exists legendary.
+  assert.deepEqual(byId.get('kingswood')!.rarities, ['rare', 'epic', 'legendary']);
+  assert.deepEqual(byId.get('starcall')!.rarities, ['epic', 'legendary']);
+  assert.deepEqual(byId.get('skyrender')!.rarities, ['legendary']);
+  // The wood ladder is harvestable: every bow log has a gather node.
+  const { NODES } = await import('./nodes.js');
+  for (const log of logs) {
+    assert.ok(NODES.some((n) => n.yieldItem === log), `${log} grows on a real tree`);
+  }
 });

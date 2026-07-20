@@ -474,7 +474,7 @@ function autoEquipTool(): void {
   for (let ty = Math.floor(own.y) - 2; ty <= Math.floor(own.y) + 2 && !need; ty++) {
     for (let tx = Math.floor(own.x) - 2; tx <= Math.floor(own.x) + 2 && !need; tx++) {
       const t = game.world.groundAt(tx, ty);
-      if (t === Tile.Tree || t === Tile.TreeOak) need = 'axe';
+      if (t === Tile.Tree || t === Tile.TreeOak || t === Tile.TreeWillow || t === Tile.TreeYew) need = 'axe';
       else if (t !== undefined && ROCK_TILES.includes(t)) need = 'pickaxe';
       else if (t === Tile.FishingSpot) need = 'rod';
     }
@@ -507,10 +507,10 @@ renderer.onGatherImpact = (kind) => {
 // A felled tree topples away from whoever cut it, groans, and lands
 // with a thud you can feel.
 game.onTileChange = (tx, ty, prev, next) => {
-  if ((prev === Tile.Tree || prev === Tile.TreeOak) && next === Tile.Stump) {
+  if ((prev === Tile.Tree || prev === Tile.TreeOak || prev === Tile.TreeWillow || prev === Tile.TreeYew) && next === Tile.Stump) {
     const own = game.predictor.pos;
     const dir = own.x <= tx + 0.5 ? 1 : -1;
-    renderer.addFallingTree(tx, ty, prev === Tile.TreeOak, dir);
+    renderer.addFallingTree(tx, ty, prev, dir);
     sfx.treeFall();
     // Impact lands at ~720ms of the 3.2s fall timeline.
     window.setTimeout(() => {

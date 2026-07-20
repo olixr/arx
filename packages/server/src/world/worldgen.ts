@@ -366,8 +366,16 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
         const treeDensity = 0.10 + (moisture - 0.62) * 1.4;
         const oakRoll = hashCoords(seed ^ 0x0acc0de, tx, ty) / 4294967296;
         const flora = hashCoords(seed ^ 0xf10a5, tx, ty) / 4294967296;
+        // Species by rarity: yew is the ancient one-in-forty find, willow
+        // grows only where the forest turns properly damp, oaks salt the
+        // rest — the woodcutting ladder lives in the deep woods.
+        const species =
+          oakRoll < 0.025 ? Tile.TreeYew
+          : oakRoll < 0.12 && moisture > 0.74 ? Tile.TreeWillow
+          : oakRoll < 0.26 ? Tile.TreeOak
+          : Tile.Tree;
         ground =
-          roll < treeDensity ? (oakRoll < 0.18 ? Tile.TreeOak : Tile.Tree)
+          roll < treeDensity ? species
           : flora < 0.008 ? Tile.WildSagewort
           : flora < 0.012 && moisture > 0.75 ? Tile.WildMoonbell
           : flora < 0.017 ? Tile.FibrePlant
