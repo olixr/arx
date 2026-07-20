@@ -254,6 +254,15 @@ const defs: NpcDef[] = [
       { item: 'steel_greathelm', qty: [1, 1], chance: 0.06 },
       { item: 'iron_platebody', qty: [1, 1], chance: 0.15 },
       { item: 'emberweave_robe', qty: [1, 1], chance: 0.08 },
+      // The heavy frostplate pieces the wolves never carry.
+      { item: 'frostplate_platebody', qty: [1, 1], chance: 0.06 },
+      { item: 'frostplate_greaves', qty: [1, 1], chance: 0.05 },
+      // Dreadforge: the villain's own wardrobe, drop-only, the
+      // aspirational chase that outlasts the fight itself.
+      { item: 'dreadforge_helm', qty: [1, 1], chance: 0.04 },
+      { item: 'dreadforge_platebody', qty: [1, 1], chance: 0.03 },
+      { item: 'dreadforge_greaves', qty: [1, 1], chance: 0.035 },
+      { item: 'dreadforge_sabatons', qty: [1, 1], chance: 0.035 },
     ],
     respawnSec: 90,
     color: '#e8e2d0',
@@ -283,6 +292,10 @@ const defs: NpcDef[] = [
       // The drop-only chase piece: hunt the pack, wear the pack.
       { item: 'wolfhide_hood', qty: [1, 1], chance: 0.06 },
       { item: 'wanderer_boots', qty: [1, 1], chance: 0.05 },
+      // Frostplate walks with the winter packs — small pieces here,
+      // the body and greaves guarded by the Champion.
+      { item: 'frostplate_helm', qty: [1, 1], chance: 0.03 },
+      { item: 'frostplate_sabatons', qty: [1, 1], chance: 0.03 },
     ],
     respawnSec: 35,
     color: '#6a6f7d',

@@ -27,10 +27,16 @@ export interface BodyStyle {
   metal?: string;
   cls: ArmorClassStyle;
   silhouette: 'tunic' | 'robe' | 'jerkin' | 'cuirass' | 'brigandine';
-  pauldron: 'none' | 'round' | 'spiked' | 'layered';
+  pauldron: 'none' | 'round' | 'spiked' | 'layered' | 'bladed';
   pauldronColor?: string;
+  /** Bright edge accent on the pauldron rim / blade edge. */
+  pauldronTrim?: string;
+  /** Spike count for 'spiked' pauldrons, 1..3. Default 1. */
+  pauldronSpikes?: number;
   chest: 'none' | 'straps' | 'plate' | 'emblem' | 'stitch';
-  emblem?: 'chevron' | 'diamond' | 'bolt';
+  emblem?: 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf';
+  /** Hip plates hanging from the fauld — the heavy-knight lower read. */
+  tassets?: boolean;
   /** Robe/coat skirt length below the belt line, tiles. 0 = none. */
   skirt: number;
   skirtSlit?: boolean;
@@ -60,6 +66,14 @@ export interface HelmStyle {
   visor?: 'slit' | 'cross';
   plume?: { color: string };
   horns?: { color: string; size: number };
+  /** Swept-back side fins — blade silhouettes off the temples. */
+  fins?: { color: string };
+  /** Upswept feathered wing blades — the valkyrie read. */
+  wings?: { color: string };
+  /** A solid metal ridge crest riding the crown centerline. */
+  crest?: { color: string };
+  /** Cheek/jaw guard plates flanking the face opening. */
+  jaw?: string;
   /** Wizard hats: a band buckle / star charm on the crown. */
   charm?: string;
 }
@@ -80,10 +94,12 @@ export interface BootStyle {
   cuff?: { color: string };
   /** Metal toe cap color (sabatons). */
   toe?: string;
+  /** A short spike off the shaft top — dread sabatons. */
+  spike?: boolean;
 }
 
 export interface OffhandStyle {
-  kind: 'buckler' | 'kite' | 'tome' | 'quiver' | 'orb';
+  kind: 'buckler' | 'kite' | 'tower' | 'tome' | 'quiver' | 'orb';
   color: string;
   trim: string;
   boss?: string;
@@ -126,6 +142,36 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     silhouette: 'cuirass', pauldron: 'layered', chest: 'plate',
     emblem: 'diamond', skirt: 0, collar: 'gorget',
   },
+  // The themed plate sets: one silhouette vocabulary, five color
+  // stories. A new colorway is a spread + palette — never a painter.
+  warden_platebody: {
+    color: '#4a7a5a', trim: '#2e4a38', metal: '#87b294', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'bladed', pauldronColor: '#5a8a6a',
+    pauldronTrim: '#d69a55', chest: 'plate', emblem: 'leaf', skirt: 0,
+    collar: 'gorget',
+  },
+  frostplate_platebody: {
+    color: '#9db6cc', trim: '#4a6a9c', metal: '#cfe0ee', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'round', pauldronTrim: '#e8f4ff',
+    chest: 'plate', emblem: 'diamond', skirt: 0, collar: 'gorget',
+  },
+  bulwark_platebody: {
+    color: '#5a6270', trim: '#b08a3c', metal: '#787f8e', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'layered', pauldronColor: '#6a7280',
+    chest: 'plate', skirt: 0, collar: 'gorget', tassets: true,
+  },
+  dreadforge_platebody: {
+    color: '#4a4553', trim: '#a83232', metal: '#625c6e', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'spiked', pauldronColor: '#3a3542',
+    pauldronSpikes: 3, chest: 'plate', emblem: 'skull', skirt: 0,
+    collar: 'gorget', tassets: true,
+  },
+  sunforged_platebody: {
+    color: '#d4a43c', trim: '#f4e0a0', metal: '#e8c05c', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'bladed', pauldronColor: '#e0b04a',
+    pauldronTrim: '#fff2c8', chest: 'plate', emblem: 'sun', skirt: 0,
+    collar: 'gorget', tassets: true,
+  },
 };
 
 export const HELM_STYLES: Record<string, HelmStyle> = {
@@ -143,6 +189,25 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     color: '#7d6a52', trim: '#5a4a38', kind: 'horned',
     noseGuard: true, horns: { color: '#e6e0d0', size: 1 },
   },
+  warden_helm: {
+    color: '#4a7a5a', trim: '#6f9a7f', kind: 'dome',
+    noseGuard: true, crest: { color: '#b0703c' },
+  },
+  frostplate_helm: {
+    color: '#9db6cc', trim: '#7a94ac', kind: 'dome',
+    noseGuard: true, fins: { color: '#cfe0ee' },
+  },
+  bulwark_greathelm: {
+    color: '#5a6270', trim: '#b08a3c', kind: 'greathelm', visor: 'cross',
+  },
+  dreadforge_helm: {
+    color: '#4a4553', trim: '#a83232', kind: 'horned', noseGuard: true,
+    horns: { color: '#35313e', size: 1.45 }, jaw: '#625c6e',
+  },
+  sunforged_helm: {
+    color: '#d4a43c', trim: '#e8c05c', kind: 'dome',
+    noseGuard: true, wings: { color: '#e8e2d0' },
+  },
 };
 
 export const LEG_STYLES: Record<string, LegStyle> = {
@@ -150,6 +215,11 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   leather_chaps: { kind: 'wraps', thigh: '#b08a5c', shin: '#8a6a45', knee: 'wrap', kneeColor: '#6b4a26' },
   iron_greaves: { kind: 'greaves', thigh: '#5c5460', shin: '#8d9299', knee: 'plate', kneeColor: '#9aa2ac' },
   steel_greaves: { kind: 'greaves', thigh: '#5c5460', shin: '#b8bec8', knee: 'plate', kneeColor: '#d4dae2' },
+  warden_greaves: { kind: 'greaves', thigh: '#3e5a48', shin: '#4a7a5a', knee: 'plate', kneeColor: '#b0703c' },
+  frostplate_greaves: { kind: 'greaves', thigh: '#55647a', shin: '#9db6cc', knee: 'plate', kneeColor: '#cfe0ee' },
+  bulwark_greaves: { kind: 'greaves', thigh: '#454b58', shin: '#5a6270', knee: 'plate', kneeColor: '#b08a3c' },
+  dreadforge_greaves: { kind: 'greaves', thigh: '#322f3a', shin: '#4a4553', knee: 'plate', kneeColor: '#a83232' },
+  sunforged_greaves: { kind: 'greaves', thigh: '#8a6a2c', shin: '#d4a43c', knee: 'plate', kneeColor: '#f4e0a0' },
 };
 
 export const BOOT_STYLES: Record<string, BootStyle> = {
@@ -157,6 +227,12 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   leather_boots: { color: '#6b4a26', height: 0.08 },
   wanderer_boots: { color: '#8a6a45', height: 0.16, cuff: { color: '#6b4a26' } },
   iron_sabatons: { color: '#8d9299', height: 0.12, toe: '#c9ccd4' },
+  steel_sabatons: { color: '#b8bec8', height: 0.13, toe: '#d4dae2' },
+  warden_sabatons: { color: '#4a7a5a', height: 0.12, toe: '#b0703c' },
+  frostplate_sabatons: { color: '#9db6cc', height: 0.12, toe: '#cfe0ee' },
+  bulwark_sabatons: { color: '#5a6270', height: 0.14, toe: '#b08a3c', cuff: { color: '#787f8e' } },
+  dreadforge_sabatons: { color: '#4a4553', height: 0.14, toe: '#625c6e', spike: true },
+  sunforged_sabatons: { color: '#d4a43c', height: 0.13, toe: '#f4e0a0' },
 };
 
 export const OFFHAND_STYLES: Record<string, OffhandStyle> = {
@@ -165,6 +241,7 @@ export const OFFHAND_STYLES: Record<string, OffhandStyle> = {
   frost_quiver: { kind: 'quiver', color: '#8ac4e8', trim: '#4a6a8a' },
   tome_of_embers: { kind: 'tome', color: '#e8763c', trim: '#6b3a1e' },
   arcane_orb: { kind: 'orb', color: '#8f9ed6', trim: '#c9c4cf' },
+  tower_shield: { kind: 'tower', color: '#8d9299', trim: '#6a6f7d', boss: '#b0b6be' },
 };
 
 // ---------------------------------------------------------- resolvers
@@ -417,6 +494,25 @@ export function drawTorsoGarment(
       ctx.fillRect(-ww - 0.008 * s, -0.075 * s, ww * 2 + 0.016 * s, 0.075 * s);
     }
 
+    // ---- tassets: hip plates hanging off the fauld, swinging a hair
+    // with the stride — the heavy knight keeps armor below the waist.
+    if (st.tassets) {
+      const sway = f.strideSw * 0.015 * s;
+      for (const es of [-1, 1]) {
+        const hx = es * ww * 0.78;
+        ctx.fillStyle = es === f.lead ? shade(metal, -4) : shade(metal, -20);
+        ctx.beginPath();
+        ctx.moveTo(hx - 0.062 * s, 0.0 * s);
+        ctx.lineTo(hx + 0.062 * s, 0.0 * s);
+        ctx.lineTo(hx + 0.046 * s + es * sway, 0.115 * s);
+        ctx.lineTo(hx - 0.046 * s + es * sway, 0.115 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = shade(metal, es === f.lead ? 16 : -8);
+        ctx.fillRect(hx - 0.052 * s, 0.008 * s, 0.104 * s, 0.016 * s);
+      }
+    }
+
     // ---- the mantle: a layered shoulder cope draping over the chest —
     // the garment-over-garment read that says HIGH wizardry. Its point
     // drapes lower in front; from behind it reads as a clean yoke.
@@ -541,6 +637,54 @@ export function drawTorsoGarment(
         // A mantle claims the upper chest — the emblem sits below it.
         const ey = -th * (st.mantle ? 0.3 : 0.58);
         const r = tw * 0.3;
+        if (st.emblem === 'skull') {
+          // The dread device: a grinning skull etched into the plate —
+          // drawn large; a timid skull is no skull at all.
+          const rs = r * 1.45;
+          ctx.beginPath();
+          ctx.arc(0, ey - rs * 0.12, rs * 0.5, Math.PI * 0.95, Math.PI * 2.05);
+          ctx.lineTo(rs * 0.34, ey + rs * 0.42);
+          ctx.lineTo(-rs * 0.34, ey + rs * 0.42);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#1c1722';
+          for (const exx of [-rs * 0.22, rs * 0.22]) {
+            ctx.fillRect(exx - rs * 0.12, ey - rs * 0.24, rs * 0.24, rs * 0.26);
+          }
+          ctx.fillRect(-rs * 0.055, ey + rs * 0.12, rs * 0.11, rs * 0.18);
+        } else if (st.emblem === 'sun') {
+          // The radiant device: a core diamond ringed by eight rays.
+          ctx.beginPath();
+          ctx.moveTo(0, ey - r * 0.4);
+          ctx.lineTo(r * 0.34, ey);
+          ctx.lineTo(0, ey + r * 0.4);
+          ctx.lineTo(-r * 0.34, ey);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = st.trim;
+          ctx.lineWidth = Math.max(1, s * 0.016);
+          ctx.beginPath();
+          for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2;
+            ctx.moveTo(Math.cos(a) * r * 0.52, ey + Math.sin(a) * r * 0.52);
+            ctx.lineTo(Math.cos(a) * r * 0.82, ey + Math.sin(a) * r * 0.82);
+          }
+          ctx.stroke();
+        } else if (st.emblem === 'leaf') {
+          // The warden device: a single leaf with its center vein.
+          ctx.beginPath();
+          ctx.moveTo(0, ey - r * 0.55);
+          ctx.quadraticCurveTo(r * 0.52, ey - r * 0.1, 0, ey + r * 0.55);
+          ctx.quadraticCurveTo(-r * 0.52, ey - r * 0.1, 0, ey - r * 0.55);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = shade(st.trim, -24);
+          ctx.lineWidth = Math.max(1, s * 0.012);
+          ctx.beginPath();
+          ctx.moveTo(0, ey - r * 0.42);
+          ctx.lineTo(0, ey + r * 0.42);
+          ctx.stroke();
+        } else {
         ctx.beginPath();
         if (st.emblem === 'chevron') {
           ctx.moveTo(-r, ey - r * 0.4);
@@ -564,6 +708,7 @@ export function drawTorsoGarment(
         }
         ctx.closePath();
         ctx.fill();
+        }
       }
     } else {
       if (st.silhouette === 'cuirass') {
@@ -698,13 +843,49 @@ export function drawPauldron(
       ctx.fillStyle = shade(col, -24);
       ctx.fillRect(-0.1 * s, 0.038 * s, 0.2 * s, 0.014 * s);
       if (st.pauldron === 'spiked') {
+        // A fan of spikes off the crown — one is a soldier, three are a
+        // warlord. Outermost is longest; each rides its own base point.
+        const n = Math.max(1, Math.min(3, st.pauldronSpikes ?? 1));
+        const tips: Array<[number, number, number, number]> = [
+          [0.06, -0.03, 0.16, -0.09],
+          [0.0, -0.05, 0.035, -0.13],
+          [-0.05, -0.04, -0.1, -0.1],
+        ];
+        ctx.fillStyle = col;
+        for (let i = 0; i < n; i++) {
+          const [bx, by, txx, tyy] = tips[i]!;
+          ctx.beginPath();
+          ctx.moveTo(side * bx * s, by * s);
+          ctx.lineTo(side * txx * s, tyy * s);
+          ctx.lineTo(side * (bx + 0.038) * s, (by + 0.032) * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+      } else if (st.pauldron === 'bladed') {
+        // A swept blade-wing rising off the shoulder — the hero cut.
         ctx.fillStyle = col;
         ctx.beginPath();
-        ctx.moveTo(side * 0.06 * s, -0.03 * s);
-        ctx.lineTo(side * 0.16 * s, -0.09 * s);
-        ctx.lineTo(side * 0.095 * s, 0.005 * s);
+        ctx.moveTo(side * 0.015 * s, -0.052 * s);
+        ctx.quadraticCurveTo(side * 0.15 * s, -0.095 * s, side * 0.205 * s, -0.21 * s);
+        ctx.quadraticCurveTo(side * 0.125 * s, -0.125 * s, side * 0.078 * s, -0.018 * s);
         ctx.closePath();
         ctx.fill();
+        ctx.strokeStyle = st.pauldronTrim ?? shade(col, 24);
+        ctx.lineWidth = Math.max(1, s * 0.016);
+        ctx.beginPath();
+        ctx.moveTo(side * 0.03 * s, -0.058 * s);
+        ctx.quadraticCurveTo(side * 0.145 * s, -0.1 * s, side * 0.195 * s, -0.2 * s);
+        ctx.stroke();
+      }
+      if (st.pauldronTrim && st.pauldron !== 'bladed') {
+        // Bright edging along the dome rim — the gilded read.
+        ctx.strokeStyle = st.pauldronTrim;
+        ctx.lineWidth = Math.max(1, s * 0.018);
+        ctx.beginPath();
+        ctx.moveTo(-0.098 * s, 0.036 * s);
+        ctx.quadraticCurveTo(-0.108 * s, -0.048 * s, 0, -0.058 * s);
+        ctx.quadraticCurveTo(0.108 * s, -0.048 * s, 0.098 * s, 0.036 * s);
+        ctx.stroke();
       }
     }
   }
@@ -942,6 +1123,85 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.fillRect(headX - lead * hw * 1.02, headY - hh * 0.16, hw * 0.58, hh * 0.6);
     }
   }
+  if (st.jaw && !hurt && backK <= 0.55 && !full) {
+    // Cheek guards flank the face opening — the war-mask read.
+    ctx.fillStyle = st.jaw;
+    for (const es of [-1, 1]) {
+      const near = es === lead;
+      ctx.beginPath();
+      chamferRect(
+        ctx,
+        headX + es * hw * (near ? 0.66 : 0.78) - hw * 0.19,
+        headY - hh * 0.1,
+        hw * 0.38,
+        hh * (near ? 0.72 : 0.6),
+        cut * 0.5,
+      );
+      ctx.fill();
+    }
+  }
+  if (st.fins && !hurt) {
+    // Side fins: broad blades swept up off the temples — real mass, a
+    // glacier's calving edge; the far fin narrows like the far eye.
+    for (const es of [-1, 1]) {
+      const far = es !== lead;
+      const wK = far ? Math.max(0.25, 1 - profileK * 0.7) : 1;
+      const bx = headX + es * hw * 0.88;
+      const by = headY - hh * 0.4;
+      ctx.fillStyle = st.fins.color;
+      ctx.beginPath();
+      ctx.moveTo(bx - es * hw * 0.06, by + hh * 0.42 * wK);
+      ctx.quadraticCurveTo(bx + es * hw * 0.55 * wK, by + hh * 0.2, bx + es * hw * 1.0 * wK, by - hh * 0.85);
+      ctx.quadraticCurveTo(bx + es * hw * 0.5 * wK, by - hh * 0.2, bx + es * hw * 0.16 * wK, by - hh * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      // A darker under-facet keeps the blade from reading flat.
+      ctx.fillStyle = shade(st.fins.color, -16);
+      ctx.beginPath();
+      ctx.moveTo(bx - es * hw * 0.06, by + hh * 0.42 * wK);
+      ctx.quadraticCurveTo(bx + es * hw * 0.5 * wK, by + hh * 0.24, bx + es * hw * 0.86 * wK, by - hh * 0.55);
+      ctx.lineTo(bx + es * hw * 0.5 * wK, by - hh * 0.02);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  if (st.wings && !hurt) {
+    // Feathered wing blades: three ascending points, tallest outermost.
+    ctx.fillStyle = st.wings.color;
+    for (const es of [-1, 1]) {
+      const far = es !== lead;
+      const wK = far ? Math.max(0.25, 1 - profileK * 0.7) : 1;
+      const bx = headX + es * hw * 0.82;
+      const by = headY - hh * 0.55;
+      ctx.beginPath();
+      ctx.moveTo(bx, by + hh * 0.35 * wK);
+      ctx.lineTo(bx + es * hw * 0.3 * wK, by - hh * 0.42);
+      ctx.lineTo(bx + es * hw * 0.44 * wK, by - hh * 0.1);
+      ctx.lineTo(bx + es * hw * 0.68 * wK, by - hh * 0.72);
+      ctx.lineTo(bx + es * hw * 0.8 * wK, by - hh * 0.25);
+      ctx.lineTo(bx + es * hw * 1.05 * wK, by - hh * 1.05);
+      ctx.lineTo(bx + es * hw * 0.62 * wK, by + hh * 0.38 * wK);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  if (st.crest && !hurt) {
+    // A solid metal ridge riding the crown: narrow blade frontal, full
+    // arc at profile — the plume grammar, forged instead of feathered.
+    const arcK = 0.35 + 0.65 * profileK;
+    ctx.fillStyle = st.crest.color;
+    ctx.beginPath();
+    ctx.moveTo(headX - lead * hw * 0.88 * arcK, headY - hh * 0.98);
+    ctx.quadraticCurveTo(headX, headY - hh * (1.72 + 0.34 * arcK), headX + lead * hw * 0.7 * arcK, headY - hh * 0.98);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = shade(st.crest.color, 24);
+    ctx.lineWidth = Math.max(1.5, s * 0.02);
+    ctx.beginPath();
+    ctx.moveTo(headX - lead * hw * 0.74 * arcK, headY - hh * 1.04);
+    ctx.quadraticCurveTo(headX, headY - hh * (1.6 + 0.3 * arcK), headX + lead * hw * 0.58 * arcK, headY - hh * 1.04);
+    ctx.stroke();
+  }
   if (st.horns && !hurt) {
     // Horns sweep up and out; the far horn narrows like the far eye.
     ctx.fillStyle = st.horns.color;
@@ -1037,6 +1297,36 @@ export function drawOffhandOnArm(
   ctx.save();
   ctx.translate(mx, my);
   ctx.rotate(Math.atan2(arm.ey - arm.ky, arm.ex - arm.kx) + Math.PI / 2);
+  if (st.kind === 'tower') {
+    // A walking wall: tall slab, riveted border, center boss band. At
+    // profile it collapses to a bright structural rim like the others.
+    const w = 0.155 * s * faceK;
+    const h = 0.34 * s;
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    chamferRect(ctx, -w, -h * 0.5, w * 2, h, 0.035 * s);
+    ctx.fill();
+    if (!hurt && faceK > 0.55) {
+      ctx.strokeStyle = st.trim;
+      ctx.lineWidth = Math.max(1, s * 0.018);
+      ctx.beginPath();
+      chamferRect(ctx, -w * 0.78, -h * 0.42, w * 1.56, h * 0.84, 0.025 * s);
+      ctx.stroke();
+      ctx.fillStyle = st.boss ?? shade(st.color, 22);
+      ctx.fillRect(-w * 0.22, -h * 0.42, w * 0.44, h * 0.84);
+      ctx.fillStyle = shade(st.color, -22);
+      for (const ry of [-h * 0.36, h * 0.3]) {
+        for (const rx of [-w * 0.6, w * 0.6]) {
+          ctx.fillRect(rx - 0.011 * s, ry, 0.022 * s, 0.022 * s);
+        }
+      }
+    } else if (!hurt) {
+      ctx.fillStyle = shade(st.color, 18);
+      ctx.fillRect(-w, -h * 0.5, w * 0.55, h);
+    }
+    ctx.restore();
+    return;
+  }
   if (st.kind === 'kite') {
     const w = 0.15 * s * faceK;
     const h = 0.24 * s;

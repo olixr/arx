@@ -531,6 +531,28 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     code: 'Is',
     desc: 'Steel toes settle a surprising number of arguments.',
   },
+  {
+    id: 'steel_sabatons',
+    name: 'Steel sabatons',
+    slot: 'boots',
+    armorClass: 'plate',
+    levelReq: { skill: 'defence', level: 30 },
+    armor: 5,
+    affixPool: PLATE_POOL,
+    acquisition: { craft: true },
+    recipe: {
+      skill: 'smithing',
+      levelReq: 32,
+      xp: 240,
+      station: 'anvil',
+      ticks: 80,
+      inputs: [{ item: 'steel_bar', qty: 2 }],
+    },
+    value: 480,
+    color: '#b8bec8',
+    code: 'Ss',
+    desc: 'Bright steel feet. The floor hears you coming and agrees.',
+  },
 
   // ------------------------------------------------ offhand
   {
@@ -581,7 +603,262 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     code: 'Ao',
     desc: 'It orbits your palm and hums when you have a good idea.',
   },
+  {
+    id: 'tower_shield',
+    name: 'Tower shield',
+    slot: 'offhand',
+    levelReq: { skill: 'defence', level: 20 },
+    armor: 5,
+    affixPool: [{ stat: 'defence', w: 3 }, { stat: 'maxHp' }, { stat: 'vitality' }],
+    acquisition: { craft: true },
+    recipe: {
+      skill: 'smithing',
+      levelReq: 24,
+      xp: 190,
+      station: 'anvil',
+      ticks: 85,
+      inputs: [
+        { item: 'iron_bar', qty: 3 },
+        { item: 'oak_log', qty: 1 },
+      ],
+    },
+    value: 380,
+    color: '#8d9299',
+    code: 'Ts',
+    desc: 'Less a shield, more a door you carry into arguments.',
+  },
+
+  // ================================================ themed plate sets
+  // The plate wardrobe: five full sets, each a color story and a shape
+  // language of its own. A "variant" is pure data — same silhouette
+  // vocabulary, different palette and devices — so no two sets (and no
+  // two players) read alike.
+
+  // -------- Warden: patina-green bronze and copper, the explorer's
+  // plate. Grown, not forged — affixes lean into the field skills.
+  ...wardenSet(),
+  // -------- Frostplate: pale ice-steel, drop-only from the wolf packs.
+  // The battle-mage hybrid: plate that still remembers magic.
+  ...frostplateSet(),
+  // -------- Bulwark: gunmetal and brass, the fortress line. Nothing
+  // clever, everything thick.
+  ...bulwarkSet(),
+  // -------- Dreadforge: blackened steel and blood trim, drop-only from
+  // the Skeleton Champion. The villain's wardrobe, worn by you.
+  ...dreadforgeSet(),
+  // -------- Sunforged: gold and ivory, the endgame craft line. Wings,
+  // sun devices, gilded edges — the parade armor that fights.
+  ...sunforgedSet(),
 ];
+
+// ---------------------------------------------------------- set makers
+// Local authoring shorthand only: each returns plain EquipmentDefs and
+// keeps the four pieces of a set tonally coherent (one palette, one
+// affix pool, one acquisition story). A JSON tool would inline these.
+
+function wardenSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'defence', w: 2 },
+    { stat: 'foraging' },
+    { stat: 'farming' },
+    { stat: 'woodcutting' },
+    { stat: 'vitality' },
+  ];
+  const color = '#4a7a5a';
+  const craft = (levelReq: number, xp: number, ticks: number, bronze: number, oak: number) => ({
+    skill: 'smithing' as const,
+    levelReq,
+    xp,
+    station: 'anvil' as const,
+    ticks,
+    inputs: oak > 0
+      ? [{ item: 'bronze_bar', qty: bronze }, { item: 'oak_log', qty: oak }]
+      : [{ item: 'bronze_bar', qty: bronze }],
+  });
+  return [
+    {
+      id: 'warden_helm', name: 'Warden helm', slot: 'head', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 15 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(18, 120, 65, 2, 1),
+      value: 260, color, code: 'Wd',
+      desc: 'Verdigris bronze with a copper crest. The forest approves.',
+    },
+    {
+      id: 'warden_platebody', name: 'Warden platebody', slot: 'body', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 16 }, armor: 7, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(22, 200, 85, 3, 2),
+      value: 380, color, code: 'Wp',
+      desc: 'Leaf-bladed shoulders, a leaf on the chest. Armor that grew here.',
+    },
+    {
+      id: 'warden_greaves', name: 'Warden greaves', slot: 'legs', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 15 }, armor: 5, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(20, 160, 75, 2, 1),
+      value: 320, color, code: 'Wg',
+      desc: 'Mossy bronze shins that walk soft for their weight.',
+    },
+    {
+      id: 'warden_sabatons', name: 'Warden sabatons', slot: 'boots', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 15 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(19, 140, 70, 2, 0),
+      value: 280, color, code: 'Ws',
+      desc: 'Copper-toed and patient. Good soil never hurt good boots.',
+    },
+  ];
+}
+
+function frostplateSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'defence', w: 2 },
+    { stat: 'magic', w: 2 },
+    { stat: 'sneak' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#9db6cc';
+  const piece = (
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    level: number, armor: number, value: number, code: string, desc: string,
+  ): EquipmentDef => ({
+    id, name, slot, armorClass: 'plate',
+    levelReq: { skill: 'defence', level }, armor, affixPool: pool,
+    acquisition: { drop: true }, value, color, code, desc,
+  });
+  return [
+    piece('frostplate_helm', 'Frostplate helm', 'head', 22, 4, 400, 'Fh',
+      'Finned like a glacier calving. Cold to wear, colder to meet.'),
+    piece('frostplate_platebody', 'Frostplate platebody', 'body', 24, 8, 560, 'Fp',
+      'Pale steel that hums faintly when spells pass through it.'),
+    piece('frostplate_greaves', 'Frostplate greaves', 'legs', 22, 6, 480, 'Fg',
+      'Rime-chased legplates. Winter walks with you now.'),
+    piece('frostplate_sabatons', 'Frostplate sabatons', 'boots', 22, 4, 420, 'Fs',
+      'They leave frost in your footprints. The wolves remember.'),
+  ];
+}
+
+function bulwarkSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'defence', w: 3 },
+    { stat: 'vitality' },
+    { stat: 'maxHp' },
+    { stat: 'regen' },
+  ];
+  const color = '#5a6270';
+  const craft = (levelReq: number, xp: number, ticks: number, iron: number, steel: number) => ({
+    skill: 'smithing' as const,
+    levelReq,
+    xp,
+    station: 'anvil' as const,
+    ticks,
+    inputs: [{ item: 'iron_bar', qty: iron }, { item: 'steel_bar', qty: steel }],
+  });
+  return [
+    {
+      id: 'bulwark_greathelm', name: 'Bulwark greathelm', slot: 'head', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 26 }, armor: 5, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(30, 240, 85, 2, 1),
+      value: 460, color, code: 'Bh',
+      desc: 'A cross of daylight is all the world you need.',
+    },
+    {
+      id: 'bulwark_platebody', name: 'Bulwark platebody', slot: 'body', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 27 }, armor: 8, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(32, 320, 100, 2, 2),
+      value: 640, color, code: 'Bp',
+      desc: 'Brass-bound gunmetal with hip tassets. Built like an argument nobody wins.',
+    },
+    {
+      id: 'bulwark_greaves', name: 'Bulwark greaves', slot: 'legs', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 26 }, armor: 6, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(31, 260, 90, 1, 2),
+      value: 540, color, code: 'Bg',
+      desc: 'Legs for holding ground. The ground appreciates the company.',
+    },
+    {
+      id: 'bulwark_sabatons', name: 'Bulwark sabatons', slot: 'boots', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 25 }, armor: 4, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(30, 220, 80, 1, 1),
+      value: 460, color, code: 'Bs',
+      desc: 'Anchor-heavy, brass-cuffed. Retreat was never on the table.',
+    },
+  ];
+}
+
+function dreadforgeSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'melee', w: 3 },
+    { stat: 'maxHp' },
+    { stat: 'vitality' },
+    { stat: 'sneak' },
+  ];
+  const color = '#4a4553';
+  const piece = (
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    level: number, armor: number, value: number, code: string, desc: string,
+  ): EquipmentDef => ({
+    id, name, slot, armorClass: 'plate',
+    levelReq: { skill: 'defence', level }, armor, affixPool: pool,
+    acquisition: { drop: true }, value, color, code, desc,
+  });
+  return [
+    piece('dreadforge_helm', 'Dreadforge helm', 'head', 34, 6, 720, 'Dh',
+      'Black horns, bared cheek-plates. Diplomacy, concluded.'),
+    piece('dreadforge_platebody', 'Dreadforge platebody', 'body', 36, 10, 980, 'Dp',
+      'Spike-shouldered night steel with a grinning device. It chose you back.'),
+    piece('dreadforge_greaves', 'Dreadforge greaves', 'legs', 35, 8, 840, 'Dg',
+      'Blood-chased shin plates that march best toward trouble.'),
+    piece('dreadforge_sabatons', 'Dreadforge sabatons', 'boots', 34, 6, 760, 'Ds',
+      'Spurred black sabatons. Even your footsteps carry knives.'),
+  ];
+}
+
+function sunforgedSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'melee', w: 2 },
+    { stat: 'defence', w: 2 },
+    { stat: 'smithing' },
+    { stat: 'vitality' },
+    { stat: 'regen' },
+  ];
+  const color = '#d4a43c';
+  const craft = (levelReq: number, xp: number, ticks: number, gold: number, steel: number) => ({
+    skill: 'smithing' as const,
+    levelReq,
+    xp,
+    station: 'anvil' as const,
+    ticks,
+    inputs: [{ item: 'gold_bar', qty: gold }, { item: 'steel_bar', qty: steel }],
+  });
+  return [
+    {
+      id: 'sunforged_helm', name: 'Sunforged helm', slot: 'head', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 40 }, armor: 6, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(44, 420, 100, 1, 2),
+      value: 900, color, code: 'Sh',
+      desc: 'Ivory wings on gold. Dawn, issued as equipment.',
+    },
+    {
+      id: 'sunforged_platebody', name: 'Sunforged platebody', slot: 'body', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 42 }, armor: 11, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(48, 620, 120, 2, 3),
+      value: 1300, color, code: 'Su',
+      desc: 'Blade-winged shoulders and a blazing sun device. Parade armor that fights.',
+    },
+    {
+      id: 'sunforged_greaves', name: 'Sunforged greaves', slot: 'legs', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 41 }, armor: 9, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(46, 520, 110, 1, 3),
+      value: 1100, color, code: 'Sn',
+      desc: 'Gilded greaves bright enough to shave in.',
+    },
+    {
+      id: 'sunforged_sabatons', name: 'Sunforged sabatons', slot: 'boots', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 40 }, armor: 6, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(45, 460, 100, 1, 2),
+      value: 950, color, code: 'So',
+      desc: 'Every step leaves a little more morning behind.',
+    },
+  ];
+}
 
 /** Compiled once at module load — throws loudly on any malformed def. */
 export const COMPILED_EQUIPMENT = compileEquipment(EQUIPMENT_DEFS);

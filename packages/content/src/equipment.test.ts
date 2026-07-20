@@ -200,3 +200,55 @@ test('acquisition routes are honest: drops in loot tables, shop stock flagged', 
   // Loot tables must never point at unknown items.
   for (const item of looted) assert.ok(ITEMS.has(item), `loot item '${item}' missing`);
 });
+
+test('instance names: dominant affix epithet, deterministic, plain when affixless', async () => {
+  const { AFFIX_EPITHETS, instanceName, rollEpithet } = await import('./equipment/naming.js');
+  const { SKILL_IDS } = await import('@devcraft/shared');
+  // Every possible affix stat owns an epithet — no rolled piece can be nameless.
+  for (const skill of SKILL_IDS) assert.ok(AFFIX_EPITHETS[skill], `no epithet for ${skill}`);
+  assert.ok(AFFIX_EPITHETS.maxHp);
+  assert.ok(AFFIX_EPITHETS.regen);
+
+  // Deterministic: the same roll names itself the same way, and matches
+  // the epithet of its own dominant affix.
+  const roll: ItemRoll = { rar: 'legendary', seed: 12345 };
+  const name1 = instanceName('iron_platebody', roll);
+  const name2 = instanceName('iron_platebody', roll);
+  assert.equal(name1, name2);
+  const stats = rolledStats('iron_platebody', roll)!;
+  assert.ok(stats.affixes.length > 0);
+  let best = stats.affixes[0]!;
+  for (const a of stats.affixes) if (a.value > best.value) best = a;
+  assert.equal(name1, `Iron platebody ${AFFIX_EPITHETS[best.stat]}`);
+  assert.equal(rollEpithet('iron_platebody', roll), AFFIX_EPITHETS[best.stat]);
+
+  // Non-gear items and affixless rolls keep the plain name.
+  assert.equal(instanceName('log'), itemDef('log')!.name);
+  let sawPlain = false;
+  for (let seed = 0; seed < 40 && !sawPlain; seed++) {
+    const r: ItemRoll = { rar: 'common', seed };
+    if ((rolledStats('iron_helm', r)?.affixes.length ?? 0) === 0) {
+      assert.equal(instanceName('iron_helm', r), 'Iron helm');
+      sawPlain = true;
+    }
+  }
+  assert.ok(sawPlain, 'expected some common roll with zero affixes');
+});
+
+test('themed plate sets: four pieces each, coherent class and reqs', () => {
+  const sets = ['warden', 'frostplate', 'bulwark', 'dreadforge', 'sunforged'];
+  const bySlot = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
+  for (const set of sets) {
+    const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`));
+    assert.equal(pieces.length, 4, `${set} should have 4 pieces`);
+    const slots = new Set(pieces.map((p) => p.slot));
+    assert.deepEqual([...slots].sort(), ['body', 'boots', 'head', 'legs'], `${set} covers the armor slots`);
+    for (const p of pieces) {
+      assert.equal(p.armorClass, 'plate', `${p.id} is plate`);
+      assert.equal(p.levelReq?.skill, 'defence', `${p.id} gates on defence`);
+      assert.ok(p.affixPool.length >= 3, `${p.id} pool feeds legendary rolls`);
+    }
+  }
+  assert.ok(bySlot.get('tower_shield'));
+  assert.ok(bySlot.get('steel_sabatons'));
+});

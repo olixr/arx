@@ -21,7 +21,7 @@ import {
   type Look,
   type Vec2,
 } from '@devcraft/shared';
-import { bandDy, itemDef, npcDef, npcHitHeight } from '@devcraft/content';
+import { bandDy, instanceName, itemDef, npcDef, npcHitHeight } from '@devcraft/content';
 import type { ClientGame } from '../game/clientGame.js';
 import {
   ANVIL_CYCLE_MS,
@@ -8183,7 +8183,8 @@ export class Renderer {
       else alpha = Math.max(0, Math.min(1, (2.6 - dist) / 0.9));
       if (alpha <= 0.03) continue;
       const def = itemDef(d.itemId);
-      const name = def?.name ?? d.itemId;
+      // Ground loot announces its roll: "Iron helm of Strength".
+      const name = instanceName(d.itemId, d.roll);
       plates.push({
         sx: d.sx,
         sy: d.sy,

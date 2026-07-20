@@ -13,6 +13,7 @@ import {
 import {
   ARMOR_CLASS_BLURB,
   abilityDef,
+  instanceName,
   itemDef,
   rolledStats,
   techniquesFor,
@@ -296,7 +297,8 @@ export class Panels {
     const title = document.createElement('div');
     const name = document.createElement('div');
     name.className = 'card-name';
-    name.textContent = def.name;
+    // A rolled instance is named by its dominant affix — "of Strength".
+    name.textContent = instanceName(itemId, roll);
     // Rarity speaks through the nameplate; legendary keeps the molten
     // gold treatment from the stylesheet.
     const tier = rarityOfInstance(itemId, roll);
@@ -531,7 +533,7 @@ export class Panels {
         const tier = rarityOfInstance(slot.item, slot.roll);
         if (tier !== 'common') cell.classList.add(`rarity-${tier}`);
         cell.dataset.filled = '1';
-        cell.dataset.tipname = def?.name ?? slot.item;
+        cell.dataset.tipname = instanceName(slot.item, slot.roll);
         cell.dataset.acta = def?.equipSlot ? 'Equip' : def?.heals ? 'Eat' : 'Use';
         // Click (no drag) fires in dragEnd; pointerdown arms both paths.
         cell.addEventListener('pointerdown', (e) => {
@@ -599,7 +601,7 @@ export class Panels {
         cell.dataset.filled = '1';
         cell.dataset.nav = '';
         cell.dataset.navkey = `equip:${slot}`;
-        cell.dataset.tipname = def?.name ?? worn.id;
+        cell.dataset.tipname = instanceName(worn.id, worn.roll);
         cell.dataset.acta = 'Remove';
         cell.addEventListener('click', () => this.onUnequip(slot));
         cell.addEventListener('contextmenu', (e) => {

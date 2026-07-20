@@ -52,6 +52,7 @@ import {
   aggregateGearStats,
   craftRarityWeights,
   dropRarityWeights,
+  instanceName,
   itemDef,
   makeRoll,
   npcHitHeight,
@@ -1276,12 +1277,13 @@ export class GameServer {
           gear.rarities,
           Math.random,
         );
-        addItem(player.inventory, recipe.output.item, recipe.output.qty, makeRoll(rar));
+        const roll = makeRoll(rar);
+        addItem(player.inventory, recipe.output.item, recipe.output.qty, roll);
         if (rar !== 'common') {
           player.session?.sendJson({
             t: 'chat',
             channel: 'system',
-            text: `Your hands outdo themselves — a ${rar} ${itemDef(recipe.output.item)?.name ?? recipe.output.item}!`,
+            text: `Your hands outdo themselves — a ${rar} ${instanceName(recipe.output.item, roll)}!`,
           });
         }
       } else {

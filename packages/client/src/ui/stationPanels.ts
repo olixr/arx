@@ -7,7 +7,7 @@ import {
   type SkillXp,
   type StationType,
 } from '@devcraft/shared';
-import { BUILDABLES, CROP_BY_SEED, GENERAL_STORE, itemDef, recipesForStation } from '@devcraft/content';
+import { BUILDABLES, CROP_BY_SEED, GENERAL_STORE, instanceName, itemDef, recipesForStation } from '@devcraft/content';
 import { buildableIconUrl, itemIconUrl } from '../render/icons.js';
 
 function iconEl(itemId: string): HTMLImageElement {
@@ -315,7 +315,7 @@ export class StationPanels {
       const name = document.createElement('div');
       name.className = 'row-name';
       const tint = RARITY_COLORS[g.roll.rar];
-      const label = def?.name ?? g.item;
+      const label = instanceName(g.item, g.roll);
       name.innerHTML = tint
         ? `<span style="color:${tint}">${label}</span><span class="row-sub">${g.roll.rar}</span>`
         : `${label}<span class="row-sub">stored</span>`;

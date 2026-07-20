@@ -437,6 +437,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         ctx.lineTo(topX + (fxx - topX) * 0.22, topY + (fyy - topY) * 0.22);
         ctx.stroke();
       }
+      if (bootSt.spike && !rig.hurt) {
+        // A knee-spike off the shaft top — dread sabatons bite upward.
+        ctx.fillStyle = bootSt.toe ?? shade(bootCol, 18);
+        ctx.beginPath();
+        ctx.moveTo(topX + lead * 0.015 * s, topY + 0.015 * s);
+        ctx.lineTo(topX + lead * 0.085 * s, topY - 0.055 * s);
+        ctx.lineTo(topX + lead * 0.045 * s, topY + 0.035 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
       ctx.lineWidth = Math.max(2, s * 0.09);
     }
     ctx.fillStyle = bootCol;
