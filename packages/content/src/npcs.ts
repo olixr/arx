@@ -156,7 +156,7 @@ const defs: NpcDef[] = [
       // Bows of the gutter: a child's first try, and a poacher's last.
       { item: 'stickbow', qty: [1, 1], chance: 0.03 },
       { item: 'poachers_friend', qty: [1, 1], chance: 0.015 },
-      // A hedge-witch's lost switch, dragged in for the nest walls.
+      // A hedge-mage's lost switch, dragged in for the nest walls.
       { item: 'hazel_switch', qty: [1, 1], chance: 0.025 },
     ],
     respawnSec: 15,
@@ -221,7 +221,7 @@ const defs: NpcDef[] = [
       { item: 'bramblethorn', qty: [1, 1], chance: 0.015 },
       // Camp staves: stolen hedge-magic and a caged light that bides.
       { item: 'hazel_switch', qty: [1, 1], chance: 0.03 },
-      { item: 'witchlight', qty: [1, 1], chance: 0.012 },
+      { item: 'wisplight', qty: [1, 1], chance: 0.012 },
       // Pried gems — the warband robs ore carts too.
       { item: 'emberstone', qty: [1, 1], chance: 0.012 },
       { item: 'bloomstone', qty: [1, 1], chance: 0.012 },
@@ -294,7 +294,7 @@ const defs: NpcDef[] = [
       { item: 'bramblethorn', qty: [1, 1], chance: 0.012 },
       // Staves off the raided coast: the wisp cage, a shepherd's hook,
       // and twin bronze serpents nobody in camp will touch twice.
-      { item: 'witchlight', qty: [1, 1], chance: 0.02 },
+      { item: 'wisplight', qty: [1, 1], chance: 0.02 },
       { item: 'shepherds_crook', qty: [1, 1], chance: 0.02 },
       { item: 'serpentcoil', qty: [1, 1], chance: 0.008 },
       { item: 'stormpearl', qty: [1, 1], chance: 0.01 },
@@ -411,7 +411,7 @@ const defs: NpcDef[] = [
       // Crypt staves: the branch that grew a skull, the knotted curse,
       // and — deep rows — bone thread on iron.
       { item: 'gravewood', qty: [1, 1], chance: 0.03 },
-      { item: 'hexthorn', qty: [1, 1], chance: 0.012 },
+      { item: 'gloomthorn', qty: [1, 1], chance: 0.012 },
       { item: 'boneharrow', qty: [1, 1], chance: 0.004 },
       { item: 'frostshard', qty: [1, 1], chance: 0.012 },
     ],

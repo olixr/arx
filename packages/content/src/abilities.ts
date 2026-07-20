@@ -733,9 +733,9 @@ const defs: AbilityDef[] = [
     status: { status: 'chill', power: 1, durationTicks: 80 },
   },
   {
-    id: 'hex_burst',
-    name: 'Hex Burst',
-    desc: 'Plant the curse where they stand and let it bloom.',
+    id: 'gloom_burst',
+    name: 'Gloom Burst',
+    desc: 'Plant the blight where they stand and let it bloom.',
     color: '#9a6ab8',
     code: 'Hb',
     cooldownTicks: 170, // 8.5 s

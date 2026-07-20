@@ -362,7 +362,7 @@ function drawArm(
     ctx.fill();
   } else {
     // The hand silhouette IS the glove's first read — four molds, so a
-    // knight's fist and a witch's fingers never share an outline.
+    // knight's fist and a conjurer's fingers never share an outline.
     const base = glove.color;
     switch (glove.hand ?? 'glove') {
       case 'gauntlet':

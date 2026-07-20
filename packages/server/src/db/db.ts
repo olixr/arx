@@ -138,6 +138,23 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX idx_bank_gear_character ON bank_gear(character_id);
   `,
+  // 12 — content-boundary renames: the game never references witches
+  // or the demonic (hedgewitch set → hedgemage, witchlight → wisplight,
+  // hexthorn → gloomthorn). Stored ids follow so owned pieces survive.
+  `
+  UPDATE inventory_slots SET item_id = replace(item_id, 'hedgewitch_', 'hedgemage_') WHERE item_id LIKE 'hedgewitch_%';
+  UPDATE inventory_slots SET item_id = 'wisplight' WHERE item_id = 'witchlight';
+  UPDATE inventory_slots SET item_id = 'gloomthorn' WHERE item_id = 'hexthorn';
+  UPDATE equipment SET item_id = replace(item_id, 'hedgewitch_', 'hedgemage_') WHERE item_id LIKE 'hedgewitch_%';
+  UPDATE equipment SET item_id = 'wisplight' WHERE item_id = 'witchlight';
+  UPDATE equipment SET item_id = 'gloomthorn' WHERE item_id = 'hexthorn';
+  UPDATE bank_items SET item_id = replace(item_id, 'hedgewitch_', 'hedgemage_') WHERE item_id LIKE 'hedgewitch_%';
+  UPDATE bank_items SET item_id = 'wisplight' WHERE item_id = 'witchlight';
+  UPDATE bank_items SET item_id = 'gloomthorn' WHERE item_id = 'hexthorn';
+  UPDATE bank_gear SET item_id = replace(item_id, 'hedgewitch_', 'hedgemage_') WHERE item_id LIKE 'hedgewitch_%';
+  UPDATE bank_gear SET item_id = 'wisplight' WHERE item_id = 'witchlight';
+  UPDATE bank_gear SET item_id = 'gloomthorn' WHERE item_id = 'hexthorn';
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

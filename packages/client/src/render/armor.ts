@@ -286,7 +286,7 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   },
   // The themed cloth sets: sashes, hem runes, orbs and halos — the
   // caster's wardrobe. Same colorway law as plate and leather.
-  hedgewitch_robe: {
+  hedgemage_robe: {
     color: '#5a6b3a', trim: '#c9a23c', cls: 'cloth',
     silhouette: 'robe', pauldron: 'none', chest: 'stitch', skirt: 0.32,
     sash: '#c9a23c', sleeves: 'full', underskirt: '#42502c', pouch: true,
@@ -462,7 +462,7 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     color: '#6b5138', trim: '#3e5a30', kind: 'hood',
     antlers: { color: '#e6e0d0' }, ruff: { color: '#8a7a52' },
   },
-  hedgewitch_hat: {
+  hedgemage_hat: {
     color: '#5a6b3a', trim: '#c9a23c', kind: 'wizard', charm: '#e8d06a',
   },
   tidecaller_hood: {
@@ -561,7 +561,7 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   dawnsworn_skirts: { kind: 'pants', thigh: '#b8a87e' },
   fenwalker_skirts: { kind: 'pants', thigh: '#3a564a' },
   stormwoven_skirts: { kind: 'pants', thigh: '#3c4660' },
-  hedgewitch_skirts: { kind: 'pants', thigh: '#4e5c33' },
+  hedgemage_skirts: { kind: 'pants', thigh: '#4e5c33' },
   tidecaller_skirts: { kind: 'pants', thigh: '#245562' },
   voidwhisper_skirts: { kind: 'pants', thigh: '#332b47' },
   cindersworn_skirts: { kind: 'pants', thigh: '#3a2d2b' },
@@ -600,7 +600,7 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   dawnsworn_slippers: { color: '#b8a87e', height: 0.08, cuff: { color: '#c9922f' } },
   fenwalker_slippers: { color: '#3a564a', height: 0.1, wrap: { color: '#a8c8a0' } },
   stormwoven_slippers: { color: '#3c4660', height: 0.09, cuff: { color: '#e8d878' } },
-  hedgewitch_slippers: { color: '#8a7a3c', height: 0.07, curl: true },
+  hedgemage_slippers: { color: '#8a7a3c', height: 0.07, curl: true },
   tidecaller_slippers: { color: '#1f4a55', height: 0.08, cuff: { color: '#bfe8e0' } },
   voidwhisper_slippers: { color: '#2e2740', height: 0.08, cuff: { color: '#b8a8d8' } },
   cindersworn_slippers: { color: '#332826', height: 0.08, cuff: { color: '#e05438' } },
@@ -697,7 +697,7 @@ export const GLOVE_STYLES: Record<string, GloveStyle> = {
   },
   // Themed cloth: the casters keep their fingers free and their
   // devices close — pearl, eye, ember and star ride the hand.
-  hedgewitch_gloves: {
+  hedgemage_gloves: {
     color: '#5a6b3a', hand: 'glove', bracer: '#506033',
     cuff: { color: '#8a7a3c', kind: 'roll' }, fingerless: true,
   },
@@ -1896,7 +1896,7 @@ export function drawTorsoGarment(
           ctx.closePath();
           ctx.fill();
         } else if (st.emblem === 'eye') {
-          // The occult device: an unblinking almond eye. It reads back.
+          // The arcane device: an unblinking almond eye. It reads back.
           ctx.beginPath();
           ctx.moveTo(-r * 0.88, ey);
           ctx.quadraticCurveTo(0, ey - r * 0.7, r * 0.88, ey);

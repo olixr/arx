@@ -277,7 +277,7 @@ test('themed leather sets: five pieces each, coherent class and reqs', () => {
 });
 
 test('themed cloth sets: five pieces each, coherent class and reqs', () => {
-  const sets = ['hedgewitch', 'tidecaller', 'voidwhisper', 'cindersworn', 'starweaver'];
+  const sets = ['hedgemage', 'tidecaller', 'voidwhisper', 'cindersworn', 'starweaver'];
   const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
   for (const set of sets) {
     const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`));
@@ -563,7 +563,7 @@ test('archmage roster: 22 staff designs, elements ride every bolt, gem swaps cra
     'ember_battlestaff', 'frost_battlestaff', 'storm_battlestaff', 'verdant_battlestaff',
     'apprentice_staff', 'ember_staff',
     'hearthwarden', 'tidebinder', 'stormcaller',
-    'hazel_switch', 'shepherds_crook', 'witchlight', 'gravewood', 'hexthorn',
+    'hazel_switch', 'shepherds_crook', 'wisplight', 'gravewood', 'gloomthorn',
     'serpentcoil', 'glacierbite', 'pyreheart', 'runegnarl', 'sunwrought',
     'boneharrow', 'bloodmoon', 'nightwell', 'tempest_crown', 'worldsplinter',
   ];

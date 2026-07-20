@@ -1923,7 +1923,7 @@ export const STAFF_STYLES: Record<string, StaffStyle> = {
     crown: 'crook', crownColor: '#a08a5c',
     ferrule: true, fx: 'leaves', fxColor: '#9ad088',
   },
-  witchlight: {
+  wisplight: {
     shaft: 'gnarled', color: '#6e5a40', edge: '#948060',
     crown: 'wisp', gem: '#f4ecc0', gemCore: '#ffffff',
     ferrule: false, fx: 'motes', fxColor: '#efe8c0',
@@ -1933,7 +1933,7 @@ export const STAFF_STYLES: Record<string, StaffStyle> = {
     crown: 'skull', crownColor: '#d8d2be', gem: '#8ec89a', gemCore: '#eaffd8',
     ferrule: false, fx: 'motes', fxColor: '#8ec89a',
   },
-  hexthorn: {
+  gloomthorn: {
     shaft: 'twisted', color: '#4a3a52', edge: '#685478', metal: '#3a2e42',
     crown: 'thorns', crownColor: '#5a4668', gem: '#b070d8', gemCore: '#e8d0ff',
     ferrule: false, fx: 'motes', fxColor: '#9a6ab8',

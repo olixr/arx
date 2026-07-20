@@ -815,9 +815,9 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // The cloth wardrobe: the caster's five color stories. Sashes, hem
   // runes, floating orbs and halos where leather had fur and scale.
 
-  // -------- Hedgewitch: moss and mustard patchwork, the herb-garden
+  // -------- Hedgemage: moss and mustard patchwork, the herb-garden
   // craft line. A pointed hat colorway proves hats obey the law too.
-  ...hedgewitchSet(),
+  ...hedgemageSet(),
   // -------- Tidecaller: deep teal and sea-foam, drop-only from the
   // goblin raiders who loot the coast. The tide keeps its own ledger.
   ...tidecallerSet(),
@@ -1351,7 +1351,7 @@ function stagheartSet(): EquipmentDef[] {
   ];
 }
 
-function hedgewitchSet(): EquipmentDef[] {
+function hedgemageSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
     { stat: 'magic', w: 2 },
     { stat: 'herbalism', w: 2 },
@@ -1371,35 +1371,35 @@ function hedgewitchSet(): EquipmentDef[] {
   });
   return [
     {
-      id: 'hedgewitch_hat', name: 'Hedgewitch hat', slot: 'head', armorClass: 'cloth',
+      id: 'hedgemage_hat', name: 'Hedgemage hat', slot: 'head', armorClass: 'cloth',
       levelReq: { skill: 'magic', level: 12 }, armor: 1, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(14, 100, 55, 2, { item: 'moonbell', qty: 1 }),
       value: 190, color, code: 'Hh',
       desc: 'Pointed, patched, and proud of both. Smells faintly of thyme.',
     },
     {
-      id: 'hedgewitch_robe', name: 'Hedgewitch robe', slot: 'body', armorClass: 'cloth',
+      id: 'hedgemage_robe', name: 'Hedgemage robe', slot: 'body', armorClass: 'cloth',
       levelReq: { skill: 'magic', level: 14 }, armor: 3, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(18, 160, 70, 3, { item: 'twine', qty: 2 }),
       value: 290, color, code: 'Hr',
       desc: 'Every patch was a lesson. The garden grades generously.',
     },
     {
-      id: 'hedgewitch_skirts', name: 'Hedgewitch skirts', slot: 'legs', armorClass: 'cloth',
+      id: 'hedgemage_skirts', name: 'Hedgemage skirts', slot: 'legs', armorClass: 'cloth',
       levelReq: { skill: 'magic', level: 13 }, armor: 2, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(16, 130, 60, 2, { item: 'twine', qty: 1 }),
       value: 240, color, code: 'Hs',
       desc: 'Hemmed high for mud season. The mud appreciates the effort.',
     },
     {
-      id: 'hedgewitch_slippers', name: 'Hedgewitch slippers', slot: 'boots', armorClass: 'cloth',
+      id: 'hedgemage_slippers', name: 'Hedgemage slippers', slot: 'boots', armorClass: 'cloth',
       levelReq: { skill: 'magic', level: 12 }, armor: 1, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(15, 110, 55, 2),
       value: 210, color, code: 'Hp',
       desc: 'Soft-soled and garden-stained. The cat approves of the toes.',
     },
     {
-      id: 'hedgewitch_gloves', name: 'Hedgewitch gloves', slot: 'gloves', armorClass: 'cloth',
+      id: 'hedgemage_gloves', name: 'Hedgemage gloves', slot: 'gloves', armorClass: 'cloth',
       levelReq: { skill: 'magic', level: 12 }, armor: 1, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(15, 105, 55, 2, { item: 'sagewort', qty: 1 }),
       value: 215, color, code: 'Hg',
@@ -3715,7 +3715,7 @@ function staffDefs(): EquipmentDef[] {
       rarities: ['common', 'uncommon'],
       acquisition: { drop: true },
       value: 12, color: '#96784f', code: 'Hz',
-      desc: 'A bent hazel rod some hedge-witch lost. Still finds water; occasionally finds trouble.',
+      desc: 'A bent hazel rod some hedge-mage lost. Still finds water; occasionally finds trouble.',
     },
     {
       id: 'shepherds_crook', name: 'Shepherd\'s crook', slot: 'weapon',
@@ -3728,7 +3728,7 @@ function staffDefs(): EquipmentDef[] {
       desc: 'The hook has pulled lambs from ravines and wolves off lambs. It has opinions about flocks.',
     },
     {
-      id: 'witchlight', name: 'Witchlight', slot: 'weapon',
+      id: 'wisplight', name: 'Wisplight', slot: 'weapon',
       levelReq: { skill: 'magic', level: 7 },
       weapon: { style: 'magic', damage: 2, cooldownTicks: 7, range: 14, projectileSpeed: 14, art: 'wisp_flare', element: 'radiant' },
       affixPool: [{ stat: 'magic', w: 2 }, { stat: 'sneak' }, { stat: 'maxHp' }],
@@ -3748,14 +3748,14 @@ function staffDefs(): EquipmentDef[] {
       desc: 'Cut from the tree that grows where nothing should. The skull on top came WITH the branch.',
     },
     {
-      id: 'hexthorn', name: 'Hexthorn', slot: 'weapon',
+      id: 'gloomthorn', name: 'Gloomthorn', slot: 'weapon',
       levelReq: { skill: 'magic', level: 14 },
-      weapon: { style: 'magic', damage: 4, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'hex_burst', element: 'void' },
+      weapon: { style: 'magic', damage: 4, cooldownTicks: 8, range: 14, projectileSpeed: 13, art: 'gloom_burst', element: 'void' },
       affixPool: [{ stat: 'magic', w: 2 }, { stat: 'herbalism' }, { stat: 'sneak' }, { stat: 'maxHp' }],
       rarities: ['uncommon', 'rare', 'epic', 'legendary'],
       acquisition: { drop: true },
       value: 300, color: '#7a5a8a', code: 'Hx',
-      desc: 'Briar wound so tight it knotted into a curse. Every thorn points at somebody.',
+      desc: 'Briar wound so tight it knotted into a grudge. Every thorn points at somebody.',
     },
     {
       id: 'serpentcoil', name: 'Serpentcoil', slot: 'weapon',
