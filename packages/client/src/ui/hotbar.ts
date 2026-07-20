@@ -189,7 +189,9 @@ export class Hotbar {
       for (const b of game.buffs) {
         const chip = document.createElement('div');
         chip.className = `buff-chip ${b.channel}`;
-        chip.title = `${b.name} — ${b.channel === 'food' ? 'well fed' : 'tonic'}`;
+        chip.title = `${b.name} — ${
+          b.channel === 'food' ? 'well fed' : b.channel === 'coating' ? 'weapon oil' : 'tonic'
+        }`;
         const img = document.createElement('img');
         img.src = itemIconUrl(b.id, 34);
         img.draggable = false;

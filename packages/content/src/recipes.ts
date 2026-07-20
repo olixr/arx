@@ -428,6 +428,78 @@ const defs: RecipeDef[] = [
     output: { item: 'mending_salve', qty: 1 },
     ticks: 60,
   },
+
+  // ------------------------------- poison-making (alembic, dark branch)
+  {
+    id: 'brew_adderfang_oil',
+    name: 'Adderfang oil',
+    skill: 'herbalism',
+    levelReq: 8,
+    xp: 50,
+    station: 'alembic',
+    inputs: [
+      { item: 'venom_gland', qty: 1 },
+      { item: 'sagewort', qty: 1 },
+    ],
+    output: { item: 'adderfang_oil', qty: 1 },
+    ticks: 45,
+  },
+  {
+    id: 'brew_hobble_brew',
+    name: 'Hobblebrew',
+    skill: 'herbalism',
+    levelReq: 14,
+    xp: 70,
+    station: 'alembic',
+    inputs: [
+      { item: 'moonbell', qty: 1 },
+      { item: 'berries', qty: 2 },
+    ],
+    output: { item: 'hobble_brew', qty: 1 },
+    ticks: 50,
+  },
+  {
+    id: 'brew_vipers_kiss',
+    name: 'Viper\'s kiss',
+    skill: 'herbalism',
+    levelReq: 22,
+    xp: 110,
+    station: 'alembic',
+    inputs: [
+      { item: 'venom_gland', qty: 2 },
+      { item: 'moonbell', qty: 1 },
+    ],
+    output: { item: 'vipers_kiss', qty: 1 },
+    ticks: 55,
+  },
+  {
+    id: 'brew_leadfoot_oil',
+    name: 'Leadfoot oil',
+    skill: 'herbalism',
+    levelReq: 30,
+    xp: 150,
+    station: 'alembic',
+    inputs: [
+      { item: 'venom_gland', qty: 1 },
+      { item: 'moonbell', qty: 2 },
+    ],
+    output: { item: 'leadfoot_oil', qty: 1 },
+    ticks: 60,
+  },
+  {
+    id: 'brew_wyrmtongue_oil',
+    name: 'Wyrmtongue oil',
+    skill: 'herbalism',
+    levelReq: 40,
+    xp: 220,
+    station: 'alembic',
+    inputs: [
+      { item: 'venom_gland', qty: 3 },
+      { item: 'moonbell', qty: 2 },
+    ],
+    output: { item: 'wyrmtongue_oil', qty: 1 },
+    ticks: 70,
+  },
 ];
 
 const allRecipes: RecipeDef[] = [...defs, ...COMPILED_EQUIPMENT.recipes];

@@ -1,4 +1,4 @@
-import type { EquipSlot, PassiveId, RarityTier, SkillId } from '@devcraft/shared';
+import type { EquipSlot, PassiveId, RarityTier, SkillId, StatusApply } from '@devcraft/shared';
 import { COMPILED_EQUIPMENT } from './equipment/defs.js';
 import type { ArmorClass, GearSlot } from './equipment/types.js';
 
@@ -71,6 +71,23 @@ export interface ConsumableBuff {
 }
 
 /**
+ * A weapon oil — the poison-maker's craft. Using the vial coats the
+ * EQUIPPED melee or archery weapon: while the coating lasts, every
+ * landed basic attack carries the status. Magic focuses take no oil —
+ * poison is a craft of edges and arrowheads, never of light. One
+ * coating at a time; a new vial replaces the old. Vials are ordinary
+ * items, so a poison-maker can brew for the whole party.
+ */
+export interface CoatingDef {
+  /** Buff-chip display name, e.g. "Adderfang oil". */
+  name: string;
+  /** How long the edge stays wet, seconds. */
+  durationSec: number;
+  /** Applied by every landed melee/archery basic while coated. */
+  status: StatusApply;
+}
+
+/**
  * Compiled equipment facts (from an EquipmentDef). Presence of `gear`
  * is what makes an item ROLL — carry rarity, affixes, requirements.
  */
@@ -100,6 +117,8 @@ export interface ItemDef {
   heals?: number;
   /** Timed buff granted when consumed (may accompany heals). */
   buff?: ConsumableBuff;
+  /** Weapon oil: coats the equipped melee/archery weapon when used. */
+  coating?: CoatingDef;
   /** Relic active ability granted while worn in the relic slot (E). */
   relic?: string;
   /** Sigil ultimate granted while worn in the sigil slot (T). */
@@ -235,6 +254,69 @@ const defs: ItemDef[] = [
     desc: 'Moonbell and milk, whipped into quiet miracles.',
     color: '#c9a8e8',
     code: 'Msv',
+  },
+
+  // Poison-making — the alembic's dark branch. Vials coat melee
+  // weapons and bows (never magic); the maker's herbalism gates the
+  // tiers, and the vials trade hands like any other goods.
+  {
+    id: 'venom_gland',
+    name: 'Venom gland',
+    stackable: true,
+    value: 12,
+    desc: 'A bitter little sac that vermin keep behind their teeth. Handle by the edges.',
+    color: '#8a9a3a',
+    code: 'Vg',
+  },
+  {
+    id: 'adderfang_oil',
+    name: 'Adderfang oil',
+    stackable: false,
+    value: 45,
+    coating: { name: 'Adderfang oil', durationSec: 180, status: { status: 'venom', power: 1, durationTicks: 80 } },
+    desc: 'The apprentice poisoner\'s first argument. Thin, green, and persuasive.',
+    color: '#a0c050',
+    code: 'Ao',
+  },
+  {
+    id: 'hobble_brew',
+    name: 'Hobblebrew',
+    stackable: false,
+    value: 55,
+    coating: { name: 'Hobblebrew', durationSec: 180, status: { status: 'chill', power: 1, durationTicks: 70 } },
+    desc: 'Moonbell distilled to a numbing syrup. Whatever you cut walks home slowly.',
+    color: '#8f9ed6',
+    code: 'Hb',
+  },
+  {
+    id: 'vipers_kiss',
+    name: 'Viper\'s kiss',
+    stackable: false,
+    value: 110,
+    coating: { name: 'Viper\'s kiss', durationSec: 300, status: { status: 'venom', power: 2, durationTicks: 100 } },
+    desc: 'Twice the gland, half the mercy. The journeyman\'s vial.',
+    color: '#7a9a2a',
+    code: 'Vk',
+  },
+  {
+    id: 'leadfoot_oil',
+    name: 'Leadfoot oil',
+    stackable: false,
+    value: 130,
+    coating: { name: 'Leadfoot oil', durationSec: 360, status: { status: 'chill', power: 2, durationTicks: 110 } },
+    desc: 'The chase ends where this begins. Boots of lead, sold by the drop.',
+    color: '#6a7ab8',
+    code: 'Lo',
+  },
+  {
+    id: 'wyrmtongue_oil',
+    name: 'Wyrmtongue oil',
+    stackable: false,
+    value: 240,
+    coating: { name: 'Wyrmtongue oil', durationSec: 480, status: { status: 'venom', power: 3, durationTicks: 120 } },
+    desc: 'The master\'s reserve — green-black, slow to pour, quick to collect debts.',
+    color: '#4a6a2a',
+    code: 'Wy',
   },
 
   // Homestead sundries — flower_crown now lives in equipment/defs.ts.

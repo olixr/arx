@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Detail, PASSIVES, Tile, TILE_DEFS } from '@devcraft/shared';
+import { Detail, PASSIVES, STATUS_IDS, Tile, TILE_DEFS } from '@devcraft/shared';
 import { ZoneBuilder } from './maps/builder.js';
 import { buildBramblewick } from './maps/bramblewick.js';
 import { buildHollowStair } from './maps/hollowstair.js';
@@ -98,6 +98,39 @@ test('the sneak ladder is reachable — daggers carry techStyle, the tanto absta
   assert.ok(tantos.length >= 1, 'the tanto line went missing');
   for (const t of tantos) {
     assert.equal(t.weapon!.techStyle, undefined, `${t.id} is the fighter's dagger — melee ladder`);
+  }
+});
+
+test('weapon oils: valid statuses, every vial is brewable, potency climbs the skill', () => {
+  const vials = [...ITEMS.values()].filter((i) => i.coating);
+  assert.ok(vials.length >= 4, 'the poison-maker needs a shelf of vials');
+  const brewReq = new Map<string, number>();
+  for (const r of RECIPES.values()) {
+    if (vials.some((v) => v.id === r.output.item)) {
+      assert.equal(r.skill, 'herbalism', `${r.id} — poison-making lives in herbalism`);
+      assert.equal(r.station, 'alembic', `${r.id} brews at the alembic`);
+      brewReq.set(r.output.item, r.levelReq);
+    }
+  }
+  for (const v of vials) {
+    const c = v.coating!;
+    assert.ok((STATUS_IDS as readonly string[]).includes(c.status.status), `${v.id} bad status`);
+    assert.ok(c.durationSec > 0 && c.status.durationTicks > 0 && c.status.power > 0);
+    assert.ok(brewReq.has(v.id), `${v.id} has no brew recipe — unmakeable poison`);
+  }
+  // Within a family, higher herbalism = stronger and longer oils.
+  const venoms = vials
+    .filter((v) => v.coating!.status.status === 'venom')
+    .sort((a, b) => brewReq.get(a.id)! - brewReq.get(b.id)!);
+  for (let i = 1; i < venoms.length; i++) {
+    assert.ok(
+      venoms[i]!.coating!.status.power > venoms[i - 1]!.coating!.status.power,
+      'venom potency must climb the ladder',
+    );
+    assert.ok(
+      venoms[i]!.coating!.durationSec > venoms[i - 1]!.coating!.durationSec,
+      'coat duration must climb the ladder',
+    );
   }
 });
 

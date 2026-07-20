@@ -3213,6 +3213,12 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   swiftness_tonic: { icon: 'bottle', color: '#8fd0e8' },
   ironbark_tonic: { icon: 'bottle', color: '#9c7440' },
   mending_salve: { icon: 'jar', color: '#c9a8e8' },
+  venom_gland: { icon: 'gem', color: '#8a9a3a' },
+  adderfang_oil: { icon: 'bottle', color: '#a0c050' },
+  hobble_brew: { icon: 'bottle', color: '#8f9ed6' },
+  vipers_kiss: { icon: 'bottle', color: '#7a9a2a' },
+  leadfoot_oil: { icon: 'bottle', color: '#6a7ab8' },
+  wyrmtongue_oil: { icon: 'bottle', color: '#4a6a2a' },
   flower_crown: { icon: 'flowercrown', color: '#e8c04c' },
   watering_can: { icon: 'wateringcan', color: '#7a8fa5' },
   // Early-game cloth sets — colorway variants are registered by the

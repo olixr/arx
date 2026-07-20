@@ -81,7 +81,7 @@ const defs: LootTableDef[] = [
   {
     id: 'rat',
     desc: 'Nest basics.',
-    entries: [{ item: 'bones' }],
+    entries: [{ item: 'bones' }, { item: 'venom_gland', chance: 0.3 }],
   },
   {
     id: 'rat_wardrobe',
@@ -334,6 +334,7 @@ const defs: LootTableDef[] = [
     entries: [
       { item: 'bones' },
       { item: 'wolf_fur', chance: 0.9 },
+      { item: 'venom_gland', chance: 0.25 },
       { item: 'verdant_totem', chance: 0.05 },
       { item: 'bramble_band', chance: 0.04 },
       { item: 'bloomstone', chance: 0.015 },

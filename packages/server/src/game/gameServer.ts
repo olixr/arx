@@ -447,15 +447,18 @@ interface PlayerBuff {
   gatherSpeed: number;
   /** HP restored every 4 seconds (best across buffs wins). */
   regenPer4s: number;
-  /** While active, landed basic attacks apply this status (Envenom). */
+  /** While active, landed basic attacks apply this status (Envenom, oils). */
   onHitStatus?: StatusApply;
+  /** onHitStatus only fires for basics of these styles (weapon oils). */
+  onHitStyles?: readonly SkillId[];
   untilTick: number;
   /**
    * Consumable channel: one 'tonic' + one 'food' buff may be active at
-   * a time; a new drink/meal replaces its channel. Combat buffs
-   * (abilities, passives) leave this unset and stack freely.
+   * a time; a new drink/meal replaces its channel, a new vial replaces
+   * the weapon's 'coating'. Combat buffs (abilities, passives) leave
+   * this unset and stack freely.
    */
-  channel?: 'tonic' | 'food';
+  channel?: 'tonic' | 'food' | 'coating';
   /** Item that granted it + display name — drives the HUD chip. */
   itemId?: string;
   name?: string;
@@ -1758,6 +1761,37 @@ export class GameServer {
     if (!slot) return;
     const def = itemDef(slot.item);
     if (!def) return;
+
+    // Weapon oils: the vial coats the EQUIPPED weapon. Edges and
+    // arrowheads take poison; a caster's focus never does — the oil is
+    // an additive layer for melee and archery loadouts only.
+    if (def.coating) {
+      const c = def.coating;
+      const style = this.equippedWeapon(player)?.weapon.style;
+      if (style !== 'melee' && style !== 'archery') {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: 'Poison needs an edge or arrowheads — equip a melee weapon or a bow first.',
+        });
+        return;
+      }
+      removeItem(player.inventory, slot.item, 1);
+      player.buffs = player.buffs.filter((x) => x.channel !== 'coating');
+      player.buffs.push(
+        mkBuff({
+          onHitStatus: c.status,
+          onHitStyles: ['melee', 'archery'],
+          untilTick: this.tickCount + c.durationSec * 20,
+          channel: 'coating',
+          itemId: def.id,
+          name: c.name,
+        }),
+      );
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      this.sendBuffs(player);
+      return;
+    }
 
     // Buff consumables (tonics, buff food) — one active per channel; a
     // new drink replaces your drink, a new meal replaces your meal.
@@ -3566,11 +3600,20 @@ export class GameServer {
     }
 
     if (opts.status) this.applyStatusToNpc(npcEid, opts.status, attackerEid, style);
-    // Envenom law: while an on-hit-status buff rides, every landed
-    // BASIC carries it — the oiled edge, not the ability rotation.
+    // Envenom + weapon-oil law: while on-hit-status buffs ride, every
+    // landed BASIC carries them — the oiled edge, not the ability
+    // rotation. Oils gate by style (melee/archery only, never magic);
+    // stacking two different statuses deliberately feeds the reaction
+    // economy — an envenomed blade over a chill oil detonates per hit.
     if (opts.basic) {
-      const onHit = this.players.get(attackerEid)?.buffs.find((b) => b.onHitStatus)?.onHitStatus;
-      if (onHit) this.applyStatusToNpc(npcEid, onHit, attackerEid, style);
+      const buffs = this.players.get(attackerEid)?.buffs;
+      if (buffs) {
+        for (const b of buffs) {
+          if (!b.onHitStatus) continue;
+          if (b.onHitStyles && !b.onHitStyles.includes(style)) continue;
+          this.applyStatusToNpc(npcEid, b.onHitStatus, attackerEid, style);
+        }
+      }
     }
     // The status may have detonated a reaction that already killed the
     // target (and cascaded further) — never strike a corpse.

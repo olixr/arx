@@ -403,6 +403,17 @@ export class Panels {
       }
     }
     if (def.heals) stat('Heals', `${def.heals} HP`, '#4fc06a');
+    if (def.coating) {
+      const st = def.coating.status;
+      const effect = st.status === 'venom' ? 'Venom' : st.status === 'chill' ? 'Crippling chill' : st.status;
+      const mins = Math.round(def.coating.durationSec / 60);
+      stat('Weapon oil', `${effect} · ${mins} min`, st.status === 'venom' ? '#a0c050' : '#8f9ed6');
+      const cd = document.createElement('div');
+      cd.className = 'card-passive-desc';
+      cd.textContent =
+        'Coats your equipped melee weapon or bow — every landed basic applies it. Magic takes no oil.';
+      this.card.appendChild(cd);
+    }
     const relicAb = def.relic ? abilityDef(def.relic) : undefined;
     if (relicAb) stat('Relic (E)', relicAb.name, '#7ac47a');
     const sigilAb = def.sigil ? abilityDef(def.sigil) : undefined;
