@@ -178,8 +178,14 @@ export class Hotbar {
       }
     }
 
-    // Consumable buff chips: rebuilt on list change, countdown every frame.
-    const bKey = game.buffs.map((b) => `${b.id}:${b.channel}`).join('|');
+    // Consumable buff chips + the equipped weapon's oil (which lives on
+    // the weapon INSTANCE, not on the player): rebuilt on list change,
+    // countdown every frame. The oil chip vanishes when the coat dries
+    // or a clean weapon is drawn.
+    const coat = game.equipment.weapon?.roll?.coat;
+    const oil = coat && coat.until > Date.now() ? coat : undefined;
+    const bKey =
+      game.buffs.map((b) => `${b.id}:${b.channel}`).join('|') + (oil ? `|oil:${oil.id}` : '');
     if (bKey !== this.buffKey) {
       this.buffKey = bKey;
       this.buffTray.innerHTML = '';
@@ -189,9 +195,7 @@ export class Hotbar {
       for (const b of game.buffs) {
         const chip = document.createElement('div');
         chip.className = `buff-chip ${b.channel}`;
-        chip.title = `${b.name} — ${
-          b.channel === 'food' ? 'well fed' : b.channel === 'coating' ? 'weapon oil' : 'tonic'
-        }`;
+        chip.title = `${b.name} — ${b.channel === 'food' ? 'well fed' : 'tonic'}`;
         const img = document.createElement('img');
         img.src = itemIconUrl(b.id, 34);
         img.draggable = false;
@@ -201,10 +205,26 @@ export class Hotbar {
         this.buffTray.appendChild(chip);
         this.buffSecsEls.push(secs);
       }
+      if (oil) {
+        const c = itemDef(oil.id)?.coating;
+        const chip = document.createElement('div');
+        chip.className = 'buff-chip coating';
+        chip.title = `${c?.name ?? 'Weapon oil'} — on your equipped weapon`;
+        const img = document.createElement('img');
+        img.src = itemIconUrl(oil.id, 34);
+        img.draggable = false;
+        const secs = document.createElement('span');
+        secs.className = 'buff-secs';
+        chip.append(img, secs);
+        this.buffTray.appendChild(chip);
+        this.buffSecsEls.push(secs);
+      }
     }
-    for (let i = 0; i < game.buffs.length && i < this.buffSecsEls.length; i++) {
-      const b = game.buffs[i]!;
-      const left = Math.max(0, Math.round(b.secsLeft - (now - game.buffsAt) / 1000));
+    for (let i = 0; i < this.buffSecsEls.length; i++) {
+      const b = game.buffs[i];
+      const left = b
+        ? Math.max(0, Math.round(b.secsLeft - (now - game.buffsAt) / 1000))
+        : Math.max(0, Math.round(((oil?.until ?? 0) - Date.now()) / 1000));
       const text = left >= 60 ? `${Math.floor(left / 60)}m${String(left % 60).padStart(2, '0')}` : `${left}s`;
       if (this.buffSecsEls[i]!.textContent !== text) this.buffSecsEls[i]!.textContent = text;
     }

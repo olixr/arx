@@ -38,6 +38,17 @@ export function isRarityTier(v: unknown): v is RarityTier {
  * One item instance's identity. Absent roll reads as common/seed-0
  * everywhere (legacy rows and pre-roll items stay valid forever).
  */
+/**
+ * A weapon oil riding an instance: the vial's item id and a real-clock
+ * expiry (epoch ms — survives restarts; the oil dries even in the
+ * bank). Lives ON the weapon, so two blades can wear two different
+ * poisons and remember them through every swap.
+ */
+export interface ItemCoat {
+  id: string;
+  until: number;
+}
+
 export interface ItemRoll {
   rar: RarityTier;
   /** 32-bit unsigned roll seed. */
@@ -50,6 +61,8 @@ export interface ItemRoll {
    * requirement) reads as the def's native power — legacy grace.
    */
   pwr?: number;
+  /** Weapon oil currently on this instance (weapons only). */
+  coat?: ItemCoat;
 }
 
 /** Sanity ceiling for wire/DB power values (above every skill cap). */
@@ -67,10 +80,22 @@ export function isItemRoll(v: unknown): v is ItemRoll {
       return false;
     }
   }
+  if (r.coat !== undefined) {
+    const c = r.coat as Record<string, unknown>;
+    if (typeof c !== 'object' || c === null) return false;
+    if (typeof c.id !== 'string' || typeof c.until !== 'number' || !Number.isFinite(c.until)) {
+      return false;
+    }
+  }
   return true;
 }
 
 export function sameRoll(a?: ItemRoll, b?: ItemRoll): boolean {
   if (!a || !b) return !a && !b;
-  return a.rar === b.rar && a.seed === b.seed && (a.pwr ?? 0) === (b.pwr ?? 0);
+  return (
+    a.rar === b.rar &&
+    a.seed === b.seed &&
+    (a.pwr ?? 0) === (b.pwr ?? 0) &&
+    (a.coat?.id ?? '') === (b.coat?.id ?? '')
+  );
 }

@@ -131,3 +131,32 @@ test('item power rides every persistence path and NULL loads as no power', () =>
   const stored = store.loadBankGear(cid).find((g) => g.id === rowId);
   assert.deepEqual(stored!.roll, { rar: 'epic', seed: 42, pwr: 45 });
 });
+
+test('weapon oils ride the instance through every path; dried oils drop at load', () => {
+  const store = makeStore();
+  const reg = store.register('rogue', 'hunter22', 'Vialla', SPAWN);
+  assert.ok(reg.ok);
+  if (!reg.ok) return;
+  const cid = reg.character.id;
+
+  const wet = { id: 'adderfang_oil', until: Date.now() + 60_000 };
+  const dried = { id: 'hobble_brew', until: Date.now() - 1000 };
+
+  const inv = new Array<{
+    item: string;
+    qty: number;
+    roll?: { rar: 'common'; seed: number; coat?: { id: string; until: number } };
+  } | null>(28).fill(null);
+  inv[0] = { item: 'bronze_dagger', qty: 1, roll: { rar: 'common', seed: 1, coat: wet } };
+  inv[1] = { item: 'iron_dagger', qty: 1, roll: { rar: 'common', seed: 2, coat: dried } };
+  store.saveInventory(cid, inv);
+  const loaded = store.loadInventory(cid, 28);
+  assert.deepEqual(loaded[0]!.roll!.coat, wet, 'wet oil survives the round trip');
+  assert.equal(loaded[1]!.roll!.coat, undefined, 'dried oil is gone at load');
+
+  store.saveEquipment(cid, { weapon: { id: 'bronze_dagger', roll: { rar: 'common', seed: 1, coat: wet } } });
+  assert.deepEqual(store.loadEquipment(cid).weapon!.roll!.coat, wet);
+
+  const rowId = store.insertBankGear(cid, 'bronze_dagger', { rar: 'common', seed: 1, coat: wet });
+  assert.deepEqual(store.loadBankGear(cid).find((g) => g.id === rowId)!.roll.coat, wet);
+});

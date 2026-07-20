@@ -163,6 +163,16 @@ const MIGRATIONS: string[] = [
   ALTER TABLE equipment ADD COLUMN pwr INTEGER;
   ALTER TABLE bank_gear ADD COLUMN pwr INTEGER;
   `,
+  // 14 — weapon oils live ON the instance: vial id + epoch-ms expiry.
+  // NULL = clean blade; expired oils are dropped at load.
+  `
+  ALTER TABLE inventory_slots ADD COLUMN coat_id TEXT;
+  ALTER TABLE inventory_slots ADD COLUMN coat_until INTEGER;
+  ALTER TABLE equipment ADD COLUMN coat_id TEXT;
+  ALTER TABLE equipment ADD COLUMN coat_until INTEGER;
+  ALTER TABLE bank_gear ADD COLUMN coat_id TEXT;
+  ALTER TABLE bank_gear ADD COLUMN coat_until INTEGER;
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

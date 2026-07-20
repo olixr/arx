@@ -368,6 +368,25 @@ export class Panels {
       }
       const art = w.art ? abilityDef(w.art) : undefined;
       if (art) stat('Art (Q)', art.name, '#9a7ae0');
+      // The instance's oil — poison lives ON the weapon, so the card
+      // is where you check which blade carries what.
+      const coat = roll?.coat;
+      if (coat && coat.until > Date.now()) {
+        const oil = itemDef(coat.id)?.coating;
+        const left = Math.max(0, Math.round((coat.until - Date.now()) / 1000));
+        const time = left >= 60 ? `${Math.floor(left / 60)}m ${left % 60}s` : `${left}s`;
+        const effect =
+          oil?.status.status === 'venom'
+            ? 'venom'
+            : oil?.status.status === 'chill'
+              ? 'crippling chill'
+              : oil?.status.status ?? 'poison';
+        stat('Poisoned', `${oil?.name ?? coat.id} · ${time}`, oil?.status.status === 'venom' ? '#a0c050' : '#8f9ed6');
+        const pd = document.createElement('div');
+        pd.className = 'card-passive-desc';
+        pd.textContent = `Every landed basic applies ${effect} while the oil lasts.`;
+        this.card.appendChild(pd);
+      }
     }
     if (def.tool) stat('Power', `${def.tool.power}`, '#c9a23c');
     // Armor class + requirement + rolled numbers — the gear block.
