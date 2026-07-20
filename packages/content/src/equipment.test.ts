@@ -252,3 +252,24 @@ test('themed plate sets: four pieces each, coherent class and reqs', () => {
   assert.ok(bySlot.get('tower_shield'));
   assert.ok(bySlot.get('steel_sabatons'));
 });
+
+test('themed leather sets: four pieces each, coherent class and reqs', () => {
+  const sets = ['wayfarer', 'wolfstalker', 'nightveil', 'drakescale', 'stagheart'];
+  const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
+  for (const set of sets) {
+    const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`));
+    assert.equal(pieces.length, 4, `${set} should have 4 pieces`);
+    const slots = new Set(pieces.map((p) => p.slot));
+    assert.deepEqual([...slots].sort(), ['body', 'boots', 'head', 'legs'], `${set} covers the armor slots`);
+    for (const p of pieces) {
+      assert.equal(p.armorClass, 'leather', `${p.id} is leather`);
+      assert.ok(p.affixPool.length >= 3, `${p.id} pool feeds legendary rolls`);
+      // Leather gates on the skirmisher skills, never on defence.
+      assert.ok(['archery', 'sneak'].includes(p.levelReq?.skill ?? ''), `${p.id} gates on archery/sneak`);
+    }
+    // One acquisition story per set: all craft or all drop.
+    const stories = new Set(pieces.map((p) => (p.acquisition.craft ? 'craft' : 'drop')));
+    assert.equal(stories.size, 1, `${set} has one acquisition story`);
+  }
+  assert.ok(byId.get('hunters_quiver'));
+});

@@ -27,13 +27,15 @@ export interface BodyStyle {
   metal?: string;
   cls: ArmorClassStyle;
   silhouette: 'tunic' | 'robe' | 'jerkin' | 'cuirass' | 'brigandine';
-  pauldron: 'none' | 'round' | 'spiked' | 'layered' | 'bladed';
+  pauldron: 'none' | 'round' | 'spiked' | 'layered' | 'bladed' | 'fur' | 'feathered';
   pauldronColor?: string;
   /** Bright edge accent on the pauldron rim / blade edge. */
   pauldronTrim?: string;
   /** Spike count for 'spiked' pauldrons, 1..3. Default 1. */
   pauldronSpikes?: number;
-  chest: 'none' | 'straps' | 'plate' | 'emblem' | 'stitch';
+  chest: 'none' | 'straps' | 'plate' | 'emblem' | 'stitch' | 'scales';
+  /** Hanging leather fringe strips off the chest yoke — the buckskin read. */
+  fringe?: boolean;
   emblem?: 'chevron' | 'diamond' | 'bolt' | 'skull' | 'sun' | 'leaf';
   /** Hip plates hanging from the fauld — the heavy-knight lower read. */
   tassets?: boolean;
@@ -76,6 +78,16 @@ export interface HelmStyle {
   jaw?: string;
   /** Wizard hats: a band buckle / star charm on the crown. */
   charm?: string;
+  /** Hoods: a lumpy fur ruff ringing the face opening. */
+  ruff?: { color: string };
+  /** Hoods: pricked wolf-ear points on the crown. */
+  ears?: { color: string };
+  /** Hoods: a swept feather tucked at the temple, trailing back. */
+  feather?: { color: string };
+  /** Hoods: a half-mask across the lower face — the rogue read. */
+  mask?: string;
+  /** Hoods: branched ivory antlers — the forest-king crown. */
+  antlers?: { color: string };
 }
 
 export interface LegStyle {
@@ -96,6 +108,10 @@ export interface BootStyle {
   toe?: string;
   /** A short spike off the shaft top — dread sabatons. */
   spike?: boolean;
+  /** Crossed straps climbing the shaft — the scout's lacing. */
+  wrap?: { color: string };
+  /** A lumpy fur top instead of a clean cuff — winter boots. */
+  fur?: { color: string };
 }
 
 export interface OffhandStyle {
@@ -172,6 +188,33 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     pauldronTrim: '#fff2c8', chest: 'plate', emblem: 'sun', skirt: 0,
     collar: 'gorget', tassets: true,
   },
+  // The themed leather sets: fur, feathers, scales and antlers — the
+  // skirmisher's wardrobe. Same colorway law as the plate sets.
+  wayfarer_jerkin: {
+    color: '#a8895a', trim: '#6b4a2e', metal: '#8a6a45', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'layered', pauldronColor: '#8a6a45',
+    chest: 'straps', fringe: true, skirt: 0, pouch: true,
+  },
+  wolfstalker_jerkin: {
+    color: '#5f6470', trim: '#424652', metal: '#9aa0ae', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'fur', pauldronColor: '#9aa0ae',
+    chest: 'straps', skirt: 0, collar: 'fur', pouch: true,
+  },
+  nightveil_jerkin: {
+    color: '#3a3648', trim: '#6a5a8c', metal: '#8c4a5a', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'none', chest: 'straps', skirt: 0,
+    pouch: true,
+  },
+  drakescale_body: {
+    color: '#8c3a32', trim: '#c9713c', metal: '#d49a4a', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'layered', pauldronColor: '#a04a38',
+    pauldronTrim: '#d49a4a', chest: 'scales', skirt: 0,
+  },
+  stagheart_jerkin: {
+    color: '#6b5138', trim: '#d4a43c', metal: '#3e5a30', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'feathered', pauldronColor: '#d8cfae',
+    chest: 'straps', fringe: true, skirt: 0.14, pouch: true,
+  },
 };
 
 export const HELM_STYLES: Record<string, HelmStyle> = {
@@ -208,6 +251,25 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     color: '#d4a43c', trim: '#e8c05c', kind: 'dome',
     noseGuard: true, wings: { color: '#e8e2d0' },
   },
+  wayfarer_hood: {
+    color: '#a8895a', trim: '#6b4a2e', kind: 'hood',
+    feather: { color: '#c94f38' },
+  },
+  wolfstalker_hood: {
+    color: '#5f6470', trim: '#424652', kind: 'hood',
+    ruff: { color: '#9aa0ae' }, ears: { color: '#4f5460' },
+  },
+  nightveil_cowl: {
+    color: '#3a3648', trim: '#6a5a8c', kind: 'hood', mask: '#4a4260',
+  },
+  drakescale_coif: {
+    color: '#8c3a32', trim: '#c9713c', kind: 'dome',
+    noseGuard: true, jaw: '#c9713c',
+  },
+  stagheart_hood: {
+    color: '#6b5138', trim: '#3e5a30', kind: 'hood',
+    antlers: { color: '#e6e0d0' }, ruff: { color: '#8a7a52' },
+  },
 };
 
 export const LEG_STYLES: Record<string, LegStyle> = {
@@ -220,6 +282,11 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   bulwark_greaves: { kind: 'greaves', thigh: '#454b58', shin: '#5a6270', knee: 'plate', kneeColor: '#b08a3c' },
   dreadforge_greaves: { kind: 'greaves', thigh: '#322f3a', shin: '#4a4553', knee: 'plate', kneeColor: '#a83232' },
   sunforged_greaves: { kind: 'greaves', thigh: '#8a6a2c', shin: '#d4a43c', knee: 'plate', kneeColor: '#f4e0a0' },
+  wayfarer_chaps: { kind: 'wraps', thigh: '#a8895a', shin: '#8a6a45', knee: 'wrap', kneeColor: '#6b4a2e' },
+  wolfstalker_chaps: { kind: 'wraps', thigh: '#5f6470', shin: '#4f5460', knee: 'wrap', kneeColor: '#9aa0ae' },
+  nightveil_leggings: { kind: 'wraps', thigh: '#3a3648', shin: '#302c3c', knee: 'wrap', kneeColor: '#6a5a8c' },
+  drakescale_chaps: { kind: 'greaves', thigh: '#6e2f28', shin: '#8c3a32', knee: 'plate', kneeColor: '#d49a4a' },
+  stagheart_chaps: { kind: 'wraps', thigh: '#6b5138', shin: '#5a4430', knee: 'wrap', kneeColor: '#3e5a30' },
 };
 
 export const BOOT_STYLES: Record<string, BootStyle> = {
@@ -233,6 +300,11 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   bulwark_sabatons: { color: '#5a6270', height: 0.14, toe: '#b08a3c', cuff: { color: '#787f8e' } },
   dreadforge_sabatons: { color: '#4a4553', height: 0.14, toe: '#625c6e', spike: true },
   sunforged_sabatons: { color: '#d4a43c', height: 0.13, toe: '#f4e0a0' },
+  wayfarer_boots: { color: '#8a6a45', height: 0.12, wrap: { color: '#6b4a2e' } },
+  wolfstalker_boots: { color: '#4f5460', height: 0.13, fur: { color: '#9aa0ae' } },
+  nightveil_boots: { color: '#302c3c', height: 0.11, cuff: { color: '#6a5a8c' } },
+  drakescale_boots: { color: '#8c3a32', height: 0.13, toe: '#d49a4a', cuff: { color: '#c9713c' } },
+  stagheart_boots: { color: '#5a4430', height: 0.14, wrap: { color: '#3e5a30' }, cuff: { color: '#d4a43c' } },
 };
 
 export const OFFHAND_STYLES: Record<string, OffhandStyle> = {
@@ -242,6 +314,7 @@ export const OFFHAND_STYLES: Record<string, OffhandStyle> = {
   tome_of_embers: { kind: 'tome', color: '#e8763c', trim: '#6b3a1e' },
   arcane_orb: { kind: 'orb', color: '#8f9ed6', trim: '#c9c4cf' },
   tower_shield: { kind: 'tower', color: '#8d9299', trim: '#6a6f7d', boss: '#b0b6be' },
+  hunters_quiver: { kind: 'quiver', color: '#8a6a45', trim: '#3f6b3a' },
 };
 
 // ---------------------------------------------------------- resolvers
@@ -594,6 +667,68 @@ export function drawTorsoGarment(
       }
     }
 
+    // ---- scale coat: overlapping scallop rows wrapping the whole
+    // torso — a scale coat has no front or back, only more scales.
+    // Each row overlaps the one below; the lit crescent on every
+    // scallop is what makes it read as metal-on-leather, not polka dots.
+    if (st.chest === 'scales') {
+      // Scales are BODY-toned rows with metal only as thin lit
+      // crescents — the leather stays the identity color; gold-filled
+      // scallops turned the whole torso into stripes (v1 verdict).
+      const rows = 4;
+      const perRow = 4;
+      const y0s = -th * 0.88;
+      const y1s = -0.14 * s;
+      const rowH = (y1s - y0s) / (rows - 1);
+      const sr = tw * 0.22;
+      const span = tw * 0.78;
+      for (let r = 0; r < rows; r++) {
+        const yy = y0s + r * rowH;
+        const off = (r % 2) * sr;
+        ctx.fillStyle = shade(st.color, r % 2 === 0 ? -10 : -20);
+        ctx.beginPath();
+        for (let i = 0; i < perRow; i++) {
+          const sx = -span + off + i * sr * 2;
+          if (sx - sr > span || sx + sr < -span) continue;
+          ctx.moveTo(sx + sr, yy);
+          ctx.arc(sx, yy, sr, 0, Math.PI);
+        }
+        ctx.fill();
+        // The copper crescent riding each scallop's crown.
+        ctx.strokeStyle = shade(metal, 8);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        for (let i = 0; i < perRow; i++) {
+          const sx = -span + off + i * sr * 2;
+          if (sx > span || sx < -span) continue;
+          ctx.moveTo(sx - sr * 0.55, yy + sr * 0.3);
+          ctx.quadraticCurveTo(sx, yy + sr * 0.66, sx + sr * 0.55, yy + sr * 0.3);
+        }
+        ctx.stroke();
+      }
+    }
+
+    // ---- buckskin fringe: leather strips swinging off the chest yoke,
+    // kicked by the stride — motion the plainest jerkin can afford.
+    if (st.fringe) {
+      const yokeY = -th * 0.52;
+      ctx.strokeStyle = shade(st.trim, -6);
+      ctx.lineWidth = Math.max(1.5, s * 0.024);
+      ctx.beginPath();
+      ctx.moveTo(-tw * 0.86, yokeY - 0.012 * s);
+      ctx.lineTo(tw * 0.86, yokeY - 0.012 * s);
+      for (let i = 0; i < 6; i++) {
+        const u = -0.78 + i * 0.312;
+        const len = (0.082 + 0.018 * Math.sin(i * 2.3)) * s;
+        const kick =
+          f.strideSw * 0.016 * s * (0.4 + 0.6 * Math.abs(u)) +
+          Math.sin(nowMs * 0.004 + i * 1.7) * 0.007 * s * (0.3 + 0.7 * runF);
+        ctx.moveTo(u * tw, yokeY);
+        ctx.lineTo(u * tw + kick, yokeY + len);
+      }
+      ctx.stroke();
+    }
+
     // ---- front and back are DIFFERENT garments: chest marks face the
     // camera; turn around and you get backplates, crossed straps, seams.
     if (!back) {
@@ -808,6 +943,72 @@ export function drawPauldron(
   ctx.save();
   ctx.translate(x, y - 0.035 * s);
   ctx.scale(Math.max(0.55, squashK), 1);
+  if (st.pauldron === 'fur') {
+    // A fur mantle over the shoulder: a dark under-row of tufts with a
+    // lit row riding on top — mass first, texture second. Lumpy on
+    // purpose; fur that lines up stops being fur.
+    for (let i = 0; i < 4; i++) {
+      const u = -0.9 + i * 0.6;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(base, -18);
+      ctx.beginPath();
+      ctx.arc(u * 0.085 * s, 0.012 * s + Math.sin(i * 2.1) * 0.01 * s, (0.052 + 0.012 * Math.sin(i * 3.3)) * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    for (let i = 0; i < 3; i++) {
+      const u = -0.62 + i * 0.62;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(base, near ? 14 : -2);
+      ctx.beginPath();
+      ctx.arc(u * 0.085 * s, -0.028 * s + Math.sin(i * 1.7) * 0.008 * s, (0.048 + 0.01 * Math.sin(i * 2.6)) * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (!hurt) {
+      // A few guard-hair strokes flicking off the outer edge.
+      ctx.strokeStyle = shade(base, 22);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const bx = side * (0.06 + i * 0.028) * s;
+        const by = (-0.05 + i * 0.024) * s;
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx + side * 0.038 * s, by - 0.03 * s);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+  if (st.pauldron === 'feathered') {
+    // A feathered mantle: three blades fanning off the shoulder, from
+    // an upswept crown feather to a drooping cover feather — a wing at
+    // rest, not a wing in flight.
+    const tips: Array<[number, number, number, number, number, number]> = [
+      // [baseX, baseY, ctrlX, ctrlY, tipX, tipY] — outward = +x, ×side.
+      [0.0, -0.05, 0.15, -0.155, 0.235, -0.185],
+      [0.015, -0.022, 0.175, -0.065, 0.25, -0.05],
+      [0.028, 0.01, 0.165, 0.025, 0.225, 0.09],
+    ];
+    for (let i = 0; i < 3; i++) {
+      const [bx, by, cx, cy, txx, tyy] = tips[i]!;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(base, (near ? 16 : 2) - i * 14);
+      ctx.beginPath();
+      ctx.moveTo(side * bx * s, by * s);
+      ctx.quadraticCurveTo(side * cx * s, cy * s, side * txx * s, tyy * s);
+      ctx.quadraticCurveTo(side * (cx + 0.01) * s, (cy + 0.055) * s, side * (bx + 0.02) * s, (by + 0.06) * s);
+      ctx.closePath();
+      ctx.fill();
+    }
+    if (!hurt) {
+      // The crown feather's spine — one stroke sells the anatomy.
+      ctx.strokeStyle = shade(base, -22);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.moveTo(side * 0.02 * s, -0.028 * s);
+      ctx.quadraticCurveTo(side * 0.13 * s, -0.1 * s, side * 0.19 * s, -0.145 * s);
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
   if (st.pauldron === 'layered') {
     // Three lames stepping down the arm — articulation you can read.
     for (let i = 0; i < 3; i++) {
@@ -1077,6 +1278,139 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 0.55);
         ctx.stroke();
       }
+    }
+    if (st.antlers && !hurt) {
+      // Branched antlers off the crown: one main beam each side with
+      // two tines, stroked round so they read as bone, not wire. The
+      // far beam narrows with the facing like the far eye.
+      ctx.strokeStyle = st.antlers.color;
+      ctx.lineCap = 'round';
+      for (const es of [-1, 1]) {
+        const far = es !== lead;
+        const wK = far ? Math.max(0.3, 1 - profileK * 0.65) : 1;
+        const bx = headX + es * hw * 0.62;
+        const by = headY - hh * 0.95;
+        const mx = bx + es * hw * 0.55 * wK;
+        const my = by - hh * 0.62;
+        const txx = bx + es * hw * 1.3 * wK;
+        const tyy = by - hh * 1.35;
+        ctx.lineWidth = Math.max(2, s * 0.032);
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.quadraticCurveTo(mx, my, txx, tyy);
+        ctx.stroke();
+        ctx.lineWidth = Math.max(1.5, s * 0.024);
+        ctx.beginPath();
+        ctx.moveTo(bx + es * hw * 0.3 * wK, by - hh * 0.38);
+        ctx.lineTo(bx + es * hw * 0.16 * wK, by - hh * 0.95);
+        ctx.moveTo(bx + es * hw * 0.88 * wK, by - hh * 0.95);
+        ctx.lineTo(bx + es * hw * 0.78 * wK, by - hh * 1.5);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+    }
+    if (st.ears && !hurt) {
+      // Pricked wolf ears on the crown; dark inner ear when frontal.
+      for (const es of [-1, 1]) {
+        const far = es !== lead;
+        const wK = far ? Math.max(0.3, 1 - profileK * 0.65) : 1;
+        const bx = headX + es * hw * 0.58;
+        const by = headY - hh * 1.02;
+        ctx.fillStyle = st.ears.color;
+        ctx.beginPath();
+        ctx.moveTo(bx - es * hw * 0.26 * wK, by);
+        ctx.lineTo(bx + es * hw * 0.14 * wK, by - hh * 0.62);
+        ctx.lineTo(bx + es * hw * 0.36 * wK, by + hh * 0.06);
+        ctx.closePath();
+        ctx.fill();
+        if (backK <= 0.55) {
+          ctx.fillStyle = shade(st.ears.color, -26);
+          ctx.beginPath();
+          ctx.moveTo(bx - es * hw * 0.1 * wK, by - hh * 0.04);
+          ctx.lineTo(bx + es * hw * 0.12 * wK, by - hh * 0.42);
+          ctx.lineTo(bx + es * hw * 0.22 * wK, by);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+    if (st.ruff && !hurt) {
+      // A lumpy fur ruff riding the hood's brow edge and falling down
+      // the side curtains — frames the face in winter.
+      ctx.fillStyle = st.ruff.color;
+      for (let i = 0; i < 5; i++) {
+        const u = -1 + i * 0.5;
+        const r = (0.05 + 0.013 * Math.sin(i * 2.7)) * hw * 2;
+        ctx.beginPath();
+        ctx.arc(headX + u * hw * 0.88, headY - hh * 0.92 + Math.sin(i * 1.9) * hh * 0.06, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      for (const es of [-1, 1]) {
+        ctx.beginPath();
+        ctx.arc(headX + es * hw * 0.98, headY - hh * 0.45, hw * 0.16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(st.ruff.color, -14);
+        ctx.beginPath();
+        ctx.arc(headX + es * hw * 0.95, headY + hh * 0.05, hw * 0.14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = st.ruff.color;
+      }
+    }
+    if (st.feather && !hurt) {
+      // One swept feather tucked at the temple, trailing behind the
+      // travel — the scout's whole heraldry. A BROAD vane with a pale
+      // spine; a thin feather reads as a wire (the fins-v1 verdict).
+      const u = -lead;
+      const bx = headX + u * hw * 0.5;
+      const by = headY - hh * 0.85;
+      const sway = Math.sin(f.nowMs * 0.0023) * hw * 0.07;
+      const txx = bx + u * hw * 1.5 + sway;
+      const tyy = by - hh * 1.15;
+      ctx.fillStyle = st.feather.color;
+      ctx.beginPath();
+      ctx.moveTo(bx, by + hh * 0.12);
+      // Upper vane edge: over the crown to the tip.
+      ctx.quadraticCurveTo(bx + u * hw * 0.5, by - hh * 0.95, txx, tyy);
+      // Lower vane edge: back beneath the spine, fat in the middle.
+      ctx.quadraticCurveTo(bx + u * hw * 0.85, by - hh * 0.28, bx + u * hw * 0.16, by + hh * 0.22);
+      ctx.closePath();
+      ctx.fill();
+      // Trailing-half shade splits the vane along the spine.
+      ctx.fillStyle = shade(st.feather.color, -16);
+      ctx.beginPath();
+      ctx.moveTo(bx + u * hw * 0.1, by + hh * 0.1);
+      ctx.quadraticCurveTo(bx + u * hw * 0.75, by - hh * 0.52, txx, tyy);
+      ctx.quadraticCurveTo(bx + u * hw * 0.85, by - hh * 0.28, bx + u * hw * 0.16, by + hh * 0.22);
+      ctx.closePath();
+      ctx.fill();
+      // The pale spine — one stroke sells the anatomy.
+      ctx.strokeStyle = shade(st.feather.color, 30);
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      ctx.moveTo(bx + u * hw * 0.08, by + hh * 0.06);
+      ctx.quadraticCurveTo(bx + u * hw * 0.72, by - hh * 0.55, txx - u * hw * 0.08, tyy + hh * 0.06);
+      ctx.stroke();
+    }
+    if (st.mask && !hurt && backK <= 0.55) {
+      // The half-mask: a kerchief over the lower face, pointed at the
+      // chin. Eyes stay the character's; the rest belongs to the job.
+      const mw = hw * 0.78 * (1 - profileK * 0.25);
+      const mx = headX + fx * headR * 0.18;
+      ctx.fillStyle = st.mask;
+      ctx.beginPath();
+      ctx.moveTo(mx - mw, headY + hh * 0.18);
+      ctx.lineTo(mx + mw, headY + hh * 0.18);
+      ctx.lineTo(mx + mw * 0.72, headY + hh * 0.6);
+      ctx.lineTo(mx, headY + hh * 0.82);
+      ctx.lineTo(mx - mw * 0.72, headY + hh * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = shade(st.mask, 16);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(mx - mw, headY + hh * 0.2);
+      ctx.lineTo(mx + mw, headY + hh * 0.2);
+      ctx.stroke();
     }
     return;
   }

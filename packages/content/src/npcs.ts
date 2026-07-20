@@ -211,6 +211,11 @@ const defs: NpcDef[] = [
       { item: 'iron_helm', qty: [1, 1], chance: 0.05 },
       { item: 'iron_greaves', qty: [1, 1], chance: 0.04 },
       { item: 'iron_sabatons', qty: [1, 1], chance: 0.04 },
+      // Nightveil: whoever prowled this crypt before you left the
+      // small pieces; the jerkin stayed with the Champion.
+      { item: 'nightveil_cowl', qty: [1, 1], chance: 0.025 },
+      { item: 'nightveil_leggings', qty: [1, 1], chance: 0.02 },
+      { item: 'nightveil_boots', qty: [1, 1], chance: 0.025 },
     ],
     respawnSec: 30,
     color: '#d8d4c8',
@@ -263,6 +268,8 @@ const defs: NpcDef[] = [
       { item: 'dreadforge_platebody', qty: [1, 1], chance: 0.03 },
       { item: 'dreadforge_greaves', qty: [1, 1], chance: 0.035 },
       { item: 'dreadforge_sabatons', qty: [1, 1], chance: 0.035 },
+      // The Nightveil jerkin: the crypt's quietest prize.
+      { item: 'nightveil_jerkin', qty: [1, 1], chance: 0.05 },
     ],
     respawnSec: 90,
     color: '#e8e2d0',
@@ -296,6 +303,12 @@ const defs: NpcDef[] = [
       // the body and greaves guarded by the Champion.
       { item: 'frostplate_helm', qty: [1, 1], chance: 0.03 },
       { item: 'frostplate_sabatons', qty: [1, 1], chance: 0.03 },
+      // Wolfstalker: the full leather chase set. Hunt the pack long
+      // enough and you start dressing like it.
+      { item: 'wolfstalker_hood', qty: [1, 1], chance: 0.03 },
+      { item: 'wolfstalker_jerkin', qty: [1, 1], chance: 0.02 },
+      { item: 'wolfstalker_chaps', qty: [1, 1], chance: 0.025 },
+      { item: 'wolfstalker_boots', qty: [1, 1], chance: 0.03 },
     ],
     respawnSec: 35,
     color: '#6a6f7d',

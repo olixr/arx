@@ -447,6 +447,39 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         ctx.closePath();
         ctx.fill();
       }
+      if (bootSt.wrap && !rig.hurt) {
+        // Crossed straps lacing the shaft — drawn along the solved shin
+        // so the X climbs the leg at any facing or terrain lift.
+        const dxn = (fxx - topX) / shinLen;
+        const dyn = (fyy - topY) / shinLen;
+        const px = -dyn;
+        const py = dxn;
+        const w = 0.056 * s;
+        ctx.strokeStyle = bootSt.wrap.color;
+        ctx.lineWidth = Math.max(1.5, s * 0.032);
+        ctx.beginPath();
+        for (const [t0, t1] of [[0.1, 0.55], [0.55, 0.1]] as const) {
+          ctx.moveTo(topX + (fxx - topX) * t0 + px * w, topY + (fyy - topY) * t0 + py * w);
+          ctx.lineTo(topX + (fxx - topX) * t1 - px * w, topY + (fyy - topY) * t1 - py * w);
+        }
+        ctx.stroke();
+      }
+      if (bootSt.fur && !rig.hurt) {
+        // A lumpy fur top instead of a clean cuff — winter boots.
+        ctx.fillStyle = bootSt.fur.color;
+        for (let i = 0; i < 3; i++) {
+          const u = -1 + i;
+          ctx.beginPath();
+          ctx.arc(
+            topX + u * 0.048 * s,
+            topY + Math.sin(i * 2.4) * 0.012 * s,
+            (0.04 + 0.009 * Math.sin(i * 3.1)) * s,
+            0,
+            Math.PI * 2,
+          );
+          ctx.fill();
+        }
+      }
       ctx.lineWidth = Math.max(2, s * 0.09);
     }
     ctx.fillStyle = bootCol;

@@ -627,6 +627,31 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     code: 'Ts',
     desc: 'Less a shield, more a door you carry into arguments.',
   },
+  {
+    id: 'hunters_quiver',
+    name: "Hunter's quiver",
+    slot: 'offhand',
+    levelReq: { skill: 'archery', level: 10 },
+    armor: 1,
+    affixPool: [{ stat: 'archery', w: 3 }, { stat: 'foraging' }, { stat: 'sneak' }],
+    acquisition: { craft: true },
+    recipe: {
+      skill: 'crafting',
+      levelReq: 12,
+      xp: 90,
+      station: 'workbench',
+      ticks: 55,
+      inputs: [
+        { item: 'leather', qty: 2 },
+        { item: 'feather', qty: 5 },
+        { item: 'twine', qty: 1 },
+      ],
+    },
+    value: 180,
+    color: '#8a6a45',
+    code: 'Hq',
+    desc: 'Oiled leather, a fist of fletching, and no excuses left.',
+  },
 
   // ================================================ themed plate sets
   // The plate wardrobe: five full sets, each a color story and a shape
@@ -649,6 +674,26 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // -------- Sunforged: gold and ivory, the endgame craft line. Wings,
   // sun devices, gilded edges — the parade armor that fights.
   ...sunforgedSet(),
+
+  // =============================================== themed leather sets
+  // The leather wardrobe: the skirmisher's five color stories. Fur,
+  // feathers, scales and antlers where plate had rivets and gold.
+
+  // -------- Wayfarer: buckskin and a redtail feather, the scout's
+  // starter craft line. Everything a long road asks for.
+  ...wayfarerSet(),
+  // -------- Wolfstalker: smoke-grey hide and winter fur, drop-only
+  // from the wolf packs. Ears on the hood; the pack walks with you.
+  ...wolfstalkerSet(),
+  // -------- Nightveil: ink and dusk-purple, drop-only from the crypt.
+  // Masked, quiet, gone. The rogue's wardrobe — it gates on Sneak.
+  ...nightveilSet(),
+  // -------- Drakescale: oxblood scale over boiled leather, the
+  // skirmish bruiser's high craft line. Copper-edged, fire-tempered.
+  ...drakescaleSet(),
+  // -------- Stagheart: bark leather, moss trim, ivory ANTLERS — the
+  // endgame forest-king craft. The wilds crown their own.
+  ...stagheartSet(),
 ];
 
 // ---------------------------------------------------------- set makers
@@ -856,6 +901,212 @@ function sunforgedSet(): EquipmentDef[] {
       acquisition: { craft: true }, recipe: craft(45, 460, 100, 1, 2),
       value: 950, color, code: 'So',
       desc: 'Every step leaves a little more morning behind.',
+    },
+  ];
+}
+
+function wayfarerSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'archery', w: 2 },
+    { stat: 'foraging' },
+    { stat: 'fishing' },
+    { stat: 'woodcutting' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#a8895a';
+  const craft = (levelReq: number, xp: number, ticks: number, leather: number, extra?: { item: string; qty: number }) => ({
+    skill: 'crafting' as const,
+    levelReq,
+    xp,
+    station: 'workbench' as const,
+    ticks,
+    inputs: extra
+      ? [{ item: 'leather', qty: leather }, extra]
+      : [{ item: 'leather', qty: leather }],
+  });
+  return [
+    {
+      id: 'wayfarer_hood', name: 'Wayfarer hood', slot: 'head', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 12 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(14, 100, 55, 2, { item: 'feather', qty: 1 }),
+      value: 180, color, code: 'Yh',
+      desc: 'A redtail feather at the temple. The road knows its own.',
+    },
+    {
+      id: 'wayfarer_jerkin', name: 'Wayfarer jerkin', slot: 'body', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 14 }, armor: 5, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(18, 160, 70, 3, { item: 'twine', qty: 2 }),
+      value: 280, color, code: 'Yj',
+      desc: 'Fringed buckskin, broken in by miles you have not walked yet.',
+    },
+    {
+      id: 'wayfarer_chaps', name: 'Wayfarer chaps', slot: 'legs', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 13 }, armor: 4, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(16, 130, 60, 2, { item: 'twine', qty: 1 }),
+      value: 230, color, code: 'Yc',
+      desc: 'Wrapped soft, worn softer. Stiles and streams, no complaints.',
+    },
+    {
+      id: 'wayfarer_boots', name: 'Wayfarer boots', slot: 'boots', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 12 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(15, 110, 55, 2),
+      value: 200, color, code: 'Yb',
+      desc: 'Cross-strapped to the shin. They point away from home.',
+    },
+  ];
+}
+
+function wolfstalkerSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'sneak', w: 2 },
+    { stat: 'archery', w: 2 },
+    { stat: 'beastcraft' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#5f6470';
+  const piece = (
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    level: number, armor: number, value: number, code: string, desc: string,
+  ): EquipmentDef => ({
+    id, name, slot, armorClass: 'leather',
+    levelReq: { skill: 'archery', level }, armor, affixPool: pool,
+    acquisition: { drop: true }, value, color, code, desc,
+  });
+  return [
+    piece('wolfstalker_hood', 'Wolfstalker hood', 'head', 22, 4, 420, 'Kh',
+      'Fur-ruffed, ears pricked. You hear the forest hear you.'),
+    piece('wolfstalker_jerkin', 'Wolfstalker jerkin', 'body', 24, 6, 580, 'Kj',
+      'Winter fur across the shoulders. The pack made room.'),
+    piece('wolfstalker_chaps', 'Wolfstalker chaps', 'legs', 22, 5, 500, 'Kc',
+      'Smoke-grey wraps that move the way snowfall does.'),
+    piece('wolfstalker_boots', 'Wolfstalker boots', 'boots', 22, 3, 440, 'Kb',
+      'Fur-topped and silent. Your footprints start lying for you.'),
+  ];
+}
+
+function nightveilSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'sneak', w: 3 },
+    { stat: 'archery' },
+    { stat: 'herbalism' },
+    { stat: 'regen' },
+  ];
+  const color = '#3a3648';
+  const piece = (
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    level: number, armor: number, value: number, code: string, desc: string,
+  ): EquipmentDef => ({
+    id, name, slot, armorClass: 'leather',
+    levelReq: { skill: 'sneak', level }, armor, affixPool: pool,
+    acquisition: { drop: true }, value, color, code, desc,
+  });
+  return [
+    piece('nightveil_cowl', 'Nightveil cowl', 'head', 27, 4, 560, 'Nh',
+      'Cowl and half-mask. What the dark keeps, it keeps politely.'),
+    piece('nightveil_jerkin', 'Nightveil jerkin', 'body', 28, 7, 760, 'Nj',
+      'Ink-black leather stitched with dusk. Torchlight slides off it.'),
+    piece('nightveil_leggings', 'Nightveil leggings', 'legs', 27, 5, 660, 'Nc',
+      'Bound quiet at every seam. Stairs stop announcing you.'),
+    piece('nightveil_boots', 'Nightveil boots', 'boots', 27, 4, 580, 'Nb',
+      'Soled in hush. The floorboard forgives you in advance.'),
+  ];
+}
+
+function drakescaleSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'archery', w: 2 },
+    { stat: 'melee', w: 2 },
+    { stat: 'vitality' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#8c3a32';
+  const craft = (levelReq: number, xp: number, ticks: number, leather: number, iron: number) => ({
+    skill: 'crafting' as const,
+    levelReq,
+    xp,
+    station: 'workbench' as const,
+    ticks,
+    inputs: [{ item: 'leather', qty: leather }, { item: 'iron_bar', qty: iron }],
+  });
+  return [
+    {
+      id: 'drakescale_coif', name: 'Drakescale coif', slot: 'head', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 33 }, armor: 5, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(36, 320, 85, 2, 1),
+      value: 700, color, code: 'Qh',
+      desc: 'Oxblood scale over a copper jaw. Ask the drake how it went.',
+    },
+    {
+      id: 'drakescale_body', name: 'Drakescale body', slot: 'body', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 34 }, armor: 8, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(40, 460, 100, 4, 2),
+      value: 960, color, code: 'Qj',
+      desc: 'Row on row of tempered scale. Arrows in, arrows off.',
+    },
+    {
+      id: 'drakescale_chaps', name: 'Drakescale chaps', slot: 'legs', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 33 }, armor: 6, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(38, 380, 90, 3, 1),
+      value: 820, color, code: 'Qc',
+      desc: 'Scaled to the knee, supple past it. Fire finds no purchase.',
+    },
+    {
+      id: 'drakescale_boots', name: 'Drakescale boots', slot: 'boots', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 33 }, armor: 5, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(37, 340, 85, 2, 1),
+      value: 740, color, code: 'Qb',
+      desc: 'Copper-toed scale boots. Embers make way, grudgingly.',
+    },
+  ];
+}
+
+function stagheartSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'archery', w: 3 },
+    { stat: 'foraging' },
+    { stat: 'sneak' },
+    { stat: 'regen' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#6b5138';
+  const craft = (levelReq: number, xp: number, ticks: number, leather: number, gold: number, feather: number) => ({
+    skill: 'crafting' as const,
+    levelReq,
+    xp,
+    station: 'workbench' as const,
+    ticks,
+    inputs: feather > 0
+      ? [{ item: 'leather', qty: leather }, { item: 'gold_bar', qty: gold }, { item: 'feather', qty: feather }]
+      : [{ item: 'leather', qty: leather }, { item: 'gold_bar', qty: gold }],
+  });
+  return [
+    {
+      id: 'stagheart_hood', name: 'Stagheart hood', slot: 'head', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 40 }, armor: 6, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(44, 560, 100, 2, 1, 0),
+      value: 1050, color, code: 'Gh',
+      desc: 'Ivory antlers over bark leather. The wilds crown their own.',
+    },
+    {
+      id: 'stagheart_jerkin', name: 'Stagheart jerkin', slot: 'body', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 42 }, armor: 9, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(48, 780, 120, 4, 2, 6),
+      value: 1400, color, code: 'Gj',
+      desc: 'Feathered shoulders, gold-stitched fringe. The forest, formal.',
+    },
+    {
+      id: 'stagheart_chaps', name: 'Stagheart chaps', slot: 'legs', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 41 }, armor: 7, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(46, 660, 110, 3, 1, 0),
+      value: 1200, color, code: 'Gc',
+      desc: 'Moss-bound bark leather. Old growth from the knee down.',
+    },
+    {
+      id: 'stagheart_boots', name: 'Stagheart boots', slot: 'boots', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 40 }, armor: 5, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(45, 600, 100, 2, 1, 0),
+      value: 1100, color, code: 'Gb',
+      desc: 'They remember every path and prefer the unmarked ones.',
     },
   ];
 }
