@@ -5,12 +5,35 @@ import {
   levelForXp,
   xpForLevel,
   type EquipSlot,
+  type EquippedItem,
   type InvSlot,
+  type ItemRoll,
   type SkillXp,
 } from '@devcraft/shared';
-import { abilityDef, itemDef, techniquesFor, type ItemDef } from '@devcraft/content';
+import {
+  ARMOR_CLASS_BLURB,
+  abilityDef,
+  itemDef,
+  rolledStats,
+  techniquesFor,
+  type ItemDef,
+} from '@devcraft/content';
 import { itemIconUrl, slotGlyphUrl } from '../render/icons.js';
-import { RARITY_COLORS, rarityOf } from './rarity.js';
+import { RARITY_COLORS, rarityOfInstance } from './rarity.js';
+
+/** Card display colors for the three armor weight classes. */
+const CLASS_COLORS: Record<string, string> = {
+  cloth: '#c9a8e8',
+  leather: '#b08a5c',
+  plate: '#9aa2ac',
+};
+
+/** Human name for an affix stat ('magic' → 'Magic', 'maxHp' → 'Max HP'). */
+function affixName(stat: string): string {
+  if (stat === 'maxHp') return 'Max HP';
+  if (stat === 'regen') return 'Regen /4s';
+  return stat.charAt(0).toUpperCase() + stat.slice(1);
+}
 
 /** Explicit verbs the item context menu can dispatch. */
 export type SlotAction = 'use' | 'deposit' | 'sell' | 'drop';
@@ -37,7 +60,7 @@ export class Panels {
   private techniques: Record<string, string> = {};
   private lastSkills: SkillXp = {};
   private lastSlots: InvSlot[] = [];
-  private lastEquipment: Partial<Record<string, string>> = {};
+  private lastEquipment: Partial<Record<string, EquippedItem>> = {};
   /** What the inspect card currently shows (to refresh on re-render). */
   private cardSource: { kind: 'inv'; slot: number } | { kind: 'equip'; slot: string } | null = null;
 
@@ -204,7 +227,7 @@ export class Panels {
         return false;
       }
       this.cardSource = { kind: 'inv', slot: idx };
-      this.renderCard(slot.item, slot.qty, null);
+      this.renderCard(slot.item, slot.qty, null, slot.roll);
       return true;
     }
     if (el.dataset.equipslot !== undefined) {
@@ -214,7 +237,7 @@ export class Panels {
         return false;
       }
       this.cardSource = { kind: 'equip', slot: el.dataset.equipslot };
-      this.renderCard(worn, 1, el.dataset.equipslot);
+      this.renderCard(worn.id, 1, el.dataset.equipslot, worn.roll);
       return true;
     }
     this.hideCard();
@@ -255,12 +278,14 @@ export class Panels {
     return 'Material';
   }
 
-  private renderCard(itemId: string, qty: number, wornSlot: string | null): void {
+  private renderCard(itemId: string, qty: number, wornSlot: string | null, roll?: ItemRoll): void {
     const def = itemDef(itemId);
     if (!def) {
       this.hideCard();
       return;
     }
+    // Rolled gear derives its true numbers from the instance roll.
+    const rolled = rolledStats(itemId, roll);
     this.card.innerHTML = '';
 
     const head = document.createElement('div');
@@ -274,7 +299,7 @@ export class Panels {
     name.textContent = def.name;
     // Rarity speaks through the nameplate; legendary keeps the molten
     // gold treatment from the stylesheet.
-    const tier = rarityOf(itemId);
+    const tier = rarityOfInstance(itemId, roll);
     const rc = RARITY_COLORS[tier];
     if (tier !== 'legendary' && rc) {
       name.classList.add('rarity-name');
@@ -316,7 +341,32 @@ export class Panels {
       if (art) stat('Art (Q)', art.name, '#9a7ae0');
     }
     if (def.tool) stat('Power', `${def.tool.power}`, '#c9a23c');
-    if (def.armor) stat('Armor', `+${def.armor}`, '#8ac4e8');
+    // Armor class + requirement + rolled numbers — the gear block.
+    const cls = def.gear?.armorClass;
+    if (cls) stat('Class', cls.charAt(0).toUpperCase() + cls.slice(1), CLASS_COLORS[cls]);
+    const shownArmor = rolled ? rolled.armor : def.armor ?? 0;
+    if (shownArmor > 0) stat('Armor', `+${shownArmor}`, '#8ac4e8');
+    if (rolled) {
+      for (const a of rolled.affixes) {
+        stat(affixName(a.stat), `+${a.value}`, '#7dc46a');
+      }
+      const req = def.gear?.levelReq;
+      if (req) {
+        const own = levelForXp(this.lastSkills[req.skill] ?? 0);
+        const met = own >= req.level;
+        stat(
+          'Requires',
+          `${affixName(req.skill)} ${req.level}`,
+          met ? '#8a7a5f' : '#d95763',
+        );
+      }
+      if (cls) {
+        const blurb = document.createElement('div');
+        blurb.className = 'card-passive-desc';
+        blurb.textContent = ARMOR_CLASS_BLURB[cls];
+        this.card.appendChild(blurb);
+      }
+    }
     if (def.heals) stat('Heals', `${def.heals} HP`, '#4fc06a');
     const relicAb = def.relic ? abilityDef(def.relic) : undefined;
     if (relicAb) stat('Relic (E)', relicAb.name, '#7ac47a');
@@ -342,10 +392,11 @@ export class Panels {
     foot.className = 'card-foot';
     const value = document.createElement('span');
     value.className = 'card-value';
+    const worth = rolled?.value ?? def.value;
     value.textContent =
       qty > 1
-        ? `${qty.toLocaleString()} in pack · ${def.value.toLocaleString()}c each`
-        : `Value ${def.value.toLocaleString()}c`;
+        ? `${qty.toLocaleString()} in pack · ${worth.toLocaleString()}c each`
+        : `Value ${worth.toLocaleString()}c`;
     foot.appendChild(value);
     this.card.appendChild(foot);
 
@@ -411,7 +462,7 @@ export class Panels {
       const worn = this.lastEquipment[slot];
       if (!worn) return false;
       entries.push({ label: 'Remove', act: () => this.onUnequip(slot) });
-      if (slot === 'weapon' && worn.includes('sword')) {
+      if (slot === 'weapon' && worn.id.includes('sword')) {
         // Cosmetic carry preference: how the blade rides at rest.
         const rogue = this.carryStyle() === 'rogue';
         entries.push({
@@ -477,7 +528,7 @@ export class Panels {
         const def = itemDef(slot.item);
         if (slot.item === 'coins') coins += slot.qty;
         cell.classList.add('clickable');
-        const tier = rarityOf(slot.item);
+        const tier = rarityOfInstance(slot.item, slot.roll);
         if (tier !== 'common') cell.classList.add(`rarity-${tier}`);
         cell.dataset.filled = '1';
         cell.dataset.tipname = def?.name ?? slot.item;
@@ -524,12 +575,12 @@ export class Panels {
     // The card may be describing a slot that just changed — refresh it.
     if (this.cardSource?.kind === 'inv') {
       const src = this.lastSlots[this.cardSource.slot];
-      if (src) this.renderCard(src.item, src.qty, null);
+      if (src) this.renderCard(src.item, src.qty, null, src.roll);
       else this.hideCard();
     }
   }
 
-  renderEquipment(equipment: Partial<Record<string, string>>): void {
+  renderEquipment(equipment: Partial<Record<string, EquippedItem>>): void {
     this.lastEquipment = equipment;
     this.equipDoll.innerHTML = '';
     // Paper-doll order: the grid areas lay the body out — head crowned,
@@ -541,14 +592,14 @@ export class Panels {
       cell.dataset.equipslot = slot;
       const worn = equipment[slot];
       if (worn) {
-        const def = itemDef(worn);
+        const def = itemDef(worn.id);
         cell.classList.add('clickable', 'equipped');
-        const tier = rarityOf(worn);
+        const tier = rarityOfInstance(worn.id, worn.roll);
         if (tier !== 'common') cell.classList.add(`rarity-${tier}`);
         cell.dataset.filled = '1';
         cell.dataset.nav = '';
         cell.dataset.navkey = `equip:${slot}`;
-        cell.dataset.tipname = def?.name ?? worn;
+        cell.dataset.tipname = def?.name ?? worn.id;
         cell.dataset.acta = 'Remove';
         cell.addEventListener('click', () => this.onUnequip(slot));
         cell.addEventListener('contextmenu', (e) => {
@@ -557,7 +608,7 @@ export class Panels {
         });
         const item = document.createElement('img');
         item.className = 'inv-item';
-        item.src = itemIconUrl(worn, 44);
+        item.src = itemIconUrl(worn.id, 44);
         item.draggable = false;
         cell.appendChild(item);
       } else {
@@ -574,7 +625,7 @@ export class Panels {
 
     if (this.cardSource?.kind === 'equip') {
       const worn = this.lastEquipment[this.cardSource.slot];
-      if (worn) this.renderCard(worn, 1, this.cardSource.slot);
+      if (worn) this.renderCard(worn.id, 1, this.cardSource.slot, worn.roll);
       else this.hideCard();
     }
   }

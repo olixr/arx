@@ -158,13 +158,13 @@ export class Session {
       case 'bank': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
-        this.game.bankOp(this.playerEid, msg.op, msg.item, msg.qty);
+        this.game.bankOp(this.playerEid, msg.op, msg.item, msg.qty, msg.slot, msg.gearId);
         return;
       }
       case 'shop': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
-        this.game.shopOp(this.playerEid, msg.op, msg.item, msg.qty);
+        this.game.shopOp(this.playerEid, msg.op, msg.item, msg.qty, msg.slot);
         return;
       }
       case 'build': {

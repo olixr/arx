@@ -159,7 +159,7 @@ export class Hotbar {
     // worn passives actually change.
     let key = '';
     for (const slot of EQUIP_SLOTS) {
-      const p = itemDef(game.equipment[slot] ?? '')?.passive;
+      const p = itemDef(game.equipment[slot]?.id ?? '')?.passive;
       if (p) key += p + '|';
     }
     if (key !== this.trayKey) {

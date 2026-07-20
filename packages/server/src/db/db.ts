@@ -119,6 +119,25 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE built_tiles ADD COLUMN prev_tile INTEGER NOT NULL DEFAULT 1;
   `,
+  // 11 — per-instance item rolls (rarity tier + derivation seed).
+  // NULL rar/seed = legacy row, read as no roll (derives common/seed-0).
+  // The bank needs its own gear table because bank_items stacks by
+  // item_id and rolled gear can never stack; rows keep stable ids so
+  // withdrawals can address an exact instance.
+  `
+  ALTER TABLE inventory_slots ADD COLUMN rar TEXT;
+  ALTER TABLE inventory_slots ADD COLUMN seed INTEGER;
+  ALTER TABLE equipment ADD COLUMN rar TEXT;
+  ALTER TABLE equipment ADD COLUMN seed INTEGER;
+  CREATE TABLE bank_gear (
+    id INTEGER PRIMARY KEY,
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    item_id TEXT NOT NULL,
+    rar TEXT NOT NULL,
+    seed INTEGER NOT NULL
+  );
+  CREATE INDEX idx_bank_gear_character ON bank_gear(character_id);
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

@@ -1,6 +1,9 @@
 // v3: chunk elev bytes became SIGNED (Int8, sunken levels) — old clients
 // would misread −1 as 255, so the bump rejects them cleanly.
-export const PROTOCOL_VERSION = 3;
+// v4: S2CEquipment slots became EquippedItem objects and inventory/bank
+// carry per-instance ItemRolls — v3 clients would read worn items as
+// strings and render nothing, so the bump rejects them cleanly.
+export const PROTOCOL_VERSION = 4;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;

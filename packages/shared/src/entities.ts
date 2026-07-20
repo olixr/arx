@@ -56,6 +56,8 @@ export interface EntityMeta {
   level?: number;
   /** Stack size for item drops — drives loot labels and pile sizes. */
   qty?: number;
+  /** Instance roll for dropped gear — tints the nameplate, survives pickup. */
+  roll?: import('./rarity.js').ItemRoll;
 }
 
 export interface AppearanceData {

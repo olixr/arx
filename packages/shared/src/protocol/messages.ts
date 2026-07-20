@@ -1,11 +1,21 @@
 import { EQUIP_SLOTS } from '../entities.js';
 import type { CarryStyle, EntityId, EntityMeta, EquipSlot } from '../entities.js';
 import { sanitizeLook, type Look } from '../look.js';
+import type { ItemRoll } from '../rarity.js';
 import type { InputFrame } from '../sim/input.js';
 import type { SkillId, SkillXp } from '../skills.js';
 
-/** One inventory slot on the wire; null = empty. */
-export type InvSlot = { item: string; qty: number } | null;
+/**
+ * One inventory slot on the wire; null = empty. `roll` is the instance
+ * identity of rolled gear — stats derive from it, they never travel.
+ */
+export type InvSlot = { item: string; qty: number; roll?: ItemRoll } | null;
+
+/** A worn item: id + the instance roll its stats derive from. */
+export interface EquippedItem {
+  id: string;
+  roll?: ItemRoll;
+}
 
 /**
  * JSON control-plane messages (WebSocket text frames).
@@ -105,6 +115,14 @@ export interface C2SBank {
   op: 'deposit' | 'withdraw';
   item: string;
   qty: number;
+  /**
+   * Deposit: exact pack slot — REQUIRED when that slot holds rolled
+   * gear, so the right instance leaves the pack (id-addressed removal
+   * would grab the first same-id item and lose a roll).
+   */
+  slot?: number;
+  /** Withdraw: bank_gear row id for a stored gear instance. */
+  gearId?: number;
 }
 
 export interface C2SShop {
@@ -112,6 +130,8 @@ export interface C2SShop {
   op: 'buy' | 'sell';
   item: string;
   qty: number;
+  /** Sell: exact pack slot, for the same instance-addressing reason. */
+  slot?: number;
 }
 
 /** Place a buildable on a world tile. */
@@ -277,7 +297,7 @@ export interface S2CAction {
 /** This player's worn equipment changed. */
 export interface S2CEquipment {
   t: 'equip';
-  equipment: Partial<Record<EquipSlot, string>>;
+  equipment: Partial<Record<EquipSlot, EquippedItem>>;
   /** Cosmetic idle carry preference; absent = standard. */
   carry?: CarryStyle;
 }
@@ -315,6 +335,11 @@ export interface S2CUpdate {
 export interface S2CBank {
   t: 'bank';
   items: Record<string, number>;
+  /**
+   * Rolled gear instances, stored per-row (they can never stack).
+   * Withdraw addresses these by their stable row id.
+   */
+  gear?: Array<{ id: number; item: string; roll: ItemRoll }>;
 }
 
 /**
@@ -518,7 +543,14 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (!isFiniteNum(msg.qty) || !Number.isInteger(msg.qty) || msg.qty < 1 || msg.qty > 100000) {
         return null;
       }
-      return { t: 'bank', op: msg.op, item: msg.item, qty: msg.qty };
+      if (msg.slot !== undefined) {
+        if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot)) return null;
+        if (msg.slot < 0 || msg.slot >= 64) return null;
+      }
+      if (msg.gearId !== undefined) {
+        if (!isFiniteNum(msg.gearId) || !Number.isInteger(msg.gearId) || msg.gearId < 0) return null;
+      }
+      return { t: 'bank', op: msg.op, item: msg.item, qty: msg.qty, slot: msg.slot, gearId: msg.gearId };
     }
     case 'shop': {
       if (msg.op !== 'buy' && msg.op !== 'sell') return null;
@@ -526,7 +558,11 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (!isFiniteNum(msg.qty) || !Number.isInteger(msg.qty) || msg.qty < 1 || msg.qty > 1000) {
         return null;
       }
-      return { t: 'shop', op: msg.op, item: msg.item, qty: msg.qty };
+      if (msg.slot !== undefined) {
+        if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot)) return null;
+        if (msg.slot < 0 || msg.slot >= 64) return null;
+      }
+      return { t: 'shop', op: msg.op, item: msg.item, qty: msg.qty, slot: msg.slot };
     }
     case 'build': {
       if (typeof msg.buildable !== 'string' || msg.buildable.length > 64) return null;

@@ -17,6 +17,7 @@ import {
   daylightAt,
   type ChunkData,
   type DaylightSample,
+  type ItemRoll,
   type Look,
   type Vec2,
 } from '@devcraft/shared';
@@ -38,7 +39,7 @@ import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import { Particles } from './particles.js';
 import { GrassSystem, windAt, windScalarAt, type Disturber } from './grass.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
-import { rarityColor } from '../ui/rarity.js';
+import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
 import { bakeChunk, bakeElevated, bakeGutter, drawLiveGround } from './terrain.js';
@@ -373,6 +374,8 @@ export class Renderer {
     itemId: string;
     qty: number;
     hovered: boolean;
+    /** Instance roll — tints the nameplate by the INSTANCE's rarity. */
+    roll?: ItemRoll;
   }> = [];
 
   /** Emissive glow requests queued during the frame, composited last. */
@@ -1489,7 +1492,7 @@ export class Renderer {
   private drawAimGuide(game: ClientGame): void {
     const drawT = game.ownDrawT;
     if (drawT <= 0 || game.ownEid === null) return;
-    const weapon = game.equipment.weapon ? itemDef(game.equipment.weapon)?.weapon : undefined;
+    const weapon = game.equipment.weapon ? itemDef(game.equipment.weapon.id)?.weapon : undefined;
     if (!weapon) return;
     const ctx = this.ctx;
     const s = this.camera.scale;
@@ -7202,7 +7205,9 @@ export class Renderer {
           break;
         }
         case EntityKind.ItemDrop:
-          items.push(this.dropItem(eid, remote.meta.defId ?? '', remote.meta.qty ?? 1, s, now));
+          items.push(
+            this.dropItem(eid, remote.meta.defId ?? '', remote.meta.qty ?? 1, s, now, remote.meta.roll),
+          );
           break;
         case EntityKind.Projectile:
           items.push(this.projectileItem(eid, remote.meta.defId ?? '', s));
@@ -7227,6 +7232,11 @@ export class Renderer {
     if (game.ownEid !== null) {
       const own = game.predictor.renderPos();
       if (game.ownStatus) this.statusAmbience(own.x, own.y, game.ownStatus);
+      // The rig only wants item IDS — strip the equip map's rolls.
+      const ownEquip: Partial<Record<string, string>> = {};
+      for (const [slot, worn] of Object.entries(game.equipment)) {
+        if (worn) ownEquip[slot] = worn.id;
+      }
       const ownItem = this.humanoidItem({
         eid: 'own',
         x: own.x,
@@ -7237,7 +7247,7 @@ export class Renderer {
         name: game.ownName,
         isOwn: true,
         hurt: game.ownHurtUntil > now,
-        equip: game.equipment,
+        equip: ownEquip,
         carry: game.carryStyle,
         look: game.ownLook ?? undefined,
         color: game.ownLook
@@ -7761,6 +7771,7 @@ export class Renderer {
     qty: number,
     s: { x: number; y: number },
     now: number,
+    roll?: ItemRoll,
   ): DrawItem {
     const ctx = this.ctx;
     const def = itemDef(itemId);
@@ -7806,7 +7817,7 @@ export class Renderer {
     const hovered =
       this.lootHud.mouse &&
       Math.hypot(this.lootHud.mx - p.x, this.lootHud.my - (p.y - k * 0.2)) < k * 0.45;
-    this.frameLoot.push({ x: s.x, y: s.y, sx: p.x, sy: p.y - k * 0.55, itemId, qty, hovered });
+    this.frameLoot.push({ x: s.x, y: s.y, sx: p.x, sy: p.y - k * 0.55, itemId, qty, hovered, roll });
 
     // Premium cargo announces itself: a soft glow in the item's color.
     if (cat === 'gold' && qty >= 25) {
@@ -8163,7 +8174,8 @@ export class Renderer {
         text: d.qty > 1 ? `${name} × ${d.qty.toLocaleString()}` : name,
         col: def?.color ?? '#b0a49a',
         // Rarity speaks on the ground too — the ARPG loot-name law.
-        nameCol: rarityColor(d.itemId) ?? '#f4efe4',
+        // A rolled instance's own tier wins over the value-derived tint.
+        nameCol: (d.roll ? RARITY_COLORS[d.roll.rar] : rarityColor(d.itemId)) ?? '#f4efe4',
         alpha,
       });
     }

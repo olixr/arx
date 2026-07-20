@@ -1,4 +1,12 @@
-import { levelForXp, tileDef, type InvSlot, type SkillXp, type StationType } from '@devcraft/shared';
+import {
+  RARITY_COLORS,
+  levelForXp,
+  tileDef,
+  type InvSlot,
+  type ItemRoll,
+  type SkillXp,
+  type StationType,
+} from '@devcraft/shared';
 import { BUILDABLES, CROP_BY_SEED, GENERAL_STORE, itemDef, recipesForStation } from '@devcraft/content';
 import { buildableIconUrl, itemIconUrl } from '../render/icons.js';
 
@@ -32,12 +40,19 @@ export class StationPanels {
   private readonly buildList = document.getElementById('build-list')!;
 
   private lastBank: Record<string, number> = {};
+  /** Rolled gear instances stored in the vault (withdraw by row id). */
+  private lastBankGear: Array<{ id: number; item: string; roll: ItemRoll }> = [];
   /** World tile center the open panel is bound to (null = untethered). */
   private anchor: { x: number; y: number } | null = null;
 
   constructor(
     private readonly onCraft: (recipe: string, qty: number) => void,
-    private readonly onBank: (op: 'deposit' | 'withdraw', item: string, qty: number) => void,
+    private readonly onBank: (
+      op: 'deposit' | 'withdraw',
+      item: string,
+      qty: number,
+      gearId?: number,
+    ) => void,
     private readonly onShop: (op: 'buy' | 'sell', item: string, qty: number) => void,
     private readonly onPickBuildable: (id: string) => void,
   ) {
@@ -259,27 +274,60 @@ export class StationPanels {
 
   // ------------------------------------------------------------- bank
 
-  openBank(items: Record<string, number>, at?: { tx: number; ty: number }): void {
+  openBank(
+    items: Record<string, number>,
+    at?: { tx: number; ty: number },
+    gear?: Array<{ id: number; item: string; roll: ItemRoll }>,
+  ): void {
     this.lastBank = items;
+    if (gear) this.lastBankGear = gear;
     this.closeAll();
     if (at) this.anchor = { x: at.tx + 0.5, y: at.ty + 0.5 };
     this.renderBank();
     this.bankPanel.classList.remove('hidden');
   }
 
-  refreshBank(items: Record<string, number>): void {
+  refreshBank(
+    items: Record<string, number>,
+    gear?: Array<{ id: number; item: string; roll: ItemRoll }>,
+  ): void {
     this.lastBank = items;
+    if (gear) this.lastBankGear = gear;
     if (this.bankOpen) this.renderBank();
   }
 
   private renderBank(): void {
     this.bankList.innerHTML = '';
     const entries = Object.entries(this.lastBank).sort(([a], [b]) => a.localeCompare(b));
-    if (entries.length === 0) {
+    if (entries.length === 0 && this.lastBankGear.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'list-row';
       empty.textContent = 'Your vault is empty.';
       this.bankList.appendChild(empty);
+    }
+    // Rolled gear first — each row is one exact instance, tinted by its
+    // rarity, withdrawn by its stable row id.
+    for (const g of this.lastBankGear) {
+      const def = itemDef(g.item);
+      const row = document.createElement('div');
+      row.className = 'list-row';
+      const swatch = iconEl(g.item);
+      const name = document.createElement('div');
+      name.className = 'row-name';
+      const tint = RARITY_COLORS[g.roll.rar];
+      const label = def?.name ?? g.item;
+      name.innerHTML = tint
+        ? `<span style="color:${tint}">${label}</span><span class="row-sub">${g.roll.rar}</span>`
+        : `${label}<span class="row-sub">stored</span>`;
+      row.append(swatch, name);
+      const btn = document.createElement('button');
+      btn.textContent = 'Take';
+      btn.dataset.nav = '';
+      btn.dataset.navkey = `bankgear:${g.id}`;
+      btn.dataset.acta = 'Withdraw';
+      btn.addEventListener('click', () => this.onBank('withdraw', g.item, 1, g.id));
+      row.appendChild(btn);
+      this.bankList.appendChild(row);
     }
     for (const [item, qty] of entries) {
       const def = itemDef(item);

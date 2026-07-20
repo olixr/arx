@@ -1,4 +1,4 @@
-import type { InvSlot } from '@devcraft/shared';
+import type { InvSlot, ItemRoll } from '@devcraft/shared';
 import { itemDef, type ToolType } from '@devcraft/content';
 
 export const INVENTORY_SIZE = 28;
@@ -7,8 +7,12 @@ export function emptyInventory(): InvSlot[] {
   return new Array<InvSlot>(INVENTORY_SIZE).fill(null);
 }
 
-/** Add items; returns the quantity that actually fit. */
-export function addItem(slots: InvSlot[], itemId: string, qty: number): number {
+/**
+ * Add items; returns the quantity that actually fit. `roll` stamps the
+ * instance identity onto non-stackable slots (gear is compile-checked
+ * non-stackable, so a roll can never be smeared across a stack).
+ */
+export function addItem(slots: InvSlot[], itemId: string, qty: number, roll?: ItemRoll): number {
   const def = itemDef(itemId);
   if (!def || qty <= 0) return 0;
   let remaining = qty;
@@ -28,14 +32,37 @@ export function addItem(slots: InvSlot[], itemId: string, qty: number): number {
 
   for (let i = 0; i < slots.length && remaining > 0; i++) {
     if (slots[i] === null) {
-      slots[i] = { item: itemId, qty: 1 };
+      slots[i] = { item: itemId, qty: 1, roll };
       remaining--;
     }
   }
   return qty - remaining;
 }
 
-/** Remove up to qty of an item; returns how many were removed. */
+/**
+ * INSTANCE-ADDRESSING LAW: any removal that can touch rolled gear must
+ * name the slot INDEX, not the item id — removeItem-by-id grabs the
+ * first same-id slot and would happily destroy a different instance's
+ * roll. Returns what was taken (with its roll), or null.
+ */
+export function takeSlot(
+  slots: InvSlot[],
+  index: number,
+  qty: number,
+): { item: string; qty: number; roll?: ItemRoll } | null {
+  const slot = slots[index];
+  if (!slot || qty <= 0) return null;
+  const take = Math.min(slot.qty, qty);
+  const out = { item: slot.item, qty: take, roll: slot.roll };
+  slot.qty -= take;
+  if (slot.qty === 0) slots[index] = null;
+  return out;
+}
+
+/**
+ * Remove up to qty of an item; returns how many were removed.
+ * Id-addressed — for stackable materials/ammo/coins ONLY (see takeSlot).
+ */
 export function removeItem(slots: InvSlot[], itemId: string, qty: number): number {
   let remaining = qty;
   for (let i = 0; i < slots.length && remaining > 0; i++) {

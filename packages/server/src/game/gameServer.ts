@@ -26,9 +26,12 @@ import {
   type CarryStyle,
   type Look,
   type InvSlot,
+  type ItemRoll,
+  type EquippedItem,
   type SkillId,
   type SkillXp,
   type SnapshotEntity,
+  isRarityTier,
   Tile,
 } from '@devcraft/shared';
 import {
@@ -47,7 +50,9 @@ import {
   growMs,
   isCropTile,
   itemDef,
+  makeRoll,
   npcHitHeight,
+  rolledStats,
   stageEndMs,
   stageForElapsed,
   techniqueDef,
@@ -127,7 +132,7 @@ import { Session, sanitizeName } from '../net/session.js';
 import type { AccountStore, CharacterRow } from '../db/accounts.js';
 import type { WorldSource } from '../world/worldSource.js';
 import { delveOrigin, generateDelve } from '../world/dungeonGen.js';
-import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem } from './inventory.js';
+import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem, takeSlot } from './inventory.js';
 
 interface PositionComp {
   x: number;
@@ -227,6 +232,8 @@ interface DropComp {
   pickupAfter: number;
   /** Skill XP granted to whoever picks this up (laid eggs). */
   xpOnPickup?: { skill: SkillId; xp: number };
+  /** Instance roll for dropped gear — survives the round trip. */
+  roll?: ItemRoll;
 }
 
 interface ProjectileComp {
@@ -329,7 +336,7 @@ interface PlayerComp {
   /** Bank contents; null for guests (no persistence, no bank). */
   bank: Record<string, number> | null;
   bankDirty: boolean;
-  equipment: Partial<Record<EquipSlot, string>>;
+  equipment: Partial<Record<EquipSlot, EquippedItem>>;
   attackCooldown: number;
   lastCombatAt: number;
   poseUntilTick: number;
@@ -639,11 +646,13 @@ export class GameServer {
     // RS-style vitality 10.
     let skills: SkillXp;
     let inventory: InvSlot[];
-    let equipment: Partial<Record<EquipSlot, string>> = {};
+    let equipment: Partial<Record<EquipSlot, EquippedItem>> = {};
     if (character.id > 0) {
       skills = this.accounts.loadSkills(character.id) as SkillXp;
       inventory = this.accounts.loadInventory(character.id, 28);
-      equipment = this.accounts.loadEquipment(character.id) as Partial<Record<EquipSlot, string>>;
+      equipment = this.accounts.loadEquipment(character.id) as Partial<
+        Record<EquipSlot, EquippedItem>
+      >;
       if (Object.keys(skills).length === 0) {
         skills = { vitality: xpForLevel(10) };
         inventory = emptyInventory();
@@ -881,7 +890,7 @@ export class GameServer {
         sys('Guests cannot use the bank — make an account!');
         return;
       }
-      player.session.sendJson({ t: 'bank', items: player.bank });
+      this.sendBank(player);
       return;
     }
 
@@ -905,9 +914,9 @@ export class GameServer {
     // still carried in the pack (best of the two wins).
     let tool = node.tool ? bestTool(player.inventory, node.tool) : { item: '', power: 1 };
     if (node.tool && player.equipment.tool) {
-      const worn = itemDef(player.equipment.tool)?.tool;
+      const worn = itemDef(player.equipment.tool.id)?.tool;
       if (worn && worn.type === node.tool && (!tool || worn.power >= tool.power)) {
-        tool = { item: player.equipment.tool, power: worn.power };
+        tool = { item: player.equipment.tool.id, power: worn.power };
       }
     }
     if (!tool) {
@@ -1378,17 +1387,47 @@ export class GameServer {
 
   // ------------------------------------------------------ bank & shop
 
-  bankOp(eid: EntityId, op: 'deposit' | 'withdraw', item: string, qty: number): void {
+  bankOp(
+    eid: EntityId,
+    op: 'deposit' | 'withdraw',
+    item: string,
+    qty: number,
+    slot?: number,
+    gearId?: number,
+  ): void {
     const player = this.players.get(eid);
     if (!player || player.session === null || player.bank === null) return;
     if (!this.nearTile(eid, Tile.BankChest)) return;
     if (!itemDef(item)) return;
 
     if (op === 'deposit') {
-      const removed = removeItem(player.inventory, item, qty);
-      if (removed > 0) {
-        player.bank[item] = (player.bank[item] ?? 0) + removed;
-        player.bankDirty = true;
+      // Rolled instances live in bank_gear rows (they can never stack);
+      // a slot-addressed deposit moves exactly the instance clicked.
+      const src = slot !== undefined ? player.inventory[slot] : undefined;
+      if (src && src.item === item && src.roll) {
+        const taken = takeSlot(player.inventory, slot!, 1);
+        if (taken?.roll && player.characterId > 0) {
+          this.accounts.insertBankGear(player.characterId, taken.item, taken.roll);
+        }
+      } else {
+        const removed =
+          src && src.item === item
+            ? (takeSlot(player.inventory, slot!, qty)?.qty ?? 0)
+            : removeItem(player.inventory, item, qty);
+        if (removed > 0) {
+          player.bank[item] = (player.bank[item] ?? 0) + removed;
+          player.bankDirty = true;
+        }
+      }
+    } else if (gearId !== undefined) {
+      // Withdraw an exact stored instance by its stable row id.
+      if (player.characterId > 0 && hasSpaceFor(player.inventory, item)) {
+        const stored = this.accounts
+          .loadBankGear(player.characterId)
+          .find((g) => g.id === gearId && g.item === item);
+        if (stored && this.accounts.deleteBankGear(gearId, player.characterId)) {
+          addItem(player.inventory, stored.item, 1, stored.roll);
+        }
       }
     } else {
       const available = player.bank[item] ?? 0;
@@ -1410,10 +1449,17 @@ export class GameServer {
       }
     }
     player.session.sendJson({ t: 'inv', slots: player.inventory });
-    player.session.sendJson({ t: 'bank', items: player.bank });
+    this.sendBank(player);
   }
 
-  shopOp(eid: EntityId, op: 'buy' | 'sell', item: string, qty: number): void {
+  private sendBank(player: PlayerComp): void {
+    if (!player.session || player.bank === null) return;
+    const gear =
+      player.characterId > 0 ? this.accounts.loadBankGear(player.characterId) : undefined;
+    player.session.sendJson({ t: 'bank', items: player.bank, gear });
+  }
+
+  shopOp(eid: EntityId, op: 'buy' | 'sell', item: string, qty: number, slot?: number): void {
     const player = this.players.get(eid);
     if (!player || player.session === null) return;
     if (!this.nearTile(eid, Tile.ShopCounter)) return;
@@ -1439,9 +1485,19 @@ export class GameServer {
       }
     } else {
       if (item === 'coins') return;
-      const sold = removeItem(player.inventory, item, qty);
-      if (sold === 0) return;
-      addItem(player.inventory, 'coins', sold * Math.max(1, Math.floor(def.value / 2)));
+      // Slot-addressed sale: the exact instance clicked leaves, and a
+      // rolled instance is priced by its DERIVED value, not the base.
+      const src = slot !== undefined ? player.inventory[slot] : undefined;
+      if (src && src.item === item) {
+        const taken = takeSlot(player.inventory, slot!, qty);
+        if (!taken) return;
+        const each = rolledStats(taken.item, taken.roll)?.value ?? def.value;
+        addItem(player.inventory, 'coins', taken.qty * Math.max(1, Math.floor(each / 2)));
+      } else {
+        const sold = removeItem(player.inventory, item, qty);
+        if (sold === 0) return;
+        addItem(player.inventory, 'coins', sold * Math.max(1, Math.floor(def.value / 2)));
+      }
     }
     player.session.sendJson({ t: 'inv', slots: player.inventory });
   }
@@ -1557,10 +1613,10 @@ export class GameServer {
     if (!player || slotIndex < 0 || slotIndex >= player.inventory.length) return;
     const slot = player.inventory[slotIndex];
     if (!slot || !itemDef(slot.item)) return;
-    const n = Math.max(1, Math.min(qty, slot.qty));
-    const item = slot.item;
-    slot.qty -= n;
-    if (slot.qty <= 0) player.inventory[slotIndex] = null;
+    const taken = takeSlot(player.inventory, slotIndex, Math.max(1, qty));
+    if (!taken) return;
+    const n = taken.qty;
+    const item = taken.item;
 
     // Land the bag a step ahead of the player; a wall in the way puts
     // it at their feet instead of inside the masonry.
@@ -1581,6 +1637,7 @@ export class GameServer {
       ownerUntil: 0,
       despawnAt: Date.now() + 12 * 60_000,
       pickupAfter: Date.now() + 2000,
+      roll: taken.roll,
     });
     this.updateChunkMembership(dropEid);
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
@@ -1634,11 +1691,24 @@ export class GameServer {
     }
 
     if (def.equipSlot) {
+      // Equip gate: BASE level only — worn +skill bonuses never
+      // bootstrap their way into more gear.
+      const req = def.gear?.levelReq;
+      if (req && levelForXp(player.skills[req.skill] ?? 0) < req.level) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `You need ${req.skill} level ${req.level} to equip that.`,
+        });
+        return;
+      }
       const worn = player.equipment[def.equipSlot];
-      // Take the item out first so a swap can't overflow the pack.
-      removeItem(player.inventory, slot.item, 1);
-      if (worn) addItem(player.inventory, worn, 1);
-      player.equipment[def.equipSlot] = slot.item;
+      // Take THIS slot's instance out first so a swap can't overflow
+      // the pack — and so the roll that leaves is the roll clicked.
+      const taken = takeSlot(player.inventory, slotIndex, 1);
+      if (!taken) return;
+      if (worn) addItem(player.inventory, worn.id, 1, worn.roll);
+      player.equipment[def.equipSlot] = { id: taken.item, roll: taken.roll };
       this.onEquipmentChanged(eid, player);
     }
   }
@@ -1694,11 +1764,11 @@ export class GameServer {
     if (!player) return;
     const worn = player.equipment[slot];
     if (!worn) return;
-    if (!hasSpaceFor(player.inventory, worn)) {
+    if (!hasSpaceFor(player.inventory, worn.id)) {
       player.session?.sendJson({ t: 'chat', channel: 'system', text: 'Your pack is full.' });
       return;
     }
-    addItem(player.inventory, worn, 1);
+    addItem(player.inventory, worn.id, 1, worn.roll);
     delete player.equipment[slot];
     this.onEquipmentChanged(eid, player);
   }
@@ -1753,10 +1823,10 @@ export class GameServer {
   // ----------------------------------------------------------- combat
 
   private equippedWeapon(player: PlayerComp) {
-    const id = player.equipment.weapon;
-    if (!id) return null;
-    const def = itemDef(id);
-    return def?.weapon ? { id, weapon: def.weapon } : null;
+    const worn = player.equipment.weapon;
+    if (!worn) return null;
+    const def = itemDef(worn.id);
+    return def?.weapon ? { id: worn.id, weapon: def.weapon } : null;
   }
 
   private tryPlayerAttack(eid: EntityId, player: PlayerComp, aim: number): void {
@@ -1930,7 +2000,7 @@ export class GameServer {
         return artId ? (abilityDef(artId) ?? null) : null;
       }
       case SLOT_RELIC: {
-        const relicItem = itemDef(player.equipment.relic ?? '');
+        const relicItem = itemDef(player.equipment.relic?.id ?? '');
         return relicItem?.relic ? (abilityDef(relicItem.relic) ?? null) : null;
       }
       case SLOT_TECHNIQUE: {
@@ -1938,7 +2008,7 @@ export class GameServer {
         return chosen ? (abilityDef(chosen) ?? null) : null;
       }
       case SLOT_SIGIL: {
-        const sigilItem = itemDef(player.equipment.sigil ?? '');
+        const sigilItem = itemDef(player.equipment.sigil?.id ?? '');
         return sigilItem?.sigil ? (abilityDef(sigilItem.sigil) ?? null) : null;
       }
     }
@@ -1961,7 +2031,7 @@ export class GameServer {
   private passiveIds(player: PlayerComp): PassiveId[] {
     const out: PassiveId[] = [];
     for (const worn of Object.values(player.equipment)) {
-      const p = itemDef(worn ?? '')?.passive;
+      const p = itemDef(worn?.id ?? '')?.passive;
       if (p) out.push(p);
     }
     return out;
@@ -1969,7 +2039,7 @@ export class GameServer {
 
   private hasPassive(player: PlayerComp, id: PassiveId): boolean {
     for (const worn of Object.values(player.equipment)) {
-      if (itemDef(worn ?? '')?.passive === id) return true;
+      if (itemDef(worn?.id ?? '')?.passive === id) return true;
     }
     return false;
   }
@@ -2990,7 +3060,7 @@ export class GameServer {
     const defLevel = levelForXp(player.skills.defence ?? 0);
     let armor = 0;
     for (const worn of Object.values(player.equipment)) {
-      armor += itemDef(worn ?? '')?.armor ?? 0;
+      armor += itemDef(worn?.id ?? '')?.armor ?? 0;
     }
     // Defence + armor shave hits down, never below 0. DoTs pierce —
     // the wound is already inside the armor.
@@ -3446,7 +3516,7 @@ export class GameServer {
         const dy = ppos.y - pos.y;
         if (dx * dx + dy * dy > 0.55 * 0.55) continue;
         if (!hasSpaceFor(player.inventory, drop.item)) continue;
-        addItem(player.inventory, drop.item, drop.qty);
+        addItem(player.inventory, drop.item, drop.qty, drop.roll);
         if (drop.xpOnPickup) {
           this.grantXp(playerEid, player, drop.xpOnPickup.skill, drop.xpOnPickup.xp);
         }
@@ -3559,13 +3629,26 @@ export class GameServer {
       return;
     }
     if (config.devCommands && text.startsWith('/give ')) {
-      const [, item, qtyRaw] = text.split(/\s+/);
+      // /give <item> [qty] [rarity] — gear mints a fresh random roll at
+      // the requested tier (default common). The Playwright lever.
+      const [, item, qtyRaw, rarRaw] = text.split(/\s+/);
       const def = itemDef(item ?? '');
       const qty = Math.max(1, Math.min(1000, Number.parseInt(qtyRaw ?? '1', 10) || 1));
+      const rar = isRarityTier(rarRaw ?? '') ? (rarRaw as ItemRoll['rar']) : undefined;
       if (def && hasSpaceFor(player.inventory, def.id)) {
-        addItem(player.inventory, def.id, qty);
+        if (def.gear) {
+          for (let i = 0; i < qty; i++) {
+            addItem(player.inventory, def.id, 1, makeRoll(rar ?? 'common'));
+          }
+        } else {
+          addItem(player.inventory, def.id, qty);
+        }
         player.session?.sendJson({ t: 'inv', slots: player.inventory });
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: `Given: ${def.name} ×${qty}` });
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `Given: ${def.name} ×${qty}${rar ? ` (${rar})` : ''}`,
+        });
       } else {
         player.session?.sendJson({ t: 'chat', channel: 'system', text: `Can't give '${item}'.` });
       }
@@ -3927,9 +4010,14 @@ export class GameServer {
     const player = this.players.get(eid);
     if (player) {
       meta.name = player.name;
+      // Appearance carries item IDS only — rendering never needs rolls.
+      const equip: Partial<Record<EquipSlot, string>> = {};
+      for (const [slot, worn] of Object.entries(player.equipment)) {
+        if (worn) equip[slot as EquipSlot] = worn.id;
+      }
       meta.appearance = {
         bodyColor: '',
-        equip: { ...player.equipment },
+        equip,
         look: player.look ?? undefined,
         carry: player.carryStyle === 'rogue' ? 'rogue' : undefined,
       };
@@ -3944,6 +4032,7 @@ export class GameServer {
     if (drop) {
       meta.defId = drop.item;
       meta.qty = drop.qty;
+      meta.roll = drop.roll;
     }
     const proj = this.projectiles.get(eid);
     if (proj) meta.defId = proj.heavy ? `${proj.style}_heavy` : proj.style;

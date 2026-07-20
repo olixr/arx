@@ -22,6 +22,8 @@ import {
   type BuffInfo,
   type InputFrame,
   type InvSlot,
+  type ItemRoll,
+  type EquippedItem,
   type S2CMessage,
   type SkillXp,
   type Snapshot,
@@ -94,8 +96,8 @@ export interface GameEvents {
   onInventory(slots: InvSlot[]): void;
   onSkills(xp: SkillXp): void;
   onXp(msg: { skill: string; gained: number; level: number; levelledUp: boolean }): void;
-  onEquipment(equipment: Partial<Record<string, string>>): void;
-  onBank(items: Record<string, number>): void;
+  onEquipment(equipment: Partial<Record<string, EquippedItem>>): void;
+  onBank(items: Record<string, number>, gear?: Array<{ id: number; item: string; roll: ItemRoll }>): void;
   onHit(hit: { x: number; y: number; dmg: number; isOwn: boolean; crit: boolean; backstab?: boolean }): void;
   onDeath(death: { x: number; y: number; defId: string }): void;
   /** A damaging blow with a knock direction — directional impact FX. */
@@ -131,7 +133,7 @@ export class ClientGame {
 
   inventory: InvSlot[] = [];
   skills: SkillXp = {};
-  equipment: Partial<Record<string, string>> = {};
+  equipment: Partial<Record<string, EquippedItem>> = {};
   /** Cosmetic idle weapon-carry preference (server-confirmed). */
   carryStyle: 'normal' | 'rogue' = 'normal';
   /** Running gather action, for the progress bar. */
@@ -241,8 +243,8 @@ export class ClientGame {
   }
 
   private equippedWeaponDef() {
-    const id = this.equipment.weapon;
-    return id ? itemDef(id)?.weapon ?? null : null;
+    const worn = this.equipment.weapon;
+    return worn ? itemDef(worn.id)?.weapon ?? null : null;
   }
 
   /** The combat style of the equipped weapon (bare fists = melee). */
@@ -258,7 +260,7 @@ export class ClientGame {
         return artId ? (abilityDef(artId) ?? null) : null;
       }
       case 1: {
-        const relic = itemDef(this.equipment.relic ?? '');
+        const relic = itemDef(this.equipment.relic?.id ?? '');
         return relic?.relic ? (abilityDef(relic.relic) ?? null) : null;
       }
       case 2: {
@@ -266,7 +268,7 @@ export class ClientGame {
         return chosen ? (abilityDef(chosen) ?? null) : null;
       }
       case 3: {
-        const sigil = itemDef(this.equipment.sigil ?? '');
+        const sigil = itemDef(this.equipment.sigil?.id ?? '');
         return sigil?.sigil ? (abilityDef(sigil.sigil) ?? null) : null;
       }
     }
@@ -586,7 +588,7 @@ export class ClientGame {
         break;
       }
       case 'bank': {
-        this.events.onBank(msg.items);
+        this.events.onBank(msg.items, msg.gear);
         break;
       }
       case 'death': {
@@ -791,8 +793,8 @@ export class ClientGame {
     this.conn?.send({ t: 'interactnpc', eid });
   }
 
-  bankSend(op: 'deposit' | 'withdraw', item: string, qty: number): void {
-    this.conn?.send({ t: 'bank', op, item, qty });
+  bankSend(op: 'deposit' | 'withdraw', item: string, qty: number, slot?: number, gearId?: number): void {
+    this.conn?.send({ t: 'bank', op, item, qty, slot, gearId });
   }
 
   invMove(from: number, to: number): void {
@@ -817,8 +819,8 @@ export class ClientGame {
     this.conn?.send({ t: 'setlook', look });
   }
 
-  shopSend(op: 'buy' | 'sell', item: string, qty: number): void {
-    this.conn?.send({ t: 'shop', op, item, qty });
+  shopSend(op: 'buy' | 'sell', item: string, qty: number, slot?: number): void {
+    this.conn?.send({ t: 'shop', op, item, qty, slot });
   }
 
   buildSend(buildable: string, tx: number, ty: number): void {

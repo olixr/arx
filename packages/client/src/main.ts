@@ -153,7 +153,7 @@ const PROMPT_LABELS: Record<string, string> = {
 
 const stationPanels = new StationPanels(
   (recipe, qty) => game.craft(recipe, qty),
-  (op, item, qty) => game.bankSend(op, item, qty),
+  (op, item, qty, gearId) => game.bankSend(op, item, qty, undefined, gearId),
   (op, item, qty) => game.shopSend(op, item, qty),
   (buildable) => {
     buildMode = buildable;
@@ -177,9 +177,9 @@ const panels = new Panels(
     const item = game.inventory[slot];
     if (!item) return;
     if (stationPanels.bankOpen) {
-      game.bankSend('deposit', item.item, item.qty);
+      game.bankSend('deposit', item.item, item.qty, slot);
     } else if (stationPanels.shopOpen) {
-      game.shopSend('sell', item.item, 1);
+      game.shopSend('sell', item.item, 1, slot);
     } else {
       game.useSlot(slot);
     }
@@ -193,8 +193,8 @@ const panels = new Panels(
     const item = game.inventory[slot];
     if (!item) return;
     if (action === 'drop') dropSlot(slot);
-    else if (action === 'deposit') game.bankSend('deposit', item.item, item.qty);
-    else if (action === 'sell') game.shopSend('sell', item.item, 1);
+    else if (action === 'deposit') game.bankSend('deposit', item.item, item.qty, slot);
+    else if (action === 'sell') game.shopSend('sell', item.item, 1, slot);
     else game.useSlot(slot);
   },
   () => (stationPanels.bankOpen ? 'bank' : stationPanels.shopOpen ? 'shop' : null),
@@ -369,10 +369,10 @@ const game = new ClientGame(input, {
     sfx.kill();
     input.rumble(0.8, 0.5, 220);
   },
-  onBank: (items) => {
-    if (stationPanels.bankOpen) stationPanels.refreshBank(items);
+  onBank: (items, gear) => {
+    if (stationPanels.bankOpen) stationPanels.refreshBank(items, gear);
     else {
-      stationPanels.openBank(items, lastBankAnchor ?? undefined);
+      stationPanels.openBank(items, lastBankAnchor ?? undefined, gear);
       panels.showInventory();
     }
   },
@@ -480,7 +480,7 @@ function autoEquipTool(): void {
     }
   }
   if (!need) return;
-  const worn = game.equipment.tool ? itemDef(game.equipment.tool)?.tool?.type : undefined;
+  const worn = game.equipment.tool ? itemDef(game.equipment.tool.id)?.tool?.type : undefined;
   if (worn === need) return;
   const idx = game.inventory.findIndex((s) => s !== null && itemDef(s.item)?.tool?.type === need);
   if (idx >= 0) game.useSlot(idx);
