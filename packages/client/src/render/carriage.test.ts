@@ -75,8 +75,27 @@ test('rogue grip: reversed low-line, trailing the facing at every gait', () => {
     const idle = bladeCarriage('rogue', side, 0);
     const run = bladeCarriage('rogue', side, 1);
     const sweep = Math.abs(run.angle - idle.angle);
-    assert.ok(sweep > 0.15 && sweep < 0.6, 'run levels the low-line without changing the hold');
-    assert.ok(run.dy < idle.dy, 'run carry rides a touch higher');
+    assert.ok(sweep > 0.15 && sweep < 0.6, 'run deepens the trail without changing the hold');
+    assert.ok(run.dy < idle.dy, 'the sprint hand lifts only a hair');
+  }
+});
+
+test('the LOW-HANDS law: the assassin fist hangs at resting height at every gait', () => {
+  // The armpit verdict: the rogue fist must NEVER ride up to "carry"
+  // the blade — a raised fist folds the elbow into a cramped bend that
+  // pivots jittery, and the whole stance reads goofy instead of
+  // coiled. The reverse-grip hand stays within a hair of the relaxed
+  // resting hang from idle through sprint.
+  for (const side of SIDES) {
+    for (const compact of [0, 1]) {
+      for (let k = 0; k <= 1.0001; k += 0.05) {
+        const c = bladeCarriage('rogue', side, k, compact);
+        assert.ok(
+          Math.abs(c.dy) <= 0.045,
+          `rogue hand at rest height (dy=${c.dy.toFixed(3)}) at runK=${k.toFixed(2)}`,
+        );
+      }
+    }
   }
 });
 

@@ -1310,9 +1310,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     if (restSettle > 0 && rig.poleStrength > 0.05) {
       const follow =
         sw * (0.3 + 0.7 * rig.runF) * restSettle * Math.min(1, rig.poleStrength);
-      if (isSword) heldAngle += (mainGrip === 'rogue' ? 0.05 : -0.07) * sideW * follow;
+      // A reverse grip is LOCKED to the forearm (an assassin's blade
+      // doesn't flop) — its follow is half the standard grip's lag.
+      if (isSword) heldAngle += (mainGrip === 'rogue' ? 0.03 : -0.07) * sideW * follow;
       else if (isBow) heldAngle += -0.04 * sideW * follow;
-      if (offBlade) offBladeAngle += (offGrip === 'rogue' ? -0.05 : 0.07) * sideW * follow;
+      if (offBlade) offBladeAngle += (offGrip === 'rogue' ? -0.03 : 0.07) * sideW * follow;
     }
     // Standing breath: the hands ride a slow offset sine so the figure
     // is never a freeze-frame — alive even when idle.

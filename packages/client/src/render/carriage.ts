@@ -17,9 +17,12 @@
  *
  * The standard-grip idle numbers are the user-tuned rest carriage
  * (512292f + 6b413e4) — change them only against fresh screenshots.
- * The rogue run rake is capped well short of horizontal: past ~1.0 rad
+ * The rogue run rake is capped well short of horizontal: past ~1.1 rad
  * of reverse rake the blade reads as skewering the belly (the 1.15 rad
- * verdict), so the run stance tightens and rises instead of flattening.
+ * verdict), so the run stance tightens instead of flattening. And the
+ * rogue fist NEVER rides up to "carry" the blade — the armpit verdict:
+ * a raised fist folds the elbow into a cramped bend that pivots
+ * jittery, and the assassin read comes from hanging LOW and coiled.
  */
 
 export type Grip = 'normal' | 'rogue';
@@ -76,14 +79,20 @@ export function bladeCarriage(
   // approved idle angles are the anchors; the run is the same hold,
   // livelier.
   if (grip === 'rogue') {
-    // Reverse grip: blade down-back past the hip, tip toward the heel
-    // — the low-line, one flick from an icepick stab. On the run it
-    // levels a shade toward horizontal-back and rides a touch higher,
-    // pumping with the arm: carried, not dangling.
+    // THE ASSASSIN CARRY (redone after the armpit verdict): low,
+    // quiet, coiled. The fist hangs at the SAME relaxed height as any
+    // resting hand — the old carriage rode the fist up toward the
+    // armpit "carrying" the blade, which folded the elbow into a
+    // cramped near-degenerate bend where every small hand move became
+    // a big forearm pivot (the goofy jittery-wrist read). The reversed
+    // blade lies along the low-line, tip trailing down-back past the
+    // calf — one flick from an icepick stab. The run only deepens the
+    // trail (a blades-back sprint) while the hand stays low and
+    // presses a touch tighter to the body: a knife-fighter at speed.
     return {
-      dx: side * (0.04 + 0.03 * lift) * tight,
-      dy: -0.05 - 0.05 * lift,
-      angle: Math.PI / 2 + side * (0.72 + 0.05 * compact + 0.3 * lift),
+      dx: side * (0.05 - 0.01 * lift) * tight,
+      dy: 0.01 - 0.03 * lift,
+      angle: Math.PI / 2 + side * (0.78 + 0.05 * compact + 0.28 * lift),
       flip: true,
     };
   }
