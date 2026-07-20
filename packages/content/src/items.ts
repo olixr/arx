@@ -1,5 +1,6 @@
 import type { EquipSlot, PassiveId, RarityTier, SkillId, StatusApply } from '@devcraft/shared';
 import { COMPILED_EQUIPMENT } from './equipment/defs.js';
+import type { EnchantEffect } from './equipment/enchants.js';
 import type { ArmorClass, GearSlot } from './equipment/types.js';
 
 export type ToolType = 'axe' | 'pickaxe' | 'rod';
@@ -99,6 +100,8 @@ export interface GearInfo {
   affixPool: Array<{ stat: SkillId | 'maxHp' | 'regen'; w: number }>;
   rarities: readonly RarityTier[];
   acquisition: { drop: boolean; craft: boolean; shop: boolean };
+  /** Native always-on effects (enchant vocabulary, baked into the def). */
+  effects?: EnchantEffect[];
 }
 
 export interface ItemDef {

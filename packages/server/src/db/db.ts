@@ -187,6 +187,14 @@ const MIGRATIONS: string[] = [
   INSERT OR IGNORE INTO character_skills (character_id, skill, xp)
     SELECT character_id, 'tailoring', xp FROM character_skills WHERE skill = 'crafting';
   `,
+  // 16 — enchantments live ON the instance: an EnchantDef id. NULL =
+  // unenchanted. Permanent (no expiry column — unlike oils, an enchant
+  // never dries).
+  `
+  ALTER TABLE inventory_slots ADD COLUMN ench_id TEXT;
+  ALTER TABLE equipment ADD COLUMN ench_id TEXT;
+  ALTER TABLE bank_gear ADD COLUMN ench_id TEXT;
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

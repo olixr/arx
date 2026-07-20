@@ -63,6 +63,12 @@ export interface ItemRoll {
   pwr?: number;
   /** Weapon oil currently on this instance (weapons only). */
   coat?: ItemCoat;
+  /**
+   * Enchantment bonded to this instance — an EnchantDef id from
+   * content/equipment/enchants.ts. Permanent (unlike an oil): it rides
+   * every swap, bank trip, and trade until another scroll replaces it.
+   */
+  ench?: string;
 }
 
 /** Sanity ceiling for wire/DB power values (above every skill cap). */
@@ -87,6 +93,9 @@ export function isItemRoll(v: unknown): v is ItemRoll {
       return false;
     }
   }
+  if (r.ench !== undefined && (typeof r.ench !== 'string' || r.ench.length === 0 || r.ench.length > 40)) {
+    return false;
+  }
   return true;
 }
 
@@ -96,6 +105,7 @@ export function sameRoll(a?: ItemRoll, b?: ItemRoll): boolean {
     a.rar === b.rar &&
     a.seed === b.seed &&
     (a.pwr ?? 0) === (b.pwr ?? 0) &&
-    (a.coat?.id ?? '') === (b.coat?.id ?? '')
+    (a.coat?.id ?? '') === (b.coat?.id ?? '') &&
+    (a.ench ?? '') === (b.ench ?? '')
   );
 }

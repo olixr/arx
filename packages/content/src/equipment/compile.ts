@@ -61,6 +61,7 @@ export function compileEquipment(defs: readonly EquipmentDef[]): {
       affixPool: def.affixPool.map((p) => ({ stat: p.stat, w: p.w ?? 1 })),
       rarities,
       acquisition: { drop: !!acq.drop, craft: !!acq.craft, shop: !!acq.shop },
+      effects: def.effects,
     };
 
     items.push({

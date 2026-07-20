@@ -1,7 +1,9 @@
-import type { EquipSlot, ItemRoll, RarityTier, SkillId } from '@devcraft/shared';
+import type { EquipSlot, ItemRoll, RarityTier, SkillId, StatusId } from '@devcraft/shared';
 import { Rng, hashCoords, hashString, rarityIndex } from '@devcraft/shared';
-import type { CombatStyle } from '../items.js';
+import type { CombatStyle, MagicElement } from '../items.js';
 import { ITEMS, itemDef } from '../items.js';
+import type { EnchantEffect } from './enchants.js';
+import { instanceEffects } from './enchants.js';
 import type { AffixStat, ArmorClass } from './types.js';
 import { ARMOR_CLASS_SLOTS } from './types.js';
 import {
@@ -173,6 +175,14 @@ export interface GearStats {
   speedMult: number;
   /** Multiplier on ability cooldowns (<1 = faster). */
   cooldownMult: number;
+  /** Multiplier on magic max hits of a specific school (1 = neutral). */
+  elementDmgMult: Partial<Record<MagicElement, number>>;
+  /** Flat damage reflected to attackers that strike the wearer. */
+  thorns: number;
+  /** Additional crit chance, percentage points on the base roll. */
+  critPct: number;
+  /** Ability-cooldown ticks shaved on every kill. */
+  onKillHasteTicks: number;
 }
 
 export function emptyGearStats(): GearStats {
@@ -185,7 +195,86 @@ export function emptyGearStats(): GearStats {
     styleDmgMult: { melee: 1, archery: 1, magic: 1 },
     speedMult: 1,
     cooldownMult: 1,
+    elementDmgMult: {},
+    thorns: 0,
+    critPct: 0,
+    onKillHasteTicks: 0,
   };
+}
+
+/**
+ * Fold one aggregate-channel effect into the stats. STRIKE effects
+ * (onHitStatus / lifesteal / backstab) are deliberately ignored here —
+ * they are read at hit time from the weapon instance that landed
+ * (weaponStrikeEffects below), never from the worn aggregate.
+ */
+function foldEffect(out: GearStats, fx: EnchantEffect): void {
+  switch (fx.kind) {
+    case 'skill':
+      out.skillBonus[fx.skill] = (out.skillBonus[fx.skill] ?? 0) + fx.amount;
+      break;
+    case 'maxHp':
+      out.maxHp += fx.amount;
+      break;
+    case 'regen':
+      out.regenPer4s += fx.amount;
+      break;
+    case 'armor':
+      out.armor += fx.amount;
+      break;
+    case 'styleDmg':
+      out.styleDmgMult[fx.style] += fx.pct / 100;
+      break;
+    case 'elementDmg':
+      out.elementDmgMult[fx.element] = (out.elementDmgMult[fx.element] ?? 1) + fx.pct / 100;
+      break;
+    case 'cooldown':
+      out.cooldownMult -= fx.pct / 100;
+      break;
+    case 'speed':
+      out.speedMult += fx.pct / 100;
+      break;
+    case 'thorns':
+      out.thorns += fx.amount;
+      break;
+    case 'crit':
+      out.critPct += fx.pct;
+      break;
+    case 'onKillHaste':
+      out.onKillHasteTicks += fx.ticks;
+      break;
+  }
+}
+
+/**
+ * Strike-channel view of one weapon instance: what fires when THIS
+ * weapon lands a basic. Combines the def's native effects with the
+ * instance's enchant — the poison-coat law generalized.
+ */
+export interface StrikeEffects {
+  onHit: Array<{ status: StatusId; power: number; durationTicks: number; chance: number }>;
+  lifestealFrac: number;
+  backstabBonus: number;
+}
+
+export function weaponStrikeEffects(itemId: string, roll?: ItemRoll): StrikeEffects {
+  const out: StrikeEffects = { onHit: [], lifestealFrac: 0, backstabBonus: 0 };
+  const def = itemDef(itemId);
+  for (const fx of instanceEffects(def?.gear?.effects, roll?.ench)) {
+    if (fx.kind === 'onHitStatus') {
+      out.onHit.push({
+        status: fx.status,
+        power: fx.power,
+        durationTicks: fx.durationTicks,
+        chance: fx.chance,
+      });
+    } else if (fx.kind === 'lifesteal') {
+      out.lifestealFrac += fx.frac;
+    } else if (fx.kind === 'backstab') {
+      out.backstabBonus += fx.bonus;
+    }
+  }
+  return out;
 }
 
 export function aggregateGearStats(
@@ -213,6 +302,11 @@ export function aggregateGearStats(
       // Legacy non-gear items (capes, bucklers) still contribute their
       // flat armor — old defs keep protecting without a gear block.
       out.armor += def.armor ?? 0;
+    }
+    // Native effects + enchant — the aggregate channels only; strike
+    // channels stay with the weapon instance (weaponStrikeEffects).
+    for (const fx of instanceEffects(def.gear?.effects, worn.roll?.ench)) {
+      foldEffect(out, fx);
     }
   }
   for (const cls of Object.keys(out.classCounts) as ArmorClass[]) {

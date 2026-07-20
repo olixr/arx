@@ -683,3 +683,103 @@ test('archmage roster: 22 staff designs, elements ride every bolt, gem swaps cra
   assert.deepEqual(byId.get('nightwell')!.rarities, ['epic', 'legendary']);
   assert.deepEqual(byId.get('worldsplinter')!.rarities, ['legendary']);
 });
+
+// ------------------------------------------------------------------ enchants
+
+test('enchant registry is coherent', async () => {
+  const { ENCHANT_DEFS, ENCHANTS, ELEMENT_REAGENT } = await import('./equipment/enchants.js');
+  const { GEAR_SLOTS } = await import('./equipment/types.js');
+  assert.ok(ENCHANT_DEFS.length >= 30, 'a real roster of enchants');
+  const prefixes = new Set<string>();
+  for (const e of ENCHANT_DEFS) {
+    assert.ok((GEAR_SLOTS as readonly string[]).includes(e.slot), `${e.id} targets a gear slot`);
+    assert.ok(e.tier >= 1 && e.tier <= 3, `${e.id} tier in range`);
+    assert.ok(e.level >= 1 && e.level <= 60, `${e.id} inscribe level sane`);
+    assert.ok(e.effects.length > 0, `${e.id} does something`);
+    assert.ok(!prefixes.has(e.prefix), `${e.id} prefix '${e.prefix}' unique`);
+    prefixes.add(e.prefix);
+    for (const fx of e.effects) {
+      // Poison-making law: venom is the herbalist's craft, never an enchant.
+      if (fx.kind === 'onHitStatus') {
+        assert.notEqual(fx.status, 'venom', `${e.id} must not carry venom`);
+        assert.ok(fx.chance > 0 && fx.chance <= 0.5, `${e.id} on-hit chance sane`);
+      }
+      if (fx.kind === 'lifesteal') assert.ok(fx.frac > 0 && fx.frac <= 0.12, `${e.id} lifesteal sane`);
+    }
+    // Reagent themes resolve to real items.
+    const reagent = ELEMENT_REAGENT[e.element];
+    if (reagent) {
+      // Essence items land in the profession commit; existing reagents must resolve now.
+      if (!reagent.endsWith('_essence')) assert.ok(itemDef(reagent), `${e.id} reagent ${reagent} exists`);
+    }
+  }
+  // Tiers climb the inscribe ladder within each slot's roster.
+  for (const slot of GEAR_SLOTS) {
+    const tiers = ENCHANT_DEFS.filter((e) => e.slot === slot);
+    for (const a of tiers) for (const b of tiers) {
+      if (a.tier < b.tier) assert.ok(a.level < b.level, `${slot}: t${a.tier} ${a.id} below t${b.tier} ${b.id}`);
+    }
+  }
+  assert.equal(ENCHANTS.size, ENCHANT_DEFS.length);
+});
+
+test('enchant effects split aggregate vs strike channels', async () => {
+  const { weaponStrikeEffects } = await import('./equipment/roll.js');
+  const roll = (ench: string): ItemRoll => ({ rar: 'common', seed: 0, ench });
+
+  // Aggregate channels fold from any worn slot.
+  const bare = aggregateGearStats({ body: { id: 'leather_body' } });
+  const hearty = aggregateGearStats({ body: { id: 'leather_body', roll: roll('hearty') } });
+  assert.equal(hearty.maxHp, bare.maxHp + 6, 'hearty adds maxHp');
+  const clever = aggregateGearStats({ head: { id: 'iron_helm', roll: roll('clever') } });
+  const bareHead = aggregateGearStats({ head: { id: 'iron_helm' } });
+  assert.ok(clever.cooldownMult < bareHead.cooldownMult, 'clever quickens cooldowns');
+  const swift = aggregateGearStats({ boots: { id: 'leather_boots', roll: roll('swift') } });
+  assert.ok(swift.speedMult > aggregateGearStats({ boots: { id: 'leather_boots' } }).speedMult);
+  const bristling = aggregateGearStats({ body: { id: 'leather_body', roll: roll('bristling') } });
+  assert.equal(bristling.thorns, 1, 'thorns channel aggregates');
+  const keen = aggregateGearStats({ weapon: { id: 'bronze_sword', roll: roll('keen_edge') } });
+  assert.equal(keen.critPct, 3, 'crit channel aggregates');
+  const blazing = aggregateGearStats({ weapon: { id: 'ember_battlestaff', roll: roll('blazing_edge') } });
+  assert.ok((blazing.elementDmgMult.ember ?? 1) > 1, 'element damage aggregates');
+
+  // Strike channels ride the weapon instance, never the aggregate.
+  const kindled = weaponStrikeEffects('bronze_sword', roll('kindled_edge'));
+  assert.equal(kindled.onHit.length, 1);
+  assert.equal(kindled.onHit[0]!.status, 'burn');
+  const leeching = weaponStrikeEffects('bronze_sword', roll('leeching_edge'));
+  assert.ok(Math.abs(leeching.lifestealFrac - 0.05) < 1e-9);
+  const shadow = weaponStrikeEffects('bronze_dagger', roll('shadow_edge'));
+  assert.ok(shadow.backstabBonus > 0);
+  // ...and shadow's +sneak still reaches the aggregate.
+  const shadowAgg = aggregateGearStats({ weapon: { id: 'bronze_dagger', roll: roll('shadow_edge') } });
+  assert.equal(shadowAgg.skillBonus.sneak, 1);
+});
+
+test('native gear effects ride the same vocabulary', async () => {
+  const { weaponStrikeEffects } = await import('./equipment/roll.js');
+  // Oathkeeper drinks without any enchant at all.
+  assert.ok(weaponStrikeEffects('oathkeeper').lifestealFrac > 0);
+  // The Last Word: strike channel backstab + aggregate channel sneak.
+  // (The instance's rolled affixes may add their own sneak — measure the
+  // native effect as the delta over the derived affix contribution.)
+  assert.ok(weaponStrikeEffects('last_word').backstabBonus > 0);
+  const affixSneak = rolledStats('last_word')!
+    .affixes.filter((a) => a.stat === 'sneak')
+    .reduce((sum, a) => sum + a.value, 0);
+  assert.equal(
+    aggregateGearStats({ weapon: { id: 'last_word' } }).skillBonus.sneak,
+    affixSneak + 2,
+  );
+  // Native and enchant STACK on one instance.
+  const both = weaponStrikeEffects('oathkeeper', { rar: 'legendary', seed: 1, ench: 'leeching_edge' });
+  assert.ok(Math.abs(both.lifestealFrac - 0.1) < 1e-9, 'native 5% + leeching 5%');
+});
+
+test('ItemRoll carries ench through guard and comparison', async () => {
+  const { isItemRoll, sameRoll } = await import('@devcraft/shared');
+  assert.ok(isItemRoll({ rar: 'rare', seed: 3, ench: 'keen_edge' }));
+  assert.ok(!isItemRoll({ rar: 'rare', seed: 3, ench: '' }));
+  assert.ok(!sameRoll({ rar: 'rare', seed: 3, ench: 'keen_edge' }, { rar: 'rare', seed: 3 }));
+  assert.ok(sameRoll({ rar: 'rare', seed: 3, ench: 'keen_edge' }, { rar: 'rare', seed: 3, ench: 'keen_edge' }));
+});

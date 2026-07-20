@@ -62,6 +62,7 @@ import {
   rollLoot,
   rolledStats,
   trinketPowerMult,
+  weaponStrikeEffects,
   type GearStats,
   stageEndMs,
   stageForElapsed,
@@ -490,9 +491,12 @@ const SAVE_INTERVAL_TICKS = 600; // 30s
  * (screen height ÷ camera pitch) — NPC shots test the feet→crown band. */
 const PLAYER_HIT_HEIGHT = 1.9;
 
-/** Damage roll with a 10% crit chance (guaranteed heavy hit). */
-function rollDamage(maxHit: number): { dmg: number; crit: boolean } {
-  if (Math.random() < 0.1) {
+/**
+ * Damage roll with a 10% base crit chance (guaranteed heavy hit).
+ * `critBonusPct` — extra percentage points from gear effects/enchants.
+ */
+function rollDamage(maxHit: number, critBonusPct = 0): { dmg: number; crit: boolean } {
+  if (Math.random() < 0.1 + critBonusPct / 100) {
     return { dmg: maxHit + Math.ceil(maxHit * 0.5), crit: true };
   }
   return { dmg: Math.floor(Math.random() * (maxHit + 1)), crit: false };
@@ -503,8 +507,8 @@ function rollDamage(maxHit: number): { dmg: number; crit: boolean } {
  * hack-and-slash cadence a stream of zero-rolls reads as broken, and
  * reliable chips are what make on-hit haste a rhythm you can trust.
  */
-function rollBasic(maxHit: number): { dmg: number; crit: boolean } {
-  const roll = rollDamage(maxHit);
+function rollBasic(maxHit: number, critBonusPct = 0): { dmg: number; crit: boolean } {
+  const roll = rollDamage(maxHit, critBonusPct);
   return { dmg: Math.max(1, roll.dmg), crit: roll.crit };
 }
 
@@ -2111,9 +2115,16 @@ export class GameServer {
     this.revealPlayer(eid, player);
 
     const level = this.effectiveLevel(player, weapon.style);
+    // School-tuned gear (Blazing Edge etc.) amplifies bolts of its element.
+    const elementMult =
+      weapon.style === 'magic' && weapon.element
+        ? (player.gear.elementDmgMult[weapon.element] ?? 1)
+        : 1;
     const maxHit = Math.max(
       1,
-      Math.round(weapon.damage * (1 + level * 0.05) * player.gear.styleDmgMult[weapon.style]),
+      Math.round(
+        weapon.damage * (1 + level * 0.05) * player.gear.styleDmgMult[weapon.style] * elementMult,
+      ),
     );
 
     if (weapon.style === 'melee') {
@@ -2241,6 +2252,14 @@ export class GameServer {
     xpStyle: SkillId = 'melee',
   ): void {
     const pos = this.positions.must(eid);
+    // Strike effects live on the blade that lands — the echo cut reads
+    // the offhand instance, exactly like coats.
+    const struckWeapon =
+      xpStyle === 'dualwield' ? player.equipment.offhand : player.equipment.weapon;
+    if (struckWeapon) {
+      backstabMult += weaponStrikeEffects(struckWeapon.id, struckWeapon.roll).backstabBonus;
+    }
+    const critPct = player.gear.critPct;
     // A strike out of full stealth backstabs from any angle; otherwise a
     // sneaking attacker must be inside the cone behind the target's facing.
     const backstabs = (npos: PositionComp): boolean =>
@@ -2271,7 +2290,7 @@ export class GameServer {
       // The finisher clears the crowd — everyone in the arc eats it.
       for (const npcEid of inArc) {
         const backstab = backstabs(this.positions.must(npcEid));
-        const { dmg, crit } = rollBasic(backstab ? Math.round(maxHit * backstabMult) : maxHit);
+        const { dmg, crit } = rollBasic(backstab ? Math.round(maxHit * backstabMult) : maxHit, critPct);
         this.damageNpc(npcEid, dmg, eid, xpStyle, {
           crit,
           knockbackMult,
@@ -2295,7 +2314,7 @@ export class GameServer {
     }
     if (bestTarget !== null) {
       const backstab = backstabs(this.positions.must(bestTarget));
-      const { dmg, crit } = rollBasic(backstab ? Math.round(maxHit * backstabMult) : maxHit);
+      const { dmg, crit } = rollBasic(backstab ? Math.round(maxHit * backstabMult) : maxHit, critPct);
       this.damageNpc(bestTarget, dmg, eid, xpStyle, {
         crit,
         knockbackMult,
@@ -2558,26 +2577,24 @@ export class GameServer {
     powerMult = 1,
   ): void {
     const pos = this.positions.must(casterEid);
-    // Player casters carry their armor-class style multiplier in.
-    const gearMult = fromNpc
-      ? 1
-      : ((this.players.get(casterEid)?.gear.styleDmgMult as Record<string, number> | undefined)?.[
-          style
-        ] ?? 1);
+    // Magic Art projectiles fly in the caster's staff school — the
+    // element is a weapon fact, so a Frost Nova from an ember staff
+    // still novas blue, but its bolts stay the staff's own fire.
+    const casterPlayer = fromNpc ? undefined : this.players.get(casterEid);
+    const element = casterPlayer
+      ? this.equippedWeapon(casterPlayer)?.weapon.element
+      : undefined;
+    // Player casters carry their armor-class style multiplier in, plus
+    // any school-tuned element amplifier (Blazing Edge etc.).
+    const gearMult = casterPlayer
+      ? ((casterPlayer.gear.styleDmgMult as Record<string, number>)[style] ?? 1) *
+        (style === 'magic' && element ? (casterPlayer.gear.elementDmgMult[element] ?? 1) : 1)
+      : 1;
     const maxHit =
       ab.damage > 0
         ? Math.max(1, Math.round(ab.damage * (1 + level * 0.05) * gearMult * powerMult))
         : 0;
     const knockbackMult = ab.knockback ?? 1;
-    // Magic Art projectiles fly in the caster's staff school — the
-    // element is a weapon fact, so a Frost Nova from an ember staff
-    // still novas blue, but its bolts stay the staff's own fire.
-    const element = fromNpc
-      ? undefined
-      : (() => {
-          const player = this.players.get(casterEid);
-          return player ? this.equippedWeapon(player)?.weapon.element : undefined;
-        })();
 
     switch (ab.shape) {
       case 'melee_arc': {
@@ -3648,7 +3665,8 @@ export class GameServer {
           // feet→crown band so a shot crossing the chest or head lands.
           const dy = bandDy(pos.y, npos.y, npcHitHeight(npc.def));
           if (dx * dx + dy * dy < (npc.def.radius + 0.25) ** 2) {
-            const roll = proj.basic ? rollBasic(proj.maxHit) : rollDamage(proj.maxHit);
+            const critPct = this.players.get(proj.ownerEid)?.gear.critPct ?? 0;
+            const roll = proj.basic ? rollBasic(proj.maxHit, critPct) : rollDamage(proj.maxHit, critPct);
             const dmg = this.executeAdjust(npcEid, roll.dmg, proj.executeBelow);
             const crit = roll.crit;
             this.damageNpc(npcEid, dmg, proj.ownerEid, proj.style, {
@@ -3756,6 +3774,7 @@ export class GameServer {
     // structural: a coated dagger poisons, the staff you swap to
     // doesn't. Stacking a chill oil under an envenomed blade detonates
     // a reaction per hit — deliberate reaction-economy fuel.
+    let strikeSteal = 0;
     if (opts.basic) {
       const attacker = this.players.get(attackerEid);
       if (attacker) {
@@ -3766,6 +3785,22 @@ export class GameServer {
         if (coat && coat.until > Date.now()) {
           const status = itemDef(coat.id)?.coating?.status;
           if (status) this.applyStatusToNpc(npcEid, status, attackerEid, style);
+        }
+        // Strike effects (native + enchant) obey the same law as coats:
+        // they live on the instance that landed the blow.
+        if (struck) {
+          const strike = weaponStrikeEffects(struck.id, struck.roll);
+          strikeSteal = strike.lifestealFrac;
+          for (const oh of strike.onHit) {
+            if (Math.random() < oh.chance) {
+              this.applyStatusToNpc(
+                npcEid,
+                { status: oh.status, power: oh.power, durationTicks: oh.durationTicks },
+                attackerEid,
+                style,
+              );
+            }
+          }
         }
         for (const b of attacker.buffs) {
           if (b.onHitStatus) this.applyStatusToNpc(npcEid, b.onHitStatus, attackerEid, style);
@@ -3816,15 +3851,16 @@ export class GameServer {
       if (opts.backstab) {
         this.grantXp(attackerEid, attacker, 'sneak', BACKSTAB_XP_BASE + dmg * 3);
       }
-      // Bloodlust: melee wounds feed the wounder.
+      // Bloodlust buffs feed melee wounds; a leeching weapon enchant
+      // feeds every basic ITS steel lands, whatever the style.
+      let steal = strikeSteal;
       if (style === 'melee') {
-        let steal = 0;
         for (const b of attacker.buffs) steal = Math.max(steal, b.meleeLifesteal);
-        if (steal > 0) {
-          const ahealth = this.healths.get(attackerEid);
-          if (ahealth && ahealth.hp < ahealth.maxHp) {
-            ahealth.hp = Math.min(ahealth.maxHp, ahealth.hp + Math.max(1, Math.round(dmg * steal)));
-          }
+      }
+      if (steal > 0) {
+        const ahealth = this.healths.get(attackerEid);
+        if (ahealth && ahealth.hp < ahealth.maxHp) {
+          ahealth.hp = Math.min(ahealth.maxHp, ahealth.hp + Math.max(1, Math.round(dmg * steal)));
         }
       }
     }
@@ -3857,6 +3893,17 @@ export class GameServer {
       // Battle Rush: each kill feeds the next chase.
       if (this.hasPassive(killer, 'battle_rush')) {
         killer.buffs.push(mkBuff({ speedMult: 1.25, untilTick: this.tickCount + 50 }));
+      }
+      // On-kill haste (Battlecharged etc.): victory shaves the Q/E slots.
+      const haste = killer.gear.onKillHasteTicks;
+      if (haste > 0) {
+        const before0 = killer.abilityCd[0];
+        const before1 = killer.abilityCd[1];
+        killer.abilityCd[0] = Math.max(0, killer.abilityCd[0] - haste);
+        killer.abilityCd[1] = Math.max(0, killer.abilityCd[1] - haste);
+        if (killer.abilityCd[0] !== before0 || killer.abilityCd[1] !== before1) {
+          this.sendCooldowns(killer);
+        }
       }
     }
 
@@ -4063,9 +4110,11 @@ export class GameServer {
         status: npc.def.attackStatus,
         sourceEid: npcEid,
       });
-      // Thorns: biting the buckler costs a point.
-      if (this.hasPassive(player, 'thorns')) {
-        this.damageNpc(npcEid, 1, targetEid, 'defence', {});
+      // Thorns: biting the buckler costs a point; bristling enchants
+      // stack more points on top of the passive's one.
+      const thorns = (this.hasPassive(player, 'thorns') ? 1 : 0) + player.gear.thorns;
+      if (thorns > 0) {
+        this.damageNpc(npcEid, thorns, targetEid, 'defence', {});
       }
     } else {
       this.damageSummon(targetEid, raw);

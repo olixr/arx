@@ -1,5 +1,6 @@
 import type { PassiveId, RarityTier, SkillId, StationType } from '@devcraft/shared';
 import type { WeaponStats } from '../items.js';
+import type { EnchantEffect } from './enchants.js';
 
 /**
  * The interchangeable equipment schema. An EquipmentDef is JSON-safe by
@@ -74,6 +75,12 @@ export interface EquipmentDef {
   weapon?: WeaponStats;
   /** Gear-carried passive (hotbar tray), same field ItemDef carries. */
   passive?: PassiveId;
+  /**
+   * Native always-on effects — the same vocabulary enchants use, baked
+   * into the def itself. This is what makes a chase item DO something
+   * beyond stats; an enchant stacks a second layer on top.
+   */
+  effects?: EnchantEffect[];
   /** Which stats this piece may roll, weighted. */
   affixPool: AffixPoolEntry[];
   /** Tiers this item can exist at; default all five. */

@@ -6,6 +6,7 @@
 export * from './abilities.js';
 export * from './items.js';
 export * from './equipment/types.js';
+export * from './equipment/enchants.js';
 export * from './equipment/tables.js';
 export * from './equipment/roll.js';
 export * from './equipment/naming.js';

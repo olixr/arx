@@ -9,6 +9,7 @@ function rowRoll(
   pwr?: number | null,
   coatId?: string | null,
   coatUntil?: number | null,
+  enchId?: string | null,
 ): ItemRoll | undefined {
   if (rar === null || seed === null || !isRarityTier(rar)) return undefined;
   const roll: ItemRoll = { rar, seed };
@@ -17,6 +18,7 @@ function rowRoll(
   if (coatId != null && coatUntil != null && coatUntil > Date.now()) {
     roll.coat = { id: coatId, until: coatUntil };
   }
+  if (enchId != null) roll.ench = enchId;
   return roll;
 }
 
@@ -154,7 +156,7 @@ export class AccountStore {
     size: number,
   ): Array<{ item: string; qty: number; roll?: ItemRoll } | null> {
     const rows = this.db
-      .prepare('SELECT slot, item_id, qty, rar, seed, pwr, coat_id, coat_until FROM inventory_slots WHERE character_id = ?')
+      .prepare('SELECT slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id FROM inventory_slots WHERE character_id = ?')
       .all(characterId) as Array<{
       slot: number;
       item_id: string;
@@ -164,6 +166,7 @@ export class AccountStore {
       pwr: number | null;
       coat_id: string | null;
       coat_until: number | null;
+      ench_id: string | null;
     }>;
     const slots = new Array<{ item: string; qty: number; roll?: ItemRoll } | null>(size).fill(null);
     for (const row of rows) {
@@ -171,7 +174,7 @@ export class AccountStore {
         slots[row.slot] = {
           item: row.item_id,
           qty: row.qty,
-          roll: rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until),
+          roll: rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id),
         };
       }
     }
@@ -273,7 +276,7 @@ export class AccountStore {
 
   loadEquipment(characterId: number): Record<string, { id: string; roll?: ItemRoll }> {
     const rows = this.db
-      .prepare('SELECT slot, item_id, rar, seed, pwr, coat_id, coat_until FROM equipment WHERE character_id = ?')
+      .prepare('SELECT slot, item_id, rar, seed, pwr, coat_id, coat_until, ench_id FROM equipment WHERE character_id = ?')
       .all(characterId) as Array<{
       slot: string;
       item_id: string;
@@ -282,10 +285,11 @@ export class AccountStore {
       pwr: number | null;
       coat_id: string | null;
       coat_until: number | null;
+      ench_id: string | null;
     }>;
     const out: Record<string, { id: string; roll?: ItemRoll }> = {};
     for (const row of rows) {
-      out[row.slot] = { id: row.item_id, roll: rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until) };
+      out[row.slot] = { id: row.item_id, roll: rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id) };
     }
     return out;
   }
@@ -298,7 +302,7 @@ export class AccountStore {
     try {
       this.db.prepare('DELETE FROM equipment WHERE character_id = ?').run(characterId);
       const stmt = this.db.prepare(
-        'INSERT INTO equipment (character_id, slot, item_id, rar, seed, pwr, coat_id, coat_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO equipment (character_id, slot, item_id, rar, seed, pwr, coat_id, coat_until, ench_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       );
       for (const [slot, worn] of Object.entries(equipment)) {
         if (worn) {
@@ -306,6 +310,7 @@ export class AccountStore {
             characterId, slot, worn.id,
             worn.roll?.rar ?? null, worn.roll?.seed ?? null, worn.roll?.pwr ?? null,
             worn.roll?.coat?.id ?? null, worn.roll?.coat?.until ?? null,
+            worn.roll?.ench ?? null,
           );
         }
       }
@@ -323,7 +328,7 @@ export class AccountStore {
    */
   loadBankGear(characterId: number): Array<{ id: number; item: string; roll: ItemRoll }> {
     const rows = this.db
-      .prepare('SELECT id, item_id, rar, seed, pwr, coat_id, coat_until FROM bank_gear WHERE character_id = ? ORDER BY id')
+      .prepare('SELECT id, item_id, rar, seed, pwr, coat_id, coat_until, ench_id FROM bank_gear WHERE character_id = ? ORDER BY id')
       .all(characterId) as Array<{
       id: number;
       item_id: string;
@@ -332,10 +337,11 @@ export class AccountStore {
       pwr: number | null;
       coat_id: string | null;
       coat_until: number | null;
+      ench_id: string | null;
     }>;
     const out: Array<{ id: number; item: string; roll: ItemRoll }> = [];
     for (const row of rows) {
-      const roll = rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until);
+      const roll = rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id);
       if (roll) out.push({ id: row.id, item: row.item_id, roll });
     }
     return out;
@@ -343,8 +349,8 @@ export class AccountStore {
 
   insertBankGear(characterId: number, item: string, roll: ItemRoll): number {
     const res = this.db
-      .prepare('INSERT INTO bank_gear (character_id, item_id, rar, seed, pwr, coat_id, coat_until) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(characterId, item, roll.rar, roll.seed, roll.pwr ?? null, roll.coat?.id ?? null, roll.coat?.until ?? null);
+      .prepare('INSERT INTO bank_gear (character_id, item_id, rar, seed, pwr, coat_id, coat_until, ench_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(characterId, item, roll.rar, roll.seed, roll.pwr ?? null, roll.coat?.id ?? null, roll.coat?.until ?? null, roll.ench ?? null);
     return Number(res.lastInsertRowid);
   }
 
@@ -412,7 +418,7 @@ export class AccountStore {
     try {
       this.db.prepare('DELETE FROM inventory_slots WHERE character_id = ?').run(characterId);
       const stmt = this.db.prepare(
-        'INSERT INTO inventory_slots (character_id, slot, item_id, qty, rar, seed, pwr, coat_id, coat_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO inventory_slots (character_id, slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       );
       for (let i = 0; i < slots.length; i++) {
         const slot = slots[i];
@@ -421,6 +427,7 @@ export class AccountStore {
             characterId, i, slot.item, slot.qty,
             slot.roll?.rar ?? null, slot.roll?.seed ?? null, slot.roll?.pwr ?? null,
             slot.roll?.coat?.id ?? null, slot.roll?.coat?.until ?? null,
+            slot.roll?.ench ?? null,
           );
         }
       }
