@@ -17,8 +17,12 @@ export interface NodeDef {
   /** What the tile becomes while depleted (null = never depletes). */
   depletedTile: Tile | null;
   respawnSec: number;
-  /** Occasional extra find alongside the main yield (e.g. seeds). */
-  bonusYield?: { item: string; chance: number };
+  /**
+   * Occasional extra find alongside the main yield: a single item, or a
+   * loot table rolled at this node's levelReq — the interaction-loot
+   * hook (chests and other lootable props resolve the same way).
+   */
+  bonusYield?: { item?: string; table?: string; chance: number };
 }
 
 export const NODES: readonly NodeDef[] = [

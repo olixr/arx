@@ -27,7 +27,6 @@ import {
   type Look,
   type InvSlot,
   MAX_ITEM_POWER,
-  RARITY_TIERS,
   type ItemRoll,
   type EquippedItem,
   type SkillId,
@@ -53,16 +52,13 @@ import {
   isCropTile,
   aggregateGearStats,
   craftRarityWeights,
-  dropRarityWeights,
   effectiveReq,
-  HEIRLOOM_CHANCE,
-  HEIRLOOM_MIN_NPC_LEVEL,
-  heirloomFor,
   instanceName,
   itemDef,
   makeRoll,
   npcHitHeight,
   pickRarity,
+  rollLoot,
   rolledStats,
   trinketPowerMult,
   type GearStats,
@@ -1043,9 +1039,18 @@ export class GameServer {
       return;
     }
     this.grantXp(eid, player, node.skill, node.xp);
-    // Occasional extra find (wild herbs shed seeds).
+    // Occasional extra find (wild herbs shed seeds) — a single item or
+    // a loot table rolled at the node's level (interaction loot).
     if (node.bonusYield && Math.random() < node.bonusYield.chance) {
-      addItem(player.inventory, node.bonusYield.item, 1);
+      if (node.bonusYield.item) addItem(player.inventory, node.bonusYield.item, 1);
+      if (node.bonusYield.table) {
+        for (const drop of rollLoot(node.bonusYield.table, {
+          level: node.levelReq,
+          rand: Math.random,
+        })) {
+          addItem(player.inventory, drop.item, drop.qty, drop.roll);
+        }
+      }
     }
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
 
@@ -3566,46 +3571,12 @@ export class GameServer {
       });
       this.updateChunkMembership(dropEid);
     };
-    // Item power rides every drop: a foe stronger than the def's native
-    // requirement re-issues the piece at its own level (small jitter),
-    // so the same loot entry keeps paying as camps get harder.
-    const dropPower = (item: string): number | undefined => {
-      const def = itemDef(item);
-      const native = def?.gear?.levelReq?.level ?? (def?.relic || def?.sigil ? 0 : undefined);
-      if (native === undefined) return undefined;
-      const pwr = npc.def.level + Math.floor(Math.random() * 4);
-      return pwr > native ? pwr : undefined;
-    };
-    for (const entry of npc.def.loot) {
-      if (Math.random() > entry.chance) continue;
-      const qty = entry.qty[0] + Math.floor(Math.random() * (entry.qty[1] - entry.qty[0] + 1));
-      // Dropped gear rolls a rarity weighted by the foe's level —
-      // tougher camps carry better-kept equipment. Relics and sigils
-      // roll too: the trinket's rarity and power scale its active.
-      const def = itemDef(entry.item);
-      const gear = def?.gear;
-      let roll: ItemRoll | undefined;
-      if (gear?.acquisition.drop) {
-        roll = makeRoll(pickRarity(dropRarityWeights(npc.def.level), gear.rarities, Math.random));
-        roll.pwr = dropPower(entry.item);
-      } else if (def?.relic || def?.sigil) {
-        roll = makeRoll(pickRarity(dropRarityWeights(npc.def.level), RARITY_TIERS, Math.random));
-        roll.pwr = dropPower(entry.item);
-      }
-      dropLoot(entry.item, qty, roll);
-    }
-    // The heirloom law: strong foes may carry ANY piece of the old
-    // wardrobe, re-issued at their own power — same art, same identity,
-    // promoted numbers. Every set ever shipped stays in rotation.
-    if (npc.def.level >= HEIRLOOM_MIN_NPC_LEVEL && Math.random() < HEIRLOOM_CHANCE) {
-      const heirloom = heirloomFor(npc.def.level, Math.random);
-      if (heirloom) {
-        const gear = itemDef(heirloom)?.gear;
-        const roll = makeRoll(
-          pickRarity(dropRarityWeights(npc.def.level), gear?.rarities ?? RARITY_TIERS, Math.random),
-        );
-        roll.pwr = npc.def.level + Math.floor(Math.random() * 4);
-        dropLoot(heirloom, 1, roll);
+    // The foe's assigned tables pay out through the one resolver, which
+    // owns the rarity and item-power laws (heirlooms included — they're
+    // a table entry now, assigned like any other).
+    for (const tableId of npc.def.loot) {
+      for (const drop of rollLoot(tableId, { level: npc.def.level, rand: Math.random })) {
+        dropLoot(drop.item, drop.qty, drop.roll);
       }
     }
 

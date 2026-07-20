@@ -11,6 +11,7 @@ import { COTTAGE_SMALL, STRUCTURE_TEMPLATES, WELL_PLAZA } from './structures/tem
 import { ABILITIES, TECHNIQUES, abilityDef } from './abilities.js';
 import { ITEMS } from './items.js';
 import { NPCS, TOWN_SPAWNS } from './npcs.js';
+import { LOOT_TABLES } from './loot/tables.js';
 import { RECIPES } from './recipes.js';
 import { NODES } from './nodes.js';
 import { BUILDABLES } from './buildables.js';
@@ -54,9 +55,9 @@ test('every equippable weapon carries an Art — no dead Q slots', () => {
 
 test('npc loot, specials, and spawns all resolve', () => {
   for (const [id, npc] of NPCS) {
-    for (const entry of npc.loot) {
-      assert.ok(ITEMS.has(entry.item), `${id} loot '${entry.item}' missing`);
-      assert.ok(entry.qty[0] >= 1 && entry.qty[1] >= entry.qty[0], `${id} loot qty malformed`);
+    assert.ok(npc.loot.length > 0, `${id} has no loot tables`);
+    for (const tableId of npc.loot) {
+      assert.ok(LOOT_TABLES.has(tableId), `${id} loot table '${tableId}' missing`);
     }
     if (npc.special) {
       const ab = abilityDef(npc.special.ability);
@@ -216,7 +217,13 @@ test('foraging nodes, buildables, and shop stock resolve', () => {
   for (const node of NODES) {
     assert.ok(ITEMS.has(node.yieldItem), `${node.name} yield '${node.yieldItem}' missing`);
     if (node.bonusYield) {
-      assert.ok(ITEMS.has(node.bonusYield.item), `${node.name} bonus yield missing`);
+      const { item, table } = node.bonusYield;
+      assert.ok(
+        (item !== undefined) !== (table !== undefined),
+        `${node.name} bonus yield needs exactly one of item/table`,
+      );
+      if (item) assert.ok(ITEMS.has(item), `${node.name} bonus yield missing`);
+      if (table) assert.ok(LOOT_TABLES.has(table), `${node.name} bonus table missing`);
       assert.ok(node.bonusYield.chance > 0 && node.bonusYield.chance <= 1);
     }
   }

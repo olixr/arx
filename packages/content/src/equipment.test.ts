@@ -253,8 +253,13 @@ test('trinket potency grows with rarity and power', () => {
 test('acquisition routes are honest: drops in loot tables, shop stock flagged', async () => {
   const { NPCS } = await import('./npcs.js');
   const { GENERAL_STORE } = await import('./shop.js');
+  const { reachableItems } = await import('./loot/roll.js');
   const looted = new Set<string>();
-  for (const npc of NPCS.values()) for (const entry of npc.loot) looted.add(entry.item);
+  for (const npc of NPCS.values()) {
+    for (const tableId of npc.loot) {
+      for (const item of reachableItems(tableId)) looted.add(item);
+    }
+  }
   for (const def of EQUIPMENT_DEFS) {
     if (def.acquisition.drop) {
       assert.ok(looted.has(def.id), `${def.id} declares drop but no NPC drops it`);
