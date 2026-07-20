@@ -860,6 +860,14 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // a legendary-only heirloom. Every signature blade carries its own
   // Weapon Art — pure data on the one ability executor.
   ...swordDefs(),
+
+  // ===================================================== the rogue's roster
+  // Twenty bespoke daggers. The thief's arsenal: sneak-gated, dialed on
+  // backstabMult rather than raw damage, fastest cadences in the game.
+  // Three smithing designs across the metal ladder, the migrated dirk
+  // line, three bespoke crafts, and fourteen drop-only finds ending in
+  // a legendary-only last word.
+  ...daggerDefs(),
 ];
 
 // ---------------------------------------------------------- set makers
@@ -2846,6 +2854,336 @@ function swordDefs(): EquipmentDef[] {
   ];
 
   return [...arming, ...falchion, ...gladius, ...scimitar, ...crafts, ...finds];
+}
+
+// ----------------------------------------------------- the rogue's roster
+// Dagger authoring laws: gates ride SNEAK (the rogue's ladder — tanto,
+// the fighter's dagger, is the deliberate exception); backstabMult is
+// the tuning dial that separates a workman's knife (2.2) from an
+// assassin's (3.2); metal lines reuse the sword metalLine() maker.
+
+function daggerDefs(): EquipmentDef[] {
+  const THIEF_POOL: AffixPoolEntry[] = [
+    { stat: 'sneak', w: 3 },
+    { stat: 'melee' },
+    { stat: 'foraging' },
+    { stat: 'maxHp' },
+  ];
+  const ASSASSIN_POOL: AffixPoolEntry[] = [
+    { stat: 'sneak', w: 3 },
+    { stat: 'melee', w: 2 },
+    { stat: 'maxHp' },
+  ];
+  // The tanto is the one dagger that fights face-on — melee gates, a
+  // soldier's pool with a rogue accent.
+  const SOLDIER_DAGGER_POOL: AffixPoolEntry[] = [
+    { stat: 'melee', w: 2 },
+    { stat: 'defence' },
+    { stat: 'sneak' },
+    { stat: 'maxHp' },
+  ];
+
+  // ---- the dirk line, migrated + extended: same ids the game shipped
+  // with (roll-less DB rows adopt as common/seed 0), steel and gold new.
+  const dirks: EquipmentDef[] = [
+    {
+      id: 'bronze_dagger', name: 'Bronze dagger', slot: 'weapon',
+      weapon: { style: 'melee', damage: 1, cooldownTicks: 5, range: 1.35, art: 'shadowstep', backstabMult: 2.5 },
+      affixPool: THIEF_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 2, xp: 35, station: 'anvil', ticks: 45,
+        inputs: [{ item: 'bronze_bar', qty: 1 }],
+      },
+      value: 28, color: '#a4744b', code: 'Bd',
+      desc: 'Light enough to forget, sharp enough to remember.',
+    },
+    {
+      id: 'iron_dagger', name: 'Iron dagger', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 10 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 5, range: 1.45, art: 'shadowstep', backstabMult: 2.5 },
+      affixPool: THIEF_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 15, xp: 75, station: 'anvil', ticks: 55,
+        inputs: [{ item: 'iron_bar', qty: 1 }],
+      },
+      value: 85, color: '#8d9299', code: 'Id',
+      desc: 'A quiet argument, settled from behind.',
+    },
+    {
+      id: 'steel_dagger', name: 'Steel dagger', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 24 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.5, art: 'shadowstep', backstabMult: 2.5 },
+      affixPool: THIEF_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 31, xp: 200, station: 'anvil', ticks: 65,
+        inputs: [{ item: 'steel_bar', qty: 1 }],
+      },
+      value: 230, color: '#b8bec8', code: 'Dd',
+      desc: 'Steel taught to whisper. The edge never gossips.',
+    },
+    {
+      id: 'gold_dagger', name: 'Gold dagger', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 28 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.5, art: 'shadowstep', backstabMult: 2.6 },
+      affixPool: THIEF_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 41, xp: 280, station: 'anvil', ticks: 70,
+        inputs: [{ item: 'gold_bar', qty: 1 }],
+      },
+      value: 640, color: '#e8c04c', code: 'Gg',
+      desc: 'For the thief with nothing left to steal but style.',
+    },
+  ];
+
+  // ---- three smithing lines across the ores.
+  const stiletto = metalLine(
+    {
+      key: 'stiletto', name: 'Stiletto', cooldownTicks: 5, range: 1.5,
+      art: 'shadowstep', backstabMult: 2.8, bars: 1, ticks: 55, pool: ASSASSIN_POOL,
+    },
+    [
+      { metal: 'bronze', bar: 'bronze_bar', color: '#a4744b', damage: 1, meleeReq: 0, smithReq: 6, xp: 45, value: 42, code: 'Tt',
+        desc: 'All point, no argument. Finds the gap in anything.' },
+      { metal: 'iron', bar: 'iron_bar', color: '#8d9299', damage: 2, meleeReq: 0, smithReq: 19, xp: 115, value: 125, code: 'Ti',
+        desc: 'A cold iron period at the end of a short sentence.' },
+      { metal: 'steel', bar: 'steel_bar', color: '#c4cad4', damage: 3, meleeReq: 0, smithReq: 35, xp: 250, value: 310, code: 'Tn',
+        desc: 'Mail shrugs at swords. It does not shrug at this.' },
+      { metal: 'gold', bar: 'gold_bar', color: '#e8c04c', damage: 3, meleeReq: 0, smithReq: 41, xp: 310, value: 720, code: 'Tq',
+        desc: 'A golden thorn for silk-lined pockets.' },
+    ],
+  );
+  const kris = metalLine(
+    {
+      key: 'kris', name: 'Kris', cooldownTicks: 6, range: 1.45,
+      art: 'serpents_kiss', backstabMult: 2.4, bars: 1, ticks: 60, pool: THIEF_POOL,
+    },
+    [
+      { metal: 'bronze', bar: 'bronze_bar', color: '#a4744b', damage: 1, meleeReq: 0, smithReq: 14, xp: 80, value: 55, code: 'Qk',
+        desc: 'The blade waves so the wound cannot close its eyes.' },
+      { metal: 'iron', bar: 'iron_bar', color: '#8d9299', damage: 2, meleeReq: 0, smithReq: 26, xp: 160, value: 160, code: 'Ki',
+        desc: 'Seven bends of iron, each one an opinion.' },
+      { metal: 'steel', bar: 'steel_bar', color: '#c4cad4', damage: 3, meleeReq: 0, smithReq: 39, xp: 300, value: 360, code: 'Kn',
+        desc: 'A river of steel. Rivers always find a way in.' },
+      { metal: 'gold', bar: 'gold_bar', color: '#e8c04c', damage: 3, meleeReq: 0, smithReq: 45, xp: 380, value: 820, code: 'Ko',
+        desc: 'A golden serpent, mid-strike, forever.' },
+    ],
+  );
+  const tanto = metalLine(
+    {
+      key: 'tanto', name: 'Tanto', cooldownTicks: 6, range: 1.5,
+      art: 'lunge', backstabMult: 2.2, bars: 1, ticks: 58, pool: SOLDIER_DAGGER_POOL,
+    },
+    [
+      { metal: 'bronze', bar: 'bronze_bar', color: '#a4744b', damage: 2, meleeReq: 6, smithReq: 10, xp: 65, value: 48, code: 'Ta',
+        desc: 'A chisel that chose violence. Honest work either way.' },
+      { metal: 'iron', bar: 'iron_bar', color: '#8d9299', damage: 3, meleeReq: 16, smithReq: 22, xp: 140, value: 140, code: 'Ty',
+        desc: 'The duelist\'s second answer, kept in the off hand.' },
+      { metal: 'steel', bar: 'steel_bar', color: '#c4cad4', damage: 4, meleeReq: 30, smithReq: 37, xp: 290, value: 330, code: 'To',
+        desc: 'Armor-writ: short, angled, final.' },
+      { metal: 'gold', bar: 'gold_bar', color: '#e8c04c', damage: 4, meleeReq: 34, smithReq: 43, xp: 350, value: 760, code: 'Tz',
+        desc: 'Ceremony up front, business at the tip.' },
+    ],
+  );
+  // Stiletto/kris gate on sneak, not melee — patch the maker's default.
+  const sneakGate = (defs: EquipmentDef[], levels: number[]): EquipmentDef[] =>
+    defs.map((d, i) => {
+      const v = { ...d };
+      if (levels[i]! > 1) v.levelReq = { skill: 'sneak', level: levels[i]! };
+      else delete v.levelReq;
+      return v;
+    });
+
+  // ---- bespoke crafts.
+  const crafts: EquipmentDef[] = [
+    {
+      id: 'vagrants_friend', name: 'Vagrant\'s Friend', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 2 },
+      weapon: { style: 'melee', damage: 1, cooldownTicks: 5, range: 1.4, art: 'shadowstep', backstabMult: 2.5 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'foraging' }, { stat: 'regen' }, { stat: 'maxHp' }],
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 8, xp: 55, station: 'anvil', ticks: 50,
+        inputs: [{ item: 'bronze_bar', qty: 1 }, { item: 'leather', qty: 1 }, { item: 'twine', qty: 2 }],
+      },
+      value: 30, color: '#8a7a5c', code: 'Vf',
+      desc: 'A plain knife that has opened tins, cut rope, and saved lives. It will not let go of your hand.',
+    },
+    {
+      id: 'sting', name: 'Sting', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 25 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 4, range: 1.4, art: 'stinger', backstabMult: 2.6 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'melee' }, { stat: 'farming' }, { stat: 'maxHp' }],
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 32, xp: 260, station: 'anvil', ticks: 75,
+        inputs: [{ item: 'gold_bar', qty: 1 }, { item: 'sunflower', qty: 2 }, { item: 'twine', qty: 1 }],
+      },
+      value: 450, color: '#e8b64c', code: 'Zg',
+      desc: 'Amber and gold, banded like the wasp that inspired it. The fastest blade ever put to a whetstone.',
+    },
+    {
+      id: 'coldsnap', name: 'Coldsnap', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 30 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.45, art: 'cold_snap', backstabMult: 2.4 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'magic' }, { stat: 'defence' }, { stat: 'maxHp' }],
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 36, xp: 340, station: 'anvil', ticks: 85,
+        inputs: [{ item: 'steel_bar', qty: 1 }, { item: 'gold_bar', qty: 1 }, { item: 'moonbell', qty: 2 }],
+      },
+      value: 560, color: '#b8d8e8', code: 'Qf',
+      desc: 'Quenched at midwinter midnight and never warm again. The first frost, kept on a hip.',
+    },
+  ];
+
+  // ---- drop-only wild finds: the knives the world already carries.
+  const finds: EquipmentDef[] = [
+    {
+      id: 'shiv', name: 'Shiv', slot: 'weapon',
+      weapon: { style: 'melee', damage: 1, cooldownTicks: 4, range: 1.25, art: 'shadowstep', backstabMult: 2.3 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'melee' }, { stat: 'maxHp' }],
+      rarities: ['common', 'uncommon', 'rare'],
+      acquisition: { drop: true },
+      value: 15, color: '#8a8276', code: 'Zx',
+      desc: 'A filed scrap wrapped in rag and bad intentions. Somebody loved it once.',
+    },
+    {
+      id: 'ratter', name: 'Ratter', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 3 },
+      weapon: { style: 'melee', damage: 1, cooldownTicks: 5, range: 1.35, art: 'shadowstep', backstabMult: 2.4 },
+      affixPool: [{ stat: 'sneak' }, { stat: 'beastcraft', w: 2 }, { stat: 'foraging' }],
+      acquisition: { drop: true },
+      value: 60, color: '#9a8468', code: 'Ra',
+      desc: 'The rat-catcher\'s trade knife — notched once per hundred. It ran out of room.',
+    },
+    {
+      id: 'scaler', name: 'Scaler', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 10 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 5, range: 1.4, art: 'riptide', backstabMult: 2.4 },
+      affixPool: [{ stat: 'fishing', w: 2 }, { stat: 'sneak' }, { stat: 'cooking' }, { stat: 'maxHp' }],
+      acquisition: { drop: true },
+      value: 180, color: '#9ab8b0', code: 'Sa',
+      desc: 'A legendary angler\'s gutting knife, lost to the coast raiders. It still smells faintly of the one that got away.',
+    },
+    {
+      id: 'fangtooth', name: 'Fangtooth', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 12 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 5, range: 1.4, art: 'lunge', backstabMult: 2.6 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'beastcraft' }, { stat: 'melee' }, { stat: 'maxHp' }],
+      acquisition: { drop: true },
+      value: 140, color: '#d8d2c0', code: 'Zf',
+      desc: 'A wolf\'s killing tooth, socketed and edged. It remembers how to be a mouth.',
+    },
+    {
+      id: 'bogsting', name: 'Bogsting', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 14 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 6, range: 1.45, art: 'thorn_lash', backstabMult: 2.4 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'herbalism' }, { stat: 'regen' }],
+      acquisition: { drop: true },
+      value: 250, color: '#5a7a58', code: 'Zs',
+      desc: 'A curved talon of bog-iron, green to the root. The marsh stings back.',
+    },
+    {
+      id: 'bonepick', name: 'Bonepick', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 16 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 5, range: 1.5, art: 'bone_needle', backstabMult: 2.7 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'melee' }, { stat: 'maxHp' }],
+      acquisition: { drop: true },
+      value: 300, color: '#e2dcc8', code: 'Zb',
+      desc: 'Carved from one femur into one purpose. The dead make excellent tools of themselves.',
+    },
+    {
+      id: 'redhand', name: 'Redhand', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 18 },
+      weapon: { style: 'melee', damage: 2, cooldownTicks: 5, range: 1.4, art: 'quicksilver', backstabMult: 2.7 },
+      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'melee' }, { stat: 'maxHp' }],
+      acquisition: { drop: true },
+      value: 340, color: '#a04a48', code: 'Rn',
+      desc: 'The guild\'s initiation blade — the red is lacquer, they insist. Membership is permanent.',
+    },
+    {
+      id: 'nightthorn', name: 'Nightthorn', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 22 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.45, art: 'shadow_fang', backstabMult: 2.8 },
+      affixPool: ASSASSIN_POOL,
+      acquisition: { drop: true },
+      value: 520, color: '#4a4058', code: 'Nt',
+      desc: 'A wave of blued steel grown in the crypt\'s dark, petal by petal. It blooms at throats.',
+    },
+    {
+      id: 'leech', name: 'Leech', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 26 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 6, range: 1.4, art: 'crimson_tithe', backstabMult: 2.5 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'vitality', w: 2 }, { stat: 'regen' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 640, color: '#6a3a44', code: 'Lj',
+      desc: 'It drinks a little from every wound and never says thank you. You feel better anyway.',
+    },
+    {
+      id: 'hush', name: 'Hush', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 30 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.5, art: 'shadowstep', backstabMult: 3.0 },
+      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'melee' }, { stat: 'maxHp' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 780, color: '#b8b4c4', code: 'Hu',
+      desc: 'Rooms go quiet when it leaves the sheath. Rooms stay quiet after.',
+    },
+    {
+      id: 'palefire', name: 'Palefire', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 32 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 6, range: 1.45, art: 'pale_flame', backstabMult: 2.5 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'magic', w: 2 }, { stat: 'maxHp' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 820, color: '#c8dce8', code: 'Pe',
+      desc: 'A tanto that burns cold — the flame casts no light and keeps no warmth. Winter\'s candle.',
+    },
+    {
+      id: 'sparkfang', name: 'Sparkfang', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 35 },
+      weapon: { style: 'melee', damage: 3, cooldownTicks: 5, range: 1.45, art: 'spark_lash', backstabMult: 2.6 },
+      affixPool: [{ stat: 'sneak', w: 2 }, { stat: 'magic' }, { stat: 'melee' }, { stat: 'maxHp' }],
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 900, color: '#7a88b8', code: 'Qs',
+      desc: 'A hooked claw of storm-iron. Every cut files a complaint with the sky, and the sky answers.',
+    },
+    {
+      id: 'kingsbane', name: 'Kingsbane', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 40 },
+      weapon: { style: 'melee', damage: 4, cooldownTicks: 5, range: 1.5, art: 'kings_bane', backstabMult: 2.8 },
+      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'melee', w: 2 }, { stat: 'maxHp' }],
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1200, color: '#c9a23c', code: 'Ke',
+      desc: 'Gold-hilted, black-hearted — the needle that ended a dynasty. Crowns fit anyone, it whispers.',
+    },
+    {
+      id: 'last_word', name: 'The Last Word', slot: 'weapon',
+      levelReq: { skill: 'sneak', level: 50 },
+      weapon: { style: 'melee', damage: 4, cooldownTicks: 4, range: 1.5, art: 'last_word', backstabMult: 3.2 },
+      affixPool: [{ stat: 'sneak', w: 3 }, { stat: 'melee' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      value: 2000, color: '#f0f0f4', code: 'Lz',
+      desc: 'Every argument ends. This one ends them politely, completely, and from behind.',
+    },
+  ];
+
+  return [
+    ...dirks,
+    ...sneakGate(stiletto, [4, 14, 28, 32]),
+    ...sneakGate(kris, [8, 18, 32, 36]),
+    ...tanto,
+    ...crafts,
+    ...finds,
+  ];
 }
 
 /** Compiled once at module load — throws loudly on any malformed def. */

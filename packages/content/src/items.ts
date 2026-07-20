@@ -229,30 +229,7 @@ const defs: ItemDef[] = [
   { id: 'cowhide', name: 'Cowhide', stackable: false, value: 8, desc: 'A whole hide, ready for the tanner\'s bench.', color: '#a08468', code: 'Hd' },
   { id: 'wolf_fur', name: 'Wolf fur', stackable: false, value: 20, desc: 'Thick winter fur, smoke-grey and warm.', color: '#6a6f7d', code: 'Wf' },
 
-  // Daggers — the rogue's line: fastest cadence, shortest reach, and the
-  // payoff lives in the backstab, not the base hit.
-  {
-    id: 'bronze_dagger',
-    name: 'Bronze dagger',
-    stackable: false,
-    value: 28,
-    equipSlot: 'weapon',
-    weapon: { style: 'melee', damage: 1, cooldownTicks: 5, range: 1.35, art: 'shadowstep', backstabMult: 2.5 },
-    desc: 'Light enough to forget, sharp enough to remember.',
-    color: '#a4744b',
-    code: 'Bd',
-  },
-  {
-    id: 'iron_dagger',
-    name: 'Iron dagger',
-    stackable: false,
-    value: 85,
-    equipSlot: 'weapon',
-    weapon: { style: 'melee', damage: 2, cooldownTicks: 5, range: 1.45, art: 'shadowstep', backstabMult: 2.5 },
-    desc: 'A quiet argument, settled from behind.',
-    color: '#8d9299',
-    code: 'Id',
-  },
+  // Daggers live in equipment/defs.ts (the rogue's roster) — rolled gear.
   {
     id: 'oak_shortbow',
     name: 'Oak shortbow',

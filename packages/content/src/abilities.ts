@@ -292,6 +292,134 @@ const defs: AbilityDef[] = [
     self: { meleeLifesteal: 0.35, durationTicks: 120 },
   },
 
+  // ----------------------------------------- rogue's-roster weapon arts
+  // The dagger identities: short dashes, deep statuses, and one polite
+  // execute. Cadence runs faster than the sword arts — a rogue's Art is
+  // a beat in the combo, not a setpiece.
+  {
+    id: 'serpents_kiss',
+    name: 'Serpent\'s Kiss',
+    desc: 'The wave finds the vein — a shallow cut that will not close.',
+    color: '#8a9a4a',
+    code: 'Ss',
+    cooldownTicks: 140, // 7 s
+    shape: 'melee_arc',
+    damage: 5,
+    range: 1.8,
+    arc: 0.9,
+    status: { status: 'bleed', power: 1, durationTicks: 110 },
+  },
+  {
+    id: 'stinger',
+    name: 'Stinger',
+    desc: 'One wingbeat forward, one perfect puncture.',
+    color: '#e8b64c',
+    code: 'Sg',
+    cooldownTicks: 100, // 5 s — the wasp does not wait
+    shape: 'dash_strike',
+    damage: 5,
+    dashTiles: 2.0,
+    status: { status: 'bleed', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'cold_snap',
+    name: 'Cold Snap',
+    desc: 'The first frost happens all at once, an arm\'s length around.',
+    color: '#b8d8e8',
+    code: 'Cn',
+    cooldownTicks: 150, // 7.5 s
+    castFreezeTicks: 4,
+    shape: 'nova',
+    damage: 5,
+    radius: 1.8,
+    status: { status: 'chill', power: 1, durationTicks: 90 },
+  },
+  {
+    id: 'bone_needle',
+    name: 'Bone Needle',
+    desc: 'The dead lend a dart. Thrown, it remembers where marrow lives.',
+    color: '#e2dcc8',
+    code: 'Bn',
+    cooldownTicks: 130, // 6.5 s
+    shape: 'projectile_fan',
+    damage: 7,
+    range: 9,
+    projectiles: 1,
+    projectileSpeed: 18,
+  },
+  {
+    id: 'shadow_fang',
+    name: 'Shadow Fang',
+    desc: 'The dark takes one long step and bites at the end of it.',
+    color: '#4a4058',
+    code: 'Sw',
+    cooldownTicks: 150, // 7.5 s
+    shape: 'dash_strike',
+    damage: 7,
+    dashTiles: 3.6,
+  },
+  {
+    id: 'crimson_tithe',
+    name: 'Crimson Tithe',
+    desc: 'For four seconds, every wound you open pays you back.',
+    color: '#6a3a44',
+    code: 'Ct',
+    cooldownTicks: 240, // 12 s
+    shape: 'self_buff',
+    damage: 0,
+    self: { meleeLifesteal: 0.5, durationTicks: 80 },
+  },
+  {
+    id: 'pale_flame',
+    name: 'Pale Flame',
+    desc: 'A sweep of fire that never warmed anything in its life.',
+    color: '#c8dce8',
+    code: 'Pl',
+    cooldownTicks: 150, // 7.5 s
+    shape: 'melee_arc',
+    damage: 6,
+    range: 1.9,
+    arc: 1.0,
+    status: { status: 'chill', power: 1, durationTicks: 90 },
+  },
+  {
+    id: 'spark_lash',
+    name: 'Spark Lash',
+    desc: 'The hook grounds a live wire into whoever is standing closest.',
+    color: '#7a88b8',
+    code: 'Sl',
+    cooldownTicks: 140, // 7 s
+    shape: 'chain_zap',
+    damage: 6,
+    range: 5,
+    radius: 2.6,
+    chainTargets: 2,
+    status: { status: 'shock', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'kings_bane',
+    name: 'King\'s Bane',
+    desc: 'Cross the room the way rumor does, and land the way history does.',
+    color: '#c9a23c',
+    code: 'Kb',
+    cooldownTicks: 170, // 8.5 s
+    shape: 'dash_strike',
+    damage: 10,
+    dashTiles: 3.0,
+    status: { status: 'bleed', power: 1, durationTicks: 80 },
+  },
+  {
+    id: 'last_word',
+    name: 'Last Word',
+    desc: 'Step in, say it once, and the conversation is over.',
+    color: '#f0f0f4',
+    code: 'Lw',
+    cooldownTicks: 200, // 10 s
+    shape: 'dash_strike',
+    damage: 14,
+    dashTiles: 2.6,
+  },
+
   // ---------------------------------------------------- relic actives
   {
     id: 'ember_dash',

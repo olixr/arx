@@ -149,6 +149,10 @@ const defs: NpcDef[] = [
       { item: 'cutpurse_gloves_alleyrat', qty: [1, 1], chance: 0.014 },
       // Rustbite: something dragged into the nest, years ago.
       { item: 'rustbite', qty: [1, 1], chance: 0.02 },
+      // Knives of the nest: a wrapped shard, and the rat-catcher's own
+      // trade blade — the rats keep what beat them.
+      { item: 'shiv', qty: [1, 1], chance: 0.03 },
+      { item: 'ratter', qty: [1, 1], chance: 0.02 },
     ],
     respawnSec: 15,
     color: '#8a7a6a',
@@ -205,6 +209,7 @@ const defs: NpcDef[] = [
       // Blades of the camp: scavenged junk and goblin ironwork.
       { item: 'rustbite', qty: [1, 1], chance: 0.03 },
       { item: 'gobsplitter', qty: [1, 1], chance: 0.025 },
+      { item: 'shiv', qty: [1, 1], chance: 0.025 },
     ],
     respawnSec: 25,
     color: '#5c8a3a',
@@ -261,6 +266,11 @@ const defs: NpcDef[] = [
       // The throwers raid the coast AND the fens — their blades say so.
       { item: 'gobsplitter', qty: [1, 1], chance: 0.02 },
       { item: 'fenreaper', qty: [1, 1], chance: 0.015 },
+      // Knives off the raiders' belts: the marsh talon, plunder from a
+      // famous tackle box, and a guild blade someone shouldn't have had.
+      { item: 'bogsting', qty: [1, 1], chance: 0.018 },
+      { item: 'scaler', qty: [1, 1], chance: 0.015 },
+      { item: 'redhand', qty: [1, 1], chance: 0.012 },
     ],
     respawnSec: 30,
     color: '#6a9a3a',
@@ -360,6 +370,12 @@ const defs: NpcDef[] = [
       { item: 'fenreaper', qty: [1, 1], chance: 0.01 },
       { item: 'gravewhisper', qty: [1, 1], chance: 0.012 },
       { item: 'bloodletter', qty: [1, 1], chance: 0.008 },
+      // Knives of the crypt: a femur made useful, the guild's red
+      // secret, the assassin's black petal, and the thing that drinks.
+      { item: 'bonepick', qty: [1, 1], chance: 0.015 },
+      { item: 'redhand', qty: [1, 1], chance: 0.01 },
+      { item: 'nightthorn', qty: [1, 1], chance: 0.01 },
+      { item: 'leech', qty: [1, 1], chance: 0.008 },
     ],
     respawnSec: 30,
     color: '#d8d4c8',
@@ -444,6 +460,13 @@ const defs: NpcDef[] = [
       { item: 'sovereign', qty: [1, 1], chance: 0.025 },
       { item: 'starfall', qty: [1, 1], chance: 0.01 },
       { item: 'oathkeeper', qty: [1, 1], chance: 0.005 },
+      // The knives of everyone who came at him sideways. The Last Word
+      // only exists legendary — the rogue's white whale.
+      { item: 'hush', qty: [1, 1], chance: 0.05 },
+      { item: 'sparkfang', qty: [1, 1], chance: 0.04 },
+      { item: 'nightthorn', qty: [1, 1], chance: 0.03 },
+      { item: 'kingsbane', qty: [1, 1], chance: 0.02 },
+      { item: 'last_word', qty: [1, 1], chance: 0.005 },
     ],
     respawnSec: 90,
     color: '#e8e2d0',
@@ -516,6 +539,10 @@ const defs: NpcDef[] = [
       // packs — the frost-fogged brand itself.
       { item: 'wolffang', qty: [1, 1], chance: 0.03 },
       { item: 'frostbrand', qty: [1, 1], chance: 0.01 },
+      // The pack's knives: a socketed killing tooth, and the cold
+      // candle that walks with the midwinter packs.
+      { item: 'fangtooth', qty: [1, 1], chance: 0.03 },
+      { item: 'palefire', qty: [1, 1], chance: 0.008 },
     ],
     respawnSec: 35,
     color: '#6a6f7d',

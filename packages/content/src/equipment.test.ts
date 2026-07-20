@@ -432,7 +432,7 @@ test('early-game leather sets: four dye lots each, colorways mirror their base',
 test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates hold', async () => {
   const { ABILITIES } = await import('./abilities.js');
   const swords = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
-  assert.equal(swords.length, 32, 'arming 3 + lines 12 + crafts 5 + finds 12');
+  assert.equal(swords.length, 65, 'swords 32 + daggers 33');
   for (const s of swords) {
     assert.equal(s.weapon?.style, 'melee');
     assert.ok(s.weapon!.art && ABILITIES.has(s.weapon!.art), `${s.id} art ${s.weapon!.art} exists`);
@@ -458,4 +458,46 @@ test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates 
   const common = rolledStats('dawnbreaker', { rar: 'common', seed: 1 })!;
   const legendary = rolledStats('dawnbreaker', { rar: 'legendary', seed: 1 })!;
   assert.ok(legendary.damage! > common.damage!, 'rarity multiplies the edge');
+});
+
+test('rogue roster: 20 dagger designs, sneak gates, backstab dial, ladders climb', async () => {
+  const { ABILITIES } = await import('./abilities.js');
+  const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
+  const daggers = [
+    'bronze_dagger', 'iron_dagger', 'steel_dagger', 'gold_dagger',
+    'stiletto', 'iron_stiletto', 'steel_stiletto', 'gold_stiletto',
+    'kris', 'iron_kris', 'steel_kris', 'gold_kris',
+    'tanto', 'iron_tanto', 'steel_tanto', 'gold_tanto',
+    'vagrants_friend', 'sting', 'coldsnap',
+    'shiv', 'ratter', 'scaler', 'fangtooth', 'bogsting', 'bonepick', 'redhand',
+    'nightthorn', 'leech', 'hush', 'palefire', 'sparkfang', 'kingsbane', 'last_word',
+  ];
+  for (const id of daggers) {
+    const d = byId.get(id);
+    assert.ok(d, `${id} exists`);
+    assert.equal(d!.weapon?.style, 'melee');
+    // The dagger identity: fast cadence, short reach, a real backstab.
+    assert.ok(d!.weapon!.cooldownTicks <= 6, `${id} keeps dagger cadence`);
+    assert.ok(d!.weapon!.range <= 1.5, `${id} keeps dagger reach`);
+    assert.ok((d!.weapon!.backstabMult ?? 0) >= 2.2, `${id} carries a backstab dial`);
+    assert.ok(d!.weapon!.art && ABILITIES.has(d!.weapon!.art), `${id} art resolves`);
+  }
+  // Metal ladders climb through the ores.
+  for (const key of ['stiletto', 'kris', 'tanto']) {
+    const line = ['', 'iron_', 'steel_', 'gold_'].map((m) => byId.get(`${m}${key}`)!);
+    for (let i = 1; i < line.length; i++) {
+      assert.ok(line[i]!.weapon!.damage >= line[i - 1]!.weapon!.damage, `${key} damage climbs`);
+      assert.ok(line[i]!.recipe!.levelReq > line[i - 1]!.recipe!.levelReq, `${key} smithing climbs`);
+    }
+  }
+  // Stiletto/kris gate on SNEAK (the rogue's ladder); tanto on melee.
+  assert.equal(byId.get('iron_stiletto')!.levelReq!.skill, 'sneak');
+  assert.equal(byId.get('iron_kris')!.levelReq!.skill, 'sneak');
+  assert.equal(byId.get('iron_tanto')!.levelReq!.skill, 'melee');
+  // The chase steepens; the heirloom only exists legendary.
+  assert.deepEqual(byId.get('kingsbane')!.rarities, ['rare', 'epic', 'legendary']);
+  assert.deepEqual(byId.get('last_word')!.rarities, ['legendary']);
+  // The Last Word out-backstabs everything.
+  const best = Math.max(...daggers.map((id) => byId.get(id)!.weapon!.backstabMult ?? 0));
+  assert.equal(byId.get('last_word')!.weapon!.backstabMult, best);
 });

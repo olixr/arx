@@ -112,30 +112,8 @@ const defs: RecipeDef[] = [
     output: { item: 'gold_bar', qty: 1 },
     ticks: 50,
   },
-  {
-    id: 'smith_bronze_dagger',
-    name: 'Bronze dagger',
-    skill: 'smithing',
-    levelReq: 2,
-    xp: 35,
-    station: 'anvil',
-    inputs: [{ item: 'bronze_bar', qty: 1 }],
-    output: { item: 'bronze_dagger', qty: 1 },
-    ticks: 45,
-  },
-  {
-    id: 'smith_iron_dagger',
-    name: 'Iron dagger',
-    skill: 'smithing',
-    levelReq: 15,
-    xp: 75,
-    station: 'anvil',
-    inputs: [{ item: 'iron_bar', qty: 1 }],
-    output: { item: 'iron_dagger', qty: 1 },
-    ticks: 55,
-  },
-  // Sword recipes are generated from the blade roster in
-  // equipment/defs.ts (craft_<itemId>) — smithing lines, bespoke crafts.
+  // Sword and dagger recipes are generated from the blade/rogue rosters
+  // in equipment/defs.ts (craft_<itemId>) — smithing lines, bespoke crafts.
   {
     id: 'smith_gold_ring',
     name: 'Gold ring',

@@ -1,7 +1,7 @@
 import { CLOTH_COLORS, HAIR_COLORS, PoseState, SKIN_TONES, type Look } from '@devcraft/shared';
 import { itemDef } from '@devcraft/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
-import { drawSword, swordStyle } from './weapons.js';
+import { bladeStyle, drawSword } from './weapons.js';
 import { LegRig, chooseLimbSign, solveLimb, type LegPose, type LegRigConfig } from './legs.js';
 import {
   bodyStyle,
@@ -1056,11 +1056,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Everything blends on poseT, so a combat follow-through settles
   // into carriage over the same 280 ms every pose change uses.
   const isStaff = weapon !== undefined && weapon.id.includes('staff');
-  // Daggers share the sword carriage (incl. the rogue reverse grip).
-  // Sword identity comes from the style registry — the blade roster's
-  // ids (falchion, oathkeeper, ...) don't all say 'sword'.
-  const isSword =
-    weapon !== undefined && (swordStyle(weapon.id) !== null || weapon.id.includes('dagger'));
+  // Blades — swords and daggers both — share the low carriage (incl.
+  // the rogue reverse grip). Identity comes from the style registry;
+  // roster ids (falchion, hush, ...) don't all say 'sword'/'dagger'.
+  const isSword = weapon !== undefined && bladeStyle(weapon.id) !== null;
   let heldAngle = thrustR !== null ? rig.dir : mainAngle;
   let staffGrip = 0.34; // combat default: gripped low, business end forward
   let armSwingK = 1;
@@ -1718,29 +1717,11 @@ function drawHeldItem(
   // fist, or the bow reads as resting on the wrist.
   if (extra?.carry) ctx.translate(-0.18 * s * extra.carry, 0);
 
-  if (itemId.includes('dagger')) {
-    // The sword language compressed: a short wicked blade, slim wrapped
-    // grip, no pommel gem — a tool, not an heirloom.
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(0.03 * s, -0.032 * s);
-    ctx.lineTo(0.2 * s, -0.032 * s);
-    ctx.lineTo(0.29 * s, 0);
-    ctx.lineTo(0.2 * s, 0.032 * s);
-    ctx.lineTo(0.03 * s, 0.032 * s);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = shade(color, 30);
-    ctx.fillRect(0.04 * s, -0.024 * s, 0.17 * s, 0.02 * s);
-    ctx.fillStyle = '#4a3a2a';
-    ctx.fillRect(0.0 * s, -0.06 * s, 0.035 * s, 0.12 * s);
-    ctx.fillStyle = '#6b4a26';
-    ctx.fillRect(-0.07 * s, -0.028 * s, 0.07 * s, 0.056 * s);
-  } else if (swordStyle(itemId, color)) {
-    // The blade roster: every sword resolves a SwordStyle — bespoke
-    // silhouette, guard, pommel, and a living fx channel. Unknown
-    // '*sword' ids get a color-derived arming blade.
-    drawSword(ctx, swordStyle(itemId, color)!, s, rig.nowMs, rig.hurt);
+  if (bladeStyle(itemId, color)) {
+    // The blade + rogue rosters: every sword AND dagger resolves a
+    // style — bespoke silhouette, guard, pommel, living fx channel.
+    // Unknown '*sword'/'*dagger' ids get color-derived fallbacks.
+    drawSword(ctx, bladeStyle(itemId, color)!, s, rig.nowMs, rig.hurt);
   } else if (itemId.includes('axe') || itemId.includes('pickaxe')) {
     ctx.fillStyle = '#8a6a45';
     ctx.beginPath();

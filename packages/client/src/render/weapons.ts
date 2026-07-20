@@ -23,7 +23,16 @@ export type BladeKind =
   | 'saber'    // shallow curve, slim and quick
   | 'rapier'   // long needle with a ricasso
   | 'cutlass'  // short broad curve, clipped tip
-  | 'cleaver'; // brutal square-nosed chopper
+  | 'cleaver'  // brutal square-nosed chopper
+  // ---- the dagger vocabulary (short blades, len ≈ 0.5–0.7):
+  | 'dirk'     // symmetric double-edge taper with a midrib
+  | 'stiletto' // needle over a squared ricasso — all point
+  | 'kris'     // the wave blade, two full bends
+  | 'karambit' // hooked claw, edge on the inner curve
+  | 'tanto'    // straight edge, hard angled tip facet
+  | 'shivkind' // jagged wrapped scrap — menace by neglect
+  | 'talon'    // one smooth fang curve
+  | 'leafblade'; // small waisted leaf, the utility knife
 
 export type GuardKind =
   | 'cross'  // straight quillon bar
@@ -35,7 +44,8 @@ export type GuardKind =
   | 'crown'  // crenellated bar
   | 'wing'   // paired swept wings
   | 'bolt'   // zigzag storm bar
-  | 'stub';  // crude block, barely a guard
+  | 'stub'   // crude block, barely a guard
+  | 'none';  // guardless — a knife trusts its grip
 
 export type PommelKind =
   | 'round' | 'gem' | 'fang' | 'ring' | 'crescent' | 'star' | 'crown' | 'none';
@@ -236,29 +246,205 @@ export const SWORD_STYLES: Record<string, SwordStyle> = {
   },
 };
 
+/**
+ * The rogue's roster wardrobe. Daggers reuse the whole SwordStyle
+ * vocabulary at knife length — len runs 0.5–0.7, guards go small or
+ * vanish, and the backstab identity lives in hooks, waves and needles.
+ */
+export const DAGGER_STYLES: Record<string, SwordStyle> = {
+  // ---- the dirk line.
+  bronze_dagger: {
+    blade: 'dirk', color: '#c08a52', len: 0.62, guard: 'stub', guardColor: '#4a3a2a',
+    grip: '#6b4a26', pommel: 'round', pommelColor: '#4a3a2a',
+  },
+  iron_dagger: {
+    blade: 'dirk', color: '#8d9299', len: 0.62, guard: 'stub', guardColor: '#3e3a44',
+    grip: '#4a3a2a', pommel: 'round', pommelColor: '#3e3a44',
+  },
+  steel_dagger: {
+    blade: 'dirk', color: '#c4cad4', len: 0.65, guard: 'cross', guardColor: '#5a5f6a',
+    grip: '#3a3540', wrap: '#b8bec8', pommel: 'round', pommelColor: '#5a5f6a',
+  },
+  gold_dagger: {
+    blade: 'dirk', color: '#e8c04c', edge: '#fff2cc', len: 0.65, guard: 'cross', guardColor: '#b8863f',
+    grip: '#6a2a3a', wrap: '#d9a441', pommel: 'gem', pommelColor: '#b8863f', gem: '#c4553d',
+  },
+
+  // ---- the stiletto line.
+  stiletto: {
+    blade: 'stiletto', color: '#c08a52', len: 0.7, guard: 'disc', guardColor: '#4a3a2a',
+    grip: '#5a4a32', pommel: 'round', pommelColor: '#4a3a2a',
+  },
+  iron_stiletto: {
+    blade: 'stiletto', color: '#9aa0a8', len: 0.7, guard: 'disc', guardColor: '#3e3a44',
+    grip: '#3a3540', pommel: 'round', pommelColor: '#3e3a44',
+  },
+  steel_stiletto: {
+    blade: 'stiletto', color: '#c4cad4', len: 0.72, guard: 'disc', guardColor: '#5a5f6a',
+    grip: '#2e3038', wrap: '#b8bec8', pommel: 'round', pommelColor: '#5a5f6a',
+  },
+  gold_stiletto: {
+    blade: 'stiletto', color: '#e8c04c', edge: '#fff2cc', len: 0.72, guard: 'disc', guardColor: '#b8863f',
+    grip: '#6a2a3a', wrap: '#d9a441', pommel: 'gem', pommelColor: '#b8863f', gem: '#8f9ed6',
+  },
+
+  // ---- the kris line.
+  kris: {
+    blade: 'kris', color: '#c08a52', len: 0.62, guard: 'fang', guardColor: '#6b4a26',
+    grip: '#5a4a32', pommel: 'crescent', pommelColor: '#4a3a2a',
+  },
+  iron_kris: {
+    blade: 'kris', color: '#9aa0a8', len: 0.62, guard: 'fang', guardColor: '#6a6578',
+    grip: '#3a3540', wrap: '#6a6578', pommel: 'crescent', pommelColor: '#6a6578',
+  },
+  steel_kris: {
+    blade: 'kris', color: '#c4cad4', len: 0.65, guard: 'fang', guardColor: '#5a5f6a',
+    grip: '#2e3038', wrap: '#b8bec8', pommel: 'crescent', pommelColor: '#5a5f6a',
+  },
+  gold_kris: {
+    blade: 'kris', color: '#e8c04c', edge: '#fff2cc', len: 0.65, guard: 'fang', guardColor: '#b8863f',
+    grip: '#6a2a3a', wrap: '#d9a441', pommel: 'gem', pommelColor: '#b8863f', gem: '#c4553d',
+  },
+
+  // ---- the tanto line.
+  tanto: {
+    blade: 'tanto', color: '#c08a52', len: 0.6, guard: 'disc', guardColor: '#4a3a2a',
+    grip: '#5a4a32', wrap: '#8a6a45', pommel: 'none',
+  },
+  iron_tanto: {
+    blade: 'tanto', color: '#9aa0a8', len: 0.6, guard: 'disc', guardColor: '#3e3a44',
+    grip: '#3a3540', wrap: '#5b4028', pommel: 'none',
+  },
+  steel_tanto: {
+    blade: 'tanto', color: '#c4cad4', len: 0.62, guard: 'disc', guardColor: '#5a5f6a',
+    grip: '#2e3038', wrap: '#d9a441', pommel: 'none',
+  },
+  gold_tanto: {
+    blade: 'tanto', color: '#e8c04c', edge: '#fff2cc', len: 0.62, guard: 'disc', guardColor: '#b8863f',
+    grip: '#6a2a3a', wrap: '#d9a441', pommel: 'none',
+  },
+
+  // ---- bespoke crafts.
+  vagrants_friend: {
+    blade: 'leafblade', color: '#a89878', edge: '#d0c4a0', len: 0.55,
+    guard: 'stub', guardColor: '#6b4a26', grip: '#8a7a5c', wrap: '#b0a068',
+    pommel: 'ring', pommelColor: '#6b4a26',
+  },
+  sting: {
+    blade: 'stiletto', color: '#e8b64c', edge: '#fff2cc', fuller: '#3a3238', len: 0.68,
+    guard: 'wing', guardColor: '#d9a441', grip: '#3a3238', wrap: '#e8b64c',
+    pommel: 'gem', pommelColor: '#3a3238', gem: '#e8b64c', fx: 'sun', fxColor: '#ffe08a',
+  },
+  coldsnap: {
+    blade: 'dirk', color: '#cfe2f0', edge: '#ffffff', fuller: '#8ac4e8', len: 0.62,
+    guard: 'cross', guardColor: '#7a94ac', grip: '#3a4a5c', wrap: '#a8c8dc',
+    pommel: 'gem', pommelColor: '#7a94ac', gem: '#b8d8e8', fx: 'frost', fxColor: '#e8f4ff',
+  },
+
+  // ---- drop-only wild finds.
+  shiv: {
+    blade: 'shivkind', color: '#8a8276', edge: '#a8a094', fuller: '#5a5248', len: 0.5,
+    guard: 'none', guardColor: '#5a5248', grip: '#6e5a40', wrap: '#8a8276', pommel: 'none',
+  },
+  ratter: {
+    blade: 'leafblade', color: '#9a8468', edge: '#c0aa88', len: 0.5, notched: true,
+    guard: 'stub', guardColor: '#5a4a3a', grip: '#4a3a2a', pommel: 'ring', pommelColor: '#8a8276',
+  },
+  scaler: {
+    blade: 'leafblade', color: '#9ab8b0', edge: '#d0e8e0', fuller: '#5a7a72', len: 0.58,
+    guard: 'stub', guardColor: '#4a5a58', grip: '#3d5a58', wrap: '#b0a068',
+    pommel: 'round', pommelColor: '#4a5a58', fx: 'gleam', fxColor: '#e8fff8',
+  },
+  fangtooth: {
+    blade: 'karambit', color: '#d8d2c0', edge: '#f4efe0', fuller: '#a89e88', len: 0.52,
+    guard: 'none', guardColor: '#5a6470', grip: '#5a6470', wrap: '#8d939f',
+    pommel: 'ring', pommelColor: '#8d939f',
+  },
+  bogsting: {
+    blade: 'talon', color: '#5a7a58', edge: '#8aa484', fuller: '#3a4a38', len: 0.55,
+    guard: 'thorn', guardColor: '#3e4a38', grip: '#3a3e34', wrap: '#79a355',
+    pommel: 'round', pommelColor: '#3e4a38',
+  },
+  bonepick: {
+    blade: 'stiletto', color: '#e2dcc8', edge: '#f8f4e4', fuller: '#b0a890', len: 0.68,
+    guard: 'none', guardColor: '#b0a890', grip: '#c9c2ac', wrap: '#8a8276',
+    pommel: 'fang', pommelColor: '#e2dcc8',
+  },
+  redhand: {
+    blade: 'dirk', color: '#8d9299', edge: '#c8ccd8', fuller: '#a04a48', len: 0.6,
+    guard: 'stub', guardColor: '#5a2e2c', grip: '#a04a48', wrap: '#6a3230',
+    pommel: 'round', pommelColor: '#5a2e2c',
+  },
+  nightthorn: {
+    blade: 'kris', color: '#5f5478', edge: '#a898d0', fuller: '#7a6a9c', len: 0.62,
+    guard: 'thorn', guardColor: '#3a3448', grip: '#2a2438', wrap: '#5a4a78',
+    pommel: 'gem', pommelColor: '#3a3448', gem: '#8a7ab8', fx: 'void', fxColor: '#a89ad0',
+  },
+  leech: {
+    blade: 'talon', color: '#95545e', edge: '#c07a84', fuller: '#c4372a', len: 0.55,
+    guard: 'none', guardColor: '#3a2228', grip: '#3a2228', wrap: '#8a3040',
+    pommel: 'gem', pommelColor: '#3a2228', gem: '#c4372a', fx: 'blood', fxColor: '#e04a38',
+  },
+  hush: {
+    blade: 'stiletto', color: '#b8b4c4', edge: '#e2dee8', fuller: '#8a8698', len: 0.72,
+    guard: 'disc', guardColor: '#5a5666', grip: '#3a3844', wrap: '#8a8698',
+    pommel: 'round', pommelColor: '#5a5666',
+  },
+  palefire: {
+    blade: 'tanto', color: '#c8dce8', edge: '#ffffff', fuller: '#8ac4e8', len: 0.6,
+    guard: 'disc', guardColor: '#7a94ac', grip: '#2e3a48', wrap: '#a8c8dc',
+    pommel: 'none', fx: 'frost', fxColor: '#e8f6ff',
+  },
+  sparkfang: {
+    blade: 'karambit', color: '#7a88b8', edge: '#c9d4f0', fuller: '#4a5a8a', len: 0.52,
+    guard: 'bolt', guardColor: '#e8e06a', grip: '#2e3448', wrap: '#e8e06a',
+    pommel: 'ring', pommelColor: '#4a5a8a', fx: 'storm', fxColor: '#fff2a0',
+  },
+  kingsbane: {
+    blade: 'stiletto', color: '#6a5f78', edge: '#b0a4c4', fuller: '#c9a23c', len: 0.72,
+    guard: 'crown', guardColor: '#c9a23c', gem: '#c4372a', grip: '#6a2a3a', wrap: '#c9a23c',
+    pommel: 'crown', pommelColor: '#c9a23c',
+  },
+  last_word: {
+    blade: 'dirk', color: '#f0f0f4', edge: '#ffffff', fuller: '#c9ccd4', len: 0.65,
+    guard: 'cross', guardColor: '#8a92a4', grip: '#2e3a5c', wrap: '#8a92a4',
+    pommel: 'round', pommelColor: '#8a92a4', fx: 'gleam', fxColor: '#ffffff',
+  },
+};
+
 /** Color-derived fallbacks so any future '*sword' id is dressed. */
 const FALLBACKS = new Map<string, SwordStyle>();
 
 /**
- * Resolve a held item to its sword style. Registry hit first; anything
- * else whose id says 'sword' gets an arming-blade fallback in its item
- * color. Null means "not a sword" (daggers keep their own painter).
+ * Resolve a held item to its blade style — swords and daggers share one
+ * painter. Registry hits first; unknown '*sword' ids get an arming
+ * fallback and unknown '*dagger' ids a dirk fallback, both in the item
+ * color. Null means "not a blade".
  */
-export function swordStyle(itemId: string | undefined, color?: string): SwordStyle | null {
+export function bladeStyle(itemId: string | undefined, color?: string): SwordStyle | null {
   if (!itemId) return null;
-  const st = SWORD_STYLES[itemId];
+  const st = SWORD_STYLES[itemId] ?? DAGGER_STYLES[itemId];
   if (st) return st;
-  if (!itemId.includes('sword')) return null;
+  const sword = itemId.includes('sword');
+  if (!sword && !itemId.includes('dagger')) return null;
   let fb = FALLBACKS.get(itemId);
   if (!fb) {
-    fb = {
-      blade: 'arming', color: color ?? '#b8bec8', guard: 'cross', guardColor: '#4a3a2a',
-      grip: '#6b4a26', pommel: 'gem', pommelColor: '#d9a441', gem: '#c4553d',
-    };
+    fb = sword
+      ? {
+          blade: 'arming', color: color ?? '#b8bec8', guard: 'cross', guardColor: '#4a3a2a',
+          grip: '#6b4a26', pommel: 'gem', pommelColor: '#d9a441', gem: '#c4553d',
+        }
+      : {
+          blade: 'dirk', color: color ?? '#8d9299', len: 0.62, guard: 'stub',
+          guardColor: '#4a3a2a', grip: '#4a3a2a', pommel: 'round', pommelColor: '#3e3a44',
+        };
     FALLBACKS.set(itemId, fb);
   }
   return fb;
 }
+
+/** Back-compat alias — sword-only callers migrated to bladeStyle. */
+export const swordStyle = bladeStyle;
 
 /**
  * Paint a sword in the held-item frame (origin at the fist, +x toward
@@ -519,6 +705,220 @@ function drawBlade(
       }
       break;
     }
+
+    // ------------------------------------------- the dagger vocabulary
+    case 'dirk': {
+      // Symmetric double-edge with a proud midrib.
+      const hw = 0.03 * s;
+      ctx.beginPath();
+      ctx.moveTo(bx, -hw);
+      ctx.lineTo(bx + len * 0.62, -hw * 0.82);
+      ctx.lineTo(tip, 0);
+      ctx.lineTo(bx + len * 0.62, hw * 0.82);
+      ctx.lineTo(bx, hw);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.008 * s, -hw + 0.005 * s);
+      ctx.lineTo(bx + len * 0.6, -hw * 0.76);
+      ctx.lineTo(tip - 0.02 * s, -0.003 * s);
+      ctx.lineTo(bx + 0.008 * s, -0.003 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = fuller;
+      ctx.lineWidth = Math.max(1, 0.014 * s);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.01 * s, 0.006 * s);
+      ctx.lineTo(tip - 0.03 * s, 0.002 * s);
+      ctx.stroke();
+      break;
+    }
+    case 'stiletto': {
+      // A squared ricasso, then nothing but point.
+      const hw = 0.012 * s;
+      ctx.fillRect(bx, -0.024 * s, 0.045 * s, 0.048 * s);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.04 * s, -hw);
+      ctx.lineTo(tip, 0);
+      ctx.lineTo(bx + 0.04 * s, hw);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1, 0.01 * s);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.045 * s, -hw * 0.4);
+      ctx.lineTo(tip - 0.015 * s, -0.001 * s);
+      ctx.stroke();
+      ctx.fillStyle = fuller;
+      ctx.fillRect(bx + 0.008 * s, -0.008 * s, 0.026 * s, 0.016 * s);
+      break;
+    }
+    case 'kris': {
+      // The wave: both edges ride the same two-bend serpent.
+      const hw = 0.026 * s;
+      const wave = (t: number): number => Math.sin(t * Math.PI * 2) * 0.028 * s * (1 - t * 0.55);
+      ctx.beginPath();
+      ctx.moveTo(bx, -hw);
+      for (let i = 1; i <= 8; i++) {
+        const t = i / 8;
+        ctx.lineTo(bx + len * t, wave(t) - hw * (1 - t * 0.9));
+      }
+      for (let i = 8; i >= 0; i--) {
+        const t = i / 8;
+        ctx.lineTo(bx + len * t, wave(t) + hw * (1 - t * 0.9));
+      }
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1, 0.012 * s);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.01 * s, -hw * 0.5);
+      for (let i = 1; i <= 8; i++) {
+        const t = i / 8;
+        ctx.lineTo(bx + len * t, wave(t) - hw * 0.5 * (1 - t * 0.9));
+      }
+      ctx.stroke();
+      break;
+    }
+    case 'karambit': {
+      // The claw: spine arcs down, edge rides the inner curve, tip
+      // hooks back toward the wielder's line.
+      ctx.beginPath();
+      ctx.moveTo(bx, -0.02 * s);
+      ctx.quadraticCurveTo(bx + len * 0.75, -0.01 * s, tip - 0.02 * s, 0.078 * s);
+      ctx.quadraticCurveTo(tip - 0.055 * s, 0.09 * s, tip - 0.075 * s, 0.075 * s);
+      ctx.quadraticCurveTo(bx + len * 0.45, 0.028 * s, bx, 0.024 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1, 0.014 * s);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.015 * s, 0.02 * s);
+      ctx.quadraticCurveTo(bx + len * 0.5, 0.026 * s, tip - 0.062 * s, 0.068 * s);
+      ctx.stroke();
+      ctx.strokeStyle = fuller;
+      ctx.lineWidth = Math.max(1, 0.011 * s);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.015 * s, -0.01 * s);
+      ctx.quadraticCurveTo(bx + len * 0.6, -0.002 * s, tip - 0.045 * s, 0.05 * s);
+      ctx.stroke();
+      break;
+    }
+    case 'tanto': {
+      // Straight spine, straight edge, one hard kissaki facet.
+      const hw = 0.028 * s;
+      const k = tip - 0.085 * s; // facet line
+      ctx.beginPath();
+      ctx.moveTo(bx, -hw);
+      ctx.lineTo(k, -hw);
+      ctx.lineTo(tip, -0.002 * s);
+      ctx.lineTo(k + 0.02 * s, hw * 0.9);
+      ctx.lineTo(bx, hw * 0.8);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      // The kissaki catches its own light — a separate facet plane.
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(k, -hw);
+      ctx.lineTo(tip, -0.002 * s);
+      ctx.lineTo(k + 0.02 * s, hw * 0.9);
+      ctx.lineTo(k - 0.006 * s, 0.004 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1, 0.014 * s);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.01 * s, hw * 0.72);
+      ctx.lineTo(k, hw * 0.82);
+      ctx.stroke();
+      ctx.strokeStyle = fuller;
+      ctx.lineWidth = Math.max(1, 0.012 * s);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.01 * s, -hw * 0.55);
+      ctx.lineTo(k - 0.01 * s, -hw * 0.55);
+      ctx.stroke();
+      break;
+    }
+    case 'shivkind': {
+      // Filed scrap: irregular jags, no two edges agreeing.
+      ctx.beginPath();
+      ctx.moveTo(bx, -0.024 * s);
+      ctx.lineTo(bx + len * 0.3, -0.035 * s);
+      ctx.lineTo(bx + len * 0.5, -0.02 * s);
+      ctx.lineTo(bx + len * 0.78, -0.03 * s);
+      ctx.lineTo(tip, 0.004 * s);
+      ctx.lineTo(bx + len * 0.55, 0.028 * s);
+      ctx.lineTo(bx + len * 0.3, 0.02 * s);
+      ctx.lineTo(bx, 0.028 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1, 0.012 * s);
+      ctx.beginPath();
+      ctx.moveTo(bx + len * 0.32, -0.026 * s);
+      ctx.lineTo(bx + len * 0.76, -0.022 * s);
+      ctx.stroke();
+      // The rag wrap where a guard should be.
+      ctx.fillStyle = fuller;
+      ctx.fillRect(bx - 0.006 * s, -0.032 * s, 0.03 * s, 0.064 * s);
+      break;
+    }
+    case 'talon': {
+      // One smooth fang — less hook than the karambit, more grace.
+      ctx.beginPath();
+      ctx.moveTo(bx, -0.026 * s);
+      ctx.quadraticCurveTo(bx + len * 0.6, -0.036 * s, tip, 0.035 * s);
+      ctx.quadraticCurveTo(bx + len * 0.5, 0.012 * s, bx, 0.026 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1, 0.013 * s);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.012 * s, 0.02 * s);
+      ctx.quadraticCurveTo(bx + len * 0.55, 0.008 * s, tip - 0.015 * s, 0.03 * s);
+      ctx.stroke();
+      ctx.strokeStyle = fuller;
+      ctx.lineWidth = Math.max(1, 0.011 * s);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.012 * s, -0.014 * s);
+      ctx.quadraticCurveTo(bx + len * 0.55, -0.022 * s, tip - 0.03 * s, 0.014 * s);
+      ctx.stroke();
+      break;
+    }
+    case 'leafblade': {
+      // A pocket leaf — the gladius idea at utility size.
+      const hw = 0.034 * s;
+      ctx.beginPath();
+      ctx.moveTo(bx, -0.02 * s);
+      ctx.quadraticCurveTo(bx + len * 0.5, -hw, tip - 0.05 * s, -hw * 0.5);
+      ctx.lineTo(tip, 0);
+      ctx.lineTo(tip - 0.05 * s, hw * 0.5);
+      ctx.quadraticCurveTo(bx + len * 0.5, hw, bx, 0.02 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1, 0.013 * s);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.012 * s, -0.016 * s);
+      ctx.quadraticCurveTo(bx + len * 0.5, -hw * 0.75, tip - 0.025 * s, -0.008 * s);
+      ctx.stroke();
+      ctx.strokeStyle = fuller;
+      ctx.lineWidth = Math.max(1, 0.013 * s);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.01 * s, 0);
+      ctx.lineTo(tip - 0.02 * s, 0);
+      ctx.stroke();
+      break;
+    }
   }
   // Battle bites knocked out of the cutting edge — the wedge BASE sits
   // on the silhouette boundary and cuts inward, so it reads as missing
@@ -667,6 +1067,8 @@ function drawGuard(
     case 'stub':
       ctx.fillRect(0.02 * s, -0.052 * s, 0.036 * s, 0.104 * s);
       break;
+    case 'none':
+      break;
   }
 }
 
@@ -814,8 +1216,8 @@ function drawBladeFx(
         y = 0.024 * s + 0.012 * s * phase;
         r *= 0.9;
         break;
-      case 'sun': // warm sparks at the bright edge
-        y = -0.038 * s + 0.012 * s * Math.sin(phase * Math.PI * 2 + i);
+      case 'sun': // warm sparks hugging the bright edge
+        y = -0.024 * s + 0.01 * s * Math.sin(phase * Math.PI * 2 + i);
         break;
       case 'star': // twinkle: scale pulses hard
         y = (i - 1) * 0.028 * s;

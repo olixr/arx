@@ -1,6 +1,6 @@
 import { itemDef } from '@devcraft/content';
 import { shade } from './rig.js';
-import { SWORD_STYLES, drawSword } from './weapons.js';
+import { DAGGER_STYLES, SWORD_STYLES, drawSword } from './weapons.js';
 
 /**
  * The icon set: every item and UI glyph is drawn in code, in the same
@@ -3359,15 +3359,20 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
 // diagonal as the classic sword glyph. nowMs is pinned so cached icons
 // hold one deterministic fx frame.
 {
-  for (const [id, st] of Object.entries(SWORD_STYLES)) {
+  for (const [id, st] of Object.entries({ ...SWORD_STYLES, ...DAGGER_STYLES })) {
+    // Daggers are short — render bigger and shift less so the knife
+    // fills the same diagonal the swords command.
+    const dagger = id in DAGGER_STYLES;
+    const scale = dagger ? 92 : 78;
+    const shift = dagger ? -9 : -15;
     PAINTERS[`sword:${id}`] = (c) => {
       c.translate(0.5, 0.5);
       c.rotate(-Math.PI / 4);
-      // drawSword thinks in body-scale pixels: render at s = 78 inside
-      // a /64 frame so its px-floor line widths stay subpixel-honest.
+      // drawSword thinks in body-scale pixels: render inside a /64
+      // frame so its px-floor line widths stay subpixel-honest.
       c.scale(1 / 64, 1 / 64);
-      c.translate(-15, 0);
-      drawSword(c, st, 78, 5234, false);
+      c.translate(shift, 0);
+      drawSword(c, st, scale, 5234, false);
     };
     ITEM_ICON[id] = { icon: `sword:${id}`, color: st.color };
   }
