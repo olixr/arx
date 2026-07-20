@@ -160,3 +160,29 @@ test('weapon oils ride the instance through every path; dried oils drop at load'
   const rowId = store.insertBankGear(cid, 'bronze_dagger', { rar: 'common', seed: 1, coat: wet });
   assert.deepEqual(store.loadBankGear(cid).find((g) => g.id === rowId)!.roll.coat, wet);
 });
+
+test('enchant ids ride every roll path: inventory, equipment, bank gear', () => {
+  const store = makeStore();
+  const reg = store.register('eric', 'hunter22', 'Aeriek', SPAWN);
+  assert.ok(reg.ok);
+  if (!reg.ok) return;
+  const cid = reg.character.id;
+
+  const inv = new Array<{ item: string; qty: number; roll?: import('@devcraft/shared').ItemRoll } | null>(28).fill(null);
+  inv[0] = { item: 'bronze_sword', qty: 1, roll: { rar: 'rare', seed: 9, ench: 'inferno_edge' } };
+  store.saveInventory(cid, inv);
+  const loaded = store.loadInventory(cid, 28);
+  assert.equal(loaded[0]?.roll?.ench, 'inferno_edge', 'inventory keeps the enchant');
+
+  store.saveEquipment(cid, {
+    weapon: { id: 'bronze_sword', roll: { rar: 'epic', seed: 5, ench: 'vampiric_edge' } },
+    body: { id: 'leather_body', roll: { rar: 'common', seed: 0 } },
+  });
+  const eq = store.loadEquipment(cid);
+  assert.equal(eq.weapon?.roll?.ench, 'vampiric_edge', 'equipment keeps the enchant');
+  assert.equal(eq.body?.roll?.ench, undefined, 'unenchanted stays clean');
+
+  const rowId = store.insertBankGear(cid, 'iron_helm', { rar: 'rare', seed: 4, ench: 'clever' });
+  const bank = store.loadBankGear(cid);
+  assert.equal(bank.find((r) => r.id === rowId)?.roll.ench, 'clever', 'bank keeps the enchant');
+});
