@@ -3076,6 +3076,8 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   aegis_stone: { icon: 'shield', color: '#8a9484' },
   storm_coil: { icon: 'ring', color: '#e8d06a' },
   bramble_band: { icon: 'ring', color: '#5a7a42' },
+  seeker_stone: { icon: 'gem', color: '#b49af0' },
+  fang_band: { icon: 'ring', color: '#a0c050' },
   sigil_fallen_champion: { icon: 'skull', color: '#e8b64c' },
   spiked_buckler: { icon: 'shield', color: '#a5794e' },
   frost_quiver: { icon: 'quiver', color: '#8ac4e8' },

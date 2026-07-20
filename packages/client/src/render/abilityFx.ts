@@ -212,6 +212,8 @@ export const FX_STYLES: Record<string, FxStyle> = {
   stone_aegis: STEEL({ mid: '#8a9484', ring: 'halo', debris: 'rock', punch: 0.3 }),
   coil_lance: STORM({ mid: '#d8cc5a', ring: 'runes', punch: 0.7 }),
   bramble_burst: VERDANT({ ring: 'shards', punch: 0.6 }),
+  arcane_seekers: ARCANE({ ring: 'petals', debris: 'star', decal: 'glow', punch: 0.4 }),
+  venom_dart: VERDANT({ mid: '#a0c050', ring: 'runes', debris: 'spark', decal: undefined, punch: 0.3 }),
 
   // -------------------------------------------------------- techniques
   heavy_slam: STEEL({ mid: '#b8865a', debris: 'rock', punch: 0.9 }),
@@ -226,6 +228,10 @@ export const FX_STYLES: Record<string, FxStyle> = {
   earthbreaker: STEEL({ mid: '#a4744b', deep: '#4a3018', debris: 'rock', decal: 'cracks', punch: 1.0 }),
   storm_of_shafts: STORM({ mid: '#8ab4c8', ring: 'shards', debris: 'spark', decal: undefined, punch: 0.6 }),
   maelstrom: TIDE({ ring: 'frost', debris: 'ice', punch: 0.8 }),
+  rend: BLOOD({ ring: 'shards', debris: 'blood', decal: 'stain', punch: 0.4 }),
+  smoke_bomb: SHADOW({ mid: '#8a8794', ring: 'petals', decal: undefined, punch: 0.5 }),
+  envenom: VERDANT({ mid: '#a0c050', ring: 'halo', debris: 'leaf', decal: undefined, punch: 0.2 }),
+  night_fangs: SHADOW({ mid: '#4a4058', ring: 'shards', debris: 'blood', decal: undefined, punch: 0.4 }),
 
   // ------------------------------------------------------------ sigils
   bone_tempest: BONE({ punch: 0.9 }),

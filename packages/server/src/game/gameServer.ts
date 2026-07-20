@@ -93,6 +93,8 @@ import {
   HEAVY_BOLT_MULT,
   HEAVY_BOLT_RECOVERY_MULT,
   HEAVY_BOLT_SPLASH,
+  HOMING_SEEK_RANGE,
+  VENOM_TICK_EVERY,
   InputButton,
   SHOCK_MAX_TICKS,
   SLOT_ART,
@@ -277,6 +279,10 @@ interface ProjectileComp {
    * and impact from it.
    */
   element?: string;
+  /** Homing turn rate, radians/sec — the shot steers toward targetEid. */
+  homingTurn?: number;
+  /** The foe a homing shot is hunting (re-acquired when it dies). */
+  targetEid?: EntityId;
   /** Boomerang: instead of dying at range/walls, fly back to the owner. */
   returns?: boolean;
   /** Boomerang return leg in progress (homes on the owner's live position). */
@@ -441,6 +447,8 @@ interface PlayerBuff {
   gatherSpeed: number;
   /** HP restored every 4 seconds (best across buffs wins). */
   regenPer4s: number;
+  /** While active, landed basic attacks apply this status (Envenom). */
+  onHitStatus?: StatusApply;
   untilTick: number;
   /**
    * Consumable channel: one 'tonic' + one 'food' buff may be active at
@@ -2124,6 +2132,16 @@ export class GameServer {
   }
 
   /**
+   * Which technique ladder the R slot reads. Damage/XP style stays the
+   * weapon's attack style — a dagger still cuts as melee — but knives
+   * declare techStyle 'sneak' and reach the rogue's ladder instead.
+   */
+  private techniqueStyle(player: PlayerComp): CombatStyleId {
+    const w = this.equippedWeapon(player)?.weapon;
+    return (w?.techStyle ?? w?.style ?? 'melee') as CombatStyleId;
+  }
+
+  /**
    * Resolve the ability in a hotbar slot. Each slot is a different
    * progression axis: Art = weapon (gear chase), relic (loot hunt),
    * technique (skill grind), sigil (boss trophies). No source, no
@@ -2140,7 +2158,7 @@ export class GameServer {
         return relicItem?.relic ? (abilityDef(relicItem.relic) ?? null) : null;
       }
       case SLOT_TECHNIQUE: {
-        const chosen = player.techniques[this.currentStyle(player)];
+        const chosen = player.techniques[this.techniqueStyle(player)];
         return chosen ? (abilityDef(chosen) ?? null) : null;
       }
       case SLOT_SIGIL: {
@@ -2286,6 +2304,30 @@ export class GameServer {
     const health = this.healths.get(casterEid);
     if (!health || health.hp >= health.maxHp) return;
     health.hp = Math.min(health.maxHp, health.hp + Math.max(1, Math.round(dmg * frac)));
+  }
+
+  /**
+   * Targets for a homing volley: every foe in the aim cone, nearest
+   * first. The fan hands these out round-robin so three seekers pick
+   * three different throats instead of stacking on one.
+   */
+  private homingMarks(pos: { x: number; y: number }, aim: number, range: number): EntityId[] {
+    const found: Array<{ eid: EntityId; d: number }> = [];
+    for (const [npcEid, npc] of this.npcs) {
+      const npos = this.positions.get(npcEid);
+      if (!npos) continue;
+      const dx = npos.x - pos.x;
+      const dy = npos.y - pos.y;
+      const d = Math.hypot(dx, dy) - npc.def.radius;
+      if (d > range) continue;
+      let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
+      if (diff > Math.PI) diff = Math.PI * 2 - diff;
+      // A generous cone — the point of a seeker is forgiving aim.
+      if (diff > 1.2 && d > 1.5) continue;
+      found.push({ eid: npcEid, d });
+    }
+    found.sort((a, b) => a.d - b.d);
+    return found.map((f) => f.eid);
   }
 
   /**
@@ -2476,7 +2518,7 @@ export class GameServer {
           this.positions.set(proj, { x: pos.x, y: pos.y, dir: aim });
           this.projectiles.set(proj, {
             ownerEid: casterEid,
-            style: style === 'magic' ? 'magic' : 'archery',
+            style: ab.element ? 'magic' : style === 'magic' ? 'magic' : 'archery',
             maxHit,
             dirX: Math.cos(aim),
             dirY: Math.sin(aim),
@@ -2484,7 +2526,8 @@ export class GameServer {
             distLeft: ab.range ?? 6,
             status: ab.status,
             fromNpc,
-            element: style === 'magic' ? element : undefined,
+            element: ab.element ?? (style === 'magic' ? element : undefined),
+            homingTurn: ab.homing,
           });
           this.updateChunkMembership(proj);
         }
@@ -2577,6 +2620,14 @@ export class GameServer {
       case 'projectile_fan': {
         const count = ab.projectiles ?? 1;
         const spread = ab.spreadArc ?? 0;
+        // An ability's own school outranks the caster's hand: seeker
+        // wisps thrown from a sword still fly as magic, not arrows.
+        const projStyle = ab.element ? 'magic' : style === 'magic' ? 'magic' : 'archery';
+        const projElement = ab.element ?? (style === 'magic' ? element : undefined);
+        // Homing fans spread their marks: each missile takes a DIFFERENT
+        // foe from the aim cone (round-robin when foes are scarce).
+        const marks =
+          ab.homing && !fromNpc ? this.homingMarks(pos, aim, ab.range ?? 7) : [];
         for (let i = 0; i < count; i++) {
           const angle = count === 1 ? aim : aim - spread / 2 + (spread * i) / (count - 1);
           const proj = this.ecs.create();
@@ -2584,7 +2635,7 @@ export class GameServer {
           this.positions.set(proj, { x: pos.x, y: pos.y, dir: angle });
           this.projectiles.set(proj, {
             ownerEid: casterEid,
-            style: style === 'magic' ? 'magic' : 'archery',
+            style: projStyle,
             maxHit,
             dirX: Math.cos(angle),
             dirY: Math.sin(angle),
@@ -2593,7 +2644,9 @@ export class GameServer {
             status: ab.status,
             pierce: ab.pierce,
             fromNpc,
-            element: style === 'magic' ? element : undefined,
+            element: projElement,
+            homingTurn: ab.homing,
+            targetEid: marks.length > 0 ? marks[i % marks.length] : undefined,
             returns: ab.returns,
             executeBelow: ab.executeBelow,
             drainFrac: ab.drainFrac,
@@ -2844,13 +2897,15 @@ export class GameServer {
         if (
           self.speedMult !== undefined ||
           self.shieldHp !== undefined ||
-          self.meleeLifesteal !== undefined
+          self.meleeLifesteal !== undefined ||
+          self.onHitStatus !== undefined
         ) {
           player.buffs.push(
             mkBuff({
               speedMult: self.speedMult ?? 1,
               shieldHp: Math.round((self.shieldHp ?? 0) * powerMult),
               meleeLifesteal: self.meleeLifesteal ?? 0,
+              onHitStatus: self.onHitStatus,
               untilTick: this.tickCount + self.durationTicks,
             }),
           );
@@ -2993,11 +3048,13 @@ export class GameServer {
             break;
           }
           case 'spread': {
-            // The fire finds new fuel.
-            const burn: StatusApply =
-              apply.status === 'burn'
-                ? { status: 'burn', power: apply.power, durationTicks: apply.durationTicks }
-                : { status: 'burn', power: other.power, durationTicks: 60 };
+            // The affliction finds new hosts — burn for Immolate,
+            // venom for Contagion (the reaction names its own plague).
+            const carried = reaction.spreadStatus ?? 'burn';
+            const plague: StatusApply =
+              apply.status === carried
+                ? { status: carried, power: apply.power, durationTicks: apply.durationTicks }
+                : { status: carried, power: other.power, durationTicks: 60 };
             for (const [otherEid, otherNpc] of this.npcs) {
               if (otherEid === npcEid) continue;
               const opos = this.positions.get(otherEid);
@@ -3005,7 +3062,7 @@ export class GameServer {
               if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - otherNpc.def.radius > reaction.radius) {
                 continue;
               }
-              this.applyStatusToNpc(otherEid, burn, sourceEid, style);
+              this.applyStatusToNpc(otherEid, plague, sourceEid, style);
             }
             break;
           }
@@ -3089,11 +3146,12 @@ export class GameServer {
         const s = list[i]!;
         s.ticksLeft--;
         if (s.stunLeft !== undefined && s.stunLeft > 0) s.stunLeft--;
-        const dot = s.id === 'burn' || s.id === 'bleed';
-        const every = s.id === 'burn' ? BURN_TICK_EVERY : BLEED_TICK_EVERY;
+        const dot = s.id === 'burn' || s.id === 'bleed' || s.id === 'venom';
+        const every =
+          s.id === 'burn' ? BURN_TICK_EVERY : s.id === 'venom' ? VENOM_TICK_EVERY : BLEED_TICK_EVERY;
         if (dot && s.ticksLeft > 0 && s.ticksLeft % every === 0) {
           if (this.npcs.has(eid)) {
-            this.dotNpc(eid, s.power, s.sourceEid, s.id as 'burn' | 'bleed');
+            this.dotNpc(eid, s.power, s.sourceEid, s.id as 'burn' | 'bleed' | 'venom');
           } else if (this.players.has(eid)) {
             this.damagePlayer(eid, s.power, { pierceArmor: true });
           }
@@ -3108,7 +3166,12 @@ export class GameServer {
    * DoT damage: hurts without flinching the target — a burning goblin
    * still fights; only direct hits interrupt windups.
    */
-  private dotNpc(npcEid: EntityId, dmg: number, sourceEid: EntityId, kind: 'burn' | 'bleed'): void {
+  private dotNpc(
+    npcEid: EntityId,
+    dmg: number,
+    sourceEid: EntityId,
+    kind: 'burn' | 'bleed' | 'venom',
+  ): void {
     const npc = this.npcs.get(npcEid);
     const health = this.healths.get(npcEid);
     if (!npc || !health || dmg <= 0) return;
@@ -3116,7 +3179,7 @@ export class GameServer {
     health.hp -= dmg;
     const source = this.players.get(sourceEid);
     if (source) {
-      const style: SkillId = kind === 'burn' ? 'magic' : 'melee';
+      const style: SkillId = kind === 'burn' ? 'magic' : kind === 'venom' ? 'sneak' : 'melee';
       this.grantXp(sourceEid, source, style, dmg * 2);
     }
     if (health.hp <= 0) this.killNpc(npcEid, npc, sourceEid);
@@ -3305,6 +3368,43 @@ export class GameServer {
           pos.dir = Math.atan2(proj.dirY, proj.dirX);
         }
       }
+      // Homing law: steer toward the mark with a capped turn rate — a
+      // curve you can read, not a teleport. A dead mark hands the shot
+      // to the nearest living foe within seek range; with nobody to
+      // hunt it flies straight and dies at range like any other shot.
+      if (proj.homingTurn && !proj.returning && !proj.fromNpc) {
+        let tpos =
+          proj.targetEid !== undefined && this.npcs.has(proj.targetEid)
+            ? this.positions.get(proj.targetEid)
+            : undefined;
+        if (!tpos) {
+          proj.targetEid = undefined;
+          let bestD = HOMING_SEEK_RANGE;
+          for (const [npcEid, npc] of this.npcs) {
+            if (proj.hitEids?.has(npcEid)) continue;
+            const npos = this.positions.get(npcEid);
+            if (!npos) continue;
+            const d = Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius;
+            if (d < bestD) {
+              bestD = d;
+              proj.targetEid = npcEid;
+              tpos = npos;
+            }
+          }
+        }
+        if (tpos) {
+          const want = Math.atan2(tpos.y - pos.y, tpos.x - pos.x);
+          const cur = Math.atan2(proj.dirY, proj.dirX);
+          let diff = want - cur;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          const maxTurn = proj.homingTurn * TICK_DT;
+          const turned = cur + Math.max(-maxTurn, Math.min(maxTurn, diff));
+          proj.dirX = Math.cos(turned);
+          proj.dirY = Math.sin(turned);
+          pos.dir = turned;
+        }
+      }
       const subs = Math.max(1, Math.ceil(step / 0.25));
       let dead = false;
       for (let i = 0; i < subs && !dead; i++) {
@@ -3466,6 +3566,12 @@ export class GameServer {
     }
 
     if (opts.status) this.applyStatusToNpc(npcEid, opts.status, attackerEid, style);
+    // Envenom law: while an on-hit-status buff rides, every landed
+    // BASIC carries it — the oiled edge, not the ability rotation.
+    if (opts.basic) {
+      const onHit = this.players.get(attackerEid)?.buffs.find((b) => b.onHitStatus)?.onHitStatus;
+      if (onHit) this.applyStatusToNpc(npcEid, onHit, attackerEid, style);
+    }
     // The status may have detonated a reaction that already killed the
     // target (and cascaded further) — never strike a corpse.
     if (!this.ecs.isAlive(npcEid) || !this.npcs.has(npcEid)) return;

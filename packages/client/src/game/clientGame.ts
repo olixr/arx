@@ -272,7 +272,9 @@ export class ClientGame {
         return relic?.relic ? (abilityDef(relic.relic) ?? null) : null;
       }
       case 2: {
-        const chosen = this.techniques[this.currentStyle()];
+        // Daggers reach the sneak ladder via techStyle — mirror the server.
+        const w = this.equippedWeaponDef();
+        const chosen = this.techniques[w?.techStyle ?? w?.style ?? 'melee'];
         return chosen ? (abilityDef(chosen) ?? null) : null;
       }
       case 3: {

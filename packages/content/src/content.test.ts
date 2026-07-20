@@ -79,11 +79,39 @@ test('techniques resolve, ladder is sane, and each style has a tree', () => {
     levels.push(t.unlockLevel);
     styles.set(t.style, levels);
   }
-  for (const style of ['melee', 'archery', 'magic']) {
+  for (const style of ['melee', 'archery', 'magic', 'sneak']) {
     const levels = styles.get(style);
     assert.ok(levels && levels.length >= 3, `${style} needs a technique tree`);
     assert.ok(Math.min(...levels) <= 5, `${style} needs an early unlock`);
   }
+});
+
+test('the sneak ladder is reachable — daggers carry techStyle, the tanto abstains', () => {
+  const knives = [...ITEMS.values()].filter(
+    (i) => (i.weapon?.backstabMult ?? 0) >= 2.2 && !i.id.includes('tanto'),
+  );
+  assert.ok(knives.length >= 15, 'the rogue roster went missing');
+  for (const k of knives) {
+    assert.equal(k.weapon!.techStyle, 'sneak', `${k.id} cannot reach the sneak ladder`);
+  }
+  const tantos = [...ITEMS.values()].filter((i) => i.id.includes('tanto') && i.weapon);
+  assert.ok(tantos.length >= 1, 'the tanto line went missing');
+  for (const t of tantos) {
+    assert.equal(t.weapon!.techStyle, undefined, `${t.id} is the fighter's dagger — melee ladder`);
+  }
+});
+
+test('homing abilities are well-formed seekers', () => {
+  let homing = 0;
+  for (const [id, ab] of ABILITIES) {
+    if (ab.homing === undefined) continue;
+    homing++;
+    assert.ok(ab.homing > 0, `${id} homing turn rate must be positive`);
+    assert.ok(ab.projectiles && ab.projectiles >= 1, `${id} homing without projectiles`);
+    assert.ok(ab.element, `${id} seekers must name a school (visual identity)`);
+    assert.ok(!ab.pierce, `${id} homing + pierce would orbit-farm a single target`);
+  }
+  assert.ok(homing >= 3, 'the seeker family needs its varieties');
 });
 
 test('sigils and passives on items resolve', () => {

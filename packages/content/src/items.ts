@@ -40,6 +40,12 @@ export interface WeaponStats {
   art?: string;
   /** Backstab damage multiplier — daggers carry a big one; other melee falls back to the default. */
   backstabMult?: number;
+  /**
+   * Which technique ladder this weapon reaches (R slot). Defaults to the
+   * attack style; daggers point at 'sneak' — loadout-is-class, so the
+   * rogue's ladder rides the knife, not a menu.
+   */
+  techStyle?: 'melee' | 'archery' | 'magic' | 'sneak';
   /** Magic school (staves) — tints bolts, flashes, and impacts. */
   element?: MagicElement;
 }
@@ -399,6 +405,28 @@ const defs: ItemDef[] = [
     desc: 'A ring of living briar. It grows where you point it.',
     color: '#5a7a42',
     code: 'Qv',
+  },
+  {
+    id: 'seeker_stone',
+    name: 'Seeker stone',
+    stackable: false,
+    value: 380,
+    equipSlot: 'relic',
+    relic: 'arcane_seekers',
+    desc: 'A cut of pale crystal that always faces something. Ask it nicely.',
+    color: '#b49af0',
+    code: 'Qk',
+  },
+  {
+    id: 'fang_band',
+    name: 'Fang band',
+    stackable: false,
+    value: 360,
+    equipSlot: 'relic',
+    relic: 'venom_dart',
+    desc: 'A serpent\'s tooth bent into a ring. It still knows the way to a vein.',
+    color: '#a0c050',
+    code: 'Qf',
   },
 
   // Sigils — boss-trophy ultimates (T). One per boss, forever.

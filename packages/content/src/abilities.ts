@@ -302,7 +302,7 @@ const defs: AbilityDef[] = [
   {
     id: 'serpents_kiss',
     name: 'Serpent\'s Kiss',
-    desc: 'The wave finds the vein — a shallow cut that will not close.',
+    desc: 'The wave finds the vein — and leaves something living in it.',
     color: '#8a9a4a',
     code: 'Ss',
     cooldownTicks: 140, // 7 s
@@ -310,7 +310,7 @@ const defs: AbilityDef[] = [
     damage: 5,
     range: 1.8,
     arc: 0.9,
-    status: { status: 'bleed', power: 1, durationTicks: 110 },
+    status: { status: 'venom', power: 1, durationTicks: 110 },
   },
   {
     id: 'stinger',
@@ -769,7 +769,7 @@ const defs: AbilityDef[] = [
     projectiles: 2,
     spreadArc: 0.24,
     projectileSpeed: 15,
-    status: { status: 'bleed', power: 1, durationTicks: 90 },
+    status: { status: 'venom', power: 1, durationTicks: 90 },
   },
   {
     id: 'magma_orb',
@@ -998,6 +998,38 @@ const defs: AbilityDef[] = [
     pulseEveryTicks: 16,
     status: { status: 'bleed', power: 1, durationTicks: 60 },
   },
+  {
+    id: 'arcane_seekers',
+    name: 'Arcane Seekers',
+    desc: 'Loose three motes of asking-light. Each picks a foe and does not lose it.',
+    color: '#b49af0',
+    code: 'Ak',
+    cooldownTicks: 280, // 14 s
+    shape: 'projectile_fan',
+    damage: 4,
+    range: 12,
+    projectiles: 3,
+    spreadArc: 0.9,
+    projectileSpeed: 11,
+    homing: 5.5, // lazy, deliberate curves — you can watch them choose
+    element: 'arcane',
+  },
+  {
+    id: 'venom_dart',
+    name: 'Venom Dart',
+    desc: 'One green needle with a name on it. Walls are somebody else\'s problem.',
+    color: '#a0c050',
+    code: 'Vd',
+    cooldownTicks: 260, // 13 s
+    shape: 'projectile_fan',
+    damage: 6,
+    range: 11,
+    projectiles: 1,
+    projectileSpeed: 13,
+    homing: 6.5, // the snap-turn hunter
+    element: 'verdant',
+    status: { status: 'venom', power: 1, durationTicks: 100 },
+  },
 
   // ------------------------------------------------------- techniques
   // Learned actives (R): unlocked by combat skill levels, freely
@@ -1150,6 +1182,61 @@ const defs: AbilityDef[] = [
     fieldTicks: 120,
     pulseEveryTicks: 14,
   },
+  // The rogue's ladder: unlocked by the sneak skill, reached through any
+  // dagger (WeaponStats.techStyle) — the payoff of the shadow grind.
+  {
+    id: 'rend',
+    name: 'Rend',
+    desc: 'Tear the wound wide — a shallow cut that bleeds like a deep one.',
+    color: '#8a3040',
+    code: 'Rz',
+    cooldownTicks: 150, // 7.5 s
+    shape: 'melee_arc',
+    damage: 4,
+    range: 1.9,
+    arc: 0.9,
+    status: { status: 'bleed', power: 2, durationTicks: 120 },
+  },
+  {
+    id: 'smoke_bomb',
+    name: 'Smoke Bomb',
+    desc: 'Drop the room into choking gray. Everything caught gropes at half speed.',
+    color: '#8a8794',
+    code: 'Sz',
+    cooldownTicks: 240, // 12 s
+    shape: 'nova',
+    damage: 2,
+    radius: 2.4,
+    status: { status: 'chill', power: 1, durationTicks: 100 },
+  },
+  {
+    id: 'envenom',
+    name: 'Envenom',
+    desc: 'Oil the edge. For eight seconds, every cut you land carries venom.',
+    color: '#a0c050',
+    code: 'Ev',
+    cooldownTicks: 320, // 16 s
+    shape: 'self_buff',
+    damage: 0,
+    self: { onHitStatus: { status: 'venom', power: 1, durationTicks: 80 }, durationTicks: 160 },
+  },
+  {
+    id: 'night_fangs',
+    name: 'Night Fangs',
+    desc: 'Three thrown fangs of dark that pick their own throats to find.',
+    color: '#4a4058',
+    code: 'Nf',
+    cooldownTicks: 220, // 11 s
+    shape: 'projectile_fan',
+    damage: 5,
+    range: 10,
+    projectiles: 3,
+    spreadArc: 0.7,
+    projectileSpeed: 15,
+    homing: 6.0,
+    element: 'void',
+    status: { status: 'bleed', power: 1, durationTicks: 60 },
+  },
   {
     id: 'maelstrom',
     name: 'Maelstrom',
@@ -1224,6 +1311,10 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   { ability: 'blink', style: 'magic', unlockLevel: 15 },
   { ability: 'meteor_shard', style: 'magic', unlockLevel: 30 },
   { ability: 'maelstrom', style: 'magic', unlockLevel: 45 },
+  { ability: 'rend', style: 'sneak', unlockLevel: 5 },
+  { ability: 'smoke_bomb', style: 'sneak', unlockLevel: 15 },
+  { ability: 'envenom', style: 'sneak', unlockLevel: 30 },
+  { ability: 'night_fangs', style: 'sneak', unlockLevel: 45 },
 ];
 
 export function techniquesFor(style: string): TechniqueDef[] {

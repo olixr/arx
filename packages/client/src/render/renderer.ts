@@ -9155,6 +9155,18 @@ export class Renderer {
         });
       }
     }
+    if (bits & STATUS_BIT.venom) {
+      // Sickly green blebs drifting UP — the poison working out of the wound.
+      this.queueGlow(x, y - 0.3, 0.8, '160, 192, 80', 0.22);
+      if (Math.random() < dt * 10) {
+        this.particles.burst(x + (Math.random() - 0.5) * 0.35, y - 0.3, 1, ['#a0c050', '#6a8a2a', '#c8e04a'], {
+          speed: 0.35,
+          life: 0.6,
+          size: 0.07,
+          gravity: -1.2,
+        });
+      }
+    }
   }
 
   /** Placed summons: totem, snare trap, straw decoy. */

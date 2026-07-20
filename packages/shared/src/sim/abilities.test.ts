@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {
   HASTE_FULL_DRAW_TICKS,
   HASTE_ON_HIT_TICKS,
+  SNEAK_DETECTED_BIT,
+  SNEAK_HIDDEN_BIT,
+  STATUS_AMBIENCE_MASK,
   STATUS_BIT,
   STATUS_IDS,
   hasteOnHit,
@@ -76,5 +79,24 @@ test('status wire bits are distinct single bits that fit a u8', () => {
     assert.equal(bit & (bit - 1), 0, 'single bit');
     assert.ok(!seen.has(bit));
     seen.add(bit);
+  }
+});
+
+test('the ambience mask covers exactly the statuses and never the sneak bits', () => {
+  let mask = 0;
+  for (const id of STATUS_IDS) mask |= STATUS_BIT[id];
+  assert.equal(mask, STATUS_AMBIENCE_MASK, 'mask must track STATUS_BIT exactly');
+  assert.equal(mask & (SNEAK_HIDDEN_BIT | SNEAK_DETECTED_BIT), 0, 'stealth bits leaked in');
+});
+
+test('spread reactions always spread a real DoT', () => {
+  const dots = ['burn', 'bleed', 'venom'];
+  for (const a of STATUS_IDS) {
+    for (const b of STATUS_IDS) {
+      if (a === b) continue;
+      const r = reactionFor(a, b)!;
+      if (r.effect !== 'spread') continue;
+      assert.ok(dots.includes(r.spreadStatus ?? 'burn'), `${r.name} spreads a non-DoT`);
+    }
   }
 });

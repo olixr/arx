@@ -14,20 +14,21 @@
 
 // ------------------------------------------------------------- status
 
-export type StatusId = 'burn' | 'chill' | 'shock' | 'bleed';
+export type StatusId = 'burn' | 'chill' | 'shock' | 'bleed' | 'venom';
 
-export const STATUS_IDS: readonly StatusId[] = ['burn', 'chill', 'shock', 'bleed'];
+export const STATUS_IDS: readonly StatusId[] = ['burn', 'chill', 'shock', 'bleed', 'venom'];
 
-/** Snapshot wire bits (u8 bitfield per entity). */
+/** Snapshot wire bits (u8 bitfield per entity). Bits 4-5 belong to sneak. */
 export const STATUS_BIT: Record<StatusId, number> = {
   burn: 1 << 0,
   chill: 1 << 1,
   shock: 1 << 2,
   bleed: 1 << 3,
+  venom: 1 << 6,
 };
 
 /** Mask of the DoT/CC bits above — ambience particles must not react to the sneak bits. */
-export const STATUS_AMBIENCE_MASK = 0x0f;
+export const STATUS_AMBIENCE_MASK = 0x4f;
 
 /** Snapshot bit: this entity is fully hidden (only ever seen on your OWN entity). */
 export const SNEAK_HIDDEN_BIT = 1 << 4;
@@ -38,7 +39,7 @@ export const SNEAK_DETECTED_BIT = 1 << 5;
 /** A status being applied by an ability or attack. */
 export interface StatusApply {
   status: StatusId;
-  /** Magnitude — DoT tick damage for burn/bleed, unused for chill/shock. */
+  /** Magnitude — DoT tick damage for burn/bleed/venom, unused for chill/shock. */
   power: number;
   durationTicks: number;
 }
@@ -54,6 +55,8 @@ export interface ActiveStatus {
 export const BURN_TICK_EVERY = 10;
 /** Bleed bleeds slower but is refreshed easily by melee. */
 export const BLEED_TICK_EVERY = 14;
+/** Venom drips fastest of the three DoTs — the rogue's pressure clock. */
+export const VENOM_TICK_EVERY = 8;
 /** Movement/attack speed factor while chilled. */
 export const CHILL_SPEED_FACTOR = 0.55;
 /**
@@ -92,6 +95,8 @@ export interface ReactionDef {
   radius: number;
   /** Floaty color. */
   color: string;
+  /** spread only: which DoT jumps to the neighbors (default burn). */
+  spreadStatus?: StatusId;
 }
 
 function pairKey(a: StatusId, b: StatusId): string {
@@ -141,6 +146,35 @@ const REACTION_TABLE: Record<string, ReactionDef> = {
     radius: 3.2,
     color: '#e8e06a',
   },
+  [pairKey('venom', 'burn')]: {
+    name: 'Caustic Blaze',
+    mult: 2.0,
+    effect: 'aoe',
+    radius: 2.0,
+    color: '#c8e04a',
+  },
+  [pairKey('venom', 'chill')]: {
+    name: 'Congeal',
+    mult: 2.6,
+    effect: 'burst',
+    radius: 0,
+    color: '#9adcc8',
+  },
+  [pairKey('venom', 'shock')]: {
+    name: 'Nerve Jolt',
+    mult: 2.2,
+    effect: 'stun',
+    radius: 0,
+    color: '#d8e86a',
+  },
+  [pairKey('venom', 'bleed')]: {
+    name: 'Contagion',
+    mult: 1.8,
+    effect: 'spread',
+    radius: 2.4,
+    color: '#a0c050',
+    spreadStatus: 'venom',
+  },
 };
 
 /** The reaction for detonating `oldStatus` with `incoming`, if any. */
@@ -170,6 +204,9 @@ export function hasteOnHit(cooldownLeft: number, fullDraw = false): number {
   const chunk = fullDraw ? HASTE_FULL_DRAW_TICKS : HASTE_ON_HIT_TICKS;
   return Math.max(0, cooldownLeft - chunk);
 }
+
+/** Tiles a homing projectile scans when re-acquiring a target mid-flight. */
+export const HOMING_SEEK_RANGE = 6;
 
 // ---------------------------------------------------------- abilities
 
@@ -209,6 +246,8 @@ export interface AbilitySelf {
   shieldHp?: number;
   /** Fraction of melee damage dealt returned as healing while active. */
   meleeLifesteal?: number;
+  /** While active, every landed basic attack applies this status — the oil-on-the-blade stances. */
+  onHitStatus?: StatusApply;
   durationTicks: number;
 }
 
@@ -248,6 +287,18 @@ export interface AbilityDef {
   projectileSpeed?: number;
   /** Projectiles punch through targets instead of stopping. */
   pierce?: boolean;
+  /**
+   * Homing turn rate, radians/second. Projectiles seek a foe picked in
+   * the aim cone at launch (fans distribute across distinct targets),
+   * re-acquiring within HOMING_SEEK_RANGE when their mark dies.
+   */
+  homing?: number;
+  /**
+   * Projectile school override: shots fly as magic bolts in this school
+   * regardless of the caster's weapon — seeker wisps from a sword hand
+   * still look like magic, not arrows.
+   */
+  element?: string;
   /** dash_strike distance, tiles. Negative = away from the aim. */
   dashTiles?: number;
   /** chain_zap: how many targets the arc can jump to. */
@@ -293,10 +344,14 @@ export type AbilitySlot = 0 | 1 | 2 | 3;
 
 // --------------------------------------------------------- techniques
 
-/** A combat style that carries a technique loadout. */
-export type CombatStyleId = 'melee' | 'archery' | 'magic';
+/**
+ * A combat style that carries a technique loadout. `sneak` is the
+ * rogue's ladder: unlocked by the sneak skill, reached through weapons
+ * that declare `techStyle: 'sneak'` (the daggers) — loadout-is-class.
+ */
+export type CombatStyleId = 'melee' | 'archery' | 'magic' | 'sneak';
 
-export const COMBAT_STYLES: readonly CombatStyleId[] = ['melee', 'archery', 'magic'];
+export const COMBAT_STYLES: readonly CombatStyleId[] = ['melee', 'archery', 'magic', 'sneak'];
 
 /**
  * A learnable active: unlocked by raising the style's skill, chosen
