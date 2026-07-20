@@ -5,7 +5,10 @@ import {
   FLOURISH_OFF_PHASE_MS,
   FLOURISH_PERIOD_MS,
   bladeCarriage,
+  icepickPath,
   idleFlourish,
+  strikeArc,
+  strikeBlade,
   type Grip,
 } from './carriage.js';
 
@@ -202,4 +205,75 @@ test('compact (knife) carriage rides tighter and steeper, same laws', () => {
       }
     }
   }
+});
+
+test('the wrist law: a swing lags, whips to a lead, settles — continuous, neutral at both ends', () => {
+  for (const grip of GRIPS) {
+    for (const stage of [0, 1] as const) {
+      const sgn = stage === 0 ? 1 : -1;
+      const base = grip === 'rogue' ? Math.PI : 0;
+      let prev = strikeBlade(grip, stage, 0);
+      assert.ok(Math.abs(prev - base) < 1e-9, `${grip}/${stage} starts neutral`);
+      for (let t = 0.01; t <= 1.0001; t += 0.01) {
+        const cur = strikeBlade(grip, stage, t);
+        assert.ok(Math.abs(cur - prev) < 0.12, `${grip}/${stage} continuous at t=${t.toFixed(2)}`);
+        prev = cur;
+      }
+      assert.ok(Math.abs(strikeBlade(grip, stage, 1) - base) < 1e-6, 'lands neutral');
+      // Cocked AGAINST the sweep at the top of the windup...
+      assert.ok(sgn * (strikeBlade(grip, stage, 0.19) - base) < -0.3, 'lags in the windup');
+      // ...leading the arm at the moment of impact.
+      const arc = strikeArc(grip, stage);
+      assert.ok(sgn * (strikeBlade(grip, stage, arc.strikeEnd) - base) > 0.2, 'leads at impact');
+    }
+  }
+});
+
+test('reverse-grip strikes: tighter arc, earlier impact, locked wrist, reversed throughout', () => {
+  for (const stage of [0, 1] as const) {
+    const std = strikeArc('normal', stage);
+    const rg = strikeArc('rogue', stage);
+    assert.ok(
+      Math.abs(rg.follow - rg.windup) < Math.abs(std.follow - std.windup),
+      'the assassin cut is narrower',
+    );
+    assert.ok(rg.strikeEnd < std.strikeEnd, 'and lands earlier in the beat');
+    for (let t = 0; t <= 1.0001; t += 0.02) {
+      const rel = strikeBlade('rogue', stage, t) - Math.PI;
+      // The blade stays REVERSED through the whole cut — never swings
+      // out to a forward point (the grip never lies mid-attack).
+      assert.ok(Math.abs(rel) < 0.5, `locked wrist stays tight at t=${t.toFixed(2)}`);
+    }
+  }
+  // The backhand is the exact mirror of the forehand, both grips.
+  for (const grip of GRIPS) {
+    const a = strikeArc(grip, 0);
+    const b = strikeArc(grip, 1);
+    assert.equal(a.windup, b.follow);
+    assert.equal(a.follow, b.windup);
+    const base = grip === 'rogue' ? Math.PI : 0;
+    for (let t = 0; t <= 1.0001; t += 0.1) {
+      const fore = strikeBlade(grip, 0, t) - base;
+      const back = strikeBlade(grip, 1, t) - base;
+      assert.ok(Math.abs(fore + back) < 1e-9, `${grip} stages mirror at t=${t.toFixed(1)}`);
+    }
+  }
+});
+
+test('icepick finisher: coil high and in, drive down the aim, recover — continuous', () => {
+  let prev = icepickPath(0);
+  for (let t = 0.01; t <= 1.0001; t += 0.01) {
+    const cur = icepickPath(t);
+    assert.ok(
+      Math.abs(cur.r - prev.r) < 0.04 && Math.abs(cur.lift - prev.lift) < 0.04,
+      `continuous at t=${t.toFixed(2)}`,
+    );
+    prev = cur;
+  }
+  const coil = icepickPath(0.35);
+  assert.ok(coil.lift < -0.3, 'the fist coils high over the shoulder');
+  assert.ok(coil.r < 0.1, 'coiled in tight, not reaching');
+  const strike = icepickPath(0.6);
+  assert.ok(strike.r > 0.4, 'drives out along the aim');
+  assert.ok(strike.lift > 0, 'lands below the shoulder line — a downward stab');
 });

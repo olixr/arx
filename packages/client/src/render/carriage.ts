@@ -109,6 +109,91 @@ export function bladeCarriage(
   };
 }
 
+// ---- The strike vocabulary: grip-aware melee attacks. ----
+
+export interface StrikeArc {
+  /** Arm-angle offset (radians rel. the aim) the windup coils to. */
+  windup: number;
+  /** Arm-angle offset the follow-through lands on. */
+  follow: number;
+  /** poseT where the strike phase ends (the windup always ends at 0.2). */
+  strikeEnd: number;
+}
+
+/**
+ * The sweep arc of a melee combo stage (0 forehand, 1 backhand). A
+ * standard grip throws the full shoulder arc; a reverse grip cuts a
+ * TIGHTER, SNAPPIER rake — an assassin slices close, fast and
+ * controlled, never windmilling — so its arc is narrower and its
+ * strike lands earlier in the beat.
+ */
+export function strikeArc(grip: Grip, stage: 0 | 1): StrikeArc {
+  const back = grip === 'rogue' ? -1.05 : -1.35;
+  const fwd = grip === 'rogue' ? 1.15 : 1.45;
+  const strikeEnd = grip === 'rogue' ? 0.42 : 0.5;
+  return stage === 0
+    ? { windup: back, follow: fwd, strikeEnd }
+    : { windup: fwd, follow: back, strikeEnd };
+}
+
+/**
+ * THE WRIST LAW: the blade's angle relative to the ARM RAY through a
+ * sweep. A real cut is a whip-crack, not a windshield wiper: the blade
+ * LAGS the arm through the windup (wrist cocked against the swing),
+ * whips through to a LEAD at impact, and settles straight in the
+ * follow — zero at both ends so the stage blends clean into carriage.
+ * The reverse grip runs the same beat around its π reversal (the tip
+ * stays reversed through the WHOLE cut — the grip never lies), tighter
+ * and stiffer: an assassin's blade is locked to the forearm.
+ */
+export function strikeBlade(grip: Grip, stage: 0 | 1, t: number): number {
+  const sgn = stage === 0 ? 1 : -1; // the arm's sweep direction
+  const base = grip === 'rogue' ? Math.PI : 0;
+  const cock = grip === 'rogue' ? 0.45 : 0.85;
+  const lead = grip === 'rogue' ? 0.28 : 0.42;
+  const strikeEnd = grip === 'rogue' ? 0.42 : 0.5;
+  let rel: number;
+  if (t < 0.2) {
+    const u = t / 0.2;
+    rel = -sgn * cock * (1 - (1 - u) * (1 - u));
+  } else if (t < strikeEnd) {
+    const u = (t - 0.2) / (strikeEnd - 0.2);
+    const e = u * u * (3 - 2 * u);
+    rel = -sgn * cock + sgn * (cock + lead) * e;
+  } else {
+    const u = Math.min(1, (t - strikeEnd) / (1 - strikeEnd));
+    rel = sgn * lead * (1 - u * u * (3 - 2 * u));
+  }
+  return base + rel;
+}
+
+/**
+ * THE ICEPICK FINISHER: a reverse grip cannot ram a forward thrust —
+ * its tip points back along the forearm — so its kill is the overhand
+ * stab. The fist coils HIGH over the shoulder, then drives down the
+ * aim line to gut height, tip first, and eases back out of the strike.
+ * Units of s: `r` = radial reach along the aim, `lift` = vertical
+ * offset (negative = raised). Continuous at every phase edge.
+ */
+export function icepickPath(t: number): { r: number; lift: number } {
+  if (t < 0.35) {
+    // Coil: the fist climbs up-back over the shoulder.
+    const u = t / 0.35;
+    const e = 1 - (1 - u) * (1 - u);
+    return { r: 0.16 - 0.1 * e, lift: -0.34 * e };
+  }
+  if (t < 0.6) {
+    // Drive: straight down the aim to the mark.
+    const u = (t - 0.35) / 0.25;
+    const e = u * u * (3 - 2 * u);
+    return { r: 0.06 + 0.38 * e, lift: -0.34 + 0.46 * e };
+  }
+  // Recover: ease the blade back out of the strike.
+  const u = Math.min(1, (t - 0.6) / 0.4);
+  const e = u * u * (3 - 2 * u);
+  return { r: 0.44 - 0.16 * e, lift: 0.12 - 0.14 * e };
+}
+
 /** One flourish cycle: how often a resting fist plays with its blade. */
 export const FLOURISH_PERIOD_MS = 9200;
 /** How long the flourish itself lasts inside each cycle. */

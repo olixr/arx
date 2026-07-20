@@ -12,7 +12,15 @@ import {
   type StaffFx,
 } from './weapons.js';
 import { LegRig, chooseLimbSign, solveLimb, type LegPose, type LegRigConfig } from './legs.js';
-import { FLOURISH_OFF_PHASE_MS, bladeCarriage, idleFlourish, type Grip } from './carriage.js';
+import {
+  FLOURISH_OFF_PHASE_MS,
+  bladeCarriage,
+  icepickPath,
+  idleFlourish,
+  strikeArc,
+  strikeBlade,
+  type Grip,
+} from './carriage.js';
 import {
   bodyStyle,
   bootStyle,
@@ -804,6 +812,15 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const hScale = 1 + (1 - wS) * 0.55;
   const weapon = itemDef(rig.weaponItem ?? '');
   const isBow = weapon !== undefined && bowStyle(weapon.id) !== null;
+  // Blades — swords and daggers both — share the low carriage AND the
+  // grip-aware strike vocabulary (incl. the reverse grip). Identity
+  // comes from the style registries; roster ids (falchion, hush,
+  // stormcaller, ...) don't all say 'sword'/'dagger'/'staff'.
+  const isSword = weapon !== undefined && bladeStyle(weapon.id) !== null;
+  const isStaff = weapon !== undefined && staffStyle(weapon.id) !== null;
+  // A reversed main fist changes the ATTACK choreography, not just the
+  // carriage — tighter rakes, locked wrist, icepick finisher.
+  const rogueMelee = isSword && rig.carryStyle === 'rogue';
   // The tool TYPE picks the work cycle: an axe chops, a pick heaves
   // overhead and pries — different rhythms, different bodies. Rods (and
   // bare hands) keep the gentle working sway.
@@ -837,49 +854,60 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         : rig.pose === PoseState.Attack3
           ? 2
           : -1;
+  // Icepick finisher path (reverse grip only) — set in stage 2 below.
+  let ice: { r: number; lift: number } | null = null;
   if (meleeStage === 0 || meleeStage === 1) {
     const t = rig.poseT;
-    const WINDUP = meleeStage === 0 ? -1.35 : 1.45;
-    const FOLLOW = meleeStage === 0 ? 1.45 : -1.35;
+    // Grip-aware sweep: the standard grip throws the full shoulder
+    // arc; the reverse grip cuts a tighter, snappier rake that lands
+    // earlier in the beat (strikeArc — the carriage vocabulary).
+    const arc = strikeArc(rogueMelee ? 'rogue' : 'normal', meleeStage as 0 | 1);
+    const WINDUP = arc.windup;
+    const FOLLOW = arc.follow;
     const sgn = Math.sign(FOLLOW - WINDUP);
     if (t < 0.2) {
       // Pull back (ease-out), coiling the torso against the swing.
       const u = t / 0.2;
       swingOffset = 0.5 + (WINDUP - 0.5) * (1 - (1 - u) * (1 - u));
       lean = -sgn * 0.06 * u;
-    } else if (t < 0.5) {
+    } else if (t < arc.strikeEnd) {
       // The strike: fast ease-in sweep across the whole arc.
-      const u = (t - 0.2) / 0.3;
+      const u = (t - 0.2) / (arc.strikeEnd - 0.2);
       const e = u * u * (3 - 2 * u);
       swingOffset = WINDUP + (FOLLOW - WINDUP) * e;
       strikeSweep = { from: rig.dir + WINDUP, to: rig.dir + swingOffset };
       lean = sgn * 0.12 * Math.sin(u * Math.PI);
     } else {
       // Follow-through settles back to rest.
-      const u = (t - 0.5) / 0.5;
+      const u = (t - arc.strikeEnd) / (1 - arc.strikeEnd);
       swingOffset = FOLLOW + (0.5 - FOLLOW) * u * u * (3 - 2 * u);
-      if (t < 0.62) strikeSweep = { from: rig.dir + WINDUP, to: rig.dir + FOLLOW };
+      if (t < arc.strikeEnd + 0.12) strikeSweep = { from: rig.dir + WINDUP, to: rig.dir + FOLLOW };
       lean = sgn * 0.12 * (1 - u);
     }
   } else if (meleeStage === 2) {
-    // Finisher: haul the blade to the hip, then RAM it down the aim.
+    // Finisher. Standard grip: haul the blade to the hip, then RAM it
+    // down the aim. Reverse grip: the ICEPICK — coil the fist high
+    // over the shoulder, then drive it down the aim line, tip first
+    // (a reversed tip cannot lead a forward thrust). Both share the
+    // same three torso beats, so the lean choreography is one path.
     const t = rig.poseT;
     swingOffset = 0;
+    if (rogueMelee) ice = icepickPath(t);
     if (t < 0.35) {
       const u = t / 0.35;
-      thrustR = 0.25 - 0.15 * u * u;
+      if (!ice) thrustR = 0.25 - 0.15 * u * u;
       lean = -0.09 * u;
     } else if (t < 0.6) {
       const u = (t - 0.35) / 0.25;
       const e = u * u * (3 - 2 * u);
-      thrustR = 0.1 + 0.4 * e;
+      if (!ice) thrustR = 0.1 + 0.4 * e;
       lean = 0.17 * Math.sin(u * Math.PI * 0.5);
     } else {
       const u = (t - 0.6) / 0.4;
-      thrustR = 0.5 - 0.25 * u * u * (3 - 2 * u);
+      if (!ice) thrustR = 0.5 - 0.25 * u * u * (3 - 2 * u);
       lean = 0.17 * (1 - u);
     }
-    lean *= Math.sign(fx || 1); // tip the torso along the thrust
+    lean *= Math.sign(fx || 1); // tip the torso along the strike
   }
 
   const drawT = isBow ? rig.drawT : 0;
@@ -1042,6 +1070,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   if (thrustR !== null) {
     mainX = rig.x + fx * thrustR * s * wS;
     mainY = armY + fy * thrustR * s;
+  } else if (ice) {
+    // Icepick: the fist rides its coil-high/drive-down path.
+    mainX = rig.x + fx * ice.r * s * wS;
+    mainY = armY + fy * ice.r * s + ice.lift * s;
   } else {
     mainX = rig.x + Math.cos(mainAngle) * reach * wS;
     mainY = armY + Math.sin(mainAngle) * reach;
@@ -1050,9 +1082,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // during swings/casts it rides the counterbalance circle instead.
   let offX: number;
   let offY: number;
-  if (thrustR !== null) {
+  if (thrustR !== null || ice) {
     // Finisher: the free arm hauls back behind the hip — the counter-
-    // weight of the ram.
+    // weight of the ram (or of the icepick drive).
     offX = rig.x - fx * 0.17 * s * wS;
     offY = armY + 0.09 * s;
   } else if (chopping || mining) {
@@ -1087,14 +1119,21 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // leveling out into a low run carry as the gait becomes a sprint.
   // Everything blends on poseT, so a combat follow-through settles
   // into carriage over the same 280 ms every pose change uses.
-  // Staves resolve through the style registry too — roster ids
-  // (stormcaller, worldsplinter, ...) don't all say 'staff'.
-  const isStaff = weapon !== undefined && staffStyle(weapon.id) !== null;
-  // Blades — swords and daggers both — share the low carriage (incl.
-  // the rogue reverse grip). Identity comes from the style registry;
-  // roster ids (falchion, hush, ...) don't all say 'sword'/'dagger'.
-  const isSword = weapon !== undefined && bladeStyle(weapon.id) !== null;
   let heldAngle = thrustR !== null ? rig.dir : mainAngle;
+  if (isSword && (meleeStage === 0 || meleeStage === 1)) {
+    // THE WRIST LAW (strikeBlade): the blade lags the arm cocked
+    // through the windup, whips to a lead at impact, settles straight
+    // — a whip-crack cut, not a windshield wiper. The reverse grip
+    // runs the same beat around its π reversal, tight and locked.
+    heldAngle =
+      mainAngle + strikeBlade(rogueMelee ? 'rogue' : 'normal', meleeStage as 0 | 1, rig.poseT);
+  } else if (ice) {
+    // The reversed blade stays pointed at the strike mark all the way
+    // through the coil and the drive — menace through the whole beat.
+    const markX = rig.x + fx * 0.6 * s * wS;
+    const markY = armY + fy * 0.6 * s + 0.26 * s;
+    heldAngle = Math.atan2(markY - mainY, markX - mainX);
+  }
   let staffGrip = 0.34; // combat default: gripped low, business end forward
   let armSwingK = 1;
   let restSettle = 0;
