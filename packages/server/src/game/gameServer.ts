@@ -49,10 +49,13 @@ import {
   bandDy,
   growMs,
   isCropTile,
+  aggregateGearStats,
+  emptyGearStats,
   itemDef,
   makeRoll,
   npcHitHeight,
   rolledStats,
+  type GearStats,
   stageEndMs,
   stageForElapsed,
   techniqueDef,
@@ -337,6 +340,11 @@ interface PlayerComp {
   bank: Record<string, number> | null;
   bankDirty: boolean;
   equipment: Partial<Record<EquipSlot, EquippedItem>>;
+  /**
+   * Everything worn gear does, aggregated ONCE per equipment change —
+   * never recomputed per hit or per movement frame. See recomputeGear.
+   */
+  gear: GearStats;
   attackCooldown: number;
   lastCombatAt: number;
   poseUntilTick: number;
@@ -665,7 +673,10 @@ export class GameServer {
       inventory = emptyInventory();
       for (const grant of STARTER_KIT) addItem(inventory, grant.item, grant.qty);
     }
-    const maxHp = levelForXp(skills.vitality ?? 0);
+    const gear = aggregateGearStats(equipment);
+    // Max HP = BASE vitality level + worn maxHp affixes (gear bonuses to
+    // the vitality SKILL power actions, never HP — no double-dipping).
+    const maxHp = levelForXp(skills.vitality ?? 0) + gear.maxHp;
 
     // Rescue characters saved somewhere that no longer exists — a delve
     // instance that died with the server, or any solid tile.
@@ -703,6 +714,7 @@ export class GameServer {
       bank: character.id > 0 ? this.accounts.loadBank(character.id) : null,
       bankDirty: false,
       equipment,
+      gear,
       attackCooldown: 0,
       lastCombatAt: 0,
       poseUntilTick: 0,
@@ -905,7 +917,7 @@ export class GameServer {
     const node = ground === undefined ? undefined : NODES_BY_TILE.get(ground as Tile);
     if (!node) return;
 
-    const level = levelForXp(player.skills[node.skill] ?? 0);
+    const level = this.effectiveLevel(player, node.skill);
     if (level < node.levelReq) {
       sys(`You need ${node.skill} level ${node.levelReq} for this ${node.name.toLowerCase()}.`);
       return;
@@ -1084,7 +1096,7 @@ export class GameServer {
     if (this.crops.has(key)) return; // someone beat you to the plot
     const def = CROP_BY_SEED.get(seed);
     if (!def) return;
-    const level = levelForXp(player.skills.farming ?? 0);
+    const level = this.effectiveLevel(player, 'farming');
     if (level < def.levelReq) {
       sys(`You need farming level ${def.levelReq} to plant ${def.name.toLowerCase()}.`);
       return;
@@ -1211,7 +1223,7 @@ export class GameServer {
 
     const recipe = RECIPES.get(recipeId);
     if (!recipe) return;
-    const level = levelForXp(player.skills[recipe.skill] ?? 0);
+    const level = this.effectiveLevel(player, recipe.skill);
     if (level < recipe.levelReq) {
       sys(`You need ${recipe.skill} level ${recipe.levelReq} to make that.`);
       return;
@@ -1245,7 +1257,7 @@ export class GameServer {
     }
     for (const input of recipe.inputs) removeItem(player.inventory, input.item, input.qty);
 
-    const level = levelForXp(player.skills[recipe.skill] ?? 0);
+    const level = this.effectiveLevel(player, recipe.skill);
     const burnChance = recipe.burnChance
       ? Math.max(0, recipe.burnChance - (level - recipe.levelReq) * 0.015)
       : 0;
@@ -1292,7 +1304,7 @@ export class GameServer {
     }
 
     const skill = def.skill ?? 'construction';
-    const level = levelForXp(player.skills[skill] ?? 0);
+    const level = this.effectiveLevel(player, skill);
     if (level < def.levelReq) {
       sys(`You need ${skill} level ${def.levelReq} for a ${def.name.toLowerCase()}.`);
       return;
@@ -1521,7 +1533,7 @@ export class GameServer {
       this.systemChatAll(`${player.name} reached ${skill} level ${levelAfter}!`);
       if (skill === 'vitality') {
         const health = this.healths.must(eid);
-        health.maxHp = levelAfter;
+        health.maxHp = levelAfter + player.gear.maxHp;
       }
     }
   }
@@ -1811,7 +1823,30 @@ export class GameServer {
     }
   }
 
+  /** Re-aggregate worn-gear stats + re-derive max HP (clamped, never 0). */
+  private recomputeGear(eid: EntityId, player: PlayerComp): void {
+    player.gear = aggregateGearStats(player.equipment);
+    const health = this.healths.get(eid);
+    if (health) {
+      health.maxHp = levelForXp(player.skills.vitality ?? 0) + player.gear.maxHp;
+      health.hp = Math.max(1, Math.min(health.hp, health.maxHp));
+    }
+  }
+
+  /**
+   * Effective skill level: base + worn +skill affixes. Powers combat,
+   * gathering, farming, crafting, and building — the RS boosting feel.
+   * Equip requirements, technique unlocks, and max HP stay BASE.
+   */
+  private effectiveLevel(player: PlayerComp, skill: SkillId): number {
+    return Math.min(
+      120,
+      levelForXp(player.skills[skill] ?? 0) + (player.gear.skillBonus[skill] ?? 0),
+    );
+  }
+
   private onEquipmentChanged(eid: EntityId, player: PlayerComp): void {
+    this.recomputeGear(eid, player);
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
     player.session?.sendJson({ t: 'equip', equipment: player.equipment, carry: player.carryStyle });
     // A new weapon or relic means new abilities on the hotbar.
@@ -1845,8 +1880,11 @@ export class GameServer {
     const wasHidden = player.hidden;
     this.revealPlayer(eid, player);
 
-    const level = levelForXp(player.skills[weapon.style] ?? 0);
-    const maxHit = Math.max(1, Math.round(weapon.damage * (1 + level * 0.05)));
+    const level = this.effectiveLevel(player, weapon.style);
+    const maxHit = Math.max(
+      1,
+      Math.round(weapon.damage * (1 + level * 0.05) * player.gear.styleDmgMult[weapon.style]),
+    );
 
     if (weapon.style === 'melee') {
       // Combo string: forehand → backhand → heavy finisher. Swinging
@@ -2018,7 +2056,9 @@ export class GameServer {
     if (!player.session) return;
     const max = [0, 0, 0, 0] as [number, number, number, number];
     for (let slot = 0; slot < ABILITY_SLOTS; slot++) {
-      max[slot] = this.slotAbility(player, slot as AbilitySlot)?.cooldownTicks ?? 0;
+      const base = this.slotAbility(player, slot as AbilitySlot)?.cooldownTicks ?? 0;
+      // Radials show the same cooldown the cast will actually set.
+      max[slot] = base > 0 ? Math.max(1, Math.round(base * player.gear.cooldownMult)) : 0;
     }
     player.session.sendJson({
       t: 'cooldowns',
@@ -2105,7 +2145,8 @@ export class GameServer {
     if (player.abilityCd[slot] > 0) return;
     if (this.tickCount < player.castFreezeUntilTick) return;
 
-    player.abilityCd[slot] = ab.cooldownTicks;
+    // Cloth's cooldown discount lands here — where every cooldown is set.
+    player.abilityCd[slot] = Math.max(1, Math.round(ab.cooldownTicks * player.gear.cooldownMult));
     player.castFreezeUntilTick = this.tickCount + (ab.castFreezeTicks ?? 0);
     player.lastCombatAt = Date.now();
     this.revealPlayer(eid, player);
@@ -2114,7 +2155,7 @@ export class GameServer {
     this.setPose(eid, PoseState.Art, Math.max(6, (ab.castFreezeTicks ?? 0) + 4));
 
     const style = this.currentStyle(player);
-    const level = levelForXp(player.skills[style] ?? 0);
+    const level = this.effectiveLevel(player, style);
     this.castAbility(eid, ab, aim, style, level, false);
     this.sendCooldowns(player);
   }
@@ -2134,7 +2175,14 @@ export class GameServer {
     targetPos?: { x: number; y: number },
   ): void {
     const pos = this.positions.must(casterEid);
-    const maxHit = ab.damage > 0 ? Math.max(1, Math.round(ab.damage * (1 + level * 0.05))) : 0;
+    // Player casters carry their armor-class style multiplier in.
+    const gearMult = fromNpc
+      ? 1
+      : ((this.players.get(casterEid)?.gear.styleDmgMult as Record<string, number> | undefined)?.[
+          style
+        ] ?? 1);
+    const maxHit =
+      ab.damage > 0 ? Math.max(1, Math.round(ab.damage * (1 + level * 0.05) * gearMult)) : 0;
     const knockbackMult = ab.knockback ?? 1;
 
     switch (ab.shape) {
@@ -2733,7 +2781,7 @@ export class GameServer {
           if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > sum.radius) continue;
           // Sprung: bite, chill, and the trap is spent.
           const owner = this.players.get(sum.ownerEid);
-          const level = owner ? levelForXp(owner.skills.melee ?? 0) : 1;
+          const level = owner ? this.effectiveLevel(owner, 'melee') : 1;
           const dmg = Math.max(1, Math.round(3 * (1 + level * 0.05)));
           this.damageNpc(npcEid, dmg, sum.ownerEid, 'melee', {
             status: { status: 'chill', power: sum.power, durationTicks: 80 },
@@ -3057,11 +3105,10 @@ export class GameServer {
     // and it must land before NPC retaliation picks a target.
     if (raw > 0) this.revealPlayer(eid, player);
 
-    const defLevel = levelForXp(player.skills.defence ?? 0);
-    let armor = 0;
-    for (const worn of Object.values(player.equipment)) {
-      armor += itemDef(worn?.id ?? '')?.armor ?? 0;
-    }
+    const defLevel = this.effectiveLevel(player, 'defence');
+    // The gear cache already sums rolled armor (rarity-scaled) plus
+    // legacy flat armor — the per-hit loop over worn items is gone.
+    const armor = player.gear.armor;
     // Defence + armor shave hits down, never below 0. DoTs pierce —
     // the wound is already inside the armor.
     let dmg = opts.pierceArmor
@@ -3271,7 +3318,7 @@ export class GameServer {
           // point of the skill below the invisibility tiers.
           let aggro = npc.def.aggroRange;
           if (player.sneaking) {
-            aggro *= sneakDetectionFactor(levelForXp(player.skills.sneak ?? 0));
+            aggro *= sneakDetectionFactor(this.effectiveLevel(player, 'sneak'));
           }
           if (dx * dx + dy * dy < aggro * aggro) {
             npc.state = 'chase';
@@ -3534,7 +3581,8 @@ export class GameServer {
     if (this.tickCount % 80 === 0) {
       for (const [eid, player] of this.players) {
         if (player.session === null) continue;
-        let regen = 0;
+        // Gear regen affixes join the best-of scan alongside consumables.
+        let regen = player.gear.regenPer4s;
         for (const b of player.buffs) regen = Math.max(regen, b.regenPer4s);
         if (regen > 0) {
           const health = this.healths.must(eid);
@@ -3743,6 +3791,7 @@ export class GameServer {
         : player.speed;
       for (const b of player.buffs) speed *= b.speedMult;
       if (this.hasPassive(player, 'fleet_footed')) speed *= 1.08;
+      speed *= player.gear.speedMult; // plate drags, leather springs
       if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
       if (casting) speed = 0; // committed to the cast
       const next = stepMovement(pos, frame, speed, TICK_DT, this.world);
@@ -3801,7 +3850,7 @@ export class GameServer {
       player.sneakStillTicks = 0;
       player.sneakMoveAccum = 0;
     }
-    const sneakLevel = levelForXp(player.skills.sneak ?? 0);
+    const sneakLevel = this.effectiveLevel(player, 'sneak');
     const wantHidden =
       player.sneaking &&
       this.tickCount >= player.revealLockUntilTick &&
@@ -3861,8 +3910,11 @@ export class GameServer {
     // Loosing the arrow is the giveaway, not drawing the string.
     this.revealPlayer(eid, player);
 
-    const level = levelForXp(player.skills.archery ?? 0);
-    const base = Math.max(1, Math.round(weapon.damage * (1 + level * 0.05)));
+    const level = this.effectiveLevel(player, 'archery');
+    const base = Math.max(
+      1,
+      Math.round(weapon.damage * (1 + level * 0.05) * player.gear.styleDmgMult.archery),
+    );
     const pos = this.positions.must(eid);
     const fire = (shot: { maxHit: number; speed: number; range: number }, angle: number, fullDraw: boolean) => {
       const proj = this.ecs.create();
