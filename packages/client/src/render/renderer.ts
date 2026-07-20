@@ -1190,8 +1190,6 @@ export class Renderer {
     };
     this.grass.drawUnder(this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
 
-    this.drawAimGuide(game);
-
     const items: DrawItem[] = [];
     // Tall thickets y-sort with the world: you walk THROUGH them.
     this.grass.collectTall(items, this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
@@ -1273,6 +1271,11 @@ export class Renderer {
 
     this.particles.update(this.frameDt);
     this.particles.draw(this.ctx, this.liftedWTS, this.camera.scale);
+    // The aim guide rides OVER the world pass: elevated ground repaints
+    // the whole plateau as y-sorted items, so drawing it early buried
+    // the guide anywhere above level 0 (the drawAimGuide-under-items
+    // era only survived on flat ground).
+    this.drawAimGuide(game);
     this.drawRings();
     this.drawCombatFx(game);
 
