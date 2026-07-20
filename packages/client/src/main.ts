@@ -741,6 +741,9 @@ function frame(now: number): void {
     const pos = game.predictor.pos;
     stationPanels.enforceAnchor(pos.x, pos.y);
   }
+  // The station being talked to (open panel) animates its in-use
+  // choreography — chest lid open, furnace stoked — via renderer heat.
+  renderer.stationFocus = stationPanels.anchorTile;
 
   // Swing/cast sounds on pose transitions (combo swings pitch up the
   // chain; the finisher also thumps the pad).

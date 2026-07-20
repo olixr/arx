@@ -453,6 +453,69 @@ export class Renderer {
     return best;
   }
 
+  /** Tiles that count as workable stations for interaction heat. */
+  private static readonly HEAT_STATION_TILES = new Set<Tile>([
+    Tile.Anvil,
+    Tile.Furnace,
+    Tile.Campfire,
+    Tile.Workbench,
+    Tile.Alembic,
+    Tile.BankChest,
+    Tile.ShopCounter,
+  ]);
+
+  /**
+   * Interaction heat per station tile, 0..1 with an eased attack and a
+   * gentler release. Heated by anyone working the station (Craft pose,
+   * own player included) and by the local player's open bank/shop/craft
+   * panel. Painters layer the in-use choreography over the idle art by
+   * reading this — lids glide open, fires flare, beams work harder.
+   */
+  private readonly stationHeat = new Map<number, number>();
+
+  /** The open station panel's anchor tile (set per frame by main.ts). */
+  stationFocus: { tx: number; ty: number } | null = null;
+
+  private tickStationHeat(game: ClientGame, dt: number): void {
+    const hot = new Set<number>();
+    const mark = (x: number, y: number): void => {
+      const cx = Math.floor(x);
+      const cy = Math.floor(y);
+      let best: { tx: number; ty: number; d: number } | null = null;
+      for (let ty2 = cy - 2; ty2 <= cy + 2; ty2++) {
+        for (let tx2 = cx - 2; tx2 <= cx + 2; tx2++) {
+          const t2 = game.world.groundAt(tx2, ty2);
+          if (t2 === undefined || !Renderer.HEAT_STATION_TILES.has(t2)) continue;
+          const d = Math.hypot(tx2 + 0.5 - x, ty2 + 0.5 - y);
+          if (!best || d < best.d) best = { tx: tx2, ty: ty2, d };
+        }
+      }
+      if (best) hot.add(packTile(best.tx, best.ty));
+    };
+    for (const [, remote] of game.entities) {
+      if (remote.meta.kind !== EntityKind.Player) continue;
+      const latest = remote.buffer.latest();
+      if (latest?.pose === PoseState.Craft) mark(latest.x, latest.y);
+    }
+    if (game.ownEid !== null && game.ownPose === PoseState.Craft) {
+      const own = game.predictor.pos;
+      mark(own.x, own.y);
+    }
+    if (this.stationFocus) hot.add(packTile(this.stationFocus.tx, this.stationFocus.ty));
+    const up = 1 - Math.exp(-9 * dt);
+    const down = 1 - Math.exp(-4 * dt);
+    for (const key of hot) {
+      const v = this.stationHeat.get(key) ?? 0;
+      this.stationHeat.set(key, v + (1 - v) * up);
+    }
+    for (const [key, v] of this.stationHeat) {
+      if (hot.has(key)) continue;
+      const nv = v * (1 - down);
+      if (nv < 0.01) this.stationHeat.delete(key);
+      else this.stationHeat.set(key, nv);
+    }
+  }
+
   /** Nearest gatherable node around a world position, if any. */
   private findGatherNode(
     x: number,
@@ -888,6 +951,7 @@ export class Renderer {
     // Hitstop slows animation + particles to a crawl for a few frames;
     // the camera and network keep real time.
     this.frameDt = performance.now() < this.hitstopUntil ? frameDt * 0.12 : frameDt;
+    this.tickStationHeat(game, this.frameDt);
 
     // Player zoom glides first — every projection this frame reads it.
     this.camera.tickZoom(frameDt);
@@ -5784,8 +5848,12 @@ export class Renderer {
         return {
           sortY: ty + 0.7,
           draw: () => {
+            // COOKING: the fed fire roars a head taller, its coals
+            // brighten, and it spits an extra ember.
+            const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
+            const fl2 = flicker * (1 + act * 0.28);
             // Warm light laps the ground around the ring first.
-            ctx.fillStyle = `rgba(232, 122, 51, ${0.08 * flicker})`;
+            ctx.fillStyle = `rgba(232, 122, 51, ${0.08 * flicker + 0.06 * act})`;
             ctx.beginPath();
             facetCircle(ctx, p.x, p.y + s * 0.08, s * 0.52, 8, 0.3, 0.55);
             ctx.fill();
@@ -5813,7 +5881,7 @@ export class Renderer {
             // The coal bed under the flames pulses out of phase.
             for (let i = 0; i < 3; i++) {
               const pulse = 0.45 + Math.sin(t * 3.2 + i * 2.1 + h) * 0.45;
-              ctx.fillStyle = `rgba(240, 130, 50, ${0.35 + pulse * 0.5})`;
+              ctx.fillStyle = `rgba(240, 130, 50, ${Math.min(1, 0.35 + pulse * 0.5 + act * 0.25)})`;
               ctx.beginPath();
               facetCircle(ctx, p.x + (i - 1) * s * 0.09, p.y + s * 0.05, s * 0.05, 5, i * 1.3, 0.6);
               ctx.fill();
@@ -5821,21 +5889,21 @@ export class Renderer {
             // Flame: two flat licks, flickering.
             ctx.fillStyle = '#e8823d';
             ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.14 * flicker, p.y + s * 0.04);
-            ctx.quadraticCurveTo(p.x - s * 0.1, p.y - s * 0.3 * flicker, p.x, p.y - s * 0.42 * flicker);
-            ctx.quadraticCurveTo(p.x + s * 0.12, p.y - s * 0.26 * flicker, p.x + s * 0.14 * flicker, p.y + s * 0.04);
+            ctx.moveTo(p.x - s * 0.14 * fl2, p.y + s * 0.04);
+            ctx.quadraticCurveTo(p.x - s * 0.1, p.y - s * 0.3 * fl2, p.x, p.y - s * 0.42 * fl2);
+            ctx.quadraticCurveTo(p.x + s * 0.12, p.y - s * 0.26 * fl2, p.x + s * 0.14 * fl2, p.y + s * 0.04);
             ctx.closePath();
             ctx.fill();
             ctx.fillStyle = '#f2c94c';
             ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.07 * flicker, p.y + s * 0.03);
-            ctx.quadraticCurveTo(p.x, p.y - s * 0.18 * flicker, p.x + s * 0.02, p.y - s * 0.22 * flicker);
-            ctx.quadraticCurveTo(p.x + s * 0.07, p.y - s * 0.1, p.x + s * 0.07 * flicker, p.y + s * 0.03);
+            ctx.moveTo(p.x - s * 0.07 * fl2, p.y + s * 0.03);
+            ctx.quadraticCurveTo(p.x, p.y - s * 0.18 * fl2, p.x + s * 0.02, p.y - s * 0.22 * fl2);
+            ctx.quadraticCurveTo(p.x + s * 0.07, p.y - s * 0.1, p.x + s * 0.07 * fl2, p.y + s * 0.03);
             ctx.closePath();
             ctx.fill();
             // Embers spiral up and out of the light; a thin wisp of
             // smoke keeps going where they give up.
-            for (let i = 0; i < 2; i++) {
+            for (let i = 0; i < 2 + (act > 0.3 ? 1 : 0); i++) {
               const ph = (t * (0.55 + i * 0.21) + h * 0.09 + i * 0.5) % 1;
               ctx.fillStyle = `rgba(255, 190, 110, ${(1 - ph) * 0.75})`;
               ctx.fillRect(
@@ -6035,8 +6103,10 @@ export class Renderer {
             ctx.fillStyle = '#94693a';
             ctx.fillRect(p.x - s * 0.4, benchY - s * 0.1, s * 0.8, s * 0.05);
 
-            // Burner flame under the retort — always working, softly.
-            const flick = 0.85 + Math.sin(t * 11 + h) * 0.12;
+            // Burner flame under the retort — always working softly,
+            // roaring up while a brew is actually on.
+            const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
+            const flick = (0.85 + Math.sin(t * 11 + h) * 0.12) * (1 + act * 0.35);
             ctx.fillStyle = '#8a8494';
             ctx.fillRect(p.x - s * 0.26, benchY - s * 0.16, s * 0.14, s * 0.045);
             ctx.fillStyle = `rgba(232, 130, 61, ${0.8 * flick})`;
@@ -6091,12 +6161,27 @@ export class Renderer {
             vial(p.x + s * 0.3, benchY - s * 0.13, s * 0.08, s * 0.12, '#8fd0e8');
             vial(p.x + s * 0.08, benchY - s * 0.13, s * 0.1, s * 0.18, '#d65a5a');
             vial(p.x - s * 0.38, benchY - s * 0.14, s * 0.09, s * 0.15, '#c9a8e8');
-            // Bubbles climbing out of the retort's brew.
-            const bt = (t * 0.7 + h * 0.13) % 1;
-            ctx.fillStyle = `rgba(230, 244, 240, ${0.6 * (1 - bt)})`;
-            ctx.beginPath();
-            ctx.arc(rx + Math.sin(t * 2 + h) * s * 0.03, ry - s * 0.02 - bt * s * 0.1, s * 0.022, 0, Math.PI * 2);
-            ctx.fill();
+            // Bubbles climbing out of the retort's brew — a rolling
+            // boil of them while the bench is working.
+            for (let i = 0; i < (act > 0.05 ? 3 : 1); i++) {
+              const bt = (t * (0.7 + i * 0.23) + h * 0.13 + i * 0.4) % 1;
+              ctx.fillStyle = `rgba(230, 244, 240, ${0.6 * (1 - bt)})`;
+              ctx.beginPath();
+              ctx.arc(
+                rx + Math.sin(t * 2 + h + i * 2.4) * s * 0.03 + (i - 1) * s * 0.02,
+                ry - s * 0.02 - bt * s * 0.1,
+                s * 0.022,
+                0,
+                Math.PI * 2,
+              );
+              ctx.fill();
+            }
+            // Distillate drips off the condenser into the vial.
+            if (act > 0.05) {
+              const dp = (t * 1.15 + h * 0.19) % 1;
+              ctx.fillStyle = `rgba(127, 201, 179, ${0.85 * act})`;
+              ctx.fillRect(p.x + s * 0.295, benchY - s * 0.24 + dp * s * 0.1, s * 0.022, s * 0.035);
+            }
           },
         };
       }
@@ -6111,9 +6196,14 @@ export class Renderer {
             this.castEdgeQuad(p.x - s * 0.44, baseY, p.x + s * 0.44, baseY, 1.2);
           },
           draw: () => {
+            // STOKED: while someone smelts, the whole piece surges —
+            // the pool, the mouth, the coals, the smoke all breathe
+            // harder on one shared flare envelope.
+            const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
+            const flare = act * (0.55 + 0.45 * Math.sin(t * 2.3 + h));
             // Firelight pools on the ground before any masonry — the
             // working glow you can read from across the smithy yard.
-            ctx.fillStyle = `rgba(232, 122, 51, ${0.1 * glow})`;
+            ctx.fillStyle = `rgba(232, 122, 51, ${0.1 * glow + 0.08 * flare})`;
             ctx.beginPath();
             facetCircle(ctx, p.x, baseY + syT * 0.12, s * 0.52, 8, 0.2, 0.42);
             ctx.fill();
@@ -6153,9 +6243,9 @@ export class Renderer {
             ctx.fillRect(p.x - s * 0.3, topY - s * 0.05, s * 0.6, s * 0.08);
             ctx.fillStyle = '#1c1524';
             ctx.fillRect(p.x - s * 0.18, topY - s * 0.05, s * 0.36, s * 0.035);
-            // Smoke: two puffs climbing off the crown, thinning as
-            // they drift east with the yard's air.
-            for (let i = 0; i < 2; i++) {
+            // Smoke: two puffs climbing off the crown (a third while
+            // stoked), thinning as they drift east with the yard's air.
+            for (let i = 0; i < 2 + (act > 0.3 ? 1 : 0); i++) {
               const ph = (t * (0.26 + i * 0.09) + i * 0.5 + h * 0.11) % 1;
               ctx.fillStyle = `rgba(146, 140, 152, ${(1 - ph) * 0.28})`;
               ctx.beginPath();
@@ -6182,7 +6272,7 @@ export class Renderer {
             ctx.lineTo(p.x + s * 0.2, baseY - s * 0.02);
             ctx.closePath();
             ctx.fill();
-            ctx.fillStyle = `rgba(232, 108, 45, ${glow * 0.9})`;
+            ctx.fillStyle = `rgba(232, 108, 45, ${Math.min(1, glow * 0.9 + flare * 0.5)})`;
             ctx.beginPath();
             ctx.moveTo(p.x - s * 0.17, baseY - s * 0.03);
             ctx.lineTo(p.x - s * 0.17, baseY - s * 0.33);
@@ -6196,14 +6286,34 @@ export class Renderer {
             // fire is never one flat brightness.
             for (let i = 0; i < 3; i++) {
               const pulse = 0.5 + Math.sin(t * 3 + i * 2.4 + h) * 0.5;
-              ctx.fillStyle = `rgba(255, 201, 92, ${0.35 + pulse * 0.55})`;
+              ctx.fillStyle = `rgba(255, 201, 92, ${Math.min(1, 0.35 + pulse * 0.55 + flare * 0.3)})`;
               ctx.beginPath();
               facetCircle(ctx, p.x + (i - 1) * s * 0.1, baseY - s * 0.08, s * 0.055, 6, i * 1.1, 0.7);
+              ctx.fill();
+            }
+            // A white heart forms in the fire while it is being fed.
+            if (act > 0.04) {
+              ctx.fillStyle = `rgba(255, 232, 160, ${flare * 0.5})`;
+              ctx.beginPath();
+              facetCircle(ctx, p.x, baseY - s * 0.1, s * 0.07, 6, 0.5, 0.7);
               ctx.fill();
             }
             ctx.fillStyle = '#2c2836';
             for (const gx of [-0.1, 0, 0.1]) {
               ctx.fillRect(p.x + gx * s - s * 0.017, baseY - s * 0.46, s * 0.034, s * 0.44);
+            }
+            // Sparks escape past the grate and climb the stack face.
+            if (act > 0.04) {
+              for (let i = 0; i < 2; i++) {
+                const ph = (t * (0.9 + i * 0.33) + h * 0.21 + i * 0.5) % 1;
+                ctx.fillStyle = `rgba(255, 205, 120, ${(1 - ph) * act * 0.8})`;
+                ctx.fillRect(
+                  p.x + Math.sin(t * 3.1 + i * 2.4 + h) * s * 0.06,
+                  baseY - s * 0.34 - ph * s * 0.5,
+                  s * 0.024,
+                  s * 0.024,
+                );
+              }
             }
             // A stone mold at the east foot: one bar still sun-bright
             // from the pour, one gone gray — the smelting story told.
@@ -6319,6 +6429,38 @@ export class Renderer {
                 );
               }
             }
+            // WORKING THE METAL: while someone hammers, the bar
+            // flashes white on each strike beat and throws a fan of
+            // sparks off the face — the strike you hear, seen.
+            const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
+            if (act > 0.04) {
+              const cyc = t * 1.7 + h * 0.3;
+              const beat = cyc % 1;
+              const seed = hashCoords(211 + (Math.floor(cyc) % 8), tx, ty);
+              if (beat < 0.16) {
+                const flash = (1 - beat / 0.16) * act;
+                ctx.save();
+                ctx.translate(p.x + s * 0.02, yF - s * 0.015);
+                ctx.rotate(-0.1);
+                ctx.fillStyle = `rgba(255, 244, 214, ${flash * 0.85})`;
+                ctx.fillRect(-s * 0.17, -s * 0.034, s * 0.34, s * 0.068);
+                ctx.restore();
+              }
+              if (beat < 0.45) {
+                const k = beat / 0.45;
+                ctx.fillStyle = `rgba(255, 205, 120, ${(1 - k) * act * 0.9})`;
+                for (let i = 0; i < 5; i++) {
+                  const a2 = -Math.PI * (0.12 + 0.76 * (((seed >>> (i * 4)) % 17) / 16));
+                  const r2 = k * s * (0.18 + (((seed >>> (i * 3)) % 7) / 7) * 0.2);
+                  ctx.fillRect(
+                    p.x + s * 0.02 + Math.cos(a2) * r2,
+                    yF - s * 0.02 + Math.sin(a2) * r2 + k * k * s * 0.12,
+                    s * 0.026,
+                    s * 0.026,
+                  );
+                }
+              }
+            }
             // Tongs lean on the stump's east shoulder, jaws up.
             ctx.save();
             ctx.translate(p.x + s * 0.3, baseY - s * 0.04);
@@ -6341,6 +6483,10 @@ export class Renderer {
             this.castEdgeQuad(p.x - s * 0.44, baseY, p.x + s * 0.44, baseY, 0.62);
           },
           draw: () => {
+            // AT WORK: the mallet taps its own beat, dust rises off
+            // the cut, and the plumb line swings with the bench.
+            const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
+            const tap = act * Math.max(0, Math.sin(t * 3.6 + h));
             // Contact shade; the rear legs peek inside the bay first.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
             ctx.fillRect(p.x - s * 0.42, baseY - s * 0.015, s * 0.84, s * 0.045);
@@ -6412,8 +6558,8 @@ export class Renderer {
             ctx.fillStyle = '#6f4d26';
             ctx.fillRect(p.x - s * 0.1, topY - s * 0.12, s * 0.07, s * 0.07);
             ctx.save();
-            ctx.translate(p.x + s * 0.16, topY - s * 0.12);
-            ctx.rotate(0.4);
+            ctx.translate(p.x + s * 0.16, topY - s * 0.12 - tap * s * 0.06);
+            ctx.rotate(0.4 - tap * 0.3);
             ctx.fillStyle = '#8a6a45';
             ctx.fillRect(-s * 0.015, 0, s * 0.03, s * 0.14);
             ctx.fillStyle = '#7a552e';
@@ -6436,9 +6582,24 @@ export class Renderer {
               ctx.arc(cx2, cy2, r2, 0.6, Math.PI * 1.7);
               ctx.stroke();
             }
+            // Sawdust lifts off the vise cut while the work is live.
+            if (act > 0.04) {
+              for (let i = 0; i < 3; i++) {
+                const ph = (t * (0.8 + i * 0.27) + h * 0.13 + i * 0.37) % 1;
+                ctx.fillStyle = `rgba(216, 192, 138, ${(1 - ph) * act * 0.6})`;
+                ctx.fillRect(
+                  p.x + s * (0.14 + i * 0.13) + Math.sin(t * 2 + i * 2.2) * s * 0.03,
+                  topY - s * 0.18 - ph * s * 0.22,
+                  s * 0.022,
+                  s * 0.022,
+                );
+              }
+            }
             // A plumb line hangs off the front edge, never quite
             // still — the maker's mark of a bench in use.
-            const sway = Math.sin(t * 1.6 + h) * s * 0.03;
+            const sway =
+              Math.sin(t * 1.6 + h) * s * 0.03 * (1 + act * 1.6) +
+              Math.sin(t * 4.3 + h * 2) * s * 0.02 * act;
             const nx = p.x - s * 0.38;
             const ny = topY + s * 0.045;
             ctx.strokeStyle = 'rgba(224, 214, 186, 0.7)';
@@ -6475,7 +6636,12 @@ export class Renderer {
             ctx.fill();
             ctx.fillStyle = shade('#6e6879', 12);
             ctx.fillRect(p.x - s * 0.4, baseY - s * 0.1, s * 0.8, s * 0.03);
-            // The strongbox: oak body under a barrel lid.
+            // The strongbox: oak body under a barrel lid. While the
+            // bank is open the lid rides the heat envelope up over its
+            // back hinge — negative y-scale past halfway means you see
+            // its underside standing behind the box, like a real chest.
+            const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
+            const o = act;
             const bodyT = baseY - s * 0.44;
             const lidT = bodyT - s * 0.24;
             ctx.fillStyle = '#7a552e';
@@ -6484,35 +6650,84 @@ export class Renderer {
             ctx.fill();
             ctx.fillStyle = shade('#7a552e', -10);
             ctx.fillRect(p.x - s * 0.34, baseY - s * 0.16, s * 0.68, s * 0.06);
+            // The open mouth: dark felt and the customer's gold.
+            if (o > 0.1) {
+              ctx.fillStyle = '#241a10';
+              ctx.fillRect(p.x - s * 0.31, bodyT + s * 0.005, s * 0.62, s * 0.1);
+              ctx.fillStyle = '#d9a441';
+              for (let i = 0; i < 4; i++) {
+                ctx.beginPath();
+                facetCircle(ctx, p.x - s * 0.21 + i * s * 0.14, bodyT + s * 0.055, s * 0.045, 6, i * 1.2, 0.6);
+                ctx.fill();
+              }
+            }
+            const hingeY = lidT + s * 0.01;
+            ctx.save();
+            ctx.translate(0, hingeY);
+            ctx.scale(1, 1 - o * 1.5);
+            ctx.translate(0, -hingeY);
             ctx.fillStyle = '#94693a';
             ctx.beginPath();
             chamferRect(ctx, p.x - s * 0.37, lidT, s * 0.74, s * 0.26, [s * 0.1, s * 0.1, s * 0.02, s * 0.02]);
             ctx.fill();
             ctx.fillStyle = shade('#94693a', 14);
             ctx.fillRect(p.x - s * 0.28, lidT + s * 0.02, s * 0.56, s * 0.05);
-            // The seam: lamplight off coin escaping where lid meets box.
-            ctx.fillStyle = `rgba(255, 208, 110, ${0.25 + gleam * 0.3})`;
-            ctx.fillRect(p.x - s * 0.31, bodyT - s * 0.012, s * 0.62, s * 0.024);
-            // Iron straps ride over lid and body, riveted; a gold trim
-            // band edges the lid the way the bank edges everything.
             ctx.fillStyle = '#3a3544';
             for (const bx of [-0.24, 0.185] as const) {
               ctx.fillRect(p.x + bx * s, lidT + s * 0.015, s * 0.055, s * 0.23);
+            }
+            ctx.fillStyle = '#8f96a3';
+            for (const bx of [-0.24, 0.185] as const) {
+              ctx.fillRect(p.x + bx * s + s * 0.014, lidT + s * 0.06, s * 0.028, s * 0.028);
+            }
+            ctx.fillStyle = '#d9a441';
+            ctx.fillRect(p.x - s * 0.37, lidT + s * 0.22, s * 0.74, s * 0.028);
+            if (o > 0.5) {
+              // Past vertical we're looking at the underside.
+              ctx.fillStyle = `rgba(24, 15, 6, ${(o - 0.5) * 0.55})`;
+              ctx.fillRect(p.x - s * 0.37, lidT - s * 0.01, s * 0.74, s * 0.28);
+            }
+            ctx.restore();
+            // The seam: lamplight off coin escaping where lid meets
+            // box — swallowed by the real light once the lid is up.
+            ctx.fillStyle = `rgba(255, 208, 110, ${(0.25 + gleam * 0.3) * (1 - o)})`;
+            ctx.fillRect(p.x - s * 0.31, bodyT - s * 0.012, s * 0.62, s * 0.024);
+            // Body straps, rivets, and the gold edge band.
+            ctx.fillStyle = '#3a3544';
+            for (const bx of [-0.24, 0.185] as const) {
               ctx.fillRect(p.x + bx * s, bodyT + s * 0.02, s * 0.055, s * 0.3);
             }
             ctx.fillStyle = '#8f96a3';
             for (const bx of [-0.24, 0.185] as const) {
-              for (const by of [lidT + s * 0.06, bodyT + s * 0.08, bodyT + s * 0.24]) {
+              for (const by of [bodyT + s * 0.08, bodyT + s * 0.24]) {
                 ctx.fillRect(p.x + bx * s + s * 0.014, by, s * 0.028, s * 0.028);
               }
             }
             ctx.fillStyle = '#d9a441';
-            ctx.fillRect(p.x - s * 0.37, lidT + s * 0.22, s * 0.74, s * 0.028);
             ctx.fillRect(p.x - s * 0.34, baseY - s * 0.13, s * 0.68, s * 0.028);
-            // Hasp and padlock: the lock IS the promise.
+            // Treasure light climbs out of the open box, motes riding
+            // it — drawn over the lid so the beam owns the frame.
+            if (o > 0.1) {
+              ctx.fillStyle = `rgba(255, 208, 110, ${0.2 * o})`;
+              ctx.fillRect(p.x - s * 0.26, bodyT - s * 0.46, s * 0.52, s * 0.46);
+              ctx.fillStyle = `rgba(255, 232, 168, ${0.11 * o})`;
+              ctx.fillRect(p.x - s * 0.15, bodyT - s * 0.72, s * 0.3, s * 0.72);
+              for (let i = 0; i < 2; i++) {
+                const ph = (t * (0.6 + i * 0.23) + h * 0.11 + i * 0.5) % 1;
+                ctx.fillStyle = `rgba(255, 226, 150, ${(1 - ph) * o * 0.8})`;
+                ctx.fillRect(
+                  p.x + Math.sin(t * 1.8 + i * 2.6 + h) * s * 0.12,
+                  bodyT - ph * s * 0.55,
+                  s * 0.024,
+                  s * 0.024,
+                );
+              }
+            }
+            // Hasp and padlock: the lock IS the promise. The plate
+            // slides off the seam as the lid lifts away from it.
             ctx.fillStyle = '#d9a441';
             ctx.beginPath();
-            chamferRect(ctx, p.x - s * 0.065, bodyT - s * 0.07, s * 0.13, s * 0.15, s * 0.03);
+            chamferRect(ctx, p.x - s * 0.065, bodyT - s * 0.07 * (1 - o), s * 0.13, s * 0.15, s * 0.03);
             ctx.fill();
             ctx.strokeStyle = '#c9962e';
             ctx.lineWidth = Math.max(1.5, s * 0.035);
@@ -6558,15 +6773,18 @@ export class Renderer {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.3;
         const topY = baseY - s * 0.56;
-        // The scale beam never quite settles — a shop is never done
-        // weighing.
-        const tilt = Math.sin(t * 0.8 + h) * 0.09;
         return {
           sortY: ty + 0.9,
           drawShadow: () => {
             this.castEdgeQuad(p.x - s * 0.46, baseY, p.x + s * 0.46, baseY, 0.8);
           },
           draw: () => {
+            // The scale beam never quite settles — a shop is never
+            // done weighing — and while a sale is on, it works harder.
+            const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
+            const tilt =
+              Math.sin(t * 0.8 + h) * 0.09 * (1 + act * 0.8) +
+              Math.sin(t * 2.7 + h * 2) * 0.05 * act;
             // Paneled counter: plinth foot, rail-and-stile front, then
             // the slab. Joinery reads as an established business.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
@@ -6670,6 +6888,30 @@ export class Renderer {
             ctx.moveTo(p.x - s * 0.215, topY - s * 0.2);
             ctx.quadraticCurveTo(p.x - s * 0.19, topY - s * 0.3, p.x - s * 0.14, topY - s * 0.33);
             ctx.stroke();
+            // A SALE IN PROGRESS: a coin arcs from the pan to the till
+            // and the stacked gold catches the light more often.
+            if (act > 0.04) {
+              const ph = (t * 0.85 + h * 0.07) % 1;
+              ctx.fillStyle = `rgba(232, 188, 90, ${Math.min(1, act * 1.4)})`;
+              ctx.beginPath();
+              facetCircle(
+                ctx,
+                p.x - s * 0.25 + ph * s * 0.56,
+                topY - s * 0.32 - Math.sin(ph * Math.PI) * s * 0.22 + ph * s * 0.1,
+                s * 0.032,
+                6,
+                ph * 7,
+                0.7,
+              );
+              ctx.fill();
+              const gp2 = (t * 0.9 + h * 0.23) % 1;
+              if (gp2 < 0.2) {
+                const k2 = Math.sin((gp2 / 0.2) * Math.PI) * act;
+                ctx.fillStyle = `rgba(255, 240, 190, ${k2 * 0.9})`;
+                ctx.fillRect(p.x + s * 0.265, topY - s * 0.27, s * 0.09, s * 0.02);
+                ctx.fillRect(p.x + s * 0.3, topY - s * 0.305, s * 0.02, s * 0.09);
+              }
+            }
           },
         };
       }

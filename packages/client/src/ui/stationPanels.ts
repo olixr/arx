@@ -71,6 +71,17 @@ export class StationPanels {
     );
   }
 
+  /**
+   * The open panel's anchor tile — the station being talked to. The
+   * renderer heats that station's interaction choreography off this
+   * (chest lid open, furnace stoked) for exactly as long as the
+   * conversation lasts.
+   */
+  get anchorTile(): { tx: number; ty: number } | null {
+    if (!this.anchor || !this.anyOpen) return null;
+    return { tx: Math.floor(this.anchor.x), ty: Math.floor(this.anchor.y) };
+  }
+
   closeAll(): void {
     this.craftPanel.classList.add('hidden');
     this.bankPanel.classList.add('hidden');
