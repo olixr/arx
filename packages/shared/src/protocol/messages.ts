@@ -362,15 +362,43 @@ export interface S2CCooldowns {
  */
 export interface S2CFx {
   t: 'fx';
-  kind: 'nova' | 'telegraph' | 'blast' | 'reaction' | 'summon' | 'vanish';
+  kind:
+    | 'nova'
+    | 'telegraph'
+    | 'blast'
+    | 'reaction'
+    | 'summon'
+    | 'vanish'
+    /** A melee crescent swung at `dir`, reaching `radius` tiles. */
+    | 'arc'
+    /** A dash streak from (x,y) to (x2,y2). */
+    | 'dash'
+    /** One chain-lightning hop from (x,y) to (x2,y2). */
+    | 'bolt'
+    /** An instant ray from (x,y) to (x2,y2). */
+    | 'beam'
+    /** A self-buff flourish rising off the caster. */
+    | 'buff'
+    /** A lingering hazard zone living `ticks` at (x,y). */
+    | 'field';
   x: number;
   y: number;
   radius: number;
-  /** telegraph: ticks until detonation; summon: lifetime. */
+  /** telegraph: ticks until detonation; summon/field: lifetime. */
   ticks?: number;
   color?: string;
   /** reaction: floaty name, e.g. "Thermal Shock". */
   text?: string;
+  /**
+   * Ability id that fired this — the client keys its bespoke layered
+   * visual identity off it (unknown/absent ids get a color fallback).
+   */
+  id?: string;
+  /** arc: aim angle in radians. */
+  dir?: number;
+  /** dash/bolt/beam: segment endpoint. */
+  x2?: number;
+  y2?: number;
 }
 
 /**

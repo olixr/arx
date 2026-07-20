@@ -151,13 +151,16 @@ const defs: AbilityDef[] = [
   {
     id: 'quicksilver',
     name: 'Quicksilver',
-    desc: 'A blur of footwork and one perfect thrust — already elsewhere.',
+    desc: 'Three thrusts in the time other blades manage one.',
     color: '#e6ddc8',
     code: 'Qs',
     cooldownTicks: 120, // 6 s — the duelist fights in tempo
-    shape: 'dash_strike',
-    damage: 6,
-    dashTiles: 2.2,
+    shape: 'flurry', // the drumroll: a burst of arc strikes you can move through
+    damage: 4,
+    range: 2.0,
+    arc: 0.8,
+    hits: 3,
+    pulseEveryTicks: 5,
   },
   {
     id: 'riptide',
@@ -346,17 +349,19 @@ const defs: AbilityDef[] = [
     range: 9,
     projectiles: 1,
     projectileSpeed: 18,
+    executeBelow: { frac: 0.4, mult: 1.6 }, // it finds the marrow of the failing
   },
   {
     id: 'shadow_fang',
     name: 'Shadow Fang',
-    desc: 'The dark takes one long step and bites at the end of it.',
+    desc: 'The dark takes one long step, bites, and keeps what it draws.',
     color: '#4a4058',
     code: 'Sw',
     cooldownTicks: 150, // 7.5 s
     shape: 'dash_strike',
     damage: 7,
     dashTiles: 3.6,
+    drainFrac: 0.25, // the bite feeds the biter
   },
   {
     id: 'crimson_tithe',
@@ -406,18 +411,20 @@ const defs: AbilityDef[] = [
     shape: 'dash_strike',
     damage: 10,
     dashTiles: 3.0,
+    executeBelow: { frac: 0.3, mult: 1.5 }, // regicide favors a faltering crown
     status: { status: 'bleed', power: 1, durationTicks: 80 },
   },
   {
     id: 'last_word',
     name: 'Last Word',
-    desc: 'Step in, say it once, and the conversation is over.',
+    desc: 'Step in, say it once, and the conversation is over. The weary hear it loudest.',
     color: '#f0f0f4',
     code: 'Lw',
     cooldownTicks: 200, // 10 s
     shape: 'dash_strike',
     damage: 14,
     dashTiles: 2.6,
+    executeBelow: { frac: 0.35, mult: 1.8 }, // the finisher: wounded foes take it hard
   },
 
   // ---------------------------------------- archer's-roster weapon arts
@@ -538,16 +545,17 @@ const defs: AbilityDef[] = [
   {
     id: 'cinder_rain',
     name: 'Cinder Rain',
-    desc: 'Loose one burning shaft skyward. It comes back plural.',
+    desc: 'Loose one burning shaft skyward. It comes back plural — and it KEEPS coming.',
     color: '#e8823d',
     code: 'Cd',
-    cooldownTicks: 200, // 10 s
-    shape: 'ground_aoe',
-    damage: 9,
+    cooldownTicks: 240, // 12 s
+    shape: 'ground_field',
+    damage: 4,
     range: 13,
     radius: 2.1,
-    fuseTicks: 16,
-    status: { status: 'burn', power: 1, durationTicks: 60 },
+    fieldTicks: 110, // a burning downpour, not a single strike
+    pulseEveryTicks: 16,
+    status: { status: 'burn', power: 1, durationTicks: 50 },
   },
   {
     id: 'kings_arrow',
@@ -584,12 +592,10 @@ const defs: AbilityDef[] = [
     color: '#d8e4f0',
     code: 'Sy',
     cooldownTicks: 220, // 11 s
-    shape: 'projectile_fan',
-    damage: 16,
-    range: 20,
-    projectiles: 1,
-    projectileSpeed: 24,
-    pierce: true,
+    shape: 'beam', // the railshot: the arrow arrives before the sound does
+    damage: 14,
+    range: 18,
+    width: 0.5,
     status: { status: 'shock', power: 1, durationTicks: 60 },
   },
 
@@ -612,16 +618,17 @@ const defs: AbilityDef[] = [
   {
     id: 'wisp_flare',
     name: 'Wisp Flare',
-    desc: 'Release the wisp in three — it comes back. They don\'t.',
+    desc: 'Release the wisp in three — and everything they pass, they pass TWICE.',
     color: '#efe8c0',
     code: 'Wf',
     cooldownTicks: 140, // 7 s
     shape: 'projectile_fan',
     damage: 4,
-    range: 13,
+    range: 9,
     projectiles: 3,
     spreadArc: 0.5,
-    projectileSpeed: 14,
+    projectileSpeed: 13,
+    returns: true, // the wisps boomerang home, striking again on the way back
   },
   {
     id: 'hearth_flare',
@@ -640,7 +647,7 @@ const defs: AbilityDef[] = [
   {
     id: 'undertow',
     name: 'Undertow',
-    desc: 'The ground remembers being seabed. Briefly, wetly, it acts on it.',
+    desc: 'The ground remembers being seabed — and everything near gets dragged under.',
     color: '#6aa0c8',
     code: 'Ut',
     cooldownTicks: 160, // 8 s
@@ -649,6 +656,7 @@ const defs: AbilityDef[] = [
     range: 12,
     radius: 2.2,
     fuseTicks: 14,
+    knockback: -1.6, // the vortex: the blast pulls INTO its own center
     status: { status: 'chill', power: 1, durationTicks: 90 },
   },
   {
@@ -708,16 +716,17 @@ const defs: AbilityDef[] = [
   {
     id: 'overgrowth',
     name: 'Overgrowth',
-    desc: 'Roots and briars erupt where you point, holding what they catch.',
+    desc: 'Briars erupt where you point and KEEP growing, raking what they hold.',
     color: '#7ac46a',
     code: 'Og',
-    cooldownTicks: 160, // 8 s
-    shape: 'ground_aoe',
-    damage: 8,
+    cooldownTicks: 200, // 10 s — a zone earns a longer breath
+    shape: 'ground_field',
+    damage: 4,
     range: 12,
     radius: 2.2,
-    fuseTicks: 14,
-    status: { status: 'chill', power: 1, durationTicks: 100 },
+    fieldTicks: 120, // 6 s of living thicket
+    pulseEveryTicks: 18,
+    status: { status: 'chill', power: 1, durationTicks: 60 },
   },
   {
     id: 'grave_chill',
@@ -735,16 +744,17 @@ const defs: AbilityDef[] = [
   {
     id: 'gloom_burst',
     name: 'Gloom Burst',
-    desc: 'Plant the blight where they stand and let it bloom.',
+    desc: 'Plant the blight where they stand and let it bloom, season after season.',
     color: '#9a6ab8',
     code: 'Hb',
-    cooldownTicks: 170, // 8.5 s
-    shape: 'ground_aoe',
-    damage: 9,
+    cooldownTicks: 220, // 11 s
+    shape: 'ground_field',
+    damage: 4,
     range: 12,
     radius: 1.9,
-    fuseTicks: 16,
-    status: { status: 'bleed', power: 1, durationTicks: 80 },
+    fieldTicks: 110, // the blight blooms in waves
+    pulseEveryTicks: 18,
+    status: { status: 'bleed', power: 1, durationTicks: 60 },
   },
   {
     id: 'venom_lash',
@@ -796,12 +806,11 @@ const defs: AbilityDef[] = [
     color: '#ffd98a',
     code: 'So',
     cooldownTicks: 180, // 9 s
-    shape: 'projectile_fan',
-    damage: 13,
-    range: 16,
-    projectiles: 1,
-    projectileSpeed: 20,
-    pierce: true,
+    castFreezeTicks: 4,
+    shape: 'beam', // noon does not travel — it simply IS, all along the line
+    damage: 12,
+    range: 14,
+    width: 0.6,
     status: { status: 'burn', power: 1, durationTicks: 60 },
   },
   {
@@ -834,15 +843,17 @@ const defs: AbilityDef[] = [
   {
     id: 'void_rift',
     name: 'Void Rift',
-    desc: 'Open a window to the place with no windows.',
+    desc: 'Open a window to the place with no windows. It INHALES.',
     color: '#5a4a8a',
     code: 'Vr',
-    cooldownTicks: 200, // 10 s
-    shape: 'ground_aoe',
-    damage: 14,
+    cooldownTicks: 240, // 12 s
+    shape: 'ground_field',
+    damage: 5,
     range: 13,
     radius: 2.6,
-    fuseTicks: 18,
+    fieldTicks: 100, // 5 s of open rift
+    pulseEveryTicks: 16,
+    knockback: -1.4, // every pulse drags the caught TOWARD the rift's mouth
   },
   {
     id: 'eye_of_the_storm',
@@ -861,7 +872,7 @@ const defs: AbilityDef[] = [
   {
     id: 'red_eclipse',
     name: 'Red Eclipse',
-    desc: 'For one heartbeat the moon is close, and it is not friendly.',
+    desc: 'For one heartbeat the moon is close, and it drinks what it wounds.',
     color: '#c84a5a',
     code: 'Rd',
     cooldownTicks: 190, // 9.5 s
@@ -869,6 +880,7 @@ const defs: AbilityDef[] = [
     shape: 'nova',
     damage: 12,
     radius: 2.4,
+    drainFrac: 0.35, // the blood school's law: every wound feeds the caster
     status: { status: 'bleed', power: 1, durationTicks: 90 },
   },
   {
@@ -878,12 +890,11 @@ const defs: AbilityDef[] = [
     color: '#9ae8de',
     code: 'Rr',
     cooldownTicks: 220, // 11 s
-    shape: 'projectile_fan',
-    damage: 16,
-    range: 18,
-    projectiles: 1,
-    projectileSpeed: 22,
-    pierce: true,
+    castFreezeTicks: 5,
+    shape: 'beam', // the legendary tears a seam clean across the world
+    damage: 15,
+    range: 16,
+    width: 0.65,
     status: { status: 'shock', power: 1, durationTicks: 70 },
   },
 
@@ -947,6 +958,45 @@ const defs: AbilityDef[] = [
     shape: 'summon',
     damage: 0,
     summon: { kind: 'decoy', durationTicks: 140, radius: 5, power: 0 },
+  },
+  {
+    id: 'stone_aegis',
+    name: 'Stone Aegis',
+    desc: 'For eight seconds, the river stone takes the blows meant for you.',
+    color: '#8a9484',
+    code: 'Ag',
+    cooldownTicks: 400, // 20 s
+    shape: 'self_buff',
+    damage: 0,
+    self: { shieldHp: 12, durationTicks: 160 },
+  },
+  {
+    id: 'coil_lance',
+    name: 'Coil Lance',
+    desc: 'Uncork the thunderclap — one straight line of finished storm.',
+    color: '#e8e06a',
+    code: 'Cl',
+    cooldownTicks: 320, // 16 s
+    shape: 'beam',
+    damage: 9,
+    range: 11,
+    width: 0.55,
+    status: { status: 'shock', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'bramble_burst',
+    name: 'Bramble Burst',
+    desc: 'Point the ring at ground it likes. The briar does the rest.',
+    color: '#5a7a42',
+    code: 'Bb',
+    cooldownTicks: 340, // 17 s
+    shape: 'ground_field',
+    damage: 3,
+    range: 10,
+    radius: 2.0,
+    fieldTicks: 100,
+    pulseEveryTicks: 16,
+    status: { status: 'bleed', power: 1, durationTicks: 60 },
   },
 
   // ------------------------------------------------------- techniques
@@ -1073,6 +1123,48 @@ const defs: AbilityDef[] = [
     knockback: 1.6,
     status: { status: 'burn', power: 1, durationTicks: 60 },
   },
+  {
+    id: 'earthbreaker',
+    name: 'Earthbreaker',
+    desc: 'Leap to your mark and land like a verdict — the ground concedes.',
+    color: '#a4744b',
+    code: 'Ek',
+    cooldownTicks: 220, // 11 s
+    shape: 'leap_slam',
+    damage: 11,
+    dashTiles: 4.5,
+    radius: 2.2,
+    knockback: 2.4,
+  },
+  {
+    id: 'storm_of_shafts',
+    name: 'Storm of Shafts',
+    desc: 'Blacken a patch of sky and keep it black — arrows on a schedule.',
+    color: '#8ab4c8',
+    code: 'Zh',
+    cooldownTicks: 260, // 13 s
+    shape: 'ground_field',
+    damage: 4,
+    range: 12,
+    radius: 2.2,
+    fieldTicks: 120,
+    pulseEveryTicks: 14,
+  },
+  {
+    id: 'maelstrom',
+    name: 'Maelstrom',
+    desc: 'Spin the sea out of dry land — everything caught walks the drain.',
+    color: '#6aa0c8',
+    code: 'Mm',
+    cooldownTicks: 260, // 13 s
+    shape: 'ground_aoe',
+    damage: 10,
+    range: 12,
+    radius: 2.6,
+    fuseTicks: 16,
+    knockback: -2.2, // the drain: a hard drag into the eye
+    status: { status: 'chill', power: 1, durationTicks: 80 },
+  },
 
   // ----------------------------------------------------------- sigils
   {
@@ -1123,12 +1215,15 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   { ability: 'heavy_slam', style: 'melee', unlockLevel: 5 },
   { ability: 'whirlwind', style: 'melee', unlockLevel: 15 },
   { ability: 'bloodlust', style: 'melee', unlockLevel: 30 },
+  { ability: 'earthbreaker', style: 'melee', unlockLevel: 45 },
   { ability: 'tumble_shot', style: 'archery', unlockLevel: 5 },
   { ability: 'rain_of_arrows', style: 'archery', unlockLevel: 15 },
   { ability: 'twin_strike', style: 'archery', unlockLevel: 30 },
+  { ability: 'storm_of_shafts', style: 'archery', unlockLevel: 45 },
   { ability: 'arc_bolt', style: 'magic', unlockLevel: 5 },
   { ability: 'blink', style: 'magic', unlockLevel: 15 },
   { ability: 'meteor_shard', style: 'magic', unlockLevel: 30 },
+  { ability: 'maelstrom', style: 'magic', unlockLevel: 45 },
 ];
 
 export function techniquesFor(style: string): TechniqueDef[] {

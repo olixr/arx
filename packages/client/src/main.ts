@@ -11,6 +11,7 @@ import { UiNav } from './ui/padUI.js';
 import { Sfx } from './audio/sfx.js';
 import { setupTouch } from './input/touch.js';
 import { uiIconUrl } from './render/icons.js';
+import { fxStyleFor } from './render/abilityFx.js';
 import { installChrome } from './ui/chrome.js';
 import { LookCreator } from './ui/lookCreator.js';
 
@@ -418,13 +419,15 @@ game.onCastFx = (_slot, ab) => {
   renderer.addRing(own.x, own.y, ab.color, 0.55);
 };
 
-// Server combat FX → audio + camera feel, scaled by how close they land.
+// Server combat FX → audio + camera feel, scaled by how close they land
+// and by each ability's own punch weight (its visual identity).
 game.onFx = (fx) => {
   const own = game.predictor.renderPos();
   const dist = Math.hypot(fx.x - own.x, fx.y - own.y);
+  const punch = fxStyleFor(fx.id, fx.color).punch;
   if (fx.kind === 'blast') {
     sfx.blast();
-    if (dist < 7) renderer.shake(dist < fx.radius + 0.5 ? 9 : 5);
+    if (dist < 7) renderer.shake((dist < fx.radius + 0.5 ? 8 : 4) * (0.5 + punch));
   } else if (fx.kind === 'reaction' && fx.text && fx.text !== 'Resist' && !fx.text.startsWith('+')) {
     sfx.reaction();
     renderer.hitstop(0.055);
@@ -432,9 +435,24 @@ game.onFx = (fx) => {
       speed: 3.2,
       life: 0.5,
     });
-  } else if (fx.kind === 'nova' && dist > 0.9) {
-    // Someone else's nova — a softer report at a distance.
-    sfx.zap();
+  } else if (fx.kind === 'nova') {
+    if (dist > 0.9) sfx.zap(); // someone else's nova — a softer report
+    if (dist < 7) renderer.shake(5 * (0.4 + punch));
+  } else if (fx.kind === 'arc') {
+    if (dist > 0.9 && dist < 9) sfx.swing(); // your own cast already sang
+  } else if (fx.kind === 'dash') {
+    if (dist > 0.9 && dist < 10) sfx.dash();
+  } else if (fx.kind === 'bolt') {
+    sfx.chainZap();
+    if (dist < 7) renderer.shake(3.5 * (0.4 + punch));
+  } else if (fx.kind === 'beam') {
+    sfx.beam();
+    if (dist < 9) renderer.shake(6 * (0.4 + punch));
+  } else if (fx.kind === 'field') {
+    sfx.ignite();
+    if (dist < 7) renderer.shake(3);
+  } else if (fx.kind === 'buff') {
+    if (dist < 10) sfx.empower();
   } else if (fx.kind === 'vanish') {
     // A stealth flip: a soft gray-violet puff where the body was (or
     // reappears) so the interest pop reads as intentional.

@@ -3,7 +3,10 @@
 // v4: S2CEquipment slots became EquippedItem objects and inventory/bank
 // carry per-instance ItemRolls — v3 clients would read worn items as
 // strings and render nothing, so the bump rejects them cleanly.
-export const PROTOCOL_VERSION = 4;
+// v5: S2CFx grew per-ability identity (id/dir/segment endpoints) and six
+// new kinds (arc/dash/bolt/beam/buff/field) — v4 clients would drop the
+// new kinds silently and miss most combat feedback, so reject cleanly.
+export const PROTOCOL_VERSION = 5;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;

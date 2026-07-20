@@ -324,6 +324,8 @@ const defs: NpcDef[] = [
       { item: 'coins', qty: [5, 25], chance: 0.7 },
       { item: 'iron_ore', qty: [1, 1], chance: 0.15 },
       { item: 'ember_charm', qty: [1, 1], chance: 0.03 },
+      // Grave-goods: the shield-stone buried with an old soldier.
+      { item: 'aegis_stone', qty: [1, 1], chance: 0.025 },
       { item: 'cape_emberweave', qty: [1, 1], chance: 0.04 },
       { item: 'cape_midnight', qty: [1, 1], chance: 0.035 },
       // Old soldiers' iron, still serviceable.
@@ -441,6 +443,7 @@ const defs: NpcDef[] = [
       { item: 'iron_sword', qty: [1, 1], chance: 0.4 },
       { item: 'iron_bar', qty: [1, 2], chance: 0.5 },
       { item: 'storm_bell', qty: [1, 1], chance: 0.12 },
+      { item: 'storm_coil', qty: [1, 1], chance: 0.1 },
       { item: 'ember_staff', qty: [1, 1], chance: 0.1 },
       { item: 'willow_longbow', qty: [1, 1], chance: 0.1 },
       { item: 'sigil_fallen_champion', qty: [1, 1], chance: 0.25 },
@@ -550,6 +553,8 @@ const defs: NpcDef[] = [
       { item: 'bones', qty: [1, 1], chance: 1 },
       { item: 'wolf_fur', qty: [1, 1], chance: 0.9 },
       { item: 'verdant_totem', qty: [1, 1], chance: 0.05 },
+      // Snagged from the underbrush the pack runs through.
+      { item: 'bramble_band', qty: [1, 1], chance: 0.04 },
       // The drop-only chase piece: hunt the pack, wear the pack.
       { item: 'wolfhide_hood', qty: [1, 1], chance: 0.06 },
       { item: 'wanderer_boots', qty: [1, 1], chance: 0.05 },

@@ -191,7 +191,15 @@ export type AbilityShape =
   /** Zap the nearest target in aim, arcing on to nearby enemies. */
   | 'chain_zap'
   /** Repeated novas from the caster over time (you can keep moving). */
-  | 'pulse_nova';
+  | 'pulse_nova'
+  /** Instant ray along the aim — everything in the corridor is struck at once. */
+  | 'beam'
+  /** A lingering hazard zone at an aimed point that pulses damage while it lives. */
+  | 'ground_field'
+  /** Leap to an aimed point and detonate a blast on landing. */
+  | 'leap_slam'
+  /** A rapid burst of melee-arc strikes over a few beats (you keep moving). */
+  | 'flurry';
 
 export interface AbilitySelf {
   heal?: number;
@@ -249,10 +257,26 @@ export interface AbilityDef {
   pulseEveryTicks?: number;
   status?: StatusApply;
   self?: AbilitySelf;
+  /**
+   * Shove strength multiplier. NEGATIVE pulls targets toward the
+   * effect's center instead — the vortex tools.
+   */
   knockback?: number;
   /** ground_aoe: ticks between telegraph and detonation. */
   fuseTicks?: number;
   summon?: AbilitySummon;
+  /** beam: corridor half-width in tiles (default 0.55). */
+  width?: number;
+  /** ground_field: how long the hazard lives (pulses every pulseEveryTicks). */
+  fieldTicks?: number;
+  /** flurry: number of strikes (spaced pulseEveryTicks apart). */
+  hits?: number;
+  /** projectile_fan: shots boomerang back to the caster, striking again. */
+  returns?: boolean;
+  /** Execute: targets below `frac` of max HP take `mult`× damage. */
+  executeBelow?: { frac: number; mult: number };
+  /** Fraction of damage dealt returned to the caster as healing. */
+  drainFrac?: number;
 }
 
 /**

@@ -81,6 +81,7 @@ import {
   FINISHER_KNOCKBACK_MULT,
   FINISHER_RECOVERY_MULT,
   ABILITY_SLOTS,
+  BODY_RADIUS,
   BURN_TICK_EVERY,
   BLEED_TICK_EVERY,
   CHILL_SPEED_FACTOR,
@@ -273,6 +274,14 @@ interface ProjectileComp {
    * and impact from it.
    */
   element?: string;
+  /** Boomerang: instead of dying at range/walls, fly back to the owner. */
+  returns?: boolean;
+  /** Boomerang return leg in progress (homes on the owner's live position). */
+  returning?: boolean;
+  /** Execute: targets below frac of max HP take mult× damage. */
+  executeBelow?: { frac: number; mult: number };
+  /** Fraction of damage dealt healed back to the owner. */
+  drainFrac?: number;
 }
 
 /** A status riding an entity, remembering who put it there. */
@@ -307,6 +316,33 @@ interface PendingBlast {
   color: string;
   /** pulse_nova: burst at the caster's LIVE position (spin that moves). */
   followCaster?: boolean;
+  /** Ability that scheduled it — rides the fx so clients paint its identity. */
+  abilityId?: string;
+  /**
+   * Flurry strikes: only targets inside this half-angle around arcAim
+   * (from the blast center) are hit, and the fx is an 'arc' swing.
+   */
+  arcAim?: number;
+  arcHalf?: number;
+  executeBelow?: { frac: number; mult: number };
+  drainFrac?: number;
+}
+
+/** A lingering hazard zone pulsing damage while it lives. */
+interface ActiveField {
+  x: number;
+  y: number;
+  radius: number;
+  /** Damage per pulse. */
+  damage: number;
+  everyTicks: number;
+  ticksLeft: number;
+  status?: StatusApply;
+  ownerEid: EntityId;
+  style: SkillId;
+  fromNpc: boolean;
+  knockback: number;
+  drainFrac?: number;
 }
 
 interface SpawnState {
@@ -470,6 +506,9 @@ export class GameServer {
 
   /** Telegraphed blasts (ground AoEs) waiting to detonate. */
   private readonly pendingBlasts: PendingBlast[] = [];
+
+  /** Lingering hazard zones (ground_field) pulsing while they live. */
+  private readonly activeFields: ActiveField[] = [];
 
   private readonly spawnPoints: SpawnState[] = [];
 
@@ -2205,6 +2244,55 @@ export class GameServer {
     this.sendCooldowns(player);
   }
 
+  /** Execute law: a target low enough on HP eats the bonus multiplier. */
+  private executeAdjust(
+    npcEid: EntityId,
+    dmg: number,
+    ex?: { frac: number; mult: number },
+  ): number {
+    if (!ex || dmg <= 0) return dmg;
+    const h = this.healths.get(npcEid);
+    if (!h || h.hp > h.maxHp * ex.frac) return dmg;
+    return Math.round(dmg * ex.mult);
+  }
+
+  /** Drain law: a fraction of ability damage flows back as healing. */
+  private drainHeal(casterEid: EntityId, dmg: number, frac?: number): void {
+    if (!frac || dmg <= 0) return;
+    const health = this.healths.get(casterEid);
+    if (!health || health.hp >= health.maxHp) return;
+    health.hp = Math.min(health.maxHp, health.hp + Math.max(1, Math.round(dmg * frac)));
+  }
+
+  /**
+   * Aim-assisted ground targeting: snap to the nearest enemy in the aim
+   * cone so gamepad and touch don't need pixel-perfect targeting.
+   */
+  private resolveGroundTarget(
+    pos: { x: number; y: number },
+    aim: number,
+    range: number,
+  ): { x: number; y: number } {
+    let best: { x: number; y: number } | null = null;
+    let bestDist = Infinity;
+    for (const [npcEid] of this.npcs) {
+      const npos = this.positions.get(npcEid);
+      if (!npos) continue;
+      const dx = npos.x - pos.x;
+      const dy = npos.y - pos.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > range) continue;
+      let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
+      if (diff > Math.PI) diff = Math.PI * 2 - diff;
+      if (diff > 0.65) continue;
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = { x: npos.x, y: npos.y };
+      }
+    }
+    return best ?? { x: pos.x + Math.cos(aim) * range * 0.6, y: pos.y + Math.sin(aim) * range * 0.6 };
+  }
+
   /**
    * The one ability interpreter: player Arts, relic actives, and NPC
    * specials all execute through here, so a new ability is pure data.
@@ -2243,6 +2331,16 @@ export class GameServer {
       case 'melee_arc': {
         const arc = ab.arc ?? Math.PI / 3;
         const range = ab.range ?? 2;
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'arc',
+          x: pos.x,
+          y: pos.y,
+          radius: range,
+          dir: aim,
+          id: ab.id,
+          color: ab.color,
+        });
         for (const [npcEid, npc] of this.npcs) {
           const npos = this.positions.get(npcEid);
           if (!npos) continue;
@@ -2253,19 +2351,29 @@ export class GameServer {
           let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
           if (diff > Math.PI) diff = Math.PI * 2 - diff;
           if (diff > arc && dist > 0.9) continue;
-          const { dmg, crit } = rollDamage(maxHit);
+          const roll = rollDamage(maxHit);
+          const dmg = this.executeAdjust(npcEid, roll.dmg, ab.executeBelow);
           this.damageNpc(npcEid, dmg, casterEid, style, {
-            crit,
+            crit: roll.crit,
             knockbackMult,
             status: ab.status,
           });
+          this.drainHeal(casterEid, dmg, ab.drainFrac);
         }
         break;
       }
 
       case 'nova': {
         const radius = ab.radius ?? 2;
-        this.broadcastFx({ t: 'fx', kind: 'nova', x: pos.x, y: pos.y, radius, color: ab.color });
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'nova',
+          x: pos.x,
+          y: pos.y,
+          radius,
+          id: ab.id,
+          color: ab.color,
+        });
         if (fromNpc) {
           this.blastPlayers(pos.x, pos.y, radius, maxHit, ab.status);
         } else {
@@ -2275,12 +2383,14 @@ export class GameServer {
             const dx = npos.x - pos.x;
             const dy = npos.y - pos.y;
             if (Math.hypot(dx, dy) - npc.def.radius > radius) continue;
-            const { dmg, crit } = rollDamage(maxHit);
+            const roll = rollDamage(maxHit);
+            const dmg = this.executeAdjust(npcEid, roll.dmg, ab.executeBelow);
             this.damageNpc(npcEid, dmg, casterEid, style, {
-              crit,
+              crit: roll.crit,
               knockbackMult,
               status: ab.status,
             });
+            this.drainHeal(casterEid, dmg, ab.drainFrac);
           }
         }
         break;
@@ -2294,6 +2404,8 @@ export class GameServer {
         const dist = Math.abs(dashTiles);
         const dirX = Math.cos(aim) * sign;
         const dirY = Math.sin(aim) * sign;
+        const startX = pos.x;
+        const startY = pos.y;
         const struck = new Set<EntityId>();
         const steps = Math.ceil(dist / 0.4);
         for (let i = 0; i < steps; i++) {
@@ -2307,15 +2419,28 @@ export class GameServer {
             if (!npos) continue;
             if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > 0.8) continue;
             struck.add(npcEid);
-            const { dmg, crit } = rollDamage(maxHit);
+            const roll = rollDamage(maxHit);
+            const dmg = this.executeAdjust(npcEid, roll.dmg, ab.executeBelow);
             this.damageNpc(npcEid, dmg, casterEid, style, {
-              crit,
+              crit: roll.crit,
               knockbackMult,
               status: ab.status,
             });
+            this.drainHeal(casterEid, dmg, ab.drainFrac);
           }
         }
         this.updateChunkMembership(casterEid);
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'dash',
+          x: startX,
+          y: startY,
+          x2: pos.x,
+          y2: pos.y,
+          radius: 0,
+          id: ab.id,
+          color: ab.color,
+        });
         // Tumble Shot: the arrow flies at what you rolled away from.
         if (ab.projectiles && maxHit > 0) {
           const proj = this.ecs.create();
@@ -2371,17 +2496,24 @@ export class GameServer {
           if (best === null) break;
           zapped.add(best);
           const tpos = this.positions.must(best);
+          // Each hop is a real bolt segment — the client draws jagged
+          // lightning from strike point to strike point.
           this.broadcastFx({
             t: 'fx',
-            kind: 'reaction',
-            x: (from.x + tpos.x) / 2,
-            y: (from.y + tpos.y) / 2,
-            radius: Math.hypot(tpos.x - from.x, tpos.y - from.y),
+            kind: 'bolt',
+            x: from.x,
+            y: from.y,
+            x2: tpos.x,
+            y2: tpos.y,
+            radius: 0,
+            id: ab.id,
             color: ab.color,
           });
           from = { x: tpos.x, y: tpos.y };
-          const { dmg, crit } = rollDamage(maxHit);
-          this.damageNpc(best, dmg, casterEid, style, { crit, status: ab.status });
+          const roll = rollDamage(maxHit);
+          const dmg = this.executeAdjust(best, roll.dmg, ab.executeBelow);
+          this.damageNpc(best, dmg, casterEid, style, { crit: roll.crit, status: ab.status });
+          this.drainHeal(casterEid, dmg, ab.drainFrac);
         }
         break;
       }
@@ -2406,6 +2538,9 @@ export class GameServer {
             fromNpc,
             color: ab.color,
             followCaster: true,
+            abilityId: ab.id,
+            executeBelow: ab.executeBelow,
+            drainFrac: ab.drainFrac,
           });
         }
         break;
@@ -2431,6 +2566,9 @@ export class GameServer {
             pierce: ab.pierce,
             fromNpc,
             element: style === 'magic' ? element : undefined,
+            returns: ab.returns,
+            executeBelow: ab.executeBelow,
+            drainFrac: ab.drainFrac,
           });
           this.updateChunkMembership(proj);
         }
@@ -2438,41 +2576,12 @@ export class GameServer {
       }
 
       case 'ground_aoe': {
-        // Aim-assisted placement: snap to the nearest enemy in the aim
-        // cone so gamepad and touch don't need pixel-perfect targeting.
-        let bx: number;
-        let by: number;
-        if (targetPos) {
-          bx = targetPos.x;
-          by = targetPos.y;
-        } else {
-          const range = ab.range ?? 4;
-          let best: { x: number; y: number } | null = null;
-          let bestDist = Infinity;
-          for (const [npcEid, npc] of this.npcs) {
-            void npc;
-            const npos = this.positions.get(npcEid);
-            if (!npos) continue;
-            const dx = npos.x - pos.x;
-            const dy = npos.y - pos.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist > range) continue;
-            let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
-            if (diff > Math.PI) diff = Math.PI * 2 - diff;
-            if (diff > 0.65) continue;
-            if (dist < bestDist) {
-              bestDist = dist;
-              best = { x: npos.x, y: npos.y };
-            }
-          }
-          bx = best ? best.x : pos.x + Math.cos(aim) * range * 0.6;
-          by = best ? best.y : pos.y + Math.sin(aim) * range * 0.6;
-        }
+        const target = targetPos ?? this.resolveGroundTarget(pos, aim, ab.range ?? 4);
         const fuse = ab.fuseTicks ?? 12;
         const radius = ab.radius ?? 1.5;
         this.pendingBlasts.push({
-          x: bx,
-          y: by,
+          x: target.x,
+          y: target.y,
           radius,
           damage: maxHit,
           knockback: knockbackMult,
@@ -2482,16 +2591,205 @@ export class GameServer {
           style,
           fromNpc,
           color: ab.color,
+          abilityId: ab.id,
+          executeBelow: ab.executeBelow,
+          drainFrac: ab.drainFrac,
         });
         this.broadcastFx({
           t: 'fx',
           kind: 'telegraph',
-          x: bx,
-          y: by,
+          x: target.x,
+          y: target.y,
           radius,
           ticks: fuse,
+          id: ab.id,
           color: ab.color,
         });
+        break;
+      }
+
+      case 'ground_field': {
+        // A hazard that LIVES: pulses damage on everything inside for
+        // its whole duration. The client owns the zone's visual life.
+        const target = targetPos ?? this.resolveGroundTarget(pos, aim, ab.range ?? 6);
+        const radius = ab.radius ?? 2;
+        const life = ab.fieldTicks ?? 100;
+        this.activeFields.push({
+          x: target.x,
+          y: target.y,
+          radius,
+          damage: maxHit,
+          everyTicks: ab.pulseEveryTicks ?? 16,
+          ticksLeft: life,
+          status: ab.status,
+          ownerEid: casterEid,
+          style,
+          fromNpc,
+          knockback: ab.knockback ?? 0,
+          drainFrac: ab.drainFrac,
+        });
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'field',
+          x: target.x,
+          y: target.y,
+          radius,
+          ticks: life,
+          id: ab.id,
+          color: ab.color,
+        });
+        break;
+      }
+
+      case 'beam': {
+        // An instant ray: everything in the corridor is struck in the
+        // same frame. The ray stops at the first solid wall face.
+        const range = ab.range ?? 10;
+        const halfW = ab.width ?? 0.55;
+        const dirX = Math.cos(aim);
+        const dirY = Math.sin(aim);
+        let len = range;
+        // March to find the wall the ray dies on.
+        for (let d = 0.4; d <= range; d += 0.25) {
+          if (pointHitsSolid(this.world, pos.x + dirX * d, pos.y + dirY * d)) {
+            len = d;
+            break;
+          }
+        }
+        const ex = pos.x + dirX * len;
+        const ey = pos.y + dirY * len;
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'beam',
+          x: pos.x,
+          y: pos.y,
+          x2: ex,
+          y2: ey,
+          radius: halfW,
+          id: ab.id,
+          color: ab.color,
+        });
+        const strike = (targetEid: EntityId, bodyR: number, tx: number, ty: number): boolean => {
+          const px = tx - pos.x;
+          const py = ty - pos.y;
+          const along = px * dirX + py * dirY;
+          if (along < 0 || along > len + bodyR) return false;
+          const perp = Math.abs(px * -dirY + py * dirX);
+          return perp <= halfW + bodyR;
+        };
+        if (fromNpc) {
+          for (const [playerEid, player] of this.players) {
+            if (player.session === null && player.disconnectedAt !== null) continue;
+            const ppos = this.positions.get(playerEid);
+            if (!ppos) continue;
+            if (!strike(playerEid, BODY_RADIUS, ppos.x, ppos.y)) continue;
+            this.damagePlayer(playerEid, Math.floor(Math.random() * (maxHit + 1)), {
+              status: ab.status,
+            });
+          }
+        } else {
+          for (const [npcEid, npc] of this.npcs) {
+            const npos = this.positions.get(npcEid);
+            if (!npos) continue;
+            if (!strike(npcEid, npc.def.radius, npos.x, npos.y)) continue;
+            const roll = rollDamage(maxHit);
+            const dmg = this.executeAdjust(npcEid, roll.dmg, ab.executeBelow);
+            this.damageNpc(npcEid, dmg, casterEid, style, {
+              crit: roll.crit,
+              knockbackMult,
+              status: ab.status,
+            });
+            this.drainHeal(casterEid, dmg, ab.drainFrac);
+          }
+        }
+        break;
+      }
+
+      case 'leap_slam': {
+        // Cross the gap the loud way: the landing is a real blast that
+        // shoves (or with negative knockback, DRAGS) from the crater.
+        const dist = Math.abs(ab.dashTiles ?? 4);
+        const dirX = Math.cos(aim);
+        const dirY = Math.sin(aim);
+        const startX = pos.x;
+        const startY = pos.y;
+        const steps = Math.ceil(dist / 0.4);
+        for (let i = 0; i < steps; i++) {
+          const next = stepMovement(pos, { mx: dirX, my: dirY }, dist / steps, 1, this.world);
+          pos.x = next.x;
+          pos.y = next.y;
+        }
+        this.updateChunkMembership(casterEid);
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'dash',
+          x: startX,
+          y: startY,
+          x2: pos.x,
+          y2: pos.y,
+          radius: 0,
+          id: ab.id,
+          color: ab.color,
+        });
+        const radius = ab.radius ?? 2;
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'blast',
+          x: pos.x,
+          y: pos.y,
+          radius,
+          id: ab.id,
+          color: ab.color,
+        });
+        const cx = pos.x;
+        const cy = pos.y;
+        if (fromNpc) {
+          this.blastPlayers(cx, cy, radius, maxHit, ab.status);
+        } else {
+          for (const [npcEid, npc] of this.npcs) {
+            const npos = this.positions.get(npcEid);
+            if (!npos) continue;
+            if (Math.hypot(npos.x - cx, npos.y - cy) - npc.def.radius > radius) continue;
+            const roll = rollDamage(maxHit);
+            const dmg = this.executeAdjust(npcEid, roll.dmg, ab.executeBelow);
+            this.damageNpc(npcEid, dmg, casterEid, style, {
+              crit: roll.crit,
+              knockbackMult,
+              status: ab.status,
+              knockFrom: { x: cx, y: cy },
+            });
+            this.drainHeal(casterEid, dmg, ab.drainFrac);
+          }
+        }
+        break;
+      }
+
+      case 'flurry': {
+        // A drumroll of arc strikes: each beat re-reads the caster's
+        // live position, so the flurry travels with the fight.
+        const hits = ab.hits ?? 3;
+        const every = ab.pulseEveryTicks ?? 5;
+        for (let i = 0; i < hits; i++) {
+          this.pendingBlasts.push({
+            x: pos.x,
+            y: pos.y,
+            radius: ab.range ?? 2,
+            damage: maxHit,
+            knockback: knockbackMult,
+            status: ab.status,
+            fuseLeft: 1 + i * every,
+            ownerEid: casterEid,
+            style,
+            fromNpc,
+            color: ab.color,
+            followCaster: true,
+            abilityId: ab.id,
+            arcAim: aim,
+            arcHalf: ab.arc ?? Math.PI / 3,
+            executeBelow: ab.executeBelow,
+            drainFrac: ab.drainFrac,
+          });
+        }
         break;
       }
 
@@ -2499,6 +2797,17 @@ export class GameServer {
         const player = this.players.get(casterEid);
         const self = ab.self;
         if (!player || !self) break;
+        // The empowerment is VISIBLE: everyone nearby sees the flourish.
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'buff',
+          x: pos.x,
+          y: pos.y,
+          radius: 0.9,
+          ticks: self.durationTicks,
+          id: ab.id,
+          color: ab.color,
+        });
         if (self.heal) {
           const health = this.healths.must(casterEid);
           health.hp = Math.min(health.maxHp, health.hp + self.heal);
@@ -2542,6 +2851,7 @@ export class GameServer {
           y: pos.y,
           radius: spec.radius,
           ticks: spec.durationTicks,
+          id: ab.id,
           color: ab.color,
         });
         // A decoy is only useful if it takes the heat NOW.
@@ -2863,30 +3173,78 @@ export class GameServer {
         blast.x = cpos.x;
         blast.y = cpos.y;
       }
+      // Flurry strikes face where the caster aimed and paint as swings.
+      const isArc = blast.arcAim !== undefined;
       this.broadcastFx({
         t: 'fx',
-        kind: 'blast',
+        kind: isArc ? 'arc' : 'blast',
         x: blast.x,
         y: blast.y,
         radius: blast.radius,
+        dir: blast.arcAim,
+        id: blast.abilityId,
         color: blast.color,
       });
       if (blast.fromNpc) {
+        // NPC flurries read as full circles — a fair trade for one code path.
         this.blastPlayers(blast.x, blast.y, blast.radius, blast.damage, blast.status);
       } else {
         for (const [npcEid, npc] of this.npcs) {
           const npos = this.positions.get(npcEid);
           if (!npos) continue;
-          if (Math.hypot(npos.x - blast.x, npos.y - blast.y) - npc.def.radius > blast.radius) {
-            continue;
+          const dx = npos.x - blast.x;
+          const dy = npos.y - blast.y;
+          const dist = Math.hypot(dx, dy) - npc.def.radius;
+          if (dist > blast.radius) continue;
+          if (isArc) {
+            let diff = Math.abs(Math.atan2(dy, dx) - blast.arcAim!) % (Math.PI * 2);
+            if (diff > Math.PI) diff = Math.PI * 2 - diff;
+            if (diff > (blast.arcHalf ?? Math.PI / 3) && dist > 0.9) continue;
           }
-          const { dmg, crit } = rollDamage(blast.damage);
+          const roll = rollDamage(blast.damage);
+          const dmg = this.executeAdjust(npcEid, roll.dmg, blast.executeBelow);
           this.damageNpc(npcEid, dmg, blast.ownerEid, blast.style, {
-            crit,
+            crit: roll.crit,
             knockbackMult: blast.knockback,
             status: blast.status,
+            // Ground blasts shove from the CRATER, not from the caster —
+            // and vortex blasts (negative knockback) drag INTO it.
+            knockFrom: isArc ? undefined : { x: blast.x, y: blast.y },
           });
+          this.drainHeal(blast.ownerEid, dmg, blast.drainFrac);
         }
+      }
+    }
+  }
+
+  /** Lingering hazard zones: pulse damage on everything inside. */
+  private tickFields(): void {
+    for (let i = this.activeFields.length - 1; i >= 0; i--) {
+      const field = this.activeFields[i]!;
+      field.ticksLeft--;
+      if (field.ticksLeft <= 0) {
+        this.activeFields.splice(i, 1);
+        continue;
+      }
+      if (field.ticksLeft % field.everyTicks !== 0) continue;
+      if (field.fromNpc) {
+        this.blastPlayers(field.x, field.y, field.radius, field.damage, field.status);
+        continue;
+      }
+      for (const [npcEid, npc] of this.npcs) {
+        const npos = this.positions.get(npcEid);
+        if (!npos) continue;
+        if (Math.hypot(npos.x - field.x, npos.y - field.y) - npc.def.radius > field.radius) {
+          continue;
+        }
+        const { dmg, crit } = rollDamage(field.damage);
+        this.damageNpc(npcEid, dmg, field.ownerEid, field.style, {
+          crit,
+          knockbackMult: field.knockback,
+          status: field.status,
+          knockFrom: { x: field.x, y: field.y },
+        });
+        this.drainHeal(field.ownerEid, dmg, field.drainFrac);
       }
     }
   }
@@ -2900,15 +3258,44 @@ export class GameServer {
       // could tunnel straight through a thin wall). pointHitsSolid is
       // shape-aware: a shot crossing a tree's tile only dies on the
       // TRUNK — grazes slip past the canopy corners.
+      // Boomerangs home on the owner's LIVE position on the way back.
+      if (proj.returning) {
+        const opos = this.positions.get(proj.ownerEid);
+        if (opos) {
+          const hx = opos.x - pos.x;
+          const hy = opos.y - pos.y;
+          const hd = Math.hypot(hx, hy);
+          if (hd < 0.6) {
+            // Caught: the shot's journey ends in the caster's hand.
+            this.removeFromChunks(eid);
+            this.ecs.destroy(eid);
+            continue;
+          }
+          proj.dirX = hx / hd;
+          proj.dirY = hy / hd;
+          pos.dir = Math.atan2(proj.dirY, proj.dirX);
+        }
+      }
       const subs = Math.max(1, Math.ceil(step / 0.25));
       let dead = false;
       for (let i = 0; i < subs && !dead; i++) {
         pos.x += proj.dirX * (step / subs);
         pos.y += proj.dirY * (step / subs);
-        if (pointHitsSolid(this.world, pos.x, pos.y)) dead = true;
+        // Return legs ghost through walls — a boomerang that dies on the
+        // doorframe it left through reads as a bug, not a mechanic.
+        if (!proj.returning && pointHitsSolid(this.world, pos.x, pos.y)) dead = true;
       }
       proj.distLeft -= step;
       dead = dead || proj.distLeft <= 0;
+
+      // The turn: instead of dying at range or a wall, come back armed.
+      if (dead && proj.returns && !proj.returning) {
+        dead = false;
+        proj.returning = true;
+        proj.distLeft = 40; // generous — the catch check is what ends it
+        proj.hitEids?.clear();
+        proj.pierce = true; // the return leg cuts through the whole line
+      }
 
       if (!dead && proj.fromNpc) {
         // NPC shots seek players (and straw decoys, which exist to eat them).
@@ -2950,7 +3337,9 @@ export class GameServer {
           // feet→crown band so a shot crossing the chest or head lands.
           const dy = bandDy(pos.y, npos.y, npcHitHeight(npc.def));
           if (dx * dx + dy * dy < (npc.def.radius + 0.25) ** 2) {
-            const { dmg, crit } = proj.basic ? rollBasic(proj.maxHit) : rollDamage(proj.maxHit);
+            const roll = proj.basic ? rollBasic(proj.maxHit) : rollDamage(proj.maxHit);
+            const dmg = this.executeAdjust(npcEid, roll.dmg, proj.executeBelow);
+            const crit = roll.crit;
             this.damageNpc(npcEid, dmg, proj.ownerEid, proj.style, {
               crit,
               basic: proj.basic,
@@ -2958,6 +3347,7 @@ export class GameServer {
               status: proj.status,
               knockbackMult: proj.heavy ? HEAVY_BOLT_KNOCKBACK : proj.fullDraw ? 1.4 : 1,
             });
+            this.drainHeal(proj.ownerEid, dmg, proj.drainFrac);
             // Heavy orbs burst on impact, splashing everything close.
             if (proj.splashRadius) {
               this.broadcastFx({
@@ -3017,6 +3407,12 @@ export class GameServer {
       status?: StatusApply;
       /** Struck from stealth or from behind while sneaking (damage already multiplied). */
       backstab?: boolean;
+      /**
+       * Knock direction origin override — blasts shove from their OWN
+       * center, not the caster's position. With a negative knockback
+       * mult the same vector becomes a vortex pull into this point.
+       */
+      knockFrom?: { x: number; y: number };
     } = {},
   ): void {
     const crit = opts.crit ?? false;
@@ -3050,7 +3446,7 @@ export class GameServer {
     // clients so impact sparks fly the way the blow landed.
     let kx = 0;
     let ky = 0;
-    const apos = this.positions.get(attackerEid);
+    const apos = opts.knockFrom ?? this.positions.get(attackerEid);
     const nposPre = this.positions.get(npcEid);
     if (apos && nposPre) {
       const kdx = nposPre.x - apos.x;
@@ -3812,6 +4208,7 @@ export class GameServer {
     this.tickStatuses();
     this.tickSummons();
     this.tickBlasts();
+    this.tickFields();
     this.tickDrops(now);
     this.tickRegen(now);
     if (this.tickCount % 40 === 0) this.tickCrops(now);

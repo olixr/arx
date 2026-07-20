@@ -104,6 +104,70 @@ test('sigils and passives on items resolve', () => {
   assert.ok(passives >= 4, 'at least four passive gear pieces at launch');
 });
 
+test('ability shape data is coherent — the executor never guesses', () => {
+  for (const [id, ab] of ABILITIES) {
+    if (ab.shape === 'ground_field') {
+      assert.ok((ab.fieldTicks ?? 0) > 0, `${id}: a field needs a lifetime`);
+      assert.ok((ab.pulseEveryTicks ?? 0) > 0, `${id}: a field needs a pulse cadence`);
+      assert.ok((ab.fieldTicks ?? 0) > (ab.pulseEveryTicks ?? 0), `${id}: field dies before pulsing`);
+    }
+    if (ab.shape === 'flurry') {
+      assert.ok((ab.hits ?? 0) >= 2, `${id}: a flurry of one is a swing`);
+      assert.ok((ab.range ?? 0) > 0, `${id}: flurry needs reach`);
+    }
+    if (ab.shape === 'beam') {
+      assert.ok((ab.range ?? 0) > 0, `${id}: a beam needs length`);
+      assert.ok((ab.width ?? 0.55) > 0 && (ab.width ?? 0.55) < 2, `${id}: beam width out of band`);
+    }
+    if (ab.shape === 'leap_slam') {
+      assert.ok((ab.dashTiles ?? 0) > 0, `${id}: a leap needs distance`);
+      assert.ok((ab.radius ?? 0) > 0, `${id}: a slam needs a crater`);
+    }
+    if (ab.returns) assert.equal(ab.shape, 'projectile_fan', `${id}: only projectiles boomerang`);
+    if (ab.executeBelow) {
+      assert.ok(ab.executeBelow.frac > 0 && ab.executeBelow.frac < 1, `${id}: execute frac out of band`);
+      assert.ok(ab.executeBelow.mult > 1, `${id}: an execute must actually bonus`);
+    }
+    if (ab.drainFrac !== undefined) {
+      assert.ok(ab.drainFrac > 0 && ab.drainFrac <= 1, `${id}: drain fraction out of band`);
+    }
+    // Vortex pulls only make sense on centered effects.
+    if ((ab.knockback ?? 0) < 0) {
+      assert.ok(
+        ab.shape === 'ground_aoe' || ab.shape === 'ground_field' || ab.shape === 'nova',
+        `${id}: a pull needs a center to pull toward`,
+      );
+    }
+  }
+});
+
+test('the arts are not homogenous — every shape family is in play', () => {
+  const shapes = new Set([...ABILITIES.values()].map((a) => a.shape));
+  for (const s of [
+    'melee_arc',
+    'dash_strike',
+    'projectile_fan',
+    'nova',
+    'ground_aoe',
+    'self_buff',
+    'summon',
+    'chain_zap',
+    'pulse_nova',
+    'beam',
+    'ground_field',
+    'leap_slam',
+    'flurry',
+  ]) {
+    assert.ok(shapes.has(s as never), `no ability uses shape '${s}' — variety regressed`);
+  }
+  // The modifier axes each have at least one bearer in the wild.
+  const all = [...ABILITIES.values()];
+  assert.ok(all.some((a) => a.executeBelow), 'no execute abilities');
+  assert.ok(all.some((a) => a.drainFrac), 'no drain abilities');
+  assert.ok(all.some((a) => a.returns), 'no boomerang abilities');
+  assert.ok(all.some((a) => (a.knockback ?? 0) < 0), 'no vortex pulls');
+});
+
 test('recipes reference real items', () => {
   for (const r of RECIPES.values()) {
     for (const input of r.inputs) assert.ok(ITEMS.has(input.item), `${r.id} input missing`);

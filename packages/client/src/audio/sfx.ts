@@ -242,4 +242,24 @@ export class Sfx {
     this.noise(0.14, 0.3);
     this.tone(420, 0.14, { type: 'triangle', slide: 160, volume: 0.22, delay: 0.06 });
   }
+
+  /** An instant ray firing — a bright sustained lance with a crack. */
+  beam(): void {
+    this.tone(320, 0.2, { type: 'sawtooth', slide: -120, volume: 0.3 });
+    this.tone(1180, 0.16, { type: 'square', slide: -300, volume: 0.16, delay: 0.01 });
+    this.noise(0.12, 0.18);
+  }
+
+  /** A hazard zone igniting — a low bloom that settles into a simmer. */
+  ignite(): void {
+    this.tone(150, 0.22, { type: 'sawtooth', slide: 90, volume: 0.28 });
+    this.noise(0.24, 0.14, 0.03);
+  }
+
+  /** A self-buff flourish — an ascending affirmation chord. */
+  empower(): void {
+    this.tone(440, 0.12, { type: 'sine', volume: 0.2, detune: false });
+    this.tone(660, 0.14, { type: 'sine', volume: 0.18, delay: 0.06, detune: false });
+    this.tone(880, 0.2, { type: 'triangle', volume: 0.16, delay: 0.12, detune: false });
+  }
 }

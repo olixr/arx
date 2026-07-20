@@ -24,6 +24,7 @@ import {
   type InvSlot,
   type ItemRoll,
   type EquippedItem,
+  type S2CFx,
   type S2CMessage,
   type SkillXp,
   type Snapshot,
@@ -76,14 +77,21 @@ export interface ChatLine {
 
 /** A combat effect in flight (nova ring, telegraph, blast, reaction). */
 export interface ActiveFx {
-  kind: 'nova' | 'telegraph' | 'blast' | 'reaction' | 'summon' | 'vanish';
+  kind: S2CFx['kind'];
   x: number;
   y: number;
   radius: number;
-  /** telegraph: fuse length in server ticks. */
+  /** telegraph: fuse length in server ticks; field/summon: lifetime. */
   ticks?: number;
   color?: string;
   text?: string;
+  /** Ability id — keys the bespoke layered visual identity. */
+  id?: string;
+  /** arc: aim angle. */
+  dir?: number;
+  /** dash/bolt/beam: segment endpoint. */
+  x2?: number;
+  y2?: number;
   bornAt: number;
 }
 
@@ -640,6 +648,10 @@ export class ClientGame {
           ticks: msg.ticks,
           color: msg.color,
           text: msg.text,
+          id: msg.id,
+          dir: msg.dir,
+          x2: msg.x2,
+          y2: msg.y2,
           bornAt: performance.now(),
         };
         this.fx.push(fx);
