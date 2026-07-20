@@ -447,7 +447,7 @@ h3 {
     'relic head cape'
     'weapon body offhand'
     'sigil legs tool'
-    '. boots .';
+    'gloves boots .';
   grid-template-columns: repeat(3, 70px);
   grid-auto-rows: 70px;
   gap: 8px;

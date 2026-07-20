@@ -134,16 +134,19 @@ const defs: NpcDef[] = [
       { item: 'mothwing_robe', qty: [1, 1], chance: 0.02 },
       { item: 'mothwing_skirts', qty: [1, 1], chance: 0.024 },
       { item: 'mothwing_slippers', qty: [1, 1], chance: 0.028 },
+      { item: 'mothwing_wraps', qty: [1, 1], chance: 0.028 },
       // Rustsedge fenwalker: dragged up from the drain-water reeds.
       { item: 'fenwalker_hood_rustsedge', qty: [1, 1], chance: 0.014 },
       { item: 'fenwalker_robe_rustsedge', qty: [1, 1], chance: 0.01 },
       { item: 'fenwalker_skirts_rustsedge', qty: [1, 1], chance: 0.012 },
       { item: 'fenwalker_slippers_rustsedge', qty: [1, 1], chance: 0.014 },
+      { item: 'fenwalker_wraps_rustsedge', qty: [1, 1], chance: 0.014 },
       // Alleyrat cutpurse: the gutters keep the guild's grey colors.
       { item: 'cutpurse_cowl_alleyrat', qty: [1, 1], chance: 0.014 },
       { item: 'cutpurse_jerkin_alleyrat', qty: [1, 1], chance: 0.01 },
       { item: 'cutpurse_leggings_alleyrat', qty: [1, 1], chance: 0.012 },
       { item: 'cutpurse_boots_alleyrat', qty: [1, 1], chance: 0.014 },
+      { item: 'cutpurse_gloves_alleyrat', qty: [1, 1], chance: 0.014 },
     ],
     respawnSec: 15,
     color: '#8a7a6a',
@@ -176,23 +179,27 @@ const defs: NpcDef[] = [
       { item: 'mothwing_robe_ember', qty: [1, 1], chance: 0.014 },
       { item: 'mothwing_skirts_ember', qty: [1, 1], chance: 0.016 },
       { item: 'mothwing_slippers_ember', qty: [1, 1], chance: 0.018 },
+      { item: 'mothwing_wraps_ember', qty: [1, 1], chance: 0.018 },
       // Fenwalker: the camps squat on drowned ground; the bog pays rent.
       { item: 'fenwalker_hood', qty: [1, 1], chance: 0.016 },
       { item: 'fenwalker_robe', qty: [1, 1], chance: 0.012 },
       { item: 'fenwalker_skirts', qty: [1, 1], chance: 0.014 },
       { item: 'fenwalker_slippers', qty: [1, 1], chance: 0.016 },
+      { item: 'fenwalker_wraps', qty: [1, 1], chance: 0.016 },
       // Cutpurse: the camps rob the road; one thief robbed it better
       // and slower, right up until the goblins found the coin device.
       { item: 'cutpurse_cowl', qty: [1, 1], chance: 0.016 },
       { item: 'cutpurse_jerkin', qty: [1, 1], chance: 0.012 },
       { item: 'cutpurse_leggings', qty: [1, 1], chance: 0.014 },
       { item: 'cutpurse_boots', qty: [1, 1], chance: 0.016 },
+      { item: 'cutpurse_gloves', qty: [1, 1], chance: 0.016 },
       // Bloodbriar: the warband hacked a briar-knight apart and kept
       // the rust-red pieces. The thorns kept a few goblins back.
       { item: 'briarplate_helm_bloodbriar', qty: [1, 1], chance: 0.01 },
       { item: 'briarplate_platebody_bloodbriar', qty: [1, 1], chance: 0.008 },
       { item: 'briarplate_greaves_bloodbriar', qty: [1, 1], chance: 0.009 },
       { item: 'briarplate_sabatons_bloodbriar', qty: [1, 1], chance: 0.01 },
+      { item: 'briarplate_gauntlets_bloodbriar', qty: [1, 1], chance: 0.01 },
     ],
     respawnSec: 25,
     color: '#5c8a3a',
@@ -225,23 +232,27 @@ const defs: NpcDef[] = [
       { item: 'tidecaller_robe', qty: [1, 1], chance: 0.015 },
       { item: 'tidecaller_skirts', qty: [1, 1], chance: 0.018 },
       { item: 'tidecaller_slippers', qty: [1, 1], chance: 0.02 },
+      { item: 'tidecaller_gloves', qty: [1, 1], chance: 0.02 },
       // Mirebloom fenwalker: heather-dyed, picked off the flower fens
       // the throwers trample on the march.
       { item: 'fenwalker_hood_mirebloom', qty: [1, 1], chance: 0.014 },
       { item: 'fenwalker_robe_mirebloom', qty: [1, 1], chance: 0.01 },
       { item: 'fenwalker_skirts_mirebloom', qty: [1, 1], chance: 0.012 },
       { item: 'fenwalker_slippers_mirebloom', qty: [1, 1], chance: 0.014 },
+      { item: 'fenwalker_wraps_mirebloom', qty: [1, 1], chance: 0.014 },
       // Redhand cutpurse: oxblood leathers, caught once — by a rock.
       { item: 'cutpurse_cowl_redhand', qty: [1, 1], chance: 0.012 },
       { item: 'cutpurse_jerkin_redhand', qty: [1, 1], chance: 0.009 },
       { item: 'cutpurse_leggings_redhand', qty: [1, 1], chance: 0.01 },
       { item: 'cutpurse_boots_redhand', qty: [1, 1], chance: 0.012 },
+      { item: 'cutpurse_gloves_redhand', qty: [1, 1], chance: 0.012 },
       // Nightbriar: violet-black bramble plate, thrown at range and
       // dragged home. The hedge grows back; the throwers do not.
       { item: 'briarplate_helm_nightbriar', qty: [1, 1], chance: 0.009 },
       { item: 'briarplate_platebody_nightbriar', qty: [1, 1], chance: 0.007 },
       { item: 'briarplate_greaves_nightbriar', qty: [1, 1], chance: 0.008 },
       { item: 'briarplate_sabatons_nightbriar', qty: [1, 1], chance: 0.009 },
+      { item: 'briarplate_gauntlets_nightbriar', qty: [1, 1], chance: 0.009 },
     ],
     respawnSec: 30,
     color: '#6a9a3a',
@@ -274,57 +285,68 @@ const defs: NpcDef[] = [
       { item: 'iron_helm', qty: [1, 1], chance: 0.05 },
       { item: 'iron_greaves', qty: [1, 1], chance: 0.04 },
       { item: 'iron_sabatons', qty: [1, 1], chance: 0.04 },
+      { item: 'iron_gauntlets', qty: [1, 1], chance: 0.04 },
       // Nightveil: whoever prowled this crypt before you left the
       // small pieces; the jerkin stayed with the Champion.
       { item: 'nightveil_cowl', qty: [1, 1], chance: 0.025 },
       { item: 'nightveil_leggings', qty: [1, 1], chance: 0.02 },
       { item: 'nightveil_boots', qty: [1, 1], chance: 0.025 },
+      { item: 'nightveil_gloves', qty: [1, 1], chance: 0.025 },
       // Voidwhisper: the crypt's other prowler dressed in cloth.
       { item: 'voidwhisper_cowl', qty: [1, 1], chance: 0.02 },
       { item: 'voidwhisper_skirts', qty: [1, 1], chance: 0.018 },
       { item: 'voidwhisper_slippers', qty: [1, 1], chance: 0.02 },
+      { item: 'voidwhisper_gloves', qty: [1, 1], chance: 0.02 },
       // Dusk mothwing: plum-grey wings folded at the crypt door.
       { item: 'mothwing_cowl_dusk', qty: [1, 1], chance: 0.016 },
       { item: 'mothwing_robe_dusk', qty: [1, 1], chance: 0.012 },
       { item: 'mothwing_skirts_dusk', qty: [1, 1], chance: 0.014 },
       { item: 'mothwing_slippers_dusk', qty: [1, 1], chance: 0.016 },
+      { item: 'mothwing_wraps_dusk', qty: [1, 1], chance: 0.016 },
       // Graymist fenwalker: fog woven by hands that stopped needing it.
       { item: 'fenwalker_hood_graymist', qty: [1, 1], chance: 0.012 },
       { item: 'fenwalker_robe_graymist', qty: [1, 1], chance: 0.009 },
       { item: 'fenwalker_skirts_graymist', qty: [1, 1], chance: 0.01 },
       { item: 'fenwalker_slippers_graymist', qty: [1, 1], chance: 0.012 },
+      { item: 'fenwalker_wraps_graymist', qty: [1, 1], chance: 0.012 },
       // Eclipse dawnsworn: the sun, briefly borrowed — never returned.
       { item: 'dawnsworn_hood_eclipse', qty: [1, 1], chance: 0.012 },
       { item: 'dawnsworn_robe_eclipse', qty: [1, 1], chance: 0.009 },
       { item: 'dawnsworn_skirts_eclipse', qty: [1, 1], chance: 0.01 },
       { item: 'dawnsworn_slippers_eclipse', qty: [1, 1], chance: 0.012 },
+      { item: 'dawnsworn_wraps_eclipse', qty: [1, 1], chance: 0.012 },
       // Bonebriar: pale as winter deadfall — the crypt's own hedge,
       // thorned deeper than the living kind.
       { item: 'briarplate_helm_bonebriar', qty: [1, 1], chance: 0.009 },
       { item: 'briarplate_platebody_bonebriar', qty: [1, 1], chance: 0.007 },
       { item: 'briarplate_greaves_bonebriar', qty: [1, 1], chance: 0.008 },
       { item: 'briarplate_sabatons_bonebriar', qty: [1, 1], chance: 0.009 },
+      { item: 'briarplate_gauntlets_bonebriar', qty: [1, 1], chance: 0.009 },
       // Moonless cutpurse: ink on ink — the job in the crypt was real.
       { item: 'cutpurse_cowl_moonless', qty: [1, 1], chance: 0.012 },
       { item: 'cutpurse_jerkin_moonless', qty: [1, 1], chance: 0.009 },
       { item: 'cutpurse_leggings_moonless', qty: [1, 1], chance: 0.01 },
       { item: 'cutpurse_boots_moonless', qty: [1, 1], chance: 0.012 },
+      { item: 'cutpurse_gloves_moonless', qty: [1, 1], chance: 0.012 },
       // Silverfox emberfox: frost-grey guard hairs, crypt-cold.
       { item: 'emberfox_hood_silverfox', qty: [1, 1], chance: 0.01 },
       { item: 'emberfox_jerkin_silverfox', qty: [1, 1], chance: 0.008 },
       { item: 'emberfox_leggings_silverfox', qty: [1, 1], chance: 0.009 },
       { item: 'emberfox_boots_silverfox', qty: [1, 1], chance: 0.01 },
+      { item: 'emberfox_gloves_silverfox', qty: [1, 1], chance: 0.01 },
       // Sentinel: the crypt watch's own issue — the old soldiers still
       // wear the gunmetal vigil plate they died standing in.
       { item: 'sentinel_greathelm', qty: [1, 1], chance: 0.01 },
       { item: 'sentinel_platebody', qty: [1, 1], chance: 0.008 },
       { item: 'sentinel_greaves', qty: [1, 1], chance: 0.009 },
       { item: 'sentinel_sabatons', qty: [1, 1], chance: 0.01 },
+      { item: 'sentinel_gauntlets', qty: [1, 1], chance: 0.01 },
       // Bloodwatch sentinel: the watch that ended badly, still posted.
       { item: 'sentinel_greathelm_bloodwatch', qty: [1, 1], chance: 0.008 },
       { item: 'sentinel_platebody_bloodwatch', qty: [1, 1], chance: 0.006 },
       { item: 'sentinel_greaves_bloodwatch', qty: [1, 1], chance: 0.007 },
       { item: 'sentinel_sabatons_bloodwatch', qty: [1, 1], chance: 0.008 },
+      { item: 'sentinel_gauntlets_bloodwatch', qty: [1, 1], chance: 0.008 },
     ],
     respawnSec: 30,
     color: '#d8d4c8',
@@ -377,6 +399,7 @@ const defs: NpcDef[] = [
       { item: 'dreadforge_platebody', qty: [1, 1], chance: 0.03 },
       { item: 'dreadforge_greaves', qty: [1, 1], chance: 0.035 },
       { item: 'dreadforge_sabatons', qty: [1, 1], chance: 0.035 },
+      { item: 'dreadforge_gauntlets', qty: [1, 1], chance: 0.035 },
       // The Nightveil jerkin: the crypt's quietest prize.
       { item: 'nightveil_jerkin', qty: [1, 1], chance: 0.05 },
       // The Voidwhisper robe: the eye that watched him fall.
@@ -387,16 +410,19 @@ const defs: NpcDef[] = [
       { item: 'emberfox_jerkin_shadowfox', qty: [1, 1], chance: 0.03 },
       { item: 'emberfox_leggings_shadowfox', qty: [1, 1], chance: 0.035 },
       { item: 'emberfox_boots_shadowfox', qty: [1, 1], chance: 0.04 },
+      { item: 'emberfox_gloves_shadowfox', qty: [1, 1], chance: 0.04 },
       // Daybreak and midnight sentinel: the first and last hours of
       // the vigil, kept by the one who outranks the watch itself.
       { item: 'sentinel_greathelm_daybreak', qty: [1, 1], chance: 0.035 },
       { item: 'sentinel_platebody_daybreak', qty: [1, 1], chance: 0.025 },
       { item: 'sentinel_greaves_daybreak', qty: [1, 1], chance: 0.03 },
       { item: 'sentinel_sabatons_daybreak', qty: [1, 1], chance: 0.035 },
+      { item: 'sentinel_gauntlets_daybreak', qty: [1, 1], chance: 0.035 },
       { item: 'sentinel_greathelm_midnight', qty: [1, 1], chance: 0.03 },
       { item: 'sentinel_platebody_midnight', qty: [1, 1], chance: 0.02 },
       { item: 'sentinel_greaves_midnight', qty: [1, 1], chance: 0.025 },
       { item: 'sentinel_sabatons_midnight', qty: [1, 1], chance: 0.03 },
+      { item: 'sentinel_gauntlets_midnight', qty: [1, 1], chance: 0.03 },
     ],
     respawnSec: 90,
     color: '#e8e2d0',
@@ -430,35 +456,41 @@ const defs: NpcDef[] = [
       // the body and greaves guarded by the Champion.
       { item: 'frostplate_helm', qty: [1, 1], chance: 0.03 },
       { item: 'frostplate_sabatons', qty: [1, 1], chance: 0.03 },
+      { item: 'frostplate_gauntlets', qty: [1, 1], chance: 0.03 },
       // Wolfstalker: the full leather chase set. Hunt the pack long
       // enough and you start dressing like it.
       { item: 'wolfstalker_hood', qty: [1, 1], chance: 0.03 },
       { item: 'wolfstalker_jerkin', qty: [1, 1], chance: 0.02 },
       { item: 'wolfstalker_chaps', qty: [1, 1], chance: 0.025 },
       { item: 'wolfstalker_boots', qty: [1, 1], chance: 0.03 },
+      { item: 'wolfstalker_gloves', qty: [1, 1], chance: 0.03 },
       // Luna mothwing: pale green dust that only settles by moonlight,
       // shaken loose wherever the night packs run.
       { item: 'mothwing_cowl_luna', qty: [1, 1], chance: 0.016 },
       { item: 'mothwing_robe_luna', qty: [1, 1], chance: 0.012 },
       { item: 'mothwing_skirts_luna', qty: [1, 1], chance: 0.014 },
       { item: 'mothwing_slippers_luna', qty: [1, 1], chance: 0.016 },
+      { item: 'mothwing_wraps_luna', qty: [1, 1], chance: 0.016 },
       // Emberfox: the pack catches the fox; you catch the pack. The
       // early road's showpiece leathers, russet with the cream tail.
       { item: 'emberfox_hood', qty: [1, 1], chance: 0.014 },
       { item: 'emberfox_jerkin', qty: [1, 1], chance: 0.01 },
       { item: 'emberfox_leggings', qty: [1, 1], chance: 0.012 },
       { item: 'emberfox_boots', qty: [1, 1], chance: 0.014 },
+      { item: 'emberfox_gloves', qty: [1, 1], chance: 0.014 },
       // Dawnfox: pale gold at first light — the dawn patrol's prize.
       { item: 'emberfox_hood_dawnfox', qty: [1, 1], chance: 0.009 },
       { item: 'emberfox_jerkin_dawnfox', qty: [1, 1], chance: 0.007 },
       { item: 'emberfox_leggings_dawnfox', qty: [1, 1], chance: 0.008 },
       { item: 'emberfox_boots_dawnfox', qty: [1, 1], chance: 0.009 },
+      { item: 'emberfox_gloves_dawnfox', qty: [1, 1], chance: 0.009 },
       // Briarplate: the woods grew armor once. The packs den where the
       // briar-knight fell, and pieces surface with the thaw.
       { item: 'briarplate_helm', qty: [1, 1], chance: 0.012 },
       { item: 'briarplate_platebody', qty: [1, 1], chance: 0.009 },
       { item: 'briarplate_greaves', qty: [1, 1], chance: 0.01 },
       { item: 'briarplate_sabatons', qty: [1, 1], chance: 0.012 },
+      { item: 'briarplate_gauntlets', qty: [1, 1], chance: 0.012 },
     ],
     respawnSec: 35,
     color: '#6a6f7d',

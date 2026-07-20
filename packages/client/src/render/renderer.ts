@@ -7550,6 +7550,7 @@ export class Renderer {
           headItem: e.equip.head,
           legsItem: e.equip.legs,
           bootsItem: e.equip.boots,
+          glovesItem: e.equip.gloves,
           offhandItem: e.equip.offhand,
           hasCape: e.equip.cape !== undefined,
           size: e.size,

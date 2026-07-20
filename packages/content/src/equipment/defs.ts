@@ -554,6 +554,97 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     desc: 'Bright steel feet. The floor hears you coming and agrees.',
   },
 
+  // ------------------------------------------------ gloves
+  // The fifth armor slot: hands. Every themed set below carries its own
+  // pair; these four are the plain working commons that seed the slot.
+  {
+    id: 'padded_mitts',
+    name: 'Padded mitts',
+    slot: 'gloves',
+    armorClass: 'cloth',
+    levelReq: { skill: 'magic', level: 8 },
+    armor: 1,
+    affixPool: [{ stat: 'magic', w: 2 }, { stat: 'crafting' }, { stat: 'regen' }],
+    acquisition: { craft: true },
+    recipe: {
+      skill: 'crafting',
+      levelReq: 10,
+      xp: 70,
+      station: 'workbench',
+      ticks: 45,
+      inputs: [{ item: 'cloth', qty: 2 }],
+    },
+    value: 120,
+    color: '#8a8ab0',
+    code: 'Pm',
+    desc: 'Quilted to the wrist. Cauldrons stop winning the argument.',
+  },
+  {
+    id: 'leather_gloves',
+    name: 'Leather gloves',
+    slot: 'gloves',
+    armorClass: 'leather',
+    armor: 1,
+    affixPool: LEATHER_POOL,
+    acquisition: { craft: true, shop: true },
+    recipe: {
+      skill: 'crafting',
+      levelReq: 2,
+      xp: 25,
+      station: 'workbench',
+      ticks: 35,
+      inputs: [{ item: 'leather', qty: 1 }],
+    },
+    value: 40,
+    color: '#b08a5c',
+    code: 'Lg',
+    desc: 'Broken in by somebody else\'s blisters. Grip and go.',
+  },
+  {
+    id: 'iron_gauntlets',
+    name: 'Iron gauntlets',
+    slot: 'gloves',
+    armorClass: 'plate',
+    levelReq: { skill: 'defence', level: 14 },
+    armor: 3,
+    affixPool: PLATE_POOL,
+    acquisition: { craft: true, drop: true },
+    recipe: {
+      skill: 'smithing',
+      levelReq: 17,
+      xp: 145,
+      station: 'anvil',
+      ticks: 70,
+      inputs: [{ item: 'iron_bar', qty: 2 }],
+    },
+    value: 260,
+    color: '#8d9299',
+    code: 'Iu',
+    desc: 'A handshake with municipal backing.',
+  },
+  {
+    id: 'steel_gauntlets',
+    name: 'Steel gauntlets',
+    slot: 'gloves',
+    armorClass: 'plate',
+    levelReq: { skill: 'defence', level: 30 },
+    armor: 5,
+    affixPool: PLATE_POOL,
+    acquisition: { craft: true },
+    recipe: {
+      skill: 'smithing',
+      levelReq: 32,
+      xp: 240,
+      station: 'anvil',
+      ticks: 80,
+      inputs: [{ item: 'steel_bar', qty: 2 }],
+    },
+    value: 480,
+    color: '#b8bec8',
+    code: 'Sl',
+    desc: 'Bright steel fists, gold at the knuckle. Doors open early.',
+  },
+
   // ------------------------------------------------ offhand
   {
     id: 'oak_kiteshield',
@@ -815,6 +906,13 @@ function wardenSet(): EquipmentDef[] {
       value: 280, color, code: 'Ws',
       desc: 'Copper-toed and patient. Good soil never hurt good boots.',
     },
+    {
+      id: 'warden_gauntlets', name: 'Warden gauntlets', slot: 'gloves', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 15 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(19, 130, 68, 1, 1),
+      value: 270, color, code: 'Wu',
+      desc: 'Verdigris knuckles under a copper leaf. Grip like old roots.',
+    },
   ];
 }
 
@@ -827,7 +925,7 @@ function frostplateSet(): EquipmentDef[] {
   ];
   const color = '#9db6cc';
   const piece = (
-    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'gloves' | 'boots',
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'plate',
@@ -843,6 +941,8 @@ function frostplateSet(): EquipmentDef[] {
       'Rime-chased legplates. Winter walks with you now.'),
     piece('frostplate_sabatons', 'Frostplate sabatons', 'boots', 22, 4, 420, 'Fs',
       'They leave frost in your footprints. The wolves remember.'),
+    piece('frostplate_gauntlets', 'Frostplate gauntlets', 'gloves', 22, 4, 430, 'Fu',
+      'Rime creeps the knuckles when you make a fist. Let it.'),
   ];
 }
 
@@ -891,6 +991,13 @@ function bulwarkSet(): EquipmentDef[] {
       value: 460, color, code: 'Bs',
       desc: 'Anchor-heavy, brass-cuffed. Retreat was never on the table.',
     },
+    {
+      id: 'bulwark_gauntlets', name: 'Bulwark gauntlets', slot: 'gloves', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 25 }, armor: 4, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(30, 230, 82, 1, 1),
+      value: 470, color, code: 'Bu',
+      desc: 'Brass-jointed gunmetal fists. What they hold stays held.',
+    },
   ];
 }
 
@@ -903,7 +1010,7 @@ function dreadforgeSet(): EquipmentDef[] {
   ];
   const color = '#4a4553';
   const piece = (
-    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'gloves' | 'boots',
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'plate',
@@ -919,6 +1026,8 @@ function dreadforgeSet(): EquipmentDef[] {
       'Blood-chased shin plates that march best toward trouble.'),
     piece('dreadforge_sabatons', 'Dreadforge sabatons', 'boots', 34, 6, 760, 'Ds',
       'Spurred black sabatons. Even your footsteps carry knives.'),
+    piece('dreadforge_gauntlets', 'Dreadforge gauntlets', 'gloves', 34, 6, 780, 'Du',
+      'Spiked night-steel fists. The handshake is a threat display.'),
   ];
 }
 
@@ -967,6 +1076,13 @@ function sunforgedSet(): EquipmentDef[] {
       acquisition: { craft: true }, recipe: craft(45, 460, 100, 1, 2),
       value: 950, color, code: 'So',
       desc: 'Every step leaves a little more morning behind.',
+    },
+    {
+      id: 'sunforged_gauntlets', name: 'Sunforged gauntlets', slot: 'gloves', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 40 }, armor: 6, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(45, 470, 100, 1, 2),
+      value: 960, color, code: 'Sf',
+      desc: 'Gold to the fingertip, ivory at the cuff. Applause, armored.',
     },
   ];
 }
@@ -1019,6 +1135,13 @@ function wayfarerSet(): EquipmentDef[] {
       value: 200, color, code: 'Yb',
       desc: 'Cross-strapped to the shin. They point away from home.',
     },
+    {
+      id: 'wayfarer_gloves', name: 'Wayfarer gloves', slot: 'gloves', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 12 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(15, 105, 55, 2),
+      value: 195, color, code: 'Yg',
+      desc: 'Buckskin worn to the shape of a bowstring. Maps optional.',
+    },
   ];
 }
 
@@ -1031,7 +1154,7 @@ function wolfstalkerSet(): EquipmentDef[] {
   ];
   const color = '#5f6470';
   const piece = (
-    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'gloves' | 'boots',
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'leather',
@@ -1047,6 +1170,8 @@ function wolfstalkerSet(): EquipmentDef[] {
       'Smoke-grey wraps that move the way snowfall does.'),
     piece('wolfstalker_boots', 'Wolfstalker boots', 'boots', 22, 3, 440, 'Kb',
       'Fur-topped and silent. Your footprints start lying for you.'),
+    piece('wolfstalker_gloves', 'Wolfstalker gloves', 'gloves', 22, 3, 450, 'Ku',
+      'Winter fur at the wrist, claw-tipped at the finger. Pack rules.'),
   ];
 }
 
@@ -1059,7 +1184,7 @@ function nightveilSet(): EquipmentDef[] {
   ];
   const color = '#3a3648';
   const piece = (
-    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'gloves' | 'boots',
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'leather',
@@ -1075,6 +1200,8 @@ function nightveilSet(): EquipmentDef[] {
       'Bound quiet at every seam. Stairs stop announcing you.'),
     piece('nightveil_boots', 'Nightveil boots', 'boots', 27, 4, 580, 'Nb',
       'Soled in hush. The floorboard forgives you in advance.'),
+    piece('nightveil_gloves', 'Nightveil gloves', 'gloves', 27, 4, 590, 'Nu',
+      'Ink to the fingertip. Locks describe them as a rumor.'),
   ];
 }
 
@@ -1122,6 +1249,13 @@ function drakescaleSet(): EquipmentDef[] {
       acquisition: { craft: true }, recipe: craft(37, 340, 85, 2, 1),
       value: 740, color, code: 'Qb',
       desc: 'Copper-toed scale boots. Embers make way, grudgingly.',
+    },
+    {
+      id: 'drakescale_gloves', name: 'Drakescale gloves', slot: 'gloves', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 33 }, armor: 5, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(37, 350, 85, 2, 1),
+      value: 750, color, code: 'Qu',
+      desc: 'Scale to the second knuckle. You can catch a brand barehanded now.',
     },
   ];
 }
@@ -1174,6 +1308,13 @@ function stagheartSet(): EquipmentDef[] {
       value: 1100, color, code: 'Gb',
       desc: 'They remember every path and prefer the unmarked ones.',
     },
+    {
+      id: 'stagheart_gloves', name: 'Stagheart gloves', slot: 'gloves', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 40 }, armor: 5, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(45, 610, 100, 2, 1, 2),
+      value: 1120, color, code: 'Gu',
+      desc: 'Bark-backed, gold-stitched, moss at the cuff. The forest\'s grip.',
+    },
   ];
 }
 
@@ -1224,6 +1365,13 @@ function hedgewitchSet(): EquipmentDef[] {
       value: 210, color, code: 'Hp',
       desc: 'Soft-soled and garden-stained. The cat approves of the toes.',
     },
+    {
+      id: 'hedgewitch_gloves', name: 'Hedgewitch gloves', slot: 'gloves', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 12 }, armor: 1, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(15, 105, 55, 2, { item: 'sagewort', qty: 1 }),
+      value: 215, color, code: 'Hg',
+      desc: 'Fingerless for the fiddly charms. Nettles lost this round.',
+    },
   ];
 }
 
@@ -1236,7 +1384,7 @@ function tidecallerSet(): EquipmentDef[] {
   ];
   const color = '#2f6a78';
   const piece = (
-    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'gloves' | 'boots',
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'cloth',
@@ -1252,6 +1400,8 @@ function tidecallerSet(): EquipmentDef[] {
       'They move like slack water and hit like a spring tide.'),
     piece('tidecaller_slippers', 'Tidecaller slippers', 'boots', 22, 2, 450, 'Tp',
       'Wet sand keeps no record of them. Neither does anything else.'),
+    piece('tidecaller_gloves', 'Tidecaller gloves', 'gloves', 22, 2, 460, 'Tu',
+      'Foam-cuffed, pearl at the wrist. The tide holds your hand back.'),
   ];
 }
 
@@ -1264,7 +1414,7 @@ function voidwhisperSet(): EquipmentDef[] {
   ];
   const color = '#453a5c';
   const piece = (
-    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'gloves' | 'boots',
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'cloth',
@@ -1280,6 +1430,8 @@ function voidwhisperSet(): EquipmentDef[] {
       'Stitched from the quiet between two heartbeats.'),
     piece('voidwhisper_slippers', 'Voidwhisper slippers', 'boots', 27, 2, 600, 'Vp',
       'They touch the floor out of politeness, nothing more.'),
+    piece('voidwhisper_gloves', 'Voidwhisper gloves', 'gloves', 27, 2, 610, 'Vu',
+      'An eye in each palm. Applaud carefully.'),
   ];
 }
 
@@ -1327,6 +1479,13 @@ function cinderswornSet(): EquipmentDef[] {
       acquisition: { craft: true }, recipe: craft(37, 340, 85, 2, 1),
       value: 760, color, code: 'Cp',
       desc: 'Every step leaves the faintest warmth in the floorboards.',
+    },
+    {
+      id: 'cindersworn_gloves', name: 'Cindersworn gloves', slot: 'gloves', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 33 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(37, 350, 85, 2, 1),
+      value: 770, color, code: 'Cu',
+      desc: 'Char-black palms, ember-lined cuffs. Snap, and mean it.',
     },
   ];
 }
@@ -1378,6 +1537,13 @@ function starweaverSet(): EquipmentDef[] {
       acquisition: { craft: true }, recipe: craft(45, 600, 100, 2, 1, 1),
       value: 1150, color, code: 'Sp',
       desc: 'Curled silver toes. The night sky, fitted for walking.',
+    },
+    {
+      id: 'starweaver_gloves', name: 'Starweaver gloves', slot: 'gloves', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 40 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(45, 610, 100, 2, 1, 1),
+      value: 1160, color, code: 'Sy',
+      desc: 'A star sapphire on each hand. Constellations take requests.',
     },
   ];
 }
@@ -1543,6 +1709,13 @@ function thistledownSet(): EquipmentDef[] {
       value: 35, color, code: 'Lp',
       desc: 'Quiet as thistle seed on the wind, twice as stubborn.',
     },
+    {
+      id: 'thistledown_wraps', name: 'Thistledown wraps', slot: 'gloves', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 2 }, armor: 1, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(2, 22, 35, 1),
+      value: 32, color, code: 'Lw',
+      desc: 'Linen wound to the knuckle. Warm hands, willing sparks.',
+    },
   ];
 }
 
@@ -1555,7 +1728,7 @@ function mothwingSet(): EquipmentDef[] {
   ];
   const color = '#8a8a72';
   const piece = (
-    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'gloves' | 'boots',
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'cloth',
@@ -1571,6 +1744,8 @@ function mothwingSet(): EquipmentDef[] {
       'They fold flat and silent, the way wings do at rest.'),
     piece('mothwing_slippers', 'Mothwing slippers', 'boots', 6, 1, 100, 'Mp',
       'Powder-soft steps. The candle never sees you coming.'),
+    piece('mothwing_wraps', 'Mothwing wraps', 'gloves', 6, 1, 98, 'Mw',
+      'Wing-dust on the fingertips. Everything you touch glows a little.'),
   ];
 }
 
@@ -1619,6 +1794,13 @@ function dawnswornSet(): EquipmentDef[] {
       value: 180, color, code: 'Ap',
       desc: 'They face east on their own. Let them lead once in a while.',
     },
+    {
+      id: 'dawnsworn_wraps', name: 'Dawnsworn wraps', slot: 'gloves', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 10 }, armor: 1, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(13, 90, 55, 2),
+      value: 175, color, code: 'Aw',
+      desc: 'Gold-banded ivory. Morning light stays where you put it.',
+    },
   ];
 }
 
@@ -1631,7 +1813,7 @@ function fenwalkerSet(): EquipmentDef[] {
   ];
   const color = '#4a6b5c';
   const piece = (
-    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'gloves' | 'boots',
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'cloth',
@@ -1647,6 +1829,8 @@ function fenwalkerSet(): EquipmentDef[] {
       'Hemmed high over the waterline, weighted low against the wind.'),
     piece('fenwalker_slippers', 'Fenwalker slippers', 'boots', 14, 2, 300, 'Fp',
       'Reed-lashed soles. The mud signs for someone else entirely.'),
+    piece('fenwalker_wraps', 'Fenwalker wraps', 'gloves', 14, 2, 290, 'Fw',
+      'Reed-wound wrists, a wisp-rune in each palm. The bog waves back.'),
   ];
 }
 
@@ -1694,6 +1878,13 @@ function stormwovenSet(): EquipmentDef[] {
       acquisition: { craft: true }, recipe: craft(21, 180, 70, 2),
       value: 380, color, code: 'Zp',
       desc: 'Static in the soles. Doorknobs have learned to flinch.',
+    },
+    {
+      id: 'stormwoven_wraps', name: 'Stormwoven wraps', slot: 'gloves', armorClass: 'cloth',
+      levelReq: { skill: 'magic', level: 17 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(21, 175, 70, 2),
+      value: 370, color, code: 'Zw',
+      desc: 'A gold bolt down each wrist. Point at nothing you like.',
     },
   ];
 }
@@ -1813,6 +2004,13 @@ function hareswiftSet(): EquipmentDef[] {
       value: 35, color, code: 'Jb',
       desc: 'Fur-topped and spring-loaded. Zigzag comes standard.',
     },
+    {
+      id: 'hareswift_gloves', name: 'Hareswift gloves', slot: 'gloves', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 2 }, armor: 1, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(2, 22, 35, 1),
+      value: 33, color, code: 'Jg',
+      desc: 'Hare-fur cuffs, nimble fingers. Fast hands finish first.',
+    },
   ];
 }
 
@@ -1861,6 +2059,13 @@ function kingfisherSet(): EquipmentDef[] {
       value: 100, color, code: 'Ob',
       desc: 'Dry inside, always. The bank mud files a complaint.',
     },
+    {
+      id: 'kingfisher_gloves', name: 'Kingfisher gloves', slot: 'gloves', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 6 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(8, 58, 45, 1),
+      value: 98, color, code: 'Og',
+      desc: 'Teal-backed, orange at the palm. The strike half of the bird.',
+    },
   ];
 }
 
@@ -1873,7 +2078,7 @@ function cutpurseSet(): EquipmentDef[] {
   ];
   const color = '#4e4438';
   const piece = (
-    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'gloves' | 'boots',
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'leather',
@@ -1889,6 +2094,8 @@ function cutpurseSet(): EquipmentDef[] {
       'Bound at the seams for rooftops. Tiles keep the secret.'),
     piece('cutpurse_boots', 'Cutpurse boots', 'boots', 10, 2, 180, 'Pb',
       'Soft-soled and unsigned. Every step is deniable.'),
+    piece('cutpurse_gloves', 'Cutpurse gloves', 'gloves', 10, 2, 175, 'Pg',
+      'Fingerless, famously. The hands the guild took its colors from.'),
   ];
 }
 
@@ -1937,6 +2144,13 @@ function traplineSet(): EquipmentDef[] {
       value: 300, color, code: 'Xb',
       desc: 'Snare-cord laced to the shin. They walk their own line.',
     },
+    {
+      id: 'trapline_gloves', name: 'Trapline gloves', slot: 'gloves', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 14 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(17, 125, 55, 2),
+      value: 290, color, code: 'Xg',
+      desc: 'Rawhide backs, snare-cord wrists. Ten fingers, still.',
+    },
   ];
 }
 
@@ -1949,7 +2163,7 @@ function emberfoxSet(): EquipmentDef[] {
   ];
   const color = '#b05a30';
   const piece = (
-    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'gloves' | 'boots',
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'leather',
@@ -1965,6 +2179,8 @@ function emberfoxSet(): EquipmentDef[] {
       'Black to the knee, the fox\'s own socks. Snow tells no one.'),
     piece('emberfox_boots', 'Emberfox boots', 'boots', 17, 3, 380, 'Ub',
       'Four soft points of contact. The ground agrees to lie.'),
+    piece('emberfox_gloves', 'Emberfox gloves', 'gloves', 17, 3, 370, 'Ug',
+      'Black to the wrist, the fox\'s own socks. Reach in anywhere.'),
   ];
 }
 
@@ -2079,6 +2295,13 @@ function tuskguardSet(): EquipmentDef[] {
       value: 35, color, code: 'Tb',
       desc: 'Hoof-heavy bronze. The ground learns your name by heart.',
     },
+    {
+      id: 'tuskguard_gauntlets', name: 'Tuskguard gauntlets', slot: 'gloves', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 2 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(3, 28, 40, 1),
+      value: 33, color, code: 'Tw',
+      desc: 'A tusk stud over each knuckle. The boar shakes hands first.',
+    },
   ];
 }
 
@@ -2126,6 +2349,13 @@ function valiantSet(): EquipmentDef[] {
       acquisition: { craft: true }, recipe: craft(9, 65, 50, 1),
       value: 100, color, code: 'Vb',
       desc: 'Gold-toed and certain. Every step files a heroic report.',
+    },
+    {
+      id: 'valiant_gauntlets', name: 'Valiant gauntlets', slot: 'gloves', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 6 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(9, 62, 50, 1),
+      value: 98, color, code: 'Vw',
+      desc: 'Mirror-bright, gold at the cuff. Made for raising a champion\'s cup.',
     },
   ];
 }
@@ -2175,6 +2405,13 @@ function ramwallSet(): EquipmentDef[] {
       value: 180, color, code: 'Rb',
       desc: 'Foundation stones with laces. Braced is the resting state.',
     },
+    {
+      id: 'ramwall_gauntlets', name: 'Ramwall gauntlets', slot: 'gloves', armorClass: 'plate',
+      levelReq: { skill: 'defence', level: 10 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(15, 115, 60, 2),
+      value: 175, color, code: 'Ru',
+      desc: 'Fluted slate fists. Knock once; the door does the math.',
+    },
   ];
 }
 
@@ -2187,7 +2424,7 @@ function briarplateSet(): EquipmentDef[] {
   ];
   const color = '#3e4a38';
   const piece = (
-    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'gloves' | 'boots',
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'plate',
@@ -2203,6 +2440,8 @@ function briarplateSet(): EquipmentDef[] {
       'Thorn-ridged to the shin. Walk anywhere; the briar signs off.'),
     piece('briarplate_sabatons', 'Briarplate sabatons', 'boots', 14, 4, 300, 'Eb',
       'Spiked at the toe like a rose remembers. Kick politely.'),
+    piece('briarplate_gauntlets', 'Briarplate gauntlets', 'gloves', 14, 4, 290, 'Eu',
+      'A thorn at every knuckle. The hedge grips back.'),
   ];
 }
 
@@ -2215,7 +2454,7 @@ function sentinelSet(): EquipmentDef[] {
   ];
   const color = '#55607a';
   const piece = (
-    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'boots',
+    id: string, name: string, slot: 'head' | 'body' | 'legs' | 'gloves' | 'boots',
     level: number, armor: number, value: number, code: string, desc: string,
   ): EquipmentDef => ({
     id, name, slot, armorClass: 'plate',
@@ -2231,6 +2470,8 @@ function sentinelSet(): EquipmentDef[] {
       'Stood so many watches they stand themselves. Heels together.'),
     piece('sentinel_sabatons', 'Sentinel sabatons', 'boots', 17, 4, 380, 'Se',
       'Iron soles that have never once fallen asleep on duty.'),
+    piece('sentinel_gauntlets', 'Sentinel gauntlets', 'gloves', 17, 4, 370, 'Sz',
+      'Gunmetal grip, gold-studded knuckles. The watch signs in.'),
   ];
 }
 

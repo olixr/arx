@@ -62,12 +62,14 @@ export const AFFIX_ROLL_FRAC: Record<RarityTier, readonly [number, number]> = {
 };
 
 /**
- * Per-piece playstyle modifiers, counted over head/body/legs/boots.
- * Percentages — a full plate set is +12% melee / −16% magic / −4% move.
+ * Per-piece playstyle modifiers, counted over head/body/legs/gloves/
+ * boots. Percentages — a full five-piece plate set is +15% melee /
+ * −20% magic / −5% move; completing a set with its gloves is what
+ * pushes a specialty over the top.
  * Only plate pays for its protection; cloth and leather are pure buffs,
  * so mixed sets dilute a specialty without punishing the wearer.
  * Authoring guideline: at equal tier, base armor ≈ plate 3 / leather 2 /
- * cloth 1 per piece.
+ * cloth 1 per piece; gloves sit at the boots budget.
  */
 export const ARMOR_CLASS_MODS: Record<
   ArmorClass,

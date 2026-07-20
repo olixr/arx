@@ -235,14 +235,14 @@ test('instance names: dominant affix epithet, deterministic, plain when affixles
   assert.ok(sawPlain, 'expected some common roll with zero affixes');
 });
 
-test('themed plate sets: four pieces each, coherent class and reqs', () => {
+test('themed plate sets: five pieces each, coherent class and reqs', () => {
   const sets = ['warden', 'frostplate', 'bulwark', 'dreadforge', 'sunforged'];
   const bySlot = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
   for (const set of sets) {
     const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`));
-    assert.equal(pieces.length, 4, `${set} should have 4 pieces`);
+    assert.equal(pieces.length, 5, `${set} should have 5 pieces`);
     const slots = new Set(pieces.map((p) => p.slot));
-    assert.deepEqual([...slots].sort(), ['body', 'boots', 'head', 'legs'], `${set} covers the armor slots`);
+    assert.deepEqual([...slots].sort(), ['body', 'boots', 'gloves', 'head', 'legs'], `${set} covers the armor slots`);
     for (const p of pieces) {
       assert.equal(p.armorClass, 'plate', `${p.id} is plate`);
       assert.equal(p.levelReq?.skill, 'defence', `${p.id} gates on defence`);
@@ -253,14 +253,14 @@ test('themed plate sets: four pieces each, coherent class and reqs', () => {
   assert.ok(bySlot.get('steel_sabatons'));
 });
 
-test('themed leather sets: four pieces each, coherent class and reqs', () => {
+test('themed leather sets: five pieces each, coherent class and reqs', () => {
   const sets = ['wayfarer', 'wolfstalker', 'nightveil', 'drakescale', 'stagheart'];
   const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
   for (const set of sets) {
     const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`));
-    assert.equal(pieces.length, 4, `${set} should have 4 pieces`);
+    assert.equal(pieces.length, 5, `${set} should have 5 pieces`);
     const slots = new Set(pieces.map((p) => p.slot));
-    assert.deepEqual([...slots].sort(), ['body', 'boots', 'head', 'legs'], `${set} covers the armor slots`);
+    assert.deepEqual([...slots].sort(), ['body', 'boots', 'gloves', 'head', 'legs'], `${set} covers the armor slots`);
     for (const p of pieces) {
       assert.equal(p.armorClass, 'leather', `${p.id} is leather`);
       assert.ok(p.affixPool.length >= 3, `${p.id} pool feeds legendary rolls`);
@@ -274,14 +274,14 @@ test('themed leather sets: four pieces each, coherent class and reqs', () => {
   assert.ok(byId.get('hunters_quiver'));
 });
 
-test('themed cloth sets: four pieces each, coherent class and reqs', () => {
+test('themed cloth sets: five pieces each, coherent class and reqs', () => {
   const sets = ['hedgewitch', 'tidecaller', 'voidwhisper', 'cindersworn', 'starweaver'];
   const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
   for (const set of sets) {
     const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`));
-    assert.equal(pieces.length, 4, `${set} should have 4 pieces`);
+    assert.equal(pieces.length, 5, `${set} should have 5 pieces`);
     const slots = new Set(pieces.map((p) => p.slot));
-    assert.deepEqual([...slots].sort(), ['body', 'boots', 'head', 'legs'], `${set} covers the armor slots`);
+    assert.deepEqual([...slots].sort(), ['body', 'boots', 'gloves', 'head', 'legs'], `${set} covers the armor slots`);
     for (const p of pieces) {
       assert.equal(p.armorClass, 'cloth', `${p.id} is cloth`);
       assert.equal(p.levelReq?.skill, 'magic', `${p.id} gates on magic`);
@@ -295,17 +295,17 @@ test('themed cloth sets: four pieces each, coherent class and reqs', () => {
 
 test('early-game cloth sets: four dye lots each, colorways mirror their base', () => {
   const SETS: Record<string, { dyes: string[]; pieces: string[] }> = {
-    thistledown: { dyes: ['madder', 'woad', 'bracken'], pieces: ['hood', 'robe', 'skirts', 'slippers'] },
-    mothwing: { dyes: ['luna', 'dusk', 'ember'], pieces: ['cowl', 'robe', 'skirts', 'slippers'] },
-    dawnsworn: { dyes: ['duskvow', 'highnoon', 'eclipse'], pieces: ['hood', 'robe', 'skirts', 'slippers'] },
-    fenwalker: { dyes: ['mirebloom', 'rustsedge', 'graymist'], pieces: ['hood', 'robe', 'skirts', 'slippers'] },
-    stormwoven: { dyes: ['thunderhead', 'sunshower', 'aurora'], pieces: ['hood', 'robe', 'skirts', 'slippers'] },
+    thistledown: { dyes: ['madder', 'woad', 'bracken'], pieces: ['hood', 'robe', 'skirts', 'slippers', 'wraps'] },
+    mothwing: { dyes: ['luna', 'dusk', 'ember'], pieces: ['cowl', 'robe', 'skirts', 'slippers', 'wraps'] },
+    dawnsworn: { dyes: ['duskvow', 'highnoon', 'eclipse'], pieces: ['hood', 'robe', 'skirts', 'slippers', 'wraps'] },
+    fenwalker: { dyes: ['mirebloom', 'rustsedge', 'graymist'], pieces: ['hood', 'robe', 'skirts', 'slippers', 'wraps'] },
+    stormwoven: { dyes: ['thunderhead', 'sunshower', 'aurora'], pieces: ['hood', 'robe', 'skirts', 'slippers', 'wraps'] },
   };
   const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
   for (const [set, { dyes, pieces }] of Object.entries(SETS)) {
     const base = pieces.map((p) => byId.get(`${set}_${p}`)!);
-    assert.equal(base.filter(Boolean).length, 4, `${set} base pieces exist`);
-    assert.deepEqual([...new Set(base.map((p) => p.slot))].sort(), ['body', 'boots', 'head', 'legs']);
+    assert.equal(base.filter(Boolean).length, 5, `${set} base pieces exist`);
+    assert.deepEqual([...new Set(base.map((p) => p.slot))].sort(), ['body', 'boots', 'gloves', 'head', 'legs']);
     for (const p of base) {
       assert.equal(p.armorClass, 'cloth', `${p.id} is cloth`);
       assert.equal(p.levelReq?.skill, 'magic', `${p.id} gates on magic`);
@@ -336,17 +336,17 @@ test('early-game cloth sets: four dye lots each, colorways mirror their base', (
 
 test('early-game plate sets: four lots each, forge lots swap the bar', () => {
   const SETS: Record<string, { dyes: string[]; pieces: string[] }> = {
-    tuskguard: { dyes: ['ironshod', 'gilded', 'ashen'], pieces: ['helm', 'platebody', 'greaves', 'sabatons'] },
-    valiant: { dyes: ['crimson', 'azure', 'gilded'], pieces: ['helm', 'platebody', 'greaves', 'sabatons'] },
-    ramwall: { dyes: ['steelhorn', 'goldhorn', 'stormram'], pieces: ['helm', 'platebody', 'greaves', 'sabatons'] },
-    briarplate: { dyes: ['bloodbriar', 'bonebriar', 'nightbriar'], pieces: ['helm', 'platebody', 'greaves', 'sabatons'] },
-    sentinel: { dyes: ['daybreak', 'bloodwatch', 'midnight'], pieces: ['greathelm', 'platebody', 'greaves', 'sabatons'] },
+    tuskguard: { dyes: ['ironshod', 'gilded', 'ashen'], pieces: ['helm', 'platebody', 'greaves', 'sabatons', 'gauntlets'] },
+    valiant: { dyes: ['crimson', 'azure', 'gilded'], pieces: ['helm', 'platebody', 'greaves', 'sabatons', 'gauntlets'] },
+    ramwall: { dyes: ['steelhorn', 'goldhorn', 'stormram'], pieces: ['helm', 'platebody', 'greaves', 'sabatons', 'gauntlets'] },
+    briarplate: { dyes: ['bloodbriar', 'bonebriar', 'nightbriar'], pieces: ['helm', 'platebody', 'greaves', 'sabatons', 'gauntlets'] },
+    sentinel: { dyes: ['daybreak', 'bloodwatch', 'midnight'], pieces: ['greathelm', 'platebody', 'greaves', 'sabatons', 'gauntlets'] },
   };
   const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
   for (const [set, { dyes, pieces }] of Object.entries(SETS)) {
     const base = pieces.map((p) => byId.get(`${set}_${p}`)!);
-    assert.equal(base.filter(Boolean).length, 4, `${set} base pieces exist`);
-    assert.deepEqual([...new Set(base.map((p) => p.slot))].sort(), ['body', 'boots', 'head', 'legs']);
+    assert.equal(base.filter(Boolean).length, 5, `${set} base pieces exist`);
+    assert.deepEqual([...new Set(base.map((p) => p.slot))].sort(), ['body', 'boots', 'gloves', 'head', 'legs']);
     for (const p of base) {
       assert.equal(p.armorClass, 'plate', `${p.id} is plate`);
       assert.ok(p.levelReq && ['defence', 'melee'].includes(p.levelReq.skill), `${p.id} gates on defence/melee`);
@@ -388,17 +388,17 @@ test('early-game plate sets: four lots each, forge lots swap the bar', () => {
 
 test('early-game leather sets: four dye lots each, colorways mirror their base', () => {
   const SETS: Record<string, { dyes: string[]; pieces: string[] }> = {
-    hareswift: { dyes: ['clover', 'snowmelt', 'sorrel'], pieces: ['hood', 'jerkin', 'chaps', 'boots'] },
-    kingfisher: { dyes: ['reedmace', 'stormgull', 'sundart'], pieces: ['hood', 'jerkin', 'chaps', 'boots'] },
-    cutpurse: { dyes: ['alleyrat', 'moonless', 'redhand'], pieces: ['cowl', 'jerkin', 'leggings', 'boots'] },
-    trapline: { dyes: ['juniper', 'riverclay', 'nightsnare'], pieces: ['hood', 'jerkin', 'chaps', 'boots'] },
-    emberfox: { dyes: ['silverfox', 'shadowfox', 'dawnfox'], pieces: ['hood', 'jerkin', 'leggings', 'boots'] },
+    hareswift: { dyes: ['clover', 'snowmelt', 'sorrel'], pieces: ['hood', 'jerkin', 'chaps', 'boots', 'gloves'] },
+    kingfisher: { dyes: ['reedmace', 'stormgull', 'sundart'], pieces: ['hood', 'jerkin', 'chaps', 'boots', 'gloves'] },
+    cutpurse: { dyes: ['alleyrat', 'moonless', 'redhand'], pieces: ['cowl', 'jerkin', 'leggings', 'boots', 'gloves'] },
+    trapline: { dyes: ['juniper', 'riverclay', 'nightsnare'], pieces: ['hood', 'jerkin', 'chaps', 'boots', 'gloves'] },
+    emberfox: { dyes: ['silverfox', 'shadowfox', 'dawnfox'], pieces: ['hood', 'jerkin', 'leggings', 'boots', 'gloves'] },
   };
   const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
   for (const [set, { dyes, pieces }] of Object.entries(SETS)) {
     const base = pieces.map((p) => byId.get(`${set}_${p}`)!);
-    assert.equal(base.filter(Boolean).length, 4, `${set} base pieces exist`);
-    assert.deepEqual([...new Set(base.map((p) => p.slot))].sort(), ['body', 'boots', 'head', 'legs']);
+    assert.equal(base.filter(Boolean).length, 5, `${set} base pieces exist`);
+    assert.deepEqual([...new Set(base.map((p) => p.slot))].sort(), ['body', 'boots', 'gloves', 'head', 'legs']);
     for (const p of base) {
       assert.equal(p.armorClass, 'leather', `${p.id} is leather`);
       // The skirmisher's road: archery gates, sneak for the thieves.

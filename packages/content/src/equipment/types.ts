@@ -12,8 +12,8 @@ import type { WeaponStats } from '../items.js';
  */
 
 /**
- * Armor weight class. Counted per worn piece over head/body/legs/boots
- * to derive playstyle modifiers: plate favors melee and defence at a
+ * Armor weight class. Counted per worn piece over head/body/legs/
+ * gloves/boots to derive playstyle modifiers: plate favors melee and defence at a
  * mobility/magic cost, leather favors archery, cloth favors magic.
  * Only plate carries penalties — mixing dilutes, it never punishes.
  */
@@ -26,20 +26,29 @@ export type ArmorClass = 'cloth' | 'leather' | 'plate';
 export type AffixStat = SkillId | 'maxHp' | 'regen';
 
 /** Slots the equipment schema may target (relic/sigil/tool stay bespoke). */
-export type GearSlot = 'head' | 'body' | 'legs' | 'boots' | 'weapon' | 'offhand' | 'cape';
+export type GearSlot =
+  | 'head'
+  | 'body'
+  | 'legs'
+  | 'gloves'
+  | 'boots'
+  | 'weapon'
+  | 'offhand'
+  | 'cape';
 
 export const GEAR_SLOTS: readonly GearSlot[] = [
   'head',
   'body',
   'legs',
+  'gloves',
   'boots',
   'weapon',
   'offhand',
   'cape',
 ];
 
-/** The four slots whose armorClass feeds the class-count modifiers. */
-export const ARMOR_CLASS_SLOTS: readonly GearSlot[] = ['head', 'body', 'legs', 'boots'];
+/** The five slots whose armorClass feeds the class-count modifiers. */
+export const ARMOR_CLASS_SLOTS: readonly GearSlot[] = ['head', 'body', 'legs', 'gloves', 'boots'];
 
 export interface AffixPoolEntry {
   stat: AffixStat;

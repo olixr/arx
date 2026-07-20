@@ -10,9 +10,11 @@ import {
   drawPauldron,
   drawQuiver,
   drawTorsoGarment,
+  gloveStyle,
   helmStyle,
   legStyle,
   offhandStyle,
+  type GloveStyle,
 } from './armor.js';
 
 export type { LegPose } from './legs.js';
@@ -156,6 +158,8 @@ export interface RigPose {
   legsItem?: string;
   /** Equipped boots — replace the bare foot chip with real footwear. */
   bootsItem?: string;
+  /** Equipped gloves — dress the hand mitts and wrists on both arms. */
+  glovesItem?: string;
   /** Equipped offhand — shield on the arm, quiver on the back, etc. */
   offhandItem?: string;
   /** A cape is worn — back-mounted gear drops to the hip to clear it. */
@@ -229,6 +233,9 @@ function drawArm(
   s: number,
   /** Full-sleeve cloth: forearm wears this color with a belled cuff. */
   cuff?: string,
+  /** Equipped gloves — mitt recolor, wrist cuff, bracer, knuckle gear. */
+  glove?: GloveStyle | null,
+  hurt?: boolean,
 ): { ex: number; ey: number; kx: number; ky: number } {
   const { ex, ey, kx, ky } = solveArm(sx, sy, hx, hy, ARM_LEN * s, prefX, prefY);
 
@@ -280,16 +287,129 @@ function drawArm(
     ctx.moveTo(kx, ky);
     ctx.lineTo(ex, ey);
     ctx.stroke();
+    // Bracer: the wrist half re-stroked in glove leather (or vambrace
+    // steel), slightly wider than the arm so it reads as WORN.
+    if (glove?.bracer) {
+      ctx.strokeStyle = hurt ? '#ffffff' : glove.bracer;
+      ctx.lineWidth = Math.max(2, s * 0.074);
+      ctx.beginPath();
+      ctx.moveTo((kx + ex) / 2, (ky + ey) / 2);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+    }
   }
   ctx.lineCap = 'butt';
   // Hand: a squared mitt aligned with the forearm — blocky, not a ball.
-  ctx.fillStyle = skin;
+  // Gloves dress this frame: local +x runs down the fingers, the wrist
+  // heel sits at −x, so cuffs flare toward the elbow and punch spikes
+  // jut past the fist no matter where the IK put the hand.
+  ctx.fillStyle = glove ? (hurt ? '#ffffff' : glove.color) : skin;
   ctx.save();
   ctx.translate(ex, ey);
   ctx.rotate(Math.atan2(ey - ky, ex - kx));
   ctx.beginPath();
   chamferRect(ctx, -0.055 * s, -0.06 * s, 0.13 * s, 0.12 * s, 0.03 * s);
   ctx.fill();
+  if (glove && !hurt) {
+    // Fingerless cut: bare fingertips past a knuckle strap.
+    if (glove.fingerless) {
+      ctx.fillStyle = skin;
+      ctx.fillRect(0.04 * s, -0.048 * s, 0.038 * s, 0.096 * s);
+      ctx.fillStyle = shade(glove.color, -18);
+      ctx.fillRect(0.024 * s, -0.06 * s, 0.018 * s, 0.12 * s);
+    }
+    const kn = glove.knuckle;
+    if (kn) {
+      ctx.fillStyle = kn.color;
+      switch (kn.kind) {
+        case 'studs': {
+          const r = Math.max(1.1, 0.019 * s);
+          for (const oy of [-0.032, 0.032]) {
+            ctx.beginPath();
+            ctx.arc(0.024 * s, oy * s, r, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+        }
+        case 'spikes':
+          // Punch spikes past the fist — the brawler's argument.
+          for (const oy of [-0.033, 0.033]) {
+            ctx.beginPath();
+            ctx.moveTo(0.06 * s, (oy - 0.024) * s);
+            ctx.lineTo(0.135 * s, oy * s);
+            ctx.lineTo(0.06 * s, (oy + 0.024) * s);
+            ctx.closePath();
+            ctx.fill();
+          }
+          break;
+        case 'claws':
+          // Three raking points — the beast's paw.
+          for (const oy of [-0.042, 0, 0.042]) {
+            ctx.beginPath();
+            ctx.moveTo(0.055 * s, (oy - 0.018) * s);
+            ctx.lineTo(0.15 * s, (oy + 0.006) * s);
+            ctx.lineTo(0.055 * s, (oy + 0.018) * s);
+            ctx.closePath();
+            ctx.fill();
+          }
+          break;
+        case 'plate':
+          // A lit plate over the back of the hand.
+          ctx.beginPath();
+          chamferRect(ctx, -0.038 * s, -0.05 * s, 0.066 * s, 0.1 * s, 0.016 * s);
+          ctx.fill();
+          break;
+        case 'gem': {
+          const r = Math.max(1.4, 0.026 * s);
+          ctx.beginPath();
+          ctx.arc(-0.004 * s, 0, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(kn.color, 45);
+          ctx.beginPath();
+          ctx.arc(-0.004 * s - r * 0.3, -r * 0.3, r * 0.35, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+        }
+      }
+    }
+    // Wrist cuff — skipped under a belled robe sleeve, whose open mouth
+    // already owns the wrist; the mitt lives inside the tube.
+    const cf = glove.cuff;
+    if (cf && !cuff) {
+      ctx.fillStyle = cf.color;
+      switch (cf.kind) {
+        case 'band':
+          ctx.fillRect(-0.094 * s, -0.064 * s, 0.044 * s, 0.128 * s);
+          break;
+        case 'roll':
+          ctx.beginPath();
+          chamferRect(ctx, -0.104 * s, -0.07 * s, 0.052 * s, 0.14 * s, 0.018 * s);
+          ctx.fill();
+          break;
+        case 'flare':
+          // The gauntlet bell, opening toward the elbow — a touch wider
+          // than the mitt, never taller than it.
+          ctx.beginPath();
+          ctx.moveTo(-0.044 * s, -0.056 * s);
+          ctx.lineTo(-0.116 * s, -0.08 * s);
+          ctx.lineTo(-0.116 * s, 0.08 * s);
+          ctx.lineTo(-0.044 * s, 0.056 * s);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = shade(cf.color, 24);
+          ctx.fillRect(-0.116 * s, -0.08 * s, 0.018 * s, 0.16 * s);
+          break;
+        case 'fur':
+          // A lumpy pelt roll ringing the wrist.
+          for (const oy of [-0.05, 0, 0.05]) {
+            ctx.beginPath();
+            ctx.arc(-0.082 * s, oy * s, Math.max(1.6, 0.04 * s), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+      }
+    }
+  }
   ctx.restore();
   // The solved joints, so gear (shields, tomes) can strap to the bone.
   return { ex, ey, kx, ky };
@@ -317,6 +437,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const legSt = rig.legsItem ? legStyle(rig.legsItem) : null;
   const bootSt = rig.bootsItem ? bootStyle(rig.bootsItem) : null;
   const offSt = rig.offhandItem ? offhandStyle(rig.offhandItem) : null;
+  const gloveSt = rig.glovesItem ? gloveStyle(rig.glovesItem) : null;
 
   // Sneak crouch: dropping the hip line shortens the leg chain so the IK
   // bends the knees for free, and the whole arm frame (armY/shoulderY)
@@ -1012,6 +1133,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       skin,
       s,
       cuff,
+      gloveSt,
+      rig.hurt,
     );
     // Arm-carried offhand rides the solved forearm, same depth layer as
     // the arm itself so the strap never breaks. An archer's off hand is
@@ -1051,6 +1174,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       skin,
       s,
       cuff,
+      gloveSt,
+      rig.hurt,
     );
     // Near pauldron caps the striking arm's root, over everything.
     if (bodySt && bodySt.pauldron !== 'none') {

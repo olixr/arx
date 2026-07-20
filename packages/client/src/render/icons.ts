@@ -809,6 +809,137 @@ const PAINTERS: Record<string, IconPainter> = {
       c.restore();
     }
   },
+  gloves: (c, col) => {
+    // One hero glove, fingers up, back of the hand to us — soft work
+    // leather or cloth. Fingers paint first so the palm block's outline
+    // draws the knuckle line over their roots.
+    c.translate(0.5, 0.54);
+    c.rotate(-0.1);
+    // Out-thrown thumb, behind the palm.
+    c.save();
+    c.translate(-0.17, -0.02);
+    c.rotate(-0.55);
+    c.fillStyle = shade(col, -8);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.roundRect(-0.055, -0.24, 0.11, 0.3, 0.05);
+    c.fill();
+    c.stroke();
+    c.restore();
+    // Four chunky fingers, middle pair the tallest.
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    for (let i = 0; i < 4; i++) {
+      const x = -0.152 + i * 0.082;
+      const len = 0.26 + (i === 1 || i === 2 ? 0.05 : 0);
+      c.fillStyle = i < 2 ? shade(col, 12) : shade(col, -10);
+      c.beginPath();
+      c.roundRect(x, -0.12 - len, 0.076, len + 0.1, 0.036);
+      c.fill();
+      c.stroke();
+    }
+    // The palm block seats the fingers and hides their roots.
+    c.fillStyle = col;
+    c.beginPath();
+    c.roundRect(-0.17, -0.16, 0.34, 0.36, 0.05);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 16);
+    c.beginPath();
+    c.roundRect(-0.17, -0.16, 0.15, 0.36, 0.05);
+    c.fill();
+    // Knuckle stitch line.
+    c.strokeStyle = shade(col, -26);
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.moveTo(-0.12, -0.07);
+    c.lineTo(0.12, -0.07);
+    c.stroke();
+    // Flared cuff over the wrist, rolled top edge catching the light.
+    poly(c, shade(col, -18), [[-0.2, 0.14], [0.2, 0.14], [0.25, 0.4], [-0.25, 0.4]]);
+    c.fillStyle = shade(col, 22);
+    c.beginPath();
+    c.roundRect(-0.215, 0.11, 0.43, 0.085, 0.03);
+    c.fill();
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.stroke();
+  },
+  gauntlet: (c, col) => {
+    // One armored gauntlet, fingers up: segmented finger lames, a
+    // faceted hand plate, a knuckle stud row, and the flared cuff that
+    // says PLATE from across the room.
+    c.translate(0.5, 0.54);
+    c.rotate(-0.1);
+    // Armored thumb.
+    c.save();
+    c.translate(-0.18, -0.02);
+    c.rotate(-0.55);
+    c.fillStyle = shade(col, -6);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.roundRect(-0.055, -0.23, 0.11, 0.29, 0.04);
+    c.fill();
+    c.stroke();
+    c.strokeStyle = shade(col, -30);
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.moveTo(-0.045, -0.12);
+    c.lineTo(0.045, -0.12);
+    c.stroke();
+    c.restore();
+    // Finger lames — each finger crossed by segment shadows.
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    for (let i = 0; i < 4; i++) {
+      const x = -0.152 + i * 0.082;
+      const len = 0.26 + (i === 1 || i === 2 ? 0.05 : 0);
+      c.fillStyle = i < 2 ? shade(col, 14) : shade(col, -8);
+      c.beginPath();
+      c.roundRect(x, -0.12 - len, 0.076, len + 0.1, 0.03);
+      c.fill();
+      c.stroke();
+      c.strokeStyle = shade(col, -32);
+      c.lineWidth = 0.02;
+      for (const t of [0.42, 0.7]) {
+        c.beginPath();
+        c.moveTo(x + 0.008, -0.12 - len * t);
+        c.lineTo(x + 0.068, -0.12 - len * t);
+        c.stroke();
+      }
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.035;
+    }
+    // Faceted back-of-hand plate.
+    poly(c, col, [[-0.18, -0.14], [0.18, -0.14], [0.21, 0.1], [0.14, 0.22], [-0.14, 0.22], [-0.21, 0.1]]);
+    c.fillStyle = shade(col, 26);
+    c.beginPath();
+    c.moveTo(-0.18, -0.14);
+    c.lineTo(0.02, -0.14);
+    c.lineTo(-0.06, 0.22);
+    c.lineTo(-0.14, 0.22);
+    c.lineTo(-0.21, 0.1);
+    c.closePath();
+    c.fill();
+    // Knuckle stud row riding the plate's top edge.
+    for (let i = 0; i < 3; i++) {
+      const x = -0.1 + i * 0.1;
+      poly(c, shade(col, 34), [[x - 0.038, -0.12], [x + 0.038, -0.12], [x, -0.21]]);
+    }
+    // Flared cuff: bright rolled rim over a dark mouth shadow.
+    poly(c, shade(col, -14), [[-0.2, 0.16], [0.2, 0.16], [0.27, 0.42], [-0.27, 0.42]]);
+    c.fillStyle = 'rgba(20, 12, 8, 0.5)';
+    c.fillRect(-0.19, 0.16, 0.38, 0.05);
+    c.fillStyle = shade(col, 20);
+    c.beginPath();
+    c.roundRect(-0.28, 0.38, 0.56, 0.075, 0.03);
+    c.fill();
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.stroke();
+  },
   robe: (c, col) => {
     // A-line robe falling to a wide hem, sash, center stitch.
     c.fillStyle = col;
@@ -3135,6 +3266,43 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   sentinel_platebody: { icon: 'platebody', color: '#55607a' },
   sentinel_greaves: { icon: 'legs', color: '#55607a' },
   sentinel_sabatons: { icon: 'boots', color: '#55607a' },
+  // Gloves: the fifth armor slot. Soft classes share the `gloves`
+  // painter, plate shares `gauntlet`; identity rides the set color and
+  // the EARLY_COLORWAYS loop below spreads the dye lots for free.
+  padded_mitts: { icon: 'gloves', color: '#8a8ab0' },
+  leather_gloves: { icon: 'gloves', color: '#b08a5c' },
+  iron_gauntlets: { icon: 'gauntlet', color: '#8d9299' },
+  steel_gauntlets: { icon: 'gauntlet', color: '#b8bec8' },
+  warden_gauntlets: { icon: 'gauntlet', color: '#4a7a5a' },
+  frostplate_gauntlets: { icon: 'gauntlet', color: '#9db6cc' },
+  bulwark_gauntlets: { icon: 'gauntlet', color: '#5a6270' },
+  dreadforge_gauntlets: { icon: 'gauntlet', color: '#4a4553' },
+  sunforged_gauntlets: { icon: 'gauntlet', color: '#d4a43c' },
+  wayfarer_gloves: { icon: 'gloves', color: '#a8895a' },
+  wolfstalker_gloves: { icon: 'gloves', color: '#5f6470' },
+  nightveil_gloves: { icon: 'gloves', color: '#302c3c' },
+  drakescale_gloves: { icon: 'gloves', color: '#8c3a32' },
+  stagheart_gloves: { icon: 'gloves', color: '#5a4430' },
+  hedgewitch_gloves: { icon: 'gloves', color: '#5a6b3a' },
+  tidecaller_gloves: { icon: 'gloves', color: '#1f4a55' },
+  voidwhisper_gloves: { icon: 'gloves', color: '#352c48' },
+  cindersworn_gloves: { icon: 'gloves', color: '#332826' },
+  starweaver_gloves: { icon: 'gloves', color: '#2c3260' },
+  thistledown_wraps: { icon: 'gloves', color: '#c9bfa3' },
+  mothwing_wraps: { icon: 'gloves', color: '#8a8a72' },
+  dawnsworn_wraps: { icon: 'gloves', color: '#d9c9a0' },
+  fenwalker_wraps: { icon: 'gloves', color: '#4a6b5c' },
+  stormwoven_wraps: { icon: 'gloves', color: '#4e5a78' },
+  hareswift_gloves: { icon: 'gloves', color: '#c2a878' },
+  kingfisher_gloves: { icon: 'gloves', color: '#2f7a8a' },
+  cutpurse_gloves: { icon: 'gloves', color: '#4e4438' },
+  trapline_gloves: { icon: 'gloves', color: '#8a7248' },
+  emberfox_gloves: { icon: 'gloves', color: '#3a3230' },
+  tuskguard_gauntlets: { icon: 'gauntlet', color: '#a4744b' },
+  valiant_gauntlets: { icon: 'gauntlet', color: '#c9ccd4' },
+  ramwall_gauntlets: { icon: 'gauntlet', color: '#6a7080' },
+  briarplate_gauntlets: { icon: 'gauntlet', color: '#3e4a38' },
+  sentinel_gauntlets: { icon: 'gauntlet', color: '#55607a' },
 };
 
 // Colorway variants inherit their base piece's painter; the tint comes
@@ -3157,21 +3325,21 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
     briarplate: ['bloodbriar', 'bonebriar', 'nightbriar'],
     sentinel: ['daybreak', 'bloodwatch', 'midnight'],
   };
-  const CLOTH_PIECES = ['hood', 'robe', 'skirts', 'slippers'];
-  const LEATHER_PIECES = ['hood', 'jerkin', 'chaps', 'boots'];
-  const PLATE_PIECES = ['helm', 'platebody', 'greaves', 'sabatons'];
+  const CLOTH_PIECES = ['hood', 'robe', 'skirts', 'slippers', 'wraps'];
+  const LEATHER_PIECES = ['hood', 'jerkin', 'chaps', 'boots', 'gloves'];
+  const PLATE_PIECES = ['helm', 'platebody', 'greaves', 'sabatons', 'gauntlets'];
   const PIECES: Record<string, string[]> = {
-    mothwing: ['cowl', 'robe', 'skirts', 'slippers'],
+    mothwing: ['cowl', 'robe', 'skirts', 'slippers', 'wraps'],
     hareswift: LEATHER_PIECES,
     kingfisher: LEATHER_PIECES,
-    cutpurse: ['cowl', 'jerkin', 'leggings', 'boots'],
+    cutpurse: ['cowl', 'jerkin', 'leggings', 'boots', 'gloves'],
     trapline: LEATHER_PIECES,
-    emberfox: ['hood', 'jerkin', 'leggings', 'boots'],
+    emberfox: ['hood', 'jerkin', 'leggings', 'boots', 'gloves'],
     tuskguard: PLATE_PIECES,
     valiant: PLATE_PIECES,
     ramwall: PLATE_PIECES,
     briarplate: PLATE_PIECES,
-    sentinel: ['greathelm', 'platebody', 'greaves', 'sabatons'],
+    sentinel: ['greathelm', 'platebody', 'greaves', 'sabatons', 'gauntlets'],
   };
   for (const [set, dyes] of Object.entries(EARLY_COLORWAYS)) {
     for (const piece of PIECES[set] ?? CLOTH_PIECES) {
@@ -3289,6 +3457,7 @@ export function slotGlyphUrl(slot: string, size = 40): string {
     head: 'helm',
     body: 'armor',
     legs: 'legs',
+    gloves: 'gloves',
     boots: 'boots',
     weapon: 'sword',
     offhand: 'shield',
