@@ -104,3 +104,30 @@ test('bank gear rows preserve exact rolls and keep stable ids', () => {
   // Cross-character deletion is refused.
   assert.ok(!store.deleteBankGear(b, cid + 999));
 });
+
+test('item power rides every persistence path and NULL loads as no power', () => {
+  const store = makeStore();
+  const reg = store.register('eric', 'hunter22', 'Aeriek', SPAWN);
+  assert.ok(reg.ok);
+  if (!reg.ok) return;
+  const cid = reg.character.id;
+
+  const inv = new Array<{
+    item: string;
+    qty: number;
+    roll?: { rar: 'epic' | 'rare'; seed: number; pwr?: number };
+  } | null>(28).fill(null);
+  inv[0] = { item: 'thistledown_robe', qty: 1, roll: { rar: 'epic', seed: 42, pwr: 45 } };
+  inv[1] = { item: 'iron_helm', qty: 1, roll: { rar: 'rare', seed: 7 } };
+  store.saveInventory(cid, inv);
+  const loaded = store.loadInventory(cid, 28);
+  assert.deepEqual(loaded[0]!.roll, { rar: 'epic', seed: 42, pwr: 45 });
+  assert.equal(loaded[1]!.roll!.pwr, undefined);
+
+  store.saveEquipment(cid, { body: { id: 'thistledown_robe', roll: { rar: 'epic', seed: 42, pwr: 45 } } });
+  assert.deepEqual(store.loadEquipment(cid).body!.roll, { rar: 'epic', seed: 42, pwr: 45 });
+
+  const rowId = store.insertBankGear(cid, 'thistledown_robe', { rar: 'epic', seed: 42, pwr: 45 });
+  const stored = store.loadBankGear(cid).find((g) => g.id === rowId);
+  assert.deepEqual(stored!.roll, { rar: 'epic', seed: 42, pwr: 45 });
+});

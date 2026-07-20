@@ -42,16 +42,35 @@ export interface ItemRoll {
   rar: RarityTier;
   /** 32-bit unsigned roll seed. */
   seed: number;
+  /**
+   * Item power — the recycling axis. A piece dropped by a stronger foe
+   * carries that foe's level here, and its derived stats scale up to
+   * match while the VISUALS never change: every set ever shipped stays
+   * in the loot pool forever. Absent (or at/below the def's native
+   * requirement) reads as the def's native power — legacy grace.
+   */
+  pwr?: number;
 }
+
+/** Sanity ceiling for wire/DB power values (above every skill cap). */
+export const MAX_ITEM_POWER = 120;
 
 /** Wire/DB guard for untrusted roll payloads. */
 export function isItemRoll(v: unknown): v is ItemRoll {
   if (typeof v !== 'object' || v === null) return false;
   const r = v as Record<string, unknown>;
-  return isRarityTier(r.rar) && typeof r.seed === 'number' && Number.isInteger(r.seed) && r.seed >= 0;
+  if (!isRarityTier(r.rar) || typeof r.seed !== 'number' || !Number.isInteger(r.seed) || r.seed < 0) {
+    return false;
+  }
+  if (r.pwr !== undefined) {
+    if (typeof r.pwr !== 'number' || !Number.isInteger(r.pwr) || r.pwr < 1 || r.pwr > MAX_ITEM_POWER) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export function sameRoll(a?: ItemRoll, b?: ItemRoll): boolean {
   if (!a || !b) return !a && !b;
-  return a.rar === b.rar && a.seed === b.seed;
+  return a.rar === b.rar && a.seed === b.seed && (a.pwr ?? 0) === (b.pwr ?? 0);
 }

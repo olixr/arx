@@ -26,6 +26,8 @@ import {
   type CarryStyle,
   type Look,
   type InvSlot,
+  MAX_ITEM_POWER,
+  RARITY_TIERS,
   type ItemRoll,
   type EquippedItem,
   type SkillId,
@@ -52,12 +54,17 @@ import {
   aggregateGearStats,
   craftRarityWeights,
   dropRarityWeights,
+  effectiveReq,
+  HEIRLOOM_CHANCE,
+  HEIRLOOM_MIN_NPC_LEVEL,
+  heirloomFor,
   instanceName,
   itemDef,
   makeRoll,
   npcHitHeight,
   pickRarity,
   rolledStats,
+  trinketPowerMult,
   type GearStats,
   stageEndMs,
   stageForElapsed,
@@ -1780,8 +1787,10 @@ export class GameServer {
 
     if (def.equipSlot) {
       // Equip gate: BASE level only — worn +skill bonuses never
-      // bootstrap their way into more gear.
-      const req = def.gear?.levelReq;
+      // bootstrap their way into more gear. A re-issued instance gates
+      // at its POWER, not its native floor: a power-45 heirloom robe is
+      // endgame loot and demands endgame skill.
+      const req = effectiveReq(slot.item, slot.roll);
       if (req && levelForXp(player.skills[req.skill] ?? 0) < req.level) {
         player.session?.sendJson({
           t: 'chat',
@@ -2240,7 +2249,17 @@ export class GameServer {
 
     const style = this.currentStyle(player);
     const level = this.effectiveLevel(player, style);
-    this.castAbility(eid, ab, aim, style, level, false);
+    // Trinket actives grow with the INSTANCE that grants them: the
+    // relic's rolled rarity and drop power scale its ability — chasing
+    // a stronger Aegis Stone is chasing a stronger Aegis.
+    const trinket =
+      slot === SLOT_RELIC
+        ? player.equipment.relic
+        : slot === SLOT_SIGIL
+          ? player.equipment.sigil
+          : undefined;
+    const powerMult = trinket?.roll ? trinketPowerMult(trinket.roll.rar, trinket.roll.pwr) : 1;
+    this.castAbility(eid, ab, aim, style, level, false, undefined, powerMult);
     this.sendCooldowns(player);
   }
 
@@ -2306,6 +2325,8 @@ export class GameServer {
     fromNpc: boolean,
     /** ground_aoe with range 0 detonates on this point (NPC slams). */
     targetPos?: { x: number; y: number },
+    /** Trinket-instance scaling (relic/sigil rarity + power). */
+    powerMult = 1,
   ): void {
     const pos = this.positions.must(casterEid);
     // Player casters carry their armor-class style multiplier in.
@@ -2315,7 +2336,9 @@ export class GameServer {
           style
         ] ?? 1);
     const maxHit =
-      ab.damage > 0 ? Math.max(1, Math.round(ab.damage * (1 + level * 0.05) * gearMult)) : 0;
+      ab.damage > 0
+        ? Math.max(1, Math.round(ab.damage * (1 + level * 0.05) * gearMult * powerMult))
+        : 0;
     const knockbackMult = ab.knockback ?? 1;
     // Magic Art projectiles fly in the caster's staff school — the
     // element is a weapon fact, so a Frost Nova from an ember staff
@@ -2808,9 +2831,10 @@ export class GameServer {
           id: ab.id,
           color: ab.color,
         });
+        // A trinket's shield and heal grow with the instance too.
         if (self.heal) {
           const health = this.healths.must(casterEid);
-          health.hp = Math.min(health.maxHp, health.hp + self.heal);
+          health.hp = Math.min(health.maxHp, health.hp + Math.round(self.heal * powerMult));
         }
         if (
           self.speedMult !== undefined ||
@@ -2820,7 +2844,7 @@ export class GameServer {
           player.buffs.push(
             mkBuff({
               speedMult: self.speedMult ?? 1,
-              shieldHp: self.shieldHp ?? 0,
+              shieldHp: Math.round((self.shieldHp ?? 0) * powerMult),
               meleeLifesteal: self.meleeLifesteal ?? 0,
               untilTick: this.tickCount + self.durationTicks,
             }),
@@ -3526,21 +3550,13 @@ export class GameServer {
     }
 
     // Roll the loot table onto the ground.
-    for (const entry of npc.def.loot) {
-      if (Math.random() > entry.chance) continue;
-      const qty = entry.qty[0] + Math.floor(Math.random() * (entry.qty[1] - entry.qty[0] + 1));
-      // Dropped gear rolls a rarity weighted by the foe's level —
-      // tougher camps carry better-kept equipment.
-      const gear = itemDef(entry.item)?.gear;
-      const roll = gear?.acquisition.drop
-        ? makeRoll(pickRarity(dropRarityWeights(npc.def.level), gear.rarities, Math.random))
-        : undefined;
+    const dropLoot = (item: string, qty: number, roll?: ItemRoll) => {
       const dropEid = this.ecs.create();
       const scatter = () => (Math.random() - 0.5) * 0.8;
       this.kinds.set(dropEid, EntityKind.ItemDrop);
       this.positions.set(dropEid, { x: pos.x + scatter(), y: pos.y + scatter(), dir: 0 });
       this.drops.set(dropEid, {
-        item: entry.item,
+        item,
         qty,
         ownerEid: killerEid,
         ownerUntil: Date.now() + 30_000,
@@ -3549,6 +3565,48 @@ export class GameServer {
         roll,
       });
       this.updateChunkMembership(dropEid);
+    };
+    // Item power rides every drop: a foe stronger than the def's native
+    // requirement re-issues the piece at its own level (small jitter),
+    // so the same loot entry keeps paying as camps get harder.
+    const dropPower = (item: string): number | undefined => {
+      const def = itemDef(item);
+      const native = def?.gear?.levelReq?.level ?? (def?.relic || def?.sigil ? 0 : undefined);
+      if (native === undefined) return undefined;
+      const pwr = npc.def.level + Math.floor(Math.random() * 4);
+      return pwr > native ? pwr : undefined;
+    };
+    for (const entry of npc.def.loot) {
+      if (Math.random() > entry.chance) continue;
+      const qty = entry.qty[0] + Math.floor(Math.random() * (entry.qty[1] - entry.qty[0] + 1));
+      // Dropped gear rolls a rarity weighted by the foe's level —
+      // tougher camps carry better-kept equipment. Relics and sigils
+      // roll too: the trinket's rarity and power scale its active.
+      const def = itemDef(entry.item);
+      const gear = def?.gear;
+      let roll: ItemRoll | undefined;
+      if (gear?.acquisition.drop) {
+        roll = makeRoll(pickRarity(dropRarityWeights(npc.def.level), gear.rarities, Math.random));
+        roll.pwr = dropPower(entry.item);
+      } else if (def?.relic || def?.sigil) {
+        roll = makeRoll(pickRarity(dropRarityWeights(npc.def.level), RARITY_TIERS, Math.random));
+        roll.pwr = dropPower(entry.item);
+      }
+      dropLoot(entry.item, qty, roll);
+    }
+    // The heirloom law: strong foes may carry ANY piece of the old
+    // wardrobe, re-issued at their own power — same art, same identity,
+    // promoted numbers. Every set ever shipped stays in rotation.
+    if (npc.def.level >= HEIRLOOM_MIN_NPC_LEVEL && Math.random() < HEIRLOOM_CHANCE) {
+      const heirloom = heirloomFor(npc.def.level, Math.random);
+      if (heirloom) {
+        const gear = itemDef(heirloom)?.gear;
+        const roll = makeRoll(
+          pickRarity(dropRarityWeights(npc.def.level), gear?.rarities ?? RARITY_TIERS, Math.random),
+        );
+        roll.pwr = npc.def.level + Math.floor(Math.random() * 4);
+        dropLoot(heirloom, 1, roll);
+      }
     }
 
     const spawn = this.spawnPoints[npc.spawnIndex];
@@ -4145,16 +4203,24 @@ export class GameServer {
       return;
     }
     if (config.devCommands && text.startsWith('/give ')) {
-      // /give <item> [qty] [rarity] — gear mints a fresh random roll at
-      // the requested tier (default common). The Playwright lever.
-      const [, item, qtyRaw, rarRaw] = text.split(/\s+/);
+      // /give <item> [qty] [rarity] [power] — gear/trinkets mint a
+      // fresh roll at the requested tier and item power. The Playwright
+      // lever.
+      const [, item, qtyRaw, rarRaw, pwrRaw] = text.split(/\s+/);
       const def = itemDef(item ?? '');
       const qty = Math.max(1, Math.min(1000, Number.parseInt(qtyRaw ?? '1', 10) || 1));
       const rar = isRarityTier(rarRaw ?? '') ? (rarRaw as ItemRoll['rar']) : undefined;
+      const pwrParsed = Number.parseInt(pwrRaw ?? '', 10);
+      const pwr =
+        Number.isInteger(pwrParsed) && pwrParsed >= 1 && pwrParsed <= MAX_ITEM_POWER
+          ? pwrParsed
+          : undefined;
       if (def && hasSpaceFor(player.inventory, def.id)) {
-        if (def.gear) {
+        if (def.gear || def.relic || def.sigil) {
           for (let i = 0; i < qty; i++) {
-            addItem(player.inventory, def.id, 1, makeRoll(rar ?? 'common'));
+            const roll = makeRoll(rar ?? 'common');
+            roll.pwr = pwr;
+            addItem(player.inventory, def.id, 1, roll);
           }
         } else {
           addItem(player.inventory, def.id, qty);
@@ -4163,7 +4229,7 @@ export class GameServer {
         player.session?.sendJson({
           t: 'chat',
           channel: 'system',
-          text: `Given: ${def.name} ×${qty}${rar ? ` (${rar})` : ''}`,
+          text: `Given: ${def.name} ×${qty}${rar ? ` (${rar})` : ''}${pwr ? ` [power ${pwr}]` : ''}`,
         });
       } else {
         player.session?.sendJson({ t: 'chat', channel: 'system', text: `Can't give '${item}'.` });

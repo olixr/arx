@@ -155,6 +155,14 @@ const MIGRATIONS: string[] = [
   UPDATE bank_gear SET item_id = 'wisplight' WHERE item_id = 'witchlight';
   UPDATE bank_gear SET item_id = 'gloomthorn' WHERE item_id = 'hexthorn';
   `,
+  // 13 — item power (the recycling axis): a re-issued instance carries
+  // the level it dropped at; NULL = the def's native power (all
+  // existing rows read unchanged).
+  `
+  ALTER TABLE inventory_slots ADD COLUMN pwr INTEGER;
+  ALTER TABLE equipment ADD COLUMN pwr INTEGER;
+  ALTER TABLE bank_gear ADD COLUMN pwr INTEGER;
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

@@ -3,9 +3,9 @@ import type { DatabaseSync } from 'node:sqlite';
 import { isRarityTier, sanitizeLook, type ItemRoll, type Look } from '@devcraft/shared';
 
 /** NULL-tolerant roll reader for legacy rows (pre-migration-11). */
-function rowRoll(rar: string | null, seed: number | null): ItemRoll | undefined {
+function rowRoll(rar: string | null, seed: number | null, pwr?: number | null): ItemRoll | undefined {
   if (rar === null || seed === null || !isRarityTier(rar)) return undefined;
-  return { rar, seed };
+  return pwr === null || pwr === undefined ? { rar, seed } : { rar, seed, pwr };
 }
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -142,18 +142,19 @@ export class AccountStore {
     size: number,
   ): Array<{ item: string; qty: number; roll?: ItemRoll } | null> {
     const rows = this.db
-      .prepare('SELECT slot, item_id, qty, rar, seed FROM inventory_slots WHERE character_id = ?')
+      .prepare('SELECT slot, item_id, qty, rar, seed, pwr FROM inventory_slots WHERE character_id = ?')
       .all(characterId) as Array<{
       slot: number;
       item_id: string;
       qty: number;
       rar: string | null;
       seed: number | null;
+      pwr: number | null;
     }>;
     const slots = new Array<{ item: string; qty: number; roll?: ItemRoll } | null>(size).fill(null);
     for (const row of rows) {
       if (row.slot >= 0 && row.slot < size) {
-        slots[row.slot] = { item: row.item_id, qty: row.qty, roll: rowRoll(row.rar, row.seed) };
+        slots[row.slot] = { item: row.item_id, qty: row.qty, roll: rowRoll(row.rar, row.seed, row.pwr) };
       }
     }
     return slots;
@@ -254,15 +255,16 @@ export class AccountStore {
 
   loadEquipment(characterId: number): Record<string, { id: string; roll?: ItemRoll }> {
     const rows = this.db
-      .prepare('SELECT slot, item_id, rar, seed FROM equipment WHERE character_id = ?')
+      .prepare('SELECT slot, item_id, rar, seed, pwr FROM equipment WHERE character_id = ?')
       .all(characterId) as Array<{
       slot: string;
       item_id: string;
       rar: string | null;
       seed: number | null;
+      pwr: number | null;
     }>;
     const out: Record<string, { id: string; roll?: ItemRoll }> = {};
-    for (const row of rows) out[row.slot] = { id: row.item_id, roll: rowRoll(row.rar, row.seed) };
+    for (const row of rows) out[row.slot] = { id: row.item_id, roll: rowRoll(row.rar, row.seed, row.pwr) };
     return out;
   }
 
@@ -274,10 +276,10 @@ export class AccountStore {
     try {
       this.db.prepare('DELETE FROM equipment WHERE character_id = ?').run(characterId);
       const stmt = this.db.prepare(
-        'INSERT INTO equipment (character_id, slot, item_id, rar, seed) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO equipment (character_id, slot, item_id, rar, seed, pwr) VALUES (?, ?, ?, ?, ?, ?)',
       );
       for (const [slot, worn] of Object.entries(equipment)) {
-        if (worn) stmt.run(characterId, slot, worn.id, worn.roll?.rar ?? null, worn.roll?.seed ?? null);
+        if (worn) stmt.run(characterId, slot, worn.id, worn.roll?.rar ?? null, worn.roll?.seed ?? null, worn.roll?.pwr ?? null);
       }
       this.db.exec('COMMIT');
     } catch (err) {
@@ -293,11 +295,11 @@ export class AccountStore {
    */
   loadBankGear(characterId: number): Array<{ id: number; item: string; roll: ItemRoll }> {
     const rows = this.db
-      .prepare('SELECT id, item_id, rar, seed FROM bank_gear WHERE character_id = ? ORDER BY id')
-      .all(characterId) as Array<{ id: number; item_id: string; rar: string; seed: number }>;
+      .prepare('SELECT id, item_id, rar, seed, pwr FROM bank_gear WHERE character_id = ? ORDER BY id')
+      .all(characterId) as Array<{ id: number; item_id: string; rar: string; seed: number; pwr: number | null }>;
     const out: Array<{ id: number; item: string; roll: ItemRoll }> = [];
     for (const row of rows) {
-      const roll = rowRoll(row.rar, row.seed);
+      const roll = rowRoll(row.rar, row.seed, row.pwr);
       if (roll) out.push({ id: row.id, item: row.item_id, roll });
     }
     return out;
@@ -305,8 +307,8 @@ export class AccountStore {
 
   insertBankGear(characterId: number, item: string, roll: ItemRoll): number {
     const res = this.db
-      .prepare('INSERT INTO bank_gear (character_id, item_id, rar, seed) VALUES (?, ?, ?, ?)')
-      .run(characterId, item, roll.rar, roll.seed);
+      .prepare('INSERT INTO bank_gear (character_id, item_id, rar, seed, pwr) VALUES (?, ?, ?, ?, ?)')
+      .run(characterId, item, roll.rar, roll.seed, roll.pwr ?? null);
     return Number(res.lastInsertRowid);
   }
 
@@ -374,12 +376,12 @@ export class AccountStore {
     try {
       this.db.prepare('DELETE FROM inventory_slots WHERE character_id = ?').run(characterId);
       const stmt = this.db.prepare(
-        'INSERT INTO inventory_slots (character_id, slot, item_id, qty, rar, seed) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO inventory_slots (character_id, slot, item_id, qty, rar, seed, pwr) VALUES (?, ?, ?, ?, ?, ?, ?)',
       );
       for (let i = 0; i < slots.length; i++) {
         const slot = slots[i];
         if (slot) {
-          stmt.run(characterId, i, slot.item, slot.qty, slot.roll?.rar ?? null, slot.roll?.seed ?? null);
+          stmt.run(characterId, i, slot.item, slot.qty, slot.roll?.rar ?? null, slot.roll?.seed ?? null, slot.roll?.pwr ?? null);
         }
       }
       this.db.exec('COMMIT');

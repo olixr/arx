@@ -13,10 +13,12 @@ import {
 import {
   ARMOR_CLASS_BLURB,
   abilityDef,
+  effectiveReq,
   instanceName,
   itemDef,
   rolledStats,
   techniquesFor,
+  trinketPowerMult,
   type ItemDef,
 } from '@devcraft/content';
 import { itemIconUrl, slotGlyphUrl } from '../render/icons.js';
@@ -377,7 +379,13 @@ export class Panels {
       for (const a of rolled.affixes) {
         stat(affixName(a.stat), `+${a.value}`, '#7dc46a');
       }
-      const req = def.gear?.levelReq;
+      // A re-issued instance wears its power openly — the heirloom row.
+      const native = def.gear?.levelReq?.level ?? 1;
+      if (roll?.pwr !== undefined && roll.pwr > native) {
+        stat('Item power', `${roll.pwr}`, '#ffb347');
+      }
+      // The gate is the INSTANCE's: a power-45 heirloom demands 45.
+      const req = effectiveReq(itemId, roll);
       if (req) {
         const own = levelForXp(this.lastSkills[req.skill] ?? 0);
         const met = own >= req.level;
@@ -399,6 +407,13 @@ export class Panels {
     if (relicAb) stat('Relic (E)', relicAb.name, '#7ac47a');
     const sigilAb = def.sigil ? abilityDef(def.sigil) : undefined;
     if (sigilAb) stat('Sigil (T)', sigilAb.name, '#e8e2d0');
+    // A rolled trinket declares how much its instance amplifies the
+    // active — the reason a power-50 legendary stone is worth the hunt.
+    if ((relicAb || sigilAb) && roll) {
+      if (roll.pwr !== undefined) stat('Item power', `${roll.pwr}`, '#ffb347');
+      const mult = trinketPowerMult(roll.rar, roll.pwr);
+      if (mult > 1.001) stat('Potency', `×${mult.toFixed(2)}`, '#e8b64c');
+    }
     if (def.passive) {
       const p = PASSIVES[def.passive];
       stat('Passive', p.name, p.color);

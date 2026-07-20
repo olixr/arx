@@ -121,3 +121,46 @@ export function dropRarityWeights(npcLevel: number): Record<RarityTier, number> 
     legendary: 0.2 * k,
   };
 }
+
+// ------------------------------------------------------- item power
+
+/**
+ * Item power — the recycling axis. A roll's `pwr` above the def's
+ * native requirement scales base armor/damage by this much per surplus
+ * level. Calibrated against the authored ladders (cloth body: armor 2
+ * at magic 4 → 6 at magic 42): a re-issued early piece lands JUST shy
+ * of a native piece of its power on base stats — the heirloom's real
+ * catch-up is its affix cap, which uses the full effective level. The
+ * chase for native top gear survives; the old wardrobe stays viable.
+ */
+export const POWER_PER_LEVEL = 0.055;
+
+/** Vendor value grows with surplus power (shy of stat growth). */
+export const POWER_VALUE_PER_LEVEL = 0.04;
+
+/** Base-stat multiplier for an instance at `eff` power over `native`. */
+export function powerMult(native: number, eff: number): number {
+  return 1 + Math.max(0, eff - native) * POWER_PER_LEVEL;
+}
+
+/**
+ * Trinket (relic/sigil) active scaling: the SAME ability grows with the
+ * instance that grants it — rarity is the roll, power is the tier it
+ * dropped at. A power-50 legendary Aegis Stone shields ~1.56× the
+ * shop-bought common. Applied to the active's damage and self numbers.
+ */
+export function trinketPowerMult(rar: RarityTier, pwr: number | undefined): number {
+  return RARITY_BASE_MULT[rar] * (1 + (pwr ?? 0) * 0.005);
+}
+
+// ---------------------------------------------------------- heirlooms
+
+/**
+ * The heirloom law: any foe this strong may carry a piece of the OLD
+ * wardrobe re-issued at its own power — same art, same identity, new
+ * numbers. This is what keeps every set we ever ship in rotation.
+ */
+export const HEIRLOOM_MIN_NPC_LEVEL = 10;
+export const HEIRLOOM_CHANCE = 0.05;
+/** A re-issue must be a real promotion — native this far below the foe. */
+export const HEIRLOOM_MIN_SURPLUS = 6;

@@ -7,9 +7,15 @@ import { RECIPES } from './recipes.js';
 import { COMPILED_EQUIPMENT, EQUIPMENT_DEFS } from './equipment/defs.js';
 import { compileEquipment } from './equipment/compile.js';
 import { equipmentDefsFromJson, equipmentDefsToJson } from './equipment/serialize.js';
-import { aggregateGearStats, rolledStats } from './equipment/roll.js';
+import { aggregateGearStats, effectiveReq, heirloomFor, rolledStats } from './equipment/roll.js';
 import type { EquipmentDef } from './equipment/types.js';
-import { AFFIX_ROLL_FRAC, affixCount, affixMagnitudeCap } from './equipment/tables.js';
+import {
+  AFFIX_ROLL_FRAC,
+  HEIRLOOM_MIN_SURPLUS,
+  affixCount,
+  affixMagnitudeCap,
+  trinketPowerMult,
+} from './equipment/tables.js';
 
 /** A minimal valid def to mutate in compile-failure tests. */
 function baseDef(): EquipmentDef {
@@ -183,6 +189,65 @@ test('rarity scales base armor and value', () => {
   const legendary = rolledStats('steel_platebody', { rar: 'legendary', seed: 5 })!;
   assert.ok(legendary.armor > common.armor);
   assert.ok(legendary.value > common.value * 5);
+});
+
+test('item power promotes an instance without changing its identity', () => {
+  // A re-issued early robe (native magic 4) at power 42 climbs toward —
+  // but not past — a native piece of that tier on base armor, while its
+  // affix cap uses the FULL effective level (the real catch-up).
+  const native = rolledStats('thistledown_robe', { rar: 'common', seed: 9 })!;
+  const heirloom = rolledStats('thistledown_robe', { rar: 'common', seed: 9, pwr: 42 })!;
+  const peer = rolledStats('starweaver_robe', { rar: 'common', seed: 9 })!;
+  assert.ok(heirloom.armor > native.armor, 'power must raise base armor');
+  assert.ok(heirloom.armor <= peer.armor + 1, 'heirloom must not eclipse the native tier');
+  assert.ok(heirloom.value > native.value, 'power must raise vendor value');
+  // Affix magnitudes at power roll against the effective-level cap.
+  const capNative = affixMagnitudeCap(4);
+  const capPower = affixMagnitudeCap(42);
+  assert.ok(capPower > capNative);
+  for (let seed = 0; seed < 60; seed++) {
+    const rolled = rolledStats('thistledown_robe', { rar: 'legendary', seed, pwr: 42 })!;
+    for (const a of rolled.affixes) {
+      const v = a.stat === 'maxHp' ? a.value / 2 : a.value;
+      assert.ok(v <= capPower, `affix ${v} above power cap`);
+    }
+  }
+  // Power below native is ignored — heirlooms never downgrade.
+  assert.deepEqual(
+    rolledStats('starweaver_robe', { rar: 'rare', seed: 3, pwr: 5 }),
+    rolledStats('starweaver_robe', { rar: 'rare', seed: 3 }),
+  );
+});
+
+test('effectiveReq gates a re-issued instance at its power', () => {
+  const base = effectiveReq('thistledown_robe');
+  assert.deepEqual(base, { skill: 'magic', level: 4 });
+  const promoted = effectiveReq('thistledown_robe', { rar: 'common', seed: 1, pwr: 45 });
+  assert.deepEqual(promoted, { skill: 'magic', level: 45 });
+  assert.equal(effectiveReq('coins'), null);
+});
+
+test('the heirloom pool re-issues only true promotions', () => {
+  // A deterministic sweep: every pick's native requirement must sit at
+  // least the minimum surplus below the foe's level.
+  for (let i = 0; i < 80; i++) {
+    const rand = () => (i * 37 % 100) / 100;
+    const pick = heirloomFor(30, rand);
+    assert.ok(pick, 'a level-30 foe must have heirlooms to carry');
+    const req = itemDef(pick!)?.gear?.levelReq?.level ?? 1;
+    assert.ok(req <= 30 - HEIRLOOM_MIN_SURPLUS, `${pick} native ${req} too close to foe level`);
+  }
+  // A foe too weak to promote anything comes up empty-handed.
+  assert.equal(heirloomFor(1, () => 0.5), null);
+});
+
+test('trinket potency grows with rarity and power', () => {
+  const base = trinketPowerMult('common', undefined);
+  assert.equal(base, 1);
+  const strong = trinketPowerMult('legendary', 50);
+  assert.ok(strong > 1.5 && strong < 1.7, `legendary p50 potency ${strong} out of band`);
+  assert.ok(trinketPowerMult('common', 30) > trinketPowerMult('common', 10));
+  assert.ok(trinketPowerMult('epic', 20) > trinketPowerMult('uncommon', 20));
 });
 
 test('acquisition routes are honest: drops in loot tables, shop stock flagged', async () => {

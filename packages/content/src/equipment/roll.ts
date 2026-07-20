@@ -1,16 +1,19 @@
 import type { EquipSlot, ItemRoll, RarityTier, SkillId } from '@devcraft/shared';
 import { Rng, hashCoords, hashString, rarityIndex } from '@devcraft/shared';
 import type { CombatStyle } from '../items.js';
-import { itemDef } from '../items.js';
+import { ITEMS, itemDef } from '../items.js';
 import type { AffixStat, ArmorClass } from './types.js';
 import { ARMOR_CLASS_SLOTS } from './types.js';
 import {
   AFFIX_ROLL_FRAC,
   ARMOR_CLASS_MODS,
+  HEIRLOOM_MIN_SURPLUS,
+  POWER_VALUE_PER_LEVEL,
   RARITY_BASE_MULT,
   RARITY_VALUE_MULT,
   affixCount,
   affixMagnitudeCap,
+  powerMult,
 } from './tables.js';
 
 /**
@@ -54,9 +57,15 @@ export function rolledStats(itemId: string, roll?: ItemRoll): RolledStats | null
   if (!def || !gear) return null;
   const r = roll ?? LEGACY_ROLL;
   const rng = new Rng(hashCoords(r.seed, hashString(itemId), rarityIndex(r.rar)));
-  const mult = RARITY_BASE_MULT[r.rar];
+  // Item power: an instance re-issued above its native requirement
+  // scales its base stats and rolls affixes at its FULL effective
+  // level — the same visuals, promoted numbers. Power below native is
+  // ignored (heirlooms never downgrade).
+  const native = gear.levelReq?.level ?? 1;
+  const eff = Math.max(native, r.pwr ?? 0);
+  const mult = RARITY_BASE_MULT[r.rar] * powerMult(native, eff);
 
-  const cap = affixMagnitudeCap(gear.levelReq?.level ?? 1);
+  const cap = affixMagnitudeCap(eff);
   const [fLo, fHi] = AFFIX_ROLL_FRAC[r.rar];
   const n = Math.min(affixCount(r.rar, rng), gear.affixPool.length);
 
@@ -83,8 +92,42 @@ export function rolledStats(itemId: string, roll?: ItemRoll): RolledStats | null
     armor: def.armor ? Math.round(def.armor * mult) : 0,
     damage: def.weapon ? def.weapon.damage * mult : undefined,
     affixes,
-    value: Math.round(def.value * RARITY_VALUE_MULT[r.rar]),
+    value: Math.round(
+      def.value * RARITY_VALUE_MULT[r.rar] * (1 + (eff - native) * POWER_VALUE_PER_LEVEL),
+    ),
   };
+}
+
+/**
+ * The level actually required to equip an instance: a re-issued piece
+ * demands its POWER, not its native floor — a power-45 Thistledown robe
+ * is endgame loot and gates like it. Null for ungated defs.
+ */
+export function effectiveReq(
+  itemId: string,
+  roll?: ItemRoll,
+): { skill: SkillId; level: number } | null {
+  const req = itemDef(itemId)?.gear?.levelReq;
+  if (!req) return null;
+  return { skill: req.skill, level: Math.max(req.level, roll?.pwr ?? 0) };
+}
+
+/**
+ * The heirloom pool for a foe of `npcLevel`: every rolled-gear def
+ * whose native requirement sits comfortably below the foe — old sets
+ * and old weapons alike, re-issued at the foe's power. Uniform pick;
+ * null when nothing qualifies.
+ */
+export function heirloomFor(npcLevel: number, rand: () => number): string | null {
+  const pool: string[] = [];
+  for (const [id, def] of ITEMS) {
+    const gear = def.gear;
+    if (!gear) continue;
+    if ((gear.levelReq?.level ?? 1) > npcLevel - HEIRLOOM_MIN_SURPLUS) continue;
+    pool.push(id);
+  }
+  if (pool.length === 0) return null;
+  return pool[Math.min(pool.length - 1, Math.floor(rand() * pool.length))]!;
 }
 
 /** Mint a fresh roll — server-side loot/craft use. */
