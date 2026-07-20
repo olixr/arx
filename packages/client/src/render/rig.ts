@@ -227,6 +227,8 @@ function drawArm(
   sleeve: string,
   skin: string,
   s: number,
+  /** Full-sleeve cloth: forearm wears this color with a belled cuff. */
+  cuff?: string,
 ): { ex: number; ey: number; kx: number; ky: number } {
   const { ex, ey, kx, ky } = solveArm(sx, sy, hx, hy, ARM_LEN * s, prefX, prefY);
 
@@ -237,13 +239,48 @@ function drawArm(
   ctx.moveTo(sx, sy);
   ctx.lineTo(kx, ky);
   ctx.stroke();
-  // Bare forearm — short-sleeved adventurers.
-  ctx.strokeStyle = skin;
-  ctx.lineWidth = Math.max(2, s * 0.062);
-  ctx.beginPath();
-  ctx.moveTo(kx, ky);
-  ctx.lineTo(ex, ey);
-  ctx.stroke();
+  if (cuff) {
+    // Robed arms: cloth all the way down, WIDENING toward the wrist —
+    // the belled sleeve that makes every gesture read as wizardry.
+    ctx.strokeStyle = cuff;
+    ctx.lineWidth = Math.max(2, s * 0.075);
+    ctx.beginPath();
+    ctx.moveTo(kx, ky);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+    const ang = Math.atan2(ey - ky, ex - kx);
+    ctx.save();
+    ctx.translate(ex, ey);
+    ctx.rotate(ang);
+    // The bell flares WIDER than the hand and its mouth hangs just past
+    // the wrist, so the mitt sits inside the sleeve instead of over it.
+    ctx.fillStyle = cuff;
+    ctx.beginPath();
+    ctx.moveTo(-0.16 * s, -0.045 * s);
+    ctx.lineTo(0.035 * s, -0.098 * s);
+    ctx.lineTo(0.055 * s, 0);
+    ctx.lineTo(0.035 * s, 0.098 * s);
+    ctx.lineTo(-0.16 * s, 0.045 * s);
+    ctx.closePath();
+    ctx.fill();
+    // The mouth's inner shadow — the sleeve is OPEN, a tube not a mitt.
+    ctx.fillStyle = 'rgba(24, 15, 26, 0.4)';
+    ctx.beginPath();
+    ctx.moveTo(0.035 * s, -0.085 * s);
+    ctx.quadraticCurveTo(0.06 * s, 0, 0.035 * s, 0.085 * s);
+    ctx.quadraticCurveTo(0.01 * s, 0, 0.035 * s, -0.085 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  } else {
+    // Bare forearm — short-sleeved adventurers.
+    ctx.strokeStyle = skin;
+    ctx.lineWidth = Math.max(2, s * 0.062);
+    ctx.beginPath();
+    ctx.moveTo(kx, ky);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+  }
   ctx.lineCap = 'butt';
   // Hand: a squared mitt aligned with the forearm — blocky, not a ball.
   ctx.fillStyle = skin;
@@ -906,6 +943,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   offShX += (rig.x - restSide * tw * 0.85 * wS - offShX) * restSettle;
   // Aiming up-and-away puts the gear behind the body.
   const weaponBehind = fy < -0.35;
+  const cuff = bodySt?.sleeves === 'full' ? sleeve : undefined;
   const paintOffArm = (): void => {
     const joints = drawArm(
       ctx,
@@ -919,6 +957,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       sleeve,
       skin,
       s,
+      cuff,
     );
     // Arm-carried offhand rides the solved forearm, same depth layer as
     // the arm itself so the strap never breaks. An archer's off hand is
@@ -957,6 +996,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       sleeve,
       skin,
       s,
+      cuff,
     );
     // Near pauldron caps the striking arm's root, over everything.
     if (bodySt && bodySt.pauldron !== 'none') {

@@ -42,6 +42,14 @@ export interface BodyStyle {
   pouch?: boolean;
   /** Hem/trim accent that breathes with a slow ember pulse. */
   glowTrim?: string;
+  /** Full sleeves: the forearm wears cloth with a belled cuff (robes). */
+  sleeves?: 'full';
+  /** Shoulder mantle (cope) color — the layered wizard majesty read. */
+  mantle?: string;
+  /** A second hem layer beneath the skirt — flowing depth. */
+  underskirt?: string;
+  /** Drifting magic motes in this color — the quiet aura. */
+  motes?: string;
 }
 
 export interface HelmStyle {
@@ -88,12 +96,15 @@ export interface OffhandStyle {
 export const BODY_STYLES: Record<string, BodyStyle> = {
   apprentice_robe: {
     color: '#5a6ea0', trim: '#c9c4cf', cls: 'cloth',
-    silhouette: 'robe', pauldron: 'none', chest: 'stitch', skirt: 0.32,
+    silhouette: 'robe', pauldron: 'none', chest: 'stitch', skirt: 0.34,
+    sleeves: 'full', mantle: '#48587e', underskirt: '#3e4a6e',
   },
   emberweave_robe: {
     color: '#c4553d', trim: '#e8a23c', cls: 'cloth',
     silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'bolt',
-    skirt: 0.3, skirtSlit: true, glowTrim: '#ffb054',
+    skirt: 0.34, skirtSlit: true, glowTrim: '#ffb054',
+    sleeves: 'full', mantle: '#8a3428', underskirt: '#7e2f24',
+    motes: '#ffc26a',
   },
   leather_body: {
     color: '#b08a5c', trim: '#6b4a26', cls: 'leather',
@@ -268,6 +279,21 @@ export function drawTorsoGarment(
         Math.abs(f.dragX) * 0.18 * s * Math.sin(u * Math.PI) * runF;
       hem.push({ x: bx + dx, y: hemY - lift });
     }
+    // The underskirt: a second cloth layer swinging on a counter-phase
+    // beneath the hem — layered depth is what makes a robe MAJESTIC
+    // instead of a colored cone.
+    if (st.underskirt && !hurt) {
+      ctx.fillStyle = st.underskirt;
+      ctx.beginPath();
+      ctx.moveTo(-ww, y0);
+      ctx.lineTo(ww, y0);
+      for (let i = 4; i >= 0; i--) {
+        const counter = Math.sin(nowMs * 0.005 + i * 1.9 + Math.PI) * 0.012 * s * (0.3 + 0.7 * runF);
+        ctx.lineTo(hem[i]!.x * 1.06 + counter, hem[i]!.y + 0.045 * s);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
     ctx.fillStyle = col;
     ctx.beginPath();
     ctx.moveTo(-ww, y0);
@@ -391,6 +417,50 @@ export function drawTorsoGarment(
       ctx.fillRect(-ww - 0.008 * s, -0.075 * s, ww * 2 + 0.016 * s, 0.075 * s);
     }
 
+    // ---- the mantle: a layered shoulder cope draping over the chest —
+    // the garment-over-garment read that says HIGH wizardry. Its point
+    // drapes lower in front; from behind it reads as a clean yoke.
+    if (st.mantle) {
+      const mCol = st.mantle;
+      const drop = back ? th * 0.34 : th * 0.48;
+      ctx.fillStyle = mCol;
+      ctx.beginPath();
+      ctx.moveTo(-tww * 1.02, -th);
+      ctx.lineTo(tww * 1.02, -th);
+      ctx.lineTo(tww * 0.72, -th + drop * 0.72);
+      ctx.lineTo(0, -th + drop);
+      ctx.lineTo(-tww * 0.72, -th + drop * 0.72);
+      ctx.closePath();
+      ctx.fill();
+      // Trailing-half shade keeps the mantle in the same light.
+      ctx.fillStyle = shade(mCol, -16);
+      ctx.beginPath();
+      ctx.moveTo(0, -th);
+      ctx.lineTo(tww * 1.02, -th);
+      ctx.lineTo(tww * 0.72, -th + drop * 0.72);
+      ctx.lineTo(0, -th + drop);
+      ctx.closePath();
+      ctx.fill();
+      // Trim edge along the drape + a clasp at the throat, front only.
+      ctx.strokeStyle = st.trim;
+      ctx.lineWidth = Math.max(1, s * 0.016);
+      ctx.beginPath();
+      ctx.moveTo(-tww * 0.72, -th + drop * 0.72);
+      ctx.lineTo(0, -th + drop);
+      ctx.lineTo(tww * 0.72, -th + drop * 0.72);
+      ctx.stroke();
+      if (!back) {
+        ctx.fillStyle = st.glowTrim ?? st.trim;
+        ctx.beginPath();
+        ctx.moveTo(0, -th + 0.015 * s);
+        ctx.lineTo(0.024 * s, -th + 0.048 * s);
+        ctx.lineTo(0, -th + 0.08 * s);
+        ctx.lineTo(-0.024 * s, -th + 0.048 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
     // ---- collar: the neck joint that ties helmet to breastplate.
     if (st.collar === 'gorget') {
       ctx.fillStyle = metal;
@@ -468,7 +538,8 @@ export function drawTorsoGarment(
       }
       if (st.emblem && (st.chest === 'emblem' || st.chest === 'plate')) {
         ctx.fillStyle = st.trim;
-        const ey = -th * 0.58;
+        // A mantle claims the upper chest — the emblem sits below it.
+        const ey = -th * (st.mantle ? 0.3 : 0.58);
         const r = tw * 0.3;
         ctx.beginPath();
         if (st.emblem === 'chevron') {
@@ -540,6 +611,31 @@ export function drawTorsoGarment(
       ctx.beginPath();
       chamferRect(ctx, pxx - 0.042 * s, -0.06 * s, 0.084 * s, 0.032 * s, 0.014 * s);
       ctx.fill();
+    }
+
+    // ---- the aura: three magic motes drifting slowly up the robe,
+    // each on its own phase, fading in and out — quiet power, never a
+    // particle storm. Deterministic from the clock alone.
+    if (st.motes) {
+      ctx.fillStyle = st.motes;
+      for (let i = 0; i < 3; i++) {
+        const ph = nowMs * 0.00042 + i * 0.37;
+        const cyc = ph - Math.floor(ph);
+        const a = Math.sin(cyc * Math.PI) * 0.55;
+        if (a <= 0.03) continue;
+        const mx = Math.sin(i * 2.4 + Math.floor(ph) * 1.7) * ww * 1.5;
+        const my = 0.05 * s + st.skirt * s - cyc * (th + st.skirt * s) * 0.9;
+        const r = (0.016 + 0.006 * Math.sin(i * 5.1)) * s;
+        ctx.globalAlpha = a;
+        ctx.beginPath();
+        ctx.moveTo(mx, my - r * 1.4);
+        ctx.lineTo(mx + r, my);
+        ctx.lineTo(mx, my + r * 1.4);
+        ctx.lineTo(mx - r, my);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
   }
 }
@@ -642,65 +738,105 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
   const mc = hurt ? '#ffffff' : st.color;
 
   if (st.kind === 'wizard') {
-    // THE wizard hat: a broad brim low on the brow and a tall crown
-    // that folds over and droops toward the trailing side — Gandalf,
-    // not a traffic cone. The tip sways on its own slow clock, so the
-    // hat is always faintly alive; the whole silhouette reads at every
-    // facing because a cone has no face to lose.
+    // THE wizard hat, done properly: a broad down-turned brim, a CHUNKY
+    // crown that tapers with gentle concave sides, and the top third
+    // slumping over into a BLUNT, thick, rounded tip — mass through the
+    // whole bend, never a pinched wisp. The slump breathes on a slow
+    // clock so the hat is quietly alive. A cone has no face to lose, so
+    // the silhouette holds at every one of the 360 facings.
     const bandY = headY - hh * 0.55;
-    const sway = Math.sin(f.nowMs * 0.0021) * hw * 0.14;
-    const tipX = headX - lead * hw * 1.35 + sway;
-    const tipY = bandY - hh * 1.62;
-    // Crown cone with a folded knee: the leading edge climbs near-
-    // vertical, breaks at the knee, then droops to the hanging tip.
+    const u = -lead; // the bend direction: the crown slumps trailing
+    const sway = Math.sin(f.nowMs * 0.0019) * hw * 0.07;
+    const tipX = headX + u * (hw * 1.02 + sway);
+    const tipY = bandY - hh * 1.42;
     ctx.fillStyle = mc;
     ctx.beginPath();
-    ctx.moveTo(headX - hw * 0.82, bandY);
-    ctx.quadraticCurveTo(headX - hw * 0.6, bandY - hh * 1.3, headX + lead * hw * 0.12, bandY - hh * 1.72);
-    ctx.quadraticCurveTo(headX - lead * hw * 0.5, bandY - hh * 2.0, tipX, tipY);
-    ctx.quadraticCurveTo(headX - lead * hw * 0.15, bandY - hh * 1.55, headX + lead * hw * 0.35, bandY - hh * 1.28);
-    ctx.quadraticCurveTo(headX + hw * 0.78, bandY - hh * 0.6, headX + hw * 0.82, bandY);
+    // Windward edge: base → concave climb → over the crown apex.
+    ctx.moveTo(headX - u * hw * 0.92, bandY);
+    ctx.quadraticCurveTo(headX - u * hw * 0.5, bandY - hh * 0.95, headX - u * hw * 0.14, bandY - hh * 1.52);
+    // Over the slump to the tip's upper shoulder — thickness held.
+    ctx.quadraticCurveTo(headX + u * hw * 0.28, bandY - hh * 1.86, tipX, tipY - hh * 0.3);
+    // The BLUNT tip: a rounded end cap, not a point.
+    ctx.quadraticCurveTo(tipX + u * hw * 0.26, tipY - hh * 0.12, tipX + u * hw * 0.08, tipY + hh * 0.12);
+    // Underside of the slump back into the crown.
+    ctx.quadraticCurveTo(headX + u * hw * 0.5, bandY - hh * 1.28, headX + u * hw * 0.62, bandY - hh * 0.85);
+    // Bend-side edge down to the base.
+    ctx.quadraticCurveTo(headX + u * hw * 0.8, bandY - hh * 0.4, headX + u * hw * 0.92, bandY);
     ctx.closePath();
     ctx.fill();
     if (!hurt) {
-      // Hard-shade the trailing half of the cone — the fold's underside.
-      ctx.fillStyle = shade(st.color, -18);
+      // Hard-shade the bend side — the slump's own shadow half.
+      ctx.fillStyle = shade(st.color, -16);
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 0.12, bandY - hh * 1.72);
-      ctx.quadraticCurveTo(headX - lead * hw * 0.5, bandY - hh * 2.0, tipX, tipY);
-      ctx.quadraticCurveTo(headX - lead * hw * 0.15, bandY - hh * 1.55, headX + lead * hw * 0.35, bandY - hh * 1.28);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.2, bandY - hh * 0.9, headX + lead * hw * 0.1, bandY);
-      ctx.lineTo(headX + lead * hw * 0.6, bandY);
+      ctx.moveTo(headX, bandY);
+      ctx.quadraticCurveTo(headX + u * hw * 0.05, bandY - hh * 0.9, headX - u * hw * 0.02, bandY - hh * 1.45);
+      ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 1.78, tipX, tipY - hh * 0.28);
+      ctx.quadraticCurveTo(tipX + u * hw * 0.24, tipY - hh * 0.1, tipX + u * hw * 0.08, tipY + hh * 0.1);
+      ctx.quadraticCurveTo(headX + u * hw * 0.5, bandY - hh * 1.26, headX + u * hw * 0.62, bandY - hh * 0.84);
+      ctx.quadraticCurveTo(headX + u * hw * 0.8, bandY - hh * 0.4, headX + u * hw * 0.92, bandY);
       ctx.closePath();
       ctx.fill();
-      // A crease line up the cone sells the cloth.
-      ctx.strokeStyle = shade(st.color, -26);
-      ctx.lineWidth = Math.max(1, s * 0.012);
+      // The crown's lit ridge — the plane the light actually catches.
+      ctx.strokeStyle = shade(st.color, 18);
+      ctx.lineWidth = Math.max(1.5, s * 0.02);
       ctx.beginPath();
-      ctx.moveTo(headX - lead * hw * 0.2, bandY - hh * 0.2);
-      ctx.quadraticCurveTo(headX - lead * hw * 0.05, bandY - hh * 0.9, headX + lead * hw * 0.08, bandY - hh * 1.5);
+      ctx.moveTo(headX - u * hw * 0.3, bandY - hh * 0.5);
+      ctx.quadraticCurveTo(headX - u * hw * 0.08, bandY - hh * 1.2, headX + u * hw * 0.22, bandY - hh * 1.62);
+      ctx.stroke();
+      // One soft crease under the slump sells the cloth's weight.
+      ctx.strokeStyle = shade(st.color, -26);
+      ctx.lineWidth = Math.max(1, s * 0.013);
+      ctx.beginPath();
+      ctx.moveTo(headX + u * hw * 0.16, bandY - hh * 1.32);
+      ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.4, tipX - u * hw * 0.14, tipY);
       ctx.stroke();
     }
-    // The brim: a wide slab over the hair, lit on top, shadowed under.
+    // The broad brim, softly down-turned at the edges: a shallow arc
+    // slab rather than a flat ellipse — the silhouette that says
+    // "weathered wizard", lit on top, shadowed beneath.
     ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, 6);
     ctx.beginPath();
-    ctx.ellipse(headX, bandY + hh * 0.06, hw * 1.85, hh * 0.34, 0, 0, Math.PI * 2);
+    ctx.moveTo(headX - hw * 1.95, bandY + hh * 0.18);
+    ctx.quadraticCurveTo(headX - hw * 1.2, bandY - hh * 0.22, headX, bandY - hh * 0.24);
+    ctx.quadraticCurveTo(headX + hw * 1.2, bandY - hh * 0.22, headX + hw * 1.95, bandY + hh * 0.18);
+    ctx.quadraticCurveTo(headX + hw * 1.3, bandY + hh * 0.34, headX, bandY + hh * 0.36);
+    ctx.quadraticCurveTo(headX - hw * 1.3, bandY + hh * 0.34, headX - hw * 1.95, bandY + hh * 0.18);
+    ctx.closePath();
     ctx.fill();
     if (!hurt) {
+      // Brim underside shadow.
       ctx.fillStyle = shade(st.color, -24);
       ctx.beginPath();
-      ctx.ellipse(headX, bandY + hh * 0.16, hw * 1.78, hh * 0.22, 0, 0, Math.PI);
+      ctx.moveTo(headX - hw * 1.8, bandY + hh * 0.2);
+      ctx.quadraticCurveTo(headX, bandY + hh * 0.42, headX + hw * 1.8, bandY + hh * 0.2);
+      ctx.quadraticCurveTo(headX + hw * 1.2, bandY + hh * 0.32, headX, bandY + hh * 0.34);
+      ctx.quadraticCurveTo(headX - hw * 1.2, bandY + hh * 0.32, headX - hw * 1.8, bandY + hh * 0.2);
+      ctx.closePath();
       ctx.fill();
-      // Band + buckle charm above the brim, tracking the face.
+      // Band + charm buckle above the brim, tracking the face.
       ctx.fillStyle = st.trim;
-      ctx.fillRect(headX - hw * 0.78, bandY - hh * 0.26, hw * 1.56, hh * 0.2);
+      ctx.fillRect(headX - hw * 0.8, bandY - hh * 0.42, hw * 1.6, hh * 0.22);
       if (backK <= 0.55 && st.charm) {
         const bxx = headX + fx * headR * 0.36;
         ctx.fillStyle = st.charm;
         ctx.beginPath();
-        chamferRect(ctx, bxx - headR * 0.09, bandY - hh * 0.3, headR * 0.18, headR * 0.26, headR * 0.05);
+        chamferRect(ctx, bxx - headR * 0.09, bandY - hh * 0.46, headR * 0.18, headR * 0.26, headR * 0.05);
         ctx.fill();
       }
+      // A single faint star winks near the tip — the aura, whispered.
+      const wink = 0.25 + 0.45 * Math.max(0, Math.sin(f.nowMs * 0.0016 + 1.2));
+      ctx.globalAlpha = wink;
+      ctx.fillStyle = st.charm ?? '#e8d06a';
+      const sxx = tipX + u * hw * 0.34;
+      const syy = tipY - hh * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(sxx, syy - hh * 0.12);
+      ctx.lineTo(sxx + hw * 0.08, syy);
+      ctx.lineTo(sxx, syy + hh * 0.12);
+      ctx.lineTo(sxx - hw * 0.08, syy);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
     }
     return;
   }
