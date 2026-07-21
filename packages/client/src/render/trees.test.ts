@@ -72,18 +72,28 @@ test('the model is coherent: anchored tips, sorted crown, real spread', () => {
   for (const tile of TREES) {
     for (let h = 0; h < 60; h++) {
       const m = treeModel(tile, h);
-      assert.ok(m.branches.length >= 1 && m.clusters.length >= 2);
-      // Trunk starts at the ground origin.
-      const [bx0, by0] = m.branches[0]!.pts[0]!;
+      assert.ok(m.branches.length >= 1 && m.clusters.length >= 4);
+      // The trunk is the LAST branch (it paints over the bough
+      // joins — the seam law) and starts at the ground origin.
+      const [bx0, by0] = m.branches[m.branches.length - 1]!.pts[0]!;
       assert.equal(by0, 0);
       assert.ok(Math.abs(bx0) < 0.01);
-      // Every branch tip points at a live cluster (anchoring law).
+      // Every bough tip points at a live cluster (anchoring law).
       for (const b of m.branches) {
         assert.ok(b.tip >= -1 && b.tip < m.clusters.length);
       }
-      // Painted back-to-front: higher clusters first.
-      for (let i = 1; i < m.clusters.length; i++) {
-        assert.ok(m.clusters[i]!.y <= m.clusters[i - 1]!.y + 1e-9);
+      // The dome is a MASS: the crown's widest tier must overlap —
+      // no cluster's nearest neighbour further than a fused join.
+      for (let i = 0; i < m.clusters.length; i++) {
+        const a = m.clusters[i]!;
+        if (a.droop) continue;
+        let nearest = Infinity;
+        for (let j = 0; j < m.clusters.length; j++) {
+          if (j === i || m.clusters[j]!.droop) continue;
+          const b = m.clusters[j]!;
+          nearest = Math.min(nearest, Math.hypot(a.x - b.x, a.y - b.y) - (a.r + b.r));
+        }
+        assert.ok(nearest < -0.05, `${Tile[tile]} h=${h} cluster ${i} floats ${nearest.toFixed(2)} clear of the mass`);
       }
       assert.ok(m.spread > 0.4 && m.spread < 3.2);
     }

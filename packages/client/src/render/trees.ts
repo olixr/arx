@@ -2,29 +2,41 @@
  * The tree grower — DevCraft's forests, grown not authored.
  *
  * Every tree on the map is GROWN from a species grammar + the tile's
- * hash: a deterministic branching skeleton (trunk spine, primary
- * limbs, twigs) hung with low-poly foliage clusters. The same tile
- * always grows the same tree, on every client, with no stored
- * geometry — the model is derived on first sight and cached.
+ * hash: a deterministic skeleton (trunk spine, short boughs) under a
+ * DOME CANOPY — packed tiers of heavily-overlapping low-poly
+ * clusters that read as ONE solid mass. The same tile always grows
+ * the same tree, on every client, with no stored geometry.
  *
  * Species are GRAMMARS, not sprites: each defines growth ranges
- * (height, trunk width, branching habit, crown shape) plus three
+ * (height, trunk width, crown dome shape, bough habit) plus three
  * bespoke structural VARIANTS, so a stand reads as siblings, never
  * clones. Adding a tree type = one new species entry.
  *
- * Scale law: the player reads ~1.2 tiles tall on screen. Common
- * trees stand 3-4x that, oaks and yews 4-5x — tall enough to be
- * lost under, never lollipops. Trunk base half-widths are the
- * physical truth: `tileColliderRadius` in shared tiles.ts must stay
- * a whisker wider than the fattest variant's flared base so bodies
- * brush past exactly what they see.
+ * THE CANOPY LAWS (learned from the lanky first draft):
+ * - Trees stand UPRIGHT. Bow and gnarl are seasoning, never posture;
+ *   only the windswept species leans, and moderately.
+ * - The crown is a MASS, not scattered balls: tiers of clusters
+ *   spaced ~one radius apart so silhouettes fuse, dome-profiled
+ *   (full at the shoulders, tapering to a cap). Nothing floats.
+ * - Light is BANDED: dark underside tier -> mid body -> lit crown,
+ *   painted as batched tone masses (one Path2D fill per tone per
+ *   tree). That is what makes it read as one solid sculpted volume —
+ *   and it is also ~5 fills per canopy instead of ~30.
+ * - Branches never show their seams: boughs are short, fill-only
+ *   (no edge strokes), painted BEFORE the trunk so the trunk body
+ *   covers every join, and their tips end INSIDE the canopy.
+ *
+ * Scale law: the player reads ~1.2 tiles tall. Commons stand 3-4x
+ * that, oaks and yews 4-5x. Trunk base half-widths are the physical
+ * truth: `tileColliderRadius` in shared tiles.ts must stay a whisker
+ * wider than the fattest variant's flared base (test-pinned via
+ * maxTrunkBaseRadius; fillLimb's 0.4 flare factor is load-bearing).
  *
  * Wind: the whole tree bends as a cantilever on the ONE shared wind
- * field (grass.ts windScalarAt) — the same squalls sweep meadow and
- * canopy. On top, every foliage cluster re-samples the field at ITS
- * OWN world offset with a height lag, so segments of one crown
- * rustle independently while neighbouring trees stay coherent. All
- * phase comes from world position — never per-tree randomness.
+ * field (grass.ts windScalarAt). Every cluster re-samples the field
+ * at ITS OWN world offset with a height lag, so segments of one
+ * crown rustle independently while neighbouring trees stay coherent.
+ * All phase comes from world position — never per-tree randomness.
  *
  * Model space: tiles, origin at the trunk base, +x screen-right,
  * +y UP. Verticals paint at full tile scale (projection law).
@@ -45,7 +57,7 @@ export interface TreeBranch {
   flare: number;
   /** Cluster index whose rustle drags this branch's tip, or -1. */
   tip: number;
-  /** 0 = trunk, 1 = primary limb, 2 = twig (thinned on saplings). */
+  /** 0 = trunk/fork arm (edges + painted last), 1 = bough (fill-only). */
   level: number;
 }
 
@@ -56,9 +68,11 @@ export interface TreeCluster {
   /** Height fraction 0..1 — drives the cantilever displacement. */
   hf: number;
   seed: number;
-  /** Index into the species leaf palette. */
+  /** Light band: 0 = shaded underside, 1 = body, 2 = lit crown. */
   tone: number;
-  /** Crown filler — young trees haven't grown these yet. */
+  /** Carries a bright top facet in the lit pass. */
+  lit: boolean;
+  /** Interior filler — young trees haven't grown these yet. */
   extra: boolean;
   /** Hangs curtain strands below itself (willow). */
   droop: boolean;
@@ -74,191 +88,180 @@ export interface TreeModel {
   bark: string;
   barkLit: string;
   barkDark: string;
-  leaves: string[];
+  /** Light-band palette, dark → mid → lit. */
+  leaves: [string, string, string];
   sides: number;
   /** Curtain strands per drooping cluster (willow), 0 = none. */
   strands: number;
-  branches: TreeBranch[]; // trunk first
-  clusters: TreeCluster[]; // pre-sorted: higher first (painted back-to-front)
+  branches: TreeBranch[]; // trunk LAST (it paints over the bough joins)
+  clusters: TreeCluster[];
 }
 
 /** One species' growth grammar. Variants override any subset. */
 interface Grow {
   bark: string;
-  leaves: string[];
+  leaves: [string, string, string]; // dark underside -> mid -> lit crown
   h: [number, number]; // total height range, tiles
   trunkW: number; // base half-width, tiles
   taper: number; // tip half-width fraction of trunkW
-  bow: number; // sideways trunk bulge (± by hash)
-  lean: number; // constant windswept lean
+  bow: number; // sideways trunk bulge (± by hash) — seasoning only
+  lean: number; // constant lean — windswept species only
   gnarl: number; // trunk edge waviness
   flare: number; // root-flare boost
-  split: number | null; // trunk forks at this fraction, or null
-  limbN: [number, number]; // primary limb count range
-  limbStart: number; // trunk fraction where limbs begin
-  limbEnd: number; // trunk fraction where limbs stop
-  limbLen: [number, number]; // limb reach, fraction of height
-  limbUp: number; // limb rise per unit reach (0 = level, 1 = steep)
-  curve: number; // upward curl of limb tips
-  twigs: number; // chance per limb of a secondary twig
-  crownR: [number, number]; // foliage cluster radius range, tiles
-  fill: number; // crown filler cluster count
-  fillW: number; // filler spread half-width, tiles
-  fillH: number; // filler spread half-height, tiles
-  fillDx: number; // filler centre x-shift (windswept crowns stream)
-  droop: number; // hanging clusters per limb tip (willow)
+  split: number | null; // trunk forks at this fraction (twin crowns)
+  boughN: [number, number]; // short boughs reaching into the canopy
+  boughStart: number; // trunk fraction where boughs begin
+  cBot: number; // crown bottom as a fraction of height
+  crownW: number; // crown half-width, tiles
+  crownR: [number, number]; // cluster radius range, tiles
+  crownDx: number; // crown centre x-shift (windswept streaming)
+  droop: number; // hanging underside clusters (willow)
   strands: number; // curtain strands per drooping cluster
   sides: number; // facet count for the low-poly clusters
 }
 
 interface SpeciesDef {
   base: Grow;
-  /** 2-3 structural variants — hash-picked, each a real silhouette. */
+  /** 3 structural variants — hash-picked, each a real silhouette. */
   variants: Array<Partial<Grow>>;
 }
 
-const GREENS = ['#3a8140', '#35773a', '#3f8a3c'];
+const GREENS: [string, string, string] = ['#2a5f30', '#3d8542', '#58ab55'];
 
 /**
  * Species 0-4 are the common wood (Tile.Tree picks by hash); 5 oak,
  * 6 willow, 7 yew are the named harvest trees.
  */
 const SPECIES: SpeciesDef[] = [
-  // 0 — Maple: the archetype. Sturdy trunk, full rounded crown.
+  // 0 — Maple: the archetype. Sturdy trunk, full rounded dome.
   {
     base: {
       bark: '#6b4a26', leaves: GREENS,
-      h: [3.9, 4.6], trunkW: 0.13, taper: 0.35, bow: 0.1, lean: 0,
+      h: [3.8, 4.5], trunkW: 0.16, taper: 0.5, bow: 0.06, lean: 0,
       gnarl: 0.03, flare: 0.9, split: null,
-      limbN: [2, 3], limbStart: 0.48, limbEnd: 0.72, limbLen: [0.22, 0.3],
-      limbUp: 0.55, curve: 0.08, twigs: 0.35,
-      crownR: [0.62, 0.85], fill: 3, fillW: 0.9, fillH: 0.55, fillDx: 0,
+      boughN: [2, 3], boughStart: 0.55,
+      cBot: 0.44, crownW: 1.35, crownR: [0.5, 0.7], crownDx: 0,
       droop: 0, strands: 0, sides: 8,
     },
     variants: [
-      {}, // classic round crown
-      { h: [4.4, 5.0], trunkW: 0.115, limbStart: 0.58, crownR: [0.55, 0.75], fillW: 0.7 }, // tall
-      { h: [3.6, 4.2], limbN: [3, 4], limbLen: [0.3, 0.4], limbUp: 0.3, fillW: 1.25, fillH: 0.45 }, // spreading
+      {}, // classic dome
+      { h: [4.3, 4.9], crownW: 1.05, cBot: 0.52, trunkW: 0.13 }, // tall column crown
+      { h: [3.6, 4.2], crownW: 1.65, cBot: 0.38, crownR: [0.55, 0.76] }, // spreading
     ],
   },
-  // 1 — Birch: tall, slim, pale, airy vertical crown.
+  // 1 — Birch: tall, slim, pale, a narrow airy dome held high.
   {
     base: {
-      bark: '#d7d2c4', leaves: ['#5a9b48', '#63a850', '#579544'],
-      h: [4.6, 5.5], trunkW: 0.085, taper: 0.45, bow: 0.16, lean: 0,
+      bark: '#d7d2c4', leaves: ['#457f3a', '#5a9b48', '#74b55e'],
+      h: [4.4, 5.2], trunkW: 0.085, taper: 0.55, bow: 0.1, lean: 0,
       gnarl: 0.02, flare: 0.5, split: null,
-      limbN: [2, 3], limbStart: 0.55, limbEnd: 0.85, limbLen: [0.14, 0.2],
-      limbUp: 0.7, curve: 0.05, twigs: 0.2,
-      crownR: [0.38, 0.55], fill: 3, fillW: 0.5, fillH: 0.9, fillDx: 0,
+      boughN: [1, 2], boughStart: 0.6,
+      cBot: 0.5, crownW: 0.85, crownR: [0.4, 0.55], crownDx: 0,
       droop: 0, strands: 0, sides: 7,
     },
     variants: [
-      {}, // gentle S-bow
-      { lean: 0.18, bow: 0.1 }, // leaning off plumb
-      { h: [4.2, 5.0], fill: 2, crownR: [0.32, 0.46] }, // sparse weathered
+      {}, // straight and pale
+      { lean: 0.12, bow: 0.06 }, // a shade off plumb
+      { h: [4.1, 4.8], crownW: 0.72, crownR: [0.34, 0.48] }, // weathered, tighter
     ],
   },
-  // 2 — Twin: the trunk forks into a Y carrying two crowns.
+  // 2 — Twin: the trunk forks into a Y carrying two fused domes.
   {
     base: {
       bark: '#66492a', leaves: GREENS,
-      h: [3.9, 4.6], trunkW: 0.135, taper: 0.4, bow: 0.05, lean: 0,
-      gnarl: 0.04, flare: 0.85, split: 0.42,
-      limbN: [0, 1], limbStart: 0.25, limbEnd: 0.38, limbLen: [0.18, 0.24],
-      limbUp: 0.45, curve: 0.06, twigs: 0,
-      crownR: [0.5, 0.7], fill: 2, fillW: 0.55, fillH: 0.4, fillDx: 0,
+      h: [3.9, 4.6], trunkW: 0.16, taper: 0.5, bow: 0.04, lean: 0,
+      gnarl: 0.04, flare: 0.85, split: 0.4,
+      boughN: [0, 1], boughStart: 0.3,
+      cBot: 0.52, crownW: 0.8, crownR: [0.46, 0.62], crownDx: 0,
       droop: 0, strands: 0, sides: 8,
     },
     variants: [
       {}, // classic Y
       { split: 0.3, h: [3.7, 4.3] }, // low fork, wide straddle
-      { split: 0.56, h: [4.2, 4.9], crownR: [0.45, 0.62] }, // high tight fork
+      { split: 0.52, h: [4.2, 4.9], crownW: 0.7 }, // high tight fork
     ],
   },
-  // 3 — Windswept: leans hard, crown streaming downwind.
+  // 3 — Windswept: a moderate lean, crown shifted leeward — shaped
+  // by weather, still a standing tree.
   {
     base: {
-      bark: '#6b4a26', leaves: ['#3f8a3c', '#479243', '#3a8140'],
-      h: [3.4, 4.1], trunkW: 0.115, taper: 0.4, bow: 0.12, lean: 0.55,
+      bark: '#6b4a26', leaves: ['#2d6a34', '#3f8a3c', '#5aa851'],
+      h: [3.4, 4.1], trunkW: 0.14, taper: 0.5, bow: 0.1, lean: 0.3,
       gnarl: 0.05, flare: 0.9, split: null,
-      limbN: [2, 3], limbStart: 0.45, limbEnd: 0.75, limbLen: [0.2, 0.28],
-      limbUp: 0.35, curve: 0.1, twigs: 0.25,
-      crownR: [0.5, 0.68], fill: 3, fillW: 0.85, fillH: 0.45, fillDx: 0.55,
+      boughN: [1, 2], boughStart: 0.5,
+      cBot: 0.45, crownW: 1.25, crownR: [0.48, 0.64], crownDx: 0.4,
       droop: 0, strands: 0, sides: 8,
     },
     variants: [
       {}, // streaming
-      { lean: 0.85, h: [3.1, 3.7], fillDx: 0.8 }, // cliff-bent survivor
-      { fill: 2, crownR: [0.42, 0.58], h: [3.6, 4.3] }, // crest-broken, sparse
+      { lean: 0.45, h: [3.2, 3.8], crownDx: 0.55 }, // cliff-bent survivor
+      { h: [3.6, 4.3], crownW: 1.0, crownDx: 0.3 }, // crest-broken, tighter
     ],
   },
-  // 4 — Broadleaf: short thick trunk, wide low crown, heavy boughs.
+  // 4 — Broadleaf: short thick trunk under a wide low pavilion dome.
   {
     base: {
-      bark: '#6f5030', leaves: ['#48924a', '#3f8a3c', '#4f9a4e'],
-      h: [3.0, 3.6], trunkW: 0.17, taper: 0.45, bow: 0.05, lean: 0,
+      bark: '#6f5030', leaves: ['#2f6e36', '#438c45', '#5daa57'],
+      h: [3.0, 3.6], trunkW: 0.2, taper: 0.55, bow: 0.04, lean: 0,
       gnarl: 0.04, flare: 1.1, split: null,
-      limbN: [3, 4], limbStart: 0.38, limbEnd: 0.62, limbLen: [0.3, 0.42],
-      limbUp: 0.25, curve: 0.1, twigs: 0.5,
-      crownR: [0.55, 0.75], fill: 4, fillW: 1.3, fillH: 0.5, fillDx: 0,
+      boughN: [3, 4], boughStart: 0.45,
+      cBot: 0.38, crownW: 1.55, crownR: [0.5, 0.68], crownDx: 0,
       droop: 0, strands: 0, sides: 9,
     },
     variants: [
-      {}, // dome
-      { h: [2.8, 3.3], limbLen: [0.4, 0.52], limbUp: 0.12, fillW: 1.6 }, // sprawler
-      { h: [3.3, 3.9], fillH: 0.85, fill: 5 }, // tiered double-storey
+      {}, // pavilion dome
+      { h: [2.9, 3.4], crownW: 1.8, cBot: 0.34 }, // sprawler
+      { h: [3.3, 3.8], cBot: 0.42, crownW: 1.4 }, // tiered, taller dome
     ],
   },
-  // 5 — Ancient oak: the landmark. Thick gnarled trunk, heavy limbs,
-  // deep dark canopy — the tree the forest gathers around.
+  // 5 — Ancient oak: the landmark. Massive trunk, a vast deep dome
+  // the rest of the forest gathers around.
   {
     base: {
-      bark: '#5d4022', leaves: ['#2c5c31', '#2f6135', '#295830'],
-      h: [4.8, 5.7], trunkW: 0.26, taper: 0.4, bow: 0.07, lean: 0,
+      bark: '#5d4022', leaves: ['#1f4827', '#2c5c31', '#417a46'],
+      h: [4.7, 5.6], trunkW: 0.26, taper: 0.5, bow: 0.06, lean: 0,
       gnarl: 0.1, flare: 1.25, split: null,
-      limbN: [3, 4], limbStart: 0.4, limbEnd: 0.68, limbLen: [0.28, 0.4],
-      limbUp: 0.4, curve: 0.12, twigs: 0.6,
-      crownR: [0.68, 0.95], fill: 5, fillW: 1.5, fillH: 0.7, fillDx: 0,
+      boughN: [3, 4], boughStart: 0.45,
+      cBot: 0.4, crownW: 1.85, crownR: [0.6, 0.82], crownDx: 0,
       droop: 0, strands: 0, sides: 9,
     },
     variants: [
       {}, // broad king
-      { h: [5.0, 6.0], trunkW: 0.28, gnarl: 0.16, bow: 0.14, limbN: [4, 5] }, // ancient
-      { split: 0.5, gnarl: 0.13, crownR: [0.6, 0.82], fill: 3 }, // storm-split twin crown
+      { h: [4.9, 5.8], trunkW: 0.28, gnarl: 0.14, crownW: 2.0 }, // ancient
+      { split: 0.42, crownW: 0.95, gnarl: 0.12 }, // storm-split twin crown
     ],
   },
-  // 6 — Weeping willow: arched limbs, curtain crown hanging low.
+  // 6 — Weeping willow: a soft dome spilling over its own underside,
+  // curtain strands swinging beneath.
   {
     base: {
-      bark: '#6f6448', leaves: ['#7aa062', '#6f9a58', '#83aa6a'],
-      h: [3.7, 4.4], trunkW: 0.15, taper: 0.4, bow: 0.18, lean: 0.1,
+      bark: '#6f6448', leaves: ['#4d8045', '#659655', '#82ad6a'],
+      h: [3.7, 4.3], trunkW: 0.17, taper: 0.5, bow: 0.12, lean: 0.06,
       gnarl: 0.07, flare: 1.0, split: null,
-      limbN: [3, 4], limbStart: 0.5, limbEnd: 0.8, limbLen: [0.25, 0.35],
-      limbUp: 0.45, curve: 0.14, twigs: 0,
-      crownR: [0.5, 0.68], fill: 3, fillW: 1.0, fillH: 0.4, fillDx: 0,
-      droop: 2, strands: 4, sides: 9,
+      boughN: [2, 3], boughStart: 0.5,
+      cBot: 0.42, crownW: 1.45, crownR: [0.5, 0.66], crownDx: 0,
+      droop: 4, strands: 4, sides: 9,
     },
     variants: [
       {}, // full curtain
-      { lean: 0.25, fillDx: 0.35 }, // riverbank lean
-      { h: [4.2, 4.9], droop: 3, strands: 5 }, // old weeper
+      { lean: 0.2, crownDx: 0.3 }, // riverbank lean
+      { h: [4.1, 4.7], droop: 6, strands: 5 }, // old weeper
     ],
   },
-  // 7 — Ancient yew: red-brown twisted mass under a near-black crown.
+  // 7 — Ancient yew: red-brown mass under a dense near-black dome.
   {
     base: {
-      bark: '#7d4436', leaves: ['#274f30', '#224a2c', '#2c5434'],
-      h: [4.5, 5.3], trunkW: 0.24, taper: 0.45, bow: 0.06, lean: 0,
+      bark: '#7d4436', leaves: ['#183b21', '#274f30', '#386841'],
+      h: [4.4, 5.2], trunkW: 0.24, taper: 0.5, bow: 0.05, lean: 0,
       gnarl: 0.12, flare: 1.2, split: null,
-      limbN: [3, 4], limbStart: 0.35, limbEnd: 0.6, limbLen: [0.24, 0.34],
-      limbUp: 0.35, curve: 0.08, twigs: 0.5,
-      crownR: [0.6, 0.85], fill: 5, fillW: 1.2, fillH: 0.75, fillDx: 0,
+      boughN: [3, 4], boughStart: 0.4,
+      cBot: 0.38, crownW: 1.6, crownR: [0.55, 0.75], crownDx: 0,
       droop: 0, strands: 0, sides: 9,
     },
     variants: [
       {}, // dense dome
-      { bow: 0.2, gnarl: 0.18 }, // twisted
-      { h: [4.9, 5.7], fillW: 0.85, fillH: 1.0, crownR: [0.5, 0.7] }, // spired
+      { bow: 0.16, gnarl: 0.18 }, // twisted
+      { h: [4.7, 5.5], crownW: 1.3 }, // spired
     ],
   },
 ];
@@ -273,8 +276,7 @@ export function speciesOf(tile: Tile, h: number): number {
 /**
  * The widest flared trunk base any variant can grow, per tree tile —
  * tested against `tileColliderRadius` so physics never drifts from
- * the art. Flare widens the first fifth of the trunk by up to
- * (1 + flare * 0.4) at the very base.
+ * the art. Flare widens the very base by up to (1 + flare * 0.4).
  */
 export function maxTrunkBaseRadius(tile: Tile): number {
   const idxs = tile === Tile.Tree ? [0, 1, 2, 3, 4] : [speciesOf(tile, 0)];
@@ -336,7 +338,7 @@ export function treeModel(tile: Tile, h: number): TreeModel {
   const rnd = (i: number): number => (hashCoords(53, h & 0xffff, i) % 1000) / 1000;
   const species = speciesOf(tile, h);
   const def = SPECIES[species]!;
-  const variant = Math.floor(rnd(0) * (def.variants.length)) % def.variants.length;
+  const variant = Math.floor(rnd(0) * def.variants.length) % def.variants.length;
   const g: Grow = { ...def.base, ...def.variants[variant] };
 
   const H = g.h[0] + (g.h[1] - g.h[0]) * rnd(1);
@@ -348,110 +350,108 @@ export function treeModel(tile: Tile, h: number): TreeModel {
 
   const branches: TreeBranch[] = [];
   const clusters: TreeCluster[] = [];
-  const tone = (i: number): number => Math.floor(rnd(90 + i) * g.leaves.length) % g.leaves.length;
 
   const addCluster = (
-    x: number, y: number, r: number, i: number, extra: boolean, droop: boolean,
+    x: number, y: number, r: number, tone: number,
+    opts: { lit?: boolean; extra?: boolean; droop?: boolean } = {},
   ): number => {
-    // Crown ceiling: no cluster tops out above H, so model.height is
-    // exactly H and the renderer's south-pad culling stays honest.
+    // Crown ceiling + reach: nothing tops out above H or streams past
+    // the renderer's ±3-column culling pad (wind sway included).
     const cy = Math.min(y, H - r);
-    // Crown reach: |x| + r stays inside the renderer's ±3-column
-    // culling pad with room for wind sway — hard-leaning variants
-    // stream, they don't leave the stage.
     const cx = Math.sign(x) * Math.min(Math.abs(x), 2.6 - r);
-    clusters.push({ x: cx, y: cy, r, hf: Math.min(1, cy / H), seed: h ^ (clusters.length * 0x9e37), tone: tone(i), extra, droop });
+    clusters.push({
+      x: cx, y: cy, r, hf: Math.min(1, cy / H),
+      seed: hashCoords(59, h & 0xffff, clusters.length),
+      tone, lit: opts.lit ?? false, extra: opts.extra ?? false, droop: opts.droop ?? false,
+    });
     return clusters.length - 1;
   };
 
-  // --- Trunk (possibly forked). Crown heads = where fillers gather.
-  const trunkTopY = H * 0.82;
-  const heads: Array<[number, number]> = [];
-  if (g.split !== null) {
-    const splitY = trunkTopY * g.split;
-    const lower = grownSpine(0, 0, bowSign * g.bow * unit * 0.3, splitY, g.bow * 0.4, g.lean * 0.5, g.gnarl, bowSign, unit, rnd, 3, 4);
-    branches.push({ pts: lower, w0: g.trunkW, w1: g.trunkW * 0.8, flare: g.flare, tip: -1, level: 0 });
-    const [sx, sy] = lower[lower.length - 1]!;
-    const straddle = 0.55 + rnd(4) * 0.35;
-    for (const side of [-1, 1]) {
-      const hx = sx + side * straddle + g.lean * H * 0.3;
-      const arm = grownSpine(sx, sy, hx, trunkTopY, g.bow * 0.6, 0, g.gnarl, side, unit, rnd, 5 + (side + 1) * 3, 4);
-      const r0 = lerp(g.crownR, rnd(7 + side));
-      const ci = addCluster(hx, trunkTopY + r0 * 0.35, r0, 8 + side, false, false);
-      branches.push({ pts: arm, w0: g.trunkW * 0.72, w1: g.trunkW * 0.35, flare: 0.2, tip: ci, level: 0 });
-      heads.push([hx, trunkTopY + r0 * 0.3]);
-    }
-  } else {
-    const trunk = grownSpine(0, 0, g.lean * H * 0.25, trunkTopY, g.bow, g.lean, g.gnarl, bowSign, unit, rnd, 3, 7);
-    const [tx, ty] = trunk[trunk.length - 1]!;
-    const r0 = lerp(g.crownR, 0.6 + rnd(6) * 0.4);
-    const ci = addCluster(tx, ty + r0 * 0.35, r0, 6, false, false);
-    branches.push({ pts: trunk, w0: g.trunkW, w1: g.trunkW * g.taper, flare: g.flare, tip: ci, level: 0 });
-    heads.push([tx + g.fillDx * 0.4, ty + r0 * 0.25]);
-  }
-  const trunkPts = branches[0]!.pts;
-
-  // --- Primary limbs reaching out to their own foliage.
-  const limbN = Math.round(lerp(g.limbN, rnd(10)));
-  let side = rnd(11) < 0.5 ? -1 : 1;
-  for (let i = 0; i < limbN; i++) {
-    const a = g.limbStart + (g.limbEnd - g.limbStart) * ((i + rnd(12 + i) * 0.6) / Math.max(1, limbN));
-    // Windswept trees grow leeward only: every limb streams with the lean.
-    if (g.lean > 0.3) side = 1;
-    const [ax, ay] = alongSpine(trunkPts, g.split !== null ? Math.min(a / g.split, 0.95) : a);
-    const reach = lerp(g.limbLen, rnd(14 + i)) * H;
-    const ex = ax + side * reach + g.lean * reach * 0.5;
-    const ey = ay + reach * (g.limbUp + (rnd(16 + i) - 0.5) * 0.3) + g.curve * reach;
-    const limb = grownSpine(ax, ay, ex, ey, 0.1, 0, g.gnarl, side, unit, rnd, 20 + i * 4, 3);
-    const lr = lerp(g.crownR, rnd(18 + i)) * 0.82;
-    const ci = addCluster(ex + side * lr * 0.25, ey + lr * 0.3, lr, 20 + i, false, false);
-    branches.push({ pts: limb, w0: g.trunkW * 0.5, w1: g.trunkW * 0.16, flare: 0, tip: ci, level: 1 });
-
-    // Weeping species hang curtain clusters below each limb tip.
-    for (let d = 0; d < g.droop; d++) {
-      const dx2 = ex + (rnd(30 + i * 3 + d) - 0.5) * lr * 1.4;
-      addCluster(dx2, ey - lr * (0.7 + d * 0.75), lr * (0.72 - d * 0.12), 30 + i + d, false, true);
-    }
-
-    // Twigs: secondary bushing off the limb's midpoint.
-    if (rnd(40 + i) < g.twigs) {
-      const [mx, my] = alongSpine(limb, 0.55);
-      const tr = reach * 0.5;
-      const tx2 = mx + side * tr * 0.7;
-      const ty2 = my + tr * (g.limbUp + 0.35);
-      const twig = grownSpine(mx, my, tx2, ty2, 0.08, 0, g.gnarl, side, unit, rnd, 50 + i * 3, 2);
-      const wr = lr * 0.6;
-      const wi = addCluster(tx2, ty2 + wr * 0.25, wr, 40 + i, false, false);
-      branches.push({ pts: twig, w0: g.trunkW * 0.24, w1: g.trunkW * 0.1, flare: 0, tip: wi, level: 2 });
-    }
-    side = -side;
-  }
-
-  // --- Crown fillers: pack the silhouette around each head.
-  const perHead = Math.max(1, Math.round(g.fill / heads.length));
-  for (let hd = 0; hd < heads.length; hd++) {
-    const [hx, hy] = heads[hd]!;
-    for (let j = 0; j < perHead; j++) {
-      const ri = 60 + hd * 16 + j * 3;
-      const fx = hx + g.fillDx + (rnd(ri) - 0.5) * 2 * g.fillW;
-      const fy = hy - g.crownR[0] * 0.2 + (rnd(ri + 1) - 0.35) * 2 * g.fillH;
-      const fr = lerp(g.crownR, rnd(ri + 2)) * (0.75 + rnd(ri + 3) * 0.3);
-      addCluster(fx, fy, fr, ri, true, false);
-      if (g.droop > 0 && rnd(ri + 4) < 0.5) {
-        addCluster(fx + (rnd(ri + 5) - 0.5) * fr, fy - fr * 1.1, fr * 0.6, ri + 6, true, true);
+  /**
+   * THE DOME: tiers of clusters packed ~one radius apart so their
+   * silhouettes fuse into one mass. Widest at the shoulders, closing
+   * to a cap. Light bands by tier: underside dark, body mid, crown
+   * lit. Returns the indices of the bottom tier (bough targets).
+   */
+  const dome = (cx0: number, yBot: number, yTop: number, halfW: number, ri: number): number[] => {
+    const ch = yTop - yBot;
+    const rMid = (g.crownR[0] + g.crownR[1]) / 2;
+    const nT = Math.max(3, Math.min(4, Math.round(ch / (rMid * 0.85))));
+    const bottomIdx: number[] = [];
+    for (let t = 0; t < nT; t++) {
+      const v = (t + 0.5) / nT;
+      // Dome profile: tucked underside, widest at the shoulders
+      // (v ≈ 0.3), closing to the cap.
+      const prof = Math.max(0.4, Math.cos((v - 0.3) * 1.55) * (v < 0.3 ? 0.94 + v * 0.2 : 1));
+      const tw = halfW * prof;
+      const r = lerp(g.crownR, rnd(ri + t * 17)) * (1 - 0.18 * v);
+      const n = Math.max(1, Math.round((tw * 2) / (r * 1.05)));
+      for (let k = 0; k < n; k++) {
+        const fx = n === 1 ? 0 : (k / (n - 1) - 0.5) * 2 * (tw - r * 0.35);
+        const jx = (rnd(ri + t * 17 + k * 3 + 1) - 0.5) * r * 0.5;
+        const jy = (rnd(ri + t * 17 + k * 3 + 2) - 0.5) * r * 0.45;
+        const tone = v < 0.3 ? 0 : v < 0.62 ? 1 : 2;
+        const edge = k === 0 || k === n - 1;
+        const idx = addCluster(cx0 + fx + jx, yBot + ch * v + jy, r, tone, {
+          lit: t === nT - 1,
+          extra: !edge && t > 0 && t < nT - 1, // interior body — grown later
+        });
+        if (t === 0) bottomIdx.push(idx);
       }
     }
+    // The cap closes the silhouette.
+    const rCap = rMid * 0.95;
+    addCluster(cx0 + (rnd(ri + 90) - 0.5) * rCap * 0.4, yTop - rCap * 0.5, rCap, 2, { lit: true });
+    return bottomIdx;
+  };
+
+  // --- Trunk (possibly forked) + crown dome(s).
+  const crownBot = H * g.cBot;
+  const crownCx = g.crownDx * unit + g.lean * unit * 0.9;
+  let bottomIdx: number[] = [];
+  if (g.split !== null) {
+    // Fork: shared lower trunk, two arms, two fused mini-domes.
+    const splitY = crownBot * g.split * 1.6;
+    const lower = grownSpine(0, 0, bowSign * g.bow * unit * 0.2, splitY, g.bow * 0.4, g.lean * 0.5, g.gnarl, bowSign, unit, rnd, 3, 4);
+    const [sx, sy] = lower[lower.length - 1]!;
+    const straddle = (0.64 + rnd(4) * 0.3) * unit;
+    const armTop = crownBot + (H - crownBot) * 0.3;
+    for (const side of [-1, 1]) {
+      const hx = sx + side * straddle + g.lean * unit * 0.4;
+      const arm = grownSpine(sx, sy, hx, armTop, g.bow * 0.5, 0, g.gnarl, side, unit, rnd, 5 + (side + 1) * 3, 4);
+      branches.push({ pts: arm, w0: g.trunkW * 0.7, w1: g.trunkW * 0.32, flare: 0.2, tip: -1, level: 0 });
+      bottomIdx.push(...dome(hx, crownBot + side * 0.06, H - (side < 0 ? 0.12 : 0), g.crownW, 40 + (side + 1) * 20));
+    }
+    branches.push({ pts: lower, w0: g.trunkW, w1: g.trunkW * 0.82, flare: g.flare, tip: -1, level: 0 });
+  } else {
+    // The trunk climbs INTO the dome so the joint can never show.
+    const trunkTop = crownBot + (H - crownBot) * 0.3;
+    const trunk = grownSpine(0, 0, g.lean * unit * 0.7, trunkTop, g.bow, g.lean, g.gnarl, bowSign, unit, rnd, 3, 6);
+    bottomIdx = dome(crownCx, crownBot, H, g.crownW, 40);
+
+    // Boughs: short, fill-only, from the upper trunk to just SHORT of
+    // a bottom-tier cluster's centre — tips always buried in foliage.
+    const boughN = Math.round(lerp(g.boughN, rnd(10)));
+    for (let i = 0; i < boughN && bottomIdx.length > 0; i++) {
+      const ci = bottomIdx[Math.floor(rnd(12 + i) * bottomIdx.length) % bottomIdx.length]!;
+      const c = clusters[ci]!;
+      const a = g.boughStart + rnd(14 + i) * (0.9 - g.boughStart);
+      const [ax, ay] = alongSpine(trunk, a);
+      const ex = ax + (c.x - ax) * 0.75;
+      const ey = ay + (c.y - ay) * 0.75;
+      const bough = grownSpine(ax, ay, ex, ey, 0.06, 0, g.gnarl * 0.7, c.x < ax ? -1 : 1, unit, rnd, 20 + i * 4, 3);
+      branches.push({ pts: bough, w0: g.trunkW * 0.55, w1: g.trunkW * 0.16, flare: 0, tip: ci, level: 1 });
+    }
+    // Trunk LAST: its body paints over every bough join (seam law).
+    branches.push({ pts: trunk, w0: g.trunkW, w1: g.trunkW * g.taper, flare: g.flare, tip: -1, level: 0 });
   }
 
-  // Paint order: higher clusters first, lower ones overpaint them —
-  // the crown's underside reads nearest, same depth law as the world.
-  // Branch tips were captured as pre-sort indices; seeds are unique
-  // (index-derived), so they resolve the permutation exactly.
-  clusters.sort((a, b) => b.y - a.y);
-  const seedToIdx = new Map<number, number>();
-  clusters.forEach((c, i) => seedToIdx.set(c.seed, i));
-  for (const b of branches) {
-    if (b.tip >= 0) b.tip = seedToIdx.get(h ^ (b.tip * 0x9e37)) ?? -1;
+  // Willow: drooping underside clusters spilling below the dome edge.
+  for (let d = 0; d < g.droop; d++) {
+    const t = g.droop === 1 ? 0.5 : d / (g.droop - 1);
+    const dx2 = crownCx + (t - 0.5) * 2 * g.crownW * 0.85 + (rnd(70 + d) - 0.5) * 0.3;
+    const rr = lerp(g.crownR, rnd(72 + d)) * 0.7;
+    addCluster(dx2, crownBot - rr * (0.35 + (d % 2) * 0.5), rr, 0, { droop: true });
   }
 
   let top = 0;
@@ -492,12 +492,13 @@ export interface TreeFrame {
   grow?: number;
 }
 
-/** Fill a tapered branch as a bark polygon with lit/shade edges. */
+/** Fill a tapered branch as a bark polygon, optionally edge-lit. */
 function fillLimb(
   ctx: CanvasRenderingContext2D,
   pts: Array<[number, number]>,
   w0: number, w1: number, flare: number,
   bark: string, lit: string, dark: string,
+  edges: boolean,
 ): void {
   const n = pts.length;
   const left: Array<[number, number]> = [];
@@ -525,6 +526,7 @@ function fillLimb(
   for (let i = n - 1; i >= 0; i--) ctx.lineTo(right[i]![0], right[i]![1]);
   ctx.closePath();
   ctx.fill();
+  if (!edges) return;
   ctx.lineJoin = 'round';
   // Lit west edge, shaded east edge — the round-trunk read.
   ctx.strokeStyle = lit;
@@ -580,26 +582,26 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
     const gust = Math.max(-0.05 * H, Math.min(0.05 * H, (local - wind) * 0.05 * H));
     rx[i] = disp(c.hf) + gust + Math.sin(f.tSec * (1.7 + (c.seed % 5) * 0.13) + ph) * amp;
     ry[i] = Math.cos(f.tSec * (1.35 + (c.seed % 3) * 0.17) + ph * 1.29) * amp * 0.55;
-    rb[i] = 1 + 0.025 * Math.sin(f.tSec * 1.9 + ph);
+    rb[i] = 1 + 0.02 * Math.sin(f.tSec * 1.9 + ph);
   }
 
-  // --- Root flares.
-  const w0px = m.branches[0]!.w0 * wMul * s * g;
+  // --- Root flares (the trunk is the LAST branch — seam law).
+  const trunk = m.branches[m.branches.length - 1]!;
+  const w0px = trunk.w0 * wMul * s * g;
   ctx.fillStyle = shade(m.bark, -8);
-  const fl = m.branches[0]!.flare;
   for (const rs of [-1, 1]) {
     ctx.beginPath();
-    ctx.moveTo(f.bx + rs * w0px * (1 + fl), f.groundY - w0px * 0.9);
-    ctx.lineTo(f.bx + rs * w0px * (2.3 + fl), f.groundY + f.syT * 0.02 * g);
+    ctx.moveTo(f.bx + rs * w0px * (1 + trunk.flare), f.groundY - w0px * 0.9);
+    ctx.lineTo(f.bx + rs * w0px * (2.3 + trunk.flare), f.groundY + f.syT * 0.02 * g);
     ctx.lineTo(f.bx + rs * w0px * 0.5, f.groundY + f.syT * 0.03 * g);
     ctx.closePath();
     ctx.fill();
   }
 
-  // --- Branches: trunk, limbs, twigs — each displaced by the
-  // cantilever, tips dragged by the foliage they carry.
+  // --- Branches. Boughs (level 1) first, fill-only; then trunk/arms
+  // (level 0) with edge light — the trunk body covers every join.
   for (const b of m.branches) {
-    if (g < 0.7 && b.level === 2) continue;
+    if (g < 0.7 && b.level === 1) continue;
     const last = b.pts.length - 1;
     // Anchoring law: a branch's base rides the cantilever exactly like
     // the spine it grew from, and its TIP lands exactly on its foliage
@@ -614,11 +616,15 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
       const hf = Math.min(1, y / H);
       return [X(x + disp(hf) + tipDx * w), Y(y + tipDy * w)];
     });
-    fillLimb(ctx, px, b.w0 * wMul * s * g, b.w1 * wMul * s * g, b.flare, m.bark, m.barkLit, m.barkDark);
+    fillLimb(
+      ctx, px,
+      b.w0 * wMul * s * g, b.w1 * wMul * s * g, b.flare,
+      m.bark, m.barkLit, m.barkDark,
+      b.level === 0,
+    );
   }
 
   // Bark seam ticks along the trunk.
-  const trunk = m.branches[0]!;
   ctx.strokeStyle = m.barkDark;
   ctx.lineWidth = Math.max(1, s * 0.025);
   ctx.beginPath();
@@ -630,31 +636,55 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
   }
   ctx.stroke();
 
-  // --- Foliage: low-poly clusters, three tones each, back-to-front.
+  // --- THE CANOPY MASS: every cluster contributes its blob to
+  // batched tone paths — one shade layer beneath, three light bands,
+  // bright facets on the lit crown. Single-fill-per-tone is what
+  // fuses the clusters into one sculpted low-poly volume (and it is
+  // 6 fills per tree instead of 30).
+  const shadePath = new Path2D();
+  const tonePaths = [new Path2D(), new Path2D(), new Path2D()];
+  const litPath = new Path2D();
+  const pctx = (p: Path2D): CanvasRenderingContext2D => p as unknown as CanvasRenderingContext2D;
+  let drew = false;
   for (let i = 0; i < n; i++) {
     const c = m.clusters[i]!;
     if (g < 0.7 && c.extra) continue;
-    const leaf = m.leaves[c.tone]!;
+    drew = true;
     const cx = X(c.x + rx[i]!);
     const cy = Y(c.y + ry[i]!);
     const cr = c.r * rMul * s * g * rb[i]!;
-    ctx.fillStyle = shade(leaf, -16);
-    ctx.beginPath();
-    facetBlob(ctx, cx + cr * 0.12, cy + cr * 0.14, cr * 0.95, c.seed, m.sides, 0.92);
-    ctx.fill();
-    ctx.fillStyle = leaf;
-    ctx.beginPath();
-    facetBlob(ctx, cx, cy, cr * 0.93, c.seed, m.sides, 0.92);
-    ctx.fill();
-    ctx.fillStyle = shade(leaf, 18);
-    ctx.beginPath();
-    facetBlob(ctx, cx - cr * 0.26, cy - cr * 0.3, cr * 0.5, c.seed ^ 0x55, 6, 0.9);
-    ctx.fill();
+    facetBlob(pctx(shadePath), cx + cr * 0.11, cy + cr * 0.13, cr * 0.98, c.seed, m.sides, 0.92);
+    facetBlob(pctx(tonePaths[c.tone]!), cx, cy, cr * 0.94, c.seed, m.sides, 0.92);
+    if (c.lit) {
+      facetBlob(pctx(litPath), cx - cr * 0.2, cy - cr * 0.28, cr * 0.5, c.seed ^ 0x55, 6, 0.9);
+    }
+  }
+  if (drew) {
+    // Depth rim under and right of the whole mass.
+    ctx.fillStyle = shade(m.leaves[0], -20);
+    ctx.fill(shadePath);
+    // Light bands, dark underside upward to the lit crown.
+    ctx.fillStyle = m.leaves[0];
+    ctx.fill(tonePaths[0]!);
+    ctx.fillStyle = m.leaves[1];
+    ctx.fill(tonePaths[1]!);
+    ctx.fillStyle = m.leaves[2];
+    ctx.fill(tonePaths[2]!);
+    // Sun facets on the crown.
+    ctx.fillStyle = shade(m.leaves[2], 24);
+    ctx.fill(litPath);
+  }
 
-    // Willow curtains: chisel-cut strands hanging off drooping
-    // clusters, tips swinging with the cluster's own rustle.
-    if (c.droop && m.strands > 0) {
-      ctx.fillStyle = shade(leaf, 8);
+  // Willow curtains: chisel-cut strands hanging off drooping
+  // clusters, tips swinging with the cluster's own rustle.
+  if (m.strands > 0) {
+    for (let i = 0; i < n; i++) {
+      const c = m.clusters[i]!;
+      if (!c.droop) continue;
+      const cx = X(c.x + rx[i]!);
+      const cy = Y(c.y + ry[i]!);
+      const cr = c.r * rMul * s * g;
+      ctx.fillStyle = shade(m.leaves[1], 6);
       for (let k = 0; k < m.strands; k++) {
         const t = m.strands === 1 ? 0.5 : k / (m.strands - 1);
         const sx0 = cx + (t - 0.5) * cr * 1.5;
