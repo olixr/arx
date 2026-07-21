@@ -1078,51 +1078,7 @@ body:has(#skills-panel:not(.hidden)) .side-panel.wide {
   cursor: default;
 }
 
-/* Skills (interim dress — the grand card grid replaces this) */
-
-.skill-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 9px;
-  font-size: 15.5px;
-  text-shadow: var(--punch-small);
-}
-
-.skill-row .skill-name {
-  width: 112px;
-  text-transform: capitalize;
-  color: var(--parchment);
-}
-
-/* A discovered secret skill wears gold — you EARNED knowing it exists. */
-.skill-row.secret-skill .skill-name {
-  color: var(--gold-bright);
-  font-weight: bold;
-}
-
-.skill-row .skill-level {
-  width: 34px;
-  text-align: right;
-  color: var(--gold-bright);
-  font-weight: bold;
-  font-size: 17px;
-}
-
-.skill-bar {
-  flex: 1;
-  height: 15px;
-  background: var(--sunk);
-  border: 1.5px solid #0c0714;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.skill-bar .fill {
-  height: 100%;
-  background: var(--gold);
-  border-right: 2px solid var(--gold-hot);
-}
+/* Skills: the hall of deeds — a card per skill, combat heroes wide. */
 
 #skills-panel {
   width: 512px;
@@ -1134,6 +1090,127 @@ body:has(#skills-panel:not(.hidden)) .side-panel.wide {
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
   padding-right: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-content: start;
+}
+
+.skills-total {
+  grid-column: span 2;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--sunk);
+  border: 1.5px solid var(--line);
+  border-radius: 7px;
+  font-family: var(--serif);
+  font-size: 15px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.skills-total strong {
+  font-size: 24px;
+  color: var(--gold-bright);
+  letter-spacing: 1px;
+}
+
+.skill-card {
+  background: var(--raise);
+  border: 1.5px solid var(--line);
+  border-radius: 7px;
+  padding: 9px 11px 8px;
+}
+
+.skill-card.hero {
+  grid-column: span 2;
+}
+
+.skill-card.maxed {
+  border-color: rgba(217, 164, 65, 0.6);
+}
+
+.skill-card-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 7px;
+}
+
+.skill-plaque {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sunk);
+  border: 2px solid var(--line);
+  border-radius: 5px;
+}
+
+.skill-plaque img {
+  width: 28px;
+  height: 28px;
+}
+
+.skill-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 15.5px;
+  font-weight: 700;
+  text-transform: capitalize;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A discovered secret skill wears gold — you EARNED knowing it exists. */
+.skill-card.secret-skill .skill-name {
+  color: var(--gold-bright);
+}
+
+.skill-lvl {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--gold-bright);
+  text-shadow: var(--punch);
+}
+
+.skill-card.maxed .skill-lvl {
+  color: var(--gold-hot);
+}
+
+.skill-cap {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--parchment-dim);
+  align-self: flex-end;
+  padding-bottom: 2px;
+  text-shadow: var(--punch-small);
+}
+
+.skill-meter {
+  height: 14px;
+}
+
+.skill-card.maxed .ui-meter-fill {
+  background: var(--gold-hot);
+}
+
+.skill-story {
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
 }
 
 /* ---------------------------------- hotbar */

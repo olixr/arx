@@ -61,6 +61,34 @@ function affixName(stat: string): string {
   return stat.charAt(0).toUpperCase() + stat.slice(1);
 }
 
+/**
+ * Every skill's face: an item that embodies the craft, and an accent
+ * the card's plaque and meter wear. Pure data — a new skill is a row.
+ */
+const SKILL_FACE: Record<string, { icon: string; color: string }> = {
+  vitality: { icon: 'bread', color: '#d95763' },
+  melee: { icon: 'bronze_sword', color: '#c4553d' },
+  defence: { icon: 'oak_kiteshield', color: '#8ac4e8' },
+  archery: { icon: 'stickbow', color: '#7dc46a' },
+  magic: { icon: 'apprentice_staff', color: '#b49af0' },
+  mining: { icon: 'bronze_pickaxe', color: '#9aa2ac' },
+  woodcutting: { icon: 'bronze_axe', color: '#b08a5c' },
+  fishing: { icon: 'fishing_rod', color: '#7fb2d9' },
+  smithing: { icon: 'bronze_bar', color: '#e8944a' },
+  woodworking: { icon: 'oak_log', color: '#a8794a' },
+  leatherworking: { icon: 'leather', color: '#b08a5c' },
+  tailoring: { icon: 'cloth', color: '#c9a8e8' },
+  cooking: { icon: 'trout', color: '#e8b64c' },
+  construction: { icon: 'log', color: '#c98d4b' },
+  farming: { icon: 'carrot', color: '#7ac46a' },
+  foraging: { icon: 'berries', color: '#9ac46a' },
+  herbalism: { icon: 'sagewort', color: '#7ac4a0' },
+  enchanting: { icon: 'arcane_dust', color: '#b49af0' },
+  beastcraft: { icon: 'bones', color: '#c4b590' },
+  sneak: { icon: 'bronze_dagger', color: '#8a7fae' },
+  dualwield: { icon: 'bronze_dagger', color: '#d9a441' },
+};
+
 /** Explicit verbs the item context menu can dispatch. */
 export type SlotAction = 'use' | 'deposit' | 'sell' | 'drop';
 
@@ -911,9 +939,27 @@ export class Panels {
     this.renderSkills(this.lastSkills);
   }
 
+  /**
+   * The hall of deeds: every skill is a CARD — icon plaque in its own
+   * accent, the level as the headline numeral, a thick meter with the
+   * exact xp story under it. Combat skills are wide hero cards whose
+   * Technique ladder lives inside them; trades sit two abreast. A
+   * total-level plaque crowns the hall.
+   */
   renderSkills(xp: SkillXp): void {
     this.lastSkills = xp;
     this.skillsList.innerHTML = '';
+
+    let total = 0;
+    for (const skill of SKILL_IDS) {
+      if (HIDDEN_SKILLS[skill] && xp[skill] === undefined) continue;
+      total += levelForXp(xp[skill] ?? 0);
+    }
+    const totalRow = document.createElement('div');
+    totalRow.className = 'skills-total';
+    totalRow.innerHTML = `<span>Total level</span><strong>${total.toLocaleString()}</strong>`;
+    this.skillsList.appendChild(totalRow);
+
     for (const skill of SKILL_IDS) {
       // Hidden-skill law: a secret skill simply does not exist in this
       // panel until the character's skill record carries its key — the
@@ -925,33 +971,55 @@ export class Panels {
       const floor = xpForLevel(level);
       const ceil = xpForLevel(level + 1);
       const frac = level >= 99 ? 1 : (value - floor) / Math.max(1, ceil - floor);
+      const techs = techniquesFor(skill);
+      const face = SKILL_FACE[skill] ?? { icon: 'bread', color: '#d9a441' };
 
-      const row = document.createElement('div');
-      row.className = 'skill-row';
-      row.title = `${value.toLocaleString()} xp`;
+      const card = document.createElement('div');
+      card.className = 'skill-card';
+      if (techs.length > 0) card.classList.add('hero');
+      if (level >= 99) card.classList.add('maxed');
+      if (hidden) card.classList.add('secret-skill');
 
+      const head = document.createElement('div');
+      head.className = 'skill-card-head';
+      const plaque = document.createElement('span');
+      plaque.className = 'skill-plaque';
+      plaque.style.borderColor = face.color;
+      const img = document.createElement('img');
+      img.src = itemIconUrl(face.icon, 30);
+      img.draggable = false;
+      plaque.appendChild(img);
       const name = document.createElement('span');
       name.className = 'skill-name';
-      name.textContent = hidden ? hidden.name.toLowerCase() : skill;
-      if (hidden) {
-        row.classList.add('secret-skill');
-        row.title += ' — a secret skill, discovered by deed';
-      }
-      const bar = document.createElement('div');
-      bar.className = 'skill-bar';
-      const fill = document.createElement('div');
-      fill.className = 'fill';
-      fill.style.width = `${Math.round(frac * 100)}%`;
-      bar.appendChild(fill);
+      name.textContent = hidden ? hidden.name : skill;
       const lvl = document.createElement('span');
-      lvl.className = 'skill-level';
+      lvl.className = 'skill-lvl';
       lvl.textContent = String(level);
+      const cap = document.createElement('span');
+      cap.className = 'skill-cap';
+      cap.textContent = '/99';
+      head.append(plaque, name, lvl, cap);
+      card.appendChild(head);
 
-      row.append(name, bar, lvl);
-      this.skillsList.appendChild(row);
+      const bar = document.createElement('div');
+      bar.className = 'ui-meter skill-meter';
+      const fill = document.createElement('div');
+      fill.className = 'ui-meter-fill';
+      fill.style.width = `${Math.round(frac * 100)}%`;
+      if (level < 99) fill.style.background = face.color;
+      bar.appendChild(fill);
+      card.appendChild(bar);
+
+      const story = document.createElement('div');
+      story.className = 'skill-story';
+      story.textContent =
+        level >= 99
+          ? `${value.toLocaleString()} xp · mastered`
+          : `${value.toLocaleString()} xp · ${(ceil - value).toLocaleString()} to ${level + 1}`;
+      if (hidden) story.textContent += ' · a secret art';
+      card.appendChild(story);
 
       // Combat skills carry their Technique ladder: pick your R.
-      const techs = techniquesFor(skill);
       if (techs.length > 0) {
         const techRow = document.createElement('div');
         techRow.className = 'technique-row';
@@ -983,8 +1051,9 @@ export class Panels {
           }
           techRow.appendChild(chip);
         }
-        this.skillsList.appendChild(techRow);
+        card.appendChild(techRow);
       }
+      this.skillsList.appendChild(card);
     }
   }
 }
