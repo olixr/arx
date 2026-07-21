@@ -96,11 +96,15 @@ export enum Tile {
   Chair = 84,
   /** A bench/pew — east-west runs merge. */
   Bench = 85,
-  /** A bed: frame, mattress, pillow, blanket. */
+  /**
+   * A bed: frame, mattress, pillow, patchwork quilt. Sleeps with its
+   * head against an adjacent wall (side-on when the wall is E/W);
+   * N-S runs merge into one long bed.
+   */
   Bed = 86,
-  /** A tall bookshelf full of spines. */
+  /** A tall bookshelf: books, gilt bindings, and a curio shelf. */
   Bookshelf = 87,
-  /** A low two-door cabinet. */
+  /** Chest-high casework — hash deals a two-door cupboard or a dresser. */
   Cabinet = 88,
   /** A service counter — runs merge; NOT the shop counter station. */
   Counter = 89,
@@ -154,6 +158,7 @@ export enum Detail {
   Mushroom = 4,
   // Baked floor decor — authored-only, walkable, painted into the
   // terrain bake (players place solid prop tiles, never detail).
+  /** Woven rug; adjacent Rug tiles merge into one great hall rug. */
   Rug = 5,
   RugRound = 6,
   Doormat = 7,

@@ -342,7 +342,7 @@ export function bakeChunk(
       const ty = baseY + ly;
       // Raised/sunken tiles' details belong to their lifted layer.
       if (elev(tx, ty) !== 0) continue;
-      drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px);
+      drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail);
     }
   }
 
@@ -363,6 +363,7 @@ function drawTileDetail(
   lx: number,
   ly: number,
   px: number,
+  dAt?: (x: number, y: number) => number,
 ): void {
   const hg = hashCoords(83, tx, ty);
   const gx = lx * px;
@@ -511,51 +512,286 @@ function drawTileDetail(
         ctx.closePath();
         ctx.fill();
       } else if (d === Detail.Rug) {
-        // A woven rug: border, field, and a diamond motif — palette
-        // hash-picked so a town's rugs aren't uniforms.
-        const pal = RUG_PALETTES[hashCoords(211, tx, ty) % RUG_PALETTES.length]!;
-        ctx.fillStyle = pal[0];
+        // A woven rug: bound border with selvedge ticks, knotted
+        // fringe off the two loom ends, and a hash-dealt motif —
+        // medallion, kilim bands, or diamond lattice — so a town's
+        // rugs read as sisters from one loom, never uniforms.
+        // MERGE LAW: adjacent Rug tiles weave into ONE great hall rug
+        // — border/fringe only on free edges, pattern and palette
+        // keyed to the block's NW anchor so every tile agrees.
+        const isRug = (x: number, y: number) => dAt?.(x, y) === Detail.Rug;
+        const jn = isRug(tx, ty - 1);
+        const je = isRug(tx + 1, ty);
+        const js = isRug(tx, ty + 1);
+        const jw = isRug(tx - 1, ty);
+        if (jn || je || js || jw) {
+          let ax = tx;
+          while (isRug(ax - 1, ty)) ax--;
+          let ay = ty;
+          while (isRug(tx, ay - 1)) ay--;
+          const ha = hashCoords(211, ax, ay);
+          const [bord, field, accent] = RUG_PALETTES[ha % RUG_PALETTES.length]!;
+          const x0 = gx + (jw ? 0 : px * 0.06);
+          const x1 = gx + (je ? px : px * 0.94);
+          const y0 = gy + (jn ? 0 : px * 0.09);
+          const y1 = gy + (js ? px : px * 0.91);
+          if (!js) {
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.fillRect(x0 + px * 0.01, y1, x1 - x0 - px * 0.02, px * 0.025);
+          }
+          ctx.fillStyle = bord;
+          ctx.beginPath();
+          chamferRect(ctx, x0, y0, x1 - x0, y1 - y0, [
+            jn || jw ? 0 : px * 0.045,
+            jn || je ? 0 : px * 0.045,
+            js || je ? 0 : px * 0.045,
+            js || jw ? 0 : px * 0.045,
+          ]);
+          ctx.fill();
+          // Field runs through joined edges; the border band survives
+          // only on the rug's true rim.
+          ctx.fillStyle = field;
+          ctx.fillRect(
+            jw ? gx : x0 + px * 0.09,
+            jn ? gy : y0 + px * 0.085,
+            (je ? gx + px : x1 - px * 0.09) - (jw ? gx : x0 + px * 0.09),
+            (js ? gy + px : y1 - px * 0.085) - (jn ? gy : y0 + px * 0.085),
+          );
+          // Pattern that repeats per tile so neighbors join: kilim
+          // bands or a diamond lattice, dealt by the anchor.
+          if (ha & 4) {
+            ctx.fillStyle = accent;
+            ctx.fillRect(x0 + (jw ? 0 : px * 0.11), gy + px * 0.24, (x1 - x0) - (jw ? 0 : px * 0.11) - (je ? 0 : px * 0.11), px * 0.07);
+            ctx.fillRect(x0 + (jw ? 0 : px * 0.11), gy + px * 0.69, (x1 - x0) - (jw ? 0 : px * 0.11) - (je ? 0 : px * 0.11), px * 0.07);
+            ctx.fillStyle = bord;
+            ctx.fillRect(x0 + (jw ? 0 : px * 0.11), gy + px * 0.42, (x1 - x0) - (jw ? 0 : px * 0.11) - (je ? 0 : px * 0.11), px * 0.16);
+            ctx.fillStyle = accent;
+            for (let k = 0; k < 3; k++) {
+              const tx2 = gx + px * (0.14 + k * 0.3);
+              ctx.beginPath();
+              ctx.moveTo(tx2, gy + px * 0.55);
+              ctx.lineTo(tx2 + px * 0.07, gy + px * 0.45);
+              ctx.lineTo(tx2 + px * 0.14, gy + px * 0.55);
+              ctx.closePath();
+              ctx.fill();
+            }
+          } else {
+            for (let r2 = 0; r2 < 2; r2++) {
+              for (let c3 = 0; c3 < 2; c3++) {
+                const dx0 = gx + px * (0.28 + c3 * 0.44);
+                const dy0 = gy + px * (0.3 + r2 * 0.4);
+                ctx.fillStyle = (r2 + c3 + tx + ty) % 2 === 0 ? accent : bord;
+                ctx.beginPath();
+                ctx.moveTo(dx0, dy0 - px * 0.085);
+                ctx.lineTo(dx0 + px * 0.11, dy0);
+                ctx.lineTo(dx0, dy0 + px * 0.085);
+                ctx.lineTo(dx0 - px * 0.11, dy0);
+                ctx.closePath();
+                ctx.fill();
+              }
+            }
+          }
+          // Weave sheen carried across the whole cloth.
+          ctx.fillStyle = 'rgba(240, 232, 210, 0.05)';
+          for (let k = 0; k < 4; k++) {
+            ctx.fillRect(x0 + px * 0.03, gy + px * (0.14 + k * 0.22), x1 - x0 - px * 0.06, px * 0.014);
+          }
+          // Selvedge ticks on free N/S rims, fringe off free E/W ends.
+          ctx.fillStyle = 'rgba(240, 232, 210, 0.26)';
+          for (let k = 0; k < 5; k++) {
+            const fx2 = gx + px * (0.12 + k * 0.19);
+            if (!jn) ctx.fillRect(fx2, y0 + px * 0.026, px * 0.05, px * 0.022);
+            if (!js) ctx.fillRect(fx2, y1 - px * 0.048, px * 0.05, px * 0.022);
+          }
+          ctx.fillStyle = '#d8c9a0';
+          for (let k = 0; k < 7; k++) {
+            const fy2 = gy + px * (0.08 + k * 0.13);
+            if (!jw) ctx.fillRect(x0 - px * 0.05, fy2, px * 0.05, px * 0.024);
+            if (!je) ctx.fillRect(x1, fy2 + px * 0.012, px * 0.05, px * 0.024);
+          }
+          return;
+        }
+        const hh = hashCoords(211, tx, ty);
+        const [bord, field, accent] = RUG_PALETTES[hh % RUG_PALETTES.length]!;
+        const rx = gx + px * 0.06;
+        const ry = gy + px * 0.09;
+        const rw = px * 0.88;
+        const rh = px * 0.82;
+        // A whisper of ground shadow seats the cloth on the boards.
+        ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+        ctx.fillRect(rx + px * 0.01, ry + rh, rw - px * 0.02, px * 0.025);
+        ctx.fillStyle = bord;
         ctx.beginPath();
-        chamferRect(ctx, gx + px * 0.07, gy + px * 0.09, px * 0.86, px * 0.82, px * 0.05);
+        chamferRect(ctx, rx, ry, rw, rh, px * 0.045);
         ctx.fill();
-        ctx.fillStyle = pal[1];
+        // Selvedge ticks worked along the long edges.
+        ctx.fillStyle = 'rgba(240, 232, 210, 0.26)';
+        for (let k = 0; k < 6; k++) {
+          ctx.fillRect(rx + rw * (0.12 + k * 0.15), ry + px * 0.026, px * 0.05, px * 0.022);
+          ctx.fillRect(rx + rw * (0.12 + k * 0.15), ry + rh - px * 0.048, px * 0.05, px * 0.022);
+        }
+        ctx.fillStyle = field;
         ctx.beginPath();
-        chamferRect(ctx, gx + px * 0.16, gy + px * 0.18, px * 0.68, px * 0.64, px * 0.04);
+        chamferRect(ctx, rx + px * 0.09, ry + px * 0.095, rw - px * 0.18, rh - px * 0.19, px * 0.035);
         ctx.fill();
-        ctx.fillStyle = pal[0];
-        const dx0 = gx + px * 0.5;
-        const dy0 = gy + px * 0.5;
-        ctx.beginPath();
-        ctx.moveTo(dx0, dy0 - px * 0.14);
-        ctx.lineTo(dx0 + px * 0.17, dy0);
-        ctx.lineTo(dx0, dy0 + px * 0.14);
-        ctx.lineTo(dx0 - px * 0.17, dy0);
-        ctx.closePath();
-        ctx.fill();
+        const cx = rx + rw / 2;
+        const cy = ry + rh / 2;
+        const motif = (hh >> 4) % 3;
+        if (motif === 0) {
+          // Stepped medallion with corner blocks.
+          const diamond = (r: number, tone: string) => {
+            ctx.fillStyle = tone;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - r);
+            ctx.lineTo(cx + r * 1.3, cy);
+            ctx.lineTo(cx, cy + r);
+            ctx.lineTo(cx - r * 1.3, cy);
+            ctx.closePath();
+            ctx.fill();
+          };
+          diamond(px * 0.2, bord);
+          diamond(px * 0.13, accent);
+          diamond(px * 0.05, field);
+          ctx.fillStyle = accent;
+          for (const [ox, oy] of [
+            [0.14, 0.16],
+            [0.78, 0.16],
+            [0.14, 0.72],
+            [0.78, 0.72],
+          ] as const) {
+            ctx.fillRect(rx + rw * ox, ry + rh * oy, px * 0.07, px * 0.07);
+          }
+        } else if (motif === 1) {
+          // Kilim bands: flat stripes, teeth on the center one.
+          ctx.fillStyle = accent;
+          ctx.fillRect(rx + px * 0.11, cy - px * 0.2, rw - px * 0.22, px * 0.075);
+          ctx.fillRect(rx + px * 0.11, cy + px * 0.125, rw - px * 0.22, px * 0.075);
+          ctx.fillStyle = bord;
+          ctx.fillRect(rx + px * 0.11, cy - px * 0.055, rw - px * 0.22, px * 0.11);
+          ctx.fillStyle = accent;
+          for (let k = 0; k < 5; k++) {
+            const tx2 = rx + rw * (0.16 + k * 0.155);
+            ctx.beginPath();
+            ctx.moveTo(tx2, cy + px * 0.045);
+            ctx.lineTo(tx2 + px * 0.05, cy - px * 0.045);
+            ctx.lineTo(tx2 + px * 0.1, cy + px * 0.045);
+            ctx.closePath();
+            ctx.fill();
+          }
+        } else {
+          // A quiet lattice of small diamonds.
+          for (let r2 = 0; r2 < 2; r2++) {
+            for (let c3 = 0; c3 < 3; c3++) {
+              const dx0 = rx + rw * (0.26 + c3 * 0.24);
+              const dy0 = ry + rh * (0.34 + r2 * 0.32);
+              ctx.fillStyle = (r2 + c3) % 2 === 0 ? accent : bord;
+              ctx.beginPath();
+              ctx.moveTo(dx0, dy0 - px * 0.075);
+              ctx.lineTo(dx0 + px * 0.095, dy0);
+              ctx.lineTo(dx0, dy0 + px * 0.075);
+              ctx.lineTo(dx0 - px * 0.095, dy0);
+              ctx.closePath();
+              ctx.fill();
+            }
+          }
+        }
+        // Weave sheen: faint weft lines carried across everything.
+        ctx.fillStyle = 'rgba(240, 232, 210, 0.05)';
+        for (let k = 0; k < 4; k++) {
+          ctx.fillRect(rx + px * 0.05, ry + rh * (0.18 + k * 0.21), rw - px * 0.1, px * 0.014);
+        }
+        // Knotted fringe off the loom ends.
+        ctx.fillStyle = '#d8c9a0';
+        for (let k = 0; k < 7; k++) {
+          const fy2 = ry + rh * (0.05 + k * 0.14);
+          ctx.fillRect(rx - px * 0.05, fy2, px * 0.05, px * 0.024);
+          ctx.fillRect(rx + rw, fy2 + px * 0.012, px * 0.05, px * 0.024);
+        }
       } else if (d === Detail.RugRound) {
-        const pal = RUG_PALETTES[hashCoords(223, tx, ty) % RUG_PALETTES.length]!;
-        ctx.fillStyle = pal[0];
+        // A round hearth rug: bound rim, stitched spoke ring, and an
+        // eight-point compass star at the heart.
+        const hh = hashCoords(223, tx, ty);
+        const [bord, field, accent] = RUG_PALETTES[hh % RUG_PALETTES.length]!;
+        const cx = gx + px * 0.5;
+        const cy = gy + px * 0.5;
+        ctx.fillStyle = 'rgba(18, 12, 26, 0.14)';
         ctx.beginPath();
-        facetCircle(ctx, gx + px * 0.5, gy + px * 0.5, px * 0.44, 8, 0.2);
+        ctx.ellipse(cx, cy + px * 0.43, px * 0.36, px * 0.045, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = pal[1];
+        ctx.fillStyle = bord;
         ctx.beginPath();
-        facetCircle(ctx, gx + px * 0.5, gy + px * 0.5, px * 0.3, 8, 0.2);
+        facetCircle(ctx, cx, cy, px * 0.45, 10, 0.2);
+        ctx.fill();
+        ctx.fillStyle = field;
+        ctx.beginPath();
+        facetCircle(ctx, cx, cy, px * 0.355, 10, 0.2);
+        ctx.fill();
+        // Radial stitch ticks around the binding.
+        ctx.fillStyle = 'rgba(240, 232, 210, 0.28)';
+        for (let k = 0; k < 10; k++) {
+          const a = (k / 10) * Math.PI * 2 + 0.31;
+          ctx.save();
+          ctx.translate(cx + Math.cos(a) * px * 0.4, cy + Math.sin(a) * px * 0.4);
+          ctx.rotate(a);
+          ctx.fillRect(-px * 0.032, -px * 0.012, px * 0.064, px * 0.024);
+          ctx.restore();
+        }
+        // The eight-point star, long arms on the cardinals.
+        ctx.fillStyle = accent;
+        for (const [rot, arm] of [
+          [0, 0.24],
+          [Math.PI / 4, 0.155],
+        ] as const) {
+          for (let k = 0; k < 4; k++) {
+            const a = rot + (k * Math.PI) / 2;
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(a) * px * arm, cy + Math.sin(a) * px * arm);
+            ctx.lineTo(cx + Math.cos(a + 2.1) * px * 0.055, cy + Math.sin(a + 2.1) * px * 0.055);
+            ctx.lineTo(cx + Math.cos(a - 2.1) * px * 0.055, cy + Math.sin(a - 2.1) * px * 0.055);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+        ctx.fillStyle = bord;
+        ctx.beginPath();
+        facetCircle(ctx, cx, cy, px * 0.045, 6, 0.3);
         ctx.fill();
       } else if (d === Detail.Doormat) {
-        // A worn coir mat with weave lines.
-        ctx.fillStyle = '#a08a5a';
+        // A bound coir mat: woven crosshatch inside a stitched edge,
+        // its middle scuffed pale by every boot that ever crossed it.
+        const mx = gx + px * 0.14;
+        const my = gy + px * 0.24;
+        const mw = px * 0.72;
+        const mh = px * 0.52;
+        ctx.fillStyle = 'rgba(18, 12, 26, 0.14)';
+        ctx.fillRect(mx + px * 0.01, my + mh, mw - px * 0.02, px * 0.02);
+        ctx.fillStyle = '#87713e';
         ctx.beginPath();
-        chamferRect(ctx, gx + px * 0.16, gy + px * 0.26, px * 0.68, px * 0.48, px * 0.04);
+        chamferRect(ctx, mx, my, mw, mh, px * 0.035);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(94, 74, 40, 0.5)';
-        ctx.lineWidth = Math.max(1, px * 0.03);
-        for (const fy of [0.4, 0.52, 0.64]) {
+        ctx.fillStyle = '#b09a64';
+        ctx.fillRect(mx + px * 0.045, my + px * 0.045, mw - px * 0.09, mh - px * 0.09);
+        // The weave: soft coir courses, not a grate.
+        ctx.strokeStyle = 'rgba(94, 74, 40, 0.28)';
+        ctx.lineWidth = Math.max(1, px * 0.02);
+        for (const fy of [0.4, 0.52, 0.64] as const) {
           ctx.beginPath();
-          ctx.moveTo(gx + px * 0.22, gy + px * fy);
-          ctx.lineTo(gx + px * 0.78, gy + px * fy);
+          ctx.moveTo(mx + px * 0.05, gy + px * fy);
+          ctx.lineTo(mx + mw - px * 0.05, gy + px * fy);
           ctx.stroke();
         }
+        for (let k = 0; k < 4; k++) {
+          const vx = mx + px * (0.14 + k * 0.15);
+          ctx.beginPath();
+          ctx.moveTo(vx, my + px * 0.06);
+          ctx.lineTo(vx, my + mh - px * 0.06);
+          ctx.stroke();
+        }
+        // Boot-worn pale patch, off-centre toward the door.
+        ctx.fillStyle = 'rgba(240, 232, 210, 0.16)';
+        ctx.beginPath();
+        ctx.ellipse(mx + mw * 0.52, my + mh * 0.48, mw * 0.26, mh * 0.24, 0, 0, Math.PI * 2);
+        ctx.fill();
       } else if (d === Detail.Sawdust) {
         // Workshop grime: pale shaving flecks drifted into a patch.
         ctx.fillStyle = 'rgba(216, 192, 142, 0.4)';
@@ -582,12 +818,14 @@ function drawTileDetail(
       }
 }
 
-/** Rug colorways: [border, field] — deep, cloth-dyed, never neon. */
-const RUG_PALETTES: ReadonlyArray<readonly [string, string]> = [
-  ['#6e3440', '#96586a'],
-  ['#35526e', '#54789c'],
-  ['#44603a', '#67875a'],
-  ['#6e5a2e', '#9c8452'],
+/** Rug colorways: [border, field, accent] — deep, cloth-dyed, never neon. */
+const RUG_PALETTES: ReadonlyArray<readonly [string, string, string]> = [
+  ['#6e3440', '#96586a', '#d8a054'],
+  ['#35526e', '#54789c', '#c9b26e'],
+  ['#44603a', '#67875a', '#c47f4a'],
+  ['#6e5a2e', '#9c8452', '#8a3d3d'],
+  ['#5a3a62', '#7e5a88', '#c9962e'],
+  ['#704038', '#9c6450', '#d8c9a0'],
 ];
 
 /**
@@ -738,7 +976,7 @@ export function bakeElevated(
       const tx = baseX + lx;
       const ty = baseY + ly;
       if (!member(tx, ty)) continue;
-      drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px);
+      drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail);
     }
   }
   ctx.restore();
@@ -882,11 +1120,17 @@ function neighborsStone(ground: GroundSampler, tx: number, ty: number): boolean 
 }
 
 function nearestFloor(ground: GroundSampler, tx: number, ty: number): number {
+  const isFloor = (t: number | undefined) =>
+    t === Tile.WoodFloor || t === Tile.StoneFloor || t === Tile.CaveFloor || t === Tile.Dirt;
   for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]] as const) {
     const t = ground(tx + dx, ty + dy);
-    if (t === Tile.WoodFloor || t === Tile.StoneFloor || t === Tile.CaveFloor || t === Tile.Dirt) {
-      return t;
-    }
+    if (isFloor(t)) return t;
+  }
+  // Ring 2 (diagonals + two-out): a table hemmed in by its own chairs
+  // must still bake over the room's floor, not a grass island.
+  for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1], [0, 2], [2, 0], [-2, 0], [0, -2]] as const) {
+    const t = ground(tx + dx, ty + dy);
+    if (isFloor(t)) return t;
   }
   return Tile.Grass;
 }
