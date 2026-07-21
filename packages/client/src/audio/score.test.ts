@@ -1,9 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CEILING_MIDI, FLOOR_MIDI, generatePhrase, midiHz, THEMES, type Rng } from './score.js';
+import {
+  CEILING_MIDI,
+  FLOOR_MIDI,
+  PAD_FLOOR_MIDI,
+  generatePhrase,
+  midiHz,
+  THEMES,
+  type Rng,
+} from './score.js';
 import type { ZoneId } from './zones.js';
 
-/** Deterministic rng (mulberry32) so phrases are pinnable. */
+/** Deterministic rng (mulberry32) so pieces are pinnable. */
 function rng(seed: number): Rng {
   let a = seed >>> 0;
   return () => {
@@ -16,12 +24,30 @@ function rng(seed: number): Rng {
 }
 
 const ZONES: ZoneId[] = ['town', 'wild', 'cave'];
+const COLOR_VOICES = ['harp', 'flute', 'bell'];
 
-test('phrases are deterministic in the rng', () => {
+test('pieces are deterministic in the rng', () => {
   for (const z of ZONES) {
     const a = generatePhrase(z, false, 1, rng(7));
     const b = generatePhrase(z, false, 1, rng(7));
     assert.deepEqual(a, b);
+  }
+});
+
+test('the progression book: variety across pieces, never the same page twice', () => {
+  for (const z of ZONES) {
+    assert.ok(THEMES[z].progressions.length >= 3, `${z} needs a real book`);
+    const picked = new Set<number>();
+    for (let seed = 1; seed <= 10; seed++) {
+      picked.add(generatePhrase(z, false, 1, rng(seed)).prog);
+    }
+    assert.ok(picked.size >= 2, `${z} always reads the same page`);
+    // The avoid law: a piece never repeats the previous progression.
+    for (let seed = 1; seed <= 8; seed++) {
+      for (let avoid = 0; avoid < THEMES[z].progressions.length; avoid++) {
+        assert.notEqual(generatePhrase(z, false, 1, rng(seed), avoid).prog, avoid);
+      }
+    }
   }
 });
 
@@ -30,9 +56,13 @@ test('every note lands in the theme scale or its chords — no wrong notes possi
     const th = THEMES[z];
     const legal = new Set<number>();
     for (const s of th.scale) legal.add(((s % 12) + 12) % 12);
-    for (const chord of th.chords) for (const c of chord) {
-      legal.add(((c % 12) + 12) % 12);
-      legal.add((((c + 7) % 12) + 12) % 12); // pad fifths ride the bass class
+    for (const prog of th.progressions) {
+      for (const chord of prog) {
+        for (const c of chord) {
+          legal.add(((c % 12) + 12) % 12);
+          legal.add((((c + 7) % 12) + 12) % 12); // pad fifths ride the bass class
+        }
+      }
     }
     for (let seed = 1; seed <= 5; seed++) {
       for (const night of [false, true]) {
@@ -62,43 +92,69 @@ test('the register ceiling: nothing above G5, nothing below the floor', () => {
   }
 });
 
-test('the separation law: by day, pads always sit below the melody', () => {
+test('sub ownership: pads never voice below the pad floor', () => {
   for (const z of ZONES) {
     for (let seed = 1; seed <= 6; seed++) {
-      const p = generatePhrase(z, false, 1, rng(seed));
-      const pads = p.events.filter((e) => e.voice === 'pad').map((e) => e.midi);
-      const keys = p.events.filter((e) => e.voice === 'key').map((e) => e.midi);
-      if (!pads.length || !keys.length) continue;
-      assert.ok(Math.max(...pads) < Math.min(...keys), `${z} seed ${seed}: pads cross the melody`);
+      for (const night of [false, true]) {
+        const p = generatePhrase(z, night, 1, rng(seed));
+        for (const ev of p.events) {
+          if (ev.voice !== 'pad') continue;
+          assert.ok(ev.midi >= PAD_FLOOR_MIDI, `${z} pad ${ev.midi} in the bass lane`);
+        }
+      }
     }
   }
 });
 
-test('the slow bloom: intensity 0 is bare bones, full intensity earns the color layers', () => {
+test('the separation law: pads always sit below the melody', () => {
   for (const z of ZONES) {
     for (let seed = 1; seed <= 6; seed++) {
-      const bare = generatePhrase(z, false, 0, rng(seed));
-      for (const ev of bare.events) {
-        assert.ok(['pad', 'bass', 'key'].includes(ev.voice), `${z} bare phrase leaked a ${ev.voice}`);
+      for (const night of [false, true]) {
+        const p = generatePhrase(z, night, 1, rng(seed));
+        const pads = p.events.filter((e) => e.voice === 'pad').map((e) => e.midi);
+        const keys = p.events.filter((e) => e.voice === 'key').map((e) => e.midi);
+        if (!pads.length || !keys.length) continue;
+        assert.ok(Math.max(...pads) < Math.min(...keys), `${z} seed ${seed}: pads cross the melody`);
       }
     }
   }
-  // The bloomed town brings its harp, the bloomed wild its flute
-  // (probabilistic per phrase — several seeds must surface each).
-  const bloomHas = (z: ZoneId, voice: string): boolean => {
-    for (let seed = 1; seed <= 12; seed++) {
-      if (generatePhrase(z, false, 1, rng(seed)).events.some((e) => e.voice === voice)) return true;
+});
+
+test('one color law: at most the zone color voice, bells only in the cave, always soft', () => {
+  for (const z of ZONES) {
+    const th = THEMES[z];
+    for (let seed = 1; seed <= 8; seed++) {
+      for (const night of [false, true]) {
+        const p = generatePhrase(z, night, 1, rng(seed));
+        for (const ev of p.events) {
+          if (!COLOR_VOICES.includes(ev.voice)) continue;
+          assert.equal(ev.voice, th.color, `${z} played a ${ev.voice}`);
+          if (ev.voice === 'bell') {
+            assert.equal(z, 'cave', 'bells escaped the cave');
+            assert.ok(ev.vel <= 0.09, `bell vel ${ev.vel} — the chimes are back`);
+          }
+        }
+      }
     }
-    return false;
-  };
-  assert.ok(bloomHas('town', 'harp'), 'town never bloomed a harp');
-  assert.ok(bloomHas('wild', 'flute'), 'wild never bloomed a flute');
+  }
+});
+
+test('the long form: full-intensity day pieces run long; low intensity trims sections', () => {
+  for (const z of ZONES) {
+    for (let seed = 1; seed <= 4; seed++) {
+      const long = generatePhrase(z, false, 1, rng(seed));
+      const bare = generatePhrase(z, false, 0, rng(seed));
+      assert.ok(long.lengthSec >= 95, `${z} full piece only ${long.lengthSec.toFixed(0)}s`);
+      assert.ok(bare.lengthSec < long.lengthSec * 0.7, `${z} bare piece did not trim`);
+    }
+  }
 });
 
 test('the intro law: only pad and bass speak before the intro bars end', () => {
   for (const z of ZONES) {
     const th = THEMES[z];
-    const introSec = th.introBars * (60 / th.tempo) * 4 - 0.05;
+    // Tempo breathes ±6% per piece; use the fastest possible intro.
+    const introSec = th.sections.intro * (60 / (th.tempo * 1.06)) * 4 - 0.05;
     for (let seed = 1; seed <= 5; seed++) {
       const p = generatePhrase(z, false, 1, rng(seed));
       for (const ev of p.events) {
@@ -110,7 +166,28 @@ test('the intro law: only pad and bass speak before the intro bars end', () => {
   }
 });
 
-test('phrases are well-formed: sorted, in-range, soft, with a real rest after', () => {
+test('the slow bloom: intensity 0 is bare bones, full intensity earns the color voice', () => {
+  for (const z of ZONES) {
+    for (let seed = 1; seed <= 6; seed++) {
+      const bare = generatePhrase(z, false, 0, rng(seed));
+      for (const ev of bare.events) {
+        assert.ok(['pad', 'bass', 'key'].includes(ev.voice), `${z} bare piece leaked a ${ev.voice}`);
+      }
+    }
+  }
+  // Each zone's color voice must surface across a handful of seeds.
+  for (const z of ZONES) {
+    const color = THEMES[z].color;
+    if (!color) continue;
+    let found = false;
+    for (let seed = 1; seed <= 12 && !found; seed++) {
+      found = generatePhrase(z, false, 1, rng(seed)).events.some((e) => e.voice === color);
+    }
+    assert.ok(found, `${z} never bloomed its ${color}`);
+  }
+});
+
+test('pieces are well-formed: sorted, in-range, soft, with a real rest after', () => {
   for (const z of ZONES) {
     const th = THEMES[z];
     const p = generatePhrase(z, false, 1, rng(3));
@@ -119,7 +196,7 @@ test('phrases are well-formed: sorted, in-range, soft, with a real rest after', 
     for (const ev of p.events) {
       assert.ok(ev.t >= last, 'sorted by time');
       last = ev.t;
-      assert.ok(ev.t >= -0.05 && ev.t <= p.lengthSec, 'inside the phrase');
+      assert.ok(ev.t >= -0.05 && ev.t <= p.lengthSec, 'inside the piece');
       assert.ok(ev.vel > 0 && ev.vel <= 0.45, 'never loud');
       assert.ok(ev.dur > 0);
     }
@@ -127,7 +204,7 @@ test('phrases are well-formed: sorted, in-range, soft, with a real rest after', 
   }
 });
 
-test('the last word of a phrase is home — tonic or fifth', () => {
+test('the last word of a piece is home — tonic or fifth', () => {
   for (const z of ZONES) {
     const th = THEMES[z];
     for (let seed = 1; seed <= 6; seed++) {
@@ -141,7 +218,7 @@ test('the last word of a phrase is home — tonic or fifth', () => {
   }
 });
 
-test('night plays fewer and softer notes than day', () => {
+test('night plays fewer notes than day', () => {
   for (const z of ZONES) {
     let dayN = 0;
     let nightN = 0;

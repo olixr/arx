@@ -8,15 +8,28 @@
  *    tape-like pitch wobble (the "wow"), a 45ms attack (never a
  *    click), and a dark low-pass. A felt piano from another room.
  *  - PAD: two barely-detuned TRIANGLES (saws were the droning
- *    culprit) over a sine sub an octave down, behind a very dark
- *    filter with a seconds-long bloom. Weather, not an instrument.
- *  - BASS: a single soft sine root note per chord — the depth.
- *  - HARP: a dark triangle pluck for the town's broken chords.
+ *    culprit) panned wide behind a very dark filter with a
+ *    seconds-long bloom. SUB OWNERSHIP: the pad has NO sub
+ *    oscillator and is high-passed — its old octave-down sine was
+ *    what piled onto the bass and blew out the low end.
+ *  - BASS: a soft sine root with a whisper of octave harmonic — the
+ *    only voice allowed below ~100 Hz.
+ *  - HARP: a dark triangle pluck for the town's low broken chords.
  *  - FLUTE: a sine with delayed vibrato — a far hilltop call.
- *  - BELL: two soft partials, rare and quiet by score law.
+ *  - BELL: cave echo pings only (the score bans bells elsewhere) —
+ *    slow-attacked, dark, and quiet. A glow, never a chime.
+ *
+ * The mix: voices sit in a stereo field (harp right, flute left,
+ * bells drifting, keys and bass center, pads wide) and the whole
+ * music path passes a gentle peaking cut around 250 Hz — the mud
+ * shelf where pads and bass used to stack — before the bus.
  *
  * Orchestration laws:
- *  - One phrase, then a LONG rest (the score's gapSec).
+ *  - One piece (~2 min of sections, see score.ts THE LONG FORM),
+ *    then a LONG rest (the score's gapSec).
+ *  - THE PROGRESSION BOOK: the performer remembers each zone's last
+ *    progression and asks the score to avoid it — no two consecutive
+ *    pieces in a zone read the same page.
  *  - THE SLOW BLOOM: `zonePlays` counts phrases performed per zone
  *    this session; intensity = min(1, plays/3) feeds the score, so a
  *    zone's music starts nearly empty and finds its voice as you
@@ -41,7 +54,10 @@ export class MusicSystem {
   state: 'resting' | 'playing' = 'resting';
   /** Phrases performed per zone — drives the slow bloom. */
   zonePlays: Record<ZoneId, number> = { town: 0, wild: 0, cave: 0 };
+  /** The progression each zone last played — never repeated back-to-back. */
+  lastProg: Record<ZoneId, number> = { town: -1, wild: -1, cave: -1 };
 
+  private mixIn: GainNode | null = null;
   private phrase: Phrase | null = null;
   private phraseGain: GainNode | null = null;
   private phraseStart = 0;
@@ -128,16 +144,37 @@ export class MusicSystem {
     // THE SLOW BLOOM: intensity grows with phrases heard in this zone.
     const intensity = Math.min(1, this.zonePlays[this.zone] / 3);
     this.zonePlays[this.zone]++;
-    const phrase = generatePhrase(this.zone, night, intensity, Math.random);
+    const phrase = generatePhrase(this.zone, night, intensity, Math.random, this.lastProg[this.zone]);
+    this.lastProg[this.zone] = phrase.prog;
     const gain = ctx.createGain();
     gain.gain.value = 1;
-    gain.connect(this.engine.music);
+    gain.connect(this.mixBus(ctx));
     this.phrase = phrase;
     this.phraseGain = gain;
     this.phraseStart = t + 0.2;
     this.phraseEnd = this.phraseStart + phrase.lengthSec;
     this.nextIdx = 0;
     this.state = 'playing';
+  }
+
+  /**
+   * All phrases pass one shared mastering touch before the bus: a
+   * gentle peaking cut at the 250 Hz mud shelf, where the old pad
+   * subs used to stack against the bass and thicken everything.
+   */
+  private mixBus(ctx: AudioContext): GainNode {
+    if (this.mixIn) return this.mixIn;
+    const g = ctx.createGain();
+    g.gain.value = 0.62; // headroom trim — pieces are denser than phrases were
+    const mud = ctx.createBiquadFilter();
+    mud.type = 'peaking';
+    mud.frequency.value = 250;
+    mud.Q.value = 0.9;
+    mud.gain.value = -3;
+    g.connect(mud);
+    mud.connect(this.engine.music!);
+    this.mixIn = g;
+    return g;
   }
 
   /** A slow pitch wobble — the tape "wow" that makes keys feel old. */
@@ -158,7 +195,14 @@ export class MusicSystem {
     const f = midiHz(ev.midi);
     switch (ev.voice) {
       case 'pad': {
-        // Weather: triangle pair + sine sub behind a very dark filter.
+        // Weather: two panned triangles behind a very dark filter.
+        // SUB OWNERSHIP: no sub oscillator, and a high-pass keeps the
+        // pad out of the bass lane entirely — the old octave-down
+        // sine was what piled up and blew out the low end.
+        const hp = ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = 115;
+        hp.Q.value = 0.3;
         const lp = ctx.createBiquadFilter();
         lp.type = 'lowpass';
         lp.frequency.value = 520;
@@ -167,42 +211,50 @@ export class MusicSystem {
         g.gain.setValueAtTime(0.0001, at);
         g.gain.exponentialRampToValueAtTime(Math.max(0.001, ev.vel), at + 2.2);
         g.gain.setTargetAtTime(0, at + ev.dur, 1.8);
+        hp.connect(lp);
         lp.connect(g);
         g.connect(out);
         const stop = at + ev.dur + 8;
-        for (const cents of [-4, 4]) {
+        for (const [cents, pan] of [
+          [-4, -0.35],
+          [4, 0.35],
+        ] as const) {
           const o = ctx.createOscillator();
           o.type = 'triangle';
           o.frequency.value = f;
           o.detune.value = cents;
-          o.connect(lp);
+          const p = ctx.createStereoPanner();
+          p.pan.value = pan;
+          o.connect(p);
+          p.connect(hp);
           o.start(at);
           o.stop(stop);
         }
-        const sub = ctx.createOscillator();
-        sub.type = 'sine';
-        sub.frequency.value = f / 2;
-        const sg = ctx.createGain();
-        sg.gain.value = 0.5;
-        sub.connect(sg);
-        sg.connect(lp);
-        sub.start(at);
-        sub.stop(stop);
         return;
       }
       case 'bass': {
-        const o = ctx.createOscillator();
-        o.type = 'sine';
-        o.frequency.value = f;
         const g = ctx.createGain();
         g.gain.setValueAtTime(0.0001, at);
         g.gain.linearRampToValueAtTime(ev.vel, at + 0.08);
         g.gain.setTargetAtTime(ev.vel * 0.6, at + 0.4, 0.8);
         g.gain.setTargetAtTime(0, at + ev.dur, 0.7);
-        o.connect(g);
         g.connect(out);
-        o.start(at);
-        o.stop(at + ev.dur + 3);
+        // A whisper of octave harmonic gives the low root definition
+        // on small speakers without adding any boom.
+        for (const [mult, amp] of [
+          [1, 1],
+          [2, 0.12],
+        ] as const) {
+          const o = ctx.createOscillator();
+          o.type = 'sine';
+          o.frequency.value = f * mult;
+          const og = ctx.createGain();
+          og.gain.value = amp;
+          o.connect(og);
+          og.connect(g);
+          o.start(at);
+          o.stop(at + ev.dur + 3);
+        }
         return;
       }
       case 'harp': {
@@ -216,7 +268,10 @@ export class MusicSystem {
         g.gain.linearRampToValueAtTime(ev.vel, at + 0.008);
         g.gain.setTargetAtTime(0, at + 0.03, 0.35);
         lp.connect(g);
-        g.connect(out);
+        const pan = ctx.createStereoPanner();
+        pan.pan.value = 0.28; // the harp sits to the listener's right
+        g.connect(pan);
+        pan.connect(out);
         const o = ctx.createOscillator();
         o.type = 'triangle';
         o.frequency.value = f;
@@ -244,7 +299,10 @@ export class MusicSystem {
         g.gain.setTargetAtTime(ev.vel * 0.8, at + 0.3, 0.5);
         g.gain.setTargetAtTime(0, at + ev.dur, 0.4);
         o.connect(g);
-        g.connect(out);
+        const pan = ctx.createStereoPanner();
+        pan.pan.value = -0.35; // the flute calls from the far left hill
+        g.connect(pan);
+        pan.connect(out);
         const stop = at + ev.dur + 2;
         o.start(at);
         o.stop(stop);
@@ -253,14 +311,25 @@ export class MusicSystem {
         return;
       }
       case 'bell': {
+        // The cave's echo ping — a GLOW, not a chime: slow attack,
+        // long dark decay, barely any upper partial. The old 10ms
+        // ping with a hot octave was one of the tonal blowouts.
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 2100;
+        lp.Q.value = 0.2;
         const g = ctx.createGain();
         g.gain.setValueAtTime(0.0001, at);
-        g.gain.linearRampToValueAtTime(ev.vel, at + 0.01);
-        g.gain.setTargetAtTime(0, at + 0.05, 0.5);
-        g.connect(out);
+        g.gain.linearRampToValueAtTime(ev.vel, at + 0.04);
+        g.gain.setTargetAtTime(0, at + 0.1, 0.8);
+        lp.connect(g);
+        const pan = ctx.createStereoPanner();
+        pan.pan.value = 0.18;
+        g.connect(pan);
+        pan.connect(out);
         for (const [mult, amp] of [
           [1, 1],
-          [2, 0.15],
+          [2, 0.07],
         ] as const) {
           const o = ctx.createOscillator();
           o.type = 'sine';
@@ -268,9 +337,9 @@ export class MusicSystem {
           const og = ctx.createGain();
           og.gain.value = amp;
           o.connect(og);
-          og.connect(g);
+          og.connect(lp);
           o.start(at);
-          o.stop(at + 2.2);
+          o.stop(at + 3.5);
         }
         return;
       }

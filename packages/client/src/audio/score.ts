@@ -4,32 +4,38 @@
  * decides WHAT to play, from an injected rng, so tests can pin the
  * musical laws exactly.
  *
- * The mood brief (user, twice now): C418's Minecraft ambience and the
- * warmth of a fantasy town — calm, soothing, DEEP. The first cut was
- * too high and its layers fought. The laws that carry the fix:
+ * The mood brief (user, three passes now): C418's Minecraft ambience
+ * — Subwoofer Lullaby above all — crossed with fantasy-tavern warmth.
+ * Round three's complaints: big tonal hits blowing out the bass,
+ * layers stacking too heavy, and phrases short enough that the loop
+ * shows. The laws that carry the fix:
  *
- *  - THE REGISTER CEILING: no note above G5 (midi 79), ever. The
- *    sharpness the user heard was register, not volume — melody lives
- *    in one octave starting an octave over the root, bells only
- *    double notes that keep the double under E5-ish, and everything
- *    drops an octave at night.
- *  - THE SEPARATION LAW: layers own frequency lanes. Bass at the
- *    bottom (a single root, chord changes only), pads voiced BELOW
- *    the melody (two voices, root+fifth, folded down so they never
- *    cross it by day), melody in its octave, sparkle rare and soft.
- *    Nothing competes because nothing shares a lane.
- *  - THE SLOW BLOOM (progressive layering): a phrase opens with pad
- *    and bass alone, the melody enters after the intro bars, and the
- *    color layers — town harp arpeggios, the wild's soft flute — are
- *    gated by `intensity`, which the performer grows the longer you
- *    stay in a zone. The first phrase you hear in a place is nearly
- *    empty; the third has found its voice.
- *  - PENTATONIC MELODY: no semitone clashes; a random walk can't
- *    play a wrong note.
- *  - SILENCE IS A SECTION: long rests between phrases. Music that
- *    never stops is wallpaper; music that returns is an event.
- *  - LAND HOME: the last melody note snaps to the tonic class and
- *    holds — every phrase resolves.
+ *  - THE LONG FORM: a piece is no longer one short phrase. It is a
+ *    plan of sections — intro / body / color / reprise / outro —
+ *    running ~100–130 seconds, each section with its own dynamic arc
+ *    (the swell), thinning back down before it ends. Low intensity
+ *    and night trim sections rather than just dropping notes.
+ *  - THE MOTIF LAW: each piece invents ONE small motif (a handful of
+ *    scale degrees with a rhythm) and then develops it — repeated,
+ *    transposed, tail-varied, inverted, augmented in the reprise —
+ *    so the piece coheres without ever literally repeating. This is
+ *    how a loop hides.
+ *  - THE PROGRESSION BOOK: every zone owns three progressions (its
+ *    moods), one chosen per piece and never the same twice in a row.
+ *    maj7 / add9 colors carry the Subwoofer-Lullaby warmth.
+ *  - SUB OWNERSHIP: only the bass voice lives in the low lane. Pads
+ *    are floored at PAD_FLOOR_MIDI and drop their fifth rather than
+ *    cross into the melody's octave. (music.ts enforces the other
+ *    half: the pad synth has no sub oscillator and is high-passed.)
+ *  - ONE COLOR LAW: a piece carries at most ONE color voice — the
+ *    town's harp, the wild's flute, the cave's echo bells — and only
+ *    in its color section. Bells exist nowhere else; the "chimes"
+ *    that blew out the mix are gone.
+ *  - Retained from earlier passes: THE REGISTER CEILING (nothing
+ *    above G5), THE SEPARATION LAW (pads always below the melody by
+ *    day), THE SLOW BLOOM (intensity earns sections), PENTATONIC
+ *    MELODY (no wrong notes possible), SILENCE IS A SECTION (long
+ *    rests between pieces), LAND HOME (the last word resolves).
  */
 
 import type { ZoneId } from './zones.js';
@@ -39,7 +45,7 @@ export type Rng = () => number;
 export type Voice = 'key' | 'pad' | 'bass' | 'harp' | 'flute' | 'bell';
 
 export interface NoteEvent {
-  /** Seconds from phrase start. */
+  /** Seconds from piece start. */
   t: number;
   midi: number;
   /** Seconds. */
@@ -51,102 +57,144 @@ export interface NoteEvent {
 
 export interface Phrase {
   events: NoteEvent[];
-  /** Seconds from phrase start to the last release tail. */
+  /** Seconds from piece start to the last release tail. */
   lengthSec: number;
-  /** Silence to hold after this phrase before the next. */
+  /** Silence to hold after this piece before the next. */
   gapSec: number;
+  /** Which progression from the zone's book this piece chose. */
+  prog: number;
 }
 
 /** THE REGISTER CEILING — no event may sound above this. */
 export const CEILING_MIDI = 79; // G5
 /** And nothing useful lives below this. */
 export const FLOOR_MIDI = 33; // A1
+/** SUB OWNERSHIP — pads may never voice below this; the bass alone owns the low lane. */
+export const PAD_FLOOR_MIDI = 43; // ~98 Hz
 
 interface ThemeDef {
   /** Midi root of the key. */
   root: number;
   /** Melody scale, semitones from root within one octave. */
   scale: number[];
-  /** Progression: each chord = semitone offsets from root; [0] is its bass class. */
-  chords: number[][];
+  /** THE PROGRESSION BOOK — each chord = semitone offsets from root; [0] is its bass class. */
+  progressions: number[][][];
   barsPerChord: number;
-  /** Quarter-note bpm; phrases are 4/4. */
+  /** Base quarter-note bpm; each piece breathes ±6%. */
   tempo: number;
-  bars: number;
-  /** Bars of pad+bass alone before the melody may enter. */
-  introBars: number;
-  /** Base chance an eighth-note slot sounds. */
-  density: number;
-  /** Chance a low melody note is doubled by a soft bell. */
-  bell: number;
-  /** Color layers this theme may bloom into at high intensity. */
-  arp: boolean;
-  flute: boolean;
+  /** THE LONG FORM — bars per section. */
+  sections: { intro: number; body: number; color: number; reprise: number; outro: number };
+  /** Chance a motif note survives realization (day). */
+  keep: number;
+  /** ONE COLOR LAW — the single color voice this zone may bloom. */
+  color: 'harp' | 'flute' | 'bell' | null;
   gapSec: [number, number];
 }
 
 /**
- * Three zone themes. Town is a hearth — warm, with harp arpeggios
- * when it fully blooms; the wild is big patient sky with a distant
- * flute; the cave is single low notes into darkness. All pentatonic.
+ * Three zone characters. Town is the tavern hearth — maj7 warmth and
+ * a low harp; the wild is Subwoofer-Lullaby sky — add9 chords and a
+ * far flute; the cave is bare fifths into darkness with echo pings.
  */
 export const THEMES: Record<ZoneId, ThemeDef> = {
   town: {
     root: 55, // G3
     scale: [0, 2, 4, 7, 9], // major pentatonic
-    chords: [
-      [0, 4, 7], // I
-      [-3, 0, 4], // vi
-      [5, 9, 12], // IV
-      [0, 4, 7], // I — home twice as often as anywhere else
+    progressions: [
+      // hearth — plain and homely
+      [
+        [0, 4, 7],
+        [-3, 0, 4],
+        [5, 9, 12],
+        [0, 4, 7],
+      ],
+      // tavern — the maj7 glow
+      [
+        [0, 4, 7, 11],
+        [5, 9, 12, 16],
+        [7, 11, 14],
+        [0, 4, 7],
+      ],
+      // evening — starts away from home, longing
+      [
+        [-3, 0, 4],
+        [5, 9, 12],
+        [0, 4, 7],
+        [7, 11, 14],
+      ],
     ],
     barsPerChord: 1,
-    tempo: 66,
-    bars: 16,
-    introBars: 4,
-    density: 0.3,
-    bell: 0.1,
-    arp: true,
-    flute: false,
-    gapSec: [20, 42],
+    tempo: 64,
+    sections: { intro: 4, body: 8, color: 8, reprise: 8, outro: 4 },
+    keep: 0.85,
+    color: 'harp',
+    gapSec: [24, 46],
   },
   wild: {
     root: 57, // A3
     scale: [0, 2, 4, 7, 9],
-    chords: [
-      [0, 4, 7, 14], // I add9 — the open-sky chord
-      [5, 9, 12, 16], // IV add9
-      [-3, 0, 4, 11], // vi
-      [7, 11, 14, 17], // V color
+    progressions: [
+      // sky — the open add9s
+      [
+        [0, 4, 7, 14],
+        [5, 9, 12, 16],
+        [-3, 0, 4, 11],
+        [7, 11, 14, 17],
+      ],
+      // lullaby — maj7 home, barely leaving
+      [
+        [0, 4, 7, 11],
+        [5, 9, 12, 16],
+        [-3, 0, 4],
+        [5, 9, 12],
+      ],
+      // dawn — the old warm circle
+      [
+        [0, 4, 7],
+        [7, 11, 14],
+        [-3, 0, 4],
+        [5, 9, 12],
+      ],
     ],
     barsPerChord: 2,
     tempo: 54,
-    bars: 12,
-    introBars: 4,
-    density: 0.22,
-    bell: 0.06,
-    arp: false,
-    flute: true,
-    gapSec: [26, 58],
+    sections: { intro: 4, body: 6, color: 6, reprise: 6, outro: 4 },
+    keep: 0.72,
+    color: 'flute',
+    gapSec: [30, 60],
   },
   cave: {
     root: 45, // A2
     scale: [0, 3, 5, 7, 10], // minor pentatonic
-    chords: [
-      [0, 7, 12], // bare fifth drone
-      [-2, 5, 10], // bVII shadow
-      [0, 7, 12],
-      [3, 10, 15], // bIII lift
+    progressions: [
+      // deep
+      [
+        [0, 7, 12],
+        [-2, 5, 10],
+        [0, 7, 12],
+        [3, 10, 15],
+      ],
+      // hollow
+      [
+        [0, 7, 12],
+        [3, 10, 15],
+        [-2, 5, 10],
+        [0, 7, 12],
+      ],
+      // still — barely moves at all
+      [
+        [0, 7, 12],
+        [0, 7, 12],
+        [-2, 5, 10],
+        [3, 10, 15],
+      ],
     ],
     barsPerChord: 2,
     tempo: 46,
-    bars: 8,
-    introBars: 2,
-    density: 0.14,
-    bell: 0.16, // the cave's "bells" are echo pings — they carry the theme
-    arp: false,
-    flute: false,
-    gapSec: [30, 68],
+    sections: { intro: 2, body: 6, color: 6, reprise: 4, outro: 2 },
+    keep: 0.6,
+    color: 'bell',
+    gapSec: [32, 70],
   },
 };
 
@@ -171,154 +219,301 @@ function snapToClass(midi: number, root: number, cls: number[]): number {
   return best;
 }
 
+/** Rhythm cells in eighth-note slots; each sums to 12 of a 16-slot
+ * (2-bar) cell, leaving a breath at the end. */
+const RHYTHMS: number[][] = [
+  [4, 2, 2, 4],
+  [2, 2, 4, 4],
+  [2, 4, 2, 4],
+  [6, 2, 4],
+  [2, 2, 2, 2, 4],
+  [4, 4, 4],
+];
+
+type SectionKind = 'intro' | 'body' | 'color' | 'reprise' | 'outro';
+
+interface Section {
+  kind: SectionKind;
+  /** Absolute starting bar. */
+  bar: number;
+  bars: number;
+  /** The swell — a section-level velocity multiplier. */
+  arc: number;
+}
+
 /**
- * Compose one phrase. `intensity` 0..1 is how settled-in the listener
- * is (the performer grows it per zone): 0 = pad, bass, and the barest
- * melody; 1 = the full bloom with color layers.
+ * Compose one piece. `intensity` 0..1 is how settled-in the listener
+ * is (the performer grows it per zone): low intensity and night trim
+ * whole sections; full day intensity earns the color section.
+ * `avoidProg` is the progression the previous piece in this zone
+ * used — the book never reads the same page twice in a row.
  */
-export function generatePhrase(zone: ZoneId, night: boolean, intensity: number, rng: Rng): Phrase {
+export function generatePhrase(
+  zone: ZoneId,
+  night: boolean,
+  intensity: number,
+  rng: Rng,
+  avoidProg = -1,
+): Phrase {
   const th = THEMES[zone];
-  const beat = 60 / th.tempo;
+
+  // ---- The page from the progression book, and this piece's breath.
+  let prog = Math.floor(rng() * th.progressions.length);
+  if (th.progressions.length > 1 && prog === avoidProg) prog = (prog + 1) % th.progressions.length;
+  const chords = th.progressions[prog]!;
+  const tempo = th.tempo * (0.94 + rng() * 0.12);
+  const beat = 60 / tempo;
   const slot = beat / 2; // eighth-note grid
   const barSec = beat * 4;
-  const events: NoteEvent[] = [];
 
-  const density = th.density * (night ? 0.55 : 1) * (0.7 + 0.3 * intensity);
-  const drop = night ? -12 : 0;
+  // Night sinks the register an octave — except underground, where
+  // there is no sky and the register is already as deep as it goes
+  // (dropping further would land the melody on the pad floor).
+  const drop = night && zone !== 'cave' ? -12 : 0;
   const velScale = night ? 0.7 : 1;
   const melodyBase = th.root + 12 + drop; // one octave over the root
+  const keepP = th.keep * (night ? 0.72 : 1);
   const chordAt = (bar: number): number[] =>
-    th.chords[Math.floor(bar / th.barsPerChord) % th.chords.length]!;
+    chords[Math.floor(bar / th.barsPerChord) % chords.length]!;
 
-  // ---- Bass and pads: the ground floor, present from bar one.
-  for (let bar = 0; bar < th.bars; bar += th.barsPerChord) {
-    const chord = chordAt(bar);
-    const span = barSec * th.barsPerChord;
-    const t0 = bar * barSec;
-    // One low root per chord change — the note that makes it deep.
-    let bassMidi = th.root - 12 + chord[0]!;
-    while (bassMidi < FLOOR_MIDI) bassMidi += 12;
-    events.push({ t: t0 + rng() * 0.04, midi: bassMidi, dur: span * 0.92, vel: 0.13 * velScale, voice: 'bass' });
-    // Pads: TWO voices only — the chord's root class and its fifth,
-    // FOLDED to sit below the melody's octave (the separation law).
-    const c0 = chord[0]! >= 5 ? chord[0]! - 12 : chord[0]!;
-    let padLow = th.root + c0 + drop;
-    while (padLow < FLOOR_MIDI + 3) padLow += 12;
-    for (const off of [0, 7]) {
+  // ---- THE LONG FORM: assemble the section plan.
+  const S = th.sections;
+  const full = !night && intensity >= 0.55;
+  const plan: Section[] = [];
+  let barCursor = 0;
+  const addSec = (kind: SectionKind, bars: number, arc: number): void => {
+    plan.push({ kind, bar: barCursor, bars, arc });
+    barCursor += bars;
+  };
+  addSec('intro', S.intro, 0.8);
+  addSec('body', S.body, 0.95);
+  if (full) addSec('color', S.color, 1);
+  if (full || intensity >= 0.3) addSec('reprise', S.reprise, 0.8);
+  addSec('outro', S.outro, 0.65);
+  const totalBars = barCursor;
+
+  const events: NoteEvent[] = [];
+
+  // ---- The ground floor: bass and pads, present through every
+  // section, shaped by each section's arc. The outro always sits on
+  // the home chord — the piece lands harmonically too.
+  for (const sec of plan) {
+    for (let b = 0; b < sec.bars; b += th.barsPerChord) {
+      const abs = sec.bar + b;
+      const chord = sec.kind === 'outro' ? chords[0]! : chordAt(abs);
+      const span = barSec * th.barsPerChord;
+      const t0 = abs * barSec;
+      // One low root per chord change — the bass alone owns the deep.
+      let bassMidi = th.root - 12 + chord[0]!;
+      while (bassMidi < FLOOR_MIDI) bassMidi += 12;
       events.push({
-        t: t0 + rng() * 0.06,
-        midi: padLow + off,
-        dur: span * 0.98,
-        vel: (0.09 + rng() * 0.02) * velScale,
-        voice: 'pad',
+        t: t0 + rng() * 0.04,
+        midi: bassMidi,
+        dur: span * 0.94,
+        vel: 0.1 * sec.arc * velScale,
+        voice: 'bass',
       });
-    }
-  }
-
-  // ---- Melody: a random walk in ONE octave over the root, entering
-  // only after the intro bars, thinning through the final bar.
-  const ladder: number[] = [...th.scale, 12];
-  let idx = 2;
-  let lastKeyEvent: NoteEvent | null = null;
-  const startSlot = th.introBars * 8;
-  const totalSlots = th.bars * 8;
-  for (let s = startSlot; s < totalSlots; s++) {
-    const bar = Math.floor(s / 8);
-    const inBar = s % 8;
-    // Call and answer: even 4-bar groups sing, odd ones recede; the
-    // last bar always recedes (the outro breath before landing home).
-    let breathe = Math.floor(bar / 4) % 2 === 0 ? 1 : 0.6;
-    if (bar >= th.bars - 1) breathe *= 0.45;
-    const beatW = inBar === 0 ? 1.6 : inBar % 4 === 0 ? 1.25 : inBar % 2 === 0 ? 1 : 0.5;
-    if (rng() > density * breathe * beatW) continue;
-
-    // Step the walk: small moves, rare leaps, pulled home at the ends.
-    const r = rng();
-    const step = r < 0.12 ? 2 : r < 0.55 ? 1 : 0;
-    idx += (rng() < 0.5 ? -1 : 1) * step;
-    if (idx < 0) idx = 1;
-    if (idx >= ladder.length) idx = ladder.length - 2;
-
-    let midi = melodyBase + ladder[idx]!;
-    if (inBar === 0 || inBar === 4) {
-      const cls = chordAt(bar).map((c) => ((c % 12) + 12) % 12);
-      midi = snapToClass(midi, melodyBase, cls);
-    }
-    // The lane law: the snap may not pull the melody down into the
-    // pads' octave, nor over the ceiling.
-    if (midi < melodyBase) midi += 12;
-    if (midi > CEILING_MIDI) midi -= 12;
-
-    // Unhurried: most notes hold long — C418 lets tones ring.
-    const holdSlots = rng() < 0.3 ? 4 : rng() < 0.65 ? 2 : 1;
-    const vel = (0.24 + rng() * 0.12) * (inBar % 4 === 0 ? 1.1 : 0.85) * velScale;
-    const ev: NoteEvent = {
-      t: s * slot + (rng() - 0.5) * 0.014, // human micro-timing
-      midi,
-      dur: slot * holdSlots * 1.9,
-      vel: Math.min(0.4, vel),
-      voice: 'key',
-    };
-    events.push(ev);
-    lastKeyEvent = ev;
-    // Sparkle is EARNED: only in a bloomed phrase, only doubling notes
-    // low enough that the double stays warm, and very softly.
-    if (intensity > 0.55 && midi <= 62 && rng() < th.bell) {
-      events.push({ t: ev.t + 0.012, midi: midi + 12, dur: ev.dur * 0.6, vel: ev.vel * 0.3, voice: 'bell' });
-    }
-    s += holdSlots - 1;
-  }
-
-  // ---- Color layers: the bloom. Only when the listener has settled.
-  if (th.arp && !night && intensity > 0.4) {
-    // Town harp: a gentle rising broken chord every other bar in the
-    // phrase's heart, plucked under the melody's volume.
-    for (let bar = th.introBars + 2; bar < th.bars - 2; bar += 2) {
-      if (rng() < 0.45) continue;
-      const chord = chordAt(bar);
-      const t0 = bar * barSec + beat * (rng() < 0.5 ? 0 : 2);
-      const tones = [...chord].sort((a, b) => a - b);
-      tones.forEach((c, i) => {
-        let m = th.root + 12 + c;
-        while (m > CEILING_MIDI - 3) m -= 12;
+      // Pads: root class + fifth, floored out of the bass lane; the
+      // fifth is DROPPED rather than allowed to cross the melody.
+      const c0 = chord[0]! >= 5 ? chord[0]! - 12 : chord[0]!;
+      let padLow = th.root + c0 + drop;
+      while (padLow < PAD_FLOOR_MIDI) padLow += 12;
+      const offs = padLow + 7 < melodyBase ? [0, 7] : [0];
+      for (const off of offs) {
         events.push({
-          t: t0 + i * slot * 0.5 + (rng() - 0.5) * 0.01,
+          t: t0 + rng() * 0.06,
+          midi: padLow + off,
+          dur: sec.kind === 'outro' ? span * 1.25 : span * 1.02,
+          vel: (0.085 + rng() * 0.02) * sec.arc * velScale,
+          voice: 'pad',
+        });
+      }
+    }
+  }
+
+  // ---- THE MOTIF LAW: invent the piece's one idea.
+  const ladder: number[] = [...th.scale, 12];
+  const clampDeg = (d: number): number => Math.max(0, Math.min(ladder.length - 1, d));
+  const rhythm = RHYTHMS[Math.floor(rng() * RHYTHMS.length)]!;
+  const motif: number[] = [];
+  let deg = 2 + Math.floor(rng() * 2);
+  for (let i = 0; i < rhythm.length; i++) {
+    motif.push(deg);
+    const r = rng();
+    const step = r < 0.15 ? 2 : r < 0.6 ? 1 : 0;
+    deg = clampDeg(deg + (rng() < 0.5 ? -1 : 1) * step);
+  }
+
+  let lastKeyEvent: NoteEvent | null = null;
+
+  /** Realize one melodic cell of the motif at an absolute bar. */
+  const realizeCell = (
+    cellBar: number,
+    degs: number[],
+    durs: number[],
+    arc: number,
+    kp: number,
+  ): void => {
+    let pos = 0;
+    let first = true;
+    for (let i = 0; i < degs.length; i++) {
+      const durSlots = durs[i]!;
+      const tSlot = cellBar * 8 + pos;
+      pos += durSlots;
+      // The cell's opening note anchors it — it survives more often.
+      if (rng() > (first ? Math.min(1, kp + 0.25) : kp)) continue;
+      let midi = melodyBase + ladder[clampDeg(degs[i]!)]!;
+      if (first) {
+        const bar = Math.floor(tSlot / 8);
+        const cls = chordAt(bar).map((c) => ((c % 12) + 12) % 12);
+        midi = snapToClass(midi, melodyBase, cls);
+      }
+      // The lane law: the snap may not pull the melody down into the
+      // pads' octave, nor over the ceiling.
+      if (midi < melodyBase) midi += 12;
+      if (midi > CEILING_MIDI) midi -= 12;
+      const vel = Math.min(
+        0.34,
+        (0.19 + rng() * 0.08) * (first ? 1.1 : 0.86) * arc * velScale,
+      );
+      const ev: NoteEvent = {
+        t: tSlot * slot + (rng() - 0.5) * 0.014, // human micro-timing
+        midi,
+        dur: durSlots * slot * 1.9, // let tones ring past their slot
+        vel,
+        voice: 'key',
+      };
+      events.push(ev);
+      lastKeyEvent = ev;
+      first = false;
+    }
+  };
+
+  /** Develop the motif: pick a variation for one cell. */
+  const developCell = (isFirst: boolean): { degs: number[]; durs: number[] } | null => {
+    if (isFirst) return { degs: motif, durs: rhythm };
+    const r = rng();
+    if (r < 0.2) return { degs: motif, durs: rhythm };
+    if (r < 0.5) {
+      // Transposed within the scale.
+      const r2 = rng();
+      const k = r2 < 0.4 ? -1 : r2 < 0.8 ? 1 : 2;
+      return { degs: motif.map((d) => d + k), durs: rhythm };
+    }
+    if (r < 0.75) {
+      // Tail-varied: the idea, but it ends somewhere new.
+      const degs = [...motif];
+      for (let i = Math.max(1, degs.length - 2); i < degs.length; i++) {
+        degs[i] = clampDeg(degs[i]! + (rng() < 0.5 ? -1 : 1));
+      }
+      return { degs, durs: rhythm };
+    }
+    if (r < 0.85) {
+      // Inverted around its first note.
+      return { degs: motif.map((d) => motif[0]! * 2 - d), durs: rhythm };
+    }
+    return null; // a cell of rest — breath is part of the melody
+  };
+
+  for (const sec of plan) {
+    if (sec.kind === 'body' || sec.kind === 'color') {
+      // 2-bar cells, each a development of the motif. In the color
+      // section the melody thins a little — the color voice speaks.
+      const kp = keepP * (sec.kind === 'color' ? 0.85 : 1);
+      for (let c = 0; c < Math.floor(sec.bars / 2); c++) {
+        const cell = developCell(sec.kind === 'body' && c === 0);
+        if (!cell) continue;
+        realizeCell(sec.bar + c * 2, cell.degs, cell.durs, sec.arc, kp);
+      }
+    } else if (sec.kind === 'reprise') {
+      // The reprise augments: the motif at half speed over 4-bar
+      // cells, sparser — the idea remembered, not restated.
+      for (let c = 0; c < Math.floor(sec.bars / 4); c++) {
+        const cell = developCell(false) ?? { degs: motif, durs: rhythm };
+        realizeCell(
+          sec.bar + c * 4,
+          cell.degs,
+          cell.durs.map((d) => d * 2),
+          sec.arc,
+          keepP * 0.8,
+        );
+      }
+    }
+  }
+
+  // ---- ONE COLOR LAW: the zone's single color voice, only in the
+  // color section (which only a full day plan contains).
+  const colorSec = plan.find((s) => s.kind === 'color');
+  if (colorSec && th.color === 'harp') {
+    // The tavern harp: low broken chords UNDER the melody's octave,
+    // rolled gently — accompaniment, never competition.
+    for (let b = 0; b < colorSec.bars; b += 2) {
+      if (rng() < 0.45) continue;
+      const abs = colorSec.bar + b;
+      const chord = chordAt(abs);
+      const t0 = abs * barSec + (rng() < 0.5 ? 0 : beat * 2);
+      // Three tones only — the roll stays under the melody's octave.
+      const tones = [...chord].sort((x, y) => x - y).slice(0, 3);
+      let prevM = 0;
+      tones.forEach((c, i) => {
+        let m = th.root + c;
+        while (m <= prevM) m += 12;
+        while (m > CEILING_MIDI - 3) m -= 12;
+        prevM = m;
+        events.push({
+          t: t0 + i * slot * 0.66 + (rng() - 0.5) * 0.01,
           midi: m,
-          dur: slot * 2,
-          vel: (0.1 + rng() * 0.04) * velScale,
+          dur: slot * 2.5,
+          vel: (0.09 + rng() * 0.03) * velScale,
           voice: 'harp',
         });
       });
     }
   }
-  if (th.flute && !night && intensity > 0.5) {
-    // The wild's far flute: one or two slow calls in the middle bars,
-    // long tones from the scale, never busy.
+  if (colorSec && th.color === 'flute') {
+    // The wild's far flute: one or two slow calls, long scale tones.
     const calls = 1 + (rng() < 0.4 ? 1 : 0);
     for (let c = 0; c < calls; c++) {
-      const bar = th.introBars + 1 + Math.floor(rng() * (th.bars - th.introBars - 4));
+      const bar = colorSec.bar + Math.floor(rng() * Math.max(1, colorSec.bars - 2));
       let t0 = bar * barSec + (rng() < 0.5 ? 0 : beat);
       const notes = 2 + Math.floor(rng() * 2);
-      let deg = 2 + Math.floor(rng() * 3);
+      let d = 2 + Math.floor(rng() * 3);
       for (let n = 0; n < notes; n++) {
-        deg += rng() < 0.5 ? -1 : 1;
-        deg = Math.max(0, Math.min(th.scale.length - 1, deg));
-        let m = th.root + 12 + th.scale[deg]!;
+        d = Math.max(0, Math.min(th.scale.length - 1, d + (rng() < 0.5 ? -1 : 1)));
+        let m = th.root + 12 + th.scale[d]!;
         if (m > CEILING_MIDI - 3) m -= 12;
         const dur = beat * (1.5 + rng() * 1.5);
-        events.push({ t: t0, midi: m, dur, vel: 0.11 * velScale, voice: 'flute' });
+        events.push({ t: t0, midi: m, dur, vel: 0.1 * velScale, voice: 'flute' });
         t0 += dur + beat * 0.5 * rng();
       }
     }
   }
-
-  // Land home: the phrase's last word is always the tonic class, held.
-  if (lastKeyEvent) {
-    lastKeyEvent.midi = snapToClass(lastKeyEvent.midi, melodyBase, [0, 7]);
-    lastKeyEvent.dur = Math.max(lastKeyEvent.dur, beat * 3);
+  if (colorSec && th.color === 'bell') {
+    // The cave's echo pings — soft, sparse, low, and NOWHERE else in
+    // any zone does a bell exist any more.
+    const n = 2 + Math.floor(rng() * 3);
+    for (let i = 0; i < n; i++) {
+      const bar = colorSec.bar + rng() * colorSec.bars;
+      const d = rng() < 0.55 ? (rng() < 0.5 ? 0 : 3) : Math.floor(rng() * th.scale.length);
+      const m = th.root + 12 + th.scale[Math.min(d, th.scale.length - 1)]!;
+      events.push({
+        t: Math.floor(bar * 4) * beat,
+        midi: m,
+        dur: 2.5,
+        vel: (0.055 + rng() * 0.02) * velScale,
+        voice: 'bell',
+      });
+    }
   }
 
-  const lengthSec = th.bars * barSec + 3;
+  // Land home: the piece's last word is always the tonic class, held.
+  if (lastKeyEvent !== null) {
+    const ev: NoteEvent = lastKeyEvent;
+    ev.midi = snapToClass(ev.midi, melodyBase, [0, 7]);
+    ev.dur = Math.max(ev.dur, beat * 3);
+  }
+
+  const lengthSec = totalBars * barSec + 4;
   const gapSec = th.gapSec[0] + rng() * (th.gapSec[1] - th.gapSec[0]);
-  return { events: events.sort((a, b) => a.t - b.t), lengthSec, gapSec };
+  return { events: events.sort((a, b) => a.t - b.t), lengthSec, gapSec, prog };
 }
