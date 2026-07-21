@@ -29,6 +29,7 @@ import type { ClientGame } from '../game/clientGame.js';
 import {
   ANVIL_CYCLE_MS,
   CHOP_CYCLE_MS,
+  FORAGE_CYCLE_MS,
   FURNACE_CYCLE_MS,
   LegSolver,
   MINE_CYCLE_MS,
@@ -788,12 +789,12 @@ export class Renderer {
   private findGatherNode(
     x: number,
     y: number,
-  ): { tx: number; ty: number; kind: 'tree' | 'rock' | 'fish' } | null {
+  ): { tx: number; ty: number; kind: 'tree' | 'rock' | 'fish' | 'forage' } | null {
     const game = this.game;
     if (!game) return null;
     const cx = Math.floor(x);
     const cy = Math.floor(y);
-    let best: { tx: number; ty: number; kind: 'tree' | 'rock' | 'fish'; d: number } | null = null;
+    let best: { tx: number; ty: number; kind: 'tree' | 'rock' | 'fish' | 'forage'; d: number } | null = null;
     for (let ty = cy - 2; ty <= cy + 2; ty++) {
       for (let tx = cx - 2; tx <= cx + 2; tx++) {
         const t = game.world.groundAt(tx, ty);
@@ -809,7 +810,12 @@ export class Renderer {
               ? ('rock' as const)
               : t === Tile.FishingSpot
                 ? ('fish' as const)
-                : null;
+                : t === Tile.BerryBush ||
+                    t === Tile.FibrePlant ||
+                    t === Tile.WildSagewort ||
+                    t === Tile.WildMoonbell
+                  ? ('forage' as const)
+                  : null;
         if (!kind) continue;
         const d = Math.hypot(tx + 0.5 - x, ty + 0.5 - y);
         if (!best || d < best.d) best = { tx, ty, kind, d };
@@ -7724,6 +7730,36 @@ export class Renderer {
             });
             this.onGatherImpact?.('rock');
           }
+        } else if (gather && gather.kind === 'forage') {
+          // The pluck beat: leaves shiver loose as the stem snaps,
+          // colored by the plant itself, with a drift of its payload
+          // accent — soft debris, never chips of wood or stone.
+          const cycle = Math.floor(performance.now() / FORAGE_CYCLE_MS);
+          const u = (performance.now() % FORAGE_CYCLE_MS) / FORAGE_CYCLE_MS;
+          if (u >= 0.44 && anim.lastChopHit !== cycle) {
+            anim.lastChopHit = cycle;
+            const nodeTile = this.game?.world.groundAt(gather.tx, gather.ty);
+            const pal =
+              nodeTile === Tile.BerryBush
+                ? ['#3a7539', '#b04a72', '#549447']
+                : nodeTile === Tile.FibrePlant
+                  ? ['#57853a', '#d9b04c', '#74a34e']
+                  : nodeTile === Tile.WildSagewort
+                    ? ['#6f9c6c', '#d4e4c8', '#94bd8c']
+                    : ['#4a7161', '#8f9ed6', '#e8ecff'];
+            const px2 = gather.tx + 0.5 - Math.cos(dir) * 0.3;
+            const py2 = gather.ty + 0.5 - Math.sin(dir) * 0.3;
+            this.particles.burst(px2, py2, 5, pal, {
+              speed: 1.1,
+              life: 0.7,
+              size: 0.055,
+              gravity: 2.6,
+              drag: 0.82,
+              dir: dir + Math.PI,
+              spread: 1.6,
+            });
+            this.onGatherImpact?.('forage');
+          }
         } else if (station?.kind === 'anvil') {
           const cycle = Math.floor(performance.now() / ANVIL_CYCLE_MS);
           const u = (performance.now() % ANVIL_CYCLE_MS) / ANVIL_CYCLE_MS;
@@ -7791,8 +7827,9 @@ export class Renderer {
           isOwn: e.isOwn,
           // During a gather the BELT tool is what's in the hands; at a
           // station the smith's own kit replaces the weapon entirely.
+          // Foraging holsters everything — herbs are picked bare-handed.
           weaponItem:
-            e.pose === PoseState.Craft
+            e.pose === PoseState.Craft || gather?.kind === 'forage'
               ? undefined
               : e.pose === PoseState.Gather
                 ? (e.equip.tool ?? e.equip.weapon)
@@ -7817,6 +7854,7 @@ export class Renderer {
           look: e.look,
           gatherPhase: now / 1000,
           craftKind: station?.kind ?? null,
+          foraging: gather?.kind === 'forage',
         };
         // Layer law with a cape worn: gear straps OVER the cloth, so
         // the quiver paints immediately after the cape on whichever

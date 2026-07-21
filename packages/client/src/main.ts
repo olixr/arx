@@ -507,16 +507,29 @@ game.onDodgeFx = (x, y, mx, my) => {
  */
 function autoEquipTool(): void {
   const own = game.predictor.pos;
+  // Serve the NEAREST node — a berry bush beside a tree is hand-work,
+  // not an excuse to draw the axe (forage nodes want no tool at all).
   let need: string | null = null;
-  for (let ty = Math.floor(own.y) - 2; ty <= Math.floor(own.y) + 2 && !need; ty++) {
-    for (let tx = Math.floor(own.x) - 2; tx <= Math.floor(own.x) + 2 && !need; tx++) {
+  let bestD = Infinity;
+  for (let ty = Math.floor(own.y) - 2; ty <= Math.floor(own.y) + 2; ty++) {
+    for (let tx = Math.floor(own.x) - 2; tx <= Math.floor(own.x) + 2; tx++) {
       const t = game.world.groundAt(tx, ty);
-      if (t === Tile.Tree || t === Tile.TreeOak || t === Tile.TreeWillow || t === Tile.TreeYew) need = 'axe';
-      else if (t !== undefined && ROCK_TILES.includes(t)) need = 'pickaxe';
-      else if (t === Tile.FishingSpot) need = 'rod';
+      let kind: string | null = null;
+      if (t === Tile.Tree || t === Tile.TreeOak || t === Tile.TreeWillow || t === Tile.TreeYew) kind = 'axe';
+      else if (t !== undefined && ROCK_TILES.includes(t)) kind = 'pickaxe';
+      else if (t === Tile.FishingSpot) kind = 'rod';
+      else if (
+        t === Tile.BerryBush || t === Tile.FibrePlant || t === Tile.WildSagewort || t === Tile.WildMoonbell
+      ) kind = 'hands';
+      if (!kind) continue;
+      const d = Math.hypot(tx + 0.5 - own.x, ty + 0.5 - own.y);
+      if (d < bestD) {
+        bestD = d;
+        need = kind;
+      }
     }
   }
-  if (!need) return;
+  if (!need || need === 'hands') return;
   const worn = game.equipment.tool ? itemDef(game.equipment.tool.id)?.tool?.type : undefined;
   if (worn === need) return;
   const idx = game.inventory.findIndex((s) => s !== null && itemDef(s.item)?.tool?.type === need);
@@ -535,6 +548,9 @@ renderer.onGatherImpact = (kind) => {
   } else if (kind === 'furnace') {
     sfx.furnaceRoar();
     input.rumble(0.12, 0.2, 160);
+  } else if (kind === 'forage') {
+    sfx.forage();
+    input.rumble(0.06, 0.14, 45);
   } else {
     sfx.chop();
     input.rumble(0.22, 0.32, 60);

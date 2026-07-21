@@ -110,6 +110,12 @@ export class Sfx {
     this.noise(0.05, 0.25);
   }
 
+  /** A stem snaps free of the plant: a leafy brush with a soft pop. */
+  forage(): void {
+    this.noise(0.09, 0.16, 0, { band: 2600 });
+    this.tone(340, 0.05, { type: 'triangle', slide: -140, volume: 0.12, delay: 0.02 });
+  }
+
   /** Pick meets rock: a hard stony knock with a metallic tick on top. */
   mineClink(): void {
     this.tone(120, 0.05, { type: 'square', slide: -50, volume: 0.35 });

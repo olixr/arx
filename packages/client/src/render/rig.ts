@@ -220,6 +220,12 @@ export interface RigPose {
    * the bespoke props that go with it.
    */
   craftKind?: 'anvil' | 'furnace' | 'fire' | 'workbench' | null;
+  /**
+   * The Gather target is a forage plant: bare-handed picking — one
+   * hand steadies the stems while the other reaches, plucks, and
+   * carries the harvest back to the belt pouch. No tool is drawn.
+   */
+  foraging?: boolean;
 }
 
 /** Shortest signed rotation from angle `a` to angle `b` (radians). */
@@ -233,6 +239,8 @@ export const MINE_CYCLE_MS = 880;
 export const CHOP_CYCLE_MS = 700;
 /** Duration of one anvil hammer blow, ms. */
 export const ANVIL_CYCLE_MS = 640;
+/** Duration of one forage pluck (reach→tug→snap→pouch), ms. */
+export const FORAGE_CYCLE_MS = 1050;
 /** Duration of one furnace stoking push, ms. */
 export const FURNACE_CYCLE_MS = 1700;
 
@@ -827,11 +835,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // overhead and pries — different rhythms, different bodies. Rods (and
   // bare hands) keep the gentle working sway.
   const toolType = weapon?.tool?.type;
-  const chopping = rig.pose === PoseState.Gather && toolType === 'axe';
-  const mining = rig.pose === PoseState.Gather && toolType === 'pickaxe';
+  // Foraging outranks the belt tool: picking herbs is hand-work even
+  // with an axe on the hip (the caller also holsters the tool sprite).
+  const foraging = rig.pose === PoseState.Gather && rig.foraging === true;
+  const chopping = rig.pose === PoseState.Gather && toolType === 'axe' && !foraging;
+  const mining = rig.pose === PoseState.Gather && toolType === 'pickaxe' && !foraging;
   const craftKind = rig.pose === PoseState.Craft ? (rig.craftKind ?? 'workbench') : null;
   const gatherSwing =
-    rig.pose === PoseState.Gather && !chopping && !mining
+    rig.pose === PoseState.Gather && !chopping && !mining && !foraging
       ? Math.sin(rig.gatherPhase * 5.5) * 0.5
       : 0;
 
@@ -1000,6 +1011,52 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     swingOffset = rel;
     lean *= Math.sign(fx || 1);
   }
+  // The forage: no tool, no swing — herbalist's hands. Bend toward
+  // the plant, reach the working hand deep into it, TUG with a little
+  // shiver of effort, snap the stem free, then carry the pluck back
+  // to the belt pouch. The drop rides mainY below so the reach goes
+  // DOWN into the foliage at every facing.
+  let forageDrop = 0;
+  if (foraging) {
+    const u = (rig.nowMs % FORAGE_CYCLE_MS) / FORAGE_CYCLE_MS;
+    let r: number;
+    if (u < 0.3) {
+      // Reach in, body bending with it.
+      const p2 = u / 0.3;
+      const e2 = 1 - (1 - p2) * (1 - p2);
+      r = 0.14 + 0.22 * e2;
+      forageDrop = 0.08 + 0.08 * e2;
+      lean = 0.13 * e2;
+    } else if (u < 0.42) {
+      // The tug: gripped in the plant, a shiver of effort.
+      r = 0.36 + Math.sin(rig.nowMs * 0.13) * 0.012;
+      forageDrop = 0.16;
+      lean = 0.13 + Math.sin(rig.nowMs * 0.13) * 0.012;
+    } else if (u < 0.5) {
+      // Snap free — quick, the body rocks back with the release.
+      const p2 = (u - 0.42) / 0.08;
+      const e2 = p2 * p2;
+      r = 0.36 - 0.14 * e2;
+      forageDrop = 0.16 - 0.06 * e2;
+      lean = 0.13 - 0.19 * e2;
+    } else if (u < 0.78) {
+      // Carry the pluck to the pouch on the belt.
+      const p2 = (u - 0.5) / 0.28;
+      const e2 = p2 * p2 * (3 - 2 * p2);
+      r = 0.22 - 0.15 * e2;
+      forageDrop = 0.1 - 0.09 * e2;
+      lean = -0.06 * (1 - e2) - 0.01;
+    } else {
+      // Settle, hand drifting back toward the next reach.
+      const p2 = (u - 0.78) / 0.22;
+      r = 0.07 + 0.07 * p2;
+      forageDrop = 0.01 + 0.07 * p2;
+      lean = -0.01 * (1 - p2);
+    }
+    swingOffset = 0.14;
+    reach = r * s;
+    lean *= Math.sign(fx || 1);
+  }
   // Station work: each craft station has its own body language.
   if (craftKind === 'anvil') {
     // Hammer blows: raise over the shoulder, ring it off the billet the
@@ -1079,6 +1136,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   } else {
     mainX = rig.x + Math.cos(mainAngle) * reach * wS;
     mainY = armY + Math.sin(mainAngle) * reach;
+    // Foraging reaches DOWN into the plant regardless of facing.
+    if (foraging) mainY += forageDrop * s;
   }
   // The free hand hangs relaxed by the hip opposite the weapon hand;
   // during swings/casts it rides the counterbalance circle instead.
@@ -1095,6 +1154,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const choke = mining ? 0.2 : 0.16;
     offX = mainX - Math.cos(mainAngle) * choke * s;
     offY = mainY - Math.sin(mainAngle) * choke * s + 0.03 * s;
+  } else if (foraging) {
+    // The steadying hand: planted low in the foliage off the working
+    // axis, holding the stems still while the main hand plucks — it
+    // barely moves, just a slow breath of grip-shifting.
+    const steadyAngle = rig.dir - 0.42;
+    offX = rig.x + Math.cos(steadyAngle) * 0.23 * s * wS;
+    offY = armY + Math.sin(steadyAngle) * 0.23 * s + (0.11 + Math.sin(rig.nowMs * 0.0021) * 0.012) * s;
   } else if (craftKind === 'anvil') {
     // Tongs hand: planted toward the anvil, holding the work steady
     // while the hammer arm does everything else.
