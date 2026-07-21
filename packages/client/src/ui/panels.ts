@@ -19,6 +19,7 @@ import {
   effectiveReq,
   enchantDef,
   instanceName,
+  isTwoHanded,
   itemDef,
   rolledStats,
   techniquesFor,
@@ -373,6 +374,8 @@ export class Panels {
       const dmgText = Number.isInteger(dmg) ? `${dmg}` : dmg.toFixed(1);
       stat('Damage', `${dmgText} · ${Panels.speedWord(w.cooldownTicks)}`, '#c4553d');
       stat(w.style === 'melee' ? 'Reach' : 'Range', `${w.range} tiles`, '#c9a23c');
+      // The two-hands law, stated where you'd look before equipping.
+      if (isTwoHanded(def)) stat('Hands', 'Two-handed', '#8d9299');
       if (w.ammo) stat('Ammo', itemDef(w.ammo)?.name ?? w.ammo, '#c4b590');
       // Staves declare their school — the color matches their bolts.
       if (w.element) {

@@ -38,6 +38,7 @@ export function compileEquipment(defs: readonly EquipmentDef[]): {
     }
     if (def.slot === 'weapon' && !def.weapon) fail('weapon slot requires weapon stats');
     if (def.slot !== 'weapon' && def.weapon) fail('weapon stats on a non-weapon slot');
+    if (def.backMounted && def.slot !== 'offhand') fail('backMounted is an offhand fact');
     if (!Array.isArray(def.affixPool)) fail('missing affixPool');
     for (const p of def.affixPool) {
       if (!isAffixStat(p.stat)) fail(`bad affix stat '${String(p.stat)}'`);
@@ -77,6 +78,7 @@ export function compileEquipment(defs: readonly EquipmentDef[]): {
       color: def.color,
       code: def.code,
       desc: def.desc,
+      backMounted: def.backMounted,
       gear,
     });
 

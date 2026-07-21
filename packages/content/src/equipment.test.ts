@@ -780,3 +780,51 @@ test('ItemRoll carries ench through guard and comparison', async () => {
   assert.ok(!sameRoll({ rar: 'rare', seed: 3, ench: 'keen_edge' }, { rar: 'rare', seed: 3 }));
   assert.ok(sameRoll({ rar: 'rare', seed: 3, ench: 'keen_edge' }, { rar: 'rare', seed: 3, ench: 'keen_edge' }));
 });
+
+test('the two-hands law: bows and staves are two-handed, quivers ride the back', async () => {
+  const { isTwoHanded } = await import('./items.js');
+  // Derived from style — no bow or staff can forget the flag.
+  for (const def of ITEMS.values()) {
+    if (!def.weapon) {
+      assert.ok(!isTwoHanded(def), `${def.id}: non-weapons are never two-handed`);
+    } else if (def.weapon.style === 'melee') {
+      assert.ok(!isTwoHanded(def), `${def.id}: melee stays one-handed (dual wield lives)`);
+    } else {
+      assert.ok(isTwoHanded(def), `${def.id}: ${def.weapon.style} weapons take both hands`);
+    }
+  }
+  // Known anchors.
+  assert.ok(isTwoHanded(itemDef('stickbow')!));
+  assert.ok(isTwoHanded(itemDef('apprentice_staff')!));
+  assert.ok(!isTwoHanded(itemDef('bronze_sword')!));
+  // backMounted is an offhand-only fact, and every quiver carries it —
+  // a quiver exists FOR archers, so it must pair with a bow.
+  for (const def of ITEMS.values()) {
+    if (def.backMounted) assert.equal(def.equipSlot, 'offhand', `${def.id}: backMounted off-slot`);
+    if (def.equipSlot === 'offhand' && def.id.includes('quiver')) {
+      assert.ok(def.backMounted, `${def.id}: quivers are worn, not held`);
+    }
+  }
+  assert.ok(itemDef('frost_quiver')!.backMounted);
+  assert.ok(itemDef('hunters_quiver')!.backMounted);
+  // Held offhands stay held.
+  assert.ok(!itemDef('oak_kiteshield')!.backMounted);
+  assert.ok(!itemDef('scholars_tome')!.backMounted);
+  // The compile guard rejects a back-mounted helmet.
+  assert.throws(() =>
+    compileEquipment([
+      {
+        id: 'bad_hat',
+        name: 'Bad hat',
+        slot: 'head',
+        armorClass: 'cloth',
+        backMounted: true,
+        affixPool: [{ stat: 'magic' }],
+        acquisition: { shop: true },
+        value: 1,
+        color: '#fff',
+        code: 'Bh',
+      },
+    ]),
+  );
+});

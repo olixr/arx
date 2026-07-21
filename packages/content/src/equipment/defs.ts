@@ -722,6 +722,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     id: 'hunters_quiver',
     name: "Hunter's quiver",
     slot: 'offhand',
+    backMounted: true,
     levelReq: { skill: 'archery', level: 10 },
     armor: 1,
     affixPool: [{ stat: 'archery', w: 3 }, { stat: 'foraging' }, { stat: 'sneak' }],

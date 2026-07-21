@@ -54,6 +54,7 @@ import {
   craftRarityWeights,
   effectiveReq,
   instanceName,
+  isTwoHanded,
   itemDef,
   makeRoll,
   npcHitHeight,
@@ -750,6 +751,17 @@ export class GameServer {
       skills = { vitality: xpForLevel(10) };
       inventory = emptyInventory();
       for (const grant of STARTER_KIT) addItem(inventory, grant.item, grant.qty);
+    }
+    // Two-hands sanitize: saves from before the law (or edited rows) may
+    // pair a bow/staff with a held offhand — stow the offhand at login.
+    // If the pack can't take it, it stays worn as legacy grace; the
+    // equip path keeps the state from ever being built again.
+    {
+      const main = equipment.weapon ? itemDef(equipment.weapon.id) : undefined;
+      const off = equipment.offhand;
+      if (main && isTwoHanded(main) && off && !itemDef(off.id)?.backMounted) {
+        if (addItem(inventory, off.id, 1, off.roll) === 1) delete equipment.offhand;
+      }
     }
     const gear = aggregateGearStats(equipment);
     // Max HP = BASE vitality level + worn maxHp affixes (gear bonuses to
@@ -2007,13 +2019,60 @@ export class GameServer {
           return;
         }
       }
+      // THE TWO-HANDS LAW: bows and staves fill both fists, so a held
+      // offhand (an off blade, shield, tome, orb) can never share them —
+      // only a back-mounted quiver rides along. Equipping either side of
+      // a conflict STOWS the other side in the pack, never a silent
+      // refusal and never a vanished instance; it only refuses when the
+      // pack can't take what must come off.
+      let shedSlot: EquipSlot | null = null;
+      if (def.equipSlot === 'weapon' && isTwoHanded(def)) {
+        const off = player.equipment.offhand;
+        if (off && !itemDef(off.id)?.backMounted) shedSlot = 'offhand';
+      } else if (def.equipSlot === 'offhand' && !def.backMounted) {
+        const main = player.equipment.weapon;
+        const mainDef = main ? itemDef(main.id) : undefined;
+        if (mainDef && isTwoHanded(mainDef)) shedSlot = 'weapon';
+      }
       const worn = player.equipment[def.equipSlot];
+      if (shedSlot) {
+        // The clicked slot frees as the item equips; the swapped-out worn
+        // piece refills it. The shed hand needs its own empty slot.
+        const empties =
+          player.inventory.filter((s) => s === null).length + 1 - (worn ? 1 : 0);
+        if (empties < 1) {
+          player.session?.sendJson({
+            t: 'chat',
+            channel: 'system',
+            text: `You need a free pack slot to stow your ${
+              itemDef(player.equipment[shedSlot]!.id)?.name.toLowerCase() ?? 'other hand'
+            } first.`,
+          });
+          return;
+        }
+      }
       // Take THIS slot's instance out first so a swap can't overflow
       // the pack — and so the roll that leaves is the roll clicked.
       const taken = takeSlot(player.inventory, slotIndex, 1);
       if (!taken) return;
       if (worn) addItem(player.inventory, worn.id, 1, worn.roll);
       player.equipment[def.equipSlot] = { id: taken.item, roll: taken.roll };
+      if (shedSlot) {
+        const shed = player.equipment[shedSlot];
+        if (shed) {
+          delete player.equipment[shedSlot];
+          addItem(player.inventory, shed.id, 1, shed.roll);
+          const shedName = itemDef(shed.id)?.name.toLowerCase() ?? 'other hand';
+          player.session?.sendJson({
+            t: 'chat',
+            channel: 'system',
+            text:
+              shedSlot === 'offhand'
+                ? `The ${def.name.toLowerCase()} needs both hands — your ${shedName} goes back in your pack.`
+                : `Your ${shedName} needs both hands — it goes back in your pack.`,
+          });
+        }
+      }
       this.onEquipmentChanged(eid, player);
     }
   }

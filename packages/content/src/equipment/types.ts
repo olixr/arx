@@ -73,6 +73,11 @@ export interface EquipmentDef {
   armor?: number;
   /** Weapons only — base damage scales with the rarity multiplier. */
   weapon?: WeaponStats;
+  /**
+   * Offhand only: worn on the back (a quiver), never held in the fist —
+   * the one offhand kind that pairs with a two-handed bow or staff.
+   */
+  backMounted?: boolean;
   /** Gear-carried passive (hotbar tray), same field ItemDef carries. */
   passive?: PassiveId;
   /**

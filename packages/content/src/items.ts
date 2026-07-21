@@ -141,6 +141,11 @@ export interface ItemDef {
   code: string;
   /** One-line flavor text for the inspect card. */
   desc?: string;
+  /**
+   * Offhand items only: worn on the back (a quiver), not held in the
+   * fist — the one offhand kind a two-handed weapon tolerates.
+   */
+  backMounted?: boolean;
   /** Rolled-equipment facts — compiled from the equipment schema. */
   gear?: GearInfo;
 }
@@ -620,6 +625,7 @@ const defs: ItemDef[] = [
     stackable: false,
     value: 240,
     equipSlot: 'offhand',
+    backMounted: true,
     passive: 'chill_charged',
     desc: 'Arrows drawn from it come out rimed with cold.',
     color: '#8ac4e8',
@@ -855,6 +861,19 @@ if (ITEMS.size !== allDefs.length) {
 
 export function itemDef(id: string): ItemDef | undefined {
   return ITEMS.get(id);
+}
+
+/**
+ * THE TWO-HANDS LAW: every bow needs a drawing hand and every staff a
+ * channeling one — archery and magic weapons are two-handed, derived
+ * from style rather than flagged per item so no def can forget it.
+ * A two-handed weapon shares the body with nothing HELD in the off
+ * fist: no off blade, no shield, no tome, no orb. Back-mounted
+ * offhands (quivers) ride the shoulders and are exempt. If one-handed
+ * casters (wands) ever land, this is the law to widen.
+ */
+export function isTwoHanded(def: ItemDef): boolean {
+  return def.weapon !== undefined && def.weapon.style !== 'melee';
 }
 
 /** What a fresh character carries. */
