@@ -304,6 +304,133 @@ export class Sfx {
     this.tone(880, 0.2, { type: 'triangle', volume: 0.16, delay: 0.12, detune: false });
   }
 
+  // ---- furniture & fingers -----------------------------------------
+  // The interaction suite: every station you talk to and every control
+  // you touch answers back. THE QUIET-HANDS LAW: these are the softest
+  // sounds in the game — felt at the fingertips, never announcing
+  // themselves over the world. Materials speak (wood creaks, parchment
+  // slides, leather shifts, coin rings); pure-UI cues are tiny sine
+  // taps with detune off so they always land identically.
+
+  /** The bank chest waking: a slow wooden creak, a latch, a lid knock. */
+  chestOpen(): void {
+    this.tone(64, 0.38, { type: 'sawtooth', slide: 42, volume: 0.1 });
+    this.tone(92, 0.3, { type: 'sawtooth', slide: 34, volume: 0.065, delay: 0.06 });
+    this.noise(0.14, 0.12, 0.02, { band: 480 });
+    this.tone(1500, 0.04, { type: 'triangle', volume: 0.08, delay: 0.03, detune: false });
+  }
+
+  /** The lid settling shut: soft thud, wood shift, latch tick. */
+  chestClose(): void {
+    this.tone(90, 0.12, { type: 'sine', slide: -25, volume: 0.2 });
+    this.noise(0.08, 0.12, 0, { band: 500 });
+    this.tone(1250, 0.035, { type: 'triangle', volume: 0.07, delay: 0.07, detune: false });
+  }
+
+  /** The counter bell: two soft brass partials over a felt strike. */
+  shopBell(): void {
+    this.noise(0.02, 0.05, 0, { band: 3000 });
+    this.tone(1560, 0.5, { type: 'sine', volume: 0.12, detune: false });
+    this.tone(2340, 0.34, { type: 'sine', volume: 0.055, delay: 0.005, detune: false });
+  }
+
+  /** Stepping up to a station: a wooden tap and the tools shifting. */
+  stationOpen(): void {
+    this.tone(200, 0.05, { type: 'triangle', slide: -70, volume: 0.16 });
+    this.noise(0.1, 0.1, 0.02, { band: 1300 });
+    this.tone(150, 0.05, { type: 'triangle', slide: -50, volume: 0.1, delay: 0.08 });
+  }
+
+  /** Parchment unrolling — the skills scroll, the blueprint sheaf. */
+  parchment(): void {
+    this.noise(0.14, 0.1, 0, { band: 2100 });
+    this.noise(0.12, 0.08, 0.07, { band: 1500 });
+    this.tone(320, 0.04, { type: 'triangle', slide: -60, volume: 0.07, delay: 0.12, detune: false });
+  }
+
+  /** Going through your things: leather and cloth, a buckle tick. */
+  satchel(): void {
+    this.noise(0.12, 0.12, 0, { band: 950 });
+    this.noise(0.07, 0.08, 0.05, { band: 1600 });
+    this.tone(1100, 0.03, { type: 'triangle', volume: 0.05, delay: 0.09, detune: false });
+  }
+
+  /** A quiet panel breathing open: two rising sine touches. */
+  uiOpen(): void {
+    this.tone(440, 0.07, { type: 'sine', volume: 0.09, detune: false });
+    this.tone(660, 0.08, { type: 'sine', volume: 0.07, delay: 0.045, detune: false });
+  }
+
+  /** …and settling closed: the same pair, descending. */
+  uiClose(): void {
+    this.tone(520, 0.06, { type: 'sine', volume: 0.08, detune: false });
+    this.tone(350, 0.08, { type: 'sine', volume: 0.07, delay: 0.04, detune: false });
+  }
+
+  /** A control accepting your press: one soft wooden tap. */
+  uiTap(): void {
+    this.tone(290, 0.045, { type: 'triangle', slide: -50, volume: 0.12, detune: false });
+    this.noise(0.03, 0.05, 0, { band: 1000 });
+  }
+
+  /** The pad cursor stepping between controls — barely-there tick. */
+  uiTick(): void {
+    this.tone(600, 0.025, { type: 'sine', volume: 0.045, detune: false });
+  }
+
+  /** Gear going on: leather shifts, a clasp snicks, weight settles. */
+  equipGear(): void {
+    this.noise(0.09, 0.12, 0, { band: 900 });
+    this.tone(1350, 0.045, { type: 'triangle', volume: 0.1, delay: 0.03, detune: false });
+    this.tone(170, 0.05, { type: 'sine', slide: -40, volume: 0.1, delay: 0.01 });
+  }
+
+  /** Gear coming off — the softer reverse. */
+  unequipGear(): void {
+    this.noise(0.09, 0.1, 0, { band: 800 });
+    this.tone(240, 0.05, { type: 'triangle', slide: -70, volume: 0.08, delay: 0.03 });
+  }
+
+  /** A bite and a swallow. */
+  eat(): void {
+    this.tone(300, 0.06, { type: 'triangle', slide: -120, volume: 0.14 });
+    this.noise(0.05, 0.1, 0, { band: 700 });
+    this.tone(140, 0.07, { type: 'sine', slide: -30, volume: 0.12, delay: 0.12 });
+  }
+
+  /** Coin meeting coin — the money jingle, kept polite. */
+  coins(): void {
+    this.noise(0.06, 0.05, 0, { band: 1200 });
+    this.tone(2100, 0.05, { type: 'triangle', volume: 0.1 });
+    this.tone(2500, 0.05, { type: 'triangle', volume: 0.08, delay: 0.05 });
+    this.tone(2300, 0.05, { type: 'triangle', volume: 0.06, delay: 0.1 });
+  }
+
+  /** An item stowed — into the vault, the pack, a new slot. */
+  stow(): void {
+    this.noise(0.07, 0.1, 0, { band: 750 });
+    this.tone(190, 0.05, { type: 'triangle', slide: -50, volume: 0.1 });
+  }
+
+  /** An item let go onto the grass: a soft ground thud. */
+  dropThud(): void {
+    this.tone(120, 0.08, { type: 'sine', slide: -30, volume: 0.16 });
+    this.noise(0.06, 0.1, 0.01, { band: 600 });
+  }
+
+  /** A seed pressed into worked soil. */
+  plantSeed(): void {
+    this.noise(0.1, 0.12, 0, { band: 500 });
+    this.tone(150, 0.06, { type: 'sine', slide: -40, volume: 0.1, delay: 0.03 });
+  }
+
+  /** Construction landing: a solid wooden set-down, knocked twice. */
+  buildThump(): void {
+    this.tone(105, 0.1, { type: 'sine', slide: -20, volume: 0.22 });
+    this.noise(0.08, 0.14, 0, { band: 700 });
+    this.tone(240, 0.05, { type: 'triangle', slide: -60, volume: 0.1, delay: 0.1 });
+  }
+
   /**
    * One foot meeting the ground. THE SOFT-STEP LAW: footsteps are felt
    * more than heard — grass is a brush of cloth against blades, stone

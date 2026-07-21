@@ -168,8 +168,15 @@ const PROMPT_LABELS: Record<string, string> = {
 
 const stationPanels = new StationPanels(
   (recipe, qty) => game.craft(recipe, qty),
-  (op, item, qty, gearId) => game.bankSend(op, item, qty, undefined, gearId),
-  (op, item, qty) => game.shopSend(op, item, qty),
+  (op, item, qty, gearId) => {
+    // Withdrawals thunk out of the chest; deposits cue at their senders.
+    if (op === 'withdraw') sfx.stow();
+    game.bankSend(op, item, qty, undefined, gearId);
+  },
+  (op, item, qty) => {
+    sfx.coins();
+    game.shopSend(op, item, qty);
+  },
   (buildable) => {
     buildMode = buildable;
     stationPanels.closeAll();
@@ -185,7 +192,18 @@ const stationPanels = new StationPanels(
   () => game.inventory,
 );
 
-stationPanels.onPlant = (tx, ty, seed) => game.plantSend(tx, ty, seed);
+stationPanels.onPlant = (tx, ty, seed) => {
+  sfx.plantSeed();
+  game.plantSend(tx, ty, seed);
+};
+
+/** The sound a pack item makes when USED — equip clasp or a bite. */
+function useSlotSound(itemId: string): void {
+  const def = itemDef(itemId);
+  if (def?.equipSlot) sfx.equipGear();
+  else if (def?.heals) sfx.eat();
+  else sfx.uiTap();
+}
 
 const panels = new Panels(
   (slot) => {
@@ -194,25 +212,41 @@ const panels = new Panels(
     const item = game.inventory[slot];
     if (!item) return;
     if (stationPanels.bankOpen) {
+      sfx.stow();
       game.bankSend('deposit', item.item, item.qty, slot);
     } else if (stationPanels.shopOpen) {
+      sfx.coins();
       game.shopSend('sell', item.item, 1, slot);
     } else {
+      useSlotSound(item.item);
       game.useSlot(slot);
     }
   },
-  (slot) => game.unequip(slot),
+  (slot) => {
+    sfx.unequipGear();
+    game.unequip(slot);
+  },
   (style, ability) => game.sendTechnique(style, ability),
-  (from, to) => game.invMove(from, to),
+  (from, to) => {
+    sfx.stow();
+    game.invMove(from, to);
+  },
   (slot) => dropSlot(slot),
   // Explicit verbs from the item context menu — no station guessing.
   (slot, action) => {
     const item = game.inventory[slot];
     if (!item) return;
     if (action === 'drop') dropSlot(slot);
-    else if (action === 'deposit') game.bankSend('deposit', item.item, item.qty, slot);
-    else if (action === 'sell') game.shopSend('sell', item.item, 1, slot);
-    else game.useSlot(slot);
+    else if (action === 'deposit') {
+      sfx.stow();
+      game.bankSend('deposit', item.item, item.qty, slot);
+    } else if (action === 'sell') {
+      sfx.coins();
+      game.shopSend('sell', item.item, 1, slot);
+    } else {
+      useSlotSound(item.item);
+      game.useSlot(slot);
+    }
   },
   () => (stationPanels.bankOpen ? 'bank' : stationPanels.shopOpen ? 'shop' : null),
   (): 'kb' | 'pad' => nav.mode,
@@ -225,6 +259,7 @@ const panels = new Panels(
 function dropSlot(slot: number): void {
   const item = game.inventory[slot];
   if (!item) return;
+  sfx.dropThud();
   game.dropSend(slot, item.qty);
 }
 
@@ -249,6 +284,7 @@ const nav = new UiNav(input, {
   onOpenBuild: () => stationPanels.openBuild(game.skills),
   packActionLabel: () =>
     stationPanels.bankOpen ? 'Deposit' : stationPanels.shopOpen ? 'Sell' : null,
+  onFocusMove: () => sfx.uiTick(),
 });
 
 // One delegated hover path drives item inspection for the mouse: item
@@ -847,6 +883,61 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+/**
+ * EVERY DOOR HAS A VOICE. One watcher owns all panel open/close cues,
+ * keyed on visibility transitions — so the chest creaks whether the
+ * bank opened from a click, a key, or the pad, and sighs shut whether
+ * you pressed ✕, tapped the world, or simply walked away. Handlers
+ * never play these themselves (that would double them).
+ */
+const panelSeen = {
+  bank: false,
+  shop: false,
+  craft: false,
+  build: false,
+  loot: false,
+  inv: false,
+  skills: false,
+  audio: false,
+};
+function panelAudioCues(): void {
+  const vis = (id: string): boolean =>
+    !document.getElementById(id)!.classList.contains('hidden');
+  const cue = (
+    key: keyof typeof panelSeen,
+    open: boolean,
+    onOpen: () => void,
+    onClose: () => void,
+  ): void => {
+    if (open === panelSeen[key]) return;
+    panelSeen[key] = open;
+    if (open) onOpen();
+    else onClose();
+  };
+  cue('bank', stationPanels.bankOpen, () => sfx.chestOpen(), () => sfx.chestClose());
+  cue('shop', stationPanels.shopOpen, () => sfx.shopBell(), () => sfx.uiClose());
+  cue('craft', vis('craft-panel'), () => sfx.stationOpen(), () => sfx.uiClose());
+  cue('build', vis('build-panel'), () => sfx.parchment(), () => sfx.uiClose());
+  cue('loot', vis('loot-panel'), () => sfx.satchel(), () => sfx.uiClose());
+  cue('inv', vis('inventory-panel'), () => sfx.satchel(), () => sfx.uiClose());
+  cue('skills', vis('skills-panel'), () => sfx.parchment(), () => sfx.uiClose());
+  cue('audio', vis('audio-panel'), () => sfx.uiOpen(), () => sfx.uiClose());
+}
+
+// EVERY CONTROL ANSWERS: one delegated listener gives all buttons the
+// same soft tap — mouse clicks and pad Ⓐ presses run the same wire.
+// (Hotbar slots are excluded: casts already sing for themselves.)
+document.addEventListener('click', (e) => {
+  const t = e.target as HTMLElement | null;
+  if (
+    t?.closest?.(
+      '.act-btn, .menu-item, .panel-close, #panel-buttons button, .technique-chip:not(.locked), .look-swatch, .look-stepper button, .look-actions button',
+    )
+  ) {
+    sfx.uiTap();
+  }
+});
+
 // Click an interactable tile within reach to use it; in build mode the
 // click places the picked buildable; X+click demolishes your work.
 canvas.addEventListener('mousedown', (e) => {
@@ -855,6 +946,7 @@ canvas.addEventListener('mousedown', (e) => {
   const tx = Math.floor(w.x);
   const ty = Math.floor(w.y);
   if (buildMode) {
+    sfx.buildThump();
     game.buildSend(buildMode, tx, ty);
     return;
   }
@@ -964,6 +1056,7 @@ function frame(now: number): void {
     // The loot panel is the same kind of conversation, with the pile.
     lootPanel.update(pos.x, pos.y);
   }
+  panelAudioCues();
   // The station being talked to (open panel) animates its in-use
   // choreography — chest lid open, furnace stoked — via renderer heat.
   renderer.stationFocus = stationPanels.anchorTile;
@@ -1106,7 +1199,10 @@ function frame(now: number): void {
       }
       tx = Math.floor(pos.x + padBuildCur.dx);
       ty = Math.floor(pos.y + padBuildCur.dy);
-      if (padEdge(0) || padEdge(2)) game.buildSend(buildMode, tx, ty);
+      if (padEdge(0) || padEdge(2)) {
+        sfx.buildThump();
+        game.buildSend(buildMode, tx, ty);
+      }
       if (padEdge(3)) game.demolishSend(tx, ty);
       if (padEdge(1)) buildMode = null;
     } else {

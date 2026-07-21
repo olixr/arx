@@ -64,6 +64,8 @@ export interface UiNavHooks {
   onOpenBuild: () => void;
   /** Contextual Ⓐ label for pack items (Deposit at bank, Sell in shop). */
   packActionLabel?: () => string | null;
+  /** Focus stepped to a new control — the barely-there cursor tick. */
+  onFocusMove?: () => void;
 }
 
 export class UiNav {
@@ -188,7 +190,10 @@ export class UiNav {
         best = el;
       }
     }
-    if (best) this.setFocus(best);
+    if (best) {
+      this.setFocus(best);
+      this.hooks.onFocusMove?.();
+    }
   }
 
   private setFocus(el: HTMLElement): void {
