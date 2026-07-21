@@ -1,7 +1,9 @@
 import {
+  CLOTH_COLORS,
   EQUIP_SLOTS,
   PASSIVES,
   HIDDEN_SKILLS,
+  PoseState,
   SKILL_IDS,
   levelForXp,
   xpForLevel,
@@ -9,12 +11,14 @@ import {
   type EquippedItem,
   type InvSlot,
   type ItemRoll,
+  type Look,
   type SkillXp,
 } from '@devcraft/shared';
 import {
   ARMOR_CLASS_BLURB,
   ELEMENT_COLORS,
   abilityDef,
+  aggregateGearStats,
   describeEffect,
   effectiveReq,
   enchantDef,
@@ -27,6 +31,7 @@ import {
   type ItemDef,
 } from '@devcraft/content';
 import { itemIconUrl, slotGlyphUrl } from '../render/icons.js';
+import { drawHumanoid } from '../render/rig.js';
 import { RARITY_COLORS, rarityOfInstance } from './rarity.js';
 
 /** Card display colors for the three armor weight classes. */
@@ -75,6 +80,12 @@ export class Panels {
   private readonly coinReadout = document.getElementById('coin-readout')!;
   private readonly skillsPanel = document.getElementById('skills-panel')!;
   private readonly skillsList = document.getElementById('skills-list')!;
+  /** The mirror: your actual rig wearing your actual gear, turning. */
+  private readonly figWell = document.getElementById('equip-fig')!;
+  private readonly figCanvas = document.createElement('canvas');
+  private readonly gearStrip = document.getElementById('gear-strip')!;
+  private figDir = 0;
+  private static readonly FIG_DIRS = [Math.PI / 2, 0, -Math.PI / 2, Math.PI];
   private readonly card: HTMLElement;
   private readonly menu: HTMLElement;
   /** The chosen technique per style, mirrored from the server. */
@@ -109,9 +120,19 @@ export class Panels {
     private readonly carryStyle: (hand: 'main' | 'off') => 'normal' | 'rogue' = () => 'normal',
     private readonly onCarryStyle: (style: 'normal' | 'rogue', hand: 'main' | 'off') => void =
       () => {},
+    /** The mirror's model: the player's chosen look + grip prefs. */
+    private readonly portraitInfo: () => { look: Look | null } = () => ({ look: null }),
   ) {
     document.getElementById('btn-inventory')!.addEventListener('click', () => this.toggleInventory());
     document.getElementById('btn-skills')!.addEventListener('click', () => this.toggleSkills());
+    this.figWell.appendChild(this.figCanvas);
+    // The mirror turns like the creation glass — a facing per beat,
+    // repainted only while the pack is open.
+    window.setInterval(() => {
+      if (this.invPanel.classList.contains('hidden')) return;
+      this.figDir = (this.figDir + 1) % Panels.FIG_DIRS.length;
+      this.drawPortrait();
+    }, 1200);
     window.addEventListener('pointermove', (e) => this.dragMove(e));
     window.addEventListener('pointerup', (e) => this.dragEnd(e));
 
@@ -135,11 +156,13 @@ export class Panels {
     this.invPanel.classList.toggle('hidden');
     this.skillsPanel.classList.add('hidden');
     if (this.invPanel.classList.contains('hidden')) this.closeInspect();
+    else this.drawPortrait();
   }
 
   showInventory(): void {
     this.invPanel.classList.remove('hidden');
     this.skillsPanel.classList.add('hidden');
+    this.drawPortrait();
   }
 
   toggleSkills(): void {
@@ -335,6 +358,8 @@ export class Panels {
     // gold treatment from the stylesheet.
     const tier = rarityOfInstance(itemId, roll);
     const rc = RARITY_COLORS[tier];
+    // The icon well wears the tier too — quality reads at a glance.
+    if (tier !== 'common' && rc) icon.style.borderColor = rc;
     if (tier !== 'legendary' && rc) {
       name.classList.add('rarity-name');
       name.style.color = rc;
@@ -734,22 +759,150 @@ export class Panels {
         item.draggable = false;
         cell.appendChild(item);
       } else {
-        // An empty socket shows its purpose as a dim glyph.
+        // An empty socket shows its purpose: a dim glyph and its name.
         cell.dataset.tipname = slot.charAt(0).toUpperCase() + slot.slice(1);
         const ghost = document.createElement('img');
         ghost.className = 'slot-ghost';
         ghost.src = slotGlyphUrl(slot, 40);
         ghost.draggable = false;
         cell.appendChild(ghost);
+        const label = document.createElement('span');
+        label.className = 'slot-label';
+        label.textContent = slot;
+        cell.appendChild(label);
       }
       this.equipDoll.appendChild(cell);
     }
+
+    this.renderGearStrip(equipment);
+    this.drawPortrait();
 
     if (this.cardSource?.kind === 'equip') {
       const worn = this.lastEquipment[this.cardSource.slot];
       if (worn) this.renderCard(worn.id, 1, this.cardSource.slot, worn.roll);
       else this.hideCard();
     }
+  }
+
+  /**
+   * The gear ledger: everything your worn kit adds up to, as flat
+   * chips under the doll — total armor, rolled skill bonuses, HP and
+   * regen, style damage. Money and stats, always clearly labeled.
+   */
+  private renderGearStrip(equipment: Partial<Record<string, EquippedItem>>): void {
+    const gear = aggregateGearStats(equipment as Parameters<typeof aggregateGearStats>[0]);
+    this.gearStrip.innerHTML = '';
+    const chip = (text: string, color: string): void => {
+      const c = document.createElement('span');
+      c.className = 'gear-stat';
+      const dot = document.createElement('span');
+      dot.className = 'gear-dot';
+      dot.style.background = color;
+      const t = document.createElement('span');
+      t.textContent = text;
+      c.append(dot, t);
+      this.gearStrip.appendChild(c);
+    };
+    if (gear.armor > 0) chip(`Armor ${gear.armor}`, '#8ac4e8');
+    for (const [skill, bonus] of Object.entries(gear.skillBonus)) {
+      if (bonus) chip(`+${bonus} ${affixName(skill)}`, '#7dc46a');
+    }
+    if (gear.maxHp > 0) chip(`+${gear.maxHp} Max HP`, '#d95763');
+    if (gear.regenPer4s > 0) chip(`+${gear.regenPer4s} Regen`, '#7ac47a');
+    for (const [style, mult] of Object.entries(gear.styleDmgMult)) {
+      if (Math.abs(mult - 1) > 0.001) {
+        const pct = Math.round((mult - 1) * 100);
+        chip(`${pct > 0 ? '+' : ''}${pct}% ${affixName(style)}`, pct > 0 ? '#e8b64c' : '#d95763');
+      }
+    }
+    if (Math.abs(gear.speedMult - 1) > 0.001) {
+      const pct = Math.round((gear.speedMult - 1) * 100);
+      chip(`${pct > 0 ? '+' : ''}${pct}% Speed`, pct > 0 ? '#7ac47a' : '#d9a441');
+    }
+    if (Math.abs(gear.cooldownMult - 1) > 0.001) {
+      const pct = Math.round((1 - gear.cooldownMult) * 100);
+      chip(`−${pct}% Cooldowns`, '#b49af0');
+    }
+    this.gearStrip.classList.toggle('hidden', this.gearStrip.childElementCount === 0);
+  }
+
+  /**
+   * The mirror: the player's ACTUAL rig — same drawHumanoid as the
+   * world, wearing the equipment record live — turning through its
+   * four facings on the constructor's beat. (The cape rides the world
+   * cloth sim, so the mirror shows the kit beneath it.)
+   */
+  private drawPortrait(): void {
+    if (this.invPanel.classList.contains('hidden')) return;
+    const rect = this.figWell.getBoundingClientRect();
+    if (rect.width < 10 || rect.height < 10) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.round(rect.width);
+    const h = Math.round(rect.height);
+    if (this.figCanvas.width !== w * dpr || this.figCanvas.height !== h * dpr) {
+      this.figCanvas.width = w * dpr;
+      this.figCanvas.height = h * dpr;
+      this.figCanvas.style.width = `${w}px`;
+      this.figCanvas.style.height = `${h}px`;
+    }
+    const ctx = this.figCanvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    const { look } = this.portraitInfo();
+    const eq = this.lastEquipment;
+    const S = Math.min(150, h * 0.45);
+    const x = w / 2;
+    const y = h * 0.88;
+    // Hard-shape ground shadow, like every shadow in this game.
+    ctx.fillStyle = 'rgba(12, 8, 24, 0.55)';
+    ctx.beginPath();
+    ctx.ellipse(x, y, S * 0.42, S * 0.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const dir = Panels.FIG_DIRS[this.figDir]!;
+    const hip = 0.1 * S;
+    drawHumanoid(ctx, {
+      x,
+      y,
+      scale: S,
+      dir,
+      pose: PoseState.Idle,
+      poseT: 1,
+      drawT: 0,
+      restT: 1,
+      nowMs: performance.now(),
+      feet: [
+        { x: x - hip, y, lift: 0 },
+        { x: x + hip, y, lift: 0 },
+      ],
+      bob: 0,
+      rise: 0.414,
+      wScale: Math.abs(Math.cos(dir)) > 0.7 ? 0.91 : 1.05,
+      poleX: 0,
+      poleY: 0,
+      poleStrength: 0,
+      runF: 0,
+      align: 1,
+      kneeMemory: [0, 0],
+      bodyColor: CLOTH_COLORS[look?.shirt ?? 0] ?? '#7b8a4a',
+      hurt: false,
+      isOwn: true,
+      look: look ?? undefined,
+      weaponItem: eq.weapon?.id,
+      weaponEnch: eq.weapon?.roll?.ench,
+      offhandEnch: eq.offhand?.roll?.ench,
+      carryStyle: this.carryStyle('main'),
+      carryOff: this.carryStyle('off'),
+      bodyItem: eq.body?.id,
+      headItem: eq.head?.id,
+      legsItem: eq.legs?.id,
+      bootsItem: eq.boots?.id,
+      glovesItem: eq.gloves?.id,
+      offhandItem: eq.offhand?.id,
+      hasCape: eq.cape !== undefined,
+      gatherPhase: 0,
+      craftKind: null,
+    });
   }
 
   /** Server-confirmed technique choices; re-renders the picker. */

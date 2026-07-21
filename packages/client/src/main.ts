@@ -216,6 +216,7 @@ const panels = new Panels(
   (): 'kb' | 'pad' => nav.mode,
   (hand) => (hand === 'off' ? game.carryOff : game.carryStyle),
   (style, hand) => game.setCarryStyle(style, hand),
+  () => ({ look: game.ownLook }),
 );
 
 /** Drop a whole pack slot onto the ground (drag-out / pad Ⓨ). */
