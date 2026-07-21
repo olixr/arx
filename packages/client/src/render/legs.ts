@@ -143,6 +143,10 @@ export class LegRig {
   private vy = 0;
   private rise: number;
   private wScale = 1;
+  /** Touchdowns since birth — diff across updates to hear footsteps. */
+  plants = 0;
+  /** Body speed (tiles/sec) at the most recent touchdown. */
+  plantSpeed = 0;
   /** Signed idle-turn accumulator; a big enough pivot owes a shuffle. */
   private lastDir: number | null = null;
   private turnDebt = 0;
@@ -340,6 +344,11 @@ export class LegRig {
         if (t >= 1) {
           this.step[i] = null;
           f.lift = 0;
+          // A touchdown — the audible moment of a gait. Consumers
+          // (footstep audio) diff `plants` across updates; `plantSpeed`
+          // carries the gait vigor so idle shuffles land near-silent.
+          this.plants++;
+          this.plantSpeed = speed;
         }
       } else {
         f.lift = 0;

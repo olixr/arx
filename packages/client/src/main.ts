@@ -10,6 +10,10 @@ import { StationPanels } from './ui/stationPanels.js';
 import { UiNav } from './ui/padUI.js';
 import { LootPanel } from './ui/lootPanel.js';
 import { Sfx } from './audio/sfx.js';
+import { AudioEngine } from './audio/engine.js';
+import { MusicSystem } from './audio/music.js';
+import { AmbienceSystem } from './audio/ambience.js';
+import { zoneWeights } from './audio/zones.js';
 import { setupTouch } from './input/touch.js';
 import { uiIconUrl } from './render/icons.js';
 import { fxStyleFor } from './render/abilityFx.js';
@@ -57,7 +61,10 @@ for (const [id, kind, tip, kbKey, padCls, padLabel] of [
   }
 }
 
-const sfx = new Sfx();
+const audioEngine = new AudioEngine();
+const sfx = new Sfx(audioEngine);
+const music = new MusicSystem(audioEngine);
+const ambience = new AmbienceSystem(audioEngine);
 window.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
 window.addEventListener('keydown', () => sfx.unlock(), { once: true });
 
@@ -530,6 +537,61 @@ renderer.onGatherImpact = (kind) => {
   }
 };
 
+// Footsteps: every humanoid touchdown asks the ground what it's made
+// of. Volume rides the gait (idle shuffles are near-silent), sneaking
+// is nearly soundless, and other people's steps arrive quiet, panned
+// to their side of you, and only from close by.
+function stepMaterial(tx: number, ty: number): 'grass' | 'stone' | 'wood' | 'dirt' | 'sand' | 'cave' | 'wet' {
+  const g = game.world.groundAt(tx, ty);
+  switch (g) {
+    case Tile.Grass:
+    case Tile.GrassTall:
+    case Tile.CropSprout:
+    case Tile.CarrotMid:
+    case Tile.CarrotRipe:
+    case Tile.SagewortMid:
+    case Tile.SagewortRipe:
+    case Tile.SunflowerMid:
+    case Tile.SunflowerRipe:
+    case Tile.WheatMid:
+    case Tile.WheatRipe:
+      return 'grass';
+    case Tile.StoneFloor:
+    case Tile.Cliff:
+    case Tile.Ramp:
+      return 'stone';
+    case Tile.WoodFloor:
+    case Tile.Bridge:
+      return 'wood';
+    case Tile.Sand:
+    case Tile.Snow:
+      return 'sand';
+    case Tile.CaveFloor:
+    case Tile.CaveWall:
+      return 'cave';
+    case Tile.Water:
+    case Tile.WaterDeep:
+    case Tile.Swamp:
+      return 'wet';
+    default:
+      return 'dirt'; // Path, Dirt, Tilled, and anything unmapped
+  }
+}
+renderer.onFootstep = (x, y, speed, isOwn, sneaking) => {
+  const mat = stepMaterial(Math.floor(x), Math.floor(y));
+  let vol = 0.05 + 0.13 * Math.min(1, speed / 5);
+  let pan = 0;
+  if (sneaking) vol *= 0.25;
+  if (!isOwn) {
+    const own = game.predictor.pos;
+    const dist = Math.hypot(x - own.x, y - own.y);
+    if (dist > 9) return;
+    vol *= 0.4 * (1 - dist / 9);
+    pan = Math.max(-0.8, Math.min(0.8, (x - own.x) / 8));
+  }
+  sfx.footstep(mat, vol, pan);
+};
+
 // A felled tree topples away from whoever cut it, groans, and lands
 // with a thud you can feel.
 game.onTileChange = (tx, ty, prev, next) => {
@@ -585,7 +647,11 @@ game.onLoose = (charge, aim) => {
 };
 
 // Dev/test hook: lets automated tests observe live game state.
-(window as unknown as Record<string, unknown>).__devcraft = { game, renderer };
+(window as unknown as Record<string, unknown>).__devcraft = {
+  game,
+  renderer,
+  audio: { engine: audioEngine, music, ambience },
+};
 
 loginToggle.addEventListener('click', () => {
   registerMode = !registerMode;
@@ -997,6 +1063,16 @@ function frame(now: number): void {
   game.update(now);
   renderer.render(game, frameDt);
   hotbar.update(game);
+
+  // The world's voice: zone-weighted music and ambience follow the
+  // listener's position and the game clock every frame.
+  if (game.ownEid !== null) {
+    const own = game.predictor.renderPos();
+    const w = zoneWeights(own.x, own.y);
+    const hours = game.clockHoursNow();
+    music.update(w, hours);
+    ambience.update(own.x, own.y, w, hours, now / 1000);
+  }
 
   fpsCounter++;
   if (now - fpsWindowStart > 1000) {

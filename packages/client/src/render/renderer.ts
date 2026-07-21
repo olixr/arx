@@ -194,6 +194,8 @@ interface AnimState {
   armDepth?: { mainBehind: boolean };
   /** Last chop cycle that spawned impact chips (gathering). */
   lastChopHit?: number;
+  /** Leg-rig plant counter at the last frame — footstep event diffing. */
+  lastPlants?: number;
   /** The entity's cape cloth sim — present only while one is worn. */
   cape?: CapeSim;
   /** Which cape item `cape` was built for; a change rebuilds the cloth. */
@@ -546,6 +548,14 @@ export class Renderer {
 
   /** Fires once per tool-impact while someone gathers ('tree' | 'rock'). */
   onGatherImpact: ((kind: string) => void) | null = null;
+
+  /**
+   * Fires on every humanoid foot touchdown (the leg rig's plant
+   * moment). `speed` is the gait vigor in tiles/sec — idle shuffles
+   * arrive near zero, so volume can ride it directly.
+   */
+  onFootstep: ((x: number, y: number, speed: number, isOwn: boolean, sneaking: boolean) => void) | null =
+    null;
 
   /** Nearest crafting station around a world position, if any. */
   private findStation(
@@ -7801,6 +7811,13 @@ export class Renderer {
       anim.rigKey = 'humanoid';
     }
     const legPose = anim.legs.update(e.x, e.y, e.dir, this.frameDt);
+    // Footstep events: a touchdown happened inside that update.
+    if (anim.lastPlants === undefined) {
+      anim.lastPlants = anim.legs.plants;
+    } else if (anim.legs.plants !== anim.lastPlants) {
+      anim.lastPlants = anim.legs.plants;
+      this.onFootstep?.(e.x, e.y, anim.legs.plantSpeed, e.isOwn === true, e.pose === PoseState.Sneak);
+    }
     const poseT = Math.min(1, (now - anim.poseStartedAt) / 280);
     // Rest-carriage clock: survives Idle↔Walk flips, resets only when
     // returning from a non-restful pose (combat, gathering, drawing).

@@ -1,33 +1,43 @@
+import type { AudioEngine } from './engine.js';
+
 /**
  * Procedural WebAudio SFX — no audio files, everything synthesized.
  * Kept short and soft; a local family server doesn't need ear-splitters.
+ * Every sound rides the engine's sfx bus, which carries the warmth
+ * low-pass, the glue compressor, and a touch of the shared room —
+ * that shared air is what keeps synthesized blips from reading as
+ * "computer noises" on top of the world instead of sounds inside it.
  */
 export class Sfx {
-  private ctx: AudioContext | null = null;
-  private master: GainNode | null = null;
+  constructor(private engine: AudioEngine) {}
 
   /** Browsers require a user gesture before audio can start. */
   unlock(): void {
-    if (this.ctx) return;
-    try {
-      this.ctx = new AudioContext();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = 0.35;
-      this.master.connect(this.ctx.destination);
-    } catch {
-      this.ctx = null;
-    }
+    this.engine.unlock();
+  }
+
+  private get ctx(): AudioContext | null {
+    return this.engine.ctx;
   }
 
   private tone(
     freq: number,
     duration: number,
-    opts: { type?: OscillatorType; slide?: number; volume?: number; delay?: number; detune?: boolean } = {},
+    opts: {
+      type?: OscillatorType;
+      slide?: number;
+      volume?: number;
+      delay?: number;
+      detune?: boolean;
+      pan?: number;
+    } = {},
   ): void {
-    if (!this.ctx || !this.master) return;
-    const t0 = this.ctx.currentTime + (opts.delay ?? 0);
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
+    const ctx = this.ctx;
+    const out = this.engine.sfx;
+    if (!ctx || !out) return;
+    const t0 = ctx.currentTime + (opts.delay ?? 0);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
     osc.type = opts.type ?? 'square';
     // A pinch of random detune keeps repeated combat sounds organic.
     if (opts.detune !== false) freq *= 1 + (Math.random() - 0.5) * 0.07;
@@ -36,24 +46,49 @@ export class Sfx {
     gain.gain.setValueAtTime(opts.volume ?? 0.5, t0);
     gain.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
     osc.connect(gain);
-    gain.connect(this.master);
+    if (opts.pan) {
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = Math.max(-1, Math.min(1, opts.pan));
+      gain.connect(pan);
+      pan.connect(out);
+    } else {
+      gain.connect(out);
+    }
     osc.start(t0);
     osc.stop(t0 + duration + 0.02);
   }
 
-  private noise(duration: number, volume = 0.3, delay = 0): void {
-    if (!this.ctx || !this.master) return;
-    const t0 = this.ctx.currentTime + delay;
-    const buffer = this.ctx.createBuffer(1, this.ctx.sampleRate * duration, this.ctx.sampleRate);
+  private noise(duration: number, volume = 0.3, delay = 0, opts: { band?: number; pan?: number } = {}): void {
+    const ctx = this.ctx;
+    const out = this.engine.sfx;
+    if (!ctx || !out) return;
+    const t0 = ctx.currentTime + delay;
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
-    const src = this.ctx.createBufferSource();
+    const src = ctx.createBufferSource();
     src.buffer = buffer;
-    const gain = this.ctx.createGain();
+    const gain = ctx.createGain();
     gain.gain.setValueAtTime(volume, t0);
     gain.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
+    let head: AudioNode = gain;
     src.connect(gain);
-    gain.connect(this.master);
+    if (opts.band) {
+      // Focused hiss instead of full-spectrum static — cloth, grass, air.
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = opts.band;
+      bp.Q.value = 0.9;
+      head.connect(bp);
+      head = bp;
+    }
+    if (opts.pan) {
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = Math.max(-1, Math.min(1, opts.pan));
+      head.connect(pan);
+      head = pan;
+    }
+    head.connect(out);
     src.start(t0);
   }
 
@@ -261,5 +296,46 @@ export class Sfx {
     this.tone(440, 0.12, { type: 'sine', volume: 0.2, detune: false });
     this.tone(660, 0.14, { type: 'sine', volume: 0.18, delay: 0.06, detune: false });
     this.tone(880, 0.2, { type: 'triangle', volume: 0.16, delay: 0.12, detune: false });
+  }
+
+  /**
+   * One foot meeting the ground. THE SOFT-STEP LAW: footsteps are felt
+   * more than heard — grass is a brush of cloth against blades, stone
+   * a small dry contact, never a clop. `vol` arrives distance- and
+   * gait-scaled from the caller; everything here stays under it.
+   */
+  footstep(mat: 'grass' | 'stone' | 'wood' | 'dirt' | 'sand' | 'cave' | 'wet', vol: number, pan = 0): void {
+    switch (mat) {
+      case 'grass':
+        // Two tiny brushed puffs — the blade rustle the user asked for.
+        this.noise(0.055, vol * 0.9, 0, { band: 2600, pan });
+        this.noise(0.09, vol * 0.5, 0.035, { band: 1900, pan });
+        break;
+      case 'stone':
+        this.tone(190, 0.045, { type: 'triangle', slide: -60, volume: vol * 0.7, pan });
+        this.noise(0.035, vol * 0.55, 0, { band: 1400, pan });
+        break;
+      case 'wood':
+        this.tone(130, 0.06, { type: 'triangle', slide: -40, volume: vol * 0.9, pan });
+        this.noise(0.03, vol * 0.3, 0, { band: 900, pan });
+        break;
+      case 'sand':
+        this.noise(0.1, vol * 0.7, 0, { band: 1500, pan });
+        break;
+      case 'cave':
+        // Same dry contact as stone, but the room hears it: the sfx bus
+        // send carries the tail, so the echo comes free.
+        this.tone(170, 0.05, { type: 'triangle', slide: -55, volume: vol * 0.8, pan });
+        this.noise(0.045, vol * 0.6, 0, { band: 1200, pan });
+        break;
+      case 'wet':
+        this.noise(0.08, vol * 0.8, 0, { band: 3200, pan });
+        this.tone(300, 0.05, { type: 'sine', slide: -140, volume: vol * 0.4, delay: 0.01, pan });
+        break;
+      default:
+        // dirt: the soft default thud.
+        this.noise(0.06, vol * 0.7, 0, { band: 700, pan });
+        break;
+    }
   }
 }
