@@ -147,6 +147,12 @@ export class LegRig {
   plants = 0;
   /** Body speed (tiles/sec) at the most recent touchdown. */
   plantSpeed = 0;
+  /** World position of the foot that just landed (dust spawns here). */
+  plantX = 0;
+  plantY = 0;
+  /** Body velocity at the touchdown — dust kicks back along this. */
+  plantVx = 0;
+  plantVy = 0;
   /** Signed idle-turn accumulator; a big enough pivot owes a shuffle. */
   private lastDir: number | null = null;
   private turnDebt = 0;
@@ -349,6 +355,10 @@ export class LegRig {
           // carries the gait vigor so idle shuffles land near-silent.
           this.plants++;
           this.plantSpeed = speed;
+          this.plantX = f.x;
+          this.plantY = f.y;
+          this.plantVx = this.vx;
+          this.plantVy = this.vy;
         }
       } else {
         f.lift = 0;

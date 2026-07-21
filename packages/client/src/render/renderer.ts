@@ -7777,6 +7777,75 @@ export class Renderer {
     }
   }
 
+  /** What a footfall kicks loose from each ground. Null = nothing
+   * (wet ground swallows the impact). Mult scales how much a given
+   * surface gives up — sand erupts, flagstone barely powders. */
+  private static dustFor(tile: number | undefined): { colors: string[]; mult: number } | null {
+    switch (tile) {
+      case undefined:
+      case Tile.Water:
+      case Tile.WaterDeep:
+      case Tile.Swamp:
+        return null;
+      case Tile.Sand:
+        return { colors: ['#d9c9a2', '#cdbb8e', '#e3d5b0'], mult: 1.3 };
+      case Tile.Snow:
+        return { colors: ['#eef2f7', '#dfe7f0', '#cdd8e6'], mult: 1.2 };
+      case Tile.StoneFloor:
+      case Tile.Cliff:
+      case Tile.Ramp:
+        return { colors: ['#9aa2ac', '#8a8494', '#a7aeb8'], mult: 0.45 };
+      case Tile.WoodFloor:
+      case Tile.Bridge:
+        return { colors: ['#b5a488', '#a5936f'], mult: 0.35 };
+      case Tile.CaveFloor:
+      case Tile.CaveWall:
+        return { colors: ['#767083', '#6a6375', '#847e91'], mult: 0.7 };
+      case Tile.Grass:
+      case Tile.GrassTall:
+        // Turf holds itself together — a footfall shakes loose dry
+        // earth with a few green bits, not a sandstorm.
+        return { colors: ['#8a9a5e', '#a89880', '#7d8f55'], mult: 0.8 };
+      default:
+        // Path, Dirt, Tilled, crops, anything else earthy.
+        return { colors: ['#a89880', '#bcae94', '#9b8a70'], mult: 1 };
+    }
+  }
+
+  /**
+   * A foot met the ground — kick loose a puff of whatever the ground
+   * is made of. Speed decides how much earth moves: an amble stirs
+   * almost nothing, a sprint tears little clouds off every plant.
+   * The puff fans low and backward along the travel line, billows
+   * (grow) and settles fast (drag) — impact dust, not smoke.
+   */
+  private kickDust(legs: LegRig, sizeMult = 1): void {
+    const speed = legs.plantSpeed;
+    if (speed < 1.1) return; // idle shuffles and turns stir nothing
+    const world = this.game?.world;
+    if (!world) return;
+    const x = legs.plantX;
+    const y = legs.plantY;
+    const dust = Renderer.dustFor(world.groundAt(Math.floor(x), Math.floor(y)));
+    if (!dust) return;
+    // 0 at a slow walk → 1 at a full sprint (~5 tiles/sec).
+    const k = Math.min(1, (speed - 1.1) / 3.9);
+    const power = (0.35 + 0.65 * k) * dust.mult * sizeMult;
+    const count = Math.round(0.6 + 2.6 * k * dust.mult * sizeMult);
+    if (count < 1) return;
+    const dir = Math.atan2(-legs.plantVy, -legs.plantVx);
+    this.particles.burst(x, y, count, dust.colors, {
+      dir,
+      spread: 1.3,
+      speed: 0.6 + 1.3 * k,
+      life: 0.45 + 0.35 * k,
+      size: 0.045 + 0.05 * power,
+      gravity: 0.4,
+      drag: 3.4,
+      grow: 0.08 + 0.1 * power,
+    });
+  }
+
   private humanoidItem(e: {
     eid: number | 'own';
     x: number;
@@ -7817,6 +7886,8 @@ export class Renderer {
     } else if (anim.legs.plants !== anim.lastPlants) {
       anim.lastPlants = anim.legs.plants;
       this.onFootstep?.(e.x, e.y, anim.legs.plantSpeed, e.isOwn === true, e.pose === PoseState.Sneak);
+      // Sneaking feet roll heel-to-toe — nothing gets kicked loose.
+      if (e.pose !== PoseState.Sneak) this.kickDust(anim.legs);
     }
     const poseT = Math.min(1, (now - anim.poseStartedAt) / 280);
     // Rest-carriage clock: survives Idle↔Walk flips, resets only when
@@ -8244,6 +8315,14 @@ export class Renderer {
       anim.kneeMemory.length = 0;
     }
     const legPose = anim.legs.update(s.x, s.y, s.dir, this.frameDt);
+    // Beast touchdowns kick dust too — a wolf at full sprint tears
+    // little clouds loose just like a player does, scaled to its size.
+    if (anim.lastPlants === undefined) {
+      anim.lastPlants = anim.legs.plants;
+    } else if (anim.legs.plants !== anim.lastPlants) {
+      anim.lastPlants = anim.legs.plants;
+      this.kickDust(anim.legs, Math.max(0.5, Math.min(1.3, (def?.radius ?? 0.3) / 0.3)));
+    }
     const feet = legPose.feet.map((f) => {
       const fp = this.camera.worldToScreen(f.x, f.y, this.w, this.h);
       fp.y -= this.renderLift(f.x, f.y) * scale;
