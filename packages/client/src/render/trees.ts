@@ -43,7 +43,7 @@
  */
 
 import { Tile, hashCoords } from '@devcraft/shared';
-import { facetBlob } from './shapes.js';
+import { BLOB_M, unitBlob } from './shapes.js';
 import { shade } from './rig.js';
 import { windScalarAt } from './grass.js';
 
@@ -644,7 +644,12 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
   const shadePath = new Path2D();
   const tonePaths = [new Path2D(), new Path2D(), new Path2D()];
   const litPath = new Path2D();
-  const pctx = (p: Path2D): CanvasRenderingContext2D => p as unknown as CanvasRenderingContext2D;
+  // Clusters stamp CACHED unit blobs (shapes.ts unitBlob) — the facet
+  // trig ran once per (seed, sides) ever; per frame each cluster is
+  // three addPath calls with a scale+squash matrix. Pixel-identical.
+  const M = BLOB_M;
+  M.b = 0;
+  M.c = 0;
   let drew = false;
   for (let i = 0; i < n; i++) {
     const c = m.clusters[i]!;
@@ -653,10 +658,23 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
     const cx = X(c.x + rx[i]!);
     const cy = Y(c.y + ry[i]!);
     const cr = c.r * rMul * s * g * rb[i]!;
-    facetBlob(pctx(shadePath), cx + cr * 0.11, cy + cr * 0.13, cr * 0.98, c.seed, m.sides, 0.92);
-    facetBlob(pctx(tonePaths[c.tone]!), cx, cy, cr * 0.94, c.seed, m.sides, 0.92);
+    const blob = unitBlob(c.seed, m.sides);
+    M.a = cr * 0.98;
+    M.d = cr * 0.98 * 0.92;
+    M.e = cx + cr * 0.11;
+    M.f = cy + cr * 0.13;
+    shadePath.addPath(blob, M);
+    M.a = cr * 0.94;
+    M.d = cr * 0.94 * 0.92;
+    M.e = cx;
+    M.f = cy;
+    tonePaths[c.tone]!.addPath(blob, M);
     if (c.lit) {
-      facetBlob(pctx(litPath), cx - cr * 0.2, cy - cr * 0.28, cr * 0.5, c.seed ^ 0x55, 6, 0.9);
+      M.a = cr * 0.5;
+      M.d = cr * 0.5 * 0.9;
+      M.e = cx - cr * 0.2;
+      M.f = cy - cr * 0.28;
+      litPath.addPath(unitBlob(c.seed ^ 0x55, 6), M);
     }
   }
   if (drew) {

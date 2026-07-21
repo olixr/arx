@@ -18,7 +18,12 @@ export interface WindSample {
  * sideways as they pass). Pure function of position + time.
  */
 export declare function windAt(wx: number, wy: number, tSec: number): WindSample;
-/** Scalar wind for anything that only bends one way (the trees). */
+/**
+ * Scalar wind for anything that only bends one way (the trees). Same
+ * formula as windAt's `s` — inlined WITHOUT the meander/luminance
+ * terms, because tree canopies sample this per cluster per frame and
+ * the discarded sines were ~40% of the call.
+ */
 export declare function windScalarAt(wx: number, wy: number, tSec: number): number;
 export interface Blade {
     bx: number;
@@ -90,10 +95,31 @@ export declare class GrassSystem {
     private tSec;
     private nowMs;
     private paths;
+    /**
+     * GRASS CASTS. Every blade tall enough to read appends one sheared
+     * ground quad here during the under pass — base at the root, tip
+     * thrown (kx, ky) px per px of height past the wind-bent crown, so
+     * shadows sway with the SAME gusts as their blades. The renderer
+     * fills the whole meadow's shadow in ONE path into the shared
+     * shadow layer (merge law: overlaps never stack), where props'
+     * shadows and the interior punch-out already live.
+     */
+    private shadowPath;
+    private shKx;
+    private shKy;
+    private shOn;
     private touched;
     private readonly touchedFlag;
-    /** Scratch: disturbers near the tile currently being built. */
+    /** Disturbers near the tile currently being built. */
     private near;
+    /**
+     * Tile → disturbers-in-range, rebuilt once per frame from each
+     * disturber's footprint (~5×5 tiles). Inverts the old per-tile scan
+     * over every live body: thousands of visible tiles × N disturbers of
+     * box tests became one map lookup per tile. Same coverage box, so
+     * blade output is identical.
+     */
+    private readonly disturberIndex;
     /**
      * Per-frame flutter table: every blade's tremble is one of 32 phase
      * bins sampled once per frame — thousands of Math.sin calls become
@@ -107,10 +133,19 @@ export declare class GrassSystem {
      * patch of tall grass.
      */
     beginFrame(nowMs: number, frameDt: number, disturbers: Disturber[], groundAt: Sampler, rustle: (x: number, y: number) => void, camX: number, camY: number): void;
+    /** Arm (or disarm) this frame's blade shadow projection. */
+    setShadow(kx: number, ky: number, on: boolean): void;
+    /**
+     * Fill the frame's accumulated blade shadows — called by the
+     * renderer inside the ground-shadow prepass so grass shade lands on
+     * the same batched layer as every other caster.
+     */
+    flushShadows(ctx: CanvasRenderingContext2D, fill: string, alpha: number): void;
     private tile;
     private ensurePaths;
     private mark;
-    /** Refresh the near-disturber scratch list for one tile. */
+    private static readonly NO_DISTURBERS;
+    /** Point `near` at this tile's precomputed disturber list. */
     private gatherNear;
     /** Two corner samples → the tile's exact local affine frame. */
     private tileFrame;

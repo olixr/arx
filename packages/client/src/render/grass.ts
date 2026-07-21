@@ -76,9 +76,21 @@ export function windAt(wx: number, wy: number, tSec: number): WindSample {
   };
 }
 
-/** Scalar wind for anything that only bends one way (the trees). */
+/**
+ * Scalar wind for anything that only bends one way (the trees). Same
+ * formula as windAt's `s` — inlined WITHOUT the meander/luminance
+ * terms, because tree canopies sample this per cluster per frame and
+ * the discarded sines were ~40% of the call.
+ */
 export function windScalarAt(wx: number, wy: number, tSec: number): number {
-  return windAt(wx, wy, tSec).s;
+  const along = wx * WX + wy * WY;
+  const across = -wx * WY + wy * WX;
+  const frontBend = 0.9 * Math.sin(across * 0.055 + tSec * 0.13);
+  const gust = 0.6 + 0.4 * Math.sin(along * 0.05 - tSec * 0.34 + frontBend);
+  const sway =
+    0.72 * Math.sin(along * 0.12 - tSec * 1.25 + 0.35 * frontBend) +
+    0.28 * Math.sin(along * 0.2 - tSec * 1.9 + 0.7);
+  return gust * (0.4 + sway);
 }
 
 // ------------------------------------------------------------ generation
@@ -405,8 +417,16 @@ export class GrassSystem {
   private shOn = false;
   private touched: number[] = [];
   private readonly touchedFlag = new Uint8Array(BUCKETS);
-  /** Scratch: disturbers near the tile currently being built. */
+  /** Disturbers near the tile currently being built. */
   private near: LiveDisturber[] = [];
+  /**
+   * Tile → disturbers-in-range, rebuilt once per frame from each
+   * disturber's footprint (~5×5 tiles). Inverts the old per-tile scan
+   * over every live body: thousands of visible tiles × N disturbers of
+   * box tests became one map lookup per tile. Same coverage box, so
+   * blade output is identical.
+   */
+  private readonly disturberIndex = new Map<number, LiveDisturber[]>();
   /**
    * Per-frame flutter table: every blade's tremble is one of 32 phase
    * bins sampled once per frame — thousands of Math.sin calls become
@@ -460,6 +480,22 @@ export class GrassSystem {
     if (this.lastPos.size > disturbers.length + 8) {
       const ids = new Set(disturbers.map((d) => d.id));
       for (const key of this.lastPos.keys()) if (!ids.has(key)) this.lastPos.delete(key);
+    }
+    // Rebuild the tile → nearby-disturbers index for this frame.
+    this.disturberIndex.clear();
+    for (const d of this.live) {
+      const tx0 = Math.floor(d.x - 2.3);
+      const tx1 = Math.floor(d.x + 2.3);
+      const ty0 = Math.floor(d.y - 2.3);
+      const ty1 = Math.floor(d.y + 2.3);
+      for (let ty = ty0; ty <= ty1; ty++) {
+        for (let tx = tx0; tx <= tx1; tx++) {
+          const key = (ty + 8192) * 16384 + (tx + 8192);
+          const list = this.disturberIndex.get(key);
+          if (list) list.push(d);
+          else this.disturberIndex.set(key, [d]);
+        }
+      }
     }
     // Evict geometry far outside the camera's neighbourhood.
     if (this.tiles.size > 6000) {
@@ -526,14 +562,12 @@ export class GrassSystem {
     }
   }
 
-  /** Refresh the near-disturber scratch list for one tile. */
+  private static readonly NO_DISTURBERS: LiveDisturber[] = [];
+
+  /** Point `near` at this tile's precomputed disturber list. */
   private gatherNear(tx: number, ty: number): void {
-    this.near.length = 0;
-    const cx = tx + 0.5;
-    const cy = ty + 0.5;
-    for (const d of this.live) {
-      if (Math.abs(d.x - cx) < 1.8 && Math.abs(d.y - cy) < 1.8) this.near.push(d);
-    }
+    this.near =
+      this.disturberIndex.get((ty + 8192) * 16384 + (tx + 8192)) ?? GrassSystem.NO_DISTURBERS;
   }
 
   /** Two corner samples → the tile's exact local affine frame. */
@@ -599,6 +633,11 @@ export class GrassSystem {
     // Perf law: HALF the blades cast (bin parity), drawn a touch
     // wider — half the path scan for the same read; a full-herd cast
     // measured 31fps on a dense meadow.
+    // PATH2D CLOSE LAW: never call closePath() on a shared accumulating
+    // Path2D — Chromium's closePath walks the whole path (O(n)), so one
+    // close per quad goes quadratic across the meadow (measured 115ms
+    // for 8k quads vs 0.6ms without). fill() closes every subpath
+    // implicitly, so for fill-only geometry the calls were pure cost.
     if (cast && this.shOn && hpx >= 8 && (b.bin & 1) === 0) {
       const sp = (this.shadowPath ??= new Path2D());
       const sx = tipX + this.shKx * hpx;
@@ -608,7 +647,6 @@ export class GrassSystem {
       sp.lineTo(px + ws, py);
       sp.lineTo(sx + w1 * 1.25, sy);
       sp.lineTo(sx - w1 * 1.25, sy);
-      sp.closePath();
     }
     if (!drawBlade) return;
 
@@ -631,13 +669,11 @@ export class GrassSystem {
       path.lineTo(tipX + w1, tipY);
       path.lineTo(tipX - w1, tipY);
       path.lineTo(midX - wm, midY);
-      path.closePath();
     } else {
       path.moveTo(px - w0, py);
       path.lineTo(px + w0, py);
       path.lineTo(tipX + w1, tipY);
       path.lineTo(tipX - w1, tipY);
-      path.closePath();
     }
   }
 
@@ -682,7 +718,6 @@ export class GrassSystem {
       sp.lineTo(px + ssw, py);
       sp.lineTo(sx + ssw, sy);
       sp.lineTo(sx - ssw, sy);
-      sp.closePath();
       const spr = f.size * s;
       sp.rect(sx - spr, sy - spr * 0.55, spr * 2, spr * 1.1);
     }
@@ -695,7 +730,6 @@ export class GrassSystem {
     stem.lineTo(px + sw, py);
     stem.lineTo(hx + sw * 0.7, hy);
     stem.lineTo(hx - sw * 0.7, hy);
-    stem.closePath();
 
     // Bloom: a pixel-flower plus — four petal chips around a core.
     const pr = f.size * s;
@@ -723,7 +757,6 @@ export class GrassSystem {
       path.lineTo(px - w * 0.6, py - h);
       path.lineTo(px + w * 0.6, py - h);
       path.lineTo(px + w, py);
-      path.closePath();
     }
   }
 

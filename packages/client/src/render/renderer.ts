@@ -28,6 +28,7 @@ import { bandDy, enchantDef, instanceName, itemDef, npcDef, npcHitHeight } from 
 import type { ClientGame } from '../game/clientGame.js';
 import {
   ANVIL_CYCLE_MS,
+  CATTLE_LOOKS,
   CHOP_CYCLE_MS,
   FORAGE_CYCLE_MS,
   FURNACE_CYCLE_MS,
@@ -35,13 +36,29 @@ import {
   MINE_CYCLE_MS,
   beastSpec,
   drawBackGear,
+  drawBat,
   drawBeast,
   drawHumanoid,
+  drawSlime,
+  drawSnake,
   shade,
   type RigPose,
 } from './rig.js';
 import { LegRig } from './legs.js';
-import { chamferRect, facetBlob, facetCircle } from './shapes.js';
+import {
+  BEAST_UPPER,
+  HUMANOID_FEET,
+  HUMANOID_UPPER,
+  Ragdoll,
+  buildBeastRagdoll,
+  buildHumanoidRagdoll,
+  drawBeastRagdoll,
+  drawHumanoidRagdoll,
+  type BeastCorpseLook,
+  type HumanoidCorpseLook,
+  type RagImpact,
+} from './ragdoll.js';
+import { BLOB_M, chamferRect, facetBlob, facetCircle, unitBlob } from './shapes.js';
 import { Particles } from './particles.js';
 import { GrassSystem, windAt, windScalarAt, type Disturber } from './grass.js';
 import { paintTree, treeModel, type TreeModel } from './trees.js';
@@ -75,6 +92,25 @@ import {
  */
 const SHADOW_SUN = '#180e20';
 const SHADOW_MOON = '#0e1430';
+/**
+ * Tree sprites/shadow paths re-bake every Nth frame (staggered by a
+ * per-frame budget). Sway drifts ~12px/s at 0.85 zoom, so a 4-frame
+ * cadence at 120fps steps ~0.4px — animation-rate sampling, invisible.
+ */
+const TREE_REBAKE_FRAMES = 6;
+/**
+ * Target tree re-bakes per frame (~0.8ms). The cadence ADAPTS to the
+ * visible tree count so a thick forest stretches the re-bake interval
+ * (motion sampling ~20Hz in a meadow → ~10Hz in a 300-tree forest,
+ * ~1px sway steps) instead of saturating a fixed budget every frame —
+ * a saturated budget both costs milliseconds AND starves the trees
+ * late in scan order, freezing their sway entirely.
+ */
+const TREE_BAKES_PER_FRAME = 28;
+/** Hard per-frame backstop (teleports/zoom flips force-bake herds). */
+const TREE_BAKE_BUDGET = 48;
+/** Cadence bounds: never faster than 6 frames, never slower than 24. */
+const TREE_CADENCE_MAX = 24;
 const CONTACT_MIN = 0.15;
 const CONTACT_MAX = 0.3;
 
@@ -176,9 +212,15 @@ const LOW_STICK_TILES = new Set<number>([
   Tile.CrateGoods,
   Tile.FishingSpot,
 ]);
-/** Ragdoll rest: how long a settled corpse lies, then how long it fades. */
-const CORPSE_LIE_MS = 850;
-const CORPSE_FADE_MS = 600;
+/**
+ * Ragdoll rest: how long a settled corpse lingers before it fades. The
+ * long lie is the point — mow through a camp and the bodies stay down
+ * around you, evidence of the fight, then wisp away.
+ */
+const CORPSE_LIE_MS = 8000;
+const CORPSE_FADE_MS = 1200;
+/** Most corpses lying around at once; the oldest gives way first. */
+const CORPSE_MAX = 24;
 
 interface AnimState {
   walkPhase: number;
@@ -201,6 +243,9 @@ interface AnimState {
   lastChopHit?: number;
   /** Leg-rig plant counter at the last frame — footstep event diffing. */
   lastPlants?: number;
+  /** Smoothed 0..1 travel activity — leg-less bodies (slimes, snakes)
+   *  gate their locomotion animation on it. */
+  moveK?: number;
   /** The entity's cape cloth sim — present only while one is worn. */
   cape?: CapeSim;
   /** Which cape item `cape` was built for; a change rebuilds the cloth. */
@@ -392,33 +437,31 @@ export class Renderer {
   private zoomPulseAmount = 0;
   private readonly rings: Array<{ x: number; y: number; color: string; bornAt: number; maxR: number }> = [];
   /**
-   * Ragdoll corpses: the death beat. At the death instant the victim's
-   * ACTUAL rendered body (same painters, same outline pass — a true
-   * 1:1) is captured into a sprite, which then launches along the
-   * killing blow, tumbles, bounces in dust kicks, eases flat where it
-   * stops, and fades as its soul wisps away. Physics run on frameDt,
-   * so the kill's hitstop gives every ragdoll a slow-motion launch.
+   * Ragdoll corpses: the death beat. At the death instant the victim
+   * becomes a limp articulated skeleton (Ragdoll in ragdoll.ts) drawn
+   * in the live rig's own dialect. The killing blow launches it — hard
+   * hits drag the body back through the scene, chip kills crumple it
+   * where it stands — the limbs trail the trunk's momentum, and the
+   * whole thing thuds down and SPRAWLS. No spin, no bouncing prop.
+   * Physics run on frameDt, so the kill's hitstop gives every ragdoll
+   * a slow-motion launch.
    */
   private readonly corpses: Array<{
-    /** The captured body — outline and all, exactly as it stood. */
-    sprite: HTMLCanvasElement;
-    /** Sprite top-left relative to the ground point, at capture scale. */
-    dx: number;
-    dy: number;
-    capScale: number;
-    radius: number;
+    rag: Ragdoll;
+    look:
+      | { kind: 'humanoid'; h: HumanoidCorpseLook }
+      | { kind: 'beast'; b: BeastCorpseLook };
+    /** World anchor the skeleton hangs from, sliding with the blow. */
     x: number;
     y: number;
     vx: number;
     vy: number;
-    /** Height above the ground (tiles) + vertical speed. */
-    z: number;
-    vz: number;
-    angle: number;
-    spin: number;
-    bounces: number;
+    /** First trunk touchdown already made its thud sound. */
+    thudded: boolean;
     settledAt: number | null;
   }> = [];
+  /** Body-thud hook: the renderer sees the landing, main.ts owns sfx. */
+  onCorpseThud?: (heavy: boolean) => void;
 
   /** A quick camera zoom kick — the killing-blow exclamation point. */
   zoomPulse(amount = 0.045): void {
@@ -1338,6 +1381,12 @@ export class Renderer {
     }
     const dist = Math.hypot(x - anim.lastX, y - anim.lastY);
     anim.walkPhase += dist * 0.55;
+    // Travel activity, low-passed so a hop animation neither flickers
+    // on interpolation jitter nor freezes mid-air the frame motion stops.
+    const dt = Math.max(this.frameDt, 1e-3);
+    const targetK = Math.min(1, dist / dt / 1.5);
+    const blend = Math.min(1, dt * 8);
+    anim.moveK = (anim.moveK ?? 0) * (1 - blend) + targetK * blend;
     anim.lastX = x;
     anim.lastY = y;
     if (pose !== anim.lastPose) {
@@ -1364,6 +1413,14 @@ export class Renderer {
   render(game: ClientGame, frameDt: number): void {
     this.game = game;
     this.resize();
+    this.frameNo++;
+    this.treeBakeBudget = TREE_BAKE_BUDGET;
+    this.treeShadowBudget = TREE_BAKE_BUDGET;
+    this.treeCadence = Math.min(
+      TREE_CADENCE_MAX,
+      Math.max(TREE_REBAKE_FRAMES, Math.ceil(this.treesVisible / TREE_BAKES_PER_FRAME)),
+    );
+    this.treesVisible = 0;
     // The sky rules the frame: shadows, exposure, grade all read it.
     this.sky = daylightAt(game.clockHoursNow());
     // Hitstop slows animation + particles to a crawl for a few frames;
@@ -1608,6 +1665,7 @@ export class Renderer {
     this.drawVignette();
     this.evictBaked();
     this.evictAnims();
+    this.evictTreeSprites();
   }
 
   /**
@@ -1964,48 +2022,7 @@ export class Renderer {
         const resStale = !contentStale && baked!.px !== bakePx && resBudget > 0;
         if (contentStale || resStale) {
           if (resStale) resBudget--;
-          const ground = (tx: number, ty: number) => game.world.groundAt(tx, ty);
-          const detail = (tx: number, ty: number) => this.detailAt(game, tx, ty);
-          const elev = (tx: number, ty: number) => game.world.elevAt(tx, ty);
-          let maxLevel = 0;
-          let minLevel = 0;
-          for (let i = 0; i < data.elev.length; i++) {
-            const e = data.elev[i]!;
-            if (e > maxLevel) maxLevel = e;
-            if (e < minLevel) minLevel = e;
-          }
-          const lifted: BakedChunk['lifted'] = [];
-          // Levels bake in ASCENDING order — same-row crown items tie
-          // on sortY and rely on stable sort, so 0 must paint over −1's
-          // down-shifted spill, −1 over −2's. A chunk without pits
-          // skips the level-0 layer entirely: the flat base blit is it.
-          for (let level = minLevel; level <= maxLevel; level++) {
-            if (level === 0 && minLevel >= 0) continue;
-            const bake = bakeElevated(ground, detail, elev, cx, cy, bakePx, level);
-            if (!bake) continue;
-            // Contiguous row runs, merged across small gaps, padded one
-            // row each way for the half-tile contour bleed.
-            const bands: Array<[number, number]> = [];
-            for (let r = 0; r < CHUNK_SIZE; r++) {
-              if (!bake.rows[r]) continue;
-              const last = bands[bands.length - 1];
-              if (last && r - last[1] <= 3) last[1] = r;
-              else bands.push([r, r]);
-            }
-            for (const band of bands) {
-              band[0] = Math.max(0, band[0] - 1);
-              band[1] = Math.min(CHUNK_SIZE - 1, band[1] + 1);
-            }
-            lifted.push({ level, canvas: bake.canvas, bands });
-          }
-          baked = {
-            canvas: bakeChunk(ground, detail, elev, cx, cy, bakePx),
-            data,
-            rev: data.rev ?? 0,
-            px: bakePx,
-            lifted,
-          };
-          this.baked.set(key, baked);
+          baked = this.bakeChunkEntry(game, cx, cy, data, bakePx);
         }
         if (!baked) continue; // unreachable: contentStale covers !baked
         // SHARED-CORNER SNAP LAW: each chunk's destination rect comes
@@ -2040,6 +2057,75 @@ export class Renderer {
         );
       }
     }
+    // PRE-BAKE RING: chunks one step outside the viewport bake (one
+    // per frame) BEFORE they scroll in. Interest radius 2 streams
+    // their data well ahead, so without this a fresh chunk column hit
+    // the view edge un-baked and did 2-3 full 1024px bakes in a single
+    // frame — the worst walking hitch in a forest (measured 34ms).
+    outer: for (let cy = minCy - 1; cy <= maxCy + 1; cy++) {
+      for (let cx = minCx - 1; cx <= maxCx + 1; cx++) {
+        if (cx >= minCx && cx <= maxCx && cy >= minCy && cy <= maxCy) continue;
+        const data = game.world.get(cx, cy);
+        if (!data) continue;
+        const baked = this.baked.get(`${cx},${cy}`);
+        if (baked && baked.data === data && baked.rev === (data.rev ?? 0)) continue;
+        this.bakeChunkEntry(game, cx, cy, data, bakePx);
+        break outer;
+      }
+    }
+  }
+
+  /** Bake one chunk (base blit + elevated bands) and cache it. */
+  private bakeChunkEntry(
+    game: ClientGame,
+    cx: number,
+    cy: number,
+    data: NonNullable<ReturnType<ClientGame['world']['get']>>,
+    bakePx: number,
+  ): BakedChunk {
+    const ground = (tx: number, ty: number) => game.world.groundAt(tx, ty);
+    const detail = (tx: number, ty: number) => this.detailAt(game, tx, ty);
+    const elev = (tx: number, ty: number) => game.world.elevAt(tx, ty);
+    let maxLevel = 0;
+    let minLevel = 0;
+    for (let i = 0; i < data.elev.length; i++) {
+      const e = data.elev[i]!;
+      if (e > maxLevel) maxLevel = e;
+      if (e < minLevel) minLevel = e;
+    }
+    const lifted: BakedChunk['lifted'] = [];
+    // Levels bake in ASCENDING order — same-row crown items tie
+    // on sortY and rely on stable sort, so 0 must paint over −1's
+    // down-shifted spill, −1 over −2's. A chunk without pits
+    // skips the level-0 layer entirely: the flat base blit is it.
+    for (let level = minLevel; level <= maxLevel; level++) {
+      if (level === 0 && minLevel >= 0) continue;
+      const bake = bakeElevated(ground, detail, elev, cx, cy, bakePx, level);
+      if (!bake) continue;
+      // Contiguous row runs, merged across small gaps, padded one
+      // row each way for the half-tile contour bleed.
+      const bands: Array<[number, number]> = [];
+      for (let r = 0; r < CHUNK_SIZE; r++) {
+        if (!bake.rows[r]) continue;
+        const last = bands[bands.length - 1];
+        if (last && r - last[1] <= 3) last[1] = r;
+        else bands.push([r, r]);
+      }
+      for (const band of bands) {
+        band[0] = Math.max(0, band[0] - 1);
+        band[1] = Math.min(CHUNK_SIZE - 1, band[1] + 1);
+      }
+      lifted.push({ level, canvas: bake.canvas, bands });
+    }
+    const baked: BakedChunk = {
+      canvas: bakeChunk(ground, detail, elev, cx, cy, bakePx),
+      data,
+      rev: data.rev ?? 0,
+      px: bakePx,
+      lifted,
+    };
+    this.baked.set(`${cx},${cy}`, baked);
+    return baked;
   }
 
   private evictBaked(): void {
@@ -2061,6 +2147,34 @@ export class Renderer {
     const cutoff = performance.now() - 10_000;
     for (const [key, anim] of this.anims) {
       if (anim.lastSeen < cutoff) this.anims.delete(key);
+    }
+  }
+
+  /**
+   * Tree sprite/shadow caches ride the camera: drop entries not drawn
+   * for ~2s (scrolled away), and under a hard cap drop the coldest —
+   * a zoomed-in sprite is big (~0.4MB), so the cap is what bounds
+   * worst-case memory, not the typical count.
+   */
+  private evictTreeSprites(): void {
+    const cutoff = this.frameNo - 240;
+    for (const [key, sp] of this.treeSprites) {
+      if (sp.used < cutoff) {
+        this.treeSprites.delete(key);
+        if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(sp.canvas);
+      }
+    }
+    for (const [key, sh] of this.treeShadows) {
+      if (sh.used < cutoff) this.treeShadows.delete(key);
+    }
+    if (this.treeSprites.size > 420) {
+      for (const [key, sp] of this.treeSprites) {
+        if (sp.used < this.frameNo - 2) {
+          this.treeSprites.delete(key);
+          if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(sp.canvas);
+        }
+        if (this.treeSprites.size <= 360) break;
+      }
     }
   }
 
@@ -4283,6 +4397,116 @@ export class Renderer {
     return from + (to - from) * Renderer.growEase(u);
   }
 
+  /**
+   * TREE SPRITE CACHE: a mature tree's painted body re-bakes onto a
+   * per-instance offscreen canvas every TREE_REBAKE_FRAMES frames
+   * (staggered by a per-frame budget) and blits with ONE drawImage per
+   * frame in between. The sway moves ~12px/s at 0.85 zoom, so a ~30Hz
+   * re-bake steps well under a pixel — every cluster rustle, flutter
+   * and bough detail is still the live procedural painter's output,
+   * just sampled at animation rate instead of frame rate. Felling
+   * (bendOverride) and regrowth (grow < 1) stay fully live.
+   */
+  private readonly treeSprites = new Map<
+    number,
+    {
+      canvas: HTMLCanvasElement;
+      ctx: CanvasRenderingContext2D;
+      cw: number; // used css-px region
+      ch: number;
+      ax: number; // trunk-base anchor within the sprite (css px)
+      ay: number;
+      scale: number; // camera scale at bake
+      frame: number; // last bake frame
+      used: number; // last frame drawn (eviction)
+    }
+  >();
+  /** Sun-shadow twin: the projected silhouette Path2D built at origin. */
+  private readonly treeShadows = new Map<
+    number,
+    { path: Path2D; scale: number; frame: number; used: number }
+  >();
+  private treeBakeBudget = 0;
+  private treeShadowBudget = 0;
+  private frameNo = 0;
+  /** Trees drawn last frame — feeds the adaptive re-bake cadence. */
+  private treesVisible = 0;
+  private treeCadence = TREE_REBAKE_FRAMES;
+  /** Evicted sprite canvases, reused by new bakes (GC churn while walking). */
+  private readonly spriteCanvasPool: HTMLCanvasElement[] = [];
+
+  private static treeKey(wx: number, wy: number, tile: Tile): number {
+    return ((Math.floor(wx) + 8192) * 32768 + (Math.floor(wy) + 8192)) * 64 + (tile & 63);
+  }
+
+  private bakeTreeSprite(
+    prev: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | undefined,
+    m: TreeModel,
+    wx: number,
+    wy: number,
+    tSec: number,
+  ): {
+    canvas: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+    cw: number;
+    ch: number;
+    ax: number;
+    ay: number;
+    scale: number;
+    frame: number;
+    used: number;
+  } {
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    // Headroom: crown spread + wind-bend throw sideways; blob jitter
+    // (facet radii reach 1.12r) and rustle bob above; root flare below.
+    const half = (m.spread * 1.15 + 0.08 * m.height + 0.45) * s;
+    const top = (m.height * 1.18 + 0.45) * s;
+    const below = 0.3 * s;
+    const cw = Math.ceil(half * 2);
+    const ch = Math.ceil(top + below);
+    const dpr = window.devicePixelRatio || 1;
+    const pw = Math.max(1, Math.ceil(cw * dpr));
+    const ph = Math.max(1, Math.ceil(ch * dpr));
+    let canvas = prev?.canvas;
+    let sctx = prev?.ctx;
+    if (!canvas || !sctx || canvas.width < pw || canvas.height < ph) {
+      // Prefer a pooled evicted canvas over a fresh allocation — new
+      // trees stream in constantly while walking, and canvas churn
+      // shows up as GC tail frames. Oversized pool hits are fine (the
+      // blit reads a source rect); grossly oversized ones stay pooled.
+      canvas = undefined;
+      for (let i = this.spriteCanvasPool.length - 1; i >= 0; i--) {
+        const c = this.spriteCanvasPool[i]!;
+        if (c.width >= pw && c.height >= ph && c.width * c.height <= pw * ph * 2.5) {
+          canvas = c;
+          this.spriteCanvasPool.splice(i, 1);
+          break;
+        }
+      }
+      if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.width = pw;
+        canvas.height = ph;
+      }
+      sctx = canvas.getContext('2d')!;
+    }
+    sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    sctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    paintTree(sctx, m, { bx: half, groundY: top, s, syT, wx, wy, tSec, grow: 1 });
+    return {
+      canvas,
+      ctx: sctx,
+      cw,
+      ch,
+      ax: half,
+      ay: top,
+      scale: s,
+      frame: this.frameNo,
+      used: this.frameNo,
+    };
+  }
+
   private drawTree(
     bx: number,
     by: number,
@@ -4297,17 +4521,52 @@ export class Renderer {
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
     const m = treeModel(tile, h);
-    const wind = paintTree(this.ctx, m, {
-      bx,
-      groundY: by + syT * 0.3,
-      s,
-      syT,
-      wx,
-      wy,
-      tSec,
-      windOverride: bendOverride,
-      grow,
-    });
+    let wind: number;
+    if (bendOverride !== undefined || grow < 1) {
+      // Shape changes every frame — paint live.
+      wind = paintTree(this.ctx, m, {
+        bx,
+        groundY: by + syT * 0.3,
+        s,
+        syT,
+        wx,
+        wy,
+        tSec,
+        windOverride: bendOverride,
+        grow,
+      });
+    } else {
+      const key = Renderer.treeKey(wx, wy, tile);
+      this.treesVisible++;
+      let sp = this.treeSprites.get(key);
+      // Each tree re-bakes on its own phase of the (adaptive) cadence,
+      // derived from its key, so the herd never re-bakes in one frame —
+      // a phase-locked wave read as a p95 hitch every Nth frame.
+      const due = (this.frameNo + key) % this.treeCadence === 0;
+      const stale =
+        !sp || (due && sp.frame !== this.frameNo) || Math.abs(sp.scale - s) > s * 0.2;
+      if (stale && (!sp || this.treeBakeBudget > 0)) {
+        this.treeBakeBudget--;
+        sp = this.bakeTreeSprite(sp, m, wx, wy, tSec);
+        this.treeSprites.set(key, sp);
+      }
+      if (!sp) return;
+      sp.used = this.frameNo;
+      const dpr = window.devicePixelRatio || 1;
+      const k = s / sp.scale;
+      this.ctx.drawImage(
+        sp.canvas,
+        0,
+        0,
+        Math.ceil(sp.cw * dpr),
+        Math.ceil(sp.ch * dpr),
+        bx - sp.ax * k,
+        by + syT * 0.3 - sp.ay * k,
+        sp.cw * k,
+        sp.ch * k,
+      );
+      wind = windScalarAt(wx, wy, tSec);
+    }
 
     // Life: strong gusts shake the occasional leaf loose (skipped
     // while felling — the fall spawns its own debris).
@@ -4383,8 +4642,13 @@ export class Renderer {
       for (let i = last; i >= 0; i--) path.lineTo(right[i]![0], right[i]![1]);
       path.closePath();
     }
-    // Canopy: each cluster's own faceted blob, sheared flat.
+    // Canopy: each cluster's own faceted blob, sheared flat — stamped
+    // from the CACHED unit blob with the scale/squash/shear folded into
+    // one addPath matrix (no per-cluster Path2D, facetBlob, or
+    // DOMMatrix allocation; pixel-identical composite transform).
     const squash = Math.max(0.5, Math.abs(ky));
+    const M = BLOB_M;
+    M.b = 0;
     for (const c of m.clusters) {
       if (g < 0.7 && c.extra) continue;
       const dx = bendT * Math.pow(Math.max(0, c.hf), 1.4);
@@ -4392,9 +4656,12 @@ export class Renderer {
       const cyp = groundY + ky * c.y * g * s;
       const crp = c.r * rMul * s * g;
       if (crp < 1.5) continue;
-      const blob = new Path2D();
-      facetBlob(blob as unknown as CanvasRenderingContext2D, 0, 0, crp, c.seed, m.sides, 0.92);
-      path.addPath(blob, new DOMMatrix([1, 0, -kx, -squash, cxp, cyp]));
+      M.a = crp;
+      M.c = -kx * crp * 0.92;
+      M.d = -squash * crp * 0.92;
+      M.e = cxp;
+      M.f = cyp;
+      path.addPath(unitBlob(c.seed, m.sides), M);
     }
     return path;
   }
@@ -4415,27 +4682,71 @@ export class Renderer {
     const throws = this.lightThrows(bx, groundY, 0.6);
     if (!sunOn && throws.length === 0) return;
     const m = treeModel(tile, h);
-    const wind = windScalarAt(wx, wy, tSec);
     const ys = this.camera.yScale;
     if (sunOn) {
       const c = this.beginCastFill();
       if (c) {
-        c.fill(
-          this.treeShadowPath(
-            m,
-            bx,
-            groundY,
-            grow,
-            wind,
-            this.sky.shadowX * this.sky.shadowLen,
-            this.sky.shadowY * this.sky.shadowLen * ys,
-          ),
-        );
+        const s = this.camera.scale;
+        if (grow < 1) {
+          // Regrowth animates shape per frame — build live.
+          c.fill(
+            this.treeShadowPath(
+              m,
+              bx,
+              groundY,
+              grow,
+              windScalarAt(wx, wy, tSec),
+              this.sky.shadowX * this.sky.shadowLen,
+              this.sky.shadowY * this.sky.shadowLen * ys,
+            ),
+          );
+        } else {
+          // Cached silhouette, built at the origin on the sprite
+          // cadence (sun azimuth + sway drift sub-pixel across 4
+          // frames) and filled translated to the trunk base.
+          const key = Renderer.treeKey(wx, wy, tile);
+          let sh = this.treeShadows.get(key);
+          // Same per-key phase as the sprite: body and shadow re-bake
+          // in the same frame, so their sway always agrees.
+          const due = (this.frameNo + key) % this.treeCadence === 0;
+          const stale =
+            !sh || (due && sh.frame !== this.frameNo) || Math.abs(sh.scale - s) > s * 0.2;
+          if (stale && (!sh || this.treeShadowBudget > 0)) {
+            this.treeShadowBudget--;
+            sh = {
+              path: this.treeShadowPath(
+                m,
+                0,
+                0,
+                1,
+                windScalarAt(wx, wy, tSec),
+                this.sky.shadowX * this.sky.shadowLen,
+                this.sky.shadowY * this.sky.shadowLen * ys,
+              ),
+              scale: s,
+              frame: this.frameNo,
+              used: this.frameNo,
+            };
+            this.treeShadows.set(key, sh);
+          }
+          if (sh) {
+            sh.used = this.frameNo;
+            const k = s / sh.scale;
+            // Manual transform undo — a save/restore pair per tree was
+            // measurable at ~240 casts a frame.
+            c.translate(bx, groundY);
+            if (k !== 1) c.scale(k, k);
+            c.fill(sh.path);
+            if (k !== 1) c.scale(1 / k, 1 / k);
+            c.translate(-bx, -groundY);
+          }
+        }
         c.globalAlpha = 1;
       }
     }
     if (throws.length > 0) {
       const c = this.sdw;
+      const wind = windScalarAt(wx, wy, tSec);
       c.fillStyle = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
       for (const th of throws) {
         c.globalAlpha = Math.min(1, th.alpha / this.sdwLayerAlpha);
@@ -8191,9 +8502,19 @@ export class Renderer {
     if (this.outlineA.height < h) this.outlineA.height = this.outlineB.height = h;
     const a = this.outlineACtx;
     const o = this.outlineBCtx;
+    // Clear an APRON past the region on BOTH scratches: the canvases
+    // grow monotonically and keep a bigger entity's stale pixels just
+    // outside a smaller entity's region — the fractional-offset
+    // drawImage taps then bilinear-bleed those texels in at the region
+    // border, and the source-in tint turns the bleed into a faint dark
+    // rectangle riding the sprite (the "corner line" bug on chickens
+    // after any cow died).
+    const apron = Math.ceil(r) + 4;
+    const cw = Math.min(this.outlineA.width, w + apron);
+    const ch = Math.min(this.outlineA.height, h + apron);
     // 1. The entity paints itself into scratch A, believing it is the
     // frame — the main ctx is swapped out from under its closures.
-    a.clearRect(0, 0, w, h);
+    a.clearRect(0, 0, cw, ch);
     a.save();
     a.translate(m - b.x, m - b.y);
     const prev = this.ctx;
@@ -8204,8 +8525,11 @@ export class Renderer {
       this.ctx = prev;
       a.restore();
     }
-    // 2. Scratch B becomes the dilated, tinted silhouette.
-    o.clearRect(0, 0, w, h);
+    // 2. Scratch B becomes the dilated, tinted silhouette. (Taps draw
+    // from A only — a self-referencing drawImage forces Chromium to
+    // snapshot the whole scratch canvas per call; a "cheaper"
+    // separable self-blit dilate measured 3× SLOWER than these taps.)
+    o.clearRect(0, 0, cw, ch);
     for (const [tx, ty] of Renderer.OUTLINE_TAPS) {
       o.drawImage(this.outlineA, 0, 0, w, h, tx * r, ty * r, w, h);
     }
@@ -8226,7 +8550,7 @@ export class Renderer {
     hurt: boolean,
   ): DrawItem {
     // Humanoid monsters use the full IK rig with size/skin overrides.
-    if (defId.startsWith('goblin') || defId.startsWith('skeleton')) {
+    if (defId.startsWith('goblin') || defId.startsWith('skeleton') || defId === 'troll') {
       const def = npcDef(defId);
       return this.humanoidItem({
         eid,
@@ -8242,14 +8566,24 @@ export class Renderer {
         equip:
           defId === 'goblin'
             ? { weapon: 'bronze_sword' }
-            : defId === 'skeleton_champion'
-              ? // The boss wears the mantle he drops — the drop is a story.
-                { cape: 'cape_champion' }
-              : {},
+            : defId === 'skeleton_archer'
+              ? // The dead still draw — the bow is the silhouette.
+                { weapon: 'oak_shortbow' }
+              : defId === 'skeleton_champion'
+                ? // The boss wears the mantle he drops — the drop is a story.
+                  { cape: 'cape_champion' }
+                : {},
         color: def?.color ?? '#999',
-        skinColor: defId.startsWith('goblin') ? '#7aa74a' : '#e3ddcc',
-        size: defId === 'skeleton_champion' ? 1.25 : 0.85,
+        skinColor:
+          defId === 'troll' ? '#6a7d5c' : defId.startsWith('goblin') ? '#7aa74a' : '#e3ddcc',
+        size: defId === 'skeleton_champion' ? 1.25 : defId === 'troll' ? 1.4 : 0.85,
       });
+    }
+
+    // Leg-less bodies skip the rig entirely: gel blocks hop, wings
+    // hover, coils slither — each through its own dedicated painter.
+    if (defId === 'slime' || defId === 'slime_small' || defId === 'cave_bat' || defId === 'adder') {
+      return this.leglessItem(eid, defId, meta, s, hurt);
     }
 
     const def = npcDef(defId);
@@ -8309,6 +8643,8 @@ export class Renderer {
           hurt,
           kneeMemory: anim.kneeMemory,
           attackT,
+          seed: eid,
+          nowMs: performance.now(),
         });
       },
       // Bounds from the SPECIES SPEC, not the collision radius: a
@@ -8317,7 +8653,11 @@ export class Renderer {
       // to ring — the "seeping border" bug.
       body: (() => {
         const halfW = (spec.bodyLen * 2.0 + 0.35) * scale + r;
-        const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2) * scale + r;
+        // Tall headgear reaches past the spec envelope — the stag's
+        // antlers ride a raised neck and clip at the top edge without
+        // their own headroom (user-flagged walking up-screen).
+        const headroom = defId === 'stag' ? 0.7 : defId === 'ram' ? 0.25 : 0;
+        const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom) * scale + r;
         const bottom = (spec.rig.legLen + 0.7) * scale;
         return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };
       })(),
@@ -8335,6 +8675,86 @@ export class Renderer {
         }
         if (s.hpPct < 255) {
           this.drawMiniHp(p.x, p.y - r * 2.45, r * 2, s.hpPct);
+        }
+      },
+    };
+  }
+
+  /**
+   * The leg-less menagerie: slimes (hopping gel blocks), cave bats
+   * (hovering wing fans), adders (slithering ribbons). No LegRig — each
+   * body's locomotion IS its painter, gated on the anim's travel
+   * activity so a still body rests instead of freezing mid-cycle.
+   */
+  private leglessItem(
+    eid: number,
+    defId: string,
+    meta: { name?: string; level?: number },
+    s: { x: number; y: number; dir: number; hpPct: number; pose: number },
+    hurt: boolean,
+  ): DrawItem {
+    const def = npcDef(defId);
+    const scale = this.camera.scale;
+    const radius = def?.radius ?? 0.3;
+    const r = radius * scale;
+    const terrainLift = this.renderLift(s.x, s.y) * scale;
+    const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
+    p.y -= terrainLift;
+    const now = performance.now();
+    const anim = this.animFor(eid, s.x, s.y, s.pose, now);
+    const attackT =
+      s.pose === PoseState.Attack ? Math.min(1, (now - anim.poseStartedAt) / 420) : 0;
+    const moveK = anim.moveK ?? 0;
+    const common = {
+      x: p.x,
+      y: p.y,
+      s: scale,
+      dir: s.dir,
+      radius,
+      color: def?.color ?? '#999',
+      hurt,
+      walkPhase: anim.walkPhase,
+      nowMs: now,
+      seed: eid,
+      moveK,
+      attackT,
+      ys: this.camera.yScale,
+    };
+    const bat = defId === 'cave_bat';
+    const snake = defId === 'adder';
+    // Sprite extents differ per body plan: the adder trails 1.3 tiles of
+    // ribbon, the bat hovers a full tile up with wings wide.
+    const halfW = (snake ? 1.55 : bat ? 0.95 : radius * 2.2 + 0.25) * scale;
+    const top = (bat ? 1.7 : snake ? 0.55 : radius * 2.4 + 0.15) * scale;
+    const bottom = (snake ? 1.1 : 0.4) * scale;
+    const labelTop = bat ? p.y - 1.95 * scale : p.y - Math.max(r * 2.6, 0.55 * scale);
+    return {
+      sortY: s.y,
+      elevated: terrainLift !== 0,
+      drawShadow: () => {
+        // The bat's shadow stays on the ground it flies over, smaller
+        // for the height; the adder throws a low smear.
+        this.castBody(p.x, p.y + r * 0.25, r * (bat ? 0.8 : snake ? 1.0 : 1.05));
+      },
+      draw: () => {
+        if (bat) drawBat(this.ctx, common);
+        else if (snake) drawSnake(this.ctx, common);
+        else drawSlime(this.ctx, common);
+      },
+      body: { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom },
+      drawLabel: () => {
+        const ctx = this.ctx;
+        if (meta.name) {
+          ctx.font = `600 ${Math.max(10, scale * 0.24)}px 'Trebuchet MS', sans-serif`;
+          ctx.textAlign = 'center';
+          const label = meta.level ? `${meta.name} (${meta.level})` : meta.name;
+          ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
+          ctx.fillText(label, p.x + 1.5, labelTop + 1.5);
+          ctx.fillStyle = '#f0cf8a';
+          ctx.fillText(label, p.x, labelTop);
+        }
+        if (s.hpPct < 255) {
+          this.drawMiniHp(p.x, labelTop + 0.12 * scale, r * 2, s.hpPct);
         }
       },
     };
@@ -9216,50 +9636,12 @@ export class Renderer {
   }
 
   /**
-   * Freeze the victim's exact on-screen body — painters plus the
-   * dilated outline ring — into a standalone sprite, anchored to its
-   * ground point. The same scratch pipeline as paintOutlined.
+   * The defeated body goes limp: build an articulated ragdoll skeleton
+   * in the victim's proportions and throw it along the killing blow.
+   * Launch force scales with the final hit's damage — a chip kill
+   * crumples where it stands, a crit finisher drags the body back
+   * through the scene.
    */
-  private captureBodySprite(item: DrawItem): { canvas: HTMLCanvasElement; ox: number; oy: number } | null {
-    const b = item.body;
-    if (!b) return null;
-    const r = Math.max(1.25, this.camera.scale * 0.04);
-    const m = Math.ceil(r) + 2;
-    const w = Math.ceil(b.w) + m * 2;
-    const h = Math.ceil(b.h) + m * 2;
-    if (this.outlineA.width < w) this.outlineA.width = this.outlineB.width = w;
-    if (this.outlineA.height < h) this.outlineA.height = this.outlineB.height = h;
-    const a = this.outlineACtx;
-    const o = this.outlineBCtx;
-    a.clearRect(0, 0, w, h);
-    a.save();
-    a.translate(m - b.x, m - b.y);
-    const prev = this.ctx;
-    this.ctx = a;
-    try {
-      item.draw();
-    } finally {
-      this.ctx = prev;
-      a.restore();
-    }
-    o.clearRect(0, 0, w, h);
-    for (const [tx, ty] of Renderer.OUTLINE_TAPS) {
-      o.drawImage(this.outlineA, 0, 0, w, h, tx * r, ty * r, w, h);
-    }
-    o.globalCompositeOperation = 'source-in';
-    o.fillStyle = '#241a2e';
-    o.fillRect(0, 0, w, h);
-    o.globalCompositeOperation = 'source-over';
-    const out = document.createElement('canvas');
-    out.width = w;
-    out.height = h;
-    const octx = out.getContext('2d')!;
-    octx.drawImage(this.outlineB, 0, 0, w, h, 0, 0, w, h);
-    octx.drawImage(this.outlineA, 0, 0, w, h, 0, 0, w, h);
-    return { canvas: out, ox: b.x - m, oy: b.y - m };
-  }
-
-  /** Turn the defeated body itself into a ragdoll along the blow. */
   private spawnCorpse(death: {
     eid: number;
     defId: string;
@@ -9269,113 +9651,213 @@ export class Renderer {
     kx: number;
     ky: number;
     crit: boolean;
+    dmg: number;
   }): void {
     const def = npcDef(death.defId);
     if (!def) return;
-    // Re-render the victim exactly as it stood (its anim state is
-    // still warm) and freeze that into the ragdoll's sprite.
-    const item = this.npcItem(
-      death.eid,
-      death.defId,
-      {},
-      { x: death.x, y: death.y, dir: death.dir, hpPct: 255, pose: PoseState.Idle },
-      false,
-    );
-    const cap = this.captureBodySprite(item);
-    if (!cap) return;
-    const p0 = this.liftedWTS(death.x, death.y);
+    // Slimes leave no body — the mass divides (the server spawns the
+    // halves) or, for a half, simply bursts. The death particle burst
+    // is the whole funeral.
+    if (death.defId === 'slime' || death.defId === 'slime_small') return;
+    let seed = 0;
+    for (let i = 0; i < death.defId.length; i++) {
+      seed = (seed * 31 + death.defId.charCodeAt(i)) | 0;
+    }
+    seed = (seed ^ (death.eid * 0x9e3779)) | 0;
+    // The blow's direction; a kill with no remembered knock (DoT tick,
+    // reaction burst) drops the body along its own facing.
     let kx = death.kx;
     let ky = death.ky;
     const kl = Math.hypot(kx, ky);
     if (kl < 0.01) {
-      const a = Math.random() * Math.PI * 2;
-      kx = Math.cos(a);
-      ky = Math.sin(a);
+      kx = Math.cos(death.dir);
+      ky = Math.sin(death.dir);
     } else {
       kx /= kl;
       ky /= kl;
     }
-    const speed = 3.4 + Math.random() * 1.2 + (death.crit ? 1.8 : 0);
+    // Severity: the killing hit's damage against a heavy-blow yardstick.
+    const sev = Math.min(1, death.dmg / 12 + (death.crit ? 0.25 : 0));
+    // ~0.5 tiles of travel for a chip kill, ~3 for a crit finisher —
+    // knocked INTO the scene, not launched across it.
+    const speed = 1.1 + 3.2 * sev;
+    // The billboard-plane launch direction: a blow straight up or down
+    // the screen still topples the body to a deterministic side.
+    let sx = kx;
+    if (Math.abs(sx) < 0.3) sx += (seed & 1) === 0 ? 0.45 : -0.45;
+    const sy = ky * this.camera.yScale;
+    const humanoid =
+      death.defId.startsWith('goblin') ||
+      death.defId.startsWith('skeleton') ||
+      death.defId === 'troll';
+    let rag: Ragdoll;
+    let look: (typeof this.corpses)[number]['look'];
+    if (humanoid) {
+      const size =
+        death.defId === 'skeleton_champion' ? 1.25 : death.defId === 'troll' ? 1.4 : 0.85;
+      const bodyColor = def.color ?? '#999';
+      rag = buildHumanoidRagdoll(size, seed);
+      rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
+      look = {
+        kind: 'humanoid',
+        h: {
+          bodyColor,
+          skinColor:
+            death.defId === 'troll'
+              ? '#6a7d5c'
+              : death.defId.startsWith('goblin')
+                ? '#7aa74a'
+                : '#e3ddcc',
+          hairColor: shade(bodyColor, -24),
+          size,
+        },
+      };
+    } else {
+      const radius = def.radius ?? 0.3;
+      const spec = beastSpec(death.defId, radius, def.speed ?? 2);
+      rag = buildBeastRagdoll(spec, radius, seed);
+      // Feet are every second chain point after the three spine points.
+      const feet: number[] = [];
+      for (let i = 4; i < rag.pts.length; i += 2) feet.push(i);
+      rag.launch(sx, sy, sev, BEAST_UPPER, feet);
+      look = {
+        kind: 'beast',
+        b: { spec, radius, color: def.color ?? '#999', defId: death.defId, seed },
+      };
+    }
     this.corpses.push({
-      sprite: cap.canvas,
-      dx: cap.ox - p0.x,
-      dy: cap.oy - p0.y,
-      capScale: this.camera.scale,
-      radius: def.radius,
+      rag,
+      look,
       x: death.x,
       y: death.y,
       vx: kx * speed,
       vy: ky * speed,
-      z: 0.35,
-      vz: 2.5 + Math.random() * 0.7 + (death.crit ? 0.9 : 0),
-      angle: 0,
-      // Tumble forward over the direction of travel — reads as the
-      // body cartwheeling away from the blow.
-      spin: (5 + Math.random() * 3) * (kx >= 0 ? 1 : -1),
-      bounces: 0,
+      thudded: false,
       settledAt: null,
     });
-    if (this.corpses.length > 10) this.corpses.shift();
+    if (this.corpses.length > CORPSE_MAX) this.corpses.shift();
   }
 
-  /** Ragdoll physics: fly, bounce with dust, come to rest, fade away. */
+  /**
+   * Ragdoll physics: the anchor slides the world along the blow while
+   * the skeleton flops in the billboard plane. Anchor deceleration is
+   * fed to the limbs as inherited momentum — the trunk pitches over its
+   * friction-pinned feet instead of spinning like a thrown prop.
+   */
   private tickCorpses(game: ClientGame, now: number): void {
     const dt = this.frameDt;
+    const impacts: RagImpact[] = [];
     for (let i = this.corpses.length - 1; i >= 0; i--) {
       const c = this.corpses[i]!;
       if (c.settledAt !== null) {
-        // Ease the body over onto its side — the ragdoll comes to rest
-        // lying down, whatever attitude it landed in.
-        const lie = Math.round((c.angle - Math.PI / 2) / Math.PI) * Math.PI + Math.PI / 2;
-        c.angle += (lie - c.angle) * Math.min(1, dt * 9);
         if (now - c.settledAt > CORPSE_LIE_MS + CORPSE_FADE_MS) this.corpses.splice(i, 1);
         continue;
       }
-      // Walls stop the slide — reflect the offending axis, cheaply.
-      // Shape-aware: a ragdoll skids past a tree's tile corner and only
-      // thumps off the actual trunk.
+      if (dt <= 0) continue;
+      const ovx = c.vx;
+      const ovy = c.vy;
+      // Walls stop the slide dead — a thump against the mass, no bounce.
+      // Shape-aware: a body skids past a tree's tile corner and only
+      // stops on the actual trunk.
       const nx = c.x + c.vx * dt;
       const ny = c.y + c.vy * dt;
-      if (pointHitsSolid(game.world, nx, c.y)) c.vx *= -0.45;
+      if (pointHitsSolid(game.world, nx, c.y)) c.vx *= -0.12;
       else c.x = nx;
-      if (pointHitsSolid(game.world, c.x, ny)) c.vy *= -0.45;
+      if (pointHitsSolid(game.world, c.x, ny)) c.vy *= -0.12;
       else c.y = ny;
-      c.z += c.vz * dt;
-      c.vz -= 10.5 * dt;
-      c.angle += c.spin * dt;
-      if (c.z <= 0 && c.vz < 0) {
-        c.z = 0;
-        this.particles.burst(c.x, c.y, c.bounces === 0 ? 7 : 4, ['#a89880', '#bcae94'], {
-          speed: 1.4,
+      // Drag rises as more of the body lies on the ground.
+      const damp = Math.max(0, 1 - (3 + 9 * c.rag.groundedFrac()) * dt);
+      c.vx *= damp;
+      c.vy *= damp;
+      impacts.length = 0;
+      // Only screen-x deceleration feeds the limbs as inherited
+      // momentum: world-y is DEPTH at this camera, and folding its
+      // decel into the billboard plane read as phantom lift.
+      c.rag.step(dt, c.vx - ovx, 0, impacts);
+      // Keep the anchor under the sprawl: fold the trunk's local drift
+      // back into the world anchor so sorting, shadow, terrain lift and
+      // wall stops all track where the body actually lies.
+      const t0 = c.rag.pts[0]!;
+      const t1 = c.rag.pts[1]!;
+      const fold = ((t0.x + t1.x) / 2) * Math.min(1, dt * 4);
+      if (fold !== 0) {
+        c.x += fold;
+        for (const p of c.rag.pts) p.x -= fold;
+      }
+      for (const imp of impacts) {
+        // Touchdown dust where the mass actually lands.
+        this.particles.burst(c.x + imp.x, c.y + 0.02, imp.heavy ? 7 : 3, ['#a89880', '#bcae94'], {
+          speed: imp.heavy ? 1.5 : 1,
           life: 0.35,
           size: 0.07,
           up: true,
           drag: 3.5,
         });
-        c.bounces++;
-        if (c.vz < -1.6 && c.bounces < 3) {
-          c.vz = -c.vz * 0.42;
-          c.vx *= 0.55;
-          c.vy *= 0.55;
-          c.spin *= 0.55;
-        } else {
-          c.vz = 0;
-          c.settledAt = now;
+        if (imp.heavy && !c.thudded) {
+          c.thudded = true;
+          this.onCorpseThud?.(imp.speed > 4);
         }
       }
+      if (c.rag.settled) c.settledAt = now;
     }
   }
 
-  /** The tumbling body itself — the captured 1:1 sprite in flight. */
+  /**
+   * The limp body itself, painted in the live rig's dialect. The item
+   * carries `body` bounds so the SAME outline pass that rings living
+   * entities rings the corpse — death never breaks the silhouette. The
+   * fade rides DrawItem.alpha (outside the outline pass) so the ring
+   * dissolves with the body, and the shadow is the live entities' own
+   * castBody pool, sun/lamp lobes and all.
+   */
   private corpseItem(c: (typeof this.corpses)[number], now: number): DrawItem {
-    const ctx = this.ctx;
     const scale = this.camera.scale;
+    const p = this.liftedWTS(c.x, c.y);
+    const b = c.rag.bounds();
+    const lieAge = c.settledAt === null ? 0 : now - c.settledAt;
+    const alpha = Math.max(0, Math.min(1, 1 - (lieAge - CORPSE_LIE_MS) / CORPSE_FADE_MS));
+    // The bounds come from the skeleton POINTS, but the painters reach
+    // well past them (body mass overhangs the spine ends, head blocks,
+    // horns, beaks). A margin smaller than that overhang clips the
+    // sprite flat against the scratch rect and the dilate rings the
+    // straight cut — the "cropped corpse with a border line" bug.
+    const cattle = c.look.kind === 'beast' ? CATTLE_LOOKS[c.look.b.defId] : undefined;
+    // Horned/antlered/clawed species overhang the skeleton further
+    // still — grow the margin with every painter that grows reach.
+    const reach =
+      c.look.kind === 'beast'
+        ? c.look.b.defId === 'stag'
+          ? 0.55
+          : c.look.b.defId === 'ram' || c.look.b.defId === 'giant_beetle'
+            ? 0.3
+            : c.look.b.defId === 'mudcrab'
+              ? 0.35
+              : 0
+        : 0;
+    const margin =
+      (c.look.kind === 'beast'
+        ? 0.35 + c.look.b.spec.bodyLen * 0.6 + reach + (cattle ? cattle.hornLen * 1.5 + 0.2 : 0)
+        : 0.25) * scale;
     return {
-      sortY: c.y,
+      sortY: c.y + 0.02,
+      elevated: this.renderLift(c.x, c.y) !== 0,
+      alpha: alpha < 1 ? alpha : undefined,
+      body: {
+        x: p.x + b.minX * scale - margin,
+        y: p.y + b.minY * scale - margin,
+        w: (b.maxX - b.minX) * scale + margin * 2,
+        h: (b.maxY - b.minY) * scale + margin * 2,
+      },
+      drawShadow: () => {
+        // The prepass shadow layer can't fade per-item — the pool
+        // simply lifts when the wisps start (masked by the body fade).
+        if (alpha < 1) return;
+        const airK = 1 / (1 + Math.max(0, -b.maxY) * 0.9);
+        const cx = p.x + ((b.minX + b.maxX) / 2) * scale;
+        const spread = Math.max(0.35, (b.maxX - b.minX) * 0.5) * scale;
+        this.castBody(cx, p.y, spread * airK);
+      },
       draw: () => {
-        const p = this.liftedWTS(c.x, c.y);
-        const lieAge = c.settledAt === null ? 0 : now - c.settledAt;
-        const alpha = Math.max(0, Math.min(1, 1 - (lieAge - CORPSE_LIE_MS) / CORPSE_FADE_MS));
         if (alpha <= 0) return;
         // Soul wisps drift up off the body as it fades.
         if (lieAge > CORPSE_LIE_MS && Math.random() < this.frameDt * 9) {
@@ -9386,31 +9868,13 @@ export class Renderer {
             gravity: -1.4,
           });
         }
-        const k = scale / c.capScale;
-        const w = c.sprite.width * k;
-        const h = c.sprite.height * k;
-        // The pivot is the body's visual center at capture time.
-        const cx = (c.dx + c.sprite.width / 2) * k;
-        const cy = (c.dy + c.sprite.height / 2) * k;
-        // Ground shadow tightens as the body rises.
-        const shrink = 1 / (1 + c.z * 0.9);
-        const shR = Math.max(0.4, c.radius * 2) * scale;
-        ctx.globalAlpha = alpha * 0.26 * shrink;
-        ctx.fillStyle = '#141020';
-        ctx.beginPath();
-        ctx.ellipse(p.x, p.y, shR * 0.6 * shrink, shR * 0.22 * shrink, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.globalAlpha = alpha;
-        ctx.save();
-        // Heights render at full scale — that contrast IS the camera tilt.
-        ctx.translate(p.x + cx, p.y - c.z * scale + cy);
-        ctx.rotate(c.angle);
-        // A touch of shear while airborne — the rag in the ragdoll.
-        if (c.settledAt === null) ctx.transform(1, Math.sin(c.angle * 1.6) * 0.09, 0, 1, 0, 0);
-        ctx.drawImage(c.sprite, -w / 2, -h / 2, w, h);
-        ctx.restore();
-        ctx.globalAlpha = 1;
+        // Resolve the ctx at DRAW time: the outline pass swaps this.ctx
+        // for its scratch canvas while the body paints — a captured ctx
+        // would paint past the ring straight onto the frame (the
+        // outline-less corpse bug).
+        const frame = { ax: p.x, ay: p.y, s: scale };
+        if (c.look.kind === 'humanoid') drawHumanoidRagdoll(this.ctx, c.rag, frame, c.look.h);
+        else drawBeastRagdoll(this.ctx, c.rag, frame, c.look.b);
       },
     };
   }

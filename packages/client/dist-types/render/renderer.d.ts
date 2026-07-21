@@ -67,6 +67,13 @@ export declare class Renderer {
     /** Where shadow helpers draw right now (batch layer or the frame). */
     private sdw;
     private sdwLayerAlpha;
+    /** True while a silhouette mask bake replays a painter offscreen —
+     *  gates side effects (glow queues, sparkles) out of the bake. */
+    private bakingMask;
+    /** Cached silhouette masks for TRUE-FORM cast shadows, keyed per
+     *  formation; cleared wholesale when the cap trips (rebakes are
+     *  cheap and only visible formations rebake). */
+    private readonly shadowMasks;
     /**
      * Point lights that CAST this frame (screen space, strongest first).
      * Bodies and organic props near one throw an extra shadow lobe away
@@ -104,14 +111,18 @@ export declare class Renderer {
     private zoomPulseAmount;
     private readonly rings;
     /**
-     * Ragdoll corpses: the death beat. At the death instant the victim's
-     * ACTUAL rendered body (same painters, same outline pass — a true
-     * 1:1) is captured into a sprite, which then launches along the
-     * killing blow, tumbles, bounces in dust kicks, eases flat where it
-     * stops, and fades as its soul wisps away. Physics run on frameDt,
-     * so the kill's hitstop gives every ragdoll a slow-motion launch.
+     * Ragdoll corpses: the death beat. At the death instant the victim
+     * becomes a limp articulated skeleton (Ragdoll in ragdoll.ts) drawn
+     * in the live rig's own dialect. The killing blow launches it — hard
+     * hits drag the body back through the scene, chip kills crumple it
+     * where it stands — the limbs trail the trunk's momentum, and the
+     * whole thing thuds down and SPRAWLS. No spin, no bouncing prop.
+     * Physics run on frameDt, so the kill's hitstop gives every ragdoll
+     * a slow-motion launch.
      */
     private readonly corpses;
+    /** Body-thud hook: the renderer sees the landing, main.ts owns sfx. */
+    onCorpseThud?: (heavy: boolean) => void;
     /** A quick camera zoom kick — the killing-blow exclamation point. */
     zoomPulse(amount?: number): void;
     /** A fading, flattening silhouette where something died. */
@@ -121,6 +132,10 @@ export declare class Renderer {
     flashHurt(): void;
     /** Expanding impact ring at a world position. */
     addRing(x: number, y: number, color: string, maxR?: number): void;
+    /** Lingering ground marks left by detonations (scorch, rime, cracks…). */
+    private readonly fxDecals;
+    /** The world remembers the hit: leave the style's mark on the ground. */
+    private addDecal;
     /** Placement preview set by the build mode; null when inactive. */
     buildGhost: {
         tx: number;
@@ -141,10 +156,19 @@ export declare class Renderer {
     };
     /** Visible drops this frame — the loot-label pass reads these. */
     private frameLoot;
+    /**
+     * Screen rects the loot labels landed on last pass — the click
+     * affordance. A label IS its drop's hitbox (bags overlap in a pile;
+     * their labels never do), with the bag sprite as a fallback target.
+     */
+    private lootPlates;
     /** Emissive glow requests queued during the frame, composited last. */
     private readonly glows;
     /** Arrows standing in the ground/walls; fade out near `until`. */
     private readonly stuckArrows;
+    /** Spent shots arcing down at the end of flight — a quarter-second of
+     *  cosmetic ballistics between "flying" and "standing in the dirt". */
+    private readonly fallingShafts;
     /** Arrows riding a living NPC (offsets in tiles off its ground point). */
     private readonly npcArrows;
     /** Projectiles already given their muzzle flash. */
@@ -169,8 +193,43 @@ export declare class Renderer {
     private game;
     /** Fires once per tool-impact while someone gathers ('tree' | 'rock'). */
     onGatherImpact: ((kind: string) => void) | null;
+    /**
+     * Fires on every humanoid foot touchdown (the leg rig's plant
+     * moment). `speed` is the gait vigor in tiles/sec — idle shuffles
+     * arrive near zero, so volume can ride it directly.
+     */
+    onFootstep: ((x: number, y: number, speed: number, isOwn: boolean, sneaking: boolean) => void) | null;
     /** Nearest crafting station around a world position, if any. */
     private findStation;
+    /**
+     * The stall wardrobe: every market stand draws one bolt of cloth
+     * from this roster, keyed by the run's west-anchor tile hash — so a
+     * merged stall wears one banner, neighbouring stands differ, and
+     * every town's market reads bespoke with zero authoring plumbing.
+     */
+    private static readonly STALL_BANNERS;
+    /**
+     * One ware on a stall's display top. Kinds: produce, bread, bottles,
+     * cloth bolts, pottery, berry basket — small enough to sit under the
+     * awning window, distinct enough to read at market distance.
+     */
+    private drawStallGood;
+    /** Tiles that count as workable stations for interaction heat. */
+    private static readonly HEAT_STATION_TILES;
+    /**
+     * Interaction heat per station tile, 0..1 with an eased attack and a
+     * gentler release. Heated by anyone working the station (Craft pose,
+     * own player included) and by the local player's open bank/shop/craft
+     * panel. Painters layer the in-use choreography over the idle art by
+     * reading this — lids glide open, fires flare, beams work harder.
+     */
+    private readonly stationHeat;
+    /** The open station panel's anchor tile (set per frame by main.ts). */
+    stationFocus: {
+        tx: number;
+        ty: number;
+    } | null;
+    private tickStationHeat;
     /** Nearest gatherable node around a world position, if any. */
     private findGatherNode;
     shake(amount: number): void;
@@ -235,6 +294,28 @@ export declare class Renderer {
     private castBody;
     /** A small thing's plain contact ellipse (drops, summons). */
     private castContact;
+    /** Bake resolution, px per tile — masks scale to the live zoom. */
+    private static readonly MASK_S;
+    /**
+     * Fetch (or bake) a silhouette mask. `paint` replays the object's
+     * own painter into the mask canvas with the base anchored at
+     * (au, av); the result is flattened to the current shadow color
+     * with a hard alpha threshold. Glows/sparkles are gated off during
+     * the bake, so time-varying garnish never fossilises into a shadow.
+     */
+    private shadowMask;
+    /**
+     * Throw a baked silhouette onto the ground: once along the sun (or
+     * moon), once away from each nearby pool of light. The shear maps a
+     * mask pixel `h` above the base line to (kx·h, ky·h) past the anchor
+     * — tall crowns land at the far tip of the shadow, feet stay glued
+     * to the contact line at every hour.
+     */
+    private castMask;
+    /** A rock/ore formation's exact silhouette, thrown as its shadow. */
+    private castRockShadow;
+    /** A wild forage plant's silhouette (grown calm: wind zeroed). */
+    private castFloraShadow;
     /**
      * Screen → world with elevation: a click on a plateau top must land
      * on the plateau, not on the (hidden) ground two tiles south. Try
@@ -298,8 +379,17 @@ export declare class Renderer {
      */
     private bakePx;
     private drawGroundChunks;
+    /** Bake one chunk (base blit + elevated bands) and cache it. */
+    private bakeChunkEntry;
     private evictBaked;
     private evictAnims;
+    /**
+     * Tree sprite/shadow caches ride the camera: drop entries not drawn
+     * for ~2s (scrolled away), and under a hard cap drop the coldest —
+     * a zoomed-in sprite is big (~0.4MB), so the cap is what bounds
+     * worst-case memory, not the typical count.
+     */
+    private evictTreeSprites;
     /** Wall-run auto-tiler membership — shared law (tiles.ts). */
     private static readonly WALL_TILES;
     /** What stops lamplight — shared law (tiles.ts). */
@@ -313,14 +403,17 @@ export declare class Renderer {
      */
     private wallItem;
     /**
-     * Beam grain over a wood crown: two lengthwise seams split the top
-     * into three long timbers (dark north beam, lit south beam) with one
-     * per-tile butt tick — the wall top is built from the same big
-     * rectangles as its face. Clips to the current crown path, so grain
-     * never spills off a chamfered corner. Call with the chamferRect
-     * path still current, immediately after its fill.
+     * A wood crown is the SLICED TOP of the log wall: the wall is one
+     * tile thick and a log is one tile wide, so looking down shows a
+     * SINGLE great log back running the length of the run. One quiet
+     * read — a sky-lit spine down the middle, the rounding falling
+     * away into shadow at both long edges, and a rare butt joint —
+     * nothing competing with the face below. Orientation follows the
+     * run direction (`vert` for N-S runs). Clips to the current crown
+     * path, so shading never spills off a chamfered corner. Call with
+     * the chamferRect path still current, right after fill.
      */
-    private woodCrownGrain;
+    private woodCrownLog;
     /**
      * How veiled a doorway's dark interior fill is: 1 far away, easing
      * to 0 as any body nears the threshold — the door "opens" for
@@ -481,34 +574,53 @@ export declare class Renderer {
      */
     private drawRockFormation;
     /**
-     * The forest is a character, not a texture. Trees stand 3-4× the
-     * player's height in six bespoke species — each with a real curved,
-     * forked, or gnarled trunk, root flares, boughs, and a layered
-     * low-poly crown — and the whole treeline breathes on ONE coherent
-     * wind field so neighbours sway together, never against each other.
+     * The forest is GROWN, not authored: render/trees.ts turns each
+     * tile's hash into a deterministic branching skeleton — species
+     * grammars with three structural variants each, foliage clusters
+     * rustling on their own offsets of the ONE shared wind field. The
+     * renderer's job here is framing: screen anchor, growth stage
+     * (sapling -> grow-in -> full tree), leaf-shed particles, felling.
      */
+    /** Regrown trees scale up from sapling size instead of popping in. */
+    private readonly growingTrees;
+    /** Start a growth ease at this tile (sapling sprout or stand-up). */
+    addGrowingTree(tx: number, ty: number): void;
+    /** Soft settle with a whisper of overshoot — growth, not inflation. */
+    private static growEase;
+    /** Growth scale for a tree/sapling item, advancing its animation. */
+    private growthOf;
     /**
-     * Coherent wind field: a smooth value in ~[-0.6, 1.4] (biased
-     * downwind) sampled from world position + time. Two slow swells
-     * travel along the wind direction over a slowly breathing gust
-     * envelope — no `sin²` spikes, no per-tree randomness. Nearby trees
-     * read nearly the same phase (they group); distant trees lag as the
-     * front sweeps across, exactly like real wind moving through a wood.
+     * TREE SPRITE CACHE: a mature tree's painted body re-bakes onto a
+     * per-instance offscreen canvas every TREE_REBAKE_FRAMES frames
+     * (staggered by a per-frame budget) and blits with ONE drawImage per
+     * frame in between. The sway moves ~12px/s at 0.85 zoom, so a ~30Hz
+     * re-bake steps well under a pixel — every cluster rustle, flutter
+     * and bough detail is still the live procedural painter's output,
+     * just sampled at animation rate instead of frame rate. Felling
+     * (bendOverride) and regrowth (grow < 1) stay fully live.
      */
-    private windField;
-    private static readonly TREE_SPECIES;
-    private static speciesOf;
-    /** Fill a tapered spine (centreline + width profile) as a bark shape. */
-    private fillSpine;
-    /**
-     * Build a trunk/branch centreline from base to a target, curving with
-     * `bow` (sideways bulge), `lean` (constant), and `gnarl` (deterministic
-     * wobble), then displaced by the wind cantilever `disp(hf)`.
-     */
-    private spine;
+    private readonly treeSprites;
+    /** Sun-shadow twin: the projected silhouette Path2D built at origin. */
+    private readonly treeShadows;
+    private treeBakeBudget;
+    private treeShadowBudget;
+    private frameNo;
+    /** Trees drawn last frame — feeds the adaptive re-bake cadence. */
+    private treesVisible;
+    private treeCadence;
+    /** Evicted sprite canvases, reused by new bakes (GC churn while walking). */
+    private readonly spriteCanvasPool;
+    private static treeKey;
+    private bakeTreeSprite;
     private drawTree;
-    /** Average centre of a lobe cluster (tiles), for fork branch targets. */
-    private clusterCentre;
+    /**
+     * TRUE-FORM tree shadow: the same skeleton paintTree draws — trunk
+     * spine, fork arms, every canopy cluster — projected flat onto the
+     * ground along the light ray, riding the same wind cantilever so
+     * the shadow sways with its tree. One Path2D, one fill: limbs and
+     * clusters merge into a single density, never stacking.
+     */
+    private treeShadowPath;
     private drawTreeShadow;
     /**
      * A felled tree: shudder → topple (varied azimuth) → impact with a
@@ -516,7 +628,7 @@ export declare class Renderer {
      * apart into log chunks and a last billow of dust. Timeline in ms.
      */
     private readonly fallingTrees;
-    addFallingTree(tx: number, ty: number, oak: boolean, dir: number): void;
+    addFallingTree(tx: number, ty: number, tile: Tile, dir: number): void;
     private readonly breakingRocks;
     /**
      * A mined-out node doesn't blink into its depleted state — it
@@ -541,12 +653,31 @@ export declare class Renderer {
      */
     private collectDisturbers;
     private collectEntities;
+    /** What a footfall kicks loose from each ground. Null = nothing
+     * (wet ground swallows the impact). Mult scales how much a given
+     * surface gives up — sand erupts, flagstone barely powders. */
+    private static dustFor;
+    /**
+     * A foot met the ground — kick loose a puff of whatever the ground
+     * is made of. Speed decides how much earth moves: an amble stirs
+     * almost nothing, a sprint tears little clouds off every plant.
+     * The puff fans low and backward along the travel line, billows
+     * (grow) and settles fast (drag) — impact dust, not smoke.
+     */
+    private kickDust;
     private humanoidItem;
     private drawMiniHp;
     /** Eight-tap alpha dilate → tinted ring under the sprite. */
     private static readonly OUTLINE_TAPS;
     private paintOutlined;
     private npcItem;
+    /**
+     * The leg-less menagerie: slimes (hopping gel blocks), cave bats
+     * (hovering wing fans), adders (slithering ribbons). No LegRig — each
+     * body's locomotion IS its painter, gated on the anim's travel
+     * activity so a still body rests instead of freezing mid-cycle.
+     */
+    private leglessItem;
     /**
      * Ground loot. Coins pile up as actual gold; everything else is a
      * cinched leather loot bag whose topper tells you the cargo at a
@@ -565,6 +696,17 @@ export declare class Renderer {
      * Labels stack upward when drops share a column so none overlap.
      */
     private drawLootLabels;
+    /**
+     * Which ground drop lives under this screen point? Labels first
+     * (they never overlap, so a stacked pile stays fully clickable),
+     * then the bag sprites themselves. Returns the drop's entity id and
+     * world position, or null.
+     */
+    lootHitTest(sx: number, sy: number): {
+        eid: number;
+        x: number;
+        y: number;
+    } | null;
     private projectileItem;
     /**
      * Settle every projectile that ended flight this frame: arrows stand
@@ -573,19 +715,43 @@ export declare class Renderer {
      */
     private consumeProjectileAftermath;
     /**
-     * Freeze the victim's exact on-screen body — painters plus the
-     * dilated outline ring — into a standalone sprite, anchored to its
-     * ground point. The same scratch pipeline as paintOutlined.
+     * March down the flight line looking for the solid the server's shot
+     * actually buried itself in — the last client sample lags the impact
+     * by up to a tick-step, which is why arrows used to "fall short" at
+     * the foot of every wall. On contact the arrow sticks INTO the face
+     * at flight height: in front of a south face, poking from a side
+     * edge, hidden behind a north one. Low props take the shaft low.
      */
-    private captureBodySprite;
-    /** Turn the defeated body itself into a ragdoll along the blow. */
+    private probeWallStick;
+    /**
+     * The defeated body goes limp: build an articulated ragdoll skeleton
+     * in the victim's proportions and throw it along the killing blow.
+     * Launch force scales with the final hit's damage — a chip kill
+     * crumples where it stands, a crit finisher drags the body back
+     * through the scene.
+     */
     private spawnCorpse;
-    /** Ragdoll physics: fly, bounce with dust, come to rest, fade away. */
+    /**
+     * Ragdoll physics: the anchor slides the world along the blow while
+     * the skeleton flops in the billboard plane. Anchor deceleration is
+     * fed to the limbs as inherited momentum — the trunk pitches over its
+     * friction-pinned feet instead of spinning like a thrown prop.
+     */
     private tickCorpses;
-    /** The tumbling body itself — the captured 1:1 sprite in flight. */
+    /**
+     * The limp body itself, painted in the live rig's dialect. The item
+     * carries `body` bounds so the SAME outline pass that rings living
+     * entities rings the corpse — death never breaks the silhouette. The
+     * fade rides DrawItem.alpha (outside the outline pass) so the ring
+     * dissolves with the body, and the shadow is the live entities' own
+     * castBody pool, sun/lamp lobes and all.
+     */
     private corpseItem;
     /** One arrow standing where it landed, angled with its flight line. */
     private stuckArrowItem;
+    /** A spent shot arcing out of the flight line: it carries forward,
+     *  drops from chest height, and pitches nose-down into the landing. */
+    private fallingShaftItem;
     /** The pincushion overlay: arrows riding a living NPC's body. */
     private npcArrowsItem;
     /**
@@ -601,10 +767,40 @@ export declare class Renderer {
      * Spawn rates are frame-time scaled so effect density is fps-stable.
      */
     private statusAmbience;
+    /**
+     * The tier-3 enchant aura: an energy corona that marks a walking
+     * masterwork. The strongest worn enchant sets the school and the
+     * color; lower tiers stay quiet here (their fx live on the item
+     * itself). Same fps-stable rate-gating as statusAmbience, plus a
+     * breathing glow that becomes a real scene light after dark.
+     */
+    private enchantAura;
     /** Placed summons: totem, snare trap, straw decoy. */
     private summonItem;
-    /** Server combat FX: telegraphs, novas, blasts, reactions, summons. */
+    /** Ground perspective squash for combat-fx circles. */
+    private static readonly FX_SQUASH;
+    /** Overlay lifetime per fx kind, ms (telegraph/field ride their fuse). */
+    private fxLife;
+    /** The ring silhouette pass novas and blasts expand with. */
+    private fxRingLayer;
+    /** Throw a style's debris family from a detonation point. */
+    private fxDebris;
+    /** One lingering ground decal — the mark the hit leaves behind. */
+    private drawDecalItem;
+    /**
+     * Ground-level combat FX: lingering decals, hazard-zone floors, and
+     * telegraph circles — painted under the y-sorted world so bodies
+     * stand ON them. Pruning happens in the overlay pass.
+     */
+    private drawGroundFx;
+    /**
+     * Overlay combat FX — every ability moment as a staged presentation:
+     * flash, body, rim, debris, decal, glow. All silhouettes stay blocky
+     * (jagged polygons, hard rects) — the world's magic is chunky too.
+     */
     private drawCombatFx;
+    /** An annular sector (arc band) path in ground perspective. */
+    private fxSectorPath;
     private drawBuildGhost;
     private drawActionProgress;
     private drawFloaties;

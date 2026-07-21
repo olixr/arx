@@ -96,9 +96,31 @@ export function decodeChunk(r: ByteReader): ChunkData {
  */
 export class ChunkStore implements CollisionSource {
   protected readonly chunks = new Map<string, ChunkData>();
+  /**
+   * One-entry chunk memo: per-tile queries (groundAt/elevAt/detailAt)
+   * run in row-major scans that hit the same chunk almost every call,
+   * and the naive path allocated a `${cx},${cy}` string plus a Map
+   * lookup per TILE — tens of thousands per rendered frame. The memo
+   * turns the common case into two integer compares. Invalidated on
+   * any chunk set/delete (in-place ground mutations keep the same
+   * ChunkData object, so the memo stays valid through setGround).
+   */
+  private memoCx = NaN;
+  private memoCy = NaN;
+  private memoChunk: ChunkData | undefined;
+
+  private chunkFor(tx: number, ty: number): ChunkData | undefined {
+    const cx = Math.floor(tx / CHUNK_SIZE);
+    const cy = Math.floor(ty / CHUNK_SIZE);
+    if (cx === this.memoCx && cy === this.memoCy) return this.memoChunk;
+    this.memoCx = cx;
+    this.memoCy = cy;
+    return (this.memoChunk = this.chunks.get(chunkKey(cx, cy)));
+  }
 
   set(chunk: ChunkData): void {
     this.chunks.set(chunkKey(chunk.cx, chunk.cy), chunk);
+    this.memoCx = NaN;
   }
 
   get(cx: number, cy: number): ChunkData | undefined {
@@ -111,6 +133,7 @@ export class ChunkStore implements CollisionSource {
 
   delete(cx: number, cy: number): void {
     this.chunks.delete(chunkKey(cx, cy));
+    this.memoCx = NaN;
   }
 
   get size(): number {
@@ -122,25 +145,25 @@ export class ChunkStore implements CollisionSource {
   }
 
   groundAt(tx: number, ty: number): number | undefined {
-    const chunk = this.get(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    const chunk = this.chunkFor(tx, ty);
     return chunk?.ground[tileIndex(tx, ty)];
   }
 
   /** Elevation level of a tile; unloaded space is ground level. */
   elevAt(tx: number, ty: number): number {
-    const chunk = this.get(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    const chunk = this.chunkFor(tx, ty);
     return chunk?.elev[tileIndex(tx, ty)] ?? 0;
   }
 
   /** Detail-layer id of a tile; unloaded space has none. */
   detailAt(tx: number, ty: number): number {
-    const chunk = this.get(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    const chunk = this.chunkFor(tx, ty);
     return chunk?.detail[tileIndex(tx, ty)] ?? 0;
   }
 
   /** Mutate one ground tile in place (no-op if the chunk isn't loaded). */
   setGround(tx: number, ty: number, tile: number): boolean {
-    const chunk = this.get(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    const chunk = this.chunkFor(tx, ty);
     if (!chunk) return false;
     chunk.ground[tileIndex(tx, ty)] = tile;
     chunk.rev = (chunk.rev ?? 0) + 1;

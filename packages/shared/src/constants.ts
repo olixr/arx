@@ -49,8 +49,15 @@ export const WALK_FACTOR = 0.34;
 /** Collision radius for humanoid entities, in tiles. */
 export const BODY_RADIUS = 0.35;
 
-/** Interest window half-size in chunks (1 => 3x3 chunk subscription). */
-export const INTEREST_CHUNK_RADIUS = 1;
+/**
+ * Interest window half-size in chunks (2 => 5x5 chunk subscription).
+ * The window is centered on the player's CHUNK, so worst-case coverage
+ * from the player is (radius × 32) + 1 tiles. The zoomed-out camera
+ * (0.85×) sees ~37 tiles half-width — radius 1's 33-tile worst case put
+ * entity pop-in and chunk seams ON SCREEN while walking; radius 2's
+ * 65-tile margin keeps streaming comfortably outside any viewport.
+ */
+export const INTEREST_CHUNK_RADIUS = 2;
 
 /** Fixed-point scale for positions in binary snapshots. */
 export const POS_SCALE = 256;

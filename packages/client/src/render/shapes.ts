@@ -82,3 +82,34 @@ export function facetBlob(
   }
   ctx.closePath();
 }
+
+/**
+ * INSTANCED BLOBS: facetBlob is a pure function of (seed, sides, rot) up
+ * to an affine transform — radius is a uniform scale, squash a y-scale,
+ * position a translation. Hot per-frame painters (tree canopies draw
+ * thousands of blobs a frame) build the UNIT blob once here and stamp
+ * it with `path.addPath(unit, matrix)` — zero trig, zero allocation per
+ * stamp, pixel-identical to rebuilding the path.
+ */
+const unitBlobs = new Map<number, Path2D>();
+
+export function unitBlob(seed: number, sides: number): Path2D {
+  // seed is a 32-bit hash; ×16 stays exact in a double.
+  const key = (seed >>> 0) * 16 + sides;
+  let p = unitBlobs.get(key);
+  if (!p) {
+    // Distinct seeds accumulate as the world is explored; the entries
+    // are tiny (~9 verts) but unbounded — reset and rebuild on demand.
+    if (unitBlobs.size > 20000) unitBlobs.clear();
+    p = new Path2D();
+    facetBlob(p as unknown as CanvasRenderingContext2D, 0, 0, 1, seed, sides, 1);
+    unitBlobs.set(key, p);
+  }
+  return p;
+}
+
+/**
+ * Shared scratch matrix for unitBlob stamps: addPath consumes the dict
+ * synchronously, so one mutable object serves every stamp with no GC.
+ */
+export const BLOB_M = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };

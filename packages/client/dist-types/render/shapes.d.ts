@@ -21,4 +21,17 @@ export declare function facetCircle(ctx: CanvasRenderingContext2D, x: number, y:
  * `seed` deterministically varies the radii so no two blobs match.
  */
 export declare function facetBlob(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, seed: number, sides?: number, squashY?: number, rot?: number): void;
+export declare function unitBlob(seed: number, sides: number): Path2D;
+/**
+ * Shared scratch matrix for unitBlob stamps: addPath consumes the dict
+ * synchronously, so one mutable object serves every stamp with no GC.
+ */
+export declare const BLOB_M: {
+    a: number;
+    b: number;
+    c: number;
+    d: number;
+    e: number;
+    f: number;
+};
 //# sourceMappingURL=shapes.d.ts.map
