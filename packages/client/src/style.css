@@ -1540,3 +1540,31 @@ body.pad-mode .hint-inline { display: none; }
   background: linear-gradient(180deg, #6b4a1c, #4a3010);
   border-color: #e8b64c;
 }
+
+/* ---- Sound menu ---- */
+.audio-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 6px;
+}
+.audio-row label {
+  flex: 0 0 84px;
+  font-size: 13px;
+}
+.audio-row input[type='range'] {
+  flex: 1;
+  accent-color: #e8b64c;
+}
+.audio-pct {
+  flex: 0 0 42px;
+  text-align: right;
+  font-size: 12px;
+  opacity: 0.85;
+}
+.audio-now {
+  margin: 14px 6px 4px;
+  font-size: 12px;
+  font-style: italic;
+  opacity: 0.75;
+}

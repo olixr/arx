@@ -3587,13 +3587,17 @@ export function sneakEyeUrl(state: 'sneaking' | 'hidden' | 'detected', size = 34
 }
 
 /** Data URL for a UI glyph. */
-export function uiIconUrl(kind: 'backpack' | 'scroll' | 'hammer' | 'house' | 'attack', size = 48): string {
+export function uiIconUrl(
+  kind: 'backpack' | 'scroll' | 'hammer' | 'house' | 'attack' | 'bell',
+  size = 48,
+): string {
   const colors: Record<string, string> = {
     backpack: '#a5793f',
     scroll: '#efe3c2',
     hammer: '#9aa2ac',
     house: '#c98d4b',
     attack: '#c9ccd4',
+    bell: '#d9b969',
   };
   return renderIcon(kind, colors[kind]!, size);
 }

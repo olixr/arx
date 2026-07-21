@@ -11,8 +11,9 @@ import { UiNav } from './ui/padUI.js';
 import { LootPanel } from './ui/lootPanel.js';
 import { Sfx } from './audio/sfx.js';
 import { AudioEngine } from './audio/engine.js';
-import { MusicSystem } from './audio/music.js';
+import { TrackPlayer } from './audio/tracks.js';
 import { AmbienceSystem } from './audio/ambience.js';
+import { AudioMenu } from './ui/audioMenu.js';
 import { zoneWeights } from './audio/zones.js';
 import { setupTouch } from './input/touch.js';
 import { uiIconUrl } from './render/icons.js';
@@ -31,6 +32,7 @@ for (const [id, kind, tip, kbKey, padCls, padLabel] of [
   ['btn-skills', 'scroll', 'Skills', 'K', 'select', '⧉'],
   ['btn-craft', 'hammer', 'Handiwork', 'C', 'ddown', '▼'],
   ['btn-build', 'house', 'Build', 'B', 'dright', '▶'],
+  ['btn-audio', 'bell', 'Sound', 'O', '', ''],
   ['touch-attack', 'attack', '', '', '', ''],
 ] as const) {
   const btn = document.getElementById(id);
@@ -63,8 +65,10 @@ for (const [id, kind, tip, kbKey, padCls, padLabel] of [
 
 const audioEngine = new AudioEngine();
 const sfx = new Sfx(audioEngine);
-const music = new MusicSystem(audioEngine);
+const music = new TrackPlayer(audioEngine);
 const ambience = new AmbienceSystem(audioEngine);
+const audioMenu = new AudioMenu(audioEngine, music);
+document.getElementById('btn-audio')?.addEventListener('click', () => audioMenu.toggle());
 window.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
 window.addEventListener('keydown', () => sfx.unlock(), { once: true });
 
@@ -722,6 +726,7 @@ window.addEventListener('keydown', (e) => {
   if (chat.isTyping || game.ownEid === null) return;
   if (e.code === 'KeyI') panels.toggleInventory();
   if (e.code === 'KeyK') panels.toggleSkills();
+  if (e.code === 'KeyO') audioMenu.toggle();
   if (e.code === 'KeyC') stationPanels.openCraft(null, game.skills);
   if (e.code === 'KeyB') stationPanels.openBuild(game.skills);
   if (e.code === 'Escape') {

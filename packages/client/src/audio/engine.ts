@@ -11,18 +11,32 @@
  * THE WARMTH LAW (user verdict: "not high blips and chips — soft and
  * warm"): every path to the speaker passes the master low-pass and the
  * shared room. New sounds get warmth for free; never bypass the chain.
+ *
+ * USER VOLUMES: each bus keeps a fixed BASE level (the mix) times a
+ * user setting 0..1 (the audio menu). Never write bus gains directly —
+ * go through setUserVolume so the mix balance survives.
  */
+
+/** The tuned mix — bus base levels. User sliders multiply these. */
+const BASE = { master: 0.9, sfx: 0.5, music: 0.24, tracks: 0.42, ambience: 0.6 } as const;
+
+export type VolumeKind = 'master' | 'music' | 'sfx' | 'ambience';
+
 export class AudioEngine {
   ctx: AudioContext | null = null;
   /** Group buses — dry legs. Route every source through one of these. */
   sfx: GainNode | null = null;
   music: GainNode | null = null;
+  /** Streamed music tracks: nearly dry — mastered audio needs no room. */
+  tracks: GainNode | null = null;
   ambience: GainNode | null = null;
   /** Per-group reverb sends (already connected to the room). */
   sfxVerb: GainNode | null = null;
   musicVerb: GainNode | null = null;
+  tracksVerb: GainNode | null = null;
   ambVerb: GainNode | null = null;
   private master: GainNode | null = null;
+  private userVol: Record<VolumeKind, number> = { master: 1, music: 1, sfx: 1, ambience: 1 };
 
   /** Browsers require a user gesture before audio can start. */
   unlock(): void {
@@ -66,14 +80,41 @@ export class AudioEngine {
         s.connect(verb);
         return [g, s];
       };
-      // Combat/action stays present but dry-ish; music lives in the
-      // room; ambience sits behind everything.
-      [this.sfx, this.sfxVerb] = bus(0.5, 0.16);
-      [this.music, this.musicVerb] = bus(0.24, 0.5);
-      [this.ambience, this.ambVerb] = bus(0.6, 0.22);
+      // Combat/action stays present but dry-ish; generated music
+      // lives in the room; streamed tracks arrive already mastered
+      // and take barely any; ambience sits behind everything.
+      [this.sfx, this.sfxVerb] = bus(BASE.sfx, 0.16);
+      [this.music, this.musicVerb] = bus(BASE.music, 0.5);
+      [this.tracks, this.tracksVerb] = bus(BASE.tracks, 0.06);
+      [this.ambience, this.ambVerb] = bus(BASE.ambience, 0.22);
+      this.applyUserVolumes();
     } catch {
       this.ctx = null;
     }
+  }
+
+  /** Set a user volume 0..1 (multiplies the bus's tuned base level). */
+  setUserVolume(kind: VolumeKind, v: number): void {
+    this.userVol[kind] = Math.max(0, Math.min(1, v));
+    this.applyUserVolumes();
+  }
+
+  getUserVolume(kind: VolumeKind): number {
+    return this.userVol[kind];
+  }
+
+  private applyUserVolumes(): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const set = (node: GainNode | null, target: number): void => {
+      node?.gain.setTargetAtTime(target, t, 0.06);
+    };
+    set(this.master, BASE.master * this.userVol.master);
+    set(this.sfx, BASE.sfx * this.userVol.sfx);
+    set(this.music, BASE.music * this.userVol.music);
+    set(this.tracks, BASE.tracks * this.userVol.music);
+    set(this.ambience, BASE.ambience * this.userVol.ambience);
   }
 
   now(): number {
