@@ -1369,6 +1369,18 @@ export class Renderer {
     // In-sort (plateau) shadows draw straight into the frame.
     this.sdw = this.ctx;
     this.sdwLayerAlpha = 1;
+    // Ground-hugging dust joins the y-sort as world items (updated
+    // here, before the sort, so positions are current): the trail a
+    // south-running body leaves must paint UNDER the body, and a puff
+    // south of a body must paint over it. Airborne effects (sparks,
+    // leaves, magic) stay in the overlay pass below.
+    this.particles.update(this.frameDt);
+    for (const p of this.particles.groundParticles()) {
+      items.push({
+        sortY: p.y,
+        draw: () => this.particles.drawOne(this.ctx, p, this.liftedWTS, this.camera.scale),
+      });
+    }
     items.sort((a, b) => a.sortY - b.sortY);
     for (const item of items) {
       // Stealth ghost: wrap OUTSIDE the outline pass so the dilated
@@ -1382,7 +1394,6 @@ export class Renderer {
       item.drawLabel?.();
     }
 
-    this.particles.update(this.frameDt);
     this.particles.draw(this.ctx, this.liftedWTS, this.camera.scale);
     // The aim guide rides OVER the world pass: elevated ground repaints
     // the whole plateau as y-sorted items, so drawing it early buried
@@ -7843,6 +7854,9 @@ export class Renderer {
       gravity: 0.4,
       drag: 3.4,
       grow: 0.08 + 0.1 * power,
+      // Dust hugs the ground: it y-sorts with the world so a body
+      // running south draws OVER the trail it leaves behind.
+      ground: true,
     });
   }
 

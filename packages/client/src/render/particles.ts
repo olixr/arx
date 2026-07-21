@@ -14,6 +14,12 @@ export interface Particle {
   drag: number;
   /** 0 = shrink over life (default); >0 = grow by this many tiles/sec. */
   grow: number;
+  /**
+   * Ground-hugging particles (footfall dust) join the renderer's
+   * y-sort as world items instead of the overlay pass — a trail left
+   * behind a south-running body must paint UNDER the body.
+   */
+  ground: boolean;
 }
 
 export class Particles {
@@ -37,6 +43,8 @@ export class Particles {
       drag?: number;
       /** Tiles/sec the block grows instead of shrinking (billowing dust). */
       grow?: number;
+      /** Y-sort with the world (ground dust) instead of drawing on top. */
+      ground?: boolean;
     } = {},
   ): void {
     const speed = opts.speed ?? 2.5;
@@ -60,6 +68,7 @@ export class Particles {
         gravity: opts.gravity ?? 6,
         drag: opts.drag ?? 0,
         grow: opts.grow ?? 0,
+        ground: opts.ground ?? false,
       });
     }
     // Hard cap so bursts can never run away.
@@ -86,28 +95,46 @@ export class Particles {
     }
   }
 
+  /** The overlay pass: everything airborne. Ground particles are
+   * skipped here — the renderer y-sorts them into the world. */
   draw(
     ctx: CanvasRenderingContext2D,
     worldToScreen: (wx: number, wy: number) => { x: number; y: number },
     scale: number,
   ): void {
     for (const p of this.pool) {
-      const t = p.life / p.maxLife;
-      // Growing blocks (dust) hold size and fade via alpha; shrinking
-      // blocks (default) taper to nothing. Both keep hard edges.
-      const s = worldToScreen(p.x, p.y);
-      let size: number;
-      let alpha = 1;
-      if (p.grow > 0) {
-        size = Math.max(2, p.size * scale);
-        alpha = t < 0.25 ? t / 0.25 : 1 - (t - 0.25) / 0.75;
-      } else {
-        size = Math.max(2, p.size * scale * (1 - t));
-      }
-      if (alpha < 1) ctx.globalAlpha = Math.max(0, alpha);
-      ctx.fillStyle = p.color;
-      ctx.fillRect(s.x - size / 2, s.y - size / 2, size, size);
-      if (alpha < 1) ctx.globalAlpha = 1;
+      if (!p.ground) this.drawOne(ctx, p, worldToScreen, scale);
+    }
+  }
+
+  drawOne(
+    ctx: CanvasRenderingContext2D,
+    p: Particle,
+    worldToScreen: (wx: number, wy: number) => { x: number; y: number },
+    scale: number,
+  ): void {
+    const t = p.life / p.maxLife;
+    // Growing blocks (dust) hold size and fade via alpha; shrinking
+    // blocks (default) taper to nothing. Both keep hard edges.
+    const s = worldToScreen(p.x, p.y);
+    let size: number;
+    let alpha = 1;
+    if (p.grow > 0) {
+      size = Math.max(2, p.size * scale);
+      alpha = t < 0.25 ? t / 0.25 : 1 - (t - 0.25) / 0.75;
+    } else {
+      size = Math.max(2, p.size * scale * (1 - t));
+    }
+    if (alpha < 1) ctx.globalAlpha = Math.max(0, alpha);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(s.x - size / 2, s.y - size / 2, size, size);
+    if (alpha < 1) ctx.globalAlpha = 1;
+  }
+
+  /** Live particles flagged for the world y-sort. */
+  *groundParticles(): IterableIterator<Particle> {
+    for (const p of this.pool) {
+      if (p.ground) yield p;
     }
   }
 }
