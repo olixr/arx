@@ -69,7 +69,7 @@ export class AudioEngine {
       // Combat/action stays present but dry-ish; music lives in the
       // room; ambience sits behind everything.
       [this.sfx, this.sfxVerb] = bus(0.5, 0.16);
-      [this.music, this.musicVerb] = bus(0.34, 0.5);
+      [this.music, this.musicVerb] = bus(0.24, 0.5);
       [this.ambience, this.ambVerb] = bus(0.6, 0.22);
     } catch {
       this.ctx = null;

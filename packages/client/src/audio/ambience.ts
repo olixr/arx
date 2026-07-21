@@ -162,7 +162,7 @@ export class AmbienceSystem {
     const distant = Math.random() < 0.35;
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = distant ? 2600 : 6000;
+    lp.frequency.value = distant ? 2400 : 4300;
     lp.connect(pan);
     pan.connect(bus);
 
@@ -204,7 +204,7 @@ export class AmbienceSystem {
   /** One cricket chirp: three tiny pulses. Soft by construction. */
   private cricketBurst(ctx: AudioContext, voice: number, t: number): void {
     const carrier = this.cricketGains[voice]!;
-    const f = voice === 0 ? 3950 : 4250;
+    const f = voice === 0 ? 3350 : 3650;
     for (let p = 0; p < 3; p++) {
       const at = t + p * 0.034;
       const o = ctx.createOscillator();
