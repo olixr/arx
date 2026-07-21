@@ -136,6 +136,14 @@ export enum Tile {
   CarvingBench = 104,
   /** A rune-carved worktable bearing an open tome and cradled focus stone — the enchanter's station. */
   EnchantingTable = 105,
+  /** A young tree standing up from a felled stump — walkable, not yet choppable. */
+  Sapling = 106,
+  /** An oak sapling. */
+  SaplingOak = 107,
+  /** A willow sapling. */
+  SaplingWillow = 108,
+  /** A yew sapling. */
+  SaplingYew = 109,
 }
 
 export enum Detail {
@@ -291,6 +299,13 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.Loom]: { name: 'loom', solid: true, color: '#6f4d26', raised: true, topColor: '#d8cbb0' },
   [Tile.CarvingBench]: { name: 'carving bench', solid: true, color: '#7d5a2e', raised: true, topColor: '#9b7440' },
   [Tile.EnchantingTable]: { name: 'enchanting table', solid: true, color: '#4a3f5e', raised: true, topColor: '#7a6aa8' },
+  // Saplings: the middle beat of tree regrowth (stump → sapling →
+  // tree). Walkable — you step over a knee-high whip — and not a
+  // gather node, so they can't be chopped back down mid-growth.
+  [Tile.Sapling]: { name: 'sapling', solid: false, color: '#4f8a42', raised: true, topColor: '#57a04b' },
+  [Tile.SaplingOak]: { name: 'oak sapling', solid: false, color: '#4f8a42', raised: true, topColor: '#2d6631' },
+  [Tile.SaplingWillow]: { name: 'willow sapling', solid: false, color: '#4f8a42', raised: true, topColor: '#5a8a4a' },
+  [Tile.SaplingYew]: { name: 'yew sapling', solid: false, color: '#4f8a42', raised: true, topColor: '#1e4028' },
 };
 
 /**
@@ -397,10 +412,14 @@ export function isSolidTile(id: number): boolean {
  * Pathfinding still treats the whole tile as blocked.
  */
 const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
-  [Tile.Tree, 0.3],
-  [Tile.TreeOak, 0.36],
-  [Tile.TreeWillow, 0.32],
-  [Tile.TreeYew, 0.38],
+  // Tree radii track the DRAWN flared trunk base (client
+  // render/trees.ts maxTrunkBaseRadius — a test pins the pairing):
+  // tight groves stay walkable because you collide with exactly the
+  // wood you see, never an invisible box around the canopy.
+  [Tile.Tree, 0.26],
+  [Tile.TreeOak, 0.38],
+  [Tile.TreeWillow, 0.26],
+  [Tile.TreeYew, 0.34],
   [Tile.Rock, 0.4],
   [Tile.RockCopper, 0.46],
   [Tile.RockTin, 0.46],
@@ -414,4 +433,33 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
 export function tileColliderRadius(id: number): number | null {
   return TILE_COLLIDER_RADIUS.get(id as Tile) ?? null;
+}
+
+/**
+ * Tree regrowth staging: a felled tree leaves a stump, the stump
+ * sprouts the species' sapling partway through the respawn wait, and
+ * the sapling stands up into the full tree. One law source for the
+ * server's respawn queue and the client's transition effects.
+ */
+const SAPLING_OF = new Map<Tile, Tile>([
+  [Tile.Tree, Tile.Sapling],
+  [Tile.TreeOak, Tile.SaplingOak],
+  [Tile.TreeWillow, Tile.SaplingWillow],
+  [Tile.TreeYew, Tile.SaplingYew],
+]);
+const TREE_OF_SAPLING = new Map<Tile, Tile>(
+  [...SAPLING_OF].map(([tree, sap]) => [sap, tree]),
+);
+
+/** The tree tiles that fell, stump, and regrow. */
+export const TREE_TILES: ReadonlySet<Tile> = new Set(SAPLING_OF.keys());
+
+/** The sapling stage for a tree tile, or null if it isn't a tree. */
+export function saplingOf(id: number): Tile | null {
+  return SAPLING_OF.get(id as Tile) ?? null;
+}
+
+/** The grown tree a sapling becomes, or null if it isn't a sapling. */
+export function treeOfSapling(id: number): Tile | null {
+  return TREE_OF_SAPLING.get(id as Tile) ?? null;
 }

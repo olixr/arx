@@ -1,4 +1,4 @@
-import { EntityKind, PoseState, ROCK_TILES, Tile, tileDef } from '@devcraft/shared';
+import { EntityKind, PoseState, ROCK_TILES, TREE_TILES, Tile, tileDef, treeOfSapling } from '@devcraft/shared';
 import { BUILDABLES, buildableGround, itemDef, npcDef } from '@devcraft/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
@@ -601,7 +601,35 @@ renderer.onFootstep = (x, y, speed, isOwn, sneaking) => {
 // A felled tree topples away from whoever cut it, groans, and lands
 // with a thud you can feel.
 game.onTileChange = (tx, ty, prev, next) => {
-  if ((prev === Tile.Tree || prev === Tile.TreeOak || prev === Tile.TreeWillow || prev === Tile.TreeYew) && next === Tile.Stump) {
+  if (prev === Tile.Stump && treeOfSapling(next) !== null) {
+    // Regrowth stage 1: a sapling sprouts from the stump under a
+    // soft spray of leaves and turned earth.
+    renderer.addGrowingTree(tx, ty);
+    renderer.particles.burst(tx + 0.5, ty + 0.6, 8, ['#5a9b48', '#6da24f', '#8a6a45'], {
+      speed: 0.8,
+      life: 0.8,
+      size: 0.06,
+      up: true,
+      gravity: 2.2,
+      drag: 1.1,
+    });
+    return;
+  }
+  if (prev !== undefined && treeOfSapling(prev) !== null && TREE_TILES.has(next)) {
+    // Regrowth stage 2: the sapling stands up into the full tree —
+    // renderer eases the scale so nothing pops.
+    renderer.addGrowingTree(tx, ty);
+    renderer.particles.burst(tx + 0.5, ty + 0.3, 12, ['#5a9b48', '#3f8a3c', '#c9a441'], {
+      speed: 1.1,
+      life: 1.0,
+      size: 0.06,
+      up: true,
+      gravity: 1.6,
+      drag: 1.0,
+    });
+    return;
+  }
+  if (prev !== undefined && TREE_TILES.has(prev) && next === Tile.Stump) {
     const own = game.predictor.pos;
     const dir = own.x <= tx + 0.5 ? 1 : -1;
     renderer.addFallingTree(tx, ty, prev, dir);

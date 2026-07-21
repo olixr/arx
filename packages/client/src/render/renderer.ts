@@ -11,10 +11,12 @@ import {
   TILE_PX,
   Tile,
   WALL_RUN_TILES,
+  TREE_TILES,
   hashCoords,
   hashString,
   pointHitsSolid,
   tileDef,
+  treeOfSapling,
   daylightAt,
   type ChunkData,
   type DaylightSample,
@@ -41,6 +43,7 @@ import { LegRig } from './legs.js';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import { Particles } from './particles.js';
 import { GrassSystem, windAt, windScalarAt, type Disturber } from './grass.js';
+import { paintTree, treeModel } from './trees.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
@@ -1901,10 +1904,17 @@ export class Renderer {
 
   private collectRaisedTiles(game: ClientGame, items: DrawItem[]): void {
     const b = this.visibleTileBounds();
-    for (let ty = b.minTy; ty <= b.maxTy; ty++) {
-      for (let tx = b.minTx; tx <= b.maxTx; tx++) {
+    // Trees now stand up to ~6 tiles: a base up to height/yScale rows
+    // SOUTH of the viewport bottom still pokes its crown into view.
+    // Deep-south rows scan for tree tiles only — walls and props are
+    // short enough for the shared bounds.
+    const TREE_PAD = 10;
+    for (let ty = b.minTy; ty <= b.maxTy + TREE_PAD; ty++) {
+      const deepSouth = ty > b.maxTy;
+      for (let tx = b.minTx - 1; tx <= b.maxTx + 1; tx++) {
         const ground = game.world.groundAt(tx, ty);
         if (ground === undefined) continue;
+        if (deepSouth && !TREE_TILES.has(ground as Tile)) continue;
         if (ground === Tile.Cliff) continue; // faces come from collectCliffFaces
         if (ground === Tile.Ramp) {
           items.push(this.rampItem(tx, ty, game));
@@ -4066,204 +4076,39 @@ export class Renderer {
   // -------------------------------------------------------------- trees
 
   /**
-   * The forest is a character, not a texture. Trees stand 3-4× the
-   * player's height in six bespoke species — each with a real curved,
-   * forked, or gnarled trunk, root flares, boughs, and a layered
-   * low-poly crown — and the whole treeline breathes on ONE coherent
-   * wind field so neighbours sway together, never against each other.
+   * The forest is GROWN, not authored: render/trees.ts turns each
+   * tile's hash into a deterministic branching skeleton — species
+   * grammars with three structural variants each, foliage clusters
+   * rustling on their own offsets of the ONE shared wind field. The
+   * renderer's job here is framing: screen anchor, growth stage
+   * (sapling -> grow-in -> full tree), leaf-shed particles, felling.
    */
 
-  /**
-   * Coherent wind field: a smooth value in ~[-0.6, 1.4] (biased
-   * downwind) sampled from world position + time. Two slow swells
-   * travel along the wind direction over a slowly breathing gust
-   * envelope — no `sin²` spikes, no per-tree randomness. Nearby trees
-   * read nearly the same phase (they group); distant trees lag as the
-   * front sweeps across, exactly like real wind moving through a wood.
-   */
-  private windField(wx: number, wy: number, tSec: number): number {
-    // ONE weather system: the treeline rides the same vector wind field
-    // as the grass (grass.ts), so gust fronts sweep canopy and meadow
-    // together — a squall you can watch cross the whole scene.
-    return windScalarAt(wx, wy, tSec);
+  /** Regrown trees scale up from sapling size instead of popping in. */
+  private readonly growingTrees = new Map<string, number>();
+
+  /** Start a growth ease at this tile (sapling sprout or stand-up). */
+  addGrowingTree(tx: number, ty: number): void {
+    this.growingTrees.set(`${tx},${ty}`, performance.now());
   }
 
-  private static readonly TREE_SPECIES: Array<{
-    trunk: string;
-    leaves: string[];
-    hMin: number;
-    hMax: number;
-    trunkW: number; // base half-width, tile fraction of k
-    tipW: number; // tip half-width fraction of trunkW
-    bow: number; // sideways trunk curve (± by hash)
-    lean: number; // constant windswept lean
-    fork: number | null; // fork height fraction, or null
-    gnarl: number; // trunk edge waviness
-    flare: number; // root-flare boost
-    sides: number; // canopy facet count
-    // Crowns: clusters of [ox, oy(up=neg), r] tiles. Fork species use
-    // two clusters (indices split by `crownSplit`).
-    lobes: Array<[number, number, number]>;
-    crownSplit: number; // lobes[0..split) = left branch crown
-    limbs: Array<[number, number, number]>; // [startHf, endOx, endOy]
-  }> = [
-    // 0 — Maple: sturdy, slightly bowed, full round crown.
-    {
-      trunk: '#6b4a26', leaves: ['#3a8140', '#35773a', '#3f8a3c'],
-      hMin: 1.0, hMax: 1.28, trunkW: 0.1, tipW: 0.4, bow: 0.14, lean: 0,
-      fork: null, gnarl: 0.03, flare: 0.9, sides: 8,
-      lobes: [[0.5, -2.0, 0.6], [-0.5, -2.05, 0.62], [0, -2.55, 0.7], [0, -2.15, 0.95]],
-      crownSplit: 0, limbs: [],
-    },
-    // 1 — Birch: tall, slim, pale, gentle S-curve, airy vertical crown.
-    // trunkW nudged up so the slimmest trunk still reads as the tile's
-    // obstacle now that bodies and arrows collide with the trunk circle.
-    {
-      trunk: '#d7d2c4', leaves: ['#5a9b48', '#63a850', '#579544'],
-      hMin: 1.25, hMax: 1.55, trunkW: 0.08, tipW: 0.5, bow: 0.22, lean: 0,
-      fork: null, gnarl: 0.02, flare: 0.5, sides: 7,
-      lobes: [[0.12, -3.1, 0.42], [-0.1, -2.6, 0.55], [0.06, -2.1, 0.5], [0.02, -3.5, 0.34]],
-      crownSplit: 0, limbs: [[0.55, -0.6, -2.2], [0.68, 0.55, -2.6]],
-    },
-    // 2 — Twin: trunk forks into a Y, two separate crowns.
-    {
-      trunk: '#66492a', leaves: ['#3a8140', '#348a3f', '#31763a'],
-      hMin: 1.05, hMax: 1.3, trunkW: 0.1, tipW: 0.45, bow: 0.06, lean: 0,
-      fork: 0.42, gnarl: 0.04, flare: 0.8, sides: 8,
-      lobes: [[-0.85, -2.3, 0.62], [-0.5, -2.7, 0.5], [0.85, -2.15, 0.64], [0.55, -2.55, 0.5]],
-      crownSplit: 2, limbs: [],
-    },
-    // 3 — Windswept: leans hard, crown streaming downwind, layered.
-    {
-      trunk: '#6b4a26', leaves: ['#3f8a3c', '#479243', '#3a8140'],
-      hMin: 1.05, hMax: 1.3, trunkW: 0.095, tipW: 0.42, bow: 0.1, lean: 0.42,
-      fork: null, gnarl: 0.05, flare: 0.85, sides: 8,
-      lobes: [[0.75, -2.35, 0.66], [0.3, -2.0, 0.56], [1.1, -2.05, 0.5], [0.55, -2.65, 0.52]],
-      crownSplit: 0, limbs: [[0.5, -0.55, -1.7]],
-    },
-    // 4 — Bushy broadleaf: short thick trunk, wide low crown, boughs.
-    {
-      trunk: '#6f5030', leaves: ['#48924a', '#3f8a3c', '#4f9a4e'],
-      hMin: 0.85, hMax: 1.05, trunkW: 0.14, tipW: 0.5, bow: 0.05, lean: 0,
-      fork: null, gnarl: 0.04, flare: 1.1, sides: 9,
-      lobes: [[-0.95, -1.7, 0.66], [0.95, -1.7, 0.66], [0, -2.15, 0.85], [-0.4, -1.5, 0.55], [0.45, -1.5, 0.55]],
-      crownSplit: 0, limbs: [[0.4, -0.9, -1.5], [0.45, 0.9, -1.5]],
-    },
-    // 5 — Ancient oak: thick gnarled trunk, heavy boughs, dark canopy.
-    {
-      trunk: '#5d4022', leaves: ['#2c5c31', '#2f6135', '#295830'],
-      hMin: 1.15, hMax: 1.42, trunkW: 0.19, tipW: 0.5, bow: 0.08, lean: 0,
-      fork: null, gnarl: 0.09, flare: 1.3, sides: 9,
-      lobes: [[-0.95, -2.15, 0.72], [0.9, -2.2, 0.74], [0, -2.75, 0.78], [0, -2.25, 1.05], [-0.45, -1.75, 0.58], [0.5, -1.8, 0.58]],
-      crownSplit: 0, limbs: [[0.5, -1.15, -1.9], [0.55, 1.1, -1.95], [0.62, -0.4, -2.3]],
-    },
-    // 6 — Weeping willow: grey-green curtain crown hanging low around a
-    // bowed trunk; the droop reads from lobes centred BELOW the crown top.
-    {
-      trunk: '#6f6448', leaves: ['#7aa062', '#6f9a58', '#83aa6a'],
-      hMin: 1.0, hMax: 1.22, trunkW: 0.12, tipW: 0.42, bow: 0.2, lean: 0.12,
-      fork: null, gnarl: 0.07, flare: 1.0, sides: 9,
-      lobes: [[0, -2.3, 0.8], [-1.0, -1.8, 0.66], [1.0, -1.85, 0.66], [-0.6, -1.3, 0.55], [0.65, -1.35, 0.55], [0, -1.55, 0.72]],
-      crownSplit: 0, limbs: [[0.6, -1.35, -0.95], [0.66, 1.35, -1.0]],
-    },
-    // 7 — Ancient yew: red-brown gnarled mass under a dense near-black
-    // crown — the rare war-bow tree, older than the map around it.
-    {
-      trunk: '#7d4436', leaves: ['#274f30', '#224a2c', '#2c5434'],
-      hMin: 1.2, hMax: 1.48, trunkW: 0.17, tipW: 0.5, bow: 0.06, lean: 0,
-      fork: null, gnarl: 0.11, flare: 1.25, sides: 9,
-      lobes: [[-0.8, -2.2, 0.66], [0.8, -2.25, 0.68], [0, -2.9, 0.72], [0, -2.3, 0.95], [-0.4, -1.7, 0.5], [0.45, -1.75, 0.5]],
-      crownSplit: 0, limbs: [[0.5, -1.05, -1.85], [0.55, 1.0, -1.9]],
-    },
-  ];
-
-  private static speciesOf(h: number, tile: Tile): number {
-    return tile === Tile.TreeOak ? 5
-      : tile === Tile.TreeWillow ? 6
-      : tile === Tile.TreeYew ? 7
-      : h % 5;
+  /** Soft settle with a whisper of overshoot — growth, not inflation. */
+  private static growEase(u: number): number {
+    const v = Math.min(1, u) - 1;
+    return 1 + 2.2 * v * v * v + 1.2 * v * v;
   }
 
-  /** Fill a tapered spine (centreline + width profile) as a bark shape. */
-  private fillSpine(
-    pts: Array<[number, number]>,
-    wBase: number,
-    wTip: number,
-    flare: number,
-    color: string,
-    litColor: string,
-  ): void {
-    const ctx = this.ctx;
-    const n = pts.length;
-    const left: Array<[number, number]> = [];
-    const right: Array<[number, number]> = [];
-    for (let i = 0; i < n; i++) {
-      const a = pts[Math.max(0, i - 1)]!;
-      const b = pts[Math.min(n - 1, i + 1)]!;
-      let tx = b[0] - a[0];
-      let ty = b[1] - a[1];
-      const len = Math.hypot(tx, ty) || 1;
-      tx /= len;
-      ty /= len;
-      const nx = -ty;
-      const ny = tx;
-      const u = i / (n - 1);
-      let w = wBase + (wTip - wBase) * u;
-      if (u < 0.2) w *= 1 + flare * ((0.2 - u) / 0.2);
-      left.push([pts[i]![0] + nx * w, pts[i]![1] + ny * w]);
-      right.push([pts[i]![0] - nx * w, pts[i]![1] - ny * w]);
+  /** Growth scale for a tree/sapling item, advancing its animation. */
+  private growthOf(tx: number, ty: number, from: number, to: number, ms: number): number {
+    const key = `${tx},${ty}`;
+    const born = this.growingTrees.get(key);
+    if (born === undefined) return to;
+    const u = (performance.now() - born) / ms;
+    if (u >= 1) {
+      this.growingTrees.delete(key);
+      return to;
     }
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(left[0]![0], left[0]![1]);
-    for (let i = 1; i < n; i++) ctx.lineTo(left[i]![0], left[i]![1]);
-    for (let i = n - 1; i >= 0; i--) ctx.lineTo(right[i]![0], right[i]![1]);
-    ctx.closePath();
-    ctx.fill();
-    // Lit west edge.
-    ctx.strokeStyle = litColor;
-    ctx.lineWidth = Math.max(1, wBase * 0.5);
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    ctx.moveTo(left[0]![0], left[0]![1]);
-    for (let i = 1; i < n; i++) ctx.lineTo(left[i]![0], left[i]![1]);
-    ctx.stroke();
-  }
-
-  /**
-   * Build a trunk/branch centreline from base to a target, curving with
-   * `bow` (sideways bulge), `lean` (constant), and `gnarl` (deterministic
-   * wobble), then displaced by the wind cantilever `disp(hf)`.
-   */
-  private spine(
-    x0: number,
-    y0: number,
-    x1: number,
-    y1: number,
-    k: number,
-    bow: number,
-    lean: number,
-    gnarl: number,
-    bowSign: number,
-    rnd: (i: number) => number,
-    disp: (hf: number) => number,
-    hf0: number,
-    hf1: number,
-    segs: number,
-  ): Array<[number, number]> {
-    const pts: Array<[number, number]> = [];
-    for (let i = 0; i <= segs; i++) {
-      const u = i / segs;
-      const e = u * u * (3 - 2 * u);
-      const hf = hf0 + (hf1 - hf0) * u;
-      let x = x0 + (x1 - x0) * e;
-      x += bowSign * bow * Math.sin(u * Math.PI) * k;
-      x += lean * e * k;
-      x += (rnd(i + 3) - 0.5) * gnarl * k;
-      x += disp(hf);
-      pts.push([x, y0 + (y1 - y0) * u]);
-    }
-    return pts;
+    return from + (to - from) * Renderer.growEase(u);
   }
 
   private drawTree(
@@ -4275,143 +4120,36 @@ export class Renderer {
     tile: Tile,
     tSec: number,
     bendOverride: number | undefined,
+    grow = 1,
   ): void {
-    const ctx = this.ctx;
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
-    const sp = Renderer.TREE_SPECIES[Renderer.speciesOf(h, tile)]!;
-    const rnd = (i: number): number => (hashCoords(7, h & 0xffff, i) % 1000) / 1000;
-    const k = (sp.hMin + (sp.hMax - sp.hMin) * rnd(1)) * s;
-    const groundY = by + syT * 0.3;
-    const bark = sp.trunk;
-    const litBark = shade(bark, bark === '#d7d2c4' ? 10 : 16);
-    const leaf = sp.leaves[h % sp.leaves.length]!;
-    const bowSign = rnd(2) < 0.5 ? -1 : 1;
+    const m = treeModel(tile, h);
+    const wind = paintTree(this.ctx, m, {
+      bx,
+      groundY: by + syT * 0.3,
+      s,
+      syT,
+      wx,
+      wy,
+      tSec,
+      windOverride: bendOverride,
+      grow,
+    });
 
-    // Coherent wind → a horizontal bend that grows with height (a
-    // cantilever: base planted, crown swaying most). One value for the
-    // whole tree, so it moves as a unit and never fights itself.
-    const windVal = bendOverride !== undefined ? bendOverride : this.windField(wx, wy, tSec);
-    const bend = windVal * 0.17 * k;
-    const disp = (hf: number): number => bend * Math.pow(Math.max(0, hf), 1.4);
-    const shimMag = (0.4 + Math.min(1.2, Math.abs(windVal))) * 0.014 * k;
-
-    // Crown attach heights (tiles up from ground → screen y).
-    const topTile = Math.max(...sp.lobes.map((l) => -l[1] + l[2] * 0.4));
-
-    // --- Trunk (+ fork branches) as bespoke curved spines.
-    let trunkPts: Array<[number, number]> | null = null;
-    if (sp.fork !== null) {
-      const forkY = groundY - topTile * sp.fork * k;
-      const forkX = bx + disp(sp.fork);
-      // Shared lower trunk.
-      const lower = this.spine(bx, groundY, forkX, forkY, k, sp.bow * 0.5, 0, sp.gnarl, bowSign, rnd, disp, 0, sp.fork, 4);
-      this.fillSpine(lower, sp.trunkW * k, sp.trunkW * k * 0.8, sp.flare, bark, litBark);
-      // Two branches to the two crown centres.
-      const lC = this.clusterCentre(sp, 0, sp.crownSplit);
-      const rC = this.clusterCentre(sp, sp.crownSplit, sp.lobes.length);
-      for (const [cxT, cyT] of [lC, rC]) {
-        const bxr = this.spine(
-          forkX, forkY, bx + cxT * k, groundY + cyT * k + 0.35 * k, k,
-          sp.bow, 0, sp.gnarl, cxT < 0 ? -1 : 1, rnd, disp, sp.fork, 0.92, 4,
-        );
-        this.fillSpine(bxr, sp.trunkW * k * 0.72, sp.trunkW * k * 0.4, 0.2, bark, litBark);
-      }
-    } else {
-      const topX = bx + sp.lean * k * 0.5;
-      const trunk = this.spine(
-        bx, groundY, topX, groundY - topTile * 0.82 * k, k,
-        sp.bow, sp.lean, sp.gnarl, bowSign, rnd, disp, 0, 0.82, 6,
-      );
-      trunkPts = trunk;
-      this.fillSpine(trunk, sp.trunkW * k, sp.trunkW * k * sp.tipW, sp.flare, bark, litBark);
-      // Bark seam texture.
-      ctx.strokeStyle = shade(bark, -20);
-      ctx.lineWidth = Math.max(1, s * 0.025);
-      ctx.beginPath();
-      for (let i = 1; i < trunk.length - 1; i += 2) {
-        ctx.moveTo(trunk[i]![0] + sp.trunkW * k * 0.2, trunk[i]![1]);
-        ctx.lineTo(trunk[i]![0] + sp.trunkW * k * 0.2, trunk[i]![1] - k * 0.14);
-      }
-      ctx.stroke();
-    }
-
-    // Root flares: a couple of short buttress roots at the base.
-    ctx.fillStyle = shade(bark, -8);
-    for (const rs of [-1, 1]) {
-      ctx.beginPath();
-      ctx.moveTo(bx + rs * sp.trunkW * k * (1 + sp.flare), groundY - sp.trunkW * k * 0.4);
-      ctx.lineTo(bx + rs * sp.trunkW * k * (2.2 + sp.flare), groundY + syT * 0.02);
-      ctx.lineTo(bx + rs * sp.trunkW * k * 0.5, groundY + syT * 0.03);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    // --- Limbs: tapered boughs reaching out toward leaf clusters.
-    // Anchored by SAMPLING the built trunk polyline — a bough can never
-    // float off a bowed, leaning, or gnarled trunk.
-    for (const [sh, ex, ey] of sp.limbs) {
-      let ax: number;
-      let ay: number;
-      if (trunkPts) {
-        const uPt = Math.min(1, sh / 0.82) * (trunkPts.length - 1);
-        const i0 = Math.floor(uPt);
-        const fr = uPt - i0;
-        const q0 = trunkPts[i0]!;
-        const q1 = trunkPts[Math.min(trunkPts.length - 1, i0 + 1)]!;
-        ax = q0[0] + (q1[0] - q0[0]) * fr;
-        ay = q0[1] + (q1[1] - q0[1]) * fr;
-      } else {
-        ax = bx + disp(sh) + bowSign * sp.bow * Math.sin(sh * Math.PI) * k;
-        ay = groundY - topTile * sh * k;
-      }
-      const limb = this.spine(
-        ax, ay, bx + ex * k, groundY + ey * k, k, 0.12, 0, sp.gnarl, ex < 0 ? -1 : 1,
-        rnd, disp, sh, Math.min(1, -ey / topTile), 3,
-      );
-      this.fillSpine(limb, sp.trunkW * k * 0.5, sp.trunkW * k * 0.18, 0, bark, litBark);
-    }
-
-    // --- Canopy: layered lobes, painted back-to-front. All share the
-    // one bend; a tiny coherent shimmer adds leaf flutter without ever
-    // sending lobes in opposite directions.
-    const order = sp.lobes
-      .map((l, i) => ({ l, i }))
-      .sort((a, b) => a.l[1] - b.l[1]); // higher (more negative oy) first
-    for (const { l, i } of order) {
-      const [ox, oy, r] = l;
-      const hf = -oy / topTile;
-      const shimmer = Math.sin(tSec * 2.3 + wx * 0.5 + wy * 0.3 + i) * shimMag;
-      const lx3 = bx + ox * k + disp(hf) + shimmer;
-      const ly3 = groundY + oy * k;
-      const lr = r * k;
-      const seed = h ^ (i * 0x9e37);
-      ctx.fillStyle = shade(leaf, -16);
-      ctx.beginPath();
-      facetBlob(ctx, lx3 + lr * 0.12, ly3 + lr * 0.14, lr * 0.95, seed, sp.sides, 0.92);
-      ctx.fill();
-      ctx.fillStyle = leaf;
-      ctx.beginPath();
-      facetBlob(ctx, lx3, ly3, lr * 0.93, seed, sp.sides, 0.92);
-      ctx.fill();
-      ctx.fillStyle = shade(leaf, 18);
-      ctx.beginPath();
-      facetBlob(ctx, lx3 - lr * 0.26 + shimmer * 0.5, ly3 - lr * 0.3, lr * 0.5, seed ^ 0x55, 6, 0.9);
-      ctx.fill();
-    }
-
-    // Life: strong gusts shake the occasional leaf loose (skipped while
-    // felling — the fall spawns its own debris).
-    if (bendOverride === undefined && Math.random() < 0.0009 * (0.5 + Math.abs(windVal))) {
-      const l = sp.lobes[Math.floor(rnd(9) * sp.lobes.length)]!;
+    // Life: strong gusts shake the occasional leaf loose (skipped
+    // while felling — the fall spawns its own debris).
+    if (bendOverride === undefined && grow >= 1 && Math.random() < 0.0009 * (0.5 + Math.abs(wind))) {
+      const c = m.clusters[Math.floor(Math.random() * m.clusters.length)]!;
+      const leaf = m.leaves[c.tone]!;
       const wpt = this.camera.screenToWorld(
-        bx + l[0] * k + (Math.random() - 0.5) * l[2] * k,
-        groundY + l[1] * k + l[2] * k * 0.4,
+        bx + (c.x + (Math.random() - 0.5) * c.r) * s,
+        by + syT * 0.3 - (c.y - c.r * 0.4) * s,
         this.w,
         this.h,
       );
       this.particles.burst(wpt.x, wpt.y, 1, [shade(leaf, 24), '#c9a441'], {
-        speed: 0.4 + Math.max(0, windVal) * 0.5,
+        speed: 0.4 + Math.max(0, wind) * 0.5,
         life: 2.2,
         size: 0.05,
         gravity: 0.5,
@@ -4422,33 +4160,22 @@ export class Renderer {
     }
   }
 
-  /** Average centre of a lobe cluster (tiles), for fork branch targets. */
-  private clusterCentre(
-    sp: { lobes: Array<[number, number, number]> },
-    from: number,
-    to: number,
-  ): [number, number] {
-    let sx = 0;
-    let sy = 0;
-    for (let i = from; i < to; i++) {
-      sx += sp.lobes[i]![0];
-      sy += sp.lobes[i]![1];
-    }
-    const n = to - from || 1;
-    return [sx / n, sy / n];
-  }
-
-  private drawTreeShadow(bx: number, by: number, h: number, tile: Tile): void {
+  private drawTreeShadow(bx: number, by: number, h: number, tile: Tile, grow = 1): void {
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
-    const sp = Renderer.TREE_SPECIES[Renderer.speciesOf(h, tile)]!;
-    const rnd = (i: number): number => (hashCoords(7, h & 0xffff, i) % 1000) / 1000;
-    const k = (sp.hMin + (sp.hMax - sp.hMin) * rnd(1)) * s;
-    const spread = Math.max(...sp.lobes.map((l) => Math.abs(l[0]) + l[2])) * 0.7;
-    // The canopy's silhouette thrown from its height, the trunk's
-    // smear tying it to the roots — long at dawn, tucked in at noon.
-    this.castBlob(bx, by + syT * 0.18, tile === Tile.TreeOak || tile === Tile.TreeYew ? 1.7 : tile === Tile.TreeWillow ? 1.8 : 1.4, k * spread * 0.9, h ^ 0x33, s * 0.09);
+    const m = treeModel(tile, h);
+    // The canopy silhouette thrown from its height, the trunk smear
+    // tying it to the roots — long at dawn, tucked in at noon.
+    this.castBlob(
+      bx,
+      by + syT * 0.18,
+      Math.min(2.1, 0.36 * m.height * grow),
+      m.spread * 0.62 * s * grow,
+      h ^ 0x33,
+      s * 0.09,
+    );
   }
+
 
   /**
    * A felled tree: shudder → topple (varied azimuth) → impact with a
@@ -4599,8 +4326,11 @@ export class Renderer {
       // dust billow instead of just vanishing.
       if (ms >= 2500 && !ft.brokeUp) {
         ft.brokeUp = true;
-        const bark = Renderer.TREE_SPECIES[Renderer.speciesOf(ft.h, ft.tile)]!.trunk;
-        for (let c = 0; c < 5; c++) {
+        const felled = treeModel(ft.tile, ft.h);
+        const bark = felled.bark;
+        // Bigger trees break into more log chunks along a longer lie.
+        const chunkN = Math.max(4, Math.round(felled.height * 1.1));
+        for (let c = 0; c < chunkN; c++) {
           const along = 0.6 + c * 0.7;
           this.particles.burst(cx + cosA * along, cy + sinA * along, 1, [bark, shade(bark, 14)], {
             speed: 1.4, life: 0.8, size: 0.2, gravity: 6, drag: 1.5, dir: -Math.PI / 2, spread: 1.6,
@@ -4932,10 +4662,29 @@ export class Renderer {
       case Tile.TreeOak:
       case Tile.TreeWillow:
       case Tile.TreeYew: {
+        // A tree that just stood up from its sapling eases from
+        // sapling scale to full height instead of popping in.
+        const grow = this.growthOf(tx, ty, 0.45, 1, 2600);
         return {
           sortY: ty + 0.9,
-          drawShadow: () => this.drawTreeShadow(p.x, p.y, h, tile),
-          draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, undefined),
+          drawShadow: () => this.drawTreeShadow(p.x, p.y, h, tile, grow),
+          draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, undefined, grow),
+        };
+      }
+
+      case Tile.Sapling:
+      case Tile.SaplingOak:
+      case Tile.SaplingWillow:
+      case Tile.SaplingYew: {
+        // The middle beat of regrowth: the SAME tree this tile will
+        // grow into (same hash -> same species, variant, silhouette),
+        // drawn young — thin, short, crown not yet filled in.
+        const tree = treeOfSapling(tile) ?? Tile.Tree;
+        const grow = this.growthOf(tx, ty, 0.16, 0.45, 1400);
+        return {
+          sortY: ty + 0.7,
+          drawShadow: () => this.drawTreeShadow(p.x, p.y, h, tree, grow),
+          draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, tree, t, undefined, grow),
         };
       }
 

@@ -33,6 +33,7 @@ import {
   type SkillXp,
   type SnapshotEntity,
   isRarityTier,
+  saplingOf,
   Tile,
 } from '@devcraft/shared';
 import {
@@ -1101,6 +1102,19 @@ export class GameServer {
 
     if (node.depletedTile !== null && Math.random() < node.depleteChance) {
       this.setWorldTile(action.tx, action.ty, node.depletedTile);
+      // Trees regrow in stages: the stump sprouts a sapling partway
+      // through the wait, then the sapling stands up into the tree.
+      // Both entries share the tile, so a build/demolish cancel that
+      // sweeps the queue clears the whole staging.
+      const sapling = saplingOf(node.tile);
+      if (sapling !== null) {
+        this.respawnQueue.push({
+          at: Date.now() + node.respawnSec * 1000 * 0.45,
+          tx: action.tx,
+          ty: action.ty,
+          tile: sapling,
+        });
+      }
       this.respawnQueue.push({
         at: Date.now() + node.respawnSec * 1000,
         tx: action.tx,

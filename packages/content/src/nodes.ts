@@ -37,7 +37,9 @@ export const NODES: readonly NodeDef[] = [
     baseTicks: 50, // 2.5s
     depleteChance: 1,
     depletedTile: Tile.Stump,
-    respawnSec: 12,
+    // Regrowth is staged (stump -> sapling -> tree), so the wait reads
+    // as growth, not a pop-in refresh.
+    respawnSec: 18,
   },
   {
     tile: Tile.TreeOak,
@@ -50,7 +52,7 @@ export const NODES: readonly NodeDef[] = [
     baseTicks: 70,
     depleteChance: 0.4,
     depletedTile: Tile.Stump,
-    respawnSec: 20,
+    respawnSec: 32,
   },
   {
     tile: Tile.TreeWillow,
@@ -63,7 +65,7 @@ export const NODES: readonly NodeDef[] = [
     baseTicks: 85,
     depleteChance: 0.35,
     depletedTile: Tile.Stump,
-    respawnSec: 30,
+    respawnSec: 45,
   },
   {
     tile: Tile.TreeYew,
@@ -76,7 +78,7 @@ export const NODES: readonly NodeDef[] = [
     baseTicks: 110,
     depleteChance: 0.3,
     depletedTile: Tile.Stump,
-    respawnSec: 60,
+    respawnSec: 75,
   },
   {
     tile: Tile.RockCopper,
