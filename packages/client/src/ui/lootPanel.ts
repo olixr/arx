@@ -32,17 +32,8 @@ export class LootPanel {
   private nextRank = 0;
   private sig = '';
 
-  constructor(private readonly game: ClientGame) {
-    const btn = document.createElement('button');
-    btn.className = 'panel-close';
-    btn.textContent = '✕';
-    btn.title = 'Close (Esc)';
-    btn.dataset.nav = '';
-    btn.dataset.navkey = 'close:loot-panel';
-    btn.dataset.acta = 'Close';
-    btn.addEventListener('click', () => this.close());
-    this.panel.querySelector('h3')!.appendChild(btn);
-  }
+  // The close chip + header dressing come from dressPanel in main.
+  constructor(private readonly game: ClientGame) {}
 
   get isOpen(): boolean {
     return !this.panel.classList.contains('hidden');

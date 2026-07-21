@@ -16,12 +16,13 @@ import { AmbienceSystem } from './audio/ambience.js';
 import { AudioMenu } from './ui/audioMenu.js';
 import { zoneWeights } from './audio/zones.js';
 import { setupTouch } from './input/touch.js';
-import { uiIconUrl } from './render/icons.js';
+import { itemIconUrl, uiIconUrl } from './render/icons.js';
 import { fxStyleFor } from './render/abilityFx.js';
 import { installChrome } from './ui/chrome.js';
+import { dressPanel } from './ui/panel.js';
 import { LookCreator } from './ui/lookCreator.js';
 
-// Paint the HUD's chrome (linen weave + ornate frame) before any panel
+// Paint the HUD's chrome (the flat chamfered frame) before any panel
 // shows — the stylesheet reads it from CSS custom properties.
 installChrome();
 
@@ -423,6 +424,49 @@ const game = new ClientGame(input, {
 
 // The ground manager: choose from a pile instead of vacuuming it.
 const lootPanel = new LootPanel(game);
+
+// ---- one anatomy for every panel: icon plaque, title, hint, close ----
+const el = (id: string): HTMLElement => document.getElementById(id)!;
+dressPanel(el('inventory-panel'), {
+  icon: uiIconUrl('backpack', 34),
+  hint: 'Worn gear above, pack below — inspect anything for its full story.',
+  onClose: () => panels.closeAll(),
+});
+dressPanel(el('skills-panel'), {
+  icon: uiIconUrl('scroll', 34),
+  hint: 'Deeds raise levels. Combat skills offer a Technique — pick yours.',
+  onClose: () => panels.closeAll(),
+});
+dressPanel(el('craft-panel'), {
+  icon: uiIconUrl('hammer', 34),
+  hint: 'Stand at a station for its recipes — Handiwork needs only your hands.',
+  onClose: () => stationPanels.closeAll(),
+});
+dressPanel(el('build-panel'), {
+  icon: uiIconUrl('house', 34),
+  hint: 'Pick a blueprint, then choose open ground to raise it.',
+  onClose: () => stationPanels.closeAll(),
+});
+dressPanel(el('bank-panel'), {
+  icon: itemIconUrl('coins', 34),
+  hint: 'Pack items deposit with a tap — the vault keeps it all safe.',
+  onClose: () => stationPanels.closeAll(),
+});
+dressPanel(el('shop-panel'), {
+  icon: itemIconUrl('flour', 34),
+  hint: 'Buy from the counter — tap pack items to sell them.',
+  onClose: () => stationPanels.closeAll(),
+});
+dressPanel(el('loot-panel'), {
+  icon: itemIconUrl('bones', 34),
+  hint: 'Everything lying within reach — take what you want.',
+  onClose: () => lootPanel.close(),
+});
+dressPanel(el('audio-panel'), {
+  icon: uiIconUrl('bell', 34),
+  hint: '100% is the shipped mix — trim each voice to taste.',
+  onClose: () => audioMenu.toggle(),
+});
 
 // Dodge dash feedback: whoosh + a streak of dust kicked out behind.
 const hotbar = new Hotbar(input);

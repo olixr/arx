@@ -55,19 +55,9 @@ export class StationPanels {
     ) => void,
     private readonly onShop: (op: 'buy' | 'sell', item: string, qty: number) => void,
     private readonly onPickBuildable: (id: string) => void,
-  ) {
-    for (const panel of [this.craftPanel, this.bankPanel, this.shopPanel, this.buildPanel]) {
-      const btn = document.createElement('button');
-      btn.className = 'panel-close';
-      btn.textContent = '✕';
-      btn.title = 'Close (Esc)';
-      btn.dataset.nav = '';
-      btn.dataset.navkey = `close:${panel.id}`;
-      btn.dataset.acta = 'Close';
-      btn.addEventListener('click', () => this.closeAll());
-      panel.querySelector('h3')!.appendChild(btn);
-    }
-  }
+  ) {}
+  // Close chips + header dressing come from ui/panel.ts (dressPanel),
+  // wired in main — one anatomy for every panel in the game.
 
   get bankOpen(): boolean {
     return !this.bankPanel.classList.contains('hidden');
