@@ -2425,27 +2425,41 @@ const PAINTERS: Record<string, IconPainter> = {
     c.restore();
   },
   herb: (c, col) => {
-    // A cut sprig: central stem, paired chunky leaves, one lit leaf.
-    c.strokeStyle = shade(col, -28);
-    c.lineWidth = 0.045;
-    c.beginPath();
-    c.moveTo(0.5, 0.88);
-    c.quadraticCurveTo(0.46, 0.5, 0.52, 0.14);
-    c.stroke();
-    const leaf = (x: number, y: number, rot: number, s: number, tint: number) => {
+    // Sagewort as it grows: a fan of chamfered paddle spears with
+    // silver midribs under a stacked silver floret crown.
+    const spear = (rot: number, len: number, tint: number) => {
       c.save();
-      c.translate(x, y);
+      c.translate(0.5, 0.86);
       c.rotate(rot);
-      poly(c, shade(col, tint), [[0, 0], [s, -s * 0.42], [s * 1.7, 0], [s, s * 0.42]]);
+      poly(c, shade(col, tint), [
+        [0, 0.02],
+        [-0.085, -len * 0.42],
+        [0, -len],
+        [0.085, -len * 0.42],
+      ]);
+      // Silver midrib — the healer's-herb signature.
+      poly(c, '#d4e4c8', [[0, -len * 0.3], [-0.028, -len * 0.55], [0, -len * 0.92], [0.028, -len * 0.55]]);
       c.restore();
     };
-    leaf(0.49, 0.7, Math.PI - 0.5, 0.15, 0);
-    leaf(0.5, 0.68, -0.5, 0.15, -12);
-    leaf(0.48, 0.5, Math.PI - 0.35, 0.14, 10);
-    leaf(0.5, 0.46, -0.4, 0.14, 0);
-    leaf(0.5, 0.3, Math.PI - 0.3, 0.12, 22);
-    leaf(0.51, 0.26, -0.3, 0.12, 32);
-    dot(c, shade(col, 44), 0.52, 0.15, 0.035);
+    spear(-1.05, 0.42, -18);
+    spear(1.05, 0.42, -18);
+    spear(-0.55, 0.52, -6);
+    spear(0.55, 0.52, -6);
+    // The floret tower rising from the heart.
+    c.save();
+    c.translate(0.5, 0.86);
+    poly(c, shade(col, 6), [[-0.05, 0], [-0.026, -0.52], [0.026, -0.52], [0.05, 0]]);
+    c.restore();
+    for (let k = 0; k < 4; k++) {
+      const fw = 0.24 - k * 0.045;
+      const fy = 0.34 - k * 0.09;
+      poly(c, k >= 2 ? '#f2f8ec' : k === 1 ? '#d8e8cc' : '#b9d4ae', [
+        [0.5 - fw / 2, fy],
+        [0.5 + fw / 2, fy],
+        [0.5 + fw / 2 - 0.02, fy - 0.075],
+        [0.5 - fw / 2 + 0.02, fy - 0.075],
+      ]);
+    }
   },
   sunflower: (c, col) => {
     // Stem + one leaf.
@@ -2531,65 +2545,115 @@ const PAINTERS: Record<string, IconPainter> = {
     }
   },
   bells: (c, col) => {
-    // Moonbell: an arched stem with hanging bells, faintly aglow.
-    c.strokeStyle = '#5b7a52';
-    c.lineWidth = 0.04;
+    // Moonbell: a thick arched stem hanging two faceted lanterns
+    // with hot moon-white cores, haloed like the wild plant at dusk.
+    c.strokeStyle = '#46695c';
+    c.lineCap = 'round';
+    c.lineWidth = 0.07;
     c.beginPath();
-    c.moveTo(0.3, 0.9);
-    c.quadraticCurveTo(0.34, 0.3, 0.72, 0.24);
+    c.moveTo(0.26, 0.92);
+    c.quadraticCurveTo(0.3, 0.28, 0.74, 0.22);
     c.stroke();
-    for (const [x, y, s] of [[0.42, 0.5, 0.1], [0.56, 0.4, 0.11], [0.72, 0.34, 0.12]] as const) {
-      c.strokeStyle = '#5b7a52';
-      c.lineWidth = 0.026;
+    for (const [x, y, s] of [[0.44, 0.56, 0.15], [0.76, 0.48, 0.18]] as const) {
+      dot(c, 'rgba(170, 188, 255, 0.35)', x, y, s * 1.55);
+      c.strokeStyle = '#46695c';
+      c.lineWidth = 0.032;
       c.beginPath();
-      c.moveTo(x, y - s * 0.9);
-      c.lineTo(x, y - s * 0.4);
+      c.moveTo(x - s * 0.2, y - s * 1.5);
+      c.lineTo(x, y - s * 0.6);
       c.stroke();
-      poly(c, col, [
-        [x - s * 0.55, y - s * 0.45],
-        [x + s * 0.55, y - s * 0.45],
-        [x + s * 0.75, y + s * 0.55],
-        [x + s * 0.3, y + s * 0.35],
-        [x, y + s * 0.6],
-        [x - s * 0.3, y + s * 0.35],
-        [x - s * 0.75, y + s * 0.55],
+      poly(c, shade(col, -16), [
+        [x - s * 0.55, y - s * 0.9],
+        [x + s * 0.55, y - s * 0.9],
+        [x + s * 0.78, y + s * 0.35],
+        [x + s * 0.3, y + s * 0.66],
+        [x, y + s * 0.44],
+        [x - s * 0.3, y + s * 0.66],
+        [x - s * 0.78, y + s * 0.35],
       ]);
-      c.fillStyle = shade(col, 26);
-      c.fillRect(x - s * 0.4, y - s * 0.38, s * 0.5, s * 0.3);
-      dot(c, '#e8ecff', x, y + s * 0.62, s * 0.16);
+      poly(c, col, [
+        [x - s * 0.42, y - s * 0.72],
+        [x + s * 0.42, y - s * 0.72],
+        [x + s * 0.58, y + s * 0.28],
+        [x - s * 0.58, y + s * 0.28],
+      ]);
+      c.fillStyle = '#e8ecff';
+      c.fillRect(x - s * 0.3, y - s * 0.52, s * 0.6, s * 0.7);
     }
   },
   berries: (c, col) => {
-    // A plump cluster with two leaves.
-    poly(c, '#5f9c46', [[0.42, 0.3], [0.6, 0.16], [0.7, 0.3], [0.52, 0.38]]);
-    poly(c, '#4c8039', [[0.42, 0.32], [0.28, 0.2], [0.2, 0.34], [0.36, 0.42]]);
-    for (const [x, y, r] of [
-      [0.36, 0.56, 0.14], [0.62, 0.52, 0.14], [0.5, 0.74, 0.15], [0.5, 0.44, 0.12],
-    ] as const) {
-      c.fillStyle = col;
-      c.strokeStyle = OUTLINE;
-      c.lineWidth = 0.03;
-      c.beginPath();
-      c.arc(x, y, r, 0, Math.PI * 2);
-      c.fill();
-      c.stroke();
-      dot(c, shade(col, 34), x - r * 0.3, y - r * 0.35, r * 0.32);
-    }
+    // A cluster of fat chamfered berry GEMS — deep frame, bright
+    // face, hard glint — under two chunky leaves, as on the bush.
+    poly(c, '#549447', [[0.44, 0.3], [0.62, 0.14], [0.74, 0.3], [0.54, 0.38]]);
+    poly(c, '#3a7539', [[0.44, 0.32], [0.28, 0.18], [0.18, 0.34], [0.36, 0.42]]);
+    const gem = (x: number, y: number, r: number, rot: number) => {
+      c.save();
+      c.translate(x, y);
+      c.rotate(rot);
+      const cut = r * 0.36;
+      poly(c, shade(col, -22), [
+        [-r + cut, -r], [r - cut, -r], [r, -r + cut], [r, r - cut],
+        [r - cut, r], [-r + cut, r], [-r, r - cut], [-r, -r + cut],
+      ]);
+      poly(c, shade(col, 12), [
+        [-r * 0.62, -r * 0.62], [r * 0.55, -r * 0.62], [r * 0.62, r * 0.5], [-r * 0.55, r * 0.55],
+      ]);
+      c.fillStyle = shade(col, 48);
+      c.fillRect(-r * 0.5, -r * 0.52, r * 0.5, r * 0.36);
+      c.restore();
+    };
+    gem(0.35, 0.55, 0.15, -0.2);
+    gem(0.66, 0.52, 0.15, 0.25);
+    gem(0.5, 0.76, 0.16, 0.1);
   },
   fibre: (c, col) => {
-    // A hank of long strands folded over a knot.
-    bar(c, shade(col, -18), 0.38, 0.42, 0.24, 0.12);
-    c.lineWidth = 0.045;
-    for (const [dx, tint] of [[-0.14, -10], [-0.05, 8], [0.04, 0], [0.13, 18]] as const) {
-      c.strokeStyle = shade(col, tint);
-      c.beginPath();
-      c.moveTo(0.5 + dx, 0.18);
-      c.quadraticCurveTo(0.5 + dx * 1.8, 0.5, 0.5 + dx * 1.3, 0.86);
-      c.stroke();
+    // A hank of fat chisel strands folded over a woven wrap — the
+    // same slab-blade language as the living plant.
+    for (const [dx, tint] of [[-0.17, -14], [-0.06, 6], [0.05, -4], [0.16, 16]] as const) {
+      poly(c, shade(col, tint), [
+        [0.5 + dx - 0.045, 0.14],
+        [0.5 + dx + 0.045, 0.14],
+        [0.5 + dx * 1.9 + 0.05, 0.52],
+        [0.5 + dx * 1.4 + 0.04, 0.88],
+        [0.5 + dx * 1.4 - 0.04, 0.88],
+        [0.5 + dx * 1.9 - 0.05, 0.52],
+      ]);
     }
-    c.strokeStyle = OUTLINE;
-    c.lineWidth = 0.028;
-    c.strokeRect(0.38, 0.42, 0.24, 0.12);
+    // The wrap: chunky band with a lit course and a stitch groove.
+    poly(c, '#6b5230', [[0.3, 0.38], [0.7, 0.38], [0.72, 0.58], [0.28, 0.58]]);
+    c.fillStyle = '#8a6c40';
+    c.fillRect(0.32, 0.41, 0.36, 0.06);
+    c.fillStyle = '#57422a';
+    c.fillRect(0.32, 0.51, 0.36, 0.04);
+  },
+  bloomstone: (c, col) => {
+    // A seed that chose stone: a hewn grey-green BLOCK (quarried
+    // stoneBlock dialect — tapered top, shoulder verts, lit cap,
+    // shaded flank) with a live sprout breaking from its crown.
+    poly(c, '#6a7562', [
+      [0.2, 0.88], [0.16, 0.62], [0.28, 0.4], [0.34, 0.36],
+      [0.66, 0.36], [0.76, 0.44], [0.82, 0.66], [0.78, 0.88],
+    ]);
+    c.fillStyle = '#7d8872';
+    c.fillRect(0.24, 0.39, 0.44, 0.13);
+    c.fillStyle = '#525c4c';
+    c.fillRect(0.66, 0.52, 0.13, 0.3);
+    poly(c, shade(col, -8), [[0.5, 0.38], [0.44, 0.24], [0.5, 0.08], [0.56, 0.24]]);
+    poly(c, shade(col, 14), [[0.5, 0.32], [0.32, 0.28], [0.22, 0.13], [0.44, 0.17]]);
+    poly(c, shade(col, 26), [[0.52, 0.32], [0.68, 0.26], [0.78, 0.11], [0.58, 0.16]]);
+  },
+  essence: (c, col) => {
+    // Pressed vigor: a faceted drop of pure element, lit from within.
+    dot(c, shade(col, 30), 0.5, 0.52, 0.36);
+    c.globalAlpha = 1;
+    poly(c, shade(col, -20), [
+      [0.5, 0.12], [0.72, 0.4], [0.78, 0.62], [0.64, 0.84],
+      [0.36, 0.84], [0.22, 0.62], [0.28, 0.4],
+    ]);
+    poly(c, col, [[0.5, 0.22], [0.66, 0.44], [0.7, 0.62], [0.58, 0.76], [0.38, 0.72], [0.32, 0.5]]);
+    c.fillStyle = shade(col, 44);
+    c.fillRect(0.38, 0.34, 0.14, 0.16);
+    poly(c, '#ffffff', [[0.62, 0.28], [0.65, 0.34], [0.71, 0.37], [0.65, 0.4], [0.62, 0.46], [0.59, 0.4], [0.53, 0.37], [0.59, 0.34]]);
   },
   twine: (c, col) => {
     // A wound coil with a loose tail.
@@ -3074,14 +3138,14 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   emberstone: { icon: 'gem', color: '#e8683c' },
   frostshard: { icon: 'gem', color: '#9ad0ec' },
   stormpearl: { icon: 'gem', color: '#e8e29a' },
-  bloomstone: { icon: 'gem', color: '#7ac46a' },
+  bloomstone: { icon: 'bloomstone', color: '#7ac46a' },
   // Enchanting reagents — dust on the nugget pile, essences on the gem.
   arcane_dust: { icon: 'nuggets', color: '#b8a8e0' },
-  ember_essence: { icon: 'gem', color: '#e8885c' },
-  frost_essence: { icon: 'gem', color: '#b8e0f4' },
-  storm_essence: { icon: 'gem', color: '#f0eab8' },
-  verdant_essence: { icon: 'gem', color: '#9ad48a' },
-  crimson_essence: { icon: 'gem', color: '#d06868' },
+  ember_essence: { icon: 'essence', color: '#e8885c' },
+  frost_essence: { icon: 'essence', color: '#b8e0f4' },
+  storm_essence: { icon: 'essence', color: '#f0eab8' },
+  verdant_essence: { icon: 'essence', color: '#9ad48a' },
+  crimson_essence: { icon: 'essence', color: '#d06868' },
   verdant_totem: { icon: 'totem', color: '#7ab06a' },
   snare_kit: { icon: 'trap', color: '#b0a05a' },
   storm_bell: { icon: 'bell', color: '#e8d06a' },

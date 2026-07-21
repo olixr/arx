@@ -44,6 +44,7 @@ import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import { Particles } from './particles.js';
 import { GrassSystem, windAt, windScalarAt, type Disturber } from './grass.js';
 import { paintTree, treeModel } from './trees.js';
+import { bellLantern, floraModel, floretTower, paintFlora } from './flora.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
@@ -4444,27 +4445,42 @@ export class Renderer {
       }
       case Tile.SagewortMid:
       case Tile.SagewortRipe: {
+        // Field sagewort echoes its wild kin (render/flora.ts): a
+        // ring of chamfered paddle spears; ripe rows raise a small
+        // silver floret tower.
         const ripe = tile === Tile.SagewortRipe;
-        const n = ripe ? 7 : 4;
-        const rad = ripe ? 0.2 : 0.14;
+        const n = ripe ? 8 : 5;
+        const rad = ripe ? 0.14 : 0.1;
+        const len = ripe ? 0.24 : 0.16;
         for (let i = 0; i < n; i++) {
           const a = (i / n) * Math.PI * 2 + m * 0.4;
-          const lx = px + Math.cos(a) * s * rad;
-          const ly = Y(0.06) + Math.sin(a) * s * rad * 0.5;
-          ctx.save();
-          ctx.translate(lx + sway * 0.4, ly);
-          ctx.rotate(Math.atan2(ly - Y(0.16), lx - px) + Math.PI / 2);
-          ctx.fillStyle = i % 2 ? '#8fb083' : '#7ba070';
+          const ca = Math.cos(a);
+          const sa = Math.sin(a);
+          const x0 = px + ca * s * rad;
+          const y0 = Y(0.06) + sa * s * rad * 0.55;
+          const x1 = px + ca * s * (rad + len) + sway * 0.4;
+          const y1 = Y(0.06) + sa * s * (rad + len) * 0.55 - s * len * 0.5;
+          let pxn = -(y1 - y0);
+          let pyn = x1 - x0;
+          const pl = Math.hypot(pxn, pyn) || 1;
+          pxn = (pxn / pl) * s * 0.055;
+          pyn = (pyn / pl) * s * 0.045;
+          ctx.fillStyle = i % 2 ? '#6f9c6c' : '#4f7a52';
           ctx.beginPath();
-          ctx.ellipse(0, -s * (ripe ? 0.13 : 0.09), s * 0.05, s * (ripe ? 0.15 : 0.1), 0, 0, Math.PI * 2);
+          ctx.moveTo(x0, y0);
+          ctx.lineTo(x0 + (x1 - x0) * 0.45 - pxn, y0 + (y1 - y0) * 0.45 - pyn);
+          ctx.lineTo(x1, y1);
+          ctx.lineTo(x0 + (x1 - x0) * 0.45 + pxn, y0 + (y1 - y0) * 0.45 + pyn);
+          ctx.closePath();
           ctx.fill();
-          if (ripe) {
-            ctx.fillStyle = '#c2d8b0';
-            ctx.beginPath();
-            ctx.ellipse(0, -s * 0.24, s * 0.028, s * 0.05, 0, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          ctx.restore();
+        }
+        if (ripe) {
+          floretTower(ctx, px + sway * 0.6, Y(-0.3), s * 0.62, 3, 0);
+        } else {
+          ctx.fillStyle = '#a8c9a0';
+          ctx.beginPath();
+          facetCircle(ctx, px, Y(0.02), s * 0.05, 6, 0.4, 0.7);
+          ctx.fill();
         }
         break;
       }
@@ -4611,29 +4627,14 @@ export class Renderer {
           ctx.stroke();
         }
         if (ripe) {
-          const bell = (bxp: number, byp: number, bs: number) => {
-            ctx.fillStyle = lit > 0.05 ? '#aab8ec' : '#8f9ed6';
-            ctx.beginPath();
-            ctx.moveTo(bxp - bs * 0.5, byp - bs * 0.4);
-            ctx.lineTo(bxp + bs * 0.5, byp - bs * 0.4);
-            ctx.lineTo(bxp + bs * 0.68, byp + bs * 0.5);
-            ctx.lineTo(bxp, byp + bs * 0.3);
-            ctx.lineTo(bxp - bs * 0.68, byp + bs * 0.5);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = lit > 0.05 ? '#e8ecff' : '#c2ccf2';
-            ctx.fillRect(bxp - bs * 0.3, byp - bs * 0.32, bs * 0.35, bs * 0.22);
-            if (lit > 0.05) {
-              // A soft night halo — the garden's lantern flowers.
-              ctx.fillStyle = `rgba(170, 190, 255, ${0.18 * lit})`;
-              ctx.beginPath();
-              ctx.arc(bxp, byp, bs * 1.6, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          };
-          bell(px - m * s * 0.24 + sway, Y(-0.26), s * 0.09);
-          bell(px + m * s * 0.28 + sway, Y(-0.24), s * 0.1);
-          bell(px + m * s * 0.06 + sway * 1.3, Y(-0.38), s * 0.08);
+          // The garden's lantern flowers — the SAME lantern as the
+          // wild moonbell (render/flora.ts), sized for a crop row.
+          const pulse = 0.5 + 0.5 * Math.sin(t * 1.15 + h * 0.13);
+          const glowK = 0.25 + 0.75 * lit;
+          const swing = sway / Math.max(1, s * 0.04) * 0.12;
+          bellLantern(ctx, px - m * s * 0.24 + sway, Y(-0.26), s * 0.09, swing, pulse, glowK);
+          bellLantern(ctx, px + m * s * 0.28 + sway, Y(-0.24), s * 0.1, swing, pulse, glowK);
+          bellLantern(ctx, px + m * s * 0.06 + sway * 1.3, Y(-0.38), s * 0.08, swing * 1.3, pulse, glowK);
         } else {
           // Unopened buds at the stem tips.
           ctx.fillStyle = '#7d8cc0';
@@ -6099,137 +6100,29 @@ export class Renderer {
           draw: () => this.drawCropPlant(p.x, p.y, s, h, tile, t),
         };
 
-      case Tile.BerryBush: {
-        return {
-          sortY: ty + 0.8,
-          drawShadow: () => this.castBlob(p.x, p.y + s * 0.15, 0.42, s * 0.3, h ^ 0x2f),
-          draw: () => {
-            // A stout double-lobed bush heavy with fruit.
-            ctx.fillStyle = '#2f5c32';
-            ctx.beginPath();
-            facetBlob(ctx, p.x, p.y - s * 0.1, s * 0.34, h, 8, 0.76);
-            ctx.fill();
-            ctx.fillStyle = '#3f7d3a';
-            ctx.beginPath();
-            facetBlob(ctx, p.x - s * 0.07, p.y - s * 0.2, s * 0.24, h ^ 9, 7, 0.75);
-            ctx.fill();
-            ctx.fillStyle = '#54934a';
-            ctx.beginPath();
-            facetBlob(ctx, p.x - s * 0.11, p.y - s * 0.26, s * 0.13, h ^ 21, 6, 0.7);
-            ctx.fill();
-            for (let i = 0; i < 6; i++) {
-              const hh = hashCoords(211 + i, tx, ty);
-              const bx = p.x + (((hh % 100) / 100) - 0.5) * s * 0.52;
-              const by = p.y - s * 0.12 + ((((hh >> 7) % 100) / 100) - 0.5) * s * 0.34;
-              ctx.fillStyle = '#a04a6e';
-              ctx.beginPath();
-              ctx.arc(bx, by, s * 0.038, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.fillStyle = '#c9718f';
-              ctx.beginPath();
-              ctx.arc(bx - s * 0.012, by - s * 0.012, s * 0.014, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          },
-        };
-      }
-
-      case Tile.FibrePlant: {
-        return {
-          sortY: ty + 0.75,
-          draw: () => {
-            // A tall fan of flax strands, seed tips catching the light.
-            const sway = Math.sin(t * 1.7 + (h % 23) * 0.6) * s * 0.04;
-            for (let i = 0; i < 7; i++) {
-              const u = i / 6 - 0.5;
-              const bx = p.x + u * s * 0.26;
-              const hgt = s * (0.42 + Math.sin(i * 2.1 + h) * 0.08);
-              const tipX = bx + u * s * 0.22 + sway;
-              ctx.strokeStyle = i % 2 ? '#79a355' : '#8cb464';
-              ctx.lineWidth = Math.max(1, s * 0.03);
-              ctx.beginPath();
-              ctx.moveTo(bx, p.y + s * 0.12);
-              ctx.quadraticCurveTo(bx + u * s * 0.1, p.y - hgt * 0.6, tipX, p.y + s * 0.12 - hgt);
-              ctx.stroke();
-              ctx.fillStyle = '#d9c98a';
-              ctx.beginPath();
-              ctx.ellipse(tipX, p.y + s * 0.12 - hgt, s * 0.025, s * 0.045, u * 0.8, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          },
-        };
-      }
-
-      case Tile.WildSagewort: {
-        return {
-          sortY: ty + 0.72,
-          draw: () => {
-            // A silver-green healer's mound — leaf spears radiating out.
-            const n = 8;
-            for (let i = 0; i < n; i++) {
-              const a = (i / n) * Math.PI * 2 + (h % 7) * 0.3;
-              const lx = p.x + Math.cos(a) * s * 0.2;
-              const ly = p.y + Math.sin(a) * s * 0.11;
-              ctx.save();
-              ctx.translate(lx, ly);
-              ctx.rotate(Math.atan2(ly - p.y - s * 0.14, lx - p.x) + Math.PI / 2);
-              ctx.fillStyle = i % 2 ? '#8fb083' : '#7ba070';
-              ctx.beginPath();
-              ctx.ellipse(0, -s * 0.14, s * 0.055, s * 0.16, 0, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.fillStyle = '#c2d8b0';
-              ctx.beginPath();
-              ctx.ellipse(0, -s * 0.26, s * 0.03, s * 0.055, 0, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.restore();
-            }
-            ctx.fillStyle = '#5b8a5e';
-            ctx.beginPath();
-            facetCircle(ctx, p.x, p.y, s * 0.09, 6, 0.4, 0.75);
-            ctx.fill();
-          },
-        };
-      }
-
+      case Tile.BerryBush:
+      case Tile.FibrePlant:
+      case Tile.WildSagewort:
       case Tile.WildMoonbell: {
-        const lit = this.sky.flame;
+        // Wild forage nodes are landmarks now (render/flora.ts) —
+        // grown from the tile hash like trees, swaying on the one
+        // shared wind field, twinkling their payload at idle.
+        const fm = floraModel(tile, h);
+        const syT = s * this.camera.yScale;
         return {
-          sortY: ty + 0.75,
-          draw: () => {
-            const sway = Math.sin(t * 1.3 + (h % 19) * 0.7) * s * 0.04;
-            for (const dir of [-1, 1]) {
-              const bx = p.x + dir * s * 0.06;
-              ctx.strokeStyle = '#4c6a54';
-              ctx.lineWidth = Math.max(1, s * 0.04);
-              ctx.beginPath();
-              ctx.moveTo(bx, p.y + s * 0.12);
-              ctx.quadraticCurveTo(bx + dir * s * 0.2 + sway, p.y - s * 0.42, bx + dir * s * 0.34 + sway, p.y - s * 0.3);
-              ctx.stroke();
-            }
-            const bell = (bxp: number, byp: number, bs: number) => {
-              if (lit > 0.05) {
-                ctx.fillStyle = `rgba(170, 190, 255, ${0.22 * lit})`;
-                ctx.beginPath();
-                ctx.arc(bxp, byp, bs * 1.8, 0, Math.PI * 2);
-                ctx.fill();
-              }
-              ctx.fillStyle = lit > 0.05 ? '#aab8ec' : '#8f9ed6';
-              ctx.beginPath();
-              ctx.moveTo(bxp - bs * 0.5, byp - bs * 0.4);
-              ctx.lineTo(bxp + bs * 0.5, byp - bs * 0.4);
-              ctx.lineTo(bxp + bs * 0.68, byp + bs * 0.5);
-              ctx.lineTo(bxp, byp + bs * 0.3);
-              ctx.lineTo(bxp - bs * 0.68, byp + bs * 0.5);
-              ctx.closePath();
-              ctx.fill();
-              ctx.fillStyle = lit > 0.05 ? '#e8ecff' : '#c2ccf2';
-              ctx.fillRect(bxp - bs * 0.3, byp - bs * 0.32, bs * 0.35, bs * 0.22);
-            };
-            const sw = Math.sin(t * 1.3 + (h % 19) * 0.7) * s * 0.04;
-            bell(p.x - s * 0.3 + sw, p.y - s * 0.28, s * 0.1);
-            bell(p.x + s * 0.34 + sw, p.y - s * 0.26, s * 0.11);
-            bell(p.x + s * 0.02 + sw * 1.4, p.y - s * 0.44, s * 0.09);
-          },
+          sortY: ty + 0.78,
+          drawShadow: () =>
+            this.castBlob(p.x, p.y + syT * 0.3, Math.min(1.2, fm.height * 0.45), fm.spread * 0.66 * s, h ^ 0x2f),
+          draw: () =>
+            paintFlora(ctx, fm, {
+              bx: p.x,
+              groundY: p.y + syT * 0.3,
+              s,
+              wx: tx + 0.5,
+              wy: ty + 0.5,
+              tSec: t,
+              flame: this.sky.flame,
+            }),
         };
       }
 

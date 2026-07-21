@@ -428,6 +428,13 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.RockGold, 0.46],
   [Tile.RockDepleted, 0.36],
   [Tile.LampPost, 0.2],
+  // Forage flora radii track the drawn base mass (client
+  // render/flora.ts floraBaseRadius — a test pins the pairing):
+  // outer foliage overhangs, but you collide with the plant's core.
+  [Tile.BerryBush, 0.34],
+  [Tile.FibrePlant, 0.24],
+  [Tile.WildSagewort, 0.3],
+  [Tile.WildMoonbell, 0.24],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
