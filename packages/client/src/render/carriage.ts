@@ -210,11 +210,14 @@ export interface Flourish {
 
 /**
  * The idle flourish: every few seconds a fully-at-rest fist plays with
- * its blade — a rogue fist rolls a full wrist spin, a standard fist
- * raises the tip as if checking the edge. Deterministic in nowMs (the
- * twinkle-window pattern: remotes and replays agree), null outside the
- * window, and both channels land back on zero (mod 2π) at the window
- * edge so blending in and out can never pop.
+ * its blade — a small, grounded gesture. THE NO-FLIP LAW (user verdict):
+ * no flourish ever revolves the blade — the old full 2π rogue wrist
+ * spin read as goofily flipping the sword and is gone for good. A
+ * flourish tips the blade out a hand's-width and settles it back,
+ * nothing more. Deterministic in nowMs (the twinkle-window pattern:
+ * remotes and replays agree), null outside the window, and both
+ * channels land back on zero at the window edge so blending in and out
+ * can never pop.
  */
 export function idleFlourish(
   nowMs: number,
@@ -226,10 +229,9 @@ export function idleFlourish(
   if (t < 0 || t >= FLOURISH_MS) return null;
   const u = t / FLOURISH_MS;
   if (grip === 'rogue') {
-    // A full reverse-grip wrist spin, eased so it snaps through the
-    // middle and lands soft — 2π total, invisible to the base angle.
-    const e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
-    return { spin: side * 2 * Math.PI * e, lift: Math.sin(u * Math.PI) * 0.03 };
+    // A restrained edge-check: the reversed blade tips out and settles
+    // back, the fist barely rising — a knife-fighter's tic, not a show.
+    return { spin: side * Math.sin(u * Math.PI) * 0.55, lift: Math.sin(u * Math.PI) * 0.03 };
   }
   // Standard: a slow tip-raise toward the forward horizon and back.
   return { spin: -side * Math.sin(u * Math.PI) * 0.5, lift: Math.sin(u * Math.PI) * 0.015 };

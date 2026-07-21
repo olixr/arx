@@ -145,21 +145,18 @@ test('flourish: deterministic windows that land back on zero — blending can ne
   assert.equal(idleFlourish(FLOURISH_MS / 2, FLOURISH_OFF_PHASE_MS, 'rogue', 1), null);
 });
 
-test('rogue flourish is a full wrist spin; standard is a tip-raise', () => {
-  // The rogue spin sweeps a full turn over the window (monotonic in u).
-  let last = 0;
-  for (let t = 0; t < FLOURISH_MS; t += FLOURISH_MS / 40) {
-    const f = idleFlourish(t, 0, 'rogue', 1)!;
-    assert.ok(f.spin >= last - 1e-9, 'spin never reverses');
-    last = f.spin;
+test('the no-flip law: no flourish ever revolves the blade', () => {
+  // The user verdict: the full 2π rogue wrist spin read as goofily
+  // flipping the sword. Every grip's flourish must stay a small tilt —
+  // alive, but never a fraction of a revolution.
+  for (const grip of GRIPS) {
+    let peak = 0;
+    for (let t = 0; t < FLOURISH_MS; t += FLOURISH_MS / 40) {
+      peak = Math.max(peak, Math.abs(idleFlourish(t, 0, grip, 1)!.spin));
+    }
+    assert.ok(peak > 0.3, `${grip} flourish is alive`);
+    assert.ok(peak < 1.0, `${grip} tilts, never flips`);
   }
-  assert.ok(last > Math.PI * 1.8, 'sweeps essentially the full turn');
-  // Standard peaks well short of a spin — an inspect, not a twirl.
-  let peak = 0;
-  for (let t = 0; t < FLOURISH_MS; t += FLOURISH_MS / 40) {
-    peak = Math.max(peak, Math.abs(idleFlourish(t, 0, 'normal', 1)!.spin));
-  }
-  assert.ok(peak > 0.3 && peak < 1.0, 'a raise, not a revolution');
 });
 
 test('facing-weight law: fractional side relaxes the rake continuously, laws intact', () => {
