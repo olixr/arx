@@ -157,6 +157,10 @@ export class LegRig {
   private lastDir: number | null = null;
   private turnDebt = 0;
   private turnPending = 0;
+  /** Seconds since each foot's last touchdown — the rhythm reference. */
+  private readonly sinceLand: number[];
+  /** Distinct gait groups: touchdowns aim to spread cycle/groups apart. */
+  private readonly groupCount: number;
 
   constructor(cfg: LegRigConfig) {
     this.cfg = cfg;
@@ -165,6 +169,8 @@ export class LegRig {
     this.moveThreshold = cfg.moveThreshold ?? 0.35;
     this.step = cfg.legs.map(() => null);
     this.rise = cfg.rise;
+    this.sinceLand = cfg.legs.map(() => 99);
+    this.groupCount = new Set(cfg.legs.map((l) => l.group)).size;
   }
 
   update(bx: number, by: number, dirRaw: number, rawDt: number): LegPose {
@@ -324,6 +330,7 @@ export class LegRig {
       const homeX = homes[i]!.x;
       const homeY = homes[i]!.y;
       const f = this.feet[i]!;
+      if (this.sinceLand[i]! < 99) this.sinceLand[i] = this.sinceLand[i]! + dt;
 
       const st = this.step[i];
       if (st) {
@@ -359,6 +366,7 @@ export class LegRig {
           this.plantY = f.y;
           this.plantVx = this.vx;
           this.plantVy = this.vy;
+          this.sinceLand[i] = 0;
         }
       } else {
         f.lift = 0;
@@ -390,15 +398,40 @@ export class LegRig {
         const emergency = moving && behind > reach * 1.12;
         if (due || emergency) {
           if (turnStep) this.turnPending--;
+          // THE RHYTHM NUDGE. A hard direction reversal leaves every
+          // foot overdue at once, and a pair of overdue feet launches
+          // as early as the gates allow, cycle after cycle — touchdowns
+          // cluster into a skipping step-step-coast hop that only the
+          // slow drift of retargeting ever unwinds. So at launch, aim
+          // the TOUCHDOWN at the even-rhythm point: one cycle-fraction
+          // after the other group's landing (in flight or just past).
+          // A too-early launch simply swings longer — and because the
+          // step targets the home at touchdown, the longer swing also
+          // strides further, burning off the overdue-ness that caused
+          // it. A healthy spread-out gait already lands on the beat,
+          // so the clamp leaves it untouched.
+          let dur = swing;
+          if (moving && this.groupCount > 1) {
+            const phaseGap = (stance + swing) / this.groupCount;
+            let land = -99; // other groups' nearest touchdown (s, ±)
+            for (let j = 0; j < cfg.legs.length; j++) {
+              if (cfg.legs[j]!.group === leg.group) continue;
+              const sj = this.step[j];
+              land = Math.max(land, sj ? (1 - Math.min(1, sj.t)) * sj.dur : -this.sinceLand[j]!);
+            }
+            if (land > -phaseGap) {
+              dur = Math.max(swing * 0.7, Math.min(swing * 1.45, land + phaseGap));
+            }
+          }
           // Land `lead` ahead of where the home will be when the swing
           // completes — the strike point of the stride wheel.
           this.step[i] = {
             fx: f.x,
             fy: f.y,
-            tx: homeX + this.vx * swing + dx * lead,
-            ty: homeY + this.vy * swing + dy * lead,
+            tx: homeX + this.vx * dur + dx * lead,
+            ty: homeY + this.vy * dur + dy * lead,
             t: 0,
-            dur: swing,
+            dur,
           };
           if (airGroup === -1) airGroup = leg.group;
           airCount++;
@@ -422,6 +455,7 @@ export class LegRig {
         f.y = homeY;
         this.step[i] = null;
         f.lift = 0;
+        this.sinceLand[i] = 99; // a snap is not a touchdown — no beat
       }
       bob += f.lift;
     }

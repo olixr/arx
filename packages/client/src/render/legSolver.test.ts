@@ -173,6 +173,40 @@ test('aim jitter never earns shuffles — signed debt cancels', () => {
   assert.equal(lifts, 0, `jitter caused ${lifts} airborne frames`);
 });
 
+test('rhythm survives hard reversals — no skipping hop', () => {
+  // Quick back-and-forth reversals leave both feet overdue at once,
+  // which used to pin the gait into clustered touchdowns (step-step-
+  // coast). The rhythm nudge must restore near-even touchdown spacing
+  // once the run settles.
+  const solver = new LegSolver();
+  const touchdowns: number[] = [];
+  let lastPlants = 0;
+  for (let t = 0; t < 4.5; t += DT) {
+    const p =
+      t < 0.4
+        ? { x: 5 * t, dir: 0 }
+        : t < 0.8
+          ? { x: 2 - 5 * (t - 0.4), dir: Math.PI }
+          : t < 1.2
+            ? { x: 5 * (t - 0.8), dir: 0 }
+            : { x: 2 - 5 * (t - 1.2), dir: Math.PI };
+    solver.update(p.x, 0, p.dir, DT);
+    if (t >= 2.2 && solver.plants !== lastPlants) touchdowns.push(t);
+    lastPlants = solver.plants;
+  }
+  let asymSum = 0;
+  let n = 0;
+  for (let i = 2; i < touchdowns.length; i++) {
+    const a = touchdowns[i - 1]! - touchdowns[i - 2]!;
+    const b = touchdowns[i]! - touchdowns[i - 1]!;
+    asymSum += Math.abs(a - b) / (a + b);
+    n++;
+  }
+  const asym = asymSum / n;
+  assert.ok(n >= 5, `only ${n} touchdown intervals recorded`);
+  assert.ok(asym < 0.15, `touchdown rhythm asymmetry ${asym.toFixed(3)} — the hop is back`);
+});
+
 test('gait alternates harmoniously: strides interleave, not sync', () => {
   const solver = new LegSolver();
   // Warm up, then record which foot is airborne over time.
