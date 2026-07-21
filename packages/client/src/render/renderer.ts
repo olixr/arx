@@ -1451,6 +1451,14 @@ export class Renderer {
       minTy: bounds.minTy + 3,
       maxTy: bounds.maxTy - 1,
     };
+    // Arm the meadow's cast BEFORE the under pass builds blades: each
+    // blade appends its sheared ground quad as it is built, and the
+    // whole meadow's shade fills into the shadow layer in one path.
+    this.grass.setShadow(
+      this.sky.shadowX * this.sky.shadowLen,
+      this.sky.shadowY * this.sky.shadowLen * this.camera.yScale,
+      this.sky.shadowAlpha >= 0.02,
+    );
     this.grass.drawUnder(this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
 
     // Ground-level combat FX — decals, hazard zones, and telegraphs
@@ -1490,6 +1498,14 @@ export class Renderer {
     for (const item of items) {
       if (!item.elevated) item.drawShadow?.();
     }
+    // The meadow's cast, gathered during the under pass: every blade
+    // and flower shadow lands here in one fill, slightly lighter than
+    // solid props — thin things throw thin shade.
+    this.grass.flushShadows(
+      sc,
+      this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN,
+      Math.min(1, (this.sky.shadowAlpha * 0.85) / this.sdwLayerAlpha),
+    );
     // SHELTERED ROOMS RECEIVE NO SKY: punch every visible interior out
     // of the shadow layer before it composites. A wall must not cast
     // into its own room — the dark wedge on an inn floor was the north

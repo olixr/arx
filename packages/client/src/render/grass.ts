@@ -390,6 +390,19 @@ export class GrassSystem {
   private tSec = 0;
   private nowMs = 0;
   private paths: Path2D[] | null = null;
+  /**
+   * GRASS CASTS. Every blade tall enough to read appends one sheared
+   * ground quad here during the under pass — base at the root, tip
+   * thrown (kx, ky) px per px of height past the wind-bent crown, so
+   * shadows sway with the SAME gusts as their blades. The renderer
+   * fills the whole meadow's shadow in ONE path into the shared
+   * shadow layer (merge law: overlaps never stack), where props'
+   * shadows and the interior punch-out already live.
+   */
+  private shadowPath: Path2D | null = null;
+  private shKx = 0;
+  private shKy = 0;
+  private shOn = false;
   private touched: number[] = [];
   private readonly touchedFlag = new Uint8Array(BUCKETS);
   /** Scratch: disturbers near the tile currently being built. */
@@ -459,6 +472,28 @@ export class GrassSystem {
     }
   }
 
+  /** Arm (or disarm) this frame's blade shadow projection. */
+  setShadow(kx: number, ky: number, on: boolean): void {
+    this.shKx = kx;
+    this.shKy = ky;
+    this.shOn = on;
+    if (!on) this.shadowPath = null;
+  }
+
+  /**
+   * Fill the frame's accumulated blade shadows — called by the
+   * renderer inside the ground-shadow prepass so grass shade lands on
+   * the same batched layer as every other caster.
+   */
+  flushShadows(ctx: CanvasRenderingContext2D, fill: string, alpha: number): void {
+    if (!this.shadowPath) return;
+    ctx.fillStyle = fill;
+    ctx.globalAlpha = alpha;
+    ctx.fill(this.shadowPath);
+    ctx.globalAlpha = 1;
+    this.shadowPath = null;
+  }
+
   private tile(tx: number, ty: number, tileId: number, detailId: number): GrassTileState {
     // Numeric key — string building here showed up in profiles.
     const key = (((ty + 8192) * 16384 + (tx + 8192)) * 16 + tileId) * 8 + detailId;
@@ -513,7 +548,15 @@ export class GrassSystem {
    * happens here: wind cantilever, shimmer relight, body displacement,
    * post-passage wobble.
    */
-  private buildBlade(b: Blade, st: GrassTileState, wind: WindSample, f: TileFrame, s: number): void {
+  private buildBlade(
+    b: Blade,
+    st: GrassTileState,
+    wind: WindSample,
+    f: TileFrame,
+    s: number,
+    cast = false,
+    drawBlade = true,
+  ): void {
     // Wind cantilever: bend grows with height; the y-component folds
     // into a slight x-drift plus a height dip (bending toward or away
     // from the camera reads as the blade foreshortening).
@@ -542,14 +585,6 @@ export class GrassSystem {
       if (e > 0) tipDx += this.wakeWobble[b.bin]! * e * e;
     }
 
-    // Shimmer: the LONG luminance swell (not the busy bend signal)
-    // relights the blade — broad swaths of light rolling through.
-    const lum = (wind.l + b.lumJit + 1) / 2;
-    const level = lum <= 0 ? 0 : lum >= 1 ? LIGHTS - 1 : Math.floor(lum * LIGHTS);
-    const bucket = b.tone * LIGHTS + level;
-    const path = (this.paths as Path2D[])[bucket]!;
-    this.mark(bucket);
-
     const px = f.x0 + (b.bx - st.tx) * f.sx;
     const py = f.y0 + (b.by - st.ty) * f.sy;
     const hpx = b.h * hMul * s;
@@ -558,6 +593,32 @@ export class GrassSystem {
     const w1 = w0 * 0.55;
     const tipX = px + tipDx * s;
     const tipY = py - hpx;
+
+    // The blade's cast: base rooted, tip thrown along the light ray
+    // FROM the wind-bent crown — the shadow gusts with the meadow.
+    // Perf law: HALF the blades cast (bin parity), drawn a touch
+    // wider — half the path scan for the same read; a full-herd cast
+    // measured 31fps on a dense meadow.
+    if (cast && this.shOn && hpx >= 8 && (b.bin & 1) === 0) {
+      const sp = (this.shadowPath ??= new Path2D());
+      const sx = tipX + this.shKx * hpx;
+      const sy = py + this.shKy * hpx;
+      const ws = w0 * 1.25;
+      sp.moveTo(px - ws, py);
+      sp.lineTo(px + ws, py);
+      sp.lineTo(sx + w1 * 1.25, sy);
+      sp.lineTo(sx - w1 * 1.25, sy);
+      sp.closePath();
+    }
+    if (!drawBlade) return;
+
+    // Shimmer: the LONG luminance swell (not the busy bend signal)
+    // relights the blade — broad swaths of light rolling through.
+    const lum = (wind.l + b.lumJit + 1) / 2;
+    const level = lum <= 0 ? 0 : lum >= 1 ? LIGHTS - 1 : Math.floor(lum * LIGHTS);
+    const bucket = b.tone * LIGHTS + level;
+    const path = (this.paths as Path2D[])[bucket]!;
+    this.mark(bucket);
 
     if (b.seg2) {
       // Two rigid segments: planted shin, streaming crown.
@@ -580,7 +641,14 @@ export class GrassSystem {
     }
   }
 
-  private buildFlower(f: Flower, st: GrassTileState, wind: WindSample, fr: TileFrame, s: number): void {
+  private buildFlower(
+    f: Flower,
+    st: GrassTileState,
+    wind: WindSample,
+    fr: TileFrame,
+    s: number,
+    cast = false,
+  ): void {
     let bob = (wind.bx + wind.by * 0.35) * f.h * 0.5;
     bob += Math.sin(this.tSec * 2.6 + f.phase * 6.283) * 0.02;
     let hMul = 1;
@@ -603,6 +671,21 @@ export class GrassSystem {
     const hx = px + bob * s;
     const hy = py - hpx;
     const paths = this.paths as Path2D[];
+
+    // A flower's cast: thin stem line and a chip where the head lands.
+    if (cast && this.shOn && hpx >= 6) {
+      const sp = (this.shadowPath ??= new Path2D());
+      const ssw = Math.max(0.8, 0.014 * s);
+      const sx = hx + this.shKx * hpx;
+      const sy = py + this.shKy * hpx;
+      sp.moveTo(px - ssw, py);
+      sp.lineTo(px + ssw, py);
+      sp.lineTo(sx + ssw, sy);
+      sp.lineTo(sx - ssw, sy);
+      sp.closePath();
+      const spr = f.size * s;
+      sp.rect(sx - spr, sy - spr * 0.55, spr * 2, spr * 1.1);
+    }
 
     // Stem: a thin slab leaning to the bloom.
     const stem = paths[B_STEM]!;
@@ -687,7 +770,14 @@ export class GrassSystem {
         const f = this.tileFrame(tx, ty, wts);
         this.gatherNear(tx, ty);
         this.buildRoots(st, f, s);
-        for (const b of st.geom.under) this.buildBlade(b, st, wind, f, s);
+        for (const b of st.geom.under) this.buildBlade(b, st, wind, f, s, true);
+        // Tall thickets y-sort their mass AFTER the shadow layer has
+        // composited, so their casts are gathered here, shadow-only —
+        // the thicket's shade lands with everyone else's.
+        if (t === Tile.GrassTall) {
+          for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s, true, false);
+          for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s, true, false);
+        }
         if (st.geom.flowers.length > 0) flowerTiles.push([st, f]);
       }
     }
@@ -695,7 +785,7 @@ export class GrassSystem {
     for (const [st, f] of flowerTiles) {
       const wind = windAt(st.tx + 0.5, st.ty + 0.5, this.tSec);
       this.gatherNear(st.tx, st.ty);
-      for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s);
+      for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s, true);
     }
     this.flush(ctx);
   }
