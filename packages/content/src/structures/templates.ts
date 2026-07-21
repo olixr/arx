@@ -16,7 +16,8 @@ import type { CellDef, StructureTemplate } from './types.js';
  *   is not ours to stamp).
  * - Multi-tile furniture is authored as runs of the same tile — the
  *   connected-render law merges adjacent Tables, E-W Benches, Counter
- *   runs, and 2-wide MarketStalls into single pieces.
+ *   runs, N-S Bed pairs (one full-length bed, proportioned to the
+ *   1.15-tile body), and 2-wide MarketStalls into single pieces.
  */
 
 /** Shared wood-building shell chars: walls, windows, doorway, floors. */
@@ -52,7 +53,7 @@ export const COTTAGE_SMALL: StructureTemplate = compileTemplate({
   rows: [
     '##W#W##',
     '#B...A#',
-    '#.r.TC#',
+    '#Br.TC#',
     '#.r...#',
     '#..d..#',
     '##WDW##',
@@ -72,7 +73,7 @@ export const COTTAGE_LARGE: StructureTemplate = compileTemplate({
   rows: [
     '##W###W##',
     '#B..H..B#',
-    'W.......W',
+    'WB.....BW',
     '#..rr..S#',
     '#..rr...#',
     '#.......#',

@@ -6187,12 +6187,14 @@ export class Renderer {
           ['#75588a', '#8a6aa0'],
         ] as const;
         const [qDark, qMain] = QUILTS[hashCoords(41, tx, ay) % 4]!;
+        // Sized against the 1.15-tile body: the tick runs the full
+        // tile plan so a sleeper fits between the boards.
         const frameC = '#6f4d26';
         const postC = '#5e3f1e';
-        const x0 = p.x - s * 0.42;
-        const x1 = p.x + s * 0.42;
-        const yTop = p.y - syT * 0.48;
-        const yBot = p.y + syT * 0.46;
+        const x0 = p.x - s * 0.46;
+        const x1 = p.x + s * 0.46;
+        const yTop = p.y - syT * 0.5;
+        const yBot = p.y + syT * 0.48;
         // Patchwork blocks under seam lines — a quilt sewn from
         // scraps, softened by a white fold-back of the sheet.
         const quilt = (qx0: number, qy0: number, qw: number, qh: number, cols: number, rows: number) => {
@@ -6226,9 +6228,12 @@ export class Renderer {
           draw: () => {
             if (head === 'n') {
               // Run-aware bounds: merged halves reach the tile edge so
-              // the long bed joins seamlessly.
+              // the long bed joins seamlessly. A LONE bed overdraws
+              // south past its tile — a bed the 1.15-tile body fits,
+              // even on a one-tile footprint (y-sort keeps occlusion
+              // honest for anyone standing at its foot).
               const yT2 = bn ? p.y - syT * 0.5 : yTop;
-              const yB2 = bs ? p.y + syT * 0.5 : yBot;
+              const yB2 = bs ? p.y + syT * 0.5 : bn ? yBot : p.y + syT * 0.62;
               // The frame stands off the floor: under-dark + feet.
               if (!bs) {
                 ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
@@ -6276,8 +6281,9 @@ export class Renderer {
                 for (const fx of [0.35, 0.53, 0.71] as const) {
                   ctx.fillRect(x0 + (x1 - x0) * fx, yTop - s * 0.39, s * 0.018, s * 0.32);
                 }
-                ctx.fillStyle = shade(postC, 12);
-                ctx.fillRect(x0 + s * 0.06, yTop - s * 0.47, x1 - x0 - s * 0.12, s * 0.045);
+                // The board's top edge foreshortens into view.
+                ctx.fillStyle = shade(postC, 18);
+                ctx.fillRect(x0 + s * 0.04, yTop - s * 0.5, x1 - x0 - s * 0.08, s * 0.075);
                 // Pillow: plumped against the board, creased, casting
                 // its own soft line on the sheet.
                 ctx.fillStyle = '#f4efe0';
@@ -6359,8 +6365,9 @@ export class Renderer {
               ctx.stroke();
               ctx.fillStyle = shade(postC, sgn > 0 ? 10 : -10);
               ctx.fillRect(sgn > 0 ? hx - s * 0.08 : hx + s * 0.045, yTop - s * 0.5, s * 0.035, yBot - yTop + s * 0.48);
-              ctx.fillStyle = shade(postC, 12);
-              ctx.fillRect(hx - s * 0.08, yTop - s * 0.5, s * 0.16, s * 0.04);
+              // Top edge of the board catches the sky.
+              ctx.fillStyle = shade(postC, 18);
+              ctx.fillRect(hx - s * 0.08, yTop - s * 0.52, s * 0.16, s * 0.07);
               // Pillow: stood vertical against the head end.
               ctx.fillStyle = '#f4efe0';
               ctx.beginPath();
@@ -6543,11 +6550,23 @@ export class Renderer {
               ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
               ctx.fillRect(cavL, floor + s * 0.028, cavW, s * 0.022);
             }
-            // Cornice crown proud of the carcass, then its shadow.
+            // The TOP — our camera is a tilted bird's eye, never a
+            // straight-on elevation: tall casework must show a
+            // foreshortened top plane (the crate-lid law), crowned by
+            // a sunlit cornice lip along its front arris.
+            const topD = syT * 0.34;
             ctx.fillStyle = shade(frame, 16);
             ctx.beginPath();
-            chamferRect(ctx, xw - s * 0.035, baseY - uh - s * 0.06, uw + s * 0.07, s * 0.09, [s * 0.03, s * 0.03, 0, 0]);
+            chamferRect(ctx, xw - s * 0.035, baseY - uh - topD, uw + s * 0.07, topD + s * 0.015, s * 0.035);
             ctx.fill();
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.35)';
+            ctx.lineWidth = Math.max(1.2, s * 0.024);
+            ctx.stroke();
+            // Far edge falls away into shade; dust of the years.
+            ctx.fillStyle = shade(frame, 6);
+            ctx.fillRect(xw - s * 0.005, baseY - uh - topD + s * 0.012, uw + s * 0.01, s * 0.03);
+            ctx.fillStyle = shade(frame, 26);
+            ctx.fillRect(xw - s * 0.035, baseY - uh - s * 0.02, uw + s * 0.07, s * 0.035);
             ctx.fillStyle = 'rgba(18, 12, 26, 0.25)';
             ctx.fillRect(xw - s * 0.02, baseY - uh + s * 0.03, uw + s * 0.04, s * 0.022);
             // A gilt spine catches the lamplight now and then.
@@ -6656,17 +6675,28 @@ export class Renderer {
               ctx.fillStyle = shade('#c9962e', -18);
               ctx.fillRect(p.x + s * 0.032, baseY - uh * 0.52 + s * 0.055, s * 0.03, s * 0.04);
             }
-            // Overhung top slab, lit, over its own shadow line.
+            // The TOP: a foreshortened plane, not a lip — the tilted
+            // bird's-eye camera must see the boards a household sets
+            // its crockery on (crate-lid law).
+            const topD = syT * 0.32;
             ctx.fillStyle = shade(frame, 16);
             ctx.beginPath();
-            chamferRect(ctx, xw - s * 0.03, baseY - uh - s * 0.045, uw + s * 0.06, s * 0.08, s * 0.025);
+            chamferRect(ctx, xw - s * 0.03, baseY - uh - topD, uw + s * 0.06, topD + s * 0.015, s * 0.03);
             ctx.fill();
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.35)';
+            ctx.lineWidth = Math.max(1.2, s * 0.024);
+            ctx.stroke();
+            ctx.fillStyle = shade(frame, 6);
+            ctx.fillRect(xw - s * 0.005, baseY - uh - topD + s * 0.012, uw + s * 0.01, s * 0.028);
+            ctx.fillStyle = shade(frame, 26);
+            ctx.fillRect(xw - s * 0.03, baseY - uh - s * 0.02, uw + s * 0.06, s * 0.032);
             ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
             ctx.fillRect(xw - s * 0.015, baseY - uh + s * 0.035, uw + s * 0.03, s * 0.02);
             // What lives on top — a jug and bowl, a plate stack,
-            // folded linens, or bare boards — dealt by the tile.
+            // folded linens, or bare boards — dealt by the tile,
+            // standing ON the top plane, not perched on its front lip.
             const c2 = (h >> 4) % 4;
-            const cyT = baseY - uh - s * 0.045;
+            const cyT = baseY - uh - topD * 0.45;
             if (c2 === 0) {
               // Stoneware jug + wash bowl.
               ctx.fillStyle = '#7d94a0';
