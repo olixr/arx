@@ -4,10 +4,11 @@
  * disappear from attention within a minute and leave a hole if muted.
  *
  * Layers, all crossfaded continuously by zone weight and clock:
- *  - WIND: a looping band-passed noise bed whose level AND voice ride
- *    the SAME wind field the grass and trees bend to (grass.ts
- *    windScalarAt) — when a gust sweeps the meadow you hear the swell
- *    move through what you see. Never invent a second weather.
+ *  - WIND: leaf rustle — a soft HIGH band (~3.9kHz) that only sounds
+ *    while a gust crests, riding the SAME wind field the grass and
+ *    trees bend to (grass.ts windScalarAt), silent between gusts.
+ *    Never a low-mid broadband bed (that reads as surf — user
+ *    verdict), and never a second weather.
  *  - BIRDS (day, outdoors): sparse procedural songbird phrases —
  *    2-5 small warbles, panned somewhere in the trees, occasionally
  *    distant. Denser through the dawn chorus, gone by dusk.
@@ -62,11 +63,13 @@ export class AmbienceSystem {
       // windScalarAt runs ~[-0.6, 1.4] (what the trees lean on) — remap
       // the full swell onto [0, 1] so lulls truly hush and gusts crest.
       const wind = Math.max(0, Math.min(1, (windScalarAt(x, y, tSec) + 0.3) / 1.55));
-      const windLevel =
-        (w.wild * 1 + w.town * 0.55) * (0.3 + 0.7 * wind) * (0.75 + 0.25 * day) * 0.13;
+      // Squared gust curve: rustle exists ONLY while a gust crests —
+      // between gusts the trees are silent, exactly like the grass is
+      // still. No floor term, or the surf comes back.
+      const windLevel = (w.wild * 1 + w.town * 0.5) * wind * wind * (0.6 + 0.4 * day) * 0.055;
       this.windGain!.gain.setTargetAtTime(windLevel, t, 0.4);
-      // Gusts lift the wind's voice as well as its level.
-      this.windFilter!.frequency.setTargetAtTime(360 + wind * 330, t, 0.5);
+      // A cresting gust rustles slightly brighter — leaves, not a tone.
+      this.windFilter!.frequency.setTargetAtTime(3600 + wind * 900, t, 0.5);
       this.rumbleGain!.gain.setTargetAtTime(w.cave * 0.1, t, 0.8);
       const cr = night * outdoor * 0.038;
       for (const g of this.cricketGains) g.gain.setTargetAtTime(cr, t, 0.6);
@@ -112,12 +115,16 @@ export class AmbienceSystem {
       return src;
     };
 
-    // Wind: noise → bandpass (the gust voice) → gain.
+    // Wind = LEAF RUSTLE, not air (user verdict: the old low-mid
+    // broadband bed read as white noise / crashing waves — that recipe
+    // IS surf). What a meadow gust actually sounds like is foliage: a
+    // soft high band, present only while a gust crests, silent in the
+    // lulls. The gain is driven on a squared gust curve in update().
     const wind = loopNoise();
     this.windFilter = ctx.createBiquadFilter();
     this.windFilter.type = 'bandpass';
-    this.windFilter.frequency.value = 420;
-    this.windFilter.Q.value = 0.45;
+    this.windFilter.frequency.value = 3900;
+    this.windFilter.Q.value = 0.7;
     this.windGain = ctx.createGain();
     this.windGain.gain.value = 0;
     wind.connect(this.windFilter);
