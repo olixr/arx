@@ -133,10 +133,24 @@ export declare class LegRig {
     private vy;
     private rise;
     private wScale;
+    /** Touchdowns since birth — diff across updates to hear footsteps. */
+    plants: number;
+    /** Body speed (tiles/sec) at the most recent touchdown. */
+    plantSpeed: number;
+    /** World position of the foot that just landed (dust spawns here). */
+    plantX: number;
+    plantY: number;
+    /** Body velocity at the touchdown — dust kicks back along this. */
+    plantVx: number;
+    plantVy: number;
     /** Signed idle-turn accumulator; a big enough pivot owes a shuffle. */
     private lastDir;
     private turnDebt;
     private turnPending;
+    /** Seconds since each foot's last touchdown — the rhythm reference. */
+    private readonly sinceLand;
+    /** Distinct gait groups: touchdowns aim to spread cycle/groups apart. */
+    private readonly groupCount;
     constructor(cfg: LegRigConfig);
     update(bx: number, by: number, dirRaw: number, rawDt: number): LegPose;
 }

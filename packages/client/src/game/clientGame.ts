@@ -56,8 +56,8 @@ export interface RemoteEntity {
   buffer: InterpBuffer;
   /** Hit-flash timer (performance.now ms). */
   hurtUntil?: number;
-  /** Direction of the last damaging hit — launches the death ragdoll. */
-  lastKnock?: { kx: number; ky: number; at: number; crit: boolean };
+  /** The last damaging hit — direction and force launch the death ragdoll. */
+  lastKnock?: { kx: number; ky: number; at: number; crit: boolean; dmg: number };
 }
 
 export interface Floaty {
@@ -168,6 +168,8 @@ export class ClientGame {
     kx: number;
     ky: number;
     crit: boolean;
+    /** Damage of the killing blow — scales the ragdoll launch. */
+    dmg: number;
   }> = [];
   /** Combat effects in flight; pruned by the renderer. */
   readonly fx: ActiveFx[] = [];
@@ -550,6 +552,7 @@ export class ClientGame {
                   ky: msg.ky ?? 0,
                   at: performance.now(),
                   crit: msg.crit === true,
+                  dmg: msg.dmg,
                 };
               }
             }
@@ -621,6 +624,7 @@ export class ClientGame {
             kx: fresh?.kx ?? 0,
             ky: fresh?.ky ?? 0,
             crit: fresh?.crit ?? false,
+            dmg: fresh?.dmg ?? 2,
           });
         }
         this.events.onDeath({ x: msg.x, y: msg.y, defId: msg.defId });

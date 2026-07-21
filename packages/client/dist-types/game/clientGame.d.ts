@@ -1,4 +1,4 @@
-import { ChunkStore, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type SkillXp, type StationType } from '@devcraft/shared';
+import { ChunkStore, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type EquippedItem, type S2CFx, type SkillXp, type StationType, type Vec2 } from '@devcraft/shared';
 import type { AbilityDef, AbilitySlot, Look } from '@devcraft/shared';
 export type InteractTarget = {
     kind: 'node';
@@ -36,6 +36,11 @@ export type InteractTarget = {
     ty: number;
     eid: EntityId;
     verb: string;
+} | {
+    kind: 'loot';
+    tx: number;
+    ty: number;
+    eid: EntityId;
 };
 import { InterpBuffer } from '../net/interpolation.js';
 import { Predictor } from '../net/prediction.js';
@@ -45,12 +50,13 @@ export interface RemoteEntity {
     buffer: InterpBuffer;
     /** Hit-flash timer (performance.now ms). */
     hurtUntil?: number;
-    /** Direction of the last damaging hit — launches the death ragdoll. */
+    /** The last damaging hit — direction and force launch the death ragdoll. */
     lastKnock?: {
         kx: number;
         ky: number;
         at: number;
         crit: boolean;
+        dmg: number;
     };
 }
 export interface Floaty {
@@ -69,14 +75,21 @@ export interface ChatLine {
 }
 /** A combat effect in flight (nova ring, telegraph, blast, reaction). */
 export interface ActiveFx {
-    kind: 'nova' | 'telegraph' | 'blast' | 'reaction' | 'summon' | 'vanish';
+    kind: S2CFx['kind'];
     x: number;
     y: number;
     radius: number;
-    /** telegraph: fuse length in server ticks. */
+    /** telegraph: fuse length in server ticks; field/summon: lifetime. */
     ticks?: number;
     color?: string;
     text?: string;
+    /** Ability id — keys the bespoke layered visual identity. */
+    id?: string;
+    /** arc: aim angle. */
+    dir?: number;
+    /** dash/bolt/beam: segment endpoint. */
+    x2?: number;
+    y2?: number;
     bornAt: number;
 }
 export interface GameEvents {
@@ -90,8 +103,12 @@ export interface GameEvents {
         level: number;
         levelledUp: boolean;
     }): void;
-    onEquipment(equipment: Partial<Record<string, string>>): void;
-    onBank(items: Record<string, number>): void;
+    onEquipment(equipment: Partial<Record<string, EquippedItem>>): void;
+    onBank(items: Record<string, number>, gear?: Array<{
+        id: number;
+        item: string;
+        roll: ItemRoll;
+    }>): void;
     onHit(hit: {
         x: number;
         y: number;
@@ -137,9 +154,11 @@ export declare class ClientGame {
     timeOfs: number;
     inventory: InvSlot[];
     skills: SkillXp;
-    equipment: Partial<Record<string, string>>;
+    equipment: Partial<Record<string, EquippedItem>>;
     /** Cosmetic idle weapon-carry preference (server-confirmed). */
     carryStyle: 'normal' | 'rogue';
+    /** Off-fist grip preference — each hand carries its own way. */
+    carryOff: 'normal' | 'rogue';
     /** Running gather action, for the progress bar. */
     action: {
         startedAt: number;
@@ -169,6 +188,8 @@ export declare class ClientGame {
         kx: number;
         ky: number;
         crit: boolean;
+        /** Damage of the killing blow — scales the ragdoll launch. */
+        dmg: number;
     }>;
     /** Combat effects in flight; pruned by the renderer. */
     readonly fx: ActiveFx[];
@@ -202,6 +223,8 @@ export declare class ClientGame {
     get isDetected(): boolean;
     /** Tap-to-move autopilot; cancelled by any manual movement input. */
     private autoPath;
+    /** Drop entity to take the moment the auto-walk brings it in reach. */
+    private pendingPickup;
     /** Own hit-flash timer. */
     ownHurtUntil: number;
     ownHpPct: number;
@@ -265,13 +288,35 @@ export declare class ClientGame {
     interact(tx: number, ty: number): void;
     /** Use (equip/eat) the item in an inventory slot. */
     useSlot(slot: number): void;
-    /** Set the cosmetic idle carry style (optimistic; server confirms). */
-    setCarryStyle(style: 'normal' | 'rogue'): void;
+    /** Set one fist's grip style (optimistic; server confirms). */
+    setCarryStyle(style: 'normal' | 'rogue', hand?: 'main' | 'off'): void;
     unequip(slot: EquipSlot): void;
     /** Classify what an interact on this tile would do, if anything. */
     targetAt(tx: number, ty: number): InteractTarget | null;
     /** The nearest interactable tile (or gatherable animal) in reach. */
     findNearbyTarget(): InteractTarget | null;
+    /** The drop nearest this tile's center (touch taps land on tiles). */
+    lootAtTile(tx: number, ty: number): EntityId | null;
+    /** Where a ground drop lies, if it is still in view. */
+    dropPos(eid: EntityId): Vec2 | null;
+    /** All ground drops within `radius` tiles of the player, nearest first. */
+    nearbyLoot(radius: number): Array<{
+        eid: EntityId;
+        x: number;
+        y: number;
+        d: number;
+        itemId: string;
+        qty: number;
+        roll?: ItemRoll;
+    }>;
+    /** Take a specific ground drop (server validates reach and claim). */
+    pickup(eid: EntityId): void;
+    /**
+     * Click a distant bag: auto-walk toward it and take exactly that
+     * bag on arrival — not whatever the walk-over vacuum happens to
+     * cross first. Manual movement input cancels the errand.
+     */
+    pickupWalk(eid: EntityId): boolean;
     /** Pathfind and auto-walk to a tile. Returns false if unreachable. */
     walkTo(tx: number, ty: number): boolean;
     get isAutoWalking(): boolean;
@@ -280,13 +325,13 @@ export declare class ClientGame {
     plantSend(tx: number, ty: number, seed: string): void;
     /** Interact with a living NPC (milk a cow). */
     interactNpc(eid: EntityId): void;
-    bankSend(op: 'deposit' | 'withdraw', item: string, qty: number): void;
+    bankSend(op: 'deposit' | 'withdraw', item: string, qty: number, slot?: number, gearId?: number): void;
     invMove(from: number, to: number): void;
     /** Drop a pack slot onto the ground where you stand. */
     dropSend(slot: number, qty: number): void;
     /** Confirm character creation (optimistic — the server locks it). */
     setLookSend(look: Look): void;
-    shopSend(op: 'buy' | 'sell', item: string, qty: number): void;
+    shopSend(op: 'buy' | 'sell', item: string, qty: number, slot?: number): void;
     buildSend(buildable: string, tx: number, ty: number): void;
     demolishSend(tx: number, ty: number): void;
     private handleSnapshot;

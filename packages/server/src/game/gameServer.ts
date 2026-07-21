@@ -4092,6 +4092,35 @@ export class GameServer {
     }
     this.removeFromChunks(npcEid);
     this.ecs.destroy(npcEid);
+
+    // The ooze divides: death spawns ephemeral halves (spawnIndex -1 —
+    // no spawn point, no respawn) that come out hunting the killer.
+    // Recursion is capped by data: the child def carries no splitInto.
+    if (npc.def.splitInto) {
+      const childDef = NPCS.get(npc.def.splitInto.npc);
+      if (childDef) {
+        for (let i = 0; i < npc.def.splitInto.count; i++) {
+          const a = Math.random() * Math.PI * 2;
+          let cx = pos.x;
+          let cy = pos.y;
+          for (let tries = 0; tries < 6; tries++) {
+            const tx = pos.x + Math.cos(a + tries) * (0.6 + Math.random() * 0.5);
+            const ty = pos.y + Math.sin(a + tries) * (0.6 + Math.random() * 0.5);
+            if (!this.world.isSolid(Math.floor(tx), Math.floor(ty))) {
+              cx = tx;
+              cy = ty;
+              break;
+            }
+          }
+          const childEid = this.spawnNpc(childDef, cx, cy, -1);
+          const child = this.npcs.get(childEid)!;
+          if (this.players.has(killerEid)) {
+            child.state = 'chase';
+            child.targetEid = killerEid;
+          }
+        }
+      }
+    }
   }
 
   private damagePlayer(
@@ -4209,33 +4238,42 @@ export class GameServer {
           break;
         }
       }
-      const eid = this.ecs.create();
-      this.kinds.set(eid, EntityKind.Npc);
-      this.positions.set(eid, { x, y, dir: Math.random() * Math.PI * 2 });
-      this.poses.set(eid, PoseState.Idle);
-      this.healths.set(eid, { hp: def.maxHp, maxHp: def.maxHp });
-      this.npcs.set(eid, {
-        def,
-        originX: x,
-        originY: y,
-        state: 'idle',
-        targetEid: null,
-        wanderUntilTick: 0,
-        wanderX: 0,
-        wanderY: 0,
-        attackCooldown: 0,
-        windupTicks: 0,
-        spawnIndex: i,
-        poseUntilTick: 0,
-        specialCooldown: 60, // never open with the special
-        nextProduceAt: 0,
-        nextLayAt: def.lays
-          ? now + (def.lays.minSec + Math.random() * (def.lays.maxSec - def.lays.minSec)) * 1000
-          : 0,
-      });
-      spawn.eid = eid;
-      this.updateChunkMembership(eid);
+      spawn.eid = this.spawnNpc(def, x, y, i);
     }
+  }
+
+  /**
+   * Materialize one NPC at a point. spawnIndex -1 = ephemeral (slime
+   * halves, dev-spawned): killNpc's spawn-point lookup finds nothing and
+   * schedules no respawn.
+   */
+  private spawnNpc(def: NpcDef, x: number, y: number, spawnIndex: number): EntityId {
+    const eid = this.ecs.create();
+    this.kinds.set(eid, EntityKind.Npc);
+    this.positions.set(eid, { x, y, dir: Math.random() * Math.PI * 2 });
+    this.poses.set(eid, PoseState.Idle);
+    this.healths.set(eid, { hp: def.maxHp, maxHp: def.maxHp });
+    this.npcs.set(eid, {
+      def,
+      originX: x,
+      originY: y,
+      state: 'idle',
+      targetEid: null,
+      wanderUntilTick: 0,
+      wanderX: 0,
+      wanderY: 0,
+      attackCooldown: 0,
+      windupTicks: 0,
+      spawnIndex,
+      poseUntilTick: 0,
+      specialCooldown: 60, // never open with the special
+      nextProduceAt: 0,
+      nextLayAt: def.lays
+        ? Date.now() + (def.lays.minSec + Math.random() * (def.lays.maxSec - def.lays.minSec)) * 1000
+        : 0,
+    });
+    this.updateChunkMembership(eid);
+    return eid;
   }
 
   /** Resolve an NPC's chase target: a live player or a straw decoy. */
@@ -4389,8 +4427,9 @@ export class GameServer {
                 });
                 this.updateChunkMembership(proj);
               } else {
-                // Wolves LEAP out of the crouch — a real gap-closer.
-                if (npc.def.id === 'wolf' && dist > 0.6) {
+                // Pouncers LEAP out of the crouch — a real gap-closer
+                // (wolves, boars, rams, spiders, the bear).
+                if (npc.def.pounce && dist > 0.6) {
                   const leap = Math.min(1.3, dist - 0.4);
                   for (let step = 0; step < 4; step++) {
                     const next = stepMovement(
@@ -4755,6 +4794,40 @@ export class GameServer {
       } else {
         player.session?.sendJson({ t: 'chat', channel: 'system', text: `Can't give '${item}'.` });
       }
+      return;
+    }
+    if (config.devCommands && text.startsWith('/spawnmob')) {
+      // /spawnmob <npcId> [count] — ephemeral mobs (no respawn) beside
+      // the caller. The staging lever: line up the whole bestiary.
+      const [, id, countRaw] = text.split(/\s+/);
+      const def = id ? NPCS.get(id) : undefined;
+      if (!def) {
+        const ids = [...NPCS.keys()].join(', ');
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: `/spawnmob <id> [count] — ${ids}` });
+        return;
+      }
+      const count = Math.max(1, Math.min(8, Number.parseInt(countRaw ?? '1', 10) || 1));
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      let placed = 0;
+      for (let i = 0; i < count; i++) {
+        let x = pos.x + 1.5;
+        let y = pos.y;
+        for (let tries = 0; tries < 10; tries++) {
+          const a = Math.random() * Math.PI * 2;
+          const r = 1.2 + Math.random() * 2.2;
+          const tx = pos.x + Math.cos(a) * r;
+          const ty = pos.y + Math.sin(a) * r;
+          if (!this.world.isSolid(Math.floor(tx), Math.floor(ty))) {
+            x = tx;
+            y = ty;
+            break;
+          }
+        }
+        this.spawnNpc(def, x, y, -1);
+        placed++;
+      }
+      player.session?.sendJson({ t: 'chat', channel: 'system', text: `Spawned ${def.name} ×${placed}.` });
       return;
     }
     for (const s of this.sessions) {

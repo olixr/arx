@@ -97,16 +97,28 @@ export function generateDelve(seed: number, origin: Vec2, returnTo: Vec2): Delve
   ];
 
   const spawns: ZoneSpawn[] = [];
-  // Skeletons in every middle room, champion in the last.
+  // Middle rooms mix the crypt garrison: sword skeletons always, plus
+  // an archer on the balconies or bats in the rafters, room by room.
   for (let i = 1; i < rooms.length - 1; i++) {
     const room = rooms[i]!;
+    const radius = Math.max(2, Math.min(room.w, room.h) / 2 - 1);
     spawns.push({
       npc: 'skeleton',
       x: origin.x + room.cx,
       y: origin.y + room.cy,
-      radius: Math.max(2, Math.min(room.w, room.h) / 2 - 1),
+      radius,
       count: rng.int(1, 3),
     });
+    const extra = rng.int(0, 2);
+    if (extra > 0) {
+      spawns.push({
+        npc: extra === 1 ? 'cave_bat' : 'skeleton_archer',
+        x: origin.x + room.cx,
+        y: origin.y + room.cy,
+        radius,
+        count: extra === 1 ? rng.int(1, 2) : 1,
+      });
+    }
   }
   spawns.push({
     npc: 'skeleton_champion',

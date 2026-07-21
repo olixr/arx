@@ -642,6 +642,12 @@ renderer.onGatherImpact = (kind) => {
   }
 };
 
+// A felled body landing is its own beat — the dull thump under the kill.
+renderer.onCorpseThud = (heavy) => {
+  sfx.bodyThud(heavy);
+  input.rumble(heavy ? 0.2 : 0.1, heavy ? 0.28 : 0.16, heavy ? 90 : 55);
+};
+
 // Footsteps: every humanoid touchdown asks the ground what it's made
 // of. Volume rides the gait (idle shuffles are near-silent), sneaking
 // is nearly soundless, and other people's steps arrive quiet, panned

@@ -50,8 +50,13 @@ export declare class LightingSystem {
     /**
      * Paint the frame's exposure. `blocks` answers whether a tile stops
      * light (walls, cliffs); it is only consulted near occluding lights.
+     * `faceH` is the height of a blocking face in WORLD-y units
+     * (screen-vertical walls divide the camera squash back out) — it
+     * sizes the lit-face response, the map's one piece of normal-aware
+     * shading: a wall standing south of a lamp catches the light on the
+     * face the camera sees.
      */
-    draw(ctx: CanvasRenderingContext2D, view: LightView, sky: DaylightSample, lights: WorldLight[], blocks: (tx: number, ty: number) => boolean): void;
+    draw(ctx: CanvasRenderingContext2D, view: LightView, sky: DaylightSample, lights: WorldLight[], blocks: (tx: number, ty: number) => boolean, faceH?: number): void;
     /** The light's radial falloff, in the ctx's world-space frame. */
     private gradient;
     /**
@@ -60,7 +65,13 @@ export declare class LightingSystem {
      * shadow never bites into the ambient or any other light.
      */
     private drawOccludedLight;
-    /** Project the tile square's silhouette away from the light. */
+    /**
+     * Project the tile square's silhouette away from the light, and
+     * report any camera-visible face the light strikes. Each occluding
+     * edge erases twice: a slightly splayed half-alpha quad (penumbra),
+     * then the exact hard quad (umbra) — the shadow's rim softens the
+     * further it runs, the core stays black.
+     */
     private castTileShadow;
 }
 //# sourceMappingURL=lighting.d.ts.map

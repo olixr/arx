@@ -392,6 +392,130 @@ const defs: LootTableDef[] = [
       { item: 'glacierbite', chance: 0.006 },
     ],
   },
+
+  // ------------------------------------------------------- the wilds
+  {
+    id: 'mudcrab',
+    desc: 'Shell pickings, and whatever it caught last.',
+    entries: [
+      { item: 'bones' },
+      { item: 'raw_trout', chance: 0.25 },
+      { item: 'coins', qty: [1, 6], chance: 0.3 },
+    ],
+  },
+  {
+    id: 'slime',
+    desc: 'What the ooze dissolved, and what it could not.',
+    entries: [
+      { item: 'coins', qty: [2, 10], chance: 0.5 },
+      { item: 'verdant_essence', chance: 0.15 },
+      { item: 'arcane_dust', chance: 0.12 },
+    ],
+  },
+  {
+    id: 'slime_small',
+    desc: 'Half an ooze holds half a hoard.',
+    entries: [
+      { item: 'coins', qty: [1, 4], chance: 0.4 },
+      { item: 'verdant_essence', chance: 0.05 },
+    ],
+  },
+  {
+    id: 'ram',
+    desc: 'Horn, hide, and stubbornness.',
+    entries: [
+      { item: 'bones' },
+      { item: 'scrap_hide', qty: [1, 2], chance: 0.7 },
+    ],
+  },
+  {
+    id: 'stag',
+    desc: 'The wood’s bounty on four legs.',
+    entries: [
+      { item: 'bones' },
+      { item: 'raw_beef', chance: 0.5 },
+      { item: 'scrap_hide', qty: [1, 3], chance: 0.8 },
+      { item: 'verdant_essence', chance: 0.08 },
+    ],
+  },
+  {
+    id: 'boar',
+    desc: 'Bristle, tusk, and a hearty cut.',
+    entries: [
+      { item: 'bones' },
+      { item: 'raw_beef', chance: 0.5 },
+      { item: 'scrap_hide', qty: [1, 3], chance: 0.8 },
+      { item: 'crimson_essence', chance: 0.06 },
+    ],
+  },
+  {
+    id: 'giant_beetle',
+    desc: 'Ground chitin is half dust already.',
+    entries: [
+      { item: 'bones' },
+      { item: 'arcane_dust', chance: 0.15 },
+      { item: 'verdant_essence', chance: 0.08 },
+    ],
+  },
+  {
+    id: 'cave_bat',
+    desc: 'Small bones and cave-things.',
+    entries: [
+      { item: 'bones' },
+      { item: 'crimson_essence', chance: 0.06 },
+      { item: 'gloomsilk_thread', chance: 0.12 },
+    ],
+  },
+  {
+    id: 'adder',
+    desc: 'Venom by the gland, skin by the yard.',
+    entries: [
+      { item: 'bones' },
+      { item: 'venom_gland', chance: 0.6 },
+      { item: 'scrap_hide', qty: [1, 2], chance: 0.4 },
+    ],
+  },
+  {
+    id: 'giant_spider',
+    desc: 'Silk and venom — the crypt tailors pay for both.',
+    entries: [
+      { item: 'venom_gland', chance: 0.5 },
+      { item: 'gloomsilk_thread', qty: [1, 2], chance: 0.4 },
+      { item: 'crimson_essence', chance: 0.08 },
+    ],
+  },
+  {
+    id: 'skeleton_archer',
+    desc: 'A quiver that outlived its owner.',
+    entries: [
+      { item: 'bones' },
+      { item: 'arrow', qty: [6, 18], chance: 0.8 },
+      { item: 'coins', qty: [4, 20], chance: 0.6 },
+      { item: 'arcane_dust', chance: 0.12 },
+      { item: 'frost_essence', chance: 0.12 },
+    ],
+  },
+  {
+    id: 'troll',
+    desc: 'A pocket-hoard scraped off the hills.',
+    entries: [
+      { item: 'bones' },
+      { item: 'coins', qty: [10, 40], chance: 0.9 },
+      { item: 'arcane_dust', qty: [1, 2], chance: 0.2 },
+      { item: 'ember_essence', chance: 0.12 },
+      { item: 'leather', chance: 0.15 },
+    ],
+  },
+  {
+    id: 'bear',
+    desc: 'A deep-wood giant leaves a deep-wood haul.',
+    entries: [
+      { item: 'bones' },
+      { item: 'raw_beef', qty: [1, 2], chance: 0.7 },
+      { item: 'scrap_hide', qty: [2, 4], chance: 0.9 },
+      { item: 'crimson_essence', qty: [1, 2], chance: 0.15 },
+    ],
+  },
 ];
 
 /**

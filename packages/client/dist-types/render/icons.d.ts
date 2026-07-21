@@ -11,5 +11,5 @@ export declare function slotGlyphUrl(slot: string, size?: number): string;
 /** Data URL for the HUD sneak-state eye chip. */
 export declare function sneakEyeUrl(state: 'sneaking' | 'hidden' | 'detected', size?: number): string;
 /** Data URL for a UI glyph. */
-export declare function uiIconUrl(kind: 'backpack' | 'scroll' | 'hammer' | 'house' | 'attack', size?: number): string;
+export declare function uiIconUrl(kind: 'backpack' | 'scroll' | 'hammer' | 'house' | 'attack' | 'bell', size?: number): string;
 //# sourceMappingURL=icons.d.ts.map

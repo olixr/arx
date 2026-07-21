@@ -2209,7 +2209,7 @@ export interface BeastSpec {
   hipSide: number;
   /** Upper-leg thickness (tiles). */
   legW: number;
-  foot: 'hoof' | 'paw' | 'claw';
+  foot: 'hoof' | 'paw' | 'claw' | 'bearpaw';
   /** Bare shanks (chicken) instead of body-shaded legs. */
   legColor?: string;
 }
@@ -2227,20 +2227,39 @@ function quadLegs(fwd: number, side: number): LegRigConfig['legs'] {
 const BEAST_SPECS: Record<string, BeastSpec> = {
   cow: {
     rig: {
-      legs: quadLegs(0.26, 0.15),
-      legLen: 0.31,
-      rise: 0.26,
-      liftAmp: 0.06,
+      legs: quadLegs(0.3, 0.16),
+      legLen: 0.33,
+      rise: 0.29,
+      liftAmp: 0.055,
       runSpeed: 1.8,
       turnRate: 4.5,
     },
-    bodyLen: 0.44,
-    bodyRise: 0.34,
+    bodyLen: 0.48,
+    bodyRise: 0.36,
     kneeFwd: [1, 1, -1, -1],
     hipFwd: 0.9,
-    hipSide: 0.55,
-    legW: 0.088,
+    hipSide: 0.5,
+    legW: 0.095,
     foot: 'hoof',
+    legColor: '#d9ccb8',
+  },
+  bull: {
+    rig: {
+      legs: quadLegs(0.32, 0.17),
+      legLen: 0.35,
+      rise: 0.31,
+      liftAmp: 0.055,
+      runSpeed: 2.4,
+      turnRate: 4,
+    },
+    bodyLen: 0.52,
+    bodyRise: 0.38,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.5,
+    legW: 0.105,
+    foot: 'hoof',
+    legColor: '#584a3d',
   },
   wolf: {
     rig: {
@@ -2251,13 +2270,14 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
       runSpeed: 4.6,
       turnRate: 8,
     },
-    bodyLen: 0.44,
+    bodyLen: 0.4,
     bodyRise: 0.4,
     kneeFwd: [1, 1, -1, -1],
     hipFwd: 0.9,
     hipSide: 0.55,
-    legW: 0.068,
+    legW: 0.075,
     foot: 'paw',
+    legColor: '#5d6270',
   },
   rat: {
     rig: {
@@ -2273,8 +2293,9 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     kneeFwd: [1, 1, -1, -1],
     hipFwd: 0.9,
     hipSide: 0.55,
-    legW: 0.042,
+    legW: 0.048,
     foot: 'paw',
+    legColor: '#786a5b',
   },
   chicken: {
     rig: {
@@ -2296,6 +2317,202 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     legW: 0.035,
     foot: 'claw',
     legColor: '#e8a33d',
+  },
+  boar: {
+    rig: {
+      legs: quadLegs(0.24, 0.13),
+      legLen: 0.24,
+      rise: 0.21,
+      liftAmp: 0.06,
+      runSpeed: 3.8,
+      turnRate: 7,
+    },
+    bodyLen: 0.38,
+    bodyRise: 0.27,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.07,
+    foot: 'hoof',
+    legColor: '#463527',
+  },
+  bear: {
+    rig: {
+      legs: quadLegs(0.3, 0.17),
+      legLen: 0.34,
+      rise: 0.29,
+      liftAmp: 0.07,
+      runSpeed: 4.0,
+      turnRate: 5.5,
+    },
+    bodyLen: 0.52,
+    bodyRise: 0.38,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.5,
+    legW: 0.13,
+    foot: 'bearpaw',
+    legColor: '#302620',
+  },
+  ram: {
+    rig: {
+      legs: quadLegs(0.23, 0.13),
+      legLen: 0.29,
+      rise: 0.25,
+      liftAmp: 0.06,
+      runSpeed: 3.4,
+      turnRate: 7,
+    },
+    bodyLen: 0.36,
+    bodyRise: 0.3,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.058,
+    foot: 'hoof',
+    legColor: '#6b5a48',
+  },
+  stag: {
+    rig: {
+      legs: quadLegs(0.26, 0.13),
+      legLen: 0.42,
+      rise: 0.37,
+      liftAmp: 0.09,
+      runSpeed: 4.4,
+      turnRate: 7,
+    },
+    bodyLen: 0.38,
+    bodyRise: 0.44,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.052,
+    foot: 'hoof',
+    legColor: '#8a6f4d',
+  },
+  // Six legs, alternating tripods: each group keeps a stable triangle
+  // planted (front+rear one side, middle the other) — the insect gait.
+  mudcrab: {
+    rig: {
+      legs: [
+        { fwd: 0.13, side: -0.19, group: 0 },
+        { fwd: 0.13, side: 0.19, group: 1 },
+        { fwd: 0, side: -0.22, group: 1 },
+        { fwd: 0, side: 0.22, group: 0 },
+        { fwd: -0.13, side: -0.19, group: 0 },
+        { fwd: -0.13, side: 0.19, group: 1 },
+      ],
+      legLen: 0.15,
+      rise: 0.09,
+      liftAmp: 0.04,
+      runSpeed: 2.2,
+      turnRate: 12,
+    },
+    bodyLen: 0.24,
+    bodyRise: 0.13,
+    kneeFwd: [1, 1, 1, -1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.62,
+    legW: 0.032,
+    foot: 'claw',
+    legColor: '#8a4f38',
+  },
+  giant_beetle: {
+    rig: {
+      legs: [
+        { fwd: 0.16, side: -0.15, group: 0 },
+        { fwd: 0.16, side: 0.15, group: 1 },
+        { fwd: 0, side: -0.17, group: 1 },
+        { fwd: 0, side: 0.17, group: 0 },
+        { fwd: -0.16, side: -0.15, group: 0 },
+        { fwd: -0.16, side: 0.15, group: 1 },
+      ],
+      legLen: 0.15,
+      rise: 0.11,
+      liftAmp: 0.045,
+      runSpeed: 2.8,
+      turnRate: 8,
+    },
+    bodyLen: 0.32,
+    bodyRise: 0.17,
+    kneeFwd: [1, 1, 1, -1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.6,
+    legW: 0.03,
+    foot: 'claw',
+    legColor: '#252c3d',
+  },
+  // Eight legs in two alternating tetrapods — diagonal pairs of pairs,
+  // so four feet always hold the ground while four reach.
+  giant_spider: {
+    rig: {
+      legs: [
+        { fwd: 0.22, side: -0.15, group: 0 },
+        { fwd: 0.22, side: 0.15, group: 1 },
+        { fwd: 0.08, side: -0.17, group: 1 },
+        { fwd: 0.08, side: 0.17, group: 0 },
+        { fwd: -0.06, side: -0.17, group: 0 },
+        { fwd: -0.06, side: 0.17, group: 1 },
+        { fwd: -0.2, side: -0.15, group: 1 },
+        { fwd: -0.2, side: 0.15, group: 0 },
+      ],
+      legLen: 0.36,
+      rise: 0.17,
+      liftAmp: 0.07,
+      runSpeed: 4.2,
+      turnRate: 9,
+    },
+    bodyLen: 0.34,
+    bodyRise: 0.22,
+    kneeFwd: [1, 1, 1, 1, -1, -1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.034,
+    foot: 'paw',
+    legColor: '#2e2838',
+  },
+  // Legless bodies: the specs exist for the corpse ragdolls (spine
+  // points only) and sprite bounds — the LIVE bodies never build a
+  // LegRig; they draw through their own dedicated painters.
+  adder: {
+    rig: { legs: [], legLen: 0.1, rise: 0.06, liftAmp: 0, runSpeed: 3.6, turnRate: 9 },
+    bodyLen: 0.62,
+    bodyRise: 0.08,
+    kneeFwd: [],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.03,
+    foot: 'paw',
+  },
+  cave_bat: {
+    rig: { legs: [], legLen: 0.08, rise: 0.05, liftAmp: 0, runSpeed: 4.8, turnRate: 11 },
+    bodyLen: 0.24,
+    bodyRise: 0.9,
+    kneeFwd: [],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.025,
+    foot: 'paw',
+  },
+  slime: {
+    rig: { legs: [], legLen: 0.06, rise: 0.04, liftAmp: 0, runSpeed: 2.6, turnRate: 9 },
+    bodyLen: 0.34,
+    bodyRise: 0.26,
+    kneeFwd: [],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.03,
+    foot: 'paw',
+  },
+  slime_small: {
+    rig: { legs: [], legLen: 0.05, rise: 0.03, liftAmp: 0, runSpeed: 3.0, turnRate: 9 },
+    bodyLen: 0.2,
+    bodyRise: 0.16,
+    kneeFwd: [],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.03,
+    foot: 'paw',
   },
 };
 
@@ -2326,6 +2543,2798 @@ export function beastSpec(defId: string, radius: number, speed: number): BeastSp
   };
 }
 
+/**
+ * Cattle are drawn as true 2.5D blocks — the same dialect as the wall
+ * prisms: a chamfered footprint extruded straight up, lit back slab
+ * over hard-shaded flanks. Everything species-flavored (hide, patches,
+ * horns, muzzle, udder) lives in this look table so the dairy cow and
+ * the bull share one painter.
+ */
+export interface CattleLook {
+  hide: string;
+  /** Seeded body patches; the count says how many. */
+  patch: string;
+  spots: number;
+  muzzle: string;
+  horn: string;
+  hornTip: string;
+  /** Horn reach (tiles) — stubs on the cow, sweeps on the bull. */
+  hornLen: number;
+  udder?: string;
+  noseRing?: string;
+  /** A strap-hung cowbell at the throat (dairy herd charm). */
+  bell?: string;
+  /** Body half-width (tiles); length comes from the BeastSpec. */
+  bodyW: number;
+  bellyH: number;
+  backH: number;
+  /** Extra shoulder mass ramped toward the chest (bull). */
+  humpH: number;
+  headW: number;
+  headH: number;
+}
+
+export const CATTLE_LOOKS: Record<string, CattleLook> = {
+  cow: {
+    hide: '#e7ddca',
+    patch: '#59463a',
+    spots: 3,
+    muzzle: '#d8a396',
+    horn: '#ddd0b2',
+    hornTip: '#8d7c64',
+    hornLen: 0.09,
+    udder: '#e2aba1',
+    bell: '#c9a24a',
+    bodyW: 0.26,
+    bellyH: 0.3,
+    backH: 0.66,
+    humpH: 0,
+    headW: 0.3,
+    headH: 0.26,
+  },
+  bull: {
+    hide: '#63503f',
+    patch: '#473a2e',
+    spots: 2,
+    muzzle: '#a08872',
+    horn: '#e4d8bc',
+    hornTip: '#6f6350',
+    hornLen: 0.17,
+    noseRing: '#d9b054',
+    bodyW: 0.29,
+    bellyH: 0.31,
+    backH: 0.7,
+    humpH: 0.14,
+    headW: 0.33,
+    headH: 0.29,
+  },
+};
+
+function ringPath(pts: Array<{ x: number; y: number }>): Path2D {
+  const p = new Path2D();
+  for (let i = 0; i < pts.length; i++) {
+    const q = pts[i]!;
+    if (i === 0) p.moveTo(q.x, q.y);
+    else p.lineTo(q.x, q.y);
+  }
+  p.closePath();
+  return p;
+}
+
+/** Convex hull (monotone chain) — the silhouette of an extruded slab. */
+function hullPath(pts: Array<{ x: number; y: number }>): Path2D {
+  const s = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
+  const cross = (
+    o: { x: number; y: number },
+    a: { x: number; y: number },
+    b: { x: number; y: number },
+  ): number => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const lower: typeof s = [];
+  for (const p of s) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2]!, lower[lower.length - 1]!, p) <= 0)
+      lower.pop();
+    lower.push(p);
+  }
+  const upper: typeof s = [];
+  for (let i = s.length - 1; i >= 0; i--) {
+    const p = s[i]!;
+    while (upper.length >= 2 && cross(upper[upper.length - 2]!, upper[upper.length - 1]!, p) <= 0)
+      upper.pop();
+    upper.push(p);
+  }
+  return ringPath([...lower.slice(0, -1), ...upper.slice(0, -1)]);
+}
+
+export interface CattleBodyFrame {
+  /** Screen position of the body's ground point. */
+  bx: number;
+  gy: number;
+  s: number;
+  fx: number;
+  fy: number;
+  /** Camera foreshorten (1 for ragdolls drawn in screen space). */
+  ys: number;
+  seed: number;
+  hurt: boolean;
+  /** Gait bob (tiles) and side roll — 0 for corpses. */
+  bob: number;
+  roll: number;
+  /** Heights (tiles) — corpses pass a collapsed backH. */
+  backH: number;
+  bellyH: number;
+}
+
+/**
+ * The cattle body block: chamfered octagon footprint projected at
+ * belly and back height, silhouette = convex hull of both rings.
+ * Paint order inside the clip makes the light model: base hide, then
+ * the seeded patches, then a hard shade step on everything below the
+ * back plane, then the lit back facet — so each patch reads darker
+ * where it spills over the flank, exactly like the torso shade-half.
+ */
+export function paintCattleBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: CattleLook,
+  f: CattleBodyFrame,
+): void {
+  const { bx, gy, s, fx, fy, ys } = f;
+  const px = -fy;
+  const py = fx;
+  const hl = spec.bodyLen * s;
+  const hw = look.bodyW * s;
+  const cut = Math.min(hl, hw) * 0.5;
+  const oct: Array<[number, number]> = [
+    [hl, -hw + cut],
+    [hl, hw - cut],
+    [hl - cut, hw],
+    [-hl + cut, hw],
+    [-hl, hw - cut],
+    [-hl, -hw + cut],
+    [-hl + cut, -hw],
+    [hl - cut, -hw],
+  ];
+  const lift = f.bob * 0.35 * s;
+  const hump = look.humpH * s;
+  const gx = (X: number, Y: number): number => bx + fx * X + px * Y;
+  const gyy = (X: number, Y: number): number => gy + (fy * X + py * Y) * ys;
+  const top = oct.map(([X, Y]) => {
+    let h = f.backH * s + lift - Y * f.roll * 0.4;
+    if (hump > 0 && X > hl * 0.1) h += hump * ((X / hl - 0.1) / 0.9);
+    return { x: gx(X, Y), y: gyy(X, Y) - h };
+  });
+  const bot = oct.map(([X, Y]) => ({
+    x: gx(X, Y),
+    // The chest runs deeper than the flank — the belly line climbs
+    // toward the rump, which is most of what reads "cattle" side-on.
+    y: gyy(X, Y) - (f.bellyH - 0.05 * Math.max(0, X / hl)) * s - lift * 0.6,
+  }));
+  const hull = hullPath([...top, ...bot]);
+  const topFace = ringPath(top);
+
+  ctx.save();
+  ctx.clip(hull);
+  ctx.fillStyle = f.hurt ? '#ffffff' : look.hide;
+  ctx.fill(hull);
+  if (!f.hurt && look.spots > 0) {
+    ctx.fillStyle = look.patch;
+    for (let k = 0; k < look.spots; k++) {
+      const b = (n: number): number => ((f.seed >>> ((k * 9 + n * 3) % 28)) & 7) / 7;
+      const X = (b(0) * 1.7 - 0.85) * hl * 0.9;
+      const Y = (b(1) * 2 - 1) * hw;
+      const r = (0.55 + b(2) * 0.5) * hw;
+      ctx.beginPath();
+      facetBlob(
+        ctx,
+        gx(X, Y),
+        gyy(X, Y) - f.backH * 0.72 * s - lift,
+        r,
+        (f.seed ^ (k * 0x9e37)) | 0,
+        7,
+        0.8,
+        k * 2.1,
+      );
+      ctx.fill();
+    }
+  }
+  if (!f.hurt) {
+    // Hard shade step: hull minus back facet = the flanks.
+    const flanks = new Path2D();
+    flanks.addPath(hull);
+    flanks.addPath(topFace);
+    ctx.fillStyle = 'rgba(30, 20, 36, 0.20)';
+    ctx.fill(flanks, 'evenodd');
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.16)';
+    ctx.fill(topFace);
+  }
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
+  ctx.lineWidth = Math.max(1, s * 0.02);
+  ctx.stroke(hull);
+}
+
+/**
+ * The cattle head: a billboard chamfered slab (like the humanoid head)
+ * whose muzzle, ears, horns and eyes orbit with the facing. Shared by
+ * the live rig and the ragdoll — corpses pass `dead` (no face marks)
+ * and ys=1.
+ */
+export function drawCattleHead(
+  ctx: CanvasRenderingContext2D,
+  look: CattleLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** Slow lateral cud-grind offset (screen px), idle only. */
+    chew?: number;
+  },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+
+  // Ears: angular flaps riding the side axis, drooping at the tips,
+  // pink inside when they face the camera.
+  for (const es of [-1, 1]) {
+    const bxr = cx + px * es * w * 0.4;
+    const byr = cy + py * es * w * 0.4 * ys - h * 0.1;
+    const tx = cx + px * es * w * 0.95;
+    const ty = cy + py * es * w * 0.95 * ys + h * 0.12;
+    ctx.fillStyle = C(shade(look.hide, -12));
+    ctx.beginPath();
+    ctx.moveTo(bxr, byr - h * 0.12);
+    ctx.lineTo(tx, ty - h * 0.08);
+    ctx.lineTo(tx + px * es * w * 0.06, ty + h * 0.06);
+    ctx.lineTo(bxr, byr + h * 0.14);
+    ctx.closePath();
+    ctx.fill();
+    if (fy > 0.05 && !o.hurt && !o.dead) {
+      ctx.fillStyle = look.muzzle;
+      ctx.beginPath();
+      ctx.moveTo(bxr + (tx - bxr) * 0.35, byr + (ty - byr) * 0.35 - h * 0.05);
+      ctx.lineTo(bxr + (tx - bxr) * 0.85, byr + (ty - byr) * 0.85 - h * 0.02);
+      ctx.lineTo(bxr + (tx - bxr) * 0.4, byr + (ty - byr) * 0.4 + h * 0.07);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Horns: tapered two-segment polygons sweeping out, then forward-up.
+  const L = look.hornLen * s;
+  for (const es of [-1, 1]) {
+    const b0x = cx + px * es * w * 0.3;
+    const b0y = cy + py * es * w * 0.3 * ys - h * 0.44;
+    const m0x = b0x + px * es * L * 0.85;
+    const m0y = b0y + py * es * L * 0.85 * ys - L * 0.55;
+    const t0x = m0x + fx * L * 0.6;
+    const t0y = m0y + fy * L * 0.6 * ys - L * 0.75;
+    // Perpendicular half-widths shrinking base → mid → tip.
+    const a1 = Math.atan2(m0y - b0y, m0x - b0x) + Math.PI / 2;
+    const a2 = Math.atan2(t0y - m0y, t0x - m0x) + Math.PI / 2;
+    const w0 = Math.max(1.2, L * 0.2);
+    const w1 = Math.max(0.9, L * 0.13);
+    ctx.fillStyle = C(look.horn);
+    ctx.beginPath();
+    ctx.moveTo(b0x + Math.cos(a1) * w0, b0y + Math.sin(a1) * w0);
+    ctx.lineTo(m0x + Math.cos(a2) * w1, m0y + Math.sin(a2) * w1);
+    ctx.lineTo(t0x, t0y);
+    ctx.lineTo(m0x - Math.cos(a2) * w1, m0y - Math.sin(a2) * w1);
+    ctx.lineTo(b0x - Math.cos(a1) * w0, b0y - Math.sin(a1) * w0);
+    ctx.closePath();
+    ctx.fill();
+    // Dark tip cap.
+    ctx.fillStyle = C(look.hornTip);
+    ctx.beginPath();
+    ctx.moveTo(t0x, t0y);
+    ctx.lineTo(t0x - (t0x - m0x) * 0.3 + Math.cos(a2) * w1 * 0.7, t0y - (t0y - m0y) * 0.3 + Math.sin(a2) * w1 * 0.7);
+    ctx.lineTo(t0x - (t0x - m0x) * 0.3 - Math.cos(a2) * w1 * 0.7, t0y - (t0y - m0y) * 0.3 - Math.sin(a2) * w1 * 0.7);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Head block with a lit poll band and a hard jaw shade.
+  ctx.fillStyle = C(look.hide);
+  ctx.beginPath();
+  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.2, w * 0.2, w * 0.28, w * 0.28]);
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.2, w * 0.2, w * 0.28, w * 0.28]);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.18)';
+    ctx.fillRect(cx - w / 2, cy - h / 2, w, h * 0.2);
+    ctx.fillStyle = 'rgba(30, 20, 36, 0.14)';
+    ctx.fillRect(cx - w / 2, cy + h * 0.2, w, h * 0.3);
+    ctx.restore();
+    // Poll tuft between the horns.
+    ctx.fillStyle = look.patch;
+    ctx.beginPath();
+    chamferRect(ctx, cx - w * 0.17, cy - h * 0.56, w * 0.34, h * 0.16, 1.5);
+    ctx.fill();
+  }
+
+  // The cowbell: a strapped trapezoid at the throat, clapper below.
+  if (look.bell && fy > -0.35) {
+    const kx = cx - fx * w * 0.1;
+    const ky = cy + h * 0.62;
+    const bw = w * 0.2;
+    ctx.strokeStyle = C('#4a3324');
+    ctx.lineWidth = Math.max(1, s * 0.014);
+    ctx.beginPath();
+    ctx.moveTo(kx, ky - h * 0.14);
+    ctx.lineTo(kx, ky);
+    ctx.stroke();
+    ctx.fillStyle = C(look.bell);
+    ctx.beginPath();
+    ctx.moveTo(kx - bw * 0.32, ky);
+    ctx.lineTo(kx + bw * 0.32, ky);
+    ctx.lineTo(kx + bw * 0.52, ky + bw * 0.78);
+    ctx.lineTo(kx - bw * 0.52, ky + bw * 0.78);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = C(shade(look.bell, -45));
+    ctx.fillRect(kx - bw * 0.14, ky + bw * 0.78, bw * 0.28, bw * 0.3);
+  }
+
+  // Muzzle: a paler block pushed along the facing. It must TURN with
+  // the head: full-face width head-on, foreshortened to a narrow
+  // profile wedge side-on (a frontal muzzle pasted over a profile head
+  // was the classic bug), gone entirely from behind.
+  if (fy > -0.3) {
+    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const d = w * (0.42 + profileK * 0.14);
+    const mx = cx + fx * d + (o.chew ?? 0) * (1 - profileK);
+    const my = cy + fy * d * ys + h * 0.16;
+    const mw = w * 0.74 * (1 - profileK * 0.58);
+    const mh = h * 0.52;
+    ctx.fillStyle = C(look.muzzle);
+    ctx.beginPath();
+    chamferRect(ctx, mx - mw / 2, my - mh / 2, mw, mh, mw * 0.16);
+    ctx.fill();
+    if (!o.hurt) {
+      ctx.fillStyle = 'rgba(30, 20, 36, 0.12)';
+      ctx.fillRect(mx - mw * 0.4, my + mh * 0.18, mw * 0.8, mh * 0.24);
+    }
+    if (fy > -0.1 && !o.hurt) {
+      // Nostril slits ride the muzzle's own frame — only the near one
+      // survives the turn to profile.
+      ctx.fillStyle = OUTLINE;
+      for (const es of [-1, 1]) {
+        if (profileK > 0.45 && es * py < 0) continue;
+        const nx = mx + px * es * mw * 0.26 + fx * mw * 0.2 * profileK;
+        const ny = my + py * es * mw * 0.26 * ys - mh * 0.18;
+        ctx.fillRect(nx - mw * 0.05, ny, mw * 0.1, mh * 0.3);
+      }
+      if (look.noseRing) {
+        ctx.strokeStyle = look.noseRing;
+        ctx.lineWidth = Math.max(1.2, s * 0.016);
+        ctx.beginPath();
+        ctx.arc(mx + fx * mw * 0.18 * profileK, my + mh * 0.22, mw * 0.16, Math.PI * 0.12, Math.PI * 0.88);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Lateral eyes — one per side of the skull, the far one hiding as
+  // the head goes profile; none on the back of the skull, none dead.
+  if (!o.dead && fy > -0.45) {
+    ctx.fillStyle = OUTLINE;
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const ex = cx + fx * w * 0.1 + px * es * w * 0.44;
+      const ey = cy + (fy * w * 0.1 + py * es * w * 0.44) * ys - h * 0.08;
+      ctx.fillRect(ex - w * 0.055, ey - h * 0.09, w * 0.11, h * 0.18);
+    }
+  }
+}
+
+/**
+ * Shared 2.5D block-body core for the bespoke beasts: a footprint
+ * polygon extruded from a belly line up to a lit back facet, the
+ * silhouette the convex hull of both rings, hard flank shade between
+ * them — the wall-prism dialect on legs. The wolf and rat ride this;
+ * cattle keep their tuned copy above.
+ */
+export interface BeastBlockFrame {
+  /** Screen position of the body's ground point. */
+  bx: number;
+  gy: number;
+  s: number;
+  fx: number;
+  fy: number;
+  /** Camera foreshorten (1 for ragdolls drawn in screen space). */
+  ys: number;
+  seed: number;
+  hurt: boolean;
+  /** Gait bob (tiles) and side roll — 0 for corpses. */
+  bob: number;
+  roll: number;
+  /** Corpses collapse the extrusion onto its side. */
+  topScale?: number;
+  /** Corpses flatten the belly line to the ground. */
+  botH?: number;
+}
+
+function paintBlockBody(
+  ctx: CanvasRenderingContext2D,
+  f: BeastBlockFrame,
+  foot: Array<[number, number]>,
+  topH: (X: number) => number,
+  botH: (X: number) => number,
+  base: string,
+  marks?: (
+    gx: (X: number, Y: number) => number,
+    gyy: (X: number, Y: number) => number,
+    lift: number,
+  ) => void,
+): void {
+  const { bx, gy, s, fx, fy, ys } = f;
+  const px = -fy;
+  const py = fx;
+  const lift = f.bob * 0.35 * s;
+  const tk = f.topScale ?? 1;
+  const gx = (X: number, Y: number): number => bx + (fx * X + px * Y) * s;
+  const gyy = (X: number, Y: number): number => gy + (fy * X + py * Y) * ys * s;
+  const top = foot.map(([X, Y]) => ({
+    x: gx(X, Y),
+    y: gyy(X, Y) - topH(X) * tk * s - lift + Y * s * f.roll * 0.4,
+  }));
+  const bot = foot.map(([X, Y]) => ({
+    x: gx(X, Y),
+    y: gyy(X, Y) - (f.botH ?? botH(X)) * s - lift * 0.6,
+  }));
+  const hull = hullPath([...top, ...bot]);
+  const topFace = ringPath(top);
+  ctx.save();
+  ctx.clip(hull);
+  ctx.fillStyle = f.hurt ? '#ffffff' : base;
+  ctx.fill(hull);
+  if (!f.hurt && marks) marks(gx, gyy, lift);
+  if (!f.hurt) {
+    // Hard shade step: hull minus back facet = the flanks.
+    const flanks = new Path2D();
+    flanks.addPath(hull);
+    flanks.addPath(topFace);
+    ctx.fillStyle = 'rgba(30, 20, 36, 0.20)';
+    ctx.fill(flanks, 'evenodd');
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.16)';
+    ctx.fill(topFace);
+  }
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
+  ctx.lineWidth = Math.max(1, s * 0.02);
+  ctx.stroke(hull);
+}
+
+/**
+ * A tapered ribbon along a quadratic spine — the wolf's brush and the
+ * rat's naked tail both build from this, live and dead. `widthAt`
+ * returns the half-width at t∈[0,1] so species shape their own taper.
+ */
+export function taperedSpinePath(
+  x0: number,
+  y0: number,
+  cx: number,
+  cy: number,
+  x1: number,
+  y1: number,
+  widthAt: (t: number) => number,
+): Path2D {
+  const N = 8;
+  const left: Array<{ x: number; y: number }> = [];
+  const right: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    const u = 1 - t;
+    const qx = u * u * x0 + 2 * u * t * cx + t * t * x1;
+    const qy = u * u * y0 + 2 * u * t * cy + t * t * y1;
+    const dx = u * (cx - x0) + t * (x1 - cx);
+    const dy = u * (cy - y0) + t * (y1 - cy);
+    const d = Math.hypot(dx, dy) || 1e-4;
+    const w = widthAt(t);
+    left.push({ x: qx + (-dy / d) * w, y: qy + (dx / d) * w });
+    right.push({ x: qx - (-dy / d) * w, y: qy - (dx / d) * w });
+  }
+  return ringPath([...left, ...right.reverse()]);
+}
+
+/**
+ * The wolf: a lean predator prism — deep chest, tucked waist, shoulder
+ * hump, dark saddle cape over pale underparts, erect ears, long
+ * foreshortening muzzle, amber eyes and a bushy dark-tipped brush.
+ */
+export interface WolfLook {
+  coat: string;
+  saddle: string;
+  under: string;
+  earIn: string;
+  eye: string;
+  /** Body half-width (tiles); length comes from the BeastSpec. */
+  bodyW: number;
+  backH: number;
+  /** Extra mass ramped up over the shoulders. */
+  shoulderH: number;
+  /** Belly height at the chest (deep) and the waist (tucked). */
+  chestH: number;
+  tuckH: number;
+  headW: number;
+  headH: number;
+}
+
+export const WOLF_LOOK: WolfLook = {
+  coat: '#6a6f7d',
+  saddle: '#4b4e5d',
+  under: '#b7b2a2',
+  earIn: '#3a3644',
+  eye: '#e2a63c',
+  bodyW: 0.165,
+  backH: 0.54,
+  shoulderH: 0.085,
+  chestH: 0.25,
+  tuckH: 0.33,
+  headW: 0.3,
+  headH: 0.245,
+};
+
+export function paintWolfBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: WolfLook,
+  f: BeastBlockFrame,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  // Wedge footprint: broad chest and shoulders, waist pulling in
+  // toward a narrow rump — the athletic taper that reads "predator"
+  // against the cattle's even slab.
+  const foot: Array<[number, number]> = [
+    [hl, -hw * 0.8],
+    [hl, hw * 0.8],
+    [hl * 0.5, hw],
+    [-hl * 0.45, hw * 0.9],
+    [-hl, hw * 0.62],
+    [-hl, -hw * 0.62],
+    [-hl * 0.45, -hw * 0.9],
+    [hl * 0.5, -hw],
+  ];
+  // Herd variance: each wolf's coat sits a step off the pack tone.
+  const coat = shade(look.coat, (((f.seed >>> 5) & 7) - 3) * 2);
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    (X) =>
+      look.backH +
+      Math.max(0, X / hl - 0.05) * look.shoulderH -
+      0.05 * Math.max(0, (-X / hl - 0.35) / 0.65),
+    (X) => look.chestH + (look.tuckH - look.chestH) * Math.min(1, Math.max(0, (0.5 - X / hl) / 1.2)),
+    coat,
+    (gx, gyy, lift) => {
+      const s = f.s;
+      const tk = f.topScale ?? 1;
+      // Dark saddle cape draped over the back, seeded per wolf.
+      ctx.save();
+      ctx.translate(gx(hl * 0.02, 0), gyy(hl * 0.02, 0) - look.backH * tk * s * 0.96 - lift);
+      ctx.rotate(Math.atan2(f.fy * f.ys, f.fx));
+      ctx.fillStyle = look.saddle;
+      ctx.beginPath();
+      facetBlob(ctx, 0, 0, hl * s * 0.82, f.seed | 1, 9, (hw * 1.15) / (hl * 0.82), 0.35);
+      ctx.fill();
+      ctx.restore();
+      // Pale bib at the chest — only while the chest can actually
+      // face the camera; painted flat it would show through the back
+      // when the wolf walks away.
+      if (f.fy > -0.15) {
+        ctx.fillStyle = look.under;
+        ctx.beginPath();
+        facetBlob(
+          ctx,
+          gx(hl * 0.88, 0),
+          gyy(hl * 0.88, 0) - (look.chestH + 0.1) * s,
+          hw * s * 0.8,
+          f.seed ^ 0x33,
+          7,
+          0.85,
+          1.7,
+        );
+        ctx.fill();
+      }
+    },
+  );
+}
+
+/**
+ * The wolf head: angular skull slab with erect ears and a long tapered
+ * muzzle that turns with the facing (full-face wedge head-on, narrow
+ * profile spike side-on). `snarl` pins the ears back and bares teeth
+ * through the pounce telegraph; corpses pass `dead` (no eyes).
+ */
+export function drawWolfHead(
+  ctx: CanvasRenderingContext2D,
+  look: WolfLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** 0..1 through the attack telegraph. */
+    snarl?: number;
+    /** 0..1 quick idle ear twitch. */
+    flick?: number;
+  },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+  const snarl = o.snarl ?? 0;
+
+  // Erect ears on the skull crown — pinned flat mid-snarl, the near
+  // one twitching at idle. A small along-facing stagger keeps the two
+  // ears from collapsing into one sliver at full profile.
+  for (const es of [-1, 1]) {
+    const bxr = cx + px * es * w * 0.3 + fx * es * w * 0.1;
+    const byr = cy + (py * es * w * 0.3 + fy * es * w * 0.1) * ys - h * 0.38;
+    const pin = Math.min(1, snarl * 0.6 + (es > 0 ? (o.flick ?? 0) * 0.35 : 0));
+    const tx = bxr + px * es * w * 0.15 - fx * w * 0.22 * pin;
+    const ty = byr - h * (0.78 - 0.36 * pin) - fy * w * 0.22 * pin * ys;
+    ctx.fillStyle = C(shade(look.coat, -6));
+    ctx.beginPath();
+    ctx.moveTo(bxr - px * es * w * 0.17, byr + h * 0.06);
+    ctx.lineTo(tx, ty);
+    ctx.lineTo(bxr + px * es * w * 0.2, byr + h * 0.12);
+    ctx.closePath();
+    ctx.fill();
+    if (fy > 0.05 && !o.hurt && !o.dead) {
+      ctx.fillStyle = look.earIn;
+      ctx.beginPath();
+      ctx.moveTo(bxr - px * es * w * 0.06, byr + h * 0.02);
+      ctx.lineTo(bxr + (tx - bxr) * 0.62, byr + (ty - byr) * 0.62);
+      ctx.lineTo(bxr + px * es * w * 0.12, byr + h * 0.07);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Skull block: lit brow, shaded jaw, pale cheek band low.
+  ctx.fillStyle = C(look.coat);
+  ctx.beginPath();
+  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.24, w * 0.24, w * 0.3, w * 0.3]);
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.24, w * 0.24, w * 0.3, w * 0.3]);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.16)';
+    ctx.fillRect(cx - w / 2, cy - h / 2, w, h * 0.22);
+    ctx.fillStyle = C(look.under);
+    ctx.fillRect(cx - w / 2, cy + h * 0.14, w, h * 0.36);
+    ctx.restore();
+  }
+
+  // Muzzle: a tapered snout wedge pushed along the facing. It must
+  // TURN with the head — longer and narrower as the profile deepens,
+  // gone from behind (the cattle muzzle law).
+  if (fy > -0.3) {
+    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const bx0 = cx + fx * w * 0.26;
+    const by0 = cy + fy * w * 0.26 * ys + h * 0.12;
+    const sl = w * (0.32 + 0.3 * profileK);
+    const tx = bx0 + fx * sl;
+    const ty = by0 + fy * sl * ys + h * 0.1;
+    const axv = tx - bx0;
+    const ayv = ty - by0;
+    const al = Math.hypot(axv, ayv) || 1e-4;
+    const nx = -ayv / al;
+    const ny = axv / al;
+    const hb = w * 0.2 * (1 - profileK * 0.25);
+    const ht = hb * 0.62;
+    ctx.fillStyle = C(shade(look.coat, 6));
+    ctx.beginPath();
+    ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
+    ctx.lineTo(tx + nx * ht, ty + ny * ht);
+    ctx.lineTo(tx - nx * ht, ty - ny * ht);
+    ctx.lineTo(bx0 - nx * hb, by0 - ny * hb);
+    ctx.closePath();
+    ctx.fill();
+    // Snarl: the jaw drops open below the snout tip, teeth bared.
+    if (snarl > 0.15 && !o.dead && !o.hurt) {
+      const gape = h * 0.34 * Math.min(1, snarl);
+      ctx.fillStyle = '#2a1420';
+      ctx.beginPath();
+      ctx.moveTo(tx - nx * ht * 0.9, ty - ny * ht * 0.9);
+      ctx.lineTo(tx + nx * ht * 0.9, ty + ny * ht * 0.9);
+      ctx.lineTo(tx + (axv / al) * ht * 0.4, ty + gape);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#efe9d8';
+      for (const ts of [-0.45, 0.35]) {
+        ctx.beginPath();
+        ctx.moveTo(tx + nx * ht * ts - w * 0.02, ty + ny * ht * ts);
+        ctx.lineTo(tx + nx * ht * ts + w * 0.02, ty + ny * ht * ts);
+        ctx.lineTo(tx + nx * ht * ts, ty + ny * ht * ts + gape * 0.45);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    // Nose chip SEATED on the tip — pulled back along the axis so it
+    // overlaps the wedge instead of floating past it at profile.
+    ctx.fillStyle = C(OUTLINE);
+    ctx.beginPath();
+    facetCircle(ctx, tx - (axv / al) * w * 0.02, ty - (ayv / al) * w * 0.02, w * 0.09, 5, fx);
+    ctx.fill();
+  }
+
+  // Amber hunter's eyes — slanted slits, the far one hiding as the
+  // head goes profile; none from behind, none dead.
+  if (!o.dead && fy > -0.45) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const ex = cx + fx * w * 0.12 + px * es * w * 0.3;
+      const ey = cy + (fy * w * 0.12 + py * es * w * 0.3) * ys - h * 0.1;
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(es * (0.3 + snarl * 0.3));
+      ctx.fillStyle = C(look.eye);
+      ctx.fillRect(-w * 0.078, -h * 0.055, w * 0.156, h * 0.11);
+      ctx.restore();
+    }
+  }
+}
+
+/**
+ * The giant rat: a low hunched wedge — rump high and round, body
+ * tapering into a pointed twitchy head with big dish ears, whiskers,
+ * buck teeth and a long naked tail dragging an S behind it.
+ */
+export interface RatLook {
+  fur: string;
+  dorsal: string;
+  belly: string;
+  /** Naked skin — tail, nose, inner ear. */
+  skin: string;
+  earIn: string;
+  bodyW: number;
+  /** Height of the hunched rump peak. */
+  humpH: number;
+  headW: number;
+  headH: number;
+}
+
+export const RAT_LOOK: RatLook = {
+  fur: '#8a7a6a',
+  dorsal: '#69594b',
+  belly: '#b5a68f',
+  skin: '#c9a68a',
+  earIn: '#d8a396',
+  bodyW: 0.2,
+  humpH: 0.29,
+  headW: 0.25,
+  headH: 0.18,
+};
+
+export function paintRatBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: RatLook,
+  f: BeastBlockFrame,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  // Teardrop footprint: full-width haunches, shoulders pinching in
+  // where the head takes over.
+  const foot: Array<[number, number]> = [
+    [hl, -hw * 0.45],
+    [hl, hw * 0.45],
+    [hl * 0.2, hw * 0.85],
+    [-hl * 0.5, hw],
+    [-hl, hw * 0.55],
+    [-hl, -hw * 0.55],
+    [-hl * 0.5, -hw],
+    [hl * 0.2, -hw * 0.85],
+  ];
+  const fur = shade(look.fur, (((f.seed >>> 7) & 7) - 3) * 2);
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    // The hunched arch: peak over the haunches, falling away to the
+    // shoulders — THE rat silhouette side-on.
+    (X) => look.humpH - 0.05 * (X / hl + 0.35) * (X / hl + 0.35),
+    (X) => 0.05 + 0.02 * Math.max(0, X / hl),
+    fur,
+    (gx, gyy, lift) => {
+      const s = f.s;
+      const tk = f.topScale ?? 1;
+      // Greasy dorsal stripe down the spine.
+      ctx.save();
+      ctx.translate(gx(-hl * 0.12, 0), gyy(-hl * 0.12, 0) - look.humpH * tk * s * 0.9 - lift);
+      ctx.rotate(Math.atan2(f.fy * f.ys, f.fx));
+      ctx.fillStyle = look.dorsal;
+      ctx.beginPath();
+      facetBlob(ctx, 0, 0, hl * s * 0.78, f.seed | 1, 9, (hw * 0.62) / (hl * 0.78), 0.9);
+      ctx.fill();
+      ctx.restore();
+    },
+  );
+}
+
+/**
+ * The rat head: pointed snout wedge off a small skull, dish ears
+ * behind, beady eyes, whiskers and buck teeth. Muzzle and eyes obey
+ * the same foreshortening laws as the cattle and wolf.
+ */
+export function drawRatHead(
+  ctx: CanvasRenderingContext2D,
+  look: RatLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** -1..1 fast whisker twitch, idle only. */
+    twitch?: number;
+  },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+
+  // Big dish ears behind the skull, pink inside when they face us. A
+  // touch of along-facing stagger keeps them apart at full profile.
+  for (const es of [-1, 1]) {
+    const exr = cx + px * es * w * 0.5 + fx * es * w * 0.07;
+    const eyr = cy + (py * es * w * 0.5 + fy * es * w * 0.07) * ys - h * 0.42;
+    ctx.fillStyle = C(shade(look.fur, -8));
+    ctx.beginPath();
+    facetCircle(ctx, exr, eyr, w * 0.36, 6, es * 0.4);
+    ctx.fill();
+    if (fy > -0.1 && !o.hurt && !o.dead) {
+      ctx.fillStyle = look.earIn;
+      ctx.beginPath();
+      facetCircle(ctx, exr + fx * w * 0.04, eyr + fy * w * 0.04, w * 0.2, 6, es * 0.4);
+      ctx.fill();
+    }
+  }
+
+  // Small skull block — a step lighter than the body fur so the head
+  // reads against the haunches at profile.
+  ctx.fillStyle = C(shade(look.fur, 8));
+  ctx.beginPath();
+  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.2, w * 0.2, w * 0.26, w * 0.26]);
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.2, w * 0.2, w * 0.26, w * 0.26]);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.14)';
+    ctx.fillRect(cx - w / 2, cy - h / 2, w, h * 0.24);
+    ctx.fillStyle = C(look.belly);
+    ctx.fillRect(cx - w / 2, cy + h * 0.2, w, h * 0.3);
+    ctx.restore();
+  }
+
+  // Pointed snout — longer and narrower in profile, pink nose tip.
+  if (fy > -0.3) {
+    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const bx0 = cx + fx * w * 0.24;
+    const by0 = cy + fy * w * 0.24 * ys + h * 0.1;
+    const sl = w * (0.3 + 0.3 * profileK);
+    const tx = bx0 + fx * sl;
+    const ty = by0 + fy * sl * ys + h * 0.12;
+    const axv = tx - bx0;
+    const ayv = ty - by0;
+    const al = Math.hypot(axv, ayv) || 1e-4;
+    const nx = -ayv / al;
+    const ny = axv / al;
+    const hb = w * 0.16 * (1 - profileK * 0.3);
+    const ht = hb * 0.25;
+    ctx.fillStyle = C(shade(look.fur, 8));
+    ctx.beginPath();
+    ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
+    ctx.lineTo(tx + nx * ht, ty + ny * ht);
+    ctx.lineTo(tx - nx * ht, ty - ny * ht);
+    ctx.lineTo(bx0 - nx * hb, by0 - ny * hb);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = C(look.skin);
+    ctx.beginPath();
+    facetCircle(ctx, tx, ty, w * 0.062, 5, fx);
+    ctx.fill();
+    // Buck teeth under the nose when the face shows.
+    if (fy > 0.1 && !o.hurt && !o.dead) {
+      ctx.fillStyle = '#efe9d8';
+      ctx.fillRect(tx - w * 0.05, ty + h * 0.08, w * 0.044, h * 0.16);
+      ctx.fillRect(tx + w * 0.008, ty + h * 0.08, w * 0.044, h * 0.16);
+    }
+    // Whiskers fanning back off the snout — the near side only once
+    // the head goes full profile.
+    if (!o.dead && !o.hurt) {
+      ctx.strokeStyle = 'rgba(240, 236, 224, 0.7)';
+      ctx.lineWidth = Math.max(0.8, s * 0.007);
+      const wbx = bx0 + (axv / al) * sl * 0.55;
+      const wby = by0 + (ayv / al) * sl * 0.55;
+      const baseA = Math.atan2(ayv, axv);
+      const tw = (o.twitch ?? 0) * 0.12;
+      for (const es of [-1, 1]) {
+        if (profileK > 0.75 && es * py < 0) continue;
+        for (const k of [-1, 0, 1]) {
+          const a = baseA + es * (1.5 - k * 0.3) + tw * es;
+          ctx.beginPath();
+          ctx.moveTo(wbx, wby);
+          ctx.lineTo(wbx + Math.cos(a) * w * 0.52, wby + Math.sin(a) * w * 0.4);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  // Beady eyes at the snout root.
+  if (!o.dead && fy > -0.45) {
+    ctx.fillStyle = OUTLINE;
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const ex = cx + fx * w * 0.16 + px * es * w * 0.27;
+      const ey = cy + (fy * w * 0.16 + py * es * w * 0.27) * ys - h * 0.06;
+      ctx.fillRect(ex - w * 0.05, ey - w * 0.05, w * 0.1, w * 0.1);
+    }
+  }
+}
+
+/**
+ * The boar: a front-loaded battering wedge — massive shoulders under a
+ * bristle crest, deep low-slung barrel, short muzzle ending in a flat
+ * pink snout disc flanked by up-curved tusks.
+ */
+export interface BoarLook {
+  hide: string;
+  bristle: string;
+  snout: string;
+  tusk: string;
+  earIn: string;
+  bodyW: number;
+  backH: number;
+  /** Extra bristle-crest mass peaked over the shoulders. */
+  crestH: number;
+  chestH: number;
+  headW: number;
+  headH: number;
+}
+
+export const BOAR_LOOK: BoarLook = {
+  hide: '#5c4a3a',
+  bristle: '#33261c',
+  snout: '#c99e86',
+  tusk: '#efe9d8',
+  earIn: '#2e2118',
+  bodyW: 0.21,
+  backH: 0.46,
+  crestH: 0.09,
+  chestH: 0.12,
+  headW: 0.3,
+  headH: 0.26,
+};
+
+export function paintBoarBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: BoarLook,
+  f: BeastBlockFrame,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  // Front-heavy footprint: chest and shoulders carry the width, the
+  // rump pulls in — the wedge that reads "charges things".
+  const foot: Array<[number, number]> = [
+    [hl, -hw * 0.75],
+    [hl, hw * 0.75],
+    [hl * 0.45, hw],
+    [-hl * 0.5, hw * 0.88],
+    [-hl, hw * 0.6],
+    [-hl, -hw * 0.6],
+    [-hl * 0.5, -hw * 0.88],
+    [hl * 0.45, -hw],
+  ];
+  const hide = shade(look.hide, (((f.seed >>> 5) & 7) - 3) * 2);
+  // The razorback line: tall over the withers, falling steadily to a
+  // low rump — the sloped wedge IS the boar silhouette.
+  const topH = (X: number): number => {
+    const t = Math.min(1, Math.max(0, (X / hl + 1) / 1.45));
+    return look.backH * (0.68 + 0.32 * t) - 0.04 * Math.max(0, (X / hl - 0.55) / 0.45);
+  };
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    topH,
+    () => look.chestH,
+    hide,
+    (gx, gyy, lift) => {
+      const s = f.s;
+      // Grizzled flank band — a lighter dust along the lower barrel,
+      // chest-side only so it never pastes onto the rump from behind.
+      if (f.fy > -0.15) {
+        ctx.fillStyle = shade(look.hide, 12);
+        ctx.beginPath();
+        facetBlob(
+          ctx,
+          gx(hl * 0.3, 0),
+          gyy(hl * 0.3, 0) - (look.chestH + 0.09) * s,
+          hw * s * 0.72,
+          f.seed ^ 0x55,
+          7,
+          0.8,
+          1.5,
+        );
+        ctx.fill();
+      }
+    },
+  );
+  // The bristle crest: serrated spikes standing proud OF the spine —
+  // painted after the body (the clip would eat anything above the
+  // hull), tallest over the shoulders, dying out down the rump.
+  const { bx, gy, s, fx, fy, ys } = f;
+  const lift = f.bob * 0.35 * s;
+  const tk = f.topScale ?? 1;
+  ctx.fillStyle = f.hurt ? '#ffffff' : look.bristle;
+  const spineAt = (X: number): { x: number; y: number } => ({
+    x: bx + fx * X * s,
+    y: gy + fy * X * ys * s - topH(X) * tk * s - lift,
+  });
+  const N = 6;
+  for (let i = 0; i < N; i++) {
+    const t = i / (N - 1);
+    const X0 = hl * (0.58 - 1.12 * t);
+    const X1 = X0 - hl * 0.14;
+    const a = spineAt(X0);
+    const b = spineAt(X1);
+    const hgt = s * tk * (0.085 - 0.05 * t);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y + s * 0.01);
+    ctx.lineTo((a.x + b.x) / 2 - fx * s * 0.015, (a.y + b.y) / 2 - hgt);
+    ctx.lineTo(b.x, b.y + s * 0.01);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/**
+ * The boar head: a short deep wedge with pinned-back ears, a stubby
+ * muzzle ending in the flat SNOUT DISC (the pig read), and white tusk
+ * chips hooking up from the jaw. `charge` lowers everything.
+ */
+export function drawBoarHead(
+  ctx: CanvasRenderingContext2D,
+  look: BoarLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** 0..1 through the charge telegraph — ears pin, head drops. */
+    charge?: number;
+  },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+  const charge = o.charge ?? 0;
+
+  // Small pointed ears swept back along the crest, staggered fore/aft
+  // so profile keeps the pair readable.
+  for (const es of [-1, 1]) {
+    const bxr = cx + px * es * w * 0.28 + fx * es * w * 0.08 - fx * w * 0.14;
+    const byr = cy + (py * es * w * 0.28 + fy * es * w * 0.08) * ys - h * 0.42 - fy * w * 0.14 * ys;
+    const pin = 0.35 + charge * 0.5;
+    const tx = bxr - fx * w * 0.3 * pin + px * es * w * 0.1;
+    const ty = byr - h * (0.55 - 0.25 * pin) - fy * w * 0.3 * pin * ys;
+    ctx.fillStyle = C(look.bristle);
+    ctx.beginPath();
+    ctx.moveTo(bxr - px * es * w * 0.13, byr + h * 0.05);
+    ctx.lineTo(tx, ty);
+    ctx.lineTo(bxr + px * es * w * 0.15, byr + h * 0.1);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Skull block — deep jaw, lit brow.
+  ctx.fillStyle = C(look.hide);
+  ctx.beginPath();
+  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.2, w * 0.2, w * 0.26, w * 0.26]);
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.2, w * 0.2, w * 0.26, w * 0.26]);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.14)';
+    ctx.fillRect(cx - w / 2, cy - h / 2, w, h * 0.2);
+    ctx.fillStyle = C(look.bristle);
+    ctx.fillRect(cx - w / 2, cy - h / 2, w, h * 0.1);
+    ctx.restore();
+  }
+
+  // Stubby muzzle → snout disc, foreshortening with the facing.
+  if (fy > -0.3) {
+    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const bx0 = cx + fx * w * 0.24;
+    const by0 = cy + fy * w * 0.24 * ys + h * 0.14;
+    const sl = w * (0.26 + 0.24 * profileK);
+    const tx = bx0 + fx * sl;
+    const ty = by0 + fy * sl * ys + h * 0.06;
+    const axv = tx - bx0;
+    const ayv = ty - by0;
+    const al = Math.hypot(axv, ayv) || 1e-4;
+    const nx = -ayv / al;
+    const ny = axv / al;
+    const hb = w * 0.22 * (1 - profileK * 0.2);
+    const ht = hb * 0.8;
+    ctx.fillStyle = C(shade(look.hide, 4));
+    ctx.beginPath();
+    ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
+    ctx.lineTo(tx + nx * ht, ty + ny * ht);
+    ctx.lineTo(tx - nx * ht, ty - ny * ht);
+    ctx.lineTo(bx0 - nx * hb, by0 - ny * hb);
+    ctx.closePath();
+    ctx.fill();
+    // Tusks hook UP and OUT from the jaw sides — big enough to read
+    // as weapons, the far one hiding at profile. A dark gum seat keeps
+    // the ivory from floating free of the jaw.
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const tbx = bx0 + nx * es * hb * 0.95 + (axv / al) * sl * 0.5;
+      const tby = by0 + ny * es * hb * 0.95 + (ayv / al) * sl * 0.5 + h * 0.12;
+      ctx.fillStyle = C(shade(look.hide, -16));
+      ctx.beginPath();
+      facetCircle(ctx, tbx, tby + h * 0.02, w * 0.045, 5, es);
+      ctx.fill();
+      ctx.fillStyle = C(look.tusk);
+      ctx.beginPath();
+      ctx.moveTo(tbx - w * 0.05, tby + h * 0.02);
+      ctx.lineTo(tbx + nx * es * w * 0.1 - w * 0.008, tby - h * 0.42);
+      ctx.lineTo(tbx + w * 0.05, tby + h * 0.04);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // THE SNOUT DISC — flat pink pad seated on the tip, nostrils when
+    // it faces the camera.
+    ctx.fillStyle = C(look.snout);
+    ctx.beginPath();
+    facetCircle(
+      ctx,
+      tx - (axv / al) * w * 0.015,
+      ty - (ayv / al) * w * 0.015,
+      w * 0.135 * (1 - profileK * 0.35),
+      6,
+      fx,
+      1 - profileK * 0.3,
+    );
+    ctx.fill();
+    if (profileK < 0.55 && !o.hurt && !o.dead) {
+      ctx.fillStyle = shade(look.snout, -38);
+      for (const es of [-1, 1]) {
+        ctx.fillRect(tx + nx * es * w * 0.05 - w * 0.017, ty - h * 0.03, w * 0.034, h * 0.08);
+      }
+    }
+  }
+
+  // Small dark eyes tight against the brow.
+  if (!o.dead && fy > -0.45) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const ex = cx + fx * w * 0.1 + px * es * w * 0.28;
+      const ey = cy + (fy * w * 0.1 + py * es * w * 0.28) * ys - h * 0.12;
+      ctx.fillStyle = C(OUTLINE);
+      ctx.fillRect(ex - w * 0.05, ey - h * 0.06, w * 0.1, h * 0.12);
+    }
+  }
+}
+
+/**
+ * The giant spider: two block masses — a low cephalothorax carrying the
+ * eye cluster and fang chips, a domed abdomen behind wearing pale
+ * chevrons — slung between eight thin stalking legs. No head or tail
+ * painter: the whole animal is the body.
+ */
+export interface SpiderLook {
+  carapace: string;
+  abdomen: string;
+  mark: string;
+  eye: string;
+  fang: string;
+  /** Abdomen half-width; the cephalothorax runs narrower. */
+  bodyW: number;
+  abdH: number;
+  cephH: number;
+}
+
+export const SPIDER_LOOK: SpiderLook = {
+  carapace: '#3a3244',
+  abdomen: '#453a55',
+  mark: '#b7a76a',
+  eye: '#d95763',
+  fang: '#efe9d8',
+  bodyW: 0.21,
+  abdH: 0.34,
+  cephH: 0.19,
+};
+
+export function paintSpiderBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: SpiderLook,
+  f: BeastBlockFrame,
+  at = 0,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  const s = f.s;
+  const fx = f.fx;
+  const fy = f.fy;
+  const px = -fy;
+  const py = fx;
+  const carapace = shade(look.carapace, (((f.seed >>> 5) & 7) - 3) * 2);
+
+  // Abdomen: a domed octagon over the rear half, peaked mid-mass.
+  const aC = -hl * 0.45;
+  const aR = hl * 0.55;
+  const abdomen: Array<[number, number]> = [
+    [aC + aR, -hw * 0.55],
+    [aC + aR, hw * 0.55],
+    [aC + aR * 0.5, hw],
+    [aC - aR * 0.5, hw],
+    [aC - aR, hw * 0.55],
+    [aC - aR, -hw * 0.55],
+    [aC - aR * 0.5, -hw],
+    [aC + aR * 0.5, -hw],
+  ];
+  paintBlockBody(
+    ctx,
+    f,
+    abdomen,
+    (X) => look.abdH * (1 - 0.45 * Math.pow((X - aC) / aR, 2)),
+    () => 0.1,
+    shade(look.abdomen, (((f.seed >>> 5) & 7) - 3) * 2),
+    (gx, gyy, lift) => {
+      const tk = f.topScale ?? 1;
+      // Pale chevrons marching rearward down the dome — drawn in the
+      // abdomen's own rotated frame so every facing keeps the V shape.
+      ctx.save();
+      ctx.translate(gx(aC, 0), gyy(aC, 0) - look.abdH * tk * s * 0.86 - lift);
+      ctx.rotate(Math.atan2(fy * f.ys, fx));
+      ctx.strokeStyle = look.mark;
+      ctx.lineWidth = Math.max(1.5, s * 0.028);
+      ctx.lineCap = 'round';
+      const wv = hw * s * 0.42;
+      for (const q of [0.3, 0, -0.3]) {
+        const mx = aR * q * s;
+        ctx.beginPath();
+        ctx.moveTo(mx - wv * 0.5, -wv);
+        ctx.lineTo(mx + wv * 0.45, 0);
+        ctx.lineTo(mx - wv * 0.5, wv);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+      ctx.restore();
+    },
+  );
+  // Spinneret nub off the abdomen's stern.
+  ctx.fillStyle = f.hurt ? '#ffffff' : shade(look.abdomen, -18);
+  ctx.beginPath();
+  facetCircle(
+    ctx,
+    f.bx + fx * (aC - aR) * s * 1.02,
+    f.gy + fy * (aC - aR) * s * 1.02 * f.ys - 0.12 * s,
+    s * 0.045,
+    5,
+    fx,
+  );
+  ctx.fill();
+
+  // Cephalothorax: the lower front plate the legs crowd around.
+  const cC = hl * 0.4;
+  const cR = hl * 0.5;
+  const cw = hw * 0.62;
+  const ceph: Array<[number, number]> = [
+    [cC + cR, -cw * 0.6],
+    [cC + cR, cw * 0.6],
+    [cC + cR * 0.45, cw],
+    [cC - cR * 0.55, cw * 0.95],
+    [cC - cR, cw * 0.55],
+    [cC - cR, -cw * 0.55],
+    [cC - cR * 0.55, -cw * 0.95],
+    [cC + cR * 0.45, -cw],
+  ];
+  paintBlockBody(
+    ctx,
+    f,
+    ceph,
+    (X) => look.cephH * (1 - 0.3 * Math.pow((X - cC) / cR, 2)),
+    () => 0.08,
+    carapace,
+  );
+
+  // Eye cluster: four hunter's beads across the front plate brow —
+  // far-side pair hiding at profile, none from behind, none dead.
+  const dead = f.topScale !== undefined && f.topScale < 1;
+  if (fy > -0.45 && !f.hurt && !dead) {
+    ctx.fillStyle = look.eye;
+    for (const [ex0, es] of [
+      [0.86, -0.5],
+      [0.86, 0.5],
+      [0.78, -1.1],
+      [0.78, 1.1],
+    ] as Array<[number, number]>) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const ex = f.bx + (fx * hl * ex0 + px * es * cw * 0.4) * s;
+      const ey =
+        f.gy + (fy * hl * ex0 + py * es * cw * 0.4) * f.ys * s - look.cephH * s * 0.82 - f.bob * 0.35 * s;
+      const er = s * (Math.abs(es) < 0.8 ? 0.028 : 0.02);
+      ctx.fillRect(ex - er, ey - er, er * 2, er * 2);
+    }
+  }
+  // Fang chips under the brow — flared mid-pounce.
+  if (fy > -0.3 && !f.hurt) {
+    const flare = 1 + Math.min(1, at * 1.6) * 0.5;
+    ctx.fillStyle = look.fang;
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.75 && es * py < 0) continue;
+      const fx0 = f.bx + (fx * hl * 0.92 + px * es * cw * 0.3) * s;
+      const fy0 =
+        f.gy + (fy * hl * 0.92 + py * es * cw * 0.3) * f.ys * s - look.cephH * s * 0.4 - f.bob * 0.35 * s;
+      ctx.beginPath();
+      ctx.moveTo(fx0 - s * 0.022, fy0);
+      ctx.lineTo(fx0 + es * px * s * 0.012, fy0 + s * 0.075 * flare);
+      ctx.lineTo(fx0 + s * 0.022, fy0);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+}
+
+/**
+ * The wild ram: a boxy fleece loaf on sturdy legs with a dark bare
+ * face — and the signature, big ridged horns curling back around the
+ * ears. The charge drops the whole head into a battering line.
+ */
+export interface RamLook {
+  wool: string;
+  /** Bare face and leg tone — dark against the fleece. */
+  face: string;
+  horn: string;
+  hornRib: string;
+  bodyW: number;
+  backH: number;
+  chestH: number;
+  headW: number;
+  headH: number;
+  /** Horn curl radius (tiles). */
+  hornR: number;
+}
+
+export const RAM_LOOK: RamLook = {
+  wool: '#cfc6b4',
+  face: '#6b5a48',
+  horn: '#9d8257',
+  hornRib: '#77613f',
+  bodyW: 0.21,
+  backH: 0.44,
+  chestH: 0.15,
+  headW: 0.26,
+  headH: 0.22,
+  hornR: 0.165,
+};
+
+export function paintRamBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: RamLook,
+  f: BeastBlockFrame,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  // Nearly a full rectangle — the fleece hides the taper a leaner
+  // animal would show; the loaf read IS the sheep read.
+  const foot: Array<[number, number]> = [
+    [hl, -hw * 0.72],
+    [hl, hw * 0.72],
+    [hl * 0.55, hw],
+    [-hl * 0.55, hw],
+    [-hl, hw * 0.72],
+    [-hl, -hw * 0.72],
+    [-hl * 0.55, -hw],
+    [hl * 0.55, -hw],
+  ];
+  const wool = shade(look.wool, (((f.seed >>> 5) & 7) - 3) * 2);
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    (X) => look.backH * (1 - 0.1 * Math.pow(X / hl, 2)),
+    () => look.chestH,
+    wool,
+    (gx, gyy, lift) => {
+      const s = f.s;
+      const tk = f.topScale ?? 1;
+      // Lumpy fleece: lighter wool clumps drifting along the back in
+      // the body's rotated frame, seeded per animal.
+      ctx.save();
+      ctx.translate(gx(0, 0), gyy(0, 0) - look.backH * tk * s * 0.88 - lift);
+      ctx.rotate(Math.atan2(f.fy * f.ys, f.fx));
+      ctx.fillStyle = shade(wool, 14);
+      for (let k = 0; k < 3; k++) {
+        const b = ((f.seed >>> (k * 5 + 3)) & 7) / 7;
+        ctx.beginPath();
+        facetBlob(
+          ctx,
+          (k - 1) * hl * s * 0.58,
+          (b - 0.5) * hw * s * 0.5,
+          hl * s * 0.36,
+          (f.seed ^ (k * 0x51)) | 0,
+          7,
+          (hw * 0.75) / (hl * 0.72),
+          k * 1.9,
+        );
+        ctx.fill();
+      }
+      ctx.restore();
+    },
+  );
+}
+
+/**
+ * The ram head: horns first — each curls in its sagittal plane, up
+ * over the ear, back, down and forward, drifting outward through the
+ * spiral so the front view reads as two curls flanking the poll.
+ * Growth ribs cross the curl. The bare face is a dark slab under a
+ * wool cap.
+ */
+export function drawRamHead(
+  ctx: CanvasRenderingContext2D,
+  look: RamLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** 0..1 through the charge telegraph. */
+    charge?: number;
+  },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+  const fsx = fx;
+  const fsy = fy * ys;
+
+  for (const es of [-1, 1]) {
+    // The far horn only vanishes deep into profile — it is the ram's
+    // whole identity, so it holds on longer than an ear would.
+    if (Math.abs(fx) > 0.75 && es * py < 0) continue;
+    const bxr = cx + px * es * w * 0.34 + fx * es * w * 0.05;
+    const byr = cy + (py * es * w * 0.34 + fy * es * w * 0.05) * ys - h * 0.28;
+    const R = look.hornR * s;
+    const NPT = 9;
+    // A solid tapered ribbon along the spiral — inner and outer edges
+    // offset radially from the curl center, so the horn reads as one
+    // carved mass, never a wire loop.
+    const outer: Array<{ x: number; y: number }> = [];
+    const inner: Array<{ x: number; y: number }> = [];
+    const at = (t: number, rOff: number): { x: number; y: number } => {
+      const phi = 1.95 + t * 4.05;
+      const r = Math.max(R * 0.12, R * (1 - 0.38 * t) + rOff);
+      const out = Math.sin(Math.PI * Math.min(1, t * 1.15)) * R * 0.78;
+      return {
+        x: bxr + Math.cos(phi) * fsx * r + px * es * out,
+        y: byr + Math.cos(phi) * fsy * r - Math.sin(phi) * r + py * es * out * ys,
+      };
+    };
+    for (let i = 0; i <= NPT; i++) {
+      const t = i / NPT;
+      const wdt = w * (0.19 - 0.13 * t);
+      outer.push(at(t, wdt));
+      inner.push(at(t, -wdt));
+    }
+    ctx.fillStyle = C(look.horn);
+    ctx.beginPath();
+    ctx.moveTo(outer[0]!.x, outer[0]!.y);
+    for (let i = 1; i <= NPT; i++) ctx.lineTo(outer[i]!.x, outer[i]!.y);
+    for (let i = NPT; i >= 0; i--) ctx.lineTo(inner[i]!.x, inner[i]!.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
+    ctx.lineWidth = Math.max(1, s * 0.018);
+    ctx.stroke();
+    // Growth ribs across the curl — what makes it horn, not hose.
+    if (!o.hurt) {
+      ctx.strokeStyle = C(look.hornRib);
+      ctx.lineWidth = Math.max(1, s * 0.018);
+      for (const rt of [0.2, 0.42, 0.64]) {
+        const a = at(rt, w * (0.19 - 0.13 * rt));
+        const b = at(rt, -w * (0.19 - 0.13 * rt));
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Bare dark face under a wool poll cap.
+  ctx.fillStyle = C(look.face);
+  ctx.beginPath();
+  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.2, w * 0.2, w * 0.28, w * 0.28]);
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.2, w * 0.2, w * 0.28, w * 0.28]);
+    ctx.clip();
+    ctx.fillStyle = C(look.wool);
+    ctx.fillRect(cx - w / 2, cy - h / 2, w, h * 0.3);
+    ctx.fillStyle = 'rgba(30, 20, 36, 0.14)';
+    ctx.fillRect(cx - w / 2, cy + h * 0.24, w, h * 0.26);
+    ctx.restore();
+  }
+
+  // Roman-nose muzzle wedge, foreshortening with the facing.
+  if (fy > -0.3) {
+    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const bx0 = cx + fx * w * 0.22;
+    const by0 = cy + fy * w * 0.22 * ys + h * 0.16;
+    const sl = w * (0.18 + 0.18 * profileK);
+    const tx = bx0 + fx * sl;
+    const ty = by0 + fy * sl * ys + h * 0.1;
+    const axv = tx - bx0;
+    const ayv = ty - by0;
+    const al = Math.hypot(axv, ayv) || 1e-4;
+    const nx = -ayv / al;
+    const ny = axv / al;
+    const hb = w * 0.21 * (1 - profileK * 0.22);
+    const ht = hb * 0.66;
+    ctx.fillStyle = C(shade(look.face, 6));
+    ctx.beginPath();
+    ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
+    ctx.lineTo(tx + nx * ht, ty + ny * ht);
+    ctx.lineTo(tx - nx * ht, ty - ny * ht);
+    ctx.lineTo(bx0 - nx * hb, by0 - ny * hb);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = C(OUTLINE);
+    ctx.beginPath();
+    facetCircle(ctx, tx - (axv / al) * w * 0.02, ty - (ayv / al) * w * 0.02, w * 0.07, 5, fx);
+    ctx.fill();
+  }
+
+  // Small dark eyes under the horn bases.
+  if (!o.dead && fy > -0.45) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const ex = cx + fx * w * 0.1 + px * es * w * 0.3;
+      const ey = cy + (fy * w * 0.1 + py * es * w * 0.3) * ys - h * 0.06;
+      ctx.fillStyle = C(OUTLINE);
+      ctx.fillRect(ex - w * 0.05, ey - h * 0.06, w * 0.1, h * 0.12);
+    }
+  }
+}
+
+/**
+ * The stag: elegance by proportion — a slim barrel held HIGH on long
+ * legs, a proud rising neck column, pale rump patch, and branched
+ * antlers swept back off the crown. The alarm-charge levels the
+ * antlers forward.
+ */
+export interface StagLook {
+  coat: string;
+  belly: string;
+  /** The pale rump patch — the deer flag. */
+  rump: string;
+  antler: string;
+  muzzle: string;
+  bodyW: number;
+  backH: number;
+  chestH: number;
+  headW: number;
+  headH: number;
+  /** How far the head rides above the back line (tiles). */
+  neckRise: number;
+}
+
+export const STAG_LOOK: StagLook = {
+  coat: '#a67c52',
+  belly: '#c4a97f',
+  rump: '#e2d6b9',
+  antler: '#9c8563',
+  muzzle: '#5f4c38',
+  bodyW: 0.16,
+  backH: 0.62,
+  chestH: 0.38,
+  headW: 0.22,
+  headH: 0.19,
+  neckRise: 0.3,
+};
+
+export function paintStagBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: StagLook,
+  f: BeastBlockFrame,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  // Slim barrel, chest a touch deeper than the flank — the daylight
+  // under the high belly line is what reads "deer" at a glance.
+  const foot: Array<[number, number]> = [
+    [hl, -hw * 0.78],
+    [hl, hw * 0.78],
+    [hl * 0.5, hw],
+    [-hl * 0.5, hw * 0.95],
+    [-hl, hw * 0.66],
+    [-hl, -hw * 0.66],
+    [-hl * 0.5, -hw * 0.95],
+    [hl * 0.5, -hw],
+  ];
+  const coat = shade(look.coat, (((f.seed >>> 5) & 7) - 3) * 2);
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    (X) => look.backH + 0.03 * Math.max(0, X / hl - 0.2) - 0.04 * Math.max(0, -X / hl - 0.5),
+    (X) => look.chestH - 0.04 * Math.max(0, X / hl - 0.3),
+    coat,
+    (gx, gyy, lift) => {
+      const s = f.s;
+      const tk = f.topScale ?? 1;
+      // The pale rump patch — only while the rump can actually face
+      // the camera (body-frame marks show through the back otherwise).
+      if (f.fy < 0.2) {
+        ctx.fillStyle = look.rump;
+        ctx.beginPath();
+        facetBlob(
+          ctx,
+          gx(-hl * 0.86, 0),
+          gyy(-hl * 0.86, 0) - look.backH * tk * s * 0.55 - lift,
+          hw * s * 0.95,
+          f.seed ^ 0x77,
+          7,
+          0.9,
+          2.3,
+        );
+        ctx.fill();
+      }
+    },
+  );
+}
+
+/**
+ * The stag head: a small wedge carried high, alert ears, and the
+ * crown — branched antlers, each a swept-back beam with a brow tine,
+ * a mid tine and a forked top, drifting outward so the front view
+ * spreads them wide.
+ */
+export function drawStagHead(
+  ctx: CanvasRenderingContext2D,
+  look: StagLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+  },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+  const fsx = fx;
+  const fsy = fy * ys;
+
+  // Antlers — drawn before the skull so the beams root under it.
+  for (const es of [-1, 1]) {
+    // (forward, up, outward) in head units → screen. The constant
+    // along-facing stagger keeps the pair readable at full profile.
+    const A = (fw: number, up: number, sd: number): { x: number; y: number } => ({
+      x: cx + fsx * fw * w + px * es * sd * w + fx * es * w * 0.08,
+      y: cy + fsy * fw * w - up * w + (py * es * sd * w + fy * es * w * 0.08) * ys,
+    });
+    const b0 = A(0.05, 0.28, 0.24);
+    const b1 = A(-0.32, 0.85, 0.5);
+    const b2 = A(-0.42, 1.45, 0.72);
+    const brow = A(0.5, 0.85, 0.36);
+    const mid = A(0.1, 1.35, 0.62);
+    const tipA = A(-0.12, 1.9, 0.8);
+    const tipB = A(-0.95, 1.72, 0.84);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = C(look.antler);
+    const seg = (
+      a: { x: number; y: number },
+      b: { x: number; y: number },
+      lw: number,
+    ): void => {
+      ctx.lineWidth = Math.max(1.2, lw);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    };
+    seg(b0, b1, w * 0.1);
+    seg(b1, b2, w * 0.08);
+    seg(b0, brow, w * 0.06);
+    seg(b1, mid, w * 0.055);
+    ctx.strokeStyle = C(shade(look.antler, 16));
+    seg(b2, tipA, w * 0.05);
+    seg(b2, tipB, w * 0.05);
+    ctx.lineCap = 'butt';
+  }
+
+  // Alert ears flaring out below the antlers.
+  for (const es of [-1, 1]) {
+    const bxr = cx + px * es * w * 0.36 + fx * es * w * 0.09;
+    const byr = cy + (py * es * w * 0.36 + fy * es * w * 0.09) * ys - h * 0.3;
+    const tx = bxr + px * es * w * 0.34;
+    const ty = byr - h * 0.42 + py * es * w * 0.1 * ys;
+    ctx.fillStyle = C(shade(look.coat, -8));
+    ctx.beginPath();
+    ctx.moveTo(bxr - px * es * w * 0.1, byr + h * 0.08);
+    ctx.lineTo(tx, ty);
+    ctx.lineTo(bxr + px * es * w * 0.14, byr + h * 0.14);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Small chamfered skull.
+  ctx.fillStyle = C(look.coat);
+  ctx.beginPath();
+  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.22, w * 0.22, w * 0.3, w * 0.3]);
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.22, w * 0.22, w * 0.3, w * 0.3]);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.16)';
+    ctx.fillRect(cx - w / 2, cy - h / 2, w, h * 0.22);
+    if (fy > 0) {
+      // Pale chin patch when the throat faces the camera.
+      ctx.fillStyle = C(look.belly);
+      ctx.fillRect(cx - w * 0.24, cy + h * 0.26, w * 0.48, h * 0.24);
+    }
+    ctx.restore();
+  }
+
+  // Tapered muzzle dipping to a dark nose.
+  if (fy > -0.3) {
+    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const bx0 = cx + fx * w * 0.24;
+    const by0 = cy + fy * w * 0.24 * ys + h * 0.14;
+    const sl = w * (0.24 + 0.22 * profileK);
+    const tx = bx0 + fx * sl;
+    const ty = by0 + fy * sl * ys + h * 0.12;
+    const axv = tx - bx0;
+    const ayv = ty - by0;
+    const al = Math.hypot(axv, ayv) || 1e-4;
+    const nx = -ayv / al;
+    const ny = axv / al;
+    const hb = w * 0.17 * (1 - profileK * 0.25);
+    const ht = hb * 0.6;
+    ctx.fillStyle = C(shade(look.coat, 5));
+    ctx.beginPath();
+    ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
+    ctx.lineTo(tx + nx * ht, ty + ny * ht);
+    ctx.lineTo(tx - nx * ht, ty - ny * ht);
+    ctx.lineTo(bx0 - nx * hb, by0 - ny * hb);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = C(look.muzzle);
+    ctx.beginPath();
+    facetCircle(ctx, tx - (axv / al) * w * 0.02, ty - (ayv / al) * w * 0.02, w * 0.075, 5, fx);
+    ctx.fill();
+  }
+
+  // Wide-set dark eyes.
+  if (!o.dead && fy > -0.45) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const ex = cx + fx * w * 0.1 + px * es * w * 0.34;
+      const ey = cy + (fy * w * 0.1 + py * es * w * 0.34) * ys - h * 0.08;
+      ctx.fillStyle = C(OUTLINE);
+      ctx.fillRect(ex - w * 0.055, ey - h * 0.07, w * 0.11, h * 0.14);
+    }
+  }
+}
+
+/**
+ * The black bear: sheer mass — a broad slab with the shoulder hump
+ * peaked over the front legs, belly nearly brushing the ground, and a
+ * huge low head with round ears and a pale short muzzle. The pounce
+ * bares teeth like the wolf, but everything about it is heavier.
+ */
+export interface BearLook {
+  fur: string;
+  muzzle: string;
+  earIn: string;
+  bodyW: number;
+  backH: number;
+  /** Extra shoulder mass over the front legs. */
+  humpH: number;
+  chestH: number;
+  headW: number;
+  headH: number;
+}
+
+export const BEAR_LOOK: BearLook = {
+  fur: '#3d332a',
+  muzzle: '#a8865f',
+  earIn: '#241c16',
+  bodyW: 0.27,
+  backH: 0.6,
+  humpH: 0.12,
+  chestH: 0.16,
+  headW: 0.34,
+  headH: 0.3,
+};
+
+export function paintBearBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: BearLook,
+  f: BeastBlockFrame,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  const foot: Array<[number, number]> = [
+    [hl, -hw * 0.7],
+    [hl, hw * 0.7],
+    [hl * 0.5, hw],
+    [-hl * 0.5, hw],
+    [-hl, hw * 0.7],
+    [-hl, -hw * 0.7],
+    [-hl * 0.5, -hw],
+    [hl * 0.5, -hw],
+  ];
+  const fur = shade(look.fur, (((f.seed >>> 5) & 7) - 3) * 2);
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    (X) =>
+      look.backH * (1 - 0.08 * Math.pow(X / hl, 2)) +
+      look.humpH * Math.max(0, 1 - Math.abs(X / hl - 0.4) / 0.55),
+    () => look.chestH,
+    fur,
+    (gx, gyy, lift) => {
+      const s = f.s;
+      const tk = f.topScale ?? 1;
+      // Grizzled shoulder saddle riding the hump, seeded per bear.
+      ctx.save();
+      ctx.translate(
+        gx(hl * 0.35, 0),
+        gyy(hl * 0.35, 0) - (look.backH + look.humpH * 0.6) * tk * s * 0.9 - lift,
+      );
+      ctx.rotate(Math.atan2(f.fy * f.ys, f.fx));
+      ctx.fillStyle = shade(fur, 9);
+      ctx.beginPath();
+      facetBlob(ctx, 0, 0, hl * s * 0.5, f.seed | 1, 8, (hw * 0.9) / (hl * 0.5), 0.6);
+      ctx.fill();
+      ctx.restore();
+    },
+  );
+}
+
+/**
+ * The bear head: a wide chamfered slab with small round ears, a short
+ * broad tan muzzle and a heavy nose. `snarl` opens the jaw and pins
+ * the ears through the pounce telegraph.
+ */
+export function drawBearHead(
+  ctx: CanvasRenderingContext2D,
+  look: BearLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** 0..1 through the attack telegraph. */
+    snarl?: number;
+  },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+  const snarl = o.snarl ?? 0;
+
+  // Round ears riding the crown corners — flattened mid-snarl. The
+  // far one hides at profile so it never floats free of the skull.
+  for (const es of [-1, 1]) {
+    if (Math.abs(fx) > 0.7 && es * py < 0) continue;
+    const exr = cx + px * es * w * 0.34 + fx * es * w * 0.05;
+    const eyr = cy + (py * es * w * 0.34 + fy * es * w * 0.05) * ys - h * (0.44 - snarl * 0.1);
+    const er = w * 0.17 * (1 - snarl * 0.25);
+    ctx.fillStyle = C(shade(look.fur, -5));
+    ctx.beginPath();
+    facetCircle(ctx, exr, eyr, er, 6, es * 0.7);
+    ctx.fill();
+    if (fy > 0.05 && !o.hurt && !o.dead) {
+      ctx.fillStyle = look.earIn;
+      ctx.beginPath();
+      facetCircle(ctx, exr, eyr + er * 0.15, er * 0.5, 5, es);
+      ctx.fill();
+    }
+  }
+
+  // The skull slab — wide, heavy-jawed.
+  ctx.fillStyle = C(look.fur);
+  ctx.beginPath();
+  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.22, w * 0.22, w * 0.26, w * 0.26]);
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.22, w * 0.22, w * 0.26, w * 0.26]);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.13)';
+    ctx.fillRect(cx - w / 2, cy - h / 2, w, h * 0.22);
+    ctx.fillStyle = 'rgba(30, 20, 36, 0.16)';
+    ctx.fillRect(cx - w / 2, cy + h * 0.22, w, h * 0.28);
+    ctx.restore();
+  }
+
+  // Short broad muzzle in the pale tan — the bear face read.
+  if (fy > -0.3) {
+    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const bx0 = cx + fx * w * 0.2;
+    const by0 = cy + fy * w * 0.2 * ys + h * 0.14;
+    const sl = w * (0.16 + 0.16 * profileK);
+    const tx = bx0 + fx * sl;
+    const ty = by0 + fy * sl * ys + h * 0.08;
+    const axv = tx - bx0;
+    const ayv = ty - by0;
+    const al = Math.hypot(axv, ayv) || 1e-4;
+    const nx = -ayv / al;
+    const ny = axv / al;
+    const hb = w * 0.24 * (1 - profileK * 0.2);
+    const ht = hb * 0.78;
+    ctx.fillStyle = C(look.muzzle);
+    ctx.beginPath();
+    ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
+    ctx.lineTo(tx + nx * ht, ty + ny * ht);
+    ctx.lineTo(tx - nx * ht, ty - ny * ht);
+    ctx.lineTo(bx0 - nx * hb, by0 - ny * hb);
+    ctx.closePath();
+    ctx.fill();
+    // Snarl: the jaw swings open under the muzzle, teeth bared.
+    if (snarl > 0.15 && !o.dead && !o.hurt) {
+      const gape = h * 0.4 * Math.min(1, snarl);
+      ctx.fillStyle = '#2a1420';
+      ctx.beginPath();
+      ctx.moveTo(tx - nx * ht * 0.95, ty - ny * ht * 0.95);
+      ctx.lineTo(tx + nx * ht * 0.95, ty + ny * ht * 0.95);
+      ctx.lineTo(tx + (axv / al) * ht * 0.3, ty + gape);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#efe9d8';
+      for (const ts of [-0.55, 0.45]) {
+        ctx.beginPath();
+        ctx.moveTo(tx + nx * ht * ts - w * 0.022, ty + ny * ht * ts);
+        ctx.lineTo(tx + nx * ht * ts + w * 0.022, ty + ny * ht * ts);
+        ctx.lineTo(tx + nx * ht * ts, ty + ny * ht * ts + gape * 0.5);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    // The heavy nose block.
+    ctx.fillStyle = C(OUTLINE);
+    ctx.beginPath();
+    facetCircle(ctx, tx - (axv / al) * w * 0.02, ty - (ayv / al) * w * 0.02, w * 0.095, 5, fx);
+    ctx.fill();
+  }
+
+  // Small dark eyes — tiny against the mass, which is the point.
+  if (!o.dead && fy > -0.45) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const ex = cx + fx * w * 0.12 + px * es * w * 0.28;
+      const ey = cy + (fy * w * 0.12 + py * es * w * 0.28) * ys - h * 0.12;
+      ctx.fillStyle = C(OUTLINE);
+      ctx.fillRect(ex - w * 0.045, ey - h * 0.05, w * 0.09, h * 0.1);
+    }
+  }
+}
+
+/**
+ * The mudcrab: a wide flat carapace slung sideways across the facing,
+ * two chunky pincers held forward (the left one the bigger crusher),
+ * and stalked eyes off the front rim. The whole animal is the body
+ * painter — head and tail branches return early.
+ */
+export interface CrabLook {
+  shell: string;
+  claw: string;
+  eye: string;
+  /** Half-WIDTH across the facing — wider than the body is long. */
+  bodyW: number;
+  shellH: number;
+}
+
+export const CRAB_LOOK: CrabLook = {
+  shell: '#b06a4a',
+  claw: '#c97f55',
+  eye: '#241a2e',
+  bodyW: 0.3,
+  shellH: 0.2,
+};
+
+export function paintCrabBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: CrabLook,
+  f: BeastBlockFrame,
+  at = 0,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  const { bx, gy, s, fx, fy, ys } = f;
+  const px = -fy;
+  const py = fx;
+  const shell = shade(look.shell, (((f.seed >>> 5) & 7) - 3) * 2);
+  const dead = f.topScale !== undefined && f.topScale < 1;
+  const lift = f.bob * 0.35 * s;
+  const tk = f.topScale ?? 1;
+
+  const drawClaw = (es: number): void => {
+    // Arm off the front corner, then the pincer held forward — open
+    // through the windup, snapped shut (and lunged) on the strike.
+    const sx0 = bx + (fx * hl * 0.4 + px * es * hw * 0.72) * s;
+    const sy0 = gy + (fy * hl * 0.4 + py * es * hw * 0.72) * ys * s - look.shellH * 0.45 * tk * s - lift;
+    const lunge = at > 0.7 ? Math.sin(Math.PI * Math.min(1, (at - 0.7) / 0.3)) * 0.1 : 0;
+    const raise = at > 0 && at <= 0.7 ? (at / 0.7) * 0.05 : 0;
+    const ex0 = sx0 + (fx * (0.15 + lunge) + px * es * 0.12) * s;
+    const ey0 = sy0 + (fy * (0.15 + lunge) + py * es * 0.12) * ys * s - (0.02 + raise) * s;
+    ctx.strokeStyle = f.hurt ? '#ffffff' : shade(look.claw, -14);
+    ctx.lineWidth = Math.max(2, s * 0.06);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(sx0, sy0);
+    ctx.lineTo(ex0, ey0);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+    // Pincer palm: a faceted pad aimed along the facing. The left
+    // claw is the oversized crusher — real crabs are lopsided.
+    const pR = (es < 0 ? 0.105 : 0.085) * s;
+    const aim = Math.atan2(fy * ys, fx);
+    const cxp = ex0 + fx * 0.07 * s;
+    const cyp = ey0 + fy * 0.07 * ys * s;
+    ctx.fillStyle = f.hurt ? '#ffffff' : look.claw;
+    ctx.beginPath();
+    facetCircle(ctx, cxp, cyp, pR, 6, aim, 0.85);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
+    ctx.lineWidth = Math.max(1, s * 0.016);
+    ctx.stroke();
+    // Fingers: two tapered chips off the palm — the gap between them
+    // gapes through the windup and snaps flat on the strike.
+    const gapeK = dead ? 0.2 : at > 0 && at <= 0.7 ? 0.3 + (at / 0.7) * 0.7 : at > 0.7 ? 0 : 0.25;
+    ctx.fillStyle = f.hurt ? '#ffffff' : shade(look.claw, 10);
+    for (const fu of [-1, 1]) {
+      const fa = aim + es * fu * (0.12 + gapeK * 0.3);
+      const fLen = pR * (1.15 + (fu < 0 ? 0.15 : 0));
+      const fx1 = cxp + Math.cos(fa) * pR * 0.55;
+      const fy1 = cyp + Math.sin(fa) * pR * 0.55;
+      const fx2 = cxp + Math.cos(fa) * (pR * 0.55 + fLen);
+      const fy2 = cyp + Math.sin(fa) * (pR * 0.55 + fLen);
+      const pnx = -Math.sin(fa);
+      const pny = Math.cos(fa);
+      ctx.beginPath();
+      ctx.moveTo(fx1 + pnx * pR * 0.28, fy1 + pny * pR * 0.28);
+      ctx.lineTo(fx2, fy2);
+      ctx.lineTo(fx1 - pnx * pR * 0.28, fy1 - pny * pR * 0.28);
+      ctx.closePath();
+      ctx.fill();
+    }
+  };
+
+  // A claw whose screen-y offset puts it below the body center is the
+  // near one — it paints over the shell; the other tucks behind.
+  const clawNear = (es: number): boolean => (fy * hl * 0.55 + py * es * hw * 0.8) * ys > 0;
+  for (const es of [-1, 1]) if (!clawNear(es)) drawClaw(es);
+
+  // The carapace: wider than long, low-domed, mottled.
+  const foot: Array<[number, number]> = [
+    [hl, -hw * 0.55],
+    [hl, hw * 0.55],
+    [hl * 0.45, hw],
+    [-hl * 0.45, hw],
+    [-hl, hw * 0.55],
+    [-hl, -hw * 0.55],
+    [-hl * 0.45, -hw],
+    [hl * 0.45, -hw],
+  ];
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    (X) => look.shellH * (1 - 0.35 * Math.pow(X / hl, 2)),
+    () => 0.05,
+    shell,
+    (gx, gyy, lift2) => {
+      // Mottle specks scattered across the crown.
+      ctx.fillStyle = shade(shell, -14);
+      for (let k = 0; k < 4; k++) {
+        const b = (n: number): number => ((f.seed >>> ((k * 7 + n * 3) % 28)) & 7) / 7;
+        ctx.beginPath();
+        facetCircle(
+          ctx,
+          gx((b(0) * 1.5 - 0.75) * hl, (b(1) * 1.6 - 0.8) * hw),
+          gyy((b(0) * 1.5 - 0.75) * hl, (b(1) * 1.6 - 0.8) * hw) - look.shellH * 0.8 * tk * s - lift2,
+          s * (0.016 + b(2) * 0.014),
+          5,
+          k * 1.7,
+        );
+        ctx.fill();
+      }
+    },
+  );
+
+  // Stalked eyes off the front rim — the far one hides at profile.
+  if (!dead && !f.hurt && fy > -0.5) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.7 && es * py < 0) continue;
+      const ex1 = bx + (fx * hl * 0.8 + px * es * hw * 0.3) * s;
+      const ey1 = gy + (fy * hl * 0.8 + py * es * hw * 0.3) * ys * s - look.shellH * 0.92 * s - lift;
+      ctx.strokeStyle = shade(look.shell, -22);
+      ctx.lineWidth = Math.max(1.2, s * 0.024);
+      ctx.beginPath();
+      ctx.moveTo(ex1, ey1 + s * 0.05);
+      ctx.lineTo(ex1, ey1 - s * 0.05);
+      ctx.stroke();
+      ctx.fillStyle = look.eye;
+      ctx.fillRect(ex1 - s * 0.024, ey1 - s * 0.095, s * 0.048, s * 0.048);
+    }
+  }
+
+  for (const es of [-1, 1]) if (clawNear(es)) drawClaw(es);
+}
+
+/**
+ * The giant beetle: domed elytra split by a center seam with an
+ * iridescent sheen, a darker pronotum plate at the front, and a rhino
+ * horn hooking up off the head between two elbowed antennae. Whole
+ * animal in the body painter — head and tail branches return early.
+ */
+export interface BeetleLook {
+  shell: string;
+  plate: string;
+  seam: string;
+  /** Iridescent highlight glazed over the lit dome. */
+  sheen: string;
+  horn: string;
+  bodyW: number;
+  elyH: number;
+  plateH: number;
+}
+
+export const BEETLE_LOOK: BeetleLook = {
+  shell: '#42527a',
+  plate: '#333f5e',
+  seam: '#1f2740',
+  sheen: '#7fd8c9',
+  horn: '#242c44',
+  bodyW: 0.2,
+  elyH: 0.3,
+  plateH: 0.17,
+};
+
+export function paintBeetleBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: BeetleLook,
+  f: BeastBlockFrame,
+  at = 0,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  const { bx, gy, s, fx, fy, ys } = f;
+  const px = -fy;
+  const py = fx;
+  const shell = shade(look.shell, (((f.seed >>> 5) & 7) - 3) * 2);
+  const lift = f.bob * 0.35 * s;
+  const tk = f.topScale ?? 1;
+
+  // Elytra: one big domed shell over the rear three-quarters.
+  const aC = -hl * 0.18;
+  const aR = hl * 0.8;
+  const ely: Array<[number, number]> = [
+    [aC + aR, -hw * 0.62],
+    [aC + aR, hw * 0.62],
+    [aC + aR * 0.5, hw],
+    [aC - aR * 0.5, hw],
+    [aC - aR, hw * 0.55],
+    [aC - aR, -hw * 0.55],
+    [aC - aR * 0.5, -hw],
+    [aC + aR * 0.5, -hw],
+  ];
+  const drawEly = (): void =>
+    paintBlockBody(
+      ctx,
+      f,
+      ely,
+      (X) => look.elyH * (1 - 0.45 * Math.pow((X - aC) / aR, 2)),
+      () => 0.06,
+      shell,
+      (gx, gyy, lift2) => {
+        // Seam, striations and sheen live in the elytra's rotated
+        // frame so every facing keeps them running nose-to-tail.
+        ctx.save();
+        ctx.translate(gx(aC, 0), gyy(aC, 0) - look.elyH * tk * s * 0.88 - lift2);
+        ctx.rotate(Math.atan2(fy * ys, fx));
+        // The center split — two wing cases, not one shell — opening
+        // from a scutellum notch at the front.
+        ctx.strokeStyle = look.seam;
+        ctx.lineWidth = Math.max(1.5, s * 0.03);
+        ctx.beginPath();
+        ctx.moveTo(aR * 0.8 * s, 0);
+        ctx.lineTo(-aR * 0.95 * s, 0);
+        ctx.stroke();
+        ctx.fillStyle = look.seam;
+        ctx.beginPath();
+        ctx.moveTo(aR * 0.92 * s, -hw * s * 0.28);
+        ctx.lineTo(aR * 0.55 * s, 0);
+        ctx.lineTo(aR * 0.92 * s, hw * s * 0.28);
+        ctx.closePath();
+        ctx.fill();
+        // Pit striations flanking the seam.
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.globalAlpha = 0.45;
+        for (const q of [-0.5, 0.5]) {
+          ctx.beginPath();
+          ctx.moveTo(aR * 0.5 * s, q * hw * s * 0.55);
+          ctx.lineTo(-aR * 0.8 * s, q * hw * s * 0.55);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        // Iridescent glaze catching on the lit dome.
+        ctx.fillStyle = look.sheen;
+        ctx.globalAlpha = 0.28;
+        ctx.beginPath();
+        facetBlob(ctx, aR * 0.28 * s, -hw * s * 0.32, aR * 0.5 * s, f.seed | 3, 7, 0.62, 0.8);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      },
+    );
+
+  // Pronotum plate + head + horn + antennae as one forequarter group.
+  const drawFore = (): void => {
+    const cC = hl * 0.72;
+    const cR = hl * 0.3;
+    const cw = hw * 0.78;
+    const pro: Array<[number, number]> = [
+      [cC + cR, -cw * 0.6],
+      [cC + cR, cw * 0.6],
+      [cC + cR * 0.4, cw],
+      [cC - cR * 0.5, cw],
+      [cC - cR, cw * 0.6],
+      [cC - cR, -cw * 0.6],
+      [cC - cR * 0.5, -cw],
+      [cC + cR * 0.4, -cw],
+    ];
+    paintBlockBody(
+      ctx,
+      f,
+      pro,
+      (X) => look.plateH * (1 - 0.35 * Math.pow((X - cC) / cR, 2)),
+      () => 0.06,
+      f.hurt ? '#ffffff' : look.plate,
+    );
+    // Head chip in front of the plate.
+    const hx0 = bx + fx * hl * 1.08 * s;
+    const hy0 = gy + fy * hl * 1.08 * ys * s - look.plateH * 0.4 * tk * s - lift;
+    ctx.fillStyle = f.hurt ? '#ffffff' : shade(look.plate, -8);
+    ctx.beginPath();
+    facetCircle(ctx, hx0, hy0, s * 0.06, 6, Math.atan2(fy * ys, fx));
+    ctx.fill();
+    // THE HORN: a rhino hook curving up-forward off the head — tossed
+    // upward through the strike.
+    const toss = at > 0.7 ? Math.sin(Math.PI * Math.min(1, (at - 0.7) / 0.3)) * 0.12 : 0;
+    const P = (fw: number, up: number): { x: number; y: number } => ({
+      x: bx + fx * fw * s,
+      y: gy + fy * fw * ys * s - up * tk * s - lift,
+    });
+    const hB = P(hl * 1.06, look.plateH * 0.5);
+    const hM = P(hl * 1.32, look.plateH * 0.5 + 0.18);
+    const hT = P(hl * 1.34, look.plateH * 0.5 + 0.4 + toss);
+    const a1 = Math.atan2(hM.y - hB.y, hM.x - hB.x) + Math.PI / 2;
+    const a2 = Math.atan2(hT.y - hM.y, hT.x - hM.x) + Math.PI / 2;
+    const w0 = Math.max(1.6, s * 0.05);
+    const w1 = Math.max(1.2, s * 0.028);
+    ctx.fillStyle = f.hurt ? '#ffffff' : look.horn;
+    ctx.beginPath();
+    ctx.moveTo(hB.x + Math.cos(a1) * w0, hB.y + Math.sin(a1) * w0);
+    ctx.lineTo(hM.x + Math.cos(a2) * w1, hM.y + Math.sin(a2) * w1);
+    ctx.lineTo(hT.x, hT.y);
+    ctx.lineTo(hM.x - Math.cos(a2) * w1, hM.y - Math.sin(a2) * w1);
+    ctx.lineTo(hB.x - Math.cos(a1) * w0, hB.y - Math.sin(a1) * w0);
+    ctx.closePath();
+    ctx.fill();
+    // Lit leading edge so the hook reads against the dark shell.
+    ctx.strokeStyle = f.hurt ? '#ffffff' : shade(look.shell, 26);
+    ctx.lineWidth = Math.max(1, s * 0.012);
+    ctx.beginPath();
+    ctx.moveTo(hB.x + Math.cos(a1) * w0 * 0.7, hB.y + Math.sin(a1) * w0 * 0.7);
+    ctx.lineTo(hM.x + Math.cos(a2) * w1 * 0.7, hM.y + Math.sin(a2) * w1 * 0.7);
+    ctx.lineTo(hT.x, hT.y);
+    ctx.stroke();
+    // Elbowed antennae with club tips, staggered; far one hides at
+    // profile.
+    const dead = f.topScale !== undefined && f.topScale < 1;
+    // No antennae from behind — over the dome they read as stray
+    // grass, and the horn already carries the silhouette.
+    if (!dead && !f.hurt && fy > -0.35) {
+      for (const es of [-1, 1]) {
+        if (Math.abs(fx) > 0.65 && es * py < 0) continue;
+        const a0x = hx0 + px * es * s * 0.05;
+        const a0y = hy0 + py * es * s * 0.05 * ys;
+        const a1x = a0x + (fx * 0.1 + px * es * 0.08) * s;
+        const a1y = a0y + (fy * 0.1 + py * es * 0.08) * ys * s - s * 0.035;
+        const a2x = a1x + (fx * 0.05 + px * es * 0.055) * s;
+        const a2y = a1y - s * 0.055;
+        ctx.strokeStyle = look.horn;
+        ctx.lineWidth = Math.max(1.2, s * 0.016);
+        ctx.beginPath();
+        ctx.moveTo(a0x, a0y);
+        ctx.lineTo(a1x, a1y);
+        ctx.lineTo(a2x, a2y);
+        ctx.stroke();
+        ctx.fillStyle = look.horn;
+        ctx.fillRect(a2x - s * 0.018, a2y - s * 0.018, s * 0.036, s * 0.036);
+      }
+    }
+  };
+
+  // True depth between the two masses: walking away, the forequarter
+  // tucks behind the dome instead of pasting over it.
+  if (fy < -0.2) {
+    drawFore();
+    drawEly();
+  } else {
+    drawEly();
+    drawFore();
+  }
+}
+
+/**
+ * The slime: a hopping gel block in the wall-prism dialect — a chamfered
+ * cube that squashes on landing, stretches mid-hop, and breathes at
+ * rest, with a darker nucleus riding low in the mass. One body reads at
+ * both sizes (the halves pass `radius` small).
+ */
+export function drawSlime(
+  ctx: CanvasRenderingContext2D,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    dir: number;
+    radius: number;
+    color: string;
+    hurt: boolean;
+    walkPhase: number;
+    nowMs: number;
+    seed: number;
+    /** 0..1 how much the body is actually travelling — stills the hop. */
+    moveK: number;
+    attackT?: number;
+    ys: number;
+  },
+): void {
+  const s = o.s;
+  const fx = Math.cos(o.dir);
+  const fy = Math.sin(o.dir);
+  const px = -fy;
+  const py = fx;
+  const w = o.radius * 2.1 * s;
+  const h = o.radius * 1.7 * s;
+
+  // Hop cycle from travelled distance; landing squash → launch stretch.
+  const hp = (o.walkPhase * 1.35) % 1;
+  const lift = Math.max(0, Math.sin(Math.PI * hp)) * 0.2 * s * o.moveK;
+  let sqy = 1 + (Math.sin(Math.PI * 2 * hp) * 0.14 - 0.02) * o.moveK;
+  // Idle breathing: the mass never quite holds still.
+  sqy += Math.sin(o.nowMs * 0.0032 + o.seed) * 0.045 * (1 - o.moveK);
+  let sqx = 2 - sqy; // area-preserving squash
+
+  // Attack: gather low and wide, then spring along the facing.
+  const at = o.attackT ?? 0;
+  let bx = o.x;
+  let by = o.y - lift;
+  if (at > 0) {
+    if (at < 0.7) {
+      const k = at / 0.7;
+      sqx += k * 0.22;
+      sqy -= k * 0.18;
+      bx -= fx * 0.1 * k * s;
+      by += fy * 0.02 * k * s;
+    } else {
+      const k = Math.sin(Math.PI * Math.min(1, (at - 0.7) / 0.3));
+      sqx -= k * 0.16;
+      sqy += k * 0.22;
+      bx += fx * 0.3 * k * s;
+      by -= (0.08 * k - fy * 0.02) * s;
+    }
+  }
+
+  const bw = w * sqx;
+  const bh = h * sqy;
+  const cut = bw * 0.24;
+  const bodyPath = (): void => {
+    ctx.beginPath();
+    chamferRect(ctx, bx - bw / 2, by - bh, bw, bh, [cut, cut, cut * 0.55, cut * 0.55]);
+  };
+
+  // Gel mass, then flat bands clipped inside it: dark contact base,
+  // lit top slab — the block read with zero gradients.
+  ctx.fillStyle = o.hurt ? '#ffffff' : o.color;
+  bodyPath();
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.save();
+    bodyPath();
+    ctx.clip();
+    ctx.fillStyle = shade(o.color, -16);
+    ctx.fillRect(bx - bw / 2, by - bh * 0.24, bw, bh * 0.24);
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.17)';
+    ctx.fillRect(bx - bw / 2, by - bh, bw, bh * 0.3);
+    // The nucleus: a darker core low in the body, seeded off-center.
+    ctx.fillStyle = shade(o.color, -30);
+    ctx.beginPath();
+    facetBlob(
+      ctx,
+      bx + ((o.seed % 7) - 3) * bw * 0.016,
+      by - bh * 0.38,
+      bw * 0.19,
+      o.seed,
+      7,
+      0.85,
+    );
+    ctx.fill();
+    // One flat gloss chip high on the lit corner.
+    ctx.fillStyle = shade(o.color, 30);
+    ctx.fillRect(bx - bw * 0.3, by - bh * 0.82, bw * 0.13, bh * 0.1);
+    ctx.restore();
+  }
+  // Eyes track the facing; none on the back of the mass.
+  if (fy > -0.45) {
+    ctx.fillStyle = OUTLINE;
+    for (const es of [-1, 1]) {
+      const eex = bx + fx * bw * 0.15 + es * px * bw * 0.19;
+      const eey = by - bh * 0.62 + (fy * bh * 0.1 + es * py * bw * 0.19) * o.ys;
+      ctx.fillRect(eex - bw * 0.035, eey - bh * 0.07, bw * 0.07, bh * 0.14);
+    }
+  }
+  ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
+  ctx.lineWidth = 1;
+  bodyPath();
+  ctx.stroke();
+}
+
+/**
+ * The cave bat: an airborne body — leathery wing fans beating on their
+ * own clock, a round tuft body hovering shoulder-high, big dish ears.
+ * The ground never touches it; the renderer throws its shadow.
+ */
+export function drawBat(
+  ctx: CanvasRenderingContext2D,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    dir: number;
+    radius: number;
+    color: string;
+    hurt: boolean;
+    nowMs: number;
+    seed: number;
+    attackT?: number;
+    ys: number;
+  },
+): void {
+  const s = o.s;
+  const fx = Math.cos(o.dir);
+  const fy = Math.sin(o.dir);
+  const r = o.radius * 2.6 * s;
+  const at = o.attackT ?? 0;
+
+  // Hover with a slow bob; the strike is a dip-and-lunge.
+  let bx = o.x;
+  let cy = o.y - 0.85 * s - Math.sin(o.nowMs * 0.0053 + o.seed) * 0.055 * s;
+  if (at > 0) {
+    if (at < 0.7) {
+      cy -= (at / 0.7) * 0.08 * s;
+      bx -= fx * 0.06 * (at / 0.7) * s;
+    } else {
+      const k = Math.sin(Math.PI * Math.min(1, (at - 0.7) / 0.3));
+      cy += k * 0.3 * s;
+      bx += fx * 0.26 * k * s;
+    }
+  }
+  const flap = Math.sin(o.nowMs * 0.021 + o.seed * 0.7);
+  const body = o.hurt ? '#ffffff' : o.color;
+  const membrane = o.hurt ? '#ffffff' : shade(o.color, -10);
+
+  // Wings: chamfered membrane fans on screen-X, beating out of phase
+  // with gravity — up-beat folds slightly, down-beat spreads.
+  for (const es of [-1, 1]) {
+    const shx = bx + es * r * 0.22;
+    const shy = cy - r * 0.05;
+    const wrx = bx + es * r * (0.85 - Math.max(0, flap) * 0.1);
+    const wry = cy - r * 0.32 - flap * 0.42 * r;
+    const tipx = bx + es * r * (1.5 - Math.max(0, flap) * 0.22);
+    const tipy = cy - r * 0.08 - flap * 0.78 * r;
+    ctx.fillStyle = membrane;
+    ctx.beginPath();
+    ctx.moveTo(shx, shy);
+    ctx.lineTo(wrx, wry);
+    ctx.lineTo(tipx, tipy);
+    // Scalloped trailing edge: two dips back toward the body.
+    ctx.lineTo(bx + es * r * 1.02, cy + r * 0.26 - flap * 0.3 * r);
+    ctx.lineTo(bx + es * r * 0.62, cy + r * 0.16 - flap * 0.12 * r);
+    ctx.lineTo(bx + es * r * 0.3, cy + r * 0.24);
+    ctx.closePath();
+    ctx.fill();
+    // Wing-arm bones ride the leading edge.
+    ctx.strokeStyle = o.hurt ? '#ffffff' : shade(o.color, -30);
+    ctx.lineWidth = Math.max(1.5, r * 0.07);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(shx, shy);
+    ctx.lineTo(wrx, wry);
+    ctx.lineTo(tipx, tipy);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+
+  // Body tuft + head with tall staggered ears.
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  facetBlob(ctx, bx, cy, r * 0.42, o.seed, 8, 1.1);
+  ctx.fill();
+  ctx.fillStyle = o.hurt ? '#ffffff' : shade(o.color, 12);
+  ctx.beginPath();
+  facetBlob(ctx, bx, cy + r * 0.16, r * 0.2, o.seed ^ 0x33, 6, 0.8);
+  ctx.fill();
+  const hx = bx + fx * r * 0.3;
+  const hy = cy - r * 0.34 + fy * r * 0.12 * o.ys;
+  const hr = r * 0.3;
+  for (const es of [-1, 1]) {
+    // Ears split fore/aft at profile — the paired-gear stagger law.
+    const ex = hx + es * (-fy) * hr * 0.7 + fx * es * hr * 0.14;
+    const ey = hy + es * fx * hr * 0.7 * o.ys - hr * 0.5;
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.moveTo(ex - hr * 0.24, ey);
+    ctx.lineTo(ex, ey - hr * 1.05);
+    ctx.lineTo(ex + hr * 0.24, ey);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  facetCircle(ctx, hx, hy, hr, 6, o.dir + Math.PI / 6);
+  ctx.fill();
+  if (fy > -0.45 && !o.hurt) {
+    ctx.fillStyle = '#e2a63c';
+    for (const es of [-1, 1]) {
+      const eex = hx + fx * hr * 0.35 + es * (-fy) * hr * 0.34;
+      const eey = hy + (fy * hr * 0.35 + es * fx * hr * 0.34) * o.ys;
+      ctx.fillRect(eex - hr * 0.09, eey - hr * 0.09, hr * 0.18, hr * 0.18);
+    }
+    if (at > 0.4) {
+      ctx.fillStyle = '#efe9d8';
+      for (const es of [-1, 1]) {
+        ctx.fillRect(hx + es * hr * 0.18 - hr * 0.05, hy + hr * 0.5, hr * 0.1, hr * 0.26);
+      }
+    }
+  }
+}
+
+/**
+ * The giant adder: a slithering tapered ribbon — the body is a sampled
+ * S-wave behind the head, diamond-patterned down the spine, with a
+ * raised viper head that strikes along the facing.
+ */
+export function drawSnake(
+  ctx: CanvasRenderingContext2D,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    dir: number;
+    radius: number;
+    color: string;
+    hurt: boolean;
+    walkPhase: number;
+    nowMs: number;
+    seed: number;
+    moveK: number;
+    attackT?: number;
+    ys: number;
+  },
+): void {
+  const s = o.s;
+  const fx = Math.cos(o.dir);
+  const fy = Math.sin(o.dir);
+  const px = -fy;
+  const py = fx;
+  const at = o.attackT ?? 0;
+  const body = o.hurt ? '#ffffff' : o.color;
+
+  // Strike: the head and fore-body pull back, then whip forward.
+  let strike = 0;
+  if (at > 0) {
+    strike = at < 0.7 ? -0.08 * (at / 0.7) : 0.3 * Math.sin(Math.PI * Math.min(1, (at - 0.7) / 0.3));
+  }
+
+  const LEN = 1.3; // tiles of body behind the head
+  const N = 12;
+  const amp = s * (0.05 + 0.07 * o.moveK);
+  const phase = o.walkPhase * Math.PI * 2 * 1.15 + Math.sin(o.nowMs * 0.0008 + o.seed) * 0.6 * (1 - o.moveK);
+  const pts: Array<{ x: number; y: number; w: number }> = [];
+  for (let k = 0; k <= N; k++) {
+    const t = k / N;
+    const d = t * LEN * s;
+    // The head holds its line; the wave grows behind the neck.
+    const lat = Math.sin(phase - t * 5.2) * amp * Math.min(1, t * 3);
+    // Fore-body rides the strike; rear stays planted.
+    const lunge = strike * Math.max(0, 1 - t * 2.4) * s;
+    const rise = Math.max(0, 0.22 - t) / 0.22 * (0.1 + at * 0.06) * s;
+    pts.push({
+      x: o.x - fx * d + px * lat + fx * lunge,
+      y: o.y - (fy * d - py * lat - fy * lunge) * o.ys - rise,
+      w: s * (0.055 * Math.sin(Math.PI * Math.pow(Math.min(1, t * 1.12), 0.7)) + 0.014 * (1 - t) + 0.004),
+    });
+  }
+  // Ribbon body: perpendicular offsets per sample, one closed fill.
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  for (let k = 0; k <= N; k++) {
+    const a = pts[Math.max(0, k - 1)]!;
+    const b = pts[Math.min(N, k + 1)]!;
+    const dl = Math.hypot(b.x - a.x, b.y - a.y) || 1e-4;
+    const nx = -(b.y - a.y) / dl;
+    const ny = (b.x - a.x) / dl;
+    const p = pts[k]!;
+    if (k === 0) ctx.moveTo(p.x + nx * p.w, p.y + ny * p.w);
+    else ctx.lineTo(p.x + nx * p.w, p.y + ny * p.w);
+  }
+  for (let k = N; k >= 0; k--) {
+    const a = pts[Math.max(0, k - 1)]!;
+    const b = pts[Math.min(N, k + 1)]!;
+    const dl = Math.hypot(b.x - a.x, b.y - a.y) || 1e-4;
+    const nx = -(b.y - a.y) / dl;
+    const ny = (b.x - a.x) / dl;
+    const p = pts[k]!;
+    ctx.lineTo(p.x - nx * p.w, p.y - ny * p.w);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // Dorsal diamonds march the spine — the adder's zigzag.
+  if (!o.hurt) {
+    ctx.fillStyle = shade(o.color, -24);
+    for (let k = 1; k < N; k += 2) {
+      const p = pts[k]!;
+      const dw = p.w * 0.85;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - dw);
+      ctx.lineTo(p.x + dw, p.y);
+      ctx.lineTo(p.x, p.y + dw);
+      ctx.lineTo(p.x - dw, p.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Viper head: a flat wedge wider than the neck, riding the rise.
+  const h = pts[0]!;
+  const hw = s * 0.085;
+  const hl = s * 0.15;
+  ctx.save();
+  ctx.translate(h.x, h.y);
+  ctx.rotate(Math.atan2(fy * o.ys, fx));
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.moveTo(-hl * 0.3, -hw);
+  ctx.lineTo(hl * 0.45, -hw * 0.72);
+  ctx.lineTo(hl, -hw * 0.3);
+  ctx.lineTo(hl, hw * 0.3);
+  ctx.lineTo(hl * 0.45, hw * 0.72);
+  ctx.lineTo(-hl * 0.3, hw);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
+  ctx.stroke();
+  // Tongue: a rare forked flick, eager through the strike.
+  const flick = Math.max(0, Math.sin(o.nowMs * 0.0031 + o.seed) - 0.88) / 0.12;
+  const tk = Math.max(flick, at > 0.5 ? 1 : 0);
+  if (tk > 0.05 && !o.hurt) {
+    ctx.strokeStyle = '#c4485a';
+    ctx.lineWidth = Math.max(1, s * 0.012);
+    const tl = s * 0.11 * tk;
+    ctx.beginPath();
+    ctx.moveTo(hl, 0);
+    ctx.lineTo(hl + tl * 0.7, 0);
+    ctx.moveTo(hl + tl * 0.7, 0);
+    ctx.lineTo(hl + tl, -s * 0.02 * tk);
+    ctx.moveTo(hl + tl * 0.7, 0);
+    ctx.lineTo(hl + tl, s * 0.02 * tk);
+    ctx.stroke();
+  }
+  ctx.restore();
+  // Eyes sit on the head's sides — skipped facing away.
+  if (fy > -0.45 && !o.hurt) {
+    ctx.fillStyle = '#e2a63c';
+    for (const es of [-1, 1]) {
+      const eex = h.x + fx * hl * 0.25 + es * px * hw * 0.72;
+      const eey = h.y + (fy * hl * 0.25 + es * py * hw * 0.72) * o.ys;
+      ctx.fillRect(eex - s * 0.014, eey - s * 0.02, s * 0.028, s * 0.04);
+    }
+  }
+}
+
 export function drawBeast(
   ctx: CanvasRenderingContext2D,
   opts: {
@@ -2350,6 +5359,10 @@ export function drawBeast(
     kneeMemory: number[];
     /** 0..1 through an attack: crouch back, then pounce. */
     attackT?: number;
+    /** Stable per-entity seed — patch layouts differ cow to cow. */
+    seed?: number;
+    /** Clock for idle life (cud chewing, tail swish, ear time). */
+    nowMs?: number;
   },
 ): void {
   const s = opts.scale;
@@ -2481,6 +5494,31 @@ export function drawBeast(
       chamferRect(ctx, -hw / 2, -hw * 0.35, hw, hw * 0.62, hw * 0.18);
       ctx.fill();
       ctx.restore();
+    } else if (spec.foot === 'bearpaw') {
+      // Broad pad with pale claws raking off its leading edge — drawn
+      // in the shin's own frame so pad and rake follow the leg at
+      // every facing, in the fur tone (not the near-black generic
+      // foot shade).
+      const pw = spec.legW * s * 1.45;
+      const shinA = Math.atan2(ey - ky, ex - kx);
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(shinA - Math.PI / 2);
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(spec.legColor ?? opts.color, -10);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, pw * 0.62, pw * 0.46, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = opts.hurt ? '#ffffff' : '#d8cbb2';
+      ctx.lineWidth = Math.max(1.2, s * 0.02);
+      ctx.lineCap = 'round';
+      for (const t of [-1, 0, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(t * pw * 0.34, pw * 0.28);
+        ctx.lineTo(t * pw * 0.44, pw * 0.58);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+      ctx.restore();
     } else {
       // Paw chip aligned with the shin.
       const pw = spec.legW * s * 1.35;
@@ -2504,7 +5542,85 @@ export function drawBeast(
   for (let i = 0; i < opts.defId.length; i++) {
     seed = (seed * 31 + opts.defId.charCodeAt(i)) | 0;
   }
+  seed = (seed ^ ((opts.seed ?? 0) * 2654435761)) | 0;
+  const cattle = CATTLE_LOOKS[opts.defId];
+  const wolfL = opts.defId === 'wolf' ? WOLF_LOOK : undefined;
+  const ratL = opts.defId === 'rat' ? RAT_LOOK : undefined;
+  const boarL = opts.defId === 'boar' ? BOAR_LOOK : undefined;
+  const spiderL = opts.defId === 'giant_spider' ? SPIDER_LOOK : undefined;
+  const ramL = opts.defId === 'ram' ? RAM_LOOK : undefined;
+  const stagL = opts.defId === 'stag' ? STAG_LOOK : undefined;
+  const bearL = opts.defId === 'bear' ? BEAR_LOOK : undefined;
+  const crabL = opts.defId === 'mudcrab' ? CRAB_LOOK : undefined;
+  const beetleL = opts.defId === 'giant_beetle' ? BEETLE_LOOK : undefined;
+  const idle = 1 - opts.pose.poleStrength;
+  const now = opts.nowMs ?? 0;
+  const blockFrame = (): BeastBlockFrame => ({
+    bx,
+    gy: by,
+    s,
+    fx,
+    fy,
+    ys,
+    seed,
+    hurt: opts.hurt,
+    bob: opts.pose.bob,
+    roll,
+  });
   const paintBody = (): void => {
+    if (wolfL) {
+      paintWolfBody(ctx, spec, wolfL, blockFrame());
+      return;
+    }
+    if (ratL) {
+      paintRatBody(ctx, spec, ratL, blockFrame());
+      return;
+    }
+    if (boarL) {
+      paintBoarBody(ctx, spec, boarL, blockFrame());
+      return;
+    }
+    if (spiderL) {
+      paintSpiderBody(ctx, spec, spiderL, blockFrame(), at);
+      return;
+    }
+    if (ramL) {
+      paintRamBody(ctx, spec, ramL, blockFrame());
+      return;
+    }
+    if (stagL) {
+      paintStagBody(ctx, spec, stagL, blockFrame());
+      return;
+    }
+    if (bearL) {
+      paintBearBody(ctx, spec, bearL, blockFrame());
+      return;
+    }
+    if (crabL) {
+      paintCrabBody(ctx, spec, crabL, blockFrame(), at);
+      return;
+    }
+    if (beetleL) {
+      paintBeetleBody(ctx, spec, beetleL, blockFrame(), at);
+      return;
+    }
+    if (cattle) {
+      paintCattleBody(ctx, spec, cattle, {
+        bx,
+        gy: by,
+        s,
+        fx,
+        fy,
+        ys,
+        seed,
+        hurt: opts.hurt,
+        bob: opts.pose.bob,
+        roll,
+        backH: cattle.backH,
+        bellyH: cattle.bellyH,
+      });
+      return;
+    }
     // Faceted low-poly mass along the facing — same dialect as the
     // boulders and canopies.
     ctx.fillStyle = color;
@@ -2520,12 +5636,6 @@ export function drawBeast(
     facetBlob(ctx, -len * 0.15, -r * 0.25, len * 0.5, seed ^ 0x5f5f, 7, (r * 0.32) / (len * 0.5), 1.1);
     ctx.fill();
     ctx.restore();
-    if (opts.defId === 'cow' && !opts.hurt) {
-      ctx.fillStyle = '#5b4632';
-      ctx.beginPath();
-      facetCircle(ctx, bx - fx * len * 0.35, bodyY + py * r * 0.15, r * 0.32, 6, opts.dir + 0.5, 0.72);
-      ctx.fill();
-    }
   };
 
   // Head anchor: a chicken pecks its head forward with each step.
@@ -2534,6 +5644,240 @@ export function drawBeast(
   const headY = bodyY + fy * (len * 0.35 + peck * s * ys) - r * 0.15;
   const headR = r * (opts.defId === 'chicken' ? 0.5 : 0.55);
   const paintHead = (): void => {
+    if (spiderL) return; // the spider's face lives in its body painter
+    if (crabL || beetleL) return; // whole animal drawn by the body painter
+    if (ramL) {
+      const hl = spec.bodyLen * s;
+      const hw2 = ramL.headW * s;
+      const nod = opts.pose.bob * 0.5 * s;
+      // The charge drops the whole head into a battering line.
+      const drop = at > 0 ? Math.min(1, at / 0.7) * 0.14 * s : 0;
+      const chx = bx + fx * (hl + hw2 * 0.44);
+      const chy = by + fy * (hl + hw2 * 0.44) * ys - ramL.backH * 0.98 * s - nod + drop;
+      // Wool shoulder roll into the skull.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(ramL.wool, -7);
+      ctx.beginPath();
+      const nb = ramL.backH * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * ramL.bodyW * 0.6 * s;
+      const nwy = py * ramL.bodyW * 0.6 * s;
+      ctx.moveTo(bx + fx * hl * 0.72 + nwx, by + (fy * hl * 0.72 + nwy) * ys - nb * 0.9);
+      ctx.lineTo(bx + fx * hl * 0.72 - nwx, by + (fy * hl * 0.72 - nwy) * ys - nb * 0.9);
+      ctx.lineTo(chx - px * hw2 * 0.4, chy - py * hw2 * 0.4 * ys + ramL.headH * s * 0.24);
+      ctx.lineTo(chx + px * hw2 * 0.4, chy + py * hw2 * 0.4 * ys + ramL.headH * s * 0.24);
+      ctx.closePath();
+      ctx.fill();
+      drawRamHead(ctx, ramL, {
+        x: chx,
+        y: chy,
+        s,
+        fx,
+        fy,
+        ys,
+        hurt: opts.hurt,
+        charge: at > 0 ? Math.min(1, at * 1.6) : 0,
+      });
+      return;
+    }
+    if (stagL) {
+      const hl = spec.bodyLen * s;
+      const hw2 = stagL.headW * s;
+      const nod = opts.pose.bob * 0.4 * s;
+      // The alarm-charge levels the antlers: the high head drops.
+      const drop = at > 0 ? Math.min(1, at / 0.7) * 0.2 * s : 0;
+      const chx = bx + fx * (hl * 0.9 + hw2 * 0.5);
+      const chy =
+        by + fy * (hl * 0.9 + hw2 * 0.5) * ys - (stagL.backH + stagL.neckRise) * s - nod + drop;
+      // The neck column — the proud riser that makes a deer read deer.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(stagL.coat, -6);
+      ctx.beginPath();
+      const nb = stagL.backH * 0.92 * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * stagL.bodyW * 0.52 * s;
+      const nwy = py * stagL.bodyW * 0.52 * s;
+      ctx.moveTo(bx + fx * hl * 0.68 + nwx, by + (fy * hl * 0.68 + nwy) * ys - nb);
+      ctx.lineTo(bx + fx * hl * 0.68 - nwx, by + (fy * hl * 0.68 - nwy) * ys - nb);
+      ctx.lineTo(chx - px * hw2 * 0.32, chy - py * hw2 * 0.32 * ys + stagL.headH * s * 0.3);
+      ctx.lineTo(chx + px * hw2 * 0.32, chy + py * hw2 * 0.32 * ys + stagL.headH * s * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      drawStagHead(ctx, stagL, { x: chx, y: chy, s, fx, fy, ys, hurt: opts.hurt });
+      return;
+    }
+    if (bearL) {
+      const hl = spec.bodyLen * s;
+      const hw2 = bearL.headW * s;
+      const nod = opts.pose.bob * 0.5 * s;
+      // The head stays LOW — slung off the hump, dropping further
+      // through the pounce windup.
+      const stalk = at > 0 ? Math.min(1, at / 0.7) * 0.08 * s : 0;
+      const chx = bx + fx * (hl + hw2 * 0.32);
+      const chy = by + fy * (hl + hw2 * 0.32) * ys - bearL.backH * 0.82 * s - nod + stalk;
+      // Thick fur neck from the hump into the skull.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(bearL.fur, -6);
+      ctx.beginPath();
+      const nb = (bearL.backH + bearL.humpH * 0.7) * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * bearL.bodyW * 0.62 * s;
+      const nwy = py * bearL.bodyW * 0.62 * s;
+      ctx.moveTo(bx + fx * hl * 0.72 + nwx, by + (fy * hl * 0.72 + nwy) * ys - nb * 0.88);
+      ctx.lineTo(bx + fx * hl * 0.72 - nwx, by + (fy * hl * 0.72 - nwy) * ys - nb * 0.88);
+      ctx.lineTo(chx - px * hw2 * 0.44, chy - py * hw2 * 0.44 * ys + bearL.headH * s * 0.26);
+      ctx.lineTo(chx + px * hw2 * 0.44, chy + py * hw2 * 0.44 * ys + bearL.headH * s * 0.26);
+      ctx.closePath();
+      ctx.fill();
+      drawBearHead(ctx, bearL, {
+        x: chx,
+        y: chy,
+        s,
+        fx,
+        fy,
+        ys,
+        hurt: opts.hurt,
+        snarl: at > 0 ? Math.min(1, at * 2) : 0,
+      });
+      return;
+    }
+    if (boarL) {
+      const hl = spec.bodyLen * s;
+      const hw2 = boarL.headW * s;
+      const nod = opts.pose.bob * 0.5 * s;
+      // The whole head drops through the charge windup — a battering
+      // ram lining up.
+      const drop = at > 0 ? Math.min(1, at / 0.7) * 0.09 * s : 0;
+      const chx = bx + fx * (hl + hw2 * 0.3);
+      const chy =
+        by + fy * (hl + hw2 * 0.3) * ys - (boarL.backH + boarL.crestH * 0.5) * 0.9 * s - nod + drop;
+      // Thick neck roll from the crest into the skull.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(boarL.hide, -8);
+      ctx.beginPath();
+      const nb = (boarL.backH + boarL.crestH * 0.6) * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * boarL.bodyW * 0.6 * s;
+      const nwy = py * boarL.bodyW * 0.6 * s;
+      ctx.moveTo(bx + fx * hl * 0.7 + nwx, by + (fy * hl * 0.7 + nwy) * ys - nb * 0.88);
+      ctx.lineTo(bx + fx * hl * 0.7 - nwx, by + (fy * hl * 0.7 - nwy) * ys - nb * 0.88);
+      ctx.lineTo(chx - px * hw2 * 0.42, chy - py * hw2 * 0.42 * ys + boarL.headH * s * 0.26);
+      ctx.lineTo(chx + px * hw2 * 0.42, chy + py * hw2 * 0.42 * ys + boarL.headH * s * 0.26);
+      ctx.closePath();
+      ctx.fill();
+      drawBoarHead(ctx, boarL, {
+        x: chx,
+        y: chy,
+        s,
+        fx,
+        fy,
+        ys,
+        hurt: opts.hurt,
+        charge: at > 0 ? Math.min(1, at * 1.6) : 0,
+      });
+      return;
+    }
+    if (cattle) {
+      const hl = spec.bodyLen * s;
+      const hw2 = cattle.headW * s;
+      // The head hangs off the shoulder line, nodding with the gait.
+      const nod = opts.pose.bob * 0.5 * s;
+      const chx = bx + fx * (hl + hw2 * 0.35);
+      const chy =
+        by + fy * (hl + hw2 * 0.35) * ys - cattle.backH * (opts.defId === 'bull' ? 0.72 : 0.78) * s - nod;
+      // Neck: a hide quad from the chest top to the head sides.
+      const nb = cattle.backH * s + opts.pose.bob * 0.35 * s;
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(cattle.hide, -8);
+      ctx.beginPath();
+      const nwx = px * cattle.bodyW * 0.5 * s;
+      const nwy = py * cattle.bodyW * 0.5 * s;
+      ctx.moveTo(bx + fx * hl * 0.75 + nwx, by + (fy * hl * 0.75 + nwy) * ys - nb * 0.92);
+      ctx.lineTo(bx + fx * hl * 0.75 - nwx, by + (fy * hl * 0.75 - nwy) * ys - nb * 0.92);
+      ctx.lineTo(chx - px * hw2 * 0.38, chy - py * hw2 * 0.38 * ys + cattle.headH * s * 0.2);
+      ctx.lineTo(chx + px * hw2 * 0.38, chy + py * hw2 * 0.38 * ys + cattle.headH * s * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      // Idle cud-grind: a slow lateral figure the muzzle rides.
+      const chew = now > 0 ? Math.sin(now * 0.005 + seed) * hw2 * 0.035 * idle : 0;
+      drawCattleHead(ctx, cattle, {
+        x: chx,
+        y: chy,
+        s,
+        fx,
+        fy,
+        ys,
+        hurt: opts.hurt,
+        chew,
+      });
+      return;
+    }
+    if (wolfL) {
+      const hl = spec.bodyLen * s;
+      const hw2 = wolfL.headW * s;
+      const nod = opts.pose.bob * 0.5 * s;
+      // The head drops toward the ground through the pounce windup —
+      // a stalking crouch that matches the body rocking back.
+      const stalk = at > 0 ? Math.min(1, at / 0.7) * 0.08 * s : 0;
+      const chx = bx + fx * (hl + hw2 * 0.42);
+      const chy =
+        by +
+        fy * (hl + hw2 * 0.42) * ys -
+        (wolfL.backH + wolfL.shoulderH * 0.6) * 1.12 * s -
+        nod +
+        stalk;
+      // Neck: a coat quad from the shoulder top into the head sides.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(wolfL.coat, -8);
+      ctx.beginPath();
+      const nb = (wolfL.backH + wolfL.shoulderH) * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * wolfL.bodyW * 0.55 * s;
+      const nwy = py * wolfL.bodyW * 0.55 * s;
+      ctx.moveTo(bx + fx * hl * 0.72 + nwx, by + (fy * hl * 0.72 + nwy) * ys - nb * 0.9);
+      ctx.lineTo(bx + fx * hl * 0.72 - nwx, by + (fy * hl * 0.72 - nwy) * ys - nb * 0.9);
+      ctx.lineTo(chx - px * hw2 * 0.36, chy - py * hw2 * 0.36 * ys + wolfL.headH * s * 0.24);
+      ctx.lineTo(chx + px * hw2 * 0.36, chy + py * hw2 * 0.36 * ys + wolfL.headH * s * 0.24);
+      ctx.closePath();
+      ctx.fill();
+      // Idle ear flick: a rare quick pulse, never a metronome.
+      const flick =
+        now > 0 ? Math.max(0, Math.sin(now * 0.0021 + seed) - 0.94) / 0.06 * idle : 0;
+      drawWolfHead(ctx, wolfL, {
+        x: chx,
+        y: chy,
+        s,
+        fx,
+        fy,
+        ys,
+        hurt: opts.hurt,
+        snarl: at > 0 ? Math.min(1, at * 2.2) : 0,
+        flick,
+      });
+      return;
+    }
+    if (ratL) {
+      const hl = spec.bodyLen * s;
+      const hw2 = ratL.headW * s;
+      // The head rides low off the shoulders, forever sniffing — a
+      // busy little bob on its own clock, stilled by running.
+      const sniff = now > 0 ? Math.sin(now * 0.004 + seed) * 0.012 * s * idle : 0;
+      const chx = bx + fx * (hl + hw2 * 0.28);
+      const chy =
+        by + fy * (hl + hw2 * 0.28) * ys - 0.17 * s - opts.pose.bob * 0.3 * s + sniff;
+      // Short neck wedge bridging the shoulder pinch into the skull.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(ratL.fur, -6);
+      ctx.beginPath();
+      const nwx = px * ratL.bodyW * 0.42 * s;
+      const nwy = py * ratL.bodyW * 0.42 * s;
+      ctx.moveTo(bx + fx * hl * 0.7 + nwx, by + (fy * hl * 0.7 + nwy) * ys - 0.22 * s);
+      ctx.lineTo(bx + fx * hl * 0.7 - nwx, by + (fy * hl * 0.7 - nwy) * ys - 0.22 * s);
+      ctx.lineTo(chx - px * hw2 * 0.34, chy - py * hw2 * 0.34 * ys + ratL.headH * s * 0.2);
+      ctx.lineTo(chx + px * hw2 * 0.34, chy + py * hw2 * 0.34 * ys + ratL.headH * s * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      const twitch = now > 0 ? Math.sin(now * 0.02 + seed) * idle : 0;
+      drawRatHead(ctx, ratL, {
+        x: chx,
+        y: chy,
+        s,
+        fx,
+        fy,
+        ys,
+        hurt: opts.hurt,
+        twitch,
+      });
+      return;
+    }
     ctx.fillStyle = color;
     ctx.beginPath();
     facetCircle(ctx, headX, headY, headR, 6, opts.dir + Math.PI / 6);
@@ -2550,16 +5894,6 @@ export function drawBeast(
       ctx.beginPath();
       ctx.arc(headX - fx * headR * 0.1, headY - headR * 0.85, headR * 0.28, 0, Math.PI * 2);
       ctx.fill();
-    } else if (opts.defId === 'wolf' || opts.defId === 'rat') {
-      ctx.fillStyle = color;
-      for (const side of [-1, 1]) {
-        ctx.beginPath();
-        ctx.moveTo(headX + px * side * headR * 0.4, headY - headR * 0.3);
-        ctx.lineTo(headX + px * side * headR * 0.85, headY - headR * 1.15);
-        ctx.lineTo(headX + px * side * headR * 0.95, headY - headR * 0.2);
-        ctx.closePath();
-        ctx.fill();
-      }
     }
     // Eyes track the facing — and a head facing away from the camera
     // SHOWS NO EYES. Painting them regardless put eyes on the back of
@@ -2575,21 +5909,179 @@ export function drawBeast(
   };
 
   const paintTail = (): void => {
-    if (opts.defId !== 'wolf' && opts.defId !== 'rat') return;
-    const wag = Math.sin(opts.walkPhase * Math.PI * 4) * 0.14;
-    ctx.strokeStyle = opts.defId === 'rat' ? '#c9a68a' : color;
-    ctx.lineWidth = Math.max(2, s * (opts.defId === 'rat' ? 0.035 : 0.07));
-    ctx.lineCap = 'round';
+    if (spiderL || crabL || beetleL) return;
+    if (ramL) {
+      // A wool nub dropped off the fleece stern.
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(ramL.wool, -5);
+      ctx.beginPath();
+      facetCircle(
+        ctx,
+        bx - fx * hl * 1.02,
+        by - fy * hl * 1.02 * ys - ramL.backH * 0.68 * s - lift,
+        s * 0.045,
+        5,
+        seed * 0.3,
+      );
+      ctx.fill();
+      return;
+    }
+    if (stagL) {
+      // The white flick riding the rump patch, twitching at idle.
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      const flick = now > 0 ? Math.max(0, Math.sin(now * 0.0019 + seed) - 0.9) / 0.1 : 0;
+      const tbx = bx - fx * hl * 1.0;
+      const tby = by - fy * hl * 1.0 * ys - stagL.backH * 0.82 * s - lift;
+      ctx.fillStyle = opts.hurt ? '#ffffff' : stagL.rump;
+      ctx.beginPath();
+      ctx.moveTo(tbx - px * s * 0.03, tby);
+      ctx.lineTo(tbx - fx * s * 0.045 + px * flick * s * 0.03, tby + s * (0.085 - flick * 0.03));
+      ctx.lineTo(tbx + px * s * 0.03, tby);
+      ctx.closePath();
+      ctx.fill();
+      return;
+    }
+    if (bearL) {
+      // Barely a tail at all — a fur nub lost in the rump.
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(bearL.fur, -4);
+      ctx.beginPath();
+      facetCircle(
+        ctx,
+        bx - fx * hl * 1.0,
+        by - fy * hl * 1.0 * ys - bearL.backH * 0.6 * s - lift,
+        s * 0.038,
+        5,
+        seed * 0.3,
+      );
+      ctx.fill();
+      return;
+    }
+    if (boarL) {
+      // The piggy kink: a short cord hooking up off the rump with a
+      // dark tuft, flicking with the gait.
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      const sway =
+        Math.sin(opts.walkPhase * Math.PI * 2) * 0.02 * s +
+        (now > 0 ? Math.sin(now * 0.0017 + seed) * 0.025 * s * idle : 0);
+      const tbx = bx - fx * hl * 0.96;
+      const tby = by - fy * hl * 0.96 * ys - boarL.backH * 0.78 * s - lift;
+      ctx.strokeStyle = opts.hurt ? '#ffffff' : shade(boarL.hide, -14);
+      ctx.lineWidth = Math.max(1.5, s * 0.024);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tbx, tby);
+      ctx.quadraticCurveTo(
+        tbx - fx * hl * 0.16 + px * sway,
+        tby - s * 0.09,
+        tbx - fx * hl * 0.2 + px * sway * 2,
+        tby + s * 0.02,
+      );
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      ctx.fillStyle = opts.hurt ? '#ffffff' : boarL.bristle;
+      ctx.beginPath();
+      facetCircle(ctx, tbx - fx * hl * 0.2 + px * sway * 2, tby + s * 0.03, s * 0.032, 5, seed * 0.3);
+      ctx.fill();
+      return;
+    }
+    if (cattle) {
+      // Rope tail hanging off the rump, swishing slowly at idle and
+      // swaying with the gait, ending in a dark tuft.
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      const sway =
+        Math.sin(opts.walkPhase * Math.PI * 2) * 0.03 * s +
+        (now > 0 ? Math.sin(now * 0.0013 + seed * 0.7) * 0.045 * s * idle : 0);
+      const tbx = bx - fx * hl * 0.92;
+      const tby = by - fy * hl * 0.92 * ys - cattle.backH * 0.95 * s - lift;
+      const tex = tbx - fx * hl * 0.14 + px * sway * 1.7;
+      const tey = tby + cattle.backH * 0.72 * s + py * sway * 0.4;
+      ctx.strokeStyle = opts.hurt ? '#ffffff' : shade(cattle.hide, -24);
+      ctx.lineWidth = Math.max(1.5, s * 0.04);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tbx, tby);
+      ctx.quadraticCurveTo(tbx - fx * hl * 0.1 + px * sway * 0.6, tby + cattle.backH * 0.3 * s, tex, tey);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      ctx.fillStyle = opts.hurt ? '#ffffff' : cattle.patch;
+      ctx.beginPath();
+      facetCircle(ctx, tex, tey + s * 0.03, s * 0.047, 5, seed * 0.3);
+      ctx.fill();
+      return;
+    }
+    if (wolfL) {
+      // The brush: a full bushy tail hanging off the rump in a lazy
+      // curve, dark-tipped, swaying with the gait and drifting at idle.
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      const sway =
+        Math.sin(opts.walkPhase * Math.PI * 2) * 0.04 * s +
+        (now > 0 ? Math.sin(now * 0.0011 + seed) * 0.05 * s * idle : 0);
+      const tbx = bx - fx * hl * 0.95;
+      const tby = by - fy * hl * 0.95 * ys - wolfL.backH * 0.8 * s - lift;
+      const cxq = tbx - fx * hl * 0.42 + px * sway * 0.7;
+      const cyq = tby + wolfL.backH * 0.1 * s;
+      const tex = tbx - fx * hl * 0.78 + px * sway * 1.6;
+      const tey = tby + wolfL.backH * 0.52 * s;
+      const brush = taperedSpinePath(tbx, tby, cxq, cyq, tex, tey, (t) =>
+        s * (0.034 + 0.058 * Math.sin(Math.PI * Math.pow(t, 0.9))),
+      );
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(wolfL.coat, -4);
+      ctx.fill(brush);
+      ctx.fillStyle = opts.hurt ? '#ffffff' : wolfL.saddle;
+      ctx.beginPath();
+      facetCircle(ctx, tex, tey, s * 0.042, 5, seed * 0.4);
+      ctx.fill();
+      return;
+    }
+    if (ratL) {
+      // The naked tail: long, thin, dragging a slithering S on the
+      // ground behind the haunches.
+      const hl = spec.bodyLen * s;
+      const sway =
+        Math.sin(opts.walkPhase * Math.PI * 2 + Math.PI * 0.5) * 0.09 * s +
+        (now > 0 ? Math.sin(now * 0.0009 + seed) * 0.06 * s * idle : 0);
+      const tbx = bx - fx * hl * 0.88;
+      const tby = by - fy * hl * 0.88 * ys - 0.11 * s;
+      const cxq = bx - fx * hl * 1.42 + px * sway * 2.2;
+      const cyq = by - fy * hl * 1.42 * ys - 0.05 * s;
+      const tex = bx - fx * hl * 1.95 + px * sway * 1.1;
+      const tey = by - fy * hl * 1.95 * ys - 0.01 * s;
+      const tail = taperedSpinePath(tbx, tby, cxq, cyq, tex, tey, (t) =>
+        s * (0.02 * (1 - t) + 0.006),
+      );
+      ctx.fillStyle = opts.hurt ? '#ffffff' : ratL.skin;
+      ctx.fill(tail);
+      return;
+    }
+  };
+
+  // The dairy udder: a pink faceted mass under the rear belly with
+  // teat chips, visible side-on and from behind — never through the
+  // body when the rump faces away.
+  const paintUdder = (): void => {
+    if (!cattle?.udder) return;
+    const hl = spec.bodyLen * s;
+    const lift = opts.pose.bob * 0.35 * s;
+    const ux = bx - fx * hl * 0.52;
+    const uy = by - fy * hl * 0.52 * ys - (cattle.bellyH - 0.06) * s - lift * 0.6;
+    const ur = cattle.bodyW * 0.62 * s;
+    ctx.fillStyle = opts.hurt ? '#ffffff' : cattle.udder;
     ctx.beginPath();
-    ctx.moveTo(bx - fx * len * 0.95, bodyY - fy * len * 0.3);
-    ctx.quadraticCurveTo(
-      bx - fx * len * 1.45 + px * wag * s,
-      bodyY - fy * len * 0.6 + py * wag * s - r * 0.3,
-      bx - fx * len * 1.75 + px * wag * s * 1.6,
-      bodyY - fy * len * 0.7 + py * wag * s * 1.6,
-    );
-    ctx.stroke();
-    ctx.lineCap = 'butt';
+    facetCircle(ctx, ux, uy, ur, 6, seed * 0.5, 0.75);
+    ctx.fill();
+    if (!opts.hurt && fy < 0.25) {
+      ctx.fillStyle = shade(cattle.udder, -18);
+      for (const es of [-1, 1]) {
+        ctx.fillRect(ux + es * ur * 0.38 - s * 0.012, uy + ur * 0.5, s * 0.024, s * 0.05);
+      }
+    }
   };
 
   // ---- compose in depth order. The facing decides where head and
@@ -2599,10 +6091,13 @@ export function drawBeast(
   const headFront = fy > 0.2;
   const headBack = fy < -0.25;
   const tailFront = fy < -0.2;
+  const udderBehind = fy > 0.15;
   if (!tailFront) paintTail();
   if (headBack) paintHead();
+  if (udderBehind) paintUdder();
   for (const i of farLegs) drawLeg(i);
   paintBody();
+  if (!udderBehind) paintUdder();
   if (!headBack && !headFront) paintHead();
   for (const i of nearLegs) drawLeg(i);
   if (headFront) paintHead();

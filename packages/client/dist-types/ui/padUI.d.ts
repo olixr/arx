@@ -24,6 +24,8 @@ export interface UiNavHooks {
     onOpenBuild: () => void;
     /** Contextual Ⓐ label for pack items (Deposit at bank, Sell in shop). */
     packActionLabel?: () => string | null;
+    /** Focus stepped to a new control — the barely-there cursor tick. */
+    onFocusMove?: () => void;
 }
 export declare class UiNav {
     private readonly input;

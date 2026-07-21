@@ -1,18 +1,26 @@
+import type { AudioEngine } from './engine.js';
 /**
  * Procedural WebAudio SFX — no audio files, everything synthesized.
  * Kept short and soft; a local family server doesn't need ear-splitters.
+ * Every sound rides the engine's sfx bus, which carries the warmth
+ * low-pass, the glue compressor, and a touch of the shared room —
+ * that shared air is what keeps synthesized blips from reading as
+ * "computer noises" on top of the world instead of sounds inside it.
  */
 export declare class Sfx {
-    private ctx;
-    private master;
+    private engine;
+    constructor(engine: AudioEngine);
     /** Browsers require a user gesture before audio can start. */
     unlock(): void;
+    private get ctx();
     private tone;
     private noise;
     hit(): void;
     hurt(): void;
     swing(): void;
     chop(): void;
+    /** A stem snaps free of the plant: a leafy brush with a soft pop. */
+    forage(): void;
     /** Pick meets rock: a hard stony knock with a metallic tick on top. */
     mineClink(): void;
     /** A mined-out node collapses: low crunch + settling stone clatter. */
@@ -25,6 +33,8 @@ export declare class Sfx {
     treeFall(): void;
     /** The crown hits the ground: deep thud + leaf wash. */
     treeImpact(): void;
+    /** A body hitting the ground — dull and soft; heavy falls land lower. */
+    bodyThud(heavy: boolean): void;
     collect(): void;
     levelUp(): void;
     portal(): void;
@@ -61,5 +71,54 @@ export declare class Sfx {
     dash(): void;
     /** A kill: a small dark pop with a satisfying tail. */
     kill(): void;
+    /** An instant ray firing — a bright sustained lance with a crack. */
+    beam(): void;
+    /** A hazard zone igniting — a low bloom that settles into a simmer. */
+    ignite(): void;
+    /** A self-buff flourish — an ascending affirmation chord. */
+    empower(): void;
+    /** The bank chest waking: a slow wooden creak, a latch, a lid knock. */
+    chestOpen(): void;
+    /** The lid settling shut: soft thud, wood shift, latch tick. */
+    chestClose(): void;
+    /** The counter bell: two soft brass partials over a felt strike. */
+    shopBell(): void;
+    /** Stepping up to a station: a wooden tap and the tools shifting. */
+    stationOpen(): void;
+    /** Parchment unrolling — the skills scroll, the blueprint sheaf. */
+    parchment(): void;
+    /** Going through your things: leather and cloth, a buckle tick. */
+    satchel(): void;
+    /** A quiet panel breathing open: two rising sine touches. */
+    uiOpen(): void;
+    /** …and settling closed: the same pair, descending. */
+    uiClose(): void;
+    /** A control accepting your press: one soft wooden tap. */
+    uiTap(): void;
+    /** The pad cursor stepping between controls — barely-there tick. */
+    uiTick(): void;
+    /** Gear going on: leather shifts, a clasp snicks, weight settles. */
+    equipGear(): void;
+    /** Gear coming off — the softer reverse. */
+    unequipGear(): void;
+    /** A bite and a swallow. */
+    eat(): void;
+    /** Coin meeting coin — the money jingle, kept polite. */
+    coins(): void;
+    /** An item stowed — into the vault, the pack, a new slot. */
+    stow(): void;
+    /** An item let go onto the grass: a soft ground thud. */
+    dropThud(): void;
+    /** A seed pressed into worked soil. */
+    plantSeed(): void;
+    /** Construction landing: a solid wooden set-down, knocked twice. */
+    buildThump(): void;
+    /**
+     * One foot meeting the ground. THE SOFT-STEP LAW: footsteps are felt
+     * more than heard — grass is a brush of cloth against blades, stone
+     * a small dry contact, never a clop. `vol` arrives distance- and
+     * gait-scaled from the caller; everything here stays under it.
+     */
+    footstep(mat: 'grass' | 'stone' | 'wood' | 'dirt' | 'sand' | 'cave' | 'wet', vol: number, pan?: number): void;
 }
 //# sourceMappingURL=sfx.d.ts.map

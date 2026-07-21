@@ -1,4 +1,4 @@
-import { type EquipSlot, type InvSlot, type SkillXp } from '@devcraft/shared';
+import { type EquipSlot, type EquippedItem, type InvSlot, type Look, type SkillXp } from '@devcraft/shared';
 /** Explicit verbs the item context menu can dispatch. */
 export type SlotAction = 'use' | 'deposit' | 'sell' | 'drop';
 /**
@@ -21,15 +21,23 @@ export declare class Panels {
     private readonly stationContext;
     /** Active input device — the card's action hints speak its glyphs. */
     private readonly deviceMode;
-    /** Cosmetic sword-carry preference: read current + toggle. */
+    /** Cosmetic per-hand grip preference: read current + set. */
     private readonly carryStyle;
     private readonly onCarryStyle;
+    /** The mirror's model: the player's chosen look + grip prefs. */
+    private readonly portraitInfo;
     private readonly invPanel;
     private readonly invGrid;
     private readonly equipDoll;
     private readonly coinReadout;
     private readonly skillsPanel;
     private readonly skillsList;
+    /** The mirror: your actual rig wearing your actual gear, turning. */
+    private readonly figWell;
+    private readonly figCanvas;
+    private readonly gearStrip;
+    private figDir;
+    private static readonly FIG_DIRS;
     private readonly card;
     private readonly menu;
     /** The chosen technique per style, mirrored from the server. */
@@ -45,8 +53,12 @@ export declare class Panels {
     stationContext?: () => 'bank' | 'shop' | null, 
     /** Active input device — the card's action hints speak its glyphs. */
     deviceMode?: () => 'kb' | 'pad', 
-    /** Cosmetic sword-carry preference: read current + toggle. */
-    carryStyle?: () => 'normal' | 'rogue', onCarryStyle?: (style: 'normal' | 'rogue') => void);
+    /** Cosmetic per-hand grip preference: read current + set. */
+    carryStyle?: (hand: 'main' | 'off') => 'normal' | 'rogue', onCarryStyle?: (style: 'normal' | 'rogue', hand: 'main' | 'off') => void, 
+    /** The mirror's model: the player's chosen look + grip prefs. */
+    portraitInfo?: () => {
+        look: Look | null;
+    });
     toggleInventory(): void;
     showInventory(): void;
     toggleSkills(): void;
@@ -79,9 +91,29 @@ export declare class Panels {
     closeMenu(): boolean;
     get menuOpen(): boolean;
     renderInventory(slots: InvSlot[]): void;
-    renderEquipment(equipment: Partial<Record<string, string>>): void;
+    renderEquipment(equipment: Partial<Record<string, EquippedItem>>): void;
+    /**
+     * The gear ledger: everything your worn kit adds up to, as flat
+     * chips under the doll — total armor, rolled skill bonuses, HP and
+     * regen, style damage. Money and stats, always clearly labeled.
+     */
+    private renderGearStrip;
+    /**
+     * The mirror: the player's ACTUAL rig — same drawHumanoid as the
+     * world, wearing the equipment record live — turning through its
+     * four facings on the constructor's beat. (The cape rides the world
+     * cloth sim, so the mirror shows the kit beneath it.)
+     */
+    private drawPortrait;
     /** Server-confirmed technique choices; re-renders the picker. */
     setTechniques(chosen: Record<string, string>): void;
+    /**
+     * The hall of deeds: every skill is a CARD — icon plaque in its own
+     * accent, the level as the headline numeral, a thick meter with the
+     * exact xp story under it. Combat skills are wide hero cards whose
+     * Technique ladder lives inside them; trades sit two abreast. A
+     * total-level plaque crowns the hall.
+     */
     renderSkills(xp: SkillXp): void;
 }
 //# sourceMappingURL=panels.d.ts.map

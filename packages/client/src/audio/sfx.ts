@@ -158,6 +158,16 @@ export class Sfx {
     this.noise(0.3, 0.3);
   }
 
+  /** A body hitting the ground — dull and soft; heavy falls land lower. */
+  bodyThud(heavy: boolean): void {
+    this.tone(heavy ? 62 : 78, heavy ? 0.16 : 0.11, {
+      type: 'sine',
+      slide: heavy ? -26 : -20,
+      volume: heavy ? 0.34 : 0.24,
+    });
+    this.noise(heavy ? 0.12 : 0.08, heavy ? 0.14 : 0.09);
+  }
+
   collect(): void {
     this.tone(520, 0.07, { type: 'triangle', volume: 0.3 });
     this.tone(780, 0.09, { type: 'triangle', volume: 0.3, delay: 0.06 });
