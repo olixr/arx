@@ -50,8 +50,9 @@ function smooth(t: number): number {
  *
  * `side` is the FACING WEIGHT — sign = which way is forward, for BOTH
  * hands; magnitude = how profile the facing is (1 side-on, shrinking
- * toward front/back, floored ~0.35 by the caller so grips stay
- * readable). Every channel is linear in side, so a fractional weight
+ * toward front/back, floored ~0.2 by the caller — front-on the grip
+ * reads through the edge flip and lean sign, and a bigger floor
+ * splayed blades at the camera). Every channel is linear in side, so a fractional weight
  * relaxes the rake toward a near-vertical hang — there is no screen-
  * forward when the travel runs straight at (or away from) the camera,
  * and a full-profile rake there held swords sideways and fists high.

@@ -173,6 +173,8 @@ export interface RigPose {
    */
   depthMemory?: {
     mainBehind: boolean;
+    /** Facing-camera depth: the off arm rides in FRONT of the torso. */
+    offFront?: boolean;
     side?: number;
     prevSide?: number;
     sideFlipMs?: number;
@@ -1166,10 +1168,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // THE FACING-WEIGHT LAW: the carriage rake is a PROFILE read. Side-on
   // the blade rakes fully forward or back; facing the camera (or away)
   // there IS no screen-forward, so the rake relaxes toward a near-
-  // vertical hang — floored at 0.35 so the two grips stay readable
-  // front-on. Feeding the full ±1 at every facing is what held swords
-  // sideways and fists high on a north-south run.
-  const sideW = sideS * (0.35 + 0.65 * profileK);
+  // vertical hang. The floor is a whisper (0.2): front-on there is no
+  // direction for a rake to point, and the old 0.35 floor splayed the
+  // blade diagonally at the viewer — "pointing the sword at the
+  // camera" (user verdict). Grip identity front-on is carried by the
+  // edge flip and the lean SIGN, not by rake magnitude. Feeding the
+  // full ±1 at every facing is what held swords sideways and fists
+  // high on a north-south run.
+  const sideW = sideS * (0.2 + 0.8 * profileK);
   // THE SMOOTHED SWING LAW: the raw pump drive — the foot-lift
   // differential — saturates and kinks at every footfall, and wrists
   // driven straight off it hinge between two poses. An ~80ms low-pass
@@ -1209,7 +1215,15 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     restSettle = rig.restT * rig.restT * (3 - 2 * rig.restT);
     const wSide = sideS;
     const runK = rig.runF;
-    let hx = rig.x + wSide * tw * 1.02 * wS;
+    // THE HANG-WIDTH LAW: hands hang at shoulder width only in PROFILE
+    // (where the near hand must clear the turned torso). Front-on and
+    // back-on a relaxed arm tapers in from the shoulder to brush the
+    // HIP line — full-width hands at a frontal facing floated outward
+    // off the body, both fists splayed wide of the silhouette (the
+    // "hands come outward" read). Linear in profileK, so the stance
+    // breathes continuously through every diagonal.
+    const hangW = ww * 1.08 + (tw * 1.02 - ww * 1.08) * profileK;
+    let hx = rig.x + wSide * hangW * wS;
     let hy = armY + 0.17 * s;
     let hAngle = Math.PI / 2 + sideW * (0.3 + 0.35 * runK); // tip down, trailing
     // How "at rest" the rest really is: flourishes and wrist life only
@@ -1285,7 +1299,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // grip, its own flourish phase (the two never twirl in sync). The
     // hand rides a touch higher and tighter than the main: the trailing
     // blade of a paired stance, not a mirror image.
-    let ox = rig.x - wSide * tw * 1.02 * wS;
+    let ox = rig.x - wSide * hangW * wS;
     let oy = armY + 0.17 * s;
     if (offBlade) {
       // The carriage mirrors on FACING, not on the hanging side — the
@@ -1637,10 +1651,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const flipAt = mem ? (mem.mainBehind ? 0.78 : 0.86) : 0.82;
   const mainBehind = offBlade && restSettle > 0.5 && profileK > flipAt;
   if (mem) mem.mainBehind = mainBehind;
+  // THE FACING-CAMERA DEPTH LAW: facing the viewer, BOTH arms hang on
+  // the near side of the body — an off hand that overlaps the hip must
+  // read in FRONT of the torso, not clip behind it (the frontal cone
+  // where the depth effect "got lost"). Mirror of the weaponBehind law
+  // for the opposite pole, with the same hysteresis pattern so aim
+  // jitter at the boundary can never flicker the layering.
+  const offFrontAt = mem ? (mem.offFront ? 0.28 : 0.4) : 0.34;
+  const offFront = !mainBehind && restSettle > 0.5 && fy > offFrontAt;
+  if (mem) mem.offFront = offFront;
   if (mainBehind) {
     paintWeapon();
     paintMainArm();
-  } else {
+  } else if (!offFront) {
     paintOffArm();
   }
   if (weaponBehind && !mainBehind) {
@@ -1904,6 +1927,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // ---- weapon + striking arm in front of the torso (the bold read) —
   // unless the dual-wield profile flip already painted them behind it,
   // in which case the NEAR (off) arm is the foremost thing instead.
+  // Facing the camera the off arm joins the front layer too — under
+  // the main pair, so the weapon stays the boldest thing on screen.
+  if (offFront) paintOffArm();
   if (!weaponBehind && !mainBehind) {
     paintWeapon();
     paintMainArm();

@@ -166,8 +166,8 @@ test('facing-weight law: fractional side relaxes the rake continuously, laws int
   for (const grip of GRIPS) {
     for (const sgn of SIDES) {
       for (const k of [0, 0.5, 1]) {
-        let prev = bladeCarriage(grip, sgn * 0.3, k);
-        for (let w = 0.35; w <= 1.0001; w += 0.05) {
+        let prev = bladeCarriage(grip, sgn * 0.15, k);
+        for (let w = 0.2; w <= 1.0001; w += 0.05) {
           const c = bladeCarriage(grip, sgn * w, k);
           assert.ok(Math.abs(c.angle - prev.angle) < 0.12, `${grip} rake sweeps, never jumps`);
           assert.ok(Math.sin(c.angle) > 0.35, `${grip} tip stays below the hand at weight ${w}`);
