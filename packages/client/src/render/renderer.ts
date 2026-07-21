@@ -44,7 +44,7 @@ import { LegRig } from './legs.js';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import { Particles } from './particles.js';
 import { GrassSystem, windAt, windScalarAt, type Disturber } from './grass.js';
-import { paintTree, treeModel } from './trees.js';
+import { paintTree, treeModel, type TreeModel } from './trees.js';
 import { bellLantern, floraModel, floretTower, paintFlora } from './flora.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
@@ -348,6 +348,13 @@ export class Renderer {
   /** Where shadow helpers draw right now (batch layer or the frame). */
   private sdw: CanvasRenderingContext2D = this.shadowLayerCtx;
   private sdwLayerAlpha = 1;
+  /** True while a silhouette mask bake replays a painter offscreen —
+   *  gates side effects (glow queues, sparkles) out of the bake. */
+  private bakingMask = false;
+  /** Cached silhouette masks for TRUE-FORM cast shadows, keyed per
+   *  formation; cleared wholesale when the cap trips (rebakes are
+   *  cheap and only visible formations rebake). */
+  private readonly shadowMasks = new Map<string, { cv: HTMLCanvasElement; au: number; av: number }>();
   /**
    * Point lights that CAST this frame (screen space, strongest first).
    * Bodies and organic props near one throw an extra shadow lobe away
@@ -1081,6 +1088,143 @@ export class Renderer {
     c.globalAlpha = 1;
   }
 
+  // ------------------------------------- TRUE-FORM silhouette shadows
+  //
+  // The shadow IS the shape. A static formation bakes its painted
+  // silhouette once into a small mask (solid shadow color, hard
+  // thresholded edges — sharp like every shadow here), and each frame
+  // that mask is flattened onto the ground with one sheared drawImage:
+  // screen x picks up kx per pixel of height, screen y collapses to
+  // ky per pixel of height. Alignment is exact by construction — every
+  // block, seam and crystal the painter drew throws its own outline —
+  // and the per-frame cost is a single GPU-composited image transform.
+
+  /** Bake resolution, px per tile — masks scale to the live zoom. */
+  private static readonly MASK_S = 72;
+
+  /**
+   * Fetch (or bake) a silhouette mask. `paint` replays the object's
+   * own painter into the mask canvas with the base anchored at
+   * (au, av); the result is flattened to the current shadow color
+   * with a hard alpha threshold. Glows/sparkles are gated off during
+   * the bake, so time-varying garnish never fossilises into a shadow.
+   */
+  private shadowMask(
+    key: string,
+    wTiles: number,
+    upTiles: number,
+    downTiles: number,
+    paint: (ctx: CanvasRenderingContext2D, au: number, av: number) => void,
+  ): { cv: HTMLCanvasElement; au: number; av: number } {
+    const moon = this.sky.moonlit;
+    const full = `${key}:${moon ? 'm' : 's'}`;
+    const hit = this.shadowMasks.get(full);
+    if (hit) return hit;
+    if (this.shadowMasks.size > 240) this.shadowMasks.clear();
+    const B = Renderer.MASK_S;
+    const cv = document.createElement('canvas');
+    cv.width = Math.ceil(wTiles * B);
+    cv.height = Math.ceil((upTiles + downTiles) * B);
+    const mctx = cv.getContext('2d')!;
+    const au = cv.width / 2;
+    const av = upTiles * B;
+    const saved = this.ctx;
+    this.ctx = mctx;
+    this.bakingMask = true;
+    paint(mctx, au, av);
+    this.bakingMask = false;
+    this.ctx = saved;
+    // Flatten: every solid pixel becomes shadow color; translucent
+    // garnish (glow halos, soft stains) drops out entirely.
+    const img = mctx.getImageData(0, 0, cv.width, cv.height);
+    const d = img.data;
+    const [rr, gg, bb] = moon ? [14, 20, 48] : [24, 14, 32];
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3]! > 110) {
+        d[i] = rr;
+        d[i + 1] = gg;
+        d[i + 2] = bb;
+        d[i + 3] = 255;
+      } else {
+        d[i + 3] = 0;
+      }
+    }
+    mctx.putImageData(img, 0, 0);
+    const entry = { cv, au, av };
+    this.shadowMasks.set(full, entry);
+    return entry;
+  }
+
+  /**
+   * Throw a baked silhouette onto the ground: once along the sun (or
+   * moon), once away from each nearby pool of light. The shear maps a
+   * mask pixel `h` above the base line to (kx·h, ky·h) past the anchor
+   * — tall crowns land at the far tip of the shadow, feet stay glued
+   * to the contact line at every hour.
+   */
+  private castMask(
+    entry: { cv: HTMLCanvasElement; au: number; av: number },
+    px: number,
+    baseY: number,
+  ): void {
+    const q = this.camera.scale / Renderer.MASK_S;
+    const ys = this.camera.yScale;
+    const c = this.sdw;
+    const throwMask = (kx: number, ky: number, alpha: number): void => {
+      c.save();
+      c.globalAlpha = Math.min(1, alpha / this.sdwLayerAlpha);
+      c.transform(q, 0, -kx * q, -ky * q, px - entry.au * q + kx * q * entry.av, baseY + ky * q * entry.av);
+      c.drawImage(entry.cv, 0, 0);
+      c.restore();
+    };
+    if (this.sky.shadowAlpha >= 0.02) {
+      throwMask(
+        this.sky.shadowX * this.sky.shadowLen,
+        this.sky.shadowY * this.sky.shadowLen * ys,
+        this.sky.shadowAlpha,
+      );
+    }
+    for (const th of this.lightThrows(px, baseY, 0.6)) {
+      throwMask(th.ux * th.len, th.uy * th.len * ys, th.alpha);
+    }
+  }
+
+  /** A rock/ore formation's exact silhouette, thrown as its shadow. */
+  private castRockShadow(px: number, py: number, tile: Tile, h: number, crowded: boolean): void {
+    if (this.sky.shadowAlpha < 0.02 && this.frameLights.length === 0) return;
+    const B = Renderer.MASK_S;
+    const entry = this.shadowMask(`r${tile}.${h}.${crowded ? 1 : 0}`, 2.7, 2.0, 0.4, (_m, au, av) => {
+      this.drawRockFormation(au, av - B * 0.28, B, h, tile, 0, crowded);
+    });
+    this.castMask(entry, px, py + this.camera.scale * 0.28);
+  }
+
+  /** A wild forage plant's silhouette (grown calm: wind zeroed). */
+  private castFloraShadow(px: number, baseY: number, tile: Tile, h: number): void {
+    if (this.sky.shadowAlpha < 0.02 && this.frameLights.length === 0) return;
+    const fm = floraModel(tile, h);
+    const B = Renderer.MASK_S;
+    const entry = this.shadowMask(
+      `f${tile}.${h}`,
+      fm.spread * 2 + 0.7,
+      fm.height + 0.45,
+      0.35,
+      (mctx, au, av) => {
+        paintFlora(mctx, fm, {
+          bx: au,
+          groundY: av,
+          s: B,
+          wx: 0,
+          wy: 0,
+          tSec: 0,
+          flame: 0,
+          windOverride: 0,
+        });
+      },
+    );
+    this.castMask(entry, px, baseY);
+  }
+
   /**
    * Screen → world with elevation: a click on a plateau top must land
    * on the plateau, not on the (hidden) ground two tiles south. Try
@@ -1573,6 +1717,7 @@ export class Renderer {
    * bolt streaking across a night field carries its own pool of light.
    */
   queueGlow(x: number, y: number, r: number, rgb: string, a: number): void {
+    if (this.bakingMask) return;
     this.glows.push({ x, y, r, rgb, a });
     if (this.sky.darkness > 0.04) {
       const [rr = 255, gg = 255, bb = 255] = rgb.split(',').map((v) => Number.parseInt(v, 10));
@@ -3768,6 +3913,7 @@ export class Renderer {
 
   /** A four-point star twinkle - the "this is mineable" beacon. */
   private sparkle(x: number, y: number, r: number, alpha: number, color: string): void {
+    if (this.bakingMask) return;
     const ctx = this.ctx;
     ctx.globalAlpha = alpha;
     ctx.fillStyle = color;
@@ -4167,20 +4313,117 @@ export class Renderer {
     }
   }
 
-  private drawTreeShadow(bx: number, by: number, h: number, tile: Tile, grow = 1): void {
+  /**
+   * TRUE-FORM tree shadow: the same skeleton paintTree draws — trunk
+   * spine, fork arms, every canopy cluster — projected flat onto the
+   * ground along the light ray, riding the same wind cantilever so
+   * the shadow sways with its tree. One Path2D, one fill: limbs and
+   * clusters merge into a single density, never stacking.
+   */
+  private treeShadowPath(
+    m: TreeModel,
+    bx: number,
+    groundY: number,
+    g: number,
+    wind: number,
+    kx: number,
+    ky: number,
+  ): Path2D {
     const s = this.camera.scale;
-    const syT = s * this.camera.yScale;
+    const wMul = 0.45 + 0.55 * g;
+    const rMul = 0.5 + 0.5 * g;
+    const H = m.height;
+    const bendT = wind * 0.055 * H;
+    const path = new Path2D();
+    // Limbs: trunk + fork arms (boughs hide inside the canopy shadow).
+    for (const b of m.branches) {
+      if (b.level !== 0) continue;
+      const last = b.pts.length - 1;
+      const proj: Array<[number, number]> = b.pts.map(([x, y]) => {
+        const hf = Math.min(1, Math.max(0, y / H));
+        const dx = bendT * Math.pow(hf, 1.4);
+        return [bx + (x + dx) * g * s + kx * y * g * s, groundY + ky * y * g * s];
+      });
+      const left: Array<[number, number]> = [];
+      const right: Array<[number, number]> = [];
+      for (let i = 0; i <= last; i++) {
+        const a = proj[Math.max(0, i - 1)]!;
+        const c2 = proj[Math.min(last, i + 1)]!;
+        let tx2 = c2[0] - a[0];
+        let ty2 = c2[1] - a[1];
+        const len = Math.hypot(tx2, ty2) || 1;
+        tx2 /= len;
+        ty2 /= len;
+        const u = last > 0 ? i / last : 0;
+        const w = Math.max(1, (b.w0 + (b.w1 - b.w0) * u) * wMul * s * g);
+        left.push([proj[i]![0] - ty2 * w, proj[i]![1] + tx2 * w]);
+        right.push([proj[i]![0] + ty2 * w, proj[i]![1] - tx2 * w]);
+      }
+      path.moveTo(left[0]![0], left[0]![1]);
+      for (let i = 1; i <= last; i++) path.lineTo(left[i]![0], left[i]![1]);
+      for (let i = last; i >= 0; i--) path.lineTo(right[i]![0], right[i]![1]);
+      path.closePath();
+    }
+    // Canopy: each cluster's own faceted blob, sheared flat.
+    const squash = Math.max(0.5, Math.abs(ky));
+    for (const c of m.clusters) {
+      if (g < 0.7 && c.extra) continue;
+      const dx = bendT * Math.pow(Math.max(0, c.hf), 1.4);
+      const cxp = bx + (c.x + dx) * g * s + kx * c.y * g * s;
+      const cyp = groundY + ky * c.y * g * s;
+      const crp = c.r * rMul * s * g;
+      if (crp < 1.5) continue;
+      const blob = new Path2D();
+      facetBlob(blob as unknown as CanvasRenderingContext2D, 0, 0, crp, c.seed, m.sides, 0.92);
+      path.addPath(blob, new DOMMatrix([1, 0, -kx, -squash, cxp, cyp]));
+    }
+    return path;
+  }
+
+  private drawTreeShadow(
+    bx: number,
+    by: number,
+    wx: number,
+    wy: number,
+    h: number,
+    tile: Tile,
+    tSec: number,
+    grow = 1,
+  ): void {
+    const syT = this.camera.scale * this.camera.yScale;
+    const groundY = by + syT * 0.3;
+    const sunOn = this.sky.shadowAlpha >= 0.02;
+    const throws = this.lightThrows(bx, groundY, 0.6);
+    if (!sunOn && throws.length === 0) return;
     const m = treeModel(tile, h);
-    // The canopy silhouette thrown from its height, the trunk smear
-    // tying it to the roots — long at dawn, tucked in at noon.
-    this.castBlob(
-      bx,
-      by + syT * 0.18,
-      Math.min(2.1, 0.36 * m.height * grow),
-      m.spread * 0.62 * s * grow,
-      h ^ 0x33,
-      s * 0.09,
-    );
+    const wind = windScalarAt(wx, wy, tSec);
+    const ys = this.camera.yScale;
+    if (sunOn) {
+      const c = this.beginCastFill();
+      if (c) {
+        c.fill(
+          this.treeShadowPath(
+            m,
+            bx,
+            groundY,
+            grow,
+            wind,
+            this.sky.shadowX * this.sky.shadowLen,
+            this.sky.shadowY * this.sky.shadowLen * ys,
+          ),
+        );
+        c.globalAlpha = 1;
+      }
+    }
+    if (throws.length > 0) {
+      const c = this.sdw;
+      c.fillStyle = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
+      for (const th of throws) {
+        c.globalAlpha = Math.min(1, th.alpha / this.sdwLayerAlpha);
+        c.fill(this.treeShadowPath(m, bx, groundY, grow, wind, th.ux * th.len, th.uy * th.len * ys));
+      }
+      c.globalAlpha = 1;
+    }
   }
 
 
@@ -4674,7 +4917,7 @@ export class Renderer {
         const grow = this.growthOf(tx, ty, 0.45, 1, 2600);
         return {
           sortY: ty + 0.9,
-          drawShadow: () => this.drawTreeShadow(p.x, p.y, h, tile, grow),
+          drawShadow: () => this.drawTreeShadow(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, grow),
           draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, undefined, grow),
         };
       }
@@ -4690,7 +4933,7 @@ export class Renderer {
         const grow = this.growthOf(tx, ty, 0.16, 0.45, 1400);
         return {
           sortY: ty + 0.7,
-          drawShadow: () => this.drawTreeShadow(p.x, p.y, h, tree, grow),
+          drawShadow: () => this.drawTreeShadow(p.x, p.y, tx + 0.5, ty + 0.5, h, tree, t, grow),
           draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, tree, t, undefined, grow),
         };
       }
@@ -4715,9 +4958,7 @@ export class Renderer {
           south !== undefined && Renderer.ROCK_TILES.has(south) && game.world.elevAt(tx, ty + 1) === game.world.elevAt(tx, ty);
         return {
           sortY: ty + 0.85,
-          drawShadow: () => {
-            this.castBlob(p.x, p.y + s * 0.2, 0.55 * size, s * 0.46 * size, h ^ 0x11);
-          },
+          drawShadow: () => this.castRockShadow(p.x, p.y, tile, h, crowded),
           draw: () => this.drawRockFormation(p.x, p.y, s, h, tile, t, crowded),
         };
       }
@@ -4725,6 +4966,7 @@ export class Renderer {
       case Tile.Stump:
         return {
           sortY: ty + 0.6,
+          drawShadow: () => this.castContact(p.x, p.y + s * 0.06, s * 0.27, s * 0.11),
           draw: () => {
             // A hewn hexagonal stump — cut marks, not a smooth oval.
             ctx.fillStyle = '#7a552e';
@@ -6117,8 +6359,7 @@ export class Renderer {
         const syT = s * this.camera.yScale;
         return {
           sortY: ty + 0.78,
-          drawShadow: () =>
-            this.castBlob(p.x, p.y + syT * 0.3, Math.min(1.2, fm.height * 0.45), fm.spread * 0.66 * s, h ^ 0x2f),
+          drawShadow: () => this.castFloraShadow(p.x, p.y + syT * 0.3, tile, h),
           draw: () =>
             paintFlora(ctx, fm, {
               bx: p.x,
