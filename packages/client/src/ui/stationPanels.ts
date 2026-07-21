@@ -7,26 +7,34 @@ import {
   type SkillXp,
   type StationType,
 } from '@devcraft/shared';
-import { BUILDABLES, CROP_BY_SEED, GENERAL_STORE, instanceName, itemDef, recipesForStation } from '@devcraft/content';
+import {
+  BUILDABLES,
+  CROP_BY_SEED,
+  GENERAL_STORE,
+  instanceName,
+  itemDef,
+  recipesForStation,
+} from '@devcraft/content';
 import { buildableIconUrl, itemIconUrl } from '../render/icons.js';
-
-function iconEl(itemId: string): HTMLImageElement {
-  const img = document.createElement('img');
-  img.className = 'swatch-mini';
-  img.src = itemIconUrl(itemId, 32);
-  img.draggable = false;
-  return img;
-}
+import { bigButton, iconTile, levelBadge, needChip } from './panel.js';
 
 /**
- * Craft / bank / shop panels. Opened by interacting with the matching
- * world tile; every action is validated server-side — these are views.
+ * Craft / bank / shop / build panels. Opened by interacting with the
+ * matching world tile; every action is validated server-side — these
+ * are views.
  *
- * A world-anchored panel (bank chest, station, shop counter) belongs
- * to its tile: walk out of reach and it closes itself, exactly when
- * the server would start refusing its actions — a panel must never
- * outlive the interaction it fronts. Every panel also closes from a
- * ✕ button and from clicking the world.
+ * Design laws:
+ * - EVERY RECIPE IS A CARD. Output portrait, name, level badge, then
+ *   the material story as have/need chips — green when your pack
+ *   covers it, ember when short. No more mystery ingredient prose.
+ * - COUNTS ARE LIVE. The pack feeds the chips through `getInventory`;
+ *   `refreshOpen` re-renders the open maker panel whenever the pack
+ *   changes, so crafting five arrows watches the feather chip fall.
+ *   Focus survives the re-render by nav key (the pad law).
+ * - A world-anchored panel (bank chest, station, shop counter) belongs
+ *   to its tile: walk out of reach and it closes itself, exactly when
+ *   the server would start refusing its actions. Every panel also
+ *   closes from its ✕ chip and from clicking the world.
  */
 export class StationPanels {
   private readonly craftPanel = document.getElementById('craft-panel')!;
@@ -44,6 +52,12 @@ export class StationPanels {
   private lastBankGear: Array<{ id: number; item: string; roll: ItemRoll }> = [];
   /** World tile center the open panel is bound to (null = untethered). */
   private anchor: { x: number; y: number } | null = null;
+  /** What the open maker panel is showing — refreshOpen re-renders it. */
+  private showing:
+    | { kind: 'craft'; station: StationType | null; skills: SkillXp }
+    | { kind: 'plant'; tx: number; ty: number; skills: SkillXp }
+    | { kind: 'build'; skills: SkillXp }
+    | null = null;
 
   constructor(
     private readonly onCraft: (recipe: string, qty: number) => void,
@@ -55,6 +69,8 @@ export class StationPanels {
     ) => void,
     private readonly onShop: (op: 'buy' | 'sell', item: string, qty: number) => void,
     private readonly onPickBuildable: (id: string) => void,
+    /** The live pack — feeds every have/need chip. */
+    private readonly getInventory: () => InvSlot[] = () => [],
   ) {}
   // Close chips + header dressing come from ui/panel.ts (dressPanel),
   // wired in main — one anatomy for every panel in the game.
@@ -93,6 +109,7 @@ export class StationPanels {
     this.shopPanel.classList.add('hidden');
     this.buildPanel.classList.add('hidden');
     this.anchor = null;
+    this.showing = null;
   }
 
   /**
@@ -107,53 +124,116 @@ export class StationPanels {
     if (dx * dx + dy * dy > 3 * 3) this.closeAll();
   }
 
+  /** The pack changed — keep the open maker panel's chips honest. */
+  refreshOpen(): void {
+    if (!this.showing) return;
+    if (this.showing.kind === 'craft') this.renderCraft();
+    else if (this.showing.kind === 'plant') this.renderPlant();
+    else this.renderBuild();
+  }
+
+  /** Total of an item across the pack — the "have" in have/need. */
+  private countOf(item: string): number {
+    let n = 0;
+    for (const slot of this.getInventory()) {
+      if (slot && slot.item === item) n += slot.qty;
+    }
+    return n;
+  }
+
+  /** The card every maker row shares: portrait · name+badge · chips. */
+  private makeCard(opts: {
+    iconUrl: string | null;
+    swatchColor?: string;
+    name: string;
+    badge?: { level: number; skill: string; met: boolean };
+    chips: Array<{ item: string; need: number }>;
+    locked: boolean;
+    outQty?: number;
+  }): HTMLElement {
+    const card = document.createElement('div');
+    card.className = 'make-card' + (opts.locked ? ' disabled' : '');
+    let tile: HTMLElement;
+    if (opts.iconUrl) {
+      tile = iconTile(opts.iconUrl, 'sm');
+    } else {
+      tile = document.createElement('div');
+      tile.className = 'icon-tile sm';
+      const sw = document.createElement('div');
+      sw.className = 'tile-swatch';
+      sw.style.cssText = `width:70%;height:70%;background:${opts.swatchColor ?? '#666'}`;
+      tile.appendChild(sw);
+    }
+    if (opts.outQty && opts.outQty > 1) {
+      const q = document.createElement('span');
+      q.className = 'out-qty';
+      q.textContent = `×${opts.outQty}`;
+      tile.appendChild(q);
+    }
+    card.appendChild(tile);
+
+    const mid = document.createElement('div');
+    mid.className = 'make-mid';
+    const head = document.createElement('div');
+    head.className = 'make-name';
+    head.textContent = opts.name;
+    mid.appendChild(head);
+    const chips = document.createElement('div');
+    chips.className = 'make-chips';
+    for (const c of opts.chips) {
+      const def = itemDef(c.item);
+      chips.appendChild(
+        needChip(itemIconUrl(c.item, 24), this.countOf(c.item), c.need, def?.name ?? c.item),
+      );
+    }
+    if (opts.badge) {
+      chips.appendChild(levelBadge(opts.badge.level, opts.badge.skill, opts.badge.met));
+    }
+    mid.appendChild(chips);
+    card.appendChild(mid);
+
+    const actions = document.createElement('div');
+    actions.className = 'make-actions';
+    card.appendChild(actions);
+    return card;
+  }
+
+  private static actionsOf(card: HTMLElement): HTMLElement {
+    return card.querySelector('.make-actions')!;
+  }
+
   // ------------------------------------------------------------ build
 
   openBuild(skills: SkillXp): void {
     this.closeAll();
+    this.showing = { kind: 'build', skills };
+    this.renderBuild();
+    this.buildPanel.classList.remove('hidden');
+  }
+
+  private renderBuild(): void {
+    if (this.showing?.kind !== 'build') return;
+    const { skills } = this.showing;
     this.buildList.innerHTML = '';
     for (const def of BUILDABLES.values()) {
       const skill = def.skill ?? 'construction';
       const level = levelForXp(skills[skill] ?? 0);
       const locked = level < def.levelReq;
-      const row = document.createElement('div');
-      row.className = 'list-row' + (locked ? ' disabled' : '');
-      // Real art for every buildable; the tile-color swatch survives as
-      // the fallback so an unmapped buildable still shows something.
-      const iconUrl = buildableIconUrl(def.id, 32);
-      let swatch: HTMLElement;
-      if (iconUrl) {
-        const img = document.createElement('img');
-        img.className = 'swatch-mini';
-        img.src = iconUrl;
-        img.draggable = false;
-        swatch = img;
-      } else {
-        swatch = document.createElement('div');
-        swatch.className = 'swatch-mini tile-swatch';
-        swatch.style.background = tileDef(def.tile).topColor ?? tileDef(def.tile).color;
-      }
-      const name = document.createElement('div');
-      name.className = 'row-name';
-      const mats = def.materials
-        .map((m) => `${m.qty}× ${itemDef(m.item)?.name ?? m.item}`)
-        .join(', ');
-      name.innerHTML = `${def.name}<span class="row-sub">${
-        mats ? `${mats} · ` : ''
-      }lvl ${def.levelReq} ${skill}</span>`;
-      row.append(swatch, name);
+      const card = this.makeCard({
+        iconUrl: buildableIconUrl(def.id, 40),
+        swatchColor: tileDef(def.tile).topColor ?? tileDef(def.tile).color,
+        name: def.name,
+        badge: { level: def.levelReq, skill, met: !locked },
+        chips: def.materials.map((m) => ({ item: m.item, need: m.qty })),
+        locked,
+      });
       if (!locked) {
-        const btn = document.createElement('button');
-        btn.textContent = 'Place';
-        btn.dataset.nav = '';
-        btn.dataset.navkey = `build:${def.id}`;
-        btn.dataset.acta = 'Place';
-        btn.addEventListener('click', () => this.onPickBuildable(def.id));
-        row.appendChild(btn);
+        StationPanels.actionsOf(card).appendChild(
+          bigButton('Place', `build:${def.id}`, () => this.onPickBuildable(def.id)),
+        );
       }
-      this.buildList.appendChild(row);
+      this.buildList.appendChild(card);
     }
-    this.buildPanel.classList.remove('hidden');
   }
 
   // ------------------------------------------------------------ plant
@@ -169,51 +249,54 @@ export class StationPanels {
     skills: SkillXp,
     at?: { tx: number; ty: number },
   ): void {
+    void inventory; // counts come live from getInventory now
     this.closeAll();
     this.anchor = at ? { x: at.tx + 0.5, y: at.ty + 0.5 } : { x: tx + 0.5, y: ty + 0.5 };
+    this.showing = { kind: 'plant', tx, ty, skills };
     this.craftTitle.textContent = 'Planting';
+    this.renderPlant();
+    this.craftPanel.classList.remove('hidden');
+  }
+
+  private renderPlant(): void {
+    if (this.showing?.kind !== 'plant') return;
+    const { tx, ty, skills } = this.showing;
     this.craftList.innerHTML = '';
     const level = levelForXp(skills.farming ?? 0);
 
     // Tally the seed pouches in the pack.
     const held = new Map<string, number>();
-    for (const slot of inventory) {
+    for (const slot of this.getInventory()) {
       if (slot && CROP_BY_SEED.has(slot.item)) {
         held.set(slot.item, (held.get(slot.item) ?? 0) + slot.qty);
       }
     }
     if (held.size === 0) {
       const empty = document.createElement('div');
-      empty.className = 'list-row';
+      empty.className = 'make-empty';
       empty.textContent = 'No seeds in your pack — buy some at the shop, or forage wild herbs.';
       this.craftList.appendChild(empty);
     }
-    for (const [seed, qty] of held) {
+    for (const [seed] of held) {
       const crop = CROP_BY_SEED.get(seed)!;
       const locked = level < crop.levelReq;
-      const row = document.createElement('div');
-      row.className = 'list-row' + (locked ? ' disabled' : '');
-      const swatch = iconEl(seed);
-      const name = document.createElement('div');
-      name.className = 'row-name';
-      name.innerHTML =
-        `${crop.name}<span class="row-sub">×${qty} · ~${crop.growMinutes} min · lvl ${crop.levelReq} farming</span>`;
-      row.append(swatch, name);
+      const card = this.makeCard({
+        iconUrl: itemIconUrl(seed, 40),
+        name: `${crop.name} · ~${crop.growMinutes} min`,
+        badge: { level: crop.levelReq, skill: 'farming', met: !locked },
+        chips: [{ item: seed, need: 1 }],
+        locked,
+      });
       if (!locked) {
-        const btn = document.createElement('button');
-        btn.textContent = 'Plant';
-        btn.dataset.nav = '';
-        btn.dataset.navkey = `plant:${seed}`;
-        btn.dataset.acta = 'Plant';
-        btn.addEventListener('click', () => {
-          this.onPlant?.(tx, ty, seed);
-          this.closeAll();
-        });
-        row.appendChild(btn);
+        StationPanels.actionsOf(card).appendChild(
+          bigButton('Plant', `plant:${seed}`, () => {
+            this.onPlant?.(tx, ty, seed);
+            this.closeAll();
+          }),
+        );
       }
-      this.craftList.appendChild(row);
+      this.craftList.appendChild(card);
     }
-    this.craftPanel.classList.remove('hidden');
   }
 
   // ------------------------------------------------------------ craft
@@ -233,37 +316,41 @@ export class StationPanels {
       enchanting_table: 'Enchanting',
     };
     this.craftTitle.textContent = station ? labels[station]! : 'Handiwork';
+    this.showing = { kind: 'craft', station, skills };
+    this.renderCraft();
+    this.craftPanel.classList.remove('hidden');
+  }
+
+  private renderCraft(): void {
+    if (this.showing?.kind !== 'craft') return;
+    const { station, skills } = this.showing;
     this.craftList.innerHTML = '';
     for (const recipe of recipesForStation(station)) {
       const level = levelForXp(skills[recipe.skill] ?? 0);
       const locked = level < recipe.levelReq;
-      const row = document.createElement('div');
-      row.className = 'list-row' + (locked ? ' disabled' : '');
-
-      const swatch = iconEl(recipe.output.item);
-
-      const name = document.createElement('div');
-      name.className = 'row-name';
-      const inputs = recipe.inputs
-        .map((i) => `${i.qty}× ${itemDef(i.item)?.name ?? i.item}`)
-        .join(', ');
-      name.innerHTML = `${recipe.name}<span class="row-sub">${inputs} · lvl ${recipe.levelReq} ${recipe.skill}</span>`;
-
-      row.append(swatch, name);
+      const card = this.makeCard({
+        iconUrl: itemIconUrl(recipe.output.item, 40),
+        name: recipe.name,
+        badge: { level: recipe.levelReq, skill: recipe.skill, met: !locked },
+        chips: recipe.inputs.map((i) => ({ item: i.item, need: i.qty })),
+        locked,
+        outQty: recipe.output.qty,
+      });
       if (!locked) {
+        const actions = StationPanels.actionsOf(card);
         for (const qty of [1, 5, 28]) {
-          const btn = document.createElement('button');
-          btn.textContent = qty === 28 ? 'All' : `×${qty}`;
-          btn.dataset.nav = '';
-          btn.dataset.navkey = `craft:${recipe.id}:${qty}`;
-          btn.dataset.acta = 'Craft';
-          btn.addEventListener('click', () => this.onCraft(recipe.id, qty));
-          row.appendChild(btn);
+          actions.appendChild(
+            bigButton(
+              qty === 28 ? 'All' : `×${qty}`,
+              `craft:${recipe.id}:${qty}`,
+              () => this.onCraft(recipe.id, qty),
+              { acta: 'Craft', minor: qty !== 1 },
+            ),
+          );
         }
       }
-      this.craftList.appendChild(row);
+      this.craftList.appendChild(card);
     }
-    this.craftPanel.classList.remove('hidden');
   }
 
   // ------------------------------------------------------------- bank
@@ -295,53 +382,55 @@ export class StationPanels {
     const entries = Object.entries(this.lastBank).sort(([a], [b]) => a.localeCompare(b));
     if (entries.length === 0 && this.lastBankGear.length === 0) {
       const empty = document.createElement('div');
-      empty.className = 'list-row';
+      empty.className = 'make-empty';
       empty.textContent = 'Your vault is empty.';
       this.bankList.appendChild(empty);
     }
     // Rolled gear first — each row is one exact instance, tinted by its
     // rarity, withdrawn by its stable row id.
     for (const g of this.lastBankGear) {
-      const def = itemDef(g.item);
-      const row = document.createElement('div');
-      row.className = 'list-row';
-      const swatch = iconEl(g.item);
-      const name = document.createElement('div');
-      name.className = 'row-name';
+      const card = this.makeCard({
+        iconUrl: itemIconUrl(g.item, 40),
+        name: instanceName(g.item, g.roll),
+        chips: [],
+        locked: false,
+      });
+      const nameEl = card.querySelector<HTMLElement>('.make-name')!;
       const tint = RARITY_COLORS[g.roll.rar];
-      const label = instanceName(g.item, g.roll);
-      name.innerHTML = tint
-        ? `<span style="color:${tint}">${label}</span><span class="row-sub">${g.roll.rar}</span>`
-        : `${label}<span class="row-sub">stored</span>`;
-      row.append(swatch, name);
-      const btn = document.createElement('button');
-      btn.textContent = 'Take';
-      btn.dataset.nav = '';
-      btn.dataset.navkey = `bankgear:${g.id}`;
-      btn.dataset.acta = 'Withdraw';
-      btn.addEventListener('click', () => this.onBank('withdraw', g.item, 1, g.id));
-      row.appendChild(btn);
-      this.bankList.appendChild(row);
+      if (tint) nameEl.style.color = tint;
+      const sub = document.createElement('span');
+      sub.className = 'make-sub';
+      sub.textContent = g.roll.rar;
+      nameEl.insertAdjacentElement('afterend', sub);
+      StationPanels.actionsOf(card).appendChild(
+        bigButton('Take', `bankgear:${g.id}`, () => this.onBank('withdraw', g.item, 1, g.id), {
+          acta: 'Withdraw',
+        }),
+      );
+      this.bankList.appendChild(card);
     }
     for (const [item, qty] of entries) {
       const def = itemDef(item);
-      const row = document.createElement('div');
-      row.className = 'list-row';
-      const swatch = iconEl(item);
-      const name = document.createElement('div');
-      name.className = 'row-name';
-      name.innerHTML = `${def?.name ?? item}<span class="row-sub">${qty.toLocaleString()} stored</span>`;
-      row.append(swatch, name);
+      const card = this.makeCard({
+        iconUrl: itemIconUrl(item, 40),
+        name: def?.name ?? item,
+        chips: [],
+        locked: false,
+      });
+      const sub = document.createElement('span');
+      sub.className = 'make-sub';
+      sub.textContent = `${qty.toLocaleString()} stored`;
+      card.querySelector('.make-name')!.insertAdjacentElement('afterend', sub);
+      const actions = StationPanels.actionsOf(card);
       for (const [label, n] of [['×1', 1], ['×5', 5], ['All', qty]] as const) {
-        const btn = document.createElement('button');
-        btn.textContent = label;
-        btn.dataset.nav = '';
-        btn.dataset.navkey = `bank:${item}:${label}`;
-        btn.dataset.acta = 'Withdraw';
-        btn.addEventListener('click', () => this.onBank('withdraw', item, n));
-        row.appendChild(btn);
+        actions.appendChild(
+          bigButton(label, `bank:${item}:${label}`, () => this.onBank('withdraw', item, n), {
+            acta: 'Withdraw',
+            minor: label !== '×1',
+          }),
+        );
       }
-      this.bankList.appendChild(row);
+      this.bankList.appendChild(card);
     }
   }
 
@@ -353,23 +442,32 @@ export class StationPanels {
     this.shopList.innerHTML = '';
     for (const entry of GENERAL_STORE) {
       const def = itemDef(entry.item);
-      const row = document.createElement('div');
-      row.className = 'list-row';
-      const swatch = iconEl(entry.item);
-      const name = document.createElement('div');
-      name.className = 'row-name';
-      name.innerHTML = `${def?.name ?? entry.item}<span class="row-sub">${entry.price} coins</span>`;
-      row.append(swatch, name);
+      const card = this.makeCard({
+        iconUrl: itemIconUrl(entry.item, 40),
+        name: def?.name ?? entry.item,
+        chips: [],
+        locked: false,
+      });
+      // The price, clearly labeled in coin.
+      const sub = document.createElement('span');
+      sub.className = 'make-sub coin-sub';
+      const coin = document.createElement('img');
+      coin.src = itemIconUrl('coins', 18);
+      coin.draggable = false;
+      const amount = document.createElement('span');
+      amount.textContent = `${entry.price.toLocaleString()} each`;
+      sub.append(coin, amount);
+      card.querySelector('.make-name')!.insertAdjacentElement('afterend', sub);
+      const actions = StationPanels.actionsOf(card);
       for (const [label, n] of [['Buy 1', 1], ['Buy 5', 5]] as const) {
-        const btn = document.createElement('button');
-        btn.textContent = label;
-        btn.dataset.nav = '';
-        btn.dataset.navkey = `shop:${entry.item}:${n}`;
-        btn.dataset.acta = 'Buy';
-        btn.addEventListener('click', () => this.onShop('buy', entry.item, n));
-        row.appendChild(btn);
+        actions.appendChild(
+          bigButton(label, `shop:${entry.item}:${n}`, () => this.onShop('buy', entry.item, n), {
+            acta: 'Buy',
+            minor: n !== 1,
+          }),
+        );
       }
-      this.shopList.appendChild(row);
+      this.shopList.appendChild(card);
     }
     this.shopPanel.classList.remove('hidden');
   }

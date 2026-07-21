@@ -1009,6 +1009,100 @@ body:has(#skills-panel:not(.hidden)) .side-panel.wide {
   gap: 8px;
 }
 
+/* ---- maker cards: every recipe/pile/blueprint is a card ---- */
+
+.make-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--raise);
+  border: 1.5px solid var(--line);
+  border-radius: 7px;
+  padding: 10px 12px;
+  text-shadow: var(--punch-small);
+}
+
+.make-card.disabled {
+  opacity: 0.45;
+}
+
+.make-mid {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.make-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--parchment);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.make-sub {
+  font-size: 13px;
+  color: var(--parchment-dim);
+}
+
+.make-sub.coin-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--gold-bright);
+  font-weight: 700;
+}
+
+.make-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.make-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.make-actions .act-btn {
+  padding: 9px 13px;
+  font-size: 14px;
+}
+
+.make-empty {
+  padding: 14px;
+  font-size: 14.5px;
+  color: var(--parchment-dim);
+  background: var(--raise);
+  border: 1.5px solid var(--line);
+  border-radius: 7px;
+  text-shadow: var(--punch-small);
+}
+
+.icon-tile.sm {
+  width: 56px;
+  height: 56px;
+  position: relative;
+}
+
+.out-qty {
+  position: absolute;
+  right: 2px;
+  bottom: 1px;
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--gold-bright);
+  background: rgba(12, 8, 24, 0.85);
+  border-radius: 3px;
+  text-shadow: var(--punch-small);
+}
+
 .list-row {
   display: flex;
   align-items: center;

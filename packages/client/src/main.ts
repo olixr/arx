@@ -181,6 +181,8 @@ const stationPanels = new StationPanels(
           : 'Click the ground to place. X+click demolishes. Esc to stop building.',
     });
   },
+  // The live pack — every maker panel's have/need chips read it.
+  () => game.inventory,
 );
 
 stationPanels.onPlant = (tx, ty, seed) => game.plantSend(tx, ty, seed);
@@ -325,6 +327,8 @@ const game = new ClientGame(input, {
   },
   onInventory: (slots) => {
     panels.renderInventory(slots);
+    // Keep the open maker panel's have/need chips honest.
+    stationPanels.refreshOpen();
     if (game.action) sfx.collect();
   },
   onSkills: (xp) => panels.renderSkills(xp),
