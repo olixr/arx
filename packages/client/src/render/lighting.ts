@@ -56,6 +56,11 @@ export class LightingSystem {
   /**
    * Paint the frame's exposure. `blocks` answers whether a tile stops
    * light (walls, cliffs); it is only consulted near occluding lights.
+   * `faceH` is the height of a blocking face in WORLD-y units
+   * (screen-vertical walls divide the camera squash back out) — it
+   * sizes the lit-face response, the map's one piece of normal-aware
+   * shading: a wall standing south of a lamp catches the light on the
+   * face the camera sees.
    */
   draw(
     ctx: CanvasRenderingContext2D,
@@ -63,6 +68,7 @@ export class LightingSystem {
     sky: DaylightSample,
     lights: WorldLight[],
     blocks: (tx: number, ty: number) => boolean,
+    faceH = 0,
   ): void {
     if (sky.darkness < 0.02) return; // full daylight: multiply-by-white
     const mw = Math.max(1, Math.ceil(view.w / MAP_DOWNSCALE));
@@ -88,7 +94,7 @@ export class LightingSystem {
     for (const light of lights) {
       if (light.intensity <= 0.01) continue;
       if (light.occlude) {
-        this.drawOccludedLight(light, blocks, sx, sy, tx, ty);
+        this.drawOccludedLight(light, blocks, sx, sy, tx, ty, faceH);
       } else {
         m.setTransform(sx, 0, 0, sy, tx, ty);
         m.globalCompositeOperation = 'screen';
@@ -131,6 +137,7 @@ export class LightingSystem {
     sy: number,
     tx: number,
     ty: number,
+    faceH: number,
   ): void {
     // Scratch bbox in map pixels around the light.
     const bx = Math.floor(light.x * sx + tx - light.r * sx) - 1;
@@ -152,7 +159,9 @@ export class LightingSystem {
     t.fillRect(light.x - light.r, light.y - light.r, light.r * 2, light.r * 2);
 
     // Hard shadows: every back-facing edge of every solid tile in
-    // reach projects away from the light to beyond its radius.
+    // reach projects away from the light to beyond its radius — with
+    // a half-strength penumbra fringe so the wedge softens toward its
+    // rim instead of ending on a razor line.
     t.globalCompositeOperation = 'destination-out';
     t.fillStyle = '#000';
     const t0x = Math.floor(light.x - light.r);
@@ -161,15 +170,34 @@ export class LightingSystem {
     const t1y = Math.ceil(light.y + light.r);
     const lTx = Math.floor(light.x);
     const lTy = Math.floor(light.y);
+    const faces: Array<[number, number, number, number]> = [];
     for (let cy = t0y; cy <= t1y; cy++) {
       for (let cx = t0x; cx <= t1x; cx++) {
         if (cx === lTx && cy === lTy) continue;
         if (!blocks(cx, cy)) continue;
-        this.castTileShadow(t, light, cx, cy);
+        this.castTileShadow(t, light, cx, cy, faces);
+      }
+    }
+    t.globalCompositeOperation = 'source-over';
+    // THE LIT FACES: a south face standing in the pool catches the
+    // lamp on the side the camera sees — brightness follows N·L (how
+    // squarely the face looks at the light) and the pool's falloff,
+    // hottest at the foot and dying up the wall. Painted after the
+    // shadow erase, it re-lights exactly the band the wall's own
+    // occlusion wedge blacked out — light lands ON the wall, not
+    // through it.
+    if (faceH > 0) {
+      const [r, g, b] = light.rgb;
+      for (const [x0, x1, ye, k] of faces) {
+        const grad = t.createLinearGradient(0, ye, 0, ye - faceH);
+        grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${k})`);
+        grad.addColorStop(0.55, `rgba(${r}, ${g}, ${b}, ${k * 0.45})`);
+        grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+        t.fillStyle = grad;
+        t.fillRect(x0, ye - faceH, x1 - x0, faceH);
       }
     }
     t.setTransform(1, 0, 0, 1, 0, 0);
-    t.globalCompositeOperation = 'source-over';
 
     const m = this.mctx;
     m.setTransform(1, 0, 0, 1, 0, 0);
@@ -177,12 +205,19 @@ export class LightingSystem {
     m.drawImage(this.tmp, 0, 0, bw, bh, bx, by, bw, bh);
   }
 
-  /** Project the tile square's silhouette away from the light. */
+  /**
+   * Project the tile square's silhouette away from the light, and
+   * report any camera-visible face the light strikes. Each occluding
+   * edge erases twice: a slightly splayed half-alpha quad (penumbra),
+   * then the exact hard quad (umbra) — the shadow's rim softens the
+   * further it runs, the core stays black.
+   */
   private castTileShadow(
     t: CanvasRenderingContext2D,
     light: WorldLight,
     cx: number,
     cy: number,
+    faces: Array<[number, number, number, number]>,
   ): void {
     // Corners clockwise; edges (a,b) with outward normals.
     const c: Array<[number, number]> = [
@@ -198,25 +233,54 @@ export class LightingSystem {
       [-1, 0],
     ];
     const reach = light.r * 2.2;
+    const PEN = 0.085; // penumbra splay, radians
+    const cosP = Math.cos(PEN);
+    const sinP = Math.sin(PEN);
     for (let e = 0; e < 4; e++) {
       const a = c[e]!;
       const b = c[(e + 1) % 4]!;
       const mx = (a[0] + b[0]) / 2 - light.x;
       const my = (a[1] + b[1]) / 2 - light.y;
-      // Back-facing: the edge's outward normal agrees with the ray
-      // from the light — this edge is the far silhouette.
-      if (mx * normals[e]![0] + my * normals[e]![1] <= 0) continue;
-      const da = Math.hypot(a[0] - light.x, a[1] - light.y) || 1;
-      const db = Math.hypot(b[0] - light.x, b[1] - light.y) || 1;
-      const ax = a[0] + ((a[0] - light.x) / da) * reach;
-      const ay = a[1] + ((a[1] - light.y) / da) * reach;
-      const bx2 = b[0] + ((b[0] - light.x) / db) * reach;
-      const by2 = b[1] + ((b[1] - light.y) / db) * reach;
+      // Front-facing: the light strikes this side. The south face
+      // (e === 2) is the one the camera sees — record it for the
+      // lit-face pass, graded by falloff and how squarely it faces
+      // the pool (N·L).
+      if (mx * normals[e]![0] + my * normals[e]![1] <= 0) {
+        if (e === 2 && my < 0) {
+          const d = Math.hypot(mx, my) || 1;
+          const fall = 1 - d / light.r;
+          const k = Math.min(0.6, light.intensity * Math.pow(Math.max(0, fall), 1.4) * (-my / d) * 0.85);
+          if (k > 0.03) faces.push([Math.min(a[0], b[0]), Math.max(a[0], b[0]), a[1], k]);
+        }
+        continue;
+      }
+      const dax = a[0] - light.x;
+      const day = a[1] - light.y;
+      const dbx = b[0] - light.x;
+      const dby = b[1] - light.y;
+      const da = Math.hypot(dax, day) || 1;
+      const db = Math.hypot(dbx, dby) || 1;
+      const uax = dax / da;
+      const uay = day / da;
+      const ubx = dbx / db;
+      const uby = dby / db;
+      // Penumbra: corner rays splayed outward (a away from b's side,
+      // b away from a's side), erased at half strength.
+      t.globalAlpha = 0.45;
       t.beginPath();
       t.moveTo(a[0], a[1]);
       t.lineTo(b[0], b[1]);
-      t.lineTo(bx2, by2);
-      t.lineTo(ax, ay);
+      t.lineTo(b[0] + (ubx * cosP - uby * sinP) * reach, b[1] + (uby * cosP + ubx * sinP) * reach);
+      t.lineTo(a[0] + (uax * cosP + uay * sinP) * reach, a[1] + (uay * cosP - uax * sinP) * reach);
+      t.closePath();
+      t.fill();
+      // Umbra: the exact silhouette wedge, fully dark.
+      t.globalAlpha = 1;
+      t.beginPath();
+      t.moveTo(a[0], a[1]);
+      t.lineTo(b[0], b[1]);
+      t.lineTo(b[0] + ubx * reach, b[1] + uby * reach);
+      t.lineTo(a[0] + uax * reach, a[1] + uay * reach);
       t.closePath();
       t.fill();
     }

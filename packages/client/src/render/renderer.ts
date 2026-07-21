@@ -1586,6 +1586,9 @@ export class Renderer {
         const t = game.world.groundAt(tx, ty);
         return t !== undefined && (Renderer.LIGHT_BLOCKERS.has(t) || t === Tile.Cliff);
       },
+      // Lit-face height in world-y units: wall faces rise WALL_H tiles
+      // of SCREEN height, so divide the camera squash back out.
+      WALL_H / this.camera.yScale,
     );
     this.lights.length = 0;
     // Moving lights hand their positions to next frame's shadow pass.
