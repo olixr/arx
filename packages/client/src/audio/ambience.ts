@@ -4,14 +4,21 @@
  * disappear from attention within a minute and leave a hole if muted.
  *
  * Layers, all crossfaded continuously by zone weight and clock:
- *  - WIND: leaf rustle — a soft HIGH band (~3.9kHz) that only sounds
- *    while a gust crests, riding the SAME wind field the grass and
- *    trees bend to (grass.ts windScalarAt), silent between gusts.
- *    Never a low-mid broadband bed (that reads as surf — user
- *    verdict), and never a second weather.
+ *  - LEAF RUSTLE (the "wind"): a GRANULAR texture — a pre-rendered
+ *    stereo loop of hundreds of overlapping micro-grains (each a
+ *    15-80ms flutter), so the sound flickers like foliage instead of
+ *    washing like water. Gated by the squared gust curve of the SAME
+ *    wind field the grass and trees bend to; silent between gusts.
+ *    THE BAN (two user rejections): NO continuous filtered-noise bed
+ *    may ever play, in any band — a smooth gain envelope on noise
+ *    reads as waves crashing, full stop. Granular or nothing.
  *  - BIRDS (day, outdoors): sparse procedural songbird phrases —
  *    2-5 small warbles, panned somewhere in the trees, occasionally
  *    distant. Denser through the dawn chorus, gone by dusk.
+ *  - MOURNING DOVE (day, outdoors): the soft low coo-ah-ooo of the
+ *    North American morning, a few times a minute at most.
+ *  - WOODPECKER (day, wild): a distant drum roll on a far snag,
+ *    rare enough to be an event.
  *  - CRICKETS (night, outdoors): two soft pulse-train voices, panned
  *    apart, low-passed well below "shrill" — the user's law: night
  *    sounds must soothe, never nag.
@@ -41,6 +48,8 @@ export class AmbienceSystem {
   private nextCricketAt: number[] = [0, 0];
   private nextDripAt = 0;
   private nextTownAt = 0;
+  private nextDoveAt = 0;
+  private nextPeckAt = 0;
   /** Debug mirrors for live verification. */
   gates = { wind: 0, birds: 0, crickets: 0, cave: 0 };
 
@@ -63,13 +72,13 @@ export class AmbienceSystem {
       // windScalarAt runs ~[-0.6, 1.4] (what the trees lean on) — remap
       // the full swell onto [0, 1] so lulls truly hush and gusts crest.
       const wind = Math.max(0, Math.min(1, (windScalarAt(x, y, tSec) + 0.3) / 1.55));
-      // Squared gust curve: rustle exists ONLY while a gust crests —
-      // between gusts the trees are silent, exactly like the grass is
-      // still. No floor term, or the surf comes back.
-      const windLevel = (w.wild * 1 + w.town * 0.5) * wind * wind * (0.6 + 0.4 * day) * 0.055;
+      // Squared gust curve: the leaf-grain loop sounds ONLY while a
+      // gust crests — between gusts the trees are silent, exactly
+      // like the grass is still. No floor term, ever.
+      const windLevel = (w.wild * 1 + w.town * 0.5) * wind * wind * (0.6 + 0.4 * day) * 0.06;
       this.windGain!.gain.setTargetAtTime(windLevel, t, 0.4);
-      // A cresting gust rustles slightly brighter — leaves, not a tone.
-      this.windFilter!.frequency.setTargetAtTime(3600 + wind * 900, t, 0.5);
+      // A cresting gust flutters slightly brighter — leaves, not a tone.
+      this.windFilter!.frequency.setTargetAtTime(4000 + wind * 700, t, 0.5);
       this.rumbleGain!.gain.setTargetAtTime(w.cave * 0.1, t, 0.8);
       const cr = night * outdoor * 0.038;
       for (const g of this.cricketGains) g.gain.setTargetAtTime(cr, t, 0.6);
@@ -99,6 +108,14 @@ export class AmbienceSystem {
       if (w.town > 0.5 && day > 0.4) this.townTink(ctx, bus, t);
       this.nextTownAt = t + 16 + Math.random() * 18;
     }
+    if (t >= this.nextDoveAt) {
+      if (day * outdoor * (w.wild + w.town * 0.6) > 0.25) this.dove(ctx, bus, t);
+      this.nextDoveAt = t + 24 + Math.random() * 26;
+    }
+    if (t >= this.nextPeckAt) {
+      if (day * outdoor * w.wild > 0.3) this.woodpecker(ctx, bus, t);
+      this.nextPeckAt = t + 35 + Math.random() * 45;
+    }
   }
 
   // ---- persistent graph ------------------------------------------------
@@ -115,22 +132,28 @@ export class AmbienceSystem {
       return src;
     };
 
-    // Wind = LEAF RUSTLE, not air (user verdict: the old low-mid
-    // broadband bed read as white noise / crashing waves — that recipe
-    // IS surf). What a meadow gust actually sounds like is foliage: a
-    // soft high band, present only while a gust crests, silent in the
-    // lulls. The gain is driven on a squared gust curve in update().
-    const wind = loopNoise();
+    // LEAF RUSTLE — granular, never a noise bed. Smooth noise with a
+    // gain envelope IS the sound of surf, whatever band it sits in
+    // (two user rejections). Foliage flickers: hundreds of tiny
+    // flutter-grains, decorrelated left/right, looping seamlessly.
+    // The gain is driven on a squared gust curve in update().
+    const rustle = ctx.createBufferSource();
+    rustle.buffer = this.makeRustleBuffer(ctx);
+    rustle.loop = true;
     this.windFilter = ctx.createBiquadFilter();
     this.windFilter.type = 'bandpass';
-    this.windFilter.frequency.value = 3900;
-    this.windFilter.Q.value = 0.7;
+    this.windFilter.frequency.value = 4300;
+    this.windFilter.Q.value = 0.45;
     this.windGain = ctx.createGain();
     this.windGain.gain.value = 0;
-    wind.connect(this.windFilter);
+    rustle.connect(this.windFilter);
     this.windFilter.connect(this.windGain);
     this.windGain.connect(bus);
-    wind.start();
+    rustle.start();
+
+    // The dove and the woodpecker wait a polite while after login.
+    this.nextDoveAt = ctx.currentTime + 12 + Math.random() * 20;
+    this.nextPeckAt = ctx.currentTime + 25 + Math.random() * 30;
 
     // Cave rumble: the same noise idea, pressed under 150 Hz.
     const rumble = loopNoise();
@@ -157,6 +180,39 @@ export class AmbienceSystem {
       this.cricketGains.push(g);
       this.cricketPan.push(p);
     }
+  }
+
+  /**
+   * Pre-render the leaf texture: white noise multiplied by a granular
+   * envelope — ~55 overlapping sin²-windowed grains per second, each
+   * 20-80ms with squared-random amplitude (many soft, few loud), wrapped
+   * at the loop seam. The chaotic 8-25 Hz amplitude flicker this makes
+   * is what separates leaves from water; a smooth envelope cannot.
+   */
+  private makeRustleBuffer(ctx: AudioContext): AudioBuffer {
+    const secs = 6;
+    const rate = ctx.sampleRate;
+    const buf = ctx.createBuffer(2, rate * secs, rate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      const env = new Float32Array(d.length);
+      const grains = secs * 55;
+      for (let g = 0; g < grains; g++) {
+        const start = Math.floor(Math.random() * d.length);
+        const glen = Math.floor(rate * (0.02 + Math.random() * 0.06));
+        const amp = Math.random() * Math.random();
+        for (let i = 0; i < glen; i++) {
+          const w = Math.sin((Math.PI * i) / glen);
+          const idx = (start + i) % d.length;
+          env[idx] = env[idx]! + amp * w * w;
+        }
+      }
+      let peak = 0;
+      for (let i = 0; i < env.length; i++) peak = Math.max(peak, env[i]!);
+      const inv = peak > 0 ? 1 / peak : 1;
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * env[i]! * inv;
+    }
+    return buf;
   }
 
   // ---- one-shot voices -------------------------------------------------
@@ -205,6 +261,90 @@ export class AmbienceSystem {
       o.start(at);
       o.stop(at + dur + 0.08);
       at += dur + 0.08 + Math.random() * 0.28;
+    }
+  }
+
+  /**
+   * A mourning dove somewhere in the trees: the rising coo-ah-OOO,
+   * then two or three low even coos. The calmest sound in North
+   * America — sine through a dark filter, nothing else.
+   */
+  private dove(ctx: AudioContext, bus: GainNode, t: number): void {
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = (Math.random() * 2 - 1) * 0.7;
+    const distant = Math.random() < 0.4;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = distant ? 620 : 880;
+    lp.Q.value = 0.3;
+    lp.connect(pan);
+    pan.connect(bus);
+    const vol = distant ? 0.032 : 0.055;
+
+    const coo = (at: number, dur: number, shape: (o: OscillatorNode) => void): void => {
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      shape(o);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(vol, at + 0.07);
+      g.gain.setValueAtTime(vol, at + dur * 0.6);
+      g.gain.exponentialRampToValueAtTime(0.001, at + dur);
+      o.connect(g);
+      g.connect(lp);
+      o.start(at);
+      o.stop(at + dur + 0.05);
+    };
+
+    // coo-ah-OOO: starts low, lifts, settles long.
+    let at = t + 0.05;
+    coo(at, 0.9, (o) => {
+      o.frequency.setValueAtTime(400, at);
+      o.frequency.exponentialRampToValueAtTime(560, at + 0.14);
+      o.frequency.exponentialRampToValueAtTime(395, at + 0.55);
+    });
+    at += 1.15;
+    const tail = 2 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < tail; i++) {
+      const a = at;
+      coo(a, 0.55, (o) => {
+        o.frequency.setValueAtTime(405, a);
+        o.frequency.exponentialRampToValueAtTime(370, a + 0.5);
+      });
+      at += 0.85 + Math.random() * 0.15;
+    }
+  }
+
+  /**
+   * A woodpecker drumming a far snag: a fast decaying roll of soft
+   * knocks. Rare — an event, not a bed.
+   */
+  private woodpecker(ctx: AudioContext, bus: GainNode, t: number): void {
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = (Math.random() * 2 - 1) * 0.8;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1500;
+    lp.connect(pan);
+    pan.connect(bus);
+    const vol = Math.random() < 0.5 ? 0.022 : 0.034;
+    const n = 9 + Math.floor(Math.random() * 7);
+    const iv = 0.046 + Math.random() * 0.012;
+    for (let i = 0; i < n; i++) {
+      const at = t + i * iv;
+      const fade = 1 - (0.55 * i) / n; // the roll trails off
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(330 + Math.random() * 30, at);
+      o.frequency.exponentialRampToValueAtTime(185, at + 0.025);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(vol * fade, at + 0.003);
+      g.gain.exponentialRampToValueAtTime(0.001, at + 0.03);
+      o.connect(g);
+      g.connect(lp);
+      o.start(at);
+      o.stop(at + 0.04);
     }
   }
 
