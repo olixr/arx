@@ -583,7 +583,9 @@ function stepMaterial(tx: number, ty: number): 'grass' | 'stone' | 'wood' | 'dir
 }
 renderer.onFootstep = (x, y, speed, isOwn, sneaking) => {
   const mat = stepMaterial(Math.floor(x), Math.floor(y));
-  let vol = 0.05 + 0.13 * Math.min(1, speed / 5);
+  // Kept soft by default (user: footsteps read too loud) — a step is
+  // felt underfoot, not announced.
+  let vol = 0.035 + 0.09 * Math.min(1, speed / 5);
   let pan = 0;
   if (sneaking) vol *= 0.25;
   if (!isOwn) {

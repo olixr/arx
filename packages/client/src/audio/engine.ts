@@ -17,8 +17,14 @@
  * go through setUserVolume so the mix balance survives.
  */
 
-/** The tuned mix — bus base levels. User sliders multiply these. */
-const BASE = { master: 0.9, sfx: 0.5, music: 0.24, tracks: 0.42, ambience: 0.6 } as const;
+/**
+ * The tuned mix — bus base levels. User sliders multiply these.
+ * THE BACKGROUND LAW (user): music is scenery, never the subject —
+ * the tracks bus sits low enough by default that speech-of-the-world
+ * (SFX, ambience) always reads over it. Tuned by ear + analyser, not
+ * by the player's sliders.
+ */
+const BASE = { master: 0.9, sfx: 0.5, music: 0.17, tracks: 0.21, ambience: 0.6 } as const;
 
 export type VolumeKind = 'master' | 'music' | 'sfx' | 'ambience';
 

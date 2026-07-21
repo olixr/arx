@@ -36,6 +36,25 @@ export const TRACK_LIBRARY: Record<TrackMood, string[]> = {
 const FADE_IN_SEC = 2.0;
 const FADE_OUT_SEC = 2.6;
 
+/**
+ * Per-track loudness trims — the library is normalized to its own
+ * quietest track (EBU R128 integrated loudness, measured with ffmpeg
+ * ebur128: −15.3 LUFS reference) so every track leaves the shelf at
+ * the same perceived level and the bus fader means one thing.
+ * Re-measure and update when tracks are added or replaced.
+ */
+const TRACK_TRIM: Record<string, number> = {
+  adventure_1: 1, // −15.3 LUFS
+  adventure_2: 0.9, // −14.4
+  adventure_3: 0.86, // −14.0
+  adventure_4: 0.76, // −12.9
+  adventure_5: 0.9, // −14.4
+  night_adventure_1: 0.74, // −12.7
+  night_adventure_2: 0.78, // −13.1
+  town_1: 0.77, // −13.0
+  town_2: 1, // −15.3
+};
+
 /** Which shelf suits this place and hour. Pure — tests could pin it. */
 export function moodFor(w: ZoneWeights, hours: number): TrackMood {
   if (dominantZone(w) === 'town') return 'town';
@@ -157,7 +176,7 @@ export class TrackPlayer {
     const g = out.gain;
     g.cancelScheduledValues(t);
     g.setValueAtTime(g.value, t);
-    g.linearRampToValueAtTime(1, t + FADE_IN_SEC);
+    g.linearRampToValueAtTime(TRACK_TRIM[name] ?? 1, t + FADE_IN_SEC);
     this.activeEl = m.el;
     this.current = name;
     this.lastPlayed[this.mood] = name;
