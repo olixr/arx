@@ -1698,6 +1698,33 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   border-color: rgba(217, 87, 99, 0.4);
 }
 
+/* What the work becomes: honest facts, then the item's own voice. */
+.work-result {
+  padding: 12px 14px;
+  background: var(--raise);
+  border: 1.5px solid var(--line);
+  border-radius: 6px;
+}
+
+.work-result-facts {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gold-bright);
+  text-shadow: var(--punch-small);
+}
+
+.work-result-flavor {
+  font-family: var(--serif);
+  font-size: 15px;
+  font-style: italic;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.work-result-facts + .work-result-flavor {
+  margin-top: 6px;
+}
+
 .work-actions {
   margin-top: auto;
   padding-top: 16px;

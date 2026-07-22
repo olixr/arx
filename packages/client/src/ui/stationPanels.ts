@@ -614,6 +614,34 @@ export class StationPanels {
       this.craftDetail.appendChild(this.materialRow(input.item, input.qty));
     }
 
+    // The result's own story — what you're actually making and why.
+    const outDef = itemDef(recipe.output.item);
+    if (outDef) {
+      const facts: string[] = [];
+      if (outDef.heals) facts.push(`Heals ${outDef.heals} HP`);
+      if (outDef.weapon) facts.push(`${outDef.weapon.damage} damage`);
+      if (outDef.armor) facts.push(`+${outDef.armor} armor`);
+      if (outDef.value) facts.push(`worth ${outDef.value.toLocaleString()}c each`);
+      if (facts.length > 0 || outDef.desc) {
+        this.craftDetail.appendChild(sectionHead('The result'));
+        const result = document.createElement('div');
+        result.className = 'work-result';
+        if (facts.length > 0) {
+          const line = document.createElement('div');
+          line.className = 'work-result-facts';
+          line.textContent = facts.join(' · ');
+          result.appendChild(line);
+        }
+        if (outDef.desc) {
+          const flavor = document.createElement('div');
+          flavor.className = 'work-result-flavor';
+          flavor.textContent = outDef.desc;
+          result.appendChild(flavor);
+        }
+        this.craftDetail.appendChild(result);
+      }
+    }
+
     const actions = document.createElement('div');
     actions.className = 'work-actions';
     if (locked) {
