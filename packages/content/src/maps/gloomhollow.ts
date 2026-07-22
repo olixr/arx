@@ -32,8 +32,9 @@ export function buildGloomhollow(): ZoneDef {
   b.set(12, 25, Tile.RockCopper);
   b.set(37, 17, Tile.RockIron);
 
-  // A dark pool in the flooded hollow.
-  b.fillEllipse(13, 41, 3, 2, Tile.Water);
+  // A dark pool in the flooded hollow — a wadeable rim, a black middle.
+  b.fillEllipse(13, 41, 3, 2, Tile.WaterShallow);
+  b.fillEllipse(13, 41, 2, 1, Tile.Water);
 
   // Way out, back beside the cave mouth in town.
   b.portal(16, 5, Tile.PortalUp, { x: 59.5, y: 34.8 });

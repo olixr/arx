@@ -146,6 +146,37 @@ const chat = new ChatUI(
   () => !hud.classList.contains('hidden'),
 );
 renderer.outlineOn = localStorage.getItem('devcraft.outline') !== 'off';
+
+// Water enhancements: ADDITIVE layers over the base water, so turning
+// one off only quiets the surface — nothing else changes. Persisted
+// like every other render preference, toggled in the menu's Display
+// section for anyone chasing frames.
+renderer.reflectionsOn = localStorage.getItem('devcraft.reflections') !== 'off';
+renderer.waterFxFull = localStorage.getItem('devcraft.waterfx') !== 'basic';
+{
+  const rows = document.getElementById('display-rows')!;
+  const toggle = (label: string, initial: boolean, apply: (on: boolean) => void): void => {
+    const row = document.createElement('div');
+    row.className = 'audio-row';
+    const lab = document.createElement('label');
+    lab.textContent = label;
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = initial;
+    box.addEventListener('change', () => apply(box.checked));
+    row.appendChild(lab);
+    row.appendChild(box);
+    rows.appendChild(row);
+  };
+  toggle('Water reflections', renderer.reflectionsOn, (on) => {
+    renderer.reflectionsOn = on;
+    localStorage.setItem('devcraft.reflections', on ? 'on' : 'off');
+  });
+  toggle('Water motion', renderer.waterFxFull, (on) => {
+    renderer.waterFxFull = on;
+    localStorage.setItem('devcraft.waterfx', on ? 'full' : 'basic');
+  });
+}
 input.setTypingCheck(() => chat.isTyping || looks.open);
 let buildMode: string | null = null;
 /** The bank chest tile that asked the server for the vault — anchors the panel. */
@@ -682,6 +713,7 @@ function stepMaterial(tx: number, ty: number): 'grass' | 'stone' | 'wood' | 'dir
       return 'cave';
     case Tile.Water:
     case Tile.WaterDeep:
+    case Tile.WaterShallow:
     case Tile.Swamp:
       return 'wet';
     default:
@@ -703,6 +735,17 @@ renderer.onFootstep = (x, y, speed, isOwn, sneaking) => {
     pan = Math.max(-0.8, Math.min(0.8, (x - own.x) / 8));
   }
   sfx.footstep(mat, vol, pan);
+};
+
+// A body stepping into or out of shallow water — one honest plunk,
+// distance-attenuated like footsteps.
+renderer.onSplash = (x, y) => {
+  const own = game.predictor.pos;
+  const dist = Math.hypot(x - own.x, y - own.y);
+  if (dist > 10) return;
+  const vol = dist < 1 ? 0.12 : 0.12 * 0.55 * (1 - dist / 10);
+  const pan = Math.max(-0.8, Math.min(0.8, (x - own.x) / 8));
+  sfx.splash(vol, pan);
 };
 
 // A felled tree topples away from whoever cut it, groans, and lands

@@ -170,8 +170,10 @@ export function buildBramblewick(): ZoneDef {
   b.set(36, 51, Tile.LampPost);
 
   // Pond in the south-east corner, sand-rimmed, with a fishing jetty.
+  // Depth reads in rings: wadeable shallows, open water, a deep heart.
   b.fillEllipse(78, 78, 10, 8, Tile.Sand);
-  b.fillEllipse(78, 78, 8, 6, Tile.Water);
+  b.fillEllipse(78, 78, 8, 6, Tile.WaterShallow);
+  b.fillEllipse(78, 78, 7, 5, Tile.Water);
   b.fillEllipse(78, 78, 5, 3, Tile.WaterDeep);
   b.fillRect(77, 70, 2, 4, Tile.Bridge);
   // Railings flanking the jetty planks.

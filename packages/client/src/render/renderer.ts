@@ -68,7 +68,14 @@ import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
-import { bakeChunk, bakeElevated, bakeGutter, drawLiveGround } from './terrain.js';
+import {
+  bakeChunk,
+  bakeElevated,
+  bakeGutter,
+  drawLiveGround,
+  waterRegionPath,
+  type WaterFx,
+} from './terrain.js';
 import {
   boltPath,
   burstStarPath,
@@ -425,6 +432,28 @@ export class Renderer {
    * alike, applied dynamically so it's a player preference, not paint.
    */
   outlineOn = true;
+  /**
+   * Water enhancement toggles (settings menu, persisted). Both are
+   * ADDITIVE layers over the base water — turning them off costs
+   * nothing visually except the enhancement itself: reflections mirror
+   * living bodies into the surface; waterFxFull runs the swell bands,
+   * caustics and rolling shore wash (off = the classic quiet surface).
+   */
+  reflectionsOn = true;
+  waterFxFull = true;
+  /** A body entered or left shallow water this frame (splash sfx). */
+  onSplash: ((x: number, y: number, entering: boolean) => void) | null = null;
+  /**
+   * Last frame's reflectable bodies (draw closure + world anchor). The
+   * reflection pass replays them ONE frame late, early in the frame, so
+   * mirrors land under foam/glints/grass without reordering the frame —
+   * at 120fps the lag is a physical impossibility to see.
+   */
+  private reflectables: Array<{ x: number; y: number; alpha?: number; draw: () => void }> = [];
+  /** Screen-bounds water region path cache (world coords), see waterClipFor. */
+  private waterClip: { key: string; path: Path2D | null } | null = null;
+  /** Per-body wading state: splash edges + wake phase. */
+  private readonly wadeStates = new Map<number | 'own', { x: number; y: number; wading: boolean }>();
   private readonly outlineA = document.createElement('canvas');
   private readonly outlineB = document.createElement('canvas');
   private readonly outlineACtx = this.outlineA.getContext('2d')!;
@@ -1425,7 +1454,15 @@ export class Renderer {
                     minTy: worldTy,
                     maxTy: worldTy,
                   };
-                  drawLiveGround(this.ctx, rowGround, rowBounds, this.liftedWTS, s, performance.now());
+                  drawLiveGround(
+                    this.ctx,
+                    rowGround,
+                    rowBounds,
+                    this.liftedWTS,
+                    s,
+                    performance.now(),
+                    this.waterFx(),
+                  );
                   this.grass.drawRow(
                     this.ctx,
                     rowGround,
@@ -1441,6 +1478,234 @@ export class Renderer {
         }
       }
     }
+  }
+
+  /** This frame's live-water options — the sky and settings decide. */
+  private waterFx(): WaterFx {
+    return { full: this.waterFxFull, moonlit: this.sky.moonlit };
+  }
+
+  /**
+   * WATER REFLECTIONS (optional enhancement): living bodies mirror
+   * about their own feet into the surface, clipped to the EXACT organic
+   * water region (shared contour geometry) so the mirror ends at the
+   * painted meander, never at a tile edge. Replays LAST frame's entity
+   * paint closures — recorded during collectEntities — early in this
+   * frame, so mirrors land under foam, glints, grass and the y-sorted
+   * world without restructuring the frame. One frame of lag at 120fps
+   * is unseeable; the win is purely-additive layering: toggled off,
+   * nothing else in the frame changes.
+   */
+  private drawReflections(game: ClientGame): void {
+    const list = this.reflectables;
+    if (!this.reflectionsOn) {
+      list.length = 0;
+      return;
+    }
+    // The path refreshes every frame (cached per bounds+world rev) —
+    // it also gates this frame's reflectable RECORDING, so it must
+    // resolve even on frames with nothing yet to mirror.
+    const bounds = this.visibleTileBounds();
+    const path = this.waterClipFor(game, bounds);
+    if (!path || list.length === 0) {
+      list.length = 0;
+      return;
+    }
+    const ctx = this.ctx;
+    const prior = ctx.getTransform();
+    ctx.save();
+    // Clip in WORLD coordinates (the camera is affine), then restore
+    // the screen coordinate system — the clip survives the transform.
+    const o = this.camera.worldToScreen(0, 0, this.w, this.h);
+    ctx.transform(
+      this.camera.scale,
+      0,
+      0,
+      this.camera.scale * this.camera.yScale,
+      o.x,
+      o.y,
+    );
+    ctx.clip(path);
+    ctx.setTransform(prior);
+    const tSec = performance.now() / 1000;
+    // The silhouette-bake flag gates glow/sparkle side effects out of
+    // the mirror pass exactly as it does out of shadow bakes.
+    this.bakingMask = true;
+    for (const r of list) {
+      const p = this.liftedWTS(r.x, r.y);
+      ctx.save();
+      ctx.globalAlpha = 0.26 * (r.alpha ?? 1);
+      // Mirror about the feet line, squashed a touch; a slow shear
+      // makes the mirror breathe with the surface it lies on.
+      const shear = Math.sin(tSec * 1.1 + r.x * 0.6 + r.y * 0.83) * 0.05;
+      ctx.translate(p.x, p.y + this.camera.scale * 0.04);
+      ctx.transform(1, 0, shear, -0.8, 0, 0);
+      ctx.translate(-p.x, -p.y);
+      r.draw();
+      ctx.restore();
+    }
+    this.bakingMask = false;
+    ctx.restore();
+    list.length = 0;
+  }
+
+  /** The water region path over the visible bounds, world coords —
+   *  rebuilt only when the camera crosses a tile or the world changes. */
+  private waterClipFor(
+    game: ClientGame,
+    bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number },
+  ): Path2D | null {
+    const key = `${bounds.minTx},${bounds.minTy},${bounds.maxTx},${bounds.maxTy},${game.worldVersion}`;
+    if (this.waterClip?.key !== key) {
+      const ground = (tx: number, ty: number): number | undefined =>
+        game.world.elevAt(tx, ty) !== 0 ? undefined : game.world.groundAt(tx, ty);
+      this.waterClip = { key, path: waterRegionPath(ground, bounds) };
+    }
+    return this.waterClip.path;
+  }
+
+  /**
+   * Water dressing for one living body, the single entry point players,
+   * NPCs and the own body all pass through:
+   *  - standing in SHALLOWS: the body sinks to the shins behind the
+   *    waterline (screen clip at the surface + a sink translate), wears
+   *    a ripple collar where it meets the water, pushes wake rings
+   *    while moving, and splashes on the way in and out;
+   *  - on dry ground NEAR water: records a reflectable so next frame's
+   *    mirror pass can lay the body into the surface.
+   */
+  private dressForWater(
+    game: ClientGame,
+    item: DrawItem,
+    key: number | 'own',
+    x: number,
+    y: number,
+  ): void {
+    const tx = Math.floor(x);
+    const ty = Math.floor(y);
+    const wading =
+      game.world.elevAt(tx, ty) === 0 && game.world.groundAt(tx, ty) === Tile.WaterShallow;
+    if (this.wadeStates.size > 512) this.wadeStates.clear(); // eid churn backstop
+    const st = this.wadeStates.get(key);
+    const moved = st ? Math.hypot(x - st.x, y - st.y) : 0;
+    if (st) {
+      st.x = x;
+      st.y = y;
+      if (st.wading !== wading) {
+        st.wading = wading;
+        // The splash of stepping in (or out).
+        this.particles.burst(x, y - 0.05, 9, ['#bfe0f2', '#8fc3e0', '#eaf4fb'], {
+          speed: 1.5,
+          life: 0.4,
+          size: 0.06,
+          up: true,
+          gravity: 4,
+          drag: 2,
+        });
+        this.onSplash?.(x, y, wading);
+      }
+    } else {
+      this.wadeStates.set(key, { x, y, wading });
+    }
+
+    if (!wading) {
+      // Mirror only bodies that could actually show in water: a fast
+      // scan of the tiles a reflection would lie across (south of the
+      // feet — reflections hang DOWN the screen).
+      if (!this.reflectionsOn || !this.waterClip?.path) return;
+      for (let dy = 0; dy <= 2; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const t = game.world.groundAt(tx + dx, ty + dy);
+          if (
+            t === Tile.Water ||
+            t === Tile.WaterDeep ||
+            t === Tile.WaterShallow ||
+            t === Tile.FishingSpot
+          ) {
+            this.reflectables.push({ x, y, alpha: item.alpha, draw: item.draw });
+            return;
+          }
+        }
+      }
+      return;
+    }
+
+    // --- Wading: sink the body behind the waterline. ---
+    const scale = this.camera.scale;
+    const moving = moved > 0.004;
+    // A little spray kicked loose while pushing through.
+    if (moving && Math.random() < this.frameDt * 2.5) {
+      this.particles.burst(x, y - 0.02, 2, ['#bfe0f2', '#eaf4fb'], {
+        speed: 0.9,
+        life: 0.3,
+        size: 0.045,
+        up: true,
+        gravity: 4,
+        drag: 2,
+      });
+    }
+    const orig = item.draw;
+    item.draw = () => {
+      const ctx = this.ctx; // read at draw time — the outline pass swaps it
+      const p = this.liftedWTS(x, y);
+      const surfY = p.y + scale * 0.03;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(-1e5, -1e5, 2e5, 1e5 + surfY);
+      ctx.clip();
+      ctx.translate(0, scale * 0.16);
+      orig();
+      ctx.restore();
+    };
+    // Rings ride OVER the body (water in front of the shins) and skip
+    // the outline dilate — chained onto the label pass, main ctx only.
+    const origLabel = item.drawLabel;
+    item.drawLabel = () => {
+      const ctx = this.ctx;
+      const p = this.liftedWTS(x, y);
+      const surfY = p.y + scale * 0.03;
+      ctx.save();
+      ctx.lineCap = 'round';
+      // The waterline collar where the body meets the surface, with a
+      // soft depth shade under its south rim.
+      ctx.strokeStyle = 'rgba(226, 240, 251, 0.55)';
+      ctx.lineWidth = Math.max(1.5, scale * 0.045);
+      ctx.beginPath();
+      ctx.ellipse(p.x, surfY, scale * 0.24, scale * 0.09, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(26, 48, 96, 0.26)';
+      ctx.lineWidth = Math.max(1.5, scale * 0.04);
+      ctx.beginPath();
+      ctx.ellipse(p.x, surfY + scale * 0.03, scale * 0.28, scale * 0.1, 0, 0, Math.PI);
+      ctx.stroke();
+      // Wake rings while pushing through; a slow bob ring at rest.
+      const t = performance.now() / 1000;
+      const seed = typeof key === 'number' ? (key % 7) / 7 : 0.35;
+      const n = moving ? 2 : 1;
+      for (let k = 0; k < n; k++) {
+        const period = moving ? 0.9 : 2.6;
+        const phase = (t / period + k * 0.5 + seed) % 1;
+        const a = (1 - phase) * (moving ? 0.4 : 0.2);
+        if (a < 0.02) continue;
+        ctx.globalAlpha = a;
+        ctx.strokeStyle = '#dcebfb';
+        ctx.lineWidth = Math.max(1.5, scale * 0.04);
+        ctx.beginPath();
+        ctx.ellipse(
+          p.x,
+          surfY,
+          (0.24 + phase * 0.5) * scale,
+          (0.09 + phase * 0.22) * scale,
+          0,
+          0,
+          Math.PI * 2,
+        );
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      origLabel?.();
+    };
   }
 
   private animFor(key: number | 'own', x: number, y: number, pose: number, now: number): AnimState {
@@ -1540,6 +1805,11 @@ export class Renderer {
 
     this.drawGroundChunks(game);
 
+    // Reflections land straight on the baked water, BEFORE the live
+    // surface — foam, glints and swells then paint over the mirror the
+    // way light sits on real water.
+    this.drawReflections(game);
+
     // The grass system wakes up first: it needs every moving body this
     // frame to part blades, flatten them underfoot, and rustle thickets.
     const groundLvl0 = (tx: number, ty: number) =>
@@ -1581,7 +1851,15 @@ export class Renderer {
     this.collectStaticLights(game, bounds);
     // Ground-level tiles only: lifted tiles get their own live layer
     // drawn OVER their plateau band (see collectElevatedGround).
-    drawLiveGround(this.ctx, groundLvl0, bounds, this.liftedWTS, this.camera.scale, performance.now());
+    drawLiveGround(
+      this.ctx,
+      groundLvl0,
+      bounds,
+      this.liftedWTS,
+      this.camera.scale,
+      performance.now(),
+      this.waterFx(),
+    );
 
     // The meadow under everyone's feet: short blades, clumps, flowers.
     // Grass bounds are TIGHT — blades reach < 1 tile up, so the 5-row
@@ -9468,31 +9746,34 @@ export class Renderer {
       if (remoteEnch) this.enchantAura(s.x, s.y, remoteEnch);
 
       switch (remote.meta.kind) {
-        case EntityKind.Player:
-          items.push(
-            this.humanoidItem({
-              eid,
-              x: s.x,
-              y: s.y,
-              dir: s.dir,
-              pose: s.pose,
-              hpPct: s.hpPct,
-              name: remote.meta.name,
-              isOwn: false,
-              hurt,
-              equip: remote.meta.appearance?.equip ?? {},
-              ench: remote.meta.appearance?.ench,
-              carry: remote.meta.appearance?.carry,
-              carryOff: remote.meta.appearance?.carryOff,
-              look: remote.meta.appearance?.look,
-              color: remote.meta.appearance?.look
-                ? CLOTH_COLORS[remote.meta.appearance.look.shirt]!
-                : PLAYER_COLORS[hashString(remote.meta.name ?? String(eid)) % PLAYER_COLORS.length]!,
-            }),
-          );
+        case EntityKind.Player: {
+          const item = this.humanoidItem({
+            eid,
+            x: s.x,
+            y: s.y,
+            dir: s.dir,
+            pose: s.pose,
+            hpPct: s.hpPct,
+            name: remote.meta.name,
+            isOwn: false,
+            hurt,
+            equip: remote.meta.appearance?.equip ?? {},
+            ench: remote.meta.appearance?.ench,
+            carry: remote.meta.appearance?.carry,
+            carryOff: remote.meta.appearance?.carryOff,
+            look: remote.meta.appearance?.look,
+            color: remote.meta.appearance?.look
+              ? CLOTH_COLORS[remote.meta.appearance.look.shirt]!
+              : PLAYER_COLORS[hashString(remote.meta.name ?? String(eid)) % PLAYER_COLORS.length]!,
+          });
+          this.dressForWater(game, item, eid, s.x, s.y);
+          items.push(item);
           break;
+        }
         case EntityKind.Npc: {
-          items.push(this.npcItem(eid, remote.meta.defId ?? '', remote.meta, s, hurt));
+          const item = this.npcItem(eid, remote.meta.defId ?? '', remote.meta, s, hurt);
+          this.dressForWater(game, item, eid, s.x, s.y);
+          items.push(item);
           const pins = this.npcArrows.get(eid);
           if (pins && pins.length > 0) items.push(this.npcArrowsItem(pins, s));
           break;
@@ -9604,6 +9885,7 @@ export class Renderer {
       // Only WE see ourselves while stealthed — a ghost of our own body.
       if (game.isHidden) ownItem.alpha = 0.45;
       else if (game.isSneaking) ownItem.alpha = 0.8;
+      this.dressForWater(game, ownItem, 'own', own.x, own.y);
       items.push(ownItem);
     }
   }
@@ -9618,6 +9900,9 @@ export class Renderer {
       case Tile.WaterDeep:
       case Tile.Swamp:
         return null;
+      case Tile.WaterShallow:
+        // Wading footfalls throw SPRAY, not dust.
+        return { colors: ['#bfe0f2', '#8fc3e0', '#eaf4fb'], mult: 1.1 };
       case Tile.Sand:
         return { colors: ['#d9c9a2', '#cdbb8e', '#e3d5b0'], mult: 1.3 };
       case Tile.Snow:
@@ -11158,7 +11443,7 @@ export class Renderer {
       const lx = f.x + Math.cos(f.dir) * FALLING_SHAFT_ADVANCE;
       const ly = f.y + Math.sin(f.dir) * FALLING_SHAFT_ADVANCE;
       const tile = game.world.groundAt(Math.floor(lx), Math.floor(ly));
-      if (tile === Tile.Water || tile === Tile.WaterDeep) {
+      if (tile === Tile.Water || tile === Tile.WaterDeep || tile === Tile.WaterShallow) {
         this.particles.burst(lx, ly, 7, ['#7fb2d9', '#a9d3ec', '#e6f2fa'], {
           speed: 1.4,
           life: 0.35,

@@ -94,6 +94,16 @@ function levelOf(pf: number, bf: number, elevation: number): number {
   return bf > BASIN_T2 ? -2 : bf > BASIN_T1 ? -1 : 0;
 }
 
+/**
+ * Sandbar fords: an independent ridge field over the water. Where it
+ * crests inside the MID-depth band the lake floor rises to wadeable
+ * shallows — organic crossing bars that thread lakes without ever
+ * bridging the deep cores. Exported for tests (and ford-hunting).
+ */
+export function sandbarAt(seed: number, tx: number, ty: number): boolean {
+  return fbm(seed + 51151, tx * 0.035, ty * 0.035, 2) > 0.64;
+}
+
 /** Below this world-y everything defaults to solid cave (dungeon land). */
 export const DARK_BAND_Y = 512;
 
@@ -332,14 +342,20 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
         }
       } else if (elevation < 0.3) {
         ground = Tile.WaterDeep;
+      } else if (elevation < 0.345) {
+        // Open water. Where the sandbar field crests, the lake floor
+        // rises into a wadeable ford — an honest shortcut across the
+        // mid-depth band (never across the deep cores: those stay moats).
+        ground = sandbarAt(seed, tx, ty) ? Tile.WaterShallow : Tile.Water;
       } else if (elevation < 0.37) {
-        // Shoreline waters host the odd fishing spot.
-        const nearLand =
-          E(lx + 1, ly) >= 0.37 ||
-          E(lx - 1, ly) >= 0.37 ||
-          E(lx, ly + 1) >= 0.37 ||
-          E(lx, ly - 1) >= 0.37;
-        ground = nearLand && roll < 0.05 ? Tile.FishingSpot : Tile.Water;
+        // The wading margin: knee-deep shallows ring every water body.
+        // Fishing spots sit just past the shallows, in true water.
+        const offMargin =
+          E(lx + 1, ly) < 0.345 ||
+          E(lx - 1, ly) < 0.345 ||
+          E(lx, ly + 1) < 0.345 ||
+          E(lx, ly - 1) < 0.345;
+        ground = offMargin && roll < 0.06 ? Tile.FishingSpot : Tile.WaterShallow;
       } else if (elevation < 0.4) {
         ground = Tile.Sand;
         if (roll < 0.04) detail = Detail.Pebbles;

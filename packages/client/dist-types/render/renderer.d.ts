@@ -96,6 +96,28 @@ export declare class Renderer {
      * alike, applied dynamically so it's a player preference, not paint.
      */
     outlineOn: boolean;
+    /**
+     * Water enhancement toggles (settings menu, persisted). Both are
+     * ADDITIVE layers over the base water — turning them off costs
+     * nothing visually except the enhancement itself: reflections mirror
+     * living bodies into the surface; waterFxFull runs the swell bands,
+     * caustics and rolling shore wash (off = the classic quiet surface).
+     */
+    reflectionsOn: boolean;
+    waterFxFull: boolean;
+    /** A body entered or left shallow water this frame (splash sfx). */
+    onSplash: ((x: number, y: number, entering: boolean) => void) | null;
+    /**
+     * Last frame's reflectable bodies (draw closure + world anchor). The
+     * reflection pass replays them ONE frame late, early in the frame, so
+     * mirrors land under foam/glints/grass without reordering the frame —
+     * at 120fps the lag is a physical impossibility to see.
+     */
+    private reflectables;
+    /** Screen-bounds water region path cache (world coords), see waterClipFor. */
+    private waterClip;
+    /** Per-body wading state: splash edges + wake phase. */
+    private readonly wadeStates;
     private readonly outlineA;
     private readonly outlineB;
     private readonly outlineACtx;
@@ -355,6 +377,34 @@ export declare class Renderer {
     pickWorld(sx: number, sy: number): Vec2;
     /** Lifted plateau surfaces as y-sorted items (real occluders). */
     private collectElevatedGround;
+    /** This frame's live-water options — the sky and settings decide. */
+    private waterFx;
+    /**
+     * WATER REFLECTIONS (optional enhancement): living bodies mirror
+     * about their own feet into the surface, clipped to the EXACT organic
+     * water region (shared contour geometry) so the mirror ends at the
+     * painted meander, never at a tile edge. Replays LAST frame's entity
+     * paint closures — recorded during collectEntities — early in this
+     * frame, so mirrors land under foam, glints, grass and the y-sorted
+     * world without restructuring the frame. One frame of lag at 120fps
+     * is unseeable; the win is purely-additive layering: toggled off,
+     * nothing else in the frame changes.
+     */
+    private drawReflections;
+    /** The water region path over the visible bounds, world coords —
+     *  rebuilt only when the camera crosses a tile or the world changes. */
+    private waterClipFor;
+    /**
+     * Water dressing for one living body, the single entry point players,
+     * NPCs and the own body all pass through:
+     *  - standing in SHALLOWS: the body sinks to the shins behind the
+     *    waterline (screen clip at the surface + a sink translate), wears
+     *    a ripple collar where it meets the water, pushes wake rings
+     *    while moving, and splashes on the way in and out;
+     *  - on dry ground NEAR water: records a reflectable so next frame's
+     *    mirror pass can lay the body into the surface.
+     */
+    private dressForWater;
     private animFor;
     private resize;
     render(game: ClientGame, frameDt: number): void;

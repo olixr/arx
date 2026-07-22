@@ -1940,3 +1940,15 @@ body.pad-mode .hint-inline { display: none; }
   font-style: italic;
   opacity: 0.75;
 }
+.menu-section {
+  margin: 18px 6px 2px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.audio-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--gold-bright);
+}

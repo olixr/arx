@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DODGE_DIST, applyDodge, stepMovement } from './movement.js';
 import { NO_COLLISION, type CollisionSource } from '../world/collision.js';
+import { Tile, WADE_SPEED_FACTOR } from '../world/tiles.js';
 
 const wallAtX5: CollisionSource = {
   isSolid: (tx) => tx === 5,
@@ -47,6 +48,18 @@ test('walls block and allow sliding', () => {
   }
   assert.ok(slide.x < 5);
   assert.ok(slide.y > startY, 'slides along the wall');
+});
+
+test('shallow water wades at the shared factor — dry land does not', () => {
+  // A world that is all shallow water vs. all grass.
+  const ford: CollisionSource = { isSolid: () => false, tileAt: () => Tile.WaterShallow };
+  const meadow: CollisionSource = { isSolid: () => false, tileAt: () => Tile.Grass };
+  const wet = stepMovement({ x: 0, y: 0 }, { mx: 1, my: 0 }, 5, 0.05, ford);
+  const dry = stepMovement({ x: 0, y: 0 }, { mx: 1, my: 0 }, 5, 0.05, meadow);
+  assert.ok(Math.abs(wet.x - dry.x * WADE_SPEED_FACTOR) < 1e-9, `wet=${wet.x} dry=${dry.x}`);
+  // Sources without tileAt (older tests, tools) never wade.
+  const bare = stepMovement({ x: 0, y: 0 }, { mx: 1, my: 0 }, 5, 0.05, NO_COLLISION);
+  assert.ok(Math.abs(bare.x - dry.x) < 1e-9);
 });
 
 test('zero input means zero movement', () => {

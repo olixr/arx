@@ -481,4 +481,15 @@ export class Sfx {
         break;
     }
   }
+
+  /**
+   * A body stepping into (or out of) shallow water: one honest plunk —
+   * a pitched blip swallowed by a short bright spray. One-shot grains
+   * only (the granular ambience law: no continuous noise beds, ever).
+   */
+  splash(vol: number, pan = 0): void {
+    this.tone(340, 0.07, { type: 'sine', slide: -180, volume: vol * 0.8, pan });
+    this.noise(0.06, vol, 0.015, { band: 2900, pan });
+    this.noise(0.12, vol * 0.45, 0.05, { band: 2100, pan });
+  }
 }

@@ -120,5 +120,11 @@ export declare class Sfx {
      * gait-scaled from the caller; everything here stays under it.
      */
     footstep(mat: 'grass' | 'stone' | 'wood' | 'dirt' | 'sand' | 'cave' | 'wet', vol: number, pan?: number): void;
+    /**
+     * A body stepping into (or out of) shallow water: one honest plunk —
+     * a pitched blip swallowed by a short bright spray. One-shot grains
+     * only (the granular ambience law: no continuous noise beds, ever).
+     */
+    splash(vol: number, pan?: number): void;
 }
 //# sourceMappingURL=sfx.d.ts.map

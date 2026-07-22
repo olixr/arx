@@ -57,9 +57,20 @@ export interface ElevatedBake {
 }
 export declare function bakeElevated(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, level: number): ElevatedBake | null;
 /**
- * The breeze layer: drifting water glints, pulsing ripples, shoreline
- * foam and portal swirls. Drawn every frame over the baked ground.
- * (Grass and flowers have their own system — see grass.ts.)
+ * Live-water options, threaded from the renderer each frame. `full`
+ * gates the ENHANCEMENT layer (swells, caustics, rolling foam) — the
+ * base water (baked skins, waterline, glints, fishing rings) never
+ * turns off, so switching to basic only quiets the surface, it never
+ * breaks it. `moonlit` silvers and dims the glitter after dark.
+ */
+export interface WaterFx {
+    full: boolean;
+    moonlit: boolean;
+}
+/**
+ * The breeze layer: drifting water glints, swell bands, shallow-water
+ * caustics, shoreline foam and portal swirls. Drawn every frame over
+ * the baked ground. (Grass and flowers live in grass.ts.)
  */
 export declare function drawLiveGround(ctx: CanvasRenderingContext2D, ground: GroundSampler, bounds: {
     minTx: number;
@@ -69,5 +80,19 @@ export declare function drawLiveGround(ctx: CanvasRenderingContext2D, ground: Gr
 }, worldToScreen: (wx: number, wy: number) => {
     x: number;
     y: number;
-}, s: number, timeMs: number): void;
+}, s: number, timeMs: number, fx?: WaterFx): void;
+/**
+ * The visible water region as ONE Path2D in WORLD tile coordinates:
+ * interior dual cells as rects, boundary cells through the same organic
+ * contour geometry as the baked skin — so a reflection clipped by this
+ * path ends exactly at the painted meander, never at a tile edge. The
+ * renderer's reflection pass applies it under the camera's affine
+ * transform. Returns null when no water is in view.
+ */
+export declare function waterRegionPath(ground: GroundSampler, bounds: {
+    minTx: number;
+    maxTx: number;
+    minTy: number;
+    maxTy: number;
+}): Path2D | null;
 //# sourceMappingURL=terrain.d.ts.map

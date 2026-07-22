@@ -148,6 +148,11 @@ export enum Tile {
   SaplingWillow = 108,
   /** A yew sapling. */
   SaplingYew = 109,
+  /**
+   * Knee-deep water — the only water you can WALK through. Wading is
+   * slow (see WADE_SPEED_FACTOR) and loud; the shore's honest shortcut.
+   */
+  WaterShallow = 110,
 }
 
 export enum Detail {
@@ -190,6 +195,7 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.Path]: { name: 'path', solid: false, color: '#c2a26e', variants: ['#bb9c68'] },
   [Tile.Sand]: { name: 'sand', solid: false, color: '#ddc98d', variants: ['#d6c286'] },
   [Tile.Water]: { name: 'water', solid: true, color: '#4979b8', variants: ['#4472ae'] },
+  [Tile.WaterShallow]: { name: 'shallow water', solid: false, color: '#649cc0', variants: ['#5f96ba'] },
   [Tile.WaterDeep]: { name: 'deep water', solid: true, color: '#3a629e', variants: ['#355c94'] },
   [Tile.StoneFloor]: {
     name: 'stone floor',
@@ -406,6 +412,17 @@ export function tileDef(id: number): TileDef {
 
 export function isSolidTile(id: number): boolean {
   return tileDef(id).solid;
+}
+
+/**
+ * THE WADE LAW: shallow water slows every body that walks it, applied
+ * inside the shared movement step so server, client prediction, and
+ * NPC chases all agree by construction — never re-apply it elsewhere.
+ */
+export const WADE_SPEED_FACTOR = 0.55;
+
+export function isWadeTile(id: number | undefined): boolean {
+  return id === Tile.WaterShallow;
 }
 
 /**

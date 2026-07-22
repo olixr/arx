@@ -1,6 +1,7 @@
 import { BODY_RADIUS } from '../constants.js';
 import type { Vec2 } from '../math/vec.js';
 import { circleHitsSolid, type CollisionSource } from '../world/collision.js';
+import { isWadeTile, WADE_SPEED_FACTOR } from '../world/tiles.js';
 import type { InputFrame } from './input.js';
 
 /** Dodge dash: distance covered and the seq-based cooldown (in ticks). */
@@ -55,8 +56,16 @@ export function stepMovement(
     my /= len;
   }
 
-  const stepX = mx * speed * dt;
-  const stepY = my * speed * dt;
+  // THE WADE LAW: knee-deep water drags every stride. Sampled at the
+  // body's current tile, inside the shared step, so prediction and the
+  // authoritative sim slow down in perfect lockstep (dodge substeps
+  // shorten through a ford the same way).
+  const wade =
+    collision.tileAt && isWadeTile(collision.tileAt(Math.floor(pos.x), Math.floor(pos.y)))
+      ? WADE_SPEED_FACTOR
+      : 1;
+  const stepX = mx * speed * wade * dt;
+  const stepY = my * speed * wade * dt;
   let x = pos.x;
   let y = pos.y;
 

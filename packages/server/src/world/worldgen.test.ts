@@ -188,7 +188,13 @@ test('levels are fenced: no walkable step between levels except ramps', () => {
 
 test('sinks never cut water or shoreline, and every ramp is a straight-edge flight', () => {
   const seed = 1337;
-  const wet = new Set<number>([Tile.Water, Tile.WaterDeep, Tile.FishingSpot, Tile.Sand]);
+  const wet = new Set<number>([
+    Tile.Water,
+    Tile.WaterDeep,
+    Tile.WaterShallow,
+    Tile.FishingSpot,
+    Tile.Sand,
+  ]);
   for (const [cx, cy] of findSinkChunks(seed, 4)) {
     const tiles = tileBlock(seed, cx, cy);
     const E = (x: number, y: number): number | undefined => tiles.get(`${x},${y}`)?.e;

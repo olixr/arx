@@ -128,11 +128,22 @@ const BLOB_LAYERS: BlobLayer[] = [
     fringe: true,
   },
   {
+    // Knee-deep shallows: the sunlit wading rim of every water body.
+    // Lighter and greener than open water so "walkable" reads at a
+    // glance; the live shoreline draws its waterline — no baked band.
+    match: (t) => t === Tile.WaterShallow,
+    color: (_t, tx, ty) => patch('#649cc0', '#5f96ba', tx, ty, 45),
+    wobble: 0.14,
+    band: null,
+    fringe: false,
+  },
+  {
+    // Open water. Its band is the DEPTH SHELF — the underwater shade
+    // step where the wadeable rim drops away into swimming water.
     match: (t) => t === Tile.Water || t === Tile.FishingSpot,
     color: () => '#4979b8',
     wobble: 0.14,
-    // The live shoreline pass draws the waterline — no baked band.
-    band: null,
+    band: 'rgba(24, 44, 84, 0.3)',
     fringe: false,
   },
   {
@@ -144,8 +155,12 @@ const BLOB_LAYERS: BlobLayer[] = [
   },
 ];
 
-/** Layer index of the water skin — the live shoreline follows it. */
-const WATER_LI = BLOB_LAYERS.findIndex((l) => l.match(Tile.Water));
+/**
+ * Layer index of the OUTERMOST water skin (the shallows) — the live
+ * shoreline traces this layer's organic contour, which is the true
+ * land|water boundary now that every body of water wears a wading rim.
+ */
+const WATER_LI = BLOB_LAYERS.findIndex((l) => l.match(Tile.WaterShallow));
 
 const GRASS_LIKE = new Set<number>([
   Tile.Grass,
@@ -428,6 +443,35 @@ function drawTileDetail(
       );
     }
   }
+      if (m === Tile.WaterShallow) {
+        // The sandbed shows through: pale submerged flecks and the odd
+        // sunken stone. Seeing the bottom IS the walkability cue — deep
+        // water stays featureless. Lift-only (floor law): bed detail is
+        // never darker than the water or it reads as holes.
+        const n = 2 + (hg % 3);
+        for (let k = 0; k < n; k++) {
+          const hh = hashCoords(223 + k, tx, ty);
+          const sx = gx + ((hh % 90) / 100) * px;
+          const sy = gy + (((hh >>> 7) % 90) / 100) * px;
+          ctx.fillStyle = hh & 1 ? 'rgba(219, 229, 210, 0.14)' : 'rgba(168, 200, 214, 0.2)';
+          ctx.fillRect(sx, sy, Math.max(1, px * 0.06), Math.max(1, px * 0.045));
+        }
+        if (hg % 4 === 0) {
+          const hh = hashCoords(227, tx, ty);
+          const sx = gx + (0.12 + (hh % 70) / 100) * px;
+          const sy = gy + (0.12 + ((hh >>> 6) % 70) / 100) * px;
+          const w = px * (0.09 + ((hh >>> 3) % 3) * 0.02);
+          // A drowned pebble: pale slate, a wet-light cap.
+          ctx.fillStyle = '#79a7c4';
+          ctx.beginPath();
+          ctx.ellipse(sx, sy, w, w * 0.72, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(200, 221, 230, 0.5)';
+          ctx.beginPath();
+          ctx.ellipse(sx - w * 0.15, sy - w * 0.2, w * 0.5, w * 0.3, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
       if (m === Tile.Grass || m === Tile.GrassTall) {
         // Baked turf stubble: static vertical flecks, dark and sunlit,
         // so the ground under the live blades reads as dense mown grass
@@ -1652,9 +1696,30 @@ function drawPlanks(
 // ------------------------------------------------------ live decorations
 
 /**
- * The breeze layer: drifting water glints, pulsing ripples, shoreline
- * foam and portal swirls. Drawn every frame over the baked ground.
- * (Grass and flowers have their own system — see grass.ts.)
+ * Live-water options, threaded from the renderer each frame. `full`
+ * gates the ENHANCEMENT layer (swells, caustics, rolling foam) — the
+ * base water (baked skins, waterline, glints, fishing rings) never
+ * turns off, so switching to basic only quiets the surface, it never
+ * breaks it. `moonlit` silvers and dims the glitter after dark.
+ */
+export interface WaterFx {
+  full: boolean;
+  moonlit: boolean;
+}
+
+const WATER_FX_DEFAULT: WaterFx = { full: true, moonlit: false };
+
+/** Alpha-bucketed swell strokes: a dozen stroke calls per frame, never
+ *  one per swell (Path2D color-bucket law — see grass.ts). Quantized in
+ *  steps of SWELL_ALPHA_UNIT so the breathing keeps ~5 visible grades
+ *  across the 0–0.42 alpha range these effects live in. */
+const SWELL_ALPHA_STEPS = 6;
+const SWELL_ALPHA_UNIT = 0.07;
+
+/**
+ * The breeze layer: drifting water glints, swell bands, shallow-water
+ * caustics, shoreline foam and portal swirls. Drawn every frame over
+ * the baked ground. (Grass and flowers live in grass.ts.)
  */
 export function drawLiveGround(
   ctx: CanvasRenderingContext2D,
@@ -1663,9 +1728,21 @@ export function drawLiveGround(
   worldToScreen: (wx: number, wy: number) => { x: number; y: number },
   s: number,
   timeMs: number,
+  fx: WaterFx = WATER_FX_DEFAULT,
 ): void {
   const t = timeMs / 1000;
-  drawShorelines(ctx, ground, bounds, worldToScreen, s, t);
+  drawShorelines(ctx, ground, bounds, worldToScreen, s, t, fx);
+  // Swell/caustic buckets: [tone][alphaStep] — filled in the tile loop,
+  // stroked once each at the end.
+  let swells: Array<Array<Path2D | null>> | null = null;
+  const swellTones = ['#5c8ac2', '#4a76ad', '#93c4da'] as const; // water, deep, caustic
+  const bucket = (tone: number, alpha: number): Path2D => {
+    swells ??= swellTones.map(() => new Array<Path2D | null>(SWELL_ALPHA_STEPS).fill(null));
+    const q = Math.min(SWELL_ALPHA_STEPS - 1, Math.floor(alpha / SWELL_ALPHA_UNIT));
+    return (swells[tone]![q] ??= new Path2D());
+  };
+  const glintTone = fx.moonlit ? '#ccd8ef' : '#cfe3f7';
+  const glintScale = fx.moonlit ? 0.3 : 0.5;
   for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
     for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
       const tile = ground(tx, ty);
@@ -1681,12 +1758,75 @@ export function drawLiveGround(
           const gx = tx + ((h >> 4) % 60) / 100 + phase * 0.35;
           const gy = ty + ((h >> 9) % 60) / 100 + 0.2;
           const p = worldToScreen(gx, gy);
-          ctx.globalAlpha = Math.sin(phase * Math.PI) * 0.5;
-          ctx.strokeStyle = '#cfe3f7';
+          ctx.globalAlpha = Math.sin(phase * Math.PI) * glintScale;
+          ctx.strokeStyle = glintTone;
           ctx.lineWidth = Math.max(1.5, s * 0.05);
           ctx.beginPath();
           ctx.moveTo(p.x, p.y);
           ctx.lineTo(p.x + s * 0.22, p.y);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+        // Swell bands: long, faintly bowed light strokes that ride
+        // east across open water and breathe in and out — the surface
+        // is always in slow motion. Lift-only: one step lighter than
+        // the base, never darker (a dark band reads as a hole).
+        // Hosts need two water tiles east so a drifting band never
+        // slides onto the shore.
+        if (
+          fx.full &&
+          h % 5 === 0 &&
+          isOpenWater(ground(tx + 1, ty)) &&
+          isOpenWater(ground(tx + 2, ty))
+        ) {
+          const phase = (t * 0.05 + (h % 89) / 89) % 1;
+          const alpha = Math.sin(phase * Math.PI) * 0.34;
+          if (alpha > 0.03) {
+            const x0 = tx + ((h >>> 4) % 40) / 100 + phase * 0.9;
+            const y0 = ty + 0.12 + ((h >>> 9) % 72) / 100;
+            const len = 0.9 + ((h >>> 6) % 50) / 50 * 0.9;
+            const bow = (((h >>> 11) % 40) / 40 - 0.5) * 0.24;
+            const a = worldToScreen(x0, y0);
+            const c = worldToScreen(x0 + len * 0.5, y0 + bow);
+            const b = worldToScreen(x0 + len, y0);
+            const path = bucket(tile === Tile.WaterDeep ? 1 : 0, alpha);
+            path.moveTo(a.x, a.y);
+            path.quadraticCurveTo(c.x, c.y, b.x, b.y);
+          }
+        }
+      } else if (tile === Tile.WaterShallow) {
+        // Caustic dapples: broken rings of sunlight wobbling on the
+        // sandbed — the shallows' own signature, distinct from open
+        // water's drift. Slow pulse, sparse, batched.
+        if (fx.full && h % 5 === 0) {
+          const phase = (t * 0.2 + (h % 83) / 83) % 1;
+          const alpha = Math.sin(phase * Math.PI) * (fx.moonlit ? 0.16 : 0.3);
+          if (alpha > 0.03) {
+            const cx = tx + 0.14 + ((h >>> 4) % 70) / 100;
+            const cy = ty + 0.14 + ((h >>> 9) % 70) / 100;
+            const p = worldToScreen(cx, cy);
+            const r = (0.09 + ((h >>> 5) % 40) / 40 * 0.1) * s;
+            const a0 = ((h >>> 7) % 63) / 10;
+            const path = bucket(2, alpha);
+            // Two facing arcs — a caustic cell, not a bubble.
+            path.moveTo(p.x + Math.cos(a0) * r, p.y + Math.sin(a0) * r * 0.7);
+            path.arc(p.x, p.y, r, a0, a0 + 2.1);
+            const a1 = a0 + Math.PI;
+            path.moveTo(p.x + Math.cos(a1) * r * 1.25, p.y + Math.sin(a1) * r * 0.9);
+            path.arc(p.x, p.y, r * 1.25, a1, a1 + 1.5);
+          }
+        }
+        // A rare, quiet glint — the shallows glitter less than open
+        // water, and that difference IS the depth read.
+        if (h % 13 === 0) {
+          const phase = (t * 0.3 + (h % 100) / 100) % 1;
+          const p = worldToScreen(tx + ((h >>> 4) % 70) / 100, ty + ((h >>> 9) % 70) / 100 + 0.15);
+          ctx.globalAlpha = Math.sin(phase * Math.PI) * glintScale * 0.6;
+          ctx.strokeStyle = glintTone;
+          ctx.lineWidth = Math.max(1.5, s * 0.045);
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x + s * 0.16, p.y);
           ctx.stroke();
           ctx.globalAlpha = 1;
         }
@@ -1707,11 +1847,71 @@ export function drawLiveGround(
       }
     }
   }
+  // Flush the swell/caustic buckets: at most 12 strokes for the whole
+  // visible surface, however many bands are alive.
+  if (swells) {
+    ctx.lineCap = 'round';
+    const moonDim = fx.moonlit ? 0.55 : 1;
+    for (let tone = 0; tone < swellTones.length; tone++) {
+      const rows = swells[tone]!;
+      for (let q = 0; q < SWELL_ALPHA_STEPS; q++) {
+        const path = rows[q];
+        if (!path) continue;
+        ctx.globalAlpha = (q + 0.5) * SWELL_ALPHA_UNIT * moonDim;
+        ctx.strokeStyle = swellTones[tone]!;
+        ctx.lineWidth = Math.max(1.5, s * (tone === 2 ? 0.035 : 0.055));
+        ctx.stroke(path);
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.lineCap = 'butt';
+  }
+}
+
+/** Open (non-wadeable) water — the only surface swell bands ride. */
+function isOpenWater(t: number | undefined): boolean {
+  return t === Tile.Water || t === Tile.WaterDeep || t === Tile.FishingSpot;
+}
+
+/**
+ * The visible water region as ONE Path2D in WORLD tile coordinates:
+ * interior dual cells as rects, boundary cells through the same organic
+ * contour geometry as the baked skin — so a reflection clipped by this
+ * path ends exactly at the painted meander, never at a tile edge. The
+ * renderer's reflection pass applies it under the camera's affine
+ * transform. Returns null when no water is in view.
+ */
+export function waterRegionPath(
+  ground: GroundSampler,
+  bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number },
+): Path2D | null {
+  const wob = BLOB_LAYERS[WATER_LI]!.wobble;
+  const id = (v: number): number => v;
+  let path: Path2D | null = null;
+  for (let j = bounds.minTy; j <= bounds.maxTy + 1; j++) {
+    for (let i = bounds.minTx; i <= bounds.maxTx + 1; i++) {
+      const mask =
+        (isWaterTile(ground(i - 1, j - 1)) ? 1 : 0) |
+        (isWaterTile(ground(i, j - 1)) ? 2 : 0) |
+        (isWaterTile(ground(i, j)) ? 4 : 0) |
+        (isWaterTile(ground(i - 1, j)) ? 8 : 0);
+      if (mask === 0) continue;
+      path ??= new Path2D();
+      const bnds = mask === 15 ? [] : boundaryCurvesFor(WATER_LI, wob, i, j, mask);
+      organicCellPath(path, WATER_LI, wob, i, j, mask, bnds, id, id);
+    }
+  }
+  return path;
 }
 
 /** Water tiles that share a shoreline (no foam between each other). */
 function isWaterTile(t: number | undefined): boolean {
-  return t === Tile.Water || t === Tile.WaterDeep || t === Tile.FishingSpot;
+  return (
+    t === Tile.Water ||
+    t === Tile.WaterDeep ||
+    t === Tile.WaterShallow ||
+    t === Tile.FishingSpot
+  );
 }
 
 /**
@@ -1727,6 +1927,7 @@ function drawShorelines(
   worldToScreen: (wx: number, wy: number) => { x: number; y: number },
   s: number,
   t: number,
+  fx: WaterFx = WATER_FX_DEFAULT,
 ): void {
   const wob = BLOB_LAYERS[WATER_LI]!.wobble;
   ctx.lineCap = 'round';
@@ -1748,21 +1949,45 @@ function drawShorelines(
           const p = qpoint(bnd, n / STEPS);
           pts.push(worldToScreen(p[0], p[1]));
         }
-        // Waterline: constant dark edge along the visual shore.
-        ctx.strokeStyle = 'rgba(26, 48, 96, 0.32)';
-        ctx.lineWidth = Math.max(1.5, s * 0.055);
+        const hh = hashCoords(71 + k, i, j);
+        // Waterline: the dark edge along the visual shore, LAPPING —
+        // width and weight swell and relax on a slow per-run clock, so
+        // the line reads as water meeting land, not inked outline.
+        const lap = fx.full ? 0.5 + 0.5 * Math.sin(t * 0.8 + (hh % 63) / 10) : 0.5;
+        ctx.strokeStyle = `rgba(26, 48, 96, ${(0.26 + lap * 0.12).toFixed(3)})`;
+        ctx.lineWidth = Math.max(1.5, s * (0.045 + lap * 0.02));
         ctx.beginPath();
         ctx.moveTo(pts[0]!.x, pts[0]!.y);
         for (let n = 1; n <= STEPS; n++) ctx.lineTo(pts[n]!.x, pts[n]!.y);
         ctx.stroke();
+        // Rolling wash (full only): a wide, soft swell that slides
+        // along the shore under the foam — the lap made visible.
+        if (fx.full) {
+          const wPhase = (t * 0.05 + (hh % 71) / 71) % 1;
+          const wAlpha = Math.sin(wPhase * Math.PI) * 0.22;
+          if (wAlpha > 0.03) {
+            const u0 = wPhase * 0.6;
+            ctx.strokeStyle = '#c6ddf0';
+            ctx.lineWidth = Math.max(2, s * 0.1);
+            ctx.globalAlpha = wAlpha;
+            ctx.beginPath();
+            for (let n = 0; n <= 4; n++) {
+              const p = qpoint(bnd, Math.min(1, u0 + (n / 4) * 0.4));
+              const sp = worldToScreen(p[0], p[1]);
+              if (n === 0) ctx.moveTo(sp.x, sp.y);
+              else ctx.lineTo(sp.x, sp.y);
+            }
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
+        }
         // Foam: a dash sliding along the curve, breathing in and out.
-        const hh = hashCoords(71 + k, i, j);
         const alpha = Math.sin(((t * 0.45 + (hh % 40) / 40) % 1) * Math.PI);
         if (alpha < 0.12) continue;
         const u = (t * 0.1 + (hh % 100) / 100) % 0.75;
-        ctx.strokeStyle = '#dcebfb';
+        ctx.strokeStyle = fx.moonlit ? '#ccd8ef' : '#dcebfb';
         ctx.lineWidth = Math.max(1.5, s * 0.05);
-        ctx.globalAlpha = alpha * 0.65;
+        ctx.globalAlpha = alpha * (fx.moonlit ? 0.45 : 0.65);
         ctx.beginPath();
         for (let n = 0; n <= 4; n++) {
           const p = qpoint(bnd, u + (n / 4) * 0.25);
