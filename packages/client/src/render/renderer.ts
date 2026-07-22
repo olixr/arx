@@ -5970,54 +5970,29 @@ export class Renderer {
         0.14 * pulse,
       );
     } else if (tile === Tile.RockSilver) {
-      // THE SILVERSPUR — silver is the crystalline metal: a dark
-      // fissure splits the host stone and a spray of long, faceted
-      // silver blades erupts from it, each prism split hard down its
-      // length into a lit facet and a steel-shadow facet (metal reads
-      // through facet CONTRAST, never through bright paint), with one
-      // white specular chip at the tip. A cut block at the foot keeps
-      // the "mineable chunk" promise. Nothing else in the rock family
-      // grows blades.
-      this.stoneBlock(X(0.54 * S), base, S * 0.46, S * 0.36 * H, 0.05 * S * m, Renderer.BARREN_DIM, h ^ 0x51f3);
-      const vSil = this.monolith(X(-0.04 * S), base, S * 1.18, S * 1.1 * H, m, pal.stone, h);
-      // The fissure the blades grew from — a jagged dark gash clipped
-      // INTO the stone, cracks running off its tips.
-      ctx.save();
-      const spurClip = new Path2D();
-      vSil.forEach(([x, y], i) => (i === 0 ? spurClip.moveTo(x, y) : spurClip.lineTo(x, y)));
-      spurClip.closePath();
-      ctx.clip(spurClip);
-      ctx.fillStyle = '#262a38';
-      ctx.beginPath();
-      ctx.moveTo(X(-0.36 * S), base - S * 0.08);
-      ctx.lineTo(X(-0.22 * S), base - S * 0.42 * H);
-      ctx.lineTo(X(-0.04 * S), base - S * 0.62 * H);
-      ctx.lineTo(X(0.12 * S), base - S * 0.88 * H);
-      ctx.lineTo(X(0.05 * S), base - S * 0.6 * H);
-      ctx.lineTo(X(-0.1 * S), base - S * 0.36 * H);
-      ctx.lineTo(X(-0.24 * S), base - S * 0.04);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
-      ctx.lineWidth = Math.max(1.5, s * 0.03);
-      ctx.beginPath();
-      ctx.moveTo(X(0.12 * S), base - S * 0.88 * H);
-      ctx.lineTo(X(0.26 * S), base - S * 0.98 * H);
-      ctx.moveTo(X(-0.22 * S), base - S * 0.42 * H);
-      ctx.lineTo(X(-0.4 * S), base - S * 0.5 * H);
-      ctx.stroke();
-      ctx.restore();
-      // A columnar silver crystal: a blocky near-parallel shaft that
-      // ends in a SLANTED FLAT CAP, not a point — the same lit-cap
-      // grammar the stone blocks speak, so the family stays blocky.
-      // Hard lengthwise split: lit steel toward the sky, shadow steel
-      // below, bright cap plane, one small white chip on the high
-      // corner. Bases sit buried in the gash.
-      const blade = (bx: number, by: number, len: number, w: number, ang: number): [number, number] => {
+      // THE SILVERSPUR — the rock's shoulder has BROKEN OPEN into a
+      // crystal pocket, and the silver grows from inside it. The
+      // integration is structural, not painted: cavity in shadow, a
+      // freshly-cut rim facet, columns rising from WITHIN the pocket
+      // with the stone's front lip overlapping their bases, and one
+      // column standing proud in front — occlusion layering is what
+      // makes the metal belong to the rock. Columns are blocky
+      // near-parallel shafts with slanted flat caps (the stoneBlock
+      // lit-cap grammar), split hard into lit/shadow facets; the tall
+      // column carries a sky-sheen stripe — polished metal remembers
+      // the sky. Steel-blue tones, white only in chips.
+      this.stoneBlock(X(0.56 * S), base, S * 0.44, S * 0.34 * H, 0.05 * S * m, Renderer.BARREN_DIM, h ^ 0x51f3);
+      const vSil = this.monolith(X(-0.04 * S), base, S * 1.2, S * 1.02 * H, m, pal.stone, h);
+      const silPath = new Path2D();
+      vSil.forEach(([x, y], i) => (i === 0 ? silPath.moveTo(x, y) : silPath.lineTo(x, y)));
+      silPath.closePath();
+      // A columnar silver crystal rooted at (bx, by): blocky shaft,
+      // slanted flat cap, hard lengthwise facet split. Returns the
+      // cap point for the sparkle sites.
+      const column = (bx: number, by: number, len: number, w: number, ang: number, sheen = false): [number, number] => {
         ctx.save();
         ctx.translate(bx, by);
         ctx.rotate(ang);
-        // Shadow-side body: the full blocky silhouette.
         ctx.fillStyle = '#8e97ad';
         ctx.beginPath();
         ctx.moveTo(-w * 0.5, 0);
@@ -6028,7 +6003,6 @@ export class Renderer {
         ctx.lineTo(w * 0.5, 0);
         ctx.closePath();
         ctx.fill();
-        // Lit facet: the sky-side half, split hard at the spine.
         ctx.fillStyle = '#d4dcea';
         ctx.beginPath();
         ctx.moveTo(-w * 0.5, 0);
@@ -6039,7 +6013,20 @@ export class Renderer {
         ctx.lineTo(-w * 0.04, 0);
         ctx.closePath();
         ctx.fill();
-        // The slanted cap plane — a flat parallelogram, brightest tone.
+        if (sheen) {
+          // The sky, reflected: one narrow brighter stripe running the
+          // shaft inside the lit facet.
+          ctx.fillStyle = '#f2f6fe';
+          ctx.beginPath();
+          ctx.moveTo(-w * 0.34, -len * 0.06);
+          ctx.lineTo(-w * 0.4, -len * 0.6);
+          ctx.lineTo(-w * 0.26, -len * 0.94);
+          ctx.lineTo(-w * 0.12, -len * 0.88);
+          ctx.lineTo(-w * 0.18, -len * 0.5);
+          ctx.lineTo(-w * 0.14, -len * 0.06);
+          ctx.closePath();
+          ctx.fill();
+        }
         ctx.fillStyle = '#eef2fa';
         ctx.beginPath();
         ctx.moveTo(-w * 0.36, -len);
@@ -6048,7 +6035,6 @@ export class Renderer {
         ctx.lineTo(-w * 0.28, -len * 0.88);
         ctx.closePath();
         ctx.fill();
-        // White chip on the cap's high corner only.
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.moveTo(-w * 0.36, -len);
@@ -6056,23 +6042,80 @@ export class Renderer {
         ctx.lineTo(-w * 0.3, -len * 0.86);
         ctx.closePath();
         ctx.fill();
-        // Base shadow seats the crystal in the rock.
-        ctx.fillStyle = 'rgba(20, 16, 30, 0.4)';
-        ctx.fillRect(-w * 0.55, -len * 0.02, w * 1.1, Math.max(1.5, len * 0.05));
         ctx.restore();
         return [bx + Math.sin(ang) * len * -0.95, by - Math.cos(ang) * len * 0.95];
       };
-      // The spray fans off the fissure line — seeded lean keeps
-      // sister outcrops from stamping. Tallest blade breaks the
-      // silhouette; the runt leans hard at the foot.
-      const lean = (((h >> 7) & 7) / 7 - 0.5) * 0.24;
-      const t1 = blade(X(-0.02 * S), base - S * 0.5 * H, S * 0.74 * H, S * 0.22, (-0.12 + lean) * m);
-      const t2 = blade(X(0.14 * S), base - S * 0.68 * H, S * 0.5 * H, S * 0.17, (0.34 + lean) * m);
-      const t3 = blade(X(-0.2 * S), base - S * 0.3 * H, S * 0.42 * H, S * 0.16, (-0.52 + lean * 0.5) * m);
-      blade(X(-0.32 * S), base - S * 0.1, S * 0.26, S * 0.13, -0.78 * m);
-      // The cut block at the foot — the chunk the pick is promised.
-      const cut: [number, number] = [X(0.3 * S), base - S * 0.18];
-      this.oreNode(cut[0], cut[1], S * 0.32, 0.1 * m, pal);
+      const lean = (((h >> 7) & 7) / 7 - 0.5) * 0.2;
+      // 1) The pocket: a broken basin high in the stone — cavity in
+      //    shadow with a freshly-cut facet along its lower rim, cracks
+      //    running off its corners. All clipped INTO the rock.
+      ctx.save();
+      ctx.clip(silPath);
+      ctx.fillStyle = '#262a38';
+      ctx.beginPath();
+      ctx.moveTo(X(-0.46 * S), base - S * 0.56 * H);
+      ctx.lineTo(X(-0.3 * S), base - S * 0.78 * H);
+      ctx.lineTo(X(0.06 * S), base - S * 0.9 * H);
+      ctx.lineTo(X(0.38 * S), base - S * 0.7 * H);
+      ctx.lineTo(X(0.28 * S), base - S * 0.5 * H);
+      ctx.lineTo(X(-0.12 * S), base - S * 0.44 * H);
+      ctx.closePath();
+      ctx.fill();
+      // The fresh cut: a lighter cool facet where the rock sheared.
+      ctx.fillStyle = '#6b6878';
+      ctx.beginPath();
+      ctx.moveTo(X(-0.46 * S), base - S * 0.56 * H);
+      ctx.lineTo(X(-0.3 * S), base - S * 0.78 * H);
+      ctx.lineTo(X(-0.2 * S), base - S * 0.72 * H);
+      ctx.lineTo(X(-0.36 * S), base - S * 0.52 * H);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+      ctx.lineWidth = Math.max(1.5, s * 0.03);
+      ctx.beginPath();
+      ctx.moveTo(X(0.38 * S), base - S * 0.7 * H);
+      ctx.lineTo(X(0.52 * S), base - S * 0.78 * H);
+      ctx.moveTo(X(-0.12 * S), base - S * 0.44 * H);
+      ctx.lineTo(X(-0.2 * S), base - S * 0.24 * H);
+      ctx.stroke();
+      ctx.restore();
+      // 2) Columns rising from INSIDE the pocket — their feet stand on
+      //    the cavity floor, behind the lip that comes next.
+      const t1 = column(X(-0.08 * S), base - S * 0.52 * H, S * 0.78 * H, S * 0.22, (-0.1 + lean) * m, true);
+      const t2 = column(X(0.18 * S), base - S * 0.56 * H, S * 0.5 * H, S * 0.16, (0.3 + lean) * m);
+      // 3) The front lip: the pocket's lower rim, a stone wedge laid
+      //    OVER the column feet — the occlusion that roots them.
+      ctx.save();
+      ctx.clip(silPath);
+      ctx.fillStyle = pal.stone.face;
+      ctx.beginPath();
+      ctx.moveTo(X(-0.5 * S), base - S * 0.5 * H);
+      ctx.lineTo(X(-0.1 * S), base - S * 0.56 * H);
+      ctx.lineTo(X(0.3 * S), base - S * 0.52 * H);
+      ctx.lineTo(X(0.42 * S), base - S * 0.4 * H);
+      ctx.lineTo(X(0.16 * S), base - S * 0.3 * H);
+      ctx.lineTo(X(-0.34 * S), base - S * 0.32 * H);
+      ctx.closePath();
+      ctx.fill();
+      // Lit brink along the lip's top edge — the stoneBlock cap law.
+      ctx.fillStyle = pal.stone.top;
+      ctx.beginPath();
+      ctx.moveTo(X(-0.5 * S), base - S * 0.5 * H);
+      ctx.lineTo(X(-0.1 * S), base - S * 0.56 * H);
+      ctx.lineTo(X(0.3 * S), base - S * 0.52 * H);
+      ctx.lineTo(X(0.29 * S), base - S * 0.475 * H);
+      ctx.lineTo(X(-0.1 * S), base - S * 0.515 * H);
+      ctx.lineTo(X(-0.44 * S), base - S * 0.465 * H);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      // 4) The front growth: one shorter column standing proud of the
+      //    lip, and a half-sunk silver block at the pocket's rim.
+      const t3 = column(X(-0.26 * S), base - S * 0.36 * H, S * 0.4 * H, S * 0.15, (-0.42 + lean * 0.5) * m);
+      this.oreNode(X(0.34 * S), base - S * 0.44 * H, S * 0.24, 0.1 * m, pal);
+      // 5) The foot: the cut block every deposit promises the pick.
+      const cut: [number, number] = [X(0.34 * S), base - S * 0.14];
+      this.oreNode(cut[0], cut[1], S * 0.3, 0.08 * m, pal);
       sites.push(t1, t2, t3, cut);
       this.rubble(px, py, s, h, [pal.nug, '#6a6375', pal.deep]);
     } else if (tile === Tile.RockMithril) {
