@@ -445,12 +445,19 @@ export class Renderer {
   /** A body entered or left shallow water this frame (splash sfx). */
   onSplash: ((x: number, y: number, entering: boolean) => void) | null = null;
   /**
-   * Last frame's reflectable bodies (draw closure + world anchor). The
+   * Last frame's reflectable bodies (item + world anchor). The
    * reflection pass replays them ONE frame late, early in the frame, so
    * mirrors land under foam/glints/grass without reordering the frame —
-   * at 120fps the lag is a physical impossibility to see.
+   * at 120fps the lag is a physical impossibility to see. Waders
+   * reflect too (their wrapped draw mirrors its own waterline clip).
    */
-  private reflectables: Array<{ x: number; y: number; alpha?: number; draw: () => void }> = [];
+  private reflectables: Array<{ x: number; y: number; wading: boolean; item: DrawItem }> = [];
+  /** Offscreen layer the mirrors render into OPAQUE (with the outline
+   *  shader), then composite onto the water in ONE alpha blend — a
+   *  reflection is a single cohesive image, never a stack of
+   *  translucent polygons showing through each other. */
+  private readonly reflLayer = document.createElement('canvas');
+  private readonly reflLayerCtx = this.reflLayer.getContext('2d')!;
   /** Screen-bounds water region path cache (world coords), see waterClipFor. */
   private waterClip: { key: string; path: Path2D | null } | null = null;
   /** Per-body wading state: splash edges + wake phase. */
@@ -1552,11 +1559,77 @@ export class Renderer {
       list.length = 0;
       return;
     }
+    // 1. Render every mirrored body OPAQUE into the offscreen layer,
+    // through the SAME outline shader as the world pass — what the
+    // water shows is the character as the game draws them, whole.
+    // Clear and composite only the UNION RECT the mirrors actually
+    // cover: the layer cost scales with reflection area, not screen.
+    const dpr = window.devicePixelRatio || 1;
+    if (this.reflLayer.width !== this.canvas.width || this.reflLayer.height !== this.canvas.height) {
+      this.reflLayer.width = this.canvas.width;
+      this.reflLayer.height = this.canvas.height;
+    }
+    const scale = this.camera.scale;
+    const entries: Array<{ r: (typeof list)[number]; px: number; axis: number }> = [];
+    let ux0 = Infinity;
+    let uy0 = Infinity;
+    let ux1 = -Infinity;
+    let uy1 = -Infinity;
+    for (const r of list) {
+      const p = this.liftedWTS(r.x, r.y);
+      // Mirror axis: the waterline for waders (their wrapped draw
+      // clips against it, and the flip carries that clip with it),
+      // the feet line for everyone else.
+      const axis = p.y + scale * (r.wading ? 0.03 : 0.04);
+      const b = r.item.body;
+      const x0 = (b ? b.x : p.x - scale * 1.4) - 10;
+      const x1 = (b ? b.x + b.w : p.x + scale * 1.4) + 10;
+      const y1 = axis + (b ? b.h : scale * 2.2) * 0.85 + 10;
+      ux0 = Math.min(ux0, x0);
+      ux1 = Math.max(ux1, x1);
+      uy0 = Math.min(uy0, axis - 6);
+      uy1 = Math.max(uy1, y1);
+      entries.push({ r, px: p.x, axis });
+    }
+    ux0 = Math.max(0, ux0);
+    uy0 = Math.max(0, uy0);
+    ux1 = Math.min(this.w, ux1);
+    uy1 = Math.min(this.h, uy1);
+    if (ux1 <= ux0 || uy1 <= uy0) {
+      list.length = 0;
+      return;
+    }
+    const rc = this.reflLayerCtx;
+    rc.setTransform(dpr, 0, 0, dpr, 0, 0);
+    rc.clearRect(ux0, uy0, ux1 - ux0, uy1 - uy0);
+    const tSec = performance.now() / 1000;
+    const prevCtx = this.ctx;
+    this.ctx = rc; // ctx-swap law: closures and paintOutlined follow
+    // The silhouette-bake flag gates glow/sparkle side effects out of
+    // the mirror pass exactly as it does out of shadow bakes.
+    this.bakingMask = true;
+    try {
+      for (const e of entries) {
+        rc.save();
+        // A slow shear makes the mirror breathe with the surface.
+        const shear = Math.sin(tSec * 1.1 + e.r.x * 0.6 + e.r.y * 0.83) * 0.05;
+        rc.translate(e.px, e.axis);
+        rc.transform(1, 0, shear, -0.8, 0, 0);
+        rc.translate(-e.px, -e.axis);
+        if (this.outlineOn && e.r.item.body) this.paintOutlined(e.r.item);
+        else e.r.item.draw();
+        rc.restore();
+      }
+    } finally {
+      this.bakingMask = false;
+      this.ctx = prevCtx;
+    }
+    // 2. Composite the union rect onto the water in ONE blend, clipped
+    // to the organic region — one cohesive image at one alpha, no
+    // polygon showing through its neighbor.
     const ctx = this.ctx;
     const prior = ctx.getTransform();
     ctx.save();
-    // Clip in WORLD coordinates (the camera is affine), then restore
-    // the screen coordinate system — the clip survives the transform.
     const o = this.camera.worldToScreen(0, 0, this.w, this.h);
     ctx.transform(
       this.camera.scale,
@@ -1568,24 +1641,18 @@ export class Renderer {
     );
     ctx.clip(path);
     ctx.setTransform(prior);
-    const tSec = performance.now() / 1000;
-    // The silhouette-bake flag gates glow/sparkle side effects out of
-    // the mirror pass exactly as it does out of shadow bakes.
-    this.bakingMask = true;
-    for (const r of list) {
-      const p = this.liftedWTS(r.x, r.y);
-      ctx.save();
-      ctx.globalAlpha = 0.26 * (r.alpha ?? 1);
-      // Mirror about the feet line, squashed a touch; a slow shear
-      // makes the mirror breathe with the surface it lies on.
-      const shear = Math.sin(tSec * 1.1 + r.x * 0.6 + r.y * 0.83) * 0.05;
-      ctx.translate(p.x, p.y + this.camera.scale * 0.04);
-      ctx.transform(1, 0, shear, -0.8, 0, 0);
-      ctx.translate(-p.x, -p.y);
-      r.draw();
-      ctx.restore();
-    }
-    this.bakingMask = false;
+    ctx.globalAlpha = 0.38;
+    ctx.drawImage(
+      this.reflLayer,
+      ux0 * dpr,
+      uy0 * dpr,
+      (ux1 - ux0) * dpr,
+      (uy1 - uy0) * dpr,
+      ux0,
+      uy0,
+      ux1 - ux0,
+      uy1 - uy0,
+    );
     ctx.restore();
     list.length = 0;
   }
@@ -1649,11 +1716,16 @@ export class Renderer {
       this.wadeStates.set(key, { x, y, wading });
     }
 
+    // Stealth ghosts cast no reflection: a single-blend composite has
+    // one alpha for the whole layer, and a mirror of a body the world
+    // can barely see would out-shout the body itself.
+    const mirrorable = this.reflectionsOn && !!this.waterClip?.path && item.alpha === undefined;
+
     if (!wading) {
       // Mirror only bodies that could actually show in water: a fast
       // scan of the tiles a reflection would lie across (south of the
       // feet — reflections hang DOWN the screen).
-      if (!this.reflectionsOn || !this.waterClip?.path) return;
+      if (!mirrorable) return;
       for (let dy = 0; dy <= 2; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
           const t = game.world.groundAt(tx + dx, ty + dy);
@@ -1663,7 +1735,7 @@ export class Renderer {
             t === Tile.WaterShallow ||
             t === Tile.FishingSpot
           ) {
-            this.reflectables.push({ x, y, alpha: item.alpha, draw: item.draw });
+            this.reflectables.push({ x, y, wading: false, item });
             return;
           }
         }
@@ -1745,6 +1817,10 @@ export class Renderer {
       ctx.restore();
       origLabel?.();
     };
+    // Waders reflect too: the mirror replays the WRAPPED draw, whose
+    // waterline clip flips along with it — the water shows exactly
+    // the above-surface half of the body, mirrored at the waterline.
+    if (mirrorable) this.reflectables.push({ x, y, wading: true, item });
   }
 
   private animFor(key: number | 'own', x: number, y: number, pose: number, now: number): AnimState {

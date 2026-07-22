@@ -108,12 +108,19 @@ export declare class Renderer {
     /** A body entered or left shallow water this frame (splash sfx). */
     onSplash: ((x: number, y: number, entering: boolean) => void) | null;
     /**
-     * Last frame's reflectable bodies (draw closure + world anchor). The
+     * Last frame's reflectable bodies (item + world anchor). The
      * reflection pass replays them ONE frame late, early in the frame, so
      * mirrors land under foam/glints/grass without reordering the frame —
-     * at 120fps the lag is a physical impossibility to see.
+     * at 120fps the lag is a physical impossibility to see. Waders
+     * reflect too (their wrapped draw mirrors its own waterline clip).
      */
     private reflectables;
+    /** Offscreen layer the mirrors render into OPAQUE (with the outline
+     *  shader), then composite onto the water in ONE alpha blend — a
+     *  reflection is a single cohesive image, never a stack of
+     *  translucent polygons showing through each other. */
+    private readonly reflLayer;
+    private readonly reflLayerCtx;
     /** Screen-bounds water region path cache (world coords), see waterClipFor. */
     private waterClip;
     /** Per-body wading state: splash edges + wake phase. */
