@@ -136,6 +136,14 @@ export declare class Renderer {
     private readonly anims;
     private shakeAmount;
     /**
+     * UI view shift, in screen px: a docked screen (the character case)
+     * asks the camera to frame the player left of it, so the LIVE rig
+     * is the character preview. Glides both ways — opening the case
+     * reads as the world sliding over, not a cut.
+     */
+    private viewShiftX;
+    private viewShiftTargetX;
+    /**
      * True while the player zoom is gliding toward its target. Every
      * cached sprite/shadow/chunk holds its bake and scale-blits for the
      * ride: a glide crosses the 20% scale-drift threshold on the whole
@@ -167,6 +175,12 @@ export declare class Renderer {
     onCorpseThud?: (heavy: boolean) => void;
     /** A quick camera zoom kick — the killing-blow exclamation point. */
     zoomPulse(amount?: number): void;
+    /**
+     * Ask the camera to frame the player `px` screen pixels left of
+     * center (0 restores the classic centered follow). Set every frame
+     * by main while a docked screen owns the right of the viewport.
+     */
+    setViewShift(px: number): void;
     /** A fading, flattening silhouette where something died. */
     /** Freeze-frame: animation and particles crawl for a beat on impact. */
     hitstop(seconds: number): void;

@@ -74,25 +74,26 @@
         <button id="btn-audio" title="Settings (O)"></button>
       </div>
 
-      <!-- CHARACTER — the hero screen: your figure on a stage, worn gear
-           flanking the body it hangs on, the kit's sum told as a stat
-           ledger, and the backpack as one full spread of sockets. -->
+      <!-- CHARACTER — the expedition case docked to the right edge:
+           worn gear hung on an armor stand, the kit's sum as a ledger
+           beside it, the backpack below. The case deliberately leaves
+           the left of the screen open — the camera slides the world
+           over so your LIVE character stands there, wearing every
+           change the moment you make it. No duplicate figure. -->
       <div id="inventory-panel" class="ui-screen screen-character hidden">
         <h3>Character</h3>
+        <div class="char-identity">
+          <span id="char-name" class="ident-name"></span>
+          <span id="char-deed" class="ident-deed"></span>
+        </div>
         <div class="char-body">
-          <section class="char-stage-col">
-            <div id="char-stage">
-              <div id="equip-left" class="equip-col"></div>
-              <div id="equip-fig">
-                <div id="char-nameplate"></div>
-                <div class="stage-turn">
-                  <button id="fig-turn-l" class="turn-btn" title="Turn left">◀</button>
-                  <button id="fig-turn-r" class="turn-btn" title="Turn right">▶</button>
-                </div>
-              </div>
-              <div id="equip-right" class="equip-col"></div>
+          <section class="worn-kit">
+            <div id="equip-anatomy"></div>
+            <div class="kit-ledger">
+              <div class="kit-ledger-title">The kit&rsquo;s sum</div>
+              <div id="gear-strip" class="hidden"></div>
+              <div class="kit-empty">Nothing worn adds to the sum yet &mdash; armor and trinkets will.</div>
             </div>
-            <div id="gear-strip" class="hidden"></div>
           </section>
           <section class="char-pack-col">
             <div class="pack-header">

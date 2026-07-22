@@ -819,149 +819,156 @@ h3 {
 }
 
 /* ==================================================================
-   THE CHARACTER SCREEN — the hero room: figure on a stage, worn gear
-   flanking the body it hangs on, the kit's sum as a stat ledger, the
-   backpack one full spread of sockets beside it.
+   THE CHARACTER SCREEN — the expedition case docked at the RIGHT edge
+   of the world. It deliberately owns only that column: the camera
+   slides the world so your live character stands in the open ground
+   to its left — the game itself is the mirror. Inside the case: the
+   worn kit hung on an armor stand, its sum as a ledger, the backpack
+   below as one spread of sockets.
    ================================================================== */
 
+/* A true dock: the case rides the right EDGE, full height, leaving
+   the rest of the viewport as clean open world for the live you. */
 .screen-character {
-  width: min(1300px, 95vw);
-  height: min(840px, 88vh);
+  left: auto;
+  right: 16px;
+  top: 14px;
+  bottom: 14px;
+  transform: none;
+  width: min(620px, 46vw);
+  height: auto;
+  max-height: none;
 }
 
-.char-body {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: 1fr 620px;
-  gap: 22px;
-}
-
-.char-stage-col {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-/* The stage: sockets left and right, the mirror between them. */
-#char-stage {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  gap: 12px;
-}
-
-.equip-col {
+/* The identity line: who this case belongs to. */
+.char-identity {
   flex: none;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  justify-content: center;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 2px 2px 10px;
 }
 
-.equip-col .inv-slot {
-  width: 76px;
-  height: 76px;
-}
-
-.equip-col {
-  gap: 8px;
-}
-
-/* The stage is a grand recessed well — the figure stands IN the case. */
-#equip-fig {
-  flex: 1;
-  min-width: 0;
-  position: relative;
-  background: none;
-  border: 9px solid transparent;
-  border-image: var(--ui-socket) 35 fill / 9px;
-  border-radius: 0;
-  overflow: hidden;
-}
-
-/* The stage floor line — the figure stands ON something. */
-#equip-fig::after {
-  content: '';
-  position: absolute;
-  left: 8%;
-  right: 8%;
-  bottom: 13%;
-  height: 2px;
-  background: var(--line);
-  pointer-events: none;
-}
-
-#equip-fig canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-#char-nameplate {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 12px;
-  text-align: center;
-  pointer-events: none;
-}
-
-.plate-name {
+.ident-name {
   font-family: var(--serif);
-  font-size: 24px;
+  font-size: 23px;
   font-weight: 700;
   letter-spacing: 1px;
   color: var(--gold-bright);
   text-shadow: var(--punch);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.plate-sub {
-  margin-top: 2px;
-  font-size: 13.5px;
+.ident-deed {
+  flex: none;
+  font-size: 12.5px;
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: var(--parchment-dim);
   text-shadow: var(--punch-small);
+  padding: 5px 10px 4px;
+  background: var(--sunk);
+  border: 1.5px solid var(--line);
+  border-radius: 5px;
 }
 
-.stage-turn {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 10px;
+.char-body {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  justify-content: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.turn-btn {
-  width: 52px;
-  height: 44px;
-  font-size: 16px;
+/* ---- the worn kit: an armor stand of sockets + the ledger ---- */
+
+.worn-kit {
+  flex: none;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 18px;
+  align-items: stretch;
+}
+
+/* The stand: sockets hung where they sit on the body — head over
+   chest over legs over boots down the spine, weapon hand left,
+   shield hand right, cape at the shoulder, tools on the belt. */
+#equip-anatomy {
+  position: relative;
+  display: grid;
+  grid-template-areas:
+    'cape   head  sigil'
+    'weapon body  offhand'
+    'gloves legs  relic'
+    'tool   boots .';
+  gap: 9px;
+  align-content: start;
+}
+
+/* The armor stand itself: a quiet spine + shoulder bar the sockets
+   hang on, visible only in the gaps between wells. Pixel-anchored:
+   the rows are fixed 74px + 9px gaps, the container may run taller. */
+#equip-anatomy::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 35px;
+  height: 237px;
+  width: 3px;
+  transform: translateX(-50%);
+  background: var(--line);
+  pointer-events: none;
+}
+
+#equip-anatomy::after {
+  content: '';
+  position: absolute;
+  left: 13px;
+  right: 13px;
+  top: 72px;
+  height: 3px;
+  background: var(--line);
+  pointer-events: none;
+}
+
+#equip-anatomy .inv-slot {
+  width: 70px;
+  height: 70px;
+  z-index: 1;
+}
+
+/* The ledger column: the worn kit's sum, told in plaques. */
+.kit-ledger {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--sunk);
+  border: 1.5px solid var(--line);
+  border-radius: 7px;
+}
+
+.kit-ledger-title {
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
   color: var(--parchment-dim);
   text-shadow: var(--punch-small);
-  background: none;
-  border: 10px solid transparent;
-  border-image: var(--btn-iron) 50 fill / 10px;
-  cursor: pointer;
-  filter: drop-shadow(2px 3px 0 var(--shadow));
 }
 
-.turn-btn:hover {
-  color: var(--gold-hot);
-  filter: brightness(1.18) drop-shadow(2px 3px 0 var(--shadow));
-}
-
-/* The gear ledger: the worn kit's sum, told in plaques. */
 #gear-strip {
   flex: none;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
   gap: 8px;
+  align-content: start;
 }
 
 #gear-strip .stat-plaque {
@@ -974,6 +981,19 @@ h3 {
 
 #gear-strip .stat-plaque-label {
   font-size: 11px;
+}
+
+/* Bare kit: one quiet line where the plaques will be. */
+.kit-empty {
+  display: none;
+  font-size: 13.5px;
+  font-style: italic;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+#gear-strip.hidden ~ .kit-empty {
+  display: block;
 }
 
 /* An empty socket names itself; a filled one wears a quiet nameplate. */
@@ -1003,6 +1023,8 @@ h3 {
 
 .char-pack-col {
   min-width: 0;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -1095,10 +1117,11 @@ h3 {
   filter: saturate(0.3);
 }
 
+/* The pack: 7 across × 4 down = the whole 28-slot spread in view. */
 #inventory-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 9px;
   flex: 1;
   min-height: 130px;
   overflow-y: auto;
@@ -1200,19 +1223,19 @@ h3 {
 body:has(#bank-panel:not(.hidden)) #inventory-panel,
 body:has(#shop-panel:not(.hidden)) #inventory-panel {
   left: calc(50% + 14px);
+  right: auto;
+  top: 47%;
+  bottom: auto;
   transform: translate(0, -50%);
   width: min(640px, 46vw);
   height: min(840px, 88vh);
 }
 
-body:has(#bank-panel:not(.hidden)) #inventory-panel .char-stage-col,
-body:has(#shop-panel:not(.hidden)) #inventory-panel .char-stage-col {
+body:has(#bank-panel:not(.hidden)) #inventory-panel .worn-kit,
+body:has(#shop-panel:not(.hidden)) #inventory-panel .worn-kit,
+body:has(#bank-panel:not(.hidden)) #inventory-panel .char-identity,
+body:has(#shop-panel:not(.hidden)) #inventory-panel .char-identity {
   display: none;
-}
-
-body:has(#bank-panel:not(.hidden)) #inventory-panel .char-body,
-body:has(#shop-panel:not(.hidden)) #inventory-panel .char-body {
-  grid-template-columns: 1fr;
 }
 
 body:has(#inventory-panel:not(.hidden)) #bank-panel,

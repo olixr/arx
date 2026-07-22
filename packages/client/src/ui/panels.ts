@@ -1,8 +1,6 @@
 import {
-  CLOTH_COLORS,
   PASSIVES,
   HIDDEN_SKILLS,
-  PoseState,
   SKILL_IDS,
   levelForXp,
   xpForLevel,
@@ -10,7 +8,6 @@ import {
   type EquippedItem,
   type InvSlot,
   type ItemRoll,
-  type Look,
   type SkillId,
   type SkillXp,
 } from '@devcraft/shared';
@@ -31,7 +28,6 @@ import {
   type ItemDef,
 } from '@devcraft/content';
 import { itemIconUrl, slotGlyphUrl } from '../render/icons.js';
-import { drawHumanoid } from '../render/rig.js';
 import { sectionHead, statPlaque } from './panel.js';
 import { RARITY_COLORS, rarityOfInstance } from './rarity.js';
 
@@ -141,9 +137,24 @@ const SKILL_WINGS: Array<{ title: string; skills: SkillId[] }> = [
   { title: 'Secret Arts', skills: ['sneak', 'dualwield'] },
 ];
 
-/** The character stage's two flanks: armor wall left, arms wall right. */
-const EQUIP_LEFT: EquipSlot[] = ['head', 'body', 'legs', 'gloves', 'boots', 'cape'];
-const EQUIP_RIGHT: EquipSlot[] = ['weapon', 'offhand', 'tool', 'relic', 'sigil'];
+/**
+ * The armor stand's sockets, in pad-walk order. Each hangs at its
+ * body place via a CSS grid-area named after the slot itself
+ * (#equip-anatomy's grid-template-areas is the single map).
+ */
+const EQUIP_SLOTS: EquipSlot[] = [
+  'cape',
+  'head',
+  'sigil',
+  'weapon',
+  'body',
+  'offhand',
+  'gloves',
+  'legs',
+  'relic',
+  'tool',
+  'boots',
+];
 
 /** Explicit verbs the item context menu can dispatch. */
 export type SlotAction = 'use' | 'deposit' | 'sell' | 'drop';
@@ -160,23 +171,17 @@ export type SlotAction = 'use' | 'deposit' | 'sell' | 'drop';
 export class Panels {
   private readonly invPanel = document.getElementById('inventory-panel')!;
   private readonly invGrid = document.getElementById('inventory-grid')!;
-  private readonly equipLeft = document.getElementById('equip-left')!;
-  private readonly equipRight = document.getElementById('equip-right')!;
+  private readonly equipAnatomy = document.getElementById('equip-anatomy')!;
   private readonly coinReadout = document.getElementById('coin-readout')!;
   private readonly packFill = document.getElementById('pack-fill')!;
   private readonly packFilters = document.getElementById('pack-filters')!;
   /** The pack's lens: dims sockets outside the chosen family. */
   private packFilter: 'all' | 'gear' | 'food' | 'mats' = 'all';
-  private readonly namePlate = document.getElementById('char-nameplate')!;
+  private readonly identName = document.getElementById('char-name')!;
+  private readonly identDeed = document.getElementById('char-deed')!;
   private readonly skillsPanel = document.getElementById('skills-panel')!;
   private readonly skillsList = document.getElementById('skills-list')!;
-  /** The mirror: your actual rig wearing your actual gear, on a stage. */
-  private readonly figWell = document.getElementById('equip-fig')!;
-  private readonly figCanvas = document.createElement('canvas');
   private readonly gearStrip = document.getElementById('gear-strip')!;
-  /** Which way the figure faces — the player turns it by hand. */
-  private figDir = 0;
-  private static readonly FIG_DIRS = [Math.PI / 2, 0, -Math.PI / 2, Math.PI];
   private readonly card: HTMLElement;
   private readonly menu: HTMLElement;
   /** The chosen technique per style, mirrored from the server. */
@@ -213,31 +218,11 @@ export class Panels {
     private readonly carryStyle: (hand: 'main' | 'off') => 'normal' | 'rogue' = () => 'normal',
     private readonly onCarryStyle: (style: 'normal' | 'rogue', hand: 'main' | 'off') => void =
       () => {},
-    /** The mirror's model: the player's chosen look + adventurer name. */
-    private readonly portraitInfo: () => { look: Look | null; name?: string } = () => ({
-      look: null,
-    }),
+    /** The case's owner: the adventurer name on the identity line. */
+    private readonly identityInfo: () => { name?: string } = () => ({}),
   ) {
     // Dock buttons are wired in main through the one screen-exclusivity
     // gate — no panel opens itself anymore.
-    // The canvas sits UNDER the stage furniture (nameplate, turn chips).
-    this.figWell.insertBefore(this.figCanvas, this.figWell.firstChild);
-    // The stage turns by the player's hand — no restless auto-spin.
-    const turn = (step: number): void => {
-      this.figDir = (this.figDir + step + Panels.FIG_DIRS.length) % Panels.FIG_DIRS.length;
-      this.drawPortrait();
-    };
-    const turnL = document.getElementById('fig-turn-l')!;
-    const turnR = document.getElementById('fig-turn-r')!;
-    turnL.dataset.nav = '';
-    turnL.dataset.navkey = 'fig:turnl';
-    turnL.dataset.acta = 'Turn';
-    turnR.dataset.nav = '';
-    turnR.dataset.navkey = 'fig:turnr';
-    turnR.dataset.acta = 'Turn';
-    turnL.addEventListener('click', () => turn(-1));
-    turnR.addEventListener('click', () => turn(1));
-
     // The pack's filter lens: All / Gear / Food / Mats chips.
     for (const [key, label] of [
       ['all', 'All'],
@@ -262,7 +247,6 @@ export class Panels {
     }
     window.addEventListener('pointermove', (e) => this.dragMove(e));
     window.addEventListener('pointerup', (e) => this.dragEnd(e));
-    window.addEventListener('resize', () => this.drawPortrait());
 
     this.card = document.createElement('div');
     this.card.id = 'item-card';
@@ -284,13 +268,13 @@ export class Panels {
     this.invPanel.classList.toggle('hidden');
     this.skillsPanel.classList.add('hidden');
     if (this.invPanel.classList.contains('hidden')) this.closeInspect();
-    else this.drawPortrait();
+    else this.renderIdentity();
   }
 
   showInventory(): void {
     this.invPanel.classList.remove('hidden');
     this.skillsPanel.classList.add('hidden');
-    this.drawPortrait();
+    this.renderIdentity();
   }
 
   toggleSkills(): void {
@@ -949,10 +933,11 @@ export class Panels {
     }
   }
 
-  /** Build one equipment socket (either flank of the stage). */
+  /** Build one equipment socket, hung at its grid-area on the stand. */
   private equipCell(slot: EquipSlot, equipment: Partial<Record<string, EquippedItem>>): HTMLElement {
     const cell = document.createElement('div');
     cell.className = 'inv-slot equip-cell';
+    cell.style.gridArea = slot;
     cell.dataset.equipslot = slot;
     const worn = equipment[slot];
     if (worn) {
@@ -993,14 +978,13 @@ export class Panels {
 
   renderEquipment(equipment: Partial<Record<string, EquippedItem>>): void {
     this.lastEquipment = equipment;
-    // The stage's two flanks: armor wall left, arms + trinkets right.
-    this.equipLeft.innerHTML = '';
-    this.equipRight.innerHTML = '';
-    for (const slot of EQUIP_LEFT) this.equipLeft.appendChild(this.equipCell(slot, equipment));
-    for (const slot of EQUIP_RIGHT) this.equipRight.appendChild(this.equipCell(slot, equipment));
+    // The armor stand: every socket hung at its body place.
+    this.equipAnatomy.innerHTML = '';
+    for (const slot of EQUIP_SLOTS) {
+      this.equipAnatomy.appendChild(this.equipCell(slot, equipment));
+    }
 
     this.renderGearStrip(equipment);
-    this.drawPortrait();
 
     if (this.cardSource?.kind === 'equip') {
       const worn = this.lastEquipment[this.cardSource.slot];
@@ -1043,101 +1027,17 @@ export class Panels {
   }
 
   /**
-   * The mirror: the player's ACTUAL rig — same drawHumanoid as the
-   * world, wearing the equipment record live — facing the glass until
-   * the player turns it by hand. (The cape rides the world cloth sim,
-   * so the mirror shows the kit beneath it.)
+   * The identity line: adventurer name + total level. The character
+   * itself is not duplicated here — the camera frames the LIVE rig in
+   * the world beside the case, wearing every change as it lands.
    */
-  private drawPortrait(): void {
-    if (this.invPanel.classList.contains('hidden')) return;
-    // The nameplate rides the stage: adventurer name + total level.
-    const info = this.portraitInfo();
+  private renderIdentity(): void {
     const total = SKILL_IDS.reduce((n, s) => {
       if (HIDDEN_SKILLS[s] && this.lastSkills[s] === undefined) return n;
       return n + levelForXp(this.lastSkills[s] ?? 0);
     }, 0);
-    this.namePlate.innerHTML = '';
-    const who = document.createElement('div');
-    who.className = 'plate-name';
-    who.textContent = info.name || 'Adventurer';
-    const deed = document.createElement('div');
-    deed.className = 'plate-sub';
-    deed.textContent = `Total level ${total.toLocaleString()}`;
-    this.namePlate.append(who, deed);
-
-    const rect = this.figWell.getBoundingClientRect();
-    if (rect.width < 10 || rect.height < 10) return;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const w = Math.round(rect.width);
-    const h = Math.round(rect.height);
-    if (this.figCanvas.width !== w * dpr || this.figCanvas.height !== h * dpr) {
-      this.figCanvas.width = w * dpr;
-      this.figCanvas.height = h * dpr;
-      this.figCanvas.style.width = `${w}px`;
-      this.figCanvas.style.height = `${h}px`;
-    }
-    const ctx = this.figCanvas.getContext('2d');
-    if (!ctx) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    const eq = this.lastEquipment;
-    // The figure owns the stage: couch-readable, boots on the floor line.
-    const S = Math.min(240, h * 0.52, w * 0.62);
-    const x = w / 2;
-    const y = h * 0.8;
-    // The stage floor: a wide facet disc the figure stands ON.
-    ctx.fillStyle = 'rgba(12, 8, 24, 0.4)';
-    ctx.beginPath();
-    ctx.ellipse(x, y + S * 0.03, S * 0.62, S * 0.15, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(12, 8, 24, 0.55)';
-    ctx.beginPath();
-    ctx.ellipse(x, y, S * 0.42, S * 0.1, 0, 0, Math.PI * 2);
-    ctx.fill();
-    const dir = Panels.FIG_DIRS[this.figDir]!;
-    const hip = 0.1 * S;
-    drawHumanoid(ctx, {
-      x,
-      y,
-      scale: S,
-      dir,
-      pose: PoseState.Idle,
-      poseT: 1,
-      drawT: 0,
-      restT: 1,
-      nowMs: performance.now(),
-      feet: [
-        { x: x - hip, y, lift: 0 },
-        { x: x + hip, y, lift: 0 },
-      ],
-      bob: 0,
-      rise: 0.414,
-      wScale: Math.abs(Math.cos(dir)) > 0.7 ? 0.91 : 1.05,
-      poleX: 0,
-      poleY: 0,
-      poleStrength: 0,
-      runF: 0,
-      align: 1,
-      kneeMemory: [0, 0],
-      bodyColor: CLOTH_COLORS[info.look?.shirt ?? 0] ?? '#7b8a4a',
-      hurt: false,
-      isOwn: true,
-      look: info.look ?? undefined,
-      weaponItem: eq.weapon?.id,
-      weaponEnch: eq.weapon?.roll?.ench,
-      offhandEnch: eq.offhand?.roll?.ench,
-      carryStyle: this.carryStyle('main'),
-      carryOff: this.carryStyle('off'),
-      bodyItem: eq.body?.id,
-      headItem: eq.head?.id,
-      legsItem: eq.legs?.id,
-      bootsItem: eq.boots?.id,
-      glovesItem: eq.gloves?.id,
-      offhandItem: eq.offhand?.id,
-      hasCape: eq.cape !== undefined,
-      gatherPhase: 0,
-      craftKind: null,
-    });
+    this.identName.textContent = this.identityInfo().name || 'Adventurer';
+    this.identDeed.textContent = `Total level ${total.toLocaleString()}`;
   }
 
   /** Server-confirmed technique choices; re-renders the picker. */
@@ -1258,6 +1158,7 @@ export class Panels {
    */
   renderSkills(xp: SkillXp): void {
     this.lastSkills = xp;
+    this.renderIdentity();
     this.skillsList.innerHTML = '';
 
     let total = 0;

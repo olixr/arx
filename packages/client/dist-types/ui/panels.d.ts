@@ -1,4 +1,4 @@
-import { type EquipSlot, type EquippedItem, type InvSlot, type Look, type SkillXp } from '@devcraft/shared';
+import { type EquipSlot, type EquippedItem, type InvSlot, type SkillXp } from '@devcraft/shared';
 /** Explicit verbs the item context menu can dispatch. */
 export type SlotAction = 'use' | 'deposit' | 'sell' | 'drop';
 /**
@@ -24,27 +24,21 @@ export declare class Panels {
     /** Cosmetic per-hand grip preference: read current + set. */
     private readonly carryStyle;
     private readonly onCarryStyle;
-    /** The mirror's model: the player's chosen look + adventurer name. */
-    private readonly portraitInfo;
+    /** The case's owner: the adventurer name on the identity line. */
+    private readonly identityInfo;
     private readonly invPanel;
     private readonly invGrid;
-    private readonly equipLeft;
-    private readonly equipRight;
+    private readonly equipAnatomy;
     private readonly coinReadout;
     private readonly packFill;
     private readonly packFilters;
     /** The pack's lens: dims sockets outside the chosen family. */
     private packFilter;
-    private readonly namePlate;
+    private readonly identName;
+    private readonly identDeed;
     private readonly skillsPanel;
     private readonly skillsList;
-    /** The mirror: your actual rig wearing your actual gear, on a stage. */
-    private readonly figWell;
-    private readonly figCanvas;
     private readonly gearStrip;
-    /** Which way the figure faces — the player turns it by hand. */
-    private figDir;
-    private static readonly FIG_DIRS;
     private readonly card;
     private readonly menu;
     /** The chosen technique per style, mirrored from the server. */
@@ -64,9 +58,8 @@ export declare class Panels {
     deviceMode?: () => 'kb' | 'pad', 
     /** Cosmetic per-hand grip preference: read current + set. */
     carryStyle?: (hand: 'main' | 'off') => 'normal' | 'rogue', onCarryStyle?: (style: 'normal' | 'rogue', hand: 'main' | 'off') => void, 
-    /** The mirror's model: the player's chosen look + adventurer name. */
-    portraitInfo?: () => {
-        look: Look | null;
+    /** The case's owner: the adventurer name on the identity line. */
+    identityInfo?: () => {
         name?: string;
     });
     toggleInventory(): void;
@@ -108,7 +101,7 @@ export declare class Panels {
     /** Re-apply the pack lens to the rendered grid (no rebuild). */
     private applyPackFilter;
     renderInventory(slots: InvSlot[]): void;
-    /** Build one equipment socket (either flank of the stage). */
+    /** Build one equipment socket, hung at its grid-area on the stand. */
     private equipCell;
     renderEquipment(equipment: Partial<Record<string, EquippedItem>>): void;
     /**
@@ -117,12 +110,11 @@ export declare class Panels {
      */
     private renderGearStrip;
     /**
-     * The mirror: the player's ACTUAL rig — same drawHumanoid as the
-     * world, wearing the equipment record live — facing the glass until
-     * the player turns it by hand. (The cape rides the world cloth sim,
-     * so the mirror shows the kit beneath it.)
+     * The identity line: adventurer name + total level. The character
+     * itself is not duplicated here — the camera frames the LIVE rig in
+     * the world beside the case, wearing every change as it lands.
      */
-    private drawPortrait;
+    private renderIdentity;
     /** Server-confirmed technique choices; re-renders the picker. */
     setTechniques(chosen: Record<string, string>): void;
     /** Build one skill card for the hall. */

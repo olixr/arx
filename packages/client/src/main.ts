@@ -284,7 +284,7 @@ const panels = new Panels(
   (): 'kb' | 'pad' => nav.mode,
   (hand) => (hand === 'off' ? game.carryOff : game.carryStyle),
   (style, hand) => game.setCarryStyle(style, hand),
-  () => ({ look: game.ownLook, name: game.ownName }),
+  () => ({ name: game.ownName }),
 );
 
 /** Drop a whole pack slot onto the ground (drag-out / pad Ⓨ). */
@@ -551,7 +551,7 @@ const lootPanel = new LootPanel(game);
 const el = (id: string): HTMLElement => document.getElementById(id)!;
 dressPanel(el('inventory-panel'), {
   icon: uiIconUrl('backpack', 34),
-  hint: 'Your figure wears what you equip — inspect anything for its full story.',
+  hint: 'You wear what you equip — watch yourself beside the case.',
   onClose: () => panels.closeAll(),
 });
 dressPanel(el('skills-panel'), {
@@ -1292,6 +1292,16 @@ function frame(now: number): void {
   const uiOpen =
     document.querySelector('.ui-screen:not(.hidden), .ui-tray:not(.hidden)') !== null ||
     looks.open;
+  // The character case frames the LIVE you: with the case docked right
+  // (and no bank/shop conversation borrowing the pack), the camera
+  // slides the world so your character stands centered in the open
+  // ground left of it. 0 hands the classic centered follow back.
+  let viewShift = 0;
+  if (panels.invOpen && !stationPanels.bankOpen && !stationPanels.shopOpen) {
+    const caseRect = el('inventory-panel').getBoundingClientRect();
+    viewShift = Math.max(0, (window.innerWidth - caseRect.left) / 2);
+  }
+  renderer.setViewShift(viewShift);
   // Build mode pins the action strip with its verbs — on both devices.
   if (buildMode) {
     if (nav.mode === 'pad') {

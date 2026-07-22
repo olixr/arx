@@ -491,6 +491,14 @@ export class Renderer {
   private readonly anims = new Map<number | 'own', AnimState>();
   private shakeAmount = 0;
   /**
+   * UI view shift, in screen px: a docked screen (the character case)
+   * asks the camera to frame the player left of it, so the LIVE rig
+   * is the character preview. Glides both ways — opening the case
+   * reads as the world sliding over, not a cut.
+   */
+  private viewShiftX = 0;
+  private viewShiftTargetX = 0;
+  /**
    * True while the player zoom is gliding toward its target. Every
    * cached sprite/shadow/chunk holds its bake and scale-blits for the
    * ride: a glide crosses the 20% scale-drift threshold on the whole
@@ -537,6 +545,15 @@ export class Renderer {
   /** A quick camera zoom kick — the killing-blow exclamation point. */
   zoomPulse(amount = 0.045): void {
     this.zoomPulseAmount = Math.min(0.08, this.zoomPulseAmount + amount);
+  }
+
+  /**
+   * Ask the camera to frame the player `px` screen pixels left of
+   * center (0 restores the classic centered follow). Set every frame
+   * by main while a docked screen owns the right of the viewport.
+   */
+  setViewShift(px: number): void {
+    this.viewShiftTargetX = px;
   }
 
   /** A fading, flattening silhouette where something died. */
@@ -2000,9 +2017,13 @@ export class Renderer {
     this.camera.tickZoom(frameDt);
     this.zoomGliding = this.camera.zoom !== this.camera.targetZoom;
 
+    // The UI's frame request glides, then the camera eases onto it —
+    // opening the character case pans the world, never cuts.
+    this.viewShiftX +=
+      (this.viewShiftTargetX - this.viewShiftX) * (1 - Math.exp(-7 * frameDt));
     const own = game.predictor.renderPos();
     const k = 1 - Math.exp(-8 * frameDt);
-    this.camera.x += (own.x - this.camera.x) * k;
+    this.camera.x += (own.x + this.viewShiftX / this.camera.scale - this.camera.x) * k;
     this.camera.y += (own.y - this.camera.y) * k;
 
     this.shakeAmount *= Math.exp(-7 * frameDt);
