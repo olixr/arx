@@ -4074,7 +4074,9 @@ export class GameServer {
                 y: ppos.y,
                 radius: 0,
                 color: '#7ac47a',
-                text: `+${sum.power}`,
+                // A bare number reads as damage — every gain floaty
+                // says WHAT went up.
+                text: `+${sum.power} health`,
               });
             }
           }
@@ -5300,22 +5302,6 @@ export class GameServer {
       }
       this.tickCrops(now);
       player.session?.sendJson({ t: 'chat', channel: 'system', text: `Ripened ${grown} crops.` });
-      return;
-    }
-    if (config.devCommands && text.startsWith('/xp')) {
-      // /xp <skill> [amount] — pour xp straight into a skill. The
-      // level-up ceremony's staging lever: rehearse the show on demand.
-      const [, skillRaw, amtRaw] = text.split(/\s+/);
-      if (!skillRaw || !isSkillId(skillRaw)) {
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `/xp <skill> [amount] — pour xp into a skill.`,
-        });
-        return;
-      }
-      const amount = Math.max(1, Math.min(10_000_000, Number.parseInt(amtRaw ?? '', 10) || 500));
-      this.grantXp(eid, player, skillRaw, amount);
       return;
     }
     if (config.devCommands && text.startsWith('/give ')) {

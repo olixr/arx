@@ -525,13 +525,17 @@ const game = new ClientGame(input, {
     }
   },
   onXp: (msg) => {
-    // A quiet golden xp drip above the player's head.
+    // The xp drip above the player's head SAYS what went up — a bare
+    // number reads as damage. It wears the skill's accent color and
+    // its true name (hidden arts included), same as the skills hall.
     const own = game.predictor.renderPos();
+    const face = SKILL_FACE[msg.skill] ?? { icon: 'bread', color: '#e8b64c' };
+    const skillName = (isSkillId(msg.skill) ? HIDDEN_SKILLS[msg.skill]?.name : undefined) ?? msg.skill;
     game.floaties.push({
       x: own.x + 0.35,
       y: own.y - 1.15,
-      text: `+${msg.gained}`,
-      color: '#e8b64c',
+      text: `+${msg.gained} ${skillName}`,
+      color: face.color,
       bornAt: performance.now(),
       sizeMul: 0.72,
     });
@@ -544,11 +548,9 @@ const game = new ClientGame(input, {
         text: `⭐ ${msg.skill} level ${msg.level}! Congratulations!`,
       });
       sfx.levelUp();
-      const face = SKILL_FACE[msg.skill] ?? { icon: 'bread', color: '#e8b64c' };
-      const hidden = isSkillId(msg.skill) ? HIDDEN_SKILLS[msg.skill] : undefined;
       renderer.startLevelCeremony(own.x, own.y, face.color);
       showLevelUp({
-        name: hidden?.name ?? msg.skill,
+        name: skillName,
         level: msg.level,
         icon: face.icon,
         color: face.color,
