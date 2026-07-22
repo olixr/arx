@@ -164,6 +164,9 @@ export class Panels {
   private readonly equipRight = document.getElementById('equip-right')!;
   private readonly coinReadout = document.getElementById('coin-readout')!;
   private readonly packFill = document.getElementById('pack-fill')!;
+  private readonly packFilters = document.getElementById('pack-filters')!;
+  /** The pack's lens: dims sockets outside the chosen family. */
+  private packFilter: 'all' | 'gear' | 'food' | 'mats' = 'all';
   private readonly namePlate = document.getElementById('char-nameplate')!;
   private readonly skillsPanel = document.getElementById('skills-panel')!;
   private readonly skillsList = document.getElementById('skills-list')!;
@@ -234,6 +237,29 @@ export class Panels {
     turnR.dataset.acta = 'Turn';
     turnL.addEventListener('click', () => turn(-1));
     turnR.addEventListener('click', () => turn(1));
+
+    // The pack's filter lens: All / Gear / Food / Mats chips.
+    for (const [key, label] of [
+      ['all', 'All'],
+      ['gear', 'Gear'],
+      ['food', 'Food'],
+      ['mats', 'Mats'],
+    ] as const) {
+      const chip = document.createElement('button');
+      chip.className = 'sort-chip' + (key === this.packFilter ? ' active' : '');
+      chip.textContent = label;
+      chip.dataset.nav = '';
+      chip.dataset.navkey = `packfilter:${key}`;
+      chip.dataset.acta = 'Filter';
+      chip.addEventListener('click', () => {
+        this.packFilter = key;
+        this.packFilters
+          .querySelectorAll('.sort-chip')
+          .forEach((el) => el.classList.toggle('active', el === chip));
+        this.applyPackFilter();
+      });
+      this.packFilters.appendChild(chip);
+    }
     window.addEventListener('pointermove', (e) => this.dragMove(e));
     window.addEventListener('pointerup', (e) => this.dragEnd(e));
     window.addEventListener('resize', () => this.drawPortrait());
@@ -830,6 +856,24 @@ export class Panels {
 
   // ---- rendering ----------------------------------------------------
 
+  /** Which filter family an item belongs to. */
+  private static packFamily(def: ItemDef | undefined): 'gear' | 'food' | 'mats' {
+    if (def?.equipSlot || def?.weapon || def?.tool) return 'gear';
+    if (def?.heals) return 'food';
+    return 'mats';
+  }
+
+  /** Re-apply the pack lens to the rendered grid (no rebuild). */
+  private applyPackFilter(): void {
+    for (const cell of this.invGrid.querySelectorAll<HTMLElement>('[data-invslot]')) {
+      const fam = cell.dataset.family;
+      cell.classList.toggle(
+        'filtered-out',
+        this.packFilter !== 'all' && fam !== undefined && fam !== this.packFilter,
+      );
+    }
+  }
+
   renderInventory(slots: InvSlot[]): void {
     this.lastSlots = slots;
     this.invGrid.innerHTML = '';
@@ -851,6 +895,7 @@ export class Panels {
         const tier = rarityOfInstance(slot.item, slot.roll);
         if (tier !== 'common') cell.classList.add(`rarity-${tier}`);
         cell.dataset.filled = '1';
+        cell.dataset.family = Panels.packFamily(def);
         cell.dataset.tipname = instanceName(slot.item, slot.roll);
         cell.dataset.acta = def?.equipSlot ? 'Equip' : def?.heals ? 'Eat' : 'Use';
         // Click (no drag) fires in dragEnd; pointerdown arms both paths.
@@ -894,6 +939,7 @@ export class Panels {
     // The room left in the bag, told plainly.
     this.packFill.textContent = `${filled} / ${count}`;
     this.packFill.classList.toggle('full', filled >= count);
+    this.applyPackFilter();
 
     // The card may be describing a slot that just changed — refresh it.
     if (this.cardSource?.kind === 'inv') {
