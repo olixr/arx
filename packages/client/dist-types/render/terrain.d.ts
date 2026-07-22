@@ -1,3 +1,4 @@
+import type { WoodSkin } from './woodSkins.js';
 /**
  * ORGANIC terrain rendering. Tiles are authored on a grid but the grid
  * must disappear on screen: material regions are contoured on the dual
@@ -39,7 +40,7 @@ export declare const SOIL_TILES: Set<number>;
  * (the canvas merely clipped it), so the gutter costs only pixels.
  */
 export declare function bakeGutter(px: number): number;
-export declare function bakeChunk(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number): HTMLCanvasElement;
+export declare function bakeChunk(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler): HTMLCanvasElement;
 /**
  * Bake the LIFTED terrain surface of one chunk at one elevation level:
  * every tile at `level` or higher (ramps excluded — they get bespoke
@@ -56,6 +57,8 @@ export interface ElevatedBake {
     rows: boolean[];
 }
 export declare function bakeElevated(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, level: number): ElevatedBake | null;
+/** Resolves the wood skin a building floor tile is cut from. */
+export type WoodSkinSampler = (tx: number, ty: number) => WoodSkin;
 /**
  * Live-water options, threaded from the renderer each frame. `full`
  * gates the ENHANCEMENT layer (swells, caustics, rolling foam) — the

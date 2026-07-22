@@ -68,6 +68,7 @@ import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
+import { dealWoodSkin, type WoodSkin } from './woodSkins.js';
 import {
   bakeChunk,
   bakeElevated,
@@ -2612,6 +2613,11 @@ export class Renderer {
     const ground = (tx: number, ty: number) => game.world.groundAt(tx, ty);
     const detail = (tx: number, ty: number) => this.detailAt(game, tx, ty);
     const elev = (tx: number, ty: number) => game.world.elevAt(tx, ty);
+    // Floorboards are cut from their building's wood: resolve the
+    // room a plank tile belongs to (wallRegion fallback covers the
+    // substituted strip that runs under the walls themselves).
+    const woodSkin = (tx: number, ty: number) =>
+      this.woodSkinFor(this.interiors.regionAt(game, tx, ty) ?? this.wallRegion(game, tx, ty));
     let maxLevel = 0;
     let minLevel = 0;
     for (let i = 0; i < data.elev.length; i++) {
@@ -2644,7 +2650,7 @@ export class Renderer {
       lifted.push({ level, canvas: bake.canvas, bands });
     }
     const baked: BakedChunk = {
-      canvas: bakeChunk(ground, detail, elev, cx, cy, bakePx),
+      canvas: bakeChunk(ground, detail, elev, cx, cy, bakePx, woodSkin),
       data,
       rev: data.rev ?? 0,
       px: bakePx,
@@ -2757,60 +2763,11 @@ export class Renderer {
   private static readonly PLINTH_COL = '#6e6779';
 
   /**
-   * A timber building is cut from ONE stand of trees: every log wall
-   * of a building shares a wood skin — base log tones, the pale
-   * limewash chinking between courses, the squared sill/plate beams,
-   * trim, sawn end-grain — plus a texture character (pine is knotty,
-   * weathered spruce is checked and split). Skins are dealt per
-   * BUILDING from its interior-region anchor, so neighbouring houses
-   * come from different forests while every wall, doorway, and window
-   * of one house agrees.
+   * The wood skin a wall/doorway tile wears (building-keyed — see
+   * woodSkins.ts, shared with the floor-plank bake in terrain.ts).
    */
-  private static readonly WOOD_SKINS: ReadonlyArray<{
-    /** Base log tone + whisper alternate — one lumber order. */
-    log: string;
-    log2: string;
-    /** Limewash chinking packed between courses. */
-    chink: string;
-    /** Crown cap-beam top. */
-    top: string;
-    /** Squared sill and wall-plate beams. */
-    plate: string;
-    /** Doorway/window trim — two steps lighter law. */
-    trim: string;
-    /** Texture character multipliers. */
-    knotK: number;
-    checkK: number;
-  }> = [
-    // Golden oak — the town default, warm and even-grained.
-    {
-      log: '#6d4a26', log2: '#674424', chink: '#a28e6b', top: '#8a6234',
-      plate: '#7a562c', trim: '#96703c', knotK: 1, checkK: 1,
-    },
-    // Honey pine — lighter, sappier, busy with knots.
-    {
-      log: '#85633a', log2: '#7e5d3a', chink: '#bcab86', top: '#a07946',
-      plate: '#8f6b3a', trim: '#ad854e', knotK: 2.1, checkK: 0.7,
-    },
-    // Weathered spruce — grayed by rain, split and checked.
-    {
-      log: '#6a5641', log2: '#644f3e', chink: '#9c8f78', top: '#7f6b52',
-      plate: '#746046', trim: '#8a7458', knotK: 0.8, checkK: 2.2,
-    },
-    // Dark walnut — rich and calm, the prestige cut.
-    {
-      log: '#4e3118', log2: '#492f1a', chink: '#83704f', top: '#66431f',
-      plate: '#5a3d1d', trim: '#7a5730', knotK: 0.7, checkK: 0.8,
-    },
-  ];
-  /** Deal weights: oak and pine common, walnut the rare prize. */
-  private static readonly WOOD_DEAL = [0, 0, 0, 1, 1, 2, 2, 3] as const;
-
-  /** The wood skin a wall/doorway tile wears (building-keyed). */
-  private woodSkinFor(region: InteriorRegion | null): (typeof Renderer.WOOD_SKINS)[number] {
-    if (!region) return Renderer.WOOD_SKINS[0]!; // freestanding runs stay oak
-    const h = hashCoords(23, region.x0, region.y0);
-    return Renderer.WOOD_SKINS[Renderer.WOOD_DEAL[h % 8]!]!;
+  private woodSkinFor(region: InteriorRegion | null): WoodSkin {
+    return dealWoodSkin(region);
   }
 
   private collectRaisedTiles(game: ClientGame, items: DrawItem[]): void {

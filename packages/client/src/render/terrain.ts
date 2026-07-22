@@ -6,6 +6,7 @@ import {
   valueNoise,
 } from '@devcraft/shared';
 import { chamferRect, facetCircle } from './shapes.js';
+import type { WoodSkin } from './woodSkins.js';
 
 /**
  * ORGANIC terrain rendering. Tiles are authored on a grid but the grid
@@ -309,6 +310,7 @@ export function bakeChunk(
   cx: number,
   cy: number,
   px: number,
+  woodSkin?: WoodSkinSampler,
 ): HTMLCanvasElement {
   const G = bakeGutter(px);
   const canvas = document.createElement('canvas');
@@ -353,7 +355,7 @@ export function bakeChunk(
   );
 
   // 3. Wood-floor plank seams (subtle, flat).
-  drawPlanks(ctx, g, baseX, baseY, px);
+  drawPlanks(ctx, g, baseX, baseY, px, woodSkin);
 
   // 4. Baked micro-details (static ones only; swaying ones are live).
   // One tile of margin so flecks straddling a chunk edge reach into
@@ -1757,19 +1759,30 @@ function maskPolygon(
 }
 
 /** Warm board tones — one per plank by world hash, kept close: a laid
- *  floor is one lumber order, not a patchwork. */
+ *  floor is one lumber order, not a patchwork. Bridges and any floor
+ *  without a building keep this neutral order; a building's floor is
+ *  cut from its own wood skin instead. */
 const PLANK_TONES = ['#a87e46', '#a37842', '#ad834a', '#9f7440'];
 
+/** Resolves the wood skin a building floor tile is cut from. */
+export type WoodSkinSampler = (tx: number, ty: number) => WoodSkin;
+
 /**
- * RUNNING-BOND PLANK FLOOR: boards are big flat rectangles — three
- * courses per tile, two tiles long, each course offset a full tile
- * from the one above, the same bond as laid masonry but cut in wood.
- * Every board picks its own tone by world hash so the floor reads as
- * individual lumber; butt joints get a dark seam, a lit end-grain
- * sliver and a peg pair; depth is one lit edge and one shadow bed per
- * course. All geometry is world-keyed, so a chunk seam can never
- * break a board, and edges that meet another material get their own
- * worn shading (the opaque boards paint over the contour band).
+ * RUNNING-BOND PLANK FLOOR: boards are big flat rectangles — a few
+ * courses per tile, several tiles long, each course offset a full
+ * tile from the one above so joints stagger diagonally like laid
+ * floorboards, never the half-brick bond of masonry. Every board
+ * picks its own tone by world hash so the floor reads as individual
+ * lumber; butt joints get a dark seam, a lit end-grain sliver and a
+ * peg pair; depth is one lit edge and one shadow bed per course.
+ * WOOD SKINS: a WoodFloor tile inside a building is cut from that
+ * building's wood — its own tone family AND its own milling: pine is
+ * knotty and milled narrow (4 courses/tile), walnut lays long clear
+ * boards (4 tiles), weathered spruce is checked and sun-bleached.
+ * Bridge tiles always keep the neutral town lumber. All geometry is
+ * world-keyed, so a chunk seam can never break a board, and edges
+ * that meet another material get their own worn shading (the opaque
+ * boards paint over the contour band).
  */
 function drawPlanks(
   ctx: CanvasRenderingContext2D,
@@ -1777,6 +1790,7 @@ function drawPlanks(
   baseX: number,
   baseY: number,
   px: number,
+  woodSkin?: WoodSkinSampler,
 ): void {
   const isPlank = (t: number | undefined): boolean => t === Tile.WoodFloor || t === Tile.Bridge;
   const jointW = Math.max(1, px * 0.035);
@@ -1785,20 +1799,25 @@ function drawPlanks(
     for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
       const tx = baseX + lx;
       const ty = baseY + ly;
-      if (!isPlank(g(tx, ty))) continue;
+      const t = g(tx, ty);
+      if (!isPlank(t)) continue;
+      const skin = t === Tile.WoodFloor && woodSkin ? woodSkin(tx, ty) : null;
+      const tones = skin ? skin.floorTones : PLANK_TONES;
+      const rows = skin ? skin.rowsPerTile : 3;
+      const len = skin ? skin.boardLen : 3;
       const gx = lx * px;
       const gy = ly * px;
-      const rowH = px / 3;
-      for (let r = 0; r < 3; r++) {
-        const row = ty * 3 + r;
-        // Boards run three tiles, each course shifted one tile from
-        // the last — joints stagger diagonally like laid floorboards,
-        // never the half-brick bond of masonry.
-        const off = ((row % 3) + 3) % 3;
-        const pid = Math.floor((tx + off) / 3);
+      const rowH = px / rows;
+      for (let r = 0; r < rows; r++) {
+        const row = ty * rows + r;
+        // Each course shifts one tile from the last (diagonal
+        // stagger); negative-x modulo keeps west-of-origin floors on
+        // the same boards.
+        const off = ((row % len) + len) % len;
+        const pid = Math.floor((tx + off) / len);
         const y0 = gy + r * rowH;
         const h1 = hashCoords(217, pid, row);
-        ctx.fillStyle = PLANK_TONES[(h1 >>> 2) % PLANK_TONES.length]!;
+        ctx.fillStyle = tones[(h1 >>> 2) % tones.length]!;
         ctx.fillRect(gx, y0, px, rowH);
         // The course's depth read: lit top edge, shadow bed beneath.
         ctx.fillStyle = 'rgba(255, 235, 200, 0.08)';
@@ -1807,7 +1826,7 @@ function drawPlanks(
         ctx.fillRect(gx, y0 + rowH - Math.max(1, px * 0.03), px, Math.max(1, px * 0.03));
         // The tile that starts a board owns its butt joint; a hashed
         // nudge keeps ends hand-laid, never gridded.
-        if ((((tx + off) % 3) + 3) % 3 === 0) {
+        if ((((tx + off) % len) + len) % len === 0) {
           const jx = gx + ((hashCoords(223, tx, row) % 14) / 100) * px;
           ctx.fillStyle = 'rgba(50, 34, 18, 0.55)';
           ctx.fillRect(jx, y0, jointW, rowH);
@@ -1817,16 +1836,34 @@ function drawPlanks(
           ctx.fillRect(jx + px * 0.09, y0 + rowH * 0.22, px * 0.035, px * 0.035);
           ctx.fillRect(jx + px * 0.09, y0 + rowH * 0.62, px * 0.035, px * 0.035);
         }
-        // Sparse grain tick; the rare knot.
+        // Sparse grain tick; knots at the wood's own rate — pine is
+        // busy with them, walnut nearly clear.
         if ((h1 & 15) === 5) {
           ctx.fillStyle = 'rgba(56, 38, 20, 0.18)';
           ctx.fillRect(gx + (((h1 >>> 5) % 55) / 100) * px, y0 + rowH * 0.45, px * 0.3, Math.max(1, px * 0.02));
         }
-        if (hashCoords(229, tx, row) % 13 === 4) {
+        const knotMod = skin ? Math.max(5, Math.round(13 / skin.knotK)) : 13;
+        if (hashCoords(229, tx, row) % knotMod === 4) {
           ctx.fillStyle = 'rgba(90, 62, 32, 0.6)';
           ctx.beginPath();
           ctx.ellipse(gx + (0.25 + (h1 % 50) / 100) * px, y0 + rowH * 0.5, px * 0.035, px * 0.025, 0, 0, Math.PI * 2);
           ctx.fill();
+        }
+        // Seasoning: short cross-grain checks off a board edge, and —
+        // on the heavily weathered woods — a sun-bleached wash.
+        if (skin && hashCoords(233, tx, row) % 100 < 7 * skin.checkK) {
+          const h2 = hashCoords(239, tx, row);
+          ctx.fillStyle = 'rgba(56, 38, 20, 0.35)';
+          ctx.fillRect(
+            gx + ((h2 % 80) / 100) * px,
+            (h2 & 1) === 0 ? y0 : y0 + rowH * 0.62,
+            Math.max(1, px * 0.02),
+            rowH * 0.38,
+          );
+        }
+        if (skin && skin.checkK >= 2 && h1 % 23 === 7) {
+          ctx.fillStyle = 'rgba(255, 240, 214, 0.07)';
+          ctx.fillRect(gx + (((h1 >>> 7) % 40) / 100) * px, y0, px * 0.6, rowH);
         }
       }
       // Worn shading where the boards end against another material.

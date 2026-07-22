@@ -517,19 +517,9 @@ export declare class Renderer {
     /** The stone plinth every timber wall stands on. */
     private static readonly PLINTH_COL;
     /**
-     * A timber building is cut from ONE stand of trees: every log wall
-     * of a building shares a wood skin — base log tones, the pale
-     * limewash chinking between courses, the squared sill/plate beams,
-     * trim, sawn end-grain — plus a texture character (pine is knotty,
-     * weathered spruce is checked and split). Skins are dealt per
-     * BUILDING from its interior-region anchor, so neighbouring houses
-     * come from different forests while every wall, doorway, and window
-     * of one house agrees.
+     * The wood skin a wall/doorway tile wears (building-keyed — see
+     * woodSkins.ts, shared with the floor-plank bake in terrain.ts).
      */
-    private static readonly WOOD_SKINS;
-    /** Deal weights: oak and pine common, walnut the rare prize. */
-    private static readonly WOOD_DEAL;
-    /** The wood skin a wall/doorway tile wears (building-keyed). */
     private woodSkinFor;
     private collectRaisedTiles;
     /**
