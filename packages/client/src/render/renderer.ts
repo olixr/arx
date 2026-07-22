@@ -11,7 +11,9 @@ import {
   TILE_PX,
   Tile,
   WALL_RUN_TILES,
+  DIAG_WALL_TILES,
   TREE_TILES,
+  diagWallInfo,
   hashCoords,
   hashString,
   pointHitsSolid,
@@ -2876,6 +2878,15 @@ export class Renderer {
           items.push(item);
           continue;
         }
+        if (DIAG_WALL_TILES.has(ground as Tile)) {
+          // 45° corners: their own painter (triangular crown + sloped
+          // facade). No cutaway — the straight camera-side run still
+          // drops to a stub; the corner stumps would read amputated.
+          const item = this.diagWallItem(ground as Tile, tx, ty, game, WALL_H, this.wallRegion(game, tx, ty));
+          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+          items.push(item);
+          continue;
+        }
         if (Renderer.WALL_TILES.has(ground)) {
           const wregion = this.wallRegion(game, tx, ty);
           // CUTAWAY LAW: the wall run between you and the camera drops
@@ -3426,6 +3437,296 @@ export class Renderer {
         ctx.fillRect(jx + s * 0.04, p.y + syT * 0.6, s * 0.042, s * 0.042);
       }
     }
+    ctx.restore();
+  }
+
+  /**
+   * A 45° wall corner tile. The mass fills one triangle (named by the
+   * tile); the open triangle faces the exterior. NE/NW-mass variants
+   * cut a building's camera-side corners and show their SLOPED
+   * hypotenuse facade; SE/SW-mass variants are the far corners — the
+   * hypotenuse hides behind the crown, and only an exposed south edge
+   * draws a straight face. Courses, palettes, and wood skins all
+   * match the straight walls, so the material reads continuous around
+   * the corner: a course at height h is the base line shifted up h,
+   * which on a diagonal is a base-PARALLEL sloped line meeting the
+   * neighbour run's horizontal course at the shared corner exactly.
+   * DIAGONAL SORT LAW (same as cliff bevels): a sloped face sorts at
+   * its NEAR row — the pocket behind the line is solid wall, nothing
+   * can stand there, so any body sharing its rows is in front.
+   */
+  private diagWallItem(
+    tile: Tile,
+    tx: number,
+    ty: number,
+    game: ClientGame,
+    whT: number,
+    region: InteriorRegion | null,
+  ): DrawItem {
+    const info = diagWallInfo(tile)!;
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const hs = whT * s;
+    const stone = info.material === 'stone';
+    const skin = this.woodSkinFor(region);
+    const top = stone ? '#8c8798' : skin.top;
+    const face = stone ? '#5b5566' : skin.log;
+    const nE = this.wallish(game, tx + 1, ty);
+    const nS = this.wallish(game, tx, ty + 1);
+    const nW = this.wallish(game, tx - 1, ty);
+    const x0 = p.x - 0.25;
+    const x1 = p.x + s + 0.25;
+    const yN = p.y;
+    const yS = p.y + syT;
+    const mass = info.mass;
+    // Hypotenuse ground endpoints, west end first.
+    const hypW: [number, number] = mass === 'NE' || mass === 'SW' ? [x0, yN] : [x0, yS];
+    const hypE: [number, number] = mass === 'NE' || mass === 'SW' ? [x1, yS] : [x1, yN];
+    // The mass triangle in plan coords (for the crown).
+    const tri: Array<[number, number]> =
+      mass === 'NE'
+        ? [[x0, yN], [x1, yN], [x1, yS]]
+        : mass === 'NW'
+          ? [[x0, yN], [x1, yN], [x0, yS]]
+          : mass === 'SE'
+            ? [[x1, yN], [x1, yS], [x0, yS]]
+            : [[x0, yN], [x1, yS], [x0, yS]];
+    const front = mass === 'NE' || mass === 'NW'; // hypotenuse faces the camera
+
+    return {
+      sortY: front ? ty + 0.001 : ty + 1,
+      drawShadow: front
+        ? () => this.castEdgeQuad(hypW[0], hypW[1], hypE[0], hypE[1], whT)
+        : nS
+          ? undefined
+          : () => this.castEdgeQuad(x0, yS, x1, yS, whT),
+      draw: () => {
+        // The visible face: sloped hypotenuse for front corners, the
+        // straight south edge for exposed back corners.
+        if (front) {
+          this.paintFaceBands(hypW, hypE, hs, s, stone, skin, face, tx, ty, whT);
+        } else if (!nS) {
+          this.paintFaceBands([x0, yS], [x1, yS], hs, s, stone, skin, face, tx, ty, whT);
+        }
+        // Crown: the mass triangle, lifted.
+        this.beginHeightLayer(whT);
+        const triPath = new Path2D();
+        triPath.moveTo(tri[0]![0], tri[0]![1]);
+        triPath.lineTo(tri[1]![0], tri[1]![1]);
+        triPath.lineTo(tri[2]![0], tri[2]![1]);
+        triPath.closePath();
+        ctx.fillStyle = top;
+        ctx.fill(triPath);
+        ctx.save();
+        ctx.clip(triPath);
+        if (!stone) {
+          // Cap-beam read along the diagonal: a hard arris falling
+          // away at the outward edge, a lit spine behind it. Strokes
+          // centred on the edge — the clip keeps the inside half.
+          ctx.strokeStyle = 'rgba(30, 18, 8, 0.24)';
+          ctx.lineWidth = s * 0.22;
+          ctx.beginPath();
+          ctx.moveTo(hypW[0], hypW[1]);
+          ctx.lineTo(hypE[0], hypE[1]);
+          ctx.stroke();
+          // Spine offset toward the mass.
+          const off = (mass === 'NE' || mass === 'NW' ? -1 : 1) * syT * 0.34;
+          ctx.strokeStyle = 'rgba(255, 226, 175, 0.14)';
+          ctx.lineWidth = s * 0.24;
+          ctx.beginPath();
+          ctx.moveTo(hypW[0], hypW[1] + off);
+          ctx.lineTo(hypE[0], hypE[1] + off);
+          ctx.stroke();
+        }
+        // Sun-lit lip on the camera-side arris grounds the height
+        // read, exactly like a straight crown's south lip.
+        if (front || !nS) {
+          ctx.strokeStyle = shade(top, 16);
+          ctx.lineWidth = s * 0.14;
+          ctx.beginPath();
+          if (front) {
+            ctx.moveTo(hypW[0], hypW[1]);
+            ctx.lineTo(hypE[0], hypE[1]);
+          } else {
+            ctx.moveTo(x0, yS);
+            ctx.lineTo(x1, yS);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+        ctx.restore(); // beginHeightLayer
+        // SILHOUETTE OUTLINE: the lifted outward arris + the visible
+        // face's ground contact + exposed end verticals. Run-shared
+        // edges are the neighbour runs' problem, as everywhere.
+        if (this.outlineOn) {
+          const o = new Path2D();
+          o.moveTo(hypW[0], hypW[1] - hs);
+          o.lineTo(hypE[0], hypE[1] - hs);
+          if (front) {
+            o.moveTo(hypW[0], hypW[1]);
+            o.lineTo(hypE[0], hypE[1]);
+            if (!nW) {
+              o.moveTo(hypW[0], hypW[1]);
+              o.lineTo(hypW[0], hypW[1] - hs);
+            }
+            if (!nE) {
+              o.moveTo(hypE[0], hypE[1]);
+              o.lineTo(hypE[0], hypE[1] - hs);
+            }
+          } else if (!nS) {
+            o.moveTo(x0, yS);
+            o.lineTo(x1, yS);
+            if (!nW) {
+              o.moveTo(x0, yS);
+              o.lineTo(x0, yS - hs);
+            }
+            if (!nE) {
+              o.moveTo(x1, yS);
+              o.lineTo(x1, yS - hs);
+            }
+          }
+          this.beginStructOutline();
+          ctx.stroke(o);
+        }
+      },
+    };
+  }
+
+  /**
+   * Material face bands for a wall face whose BASE runs between two
+   * ground points — a straight south edge or a 45° hypotenuse. Paints
+   * in a sheared local frame (x along the base, y up in screen px) so
+   * every course lands parallel to the base: constant world height IS
+   * a base-parallel line in this projection, which is what makes a
+   * diagonal's courses meet the neighbour run's at the corner. Values
+   * are THE SAME LAW as wallItem's face (chinked-course law for wood,
+   * running-bond for stone) — change them together.
+   */
+  private paintFaceBands(
+    A: [number, number],
+    B: [number, number],
+    hs: number,
+    s: number,
+    stone: boolean,
+    skin: WoodSkin,
+    face: string,
+    tx: number,
+    ty: number,
+    whT: number,
+  ): void {
+    const ctx = this.ctx;
+    const w2 = B[0] - A[0];
+    const k = (B[1] - A[1]) / w2;
+    ctx.save();
+    ctx.translate(A[0], A[1]);
+    ctx.transform(1, k, 0, 1, 0, 0);
+    ctx.fillStyle = face;
+    ctx.fillRect(0, -hs, w2, hs);
+    if (!stone) {
+      const plinthH = s * 0.22;
+      const sillH = whT >= 1 ? s * 0.11 : 0;
+      const plateH = s * 0.13;
+      const spanPx = hs - plateH - plinthH - sillH;
+      const nLogs = Math.max(1, Math.round(spanPx / (s * 0.42)));
+      const chinkG = Math.min(s * 0.055, spanPx * 0.05);
+      const logH = (spanPx - chinkG * (nLogs - 1)) / nLogs;
+      ctx.fillStyle = Renderer.PLINTH_COL;
+      ctx.fillRect(0, -plinthH, w2, plinthH);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.fillRect(0, -plinthH, w2, s * 0.03);
+      if (sillH > 0) {
+        ctx.fillStyle = shade(skin.plate, -10);
+        ctx.fillRect(0, -plinthH - sillH, w2, sillH);
+        ctx.fillStyle = 'rgba(255, 220, 170, 0.14)';
+        ctx.fillRect(0, -plinthH - sillH, w2, s * 0.028);
+      }
+      const base = plinthH + sillH;
+      const topY = -(hs - plateH);
+      ctx.fillStyle = skin.chink;
+      ctx.fillRect(0, topY, w2, spanPx + 0.5);
+      for (let li = 0; li < nLogs; li++) {
+        const yb = -base - li * (logH + chinkG);
+        const yt = yb - logH;
+        ctx.fillStyle = li % 2 === 0 ? skin.log : skin.log2;
+        ctx.fillRect(0, yt, w2, logH);
+        ctx.fillStyle = 'rgba(255, 214, 150, 0.2)';
+        ctx.fillRect(0, yt + logH * 0.06, w2, logH * 0.2);
+        ctx.fillStyle = 'rgba(28, 16, 6, 0.22)';
+        ctx.fillRect(0, yb - logH * 0.2, w2, logH * 0.2);
+        ctx.fillStyle = 'rgba(20, 12, 5, 0.45)';
+        ctx.fillRect(0, yb - Math.max(1, s * 0.022), w2, Math.max(1, s * 0.022));
+        const hg = hashCoords(157 + li, tx, ty);
+        if (hg % 100 < 30 * skin.knotK) {
+          const kx = w2 * (0.16 + ((hg >>> 5) % 64) / 100);
+          const ky = yt + logH * (0.32 + ((hg >>> 9) % 38) / 100);
+          const kr = s * (0.03 + ((hg >>> 13) % 12) / 520);
+          ctx.fillStyle = 'rgba(40, 24, 10, 0.45)';
+          ctx.beginPath();
+          ctx.ellipse(kx, ky, kr * 1.4, kr, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(skin.log, -24);
+          ctx.beginPath();
+          ctx.ellipse(kx, ky, kr * 0.65, kr * 0.45, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if ((hg & 3) === 1) {
+          ctx.fillStyle = 'rgba(46, 28, 12, 0.2)';
+          ctx.fillRect(
+            (w2 * (hg % 40)) / 100,
+            yt + logH * (0.42 + ((hg >>> 11) % 22) / 100),
+            w2 * (0.3 + ((hg >>> 6) % 35) / 100),
+            Math.max(1, s * 0.026),
+          );
+        }
+        if ((hg >>> 3) % 100 < 13 * skin.checkK) {
+          ctx.fillStyle = 'rgba(26, 15, 6, 0.4)';
+          ctx.fillRect(
+            w2 * (0.18 + ((hg >>> 7) % 62) / 100),
+            (hg & 8) === 0 ? yt : yb - logH * 0.3,
+            Math.max(1, s * 0.024),
+            logH * 0.3,
+          );
+        }
+      }
+      ctx.fillStyle = skin.plate;
+      ctx.fillRect(0, -hs, w2, plateH);
+      ctx.fillStyle = 'rgba(255, 220, 170, 0.15)';
+      ctx.fillRect(0, -hs, w2, s * 0.03);
+      ctx.fillStyle = 'rgba(26, 15, 7, 0.4)';
+      ctx.fillRect(0, -hs + plateH - s * 0.028, w2, s * 0.028);
+      const hp = hashCoords(173, tx, ty);
+      if ((hp & 3) !== 0) {
+        ctx.fillStyle = 'rgba(40, 24, 10, 0.5)';
+        const pgx = w2 * (0.2 + (hp % 30) / 100);
+        ctx.fillRect(pgx, -hs + plateH * 0.28, s * 0.045, s * 0.045);
+        if ((hp & 4) === 0) ctx.fillRect(pgx + s * 0.5, -hs + plateH * 0.28, s * 0.045, s * 0.045);
+      }
+    } else {
+      // Running-bond masonry, courses at absolute stone height.
+      ctx.strokeStyle = 'rgba(20, 14, 28, 0.35)';
+      ctx.lineWidth = Math.max(1, s * 0.03);
+      let band = 0;
+      for (let cy2 = s * 0.39; cy2 < hs * 0.96; cy2 += s * 0.39, band++) {
+        ctx.beginPath();
+        ctx.moveTo(0, -cy2);
+        ctx.lineTo(w2, -cy2);
+        ctx.stroke();
+        for (const fx of band % 2 === 0 ? [0.25, 0.75] : [0.5]) {
+          ctx.beginPath();
+          ctx.moveTo(w2 * fx, -cy2);
+          ctx.lineTo(w2 * fx, -Math.min(hs * 0.96, cy2 + s * 0.39));
+          ctx.stroke();
+        }
+      }
+      ctx.fillStyle = 'rgba(20, 12, 26, 0.2)';
+      ctx.fillRect(0, -hs * 0.1, w2, hs * 0.1);
+    }
+    // Ambient-occlusion seam where the face meets the ground.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
+    ctx.fillRect(0, -s * 0.06, w2, s * 0.06);
     ctx.restore();
   }
 

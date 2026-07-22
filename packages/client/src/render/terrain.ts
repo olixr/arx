@@ -2,7 +2,9 @@ import {
   CHUNK_SIZE,
   Detail,
   Tile,
+  diagWallInfo,
   hashCoords,
+  tileDef,
   valueNoise,
 } from '@devcraft/shared';
 import { chamferRect, facetCircle } from './shapes.js';
@@ -259,6 +261,18 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
       t === Tile.EnchantingTable
     ) {
       return nearestFloor(ground, tx, ty);
+    }
+    // A 45° wall corner: the crown and face cover the MASS triangle,
+    // but the OPEN triangle always faces the exterior — the ground
+    // under it is whatever the exterior-side diagonal neighbour
+    // carries, so terrain skins flow beneath the cut instead of
+    // leaving a bald patch of base meadow.
+    const dw = diagWallInfo(t);
+    if (dw) {
+      const [dx, dy] =
+        dw.mass === 'NE' ? [-1, 1] : dw.mass === 'NW' ? [1, 1] : dw.mass === 'SE' ? [-1, -1] : [1, -1];
+      const nt = ground(tx + dx, ty + dy);
+      return nt === undefined || tileDef(nt).solid ? Tile.Grass : nt;
     }
     // Floors run UNDER walls: the prism covers its own tile, and the
     // floor skin meeting the wall base edge-on leaves no gap to peek

@@ -126,7 +126,10 @@ import {
   sneakDetectionFactor,
   STATION_TILES,
   STATUS_BIT,
+  WALL_RUN_TILES,
   applyDodge,
+  diagWallInfo,
+  orientDiagWall,
   chargedShot,
   circleHitsSolid,
   pointHitsSolid,
@@ -1608,13 +1611,31 @@ export class GameServer {
     }
     for (const m of def.materials) removeItem(player.inventory, m.item, m.qty);
 
+    // A diagonal wall corner auto-orients to span the two
+    // perpendicular wall neighbours present right now — the builder
+    // raises the adjoining runs first, then cuts the corner.
+    let placed = def.tile;
+    const dw = diagWallInfo(def.tile);
+    if (dw) {
+      const isWall = (x: number, y: number): boolean => {
+        const t = this.world.groundAt(x, y);
+        return t !== undefined && WALL_RUN_TILES.includes(t as Tile);
+      };
+      placed = orientDiagWall(
+        dw.material,
+        isWall(action.tx, action.ty - 1),
+        isWall(action.tx + 1, action.ty),
+        isWall(action.tx, action.ty + 1),
+        isWall(action.tx - 1, action.ty),
+      );
+    }
     // The ground being replaced is what demolish will restore. When
     // building over an earlier construction the register/save layers
     // keep the original capture, so 'ground' here is only the first
     // link in the chain.
-    this.world.registerBuilt(action.tx, action.ty, def.tile, player.characterId, ground);
-    this.accounts.saveBuiltTile(action.tx, action.ty, def.tile, player.characterId, ground);
-    this.setWorldTile(action.tx, action.ty, def.tile);
+    this.world.registerBuilt(action.tx, action.ty, placed, player.characterId, ground);
+    this.accounts.saveBuiltTile(action.tx, action.ty, placed, player.characterId, ground);
+    this.setWorldTile(action.tx, action.ty, placed);
     this.grantXp(eid, player, def.skill ?? 'construction', def.xp);
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
     this.cancelAction(eid, player, 'done');

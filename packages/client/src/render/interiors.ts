@@ -12,7 +12,7 @@
  * world changes (worldVersion bump ⇒ full clear; recompute is bounded
  * by MAX_REGION and only runs for tiles actually asked about).
  */
-import { INTERIOR_BOUNDARY_TILES, Tile, hashCoords } from '@devcraft/shared';
+import { INTERIOR_BOUNDARY_TILES, Tile, diagWallInfo, hashCoords } from '@devcraft/shared';
 import type { ClientGame } from '../game/clientGame.js';
 
 export interface InteriorRegion {
@@ -111,7 +111,8 @@ export class InteriorMap {
             t === Tile.WallStone ||
             t === Tile.WallStoneWindow ||
             t === Tile.DoorwayStone ||
-            t === Tile.DoorwayStoneWide
+            t === Tile.DoorwayStoneWide ||
+            diagWallInfo(t)?.material === 'stone'
           ) {
             stone++;
           } else if (t === Tile.CaveWall) stone++;

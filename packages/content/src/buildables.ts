@@ -64,6 +64,18 @@ const defs: BuildableDef[] = [
     ground: OUTDOOR_AND_FLOORS,
   },
   {
+    // Auto-orients to span the corner between the two perpendicular
+    // wall neighbours present at placement — build those runs first.
+    id: 'wood_wall_corner',
+    name: 'Wood wall corner',
+    tile: Tile.WallWoodDiagNE,
+    levelReq: 4,
+    xp: 30,
+    materials: [{ item: 'log', qty: 2 }],
+    ticks: 30,
+    ground: OUTDOOR_AND_FLOORS,
+  },
+  {
     id: 'garden_plot',
     name: 'Garden plot',
     tile: Tile.Tilled,
@@ -351,6 +363,18 @@ const defs: BuildableDef[] = [
     tile: Tile.WallStone,
     levelReq: 15,
     xp: 45,
+    materials: [{ item: 'copper_ore', qty: 1 }, { item: 'log', qty: 1 }],
+    ticks: 35,
+    ground: OUTDOOR_AND_FLOORS,
+  },
+  {
+    // Auto-orients to span the corner between the two perpendicular
+    // wall neighbours present at placement — build those runs first.
+    id: 'stone_wall_corner',
+    name: 'Stone wall corner',
+    tile: Tile.WallStoneDiagNE,
+    levelReq: 16,
+    xp: 50,
     materials: [{ item: 'copper_ore', qty: 1 }, { item: 'log', qty: 1 }],
     ticks: 35,
     ground: OUTDOOR_AND_FLOORS,

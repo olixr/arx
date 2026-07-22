@@ -3530,6 +3530,8 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   stone_floor: { icon: 'floortile', color: '#a09aa8' },
   wood_wall: { icon: 'wallblock', color: '#7d5a2e' },
   stone_wall: { icon: 'wallblock', color: '#767181' },
+  wood_wall_corner: { icon: 'wallblock', color: '#6d4a26' },
+  stone_wall_corner: { icon: 'wallblock', color: '#8c8798' },
   wood_window: { icon: 'windowframe', color: '#7d5a2e' },
   stone_window: { icon: 'windowframe', color: '#767181' },
   wood_doorway: { icon: 'doorframe', color: '#7d5a2e' },

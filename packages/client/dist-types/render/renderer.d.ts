@@ -542,6 +542,33 @@ export declare class Renderer {
      */
     private woodCrownPlate;
     /**
+     * A 45° wall corner tile. The mass fills one triangle (named by the
+     * tile); the open triangle faces the exterior. NE/NW-mass variants
+     * cut a building's camera-side corners and show their SLOPED
+     * hypotenuse facade; SE/SW-mass variants are the far corners — the
+     * hypotenuse hides behind the crown, and only an exposed south edge
+     * draws a straight face. Courses, palettes, and wood skins all
+     * match the straight walls, so the material reads continuous around
+     * the corner: a course at height h is the base line shifted up h,
+     * which on a diagonal is a base-PARALLEL sloped line meeting the
+     * neighbour run's horizontal course at the shared corner exactly.
+     * DIAGONAL SORT LAW (same as cliff bevels): a sloped face sorts at
+     * its NEAR row — the pocket behind the line is solid wall, nothing
+     * can stand there, so any body sharing its rows is in front.
+     */
+    private diagWallItem;
+    /**
+     * Material face bands for a wall face whose BASE runs between two
+     * ground points — a straight south edge or a 45° hypotenuse. Paints
+     * in a sheared local frame (x along the base, y up in screen px) so
+     * every course lands parallel to the base: constant world height IS
+     * a base-parallel line in this projection, which is what makes a
+     * diagonal's courses meet the neighbour run's at the corner. Values
+     * are THE SAME LAW as wallItem's face (chinked-course law for wood,
+     * running-bond for stone) — change them together.
+     */
+    private paintFaceBands;
+    /**
      * How veiled a doorway's dark interior fill is: 1 far away, easing
      * to 0 as any body nears the threshold — the door "opens" for
      * whoever approaches, no swinging leaf needed.

@@ -92,7 +92,24 @@ export enum Tile {
   DoorwayStoneWide = 66,
   /** WALKABLE wide wood doorway — E-W runs merge into one opening. */
   DoorwayWoodWide = 67,
-  // 68-79 reserved for future wall vocabulary.
+  /**
+   * 45° wall segments. The suffix names the SOLID triangle — which
+   * two tile edges the mass spans — so DiagNE (mass across the north
+   * and east edges) cuts a building's SW corner, DiagNW its SE
+   * corner, DiagSE its NW corner, DiagSW its NE corner. The open
+   * triangle always faces the exterior. Placement auto-orients from
+   * the two perpendicular wall neighbours (build the adjoining walls
+   * first).
+   */
+  WallStoneDiagNE = 68,
+  WallStoneDiagNW = 69,
+  WallStoneDiagSE = 70,
+  WallStoneDiagSW = 71,
+  WallWoodDiagNE = 72,
+  WallWoodDiagNW = 73,
+  WallWoodDiagSE = 74,
+  WallWoodDiagSW = 75,
+  // 76-79 reserved for future wall vocabulary.
   /** A banded oak barrel — the workhorse of clutter. */
   Barrel = 80,
   /** A plank shipping crate. */
@@ -294,6 +311,14 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.DoorwayWood]: { name: 'wood doorway', solid: false, color: '#54391c' },
   [Tile.DoorwayStoneWide]: { name: 'wide stone doorway', solid: false, color: '#4a4554' },
   [Tile.DoorwayWoodWide]: { name: 'wide wood doorway', solid: false, color: '#54391c' },
+  [Tile.WallStoneDiagNE]: { name: 'stone wall corner', solid: true, color: '#4a4554', raised: true, topColor: '#767181' },
+  [Tile.WallStoneDiagNW]: { name: 'stone wall corner', solid: true, color: '#4a4554', raised: true, topColor: '#767181' },
+  [Tile.WallStoneDiagSE]: { name: 'stone wall corner', solid: true, color: '#4a4554', raised: true, topColor: '#767181' },
+  [Tile.WallStoneDiagSW]: { name: 'stone wall corner', solid: true, color: '#4a4554', raised: true, topColor: '#767181' },
+  [Tile.WallWoodDiagNE]: { name: 'wood wall corner', solid: true, color: '#54391c', raised: true, topColor: '#7d5a2e' },
+  [Tile.WallWoodDiagNW]: { name: 'wood wall corner', solid: true, color: '#54391c', raised: true, topColor: '#7d5a2e' },
+  [Tile.WallWoodDiagSE]: { name: 'wood wall corner', solid: true, color: '#54391c', raised: true, topColor: '#7d5a2e' },
+  [Tile.WallWoodDiagSW]: { name: 'wood wall corner', solid: true, color: '#54391c', raised: true, topColor: '#7d5a2e' },
   [Tile.ArchStone]: { name: 'stone arch', solid: false, color: '#5b5566' },
   [Tile.PillarStone]: { name: 'stone pillar', solid: true, color: '#5b5566', raised: true, topColor: '#8c8798' },
   [Tile.RailWood]: { name: 'wood railing', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
@@ -345,7 +370,60 @@ export const WALL_RUN_TILES: readonly Tile[] = [
   Tile.DoorwayWood,
   Tile.DoorwayStoneWide,
   Tile.DoorwayWoodWide,
+  Tile.WallStoneDiagNE,
+  Tile.WallStoneDiagNW,
+  Tile.WallStoneDiagSE,
+  Tile.WallStoneDiagSW,
+  Tile.WallWoodDiagNE,
+  Tile.WallWoodDiagNW,
+  Tile.WallWoodDiagSE,
+  Tile.WallWoodDiagSW,
 ];
+
+/** Which triangle of a 45° wall tile holds the mass. */
+export type DiagWallMass = 'NE' | 'NW' | 'SE' | 'SW';
+
+const DIAG_WALL_INFO = new Map<Tile, { material: 'stone' | 'wood'; mass: DiagWallMass }>([
+  [Tile.WallStoneDiagNE, { material: 'stone', mass: 'NE' }],
+  [Tile.WallStoneDiagNW, { material: 'stone', mass: 'NW' }],
+  [Tile.WallStoneDiagSE, { material: 'stone', mass: 'SE' }],
+  [Tile.WallStoneDiagSW, { material: 'stone', mass: 'SW' }],
+  [Tile.WallWoodDiagNE, { material: 'wood', mass: 'NE' }],
+  [Tile.WallWoodDiagNW, { material: 'wood', mass: 'NW' }],
+  [Tile.WallWoodDiagSE, { material: 'wood', mass: 'SE' }],
+  [Tile.WallWoodDiagSW, { material: 'wood', mass: 'SW' }],
+]);
+
+/** All 45° wall tiles, both materials. */
+export const DIAG_WALL_TILES: ReadonlySet<Tile> = new Set(DIAG_WALL_INFO.keys());
+
+/** Material + mass triangle of a 45° wall tile, or null. */
+export function diagWallInfo(
+  id: number,
+): { material: 'stone' | 'wood'; mass: DiagWallMass } | null {
+  return DIAG_WALL_INFO.get(id as Tile) ?? null;
+}
+
+/**
+ * AUTO-ORIENT LAW: a diagonal wall spans the corner between the two
+ * perpendicular wall neighbours present at placement time — N+E cuts
+ * a SW corner, and so on. With no unambiguous pair it defaults to NE;
+ * build the adjoining walls first, then the corner.
+ */
+export function orientDiagWall(
+  material: 'stone' | 'wood',
+  n: boolean,
+  e: boolean,
+  s: boolean,
+  w: boolean,
+): Tile {
+  const mass: DiagWallMass =
+    n && e ? 'NE' : n && w ? 'NW' : s && e ? 'SE' : s && w ? 'SW' : 'NE';
+  for (const [tile, info] of DIAG_WALL_INFO) {
+    if (info.material === material && info.mass === mass) return tile;
+  }
+  return material === 'stone' ? Tile.WallStoneDiagNE : Tile.WallWoodDiagNE;
+}
 
 /**
  * Tiles that bound an interior region (the room enclosure test).
@@ -366,6 +444,7 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
   Tile.WallStoneWindow,
   Tile.WallWoodWindow,
   Tile.PillarStone,
+  ...DIAG_WALL_TILES,
 ];
 
 /** Every mineable/mined rock formation tile, ore-bearing or not. */
