@@ -38,8 +38,12 @@ import {
   chestInfo,
   closedChestTile,
   openChestTile,
+  doorInfo,
+  openDoorTile,
+  shutDoorTile,
   type ChestInfo,
   type ChestKind,
+  type DoorInfo,
 } from '@devcraft/shared';
 import {
   BUILDABLES,
@@ -646,6 +650,15 @@ export class GameServer {
   /** Depleted nodes waiting to come back. */
   private readonly respawnQueue: Array<{ at: number; tx: number; ty: number; tile: Tile }> = [];
 
+  /**
+   * Locked doors, keyed by the door unit's anchor tile (`"tx,ty"` of
+   * the west-most / north-most member of a wide run). A locked door
+   * refuses to open — the /lock command toggles it for now; keys and
+   * ownership arrive with a later epic. In-memory, like every other
+   * world mutation.
+   */
+  private readonly doorLocks = new Set<string>();
+
   /** Players some NPC is chasing this tick — drives the DETECTED status bit. */
   private readonly chasedPlayers = new Set<EntityId>();
 
@@ -1106,6 +1119,14 @@ export class GameServer {
       return;
     }
 
+    // Doors: toggle the whole unit — open swings shut (unless a body
+    // stands in the way), shut swings open (unless the lock holds).
+    const door = ground === undefined ? null : doorInfo(ground);
+    if (door) {
+      this.interactDoor(tx, ty, door, sys);
+      return;
+    }
+
     // Garden plots: planting runs through the seed-picker → C2SPlant.
     if (ground === Tile.Tilled) return;
     // A planted crop: water it, harvest it, or hear how it's doing.
@@ -1222,6 +1243,124 @@ export class GameServer {
       ty,
       tile: closedChestTile(chest.kind),
     });
+  }
+
+  /** How long a hand-opened door stands before pulling itself to. */
+  private static readonly DOOR_AUTOCLOSE_MS = 120_000;
+
+  /**
+   * The full merged unit a doorway tile belongs to. Wide runs flip as
+   * ONE door — every member tile toggles atomically, matching the
+   * renderer's merged-opening law — and the anchor (west-most or
+   * north-most member) keys locks, auto-close entries, and rattles.
+   * Plain doorways never merge: each is its own unit.
+   */
+  private doorUnit(
+    tx: number,
+    ty: number,
+    info: DoorInfo,
+  ): { ax: number; ay: number; tiles: Array<{ x: number; y: number }> } {
+    const t = this.world.groundAt(tx, ty);
+    if (!info.wide || t === undefined) return { ax: tx, ay: ty, tiles: [{ x: tx, y: ty }] };
+    const same = (x: number, y: number) => this.world.groundAt(x, y) === t;
+    const tiles: Array<{ x: number; y: number }> = [];
+    if (same(tx, ty - 1) || same(tx, ty + 1)) {
+      // A N-S run: the wide side doorway, merged along the wall.
+      let ay = ty;
+      while (same(tx, ay - 1)) ay--;
+      for (let y = ay; same(tx, y); y++) tiles.push({ x: tx, y });
+      return { ax: tx, ay, tiles };
+    }
+    let ax = tx;
+    while (same(ax - 1, ty)) ax--;
+    for (let x = ax; same(x, ty); x++) tiles.push({ x, y: ty });
+    return { ax, ay: ty, tiles };
+  }
+
+  /**
+   * Any body whose center could overlap this tile (padded by a body
+   * radius) — the build system's occupancy check, widened so a door
+   * never closes INTO someone half-across the threshold and leaves
+   * them embedded in a solid tile.
+   */
+  private bodyOnTile(tx: number, ty: number, pad = 0.4): boolean {
+    const cx = Math.floor((tx + 0.5) / CHUNK_SIZE);
+    const cy = Math.floor((ty + 0.5) / CHUNK_SIZE);
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const set = this.chunks.get(chunkKey(cx + dx, cy + dy));
+        if (!set) continue;
+        for (const other of set) {
+          const opos = this.positions.get(other);
+          if (!opos) continue;
+          if (
+            opos.x > tx - pad &&
+            opos.x < tx + 1 + pad &&
+            opos.y > ty - pad &&
+            opos.y < ty + 1 + pad
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Toggle a door unit. Open doors pull shut (never onto a body);
+   * shut doors swing open unless locked — a locked door answers with
+   * a rattle fx and a system line. Opened doors queue an auto-close
+   * on the respawn ladder (one entry at the unit anchor).
+   */
+  private interactDoor(tx: number, ty: number, info: DoorInfo, sys: (text: string) => void): void {
+    const unit = this.doorUnit(tx, ty, info);
+    const lockKey = `${unit.ax},${unit.ay}`;
+    if (info.open) {
+      for (const t of unit.tiles) {
+        if (this.bodyOnTile(t.x, t.y)) {
+          sys('Someone is standing in the doorway.');
+          return;
+        }
+      }
+      for (const t of unit.tiles) {
+        const g = this.world.groundAt(t.x, t.y);
+        const shut = g === undefined ? null : shutDoorTile(g);
+        if (shut !== null && shut !== g) this.setWorldTile(t.x, t.y, shut);
+        // A hand on the door outranks the auto-close timer.
+        for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
+          const e = this.respawnQueue[i]!;
+          if (e.tx === t.x && e.ty === t.y) this.respawnQueue.splice(i, 1);
+        }
+      }
+      return;
+    }
+    if (this.doorLocks.has(lockKey)) {
+      sys('Locked — the door holds fast.');
+      this.broadcastFx({
+        t: 'fx',
+        kind: 'rattle',
+        x: unit.ax + 0.5,
+        y: unit.ay + 0.5,
+        radius: 0.5,
+      });
+      return;
+    }
+    for (const t of unit.tiles) {
+      const g = this.world.groundAt(t.x, t.y);
+      const open = g === undefined ? null : openDoorTile(g);
+      if (open !== null && open !== g) this.setWorldTile(t.x, t.y, open);
+    }
+    const anchorTile = this.world.groundAt(unit.ax, unit.ay);
+    const shutAnchor = anchorTile === undefined ? null : shutDoorTile(anchorTile);
+    if (shutAnchor !== null) {
+      this.respawnQueue.push({
+        at: Date.now() + GameServer.DOOR_AUTOCLOSE_MS,
+        tx: unit.ax,
+        ty: unit.ay,
+        tile: shutAnchor,
+      });
+    }
   }
 
   /** Best gathering-speed multiplier across active buffs. */
@@ -4889,6 +5028,44 @@ export class GameServer {
   chat(eid: EntityId, text: string): void {
     const player = this.players.get(eid);
     if (!player) return;
+    // /lock — toggle the lock on the nearest shut door in reach. A
+    // player feature, not dev-gated: the first rung of the locking
+    // ladder (keys and ownership arrive with a later epic).
+    if (text.trim() === '/lock') {
+      const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      const cx = Math.floor(pos.x);
+      const cy = Math.floor(pos.y);
+      let best: { tx: number; ty: number; info: DoorInfo; d: number } | null = null;
+      for (let ty = cy - 2; ty <= cy + 2; ty++) {
+        for (let tx = cx - 2; tx <= cx + 2; tx++) {
+          const g = this.world.groundAt(tx, ty);
+          const info = g === undefined ? null : doorInfo(g);
+          if (!info) continue;
+          const dx = tx + 0.5 - pos.x;
+          const dy = ty + 0.5 - pos.y;
+          const d = dx * dx + dy * dy;
+          if (d <= 2.2 * 2.2 && (!best || d < best.d)) best = { tx, ty, info, d };
+        }
+      }
+      if (!best) {
+        sys('No door within reach.');
+        return;
+      }
+      if (best.info.open) {
+        sys('Close the door before locking it.');
+        return;
+      }
+      const unit = this.doorUnit(best.tx, best.ty, best.info);
+      const key = `${unit.ax},${unit.ay}`;
+      if (this.doorLocks.delete(key)) sys('The lock clicks open.');
+      else {
+        this.doorLocks.add(key);
+        sys('The lock snaps shut.');
+      }
+      return;
+    }
     // Dev-only utility commands, never broadcast.
     if (config.devCommands && text.startsWith('/tp ')) {
       const [, xRaw, yRaw] = text.split(/\s+/);
@@ -5112,13 +5289,36 @@ export class GameServer {
     this.tickRegen(now);
     if (this.tickCount % 40 === 0) this.tickCrops(now);
 
-    // Respawn depleted nodes.
+    // Respawn depleted nodes (and pull forgotten doors to).
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
       const entry = this.respawnQueue[i]!;
-      if (entry.at <= now) {
-        this.setWorldTile(entry.tx, entry.ty, entry.tile);
+      if (entry.at > now) continue;
+      const d = doorInfo(entry.tile);
+      if (d && !d.open) {
+        // Door auto-close: the unit shuts as ONE (matching the merged
+        // opening) and never onto a body — an occupied doorway defers
+        // the timer instead of embedding whoever stands in it.
+        const g = this.world.groundAt(entry.tx, entry.ty);
+        const gi = g === undefined ? null : doorInfo(g);
+        if (gi === null || !gi.open) {
+          // Already shut by hand, or the doorway is gone — drop it.
+          this.respawnQueue.splice(i, 1);
+          continue;
+        }
+        const unit = this.doorUnit(entry.tx, entry.ty, gi);
+        if (unit.tiles.some((t) => this.bodyOnTile(t.x, t.y))) {
+          entry.at = now + 5000;
+          continue;
+        }
+        for (const t of unit.tiles) {
+          const gg = this.world.groundAt(t.x, t.y)!;
+          this.setWorldTile(t.x, t.y, shutDoorTile(gg)!);
+        }
         this.respawnQueue.splice(i, 1);
+        continue;
       }
+      this.setWorldTile(entry.tx, entry.ty, entry.tile);
+      this.respawnQueue.splice(i, 1);
     }
 
     for (const session of this.sessions) {

@@ -81,6 +81,12 @@ export declare class Sfx {
     chestOpen(): void;
     /** The lid settling shut: soft thud, wood shift, latch tick. */
     chestClose(): void;
+    /** A door leaf swinging wide: latch click, then a long hinge creak. */
+    doorOpen(): void;
+    /** The leaf pulled to: a short creak, a frame knock, the latch. */
+    doorClose(): void;
+    /** A locked door refusing: two dull knocks and the hasp's rattle. */
+    doorRattle(): void;
     /** The counter bell: two soft brass partials over a felt strike. */
     shopBell(): void;
     /** Stepping up to a station: a wooden tap and the tools shifting. */

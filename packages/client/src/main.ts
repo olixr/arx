@@ -1,4 +1,4 @@
-import { EntityKind, PoseState, ROCK_TILES, TREE_TILES, Tile, chestInfo, tileDef, treeOfSapling } from '@devcraft/shared';
+import { EntityKind, PoseState, ROCK_TILES, TREE_TILES, Tile, chestInfo, doorInfo, tileDef, treeOfSapling } from '@devcraft/shared';
 import { BUILDABLES, buildableGround, itemDef, npcDef } from '@devcraft/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
@@ -610,6 +610,13 @@ game.onCastFx = (_slot, ab) => {
 game.onFx = (fx) => {
   const own = game.predictor.renderPos();
   const dist = Math.hypot(fx.x - own.x, fx.y - own.y);
+  if (fx.kind === 'rattle') {
+    // A locked door refusing: the leaf shudders in its frame and
+    // knocks — scenery feedback, no camera punch.
+    renderer.addDoorEase(Math.floor(fx.x), Math.floor(fx.y), 'shake');
+    if (dist < 12) sfx.doorRattle();
+    return;
+  }
   const punch = fxStyleFor(fx.id, fx.color).punch;
   if (fx.kind === 'blast') {
     sfx.blast();
@@ -801,6 +808,7 @@ renderer.onSplash = (x, y) => {
 
 // A felled tree topples away from whoever cut it, groans, and lands
 // with a thud you can feel.
+let lastDoorSfxAt = 0;
 game.onTileChange = (tx, ty, prev, next) => {
   // Loot chests: the tile swap IS the state change — the renderer
   // eases the lid over its hinge, and the box breathes out a puff of
@@ -832,6 +840,21 @@ game.onTileChange = (tx, ty, prev, next) => {
     // The respawn queue shutting a forgotten lid — soft, no fanfare.
     renderer.addChestEase(tx, ty, 'close');
     sfx.chestClose();
+    return;
+  }
+  // Doors: the tile swap IS the state change, same law as chests. A
+  // wide run patches every member tile — the ease lands on each (the
+  // renderer reads the run anchor's) and the sound debounces to one.
+  const prevDoor = prev === undefined ? null : doorInfo(prev);
+  const nextDoor = doorInfo(next);
+  if (prevDoor && nextDoor && prevDoor.open !== nextDoor.open) {
+    renderer.addDoorEase(tx, ty, nextDoor.open ? 'open' : 'close');
+    const now = performance.now();
+    if (now - lastDoorSfxAt > 80) {
+      lastDoorSfxAt = now;
+      if (nextDoor.open) sfx.doorOpen();
+      else sfx.doorClose();
+    }
     return;
   }
   if (prev === Tile.Stump && treeOfSapling(next) !== null) {
@@ -980,6 +1003,11 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       break;
     case 'chest':
       // The server decides: locked, or a lid swings and loot spills.
+      game.interact(target.tx, target.ty);
+      break;
+    case 'door':
+      // The server decides: swing it, refuse it (locked rattle), or
+      // hold it open because someone stands in the way.
       game.interact(target.tx, target.ty);
       break;
     case 'npc':
@@ -1288,6 +1316,7 @@ function frame(now: number): void {
         target.kind === 'station' ? PROMPT_LABELS[target.station]
         : target.kind === 'npc' ? target.verb
         : target.kind === 'crop' ? (target.mature ? 'Harvest' : 'Tend')
+        : target.kind === 'door' ? (target.open ? 'Close Door' : 'Open Door')
         : PROMPT_LABELS[target.kind];
       nav.setPrompt({ sx: p.x, sy: p.y - renderer.camera.scale * 1.5, label: label ?? 'Use' });
     } else {

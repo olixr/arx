@@ -494,7 +494,7 @@ export declare class Renderer {
     private evictTreeSprites;
     /** Wall-run auto-tiler membership — shared law (tiles.ts). */
     private static readonly WALL_TILES;
-    /** Every walkable doorway tile, both orientations and widths. */
+    /** Every doorway tile — open and shut, both orientations and widths. */
     private static readonly DOOR_TILES;
     /**
      * SIDE-DOORWAY LAW: a doorway's orientation comes from the wall run
@@ -574,6 +574,16 @@ export declare class Renderer {
      * whoever approaches, no swinging leaf needed.
      */
     private doorVeil;
+    /**
+     * One paneled timber door leaf on a south face, drawn in the current
+     * (leaned) frame. `hx` is the hinge edge, `dir` which way the leaf
+     * extends (+1 east, -1 west), `w` its current on-screen width — the
+     * swing compresses width toward the hinge, so `oc` (0 shut → 1 open)
+     * only drives the edge-on shading and detail fade. The grammar is
+     * the side-door leaf's: recessed panels, iron straps at the hinge,
+     * a brass knob riding the free edge.
+     */
+    private paintDoorLeaf;
     /**
      * A WALKABLE framed opening in a wall run: jambs, a header beam
      * (stone gets 45°-cut haunches — the brutalist arch), and the run's
@@ -787,6 +797,28 @@ export declare class Renderer {
      * overshoot. Closing is a shorter, sober fall back onto the rim.
      */
     private chestOpenness;
+    /**
+     * DOOR EASES — the same clock pattern as chests: main.ts kicks an
+     * ease on the tile patch (or a 'rattle' fx for a locked refusal) and
+     * the doorway painters read swing/shudder each frame. Keys are the
+     * door unit's ANCHOR tile — the west-most (E-W) or north-most (N-S)
+     * member of a wide run, or the tile itself for singles.
+     */
+    private readonly doorEases;
+    /** Start a leaf swing (or a locked-door shudder) at this tile. */
+    addDoorEase(tx: number, ty: number, dir: 'open' | 'close' | 'shake'): void;
+    /**
+     * Leaf openness 0..1 for a door anchor, advancing its animation.
+     * Opening swings with growEase's overshoot — the leaf flings past
+     * its rest and settles; closing is a shorter, sober pull-to. A
+     * 'shake' ease holds the posture (the door never moved).
+     */
+    private doorOpenness;
+    /**
+     * Signed shudder offset for a locked door's refusal — a quick
+     * decaying knock-knock in the frame. Zero when quiet.
+     */
+    private doorShakeAt;
     /**
      * TREE SPRITE CACHE: a mature tree's painted body re-bakes onto a
      * per-instance offscreen canvas every TREE_REBAKE_FRAMES frames

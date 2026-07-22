@@ -289,6 +289,12 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
       t === Tile.DoorwayStone ||
       t === Tile.DoorwayWoodWide ||
       t === Tile.DoorwayStoneWide ||
+      // Shut doors keep their threshold floor — the leaf swings over
+      // the same ground the open doorway carries.
+      t === Tile.DoorwayWoodShut ||
+      t === Tile.DoorwayStoneShut ||
+      t === Tile.DoorwayWoodWideShut ||
+      t === Tile.DoorwayStoneWideShut ||
       t === Tile.ArchStone ||
       t === Tile.PillarStone ||
       t === Tile.RailWood

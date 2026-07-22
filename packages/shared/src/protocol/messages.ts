@@ -401,7 +401,9 @@ export interface S2CFx {
     /** A self-buff flourish rising off the caster. */
     | 'buff'
     /** A lingering hazard zone living `ticks` at (x,y). */
-    | 'field';
+    | 'field'
+    /** A locked door refusing at (x,y) — the leaf shudders in its frame. */
+    | 'rattle';
   x: number;
   y: number;
   radius: number;

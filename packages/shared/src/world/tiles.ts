@@ -109,7 +109,17 @@ export enum Tile {
   WallWoodDiagNW = 73,
   WallWoodDiagSE = 74,
   WallWoodDiagSW = 75,
-  // 76-79 reserved for future wall vocabulary.
+  /**
+   * SHUT doorways — the TILE IS THE STATE, exactly like chests: a
+   * doorway with its leaf swung shut is a different (SOLID) tile, so
+   * open/shut posture, collision, and lamplight all sync through the
+   * ordinary tile-patch pipeline on both sides. A wide run flips as
+   * one unit — the server toggles every member tile atomically.
+   */
+  DoorwayStoneShut = 76,
+  DoorwayWoodShut = 77,
+  DoorwayStoneWideShut = 78,
+  DoorwayWoodWideShut = 79,
   /** A banded oak barrel — the workhorse of clutter. */
   Barrel = 80,
   /** A plank shipping crate. */
@@ -333,6 +343,10 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.DoorwayWood]: { name: 'wood doorway', solid: false, color: '#54391c' },
   [Tile.DoorwayStoneWide]: { name: 'wide stone doorway', solid: false, color: '#4a4554' },
   [Tile.DoorwayWoodWide]: { name: 'wide wood doorway', solid: false, color: '#54391c' },
+  [Tile.DoorwayStoneShut]: { name: 'shut stone doorway', solid: true, color: '#4a4554' },
+  [Tile.DoorwayWoodShut]: { name: 'shut wood doorway', solid: true, color: '#54391c' },
+  [Tile.DoorwayStoneWideShut]: { name: 'shut wide stone doorway', solid: true, color: '#4a4554' },
+  [Tile.DoorwayWoodWideShut]: { name: 'shut wide wood doorway', solid: true, color: '#54391c' },
   [Tile.WallStoneDiagNE]: { name: 'stone wall corner', solid: true, color: '#4a4554', raised: true, topColor: '#767181' },
   [Tile.WallStoneDiagNW]: { name: 'stone wall corner', solid: true, color: '#4a4554', raised: true, topColor: '#767181' },
   [Tile.WallStoneDiagSE]: { name: 'stone wall corner', solid: true, color: '#4a4554', raised: true, topColor: '#767181' },
@@ -402,6 +416,10 @@ export const WALL_RUN_TILES: readonly Tile[] = [
   Tile.DoorwayWood,
   Tile.DoorwayStoneWide,
   Tile.DoorwayWoodWide,
+  Tile.DoorwayStoneShut,
+  Tile.DoorwayWoodShut,
+  Tile.DoorwayStoneWideShut,
+  Tile.DoorwayWoodWideShut,
   Tile.WallStoneDiagNE,
   Tile.WallStoneDiagNW,
   Tile.WallStoneDiagSE,
@@ -477,7 +495,69 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
   Tile.WallWoodWindow,
   Tile.PillarStone,
   ...DIAG_WALL_TILES,
+  // A shut leaf stops lamplight; the open doorway spills it.
+  Tile.DoorwayStoneShut,
+  Tile.DoorwayWoodShut,
+  Tile.DoorwayStoneWideShut,
+  Tile.DoorwayWoodWideShut,
 ];
+
+/**
+ * DOOR LAW — the tile is the state. Every doorway tile maps to its
+ * material, width, and posture; `shutDoorTile`/`openDoorTile` are the
+ * two halves of the toggle. Frame material tracks the wall it pierces
+ * (the leaf itself is always timber — stone shells hang oak doors).
+ */
+export type DoorMaterial = 'stone' | 'wood';
+
+export interface DoorInfo {
+  material: DoorMaterial;
+  /** Wide doorways merge into one opening and hang a French pair. */
+  wide: boolean;
+  /** True when a body can walk through — the leaf stands open. */
+  open: boolean;
+}
+
+const DOOR_INFO = new Map<Tile, DoorInfo>([
+  [Tile.DoorwayStone, { material: 'stone', wide: false, open: true }],
+  [Tile.DoorwayWood, { material: 'wood', wide: false, open: true }],
+  [Tile.DoorwayStoneWide, { material: 'stone', wide: true, open: true }],
+  [Tile.DoorwayWoodWide, { material: 'wood', wide: true, open: true }],
+  [Tile.DoorwayStoneShut, { material: 'stone', wide: false, open: false }],
+  [Tile.DoorwayWoodShut, { material: 'wood', wide: false, open: false }],
+  [Tile.DoorwayStoneWideShut, { material: 'stone', wide: true, open: false }],
+  [Tile.DoorwayWoodWideShut, { material: 'wood', wide: true, open: false }],
+]);
+
+/** Every doorway tile, open and shut, both widths and materials. */
+export const DOOR_TILES: ReadonlySet<Tile> = new Set(DOOR_INFO.keys());
+
+/** Material/width/posture of a doorway tile, or null. */
+export function doorInfo(id: number): DoorInfo | null {
+  return DOOR_INFO.get(id as Tile) ?? null;
+}
+
+const SHUT_OF = new Map<Tile, Tile>([
+  [Tile.DoorwayStone, Tile.DoorwayStoneShut],
+  [Tile.DoorwayWood, Tile.DoorwayWoodShut],
+  [Tile.DoorwayStoneWide, Tile.DoorwayStoneWideShut],
+  [Tile.DoorwayWoodWide, Tile.DoorwayWoodWideShut],
+]);
+const OPEN_OF = new Map<Tile, Tile>([...SHUT_OF].map(([o, s]) => [s, o]));
+
+/** The shut counterpart of a doorway tile (identity if already shut). */
+export function shutDoorTile(id: number): Tile | null {
+  const t = id as Tile;
+  if (OPEN_OF.has(t)) return t;
+  return SHUT_OF.get(t) ?? null;
+}
+
+/** The open counterpart of a doorway tile (identity if already open). */
+export function openDoorTile(id: number): Tile | null {
+  const t = id as Tile;
+  if (SHUT_OF.has(t)) return t;
+  return OPEN_OF.get(t) ?? null;
+}
 
 /** Every mineable/mined rock formation tile, ore-bearing or not. */
 export const ROCK_TILES: readonly Tile[] = [

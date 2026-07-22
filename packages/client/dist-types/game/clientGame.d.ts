@@ -71,6 +71,11 @@ export type InteractTarget = {
     tx: number;
     ty: number;
     chest: ChestKind;
+} | {
+    kind: 'door';
+    tx: number;
+    ty: number;
+    open: boolean;
 };
 import { InterpBuffer } from '../net/interpolation.js';
 import { Predictor } from '../net/prediction.js';

@@ -18,6 +18,7 @@ import {
   clockHours,
   drawCharge,
   chestInfo,
+  doorInfo,
   findPath,
   nextComboStage,
   snapShot,
@@ -81,7 +82,8 @@ export type InteractTarget =
   | { kind: 'crop'; tx: number; ty: number; mature: boolean }
   | { kind: 'npc'; tx: number; ty: number; eid: EntityId; verb: string }
   | { kind: 'loot'; tx: number; ty: number; eid: EntityId }
-  | { kind: 'chest'; tx: number; ty: number; chest: ChestKind };
+  | { kind: 'chest'; tx: number; ty: number; chest: ChestKind }
+  | { kind: 'door'; tx: number; ty: number; open: boolean };
 import { Connection } from '../net/connection.js';
 import { InterpBuffer } from '../net/interpolation.js';
 import { Predictor } from '../net/prediction.js';
@@ -806,6 +808,18 @@ export class ClientGame {
         break;
       }
       case 'fx': {
+        // A door rattle is scenery feedback, not combat VFX — hand it
+        // straight to the fx hook without joining the ability list.
+        if (msg.kind === 'rattle') {
+          this.onFx?.({
+            kind: msg.kind,
+            x: msg.x,
+            y: msg.y,
+            radius: msg.radius,
+            bornAt: performance.now(),
+          });
+          break;
+        }
         const fx: ActiveFx = {
           kind: msg.kind,
           x: msg.x,
@@ -905,6 +919,10 @@ export class ClientGame {
     // already told its story and stays quiet.
     const chest = chestInfo(ground);
     if (chest && !chest.open) return { kind: 'chest', tx, ty, chest: chest.kind };
+    // Doors: open ones offer a close, shut ones offer an open — the
+    // server arbitrates locks and doorway occupancy.
+    const door = doorInfo(ground);
+    if (door) return { kind: 'door', tx, ty, open: door.open };
     if (ground === Tile.BankChest) return { kind: 'bank', tx, ty };
     if (ground === Tile.ShopCounter) return { kind: 'shop', tx, ty };
     if (ground === Tile.PortalDown || ground === Tile.PortalUp) return { kind: 'portal', tx, ty };

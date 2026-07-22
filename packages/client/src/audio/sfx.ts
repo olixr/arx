@@ -337,6 +337,28 @@ export class Sfx {
     this.tone(1250, 0.035, { type: 'triangle', volume: 0.07, delay: 0.07, detune: false });
   }
 
+  /** A door leaf swinging wide: latch click, then a long hinge creak. */
+  doorOpen(): void {
+    this.tone(1400, 0.03, { type: 'triangle', volume: 0.07, detune: false });
+    this.tone(120, 0.34, { type: 'sawtooth', slide: 60, volume: 0.075, delay: 0.03 });
+    this.noise(0.1, 0.16, 0.02, { band: 700 });
+  }
+
+  /** The leaf pulled to: a short creak, a frame knock, the latch. */
+  doorClose(): void {
+    this.tone(160, 0.16, { type: 'sawtooth', slide: -50, volume: 0.06 });
+    this.tone(85, 0.1, { type: 'sine', slide: -20, volume: 0.18, delay: 0.1 });
+    this.tone(1350, 0.03, { type: 'triangle', volume: 0.08, delay: 0.15, detune: false });
+  }
+
+  /** A locked door refusing: two dull knocks and the hasp's rattle. */
+  doorRattle(): void {
+    this.tone(110, 0.06, { type: 'sine', slide: -15, volume: 0.16 });
+    this.tone(110, 0.06, { type: 'sine', slide: -15, volume: 0.14, delay: 0.09 });
+    this.noise(0.05, 0.1, 0, { band: 1800 });
+    this.noise(0.05, 0.08, 0.09, { band: 1800 });
+  }
+
   /** The counter bell: two soft brass partials over a felt strike. */
   shopBell(): void {
     this.noise(0.02, 0.05, 0, { band: 3000 });

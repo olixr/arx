@@ -14,7 +14,9 @@ import {
   DIAG_WALL_TILES,
   TREE_TILES,
   chestInfo,
+  DOOR_TILES,
   diagWallInfo,
+  doorInfo,
   hashCoords,
   hashString,
   pointHitsSolid,
@@ -2745,13 +2747,8 @@ export class Renderer {
   /** Wall-run auto-tiler membership — shared law (tiles.ts). */
   private static readonly WALL_TILES = new Set<number>(WALL_RUN_TILES);
 
-  /** Every walkable doorway tile, both orientations and widths. */
-  private static readonly DOOR_TILES = new Set<number>([
-    Tile.DoorwayStone,
-    Tile.DoorwayWood,
-    Tile.DoorwayStoneWide,
-    Tile.DoorwayWoodWide,
-  ]);
+  /** Every doorway tile — open and shut, both orientations and widths. */
+  private static readonly DOOR_TILES = new Set<number>(DOOR_TILES);
 
   /**
    * SIDE-DOORWAY LAW: a doorway's orientation comes from the wall run
@@ -2827,12 +2824,8 @@ export class Renderer {
         // paths: doorways are IN the wall-run set (so neighbours merge
         // with them) but draw their own framed opening, and pillars/
         // rails/arches are raised or walkable tiles with bespoke items.
-        if (
-          ground === Tile.DoorwayStone ||
-          ground === Tile.DoorwayWood ||
-          ground === Tile.DoorwayStoneWide ||
-          ground === Tile.DoorwayWoodWide
-        ) {
+        if (Renderer.DOOR_TILES.has(ground)) {
+          const dinfo = doorInfo(ground)!;
           // SIDE-DOORWAY LAW: a doorway in a N-S wall run is edge-on
           // to this camera — it gets the notch/lintel/porch-step
           // treatment instead of the (invisible) south-facing frame.
@@ -2840,7 +2833,7 @@ export class Renderer {
           if (this.isSideDoorway(game, tx, ty)) {
             let ay = ty;
             let vLen = 1;
-            if (ground === Tile.DoorwayStoneWide || ground === Tile.DoorwayWoodWide) {
+            if (dinfo.wide) {
               while (game.world.groundAt(tx, ay - 1) === ground) ay--;
               while (game.world.groundAt(tx, ay + vLen) === ground) vLen++;
               const vKey = packTile(tx, ay);
@@ -2855,10 +2848,12 @@ export class Renderer {
           // anchor and emit once (runSeen dedupes, and walking west
           // catches runs whose anchor sits outside the viewport pad).
           // Plain doorways never merge: two singles side by side stay
-          // two framed doors on purpose.
+          // two framed doors on purpose. Open and shut wide tiles never
+          // mix mid-run — the server flips a unit atomically — so the
+          // same-tile equality walk still finds the whole opening.
           let ax = tx;
           let runLen = 1;
-          if (ground === Tile.DoorwayStoneWide || ground === Tile.DoorwayWoodWide) {
+          if (dinfo.wide) {
             while (game.world.groundAt(ax - 1, ty) === ground) ax--;
             while (game.world.groundAt(ax + runLen, ty) === ground) runLen++;
             const runKey = packTile(ax, ty);
@@ -3777,6 +3772,69 @@ export class Renderer {
   }
 
   /**
+   * One paneled timber door leaf on a south face, drawn in the current
+   * (leaned) frame. `hx` is the hinge edge, `dir` which way the leaf
+   * extends (+1 east, -1 west), `w` its current on-screen width — the
+   * swing compresses width toward the hinge, so `oc` (0 shut → 1 open)
+   * only drives the edge-on shading and detail fade. The grammar is
+   * the side-door leaf's: recessed panels, iron straps at the hinge,
+   * a brass knob riding the free edge.
+   */
+  private paintDoorLeaf(
+    hx: number,
+    dir: 1 | -1,
+    w: number,
+    yTop: number,
+    h: number,
+    base: string,
+    oc: number,
+    s: number,
+  ): void {
+    const ctx = this.ctx;
+    const lx = dir > 0 ? hx : hx - w;
+    // Turning edge-on, the face falls into its own shadow.
+    ctx.fillStyle = shade(base, -Math.round(oc * 26));
+    ctx.fillRect(lx, yTop, w, h);
+    // A lit top rail keeps the leaf reading under the header shadow.
+    ctx.fillStyle = 'rgba(255, 224, 170, 0.14)';
+    ctx.fillRect(lx, yTop, w, s * 0.07);
+    const detail = 1 - oc * 0.75;
+    if (detail > 0.05) {
+      // Two recessed panels — the casework grammar, compressing with
+      // the leaf like true foreshortening.
+      ctx.fillStyle = `rgba(26, 16, 8, ${0.35 * detail})`;
+      for (const [py, ph] of [
+        [yTop + h * 0.1, h * 0.36],
+        [yTop + h * 0.56, h * 0.34],
+      ] as const) {
+        ctx.fillRect(lx + w * 0.18, py, w * 0.64, ph);
+        ctx.fillStyle = `rgba(255, 224, 170, ${0.1 * detail})`;
+        ctx.fillRect(lx + w * 0.18, py + ph - s * 0.03, w * 0.64, s * 0.03);
+        ctx.fillStyle = `rgba(26, 16, 8, ${0.35 * detail})`;
+      }
+      // Iron straps at the hinge edge; the knob rides the free edge.
+      const strapX = dir > 0 ? lx : lx + w - w * 0.3;
+      ctx.fillStyle = `rgba(46, 42, 56, ${detail})`;
+      for (const hy of [yTop + h * 0.16, yTop + h * 0.72]) {
+        ctx.fillRect(strapX, hy, w * 0.3, s * 0.05);
+      }
+      const knobX = dir > 0 ? lx + w - s * 0.11 : lx + s * 0.06;
+      ctx.fillStyle = `rgba(201, 160, 59, ${detail})`;
+      ctx.fillRect(knobX, yTop + h * 0.48, s * 0.05, s * 0.05);
+    }
+    // The free edge catches light as the leaf stands ajar.
+    if (oc > 0.15) {
+      ctx.fillStyle = `rgba(255, 224, 170, ${0.16 * Math.min(1, oc * 1.4)})`;
+      const edgeX = dir > 0 ? lx + w - s * 0.03 : lx;
+      ctx.fillRect(edgeX, yTop, s * 0.03, h);
+    }
+    if (this.outlineOn) {
+      this.beginStructOutline();
+      this.ctx.strokeRect(lx, yTop, w, h);
+    }
+  }
+
+  /**
    * A WALKABLE framed opening in a wall run: jambs, a header beam
    * (stone gets 45°-cut haunches — the brutalist arch), and the run's
    * unbroken crown. The frame sorts at ty+1 like its wall neighbours,
@@ -3817,7 +3875,7 @@ export class Renderer {
       if (!isWallAt(tx + i, ty - 1)) n = false;
       if (!isWallAt(tx + i, ty + 1)) sw = false;
     }
-    const stone = tile === Tile.DoorwayStone || tile === Tile.DoorwayStoneWide;
+    const stone = doorInfo(tile)!.material === 'stone';
     const skin = this.woodSkinFor(region);
     const top = stone ? '#8c8798' : skin.top;
     const face = stone ? '#5b5566' : skin.log;
@@ -3855,6 +3913,41 @@ export class Renderer {
         if (veil > 0.01) {
           ctx.fillStyle = `rgba(14, 10, 22, ${0.5 * veil})`;
           ctx.fillRect(x0 + jw, -hs, x1 - x0 - jw * 2, hs);
+        }
+        // THE DOOR LEAF(S). The tile is the state: shut tiles stand a
+        // paneled timber leaf across the opening, open tiles leave it
+        // swung inward — read edge-on as a thin strip at the hinge
+        // jamb, so every doorway visibly HAS a door. Wide openings
+        // hang a French pair meeting at an astragal seam; the swing
+        // eases through doorOpenness and a locked refusal shudders the
+        // whole leaf in its frame.
+        {
+          const dinfo = doorInfo(tile)!;
+          const o = this.doorOpenness(tx, ty, dinfo.open);
+          const oc = Math.min(1, o);
+          const shakeDx = this.doorShakeAt(tx, ty) * s * 0.035;
+          const ox0 = x0 + jw;
+          const ox1 = x1 - jw;
+          const ow = ox1 - ox0;
+          const leafTop = -hs + hh;
+          const leafH = hs - hh;
+          // The leaf is always timber; a wood shell's door wears its
+          // building's skin, a stone shell hangs plain oak.
+          const base = stone ? '#6a4a26' : shade(skin.log, -8);
+          if (dinfo.wide) {
+            const half = ow / 2;
+            const wLeaf = Math.max(half * 0.09, half * (1 - 0.91 * oc));
+            this.paintDoorLeaf(ox0 + shakeDx, 1, wLeaf, leafTop, leafH, base, oc, s);
+            this.paintDoorLeaf(ox1 + shakeDx, -1, wLeaf, leafTop, leafH, base, oc, s);
+            if (oc < 0.12) {
+              // The astragal: the dark meeting seam of a French pair.
+              ctx.fillStyle = 'rgba(24, 14, 6, 0.55)';
+              ctx.fillRect(ox0 + ow / 2 - s * 0.015 + shakeDx, leafTop, s * 0.03, leafH);
+            }
+          } else {
+            const wLeaf = Math.max(ow * 0.09, ow * (1 - 0.91 * oc));
+            this.paintDoorLeaf(ox0 + shakeDx, 1, wLeaf, leafTop, leafH, base, oc, s);
+          }
         }
         // Header across the top: the opening below it clears ~1.56
         // tiles — the body walks UNDER the frame with real headroom.
@@ -3988,9 +4081,10 @@ export class Renderer {
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const elevated = game.world.elevAt(tx, ty) !== 0;
-    const stone = tile === Tile.DoorwayStone || tile === Tile.DoorwayStoneWide;
+    const stone = doorInfo(tile)!.material === 'stone';
     // A side door's frame carries its building's wood skin too.
-    const trim = stone ? '#8a8496' : this.woodSkinFor(this.wallRegion(game, tx, ty)).trim;
+    const skin = this.woodSkinFor(this.wallRegion(game, tx, ty));
+    const trim = stone ? '#8a8496' : skin.trim;
     const syT = s * this.camera.yScale;
     const hs = WALL_H * s;
     const x0 = p.x - 0.25;
@@ -4041,14 +4135,15 @@ export class Renderer {
       },
     });
 
-    // THE OPEN DOOR LEAF. A side door's opening is edge-on and its
-    // face-bands are buried under southern crowns — so the door
-    // itself stands OUTSIDE the wall: the leaf swung fully open
-    // against the outer face. Swung 90° from a N-S wall, a leaf's
-    // face squares to this camera, and it lives in the neighbour
-    // column where no crown ever buries it. Single doors hang one
-    // leaf at the north jamb; wide doors hang a pair flanking the
-    // opening — the classic thrown-open double door.
+    // THE DOOR LEAF — the tile is the state. An OPEN side door stands
+    // its leaf thrown open OUTSIDE the wall: swung 90° from a N-S
+    // wall a leaf's face squares to this camera, and the neighbour
+    // column is the one place no southern crown can ever bury it. A
+    // SHUT door swings the leaf back INTO the wall plane, where it
+    // reads edge-on — a timber slab filling the notch at door height,
+    // the honest closed-run silhouette. The swing between the poses
+    // pivots on the north-jamb hinge (doorOpenness eases it), and a
+    // locked refusal shudders whichever pose is standing.
     const eastIn = this.interiors.regionAt(game, tx + 1, ty) !== null;
     const westIn = this.interiors.regionAt(game, tx - 1, ty) !== null;
     // The leaf hangs on the OUTDOOR side; facing two exteriors (a
@@ -4062,52 +4157,127 @@ export class Renderer {
     const doorH = s * 1.5; // leaf height under the 1.56 headroom
     const leafX0 = side < 0 ? x0 - lw : x1;
     const hingeAtWest = side > 0; // hinge edge hugs the wall line
-    const leaf = (baseY: number, sortY: number): DrawItem => ({
-      sortY,
+    const dinfo = doorInfo(tile)!;
+    const base = stone ? '#6a4a26' : shade(skin.log, -8);
+    const oNow = Math.min(1, this.doorOpenness(tx, ty, dinfo.open));
+    push({
+      // Open: the leaf lives in the neighbour column, north-anchored.
+      // Shut/swinging: the slab spans the gap and must draw over the
+      // north wall-end's face (sortY ty) yet under the south restart.
+      sortY: oNow > 0.5 ? ty + 0.05 : ty + 0.6,
       drawShadow: () => {
-        this.castEdgeQuad(leafX0, baseY, leafX0 + lw, baseY, 1.5);
+        const o = Math.min(1, this.doorOpenness(tx, ty, dinfo.open));
+        if (o > 0.5) {
+          const baseY = p.y + syT * 0.1;
+          this.castEdgeQuad(leafX0, baseY, leafX0 + lw, baseY, 1.5);
+        } else {
+          const xc = p.x + s * 0.5;
+          this.castEdgeQuad(xc, p.y + syT * 0.08, xc, p.y + gapH - syT * 0.08, 1.5);
+        }
       },
       draw: () => {
         const ctx = this.ctx;
-        const yT = baseY - doorH;
-        // Contact shade roots the leaf where it stands.
-        ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
-        ctx.fillRect(leafX0 + s * 0.02, baseY - s * 0.025, lw - s * 0.04, s * 0.06);
-        // The leaf: timber board face with a lit top rail.
-        ctx.fillStyle = '#6a4a26';
-        ctx.fillRect(leafX0, yT, lw, doorH);
-        ctx.fillStyle = 'rgba(255, 224, 170, 0.14)';
-        ctx.fillRect(leafX0, yT, lw, s * 0.07);
-        // Two recessed panels, the same casework grammar as cupboard
-        // doors: dark inset + a thin lit bottom lip each.
-        ctx.fillStyle = 'rgba(26, 16, 8, 0.35)';
-        for (const [py, ph] of [
-          [yT + doorH * 0.12, doorH * 0.34],
-          [yT + doorH * 0.56, doorH * 0.34],
-        ] as const) {
-          ctx.fillRect(leafX0 + lw * 0.18, py, lw * 0.64, ph);
-          ctx.fillStyle = 'rgba(255, 224, 170, 0.1)';
-          ctx.fillRect(leafX0 + lw * 0.18, py + ph - s * 0.03, lw * 0.64, s * 0.03);
+        const o = Math.min(1, this.doorOpenness(tx, ty, dinfo.open));
+        const shake = this.doorShakeAt(tx, ty);
+        if (o >= 0.98) {
+          // FULLY OPEN: the detailed thrown-open leaf, face-on.
+          const baseY = p.y + syT * 0.1;
+          const yT = baseY - doorH;
+          // Contact shade roots the leaf where it stands.
+          ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+          ctx.fillRect(leafX0 + s * 0.02, baseY - s * 0.025, lw - s * 0.04, s * 0.06);
+          // The leaf: timber board face with a lit top rail.
+          ctx.fillStyle = base;
+          ctx.fillRect(leafX0, yT, lw, doorH);
+          ctx.fillStyle = 'rgba(255, 224, 170, 0.14)';
+          ctx.fillRect(leafX0, yT, lw, s * 0.07);
+          // Two recessed panels, the same casework grammar as cupboard
+          // doors: dark inset + a thin lit bottom lip each.
           ctx.fillStyle = 'rgba(26, 16, 8, 0.35)';
+          for (const [py, ph] of [
+            [yT + doorH * 0.12, doorH * 0.34],
+            [yT + doorH * 0.56, doorH * 0.34],
+          ] as const) {
+            ctx.fillRect(leafX0 + lw * 0.18, py, lw * 0.64, ph);
+            ctx.fillStyle = 'rgba(255, 224, 170, 0.1)';
+            ctx.fillRect(leafX0 + lw * 0.18, py + ph - s * 0.03, lw * 0.64, s * 0.03);
+            ctx.fillStyle = 'rgba(26, 16, 8, 0.35)';
+          }
+          // Iron strap hinges on the wall-side edge; brass handle on
+          // the swinging edge.
+          const hingeX = hingeAtWest ? leafX0 : leafX0 + lw - lw * 0.3;
+          ctx.fillStyle = '#2e2a38';
+          for (const hy of [yT + doorH * 0.16, yT + doorH * 0.72]) {
+            ctx.fillRect(hingeX, hy, lw * 0.3, s * 0.055);
+          }
+          const knobX = hingeAtWest ? leafX0 + lw - s * 0.12 : leafX0 + s * 0.07;
+          ctx.fillStyle = '#c9a03b';
+          ctx.fillRect(knobX, yT + doorH * 0.47, s * 0.05, s * 0.05);
+          if (this.outlineOn) {
+            this.beginStructOutline();
+            ctx.strokeRect(leafX0, yT, lw, doorH);
+          }
+          return;
         }
-        // Iron strap hinges on the wall-side edge; brass handle on
-        // the swinging edge.
-        const hingeX = hingeAtWest ? leafX0 : leafX0 + lw - lw * 0.3;
-        ctx.fillStyle = '#2e2a38';
-        for (const hy of [yT + doorH * 0.16, yT + doorH * 0.72]) {
-          ctx.fillRect(hingeX, hy, lw * 0.3, s * 0.055);
+        if (o <= 0.02) {
+          // SHUT: the leaf sits in the wall plane, edge-on — a slab
+          // read as its lifted top-edge ribbon spanning the gap plus
+          // the south end face dropping to the threshold. A locked
+          // rattle shudders the whole slab in the frame.
+          const xc = p.x + s * 0.5 + shake * s * 0.035;
+          const slabW = s * 0.16;
+          // South end face: the door's visible end grain.
+          ctx.fillStyle = shade(base, -10);
+          ctx.fillRect(xc - slabW / 2, p.y + gapH - doorH, slabW, doorH);
+          // Top edge ribbon: the door's top riding door-height over
+          // the passage — the mini-crown that fills the notch.
+          ctx.fillStyle = shade(base, 18);
+          ctx.fillRect(xc - slabW / 2, p.y - doorH, slabW, gapH);
+          // Lit south lip where ribbon meets end face.
+          ctx.fillStyle = 'rgba(255, 224, 170, 0.12)';
+          ctx.fillRect(xc - slabW / 2, p.y + gapH - doorH - syT * 0.1, slabW, syT * 0.1);
+          // Contact shade at the threshold.
+          ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+          ctx.fillRect(xc - slabW / 2 - s * 0.02, p.y + gapH - s * 0.03, slabW + s * 0.04, s * 0.05);
+          if (this.outlineOn) {
+            this.beginStructOutline();
+            ctx.strokeRect(xc - slabW / 2, p.y - doorH, slabW, gapH + doorH);
+          }
+          return;
         }
-        const knobX = hingeAtWest ? leafX0 + lw - s * 0.12 : leafX0 + s * 0.07;
-        ctx.fillStyle = '#c9a03b';
-        ctx.fillRect(knobX, yT + doorH * 0.47, s * 0.05, s * 0.05);
+        // MID-SWING: the leaf pivots on its north-jamb hinge — the
+        // free edge sweeps an arc from the wall plane (edge-on, cos
+        // component south along the run) out to the neighbour column
+        // (face-on, sin component outward). One quad, foreshortening
+        // honestly through the whole sweep.
+        const th = (o * Math.PI) / 2;
+        const hx = (side < 0 ? x0 : x1) + shake * s * 0.02;
+        const hyB = p.y + syT * 0.1;
+        const fxB = hx + side * lw * Math.sin(th);
+        const fyB = hyB + lw * 0.95 * Math.cos(th) * (syT / s);
+        const quad = new Path2D();
+        quad.moveTo(hx, hyB);
+        quad.lineTo(fxB, fyB);
+        quad.lineTo(fxB, fyB - doorH);
+        quad.lineTo(hx, hyB - doorH);
+        quad.closePath();
+        ctx.fillStyle = shade(base, -Math.round((1 - Math.sin(th)) * 24));
+        ctx.fill(quad);
+        // Lit top edge tracks the sweep.
+        ctx.beginPath();
+        ctx.moveTo(hx, hyB - doorH);
+        ctx.lineTo(fxB, fyB - doorH);
+        ctx.lineTo(fxB, fyB - doorH + s * 0.06);
+        ctx.lineTo(hx, hyB - doorH + s * 0.06);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(255, 224, 170, 0.14)';
+        ctx.fill();
         if (this.outlineOn) {
           this.beginStructOutline();
-          ctx.strokeRect(leafX0, yT, lw, doorH);
+          ctx.stroke(quad);
         }
       },
     });
-    push(leaf(p.y + syT * 0.1, ty + 0.05));
-
   }
 
   /**
@@ -5721,6 +5891,63 @@ export class Renderer {
       return 0.14 + 0.86 * Renderer.growEase((u - 0.24) / 0.76);
     }
     return 1 - Renderer.growEase(u);
+  }
+
+  /**
+   * DOOR EASES — the same clock pattern as chests: main.ts kicks an
+   * ease on the tile patch (or a 'rattle' fx for a locked refusal) and
+   * the doorway painters read swing/shudder each frame. Keys are the
+   * door unit's ANCHOR tile — the west-most (E-W) or north-most (N-S)
+   * member of a wide run, or the tile itself for singles.
+   */
+  private readonly doorEases = new Map<string, { dir: 'open' | 'close' | 'shake'; born: number }>();
+
+  /** Start a leaf swing (or a locked-door shudder) at this tile. */
+  addDoorEase(tx: number, ty: number, dir: 'open' | 'close' | 'shake'): void {
+    const now = performance.now();
+    // Wide runs ease every member tile but only the anchor is ever
+    // read back — sweep stale keys so the map stays a handful.
+    if (this.doorEases.size > 32) {
+      for (const [k, e] of this.doorEases) {
+        if (now - e.born > 2000) this.doorEases.delete(k);
+      }
+    }
+    this.doorEases.set(`${tx},${ty}`, { dir, born: now });
+  }
+
+  /**
+   * Leaf openness 0..1 for a door anchor, advancing its animation.
+   * Opening swings with growEase's overshoot — the leaf flings past
+   * its rest and settles; closing is a shorter, sober pull-to. A
+   * 'shake' ease holds the posture (the door never moved).
+   */
+  private doorOpenness(tx: number, ty: number, open: boolean): number {
+    const key = `${tx},${ty}`;
+    const ease = this.doorEases.get(key);
+    if (ease === undefined || ease.dir === 'shake') return open ? 1 : 0;
+    const u = (performance.now() - ease.born) / (ease.dir === 'open' ? 520 : 380);
+    if (u >= 1) {
+      this.doorEases.delete(key);
+      return open ? 1 : 0;
+    }
+    if (ease.dir === 'open') return Renderer.growEase(u);
+    return Math.max(0, 1 - Renderer.growEase(u));
+  }
+
+  /**
+   * Signed shudder offset for a locked door's refusal — a quick
+   * decaying knock-knock in the frame. Zero when quiet.
+   */
+  private doorShakeAt(tx: number, ty: number): number {
+    const key = `${tx},${ty}`;
+    const ease = this.doorEases.get(key);
+    if (ease === undefined || ease.dir !== 'shake') return 0;
+    const u = (performance.now() - ease.born) / 460;
+    if (u >= 1) {
+      this.doorEases.delete(key);
+      return 0;
+    }
+    return Math.sin(u * Math.PI * 7) * (1 - u);
   }
 
   /**

@@ -12,7 +12,7 @@
  * world changes (worldVersion bump ⇒ full clear; recompute is bounded
  * by MAX_REGION and only runs for tiles actually asked about).
  */
-import { INTERIOR_BOUNDARY_TILES, Tile, diagWallInfo, hashCoords } from '@devcraft/shared';
+import { INTERIOR_BOUNDARY_TILES, Tile, diagWallInfo, doorInfo, hashCoords } from '@devcraft/shared';
 import type { ClientGame } from '../game/clientGame.js';
 
 export interface InteriorRegion {
@@ -112,17 +112,16 @@ export class InteriorMap {
             t === Tile.WallStoneWindow ||
             t === Tile.DoorwayStone ||
             t === Tile.DoorwayStoneWide ||
+            t === Tile.DoorwayStoneShut ||
+            t === Tile.DoorwayStoneWideShut ||
             diagWallInfo(t)?.material === 'stone'
           ) {
             stone++;
           } else if (t === Tile.CaveWall) stone++;
           else wood++;
-          if (
-            t === Tile.DoorwayStone ||
-            t === Tile.DoorwayWood ||
-            t === Tile.DoorwayStoneWide ||
-            t === Tile.DoorwayWoodWide
-          ) {
+          // Open AND shut doorways both anchor the region's door list —
+          // a door toggling must never re-shape the room it serves.
+          if (doorInfo(t) !== null) {
             doorTiles.push({ tx: nx, ty: ny });
           }
           continue;
