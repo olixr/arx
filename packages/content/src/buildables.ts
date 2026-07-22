@@ -142,6 +142,18 @@ const defs: BuildableDef[] = [
     ground: OUTDOOR_AND_FLOORS,
   },
   {
+    // Place two side by side and they merge into ONE full-width
+    // opening; the plain doorway never merges.
+    id: 'wood_doorway_wide',
+    name: 'Wide wood doorway',
+    tile: Tile.DoorwayWoodWide,
+    levelReq: 7,
+    xp: 40,
+    materials: [{ item: 'log', qty: 3 }],
+    ticks: 35,
+    ground: OUTDOOR_AND_FLOORS,
+  },
+  {
     id: 'table',
     name: 'Table',
     tile: Tile.Table,
@@ -211,6 +223,16 @@ const defs: BuildableDef[] = [
     xp: 50,
     materials: [{ item: 'copper_ore', qty: 1 }, { item: 'log', qty: 1 }],
     ticks: 35,
+    ground: OUTDOOR_AND_FLOORS,
+  },
+  {
+    id: 'stone_doorway_wide',
+    name: 'Wide stone doorway',
+    tile: Tile.DoorwayStoneWide,
+    levelReq: 11,
+    xp: 55,
+    materials: [{ item: 'copper_ore', qty: 2 }, { item: 'log', qty: 1 }],
+    ticks: 40,
     ground: OUTDOOR_AND_FLOORS,
   },
   {

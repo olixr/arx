@@ -83,9 +83,9 @@ export function buildBramblewick(): ZoneDef {
   b.set(58, 59, Tile.Barrel).set(58, 63, Tile.Crate);
   b.set(69, 60, Tile.Barrel).set(67, 65, Tile.Crate);
 
-  // The Gilded Antler inn — the inn template: paired north doors on
-  // the road, hearth on the west wall, table clusters, the bar, beds
-  // at the east end.
+  // The Gilded Antler inn — the inn template: a wide double door on
+  // the north road, hearth on the west wall, table clusters, the bar,
+  // beds at the east end.
   b.stamp(INN_LARGE, 22, 52);
   b.set(26, 51, Tile.HangingSign);
   b.set(25, 51, Tile.FlowerBox).set(32, 51, Tile.FlowerBox); // under the windows

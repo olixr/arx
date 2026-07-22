@@ -17,7 +17,12 @@ export function templateHeight(tpl: StructureTemplate): number {
   return tpl.rows.length;
 }
 
-const DOORWAY_TILES: readonly Tile[] = [Tile.DoorwayStone, Tile.DoorwayWood];
+const DOORWAY_TILES: readonly Tile[] = [
+  Tile.DoorwayStone,
+  Tile.DoorwayWood,
+  Tile.DoorwayStoneWide,
+  Tile.DoorwayWoodWide,
+];
 
 /**
  * Validate a template, throwing with the template id and reason.

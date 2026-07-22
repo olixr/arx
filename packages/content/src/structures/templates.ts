@@ -20,11 +20,17 @@ import type { CellDef, StructureTemplate } from './types.js';
  *   1.15-tile body), and 2-wide MarketStalls into single pieces.
  */
 
-/** Shared wood-building shell chars: walls, windows, doorway, floors. */
+/**
+ * Shared wood-building shell chars: walls, windows, doorway, floors.
+ * '=' is the WIDE doorway — author it in runs ('==') and the renderer
+ * merges the run into one full-width opening. 'D' is a single door
+ * and never merges: 'DD' means two individual doors with a divider.
+ */
 const wood: Record<string, CellDef> = {
   '#': { tile: Tile.WallWood },
   W: { tile: Tile.WallWoodWindow },
   D: { tile: Tile.DoorwayWood },
+  '=': { tile: Tile.DoorwayWoodWide },
   '.': { tile: Tile.WoodFloor },
   d: { tile: Tile.WoodFloor, detail: Detail.Doormat },
   r: { tile: Tile.WoodFloor, detail: Detail.Rug },
@@ -35,6 +41,7 @@ const stone: Record<string, CellDef> = {
   '#': { tile: Tile.WallStone },
   W: { tile: Tile.WallStoneWindow },
   D: { tile: Tile.DoorwayStone },
+  '=': { tile: Tile.DoorwayStoneWide },
   '.': { tile: Tile.StoneFloor },
   d: { tile: Tile.StoneFloor, detail: Detail.Doormat },
   r: { tile: Tile.StoneFloor, detail: Detail.Rug },
@@ -85,7 +92,7 @@ export const COTTAGE_LARGE: StructureTemplate = compileTemplate({
 
 /**
  * A working forge: the north side is a 2-wide open workshop entry
- * (paired doorways), sawdust tracked across the floor from the racks.
+ * (one wide doorway), sawdust tracked across the floor from the racks.
  */
 export const SMITHY: StructureTemplate = compileTemplate({
   id: 'smithy',
@@ -99,7 +106,7 @@ export const SMITHY: StructureTemplate = compileTemplate({
     s: { tile: Tile.StoneFloor, detail: Detail.Sawdust },
   },
   rows: [
-    '###DD####',
+    '###==####',
     '#T.s...o#',
     '#F.sA...#',
     '#..s...b#',
@@ -154,9 +161,9 @@ export const MARKET_STALL: StructureTemplate = compileTemplate({
 });
 
 /**
- * The big common house: paired north doors, west-wall hearth, four
- * table clusters, a 4-run bar in the south, three beds at the east
- * end.
+ * The big common house: a wide double door on the north road, west-
+ * wall hearth, four table clusters, a 4-run bar in the south, three
+ * beds at the east end.
  */
 export const INN_LARGE: StructureTemplate = compileTemplate({
   id: 'inn_large',
@@ -169,7 +176,7 @@ export const INN_LARGE: StructureTemplate = compileTemplate({
     B: { tile: Tile.Bed },
   },
   rows: [
-    '###W##DD##W###',
+    '###W##==##W###',
     '#.....dd.....#',
     '#H..........B#',
     '#..TC....TC..#',
@@ -186,7 +193,7 @@ export const INN_LARGE: StructureTemplate = compileTemplate({
 });
 
 /**
- * A nave: south double entry, two columns of 2-wide pews (E-W bench
+ * A nave: wide south entry, two columns of 2-wide pews (E-W bench
  * runs merge into full pews) with a centre aisle to the lectern and
  * round rug, windows down both long sides.
  */
@@ -210,7 +217,7 @@ export const CHAPEL: StructureTemplate = compileTemplate({
     '#PP..PP#',
     'W......W',
     '#..dd..#',
-    '###DD###',
+    '###==###',
   ],
   meta: { label: 'Chapel' },
 });

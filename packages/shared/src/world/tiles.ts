@@ -83,7 +83,16 @@ export enum Tile {
   PillarStone = 64,
   /** Half-height railing — porches, jetties, balconies. */
   RailWood = 65,
-  // 66-79 reserved for future wall vocabulary.
+  /**
+   * WALKABLE wide stone doorway — adjacent wide tiles in an E-W run
+   * merge into ONE full-width opening (jambs only at the run ends).
+   * Plain DoorwayStone never merges: two singles side by side stay
+   * two framed doors with a real divider read.
+   */
+  DoorwayStoneWide = 66,
+  /** WALKABLE wide wood doorway — E-W runs merge into one opening. */
+  DoorwayWoodWide = 67,
+  // 68-79 reserved for future wall vocabulary.
   /** A banded oak barrel — the workhorse of clutter. */
   Barrel = 80,
   /** A plank shipping crate. */
@@ -283,6 +292,8 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   },
   [Tile.DoorwayStone]: { name: 'stone doorway', solid: false, color: '#4a4554' },
   [Tile.DoorwayWood]: { name: 'wood doorway', solid: false, color: '#54391c' },
+  [Tile.DoorwayStoneWide]: { name: 'wide stone doorway', solid: false, color: '#4a4554' },
+  [Tile.DoorwayWoodWide]: { name: 'wide wood doorway', solid: false, color: '#54391c' },
   [Tile.ArchStone]: { name: 'stone arch', solid: false, color: '#5b5566' },
   [Tile.PillarStone]: { name: 'stone pillar', solid: true, color: '#5b5566', raised: true, topColor: '#8c8798' },
   [Tile.RailWood]: { name: 'wood railing', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
@@ -332,6 +343,8 @@ export const WALL_RUN_TILES: readonly Tile[] = [
   Tile.WallWoodWindow,
   Tile.DoorwayStone,
   Tile.DoorwayWood,
+  Tile.DoorwayStoneWide,
+  Tile.DoorwayWoodWide,
 ];
 
 /**

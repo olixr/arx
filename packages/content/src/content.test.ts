@@ -7,7 +7,14 @@ import { buildHollowStair } from './maps/hollowstair.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { compileTemplate, templateHeight, templateWidth } from './structures/stamp.js';
 import { templateFromJson, templateToJson } from './structures/serialize.js';
-import { COTTAGE_SMALL, STRUCTURE_TEMPLATES, WELL_PLAZA } from './structures/templates.js';
+import {
+  CHAPEL,
+  COTTAGE_SMALL,
+  INN_LARGE,
+  SMITHY,
+  STRUCTURE_TEMPLATES,
+  WELL_PLAZA,
+} from './structures/templates.js';
 import { ABILITIES, TECHNIQUES, abilityDef } from './abilities.js';
 import { ITEMS } from './items.js';
 import { NPCS, TOWN_SPAWNS } from './npcs.js';
@@ -496,6 +503,33 @@ test('structure stamping: flipX keeps the doorway on the perimeter', () => {
   );
 });
 
+test('structure templates: double entries are wide-doorway runs, not door pairs', () => {
+  // The smithy, inn, and chapel author their 2-wide entries as WIDE
+  // doorway tiles so the renderer merges them into one full-width
+  // opening. A 'DD' pair of plain doorways is reserved for buildings
+  // that genuinely want two separate doors with a divider.
+  for (const tpl of STRUCTURE_TEMPLATES) {
+    for (const row of tpl.rows) {
+      assert.ok(!row.includes('DD'), `${tpl.id} authors a plain-door pair — use '==' (wide)`);
+    }
+  }
+  const wideRuns = [
+    { tpl: SMITHY, tile: Tile.DoorwayStoneWide },
+    { tpl: INN_LARGE, tile: Tile.DoorwayWoodWide },
+    { tpl: CHAPEL, tile: Tile.DoorwayStoneWide },
+  ];
+  for (const { tpl, tile } of wideRuns) {
+    let adjacentPair = false;
+    for (const row of tpl.rows) {
+      for (let x = 0; x + 1 < row.length; x++) {
+        if (row[x] === '=' && row[x + 1] === '=') adjacentPair = true;
+      }
+    }
+    assert.ok(adjacentPair, `${tpl.id} lost its 2-wide doorway run`);
+    assert.equal(tpl.legend['=']!.tile, tile, `${tpl.id} '=' maps to the wrong wide doorway`);
+  }
+});
+
 test('structure stamping: space cells are transparent', () => {
   const b = new ZoneBuilder('scratch', 'Scratch', { x: 0, y: 0 }, 24, 24, Tile.Grass);
   b.stamp(WELL_PLAZA, 2, 2);
@@ -566,7 +600,13 @@ test('bramblewick: every doorway is walkable from the spawn', () => {
   const unreachable: string[] = [];
   for (let i = 0; i < z.ground.length; i++) {
     const t = z.ground[i];
-    if ((t === Tile.DoorwayStone || t === Tile.DoorwayWood) && !seen[i]) {
+    if (
+      (t === Tile.DoorwayStone ||
+        t === Tile.DoorwayWood ||
+        t === Tile.DoorwayStoneWide ||
+        t === Tile.DoorwayWoodWide) &&
+      !seen[i]
+    ) {
       unreachable.push(`(${i % z.width},${Math.floor(i / z.width)})`);
     }
   }

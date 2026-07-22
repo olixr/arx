@@ -270,6 +270,8 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     if (
       t === Tile.DoorwayWood ||
       t === Tile.DoorwayStone ||
+      t === Tile.DoorwayWoodWide ||
+      t === Tile.DoorwayStoneWide ||
       t === Tile.ArchStone ||
       t === Tile.PillarStone ||
       t === Tile.RailWood

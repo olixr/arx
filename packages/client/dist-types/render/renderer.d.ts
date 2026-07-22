@@ -494,6 +494,24 @@ export declare class Renderer {
     private evictTreeSprites;
     /** Wall-run auto-tiler membership — shared law (tiles.ts). */
     private static readonly WALL_TILES;
+    /** Every walkable doorway tile, both orientations and widths. */
+    private static readonly DOOR_TILES;
+    /**
+     * SIDE-DOORWAY LAW: a doorway's orientation comes from the wall run
+     * it pierces. Wall (or same-doorway run) north AND south with open
+     * ground east/west = a SIDE doorway — you walk through it east-west.
+     * Anything else keeps the classic south-facing frame.
+     */
+    private isSideDoorway;
+    /**
+     * Wall-run neighbour test that ENDS runs at side doorways. A wall
+     * north of a side door must show its face (the jamb) and a wall
+     * south of one must restart with chamfered crown — merging straight
+     * over the opening is exactly what made side doors read as seamless
+     * wall. South-facing doorways still merge (their frame carries the
+     * run through the opening).
+     */
+    private wallish;
     /** What stops lamplight — shared law (tiles.ts). */
     private static readonly LIGHT_BLOCKERS;
     /** The stone plinth every timber wall stands on. */
@@ -529,8 +547,35 @@ export declare class Renderer {
      * and a body standing in the door tile sorts BEFORE that — so the
      * player stays visible through the opening and ducks behind the
      * header. The pass-under read falls out of the existing y-sort.
+     *
+     * runLen > 1 is a merged WIDE-doorway run: (tx,ty) is the west
+     * anchor and one frame spans the whole run — jambs at the run ends
+     * only, one header, one centred keystone. Every reachable opening
+     * is a true full-width threshold, never two doors with a phantom
+     * divider you can walk through.
      */
     private doorwayItem;
+    /**
+     * A doorway in a N-S wall run — the SIDE of a building. In this
+     * projection an edge-on opening has no visible face, so the portal
+     * reads through structure instead (the arch/torii grammar, in the
+     * entrance-trim vocabulary):
+     *  - the wall run ENDS at the opening (wallish law): the north end
+     *    shows its true material face, the south run restarts with a
+     *    chamfered crown — an honest notch in the silhouette;
+     *  - the DOOR LEAF stands thrown open OUTSIDE the wall on the
+     *    outdoor side — swung 90° from a N-S wall a leaf's face
+     *    squares to this camera, and the neighbour column is the one
+     *    place no southern crown can ever bury it. One leaf per
+     *    opening, hung at the north jamb (a wide door's broad leaf
+     *    reads barn-style; a flanking pair would stack unreadably);
+     *  - a worn passage floor plus porch landings poking out BOTH
+     *    walkable sides at ground level — southern crowns legitimately
+     *    occlude the gap floor on long runs, but the neighbouring
+     *    columns are never covered, so the landings read from either
+     *    approach at any run length.
+     */
+    private sideDoorwayItems;
     /**
      * A freestanding walk-through arch: thicker piers than a doorway,
      * capital blocks, its own crown. Adjacent arches merge into

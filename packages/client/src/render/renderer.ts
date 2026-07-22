@@ -2710,6 +2710,47 @@ export class Renderer {
 
   /** Wall-run auto-tiler membership — shared law (tiles.ts). */
   private static readonly WALL_TILES = new Set<number>(WALL_RUN_TILES);
+
+  /** Every walkable doorway tile, both orientations and widths. */
+  private static readonly DOOR_TILES = new Set<number>([
+    Tile.DoorwayStone,
+    Tile.DoorwayWood,
+    Tile.DoorwayStoneWide,
+    Tile.DoorwayWoodWide,
+  ]);
+
+  /**
+   * SIDE-DOORWAY LAW: a doorway's orientation comes from the wall run
+   * it pierces. Wall (or same-doorway run) north AND south with open
+   * ground east/west = a SIDE doorway — you walk through it east-west.
+   * Anything else keeps the classic south-facing frame.
+   */
+  private isSideDoorway(game: ClientGame, tx: number, ty: number): boolean {
+    const t = game.world.groundAt(tx, ty);
+    if (t === undefined || !Renderer.DOOR_TILES.has(t)) return false;
+    const solidWall = (tt: number | undefined): boolean =>
+      tt !== undefined && Renderer.WALL_TILES.has(tt) && !Renderer.DOOR_TILES.has(tt);
+    const along = (tt: number | undefined): boolean => solidWall(tt) || tt === t;
+    const vert =
+      along(game.world.groundAt(tx, ty - 1)) && along(game.world.groundAt(tx, ty + 1));
+    const horiz =
+      along(game.world.groundAt(tx + 1, ty)) && along(game.world.groundAt(tx - 1, ty));
+    return vert && !horiz;
+  }
+
+  /**
+   * Wall-run neighbour test that ENDS runs at side doorways. A wall
+   * north of a side door must show its face (the jamb) and a wall
+   * south of one must restart with chamfered crown — merging straight
+   * over the opening is exactly what made side doors read as seamless
+   * wall. South-facing doorways still merge (their frame carries the
+   * run through the opening).
+   */
+  private wallish(game: ClientGame, tx: number, ty: number): boolean {
+    const t = game.world.groundAt(tx, ty);
+    if (t === undefined || !Renderer.WALL_TILES.has(t)) return false;
+    return !(Renderer.DOOR_TILES.has(t) && this.isSideDoorway(game, tx, ty));
+  }
   /** What stops lamplight — shared law (tiles.ts). */
   private static readonly LIGHT_BLOCKERS = new Set<number>(LIGHT_BLOCKING_TILES);
   /** The stone plinth every timber wall stands on. */
@@ -2744,16 +2785,53 @@ export class Renderer {
         // paths: doorways are IN the wall-run set (so neighbours merge
         // with them) but draw their own framed opening, and pillars/
         // rails/arches are raised or walkable tiles with bespoke items.
-        if (ground === Tile.DoorwayStone || ground === Tile.DoorwayWood) {
-          const dregion = this.wallRegion(game, tx, ty);
+        if (
+          ground === Tile.DoorwayStone ||
+          ground === Tile.DoorwayWood ||
+          ground === Tile.DoorwayStoneWide ||
+          ground === Tile.DoorwayWoodWide
+        ) {
+          // SIDE-DOORWAY LAW: a doorway in a N-S wall run is edge-on
+          // to this camera — it gets the notch/lintel/porch-step
+          // treatment instead of the (invisible) south-facing frame.
+          // Wide side doorways merge along the wall: N-S runs.
+          if (this.isSideDoorway(game, tx, ty)) {
+            let ay = ty;
+            let vLen = 1;
+            if (ground === Tile.DoorwayStoneWide || ground === Tile.DoorwayWoodWide) {
+              while (game.world.groundAt(tx, ay - 1) === ground) ay--;
+              while (game.world.groundAt(tx, ay + vLen) === ground) vLen++;
+              const vKey = packTile(tx, ay);
+              if (runSeen.has(vKey)) continue;
+              runSeen.add(vKey);
+            }
+            this.sideDoorwayItems(ground, tx, ay, game, vLen, items);
+            continue;
+          }
+          // WIDE-DOORWAY RUN LAW: adjacent wide tiles in an E-W run
+          // merge into ONE full-width opening — walk to the run's west
+          // anchor and emit once (runSeen dedupes, and walking west
+          // catches runs whose anchor sits outside the viewport pad).
+          // Plain doorways never merge: two singles side by side stay
+          // two framed doors on purpose.
+          let ax = tx;
+          let runLen = 1;
+          if (ground === Tile.DoorwayStoneWide || ground === Tile.DoorwayWoodWide) {
+            while (game.world.groundAt(ax - 1, ty) === ground) ax--;
+            while (game.world.groundAt(ax + runLen, ty) === ground) runLen++;
+            const runKey = packTile(ax, ty);
+            if (runSeen.has(runKey)) continue;
+            runSeen.add(runKey);
+          }
+          const dregion = this.wallRegion(game, ax, ty);
           // CUTAWAY LAW: fronting your own room, the frame drops to a
           // stub so the room is yours to see.
           const dcut =
             this.localRegion !== null &&
             dregion === this.localRegion &&
-            this.localRegion.tiles.has(packTile(tx, ty - 1));
-          const item = this.doorwayItem(ground, tx, ty, game, dcut ? 0.62 : WALL_H);
-          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+            this.localRegion.tiles.has(packTile(ax, ty - 1));
+          const item = this.doorwayItem(ground, ax, ty, game, dcut ? 0.62 : WALL_H, runLen);
+          if (game.world.elevAt(ax, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
         }
@@ -2849,11 +2927,15 @@ export class Renderer {
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
-    const isWall = (t: number | undefined) => t !== undefined && Renderer.WALL_TILES.has(t);
-    const n = isWall(game.world.groundAt(tx, ty - 1));
-    const e = isWall(game.world.groundAt(tx + 1, ty));
-    const sw = isWall(game.world.groundAt(tx, ty + 1));
-    const w = isWall(game.world.groundAt(tx - 1, ty));
+    const n = this.wallish(game, tx, ty - 1);
+    const e = this.wallish(game, tx + 1, ty);
+    const sw = this.wallish(game, tx, ty + 1);
+    const w = this.wallish(game, tx - 1, ty);
+    // A side doorway to the north = this run restarts at a passage
+    // mouth: keep the crown corners SQUARE there so the slot above
+    // reads as a clean rectangular opening, not a pointed notch.
+    const nT = game.world.groundAt(tx, ty - 1);
+    const nDoor = !n && nT !== undefined && Renderer.DOOR_TILES.has(nT);
 
     // Windowed walls are the same masonry with a glazed opening set
     // into the south face — resolve to the base material for colors.
@@ -2867,8 +2949,8 @@ export class Renderer {
     // corners stay square: they sit flush on the south face, and a cut
     // there opens a sliver of ground between crown and face.
     const radii: [number, number, number, number] = [
-      !n && !w ? r : 0,
-      !n && !e ? r : 0,
+      !n && !nDoor && !w ? r : 0,
+      !n && !nDoor && !e ? r : 0,
       0,
       0,
     ];
@@ -3328,18 +3410,40 @@ export class Renderer {
    * and a body standing in the door tile sorts BEFORE that — so the
    * player stays visible through the opening and ducks behind the
    * header. The pass-under read falls out of the existing y-sort.
+   *
+   * runLen > 1 is a merged WIDE-doorway run: (tx,ty) is the west
+   * anchor and one frame spans the whole run — jambs at the run ends
+   * only, one header, one centred keystone. Every reachable opening
+   * is a true full-width threshold, never two doors with a phantom
+   * divider you can walk through.
    */
-  private doorwayItem(tile: Tile, tx: number, ty: number, game: ClientGame, whT: number): DrawItem {
+  private doorwayItem(
+    tile: Tile,
+    tx: number,
+    ty: number,
+    game: ClientGame,
+    whT: number,
+    runLen = 1,
+  ): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
-    const isWall = (t: number | undefined) => t !== undefined && Renderer.WALL_TILES.has(t);
-    const n = isWall(game.world.groundAt(tx, ty - 1));
-    const e = isWall(game.world.groundAt(tx + 1, ty));
-    const sw = isWall(game.world.groundAt(tx, ty + 1));
-    const w = isWall(game.world.groundAt(tx - 1, ty));
-    const stone = tile === Tile.DoorwayStone;
+    const isWallAt = (x: number, y: number) => this.wallish(game, x, y);
+    const ex = tx + runLen - 1; // east-most tile of the run
+    const nW = isWallAt(tx, ty - 1);
+    const nE = isWallAt(ex, ty - 1);
+    const e = isWallAt(ex + 1, ty);
+    const w = isWallAt(tx - 1, ty);
+    // Crown top edge / south lip only yield where EVERY run member
+    // borders wall — a single tile reduces to the old per-tile read.
+    let n = true;
+    let sw = true;
+    for (let i = 0; i < runLen; i++) {
+      if (!isWallAt(tx + i, ty - 1)) n = false;
+      if (!isWallAt(tx + i, ty + 1)) sw = false;
+    }
+    const stone = tile === Tile.DoorwayStone || tile === Tile.DoorwayStoneWide;
     const top = stone ? '#8c8798' : '#8a6234';
     const face = stone ? '#5b5566' : '#5e3f1e';
     // Frame trim reads two steps lighter than the wall it pierces —
@@ -3347,12 +3451,13 @@ export class Renderer {
     const trim = stone ? '#8a8496' : '#96703c';
     const syT = s * this.camera.yScale;
     const hs = whT * s;
+    const rw = s * runLen; // the opening spans the whole run
     const x0 = p.x - 0.25;
-    const x1 = p.x + s + 0.25;
+    const x1 = p.x + rw + 0.25;
     const jw = s * 0.15;
     const r = s * 0.26;
-    const radii: [number, number, number, number] = [!n && !w ? r : 0, !n && !e ? r : 0, 0, 0];
-    const skew = (this.leanX(p.x + s / 2, whT) - (p.x + s / 2)) / -hs;
+    const radii: [number, number, number, number] = [!nW && !w ? r : 0, !nE && !e ? r : 0, 0, 0];
+    const skew = (this.leanX(p.x + rw / 2, whT) - (p.x + rw / 2)) / -hs;
     return {
       sortY: ty + 1,
       drawShadow: () => {
@@ -3371,7 +3476,7 @@ export class Renderer {
         // The dark interior seen through the opening; melts away as
         // anyone approaches the threshold.
         const hh = Math.max(0, hs - s * 1.56); // opening is FIXED height; the header grows (stubs have none)
-        const veil = hh > s * 0.05 ? this.doorVeil(game, tx + 0.5, ty + 0.5) : 0;
+        const veil = hh > s * 0.05 ? this.doorVeil(game, tx + runLen / 2, ty + 0.5) : 0;
         if (veil > 0.01) {
           ctx.fillStyle = `rgba(14, 10, 22, ${0.5 * veil})`;
           ctx.fillRect(x0 + jw, -hs, x1 - x0 - jw * 2, hs);
@@ -3397,11 +3502,12 @@ export class Renderer {
             ctx.fill();
           }
           ctx.fillStyle = shade(trim, 14);
+          const mid = p.x + rw / 2; // keystone rides the run's centre
           ctx.beginPath();
-          ctx.moveTo(p.x + s * 0.38, -hs + hh + s * 0.02);
-          ctx.lineTo(p.x + s * 0.62, -hs + hh + s * 0.02);
-          ctx.lineTo(p.x + s * 0.57, -hs + s * 0.02);
-          ctx.lineTo(p.x + s * 0.43, -hs + s * 0.02);
+          ctx.moveTo(mid - s * 0.12, -hs + hh + s * 0.02);
+          ctx.lineTo(mid + s * 0.12, -hs + hh + s * 0.02);
+          ctx.lineTo(mid + s * 0.07, -hs + s * 0.02);
+          ctx.lineTo(mid - s * 0.07, -hs + s * 0.02);
           ctx.closePath();
           ctx.fill();
         } else if (hh > s * 0.05) {
@@ -3438,12 +3544,12 @@ export class Renderer {
         this.beginHeightLayer(whT);
         ctx.fillStyle = top;
         ctx.beginPath();
-        chamferRect(ctx, x0, p.y - 0.25, s + 0.5, syT + 0.5, radii);
+        chamferRect(ctx, x0, p.y - 0.25, rw + 0.5, syT + 0.5, radii);
         ctx.fill();
         if (!stone) this.woodCrownLog(p, syT, s, x0, x1, tx, ty, (n || sw) && !(w || e));
         if (!sw) {
           ctx.fillStyle = shade(top, 16);
-          ctx.fillRect(x0, p.y + syT - s * 0.08, s + 0.5, s * 0.08);
+          ctx.fillRect(x0, p.y + syT - s * 0.08, rw + 0.5, s * 0.08);
         }
         ctx.restore();
         // SILHOUETTE OUTLINE: crown perimeter like a wall, PLUS the
@@ -3473,6 +3579,159 @@ export class Renderer {
         }
       },
     };
+  }
+
+  /**
+   * A doorway in a N-S wall run — the SIDE of a building. In this
+   * projection an edge-on opening has no visible face, so the portal
+   * reads through structure instead (the arch/torii grammar, in the
+   * entrance-trim vocabulary):
+   *  - the wall run ENDS at the opening (wallish law): the north end
+   *    shows its true material face, the south run restarts with a
+   *    chamfered crown — an honest notch in the silhouette;
+   *  - the DOOR LEAF stands thrown open OUTSIDE the wall on the
+   *    outdoor side — swung 90° from a N-S wall a leaf's face
+   *    squares to this camera, and the neighbour column is the one
+   *    place no southern crown can ever bury it. One leaf per
+   *    opening, hung at the north jamb (a wide door's broad leaf
+   *    reads barn-style; a flanking pair would stack unreadably);
+   *  - a worn passage floor plus porch landings poking out BOTH
+   *    walkable sides at ground level — southern crowns legitimately
+   *    occlude the gap floor on long runs, but the neighbouring
+   *    columns are never covered, so the landings read from either
+   *    approach at any run length.
+   */
+  private sideDoorwayItems(
+    tile: Tile,
+    tx: number,
+    ty: number,
+    game: ClientGame,
+    runLen: number,
+    items: DrawItem[],
+  ): void {
+    const s = this.camera.scale;
+    const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const elevated = game.world.elevAt(tx, ty) !== 0;
+    const stone = tile === Tile.DoorwayStone || tile === Tile.DoorwayStoneWide;
+    const trim = stone ? '#8a8496' : '#96703c';
+    const syT = s * this.camera.yScale;
+    const hs = WALL_H * s;
+    const x0 = p.x - 0.25;
+    const x1 = p.x + s + 0.25;
+    const gapH = syT * runLen; // gap tile band, plan view
+    const cy = p.y + gapH / 2;
+    const push = (item: DrawItem): void => {
+      if (elevated) item.elevated = true;
+      items.push(item);
+    };
+
+    // Passage floor + porch steps: the ground-level affordance.
+    push({
+      sortY: ty,
+      draw: () => {
+        const ctx = this.ctx;
+        // Worn threshold paving through the opening — same tone law
+        // as the south doorframe's step.
+        ctx.fillStyle = shade(trim, stone ? 22 : 30);
+        ctx.fillRect(p.x + s * 0.07, p.y + syT * 0.05, s * 0.86, gapH - syT * 0.1);
+        // Wear from feet: two faint tracks in the walk direction.
+        ctx.fillStyle = 'rgba(26, 20, 36, 0.14)';
+        ctx.fillRect(p.x + s * 0.07, cy - syT * 0.26, s * 0.86, syT * 0.13);
+        ctx.fillRect(p.x + s * 0.07, cy + syT * 0.13, s * 0.86, syT * 0.13);
+        // Porch landings on BOTH walkable sides: proper entry slabs as
+        // tall as the opening, in columns the wall crowns never cover
+        // — the ground-level cue that survives any run length.
+        const landH = gapH + syT * 0.26;
+        for (const [sx0, sx1] of [
+          [p.x - s * 0.42, p.x + s * 0.05],
+          [p.x + s * 0.95, p.x + s * 1.42],
+        ] as const) {
+          ctx.fillStyle = shade(trim, stone ? 14 : 18);
+          ctx.fillRect(sx0, cy - landH / 2, sx1 - sx0, landH);
+          // Lit north lip + shaded south edge ground the slab.
+          ctx.fillStyle = 'rgba(255, 236, 200, 0.14)';
+          ctx.fillRect(sx0, cy - landH / 2, sx1 - sx0, syT * 0.12);
+          ctx.fillStyle = 'rgba(26, 20, 36, 0.3)';
+          ctx.fillRect(sx0, cy + landH / 2 - syT * 0.12, sx1 - sx0, syT * 0.12);
+          // A seam line splits the slab into two worn treads.
+          ctx.fillStyle = 'rgba(26, 20, 36, 0.18)';
+          ctx.fillRect(sx0, cy - Math.max(1, s * 0.015), sx1 - sx0, Math.max(1, s * 0.03));
+          if (this.outlineOn) {
+            this.beginStructOutline();
+            ctx.strokeRect(sx0, cy - landH / 2, sx1 - sx0, landH);
+          }
+        }
+      },
+    });
+
+    // THE OPEN DOOR LEAF. A side door's opening is edge-on and its
+    // face-bands are buried under southern crowns — so the door
+    // itself stands OUTSIDE the wall: the leaf swung fully open
+    // against the outer face. Swung 90° from a N-S wall, a leaf's
+    // face squares to this camera, and it lives in the neighbour
+    // column where no crown ever buries it. Single doors hang one
+    // leaf at the north jamb; wide doors hang a pair flanking the
+    // opening — the classic thrown-open double door.
+    const eastIn = this.interiors.regionAt(game, tx + 1, ty) !== null;
+    const westIn = this.interiors.regionAt(game, tx - 1, ty) !== null;
+    // The leaf hangs on the OUTDOOR side; facing two exteriors (a
+    // freestanding wall) or two interiors (a connector), west wins.
+    const side: -1 | 1 = westIn && !eastIn ? 1 : -1;
+    // One leaf per opening: a flanking pair on a wide door stacks
+    // into an unreadable panel column at this camera (leaves are
+    // taller on screen than the opening's plan span), so a wide door
+    // hangs a single broad barn-style leaf instead.
+    const lw = s * (runLen > 1 ? 0.8 : 0.62); // leaf width along the wall face
+    const doorH = s * 1.5; // leaf height under the 1.56 headroom
+    const leafX0 = side < 0 ? x0 - lw : x1;
+    const hingeAtWest = side > 0; // hinge edge hugs the wall line
+    const leaf = (baseY: number, sortY: number): DrawItem => ({
+      sortY,
+      drawShadow: () => {
+        this.castEdgeQuad(leafX0, baseY, leafX0 + lw, baseY, 1.5);
+      },
+      draw: () => {
+        const ctx = this.ctx;
+        const yT = baseY - doorH;
+        // Contact shade roots the leaf where it stands.
+        ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+        ctx.fillRect(leafX0 + s * 0.02, baseY - s * 0.025, lw - s * 0.04, s * 0.06);
+        // The leaf: timber board face with a lit top rail.
+        ctx.fillStyle = '#6a4a26';
+        ctx.fillRect(leafX0, yT, lw, doorH);
+        ctx.fillStyle = 'rgba(255, 224, 170, 0.14)';
+        ctx.fillRect(leafX0, yT, lw, s * 0.07);
+        // Two recessed panels, the same casework grammar as cupboard
+        // doors: dark inset + a thin lit bottom lip each.
+        ctx.fillStyle = 'rgba(26, 16, 8, 0.35)';
+        for (const [py, ph] of [
+          [yT + doorH * 0.12, doorH * 0.34],
+          [yT + doorH * 0.56, doorH * 0.34],
+        ] as const) {
+          ctx.fillRect(leafX0 + lw * 0.18, py, lw * 0.64, ph);
+          ctx.fillStyle = 'rgba(255, 224, 170, 0.1)';
+          ctx.fillRect(leafX0 + lw * 0.18, py + ph - s * 0.03, lw * 0.64, s * 0.03);
+          ctx.fillStyle = 'rgba(26, 16, 8, 0.35)';
+        }
+        // Iron strap hinges on the wall-side edge; brass handle on
+        // the swinging edge.
+        const hingeX = hingeAtWest ? leafX0 : leafX0 + lw - lw * 0.3;
+        ctx.fillStyle = '#2e2a38';
+        for (const hy of [yT + doorH * 0.16, yT + doorH * 0.72]) {
+          ctx.fillRect(hingeX, hy, lw * 0.3, s * 0.055);
+        }
+        const knobX = hingeAtWest ? leafX0 + lw - s * 0.12 : leafX0 + s * 0.07;
+        ctx.fillStyle = '#c9a03b';
+        ctx.fillRect(knobX, yT + doorH * 0.47, s * 0.05, s * 0.05);
+        if (this.outlineOn) {
+          this.beginStructOutline();
+          ctx.strokeRect(leafX0, yT, lw, doorH);
+        }
+      },
+    });
+    push(leaf(p.y + syT * 0.1, ty + 0.05));
+
   }
 
   /**

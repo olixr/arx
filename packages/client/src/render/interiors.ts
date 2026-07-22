@@ -107,10 +107,23 @@ export class InteriorMap {
         }
         if (BOUNDARY.has(t)) {
           wallTiles.add(nk);
-          if (t === Tile.WallStone || t === Tile.WallStoneWindow || t === Tile.DoorwayStone) stone++;
-          else if (t === Tile.CaveWall) stone++;
+          if (
+            t === Tile.WallStone ||
+            t === Tile.WallStoneWindow ||
+            t === Tile.DoorwayStone ||
+            t === Tile.DoorwayStoneWide
+          ) {
+            stone++;
+          } else if (t === Tile.CaveWall) stone++;
           else wood++;
-          if (t === Tile.DoorwayStone || t === Tile.DoorwayWood) doorTiles.push({ tx: nx, ty: ny });
+          if (
+            t === Tile.DoorwayStone ||
+            t === Tile.DoorwayWood ||
+            t === Tile.DoorwayStoneWide ||
+            t === Tile.DoorwayWoodWide
+          ) {
+            doorTiles.push({ tx: nx, ty: ny });
+          }
           continue;
         }
         if (world.elevAt(nx, ny) !== elevLevel) {

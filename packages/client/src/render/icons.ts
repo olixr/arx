@@ -3534,6 +3534,8 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   stone_window: { icon: 'windowframe', color: '#767181' },
   wood_doorway: { icon: 'doorframe', color: '#7d5a2e' },
   stone_doorway: { icon: 'doorframe', color: '#767181' },
+  wood_doorway_wide: { icon: 'doorframe', color: '#96703c' },
+  stone_doorway_wide: { icon: 'doorframe', color: '#8a8496' },
   fence: { icon: 'railing', color: '#8a6534' },
   wood_railing: { icon: 'railing', color: '#a5793f' },
   campfire: { icon: 'campfirebuild', color: '#e8823d' },
