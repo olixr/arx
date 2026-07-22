@@ -6,3 +6,8 @@ data/*.db-*
 data/worldcache/
 .DS_Store
 .playwright-mcp/
+
+# Playwright audit screenshots land in the repo root — never ship them
+/*.png
+/*.jpeg
+/.playwright-mcp/
