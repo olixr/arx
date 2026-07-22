@@ -24,7 +24,7 @@ import {
 const OUTLINE = '#241a2e';
 const SHADOW = 'rgba(20, 12, 8, 0.45)';
 
-type IconPainter = (ctx: CanvasRenderingContext2D, color: string) => void;
+export type IconPainter = (ctx: CanvasRenderingContext2D, color: string) => void;
 
 /** All painters draw inside a 0..1 unit box. */
 const PAINTERS: Record<string, IconPainter> = {
@@ -4487,6 +4487,18 @@ function renderIcon(icon: string, color: string, size: number): string {
   const url = canvas.toDataURL();
   cache.set(key, url);
   return url;
+}
+
+/**
+ * Render an externally-authored painter through the SAME pipeline —
+ * supersample, eight-tap outline ring, hard shadow — so satellite icon
+ * sets (the ability spell-plates) wear the identical dark ring the
+ * item set does. The key namespaces the painter in the shared cache;
+ * re-registration under the same key is a no-op.
+ */
+export function paintedIconUrl(key: string, painter: IconPainter, color: string, size: number): string {
+  if (!PAINTERS[key]) PAINTERS[key] = painter;
+  return renderIcon(key, color, size);
 }
 
 /** Every mapped item id — the dev icon gallery walks this. */

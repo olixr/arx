@@ -28,6 +28,7 @@ import {
   type ItemDef,
 } from '@devcraft/content';
 import { itemIconUrl, slotGlyphUrl } from '../render/icons.js';
+import { abilityIconUrl, passiveIconUrl } from '../render/abilityIcons.js';
 import { sectionHead, statPlaque } from './panel.js';
 import { RARITY_COLORS, rarityOfInstance } from './rarity.js';
 
@@ -548,12 +549,19 @@ export class Panels {
       this.card.appendChild(strip);
     }
 
-    const stat = (label: string, text: string, color?: string): void => {
+    const stat = (label: string, text: string, color?: string, iconUrl?: string): void => {
       const row = document.createElement('div');
       row.className = 'card-stat';
       const chip = document.createElement('span');
       chip.className = 'stat-chip';
-      chip.style.background = color ?? 'var(--gold)';
+      if (iconUrl) {
+        // Ability rows carry their spell-plate in miniature instead of
+        // a bare color square — the same icon the hotbar will show.
+        chip.classList.add('icon');
+        chip.style.background = `center / contain no-repeat url("${iconUrl}")`;
+      } else {
+        chip.style.background = color ?? 'var(--gold)';
+      }
       const lab = document.createElement('span');
       lab.className = 'stat-label';
       lab.textContent = label;
@@ -579,7 +587,7 @@ export class Panels {
         );
       }
       const art = w.art ? abilityDef(w.art) : undefined;
-      if (art) stat('Art (Q)', art.name, '#9a7ae0');
+      if (art) stat('Art (Q)', art.name, '#9a7ae0', abilityIconUrl(art.id, 40));
       // The instance's oil — poison lives ON the weapon, so the card
       // is where you check which blade carries what.
       const coat = roll?.coat;
@@ -668,9 +676,9 @@ export class Panels {
       }
     }
     const relicAb = def.relic ? abilityDef(def.relic) : undefined;
-    if (relicAb) stat('Relic (E)', relicAb.name, '#7ac47a');
+    if (relicAb) stat('Relic (E)', relicAb.name, '#7ac47a', abilityIconUrl(relicAb.id, 40));
     const sigilAb = def.sigil ? abilityDef(def.sigil) : undefined;
-    if (sigilAb) stat('Sigil (T)', sigilAb.name, '#e8e2d0');
+    if (sigilAb) stat('Sigil (T)', sigilAb.name, '#e8e2d0', abilityIconUrl(sigilAb.id, 40));
     // A rolled trinket declares how much its instance amplifies the
     // active — the reason a power-50 legendary stone is worth the hunt.
     if ((relicAb || sigilAb) && roll) {
@@ -680,7 +688,7 @@ export class Panels {
     }
     if (def.passive) {
       const p = PASSIVES[def.passive];
-      stat('Passive', p.name, p.color);
+      stat('Passive', p.name, p.color, passiveIconUrl(def.passive, 40));
       const pd = document.createElement('div');
       pd.className = 'card-passive-desc';
       pd.textContent = p.desc;
@@ -1122,10 +1130,19 @@ export class Panels {
         if (!ab) continue;
         const chip = document.createElement('span');
         chip.className = 'technique-chip';
+        // Every technique leads with its spell-plate — the same icon
+        // that will sit on the hotbar once it's chosen.
+        const plate = document.createElement('img');
+        plate.className = 'technique-plate';
+        plate.src = abilityIconUrl(tech.ability, 34);
+        plate.draggable = false;
+        chip.appendChild(plate);
+        const cap = document.createElement('span');
+        chip.appendChild(cap);
         const unlocked = level >= tech.unlockLevel;
         if (!unlocked) {
           chip.classList.add('locked');
-          chip.textContent = `${ab.name} (lv ${tech.unlockLevel})`;
+          cap.textContent = `${ab.name} (lv ${tech.unlockLevel})`;
           // Navigable even though locked: pad players can focus it to
           // read what it does and what unlocks it.
           chip.dataset.nav = '';
@@ -1134,7 +1151,7 @@ export class Panels {
           chip.dataset.tipname = ab.name;
           chip.dataset.tipsub = `${ab.desc} — unlocks at ${skill} level ${tech.unlockLevel}`;
         } else {
-          chip.textContent = ab.name;
+          cap.textContent = ab.name;
           chip.dataset.nav = '';
           chip.dataset.navkey = `tech:${skill}:${tech.ability}`;
           chip.dataset.tipname = ab.name;

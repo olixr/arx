@@ -1,3 +1,12 @@
+export type IconPainter = (ctx: CanvasRenderingContext2D, color: string) => void;
+/**
+ * Render an externally-authored painter through the SAME pipeline —
+ * supersample, eight-tap outline ring, hard shadow — so satellite icon
+ * sets (the ability spell-plates) wear the identical dark ring the
+ * item set does. The key namespaces the painter in the shared cache;
+ * re-registration under the same key is a no-op.
+ */
+export declare function paintedIconUrl(key: string, painter: IconPainter, color: string, size: number): string;
 /** Every mapped item id — the dev icon gallery walks this. */
 export declare function allIconItemIds(): string[];
 /** Every mapped buildable id — the dev icon gallery walks this. */

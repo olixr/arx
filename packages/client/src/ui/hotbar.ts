@@ -3,6 +3,7 @@ import { itemDef } from '@devcraft/content';
 import type { ClientGame } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
 import { itemIconUrl, sneakEyeUrl } from '../render/icons.js';
+import { abilityIconUrl, passiveIconUrl } from '../render/abilityIcons.js';
 
 const SLOT_KEYS = ['Q', 'E', 'R', 'T'] as const;
 /** Pad bindings for the same four slots: LB, RB, Y, d-pad up. */
@@ -117,8 +118,7 @@ export class Hotbar {
         if (this.names[slot] !== '') {
           this.names[slot] = '';
           el.classList.add('empty');
-          icon.textContent = '';
-          icon.style.background = 'transparent';
+          icon.replaceChildren();
         }
         el.title = EMPTY_HINTS[slot]!;
         this.wipes[slot]!.style.background = 'none';
@@ -129,8 +129,11 @@ export class Hotbar {
         this.names[slot] = ab.name;
         el.classList.remove('empty');
         el.title = `${ab.name} — ${ab.desc}`;
-        icon.textContent = ab.code;
-        icon.style.background = ab.color;
+        // The spell-plate: a bespoke painted icon, not a lettered chip.
+        const img = document.createElement('img');
+        img.src = abilityIconUrl(ab.id, 60);
+        img.draggable = false;
+        icon.replaceChildren(img);
       }
 
       const frac = game.abilityCdFraction(slot as AbilitySlot, now);
@@ -172,8 +175,10 @@ export class Hotbar {
         const chip = document.createElement('div');
         chip.className = 'passive-chip';
         chip.title = `${meta.name} — ${meta.desc}`;
-        chip.textContent = meta.code;
-        chip.style.background = meta.color;
+        const img = document.createElement('img');
+        img.src = passiveIconUrl(id, 26);
+        img.draggable = false;
+        chip.appendChild(img);
         this.tray.appendChild(chip);
       }
     }

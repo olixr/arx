@@ -1,4 +1,5 @@
-import { itemDef } from '@devcraft/content';
+import { PASSIVES } from '@devcraft/shared';
+import { TECHNIQUES, abilityDef, itemDef } from '@devcraft/content';
 import {
   allIconBuildableIds,
   allIconItemIds,
@@ -7,6 +8,12 @@ import {
   slotGlyphUrl,
   uiIconUrl,
 } from '../render/icons.js';
+import {
+  abilityIconUrl,
+  allAbilityIconIds,
+  allPassiveIconIds,
+  passiveIconUrl,
+} from '../render/abilityIcons.js';
 
 /**
  * Dev icon gallery — `?icons` on the URL overlays every registered
@@ -92,6 +99,45 @@ export function showIconGallery(): void {
     take('Scrolls', (id) => /^scroll_/.test(id)),
     take('Everything else', () => true),
   ];
+
+  // The spell-plates, grouped the way the design document groups them:
+  // techniques and the sigil pulled out first, the arts left together.
+  {
+    const abilityIds = allAbilityIconIds();
+    const techIds = new Set(TECHNIQUES.map((t) => t.ability));
+    const abTaken = new Set<string>();
+    const takeAbility = (name: string, test: (id: string) => boolean): void => {
+      const ids = abilityIds.filter((id) => !abTaken.has(id) && test(id));
+      for (const id of ids) abTaken.add(id);
+      if (!ids.length) return;
+      groups.push({
+        name,
+        entries: ids.map((id) => ({
+          id,
+          label: abilityDef(id)?.name ?? id,
+          url64: abilityIconUrl(id, 64),
+          url24: abilityIconUrl(id, 24),
+        })),
+      });
+    };
+    takeAbility('Techniques', (id) => techIds.has(id));
+    takeAbility('Sigils & specials', (id) => id === 'bone_tempest' || id === 'ground_slam');
+    const relicActives = new Set([
+      'ember_dash', 'healing_totem', 'snare_trap', 'storm_bell', 'hunters_decoy',
+      'stone_aegis', 'coil_lance', 'bramble_burst', 'arcane_seekers', 'venom_dart',
+    ]);
+    takeAbility('Relic actives', (id) => relicActives.has(id));
+    takeAbility('Weapon Arts', () => true);
+    groups.push({
+      name: 'Gear passives',
+      entries: allPassiveIconIds().map((id) => ({
+        id,
+        label: PASSIVES[id as keyof typeof PASSIVES]?.name ?? id,
+        url64: passiveIconUrl(id, 64),
+        url24: passiveIconUrl(id, 24),
+      })),
+    });
+  }
 
   groups.push({
     name: 'Buildables',

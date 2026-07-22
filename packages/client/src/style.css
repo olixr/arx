@@ -1384,6 +1384,17 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   box-shadow: 1px 1px 0 rgba(10, 6, 16, 0.7);
 }
 
+/* An ability row wears its spell-plate in miniature: bigger than the
+   color square, borderless — the painted icon carries its own ring. */
+.stat-chip.icon {
+  width: 20px;
+  height: 20px;
+  margin: -3px -5px -3px -5px;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .stat-label {
   color: var(--parchment-dim);
   min-width: 88px;
@@ -1750,7 +1761,10 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 }
 
 .technique-chip {
-  padding: 9px 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px 7px 9px;
   font-size: 14.5px;
   font-weight: 700;
   color: var(--parchment);
@@ -1761,6 +1775,16 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   cursor: pointer;
   -webkit-user-select: none;
   user-select: none;
+}
+
+.technique-plate {
+  width: 26px;
+  height: 26px;
+  flex: none;
+}
+
+.technique-chip.locked .technique-plate {
+  filter: saturate(0.2) brightness(0.75);
 }
 
 .technique-chip:hover {
@@ -2649,12 +2673,15 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: inherit;
-  font-size: 22px;
-  font-weight: 700;
-  color: rgba(18, 10, 6, 0.82);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
-  box-shadow: inset 0 0 0 1.5px rgba(10, 6, 16, 0.35);
+}
+
+/* The spell-plate floats on the socket well, same as pack icons on
+   their slot chrome — no backing fill, the plate's own ring does it. */
+.hotbar-icon img {
+  width: 94%;
+  height: 94%;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .hotbar-wipe {
@@ -2710,11 +2737,14 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(18, 10, 6, 0.82);
+  background: var(--sunk);
   border: 2px solid #10091c;
   box-shadow: 2px 2px 0 var(--shadow);
+}
+
+.passive-chip img {
+  width: 26px;
+  height: 26px;
 }
 
 /* Consumable buffs: one drink + one meal, mirrored across the hotbar
