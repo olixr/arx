@@ -69,8 +69,8 @@ export interface WaterFx {
 }
 /**
  * The breeze layer: drifting water glints, swell bands, shallow-water
- * caustics, shoreline foam and portal swirls. Drawn every frame over
- * the baked ground. (Grass and flowers live in grass.ts.)
+ * caustics, the surf shoreline and portal swirls. Drawn every frame
+ * over the baked ground. (Grass and flowers live in grass.ts.)
  */
 export declare function drawLiveGround(ctx: CanvasRenderingContext2D, ground: GroundSampler, bounds: {
     minTx: number;

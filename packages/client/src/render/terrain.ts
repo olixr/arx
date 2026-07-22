@@ -1709,17 +1709,99 @@ export interface WaterFx {
 
 const WATER_FX_DEFAULT: WaterFx = { full: true, moonlit: false };
 
-/** Alpha-bucketed swell strokes: a dozen stroke calls per frame, never
- *  one per swell (Path2D color-bucket law — see grass.ts). Quantized in
- *  steps of SWELL_ALPHA_UNIT so the breathing keeps ~5 visible grades
- *  across the 0–0.42 alpha range these effects live in. */
-const SWELL_ALPHA_STEPS = 6;
-const SWELL_ALPHA_UNIT = 0.07;
+/** Quantization step for live-water alphas (~6 visible grades). */
+const WB_ALPHA_UNIT = 0.07;
+
+/**
+ * THE FLAT LAW: a circle lying ON the water surface must project at
+ * the camera's pitch — every ring, dapple and ripple here is an
+ * ellipse squashed by yScale (0.6). A round ring says "straight down",
+ * and this camera never looks straight down.
+ */
+const FLAT = 0.6;
+
+interface WBucket {
+  tone: string;
+  w: number;
+  q: number;
+  path: Path2D;
+}
+
+/**
+ * Path2D batcher for the whole live-water pass: every glint, swell,
+ * crest, foam dash, spray fleck and wet-sand band lands in a
+ * (tone, width, alpha-step) bucket, and the entire surface strokes in
+ * a couple dozen calls — never one per effect (the Path2D color-bucket
+ * law, see grass.ts).
+ */
+class WaterBuckets {
+  private readonly map = new Map<string, WBucket>();
+
+  /** A stroke path for (tone, width, alpha) — null when the quantized
+   *  alpha rounds to invisible, so callers skip the geometry work too. */
+  stroke(tone: string, w: number, alpha: number): Path2D | null {
+    const q = Math.min(14, Math.round(alpha / WB_ALPHA_UNIT));
+    if (q <= 0) return null;
+    const key = `${tone}|${w}|${q}`;
+    let b = this.map.get(key);
+    if (!b) {
+      b = { tone, w, q, path: new Path2D() };
+      this.map.set(key, b);
+    }
+    return b.path;
+  }
+
+  /** A fill path (spray flecks) — width −1 marks fills. */
+  fill(tone: string, alpha: number): Path2D | null {
+    return this.stroke(tone, -1, alpha);
+  }
+
+  flush(ctx: CanvasRenderingContext2D, s: number): void {
+    if (this.map.size === 0) return;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const b of this.map.values()) {
+      ctx.globalAlpha = Math.min(1, b.q * WB_ALPHA_UNIT);
+      if (b.w < 0) {
+        ctx.fillStyle = b.tone;
+        ctx.fill(b.path);
+      } else {
+        ctx.strokeStyle = b.tone;
+        ctx.lineWidth = Math.max(1.5, s * b.w);
+        ctx.stroke(b.path);
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'miter';
+  }
+}
+
+/**
+ * THE CALM/SURF FIELD: one long-wavelength noise, drifting slowly with
+ * time, decides how lively every stretch of water is. Glints, swells,
+ * caustics and the shoreline surf all scale by it — busy water wanders
+ * across calm water, no two screenfuls glitter alike, and nothing
+ * pulses on a visible tile grid. This field is the anti-repetition
+ * law: any new water effect must ride it, not a per-tile clock alone.
+ */
+function liveliness(wx: number, wy: number, t: number): number {
+  // Drift fast enough that a becalmed cove livens within ~half a
+  // minute — variation must read as weather, not as dead zones.
+  return valueNoise(9911, wx * 0.045 + t * 0.02, wy * 0.045);
+}
+
+/** The live-water palette, day and moonlit. */
+function waterTones(moonlit: boolean) {
+  return moonlit
+    ? { foam: '#d4e0f2', crest: '#9db3d4', wash: '#a9bcd8', glint: '#ccd8ef', dim: 0.55 }
+    : { foam: '#f2f8fd', crest: '#b8d8ea', wash: '#c6ddf0', glint: '#cfe3f7', dim: 1 };
+}
 
 /**
  * The breeze layer: drifting water glints, swell bands, shallow-water
- * caustics, shoreline foam and portal swirls. Drawn every frame over
- * the baked ground. (Grass and flowers live in grass.ts.)
+ * caustics, the surf shoreline and portal swirls. Drawn every frame
+ * over the baked ground. (Grass and flowers live in grass.ts.)
  */
 export function drawLiveGround(
   ctx: CanvasRenderingContext2D,
@@ -1731,17 +1813,11 @@ export function drawLiveGround(
   fx: WaterFx = WATER_FX_DEFAULT,
 ): void {
   const t = timeMs / 1000;
-  drawShorelines(ctx, ground, bounds, worldToScreen, s, t, fx);
-  // Swell/caustic buckets: [tone][alphaStep] — filled in the tile loop,
-  // stroked once each at the end.
-  let swells: Array<Array<Path2D | null>> | null = null;
-  const swellTones = ['#5c8ac2', '#4a76ad', '#93c4da'] as const; // water, deep, caustic
-  const bucket = (tone: number, alpha: number): Path2D => {
-    swells ??= swellTones.map(() => new Array<Path2D | null>(SWELL_ALPHA_STEPS).fill(null));
-    const q = Math.min(SWELL_ALPHA_STEPS - 1, Math.floor(alpha / SWELL_ALPHA_UNIT));
-    return (swells[tone]![q] ??= new Path2D());
-  };
-  const glintTone = fx.moonlit ? '#ccd8ef' : '#cfe3f7';
+  const bk = new WaterBuckets();
+  const tones = waterTones(fx.moonlit);
+  // The shoreline runs first so its dark waterline buckets flush under
+  // the foam and glitter (map insertion order is draw order).
+  drawShorelines(bk, ground, bounds, worldToScreen, s, t, fx, tones);
   const glintScale = fx.moonlit ? 0.3 : 0.5;
   for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
     for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
@@ -1752,27 +1828,27 @@ export function drawLiveGround(
       // Grass and flowers live in the bespoke GrassSystem (grass.ts) —
       // this layer keeps the water, portals, and shorelines breathing.
       if (tile === Tile.Water || tile === Tile.WaterDeep) {
+        // Calm water still reads as water — the field shapes glitter,
+        // it never kills it.
+        const act = 0.5 + 0.5 * liveliness(tx, ty, t);
         if (h % 6 === 0) {
-          // Drifting glint: a short dash that slides and fades.
+          // Drifting glint: a short dash that slides and fades, scaled
+          // by the calm/surf field so still coves barely sparkle.
           const phase = (t * 0.35 + (h % 100) / 100) % 1;
-          const gx = tx + ((h >> 4) % 60) / 100 + phase * 0.35;
-          const gy = ty + ((h >> 9) % 60) / 100 + 0.2;
-          const p = worldToScreen(gx, gy);
-          ctx.globalAlpha = Math.sin(phase * Math.PI) * glintScale;
-          ctx.strokeStyle = glintTone;
-          ctx.lineWidth = Math.max(1.5, s * 0.05);
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p.x + s * 0.22, p.y);
-          ctx.stroke();
-          ctx.globalAlpha = 1;
+          const alpha = Math.sin(phase * Math.PI) * glintScale * act;
+          const path = bk.stroke(tones.glint, 0.05, alpha);
+          if (path) {
+            const gx = tx + ((h >>> 4) % 60) / 100 + phase * 0.35;
+            const gy = ty + ((h >>> 9) % 60) / 100 + 0.2;
+            const p = worldToScreen(gx, gy);
+            path.moveTo(p.x, p.y);
+            path.lineTo(p.x + s * (0.16 + ((h >>> 13) % 4) * 0.04), p.y);
+          }
         }
-        // Swell bands: long, faintly bowed light strokes that ride
-        // east across open water and breathe in and out — the surface
-        // is always in slow motion. Lift-only: one step lighter than
-        // the base, never darker (a dark band reads as a hole).
-        // Hosts need two water tiles east so a drifting band never
-        // slides onto the shore.
+        // Swell bands: long, faintly bowed light strokes riding east
+        // across open water. Lift-only — one step lighter than the
+        // base, never darker (a dark band reads as a hole). Hosts need
+        // two water tiles east so a band never slides ashore.
         if (
           fx.full &&
           h % 5 === 0 &&
@@ -1780,65 +1856,86 @@ export function drawLiveGround(
           isOpenWater(ground(tx + 2, ty))
         ) {
           const phase = (t * 0.05 + (h % 89) / 89) % 1;
-          const alpha = Math.sin(phase * Math.PI) * 0.34;
-          if (alpha > 0.03) {
+          const alpha = Math.sin(phase * Math.PI) * 0.34 * act * tones.dim;
+          const tone = tile === Tile.WaterDeep ? '#4a76ad' : '#5c8ac2';
+          const path = bk.stroke(tone, 0.055, alpha);
+          if (path) {
             const x0 = tx + ((h >>> 4) % 40) / 100 + phase * 0.9;
             const y0 = ty + 0.12 + ((h >>> 9) % 72) / 100;
-            const len = 0.9 + ((h >>> 6) % 50) / 50 * 0.9;
+            const len = 0.9 + (((h >>> 6) % 50) / 50) * 0.9;
             const bow = (((h >>> 11) % 40) / 40 - 0.5) * 0.24;
             const a = worldToScreen(x0, y0);
             const c = worldToScreen(x0 + len * 0.5, y0 + bow);
             const b = worldToScreen(x0 + len, y0);
-            const path = bucket(tile === Tile.WaterDeep ? 1 : 0, alpha);
             path.moveTo(a.x, a.y);
             path.quadraticCurveTo(c.x, c.y, b.x, b.y);
+            // An echo band trailing half the swells: pairs and lone
+            // bands mixed break the one-stroke-per-tile rhythm.
+            if (h & 2) {
+              const e = bk.stroke(tone, 0.055, alpha * 0.55);
+              if (e) {
+                const a2 = worldToScreen(x0 + 0.18, y0 + 0.16);
+                const b2 = worldToScreen(x0 + 0.18 + len * 0.7, y0 + 0.16);
+                e.moveTo(a2.x, a2.y);
+                e.quadraticCurveTo(
+                  (a2.x + b2.x) / 2,
+                  worldToScreen(0, y0 + 0.16 + bow * 0.7).y,
+                  b2.x,
+                  b2.y,
+                );
+              }
+            }
           }
         }
       } else if (tile === Tile.WaterShallow) {
+        const act = 0.35 + 0.65 * liveliness(tx, ty, t);
         // Caustic dapples: broken rings of sunlight wobbling on the
-        // sandbed — the shallows' own signature, distinct from open
-        // water's drift. Slow pulse, sparse, batched.
+        // sandbed — the shallows' own signature. FLAT-squashed: light
+        // lying on a tilted surface, never a top-down bubble.
         if (fx.full && h % 5 === 0) {
           const phase = (t * 0.2 + (h % 83) / 83) % 1;
-          const alpha = Math.sin(phase * Math.PI) * (fx.moonlit ? 0.16 : 0.3);
-          if (alpha > 0.03) {
+          const alpha = Math.sin(phase * Math.PI) * (fx.moonlit ? 0.16 : 0.3) * act;
+          const path = bk.stroke('#93c4da', 0.035, alpha);
+          if (path) {
             const cx = tx + 0.14 + ((h >>> 4) % 70) / 100;
             const cy = ty + 0.14 + ((h >>> 9) % 70) / 100;
             const p = worldToScreen(cx, cy);
-            const r = (0.09 + ((h >>> 5) % 40) / 40 * 0.1) * s;
+            const r = (0.09 + (((h >>> 5) % 40) / 40) * 0.1) * s;
             const a0 = ((h >>> 7) % 63) / 10;
-            const path = bucket(2, alpha);
-            // Two facing arcs — a caustic cell, not a bubble.
-            path.moveTo(p.x + Math.cos(a0) * r, p.y + Math.sin(a0) * r * 0.7);
-            path.arc(p.x, p.y, r, a0, a0 + 2.1);
+            path.moveTo(p.x + Math.cos(a0) * r, p.y + Math.sin(a0) * r * FLAT);
+            path.ellipse(p.x, p.y, r, r * FLAT, 0, a0, a0 + 2.1);
             const a1 = a0 + Math.PI;
-            path.moveTo(p.x + Math.cos(a1) * r * 1.25, p.y + Math.sin(a1) * r * 0.9);
-            path.arc(p.x, p.y, r * 1.25, a1, a1 + 1.5);
+            path.moveTo(p.x + Math.cos(a1) * r * 1.25, p.y + Math.sin(a1) * r * 1.25 * FLAT);
+            path.ellipse(p.x, p.y, r * 1.25, r * 1.25 * FLAT, 0, a1, a1 + 1.5);
           }
         }
         // A rare, quiet glint — the shallows glitter less than open
         // water, and that difference IS the depth read.
         if (h % 13 === 0) {
           const phase = (t * 0.3 + (h % 100) / 100) % 1;
-          const p = worldToScreen(tx + ((h >>> 4) % 70) / 100, ty + ((h >>> 9) % 70) / 100 + 0.15);
-          ctx.globalAlpha = Math.sin(phase * Math.PI) * glintScale * 0.6;
-          ctx.strokeStyle = glintTone;
-          ctx.lineWidth = Math.max(1.5, s * 0.045);
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p.x + s * 0.16, p.y);
-          ctx.stroke();
-          ctx.globalAlpha = 1;
+          const alpha = Math.sin(phase * Math.PI) * glintScale * 0.6 * act;
+          const path = bk.stroke(tones.glint, 0.045, alpha);
+          if (path) {
+            const p = worldToScreen(
+              tx + ((h >>> 4) % 70) / 100,
+              ty + ((h >>> 9) % 70) / 100 + 0.15,
+            );
+            path.moveTo(p.x, p.y);
+            path.lineTo(p.x + s * 0.16, p.y);
+          }
         }
       } else if (tile === Tile.FishingSpot) {
+        // Rise rings: FLAT-squashed, staggered so the pair never pulses
+        // in lockstep.
         const p = worldToScreen(tx + 0.5, ty + 0.5);
         for (let ring = 0; ring < 2; ring++) {
-          const phase = (t * 0.6 + ring * 0.5) % 1;
-          ctx.globalAlpha = (1 - phase) * 0.6;
-          ctx.strokeStyle = '#dcebfb';
+          const phase = (t * 0.6 + ring * 0.37 + (h % 10) / 10) % 1;
+          ctx.globalAlpha = (1 - phase) * 0.6 * tones.dim;
+          ctx.strokeStyle = tones.foam;
           ctx.lineWidth = Math.max(1.5, s * 0.05);
           ctx.beginPath();
-          ctx.arc(p.x, p.y, (0.1 + phase * 0.34) * s, 0, Math.PI * 2);
+          const r = (0.1 + phase * 0.34) * s;
+          ctx.ellipse(p.x, p.y, r, r * FLAT, 0, 0, Math.PI * 2);
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
@@ -1847,25 +1944,7 @@ export function drawLiveGround(
       }
     }
   }
-  // Flush the swell/caustic buckets: at most 12 strokes for the whole
-  // visible surface, however many bands are alive.
-  if (swells) {
-    ctx.lineCap = 'round';
-    const moonDim = fx.moonlit ? 0.55 : 1;
-    for (let tone = 0; tone < swellTones.length; tone++) {
-      const rows = swells[tone]!;
-      for (let q = 0; q < SWELL_ALPHA_STEPS; q++) {
-        const path = rows[q];
-        if (!path) continue;
-        ctx.globalAlpha = (q + 0.5) * SWELL_ALPHA_UNIT * moonDim;
-        ctx.strokeStyle = swellTones[tone]!;
-        ctx.lineWidth = Math.max(1.5, s * (tone === 2 ? 0.035 : 0.055));
-        ctx.stroke(path);
-      }
-    }
-    ctx.globalAlpha = 1;
-    ctx.lineCap = 'butt';
-  }
+  bk.flush(ctx, s);
 }
 
 /** Open (non-wadeable) water — the only surface swell bands ride. */
@@ -1915,22 +1994,35 @@ function isWaterTile(t: number | undefined): boolean {
 }
 
 /**
- * Shoreline dressing: a dark waterline plus slow-breathing foam dashes
- * that slide along the shore. Traces the SAME organic curves as the
- * baked water skin (shared boundaryCurvesFor geometry), so the line
- * hugs the painted meander exactly — never a straight ghost of it.
+ * THE SURF SHORELINE. Every boundary run traces the SAME organic curve
+ * as the baked water skin (shared boundaryCurvesFor geometry), and each
+ * run lives its own wave cycle, desynchronized by hash and throttled by
+ * the calm/surf field:
+ *
+ *   crest slides IN from open water (offset along the run's outward
+ *   normal, so the approach is perpendicular — real waves come TO the
+ *   shore, not along it) → whitens as it arrives → BREAKS into chunky
+ *   foam dashes and tossed spray at the waterline → a wide backwash
+ *   sheet recedes → the sand at the line stays dark and damp, drying
+ *   until the next set.
+ *
+ * Calm stretches (low liveliness) skip the surf entirely and keep the
+ * quiet lapping waterline — a coast reads as coves and breaks, never
+ * as one synchronized machine. Everything lands in the shared
+ * WaterBuckets, so the whole coast is still a handful of strokes.
  */
 function drawShorelines(
-  ctx: CanvasRenderingContext2D,
+  bk: WaterBuckets,
   ground: GroundSampler,
   bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number },
   worldToScreen: (wx: number, wy: number) => { x: number; y: number },
   s: number,
   t: number,
-  fx: WaterFx = WATER_FX_DEFAULT,
+  fx: WaterFx,
+  tones: ReturnType<typeof waterTones>,
 ): void {
   const wob = BLOB_LAYERS[WATER_LI]!.wobble;
-  ctx.lineCap = 'round';
+  const STEPS = 6;
   for (let j = bounds.minTy; j <= bounds.maxTy + 1; j++) {
     for (let i = bounds.minTx; i <= bounds.maxTx + 1; i++) {
       const mask =
@@ -1942,65 +2034,127 @@ function drawShorelines(
       const bnds = boundaryCurvesFor(WATER_LI, wob, i, j, mask);
       for (let k = 0; k < bnds.length; k++) {
         const bnd = bnds[k]!;
-        // Sample the quadratic into a short screen polyline.
-        const STEPS = 6;
-        const pts: Array<{ x: number; y: number }> = [];
-        for (let n = 0; n <= STEPS; n++) {
-          const p = qpoint(bnd, n / STEPS);
-          pts.push(worldToScreen(p[0], p[1]));
-        }
+        // The run's world polyline, sampled once and re-used by every
+        // layer; `emit` re-projects it offset along the outward normal
+        // (d > 0 pushes OFFSHORE, d < 0 onto the land).
+        const wpts: Pt[] = [];
+        for (let n = 0; n <= STEPS; n++) wpts.push(qpoint(bnd, n / STEPS));
+        const emit = (path: Path2D, d: number, from = 0, to = STEPS): void => {
+          for (let n = from; n <= to; n++) {
+            const p = worldToScreen(wpts[n]![0] - bnd.ox * d, wpts[n]![1] - bnd.oy * d);
+            if (n === from) path.moveTo(p.x, p.y);
+            else path.lineTo(p.x, p.y);
+          }
+        };
         const hh = hashCoords(71 + k, i, j);
-        // Waterline: the dark edge along the visual shore, LAPPING —
-        // width and weight swell and relax on a slow per-run clock, so
-        // the line reads as water meeting land, not inked outline.
-        const lap = fx.full ? 0.5 + 0.5 * Math.sin(t * 0.8 + (hh % 63) / 10) : 0.5;
-        ctx.strokeStyle = `rgba(26, 48, 96, ${(0.26 + lap * 0.12).toFixed(3)})`;
-        ctx.lineWidth = Math.max(1.5, s * (0.045 + lap * 0.02));
-        ctx.beginPath();
-        ctx.moveTo(pts[0]!.x, pts[0]!.y);
-        for (let n = 1; n <= STEPS; n++) ctx.lineTo(pts[n]!.x, pts[n]!.y);
-        ctx.stroke();
-        // Rolling wash (full only): a wide, soft swell that slides
-        // along the shore under the foam — the lap made visible.
-        if (fx.full) {
-          const wPhase = (t * 0.05 + (hh % 71) / 71) % 1;
-          const wAlpha = Math.sin(wPhase * Math.PI) * 0.22;
-          if (wAlpha > 0.03) {
-            const u0 = wPhase * 0.6;
-            ctx.strokeStyle = '#c6ddf0';
-            ctx.lineWidth = Math.max(2, s * 0.1);
-            ctx.globalAlpha = wAlpha;
-            ctx.beginPath();
+        const act = liveliness(bnd.ax, bnd.ay, t);
+
+        // THE LAP (both modes): the dark waterline, breathing — water
+        // meeting land, not inked outline.
+        const lap = 0.5 + 0.5 * Math.sin(t * 0.8 + (hh % 63) / 10);
+        const wl = bk.stroke('#1a3060', lap > 0.5 ? 0.06 : 0.05, 0.26 + lap * 0.12);
+        if (wl) emit(wl, 0);
+
+        // Ambient foam dash gliding smoothly along the shore (both
+        // modes) — sampled at fractional curve params, not the cached
+        // polyline, so the slide never steps.
+        const fA = Math.sin(((t * 0.45 + (hh % 40) / 40) % 1) * Math.PI);
+        if (fA > 0.12) {
+          const u = (t * 0.1 + (hh % 100) / 100) % 0.75;
+          const path = bk.stroke(tones.foam, 0.05, fA * 0.6 * (0.4 + 0.6 * act) * tones.dim);
+          if (path) {
             for (let n = 0; n <= 4; n++) {
-              const p = qpoint(bnd, Math.min(1, u0 + (n / 4) * 0.4));
-              const sp = worldToScreen(p[0], p[1]);
-              if (n === 0) ctx.moveTo(sp.x, sp.y);
-              else ctx.lineTo(sp.x, sp.y);
+              const wp = qpoint(bnd, u + (n / 4) * 0.25);
+              const p = worldToScreen(wp[0] - bnd.ox * 0.015, wp[1] - bnd.oy * 0.015);
+              if (n === 0) path.moveTo(p.x, p.y);
+              else path.lineTo(p.x, p.y);
             }
-            ctx.stroke();
-            ctx.globalAlpha = 1;
           }
         }
-        // Foam: a dash sliding along the curve, breathing in and out.
-        const alpha = Math.sin(((t * 0.45 + (hh % 40) / 40) % 1) * Math.PI);
-        if (alpha < 0.12) continue;
-        const u = (t * 0.1 + (hh % 100) / 100) % 0.75;
-        ctx.strokeStyle = fx.moonlit ? '#ccd8ef' : '#dcebfb';
-        ctx.lineWidth = Math.max(1.5, s * 0.05);
-        ctx.globalAlpha = alpha * (fx.moonlit ? 0.45 : 0.65);
-        ctx.beginPath();
-        for (let n = 0; n <= 4; n++) {
-          const p = qpoint(bnd, u + (n / 4) * 0.25);
-          const sp = worldToScreen(p[0], p[1]);
-          if (n === 0) ctx.moveTo(sp.x, sp.y);
-          else ctx.lineTo(sp.x, sp.y);
+
+        if (!fx.full) continue;
+
+        // THE SET WAVE — throttled by the calm/surf field: dead-calm
+        // stretches keep their lap alone, everything else gets sets.
+        if (act < 0.12) continue;
+        const period = 3.4 + (((hh >>> 3) % 100) / 100) * 2.2;
+        const cycle = Math.floor(t / period + (hh % 997) / 997);
+        // Waves arrive in SETS: each cycle rolls its own weight, so a
+        // shore alternates heavy breakers and gentle washes instead of
+        // metronoming one identical wave.
+        const setK = 0.55 + 0.45 * ((hashCoords(hh & 0xffff, cycle, i) % 100) / 100);
+        const strength = (0.3 + 0.7 * act) * setK * tones.dim;
+        const u = (t / period + (hh % 997) / 997) % 1;
+
+        // Crest rolling in: offset shrinks toward the shore, the line
+        // brightens and whitens as it comes. A thin dark accent trails
+        // just offshore of the light line — the wave's FACE, the one
+        // stroke that makes the crest read as a moving ridge instead
+        // of a drifting highlight.
+        if (u < 0.8) {
+          const uu = u / 0.8;
+          const d = 0.55 * (1 - uu) + 0.02;
+          const tone = uu > 0.5 ? tones.foam : tones.crest;
+          const path = bk.stroke(tone, uu > 0.5 ? 0.065 : 0.05, strength * (0.1 + 0.55 * uu * uu));
+          if (path) emit(path, d);
+          if (uu > 0.35) {
+            const face = bk.stroke('#1a3060', 0.045, strength * 0.3 * uu);
+            if (face) emit(face, d + 0.055);
+          }
         }
-        ctx.stroke();
-        ctx.globalAlpha = 1;
+
+        // The break: chunky white dashes at the line — chisel-cut foam,
+        // three ragged pieces, never one smooth arc.
+        const db = (u - 0.8 + 1) % 1;
+        if (db < 0.28) {
+          const path = bk.stroke(tones.foam, 0.08, strength * 0.95 * (1 - db / 0.28));
+          if (path) {
+            for (let seg = 0; seg < 3; seg++) {
+              if (((hh >>> (seg + 5)) & 3) === 0) continue; // ragged gaps
+              emit(path, 0.02, seg * 2, Math.min(seg * 2 + 2, STEPS));
+            }
+          }
+          // Spray tossed past the line at the moment of the break.
+          if (db < 0.1) {
+            const fill = bk.fill(tones.foam, strength * 0.6 * (1 - db / 0.1));
+            if (fill) {
+              for (let sp = 0; sp < 3; sp++) {
+                const w = wpts[1 + sp * 2]!;
+                const jx = (((hh >>> (sp * 3 + 2)) % 20) - 10) / 160;
+                const d = -0.04 - ((hh >>> (sp * 2 + 7)) % 12) / 160;
+                const p = worldToScreen(w[0] - bnd.ox * d + jx, w[1] - bnd.oy * d);
+                const r = (0.028 + ((hh >>> (sp + 9)) % 3) * 0.012) * s;
+                // FLAT-squashed fleck, like everything lying on the
+                // surface.
+                fill.rect(p.x, p.y, r, r * FLAT);
+              }
+            }
+          }
+        }
+
+        // Backwash: a wide pale sheet sliding back out.
+        if (db >= 0.06 && db < 0.44) {
+          const uw = (db - 0.06) / 0.38;
+          const path = bk.stroke(tones.wash, 0.09, strength * 0.22 * (1 - uw));
+          if (path) emit(path, 0.04 + uw * 0.34);
+        }
+
+        // Wet sand: the land side of the line stays dark and damp
+        // after each wave, drying until the next — only over sand.
+        if (db < 0.6) {
+          const mid = wpts[3]!;
+          const landTile = ground(
+            Math.floor(mid[0] + bnd.ox * 0.6),
+            Math.floor(mid[1] + bnd.oy * 0.6),
+          );
+          if (landTile === Tile.Sand) {
+            const path = bk.stroke('#6e5432', 0.09, 0.32 * (1 - db / 0.6) * strength);
+            if (path) emit(path, -0.08);
+          }
+        }
       }
     }
   }
-  ctx.lineCap = 'butt';
 }
 
 

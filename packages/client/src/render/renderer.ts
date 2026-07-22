@@ -1666,17 +1666,22 @@ export class Renderer {
       const surfY = p.y + scale * 0.03;
       ctx.save();
       ctx.lineCap = 'round';
+      // THE FLAT LAW: rings lying on the surface project at the
+      // camera's pitch — every ellipse here is rx × rx·0.6, matching
+      // the world's yScale. Rounder reads top-down; flatter reads like
+      // a side view. Neither is this camera.
+      const FLAT = 0.6;
       // The waterline collar where the body meets the surface, with a
       // soft depth shade under its south rim.
       ctx.strokeStyle = 'rgba(226, 240, 251, 0.55)';
       ctx.lineWidth = Math.max(1.5, scale * 0.045);
       ctx.beginPath();
-      ctx.ellipse(p.x, surfY, scale * 0.24, scale * 0.09, 0, 0, Math.PI * 2);
+      ctx.ellipse(p.x, surfY, scale * 0.24, scale * 0.24 * FLAT, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.strokeStyle = 'rgba(26, 48, 96, 0.26)';
       ctx.lineWidth = Math.max(1.5, scale * 0.04);
       ctx.beginPath();
-      ctx.ellipse(p.x, surfY + scale * 0.03, scale * 0.28, scale * 0.1, 0, 0, Math.PI);
+      ctx.ellipse(p.x, surfY + scale * 0.03, scale * 0.28, scale * 0.28 * FLAT, 0, 0, Math.PI);
       ctx.stroke();
       // Wake rings while pushing through; a slow bob ring at rest.
       const t = performance.now() / 1000;
@@ -1691,15 +1696,8 @@ export class Renderer {
         ctx.strokeStyle = '#dcebfb';
         ctx.lineWidth = Math.max(1.5, scale * 0.04);
         ctx.beginPath();
-        ctx.ellipse(
-          p.x,
-          surfY,
-          (0.24 + phase * 0.5) * scale,
-          (0.09 + phase * 0.22) * scale,
-          0,
-          0,
-          Math.PI * 2,
-        );
+        const rr = (0.24 + phase * 0.5) * scale;
+        ctx.ellipse(p.x, surfY, rr, rr * FLAT, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
       ctx.globalAlpha = 1;
