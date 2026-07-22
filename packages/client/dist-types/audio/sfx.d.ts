@@ -88,6 +88,11 @@ export declare class Sfx {
     /** A locked door refusing: two dull knocks and the hasp's rattle. */
     doorRattle(): void;
     /**
+     * A blow landing on a durable prop without finishing it: one solid
+     * woody knock and a short splinter spray — the sound of progress.
+     */
+    propCrack(): void;
+    /**
      * A prop bursting: a sharp crack, a spray of splinters, and the
      * clatter of pieces coming down. Barrels add a hollow cask boom
      * under the crack — a drum giving up.

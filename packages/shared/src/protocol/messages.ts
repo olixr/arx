@@ -405,10 +405,13 @@ export interface S2CFx {
     /** A locked door refusing at (x,y) — the leaf shudders in its frame. */
     | 'rattle'
     /**
-     * A destructible prop bursting at (x,y). `dir` is the impact
+     * A destructible prop taking a hit at (x,y). `dir` is the impact
      * heading (away from the smasher — debris flies WITH the blow),
      * `id` the DestructibleKind so the client picks its break-up kit
-     * without waiting on the tile patch that follows.
+     * without waiting on any tile patch. `radius` is the fraction of
+     * durability REMAINING after the blow: 0 = the burst (a tile
+     * patch to the floor follows), >0 = a crack — the prop shudders
+     * and spits chips but stands.
      */
     | 'smash';
   x: number;

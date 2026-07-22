@@ -813,6 +813,12 @@ export declare class Renderer {
      * rolling ground-dust wave and a spray of splinter streaks. All
      * theatre — the tile patch right behind the fx is the truth.
      */
+    /**
+     * A durable prop absorbing a blow that didn't finish it: the piece
+     * shudders in place, spits a few short-lived chips WITH the blow,
+     * and coughs a breath of dust — the "keep hitting" feedback.
+     */
+    crackProp(wx: number, wy: number, dir: number, kind: SmashKind): void;
     smashProp(wx: number, wy: number, dir: number, kind: SmashKind): void;
     /**
      * Lid openness 0..1 for a chest tile, advancing its animation.
@@ -843,6 +849,16 @@ export declare class Renderer {
      * decaying knock-knock in the frame. Zero when quiet.
      */
     private doorShakeAt;
+    /**
+     * PROP SHUDDER — a durable prop absorbing a blow that didn't finish
+     * it. Same decaying-knock clock as the door rattle; keyed per tile,
+     * self-pruning. The offset rides the whole drawn prop (cached-ring
+     * blits included — position isn't part of the bake).
+     */
+    private readonly propShakes;
+    addPropShake(tx: number, ty: number): void;
+    /** Signed screen-x shudder in px for a hit prop. Zero when quiet. */
+    private propShakeX;
     /**
      * TREE SPRITE CACHE: a mature tree's painted body re-bakes onto a
      * per-instance offscreen canvas every TREE_REBAKE_FRAMES frames

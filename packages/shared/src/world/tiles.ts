@@ -764,15 +764,24 @@ export interface DestructibleInfo {
   kind: DestructibleKind;
   /** Seconds of satisfying absence before the prop stands back up. */
   respawnSec: number;
+  /**
+   * DURABILITY — how many HITS the prop absorbs before bursting.
+   * Counted in blows, never damage: a level-1 fist and an endgame
+   * blade chew through a table in the same three strikes, so bulk
+   * reads as bulk at every scale. Light clutter pops on the first
+   * hit; big joined furniture holds a beat or two (the shudder tells
+   * you it's working). This is the knob future barricades turn.
+   */
+  hits: number;
 }
 
 const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
-  [Tile.Barrel, { kind: 'barrel', respawnSec: 180 }],
-  [Tile.Crate, { kind: 'crate', respawnSec: 180 }],
-  [Tile.CrateGoods, { kind: 'goods', respawnSec: 240 }],
-  [Tile.Chair, { kind: 'chair', respawnSec: 150 }],
-  [Tile.Table, { kind: 'table', respawnSec: 240 }],
-  [Tile.Bench, { kind: 'bench', respawnSec: 180 }],
+  [Tile.Barrel, { kind: 'barrel', respawnSec: 180, hits: 1 }],
+  [Tile.Crate, { kind: 'crate', respawnSec: 180, hits: 1 }],
+  [Tile.CrateGoods, { kind: 'goods', respawnSec: 240, hits: 2 }],
+  [Tile.Chair, { kind: 'chair', respawnSec: 150, hits: 1 }],
+  [Tile.Table, { kind: 'table', respawnSec: 240, hits: 3 }],
+  [Tile.Bench, { kind: 'bench', respawnSec: 180, hits: 2 }],
 ]);
 
 /** Every smashable prop tile. */

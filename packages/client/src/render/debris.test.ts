@@ -70,6 +70,19 @@ test('no two breakages match: different rolls, different wreckage', () => {
   assert.notDeepEqual(sig(a), sig(b));
 });
 
+test('a crack chips small and brief — never a full burst', () => {
+  const d = new Debris();
+  d.chip(5, 5, 0, 'table', mulberry32(9));
+  const chips = chunksOf(d);
+  assert.ok(chips.length >= 2 && chips.length <= 4, 'a handful, not a burst');
+  for (const c of chips) {
+    assert.ok(c.len <= 0.17, 'chips are small');
+    assert.ok(c.maxLife < 4, 'chips clear fast');
+    const ang = Math.atan2(c.vy / 0.8, c.vx);
+    assert.ok(Math.abs(ang) < 0.6, 'chips fly with the blow');
+  }
+});
+
 test('each kind breaks along its own joinery', () => {
   const colors = (kind: Parameters<Debris['smash']>[3]) => {
     const d = new Debris();

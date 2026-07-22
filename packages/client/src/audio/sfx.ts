@@ -360,6 +360,15 @@ export class Sfx {
   }
 
   /**
+   * A blow landing on a durable prop without finishing it: one solid
+   * woody knock and a short splinter spray — the sound of progress.
+   */
+  propCrack(): void {
+    this.tone(200, 0.05, { type: 'triangle', slide: -90, volume: 0.15 });
+    this.noise(0.05, 0.11, 0.01, { band: 2100 });
+  }
+
+  /**
    * A prop bursting: a sharp crack, a spray of splinters, and the
    * clatter of pieces coming down. Barrels add a hollow cask boom
    * under the crack — a drum giving up.

@@ -2067,6 +2067,9 @@ export class GameServer {
 
   /** Mutate the world and stream the patch to everyone nearby. */
   private setWorldTile(tx: number, ty: number, tile: Tile): void {
+    // Fresh tile, fresh wood: any change at this coord resets prop
+    // durability (respawn, build, demolish, the burst itself).
+    this.propDamage.delete(`${tx},${ty}`);
     this.world.setGround(tx, ty, tile);
     const key = chunkKey(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
     const patch = encodeTilePatch({ tx, ty, ground: tile });
@@ -2869,9 +2872,49 @@ export class GameServer {
         let diff = Math.abs(angleTo - aim) % (Math.PI * 2);
         if (diff > Math.PI) diff = Math.PI * 2 - diff;
         if (diff > Math.PI / 3 && dist > 0.9) continue;
-        this.smashProp(tx, ty, g as Tile, info, angleTo);
+        this.hitProp(tx, ty, g as Tile, info, angleTo);
       }
     }
+  }
+
+  /**
+   * Hits-left per damaged prop tile, keyed 'tx,ty'. In-memory like
+   * door locks; any tile change at the coord wipes the entry (see
+   * setWorldTile) — a respawned or freshly built prop is fresh wood.
+   */
+  private readonly propDamage = new Map<string, number>();
+
+  /**
+   * Land one blow on a destructible prop. Durability is counted in
+   * HITS, not damage — bulk reads as bulk at every level. A blow that
+   * leaves wood standing broadcasts the same 'smash' fx with the
+   * remaining fraction in `radius` (the client shudders the prop and
+   * spits chips); the last blow runs the full burst.
+   */
+  private hitProp(
+    tx: number,
+    ty: number,
+    tile: Tile,
+    info: DestructibleInfo,
+    dir: number,
+  ): void {
+    const key = `${tx},${ty}`;
+    const left = (this.propDamage.get(key) ?? info.hits) - 1;
+    if (left > 0) {
+      this.propDamage.set(key, left);
+      this.broadcastFx({
+        t: 'fx',
+        kind: 'smash',
+        x: tx + 0.5,
+        y: ty + 0.5,
+        radius: left / info.hits,
+        dir,
+        id: info.kind,
+      });
+      return;
+    }
+    this.propDamage.delete(key);
+    this.smashProp(tx, ty, tile, info, dir);
   }
 
   /**
@@ -2897,7 +2940,7 @@ export class GameServer {
       kind: 'smash',
       x: tx + 0.5,
       y: ty + 0.5,
-      radius: 1,
+      radius: 0, // nothing left standing — the burst
       dir,
       id: info.kind,
     });
@@ -4214,7 +4257,7 @@ export class GameServer {
             const g = this.world.groundAt(stx, sty);
             const dinfo = g === undefined ? null : destructibleInfo(g);
             if (dinfo) {
-              this.smashProp(stx, sty, g as Tile, dinfo, Math.atan2(proj.dirY, proj.dirX));
+              this.hitProp(stx, sty, g as Tile, dinfo, Math.atan2(proj.dirY, proj.dirX));
             }
           }
         }

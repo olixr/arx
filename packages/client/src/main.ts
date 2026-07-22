@@ -619,9 +619,16 @@ game.onFx = (fx) => {
     return;
   }
   if (fx.kind === 'smash') {
-    // A prop bursting: the debris theatre is all client-side, keyed
-    // off this one event — the tile patch right behind it is the truth.
+    // A prop taking a blow. radius carries the durability fraction
+    // still standing: >0 = a crack (shudder + chips, keep hitting),
+    // 0 = the burst — full debris theatre, tile patch right behind.
     const kind = (fx.id ?? 'crate') as SmashKind;
+    if (fx.radius > 0) {
+      renderer.crackProp(fx.x, fx.y, fx.dir ?? 0, kind);
+      if (dist < 12) sfx.propCrack();
+      if (dist < 2.5) input.rumble(0.18, 0.3, 60);
+      return;
+    }
     renderer.smashProp(fx.x, fx.y, fx.dir ?? 0, kind);
     if (dist < 14) sfx.propSmash(kind === 'barrel');
     if (dist < 6) renderer.shake(kind === 'table' ? 3.2 : 2.2);

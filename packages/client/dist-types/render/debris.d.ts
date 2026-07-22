@@ -55,6 +55,12 @@ export declare class Debris {
      */
     smash(x: number, y: number, dir: number, kind: SmashKind, rand?: () => number): void;
     /**
+     * A blow that DIDN'T finish the prop: a few small chips fly off the
+     * impact, short-lived — the "it's working" feedback between hits on
+     * durable furniture. Same bodies, smaller and briefer than a burst.
+     */
+    chip(x: number, y: number, dir: number, kind: SmashKind, rand?: () => number): void;
+    /**
      * Step every chunk: gravity, bounce, and axis-separated wall tests
      * against the live collision field (the corpse-skid law) — debris
      * never crosses a wall, it thuds and drops.

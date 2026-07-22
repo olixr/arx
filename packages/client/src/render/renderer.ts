@@ -14,6 +14,7 @@ import {
   DIAG_WALL_TILES,
   TREE_TILES,
   chestInfo,
+  destructibleInfo,
   DOOR_TILES,
   diagWallInfo,
   doorInfo,
@@ -3067,6 +3068,21 @@ export class Renderer {
           item.draw = () => this.drawPropOutlined(ground as Tile, tx, ty, b, inner);
           item.body = undefined;
         }
+        // A durable prop mid-shudder: translate the whole drawn piece
+        // (live paint or cached blit alike) by the decaying knock.
+        if (this.propShakes.size > 0 && destructibleInfo(ground)) {
+          const shakeX = this.propShakeX(tx, ty);
+          if (shakeX !== 0) {
+            const inner = item.draw;
+            item.draw = () => {
+              const ctx = this.ctx;
+              ctx.save();
+              ctx.translate(shakeX, 0);
+              inner();
+              ctx.restore();
+            };
+          }
+        }
         if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
         items.push(item);
       }
@@ -5980,6 +5996,24 @@ export class Renderer {
    * rolling ground-dust wave and a spray of splinter streaks. All
    * theatre — the tile patch right behind the fx is the truth.
    */
+  /**
+   * A durable prop absorbing a blow that didn't finish it: the piece
+   * shudders in place, spits a few short-lived chips WITH the blow,
+   * and coughs a breath of dust — the "keep hitting" feedback.
+   */
+  crackProp(wx: number, wy: number, dir: number, kind: SmashKind): void {
+    this.addPropShake(Math.floor(wx), Math.floor(wy));
+    this.debris.chip(wx, wy, dir, kind);
+    this.particles.burst(wx, wy - 0.15, 5, ['#8a6534', '#c9a76a'], {
+      speed: 1.0,
+      life: 0.45,
+      size: 0.045,
+      dir,
+      spread: 1.3,
+      gravity: 5,
+    });
+  }
+
   smashProp(wx: number, wy: number, dir: number, kind: SmashKind): void {
     this.debris.smash(wx, wy, dir, kind);
     // Wood dust rolls out low along the blow and billows to a stop.
@@ -6085,6 +6119,32 @@ export class Renderer {
       return 0;
     }
     return Math.sin(u * Math.PI * 7) * (1 - u);
+  }
+
+  /**
+   * PROP SHUDDER — a durable prop absorbing a blow that didn't finish
+   * it. Same decaying-knock clock as the door rattle; keyed per tile,
+   * self-pruning. The offset rides the whole drawn prop (cached-ring
+   * blits included — position isn't part of the bake).
+   */
+  private readonly propShakes = new Map<string, number>();
+
+  addPropShake(tx: number, ty: number): void {
+    this.propShakes.set(`${tx},${ty}`, performance.now());
+  }
+
+  /** Signed screen-x shudder in px for a hit prop. Zero when quiet. */
+  private propShakeX(tx: number, ty: number): number {
+    if (this.propShakes.size === 0) return 0;
+    const key = `${tx},${ty}`;
+    const born = this.propShakes.get(key);
+    if (born === undefined) return 0;
+    const u = (performance.now() - born) / 380;
+    if (u >= 1) {
+      this.propShakes.delete(key);
+      return 0;
+    }
+    return Math.sin(u * Math.PI * 8) * (1 - u) * 0.05 * this.camera.scale;
   }
 
   /**
@@ -6382,16 +6442,32 @@ export class Renderer {
       w: pMax.x - pMin.x + cfg.hw * 2 * s,
       h: pMax.y - pMin.y + (cfg.up + cfg.down) * s,
     };
+    // A blow anywhere along a joined run shudders the WHOLE piece —
+    // a long table is one carpentered object, not loose tiles.
+    let shakeX = 0;
+    if (this.propShakes.size > 0 && destructibleInfo(tile)) {
+      for (let i = 0; i < members.length; i += 2) {
+        const sx = this.propShakeX(members[i]!, members[i + 1]!);
+        if (Math.abs(sx) > Math.abs(shakeX)) shakeX = sx;
+      }
+    }
     items.push({
       sortY: y1 + cfg.sortOff,
       elevated: game.world.elevAt(ax, ay) !== 0,
       drawShadow: () => {
         for (const mi of memberItems) mi.drawShadow?.();
       },
-      draw: () =>
+      draw: () => {
+        const ctx = this.ctx;
+        if (shakeX !== 0) {
+          ctx.save();
+          ctx.translate(shakeX, 0);
+        }
         this.drawPropOutlined(tile, ax, ay, b, () => {
           for (const mi of memberItems) mi.draw();
-        }),
+        });
+        if (shakeX !== 0) ctx.restore();
+      },
     });
     return true;
   }

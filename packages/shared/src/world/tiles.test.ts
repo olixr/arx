@@ -83,25 +83,31 @@ test('non-door tiles report null', () => {
 
 // ------------------------------------------------- destructible props
 
-test('the six smashable props carry a break-up kind and respawn law', () => {
-  const expect: Array<[Tile, string]> = [
-    [Tile.Barrel, 'barrel'],
-    [Tile.Crate, 'crate'],
-    [Tile.CrateGoods, 'goods'],
-    [Tile.Chair, 'chair'],
-    [Tile.Table, 'table'],
-    [Tile.Bench, 'bench'],
+test('the six smashable props carry a break-up kind, respawn law, and durability', () => {
+  const expect: Array<[Tile, string, number]> = [
+    [Tile.Barrel, 'barrel', 1],
+    [Tile.Crate, 'crate', 1],
+    [Tile.CrateGoods, 'goods', 2],
+    [Tile.Chair, 'chair', 1],
+    [Tile.Table, 'table', 3],
+    [Tile.Bench, 'bench', 2],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
-  for (const [tile, kind] of expect) {
+  for (const [tile, kind, hits] of expect) {
     const info = destructibleInfo(tile);
     assert.equal(info?.kind, kind);
+    // Durability is counted in HITS (scale-free): at least one, and
+    // pinned per prop so a rebalance is a deliberate act.
+    assert.equal(info!.hits, hits);
+    assert.ok(info!.hits >= 1);
     // The absence must be worth enjoying, and never permanent.
     assert.ok(info!.respawnSec >= 120 && info!.respawnSec <= 600);
     // Only SOLID clutter is smashable — bursting a walkable tile
     // would patch the floor out from under someone's feet.
     assert.ok(tileDef(tile).solid, `${tileDef(tile).name} is solid`);
   }
+  // Bulk reads as bulk: the big joined table outlasts light clutter.
+  assert.ok(destructibleInfo(Tile.Table)!.hits > destructibleInfo(Tile.Barrel)!.hits);
 });
 
 test('load-bearing scenery is not smashable', () => {

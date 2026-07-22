@@ -119,6 +119,37 @@ export class Debris {
   }
 
   /**
+   * A blow that DIDN'T finish the prop: a few small chips fly off the
+   * impact, short-lived — the "it's working" feedback between hits on
+   * durable furniture. Same bodies, smaller and briefer than a burst.
+   */
+  chip(x: number, y: number, dir: number, kind: SmashKind, rand: () => number = Math.random): void {
+    const base = CHIP_TONE[kind];
+    const n = 2 + Math.floor(rand() * 2);
+    for (let i = 0; i < n; i++) {
+      const c = this.take();
+      const ang = dir + (rand() - 0.5) * 0.9;
+      const sp = 1.2 + rand() * 1.8;
+      c.x = x + (rand() - 0.5) * 0.2;
+      c.y = y + (rand() - 0.5) * 0.2;
+      c.z = 0.3 + rand() * 0.35;
+      c.vx = Math.cos(ang) * sp;
+      c.vy = Math.sin(ang) * sp * 0.8;
+      c.vz = 1.2 + rand() * 1.6;
+      c.rot = rand() * Math.PI * 2;
+      c.spin = (rand() - 0.5) * 18;
+      c.len = 0.08 + rand() * 0.08;
+      c.wid = 0.05 + rand() * 0.04;
+      c.color = rand() < 0.5 ? base : shade(base, rand() < 0.5 ? 12 : -12);
+      c.stripe = null;
+      c.round = false;
+      c.settled = false;
+      c.life = 0;
+      c.maxLife = 2.2 + rand() * 1.6;
+    }
+  }
+
+  /**
    * Step every chunk: gravity, bounce, and axis-separated wall tests
    * against the live collision field (the corpse-skid law) — debris
    * never crosses a wall, it thuds and drops.
@@ -245,6 +276,16 @@ export class Debris {
 }
 
 // ------------------------------------------------------ break-up kits
+
+/** The base wood tone chips fly in, per kind. */
+const CHIP_TONE: Record<SmashKind, string> = {
+  barrel: '#7a552e',
+  crate: '#8a6534',
+  goods: '#8a6534',
+  chair: '#7a552e',
+  table: '#9c7040',
+  bench: '#9c7040',
+};
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
   arr[Math.floor(rand() * arr.length)]!;
