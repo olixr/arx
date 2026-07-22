@@ -9,6 +9,8 @@ export declare class LookCreator {
     private tab;
     private dir;
     private auto;
+    private bust;
+    private summary;
     private raf;
     open: boolean;
     constructor(onConfirm: (look: Look) => void);
@@ -20,6 +22,8 @@ export declare class LookCreator {
     /** Drag across the stage spins the hero by hand. */
     private bindDrag;
     private refreshTurn;
+    /** One living line reading the current identity back to the player. */
+    private updateSummary;
     private rebuildTab;
     /** Heritage: parchment cards, each wearing a live bust of the folk. */
     private buildHeritage;

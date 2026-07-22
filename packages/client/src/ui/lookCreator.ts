@@ -69,6 +69,8 @@ export class LookCreator {
   private tab: Tab = 'heritage';
   private dir = Math.PI / 2;
   private auto = true;
+  private bust = false;
+  private summary!: HTMLElement;
   private raf: number | null = null;
   open = false;
 
@@ -178,7 +180,24 @@ export class LookCreator {
       this.refreshTurn();
     });
     turn.appendChild(spin);
+    const zoom = document.createElement('button');
+    zoom.type = 'button';
+    zoom.className = 'turn-stud turn-zoom';
+    zoom.dataset.nav = '';
+    zoom.dataset.navkey = 'look:turn:zoom';
+    zoom.textContent = '🔍';
+    zoom.title = 'Lean into the mirror';
+    zoom.addEventListener('click', () => {
+      this.bust = !this.bust;
+      zoom.classList.toggle('active', this.bust);
+    });
+    turn.appendChild(zoom);
     stage.appendChild(turn);
+
+    // The mirror reads your choices back: one living line of identity.
+    this.summary = document.createElement('p');
+    this.summary.className = 'look-summary';
+    stage.appendChild(this.summary);
 
     const note = document.createElement('p');
     note.className = 'look-note';
@@ -271,7 +290,24 @@ export class LookCreator {
 
   // ---- the option shelf ----------------------------------------------
 
+  /** One living line reading the current identity back to the player. */
+  private updateSummary(): void {
+    const l = this.look;
+    const parts: string[] = [SKIN_TONE_NAMES[l.skin]!];
+    parts.push(
+      l.hair === 1
+        ? 'bald'
+        : `${HAIR_COLOR_NAMES[l.hairColor]!.toLowerCase()} ${HAIR_STYLES[l.hair]!.toLowerCase()}`,
+    );
+    parts.push(`${EYE_STYLES[l.eyes]!.toLowerCase()} eyes`);
+    if (l.ears > 0) parts.push(`${EAR_STYLES[l.ears]!.toLowerCase()} ears`);
+    if (l.beard > 0) parts.push(BEARD_STYLES[l.beard]!.toLowerCase());
+    if (l.feature > 0) parts.push(FACE_FEATURES[l.feature]!.toLowerCase());
+    this.summary.textContent = parts.join(' · ');
+  }
+
   private rebuildTab(): void {
+    this.updateSummary();
     const scroll = this.tabPanel.scrollTop;
     this.tabPanel.innerHTML = '';
     switch (this.tab) {
@@ -545,14 +581,33 @@ export class LookCreator {
     const w = this.preview.width / 2;
     const h = this.preview.height / 2;
     ctx.clearRect(0, 0, w, h);
-    // The stage floor: a quiet pedestal so every skin tone reads.
-    const yFeet = h * 0.88;
-    ctx.fillStyle = 'rgba(12, 8, 18, 0.55)';
-    ctx.beginPath();
-    ctx.ellipse(w / 2, yFeet + 4, w * 0.32, h * 0.045, 0, 0, Math.PI * 2);
-    ctx.fill();
-    const S = 225;
-    this.paintFigure(ctx, this.look, w / 2, yFeet, S, this.dir);
+    if (this.bust) {
+      // Leaned in: the mirror fills with the face — every ear point,
+      // strand notch, and tusk glint at inspection scale.
+      const S = 470;
+      this.paintFigure(ctx, this.look, w / 2, h * 0.42 + 0.98 * S, S, this.dir);
+    } else {
+      // The socle: a stone turntable disc the hero stands on.
+      const yFeet = h * 0.88;
+      ctx.fillStyle = 'rgba(10, 6, 16, 0.5)';
+      ctx.beginPath();
+      ctx.ellipse(w / 2, yFeet + 12, w * 0.36, h * 0.05, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#453b56';
+      ctx.beginPath();
+      ctx.ellipse(w / 2, yFeet + 7, w * 0.33, h * 0.048, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#544868';
+      ctx.beginPath();
+      ctx.ellipse(w / 2, yFeet + 3, w * 0.33, h * 0.048, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#615377';
+      ctx.beginPath();
+      ctx.ellipse(w / 2, yFeet + 2, w * 0.25, h * 0.034, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const S = 225;
+      this.paintFigure(ctx, this.look, w / 2, yFeet, S, this.dir);
+    }
 
     // The crest medallion wears the current face, front-on.
     const cctx = this.crest.getContext('2d');

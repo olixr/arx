@@ -3158,8 +3158,20 @@ body.pad-mode .hint-inline { display: none; }
   border-image: var(--btn-brass) 45 fill / 8px;
 }
 
-.look-note {
+/* The mirror reads your choices back — one living line of identity. */
+.look-summary {
   margin: 8px 0 0;
+  font-family: var(--serif);
+  font-size: 14px;
+  color: #e2c07a;
+  text-shadow: var(--punch-small);
+  max-width: 320px;
+  text-align: center;
+  min-height: 18px;
+}
+
+.look-note {
+  margin: 5px 0 0;
   font-size: 13px;
   font-style: italic;
   color: #b89b6a;
