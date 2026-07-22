@@ -72,6 +72,7 @@ import {
   bakeChunk,
   bakeElevated,
   bakeGutter,
+  DOCK_LIFT,
   drawLiveGround,
   waterRegionPath,
   type WaterFx,
@@ -1000,7 +1001,13 @@ export class Renderer {
     const tx = Math.floor(x);
     const ty = Math.floor(y);
     const lvl = game.world.elevAt(tx, ty);
-    if (game.world.groundAt(tx, ty) === Tile.Ramp) {
+    const t = game.world.groundAt(tx, ty);
+    // Docks: the deck rides DOCK_LIFT above the ground, and so does
+    // everything standing on it — feet meet boards by construction.
+    if (t === Tile.Bridge && this.isDockAt(game, tx, ty)) {
+      return lvl * ELEV_H + DOCK_LIFT;
+    }
+    if (t === Tile.Ramp) {
       // Ascend toward the cardinal neighbor a level down — the mouth.
       for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) {
         if (game.world.elevAt(tx + dx, ty + dy) < lvl) {
@@ -1018,6 +1025,40 @@ export class Renderer {
       }
     }
     return lvl * ELEV_H;
+  }
+
+  /** Memoized dock test (Bridge + water within Chebyshev 2), keyed by
+   *  tile and cleared on any world change — renderLift is hot and the
+   *  25-tile scan must run once per tile, not once per query. */
+  private readonly dockMemo = new Map<number, boolean>();
+  private dockMemoVersion = -1;
+
+  private isDockAt(game: ClientGame, tx: number, ty: number): boolean {
+    if (game.worldVersion !== this.dockMemoVersion) {
+      this.dockMemo.clear();
+      this.dockMemoVersion = game.worldVersion;
+    }
+    const key = packTile(tx, ty);
+    let v = this.dockMemo.get(key);
+    if (v === undefined) {
+      v = false;
+      outer: for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          const t = game.world.groundAt(tx + dx, ty + dy);
+          if (
+            t === Tile.Water ||
+            t === Tile.WaterDeep ||
+            t === Tile.WaterShallow ||
+            t === Tile.FishingSpot
+          ) {
+            v = true;
+            break outer;
+          }
+        }
+      }
+      this.dockMemo.set(key, v);
+    }
+    return v;
   }
 
   /** worldToScreen that also rides the terrain lift under the point. */

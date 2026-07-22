@@ -294,6 +294,12 @@ export declare class Renderer {
      * one function.
      */
     renderLift(x: number, y: number): number;
+    /** Memoized dock test (Bridge + water within Chebyshev 2), keyed by
+     *  tile and cleared on any world change — renderLift is hot and the
+     *  25-tile scan must run once per tile, not once per query. */
+    private readonly dockMemo;
+    private dockMemoVersion;
+    private isDockAt;
     /** worldToScreen that also rides the terrain lift under the point. */
     private liftedWTS;
     /**

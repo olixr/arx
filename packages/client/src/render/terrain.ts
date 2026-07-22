@@ -227,6 +227,12 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
   const g = (tx: number, ty: number): number => {
     const t = ground(tx, ty);
     if (t === undefined) return Tile.Grass;
+    // Docks: the SKIN under a deck is the water it spans — organic
+    // contours, depth bands and shorelines all flow beneath the
+    // boards; the deck itself is painted by drawDocks, raised.
+    if (t === Tile.Bridge && isDockTile(ground, tx, ty)) {
+      return dockUnderWater(ground, tx, ty);
+    }
     if (GRASS_LIKE.has(t)) return Tile.Grass;
     if (SOIL_TILES.has(t)) return Tile.Tilled;
     if (ROCKY.has(t)) {
@@ -361,7 +367,146 @@ export function bakeChunk(
     }
   }
 
+  // 5. Docks: raised decks over the water painted LAST, so the deck's
+  // lifted top (which reaches into the north neighbor's cell) covers
+  // that neighbor's water details instead of wearing them.
+  drawDocks(ctx, ground, baseX, baseY, px);
+
   return canvas;
+}
+
+/** Weathered board tones for dock decks — hash-dealt per board. */
+const DOCK_TONES = ['#9c7a4a', '#92714a', '#a5834f', '#8a683c'];
+
+/**
+ * THE DOCK PASS. Every dock tile paints, bottom to top:
+ *
+ *   standing shadow on the water south of it (the mass hangs OVER the
+ *   surface) → paired PILES driven into the water with FLAT-law
+ *   waterline collars → the south FASCIA (the deck's visible
+ *   thickness: side-on board, joist shade at the foot, catch-light on
+ *   the lip) → the plank DECK riding DOCK_LIFT above the ground, with
+ *   boards running ACROSS the walk direction and tones keyed by row
+ *   alone so a two-tile-wide jetty reads as continuous boards, never
+ *   tiles → a perimeter stroke on EXPOSED edges only (the
+ *   architecture outline law — no seams inside a run).
+ *
+ * Connectivity is by raw Bridge neighbors, so runs merge; everything
+ * is world-keyed, so chunk seams and resolution tiers agree.
+ */
+function drawDocks(
+  ctx: CanvasRenderingContext2D,
+  ground: GroundSampler,
+  baseX: number,
+  baseY: number,
+  px: number,
+): void {
+  const liftB = Math.round((DOCK_LIFT / FLAT) * px);
+  const seam = Math.max(1, px * 0.02);
+  for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
+    for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
+      const tx = baseX + lx;
+      const ty = baseY + ly;
+      if (!isDockTile(ground, tx, ty)) continue;
+      const gx = lx * px;
+      const gy = ly * px;
+      const hasN = ground(tx, ty - 1) === Tile.Bridge;
+      const hasS = ground(tx, ty + 1) === Tile.Bridge;
+      const hasE = ground(tx + 1, ty) === Tile.Bridge;
+      const hasW = ground(tx - 1, ty) === Tile.Bridge;
+      const southWater = isWaterTile(ground(tx, ty + 1));
+
+      // Standing shadow: two stepped bands, flat-art AO.
+      if (!hasS) {
+        ctx.fillStyle = 'rgba(20, 34, 62, 0.26)';
+        ctx.fillRect(gx, gy + px, px, px * 0.2);
+        ctx.fillStyle = 'rgba(20, 34, 62, 0.12)';
+        ctx.fillRect(gx, gy + px + px * 0.2, px, px * 0.18);
+      }
+      // Root contact shadow: where the deck steps up off dry land, a
+      // thin shade at the threshold grounds the structure on the shore.
+      const northT = ground(tx, ty - 1);
+      if (!hasN && northT !== undefined && !isWaterTile(northT)) {
+        ctx.fillStyle = 'rgba(30, 22, 12, 0.22)';
+        ctx.fillRect(gx, gy - liftB - px * 0.05, px, px * 0.05);
+      }
+
+      // Piles: the legs the whole structure stands on.
+      if (!hasS && southWater) {
+        for (const fpos of [0.18, 0.82]) {
+          const pxl = gx + fpos * px - px * 0.055;
+          const pw = px * 0.11;
+          const top = gy + px - liftB * 0.25;
+          const bot = gy + px + px * 0.14;
+          ctx.fillStyle = '#4e3a22';
+          ctx.fillRect(pxl, top, pw, bot - top);
+          ctx.fillStyle = '#77593a'; // sun-law lit west edge
+          ctx.fillRect(pxl, top, Math.max(1, pw * 0.3), bot - top);
+          ctx.strokeStyle = 'rgba(226, 240, 251, 0.5)';
+          ctx.lineWidth = Math.max(1.2, px * 0.03);
+          ctx.beginPath();
+          ctx.ellipse(pxl + pw / 2, bot, pw * 0.85, pw * 0.85 * FLAT, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      // South fascia: the deck's thickness made visible.
+      if (!hasS) {
+        ctx.fillStyle = '#6d5130';
+        ctx.fillRect(gx, gy + px - liftB, px, liftB);
+        const joist = Math.max(1.5, liftB * 0.22);
+        ctx.fillStyle = 'rgba(30, 19, 9, 0.45)';
+        ctx.fillRect(gx, gy + px - joist, px, joist);
+        ctx.fillStyle = 'rgba(214, 178, 120, 0.28)';
+        ctx.fillRect(gx, gy + px - liftB, px, Math.max(1, px * 0.02));
+      }
+
+      // The deck itself, lifted. Dark underlay first — the gaps
+      // between boards read as shadowed seams.
+      const dy0 = gy - liftB;
+      const vertRun = hasN || hasS || (!hasE && !hasW);
+      ctx.fillStyle = '#5a4326';
+      ctx.fillRect(gx, dy0, px, px);
+      const rows = 5;
+      for (let r = 0; r < rows; r++) {
+        const hh = vertRun ? hashCoords(137, ty * 8 + r, 0) : hashCoords(139, tx * 8 + r, 0);
+        ctx.fillStyle = DOCK_TONES[hh % 4]!;
+        if (vertRun) ctx.fillRect(gx, dy0 + (r / rows) * px, px, px / rows - seam);
+        else ctx.fillRect(gx + (r / rows) * px, dy0, px / rows - seam, px);
+      }
+      // Staggered butt joints where boards meet along a run.
+      ctx.fillStyle = 'rgba(40, 26, 14, 0.5)';
+      for (let r = 0; r < rows; r++) {
+        const hh = hashCoords(141, (vertRun ? ty : tx) * 8 + r, vertRun ? tx : ty);
+        if (hh % 3 !== 0) continue;
+        const at = 0.25 + ((hh >>> 4) % 50) / 100;
+        if (vertRun) ctx.fillRect(gx + at * px, dy0 + (r / rows) * px, seam, px / rows - seam);
+        else ctx.fillRect(gx + (r / rows) * px, dy0 + at * px, px / rows - seam, seam);
+      }
+
+      // Perimeter stroke, exposed edges only.
+      ctx.strokeStyle = 'rgba(42, 28, 14, 0.85)';
+      ctx.lineWidth = Math.max(1.5, px * 0.045);
+      ctx.beginPath();
+      if (!hasN) {
+        ctx.moveTo(gx, dy0);
+        ctx.lineTo(gx + px, dy0);
+      }
+      if (!hasS) {
+        ctx.moveTo(gx, dy0 + px);
+        ctx.lineTo(gx + px, dy0 + px);
+      }
+      if (!hasW) {
+        ctx.moveTo(gx, dy0);
+        ctx.lineTo(gx, dy0 + px);
+      }
+      if (!hasE) {
+        ctx.moveTo(gx + px, dy0);
+        ctx.lineTo(gx + px, dy0 + px);
+      }
+      ctx.stroke();
+    }
+  }
 }
 
 /**
@@ -1720,6 +1865,50 @@ const WB_ALPHA_UNIT = 0.07;
  */
 const FLAT = 0.6;
 
+/**
+ * DOCKS. A Bridge tile near water is a DOCK: the ground under it is
+ * painted as real water (the skin, contours and depth all run beneath
+ * the boards) and a raised plank deck stands over it on driven piles.
+ * The deck rides DOCK_LIFT tiles of SCREEN height above the surface —
+ * renderLift lifts every body standing on one by the same amount, so
+ * feet and boards agree by construction. Bake-space vertical offsets
+ * must divide by FLAT (the bake squashes at blit time; screen height
+ * does not).
+ */
+export const DOCK_LIFT = 0.22;
+
+/** Bridge with any water within Chebyshev distance 2 — a dock. The
+ *  radius-2 scan keeps a whole jetty uniform (interior tiles of a
+ *  2-wide run don't all touch water) so the lift never dips mid-run. */
+export function isDockTile(ground: GroundSampler, tx: number, ty: number): boolean {
+  if (ground(tx, ty) !== Tile.Bridge) return false;
+  for (let dy = -2; dy <= 2; dy++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      if (isWaterTile(ground(tx + dx, ty + dy))) return true;
+    }
+  }
+  return false;
+}
+
+/** The water that continues under a dock: the most common depth among
+ *  the 8 neighbors, so the pool keeps its own color beneath the boards. */
+function dockUnderWater(ground: GroundSampler, tx: number, ty: number): number {
+  let shallow = 0;
+  let water = 0;
+  let deep = 0;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const t = ground(tx + dx, ty + dy);
+      if (t === Tile.WaterShallow) shallow++;
+      else if (t === Tile.Water || t === Tile.FishingSpot) water++;
+      else if (t === Tile.WaterDeep) deep++;
+    }
+  }
+  if (deep > 0 && deep >= water && deep >= shallow) return Tile.WaterDeep;
+  if (water > 0 && water >= shallow) return Tile.Water;
+  return Tile.WaterShallow;
+}
+
 interface WBucket {
   tone: string;
   w: number;
@@ -1827,11 +2016,16 @@ export function drawLiveGround(
 
       // Grass and flowers live in the bespoke GrassSystem (grass.ts) —
       // this layer keeps the water, portals, and shorelines breathing.
+      // A dock's lifted deck reaches into the cell NORTH of it — no
+      // glitter may paint over those boards (the deck is baked; the
+      // breeze layer is live and would land on top).
+      const southIsDeck = ground(tx, ty + 1) === Tile.Bridge;
+
       if (tile === Tile.Water || tile === Tile.WaterDeep) {
         // Calm water still reads as water — the field shapes glitter,
         // it never kills it.
         const act = 0.5 + 0.5 * liveliness(tx, ty, t);
-        if (h % 6 === 0) {
+        if (h % 6 === 0 && !southIsDeck) {
           // Drifting glint: a short dash that slides and fades, scaled
           // by the calm/surf field so still coves barely sparkle.
           const phase = (t * 0.35 + (h % 100) / 100) % 1;
@@ -1852,6 +2046,7 @@ export function drawLiveGround(
         if (
           fx.full &&
           h % 5 === 0 &&
+          !southIsDeck &&
           isOpenWater(ground(tx + 1, ty)) &&
           isOpenWater(ground(tx + 2, ty))
         ) {
@@ -1892,7 +2087,7 @@ export function drawLiveGround(
         // Caustic dapples: broken rings of sunlight wobbling on the
         // sandbed — the shallows' own signature. FLAT-squashed: light
         // lying on a tilted surface, never a top-down bubble.
-        if (fx.full && h % 5 === 0) {
+        if (fx.full && h % 5 === 0 && !southIsDeck) {
           const phase = (t * 0.2 + (h % 83) / 83) % 1;
           const alpha = Math.sin(phase * Math.PI) * (fx.moonlit ? 0.16 : 0.3) * act;
           const path = bk.stroke('#93c4da', 0.035, alpha);
@@ -1911,7 +2106,7 @@ export function drawLiveGround(
         }
         // A rare, quiet glint — the shallows glitter less than open
         // water, and that difference IS the depth read.
-        if (h % 13 === 0) {
+        if (h % 13 === 0 && !southIsDeck) {
           const phase = (t * 0.3 + (h % 100) / 100) % 1;
           const alpha = Math.sin(phase * Math.PI) * glintScale * 0.6 * act;
           const path = bk.stroke(tones.glint, 0.045, alpha);
@@ -1939,6 +2134,42 @@ export function drawLiveGround(
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
+      } else if (tile === Tile.Bridge) {
+        // The dock's live waterline: the surface visibly LAPS against
+        // the structure — breathing white lines hug every deck edge
+        // that meets water, and the piles nurse slow ripple collars.
+        // All positions sample JUST OUTSIDE the dock tile (the dock
+        // tile itself is lifted by renderLift; the water is not).
+        if (fx.full && isDockTile(ground, tx, ty)) {
+          const hd = hashCoords(163, tx, ty);
+          const lapA = (0.16 + 0.14 * Math.sin(t * 0.9 + (hd % 63) / 10)) * tones.dim;
+          const lap = (x0: number, y0: number, x1: number, y1: number): void => {
+            const path = bk.stroke(tones.foam, 0.035, lapA);
+            if (!path) return;
+            const a = worldToScreen(x0, y0);
+            const b = worldToScreen(x1, y1);
+            path.moveTo(a.x, a.y);
+            path.lineTo(b.x, b.y);
+          };
+          if (isWaterTile(ground(tx - 1, ty))) lap(tx - 0.02, ty + 0.12, tx - 0.02, ty + 0.88);
+          if (isWaterTile(ground(tx + 1, ty))) lap(tx + 1.02, ty + 0.12, tx + 1.02, ty + 0.88);
+          if (isWaterTile(ground(tx, ty + 1))) {
+            lap(tx + 0.1, ty + 1.04, tx + 0.9, ty + 1.04);
+            // Pile ripple collars, phase-desynced per pile.
+            for (const fpos of [0.18, 0.82]) {
+              const hp = hashCoords(157 + Math.round(fpos * 100), tx, ty);
+              const phase = (t * 0.45 + (hp % 89) / 89) % 1;
+              const alpha = (1 - phase) * 0.3 * tones.dim;
+              const path = bk.stroke(tones.glint, 0.03, alpha);
+              if (path) {
+                const p = worldToScreen(tx + fpos, ty + 1.14);
+                const r = (0.06 + phase * 0.12) * s;
+                path.moveTo(p.x + r, p.y);
+                path.ellipse(p.x, p.y, r, r * FLAT, 0, 0, Math.PI * 2);
+              }
+            }
+          }
+        }
       } else if (tile === Tile.PortalDown || tile === Tile.PortalUp) {
         drawPortal(ctx, tx, ty, tile === Tile.PortalUp, worldToScreen, s, t);
       }
@@ -2025,11 +2256,26 @@ function drawShorelines(
   const STEPS = 6;
   for (let j = bounds.minTy; j <= bounds.maxTy + 1; j++) {
     for (let i = bounds.minTx; i <= bounds.maxTx + 1; i++) {
+      const c00 = ground(i - 1, j - 1);
+      const c10 = ground(i, j - 1);
+      const c11 = ground(i, j);
+      const c01 = ground(i - 1, j);
+      // Dock cells get NO shoreline: the water slides quietly under
+      // the raised deck — foam ringing a dock would paint it back
+      // into a flat peninsula (piles carry their own ripples).
+      if (
+        (c00 === Tile.Bridge && isDockTile(ground, i - 1, j - 1)) ||
+        (c10 === Tile.Bridge && isDockTile(ground, i, j - 1)) ||
+        (c11 === Tile.Bridge && isDockTile(ground, i, j)) ||
+        (c01 === Tile.Bridge && isDockTile(ground, i - 1, j))
+      ) {
+        continue;
+      }
       const mask =
-        (isWaterTile(ground(i - 1, j - 1)) ? 1 : 0) |
-        (isWaterTile(ground(i, j - 1)) ? 2 : 0) |
-        (isWaterTile(ground(i, j)) ? 4 : 0) |
-        (isWaterTile(ground(i - 1, j)) ? 8 : 0);
+        (isWaterTile(c00) ? 1 : 0) |
+        (isWaterTile(c10) ? 2 : 0) |
+        (isWaterTile(c11) ? 4 : 0) |
+        (isWaterTile(c01) ? 8 : 0);
       if (mask === 0 || mask === 15) continue;
       const bnds = boundaryCurvesFor(WATER_LI, wob, i, j, mask);
       for (let k = 0; k < bnds.length; k++) {

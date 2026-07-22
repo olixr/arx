@@ -175,12 +175,11 @@ export function buildBramblewick(): ZoneDef {
   b.fillEllipse(78, 78, 8, 6, Tile.WaterShallow);
   b.fillEllipse(78, 78, 7, 5, Tile.Water);
   b.fillEllipse(78, 78, 5, 3, Tile.WaterDeep);
-  b.fillRect(77, 70, 2, 4, Tile.Bridge);
-  // Railings flanking the jetty planks.
-  for (let ry = 71; ry <= 73; ry++) {
-    b.set(76, ry, Tile.RailWood);
-    b.set(79, ry, Tile.RailWood);
-  }
+  // The jetty: a raised plank dock striding out over open water on
+  // driven piles (the dock renderer supplies deck, fascia, and legs —
+  // never flank a dock with ground-level rails, they'd stand IN the
+  // water beside a lifted deck).
+  b.fillRect(77, 70, 2, 5, Tile.Bridge);
 
   // Farm plots behind the inn, fenced.
   b.fillRect(14, 24, 12, 10, Tile.Dirt);
