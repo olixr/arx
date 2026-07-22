@@ -423,21 +423,30 @@ const PAINTERS: Record<string, IconPainter> = {
     oreChunk(c, 0.74, 0.72, 0.23, -0.14, '#3a3d46', '#9fb2c8');
   },
   ore_silver: (c, col) => {
-    // One moon-bright block wearing the crossed lode's X on its face.
-    oreChunk(c, 0.48, 0.54, 0.52, -0.08, col, '#ffffff');
+    // The moonsilver chunk in miniature: a dark diagonal parting with
+    // the polished streak riding its lit flank (filled bands, never
+    // strokes), and silver's signature — a faceted crescent of caught
+    // moonlight — floating at its shoulder.
+    oreChunk(c, 0.46, 0.56, 0.52, -0.08, col, '#ffffff');
     c.save();
-    c.translate(0.48, 0.54);
-    c.rotate(-0.08);
-    c.strokeStyle = '#ffffff';
-    c.lineWidth = 0.035;
-    c.beginPath();
-    c.moveTo(-0.16, 0.12);
-    c.lineTo(0.14, -0.14);
-    c.moveTo(-0.15, -0.13);
-    c.lineTo(0.15, 0.11);
-    c.stroke();
+    c.translate(0.46, 0.56);
+    c.rotate(-0.72);
+    poly(c, shade(col, -42), [
+      [-0.2, -0.028], [0.2, -0.05], [0.2, 0.05], [-0.2, 0.052],
+    ]);
+    poly(c, '#ffffff', [
+      [-0.2, -0.026], [0.2, -0.048], [0.2, -0.012], [-0.2, 0.008],
+    ]);
     c.restore();
-    oreChunk(c, 0.76, 0.74, 0.24, 0.18, col, '#ffffff');
+    oreChunk(c, 0.74, 0.76, 0.24, 0.18, col, '#ffffff');
+    c.save();
+    c.translate(0.78, 0.28);
+    c.rotate(-0.3);
+    poly(c, '#ffffff', [
+      [0.035, -0.095], [-0.055, -0.075], [-0.095, 0], [-0.055, 0.075],
+      [0.035, 0.095], [-0.005, 0.06], [-0.045, 0], [-0.005, -0.06],
+    ]);
+    c.restore();
   },
   ore_mithril: (c, col) => {
     // Sky-metal: a tall-cut chunk and a hard four-point star above it.
