@@ -71,6 +71,6 @@ export declare class Debris {
     drawOne(ctx: CanvasRenderingContext2D, c: DebrisChunk, worldToScreen: (wx: number, wy: number) => {
         x: number;
         y: number;
-    }, scale: number): void;
+    }, scale: number, outlined?: boolean): void;
 }
 //# sourceMappingURL=debris.d.ts.map

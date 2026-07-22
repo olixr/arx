@@ -2192,7 +2192,10 @@ export class Renderer {
     for (const c of this.debris.chunks()) {
       items.push({
         sortY: c.y + 0.02,
-        draw: () => this.debris.drawOne(this.ctx, c, this.liftedWTS, this.camera.scale),
+        // Each chunk wears its own brand ring (drawn inside drawOne),
+        // gated on the same /outline switch as everything standing.
+        draw: () =>
+          this.debris.drawOne(this.ctx, c, this.liftedWTS, this.camera.scale, this.outlineOn),
       });
     }
     items.sort((a, b) => a.sortY - b.sortY);

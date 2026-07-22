@@ -23,6 +23,9 @@
 
 import { shade } from './rig.js';
 
+/** The game's outline-shader ink (bakeOutlineRing / the entity ring). */
+const BRAND_OUTLINE = '#241a2e';
+
 export const DEBRIS_CAP = 220;
 
 export type SmashKind = 'barrel' | 'crate' | 'goods' | 'chair' | 'table' | 'bench';
@@ -221,6 +224,7 @@ export class Debris {
     c: DebrisChunk,
     worldToScreen: (wx: number, wy: number) => { x: number; y: number },
     scale: number,
+    outlined = true,
   ): void {
     const t = c.life / c.maxLife;
     // Hold near-solid, then fade the last stretch — litter that lies,
@@ -241,34 +245,36 @@ export class Debris {
     ctx.save();
     ctx.translate(p.x, p.y - c.z * scale * 0.92);
     ctx.rotate(c.rot);
+    // ONE silhouette path serves both the brand ring and the fill.
+    ctx.beginPath();
+    if (c.round) ctx.ellipse(0, 0, lw / 2, (lw / 2) * 0.72, 0, 0, Math.PI * 2);
+    else ctx.rect(-lw / 2, -wh / 2, lw, wh);
+    if (outlined) {
+      // THE SHADER RING, per chunk: the sprite bake dilates the
+      // silhouette by max(1.25, scale*0.04) in solid #241a2e — for a
+      // convex chunk the identical result is a round-joined stroke at
+      // DOUBLE that width under the fill (the surviving outer half is
+      // the dilation). One stroke, no offscreen, fades with the chunk.
+      // Tiny chips clamp the ring so a speck keeps its wood color.
+      const shapeHalf = c.round ? lw * 0.36 : Math.min(lw, wh) / 2;
+      const ring = Math.min(Math.max(1.25, scale * 0.04), shapeHalf * 0.75);
+      ctx.strokeStyle = BRAND_OUTLINE;
+      ctx.lineWidth = ring * 2;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
     ctx.fillStyle = c.color;
-    if (c.round) {
-      ctx.beginPath();
-      ctx.ellipse(0, 0, lw / 2, (lw / 2) * 0.72, 0, 0, Math.PI * 2);
-      ctx.fill();
-      if (c.stripe) {
-        ctx.fillStyle = c.stripe;
+    ctx.fill();
+    if (c.stripe) {
+      ctx.fillStyle = c.stripe;
+      if (c.round) {
         ctx.beginPath();
         ctx.ellipse(-lw * 0.08, -lw * 0.08, lw * 0.26, lw * 0.18, 0, 0, Math.PI * 2);
         ctx.fill();
-      }
-    } else {
-      ctx.fillRect(-lw / 2, -wh / 2, lw, wh);
-      if (c.stripe) {
-        ctx.fillStyle = c.stripe;
+      } else {
         ctx.fillRect(-lw / 2 + lw * 0.08, -wh * 0.28, lw * 0.84, wh * 0.3);
       }
-    }
-    // The house outline — debris stays on brand with everything else
-    // that stands in the world.
-    ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
-    ctx.lineWidth = Math.max(1, scale * 0.028);
-    if (c.round) {
-      ctx.beginPath();
-      ctx.ellipse(0, 0, lw / 2, (lw / 2) * 0.72, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    } else {
-      ctx.strokeRect(-lw / 2, -wh / 2, lw, wh);
     }
     ctx.restore();
     ctx.globalAlpha = 1;
