@@ -28,11 +28,11 @@ test('fx palettes are well-formed hex and glow triples', () => {
 
 test('sibling arts stay distinguishable — no two share a full identity', () => {
   // Two abilities may share a family, but the exact (mid, ring, debris,
-  // decal) quadruple is an ability's face — collisions make the roster
-  // read homogenous, which is the thing this epic exists to kill.
+  // decal, motif) face is an ability's identity — collisions make the
+  // roster read homogenous, which is the thing this epic exists to kill.
   const seen = new Map<string, string>();
   for (const [id, st] of Object.entries(FX_STYLES)) {
-    const face = `${st.mid}|${st.ring}|${st.debris}|${st.decal ?? '-'}|${st.punch}`;
+    const face = `${st.mid}|${st.ring}|${st.debris}|${st.decal ?? '-'}|${st.motif ?? '-'}|${st.punch}`;
     const prior = seen.get(face);
     assert.equal(prior, undefined, `'${id}' wears the same face as '${prior}'`);
     seen.set(face, id);

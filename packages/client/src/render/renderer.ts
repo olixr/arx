@@ -552,6 +552,78 @@ export class Renderer {
     if (this.rings.length > 24) this.rings.shift();
   }
 
+  /**
+   * Scheduled aftershock beats — the SECOND read of a detonation. A
+   * blast is not one frame: the flash lands, then the dust wave rolls
+   * out, then embers settle. Records, not closures — no capture churn.
+   */
+  private readonly fxBeats: Array<{
+    at: number;
+    x: number;
+    y: number;
+    r: number;
+    kind: 'dust' | 'settle' | 'echo';
+    mid: string;
+    deep: string;
+    spark: string;
+  }> = [];
+
+  private queueBeat(
+    at: number,
+    x: number,
+    y: number,
+    r: number,
+    kind: 'dust' | 'settle' | 'echo',
+    st: FxStyle,
+  ): void {
+    this.fxBeats.push({ at, x, y, r, kind, mid: st.mid, deep: st.deep, spark: st.spark });
+    if (this.fxBeats.length > 32) this.fxBeats.shift();
+  }
+
+  /** Fire every due aftershock beat. Called once per frame. */
+  private runFxBeats(now: number): void {
+    for (let i = this.fxBeats.length - 1; i >= 0; i--) {
+      const b = this.fxBeats[i]!;
+      if (b.at > now) continue;
+      this.fxBeats.splice(i, 1);
+      if (b.kind === 'dust') {
+        // The aftershock: a low rolling dust wave along the rim —
+        // ground-sorted billows that drift out and die slow.
+        const n = Math.min(14, 6 + Math.round(b.r * 5));
+        for (let k = 0; k < n; k++) {
+          const a = (k / n) * Math.PI * 2 + Math.random() * 0.5;
+          const rx = b.x + Math.cos(a) * b.r * 0.75;
+          const ry = b.y + Math.sin(a) * b.r * 0.75 * Renderer.FX_SQUASH;
+          this.particles.burst(rx, ry, 1, [b.deep, '#4a4252', '#3a3442'], {
+            speed: 0.9,
+            life: 1.1,
+            size: 0.13,
+            gravity: -0.5,
+            dir: a,
+            spread: 0.6,
+            drag: 1.8,
+            grow: 0.32,
+            ground: true,
+          });
+        }
+        this.addRing(b.x, b.y, b.deep, b.r * 1.15);
+      } else if (b.kind === 'settle') {
+        // Late sparks/motes drifting down where the hit landed — the
+        // air still remembers.
+        this.particles.burst(b.x, b.y - 0.6, 6, [b.spark, b.mid], {
+          speed: 0.5,
+          life: 1.3,
+          size: 0.06,
+          gravity: 0.7,
+          drag: 1.2,
+          flicker: 0.7,
+        });
+      } else {
+        this.addRing(b.x, b.y, b.mid, b.r);
+      }
+    }
+  }
+
   /** Lingering ground marks left by detonations (scorch, rime, cracks…). */
   private readonly fxDecals: Array<{
     x: number;
@@ -565,7 +637,12 @@ export class Renderer {
     seed: number;
   }> = [];
 
-  /** The world remembers the hit: leave the style's mark on the ground. */
+  /**
+   * The world remembers the hit: leave the style's mark on the ground.
+   * Marks live ~5s in three acts — ACTIVE (the aftermath still burns,
+   * grows, glows), SETTLED (a quiet residue), FADE (the turf reclaims
+   * it) — so a fight leaves a readable history behind it.
+   */
   private addDecal(x: number, y: number, r: number, st: FxStyle): void {
     if (!st.decal) return;
     this.fxDecals.push({
@@ -576,10 +653,10 @@ export class Renderer {
       mid: st.mid,
       deep: st.deep,
       bornAt: performance.now(),
-      life: 2600,
+      life: 5200,
       seed: (performance.now() * 31) & 0x7fffffff,
     });
-    if (this.fxDecals.length > 20) this.fxDecals.shift();
+    if (this.fxDecals.length > 26) this.fxDecals.shift();
   }
 
   /** Placement preview set by the build mode; null when inactive. */
@@ -2473,9 +2550,13 @@ export class Renderer {
 
   /** Expanding impact rings — crisp stroked circles, quick and gone. */
   private drawRings(): void {
+    // Impact ripples LIE ON THE GROUND: perspective-squashed ellipses,
+    // layered deep-under-bright so the shock reads as a pressure front
+    // rolling over the turf, not a circle stamped on the screen.
     const ctx = this.ctx;
     const now = performance.now();
-    const LIFE = 260;
+    const LIFE = 300;
+    const squash = Renderer.FX_SQUASH;
     for (let i = this.rings.length - 1; i >= 0; i--) {
       const ring = this.rings[i]!;
       const age = now - ring.bornAt;
@@ -2485,11 +2566,20 @@ export class Renderer {
       }
       const t = age / LIFE;
       const p = this.liftedWTS(ring.x, ring.y);
-      ctx.globalAlpha = (1 - t) * 0.8;
-      ctx.strokeStyle = ring.color;
-      ctx.lineWidth = Math.max(1.5, this.camera.scale * 0.07 * (1 - t));
+      const ease = 1 - (1 - t) * (1 - t);
+      const rr = ring.maxR * this.camera.scale * (0.25 + 0.75 * ease);
+      // The dark pressure band trails just inside the bright front.
+      ctx.globalAlpha = (1 - t) * 0.35;
+      ctx.strokeStyle = shade(ring.color, -38);
+      ctx.lineWidth = Math.max(2.5, this.camera.scale * 0.1 * (1 - t));
       ctx.beginPath();
-      ctx.arc(p.x, p.y, ring.maxR * this.camera.scale * (0.25 + 0.75 * (1 - (1 - t) * (1 - t))), 0, Math.PI * 2);
+      ctx.ellipse(p.x, p.y, rr * 0.88, rr * 0.88 * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = (1 - t) * 0.85;
+      ctx.strokeStyle = ring.color;
+      ctx.lineWidth = Math.max(1.5, this.camera.scale * 0.06 * (1 - t));
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, rr, rr * squash, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
@@ -14041,9 +14131,12 @@ export class Renderer {
         ctx.ellipse(p.x, groundY, scale * 0.16, scale * 0.06, 0, 0, Math.PI * 2);
         ctx.fill();
 
+        const now = performance.now();
+        const el = style.split(':')[1] ?? 'arcane';
         if (style.split(':')[0] === 'magic_heavy') {
           // The heavy orb: fat, slow, unmistakably the payoff beat —
-          // a churning faceted core shedding embers as it goes.
+          // a churning faceted core with an ESCORT: three satellites
+          // wheeling around it in the element's own matter.
           this.particles.burst(ax, ay, 2, [tint.mid, `rgb(${tint.deep})`, tint.core], {
             speed: 0.6,
             life: 0.5,
@@ -14065,12 +14158,34 @@ export class Renderer {
           ctx.beginPath();
           facetCircle(ctx, p.x, p.y, scale * 0.11, 5, s.dir);
           ctx.fill();
+          // The escort ring — orbit tilted flat like everything else.
+          for (let k = 0; k < 3; k++) {
+            const a = now / 240 + (k / 3) * Math.PI * 2;
+            const ox = Math.cos(a) * scale * 0.46;
+            const oy = Math.sin(a) * scale * 0.28;
+            const g = scale * 0.07;
+            ctx.fillStyle = k === 0 ? tint.core : tint.fleck;
+            ctx.save();
+            ctx.translate(p.x + ox, p.y + oy);
+            ctx.rotate(a * 2);
+            ctx.fillRect(-g / 2, -g / 2, g, g);
+            ctx.restore();
+            if (el === 'storm' && k === 0) {
+              // The escort arcs to the core.
+              ctx.strokeStyle = tint.core;
+              ctx.lineWidth = Math.max(1, scale * 0.025);
+              ctx.beginPath();
+              boltPath(ctx, p.x + ox, p.y + oy, p.x, p.y, ((now / 60) | 0) * 7 + k, scale * 0.08);
+              ctx.stroke();
+            }
+          }
           return;
         }
 
         if (magic) {
-          // A cut shard of magic streaking nose-first: layered diamond
-          // with a hot core, shedding a violet wake + white flecks.
+          // Every school flies its OWN matter — a frost shard is not
+          // an orange fireball with the hue swapped. The shared core
+          // is the cut diamond; the element speaks around it.
           this.particles.burst(ax, ay, 1, [tint.mid, `rgb(${tint.deep})`], {
             speed: 0.35,
             life: 0.34,
@@ -14091,19 +14206,160 @@ export class Renderer {
           const nose = 0.3 * scale;
           const tail = 0.26 * scale;
           const half = 0.09 * scale;
-          const diamond = (k: number, color: string): void => {
+          const diamond = (k: number, color: string, off = 0): void => {
+            const cxp = p.x - fx * off;
+            const cyp = p.y - fy * off;
             ctx.fillStyle = color;
             ctx.beginPath();
-            ctx.moveTo(p.x + fx * nose * k, p.y + fy * nose * k);
-            ctx.lineTo(p.x - fy * half * k, p.y + fx * half * k);
-            ctx.lineTo(p.x - fx * tail * k, p.y - fy * tail * k);
-            ctx.lineTo(p.x + fy * half * k, p.y - fx * half * k);
+            ctx.moveTo(cxp + fx * nose * k, cyp + fy * nose * k);
+            ctx.lineTo(cxp - fy * half * k, cyp + fx * half * k);
+            ctx.lineTo(cxp - fx * tail * k, cyp - fy * tail * k);
+            ctx.lineTo(cxp + fy * half * k, cyp - fx * half * k);
             ctx.closePath();
             ctx.fill();
           };
-          diamond(1.5, `rgba(${tint.deep}, 0.3)`);
-          diamond(1.0, tint.mid);
-          diamond(0.48, tint.core);
+          switch (el) {
+            case 'ember': {
+              // A brand streaking fire: flame tongues gutter off the
+              // tail, each on its own strobe clock.
+              for (let k = 0; k < 3; k++) {
+                const lick = (0.28 + 0.14 * Math.sin(now / 55 + k * 2.4)) * scale;
+                const off = (0.3 + k * 0.2) * scale;
+                const side = (k % 2 === 0 ? 1 : -1) * (0.05 + 0.03 * Math.sin(now / 70 + k)) * scale;
+                ctx.fillStyle = k === 0 ? tint.mid : `rgba(${tint.deep}, 0.85)`;
+                ctx.beginPath();
+                ctx.moveTo(p.x - fx * off - fy * side, p.y - fy * off + fx * side);
+                ctx.lineTo(p.x - fx * (off + lick) - fy * side * 0.4, p.y - fy * (off + lick) + fx * side * 0.4);
+                ctx.lineTo(p.x - fx * off - fy * side * 2.2, p.y - fy * off + fx * side * 2.2);
+                ctx.closePath();
+                ctx.fill();
+              }
+              diamond(1.0, tint.mid);
+              diamond(0.48, tint.core);
+              break;
+            }
+            case 'frost': {
+              // A cut crystal flanked by two counter-spinning shards.
+              diamond(1.2, `rgba(${tint.deep}, 0.35)`);
+              diamond(0.85, tint.mid);
+              diamond(0.4, tint.core);
+              for (const sv of [-1, 1]) {
+                const a = now / 180 * sv;
+                const ox = -fy * sv * scale * 0.2;
+                const oy = fx * sv * scale * 0.2;
+                const g = scale * 0.09;
+                ctx.fillStyle = tint.fleck;
+                ctx.save();
+                ctx.translate(p.x + ox - fx * scale * 0.1, p.y + oy - fy * scale * 0.1);
+                ctx.rotate(a);
+                ctx.fillRect(-g * 0.7, -g * 0.25, g * 1.4, g * 0.5);
+                ctx.restore();
+              }
+              break;
+            }
+            case 'storm': {
+              // Crackling dart: the body rides inside a live micro-arc
+              // re-kinked every 50ms.
+              const ks = ((now / 50) | 0) * 13;
+              ctx.strokeStyle = tint.core;
+              ctx.lineWidth = Math.max(1.5, scale * 0.04);
+              ctx.beginPath();
+              boltPath(ctx, p.x - fx * tail * 1.8, p.y - fy * tail * 1.8, p.x + fx * nose * 1.2, p.y + fy * nose * 1.2, ks, scale * 0.14);
+              ctx.stroke();
+              diamond(0.9, tint.mid);
+              diamond(0.42, tint.core);
+              break;
+            }
+            case 'verdant': {
+              // Living seed: leaf blades orbit the pod as it flies.
+              diamond(1.0, tint.mid);
+              diamond(0.48, tint.core);
+              for (let k = 0; k < 2; k++) {
+                const a = now / 150 + k * Math.PI;
+                const ox = Math.cos(a) * scale * 0.22;
+                const oy = Math.sin(a) * scale * 0.14;
+                const g = scale * 0.1;
+                ctx.fillStyle = k === 0 ? tint.fleck : tint.mid;
+                ctx.save();
+                ctx.translate(p.x + ox, p.y + oy);
+                ctx.rotate(a + 0.6);
+                ctx.fillRect(-g * 0.7, -g * 0.2, g * 1.4, g * 0.4);
+                ctx.restore();
+              }
+              break;
+            }
+            case 'void': {
+              // Inverted: a pale shell around a DARK heart — the shot
+              // is a hole in the air, drinking its own wake.
+              diamond(1.25, tint.core);
+              diamond(0.85, `rgb(${tint.deep})`);
+              diamond(0.35, tint.mid);
+              if (Math.random() < this.frameDt * 16) {
+                this.particles.burst(ax - Math.cos(s.dir) * 0.5, ay - Math.sin(s.dir) * 0.5, 1, [tint.fleck], {
+                  speed: 1.6, life: 0.3, size: 0.05, gravity: 0, dir: s.dir, spread: 0.3, shape: 'streak',
+                });
+              }
+              break;
+            }
+            case 'radiant': {
+              // A four-point star wheeling slowly, trailing light.
+              const a = now / 400;
+              ctx.fillStyle = tint.mid;
+              ctx.beginPath();
+              burstStarPath(ctx, p.x, p.y, scale * 0.3, scale * 0.1, 4, a);
+              ctx.fill();
+              ctx.fillStyle = tint.core;
+              ctx.beginPath();
+              burstStarPath(ctx, p.x, p.y, scale * 0.16, scale * 0.06, 4, -a * 1.4);
+              ctx.fill();
+              break;
+            }
+            case 'blood': {
+              // A heavy droplet, nose-first, weeping as it flies.
+              diamond(1.1, tint.mid);
+              diamond(0.5, tint.core);
+              ctx.fillStyle = tint.mid;
+              ctx.beginPath();
+              ctx.ellipse(p.x - fx * tail * 0.9, p.y - fy * tail * 0.9, half * 1.15, half * 0.85, Math.atan2(fy, fx), 0, Math.PI * 2);
+              ctx.fill();
+              if (Math.random() < this.frameDt * 10) {
+                this.particles.burst(ax, ay, 1, [tint.mid], { speed: 0.4, life: 0.4, size: 0.05, gravity: 5, shape: 'streak' });
+              }
+              break;
+            }
+            case 'astral': {
+              // A traveling constellation: core + three trailing stars.
+              diamond(0.8, tint.mid);
+              diamond(0.4, tint.core);
+              for (let k = 1; k <= 3; k++) {
+                const off = k * 0.2 * scale;
+                const sway = Math.sin(now / 160 + k * 1.9) * scale * 0.08;
+                const g = scale * (0.07 - k * 0.012);
+                ctx.fillStyle = k % 2 === 0 ? tint.fleck : tint.core;
+                const bx = p.x - fx * off - fy * sway;
+                const by = p.y - fy * off + fx * sway;
+                ctx.fillRect(bx - g / 2, by - g * 1.5, g, g * 3);
+                ctx.fillRect(bx - g * 1.5, by - g / 2, g * 3, g);
+              }
+              break;
+            }
+            default: {
+              // Arcane: the classic cut shard, now with a slow-spinning
+              // outer facet so it reads as machined, not stamped.
+              diamond(1.5, `rgba(${tint.deep}, 0.3)`);
+              diamond(1.0, tint.mid);
+              diamond(0.48, tint.core);
+              const a = now / 220;
+              const g = scale * 0.06;
+              ctx.fillStyle = tint.fleck;
+              ctx.save();
+              ctx.translate(p.x - fx * scale * 0.05, p.y - fy * scale * 0.05);
+              ctx.rotate(a);
+              ctx.fillRect(-g / 2, -g / 2, g, g);
+              ctx.restore();
+              break;
+            }
+          }
         } else {
           // An arrow you can read at speed: streak, shaft, iron head,
           // red fletching — and a wisp of slipstream behind it.
@@ -14952,8 +15208,9 @@ export class Renderer {
       case 'beam':
         return 480;
       case 'nova':
+        return 620;
       case 'blast':
-        return 520;
+        return 700;
       case 'buff':
         return 750;
       case 'summon':
@@ -14963,7 +15220,13 @@ export class Renderer {
     }
   }
 
-  /** The ring silhouette pass novas and blasts expand with. */
+  /**
+   * The ring silhouette pass novas and blasts expand with. Every
+   * family is a three-layer read — dark pressure band under, identity
+   * silhouette over, hot inner edge — and the rim SHEDS: sparks fly
+   * off the expanding front so the shock feels like it's tearing
+   * through the air, not sliding over it.
+   */
   private fxRingLayer(
     px: number,
     py: number,
@@ -14971,14 +15234,32 @@ export class Renderer {
     st: FxStyle,
     t: number,
     seed: number,
+    wx?: number,
+    wy?: number,
+    wr?: number,
   ): void {
     const ctx = this.ctx;
     const sc = this.camera.scale;
     const squash = Renderer.FX_SQUASH;
     const rot = seed % 7;
     ctx.lineJoin = 'miter';
+    // Rim shedding: a couple of streak sparks per frame fly off the
+    // front while it's young (framerate-independent via frameDt gate).
+    if (wx !== undefined && wy !== undefined && wr !== undefined && t < 0.7 && Math.random() < this.frameDt * 26 * (1 - t)) {
+      const a = Math.random() * Math.PI * 2;
+      const rw = wr * Math.sqrt(Math.max(0.05, t));
+      this.particles.burst(wx + Math.cos(a) * rw, wy + Math.sin(a) * rw * squash, 1, [st.spark, st.core], {
+        speed: 1.8, life: 0.35, size: 0.06, gravity: 0.6, dir: a, spread: 0.5, shape: 'streak', drag: 2.2,
+      });
+    }
     if (st.ring === 'halo') {
-      // A clean double halo — the dignified rings (royal, radiant, oath).
+      // The dignified double halo (royal, radiant, oath) — plus a
+      // corona of short ticks standing off the outer band.
+      ctx.strokeStyle = shade(st.mid, -30);
+      ctx.lineWidth = Math.max(3.5, sc * 0.16 * (1 - t) + 1.5);
+      ctx.beginPath();
+      ctx.ellipse(px, py, rr * 0.94, rr * 0.94 * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
       ctx.strokeStyle = st.mid;
       ctx.lineWidth = Math.max(2.5, sc * 0.12 * (1 - t) + 1);
       ctx.beginPath();
@@ -14989,35 +15270,54 @@ export class Renderer {
       ctx.beginPath();
       ctx.ellipse(px, py, rr * 1.12, rr * 1.12 * squash, 0, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.fillStyle = st.core;
+      for (let i = 0; i < 12; i++) {
+        const a = rot + (i / 12) * Math.PI * 2;
+        const g = sc * 0.03;
+        ctx.fillRect(px + Math.cos(a) * rr * 1.22 - g / 2, py + Math.sin(a) * rr * 1.22 * squash - g * 1.5, g, g * 3);
+      }
       return;
     }
     if (st.ring === 'runes') {
-      // A plain ring escorted by orbiting glyph blocks.
+      // A conjured circle: dark band, bright band, orbiting glyphs
+      // with connector ticks — a spell diagram racing outward.
+      ctx.strokeStyle = shade(st.mid, -32);
+      ctx.lineWidth = Math.max(3, sc * 0.12 * (1 - t) + 1.5);
+      ctx.beginPath();
+      ctx.ellipse(px, py, rr * 0.96, rr * 0.96 * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
       ctx.strokeStyle = st.mid;
       ctx.lineWidth = Math.max(2, sc * 0.08 * (1 - t) + 1);
       ctx.beginPath();
       ctx.ellipse(px, py, rr, rr * squash, 0, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = st.core;
       const g = sc * 0.09 * (1 - t * 0.5);
       for (let i = 0; i < 6; i++) {
         const a = rot + (i / 6) * Math.PI * 2 + t * 1.6;
         const gx = px + Math.cos(a) * rr;
         const gy = py + Math.sin(a) * rr * squash;
+        ctx.fillStyle = i % 2 === 0 ? st.core : st.spark;
         ctx.fillRect(gx - g / 2, gy - g, g, g * 2);
+        ctx.fillRect(gx - g, gy - g * 0.25, g * 2, g * 0.5);
       }
       return;
     }
     // Jagged families: teeth (saw ring), petals (fat lobes), shards
-    // (violent spikes), frost (hex crystal).
+    // (violent spikes), frost (hex crystal w/ spur ticks).
     const spec =
       st.ring === 'teeth'
         ? { points: 22, jag: 0.14 }
         : st.ring === 'petals'
           ? { points: 12, jag: 0.26 }
           : st.ring === 'shards'
-            ? { points: 9, jag: 0.4 }
+            ? { points: 9, jag: 0.45 }
             : { points: 6, jag: 0.5 }; // frost
+    // Pressure band under the silhouette.
+    ctx.strokeStyle = shade(st.mid, -34);
+    ctx.lineWidth = Math.max(3.5, sc * 0.15 * (1 - t) + 1.5);
+    ctx.beginPath();
+    jaggedRingPath(ctx, px, py, rr * 0.97, squash, spec.points, spec.jag, rot, seed);
+    ctx.stroke();
     ctx.strokeStyle = st.mid;
     ctx.lineWidth = Math.max(2.5, sc * 0.11 * (1 - t) + 1);
     ctx.beginPath();
@@ -15028,43 +15328,559 @@ export class Renderer {
     ctx.beginPath();
     ctx.ellipse(px, py, rr * 0.82, rr * 0.82 * squash, 0, 0, Math.PI * 2);
     ctx.stroke();
+    if (st.ring === 'frost') {
+      // Crystal spurs standing proud of the hex rim.
+      ctx.fillStyle = st.core;
+      for (let i = 0; i < 6; i++) {
+        const a = rot + (i / 6) * Math.PI * 2 + 0.5;
+        const bx = px + Math.cos(a) * rr * 1.05;
+        const by = py + Math.sin(a) * rr * 1.05 * squash;
+        const len = sc * 0.14 * (1 - t * 0.5);
+        ctx.beginPath();
+        ctx.moveTo(bx + Math.cos(a) * len, by + Math.sin(a) * len * squash);
+        ctx.lineTo(bx - Math.sin(a) * len * 0.3, by + Math.cos(a) * len * 0.3);
+        ctx.lineTo(bx + Math.sin(a) * len * 0.3, by - Math.cos(a) * len * 0.3);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
   }
 
-  /** Throw a style's debris family from a detonation point. */
+  /**
+   * Throw a style's debris family from a detonation point. Matter
+   * behaves like its material: embers climb and strobe, rock and bone
+   * TUMBLE under gravity, sparks streak, leaves flutter down, shadow
+   * curls upward. The material read is half the identity.
+   */
   private fxDebris(x: number, y: number, st: FxStyle, count: number): void {
     const colors = [st.mid, st.spark, st.core];
     switch (st.debris) {
       case 'ember':
-        this.particles.burst(x, y - 0.2, count, colors, { speed: 3.2, life: 0.6, size: 0.1, gravity: -1.6, up: true });
+        this.particles.burst(x, y - 0.2, count, colors, { speed: 3.2, life: 0.7, size: 0.1, gravity: -1.6, up: true, flicker: 0.8, drag: 0.8 });
+        this.particles.burst(x, y - 0.2, Math.ceil(count / 3), ['#3a3442', st.deep], { speed: 1.0, life: 1.0, size: 0.13, gravity: -1.0, drag: 1.4, grow: 0.25 });
         break;
       case 'rock':
-        this.particles.burst(x, y - 0.2, count, [st.deep, st.mid, '#6a6375'], { speed: 3.6, life: 0.55, size: 0.13, gravity: 8, up: true });
+        this.particles.burst(x, y - 0.2, count, [st.deep, st.mid, '#6a6375'], { speed: 3.6, life: 0.6, size: 0.13, gravity: 8, up: true, shape: 'shard', spin: 9 });
+        this.particles.burst(x, y - 0.1, Math.ceil(count / 2), ['#4a4252', '#3a3442'], { speed: 1.4, life: 0.9, size: 0.11, gravity: 0.5, drag: 1.8, grow: 0.3, ground: true });
         break;
       case 'ice':
-        this.particles.burst(x, y - 0.2, count, colors, { speed: 3.0, life: 0.5, size: 0.1, gravity: 6, up: true });
+        this.particles.burst(x, y - 0.2, count, colors, { speed: 3.0, life: 0.55, size: 0.1, gravity: 6, up: true, shape: 'shard', spin: 11 });
+        this.particles.burst(x, y - 0.3, Math.ceil(count / 3), ['#ffffff', st.core], { speed: 1.2, life: 0.5, size: 0.05, gravity: 2, flicker: 0.5 });
         break;
       case 'leaf':
-        this.particles.burst(x, y - 0.3, count, colors, { speed: 2.4, life: 0.8, size: 0.11, gravity: 1.4, drag: 1.6, up: true });
+        this.particles.burst(x, y - 0.3, count, colors, { speed: 2.4, life: 1.0, size: 0.11, gravity: 1.2, drag: 1.8, up: true, shape: 'shard', spin: 5 });
         break;
       case 'bone':
-        this.particles.burst(x, y - 0.2, count, colors, { speed: 3.4, life: 0.55, size: 0.12, gravity: 7, up: true });
+        this.particles.burst(x, y - 0.2, count, colors, { speed: 3.4, life: 0.6, size: 0.12, gravity: 7, up: true, shape: 'shard', spin: 8 });
         break;
       case 'star':
-        this.particles.burst(x, y - 0.35, count, colors, { speed: 2.6, life: 0.6, size: 0.09, gravity: 0, drag: 2.4 });
+        this.particles.burst(x, y - 0.35, count, colors, { speed: 2.6, life: 0.7, size: 0.09, gravity: 0, drag: 2.4, flicker: 0.6 });
+        this.particles.burst(x, y - 0.35, Math.ceil(count / 3), ['#ffffff'], { speed: 3.4, life: 0.3, size: 0.06, gravity: 0, shape: 'streak', drag: 1.5 });
         break;
       case 'shadow':
-        this.particles.burst(x, y - 0.3, count, [st.deep, st.mid, st.spark], { speed: 1.8, life: 0.7, size: 0.13, gravity: -0.8, drag: 1.4 });
+        this.particles.burst(x, y - 0.3, count, [st.deep, st.mid, st.spark], { speed: 1.8, life: 0.9, size: 0.13, gravity: -0.8, drag: 1.4, grow: 0.18 });
         break;
       case 'blood':
         this.particles.burst(x, y - 0.25, count, [st.mid, st.deep], { speed: 2.8, life: 0.5, size: 0.1, gravity: 9, up: true });
+        this.particles.burst(x, y - 0.25, Math.ceil(count / 2), [st.mid], { speed: 3.4, life: 0.35, size: 0.06, gravity: 10, up: true, shape: 'streak' });
         break;
       default:
-        this.particles.burst(x, y - 0.25, count, colors, { speed: 3.6, life: 0.35, size: 0.08, gravity: 0.5 });
+        this.particles.burst(x, y - 0.25, count, colors, { speed: 3.6, life: 0.4, size: 0.08, gravity: 0.5, shape: 'streak' });
         break;
     }
   }
 
-  /** One lingering ground decal — the mark the hit leaves behind. */
+  /**
+   * The SIGNATURE layer — each ability's bespoke set-piece, drawn over
+   * the shared kind grammar. This is where a fire nova stops being "a
+   * ring, but orange": the pillar climbs, the spikes erupt, the rift
+   * tears open. Everything stays flat and blocky; drama comes from
+   * staged geometry, not gradients.
+   */
+  private fxMotif(
+    wxa: number,
+    wya: number,
+    px: number,
+    py: number,
+    rPx: number,
+    st: FxStyle,
+    t: number,
+    seed: number,
+    now: number,
+  ): void {
+    const ctx = this.ctx;
+    const sc = this.camera.scale;
+    const squash = Renderer.FX_SQUASH;
+    const rand = srand(seed ^ 0x5f3);
+    const fade = 1 - t;
+    ctx.save();
+    switch (st.motif) {
+      case 'pillar': {
+        // A column of fire/light ERUPTS from the center: stacked
+        // blocks narrowing with height, licking sideways as they climb.
+        const h = rPx * 1.7 * Math.min(1, t / 0.25);
+        const settle = t > 0.6 ? 1 - (t - 0.6) / 0.4 : 1;
+        for (let k = 0; k < 6; k++) {
+          const f = k / 6;
+          const wob = Math.sin(now / 90 + k * 2.1) * sc * 0.06 * f;
+          const w = rPx * (0.5 - f * 0.34) * settle;
+          const yk = py - h * f;
+          ctx.globalAlpha = fade * (0.85 - f * 0.35);
+          ctx.fillStyle = k === 0 ? st.core : k % 2 === 0 ? st.mid : shade(st.mid, -18);
+          ctx.fillRect(px - w / 2 + wob, yk - h / 6 - 1, w, h / 6 + 2);
+        }
+        // The crown flame flickers off the top.
+        ctx.globalAlpha = fade * 0.9;
+        ctx.fillStyle = st.core;
+        const fl = sc * (0.12 + 0.06 * Math.sin(now / 70 + seed));
+        ctx.beginPath();
+        ctx.moveTo(px, py - h - fl * 2.2);
+        ctx.lineTo(px + fl, py - h + 1);
+        ctx.lineTo(px - fl, py - h + 1);
+        ctx.closePath();
+        ctx.fill();
+        if (Math.random() < this.frameDt * 20 * fade) {
+          this.particles.burst(wxa, wya - (h / sc) * 0.8, 1, [st.spark, st.core], {
+            speed: 1.2, life: 0.5, size: 0.07, gravity: -2.6, flicker: 0.8,
+          });
+        }
+        this.queueGlow(wxa, wya - 0.5, 1.3, st.glow, 0.4 * fade);
+        break;
+      }
+      case 'spikes': {
+        // Spears of matter erupt on a ring — up fast, hold, sink back.
+        const n = 8;
+        const up = Math.min(1, t / 0.22);
+        const sink = t > 0.68 ? (t - 0.68) / 0.32 : 0;
+        for (let k = 0; k < n; k++) {
+          const a = (k / n) * Math.PI * 2 + (seed % 5) * 0.7;
+          const rr = rPx * (0.5 + rand() * 0.25);
+          const bx = px + Math.cos(a) * rr;
+          const by = py + Math.sin(a) * rr * squash;
+          const hK = sc * (0.5 + rand() * 0.45) * up * (1 - sink);
+          const wK = sc * (0.08 + rand() * 0.05);
+          ctx.globalAlpha = fade * 0.95;
+          // Shaded flank + lit flank: a faceted spear, not a triangle.
+          ctx.fillStyle = shade(st.mid, -26);
+          ctx.beginPath();
+          ctx.moveTo(bx, by - hK);
+          ctx.lineTo(bx - wK, by + wK * 0.5);
+          ctx.lineTo(bx, by + wK * 0.3);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = k % 3 === 0 ? st.core : st.mid;
+          ctx.beginPath();
+          ctx.moveTo(bx, by - hK);
+          ctx.lineTo(bx + wK, by + wK * 0.5);
+          ctx.lineTo(bx, by + wK * 0.3);
+          ctx.closePath();
+          ctx.fill();
+          // Ground bite at the root.
+          ctx.globalAlpha = fade * 0.5;
+          ctx.fillStyle = shade(st.deep, -10);
+          ctx.beginPath();
+          ctx.ellipse(bx, by + wK * 0.4, wK * 1.7, wK * 1.7 * squash, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      }
+      case 'vortex': {
+        // Spiral streaks wind INTO the center, rotating as they drain.
+        const spin = now / 340;
+        ctx.lineCap = 'butt';
+        for (let k = 0; k < 6; k++) {
+          const a0 = (k / 6) * Math.PI * 2 + spin;
+          ctx.globalAlpha = fade * (0.5 + 0.3 * (k % 2));
+          ctx.strokeStyle = k % 3 === 0 ? st.core : st.mid;
+          ctx.lineWidth = Math.max(1.5, sc * (0.05 - k * 0.004));
+          ctx.beginPath();
+          for (let s2 = 0; s2 <= 8; s2++) {
+            const f = s2 / 8;
+            const a = a0 + f * 2.2;
+            const rr = rPx * (0.95 - f * 0.75);
+            const x = px + Math.cos(a) * rr;
+            const y = py + Math.sin(a) * rr * squash;
+            if (s2 === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+        // Matter caught in the drain.
+        if (Math.random() < this.frameDt * 18 * fade) {
+          const a = Math.random() * Math.PI * 2;
+          this.particles.burst(wxa + Math.cos(a) * (rPx / sc) * 0.9, wya + Math.sin(a) * (rPx / sc) * 0.55, 1, [st.spark, st.mid], {
+            speed: 2.2, life: 0.45, size: 0.07, gravity: 0, dir: a + Math.PI * 0.72, spread: 0.3, shape: 'streak', drag: 1.2,
+          });
+        }
+        // The eye: a dark center that breathes.
+        ctx.globalAlpha = fade * 0.55;
+        ctx.fillStyle = st.deep;
+        const eye = rPx * 0.16 * (1 + 0.15 * Math.sin(now / 160));
+        ctx.beginPath();
+        ctx.ellipse(px, py, eye, eye * squash, 0, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case 'rain': {
+        // Matter falls INTO the circle: staggered streaks dropping
+        // from above, each popping a micro-star where it lands.
+        const n = 9;
+        for (let k = 0; k < n; k++) {
+          const lx = px + (rand() * 2 - 1) * rPx * 0.85;
+          const lyG = py + (rand() * 2 - 1) * rPx * 0.5 * squash;
+          const drop = (t * (1.6 + rand() * 0.8) + k * 0.13) % 1;
+          const h = rPx * 1.9;
+          const dy = -h * (1 - drop);
+          if (drop < 0.82) {
+            const segLen = sc * 0.5;
+            ctx.globalAlpha = fade * 0.9;
+            ctx.strokeStyle = k % 3 === 0 ? st.core : st.mid;
+            ctx.lineWidth = Math.max(2, sc * 0.055);
+            ctx.beginPath();
+            ctx.moveTo(lx, lyG + dy - segLen);
+            ctx.lineTo(lx, lyG + dy);
+            ctx.stroke();
+          } else {
+            // Landing pop.
+            const pt = (drop - 0.82) / 0.18;
+            ctx.globalAlpha = fade * (1 - pt);
+            ctx.fillStyle = st.spark;
+            ctx.beginPath();
+            burstStarPath(ctx, lx, lyG, sc * 0.14 * (1 - pt * 0.5), sc * 0.05, 4, k * 1.3, squash);
+            ctx.fill();
+          }
+        }
+        break;
+      }
+      case 'cage': {
+        // Bars rise on the rim and lock the circle: a ward you could
+        // reach out and touch, caps glinting.
+        const n = 9;
+        const up = Math.min(1, t / 0.2);
+        const drop = t > 0.75 ? (t - 0.75) / 0.25 : 0;
+        for (let k = 0; k < n; k++) {
+          const a = (k / n) * Math.PI * 2 + (seed % 4) * 0.5 + now / 4200;
+          const bx = px + Math.cos(a) * rPx * 0.92;
+          const by = py + Math.sin(a) * rPx * 0.92 * squash;
+          const h = sc * (0.85 + (k % 3) * 0.12) * up * (1 - drop);
+          const w = Math.max(2, sc * 0.05);
+          // Far bars dim — cheap depth.
+          const behind = Math.sin(a) < 0;
+          ctx.globalAlpha = fade * (behind ? 0.45 : 0.9);
+          ctx.fillStyle = k % 3 === 0 ? st.core : st.mid;
+          ctx.fillRect(bx - w / 2, by - h, w, h);
+          ctx.fillStyle = st.spark;
+          ctx.fillRect(bx - w, by - h - w, w * 2, w);
+        }
+        break;
+      }
+      case 'wisps': {
+        // Soul-flames orbit the site at differing heights and speeds,
+        // each a teardrop of two stacked quads, guttering.
+        const n = 5;
+        for (let k = 0; k < n; k++) {
+          const ph = rand() * Math.PI * 2;
+          const speed = 1.2 + rand() * 0.9;
+          const a = ph + (now / 1000) * speed;
+          const rr = rPx * (0.45 + rand() * 0.4);
+          const bx = px + Math.cos(a) * rr;
+          const by = py + Math.sin(a) * rr * squash - sc * (0.3 + rand() * 0.5) - Math.sin(now / 300 + ph) * sc * 0.08;
+          const gut = 0.6 + 0.4 * Math.sin(now / 140 + ph * 3);
+          const s = sc * (0.07 + rand() * 0.04);
+          ctx.globalAlpha = fade * gut * 0.9;
+          ctx.fillStyle = k % 2 === 0 ? st.mid : st.spark;
+          ctx.fillRect(bx - s / 2, by - s, s, s * 1.5);
+          ctx.fillStyle = st.core;
+          ctx.fillRect(bx - s * 0.28, by - s * 1.8, s * 0.56, s * 0.9);
+        }
+        if (Math.random() < this.frameDt * 8 * fade) {
+          this.particles.burst(wxa, wya - 0.5, 1, [st.mid, st.deep], {
+            speed: 0.4, life: 0.8, size: 0.06, gravity: -1.2, drag: 1.2, flicker: 0.6,
+          });
+        }
+        break;
+      }
+      case 'rays': {
+        // Long light-blades wheel about the center — the sun's own
+        // geometry, laid onto the ground plane.
+        const spin = now / 2400 + (seed % 3);
+        const reach = rPx * (1.15 + 0.1 * Math.sin(now / 500));
+        for (let k = 0; k < 8; k++) {
+          const a = spin + (k / 8) * Math.PI * 2;
+          const wA = 0.07 + 0.03 * (k % 2);
+          ctx.globalAlpha = fade * (k % 2 === 0 ? 0.55 : 0.3);
+          ctx.fillStyle = k % 2 === 0 ? st.mid : st.core;
+          ctx.beginPath();
+          ctx.moveTo(px + Math.cos(a - wA) * rPx * 0.25, py + Math.sin(a - wA) * rPx * 0.25 * squash);
+          ctx.lineTo(px + Math.cos(a) * reach, py + Math.sin(a) * reach * squash);
+          ctx.lineTo(px + Math.cos(a + wA) * rPx * 0.25, py + Math.sin(a + wA) * rPx * 0.25 * squash);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // The disc at the heart.
+        ctx.globalAlpha = fade * 0.85;
+        ctx.fillStyle = st.core;
+        ctx.beginPath();
+        ctx.ellipse(px, py, rPx * 0.14, rPx * 0.14 * squash, 0, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case 'tear': {
+        // Reality slits open: a jagged vertical rift that yawns wide,
+        // holds, then snaps shut. Interior is the style's deep band —
+        // for void families that reads as looking INTO somewhere else.
+        const open = t < 0.25 ? t / 0.25 : t > 0.7 ? Math.max(0, 1 - (t - 0.7) / 0.22) : 1;
+        if (open <= 0) break;
+        const H = rPx * 1.35;
+        const W = rPx * 0.34 * open;
+        const segs = 7;
+        ctx.globalAlpha = 0.95;
+        // Rim first (pale), interior second (deep), core slit last.
+        for (const [wMul, col] of [
+          [1.25, st.core],
+          [1.0, st.deep],
+          [0.35, st.mid],
+        ] as const) {
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          const r2 = srand(seed ^ 0x77);
+          for (let s2 = 0; s2 <= segs; s2++) {
+            const f = s2 / segs;
+            const jag = (r2() - 0.5) * W * 0.8;
+            const wHere = Math.sin(f * Math.PI) * W * wMul + jag * Math.sin(f * Math.PI);
+            const y = py - sc * 0.35 - H / 2 + H * f;
+            if (s2 === 0) ctx.moveTo(px, y);
+            else ctx.lineTo(px + wHere / 2, y);
+          }
+          for (let s2 = segs; s2 >= 0; s2--) {
+            const f = s2 / segs;
+            const jag = (r2() - 0.5) * W * 0.8;
+            const wHere = Math.sin(f * Math.PI) * W * wMul + jag * Math.sin(f * Math.PI);
+            const y = py - sc * 0.35 - H / 2 + H * f;
+            ctx.lineTo(px - wHere / 2, y);
+          }
+          ctx.closePath();
+          ctx.fill();
+        }
+        // Motes drift out of the wound.
+        if (Math.random() < this.frameDt * 14 * open) {
+          this.particles.burst(wxa, wya - 0.7, 1, [st.spark, st.core], {
+            speed: 0.9, life: 0.6, size: 0.06, gravity: -0.4, drag: 1.5, flicker: 0.5,
+          });
+        }
+        this.queueGlow(wxa, wya - 0.6, 1.1, st.glow, 0.35 * open);
+        break;
+      }
+      case 'wave': {
+        // Crescent crests roll outward in succession, foam ticks
+        // breaking off each leading edge.
+        for (let k = 0; k < 3; k++) {
+          const wt = t * 1.25 - k * 0.18;
+          if (wt <= 0 || wt >= 1) continue;
+          const rr = rPx * (0.25 + 0.75 * wt);
+          const aw = 1.15 - wt * 0.3;
+          const baseA = (seed % 6) + k * 2.1;
+          ctx.globalAlpha = (1 - wt) * 0.85;
+          ctx.strokeStyle = k % 2 === 0 ? st.mid : st.core;
+          ctx.lineWidth = Math.max(2.5, sc * 0.1 * (1 - wt));
+          ctx.beginPath();
+          ctx.ellipse(px, py, rr, rr * squash, 0, baseA - aw, baseA + aw);
+          ctx.stroke();
+          // Foam: ticks off the crest.
+          ctx.fillStyle = st.core;
+          for (let f2 = 0; f2 < 4; f2++) {
+            const a = baseA - aw + (f2 / 3) * aw * 2;
+            const g = sc * 0.045;
+            ctx.fillRect(px + Math.cos(a) * rr * 1.06 - g / 2, py + Math.sin(a) * rr * 1.06 * squash - g, g, g * 2);
+          }
+        }
+        break;
+      }
+      case 'bloom': {
+        // Petals unfurl from the heart, each on its own beat, tips
+        // nodding once open.
+        const n = 6;
+        for (let k = 0; k < n; k++) {
+          const a = (k / n) * Math.PI * 2 + (seed % 4) * 0.6;
+          const open = Math.max(0, Math.min(1, t * 2.4 - k * 0.12));
+          if (open <= 0) continue;
+          const nod = Math.sin(now / 380 + k) * 0.05;
+          const len = rPx * (0.55 + 0.35 * open);
+          const wP = rPx * 0.2 * open;
+          const tipX = px + Math.cos(a + nod) * len;
+          const tipY = py + Math.sin(a + nod) * len * squash - sc * 0.12 * open;
+          ctx.globalAlpha = fade * 0.9;
+          ctx.fillStyle = k % 2 === 0 ? st.mid : shade(st.mid, 16);
+          ctx.beginPath();
+          ctx.moveTo(px + Math.cos(a) * rPx * 0.1, py + Math.sin(a) * rPx * 0.1 * squash);
+          ctx.lineTo(px + Math.cos(a) * len * 0.5 - Math.sin(a) * wP, py + (Math.sin(a) * len * 0.5 + Math.cos(a) * wP) * squash);
+          ctx.lineTo(tipX, tipY);
+          ctx.lineTo(px + Math.cos(a) * len * 0.5 + Math.sin(a) * wP, py + (Math.sin(a) * len * 0.5 - Math.cos(a) * wP) * squash);
+          ctx.closePath();
+          ctx.fill();
+          // Vein down the petal.
+          ctx.strokeStyle = st.core;
+          ctx.lineWidth = Math.max(1, sc * 0.02);
+          ctx.beginPath();
+          ctx.moveTo(px + Math.cos(a) * rPx * 0.12, py + Math.sin(a) * rPx * 0.12 * squash);
+          ctx.lineTo(tipX, tipY);
+          ctx.stroke();
+        }
+        // The heart.
+        ctx.globalAlpha = fade;
+        ctx.fillStyle = st.core;
+        ctx.beginPath();
+        facetCircle(ctx, px, py, rPx * 0.1, 6, now / 1400);
+        ctx.fill();
+        break;
+      }
+      case 'crown': {
+        // Regal points ride the ring: a rotating circlet of gold
+        // triangles with ball tips over a jeweled band.
+        const spin = now / 3600;
+        const rr = rPx * 0.8;
+        ctx.globalAlpha = fade * 0.9;
+        ctx.strokeStyle = st.mid;
+        ctx.lineWidth = Math.max(2.5, sc * 0.08);
+        ctx.beginPath();
+        ctx.ellipse(px, py, rr, rr * squash, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        for (let k = 0; k < 5; k++) {
+          const a = spin + (k / 5) * Math.PI * 2;
+          const bx = px + Math.cos(a) * rr;
+          const by = py + Math.sin(a) * rr * squash;
+          const h = sc * 0.28;
+          const w = sc * 0.09;
+          ctx.fillStyle = st.mid;
+          ctx.beginPath();
+          ctx.moveTo(bx, by - h);
+          ctx.lineTo(bx + w, by);
+          ctx.lineTo(bx - w, by);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = st.core;
+          ctx.fillRect(bx - w * 0.35, by - h - w * 0.7, w * 0.7, w * 0.7);
+          // The jewel between points.
+          const aj = a + Math.PI / 5;
+          ctx.fillStyle = k % 2 === 0 ? st.spark : st.core;
+          const g = sc * 0.05;
+          ctx.fillRect(px + Math.cos(aj) * rr - g / 2, py + Math.sin(aj) * rr * squash - g / 2, g, g);
+        }
+        break;
+      }
+      case 'echo': {
+        // Resonance: three trailing rings chase the moment outward,
+        // alternating tone, with radial tick bursts between.
+        for (let k = 1; k <= 3; k++) {
+          const et = t - k * 0.14;
+          if (et <= 0) continue;
+          const rr = rPx * Math.sqrt(Math.min(1, et * 1.3));
+          ctx.globalAlpha = Math.max(0, 1 - et * 1.35) * (0.55 - k * 0.1);
+          ctx.strokeStyle = k % 2 === 0 ? st.core : st.mid;
+          ctx.lineWidth = Math.max(1.5, sc * (0.06 - k * 0.012));
+          ctx.beginPath();
+          ctx.ellipse(px, py, rr, rr * squash, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        // Tick marks radiate on the main front.
+        ctx.globalAlpha = fade * 0.8;
+        ctx.fillStyle = st.spark;
+        const rm = rPx * Math.sqrt(Math.min(1, t * 1.2));
+        for (let k = 0; k < 8; k++) {
+          const a = (seed % 5) + (k / 8) * Math.PI * 2;
+          const g = sc * 0.035;
+          ctx.fillRect(px + Math.cos(a) * rm * 1.08 - g / 2, py + Math.sin(a) * rm * 1.08 * squash - g * 1.4, g, g * 2.8);
+        }
+        break;
+      }
+      case 'quake': {
+        // The ground BREAKS: fissure wedges tear outward from the
+        // center, upthrown slabs tilt at their mouths, dust hangs.
+        const reach = Math.min(1, t / 0.3);
+        for (let k = 0; k < 5; k++) {
+          const a = (k / 5) * Math.PI * 2 + (seed % 7) * 0.4 + rand() * 0.3;
+          const len = rPx * (0.8 + rand() * 0.4) * reach;
+          // The fissure: a tapering dark wedge with a hot seam early.
+          const mx = px + Math.cos(a) * len;
+          const my = py + Math.sin(a) * len * squash;
+          const wQ = sc * 0.09 * (1 - t * 0.4);
+          ctx.globalAlpha = fade * 0.85;
+          ctx.fillStyle = '#241c28';
+          ctx.beginPath();
+          ctx.moveTo(px - Math.sin(a) * wQ, py + Math.cos(a) * wQ * squash);
+          ctx.lineTo(mx, my);
+          ctx.lineTo(px + Math.sin(a) * wQ, py - Math.cos(a) * wQ * squash);
+          ctx.closePath();
+          ctx.fill();
+          if (t < 0.4) {
+            ctx.globalAlpha = (1 - t / 0.4) * 0.8;
+            ctx.strokeStyle = st.spark;
+            ctx.lineWidth = Math.max(1, sc * 0.025);
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            ctx.lineTo(mx, my);
+            ctx.stroke();
+          }
+          // Upthrown slab at the mouth, tilted off-axis.
+          const s = sc * (0.1 + rand() * 0.07);
+          ctx.globalAlpha = fade * 0.95;
+          ctx.save();
+          ctx.translate(mx, my - s * 0.4);
+          ctx.rotate((rand() - 0.5) * 0.7);
+          ctx.fillStyle = shade(st.mid, -12);
+          ctx.fillRect(-s * 0.7, -s * 0.45, s * 1.4, s * 0.9);
+          ctx.fillStyle = shade(st.mid, 10);
+          ctx.fillRect(-s * 0.7, -s * 0.45, s * 1.4, s * 0.3);
+          ctx.restore();
+        }
+        break;
+      }
+      case 'swarm': {
+        // Darting motes with streak tails, wheeling on seeded
+        // lissajous orbits, closing on the heart as the moment dies.
+        const n = 8;
+        for (let k = 0; k < n; k++) {
+          const pa = rand() * Math.PI * 2;
+          const pb = rand() * Math.PI * 2;
+          const fa = 1.6 + rand() * 1.2;
+          const fb = 2.2 + rand() * 1.4;
+          const shrink = 1 - t * 0.55;
+          const ox = Math.sin((now / 1000) * fa + pa) * rPx * 0.8 * shrink;
+          const oy = Math.sin((now / 1000) * fb + pb) * rPx * 0.5 * shrink * squash;
+          const bx = px + ox;
+          const by = py - sc * 0.35 + oy;
+          // Tail: sampled a beat back along the same orbit.
+          const tx2 = px + Math.sin(((now - 60) / 1000) * fa + pa) * rPx * 0.8 * shrink;
+          const ty2 = py - sc * 0.35 + Math.sin(((now - 60) / 1000) * fb + pb) * rPx * 0.5 * shrink * squash;
+          ctx.globalAlpha = fade * 0.55;
+          ctx.strokeStyle = st.mid;
+          ctx.lineWidth = Math.max(1.5, sc * 0.035);
+          ctx.beginPath();
+          ctx.moveTo(tx2, ty2);
+          ctx.lineTo(bx, by);
+          ctx.stroke();
+          ctx.globalAlpha = fade;
+          ctx.fillStyle = k % 3 === 0 ? st.core : st.spark;
+          const g = sc * 0.055;
+          ctx.save();
+          ctx.translate(bx, by);
+          ctx.rotate(Math.PI / 4);
+          ctx.fillRect(-g / 2, -g / 2, g, g);
+          ctx.restore();
+        }
+        break;
+      }
+    }
+    ctx.restore();
+  }
+
+  /**
+   * One lingering ground decal — the mark the hit leaves behind, in
+   * three acts. `t` is the whole 5s life; `active` is hot aftermath
+   * (first ~40%: coals still glowing, frost still growing, blood still
+   * spreading), then the mark settles into quiet residue and the turf
+   * finally reclaims it.
+   */
   private drawDecalItem(d: (typeof this.fxDecals)[number], now: number): void {
     const ctx = this.ctx;
     const sc = this.camera.scale;
@@ -15075,106 +15891,213 @@ export class Renderer {
     const squash = Renderer.FX_SQUASH;
     const rand = srand(d.seed);
     const rPx = d.r * sc * 0.85;
-    const fade = 1 - t;
+    // Hold near-full strength through the settle, then release.
+    const fade = t < 0.72 ? 1 - t * 0.25 : (1 - t) / 0.28 * 0.82;
+    const active = Math.max(0, 1 - t / 0.4); // the hot window
+    const grow = Math.min(1, (now - d.bornAt) / 420); // matter arriving
     ctx.save();
     switch (d.kind) {
       case 'scorch': {
-        ctx.globalAlpha = 0.5 * fade;
+        // Charred earth: a burnt field of blocks, coal seams that
+        // pulse while hot and cool to black, wisps of late smoke.
+        ctx.globalAlpha = 0.55 * fade;
         ctx.fillStyle = '#1c120e';
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 12; i++) {
           const a = rand() * Math.PI * 2;
-          const rr = rPx * (0.25 + rand() * 0.7);
-          const s = sc * (0.1 + rand() * 0.14);
+          const rr = rPx * (0.15 + rand() * 0.8) * grow;
+          const s = sc * (0.09 + rand() * 0.15);
           ctx.fillRect(p.x + Math.cos(a) * rr - s / 2, p.y + Math.sin(a) * rr * squash - s / 2, s, s * 0.7);
         }
-        // Coals breathe out in the first moments.
-        if (t < 0.45) {
-          ctx.globalAlpha = (0.45 - t) * 1.6;
+        // The scorch halo — a faint burnt ring around the field.
+        ctx.globalAlpha = 0.3 * fade;
+        ctx.strokeStyle = '#241610';
+        ctx.lineWidth = Math.max(2, sc * 0.07);
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, rPx * 0.95 * grow, rPx * 0.95 * grow * squash, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        // Live coals: each has its own pulse clock, dying as it cools.
+        for (let i = 0; i < 6; i++) {
+          const a = rand() * Math.PI * 2;
+          const rr = rPx * (0.15 + rand() * 0.55);
+          const heat = Math.max(0, 1 - t / (0.35 + rand() * 0.35));
+          if (heat <= 0) continue;
+          const pulse = 0.55 + 0.45 * Math.sin(now / 190 + i * 2.3);
+          ctx.globalAlpha = heat * pulse * 0.9;
+          ctx.fillStyle = i % 3 === 0 ? '#ffd24a' : d.mid;
+          const s = sc * (0.045 + rand() * 0.035);
+          ctx.fillRect(p.x + Math.cos(a) * rr - s / 2, p.y + Math.sin(a) * rr * squash - s / 2, s, s);
+        }
+        // The ground itself remembers heat: a dying underglow.
+        if (active > 0) {
+          ctx.globalAlpha = active * 0.14;
           ctx.fillStyle = d.mid;
-          for (let i = 0; i < 3; i++) {
-            const a = rand() * Math.PI * 2;
-            const rr = rPx * (0.2 + rand() * 0.5);
-            const s = sc * 0.05;
-            ctx.fillRect(p.x + Math.cos(a) * rr - s / 2, p.y + Math.sin(a) * rr * squash - s / 2, s, s);
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y, rPx * 0.7, rPx * 0.7 * squash, 0, 0, Math.PI * 2);
+          ctx.fill();
+          if (Math.random() < this.frameDt * 2.2) {
+            this.particles.burst(d.x + (Math.random() - 0.5) * d.r, d.y + (Math.random() - 0.5) * d.r * 0.6, 1, ['#4a4252', '#3a3442'], {
+              speed: 0.25, life: 1.2, size: 0.1, gravity: -0.9, drag: 1.4, grow: 0.2,
+            });
           }
         }
         break;
       }
       case 'rime': {
-        ctx.globalAlpha = 0.55 * fade;
-        for (let i = 0; i < 9; i++) {
+        // Hoarfrost claims the ground: pale floor patches, crystal
+        // spars that GROW outward, glints that wink while it's fresh.
+        ctx.globalAlpha = 0.2 * fade;
+        ctx.fillStyle = d.mid;
+        for (let i = 0; i < 4; i++) {
           const a = rand() * Math.PI * 2;
-          const rr = rPx * (0.15 + rand() * 0.8);
+          const rr = rPx * rand() * 0.5 * grow;
+          const s = sc * (0.2 + rand() * 0.22);
+          ctx.beginPath();
+          ctx.ellipse(p.x + Math.cos(a) * rr, p.y + Math.sin(a) * rr * squash, s, s * squash, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 0.6 * fade;
+        for (let i = 0; i < 13; i++) {
+          const a = rand() * Math.PI * 2;
+          const reach = 0.15 + rand() * 0.8;
+          if (reach > grow * 1.1) continue; // spars grow center-out
+          const rr = rPx * reach;
           const cx = p.x + Math.cos(a) * rr;
           const cy = p.y + Math.sin(a) * rr * squash;
-          const len = sc * (0.12 + rand() * 0.2);
+          const len = sc * (0.1 + rand() * 0.22);
           const ang = rand() * Math.PI;
           ctx.fillStyle = i % 3 === 0 ? '#f0fbff' : d.mid;
           ctx.save();
           ctx.translate(cx, cy);
           ctx.rotate(ang);
           ctx.fillRect(-len / 2, -sc * 0.02, len, sc * 0.04);
+          // Every spar carries a cross-tick — real crystal grammar.
+          if (i % 2 === 0) ctx.fillRect(-sc * 0.02, -len * 0.3, sc * 0.04, len * 0.6);
           ctx.restore();
+        }
+        // Winking glints — deterministic twinkle windows.
+        for (let i = 0; i < 5; i++) {
+          const a = rand() * Math.PI * 2;
+          const rr = rPx * (0.2 + rand() * 0.6);
+          const tw = Math.sin(now / 260 + i * 2.7 + d.seed % 5);
+          if (tw < 0.86) continue;
+          ctx.globalAlpha = (tw - 0.86) / 0.14 * fade;
+          ctx.fillStyle = '#ffffff';
+          const gx = p.x + Math.cos(a) * rr;
+          const gy = p.y + Math.sin(a) * rr * squash;
+          const g = sc * 0.05;
+          ctx.fillRect(gx - g / 2, gy - g * 1.6, g, g * 3.2);
+          ctx.fillRect(gx - g * 1.6, gy - g / 2, g * 3.2, g);
         }
         break;
       }
       case 'cracks': {
-        ctx.globalAlpha = 0.5 * fade;
-        ctx.strokeStyle = '#241c14';
-        ctx.lineWidth = Math.max(1.5, sc * 0.045);
-        for (let i = 0; i < 5; i++) {
-          const a = (i / 5) * Math.PI * 2 + rand() * 0.7;
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
+        // Fissured earth: dark cracks with a molten underglow that
+        // cools shut, rubble thrown along the fissure ends.
+        const glowHeat = Math.max(0, 1 - t / 0.45);
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2 + rand() * 0.7;
+          // Trace once, stroke twice: molten seam under, dark lip over.
+          const seg: number[] = [p.x, p.y];
           let cx = p.x;
           let cy = p.y;
           for (let sgm = 0; sgm < 3; sgm++) {
-            const rr = rPx * ((sgm + 1) / 3) * (0.7 + rand() * 0.4);
+            const rr = rPx * ((sgm + 1) / 3) * (0.7 + rand() * 0.4) * grow;
             cx = p.x + Math.cos(a + (rand() - 0.5) * 0.5) * rr;
             cy = p.y + Math.sin(a + (rand() - 0.5) * 0.5) * rr * squash;
-            ctx.lineTo(cx, cy);
+            seg.push(cx, cy);
           }
+          if (glowHeat > 0) {
+            ctx.globalAlpha = glowHeat * (0.5 + 0.3 * Math.sin(now / 220 + i));
+            ctx.strokeStyle = d.mid;
+            ctx.lineWidth = Math.max(2.5, sc * 0.075);
+            ctx.beginPath();
+            ctx.moveTo(seg[0]!, seg[1]!);
+            for (let k = 2; k < seg.length; k += 2) ctx.lineTo(seg[k]!, seg[k + 1]!);
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 0.55 * fade;
+          ctx.strokeStyle = '#241c14';
+          ctx.lineWidth = Math.max(1.5, sc * 0.042);
+          ctx.beginPath();
+          ctx.moveTo(seg[0]!, seg[1]!);
+          for (let k = 2; k < seg.length; k += 2) ctx.lineTo(seg[k]!, seg[k + 1]!);
           ctx.stroke();
+          // Rubble at the fissure mouth.
+          ctx.fillStyle = '#3a3040';
+          const s = sc * (0.05 + rand() * 0.05);
+          ctx.fillRect(cx - s / 2, cy - s / 2, s, s * 0.8);
         }
         break;
       }
       case 'roots': {
+        // Briar aftermath: hooks that keep reaching while fresh, tiny
+        // leaves shivering at the tips.
         ctx.globalAlpha = 0.6 * fade;
-        ctx.strokeStyle = d.deep;
-        ctx.lineWidth = Math.max(1.5, sc * 0.05);
-        for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * Math.PI * 2 + rand() * 0.5;
-          const r0 = rPx * 0.4;
-          const r1 = rPx * (0.75 + rand() * 0.3);
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + rand() * 0.5;
+          const reach = 0.75 + rand() * 0.3;
+          if (reach - 0.3 > grow) continue;
+          const r0 = rPx * 0.35;
+          const r1 = rPx * reach;
+          const sway = Math.sin(now / 420 + i * 1.9) * sc * 0.02;
+          ctx.strokeStyle = i % 3 === 0 ? d.mid : d.deep;
+          ctx.lineWidth = Math.max(1.5, sc * 0.05);
           ctx.beginPath();
           ctx.moveTo(p.x + Math.cos(a) * r0, p.y + Math.sin(a) * r0 * squash);
-          // Each hook curls sideways at the tip — briar grammar.
           const tipA = a + 0.55;
-          ctx.lineTo(p.x + Math.cos(a) * r1, p.y + Math.sin(a) * r1 * squash);
-          ctx.lineTo(p.x + Math.cos(tipA) * r1 * 0.92, p.y + Math.sin(tipA) * r1 * 0.92 * squash - sc * 0.08);
+          const tx2 = p.x + Math.cos(a) * r1;
+          const ty2 = p.y + Math.sin(a) * r1 * squash;
+          ctx.lineTo(tx2, ty2);
+          ctx.lineTo(p.x + Math.cos(tipA) * r1 * 0.92 + sway, p.y + Math.sin(tipA) * r1 * 0.92 * squash - sc * 0.09);
           ctx.stroke();
+          // A leaf rides most tips.
+          if (i % 2 === 0) {
+            ctx.fillStyle = d.mid;
+            const s = sc * 0.05;
+            ctx.fillRect(tx2 - s / 2 + sway, ty2 - sc * 0.1, s, s * 1.4);
+          }
         }
         break;
       }
       case 'stain': {
-        ctx.globalAlpha = 0.4 * fade;
+        // The pool spreads while fresh, then dries from the rim in.
+        const spread = Math.min(1, 0.5 + t * 1.6);
         ctx.fillStyle = d.deep;
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 7; i++) {
           const a = rand() * Math.PI * 2;
-          const rr = rPx * rand() * 0.6;
-          const s = sc * (0.14 + rand() * 0.18);
+          const rr = rPx * rand() * 0.62 * spread;
+          const s = sc * (0.12 + rand() * 0.2) * (i === 0 ? 1.5 : 1);
+          ctx.globalAlpha = (i === 0 ? 0.5 : 0.38) * fade;
           ctx.beginPath();
           ctx.ellipse(p.x + Math.cos(a) * rr, p.y + Math.sin(a) * rr * squash, s, s * squash, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // A wet gleam while fresh.
+        if (active > 0) {
+          ctx.globalAlpha = active * 0.3;
+          ctx.fillStyle = d.mid;
+          ctx.beginPath();
+          ctx.ellipse(p.x - rPx * 0.1, p.y - rPx * 0.06, rPx * 0.28, rPx * 0.28 * squash, 0, 0, Math.PI * 2);
           ctx.fill();
         }
         break;
       }
       case 'runes': {
-        ctx.globalAlpha = 0.6 * fade;
-        ctx.fillStyle = d.mid;
+        // A slow ceremonial orbit: glyphs blink awake in sequence
+        // around a faint circle, then gutter out one by one.
+        ctx.globalAlpha = 0.24 * fade;
+        ctx.strokeStyle = d.mid;
+        ctx.lineWidth = Math.max(1, sc * 0.025);
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, rPx * 0.8, rPx * 0.8 * squash, 0, 0, Math.PI * 2);
+        ctx.stroke();
         const g = sc * 0.08;
-        for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * Math.PI * 2 + d.seed % 3;
+        const drift = now / 2400;
+        for (let i = 0; i < 7; i++) {
+          const a = (i / 7) * Math.PI * 2 + (d.seed % 3) + drift;
+          const blink = 0.45 + 0.55 * Math.max(0, Math.sin(now / 340 - i * 0.9));
+          ctx.globalAlpha = 0.7 * fade * blink;
+          ctx.fillStyle = i % 3 === 0 ? '#ffffff' : d.mid;
           const gx = p.x + Math.cos(a) * rPx * 0.8;
           const gy = p.y + Math.sin(a) * rPx * 0.8 * squash;
           ctx.fillRect(gx - g / 2, gy - g, g, g * 2);
@@ -15183,11 +16106,23 @@ export class Renderer {
         break;
       }
       case 'glow': {
-        ctx.globalAlpha = 0.18 * fade;
+        // Residual light pooled on the grass, breathing as it drains,
+        // shedding the occasional rising mote.
+        const breath = 0.85 + 0.15 * Math.sin(now / 480 + d.seed % 7);
+        ctx.globalAlpha = 0.16 * fade * breath;
         ctx.fillStyle = d.mid;
         ctx.beginPath();
-        ctx.ellipse(p.x, p.y, rPx, rPx * squash, 0, 0, Math.PI * 2);
+        ctx.ellipse(p.x, p.y, rPx * breath, rPx * breath * squash, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.globalAlpha = 0.1 * fade;
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, rPx * 0.55, rPx * 0.55 * squash, 0, 0, Math.PI * 2);
+        ctx.fill();
+        if (active > 0 && Math.random() < this.frameDt * 2.5) {
+          this.particles.burst(d.x + (Math.random() - 0.5) * d.r * 1.2, d.y + (Math.random() - 0.5) * d.r * 0.7, 1, [d.mid, '#ffffff'], {
+            speed: 0.2, life: 1.0, size: 0.05, gravity: -0.7, flicker: 0.5,
+          });
+        }
         break;
       }
     }
@@ -15344,6 +16279,34 @@ export class Renderer {
             ctx.globalAlpha = Math.random() < 0.6 ? 0.8 * edge : 0.15 * edge;
             const s = sc * 0.05;
             ctx.fillRect(cx - s / 2, cy - s / 2, s * (1 + rand()), s * 0.6);
+          } else if (st.debris === 'bone') {
+            // Grave splinters standing crooked out of the ground.
+            ctx.fillStyle = k % 3 === 0 ? st.core : st.mid;
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate((rand() - 0.5) * 0.9);
+            ctx.fillRect(-sc * 0.025, -sc * (0.1 + rand() * 0.1), sc * 0.05, sc * (0.13 + rand() * 0.1));
+            ctx.restore();
+          } else if (st.debris === 'rock') {
+            // Rubble slabs, lit-top faceted.
+            const s = sc * (0.08 + rand() * 0.08);
+            ctx.fillStyle = shade(st.mid, -14);
+            ctx.fillRect(cx - s / 2, cy - s / 2 + jig, s, s * 0.75);
+            ctx.fillStyle = shade(st.mid, 8);
+            ctx.fillRect(cx - s / 2, cy - s / 2 + jig, s, s * 0.28);
+          } else if (st.debris === 'blood') {
+            ctx.fillStyle = k % 2 === 0 ? st.deep : st.mid;
+            const s = sc * (0.09 + rand() * 0.1);
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, s, s * squash, 0, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (st.debris === 'star') {
+            const tw = 0.5 + 0.5 * Math.sin(now / 320 + k * 2.2);
+            ctx.globalAlpha = (0.3 + 0.6 * tw) * edge;
+            ctx.fillStyle = k % 2 === 0 ? st.core : st.spark;
+            const g = sc * 0.04;
+            ctx.fillRect(cx - g / 2, cy - g * 1.6, g, g * 3.2);
+            ctx.fillRect(cx - g * 1.6, cy - g / 2, g * 3.2, g);
           } else {
             ctx.fillStyle = k % 2 === 0 ? st.mid : st.deep;
             const s = sc * (0.07 + rand() * 0.08);
@@ -15366,11 +16329,21 @@ export class Renderer {
     const sc = this.camera.scale;
     const now = performance.now();
     const squash = Renderer.FX_SQUASH;
+    this.runFxBeats(now);
     for (let i = game.fx.length - 1; i >= 0; i--) {
       const fx = game.fx[i]! as (typeof game.fx)[number] & { spawned?: boolean };
       const age = now - fx.bornAt;
       const life = this.fxLife(fx);
       if (age > life) {
+        // A hazard zone doesn't just switch off: it exhales — a
+        // dissipation puff and a lingering residue where it stood.
+        if (fx.kind === 'field') {
+          const stEnd = fxStyleFor(fx.id, fx.color);
+          this.addDecal(fx.x, fx.y, fx.radius * 0.75, stEnd);
+          this.particles.burst(fx.x, fx.y - 0.2, 8, [stEnd.mid, stEnd.deep], {
+            speed: 0.8, life: 0.9, size: 0.11, gravity: -0.8, drag: 1.6, grow: 0.2,
+          });
+        }
         game.fx.splice(i, 1);
         continue;
       }
@@ -15436,6 +16409,16 @@ export class Renderer {
             ctx.fillRect(p.x + Math.cos(a) * rr - s / 2, p.y + Math.sin(a) * rr * squash - s / 2, s, s);
           }
           ctx.restore();
+          // The edge SHEDS as it cuts: streak sparks fly off the tip.
+          if (sweep < 1 && Math.random() < this.frameDt * 30) {
+            this.particles.burst(
+              fx.x + Math.cos(lead) * fx.radius,
+              fx.y + Math.sin(lead) * fx.radius * squash - 0.3,
+              1,
+              [st.spark, st.core],
+              { speed: 2.6, life: 0.3, size: 0.06, gravity: 3, dir: lead + 0.5, spread: 0.5, shape: 'streak' },
+            );
+          }
           break;
         }
 
@@ -15447,6 +16430,10 @@ export class Renderer {
             fx.spawned = true;
             this.particles.burst(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.3, 8, [st.mid, st.spark], { speed: 2.2, life: 0.35, size: 0.08, gravity: 3, up: true });
             this.queueGlow(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.3, 1.2, st.glow, 0.35);
+            // Departure kick: the ground remembers where you left.
+            this.particles.burst(fx.x, fx.y, 5, ['#4a4252', '#3a3442'], {
+              speed: 0.9, life: 0.8, size: 0.11, gravity: -0.4, drag: 1.8, grow: 0.25, ground: true,
+            });
           }
           const dx = q.x - p.x;
           const dy = q.y - p.y;
@@ -15520,6 +16507,16 @@ export class Renderer {
           const kinkSeed = seed + Math.floor(age / 70) * 13;
           const fade = 1 - t;
           ctx.save();
+          // Ground flash under the strike point — the earth answers.
+          {
+            const q0 = this.camera.worldToScreen(fx.x2 ?? fx.x, fx.y2 ?? fx.y, this.w, this.h);
+            q0.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc;
+            ctx.globalAlpha = fade * 0.3;
+            ctx.fillStyle = st.mid;
+            ctx.beginPath();
+            ctx.ellipse(q0.x, q0.y, sc * 0.45 * (1 - t * 0.4), sc * 0.45 * (1 - t * 0.4) * squash, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
           ctx.lineJoin = 'miter';
           ctx.globalAlpha = 0.65 * fade;
           ctx.strokeStyle = st.mid;
@@ -15568,6 +16565,9 @@ export class Renderer {
             this.queueGlow(fx.x, fx.y - 0.4, 1.0, st.glow, 0.5);
             this.queueGlow((fx.x + (fx.x2 ?? fx.x)) / 2, (fx.y + (fx.y2 ?? fx.y)) / 2 - 0.4, 1.6, st.glow, 0.4);
             this.queueGlow(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.4, 1.3, st.glow, 0.5);
+            // The corridor leaves its mark where it terminated.
+            this.addDecal(fx.x2 ?? fx.x, fx.y2 ?? fx.y, 0.9, st);
+            this.queueBeat(now + 380, fx.x2 ?? fx.x, fx.y2 ?? fx.y, 0.8, 'settle', st);
           }
           const lift = sc * 0.5;
           const grow = Math.min(1, age / 70);
@@ -15630,26 +16630,35 @@ export class Renderer {
         }
 
         case 'nova': {
-          // The ring is a staged event: white flash, jagged main ring,
-          // a chasing echo ring, radial spikes, debris, and the mark.
+          // A staged event: white flash + upward light kick, the main
+          // jagged ring shedding sparks, a chasing echo, then a dust
+          // aftershock and settling motes AFTER the ring dies — the
+          // moment has a beginning, a middle, and an aftermath.
           if (!fx.spawned) {
             fx.spawned = true;
-            this.fxDebris(fx.x, fx.y, st, 12);
+            this.fxDebris(fx.x, fx.y, st, 14);
             this.addDecal(fx.x, fx.y, fx.radius * 0.8, st);
+            this.queueBeat(now + 260, fx.x, fx.y, fx.radius, 'dust', st);
+            this.queueBeat(now + 520, fx.x, fx.y, fx.radius * 0.6, 'settle', st);
           }
           this.queueGlow(fx.x, fx.y, fx.radius * (0.5 + 0.7 * t), st.glow, 0.5 * (1 - t));
           ctx.save();
-          // Flash frame: the first instant is a solid disc of light.
+          // Flash frame: a solid disc of light + a vertical kick — the
+          // energy leaves the ground UP as the ring leaves it OUT.
           if (t < 0.16) {
-            ctx.globalAlpha = (1 - t / 0.16) * 0.5;
+            const ft = 1 - t / 0.16;
+            ctx.globalAlpha = ft * 0.5;
             ctx.fillStyle = st.core;
             ctx.beginPath();
             ctx.ellipse(p.x, p.y, rPx * 0.55, rPx * 0.55 * squash, 0, 0, Math.PI * 2);
             ctx.fill();
+            ctx.globalAlpha = ft * 0.8;
+            const kw = sc * 0.12 * ft;
+            ctx.fillRect(p.x - kw / 2, p.y - rPx * 1.1, kw, rPx * 1.1);
           }
           const rr = rPx * Math.sqrt(t);
           ctx.globalAlpha = (1 - t) * 0.85;
-          this.fxRingLayer(p.x, p.y, rr, st, t, seed);
+          this.fxRingLayer(p.x, p.y, rr, st, t, seed, fx.x, fx.y, fx.radius);
           // The echo ring chases the first.
           if (t > 0.22) {
             const t2 = (t - 0.22) / 0.78;
@@ -15680,27 +16689,45 @@ export class Renderer {
         }
 
         case 'blast': {
-          // Detonation: flash, double burst star, expanding ring,
-          // debris under gravity, smoke, and a lingering mark.
+          // Detonation in four beats: flash + light pillar, the fire
+          // body (double burst star), the racing ground ring, then a
+          // scheduled dust wave + settling embers. The world keeps the
+          // crater mark for seconds.
           if (!fx.spawned) {
             fx.spawned = true;
-            this.fxDebris(fx.x, fx.y, st, 16);
+            this.fxDebris(fx.x, fx.y, st, 18);
             // The smoke column billows and drifts.
-            this.particles.burst(fx.x, fx.y - 0.3, 5, [st.deep, '#3a3442'], { speed: 0.7, life: 0.9, size: 0.16, gravity: -1.2, drag: 1.6, grow: 0.35 });
+            this.particles.burst(fx.x, fx.y - 0.3, 6, [st.deep, '#3a3442'], { speed: 0.7, life: 1.1, size: 0.16, gravity: -1.2, drag: 1.6, grow: 0.35 });
             this.addDecal(fx.x, fx.y, fx.radius * 0.7, st);
             this.addRing(fx.x, fx.y, st.mid, fx.radius);
+            this.queueBeat(now + 300, fx.x, fx.y, fx.radius * 1.1, 'dust', st);
+            this.queueBeat(now + 620, fx.x, fx.y, fx.radius * 0.6, 'settle', st);
           }
           this.queueGlow(fx.x, fx.y, fx.radius * 1.6 * (1 - t), st.glow, 0.55 * (1 - t));
           ctx.save();
           if (t < 0.12) {
-            ctx.globalAlpha = (1 - t / 0.12) * 0.65;
+            // The overpressure instant: solid light + a pillar flash
+            // reaching for the sky — the "something BIG landed" read.
+            const ft = 1 - t / 0.12;
+            ctx.globalAlpha = ft * 0.65;
             ctx.fillStyle = st.core;
             ctx.beginPath();
             ctx.ellipse(p.x, p.y, rPx * 0.8, rPx * 0.8 * squash, 0, 0, Math.PI * 2);
             ctx.fill();
+            ctx.globalAlpha = ft * 0.9;
+            const kw = sc * 0.2 * ft;
+            ctx.fillRect(p.x - kw / 2, p.y - rPx * 1.7, kw, rPx * 1.7);
+            ctx.globalAlpha = ft * 0.5;
+            ctx.fillRect(p.x - kw * 1.6, p.y - rPx * 1.1, kw * 3.2, rPx * 0.16);
           }
-          // The burst star holds while it fades — the explosion's body.
+          // The burst star holds while it fades — the explosion's body
+          // — with a shaded southern half so the fireball has volume.
           const starR = rPx * (0.55 + 0.35 * Math.min(1, t / 0.3));
+          ctx.globalAlpha = (1 - t) * 0.55;
+          ctx.fillStyle = st.deep;
+          ctx.beginPath();
+          burstStarPath(ctx, p.x, p.y - sc * 0.06, starR * 1.04, starR * 0.52, 9, (seed % 6) + 0.15, 0.8);
+          ctx.fill();
           ctx.globalAlpha = (1 - t) * 0.6;
           ctx.fillStyle = st.mid;
           ctx.beginPath();
@@ -15713,7 +16740,7 @@ export class Renderer {
           ctx.fill();
           // The ground ring races out under the fire.
           ctx.globalAlpha = (1 - t) * 0.7;
-          this.fxRingLayer(p.x, p.y, rPx * (0.5 + 0.5 * Math.sqrt(t)), st, t, seed);
+          this.fxRingLayer(p.x, p.y, rPx * (0.5 + 0.5 * Math.sqrt(t)), st, t, seed, fx.x, fx.y, fx.radius);
           ctx.restore();
           break;
         }
@@ -15830,6 +16857,23 @@ export class Renderer {
               this.particles.burst(px2, py2 - 0.15, 1, [st.mid, st.spark], { speed: 0.5, life: 0.5, size: 0.08, gravity: -1.4 });
             }
           }
+          // The rim breathes matter: motes drift off the boundary (or
+          // INTO it for vortex zones) so the edge reads as a living
+          // membrane, not a painted line.
+          if (Math.random() < this.frameDt * 10 * edge) {
+            const a = Math.random() * Math.PI * 2;
+            const inward = st.motif === 'vortex';
+            this.particles.burst(fx.x + Math.cos(a) * fx.radius, fx.y + Math.sin(a) * fx.radius * squash, 1, [st.mid, st.spark], {
+              speed: inward ? 1.5 : 0.4,
+              life: 0.7,
+              size: 0.06,
+              gravity: -0.6,
+              dir: inward ? a + Math.PI : a,
+              spread: 0.4,
+              drag: 1.4,
+              flicker: 0.5,
+            });
+          }
           const pulse = (age % 800) / 800;
           ctx.save();
           ctx.globalAlpha = (1 - pulse) * 0.35 * edge;
@@ -15845,6 +16889,21 @@ export class Renderer {
         default:
           // telegraph lives in the ground pass; vanish is pure particles.
           break;
+      }
+
+      // The signature layer: the ability's bespoke set-piece, anchored
+      // at the far end for traveling shapes (dash arrival, bolt/beam
+      // impact) and at the heart for everything else.
+      if (st.motif && fx.kind !== 'telegraph') {
+        let ax = fx.x;
+        let ay = fx.y;
+        if ((fx.kind === 'dash' || fx.kind === 'bolt' || fx.kind === 'beam') && fx.x2 !== undefined) {
+          ax = fx.x2;
+          ay = fx.y2 ?? fx.y;
+        }
+        const ap = this.camera.worldToScreen(ax, ay, this.w, this.h);
+        ap.y -= this.renderLift(ax, ay) * sc;
+        this.fxMotif(ax, ay, ap.x, ap.y, Math.max(rPx, sc * 0.9), st, t, seed, now);
       }
     }
   }

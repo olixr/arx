@@ -1,4 +1,19 @@
-/** Tiny pooled particle system — squares only, hard edges, no blur. */
+/**
+ * Pooled particle engine — the combat-FX workhorse.
+ *
+ * Everything stays on brand: hard-edged quads, no blur, no gradients.
+ * Three silhouettes cover the whole vocabulary:
+ *  - square: the classic chunk (debris, dust, coals)
+ *  - streak: a velocity-stretched sliver (sparks, rain, speed lines)
+ *  - shard:  a spinning slab (ice, bone, leaves — tumbling matter)
+ *
+ * Perf discipline: live particles are swap-removed and dead objects
+ * recycled through a free list — zero allocation once the pool warms.
+ * At the cap, new spawns overwrite a rotating slot instead of pushing;
+ * a detonation storm can never grow the heap or the draw bill.
+ */
+
+export const PARTICLE_CAP = 1400;
 
 export interface Particle {
   x: number; // world coords
@@ -14,6 +29,16 @@ export interface Particle {
   drag: number;
   /** 0 = shrink over life (default); >0 = grow by this many tiles/sec. */
   grow: number;
+  /** 0 square, 1 streak (velocity-stretched), 2 shard (spinning slab). */
+  shape: number;
+  /** Shard spin rate, rad/s (shards only). */
+  spin: number;
+  /** Shard orientation, advanced by spin. */
+  rot: number;
+  /** Strobe weight 0..1 — embers and arcs shimmer, dust doesn't. */
+  flicker: number;
+  /** Deterministic phase so flicker never syncs across a burst. */
+  phase: number;
   /**
    * Ground-hugging particles (footfall dust) join the renderer's
    * y-sort as world items instead of the overlay pass — a trail left
@@ -22,32 +47,60 @@ export interface Particle {
   ground: boolean;
 }
 
+export interface BurstOpts {
+  speed?: number;
+  life?: number;
+  size?: number;
+  gravity?: number;
+  up?: boolean;
+  /** Emit in a cone around this angle (radians) instead of a circle. */
+  dir?: number;
+  spread?: number;
+  /** Per-second velocity damping (dust rolls out and stops). */
+  drag?: number;
+  /** Tiles/sec the block grows instead of shrinking (billowing dust). */
+  grow?: number;
+  /** Y-sort with the world (ground dust) instead of drawing on top. */
+  ground?: boolean;
+  /** Silhouette: 'square' (default) | 'streak' | 'shard'. */
+  shape?: 'square' | 'streak' | 'shard';
+  /** Shard tumble rate, rad/s. */
+  spin?: number;
+  /** Strobe weight 0..1 — embers/arcs shimmer as they live. */
+  flicker?: number;
+}
+
+const SHAPE_ID = { square: 0, streak: 1, shard: 2 } as const;
+
 export class Particles {
   private readonly pool: Particle[] = [];
+  private readonly free: Particle[] = [];
+  private capCursor = 0;
 
-  burst(
-    x: number,
-    y: number,
-    count: number,
-    colors: string[],
-    opts: {
-      speed?: number;
-      life?: number;
-      size?: number;
-      gravity?: number;
-      up?: boolean;
-      /** Emit in a cone around this angle (radians) instead of a circle. */
-      dir?: number;
-      spread?: number;
-      /** Per-second velocity damping (dust rolls out and stops). */
-      drag?: number;
-      /** Tiles/sec the block grows instead of shrinking (billowing dust). */
-      grow?: number;
-      /** Y-sort with the world (ground dust) instead of drawing on top. */
-      ground?: boolean;
-    } = {},
-  ): void {
+  private take(): Particle {
+    if (this.pool.length >= PARTICLE_CAP) {
+      // At the cap: recycle a rotating live slot — a storm stays a
+      // storm, it just churns its oldest members.
+      this.capCursor = (this.capCursor + 1) % this.pool.length;
+      return this.pool[this.capCursor]!;
+    }
+    const p = this.free.pop();
+    if (p) {
+      this.pool.push(p);
+      return p;
+    }
+    const fresh: Particle = {
+      x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 1, size: 0.08,
+      color: '#fff', gravity: 6, drag: 0, grow: 0, shape: 0,
+      spin: 0, rot: 0, flicker: 0, phase: 0, ground: false,
+    };
+    this.pool.push(fresh);
+    return fresh;
+  }
+
+  burst(x: number, y: number, count: number, colors: string[], opts: BurstOpts = {}): void {
     const speed = opts.speed ?? 2.5;
+    const shape = SHAPE_ID[opts.shape ?? 'square'];
     for (let i = 0; i < count; i++) {
       const angle =
         opts.dir !== undefined
@@ -56,31 +109,37 @@ export class Particles {
             ? -Math.PI / 2 + (Math.random() - 0.5) * 1.2
             : Math.random() * Math.PI * 2;
       const v = speed * (0.4 + Math.random() * 0.6);
-      this.pool.push({
-        x,
-        y,
-        vx: Math.cos(angle) * v,
-        vy: Math.sin(angle) * v,
-        life: 0,
-        maxLife: (opts.life ?? 0.5) * (0.7 + Math.random() * 0.6),
-        size: (opts.size ?? 0.08) * (0.7 + Math.random() * 0.6),
-        color: colors[Math.floor(Math.random() * colors.length)]!,
-        gravity: opts.gravity ?? 6,
-        drag: opts.drag ?? 0,
-        grow: opts.grow ?? 0,
-        ground: opts.ground ?? false,
-      });
+      const p = this.take();
+      p.x = x;
+      p.y = y;
+      p.vx = Math.cos(angle) * v;
+      p.vy = Math.sin(angle) * v;
+      p.life = 0;
+      p.maxLife = (opts.life ?? 0.5) * (0.7 + Math.random() * 0.6);
+      p.size = (opts.size ?? 0.08) * (0.7 + Math.random() * 0.6);
+      p.color = colors[Math.floor(Math.random() * colors.length)]!;
+      p.gravity = opts.gravity ?? 6;
+      p.drag = opts.drag ?? 0;
+      p.grow = opts.grow ?? 0;
+      p.shape = shape;
+      p.spin = (opts.spin ?? 0) * (Math.random() < 0.5 ? -1 : 1) * (0.6 + Math.random() * 0.8);
+      p.rot = Math.random() * Math.PI * 2;
+      p.flicker = opts.flicker ?? 0;
+      p.phase = Math.random() * Math.PI * 2;
+      p.ground = opts.ground ?? false;
     }
-    // Hard cap so bursts can never run away.
-    if (this.pool.length > 500) this.pool.splice(0, this.pool.length - 500);
   }
 
   update(dt: number): void {
-    for (let i = this.pool.length - 1; i >= 0; i--) {
-      const p = this.pool[i]!;
+    const pool = this.pool;
+    for (let i = pool.length - 1; i >= 0; i--) {
+      const p = pool[i]!;
       p.life += dt;
       if (p.life >= p.maxLife) {
-        this.pool.splice(i, 1);
+        // Swap-remove: order is irrelevant, allocation is forbidden.
+        const last = pool.pop()!;
+        if (p !== last) pool[i] = last;
+        this.free.push(p);
         continue;
       }
       p.vy += p.gravity * dt;
@@ -92,6 +151,7 @@ export class Particles {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       if (p.grow > 0) p.size += p.grow * dt;
+      if (p.spin !== 0) p.rot += p.spin * dt;
     }
   }
 
@@ -114,21 +174,47 @@ export class Particles {
     scale: number,
   ): void {
     const t = p.life / p.maxLife;
-    // Growing blocks (dust) hold size and fade via alpha; shrinking
-    // blocks (default) taper to nothing. Both keep hard edges.
     const s = worldToScreen(p.x, p.y);
     let size: number;
     let alpha = 1;
     if (p.grow > 0) {
+      // Growing blocks (dust) hold size and fade via alpha; shrinking
+      // blocks (default) taper to nothing. Both keep hard edges.
       size = Math.max(2, p.size * scale);
       alpha = t < 0.25 ? t / 0.25 : 1 - (t - 0.25) / 0.75;
     } else {
       size = Math.max(2, p.size * scale * (1 - t));
     }
+    if (p.flicker > 0) {
+      // Embers strobe on their own clock — never in sync with siblings.
+      alpha *= 1 - p.flicker * (0.5 + 0.5 * Math.sin(p.life * 26 + p.phase)) * 0.6;
+    }
     if (alpha < 1) ctx.globalAlpha = Math.max(0, alpha);
     ctx.fillStyle = p.color;
-    ctx.fillRect(s.x - size / 2, s.y - size / 2, size, size);
-    if (alpha < 1) ctx.globalAlpha = 1;
+    if (p.shape === 1) {
+      // Streak: a sliver stretched along the flight line — projected
+      // through the camera so diagonals lie on the true screen path.
+      const tail = worldToScreen(p.x - p.vx * 0.045, p.y - p.vy * 0.045);
+      const dx = s.x - tail.x;
+      const dy = s.y - tail.y;
+      const len = Math.max(size * 1.6, Math.hypot(dx, dy));
+      const ang = Math.atan2(dy, dx);
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(ang);
+      ctx.fillRect(-len, -size * 0.28, len, size * 0.56);
+      ctx.restore();
+    } else if (p.shape === 2) {
+      // Shard: a tumbling slab.
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(p.rot);
+      ctx.fillRect(-size * 0.7, -size * 0.4, size * 1.4, size * 0.8);
+      ctx.restore();
+    } else {
+      ctx.fillRect(s.x - size / 2, s.y - size / 2, size, size);
+    }
+    if (ctx.globalAlpha !== 1) ctx.globalAlpha = 1;
   }
 
   /** Live particles flagged for the world y-sort. */
