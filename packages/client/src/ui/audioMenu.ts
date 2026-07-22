@@ -62,6 +62,10 @@ export class AudioMenu {
       slider.max = '100';
       slider.step = '1';
       slider.value = String(Math.round(this.engine.getUserVolume(kind) * 100));
+      // The pad walks the sliders too: focus + Ⓐ nudges right, wrap to 0.
+      slider.dataset.nav = '';
+      slider.dataset.navkey = `audio:${kind}`;
+      slider.dataset.acta = 'Adjust';
       const pct = document.createElement('span');
       pct.className = 'audio-pct';
       pct.textContent = `${slider.value}%`;

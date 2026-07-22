@@ -85,20 +85,20 @@ export class LootPanel {
     this.list.innerHTML = '';
     if (loot.length > 1) {
       const all = document.createElement('div');
-      all.className = 'make-card';
+      all.className = 'loot-row loot-all';
       const mid = document.createElement('div');
-      mid.className = 'make-mid';
+      mid.className = 'loot-mid';
       const total = loot.reduce((n, l) => n + l.qty, 0);
       const name = document.createElement('div');
-      name.className = 'make-name';
+      name.className = 'loot-name';
       name.textContent = 'Everything here';
       const sub = document.createElement('span');
-      sub.className = 'make-sub';
+      sub.className = 'loot-sub';
       sub.textContent = `${loot.length} piles · ${total.toLocaleString()} items`;
       mid.append(name, sub);
       all.appendChild(mid);
       const actions = document.createElement('div');
-      actions.className = 'make-actions';
+      actions.className = 'loot-actions';
       actions.appendChild(
         bigButton('Take all', 'loot:all', () => {
           for (const l of this.game.nearbyLoot(REACH)) this.game.pickup(l.eid);
@@ -109,26 +109,28 @@ export class LootPanel {
     }
     for (const l of loot) {
       const row = document.createElement('div');
-      row.className = 'make-card';
+      row.className = 'loot-row';
+      // The pile's rarity paints the row's leading edge.
+      const tint = (l.roll ? RARITY_COLORS[l.roll.rar] : rarityColor(l.itemId)) ?? '';
+      if (tint) row.style.setProperty('--loot-tint', tint);
       // The inspect dataset: hover and pad focus raise the item card.
       row.dataset.lootitem = l.itemId;
       row.dataset.lootqty = String(l.qty);
       if (l.roll) row.dataset.lootroll = JSON.stringify(l.roll);
       row.appendChild(iconTile(itemIconUrl(l.itemId, 40), 'sm'));
       const mid = document.createElement('div');
-      mid.className = 'make-mid';
+      mid.className = 'loot-mid';
       const name = document.createElement('div');
-      name.className = 'make-name';
+      name.className = 'loot-name';
       name.textContent = instanceName(l.itemId, l.roll);
-      const tint = (l.roll ? RARITY_COLORS[l.roll.rar] : rarityColor(l.itemId)) ?? '';
       if (tint) name.style.color = tint;
       const sub = document.createElement('span');
-      sub.className = 'make-sub';
+      sub.className = 'loot-sub';
       sub.textContent = l.qty > 1 ? `× ${l.qty.toLocaleString()}` : (l.roll?.rar ?? '');
       mid.append(name, sub);
       row.appendChild(mid);
       const actions = document.createElement('div');
-      actions.className = 'make-actions';
+      actions.className = 'loot-actions';
       actions.appendChild(
         bigButton('Take', `loot:${l.eid}`, () => this.game.pickup(l.eid)),
       );

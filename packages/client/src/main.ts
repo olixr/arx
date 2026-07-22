@@ -284,7 +284,7 @@ const panels = new Panels(
   (): 'kb' | 'pad' => nav.mode,
   (hand) => (hand === 'off' ? game.carryOff : game.carryStyle),
   (style, hand) => game.setCarryStyle(style, hand),
-  () => ({ look: game.ownLook }),
+  () => ({ look: game.ownLook, name: game.ownName }),
 );
 
 /** Drop a whole pack slot onto the ground (drag-out / pad Ⓨ). */
@@ -502,7 +502,7 @@ const lootPanel = new LootPanel(game);
 const el = (id: string): HTMLElement => document.getElementById(id)!;
 dressPanel(el('inventory-panel'), {
   icon: uiIconUrl('backpack', 34),
-  hint: 'Worn gear above, pack below — inspect anything for its full story.',
+  hint: 'Your figure wears what you equip — inspect anything for its full story.',
   onClose: () => panels.closeAll(),
 });
 dressPanel(el('skills-panel'), {
@@ -510,11 +510,13 @@ dressPanel(el('skills-panel'), {
   hint: 'Deeds raise levels. Combat skills offer a Technique — pick yours.',
   onClose: () => panels.closeAll(),
 });
-dressPanel(el('craft-panel'), {
-  icon: uiIconUrl('hammer', 34),
-  hint: 'Stand at a station for its recipes — Handiwork needs only your hands.',
-  onClose: () => stationPanels.closeAll(),
-});
+stationPanels.setCraftDress(
+  dressPanel(el('craft-panel'), {
+    icon: uiIconUrl('hammer', 34),
+    hint: 'Stand at a station for its recipes — Handiwork needs only your hands.',
+    onClose: () => stationPanels.closeAll(),
+  }),
+);
 dressPanel(el('build-panel'), {
   icon: uiIconUrl('house', 34),
   hint: 'Pick a blueprint, then choose open ground to raise it.',
@@ -522,12 +524,12 @@ dressPanel(el('build-panel'), {
 });
 dressPanel(el('bank-panel'), {
   icon: itemIconUrl('coins', 34),
-  hint: 'Pack items deposit with a tap — the vault keeps it all safe.',
+  hint: 'Tap pack items to deposit — choose a socket here to take back.',
   onClose: () => stationPanels.closeAll(),
 });
 dressPanel(el('shop-panel'), {
   icon: itemIconUrl('flour', 34),
-  hint: 'Buy from the counter — tap pack items to sell them.',
+  hint: 'Buy from the shelves — tap your pack items to sell them.',
   onClose: () => stationPanels.closeAll(),
 });
 dressPanel(el('loot-panel'), {
@@ -537,7 +539,7 @@ dressPanel(el('loot-panel'), {
 });
 dressPanel(el('audio-panel'), {
   icon: uiIconUrl('bell', 34),
-  hint: '100% is the shipped mix — trim each voice to taste.',
+  hint: 'Sound and picture, dialed to taste — changes stick.',
   onClose: () => audioMenu.toggle(),
 });
 
@@ -901,8 +903,9 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       game.interact(target.tx, target.ty);
       break;
     case 'station':
+      // The Workshop tells the whole material story itself — the pack
+      // stays closed so the bench gets the room.
       stationPanels.openCraft(target.station, game.skills, target);
-      panels.showInventory();
       break;
     case 'bank':
       lastBankAnchor = { tx: target.tx, ty: target.ty };
@@ -1188,7 +1191,8 @@ function frame(now: number): void {
   input.buildCapture = buildMode !== null;
   input.pollGamepad();
   const uiOpen =
-    document.querySelector('.side-panel:not(.hidden)') !== null || looks.open;
+    document.querySelector('.ui-screen:not(.hidden), .ui-tray:not(.hidden)') !== null ||
+    looks.open;
   // Build mode pins the action strip with its verbs — on both devices.
   if (buildMode) {
     if (nav.mode === 'pad') {

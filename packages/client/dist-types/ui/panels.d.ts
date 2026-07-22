@@ -2,11 +2,11 @@ import { type EquipSlot, type EquippedItem, type InvSlot, type Look, type SkillX
 /** Explicit verbs the item context menu can dispatch. */
 export type SlotAction = 'use' | 'deposit' | 'sell' | 'drop';
 /**
- * Inventory + skills side panels (DOM overlay UI), plus the two pieces
- * of the item-inspection layer that ride with them:
- * - the INSPECT CARD: a detail pane pinned beside the pack that names
- *   whatever item the mouse hovers or the pad focuses — stats, granted
- *   abilities, passives, flavor, value;
+ * The character screen + skills hall (DOM overlay UI), plus the two
+ * pieces of the item-inspection layer that ride with them:
+ * - the INSPECT CARD: a detail card raised beside whatever item cell
+ *   the mouse hovers or the pad focuses — stats, granted abilities,
+ *   passives, flavor, value;
  * - the CONTEXT MENU: right-click (or Ⓨ on pad) opens the item's verb
  *   list — Equip/Eat, Deposit/Sell in a station, Drop.
  */
@@ -24,18 +24,22 @@ export declare class Panels {
     /** Cosmetic per-hand grip preference: read current + set. */
     private readonly carryStyle;
     private readonly onCarryStyle;
-    /** The mirror's model: the player's chosen look + grip prefs. */
+    /** The mirror's model: the player's chosen look + adventurer name. */
     private readonly portraitInfo;
     private readonly invPanel;
     private readonly invGrid;
-    private readonly equipDoll;
+    private readonly equipLeft;
+    private readonly equipRight;
     private readonly coinReadout;
+    private readonly packFill;
+    private readonly namePlate;
     private readonly skillsPanel;
     private readonly skillsList;
-    /** The mirror: your actual rig wearing your actual gear, turning. */
+    /** The mirror: your actual rig wearing your actual gear, on a stage. */
     private readonly figWell;
     private readonly figCanvas;
     private readonly gearStrip;
+    /** Which way the figure faces — the player turns it by hand. */
     private figDir;
     private static readonly FIG_DIRS;
     private readonly card;
@@ -47,6 +51,8 @@ export declare class Panels {
     private lastEquipment;
     /** What the inspect card currently shows (to refresh on re-render). */
     private cardSource;
+    /** The cell the card is pinned beside (repositions on refresh). */
+    private cardAnchor;
     private drag;
     constructor(onUseSlot: (slot: number) => void, onUnequip: (slot: EquipSlot) => void, onTechnique?: (style: string, ability: string) => void, onInvMove?: (from: number, to: number) => void, onDropToWorld?: (slot: number) => void, onSlotAction?: (slot: number, action: SlotAction) => void, 
     /** Which station conversation is open — labels the menu verbs. */
@@ -55,9 +61,10 @@ export declare class Panels {
     deviceMode?: () => 'kb' | 'pad', 
     /** Cosmetic per-hand grip preference: read current + set. */
     carryStyle?: (hand: 'main' | 'off') => 'normal' | 'rogue', onCarryStyle?: (style: 'normal' | 'rogue', hand: 'main' | 'off') => void, 
-    /** The mirror's model: the player's chosen look + grip prefs. */
+    /** The mirror's model: the player's chosen look + adventurer name. */
     portraitInfo?: () => {
         look: Look | null;
+        name?: string;
     });
     toggleInventory(): void;
     showInventory(): void;
@@ -91,28 +98,30 @@ export declare class Panels {
     closeMenu(): boolean;
     get menuOpen(): boolean;
     renderInventory(slots: InvSlot[]): void;
+    /** Build one equipment socket (either flank of the stage). */
+    private equipCell;
     renderEquipment(equipment: Partial<Record<string, EquippedItem>>): void;
     /**
-     * The gear ledger: everything your worn kit adds up to, as flat
-     * chips under the doll — total armor, rolled skill bonuses, HP and
-     * regen, style damage. Money and stats, always clearly labeled.
+     * The gear ledger: everything the worn kit adds up to, told as stat
+     * plaques under the stage — a big honest number over a plain label.
      */
     private renderGearStrip;
     /**
      * The mirror: the player's ACTUAL rig — same drawHumanoid as the
-     * world, wearing the equipment record live — turning through its
-     * four facings on the constructor's beat. (The cape rides the world
-     * cloth sim, so the mirror shows the kit beneath it.)
+     * world, wearing the equipment record live — facing the glass until
+     * the player turns it by hand. (The cape rides the world cloth sim,
+     * so the mirror shows the kit beneath it.)
      */
     private drawPortrait;
     /** Server-confirmed technique choices; re-renders the picker. */
     setTechniques(chosen: Record<string, string>): void;
+    /** Build one skill card for the hall. */
+    private skillCard;
     /**
-     * The hall of deeds: every skill is a CARD — icon plaque in its own
-     * accent, the level as the headline numeral, a thick meter with the
-     * exact xp story under it. Combat skills are wide hero cards whose
-     * Technique ladder lives inside them; trades sit two abreast. A
-     * total-level plaque crowns the hall.
+     * The hall of deeds: disciplines grouped into named wings — Combat
+     * Arts as wide hero cards with their technique ladders, Fieldcraft
+     * and Maker's Arts as galleries, Secret Arts appearing only once
+     * discovered. A total-level crown plaque presides over the hall.
      */
     renderSkills(xp: SkillXp): void;
 }

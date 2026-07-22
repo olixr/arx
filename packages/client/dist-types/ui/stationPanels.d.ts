@@ -1,48 +1,42 @@
 import { type InvSlot, type ItemRoll, type SkillXp, type StationType } from '@devcraft/shared';
-/**
- * Craft / bank / shop / build panels. Opened by interacting with the
- * matching world tile; every action is validated server-side — these
- * are views.
- *
- * Design laws:
- * - EVERY RECIPE IS A CARD. Output portrait, name, level badge, then
- *   the material story as have/need chips — green when your pack
- *   covers it, ember when short. No more mystery ingredient prose.
- * - COUNTS ARE LIVE. The pack feeds the chips through `getInventory`;
- *   `refreshOpen` re-renders the open maker panel whenever the pack
- *   changes, so crafting five arrows watches the feather chip fall.
- *   Focus survives the re-render by nav key (the pad law).
- * - A world-anchored panel (bank chest, station, shop counter) belongs
- *   to its tile: walk out of reach and it closes itself, exactly when
- *   the server would start refusing its actions. Every panel also
- *   closes from its ✕ chip and from clicking the world.
- */
 export declare class StationPanels {
     private readonly onCraft;
     private readonly onBank;
     private readonly onShop;
     private readonly onPickBuildable;
-    /** The live pack — feeds every have/need chip. */
+    /** The live pack — feeds every have/need figure. */
     private readonly getInventory;
     private readonly craftPanel;
     private readonly craftTitle;
     private readonly craftList;
+    private readonly craftDetail;
     private readonly bankPanel;
     private readonly bankList;
+    private readonly bankArmory;
+    private readonly bankDetail;
     private readonly shopPanel;
     private readonly shopList;
     private readonly buildPanel;
     private readonly buildList;
+    /** dressPanel handles for the Workshop head — set from main. */
+    private craftDressHandles;
     private lastBank;
     /** Rolled gear instances stored in the vault (withdraw by row id). */
     private lastBankGear;
+    /** The vault's selected pile — the detail strip's subject. */
+    private bankSel;
     /** World tile center the open panel is bound to (null = untethered). */
     private anchor;
-    /** What the open maker panel is showing — refreshOpen re-renders it. */
+    /** What the open maker screen is showing — refreshOpen re-renders it. */
     private showing;
     constructor(onCraft: (recipe: string, qty: number) => void, onBank: (op: 'deposit' | 'withdraw', item: string, qty: number, gearId?: number) => void, onShop: (op: 'buy' | 'sell', item: string, qty: number) => void, onPickBuildable: (id: string) => void, 
-    /** The live pack — feeds every have/need chip. */
+    /** The live pack — feeds every have/need figure. */
     getInventory?: () => InvSlot[]);
+    /** Main hands over the Workshop head's dress handles once, at boot. */
+    setCraftDress(handles: {
+        setHint: (t: string) => void;
+        setIcon: (u: string) => void;
+    }): void;
     get bankOpen(): boolean;
     get shopOpen(): boolean;
     get anyOpen(): boolean;
@@ -63,14 +57,16 @@ export declare class StationPanels {
      * interaction radius, so standing at the edge doesn't flicker it).
      */
     enforceAnchor(px: number, py: number): void;
-    /** The pack changed — keep the open maker panel's chips honest. */
+    /** The pack changed — keep the open maker screen's figures honest. */
     refreshOpen(): void;
     /** Total of an item across the pack — the "have" in have/need. */
     private countOf;
-    /** The card every maker row shares: portrait · name+badge · chips. */
-    private makeCard;
-    private static actionsOf;
     openBuild(skills: SkillXp): void;
+    /**
+     * The Builder's Table: every blueprint is a CARD laid on the table —
+     * portrait, name, the level it asks, the material story, and one
+     * Place button. Locked plans stay visible; ambition needs a map.
+     */
     private renderBuild;
     /** Set by main: sends the plant intent for a chosen seed. */
     onPlant: ((tx: number, ty: number, seed: string) => void) | null;
@@ -79,11 +75,24 @@ export declare class StationPanels {
         tx: number;
         ty: number;
     }): void;
+    /** Dress the Workshop head for whoever owns it right now. */
+    private dressCraft;
+    /** One ledger row (Workshop master list). */
+    private ledgerRow;
+    /** One material row in the Workshop detail: the full story of a need. */
+    private materialRow;
     private renderPlant;
     openCraft(station: StationType | null, skills: SkillXp, at?: {
         tx: number;
         ty: number;
     }): void;
+    /** How many of a recipe the pack can cover right now. */
+    private makeable;
+    /**
+     * The Workshop: recipe ledger on the left — each row telling you at
+     * a glance whether it's within reach — and the chosen work laid out
+     * large on the right with the full material story and make buttons.
+     */
     private renderCraft;
     openBank(items: Record<string, number>, at?: {
         tx: number;
@@ -98,7 +107,19 @@ export declare class StationPanels {
         item: string;
         roll: ItemRoll;
     }>): void;
+    /**
+     * The Vault: stored goods as a WALL OF SOCKETS you read like your
+     * own pack — pick a pile and the counter beneath offers Take 1/5/
+     * All. Rolled gear hangs apart on the armory rack, tinted by tier,
+     * each piece taken back with one press. Hover or focus any socket
+     * for the full item card, exactly like the pack.
+     */
     private renderBank;
+    /**
+     * The Store: goods SHELVED in a grid — big portrait, name, an honest
+     * coin price tag, and the buy buttons right on the shelf. Your pack
+     * stands beside the counter; tap items there to sell them.
+     */
     openShop(at?: {
         tx: number;
         ty: number;

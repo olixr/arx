@@ -49,4 +49,14 @@ export declare function meter(frac: number, cls?: string): {
 };
 /** A small flat level-requirement badge ("lvl 30 smithing"). */
 export declare function levelBadge(level: number, skill: string, met: boolean): HTMLElement;
+/**
+ * A section headline inside a screen body: small serif capitals riding
+ * a ruled line — the way the hall names its wings.
+ */
+export declare function sectionHead(label: string): HTMLElement;
+/**
+ * A stat plaque: one number told big, its meaning under it — the
+ * ledger language of the character screen. `tone` tints the value.
+ */
+export declare function statPlaque(value: string, label: string, tone?: string): HTMLElement;
 //# sourceMappingURL=panel.d.ts.map

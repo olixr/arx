@@ -303,13 +303,13 @@ export class UiNav {
     // A freshly opened panel owns the cursor: whenever the set of open
     // panels changes (or nothing is focused), land on the new panel's
     // first ROW — never the dock, never the ✕ chip.
-    const sig = Array.from(document.querySelectorAll('.side-panel:not(.hidden)'))
+    const sig = Array.from(document.querySelectorAll('.ui-screen:not(.hidden), .ui-tray:not(.hidden)'))
       .map((p) => p.id)
       .join('|');
     if (sig !== this.panelSig || !this.focused()) {
       this.panelSig = sig;
       const items = this.navigables();
-      const inPanel = items.filter((el) => el.closest('.side-panel'));
+      const inPanel = items.filter((el) => el.closest('.ui-screen, .ui-tray'));
       const first = inPanel.find((el) => !el.classList.contains('panel-close')) ?? inPanel[0] ?? items[0];
       if (first) this.setFocus(first);
     }

@@ -136,3 +136,34 @@ export function levelBadge(level: number, skill: string, met: boolean): HTMLElem
   b.textContent = `lvl ${level} ${skill}`;
   return b;
 }
+
+/**
+ * A section headline inside a screen body: small serif capitals riding
+ * a ruled line — the way the hall names its wings.
+ */
+export function sectionHead(label: string): HTMLElement {
+  const head = document.createElement('div');
+  head.className = 'screen-section';
+  const text = document.createElement('span');
+  text.textContent = label;
+  head.appendChild(text);
+  return head;
+}
+
+/**
+ * A stat plaque: one number told big, its meaning under it — the
+ * ledger language of the character screen. `tone` tints the value.
+ */
+export function statPlaque(value: string, label: string, tone?: string): HTMLElement {
+  const p = document.createElement('div');
+  p.className = 'stat-plaque';
+  const v = document.createElement('div');
+  v.className = 'stat-plaque-value';
+  v.textContent = value;
+  if (tone) v.style.color = tone;
+  const l = document.createElement('div');
+  l.className = 'stat-plaque-label';
+  l.textContent = label;
+  p.append(v, l);
+  return p;
+}

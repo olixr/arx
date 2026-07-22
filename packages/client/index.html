@@ -67,61 +67,102 @@
       </div>
 
       <div id="panel-buttons">
-        <button id="btn-inventory" title="Pack (I)"></button>
+        <button id="btn-inventory" title="Character (I)"></button>
         <button id="btn-skills" title="Skills (K)"></button>
         <button id="btn-craft" title="Handiwork (C)"></button>
         <button id="btn-build" title="Build (B)"></button>
-        <button id="btn-audio" title="Sound (O)"></button>
+        <button id="btn-audio" title="Settings (O)"></button>
       </div>
 
-      <div id="inventory-panel" class="side-panel inv-panel hidden">
-        <h3>Pack</h3>
-        <div class="doll-row">
-          <div id="equip-doll"></div>
-          <div id="equip-fig"></div>
+      <!-- CHARACTER — the hero screen: your figure on a stage, worn gear
+           flanking the body it hangs on, the kit's sum told as a stat
+           ledger, and the backpack as one full spread of sockets. -->
+      <div id="inventory-panel" class="ui-screen screen-character hidden">
+        <h3>Character</h3>
+        <div class="char-body">
+          <section class="char-stage-col">
+            <div id="char-stage">
+              <div id="equip-left" class="equip-col"></div>
+              <div id="equip-fig">
+                <div id="char-nameplate"></div>
+                <div class="stage-turn">
+                  <button id="fig-turn-l" class="turn-btn" title="Turn left">◀</button>
+                  <button id="fig-turn-r" class="turn-btn" title="Turn right">▶</button>
+                </div>
+              </div>
+              <div id="equip-right" class="equip-col"></div>
+            </div>
+            <div id="gear-strip" class="hidden"></div>
+          </section>
+          <section class="char-pack-col">
+            <div class="pack-header">
+              <div class="section-title">Backpack</div>
+              <span id="pack-fill" class="pack-fill"></span>
+            </div>
+            <div id="inventory-grid"></div>
+            <div class="pack-foot">
+              <span class="pack-hint hint-inline"
+                >Drag an item onto the world to drop it</span
+              >
+              <span id="coin-readout" data-tipname="Coins" title="Coins"></span>
+            </div>
+          </section>
         </div>
-        <div id="gear-strip" class="hidden"></div>
-        <div class="pack-header">
-          <div class="section-title">Backpack</div>
-          <span id="coin-readout" data-tipname="Coins" title="Coins"></span>
-        </div>
-        <div id="inventory-grid"></div>
       </div>
 
-      <div id="audio-panel" class="side-panel hidden">
-        <h3>Sound</h3>
+      <!-- SETTINGS — sound and display, dialed from the couch. -->
+      <div id="audio-panel" class="ui-screen screen-settings hidden">
+        <h3>Settings</h3>
+        <h4 class="menu-section">Sound</h4>
         <div id="audio-rows"></div>
         <h4 class="menu-section">Display</h4>
         <div id="display-rows"></div>
         <p id="audio-nowplaying" class="audio-now"></p>
       </div>
 
-      <div id="skills-panel" class="side-panel hidden">
+      <!-- SKILLS — the hall of deeds: disciplines grouped into wings,
+           combat arts carrying their technique ladders. -->
+      <div id="skills-panel" class="ui-screen screen-skills hidden">
         <h3>Skills</h3>
         <div id="skills-list"></div>
       </div>
 
-      <div id="craft-panel" class="side-panel wide hidden">
+      <!-- WORKSHOP — every station's recipes as a ledger on the left,
+           the chosen work laid out large on the right. -->
+      <div id="craft-panel" class="ui-screen screen-craft hidden">
         <h3 id="craft-title">Crafting</h3>
-        <div id="craft-list" class="row-list"></div>
+        <div class="craft-body">
+          <div id="craft-list" class="craft-ledger"></div>
+          <div id="craft-detail"></div>
+        </div>
       </div>
 
-      <div id="bank-panel" class="side-panel wide hidden">
-        <h3>Bank</h3>
-        <div id="bank-list" class="row-list"></div>
+      <!-- VAULT — stored goods as a wall of sockets; rolled gear kept
+           apart in the armory rack. -->
+      <div id="bank-panel" class="ui-screen screen-bank hidden">
+        <h3>Vault</h3>
+        <div class="bank-body">
+          <div id="bank-armory" class="hidden"></div>
+          <div id="bank-list"></div>
+          <div id="bank-detail" class="hidden"></div>
+        </div>
       </div>
 
-      <div id="shop-panel" class="side-panel wide hidden">
+      <!-- STORE — the counter: goods shelved with honest price tags. -->
+      <div id="shop-panel" class="ui-screen screen-shop hidden">
         <h3>General Store</h3>
-        <div id="shop-list" class="row-list"></div>
+        <div id="shop-list"></div>
       </div>
 
-      <div id="build-panel" class="side-panel wide hidden">
+      <!-- BUILDER'S TABLE — blueprints spread out to choose from. -->
+      <div id="build-panel" class="ui-screen screen-build hidden">
         <h3>Build</h3>
-        <div id="build-list" class="row-list"></div>
+        <div id="build-list"></div>
       </div>
 
-      <div id="loot-panel" class="side-panel wide hidden">
+      <!-- ON THE GROUND — a quick tray beside the action, never a
+           screen: grab and get back to the fight. -->
+      <div id="loot-panel" class="ui-tray hidden">
         <h3>On the Ground</h3>
         <div id="loot-list" class="row-list"></div>
       </div>

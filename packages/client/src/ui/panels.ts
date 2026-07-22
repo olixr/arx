@@ -1,6 +1,5 @@
 import {
   CLOTH_COLORS,
-  EQUIP_SLOTS,
   PASSIVES,
   HIDDEN_SKILLS,
   PoseState,
@@ -12,6 +11,7 @@ import {
   type InvSlot,
   type ItemRoll,
   type Look,
+  type SkillId,
   type SkillXp,
 } from '@devcraft/shared';
 import {
@@ -32,6 +32,7 @@ import {
 } from '@devcraft/content';
 import { itemIconUrl, slotGlyphUrl } from '../render/icons.js';
 import { drawHumanoid } from '../render/rig.js';
+import { sectionHead, statPlaque } from './panel.js';
 import { RARITY_COLORS, rarityOfInstance } from './rarity.js';
 
 /** Card display colors for the three armor weight classes. */
@@ -89,29 +90,88 @@ const SKILL_FACE: Record<string, { icon: string; color: string }> = {
   dualwield: { icon: 'bronze_dagger', color: '#d9a441' },
 };
 
+/** One quiet line under each skill's name — what the craft IS. */
+const SKILL_STORY: Record<string, string> = {
+  vitality: 'Health and the will to keep it',
+  melee: 'Blades, bludgeons and closed distance',
+  defence: 'Standing where the blow lands',
+  archery: 'The long shot and the quick draw',
+  magic: 'Eight schools, one focused mind',
+  mining: 'Ore called out of the rock',
+  woodcutting: 'Timber felled clean',
+  fishing: 'Patience at the water',
+  smithing: 'Metal made useful',
+  woodworking: 'Lumber shaped to purpose',
+  leatherworking: 'Hide cured into armor',
+  tailoring: 'Thread, cloth and cut',
+  cooking: 'Fire turned into meals',
+  construction: 'Walls raised by hand',
+  farming: 'Seeds seen through to harvest',
+  foraging: 'The wild pantry, read closely',
+  herbalism: 'Leaf and root distilled',
+  enchanting: 'Power bound into gear',
+  beastcraft: 'Trophies worked from the hunt',
+  sneak: 'Unseen, unheard, unhurried',
+  dualwield: 'A blade in each fist',
+};
+
+/**
+ * The hall's wings: every discipline shown in its own gallery. Hidden
+ * skills only ever surface in the Secret Arts wing, by row-presence.
+ */
+const SKILL_WINGS: Array<{ title: string; skills: SkillId[] }> = [
+  { title: 'Combat Arts', skills: ['vitality', 'melee', 'defence', 'archery', 'magic'] },
+  {
+    title: 'Fieldcraft',
+    skills: ['mining', 'woodcutting', 'fishing', 'farming', 'foraging', 'herbalism'],
+  },
+  {
+    title: "Maker's Arts",
+    skills: [
+      'smithing',
+      'woodworking',
+      'leatherworking',
+      'tailoring',
+      'cooking',
+      'construction',
+      'enchanting',
+      'beastcraft',
+    ],
+  },
+  { title: 'Secret Arts', skills: ['sneak', 'dualwield'] },
+];
+
+/** The character stage's two flanks: armor wall left, arms wall right. */
+const EQUIP_LEFT: EquipSlot[] = ['head', 'body', 'legs', 'gloves', 'boots', 'cape'];
+const EQUIP_RIGHT: EquipSlot[] = ['weapon', 'offhand', 'tool', 'relic', 'sigil'];
+
 /** Explicit verbs the item context menu can dispatch. */
 export type SlotAction = 'use' | 'deposit' | 'sell' | 'drop';
 
 /**
- * Inventory + skills side panels (DOM overlay UI), plus the two pieces
- * of the item-inspection layer that ride with them:
- * - the INSPECT CARD: a detail pane pinned beside the pack that names
- *   whatever item the mouse hovers or the pad focuses — stats, granted
- *   abilities, passives, flavor, value;
+ * The character screen + skills hall (DOM overlay UI), plus the two
+ * pieces of the item-inspection layer that ride with them:
+ * - the INSPECT CARD: a detail card raised beside whatever item cell
+ *   the mouse hovers or the pad focuses — stats, granted abilities,
+ *   passives, flavor, value;
  * - the CONTEXT MENU: right-click (or Ⓨ on pad) opens the item's verb
  *   list — Equip/Eat, Deposit/Sell in a station, Drop.
  */
 export class Panels {
   private readonly invPanel = document.getElementById('inventory-panel')!;
   private readonly invGrid = document.getElementById('inventory-grid')!;
-  private readonly equipDoll = document.getElementById('equip-doll')!;
+  private readonly equipLeft = document.getElementById('equip-left')!;
+  private readonly equipRight = document.getElementById('equip-right')!;
   private readonly coinReadout = document.getElementById('coin-readout')!;
+  private readonly packFill = document.getElementById('pack-fill')!;
+  private readonly namePlate = document.getElementById('char-nameplate')!;
   private readonly skillsPanel = document.getElementById('skills-panel')!;
   private readonly skillsList = document.getElementById('skills-list')!;
-  /** The mirror: your actual rig wearing your actual gear, turning. */
+  /** The mirror: your actual rig wearing your actual gear, on a stage. */
   private readonly figWell = document.getElementById('equip-fig')!;
   private readonly figCanvas = document.createElement('canvas');
   private readonly gearStrip = document.getElementById('gear-strip')!;
+  /** Which way the figure faces — the player turns it by hand. */
   private figDir = 0;
   private static readonly FIG_DIRS = [Math.PI / 2, 0, -Math.PI / 2, Math.PI];
   private readonly card: HTMLElement;
@@ -123,6 +183,8 @@ export class Panels {
   private lastEquipment: Partial<Record<string, EquippedItem>> = {};
   /** What the inspect card currently shows (to refresh on re-render). */
   private cardSource: { kind: 'inv'; slot: number } | { kind: 'equip'; slot: string } | null = null;
+  /** The cell the card is pinned beside (repositions on refresh). */
+  private cardAnchor: HTMLElement | null = null;
 
   // ---- pointer drag state (mouse drag & drop between pack slots).
   private drag: {
@@ -148,21 +210,33 @@ export class Panels {
     private readonly carryStyle: (hand: 'main' | 'off') => 'normal' | 'rogue' = () => 'normal',
     private readonly onCarryStyle: (style: 'normal' | 'rogue', hand: 'main' | 'off') => void =
       () => {},
-    /** The mirror's model: the player's chosen look + grip prefs. */
-    private readonly portraitInfo: () => { look: Look | null } = () => ({ look: null }),
+    /** The mirror's model: the player's chosen look + adventurer name. */
+    private readonly portraitInfo: () => { look: Look | null; name?: string } = () => ({
+      look: null,
+    }),
   ) {
     document.getElementById('btn-inventory')!.addEventListener('click', () => this.toggleInventory());
     document.getElementById('btn-skills')!.addEventListener('click', () => this.toggleSkills());
-    this.figWell.appendChild(this.figCanvas);
-    // The mirror turns like the creation glass — a facing per beat,
-    // repainted only while the pack is open.
-    window.setInterval(() => {
-      if (this.invPanel.classList.contains('hidden')) return;
-      this.figDir = (this.figDir + 1) % Panels.FIG_DIRS.length;
+    // The canvas sits UNDER the stage furniture (nameplate, turn chips).
+    this.figWell.insertBefore(this.figCanvas, this.figWell.firstChild);
+    // The stage turns by the player's hand — no restless auto-spin.
+    const turn = (step: number): void => {
+      this.figDir = (this.figDir + step + Panels.FIG_DIRS.length) % Panels.FIG_DIRS.length;
       this.drawPortrait();
-    }, 1200);
+    };
+    const turnL = document.getElementById('fig-turn-l')!;
+    const turnR = document.getElementById('fig-turn-r')!;
+    turnL.dataset.nav = '';
+    turnL.dataset.navkey = 'fig:turnl';
+    turnL.dataset.acta = 'Turn';
+    turnR.dataset.nav = '';
+    turnR.dataset.navkey = 'fig:turnr';
+    turnR.dataset.acta = 'Turn';
+    turnL.addEventListener('click', () => turn(-1));
+    turnR.addEventListener('click', () => turn(1));
     window.addEventListener('pointermove', (e) => this.dragMove(e));
     window.addEventListener('pointerup', (e) => this.dragEnd(e));
+    window.addEventListener('resize', () => this.drawPortrait());
 
     this.card = document.createElement('div');
     this.card.id = 'item-card';
@@ -288,14 +362,15 @@ export class Panels {
    * Returns false when the element isn't an inspectable item.
    */
   showCardFor(el: HTMLElement | null): boolean {
-    // Ground loot rows (loot panel) inspect like pack cells — the same
-    // full card, for gear still lying in the grass.
+    // Ground loot rows (loot panel) and vault sockets inspect like pack
+    // cells — the same full card, for gear not in your hands yet.
     const lootEl = el?.closest?.('[data-lootitem]') as HTMLElement | null;
     if (lootEl?.dataset.lootitem) {
       const roll = lootEl.dataset.lootroll
         ? (JSON.parse(lootEl.dataset.lootroll) as ItemRoll)
         : undefined;
       this.cardSource = null;
+      this.cardAnchor = lootEl;
       this.renderCard(lootEl.dataset.lootitem, Number(lootEl.dataset.lootqty ?? '1'), null, roll);
       return true;
     }
@@ -311,6 +386,7 @@ export class Panels {
         return false;
       }
       this.cardSource = { kind: 'inv', slot: idx };
+      this.cardAnchor = el;
       this.renderCard(slot.item, slot.qty, null, slot.roll);
       return true;
     }
@@ -321,6 +397,7 @@ export class Panels {
         return false;
       }
       this.cardSource = { kind: 'equip', slot: el.dataset.equipslot };
+      this.cardAnchor = el;
       this.renderCard(worn.id, 1, el.dataset.equipslot, worn.roll);
       return true;
     }
@@ -330,6 +407,7 @@ export class Panels {
 
   hideCard(): void {
     this.cardSource = null;
+    this.cardAnchor = null;
     this.card.classList.add('hidden');
   }
 
@@ -596,12 +674,23 @@ export class Panels {
     }
     this.card.appendChild(hints);
 
-    // Pin beside the inventory panel's outer edge.
+    // Pin beside the CELL it describes, like a game tooltip: the side
+    // with room wins, clamped on-screen. The anchor survives refreshes.
     this.card.classList.remove('hidden');
-    const pr = this.invPanel.getBoundingClientRect();
+    const anchor = this.cardAnchor?.getBoundingClientRect();
     const cw = this.card.offsetWidth;
-    const x = Math.max(8, pr.left - cw - 12);
-    const y = Math.min(Math.max(8, pr.top), window.innerHeight - this.card.offsetHeight - 8);
+    const chh = this.card.offsetHeight;
+    let x: number;
+    let y: number;
+    if (anchor) {
+      x = anchor.left - cw - 14;
+      if (x < 8) x = Math.min(window.innerWidth - cw - 8, anchor.right + 14);
+      y = Math.min(Math.max(10, anchor.top - 24), window.innerHeight - chh - 10);
+    } else {
+      const pr = this.invPanel.getBoundingClientRect();
+      x = Math.max(8, pr.left - cw - 12);
+      y = Math.min(Math.max(8, pr.top), window.innerHeight - chh - 8);
+    }
     this.card.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
   }
 
@@ -692,6 +781,7 @@ export class Panels {
     this.invGrid.innerHTML = '';
     const count = Math.max(28, slots.length);
     let coins = 0;
+    let filled = 0;
     for (let i = 0; i < count; i++) {
       const cell = document.createElement('div');
       cell.className = 'inv-slot';
@@ -700,6 +790,7 @@ export class Panels {
       cell.dataset.invslot = String(i);
       const slot = slots[i];
       if (slot) {
+        filled++;
         const def = itemDef(slot.item);
         if (slot.item === 'coins') coins += slot.qty;
         cell.classList.add('clickable');
@@ -746,6 +837,9 @@ export class Panels {
     const coinText = document.createElement('span');
     coinText.textContent = coins.toLocaleString();
     this.coinReadout.append(coinIcon, coinText);
+    // The room left in the bag, told plainly.
+    this.packFill.textContent = `${filled} / ${count}`;
+    this.packFill.classList.toggle('full', filled >= count);
 
     // The card may be describing a slot that just changed — refresh it.
     if (this.cardSource?.kind === 'inv') {
@@ -755,52 +849,55 @@ export class Panels {
     }
   }
 
+  /** Build one equipment socket (either flank of the stage). */
+  private equipCell(slot: EquipSlot, equipment: Partial<Record<string, EquippedItem>>): HTMLElement {
+    const cell = document.createElement('div');
+    cell.className = 'inv-slot equip-cell';
+    cell.dataset.equipslot = slot;
+    const worn = equipment[slot];
+    if (worn) {
+      cell.classList.add('clickable', 'equipped');
+      const tier = rarityOfInstance(worn.id, worn.roll);
+      if (tier !== 'common') cell.classList.add(`rarity-${tier}`);
+      cell.dataset.filled = '1';
+      cell.dataset.nav = '';
+      cell.dataset.navkey = `equip:${slot}`;
+      cell.dataset.tipname = instanceName(worn.id, worn.roll);
+      cell.dataset.acta = 'Remove';
+      cell.addEventListener('click', () => this.onUnequip(slot));
+      cell.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        this.openMenuFor(cell, { x: e.clientX, y: e.clientY });
+      });
+      const item = document.createElement('img');
+      item.className = 'inv-item';
+      item.src = itemIconUrl(worn.id, 44);
+      item.draggable = false;
+      cell.appendChild(item);
+    } else {
+      // An empty socket shows its purpose: a dim glyph and its name.
+      cell.dataset.tipname = slot.charAt(0).toUpperCase() + slot.slice(1);
+      const ghost = document.createElement('img');
+      ghost.className = 'slot-ghost';
+      ghost.src = slotGlyphUrl(slot, 40);
+      ghost.draggable = false;
+      cell.appendChild(ghost);
+    }
+    // Every socket wears its name — full or empty, you know the place.
+    const label = document.createElement('span');
+    label.className = 'slot-label';
+    label.textContent = slot;
+    cell.appendChild(label);
+    return cell;
+  }
+
   renderEquipment(equipment: Partial<Record<string, EquippedItem>>): void {
     this.lastEquipment = equipment;
-    this.equipDoll.innerHTML = '';
-    // Paper-doll order: the grid areas lay the body out — head crowned,
-    // weapon hand left, offhand right, trinkets on the flanks.
-    for (const slot of EQUIP_SLOTS) {
-      const cell = document.createElement('div');
-      cell.className = 'inv-slot equip-cell';
-      cell.style.gridArea = slot;
-      cell.dataset.equipslot = slot;
-      const worn = equipment[slot];
-      if (worn) {
-        const def = itemDef(worn.id);
-        cell.classList.add('clickable', 'equipped');
-        const tier = rarityOfInstance(worn.id, worn.roll);
-        if (tier !== 'common') cell.classList.add(`rarity-${tier}`);
-        cell.dataset.filled = '1';
-        cell.dataset.nav = '';
-        cell.dataset.navkey = `equip:${slot}`;
-        cell.dataset.tipname = instanceName(worn.id, worn.roll);
-        cell.dataset.acta = 'Remove';
-        cell.addEventListener('click', () => this.onUnequip(slot));
-        cell.addEventListener('contextmenu', (e) => {
-          e.preventDefault();
-          this.openMenuFor(cell, { x: e.clientX, y: e.clientY });
-        });
-        const item = document.createElement('img');
-        item.className = 'inv-item';
-        item.src = itemIconUrl(worn.id, 44);
-        item.draggable = false;
-        cell.appendChild(item);
-      } else {
-        // An empty socket shows its purpose: a dim glyph and its name.
-        cell.dataset.tipname = slot.charAt(0).toUpperCase() + slot.slice(1);
-        const ghost = document.createElement('img');
-        ghost.className = 'slot-ghost';
-        ghost.src = slotGlyphUrl(slot, 40);
-        ghost.draggable = false;
-        cell.appendChild(ghost);
-        const label = document.createElement('span');
-        label.className = 'slot-label';
-        label.textContent = slot;
-        cell.appendChild(label);
-      }
-      this.equipDoll.appendChild(cell);
-    }
+    // The stage's two flanks: armor wall left, arms + trinkets right.
+    this.equipLeft.innerHTML = '';
+    this.equipRight.innerHTML = '';
+    for (const slot of EQUIP_LEFT) this.equipLeft.appendChild(this.equipCell(slot, equipment));
+    for (const slot of EQUIP_RIGHT) this.equipRight.appendChild(this.equipCell(slot, equipment));
 
     this.renderGearStrip(equipment);
     this.drawPortrait();
@@ -813,55 +910,61 @@ export class Panels {
   }
 
   /**
-   * The gear ledger: everything your worn kit adds up to, as flat
-   * chips under the doll — total armor, rolled skill bonuses, HP and
-   * regen, style damage. Money and stats, always clearly labeled.
+   * The gear ledger: everything the worn kit adds up to, told as stat
+   * plaques under the stage — a big honest number over a plain label.
    */
   private renderGearStrip(equipment: Partial<Record<string, EquippedItem>>): void {
     const gear = aggregateGearStats(equipment as Parameters<typeof aggregateGearStats>[0]);
     this.gearStrip.innerHTML = '';
-    const chip = (text: string, color: string): void => {
-      const c = document.createElement('span');
-      c.className = 'gear-stat';
-      const dot = document.createElement('span');
-      dot.className = 'gear-dot';
-      dot.style.background = color;
-      const t = document.createElement('span');
-      t.textContent = text;
-      c.append(dot, t);
-      this.gearStrip.appendChild(c);
+    const add = (value: string, label: string, tone: string): void => {
+      this.gearStrip.appendChild(statPlaque(value, label, tone));
     };
-    if (gear.armor > 0) chip(`Armor ${gear.armor}`, '#8ac4e8');
+    if (gear.armor > 0) add(String(gear.armor), 'Armor', '#8ac4e8');
+    if (gear.maxHp > 0) add(`+${gear.maxHp}`, 'Max HP', '#d95763');
+    if (gear.regenPer4s > 0) add(`+${gear.regenPer4s}`, 'Regen /4s', '#7ac47a');
     for (const [skill, bonus] of Object.entries(gear.skillBonus)) {
-      if (bonus) chip(`+${bonus} ${affixName(skill)}`, '#7dc46a');
+      if (bonus) add(`+${bonus}`, affixName(skill), '#7dc46a');
     }
-    if (gear.maxHp > 0) chip(`+${gear.maxHp} Max HP`, '#d95763');
-    if (gear.regenPer4s > 0) chip(`+${gear.regenPer4s} Regen`, '#7ac47a');
     for (const [style, mult] of Object.entries(gear.styleDmgMult)) {
       if (Math.abs(mult - 1) > 0.001) {
         const pct = Math.round((mult - 1) * 100);
-        chip(`${pct > 0 ? '+' : ''}${pct}% ${affixName(style)}`, pct > 0 ? '#e8b64c' : '#d95763');
+        add(`${pct > 0 ? '+' : ''}${pct}%`, `${affixName(style)} dmg`, pct > 0 ? '#e8b64c' : '#d95763');
       }
     }
     if (Math.abs(gear.speedMult - 1) > 0.001) {
       const pct = Math.round((gear.speedMult - 1) * 100);
-      chip(`${pct > 0 ? '+' : ''}${pct}% Speed`, pct > 0 ? '#7ac47a' : '#d9a441');
+      add(`${pct > 0 ? '+' : ''}${pct}%`, 'Move speed', pct > 0 ? '#7ac47a' : '#d9a441');
     }
     if (Math.abs(gear.cooldownMult - 1) > 0.001) {
       const pct = Math.round((1 - gear.cooldownMult) * 100);
-      chip(`−${pct}% Cooldowns`, '#b49af0');
+      add(`−${pct}%`, 'Cooldowns', '#b49af0');
     }
     this.gearStrip.classList.toggle('hidden', this.gearStrip.childElementCount === 0);
   }
 
   /**
    * The mirror: the player's ACTUAL rig — same drawHumanoid as the
-   * world, wearing the equipment record live — turning through its
-   * four facings on the constructor's beat. (The cape rides the world
-   * cloth sim, so the mirror shows the kit beneath it.)
+   * world, wearing the equipment record live — facing the glass until
+   * the player turns it by hand. (The cape rides the world cloth sim,
+   * so the mirror shows the kit beneath it.)
    */
   private drawPortrait(): void {
     if (this.invPanel.classList.contains('hidden')) return;
+    // The nameplate rides the stage: adventurer name + total level.
+    const info = this.portraitInfo();
+    const total = SKILL_IDS.reduce((n, s) => {
+      if (HIDDEN_SKILLS[s] && this.lastSkills[s] === undefined) return n;
+      return n + levelForXp(this.lastSkills[s] ?? 0);
+    }, 0);
+    this.namePlate.innerHTML = '';
+    const who = document.createElement('div');
+    who.className = 'plate-name';
+    who.textContent = info.name || 'Adventurer';
+    const deed = document.createElement('div');
+    deed.className = 'plate-sub';
+    deed.textContent = `Total level ${total.toLocaleString()}`;
+    this.namePlate.append(who, deed);
+
     const rect = this.figWell.getBoundingClientRect();
     if (rect.width < 10 || rect.height < 10) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -877,12 +980,16 @@ export class Panels {
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    const { look } = this.portraitInfo();
     const eq = this.lastEquipment;
-    const S = Math.min(150, h * 0.45);
+    // The figure owns the stage: couch-readable, boots on the floor line.
+    const S = Math.min(240, h * 0.52, w * 0.62);
     const x = w / 2;
-    const y = h * 0.88;
-    // Hard-shape ground shadow, like every shadow in this game.
+    const y = h * 0.8;
+    // The stage floor: a wide facet disc the figure stands ON.
+    ctx.fillStyle = 'rgba(12, 8, 24, 0.4)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + S * 0.03, S * 0.62, S * 0.15, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = 'rgba(12, 8, 24, 0.55)';
     ctx.beginPath();
     ctx.ellipse(x, y, S * 0.42, S * 0.1, 0, 0, Math.PI * 2);
@@ -912,10 +1019,10 @@ export class Panels {
       runF: 0,
       align: 1,
       kneeMemory: [0, 0],
-      bodyColor: CLOTH_COLORS[look?.shirt ?? 0] ?? '#7b8a4a',
+      bodyColor: CLOTH_COLORS[info.look?.shirt ?? 0] ?? '#7b8a4a',
       hurt: false,
       isOwn: true,
-      look: look ?? undefined,
+      look: info.look ?? undefined,
       weaponItem: eq.weapon?.id,
       weaponEnch: eq.weapon?.roll?.ench,
       offhandEnch: eq.offhand?.roll?.ench,
@@ -939,121 +1046,157 @@ export class Panels {
     this.renderSkills(this.lastSkills);
   }
 
+  /** Build one skill card for the hall. */
+  private skillCard(skill: SkillId, xp: SkillXp): HTMLElement {
+    const hidden = HIDDEN_SKILLS[skill];
+    const value = xp[skill] ?? 0;
+    const level = levelForXp(value);
+    const floor = xpForLevel(level);
+    const ceil = xpForLevel(level + 1);
+    const frac = level >= 99 ? 1 : (value - floor) / Math.max(1, ceil - floor);
+    const techs = techniquesFor(skill);
+    const face = SKILL_FACE[skill] ?? { icon: 'bread', color: '#d9a441' };
+
+    const card = document.createElement('div');
+    card.className = 'skill-card';
+    if (techs.length > 0) card.classList.add('hero');
+    if (level >= 99) card.classList.add('maxed');
+    if (hidden) card.classList.add('secret-skill');
+    card.style.setProperty('--skill-accent', face.color);
+
+    const head = document.createElement('div');
+    head.className = 'skill-card-head';
+    const plaque = document.createElement('span');
+    plaque.className = 'skill-plaque';
+    plaque.style.borderColor = face.color;
+    const img = document.createElement('img');
+    img.src = itemIconUrl(face.icon, 34);
+    img.draggable = false;
+    plaque.appendChild(img);
+    const names = document.createElement('span');
+    names.className = 'skill-names';
+    const name = document.createElement('span');
+    name.className = 'skill-name';
+    name.textContent = hidden ? hidden.name : skill;
+    const tale = document.createElement('span');
+    tale.className = 'skill-tale';
+    tale.textContent = hidden ? 'A secret art — you earned knowing it' : SKILL_STORY[skill] ?? '';
+    names.append(name, tale);
+    const lvl = document.createElement('span');
+    lvl.className = 'skill-lvl';
+    lvl.textContent = String(level);
+    const cap = document.createElement('span');
+    cap.className = 'skill-cap';
+    cap.textContent = '/99';
+    head.append(plaque, names, lvl, cap);
+    card.appendChild(head);
+
+    const bar = document.createElement('div');
+    bar.className = 'ui-meter skill-meter';
+    const fill = document.createElement('div');
+    fill.className = 'ui-meter-fill';
+    fill.style.width = `${Math.round(frac * 100)}%`;
+    if (level < 99) fill.style.background = face.color;
+    bar.appendChild(fill);
+    card.appendChild(bar);
+
+    const story = document.createElement('div');
+    story.className = 'skill-story';
+    story.textContent =
+      level >= 99
+        ? `${value.toLocaleString()} xp · mastered`
+        : `${value.toLocaleString()} xp · ${(ceil - value).toLocaleString()} to level ${level + 1}`;
+    card.appendChild(story);
+
+    // Combat skills carry their Technique ladder: pick your R.
+    if (techs.length > 0) {
+      const techRow = document.createElement('div');
+      techRow.className = 'technique-row';
+      const techTitle = document.createElement('span');
+      techTitle.className = 'technique-title';
+      techTitle.textContent = 'Technique';
+      techRow.appendChild(techTitle);
+      for (const tech of techs) {
+        const ab = abilityDef(tech.ability);
+        if (!ab) continue;
+        const chip = document.createElement('span');
+        chip.className = 'technique-chip';
+        const unlocked = level >= tech.unlockLevel;
+        if (!unlocked) {
+          chip.classList.add('locked');
+          chip.textContent = `${ab.name} (lv ${tech.unlockLevel})`;
+          // Navigable even though locked: pad players can focus it to
+          // read what it does and what unlocks it.
+          chip.dataset.nav = '';
+          chip.dataset.navkey = `tech:${skill}:${tech.ability}`;
+          chip.dataset.acta = 'Locked';
+          chip.dataset.tipname = ab.name;
+          chip.dataset.tipsub = `${ab.desc} — unlocks at ${skill} level ${tech.unlockLevel}`;
+        } else {
+          chip.textContent = ab.name;
+          chip.dataset.nav = '';
+          chip.dataset.navkey = `tech:${skill}:${tech.ability}`;
+          chip.dataset.tipname = ab.name;
+          chip.dataset.tipsub = ab.desc;
+          chip.dataset.acta = 'Equip';
+          if (this.techniques[skill] === tech.ability) chip.classList.add('active');
+          chip.addEventListener('click', () => this.onTechnique(skill, tech.ability));
+        }
+        techRow.appendChild(chip);
+      }
+      card.appendChild(techRow);
+    }
+    return card;
+  }
+
   /**
-   * The hall of deeds: every skill is a CARD — icon plaque in its own
-   * accent, the level as the headline numeral, a thick meter with the
-   * exact xp story under it. Combat skills are wide hero cards whose
-   * Technique ladder lives inside them; trades sit two abreast. A
-   * total-level plaque crowns the hall.
+   * The hall of deeds: disciplines grouped into named wings — Combat
+   * Arts as wide hero cards with their technique ladders, Fieldcraft
+   * and Maker's Arts as galleries, Secret Arts appearing only once
+   * discovered. A total-level crown plaque presides over the hall.
    */
   renderSkills(xp: SkillXp): void {
     this.lastSkills = xp;
     this.skillsList.innerHTML = '';
 
     let total = 0;
+    let mastered = 0;
     for (const skill of SKILL_IDS) {
       if (HIDDEN_SKILLS[skill] && xp[skill] === undefined) continue;
-      total += levelForXp(xp[skill] ?? 0);
+      const lv = levelForXp(xp[skill] ?? 0);
+      total += lv;
+      if (lv >= 99) mastered++;
     }
-    const totalRow = document.createElement('div');
-    totalRow.className = 'skills-total';
-    totalRow.innerHTML = `<span>Total level</span><strong>${total.toLocaleString()}</strong>`;
-    this.skillsList.appendChild(totalRow);
+    const crown = document.createElement('div');
+    crown.className = 'skills-total';
+    const crownLeft = document.createElement('div');
+    crownLeft.className = 'skills-total-label';
+    crownLeft.textContent = 'Total level';
+    const crownValue = document.createElement('strong');
+    crownValue.textContent = total.toLocaleString();
+    const crownRight = document.createElement('div');
+    crownRight.className = 'skills-total-note';
+    crownRight.textContent =
+      mastered > 0
+        ? `${mastered} ${mastered === 1 ? 'skill' : 'skills'} mastered`
+        : 'Deeds raise levels — go do';
+    crown.append(crownLeft, crownValue, crownRight);
+    this.skillsList.appendChild(crown);
 
-    for (const skill of SKILL_IDS) {
+    for (const wing of SKILL_WINGS) {
       // Hidden-skill law: a secret skill simply does not exist in this
       // panel until the character's skill record carries its key — the
-      // server writes the row only at the moment of discovery.
-      const hidden = HIDDEN_SKILLS[skill];
-      if (hidden && xp[skill] === undefined) continue;
-      const value = xp[skill] ?? 0;
-      const level = levelForXp(value);
-      const floor = xpForLevel(level);
-      const ceil = xpForLevel(level + 1);
-      const frac = level >= 99 ? 1 : (value - floor) / Math.max(1, ceil - floor);
-      const techs = techniquesFor(skill);
-      const face = SKILL_FACE[skill] ?? { icon: 'bread', color: '#d9a441' };
-
-      const card = document.createElement('div');
-      card.className = 'skill-card';
-      if (techs.length > 0) card.classList.add('hero');
-      if (level >= 99) card.classList.add('maxed');
-      if (hidden) card.classList.add('secret-skill');
-
-      const head = document.createElement('div');
-      head.className = 'skill-card-head';
-      const plaque = document.createElement('span');
-      plaque.className = 'skill-plaque';
-      plaque.style.borderColor = face.color;
-      const img = document.createElement('img');
-      img.src = itemIconUrl(face.icon, 30);
-      img.draggable = false;
-      plaque.appendChild(img);
-      const name = document.createElement('span');
-      name.className = 'skill-name';
-      name.textContent = hidden ? hidden.name : skill;
-      const lvl = document.createElement('span');
-      lvl.className = 'skill-lvl';
-      lvl.textContent = String(level);
-      const cap = document.createElement('span');
-      cap.className = 'skill-cap';
-      cap.textContent = '/99';
-      head.append(plaque, name, lvl, cap);
-      card.appendChild(head);
-
-      const bar = document.createElement('div');
-      bar.className = 'ui-meter skill-meter';
-      const fill = document.createElement('div');
-      fill.className = 'ui-meter-fill';
-      fill.style.width = `${Math.round(frac * 100)}%`;
-      if (level < 99) fill.style.background = face.color;
-      bar.appendChild(fill);
-      card.appendChild(bar);
-
-      const story = document.createElement('div');
-      story.className = 'skill-story';
-      story.textContent =
-        level >= 99
-          ? `${value.toLocaleString()} xp · mastered`
-          : `${value.toLocaleString()} xp · ${(ceil - value).toLocaleString()} to ${level + 1}`;
-      if (hidden) story.textContent += ' · a secret art';
-      card.appendChild(story);
-
-      // Combat skills carry their Technique ladder: pick your R.
-      if (techs.length > 0) {
-        const techRow = document.createElement('div');
-        techRow.className = 'technique-row';
-        for (const tech of techs) {
-          const ab = abilityDef(tech.ability);
-          if (!ab) continue;
-          const chip = document.createElement('span');
-          chip.className = 'technique-chip';
-          const unlocked = level >= tech.unlockLevel;
-          if (!unlocked) {
-            chip.classList.add('locked');
-            chip.textContent = `${ab.name} (lv ${tech.unlockLevel})`;
-            // Navigable even though locked: pad players can focus it to
-            // read what it does and what unlocks it.
-            chip.dataset.nav = '';
-            chip.dataset.navkey = `tech:${skill}:${tech.ability}`;
-            chip.dataset.acta = 'Locked';
-            chip.dataset.tipname = ab.name;
-            chip.dataset.tipsub = `${ab.desc} — unlocks at ${skill} level ${tech.unlockLevel}`;
-          } else {
-            chip.textContent = ab.name;
-            chip.dataset.nav = '';
-            chip.dataset.navkey = `tech:${skill}:${tech.ability}`;
-            chip.dataset.tipname = ab.name;
-            chip.dataset.tipsub = ab.desc;
-            chip.dataset.acta = 'Equip';
-            if (this.techniques[skill] === tech.ability) chip.classList.add('active');
-            chip.addEventListener('click', () => this.onTechnique(skill, tech.ability));
-          }
-          techRow.appendChild(chip);
-        }
-        card.appendChild(techRow);
-      }
-      this.skillsList.appendChild(card);
+      // server writes the row only at the moment of discovery. A wing
+      // with nothing to show is not built at all.
+      const present = wing.skills.filter(
+        (s) => !(HIDDEN_SKILLS[s] && xp[s] === undefined),
+      );
+      if (present.length === 0) continue;
+      this.skillsList.appendChild(sectionHead(wing.title));
+      const grid = document.createElement('div');
+      grid.className = 'skills-wing';
+      for (const skill of present) grid.appendChild(this.skillCard(skill, xp));
+      this.skillsList.appendChild(grid);
     }
   }
 }
