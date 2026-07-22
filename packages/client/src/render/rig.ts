@@ -3093,7 +3093,14 @@ function drawHeldItem(
   } else if (toolStyle(itemId, color) && !itemId.includes('rod')) {
     // The gatherer's roster: every axe and pickaxe resolves a style —
     // bespoke head, haft furniture, collar lashing, starsteel fx.
+    // BIT-LEADS LAW: the head is authored with the bit on −y; a chop
+    // facing right sweeps clockwise, so mirror the head across the
+    // haft there — the honed edge (not the poll) buries in the work
+    // at the bite, whichever way the body faces.
+    ctx.save();
+    if (Math.cos(rig.dir) > 0) ctx.scale(1, -1);
     drawTool(ctx, toolStyle(itemId, color)!, s, rig.nowMs, rig.hurt);
+    ctx.restore();
   } else if (bowStyle(itemId, color)) {
     // The archer's roster: every bow resolves a style — limb kind,
     // wood, tip furniture, charms, and the living fx channel. The

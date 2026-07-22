@@ -551,6 +551,10 @@ const game = new ClientGame(input, {
   },
 });
 
+// Dev handle: Playwright drives /give and friends through this —
+// window.game is stolen by the canvas id, so take a distinct name.
+(window as unknown as { dcGame: ClientGame }).dcGame = game;
+
 // The ground manager: choose from a pile instead of vacuuming it.
 const lootPanel = new LootPanel(game);
 
