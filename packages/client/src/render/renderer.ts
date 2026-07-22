@@ -2778,9 +2778,6 @@ export class Renderer {
     plate: string;
     /** Doorway/window trim — two steps lighter law. */
     trim: string;
-    /** Sawn end-grain disc + its sky-lit barrel top. */
-    end: string;
-    endTop: string;
     /** Texture character multipliers. */
     knotK: number;
     checkK: number;
@@ -2788,26 +2785,22 @@ export class Renderer {
     // Golden oak — the town default, warm and even-grained.
     {
       log: '#6d4a26', log2: '#674424', chink: '#a28e6b', top: '#8a6234',
-      plate: '#7a562c', trim: '#96703c', end: '#96703f', endTop: '#a8834c',
-      knotK: 1, checkK: 1,
+      plate: '#7a562c', trim: '#96703c', knotK: 1, checkK: 1,
     },
     // Honey pine — lighter, sappier, busy with knots.
     {
       log: '#85633a', log2: '#7e5d3a', chink: '#bcab86', top: '#a07946',
-      plate: '#8f6b3a', trim: '#ad854e', end: '#ad854f', endTop: '#bc975e',
-      knotK: 2.1, checkK: 0.7,
+      plate: '#8f6b3a', trim: '#ad854e', knotK: 2.1, checkK: 0.7,
     },
     // Weathered spruce — grayed by rain, split and checked.
     {
       log: '#6a5641', log2: '#644f3e', chink: '#9c8f78', top: '#7f6b52',
-      plate: '#746046', trim: '#8a7458', end: '#8a745a', endTop: '#99836a',
-      knotK: 0.8, checkK: 2.2,
+      plate: '#746046', trim: '#8a7458', knotK: 0.8, checkK: 2.2,
     },
     // Dark walnut — rich and calm, the prestige cut.
     {
       log: '#4e3118', log2: '#492f1a', chink: '#83704f', top: '#66431f',
-      plate: '#5a3d1d', trim: '#7a5730', end: '#74522a', endTop: '#855f34',
-      knotK: 0.7, checkK: 0.8,
+      plate: '#5a3d1d', trim: '#7a5730', knotK: 0.7, checkK: 0.8,
     },
   ];
   /** Deal weights: oak and pine common, walnut the rare prize. */
@@ -3266,60 +3259,6 @@ export class Renderer {
               const pgx = p.x + s * (0.18 + (hp % 30) / 100);
               ctx.fillRect(pgx, -hs + plateH * 0.28, s * 0.045, s * 0.045);
               if ((hp & 4) === 0) ctx.fillRect(pgx + s * 0.5, -hs + plateH * 0.28, s * 0.045, s * 0.045);
-            }
-            // CORNER LOG-END LADDER: at a corner the crossing wall's
-            // logs run out and their sawn ends stack up the outer
-            // edge — a column of chunky protruding discs riding the
-            // CHINK lines (the crossing wall's courses sit at half-
-            // pitch, the way saddle-notched corners interlock). Each
-            // end obeys the game's 45° protrusion grammar: a sky-lit
-            // barrel top, the sawn disc pushed down-screen by the
-            // protrusion depth, off-centre growth rings (a tree's
-            // heart is never dead centre), and a cast shadow under
-            // its lip. Depths alternate deep/shallow so the stack
-            // reads as built, not applied.
-            if (n && (!w || !e)) {
-              const endW = s * 0.56;
-              const ex0 =
-                !w && !e ? (x0 + x1) / 2 - endW / 2 : !w ? x0 + s * 0.015 : x1 - endW - s * 0.015;
-              for (let li = 1; li < nLogs; li++) {
-                const yc = -base - li * (logH + chinkG) + chinkG / 2;
-                const he = logH * 0.84;
-                const yt2 = yc - he / 2;
-                const prot = syT * (li % 2 === 1 ? 0.16 : 0.07);
-                const cut = he * 0.32;
-                const rim = Math.max(1, s * 0.02);
-                // Silhouette + seam ring around top band and disc.
-                ctx.fillStyle = 'rgba(38, 22, 9, 0.55)';
-                ctx.beginPath();
-                chamferRect(ctx, ex0, yt2, endW, he + prot, cut);
-                ctx.fill();
-                // Sky-lit barrel top between wall plane and the rim.
-                ctx.fillStyle = skin.endTop;
-                ctx.beginPath();
-                chamferRect(ctx, ex0 + rim, yt2 + rim, endW - rim * 2, prot + cut, cut * 0.6);
-                ctx.fill();
-                // The sawn disc, pushed south of the wall plane.
-                ctx.fillStyle = skin.end;
-                ctx.beginPath();
-                chamferRect(ctx, ex0 + rim, yt2 + prot, endW - rim * 2, he - rim, cut * 0.85);
-                ctx.fill();
-                // Growth ring + pith, drifting off-centre per end.
-                const hc = hashCoords(191 + li, tx, ty);
-                const jx = endW * (((hc % 13) - 6) / 100);
-                const jy = he * ((((hc >>> 4) % 11) - 5) / 100);
-                ctx.fillStyle = 'rgba(74, 48, 22, 0.14)';
-                ctx.beginPath();
-                chamferRect(ctx, ex0 + endW * 0.2 + jx, yt2 + prot + he * 0.18 + jy, endW * 0.6, he * 0.55, cut * 0.6);
-                ctx.fill();
-                ctx.fillStyle = 'rgba(74, 48, 22, 0.34)';
-                ctx.beginPath();
-                chamferRect(ctx, ex0 + endW * 0.38 + jx * 1.6, yt2 + prot + he * 0.36 + jy * 1.6, endW * 0.24, he * 0.2, cut * 0.3);
-                ctx.fill();
-                // Cast shadow under the protruding lip.
-                ctx.fillStyle = 'rgba(24, 15, 6, 0.3)';
-                ctx.fillRect(ex0 + cut, yt2 + he + prot, endW - cut * 2, Math.max(1, s * 0.035));
-              }
             }
           } else {
             // Running-bond masonry: four mortar courses over the taller
@@ -4174,7 +4113,15 @@ export class Renderer {
   /** The interior region a wall-run tile fronts: any adjacent
    *  enclosed floor claims it (per-frame cached in the InteriorMap). */
   private wallRegion(game: ClientGame, tx: number, ty: number): InteriorRegion | null {
-    for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+    // Cardinals first, then diagonals: a CORNER tile touches only
+    // walls and open ground on its cardinal sides — its room sits
+    // diagonally inside. Without the diagonal probe, corners resolve
+    // no region and fall back to the default wood skin, printing a
+    // mismatched column on any non-oak building.
+    for (const [dx, dy] of [
+      [0, 1], [0, -1], [1, 0], [-1, 0],
+      [1, 1], [1, -1], [-1, 1], [-1, -1],
+    ] as const) {
       const t = game.world.groundAt(tx + dx, ty + dy);
       if (t === undefined || Renderer.WALL_TILES.has(t)) continue;
       const r = this.interiors.regionAt(game, tx + dx, ty + dy);
