@@ -124,8 +124,13 @@ export function nextComboStage(prevStage: number, withinGrace: boolean): number 
  * The price is structural: that hand held your shield.
  */
 export const DUALWIELD_UNLOCK_MELEE = 10;
-/** Offhand echo lands this many ticks after the mainhand swing. */
-export const OFFHAND_DELAY_TICKS = 2;
+/**
+ * Offhand echo lands this many ticks after the mainhand swing —
+ * matched to the rig's echo choreography (the off blade's cut lands
+ * ~0.6 of the 280ms swing beat), so the damage tick and the visible
+ * cut arrive together.
+ */
+export const OFFHAND_DELAY_TICKS = 4;
 /** Damage fraction at dualwield level 1. */
 export const OFFHAND_DMG_BASE = 0.35;
 /** Damage fraction gained per dualwield level past 1. */

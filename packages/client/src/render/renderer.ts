@@ -45,6 +45,7 @@ import {
   type RigPose,
 } from './rig.js';
 import { LegRig } from './legs.js';
+import { FINISHER_PHASES, strikePhases } from './carriage.js';
 import {
   BEAST_UPPER,
   HUMANOID_FEET,
@@ -9722,7 +9723,11 @@ export class Renderer {
       // Sneaking feet roll heel-to-toe — nothing gets kicked loose.
       if (e.pose !== PoseState.Sneak) this.kickDust(anim.legs);
     }
-    const poseT = Math.min(1, (now - anim.poseStartedAt) / 280);
+    // The finisher (and the wand's heavy bolt) rides its full 8-tick
+    // pose — a heavier beat deserves its whole 400ms; everything else
+    // keeps the standard 280ms one-shot clock.
+    const poseMs = e.pose === PoseState.Attack3 ? 400 : 280;
+    const poseT = Math.min(1, (now - anim.poseStartedAt) / poseMs);
     // Rest-carriage clock: survives Idle↔Walk flips, resets only when
     // returning from a non-restful pose (combat, gathering, drawing).
     const restfulPose =
@@ -9756,17 +9761,34 @@ export class Renderer {
 
     // Attack lunge: the body rocks back then punches toward the aim
     // while the feet stay planted — the legs lean into the strike.
+    // Retimed to the strike vocabulary's own beats (grip-aware): rock
+    // back through the coil+hold, punch through the snap, HOLD the
+    // landed weight through the extension, ease home with the recover.
     let lunge = 0;
     if (e.pose === PoseState.Attack || e.pose === PoseState.Attack2) {
-      lunge = poseT < 0.2 ? -0.05 * (poseT / 0.2) : poseT < 0.5 ? -0.05 + 0.21 * ((poseT - 0.2) / 0.3) : 0.16 * (1 - (poseT - 0.5) / 0.5);
-    } else if (e.pose === PoseState.Attack3) {
-      // Finisher: deep coil, then the whole body rams down the aim.
+      const P = strikePhases(e.carry === 'rogue' ? 'rogue' : 'normal');
       lunge =
-        poseT < 0.35
-          ? -0.09 * (poseT / 0.35)
-          : poseT < 0.6
-            ? -0.09 + 0.4 * ((poseT - 0.35) / 0.25)
-            : 0.31 * (1 - (poseT - 0.6) / 0.4);
+        poseT < P.hold
+          ? -0.05 * (poseT / P.hold)
+          : poseT < P.impact
+            ? -0.05 + 0.22 * ((poseT - P.hold) / (P.impact - P.hold))
+            : poseT < P.ext
+              ? 0.17
+              : 0.17 * (1 - (poseT - P.ext) / (1 - P.ext));
+    } else if (e.pose === PoseState.Attack3) {
+      // Finisher, on the shared finisher clock: coil, poised hold,
+      // ram, buried hold, recover.
+      const F = FINISHER_PHASES;
+      lunge =
+        poseT < F.coil
+          ? -0.09 * (poseT / F.coil)
+          : poseT < F.hold
+            ? -0.09
+            : poseT < F.drive
+              ? -0.09 + 0.49 * ((poseT - F.hold) / (F.drive - F.hold))
+              : poseT < F.buried
+                ? 0.4 - 0.05 * ((poseT - F.drive) / (F.buried - F.drive))
+                : 0.35 * (1 - (poseT - F.buried) / (1 - F.buried));
     } else if (drawT > 0) {
       lunge = -0.05 * drawT; // braced back against the string
     } else if (e.pose === PoseState.Loose) {

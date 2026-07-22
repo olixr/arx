@@ -2466,8 +2466,11 @@ export class GameServer {
           offhandDamageFactor(dwLevel),
       ),
     );
-    // A short second cut on the pose channel sells the one-two.
-    this.setPose(eid, PoseState.Attack2, 4);
+    // NO pose here: the echo is pure client choreography (the rig's
+    // one-two law animates the off blade inside the MAIN swing's
+    // pose beat). Re-posing mid-swing restarted the main hand's
+    // animation clock — the client played a second mainhand cut over
+    // the first, and the off blade never moved: the "flailing" bug.
     this.meleeSwing(
       eid,
       player,

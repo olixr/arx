@@ -1080,6 +1080,17 @@ function frame(now: number): void {
       input.rumble(0.55, 0.3, 130);
     } else if (game.ownPose === PoseState.Cast) sfx.zap();
     else if (game.ownPose === PoseState.Sneak) sfx.dash(); // soft cloth rustle into the crouch
+    // Dual wield: the off blade's echo cut whooshes on its own beat —
+    // a lighter second voice ~0.6 of the swing beat later, matching
+    // the rig's one-two choreography.
+    const isMeleeSwing =
+      game.ownPose === PoseState.Attack ||
+      game.ownPose === PoseState.Attack2 ||
+      game.ownPose === PoseState.Attack3;
+    if (isMeleeSwing && itemDef(game.equipment.offhand?.id ?? '')?.weapon?.style === 'melee') {
+      const beatMs = game.ownPose === PoseState.Attack3 ? 400 : 280;
+      window.setTimeout(() => sfx.swingCombo(0), Math.round(beatMs * 0.55));
+    }
     lastOwnPose = game.ownPose;
   }
 

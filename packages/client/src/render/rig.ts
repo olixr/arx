@@ -21,13 +21,21 @@ import {
   type LimbSolve,
 } from './legs.js';
 import {
+  ECHO_START,
+  FINISHER_PHASES,
   FLOURISH_OFF_PHASE_MS,
   bladeCarriage,
+  echoFrame,
+  echoTrail,
+  finisherLean,
   icepickPath,
   idleFlourish,
-  strikeArc,
-  strikeBlade,
+  strikeFrame,
+  strikeTrail,
+  thrustPath,
   type Grip,
+  type StrikeFrame,
+  type StrikeTrail,
 } from './carriage.js';
 import {
   bodyStyle,
@@ -849,6 +857,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // A reversed main fist changes the ATTACK choreography, not just the
   // carriage — tighter rakes, locked wrist, icepick finisher.
   const rogueMelee = isSword && rig.carryStyle === 'rogue';
+  // Per-fist grips + the off blade, hoisted above the melee block: the
+  // dual-wield echo choreography needs them at strike time, not just
+  // at rest. Flip is a property of the GRIP, constant through swings.
+  const mainGrip: Grip = rig.carryStyle === 'rogue' ? 'rogue' : 'normal';
+  const offGrip: Grip = rig.carryOff === 'rogue' ? 'rogue' : 'normal';
+  const offBlade = offSt?.kind === 'weapon' && rig.offhandItem !== undefined;
   // The tool TYPE picks the work cycle: an axe chops, a pick heaves
   // overhead and pries — different rhythms, different bodies. Rods (and
   // bare hands) keep the gentle working sway.
@@ -869,11 +883,25 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const ww = 0.125 * s; // waist half-width
   const th = 0.46 * s * (1 - 0.12 * crouch); // hip line → shoulders
 
-  // Melee combo stages: forehand sweep, backhand sweep, lunging thrust.
-  // Each is anticipation → strike → follow-through, never a plain pivot.
+  // Melee combo stages — THE TWO SCHOOLS (carriage.ts strike
+  // vocabulary): every strike is coil → cocked hold → snap →
+  // held extension → recover, and the grip picks the choreography.
+  // Standard: cleave / rising return / lunge thrust. Rogue: cross
+  // rake (pull-in) / backslash (fling-out) / icepick plunge.
   let swingOffset = 0.5 + gatherSwing;
-  let strikeSweep: { from: number; to: number } | null = null;
   let thrustR: number | null = null; // finisher: radial thrust (tiles)
+  // Strike channels beyond the arm angle: reach multiplier, screen
+  // lift (the cut's vertical plane), and the blade's wrist-law angle.
+  let strikeReachK = 1;
+  let strikeLiftS = 0;
+  let strikeBladeRel: number | null = null;
+  let mainTrail: StrikeTrail | null = null;
+  // Dual-wield echo: the off blade's own cut on the back of the beat
+  // (the ONE-TWO law) — channels + a ramp weight blending it out of
+  // and back into the combat guard.
+  let echoF: StrikeFrame | null = null;
+  let echoTr: StrikeTrail | null = null;
+  let echoW = 0;
   // Sneaking hunches forward along facing; no other pose branch runs in
   // Sneak, so this baseline survives to the torso draw.
   let lean = 0.15 * crouch * Math.sign(fx || 1); // torso lean (radians) inside the squash frame
@@ -889,56 +917,47 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   let ice: { r: number; lift: number } | null = null;
   if (meleeStage === 0 || meleeStage === 1) {
     const t = rig.poseT;
-    // Grip-aware sweep: the standard grip throws the full shoulder
-    // arc; the reverse grip cuts a tighter, snappier rake that lands
-    // earlier in the beat (strikeArc — the carriage vocabulary).
-    const arc = strikeArc(rogueMelee ? 'rogue' : 'normal', meleeStage as 0 | 1);
-    const WINDUP = arc.windup;
-    const FOLLOW = arc.follow;
-    const sgn = Math.sign(FOLLOW - WINDUP);
-    if (t < 0.2) {
-      // Pull back (ease-out), coiling the torso against the swing.
-      const u = t / 0.2;
-      swingOffset = 0.5 + (WINDUP - 0.5) * (1 - (1 - u) * (1 - u));
-      lean = -sgn * 0.06 * u;
-    } else if (t < arc.strikeEnd) {
-      // The strike: fast ease-in sweep across the whole arc.
-      const u = (t - 0.2) / (arc.strikeEnd - 0.2);
-      const e = u * u * (3 - 2 * u);
-      swingOffset = WINDUP + (FOLLOW - WINDUP) * e;
-      strikeSweep = { from: rig.dir + WINDUP, to: rig.dir + swingOffset };
-      lean = sgn * 0.12 * Math.sin(u * Math.PI);
-    } else {
-      // Follow-through settles back to rest.
-      const u = (t - arc.strikeEnd) / (1 - arc.strikeEnd);
-      swingOffset = FOLLOW + (0.5 - FOLLOW) * u * u * (3 - 2 * u);
-      if (t < arc.strikeEnd + 0.12) strikeSweep = { from: rig.dir + WINDUP, to: rig.dir + FOLLOW };
-      lean = sgn * 0.12 * (1 - u);
-    }
+    const f = strikeFrame(rogueMelee ? 'rogue' : 'normal', meleeStage as 0 | 1, t);
+    swingOffset = f.arm;
+    strikeReachK = f.reach;
+    strikeLiftS = f.lift;
+    if (isSword) strikeBladeRel = f.blade;
+    lean = f.lean;
+    mainTrail = strikeTrail(rogueMelee ? 'rogue' : 'normal', meleeStage as 0 | 1, t);
   } else if (meleeStage === 2) {
-    // Finisher. Standard grip: haul the blade to the hip, then RAM it
-    // down the aim. Reverse grip: the ICEPICK — coil the fist high
-    // over the shoulder, then drive it down the aim line, tip first
-    // (a reversed tip cannot lead a forward thrust). Both share the
-    // same three torso beats, so the lean choreography is one path.
+    // Finisher. Standard grip: haul the blade to the hip — tip on the
+    // mark — then RAM it down the aim and hold it buried. Reverse
+    // grip: the ICEPICK — coil high, POISE (the raised-dagger
+    // telegraph), plunge down the aim line tip first. One shared lean
+    // clock (finisherLean) lands the whole body together.
     const t = rig.poseT;
     swingOffset = 0;
-    if (rogueMelee) ice = icepickPath(t);
-    if (t < 0.35) {
-      const u = t / 0.35;
-      if (!ice) thrustR = 0.25 - 0.15 * u * u;
-      lean = -0.09 * u;
-    } else if (t < 0.6) {
-      const u = (t - 0.35) / 0.25;
-      const e = u * u * (3 - 2 * u);
-      if (!ice) thrustR = 0.1 + 0.4 * e;
-      lean = 0.17 * Math.sin(u * Math.PI * 0.5);
+    if (rogueMelee) {
+      ice = icepickPath(t);
     } else {
-      const u = (t - 0.6) / 0.4;
-      if (!ice) thrustR = 0.5 - 0.25 * u * u * (3 - 2 * u);
-      lean = 0.17 * (1 - u);
+      const tp = thrustPath(t);
+      thrustR = tp.r;
+      strikeLiftS = tp.lift;
     }
-    lean *= Math.sign(fx || 1); // tip the torso along the strike
+    lean = finisherLean(t) * Math.sign(fx || 1); // tip the torso along the strike
+  }
+  // The echo rides every stage of the main combo when an off blade is
+  // worn: it coils while the main blade cuts and cuts while the main
+  // recovers, on the opposite plane, in the OFF fist's own grip. The
+  // ramp weight eases the fist out of its guard into the echo's coil
+  // and back to guard by the beat's end, so nothing ever pops.
+  if (offBlade && meleeStage >= 0) {
+    const t = rig.poseT;
+    echoF = echoFrame(offGrip, meleeStage as 0 | 1 | 2, t);
+    echoTr = echoTrail(offGrip, meleeStage as 0 | 1 | 2, t);
+    if (echoF) {
+      const inU = Math.min(1, (t - ECHO_START) / 0.1);
+      const outU = Math.max(0, Math.min(1, (t - 0.92) / 0.08));
+      echoW = inU * inU * (3 - 2 * inU) * (1 - outU * outU * (3 - 2 * outU));
+      // The body answers the second cut — a smaller counter-lean on
+      // the echo's own clock, layered over the main lean's recovery.
+      lean += echoF.lean * 0.5 * echoW;
+    }
   }
 
   const drawT = isBow ? rig.drawT : 0;
@@ -1139,21 +1158,32 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const shoulderY = hipY - th * hScale + 0.06 * s;
   const mainAngle = rig.dir + swingOffset;
   // The free arm counter-swings a melee strike instead of floating on
-  // a fixed circle — two arms in the fight, not one.
-  const offAngle =
+  // a fixed circle — two arms in the fight, not one. An off BLADE
+  // never counter-swings: it braces in guard, then its shoulder and
+  // elbow follow the echo cut on the echo's own ramp.
+  let offAngle =
     meleeStage === 0 || meleeStage === 1 ? rig.dir - swingOffset * 0.55 : rig.dir - 0.55;
+  if (offBlade && meleeStage >= 0) {
+    offAngle = rig.dir - 0.9;
+    if (echoF && echoW > 0) {
+      offAngle += angleDelta(offAngle, rig.dir + echoF.arm) * echoW;
+    }
+  }
   let mainX: number;
   let mainY: number;
   if (thrustR !== null) {
     mainX = rig.x + fx * thrustR * s * wS;
-    mainY = armY + fy * thrustR * s;
+    mainY = armY + fy * thrustR * s + strikeLiftS * s;
   } else if (ice) {
     // Icepick: the fist rides its coil-high/drive-down path.
     mainX = rig.x + fx * ice.r * s * wS;
     mainY = armY + fy * ice.r * s + ice.lift * s;
   } else {
-    mainX = rig.x + Math.cos(mainAngle) * reach * wS;
-    mainY = armY + Math.sin(mainAngle) * reach;
+    // Strike channels ride here: the reach breathes with the cut
+    // (collapsing through a rogue pull, extending through a cleave)
+    // and the lift carries the cut's vertical plane at every facing.
+    mainX = rig.x + Math.cos(mainAngle) * reach * strikeReachK * wS;
+    mainY = armY + Math.sin(mainAngle) * reach * strikeReachK + strikeLiftS * s;
     // Foraging reaches DOWN into the plant regardless of facing.
     if (foraging) mainY += forageDrop * s;
   }
@@ -1161,7 +1191,31 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // during swings/casts it rides the counterbalance circle instead.
   let offX: number;
   let offY: number;
-  if (thrustR !== null || ice) {
+  if (offBlade && meleeStage >= 0) {
+    // Dual wield, mid-combo: the off blade NEVER mirrors the main
+    // swing (two arms windmilling in parallel was the flail). It
+    // BRACES in guard while the main blade cuts — a fixed coiled
+    // ready — then the echo beat takes the fist over on its own
+    // choreography, eased in and out by the ramp weight.
+    const gAngle = rig.dir - 0.9;
+    let gx = rig.x + Math.cos(gAngle) * 0.18 * s * wS;
+    let gy = armY + Math.sin(gAngle) * 0.18 * s + 0.02 * s;
+    if (thrustR !== null || ice) {
+      // Finisher counter-haul until the echo claims the arm.
+      gx = rig.x - fx * 0.17 * s * wS;
+      gy = armY + 0.09 * s;
+    }
+    if (echoF && echoW > 0) {
+      const eAngle = rig.dir + echoF.arm;
+      const ex = rig.x + Math.cos(eAngle) * reach * echoF.reach * wS;
+      const ey = armY + Math.sin(eAngle) * reach * echoF.reach + echoF.lift * s;
+      offX = gx + (ex - gx) * echoW;
+      offY = gy + (ey - gy) * echoW;
+    } else {
+      offX = gx;
+      offY = gy;
+    }
+  } else if (thrustR !== null || ice) {
     // Finisher: the free arm hauls back behind the hip — the counter-
     // weight of the ram (or of the icepick drive).
     offX = rig.x - fx * 0.17 * s * wS;
@@ -1206,13 +1260,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Everything blends on poseT, so a combat follow-through settles
   // into carriage over the same 280 ms every pose change uses.
   let heldAngle = thrustR !== null ? rig.dir : mainAngle;
-  if (isSword && (meleeStage === 0 || meleeStage === 1)) {
-    // THE WRIST LAW (strikeBlade): the blade lags the arm cocked
-    // through the windup, whips to a lead at impact, settles straight
-    // — a whip-crack cut, not a windshield wiper. The reverse grip
-    // runs the same beat around its π reversal, tight and locked.
-    heldAngle =
-      mainAngle + strikeBlade(rogueMelee ? 'rogue' : 'normal', meleeStage as 0 | 1, rig.poseT);
+  if (strikeBladeRel !== null) {
+    // THE WRIST LAW (strikeFrame's blade channel): the blade lags the
+    // arm cocked through the coil and the hold, whips to a lead at
+    // impact, settles straight — a whip-crack cut, not a windshield
+    // wiper. The reverse grip runs the same beat around its π
+    // reversal, tight and locked — the grip never lies.
+    heldAngle = mainAngle + strikeBladeRel;
   } else if (ice) {
     // The reversed blade stays pointed at the strike mark all the way
     // through the coil and the drive — menace through the whole beat.
@@ -1277,13 +1331,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     mem.sw = swS;
     mem.swMs = rig.nowMs;
   }
-  // Per-fist grips: each hand resolves its own carriage. Flip is a
-  // property of the GRIP, constant through swings — a reversed fist
-  // keeps its edge orientation mid-combo, so it can never pop.
-  const mainGrip: Grip = rig.carryStyle === 'rogue' ? 'rogue' : 'normal';
-  const offGrip: Grip = rig.carryOff === 'rogue' ? 'rogue' : 'normal';
+  // Per-fist edge flips: a property of the GRIP (hoisted above the
+  // melee block), constant through swings — a reversed fist keeps its
+  // edge orientation mid-combo, so it can never pop.
   const mainFlip = isSword && mainGrip === 'rogue';
-  const offBlade = offSt?.kind === 'weapon' && rig.offhandItem !== undefined;
   const offFlip = offBlade && offGrip === 'rogue';
   // Knives ride tighter to the body than swords — the compact carry.
   const mainCompact = isSword && (weapon?.weapon?.range ?? 2) <= 1.5 ? 1 : 0;
@@ -1291,6 +1342,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     offBlade && (itemDef(rig.offhandItem!)?.weapon?.range ?? 2) <= 1.5 ? 1 : 0;
   // Off-blade baseline: the raised guard read it keeps through combat.
   let offBladeAngle = -Math.PI / 2 + sideW * 0.35;
+  // The echo cut steers the off blade through its own wrist law —
+  // blended on the same ramp weight as the fist, so the blade and the
+  // hand leave (and rejoin) the guard together.
+  if (echoF && echoW > 0) {
+    const eTarget = rig.dir + echoF.arm + echoF.blade;
+    offBladeAngle += angleDelta(offBladeAngle, eTarget) * echoW;
+  }
   if (
     (rig.pose === PoseState.Walk || rig.pose === PoseState.Idle || rig.pose === PoseState.Sneak) &&
     !drawing &&
@@ -1505,51 +1563,67 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     offY = bowY;
   }
 
-  // Slash trail: a crisp crescent chasing the blade through the strike
-  // (backhand sweeps the reverse way); the finisher fires a piston
-  // streak straight down the aim line instead.
-  if (strikeSweep && weapon?.weapon?.style === 'melee') {
-    const fade = rig.poseT < 0.5 ? 1 : 1 - (rig.poseT - 0.5) / 0.12;
-    const alpha = Math.max(0, Math.min(1, fade));
-    if (alpha > 0) {
-      const r0 = (weapon.weapon.range ?? 1.5) * 0.27 * s;
-      const ccw = strikeSweep.to < strikeSweep.from;
+  // Slash trails: a crisp crescent chasing each blade through its cut,
+  // centered on the cut's plane (a high cleave rings high, a rising
+  // return rings low) and fading through the held extension. The echo
+  // draws its own smaller, fainter crescent — the second beat of the
+  // one-two. The finishers fire a piston streak down the aim instead.
+  const drawCrescent = (tr: StrikeTrail, r0: number, k: number): void => {
+    const a = Math.max(0, Math.min(1, tr.alpha)) * k;
+    if (a <= 0) return;
+    const cy = armY + tr.lift * s * 0.6;
+    const from = rig.dir + tr.from;
+    const to = rig.dir + tr.to;
+    const ccw = to < from;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = `rgba(244, 239, 228, ${0.28 * a})`;
+    ctx.lineWidth = 0.16 * s * k;
+    ctx.beginPath();
+    ctx.arc(rig.x, cy, r0, from, to, ccw);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255, 252, 240, ${0.75 * a})`;
+    ctx.lineWidth = 0.055 * s * k;
+    ctx.beginPath();
+    ctx.arc(rig.x, cy, r0 + 0.09 * s, from, to, ccw);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  };
+  if (mainTrail && weapon?.weapon?.style === 'melee') {
+    drawCrescent(mainTrail, (weapon.weapon.range ?? 1.5) * 0.27 * s, 1);
+  }
+  if (echoTr && offBlade) {
+    const offRange = itemDef(rig.offhandItem!)?.weapon?.range ?? 1.5;
+    drawCrescent(echoTr, offRange * 0.27 * s * 0.8, 0.7);
+  }
+  if (meleeStage === 2 && weapon?.weapon?.style === 'melee') {
+    // The finisher streak, on the shared finisher clock: alive from
+    // the loosing of the drive, dying through the buried hold. The
+    // icepick's streak runs down its plunge line to the mark; the
+    // thrust's straight down the aim.
+    const P = FINISHER_PHASES;
+    const t = rig.poseT;
+    if (t >= P.hold + 0.02 && t < P.buried + 0.06) {
+      const fade = 1 - Math.max(0, (t - P.drive) / (P.buried + 0.06 - P.drive));
+      const r1 = (weapon.weapon.range ?? 1.7) * 0.33 * s;
+      const tx = ice ? rig.x + fx * 0.6 * s * wS : rig.x + fx * r1;
+      const ty = ice ? armY + fy * 0.6 * s + 0.26 * s : armY + fy * r1;
+      const sx = ice ? rig.x + fx * 0.08 * s : rig.x + fx * 0.15 * s;
+      const sy = ice ? armY + fy * 0.08 * s - 0.2 * s : armY + fy * 0.15 * s;
       ctx.lineCap = 'round';
-      ctx.strokeStyle = `rgba(244, 239, 228, ${0.28 * alpha})`;
-      ctx.lineWidth = 0.16 * s;
+      ctx.strokeStyle = `rgba(244, 239, 228, ${0.3 * fade})`;
+      ctx.lineWidth = 0.2 * s;
       ctx.beginPath();
-      ctx.arc(rig.x, armY, r0, strikeSweep.from, strikeSweep.to, ccw);
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + (tx - sx) * 0.85, sy + (ty - sy) * 0.85);
       ctx.stroke();
-      ctx.strokeStyle = `rgba(255, 252, 240, ${0.75 * alpha})`;
-      ctx.lineWidth = 0.055 * s;
+      ctx.strokeStyle = `rgba(255, 252, 240, ${0.7 * fade})`;
+      ctx.lineWidth = 0.08 * s;
       ctx.beginPath();
-      ctx.arc(rig.x, armY, r0 + 0.09 * s, strikeSweep.from, strikeSweep.to, ccw);
+      ctx.moveTo(sx + (tx - sx) * 0.2, sy + (ty - sy) * 0.2);
+      ctx.lineTo(tx, ty);
       ctx.stroke();
       ctx.lineCap = 'butt';
     }
-  }
-  if (
-    thrustR !== null &&
-    weapon?.weapon?.style === 'melee' &&
-    rig.poseT >= 0.35 &&
-    rig.poseT < 0.78
-  ) {
-    const fade = 1 - Math.max(0, (rig.poseT - 0.6) / 0.18);
-    const r1 = (weapon.weapon.range ?? 1.7) * 0.33 * s;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = `rgba(244, 239, 228, ${0.3 * fade})`;
-    ctx.lineWidth = 0.2 * s;
-    ctx.beginPath();
-    ctx.moveTo(rig.x + fx * 0.15 * s, armY + fy * 0.15 * s);
-    ctx.lineTo(rig.x + fx * r1 * 0.85, armY + fy * r1 * 0.85);
-    ctx.stroke();
-    ctx.strokeStyle = `rgba(255, 252, 240, ${0.7 * fade})`;
-    ctx.lineWidth = 0.08 * s;
-    ctx.beginPath();
-    ctx.moveTo(rig.x + fx * 0.2 * s, armY + fy * 0.2 * s);
-    ctx.lineTo(rig.x + fx * r1, armY + fy * r1);
-    ctx.stroke();
-    ctx.lineCap = 'butt';
   }
 
   // Shoulders slide smoothly along the shoulder line toward each hand
