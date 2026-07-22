@@ -2,6 +2,15 @@ import { ELEMENT_COLORS, ENCHANT_DEFS, itemDef } from '@devcraft/content';
 import { shade } from './rig.js';
 import { BOW_STYLES, DAGGER_STYLES, STAFF_STYLES, SWORD_STYLES, drawBow, drawStaff, drawSword } from './weapons.js';
 import { TOOL_STYLES, drawTool } from './tools.js';
+import { bodyStyle, bootStyle, gloveStyle, helmStyle, legStyle, offhandStyle } from './armor.js';
+import {
+  bodyIconPainter,
+  bootsIconPainter,
+  glovesIconPainter,
+  helmIconPainter,
+  legsIconPainter,
+  offhandIconPainter,
+} from './armorIcons.js';
 
 /**
  * The icon set: every item and UI glyph is drawn in code, in the same
@@ -367,29 +376,10 @@ const PAINTERS: Record<string, IconPainter> = {
     c.lineCap = 'butt';
     dot(c, '#9aa2ac', 0.78, 0.66, 0.045);
   },
-  log: (c, col) => {
-    c.save();
-    c.translate(0.5, 0.52);
-    c.rotate(-0.35);
-    c.fillStyle = col;
-    c.strokeStyle = OUTLINE;
-    c.lineWidth = 0.035;
-    c.beginPath();
-    c.roundRect(-0.36, -0.16, 0.72, 0.32, 0.1);
-    c.fill();
-    c.stroke();
-    c.fillStyle = shade(col, 40);
-    c.beginPath();
-    c.ellipse(0.3, 0, 0.09, 0.15, 0, 0, Math.PI * 2);
-    c.fill();
-    c.stroke();
-    c.strokeStyle = shade(col, -30);
-    c.lineWidth = 0.025;
-    c.beginPath();
-    c.arc(0.3, 0, 0.05, 0, Math.PI * 2);
-    c.stroke();
-    c.restore();
-  },
+  log: (c, col) => drawLog(c, col, 'plain'),
+  log_oak: (c, col) => drawLog(c, col, 'oak'),
+  log_willow: (c, col) => drawLog(c, col, 'willow'),
+  log_yew: (c, col) => drawLog(c, col, 'yew'),
   // Each ore is its own find, cut in the game's blocky node language:
   // a deep-toned frame, a bright mineral face, one hard square glint —
   // the icon IS the chunk the deposit gives up, no generic host rock.
@@ -531,9 +521,41 @@ const PAINTERS: Record<string, IconPainter> = {
     ]);
   },
   bar: (c, col) => {
-    poly(c, col, [[0.2, 0.62], [0.3, 0.42], [0.74, 0.42], [0.84, 0.62]]);
-    c.fillStyle = shade(col, 30);
-    poly(c, shade(col, 30), [[0.3, 0.42], [0.74, 0.42], [0.7, 0.48], [0.34, 0.48]]);
+    // A cast ingot with real body: foreshortened top plane, tall front
+    // face, shadowed end, and the smith's stamp struck into the top —
+    // the crate-lid treatment in metal.
+    c.save();
+    c.translate(0.5, 0.54);
+    c.rotate(-0.09);
+    const topY = -0.2;
+    const face = 0.24;
+    // Front face (mold-tapered sides).
+    poly(c, shade(col, -14), [[-0.34, topY + 0.02], [0.34, topY + 0.02], [0.42, topY + face], [-0.42, topY + face]]);
+    // Bottom lip in deeper shadow.
+    poly(c, shade(col, -32), [[-0.42, topY + face], [0.42, topY + face], [0.43, topY + face + 0.05], [-0.43, topY + face + 0.05]]);
+    // Top plane, lit, narrowing away from camera.
+    poly(c, col, [[-0.28, topY - 0.13], [0.28, topY - 0.13], [0.34, topY + 0.02], [-0.34, topY + 0.02]]);
+    // Sunlit arris along the near top edge.
+    c.strokeStyle = shade(col, 36);
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(-0.33, topY + 0.015);
+    c.lineTo(0.33, topY + 0.015);
+    c.stroke();
+    // The smith's stamp: a struck diamond, debossed (dark, lit lip).
+    c.strokeStyle = shade(col, -34);
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.moveTo(0, topY - 0.1);
+    c.lineTo(0.09, topY - 0.05);
+    c.lineTo(0, topY - 0.0);
+    c.lineTo(-0.09, topY - 0.05);
+    c.closePath();
+    c.stroke();
+    // Casting shine sweeping the top plane.
+    c.fillStyle = shade(col, 26);
+    poly(c, shade(col, 26), [[-0.24, topY - 0.115], [-0.13, topY - 0.115], [-0.2, topY], [-0.31, topY]]);
+    c.restore();
   },
   fish: (c, col) => {
     // A river trout with real anatomy: forked tail, dorsal fin, gill
@@ -652,26 +674,57 @@ const PAINTERS: Record<string, IconPainter> = {
     c.lineCap = 'butt';
   },
   meat: (c, col) => {
+    // A butcher's cut, not a lollipop: a thick chop slab with a fat
+    // cap along the top edge, marbling in the muscle, and the round
+    // bone eye set INTO the meat where a chop carries it.
+    c.save();
+    c.translate(0.5, 0.52);
+    c.rotate(-0.18);
     c.fillStyle = col;
     c.strokeStyle = OUTLINE;
-    c.lineWidth = 0.035;
+    c.lineWidth = 0.034;
     c.beginPath();
-    c.ellipse(0.42, 0.44, 0.24, 0.19, -0.5, 0, Math.PI * 2);
+    c.moveTo(-0.3, -0.14);
+    c.quadraticCurveTo(0.05, -0.3, 0.3, -0.16);
+    c.quadraticCurveTo(0.4, -0.02, 0.32, 0.14);
+    c.quadraticCurveTo(0.18, 0.28, -0.06, 0.24);
+    c.quadraticCurveTo(-0.32, 0.2, -0.34, 0.0);
+    c.closePath();
     c.fill();
     c.stroke();
-    c.strokeStyle = '#efe8d8';
-    c.lineWidth = 0.07;
-    c.lineCap = 'round';
+    // The fat cap riding the top edge.
+    c.fillStyle = '#efe3d0';
     c.beginPath();
-    c.moveTo(0.58, 0.6);
-    c.lineTo(0.76, 0.78);
-    c.stroke();
-    c.lineCap = 'butt';
-    dot(c, '#efe8d8', 0.8, 0.82, 0.06);
-    c.fillStyle = shade(col, 22);
-    c.beginPath();
-    c.ellipse(0.38, 0.38, 0.12, 0.08, -0.5, 0, Math.PI * 2);
+    c.moveTo(-0.29, -0.135);
+    c.quadraticCurveTo(0.05, -0.29, 0.29, -0.155);
+    c.quadraticCurveTo(0.06, -0.2, -0.12, -0.16);
+    c.quadraticCurveTo(-0.22, -0.14, -0.29, -0.135);
+    c.closePath();
     c.fill();
+    // Marbling: two pale veins wandering the muscle.
+    c.strokeStyle = shade(col, 30);
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(-0.2, 0.04);
+    c.quadraticCurveTo(-0.04, -0.05, 0.1, 0.05);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(-0.08, 0.15);
+    c.quadraticCurveTo(0.06, 0.1, 0.18, 0.16);
+    c.stroke();
+    // The bone eye, set into the chop.
+    c.fillStyle = '#efe8d8';
+    c.strokeStyle = shade(col, -26);
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.arc(0.2, -0.02, 0.065, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.fillStyle = '#cfc4ae';
+    c.beginPath();
+    c.arc(0.215, -0.005, 0.028, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
   },
   bones: (c, col) => {
     c.strokeStyle = col;
@@ -709,21 +762,50 @@ const PAINTERS: Record<string, IconPainter> = {
     c.restore();
   },
   hide: (c, col) => {
+    // A splayed pelt the tanner would recognize: neck stub at the top,
+    // four leg flares, ragged flanks, the belly lighter than the rim
+    // and a grain of strokes running with the hide.
+    c.save();
+    c.translate(0.5, 0.52);
+    c.rotate(-0.06);
     c.fillStyle = col;
     c.strokeStyle = OUTLINE;
-    c.lineWidth = 0.035;
+    c.lineWidth = 0.032;
     c.beginPath();
-    c.moveTo(0.5, 0.16);
-    c.quadraticCurveTo(0.84, 0.2, 0.78, 0.5);
-    c.quadraticCurveTo(0.8, 0.8, 0.5, 0.84);
-    c.quadraticCurveTo(0.2, 0.8, 0.22, 0.5);
-    c.quadraticCurveTo(0.16, 0.2, 0.5, 0.16);
+    c.moveTo(0, -0.4); // neck
+    c.quadraticCurveTo(0.14, -0.38, 0.19, -0.3);
+    c.quadraticCurveTo(0.34, -0.34, 0.36, -0.22); // fore leg flare
+    c.quadraticCurveTo(0.28, -0.12, 0.3, 0.02);
+    c.quadraticCurveTo(0.27, 0.14, 0.35, 0.24); // hind leg flare
+    c.quadraticCurveTo(0.3, 0.36, 0.16, 0.32);
+    c.quadraticCurveTo(0.04, 0.4, -0.08, 0.33); // tail edge
+    c.quadraticCurveTo(-0.26, 0.37, -0.31, 0.24);
+    c.quadraticCurveTo(-0.27, 0.12, -0.29, 0.0);
+    c.quadraticCurveTo(-0.36, -0.14, -0.31, -0.24);
+    c.quadraticCurveTo(-0.33, -0.34, -0.18, -0.31);
+    c.quadraticCurveTo(-0.12, -0.39, 0, -0.4);
+    c.closePath();
     c.fill();
     c.stroke();
-    c.fillStyle = shade(col, 18);
+    // The belly field, worked lighter toward the middle.
+    c.fillStyle = shade(col, 16);
     c.beginPath();
-    c.ellipse(0.44, 0.42, 0.14, 0.1, 0.3, 0, Math.PI * 2);
+    c.ellipse(-0.01, -0.03, 0.19, 0.24, 0.05, 0, Math.PI * 2);
     c.fill();
+    c.fillStyle = shade(col, 28);
+    c.beginPath();
+    c.ellipse(-0.05, -0.09, 0.1, 0.13, 0.15, 0, Math.PI * 2);
+    c.fill();
+    // Hide grain: short strokes running with the spine.
+    c.strokeStyle = shade(col, -18);
+    c.lineWidth = 0.016;
+    for (const [x, y] of [[-0.18, -0.18], [0.14, -0.14], [-0.16, 0.16], [0.16, 0.12], [0.0, 0.26]] as const) {
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x + 0.05, y + 0.07);
+      c.stroke();
+    }
+    c.restore();
   },
   armor: (c, col) => {
     c.fillStyle = col;
@@ -749,20 +831,56 @@ const PAINTERS: Record<string, IconPainter> = {
     c.stroke();
   },
   coins: (c, col) => {
-    for (const [x, y] of [[0.38, 0.66], [0.62, 0.66], [0.5, 0.48]] as const) {
+    // Treasure with WEIGHT: a stacked column flanked by strays, milled
+    // edges, and the top coin struck with a star — gold you count.
+    const coin = (x: number, y: number, r: number, stamped = false): void => {
+      const ry = r * 0.62;
+      // Edge thickness under the face.
+      c.fillStyle = shade(col, -28);
+      c.beginPath();
+      c.ellipse(x, y + 0.035, r, ry, 0, 0, Math.PI * 2);
+      c.fill();
       c.fillStyle = col;
       c.strokeStyle = OUTLINE;
-      c.lineWidth = 0.03;
+      c.lineWidth = 0.028;
       c.beginPath();
-      c.ellipse(x, y, 0.17, 0.12, 0, 0, Math.PI * 2);
+      c.ellipse(x, y, r, ry, 0, 0, Math.PI * 2);
       c.fill();
       c.stroke();
-      c.strokeStyle = shade(col, -40);
-      c.lineWidth = 0.02;
+      c.strokeStyle = shade(col, -34);
+      c.lineWidth = 0.018;
       c.beginPath();
-      c.ellipse(x, y, 0.1, 0.06, 0, 0, Math.PI * 2);
+      c.ellipse(x, y, r * 0.66, ry * 0.62, 0, 0, Math.PI * 2);
       c.stroke();
-    }
+      if (stamped) {
+        // The struck star on the face.
+        c.fillStyle = shade(col, -34);
+        c.beginPath();
+        for (let i = 0; i < 5; i++) {
+          const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+          const px = x + Math.cos(a) * r * 0.4;
+          const py = y + Math.sin(a) * ry * 0.4;
+          if (i === 0) c.moveTo(px, py);
+          else c.lineTo(px, py);
+          const a2 = a + Math.PI / 5;
+          c.lineTo(x + Math.cos(a2) * r * 0.16, y + Math.sin(a2) * ry * 0.16);
+        }
+        c.closePath();
+        c.fill();
+      } else {
+        c.fillStyle = shade(col, 30);
+        c.beginPath();
+        c.ellipse(x - r * 0.35, y - ry * 0.35, r * 0.2, ry * 0.22, -0.5, 0, Math.PI * 2);
+        c.fill();
+      }
+    };
+    // Strays at the base, then the stack, capped by the stamped face.
+    coin(0.24, 0.72, 0.15);
+    coin(0.76, 0.74, 0.14);
+    coin(0.5, 0.66, 0.17);
+    coin(0.5, 0.56, 0.17);
+    coin(0.5, 0.46, 0.17);
+    coin(0.5, 0.36, 0.17, true);
   },
   burnt: (c, col) => {
     poly(c, col, [[0.26, 0.72], [0.2, 0.5], [0.38, 0.32], [0.66, 0.3], [0.8, 0.52], [0.7, 0.72]]);
@@ -1647,25 +1765,46 @@ const PAINTERS: Record<string, IconPainter> = {
     }
   },
   ring: (c, col) => {
-    // A jeweler's band catching the light.
+    // A jeweler's band STANDING in three-quarter view: the hoop is an
+    // ellipse with real thickness — near limb fat and lit, far limb
+    // thin in shadow — crowned by a faceted stone cut from the metal's
+    // own family so every band keeps one clean identity color.
+    c.save();
+    c.translate(0.5, 0.56);
+    c.rotate(-0.12);
+    // Far limb (inside of the hoop, in shadow).
     c.strokeStyle = OUTLINE;
-    c.lineWidth = 0.14;
+    c.lineWidth = 0.15;
     c.beginPath();
-    c.arc(0.5, 0.56, 0.22, 0, Math.PI * 2);
+    c.ellipse(0, 0, 0.22, 0.26, 0, 0, Math.PI * 2);
     c.stroke();
+    c.strokeStyle = shade(col, -22);
+    c.lineWidth = 0.09;
+    c.beginPath();
+    c.ellipse(0, 0, 0.22, 0.26, 0, 0, Math.PI * 2);
+    c.stroke();
+    // Near limb: the lit outer half rides slightly low-left.
     c.strokeStyle = col;
-    c.lineWidth = 0.085;
+    c.lineWidth = 0.095;
     c.beginPath();
-    c.arc(0.5, 0.56, 0.22, 0, Math.PI * 2);
+    c.ellipse(0.012, 0.012, 0.225, 0.265, 0, Math.PI * 0.3, Math.PI * 1.25);
     c.stroke();
-    c.strokeStyle = shade(col, 26);
-    c.lineWidth = 0.04;
+    // Band shine along the lit shoulder.
+    c.strokeStyle = shade(col, 34);
+    c.lineWidth = 0.042;
     c.beginPath();
-    c.arc(0.5, 0.56, 0.25, Math.PI * 0.85, Math.PI * 1.35);
+    c.ellipse(0, 0, 0.245, 0.29, 0, Math.PI * 0.72, Math.PI * 1.1);
     c.stroke();
-    // The stone.
-    poly(c, '#8ac4e8', [[0.5, 0.14], [0.6, 0.26], [0.5, 0.38], [0.4, 0.26]]);
-    poly(c, '#c8e6f8', [[0.5, 0.14], [0.55, 0.26], [0.45, 0.26]]);
+    // The crown: a bezel-set faceted stone at the top of the hoop.
+    const gem = shade(col, 44);
+    c.fillStyle = shade(col, -18);
+    c.beginPath();
+    c.ellipse(0, -0.3, 0.115, 0.1, 0, 0, Math.PI * 2);
+    c.fill();
+    poly(c, gem, [[0, -0.395], [0.082, -0.3], [0, -0.21], [-0.082, -0.3]]);
+    poly(c, shade(gem, 24), [[0, -0.395], [0.041, -0.3], [-0.041, -0.3]]);
+    dot(c, '#ffffff', -0.02, -0.345, 0.016);
+    c.restore();
   },
   key: (c, col) => {
     // A warded strongchest key, bow up, laid on the diagonal so the
@@ -3091,27 +3230,61 @@ const PAINTERS: Record<string, IconPainter> = {
     c.stroke();
   },
   flowercrown: (c, col) => {
-    // A woven circlet dotted with blooms.
-    c.strokeStyle = '#8a6534';
-    c.lineWidth = 0.1;
+    // A woven meadow circlet seen at the wearing angle: a braided
+    // green ring with leaves tucked into the weave and five open
+    // blooms riding the crown — the FRONT arc passes over, the back
+    // arc dips behind, so it reads as a ring with depth, not a bowl.
+    c.save();
+    c.translate(0.5, 0.54);
+    // Back arc of the braid, dimmed.
+    c.strokeStyle = '#4a7a3a';
+    c.lineWidth = 0.085;
     c.beginPath();
-    c.ellipse(0.5, 0.55, 0.3, 0.2, 0, 0, Math.PI * 2);
+    c.ellipse(0, 0, 0.3, 0.185, 0, Math.PI * 1.02, Math.PI * 1.98);
     c.stroke();
-    c.strokeStyle = '#5f9c46';
-    c.lineWidth = 0.045;
-    c.beginPath();
-    c.ellipse(0.5, 0.55, 0.3, 0.2, 0, 0.4, Math.PI * 1.3);
-    c.stroke();
-    for (const [x, y, s] of [
-      [0.24, 0.48, 0.075], [0.5, 0.36, 0.09], [0.76, 0.48, 0.075], [0.36, 0.72, 0.065], [0.64, 0.72, 0.065],
-    ] as const) {
-      for (let i = 0; i < 5; i++) {
-        const a = (i / 5) * Math.PI * 2 - 0.3;
-        dot(c, col, x + Math.cos(a) * s, y + Math.sin(a) * s * 0.85, s * 0.55);
+    // Blooms on the back rim peek over the braid.
+    const bloom = (x: number, y: number, s: number, dim: boolean): void => {
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + 0.35;
+        dot(c, dim ? shade(col, -16) : col, x + Math.cos(a) * s, y + Math.sin(a) * s * 0.9, s * 0.6);
       }
-      dot(c, '#c4553d', x, y, s * 0.45);
-      dot(c, '#fff2cc', x - s * 0.15, y - s * 0.15, s * 0.16);
+      dot(c, dim ? '#a8452f' : '#c4553d', x, y, s * 0.48);
+      dot(c, '#fff2cc', x - s * 0.18, y - s * 0.18, s * 0.17);
+    };
+    bloom(-0.21, -0.15, 0.062, true);
+    bloom(0.21, -0.15, 0.062, true);
+    // Front arc of the braid: two-tone strands woven over each other.
+    c.strokeStyle = '#5f9c46';
+    c.lineWidth = 0.095;
+    c.beginPath();
+    c.ellipse(0, 0, 0.3, 0.185, 0, -0.1, Math.PI * 1.1);
+    c.stroke();
+    c.strokeStyle = '#79b858';
+    c.lineWidth = 0.038;
+    for (let i = 0; i < 5; i++) {
+      const a = 0.25 + (i / 5) * Math.PI * 0.75;
+      c.beginPath();
+      c.ellipse(0, 0, 0.3, 0.185, 0, a, a + 0.28);
+      c.stroke();
     }
+    // Leaf tips tucked in the weave.
+    c.fillStyle = '#79b858';
+    for (const [lx, ly, la] of [[-0.29, 0.1, 2.4], [0.29, 0.1, 0.7], [0.0, 0.2, 1.5]] as const) {
+      c.save();
+      c.translate(lx, ly);
+      c.rotate(la);
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.quadraticCurveTo(0.06, -0.045, 0.11, 0);
+      c.quadraticCurveTo(0.06, 0.045, 0, 0);
+      c.fill();
+      c.restore();
+    }
+    // Front blooms, biggest at the brow center.
+    bloom(-0.26, 0.06, 0.07, false);
+    bloom(0.26, 0.06, 0.07, false);
+    bloom(0, 0.16, 0.088, false);
+    c.restore();
   },
   wateringcan: (c, col) => {
     // Body, high handle, long spout ending in a rose.
@@ -3142,6 +3315,117 @@ const PAINTERS: Record<string, IconPainter> = {
     c.strokeRect(0.3, 0.42, 0.32, 0.4);
   },
 };
+
+/**
+ * One felled log, and each timber wears its own bark: plain birchwood
+ * is clean with a knot; oak runs deep fissured ridges; willow is a
+ * slimmer green-skinned bough with lenticel ticks; yew flakes purple-
+ * brown over a blood-red heart. The sawn end shows growth rings — the
+ * 2.5D plane every log gets for free.
+ */
+function drawLog(c: CanvasRenderingContext2D, col: string, kind: 'plain' | 'oak' | 'willow' | 'yew'): void {
+  c.save();
+  c.translate(0.5, 0.52);
+  c.rotate(-0.35);
+  const hw = kind === 'willow' ? 0.13 : kind === 'oak' ? 0.175 : 0.16;
+  const len = 0.37;
+  c.fillStyle = col;
+  c.strokeStyle = OUTLINE;
+  c.lineWidth = 0.034;
+  c.beginPath();
+  c.roundRect(-len, -hw, len * 2, hw * 2, hw * 0.62);
+  c.fill();
+  c.stroke();
+  // Bark character.
+  if (kind === 'oak') {
+    // Deep fissures: paired dark ridges with a lit shoulder between.
+    c.strokeStyle = shade(col, -26);
+    c.lineWidth = 0.026;
+    for (const [y0, y1, x0, x1] of [[-0.09, -0.07, -0.3, 0.1], [0.02, 0.05, -0.24, 0.2], [0.1, 0.09, -0.32, -0.02]] as const) {
+      c.beginPath();
+      c.moveTo(x0, y0);
+      c.quadraticCurveTo((x0 + x1) / 2, (y0 + y1) / 2 + 0.03, x1, y1);
+      c.stroke();
+    }
+    c.strokeStyle = shade(col, 16);
+    c.lineWidth = 0.018;
+    c.beginPath();
+    c.moveTo(-0.28, -0.035);
+    c.quadraticCurveTo(-0.05, -0.01, 0.16, -0.03);
+    c.stroke();
+  } else if (kind === 'willow') {
+    // Smooth young bark: horizontal lenticel ticks, a leafed withy.
+    c.strokeStyle = shade(col, -20);
+    c.lineWidth = 0.018;
+    for (const [x, y] of [[-0.24, -0.05], [-0.1, 0.06], [0.06, -0.06], [0.2, 0.04]] as const) {
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x + 0.07, y);
+      c.stroke();
+    }
+    // A sprouting withy with two leaves — willow refuses to be lumber.
+    c.strokeStyle = '#6f8a4a';
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.moveTo(-0.12, -hw);
+    c.quadraticCurveTo(-0.16, -hw - 0.12, -0.26, -hw - 0.16);
+    c.stroke();
+    c.fillStyle = '#87a85e';
+    for (const [lx, ly, la] of [[-0.2, -hw - 0.13, -0.6], [-0.26, -hw - 0.15, -1.2]] as const) {
+      c.save();
+      c.translate(lx, ly);
+      c.rotate(la);
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.quadraticCurveTo(0.05, -0.035, 0.1, 0);
+      c.quadraticCurveTo(0.05, 0.035, 0, 0);
+      c.fill();
+      c.restore();
+    }
+  } else if (kind === 'yew') {
+    // Flaking bark: lifted purple-brown scales over the red body.
+    c.fillStyle = shade(col, -18);
+    for (const [x, y, w] of [[-0.28, -0.1, 0.12], [-0.06, 0.02, 0.15], [0.14, -0.08, 0.12]] as const) {
+      c.beginPath();
+      c.roundRect(x, y, w, 0.07, 0.03);
+      c.fill();
+    }
+    c.fillStyle = shade(col, 14);
+    for (const [x, y, w] of [[-0.16, -0.02, 0.09], [0.04, 0.08, 0.1]] as const) {
+      c.beginPath();
+      c.roundRect(x, y, w, 0.05, 0.025);
+      c.fill();
+    }
+  } else {
+    // Plain timber: one grain line and a dark knot.
+    c.strokeStyle = shade(col, -22);
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(-0.28, 0.04);
+    c.quadraticCurveTo(0, 0.08, 0.18, 0.03);
+    c.stroke();
+    dot(c, shade(col, -30), -0.1, -0.06, 0.032);
+    dot(c, shade(col, -10), -0.1, -0.06, 0.016);
+  }
+  // The sawn end: lit face, growth rings, yew's blood-red heart.
+  const endX = len - 0.045;
+  c.fillStyle = shade(col, 42);
+  c.strokeStyle = OUTLINE;
+  c.lineWidth = 0.03;
+  c.beginPath();
+  c.ellipse(endX, 0, 0.085, hw * 0.94, 0, 0, Math.PI * 2);
+  c.fill();
+  c.stroke();
+  c.strokeStyle = kind === 'yew' ? '#8c3a32' : shade(col, -24);
+  c.lineWidth = 0.02;
+  c.beginPath();
+  c.ellipse(endX, 0, 0.05, hw * 0.55, 0, 0, Math.PI * 2);
+  c.stroke();
+  c.beginPath();
+  c.ellipse(endX, 0, 0.022, hw * 0.24, 0, 0, Math.PI * 2);
+  c.stroke();
+  c.restore();
+}
 
 /**
  * One blocky ore chunk — the icon-scale twin of the world's oreNode:
@@ -3229,9 +3513,9 @@ function dot(c: CanvasRenderingContext2D, color: string, x: number, y: number, r
 const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   coins: { icon: 'coins', color: '#e8b64c' },
   log: { icon: 'log', color: '#96744c' },
-  oak_log: { icon: 'log', color: '#74522f' },
-  willow_log: { icon: 'log', color: '#94a05e' },
-  yew_log: { icon: 'log', color: '#87493a' },
+  oak_log: { icon: 'log_oak', color: '#74522f' },
+  willow_log: { icon: 'log_willow', color: '#94a05e' },
+  yew_log: { icon: 'log_yew', color: '#87493a' },
   copper_ore: { icon: 'ore_copper', color: '#c47b3d' },
   tin_ore: { icon: 'ore_tin', color: '#cfd3dc' },
   iron_ore: { icon: 'ore_iron', color: '#a05038' },
@@ -3676,6 +3960,64 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
       drawStaff(c, st, scale, 5234, false, 0.5, 0);
     };
     ITEM_ICON[id] = { icon: `staff:${id}`, color: st.gem ?? st.color };
+  }
+}
+
+// ---- the wardrobe: every armor piece's icon renders FROM the style
+// record that dresses the rig (helms and torsos through the actual
+// world painters on a mannequin frame; legs/boots/gloves/shields as
+// product shots consuming the same style fields). Gated on the item's
+// real equip slot so trinkets that borrow armor glyphs stay put.
+{
+  const SLOT_PAINTER: Record<string, (id: string, tint: string) => IconPainter> = {
+    head: (id) => {
+      const p = helmIconPainter(helmStyle(id));
+      return (c) => p(c);
+    },
+    body: (id) => {
+      const p = bodyIconPainter(bodyStyle(id));
+      return (c) => p(c);
+    },
+    legs: (id, tint) => {
+      const p = legsIconPainter(legStyle(id), itemDef(id)?.color ?? tint);
+      return (c) => p(c);
+    },
+    boots: (id) => {
+      const p = bootsIconPainter(bootStyle(id));
+      return (c) => p(c);
+    },
+    gloves: (id) => {
+      const p = glovesIconPainter(gloveStyle(id));
+      return (c) => p(c);
+    },
+    // Only true shields product-shot here; tomes/orbs/quivers keep
+    // their bespoke object painters (the caller gates the kind).
+    offhand: (id) => {
+      const p = offhandIconPainter(offhandStyle(id));
+      return (c) => p(c);
+    },
+  };
+  // Only ids still wearing a GENERIC slot glyph convert to product
+  // shots — an item that already earned a bespoke painter (the flower
+  // crown, capes) keeps it.
+  const GENERIC = new Set([
+    'helm', 'greathelm', 'hood', 'wizardhat', 'circlet',
+    'armor', 'robe', 'jerkin', 'platebody',
+    'legs', 'boots', 'gloves', 'gauntlet',
+    'shield', 'kiteshield',
+  ]);
+  for (const [id, spec] of Object.entries(ITEM_ICON)) {
+    const slot = itemDef(id)?.equipSlot;
+    if (!slot) continue;
+    if (!GENERIC.has(spec.icon)) continue;
+    const make = SLOT_PAINTER[slot];
+    if (!make) continue;
+    if (slot === 'offhand') {
+      const st = offhandStyle(id);
+      if (st.kind !== 'buckler' && st.kind !== 'kite' && st.kind !== 'tower') continue;
+    }
+    PAINTERS[`worn:${id}`] = make(id, spec.color);
+    ITEM_ICON[id] = { icon: `worn:${id}`, color: spec.color };
   }
 }
 
