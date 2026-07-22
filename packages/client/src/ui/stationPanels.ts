@@ -114,9 +114,11 @@ const HANDIWORK_FACE = STATION_FACE.workbench!;
 export class StationPanels {
   private readonly craftPanel = document.getElementById('craft-panel')!;
   private readonly craftTitle = document.getElementById('craft-title')!;
+  private readonly craftTools = document.getElementById('craft-tools')!;
   private readonly craftList = document.getElementById('craft-list')!;
   private readonly craftDetail = document.getElementById('craft-detail')!;
   private readonly bankPanel = document.getElementById('bank-panel')!;
+  private readonly bankTools = document.getElementById('bank-tools')!;
   private readonly bankList = document.getElementById('bank-list')!;
   private readonly bankArmory = document.getElementById('bank-armory')!;
   private readonly bankDetail = document.getElementById('bank-detail')!;
@@ -134,6 +136,10 @@ export class StationPanels {
   private lastBankGear: Array<{ id: number; item: string; roll: ItemRoll }> = [];
   /** The vault's selected pile — the detail strip's subject. */
   private bankSel: string | null = null;
+  /** How the vault wall is ordered. */
+  private bankSort: 'az' | 'qty' = 'az';
+  /** How the Workshop ledger is ordered. */
+  private craftSort: 'reach' | 'level' | 'az' = 'reach';
   /** World tile center the open panel is bound to (null = untethered). */
   private anchor: { x: number; y: number } | null = null;
   /** What the open maker screen is showing — refreshOpen re-renders it. */
@@ -170,6 +176,14 @@ export class StationPanels {
 
   get shopOpen(): boolean {
     return !this.shopPanel.classList.contains('hidden');
+  }
+
+  get craftOpen(): boolean {
+    return !this.craftPanel.classList.contains('hidden');
+  }
+
+  get buildOpen(): boolean {
+    return !this.buildPanel.classList.contains('hidden');
   }
 
   get anyOpen(): boolean {
@@ -340,6 +354,37 @@ export class StationPanels {
     this.craftDressHandles?.setHint(hint);
   }
 
+  /**
+   * A row of sort chips — the ordering controls every list screen
+   * shares. Chips are pad stops; the active one wears the gold.
+   */
+  private sortBar<K extends string>(
+    host: HTMLElement,
+    scope: string,
+    options: Array<[K, string]>,
+    current: K,
+    onPick: (key: K) => void,
+  ): void {
+    host.innerHTML = '';
+    const row = document.createElement('div');
+    row.className = 'sort-row';
+    const label = document.createElement('span');
+    label.className = 'sort-label';
+    label.textContent = 'Sort';
+    row.appendChild(label);
+    for (const [key, text] of options) {
+      const chip = document.createElement('button');
+      chip.className = 'sort-chip' + (key === current ? ' active' : '');
+      chip.textContent = text;
+      chip.dataset.nav = '';
+      chip.dataset.navkey = `sort:${scope}:${key}`;
+      chip.dataset.acta = 'Sort';
+      chip.addEventListener('click', () => onPick(key));
+      row.appendChild(chip);
+    }
+    host.appendChild(row);
+  }
+
   /** One ledger row (Workshop master list). */
   private ledgerRow(opts: {
     key: string;
@@ -392,6 +437,7 @@ export class StationPanels {
     if (this.showing?.kind !== 'plant') return;
     const showing = this.showing;
     const { tx, ty, skills } = showing;
+    this.craftTools.innerHTML = ''; // a seed pouch needs no sorting
     this.craftList.innerHTML = '';
     this.craftDetail.innerHTML = '';
     const level = levelForXp(skills.farming ?? 0);
@@ -544,7 +590,32 @@ export class StationPanels {
       showing.sel = (canDo ?? unlocked ?? recipes[0]!).id;
     }
 
-    for (const recipe of recipes) {
+    // The ledger's order is the player's to choose.
+    this.sortBar(
+      this.craftTools,
+      'craft',
+      [
+        ['reach', 'In reach'],
+        ['level', 'By level'],
+        ['az', 'A–Z'],
+      ],
+      this.craftSort,
+      (k) => {
+        this.craftSort = k;
+        this.renderCraft();
+      },
+    );
+    const reachScore = (r: RecipeDef): number => {
+      const unlocked = levelForXp(skills[r.skill] ?? 0) >= r.levelReq;
+      return (unlocked ? 2 : 0) + (unlocked && this.makeable(r) > 0 ? 1 : 0);
+    };
+    const rows = [...recipes];
+    if (this.craftSort === 'az') rows.sort((a, b) => a.name.localeCompare(b.name));
+    else if (this.craftSort === 'level')
+      rows.sort((a, b) => a.levelReq - b.levelReq || a.name.localeCompare(b.name));
+    else rows.sort((a, b) => reachScore(b) - reachScore(a));
+
+    for (const recipe of rows) {
       const level = levelForXp(skills[recipe.skill] ?? 0);
       const locked = level < recipe.levelReq;
       const count = this.makeable(recipe);
@@ -698,8 +769,28 @@ export class StationPanels {
     this.bankList.innerHTML = '';
     this.bankArmory.innerHTML = '';
     this.bankDetail.innerHTML = '';
-    const entries = Object.entries(this.lastBank).sort(([a], [b]) => a.localeCompare(b));
+    this.bankTools.innerHTML = '';
+    const entries = Object.entries(this.lastBank).sort(([a, an], [b, bn]) =>
+      this.bankSort === 'qty'
+        ? bn - an || a.localeCompare(b)
+        : (itemDef(a)?.name ?? a).localeCompare(itemDef(b)?.name ?? b),
+    );
     if (this.bankSel && !this.lastBank[this.bankSel]) this.bankSel = null;
+    if (entries.length > 1) {
+      this.sortBar(
+        this.bankTools,
+        'bank',
+        [
+          ['az', 'A–Z'],
+          ['qty', 'Most stored'],
+        ],
+        this.bankSort,
+        (k) => {
+          this.bankSort = k;
+          this.renderBank();
+        },
+      );
+    }
 
     if (entries.length === 0 && this.lastBankGear.length === 0) {
       const empty = document.createElement('div');

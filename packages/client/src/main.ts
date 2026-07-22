@@ -69,7 +69,6 @@ const sfx = new Sfx(audioEngine);
 const music = new TrackPlayer(audioEngine);
 const ambience = new AmbienceSystem(audioEngine);
 const audioMenu = new AudioMenu(audioEngine, music);
-document.getElementById('btn-audio')?.addEventListener('click', () => audioMenu.toggle());
 window.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
 window.addEventListener('keydown', () => sfx.unlock(), { once: true });
 
@@ -310,10 +309,10 @@ const nav = new UiNav(input, {
     panels.closeAll();
     lootPanel.close();
   },
-  onToggleInventory: () => panels.toggleInventory(),
-  onToggleSkills: () => panels.toggleSkills(),
-  onOpenCraft: () => stationPanels.openCraft(null, game.skills),
-  onOpenBuild: () => stationPanels.openBuild(game.skills),
+  onToggleInventory: () => toggleScreen('inv'),
+  onToggleSkills: () => toggleScreen('skills'),
+  onOpenCraft: () => toggleScreen('craft'),
+  onOpenBuild: () => toggleScreen('build'),
   packActionLabel: () =>
     stationPanels.bankOpen ? 'Deposit' : stationPanels.shopOpen ? 'Sell' : null,
   onFocusMove: () => sfx.uiTick(),
@@ -337,12 +336,60 @@ document.addEventListener('pointerover', (e) => {
   else nav.hideTooltip();
 });
 
-document.getElementById('btn-craft')!.addEventListener('click', () => {
-  stationPanels.openCraft(null, game.skills);
-});
-document.getElementById('btn-build')!.addEventListener('click', () => {
-  stationPanels.openBuild(game.skills);
-});
+// ---- the one screen law: ONE screen owns the stage at a time --------
+// Opening any screen closes every other; the sole exception is the
+// deliberate bank/shop + pack pairing, composed in activateTarget and
+// onBank. (Function declarations — hoisted, safe to hand to UiNav.)
+
+function closeAllUi(): void {
+  stationPanels.closeAll();
+  panels.closeAll();
+  lootPanel.close();
+  audioMenu.close();
+}
+
+function toggleScreen(which: 'inv' | 'skills' | 'craft' | 'build' | 'audio' | 'loot'): void {
+  const wasOpen =
+    which === 'inv'
+      ? panels.invOpen
+      : which === 'skills'
+        ? panels.skillsOpen
+        : which === 'craft'
+          ? stationPanels.craftOpen
+          : which === 'build'
+            ? stationPanels.buildOpen
+            : which === 'audio'
+              ? audioMenu.isOpen
+              : lootPanel.isOpen;
+  closeAllUi();
+  if (wasOpen) return;
+  switch (which) {
+    case 'inv':
+      panels.showInventory();
+      break;
+    case 'skills':
+      panels.showSkills();
+      break;
+    case 'craft':
+      stationPanels.openCraft(null, game.skills);
+      break;
+    case 'build':
+      stationPanels.openBuild(game.skills);
+      break;
+    case 'audio':
+      audioMenu.open();
+      break;
+    case 'loot':
+      if (game.nearbyLoot(2.4).length > 0) lootPanel.open();
+      break;
+  }
+}
+
+document.getElementById('btn-inventory')!.addEventListener('click', () => toggleScreen('inv'));
+document.getElementById('btn-skills')!.addEventListener('click', () => toggleScreen('skills'));
+document.getElementById('btn-craft')!.addEventListener('click', () => toggleScreen('craft'));
+document.getElementById('btn-build')!.addEventListener('click', () => toggleScreen('build'));
+document.getElementById('btn-audio')!.addEventListener('click', () => toggleScreen('audio'));
 
 function showLoginError(text: string): void {
   loginError.textContent = text;
@@ -463,6 +510,7 @@ const game = new ClientGame(input, {
   onBank: (items, gear) => {
     if (stationPanels.bankOpen) stationPanels.refreshBank(items, gear);
     else {
+      closeAllUi();
       stationPanels.openBank(items, lastBankAnchor ?? undefined, gear);
       panels.showInventory();
     }
@@ -540,7 +588,7 @@ dressPanel(el('loot-panel'), {
 dressPanel(el('audio-panel'), {
   icon: uiIconUrl('bell', 34),
   hint: 'Sound and picture, dialed to taste — changes stick.',
-  onClose: () => audioMenu.toggle(),
+  onClose: () => audioMenu.close(),
 });
 
 // Dodge dash feedback: whoosh + a streak of dust kicked out behind.
@@ -905,9 +953,11 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
     case 'station':
       // The Workshop tells the whole material story itself — the pack
       // stays closed so the bench gets the room.
+      closeAllUi();
       stationPanels.openCraft(target.station, game.skills, target);
       break;
     case 'bank':
+      closeAllUi();
       lastBankAnchor = { tx: target.tx, ty: target.ty };
       game.interact(target.tx, target.ty); // server replies with the vault
       break;
@@ -916,10 +966,12 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       sfx.portal();
       break;
     case 'shop':
+      closeAllUi();
       stationPanels.openShop(target);
       panels.showInventory();
       break;
     case 'plot':
+      closeAllUi();
       stationPanels.openPlant(target.tx, target.ty, game.inventory, game.skills, target);
       break;
     case 'crop':
@@ -935,8 +987,12 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       break;
     case 'loot':
       // One bag: just take it. A pile: open the ground manager and choose.
-      if (game.nearbyLoot(2.4).length > 1) lootPanel.open();
-      else game.pickup(target.eid);
+      if (game.nearbyLoot(2.4).length > 1) {
+        closeAllUi();
+        lootPanel.open();
+      } else {
+        game.pickup(target.eid);
+      }
       break;
   }
 }
@@ -944,11 +1000,11 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
 // Panel hotkeys + interact key.
 window.addEventListener('keydown', (e) => {
   if (chat.isTyping || game.ownEid === null) return;
-  if (e.code === 'KeyI') panels.toggleInventory();
-  if (e.code === 'KeyK') panels.toggleSkills();
-  if (e.code === 'KeyO') audioMenu.toggle();
-  if (e.code === 'KeyC') stationPanels.openCraft(null, game.skills);
-  if (e.code === 'KeyB') stationPanels.openBuild(game.skills);
+  if (e.code === 'KeyI') toggleScreen('inv');
+  if (e.code === 'KeyK') toggleScreen('skills');
+  if (e.code === 'KeyO') toggleScreen('audio');
+  if (e.code === 'KeyC') toggleScreen('craft');
+  if (e.code === 'KeyB') toggleScreen('build');
   if (e.code === 'Escape') {
     stationPanels.closeAll();
     panels.closeAll();
@@ -958,10 +1014,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.code === 'KeyF') activateTarget(game.findNearbyTarget());
   // G for "ground": toggle the loot manager over whatever lies in reach.
-  if (e.code === 'KeyG') {
-    if (lootPanel.isOpen) lootPanel.close();
-    else if (game.nearbyLoot(2.4).length > 0) lootPanel.open();
-  }
+  if (e.code === 'KeyG') toggleScreen('loot');
   if (e.code === 'Equal' || e.code === 'NumpadAdd') {
     renderer.camera.stepZoom(1.15);
     saveZoom();

@@ -88,18 +88,30 @@ export class AudioMenu {
     localStorage.setItem(STORE_KEY, JSON.stringify(out));
   }
 
-  toggle(): void {
-    const hidden = this.panel.classList.toggle('hidden');
+  get isOpen(): boolean {
+    return !this.panel.classList.contains('hidden');
+  }
+
+  open(): void {
+    this.panel.classList.remove('hidden');
+    if (this.nowTimer !== null) window.clearInterval(this.nowTimer);
+    const refresh = (): void => {
+      this.nowLine.textContent = prettyName(this.tracks.current);
+    };
+    refresh();
+    this.nowTimer = window.setInterval(refresh, 1000);
+  }
+
+  close(): void {
+    this.panel.classList.add('hidden');
     if (this.nowTimer !== null) {
       window.clearInterval(this.nowTimer);
       this.nowTimer = null;
     }
-    if (!hidden) {
-      const refresh = (): void => {
-        this.nowLine.textContent = prettyName(this.tracks.current);
-      };
-      refresh();
-      this.nowTimer = window.setInterval(refresh, 1000);
-    }
+  }
+
+  toggle(): void {
+    if (this.isOpen) this.close();
+    else this.open();
   }
 }

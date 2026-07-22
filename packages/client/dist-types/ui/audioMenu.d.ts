@@ -14,6 +14,9 @@ export declare class AudioMenu {
     private nowTimer;
     constructor(engine: AudioEngine, tracks: TrackPlayer);
     private save;
+    get isOpen(): boolean;
+    open(): void;
+    close(): void;
     toggle(): void;
 }
 //# sourceMappingURL=audioMenu.d.ts.map

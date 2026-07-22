@@ -215,8 +215,8 @@ export class Panels {
       look: null,
     }),
   ) {
-    document.getElementById('btn-inventory')!.addEventListener('click', () => this.toggleInventory());
-    document.getElementById('btn-skills')!.addEventListener('click', () => this.toggleSkills());
+    // Dock buttons are wired in main through the one screen-exclusivity
+    // gate — no panel opens itself anymore.
     // The canvas sits UNDER the stage furniture (nameplate, turn chips).
     this.figWell.insertBefore(this.figCanvas, this.figWell.firstChild);
     // The stage turns by the player's hand — no restless auto-spin.
@@ -271,6 +271,20 @@ export class Panels {
     this.skillsPanel.classList.toggle('hidden');
     this.invPanel.classList.add('hidden');
     this.closeInspect();
+  }
+
+  showSkills(): void {
+    this.skillsPanel.classList.remove('hidden');
+    this.invPanel.classList.add('hidden');
+    this.closeInspect();
+  }
+
+  get invOpen(): boolean {
+    return !this.invPanel.classList.contains('hidden');
+  }
+
+  get skillsOpen(): boolean {
+    return !this.skillsPanel.classList.contains('hidden');
   }
 
   closeAll(): void {
@@ -476,11 +490,53 @@ export class Panels {
     const cat = document.createElement('div');
     cat.className = 'card-cat';
     cat.textContent = wornSlot
-      ? `${Panels.categoryLine(def)} · worn (${wornSlot}) · ${tier}`
-      : `${Panels.categoryLine(def)} · ${tier}`;
+      ? `${Panels.categoryLine(def)} · worn (${wornSlot})`
+      : Panels.categoryLine(def);
     title.append(name, cat);
     head.append(icon, title);
+    // The tier speaks for itself: a stamped seal in the head's corner.
+    const seal = document.createElement('span');
+    seal.className = `card-tier tier-${tier}`;
+    seal.textContent = tier;
+    if (rc && tier !== 'common') {
+      seal.style.color = rc;
+      seal.style.borderColor = rc;
+    }
+    head.appendChild(seal);
     this.card.appendChild(head);
+
+    // The HEADLINE: the item's defining numbers, told huge — what you
+    // read first, before any fine print.
+    const headline: Array<{ v: string; l: string; c: string }> = [];
+    const rolledDmg = rolled?.damage !== undefined ? rolled.damage : def.weapon?.damage;
+    if (def.weapon && rolledDmg !== undefined) {
+      const dmgText = Number.isInteger(rolledDmg) ? `${rolledDmg}` : rolledDmg.toFixed(1);
+      headline.push({
+        v: dmgText,
+        l: `damage · ${Panels.speedWord(def.weapon.cooldownTicks).toLowerCase()}`,
+        c: '#ff9b8a',
+      });
+    }
+    const headArmor = rolled ? rolled.armor : def.armor ?? 0;
+    if (headArmor > 0) headline.push({ v: `+${headArmor}`, l: 'armor', c: '#8ac4e8' });
+    if (def.heals) headline.push({ v: `+${def.heals}`, l: 'heals HP', c: '#7dc46a' });
+    if (def.tool) headline.push({ v: `${def.tool.power}`, l: 'tool power', c: '#e8b64c' });
+    if (headline.length > 0) {
+      const strip = document.createElement('div');
+      strip.className = 'card-headline';
+      for (const fact of headline.slice(0, 2)) {
+        const plaque = document.createElement('div');
+        plaque.className = 'headline-fact';
+        const v = document.createElement('strong');
+        v.textContent = fact.v;
+        v.style.color = fact.c;
+        const l = document.createElement('span');
+        l.textContent = fact.l;
+        plaque.append(v, l);
+        strip.appendChild(plaque);
+      }
+      this.card.appendChild(strip);
+    }
 
     const stat = (label: string, text: string, color?: string): void => {
       const row = document.createElement('div');
@@ -499,11 +555,7 @@ export class Panels {
 
     const w = def.weapon;
     if (w) {
-      // Rolled weapons carry rarity in the edge — show the instance's
-      // derived damage, fractional and honest, not the base.
-      const dmg = rolled?.damage !== undefined ? rolled.damage : w.damage;
-      const dmgText = Number.isInteger(dmg) ? `${dmg}` : dmg.toFixed(1);
-      stat('Damage', `${dmgText} · ${Panels.speedWord(w.cooldownTicks)}`, '#c4553d');
+      // Damage already leads the headline; the fine print starts here.
       stat(w.style === 'melee' ? 'Reach' : 'Range', `${w.range} tiles`, '#c9a23c');
       // The two-hands law, stated where you'd look before equipping.
       if (isTwoHanded(def)) stat('Hands', 'Two-handed', '#8d9299');
@@ -538,12 +590,10 @@ export class Panels {
         this.card.appendChild(pd);
       }
     }
-    if (def.tool) stat('Power', `${def.tool.power}`, '#c9a23c');
     // Armor class + requirement + rolled numbers — the gear block.
+    // (Armor and tool power already lead the headline strip.)
     const cls = def.gear?.armorClass;
     if (cls) stat('Class', cls.charAt(0).toUpperCase() + cls.slice(1), CLASS_COLORS[cls]);
-    const shownArmor = rolled ? rolled.armor : def.armor ?? 0;
-    if (shownArmor > 0) stat('Armor', `+${shownArmor}`, '#8ac4e8');
     if (rolled) {
       for (const a of rolled.affixes) {
         stat(affixName(a.stat), `+${a.value}`, '#7dc46a');
@@ -584,7 +634,6 @@ export class Panels {
         this.card.appendChild(blurb);
       }
     }
-    if (def.heals) stat('Heals', `${def.heals} HP`, '#4fc06a');
     if (def.coating) {
       const st = def.coating.status;
       const effect = st.status === 'venom' ? 'Venom' : st.status === 'chill' ? 'Crippling chill' : st.status;
@@ -640,10 +689,15 @@ export class Panels {
     const value = document.createElement('span');
     value.className = 'card-value';
     const worth = rolled?.value ?? def.value;
-    value.textContent =
+    const coinImg = document.createElement('img');
+    coinImg.src = itemIconUrl('coins', 20);
+    coinImg.draggable = false;
+    const valueText = document.createElement('span');
+    valueText.textContent =
       qty > 1
-        ? `${qty.toLocaleString()} in pack · ${worth.toLocaleString()}c each`
-        : `Value ${worth.toLocaleString()}c`;
+        ? `${worth.toLocaleString()} each · ${qty.toLocaleString()} in pack`
+        : `${worth.toLocaleString()}`;
+    value.append(coinImg, valueText);
     foot.appendChild(value);
     this.card.appendChild(foot);
 
@@ -1082,13 +1136,14 @@ export class Panels {
     tale.className = 'skill-tale';
     tale.textContent = hidden ? 'A secret art — you earned knowing it' : SKILL_STORY[skill] ?? '';
     names.append(name, tale);
-    const lvl = document.createElement('span');
-    lvl.className = 'skill-lvl';
-    lvl.textContent = String(level);
-    const cap = document.createElement('span');
-    cap.className = 'skill-cap';
-    cap.textContent = '/99';
-    head.append(plaque, names, lvl, cap);
+    // The level rides a faceted gem — the number IS the trophy.
+    const gem = document.createElement('span');
+    gem.className = 'lvl-gem';
+    const gemNum = document.createElement('span');
+    gemNum.className = 'lvl-gem-num';
+    gemNum.textContent = String(level);
+    gem.appendChild(gemNum);
+    head.append(plaque, names, gem);
     card.appendChild(head);
 
     const bar = document.createElement('div');

@@ -8,9 +8,11 @@ export declare class StationPanels {
     private readonly getInventory;
     private readonly craftPanel;
     private readonly craftTitle;
+    private readonly craftTools;
     private readonly craftList;
     private readonly craftDetail;
     private readonly bankPanel;
+    private readonly bankTools;
     private readonly bankList;
     private readonly bankArmory;
     private readonly bankDetail;
@@ -25,6 +27,10 @@ export declare class StationPanels {
     private lastBankGear;
     /** The vault's selected pile — the detail strip's subject. */
     private bankSel;
+    /** How the vault wall is ordered. */
+    private bankSort;
+    /** How the Workshop ledger is ordered. */
+    private craftSort;
     /** World tile center the open panel is bound to (null = untethered). */
     private anchor;
     /** What the open maker screen is showing — refreshOpen re-renders it. */
@@ -39,6 +45,8 @@ export declare class StationPanels {
     }): void;
     get bankOpen(): boolean;
     get shopOpen(): boolean;
+    get craftOpen(): boolean;
+    get buildOpen(): boolean;
     get anyOpen(): boolean;
     /**
      * The open panel's anchor tile — the station being talked to. The
@@ -77,6 +85,11 @@ export declare class StationPanels {
     }): void;
     /** Dress the Workshop head for whoever owns it right now. */
     private dressCraft;
+    /**
+     * A row of sort chips — the ordering controls every list screen
+     * shares. Chips are pad stops; the active one wears the gold.
+     */
+    private sortBar;
     /** One ledger row (Workshop master list). */
     private ledgerRow;
     /** One material row in the Workshop detail: the full story of a need. */

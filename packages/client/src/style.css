@@ -161,8 +161,7 @@ h3 {
   justify-content: center;
   background: var(--raise);
   border: 2px solid var(--line-strong);
-  border-radius: 7px;
-  box-shadow: 3px 3px 0 rgba(10, 6, 20, 0.35);
+  filter: drop-shadow(3px 3px 0 rgba(10, 6, 20, 0.35));
 }
 
 /* A screen with a face (the Workshop) tints its crest + tab. */
@@ -210,6 +209,67 @@ h3 {
   background: var(--raise-hi);
 }
 
+/* ---- THE CUT PLATE — the interface's brick ----
+   Every card, row, chip and button in a screen is a chamfered PLATE,
+   cut with the same 45° corners as the game's chamferRect. One rule,
+   many cuts: elements opt in and set their own --cut depth. */
+
+.skill-card,
+.ledger-row,
+.mat-row,
+.work-fact,
+.work-result,
+.stat-plaque,
+.shelf-card,
+.blueprint-card,
+.loot-row,
+.skills-total,
+.technique-chip,
+.act-btn,
+.price-tag,
+.pack-foot,
+.make-empty,
+.sort-chip,
+.panel-icon,
+.panel-close,
+.icon-tile,
+.turn-btn,
+.card-tier,
+.headline-fact,
+#bank-detail {
+  --cut: 9px;
+  border-radius: 0;
+  clip-path: polygon(
+    var(--cut) 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut)),
+    0 var(--cut)
+  );
+}
+
+.technique-chip,
+.sort-chip,
+.price-tag,
+.card-tier {
+  --cut: 6px;
+}
+
+.act-btn,
+.panel-close,
+.turn-btn {
+  --cut: 8px;
+}
+
+.blueprint-card,
+.skills-total,
+#bank-detail {
+  --cut: 13px;
+}
+
 /* A section headline inside a screen: serif capitals on a ruled line. */
 .screen-section {
   display: flex;
@@ -252,15 +312,15 @@ h3 {
 .act-btn {
   background: var(--gold);
   border: 2px solid #10091c;
-  border-radius: 5px;
   color: #241a10;
   font-weight: 800;
   font-size: 17px;
   letter-spacing: 0.4px;
-  padding: 12px 22px;
+  padding: 12px 24px;
   cursor: pointer;
   text-shadow: none;
-  box-shadow: 3px 4px 0 var(--shadow);
+  /* The shadow follows the chamfer cut — a true ingot silhouette. */
+  filter: drop-shadow(3px 4px 0 var(--shadow));
 }
 
 .act-btn:hover {
@@ -269,7 +329,7 @@ h3 {
 
 .act-btn:active {
   transform: translate(2px, 2px);
-  box-shadow: 1px 2px 0 var(--shadow);
+  filter: drop-shadow(1px 2px 0 var(--shadow));
 }
 
 .act-btn:disabled {
@@ -345,14 +405,30 @@ h3 {
   height: 18px;
   background: var(--sunk);
   border: 2px solid #0c0714;
-  border-radius: 4px;
+  border-radius: 3px;
   overflow: hidden;
+  position: relative;
 }
 
 .ui-meter-fill {
   height: 100%;
   background: var(--gold);
   border-right: 2px solid var(--gold-hot);
+}
+
+/* Engraved tick marks every tenth — flat hard stops, the gauge read. */
+.ui-meter::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent calc(10% - 2px),
+    rgba(12, 7, 20, 0.45) calc(10% - 2px),
+    rgba(12, 7, 20, 0.45) 10%
+  );
 }
 
 .lvl-badge {
@@ -409,6 +485,49 @@ h3 {
   font-weight: 700;
   color: var(--red-soft);
   text-shadow: var(--punch-small);
+}
+
+/* ---- sort chips: the ordering controls every ledger shares ---- */
+
+.sort-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 10px;
+}
+
+.sort-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  margin-right: 2px;
+}
+
+.sort-chip {
+  padding: 8px 15px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  background: var(--sunk);
+  border: 1.5px solid var(--line);
+  cursor: pointer;
+}
+
+.sort-chip:hover {
+  color: var(--parchment);
+  border-color: var(--line-strong);
+}
+
+.sort-chip.active {
+  color: var(--gold-bright);
+  border-color: var(--gold);
+  background: var(--raise-hi);
 }
 
 /* ---------------------------------- login */
@@ -634,10 +753,19 @@ h3 {
   position: relative;
   width: 70px;
   height: 70px;
-  border-radius: 6px;
+  --cut: 10px;
+  clip-path: polygon(
+    var(--cut) 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut)),
+    0 var(--cut)
+  );
   background: var(--panel);
   border: 2px solid var(--line-strong);
-  box-shadow: 4px 5px 0 var(--shadow);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -657,7 +785,12 @@ h3 {
 
 #panel-buttons button:active {
   transform: translate(2px, 2px);
-  box-shadow: 2px 3px 0 var(--shadow);
+}
+
+/* The dock throws its hard shadow from the row, not per button —
+   buttons are clipped plates now. */
+#panel-buttons {
+  filter: drop-shadow(4px 5px 0 var(--shadow));
 }
 
 /* ==================================================================
@@ -1054,8 +1187,8 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   left: 0;
   top: 0;
   z-index: 60;
-  width: 410px;
-  padding: 10px 18px 15px;
+  width: 440px;
+  padding: 12px 20px 16px;
   background-color: var(--panel);
   background-clip: padding-box;
   border: var(--frame-border) solid transparent;
@@ -1070,27 +1203,31 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 .card-head {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   margin-bottom: 10px;
+  position: relative;
+  padding-right: 4px;
 }
 
 .card-head img {
-  width: 72px;
-  height: 72px;
+  width: 84px;
+  height: 84px;
   flex: none;
-  padding: 5px;
+  padding: 6px;
   background: var(--sunk);
-  border: 2px solid var(--line);
-  border-radius: 6px;
+  border: 2.5px solid var(--line);
+  border-radius: 7px;
 }
 
 .card-name {
   font-family: var(--serif);
-  font-size: 23px;
+  font-size: 26px;
   font-weight: 700;
   letter-spacing: 0.5px;
+  line-height: 1.1;
   color: var(--gold-bright);
   text-shadow: var(--punch);
+  padding-right: 86px; /* room for the tier seal */
 }
 
 /* Rarity nameplates ride a solid tier color (set inline). */
@@ -1099,12 +1236,68 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 }
 
 .card-cat {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--parchment-dim);
   text-transform: uppercase;
-  letter-spacing: 1.2px;
+  letter-spacing: 1.4px;
+  margin-top: 5px;
+  text-shadow: var(--punch-small);
+}
+
+/* The tier seal, stamped in the head's corner. */
+.card-tier {
+  position: absolute;
+  right: 0;
+  top: 2px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  border: 1.5px solid var(--line-strong);
+  background: var(--sunk);
+  text-shadow: var(--punch-small);
+}
+
+.card-tier.tier-legendary {
+  box-shadow: 0 0 10px rgba(255, 179, 71, 0.35);
+}
+
+/* The headline strip: the item's defining numbers, told huge. */
+.card-headline {
+  display: flex;
+  gap: 10px;
+  margin: 4px 0 10px;
+}
+
+.headline-fact {
+  flex: 1;
+  padding: 11px 12px 9px;
+  background: var(--sunk);
+  border: 1.5px solid var(--line);
+  text-align: center;
+  --cut: 10px;
+}
+
+.headline-fact strong {
+  display: block;
+  font-family: var(--serif);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: var(--punch);
+}
+
+.headline-fact span {
+  display: block;
   margin-top: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
   text-shadow: var(--punch-small);
 }
 
@@ -1151,13 +1344,24 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 
 .card-foot {
   margin-top: 9px;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .card-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   color: var(--gold-bright);
   font-weight: 700;
   text-shadow: var(--punch-small);
+}
+
+.card-value img {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: none;
 }
 
 .card-hints {
@@ -1275,10 +1479,9 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   display: flex;
   align-items: baseline;
   gap: 16px;
-  padding: 12px 20px;
+  padding: 14px 24px;
   background: var(--sunk);
-  border: 2px solid var(--line);
-  border-radius: 8px;
+  border: 2px solid var(--gold-deep);
 }
 
 .skills-total-label {
@@ -1292,7 +1495,7 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 
 .skills-total strong {
   font-family: var(--serif);
-  font-size: 40px;
+  font-size: 46px;
   line-height: 1;
   color: var(--gold-bright);
   letter-spacing: 1px;
@@ -1321,11 +1524,11 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 .skill-card {
   display: flex;
   flex-direction: column;
-  background: var(--raise);
-  border: 1.5px solid var(--line);
-  border-radius: 7px;
-  padding: 12px 14px 11px;
-  border-left: 4px solid var(--skill-accent, var(--line));
+  /* The discipline's color soaks the whole plate, not just an edge. */
+  background: color-mix(in srgb, var(--skill-accent, var(--line)) 9%, var(--raise));
+  border: 1.5px solid color-mix(in srgb, var(--skill-accent, var(--line)) 45%, var(--line));
+  padding: 13px 15px 12px;
+  border-left: 5px solid var(--skill-accent, var(--line));
 }
 
 /* The technique ladder anchors to the card's floor. */
@@ -1352,8 +1555,8 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 
 .skill-plaque {
   flex: none;
-  width: 46px;
-  height: 46px;
+  width: 54px;
+  height: 54px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1363,8 +1566,8 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 }
 
 .skill-plaque img {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
 }
 
 .skill-names {
@@ -1376,8 +1579,10 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 }
 
 .skill-name {
-  font-size: 17.5px;
+  font-family: var(--serif);
+  font-size: 20px;
   font-weight: 700;
+  letter-spacing: 0.4px;
   text-transform: capitalize;
   color: var(--parchment);
   text-shadow: var(--punch-small);
@@ -1387,7 +1592,8 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 }
 
 .skill-tale {
-  font-size: 12.5px;
+  font-size: 13px;
+  font-style: italic;
   color: var(--parchment-dim);
   text-shadow: var(--punch-small);
   white-space: nowrap;
@@ -1400,26 +1606,38 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   color: var(--gold-bright);
 }
 
-.skill-lvl {
+/* The level gem: a faceted diamond bearing the number — the trophy. */
+.lvl-gem {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  margin: 6px 10px 6px 4px;
+  transform: rotate(45deg);
+  background: var(--sunk);
+  border: 2.5px solid var(--skill-accent, var(--gold));
+  box-shadow: inset 0 0 0 3px rgba(10, 6, 16, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lvl-gem-num {
+  transform: rotate(-45deg);
   font-family: var(--serif);
-  font-size: 36px;
+  font-size: 24px;
   font-weight: 700;
   line-height: 1;
   color: var(--gold-bright);
   text-shadow: var(--punch);
 }
 
-.skill-card.maxed .skill-lvl {
-  color: var(--gold-hot);
+.skill-card.maxed .lvl-gem {
+  border-color: var(--gold-hot);
+  background: color-mix(in srgb, var(--gold) 30%, var(--sunk));
 }
 
-.skill-cap {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--parchment-dim);
-  align-self: flex-end;
-  padding-bottom: 3px;
-  text-shadow: var(--punch-small);
+.skill-card.maxed .lvl-gem-num {
+  color: var(--gold-hot);
 }
 
 .skill-meter {
@@ -1507,7 +1725,18 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   gap: 18px;
 }
 
+.craft-left {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#craft-tools {
+  flex: none;
+}
+
 .craft-ledger {
+  flex: 1;
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;

@@ -69,6 +69,9 @@ export declare class Panels {
     toggleInventory(): void;
     showInventory(): void;
     toggleSkills(): void;
+    showSkills(): void;
+    get invOpen(): boolean;
+    get skillsOpen(): boolean;
     closeAll(): void;
     get anyOpen(): boolean;
     private dragMove;
