@@ -4343,7 +4343,16 @@ export class Renderer {
     const tone = !diagonal ? 0 : nx > 0 ? -16 : 12;
 
     return {
-      sortY: Math.max(ay, by) + 0.001,
+      // DIAGONAL SORT LAW: a bevel's occlusion boundary varies with x,
+      // so sorting at its far row lets it paint over a body standing
+      // visually IN FRONT of the line but north of the segment's max
+      // row (the corner-hug clip). Sort at the NEAR row instead: the
+      // pocket north of the line inside the dual cell is cliff mass —
+      // nothing can ever stand there at face level — so anything
+      // whose feet share the segment's rows is in front by
+      // construction and must win. Straight south faces (ay === by)
+      // are unchanged by min().
+      sortY: Math.min(ay, by) + 0.001,
       drawShadow:
         level - 1 === 0
           ? () => {
