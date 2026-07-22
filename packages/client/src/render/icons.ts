@@ -1847,34 +1847,115 @@ const PAINTERS: Record<string, IconPainter> = {
     oreChunk(c, 0.5, 0.38, 0.31, -0.18, col);
     dot(c, '#fff2cc', 0.6, 0.27, 0.028);
   },
-  chicken: (c, col) => {
-    // The whole bird, honest and plucked.
+  dust: (c, col) => {
+    // Ground enchantment: a poured mound of powder still holding the
+    // pour's cone, motes lifting off it, four-point star glints where
+    // the magic catches — dust that refuses to sit still.
+    c.save();
+    c.translate(0.5, 0.6);
+    // The mound: a soft cone with a spilled skirt.
     c.fillStyle = col;
     c.strokeStyle = OUTLINE;
-    c.lineWidth = 0.035;
+    c.lineWidth = 0.032;
     c.beginPath();
-    c.ellipse(0.5, 0.5, 0.27, 0.21, -0.15, 0, Math.PI * 2);
+    c.moveTo(-0.34, 0.14);
+    c.quadraticCurveTo(-0.2, 0.1, -0.12, -0.04);
+    c.quadraticCurveTo(-0.04, -0.2, 0.02, -0.19);
+    c.quadraticCurveTo(0.1, -0.16, 0.16, -0.02);
+    c.quadraticCurveTo(0.24, 0.1, 0.35, 0.14);
+    c.quadraticCurveTo(0.2, 0.22, 0, 0.22);
+    c.quadraticCurveTo(-0.2, 0.22, -0.34, 0.14);
+    c.closePath();
     c.fill();
     c.stroke();
-    // Drumstick knuckles.
-    for (const side of [-1, 1]) {
-      c.strokeStyle = shade(col, -18);
-      c.lineWidth = 0.05;
+    // Lit slope + settled shadow skirt.
+    c.fillStyle = shade(col, 24);
+    c.beginPath();
+    c.moveTo(-0.11, -0.03);
+    c.quadraticCurveTo(-0.04, -0.18, 0.015, -0.175);
+    c.quadraticCurveTo(-0.01, -0.05, -0.02, 0.08);
+    c.quadraticCurveTo(-0.08, 0.06, -0.11, -0.03);
+    c.closePath();
+    c.fill();
+    c.fillStyle = shade(col, -18);
+    c.beginPath();
+    c.ellipse(0.1, 0.15, 0.18, 0.045, 0, 0, Math.PI);
+    c.fill();
+    // Star glints: four-point sparks on and above the pile.
+    const star = (x: number, y: number, r: number): void => {
+      c.fillStyle = '#fff6e8';
       c.beginPath();
-      c.moveTo(0.5 + side * 0.1, 0.66);
-      c.lineTo(0.5 + side * 0.17, 0.8);
-      c.stroke();
-      dot(c, '#efe8d8', 0.5 + side * 0.19, 0.82, 0.035);
-    }
-    // Wing fold + neck stump.
-    c.fillStyle = shade(col, 18);
-    c.beginPath();
-    c.ellipse(0.44, 0.44, 0.12, 0.07, -0.3, 0, Math.PI * 2);
-    c.fill();
+      c.moveTo(x, y - r);
+      c.quadraticCurveTo(x + r * 0.2, y - r * 0.2, x + r, y);
+      c.quadraticCurveTo(x + r * 0.2, y + r * 0.2, x, y + r);
+      c.quadraticCurveTo(x - r * 0.2, y + r * 0.2, x - r, y);
+      c.quadraticCurveTo(x - r * 0.2, y - r * 0.2, x, y - r);
+      c.fill();
+    };
+    star(-0.05, -0.08, 0.05);
+    star(0.14, 0.04, 0.035);
+    star(-0.2, 0.1, 0.03);
+    // Motes drifting off the pour.
+    dot(c, shade(col, 36), 0.12, -0.3, 0.022);
+    dot(c, shade(col, 30), -0.16, -0.24, 0.017);
+    dot(c, shade(col, 42), 0.24, -0.18, 0.014);
+    c.restore();
+  },
+  chicken: (c, col) => {
+    // The trussed bird, breast up on the board: plump keel, two
+    // drumsticks tied over the tail end, wing folds tucked at the
+    // sides — the roasting-pan read, honest and plucked.
+    c.save();
+    c.translate(0.48, 0.52);
+    c.rotate(-0.08);
+    // Body: deep-keeled oval, fatter at the breast (left).
+    c.fillStyle = col;
     c.strokeStyle = OUTLINE;
-    c.lineWidth = 0.028;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.3, -0.06);
+    c.quadraticCurveTo(-0.28, -0.24, -0.02, -0.24);
+    c.quadraticCurveTo(0.2, -0.24, 0.28, -0.1);
+    c.quadraticCurveTo(0.32, 0.04, 0.24, 0.14);
+    c.quadraticCurveTo(0.06, 0.26, -0.14, 0.2);
+    c.quadraticCurveTo(-0.32, 0.14, -0.3, -0.06);
+    c.closePath();
+    c.fill();
     c.stroke();
-    dot(c, shade(col, -14), 0.24, 0.36, 0.05);
+    // Breast highlight — the plump keel catching light.
+    c.fillStyle = shade(col, 20);
+    c.beginPath();
+    c.ellipse(-0.12, -0.08, 0.13, 0.09, -0.25, 0, Math.PI * 2);
+    c.fill();
+    // Wing folds tucked against the flanks.
+    c.fillStyle = shade(col, -12);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.ellipse(-0.05, 0.1, 0.1, 0.055, 0.18, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    // The drumsticks: two plump legs crossed up over the tail end,
+    // knuckles tipped in bone.
+    for (const side of [-1, 1] as const) {
+      c.fillStyle = shade(col, side < 0 ? 6 : -6);
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.028;
+      c.beginPath();
+      c.ellipse(0.27 + side * 0.02, side * 0.055 - 0.02, 0.13, 0.06, side * 0.5, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      dot(c, '#efe8d8', 0.38, side * 0.1 - 0.03, 0.036);
+      dot(c, shade('#efe8d8', -22), 0.39, side * 0.1 - 0.03, 0.016);
+    }
+    // Twine truss around the drumstick ankles.
+    c.strokeStyle = '#b0a068';
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.moveTo(0.33, -0.08);
+    c.lineTo(0.31, 0.06);
+    c.stroke();
+    c.restore();
   },
   chickenleg: (c, col) => {
     // The classic drumstick.
@@ -3206,6 +3287,218 @@ const PAINTERS: Record<string, IconPainter> = {
     c.closePath();
     c.stroke();
   },
+  gland: (c, col) => {
+    // The milked venom sac: a taut membrane bulb with a sinew stem,
+    // sheen on the swell, and one drop leaving the tip.
+    c.save();
+    c.translate(0.5, 0.46);
+    // Sinew stem, tied off.
+    c.strokeStyle = '#8a7a5f';
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(0.02, -0.36);
+    c.quadraticCurveTo(0.1, -0.3, 0.05, -0.22);
+    c.stroke();
+    c.strokeStyle = '#6b5a42';
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.moveTo(-0.05, -0.25);
+    c.lineTo(0.13, -0.21);
+    c.stroke();
+    // The sac: heavy teardrop, wall thick with the good stuff.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(0.04, -0.22);
+    c.quadraticCurveTo(0.26, -0.12, 0.22, 0.1);
+    c.quadraticCurveTo(0.18, 0.3, 0, 0.34);
+    c.quadraticCurveTo(-0.2, 0.3, -0.23, 0.08);
+    c.quadraticCurveTo(-0.25, -0.14, 0.04, -0.22);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // Membrane sheen + the darker payload swirling low.
+    c.fillStyle = shade(col, -20);
+    c.beginPath();
+    c.ellipse(0.02, 0.16, 0.14, 0.1, 0.1, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = shade(col, 30);
+    c.beginPath();
+    c.ellipse(-0.09, -0.06, 0.07, 0.11, 0.5, 0, Math.PI * 2);
+    c.fill();
+    dot(c, shade(col, 46), -0.11, -0.1, 0.026);
+    // The drop leaving the tip.
+    c.fillStyle = shade(col, 18);
+    c.beginPath();
+    c.moveTo(0, 0.36);
+    c.quadraticCurveTo(0.045, 0.42, 0, 0.47);
+    c.quadraticCurveTo(-0.045, 0.42, 0, 0.36);
+    c.fill();
+    c.restore();
+  },
+  vial: (c, col) => {
+    // The tonic: a tall slim vial, corked and collared, the draught
+    // filling two-thirds with one rising bubble.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(0.06);
+    bar(c, '#a5824e', -0.055, -0.44, 0.11, 0.1);
+    bar(c, shade('#a5824e', -18), -0.055, -0.37, 0.11, 0.03);
+    // Glass body.
+    c.fillStyle = 'rgba(210, 224, 235, 0.5)';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.roundRect(-0.11, -0.35, 0.22, 0.75, 0.09);
+    c.fill();
+    // The draught.
+    c.fillStyle = col;
+    c.beginPath();
+    c.roundRect(-0.095, -0.08, 0.19, 0.465, 0.075);
+    c.fill();
+    c.fillStyle = shade(col, 26);
+    c.beginPath();
+    c.ellipse(0, -0.08, 0.095, 0.032, 0, 0, Math.PI * 2);
+    c.fill();
+    dot(c, shade(col, 34), 0.03, 0.12, 0.022);
+    // Glass outline + shine.
+    c.strokeStyle = OUTLINE;
+    c.beginPath();
+    c.roundRect(-0.11, -0.35, 0.22, 0.75, 0.09);
+    c.stroke();
+    c.strokeStyle = '#f4f8ff';
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(-0.062, -0.26);
+    c.lineTo(-0.062, 0.24);
+    c.stroke();
+    c.restore();
+  },
+  jug: (c, col) => {
+    // The brew: a stout stoneware jug, glaze dipped to the shoulder,
+    // rope-loop handle, the cork driven deep.
+    c.save();
+    c.translate(0.5, 0.54);
+    bar(c, '#8a6a45', -0.05, -0.48, 0.1, 0.09);
+    // Body.
+    c.fillStyle = '#c9b690';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(-0.08, -0.42);
+    c.lineTo(0.08, -0.42);
+    c.quadraticCurveTo(0.13, -0.32, 0.24, -0.22);
+    c.quadraticCurveTo(0.32, -0.1, 0.3, 0.12);
+    c.quadraticCurveTo(0.28, 0.34, 0.0, 0.36);
+    c.quadraticCurveTo(-0.28, 0.34, -0.3, 0.12);
+    c.quadraticCurveTo(-0.32, -0.1, -0.24, -0.22);
+    c.quadraticCurveTo(-0.13, -0.32, -0.08, -0.42);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The glaze dip: the brew's color poured over the shoulder.
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(-0.235, -0.21);
+    c.quadraticCurveTo(-0.1, -0.13, 0, -0.145);
+    c.quadraticCurveTo(0.12, -0.16, 0.235, -0.21);
+    c.quadraticCurveTo(0.16, -0.3, 0.09, -0.4);
+    c.lineTo(-0.09, -0.4);
+    c.quadraticCurveTo(-0.16, -0.3, -0.235, -0.21);
+    c.closePath();
+    c.fill();
+    // Drip runs off the glaze line.
+    c.fillStyle = col;
+    c.beginPath();
+    c.roundRect(-0.05, -0.16, 0.045, 0.1, 0.02);
+    c.fill();
+    // Belly shine + handle.
+    c.fillStyle = shade('#c9b690', 20);
+    c.beginPath();
+    c.ellipse(-0.13, 0.05, 0.055, 0.12, 0.2, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = '#8a6a45';
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.arc(0.2, -0.26, 0.09, Math.PI * 1.3, Math.PI * 0.45);
+    c.stroke();
+    c.restore();
+  },
+  oilvial: (c, col) => {
+    // The blade oil: an angular alchemist's bottle with a shoulder
+    // spike of a stopper and a fang charm on a cord — poison you
+    // recognize before you read the label.
+    c.save();
+    c.translate(0.5, 0.52);
+    // Stopper: a whittled spike.
+    poly(c, '#6a6274', [[-0.035, -0.5], [0.035, -0.5], [0.05, -0.34], [-0.05, -0.34]]);
+    // Angular body: wide shoulders tapering to a foot.
+    c.fillStyle = 'rgba(205, 220, 228, 0.45)';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(-0.06, -0.36);
+    c.lineTo(0.06, -0.36);
+    c.lineTo(0.09, -0.26);
+    c.lineTo(0.24, -0.14);
+    c.lineTo(0.18, 0.34);
+    c.lineTo(-0.18, 0.34);
+    c.lineTo(-0.24, -0.14);
+    c.lineTo(-0.09, -0.26);
+    c.closePath();
+    c.fill();
+    // The oil, thick and to the shoulders.
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(-0.215, -0.1);
+    c.lineTo(0.215, -0.1);
+    c.lineTo(0.172, 0.325);
+    c.lineTo(-0.172, 0.325);
+    c.closePath();
+    c.fill();
+    c.fillStyle = shade(col, 24);
+    c.beginPath();
+    c.ellipse(0, -0.1, 0.215, 0.04, 0, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = OUTLINE;
+    c.beginPath();
+    c.moveTo(-0.06, -0.36);
+    c.lineTo(0.06, -0.36);
+    c.lineTo(0.09, -0.26);
+    c.lineTo(0.24, -0.14);
+    c.lineTo(0.18, 0.34);
+    c.lineTo(-0.18, 0.34);
+    c.lineTo(-0.24, -0.14);
+    c.lineTo(-0.09, -0.26);
+    c.closePath();
+    c.stroke();
+    // Glass shine.
+    c.strokeStyle = '#f4f8ff';
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(-0.14, -0.05);
+    c.lineTo(-0.11, 0.26);
+    c.stroke();
+    // The fang charm on its cord.
+    c.strokeStyle = '#6b4a26';
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.moveTo(0.09, -0.28);
+    c.quadraticCurveTo(0.2, -0.26, 0.24, -0.18);
+    c.stroke();
+    c.fillStyle = '#efe8d8';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(0.2, -0.19);
+    c.quadraticCurveTo(0.3, -0.16, 0.26, -0.02);
+    c.quadraticCurveTo(0.22, -0.13, 0.18, -0.15);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.restore();
+  },
   jar: (c, col) => {
     // A squat salve pot with a waxed lid.
     poly(c, '#c9b690', [[0.3, 0.4], [0.7, 0.4], [0.76, 0.6], [0.68, 0.82], [0.32, 0.82], [0.24, 0.6]]);
@@ -3586,7 +3879,7 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   stormpearl: { icon: 'gem', color: '#e8e29a' },
   bloomstone: { icon: 'bloomstone', color: '#7ac46a' },
   // Enchanting reagents — dust on the nugget pile, essences on the gem.
-  arcane_dust: { icon: 'nuggets', color: '#b8a8e0' },
+  arcane_dust: { icon: 'dust', color: '#b8a8e0' },
   brass_key: { icon: 'key', color: '#c9a23e' },
   ember_essence: { icon: 'essence', color: '#e8885c' },
   frost_essence: { icon: 'essence', color: '#b8e0f4' },
@@ -3732,17 +4025,20 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   fried_egg: { icon: 'friedegg', color: '#f2c04c' },
   hearty_stew: { icon: 'stew', color: '#b06a4a' },
   cake: { icon: 'cakeicon', color: '#e8b6c9' },
+  // The apothecary's shelf speaks in silhouettes: round flask =
+  // tincture you drink, stoneware jug = brew, slim vial = tonic,
+  // fanged angular bottle = a blade oil you'd best not drink.
   healing_tincture: { icon: 'bottle', color: '#d65a5a' },
-  gatherers_brew: { icon: 'bottle', color: '#7fc9b3' },
-  swiftness_tonic: { icon: 'bottle', color: '#8fd0e8' },
-  ironbark_tonic: { icon: 'bottle', color: '#9c7440' },
+  gatherers_brew: { icon: 'jug', color: '#7fc9b3' },
+  swiftness_tonic: { icon: 'vial', color: '#8fd0e8' },
+  ironbark_tonic: { icon: 'vial', color: '#9c7440' },
   mending_salve: { icon: 'jar', color: '#c9a8e8' },
-  venom_gland: { icon: 'gem', color: '#8a9a3a' },
-  adderfang_oil: { icon: 'bottle', color: '#a0c050' },
-  hobble_brew: { icon: 'bottle', color: '#8f9ed6' },
-  vipers_kiss: { icon: 'bottle', color: '#7a9a2a' },
-  leadfoot_oil: { icon: 'bottle', color: '#6a7ab8' },
-  wyrmtongue_oil: { icon: 'bottle', color: '#4a6a2a' },
+  venom_gland: { icon: 'gland', color: '#8a9a3a' },
+  adderfang_oil: { icon: 'oilvial', color: '#a0c050' },
+  hobble_brew: { icon: 'jug', color: '#8f9ed6' },
+  vipers_kiss: { icon: 'oilvial', color: '#7a9a2a' },
+  leadfoot_oil: { icon: 'oilvial', color: '#6a7ab8' },
+  wyrmtongue_oil: { icon: 'oilvial', color: '#4a6a2a' },
   flower_crown: { icon: 'flowercrown', color: '#e8c04c' },
   watering_can: { icon: 'wateringcan', color: '#7a8fa5' },
   // Early-game cloth sets — colorway variants are registered by the
