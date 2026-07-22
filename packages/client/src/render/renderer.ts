@@ -2756,6 +2756,70 @@ export class Renderer {
   /** The stone plinth every timber wall stands on. */
   private static readonly PLINTH_COL = '#6e6779';
 
+  /**
+   * A timber building is cut from ONE stand of trees: every log wall
+   * of a building shares a wood skin — base log tones, the pale
+   * limewash chinking between courses, the squared sill/plate beams,
+   * trim, sawn end-grain — plus a texture character (pine is knotty,
+   * weathered spruce is checked and split). Skins are dealt per
+   * BUILDING from its interior-region anchor, so neighbouring houses
+   * come from different forests while every wall, doorway, and window
+   * of one house agrees.
+   */
+  private static readonly WOOD_SKINS: ReadonlyArray<{
+    /** Base log tone + whisper alternate — one lumber order. */
+    log: string;
+    log2: string;
+    /** Limewash chinking packed between courses. */
+    chink: string;
+    /** Crown cap-beam top. */
+    top: string;
+    /** Squared sill and wall-plate beams. */
+    plate: string;
+    /** Doorway/window trim — two steps lighter law. */
+    trim: string;
+    /** Sawn end-grain disc + its sky-lit barrel top. */
+    end: string;
+    endTop: string;
+    /** Texture character multipliers. */
+    knotK: number;
+    checkK: number;
+  }> = [
+    // Golden oak — the town default, warm and even-grained.
+    {
+      log: '#6d4a26', log2: '#674424', chink: '#a28e6b', top: '#8a6234',
+      plate: '#7a562c', trim: '#96703c', end: '#96703f', endTop: '#a8834c',
+      knotK: 1, checkK: 1,
+    },
+    // Honey pine — lighter, sappier, busy with knots.
+    {
+      log: '#85633a', log2: '#7e5d3a', chink: '#bcab86', top: '#a07946',
+      plate: '#8f6b3a', trim: '#ad854e', end: '#ad854f', endTop: '#bc975e',
+      knotK: 2.1, checkK: 0.7,
+    },
+    // Weathered spruce — grayed by rain, split and checked.
+    {
+      log: '#6a5641', log2: '#644f3e', chink: '#9c8f78', top: '#7f6b52',
+      plate: '#746046', trim: '#8a7458', end: '#8a745a', endTop: '#99836a',
+      knotK: 0.8, checkK: 2.2,
+    },
+    // Dark walnut — rich and calm, the prestige cut.
+    {
+      log: '#4e3118', log2: '#492f1a', chink: '#83704f', top: '#66431f',
+      plate: '#5a3d1d', trim: '#7a5730', end: '#74522a', endTop: '#855f34',
+      knotK: 0.7, checkK: 0.8,
+    },
+  ];
+  /** Deal weights: oak and pine common, walnut the rare prize. */
+  private static readonly WOOD_DEAL = [0, 0, 0, 1, 1, 2, 2, 3] as const;
+
+  /** The wood skin a wall/doorway tile wears (building-keyed). */
+  private woodSkinFor(region: InteriorRegion | null): (typeof Renderer.WOOD_SKINS)[number] {
+    if (!region) return Renderer.WOOD_SKINS[0]!; // freestanding runs stay oak
+    const h = hashCoords(23, region.x0, region.y0);
+    return Renderer.WOOD_SKINS[Renderer.WOOD_DEAL[h % 8]!]!;
+  }
+
   private collectRaisedTiles(game: ClientGame, items: DrawItem[]): void {
     const b = this.visibleTileBounds();
     // Run-merged furniture components already emitted this frame,
@@ -2830,7 +2894,7 @@ export class Renderer {
             this.localRegion !== null &&
             dregion === this.localRegion &&
             this.localRegion.tiles.has(packTile(ax, ty - 1));
-          const item = this.doorwayItem(ground, ax, ty, game, dcut ? 0.62 : WALL_H, runLen);
+          const item = this.doorwayItem(ground, ax, ty, game, dcut ? 0.62 : WALL_H, runLen, dregion);
           if (game.world.elevAt(ax, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
@@ -2877,6 +2941,7 @@ export class Renderer {
             game,
             wcut ? 0.62 : WALL_H,
             wregion?.hasHearth ?? false,
+            wregion,
           );
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
           items.push(item);
@@ -2922,7 +2987,15 @@ export class Renderer {
    * Walls: continuous top mass with rounded exposed corners, a darker
    * front face where the wall meets open ground, and a hard shadow.
    */
-  private wallItem(tile: Tile, tx: number, ty: number, game: ClientGame, whT: number, hearth = false): DrawItem {
+  private wallItem(
+    tile: Tile,
+    tx: number,
+    ty: number,
+    game: ClientGame,
+    whT: number,
+    hearth = false,
+    region: InteriorRegion | null = null,
+  ): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
@@ -2942,8 +3015,9 @@ export class Renderer {
     const mat =
       tile === Tile.WallWoodWindow ? Tile.WallWood : tile === Tile.WallStoneWindow ? Tile.WallStone : tile;
     const window = mat !== tile && whT > 1; // stubs carry no glazing
-    const top = mat === Tile.WallWood ? '#8a6234' : mat === Tile.WallStone ? '#8c8798' : '#3a3444';
-    const face = mat === Tile.WallWood ? '#5e3f1e' : mat === Tile.WallStone ? '#5b5566' : '#221d2c';
+    const skin = this.woodSkinFor(region);
+    const top = mat === Tile.WallWood ? skin.top : mat === Tile.WallStone ? '#8c8798' : '#3a3444';
+    const face = mat === Tile.WallWood ? skin.log : mat === Tile.WallStone ? '#5b5566' : '#221d2c';
     const r = s * 0.26;
     // Chamfer only NORTH corners exposed on both sides. South crown
     // corners stay square: they sit flush on the south face, and a cut
@@ -2959,7 +3033,19 @@ export class Renderer {
     const lx = (x: number): number => this.leanX(x, whT);
     const x0 = p.x - 0.25;
     const x1 = p.x + s + 0.25;
-    const sideCol = shade(mat === Tile.WallWood ? '#6f4d26' : mat === Tile.WallStone ? '#6f697c' : '#2b2536', -8);
+    const sideCol = shade(mat === Tile.WallWood ? skin.log : mat === Tile.WallStone ? '#6f697c' : '#2b2536', -6);
+    // Shared timber course geometry — face, flanks, and corner ends
+    // must agree on where every log beds. The stack reads bottom-up:
+    // stone plinth, squared sill beam, whole chinked log courses at
+    // ~0.42-tile pitch (absolute — taller walls stack MORE logs),
+    // squared wall-plate beam under the crown. Stubs drop the sill.
+    const plinthH = s * 0.22;
+    const sillH = whT >= 1 ? s * 0.11 : 0;
+    const plateH = s * 0.13;
+    const spanPx = hs - plateH - plinthH - sillH;
+    const nLogs = Math.max(1, Math.round(spanPx / (s * 0.42)));
+    const chinkG = Math.min(s * 0.055, spanPx * 0.05);
+    const logH = (spanPx - chinkG * (nLogs - 1)) / nLogs;
 
     return {
       sortY: ty + 1,
@@ -2983,24 +3069,31 @@ export class Renderer {
         // than its own side.
         const flankDetail = (xa: number, txa: number): void => {
           if (mat !== Tile.WallWood) return;
-          const f0 = Math.min(0.9, 0.22 / whT);
-          const xf0 = xa + (txa - xa) * f0;
-          ctx.fillStyle = shade(Renderer.PLINTH_COL, -12);
-          ctx.beginPath();
-          ctx.moveTo(xa, p.y);
-          ctx.lineTo(xa, yBase);
-          ctx.lineTo(xf0, yBase - hs * f0);
-          ctx.lineTo(xf0, p.y - hs * f0);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = 'rgba(26, 15, 7, 0.35)';
-          // Course seams at the giant-log pitch — whole logs fitted
-          // between plinth and plate, same division as the face.
-          const spanT = whT - 0.35;
-          const logT = spanT / Math.max(1, Math.round(spanT));
-          for (let f = (0.22 + logT) / whT; f < 1 - 0.11 / whT; f += logT / whT) {
-            const xf = xa + (txa - xa) * f;
-            ctx.fillRect(xf - s * 0.015, p.y - hs * f, Math.max(1, s * 0.03), yBase - p.y);
+          const lerp = (f: number): number => xa + (txa - xa) * f;
+          const band = (f0: number, f1: number, col: string): void => {
+            const xq0 = lerp(f0);
+            const xq1 = lerp(f1);
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.moveTo(xq0, p.y - hs * f0);
+            ctx.lineTo(xq0, p.y + syT - hs * f0);
+            ctx.lineTo(xq1, p.y + syT - hs * f1);
+            ctx.lineTo(xq1, p.y - hs * f1);
+            ctx.closePath();
+            ctx.fill();
+          };
+          // Foundation, sill beam, and wall plate wrap the corner —
+          // a face is never a different construction than its side.
+          band(0, plinthH / hs, shade(Renderer.PLINTH_COL, -12));
+          if (sillH > 0) band(plinthH / hs, (plinthH + sillH) / hs, shade(skin.plate, -16));
+          band(1 - plateH / hs, 1, shade(skin.plate, -8));
+          // Chinking lines between courses carry the stacked logs
+          // around the building's edge at the exact face pitch.
+          for (let i = 1; i < nLogs; i++) {
+            const f = (plinthH + sillH + i * logH + (i - 0.5) * chinkG) / hs;
+            const xf = lerp(f);
+            ctx.fillStyle = shade(skin.chink, -22);
+            ctx.fillRect(xf - s * 0.02, p.y - hs * f, Math.max(1, s * 0.04), syT);
           }
         };
         if (tx0 > x0 + 0.5 && !w) {
@@ -3073,22 +3166,15 @@ export class Renderer {
             ctx.clip(guard, 'evenodd');
           }
           if (mat === Tile.WallWood) {
-            // STACKED-LOG WALL: full-width logs, one per course, and
-            // NO vertical joints — masonry breaks into blocks; wood
-            // runs in long unbroken lines. Each log is a cylinder in
-            // flat vector: a lit crown band, a shadowed belly, one
-            // dark groove where it beds on the log below. The tone is
-            // ONE warm timber with a whisper of alternation — a log
-            // wall is cut from one forest, not quarried in blocks.
-            const plinthH = s * 0.22;
-            const plateH = s * 0.13;
-            // ONE GIANT LOG: the wall is one log thick, so a log's
-            // diameter is a whole tile. The face fits whole courses
-            // between plinth and plate — two great logs at standard
-            // wall height, never a sliver — and the crown and corner
-            // caps share the same diameter.
-            const span = hs - plateH - plinthH;
-            const logH = span / Math.max(1, Math.round(span / s));
+            // CHINKED-LOG WALL: whole hewn logs at ~0.42-tile pitch,
+            // pale limewash CHINKING packed between courses, and NO
+            // vertical joints anywhere — masonry breaks into blocks;
+            // a log wall runs in long unbroken horizontal lines. Each
+            // log is a cylinder in flat vector: one sky-lit top
+            // arris, one belly shadow rolling under, one crisp bed
+            // shadow where it rests on the chinking. Character comes
+            // from the wood itself — knots, grain streaks, seasoning
+            // checks — dealt sparsely by hash, never from joints.
             // Stone plinth: the foundation the log stack sits on.
             ctx.fillStyle = Renderer.PLINTH_COL;
             ctx.fillRect(x0, -plinthH, x1 - x0, plinthH);
@@ -3104,94 +3190,135 @@ export class Renderer {
                 plinthH - s * 0.07,
               );
             }
-            // Logs at ABSOLUTE height — a 2-story facade stacks more
-            // logs, it doesn't stretch them.
+            // Squared sill beam the first log beds on (stubs skip it).
+            if (sillH > 0) {
+              ctx.fillStyle = shade(skin.plate, -10);
+              ctx.fillRect(x0, -plinthH - sillH, x1 - x0, sillH);
+              ctx.fillStyle = 'rgba(255, 220, 170, 0.14)';
+              ctx.fillRect(x0, -plinthH - sillH, x1 - x0, s * 0.028);
+            }
+            const base = plinthH + sillH;
             const topY = -(hs - plateH);
-            let li2 = 0;
-            for (let yb = -plinthH; yb > topY + 0.5; yb -= logH, li2++) {
-              const yt = Math.max(yb - logH, topY);
-              const h2 = yb - yt;
-              ctx.fillStyle = li2 % 2 === 0 ? '#6d4a25' : '#684627';
-              ctx.fillRect(x0, yt, x1 - x0, h2);
-              // The cylinder read: lit crown, shadowed belly, groove.
-              ctx.fillStyle = 'rgba(255, 214, 160, 0.16)';
-              ctx.fillRect(x0, yt + h2 * 0.08, x1 - x0, h2 * 0.3);
-              ctx.fillStyle = 'rgba(30, 18, 8, 0.28)';
-              ctx.fillRect(x0, yb - h2 * 0.24, x1 - x0, h2 * 0.24);
-              ctx.fillStyle = 'rgba(20, 12, 5, 0.5)';
-              ctx.fillRect(x0, yb - Math.max(1, s * 0.025), x1 - x0, Math.max(1, s * 0.025));
-              // A long grain streak in the odd log — wood, not paint.
-              const hg2 = hashCoords(157 + li2, tx, ty);
-              if ((hg2 & 3) === 1) {
-                ctx.fillStyle = 'rgba(46, 28, 12, 0.22)';
+            // Chinking first, across the whole stack — the logs are
+            // then laid over it leaving only the packed lines bare.
+            ctx.fillStyle = skin.chink;
+            ctx.fillRect(x0, topY, x1 - x0, spanPx + 0.5);
+            for (let li = 0; li < nLogs; li++) {
+              const yb = -base - li * (logH + chinkG);
+              const yt = yb - logH;
+              ctx.fillStyle = li % 2 === 0 ? skin.log : skin.log2;
+              ctx.fillRect(x0, yt, x1 - x0, logH);
+              // The cylinder read: sky-lit top arris, belly shadow,
+              // and a crisp bed shadow onto the chinking below.
+              ctx.fillStyle = 'rgba(255, 214, 150, 0.2)';
+              ctx.fillRect(x0, yt + logH * 0.06, x1 - x0, logH * 0.2);
+              ctx.fillStyle = 'rgba(28, 16, 6, 0.22)';
+              ctx.fillRect(x0, yb - logH * 0.2, x1 - x0, logH * 0.2);
+              ctx.fillStyle = 'rgba(20, 12, 5, 0.45)';
+              ctx.fillRect(x0, yb - Math.max(1, s * 0.022), x1 - x0, Math.max(1, s * 0.022));
+              // The wood's own character, dealt by hash — knots with
+              // a dark heart, long grain streaks, seasoning checks.
+              // Rates ride the skin: pine is knotty, spruce splits.
+              const hg = hashCoords(157 + li, tx, ty);
+              if (hg % 100 < 30 * skin.knotK) {
+                const kx = p.x + s * (0.14 + ((hg >>> 5) % 72) / 100);
+                const ky = yt + logH * (0.32 + ((hg >>> 9) % 38) / 100);
+                const kr = s * (0.03 + ((hg >>> 13) % 12) / 520);
+                ctx.fillStyle = 'rgba(40, 24, 10, 0.45)';
+                ctx.beginPath();
+                ctx.ellipse(kx, ky, kr * 1.4, kr, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = shade(skin.log, -24);
+                ctx.beginPath();
+                ctx.ellipse(kx, ky, kr * 0.65, kr * 0.45, 0, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              if ((hg & 3) === 1) {
+                ctx.fillStyle = 'rgba(46, 28, 12, 0.2)';
                 ctx.fillRect(
-                  p.x + (s * (hg2 % 40)) / 100,
-                  yt + h2 * 0.52,
-                  s * (0.35 + ((hg2 >>> 6) % 40) / 100),
-                  Math.max(1, s * 0.028),
+                  p.x + (s * (hg % 40)) / 100,
+                  yt + logH * (0.42 + ((hg >>> 11) % 22) / 100),
+                  s * (0.4 + ((hg >>> 6) % 45) / 100),
+                  Math.max(1, s * 0.026),
+                );
+              }
+              if ((hg >>> 3) % 100 < 13 * skin.checkK) {
+                ctx.fillStyle = 'rgba(26, 15, 6, 0.4)';
+                ctx.fillRect(
+                  p.x + s * (0.18 + ((hg >>> 7) % 62) / 100),
+                  (hg & 8) === 0 ? yt : yb - logH * 0.3,
+                  Math.max(1, s * 0.024),
+                  logH * 0.3,
                 );
               }
             }
-            // Wall plate: the squared top log the crown sits on.
-            ctx.fillStyle = shade(face, 22);
+            // Squared wall-plate beam capping the stack, pinned with
+            // occasional trunnel pegs — carpentry, not paint.
+            ctx.fillStyle = skin.plate;
             ctx.fillRect(x0, -hs, x1 - x0, plateH);
-            ctx.fillStyle = 'rgba(26, 15, 7, 0.35)';
-            ctx.fillRect(x0, -hs + plateH - s * 0.03, x1 - x0, s * 0.03);
-            // CROSSED-CORNER LOG ENDS: at a corner, the crossing
-            // wall's logs run out of the north and their sawn ends
-            // ARE this tile's face — full-tile-width panels aligned
-            // with the crossing wall's crown and this wall's course
-            // grooves. Each end PROTRUDES from the wall plane, and
-            // at this camera a protruding stub obeys the same 45°
-            // grammar as every crown and cliff in the game: a
-            // sky-lit TOP band (the barrel of the log seen from
-            // above), the sawn disc pushed down-screen by the
-            // protrusion depth, and a cast shadow under its lip.
-            // Courses alternate deep/shallow the way interlocked
-            // corners do, so the stack reads as built, not applied.
+            ctx.fillStyle = 'rgba(255, 220, 170, 0.15)';
+            ctx.fillRect(x0, -hs, x1 - x0, s * 0.03);
+            ctx.fillStyle = 'rgba(26, 15, 7, 0.4)';
+            ctx.fillRect(x0, -hs + plateH - s * 0.028, x1 - x0, s * 0.028);
+            const hp = hashCoords(173, tx, ty);
+            if ((hp & 3) !== 0) {
+              ctx.fillStyle = 'rgba(40, 24, 10, 0.5)';
+              const pgx = p.x + s * (0.18 + (hp % 30) / 100);
+              ctx.fillRect(pgx, -hs + plateH * 0.28, s * 0.045, s * 0.045);
+              if ((hp & 4) === 0) ctx.fillRect(pgx + s * 0.5, -hs + plateH * 0.28, s * 0.045, s * 0.045);
+            }
+            // CORNER LOG-END LADDER: at a corner the crossing wall's
+            // logs run out and their sawn ends stack up the outer
+            // edge — a column of chunky protruding discs riding the
+            // CHINK lines (the crossing wall's courses sit at half-
+            // pitch, the way saddle-notched corners interlock). Each
+            // end obeys the game's 45° protrusion grammar: a sky-lit
+            // barrel top, the sawn disc pushed down-screen by the
+            // protrusion depth, off-centre growth rings (a tree's
+            // heart is never dead centre), and a cast shadow under
+            // its lip. Depths alternate deep/shallow so the stack
+            // reads as built, not applied.
             if (n && (!w || !e)) {
-              const wF = x1 - x0;
-              let li3 = 0;
-              for (let yb = -plinthH; yb > topY + 0.5; yb -= logH, li3++) {
-                const yt = Math.max(yb - logH, topY);
-                const h2 = yb - yt;
-                if (h2 < logH * 0.55) break; // no sliver at the plate
-                const prot = syT * (li3 % 2 === 0 ? 0.17 : 0.07);
-                const cut = h2 * 0.18;
+              const endW = s * 0.56;
+              const ex0 =
+                !w && !e ? (x0 + x1) / 2 - endW / 2 : !w ? x0 + s * 0.015 : x1 - endW - s * 0.015;
+              for (let li = 1; li < nLogs; li++) {
+                const yc = -base - li * (logH + chinkG) + chinkG / 2;
+                const he = logH * 0.84;
+                const yt2 = yc - he / 2;
+                const prot = syT * (li % 2 === 1 ? 0.16 : 0.07);
+                const cut = he * 0.32;
                 const rim = Math.max(1, s * 0.02);
                 // Silhouette + seam ring around top band and disc.
-                ctx.fillStyle = 'rgba(38, 22, 9, 0.5)';
+                ctx.fillStyle = 'rgba(38, 22, 9, 0.55)';
                 ctx.beginPath();
-                chamferRect(ctx, x0, yt, wF, h2 + prot, cut);
+                chamferRect(ctx, ex0, yt2, endW, he + prot, cut);
                 ctx.fill();
                 // Sky-lit barrel top between wall plane and the rim.
-                ctx.fillStyle = '#9d7643';
+                ctx.fillStyle = skin.endTop;
                 ctx.beginPath();
-                chamferRect(ctx, x0 + rim, yt + rim, wF - rim * 2, prot + cut, cut * 0.6);
+                chamferRect(ctx, ex0 + rim, yt2 + rim, endW - rim * 2, prot + cut, cut * 0.6);
                 ctx.fill();
-                // The sawn disc, pushed south of the wall plane —
-                // lighter than the bark, darker than the lit top.
-                ctx.fillStyle = '#8f6a38';
+                // The sawn disc, pushed south of the wall plane.
+                ctx.fillStyle = skin.end;
                 ctx.beginPath();
-                chamferRect(ctx, x0 + rim, yt + prot, wF - rim * 2, h2 - rim, cut * 0.85);
+                chamferRect(ctx, ex0 + rim, yt2 + prot, endW - rim * 2, he - rim, cut * 0.85);
                 ctx.fill();
-                // Growth ring + pith drift off-centre per end — a
-                // tree's heart is never dead centre, and the drift
-                // kills the machined concentric-target read.
-                const hc = hashCoords(191 + li3, tx, ty);
-                const jx = wF * (((hc % 13) - 6) / 100);
-                const jy = h2 * ((((hc >>> 4) % 11) - 5) / 100);
-                ctx.fillStyle = 'rgba(74, 48, 22, 0.12)';
+                // Growth ring + pith, drifting off-centre per end.
+                const hc = hashCoords(191 + li, tx, ty);
+                const jx = endW * (((hc % 13) - 6) / 100);
+                const jy = he * ((((hc >>> 4) % 11) - 5) / 100);
+                ctx.fillStyle = 'rgba(74, 48, 22, 0.14)';
                 ctx.beginPath();
-                chamferRect(ctx, x0 + wF * 0.2 + jx, yt + prot + h2 * 0.18 + jy, wF * 0.6, h2 * 0.6, cut * 0.6);
+                chamferRect(ctx, ex0 + endW * 0.2 + jx, yt2 + prot + he * 0.18 + jy, endW * 0.6, he * 0.55, cut * 0.6);
                 ctx.fill();
-                ctx.fillStyle = 'rgba(74, 48, 22, 0.32)';
+                ctx.fillStyle = 'rgba(74, 48, 22, 0.34)';
                 ctx.beginPath();
-                chamferRect(ctx, x0 + wF * 0.39 + jx * 1.6, yt + prot + h2 * 0.38 + jy * 1.6, wF * 0.22, h2 * 0.2, cut * 0.3);
+                chamferRect(ctx, ex0 + endW * 0.38 + jx * 1.6, yt2 + prot + he * 0.36 + jy * 1.6, endW * 0.24, he * 0.2, cut * 0.3);
                 ctx.fill();
                 // Cast shadow under the protruding lip.
-                ctx.fillStyle = 'rgba(24, 15, 6, 0.25)';
-                ctx.fillRect(x0 + cut, yb + prot, wF - cut * 2, Math.max(1, s * 0.04));
+                ctx.fillStyle = 'rgba(24, 15, 6, 0.3)';
+                ctx.fillRect(ex0 + cut, yt2 + he + prot, endW - cut * 2, Math.max(1, s * 0.035));
               }
             }
           } else {
@@ -3229,7 +3356,7 @@ export class Renderer {
             if (wood2) {
               // Plank shutters pinned open against the wall.
               for (const shx of [wx - s * 0.15, wx + ww + s * 0.03]) {
-                ctx.fillStyle = '#4a3016';
+                ctx.fillStyle = shade(skin.log, -20);
                 ctx.beginPath();
                 chamferRect(ctx, shx, wy - s * 0.02, s * 0.12, wh2 + s * 0.04, s * 0.02);
                 ctx.fill();
@@ -3237,15 +3364,15 @@ export class Renderer {
                 ctx.fillRect(shx + s * 0.045, wy + s * 0.02, s * 0.025, wh2 - s * 0.04);
               }
               // Timber lintel + sill boards, pegged into the wall.
-              ctx.fillStyle = '#6a4a24';
+              ctx.fillStyle = skin.plate;
               ctx.fillRect(wx - s * 0.18, wy - s * 0.085, ww + s * 0.36, s * 0.055);
               ctx.fillStyle = 'rgba(40, 24, 10, 0.55)';
               ctx.fillRect(wx - s * 0.15, wy - s * 0.078, s * 0.04, s * 0.04);
               ctx.fillRect(wx + ww + s * 0.11, wy - s * 0.078, s * 0.04, s * 0.04);
-              ctx.fillStyle = shade('#6a4a24', 18);
+              ctx.fillStyle = shade(skin.plate, 18);
               ctx.fillRect(wx - s * 0.18, wy + wh2 + s * 0.035, ww + s * 0.36, s * 0.06);
               // Knee braces under the sill ends root it to the wall.
-              ctx.fillStyle = shade('#6a4a24', -8);
+              ctx.fillStyle = shade(skin.plate, -8);
               for (const bx of [wx - s * 0.08, wx + ww - s * 0.02]) {
                 ctx.beginPath();
                 ctx.moveTo(bx, wy + wh2 + s * 0.095);
@@ -3291,7 +3418,7 @@ export class Renderer {
               ctx.closePath();
               ctx.fill();
             }
-            ctx.fillStyle = mat === Tile.WallWood ? '#4a3016' : shade(face, -8);
+            ctx.fillStyle = mat === Tile.WallWood ? shade(skin.log, -22) : shade(face, -8);
             ctx.fillRect(wx + ww / 2 - s * 0.022, wy, s * 0.044, wh2);
             ctx.fillRect(wx, wy + wh2 * 0.46 - s * 0.02, ww, s * 0.04);
             ctx.restore();
@@ -3304,7 +3431,7 @@ export class Renderer {
         ctx.beginPath();
         chamferRect(ctx, x0, p.y - 0.25, s + 0.5, syT + 0.5, radii);
         ctx.fill();
-        if (mat === Tile.WallWood) this.woodCrownLog(p, syT, s, x0, x1, tx, ty, (n || sw) && !(w || e));
+        if (mat === Tile.WallWood) this.woodCrownPlate(p, syT, s, x0, x1, tx, ty, (n || sw) && !(w || e));
         // Lit south lip of the crown grounds the height read.
         if (!sw) {
           ctx.fillStyle = shade(top, 16);
@@ -3334,17 +3461,19 @@ export class Renderer {
   }
 
   /**
-   * A wood crown is the SLICED TOP of the log wall: the wall is one
-   * tile thick and a log is one tile wide, so looking down shows a
-   * SINGLE great log back running the length of the run. One quiet
-   * read — a sky-lit spine down the middle, the rounding falling
-   * away into shadow at both long edges, and a rare butt joint —
-   * nothing competing with the face below. Orientation follows the
-   * run direction (`vert` for N-S runs). Clips to the current crown
-   * path, so shading never spills off a chamfered corner. Call with
-   * the chamferRect path still current, right after fill.
+   * A wood crown is the top of the squared CAP BEAM the wall carries
+   * — a hewn timber back running the length of the run, not a round
+   * log (a plate always caps a chinked log stack; you never see bare
+   * log backs from above). One quiet read: hard arris shadows where
+   * the beam's edges fall away to the faces, a sun-lit spine, long
+   * grain streaks, and a RARE butt joint pinned with a peg pair —
+   * carpentry, never competing with the face below. Orientation
+   * follows the run direction (`vert` for N-S runs). Clips to the
+   * current crown path, so shading never spills off a chamfered
+   * corner. Call with the chamferRect path still current, right
+   * after fill.
    */
-  private woodCrownLog(
+  private woodCrownPlate(
     p: { x: number; y: number },
     syT: number,
     s: number,
@@ -3361,26 +3490,44 @@ export class Renderer {
     const hj = hashCoords(177, tx, ty);
     if (vert) {
       const wL = x1 - x0;
-      // Rounding falls away toward the faces at both long edges.
-      ctx.fillStyle = 'rgba(30, 18, 8, 0.2)';
-      ctx.fillRect(x0, p.y - 0.25, wL * 0.11, syT + 0.75);
-      ctx.fillRect(x1 - wL * 0.11, p.y - 0.25, wL * 0.11, syT + 0.75);
-      // Sky-lit spine along the log's back.
-      ctx.fillStyle = 'rgba(255, 226, 175, 0.16)';
-      ctx.fillRect(x0 + wL * 0.3, p.y - 0.25, wL * 0.4, syT + 0.75);
-      if ((hj & 7) === 1) {
-        ctx.fillStyle = 'rgba(40, 24, 10, 0.35)';
-        ctx.fillRect(x0 + wL * 0.09, p.y + (syT * (hj % 70)) / 100, wL * 0.82, seam);
+      // Hard arris shadows where the beam edges fall to the faces.
+      ctx.fillStyle = 'rgba(30, 18, 8, 0.24)';
+      ctx.fillRect(x0, p.y - 0.25, wL * 0.1, syT + 0.75);
+      ctx.fillRect(x1 - wL * 0.1, p.y - 0.25, wL * 0.1, syT + 0.75);
+      // Sun-lit spine along the beam's back.
+      ctx.fillStyle = 'rgba(255, 226, 175, 0.14)';
+      ctx.fillRect(x0 + wL * 0.32, p.y - 0.25, wL * 0.36, syT + 0.75);
+      // Long grain following the run.
+      if ((hj & 3) === 1) {
+        ctx.fillStyle = 'rgba(40, 24, 10, 0.2)';
+        ctx.fillRect(x0 + wL * (0.2 + ((hj >>> 6) % 30) / 100), p.y + syT * 0.12, seam, syT * 0.62);
+      }
+      // Rare butt joint, pegged either side — beams are FITTED.
+      if ((hj & 7) === 2) {
+        const jy = p.y + (syT * (20 + (hj % 55))) / 100;
+        ctx.fillStyle = 'rgba(40, 24, 10, 0.38)';
+        ctx.fillRect(x0 + wL * 0.08, jy, wL * 0.84, seam);
+        ctx.fillStyle = 'rgba(40, 24, 10, 0.5)';
+        ctx.fillRect(x0 + wL * 0.28, jy - s * 0.075, s * 0.042, s * 0.042);
+        ctx.fillRect(x0 + wL * 0.6, jy + s * 0.04, s * 0.042, s * 0.042);
       }
     } else {
-      ctx.fillStyle = 'rgba(30, 18, 8, 0.2)';
-      ctx.fillRect(x0, p.y - 0.25, x1 - x0, syT * 0.11);
-      ctx.fillRect(x0, p.y + syT * 0.89, x1 - x0, syT * 0.11 + 0.5);
-      ctx.fillStyle = 'rgba(255, 226, 175, 0.16)';
-      ctx.fillRect(x0, p.y + syT * 0.3, x1 - x0, syT * 0.4);
-      if ((hj & 7) === 1) {
-        ctx.fillStyle = 'rgba(40, 24, 10, 0.35)';
-        ctx.fillRect(p.x + (s * (hj % 70)) / 100, p.y + syT * 0.09, seam, syT * 0.82);
+      ctx.fillStyle = 'rgba(30, 18, 8, 0.24)';
+      ctx.fillRect(x0, p.y - 0.25, x1 - x0, syT * 0.1);
+      ctx.fillRect(x0, p.y + syT * 0.9, x1 - x0, syT * 0.1 + 0.5);
+      ctx.fillStyle = 'rgba(255, 226, 175, 0.14)';
+      ctx.fillRect(x0, p.y + syT * 0.32, x1 - x0, syT * 0.36);
+      if ((hj & 3) === 1) {
+        ctx.fillStyle = 'rgba(40, 24, 10, 0.2)';
+        ctx.fillRect(p.x + (s * (hj % 60)) / 100, p.y + syT * (0.2 + ((hj >>> 6) % 30) / 100), s * 0.5, seam);
+      }
+      if ((hj & 7) === 2) {
+        const jx = p.x + (s * (20 + (hj % 55))) / 100;
+        ctx.fillStyle = 'rgba(40, 24, 10, 0.38)';
+        ctx.fillRect(jx, p.y + syT * 0.08, seam, syT * 0.84);
+        ctx.fillStyle = 'rgba(40, 24, 10, 0.5)';
+        ctx.fillRect(jx - s * 0.075, p.y + syT * 0.28, s * 0.042, s * 0.042);
+        ctx.fillRect(jx + s * 0.04, p.y + syT * 0.6, s * 0.042, s * 0.042);
       }
     }
     ctx.restore();
@@ -3424,6 +3571,7 @@ export class Renderer {
     game: ClientGame,
     whT: number,
     runLen = 1,
+    region: InteriorRegion | null = null,
   ): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
@@ -3444,11 +3592,12 @@ export class Renderer {
       if (!isWallAt(tx + i, ty + 1)) sw = false;
     }
     const stone = tile === Tile.DoorwayStone || tile === Tile.DoorwayStoneWide;
-    const top = stone ? '#8c8798' : '#8a6234';
-    const face = stone ? '#5b5566' : '#5e3f1e';
+    const skin = this.woodSkinFor(region);
+    const top = stone ? '#8c8798' : skin.top;
+    const face = stone ? '#5b5566' : skin.log;
     // Frame trim reads two steps lighter than the wall it pierces —
     // entrances must be findable at a glance from across the plaza.
-    const trim = stone ? '#8a8496' : '#96703c';
+    const trim = stone ? '#8a8496' : skin.trim;
     const syT = s * this.camera.yScale;
     const hs = whT * s;
     const rw = s * runLen; // the opening spans the whole run
@@ -3546,7 +3695,7 @@ export class Renderer {
         ctx.beginPath();
         chamferRect(ctx, x0, p.y - 0.25, rw + 0.5, syT + 0.5, radii);
         ctx.fill();
-        if (!stone) this.woodCrownLog(p, syT, s, x0, x1, tx, ty, (n || sw) && !(w || e));
+        if (!stone) this.woodCrownPlate(p, syT, s, x0, x1, tx, ty, (n || sw) && !(w || e));
         if (!sw) {
           ctx.fillStyle = shade(top, 16);
           ctx.fillRect(x0, p.y + syT - s * 0.08, rw + 0.5, s * 0.08);
@@ -3614,7 +3763,8 @@ export class Renderer {
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const elevated = game.world.elevAt(tx, ty) !== 0;
     const stone = tile === Tile.DoorwayStone || tile === Tile.DoorwayStoneWide;
-    const trim = stone ? '#8a8496' : '#96703c';
+    // A side door's frame carries its building's wood skin too.
+    const trim = stone ? '#8a8496' : this.woodSkinFor(this.wallRegion(game, tx, ty)).trim;
     const syT = s * this.camera.yScale;
     const hs = WALL_H * s;
     const x0 = p.x - 0.25;

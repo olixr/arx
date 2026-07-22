@@ -516,6 +516,21 @@ export declare class Renderer {
     private static readonly LIGHT_BLOCKERS;
     /** The stone plinth every timber wall stands on. */
     private static readonly PLINTH_COL;
+    /**
+     * A timber building is cut from ONE stand of trees: every log wall
+     * of a building shares a wood skin — base log tones, the pale
+     * limewash chinking between courses, the squared sill/plate beams,
+     * trim, sawn end-grain — plus a texture character (pine is knotty,
+     * weathered spruce is checked and split). Skins are dealt per
+     * BUILDING from its interior-region anchor, so neighbouring houses
+     * come from different forests while every wall, doorway, and window
+     * of one house agrees.
+     */
+    private static readonly WOOD_SKINS;
+    /** Deal weights: oak and pine common, walnut the rare prize. */
+    private static readonly WOOD_DEAL;
+    /** The wood skin a wall/doorway tile wears (building-keyed). */
+    private woodSkinFor;
     private collectRaisedTiles;
     /**
      * Walls: continuous top mass with rounded exposed corners, a darker
@@ -523,17 +538,19 @@ export declare class Renderer {
      */
     private wallItem;
     /**
-     * A wood crown is the SLICED TOP of the log wall: the wall is one
-     * tile thick and a log is one tile wide, so looking down shows a
-     * SINGLE great log back running the length of the run. One quiet
-     * read — a sky-lit spine down the middle, the rounding falling
-     * away into shadow at both long edges, and a rare butt joint —
-     * nothing competing with the face below. Orientation follows the
-     * run direction (`vert` for N-S runs). Clips to the current crown
-     * path, so shading never spills off a chamfered corner. Call with
-     * the chamferRect path still current, right after fill.
+     * A wood crown is the top of the squared CAP BEAM the wall carries
+     * — a hewn timber back running the length of the run, not a round
+     * log (a plate always caps a chinked log stack; you never see bare
+     * log backs from above). One quiet read: hard arris shadows where
+     * the beam's edges fall away to the faces, a sun-lit spine, long
+     * grain streaks, and a RARE butt joint pinned with a peg pair —
+     * carpentry, never competing with the face below. Orientation
+     * follows the run direction (`vert` for N-S runs). Clips to the
+     * current crown path, so shading never spills off a chamfered
+     * corner. Call with the chamferRect path still current, right
+     * after fill.
      */
-    private woodCrownLog;
+    private woodCrownPlate;
     /**
      * How veiled a doorway's dark interior fill is: 1 far away, easing
      * to 0 as any body nears the threshold — the door "opens" for
