@@ -1,6 +1,7 @@
 import { ELEMENT_COLORS, ENCHANT_DEFS, itemDef } from '@devcraft/content';
 import { shade } from './rig.js';
 import { BOW_STYLES, DAGGER_STYLES, STAFF_STYLES, SWORD_STYLES, drawBow, drawStaff, drawSword } from './weapons.js';
+import { TOOL_STYLES, drawTool } from './tools.js';
 
 /**
  * The icon set: every item and UI glyph is drawn in code, in the same
@@ -3619,9 +3620,12 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   for (const [id, st] of Object.entries({ ...SWORD_STYLES, ...DAGGER_STYLES })) {
     // Daggers are short — render bigger and shift less so the knife
     // fills the same diagonal the swords command.
+    // Chunky-icon law: the pack glyph rides the box DIAGONAL (90px in
+    // a 64 frame), so the painter can render ~35% bigger than a
+    // square fit — thickness comes free with the length headroom.
     const dagger = id in DAGGER_STYLES;
-    const scale = dagger ? 92 : 78;
-    const shift = dagger ? -9 : -15;
+    const scale = dagger ? 118 : 105;
+    const shift = dagger ? -12 : -20;
     PAINTERS[`sword:${id}`] = (c) => {
       c.translate(0.5, 0.5);
       c.rotate(-Math.PI / 4);
@@ -3640,8 +3644,10 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
 // — render smaller so the full stave fits the box.
 {
   for (const [id, st] of Object.entries(BOW_STYLES)) {
+    // Same diagonal headroom as the blades — a bow is all silhouette,
+    // so the fatter limbs and visible grain matter double here.
     const tall = st.bow === 'longbow';
-    const scale = tall ? 68 : 82;
+    const scale = tall ? 92 : 108;
     const shift = -0.15 * scale;
     PAINTERS[`bow:${id}`] = (c) => {
       c.translate(0.5, 0.5);
@@ -3659,7 +3665,7 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
 // box. Long builds render smaller so the whole silhouette fits.
 {
   for (const [id, st] of Object.entries(STAFF_STYLES)) {
-    const scale = (st.len ?? 1) > 1.04 ? 52 : 58;
+    const scale = (st.len ?? 1) > 1.04 ? 68 : 74;
     PAINTERS[`staff:${id}`] = (c) => {
       c.translate(0.5, 0.5);
       c.rotate(-Math.PI / 4);
@@ -3670,6 +3676,24 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
       drawStaff(c, st, scale, 5234, false, 0.5, 0);
     };
     ITEM_ICON[id] = { icon: `staff:${id}`, color: st.gem ?? st.color };
+  }
+}
+
+// ---- the gatherer's roster: every tool's icon IS its world painter,
+// on the sword diagonal, head up-right where the classic axe glyph
+// carried its bit. The rod lies flatter so line and bobber stay in.
+{
+  for (const [id, st] of Object.entries(TOOL_STYLES)) {
+    const rod = st.kind === 'rod';
+    const scale = rod ? 96 : 100;
+    PAINTERS[`tool:${id}`] = (c) => {
+      c.translate(0.5, 0.5);
+      c.rotate(rod ? -Math.PI / 7 : -Math.PI / 4);
+      c.scale(1 / 64, 1 / 64);
+      c.translate(rod ? -22 : -16, rod ? 4 : 6);
+      drawTool(c, st, scale, 5234, false);
+    };
+    ITEM_ICON[id] = { icon: `tool:${id}`, color: st.color };
   }
 }
 
@@ -3731,6 +3755,27 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
 
 const cache = new Map<string, string>();
 
+/**
+ * Eight-tap dilate offsets — the SAME kernel as the renderer's entity
+ * outline pass (Renderer.OUTLINE_TAPS). Icons ride through the world's
+ * outline shader so a glyph in the pack and the object in the grass
+ * wear the identical dark ring.
+ */
+const ICON_TAPS: ReadonlyArray<readonly [number, number]> = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [0.71, 0.71],
+  [-0.71, 0.71],
+  [0.71, -0.71],
+  [-0.71, -0.71],
+];
+
+/** Supersample factor: paint big, ring big, downscale once — curve
+ * edges and the dilate ring land antialiased instead of stair-stepped. */
+const SS = 3;
+
 function renderIcon(icon: string, color: string, size: number): string {
   const key = `${icon}|${color}|${size}`;
   const hit = cache.get(key);
@@ -3738,36 +3783,82 @@ function renderIcon(icon: string, color: string, size: number): string {
 
   const painter = PAINTERS[icon] ?? PAINTERS.burnt!;
 
-  // Draw the art once, derive a solid silhouette, then compose:
-  // silhouette offset (the hard drop shadow) + art on top.
+  // 1. Paint the art at supersample resolution. Painters draw in a
+  // 0..1 unit box; a small inset leaves apron for the ring to grow
+  // outward without clipping at the canvas edge.
+  const px = size * SS;
+  const inset = Math.ceil(px * 0.045) + 2;
   const art = document.createElement('canvas');
-  art.width = size;
-  art.height = size;
+  art.width = px;
+  art.height = px;
   const actx = art.getContext('2d')!;
   actx.save();
-  actx.scale(size, size);
+  actx.translate(inset, inset);
+  actx.scale(px - inset * 2, px - inset * 2);
   painter(actx, color);
   actx.restore();
 
+  // 2. The outline shader: eight-tap alpha dilate of the art, tinted
+  // the world's outline color. Radius matches the world pass's feel
+  // (max(1.25, scale*0.04)) at this icon's effective scale.
+  const r = Math.max(1.25 * SS, px * 0.03);
+  const ri = Math.max(1, Math.round(r));
+  const rd = Math.max(1, Math.round(r * 0.71));
+  const ring = document.createElement('canvas');
+  ring.width = px;
+  ring.height = px;
+  const rctx = ring.getContext('2d')!;
+  for (const [tx, ty] of ICON_TAPS) {
+    const diag = tx !== 0 && ty !== 0;
+    rctx.drawImage(art, Math.sign(tx) * (diag ? rd : ri), Math.sign(ty) * (diag ? rd : ri));
+  }
+  rctx.globalCompositeOperation = 'source-in';
+  rctx.fillStyle = OUTLINE;
+  rctx.fillRect(0, 0, px, px);
+  rctx.globalCompositeOperation = 'source-over';
+
+  // 3. The hard drop shadow comes off the RINGED silhouette (ring ∪
+  // art), so the shadow hugs the final outlined shape.
   const sil = document.createElement('canvas');
-  sil.width = size;
-  sil.height = size;
+  sil.width = px;
+  sil.height = px;
   const sctx = sil.getContext('2d')!;
+  sctx.drawImage(ring, 0, 0);
   sctx.drawImage(art, 0, 0);
   sctx.globalCompositeOperation = 'source-in';
   sctx.fillStyle = SHADOW;
-  sctx.fillRect(0, 0, size, size);
+  sctx.fillRect(0, 0, px, px);
+
+  // 4. Compose at supersample, then downscale once.
+  const big = document.createElement('canvas');
+  big.width = px;
+  big.height = px;
+  const bctx = big.getContext('2d')!;
+  bctx.drawImage(sil, px * 0.045, px * 0.045);
+  bctx.drawImage(ring, 0, 0);
+  bctx.drawImage(art, 0, 0);
 
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(sil, size * 0.05, size * 0.05);
-  ctx.drawImage(art, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(big, 0, 0, size, size);
 
   const url = canvas.toDataURL();
   cache.set(key, url);
   return url;
+}
+
+/** Every mapped item id — the dev icon gallery walks this. */
+export function allIconItemIds(): string[] {
+  return Object.keys(ITEM_ICON);
+}
+
+/** Every mapped buildable id — the dev icon gallery walks this. */
+export function allIconBuildableIds(): string[] {
+  return Object.keys(BUILDABLE_ICON);
 }
 
 /** Data URL for an item's icon. */

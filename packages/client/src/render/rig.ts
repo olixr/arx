@@ -11,6 +11,7 @@ import {
   type BladeFx,
   type StaffFx,
 } from './weapons.js';
+import { drawTool, toolStyle } from './tools.js';
 import {
   LegRig,
   chooseLimbSign,
@@ -3089,26 +3090,10 @@ function drawHeldItem(
     // style — bespoke silhouette, guard, pommel, living fx channel.
     // Unknown '*sword'/'*dagger' ids get color-derived fallbacks.
     drawSword(ctx, enchantedStyle(bladeStyle(itemId, color)!, extra?.ench, 'blade'), s, rig.nowMs, rig.hurt);
-  } else if (itemId.includes('axe') || itemId.includes('pickaxe')) {
-    ctx.fillStyle = '#8a6a45';
-    ctx.beginPath();
-    ctx.roundRect(-0.05 * s, -0.024 * s, 0.46 * s, 0.048 * s, 0.02 * s);
-    ctx.fill();
-    ctx.fillStyle = color;
-    if (itemId.includes('pickaxe')) {
-      ctx.beginPath();
-      ctx.moveTo(0.36 * s, -0.16 * s);
-      ctx.quadraticCurveTo(0.55 * s, 0, 0.36 * s, 0.16 * s);
-      ctx.quadraticCurveTo(0.44 * s, 0, 0.36 * s, -0.16 * s);
-      ctx.fill();
-    } else {
-      ctx.beginPath();
-      ctx.moveTo(0.36 * s, -0.13 * s);
-      ctx.quadraticCurveTo(0.56 * s, -0.06 * s, 0.54 * s, 0.1 * s);
-      ctx.lineTo(0.36 * s, 0.06 * s);
-      ctx.closePath();
-      ctx.fill();
-    }
+  } else if (toolStyle(itemId, color) && !itemId.includes('rod')) {
+    // The gatherer's roster: every axe and pickaxe resolves a style —
+    // bespoke head, haft furniture, collar lashing, starsteel fx.
+    drawTool(ctx, toolStyle(itemId, color)!, s, rig.nowMs, rig.hurt);
   } else if (bowStyle(itemId, color)) {
     // The archer's roster: every bow resolves a style — limb kind,
     // wood, tip furniture, charms, and the living fx channel. The
@@ -3124,18 +3109,7 @@ function drawHeldItem(
     const castT = rig.pose === PoseState.Cast ? rig.poseT : 0;
     drawStaff(ctx, enchantedStyle(staffStyle(itemId, color)!, extra?.ench, 'staff'), s, rig.nowMs, rig.hurt, extra?.grip ?? 0.34, castT);
   } else if (itemId.includes('rod')) {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = Math.max(2, s * 0.04);
-    ctx.beginPath();
-    ctx.moveTo(-0.05 * s, 0);
-    ctx.quadraticCurveTo(0.3 * s, -0.14 * s, 0.52 * s, -0.06 * s);
-    ctx.stroke();
-    ctx.strokeStyle = '#dcd6c4';
-    ctx.lineWidth = Math.max(1, s * 0.015);
-    ctx.beginPath();
-    ctx.moveTo(0.52 * s, -0.06 * s);
-    ctx.lineTo(0.5 * s, 0.12 * s);
-    ctx.stroke();
+    drawTool(ctx, toolStyle(itemId, color)!, s, rig.nowMs, rig.hurt);
   } else {
     ctx.fillStyle = color;
     ctx.beginPath();

@@ -1,3 +1,7 @@
+/** Every mapped item id — the dev icon gallery walks this. */
+export declare function allIconItemIds(): string[];
+/** Every mapped buildable id — the dev icon gallery walks this. */
+export declare function allIconBuildableIds(): string[];
 /** Data URL for an item's icon. */
 export declare function itemIconUrl(itemId: string, size?: number): string;
 /**

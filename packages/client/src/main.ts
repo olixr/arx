@@ -27,6 +27,13 @@ import { LookCreator } from './ui/lookCreator.js';
 // shows — the stylesheet reads it from CSS custom properties.
 installChrome();
 
+// Dev audit surface: `?icons` overlays the full icon gallery. The game
+// boots underneath untouched; the overlay simply outranks it.
+if (new URLSearchParams(location.search).has('icons')) {
+  const { showIconGallery } = await import('./editor/iconGallery.js');
+  showIconGallery();
+}
+
 // Painted UI glyphs — no emoji anywhere in the universe. Each dock
 // button wears a device-aware shortcut badge (letter or pad glyph).
 for (const [id, kind, tip, kbKey, padCls, padLabel] of [
