@@ -18,10 +18,19 @@ export function chamferRect(
   h: number,
   cut: number | [number, number, number, number],
 ): void {
+  // Allocation-free clamp: this runs thousands of times a frame across
+  // the painters — the old destructure+map built an array, an iterator
+  // and a closure per call (~6MB/s of pure garbage in town).
   const cap = Math.min(w, h) / 2;
-  const [tl, tr, br, bl] = (
-    typeof cut === 'number' ? [cut, cut, cut, cut] : cut
-  ).map((c) => Math.max(0, Math.min(cap, c))) as [number, number, number, number];
+  let tl: number, tr: number, br: number, bl: number;
+  if (typeof cut === 'number') {
+    tl = tr = br = bl = cut < 0 ? 0 : cut > cap ? cap : cut;
+  } else {
+    tl = cut[0] < 0 ? 0 : cut[0] > cap ? cap : cut[0];
+    tr = cut[1] < 0 ? 0 : cut[1] > cap ? cap : cut[1];
+    br = cut[2] < 0 ? 0 : cut[2] > cap ? cap : cut[2];
+    bl = cut[3] < 0 ? 0 : cut[3] > cap ? cap : cut[3];
+  }
   ctx.moveTo(x + tl, y);
   ctx.lineTo(x + w - tr, y);
   if (tr > 0) ctx.lineTo(x + w, y + tr);
@@ -30,8 +39,7 @@ export function chamferRect(
   ctx.lineTo(x + bl, y + h);
   if (bl > 0) ctx.lineTo(x, y + h - bl);
   ctx.lineTo(x, y + tl);
-  if (tl > 0) ctx.closePath();
-  else ctx.closePath();
+  ctx.closePath();
 }
 
 /**

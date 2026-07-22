@@ -103,6 +103,16 @@ export declare class Renderer {
     private readonly baked;
     private readonly anims;
     private shakeAmount;
+    /**
+     * True while the player zoom is gliding toward its target. Every
+     * cached sprite/shadow/chunk holds its bake and scale-blits for the
+     * ride: a glide crosses the 20% scale-drift threshold on the whole
+     * herd at once, and re-baking mid-glide is doubly wasted — the same
+     * sprites re-bake AGAIN at the settled scale (measured 17.6ms p95
+     * on a 2.0→0.85 glide; pure blits hold the frame budget). Missing
+     * sprites still bake — a blurry hold beats a hole.
+     */
+    private zoomGliding;
     private frameDt;
     private w;
     private h;
@@ -188,6 +198,27 @@ export declare class Renderer {
      * `heightTiles` and leaned coherently. Pair with ctx.restore().
      */
     private beginHeightLayer;
+    /** The world's outline color — the dark edge entities and props wear. */
+    private static readonly STRUCT_OUTLINE;
+    /**
+     * Arm the context to stroke an architecture silhouette: the same
+     * bold dark edge the entity ring gives props and characters, drawn
+     * as a hard stroke so buildings, doorways, arches, and pillars read
+     * with the flat-art edge the rest of the world wears. Only EXPOSED
+     * edges are ever stroked (an edge shared with a run-neighbour gets
+     * none), so runs stay seamless — only the building perimeter and
+     * its openings are ringed.
+     */
+    private beginStructOutline;
+    /**
+     * Trace a wall-like mass's crown top edge + its exposed vertical
+     * sides into `path` (screen space). `cTop` is the crown's north
+     * edge; the left/right sides descend to `leftBot`/`rightBot`.
+     * Chamfered north corners (radii rTL/rTR) are followed so the ring
+     * hugs the cut. Shared by wall, doorway, and arch painters — each
+     * adds its own base/opening edges afterwards.
+     */
+    private addCrownPerimeter;
     constructor(canvas: HTMLCanvasElement);
     /** The game being rendered this frame (for world lookups in painters). */
     private game;
@@ -314,7 +345,7 @@ export declare class Renderer {
     private castMask;
     /** A rock/ore formation's exact silhouette, thrown as its shadow. */
     private castRockShadow;
-    /** A wild forage plant's silhouette (grown calm: wind zeroed). */
+    /** A grown plant's silhouette — forage node or farm crop (calm: wind zeroed). */
     private castFloraShadow;
     /**
      * Screen → world with elevation: a click on a plateau top must land
@@ -346,12 +377,20 @@ export declare class Renderer {
      * bolt streaking across a night field carries its own pool of light.
      */
     queueGlow(x: number, y: number, r: number, rgb: string, a: number): void;
+    /** 1/3-res frame copy backing the tilt-shift (bilinear up IS the blur). */
+    private readonly tiltScratch;
+    private readonly tiltScratchCtx;
     /**
      * Tilt-shift: the top and bottom of the frame soften like a macro
      * photo of a miniature — the single cheapest "this is a diorama with
-     * real depth" signal there is. Overlapping self-drawImage strips with
-     * canvas blur filters; skipped cleanly where filters are unsupported.
+     * real depth" signal there is. DOWNSAMPLE-UPSAMPLE, not ctx.filter:
+     * one 1/3-res copy of the frame, then plain band blits back up —
+     * bilinear resampling does the softening. A filter blur re-runs a
+     * Gaussian pass per band and forces a canvas snapshot each time
+     * (~0.5ms/frame at 0.85×); this is six cheap drawImages, and the
+     * alpha ramp keeps the graded near-sharp-to-soft read.
      */
+    private static readonly TILT_BANDS;
     private applyTiltShift;
     /**
      * Color grade: the "curated camera" over the raw painter output,
@@ -541,7 +580,7 @@ export declare class Renderer {
      * One TALL hewn monolith: a single tapering silhouette with a
      * stepped ledge on each flank — the "you walk up against it"
      * landmark mass. Same flat grammar as stoneBlock (lit cap, shaded
-     * lane, one outline) but drawn as ONE rock, so height never reads
+     * lane, shader-rung silhouette) but drawn as ONE rock, so height never reads
      * as a pancake tower of crates. Returns the silhouette so callers
      * can clip veins INTO the stone.
      */
@@ -612,6 +651,97 @@ export declare class Renderer {
     private readonly spriteCanvasPool;
     private static treeKey;
     private bakeTreeSprite;
+    /**
+     * Props whose outline ring bakes into a cached sprite (with their
+     * art) instead of running the per-frame outline pass. Only DISCRETE
+     * pieces belong here — run-merged furniture rings solely when
+     * isolated (its body is undefined mid-run), and flame-lit pieces
+     * (LampPost, Hearth, Campfire, the stations) stay on the live pass
+     * so their fire isn't sampled down to cadence rate.
+     */
+    private static readonly CACHED_RING_TILES;
+    /**
+     * Stations ride the ring-baked sprite cache too — but only while
+     * COLD. Their flame/shimmer animation samples at the shared adaptive
+     * cadence (every animated term is <4Hz, safely under the ~12Hz
+     * cadence floor), which turned ~11 live outline passes per town
+     * frame into cache blits. A station someone is WORKING (stationHeat
+     * > 0) goes back to the live pass: full-rate animation exactly when
+     * a player is close enough to study it. EnchantingTable is absent by
+     * LAW — its painter queueGlows, and a glow queued inside a baked
+     * painter strobes at cadence rate (the candle-strobe bug).
+     */
+    private static readonly STATION_CACHE_TILES;
+    /**
+     * Cached-ring props with NO ambient animation: skip the fast tree
+     * cadence and heal on a slow stagger instead (scale drift and
+     * neighbor edits still re-bake) — re-baking a static bookshelf at
+     * 20Hz is pure bake-budget waste.
+     */
+    private static readonly STATIC_RING_TILES;
+    /**
+     * Run-merging furniture rings as ONE unit: connected same-tile
+     * components bake into a single anchor-keyed sprite so the ring
+     * wraps the whole hall table / stall / counter run instead of
+     * seaming every joint (the user-flagged gap after the isolated-only
+     * era). `cap` bounds the BFS — a component past it (estate fencing)
+     * goes ringless rather than paying a wall-sized bake.
+     */
+    /** Pooled BFS scratch for tryRunRingItem (flat x,y interleaved). */
+    private static readonly runMembers;
+    private static readonly runSeenScratch;
+    private static readonly runQueue;
+    private static readonly RUN_NEIGH_X;
+    private static readonly RUN_NEIGH_Y;
+    private static readonly RUN_RING_TILES;
+    /**
+     * Group a run-merging tile's connected component and emit ONE ringed
+     * item for the whole piece. Members are discovered by world data
+     * (not the visible loop) so a run half-off-screen still bakes whole.
+     * Returns true if the tile was consumed (already-seen member or the
+     * fresh run item was pushed); false = treat as a plain tile.
+     */
+    private tryRunRingItem;
+    /**
+     * Bake a prop's own draw + outline ring into a sprite canvas. The
+     * paint closure draws at ABSOLUTE screen coords; the translate maps
+     * the item's body rect to the canvas with a ring margin, and the
+     * this.ctx swap routes it here (every cached case re-captures ctx
+     * at draw time — the build-time-capture law).
+     */
+    private bakePropSprite;
+    /**
+     * Cached-sprite draw for a discrete ringed prop — the flora pattern
+     * generalized. Shares the tree cache wholesale (map, budget,
+     * adaptive cadence, eviction, canvas pool); the body rect arrives
+     * fresh each frame (items rebuild per frame) so the blit tracks the
+     * camera at full rate while the art samples at cadence. Falls back
+     * to the live outline pass while streaming in faster than the bake
+     * budget allows.
+     */
+    private drawPropOutlined;
+    /** Pool-aware canvas acquisition shared by the world-prop sprite bakes. */
+    private acquireSpriteCanvas;
+    /**
+     * Wild forage nodes, cached exactly like trees: per-instance sprite
+     * re-baked on the shared adaptive cadence, outline ring baked in.
+     * The per-frame outline pass on ~38 live-painted forage nodes cost
+     * 2.1ms in a dense forest (120→94fps) — cached, the steady cost is
+     * one drawImage per node.
+     */
+    private bakeFloraSprite;
+    /** Cached-sprite draw for a grown plant — forage node or farm crop. */
+    private drawFlora;
+    /**
+     * The world's outline ring, baked INTO a sprite canvas: dilate the
+     * sprite's own alpha into scratch B, tint, slip the ring UNDER the
+     * art (destination-over). Cached trees pay this once per re-bake
+     * instead of ~38μs per frame in paintOutlined — a 300-tree forest
+     * would otherwise spend >10ms/frame on rings alone. Works in device
+     * pixels (identity transform); the final blit is integer-aligned so
+     * the fractional-tap bleed law only needs the apron clear on B.
+     */
+    private bakeOutlineRing;
     private drawTree;
     /**
      * TRUE-FORM tree shadow: the same skeleton paintTree draws — trunk
@@ -639,11 +769,12 @@ export declare class Renderer {
     private collectBreakingRocks;
     private collectFallingTrees;
     /**
-     * A growing crop plant. Flat vector language: triangle blades, facet
-     * blooms, chunky puffs — every species reads at a glance, and ripe
-     * stages visibly ask to be picked.
+     * Screen bounds of a live-painted tree, mirroring bakeTreeSprite's
+     * headroom exactly — crown spread + wind throw + blob jitter above,
+     * root flare below. Feeds the outline pass for the trees that can't
+     * blit a ring-baked sprite (regrowth, felling shudder).
      */
-    private drawCropPlant;
+    private treeBody;
     /** Trees, rocks, stations — the object layer, redrawn with character. */
     private objectItem;
     /**
@@ -651,6 +782,10 @@ export declare class Renderer {
      * included. The grass system derives velocities itself (it remembers
      * last positions per id), so this is just who-is-where.
      */
+    /** This frame's moving bodies (players + NPCs), pooled records.
+     *  Shared by the grass system AND the doorway veil — one gather. */
+    private readonly frameDisturbers;
+    private readonly disturberPool;
     private collectDisturbers;
     private collectEntities;
     /** What a footfall kicks loose from each ground. Null = nothing

@@ -33,6 +33,7 @@
  * floraBaseRadius() — a test pins physics to the drawn base mass.
  */
 import { Tile } from '@devcraft/shared';
+export declare const OUTLINE = "rgba(26, 20, 36, 0.45)";
 export interface FloraMass {
     x: number;
     y: number;
@@ -108,6 +109,14 @@ export interface FloraFrame {
     flame: number;
     windOverride?: number;
 }
+/** Moonbell: cool leaf fan, indigo lanterns, hot moon-white core. */
+export declare const MOON_LEAF: readonly ["#38584e", "#4a7161", "#5e8a74"];
+export declare const MOON_BELL: {
+    deep: string;
+    face: string;
+    core: string;
+};
+export declare function mulberry(seed: number): () => number;
 export declare function speciesOfFlora(tile: Tile): number;
 /**
  * The drawn base-mass half-width per tile — TILE_COLLIDER_RADIUS in
@@ -116,6 +125,13 @@ export declare function speciesOfFlora(tile: Tile): number;
  */
 export declare function floraBaseRadius(tile: Tile): number;
 export declare function floraModel(tile: Tile, h: number): FloraModel;
+/** Staggered twinkle window: brief flash once per period (beacon law). */
+export declare function twinkle(tSec: number, seed: number, period: number): number;
+export declare function sparkle(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, alpha: number, color: string): void;
+/** Crisp parting shadow where the plant meets the turf (ore law). */
+export declare function partingShadow(ctx: CanvasRenderingContext2D, bx: number, gy: number, w: number): void;
+/** Blocky leaf-litter chips scattered at the feet — grounds the mass. */
+export declare function litter(ctx: CanvasRenderingContext2D, bx: number, gy: number, s: number, seed: number, colors: readonly string[]): void;
 /**
  * The sagewort floret tower: a snug dark silhouette behind stacked
  * chamfer florets whitening upward. `tipY` is the stalk's top; the
@@ -134,4 +150,8 @@ export declare function bellLantern(ctx: CanvasRenderingContext2D, x: number, y:
  * ambient effects on gust strength.
  */
 export declare function paintFlora(ctx: CanvasRenderingContext2D, m: FloraModel, f: FloraFrame): number;
+/** Tone-banded foliage masses with per-cluster rustle (tree dialect). */
+export declare function paintMasses(ctx: CanvasRenderingContext2D, m: {
+    masses: FloraMass[];
+}, f: FloraFrame, wind: number, leaves: readonly string[], bend: number): Float32Array;
 //# sourceMappingURL=flora.d.ts.map

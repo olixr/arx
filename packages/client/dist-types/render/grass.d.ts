@@ -17,6 +17,7 @@ export interface WindSample {
  * curve like real weather) and a perpendicular meander (swaths snake
  * sideways as they pass). Pure function of position + time.
  */
+export declare function windAtInto(out: WindSample, wx: number, wy: number, tSec: number): WindSample;
 export declare function windAt(wx: number, wy: number, tSec: number): WindSample;
 /**
  * Scalar wind for anything that only bends one way (the trees). Same
@@ -109,9 +110,26 @@ export declare class GrassSystem {
     private shKy;
     private shOn;
     private touched;
-    private readonly touchedFlag;
+    private touchedFlag;
     /** Disturbers near the tile currently being built. */
     private near;
+    /**
+     * THE CALM CACHE. Re-tessellating every visible blade every frame
+     * cost ~2ms steady at 0.85× zoom (and its allocation churn drew GC
+     * pauses of up to 15ms into this very pass). But a calm meadow only
+     * MOVES at wind rate — so the under-layer bakes all undisturbed
+     * tiles into a persistent set of bucket paths at UNDER_CACHE_MS
+     * cadence (~15Hz wind sampling, the tree-cadence law) and each frame
+     * just re-FILLS them translated by the camera delta. Only tiles a
+     * body (or its predicted path — a swept box over the cache window)
+     * can reach, plus fresh wakes, are excluded and rebuilt live per
+     * frame. A disturber that escapes its predicted box forces an
+     * immediate rebake, so displacement NEVER lags a frame.
+     */
+    private underCache;
+    /** This frame's cached-fill translation (drawUnder → flushShadows). */
+    private cacheDx;
+    private cacheDy;
     /**
      * Tile → disturbers-in-range, rebuilt once per frame from each
      * disturber's footprint (~5×5 tiles). Inverts the old per-tile scan
@@ -120,6 +138,10 @@ export declare class GrassSystem {
      * blade output is identical.
      */
     private readonly disturberIndex;
+    /** Frame stamp for disturberIndex entries — readers must match it. */
+    private indexEpoch;
+    /** Recycled LiveDisturber records backing `live` (see beginFrame). */
+    private readonly livePool;
     /**
      * Per-frame flutter table: every blade's tremble is one of 32 phase
      * bins sampled once per frame — thousands of Math.sin calls become
@@ -158,10 +180,21 @@ export declare class GrassSystem {
     private buildFlower;
     private buildRoots;
     private flush;
+    /** Painter's order for one bucket set: roots under blades under flowers. */
+    private fillBuckets;
+    /** Build one tile's under-layer content into the CURRENT containers
+     *  (roots, under blades, tall-thicket casts, flowers deferred). */
+    private buildUnderTile;
+    /** Flowers are their own layer: heads always read above the lawn. */
+    private buildFlowerTiles;
+    /** Rebake the calm cache (see underCache). */
+    private bakeUnder;
     /**
      * The under-layer: every short blade, clump, and flower in bounds —
      * drawn beneath entities. Tall thickets contribute only their sparse
-     * underbrush here; their mass y-sorts via collectTall.
+     * underbrush here; their mass y-sorts via collectTall. Calm tiles
+     * come from the cadence-baked cache (one translated fill per bucket);
+     * only disturbed/waking tiles rebuild per frame.
      */
     drawUnder(ctx: CanvasRenderingContext2D, ground: Sampler, detail: DetailFn, bounds: GrassBounds, wts: WTS, s: number): void;
     /**

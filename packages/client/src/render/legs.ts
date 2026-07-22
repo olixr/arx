@@ -498,6 +498,51 @@ export function chooseLimbSign(
   return target;
 }
 
+/** solveLimb's result shape — also usable as a caller-owned scratch. */
+export interface LimbSolve {
+  ex: number;
+  ey: number;
+  kx: number;
+  ky: number;
+}
+
+/**
+ * Allocation-free two-bone solve: writes into `out` and returns it.
+ * Per-frame paint paths (every limb of every visible body solves every
+ * frame) call this with a long-lived scratch; anything that needs to
+ * HOLD two solves at once uses solveLimb, which allocates.
+ */
+export function solveLimbInto(
+  out: LimbSolve,
+  sx: number,
+  sy: number,
+  hx: number,
+  hy: number,
+  L: number,
+  stretch: number,
+  prefX: number,
+  prefY: number,
+): LimbSolve {
+  let dx = hx - sx;
+  let dy = hy - sy;
+  let d = Math.hypot(dx, dy) || 1e-4;
+  const dMax = L * 2 * stretch;
+  if (d > dMax) {
+    dx *= dMax / d;
+    dy *= dMax / d;
+    d = dMax;
+  }
+  const bend = Math.sqrt(Math.max(0, L * L - (d / 2) ** 2));
+  const cx = -dy / d;
+  const cy = dx / d;
+  const sign = cx * prefX + cy * prefY >= 0 ? 1 : -1;
+  out.ex = sx + dx;
+  out.ey = sy + dy;
+  out.kx = sx + dx / 2 + cx * sign * bend;
+  out.ky = sy + dy / 2 + cy * sign * bend;
+  return out;
+}
+
 /**
  * Pure two-bone limb solve, the one IK in the game: clamps the target
  * into reach and places the joint on whichever side of the root→target
@@ -512,24 +557,6 @@ export function solveLimb(
   stretch: number,
   prefX: number,
   prefY: number,
-): { ex: number; ey: number; kx: number; ky: number } {
-  let dx = hx - sx;
-  let dy = hy - sy;
-  let d = Math.hypot(dx, dy) || 1e-4;
-  const dMax = L * 2 * stretch;
-  if (d > dMax) {
-    dx *= dMax / d;
-    dy *= dMax / d;
-    d = dMax;
-  }
-  const bend = Math.sqrt(Math.max(0, L * L - (d / 2) ** 2));
-  const cx = -dy / d;
-  const cy = dx / d;
-  const sign = cx * prefX + cy * prefY >= 0 ? 1 : -1;
-  return {
-    ex: sx + dx,
-    ey: sy + dy,
-    kx: sx + dx / 2 + cx * sign * bend,
-    ky: sy + dy / 2 + cy * sign * bend,
-  };
+): LimbSolve {
+  return solveLimbInto({ ex: 0, ey: 0, kx: 0, ky: 0 }, sx, sy, hx, hy, L, stretch, prefX, prefY);
 }

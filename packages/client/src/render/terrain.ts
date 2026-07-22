@@ -342,7 +342,7 @@ export function bakeChunk(
       const ty = baseY + ly;
       // Raised/sunken tiles' details belong to their lifted layer.
       if (elev(tx, ty) !== 0) continue;
-      drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail);
+      drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail, g);
     }
   }
 
@@ -364,6 +364,7 @@ function drawTileDetail(
   ly: number,
   px: number,
   dAt?: (x: number, y: number) => number,
+  gAt?: (x: number, y: number) => number | undefined,
 ): void {
   const hg = hashCoords(83, tx, ty);
   const gx = lx * px;
@@ -372,20 +373,58 @@ function drawTileDetail(
   // flowered meadow must not keep phantom blooms) and gets furrows.
   if (m === Tile.Tilled) {
     d = Detail.None;
-    // Three worked furrow rows, slightly ragged, plus a couple clods.
-    ctx.fillStyle = 'rgba(32, 22, 13, 0.35)';
+    // Hand-dug furrow courses running east-west: broken runs of dark
+    // groove dashes with the odd sunlit crumb on the ridge shoulder —
+    // worked earth, never planks (continuous full-width bands with a
+    // hard highlight read as decking; measured and rejected). Course
+    // lines sit at fixed tile fractions so a plot reads as continuous
+    // rows, but every dash wobbles and the runs stay ragged.
+    const soilW = gAt !== undefined && gAt(tx - 1, ty) === Tile.Tilled;
+    const soilE = gAt !== undefined && gAt(tx + 1, ty) === Tile.Tilled;
+    const minX = gx + (soilW ? -px * 0.05 : px * 0.07);
+    const maxX = gx + px - (soilE ? -px * 0.05 : px * 0.07);
     for (let r = 0; r < 3; r++) {
-      const fy = gy + px * (0.2 + r * 0.28) + ((hg >> (r * 3)) % 3 - 1) * px * 0.02;
-      ctx.fillRect(gx + px * 0.06, fy, px * 0.88, Math.max(1, px * 0.07));
+      const baseY = gy + px * (0.16 + r * 0.3);
+      for (let seg = 0; seg < 4; seg++) {
+        const hh = hashCoords(97 + r * 7 + seg, tx, ty);
+        let sx = gx + (seg / 4) * px - px * 0.04;
+        const sw = px * (0.2 + (hh % 5) * 0.032);
+        let ex = sx + sw;
+        sx = Math.max(minX, sx);
+        ex = Math.min(maxX, ex);
+        if (ex <= sx) continue;
+        const sy = baseY + (((hh >> 4) % 5) - 2) * px * 0.014;
+        ctx.fillStyle = 'rgba(30, 20, 11, 0.42)';
+        ctx.fillRect(sx, sy, ex - sx, Math.max(1.5, px * 0.075));
+        if ((hh & 3) === 0) {
+          ctx.fillStyle = 'rgba(196, 152, 100, 0.3)';
+          ctx.fillRect(sx + (ex - sx) * 0.2, sy - px * 0.05, (ex - sx) * 0.4, Math.max(1, px * 0.035));
+        }
+      }
     }
-    ctx.fillStyle = 'rgba(150, 116, 76, 0.5)';
-    for (let k = 0; k < 2; k++) {
+    // Turned clods: chunky lumps with a dark seat and a sunlit cap —
+    // the spade's leavings, scattered off the course lines.
+    for (let k = 0; k < 3; k++) {
       const hh = hashCoords(191 + k, tx, ty);
+      const cx = gx + (0.08 + (hh % 78) / 100) * px;
+      const cy = gy + (0.06 + ((hh >> 7) % 80) / 100) * px;
+      const cw = px * (0.05 + ((hh >> 3) % 4) * 0.013);
+      ctx.fillStyle = 'rgba(30, 20, 11, 0.5)';
+      ctx.fillRect(cx - cw * 0.14, cy + cw * 0.28, cw * 1.25, cw * 0.7);
+      ctx.fillStyle = hh & 1 ? '#8a6a45' : '#7d5f3d';
+      ctx.fillRect(cx, cy, cw, cw * 0.78);
+      ctx.fillStyle = 'rgba(214, 175, 122, 0.4)';
+      ctx.fillRect(cx + cw * 0.1, cy, cw * 0.55, cw * 0.24);
+    }
+    // The odd pale stone the spade turned up.
+    if (hg % 5 === 0) {
+      const hh = hashCoords(211, tx, ty);
+      ctx.fillStyle = '#8d867c';
       ctx.fillRect(
-        gx + (0.12 + (hh % 70) / 100) * px,
-        gy + (0.1 + ((hh >> 7) % 75) / 100) * px,
-        px * 0.07,
-        px * 0.05,
+        gx + (0.15 + (hh % 60) / 100) * px,
+        gy + (0.12 + ((hh >> 6) % 65) / 100) * px,
+        px * 0.055,
+        px * 0.04,
       );
     }
   }
@@ -976,7 +1015,7 @@ export function bakeElevated(
       const tx = baseX + lx;
       const ty = baseY + ly;
       if (!member(tx, ty)) continue;
-      drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail);
+      drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail, g);
     }
   }
   ctx.restore();

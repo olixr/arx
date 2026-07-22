@@ -53,7 +53,7 @@ export interface WindSample {
  * curve like real weather) and a perpendicular meander (swaths snake
  * sideways as they pass). Pure function of position + time.
  */
-export function windAt(wx: number, wy: number, tSec: number): WindSample {
+export function windAtInto(out: WindSample, wx: number, wy: number, tSec: number): WindSample {
   const along = wx * WX + wy * WY;
   const across = -wx * WY + wy * WX;
   const frontBend = 0.9 * Math.sin(across * 0.055 + tSec * 0.13);
@@ -68,13 +68,24 @@ export function windAt(wx: number, wy: number, tSec: number): WindSample {
   const l =
     0.62 * Math.sin(along * 0.035 - tSec * 0.3 + 0.5 * frontBend) +
     0.38 * Math.sin(along * 0.07 - tSec * 0.75 + across * 0.02);
-  return {
-    bx: WX * s - WY * meander,
-    by: WY * s + WX * meander,
-    s,
-    l,
-  };
+  out.bx = WX * s - WY * meander;
+  out.by = WY * s + WX * meander;
+  out.s = s;
+  out.l = l;
+  return out;
 }
+
+export function windAt(wx: number, wy: number, tSec: number): WindSample {
+  return windAtInto({ bx: 0, by: 0, s: 0, l: 0 }, wx, wy, tSec);
+}
+
+/**
+ * The grass system's own wind scratch: one sample is in flight at a
+ * time (per-tile, consumed before the next tile samples), so every
+ * in-class call reuses this record — thousands of allocations a frame
+ * otherwise. External callers with overlapping lifetimes use windAt.
+ */
+const WIND_SCRATCH: WindSample = { bx: 0, by: 0, s: 0, l: 0 };
 
 /**
  * Scalar wind for anything that only bends one way (the trees). Same
@@ -393,6 +404,18 @@ interface TileFrame {
 /** Bins for the shared per-frame flutter table (indexed by blade phase). */
 const FLUTTER_BINS = 32;
 
+/** Calm-cache rebake cadence, ms (~15Hz wind sampling — the same
+ *  rate the tree-sprite cadence law already proved invisible). */
+const UNDER_CACHE_MS = 66;
+/** Padding (tiles) baked past the visible bounds so panning doesn't
+ *  force a rebake between cadence beats. */
+const UNDER_PAD = 2;
+/** A disturber's blade-influence box half-extent, tiles (matches the
+ *  disturberIndex footprint). */
+const DISTURB_REACH = 2.3;
+/** Flower buckets in paint order — hoisted (flush runs per frame). */
+const FLOWER_BUCKETS = [B_STEM, B_PETAL0, B_PETAL0 + 1, B_PETAL0 + 2, B_CORE] as const;
+
 export class GrassSystem {
   private readonly tiles = new Map<number, GrassTileState>();
   /** Position → live state, for waking tiles bodies move through. */
@@ -416,9 +439,45 @@ export class GrassSystem {
   private shKy = 0;
   private shOn = false;
   private touched: number[] = [];
-  private readonly touchedFlag = new Uint8Array(BUCKETS);
+  private touchedFlag = new Uint8Array(BUCKETS);
   /** Disturbers near the tile currently being built. */
   private near: LiveDisturber[] = [];
+  /**
+   * THE CALM CACHE. Re-tessellating every visible blade every frame
+   * cost ~2ms steady at 0.85× zoom (and its allocation churn drew GC
+   * pauses of up to 15ms into this very pass). But a calm meadow only
+   * MOVES at wind rate — so the under-layer bakes all undisturbed
+   * tiles into a persistent set of bucket paths at UNDER_CACHE_MS
+   * cadence (~15Hz wind sampling, the tree-cadence law) and each frame
+   * just re-FILLS them translated by the camera delta. Only tiles a
+   * body (or its predicted path — a swept box over the cache window)
+   * can reach, plus fresh wakes, are excluded and rebuilt live per
+   * frame. A disturber that escapes its predicted box forces an
+   * immediate rebake, so displacement NEVER lags a frame.
+   */
+  private underCache: {
+    paths: Path2D[];
+    flags: Uint8Array;
+    shadow: Path2D | null;
+    /** Screen position of world (0,0) at bake — fills translate by the delta. */
+    ox: number;
+    oy: number;
+    scale: number;
+    bakedAtMs: number;
+    /** Padded tile bounds the bake covered. */
+    minTx: number;
+    maxTx: number;
+    minTy: number;
+    maxTy: number;
+    /** Packed keys of tiles EXCLUDED from the bake (drawn live). */
+    live: Set<number>;
+    shKx: number;
+    shKy: number;
+    shOn: boolean;
+  } | null = null;
+  /** This frame's cached-fill translation (drawUnder → flushShadows). */
+  private cacheDx = 0;
+  private cacheDy = 0;
   /**
    * Tile → disturbers-in-range, rebuilt once per frame from each
    * disturber's footprint (~5×5 tiles). Inverts the old per-tile scan
@@ -426,7 +485,11 @@ export class GrassSystem {
    * box tests became one map lookup per tile. Same coverage box, so
    * blade output is identical.
    */
-  private readonly disturberIndex = new Map<number, LiveDisturber[]>();
+  private readonly disturberIndex = new Map<number, { epoch: number; list: LiveDisturber[] }>();
+  /** Frame stamp for disturberIndex entries — readers must match it. */
+  private indexEpoch = 0;
+  /** Recycled LiveDisturber records backing `live` (see beginFrame). */
+  private readonly livePool: LiveDisturber[] = [];
   /**
    * Per-frame flutter table: every blade's tremble is one of 32 phase
    * bins sampled once per frame — thousands of Math.sin calls become
@@ -457,7 +520,17 @@ export class GrassSystem {
       this.wakeWobble[i] = Math.sin(nowMs * 0.021 + phase * 1.75) * 0.055;
     }
     const dt = Math.max(frameDt, 1 / 240);
-    this.live = disturbers.map((d) => {
+    // POOLED live records: the roster is rebuilt every frame, so the
+    // record objects (and the lastPos entries) are recycled in place —
+    // the old map()+spread minted ~80 objects a frame here.
+    this.live.length = disturbers.length;
+    for (let i = 0; i < disturbers.length; i++) {
+      const d = disturbers[i]!;
+      let ld = this.livePool[i];
+      if (!ld) {
+        ld = { id: 0, x: 0, y: 0, r: 0, vx: 0, vy: 0, speed: 0 };
+        this.livePool[i] = ld;
+      }
       const prev = this.lastPos.get(d.id);
       const vx = prev ? (d.x - prev.x) / dt : 0;
       const vy = prev ? (d.y - prev.y) / dt : 0;
@@ -473,16 +546,33 @@ export class GrassSystem {
           if (tile === Tile.GrassTall) rustle(d.x, d.y);
         }
       }
-      this.lastPos.set(d.id, { x: d.x, y: d.y, tx, ty });
-      return { ...d, vx: Math.min(8, Math.max(-8, vx)), vy: Math.min(8, Math.max(-8, vy)), speed };
-    });
+      if (prev) {
+        prev.x = d.x;
+        prev.y = d.y;
+        prev.tx = tx;
+        prev.ty = ty;
+      } else {
+        this.lastPos.set(d.id, { x: d.x, y: d.y, tx, ty });
+      }
+      ld.id = d.id;
+      ld.x = d.x;
+      ld.y = d.y;
+      ld.r = d.r;
+      ld.vx = Math.min(8, Math.max(-8, vx));
+      ld.vy = Math.min(8, Math.max(-8, vy));
+      ld.speed = speed;
+      this.live[i] = ld;
+    }
     // Forget disturbers that vanished (deaths, despawns).
     if (this.lastPos.size > disturbers.length + 8) {
       const ids = new Set(disturbers.map((d) => d.id));
       for (const key of this.lastPos.keys()) if (!ids.has(key)) this.lastPos.delete(key);
     }
     // Rebuild the tile → nearby-disturbers index for this frame.
-    this.disturberIndex.clear();
+    // EPOCH-STAMPED entries recycle their list arrays across frames
+    // (the old clear()+fresh-[d] pattern allocated ~1k arrays a frame
+    // with a town's worth of bodies); readers must check the epoch.
+    const epoch = ++this.indexEpoch;
     for (const d of this.live) {
       const tx0 = Math.floor(d.x - 2.3);
       const tx1 = Math.floor(d.x + 2.3);
@@ -491,10 +581,22 @@ export class GrassSystem {
       for (let ty = ty0; ty <= ty1; ty++) {
         for (let tx = tx0; tx <= tx1; tx++) {
           const key = (ty + 8192) * 16384 + (tx + 8192);
-          const list = this.disturberIndex.get(key);
-          if (list) list.push(d);
-          else this.disturberIndex.set(key, [d]);
+          let e = this.disturberIndex.get(key);
+          if (!e) {
+            e = { epoch, list: [] };
+            this.disturberIndex.set(key, e);
+          } else if (e.epoch !== epoch) {
+            e.epoch = epoch;
+            e.list.length = 0;
+          }
+          e.list.push(d);
         }
+      }
+    }
+    // Stale keys (tiles bodies left) accumulate — prune occasionally.
+    if (this.disturberIndex.size > 4096) {
+      for (const [key, e] of this.disturberIndex) {
+        if (e.epoch !== epoch) this.disturberIndex.delete(key);
       }
     }
     // Evict geometry far outside the camera's neighbourhood.
@@ -522,10 +624,22 @@ export class GrassSystem {
    * the same batched layer as every other caster.
    */
   flushShadows(ctx: CanvasRenderingContext2D, fill: string, alpha: number): void {
-    if (!this.shadowPath) return;
+    const cached = this.underCache?.shadow ?? null;
+    if (!this.shadowPath && !cached) return;
     ctx.fillStyle = fill;
     ctx.globalAlpha = alpha;
-    ctx.fill(this.shadowPath);
+    // The calm meadow's casts ride the cache, translated exactly like
+    // its blades (cacheDx/Dy were computed by this frame's drawUnder).
+    if (cached) {
+      const moved = this.cacheDx !== 0 || this.cacheDy !== 0;
+      if (moved) {
+        ctx.save();
+        ctx.translate(this.cacheDx, this.cacheDy);
+      }
+      ctx.fill(cached);
+      if (moved) ctx.restore();
+    }
+    if (this.shadowPath) ctx.fill(this.shadowPath);
     ctx.globalAlpha = 1;
     this.shadowPath = null;
   }
@@ -566,8 +680,10 @@ export class GrassSystem {
 
   /** Point `near` at this tile's precomputed disturber list. */
   private gatherNear(tx: number, ty: number): void {
-    this.near =
-      this.disturberIndex.get((ty + 8192) * 16384 + (tx + 8192)) ?? GrassSystem.NO_DISTURBERS;
+    const e = this.disturberIndex.get((ty + 8192) * 16384 + (tx + 8192));
+    // Entries persist across frames (recycled lists) — a stale epoch
+    // means "no disturbers here THIS frame".
+    this.near = e !== undefined && e.epoch === this.indexEpoch ? e.list : GrassSystem.NO_DISTURBERS;
   }
 
   /** Two corner samples → the tile's exact local affine frame. */
@@ -761,28 +877,152 @@ export class GrassSystem {
   }
 
   private flush(ctx: CanvasRenderingContext2D): void {
-    const paths = this.paths as Path2D[];
-    // Roots under blades under flowers: painter's order inside the batch.
-    if (this.touchedFlag[B_ROOT]) {
+    this.fillBuckets(ctx, this.paths as Path2D[], this.touchedFlag);
+  }
+
+  /** Painter's order for one bucket set: roots under blades under flowers. */
+  private fillBuckets(ctx: CanvasRenderingContext2D, paths: Path2D[], flags: Uint8Array): void {
+    if (flags[B_ROOT]) {
       ctx.fillStyle = BUCKET_FILLS[B_ROOT]!;
       ctx.fill(paths[B_ROOT]!);
     }
     for (let i = 0; i < B_ROOT; i++) {
-      if (!this.touchedFlag[i]) continue;
+      if (!flags[i]) continue;
       ctx.fillStyle = BUCKET_FILLS[i]!;
       ctx.fill(paths[i]!);
     }
-    for (const i of [B_STEM, B_PETAL0, B_PETAL0 + 1, B_PETAL0 + 2, B_CORE]) {
-      if (!this.touchedFlag[i]) continue;
+    for (const i of FLOWER_BUCKETS) {
+      if (!flags[i]) continue;
       ctx.fillStyle = BUCKET_FILLS[i]!;
       ctx.fill(paths[i]!);
     }
   }
 
+  /** Build one tile's under-layer content into the CURRENT containers
+   *  (roots, under blades, tall-thicket casts, flowers deferred). */
+  private buildUnderTile(
+    st: GrassTileState,
+    t: number,
+    tx: number,
+    ty: number,
+    wts: WTS,
+    s: number,
+    flowerTiles: GrassTileState[],
+  ): void {
+    const wind = windAtInto(WIND_SCRATCH, tx + 0.5, ty + 0.5, this.tSec);
+    const f = this.tileFrame(tx, ty, wts);
+    this.gatherNear(tx, ty);
+    this.buildRoots(st, f, s);
+    for (const b of st.geom.under) this.buildBlade(b, st, wind, f, s, true);
+    // Tall thickets y-sort their mass AFTER the shadow layer has
+    // composited, so their casts are gathered here, shadow-only —
+    // the thicket's shade lands with everyone else's.
+    if (t === Tile.GrassTall) {
+      for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s, true, false);
+      for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s, true, false);
+    }
+    if (st.geom.flowers.length > 0) flowerTiles.push(st);
+  }
+
+  /** Flowers are their own layer: heads always read above the lawn. */
+  private buildFlowerTiles(flowerTiles: GrassTileState[], wts: WTS, s: number): void {
+    for (const st of flowerTiles) {
+      const wind = windAtInto(WIND_SCRATCH, st.tx + 0.5, st.ty + 0.5, this.tSec);
+      const f = this.tileFrame(st.tx, st.ty, wts);
+      this.gatherNear(st.tx, st.ty);
+      for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s, true);
+    }
+  }
+
+  /** Rebake the calm cache (see underCache). */
+  private bakeUnder(
+    ground: Sampler,
+    detail: DetailFn,
+    bounds: GrassBounds,
+    wts: WTS,
+    s: number,
+    ox: number,
+    oy: number,
+  ): void {
+    const minTx = bounds.minTx - UNDER_PAD;
+    const maxTx = bounds.maxTx + UNDER_PAD;
+    const minTy = bounds.minTy - UNDER_PAD;
+    const maxTy = bounds.maxTy + UNDER_PAD;
+    // Exclusion set: every tile a disturber can influence during this
+    // cache window — its reach box SWEPT along its predicted motion.
+    const live = new Set<number>();
+    const horizon = UNDER_CACHE_MS / 1000 + 0.02;
+    for (const d of this.live) {
+      const x1 = d.x + d.vx * horizon;
+      const y1 = d.y + d.vy * horizon;
+      const bx0 = Math.floor(Math.min(d.x, x1) - DISTURB_REACH);
+      const bx1 = Math.floor(Math.max(d.x, x1) + DISTURB_REACH);
+      const by0 = Math.floor(Math.min(d.y, y1) - DISTURB_REACH);
+      const by1 = Math.floor(Math.max(d.y, y1) + DISTURB_REACH);
+      for (let ty = by0; ty <= by1; ty++) {
+        for (let tx = bx0; tx <= bx1; tx++) {
+          live.add((ty + 8192) * 16384 + (tx + 8192));
+        }
+      }
+    }
+    // Swap the bucket containers for the bake, restore after — the
+    // build helpers all write through `this`.
+    const prevPaths = this.paths;
+    const prevFlags = this.touchedFlag;
+    const prevTouched = this.touched;
+    const prevShadow = this.shadowPath;
+    const paths = new Array<Path2D>(BUCKETS);
+    for (let i = 0; i < BUCKETS; i++) paths[i] = new Path2D();
+    this.paths = paths;
+    this.touchedFlag = new Uint8Array(BUCKETS);
+    this.touched = [];
+    this.shadowPath = null;
+    const flowerTiles: GrassTileState[] = [];
+    for (let ty = minTy; ty <= maxTy; ty++) {
+      for (let tx = minTx; tx <= maxTx; tx++) {
+        const t = ground(tx, ty);
+        if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
+        const key = (ty + 8192) * 16384 + (tx + 8192);
+        const st = this.tile(tx, ty, t, detail(tx, ty));
+        // Fresh wakes spring back at frame rate — keep them live too.
+        if (st.wakeAt > 0 && this.nowMs - st.wakeAt < 800) {
+          live.add(key);
+          continue;
+        }
+        if (live.has(key)) continue;
+        this.buildUnderTile(st, t, tx, ty, wts, s, flowerTiles);
+      }
+    }
+    this.buildFlowerTiles(flowerTiles, wts, s);
+    this.underCache = {
+      paths,
+      flags: this.touchedFlag,
+      shadow: this.shadowPath,
+      ox,
+      oy,
+      scale: s,
+      bakedAtMs: this.nowMs,
+      minTx,
+      maxTx,
+      minTy,
+      maxTy,
+      live,
+      shKx: this.shKx,
+      shKy: this.shKy,
+      shOn: this.shOn,
+    };
+    this.paths = prevPaths;
+    this.touchedFlag = prevFlags;
+    this.touched = prevTouched;
+    this.shadowPath = prevShadow;
+  }
+
   /**
    * The under-layer: every short blade, clump, and flower in bounds —
    * drawn beneath entities. Tall thickets contribute only their sparse
-   * underbrush here; their mass y-sorts via collectTall.
+   * underbrush here; their mass y-sorts via collectTall. Calm tiles
+   * come from the cadence-baked cache (one translated fill per bucket);
+   * only disturbed/waking tiles rebuild per frame.
    */
   drawUnder(
     ctx: CanvasRenderingContext2D,
@@ -792,34 +1032,71 @@ export class GrassSystem {
     wts: WTS,
     s: number,
   ): void {
-    this.ensurePaths();
-    const flowerTiles: Array<[GrassTileState, TileFrame]> = [];
-    for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
-      for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
-        const t = ground(tx, ty);
-        if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
-        const st = this.tile(tx, ty, t, detail(tx, ty));
-        const wind = windAt(tx + 0.5, ty + 0.5, this.tSec);
-        const f = this.tileFrame(tx, ty, wts);
-        this.gatherNear(tx, ty);
-        this.buildRoots(st, f, s);
-        for (const b of st.geom.under) this.buildBlade(b, st, wind, f, s, true);
-        // Tall thickets y-sort their mass AFTER the shadow layer has
-        // composited, so their casts are gathered here, shadow-only —
-        // the thicket's shade lands with everyone else's.
-        if (t === Tile.GrassTall) {
-          for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s, true, false);
-          for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s, true, false);
+    const o = wts(0, 0);
+    let c = this.underCache;
+    let needBake =
+      !c ||
+      c.scale !== s ||
+      this.nowMs - c.bakedAtMs >= UNDER_CACHE_MS ||
+      Math.abs(c.shKx - this.shKx) > 0.004 ||
+      Math.abs(c.shKy - this.shKy) > 0.004 ||
+      c.shOn !== this.shOn ||
+      bounds.minTx < c.minTx ||
+      bounds.maxTx > c.maxTx ||
+      bounds.minTy < c.minTy ||
+      bounds.maxTy > c.maxTy;
+    // Escape hatch: a disturber outside every predicted box (teleport,
+    // fresh projectile) must not displace BAKED blades — rebake now,
+    // not at the next beat, so displacement never lags.
+    if (!needBake && c) {
+      outer: for (const d of this.live) {
+        const tx0 = Math.floor(d.x - DISTURB_REACH);
+        const tx1 = Math.floor(d.x + DISTURB_REACH);
+        const ty0 = Math.floor(d.y - DISTURB_REACH);
+        const ty1 = Math.floor(d.y + DISTURB_REACH);
+        for (let ty = ty0; ty <= ty1; ty++) {
+          for (let tx = tx0; tx <= tx1; tx++) {
+            if (tx < bounds.minTx || tx > bounds.maxTx || ty < bounds.minTy || ty > bounds.maxTy) continue;
+            if (!c.live.has((ty + 8192) * 16384 + (tx + 8192))) {
+              const t = ground(tx, ty);
+              if (t === Tile.Grass || t === Tile.GrassTall) {
+                needBake = true;
+                break outer;
+              }
+            }
+          }
         }
-        if (st.geom.flowers.length > 0) flowerTiles.push([st, f]);
       }
     }
-    // Flowers are their own layer: heads always read above the lawn.
-    for (const [st, f] of flowerTiles) {
-      const wind = windAt(st.tx + 0.5, st.ty + 0.5, this.tSec);
-      this.gatherNear(st.tx, st.ty);
-      for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s, true);
+    if (needBake) {
+      this.bakeUnder(ground, detail, bounds, wts, s, o.x, o.y);
+      c = this.underCache;
     }
+    const cache = c!;
+    // 1. The calm meadow: cached buckets, translated by the camera
+    // delta (both origins are pixel-snapped, so the delta is integer).
+    this.cacheDx = o.x - cache.ox;
+    this.cacheDy = o.y - cache.oy;
+    const moved = this.cacheDx !== 0 || this.cacheDy !== 0;
+    if (moved) {
+      ctx.save();
+      ctx.translate(this.cacheDx, this.cacheDy);
+    }
+    this.fillBuckets(ctx, cache.paths, cache.flags);
+    if (moved) ctx.restore();
+    // 2. The living edge: excluded tiles rebuild at frame rate.
+    this.ensurePaths();
+    const flowerTiles: GrassTileState[] = [];
+    for (const key of cache.live) {
+      const ty = Math.floor(key / 16384) - 8192;
+      const tx = (key % 16384) - 8192;
+      if (tx < bounds.minTx || tx > bounds.maxTx || ty < bounds.minTy || ty > bounds.maxTy) continue;
+      const t = ground(tx, ty);
+      if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
+      const st = this.tile(tx, ty, t, detail(tx, ty));
+      this.buildUnderTile(st, t, tx, ty, wts, s, flowerTiles);
+    }
+    this.buildFlowerTiles(flowerTiles, wts, s);
     this.flush(ctx);
   }
 
@@ -858,7 +1135,7 @@ export class GrassSystem {
           draw: () => {
             this.ensurePaths();
             for (const st of tiles) {
-              const wind = windAt(st.tx + 0.5, st.ty + 0.5, this.tSec);
+              const wind = windAtInto(WIND_SCRATCH, st.tx + 0.5, st.ty + 0.5, this.tSec);
               const f = this.tileFrame(st.tx, st.ty, wts);
               this.gatherNear(st.tx, st.ty);
               for (const b of st.geom[half]) this.buildBlade(b, st, wind, f, s);
@@ -889,7 +1166,7 @@ export class GrassSystem {
         const t = ground(tx, ty);
         if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
         const st = this.tile(tx, ty, t, detail(tx, ty));
-        const wind = windAt(tx + 0.5, ty + 0.5, this.tSec);
+        const wind = windAtInto(WIND_SCRATCH, tx + 0.5, ty + 0.5, this.tSec);
         const f = this.tileFrame(tx, ty, wts);
         this.gatherNear(tx, ty);
         this.buildRoots(st, f, s);

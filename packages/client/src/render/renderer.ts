@@ -60,9 +60,9 @@ import {
 } from './ragdoll.js';
 import { BLOB_M, chamferRect, facetBlob, facetCircle, unitBlob } from './shapes.js';
 import { Particles } from './particles.js';
-import { GrassSystem, windAt, windScalarAt, type Disturber } from './grass.js';
+import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
 import { paintTree, treeModel, type TreeModel } from './trees.js';
-import { bellLantern, floraModel, floretTower, paintFlora } from './flora.js';
+import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
@@ -92,6 +92,8 @@ import {
  */
 const SHADOW_SUN = '#180e20';
 const SHADOW_MOON = '#0e1430';
+/** Renderer-side wind scratch (samples are consumed immediately). */
+const WIND_TMP: WindSample = { bx: 0, by: 0, s: 0, l: 0 };
 /**
  * Tree sprites/shadow paths re-bake every Nth frame (staggered by a
  * per-frame budget). Sway drifts ~12px/s at 0.85 zoom, so a 4-frame
@@ -429,6 +431,16 @@ export class Renderer {
   private readonly baked = new Map<string, BakedChunk>();
   private readonly anims = new Map<number | 'own', AnimState>();
   private shakeAmount = 0;
+  /**
+   * True while the player zoom is gliding toward its target. Every
+   * cached sprite/shadow/chunk holds its bake and scale-blits for the
+   * ride: a glide crosses the 20% scale-drift threshold on the whole
+   * herd at once, and re-baking mid-glide is doubly wasted — the same
+   * sprites re-bake AGAIN at the settled scale (measured 17.6ms p95
+   * on a 2.0→0.85 glide; pure blits hold the frame budget). Missing
+   * sprites still bake — a blurry hold beats a hole.
+   */
+  private zoomGliding = false;
   private frameDt = 1 / 60;
   private w = 0;
   private h = 0;
@@ -592,6 +604,71 @@ export class Renderer {
     this.ctx.translate(this.w / 2, -heightTiles * this.camera.scale);
     this.ctx.scale(k, 1);
     this.ctx.translate(-this.w / 2, 0);
+  }
+
+  /** The world's outline color — the dark edge entities and props wear. */
+  private static readonly STRUCT_OUTLINE = '#241a2e';
+
+  /**
+   * Arm the context to stroke an architecture silhouette: the same
+   * bold dark edge the entity ring gives props and characters, drawn
+   * as a hard stroke so buildings, doorways, arches, and pillars read
+   * with the flat-art edge the rest of the world wears. Only EXPOSED
+   * edges are ever stroked (an edge shared with a run-neighbour gets
+   * none), so runs stay seamless — only the building perimeter and
+   * its openings are ringed.
+   */
+  private beginStructOutline(): void {
+    const ctx = this.ctx;
+    ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+    ctx.lineWidth = Math.max(1.5, this.camera.scale * 0.055);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+  }
+
+  /**
+   * Trace a wall-like mass's crown top edge + its exposed vertical
+   * sides into `path` (screen space). `cTop` is the crown's north
+   * edge; the left/right sides descend to `leftBot`/`rightBot`.
+   * Chamfered north corners (radii rTL/rTR) are followed so the ring
+   * hugs the cut. Shared by wall, doorway, and arch painters — each
+   * adds its own base/opening edges afterwards.
+   */
+  private addCrownPerimeter(
+    path: Path2D,
+    x0: number,
+    x1: number,
+    cTop: number,
+    leftBot: number,
+    rightBot: number,
+    rTL: number,
+    rTR: number,
+    n: boolean,
+    e: boolean,
+    w: boolean,
+  ): void {
+    if (!n) {
+      path.moveTo(x0 + rTL, cTop);
+      path.lineTo(x1 - rTR, cTop);
+    }
+    if (!w) {
+      if (!n && rTL > 0) {
+        path.moveTo(x0 + rTL, cTop);
+        path.lineTo(x0, cTop + rTL);
+      } else {
+        path.moveTo(x0, cTop);
+      }
+      path.lineTo(x0, leftBot);
+    }
+    if (!e) {
+      if (!n && rTR > 0) {
+        path.moveTo(x1 - rTR, cTop);
+        path.lineTo(x1, cTop + rTR);
+      } else {
+        path.moveTo(x1, cTop);
+      }
+      path.lineTo(x1, rightBot);
+    }
   }
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -1242,10 +1319,10 @@ export class Renderer {
     this.castMask(entry, px, py + this.camera.scale * 0.28);
   }
 
-  /** A wild forage plant's silhouette (grown calm: wind zeroed). */
+  /** A grown plant's silhouette — forage node or farm crop (calm: wind zeroed). */
   private castFloraShadow(px: number, baseY: number, tile: Tile, h: number): void {
     if (this.sky.shadowAlpha < 0.02 && this.frameLights.length === 0) return;
-    const fm = floraModel(tile, h);
+    const fm = plantModel(tile, h);
     const B = Renderer.MASK_S;
     const entry = this.shadowMask(
       `f${tile}.${h}`,
@@ -1253,7 +1330,7 @@ export class Renderer {
       fm.height + 0.45,
       0.35,
       (mctx, au, av) => {
-        paintFlora(mctx, fm, {
+        paintPlant(mctx, fm, {
           bx: au,
           groundY: av,
           s: B,
@@ -1416,9 +1493,14 @@ export class Renderer {
     this.frameNo++;
     this.treeBakeBudget = TREE_BAKE_BUDGET;
     this.treeShadowBudget = TREE_BAKE_BUDGET;
+    // Zoomed out, the same world-space sway spans FEWER screen pixels —
+    // stretch the sampling floor so wide framings stop paying the full
+    // re-bake rate for sub-pixel motion. Cadence 10 at ≤0.85× steps
+    // ~1px, the accepted dense-forest rate; ≥1× keeps the fine floor.
+    const minCadence = this.camera.zoom < 1 ? 10 : TREE_REBAKE_FRAMES;
     this.treeCadence = Math.min(
       TREE_CADENCE_MAX,
-      Math.max(TREE_REBAKE_FRAMES, Math.ceil(this.treesVisible / TREE_BAKES_PER_FRAME)),
+      Math.max(minCadence, Math.ceil(this.treesVisible / TREE_BAKES_PER_FRAME)),
     );
     this.treesVisible = 0;
     // The sky rules the frame: shadows, exposure, grade all read it.
@@ -1430,6 +1512,7 @@ export class Renderer {
 
     // Player zoom glides first — every projection this frame reads it.
     this.camera.tickZoom(frameDt);
+    this.zoomGliding = this.camera.zoom !== this.camera.targetZoom;
 
     const own = game.predictor.renderPos();
     const k = 1 - Math.exp(-8 * frameDt);
@@ -1720,6 +1803,16 @@ export class Renderer {
             });
             this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 5 * flick, rgb: [255, 205, 135], intensity: 0.9 * flame * flick, occlude: true });
           }
+        } else if (tile === Tile.Table) {
+          // Table candles (the same hash roll the baked art deals) glow
+          // from HERE, not from the tile painter: the table is a
+          // run-ring baked prop, so its paint only runs on re-bake
+          // frames and a glow queued there strobes at cadence rate.
+          const h = hashCoords(41, tx, ty);
+          if ((h >> 11) % 3 === 0 && flame > 0.05) {
+            const flick = 0.85 + Math.sin(t * 11 + h) * 0.12 + Math.sin(t * 23 + h * 3) * 0.05;
+            this.queueGlow(tx + 0.5, ty + 0.5, 0.9, '255, 196, 110', 0.22 * flame * flick);
+          }
         } else if (tile === Tile.WallStoneWindow || tile === Tile.WallWoodWindow) {
           if (windowLights >= 24) continue;
           // Which side is indoors? The enclosed region claims it.
@@ -1804,35 +1897,59 @@ export class Renderer {
     }
   }
 
+  /** 1/3-res frame copy backing the tilt-shift (bilinear up IS the blur). */
+  private readonly tiltScratch = document.createElement('canvas');
+  private readonly tiltScratchCtx = this.tiltScratch.getContext('2d')!;
+
   /**
    * Tilt-shift: the top and bottom of the frame soften like a macro
    * photo of a miniature — the single cheapest "this is a diorama with
-   * real depth" signal there is. Overlapping self-drawImage strips with
-   * canvas blur filters; skipped cleanly where filters are unsupported.
+   * real depth" signal there is. DOWNSAMPLE-UPSAMPLE, not ctx.filter:
+   * one 1/3-res copy of the frame, then plain band blits back up —
+   * bilinear resampling does the softening. A filter blur re-runs a
+   * Gaussian pass per band and forces a canvas snapshot each time
+   * (~0.5ms/frame at 0.85×); this is six cheap drawImages, and the
+   * alpha ramp keeps the graded near-sharp-to-soft read.
    */
+  private static readonly TILT_BANDS: ReadonlyArray<readonly [number, number, number]> = [
+    // [yFrac, hFrac, alpha] — top three bands, bottom two.
+    [0, 0.1, 0.8],
+    [0.08, 0.07, 0.5],
+    [0.14, 0.05, 0.24],
+    [0.88, 0.06, 0.34],
+    [0.93, 0.07, 0.65],
+  ];
+
   private applyTiltShift(): void {
     const ctx = this.ctx;
-    if (typeof ctx.filter !== 'string') return;
-    const dpr = window.devicePixelRatio || 1;
-    // [yCss, hCss, blurPx, alpha] — top three bands, bottom two.
-    const bands: Array<[number, number, number, number]> = [
-      [0, this.h * 0.1, 3.2, 0.8],
-      [this.h * 0.08, this.h * 0.07, 1.8, 0.55],
-      [this.h * 0.14, this.h * 0.05, 0.9, 0.3],
-      [this.h * 0.88, this.h * 0.06, 1.1, 0.4],
-      [this.h * 0.93, this.h * 0.07, 2.4, 0.7],
-    ];
-    for (const [y, bandH, blur, alpha] of bands) {
-      const pad = blur * 3;
-      const sy = Math.max(0, (y - pad) * dpr);
-      const sh = Math.min(this.canvas.height - sy, (bandH + pad * 2) * dpr);
-      ctx.save();
-      ctx.filter = `blur(${blur}px)`;
-      ctx.globalAlpha = alpha;
-      ctx.drawImage(this.canvas, 0, sy, this.canvas.width, sh, 0, sy / dpr, this.w, sh / dpr);
-      ctx.restore();
+    const sw = Math.max(1, Math.ceil(this.w / 3));
+    const sh = Math.max(1, Math.ceil(this.h / 3));
+    if (this.tiltScratch.width !== sw || this.tiltScratch.height !== sh) {
+      this.tiltScratch.width = sw;
+      this.tiltScratch.height = sh;
     }
-    ctx.filter = 'none';
+    const sc = this.tiltScratchCtx;
+    sc.imageSmoothingEnabled = true;
+    sc.drawImage(this.canvas, 0, 0, this.canvas.width, this.canvas.height, 0, 0, sw, sh);
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    for (const [yF, hF, alpha] of Renderer.TILT_BANDS) {
+      const y = yF * this.h;
+      const bandH = hF * this.h;
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(
+        this.tiltScratch,
+        0,
+        (y / this.h) * sh,
+        sw,
+        (bandH / this.h) * sh,
+        0,
+        y,
+        this.w,
+        bandH,
+      );
+    }
+    ctx.restore();
   }
 
   /**
@@ -2008,8 +2125,18 @@ export class Renderer {
     const bakePx = this.bakePx();
     // Resolution-only rebakes are budgeted per frame: a zoom-tier flip
     // re-bakes visible chunks over a few frames (the stale-res bake is
-    // still correct content) instead of hitching on one.
-    let resBudget = 3;
+    // still correct content) instead of hitching on one. ONE per frame:
+    // a hi-res bake is ~10ms, so even two in a frame blows the 8.3ms
+    // budget — the heal takes ~20 frames and is invisible (the stale
+    // tier is correct content, merely softer).
+    let resBudget = 1;
+    // Content re-bakes are budgeted too — but only when an OLD bake
+    // exists to blit meanwhile. A server tick can bump the rev on
+    // several visible chunks at once (crop growth, tree respawns), and
+    // unbudgeted that was a 2-3 bake hitch in one frame. A truly
+    // missing chunk still bakes immediately: a hole is worse than a
+    // hitch.
+    let contentBudget = 2;
 
     for (let cy = minCy; cy <= maxCy; cy++) {
       for (let cx = minCx; cx <= maxCx; cx++) {
@@ -2018,10 +2145,15 @@ export class Renderer {
         const key = `${cx},${cy}`;
         let baked = this.baked.get(key);
         const contentStale =
-          !baked || baked.data !== data || baked.rev !== (data.rev ?? 0);
-        const resStale = !contentStale && baked!.px !== bakePx && resBudget > 0;
+          (baked !== undefined && (baked.data !== data || baked.rev !== (data.rev ?? 0)) && contentBudget > 0) ||
+          !baked;
+        // Tier flips wait out the glide: bakePx is keyed off targetZoom,
+        // so mid-glide re-bakes render for a scale the camera hasn't
+        // reached — and the settle pass would just re-blit them anyway.
+        const resStale = !contentStale && baked!.px !== bakePx && resBudget > 0 && !this.zoomGliding;
         if (contentStale || resStale) {
           if (resStale) resBudget--;
+          else if (baked) contentBudget--;
           baked = this.bakeChunkEntry(game, cx, cy, data, bakePx);
         }
         if (!baked) continue; // unreachable: contentStale covers !baked
@@ -2167,13 +2299,15 @@ export class Renderer {
     for (const [key, sh] of this.treeShadows) {
       if (sh.used < cutoff) this.treeShadows.delete(key);
     }
-    if (this.treeSprites.size > 420) {
+    // Cap raised for the prop ring cache: a dense forest (310 trees +
+    // forage) plus a prop-heavy town in the same walk must both fit.
+    if (this.treeSprites.size > 640) {
       for (const [key, sp] of this.treeSprites) {
         if (sp.used < this.frameNo - 2) {
           this.treeSprites.delete(key);
           if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(sp.canvas);
         }
-        if (this.treeSprites.size <= 360) break;
+        if (this.treeSprites.size <= 560) break;
       }
     }
   }
@@ -2189,6 +2323,9 @@ export class Renderer {
 
   private collectRaisedTiles(game: ClientGame, items: DrawItem[]): void {
     const b = this.visibleTileBounds();
+    // Run-merged furniture components already emitted this frame,
+    // keyed by anchor tile.
+    const runSeen = new Set<number>();
     // Trees now stand up to ~6 tiles: a base up to height/yScale rows
     // SOUTH of the viewport bottom still pokes its crown into view.
     // Deep-south rows scan for tree tiles only — walls and props are
@@ -2234,6 +2371,15 @@ export class Renderer {
         }
         if (ground === Tile.PillarStone) {
           const item = this.pillarItem(tx, ty, game);
+          // Bake the outline ring into a cached sprite, exactly like a
+          // discrete prop — a column is static, so it rides the slow
+          // cadence and costs one blit a frame.
+          if (this.outlineOn && item.body) {
+            const b = item.body;
+            const inner = item.draw;
+            item.draw = () => this.drawPropOutlined(ground as Tile, tx, ty, b, inner);
+            item.body = undefined;
+          }
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
@@ -2269,7 +2415,31 @@ export class Renderer {
         // is a y-sorted object you pass behind.
         const isCrop = ground >= Tile.CropSprout && ground <= Tile.MoonbellRipe;
         if (!def.raised && ground !== Tile.Stump && !isCrop) continue;
+        // Run-merging furniture rings as one whole-component unit.
+        if (
+          this.outlineOn &&
+          Renderer.RUN_RING_TILES.has(ground as Tile) &&
+          this.tryRunRingItem(ground as Tile, tx, ty, game, items, runSeen)
+        ) {
+          continue;
+        }
         const item = this.objectItem(ground as Tile, tx, ty, game);
+        // Discrete props ride the ring-baked sprite cache instead of
+        // the per-frame outline pass — 76 live-outlined props in town
+        // cost 2.5ms/frame. Their slow ambient animation (canopy sway,
+        // ripples) samples at the shared cadence, exactly like tree
+        // wind. Cold stations joined them (see STATION_CACHE_TILES);
+        // a worked station drops back to the live pass for the show.
+        const ringCached =
+          Renderer.CACHED_RING_TILES.has(ground) ||
+          (Renderer.STATION_CACHE_TILES.has(ground) &&
+            (this.stationHeat.get(packTile(tx, ty)) ?? 0) < 0.01);
+        if (this.outlineOn && item.body && ringCached) {
+          const b = item.body;
+          const inner = item.draw;
+          item.draw = () => this.drawPropOutlined(ground as Tile, tx, ty, b, inner);
+          item.body = undefined;
+        }
         if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
         items.push(item);
       }
@@ -2665,6 +2835,24 @@ export class Renderer {
           ctx.fillRect(x0 + radii[3] * 0.8, p.y + syT - s * 0.08, s + 0.5 - (radii[2] + radii[3]) * 0.8, s * 0.08);
         }
         ctx.restore();
+        // SILHOUETTE OUTLINE: the flat-art edge, on exposed perimeter
+        // only — the crown top + roofline sides + the front face's
+        // ground contact. Run-shared edges (n/e/w/sw) are skipped so
+        // the run reads as one mass, only its outer boundary ringed.
+        if (this.outlineOn) {
+          const cTop = p.y - 0.25 - hs; // crown north edge, lifted
+          const cBot = p.y + syT + 0.25 - hs; // crown south lip
+          const fBot = p.y + syT; // face foot on the ground
+          const sideBot = sw ? cBot : fBot; // no face ⇒ stop at the crown
+          const outline = new Path2D();
+          this.addCrownPerimeter(outline, x0, x1, cTop, sideBot, sideBot, radii[0], radii[1], n, e, w);
+          if (!sw) {
+            outline.moveTo(x0, fBot);
+            outline.lineTo(x1, fBot);
+          }
+          this.beginStructOutline();
+          ctx.stroke(outline);
+        }
       },
     };
   }
@@ -2727,20 +2915,13 @@ export class Renderer {
    * to 0 as any body nears the threshold — the door "opens" for
    * whoever approaches, no swinging leaf needed.
    */
-  private doorVeil(game: ClientGame, cx: number, cy: number): number {
+  private doorVeil(_game: ClientGame, cx: number, cy: number): number {
+    // The frame's disturber roster IS the player+NPC position list —
+    // reuse it instead of re-scanning entities (sampleAt allocates,
+    // and towns call this for every visible doorway every frame).
     let d2 = Infinity;
-    if (game.ownEid !== null) {
-      const own = game.predictor.renderPos();
-      d2 = (own.x - cx) ** 2 + (own.y - cy) ** 2;
-    }
-    const t = game.renderTime();
-    for (const [, remote] of game.entities) {
-      const kind = remote.meta.kind;
-      if (kind !== EntityKind.Player && kind !== EntityKind.Npc) continue;
-      const sm = remote.buffer.sampleAt(t);
-      const ex = sm?.x ?? remote.meta.x;
-      const ey = sm?.y ?? remote.meta.y;
-      const dd = (ex - cx) ** 2 + (ey - cy) ** 2;
+    for (const d of this.frameDisturbers) {
+      const dd = (d.x - cx) ** 2 + (d.y - cy) ** 2;
       if (dd < d2) d2 = dd;
     }
     return Math.min(1, Math.max(0, (Math.sqrt(d2) - 0.7) / 0.9));
@@ -2871,6 +3052,31 @@ export class Renderer {
           ctx.fillRect(x0, p.y + syT - s * 0.08, s + 0.5, s * 0.08);
         }
         ctx.restore();
+        // SILHOUETTE OUTLINE: crown perimeter like a wall, PLUS the
+        // entrance itself — a hard-edged opening frames the doorway so
+        // it reads as a real threshold, not a painted gap. The jamb
+        // feet ring the wall's ground contact either side of the door.
+        if (this.outlineOn) {
+          const cTop = p.y - 0.25 - hs;
+          const fBot = p.y + syT;
+          const headBot = fBot - hs + hh; // header underside
+          const outline = new Path2D();
+          this.addCrownPerimeter(outline, x0, x1, cTop, fBot, fBot, radii[0], radii[1], n, e, w);
+          // The opening: up the inner jambs and across the header (the
+          // threshold stays open — you walk through it).
+          outline.moveTo(x0 + jw, fBot);
+          outline.lineTo(x0 + jw, headBot);
+          outline.lineTo(x1 - jw, headBot);
+          outline.lineTo(x1 - jw, fBot);
+          if (!sw) {
+            outline.moveTo(x0, fBot);
+            outline.lineTo(x0 + jw, fBot);
+            outline.moveTo(x1 - jw, fBot);
+            outline.lineTo(x1, fBot);
+          }
+          this.beginStructOutline();
+          ctx.stroke(outline);
+        }
       },
     };
   }
@@ -2950,6 +3156,35 @@ export class Renderer {
         ctx.fillStyle = shade(top, 16);
         ctx.fillRect(x0, p.y + syT - s * 0.08, s + 0.5, s * 0.08);
         ctx.restore();
+        // SILHOUETTE OUTLINE: crown top + pier sides, and the archway
+        // void. The lintel underside spans every tile (arcades read as
+        // one continuous span), but the opening's vertical reveals are
+        // stroked ONLY at run ends where a pier actually stands.
+        if (this.outlineOn) {
+          const cTop = p.y - 0.25 - hs;
+          const fBot = p.y + syT;
+          const lintelBot = fBot - hs + hh;
+          const leftInner = aw ? x0 : x0 + pw;
+          const rightInner = ae ? x1 : x1 - pw;
+          const outline = new Path2D();
+          this.addCrownPerimeter(outline, x0, x1, cTop, fBot, fBot, aw ? 0 : r, ae ? 0 : r, false, ae, aw);
+          outline.moveTo(leftInner, lintelBot);
+          outline.lineTo(rightInner, lintelBot);
+          if (!aw) {
+            outline.moveTo(x0 + pw, lintelBot);
+            outline.lineTo(x0 + pw, fBot);
+            outline.moveTo(x0, fBot);
+            outline.lineTo(x0 + pw, fBot);
+          }
+          if (!ae) {
+            outline.moveTo(x1 - pw, lintelBot);
+            outline.lineTo(x1 - pw, fBot);
+            outline.moveTo(x1 - pw, fBot);
+            outline.lineTo(x1, fBot);
+          }
+          this.beginStructOutline();
+          ctx.stroke(outline);
+        }
       },
     };
   }
@@ -2960,19 +3195,32 @@ export class Renderer {
    * like a prop.
    */
   private pillarItem(tx: number, ty: number, game: ClientGame): DrawItem {
-    const ctx = this.ctx;
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const syT = s * this.camera.yScale;
     const H = 1.7;
+    const baseY0 = p.y + syT * 0.16;
+    const topY0 = baseY0 - H * s;
     return {
       sortY: ty + 0.8,
+      // Freestanding column, ringed like any prop (baked outline) so
+      // it stops standing out of place among the outlined world.
+      body: {
+        x: p.x - s * 0.3,
+        y: topY0 - s * 0.12,
+        w: s * 0.6,
+        h: baseY0 + s * 0.14 - (topY0 - s * 0.12),
+      },
       drawShadow: () => {
         const baseY = p.y + syT * 0.16;
         this.castEdgeQuad(p.x - s * 0.17, baseY, p.x + s * 0.17, baseY, H);
       },
       draw: () => {
+        // Read the ctx at DRAW time: the ring bake swaps this.ctx to a
+        // scratch canvas under our closure (a captured ctx would paint
+        // the column onto the main canvas and bake an empty sprite).
+        const ctx = this.ctx;
         const baseY = p.y + syT * 0.16;
         const topX = this.leanX(p.x, H);
         const topY = baseY - H * s;
@@ -3916,10 +4164,8 @@ export class Renderer {
     ctx.fillRect(-w, -w * 0.5, w * 2, w * 0.5 + capH);
     ctx.restore();
     ctx.restore();
-    trace();
-    ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
-    ctx.lineWidth = Math.max(1.5, w * 0.04);
-    ctx.stroke();
+    // No baked perimeter stroke: the outline shader rings the whole
+    // formation — a stroke here doubles it into a fat double border.
     // Crisp parting shadow where the block meets whatever bears it.
     ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
     ctx.fillRect(cx - w * 0.4, yb - Math.max(1.5, hgt * 0.045), w * 0.8, Math.max(1.5, hgt * 0.045));
@@ -3930,7 +4176,7 @@ export class Renderer {
    * One TALL hewn monolith: a single tapering silhouette with a
    * stepped ledge on each flank — the "you walk up against it"
    * landmark mass. Same flat grammar as stoneBlock (lit cap, shaded
-   * lane, one outline) but drawn as ONE rock, so height never reads
+   * lane, shader-rung silhouette) but drawn as ONE rock, so height never reads
    * as a pancake tower of crates. Returns the silhouette so callers
    * can clip veins INTO the stone.
    */
@@ -3998,10 +4244,7 @@ export class Renderer {
     ctx.fillRect(cx - wl * 0.84 + lean * 0.5, lY - hgt * 0.052, wl * 0.22, hgt * 0.032);
     ctx.fillRect(cx + wl * 0.58 + lean * 0.5, rY - hgt * 0.048, wl * 0.28, hgt * 0.03);
     ctx.restore();
-    trace();
-    ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
-    ctx.lineWidth = Math.max(1.5, w * 0.04);
-    ctx.stroke();
+    // No baked perimeter stroke — the outline shader supplies it.
     ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
     ctx.fillRect(cx - w * 0.4, yb - Math.max(1.5, hgt * 0.03), w * 0.8, Math.max(1.5, hgt * 0.03));
     return sil;
@@ -4030,8 +4273,10 @@ export class Renderer {
     ctx.beginPath();
     chamferRect(ctx, -w / 2, -hh / 2, w, hh, cut);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
-    ctx.lineWidth = Math.max(1.4, w * 0.08);
+    // Hairline seat only — the shader ring owns the bold border, and a
+    // heavy frame here stacked into a double-thick edge on skyline nodes.
+    ctx.strokeStyle = 'rgba(26, 20, 36, 0.35)';
+    ctx.lineWidth = Math.max(1, w * 0.04);
     ctx.stroke();
     // Bright face biased toward the lit top-left.
     ctx.fillStyle = pal.nug;
@@ -4280,9 +4525,6 @@ export class Renderer {
       ctx.lineTo(X(0.5 * S), base);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
-      ctx.lineWidth = Math.max(1.5, s * 0.035);
-      ctx.stroke();
       // Angular gloss facets + hard glint ticks — coal shines flat.
       ctx.fillStyle = '#44404f';
       ctx.beginPath();
@@ -4419,6 +4661,7 @@ export class Renderer {
       scale: number; // camera scale at bake
       frame: number; // last bake frame
       used: number; // last frame drawn (eviction)
+      outlined: boolean; // ring baked in — must match outlineOn
     }
   >();
   /** Sun-shadow twin: the projected silhouette Path2D built at origin. */
@@ -4455,6 +4698,7 @@ export class Renderer {
     scale: number;
     frame: number;
     used: number;
+    outlined: boolean;
   } {
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
@@ -4468,11 +4712,346 @@ export class Renderer {
     const dpr = window.devicePixelRatio || 1;
     const pw = Math.max(1, Math.ceil(cw * dpr));
     const ph = Math.max(1, Math.ceil(ch * dpr));
+    const { canvas, sctx } = this.acquireSpriteCanvas(prev, pw, ph);
+    sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    sctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    paintTree(sctx, m, { bx: half, groundY: top, s, syT, wx, wy, tSec, grow: 1 });
+    if (this.outlineOn) this.bakeOutlineRing(canvas, sctx, pw, ph);
+    return {
+      canvas,
+      ctx: sctx,
+      cw,
+      ch,
+      ax: half,
+      ay: top,
+      scale: s,
+      frame: this.frameNo,
+      used: this.frameNo,
+      outlined: this.outlineOn,
+    };
+  }
+
+  /**
+   * Props whose outline ring bakes into a cached sprite (with their
+   * art) instead of running the per-frame outline pass. Only DISCRETE
+   * pieces belong here — run-merged furniture rings solely when
+   * isolated (its body is undefined mid-run), and flame-lit pieces
+   * (LampPost, Hearth, Campfire, the stations) stay on the live pass
+   * so their fire isn't sampled down to cadence rate.
+   */
+  private static readonly CACHED_RING_TILES = new Set<Tile>([
+    Tile.Stump,
+    Tile.Barrel,
+    Tile.Crate,
+    Tile.CrateGoods,
+    Tile.Chair,
+    Tile.Bookshelf,
+    Tile.Cabinet,
+    Tile.BannerPole,
+    Tile.HangingSign,
+    Tile.FlowerBox,
+    Tile.ToolRack,
+    Tile.WeaponRack,
+    Tile.Vault,
+    Tile.Lectern,
+    Tile.Basin,
+    // Rocks are landmarks with occasional ore glints — cadence-sampled
+    // like tree sway. Lamp flicker survives cadence sampling too (it
+    // IS a shimmer); the lantern's bloom lives in the light passes.
+    Tile.Rock,
+    Tile.RockCopper,
+    Tile.RockTin,
+    Tile.RockIron,
+    Tile.RockCoal,
+    Tile.RockGold,
+    Tile.LampPost,
+  ]);
+
+  /**
+   * Stations ride the ring-baked sprite cache too — but only while
+   * COLD. Their flame/shimmer animation samples at the shared adaptive
+   * cadence (every animated term is <4Hz, safely under the ~12Hz
+   * cadence floor), which turned ~11 live outline passes per town
+   * frame into cache blits. A station someone is WORKING (stationHeat
+   * > 0) goes back to the live pass: full-rate animation exactly when
+   * a player is close enough to study it. EnchantingTable is absent by
+   * LAW — its painter queueGlows, and a glow queued inside a baked
+   * painter strobes at cadence rate (the candle-strobe bug).
+   */
+  private static readonly STATION_CACHE_TILES = new Set<Tile>([
+    Tile.Campfire,
+    Tile.Furnace,
+    Tile.Anvil,
+    Tile.Workbench,
+    Tile.BankChest,
+    Tile.ShopCounter,
+    Tile.Alembic,
+    Tile.Hearth,
+    Tile.TanningRack,
+    Tile.Loom,
+    Tile.CarvingBench,
+  ]);
+
+  /**
+   * Cached-ring props with NO ambient animation: skip the fast tree
+   * cadence and heal on a slow stagger instead (scale drift and
+   * neighbor edits still re-bake) — re-baking a static bookshelf at
+   * 20Hz is pure bake-budget waste.
+   */
+  private static readonly STATIC_RING_TILES = new Set<Tile>([
+    Tile.Stump,
+    Tile.Fence,
+    Tile.Crate,
+    Tile.CrateGoods,
+    Tile.Counter,
+    Tile.Bench,
+    Tile.Chair,
+    Tile.Bed,
+    Tile.Bookshelf,
+    Tile.Cabinet,
+    Tile.ToolRack,
+    Tile.WeaponRack,
+    Tile.Lectern,
+    Tile.PillarStone,
+  ]);
+
+  /**
+   * Run-merging furniture rings as ONE unit: connected same-tile
+   * components bake into a single anchor-keyed sprite so the ring
+   * wraps the whole hall table / stall / counter run instead of
+   * seaming every joint (the user-flagged gap after the isolated-only
+   * era). `cap` bounds the BFS — a component past it (estate fencing)
+   * goes ringless rather than paying a wall-sized bake.
+   */
+  /** Pooled BFS scratch for tryRunRingItem (flat x,y interleaved). */
+  private static readonly runMembers: number[] = [];
+  private static readonly runSeenScratch = new Set<number>();
+  private static readonly runQueue: number[] = [];
+  private static readonly RUN_NEIGH_X = [1, -1, 0, 0] as const;
+  private static readonly RUN_NEIGH_Y = [0, 0, 1, -1] as const;
+
+  private static readonly RUN_RING_TILES = new Map<
+    Tile,
+    { hw: number; up: number; down: number; sortOff: number; cap: number }
+  >([
+    [Tile.Table, { hw: 0.85, up: 1.1, down: 0.5, sortOff: 0.72, cap: 12 }],
+    [Tile.Counter, { hw: 0.85, up: 1.4, down: 0.5, sortOff: 0.72, cap: 12 }],
+    [Tile.Bench, { hw: 0.75, up: 0.75, down: 0.45, sortOff: 0.68, cap: 8 }],
+    [Tile.Bed, { hw: 0.85, up: 1.35, down: 0.6, sortOff: 0.72, cap: 4 }],
+    [Tile.MarketStall, { hw: 1.35, up: 2.4, down: 0.8, sortOff: 0.78, cap: 8 }],
+    [Tile.Fence, { hw: 0.6, up: 1.0, down: 0.55, sortOff: 0.8, cap: 8 }],
+  ]);
+
+  /**
+   * Group a run-merging tile's connected component and emit ONE ringed
+   * item for the whole piece. Members are discovered by world data
+   * (not the visible loop) so a run half-off-screen still bakes whole.
+   * Returns true if the tile was consumed (already-seen member or the
+   * fresh run item was pushed); false = treat as a plain tile.
+   */
+  private tryRunRingItem(
+    tile: Tile,
+    tx: number,
+    ty: number,
+    game: ClientGame,
+    items: DrawItem[],
+    runSeen: Set<number>,
+  ): boolean {
+    const cfg = Renderer.RUN_RING_TILES.get(tile);
+    if (!cfg) return false;
+    // BFS the component, capped — into POOLED scratch: this runs for
+    // every visible run tile every frame, and fresh members/seen/queue
+    // per call was ~15MB/s of garbage in a furniture-dense town.
+    const members = Renderer.runMembers;
+    const seen = Renderer.runSeenScratch;
+    const queue = Renderer.runQueue;
+    members.length = 0;
+    queue.length = 0;
+    seen.clear();
+    queue.push(tx, ty);
+    seen.add(packTile(tx, ty));
+    while (queue.length > 0) {
+      if (members.length > cfg.cap * 2) return false; // too big — ringless
+      const cy = queue.pop()!;
+      const cx = queue.pop()!;
+      members.push(cx, cy);
+      for (let n = 0; n < 4; n++) {
+        const nx = cx + Renderer.RUN_NEIGH_X[n]!;
+        const ny = cy + Renderer.RUN_NEIGH_Y[n]!;
+        const k = packTile(nx, ny);
+        if (!seen.has(k) && game.world.groundAt(nx, ny) === tile) {
+          seen.add(k);
+          queue.push(nx, ny);
+        }
+      }
+    }
+    // Anchor: lexicographic min — stable no matter which member the
+    // visible scan meets first.
+    let ax = tx;
+    let ay = ty;
+    let x0 = tx, x1 = tx, y0 = ty, y1 = ty;
+    for (let i = 0; i < members.length; i += 2) {
+      const mx = members[i]!;
+      const my = members[i + 1]!;
+      if (my < ay || (my === ay && mx < ax)) { ax = mx; ay = my; }
+      if (mx < x0) x0 = mx;
+      if (mx > x1) x1 = mx;
+      if (my < y0) y0 = my;
+      if (my > y1) y1 = my;
+    }
+    const runKey = packTile(ax, ay);
+    if (runSeen.has(runKey)) return true; // another member already emitted it
+    runSeen.add(runKey);
+    // Build every member's item fresh this frame — draws feed the run
+    // bake, shadows stay live per tile.
+    const memberItems: DrawItem[] = [];
+    for (let i = 0; i < members.length; i += 2) {
+      memberItems.push(this.objectItem(tile, members[i]!, members[i + 1]!, game));
+    }
+    const s = this.camera.scale;
+    const lift = game.world.elevAt(ax, ay) * ELEV_H * s;
+    const pMin = this.camera.worldToScreen(x0 + 0.5, y0 + 0.5, this.w, this.h);
+    const pMax = this.camera.worldToScreen(x1 + 0.5, y1 + 0.5, this.w, this.h);
+    pMin.y -= lift;
+    pMax.y -= lift;
+    const b = {
+      x: pMin.x - cfg.hw * s,
+      y: pMin.y - cfg.up * s,
+      w: pMax.x - pMin.x + cfg.hw * 2 * s,
+      h: pMax.y - pMin.y + (cfg.up + cfg.down) * s,
+    };
+    items.push({
+      sortY: y1 + cfg.sortOff,
+      elevated: game.world.elevAt(ax, ay) !== 0,
+      drawShadow: () => {
+        for (const mi of memberItems) mi.drawShadow?.();
+      },
+      draw: () =>
+        this.drawPropOutlined(tile, ax, ay, b, () => {
+          for (const mi of memberItems) mi.draw();
+        }),
+    });
+    return true;
+  }
+
+  /**
+   * Bake a prop's own draw + outline ring into a sprite canvas. The
+   * paint closure draws at ABSOLUTE screen coords; the translate maps
+   * the item's body rect to the canvas with a ring margin, and the
+   * this.ctx swap routes it here (every cached case re-captures ctx
+   * at draw time — the build-time-capture law).
+   */
+  private bakePropSprite(
+    prev: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | undefined,
+    b: { x: number; y: number; w: number; h: number },
+    paint: () => void,
+  ): {
+    canvas: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+    cw: number;
+    ch: number;
+    ax: number;
+    ay: number;
+    scale: number;
+    frame: number;
+    used: number;
+    outlined: boolean;
+  } {
+    const r = Math.max(1.25, this.camera.scale * 0.04);
+    const m = Math.ceil(r) + 2;
+    const cw = Math.ceil(b.w) + m * 2;
+    const ch = Math.ceil(b.h) + m * 2;
+    const dpr = window.devicePixelRatio || 1;
+    const pw = Math.max(1, Math.ceil(cw * dpr));
+    const ph = Math.max(1, Math.ceil(ch * dpr));
+    const { canvas, sctx } = this.acquireSpriteCanvas(prev, pw, ph);
+    sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    sctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    sctx.save();
+    sctx.translate(m - b.x, m - b.y);
+    const prevCtx = this.ctx;
+    this.ctx = sctx;
+    try {
+      paint();
+    } finally {
+      this.ctx = prevCtx;
+      sctx.restore();
+    }
+    this.bakeOutlineRing(canvas, sctx, pw, ph);
+    return {
+      canvas,
+      ctx: sctx,
+      cw,
+      ch,
+      ax: m,
+      ay: m,
+      scale: this.camera.scale,
+      frame: this.frameNo,
+      used: this.frameNo,
+      outlined: true,
+    };
+  }
+
+  /**
+   * Cached-sprite draw for a discrete ringed prop — the flora pattern
+   * generalized. Shares the tree cache wholesale (map, budget,
+   * adaptive cadence, eviction, canvas pool); the body rect arrives
+   * fresh each frame (items rebuild per frame) so the blit tracks the
+   * camera at full rate while the art samples at cadence. Falls back
+   * to the live outline pass while streaming in faster than the bake
+   * budget allows.
+   */
+  private drawPropOutlined(
+    tile: Tile,
+    tx: number,
+    ty: number,
+    b: { x: number; y: number; w: number; h: number },
+    paint: () => void,
+  ): void {
+    const s = this.camera.scale;
+    const key = Renderer.treeKey(tx + 0.5, ty + 0.5, tile);
+    this.treesVisible++;
+    let sp = this.treeSprites.get(key);
+    const cadence = Renderer.STATIC_RING_TILES.has(tile) ? 240 : this.treeCadence;
+    const due = (this.frameNo + key) % cadence === 0;
+    const stale =
+      !sp || (due && sp.frame !== this.frameNo) || Math.abs(sp.scale - s) > s * 0.2 || !sp.outlined;
+    if (stale && (!sp || (this.treeBakeBudget > 0 && !this.zoomGliding))) {
+      this.treeBakeBudget--;
+      sp = this.bakePropSprite(sp, b, paint);
+      this.treeSprites.set(key, sp);
+    }
+    if (!sp) {
+      this.paintOutlined({ sortY: ty, draw: paint, body: b });
+      return;
+    }
+    sp.used = this.frameNo;
+    const dpr = window.devicePixelRatio || 1;
+    const k = s / sp.scale;
+    this.ctx.drawImage(
+      sp.canvas,
+      0,
+      0,
+      Math.ceil(sp.cw * dpr),
+      Math.ceil(sp.ch * dpr),
+      b.x - sp.ax * k,
+      b.y - sp.ay * k,
+      sp.cw * k,
+      sp.ch * k,
+    );
+  }
+
+  /** Pool-aware canvas acquisition shared by the world-prop sprite bakes. */
+  private acquireSpriteCanvas(
+    prev: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | undefined,
+    pw: number,
+    ph: number,
+  ): { canvas: HTMLCanvasElement; sctx: CanvasRenderingContext2D } {
     let canvas = prev?.canvas;
     let sctx = prev?.ctx;
     if (!canvas || !sctx || canvas.width < pw || canvas.height < ph) {
       // Prefer a pooled evicted canvas over a fresh allocation — new
-      // trees stream in constantly while walking, and canvas churn
+      // props stream in constantly while walking, and canvas churn
       // shows up as GC tail frames. Oversized pool hits are fine (the
       // blit reads a source rect); grossly oversized ones stay pooled.
       canvas = undefined;
@@ -4491,9 +5070,57 @@ export class Renderer {
       }
       sctx = canvas.getContext('2d')!;
     }
+    return { canvas, sctx };
+  }
+
+  /**
+   * Wild forage nodes, cached exactly like trees: per-instance sprite
+   * re-baked on the shared adaptive cadence, outline ring baked in.
+   * The per-frame outline pass on ~38 live-painted forage nodes cost
+   * 2.1ms in a dense forest (120→94fps) — cached, the steady cost is
+   * one drawImage per node.
+   */
+  private bakeFloraSprite(
+    prev: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | undefined,
+    fm: PlantModel,
+    wx: number,
+    wy: number,
+    tSec: number,
+  ): {
+    canvas: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+    cw: number;
+    ch: number;
+    ax: number;
+    ay: number;
+    scale: number;
+    frame: number;
+    used: number;
+    outlined: boolean;
+  } {
+    const s = this.camera.scale;
+    // Headroom: sway throw sideways, payload twinkle above, base below.
+    const half = (fm.spread * 1.3 + 0.2) * s;
+    const top = (fm.height * 1.25 + 0.2) * s;
+    const below = 0.35 * s;
+    const cw = Math.ceil(half * 2);
+    const ch = Math.ceil(top + below);
+    const dpr = window.devicePixelRatio || 1;
+    const pw = Math.max(1, Math.ceil(cw * dpr));
+    const ph = Math.max(1, Math.ceil(ch * dpr));
+    const { canvas, sctx } = this.acquireSpriteCanvas(prev, pw, ph);
     sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     sctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-    paintTree(sctx, m, { bx: half, groundY: top, s, syT, wx, wy, tSec, grow: 1 });
+    paintPlant(sctx, fm, {
+      bx: half,
+      groundY: top,
+      s,
+      wx,
+      wy,
+      tSec,
+      flame: this.sky.flame,
+    });
+    if (this.outlineOn) this.bakeOutlineRing(canvas, sctx, pw, ph);
     return {
       canvas,
       ctx: sctx,
@@ -4504,7 +5131,99 @@ export class Renderer {
       scale: s,
       frame: this.frameNo,
       used: this.frameNo,
+      outlined: this.outlineOn,
     };
+  }
+
+  /** Cached-sprite draw for a grown plant — forage node or farm crop. */
+  private drawFlora(bx: number, by: number, tx: number, ty: number, tile: Tile, h: number, tSec: number): void {
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    const fm = plantModel(tile, h);
+    const key = Renderer.treeKey(tx + 0.5, ty + 0.5, tile);
+    // Shares the tree cache wholesale: budget, adaptive cadence,
+    // eviction, canvas pool. Keys can't collide — tile ids differ.
+    this.treesVisible++;
+    let sp = this.treeSprites.get(key);
+    const due = (this.frameNo + key) % this.treeCadence === 0;
+    const stale =
+      !sp ||
+      (due && sp.frame !== this.frameNo) ||
+      Math.abs(sp.scale - s) > s * 0.2 ||
+      sp.outlined !== this.outlineOn;
+    if (stale && (!sp || (this.treeBakeBudget > 0 && !this.zoomGliding))) {
+      this.treeBakeBudget--;
+      sp = this.bakeFloraSprite(sp, fm, tx + 0.5, ty + 0.5, tSec);
+      this.treeSprites.set(key, sp);
+    }
+    if (!sp) return;
+    sp.used = this.frameNo;
+    const dpr = window.devicePixelRatio || 1;
+    const k = s / sp.scale;
+    this.ctx.drawImage(
+      sp.canvas,
+      0,
+      0,
+      Math.ceil(sp.cw * dpr),
+      Math.ceil(sp.ch * dpr),
+      bx - sp.ax * k,
+      by + syT * 0.3 - sp.ay * k,
+      sp.cw * k,
+      sp.ch * k,
+    );
+  }
+
+  /**
+   * The world's outline ring, baked INTO a sprite canvas: dilate the
+   * sprite's own alpha into scratch B, tint, slip the ring UNDER the
+   * art (destination-over). Cached trees pay this once per re-bake
+   * instead of ~38μs per frame in paintOutlined — a 300-tree forest
+   * would otherwise spend >10ms/frame on rings alone. Works in device
+   * pixels (identity transform); the final blit is integer-aligned so
+   * the fractional-tap bleed law only needs the apron clear on B.
+   */
+  private bakeOutlineRing(
+    canvas: HTMLCanvasElement,
+    sctx: CanvasRenderingContext2D,
+    pw: number,
+    ph: number,
+  ): void {
+    const dpr = window.devicePixelRatio || 1;
+    const r = Math.max(1.25, this.camera.scale * 0.04) * dpr;
+    // INTEGER tap offsets, unlike paintOutlined's fractional ones:
+    // fractional offsets force a bilinear resample per tap and made
+    // the dense-forest bake wave cost ~3ms/frame (120→93fps at 310
+    // trees); integer 1:1 blits are straight copies. Quantization is
+    // safe HERE because this is a bake — the per-entity jitter law
+    // only bars quantizing the live smooth-camera blit.
+    const ri = Math.max(1, Math.round(r));
+    const rd = Math.max(1, Math.round(r * 0.71));
+    if (this.outlineB.width < pw) this.outlineB.width = pw;
+    if (this.outlineB.height < ph) this.outlineB.height = ph;
+    const o = this.outlineBCtx;
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    const apron = ri + 4;
+    o.clearRect(
+      0,
+      0,
+      Math.min(this.outlineB.width, pw + apron),
+      Math.min(this.outlineB.height, ph + apron),
+    );
+    for (const [tx, ty] of Renderer.OUTLINE_TAPS) {
+      const diag = tx !== 0 && ty !== 0;
+      const ox = Math.sign(tx) * (diag ? rd : ri);
+      const oy = Math.sign(ty) * (diag ? rd : ri);
+      o.drawImage(canvas, 0, 0, pw, ph, ox, oy, pw, ph);
+    }
+    o.globalCompositeOperation = 'source-in';
+    o.fillStyle = '#241a2e';
+    o.fillRect(0, 0, pw, ph);
+    o.globalCompositeOperation = 'source-over';
+    sctx.save();
+    sctx.setTransform(1, 0, 0, 1, 0, 0);
+    sctx.globalCompositeOperation = 'destination-over';
+    sctx.drawImage(this.outlineB, 0, 0, pw, ph, 0, 0, pw, ph);
+    sctx.restore();
   }
 
   private drawTree(
@@ -4544,8 +5263,11 @@ export class Renderer {
       // a phase-locked wave read as a p95 hitch every Nth frame.
       const due = (this.frameNo + key) % this.treeCadence === 0;
       const stale =
-        !sp || (due && sp.frame !== this.frameNo) || Math.abs(sp.scale - s) > s * 0.2;
-      if (stale && (!sp || this.treeBakeBudget > 0)) {
+        !sp ||
+        (due && sp.frame !== this.frameNo) ||
+        Math.abs(sp.scale - s) > s * 0.2 ||
+        sp.outlined !== this.outlineOn;
+      if (stale && (!sp || (this.treeBakeBudget > 0 && !this.zoomGliding))) {
         this.treeBakeBudget--;
         sp = this.bakeTreeSprite(sp, m, wx, wy, tSec);
         this.treeSprites.set(key, sp);
@@ -4711,7 +5433,7 @@ export class Renderer {
           const due = (this.frameNo + key) % this.treeCadence === 0;
           const stale =
             !sh || (due && sh.frame !== this.frameNo) || Math.abs(sh.scale - s) > s * 0.2;
-          if (stale && (!sh || this.treeShadowBudget > 0)) {
+          if (stale && (!sh || (this.treeShadowBudget > 0 && !this.zoomGliding))) {
             this.treeShadowBudget--;
             sh = {
               path: this.treeShadowPath(
@@ -4921,9 +5643,20 @@ export class Renderer {
         });
       }
 
+      // The shudder phase keeps the standing tree's outline ring (its
+      // cached sprite carried one baked in — dropping it a beat early
+      // reads as a flicker). Once the topple starts the ring lets go:
+      // rotation sweeps the bounds and the dust hides the handoff.
+      let fellBody: { x: number; y: number; w: number; h: number } | undefined;
+      if (ms < 180) {
+        const pB = this.camera.worldToScreen(cx, cy, this.w, this.h);
+        pB.y -= this.renderLift(cx, cy) * this.camera.scale;
+        fellBody = this.treeBody(ft.tile, ft.h, pB.x, pB.y);
+      }
       items.push({
         sortY: ft.ty + 0.9,
         elevated: this.renderLift(cx, cy) !== 0,
+        body: fellBody,
         draw: () => {
           const ctx = this.ctx;
           const p = this.camera.worldToScreen(cx, cy, this.w, this.h);
@@ -4965,267 +5698,23 @@ export class Renderer {
   }
 
   /**
-   * A growing crop plant. Flat vector language: triangle blades, facet
-   * blooms, chunky puffs — every species reads at a glance, and ripe
-   * stages visibly ask to be picked.
+   * Screen bounds of a live-painted tree, mirroring bakeTreeSprite's
+   * headroom exactly — crown spread + wind throw + blob jitter above,
+   * root flare below. Feeds the outline pass for the trees that can't
+   * blit a ring-baked sprite (regrowth, felling shudder).
    */
-  private drawCropPlant(px: number, py: number, s: number, h: number, tile: Tile, t: number): void {
-    const ctx = this.ctx;
-    const m = (h >> 4) & 1 ? -1 : 1;
-    const sway = Math.sin(t * 1.5 + (h % 31) * 0.45) * s * 0.03;
-    const X = (dx: number) => px + dx * m * s;
-    const Y = (dy: number) => py + dy * s;
-    /** One leaning leaf blade, base-anchored. */
-    const blade = (bx: number, by: number, w: number, hgt: number, lean: number, col: string) => {
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.moveTo(bx - w / 2, by);
-      ctx.lineTo(bx + w / 2, by);
-      ctx.lineTo(bx + lean * s + sway, by - hgt);
-      ctx.closePath();
-      ctx.fill();
-    };
-
-    if (tile === Tile.CropSprout) {
-      // A dug mound with the first hopeful shoots.
-      ctx.fillStyle = '#57402a';
-      ctx.beginPath();
-      ctx.ellipse(px, Y(0.1), s * 0.17, s * 0.07, 0, 0, Math.PI * 2);
-      ctx.fill();
-      blade(X(-0.07), Y(0.08), s * 0.05, s * 0.17, -0.03, '#8fc46a');
-      blade(X(0.02), Y(0.08), s * 0.05, s * 0.22, 0.02, '#a3d47c');
-      blade(X(0.09), Y(0.08), s * 0.045, s * 0.14, 0.05, '#8fc46a');
-      return;
-    }
-
-    switch (tile) {
-      case Tile.CarrotMid: {
-        for (const [dx, hgt, lean] of [
-          [-0.12, 0.24, -0.09], [-0.04, 0.3, -0.03], [0.04, 0.32, 0.03], [0.12, 0.22, 0.09],
-        ] as const) {
-          blade(X(dx), Y(0.1), s * 0.06, s * hgt, lean, dx < 0 ? '#5f9c46' : '#6fae52');
-        }
-        break;
-      }
-      case Tile.CarrotRipe: {
-        // Orange crowns shoulder out of the soil under a full head.
-        for (const dx of [-0.11, 0.02, 0.13]) {
-          ctx.fillStyle = '#e8873d';
-          ctx.beginPath();
-          ctx.ellipse(X(dx), Y(0.1), s * 0.055, s * 0.04, 0, Math.PI, 0);
-          ctx.fill();
-        }
-        for (const [dx, hgt, lean] of [
-          [-0.14, 0.3, -0.1], [-0.05, 0.38, -0.03], [0.03, 0.4, 0.03], [0.12, 0.3, 0.1], [0.18, 0.2, 0.13],
-        ] as const) {
-          blade(X(dx), Y(0.08), s * 0.06, s * hgt, lean, dx < 0 ? '#5f9c46' : '#6fae52');
-        }
-        break;
-      }
-      case Tile.SagewortMid:
-      case Tile.SagewortRipe: {
-        // Field sagewort echoes its wild kin (render/flora.ts): a
-        // ring of chamfered paddle spears; ripe rows raise a small
-        // silver floret tower.
-        const ripe = tile === Tile.SagewortRipe;
-        const n = ripe ? 8 : 5;
-        const rad = ripe ? 0.14 : 0.1;
-        const len = ripe ? 0.24 : 0.16;
-        for (let i = 0; i < n; i++) {
-          const a = (i / n) * Math.PI * 2 + m * 0.4;
-          const ca = Math.cos(a);
-          const sa = Math.sin(a);
-          const x0 = px + ca * s * rad;
-          const y0 = Y(0.06) + sa * s * rad * 0.55;
-          const x1 = px + ca * s * (rad + len) + sway * 0.4;
-          const y1 = Y(0.06) + sa * s * (rad + len) * 0.55 - s * len * 0.5;
-          let pxn = -(y1 - y0);
-          let pyn = x1 - x0;
-          const pl = Math.hypot(pxn, pyn) || 1;
-          pxn = (pxn / pl) * s * 0.055;
-          pyn = (pyn / pl) * s * 0.045;
-          ctx.fillStyle = i % 2 ? '#6f9c6c' : '#4f7a52';
-          ctx.beginPath();
-          ctx.moveTo(x0, y0);
-          ctx.lineTo(x0 + (x1 - x0) * 0.45 - pxn, y0 + (y1 - y0) * 0.45 - pyn);
-          ctx.lineTo(x1, y1);
-          ctx.lineTo(x0 + (x1 - x0) * 0.45 + pxn, y0 + (y1 - y0) * 0.45 + pyn);
-          ctx.closePath();
-          ctx.fill();
-        }
-        if (ripe) {
-          floretTower(ctx, px + sway * 0.6, Y(-0.3), s * 0.62, 3, 0);
-        } else {
-          ctx.fillStyle = '#a8c9a0';
-          ctx.beginPath();
-          facetCircle(ctx, px, Y(0.02), s * 0.05, 6, 0.4, 0.7);
-          ctx.fill();
-        }
-        break;
-      }
-      case Tile.SunflowerMid: {
-        ctx.strokeStyle = '#5f8a44';
-        ctx.lineWidth = Math.max(1.5, s * 0.045);
-        ctx.beginPath();
-        ctx.moveTo(px, Y(0.12));
-        ctx.quadraticCurveTo(px + sway, Y(-0.18), px + sway + m * s * 0.02, Y(-0.4));
-        ctx.stroke();
-        blade(X(-0.03), Y(0), s * 0.05, s * 0.16, -0.12, '#5f9c46');
-        blade(X(0.05), Y(-0.06), s * 0.05, s * 0.14, 0.12, '#6fae52');
-        // Closed bud.
-        ctx.fillStyle = '#7ba54c';
-        ctx.beginPath();
-        facetCircle(ctx, px + sway + m * s * 0.02, Y(-0.46), s * 0.08, 6, 0.3, 0.75);
-        ctx.fill();
-        ctx.fillStyle = '#a9c25c';
-        ctx.beginPath();
-        facetCircle(ctx, px + sway + m * s * 0.02, Y(-0.48), s * 0.045, 6, 0.3, 0.75);
-        ctx.fill();
-        break;
-      }
-      case Tile.SunflowerRipe: {
-        const hx = px + sway + m * s * 0.05;
-        const hy = Y(-0.72);
-        ctx.strokeStyle = '#5f8a44';
-        ctx.lineWidth = Math.max(1.5, s * 0.055);
-        ctx.beginPath();
-        ctx.moveTo(px, Y(0.12));
-        ctx.quadraticCurveTo(px + sway * 0.6, Y(-0.3), hx, hy + s * 0.1);
-        ctx.stroke();
-        blade(X(-0.04), Y(0.02), s * 0.06, s * 0.2, -0.14, '#5f9c46');
-        blade(X(0.06), Y(-0.08), s * 0.06, s * 0.18, 0.14, '#6fae52');
-        // The bloom: chunky petal diamonds around a seed heart.
-        for (let i = 0; i < 10; i++) {
-          const a = (i / 10) * Math.PI * 2 + m * 0.2;
-          ctx.save();
-          ctx.translate(hx + Math.cos(a) * s * 0.14, hy + Math.sin(a) * s * 0.14);
-          ctx.rotate(a);
-          ctx.fillStyle = i % 2 ? '#e8c04c' : '#f2d264';
-          ctx.beginPath();
-          ctx.moveTo(-s * 0.015, -s * 0.04);
-          ctx.lineTo(s * 0.1, 0);
-          ctx.lineTo(-s * 0.015, s * 0.04);
-          ctx.closePath();
-          ctx.fill();
-          ctx.restore();
-        }
-        ctx.fillStyle = '#6b4a26';
-        ctx.beginPath();
-        facetCircle(ctx, hx, hy, s * 0.09, 7, 0.2, 0.8);
-        ctx.fill();
-        ctx.fillStyle = '#8a6534';
-        ctx.beginPath();
-        facetCircle(ctx, hx - s * 0.025, hy - s * 0.025, s * 0.045, 6, 0.2, 0.8);
-        ctx.fill();
-        break;
-      }
-      case Tile.WheatMid: {
-        for (const [dx, hgt, lean] of [
-          [-0.15, 0.3, -0.05], [-0.07, 0.36, -0.02], [0.01, 0.4, 0.01], [0.09, 0.34, 0.04], [0.16, 0.26, 0.07],
-        ] as const) {
-          blade(X(dx), Y(0.1), s * 0.045, s * hgt, lean, dx < 0 ? '#7ba54c' : '#8fbc59');
-        }
-        break;
-      }
-      case Tile.WheatRipe: {
-        // A standing golden sheaf, heads nodding with the wind.
-        for (const [dx, hgt] of [
-          [-0.16, 0.42], [-0.08, 0.52], [0, 0.58], [0.08, 0.5], [0.16, 0.4],
-        ] as const) {
-          const bx = X(dx);
-          const tipX = bx + sway * 1.6 + m * s * 0.03;
-          const tipY = Y(0.1) - s * hgt;
-          ctx.strokeStyle = '#c9a24c';
-          ctx.lineWidth = Math.max(1, s * 0.028);
-          ctx.beginPath();
-          ctx.moveTo(bx, Y(0.1));
-          ctx.quadraticCurveTo(bx + sway * 0.7, Y(0.1) - s * hgt * 0.6, tipX, tipY);
-          ctx.stroke();
-          // Kernel head: stacked pairs.
-          for (let k = 0; k < 3; k++) {
-            const ky = tipY + k * s * 0.045;
-            ctx.fillStyle = k % 2 ? '#e0b955' : '#edc968';
-            ctx.beginPath();
-            ctx.ellipse(tipX - s * 0.025, ky, s * 0.028, s * 0.018, -0.6, 0, Math.PI * 2);
-            ctx.ellipse(tipX + s * 0.025, ky, s * 0.028, s * 0.018, 0.6, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-        break;
-      }
-      case Tile.CottonMid: {
-        ctx.fillStyle = '#4c8039';
-        ctx.beginPath();
-        facetBlob(ctx, px, Y(-0.04), s * 0.17, h, 7, 0.7);
-        ctx.fill();
-        ctx.fillStyle = '#5f9c46';
-        ctx.beginPath();
-        facetBlob(ctx, px - m * s * 0.03, Y(-0.09), s * 0.12, h ^ 5, 6, 0.75);
-        ctx.fill();
-        break;
-      }
-      case Tile.CottonRipe: {
-        ctx.fillStyle = '#4c8039';
-        ctx.beginPath();
-        facetBlob(ctx, px, Y(-0.05), s * 0.19, h, 7, 0.68);
-        ctx.fill();
-        for (const [dx, dy, r] of [
-          [-0.12, -0.1, 0.075], [0.1, -0.13, 0.08], [0, 0.0, 0.085],
-        ] as const) {
-          const cxp = X(dx);
-          const cyp = Y(dy);
-          ctx.fillStyle = '#f2efe6';
-          ctx.beginPath();
-          ctx.arc(cxp - s * r * 0.5, cyp + s * r * 0.15, s * r * 0.6, 0, Math.PI * 2);
-          ctx.arc(cxp + s * r * 0.5, cyp + s * r * 0.15, s * r * 0.6, 0, Math.PI * 2);
-          ctx.arc(cxp, cyp - s * r * 0.3, s * r * 0.7, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(cxp - s * r * 0.2, cyp - s * r * 0.4, s * r * 0.28, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        break;
-      }
-      case Tile.MoonbellMid:
-      case Tile.MoonbellRipe: {
-        const ripe = tile === Tile.MoonbellRipe;
-        const lit = this.sky.flame;
-        for (const dir of [-1, 1]) {
-          const bx = px + dir * s * 0.05;
-          ctx.strokeStyle = '#5b7a52';
-          ctx.lineWidth = Math.max(1, s * 0.035);
-          ctx.beginPath();
-          ctx.moveTo(bx, Y(0.12));
-          ctx.quadraticCurveTo(
-            bx + dir * s * 0.16 + sway,
-            Y(-0.28),
-            bx + dir * s * (ripe ? 0.3 : 0.22) + sway,
-            Y(ripe ? -0.3 : -0.2),
-          );
-          ctx.stroke();
-        }
-        if (ripe) {
-          // The garden's lantern flowers — the SAME lantern as the
-          // wild moonbell (render/flora.ts), sized for a crop row.
-          const pulse = 0.5 + 0.5 * Math.sin(t * 1.15 + h * 0.13);
-          const glowK = 0.25 + 0.75 * lit;
-          const swing = sway / Math.max(1, s * 0.04) * 0.12;
-          bellLantern(ctx, px - m * s * 0.24 + sway, Y(-0.26), s * 0.09, swing, pulse, glowK);
-          bellLantern(ctx, px + m * s * 0.28 + sway, Y(-0.24), s * 0.1, swing, pulse, glowK);
-          bellLantern(ctx, px + m * s * 0.06 + sway * 1.3, Y(-0.38), s * 0.08, swing * 1.3, pulse, glowK);
-        } else {
-          // Unopened buds at the stem tips.
-          ctx.fillStyle = '#7d8cc0';
-          for (const dir of [-1, 1]) {
-            ctx.beginPath();
-            ctx.ellipse(px + dir * s * 0.24 + sway, Y(-0.21), s * 0.035, s * 0.05, 0, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-        break;
-      }
-    }
+  private treeBody(
+    tile: Tile,
+    h: number,
+    px: number,
+    py: number,
+  ): { x: number; y: number; w: number; h: number } {
+    const m = treeModel(tile, h);
+    const s = this.camera.scale;
+    const half = (m.spread * 1.15 + 0.08 * m.height + 0.45) * s;
+    const top = (m.height * 1.18 + 0.45) * s;
+    const groundY = py + s * this.camera.yScale * 0.3;
+    return { x: px - half, y: groundY - top, w: half * 2, h: top + 0.3 * s };
   }
 
   /** Trees, rocks, stations — the object layer, redrawn with character. */
@@ -5236,6 +5725,16 @@ export class Renderer {
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const h = hashCoords(41, tx, ty);
     const t = performance.now() / 1000;
+    // Interactables wear the character outline ring — one generous
+    // bounds recipe covers every workable station's casework (the
+    // pass only sizes its scratch region from this; too-tight bounds
+    // clip the art and ring the straight clip edge).
+    const stationBody = (hw = 1.15, up = 2.2, down = 0.8) => ({
+      x: p.x - hw * s,
+      y: p.y - up * s,
+      w: hw * 2 * s,
+      h: (up + down) * s,
+    });
 
     switch (tile) {
       case Tile.Tree:
@@ -5247,6 +5746,10 @@ export class Renderer {
         const grow = this.growthOf(tx, ty, 0.45, 1, 2600);
         return {
           sortY: ty + 0.9,
+          // Mature trees carry the ring baked into their cached sprite
+          // (bakeOutlineRing) — only the live-painted regrowth ease
+          // goes through the per-frame outline pass.
+          body: grow < 1 ? this.treeBody(tile, h, p.x, p.y) : undefined,
           drawShadow: () => this.drawTreeShadow(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, grow),
           draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, undefined, grow),
         };
@@ -5263,6 +5766,7 @@ export class Renderer {
         const grow = this.growthOf(tx, ty, 0.16, 0.45, 1400);
         return {
           sortY: ty + 0.7,
+          body: this.treeBody(tree, h, p.x, p.y),
           drawShadow: () => this.drawTreeShadow(p.x, p.y, tx + 0.5, ty + 0.5, h, tree, t, grow),
           draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, tree, t, undefined, grow),
         };
@@ -5288,6 +5792,12 @@ export class Renderer {
           south !== undefined && Renderer.ROCK_TILES.has(south) && game.world.elevAt(tx, ty + 1) === game.world.elevAt(tx, ty);
         return {
           sortY: ty + 0.85,
+          // Depleted rocks go ringless on purpose: the outline doubles
+          // as the "this node is workable" signal, so mining one out
+          // visibly retires it.
+          body: depleted
+            ? undefined
+            : { x: p.x - s * 1.2, y: p.y - s * 1.5, w: s * 2.4, h: s * 2.1 },
           drawShadow: () => this.castRockShadow(p.x, p.y, tile, h, crowded),
           draw: () => this.drawRockFormation(p.x, p.y, s, h, tile, t, crowded),
         };
@@ -5296,8 +5806,12 @@ export class Renderer {
       case Tile.Stump:
         return {
           sortY: ty + 0.6,
+          body: stationBody(0.5, 0.55, 0.4),
           drawShadow: () => this.castContact(p.x, p.y + s * 0.06, s * 0.27, s * 0.11),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // A hewn hexagonal stump — cut marks, not a smooth oval.
             ctx.fillStyle = '#7a552e';
             ctx.beginPath();
@@ -5322,11 +5836,15 @@ export class Renderer {
         const syT = s * this.camera.yScale;
         return {
           sortY: ty + 0.8,
+          body: stationBody(0.45, 1.85, 0.55),
           drawShadow: () => {
             const baseY = p.y + syT * 0.12;
             this.castEdgeQuad(p.x - s * 0.05, baseY, p.x + s * 0.05, baseY, 1.55);
           },
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             const baseY = p.y + syT * 0.12;
             const lit = this.sky.flame;
             // Stone foot.
@@ -5390,12 +5908,16 @@ export class Renderer {
         const railC = '#94693a';
         return {
           sortY: ty + 0.8,
+          body: isolated ? stationBody(0.5, 0.95, 0.5) : undefined,
           drawShadow: () => {
             // The post's thin cast line — fences read by their posts.
             const baseY = p.y + syT * 0.16;
             this.castEdgeQuad(p.x - s * 0.055, baseY, p.x + s * 0.055, baseY, 0.55);
           },
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             const baseY = p.y + syT * 0.14;
             const postH = 0.54 * s;
             const railT = Math.max(2, s * 0.06);
@@ -5442,8 +5964,12 @@ export class Renderer {
         const water = h % 3 === 0;
         return {
           sortY: ty + 0.7,
+          body: stationBody(0.6, 1.0, 0.55),
           drawShadow: () => this.castBlob(p.x, baseY, 0.34, s * 0.24, h ^ 0x21),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // Contact shade roots it to the floor.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
             ctx.beginPath();
@@ -5512,10 +6038,14 @@ export class Renderer {
         const goods = tile === Tile.CrateGoods;
         return {
           sortY: ty + 0.7,
+          body: stationBody(0.65, 1.05, 0.55),
           drawShadow: () => {
             this.castEdgeQuad(p.x - cw / 2, baseY, p.x + cw / 2, baseY, 0.55);
           },
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // Contact shade under the box edge.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
             ctx.fillRect(p.x - cw / 2 - s * 0.02, baseY - s * 0.015, cw + s * 0.04, s * 0.05);
@@ -5597,10 +6127,14 @@ export class Renderer {
         const yB = p.y + syT * 0.5 + (js ? 0.5 : -syT * 0.1);
         return {
           sortY: ty + 0.72,
+          body: jn || je || js || jw ? undefined : stationBody(0.85, 1.1, 0.5),
           drawShadow: js
             ? undefined
             : () => this.castEdgeQuad(xL, yB + syT * 0.08, xR, yB + syT * 0.08, 0.4),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             const lh = th + syT * 0.05;
             // A trestle leg: tapered post flaring into a splayed foot
             // with a shaded pad — carpentry, not table-shaped sticks.
@@ -5737,7 +6271,10 @@ export class Renderer {
                 ctx.beginPath();
                 facetCircle(ctx, ccx, ccy - s * 0.195, s * 0.022, 6, 0.4);
                 ctx.fill();
-                this.queueGlow(tx + 0.5, ty + 0.5, 0.9, '255, 196, 110', 0.22 * lit * flick);
+                // No queueGlow here: this paint runs only on re-bake
+                // frames (Table is a run-ring baked prop), so a glow
+                // queued from it strobes at cadence rate. The candle's
+                // bloom lives in collectStaticLights — the live pass.
               } else {
                 // Daylight: a cold black wick.
                 ctx.fillStyle = '#2c2836';
@@ -5822,10 +6359,14 @@ export class Renderer {
         const yB = p.y + syT * 0.5 + (js ? 0.5 : -syT * 0.1);
         return {
           sortY: ty + 0.72,
+          body: jn || je || js || jw ? undefined : stationBody(0.85, 1.4, 0.5),
           drawShadow: js
             ? undefined
             : () => this.castEdgeQuad(xL, yB + syT * 0.08, xR, yB + syT * 0.08, 0.55),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             if (!js) {
               // Contact shade, then the south face's joinery stack.
               ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
@@ -5953,8 +6494,12 @@ export class Renderer {
         const yB = p.y + syT * 0.22;
         return {
           sortY: ty + 0.68,
+          body: je || jw ? undefined : stationBody(0.75, 0.75, 0.45),
           drawShadow: () => this.castEdgeQuad(xL, yB + syT * 0.05, xR, yB + syT * 0.05, 0.28),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // Splayed trestle ends — a pew stands on real feet. flip
             // mirrors the splay so both ends lean outward.
             const leg = (lx: number, flip: number) => {
@@ -6043,8 +6588,12 @@ export class Renderer {
         const cush = (h & 4) !== 0 ? CUSHIONS[(h >> 3) % 4]! : null;
         return {
           sortY: ty + 0.68,
+          body: stationBody(0.6, 1.05, 0.5),
           drawShadow: () => this.castEdgeQuad(p.x - sw / 2, baseY, p.x + sw / 2, baseY, 0.5),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
             ctx.beginPath();
             ctx.ellipse(p.x, baseY + s * 0.01, sw * 0.62, s * 0.055, 0, 0, Math.PI * 2);
@@ -6195,37 +6744,44 @@ export class Renderer {
         const x1 = p.x + s * 0.46;
         const yTop = p.y - syT * 0.5;
         const yBot = p.y + syT * 0.48;
-        // Patchwork blocks under seam lines — a quilt sewn from
-        // scraps, softened by a white fold-back of the sheet.
-        const quilt = (qx0: number, qy0: number, qw: number, qh: number, cols: number, rows: number) => {
-          ctx.fillStyle = qMain;
-          ctx.fillRect(qx0, qy0, qw, qh);
-          ctx.fillStyle = qDark;
-          for (let r2 = 0; r2 < rows; r2++) {
-            for (let c3 = 0; c3 < cols; c3++) {
-              if ((r2 + c3) % 2 === 0) continue;
-              ctx.fillRect(qx0 + (qw / cols) * c3, qy0 + (qh / rows) * r2, qw / cols, qh / rows);
-            }
-          }
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
-          for (let r2 = 1; r2 < rows; r2++) ctx.fillRect(qx0, qy0 + (qh / rows) * r2 - s * 0.008, qw, s * 0.016);
-          for (let c3 = 1; c3 < cols; c3++) ctx.fillRect(qx0 + (qw / cols) * c3 - s * 0.008, qy0, s * 0.016, qh);
-        };
-        // A bedpost capped with a turned finial.
-        const finialPost = (fx2: number, fy2: number, ph2: number) => {
-          ctx.fillStyle = postC;
-          ctx.fillRect(fx2 - s * 0.045, fy2 - ph2, s * 0.09, ph2);
-          ctx.fillStyle = shade(postC, 10);
-          ctx.fillRect(fx2 - s * 0.045, fy2 - ph2, s * 0.03, ph2);
-          ctx.fillStyle = shade(postC, 18);
-          ctx.beginPath();
-          facetCircle(ctx, fx2, fy2 - ph2 - s * 0.035, s * 0.05, 6, 0.3);
-          ctx.fill();
-        };
         return {
           sortY: ty + 0.72,
+          body: bn || bs ? undefined : stationBody(0.85, 1.35, 0.6),
           drawShadow: bs ? undefined : () => this.castEdgeQuad(x0, yBot, x1, yBot, 0.3),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past
+            // it. The quilt/finialPost helpers live IN here for the
+            // same reason — defined at case level they'd seal in the
+            // stale ctx and split the bed across two canvases.
+            const ctx = this.ctx;
+            // Patchwork blocks under seam lines — a quilt sewn from
+            // scraps, softened by a white fold-back of the sheet.
+            const quilt = (qx0: number, qy0: number, qw: number, qh: number, cols: number, rows: number) => {
+              ctx.fillStyle = qMain;
+              ctx.fillRect(qx0, qy0, qw, qh);
+              ctx.fillStyle = qDark;
+              for (let r2 = 0; r2 < rows; r2++) {
+                for (let c3 = 0; c3 < cols; c3++) {
+                  if ((r2 + c3) % 2 === 0) continue;
+                  ctx.fillRect(qx0 + (qw / cols) * c3, qy0 + (qh / rows) * r2, qw / cols, qh / rows);
+                }
+              }
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+              for (let r2 = 1; r2 < rows; r2++) ctx.fillRect(qx0, qy0 + (qh / rows) * r2 - s * 0.008, qw, s * 0.016);
+              for (let c3 = 1; c3 < cols; c3++) ctx.fillRect(qx0 + (qw / cols) * c3 - s * 0.008, qy0, s * 0.016, qh);
+            };
+            // A bedpost capped with a turned finial.
+            const finialPost = (fx2: number, fy2: number, ph2: number) => {
+              ctx.fillStyle = postC;
+              ctx.fillRect(fx2 - s * 0.045, fy2 - ph2, s * 0.09, ph2);
+              ctx.fillStyle = shade(postC, 10);
+              ctx.fillRect(fx2 - s * 0.045, fy2 - ph2, s * 0.03, ph2);
+              ctx.fillStyle = shade(postC, 18);
+              ctx.beginPath();
+              facetCircle(ctx, fx2, fy2 - ph2 - s * 0.035, s * 0.05, 6, 0.3);
+              ctx.fill();
+            };
             if (head === 'n') {
               // Run-aware bounds: merged halves reach the tile edge so
               // the long bed joins seamlessly. A LONE bed overdraws
@@ -6430,8 +6986,12 @@ export class Renderer {
         const xw = p.x - uw / 2;
         return {
           sortY: ty + 0.72,
+          body: stationBody(0.65, 2.1, 0.5),
           drawShadow: () => this.castEdgeQuad(xw, baseY, p.x + uw / 2, baseY, 1.55),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // Contact shade under a kicked plinth foot.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
             ctx.fillRect(xw - s * 0.02, baseY - s * 0.015, uw + s * 0.04, s * 0.05);
@@ -6589,8 +7149,12 @@ export class Renderer {
         const dresser = ((h >> 1) & 1) === 1;
         return {
           sortY: ty + 0.72,
+          body: stationBody(0.62, 1.55, 0.5),
           drawShadow: () => this.castEdgeQuad(xw, baseY, p.x + uw / 2, baseY, 0.9),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // Bracket feet under the carcass.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
             ctx.fillRect(xw - s * 0.02, baseY - s * 0.015, uw + s * 0.04, s * 0.05);
@@ -6752,8 +7316,12 @@ export class Renderer {
         const hh2 = s * 1.7;
         return {
           sortY: ty + 0.75,
+          body: stationBody(0.95, 2.2, 0.6),
           drawShadow: () => this.castEdgeQuad(p.x - hw / 2, baseY, p.x + hw / 2, baseY, 1.6),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // Contact shade at the hearthstone.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
             ctx.fillRect(p.x - hw / 2 - s * 0.03, baseY - s * 0.01, hw + s * 0.06, s * 0.05);
@@ -6876,9 +7444,13 @@ export class Renderer {
         const canTop = baseY - s * 2.6;
         return {
           sortY: ty + 0.78,
+          body: je || jw ? undefined : stationBody(1.35, 2.4, 0.8),
           drawShadow: () => this.castEdgeQuad(xL, baseY + syT * 0.05, xR, baseY + syT * 0.05, 1.0),
           draw: () => {
-            const wind = windAt(tx + 0.5, ty + 0.5, t);
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            const wind = windAtInto(WIND_TMP, tx + 0.5, ty + 0.5, t);
             const tileL = p.x - s * 0.5;
             const tileR = p.x + s * 0.5;
             // Contact shade under the stand.
@@ -7017,10 +7589,14 @@ export class Renderer {
         const ph = s * 1.85;
         return {
           sortY: ty + 0.8,
+          body: stationBody(0.7, 2.6, 0.5),
           drawShadow: () => {
             this.castEdgeQuad(p.x - s * 0.05, baseY, p.x + s * 0.05, baseY, 1.75);
           },
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // Contact shade + two-step stone foot.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
             ctx.beginPath();
@@ -7110,8 +7686,12 @@ export class Renderer {
         const ph = s * 1.55;
         return {
           sortY: ty + 0.8,
+          body: stationBody(0.85, 2.4, 0.45),
           drawShadow: () => this.castEdgeQuad(p.x - s * 0.18, baseY, p.x - s * 0.06, baseY, 1.45),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // Contact shade at the post foot.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
             ctx.beginPath();
@@ -7175,7 +7755,11 @@ export class Renderer {
         const BLOOMS = ['#d977a8', '#e8c06a', '#f0ede4', '#8f9ed6'];
         return {
           sortY: ty + 0.6,
+          body: stationBody(0.7, 0.85, 0.45),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // Contact shade + planter on little feet.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
             ctx.fillRect(p.x - s * 0.36, baseY - s * 0.005, s * 0.72, s * 0.04);
@@ -7223,8 +7807,12 @@ export class Renderer {
         const bh2 = s * 1.35;
         return {
           sortY: ty + 0.72,
+          body: stationBody(0.78, 1.7, 0.5),
           drawShadow: () => this.castEdgeQuad(p.x - bw / 2, baseY, p.x + bw / 2, baseY, 1.25),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // The board on two stub feet.
             ctx.fillStyle = '#5e3f1e';
             ctx.fillRect(p.x - bw / 2 + s * 0.04, baseY - s * 0.08, s * 0.08, s * 0.08);
@@ -7303,8 +7891,12 @@ export class Renderer {
         const vh = s * 1.45;
         return {
           sortY: ty + 0.75,
+          body: stationBody(0.8, 1.7, 0.55),
           drawShadow: () => this.castEdgeQuad(p.x - vw / 2, baseY, p.x + vw / 2, baseY, 1.35),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // Contact shade, then the iron mass on stub feet.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
             ctx.fillRect(p.x - vw / 2 - s * 0.02, baseY - s * 0.01, vw + s * 0.04, s * 0.05);
@@ -7379,7 +7971,11 @@ export class Renderer {
         const baseY = p.y + syT * 0.18;
         return {
           sortY: ty + 0.68,
+          body: stationBody(0.6, 1.5, 0.45),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // Foot, tapered column, slanted desk, open tome.
             ctx.fillStyle = '#5e3f1e';
             ctx.beginPath();
@@ -7431,7 +8027,11 @@ export class Renderer {
         const baseY = p.y + syT * 0.2;
         return {
           sortY: ty + 0.62,
+          body: stationBody(0.7, 1.1, 0.5),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // Contact shade + stone trough with standing water.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
             ctx.fillRect(p.x - s * 0.42, baseY - s * 0.01, s * 0.84, s * 0.045);
@@ -7459,7 +8059,11 @@ export class Renderer {
         const flicker = 0.85 + Math.sin(t * 12 + h) * 0.1 + Math.sin(t * 23) * 0.05;
         return {
           sortY: ty + 0.7,
+          body: stationBody(0.8, 1.35, 0.55),
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // COOKING: the fed fire roars a head taller, its coals
             // brighten, and it spits an extra ember.
             const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
@@ -7554,13 +8158,21 @@ export class Renderer {
       case Tile.CottonMid:
       case Tile.CottonRipe:
       case Tile.MoonbellMid:
-      case Tile.MoonbellRipe:
-        // Walk-through plants: no cast shadow (they're low and leafy),
-        // y-sorted so you wade behind the tall ripe ones.
+      case Tile.MoonbellRipe: {
+        // Farm crops: walk-through rows, y-sorted so you wade behind
+        // the tall ripe ones. Same cached-sprite path as wild flora —
+        // outline ring baked in, real silhouette shadows (sprouts are
+        // too low to bother casting one).
+        const syT = s * this.camera.yScale;
         return {
           sortY: ty + 0.75,
-          draw: () => this.drawCropPlant(p.x, p.y, s, h, tile, t),
+          drawShadow:
+            tile === Tile.CropSprout
+              ? undefined
+              : () => this.castFloraShadow(p.x, p.y + syT * 0.3, tile, h),
+          draw: () => this.drawFlora(p.x, p.y, tx, ty, tile, h, t),
         };
+      }
 
       case Tile.BerryBush:
       case Tile.FibrePlant:
@@ -7569,31 +8181,26 @@ export class Renderer {
         // Wild forage nodes are landmarks now (render/flora.ts) —
         // grown from the tile hash like trees, swaying on the one
         // shared wind field, twinkling their payload at idle.
-        const fm = floraModel(tile, h);
         const syT = s * this.camera.yScale;
         return {
           sortY: ty + 0.78,
+          // Ring baked into the cached sprite (drawFlora) — no body.
           drawShadow: () => this.castFloraShadow(p.x, p.y + syT * 0.3, tile, h),
-          draw: () =>
-            paintFlora(ctx, fm, {
-              bx: p.x,
-              groundY: p.y + syT * 0.3,
-              s,
-              wx: tx + 0.5,
-              wy: ty + 0.5,
-              tSec: t,
-              flame: this.sky.flame,
-            }),
+          draw: () => this.drawFlora(p.x, p.y, tx, ty, tile, h, t),
         };
       }
 
       case Tile.Alembic: {
         return {
           sortY: ty + 1,
+          body: stationBody(),
           drawShadow: () => {
             this.castEdgeQuad(p.x - s * 0.42, p.y + s * 0.32, p.x + s * 0.42, p.y + s * 0.32, 0.7);
           },
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             const benchY = p.y - s * 0.1;
             // Sturdy legs, then the slab: an apothecary's workbench.
             ctx.fillStyle = '#5b4028';
@@ -7692,10 +8299,14 @@ export class Renderer {
       case Tile.TanningRack: {
         return {
           sortY: ty + 1,
+          body: stationBody(),
           drawShadow: () => {
             this.castEdgeQuad(p.x - s * 0.4, p.y + s * 0.3, p.x + s * 0.4, p.y + s * 0.3, 0.85);
           },
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
             const baseY = p.y + s * 0.3;
             // A-frame timber poles, crossed at the crown, feet splayed.
@@ -7766,10 +8377,14 @@ export class Renderer {
       case Tile.Loom: {
         return {
           sortY: ty + 1,
+          body: stationBody(),
           drawShadow: () => {
             this.castEdgeQuad(p.x - s * 0.42, p.y + s * 0.3, p.x + s * 0.42, p.y + s * 0.3, 0.9);
           },
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
             const baseY = p.y + s * 0.3;
             const topY = baseY - s * 1.05;
@@ -7843,10 +8458,14 @@ export class Renderer {
       case Tile.CarvingBench: {
         return {
           sortY: ty + 1,
+          body: stationBody(),
           drawShadow: () => {
             this.castEdgeQuad(p.x - s * 0.44, p.y + s * 0.3, p.x + s * 0.44, p.y + s * 0.3, 0.7);
           },
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
             const baseY = p.y + s * 0.3;
             const benchY = baseY - s * 0.42;
@@ -7915,10 +8534,14 @@ export class Renderer {
       case Tile.EnchantingTable: {
         return {
           sortY: ty + 1,
+          body: stationBody(),
           drawShadow: () => {
             this.castEdgeQuad(p.x - s * 0.42, p.y + s * 0.3, p.x + s * 0.42, p.y + s * 0.3, 0.7);
           },
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
             const baseY = p.y + s * 0.3;
             const slabY = baseY - s * 0.44;
@@ -8019,10 +8642,14 @@ export class Renderer {
         const glow = 0.7 + Math.sin(t * 5 + h) * 0.22 + Math.sin(t * 11) * 0.08;
         return {
           sortY: ty + 1,
+          body: stationBody(),
           drawShadow: () => {
             this.castEdgeQuad(p.x - s * 0.44, baseY, p.x + s * 0.44, baseY, 1.2);
           },
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // STOKED: while someone smelts, the whole piece surges —
             // the pool, the mouth, the coals, the smoke all breathe
             // harder on one shared flare envelope.
@@ -8168,10 +8795,14 @@ export class Renderer {
         const heat = 0.62 + Math.sin(t * 5.5 + h) * 0.2 + Math.sin(t * 13) * 0.08;
         return {
           sortY: ty + 0.85,
+          body: stationBody(0.95, 1.1, 0.55),
           drawShadow: () => {
             this.castBlob(p.x, p.y + s * 0.18, 0.46, s * 0.36, tx ^ (ty << 3));
           },
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // Contact shade, then the hewn oak round every smith sets
             // an anvil on — wood makes the blow ring, not crack.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
@@ -8306,10 +8937,14 @@ export class Renderer {
         const topY = baseY - s * 0.5;
         return {
           sortY: ty + 0.9,
+          body: stationBody(),
           drawShadow: () => {
             this.castEdgeQuad(p.x - s * 0.44, baseY, p.x + s * 0.44, baseY, 0.62);
           },
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // AT WORK: the mallet taps its own beat, dust rises off
             // the cut, and the plumb line swings with the bench.
             const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
@@ -8450,10 +9085,14 @@ export class Renderer {
         const gleam = 0.5 + Math.sin(t * 2.1 + h) * 0.3;
         return {
           sortY: ty + 0.85,
+          body: stationBody(0.95, 1.2, 0.6),
           drawShadow: () => {
             this.castEdgeQuad(p.x - s * 0.38, baseY, p.x + s * 0.38, baseY, 0.68);
           },
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // A cut-stone plinth — the bank does not set gold on dirt.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
             ctx.fillRect(p.x - s * 0.44, baseY - s * 0.01, s * 0.88, s * 0.045);
@@ -8602,10 +9241,14 @@ export class Renderer {
         const topY = baseY - s * 0.56;
         return {
           sortY: ty + 0.9,
+          body: stationBody(),
           drawShadow: () => {
             this.castEdgeQuad(p.x - s * 0.46, baseY, p.x + s * 0.46, baseY, 0.8);
           },
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
             // The scale beam never quite settles — a shop is never
             // done weighing — and while a sale is on, it works harder.
             const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
@@ -8755,31 +9398,62 @@ export class Renderer {
    * included. The grass system derives velocities itself (it remembers
    * last positions per id), so this is just who-is-where.
    */
+  /** This frame's moving bodies (players + NPCs), pooled records.
+   *  Shared by the grass system AND the doorway veil — one gather. */
+  private readonly frameDisturbers: Disturber[] = [];
+  private readonly disturberPool: Disturber[] = [];
+
   private collectDisturbers(game: ClientGame): Disturber[] {
-    const out: Disturber[] = [];
+    const out = this.frameDisturbers;
+    out.length = 0;
     const t = game.renderTime();
+    let n = 0;
+    const claim = (): Disturber => {
+      let d = this.disturberPool[n];
+      if (!d) {
+        d = { id: 0, x: 0, y: 0, r: 0 };
+        this.disturberPool[n] = d;
+      }
+      n++;
+      return d;
+    };
     for (const [eid, remote] of game.entities) {
       const kind = remote.meta.kind;
       if (kind !== EntityKind.Player && kind !== EntityKind.Npc) continue;
       const s = remote.buffer.sampleAt(t);
       const radius = kind === EntityKind.Npc ? (npcDef(remote.meta.defId ?? '')?.radius ?? 0.3) : 0.3;
-      out.push({ id: eid, x: s?.x ?? remote.meta.x, y: s?.y ?? remote.meta.y, r: radius });
+      const d = claim();
+      d.id = eid;
+      d.x = s?.x ?? remote.meta.x;
+      d.y = s?.y ?? remote.meta.y;
+      d.r = radius;
+      out.push(d);
     }
     if (game.ownEid !== null) {
       const own = game.predictor.renderPos();
-      out.push({ id: 'own', x: own.x, y: own.y, r: 0.3 });
+      const d = claim();
+      d.id = 'own';
+      d.x = own.x;
+      d.y = own.y;
+      d.r = 0.3;
+      out.push(d);
     }
     return out;
   }
 
   private collectEntities(game: ClientGame, items: DrawItem[]): void {
     const t = game.renderTime();
+    // Projectiles live on the server-NOW timeline: extrapolated to
+    // their true in-flight position instead of the interp past — your
+    // arrow tracks its real flight and lands in sync with the hit FX.
+    const tProj = game.projectileTime();
     const now = performance.now();
     this.frameLoot.length = 0;
     this.consumeProjectileAftermath(game, now);
 
     for (const [eid, remote] of game.entities) {
-      const s = remote.buffer.sampleAt(t) ?? {
+      const timeline = remote.meta.kind === EntityKind.Projectile ? tProj : t;
+      const s = remote.buffer.sampleAt(timeline) ?? {
         x: remote.meta.x,
         y: remote.meta.y,
         dir: 0,
@@ -9095,7 +9769,7 @@ export class Renderer {
         az,
         dir,
         this.frameDt,
-        windAt(e.x, e.y, now / 1000),
+        windAtInto(WIND_TMP, e.x, e.y, now / 1000),
         now / 1000,
         capeK,
       );
@@ -9413,9 +10087,21 @@ export class Renderer {
     // from A only — a self-referencing drawImage forces Chromium to
     // snapshot the whole scratch canvas per call; a "cheaper"
     // separable self-blit dilate measured 3× SLOWER than these taps.)
+    // INTEGER tap offsets, same law as bakeOutlineRing: a fractional
+    // offset forces a bilinear resample per tap while an integer 1:1
+    // blit is a straight copy — measured ~2× on the whole pass with
+    // ~50 live bodies (town at 0.85×). Ring thickness quantizes by
+    // ≤0.5px, invisible at the ring's 1.3-3.2px range; the per-entity
+    // jitter law only bars quantizing the final smooth-camera blit,
+    // which stays fractional below.
+    const ri = Math.max(1, Math.round(r));
+    const rd = Math.max(1, Math.round(r * 0.71));
     o.clearRect(0, 0, cw, ch);
     for (const [tx, ty] of Renderer.OUTLINE_TAPS) {
-      o.drawImage(this.outlineA, 0, 0, w, h, tx * r, ty * r, w, h);
+      const diag = tx !== 0 && ty !== 0;
+      const ox = Math.sign(tx) * (diag ? rd : ri);
+      const oy = Math.sign(ty) * (diag ? rd : ri);
+      o.drawImage(this.outlineA, 0, 0, w, h, ox, oy, w, h);
     }
     o.globalCompositeOperation = 'source-in';
     o.fillStyle = '#241a2e';

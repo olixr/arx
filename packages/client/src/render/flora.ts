@@ -38,7 +38,7 @@ import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import { shade } from './rig.js';
 import { windScalarAt } from './grass.js';
 
-const OUTLINE = 'rgba(26, 20, 36, 0.45)';
+export const OUTLINE = 'rgba(26, 20, 36, 0.45)';
 
 // ---- model ------------------------------------------------------------
 
@@ -139,12 +139,12 @@ const SAGE_LEAF = ['#4f7a52', '#6f9c6c', '#94bd8c'] as const;
 const SAGE_SILVER = '#d4e4c8';
 const SAGE_FLORET = ['#b9d4ae', '#d8e8cc', '#eef7e6'] as const;
 /** Moonbell: cool leaf fan, indigo lanterns, hot moon-white core. */
-const MOON_LEAF = ['#38584e', '#4a7161', '#5e8a74'] as const;
-const MOON_BELL = { deep: '#5b64a8', face: '#8f9ed6', core: '#e8ecff' };
+export const MOON_LEAF = ['#38584e', '#4a7161', '#5e8a74'] as const;
+export const MOON_BELL = { deep: '#5b64a8', face: '#8f9ed6', core: '#e8ecff' };
 
 // ---- growth -----------------------------------------------------------
 
-function mulberry(seed: number): () => number {
+export function mulberry(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -413,13 +413,13 @@ function growMoonbell(m: FloraModel, variant: number, rnd: () => number): void {
 // ---- painting ---------------------------------------------------------
 
 /** Staggered twinkle window: brief flash once per period (beacon law). */
-function twinkle(tSec: number, seed: number, period: number): number {
+export function twinkle(tSec: number, seed: number, period: number): number {
   const phase = (tSec / period + ((seed >>> 3) % 97) / 97) % 1;
   const DUR = 0.14;
   return phase < DUR ? Math.sin((phase / DUR) * Math.PI) : 0;
 }
 
-function sparkle(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, alpha: number, color: string): void {
+export function sparkle(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, alpha: number, color: string): void {
   ctx.globalAlpha = alpha;
   ctx.fillStyle = color;
   ctx.beginPath();
@@ -437,13 +437,13 @@ function sparkle(ctx: CanvasRenderingContext2D, x: number, y: number, r: number,
 }
 
 /** Crisp parting shadow where the plant meets the turf (ore law). */
-function partingShadow(ctx: CanvasRenderingContext2D, bx: number, gy: number, w: number): void {
+export function partingShadow(ctx: CanvasRenderingContext2D, bx: number, gy: number, w: number): void {
   ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
   ctx.fillRect(bx - w / 2, gy - Math.max(1.5, w * 0.05), w, Math.max(1.5, w * 0.05));
 }
 
 /** Blocky leaf-litter chips scattered at the feet — grounds the mass. */
-function litter(ctx: CanvasRenderingContext2D, bx: number, gy: number, s: number, seed: number, colors: readonly string[]): void {
+export function litter(ctx: CanvasRenderingContext2D, bx: number, gy: number, s: number, seed: number, colors: readonly string[]): void {
   for (let k = 0; k < 4; k++) {
     const cx = bx + ((((seed >> (k * 6)) % 200) - 100) / 100) * s * 0.5;
     const cy = gy + ((((seed >> (k * 4 + 2)) % 20) - 4) / 100) * s;
@@ -590,9 +590,9 @@ export function paintFlora(ctx: CanvasRenderingContext2D, m: FloraModel, f: Flor
 }
 
 /** Tone-banded foliage masses with per-cluster rustle (tree dialect). */
-function paintMasses(
+export function paintMasses(
   ctx: CanvasRenderingContext2D,
-  m: FloraModel,
+  m: { masses: FloraMass[] },
   f: FloraFrame,
   wind: number,
   leaves: readonly string[],

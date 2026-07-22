@@ -11,7 +11,15 @@ import {
   type BladeFx,
   type StaffFx,
 } from './weapons.js';
-import { LegRig, chooseLimbSign, solveLimb, type LegPose, type LegRigConfig } from './legs.js';
+import {
+  LegRig,
+  chooseLimbSign,
+  solveLimb,
+  solveLimbInto,
+  type LegPose,
+  type LegRigConfig,
+  type LimbSolve,
+} from './legs.js';
 import {
   FLOURISH_OFF_PHASE_MS,
   bladeCarriage,
@@ -247,6 +255,14 @@ export const FURNACE_CYCLE_MS = 1700;
 /** Arm segment length (upper = fore), in tile units. */
 const ARM_LEN = 0.17;
 
+/** Shared per-frame IK scratches (see solveLimbInto's contract). */
+const ARM_SOLVE: LimbSolve = { ex: 0, ey: 0, kx: 0, ky: 0 };
+const LEG_SOLVE: LimbSolve = { ex: 0, ey: 0, kx: 0, ky: 0 };
+/** Hoisted per-foot paint tables — loop literals in the leg painter
+ *  alloc once per LEG per frame otherwise. */
+const CLAW_TOES = [-0.55, 0, 0.55] as const;
+const BEARPAW_RAKE = [-1, 0, 1] as const;
+
 /**
  * One two-segment arm: shoulder → elbow (sleeve) → forearm (skin) →
  * hand, solved by the same two-bone IK as the legs. The preference
@@ -288,7 +304,9 @@ function drawArm(
   glove?: GloveStyle | null,
   hurt?: boolean,
 ): { ex: number; ey: number; kx: number; ky: number } {
-  const { ex, ey, kx, ky } = solveArm(sx, sy, hx, hy, ARM_LEN * s, prefX, prefY);
+  // Hot path: every visible humanoid solves two arms a frame — reuse
+  // one scratch (destructured immediately) instead of allocating.
+  const { ex, ey, kx, ky } = solveLimbInto(ARM_SOLVE, sx, sy, hx, hy, ARM_LEN * s, 1.08, prefX, prefY);
 
   ctx.lineCap = 'round';
   ctx.strokeStyle = sleeve;
@@ -2621,28 +2639,50 @@ function ringPath(pts: Array<{ x: number; y: number }>): Path2D {
   return p;
 }
 
+/** Hoisted hull helpers — hullPath runs per beast slab per frame, so
+ *  its comparator/scratch must not be rebuilt per call (GC churn). */
+const hullCmp = (a: { x: number; y: number }, b: { x: number; y: number }): number =>
+  a.x - b.x || a.y - b.y;
+function hullCross(
+  o: { x: number; y: number },
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): number {
+  return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+}
+const hullSorted: Array<{ x: number; y: number }> = [];
+const hullLower: Array<{ x: number; y: number }> = [];
+const hullUpper: Array<{ x: number; y: number }> = [];
+
 /** Convex hull (monotone chain) — the silhouette of an extruded slab. */
 function hullPath(pts: Array<{ x: number; y: number }>): Path2D {
-  const s = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
-  const cross = (
-    o: { x: number; y: number },
-    a: { x: number; y: number },
-    b: { x: number; y: number },
-  ): number => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-  const lower: typeof s = [];
+  const s = hullSorted;
+  s.length = 0;
+  for (const p of pts) s.push(p);
+  s.sort(hullCmp);
+  const lower = hullLower;
+  lower.length = 0;
   for (const p of s) {
-    while (lower.length >= 2 && cross(lower[lower.length - 2]!, lower[lower.length - 1]!, p) <= 0)
+    while (lower.length >= 2 && hullCross(lower[lower.length - 2]!, lower[lower.length - 1]!, p) <= 0)
       lower.pop();
     lower.push(p);
   }
-  const upper: typeof s = [];
+  const upper = hullUpper;
+  upper.length = 0;
   for (let i = s.length - 1; i >= 0; i--) {
     const p = s[i]!;
-    while (upper.length >= 2 && cross(upper[upper.length - 2]!, upper[upper.length - 1]!, p) <= 0)
+    while (upper.length >= 2 && hullCross(upper[upper.length - 2]!, upper[upper.length - 1]!, p) <= 0)
       upper.pop();
     upper.push(p);
   }
-  return ringPath([...lower.slice(0, -1), ...upper.slice(0, -1)]);
+  // Ring the two chains directly (skip each chain's duplicated endpoint).
+  const path = new Path2D();
+  if (lower.length === 0) return path;
+  path.moveTo(lower[0]!.x, lower[0]!.y);
+  for (let i = 1; i < lower.length - 1; i++) path.lineTo(lower[i]!.x, lower[i]!.y);
+  for (let i = 0; i < upper.length - 1; i++) path.lineTo(upper[i]!.x, upper[i]!.y);
+  path.closePath();
+  return path;
 }
 
 export interface CattleBodyFrame {
@@ -5442,7 +5482,8 @@ export function drawBeast(
     const cyn = ddx / dd;
     const sign = chooseLimbSign(cxn, cyn, prefX, prefY, opts.kneeMemory[i] ?? 0);
     opts.kneeMemory[i] = sign;
-    const { ex, ey, kx, ky } = solveLimb(
+    const { ex, ey, kx, ky } = solveLimbInto(
+      LEG_SOLVE,
       hipX,
       hipY,
       foot.x,
@@ -5474,7 +5515,7 @@ export function drawBeast(
       ctx.strokeStyle = footColor;
       ctx.lineWidth = Math.max(1.5, spec.legW * s * 0.7);
       ctx.lineCap = 'round';
-      for (const t of [-0.55, 0, 0.55]) {
+      for (const t of CLAW_TOES) {
         const ta = opts.dir + t;
         ctx.beginPath();
         ctx.moveTo(ex, ey);
@@ -5511,7 +5552,7 @@ export function drawBeast(
       ctx.strokeStyle = opts.hurt ? '#ffffff' : '#d8cbb2';
       ctx.lineWidth = Math.max(1.2, s * 0.02);
       ctx.lineCap = 'round';
-      for (const t of [-1, 0, 1]) {
+      for (const t of BEARPAW_RAKE) {
         ctx.beginPath();
         ctx.moveTo(t * pw * 0.34, pw * 0.28);
         ctx.lineTo(t * pw * 0.44, pw * 0.58);

@@ -163,15 +163,24 @@ export declare class LegRig {
  * pole past perpendicular to a planted leg's chord. Returns ±1.
  */
 export declare function chooseLimbSign(cx: number, cy: number, prefX: number, prefY: number, memory: number): number;
+/** solveLimb's result shape — also usable as a caller-owned scratch. */
+export interface LimbSolve {
+    ex: number;
+    ey: number;
+    kx: number;
+    ky: number;
+}
+/**
+ * Allocation-free two-bone solve: writes into `out` and returns it.
+ * Per-frame paint paths (every limb of every visible body solves every
+ * frame) call this with a long-lived scratch; anything that needs to
+ * HOLD two solves at once uses solveLimb, which allocates.
+ */
+export declare function solveLimbInto(out: LimbSolve, sx: number, sy: number, hx: number, hy: number, L: number, stretch: number, prefX: number, prefY: number): LimbSolve;
 /**
  * Pure two-bone limb solve, the one IK in the game: clamps the target
  * into reach and places the joint on whichever side of the root→target
  * line the preference vector points. Legs, arms, whatever bends.
  */
-export declare function solveLimb(sx: number, sy: number, hx: number, hy: number, L: number, stretch: number, prefX: number, prefY: number): {
-    ex: number;
-    ey: number;
-    kx: number;
-    ky: number;
-};
+export declare function solveLimb(sx: number, sy: number, hx: number, hy: number, L: number, stretch: number, prefX: number, prefY: number): LimbSolve;
 //# sourceMappingURL=legs.d.ts.map
