@@ -6007,19 +6007,24 @@ export class Renderer {
       ctx.lineTo(X(-0.4 * S), base - S * 0.5 * H);
       ctx.stroke();
       ctx.restore();
-      // A faceted blade crystal: elongated 5-point prism, hard-split
-      // lengthwise — lit steel toward the sky, shadow steel below,
-      // one white chip at the very tip. Bases sit buried in the gash.
+      // A columnar silver crystal: a blocky near-parallel shaft that
+      // ends in a SLANTED FLAT CAP, not a point — the same lit-cap
+      // grammar the stone blocks speak, so the family stays blocky.
+      // Hard lengthwise split: lit steel toward the sky, shadow steel
+      // below, bright cap plane, one small white chip on the high
+      // corner. Bases sit buried in the gash.
       const blade = (bx: number, by: number, len: number, w: number, ang: number): [number, number] => {
         ctx.save();
         ctx.translate(bx, by);
         ctx.rotate(ang);
+        // Shadow-side body: the full blocky silhouette.
         ctx.fillStyle = '#8e97ad';
         ctx.beginPath();
         ctx.moveTo(-w * 0.5, 0);
-        ctx.lineTo(-w * 0.62, -len * 0.52);
-        ctx.lineTo(-w * 0.1, -len);
-        ctx.lineTo(w * 0.58, -len * 0.56);
+        ctx.lineTo(-w * 0.56, -len * 0.62);
+        ctx.lineTo(-w * 0.36, -len);
+        ctx.lineTo(w * 0.3, -len * 0.86);
+        ctx.lineTo(w * 0.54, -len * 0.58);
         ctx.lineTo(w * 0.5, 0);
         ctx.closePath();
         ctx.fill();
@@ -6027,34 +6032,44 @@ export class Renderer {
         ctx.fillStyle = '#d4dcea';
         ctx.beginPath();
         ctx.moveTo(-w * 0.5, 0);
-        ctx.lineTo(-w * 0.62, -len * 0.52);
-        ctx.lineTo(-w * 0.1, -len);
+        ctx.lineTo(-w * 0.56, -len * 0.62);
+        ctx.lineTo(-w * 0.36, -len);
+        ctx.lineTo(w * 0.0, -len * 0.92);
         ctx.lineTo(w * 0.02, -len * 0.5);
-        ctx.lineTo(-w * 0.06, 0);
+        ctx.lineTo(-w * 0.04, 0);
         ctx.closePath();
         ctx.fill();
-        // Specular chip at the tip only — the premium restraint.
+        // The slanted cap plane — a flat parallelogram, brightest tone.
+        ctx.fillStyle = '#eef2fa';
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.36, -len);
+        ctx.lineTo(w * 0.3, -len * 0.86);
+        ctx.lineTo(w * 0.18, -len * 0.76);
+        ctx.lineTo(-w * 0.28, -len * 0.88);
+        ctx.closePath();
+        ctx.fill();
+        // White chip on the cap's high corner only.
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.moveTo(-w * 0.1, -len);
-        ctx.lineTo(-w * 0.34, -len * 0.72);
-        ctx.lineTo(w * 0.06, -len * 0.78);
+        ctx.moveTo(-w * 0.36, -len);
+        ctx.lineTo(-w * 0.1, -len * 0.95);
+        ctx.lineTo(-w * 0.3, -len * 0.86);
         ctx.closePath();
         ctx.fill();
-        // Base shadow seats the blade in the rock.
+        // Base shadow seats the crystal in the rock.
         ctx.fillStyle = 'rgba(20, 16, 30, 0.4)';
         ctx.fillRect(-w * 0.55, -len * 0.02, w * 1.1, Math.max(1.5, len * 0.05));
         ctx.restore();
-        return [bx + Math.sin(ang) * len * -1, by - Math.cos(ang) * len];
+        return [bx + Math.sin(ang) * len * -0.95, by - Math.cos(ang) * len * 0.95];
       };
       // The spray fans off the fissure line — seeded lean keeps
       // sister outcrops from stamping. Tallest blade breaks the
       // silhouette; the runt leans hard at the foot.
       const lean = (((h >> 7) & 7) / 7 - 0.5) * 0.24;
-      const t1 = blade(X(-0.02 * S), base - S * 0.5 * H, S * 0.78 * H, S * 0.17, (-0.12 + lean) * m);
-      const t2 = blade(X(0.14 * S), base - S * 0.68 * H, S * 0.52 * H, S * 0.13, (0.34 + lean) * m);
-      const t3 = blade(X(-0.2 * S), base - S * 0.3 * H, S * 0.44 * H, S * 0.12, (-0.52 + lean * 0.5) * m);
-      blade(X(-0.32 * S), base - S * 0.1, S * 0.28, S * 0.1, -0.78 * m);
+      const t1 = blade(X(-0.02 * S), base - S * 0.5 * H, S * 0.74 * H, S * 0.22, (-0.12 + lean) * m);
+      const t2 = blade(X(0.14 * S), base - S * 0.68 * H, S * 0.5 * H, S * 0.17, (0.34 + lean) * m);
+      const t3 = blade(X(-0.2 * S), base - S * 0.3 * H, S * 0.42 * H, S * 0.16, (-0.52 + lean * 0.5) * m);
+      blade(X(-0.32 * S), base - S * 0.1, S * 0.26, S * 0.13, -0.78 * m);
       // The cut block at the foot — the chunk the pick is promised.
       const cut: [number, number] = [X(0.3 * S), base - S * 0.18];
       this.oreNode(cut[0], cut[1], S * 0.32, 0.1 * m, pal);

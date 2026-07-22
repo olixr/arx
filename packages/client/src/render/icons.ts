@@ -432,23 +432,26 @@ const PAINTERS: Record<string, IconPainter> = {
       c.translate(bx, by);
       c.rotate(ang);
       poly(c, shade(col, -26), [
-        [-w * 0.5, 0], [-w * 0.62, -len * 0.52], [-w * 0.1, -len],
-        [w * 0.58, -len * 0.56], [w * 0.5, 0],
+        [-w * 0.5, 0], [-w * 0.56, -len * 0.62], [-w * 0.36, -len],
+        [w * 0.3, -len * 0.86], [w * 0.54, -len * 0.58], [w * 0.5, 0],
       ]);
       poly(c, col, [
-        [-w * 0.5, 0], [-w * 0.62, -len * 0.52], [-w * 0.1, -len],
-        [w * 0.02, -len * 0.5], [-w * 0.06, 0],
+        [-w * 0.5, 0], [-w * 0.56, -len * 0.62], [-w * 0.36, -len],
+        [0, -len * 0.92], [w * 0.02, -len * 0.5], [-w * 0.04, 0],
+      ]);
+      poly(c, shade(col, 24), [
+        [-w * 0.36, -len], [w * 0.3, -len * 0.86], [w * 0.18, -len * 0.76], [-w * 0.28, -len * 0.88],
       ]);
       poly(c, '#ffffff', [
-        [-w * 0.1, -len], [-w * 0.34, -len * 0.72], [w * 0.06, -len * 0.78],
+        [-w * 0.36, -len], [-w * 0.1, -len * 0.95], [-w * 0.3, -len * 0.86],
       ]);
       c.restore();
     };
-    // Host chunk low in the frame, blades fanning up from its back.
+    // Host chunk low in the frame, columns fanning up from its back.
     oreChunk(c, 0.46, 0.72, 0.46, -0.06, shade(col, -34), shade(col, -10));
-    blade(0.42, 0.62, 0.5, 0.16, -0.14);
-    blade(0.6, 0.66, 0.34, 0.12, 0.42);
-    blade(0.3, 0.68, 0.26, 0.1, -0.55);
+    blade(0.42, 0.62, 0.48, 0.2, -0.14);
+    blade(0.6, 0.66, 0.32, 0.15, 0.42);
+    blade(0.3, 0.68, 0.25, 0.13, -0.55);
   },
   ore_mithril: (c, col) => {
     // Sky-metal: a tall-cut chunk and a hard four-point star above it.
