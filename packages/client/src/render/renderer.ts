@@ -516,6 +516,28 @@ export class Renderer {
   private zoomPulseAmount = 0;
   private readonly rings: Array<{ x: number; y: number; color: string; bornAt: number; maxR: number }> = [];
   /**
+   * The level-up ceremony: ONE record, ~5.6s of staged show anchored
+   * to the live player — light pillar, slow ground rings, a sustained
+   * pooled-particle fountain, four climbing orbit sparks and a
+   * wheeling crown star, all in gold + the skill's accent color.
+   * Zero steady-state allocation: the record is built once at start,
+   * every mote rides the pooled particle system, and rings are bornAt
+   * stamps in one small array.
+   */
+  private levelFx: {
+    t0: number;
+    accent: string;
+    accentLit: string;
+    accentDeep: string;
+    glowRgb: string;
+    ringAt: number[];
+    nextRingAt: number;
+    emitCarry: number;
+    finaleDone: boolean;
+  } | null = null;
+
+  private static readonly LEVEL_FX_MS = 5600;
+  /**
    * Ragdoll corpses: the death beat. At the death instant the victim
    * becomes a limp articulated skeleton (Ragdoll in ragdoll.ts) drawn
    * in the live rig's own dialect. The killing blow launches it — hard
@@ -571,6 +593,48 @@ export class Renderer {
   addRing(x: number, y: number, color: string, maxR = 0.5): void {
     this.rings.push({ x, y, color, bornAt: performance.now(), maxR });
     if (this.rings.length > 24) this.rings.shift();
+  }
+
+  /**
+   * Kick off the level-up ceremony at the player's feet. The opening
+   * crack fires here (flash ring + streak column + shard fan + zoom
+   * kick); everything after is staged per frame in drawLevelCeremony,
+   * following the live player.
+   */
+  startLevelCeremony(x: number, y: number, accent: string): void {
+    const rr = Number.parseInt(accent.slice(1, 3), 16);
+    const gg = Number.parseInt(accent.slice(3, 5), 16);
+    const bb = Number.parseInt(accent.slice(5, 7), 16);
+    this.levelFx = {
+      t0: performance.now(),
+      accent,
+      accentLit: shade(accent, 32),
+      accentDeep: shade(accent, -26),
+      glowRgb: `${rr}, ${gg}, ${bb}`,
+      ringAt: [],
+      nextRingAt: 320,
+      emitCarry: 0,
+      finaleDone: false,
+    };
+    this.addRing(x, y, '#ffe9a8', 1.15);
+    this.particles.burst(x, y - 0.4, 30, ['#fff3d0', '#ffe9a8', '#f2c94c'], {
+      speed: 5.4,
+      life: 0.75,
+      up: true,
+      gravity: 3,
+      shape: 'streak',
+      size: 0.09,
+    });
+    this.particles.burst(x, y - 0.3, 18, [this.levelFx.accentLit, accent], {
+      speed: 3.6,
+      life: 0.95,
+      up: true,
+      gravity: 4.5,
+      shape: 'shard',
+      spin: 8,
+      size: 0.11,
+    });
+    this.zoomPulse(0.05);
   }
 
   /**
@@ -2245,6 +2309,7 @@ export class Renderer {
     this.drawAimGuide(game);
     this.drawRings();
     this.drawCombatFx(game);
+    this.drawLevelCeremony(game);
 
     // Depth & atmosphere: the exposure pass (multiply lightmap) sets
     // the scene's darkness, THEN emissive bloom pops over it, then the
@@ -2627,6 +2692,208 @@ export class Renderer {
       ctx.ellipse(p.x, p.y, rr, rr * squash, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.globalAlpha = 1;
+    }
+  }
+
+  /**
+   * The level-up ceremony's world half, staged over 5.6s and anchored
+   * to the live player every frame:
+   *  - Act 1 (0–0.5s): the pillar of light rises out of the opening
+   *    crack, the first ground ring rolls out.
+   *  - Act 2 (0.5–4.2s): the show holds court — slow gold/accent
+   *    rings every ~0.8s, a sustained mote-and-shard fountain, four
+   *    sparks spiraling up the pillar, a wheeling crown star at the
+   *    top, and a lightmap glow so the world itself answers.
+   *  - Act 3 (4.2–5.6s): one farewell ring and drifting settle motes
+   *    while the pillar thins and bows out.
+   * Direct draws are a dozen flat shapes; everything thrown rides the
+   * pooled particle system — no steady-state allocation.
+   */
+  private drawLevelCeremony(game: ClientGame): void {
+    const fx = this.levelFx;
+    if (!fx) return;
+    const now = performance.now();
+    const t = now - fx.t0;
+    if (t > Renderer.LEVEL_FX_MS) {
+      this.levelFx = null;
+      return;
+    }
+    const own = game.predictor.renderPos();
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const squash = Renderer.FX_SQUASH;
+    // In fast, out slow: the show lands hard and leaves politely.
+    const env =
+      Math.min(1, t / 240) *
+      (t > 4200 ? Math.max(0, 1 - (t - 4200) / (Renderer.LEVEL_FX_MS - 4200)) : 1);
+
+    // The world answers: lightmap punch + bloom around the player.
+    this.queueGlow(own.x, own.y - 0.55, 1.5, fx.glowRgb, 0.32 * env);
+
+    // The fountain: gold motes climb and flicker, accent shards leap
+    // and tumble back down. Budgeted by frameDt (hitstop slows it too).
+    if (t < 4200) {
+      fx.emitCarry += this.frameDt * 26;
+      while (fx.emitCarry >= 1) {
+        fx.emitCarry -= 1;
+        const a = Math.random() * Math.PI * 2;
+        const r = 0.15 + Math.random() * 0.4;
+        const px = own.x + Math.cos(a) * r;
+        const py = own.y + Math.sin(a) * r * squash;
+        if (Math.random() < 0.6) {
+          this.particles.burst(px, py, 1, ['#ffe9a8', '#f2c94c', '#e8b64c'], {
+            speed: 1.5,
+            life: 1.6,
+            up: true,
+            gravity: -1.4,
+            drag: 1.1,
+            size: 0.07,
+            flicker: 0.7,
+          });
+        } else {
+          this.particles.burst(px, py, 1, [fx.accentLit, fx.accent], {
+            speed: 2.4,
+            life: 1.1,
+            up: true,
+            gravity: 2.6,
+            shape: 'shard',
+            spin: 7,
+            size: 0.1,
+          });
+        }
+      }
+    }
+
+    // Slow majestic ground rings — the pressure-front dialect of
+    // drawRings, but each front takes a full second to roll out.
+    if (t >= fx.nextRingAt && t < 3900) {
+      fx.ringAt.push(now);
+      fx.nextRingAt = t + 820;
+    }
+    const RLIFE = 1050;
+    const p = this.liftedWTS(own.x, own.y);
+    for (let i = fx.ringAt.length - 1; i >= 0; i--) {
+      const age = now - fx.ringAt[i]!;
+      if (age > RLIFE) {
+        fx.ringAt.splice(i, 1);
+        continue;
+      }
+      const rt = age / RLIFE;
+      const ease = 1 - (1 - rt) * (1 - rt);
+      const rr = s * (0.35 + 1.4 * ease);
+      ctx.globalAlpha = (1 - rt) * 0.4 * env;
+      ctx.strokeStyle = fx.accentDeep;
+      ctx.lineWidth = Math.max(2.5, s * 0.11 * (1 - rt));
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, rr * 0.88, rr * 0.88 * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = (1 - rt) * 0.8 * env;
+      ctx.strokeStyle = rt < 0.5 ? '#f2c94c' : fx.accentLit;
+      ctx.lineWidth = Math.max(1.5, s * 0.06 * (1 - rt));
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, rr, rr * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // The pillar of light: three nested flat bands, additive, rising
+    // out of the crack in half a second and breathing while it holds.
+    const rise = Math.min(1, t / 460);
+    const easeRise = 1 - (1 - rise) * (1 - rise) * (1 - rise);
+    const h = s * 3.0 * easeRise * (1 + 0.03 * Math.sin(t * 0.006));
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    // The pool of light at the base.
+    ctx.globalAlpha = 0.13 * env;
+    ctx.fillStyle = fx.accent;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, s * 0.62, s * 0.62 * squash, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.16 * env;
+    ctx.fillStyle = '#f2c94c';
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, s * 0.34, s * 0.34 * squash, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    for (let b = 0; b < 3; b++) {
+      const w = [s * 0.52, s * 0.3, s * 0.13][b]!;
+      ctx.globalAlpha = [0.09, 0.15, 0.28][b]! * env;
+      ctx.fillStyle = [fx.accent, '#f2c94c', '#fff3d0'][b]!;
+      ctx.beginPath();
+      ctx.moveTo(p.x - w / 2, p.y);
+      ctx.lineTo(p.x - w * 0.28, p.y - h);
+      ctx.lineTo(p.x + w * 0.28, p.y - h);
+      ctx.lineTo(p.x + w / 2, p.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Four sparks spiral up the pillar, shedding streaks as they go.
+    for (let i = 0; i < 4; i++) {
+      const climb = (t * 0.00042 + i * 0.25) % 1;
+      const ang = t * 0.004 + i * (Math.PI / 2);
+      const orbR = s * 0.6 * (1 - climb * 0.55);
+      const sx = p.x + Math.cos(ang) * orbR;
+      const sy = p.y - climb * h + Math.sin(ang) * orbR * squash * 0.3;
+      const d = s * 0.07 * (1 - climb * 0.4);
+      ctx.globalAlpha = env * (climb < 0.12 ? climb / 0.12 : 1 - climb * 0.6);
+      ctx.fillStyle = i % 2 === 0 ? '#ffe9a8' : fx.accentLit;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy - d);
+      ctx.lineTo(sx + d, sy);
+      ctx.lineTo(sx, sy + d);
+      ctx.lineTo(sx - d, sy);
+      ctx.closePath();
+      ctx.fill();
+      if (Math.random() < this.frameDt * 4 && env > 0.3) {
+        this.particles.burst(own.x + (sx - p.x) / s, own.y + (sy - p.y) / s, 1, ['#ffe9a8'], {
+          speed: 0.8,
+          life: 0.5,
+          gravity: 1.5,
+          shape: 'streak',
+          size: 0.05,
+        });
+      }
+    }
+
+    // The crown: a wheeling four-point star at the pillar's head.
+    if (easeRise > 0.85) {
+      const rot = t * 0.0035;
+      const starR = s * 0.3 * (1 + 0.1 * Math.sin(t * 0.011));
+      const cy = p.y - h;
+      for (let pass = 0; pass < 2; pass++) {
+        const rad = pass === 0 ? starR : starR * 0.55;
+        ctx.globalAlpha = (pass === 0 ? 0.35 : 0.85) * env;
+        ctx.fillStyle = pass === 0 ? fx.accentLit : '#fff3d0';
+        ctx.beginPath();
+        for (let k = 0; k < 4; k++) {
+          const a0 = rot + (k * Math.PI) / 2;
+          const a1 = a0 + Math.PI / 4;
+          const ox = p.x + Math.cos(a0) * rad;
+          const oy = cy + Math.sin(a0) * rad;
+          if (k === 0) ctx.moveTo(ox, oy);
+          else ctx.lineTo(ox, oy);
+          ctx.lineTo(p.x + Math.cos(a1) * rad * 0.34, cy + Math.sin(a1) * rad * 0.34);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+
+    // The farewell: one last accent ring and a soft settle of motes.
+    if (t >= 4300 && !fx.finaleDone) {
+      fx.finaleDone = true;
+      this.addRing(own.x, own.y, fx.accentLit, 1.3);
+      this.particles.burst(own.x, own.y - 0.6, 14, ['#ffe9a8', '#f2c94c', fx.accentLit], {
+        speed: 1.2,
+        life: 1.4,
+        gravity: -0.6,
+        drag: 1.2,
+        size: 0.06,
+        flicker: 0.6,
+      });
     }
   }
 

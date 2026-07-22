@@ -173,9 +173,32 @@ export class Sfx {
     this.tone(780, 0.09, { type: 'triangle', volume: 0.3, delay: 0.06 });
   }
 
+  /**
+   * The level-up fanfare — a ceremony, not a blip: a grounded thump
+   * the moment lands on, a four-note herald climbing the major triad,
+   * then the full chord planted on top with a glitter tail. Sized to
+   * the world show (~5.6s of pillar and rings) without overstaying.
+   */
   levelUp(): void {
-    const notes = [392, 523, 659, 784];
-    notes.forEach((f, i) => this.tone(f, 0.18, { type: 'triangle', volume: 0.35, delay: i * 0.09 }));
+    // The ground beat: the moment arrives with weight.
+    this.tone(72, 0.22, { type: 'sine', slide: -24, volume: 0.38, detune: false });
+    this.noise(0.12, 0.1);
+    // The herald climbs: G4 B4 D5 G5.
+    const notes = [392, 494, 587, 784];
+    notes.forEach((f, i) =>
+      this.tone(f, 0.16, { type: 'triangle', volume: 0.3, delay: 0.06 + i * 0.085, detune: false }),
+    );
+    // The chord plants the flag: root-third-fifth held together, a
+    // soft sine octave underneath for warmth.
+    const chordAt = 0.06 + 4 * 0.085;
+    for (const f of [784, 988, 1175]) {
+      this.tone(f, 0.8, { type: 'triangle', volume: 0.2, delay: chordAt, detune: false });
+    }
+    this.tone(392, 0.8, { type: 'sine', volume: 0.18, delay: chordAt, detune: false });
+    // Glitter: two high sparkles answering, and a bright hiss of air.
+    this.tone(1568, 0.3, { type: 'triangle', volume: 0.11, delay: chordAt + 0.28, detune: false });
+    this.tone(2093, 0.35, { type: 'triangle', volume: 0.08, delay: chordAt + 0.46, detune: false });
+    this.noise(0.5, 0.045, chordAt, { band: 5200 });
   }
 
   portal(): void {

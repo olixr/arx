@@ -1,4 +1,4 @@
-import { EntityKind, PoseState, ROCK_TILES, TREE_TILES, Tile, chestInfo, doorInfo, tileDef, treeOfSapling } from '@devcraft/shared';
+import { EntityKind, HIDDEN_SKILLS, PoseState, ROCK_TILES, TREE_TILES, Tile, chestInfo, doorInfo, isSkillId, tileDef, treeOfSapling } from '@devcraft/shared';
 import { BUILDABLES, buildableGround, itemDef, npcDef } from '@devcraft/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
@@ -6,7 +6,8 @@ import { Renderer } from './render/renderer.js';
 import type { SmashKind } from './render/debris.js';
 import { ChatUI } from './ui/chat.js';
 import { Hotbar } from './ui/hotbar.js';
-import { Panels } from './ui/panels.js';
+import { Panels, SKILL_FACE } from './ui/panels.js';
+import { showLevelUp } from './ui/levelToast.js';
 import { StationPanels } from './ui/stationPanels.js';
 import { UiNav } from './ui/padUI.js';
 import { LootPanel } from './ui/lootPanel.js';
@@ -535,17 +536,22 @@ const game = new ClientGame(input, {
       sizeMul: 0.72,
     });
     if (msg.levelledUp) {
+      // The full reward ceremony: the renderer stages the world show
+      // (pillar, rings, fountain — ~5.6s) while the ceremony card
+      // slams in up top with the skill's face and the new level.
       chat.addLine({
         channel: 'system',
         text: `⭐ ${msg.skill} level ${msg.level}! Congratulations!`,
       });
       sfx.levelUp();
-      const own = game.predictor.renderPos();
-      renderer.particles.burst(own.x, own.y - 0.5, 26, ['#f2c94c', '#e8a33d', '#f4efe4'], {
-        speed: 3.5,
-        life: 0.9,
-        up: true,
-        gravity: 4,
+      const face = SKILL_FACE[msg.skill] ?? { icon: 'bread', color: '#e8b64c' };
+      const hidden = isSkillId(msg.skill) ? HIDDEN_SKILLS[msg.skill] : undefined;
+      renderer.startLevelCeremony(own.x, own.y, face.color);
+      showLevelUp({
+        name: hidden?.name ?? msg.skill,
+        level: msg.level,
+        icon: face.icon,
+        color: face.color,
       });
     }
   },

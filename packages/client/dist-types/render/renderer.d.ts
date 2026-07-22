@@ -161,6 +161,17 @@ export declare class Renderer {
     private zoomPulseAmount;
     private readonly rings;
     /**
+     * The level-up ceremony: ONE record, ~5.6s of staged show anchored
+     * to the live player — light pillar, slow ground rings, a sustained
+     * pooled-particle fountain, four climbing orbit sparks and a
+     * wheeling crown star, all in gold + the skill's accent color.
+     * Zero steady-state allocation: the record is built once at start,
+     * every mote rides the pooled particle system, and rings are bornAt
+     * stamps in one small array.
+     */
+    private levelFx;
+    private static readonly LEVEL_FX_MS;
+    /**
      * Ragdoll corpses: the death beat. At the death instant the victim
      * becomes a limp articulated skeleton (Ragdoll in ragdoll.ts) drawn
      * in the live rig's own dialect. The killing blow launches it — hard
@@ -188,6 +199,13 @@ export declare class Renderer {
     flashHurt(): void;
     /** Expanding impact ring at a world position. */
     addRing(x: number, y: number, color: string, maxR?: number): void;
+    /**
+     * Kick off the level-up ceremony at the player's feet. The opening
+     * crack fires here (flash ring + streak column + shard fan + zoom
+     * kick); everything after is staged per frame in drawLevelCeremony,
+     * following the live player.
+     */
+    startLevelCeremony(x: number, y: number, accent: string): void;
     /**
      * Scheduled aftershock beats — the SECOND read of a detonation. A
      * blast is not one frame: the flash lands, then the dust wave rolls
@@ -501,6 +519,21 @@ export declare class Renderer {
     private drawAimGuide;
     /** Expanding impact rings — crisp stroked circles, quick and gone. */
     private drawRings;
+    /**
+     * The level-up ceremony's world half, staged over 5.6s and anchored
+     * to the live player every frame:
+     *  - Act 1 (0–0.5s): the pillar of light rises out of the opening
+     *    crack, the first ground ring rolls out.
+     *  - Act 2 (0.5–4.2s): the show holds court — slow gold/accent
+     *    rings every ~0.8s, a sustained mote-and-shard fountain, four
+     *    sparks spiraling up the pillar, a wheeling crown star at the
+     *    top, and a lightmap glow so the world itself answers.
+     *  - Act 3 (4.2–5.6s): one farewell ring and drifting settle motes
+     *    while the pillar thins and bows out.
+     * Direct draws are a dozen flat shapes; everything thrown rides the
+     * pooled particle system — no steady-state allocation.
+     */
+    private drawLevelCeremony;
     /** Hard red edge bands when the local player is hurt. */
     private drawVignette;
     private detailAt;

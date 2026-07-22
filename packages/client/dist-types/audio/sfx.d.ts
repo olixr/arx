@@ -36,6 +36,12 @@ export declare class Sfx {
     /** A body hitting the ground — dull and soft; heavy falls land lower. */
     bodyThud(heavy: boolean): void;
     collect(): void;
+    /**
+     * The level-up fanfare — a ceremony, not a blip: a grounded thump
+     * the moment lands on, a four-note herald climbing the major triad,
+     * then the full chord planted on top with a glitter tail. Sized to
+     * the world show (~5.6s of pillar and rings) without overstaying.
+     */
     levelUp(): void;
     portal(): void;
     death(): void;

@@ -62,7 +62,7 @@ function affixName(stat: string): string {
  * Every skill's face: an item that embodies the craft, and an accent
  * the card's plaque and meter wear. Pure data — a new skill is a row.
  */
-const SKILL_FACE: Record<string, { icon: string; color: string }> = {
+export const SKILL_FACE: Record<string, { icon: string; color: string }> = {
   vitality: { icon: 'bread', color: '#d95763' },
   melee: { icon: 'bronze_sword', color: '#c4553d' },
   defence: { icon: 'oak_kiteshield', color: '#8ac4e8' },

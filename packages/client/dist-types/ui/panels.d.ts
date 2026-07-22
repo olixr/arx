@@ -1,4 +1,12 @@
 import { type EquipSlot, type EquippedItem, type InvSlot, type SkillXp } from '@devcraft/shared';
+/**
+ * Every skill's face: an item that embodies the craft, and an accent
+ * the card's plaque and meter wear. Pure data — a new skill is a row.
+ */
+export declare const SKILL_FACE: Record<string, {
+    icon: string;
+    color: string;
+}>;
 /** Explicit verbs the item context menu can dispatch. */
 export type SlotAction = 'use' | 'deposit' | 'sell' | 'drop';
 /**
