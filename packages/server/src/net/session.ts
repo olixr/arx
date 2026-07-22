@@ -22,6 +22,14 @@ export class Session {
   readonly id = nextSessionId++;
   playerEid: EntityId | null = null;
 
+  /**
+   * Transport RTT measured with ws protocol pings (EWMA, ms). Feeds
+   * melee lag compensation — no game-protocol message involved.
+   */
+  rttMs = 0;
+  private pingSentAt = 0;
+  private pingTimer: ReturnType<typeof setInterval> | null = null;
+
   /** Entities this client currently knows about (interest set). */
   readonly knownEntities = new Set<EntityId>();
 
@@ -58,9 +66,29 @@ export class Session {
     });
     ws.on('close', () => {
       this.closed = true;
+      if (this.pingTimer) clearInterval(this.pingTimer);
       if (this.playerEid !== null) this.game.onSessionClosed(this);
     });
     ws.on('error', () => ws.close());
+    // Protocol-level ping/pong rides UNDER the fake-lag simulator, so
+    // it measures the true socket RTT; viewRttMs adds the simulated
+    // part back so lag comp behaves the same in fake-lag testing.
+    ws.on('pong', () => {
+      if (this.pingSentAt === 0) return;
+      const rtt = performance.now() - this.pingSentAt;
+      this.rttMs = this.rttMs === 0 ? rtt : this.rttMs * 0.7 + rtt * 0.3;
+    });
+    this.pingTimer = setInterval(() => {
+      if (ws.readyState === ws.OPEN) {
+        this.pingSentAt = performance.now();
+        ws.ping();
+      }
+    }, 3000);
+  }
+
+  /** RTT as the CLIENT experiences it (real + simulated fake lag). */
+  get viewRttMs(): number {
+    return this.rttMs + (config.fakeLagMs > 0 ? config.fakeLagMs + config.fakeJitterMs : 0);
   }
 
   private handleRaw(raw: string): void {

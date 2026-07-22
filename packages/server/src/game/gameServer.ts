@@ -491,7 +491,14 @@ function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): PlayerBuf
 }
 
 const MAX_QUEUED_INPUTS = 8;
-const MAX_INPUTS_PER_TICK = 2;
+/**
+ * Input frames simulated per tick. Nominal flow is 1/tick; the surplus
+ * is CATCH-UP after a network stall — at 2, a 500ms burst of buffered
+ * inputs took another 500ms to drain (sustained input lag); at 4 the
+ * same backlog clears in ~150ms. Sustained speed cheating is bounded
+ * by the session input token bucket (25/s), not this number.
+ */
+const MAX_INPUTS_PER_TICK = 4;
 const SAVE_INTERVAL_TICKS = 600; // 30s
 /** World-y extent of the player's visual body above its ground point
  * (screen height ÷ camera pitch) — NPC shots test the feet→crown band. */
@@ -549,6 +556,73 @@ export class GameServer {
   /** Ephemeral guest tokens -> eid (guests have no DB session). */
   private readonly guestTokens = new Map<string, EntityId>();
   private nextGuestId = -1;
+
+  /**
+   * MELEE LAG COMPENSATION. A swing is aimed at what the attacker SAW —
+   * NPC positions ~(half their RTT + interp delay) in the past. Testing
+   * the live positions instead made strafing targets feel like they
+   * slid out from under landed hits. Each tick every NPC logs
+   * [x, y, dir] into an 8-slot ring (400ms of history); meleeSwing
+   * rewinds its range/arc/backstab TESTS by the attacker's estimated
+   * view delay. Damage still lands on the live entity — only the
+   * "did you hit what you saw" question is answered in the past.
+   */
+  private readonly npcHist = new Map<EntityId, Float32Array>();
+
+  /** History ring slots (× TICK_MS = rewind ceiling, 400ms). */
+  private static readonly HIST_TICKS = 8;
+
+  /** Client interp-delay estimate for rewind (the adaptive client
+   *  floor sits at 80, worst ~200; 100 + slop covers the spread). */
+  private static readonly VIEW_INTERP_MS = 100;
+
+  private recordNpcHistory(): void {
+    for (const [eid] of this.npcs) {
+      const pos = this.positions.get(eid);
+      if (!pos) continue;
+      let ring = this.npcHist.get(eid);
+      if (!ring) {
+        ring = new Float32Array(GameServer.HIST_TICKS * 3);
+        // Prefill with the live position so a fresh spawn rewinds to
+        // itself instead of to (0,0).
+        for (let i = 0; i < GameServer.HIST_TICKS; i++) {
+          ring[i * 3] = pos.x;
+          ring[i * 3 + 1] = pos.y;
+          ring[i * 3 + 2] = pos.dir;
+        }
+        this.npcHist.set(eid, ring);
+      }
+      const slot = (this.tickCount % GameServer.HIST_TICKS) * 3;
+      ring[slot] = pos.x;
+      ring[slot + 1] = pos.y;
+      ring[slot + 2] = pos.dir;
+    }
+    // Dead NPCs' rings retire lazily — a full sweep every 10s.
+    if (this.tickCount % 200 === 0) {
+      for (const eid of this.npcHist.keys()) {
+        if (!this.npcs.has(eid)) this.npcHist.delete(eid);
+      }
+    }
+  }
+
+  /** An NPC's position `ticksAgo` ticks back (clamped to the ring). */
+  private npcPosAt(eid: EntityId, ticksAgo: number): { x: number; y: number; dir: number } | null {
+    const live = this.positions.get(eid);
+    if (!live) return null;
+    if (ticksAgo <= 0) return live;
+    const ring = this.npcHist.get(eid);
+    if (!ring) return live;
+    const back = Math.min(ticksAgo, GameServer.HIST_TICKS - 1);
+    const slot = (((this.tickCount - back) % GameServer.HIST_TICKS) + GameServer.HIST_TICKS) % GameServer.HIST_TICKS * 3;
+    return { x: ring[slot]!, y: ring[slot + 1]!, dir: ring[slot + 2]! };
+  }
+
+  /** How many ticks back this player's screen is showing NPCs. */
+  private viewRewindTicks(player: PlayerComp): number {
+    const rtt = player.session?.viewRttMs ?? 0;
+    const viewMs = rtt / 2 + GameServer.VIEW_INTERP_MS;
+    return Math.max(0, Math.min(GameServer.HIST_TICKS - 1, Math.round(viewMs / TICK_MS)));
+  }
 
   /** chunkKey -> entities inside; the interest-management index. */
   private readonly chunks = new Map<string, Set<EntityId>>();
@@ -2418,15 +2492,19 @@ export class GameServer {
       backstabMult += weaponStrikeEffects(struckWeapon.id, struckWeapon.roll).backstabBonus;
     }
     const critPct = player.gear.critPct;
+    // LAG COMP: test the swing against the world the ATTACKER saw —
+    // NPC positions rewound by their view delay (see npcHist). Damage
+    // and knockback still resolve on the live entity.
+    const rewind = this.viewRewindTicks(player);
     // A strike out of full stealth backstabs from any angle; otherwise a
     // sneaking attacker must be inside the cone behind the target's facing.
-    const backstabs = (npos: PositionComp): boolean =>
+    const backstabs = (npos: { x: number; y: number; dir: number }): boolean =>
       wasHidden || (player.sneaking && isBehind(pos.x, pos.y, npos.x, npos.y, npos.dir));
     let bestTarget: EntityId | null = null;
     let bestDist = Infinity;
     const inArc: EntityId[] = [];
     for (const [npcEid, npc] of this.npcs) {
-      const npos = this.positions.get(npcEid);
+      const npos = this.npcPosAt(npcEid, rewind);
       if (!npos) continue;
       const dx = npos.x - pos.x;
       const dy = npos.y - pos.y;
@@ -2447,7 +2525,7 @@ export class GameServer {
     if (sweepAll) {
       // The finisher clears the crowd — everyone in the arc eats it.
       for (const npcEid of inArc) {
-        const backstab = backstabs(this.positions.must(npcEid));
+        const backstab = backstabs(this.npcPosAt(npcEid, rewind) ?? this.positions.must(npcEid));
         const { dmg, crit } = rollBasic(backstab ? Math.round(maxHit * backstabMult) : maxHit, critPct);
         this.damageNpc(npcEid, dmg, eid, xpStyle, {
           crit,
@@ -2471,7 +2549,7 @@ export class GameServer {
       );
     }
     if (bestTarget !== null) {
-      const backstab = backstabs(this.positions.must(bestTarget));
+      const backstab = backstabs(this.npcPosAt(bestTarget, rewind) ?? this.positions.must(bestTarget));
       const { dmg, crit } = rollBasic(backstab ? Math.round(maxHit * backstabMult) : maxHit, critPct);
       this.damageNpc(bestTarget, dmg, eid, xpStyle, {
         crit,
@@ -4864,6 +4942,8 @@ export class GameServer {
 
     this.tickSpawns(now);
     this.tickNpcs(now);
+    // NPC positions are final for this tick — log the lag-comp ring.
+    this.recordNpcHistory();
     this.tickSneakXp();
     this.tickStatuses();
     this.tickSummons();

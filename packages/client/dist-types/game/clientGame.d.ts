@@ -150,6 +150,20 @@ export declare class ClientGame {
     aim: number;
     rttMs: number;
     serverTick: number;
+    /** Snapshots folded into the clock (young clocks converge faster). */
+    private clockSamples;
+    /** EWMA of snapshot arrival deviation — what the delay must absorb. */
+    private jitterEwma;
+    /** Consecutive >300ms clock deviations (sustained ⇒ real step). */
+    private bigDevRun;
+    /**
+     * ADAPTIVE interpolation delay, slewed toward the jitter-derived
+     * target (see targetInterpDelay). A fixed 120ms taxed every clean
+     * connection ~40ms of unnecessary remote-player lag; a jittery one
+     * needs MORE than 120 to stop freeze-jump. Slew ≤15ms/s: the remote
+     * timeline may stretch, never snap.
+     */
+    private interpDelayMs;
     /** World-clock offset in ticks (dev /time); see sim/daylight. */
     timeOfs: number;
     inventory: InvSlot[];
@@ -341,8 +355,23 @@ export declare class ClientGame {
      * on snapshot arrival.
      */
     clockHoursNow(): number;
+    /**
+     * The delay target: one snapshot interval of bracketing room plus
+     * headroom scaled by measured arrival jitter. Clean local play sits
+     * at the 80ms floor; a 30ms-jitter connection rides ~200.
+     */
+    private targetInterpDelay;
     /** Server-timeline timestamp remote entities should be rendered at. */
     renderTime(): number;
+    /**
+     * Server-NOW estimate — the projectile timeline. Arrows and bolts
+     * render extrapolated to where the server actually HAS them, not
+     * 100+ms in the past: your shot leaves the bow tracking its true
+     * flight, and an incoming shot is exactly as far along as it really
+     * is. Straight-line flight is what makes this safe (the interp
+     * buffer's bounded extrapolation does the projection).
+     */
+    projectileTime(): number;
     sendChat(text: string): void;
     /** Fixed-timestep input sampling + prediction; called every frame. */
     update(now: number): void;

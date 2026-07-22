@@ -45,8 +45,21 @@ for (const zone of zones) {
 }
 game.start();
 
-const wss = new WebSocketServer({ port: config.port, path: '/ws' });
-wss.on('connection', (ws) => {
+const wss = new WebSocketServer({
+  port: config.port,
+  path: '/ws',
+  // Snapshots are 20Hz and tiny — compression would add per-message
+  // CPU + latency for nothing. Explicit so nobody "enables a win".
+  perMessageDeflate: false,
+});
+wss.on('connection', (ws, req) => {
+  // KILL NAGLE. Node sockets batch small writes by default; a 20Hz
+  // stream of sub-MTU snapshots is Nagle's worst case — it can hold a
+  // snapshot back until the previous one is ACKed (+RTT, up to ~40ms
+  // added latency on real networks). Localhost hides this entirely,
+  // which is why it survives in dev. The single most important line
+  // in the transport.
+  req.socket.setNoDelay(true);
   new Session(ws, game);
 });
 

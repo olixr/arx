@@ -137,6 +137,20 @@ export class ClientGame {
   aim = 0;
   rttMs = 0;
   serverTick = 0;
+  /** Snapshots folded into the clock (young clocks converge faster). */
+  private clockSamples = 0;
+  /** EWMA of snapshot arrival deviation — what the delay must absorb. */
+  private jitterEwma = 0;
+  /** Consecutive >300ms clock deviations (sustained ⇒ real step). */
+  private bigDevRun = 0;
+  /**
+   * ADAPTIVE interpolation delay, slewed toward the jitter-derived
+   * target (see targetInterpDelay). A fixed 120ms taxed every clean
+   * connection ~40ms of unnecessary remote-player lag; a jittery one
+   * needs MORE than 120 to stop freeze-jump. Slew ≤15ms/s: the remote
+   * timeline may stretch, never snap.
+   */
+  private interpDelayMs = INTERP_DELAY_MS;
   /** World-clock offset in ticks (dev /time); see sim/daylight. */
   timeOfs = 0;
 
@@ -957,8 +971,38 @@ export class ClientGame {
     this.serverTick = snap.serverTick;
     const snapTime = snap.serverTick * TICK_MS;
     const offset = snapTime - performance.now();
-    this.clockOffset =
-      this.clockOffset === null ? offset : this.clockOffset + (offset - this.clockOffset) * 0.1;
+    // CLOCK DISCIPLINE. The offset estimate IS the remote timeline —
+    // any wobble here is rubber-banding for every entity at once. Three
+    // regimes: fast convergence while young; slew-limited micro-steps
+    // (≤1ms per snapshot ≈ 20ms/s) in steady state so one delayed
+    // burst can never warp time; and a sustained-jump snap (tab sleep,
+    // route change) once the deviation holds for a full second.
+    if (this.clockOffset === null) {
+      this.clockOffset = offset;
+      this.clockSamples = 1;
+      this.jitterEwma = 0;
+      this.bigDevRun = 0;
+    } else {
+      const dev = offset - this.clockOffset;
+      // Arrival jitter feeds the adaptive interp delay.
+      this.jitterEwma += (Math.abs(dev) - this.jitterEwma) * 0.05;
+      if (Math.abs(dev) > 300) {
+        if (++this.bigDevRun >= 20) {
+          this.clockOffset = offset; // sustained for ~1s: a real clock step
+          this.clockSamples = 1;
+          this.jitterEwma = 0;
+          this.bigDevRun = 0;
+        }
+      } else {
+        this.bigDevRun = 0;
+        if (this.clockSamples < 20) {
+          this.clockOffset += dev * 0.1;
+          this.clockSamples++;
+        } else {
+          this.clockOffset += Math.max(-1, Math.min(1, dev * 0.1));
+        }
+      }
+    }
 
     for (const e of snap.entities) {
       if (e.eid === this.ownEid) {
@@ -993,10 +1037,32 @@ export class ClientGame {
     return clockHours(serverMs + this.timeOfs * TICK_MS);
   }
 
+  /**
+   * The delay target: one snapshot interval of bracketing room plus
+   * headroom scaled by measured arrival jitter. Clean local play sits
+   * at the 80ms floor; a 30ms-jitter connection rides ~200.
+   */
+  private targetInterpDelay(): number {
+    return Math.min(220, Math.max(80, TICK_MS + 30 + this.jitterEwma * 4));
+  }
+
   /** Server-timeline timestamp remote entities should be rendered at. */
   renderTime(): number {
     if (this.clockOffset === null) return 0;
-    return performance.now() + this.clockOffset - INTERP_DELAY_MS;
+    return performance.now() + this.clockOffset - this.interpDelayMs;
+  }
+
+  /**
+   * Server-NOW estimate — the projectile timeline. Arrows and bolts
+   * render extrapolated to where the server actually HAS them, not
+   * 100+ms in the past: your shot leaves the bow tracking its true
+   * flight, and an incoming shot is exactly as far along as it really
+   * is. Straight-line flight is what makes this safe (the interp
+   * buffer's bounded extrapolation does the projection).
+   */
+  projectileTime(): number {
+    if (this.clockOffset === null) return 0;
+    return performance.now() + this.clockOffset;
   }
 
   sendChat(text: string): void {
@@ -1063,5 +1129,10 @@ export class ClientGame {
     // the fixed-step prediction at full display refresh.
     this.predictor.renderAlpha = this.accumulator / TICK_MS;
     this.predictor.decayError(frameDt / 1000);
+    // Interp delay slews toward its jitter-derived target (≤15ms/s —
+    // a 1.5% time dilation, invisible; a step would be a visible warp).
+    const dTarget = this.targetInterpDelay();
+    const maxStep = 15 * (frameDt / 1000);
+    this.interpDelayMs += Math.max(-maxStep, Math.min(maxStep, dTarget - this.interpDelayMs));
   }
 }
