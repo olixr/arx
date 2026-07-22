@@ -263,12 +263,18 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
           const inFormation = nearRim(lx, ly, 2) && formation > 0.56;
           if (inFormation) {
             // Ore formations hug the rims — richer the higher you climb.
+            // The twice-climbed crowns carry the high ladder: silver and
+            // gold for the mid-game, mithril and adamant seams for the
+            // smith who kept walking up.
             if (lvl >= 2) {
               ground =
-                roll < 0.1 ? Tile.RockIron
-                : roll < 0.19 ? Tile.RockCoal
-                : roll < 0.25 ? Tile.RockGold
-                : roll < 0.52 ? Tile.Rock
+                roll < 0.08 ? Tile.RockIron
+                : roll < 0.15 ? Tile.RockCoal
+                : roll < 0.2 ? Tile.RockSilver
+                : roll < 0.24 ? Tile.RockGold
+                : roll < 0.28 ? Tile.RockMithril
+                : roll < 0.3 ? Tile.RockAdamant
+                : roll < 0.55 ? Tile.Rock
                 : Tile.StoneFloor;
             } else {
               ground =
@@ -276,14 +282,19 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
                 : roll < 0.2 ? Tile.RockTin
                 : roll < 0.27 ? Tile.RockIron
                 : roll < 0.32 ? Tile.RockCoal
+                : roll < 0.35 ? Tile.RockSilver
                 : roll < 0.58 ? Tile.Rock
                 : Tile.StoneFloor;
             }
             if (ground === Tile.StoneFloor && roll > 0.85) detail = Detail.Pebbles;
           } else if (lvl >= 2) {
-            // Mesa tops: stark stone with wind-scoured snow patches.
+            // Mesa tops: stark stone with wind-scoured snow patches —
+            // and, once in a great while, a starfall crater: the only
+            // overworld source of starmetal, parked where the sky is
+            // closest. A landmark you hike to, not stumble over.
             ground =
-              moisture > 0.6 ? Tile.Snow
+              roll < 0.0035 ? Tile.RockStarfall
+              : moisture > 0.6 ? Tile.Snow
               : roll < 0.03 ? Tile.Rock
               : Tile.StoneFloor;
             if (ground === Tile.StoneFloor && roll > 0.88) detail = Detail.Pebbles;
@@ -312,10 +323,16 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
           // bonus mining spot for whoever climbs down twice, tuned well
           // below the mesa formations (this is a dell's cellar, not a
           // jackpot).
+          // The deep cut also nicks the high ladder: a little silver
+          // and mithril, and the odd cooled obsidian flow where the
+          // quarry floor met old fire.
           ground =
             roll < 0.05 ? Tile.RockIron
             : roll < 0.09 ? Tile.RockCoal
             : roll < 0.12 ? Tile.RockGold
+            : roll < 0.145 ? Tile.RockSilver
+            : roll < 0.165 ? Tile.RockMithril
+            : roll < 0.175 ? Tile.RockObsidian
             : roll < 0.38 ? Tile.Rock
             : Tile.StoneFloor;
           if (ground === Tile.StoneFloor && roll > 0.85) detail = Detail.Pebbles;

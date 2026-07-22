@@ -2518,7 +2518,7 @@ function sentinelSet(): EquipmentDef[] {
 
 /** One smithing design forged across the metal ladder. */
 interface MetalStep {
-  metal: 'bronze' | 'iron' | 'steel' | 'gold';
+  metal: 'bronze' | 'iron' | 'steel' | 'gold' | 'mithril' | 'adamant' | 'obsidian' | 'starsteel';
   bar: string;
   color: string;
   damage: number;
@@ -2630,6 +2630,58 @@ function swordDefs(): EquipmentDef[] {
       value: 240, color: '#b8bec8', code: 'Ss',
       desc: 'Anvil-song made solid. It hums when it swings.',
     },
+    {
+      id: 'mithril_sword', name: 'Mithril sword', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 40 },
+      weapon: { style: 'melee', damage: 4, cooldownTicks: 7, range: 2.1, art: 'shockwave' },
+      affixPool: SOLDIER_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 50, xp: 560, station: 'anvil', ticks: 90,
+        inputs: [{ item: 'mithril_bar', qty: 2 }],
+      },
+      value: 1500, color: '#7fa8d9', code: 'M4',
+      desc: 'The blade the smith-songs promised. Light as a good idea.',
+    },
+    {
+      id: 'adamant_sword', name: 'Adamant sword', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 55 },
+      weapon: { style: 'melee', damage: 5, cooldownTicks: 7, range: 2.15, art: 'shockwave' },
+      affixPool: SOLDIER_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 65, xp: 920, station: 'anvil', ticks: 100,
+        inputs: [{ item: 'adamant_bar', qty: 2 }],
+      },
+      value: 3000, color: '#5fa06a', code: 'M5',
+      desc: 'Deep-green and patient. Whatever it meets was temporary.',
+    },
+    {
+      id: 'obsidian_sword', name: 'Obsidian sword', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 68 },
+      weapon: { style: 'melee', damage: 6, cooldownTicks: 7, range: 2.15, art: 'shockwave' },
+      affixPool: SOLDIER_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 78, xp: 1350, station: 'anvil', ticks: 110,
+        inputs: [{ item: 'obsidian_shard', qty: 3 }],
+      },
+      value: 4900, color: '#4e4260', code: 'M6',
+      desc: 'A blade of cooled night. It does not ring; it whispers.',
+    },
+    {
+      id: 'starsteel_sword', name: 'Starsteel sword', slot: 'weapon',
+      levelReq: { skill: 'melee', level: 80 },
+      weapon: { style: 'melee', damage: 7, cooldownTicks: 7, range: 2.2, art: 'shockwave' },
+      affixPool: SOLDIER_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 90, xp: 1950, station: 'anvil', ticks: 120,
+        inputs: [{ item: 'starsteel_bar', qty: 2 }],
+      },
+      value: 8600, color: '#cabdf2', code: 'M7',
+      desc: 'The master smith\'s proof: a sword that remembers the sky.',
+    },
   ];
 
   // ---- the three smithing lines: one design, four metals each.
@@ -2647,6 +2699,14 @@ function swordDefs(): EquipmentDef[] {
         desc: 'A steel wedge with manners. It asks once.' },
       { metal: 'gold', bar: 'gold_bar', color: '#e8c04c', damage: 4, meleeReq: 32, smithReq: 42, xp: 340, value: 780, code: 'Fo',
         desc: 'Too soft for war, says the smith — swinging it anyway, grinning.' },
+      { metal: 'mithril', bar: 'mithril_bar', color: '#7fa8d9', damage: 5, meleeReq: 40, smithReq: 52, xp: 620, value: 1600, code: 'F4',
+        desc: 'Sky-metal with an axeman\'s temper. The chop arrives early.' },
+      { metal: 'adamant', bar: 'adamant_bar', color: '#5fa06a', damage: 6, meleeReq: 55, smithReq: 67, xp: 1000, value: 3200, code: 'F5',
+        desc: 'Green as deep water and about as easy to argue with.' },
+      { metal: 'obsidian', bar: 'obsidian_shard', color: '#4e4260', damage: 7, meleeReq: 68, smithReq: 80, xp: 1400, value: 5200, code: 'F6',
+        desc: 'Knapped volcano glass. The mountain\'s own cleaver.' },
+      { metal: 'starsteel', bar: 'starsteel_bar', color: '#cabdf2', damage: 8, meleeReq: 80, smithReq: 92, xp: 2000, value: 9000, code: 'F7',
+        desc: 'It fell from the sky once. It has been falling on things since.' },
     ],
   );
   const gladius = metalLine(
@@ -2663,6 +2723,14 @@ function swordDefs(): EquipmentDef[] {
         desc: 'Steel at parade polish. Steps forward when you do.' },
       { metal: 'gold', bar: 'gold_bar', color: '#e8c04c', damage: 3, meleeReq: 30, smithReq: 40, xp: 300, value: 700, code: 'Gk',
         desc: 'A triumph in arm\'s reach. Generals retire onto these.' },
+      { metal: 'mithril', bar: 'mithril_bar', color: '#7fa8d9', damage: 4, meleeReq: 40, smithReq: 50, xp: 560, value: 1450, code: 'G4',
+        desc: 'So light the thrust outruns the thought behind it.' },
+      { metal: 'adamant', bar: 'adamant_bar', color: '#5fa06a', damage: 5, meleeReq: 55, smithReq: 65, xp: 900, value: 2900, code: 'G5',
+        desc: 'Shield-splitter in a short green package.' },
+      { metal: 'obsidian', bar: 'obsidian_shard', color: '#4e4260', damage: 6, meleeReq: 68, smithReq: 78, xp: 1300, value: 4700, code: 'G6',
+        desc: 'A glass tooth from the world\'s first fire.' },
+      { metal: 'starsteel', bar: 'starsteel_bar', color: '#cabdf2', damage: 7, meleeReq: 80, smithReq: 90, xp: 1850, value: 8200, code: 'G7',
+        desc: 'The point glows faintly, like it still misses the sky.' },
     ],
   );
   const scimitar = metalLine(
@@ -2679,6 +2747,14 @@ function swordDefs(): EquipmentDef[] {
         desc: 'Quick as gossip and twice as cutting.' },
       { metal: 'gold', bar: 'gold_bar', color: '#e8c04c', damage: 3, meleeReq: 34, smithReq: 44, xp: 360, value: 860, code: 'Kq',
         desc: 'A crescent moon on a velvet night out.' },
+      { metal: 'mithril', bar: 'mithril_bar', color: '#7fa8d9', damage: 4, meleeReq: 40, smithReq: 54, xp: 660, value: 1750, code: 'C4',
+        desc: 'The curve sings a higher note now. Duck.' },
+      { metal: 'adamant', bar: 'adamant_bar', color: '#5fa06a', damage: 5, meleeReq: 55, smithReq: 69, xp: 1050, value: 3400, code: 'C5',
+        desc: 'A green sickle that harvests exactly one crop.' },
+      { metal: 'obsidian', bar: 'obsidian_shard', color: '#4e4260', damage: 6, meleeReq: 68, smithReq: 82, xp: 1450, value: 5500, code: 'C6',
+        desc: 'The night sky, sharpened along one edge.' },
+      { metal: 'starsteel', bar: 'starsteel_bar', color: '#cabdf2', damage: 7, meleeReq: 80, smithReq: 94, xp: 2100, value: 9400, code: 'C7',
+        desc: 'A comet\'s arc, kept short enough to hold.' },
     ],
   );
 
@@ -2972,6 +3048,14 @@ function daggerDefs(): EquipmentDef[] {
         desc: 'Mail shrugs at swords. It does not shrug at this.' },
       { metal: 'gold', bar: 'gold_bar', color: '#e8c04c', damage: 3, meleeReq: 0, smithReq: 41, xp: 310, value: 720, code: 'Tq',
         desc: 'A golden thorn for silk-lined pockets.' },
+      { metal: 'mithril', bar: 'mithril_bar', color: '#7fa8d9', damage: 4, meleeReq: 0, smithReq: 51, xp: 580, value: 1500, code: 'T4',
+        desc: 'Light enough to forget. They certainly will.' },
+      { metal: 'adamant', bar: 'adamant_bar', color: '#5fa06a', damage: 5, meleeReq: 0, smithReq: 66, xp: 940, value: 3000, code: 'T5',
+        desc: 'Plate is a rumor. This is a correction.' },
+      { metal: 'obsidian', bar: 'obsidian_shard', color: '#4e4260', damage: 6, meleeReq: 0, smithReq: 79, xp: 1350, value: 4900, code: 'T6',
+        desc: 'A splinter of midnight. It leaves no echo.' },
+      { metal: 'starsteel', bar: 'starsteel_bar', color: '#cabdf2', damage: 7, meleeReq: 0, smithReq: 91, xp: 1900, value: 8600, code: 'T7',
+        desc: 'One cold star, delivered to a very small address.' },
     ],
   );
   const kris = metalLine(
@@ -2988,6 +3072,14 @@ function daggerDefs(): EquipmentDef[] {
         desc: 'A river of steel. Rivers always find a way in.' },
       { metal: 'gold', bar: 'gold_bar', color: '#e8c04c', damage: 3, meleeReq: 0, smithReq: 45, xp: 380, value: 820, code: 'Ko',
         desc: 'A golden serpent, mid-strike, forever.' },
+      { metal: 'mithril', bar: 'mithril_bar', color: '#7fa8d9', damage: 4, meleeReq: 0, smithReq: 55, xp: 700, value: 1800, code: 'K4',
+        desc: 'The waves ride quicksilver-light. So does the hand.' },
+      { metal: 'adamant', bar: 'adamant_bar', color: '#5fa06a', damage: 5, meleeReq: 0, smithReq: 70, xp: 1100, value: 3500, code: 'K5',
+        desc: 'A green river in flood. Doors mean nothing to it.' },
+      { metal: 'obsidian', bar: 'obsidian_shard', color: '#4e4260', damage: 6, meleeReq: 0, smithReq: 83, xp: 1500, value: 5700, code: 'K6',
+        desc: 'Seven waves of black glass, each one a last word.' },
+      { metal: 'starsteel', bar: 'starsteel_bar', color: '#cabdf2', damage: 7, meleeReq: 0, smithReq: 95, xp: 2200, value: 9800, code: 'K7',
+        desc: 'It ripples like the night it fell through.' },
     ],
   );
   const tanto = metalLine(
@@ -3004,6 +3096,14 @@ function daggerDefs(): EquipmentDef[] {
         desc: 'Armor-writ: short, angled, final.' },
       { metal: 'gold', bar: 'gold_bar', color: '#e8c04c', damage: 4, meleeReq: 34, smithReq: 43, xp: 350, value: 760, code: 'Tz',
         desc: 'Ceremony up front, business at the tip.' },
+      { metal: 'mithril', bar: 'mithril_bar', color: '#7fa8d9', damage: 5, meleeReq: 40, smithReq: 53, xp: 640, value: 1650, code: 'N4',
+        desc: 'The off-hand answer, now asked in sky-metal.' },
+      { metal: 'adamant', bar: 'adamant_bar', color: '#5fa06a', damage: 6, meleeReq: 55, smithReq: 68, xp: 1000, value: 3300, code: 'N5',
+        desc: 'Green wedge, straight face. Armor files a complaint.' },
+      { metal: 'obsidian', bar: 'obsidian_shard', color: '#4e4260', damage: 7, meleeReq: 68, smithReq: 81, xp: 1400, value: 5300, code: 'N6',
+        desc: 'The kissaki is glass. The verdict is stone.' },
+      { metal: 'starsteel', bar: 'starsteel_bar', color: '#cabdf2', damage: 8, meleeReq: 80, smithReq: 93, xp: 2000, value: 9200, code: 'N7',
+        desc: 'Forge-cooled starlight with a working edge.' },
     ],
   );
   // Stiletto/kris gate on sneak, not melee — patch the maker's default.
@@ -3199,8 +3299,8 @@ function daggerDefs(): EquipmentDef[] {
   // tanto, the fighter's dagger, which keeps the soldier's R.
   const roster = [
     ...dirks,
-    ...sneakGate(stiletto, [4, 14, 28, 32]),
-    ...sneakGate(kris, [8, 18, 32, 36]),
+    ...sneakGate(stiletto, [4, 14, 28, 32, 42, 56, 70, 82]),
+    ...sneakGate(kris, [8, 18, 32, 36, 44, 58, 72, 84]),
     ...crafts,
     ...finds,
   ];

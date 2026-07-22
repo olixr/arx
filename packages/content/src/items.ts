@@ -165,6 +165,11 @@ const defs: ItemDef[] = [
   { id: 'iron_ore', name: 'Iron ore', stackable: false, value: 18, desc: 'Rust-flecked stone with real metal in its bones.', color: '#8d9299', code: 'Fe' },
   { id: 'coal', name: 'Coal', stackable: false, value: 22, desc: 'Black rock that burns hot enough for steelwork.', color: '#2e2b33', code: 'Co' },
   { id: 'gold_ore', name: 'Gold ore', stackable: false, value: 45, desc: 'Glittering seams of the mountain\'s treasure.', color: '#e8b64c', code: 'Au' },
+  { id: 'silver_ore', name: 'Silver ore', stackable: false, value: 30, desc: 'Cold pale metal — moonlight the mountain kept.', color: '#dce4f0', code: 'Ag' },
+  { id: 'mithril_ore', name: 'Mithril ore', stackable: false, value: 90, desc: 'Sky-blue and feather-light. The smith-songs all start here.', color: '#7fa8d9', code: 'Mi' },
+  { id: 'adamant_ore', name: 'Adamant ore', stackable: false, value: 180, desc: 'Green-veined stone hard enough to chip the pick that wins it.', color: '#5fa06a', code: 'Ad' },
+  { id: 'obsidian_shard', name: 'Obsidian shard', stackable: false, value: 240, desc: 'Volcanic glass, sharper than any whetstone will ever make steel.', color: '#453a52', code: 'Ob' },
+  { id: 'starmetal_ore', name: 'Starmetal ore', stackable: false, value: 400, desc: 'It fell burning from the old sky. It remembers being a star.', color: '#cabdf2', code: 'St' },
 
   // Fish & food
   { id: 'raw_trout', name: 'Raw trout', stackable: false, value: 8, desc: 'A river trout, cold and slick. Cook it over a fire.', color: '#7fb2d9', code: 'Tr' },
@@ -342,12 +347,17 @@ const defs: ItemDef[] = [
   { id: 'iron_bar', name: 'Iron bar', stackable: false, value: 30, desc: 'Honest metal, ready for the anvil.', color: '#8d9299', code: 'Ib' },
   { id: 'steel_bar', name: 'Steel bar', stackable: false, value: 80, desc: 'Iron improved by coal and patience.', color: '#b8bec8', code: 'Sb' },
   { id: 'gold_bar', name: 'Gold bar', stackable: false, value: 95, desc: 'Soft, heavy, and worth its weight in itself.', color: '#f2c94c', code: 'Gb' },
+  { id: 'silver_bar', name: 'Silver bar', stackable: false, value: 60, desc: 'Takes a mirror polish and an enchanter\'s whisper equally well.', color: '#dce4f0', code: 'Vb' },
+  { id: 'mithril_bar', name: 'Mithril bar', stackable: false, value: 200, desc: 'Half the weight of steel, twice the spine.', color: '#7fa8d9', code: 'Mb' },
+  { id: 'adamant_bar', name: 'Adamant bar', stackable: false, value: 420, desc: 'The anvil complains the whole time. It\'s worth it.', color: '#5fa06a', code: 'Ab' },
+  { id: 'starsteel_bar', name: 'Starsteel bar', stackable: false, value: 950, desc: 'Sky-metal folded over coal-fire until it holds its own faint light.', color: '#cabdf2', code: 'Xb' },
 
   // Crafting materials & gear — armor pieces live in equipment/defs.ts.
   { id: 'leather', name: 'Leather', stackable: false, value: 12, desc: 'Cured hide, supple and strong.', color: '#b08a5c', code: 'Le' },
   // Swords live in equipment/defs.ts (the blade roster) — rolled gear.
   // Smithed valuables — the goldsmith's vendor line.
   { id: 'gold_ring', name: 'Gold ring', stackable: false, value: 180, desc: 'A goldsmith\'s staple. Vendors adore them.', color: '#f2c94c', code: 'Gr' },
+  { id: 'silver_ring', name: 'Silver ring', stackable: false, value: 120, desc: 'Moon-pale and mirror-bright. The quiet fortune-maker.', color: '#dce4f0', code: 'Sr' },
 
   // Monster drops
   { id: 'bones', name: 'Bones', stackable: false, value: 2, desc: 'Every creature leaves some behind.', color: '#e6e0d0', code: 'Bn' },
@@ -843,6 +853,49 @@ const defs: ItemDef[] = [
     code: 'Rd',
   },
 ];
+
+// The tool ladder: every metal tier smiths a faster axe and pickaxe,
+// so each new ore bracket immediately pays the gatherer back. Power
+// climbs one point per tier; recipes live in recipes.ts (smith_*).
+const TOOL_LADDER: Array<{
+  metal: string; name: string; power: number; value: number; color: string;
+  axeCode: string; pickCode: string; axeDesc: string; pickDesc: string;
+}> = [
+  { metal: 'iron', name: 'Iron', power: 2, value: 70, color: '#8d9299',
+    axeCode: 'A2', pickCode: 'P2',
+    axeDesc: 'Holds its edge through a full stand of oaks.',
+    pickDesc: 'Rings truer and bites deeper than bronze.' },
+  { metal: 'steel', name: 'Steel', power: 3, value: 210, color: '#b8bec8',
+    axeCode: 'A3', pickCode: 'P3',
+    axeDesc: 'The forester\'s pride — one swing, one wedge of wood.',
+    pickDesc: 'Coal seams open like bread before it.' },
+  { metal: 'mithril', name: 'Mithril', power: 4, value: 620, color: '#7fa8d9',
+    axeCode: 'A4', pickCode: 'P4',
+    axeDesc: 'So light the swing feels borrowed from someone stronger.',
+    pickDesc: 'Sky-metal that makes the mountain feel soft.' },
+  { metal: 'adamant', name: 'Adamant', power: 5, value: 1400, color: '#5fa06a',
+    axeCode: 'A5', pickCode: 'P5',
+    axeDesc: 'Green-edged and tireless. The tree loses every argument.',
+    pickDesc: 'Nothing in the rock argues back anymore.' },
+  { metal: 'starsteel', name: 'Starsteel', power: 6, value: 3200, color: '#cabdf2',
+    axeCode: 'A6', pickCode: 'P6',
+    axeDesc: 'It hums a note the forest seems to recognise.',
+    pickDesc: 'A star digging for its buried kin.' },
+];
+for (const t of TOOL_LADDER) {
+  defs.push(
+    {
+      id: `${t.metal}_axe`, name: `${t.name} axe`, stackable: false, value: t.value,
+      equipSlot: 'tool', tool: { type: 'axe', power: t.power },
+      desc: t.axeDesc, color: t.color, code: t.axeCode,
+    },
+    {
+      id: `${t.metal}_pickaxe`, name: `${t.name} pickaxe`, stackable: false, value: t.value,
+      equipSlot: 'tool', tool: { type: 'pickaxe', power: t.power },
+      desc: t.pickDesc, color: t.color, code: t.pickCode,
+    },
+  );
+}
 
 // Enchant scrolls — one per EnchantDef, pure generation. A scroll is a
 // plain stackable trade good: the enchanter's skill went into

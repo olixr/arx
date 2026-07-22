@@ -102,6 +102,24 @@ export const SWORD_STYLES: Record<string, SwordStyle> = {
     blade: 'arming', color: '#c4cad4', len: 1.05, guard: 'cross', guardColor: '#5a5f6a',
     grip: '#3a3540', pommel: 'gem', pommelColor: '#d9a441', gem: '#7fb2d9',
   },
+  // The high ladder wears its ore's identity colors — the same hues
+  // the deposits and icons speak — and only starsteel earns an fx.
+  mithril_sword: {
+    blade: 'arming', color: '#8fb4e4', edge: '#d8ecff', len: 1.05, guard: 'cross', guardColor: '#3f5e8c',
+    grip: '#2e3a4e', wrap: '#7fa8d9', pommel: 'gem', pommelColor: '#3f5e8c', gem: '#d8ecff',
+  },
+  adamant_sword: {
+    blade: 'arming', color: '#6cb47a', edge: '#d2f0d0', fuller: '#2f5e3c', len: 1.08, guard: 'cross', guardColor: '#2f5e3c',
+    grip: '#26382c', wrap: '#5fa06a', pommel: 'gem', pommelColor: '#2f5e3c', gem: '#d2f0d0',
+  },
+  obsidian_sword: {
+    blade: 'arming', color: '#4e4260', edge: '#b8a8d8', fuller: '#2a2333', len: 1.08, guard: 'stub', guardColor: '#332b40',
+    grip: '#241d30', wrap: '#6a5a80', pommel: 'round', pommelColor: '#332b40',
+  },
+  starsteel_sword: {
+    blade: 'arming', color: '#d6cbf6', edge: '#ffffff', fuller: '#a99ad8', len: 1.1, guard: 'wing', guardColor: '#7a6ab0',
+    grip: '#3a3452', wrap: '#a99ad8', pommel: 'star', pommelColor: '#f4f4ff', fx: 'star', fxColor: '#f4f4ff',
+  },
 
   // ---- falchion line: the workman's chopper.
   falchion: {
@@ -119,6 +137,22 @@ export const SWORD_STYLES: Record<string, SwordStyle> = {
   gold_falchion: {
     blade: 'falchion', color: '#e8c04c', edge: '#fff2cc', guard: 'cross', guardColor: '#b8863f',
     grip: '#6a2a3a', wrap: '#d9a441', pommel: 'round', pommelColor: '#d9a441',
+  },
+  mithril_falchion: {
+    blade: 'falchion', color: '#8fb4e4', edge: '#d8ecff', guard: 'cross', guardColor: '#3f5e8c',
+    grip: '#2e3a4e', wrap: '#7fa8d9', pommel: 'round', pommelColor: '#3f5e8c',
+  },
+  adamant_falchion: {
+    blade: 'falchion', color: '#6cb47a', edge: '#d2f0d0', fuller: '#2f5e3c', guard: 'cross', guardColor: '#2f5e3c',
+    grip: '#26382c', wrap: '#5fa06a', pommel: 'round', pommelColor: '#2f5e3c',
+  },
+  obsidian_falchion: {
+    blade: 'falchion', color: '#4e4260', edge: '#b8a8d8', fuller: '#2a2333', guard: 'stub', guardColor: '#332b40',
+    grip: '#241d30', wrap: '#6a5a80', pommel: 'round', pommelColor: '#332b40',
+  },
+  starsteel_falchion: {
+    blade: 'falchion', color: '#d6cbf6', edge: '#ffffff', fuller: '#a99ad8', guard: 'cross', guardColor: '#7a6ab0',
+    grip: '#3a3452', wrap: '#a99ad8', pommel: 'star', pommelColor: '#f4f4ff', fx: 'star', fxColor: '#f4f4ff',
   },
 
   // ---- gladius line: the legion's short blade (len says SHORT).
@@ -138,6 +172,22 @@ export const SWORD_STYLES: Record<string, SwordStyle> = {
     blade: 'gladius', color: '#e8c04c', edge: '#fff2cc', len: 0.82, guard: 'disc', guardColor: '#b8863f',
     grip: '#6a2a3a', wrap: '#d9a441', pommel: 'gem', pommelColor: '#d9a441', gem: '#c4553d',
   },
+  mithril_gladius: {
+    blade: 'gladius', color: '#8fb4e4', edge: '#d8ecff', len: 0.82, guard: 'disc', guardColor: '#3f5e8c',
+    grip: '#2e3a4e', wrap: '#7fa8d9', pommel: 'round', pommelColor: '#3f5e8c',
+  },
+  adamant_gladius: {
+    blade: 'gladius', color: '#6cb47a', edge: '#d2f0d0', fuller: '#2f5e3c', len: 0.82, guard: 'disc', guardColor: '#2f5e3c',
+    grip: '#26382c', wrap: '#5fa06a', pommel: 'round', pommelColor: '#2f5e3c',
+  },
+  obsidian_gladius: {
+    blade: 'gladius', color: '#4e4260', edge: '#b8a8d8', fuller: '#2a2333', len: 0.82, guard: 'stub', guardColor: '#332b40',
+    grip: '#241d30', wrap: '#6a5a80', pommel: 'round', pommelColor: '#332b40',
+  },
+  starsteel_gladius: {
+    blade: 'gladius', color: '#d6cbf6', edge: '#ffffff', fuller: '#a99ad8', len: 0.82, guard: 'disc', guardColor: '#7a6ab0',
+    grip: '#3a3452', wrap: '#a99ad8', pommel: 'star', pommelColor: '#f4f4ff', fx: 'star', fxColor: '#f4f4ff',
+  },
 
   // ---- scimitar line: the sideways grin.
   scimitar: {
@@ -155,6 +205,22 @@ export const SWORD_STYLES: Record<string, SwordStyle> = {
   gold_scimitar: {
     blade: 'scimitar', color: '#e8c04c', edge: '#fff2cc', guard: 'disc', guardColor: '#b8863f',
     grip: '#6a2a3a', wrap: '#d9a441', pommel: 'crescent', pommelColor: '#d9a441',
+  },
+  mithril_scimitar: {
+    blade: 'scimitar', color: '#8fb4e4', edge: '#d8ecff', guard: 'disc', guardColor: '#3f5e8c',
+    grip: '#2e3a4e', wrap: '#7fa8d9', pommel: 'crescent', pommelColor: '#3f5e8c',
+  },
+  adamant_scimitar: {
+    blade: 'scimitar', color: '#6cb47a', edge: '#d2f0d0', fuller: '#2f5e3c', guard: 'disc', guardColor: '#2f5e3c',
+    grip: '#26382c', wrap: '#5fa06a', pommel: 'crescent', pommelColor: '#2f5e3c',
+  },
+  obsidian_scimitar: {
+    blade: 'scimitar', color: '#4e4260', edge: '#b8a8d8', fuller: '#2a2333', guard: 'stub', guardColor: '#332b40',
+    grip: '#241d30', wrap: '#6a5a80', pommel: 'crescent', pommelColor: '#332b40',
+  },
+  starsteel_scimitar: {
+    blade: 'scimitar', color: '#d6cbf6', edge: '#ffffff', fuller: '#a99ad8', guard: 'disc', guardColor: '#7a6ab0',
+    grip: '#3a3452', wrap: '#a99ad8', pommel: 'star', pommelColor: '#f4f4ff', fx: 'star', fxColor: '#f4f4ff',
   },
 
   // ---- bespoke crafts.
@@ -287,6 +353,22 @@ export const DAGGER_STYLES: Record<string, SwordStyle> = {
     blade: 'stiletto', color: '#e8c04c', edge: '#fff2cc', len: 0.72, guard: 'disc', guardColor: '#b8863f',
     grip: '#6a2a3a', wrap: '#d9a441', pommel: 'gem', pommelColor: '#b8863f', gem: '#8f9ed6',
   },
+  mithril_stiletto: {
+    blade: 'stiletto', color: '#8fb4e4', edge: '#d8ecff', len: 0.72, guard: 'disc', guardColor: '#3f5e8c',
+    grip: '#2e3a4e', wrap: '#7fa8d9', pommel: 'round', pommelColor: '#3f5e8c',
+  },
+  adamant_stiletto: {
+    blade: 'stiletto', color: '#6cb47a', edge: '#d2f0d0', fuller: '#2f5e3c', len: 0.72, guard: 'disc', guardColor: '#2f5e3c',
+    grip: '#26382c', wrap: '#5fa06a', pommel: 'round', pommelColor: '#2f5e3c',
+  },
+  obsidian_stiletto: {
+    blade: 'stiletto', color: '#4e4260', edge: '#b8a8d8', fuller: '#2a2333', len: 0.72, guard: 'none', guardColor: '#332b40',
+    grip: '#241d30', wrap: '#6a5a80', pommel: 'round', pommelColor: '#332b40',
+  },
+  starsteel_stiletto: {
+    blade: 'stiletto', color: '#d6cbf6', edge: '#ffffff', fuller: '#a99ad8', len: 0.72, guard: 'disc', guardColor: '#7a6ab0',
+    grip: '#3a3452', wrap: '#a99ad8', pommel: 'star', pommelColor: '#f4f4ff', fx: 'star', fxColor: '#f4f4ff',
+  },
 
   // ---- the kris line.
   kris: {
@@ -305,6 +387,22 @@ export const DAGGER_STYLES: Record<string, SwordStyle> = {
     blade: 'kris', color: '#e8c04c', edge: '#fff2cc', len: 0.65, guard: 'fang', guardColor: '#b8863f',
     grip: '#6a2a3a', wrap: '#d9a441', pommel: 'gem', pommelColor: '#b8863f', gem: '#c4553d',
   },
+  mithril_kris: {
+    blade: 'kris', color: '#8fb4e4', edge: '#d8ecff', len: 0.65, guard: 'fang', guardColor: '#3f5e8c',
+    grip: '#2e3a4e', wrap: '#7fa8d9', pommel: 'crescent', pommelColor: '#3f5e8c',
+  },
+  adamant_kris: {
+    blade: 'kris', color: '#6cb47a', edge: '#d2f0d0', fuller: '#2f5e3c', len: 0.65, guard: 'fang', guardColor: '#2f5e3c',
+    grip: '#26382c', wrap: '#5fa06a', pommel: 'crescent', pommelColor: '#2f5e3c',
+  },
+  obsidian_kris: {
+    blade: 'kris', color: '#4e4260', edge: '#b8a8d8', fuller: '#2a2333', len: 0.65, guard: 'fang', guardColor: '#332b40',
+    grip: '#241d30', wrap: '#6a5a80', pommel: 'crescent', pommelColor: '#332b40',
+  },
+  starsteel_kris: {
+    blade: 'kris', color: '#d6cbf6', edge: '#ffffff', fuller: '#a99ad8', len: 0.65, guard: 'fang', guardColor: '#7a6ab0',
+    grip: '#3a3452', wrap: '#a99ad8', pommel: 'star', pommelColor: '#f4f4ff', fx: 'star', fxColor: '#f4f4ff',
+  },
 
   // ---- the tanto line.
   tanto: {
@@ -322,6 +420,22 @@ export const DAGGER_STYLES: Record<string, SwordStyle> = {
   gold_tanto: {
     blade: 'tanto', color: '#e8c04c', edge: '#fff2cc', len: 0.62, guard: 'disc', guardColor: '#b8863f',
     grip: '#6a2a3a', wrap: '#d9a441', pommel: 'none',
+  },
+  mithril_tanto: {
+    blade: 'tanto', color: '#8fb4e4', edge: '#d8ecff', len: 0.62, guard: 'disc', guardColor: '#3f5e8c',
+    grip: '#2e3a4e', wrap: '#7fa8d9', pommel: 'none',
+  },
+  adamant_tanto: {
+    blade: 'tanto', color: '#6cb47a', edge: '#d2f0d0', fuller: '#2f5e3c', len: 0.62, guard: 'disc', guardColor: '#2f5e3c',
+    grip: '#26382c', wrap: '#5fa06a', pommel: 'none',
+  },
+  obsidian_tanto: {
+    blade: 'tanto', color: '#4e4260', edge: '#b8a8d8', fuller: '#2a2333', len: 0.62, guard: 'disc', guardColor: '#332b40',
+    grip: '#241d30', wrap: '#6a5a80', pommel: 'none',
+  },
+  starsteel_tanto: {
+    blade: 'tanto', color: '#d6cbf6', edge: '#ffffff', fuller: '#a99ad8', len: 0.62, guard: 'disc', guardColor: '#7a6ab0',
+    grip: '#3a3452', wrap: '#a99ad8', pommel: 'none', fx: 'star', fxColor: '#f4f4ff',
   },
 
   // ---- bespoke crafts.

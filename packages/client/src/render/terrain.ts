@@ -212,6 +212,11 @@ const ROCKY = new Set<number>([
   Tile.RockIron,
   Tile.RockCoal,
   Tile.RockGold,
+  Tile.RockSilver,
+  Tile.RockMithril,
+  Tile.RockAdamant,
+  Tile.RockObsidian,
+  Tile.RockStarfall,
   Tile.RockDepleted,
 ]);
 

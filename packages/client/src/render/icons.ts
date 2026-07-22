@@ -422,6 +422,78 @@ const PAINTERS: Record<string, IconPainter> = {
     c.restore();
     oreChunk(c, 0.74, 0.72, 0.23, -0.14, '#3a3d46', '#9fb2c8');
   },
+  ore_silver: (c, col) => {
+    // One moon-bright block wearing the crossed lode's X on its face.
+    oreChunk(c, 0.48, 0.54, 0.52, -0.08, col, '#ffffff');
+    c.save();
+    c.translate(0.48, 0.54);
+    c.rotate(-0.08);
+    c.strokeStyle = '#ffffff';
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(-0.16, 0.12);
+    c.lineTo(0.14, -0.14);
+    c.moveTo(-0.15, -0.13);
+    c.lineTo(0.15, 0.11);
+    c.stroke();
+    c.restore();
+    oreChunk(c, 0.76, 0.74, 0.24, 0.18, col, '#ffffff');
+  },
+  ore_mithril: (c, col) => {
+    // Sky-metal: a tall-cut chunk and a hard four-point star above it.
+    oreChunk(c, 0.46, 0.56, 0.5, 0.1, col, '#d8ecff');
+    oreChunk(c, 0.72, 0.72, 0.26, -0.16, col, '#d8ecff');
+    poly(c, '#d8ecff', [
+      [0.74, 0.26], [0.77, 0.34], [0.85, 0.37], [0.77, 0.4], [0.74, 0.48], [0.71, 0.4], [0.63, 0.37], [0.71, 0.34],
+    ]);
+  },
+  ore_adamant: (c, col) => {
+    // Deep-green block banded with the horns' dark armor plates.
+    oreChunk(c, 0.5, 0.54, 0.56, 0.06, col, '#d2f0d0');
+    c.save();
+    c.translate(0.5, 0.54);
+    c.rotate(0.06);
+    c.fillStyle = shade(col, -30);
+    c.fillRect(-0.21, -0.04, 0.42, 0.055);
+    c.fillRect(-0.18, 0.09, 0.36, 0.045);
+    c.restore();
+    oreChunk(c, 0.24, 0.72, 0.2, -0.2, col, '#d2f0d0');
+  },
+  shard_obsidian: (c, col) => {
+    // A knapped blade of volcano glass: hard angular silhouette,
+    // violet facet, conchoidal ripples, one ember still warm at the heel.
+    poly(c, shade(col, -20), [
+      [0.36, 0.82], [0.3, 0.56], [0.4, 0.3], [0.56, 0.14], [0.62, 0.34], [0.7, 0.58], [0.58, 0.8],
+    ]);
+    poly(c, '#4e4260', [
+      [0.42, 0.72], [0.38, 0.52], [0.46, 0.3], [0.56, 0.18], [0.58, 0.4], [0.52, 0.62],
+    ]);
+    c.strokeStyle = '#b8a8d8';
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.arc(0.5, 0.52, 0.1, Math.PI * 1.15, Math.PI * 1.85);
+    c.stroke();
+    c.beginPath();
+    c.arc(0.52, 0.66, 0.13, Math.PI * 1.2, Math.PI * 1.8);
+    c.stroke();
+    dot(c, '#e8683c', 0.4, 0.76, 0.03);
+  },
+  ore_starmetal: (c, col) => {
+    // The fallen star's core: a pale chunk trailing impact cracks,
+    // crowned with a white four-point glitter.
+    oreChunk(c, 0.5, 0.58, 0.52, -0.12, col, '#ffffff');
+    c.strokeStyle = shade(col, -40);
+    c.lineWidth = 0.025;
+    c.beginPath();
+    c.moveTo(0.3, 0.74);
+    c.lineTo(0.18, 0.84);
+    c.moveTo(0.68, 0.7);
+    c.lineTo(0.8, 0.8);
+    c.stroke();
+    poly(c, '#ffffff', [
+      [0.72, 0.22], [0.755, 0.315], [0.85, 0.35], [0.755, 0.385], [0.72, 0.48], [0.685, 0.385], [0.59, 0.35], [0.685, 0.315],
+    ]);
+  },
   bar: (c, col) => {
     poly(c, col, [[0.2, 0.62], [0.3, 0.42], [0.74, 0.42], [0.84, 0.62]]);
     c.fillStyle = shade(col, 30);
@@ -3129,6 +3201,11 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   iron_ore: { icon: 'ore_iron', color: '#a05038' },
   coal: { icon: 'coalpile', color: '#4a4456' },
   gold_ore: { icon: 'nuggets', color: '#e8b64c' },
+  silver_ore: { icon: 'ore_silver', color: '#dce4f0' },
+  mithril_ore: { icon: 'ore_mithril', color: '#8fb4e4' },
+  adamant_ore: { icon: 'ore_adamant', color: '#6cb47a' },
+  obsidian_shard: { icon: 'shard_obsidian', color: '#3b3247' },
+  starmetal_ore: { icon: 'ore_starmetal', color: '#d6cbf6' },
   raw_trout: { icon: 'fish', color: '#8fb7d9' },
   trout: { icon: 'fishcooked', color: '#d99a6a' },
   raw_chicken: { icon: 'chicken', color: '#ecd3bd' },
@@ -3140,7 +3217,12 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   iron_bar: { icon: 'bar', color: '#9aa2ac' },
   steel_bar: { icon: 'bar', color: '#c4cad4' },
   gold_bar: { icon: 'bar', color: '#f2c94c' },
+  silver_bar: { icon: 'bar', color: '#dce4f0' },
+  mithril_bar: { icon: 'bar', color: '#8fb4e4' },
+  adamant_bar: { icon: 'bar', color: '#6cb47a' },
+  starsteel_bar: { icon: 'bar', color: '#d6cbf6' },
   gold_ring: { icon: 'ring', color: '#f2c94c' },
+  silver_ring: { icon: 'ring', color: '#dce4f0' },
   leather: { icon: 'hide', color: '#b08a5c' },
   cowhide: { icon: 'hide', color: '#a08468' },
   scrap_hide: { icon: 'hide', color: '#8a6f52' },
@@ -3155,6 +3237,16 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   feather: { icon: 'feather', color: '#f4efe4' },
   bronze_axe: { icon: 'axe', color: '#b0793f' },
   bronze_pickaxe: { icon: 'pickaxe', color: '#b0793f' },
+  iron_axe: { icon: 'axe', color: '#9aa2ac' },
+  iron_pickaxe: { icon: 'pickaxe', color: '#9aa2ac' },
+  steel_axe: { icon: 'axe', color: '#c4cad4' },
+  steel_pickaxe: { icon: 'pickaxe', color: '#c4cad4' },
+  mithril_axe: { icon: 'axe', color: '#8fb4e4' },
+  mithril_pickaxe: { icon: 'pickaxe', color: '#8fb4e4' },
+  adamant_axe: { icon: 'axe', color: '#6cb47a' },
+  adamant_pickaxe: { icon: 'pickaxe', color: '#6cb47a' },
+  starsteel_axe: { icon: 'axe', color: '#d6cbf6' },
+  starsteel_pickaxe: { icon: 'pickaxe', color: '#d6cbf6' },
   fishing_rod: { icon: 'rod', color: '#c4a35a' },
   bronze_dagger: { icon: 'dagger', color: '#c98d4b' },
   iron_dagger: { icon: 'dagger', color: '#b6bcc6' },

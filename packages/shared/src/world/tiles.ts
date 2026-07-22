@@ -211,6 +211,22 @@ export enum Tile {
   /** The boss chest: black iron and a bone skull. Legendary-kept. */
   ChestBoss = 119,
   ChestBossOpen = 120,
+  /**
+   * The high-mining ladder — five late-game deposits extending the
+   * ore ladder past gold and up to the level cap. Same node laws as
+   * the classic five (deplete to RockDepleted, cluster low when
+   * crowded, bespoke landmark art per metal).
+   */
+  /** Moonlit lode — crossed bright veins in a tilted slab. Mining 30. */
+  RockSilver = 121,
+  /** The sky spire — the master smith's blue beacon. Mining 50. */
+  RockMithril = 122,
+  /** Twin green horns of the hardest honest metal. Mining 65. */
+  RockAdamant = 123,
+  /** A cooled glass flow, ember still warm underneath. Mining 78. */
+  RockObsidian = 124,
+  /** A fallen star half-buried in its scorched crater. Mining 90. */
+  RockStarfall = 125,
 }
 
 export enum Detail {
@@ -399,6 +415,11 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.ChestMossyOpen]: { name: 'open mossgrown chest', solid: true, color: '#5a5244', raised: true, topColor: '#5c6b46' },
   [Tile.ChestBoss]: { name: 'boss chest', solid: true, color: '#2b2635', raised: true, topColor: '#453f52' },
   [Tile.ChestBossOpen]: { name: 'open boss chest', solid: true, color: '#2b2635', raised: true, topColor: '#453f52' },
+  [Tile.RockSilver]: { name: 'silver rock', solid: true, color: '#6e6a75', raised: true, topColor: '#dce4f0' },
+  [Tile.RockMithril]: { name: 'mithril rock', solid: true, color: '#6e6a75', raised: true, topColor: '#7fa8d9' },
+  [Tile.RockAdamant]: { name: 'adamant rock', solid: true, color: '#6e6a75', raised: true, topColor: '#5fa06a' },
+  [Tile.RockObsidian]: { name: 'obsidian flow', solid: true, color: '#6e6a75', raised: true, topColor: '#38304a' },
+  [Tile.RockStarfall]: { name: 'starfall crater', solid: true, color: '#6e6a75', raised: true, topColor: '#cabdf2' },
 };
 
 /**
@@ -567,6 +588,11 @@ export const ROCK_TILES: readonly Tile[] = [
   Tile.RockIron,
   Tile.RockCoal,
   Tile.RockGold,
+  Tile.RockSilver,
+  Tile.RockMithril,
+  Tile.RockAdamant,
+  Tile.RockObsidian,
+  Tile.RockStarfall,
   Tile.RockDepleted,
 ];
 
@@ -577,6 +603,11 @@ export const ORE_TILES: readonly Tile[] = [
   Tile.RockIron,
   Tile.RockCoal,
   Tile.RockGold,
+  Tile.RockSilver,
+  Tile.RockMithril,
+  Tile.RockAdamant,
+  Tile.RockObsidian,
+  Tile.RockStarfall,
 ];
 
 /** Crafting stations, keyed by what recipes call them. */
@@ -652,6 +683,11 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.RockIron, 0.46],
   [Tile.RockCoal, 0.46],
   [Tile.RockGold, 0.46],
+  [Tile.RockSilver, 0.46],
+  [Tile.RockMithril, 0.46],
+  [Tile.RockAdamant, 0.46],
+  [Tile.RockObsidian, 0.46],
+  [Tile.RockStarfall, 0.46],
   [Tile.RockDepleted, 0.36],
   [Tile.LampPost, 0.2],
   // Forage flora radii track the drawn base mass (client

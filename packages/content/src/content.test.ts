@@ -396,6 +396,49 @@ test('crop stages: boundaries and watering boost math', () => {
   assert.equal(stageForElapsed(carrot, total - boost + boost), 2);
 });
 
+test('mining ladder: ten ores climb 1→90, every yield feeds the forge, tools keep pace', async () => {
+  const { RECIPES } = await import('./recipes.js');
+  const mining = NODES.filter((n) => n.skill === 'mining');
+  // The full ladder, in level order — a fresh bracket every 10-15
+  // levels from the first copper swing to the starfall crater.
+  const ladder = [
+    ['copper_ore', 1], ['tin_ore', 1], ['iron_ore', 15], ['coal', 20],
+    ['silver_ore', 30], ['gold_ore', 40], ['mithril_ore', 50],
+    ['adamant_ore', 65], ['obsidian_shard', 78], ['starmetal_ore', 90],
+  ] as const;
+  assert.equal(mining.length, ladder.length, 'every rung has a deposit');
+  for (const [item, lvl] of ladder) {
+    const node = mining.find((n) => n.yieldItem === item);
+    assert.ok(node, `${item} has a mining node`);
+    assert.equal(node!.levelReq, lvl, `${item} gates at ${lvl}`);
+    // Every ore is CONSUMED: smelted into a bar or smithed directly.
+    const used = [...RECIPES.values()].some((r) => r.inputs.some((i) => i.item === item));
+    assert.ok(used, `${item} feeds at least one recipe`);
+  }
+  // Later rock is slower rock: baseTicks never falls as levels climb.
+  const sorted = [...mining].sort((a, b) => a.levelReq - b.levelReq);
+  for (let i = 1; i < sorted.length; i++) {
+    assert.ok(sorted[i]!.baseTicks >= sorted[i - 1]!.baseTicks, 'mining effort climbs the ladder');
+  }
+  // Every bar of the high ladder smelts, and the smelt gate matches
+  // the ore's mining gate so a self-sufficient smith never stalls.
+  for (const [bar, lvl] of [['silver_bar', 30], ['mithril_bar', 50], ['adamant_bar', 65], ['starsteel_bar', 90]] as const) {
+    const r = RECIPES.get(`smelt_${bar.replace('_bar', '')}`);
+    assert.ok(r, `${bar} smelts`);
+    assert.equal(r!.levelReq, lvl, `${bar} gate rides its ore`);
+    assert.equal(r!.station, 'furnace');
+  }
+  // The tool ladder: pickaxe power climbs one point per metal tier.
+  const powers = ['bronze', 'iron', 'steel', 'mithril', 'adamant', 'starsteel'].map(
+    (m) => ITEMS.get(`${m}_pickaxe`)?.tool?.power,
+  );
+  assert.deepEqual(powers, [1, 2, 3, 4, 5, 6], 'pickaxe power climbs the tiers');
+  for (const m of ['iron', 'steel', 'mithril', 'adamant', 'starsteel']) {
+    assert.ok(RECIPES.has(`smith_${m}_pickaxe`), `${m} pickaxe smiths`);
+    assert.ok(RECIPES.has(`smith_${m}_axe`), `${m} axe smiths`);
+  }
+});
+
 test('foraging nodes, buildables, and shop stock resolve', () => {
   for (const node of NODES) {
     assert.ok(ITEMS.has(node.yieldItem), `${node.name} yield '${node.yieldItem}' missing`);

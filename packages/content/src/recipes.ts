@@ -113,6 +113,61 @@ const defs: RecipeDef[] = [
     output: { item: 'gold_bar', qty: 1 },
     ticks: 50,
   },
+  {
+    id: 'smelt_silver',
+    name: 'Silver bar',
+    skill: 'smithing',
+    levelReq: 30,
+    xp: 80,
+    station: 'furnace',
+    inputs: [{ item: 'silver_ore', qty: 1 }],
+    output: { item: 'silver_bar', qty: 1 },
+    ticks: 50,
+  },
+  // The high ladder burns hotter: each tier past mithril asks one more
+  // coal, so the coal seams stay busy all the way to the level cap.
+  {
+    id: 'smelt_mithril',
+    name: 'Mithril bar',
+    skill: 'smithing',
+    levelReq: 50,
+    xp: 160,
+    station: 'furnace',
+    inputs: [
+      { item: 'mithril_ore', qty: 1 },
+      { item: 'coal', qty: 2 },
+    ],
+    output: { item: 'mithril_bar', qty: 1 },
+    ticks: 70,
+  },
+  {
+    id: 'smelt_adamant',
+    name: 'Adamant bar',
+    skill: 'smithing',
+    levelReq: 65,
+    xp: 260,
+    station: 'furnace',
+    inputs: [
+      { item: 'adamant_ore', qty: 1 },
+      { item: 'coal', qty: 3 },
+    ],
+    output: { item: 'adamant_bar', qty: 1 },
+    ticks: 85,
+  },
+  {
+    id: 'smelt_starsteel',
+    name: 'Starsteel bar',
+    skill: 'smithing',
+    levelReq: 90,
+    xp: 480,
+    station: 'furnace',
+    inputs: [
+      { item: 'starmetal_ore', qty: 1 },
+      { item: 'coal', qty: 4 },
+    ],
+    output: { item: 'starsteel_bar', qty: 1 },
+    ticks: 110,
+  },
   // Sword and dagger recipes are generated from the blade/rogue rosters
   // in equipment/defs.ts (craft_<itemId>) — smithing lines, bespoke crafts.
   {
@@ -125,6 +180,17 @@ const defs: RecipeDef[] = [
     inputs: [{ item: 'gold_bar', qty: 1 }],
     output: { item: 'gold_ring', qty: 1 },
     ticks: 60,
+  },
+  {
+    id: 'smith_silver_ring',
+    name: 'Silver ring',
+    skill: 'smithing',
+    levelReq: 32,
+    xp: 110,
+    station: 'anvil',
+    inputs: [{ item: 'silver_bar', qty: 1 }],
+    output: { item: 'silver_ring', qty: 1 },
+    ticks: 55,
   },
 
   // ------------------------------------------------ leatherworking / woodworking / tailoring basics
@@ -553,9 +619,10 @@ const defs: RecipeDef[] = [
 /**
  * Enchanting recipes, generated from the enchant roster. Reagent law:
  * every scroll takes arcane dust (the universal binder, scaling by
- * tier), elemental scrolls add their element's essence, and tier-3
- * capstones demand the element's gem (or a gold bar where no gem
- * exists) — the dungeon-chase ingredient.
+ * tier), elemental scrolls add their element's essence, tier-2 scrolls
+ * bind through a silver bar, and tier-3 capstones demand the element's
+ * gem (or a gold bar where no gem exists) — the dungeon-chase
+ * ingredient.
  */
 const DUST_BY_TIER: Record<1 | 2 | 3, number> = { 1: 2, 2: 4, 3: 8 };
 const ESSENCE_BY_TIER: Record<1 | 2 | 3, number> = { 1: 1, 2: 2, 3: 4 };
@@ -568,6 +635,9 @@ const enchantRecipes: RecipeDef[] = ENCHANT_DEFS.map((e) => {
   ];
   const reagent = ELEMENT_REAGENT[e.element];
   if (reagent) inputs.push({ item: reagent, qty: ESSENCE_BY_TIER[e.tier] });
+  // Tier-2 scrolls bind through a silver bar — the enchanter's metal,
+  // keeping the silver lodes busy long past the jeweller's bench.
+  if (e.tier === 2) inputs.push({ item: 'silver_bar', qty: 1 });
   if (e.tier === 3) inputs.push({ item: ELEMENT_GEM[e.element] ?? 'gold_bar', qty: 1 });
   return {
     id: `inscribe_${e.id}`,
@@ -596,7 +666,33 @@ const grindRecipes: RecipeDef[] = Object.entries(ELEMENT_GEM).map(([, gem]) => (
   ticks: 25,
 }));
 
-const allRecipes: RecipeDef[] = [...defs, ...enchantRecipes, ...grindRecipes, ...COMPILED_EQUIPMENT.recipes];
+/**
+ * The tool ladder: axes and pickaxes for every smithable metal tier.
+ * Smith level sits just past the tier's bar so a fresh bracket's first
+ * project is the tool that speeds the rest of it.
+ */
+const TOOL_RECIPES: Array<{ metal: string; bar: string; bars: number; lvl: number; xp: number; ticks: number }> = [
+  { metal: 'iron', bar: 'iron_bar', bars: 2, lvl: 20, xp: 120, ticks: 65 },
+  { metal: 'steel', bar: 'steel_bar', bars: 2, lvl: 35, xp: 240, ticks: 75 },
+  { metal: 'mithril', bar: 'mithril_bar', bars: 2, lvl: 52, xp: 420, ticks: 90 },
+  { metal: 'adamant', bar: 'adamant_bar', bars: 2, lvl: 67, xp: 680, ticks: 105 },
+  { metal: 'starsteel', bar: 'starsteel_bar', bars: 2, lvl: 92, xp: 1200, ticks: 130 },
+];
+const toolRecipes: RecipeDef[] = TOOL_RECIPES.flatMap((t) =>
+  (['axe', 'pickaxe'] as const).map((kind) => ({
+    id: `smith_${t.metal}_${kind}`,
+    name: `${t.metal.charAt(0).toUpperCase()}${t.metal.slice(1)} ${kind}`,
+    skill: 'smithing' as SkillId,
+    levelReq: t.lvl,
+    xp: t.xp,
+    station: 'anvil' as StationType,
+    inputs: [{ item: t.bar, qty: t.bars }, { item: 'log', qty: 1 }],
+    output: { item: `${t.metal}_${kind}`, qty: 1 },
+    ticks: t.ticks,
+  })),
+);
+
+const allRecipes: RecipeDef[] = [...defs, ...enchantRecipes, ...grindRecipes, ...toolRecipes, ...COMPILED_EQUIPMENT.recipes];
 
 export const RECIPES: ReadonlyMap<string, RecipeDef> = new Map(allRecipes.map((d) => [d.id, d]));
 

@@ -502,25 +502,30 @@ test('early-game leather sets: four dye lots each, colorways mirror their base',
 test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates hold', async () => {
   const { ABILITIES } = await import('./abilities.js');
   const weapons = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
-  assert.equal(weapons.length, 122, 'swords 32 + daggers 33 + bows 29 + staves 28');
+  assert.equal(weapons.length, 150, 'swords 48 + daggers 45 + bows 29 + staves 28');
   const swords = weapons.filter((d) => d.weapon?.style === 'melee');
-  assert.equal(swords.length, 65, 'swords 32 + daggers 33');
+  assert.equal(swords.length, 93, 'swords 48 + daggers 45');
   for (const s of swords) {
     assert.equal(s.weapon?.style, 'melee');
     assert.ok(s.weapon!.art && ABILITIES.has(s.weapon!.art), `${s.id} art ${s.weapon!.art} exists`);
     assert.ok(s.desc && s.desc.length > 20, `${s.id} carries a real story`);
   }
-  // Metal ladders: damage, gates, value and recipe metal all climb.
+  // Metal ladders: damage, gates, value and recipe metal all climb —
+  // the full eight-metal run, bronze to starsteel.
   for (const key of ['falchion', 'gladius', 'scimitar']) {
-    const line = ['', 'iron_', 'steel_', 'gold_'].map((m) => swords.find((s) => s.id === `${m}${key}`)!);
-    assert.ok(line.every(Boolean), `${key} forged in four metals`);
+    const line = ['', 'iron_', 'steel_', 'gold_', 'mithril_', 'adamant_', 'obsidian_', 'starsteel_']
+      .map((m) => swords.find((s) => s.id === `${m}${key}`)!);
+    assert.ok(line.every(Boolean), `${key} forged in eight metals`);
     for (let i = 1; i < line.length; i++) {
       assert.ok(line[i]!.weapon!.damage >= line[i - 1]!.weapon!.damage, `${key} damage climbs`);
       assert.ok(line[i]!.value > line[i - 1]!.value, `${key} value climbs`);
       assert.ok(line[i]!.recipe!.levelReq > line[i - 1]!.recipe!.levelReq, `${key} smithing climbs`);
       assert.equal(line[i]!.weapon!.cooldownTicks, line[0]!.weapon!.cooldownTicks, `${key} keeps its cadence`);
     }
-    const metals = ['bronze_bar', 'iron_bar', 'steel_bar', 'gold_bar'];
+    const metals = [
+      'bronze_bar', 'iron_bar', 'steel_bar', 'gold_bar',
+      'mithril_bar', 'adamant_bar', 'obsidian_shard', 'starsteel_bar',
+    ];
     line.forEach((d, i) => assert.ok(d.recipe!.inputs.some((inp) => inp.item === metals[i]), `${d.id} forged from ${metals[i]}`));
   }
   // The chase steepens: legendary-only heirloom, epic+ starmetal.
@@ -554,9 +559,11 @@ test('rogue roster: 20 dagger designs, sneak gates, backstab dial, ladders climb
     assert.ok((d!.weapon!.backstabMult ?? 0) >= 2.2, `${id} carries a backstab dial`);
     assert.ok(d!.weapon!.art && ABILITIES.has(d!.weapon!.art), `${id} art resolves`);
   }
-  // Metal ladders climb through the ores.
+  // Metal ladders climb through the ores — all eight rungs.
   for (const key of ['stiletto', 'kris', 'tanto']) {
-    const line = ['', 'iron_', 'steel_', 'gold_'].map((m) => byId.get(`${m}${key}`)!);
+    const line = ['', 'iron_', 'steel_', 'gold_', 'mithril_', 'adamant_', 'obsidian_', 'starsteel_']
+      .map((m) => byId.get(`${m}${key}`)!);
+    assert.ok(line.every(Boolean), `${key} forged in eight metals`);
     for (let i = 1; i < line.length; i++) {
       assert.ok(line[i]!.weapon!.damage >= line[i - 1]!.weapon!.damage, `${key} damage climbs`);
       assert.ok(line[i]!.recipe!.levelReq > line[i - 1]!.recipe!.levelReq, `${key} smithing climbs`);
@@ -566,6 +573,8 @@ test('rogue roster: 20 dagger designs, sneak gates, backstab dial, ladders climb
   assert.equal(byId.get('iron_stiletto')!.levelReq!.skill, 'sneak');
   assert.equal(byId.get('iron_kris')!.levelReq!.skill, 'sneak');
   assert.equal(byId.get('iron_tanto')!.levelReq!.skill, 'melee');
+  assert.equal(byId.get('starsteel_stiletto')!.levelReq!.skill, 'sneak');
+  assert.equal(byId.get('starsteel_tanto')!.levelReq!.skill, 'melee');
   // The chase steepens; the heirloom only exists legendary.
   assert.deepEqual(byId.get('kingsbane')!.rarities, ['rare', 'epic', 'legendary']);
   assert.deepEqual(byId.get('last_word')!.rarities, ['legendary']);

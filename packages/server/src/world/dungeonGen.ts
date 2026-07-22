@@ -74,11 +74,21 @@ export function generateDelve(seed: number, origin: Vec2, returnTo: Vec2): Delve
         const iy = rng.int(room.y, room.y + room.h - 1);
         const idx = iy * SIZE + ix;
         if (ground[idx] !== Tile.CaveFloor || !wallAdjacent(ix, iy)) continue;
+        // Deep rooms carry the delve's real prize: the high-mining
+        // ladder underground — obsidian where the stone ran molten,
+        // starmetal buried where nothing should be, mithril and
+        // adamant seams between. Shallow rooms keep the starter ores.
         ground[idx] = deep
-          ? rng.chance(0.4) ? Tile.RockGold
+          ? rng.chance(0.1) ? Tile.RockStarfall
+            : rng.chance(0.2) ? Tile.RockObsidian
+            : rng.chance(0.25) ? Tile.RockAdamant
+            : rng.chance(0.33) ? Tile.RockMithril
+            : rng.chance(0.4) ? Tile.RockGold
+            : rng.chance(0.45) ? Tile.RockSilver
             : rng.chance(0.5) ? Tile.RockCoal
             : Tile.RockIron
           : rng.chance(0.45) ? Tile.RockIron
+            : rng.chance(0.4) ? Tile.RockSilver
             : rng.chance(0.5) ? Tile.RockCoal
             : rng.chance(0.5) ? Tile.RockCopper
             : Tile.RockTin;

@@ -1071,7 +1071,12 @@ export class Renderer {
                 t === Tile.RockTin ||
                 t === Tile.RockIron ||
                 t === Tile.RockCoal ||
-                t === Tile.RockGold
+                t === Tile.RockGold ||
+                t === Tile.RockSilver ||
+                t === Tile.RockMithril ||
+                t === Tile.RockAdamant ||
+                t === Tile.RockObsidian ||
+                t === Tile.RockStarfall
               ? ('rock' as const)
               : t === Tile.FishingSpot
                 ? ('fish' as const)
@@ -5417,6 +5422,36 @@ export class Renderer {
       accent: '#fff3c9',
       stone: { face: '#565064', top: '#6e687c', side: '#454051' },
     },
+    [Tile.RockSilver]: {
+      nug: '#e4eaf4',
+      deep: '#8b93a8',
+      accent: '#ffffff',
+      stone: { face: '#5a5766', top: '#787588', side: '#484554' },
+    },
+    [Tile.RockMithril]: {
+      nug: '#8fb4e4',
+      deep: '#3f5e8c',
+      accent: '#d8ecff',
+      stone: { face: '#525668', top: '#6c7284', side: '#414452' },
+    },
+    [Tile.RockAdamant]: {
+      nug: '#6cb47a',
+      deep: '#2f5e3c',
+      accent: '#d2f0d0',
+      stone: { face: '#4f5a54', top: '#68766c', side: '#3e4842' },
+    },
+    [Tile.RockObsidian]: {
+      nug: '#3b3247',
+      deep: '#1c1626',
+      accent: '#b8a8d8',
+      stone: { face: '#4a4152', top: '#5e5468', side: '#382f40' },
+    },
+    [Tile.RockStarfall]: {
+      nug: '#d6cbf6',
+      deep: '#7a6ab0',
+      accent: '#ffffff',
+      stone: { face: '#4c4658', top: '#645d72', side: '#3b3648' },
+    },
   };
 
   private static readonly BARREN_STONE = { face: '#5f596b', top: '#767083', side: '#4c475a' };
@@ -5429,6 +5464,11 @@ export class Renderer {
     Tile.RockIron,
     Tile.RockCoal,
     Tile.RockGold,
+    Tile.RockSilver,
+    Tile.RockMithril,
+    Tile.RockAdamant,
+    Tile.RockObsidian,
+    Tile.RockStarfall,
     Tile.RockDepleted,
   ]);
 
@@ -5889,7 +5929,7 @@ export class Renderer {
       this.oreNode(X(0.4 * S), base - S * 0.07, S * 0.2, -0.14 * m, pal);
       sites.push([X(-0.28 * S), base - S * 0.62 * cH], [X(0.1 * S), base - S * 0.8 * cH]);
       this.rubble(px, py, s, h, ['#232028', '#3d3a48']);
-    } else {
+    } else if (tile === Tile.RockGold) {
       // THE CROWNED VEIN — a standing pillar split by a milky quartz
       // band, fat gold blocks studding the vein and one crowning the
       // top. The band lives IN the stone — clipped to the stack so it
@@ -5926,11 +5966,234 @@ export class Renderer {
         '242, 201, 76',
         0.14 * pulse,
       );
+    } else if (tile === Tile.RockSilver) {
+      // THE CROSSED LODE — one broad tilted slab of cool stone with
+      // TWO thin moon-bright veins crossing in an X, a fat silver
+      // block seated where they meet. Reads at a glance: the metal
+      // that draws in lines, not nuggets.
+      this.stoneBlock(X(0.54 * S), base, S * 0.46, S * 0.36 * H, 0.05 * S * m, Renderer.BARREN_DIM, h ^ 0x51f3);
+      const vSil = this.monolith(X(-0.04 * S), base, S * 1.22, S * 1.34 * H, m, pal.stone, h);
+      ctx.save();
+      const lodeClip = new Path2D();
+      vSil.forEach(([x, y], i) => (i === 0 ? lodeClip.moveTo(x, y) : lodeClip.lineTo(x, y)));
+      lodeClip.closePath();
+      ctx.clip(lodeClip);
+      // The X: two straight bright veins, each a hard three-point run.
+      ctx.strokeStyle = pal.nug;
+      ctx.lineWidth = Math.max(2, S * 0.07);
+      ctx.beginPath();
+      ctx.moveTo(X(-0.52 * S), base - S * 0.1);
+      ctx.lineTo(X(0.02 * S), base - S * 0.72 * H);
+      ctx.lineTo(X(0.4 * S), base - S * 1.3 * H);
+      ctx.moveTo(X(0.42 * S), base - S * 0.16);
+      ctx.lineTo(X(0.02 * S), base - S * 0.72 * H);
+      ctx.lineTo(X(-0.34 * S), base - S * 1.24 * H);
+      ctx.stroke();
+      // Faint wide under-vein so the X reads from far zoom.
+      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = Math.max(3.5, S * 0.13);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      const v1: [number, number] = [X(0.02 * S), base - S * 0.72 * H]; // the crossing
+      const v2: [number, number] = [X(-0.38 * S), base - S * 0.24];
+      this.oreNode(v1[0], v1[1], S * 0.38, -0.1 * m, pal);
+      this.oreNode(v2[0], v2[1], S * 0.28, 0.14 * m, pal);
+      sites.push(v1, v2);
+      this.rubble(px, py, s, h, [pal.nug, '#6a6375', pal.deep]);
+    } else if (tile === Tile.RockMithril) {
+      // THE SKY SPIRE — the tallest deposit in the game: one slender
+      // blue-grey needle with a single sky seam up its heart and
+      // mithril blocks climbing it like rungs. The master smith's
+      // beacon, visible across a mesa.
+      this.stoneBlock(X(0.5 * S), base, S * 0.48, S * 0.34 * H, 0.04 * S * m, Renderer.BARREN_DIM, h ^ 0x9e37);
+      const spH = crowded ? 0.62 : 1;
+      const mSil = this.monolith(X(-0.04 * S), base, S * 0.96, S * 1.85 * spH, m, pal.stone, h);
+      ctx.save();
+      const spireClip = new Path2D();
+      mSil.forEach(([x, y], i) => (i === 0 ? spireClip.moveTo(x, y) : spireClip.lineTo(x, y)));
+      spireClip.closePath();
+      ctx.clip(spireClip);
+      // One straight sky-blue seam, heart of the spire.
+      ctx.fillStyle = pal.deep;
+      ctx.fillRect(X(-0.1 * S) - S * 0.055, base - S * 1.9 * spH, S * 0.11, S * 1.9 * spH);
+      ctx.fillStyle = pal.nug;
+      ctx.fillRect(X(-0.1 * S) - S * 0.025, base - S * 1.9 * spH, S * 0.05, S * 1.9 * spH);
+      ctx.restore();
+      // Rungs: mithril blocks stepping up the seam.
+      const r1: [number, number] = [X(-0.16 * S), base - S * 0.28];
+      const r2: [number, number] = [X(-0.02 * S), base - S * 0.92 * spH];
+      const r3: [number, number] = [X(-0.1 * S), base - S * 1.56 * spH];
+      this.oreNode(r1[0], r1[1], S * 0.32, 0.1 * m, pal);
+      this.oreNode(r2[0], r2[1], S * 0.3, -0.12 * m, pal);
+      this.oreNode(r3[0], r3[1], S * 0.34, 0.08 * m, pal);
+      sites.push(r2, r3);
+      this.rubble(px, py, s, h, [pal.nug, '#6a6375']);
+      // A cool, thin halo — the sky remembering its metal.
+      const mPulse = 0.6 + Math.sin(tSec * 1.3 + (h % 10)) * 0.4;
+      this.queueGlow(
+        (px - this.w / 2) / s + this.camera.x,
+        (base - S * 1.1 * spH - this.h / 2) / (s * this.camera.yScale) + this.camera.y,
+        0.65,
+        '143, 180, 228',
+        0.1 * mPulse,
+      );
+    } else if (tile === Tile.RockAdamant) {
+      // THE TWIN HORNS — two hard prongs leaning apart in a V, deep
+      // green plates clipped into the tall horn, an adamant block
+      // seated in the notch between them. Nothing else in the rock
+      // family splits; the silhouette is the signature.
+      const aH = crowded ? 0.66 : 1;
+      const hornL = this.stoneBlock(X(-0.3 * S), base, S * 0.62, S * 1.42 * aH, -0.22 * S * m, pal.stone, h, 0.75);
+      this.stoneBlock(X(0.34 * S), base, S * 0.54, S * 1.02 * aH, 0.24 * S * m, pal.stone, h ^ 0x51f3, 0.75);
+      // Green armor plates live IN the tall horn.
+      ctx.save();
+      const hornClip = new Path2D();
+      hornL.forEach(([x, y], i) => (i === 0 ? hornClip.moveTo(x, y) : hornClip.lineTo(x, y)));
+      hornClip.closePath();
+      ctx.clip(hornClip);
+      ctx.fillStyle = pal.deep;
+      ctx.save();
+      ctx.translate(X(-0.3 * S), base);
+      ctx.rotate(-0.18 * m);
+      ctx.fillRect(-S * 0.5, -S * 1.06 * aH, S, S * 0.13 * aH);
+      ctx.fillRect(-S * 0.5, -S * 0.6 * aH, S, S * 0.1 * aH);
+      ctx.restore();
+      ctx.restore();
+      const a1: [number, number] = [X(0.02 * S), base - S * 0.52 * aH]; // the notch
+      const a2: [number, number] = [X(-0.36 * S), base - S * 1.18 * aH];
+      const a3: [number, number] = [X(0.4 * S), base - S * 0.2];
+      this.oreNode(a1[0], a1[1], S * 0.36, 0.08 * m, pal);
+      this.oreNode(a2[0], a2[1], S * 0.3, -0.14 * m, pal);
+      this.oreNode(a3[0], a3[1], S * 0.26, 0.16 * m, pal);
+      sites.push(a1, a2);
+      this.rubble(px, py, s, h, [pal.nug, '#4f5a54', pal.deep]);
+    } else if (tile === Tile.RockObsidian) {
+      // THE GLASS FLOW — low and wide where the others stand tall: a
+      // cooled black flow in hard angular steps, glossed with violet
+      // facets and conchoidal arcs, ember light still breathing in
+      // the crack along its base. Volcanic, not stony — nothing else
+      // in the family glows warm.
+      const oH = crowded ? 0.75 : 1;
+      this.stoneBlock(X(-0.62 * S), base, S * 0.44, S * 0.34 * oH, -0.04 * S * m, Renderer.BARREN_DIM, h ^ 0x9e37);
+      // The flow: one wide stepped slab of black glass.
+      const f0 = (0.42 + ((h >> 3) & 3) * 0.05) * oH;
+      const f1 = (0.66 + ((h >> 6) & 3) * 0.05) * oH;
+      const f2 = (0.36 + ((h >> 9) & 3) * 0.04) * oH;
+      ctx.fillStyle = pal.nug;
+      ctx.beginPath();
+      ctx.moveTo(X(-0.66 * S), base);
+      ctx.lineTo(X(-0.6 * S), base - S * f0);
+      ctx.lineTo(X(-0.2 * S), base - S * f0 - S * 0.06);
+      ctx.lineTo(X(-0.08 * S), base - S * f1);
+      ctx.lineTo(X(0.3 * S), base - S * f1 + S * 0.04);
+      ctx.lineTo(X(0.44 * S), base - S * f2);
+      ctx.lineTo(X(0.68 * S), base - S * f2 + S * 0.05);
+      ctx.lineTo(X(0.72 * S), base);
+      ctx.closePath();
+      ctx.fill();
+      // Violet gloss facets — flat parallelograms, biased to the light.
+      ctx.fillStyle = '#5c4f70';
+      ctx.beginPath();
+      ctx.moveTo(X(-0.5 * S), base - S * f0 * 0.82);
+      ctx.lineTo(X(-0.26 * S), base - S * f0 * 0.94);
+      ctx.lineTo(X(-0.3 * S), base - S * f0 * 0.4);
+      ctx.lineTo(X(-0.52 * S), base - S * f0 * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(X(-0.02 * S), base - S * f1 * 0.9);
+      ctx.lineTo(X(0.22 * S), base - S * f1 * 0.82);
+      ctx.lineTo(X(0.18 * S), base - S * f1 * 0.44);
+      ctx.lineTo(X(-0.04 * S), base - S * f1 * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      // Conchoidal arcs: the glass-fracture tell, thin and hard.
+      ctx.strokeStyle = pal.accent;
+      ctx.globalAlpha = 0.8;
+      ctx.lineWidth = Math.max(1.4, S * 0.028);
+      ctx.beginPath();
+      ctx.arc(X(-0.34 * S), base - S * f0 * 0.55, S * 0.14, Math.PI * 0.15, Math.PI * 0.85);
+      ctx.moveTo(X(0.14 * S) + S * 0.12, base - S * f1 * 0.6);
+      ctx.arc(X(0.14 * S), base - S * f1 * 0.6, S * 0.12, Math.PI * 0.1, Math.PI * 0.9);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      // The ember crack: warm light breathing along the base — the
+      // one warm note in the whole rock family, so it must READ.
+      const breathe = 0.55 + Math.sin(tSec * 2.3 + (h % 7)) * 0.45;
+      ctx.fillStyle = '#ff8a3c';
+      ctx.globalAlpha = 0.65 + 0.35 * breathe;
+      ctx.fillRect(X(-0.44 * S), base - Math.max(2.5, S * 0.07), S * 0.34, Math.max(2.5, S * 0.06));
+      ctx.fillRect(X(0.1 * S), base - Math.max(2.5, S * 0.06), S * 0.26, Math.max(2.5, S * 0.055));
+      // A vent higher in the flow, ember light leaking up a step.
+      ctx.fillRect(X(-0.12 * S), base - S * f1 * 0.98, S * 0.14, Math.max(2, S * 0.04));
+      ctx.globalAlpha = 1;
+      // Knapped shards leaning at the foot.
+      this.oreNode(X(-0.2 * S), base - S * 0.12, S * 0.26, -0.12 * m, pal);
+      this.oreNode(X(0.5 * S), base - S * 0.1, S * 0.22, 0.16 * m, pal);
+      sites.push([X(-0.3 * S), base - S * f0 * 0.6], [X(0.1 * S), base - S * f1 * 0.7]);
+      this.rubble(px, py, s, h, ['#241d30', '#3b3247']);
+      this.queueGlow(
+        (px - this.w / 2) / s + this.camera.x,
+        (base - S * 0.15 - this.h / 2) / (s * this.camera.yScale) + this.camera.y,
+        0.55,
+        '232, 104, 60',
+        0.12 * breathe,
+      );
+    } else {
+      // THE FALLEN STAR — a scorched crater cupping a half-buried
+      // core of starmetal: two dim shoulder blocks ring a fat bright
+      // block with hard cracks radiating from the impact. The only
+      // deposit that reads as an EVENT, not a formation.
+      const cH = crowded ? 0.75 : 1;
+      // Scorch: a flat dark apron under everything.
+      ctx.fillStyle = 'rgba(24, 17, 32, 0.5)';
+      ctx.beginPath();
+      ctx.ellipse(px, base - S * 0.06, S * 0.78, S * 0.24, 0, 0, Math.PI * 2);
+      ctx.fill();
+      this.stoneBlock(X(-0.52 * S), base, S * 0.52, S * 0.5 * cH, 0.12 * S * m, pal.stone, h ^ 0x51f3);
+      this.stoneBlock(X(0.52 * S), base, S * 0.48, S * 0.42 * cH, -0.12 * S * m, pal.stone, h ^ 0x9e37);
+      // Radiating impact cracks — hard strokes, out from the core.
+      ctx.strokeStyle = 'rgba(26, 20, 36, 0.6)';
+      ctx.lineWidth = Math.max(1.5, s * 0.035);
+      ctx.beginPath();
+      ctx.moveTo(X(-0.18 * S), base - S * 0.3 * cH);
+      ctx.lineTo(X(-0.52 * S), base - S * 0.06);
+      ctx.moveTo(X(0.2 * S), base - S * 0.32 * cH);
+      ctx.lineTo(X(0.5 * S), base - S * 0.1);
+      ctx.lineTo(X(0.64 * S), base - S * 0.02);
+      ctx.moveTo(X(0.04 * S), base - S * 0.18);
+      ctx.lineTo(X(0.1 * S), base - S * 0.02);
+      ctx.stroke();
+      // The core: one great tilted block of starmetal, half-sunk —
+      // the fattest single node in the game; the event IS the ore.
+      const core: [number, number] = [X(0), base - S * 0.46 * cH];
+      this.oreNode(core[0], core[1], S * 0.62, -0.14 * m, pal);
+      const shard: [number, number] = [X(-0.42 * S), base - S * 0.64 * cH];
+      this.oreNode(shard[0], shard[1], S * 0.26, 0.2 * m, pal);
+      const ember: [number, number] = [X(0.44 * S), base - S * 0.52 * cH];
+      this.oreNode(ember[0], ember[1], S * 0.2, -0.22 * m, pal);
+      sites.push(core, shard, ember);
+      this.rubble(px, py, s, h, [pal.nug, '#3b3648', pal.deep]);
+      // Starlight never quite goes out: a pale violet pulse.
+      const sPulse = 0.6 + Math.sin(tSec * 1.9 + (h % 10)) * 0.4;
+      this.queueGlow(
+        (px - this.w / 2) / s + this.camera.x,
+        (base - S * 0.42 - this.h / 2) / (s * this.camera.yScale) + this.camera.y,
+        0.75,
+        '214, 203, 246',
+        0.16 * sPulse,
+      );
     }
 
     // Idle shimmer: brief four-point twinkles over the crystal sites -
-    // gold flashes often, everything else winks patiently.
-    const period = tile === Tile.RockGold ? 2.1 : 3.4;
+    // gold flashes often, the fallen star outright glitters, and
+    // everything else winks patiently.
+    const period =
+      tile === Tile.RockStarfall ? 1.7
+      : tile === Tile.RockGold ? 2.1
+      : tile === Tile.RockMithril ? 2.6
+      : 3.4;
     for (let k = 0; k < sites.length; k++) {
       const a = Renderer.twinkle(tSec, h >> (k * 4), period + k * 0.53);
       if (a <= 0) continue;
@@ -7914,6 +8177,11 @@ export class Renderer {
       case Tile.RockIron:
       case Tile.RockCoal:
       case Tile.RockGold:
+      case Tile.RockSilver:
+      case Tile.RockMithril:
+      case Tile.RockAdamant:
+      case Tile.RockObsidian:
+      case Tile.RockStarfall:
       case Tile.RockDepleted: {
         const depleted = tile === Tile.RockDepleted;
         // Ore deposits are landmarks now — their cast shadow matches
@@ -13705,7 +13973,7 @@ export class Renderer {
     const cat: 'gold' | 'ore' | 'egg' | 'gear' | 'ammo' | 'wear' | 'eat' | 'stuff' =
       itemId === 'coins'
         ? 'gold'
-        : itemId.endsWith('_ore') || itemId === 'coal'
+        : itemId.endsWith('_ore') || itemId === 'coal' || itemId === 'obsidian_shard'
           ? 'ore'
           : itemId === 'egg'
             ? 'egg'
@@ -13826,10 +14094,20 @@ export class Renderer {
         iron_ore: '#a05038',
         coal: '#4a4456',
         gold_ore: '#e8b64c',
+        silver_ore: '#dce4f0',
+        mithril_ore: '#8fb4e4',
+        adamant_ore: '#6cb47a',
+        obsidian_shard: '#3b3247',
+        starmetal_ore: '#d6cbf6',
       };
       const oreCol = ORE_DROP[itemId] ?? col;
       const accent =
-        itemId === 'coal' ? '#8a86a0' : itemId === 'tin_ore' ? '#ffffff' : '#fff6d8';
+        itemId === 'coal' ? '#8a86a0'
+        : itemId === 'obsidian_shard' ? '#b8a8d8'
+        : itemId === 'tin_ore' || itemId === 'silver_ore' || itemId === 'starmetal_ore' ? '#ffffff'
+        : itemId === 'mithril_ore' ? '#d8ecff'
+        : itemId === 'adamant_ore' ? '#d2f0d0'
+        : '#fff6d8';
       const chunk = (cx: number, cy: number, w: number, rot: number): void => {
         ctx.save();
         ctx.translate(cx, cy);
