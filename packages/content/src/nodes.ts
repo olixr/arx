@@ -10,6 +10,14 @@ export interface NodeDef {
   xp: number;
   yieldItem: string;
   tool: ToolType | null;
+  /**
+   * Minimum tool power (metal tier) the node accepts — a cheap tool
+   * simply can't bite this material. THE BOOTSTRAP LAW: the ore a
+   * tier's tool is forged from must be workable with the PREVIOUS
+   * tier's tool (content.test pins it), so the ladder never deadlocks.
+   * Omitted = 1 (any tool of the right type).
+   */
+  minPower?: number;
   /** Base ticks per gather attempt at power-1 tool. */
   baseTicks: number;
   /** Chance the node depletes after a successful gather. */
@@ -49,6 +57,7 @@ export const NODES: readonly NodeDef[] = [
     xp: 60,
     yieldItem: 'oak_log',
     tool: 'axe',
+    minPower: 2, // iron — bronze bounces off seasoned oak
     baseTicks: 70,
     depleteChance: 0.4,
     depletedTile: Tile.Stump,
@@ -62,6 +71,7 @@ export const NODES: readonly NodeDef[] = [
     xp: 95,
     yieldItem: 'willow_log',
     tool: 'axe',
+    minPower: 3, // steel
     baseTicks: 85,
     depleteChance: 0.35,
     depletedTile: Tile.Stump,
@@ -75,6 +85,7 @@ export const NODES: readonly NodeDef[] = [
     xp: 150,
     yieldItem: 'yew_log',
     tool: 'axe',
+    minPower: 4, // mithril — yew heartwood eats lesser edges
     baseTicks: 110,
     depleteChance: 0.3,
     depletedTile: Tile.Stump,
@@ -129,6 +140,7 @@ export const NODES: readonly NodeDef[] = [
     xp: 85,
     yieldItem: 'coal',
     tool: 'pickaxe',
+    minPower: 2, // iron — the seam that pays for the pick that opened it
     baseTicks: 90,
     depleteChance: 1,
     depletedTile: Tile.RockDepleted,
@@ -143,6 +155,7 @@ export const NODES: readonly NodeDef[] = [
     yieldItem: 'gold_ore',
     bonusYield: { item: 'stormpearl', chance: 0.06 }, // lightning finds gold first
     tool: 'pickaxe',
+    minPower: 3, // steel
     baseTicks: 110,
     depleteChance: 1,
     depletedTile: Tile.RockDepleted,
@@ -157,6 +170,7 @@ export const NODES: readonly NodeDef[] = [
     yieldItem: 'silver_ore',
     bonusYield: { item: 'frostshard', chance: 0.05 }, // moon-metal sweats cold glass
     tool: 'pickaxe',
+    minPower: 2, // iron
     baseTicks: 100,
     depleteChance: 1,
     depletedTile: Tile.RockDepleted,
@@ -171,6 +185,7 @@ export const NODES: readonly NodeDef[] = [
     yieldItem: 'mithril_ore',
     bonusYield: { item: 'stormpearl', chance: 0.05 }, // the sky pays its debts
     tool: 'pickaxe',
+    minPower: 3, // steel — bootstrap: steel frees the ore that forges the mithril pick
     baseTicks: 130,
     depleteChance: 1,
     depletedTile: Tile.RockDepleted,
@@ -185,6 +200,7 @@ export const NODES: readonly NodeDef[] = [
     yieldItem: 'adamant_ore',
     bonusYield: { item: 'bloomstone', chance: 0.05 }, // green stone keeps green company
     tool: 'pickaxe',
+    minPower: 4, // mithril
     baseTicks: 150,
     depleteChance: 1,
     depletedTile: Tile.RockDepleted,
@@ -199,6 +215,7 @@ export const NODES: readonly NodeDef[] = [
     yieldItem: 'obsidian_shard',
     bonusYield: { item: 'emberstone', chance: 0.07 }, // the flow never quite cooled
     tool: 'pickaxe',
+    minPower: 5, // adamant
     baseTicks: 160,
     depleteChance: 1,
     depletedTile: Tile.RockDepleted,
@@ -213,6 +230,7 @@ export const NODES: readonly NodeDef[] = [
     yieldItem: 'starmetal_ore',
     bonusYield: { item: 'arcane_dust', chance: 0.2 }, // starlight rubs off
     tool: 'pickaxe',
+    minPower: 5, // adamant — bootstrap: adamant digs the star that forges the starsteel pick
     baseTicks: 190,
     depleteChance: 1,
     depletedTile: Tile.RockDepleted,

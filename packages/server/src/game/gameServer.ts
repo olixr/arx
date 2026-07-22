@@ -59,6 +59,7 @@ import {
   NPCS,
   RECIPES,
   STARTER_KIT,
+  TOOL_TIER_NAMES,
   TOWN_SPAWNS,
   abilityDef,
   bandDy,
@@ -1169,6 +1170,18 @@ export class GameServer {
     }
     if (!tool) {
       sys(`You need a ${node.tool} to work this ${node.name.toLowerCase()}.`);
+      return;
+    }
+    // Metal-tier gate: a cheap tool can't bite hard material, whatever
+    // your skill says. The forge is the only way up.
+    const minPower = node.minPower ?? 1;
+    if (node.tool && tool.power < minPower) {
+      const tier = (TOOL_TIER_NAMES[minPower] ?? `power-${minPower}`).toLowerCase();
+      const article = /^[aeiou]/.test(tier) ? 'an' : 'a';
+      sys(
+        `Your ${itemDef(tool.item)?.name.toLowerCase() ?? node.tool} can't bite this ` +
+          `${node.name.toLowerCase()} — you need ${article} ${tier} ${node.tool} or better.`,
+      );
       return;
     }
     if (!hasSpaceFor(player.inventory, node.yieldItem)) {

@@ -854,6 +854,20 @@ const defs: ItemDef[] = [
   },
 ];
 
+/**
+ * Tier name by tool power, for gate messages ("You need an Iron
+ * pickaxe or better"). Power 1 is the shop-bought bronze starter;
+ * everything above it must be forged.
+ */
+export const TOOL_TIER_NAMES: Record<number, string> = {
+  1: 'Bronze',
+  2: 'Iron',
+  3: 'Steel',
+  4: 'Mithril',
+  5: 'Adamant',
+  6: 'Starsteel',
+};
+
 // The tool ladder: every metal tier smiths a faster axe and pickaxe,
 // so each new ore bracket immediately pays the gatherer back. Power
 // climbs one point per tier; recipes live in recipes.ts (smith_*).

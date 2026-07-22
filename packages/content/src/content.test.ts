@@ -439,6 +439,64 @@ test('mining ladder: ten ores climb 1→90, every yield feeds the forge, tools k
   }
 });
 
+test('tool-tier gates: hard material refuses cheap tools, and the ladder never deadlocks', async () => {
+  const { RECIPES } = await import('./recipes.js');
+  const { TOOL_TIER_NAMES } = await import('./items.js');
+  // The gate table, pinned: which tier each node demands.
+  const gates: Array<[string, number]> = [
+    // pickaxe rungs
+    ['copper_ore', 1], ['tin_ore', 1], ['iron_ore', 1],
+    ['coal', 2], ['silver_ore', 2],
+    ['gold_ore', 3], ['mithril_ore', 3],
+    ['adamant_ore', 4],
+    ['obsidian_shard', 5], ['starmetal_ore', 5],
+    // axe rungs
+    ['log', 1], ['oak_log', 2], ['willow_log', 3], ['yew_log', 4],
+  ];
+  for (const [item, power] of gates) {
+    const node = NODES.find((n) => n.yieldItem === item);
+    assert.ok(node, `${item} has a node`);
+    assert.equal(node!.minPower ?? 1, power, `${item} demands tier ${power}`);
+    assert.ok(TOOL_TIER_NAMES[power], `tier ${power} has a name for the gate message`);
+  }
+  // Every named gate is reachable: some tool item of the node's type
+  // carries at least that power.
+  for (const node of NODES) {
+    if (!node.tool || !node.minPower) continue;
+    const reachable = [...ITEMS.values()].some(
+      (d) => d.tool?.type === node.tool && d.tool.power >= node.minPower!,
+    );
+    assert.ok(reachable, `${node.name} gate has a tool that meets it`);
+  }
+  // THE BOOTSTRAP LAW: each smithable pickaxe must be forgeable using
+  // only ore the PREVIOUS tier's pickaxe can free — otherwise the
+  // ladder deadlocks and no one climbs past the gap. Walk each tool
+  // recipe's bar back to its ore and check the ore node's gate.
+  const barOre: Record<string, string> = {
+    iron_bar: 'iron_ore', steel_bar: 'iron_ore', mithril_bar: 'mithril_ore',
+    adamant_bar: 'adamant_ore', starsteel_bar: 'starmetal_ore',
+  };
+  const tiers = ['iron', 'steel', 'mithril', 'adamant', 'starsteel'];
+  for (const metal of tiers) {
+    const recipe = RECIPES.get(`smith_${metal}_pickaxe`);
+    assert.ok(recipe, `${metal} pickaxe recipe exists`);
+    const prevPower = ITEMS.get(`${metal}_pickaxe`)!.tool!.power - 1;
+    for (const input of recipe!.inputs) {
+      const ore = barOre[input.item];
+      if (!ore) continue;
+      const oreNode = NODES.find((n) => n.yieldItem === ore)!;
+      assert.ok(
+        (oreNode.minPower ?? 1) <= prevPower,
+        `${metal} pickaxe needs ${ore}, which the previous tier (power ${prevPower}) must reach`,
+      );
+    }
+    // Bars burn coal too (smelting) — coal must sit below every tier
+    // that consumes it, and it does: gate 2, first consumer steel (3).
+  }
+  const coalNode = NODES.find((n) => n.yieldItem === 'coal')!;
+  assert.ok((coalNode.minPower ?? 1) <= 2, 'coal opens to the iron pick that steel bars need');
+});
+
 test('foraging nodes, buildables, and shop stock resolve', () => {
   for (const node of NODES) {
     assert.ok(ITEMS.has(node.yieldItem), `${node.name} yield '${node.yieldItem}' missing`);
