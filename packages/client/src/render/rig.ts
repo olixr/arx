@@ -1895,67 +1895,438 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   ctx.beginPath();
   chamferRect(ctx, headX - hw, headY - hh, hw * 2, hh * 2, cut);
   ctx.fill();
-  // Hair (skipped under a helmet — the dome owns the skull). Style and
-  // color come from the chosen look; NPC humanoids keep the classic
-  // crop tinted from their body color.
-  const hairStyle = rig.look?.hair ?? 0;
+  // ---- hair, ears, and the face: all band-aware, all gated by what
+  // the headwear allows. THE COVERAGE LAW: a helmet never deletes a
+  // hairstyle, it CONTAINS it.
+  //   free   — bare head or a circlet: the full hairdo.
+  //   brim   — wizard's hat: fringe locks only (cloth holds the rest).
+  //   open   — open-face metal (dome, horned): steel owns the crown,
+  //            but curtains, side locks, and tails show below the rim.
+  //   sealed — greathelm, bascinet: only the long styles' nape-fall
+  //            escapes below the back rim.
+  //   cloth  — hoods: the cloth wraps everything.
+  const helmKind = helmSt?.kind;
+  const cover: 'free' | 'brim' | 'open' | 'sealed' | 'cloth' =
+    !helm || helmKind === 'circlet'
+      ? 'free'
+      : helmKind === 'wizard'
+        ? 'brim'
+        : helmKind === 'dome' || helmKind === 'horned'
+          ? 'open'
+          : helmKind === 'hood'
+            ? 'cloth'
+            : 'sealed';
   const hairCol = rig.hurt
     ? '#ffffff'
     : rig.look
       ? HAIR_COLORS[rig.look.hairColor]!
       : shade(bodyColor, -24);
-  const BALD = hairStyle === 1;
-  // A hat CONTAINS the hair: under a wizard brim only the fringe locks
-  // peek out — long curtains and topknots would dangle through the
-  // cloth and read as stray cowl strips.
-  const underBrim = helmSt?.kind === 'wizard';
-  const LONG = hairStyle === 2 && !underBrim;
-  const KNOT = hairStyle === 3 && !underBrim;
-  // A circlet sits ON the hair, a wizard's brim rides over it (locks
-  // peeking out below); every other helm owns the skull.
-  if ((!helm || helmSt?.kind === 'circlet' || helmSt?.kind === 'wizard') && !BALD) {
+
+  // A hanging plait: stacked beads narrowing to a tuft, tie bands
+  // between beads — the braid vocabulary for hair AND beards.
+  const paintPlait = (bx: number, topY: number, w: number, segs: number): void => {
+    let y = topY;
+    let bw = w;
+    for (let i = 0; i < segs; i++) {
+      ctx.fillStyle = hairCol;
+      ctx.beginPath();
+      chamferRect(ctx, bx - bw / 2, y, bw, hh * 0.36, bw * 0.28);
+      ctx.fill();
+      if (!rig.hurt) {
+        ctx.fillStyle = shade(hairCol, -24);
+        ctx.fillRect(bx - bw / 2, y + hh * 0.3, bw, hh * 0.07);
+      }
+      y += hh * 0.34;
+      bw *= 0.82;
+    }
     ctx.fillStyle = hairCol;
-    if (backK > 0.55) {
+    ctx.beginPath();
+    ctx.moveTo(bx - bw * 0.5, y);
+    ctx.lineTo(bx + bw * 0.5, y);
+    ctx.lineTo(bx, y + hh * 0.32);
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  // A gathered tail: tie band at the root, tapering to a point.
+  const paintTail = (bx: number, topY: number, w: number, len: number): void => {
+    ctx.fillStyle = hairCol;
+    ctx.beginPath();
+    ctx.moveTo(bx - w / 2, topY);
+    ctx.lineTo(bx + w / 2, topY);
+    ctx.lineTo(bx + w * 0.32, topY + len * 0.6);
+    ctx.lineTo(bx, topY + len);
+    ctx.lineTo(bx - w * 0.32, topY + len * 0.6);
+    ctx.closePath();
+    ctx.fill();
+    if (!rig.hurt) {
+      ctx.fillStyle = shade(hairCol, -24);
+      ctx.fillRect(bx - w / 2, topY + hh * 0.07, w, hh * 0.08);
+    }
+  };
+
+  // Ears ride the head sides UNDER the hair (curtains lie over the
+  // roots; pointed tips break the silhouette — that is the point).
+  // Round ears vanish into the block head; metal and cloth cover all.
+  const earStyle = rig.look?.ears ?? 0;
+  if (earStyle > 0 && (cover === 'free' || cover === 'brim')) {
+    for (const es of [-1, 1]) {
+      // The far ear ducks behind the skull through three-quarter.
+      const far = es !== lead;
+      const wK = far ? Math.max(0, 1 - Math.max(0, (profileK - 0.42) / 0.3)) : 1;
+      if (wK <= 0.05) continue;
+      const rootX = headX - fx * headR * 0.16 + es * hw * (0.94 - 0.2 * profileK);
+      const rootY = headY + headR * 0.1 + fy * headR * 0.05;
+      ctx.fillStyle = skin;
+      ctx.beginPath();
+      if (earStyle === 1) {
+        // Pointed: a long leaf wedge running outward — the drow read.
+        ctx.moveTo(rootX, rootY - headR * 0.2);
+        ctx.lineTo(rootX + es * headR * 0.6 * wK, rootY - headR * 0.32);
+        ctx.lineTo(rootX, rootY + headR * 0.16);
+      } else {
+        // Upswept: a high fey point angling toward the crown.
+        ctx.moveTo(rootX, rootY + headR * 0.16);
+        ctx.lineTo(rootX + es * headR * 0.42 * wK, rootY - headR * 0.62);
+        ctx.lineTo(rootX + es * headR * 0.03, rootY - headR * 0.16);
+      }
+      ctx.closePath();
+      ctx.fill();
+      // A shade crease grounds the ear against the head.
+      if (!rig.hurt) {
+        ctx.fillStyle = shade(skin, -14);
+        ctx.fillRect(rootX - headR * 0.02, rootY - headR * 0.12, headR * 0.045, headR * 0.24);
+      }
+    }
+  }
+
+  // Style and color come from the chosen look; NPC humanoids keep the
+  // classic crop tinted from their body color. Under a wizard's brim
+  // every hairdo collapses to the crop — curtains and tails would
+  // dangle through the cloth and read as stray cowl strips.
+  const hairStyleRaw = rig.look?.hair ?? 0;
+  const BALD = hairStyleRaw === 1;
+  const hairStyle = cover === 'brim' ? 0 : hairStyleRaw;
+  const LONG = hairStyle === 2;
+  const KNOT = hairStyle === 3;
+  const BRAID = hairStyle === 4;
+  const PONY = hairStyle === 5;
+  const TWIN = hairStyle === 6;
+  const BOB = hairStyle === 7;
+  const HAWK = hairStyle === 8;
+  const WILD = hairStyle === 9;
+  const SWEEP = hairStyle === 10;
+  // Crown-top protrusions (knob, ridge, spikes, puff) fit only a bare
+  // head or a circlet; any real helm owns the crown line.
+  const crownFree = cover === 'free';
+  const napeFall = LONG || BRAID || PONY || TWIN || BOB;
+
+  // Flame teeth ringing the crown — the wild mane silhouette.
+  const paintCrownSpikes = (): void => {
+    ctx.fillStyle = hairCol;
+    for (let i = 0; i < 5; i++) {
+      const t = (i / 4) * 2 - 1;
+      const bx = headX + t * hw * 0.7;
+      const by = headY - hh * (0.92 - 0.16 * t * t);
+      const hgt = hh * (0.52 - 0.18 * Math.abs(t));
+      ctx.beginPath();
+      ctx.moveTo(bx - hw * 0.17, by);
+      ctx.lineTo(bx + hw * 0.17, by);
+      ctx.lineTo(bx + t * hw * 0.12, by - hgt);
+      ctx.closePath();
+      ctx.fill();
+    }
+  };
+
+  if (!BALD && cover !== 'cloth') {
+    ctx.fillStyle = hairCol;
+    if (cover === 'sealed') {
+      // Only the nape-fall escapes a sealed helm — and a full helm's
+      // box runs to headY + 0.98·hh and ±1.06·hw, so everything here
+      // starts BELOW that rim or OUTSIDE that width, or it vanishes.
+      if (napeFall) {
+        if (backK > 0.55 || profileK > 0.5) {
+          if (BRAID) {
+            paintPlait(
+              backK > 0.55 ? headX : headX - lead * hw * 0.9,
+              headY + hh * 0.9,
+              hw * 0.36,
+              3,
+            );
+          } else if (PONY) {
+            paintTail(
+              backK > 0.55 ? headX : headX - lead * hw * 0.9,
+              headY + hh * 0.85,
+              hw * 0.5,
+              hh * 1.5,
+            );
+          } else if (TWIN) {
+            for (const es of [-1, 1]) {
+              paintTail(headX + es * hw * 0.95, headY + hh * 0.8, hw * 0.3, hh * 1.3);
+            }
+          } else {
+            // Long and bob: a nape curtain below the back rim.
+            ctx.beginPath();
+            chamferRect(
+              ctx,
+              headX - hw * 0.72,
+              headY + hh * 0.85,
+              hw * 1.44,
+              hh * (LONG ? 1.0 : 0.6),
+              [0, 0, cut * 0.8, cut * 0.8],
+            );
+            ctx.fill();
+          }
+        } else if (LONG || TWIN || BOB) {
+          // Face-on: curtain stubs pushed out past the cheek plates.
+          for (const es of [-1, 1]) {
+            ctx.fillRect(
+              headX + es * hw * 1.02 - hw * 0.13,
+              headY + hh * 0.55,
+              hw * 0.26,
+              hh * (BOB ? 0.85 : 1.15),
+            );
+          }
+        }
+      }
+    } else if (backK > 0.55) {
       // Back of the skull: the mop covers nearly everything, with one
       // stepped hem so it still reads as a haircut. Long hair falls
-      // past the jaw; a topknot crops high.
-      const mopH = LONG ? hh * 1.95 : KNOT ? hh * 1.1 : hh * 1.52;
-      ctx.beginPath();
-      chamferRect(ctx, headX - hw * 0.96, headY - hh * 0.98, hw * 1.92, mopH, [
-        cut * 0.85,
-        cut * 0.85,
-        0,
-        0,
-      ]);
-      ctx.fill();
-      ctx.fillRect(
-        headX - lead * hw * 0.5 - hw * 0.28,
-        headY - hh * 0.98 + mopH - hh * 0.06,
-        hw * 0.56,
-        hh * 0.22,
-      );
+      // past the jaw; a topknot crops high; the bob hooks inward.
+      if (HAWK) {
+        if (crownFree) {
+          // The ridge runs crown-to-nape, read edge-on from behind.
+          ctx.beginPath();
+          chamferRect(ctx, headX - hw * 0.24, headY - hh * 1.48, hw * 0.48, hh * 2.35, [
+            cut * 0.6,
+            cut * 0.6,
+            0,
+            0,
+          ]);
+          ctx.fill();
+        }
+      } else {
+        const mopH = LONG
+          ? hh * 1.95
+          : KNOT
+            ? hh * 1.1
+            : BOB
+              ? hh * 1.78
+              : SWEEP
+                ? hh * 1.62
+                : BRAID || PONY
+                  ? hh * 1.28
+                  : TWIN
+                    ? hh * 1.38
+                    : hh * 1.52;
+        ctx.beginPath();
+        chamferRect(
+          ctx,
+          headX - hw * 0.96,
+          headY - hh * 0.98,
+          hw * 1.92,
+          mopH,
+          BOB
+            ? [cut * 0.85, cut * 0.85, cut * 1.4, cut * 1.4]
+            : [cut * 0.85, cut * 0.85, 0, 0],
+        );
+        ctx.fill();
+        if (!BOB && !KNOT) {
+          ctx.fillRect(
+            headX - lead * hw * 0.5 - hw * 0.28,
+            headY - hh * 0.98 + mopH - hh * 0.06,
+            hw * 0.56,
+            hh * 0.22,
+          );
+        }
+        if (SWEEP) {
+          // The sweep drops one long lock past the hem, trailing side.
+          ctx.fillRect(
+            headX - lead * hw * 0.72 - hw * 0.15,
+            headY - hh * 0.98 + mopH - hh * 0.1,
+            hw * 0.3,
+            hh * 0.65,
+          );
+        }
+        if (WILD) {
+          // Jagged hem teeth below the mop.
+          for (let i = 0; i < 4; i++) {
+            const bx = headX - hw * 0.66 + i * hw * 0.44;
+            const by = headY - hh * 0.98 + mopH - hh * 0.02;
+            ctx.beginPath();
+            ctx.moveTo(bx - hw * 0.16, by);
+            ctx.lineTo(bx + hw * 0.16, by);
+            ctx.lineTo(bx, by + hh * 0.3);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+        // A lit crown band gives the mop its top plane.
+        if (!rig.hurt && cover === 'free') {
+          ctx.fillStyle = shade(hairCol, 10);
+          ctx.beginPath();
+          chamferRect(ctx, headX - hw * 0.8, headY - hh * 0.92, hw * 1.6, hh * 0.28, cut * 0.5);
+          ctx.fill();
+          ctx.fillStyle = hairCol;
+        }
+      }
+      if (BRAID) paintPlait(headX, headY + hh * 0.28, hw * 0.42, 4);
+      if (PONY) paintTail(headX, headY - hh * (crownFree ? 0.7 : 0.1), hw * 0.66, hh * 2.4);
+      if (TWIN) {
+        for (const es of [-1, 1]) {
+          paintTail(headX + es * hw * 0.82, headY - hh * 0.35, hw * 0.32, hh * 1.7);
+        }
+      }
+      if (WILD && crownFree) paintCrownSpikes();
     } else {
-      // Fringe slab with its stepped notch on the trailing side.
-      const fringeH = KNOT ? hh * 0.45 : hh * 0.6;
-      ctx.beginPath();
-      chamferRect(ctx, headX - hw * 0.96, headY - hh * 0.98, hw * 1.92, fringeH, [
-        cut * 0.85,
-        cut * 0.85,
-        0,
-        0,
-      ]);
-      ctx.fill();
-      if (!KNOT) {
-        ctx.fillRect(headX - lead * hw * 0.55 - hw * 0.28, headY - hh * 0.44, hw * 0.56, hh * 0.24);
+      // Front and three-quarter bands: the fringe family.
+      const fringeH = KNOT ? hh * 0.45 : BOB ? hh * 0.68 : hh * 0.6;
+      if (HAWK) {
+        if (crownFree) {
+          // The ridge reads narrow head-on and widens into the full
+          // forehead-to-nape crest through profile — one band curve.
+          const widen = Math.max(0, (profileK - 0.25) / 0.75);
+          const rw = hw * (0.46 + 1.15 * widen);
+          ctx.beginPath();
+          chamferRect(ctx, headX - rw / 2, headY - hh * 1.5, rw, hh * 0.9, [
+            cut * 0.7,
+            cut * 0.7,
+            0,
+            0,
+          ]);
+          ctx.fill();
+          // The forehead landing strip grounds the ridge head-on.
+          ctx.fillRect(headX - hw * 0.2, headY - hh * 0.98, hw * 0.4, hh * 0.42);
+        }
+      } else if (SWEEP) {
+        // A diagonal sweep: high over the leading brow, deep past the
+        // trailing cheek, one long lock trailing to the jaw.
+        const hemLead = headY - hh * 0.5;
+        const hemTrail = headY + hh * 0.05;
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.96, headY - hh * 0.98);
+        ctx.lineTo(headX + hw * 0.96, headY - hh * 0.98);
+        ctx.lineTo(headX + hw * 0.96, lead > 0 ? hemLead : hemTrail);
+        ctx.lineTo(headX - hw * 0.96, lead > 0 ? hemTrail : hemLead);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillRect(
+          headX - lead * hw * 0.79 - hw * 0.15,
+          headY - hh * 0.4,
+          hw * 0.3,
+          hh * 1.15,
+        );
+      } else if (WILD) {
+        // Jagged fringe: teeth biting down over the brow.
+        ctx.beginPath();
+        chamferRect(ctx, headX - hw * 0.96, headY - hh * 0.98, hw * 1.92, hh * 0.5, [
+          cut * 0.85,
+          cut * 0.85,
+          0,
+          0,
+        ]);
+        ctx.fill();
+        for (let i = 0; i < 4; i++) {
+          const bx = headX - hw * 0.6 + i * hw * 0.4;
+          const by = headY - hh * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(bx - hw * 0.15, by);
+          ctx.lineTo(bx + hw * 0.15, by);
+          ctx.lineTo(bx, by + hh * 0.28);
+          ctx.closePath();
+          ctx.fill();
+        }
+        if (crownFree) paintCrownSpikes();
+      } else {
+        // The classic fringe slab with its stepped notch trailing.
+        ctx.beginPath();
+        chamferRect(ctx, headX - hw * 0.96, headY - hh * 0.98, hw * 1.92, fringeH, [
+          cut * 0.85,
+          cut * 0.85,
+          0,
+          0,
+        ]);
+        ctx.fill();
+        if (!KNOT && !BOB) {
+          ctx.fillRect(headX - lead * hw * 0.55 - hw * 0.28, headY - hh * 0.44, hw * 0.56, hh * 0.24);
+        }
       }
       if (LONG) {
         // Curtains framing the face on both sides, past the jawline.
         for (const es of [-1, 1]) {
-          ctx.fillRect(headX + es * hw * 0.68, headY - hh * 0.6, hw * 0.3, hh * 1.75);
+          ctx.fillRect(headX + es * hw * 0.82 - hw * 0.15, headY - hh * 0.6, hw * 0.3, hh * 1.75);
         }
-      } else if (profileK > 0.45) {
+      } else if (BOB) {
+        // A rounded helmet of hair: curtains crop at the jaw, hook in.
+        for (const es of [-1, 1]) {
+          ctx.beginPath();
+          chamferRect(
+            ctx,
+            headX + es * hw * 0.8 - hw * 0.17,
+            headY - hh * 0.66,
+            hw * 0.34,
+            hh * 1.42,
+            [0, 0, cut * 0.5, cut * 0.5],
+          );
+          ctx.fill();
+        }
+        if (profileK > 0.45) {
+          // Turned: the bob wraps the back half of the skull.
+          const k = Math.min(1, (profileK - 0.45) / 0.35);
+          ctx.beginPath();
+          chamferRect(
+            ctx,
+            headX - lead * hw * 0.96 - (lead < 0 ? hw * 0.62 * k : 0),
+            headY - hh * 0.72,
+            hw * 0.62 * k,
+            hh * 1.48,
+            [0, 0, cut * 0.5, cut * 0.5],
+          );
+          ctx.fill();
+        }
+      } else if (TWIN) {
+        // Two gathered tails hanging off the upper sides.
+        for (const es of [-1, 1]) {
+          const far = es !== lead;
+          const wK = far ? Math.max(0.5, 1 - Math.max(0, (profileK - 0.45) / 0.4)) : 1;
+          paintTail(headX + es * hw * 0.92, headY - hh * 0.35, hw * 0.32 * wK, hh * 1.55);
+        }
+      } else if (PONY) {
+        if (crownFree) {
+          // The gather puff rides the back of the crown.
+          ctx.beginPath();
+          chamferRect(
+            ctx,
+            headX - fx * hw * 0.3 - hw * 0.3,
+            headY - hh * 1.28,
+            hw * 0.6,
+            hh * 0.4,
+            cut * 0.5,
+          );
+          ctx.fill();
+        }
+        if (profileK > 0.4) {
+          // Turned: the tail sweeps back and down behind the skull.
+          ctx.save();
+          ctx.translate(headX - lead * hw * 0.85, headY - hh * (crownFree ? 0.75 : 0.15));
+          ctx.rotate(lead * 0.45);
+          paintTail(0, 0, hw * 0.5, hh * 1.9);
+          ctx.restore();
+        }
+      } else if (BRAID) {
+        if (profileK > 0.4) {
+          // Turned: the plait trails behind the skull.
+          paintPlait(
+            headX - lead * hw * 0.95,
+            headY - hh * (cover === 'open' ? 0.1 : 0.35),
+            hw * 0.34,
+            3,
+          );
+        }
+      } else if (hairStyle === 0 && profileK > 0.45) {
         // Crop: a side-lock behind the ear grounds the turned head.
         const k = Math.min(1, (profileK - 0.45) / 0.35);
+        ctx.fillStyle = hairCol;
         ctx.fillRect(
           headX - lead * hw * 0.96,
           headY - hh * 0.5,
@@ -1963,8 +2334,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           hh * 1.05,
         );
       }
+      // A lit band on the fringe gives the hair its top plane.
+      if (!rig.hurt && !HAWK && cover === 'free') {
+        ctx.fillStyle = shade(hairCol, 10);
+        ctx.beginPath();
+        chamferRect(ctx, headX - hw * 0.8, headY - hh * 0.92, hw * 1.6, hh * 0.2, cut * 0.4);
+        ctx.fill();
+        ctx.fillStyle = hairCol;
+      }
     }
-    if (KNOT) {
+    if (KNOT && crownFree) {
       // The knob rides the crown in every band.
       ctx.beginPath();
       chamferRect(ctx, headX - hw * 0.2, headY - hh * 1.34, hw * 0.4, hh * 0.36, cut * 0.4);
@@ -1980,17 +2359,76 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const eyeLineY = headY + headR * 0.1 + fy * headR * 0.06;
     const pairX = headX + fx * headR * 0.36;
     const sep = headR * (0.42 - 0.16 * profileK);
-    const eyeW = headR * 0.19;
-    const eyeH = headR * 0.36;
-    ctx.fillStyle = OUTLINE;
+    const eyeStyle = rig.look?.eyes ?? 0;
+    const feature = rig.look?.feature ?? 0;
+    // The far side of anything on the face narrows through
+    // three-quarter and disappears around the corner at profile.
+    const sideK = (es: number): number =>
+      es !== lead ? Math.max(0, 1 - Math.max(0, (profileK - 0.5) / 0.28)) : 1;
+
+    // The scar rides UNDER the eye slit, so the slash reads as
+    // crossing it — always on the leading side of the face.
+    if (feature === 4 && !rig.hurt) {
+      ctx.strokeStyle = shade(skin, -42);
+      ctx.lineWidth = headR * 0.085;
+      const sx = pairX + lead * sep;
+      ctx.beginPath();
+      ctx.moveTo(sx - lead * headR * 0.1, eyeLineY - headR * 0.42);
+      ctx.lineTo(sx + lead * headR * 0.14, eyeLineY + headR * 0.46);
+      ctx.stroke();
+      // Two stitch ticks across the slash.
+      ctx.lineWidth = headR * 0.045;
+      for (const t of [-0.16, 0.2]) {
+        const mx = sx + lead * headR * 0.02 + lead * headR * 0.24 * t;
+        const my = eyeLineY + headR * 0.88 * t;
+        ctx.beginPath();
+        ctx.moveTo(mx - headR * 0.09, my - headR * 0.03);
+        ctx.lineTo(mx + headR * 0.09, my + headR * 0.03);
+        ctx.stroke();
+      }
+    }
+
+    // Eyes, per chosen pattern: the calm slit, the sharp blade, the
+    // wide open pair (with a glint), and the lashed read.
+    const eyeW = headR * (eyeStyle === 1 || eyeStyle === 2 ? 0.24 : 0.19);
+    const eyeH = headR * (eyeStyle === 1 ? 0.26 : eyeStyle === 2 ? 0.44 : 0.36);
     for (const es of [-1, 1]) {
-      // The far eye narrows through three-quarter and disappears
-      // around the corner at strong profile.
-      const far = es !== lead;
-      const wK = far ? Math.max(0, 1 - Math.max(0, (profileK - 0.5) / 0.28)) : 1;
+      const wK = sideK(es);
       if (wK <= 0.02) continue;
       const w = eyeW * wK;
-      ctx.fillRect(pairX + es * sep - w / 2, eyeLineY - eyeH / 2, w, eyeH * faceK);
+      const cx = pairX + es * sep;
+      ctx.fillStyle = OUTLINE;
+      if (eyeStyle === 1) {
+        // Sharp: a hard slanted blade, outer corner riding high.
+        const innerX = cx - es * (w / 2);
+        const outerX = cx + es * (w / 2);
+        ctx.beginPath();
+        ctx.moveTo(innerX, eyeLineY + eyeH * 0.12 * faceK);
+        ctx.lineTo(outerX, eyeLineY - eyeH * 0.5 * faceK);
+        ctx.lineTo(outerX, eyeLineY + eyeH * 0.16 * faceK);
+        ctx.lineTo(innerX, eyeLineY + eyeH * 0.5 * faceK);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.fillRect(cx - w / 2, eyeLineY - eyeH / 2, w, eyeH * faceK);
+        if (eyeStyle === 2 && !rig.hurt) {
+          // Wide: a bright glint wakes the bigger eye.
+          ctx.fillStyle = '#8fa0b5';
+          ctx.fillRect(cx - w * 0.1, eyeLineY - eyeH * 0.34, w * 0.3, eyeH * 0.22);
+        } else if (eyeStyle === 3 && !rig.hurt) {
+          // Lashed: two ticks flicking up off the outer corner.
+          ctx.strokeStyle = OUTLINE;
+          ctx.lineWidth = headR * 0.045;
+          const ox = cx + es * (w / 2);
+          const topY = eyeLineY - eyeH / 2;
+          for (const l of [0, 1]) {
+            ctx.beginPath();
+            ctx.moveTo(ox, topY + eyeH * 0.16 * l);
+            ctx.lineTo(ox + es * headR * 0.12 * wK, topY - headR * 0.07 + eyeH * 0.2 * l);
+            ctx.stroke();
+          }
+        }
+      }
     }
     // Profile nose: a small skin wedge off the leading edge — the one
     // mark that makes a side view a side view.
@@ -2005,18 +2443,59 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ctx.closePath();
       ctx.fill();
     }
-    // Rosy cheeks under the eyes, riding the same face bands.
-    if (!rig.hurt) {
+    // Rosy cheeks under the eyes, riding the same face bands —
+    // warpaint replaces the blush entirely.
+    if (!rig.hurt && feature !== 3) {
       ctx.fillStyle = 'rgba(214, 118, 96, 0.45)';
       for (const es of [-1, 1]) {
-        const far = es !== lead;
-        const wK = far ? Math.max(0, 1 - Math.max(0, (profileK - 0.5) / 0.28)) : 1;
+        const wK = sideK(es);
         if (wK <= 0.02) continue;
         ctx.fillRect(
           pairX + es * sep - headR * 0.14 * wK,
           eyeLineY + headR * 0.24,
           headR * 0.28 * wK,
           headR * 0.16,
+        );
+      }
+    }
+    if (feature === 3 && !rig.hurt) {
+      // Warpaint: two crimson slashes raking each cheek.
+      ctx.fillStyle = 'rgba(178, 44, 38, 0.85)';
+      for (const es of [-1, 1]) {
+        const wK = sideK(es);
+        if (wK <= 0.05) continue;
+        for (const row of [0, 1]) {
+          const y0 = eyeLineY + headR * (0.22 + row * 0.18);
+          const x0 = pairX + es * sep - headR * 0.17 * wK;
+          const bw = headR * 0.36 * wK;
+          ctx.beginPath();
+          ctx.moveTo(x0, y0 + headR * 0.05);
+          ctx.lineTo(x0 + bw, y0 - headR * 0.03);
+          ctx.lineTo(x0 + bw, y0 + headR * 0.05);
+          ctx.lineTo(x0, y0 + headR * 0.13);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    } else if (feature === 5 && !rig.hurt) {
+      // Freckles: a scatter across the nose bridge and cheeks.
+      ctx.fillStyle = shade(skin, -22);
+      const spots: readonly (readonly [number, number])[] = [
+        [-0.34, 0.24],
+        [-0.18, 0.32],
+        [-0.02, 0.26],
+        [0.14, 0.33],
+        [0.3, 0.25],
+        [0.05, 0.4],
+      ];
+      for (const [ox, oy] of spots) {
+        const wK = sideK(ox < 0 ? -1 : 1);
+        if (wK <= 0.15) continue;
+        ctx.fillRect(
+          pairX + ox * headR * 1.05 * (1 - 0.3 * profileK),
+          eyeLineY + oy * headR,
+          headR * 0.055,
+          headR * 0.055,
         );
       }
     }
@@ -2041,7 +2520,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           cut * 0.3,
         );
         ctx.fill();
-      } else {
+      } else if (beard === 3) {
         // Full beard: mustache bar plus a jaw slab below the face.
         ctx.fillRect(pairX - headR * 0.32 * bK, eyeLineY + headR * 0.26, headR * 0.64 * bK, headR * 0.14);
         ctx.beginPath();
@@ -2054,6 +2533,77 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           [0, 0, cut * 0.8, cut * 0.8],
         );
         ctx.fill();
+      } else if (beard === 4) {
+        // Braided beard: mustache bar, then the plait off the chin.
+        ctx.fillRect(pairX - headR * 0.32 * bK, eyeLineY + headR * 0.26, headR * 0.64 * bK, headR * 0.14);
+        paintPlait(pairX, headY + hh * 0.55, headR * 0.34 * bK, 3);
+      } else if (beard === 5) {
+        // Mutton chops: side slabs hugging the jaw, chin left bare.
+        for (const es of [-1, 1]) {
+          const wK = sideK(es);
+          if (wK <= 0.05) continue;
+          const sideX = headX - fx * headR * 0.12 + es * hw * 0.76;
+          ctx.beginPath();
+          chamferRect(
+            ctx,
+            sideX - hw * 0.17 * wK,
+            eyeLineY + headR * 0.02,
+            hw * 0.34 * wK,
+            hh * 0.78,
+            [0, 0, cut * 0.4, cut * 0.4],
+          );
+          ctx.fill();
+          // The jaw hook curls in toward the chin.
+          ctx.fillRect(
+            sideX - es * hw * 0.24 - hw * 0.12 * wK,
+            headY + hh * 0.6,
+            hw * 0.24 * wK,
+            hh * 0.24,
+          );
+        }
+      } else {
+        // Stubble: a translucent shadow across the jaw band.
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        chamferRect(
+          ctx,
+          pairX - hw * 0.6 * bK,
+          headY + hh * 0.35,
+          hw * 1.2 * bK,
+          hh * 0.55,
+          [0, 0, cut * 0.7, cut * 0.7],
+        );
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+    // Tusks and fangs paint OVER the beard — teeth in front of hair.
+    if (feature === 1 || feature === 2) {
+      const big = feature === 1;
+      const ivory = rig.hurt ? '#ffffff' : '#eae1c8';
+      for (const es of [-1, 1]) {
+        const wK = sideK(es);
+        if (wK <= 0.05) continue;
+        const bx = pairX + es * headR * (big ? 0.3 : 0.22) * (1 - 0.2 * profileK);
+        const baseY = headY + hh * (big ? 0.82 : 0.72);
+        const len = headR * (big ? 0.52 : 0.26);
+        const w = headR * (big ? 0.15 : 0.09) * wK;
+        ctx.fillStyle = ivory;
+        ctx.beginPath();
+        ctx.moveTo(bx - w, baseY);
+        ctx.lineTo(bx + w, baseY);
+        ctx.lineTo(bx + es * headR * (big ? 0.1 : 0.04), baseY - len);
+        ctx.closePath();
+        ctx.fill();
+        // A shade edge keeps the tusk from washing into the skin.
+        if (!rig.hurt && big) {
+          ctx.strokeStyle = shade(ivory, -24);
+          ctx.lineWidth = headR * 0.035;
+          ctx.beginPath();
+          ctx.moveTo(bx - w * 0.6, baseY);
+          ctx.lineTo(bx + es * headR * 0.06, baseY - len * 0.85);
+          ctx.stroke();
+        }
       }
     }
   }

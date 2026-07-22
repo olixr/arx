@@ -1,31 +1,38 @@
 import { type Look } from '@devcraft/shared';
-/**
- * Character creation: the RuneScape mirror. A live preview of the
- * actual in-game rig (same drawHumanoid, poster scale) turns slowly
- * through its facings while the player picks skin, hair, beard, and
- * base cloth dyes from the shared palettes. Confirm sends the look to
- * the server, where it locks — the client never enforces anything.
- *
- * Controls are plain [data-nav] elements, so the gamepad's spatial
- * focus walks them like any other panel; the panel is modal to the
- * navigator while open (see UiNav.navigables).
- */
 export declare class LookCreator {
     private readonly onConfirm;
     private readonly panel;
-    private readonly preview;
+    private preview;
+    private crest;
+    private tabPanel;
     private look;
-    private dirIx;
-    private spinTimer;
+    private tab;
+    private dir;
+    private auto;
+    private raf;
     open: boolean;
-    private static readonly DIRS;
     constructor(onConfirm: (look: Look) => void);
     show(): void;
     hide(): void;
-    /** Rebuild the whole control column (small DOM, clarity wins). */
+    /** Build the full card once per show(); look changes only touch the
+     *  tab body and selection classes via rebuildTab(). */
     private build;
+    /** Drag across the stage spins the hero by hand. */
+    private bindDrag;
+    private refreshTurn;
+    private rebuildTab;
+    /** Heritage: parchment cards, each wearing a live bust of the folk. */
+    private buildHeritage;
+    /** A labeled grid of rendered-bust option tiles. */
+    private tileRow;
     private swatchRow;
-    private stepperRow;
+    /** Retina-backed canvas: crisp vector art at any zoom. */
+    private sizeCanvas;
+    /** One rig pose, shared by the stage, busts, and the crest. */
+    private paintFigure;
+    /** A head-and-shoulders portrait: the head centered high, cropped
+     *  tight — the true art, not an icon of it. */
+    private drawBust;
     private drawPreview;
 }
 //# sourceMappingURL=lookCreator.d.ts.map

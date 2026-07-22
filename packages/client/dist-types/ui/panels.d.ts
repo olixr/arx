@@ -32,6 +32,9 @@ export declare class Panels {
     private readonly equipRight;
     private readonly coinReadout;
     private readonly packFill;
+    private readonly packFilters;
+    /** The pack's lens: dims sockets outside the chosen family. */
+    private packFilter;
     private readonly namePlate;
     private readonly skillsPanel;
     private readonly skillsList;
@@ -100,6 +103,10 @@ export declare class Panels {
     /** Close the verb menu. Returns true if one was open (Ⓑ backstop). */
     closeMenu(): boolean;
     get menuOpen(): boolean;
+    /** Which filter family an item belongs to. */
+    private static packFamily;
+    /** Re-apply the pack lens to the rendered grid (no rebuild). */
+    private applyPackFilter;
     renderInventory(slots: InvSlot[]): void;
     /** Build one equipment socket (either flank of the stage). */
     private equipCell;
