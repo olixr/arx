@@ -454,12 +454,33 @@ const PAINTERS: Record<string, IconPainter> = {
     blade(0.3, 0.68, 0.25, 0.13, -0.55);
   },
   ore_mithril: (c, col) => {
-    // Sky-metal: a tall-cut chunk and a hard four-point star above it.
-    oreChunk(c, 0.46, 0.56, 0.5, 0.1, col, '#d8ecff');
-    oreChunk(c, 0.72, 0.72, 0.26, -0.16, col, '#d8ecff');
-    poly(c, '#d8ecff', [
-      [0.74, 0.26], [0.77, 0.34], [0.85, 0.37], [0.77, 0.4], [0.74, 0.48], [0.71, 0.4], [0.63, 0.37], [0.71, 0.34],
-    ]);
+    // The risen lode in miniature: the sky-metal chunk floats free of
+    // its host stone — a visible gap and a soft contact shadow below
+    // sell the feather-light hover, faceted like the deposit's drift.
+    oreChunk(c, 0.5, 0.72, 0.44, -0.06, col, '#d8ecff');
+    c.fillStyle = 'rgba(20, 16, 30, 0.3)';
+    c.beginPath();
+    c.ellipse(0.48, 0.47, 0.11, 0.028, 0, 0, Math.PI * 2);
+    c.fill();
+    const shard = (bx: number, by: number, r: number, rot: number): void => {
+      c.save();
+      c.translate(bx, by);
+      c.rotate(rot);
+      poly(c, shade(col, -30), [
+        [-r * 0.9, -r * 0.15], [-r * 0.45, -r * 0.85], [r * 0.5, -r * 0.75],
+        [r * 0.95, r * 0.1], [r * 0.35, r * 0.8], [-r * 0.5, r * 0.7],
+      ]);
+      poly(c, col, [
+        [-r * 0.9, -r * 0.15], [-r * 0.45, -r * 0.85], [r * 0.5, -r * 0.75],
+        [r * 0.28, -r * 0.05], [-r * 0.35, r * 0.45],
+      ]);
+      poly(c, '#e8f4ff', [
+        [-r * 0.45, -r * 0.85], [-r * 0.1, -r * 0.78], [-r * 0.38, -r * 0.5],
+      ]);
+      c.restore();
+    };
+    shard(0.48, 0.32, 0.15, 0.12);
+    shard(0.72, 0.18, 0.08, -0.4);
   },
   ore_adamant: (c, col) => {
     // Deep-green block banded with the horns' dark armor plates.

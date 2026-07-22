@@ -6119,41 +6119,142 @@ export class Renderer {
       sites.push(t1, t2, t3, cut);
       this.rubble(px, py, s, h, [pal.nug, '#6a6375', pal.deep]);
     } else if (tile === Tile.RockMithril) {
-      // THE SKY SPIRE — the tallest deposit in the game: one slender
-      // blue-grey needle with a single sky seam up its heart and
-      // mithril blocks climbing it like rungs. The master smith's
-      // beacon, visible across a mesa.
+      // THE RISEN LODE — mithril is the feather-light sky-metal, and
+      // this is the only deposit in the game that FLOATS: a broken
+      // notch in the tall spire holds the embedded lode-mass, and a
+      // trail of faceted shards drifts weightlessly up off it, each
+      // bobbing on its own slow phase with a contact shadow selling
+      // the hover. Integration follows the silverspur law — notch
+      // clipped INTO the stone, lode seated behind a stone lip, the
+      // sky claiming what worked loose.
       this.stoneBlock(X(0.5 * S), base, S * 0.48, S * 0.34 * H, 0.04 * S * m, Renderer.BARREN_DIM, h ^ 0x9e37);
       const spH = crowded ? 0.62 : 1;
-      const mSil = this.monolith(X(-0.04 * S), base, S * 0.96, S * 1.85 * spH, m, pal.stone, h);
+      const mSil = this.monolith(X(-0.04 * S), base, S * 0.98, S * 1.6 * spH, m, pal.stone, h);
+      const spirePath = new Path2D();
+      mSil.forEach(([x, y], i) => (i === 0 ? spirePath.moveTo(x, y) : spirePath.lineTo(x, y)));
+      spirePath.closePath();
+      // A faceted mithril shard: low-poly chunk, hard three-tone split
+      // (deep flank, sky-blue body, lit facet) + one white chip.
+      const shard = (cx2: number, cy2: number, r: number, rot: number): void => {
+        ctx.save();
+        ctx.translate(cx2, cy2);
+        ctx.rotate(rot);
+        ctx.fillStyle = pal.deep;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.9, -r * 0.15);
+        ctx.lineTo(-r * 0.45, -r * 0.85);
+        ctx.lineTo(r * 0.5, -r * 0.75);
+        ctx.lineTo(r * 0.95, r * 0.1);
+        ctx.lineTo(r * 0.35, r * 0.8);
+        ctx.lineTo(-r * 0.5, r * 0.7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = pal.nug;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.9, -r * 0.15);
+        ctx.lineTo(-r * 0.45, -r * 0.85);
+        ctx.lineTo(r * 0.5, -r * 0.75);
+        ctx.lineTo(r * 0.28, -r * 0.05);
+        ctx.lineTo(-r * 0.35, r * 0.45);
+        ctx.closePath();
+        ctx.fill();
+        // Lit facet toward the sky.
+        ctx.fillStyle = '#b7d2f2';
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.45, -r * 0.85);
+        ctx.lineTo(r * 0.5, -r * 0.75);
+        ctx.lineTo(r * 0.28, -r * 0.05);
+        ctx.lineTo(-r * 0.25, -r * 0.3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#e8f4ff';
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.45, -r * 0.85);
+        ctx.lineTo(-r * 0.1, -r * 0.78);
+        ctx.lineTo(-r * 0.38, -r * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      };
+      // 1) The notch: a shadowed bite in the spire's flank where the
+      //    lode surfaced — clipped INTO the stone, crack running down.
+      const notchY = base - S * 0.98 * spH;
       ctx.save();
-      const spireClip = new Path2D();
-      mSil.forEach(([x, y], i) => (i === 0 ? spireClip.moveTo(x, y) : spireClip.lineTo(x, y)));
-      spireClip.closePath();
-      ctx.clip(spireClip);
-      // One straight sky-blue seam, heart of the spire.
-      ctx.fillStyle = pal.deep;
-      ctx.fillRect(X(-0.1 * S) - S * 0.055, base - S * 1.9 * spH, S * 0.11, S * 1.9 * spH);
-      ctx.fillStyle = pal.nug;
-      ctx.fillRect(X(-0.1 * S) - S * 0.025, base - S * 1.9 * spH, S * 0.05, S * 1.9 * spH);
+      ctx.clip(spirePath);
+      ctx.fillStyle = '#262a38';
+      ctx.beginPath();
+      ctx.moveTo(X(-0.34 * S), notchY + S * 0.08);
+      ctx.lineTo(X(-0.16 * S), notchY - S * 0.26);
+      ctx.lineTo(X(0.2 * S), notchY - S * 0.3);
+      ctx.lineTo(X(0.34 * S), notchY - S * 0.02);
+      ctx.lineTo(X(0.12 * S), notchY + S * 0.16);
+      ctx.lineTo(X(-0.14 * S), notchY + S * 0.18);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+      ctx.lineWidth = Math.max(1.5, s * 0.03);
+      ctx.beginPath();
+      ctx.moveTo(X(-0.14 * S), notchY + S * 0.18);
+      ctx.lineTo(X(-0.22 * S), notchY + S * 0.52);
+      ctx.stroke();
       ctx.restore();
-      // Rungs: mithril blocks stepping up the seam.
-      const r1: [number, number] = [X(-0.16 * S), base - S * 0.28];
-      const r2: [number, number] = [X(-0.02 * S), base - S * 0.92 * spH];
-      const r3: [number, number] = [X(-0.1 * S), base - S * 1.56 * spH];
-      this.oreNode(r1[0], r1[1], S * 0.32, 0.1 * m, pal);
-      this.oreNode(r2[0], r2[1], S * 0.3, -0.12 * m, pal);
-      this.oreNode(r3[0], r3[1], S * 0.34, 0.08 * m, pal);
-      sites.push(r2, r3);
+      // 2) The lode-mass: one big faceted chunk seated IN the notch.
+      shard(X(0.0 * S), notchY - S * 0.04, S * 0.3, 0.1 * m);
+      // 3) The lip: the notch's lower rim laid over the mass's foot —
+      //    the occlusion that roots it in the spire.
+      ctx.save();
+      ctx.clip(spirePath);
+      ctx.fillStyle = pal.stone.face;
+      ctx.beginPath();
+      ctx.moveTo(X(-0.36 * S), notchY + S * 0.1);
+      ctx.lineTo(X(0.14 * S), notchY + S * 0.14);
+      ctx.lineTo(X(0.36 * S), notchY + S * 0.02);
+      ctx.lineTo(X(0.3 * S), notchY + S * 0.34);
+      ctx.lineTo(X(-0.28 * S), notchY + S * 0.38);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = pal.stone.top;
+      ctx.beginPath();
+      ctx.moveTo(X(-0.36 * S), notchY + S * 0.1);
+      ctx.lineTo(X(0.14 * S), notchY + S * 0.14);
+      ctx.lineTo(X(0.36 * S), notchY + S * 0.02);
+      ctx.lineTo(X(0.35 * S), notchY + S * 0.07);
+      ctx.lineTo(X(0.14 * S), notchY + S * 0.185);
+      ctx.lineTo(X(-0.35 * S), notchY + S * 0.145);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      // 4) THE DRIFT: shards working loose and rising — each bobs on
+      //    its own slow phase (deterministic off tSec, so bakes hold
+      //    still), with a soft contact shadow on the stone below the
+      //    lowest one anchoring the hover.
+      const bob = (k: number): number => Math.sin(tSec * 1.15 + k * 2.1 + (h % 7)) * S * 0.025;
+      const f1: [number, number] = [X(0.1 * S), notchY - S * 0.52 + bob(0)];
+      const f2: [number, number] = [X(-0.08 * S), notchY - S * 0.82 + bob(1)];
+      const f3: [number, number] = [X(0.16 * S), notchY - S * 1.08 + bob(2)];
+      if (!this.bakingMask) {
+        ctx.fillStyle = 'rgba(20, 16, 30, 0.28)';
+        ctx.beginPath();
+        ctx.ellipse(f1[0], notchY - S * 0.2, S * 0.13 - bob(0) * 0.8, S * 0.035, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      shard(f1[0], f1[1], S * 0.15, 0.3 * m + bob(0) * 0.01);
+      shard(f2[0], f2[1], S * 0.11, -0.5 * m + bob(1) * 0.01);
+      shard(f3[0], f3[1], S * 0.075, 0.8 * m);
+      // 5) The foot: half-sunk cut blocks — the pick's honest target.
+      const cut: [number, number] = [X(-0.24 * S), base - S * 0.2];
+      this.oreNode(cut[0], cut[1], S * 0.3, -0.08 * m, pal);
+      this.oreNode(X(0.3 * S), base - S * 0.12, S * 0.22, 0.14 * m, pal);
+      sites.push(f1, f2, f3, cut);
       this.rubble(px, py, s, h, [pal.nug, '#6a6375']);
-      // A cool, thin halo — the sky remembering its metal.
+      // The cool halo rides the drift — the sky remembering its metal.
       const mPulse = 0.6 + Math.sin(tSec * 1.3 + (h % 10)) * 0.4;
       this.queueGlow(
         (px - this.w / 2) / s + this.camera.x,
-        (base - S * 1.1 * spH - this.h / 2) / (s * this.camera.yScale) + this.camera.y,
-        0.65,
+        (notchY - S * 0.6 - this.h / 2) / (s * this.camera.yScale) + this.camera.y,
+        0.6,
         '143, 180, 228',
-        0.1 * mPulse,
+        0.12 * mPulse,
       );
     } else if (tile === Tile.RockAdamant) {
       // THE TWIN HORNS — two hard prongs leaning apart in a V, deep
