@@ -1,8 +1,11 @@
 import {
   CHUNK_SIZE,
+  COMBO_GRACE_TICKS,
+  COMBO_STAGES,
   ChunkStore,
   DRAW_FULL_TICKS,
   DRAW_MIN_TICKS,
+  HEAVY_BOLT_RECOVERY_MULT,
   INTERP_DELAY_MS,
   InputButton,
   hasButton,
@@ -11,10 +14,14 @@ import {
   SNEAK_DETECTED_BIT,
   SNEAK_HIDDEN_BIT,
   TICK_MS,
+  chargedShot,
   clockHours,
-  Tile,
+  drawCharge,
   findPath,
+  nextComboStage,
+  snapShot,
   stationAtTile,
+  Tile,
   type ChunkData,
   type EntityId,
   type EntityMeta,
@@ -35,6 +42,32 @@ import {
 import { MATURE_TILES, NODES_BY_TILE, isCropTile, abilityDef, itemDef, npcDef } from '@devcraft/content';
 import { EntityKind } from '@devcraft/shared';
 import type { AbilityDef, AbilitySlot, Look } from '@devcraft/shared';
+
+/**
+ * A zero-latency predicted shot (v8). Spawned the instant the local
+ * fire gate passes (the same mirrored gate the server applies), flown
+ * client-side, and handed off to the authoritative projectile entity
+ * when it enters — matched by (ownerEid, firing seq). An unmatched
+ * tracer (misprediction: ammo desync, server-side cancel) fades out in
+ * a quarter second instead of lying about a hit.
+ */
+export interface OwnShot {
+  /** Input-frame seq at the predicted fire — the matching key. */
+  seq: number;
+  /** Same defId the server will broadcast ('archery', 'magic:ember'…). */
+  defId: string;
+  x: number;
+  y: number;
+  dirX: number;
+  dirY: number;
+  dir: number;
+  /** Tiles per second. */
+  speed: number;
+  /** Max flight distance, tiles. */
+  range: number;
+  /** performance.now() at spawn. */
+  bornAt: number;
+}
 
 export type InteractTarget =
   | { kind: 'node'; tx: number; ty: number }
@@ -170,6 +203,20 @@ export class ClientGame {
    * consumed by the renderer for impact bursts and stuck arrows.
    */
   readonly projectileEnds: Array<{ x: number; y: number; dir: number; style: string }> = [];
+  /** Predicted own shots in flight, awaiting their server entity (v8). */
+  readonly ownShots: OwnShot[] = [];
+  /**
+   * Matched tracer → entity handoffs. The renderer captures the visual
+   * offset on the entity's first draw and decays it (~90ms), so the
+   * predicted flight blends into the authoritative one seamlessly.
+   */
+  readonly projHandoffs = new Map<EntityId, { shot: OwnShot; ox: number; oy: number; capturedAt: number }>();
+  /** Local staff-cadence mirror (bolt-bolt-HEAVY, same shared laws). */
+  private staffReadyAt = 0;
+  private boltStageLocal = 0;
+  private boltGraceUntilMs = 0;
+  /** Local mirror of the cast commitment window (holds basics back). */
+  private castFreezeUntilMs = 0;
   /** NPC deaths this frame — drives the ragdoll + stuck-arrow scatter. */
   readonly npcDeaths: Array<{
     eid: EntityId;
@@ -341,6 +388,7 @@ export class ClientGame {
       this.abilityReadyAt[slot] = now + ab.cooldownTicks * TICK_MS;
       this.abilityMax[slot] = ab.cooldownTicks;
       this.drawStartAt = 0; // casting lets the bowstring down
+      this.castFreezeUntilMs = now + (ab.castFreezeTicks ?? 0) * TICK_MS;
       this.predictor.registerCast(
         frame.seq,
         ab.castFreezeTicks ?? 0,
@@ -375,14 +423,71 @@ export class ClientGame {
     const heldMs = now - this.drawStartAt;
     const charge = this.ownDrawT;
     this.drawStartAt = 0;
+    const speed = weapon.projectileSpeed ?? 12;
     if (heldMs >= DRAW_MIN_TICKS * TICK_MS) {
       this.drawReadyAt = now + weapon.cooldownTicks * TICK_MS;
       this.onLoose?.(charge, this.aim);
+      // Predicted arrow (v8): the same chargedShot law the server fires
+      // with — the tracer flies the true speed/range for this draw.
+      const ticks = Math.round(heldMs / TICK_MS);
+      const shot = chargedShot(drawCharge(ticks), 1, speed, weapon.range);
+      this.predictShot(frame.seq, 'archery', this.aim, shot.speed, shot.range);
     } else {
       // Snap shot — instant hip-fire, quick recovery, rapid-tap rhythm.
       this.drawReadyAt = now + 6 * TICK_MS;
       this.onLoose?.(0, this.aim);
+      const shot = snapShot(1, speed, weapon.range);
+      this.predictShot(frame.seq, 'archery', this.aim, shot.speed, shot.range);
     }
+  }
+
+  /**
+   * Staff bolts fire while Attack is HELD, cadence-gated — mirror the
+   * server's bolt-bolt-HEAVY rhythm with the same shared functions so
+   * the predicted bolt and the real one agree on stage, speed, and
+   * recovery. A mispredicted bolt (rare cadence drift) simply never
+   * matches an entity and fades.
+   */
+  private trackOwnStaff(frame: InputFrame, now: number): void {
+    const weapon = this.equippedWeaponDef();
+    if (!weapon || weapon.style !== 'magic') return;
+    if (!hasButton(frame.buttons, InputButton.Attack)) return;
+    if (now < this.staffReadyAt || now < this.castFreezeUntilMs) return;
+    const stage = nextComboStage(this.boltStageLocal, now <= this.boltGraceUntilMs);
+    this.boltStageLocal = stage;
+    const heavy = stage === COMBO_STAGES - 1;
+    const cdTicks = heavy
+      ? Math.round(weapon.cooldownTicks * HEAVY_BOLT_RECOVERY_MULT)
+      : weapon.cooldownTicks;
+    this.staffReadyAt = now + cdTicks * TICK_MS;
+    this.boltGraceUntilMs = this.staffReadyAt + COMBO_GRACE_TICKS * TICK_MS;
+    const base = heavy ? 'magic_heavy' : 'magic';
+    const defId = weapon.element ? `${base}:${weapon.element}` : base;
+    this.predictShot(
+      frame.seq,
+      defId,
+      frame.aim,
+      (weapon.projectileSpeed ?? 12) * (heavy ? 0.8 : 1),
+      weapon.range,
+    );
+  }
+
+  /** Spawn a predicted tracer at the body, capped to a small roster. */
+  private predictShot(seq: number, defId: string, aim: number, speed: number, range: number): void {
+    const p = this.predictor.renderPos();
+    this.ownShots.push({
+      seq,
+      defId,
+      x: p.x,
+      y: p.y,
+      dirX: Math.cos(aim),
+      dirY: Math.sin(aim),
+      dir: aim,
+      speed,
+      range,
+      bornAt: performance.now(),
+    });
+    if (this.ownShots.length > 8) this.ownShots.shift();
   }
 
   /** Connect; the server answers welcome (valid token) or authRequired. */
@@ -439,6 +544,12 @@ export class ClientGame {
         this.token = msg.token;
         this.serverTick = msg.tick;
         this.entities.clear();
+        this.ownShots.length = 0;
+        this.projHandoffs.clear();
+        this.staffReadyAt = 0;
+        this.boltStageLocal = 0;
+        this.boltGraceUntilMs = 0;
+        this.castFreezeUntilMs = 0;
         this.clockOffset = null;
         this.reconnectDelay = 500;
         this.events.onStatus('ingame');
@@ -474,6 +585,32 @@ export class ClientGame {
             existing.meta = meta;
           } else {
             this.entities.set(meta.eid, { meta, buffer: new InterpBuffer() });
+          }
+          // Tracer handoff (v8): our own projectile arrived — marry it
+          // to the predicted shot that fired on (nearly) that seq. ±2
+          // absorbs the case where cooldown expiry lands a frame later
+          // server-side than the local mirror guessed; rapid-fire
+          // shots are ≥6 seqs apart, so the window can't cross-match.
+          if (
+            meta.kind === EntityKind.Projectile &&
+            meta.ownerEid === this.ownEid &&
+            meta.seq !== undefined
+          ) {
+            let best: OwnShot | null = null;
+            let bestIdx = -1;
+            for (let i = 0; i < this.ownShots.length; i++) {
+              const shot = this.ownShots[i]!;
+              const d = Math.abs(shot.seq - meta.seq);
+              if (d > 2) continue;
+              if (!best || d < Math.abs(best.seq - meta.seq)) {
+                best = shot;
+                bestIdx = i;
+              }
+            }
+            if (best) {
+              this.ownShots.splice(bestIdx, 1);
+              this.projHandoffs.set(meta.eid, { shot: best, ox: 0, oy: 0, capturedAt: 0 });
+            }
           }
         }
         break;
@@ -1107,9 +1244,12 @@ export class ClientGame {
         buttons: this.input.buttons(),
       };
       this.trackOwnCasts(frame);
-      this.conn.send({ t: 'input', frame });
+      // viewMs (v8): report the live interp delay so melee lag comp
+      // rewinds by what this screen is ACTUALLY showing.
+      this.conn.send({ t: 'input', frame, viewMs: Math.round(this.interpDelayMs) });
       this.predictor.applyInput(frame);
       this.trackOwnDraw(frame, now);
+      this.trackOwnStaff(frame, now);
     }
     // A walk-to-loot errand completes the moment the bag is in reach
     // (or dissolves if someone else took it first).
@@ -1134,5 +1274,22 @@ export class ClientGame {
     const dTarget = this.targetInterpDelay();
     const maxStep = 15 * (frameDt / 1000);
     this.interpDelayMs += Math.max(-maxStep, Math.min(maxStep, dTarget - this.interpDelayMs));
+    // Tracer expiry: an unmatched shot past its plausible arrival
+    // window (or flight range) was a misprediction — the renderer
+    // fades it over its last 150ms; drop it after.
+    const nowMs = performance.now();
+    for (let i = this.ownShots.length - 1; i >= 0; i--) {
+      const shot = this.ownShots[i]!;
+      const age = nowMs - shot.bornAt;
+      if (age > 550 || (age / 1000) * shot.speed > shot.range + 1) this.ownShots.splice(i, 1);
+    }
+    // Handoffs whose entity left before the blend finished.
+    if (this.projHandoffs.size > 0) {
+      for (const [eid, h] of this.projHandoffs) {
+        if (!this.entities.has(eid) || (h.capturedAt > 0 && nowMs - h.capturedAt > 500)) {
+          this.projHandoffs.delete(eid);
+        }
+      }
+    }
   }
 }

@@ -11,7 +11,11 @@
 // v7: grips became per-hand (AppearanceData.carryOff, C2SCarryStyle.hand)
 // — v6 clients would render a dual wielder's off blade in the wrong grip
 // for every watcher, so reject cleanly.
-export const PROTOCOL_VERSION = 7;
+// v8: projectile meta carries ownerEid + firing seq (client-predicted
+// tracers hand off to the real entity) and C2SInput reports viewMs for
+// exact melee lag compensation — a v7 client would neither predict nor
+// be rewound correctly, so reject cleanly.
+export const PROTOCOL_VERSION = 8;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;

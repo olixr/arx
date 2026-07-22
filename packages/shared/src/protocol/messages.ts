@@ -54,6 +54,12 @@ export interface C2SRegister {
 export interface C2SInput {
   t: 'input';
   frame: InputFrame;
+  /**
+   * The client's CURRENT adaptive interpolation delay, ms — how far in
+   * the past it is rendering remote entities. Feeds exact melee lag
+   * compensation (v8). Optional: absent reads as the server default.
+   */
+  viewMs?: number;
 }
 
 export interface C2SChat {
@@ -531,10 +537,14 @@ export function parseC2S(raw: string): C2SMessage | null {
       ) {
         return null;
       }
-      return {
+      const out: C2SInput = {
         t: 'input',
         frame: { seq: f.seq, mx: f.mx, my: f.my, aim: f.aim, buttons: f.buttons },
       };
+      // Optional view-delay report; clamped here so the game code
+      // never sees a hostile value.
+      if (isFiniteNum(msg.viewMs)) out.viewMs = Math.max(0, Math.min(400, msg.viewMs));
+      return out;
     }
     case 'chat': {
       if (typeof msg.text !== 'string') return null;

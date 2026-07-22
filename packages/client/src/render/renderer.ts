@@ -9501,9 +9501,32 @@ export class Renderer {
             this.dropItem(eid, remote.meta.defId ?? '', remote.meta.qty ?? 1, s, now, remote.meta.roll),
           );
           break;
-        case EntityKind.Projectile:
-          items.push(this.projectileItem(eid, remote.meta.defId ?? '', s));
+        case EntityKind.Projectile: {
+          // Tracer handoff (v8): on this entity's FIRST draw, measure
+          // the gap between where the predicted tracer flew and where
+          // the authoritative shot is, then decay it away (~90ms) —
+          // the flight reads as one continuous arrow.
+          let sp = s;
+          const h = game.projHandoffs.get(eid);
+          if (h) {
+            if (h.capturedAt === 0) {
+              const age = (now - h.shot.bornAt) / 1000;
+              h.ox = h.shot.x + h.shot.dirX * h.shot.speed * age - s.x;
+              h.oy = h.shot.y + h.shot.dirY * h.shot.speed * age - s.y;
+              h.capturedAt = now;
+              // The tracer already fired this shot's muzzle flash.
+              this.projSeen.add(eid);
+            }
+            const k = Math.exp(-(now - h.capturedAt) / 90);
+            if (k < 0.02) {
+              game.projHandoffs.delete(eid);
+            } else {
+              sp = { ...s, x: s.x + h.ox * k, y: s.y + h.oy * k };
+            }
+          }
+          items.push(this.projectileItem(eid, remote.meta.defId ?? '', sp));
           break;
+        }
         case EntityKind.Prop:
           if (remote.meta.defId?.startsWith('summon_')) {
             items.push(this.summonItem(remote.meta.defId, s, now));
@@ -9512,6 +9535,25 @@ export class Renderer {
         default:
           break;
       }
+    }
+
+    // PREDICTED TRACERS (v8): the local player's shots, flying from the
+    // instant of release — the server entity takes over on arrival
+    // (handoff above). Pseudo-eids are negative so the muzzle-flash
+    // first-sight logic works unchanged. Mispredictions fade out.
+    for (const shot of game.ownShots) {
+      const age = (now - shot.bornAt) / 1000;
+      const flown = Math.min(shot.speed * age, shot.range);
+      const item = this.projectileItem(-1 - shot.seq, shot.defId, {
+        x: shot.x + shot.dirX * flown,
+        y: shot.y + shot.dirY * flown,
+        dir: shot.dir,
+      });
+      // A tracer past its plausible arrival window is a misprediction —
+      // fade its last 150ms instead of vanishing mid-air.
+      const ageMs = now - shot.bornAt;
+      if (ageMs > 400) item.alpha = Math.max(0, 1 - (ageMs - 400) / 150);
+      items.push(item);
     }
 
     // Arrows standing where they landed — the field remembers the fight.
@@ -11146,7 +11188,19 @@ export class Renderer {
     }
     if (this.projSeen.size > 0) {
       for (const eid of this.projSeen) {
-        if (!game.entities.has(eid)) this.projSeen.delete(eid);
+        if (eid < 0) {
+          // Tracer pseudo-eid (-1 - seq): alive while its shot is.
+          let live = false;
+          for (const shot of game.ownShots) {
+            if (-1 - shot.seq === eid) {
+              live = true;
+              break;
+            }
+          }
+          if (!live) this.projSeen.delete(eid);
+        } else if (!game.entities.has(eid)) {
+          this.projSeen.delete(eid);
+        }
       }
     }
   }

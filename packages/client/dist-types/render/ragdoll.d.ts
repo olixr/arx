@@ -46,7 +46,15 @@ export declare class Ragdoll {
     private readonly heavySet;
     private stillFor;
     settled: boolean;
-    constructor(pts: RagPoint[], sticks: RagStick[], heavy: number[]);
+    /**
+     * Seeded launch jitter (mulberry32). Math.random here made every
+     * death — and the ragdoll test suite — nondeterministic; two clients
+     * watching the same kill each rolled a different corpse. Seed it per
+     * ragdoll and the tumble is a pure function of (victim, blow).
+     */
+    private rngState;
+    constructor(pts: RagPoint[], sticks: RagStick[], heavy: number[], seed?: number);
+    private rand;
     /**
      * Advance the simulation. `carryX/carryY` is the velocity DELTA of the
      * moving anchor frame this step (screen-tile units): points inherit
@@ -92,7 +100,7 @@ export declare const H: {
  */
 export declare function buildHumanoidRagdoll(size: number, seed: number): Ragdoll;
 /** Upper-body / feet index groups for launch(). */
-export declare const HUMANOID_UPPER: (2 | 1 | 8 | 7 | 9 | 10)[];
+export declare const HUMANOID_UPPER: (1 | 2 | 7 | 8 | 9 | 10)[];
 export declare const HUMANOID_FEET: (4 | 6)[];
 /**
  * Beast skeleton: rear hip, front chest, head, then one two-segment

@@ -58,6 +58,15 @@ export interface EntityMeta {
   qty?: number;
   /** Instance roll for dropped gear — tints the nameplate, survives pickup. */
   roll?: import('./rarity.js').ItemRoll;
+  /**
+   * Projectiles only: who fired it. With `seq`, the identity a client
+   * needs to hand its zero-latency predicted tracer off to the real
+   * entity (v8).
+   */
+  ownerEid?: EntityId;
+  /** Projectiles only: the input-frame seq whose press/release fired
+   *  this shot — the tracer↔entity matching key. */
+  seq?: number;
 }
 
 export interface AppearanceData {

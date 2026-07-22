@@ -100,11 +100,26 @@ export class Ragdoll {
   private readonly heavySet: Set<number>;
   private stillFor = 0;
   settled = false;
+  /**
+   * Seeded launch jitter (mulberry32). Math.random here made every
+   * death — and the ragdoll test suite — nondeterministic; two clients
+   * watching the same kill each rolled a different corpse. Seed it per
+   * ragdoll and the tumble is a pure function of (victim, blow).
+   */
+  private rngState: number;
 
-  constructor(pts: RagPoint[], sticks: RagStick[], heavy: number[]) {
+  constructor(pts: RagPoint[], sticks: RagStick[], heavy: number[], seed = 1) {
     this.pts = pts;
     this.sticks = sticks;
     this.heavySet = new Set(heavy);
+    this.rngState = (seed >>> 0) || 1;
+  }
+
+  private rand(): number {
+    let t = (this.rngState += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
 
   /**
@@ -212,8 +227,8 @@ export class Ragdoll {
     const up = 0.6 + 3.2 * power;
     const shove = 1.1 + 3.6 * power;
     for (const p of this.pts) {
-      p.vy -= up * (0.75 + Math.random() * 0.5);
-      p.vx += (Math.random() - 0.5) * 0.5;
+      p.vy -= up * (0.75 + this.rand() * 0.5);
+      p.vx += (this.rand() - 0.5) * 0.5;
       p.grounded = false;
     }
     for (const i of upper) {
@@ -292,7 +307,7 @@ export function buildHumanoidRagdoll(size: number, seed: number): Ragdoll {
     // Soft trunk brace: the spine bends, it doesn't fold in half.
     st(H.pelvis, H.head, 0.35),
   ];
-  return new Ragdoll(pts, sticks, [H.pelvis, H.chest, H.head]);
+  return new Ragdoll(pts, sticks, [H.pelvis, H.chest, H.head], seed);
 }
 
 /** Upper-body / feet index groups for launch(). */
@@ -333,7 +348,7 @@ export function buildBeastRagdoll(spec: BeastSpec, radius: number, seed: number)
     sticks.push({ a: kneeI, b: footI, len: half, stiffness: 1 });
     legIdx.push({ anchor, knee: kneeI, foot: footI, side: Math.sign(leg.side) || 1 });
   }
-  const rag = new Ragdoll(pts, sticks, [0, 1, 2]);
+  const rag = new Ragdoll(pts, sticks, [0, 1, 2], seed);
   (rag as Ragdoll & { legIdx?: typeof legIdx }).legIdx = legIdx;
   return rag;
 }

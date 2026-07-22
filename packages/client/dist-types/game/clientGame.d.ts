@@ -1,5 +1,30 @@
 import { ChunkStore, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type EquippedItem, type S2CFx, type SkillXp, type StationType, type Vec2 } from '@devcraft/shared';
 import type { AbilityDef, AbilitySlot, Look } from '@devcraft/shared';
+/**
+ * A zero-latency predicted shot (v8). Spawned the instant the local
+ * fire gate passes (the same mirrored gate the server applies), flown
+ * client-side, and handed off to the authoritative projectile entity
+ * when it enters — matched by (ownerEid, firing seq). An unmatched
+ * tracer (misprediction: ammo desync, server-side cancel) fades out in
+ * a quarter second instead of lying about a hit.
+ */
+export interface OwnShot {
+    /** Input-frame seq at the predicted fire — the matching key. */
+    seq: number;
+    /** Same defId the server will broadcast ('archery', 'magic:ember'…). */
+    defId: string;
+    x: number;
+    y: number;
+    dirX: number;
+    dirY: number;
+    dir: number;
+    /** Tiles per second. */
+    speed: number;
+    /** Max flight distance, tiles. */
+    range: number;
+    /** performance.now() at spawn. */
+    bornAt: number;
+}
 export type InteractTarget = {
     kind: 'node';
     tx: number;
@@ -190,6 +215,25 @@ export declare class ClientGame {
         dir: number;
         style: string;
     }>;
+    /** Predicted own shots in flight, awaiting their server entity (v8). */
+    readonly ownShots: OwnShot[];
+    /**
+     * Matched tracer → entity handoffs. The renderer captures the visual
+     * offset on the entity's first draw and decays it (~90ms), so the
+     * predicted flight blends into the authoritative one seamlessly.
+     */
+    readonly projHandoffs: Map<number, {
+        shot: OwnShot;
+        ox: number;
+        oy: number;
+        capturedAt: number;
+    }>;
+    /** Local staff-cadence mirror (bolt-bolt-HEAVY, same shared laws). */
+    private staffReadyAt;
+    private boltStageLocal;
+    private boltGraceUntilMs;
+    /** Local mirror of the cast commitment window (holds basics back). */
+    private castFreezeUntilMs;
     /** NPC deaths this frame — drives the ragdoll + stuck-arrow scatter. */
     readonly npcDeaths: Array<{
         eid: EntityId;
@@ -285,6 +329,16 @@ export declare class ClientGame {
      * server stays authoritative about the arrow itself.
      */
     private trackOwnDraw;
+    /**
+     * Staff bolts fire while Attack is HELD, cadence-gated — mirror the
+     * server's bolt-bolt-HEAVY rhythm with the same shared functions so
+     * the predicted bolt and the real one agree on stage, speed, and
+     * recovery. A mispredicted bolt (rare cadence drift) simply never
+     * matches an entity and fades.
+     */
+    private trackOwnStaff;
+    /** Spawn a predicted tracer at the body, capped to a small roster. */
+    private predictShot;
     /** Connect; the server answers welcome (valid token) or authRequired. */
     connect(token: string | null): void;
     sendLogin(user: string, pass: string): void;

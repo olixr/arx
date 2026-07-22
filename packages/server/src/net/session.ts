@@ -128,7 +128,7 @@ export class Session {
       case 'input': {
         if (this.playerEid === null) return;
         if (!this.inputBucket.consume()) return; // drop silently; TCP bursts happen
-        this.game.queueInput(this.playerEid, sanitizeInputFrame(msg.frame));
+        this.game.queueInput(this.playerEid, sanitizeInputFrame(msg.frame), msg.viewMs);
         return;
       }
       case 'chat': {

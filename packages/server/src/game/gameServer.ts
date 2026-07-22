@@ -271,6 +271,9 @@ interface ProjectileComp {
   basic?: boolean;
   /** Full-draw arrows haste harder on hit. */
   fullDraw?: boolean;
+  /** Input-frame seq that fired this shot — broadcast in meta so the
+   *  owner's client can hand its predicted tracer off (v8). */
+  spawnSeq?: number;
   /** Status carried onto whatever this hits. */
   status?: StatusApply;
   /** Punches through targets instead of stopping at the first. */
@@ -422,6 +425,8 @@ interface PlayerComp {
   lastDodgeSeq: number;
   /** Ticks the bow has been drawn; 0 = not drawing. */
   drawTicks: number;
+  /** Client-reported adaptive interp delay, ms (v8) — exact lag comp. */
+  viewMs?: number;
   /** Stage of the previous melee swing (0/1/2). */
   comboStage: number;
   /** Swinging again before this tick continues the combo string. */
@@ -620,7 +625,9 @@ export class GameServer {
   /** How many ticks back this player's screen is showing NPCs. */
   private viewRewindTicks(player: PlayerComp): number {
     const rtt = player.session?.viewRttMs ?? 0;
-    const viewMs = rtt / 2 + GameServer.VIEW_INTERP_MS;
+    // v8 clients report their live adaptive interp delay; the constant
+    // is only the fallback for a client that hasn't reported yet.
+    const viewMs = rtt / 2 + (player.viewMs ?? GameServer.VIEW_INTERP_MS);
     return Math.max(0, Math.min(GameServer.HIST_TICKS - 1, Math.round(viewMs / TICK_MS)));
   }
 
@@ -1028,9 +1035,12 @@ export class GameServer {
 
   // ------------------------------------------------------------ intents
 
-  queueInput(eid: EntityId, frame: InputFrame): void {
+  queueInput(eid: EntityId, frame: InputFrame, viewMs?: number): void {
     const player = this.players.get(eid);
     if (!player) return;
+    // The client's self-reported interp delay (already clamped by the
+    // protocol parser) — makes melee rewind exact instead of assumed.
+    if (viewMs !== undefined) player.viewMs = viewMs;
     if (frame.seq <= player.lastProcessedSeq) return;
     const q = player.inputQueue;
     if (q.length > 0 && frame.seq <= q[q.length - 1]!.seq) return;
@@ -2330,7 +2340,7 @@ export class GameServer {
     return { id: worn.id, weapon };
   }
 
-  private tryPlayerAttack(eid: EntityId, player: PlayerComp, aim: number): void {
+  private tryPlayerAttack(eid: EntityId, player: PlayerComp, aim: number, seq: number): void {
     if (player.attackCooldown > 0) return;
     const equipped = this.equippedWeapon(player);
     if (process.env.COMBAT_DEBUG) {
@@ -2421,6 +2431,7 @@ export class GameServer {
         speed: (weapon.projectileSpeed ?? 12) * (heavy ? 0.8 : 1),
         distLeft: weapon.range,
         basic: true,
+        spawnSeq: seq,
         element: weapon.element,
         heavy: heavy || undefined,
         splashRadius: heavy ? HEAVY_BOLT_SPLASH : undefined,
@@ -5045,9 +5056,9 @@ export class GameServer {
       const stillCasting = this.tickCount < player.castFreezeUntilTick;
       const attackHeld = hasButton(frame.buttons, InputButton.Attack) && !stillCasting;
       if (style === 'archery') {
-        this.tickBowDraw(eid, player, equipped!.weapon, attackHeld, frame.aim);
+        this.tickBowDraw(eid, player, equipped!.weapon, attackHeld, frame.aim, frame.seq);
       } else if (attackHeld) {
-        this.tryPlayerAttack(eid, player, frame.aim);
+        this.tryPlayerAttack(eid, player, frame.aim, frame.seq);
       }
       frames++;
     }
@@ -5102,6 +5113,7 @@ export class GameServer {
     weapon: WeaponStats,
     attackHeld: boolean,
     aim: number,
+    seq: number,
   ): void {
     if (attackHeld) {
       if (player.drawTicks === 0) {
@@ -5142,6 +5154,7 @@ export class GameServer {
         distLeft: shot.range,
         basic: true,
         fullDraw,
+        spawnSeq: seq,
         // Biting Draw passive: a full draw carries the cold with it.
         status:
           fullDraw && this.hasPassive(player, 'chill_charged')
@@ -5312,6 +5325,10 @@ export class GameServer {
     if (proj) {
       const base = proj.heavy ? `${proj.style}_heavy` : proj.style;
       meta.defId = proj.element ? `${base}:${proj.element}` : base;
+      // Tracer handoff identity (v8): the owner's client matches its
+      // predicted shot to this entity by (ownerEid, seq).
+      meta.ownerEid = proj.ownerEid;
+      if (proj.spawnSeq !== undefined) meta.seq = proj.spawnSeq;
     }
     const summon = this.summons.get(eid);
     if (summon) meta.defId = `summon_${summon.kind}`;
