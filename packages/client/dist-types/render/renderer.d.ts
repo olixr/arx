@@ -771,6 +771,23 @@ export declare class Renderer {
     /** Growth scale for a tree/sapling item, advancing its animation. */
     private growthOf;
     /**
+     * Loot-chest lids ease over their hinge instead of popping between
+     * the closed and open tiles. Same clock pattern as growingTrees:
+     * main.ts kicks an ease on the tile patch, the painter reads its
+     * openness each frame, and while a key is live the ring-cache gate
+     * keeps that chest on the live outline pass (collectRaisedTiles).
+     */
+    private readonly chestEases;
+    /** Start a lid ease at this tile (fling open or quiet re-latch). */
+    addChestEase(tx: number, ty: number, dir: 'open' | 'close'): void;
+    /**
+     * Lid openness 0..1 for a chest tile, advancing its animation.
+     * Opening is a two-beat swing: the latch gives (a slow first lift)
+     * before the lid FLINGS past vertical and settles with growEase's
+     * overshoot. Closing is a shorter, sober fall back onto the rim.
+     */
+    private chestOpenness;
+    /**
      * TREE SPRITE CACHE: a mature tree's painted body re-bakes onto a
      * per-instance offscreen canvas every TREE_REBAKE_FRAMES frames
      * (staggered by a per-frame budget) and blits with ONE drawImage per
@@ -917,6 +934,54 @@ export declare class Renderer {
      * blit a ring-baked sprite (regrowth, felling shudder).
      */
     private treeBody;
+    /** Everything a chest painter needs for one frame. */
+    private static chestPose;
+    /**
+     * The revealed mouth: the body's own plan as a dark cavity — one
+     * bold lining band on the near wall, one sunlit near-rim lane.
+     */
+    private chestMouth;
+    /**
+     * The standing open lid: the lid's inner face as a square slab
+     * rising behind the box — frame color around a lining inset, a cap
+     * strip along the top. Bespoke trim is painted by the caller.
+     */
+    private chestStandingLid;
+    /**
+     * A moss slab: a low-poly rectangular patch — deep seat offset
+     * down-right, square body, one bold lit top strip. Never a blob.
+     */
+    private mossSlab;
+    /**
+     * WOOD — the traveller's trunk. Honest warm boards carried by two
+     * broad silver straps and a silver arris cap: the metal is the
+     * contrast, the wood stays quiet.
+     */
+    private drawChestWood;
+    /**
+     * MOSSY — the wayside elder. A batten-built chest with no metal
+     * left worth naming, being claimed one square slab of moss at a
+     * time. Blocky moss, blocky mushrooms, quiet wood.
+     */
+    private drawChestMossy;
+    /**
+     * IRON — the strongchest. Dark timber in an iron grip: corner
+     * columns, one massive belt, and a padlock the size of a fist.
+     * The lock IS the promise; it goes with the key that opens it.
+     */
+    private drawChestIron;
+    /**
+     * GILDED — the coffer. A stepped gold crown over a lacquer inlay:
+     * treasure-house work, all big faces and one set stone. The value
+     * ladder does the shining; the sparkles only visit.
+     */
+    private drawChestGilded;
+    /**
+     * BOSS — the black cache. A pedestal-set black mass in angular
+     * iron, fronted by a bone skull whose sockets smoulder while the
+     * hoard is still inside. Legendary is a silhouette, not a shimmer.
+     */
+    private drawChestBoss;
     /** Trees, rocks, stations — the object layer, redrawn with character. */
     private objectItem;
     /**

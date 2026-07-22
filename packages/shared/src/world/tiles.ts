@@ -179,6 +179,28 @@ export enum Tile {
    * slow (see WADE_SPEED_FACTOR) and loud; the shore's honest shortcut.
    */
   WaterShallow = 110,
+  /**
+   * Loot chests. Closed and open are separate tiles — the tile IS the
+   * state, so it syncs, persists, and animates off the ordinary tile
+   * patch with no new protocol. Interacting with a closed chest rolls
+   * its loot table and spills the take at its foot; an emptied chest
+   * stands open until the respawn queue quietly shuts it again.
+   */
+  /** A banded traveller's chest — plain wood under steel strapping. */
+  ChestWood = 111,
+  ChestWoodOpen = 112,
+  /** A dark ironbound strongchest — often padlocked; wants a key. */
+  ChestIron = 113,
+  ChestIronOpen = 114,
+  /** A gilded coffer — faceted gold over lacquer, treasure-house work. */
+  ChestGilded = 115,
+  ChestGildedOpen = 116,
+  /** A moss-grown wayside chest — old timber the forest is claiming. */
+  ChestMossy = 117,
+  ChestMossyOpen = 118,
+  /** The boss chest: black iron and a bone skull. Legendary-kept. */
+  ChestBoss = 119,
+  ChestBossOpen = 120,
 }
 
 export enum Detail {
@@ -353,6 +375,16 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.SaplingOak]: { name: 'oak sapling', solid: false, color: '#4f8a42', raised: true, topColor: '#2d6631' },
   [Tile.SaplingWillow]: { name: 'willow sapling', solid: false, color: '#4f8a42', raised: true, topColor: '#5a8a4a' },
   [Tile.SaplingYew]: { name: 'yew sapling', solid: false, color: '#4f8a42', raised: true, topColor: '#1e4028' },
+  [Tile.ChestWood]: { name: 'chest', solid: true, color: '#7a552e', raised: true, topColor: '#94693a' },
+  [Tile.ChestWoodOpen]: { name: 'open chest', solid: true, color: '#7a552e', raised: true, topColor: '#94693a' },
+  [Tile.ChestIron]: { name: 'strongchest', solid: true, color: '#4a4048', raised: true, topColor: '#5e5560' },
+  [Tile.ChestIronOpen]: { name: 'open strongchest', solid: true, color: '#4a4048', raised: true, topColor: '#5e5560' },
+  [Tile.ChestGilded]: { name: 'gilded coffer', solid: true, color: '#8a6218', raised: true, topColor: '#d9a441' },
+  [Tile.ChestGildedOpen]: { name: 'open gilded coffer', solid: true, color: '#8a6218', raised: true, topColor: '#d9a441' },
+  [Tile.ChestMossy]: { name: 'mossgrown chest', solid: true, color: '#5a5244', raised: true, topColor: '#5c6b46' },
+  [Tile.ChestMossyOpen]: { name: 'open mossgrown chest', solid: true, color: '#5a5244', raised: true, topColor: '#5c6b46' },
+  [Tile.ChestBoss]: { name: 'boss chest', solid: true, color: '#2b2635', raised: true, topColor: '#453f52' },
+  [Tile.ChestBossOpen]: { name: 'open boss chest', solid: true, color: '#2b2635', raised: true, topColor: '#453f52' },
 };
 
 /**
@@ -583,4 +615,56 @@ export function saplingOf(id: number): Tile | null {
 /** The grown tree a sapling becomes, or null if it isn't a sapling. */
 export function treeOfSapling(id: number): Tile | null {
   return TREE_OF_SAPLING.get(id as Tile) ?? null;
+}
+
+/**
+ * Loot chests: one law source for the five kinds and their two
+ * postures. The wood chest is the everyday find; the mossgrown chest
+ * is its forest-claimed elder; the ironbound strongchest is often
+ * locked and wants a brass key; the gilded coffer is treasure-house
+ * work; and the black boss chest holds the champion's cache behind
+ * the champion.
+ */
+export type ChestKind = 'wood' | 'iron' | 'gilded' | 'mossy' | 'boss';
+
+export interface ChestInfo {
+  kind: ChestKind;
+  open: boolean;
+}
+
+const CHEST_INFO = new Map<Tile, ChestInfo>([
+  [Tile.ChestWood, { kind: 'wood', open: false }],
+  [Tile.ChestWoodOpen, { kind: 'wood', open: true }],
+  [Tile.ChestIron, { kind: 'iron', open: false }],
+  [Tile.ChestIronOpen, { kind: 'iron', open: true }],
+  [Tile.ChestGilded, { kind: 'gilded', open: false }],
+  [Tile.ChestGildedOpen, { kind: 'gilded', open: true }],
+  [Tile.ChestMossy, { kind: 'mossy', open: false }],
+  [Tile.ChestMossyOpen, { kind: 'mossy', open: true }],
+  [Tile.ChestBoss, { kind: 'boss', open: false }],
+  [Tile.ChestBossOpen, { kind: 'boss', open: true }],
+]);
+
+/** Every chest tile, closed or open. */
+export const CHEST_TILES: ReadonlySet<Tile> = new Set(CHEST_INFO.keys());
+
+/** Kind + posture of a chest tile, or null for anything else. */
+export function chestInfo(id: number): ChestInfo | null {
+  return CHEST_INFO.get(id as Tile) ?? null;
+}
+
+/** The closed tile for a chest kind. */
+export function closedChestTile(kind: ChestKind): Tile {
+  for (const [tile, info] of CHEST_INFO) {
+    if (info.kind === kind && !info.open) return tile;
+  }
+  return Tile.ChestWood;
+}
+
+/** The open tile for a chest kind. */
+export function openChestTile(kind: ChestKind): Tile {
+  for (const [tile, info] of CHEST_INFO) {
+    if (info.kind === kind && info.open) return tile;
+  }
+  return Tile.ChestWoodOpen;
 }

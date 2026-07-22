@@ -1,4 +1,5 @@
 import {
+  CHEST_TILES,
   CHUNK_SIZE,
   Detail,
   Tile,
@@ -258,7 +259,8 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
       t === Tile.TanningRack ||
       t === Tile.Loom ||
       t === Tile.CarvingBench ||
-      t === Tile.EnchantingTable
+      t === Tile.EnchantingTable ||
+      CHEST_TILES.has(t)
     ) {
       return nearestFloor(ground, tx, ty);
     }

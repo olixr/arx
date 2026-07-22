@@ -150,6 +150,9 @@ export function buildBramblewick(): ZoneDef {
   b.set(69, 53, Tile.CarvingBench);
   b.set(66, 55, Tile.Alembic);
   b.set(62, 55, Tile.Barrel).set(70, 55, Tile.Crate);
+  // The yard's traveller's chest — the town's first taste of chest
+  // loot, restocked on its own quiet clock.
+  b.set(64, 55, Tile.ChestWood);
 
   // The Arcanum — the enchanter's stone-floored study nook east of the
   // crafters' yard: enchanting table flanked by a bookshelf wall and a

@@ -32,6 +32,14 @@ export function buildGloomhollow(): ZoneDef {
   b.set(12, 25, Tile.RockCopper);
   b.set(37, 17, Tile.RockIron);
 
+  // Chests of the cave: a mossgrown chest rotting by the flooded
+  // hollow, a traveller's chest dragged into the great chamber, and
+  // an ironbound strongchest deep in the bone pit — bring a brass
+  // key off the skeletons that guard it.
+  b.set(24, 19, Tile.ChestWood);
+  b.set(44, 18, Tile.ChestIron);
+  b.set(10, 44, Tile.ChestMossy);
+
   // A dark pool in the flooded hollow — a wadeable rim, a black middle.
   b.fillEllipse(13, 41, 3, 2, Tile.WaterShallow);
   b.fillEllipse(13, 41, 2, 1, Tile.Water);

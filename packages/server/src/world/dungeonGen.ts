@@ -90,6 +90,20 @@ export function generateDelve(seed: number, origin: Vec2, returnTo: Vec2): Delve
   const entryRoom = rooms[0]!;
   const lastRoom = rooms[rooms.length - 1]!;
 
+  // The treasure ladder of the delve: a mossgrown chest forgotten in
+  // an early room, a gilded coffer glinting in the second-deepest,
+  // and the black boss chest against the boss room's far wall — the
+  // champion stands between you and it.
+  if (rooms.length > 3) {
+    const earlyRoom = rooms[1 + (Math.abs(seed) % (rooms.length - 3))]!;
+    ground[(earlyRoom.y + earlyRoom.h - 1) * SIZE + earlyRoom.cx] = Tile.ChestMossy;
+  }
+  const deepRoom = rooms[rooms.length - 2];
+  if (deepRoom && rooms.length > 2) {
+    ground[(deepRoom.y + deepRoom.h - 1) * SIZE + deepRoom.cx] = Tile.ChestGilded;
+  }
+  ground[(lastRoom.y + lastRoom.h - 1) * SIZE + lastRoom.cx] = Tile.ChestBoss;
+
   // Way out where you land.
   ground[entryRoom.cy * SIZE + entryRoom.cx] = Tile.PortalUp;
   const portals: PortalDef[] = [

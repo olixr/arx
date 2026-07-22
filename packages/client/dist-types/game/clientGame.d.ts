@@ -1,4 +1,4 @@
-import { ChunkStore, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type EquippedItem, type S2CFx, type SkillXp, type StationType, type Vec2 } from '@devcraft/shared';
+import { ChunkStore, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type EquippedItem, type S2CFx, type SkillXp, type StationType, type Vec2 } from '@devcraft/shared';
 import type { AbilityDef, AbilitySlot, Look } from '@devcraft/shared';
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
@@ -66,6 +66,11 @@ export type InteractTarget = {
     tx: number;
     ty: number;
     eid: EntityId;
+} | {
+    kind: 'chest';
+    tx: number;
+    ty: number;
+    chest: ChestKind;
 };
 import { InterpBuffer } from '../net/interpolation.js';
 import { Predictor } from '../net/prediction.js';

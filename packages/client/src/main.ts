@@ -1,4 +1,4 @@
-import { EntityKind, PoseState, ROCK_TILES, TREE_TILES, Tile, tileDef, treeOfSapling } from '@devcraft/shared';
+import { EntityKind, PoseState, ROCK_TILES, TREE_TILES, Tile, chestInfo, tileDef, treeOfSapling } from '@devcraft/shared';
 import { BUILDABLES, buildableGround, itemDef, npcDef } from '@devcraft/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
@@ -187,6 +187,7 @@ const PROMPT_LABELS: Record<string, string> = {
   node: 'Gather',
   loot: 'Pick up',
   bank: 'Open Bank',
+  chest: 'Open Chest',
   shop: 'Browse Wares',
   portal: 'Enter',
   fire: 'Cook',
@@ -751,6 +752,38 @@ renderer.onSplash = (x, y) => {
 // A felled tree topples away from whoever cut it, groans, and lands
 // with a thud you can feel.
 game.onTileChange = (tx, ty, prev, next) => {
+  // Loot chests: the tile swap IS the state change — the renderer
+  // eases the lid over its hinge, and the box breathes out a puff of
+  // whatever it has been keeping (dust, must, or money-light).
+  const prevChest = prev === undefined ? null : chestInfo(prev);
+  const nextChest = chestInfo(next);
+  if (prevChest && nextChest && !prevChest.open && nextChest.open) {
+    renderer.addChestEase(tx, ty, 'open');
+    sfx.chestOpen();
+    const motes: Record<string, string[]> = {
+      wood: ['#c9a76a', '#8a6534', '#e0d4b8'],
+      iron: ['#8f96a3', '#5e5560', '#c9c4cf'],
+      gilded: ['#ffd06e', '#f2e0a0', '#d9a441'],
+      mossy: ['#7fae62', '#a4c98a', '#5c6b46'],
+      boss: ['#ff8a3c', '#6e6879', '#e0d6c2'],
+    };
+    renderer.particles.burst(tx + 0.5, ty + 0.35, 9, motes[nextChest.kind]!, {
+      speed: 0.7,
+      life: 0.9,
+      size: 0.05,
+      up: true,
+      gravity: 1.4,
+      drag: 1.6,
+      spread: 2.2,
+    });
+    return;
+  }
+  if (prevChest && nextChest && prevChest.open && !nextChest.open) {
+    // The respawn queue shutting a forgotten lid — soft, no fanfare.
+    renderer.addChestEase(tx, ty, 'close');
+    sfx.chestClose();
+    return;
+  }
   if (prev === Tile.Stump && treeOfSapling(next) !== null) {
     // Regrowth stage 1: a sapling sprouts from the stump under a
     // soft spray of leaves and turned earth.
@@ -888,6 +921,10 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       break;
     case 'crop':
       // The server decides: harvest if ripe, water if thirsty, else status.
+      game.interact(target.tx, target.ty);
+      break;
+    case 'chest':
+      // The server decides: locked, or a lid swings and loot spills.
       game.interact(target.tx, target.ty);
       break;
     case 'npc':

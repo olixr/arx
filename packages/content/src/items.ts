@@ -504,6 +504,15 @@ const defs: ItemDef[] = [
     code: 'Vt',
   },
   {
+    id: 'brass_key',
+    name: 'Brass key',
+    stackable: true,
+    value: 65,
+    desc: 'Heavy, cold, and exactly the shape of a strongchest\'s appetite. Spent in the turning.',
+    color: '#c9a23e',
+    code: 'Bk',
+  },
+  {
     id: 'snare_kit',
     name: 'Snare kit',
     stackable: false,

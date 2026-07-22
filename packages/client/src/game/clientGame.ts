@@ -17,11 +17,13 @@ import {
   chargedShot,
   clockHours,
   drawCharge,
+  chestInfo,
   findPath,
   nextComboStage,
   snapShot,
   stationAtTile,
   Tile,
+  type ChestKind,
   type ChunkData,
   type EntityId,
   type EntityMeta,
@@ -78,7 +80,8 @@ export type InteractTarget =
   | { kind: 'plot'; tx: number; ty: number }
   | { kind: 'crop'; tx: number; ty: number; mature: boolean }
   | { kind: 'npc'; tx: number; ty: number; eid: EntityId; verb: string }
-  | { kind: 'loot'; tx: number; ty: number; eid: EntityId };
+  | { kind: 'loot'; tx: number; ty: number; eid: EntityId }
+  | { kind: 'chest'; tx: number; ty: number; chest: ChestKind };
 import { Connection } from '../net/connection.js';
 import { InterpBuffer } from '../net/interpolation.js';
 import { Predictor } from '../net/prediction.js';
@@ -898,6 +901,10 @@ export class ClientGame {
     }
     const station = stationAtTile(ground);
     if (station) return { kind: 'station', tx, ty, station };
+    // Loot chests: a closed chest offers itself; an open one has
+    // already told its story and stays quiet.
+    const chest = chestInfo(ground);
+    if (chest && !chest.open) return { kind: 'chest', tx, ty, chest: chest.kind };
     if (ground === Tile.BankChest) return { kind: 'bank', tx, ty };
     if (ground === Tile.ShopCounter) return { kind: 'shop', tx, ty };
     if (ground === Tile.PortalDown || ground === Tile.PortalUp) return { kind: 'portal', tx, ty };

@@ -1559,6 +1559,40 @@ const PAINTERS: Record<string, IconPainter> = {
     poly(c, '#8ac4e8', [[0.5, 0.14], [0.6, 0.26], [0.5, 0.38], [0.4, 0.26]]);
     poly(c, '#c8e6f8', [[0.5, 0.14], [0.55, 0.26], [0.45, 0.26]]);
   },
+  key: (c, col) => {
+    // A warded strongchest key, bow up, laid on the diagonal so the
+    // teeth read at 44px. Chunky flat masses, never thin scrollwork.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(Math.PI * 0.23);
+    c.translate(-0.5, -0.5);
+    // The bow: a squared ring with a diamond void.
+    c.fillStyle = OUTLINE;
+    c.fillRect(0.335, 0.045, 0.33, 0.33);
+    c.fillStyle = col;
+    c.fillRect(0.365, 0.075, 0.27, 0.27);
+    c.fillStyle = shade(col, 24);
+    c.fillRect(0.365, 0.075, 0.27, 0.075);
+    c.fillStyle = OUTLINE;
+    poly(c, OUTLINE, [[0.5, 0.115], [0.585, 0.21], [0.5, 0.305], [0.415, 0.21]]);
+    // The shank, with a collar where the bow meets it.
+    c.fillStyle = OUTLINE;
+    c.fillRect(0.435, 0.36, 0.13, 0.5);
+    c.fillStyle = col;
+    c.fillRect(0.455, 0.375, 0.09, 0.475);
+    c.fillStyle = shade(col, 22);
+    c.fillRect(0.455, 0.375, 0.036, 0.475);
+    c.fillStyle = shade(col, -18);
+    c.fillRect(0.435, 0.42, 0.13, 0.045);
+    // The teeth: two hard steps off the tip.
+    c.fillStyle = OUTLINE;
+    c.fillRect(0.545, 0.7, 0.17, 0.075);
+    c.fillRect(0.545, 0.8, 0.24, 0.075);
+    c.fillStyle = shade(col, -10);
+    c.fillRect(0.56, 0.715, 0.135, 0.045);
+    c.fillRect(0.56, 0.815, 0.205, 0.045);
+    c.restore();
+  },
   nuggets: (c, col) => {
     // Fat blocky nuggets of the good stuff, stacked like a hoard.
     oreChunk(c, 0.36, 0.62, 0.33, 0.12, col);
@@ -3141,6 +3175,7 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   bloomstone: { icon: 'bloomstone', color: '#7ac46a' },
   // Enchanting reagents — dust on the nugget pile, essences on the gem.
   arcane_dust: { icon: 'nuggets', color: '#b8a8e0' },
+  brass_key: { icon: 'key', color: '#c9a23e' },
   ember_essence: { icon: 'essence', color: '#e8885c' },
   frost_essence: { icon: 'essence', color: '#b8e0f4' },
   storm_essence: { icon: 'essence', color: '#f0eab8' },

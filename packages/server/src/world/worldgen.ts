@@ -395,6 +395,9 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
           : flora < 0.008 ? Tile.WildSagewort
           : flora < 0.012 && moisture > 0.75 ? Tile.WildMoonbell
           : flora < 0.017 ? Tile.FibrePlant
+          // A traveller's chest abandoned under the canopy — the deep
+          // woods' rare find; regen restocks it like any other node.
+          : flora < 0.0185 ? Tile.ChestWood
           : Tile.Grass;
         if (ground === Tile.Grass && roll > 0.93) detail = Detail.Mushroom;
       } else if (moisture < 0.34) {

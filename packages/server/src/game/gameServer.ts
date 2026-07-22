@@ -35,6 +35,11 @@ import {
   isRarityTier,
   saplingOf,
   Tile,
+  chestInfo,
+  closedChestTile,
+  openChestTile,
+  type ChestInfo,
+  type ChestKind,
 } from '@devcraft/shared';
 import {
   BUILDABLES,
@@ -1091,6 +1096,16 @@ export class GameServer {
       return;
     }
 
+    // Loot chests: a closed chest rolls its table and spills the take
+    // at the opener's feet, then stands open until the respawn queue
+    // quietly shuts it again. The tile IS the state — closed and open
+    // are different tiles, so posture syncs like any other patch.
+    const chest = ground === undefined ? null : chestInfo(ground);
+    if (chest) {
+      this.interactChest(eid, player, tx, ty, chest, sys);
+      return;
+    }
+
     // Garden plots: planting runs through the seed-picker → C2SPlant.
     if (ground === Tile.Tilled) return;
     // A planted crop: water it, harvest it, or hear how it's doing.
@@ -1132,6 +1147,81 @@ export class GameServer {
     player.action = { kind: 'gather', tx, ty, node, ticksLeft: ticks };
     this.poses.set(eid, PoseState.Gather);
     player.session.sendJson({ t: 'action', state: 'start', ticks });
+  }
+
+  /**
+   * The chest ladder: what each kind pays, at what level, and how long
+   * it stands open before the respawn queue shuts it for the next
+   * finder. Only the ironbound strongchest is locked — the key is
+   * spent in the turning.
+   */
+  private static readonly CHEST_LAWS: Record<
+    ChestKind,
+    { level: number; table: string; recloseSec: number; key?: string }
+  > = {
+    wood: { level: 4, table: 'chest_wood', recloseSec: 240 },
+    mossy: { level: 8, table: 'chest_mossy', recloseSec: 300 },
+    iron: { level: 12, table: 'chest_iron', recloseSec: 420, key: 'brass_key' },
+    gilded: { level: 16, table: 'chest_gilded', recloseSec: 600 },
+    boss: { level: 20, table: 'chest_boss', recloseSec: 900 },
+  };
+
+  private interactChest(
+    eid: EntityId,
+    player: PlayerComp,
+    tx: number,
+    ty: number,
+    chest: ChestInfo,
+    sys: (text: string) => void,
+  ): void {
+    if (chest.open) {
+      sys('Empty — nothing left but the smell of old air.');
+      return;
+    }
+    const law = GameServer.CHEST_LAWS[chest.kind];
+    if (law.key) {
+      if (countItem(player.inventory, law.key) < 1) {
+        sys('Locked fast. The hasp wants a brass key.');
+        return;
+      }
+      removeItem(player.inventory, law.key, 1);
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      sys('The key turns once, and stays turned.');
+    }
+    const pos = this.positions.get(eid);
+    if (!pos) return;
+    // The take lands between chest and opener — always reachable, and
+    // the merge/label pipeline handles the pile from there.
+    const cx = tx + 0.5;
+    const cy = ty + 0.5;
+    let dx = pos.x - cx;
+    let dy = pos.y - cy;
+    const d = Math.hypot(dx, dy) || 1;
+    dx /= d;
+    dy /= d;
+    const now = Date.now();
+    for (const drop of rollLoot(law.table, { level: law.level, rand: Math.random })) {
+      this.placeDrop(
+        drop.item,
+        drop.qty,
+        cx + dx * 0.95 + (Math.random() - 0.5) * 0.7,
+        cy + dy * 0.95 + (Math.random() - 0.5) * 0.7,
+        {
+          ownerEid: eid,
+          ownerUntil: now + 30_000,
+          despawnAt: now + 300_000,
+          pickupAfter: now + 400,
+          roll: drop.roll,
+        },
+      );
+    }
+    this.setWorldTile(tx, ty, openChestTile(chest.kind));
+    this.respawnQueue.push({
+      at: now + law.recloseSec * 1000,
+      tx,
+      ty,
+      tile: closedChestTile(chest.kind),
+    });
   }
 
   /** Best gathering-speed multiplier across active buffs. */
@@ -4941,6 +5031,40 @@ export class GameServer {
         placed++;
       }
       player.session?.sendJson({ t: 'chat', channel: 'system', text: `Spawned ${def.name} ×${placed}.` });
+      return;
+    }
+    if (config.devCommands && text.startsWith('/spawnchest')) {
+      // /spawnchest [wood|iron|gilded|mossy] — a closed chest on the
+      // nearest open tile beside the caller. Transient (not a built
+      // tile): chunk regen sweeps it, which is what staging wants.
+      const [, kindRaw] = text.split(/\s+/);
+      const kind = (kindRaw ?? 'wood') as ChestKind;
+      if (!['wood', 'mossy', 'iron', 'gilded', 'boss'].includes(kind)) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: '/spawnchest [wood|mossy|iron|gilded|boss]',
+        });
+        return;
+      }
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      for (let tries = 0; tries < 14; tries++) {
+        const a = (tries / 14) * Math.PI * 2;
+        const r = 1.4 + Math.floor(tries / 7) * 0.9;
+        const tx = Math.floor(pos.x + Math.cos(a) * r);
+        const ty = Math.floor(pos.y + Math.sin(a) * r);
+        if (this.world.isSolid(tx, ty)) continue;
+        if (Math.floor(pos.x) === tx && Math.floor(pos.y) === ty) continue;
+        this.setWorldTile(tx, ty, closedChestTile(kind));
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `A ${kind} chest lands at ${tx}, ${ty}.`,
+        });
+        return;
+      }
+      player.session?.sendJson({ t: 'chat', channel: 'system', text: 'No open ground nearby.' });
       return;
     }
     for (const s of this.sessions) {
