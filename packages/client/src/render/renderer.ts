@@ -588,13 +588,15 @@ export class Renderer {
       this.fxBeats.splice(i, 1);
       if (b.kind === 'dust') {
         // The aftershock: a low rolling dust wave along the rim —
-        // ground-sorted billows that drift out and die slow.
+        // ground-sorted billows that drift out and die slow. The haze
+        // carries the family's tone (frost breathes pale, fire sooty).
         const n = Math.min(14, 6 + Math.round(b.r * 5));
+        const haze = shade(b.deep, -12);
         for (let k = 0; k < n; k++) {
           const a = (k / n) * Math.PI * 2 + Math.random() * 0.5;
           const rx = b.x + Math.cos(a) * b.r * 0.75;
           const ry = b.y + Math.sin(a) * b.r * 0.75 * Renderer.FX_SQUASH;
-          this.particles.burst(rx, ry, 1, [b.deep, '#4a4252', '#3a3442'], {
+          this.particles.burst(rx, ry, 1, [b.deep, haze, b.mid], {
             speed: 0.9,
             life: 1.1,
             size: 0.13,
@@ -15908,13 +15910,19 @@ export class Renderer {
           const s = sc * (0.09 + rand() * 0.15);
           ctx.fillRect(p.x + Math.cos(a) * rr - s / 2, p.y + Math.sin(a) * rr * squash - s / 2, s, s * 0.7);
         }
-        // The scorch halo — a faint burnt ring around the field.
+        // The scorch halo — burnt patches hugging the rim, never a
+        // drawn circle: the fire licked outward unevenly.
         ctx.globalAlpha = 0.3 * fade;
         ctx.strokeStyle = '#241610';
-        ctx.lineWidth = Math.max(2, sc * 0.07);
-        ctx.beginPath();
-        ctx.ellipse(p.x, p.y, rPx * 0.95 * grow, rPx * 0.95 * grow * squash, 0, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.lineWidth = Math.max(2.5, sc * 0.09);
+        for (let i = 0; i < 5; i++) {
+          const a0 = rand() * Math.PI * 2;
+          const span = 0.5 + rand() * 0.9;
+          const rr = rPx * (0.88 + rand() * 0.16) * grow;
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y, rr, rr * squash, 0, a0, a0 + span);
+          ctx.stroke();
+        }
         // Live coals: each has its own pulse clock, dying as it cools.
         for (let i = 0; i < 6; i++) {
           const a = rand() * Math.PI * 2;
