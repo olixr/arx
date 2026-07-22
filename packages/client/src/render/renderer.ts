@@ -67,6 +67,7 @@ import {
 } from './ragdoll.js';
 import { BLOB_M, chamferRect, facetBlob, facetCircle, unitBlob } from './shapes.js';
 import { Particles } from './particles.js';
+import { Debris, type SmashKind } from './debris.js';
 import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
 import { paintTree, treeModel, type TreeModel } from './trees.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
@@ -404,6 +405,8 @@ interface DrawItem {
 export class Renderer {
   readonly camera = new Camera();
   readonly particles = new Particles();
+  /** Smashed-prop chunk bodies — pooled, wall-aware, self-clearing. */
+  readonly debris = new Debris();
   private readonly grass = new GrassSystem();
   private readonly lighting = new LightingSystem();
   /** Derived building-interior regions (cutaway, facades, windows). */
@@ -2179,6 +2182,16 @@ export class Renderer {
       items.push({
         sortY: p.y,
         draw: () => this.particles.drawOne(this.ctx, p, this.liftedWTS, this.camera.scale),
+      });
+    }
+    // Smashed-prop chunks are world matter: they y-sort with the scene
+    // (a stave that lands north of a table paints under it) and test
+    // the live collision field so flying wood thuds off walls.
+    this.debris.update(this.frameDt, (x, y) => pointHitsSolid(game.world, x, y));
+    for (const c of this.debris.chunks()) {
+      items.push({
+        sortY: c.y + 0.02,
+        draw: () => this.debris.drawOne(this.ctx, c, this.liftedWTS, this.camera.scale),
       });
     }
     items.sort((a, b) => a.sortY - b.sortY);
@@ -5959,6 +5972,38 @@ export class Renderer {
   /** Start a lid ease at this tile (fling open or quiet re-latch). */
   addChestEase(tx: number, ty: number, dir: 'open' | 'close'): void {
     this.chestEases.set(`${tx},${ty}`, { dir, born: performance.now() });
+  }
+
+  /**
+   * A destructible prop bursting at (wx,wy): chunk bodies fly WITH
+   * the blow (`dir` is the impact heading from the server fx), plus a
+   * rolling ground-dust wave and a spray of splinter streaks. All
+   * theatre — the tile patch right behind the fx is the truth.
+   */
+  smashProp(wx: number, wy: number, dir: number, kind: SmashKind): void {
+    this.debris.smash(wx, wy, dir, kind);
+    // Wood dust rolls out low along the blow and billows to a stop.
+    this.particles.burst(wx, wy, 10, ['#8a6534', '#6f4d26', '#c9a76a'], {
+      speed: 1.5,
+      life: 0.7,
+      size: 0.07,
+      dir,
+      spread: 1.7,
+      gravity: 0,
+      drag: 2.4,
+      grow: 0.28,
+      ground: true,
+    });
+    // Splinters spit fast and die young.
+    this.particles.burst(wx, wy - 0.25, 8, ['#c9a76a', '#a5793f', '#e0d4b8'], {
+      speed: 3.6,
+      life: 0.38,
+      size: 0.05,
+      dir,
+      spread: 1.0,
+      gravity: 7,
+      shape: 'streak',
+    });
   }
 
   /**

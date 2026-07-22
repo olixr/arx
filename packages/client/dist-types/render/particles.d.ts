@@ -1,4 +1,18 @@
-/** Tiny pooled particle system — squares only, hard edges, no blur. */
+/**
+ * Pooled particle engine — the combat-FX workhorse.
+ *
+ * Everything stays on brand: hard-edged quads, no blur, no gradients.
+ * Three silhouettes cover the whole vocabulary:
+ *  - square: the classic chunk (debris, dust, coals)
+ *  - streak: a velocity-stretched sliver (sparks, rain, speed lines)
+ *  - shard:  a spinning slab (ice, bone, leaves — tumbling matter)
+ *
+ * Perf discipline: live particles are swap-removed and dead objects
+ * recycled through a free list — zero allocation once the pool warms.
+ * At the cap, new spawns overwrite a rotating slot instead of pushing;
+ * a detonation storm can never grow the heap or the draw bill.
+ */
+export declare const PARTICLE_CAP = 1400;
 export interface Particle {
     x: number;
     y: number;
@@ -13,6 +27,16 @@ export interface Particle {
     drag: number;
     /** 0 = shrink over life (default); >0 = grow by this many tiles/sec. */
     grow: number;
+    /** 0 square, 1 streak (velocity-stretched), 2 shard (spinning slab). */
+    shape: number;
+    /** Shard spin rate, rad/s (shards only). */
+    spin: number;
+    /** Shard orientation, advanced by spin. */
+    rot: number;
+    /** Strobe weight 0..1 — embers and arcs shimmer, dust doesn't. */
+    flicker: number;
+    /** Deterministic phase so flicker never syncs across a burst. */
+    phase: number;
     /**
      * Ground-hugging particles (footfall dust) join the renderer's
      * y-sort as world items instead of the overlay pass — a trail left
@@ -20,24 +44,34 @@ export interface Particle {
      */
     ground: boolean;
 }
+export interface BurstOpts {
+    speed?: number;
+    life?: number;
+    size?: number;
+    gravity?: number;
+    up?: boolean;
+    /** Emit in a cone around this angle (radians) instead of a circle. */
+    dir?: number;
+    spread?: number;
+    /** Per-second velocity damping (dust rolls out and stops). */
+    drag?: number;
+    /** Tiles/sec the block grows instead of shrinking (billowing dust). */
+    grow?: number;
+    /** Y-sort with the world (ground dust) instead of drawing on top. */
+    ground?: boolean;
+    /** Silhouette: 'square' (default) | 'streak' | 'shard'. */
+    shape?: 'square' | 'streak' | 'shard';
+    /** Shard tumble rate, rad/s. */
+    spin?: number;
+    /** Strobe weight 0..1 — embers/arcs shimmer as they live. */
+    flicker?: number;
+}
 export declare class Particles {
     private readonly pool;
-    burst(x: number, y: number, count: number, colors: string[], opts?: {
-        speed?: number;
-        life?: number;
-        size?: number;
-        gravity?: number;
-        up?: boolean;
-        /** Emit in a cone around this angle (radians) instead of a circle. */
-        dir?: number;
-        spread?: number;
-        /** Per-second velocity damping (dust rolls out and stops). */
-        drag?: number;
-        /** Tiles/sec the block grows instead of shrinking (billowing dust). */
-        grow?: number;
-        /** Y-sort with the world (ground dust) instead of drawing on top. */
-        ground?: boolean;
-    }): void;
+    private readonly free;
+    private capCursor;
+    private take;
+    burst(x: number, y: number, count: number, colors: string[], opts?: BurstOpts): void;
     update(dt: number): void;
     /** The overlay pass: everything airborne. Ground particles are
      * skipped here — the renderer y-sorts them into the world. */

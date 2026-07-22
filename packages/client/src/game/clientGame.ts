@@ -808,14 +808,17 @@ export class ClientGame {
         break;
       }
       case 'fx': {
-        // A door rattle is scenery feedback, not combat VFX — hand it
-        // straight to the fx hook without joining the ability list.
-        if (msg.kind === 'rattle') {
+        // Door rattles and prop smashes are scenery feedback, not
+        // combat VFX — hand them straight to the fx hook without
+        // joining the ability list.
+        if (msg.kind === 'rattle' || msg.kind === 'smash') {
           this.onFx?.({
             kind: msg.kind,
             x: msg.x,
             y: msg.y,
             radius: msg.radius,
+            dir: msg.dir,
+            id: msg.id,
             bornAt: performance.now(),
           });
           break;

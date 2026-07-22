@@ -748,3 +748,63 @@ export function openChestTile(kind: ChestKind): Tile {
   }
   return Tile.ChestWoodOpen;
 }
+
+/**
+ * Destructible props: the clutter you can SMASH. One swing (or a
+ * spent arrow) bursts the prop into client-side debris and the tile
+ * becomes the floor beneath it — the tile IS the state, exactly the
+ * chest/door law, so collision, pathing, and lamplight all follow the
+ * ordinary tile patch. The respawn queue quietly stands the prop back
+ * up a few minutes later, never onto a body and never over something
+ * newly built there.
+ */
+export type DestructibleKind = 'barrel' | 'crate' | 'goods' | 'chair' | 'table' | 'bench';
+
+export interface DestructibleInfo {
+  kind: DestructibleKind;
+  /** Seconds of satisfying absence before the prop stands back up. */
+  respawnSec: number;
+}
+
+const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
+  [Tile.Barrel, { kind: 'barrel', respawnSec: 180 }],
+  [Tile.Crate, { kind: 'crate', respawnSec: 180 }],
+  [Tile.CrateGoods, { kind: 'goods', respawnSec: 240 }],
+  [Tile.Chair, { kind: 'chair', respawnSec: 150 }],
+  [Tile.Table, { kind: 'table', respawnSec: 240 }],
+  [Tile.Bench, { kind: 'bench', respawnSec: 180 }],
+]);
+
+/** Every smashable prop tile. */
+export const DESTRUCTIBLE_TILES: ReadonlySet<Tile> = new Set(DESTRUCTIBLE_INFO.keys());
+
+/** Break-up kind + respawn law of a destructible prop, or null. */
+export function destructibleInfo(id: number): DestructibleInfo | null {
+  return DESTRUCTIBLE_INFO.get(id as Tile) ?? null;
+}
+
+/**
+ * The floor a prop stands on — the SAME law the client uses to bake
+ * the underlay beneath prop tiles, hoisted here so a smashed barrel
+ * reveals exactly the floor the player was already seeing. Ring 1
+ * first, then ring 2 (diagonals + two-out: a table hemmed in by its
+ * own chairs still finds the room's boards), grass as the open-air
+ * fallback.
+ */
+export function nearestFloorTile(
+  ground: (tx: number, ty: number) => number | undefined,
+  tx: number,
+  ty: number,
+): Tile {
+  const isFloor = (t: number | undefined) =>
+    t === Tile.WoodFloor || t === Tile.StoneFloor || t === Tile.CaveFloor || t === Tile.Dirt;
+  for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]] as const) {
+    const t = ground(tx + dx, ty + dy);
+    if (isFloor(t)) return t as Tile;
+  }
+  for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1], [0, 2], [2, 0], [-2, 0], [0, -2]] as const) {
+    const t = ground(tx + dx, ty + dy);
+    if (isFloor(t)) return t as Tile;
+  }
+  return Tile.Grass;
+}

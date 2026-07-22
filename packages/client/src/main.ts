@@ -3,6 +3,7 @@ import { BUILDABLES, buildableGround, itemDef, npcDef } from '@devcraft/content'
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
 import { Renderer } from './render/renderer.js';
+import type { SmashKind } from './render/debris.js';
 import { ChatUI } from './ui/chat.js';
 import { Hotbar } from './ui/hotbar.js';
 import { Panels } from './ui/panels.js';
@@ -615,6 +616,16 @@ game.onFx = (fx) => {
     // knocks — scenery feedback, no camera punch.
     renderer.addDoorEase(Math.floor(fx.x), Math.floor(fx.y), 'shake');
     if (dist < 12) sfx.doorRattle();
+    return;
+  }
+  if (fx.kind === 'smash') {
+    // A prop bursting: the debris theatre is all client-side, keyed
+    // off this one event — the tile patch right behind it is the truth.
+    const kind = (fx.id ?? 'crate') as SmashKind;
+    renderer.smashProp(fx.x, fx.y, fx.dir ?? 0, kind);
+    if (dist < 14) sfx.propSmash(kind === 'barrel');
+    if (dist < 6) renderer.shake(kind === 'table' ? 3.2 : 2.2);
+    if (dist < 2.5) input.rumble(0.32, 0.5, 90);
     return;
   }
   const punch = fxStyleFor(fx.id, fx.color).punch;

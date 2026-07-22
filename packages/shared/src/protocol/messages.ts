@@ -403,7 +403,14 @@ export interface S2CFx {
     /** A lingering hazard zone living `ticks` at (x,y). */
     | 'field'
     /** A locked door refusing at (x,y) — the leaf shudders in its frame. */
-    | 'rattle';
+    | 'rattle'
+    /**
+     * A destructible prop bursting at (x,y). `dir` is the impact
+     * heading (away from the smasher — debris flies WITH the blow),
+     * `id` the DestructibleKind so the client picks its break-up kit
+     * without waiting on the tile patch that follows.
+     */
+    | 'smash';
   x: number;
   y: number;
   radius: number;

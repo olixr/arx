@@ -8,7 +8,10 @@ import {
   Tile,
   chestInfo,
   closedChestTile,
+  destructibleInfo,
+  DESTRUCTIBLE_TILES,
   doorInfo,
+  nearestFloorTile,
   openChestTile,
   openDoorTile,
   shutDoorTile,
@@ -76,4 +79,57 @@ test('non-door tiles report null', () => {
   assert.equal(doorInfo(Tile.ArchStone), null);
   assert.equal(shutDoorTile(Tile.WallStone), null);
   assert.equal(openDoorTile(Tile.WallStone), null);
+});
+
+// ------------------------------------------------- destructible props
+
+test('the six smashable props carry a break-up kind and respawn law', () => {
+  const expect: Array<[Tile, string]> = [
+    [Tile.Barrel, 'barrel'],
+    [Tile.Crate, 'crate'],
+    [Tile.CrateGoods, 'goods'],
+    [Tile.Chair, 'chair'],
+    [Tile.Table, 'table'],
+    [Tile.Bench, 'bench'],
+  ];
+  assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
+  for (const [tile, kind] of expect) {
+    const info = destructibleInfo(tile);
+    assert.equal(info?.kind, kind);
+    // The absence must be worth enjoying, and never permanent.
+    assert.ok(info!.respawnSec >= 120 && info!.respawnSec <= 600);
+    // Only SOLID clutter is smashable — bursting a walkable tile
+    // would patch the floor out from under someone's feet.
+    assert.ok(tileDef(tile).solid, `${tileDef(tile).name} is solid`);
+  }
+});
+
+test('load-bearing scenery is not smashable', () => {
+  for (const t of [Tile.WallWood, Tile.DoorwayWoodShut, Tile.ChestWood, Tile.Bed, Tile.Bookshelf]) {
+    assert.equal(destructibleInfo(t), null);
+  }
+});
+
+test('nearestFloorTile mirrors the underlay law: ring 1, ring 2, grass', () => {
+  const world = (tiles: Record<string, Tile>) => (tx: number, ty: number) =>
+    tiles[`${tx},${ty}`];
+  // A neighboring floor wins outright.
+  assert.equal(nearestFloorTile(world({ '0,1': Tile.WoodFloor }), 0, 0), Tile.WoodFloor);
+  // A table ringed by its own chairs still finds the boards two out.
+  assert.equal(
+    nearestFloorTile(
+      world({
+        '0,1': Tile.Chair,
+        '1,0': Tile.Chair,
+        '-1,0': Tile.Chair,
+        '0,-1': Tile.Chair,
+        '0,2': Tile.StoneFloor,
+      }),
+      0,
+      0,
+    ),
+    Tile.StoneFloor,
+  );
+  // Open air falls back to grass.
+  assert.equal(nearestFloorTile(world({}), 0, 0), Tile.Grass);
 });

@@ -1,6 +1,7 @@
 import { Tile, type Vec2 } from '@devcraft/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import { Particles } from './particles.js';
+import { Debris, type SmashKind } from './debris.js';
 import { InteriorMap } from './interiors.js';
 /** Player zoom bounds: 1 = the classic framing (also the default). */
 export declare const ZOOM_MIN = 0.85;
@@ -50,6 +51,8 @@ export declare class Renderer {
     private readonly canvas;
     readonly camera: Camera;
     readonly particles: Particles;
+    /** Smashed-prop chunk bodies — pooled, wall-aware, self-clearing. */
+    readonly debris: Debris;
     private readonly grass;
     private readonly lighting;
     /** Derived building-interior regions (cutaway, facades, windows). */
@@ -171,9 +174,23 @@ export declare class Renderer {
     flashHurt(): void;
     /** Expanding impact ring at a world position. */
     addRing(x: number, y: number, color: string, maxR?: number): void;
+    /**
+     * Scheduled aftershock beats — the SECOND read of a detonation. A
+     * blast is not one frame: the flash lands, then the dust wave rolls
+     * out, then embers settle. Records, not closures — no capture churn.
+     */
+    private readonly fxBeats;
+    private queueBeat;
+    /** Fire every due aftershock beat. Called once per frame. */
+    private runFxBeats;
     /** Lingering ground marks left by detonations (scorch, rime, cracks…). */
     private readonly fxDecals;
-    /** The world remembers the hit: leave the style's mark on the ground. */
+    /**
+     * The world remembers the hit: leave the style's mark on the ground.
+     * Marks live ~5s in three acts — ACTIVE (the aftermath still burns,
+     * grows, glows), SETTLED (a quiet residue), FADE (the turf reclaims
+     * it) — so a fight leaves a readable history behind it.
+     */
     private addDecal;
     /** Placement preview set by the build mode; null when inactive. */
     buildGhost: {
@@ -791,6 +808,13 @@ export declare class Renderer {
     /** Start a lid ease at this tile (fling open or quiet re-latch). */
     addChestEase(tx: number, ty: number, dir: 'open' | 'close'): void;
     /**
+     * A destructible prop bursting at (wx,wy): chunk bodies fly WITH
+     * the blow (`dir` is the impact heading from the server fx), plus a
+     * rolling ground-dust wave and a spray of splinter streaks. All
+     * theatre — the tile patch right behind the fx is the truth.
+     */
+    smashProp(wx: number, wy: number, dir: number, kind: SmashKind): void;
+    /**
      * Lid openness 0..1 for a chest tile, advancing its animation.
      * Opening is a two-beat swing: the latch gives (a slow first lift)
      * before the lid FLINGS past vertical and settles with growEase's
@@ -1155,11 +1179,36 @@ export declare class Renderer {
     private static readonly FX_SQUASH;
     /** Overlay lifetime per fx kind, ms (telegraph/field ride their fuse). */
     private fxLife;
-    /** The ring silhouette pass novas and blasts expand with. */
+    /**
+     * The ring silhouette pass novas and blasts expand with. Every
+     * family is a three-layer read — dark pressure band under, identity
+     * silhouette over, hot inner edge — and the rim SHEDS: sparks fly
+     * off the expanding front so the shock feels like it's tearing
+     * through the air, not sliding over it.
+     */
     private fxRingLayer;
-    /** Throw a style's debris family from a detonation point. */
+    /**
+     * Throw a style's debris family from a detonation point. Matter
+     * behaves like its material: embers climb and strobe, rock and bone
+     * TUMBLE under gravity, sparks streak, leaves flutter down, shadow
+     * curls upward. The material read is half the identity.
+     */
     private fxDebris;
-    /** One lingering ground decal — the mark the hit leaves behind. */
+    /**
+     * The SIGNATURE layer — each ability's bespoke set-piece, drawn over
+     * the shared kind grammar. This is where a fire nova stops being "a
+     * ring, but orange": the pillar climbs, the spikes erupt, the rift
+     * tears open. Everything stays flat and blocky; drama comes from
+     * staged geometry, not gradients.
+     */
+    private fxMotif;
+    /**
+     * One lingering ground decal — the mark the hit leaves behind, in
+     * three acts. `t` is the whole 5s life; `active` is hot aftermath
+     * (first ~40%: coals still glowing, frost still growing, blood still
+     * spreading), then the mark settles into quiet residue and the turf
+     * finally reclaims it.
+     */
     private drawDecalItem;
     /**
      * Ground-level combat FX: lingering decals, hazard-zone floors, and

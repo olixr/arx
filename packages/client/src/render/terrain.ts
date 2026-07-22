@@ -5,6 +5,7 @@ import {
   Tile,
   diagWallInfo,
   hashCoords,
+  nearestFloorTile,
   tileDef,
   valueNoise,
 } from '@devcraft/shared';
@@ -1374,19 +1375,9 @@ function neighborsStone(ground: GroundSampler, tx: number, ty: number): boolean 
 }
 
 function nearestFloor(ground: GroundSampler, tx: number, ty: number): number {
-  const isFloor = (t: number | undefined) =>
-    t === Tile.WoodFloor || t === Tile.StoneFloor || t === Tile.CaveFloor || t === Tile.Dirt;
-  for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]] as const) {
-    const t = ground(tx + dx, ty + dy);
-    if (isFloor(t)) return t;
-  }
-  // Ring 2 (diagonals + two-out): a table hemmed in by its own chairs
-  // must still bake over the room's floor, not a grass island.
-  for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1], [0, 2], [2, 0], [-2, 0], [0, -2]] as const) {
-    const t = ground(tx + dx, ty + dy);
-    if (isFloor(t)) return t;
-  }
-  return Tile.Grass;
+  // The law lives in shared/tiles now: the server reveals THIS floor
+  // when a prop standing here is smashed, so bake and reveal agree.
+  return nearestFloorTile(ground, tx, ty);
 }
 
 /** Which skin layer a tile belongs to, or -1 for the grass base. */

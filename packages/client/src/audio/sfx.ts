@@ -359,6 +359,21 @@ export class Sfx {
     this.noise(0.05, 0.08, 0.09, { band: 1800 });
   }
 
+  /**
+   * A prop bursting: a sharp crack, a spray of splinters, and the
+   * clatter of pieces coming down. Barrels add a hollow cask boom
+   * under the crack — a drum giving up.
+   */
+  propSmash(hollow = false): void {
+    this.tone(240, 0.06, { type: 'triangle', slide: -140, volume: 0.18 });
+    this.noise(0.09, 0.18, 0, { band: 2400 });
+    if (hollow) this.tone(95, 0.16, { type: 'sine', slide: -35, volume: 0.16, delay: 0.02 });
+    // The pieces landing: two staggered woody knocks and a dry rustle.
+    this.tone(170, 0.05, { type: 'triangle', slide: -60, volume: 0.09, delay: 0.16 });
+    this.noise(0.06, 0.08, 0.2, { band: 1400 });
+    this.tone(140, 0.05, { type: 'triangle', slide: -50, volume: 0.07, delay: 0.3 });
+  }
+
   /** The counter bell: two soft brass partials over a felt strike. */
   shopBell(): void {
     this.noise(0.02, 0.05, 0, { band: 3000 });

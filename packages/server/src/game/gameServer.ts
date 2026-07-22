@@ -44,6 +44,10 @@ import {
   type ChestInfo,
   type ChestKind,
   type DoorInfo,
+  destructibleInfo,
+  nearestFloorTile,
+  TILE_DEFS,
+  type DestructibleInfo,
 } from '@devcraft/shared';
 import {
   BUILDABLES,
@@ -648,7 +652,18 @@ export class GameServer {
   private readonly entityChunk = new Map<EntityId, string>();
 
   /** Depleted nodes waiting to come back. */
-  private readonly respawnQueue: Array<{ at: number; tx: number; ty: number; tile: Tile }> = [];
+  private readonly respawnQueue: Array<{
+    at: number;
+    tx: number;
+    ty: number;
+    tile: Tile;
+    /**
+     * Respawn only if the ground still holds this tile — a smashed
+     * prop whose floor someone has since built over stays gone rather
+     * than stomping the new construction.
+     */
+    over?: Tile;
+  }> = [];
 
   /**
    * Locked doors, keyed by the door unit's anchor tile (`"tx,ty"` of
@@ -2748,6 +2763,9 @@ export class GameServer {
     xpStyle: SkillId = 'melee',
   ): void {
     const pos = this.positions.must(eid);
+    // Every swing sweeps the scenery too: destructible clutter in the
+    // arc bursts regardless of what the blade finds to bleed.
+    this.smashPropsInArc(pos, aim, range);
     // Strike effects live on the blade that lands — the echo cut reads
     // the offhand instance, exactly like coats.
     const struckWeapon =
@@ -2823,6 +2841,81 @@ export class GameServer {
         offhand: xpStyle === 'dualwield',
       });
     }
+  }
+
+  // ---------------------------------------------------- smashable props
+
+  /**
+   * Sweep the strike arc for destructible clutter — same cone law as
+   * the NPC sweep (±60° of aim, touch range always counts) so a swing
+   * that would cut a goblin also bursts the barrel beside it. Every
+   * prop in the arc goes at once: clearing a room is the fantasy.
+   */
+  private smashPropsInArc(pos: { x: number; y: number }, aim: number, range: number): void {
+    const r = Math.ceil(range + 1);
+    const ptx = Math.floor(pos.x);
+    const pty = Math.floor(pos.y);
+    for (let ty = pty - r; ty <= pty + r; ty++) {
+      for (let tx = ptx - r; tx <= ptx + r; tx++) {
+        const g = this.world.groundAt(tx, ty);
+        if (g === undefined) continue;
+        const info = destructibleInfo(g);
+        if (!info) continue;
+        const dx = tx + 0.5 - pos.x;
+        const dy = ty + 0.5 - pos.y;
+        const dist = Math.hypot(dx, dy) - 0.35;
+        if (dist > range) continue;
+        const angleTo = Math.atan2(dy, dx);
+        let diff = Math.abs(angleTo - aim) % (Math.PI * 2);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+        if (diff > Math.PI / 3 && dist > 0.9) continue;
+        this.smashProp(tx, ty, g as Tile, info, angleTo);
+      }
+    }
+  }
+
+  /**
+   * Burst a destructible prop. The tile becomes the floor beneath it
+   * (the shared nearestFloorTile law — exactly the underlay the client
+   * already painted, so nothing pops), collision and pathing follow
+   * the ordinary patch, and the respawn queue stands the prop back up
+   * after its absence has been enjoyed. The debris itself is pure
+   * client-side theatre keyed off ONE broadcast fx — the server never
+   * simulates a splinter.
+   */
+  private smashProp(
+    tx: number,
+    ty: number,
+    tile: Tile,
+    info: DestructibleInfo,
+    dir: number,
+  ): void {
+    // Fx FIRST: it carries the impact heading + kind, and must land
+    // before the tile patch that erases the prop.
+    this.broadcastFx({
+      t: 'fx',
+      kind: 'smash',
+      x: tx + 0.5,
+      y: ty + 0.5,
+      radius: 1,
+      dir,
+      id: info.kind,
+    });
+    // A player-built prop remembers its true ground; authored clutter
+    // reveals the same floor the client bakes beneath it.
+    const built = this.world.builtAt(tx, ty);
+    const floor =
+      built && !TILE_DEFS[built.prevTile as Tile]?.solid
+        ? (built.prevTile as Tile)
+        : nearestFloorTile((x, y) => this.world.groundAt(x, y), tx, ty);
+    this.setWorldTile(tx, ty, floor);
+    this.respawnQueue.push({
+      at: Date.now() + info.respawnSec * 1000,
+      tx,
+      ty,
+      tile,
+      over: floor,
+    });
   }
 
   // --------------------------------------------------------- abilities
@@ -4111,7 +4204,20 @@ export class GameServer {
         pos.y += proj.dirY * (step / subs);
         // Return legs ghost through walls — a boomerang that dies on the
         // doorframe it left through reads as a bug, not a mechanic.
-        if (!proj.returning && pointHitsSolid(this.world, pos.x, pos.y)) dead = true;
+        if (!proj.returning && pointHitsSolid(this.world, pos.x, pos.y)) {
+          dead = true;
+          // A player's shot spends itself bursting the crate it
+          // struck — the arrow's last act is the smash.
+          if (!proj.fromNpc) {
+            const stx = Math.floor(pos.x);
+            const sty = Math.floor(pos.y);
+            const g = this.world.groundAt(stx, sty);
+            const dinfo = g === undefined ? null : destructibleInfo(g);
+            if (dinfo) {
+              this.smashProp(stx, sty, g as Tile, dinfo, Math.atan2(proj.dirY, proj.dirX));
+            }
+          }
+        }
       }
       proj.distLeft -= step;
       dead = dead || proj.distLeft <= 0;
@@ -5315,6 +5421,21 @@ export class GameServer {
           this.setWorldTile(t.x, t.y, shutDoorTile(gg)!);
         }
         this.respawnQueue.splice(i, 1);
+        continue;
+      }
+      const cur = this.world.groundAt(entry.tx, entry.ty);
+      if (entry.over !== undefined && cur !== entry.over) {
+        // The world moved on under this entry — let it go.
+        this.respawnQueue.splice(i, 1);
+        continue;
+      }
+      // Never stand a solid back up THROUGH a body: if the tile is
+      // currently walkable and about to turn solid, an occupant defers
+      // the timer (same courtesy the doors extend).
+      const becomingSolid =
+        TILE_DEFS[entry.tile]?.solid && !(cur !== undefined && TILE_DEFS[cur as Tile]?.solid);
+      if (becomingSolid && this.bodyOnTile(entry.tx, entry.ty)) {
+        entry.at = now + 5000;
         continue;
       }
       this.setWorldTile(entry.tx, entry.ty, entry.tile);
