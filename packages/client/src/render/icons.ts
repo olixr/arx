@@ -423,30 +423,32 @@ const PAINTERS: Record<string, IconPainter> = {
     oreChunk(c, 0.74, 0.72, 0.23, -0.14, '#3a3d46', '#9fb2c8');
   },
   ore_silver: (c, col) => {
-    // The moonsilver chunk in miniature: a dark diagonal parting with
-    // the polished streak riding its lit flank (filled bands, never
-    // strokes), and silver's signature — a faceted crescent of caught
-    // moonlight — floating at its shoulder.
-    oreChunk(c, 0.46, 0.56, 0.52, -0.08, col, '#ffffff');
-    c.save();
-    c.translate(0.46, 0.56);
-    c.rotate(-0.72);
-    poly(c, shade(col, -42), [
-      [-0.2, -0.028], [0.2, -0.05], [0.2, 0.05], [-0.2, 0.052],
-    ]);
-    poly(c, '#ffffff', [
-      [-0.2, -0.026], [0.2, -0.048], [0.2, -0.012], [-0.2, 0.008],
-    ]);
-    c.restore();
-    oreChunk(c, 0.74, 0.76, 0.24, 0.18, col, '#ffffff');
-    c.save();
-    c.translate(0.78, 0.28);
-    c.rotate(-0.3);
-    poly(c, '#ffffff', [
-      [0.035, -0.095], [-0.055, -0.075], [-0.095, 0], [-0.055, 0.075],
-      [0.035, 0.095], [-0.005, 0.06], [-0.045, 0], [-0.005, -0.06],
-    ]);
-    c.restore();
+    // The silverspur in miniature: a dark host chunk with two faceted
+    // blade crystals erupting from it — each split hard into a lit
+    // facet and a steel-shadow facet, white chip only at the tip.
+    // Metal through facet contrast, never bright paint.
+    const blade = (bx: number, by: number, len: number, w: number, ang: number): void => {
+      c.save();
+      c.translate(bx, by);
+      c.rotate(ang);
+      poly(c, shade(col, -26), [
+        [-w * 0.5, 0], [-w * 0.62, -len * 0.52], [-w * 0.1, -len],
+        [w * 0.58, -len * 0.56], [w * 0.5, 0],
+      ]);
+      poly(c, col, [
+        [-w * 0.5, 0], [-w * 0.62, -len * 0.52], [-w * 0.1, -len],
+        [w * 0.02, -len * 0.5], [-w * 0.06, 0],
+      ]);
+      poly(c, '#ffffff', [
+        [-w * 0.1, -len], [-w * 0.34, -len * 0.72], [w * 0.06, -len * 0.78],
+      ]);
+      c.restore();
+    };
+    // Host chunk low in the frame, blades fanning up from its back.
+    oreChunk(c, 0.46, 0.72, 0.46, -0.06, shade(col, -34), shade(col, -10));
+    blade(0.42, 0.62, 0.5, 0.16, -0.14);
+    blade(0.6, 0.66, 0.34, 0.12, 0.42);
+    blade(0.3, 0.68, 0.26, 0.1, -0.55);
   },
   ore_mithril: (c, col) => {
     // Sky-metal: a tall-cut chunk and a hard four-point star above it.
@@ -3210,7 +3212,7 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   iron_ore: { icon: 'ore_iron', color: '#a05038' },
   coal: { icon: 'coalpile', color: '#4a4456' },
   gold_ore: { icon: 'nuggets', color: '#e8b64c' },
-  silver_ore: { icon: 'ore_silver', color: '#dce4f0' },
+  silver_ore: { icon: 'ore_silver', color: '#c6cfe0' },
   mithril_ore: { icon: 'ore_mithril', color: '#8fb4e4' },
   adamant_ore: { icon: 'ore_adamant', color: '#6cb47a' },
   obsidian_shard: { icon: 'shard_obsidian', color: '#3b3247' },

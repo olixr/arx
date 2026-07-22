@@ -5423,8 +5423,11 @@ export class Renderer {
       stone: { face: '#565064', top: '#6e687c', side: '#454051' },
     },
     [Tile.RockSilver]: {
-      nug: '#e4eaf4',
-      deep: '#8b93a8',
+      // Steel-blue metal tones, not white: silver reads through facet
+      // contrast, and near-white fills read as paint (the lesson the
+      // first two silver designs taught).
+      nug: '#c6cfe0',
+      deep: '#59617a',
       accent: '#ffffff',
       stone: { face: '#5a5766', top: '#787588', side: '#484554' },
     },
@@ -5967,142 +5970,95 @@ export class Renderer {
         0.14 * pulse,
       );
     } else if (tile === Tile.RockSilver) {
-      // THE MOONSILVER OUTCROP — silver is the moon's metal, and its
-      // deposit is the elegant one: ONE flowing streak of polished
-      // silver sweeping up through the stone (a tapered, kinked band —
-      // the copper-seam / gold-quartz law, never strokes), a cluster
-      // of chunky mirror-bright blocks riding the streak's belly, and
-      // the signature no other ore carries: a faceted crescent-moon
-      // inclusion high in the rock, as if the mountain kept a sliver
-      // of moonlight. Ledge sills wear flat mirror-plates that catch
-      // the sky.
+      // THE SILVERSPUR — silver is the crystalline metal: a dark
+      // fissure splits the host stone and a spray of long, faceted
+      // silver blades erupts from it, each prism split hard down its
+      // length into a lit facet and a steel-shadow facet (metal reads
+      // through facet CONTRAST, never through bright paint), with one
+      // white specular chip at the tip. A cut block at the foot keeps
+      // the "mineable chunk" promise. Nothing else in the rock family
+      // grows blades.
       this.stoneBlock(X(0.54 * S), base, S * 0.46, S * 0.36 * H, 0.05 * S * m, Renderer.BARREN_DIM, h ^ 0x51f3);
-      const vSil = this.monolith(X(-0.04 * S), base, S * 1.22, S * 1.34 * H, m, pal.stone, h);
+      const vSil = this.monolith(X(-0.04 * S), base, S * 1.18, S * 1.1 * H, m, pal.stone, h);
+      // The fissure the blades grew from — a jagged dark gash clipped
+      // INTO the stone, cracks running off its tips.
       ctx.save();
-      const lodeClip = new Path2D();
-      vSil.forEach(([x, y], i) => (i === 0 ? lodeClip.moveTo(x, y) : lodeClip.lineTo(x, y)));
-      lodeClip.closePath();
-      ctx.clip(lodeClip);
-      // Sweep a kinked 3-point centerline into a tapered band: per-
-      // point averaged normals, per-point half-widths — a hard-edged
-      // low-poly ribbon that pinches at its mouths like a real lode.
-      const band = (c: Array<[number, number]>, w: number[], grow: number): Path2D => {
-        const seg: Array<[number, number]> = [];
-        for (let i = 0; i < c.length - 1; i++) {
-          const dx = c[i + 1]![0] - c[i]![0];
-          const dy = c[i + 1]![1] - c[i]![1];
-          const len = Math.hypot(dx, dy) || 1;
-          seg.push([-dy / len, dx / len]);
-        }
-        const nv = c.map((_, i) => {
-          const a = seg[Math.max(0, i - 1)]!;
-          const b = seg[Math.min(seg.length - 1, i)]!;
-          const mx = (a[0] + b[0]) / 2;
-          const my = (a[1] + b[1]) / 2;
-          const len = Math.hypot(mx, my) || 1;
-          return [mx / len, my / len] as [number, number];
-        });
-        const p = new Path2D();
-        c.forEach(([x, y], i) => {
-          const qx = x + nv[i]![0] * w[i]! * grow;
-          const qy = y + nv[i]![1] * w[i]! * grow;
-          if (i === 0) p.moveTo(qx, qy);
-          else p.lineTo(qx, qy);
-        });
-        for (let i = c.length - 1; i >= 0; i--) {
-          p.lineTo(c[i]![0] - nv[i]![0] * w[i]! * grow, c[i]![1] - nv[i]![1] * w[i]! * grow);
-        }
-        p.closePath();
-        return p;
-      };
-      // THE STREAK: one graceful S-swept band climbing the stone —
-      // pinched at both mouths, fat through the belly. Seeded sway
-      // keeps sister outcrops from stamping.
-      const sway = (((h >> 7) & 7) / 7 - 0.5) * 0.16 * S;
-      const streak: Array<[number, number]> = [
-        [X(-0.52 * S), base - S * 0.12],
-        [X(-0.14 * S) + sway, base - S * 0.48 * H],
-        [X(0.12 * S) + sway * 0.5, base - S * 0.84 * H],
-        [X(0.38 * S), base - S * 1.2 * H],
-      ];
-      const wS = [S * 0.055, S * 0.115, S * 0.105, S * 0.045];
-      // Dark parting under, polished core riding the lit upper edge —
-      // flat two-tone depth, light always from above.
-      ctx.fillStyle = '#3f4452';
-      ctx.fill(band(streak, wS, 1));
-      const litStreak: Array<[number, number]> = streak.map(([x, y]) => [x, y - S * 0.04]);
-      ctx.fillStyle = pal.nug;
-      ctx.fill(band(litStreak, wS, 0.6));
-      // Hard glint dashes laid ALONG the streak — never scribbles.
-      const tick = (a: [number, number], b: [number, number], t: number, len: number): void => {
-        ctx.save();
-        ctx.translate(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - S * 0.04);
-        ctx.rotate(Math.atan2(b[1] - a[1], b[0] - a[0]));
-        ctx.fillStyle = pal.accent;
-        ctx.fillRect(-len / 2, -S * 0.014, len, S * 0.028);
-        ctx.restore();
-      };
-      tick(streak[1]!, streak[2]!, 0.4, S * 0.13);
-      tick(streak[0]!, streak[1]!, 0.55, S * 0.09);
-      // THE CRESCENT — a faceted sliver of moon caught in the stone,
-      // high on the lit flank: silver's signature, hard-edged and
-      // flat like everything else in the dialect.
-      const cmx = X(-0.3 * S) - sway * 0.4;
-      const cmy = base - S * 0.88 * H;
-      const cr = S * 0.16;
-      ctx.save();
-      ctx.translate(cmx, cmy);
-      ctx.rotate(-0.35 * m);
-      ctx.fillStyle = pal.nug;
+      const spurClip = new Path2D();
+      vSil.forEach(([x, y], i) => (i === 0 ? spurClip.moveTo(x, y) : spurClip.lineTo(x, y)));
+      spurClip.closePath();
+      ctx.clip(spurClip);
+      ctx.fillStyle = '#262a38';
       ctx.beginPath();
-      ctx.moveTo(cr * 0.35, -cr * 0.92);
-      ctx.lineTo(-cr * 0.55, -cr * 0.72);
-      ctx.lineTo(-cr * 0.92, 0);
-      ctx.lineTo(-cr * 0.55, cr * 0.72);
-      ctx.lineTo(cr * 0.35, cr * 0.92);
-      ctx.lineTo(-cr * 0.05, cr * 0.58);
-      ctx.lineTo(-cr * 0.42, 0);
-      ctx.lineTo(-cr * 0.05, -cr * 0.58);
+      ctx.moveTo(X(-0.36 * S), base - S * 0.08);
+      ctx.lineTo(X(-0.22 * S), base - S * 0.42 * H);
+      ctx.lineTo(X(-0.04 * S), base - S * 0.62 * H);
+      ctx.lineTo(X(0.12 * S), base - S * 0.88 * H);
+      ctx.lineTo(X(0.05 * S), base - S * 0.6 * H);
+      ctx.lineTo(X(-0.1 * S), base - S * 0.36 * H);
+      ctx.lineTo(X(-0.24 * S), base - S * 0.04);
       ctx.closePath();
       ctx.fill();
-      // One hard skylight facet on the upper limb.
-      ctx.fillStyle = pal.accent;
+      ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+      ctx.lineWidth = Math.max(1.5, s * 0.03);
       ctx.beginPath();
-      ctx.moveTo(-cr * 0.2, -cr * 0.76);
-      ctx.lineTo(-cr * 0.62, -cr * 0.42);
-      ctx.lineTo(-cr * 0.72, -cr * 0.1);
-      ctx.lineTo(-cr * 0.38, -cr * 0.36);
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(X(0.12 * S), base - S * 0.88 * H);
+      ctx.lineTo(X(0.26 * S), base - S * 0.98 * H);
+      ctx.moveTo(X(-0.22 * S), base - S * 0.42 * H);
+      ctx.lineTo(X(-0.4 * S), base - S * 0.5 * H);
+      ctx.stroke();
       ctx.restore();
-      ctx.restore();
-      // Mirror-plates seated on the ledge sills the monolith already
-      // paints — flat polished panes with a hard square skylight.
-      const plate = (px2: number, py2: number, w2: number, rot: number): void => {
+      // A faceted blade crystal: elongated 5-point prism, hard-split
+      // lengthwise — lit steel toward the sky, shadow steel below,
+      // one white chip at the very tip. Bases sit buried in the gash.
+      const blade = (bx: number, by: number, len: number, w: number, ang: number): [number, number] => {
         ctx.save();
-        ctx.translate(px2, py2);
-        ctx.rotate(rot);
-        ctx.fillStyle = 'rgba(20, 16, 30, 0.35)';
-        ctx.fillRect(-w2 * 0.44, w2 * 0.1, w2 * 0.88, Math.max(1.5, w2 * 0.14));
-        ctx.fillStyle = pal.nug;
+        ctx.translate(bx, by);
+        ctx.rotate(ang);
+        ctx.fillStyle = '#8e97ad';
         ctx.beginPath();
-        chamferRect(ctx, -w2 / 2, -w2 * 0.2, w2, w2 * 0.32, w2 * 0.08);
+        ctx.moveTo(-w * 0.5, 0);
+        ctx.lineTo(-w * 0.62, -len * 0.52);
+        ctx.lineTo(-w * 0.1, -len);
+        ctx.lineTo(w * 0.58, -len * 0.56);
+        ctx.lineTo(w * 0.5, 0);
+        ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = pal.accent;
-        ctx.fillRect(-w2 * 0.34, -w2 * 0.13, w2 * 0.3, w2 * 0.12);
+        // Lit facet: the sky-side half, split hard at the spine.
+        ctx.fillStyle = '#d4dcea';
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.5, 0);
+        ctx.lineTo(-w * 0.62, -len * 0.52);
+        ctx.lineTo(-w * 0.1, -len);
+        ctx.lineTo(w * 0.02, -len * 0.5);
+        ctx.lineTo(-w * 0.06, 0);
+        ctx.closePath();
+        ctx.fill();
+        // Specular chip at the tip only — the premium restraint.
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.1, -len);
+        ctx.lineTo(-w * 0.34, -len * 0.72);
+        ctx.lineTo(w * 0.06, -len * 0.78);
+        ctx.closePath();
+        ctx.fill();
+        // Base shadow seats the blade in the rock.
+        ctx.fillStyle = 'rgba(20, 16, 30, 0.4)';
+        ctx.fillRect(-w * 0.55, -len * 0.02, w * 1.1, Math.max(1.5, len * 0.05));
         ctx.restore();
+        return [bx + Math.sin(ang) * len * -1, by - Math.cos(ang) * len];
       };
-      plate(vSil[3]![0] + S * 0.12, vSil[3]![1] - S * 0.03, S * 0.24, -0.07);
-      plate(vSil[8]![0] - S * 0.1, vSil[8]![1] - S * 0.025, S * 0.19, 0.08);
-      // The node cluster: chunky polished blocks riding the streak's
-      // belly — the "this is the ore" protagonists, mirror-bright.
-      const belly: [number, number] = [X(-0.06 * S) + sway * 0.8, base - S * 0.62 * H];
-      const high: [number, number] = [X(0.28 * S) + sway * 0.5, base - S * 1.02 * H];
-      const foot: [number, number] = [X(-0.34 * S), base - S * 0.24];
-      this.oreNode(belly[0], belly[1], S * 0.38, -0.08 * m, pal);
-      this.oreNode(high[0], high[1], S * 0.24, 0.14 * m, pal);
-      this.oreNode(foot[0], foot[1], S * 0.28, 0.1 * m, pal);
-      sites.push(belly, high, [cmx, cmy]);
+      // The spray fans off the fissure line — seeded lean keeps
+      // sister outcrops from stamping. Tallest blade breaks the
+      // silhouette; the runt leans hard at the foot.
+      const lean = (((h >> 7) & 7) / 7 - 0.5) * 0.24;
+      const t1 = blade(X(-0.02 * S), base - S * 0.5 * H, S * 0.78 * H, S * 0.17, (-0.12 + lean) * m);
+      const t2 = blade(X(0.14 * S), base - S * 0.68 * H, S * 0.52 * H, S * 0.13, (0.34 + lean) * m);
+      const t3 = blade(X(-0.2 * S), base - S * 0.3 * H, S * 0.44 * H, S * 0.12, (-0.52 + lean * 0.5) * m);
+      blade(X(-0.32 * S), base - S * 0.1, S * 0.28, S * 0.1, -0.78 * m);
+      // The cut block at the foot — the chunk the pick is promised.
+      const cut: [number, number] = [X(0.3 * S), base - S * 0.18];
+      this.oreNode(cut[0], cut[1], S * 0.32, 0.1 * m, pal);
+      sites.push(t1, t2, t3, cut);
       this.rubble(px, py, s, h, [pal.nug, '#6a6375', pal.deep]);
     } else if (tile === Tile.RockMithril) {
       // THE SKY SPIRE — the tallest deposit in the game: one slender
@@ -14197,7 +14153,7 @@ export class Renderer {
         iron_ore: '#a05038',
         coal: '#4a4456',
         gold_ore: '#e8b64c',
-        silver_ore: '#dce4f0',
+        silver_ore: '#c6cfe0',
         mithril_ore: '#8fb4e4',
         adamant_ore: '#6cb47a',
         obsidian_shard: '#3b3247',
