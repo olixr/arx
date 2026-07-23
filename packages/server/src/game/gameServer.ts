@@ -1392,6 +1392,14 @@ export class GameServer {
     q.push(frame);
   }
 
+  /**
+   * THE WORK TAKES TIME: no resource node yields faster than 3 seconds
+   * (60 ticks), whatever the tool ladder, level surplus, and brews
+   * multiply out to. Harvesting is labor, not vacuuming — the floor is
+   * what keeps a starsteel axe from mowing a copse flat in a blink.
+   */
+  private static readonly MIN_GATHER_TICKS = 60;
+
   /** Attempt to start gathering at a tile. */
   interact(eid: EntityId, tx: number, ty: number): void {
     const player = this.players.get(eid);
@@ -1499,7 +1507,7 @@ export class GameServer {
     // Faster with better tools, higher levels, and a gatherer's brew.
     const speedup =
       (1 + (tool.power - 1) * 0.25 + (level - node.levelReq) * 0.01) * this.gatherSpeedOf(player);
-    const ticks = Math.max(20, Math.round(node.baseTicks / speedup));
+    const ticks = Math.max(GameServer.MIN_GATHER_TICKS, Math.round(node.baseTicks / speedup));
     player.action = { kind: 'gather', tx, ty, node, ticksLeft: ticks };
     this.poses.set(eid, PoseState.Gather);
     player.session.sendJson({ t: 'action', state: 'start', ticks });
@@ -1778,7 +1786,10 @@ export class GameServer {
       this.cancelAction(eid, player, 'done');
     } else {
       // Keep gathering the same node.
-      action.ticksLeft = Math.max(20, Math.round(node.baseTicks / this.gatherSpeedOf(player)));
+      action.ticksLeft = Math.max(
+        GameServer.MIN_GATHER_TICKS,
+        Math.round(node.baseTicks / this.gatherSpeedOf(player)),
+      );
       player.session?.sendJson({ t: 'action', state: 'start', ticks: action.ticksLeft });
     }
   }
