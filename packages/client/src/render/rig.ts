@@ -249,6 +249,16 @@ export interface RigPose {
    * carries the harvest back to the belt pouch. No tool is drawn.
    */
   foraging?: boolean;
+  /**
+   * Seated rest blend, 0..1, SMOOTHED BY THE CALLER (never poseT — it
+   * resets on pose flips and would pop the stand-up). Drops the hips
+   * to the ground, plants the hands, and forces knees up-screen; the
+   * caller stretches the feet forward and leans the body back to
+   * complete the armored wayside sit.
+   */
+  sitT?: number;
+  /** Which seated posture: 0 = lounger (legs out), 1 = one knee up. */
+  sitVariant?: 0 | 1;
 }
 
 /** Shortest signed rotation from angle `a` to angle `b` (radians). */
@@ -1278,9 +1288,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // bends the knees for free, and the whole arm frame (armY/shoulderY)
   // hangs off hipY so the weapon carriage ducks with the body.
   const crouch = rig.pose === PoseState.Sneak ? Math.min(1, rig.poseT) : 0;
+  const sit = rig.sitT ?? 0;
 
-  // The body rides the hip line, which rides the gait bob.
-  const hipY = rig.y - (rig.rise + rig.bob * 0.45) * s + 0.11 * s * crouch;
+  // The body rides the hip line, which rides the gait bob. Seated, the
+  // hip line settles a hand's width off the ground and the whole upper
+  // body (armY/shoulderY hang off hipY) comes down with it.
+  const hipYStand = rig.y - (rig.rise + rig.bob * 0.45) * s + 0.11 * s * crouch;
+  const hipY = hipYStand + (rig.y - 0.13 * s - hipYStand) * sit;
 
   // ---- legs: two-bone IK from SCREEN-FIXED hips to planted feet.
   const L = (LEG_LEN / 2) * s;
@@ -1310,14 +1324,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const bend = Math.sqrt(Math.max(0, L * L - (d / 2) ** 2));
     const cxn = -ey / d;
     const cyn = ex / d;
-    const sign = chooseKneeSign(
-      cxn,
-      cyn,
-      fx,
-      fy,
-      sgn,
-      rig.kneeMemory[i] ?? 0,
-    );
+    // Seated, the anatomical pole yields to gravity's law: a bent knee
+    // always rises UP-SCREEN — folding down would bury it in the ground.
+    const sign =
+      sit > 0.4
+        ? cyn > 0
+          ? -1
+          : 1
+        : chooseKneeSign(cxn, cyn, fx, fy, sgn, rig.kneeMemory[i] ?? 0);
     rig.kneeMemory[i] = sign;
     const kx = hipX + ex / 2 + cxn * sign * bend;
     const ky = hipY + ey / 2 + cyn * sign * bend;

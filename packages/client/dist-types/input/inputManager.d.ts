@@ -51,6 +51,13 @@ export declare class InputManager {
      * AND raises the held Sneak bit so the server tracks stealth state.
      */
     sneakMode: boolean;
+    /**
+     * One queued sit-toggle press (X / pad D-down). Consumed into exactly
+     * one input frame's Sit bit — the server owns the seated state and
+     * edge-detects the flip, so the client keeps no latch to desync.
+     */
+    private sitQueued;
+    private padSitWasDown;
     constructor(target: HTMLElement);
     setTypingCheck(fn: () => boolean): void;
     isDown(code: string): boolean;

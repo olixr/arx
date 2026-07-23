@@ -130,6 +130,16 @@ export interface RigPose {
      * carries the harvest back to the belt pouch. No tool is drawn.
      */
     foraging?: boolean;
+    /**
+     * Seated rest blend, 0..1, SMOOTHED BY THE CALLER (never poseT — it
+     * resets on pose flips and would pop the stand-up). Drops the hips
+     * to the ground, plants the hands, and forces knees up-screen; the
+     * caller stretches the feet forward and leans the body back to
+     * complete the armored wayside sit.
+     */
+    sitT?: number;
+    /** Which seated posture: 0 = lounger (legs out), 1 = one knee up. */
+    sitVariant?: 0 | 1;
 }
 /** Duration of one mining swing (windup→heave→strike→pry), ms. */
 export declare const MINE_CYCLE_MS = 880;

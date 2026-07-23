@@ -62,11 +62,24 @@ export class InputManager {
    */
   sneakMode = false;
 
+  /**
+   * One queued sit-toggle press (X / pad D-down). Consumed into exactly
+   * one input frame's Sit bit — the server owns the seated state and
+   * edge-detects the flip, so the client keeps no latch to desync.
+   */
+  private sitQueued = false;
+  private padSitWasDown = false;
+
   constructor(target: HTMLElement) {
     window.addEventListener('keydown', (e) => {
       if (this.typingCheck()) return;
       if (e.code === 'KeyZ' && !e.repeat && !this.cinemaCapture) this.walkMode = !this.walkMode;
       if (e.code === 'KeyC' && !e.repeat && !this.cinemaCapture) this.sneakMode = !this.sneakMode;
+      // The stance row: Z walk, X sit, C sneak. Build mode owns X
+      // (demolish), so the queue only arms in open play.
+      if (e.code === 'KeyX' && !e.repeat && !this.cinemaCapture && !this.buildCapture) {
+        this.sitQueued = true;
+      }
       this.keys.add(e.code);
       // Keep the page from scrolling on space/arrows; Alt is the loot
       // reveal, so it must not focus the browser's menu bar.
@@ -182,13 +195,17 @@ export class InputManager {
   }
 
   buttons(): number {
-    if (this.cinemaCapture) return 0;
+    if (this.cinemaCapture) {
+      this.sitQueued = false;
+      return 0;
+    }
     let b = 0;
     // Build mode holsters the weapons on EVERY device: the click (or
     // Space, or Q/E/R/T) that places a wall must never double as an
     // attack or a cast. Only movement-adjacent bits survive — you can
     // still dodge and sneak around your own site while the ghost is up.
     if (this.buildCapture) {
+      this.sitQueued = false;
       if (this.keys.has('ShiftLeft')) b |= InputButton.Dodge;
       if (this.sneakMode) b |= InputButton.Sneak;
       return b;
@@ -214,6 +231,18 @@ export class InputManager {
     if (this.keys.has('KeyF')) b |= InputButton.Interact;
     if (this.keys.has('ShiftLeft')) b |= InputButton.Dodge;
     if (this.sneakMode) b |= InputButton.Sneak;
+    // Sit: D-pad down edge on pads, or the queued X press — one frame
+    // carries the bit, the server flips the seat.
+    const padSit = !this.uiCapture && pad !== null && (pad.buttons[13]?.pressed ?? false);
+    if (padSit && !this.padSitWasDown) {
+      this.sitQueued = true;
+      this.padUsed = true;
+    }
+    this.padSitWasDown = padSit;
+    if (this.sitQueued) {
+      b |= InputButton.Sit;
+      this.sitQueued = false;
+    }
     return b;
   }
 

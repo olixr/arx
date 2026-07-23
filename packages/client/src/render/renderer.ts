@@ -282,6 +282,12 @@ interface AnimState {
   /** Smoothed 0..1 travel activity — leg-less bodies (slimes, snakes)
    *  gate their locomotion animation on it. */
   moveK?: number;
+  /**
+   * Smoothed 0..1 seated blend. NEVER poseT — that clock resets on
+   * every pose change, which would pop the stand-up; this one glides
+   * both directions so sitting down and rising both ease.
+   */
+  sitK?: number;
   /** The entity's cape cloth sim — present only while one is worn. */
   cape?: CapeSim;
   /** Which cape item `cape` was built for; a change rebuilds the cloth. */
@@ -14614,6 +14620,22 @@ export class Renderer {
       anim.rigKey = 'humanoid';
     }
     const legPose = anim.legs.update(e.x, e.y, e.dir, this.frameDt);
+    // Seated rest: drop the hips, stretch the legs to forward ground
+    // targets, lean the torso back — the armored wayside sit. Two
+    // postures by eid parity (lounger / knee-up) so a campfire circle
+    // never rests identically.
+    const sitTarget = e.pose === PoseState.Sit ? 1 : 0;
+    let sitK = anim.sitK ?? 0;
+    sitK += (sitTarget - sitK) * (1 - Math.exp(-5 * this.frameDt));
+    if (sitK < 0.004) sitK = 0;
+    else if (sitK > 0.996) sitK = 1;
+    anim.sitK = sitK;
+    const sitE = sitK * sitK * (3 - 2 * sitK);
+    // Posture by entity id parity — stable per body, mixed per crowd.
+    // The own body resolves its REAL eid so the mirror never disagrees
+    // with what other players see.
+    const varEid = typeof e.eid === 'number' ? e.eid : (this.game?.ownEid ?? 0);
+    const sitVariant = (Math.abs(varEid) % 2) as 0 | 1;
     // Footstep events: a touchdown happened inside that update.
     if (anim.lastPlants === undefined) {
       anim.lastPlants = anim.legs.plants;
@@ -14653,10 +14675,47 @@ export class Renderer {
     const terrainLift = this.renderLift(e.x, e.y) * s;
     const p = this.camera.worldToScreen(e.x, e.y, this.w, this.h);
     p.y -= terrainLift;
-    const feet = legPose.feet.map((f) => {
-      const fp = this.camera.worldToScreen(f.x, f.y, this.w, this.h);
-      fp.y -= this.renderLift(f.x, f.y) * s;
-      return { x: fp.x, y: fp.y, lift: f.lift };
+    // Seated foot targets, in world space so the legs stretch along the
+    // FACING and the camera's ground compression foreshortens them the
+    // same way it does everything else on the ground plane.
+    let seatFeet: Array<{ x: number; y: number }> | null = null;
+    if (sitE > 0) {
+      const fwx = Math.cos(e.dir);
+      const fwy = Math.sin(e.dir);
+      const kSize = e.size ?? 1;
+      // Facing the camera (or away), forward-stretched legs project as
+      // a narrow standing column — so the seat goes DIRECTION-AWARE:
+      // the more vertical the facing, the wider the splay and the
+      // shorter the reach, until the legs read as an open V on the
+      // ground. Side-on keeps the long stretched-out profile.
+      const vert = Math.abs(fwy);
+      // Lounger: both legs stretched, easy splay. Knee-up: one leg out,
+      // the other foot pulled in so the IK raises that knee.
+      const spots =
+        sitVariant === 0
+          ? [
+              { fwd: 0.44 - 0.18 * vert, side: -(0.18 + 0.17 * vert) },
+              { fwd: 0.54 - 0.2 * vert, side: 0.14 + 0.18 * vert },
+            ]
+          : [
+              { fwd: 0.52 - 0.18 * vert, side: 0.15 + 0.17 * vert },
+              { fwd: 0.22 - 0.05 * vert, side: -(0.14 + 0.12 * vert) },
+            ];
+      const t = spots.map((sp) => ({
+        x: e.x + (fwx * sp.fwd - fwy * sp.side) * kSize,
+        y: e.y + (fwy * sp.fwd + fwx * sp.side) * kSize,
+      }));
+      // Hips are screen-fixed (left hip = foot 0): the more screen-left
+      // target keeps the left leg so the shins never cross.
+      seatFeet = t[0]!.x <= t[1]!.x ? t : [t[1]!, t[0]!];
+    }
+    const feet = legPose.feet.map((f, i) => {
+      const sf = seatFeet?.[i];
+      const wx = sf ? f.x + (sf.x - f.x) * sitE : f.x;
+      const wy = sf ? f.y + (sf.y - f.y) * sitE : f.y;
+      const fp = this.camera.worldToScreen(wx, wy, this.w, this.h);
+      fp.y -= this.renderLift(wx, wy) * s;
+      return { x: fp.x, y: fp.y, lift: f.lift * (1 - sitE) };
     });
 
     // Attack lunge: the body rocks back then punches toward the aim
@@ -14709,6 +14768,10 @@ export class Renderer {
     if (gather) dir = Math.atan2(gather.ty + 0.5 - e.y, gather.tx + 0.5 - e.x);
     const station = e.pose === PoseState.Craft ? this.findStation(e.x, e.y) : null;
     if (station) dir = Math.atan2(station.ty + 0.5 - e.y, station.tx + 0.5 - e.x);
+
+    // Seated lean: hips and torso settle BEHIND the ground point while
+    // the feet hold their forward plant — the stretched-out rest.
+    if (sitE > 0) lunge -= 0.15 * sitE;
 
     const bodyX = p.x + Math.cos(dir) * lunge * s;
     const bodyY = p.y + Math.sin(dir) * lunge * s;
@@ -14921,8 +14984,9 @@ export class Renderer {
           // During a gather the BELT tool is what's in the hands; at a
           // station the smith's own kit replaces the weapon entirely.
           // Foraging holsters everything — herbs are picked bare-handed.
+          // A resting body holsters the blade the same way Craft does.
           weaponItem:
-            e.pose === PoseState.Craft || gather?.kind === 'forage'
+            e.pose === PoseState.Craft || gather?.kind === 'forage' || sitE > 0.3
               ? undefined
               : e.pose === PoseState.Gather
                 ? (e.equip.tool ?? e.equip.weapon)
@@ -14949,6 +15013,8 @@ export class Renderer {
           gatherPhase: now / 1000,
           craftKind: station?.kind ?? null,
           foraging: gather?.kind === 'forage',
+          sitT: sitE,
+          sitVariant,
         };
         // Layer law with a cape worn: gear straps OVER the cloth, so
         // the quiver paints immediately after the cape on whichever

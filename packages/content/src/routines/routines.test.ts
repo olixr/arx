@@ -83,6 +83,12 @@ test('validator rejects the dishonest defs', () => {
   );
   bad({ ...base, base: { kind: 'post', dir: 9 } }, 'radians');
   bad({ ...base, base: { kind: 'post', work: 'yes' } }, 'boolean');
+  bad({ ...base, base: { kind: 'post', sit: 'yes' } }, 'boolean');
+  bad({ ...base, base: { kind: 'post', work: true, sit: true } }, 'cannot both work and sit');
+  bad(
+    { ...base, base: { kind: 'path', waypoints: [{ x: 1, y: 1, work: true, sit: true }] } },
+    'cannot both work and sit',
+  );
   bad({ ...base, base: { kind: 'post', speed: 0.1 } }, '0.3..6');
   bad({ ...base, base: { kind: 'wander', radius: 3, speed: 12 } }, '0.3..6');
   bad(
@@ -114,7 +120,11 @@ test('speed layers survive validation at every level', () => {
 test('validator normalizes defaults away (interchange stays minimal)', () => {
   const res = validateRoutine({
     id: 'test_min',
-    base: { kind: 'path', mode: 'loop', waypoints: [{ x: 1, y: 0, waitSec: 0, work: false }] },
+    base: {
+      kind: 'path',
+      mode: 'loop',
+      waypoints: [{ x: 1, y: 0, waitSec: 0, work: false, sit: false }],
+    },
   });
   assert.ok(res.ok);
   const path = res.routine.base;
@@ -122,4 +132,24 @@ test('validator normalizes defaults away (interchange stays minimal)', () => {
   assert.equal(path.mode, undefined, "mode 'loop' is the default and stores as absent");
   assert.equal(path.waypoints[0]!.waitSec, undefined, 'waitSec 0 stores as absent');
   assert.equal(path.waypoints[0]!.work, undefined, 'work false stores as absent');
+  assert.equal(path.waypoints[0]!.sit, undefined, 'sit false stores as absent');
+});
+
+test('a seated stop survives validation at post and waypoint level', () => {
+  const res = validateRoutine({
+    id: 'test_rest',
+    base: { kind: 'post', sit: true, dir: 1.5 },
+    slots: [
+      {
+        from: 12,
+        to: 13,
+        task: { kind: 'path', waypoints: [{ x: 2, y: 0, waitSec: 20, sit: true }] },
+      },
+    ],
+  });
+  assert.ok(res.ok);
+  assert.ok(res.routine.base.kind === 'post' && res.routine.base.sit === true);
+  const path = res.routine.slots![0]!.task;
+  assert.ok(path.kind === 'path');
+  assert.equal(path.waypoints[0]!.sit, true);
 });

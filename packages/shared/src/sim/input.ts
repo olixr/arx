@@ -26,6 +26,8 @@ export enum InputButton {
   Ability4 = 1 << 6,
   /** Crouch-walk latch — HELD while the client's sneak toggle is on, not an edge. */
   Sneak = 1 << 7,
+  /** Sit toggle (X / pad D-down) — press edge flips the seated rest. */
+  Sit = 1 << 8,
 }
 
 export function hasButton(buttons: number, b: InputButton): boolean {

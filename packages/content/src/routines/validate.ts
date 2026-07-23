@@ -59,13 +59,28 @@ function validateDir(raw: unknown, where: string, errors: string[]): number | un
   return raw;
 }
 
-function validateWork(raw: unknown, where: string, errors: string[]): boolean | undefined {
+function validateFlag(
+  raw: unknown,
+  where: string,
+  key: 'work' | 'sit',
+  errors: string[],
+): boolean | undefined {
   if (raw === undefined) return undefined;
   if (typeof raw !== 'boolean') {
-    errors.push(`${where}.work must be a boolean`);
+    errors.push(`${where}.${key} must be a boolean`);
     return undefined;
   }
   return raw ? true : undefined;
+}
+
+/** A stop is a posture: hammering a station and resting are exclusive. */
+function rejectWorkSit(
+  work: boolean | undefined,
+  sit: boolean | undefined,
+  where: string,
+  errors: string[],
+): void {
+  if (work && sit) errors.push(`${where} cannot both work and sit`);
 }
 
 /** Strides live between a hobble and a sprint (player speed is 5). */
@@ -98,7 +113,9 @@ function validateWaypoint(
     }
   }
   wp.dir = validateDir(raw.dir, where, errors);
-  wp.work = validateWork(raw.work, where, errors);
+  wp.work = validateFlag(raw.work, where, 'work', errors);
+  wp.sit = validateFlag(raw.sit, where, 'sit', errors);
+  rejectWorkSit(wp.work, wp.sit, where, errors);
   wp.speed = validateSpeed(raw.speed, where, errors);
   return wp;
 }
@@ -114,7 +131,9 @@ function validateTask(raw: unknown, where: string, errors: string[]): RoutineTas
     if (off.x !== undefined) task.x = off.x;
     if (off.y !== undefined) task.y = off.y;
     task.dir = validateDir(raw.dir, where, errors);
-    task.work = validateWork(raw.work, where, errors);
+    task.work = validateFlag(raw.work, where, 'work', errors);
+    task.sit = validateFlag(raw.sit, where, 'sit', errors);
+    rejectWorkSit(task.work, task.sit, where, errors);
     task.speed = validateSpeed(raw.speed, where, errors);
     return task;
   }

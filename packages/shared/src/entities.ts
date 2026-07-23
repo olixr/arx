@@ -35,6 +35,12 @@ export enum PoseState {
   Art = 12,
   /** Crouch-walk stealth carriage — covers both sneak-moving and sneak-idle. */
   Sneak = 13,
+  /**
+   * Seated rest — the wayside emote. One byte covers players (X
+   * toggle) and NPCs (routine `sit` stops); the client varies the
+   * posture per entity so a campfire circle never sits identically.
+   */
+  Sit = 14,
 }
 
 /**

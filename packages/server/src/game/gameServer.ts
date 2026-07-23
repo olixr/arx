@@ -609,6 +609,12 @@ interface PlayerComp {
   boltGraceUntilTick: number;
   /** Crouch latch from the last processed frame (held bit, survives empty ticks). */
   sneaking: boolean;
+  /**
+   * Seated rest (the X toggle). Purely cosmetic and always yielding:
+   * moving, dodging, attacking, casting, sneaking, starting an action,
+   * or taking a hit stands the body back up.
+   */
+  sitting: boolean;
   /** Consecutive ticks without movement while sneaking. */
   sneakStillTicks: number;
   /** Fully hidden from other players and NPCs. */
@@ -1199,6 +1205,7 @@ export class GameServer {
       boltStage: 0,
       boltGraceUntilTick: 0,
       sneaking: false,
+      sitting: false,
       sneakStillTicks: 0,
       hidden: false,
       flags: character.id > 0 ? this.accounts.loadFlags(character.id) : new Map(),
@@ -5222,6 +5229,7 @@ export class GameServer {
 
     health.hp -= dmg;
     this.grantXp(eid, player, 'defence', dmg * 3);
+    player.sitting = false; // a landed blow ends the rest
     this.setPose(eid, PoseState.Hurt, 4);
     // Second Wind: fires only on the CROSSING into danger, so a string
     // of low hits can't re-trigger it every tick.
@@ -5648,12 +5656,19 @@ export class GameServer {
         }
         if (rc.phase === 'linger') {
           const working = task.kind === 'post' ? task.work : wp?.work;
+          const seated = task.kind === 'post' ? task.sit : wp?.sit;
           const dir = task.kind === 'path' ? wp?.dir : task.kind === 'post' ? task.dir : undefined;
           if (working) {
             // The client squares the rig up to the nearest station and
             // plays the full work choreography off this one byte.
             this.routinePose(eid, npc, PoseState.Craft);
             rc.holdFacing = true;
+          } else if (seated) {
+            // The wayside rest: a seated body is planted — no glancing
+            // at passersby (the whole figure would swivel on the seat).
+            this.routinePose(eid, npc, PoseState.Sit);
+            rc.holdFacing = true;
+            if (dir !== undefined) pos.dir = dir;
           } else {
             this.routinePose(eid, npc, PoseState.Idle);
             // An authored facing is held; otherwise tickActors may
@@ -6768,6 +6783,15 @@ export class GameServer {
       // Abilities fire on the press edge — holding Q is one cast.
       const pressed = frame.buttons & ~player.prevButtons;
       player.prevButtons = frame.buttons;
+      // The sit toggle flips on the press edge; every deliberate act
+      // below (moving, dodging, swinging, casting) stands the body up.
+      if (pressed & InputButton.Sit) player.sitting = !player.sitting;
+      if (
+        pressed &
+        (InputButton.Ability1 | InputButton.Ability2 | InputButton.Ability3 | InputButton.Ability4)
+      ) {
+        player.sitting = false;
+      }
       if (pressed & InputButton.Ability1) this.tryCastAbility(eid, player, 0, frame.aim);
       if (pressed & InputButton.Ability2) this.tryCastAbility(eid, player, 1, frame.aim);
       if (pressed & InputButton.Ability3) this.tryCastAbility(eid, player, 2, frame.aim);
@@ -6794,6 +6818,7 @@ export class GameServer {
       // A cast this frame (or one still resolving) holds the basic back.
       const stillCasting = this.tickCount < player.castFreezeUntilTick;
       const attackHeld = hasButton(frame.buttons, InputButton.Attack) && !stillCasting;
+      if (attackHeld) player.sitting = false;
       if (style === 'archery') {
         this.tickBowDraw(eid, player, equipped!.weapon, attackHeld, frame.aim, frame.seq);
       } else if (attackHeld) {
@@ -6806,6 +6831,9 @@ export class GameServer {
     // held bit, so it survives empty ticks and packet loss. Hidden is
     // strictly layered on top: hidden ⇒ sneaking.
     player.sneaking = hasButton(player.prevButtons, InputButton.Sneak);
+    // Rest yields to everything: a step, a crouch, or a running action
+    // (gathering, crafting) ends the sit — no half-seated walkers.
+    if (moved || player.sneaking || player.action) player.sitting = false;
     if (player.sneaking) {
       player.sneakStillTicks = moved ? 0 : player.sneakStillTicks + 1;
     } else {
@@ -6835,7 +6863,13 @@ export class GameServer {
     } else {
       this.poses.set(
         eid,
-        player.sneaking ? PoseState.Sneak : moved ? PoseState.Walk : PoseState.Idle,
+        player.sitting
+          ? PoseState.Sit
+          : player.sneaking
+            ? PoseState.Sneak
+            : moved
+              ? PoseState.Walk
+              : PoseState.Idle,
       );
     }
     if (moved) this.updateChunkMembership(eid);

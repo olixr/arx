@@ -45,6 +45,12 @@ export interface RoutineWaypoint {
    */
   work?: boolean;
   /**
+   * Rest seated while lingering — the wayside sit (stretched-out RPG
+   * rest, never cross-legged). A bandit off the patrol rotation parks
+   * by the campfire with this. Mutually exclusive with `work`.
+   */
+  sit?: boolean;
+  /**
    * Stride for the leg INTO this stop, tiles/sec — overrides the
    * task's speed for that one segment (a dash across the yard on an
    * otherwise ambling round). Absent = the task's pace.
@@ -73,6 +79,8 @@ export interface RoutineTaskPost {
   dir?: number;
   /** Work the nearest station the whole time (see RoutineWaypoint.work). */
   work?: boolean;
+  /** Rest seated the whole time (see RoutineWaypoint.sit). */
+  sit?: boolean;
   /** Stride when traveling to (or back to) the post, tiles/sec. */
   speed?: RoutineSpeed;
 }
