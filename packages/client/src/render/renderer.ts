@@ -14710,17 +14710,35 @@ export class Renderer {
       // shorter the reach, until the legs read as an open V on the
       // ground. Side-on keeps the long stretched-out profile.
       const vert = Math.abs(fwy);
-      // Lounger: both legs stretched, easy splay. Knee-up: one leg out,
-      // the other foot pulled in so the IK raises that knee.
+      // Lounger: one leg stretched long, the other SOFT-BENT (foot
+      // pulled partway in so the IK lifts a low lazy knee) — two
+      // parallel straight legs read as planks, not a person. Knee-up:
+      // one leg out, the other foot hauled in close so the knee rises
+      // sharply — the campfire sit, forearm draped over the cap.
+      // Facing up/down-screen the feet pull IN until they sit almost
+      // LEVEL with the hip line: forward reach barely foreshortens on
+      // the ground plane, so any real fwd distance hangs the feet far
+      // below the hips and the whole figure reads as a standing
+      // A-stance. Near-zero reach + wide splay lays the shins along
+      // the ground with the knees folded out — a floor sit.
+      // `side` lives in the FACING frame — its screen side flips with
+      // the facing. The showpiece leg (the lounger's long stretch, the
+      // raised knee) must take the CAMERA side of the body at profile
+      // or it hides behind the torso and the sit reads one-legged;
+      // camSide re-signs it into world down-screen.
+      const camSide = fwx >= 0 ? 1 : -1;
       const spots =
         sitVariant === 0
           ? [
-              { fwd: 0.44 - 0.18 * vert, side: -(0.18 + 0.17 * vert) },
-              { fwd: 0.54 - 0.2 * vert, side: 0.14 + 0.18 * vert },
+              { fwd: 0.34 - 0.3 * vert, side: -camSide * (0.17 + 0.07 * vert) },
+              { fwd: 0.56 - 0.5 * vert, side: camSide * (0.16 + 0.1 * vert) },
             ]
           : [
-              { fwd: 0.52 - 0.18 * vert, side: 0.15 + 0.17 * vert },
-              { fwd: 0.22 - 0.05 * vert, side: -(0.14 + 0.12 * vert) },
+              { fwd: 0.54 - 0.44 * vert, side: -camSide * (0.15 + 0.13 * vert) },
+              // The raised foot tucks nearly under the hip — the short
+              // hip→foot span is what folds the knee up toward the
+              // chest instead of a low lazy peak.
+              { fwd: 0.1 - 0.05 * vert, side: camSide * (0.11 + 0.06 * vert) },
             ];
       const t = spots.map((sp) => ({
         x: e.x + (fwx * sp.fwd - fwy * sp.side) * kSize,

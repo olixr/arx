@@ -291,6 +291,14 @@ const ARM_LEN = 0.17;
 
 /** Shared per-frame IK scratches (see solveLimbInto's contract). */
 const ARM_SOLVE: LimbSolve = { ex: 0, ey: 0, kx: 0, ky: 0 };
+/** Per-draw knee scratch (hot path, no alloc): the leg loop records
+ * each solved knee so the seated arm vocabulary can drape a forearm
+ * over the raised kneecap it actually drew. d = hip→foot span; the
+ * SMALLER span is the more bent — the raised — knee. */
+const KNEE_SCRATCH = [
+  { x: 0, y: 0, d: 0 },
+  { x: 0, y: 0, d: 0 },
+];
 const LEG_SOLVE: LimbSolve = { ex: 0, ey: 0, kx: 0, ky: 0 };
 /** Hoisted per-foot paint tables — loop literals in the leg painter
  *  alloc once per LEG per frame otherwise. */
@@ -1344,6 +1352,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     rig.kneeMemory[i] = sign;
     const kx = hipX + ex / 2 + cxn * sign * bend;
     const ky = hipY + ey / 2 + cyn * sign * bend;
+    const kn = KNEE_SCRATCH[i]!;
+    kn.x = kx;
+    kn.y = ky;
+    kn.d = d;
 
     // Leg dressing: thigh and shin as separate strokes so greaves and
     // wraps can recolor the lower leg; default = today's exact colors.
@@ -2215,6 +2227,58 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     }
   }
 
+  // ---- the seat claims the arms and the spine. Sit is not a restful
+  // pose (restT stays 0), so without this the hands hold the combat-
+  // guard baseline — arms braced forward on a sitter, the "goofy sit"
+  // read. Two arm vocabularies matched to the two leg postures:
+  // LOUNGER plants both palms on the ground behind the hips (the
+  // lean-back sunset watch); KNEE-UP drapes the forearm over the
+  // raised kneecap — wrist hanging loose past the cap — while the
+  // other palm props the ground beside the trailing hip. THE PROP
+  // LEAN: the torso tips back off the planted arms, profile-weighted
+  // (front-on there is no screen-backward to lean along). Everything
+  // blends on the caller-smoothed sit channel, so the hands travel to
+  // the ground and back with the body — never a pop.
+  if (sit > 0) {
+    const kneeUpSit = rig.sitVariant === 1;
+    let smx: number;
+    let smy: number;
+    let sox: number;
+    let soy: number;
+    if (kneeUpSit) {
+      // The raised knee is the leg the IK bent hardest (smallest
+      // hip→foot span) — drape the same-side fist over it.
+      const a = KNEE_SCRATCH[0]!;
+      const b = KNEE_SCRATCH[1]!;
+      const rk = a.d <= b.d ? a : b;
+      const kneeSide = Math.sign(rk.x - rig.x) || 1;
+      const drapeX = rk.x + kneeSide * 0.05 * s * wS;
+      const drapeY = rk.y + 0.05 * s;
+      const propX = rig.x - kneeSide * tw * 1.35 * wS - fx * 0.1 * s * wS;
+      const propY = hipY + 0.11 * s;
+      const mainDrapes = kneeSide === (Math.sign(sideS) || 1);
+      smx = mainDrapes ? drapeX : propX;
+      smy = mainDrapes ? drapeY : propY;
+      sox = mainDrapes ? propX : drapeX;
+      soy = mainDrapes ? propY : drapeY;
+    } else {
+      // Both palms planted just outside and behind the hips.
+      const backX = -fx * 0.13 * s * wS;
+      smx = rig.x + sideS * tw * 1.5 * wS + backX;
+      smy = hipY + 0.1 * s;
+      sox = rig.x - sideS * tw * 1.5 * wS + backX;
+      soy = hipY + 0.12 * s;
+    }
+    mainX += (smx - mainX) * sit;
+    mainY += (smy - mainY) * sit;
+    offX += (sox - offX) * sit;
+    offY += (soy - offY) * sit;
+    // Seated breath — the resting hands are never a freeze-frame.
+    mainY += Math.sin(rig.nowMs * 0.0017) * 0.008 * s * sit;
+    offY += Math.sin(rig.nowMs * 0.0017 + 1.4) * 0.008 * s * sit;
+    lean += -sideS * profileK * (kneeUpSit ? 0.1 : 0.2) * sit;
+  }
+
   // Casting: the free hand punches a push toward the aim.
   if (rig.pose === PoseState.Cast && rig.poseT < 0.5) {
     const u = Math.sin((rig.poseT / 0.5) * Math.PI);
@@ -2386,8 +2450,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   let offShX = archer
     ? rig.x + fx * tw * 0.8 * wS
     : rig.x + Math.cos(offAngle) * tw * 0.8 * wS;
-  mainShX += (rig.x + sideS * tw * 0.85 * wS - mainShX) * restSettle;
-  offShX += (rig.x - sideS * tw * 0.85 * wS - offShX) * restSettle;
+  // Seated counts as fully settled: arms hang (or plant) from their
+  // anatomical roots even though Sit is not a "restful" pose.
+  const settleK = Math.max(restSettle, sit);
+  mainShX += (rig.x + sideS * tw * 0.85 * wS - mainShX) * settleK;
+  offShX += (rig.x - sideS * tw * 0.85 * wS - offShX) * settleK;
   // Aiming up-and-away puts the gear behind the body.
   const weaponBehind = fy < -0.35;
   const cuff = bodySt?.sleeves === 'full' ? sleeve : undefined;
@@ -2411,8 +2478,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       shoulderY,
       offX,
       offY,
-      (archer ? fx * 0.2 : Math.cos(offAngle) * 0.4) * (1 - restSettle) -
-        sideS * 0.45 * restSettle,
+      (archer ? fx * 0.2 : Math.cos(offAngle) * 0.4) * (1 - settleK) -
+        sideS * 0.45 * settleK,
       1,
       sleeve,
       skin,
@@ -2546,8 +2613,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       shoulderY,
       mainX,
       mainY,
-      (archer ? -fx : Math.cos(mainAngle) * 0.4) * (1 - restSettle) +
-        sideS * 0.45 * restSettle,
+      (archer ? -fx : Math.cos(mainAngle) * 0.4) * (1 - settleK) +
+        sideS * 0.45 * settleK,
       archer ? -0.6 : 1,
       sleeve,
       skin,
