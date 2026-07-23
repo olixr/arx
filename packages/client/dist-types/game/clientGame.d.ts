@@ -320,6 +320,8 @@ export declare class ClientGame {
     get isHidden(): boolean;
     /** A hostile NPC is currently chasing us (own snapshot bit). */
     get isDetected(): boolean;
+    /** Weapons stowed on the body (own snapshot bit, server-owned). */
+    get isSheathed(): boolean;
     /** Tap-to-move autopilot; cancelled by any manual movement input. */
     private autoPath;
     /** Drop entity to take the moment the auto-walk brings it in reach. */

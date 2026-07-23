@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   HASTE_FULL_DRAW_TICKS,
   HASTE_ON_HIT_TICKS,
+  SHEATHED_BIT,
   SNEAK_DETECTED_BIT,
   SNEAK_HIDDEN_BIT,
   STATUS_AMBIENCE_MASK,
@@ -87,6 +88,7 @@ test('the ambience mask covers exactly the statuses and never the sneak bits', (
   for (const id of STATUS_IDS) mask |= STATUS_BIT[id];
   assert.equal(mask, STATUS_AMBIENCE_MASK, 'mask must track STATUS_BIT exactly');
   assert.equal(mask & (SNEAK_HIDDEN_BIT | SNEAK_DETECTED_BIT), 0, 'stealth bits leaked in');
+  assert.equal(mask & SHEATHED_BIT, 0, 'the sheathe bit leaked into the ambience mask');
 });
 
 test('spread reactions always spread a real DoT', () => {

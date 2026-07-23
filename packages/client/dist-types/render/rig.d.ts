@@ -140,6 +140,14 @@ export interface RigPose {
     sitT?: number;
     /** Which seated posture: 0 = lounger (legs out), 1 = one knee up. */
     sitVariant?: 0 | 1;
+    /**
+     * Sheathe blend, 0..1, SMOOTHED BY THE CALLER (the sitT pattern —
+     * never poseT). 0 = weapons in hand; rising, the hand carries the
+     * weapon to its stow spot (blades to the belt, bow/staff over the
+     * shoulder); past the handoff the weapon rides the BODY and the
+     * empty hand walks home. Falling plays the same motion as the draw.
+     */
+    sheathT?: number;
 }
 /** Duration of one mining swing (windup→heave→strike→pry), ms. */
 export declare const MINE_CYCLE_MS = 880;

@@ -53,6 +53,10 @@ export declare class Sfx {
     death(): void;
     crit(): void;
     bowTwang(): void;
+    /** Steel leaves the scabbard: a bright scrape ringing UP and open. */
+    weaponDraw(): void;
+    /** Steel slides home: a duller scrape down, then the frog's soft click. */
+    weaponStow(): void;
     /** Nocking + hauling the string back: a low wooden creak. */
     bowDraw(): void;
     /** Full draw reached: a tight little click — "locked in". */

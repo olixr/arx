@@ -28,6 +28,8 @@ export enum InputButton {
   Sneak = 1 << 7,
   /** Sit toggle (X / pad D-down) — press edge flips the seated rest. */
   Sit = 1 << 8,
+  /** Sheathe toggle (H / pad D-left) — press edge stows/draws the weapons. */
+  Sheathe = 1 << 9,
 }
 
 export function hasButton(buttons: number, b: InputButton): boolean {

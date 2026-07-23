@@ -6,6 +6,7 @@ import {
   DRAW_FULL_TICKS,
   EntityKind,
   PoseState,
+  SHEATHED_BIT,
   STATUS_AMBIENCE_MASK,
   STATUS_BIT,
   LIGHT_BLOCKING_TILES,
@@ -288,6 +289,12 @@ interface AnimState {
    * both directions so sitting down and rising both ease.
    */
   sitK?: number;
+  /**
+   * Smoothed 0..1 sheathe blend (the sitK pattern): 1 = weapons stowed
+   * on the body. Initialized AT its target on first sight so a body
+   * that enters view already sheathed doesn't pantomime the stow.
+   */
+  sheathK?: number;
   /** The entity's cape cloth sim — present only while one is worn. */
   cape?: CapeSim;
   /** Which cape item `cape` was built for; a change rebuilds the cloth. */
@@ -14359,6 +14366,7 @@ export class Renderer {
             carry: remote.meta.appearance?.carry,
             carryOff: remote.meta.appearance?.carryOff,
             look: remote.meta.appearance?.look,
+            sheathed: (s.status & SHEATHED_BIT) !== 0,
             color: remote.meta.appearance?.look
               ? CLOTH_COLORS[remote.meta.appearance.look.shirt]!
               : PLAYER_COLORS[hashString(remote.meta.name ?? String(eid)) % PLAYER_COLORS.length]!,
@@ -14386,6 +14394,7 @@ export class Renderer {
                 equip: remote.meta.appearance.equip ?? {},
                 ench: remote.meta.appearance.ench,
                 look: remote.meta.appearance.look,
+                sheathed: (s.status & SHEATHED_BIT) !== 0,
                 color: remote.meta.appearance.look
                   ? CLOTH_COLORS[remote.meta.appearance.look.shirt]!
                   : '#c8b89a',
@@ -14500,6 +14509,7 @@ export class Renderer {
           ? CLOTH_COLORS[game.ownLook.shirt]!
           : PLAYER_COLORS[hashString(game.ownName) % PLAYER_COLORS.length]!,
         drawTOverride: game.ownDrawT,
+        sheathed: game.isSheathed,
       });
       // Only WE see ourselves while stealthed — a ghost of our own body.
       if (game.isHidden) ownItem.alpha = 0.45;
@@ -14611,6 +14621,8 @@ export class Renderer {
     drawTOverride?: number;
     /** Bone-dialect override: this humanoid is a skeleton. */
     skeletal?: SkeletonLook;
+    /** Weapons stowed on the body (snapshot SHEATHED_BIT). */
+    sheathed?: boolean;
   }): DrawItem {
     const s = this.camera.scale;
     const now = performance.now();
@@ -14772,6 +14784,24 @@ export class Renderer {
     // Seated lean: hips and torso settle BEHIND the ground point while
     // the feet hold their forward plant — the stretched-out rest.
     if (sitE > 0) lunge -= 0.15 * sitE;
+
+    // The sheathe blend: the player's own toggle, and every state that
+    // used to VANISH the weapon (station work, foraging, the seated
+    // rest) now stows it instead — the blade rides the belt while its
+    // owner hammers, picks herbs, or rests. First sight starts AT the
+    // target so an already-sheathed body never pantomimes the stow.
+    const sheathTarget =
+      e.sheathed === true ||
+      e.pose === PoseState.Craft ||
+      e.pose === PoseState.Sit ||
+      gather?.kind === 'forage'
+        ? 1
+        : 0;
+    let sheathK = anim.sheathK ?? sheathTarget;
+    sheathK += (sheathTarget - sheathK) * (1 - Math.exp(-6 * this.frameDt));
+    if (sheathK < 0.004) sheathK = 0;
+    else if (sheathK > 0.996) sheathK = 1;
+    anim.sheathK = sheathK;
 
     const bodyX = p.x + Math.cos(dir) * lunge * s;
     const bodyY = p.y + Math.sin(dir) * lunge * s;
@@ -14981,21 +15011,19 @@ export class Renderer {
           bodyColor: e.color,
           hurt: e.hurt ?? false,
           isOwn: e.isOwn,
-          // During a gather the BELT tool is what's in the hands; at a
-          // station the smith's own kit replaces the weapon entirely.
-          // Foraging holsters everything — herbs are picked bare-handed.
-          // A resting body holsters the blade the same way Craft does.
+          // During a gather the BELT tool is what's in the hands. The
+          // old holster states (station work, foraging, the seated
+          // rest) now flow through the sheathe blend above instead of
+          // vanishing the weapon — it stows to the belt or the back.
           weaponItem:
-            e.pose === PoseState.Craft || gather?.kind === 'forage' || sitE > 0.3
-              ? undefined
-              : e.pose === PoseState.Gather
-                ? (e.equip.tool ?? e.equip.weapon)
-                : e.equip.weapon,
-          // Enchant fx ride the real weapons, never the gather tool.
+            e.pose === PoseState.Gather ? (e.equip.tool ?? e.equip.weapon) : e.equip.weapon,
+          // Enchant fx ride the real weapon — in hand OR stowed —
+          // never the gather tool.
           weaponEnch:
-            e.pose === PoseState.Craft || e.pose === PoseState.Gather
-              ? undefined
-              : e.ench?.weapon,
+            (e.pose === PoseState.Gather ? (e.equip.tool ?? e.equip.weapon) : e.equip.weapon) ===
+            e.equip.weapon
+              ? e.ench?.weapon
+              : undefined,
           offhandEnch: e.ench?.offhand,
           carryStyle: e.carry,
           carryOff: e.carryOff,
@@ -15015,6 +15043,7 @@ export class Renderer {
           foraging: gather?.kind === 'forage',
           sitT: sitE,
           sitVariant,
+          sheathT: sheathK,
         };
         // Layer law with a cape worn: gear straps OVER the cloth, so
         // the quiver paints immediately after the cape on whichever

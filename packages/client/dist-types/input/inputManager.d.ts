@@ -58,6 +58,12 @@ export declare class InputManager {
      */
     private sitQueued;
     private padSitWasDown;
+    /**
+     * One queued sheathe-toggle press (H / pad D-left) — same protocol
+     * as sit: one frame carries the bit, the server owns the state.
+     */
+    private sheatheQueued;
+    private padSheatheWasDown;
     constructor(target: HTMLElement);
     setTypingCheck(fn: () => boolean): void;
     isDown(code: string): boolean;

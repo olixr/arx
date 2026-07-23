@@ -605,6 +605,8 @@ const game = new ClientGame(input, {
 // Dev handle: Playwright drives /give and friends through this —
 // window.game is stolen by the canvas id, so take a distinct name.
 (window as unknown as { dcGame: ClientGame }).dcGame = game;
+// Dev/Playwright handle: the renderer beside the game (camera, anims).
+(window as unknown as { dcRenderer: Renderer }).dcRenderer = renderer;
 
 // The ground manager: choose from a pile instead of vacuuming it.
 const lootPanel = new LootPanel(game);
@@ -1300,6 +1302,7 @@ let lastOwnPose = 0;
 let padInteractWasDown = false;
 let padSneakWasDown = false;
 let lastDrawT = 0;
+let lastSheathed = false;
 /** Pad button state last frame — build-mode verbs edge off this. */
 let padPrevBtns = new Set<number>();
 let lastWalkMode = false;
@@ -1378,6 +1381,16 @@ function frame(now: number): void {
       window.setTimeout(() => sfx.swingCombo(0), Math.round(beatMs * 0.55));
     }
     lastOwnPose = game.ownPose;
+  }
+
+  // The sheathe: steel sings leaving the scabbard, slides home with a
+  // click. Server-confirmed edge, so the sound lands with the visual.
+  if (game.isSheathed !== lastSheathed) {
+    if (game.equipment.weapon || itemDef(game.equipment.offhand?.id ?? '')?.weapon) {
+      if (game.isSheathed) sfx.weaponStow();
+      else sfx.weaponDraw();
+    }
+    lastSheathed = game.isSheathed;
   }
 
   // Bow-draw tension: creak when the string starts back, a tight click

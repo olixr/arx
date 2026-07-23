@@ -38,6 +38,7 @@ import {
   type StrikeFrame,
   type StrikeTrail,
 } from './carriage.js';
+import { STOW_HANDOFF, sheathePhases, stowBack, stowBlade } from './sheath.js';
 import {
   bodyStyle,
   bootStyle,
@@ -259,6 +260,14 @@ export interface RigPose {
   sitT?: number;
   /** Which seated posture: 0 = lounger (legs out), 1 = one knee up. */
   sitVariant?: 0 | 1;
+  /**
+   * Sheathe blend, 0..1, SMOOTHED BY THE CALLER (the sitT pattern —
+   * never poseT). 0 = weapons in hand; rising, the hand carries the
+   * weapon to its stow spot (blades to the belt, bow/staff over the
+   * shoulder); past the handoff the weapon rides the BODY and the
+   * empty hand walks home. Falling plays the same motion as the draw.
+   */
+  sheathT?: number;
 }
 
 /** Shortest signed rotation from angle `a` to angle `b` (radians). */
@@ -1518,7 +1527,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // doing; two-segment IK arms connect them back to the shoulder line.
   const wS = rig.wScale;
   const hScale = 1 + (1 - wS) * 0.55;
-  const weapon = itemDef(rig.weaponItem ?? '');
+  // The sheathe blend: before the handoff the weapon still lives in the
+  // hand (carried toward its stow spot); past it the weapon is BODY
+  // gear — the hand code below sees empty fists and relaxes into the
+  // bare hang, while the stow painters put the steel on the belt/back.
+  const sheath = rig.sheathT ?? 0;
+  const stowed = sheath >= STOW_HANDOFF;
+  const wornDef = itemDef(rig.weaponItem ?? '');
+  const weapon = stowed ? undefined : wornDef;
   const isBow = weapon !== undefined && bowStyle(weapon.id) !== null;
   // Blades — swords and daggers both — share the low carriage AND the
   // grip-aware strike vocabulary (incl. the reverse grip). Identity
@@ -1534,7 +1550,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // at rest. Flip is a property of the GRIP, constant through swings.
   const mainGrip: Grip = rig.carryStyle === 'rogue' ? 'rogue' : 'normal';
   const offGrip: Grip = rig.carryOff === 'rogue' ? 'rogue' : 'normal';
-  const offBlade = offSt?.kind === 'weapon' && rig.offhandItem !== undefined;
+  // A stowed off blade leaves the hand exactly like the main weapon —
+  // offWorn remembers it for the stow painter and the grab blend.
+  const offWorn = offSt?.kind === 'weapon' && rig.offhandItem !== undefined;
+  const offBlade = offWorn && !stowed;
   // The tool TYPE picks the work cycle: an axe chops, a pick heaves
   // overhead and pries — different rhythms, different bodies. Rods (and
   // bare hands) keep the gentle working sway.
@@ -2235,6 +2254,61 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     offY = bowY;
   }
 
+  // ---- the sheathe: one blend moves the weapons between hand and body.
+  // Blades stow to the belt, bows and staffs sling across the back; the
+  // spots live in sheath.ts (pure, test-pinned) and ride hipY/shoulderY,
+  // so they duck with a crouch and settle with a sit for free.
+  const wornBow = wornDef !== undefined && bowStyle(wornDef.id) !== null;
+  const wornStaff = wornDef !== undefined && staffStyle(wornDef.id) !== null;
+  const wornBack = wornBow || wornStaff;
+  let mainStow: { x: number; y: number; angle: number } | null = null;
+  if (wornDef) {
+    if (wornBack) {
+      // stowBack speaks painter space directly: staff angle = grip→
+      // crown along local +X, bow angle = the mirrored-sling law.
+      const spot = stowBack(wornBow ? 'bow' : 'staff', sideS);
+      mainStow = {
+        x: rig.x - fx * 0.14 * s + spot.dx * s * wS,
+        y: shoulderY + spot.dy * s,
+        angle: spot.angle,
+      };
+    } else {
+      const spot = stowBlade('main', sideS, sideW, sit);
+      mainStow = { x: rig.x + spot.dx * s * wS, y: hipY + spot.dy * s, angle: spot.angle };
+    }
+  }
+  let offStow: { x: number; y: number; angle: number } | null = null;
+  if (offWorn) {
+    const spot = stowBlade('off', sideS, sideW, sit);
+    offStow = { x: rig.x + spot.dx * s * wS, y: hipY + spot.dy * s, angle: spot.angle };
+  }
+  if (sheath > 0 && mainStow) {
+    const ph = sheathePhases(sheath);
+    if (!stowed) {
+      // The reach: hand and weapon travel together to the stow spot,
+      // the blade rolling to its seated rake on the way in. Falling
+      // (a draw) plays the same path out of the scabbard.
+      mainX += (mainStow.x - mainX) * ph.grabK;
+      mainY += (mainStow.y - mainY) * ph.grabK;
+      heldAngle += angleDelta(heldAngle, mainStow.angle) * ph.grabK;
+      staffGrip += (0.5 - staffGrip) * ph.grabK;
+      if (offStow) {
+        offX += (offStow.x - offX) * ph.grabK;
+        offY += (offStow.y - offY) * ph.grabK;
+        offBladeAngle += angleDelta(offBladeAngle, offStow.angle) * ph.grabK;
+      }
+    } else {
+      // The weapon is body gear now — the empty hands walk home from
+      // the spot they left it (or reach back toward it, drawing).
+      mainX = mainStow.x + (mainX - mainStow.x) * ph.homeK;
+      mainY = mainStow.y + (mainY - mainStow.y) * ph.homeK;
+      if (offStow) {
+        offX = offStow.x + (offX - offStow.x) * ph.homeK;
+        offY = offStow.y + (offY - offStow.y) * ph.homeK;
+      }
+    }
+  }
+
   // Slash trails: a crisp crescent chasing each blade through its cut,
   // centered on the cut's plane (a high cleave rings high, a rising
   // return rings low) and fading through the held extension. The echo
@@ -2371,7 +2445,100 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     if (!offSt || offSt.kind !== 'quiver' || rig.hasCape) return;
     drawQuiver(ctx, offSt, rig.x - fx * 0.14 * s, shoulderY - 0.02 * s, s, lead, rig.hurt);
   };
+  // ---- stowed weapons on the body. A sheathed BLADE wears its
+  // scabbard: a leather sleeve covering the steel from guard to point,
+  // dressed with the blade's own guard metal (locket at the mouth,
+  // chape at the tip) so every bespoke sword keeps its identity while
+  // visibly put away. The belt FROG — the loop that hangs the scabbard
+  // from the belt — paints over the mouth: that strap is what
+  // attaches the steel to the body instead of floating it at the hip.
+  const paintScabbard = (spot: { x: number; y: number; angle: number }, itemId: string): void => {
+    const bSt = bladeStyle(itemId, '#8d9299');
+    if (!bSt) return; // tools hang bare on the frog — no sleeve
+    ctx.save();
+    ctx.translate(spot.x, spot.y);
+    ctx.rotate(spot.angle);
+    const mouth = 0.035 * s;
+    const tip = 0.045 * s + (bSt.len ?? 1) * 0.44 * s + 0.02 * s;
+    const leather = rig.hurt ? '#ffffff' : '#453324';
+    // The sleeve: widest at the mouth, tapering to a rounded point.
+    ctx.fillStyle = leather;
+    ctx.beginPath();
+    ctx.moveTo(mouth, -0.055 * s);
+    ctx.lineTo(tip - 0.06 * s, -0.034 * s);
+    ctx.quadraticCurveTo(tip + 0.015 * s, 0, tip - 0.06 * s, 0.034 * s);
+    ctx.lineTo(mouth, 0.055 * s);
+    ctx.closePath();
+    ctx.fill();
+    if (!rig.hurt) {
+      // Stitched seam down the center line — worn leather, not a slab.
+      ctx.strokeStyle = '#5d4732';
+      ctx.lineWidth = Math.max(1, 0.014 * s);
+      ctx.beginPath();
+      ctx.moveTo(mouth + 0.05 * s, 0);
+      ctx.lineTo(tip - 0.07 * s, 0);
+      ctx.stroke();
+      // Furniture in the blade's own guard metal: the locket banding
+      // the mouth, the chape capping the point.
+      const metal = bSt.guardColor ?? '#4a4554';
+      ctx.fillStyle = metal;
+      ctx.fillRect(mouth, -0.058 * s, 0.042 * s, 0.116 * s);
+      ctx.beginPath();
+      ctx.moveTo(tip - 0.075 * s, -0.037 * s);
+      ctx.quadraticCurveTo(tip + 0.018 * s, 0, tip - 0.075 * s, 0.037 * s);
+      ctx.lineTo(tip - 0.045 * s, 0.02 * s);
+      ctx.lineTo(tip - 0.045 * s, -0.02 * s);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  };
+  const paintFrog = (spot: { x: number; y: number; angle: number }): void => {
+    if (rig.hurt) return; // the hurt flash keeps silhouettes clean
+    ctx.save();
+    ctx.translate(spot.x, spot.y);
+    ctx.rotate(spot.angle);
+    ctx.fillStyle = '#43331f';
+    ctx.beginPath();
+    ctx.roundRect(0.09 * s, -0.06 * s, 0.062 * s, 0.12 * s, 0.02 * s);
+    ctx.fill();
+    ctx.fillStyle = '#5d4a30';
+    ctx.fillRect(0.104 * s, -0.06 * s, 0.014 * s, 0.12 * s);
+    ctx.restore();
+  };
+  const paintStowedMain = (): void => {
+    if (!stowed || !wornDef || !mainStow) return;
+    drawHeldItem(ctx, wornDef.id, wornDef.color, mainStow.x, mainStow.y, mainStow.angle, s, rig, {
+      ench: rig.weaponEnch,
+      carry: wornBow ? 1 : 0,
+      grip: 0.5,
+    });
+    if (!wornBack) {
+      paintScabbard(mainStow, wornDef.id);
+      paintFrog(mainStow);
+    }
+  };
+  const paintStowedOff = (): void => {
+    if (!stowed || !offStow || !offSt || !rig.offhandItem) return;
+    drawHeldItem(ctx, rig.offhandItem, offSt.color, offStow.x, offStow.y, offStow.angle, s, rig, {
+      ench: rig.offhandEnch,
+    });
+    paintScabbard(offStow, rig.offhandItem);
+    paintFrog(offStow);
+  };
+  // Back slings share the quiver's depth law: behind the torso facing
+  // the camera, over it facing away. With a cape the renderer owns the
+  // call (drawBackGear) so the sling straps over the cloth. Belt gear
+  // has its own depth: at PROFILE the main scabbard hangs off the
+  // TRAILING hip — the blade rakes back behind the body, so it tucks
+  // behind the torso — while the off scabbard rides the leading hip in
+  // front; face-on both hips sit outside the waist and paint in front.
+  const slingFront = fy < -0.16;
+  const beltBehind = profileK > 0.62;
   if (!quiverFront) paintQuiver();
+  if (stowed && offWorn && !beltBehind) paintStowedOff();
+  if (stowed && !wornBack && beltBehind) paintStowedMain();
+  if (stowed && wornBack && !slingFront && !rig.hasCape) paintStowedMain();
   const paintMainArm = (): void => {
     drawArm(
       ctx,
@@ -3665,6 +3832,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
 
   // A back-facing quiver reads over the torso, like a cape's front side.
   if (quiverFront) paintQuiver();
+  // Stowed gear on the near side of the body paints over the torso —
+  // the back sling when facing away, the belt pieces face-on, and the
+  // off scabbard's leading hip at profile — but UNDER the arms, so a
+  // hand hanging beside the hip reads in front of its own scabbard.
+  if (stowed && wornBack && slingFront && !rig.hasCape) paintStowedMain();
+  if (stowed && !wornBack && !beltBehind) paintStowedMain();
+  if (stowed && offWorn && beltBehind) paintStowedOff();
 
   // ---- weapon + striking arm in front of the torso (the bold read) —
   // unless the dual-wield profile flip already painted them behind it,
@@ -3687,9 +3861,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
  * quiver whenever hasCape is set.
  */
 export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void {
-  if (!rig.offhandItem) return;
-  const st = offhandStyle(rig.offhandItem);
-  if (st.kind !== 'quiver') return;
+  const st = rig.offhandItem ? offhandStyle(rig.offhandItem) : null;
+  const worn = itemDef(rig.weaponItem ?? '');
+  const stowedBow = worn !== undefined && bowStyle(worn.id) !== null;
+  const stowedStaff = worn !== undefined && staffStyle(worn.id) !== null;
+  const sling = (rig.sheathT ?? 0) >= STOW_HANDOFF && (stowedBow || stowedStaff);
+  if (st?.kind !== 'quiver' && !sling) return;
   const k = rig.size ?? 1;
   const s = rig.scale * k;
   const fx = Math.cos(rig.dir);
@@ -3700,7 +3877,25 @@ export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const th = 0.46 * s * (1 - 0.12 * crouch);
   const shoulderY = hipY - th * hScale + 0.06 * s;
   const lead = fx >= 0 ? 1 : -1;
-  drawQuiver(ctx, st, rig.x - fx * 0.14 * s, shoulderY - 0.02 * s, s, lead, rig.hurt);
+  if (st?.kind === 'quiver') {
+    drawQuiver(ctx, st, rig.x - fx * 0.14 * s, shoulderY - 0.02 * s, s, lead, rig.hurt);
+  }
+  // A stowed bow/staff straps over the cape exactly like the quiver.
+  if (sling && worn) {
+    const side = rig.depthMemory?.side ?? (Math.sign(fx) || 1);
+    const spot = stowBack(stowedBow ? 'bow' : 'staff', side);
+    drawHeldItem(
+      ctx,
+      worn.id,
+      worn.color,
+      rig.x - fx * 0.14 * s + spot.dx * s * wS,
+      shoulderY + spot.dy * s,
+      spot.angle,
+      s,
+      rig,
+      { ench: rig.weaponEnch, carry: stowedBow ? 1 : 0, grip: 0.5 },
+    );
+  }
 }
 
 /** Darken/lighten a hex color by a flat amount — flat-art shading. */

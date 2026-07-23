@@ -11,6 +11,7 @@ import {
   hasButton,
   PLAYER_SPEED,
   PROTOCOL_VERSION,
+  SHEATHED_BIT,
   SNEAK_DETECTED_BIT,
   SNEAK_HIDDEN_BIT,
   TICK_MS,
@@ -294,6 +295,11 @@ export class ClientGame {
   /** A hostile NPC is currently chasing us (own snapshot bit). */
   get isDetected(): boolean {
     return (this.ownStatus & SNEAK_DETECTED_BIT) !== 0;
+  }
+
+  /** Weapons stowed on the body (own snapshot bit, server-owned). */
+  get isSheathed(): boolean {
+    return (this.ownStatus & SHEATHED_BIT) !== 0;
   }
 
   /** Tap-to-move autopilot; cancelled by any manual movement input. */

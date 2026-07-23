@@ -69,6 +69,12 @@ export class InputManager {
    */
   private sitQueued = false;
   private padSitWasDown = false;
+  /**
+   * One queued sheathe-toggle press (H / pad D-left) — same protocol
+   * as sit: one frame carries the bit, the server owns the state.
+   */
+  private sheatheQueued = false;
+  private padSheatheWasDown = false;
 
   constructor(target: HTMLElement) {
     window.addEventListener('keydown', (e) => {
@@ -79,6 +85,10 @@ export class InputManager {
       // (demolish), so the queue only arms in open play.
       if (e.code === 'KeyX' && !e.repeat && !this.cinemaCapture && !this.buildCapture) {
         this.sitQueued = true;
+      }
+      // H holsters: stow the weapons on the body / pull them back out.
+      if (e.code === 'KeyH' && !e.repeat && !this.cinemaCapture && !this.buildCapture) {
+        this.sheatheQueued = true;
       }
       this.keys.add(e.code);
       // Keep the page from scrolling on space/arrows; Alt is the loot
@@ -197,6 +207,7 @@ export class InputManager {
   buttons(): number {
     if (this.cinemaCapture) {
       this.sitQueued = false;
+      this.sheatheQueued = false;
       return 0;
     }
     let b = 0;
@@ -206,6 +217,7 @@ export class InputManager {
     // still dodge and sneak around your own site while the ghost is up.
     if (this.buildCapture) {
       this.sitQueued = false;
+      this.sheatheQueued = false;
       if (this.keys.has('ShiftLeft')) b |= InputButton.Dodge;
       if (this.sneakMode) b |= InputButton.Sneak;
       return b;
@@ -242,6 +254,17 @@ export class InputManager {
     if (this.sitQueued) {
       b |= InputButton.Sit;
       this.sitQueued = false;
+    }
+    // Sheathe: D-pad left edge on pads, or the queued H press.
+    const padSheathe = !this.uiCapture && pad !== null && (pad.buttons[14]?.pressed ?? false);
+    if (padSheathe && !this.padSheatheWasDown) {
+      this.sheatheQueued = true;
+      this.padUsed = true;
+    }
+    this.padSheatheWasDown = padSheathe;
+    if (this.sheatheQueued) {
+      b |= InputButton.Sheathe;
+      this.sheatheQueued = false;
     }
     return b;
   }

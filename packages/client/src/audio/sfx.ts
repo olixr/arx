@@ -236,6 +236,20 @@ export class Sfx {
     this.noise(0.04, 0.12);
   }
 
+  /** Steel leaves the scabbard: a bright scrape ringing UP and open. */
+  weaponDraw(): void {
+    this.noise(0.16, 0.13, 0, { band: 3400 });
+    this.tone(1250, 0.16, { type: 'triangle', slide: 850, volume: 0.13 });
+    this.tone(420, 0.05, { type: 'square', slide: -60, volume: 0.09 });
+  }
+
+  /** Steel slides home: a duller scrape down, then the frog's soft click. */
+  weaponStow(): void {
+    this.noise(0.14, 0.11, 0, { band: 2200 });
+    this.tone(980, 0.13, { type: 'triangle', slide: -430, volume: 0.09 });
+    this.tone(200, 0.05, { type: 'square', slide: -40, volume: 0.14, delay: 0.12 });
+  }
+
   /** Nocking + hauling the string back: a low wooden creak. */
   bowDraw(): void {
     this.tone(90, 0.28, { type: 'sawtooth', slide: 55, volume: 0.14 });

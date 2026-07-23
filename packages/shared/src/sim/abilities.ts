@@ -36,6 +36,14 @@ export const SNEAK_HIDDEN_BIT = 1 << 4;
 /** Snapshot bit: a hostile NPC is currently chasing this entity. */
 export const SNEAK_DETECTED_BIT = 1 << 5;
 
+/**
+ * Snapshot bit: this body's weapons ride STOWED on the body — blades
+ * at the hip, bow/staff slung across the back. Players flip it by
+ * choice (H toggle); NPC actors read it from disposition and combat
+ * state, so a provoked guard visibly draws as the chase begins.
+ */
+export const SHEATHED_BIT = 1 << 7;
+
 /** A status being applied by an ability or attack. */
 export interface StatusApply {
   status: StatusId;

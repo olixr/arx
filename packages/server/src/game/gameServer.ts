@@ -135,6 +135,7 @@ import {
   SLOT_RELIC,
   SLOT_SIGIL,
   SLOT_TECHNIQUE,
+  SHEATHED_BIT,
   SNAP_GRACE_TICKS,
   SNAP_RECOVERY_TICKS,
   SNEAK_HIDDEN_BIT,
@@ -292,6 +293,12 @@ interface NpcComp {
   navRefY: number;
   /** A failed chase sulks: no aggro scans until this tick. */
   noAggroUntilTick: number;
+  /**
+   * This body keeps its weapons stowed when at peace (non-hostile
+   * actors). The snapshot bit derives from pref + state, so drawing
+   * on aggro and re-stowing after a leash need no bookkeeping.
+   */
+  sheathePref?: boolean;
 }
 
 /**
@@ -615,6 +622,16 @@ interface PlayerComp {
    * or taking a hit stands the body back up.
    */
   sitting: boolean;
+  /**
+   * Weapons stowed on the body (the H toggle) — blades at the hip,
+   * bow/staff across the back. While stowed, attacks and casts are
+   * SUPPRESSED (the roleplay safety): a combat press draws the weapon
+   * instead, and the draw-lock below holds the first swing until the
+   * pull-out has visibly played.
+   */
+  sheathed: boolean;
+  /** No attacks or casts until this tick — the weapon is mid-draw. */
+  drawLockUntilTick: number;
   /** Consecutive ticks without movement while sneaking. */
   sneakStillTicks: number;
   /** Fully hidden from other players and NPCs. */
@@ -682,6 +699,12 @@ const SAVE_INTERVAL_TICKS = 600; // 30s
 /** World-y extent of the player's visual body above its ground point
  * (screen height ÷ camera pitch) — NPC shots test the feet→crown band. */
 const PLAYER_HIT_HEIGHT = 1.9;
+/**
+ * Ticks between a combat press drawing a stowed weapon and the first
+ * swing it will honor (~0.5s) — the pull-out visibly plays before any
+ * damage can happen, so an accidental click can never be an attack.
+ */
+const DRAW_LOCK_TICKS = 10;
 
 /**
  * Damage roll with a 10% base crit chance (guaranteed heavy hit).
@@ -1206,6 +1229,8 @@ export class GameServer {
       boltGraceUntilTick: 0,
       sneaking: false,
       sitting: false,
+      sheathed: false,
+      drawLockUntilTick: 0,
       sneakStillTicks: 0,
       hidden: false,
       flags: character.id > 0 ? this.accounts.loadFlags(character.id) : new Map(),
@@ -4515,6 +4540,17 @@ export class GameServer {
     if (player) {
       if (player.hidden) bits |= SNEAK_HIDDEN_BIT;
       if (this.chasedPlayers.has(eid)) bits |= SNEAK_DETECTED_BIT;
+      if (player.sheathed) bits |= SHEATHED_BIT;
+    } else {
+      // NPC sheathe is a pure function of disposition and combat state:
+      // friendly actors (no combat body) always keep arms away; a
+      // fightable actor with the preference stows only while idle — the
+      // moment a chase begins the bit drops and the client plays the
+      // draw. Plain bestiary mobs never stow.
+      const npc = this.npcs.get(eid);
+      if (npc ? npc.sheathePref && npc.state === 'idle' : this.actors.has(eid)) {
+        bits |= SHEATHED_BIT;
+      }
     }
     return bits;
   }
@@ -5447,6 +5483,9 @@ export class GameServer {
         navRefX: Infinity,
         navRefY: Infinity,
         noAggroUntilTick: 0,
+        // A guard at peace keeps the blade on the hip; hostiles walk
+        // with steel out. The bit derives from this + state === 'idle'.
+        sheathePref: actor.disposition !== 'hostile',
       });
     }
     this.updateChunkMembership(eid);
@@ -6786,16 +6825,31 @@ export class GameServer {
       // The sit toggle flips on the press edge; every deliberate act
       // below (moving, dodging, swinging, casting) stands the body up.
       if (pressed & InputButton.Sit) player.sitting = !player.sitting;
-      if (
-        pressed &
-        (InputButton.Ability1 | InputButton.Ability2 | InputButton.Ability3 | InputButton.Ability4)
-      ) {
-        player.sitting = false;
+      // The sheathe toggle: weapons away, weapons out. Sheathing mid-draw
+      // lets the bowstring down; sitting and sheathing compose freely.
+      if (pressed & InputButton.Sheathe) {
+        player.sheathed = !player.sheathed;
+        if (player.sheathed) player.drawTicks = 0;
       }
-      if (pressed & InputButton.Ability1) this.tryCastAbility(eid, player, 0, frame.aim);
-      if (pressed & InputButton.Ability2) this.tryCastAbility(eid, player, 1, frame.aim);
-      if (pressed & InputButton.Ability3) this.tryCastAbility(eid, player, 2, frame.aim);
-      if (pressed & InputButton.Ability4) this.tryCastAbility(eid, player, 3, frame.aim);
+      const abilityPressed =
+        pressed &
+        (InputButton.Ability1 | InputButton.Ability2 | InputButton.Ability3 | InputButton.Ability4);
+      if (abilityPressed) player.sitting = false;
+      // THE SAFETY: while stowed, no press can deal damage. A combat
+      // press DRAWS instead — the weapon comes out (the client plays
+      // the pull), and the draw-lock holds the first real swing until
+      // the hand is back off the hip.
+      if (player.sheathed && (abilityPressed || pressed & InputButton.Attack)) {
+        player.sheathed = false;
+        player.drawLockUntilTick = this.tickCount + DRAW_LOCK_TICKS;
+      }
+      const weaponsAway = player.sheathed || this.tickCount < player.drawLockUntilTick;
+      if (!weaponsAway) {
+        if (pressed & InputButton.Ability1) this.tryCastAbility(eid, player, 0, frame.aim);
+        if (pressed & InputButton.Ability2) this.tryCastAbility(eid, player, 1, frame.aim);
+        if (pressed & InputButton.Ability3) this.tryCastAbility(eid, player, 2, frame.aim);
+        if (pressed & InputButton.Ability4) this.tryCastAbility(eid, player, 3, frame.aim);
+      }
       // Dodge dash: same seq-cooldown rule the client predicts with.
       if (
         hasButton(frame.buttons, InputButton.Dodge) &&
@@ -6816,8 +6870,10 @@ export class GameServer {
       player.lastProcessedSeq = frame.seq;
 
       // A cast this frame (or one still resolving) holds the basic back.
+      // Stowed weapons hold it too — the safety again, for the held path.
       const stillCasting = this.tickCount < player.castFreezeUntilTick;
-      const attackHeld = hasButton(frame.buttons, InputButton.Attack) && !stillCasting;
+      const attackHeld =
+        hasButton(frame.buttons, InputButton.Attack) && !stillCasting && !weaponsAway;
       if (attackHeld) player.sitting = false;
       if (style === 'archery') {
         this.tickBowDraw(eid, player, equipped!.weapon, attackHeld, frame.aim, frame.seq);
