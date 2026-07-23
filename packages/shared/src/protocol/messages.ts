@@ -328,6 +328,16 @@ export interface S2CSkills {
   xp: SkillXp;
 }
 
+/**
+ * The recipes this character KNOWS beyond the core set (on login and
+ * after each learn). Core recipes are never listed — everyone knows
+ * them; the client unions this with the core set from content.
+ */
+export interface S2CRecipes {
+  t: 'recipes';
+  known: string[];
+}
+
 /** One skill gained XP. */
 export interface S2CXp {
   t: 'xp';
@@ -573,6 +583,7 @@ export type S2CMessage =
   | S2CPong
   | S2CInventory
   | S2CSkills
+  | S2CRecipes
   | S2CXp
   | S2CAction
   | S2CEquipment

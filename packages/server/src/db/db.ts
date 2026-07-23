@@ -407,6 +407,18 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (routine_id, idx)
   );
   `,
+  // 23 — recipe knowledge: which non-core recipes a character has
+  // learned (trainer scrolls, chest finds). Row-presence IS the
+  // unlock, the same law character_skills uses for hidden skills —
+  // core recipes never get rows because everyone knows them.
+  `
+  CREATE TABLE character_recipes (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    recipe TEXT NOT NULL,
+    learned_at INTEGER NOT NULL,
+    PRIMARY KEY (character_id, recipe)
+  );
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

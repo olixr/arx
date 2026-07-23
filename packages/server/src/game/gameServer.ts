@@ -652,6 +652,12 @@ interface PlayerComp {
   /** Tiles moved while sneaking since the last XP pulse (anti-AFK gate). */
   sneakMoveAccum: number;
   /**
+   * Recipes learned beyond the core set (scrolls studied). Row-backed
+   * (character_recipes) for real characters; guests keep the session's
+   * set in memory only. Core recipes are never in here.
+   */
+  knownRecipes: Set<string>;
+  /**
    * Durable story flags: dialogue completions (dlg:<id>), authored
    * choices, and — soon — quest and faction state. Persisted the
    * moment they're set; guests keep them in memory only.
@@ -1245,6 +1251,7 @@ export class GameServer {
       sneakStillTicks: 0,
       hidden: false,
       flags: character.id > 0 ? this.accounts.loadFlags(character.id) : new Map(),
+      knownRecipes: character.id > 0 ? new Set(this.accounts.loadRecipes(character.id)) : new Set(),
       dialogue: null,
       revealLockUntilTick: 0,
       sneakMoveAccum: 0,
@@ -1295,6 +1302,7 @@ export class GameServer {
       look: player.look ?? undefined,
     });
     session.sendJson({ t: 'skills', xp: player.skills });
+    session.sendJson({ t: 'recipes', known: [...player.knownRecipes] });
     session.sendJson({ t: 'inv', slots: player.inventory });
     session.sendJson({ t: 'equip', equipment: player.equipment, carry: player.carryStyle, carryOff: player.carryOff });
     session.sendJson({ t: 'techniques', chosen: player.techniques });
@@ -2019,6 +2027,12 @@ export class GameServer {
 
     const recipe = RECIPES.get(recipeId);
     if (!recipe) return;
+    // THE RECIPE IS KNOWLEDGE: core is everyone's; the rest must have
+    // been learned (trainer scroll or a chest find) before any craft.
+    if (recipe.unlock !== 'core' && !player.knownRecipes.has(recipe.id)) {
+      sys("You don't know how to make that yet.");
+      return;
+    }
     const level = this.effectiveLevel(player, recipe.skill);
     if (level < recipe.levelReq) {
       sys(`You need ${recipe.skill} level ${recipe.levelReq} to make that.`);
@@ -2594,6 +2608,39 @@ export class GameServer {
     if (!slot) return;
     const def = itemDef(slot.item);
     if (!def) return;
+
+    // Recipe scrolls: studying one teaches the recipe PERMANENTLY
+    // (character_recipes, written immediately). Already-known refuses
+    // without consuming — the scroll survives to trade on. The skill
+    // level is NOT checked here: you may study above your level and
+    // grow into the work; the craft itself stays level-gated.
+    if (def.teaches) {
+      const recipe = RECIPES.get(def.teaches);
+      if (!recipe) return;
+      if (recipe.unlock === 'core' || player.knownRecipes.has(recipe.id)) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `You already know how to make ${recipe.name.toLowerCase()}.`,
+        });
+        return;
+      }
+      removeItem(player.inventory, slot.item, 1);
+      player.knownRecipes.add(recipe.id);
+      if (player.characterId > 0) this.accounts.learnRecipe(player.characterId, recipe.id);
+      player.session?.sendJson({ t: 'recipes', known: [...player.knownRecipes] });
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      const level = this.effectiveLevel(player, recipe.skill);
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text:
+          level >= recipe.levelReq
+            ? `You study the ${def.name.toLowerCase()} — ${recipe.name} joins your repertoire.`
+            : `You study the ${def.name.toLowerCase()} — ${recipe.name} joins your repertoire (needs ${recipe.skill} ${recipe.levelReq}).`,
+      });
+      return;
+    }
 
     // Weapon oils: the vial bonds to the EQUIPPED weapon's INSTANCE —
     // swap weapons and each blade keeps its own poison. Edges and

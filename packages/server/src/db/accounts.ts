@@ -152,6 +152,26 @@ export class AccountStore {
   }
 
   /**
+   * Recipe knowledge — row-presence is the unlock. Written the moment
+   * a scroll is studied (knowledge must never be lost to a crash);
+   * core recipes never appear here.
+   */
+  loadRecipes(characterId: number): string[] {
+    const rows = this.db
+      .prepare('SELECT recipe FROM character_recipes WHERE character_id = ?')
+      .all(characterId) as Array<{ recipe: string }>;
+    return rows.map((r) => r.recipe);
+  }
+
+  learnRecipe(characterId: number, recipe: string): void {
+    this.db
+      .prepare(
+        'INSERT OR IGNORE INTO character_recipes (character_id, recipe, learned_at) VALUES (?, ?, ?)',
+      )
+      .run(characterId, recipe, Date.now());
+  }
+
+  /**
    * The flag ledger: dialogue completions, story choices, and (soon)
    * quest/faction state. Written flag-at-a-time the moment a flag is
    * set — a story beat must never be lost to a crash before the next
