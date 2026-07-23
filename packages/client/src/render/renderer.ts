@@ -9393,7 +9393,7 @@ export class Renderer {
               // Each flank carries one hash-jogged shoulder partway up
               // so the edges read grown, not machined.
               const hj = hashCoords(83 + bi, tx, ty);
-              const fm = b.f0 + (b.f1 - b.f0) * (0.4 + ((hj >> 3) % 30) / 100);
+              const fm = b.f0 + (b.f1 - b.f0) * (0.4 + ((hj >>> 3) % 30) / 100);
               const wm = bw * (b.wb + ((fm - b.f0) / (b.f1 - b.f0)) * (b.wt - b.wb));
               const jog = ((hj & 1) === 0 ? 1 : -1) * bw * 0.09;
               ctx.fillStyle = b.col;
@@ -9503,9 +9503,9 @@ export class Renderer {
             for (let k = 0; k < nB; k++) {
               const hb = hashCoords(59 + k, tx, ty);
               const bx = p.x + (((hb % 100) / 100 - 0.5) * s * 0.5) * m;
-              const by = baseY - s * 0.05 - ((hb >> 8) % 12) / 100 * s;
-              const ang = (((hb >> 5) % 100) / 100 - 0.5) * 1.1;
-              bone(bx, by, s * (0.3 + ((hb >> 11) % 20) / 100), ang, (hb & 1) === 0 ? '#cfc7ae' : '#c2b99d');
+              const by = baseY - s * 0.05 - ((hb >>> 8) % 12) / 100 * s;
+              const ang = (((hb >>> 5) % 100) / 100 - 0.5) * 1.1;
+              bone(bx, by, s * (0.3 + ((hb >>> 11) % 20) / 100), ang, (hb & 1) === 0 ? '#cfc7ae' : '#c2b99d');
             }
             // The skull: a dome with a hard brow, two socket voids and
             // a broken jaw line — sits ON the heap, hash picks a side.
@@ -9638,7 +9638,7 @@ export class Renderer {
             for (let k = 0; k < 4; k++) {
               const hc = hashCoords(67 + k, tx, ty);
               const cx = p.x + (((hc % 100) / 100 - 0.5) * rw * 1.1);
-              const cy = rimY + s * 0.005 - ((hc >> 6) % 8) / 100 * s;
+              const cy = rimY + s * 0.005 - ((hc >>> 6) % 8) / 100 * s;
               ctx.fillStyle =
                 lit > 0.05
                   ? (hc & 1) === 0
@@ -9648,7 +9648,7 @@ export class Renderer {
                     ? '#38313f'
                     : '#463d50';
               ctx.beginPath();
-              facetCircle(ctx, cx, cy, s * (0.036 + ((hc >> 9) % 4) * 0.007), 6, hc * 0.3);
+              facetCircle(ctx, cx, cy, s * (0.036 + ((hc >>> 9) % 4) * 0.007), 6, hc * 0.3);
               ctx.fill();
             }
             if (lit > 0.05) {
@@ -9714,14 +9714,14 @@ export class Renderer {
             for (let k = 0; k < nS; k++) {
               const hs2 = hashCoords(71 + k, tx, ty);
               const ox = (((hs2 % 100) / 100 - 0.5) * s * 0.52);
-              const oy = (((hs2 >> 7) % 40) / 100 - 0.2) * s * 0.3;
-              const hgt = s * (0.16 + ((hs2 >> 11) % 20) / 100); // 0.16..0.36
+              const oy = (((hs2 >>> 7) % 40) / 100 - 0.2) * s * 0.3;
+              const hgt = s * (0.16 + ((hs2 >>> 11) % 20) / 100); // 0.16..0.36
               heads.push([p.x + ox, baseY + oy, hgt, hs2]);
             }
             heads.sort((a, b) => a[1] - b[1]);
             for (const [cx, cy, hgt, hs2] of heads) {
-              const cr = hgt * (0.62 + ((hs2 >> 4) % 3) * 0.08); // cap radius
-              const tilt = (((hs2 >> 9) % 100) / 100 - 0.5) * 0.16;
+              const cr = hgt * (0.62 + ((hs2 >>> 4) % 3) * 0.08); // cap radius
+              const tilt = (((hs2 >>> 9) % 100) / 100 - 0.5) * 0.16;
               // Stem: pale, slightly leaned, rooted with contact shade.
               ctx.fillStyle = 'rgba(12, 8, 20, 0.22)';
               ctx.beginPath();
