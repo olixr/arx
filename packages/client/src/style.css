@@ -2507,9 +2507,12 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 /* ==================================================================
    ON THE GROUND — the loot tray: a quick grab-list docked beside the
    action, never a screen. Rarity paints each row's leading edge.
+   LAYOUT LIVES ON #loot-panel: .ui-tray is shared painted chrome, and
+   loading it with docking/width/flex once hijacked every other tray
+   (the level-up card stacked into a misaligned column).
    ================================================================== */
 
-.ui-tray {
+#loot-panel {
   position: absolute;
   right: 14px;
   bottom: 96px;
@@ -3537,13 +3540,29 @@ body.pad-mode .hint-inline { display: none; }
   }
 }
 
+/* The ceremony tray wears its own copy of the tray chrome — NOT the
+   .ui-tray class: that class doubles as the "a panel is open" input
+   gate, and panel layout landing on it once stacked this card into a
+   broken column. The trophy row is: plaque | text | crest medal. */
 .lvl-card {
   position: relative;
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 16px;
   padding: 14px 22px;
+  width: max-content;
   max-width: min(520px, 92vw);
+  background-color: var(--panel);
+  background-clip: padding-box;
+  border: var(--tray-border) solid transparent;
+  border-image-source: var(--ui-tray-frame);
+  border-image-slice: var(--tray-slice);
+  border-image-width: var(--tray-border);
+  border-image-repeat: round;
+  border-radius: 0;
+  color: var(--parchment);
+  filter: drop-shadow(7px 8px 0 var(--shadow));
   animation: lvl-slam 620ms cubic-bezier(0.2, 1.35, 0.32, 1) both;
 }
 

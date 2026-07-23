@@ -36,8 +36,12 @@ export function showLevelUp(o: {
   rays.className = 'lvl-rays';
   el.appendChild(rays);
 
+  // Bespoke class only — .ui-tray is the loot dock's chrome AND the
+  // "a panel is open" input-gate selector; a ceremony card must be
+  // neither (it stacked into the misaligned column, and it silently
+  // gated input for the 5s hold).
   const card = document.createElement('div');
-  card.className = 'lvl-card ui-tray';
+  card.className = 'lvl-card';
 
   const plaque = document.createElement('div');
   plaque.className = 'lvl-plaque';
