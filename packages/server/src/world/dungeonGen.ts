@@ -122,7 +122,8 @@ export function generateDelve(seed: number, origin: Vec2, returnTo: Vec2): Delve
 
   const spawns: ZoneSpawn[] = [];
   // Middle rooms mix the crypt garrison: sword skeletons always, plus
-  // an archer on the balconies or bats in the rafters, room by room.
+  // an archer on the balconies, bats in the rafters, or a shield guard
+  // holding the doorway — room by room.
   for (let i = 1; i < rooms.length - 1; i++) {
     const room = rooms[i]!;
     const radius = Math.max(2, Math.min(room.w, room.h) / 2 - 1);
@@ -133,10 +134,10 @@ export function generateDelve(seed: number, origin: Vec2, returnTo: Vec2): Delve
       radius,
       count: rng.int(1, 3),
     });
-    const extra = rng.int(0, 2);
+    const extra = rng.int(0, 3);
     if (extra > 0) {
       spawns.push({
-        npc: extra === 1 ? 'cave_bat' : 'skeleton_archer',
+        npc: extra === 1 ? 'cave_bat' : extra === 2 ? 'skeleton_archer' : 'skeleton_guard',
         x: origin.x + room.cx,
         y: origin.y + room.cy,
         radius,
@@ -144,12 +145,21 @@ export function generateDelve(seed: number, origin: Vec2, returnTo: Vec2): Delve
       });
     }
   }
+  // The boss room: the crowned champion and his honor guard between
+  // you and the black chest.
   spawns.push({
     npc: 'skeleton_champion',
     x: origin.x + lastRoom.cx,
     y: origin.y + lastRoom.cy,
     radius: 2,
     count: 1,
+  });
+  spawns.push({
+    npc: 'skeleton_guard',
+    x: origin.x + lastRoom.cx,
+    y: origin.y + lastRoom.cy,
+    radius: 3,
+    count: 2,
   });
 
   const zone: ZoneDef = {

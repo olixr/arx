@@ -110,6 +110,12 @@ export interface RigPose {
     /** Overall size multiplier (goblins ~0.8, champions ~1.2). */
     size?: number;
     skinColor?: string;
+    /**
+     * THE BONE DIALECT: swap every flesh painter for bone — skull for
+     * head, ribcage for torso, bare bone strokes for limbs — while the
+     * rig, carriage, capes, and helmets keep working untouched.
+     */
+    skeletal?: SkeletonLook;
     /** Time-based swing driver for the gather pose. */
     gatherPhase: number;
     /**
@@ -152,6 +158,72 @@ export declare function solveArm(sx: number, sy: number, hx: number, hy: number,
     kx: number;
     ky: number;
 };
+export interface SkeletonLook {
+    /** Base bone tone — each variant aged differently in the ground. */
+    bone: string;
+    /** The dark of the rib cavity behind the rib bars — the depth read. */
+    cavity: string;
+    /** Light living in the sockets; undefined = the hollow dark stare. */
+    glow?: string;
+    /** Royalty among the dead wears its crown into battle. */
+    crown?: {
+        band: string;
+        gem: string;
+    };
+    /** Bone thickness multiplier: gracile archer 0.92 → champion 1.3. */
+    heavy: number;
+    /** Old battle damage: a skull crack down the trailing brow. */
+    cracked: boolean;
+}
+export declare const SKELETON_LOOKS: Record<string, SkeletonLook>;
+/** Variant lookup with the rank-and-file as the unknown-id fallback. */
+export declare function skeletonLook(defId: string): SkeletonLook;
+export interface SkullFrame {
+    s: number;
+    headX: number;
+    headY: number;
+    hw: number;
+    hh: number;
+    cut: number;
+    headR: number;
+    fx: number;
+    fy: number;
+    profileK: number;
+    backK: number;
+    lead: number;
+    hurt: boolean;
+    nowMs: number;
+    /** 0..1 jaw drop — the combat bite; 0 keeps the jaw seated. */
+    gape: number;
+}
+/**
+ * The skull, drawn in the head block's own frame so helmets still fit.
+ * Reads skull by SILHOUETTE first: a broad cranium dome stepping in to
+ * a narrower maxilla and a separate mandible — then the band-aware
+ * face: sockets that slide with the facing and vanish around the
+ * corner, a nasal wedge, a tooth row, suture lines on the back band.
+ */
+export declare function paintSkull(ctx: CanvasRenderingContext2D, sk: SkeletonLook, f: SkullFrame): void;
+export interface RibcageFrame {
+    s: number;
+    tw: number;
+    ww: number;
+    th: number;
+    fx: number;
+    lead: number;
+    profileK: number;
+    backK: number;
+    hurt: boolean;
+}
+/**
+ * The skeletal torso, drawn in the garment's local frame (y=0 at the
+ * hip line, −th at the shoulders): clavicle bar and shoulder knobs, a
+ * rib barrel over the dark cavity with the sternum riding the leading
+ * edge, scapulae and spine from behind — and below it a REAL gap where
+ * a waist should be, crossed only by vertebrae down to the iliac-wing
+ * pelvis. The see-through waist is the whole-body skeleton read.
+ */
+export declare function paintRibcage(ctx: CanvasRenderingContext2D, sk: SkeletonLook, f: RibcageFrame): void;
 export declare function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void;
 /**
  * Back-mounted gear layered relative to the CAPE — called by the

@@ -226,6 +226,24 @@ const defs: LootTableDef[] = [
     ],
   },
   {
+    id: 'skeleton_guard',
+    desc: 'The key-keeper of the crypt: the watch carried the brass, the iron, and the shield-stone.',
+    entries: [
+      { item: 'bones', qty: [1, 2] },
+      { item: 'coins', qty: [8, 32], chance: 0.7 },
+      // The guards hold the keys — the strongchest story sends you
+      // through them.
+      { item: 'brass_key', chance: 0.12 },
+      { item: 'iron_ore', chance: 0.2 },
+      { item: 'iron_helm', chance: 0.06 },
+      { item: 'oak_kiteshield', chance: 0.035 },
+      { item: 'aegis_stone', chance: 0.04 },
+      { item: 'gloomsilk_thread', chance: 0.3 },
+      { item: 'arcane_dust', qty: [1, 2], chance: 0.35 },
+      { item: 'frost_essence', chance: 0.14 },
+    ],
+  },
+  {
     id: 'crypt_wardrobe',
     desc: 'What the crypt’s prowlers and its watch wore in. The Nightveil jerkin and Voidwhisper robe stay with the Champion.',
     entries: [

@@ -1131,6 +1131,20 @@ export declare class Renderer {
     /** Eight-tap alpha dilate → tinted ring under the sprite. */
     private static readonly OUTLINE_TAPS;
     private paintOutlined;
+    /**
+     * The crypt garrison's kit, variant by variant — the warrior's grave
+     * iron, the archer's bone-and-iron Marrowpoint with a hip quiver, the
+     * guard's rusted helm and oak kiteshield, the champion's mantle and
+     * the sword from his own purse. Every piece is a real item the mob
+     * (or its tier) actually drops: the look IS the loot story.
+     */
+    private static readonly SKELETON_EQUIP;
+    /**
+     * Skeleton stature ladder: the dead stand taller and gaunter than
+     * goblins — the archer a touch lighter, the guard a head above the
+     * rank-and-file, the champion looming over all of them.
+     */
+    private static readonly SKELETON_SIZE;
     private npcItem;
     /**
      * The leg-less menagerie: slimes (hopping gel blocks), cave bats

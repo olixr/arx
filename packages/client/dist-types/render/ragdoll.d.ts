@@ -14,7 +14,7 @@
  * the body decelerates — that inertia is what pitches a sliding corpse
  * over its own pinned feet.
  */
-import { type BeastSpec } from './rig.js';
+import { type BeastSpec, type SkeletonLook } from './rig.js';
 export interface RagPoint {
     x: number;
     y: number;
@@ -100,7 +100,7 @@ export declare const H: {
  */
 export declare function buildHumanoidRagdoll(size: number, seed: number): Ragdoll;
 /** Upper-body / feet index groups for launch(). */
-export declare const HUMANOID_UPPER: (2 | 1 | 9 | 7 | 8 | 10)[];
+export declare const HUMANOID_UPPER: (1 | 2 | 8 | 10 | 9 | 7)[];
 export declare const HUMANOID_FEET: (6 | 4)[];
 /**
  * Beast skeleton: rear hip, front chest, head, then one two-segment
@@ -122,6 +122,8 @@ export interface HumanoidCorpseLook {
     skinColor: string;
     hairColor: string;
     size: number;
+    /** Set = this corpse is a skeleton: paint bones, not flesh. */
+    skel?: SkeletonLook;
 }
 /**
  * Paint a humanoid ragdoll in the rig's own dialect: trapezoid torso

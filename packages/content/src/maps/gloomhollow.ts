@@ -54,6 +54,10 @@ export function buildGloomhollow(): ZoneDef {
   b.npcSpawn('skeleton', 40, 22, 4, 3);
   b.npcSpawn('skeleton', 16, 40, 5, 3);
   b.npcSpawn('skeleton', 33, 41, 3, 2);
+  // The watch: shield-bearing guards posted on the strongchest — they
+  // carry the brass keys the chest demands. Archers cover the bone pit.
+  b.npcSpawn('skeleton_guard', 40, 22, 3, 2);
+  b.npcSpawn('skeleton_archer', 16, 40, 4, 2);
 
   return b.build();
 }

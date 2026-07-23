@@ -205,6 +205,29 @@ const defs: NpcDef[] = [
     weak: ['burn'],
   },
   {
+    id: 'skeleton_guard',
+    name: 'Skeleton Guard',
+    level: 13,
+    maxHp: 46,
+    damage: 3,
+    attackRange: 1.1,
+    // Slow, deliberate blows behind a raised shield — the wall, not
+    // the sword, is the threat.
+    attackCooldownTicks: 50,
+    aggroRange: 5,
+    leashRange: 12,
+    speed: 2.9,
+    xpReward: 170,
+    loot: ['skeleton_guard', 'crypt_wardrobe', 'crypt_arms'],
+    respawnSec: 40,
+    color: '#c9c2ae',
+    radius: 0.32,
+    hitHeight: 2.1,
+    // Dry bones under old iron: nothing to bleed, nothing to chill.
+    resist: ['bleed', 'chill'],
+    weak: ['burn'],
+  },
+  {
     id: 'skeleton_champion',
     name: 'Skeleton Champion',
     level: 20,

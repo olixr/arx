@@ -49,7 +49,9 @@ import {
   drawSlime,
   drawSnake,
   shade,
+  skeletonLook,
   type RigPose,
+  type SkeletonLook,
 } from './rig.js';
 import { LegRig } from './legs.js';
 import { FINISHER_PHASES, strikePhases } from './carriage.js';
@@ -13764,6 +13766,8 @@ export class Renderer {
     look?: Look;
     /** Live local bow-draw charge (own player only). */
     drawTOverride?: number;
+    /** Bone-dialect override: this humanoid is a skeleton. */
+    skeletal?: SkeletonLook;
   }): DrawItem {
     const s = this.camera.scale;
     const now = performance.now();
@@ -14104,6 +14108,7 @@ export class Renderer {
           size: e.size,
           skinColor: e.skinColor,
           look: e.look,
+          skeletal: e.skeletal,
           gatherPhase: now / 1000,
           craftKind: station?.kind ?? null,
           foraging: gather?.kind === 'forage',
@@ -14235,6 +14240,32 @@ export class Renderer {
     this.ctx.drawImage(this.outlineA, 0, 0, w, h, b.x - m, b.y - m, w, h);
   }
 
+  /**
+   * The crypt garrison's kit, variant by variant — the warrior's grave
+   * iron, the archer's bone-and-iron Marrowpoint with a hip quiver, the
+   * guard's rusted helm and oak kiteshield, the champion's mantle and
+   * the sword from his own purse. Every piece is a real item the mob
+   * (or its tier) actually drops: the look IS the loot story.
+   */
+  private static readonly SKELETON_EQUIP: Record<string, Partial<Record<string, string>>> = {
+    skeleton: { weapon: 'iron_sword' },
+    skeleton_archer: { weapon: 'marrowpoint', offhand: 'hunters_quiver' },
+    skeleton_guard: { weapon: 'iron_sword', offhand: 'oak_kiteshield', head: 'iron_helm' },
+    skeleton_champion: { weapon: 'iron_sword', cape: 'cape_champion' },
+  };
+
+  /**
+   * Skeleton stature ladder: the dead stand taller and gaunter than
+   * goblins — the archer a touch lighter, the guard a head above the
+   * rank-and-file, the champion looming over all of them.
+   */
+  private static readonly SKELETON_SIZE: Record<string, number> = {
+    skeleton: 0.95,
+    skeleton_archer: 0.92,
+    skeleton_guard: 1.05,
+    skeleton_champion: 1.25,
+  };
+
   private npcItem(
     eid: number,
     defId: string,
@@ -14245,6 +14276,7 @@ export class Renderer {
     // Humanoid monsters use the full IK rig with size/skin overrides.
     if (defId.startsWith('goblin') || defId.startsWith('skeleton') || defId === 'troll') {
       const def = npcDef(defId);
+      const skel = defId.startsWith('skeleton') ? skeletonLook(defId) : undefined;
       return this.humanoidItem({
         eid,
         x: s.x,
@@ -14256,20 +14288,17 @@ export class Renderer {
         level: meta.level,
         isOwn: false,
         hurt,
+        // Every skeleton carries what it was buried with — the gear is
+        // the variant's silhouette (and each piece really drops).
         equip:
           defId === 'goblin'
             ? { weapon: 'bronze_sword' }
-            : defId === 'skeleton_archer'
-              ? // The dead still draw — the bow is the silhouette.
-                { weapon: 'oak_shortbow' }
-              : defId === 'skeleton_champion'
-                ? // The boss wears the mantle he drops — the drop is a story.
-                  { cape: 'cape_champion' }
-                : {},
+            : (Renderer.SKELETON_EQUIP[defId] ?? {}),
         color: def?.color ?? '#999',
         skinColor:
-          defId === 'troll' ? '#6a7d5c' : defId.startsWith('goblin') ? '#7aa74a' : '#e3ddcc',
-        size: defId === 'skeleton_champion' ? 1.25 : defId === 'troll' ? 1.4 : 0.85,
+          defId === 'troll' ? '#6a7d5c' : defId.startsWith('goblin') ? '#7aa74a' : undefined,
+        size: Renderer.SKELETON_SIZE[defId] ?? (defId === 'troll' ? 1.4 : 0.85),
+        skeletal: skel,
       });
     }
 
@@ -15575,7 +15604,7 @@ export class Renderer {
     let look: (typeof this.corpses)[number]['look'];
     if (humanoid) {
       const size =
-        death.defId === 'skeleton_champion' ? 1.25 : death.defId === 'troll' ? 1.4 : 0.85;
+        Renderer.SKELETON_SIZE[death.defId] ?? (death.defId === 'troll' ? 1.4 : 0.85);
       const bodyColor = def.color ?? '#999';
       rag = buildHumanoidRagdoll(size, seed);
       rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
@@ -15583,14 +15612,13 @@ export class Renderer {
         kind: 'humanoid',
         h: {
           bodyColor,
-          skinColor:
-            death.defId === 'troll'
-              ? '#6a7d5c'
-              : death.defId.startsWith('goblin')
-                ? '#7aa74a'
-                : '#e3ddcc',
+          skinColor: death.defId === 'troll' ? '#6a7d5c' : '#7aa74a',
           hairColor: shade(bodyColor, -24),
           size,
+          // Skeleton corpses keep the bone dialect — crown and all.
+          skel: death.defId.startsWith('skeleton')
+            ? skeletonLook(death.defId)
+            : undefined,
         },
       };
     } else {

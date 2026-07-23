@@ -47,6 +47,7 @@ import {
   shade,
   taperedSpinePath,
   type BeastSpec,
+  type SkeletonLook,
 } from './rig.js';
 
 const BOOT = '#4a3324';
@@ -420,6 +421,8 @@ export interface HumanoidCorpseLook {
   skinColor: string;
   hairColor: string;
   size: number;
+  /** Set = this corpse is a skeleton: paint bones, not flesh. */
+  skel?: SkeletonLook;
 }
 
 /**
@@ -434,6 +437,10 @@ export function drawHumanoidRagdoll(
   f: RagFrame,
   look: HumanoidCorpseLook,
 ): void {
+  if (look.skel) {
+    drawSkeletonRagdoll(ctx, rag, f, look.size, look.skel);
+    return;
+  }
   const s = f.s * look.size;
   const g = rag.pts;
   const pelvis = P(f, g[H.pelvis]!);
@@ -537,6 +544,227 @@ export function drawHumanoidRagdoll(
   // Near pair over the trunk.
   drawLeg(H.kneeR, H.footR, 1);
   drawArm(H.elbowR, H.handR, 1);
+}
+
+/**
+ * The skeleton's corpse keeps the bone dialect: bare bone limbs with
+ * condyle knobs, the open rib cage and vertebra chain along the fallen
+ * trunk axis, and the skull — sockets dark (the light in them goes out
+ * with the kill), jaw slack, crown still seated on royalty. A pile of
+ * bones you can read the variant from.
+ */
+function drawSkeletonRagdoll(
+  ctx: CanvasRenderingContext2D,
+  rag: Ragdoll,
+  f: RagFrame,
+  size: number,
+  sk: SkeletonLook,
+): void {
+  const s = f.s * size;
+  const hv = sk.heavy;
+  const bone = sk.bone;
+  const g = rag.pts;
+  const pelvis = P(f, g[H.pelvis]!);
+  const chest = P(f, g[H.chest]!);
+  const head = P(f, g[H.head]!);
+
+  // Trunk axis pelvis→chest, with its perpendicular.
+  let ux = chest.x - pelvis.x;
+  let uy = chest.y - pelvis.y;
+  const ul = Math.hypot(ux, uy) || 1e-4;
+  ux /= ul;
+  uy /= ul;
+  const nx = -uy;
+  const ny = ux;
+  const tw = 0.185 * s;
+  const ww = 0.125 * s;
+
+  const knob = (x: number, y: number, r: number): void => {
+    ctx.fillStyle = bone;
+    ctx.beginPath();
+    ctx.arc(x, y, Math.max(1.4, r), 0, Math.PI * 2);
+    ctx.fill();
+  };
+  const drawLeg = (knee: number, foot: number, hipSide: number): void => {
+    const hip = {
+      x: pelvis.x + nx * hipSide * ww * 0.7,
+      y: pelvis.y + ny * hipSide * ww * 0.7,
+    };
+    const k = P(f, g[knee]!);
+    const ft = P(f, g[foot]!);
+    limb(ctx, hip, k, ft, shade(bone, -3), bone, s * 0.062 * hv, s * 0.05 * hv);
+    knob(k.x, k.y, s * 0.04 * hv);
+    chip(ctx, ft, k, s * 0.085, s * 0.07, bone);
+  };
+  const drawArmB = (elbow: number, hand: number, side: number): void => {
+    const sh = {
+      x: chest.x + nx * side * tw * 0.85,
+      y: chest.y + ny * side * tw * 0.85,
+    };
+    const el = P(f, g[elbow]!);
+    const hd = P(f, g[hand]!);
+    limb(ctx, sh, el, hd, shade(bone, -3), bone, s * 0.056 * hv, s * 0.046 * hv);
+    knob(el.x, el.y, s * 0.036 * hv);
+    chip(ctx, hd, el, s * 0.07, s * 0.06, bone);
+  };
+
+  // Far pair behind the trunk.
+  drawArmB(H.elbowL, H.handL, -1);
+  drawLeg(H.kneeL, H.footL, -1);
+
+  // --- the fallen cage: cavity slab, rib bars crossing the axis, the
+  // sternum riding the up-facing edge, then the vertebra chain down to
+  // the pelvis bowl. Same reads as the live ribcage, lying down.
+  const cageT = 0.62; // fraction of the trunk the ribcage occupies (chest end)
+  const c1 = { x: chest.x + nx * tw * 0.92, y: chest.y + ny * tw * 0.92 };
+  const c2 = { x: chest.x - nx * tw * 0.92, y: chest.y - ny * tw * 0.92 };
+  const mx = pelvis.x + ux * ul * (1 - cageT);
+  const my = pelvis.y + uy * ul * (1 - cageT);
+  const m1 = { x: mx + nx * ww * 1.0, y: my + ny * ww * 1.0 };
+  const m2 = { x: mx - nx * ww * 1.0, y: my - ny * ww * 1.0 };
+  ctx.fillStyle = sk.cavity;
+  ctx.beginPath();
+  ctx.moveTo(c1.x, c1.y);
+  ctx.lineTo(c2.x, c2.y);
+  ctx.lineTo(m2.x, m2.y);
+  ctx.lineTo(m1.x, m1.y);
+  ctx.closePath();
+  ctx.fill();
+  // Rib bars: three hoops crossing the trunk axis.
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = bone;
+  ctx.lineWidth = Math.max(1.6, s * 0.042 * hv);
+  for (const t of [0.18, 0.5, 0.82]) {
+    const rx = mx + ux * ul * cageT * (1 - t) + ux * 0;
+    const ry = my + uy * ul * cageT * (1 - t);
+    const w = (ww + (tw - ww) * (1 - t)) * 0.95;
+    ctx.beginPath();
+    ctx.moveTo(rx + nx * w, ry + ny * w);
+    ctx.lineTo(rx - nx * w, ry - ny * w);
+    ctx.stroke();
+  }
+  // Sternum: a short bar along the axis over the rib mids.
+  ctx.strokeStyle = shade(bone, 8);
+  ctx.lineWidth = Math.max(1.6, s * 0.05 * hv);
+  ctx.beginPath();
+  ctx.moveTo(mx + ux * ul * cageT * 0.12, my + uy * ul * cageT * 0.12);
+  ctx.lineTo(mx + ux * ul * cageT * 0.86, my + uy * ul * cageT * 0.86);
+  ctx.stroke();
+  // Vertebrae: beads from cage bottom to the pelvis.
+  ctx.lineCap = 'butt';
+  for (const t of [0.22, 0.55, 0.85]) {
+    const bx = pelvis.x + ux * ul * (1 - cageT) * (1 - t);
+    const by = pelvis.y + uy * ul * (1 - cageT) * (1 - t);
+    ctx.fillStyle = shade(bone, t > 0.5 ? -8 : 0);
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(Math.atan2(uy, ux));
+    ctx.beginPath();
+    chamferRect(ctx, -0.024 * s, -0.038 * s * hv, 0.048 * s, 0.076 * s * hv, 0.012 * s);
+    ctx.fill();
+    ctx.restore();
+  }
+  // Pelvis bowl: wings flaring perpendicular off the pelvis point.
+  for (const es of [-1, 1]) {
+    ctx.fillStyle = shade(bone, es > 0 ? -8 : 2);
+    ctx.beginPath();
+    ctx.moveTo(pelvis.x + ux * 0.03 * s, pelvis.y + uy * 0.03 * s);
+    ctx.lineTo(pelvis.x + nx * es * ww * 1.0 + ux * 0.05 * s, pelvis.y + ny * es * ww * 1.0 + uy * 0.05 * s);
+    ctx.lineTo(pelvis.x + nx * es * ww * 0.72 - ux * 0.05 * s, pelvis.y + ny * es * ww * 0.72 - uy * 0.05 * s);
+    ctx.lineTo(pelvis.x - ux * 0.045 * s, pelvis.y - uy * 0.045 * s);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Clavicle line + shoulder knobs at the chest end.
+  ctx.strokeStyle = shade(bone, 4);
+  ctx.lineWidth = Math.max(1.4, s * 0.03);
+  ctx.beginPath();
+  ctx.moveTo(c1.x, c1.y);
+  ctx.lineTo(c2.x, c2.y);
+  ctx.stroke();
+  knob(c1.x, c1.y, s * 0.042 * hv);
+  knob(c2.x, c2.y, s * 0.042 * hv);
+
+  // --- the skull, staring up out of the sprawl: cranium, stepped
+  // maxilla, slack mandible, both sockets dark. Crown stays seated.
+  let hx = head.x - chest.x;
+  let hy = head.y - chest.y;
+  const hl = Math.hypot(hx, hy) || 1e-4;
+  hx /= hl;
+  hy /= hl;
+  const headR = 0.15 * s;
+  const hw = headR * 1.04;
+  const hh = headR;
+  const cut = headR * 0.34;
+  ctx.save();
+  ctx.translate(head.x, head.y);
+  ctx.rotate(Math.atan2(hy, hx) + Math.PI / 2);
+  const crTop = -hh * 1.06;
+  const crBot = hh * 0.32;
+  ctx.fillStyle = bone;
+  ctx.beginPath();
+  chamferRect(ctx, -hw, crTop, hw * 2, crBot - crTop, [cut * 1.15, cut * 1.15, cut * 0.4, cut * 0.4]);
+  ctx.fill();
+  ctx.fillStyle = shade(bone, -9);
+  ctx.fillRect(0, crTop, hw, crBot - crTop);
+  const mxHw = hw * 0.72;
+  ctx.fillStyle = shade(bone, -5);
+  ctx.beginPath();
+  chamferRect(ctx, -mxHw, crBot - hh * 0.06, mxHw * 2, hh * 0.66, [0, 0, cut * 0.5, cut * 0.5]);
+  ctx.fill();
+  // Mandible hangs slack — death's small open question.
+  const mdHw = hw * 0.56;
+  const mdTop = hh * 0.72;
+  ctx.fillStyle = shade(bone, -11);
+  ctx.beginPath();
+  chamferRect(ctx, -mdHw, mdTop, mdHw * 2, hh * 0.36, [0, 0, cut * 0.5, cut * 0.5]);
+  ctx.fill();
+  ctx.fillStyle = shade(bone, 12);
+  ctx.fillRect(-mdHw * 0.85, mdTop, mdHw * 1.7, hh * 0.13);
+  // Sockets and nasal wedge: hollow dark — whatever burned here is out.
+  ctx.fillStyle = '#241a2e';
+  for (const es of [-1, 1]) {
+    ctx.beginPath();
+    chamferRect(ctx, es * headR * 0.42 - headR * 0.16, -hh * 0.26, headR * 0.32, headR * 0.34, headR * 0.09);
+    ctx.fill();
+  }
+  ctx.beginPath();
+  ctx.moveTo(-headR * 0.08, hh * 0.24);
+  ctx.lineTo(headR * 0.08, hh * 0.24);
+  ctx.lineTo(0, hh * 0.46);
+  ctx.closePath();
+  ctx.fill();
+  if (sk.cracked) {
+    ctx.strokeStyle = shade(bone, -26);
+    ctx.lineWidth = Math.max(1, headR * 0.055);
+    ctx.beginPath();
+    ctx.moveTo(-hw * 0.3, crTop + hh * 0.1);
+    ctx.lineTo(-hw * 0.52, -hh * 0.5);
+    ctx.lineTo(-hw * 0.38, -hh * 0.16);
+    ctx.stroke();
+  }
+  if (sk.crown) {
+    const bandY = crTop + hh * 0.3;
+    const bandH = hh * 0.26;
+    ctx.fillStyle = sk.crown.band;
+    ctx.fillRect(-hw * 0.98, bandY, hw * 1.96, bandH);
+    ctx.fillStyle = shade(sk.crown.band, -14);
+    ctx.fillRect(0, bandY, hw * 0.98, bandH);
+    ctx.fillStyle = sk.crown.band;
+    for (const ot of [-0.68, 0, 0.68]) {
+      ctx.beginPath();
+      ctx.moveTo(ot * hw - hw * 0.14, bandY + bandH * 0.1);
+      ctx.lineTo(ot * hw + hw * 0.14, bandY + bandH * 0.1);
+      ctx.lineTo(ot * hw, bandY - hh * (ot === 0 ? 0.46 : 0.32));
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  // Near pair over the trunk.
+  drawLeg(H.kneeR, H.footR, 1);
+  drawArmB(H.elbowR, H.handR, 1);
 }
 
 export interface BeastCorpseLook {
