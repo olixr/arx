@@ -145,6 +145,10 @@ export interface GameEvents {
   onXp(msg: { skill: string; gained: number; level: number; levelledUp: boolean }): void;
   onEquipment(equipment: Partial<Record<string, EquippedItem>>): void;
   onBank(items: Record<string, number>, gear?: Array<{ id: number; item: string; roll: ItemRoll }>): void;
+  /** The Riftgate answered an interact — open the key panel over these pack slots. */
+  onRiftgate?(keySlots: number[]): void;
+  /** Crossed into a dungeon — everything the entry banner tells. */
+  onDungeon?(d: { name: string; sigil: string; tier: string; theme: string; power: number }): void;
   onHit(hit: { x: number; y: number; dmg: number; isOwn: boolean; crit: boolean; backstab?: boolean }): void;
   onDeath(death: { x: number; y: number; defId: string }): void;
   /** A damaging blow with a knock direction — directional impact FX. */
@@ -766,6 +770,22 @@ export class ClientGame {
         this.events.onBank(msg.items, msg.gear);
         break;
       }
+      case 'riftgate': {
+        // The gate names the slots; the panel reads the keys' rolls
+        // from our own pack (instance-addressing law).
+        this.events.onRiftgate?.(msg.keySlots);
+        break;
+      }
+      case 'dungeon': {
+        this.events.onDungeon?.({
+          name: msg.name,
+          sigil: msg.sigil,
+          tier: msg.tier,
+          theme: msg.theme,
+          power: msg.power,
+        });
+        break;
+      }
       case 'death': {
         if (this.npcDeaths.length < 32) {
           const remote = this.entities.get(msg.eid);
@@ -1111,6 +1131,11 @@ export class ClientGame {
   /** Drop a pack slot onto the ground where you stand. */
   dropSend(slot: number, qty: number): void {
     this.conn?.send({ t: 'dropitem', slot, qty });
+  }
+
+  /** Turn the dungeon key in this pack slot — only heard at a riftgate. */
+  useKeySend(slot: number): void {
+    this.conn?.send({ t: 'usekey', slot });
   }
 
   /** Confirm character creation (optimistic — the server locks it). */

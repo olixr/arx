@@ -11,6 +11,8 @@ import { showLevelUp } from './ui/levelToast.js';
 import { StationPanels } from './ui/stationPanels.js';
 import { UiNav } from './ui/padUI.js';
 import { LootPanel } from './ui/lootPanel.js';
+import { RiftgatePanel } from './ui/riftgate.js';
+import { showDungeonEntry } from './ui/dungeonBanner.js';
 import { Sfx } from './audio/sfx.js';
 import { AudioEngine } from './audio/engine.js';
 import { TrackPlayer } from './audio/tracks.js';
@@ -318,6 +320,7 @@ const nav = new UiNav(input, {
     stationPanels.closeAll();
     panels.closeAll();
     lootPanel.close();
+    riftgate.close();
   },
   onToggleInventory: () => toggleScreen('inv'),
   onToggleSkills: () => toggleScreen('skills'),
@@ -355,6 +358,7 @@ function closeAllUi(): void {
   stationPanels.closeAll();
   panels.closeAll();
   lootPanel.close();
+  riftgate.close();
   audioMenu.close();
 }
 
@@ -525,6 +529,15 @@ const game = new ClientGame(input, {
       panels.showInventory();
     }
   },
+  onRiftgate: (keySlots) => {
+    // A server-driven screen, like the vault: through the one gate.
+    closeAllUi();
+    riftgate.open(keySlots);
+  },
+  onDungeon: (d) => {
+    // A toast, not a screen — it overlays like the level-up card.
+    showDungeonEntry(d);
+  },
   onXp: (msg) => {
     // NO xp floaty: combat kills feed several skills at once and the
     // drips stacked into unreadable mush over the damage numbers (user
@@ -562,6 +575,9 @@ const game = new ClientGame(input, {
 // The ground manager: choose from a pile instead of vacuuming it.
 const lootPanel = new LootPanel(game);
 
+// The Riftgate's key chooser — opens when the gate answers an interact.
+const riftgate = new RiftgatePanel(game);
+
 // ---- one anatomy for every panel: icon plaque, title, hint, close ----
 const el = (id: string): HTMLElement => document.getElementById(id)!;
 dressPanel(el('inventory-panel'), {
@@ -595,6 +611,11 @@ dressPanel(el('shop-panel'), {
   icon: itemIconUrl('flour', 34),
   hint: 'Buy from the shelves — tap your pack items to sell them.',
   onClose: () => stationPanels.closeAll(),
+});
+dressPanel(el('riftgate-panel'), {
+  icon: itemIconUrl('dungeon_key', 34),
+  hint: 'Choose a key to turn — the same key always opens the same halls.',
+  onClose: () => riftgate.close(),
 });
 dressPanel(el('loot-panel'), {
   icon: itemIconUrl('bones', 34),
@@ -1092,6 +1113,7 @@ window.addEventListener('keydown', (e) => {
     stationPanels.closeAll();
     panels.closeAll();
     lootPanel.close();
+    riftgate.close();
     buildMode = null;
     renderer.buildGhost = null;
   }
@@ -1124,6 +1146,7 @@ const panelSeen = {
   inv: false,
   skills: false,
   audio: false,
+  riftgate: false,
 };
 function panelAudioCues(): void {
   const vis = (id: string): boolean =>
@@ -1147,6 +1170,7 @@ function panelAudioCues(): void {
   cue('inv', vis('inventory-panel'), () => sfx.satchel(), () => sfx.uiClose());
   cue('skills', vis('skills-panel'), () => sfx.parchment(), () => sfx.uiClose());
   cue('audio', vis('audio-panel'), () => sfx.uiOpen(), () => sfx.uiClose());
+  cue('riftgate', vis('riftgate-panel'), () => sfx.uiOpen(), () => sfx.uiClose());
 }
 
 // EVERY CONTROL ANSWERS: one delegated listener gives all buttons the

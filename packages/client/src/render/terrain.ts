@@ -126,6 +126,26 @@ const BLOB_LAYERS: BlobLayer[] = [
     fringe: false,
   },
   {
+    // Dungeon flagstones: hand-laid masonry in the dark band — the
+    // flagstone wobble (tight, deliberate) in cave-depth tones, so a
+    // built room reads man-made against the raw cave around it.
+    match: (t) => t === Tile.DungeonFloor,
+    color: (_t, tx, ty) => patch('#514b58', '#4c4653', tx, ty, 47),
+    wobble: 0.11,
+    band: 'rgba(16, 12, 24, 0.32)',
+    fringe: false,
+  },
+  {
+    // Cave rubble: collapsed scree spilling across the corridors —
+    // fully organic patches, a shade lighter than the rock they broke
+    // from, painted over both cave floor and flagstone.
+    match: (t) => t === Tile.CaveRubble,
+    color: (_t, tx, ty) => patch('#544e5f', '#4f4959', tx, ty, 49),
+    wobble: 0.18,
+    band: 'rgba(18, 14, 28, 0.3)',
+    fringe: false,
+  },
+  {
     match: (t) => t === Tile.Snow,
     color: () => '#e9edf3',
     wobble: 0.22,
@@ -224,7 +244,10 @@ const ROCKY = new Set<number>([
 function isCaveGround(t: number | undefined): boolean {
   return (
     t === Tile.CaveWall ||
+    t === Tile.CrackedCaveWall ||
     t === Tile.CaveFloor ||
+    t === Tile.DungeonFloor ||
+    t === Tile.CaveRubble ||
     t === Tile.PortalDown ||
     t === Tile.PortalUp
   );
@@ -286,8 +309,17 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     // floor skin meeting the wall base edge-on leaves no gap to peek
     // through beside it.
     if (t === Tile.WallWood || t === Tile.WallWoodWindow) return Tile.WoodFloor;
-    if (t === Tile.WallStone || t === Tile.WallStoneWindow) return Tile.StoneFloor;
-    if (t === Tile.CaveWall) return Tile.CaveFloor;
+    if (t === Tile.WallStone || t === Tile.WallStoneWindow) {
+      // Dungeon masonry stands ON the dungeon's own floor: probe the
+      // corridor beside the wall so its base sliver never prints
+      // surface flagstone in the dark band.
+      const sT = ground(tx, ty + 1);
+      if (sT === Tile.DungeonFloor || sT === Tile.CaveRubble || sT === Tile.CaveFloor) return sT;
+      const nT = ground(tx, ty - 1);
+      if (nT === Tile.DungeonFloor || nT === Tile.CaveRubble || nT === Tile.CaveFloor) return nT;
+      return Tile.StoneFloor;
+    }
+    if (t === Tile.CaveWall || t === Tile.CrackedCaveWall) return Tile.CaveFloor;
     // Walk-through structure: the ground continues under the frame —
     // a doorway's threshold carries the room's floor to the outside.
     if (
@@ -309,6 +341,16 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     }
     // Props stand ON a floor, they aren't ground materials themselves.
     if (t >= Tile.Barrel && t <= Tile.Basin) return nearestFloor(ground, tx, ty);
+    // Dungeon props stand on whichever floor the corridor carries
+    // (nearestFloor knows DungeonFloor/CaveRubble/CaveFloor).
+    if (
+      t === Tile.Stalagmite ||
+      t === Tile.BonePile ||
+      t === Tile.Brazier ||
+      t === Tile.GlowShroom
+    ) {
+      return nearestFloor(ground, tx, ty);
+    }
     // Stairs read as stone; the bespoke step prop draws over it.
     if (t === Tile.Ramp) return Tile.StoneFloor;
     if (t === Tile.Cliff) return Tile.StoneFloor;
@@ -717,7 +759,10 @@ function drawTileDetail(
           const hh = hashCoords(97 + k, tx, ty);
           ctx.fillRect(gx + (hh % 80) / 100 * px, gy + ((hh >> 7) % 80) / 100 * px, px * 0.04, px * 0.04);
         }
-      } else if (m === Tile.CaveFloor && hg % 5 === 0) {
+      } else if (
+        (m === Tile.CaveFloor || m === Tile.DungeonFloor || m === Tile.CaveRubble) &&
+        hg % 5 === 0
+      ) {
         ctx.strokeStyle = 'rgba(20, 16, 32, 0.22)';
         ctx.lineWidth = Math.max(1, px * 0.03);
         ctx.beginPath();

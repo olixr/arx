@@ -78,6 +78,7 @@ import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
+import { UNDERGROUND_Y } from '../audio/zones.js';
 import { dealWoodSkin, type WoodSkin } from './woodSkins.js';
 import { drawPortalArch, drawPortalGround, spawnPortalFx, PORTAL_PLANE } from './portal.js';
 import {
@@ -420,6 +421,14 @@ export class Renderer {
   private visibleRegions: InteriorRegion[] = [];
   /** The frame's sky sample — every shadow and light reads this. */
   private sky: DaylightSample = daylightAt(12);
+  /** Surface→deep-cave ambient blend, eased over ~1s of real time.
+   *  0 = surface sky rules, 1 = the fixed underground ambient. */
+  private ugBlend = 0;
+  /** Local player's render position + the underground gate, sampled
+   *  once per frame — the dungeon wall cutaway reads these. */
+  private ugCutOn = false;
+  private ownPX = 0;
+  private ownPY = 0;
   /** Scene lights gathered this frame (tiles, projectiles, flames). */
   private readonly lights: WorldLight[] = [];
   /** Ground shadows batch here, composited once at the sky's alpha. */
@@ -2075,6 +2084,18 @@ export class Renderer {
     this.treesVisible = 0;
     // The sky rules the frame: shadows, exposure, grade all read it.
     this.sky = daylightAt(game.clockHoursNow());
+    // UNDERGROUND LAW: the dark band never sees the surface sky. Below
+    // UNDERGROUND_Y the frame's sample blends toward a fixed deep-cave
+    // ambient at this single choke point — lightmap, sun shadows, the
+    // grade and the flame gate all read the same override — easing
+    // over ~1s of real time so a portal hop fades instead of popping.
+    {
+      const pos = game.ownEid !== null ? game.predictor.renderPos() : null;
+      const under = pos !== null && pos.y >= UNDERGROUND_Y ? 1 : 0;
+      const step = frameDt; // full swing in one second
+      this.ugBlend += Math.max(-step, Math.min(step, under - this.ugBlend));
+      if (this.ugBlend > 0.001) this.applyUnderground(this.ugBlend);
+    }
     // Hitstop slows animation + particles to a crawl for a few frames;
     // the camera and network keep real time.
     this.frameDt = performance.now() < this.hitstopUntil ? frameDt * 0.12 : frameDt;
@@ -2150,8 +2171,14 @@ export class Renderer {
     if (game.ownEid !== null) {
       const own = game.predictor.renderPos();
       this.localRegion = this.interiors.regionAt(game, Math.floor(own.x), Math.floor(own.y));
+      // The dungeon cutaway eases on the CONTINUOUS render position —
+      // floor()ing here would make the occlusion window pop per row.
+      this.ownPX = own.x;
+      this.ownPY = own.y;
+      this.ugCutOn = own.y >= UNDERGROUND_Y;
     } else {
       this.localRegion = null;
+      this.ugCutOn = false;
     }
     // Standing lights gather FIRST: the shadow prepass needs to know
     // every pool before anything casts. (Moving lights announce via
@@ -2367,6 +2394,38 @@ export class Renderer {
     this.evictTreeSprites();
   }
 
+  /** Deep-cave ambient the underground blend rides to: cool, slightly
+   *  desaturated, ~0.79 effective darkness regardless of surface hour. */
+  private static readonly UG_AMBIENT: readonly [number, number, number] = [48, 54, 70];
+
+  /**
+   * Blend this frame's sky sample toward the fixed cave ambient.
+   * Mutates the object daylightAt() built THIS frame (a fresh sample
+   * every render — nothing else aliases it). Sun, moon and shadow
+   * alpha die with the blend so tile shadows fade out underground;
+   * flame rides to 1 so braziers carry the scene no matter what the
+   * surface clock says; darkness is re-derived from the blended
+   * ambient so the lightmap gate, glow boosts and grade all agree.
+   */
+  private applyUnderground(k: number): void {
+    const s = this.sky;
+    const [ur, ug, ub] = Renderer.UG_AMBIENT;
+    s.ambient[0] += (ur - s.ambient[0]) * k;
+    s.ambient[1] += (ug - s.ambient[1]) * k;
+    s.ambient[2] += (ub - s.ambient[2]) * k;
+    // The horizon haze sinks to cave gloom — near-black, faintly blue.
+    s.sky[0] += (14 - s.sky[0]) * k;
+    s.sky[1] += (16 - s.sky[1]) * k;
+    s.sky[2] += (26 - s.sky[2]) * k;
+    s.skyAlpha += (0.4 - s.skyAlpha) * k;
+    s.sun *= 1 - k;
+    s.moon *= 1 - k;
+    s.shadowAlpha *= 1 - k; // no sun down there
+    s.flame += (1 - s.flame) * k;
+    const lum = (0.299 * s.ambient[0] + 0.587 * s.ambient[1] + 0.114 * s.ambient[2]) / 255;
+    s.darkness = 1 - lum;
+  }
+
   /**
    * The frame's standing light sources, from one tile scan: each pushes
    * an emissive glow (additive bloom) AND a WorldLight (lightmap punch,
@@ -2405,6 +2464,22 @@ export class Renderer {
           const pulse = 0.9 + Math.sin(t * 6 + tx * 1.9) * 0.08;
           this.glows.push({ x: tx + 0.5, y: ty + 0.45, r: 1.4 * pulse, rgb: '235, 150, 62', a: 0.26 * pulse * boost });
           this.lights.push({ x: tx + 0.5, y: ty + 0.7, r: 4.2, rgb: [255, 190, 120], intensity: 0.85 * flame * pulse, occlude: true });
+        } else if (tile === Tile.Brazier) {
+          // Dungeon brazier: an open coal basket — campfire-class
+          // reach with the same standing-flame flicker, flame-gated
+          // like every man-made fire (underground the flame gate rides
+          // to 1, so braziers always carry the dark band).
+          const flick = 0.85 + Math.sin(t * 11 + tx * 3.1) * 0.1 + Math.sin(t * 23 + ty) * 0.05;
+          this.glows.push({ x: tx + 0.5, y: ty + 0.3, r: 1.5 * flick, rgb: '255, 158, 66', a: 0.3 * flick * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 4.4 * flick, rgb: [255, 180, 104], intensity: 0.9 * flame * flick, occlude: true });
+        } else if (tile === Tile.GlowShroom) {
+          // Glowshrooms: bioluminescence, not fire — a smaller, cool
+          // teal pool that BREATHES on a slow swell (never the flame
+          // flicker), ungated by the flame clock, and non-occluding
+          // (a soft haze through the cave, not a lamp).
+          const pulse = 0.8 + Math.sin(t * 1.4 + tx * 0.9 + ty * 1.7) * 0.2;
+          this.glows.push({ x: tx + 0.5, y: ty + 0.4, r: 0.95 * pulse, rgb: '110, 225, 200', a: 0.12 * pulse * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 2.4, rgb: [110, 225, 200], intensity: 0.4 * pulse });
         } else if (tile === Tile.PortalDown || tile === Tile.PortalUp) {
           // The Riftgate: bloom rides the vortex heart (raised off the
           // ground — divide the squash back out, the projAir law), a
@@ -3325,7 +3400,15 @@ export class Renderer {
             this.localRegion !== null &&
             dregion === this.localRegion &&
             this.localRegion.tiles.has(packTile(ax, ty - 1));
-          const item = this.doorwayItem(ground, ax, ty, game, dcut ? 0.62 : WALL_H, runLen, dregion);
+          // Underground the frame follows the dungeon cutaway rule the
+          // same way it composes with wcut: full height unless the run
+          // sits in the player's occlusion window.
+          let dwhT = dcut ? 0.62 : WALL_H;
+          if (!dcut && this.ugCutOn) {
+            const cut = this.dungeonCut(game, ax, ty);
+            if (cut > 0) dwhT = WALL_H + (0.62 - WALL_H) * cut;
+          }
+          const item = this.doorwayItem(ground, ax, ty, game, dwhT, runLen, dregion);
           if (game.world.elevAt(ax, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
@@ -3380,12 +3463,20 @@ export class Renderer {
             this.localRegion !== null &&
             wregion === this.localRegion &&
             this.localRegion.tiles.has(packTile(tx, ty - 1));
+          // DUNGEON CUTAWAY: underground the region law never fires
+          // (cavern floods dwarf MAX_REGION) — the occlusion-window
+          // rule takes over, with a continuously eased height.
+          let whT = wcut ? 0.62 : WALL_H;
+          if (!wcut && this.ugCutOn) {
+            const cut = this.dungeonCut(game, tx, ty);
+            if (cut > 0) whT = WALL_H + (0.62 - WALL_H) * cut;
+          }
           const item = this.wallItem(
             ground as Tile,
             tx,
             ty,
             game,
-            wcut ? 0.62 : WALL_H,
+            whT,
             wregion?.hasHearth ?? false,
             wregion,
           );
@@ -3451,6 +3542,39 @@ export class Renderer {
    * Walls: continuous top mass with rounded exposed corners, a darker
    * front face where the wall meets open ground, and a hard shadow.
    */
+  /**
+   * DUNGEON CUTAWAY LAW: underground (player y >= UNDERGROUND_Y) there
+   * are no interior regions — cavern flood-fills blow past MAX_REGION —
+   * so the building cutaway never fires. Instead ANY wall-run tile
+   * fronting walkable floor to its NORTH sinks toward the stub while
+   * it stands in the player's occlusion window: dy = ty − playerY in
+   * ~[0..6] rows south, |dx| ≤ ~10 columns. Returns the cut factor
+   * 0 (full height) → 1 (full stub), SMOOTHSTEP-eased over ~2 tiles at
+   * every window edge on the CONTINUOUS player position, so walls sink
+   * and rise as you walk instead of popping per row. ugBlend scales it
+   * so a portal drop fades the cut in with the darkness. Deliberately
+   * cheap: a few clamps and multiplies per visible wall, no allocation,
+   * nothing cached — the wall painter is live, so a per-frame height
+   * is free. Never called above ground (ugCutOn gates every call
+   * site); the surface keeps the region-based law untouched.
+   */
+  private dungeonCut(game: ClientGame, tx: number, ty: number): number {
+    const dy = ty - this.ownPY;
+    if (dy < -2 || dy > 7) return 0;
+    const adx = Math.abs(tx + 0.5 - this.ownPX);
+    if (adx > 11) return 0;
+    const nt = game.world.groundAt(tx, ty - 1);
+    if (nt === undefined || tileDef(nt).solid) return 0;
+    // Window margins: ease in over dy [-2..-0.5] (the wall row you
+    // stand on is fully cut), out over dy [5..7] and |dx| [9..11].
+    let ey = Math.min((dy + 2) / 1.5, (7 - dy) / 2, 1);
+    let ex = Math.min((11 - adx) / 2, 1);
+    if (ey <= 0 || ex <= 0) return 0;
+    ey = ey * ey * (3 - 2 * ey);
+    ex = ex * ex * (3 - 2 * ex);
+    return ey * ex * this.ugBlend;
+  }
+
   private wallItem(
     tile: Tile,
     tx: number,

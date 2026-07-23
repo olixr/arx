@@ -62,6 +62,14 @@ export declare class Renderer {
     private visibleRegions;
     /** The frame's sky sample — every shadow and light reads this. */
     private sky;
+    /** Surface→deep-cave ambient blend, eased over ~1s of real time.
+     *  0 = surface sky rules, 1 = the fixed underground ambient. */
+    private ugBlend;
+    /** Local player's render position + the underground gate, sampled
+     *  once per frame — the dungeon wall cutaway reads these. */
+    private ugCutOn;
+    private ownPX;
+    private ownPY;
     /** Scene lights gathered this frame (tiles, projectiles, flames). */
     private readonly lights;
     /** Ground shadows batch here, composited once at the sky's alpha. */
@@ -470,6 +478,19 @@ export declare class Renderer {
     private animFor;
     private resize;
     render(game: ClientGame, frameDt: number): void;
+    /** Deep-cave ambient the underground blend rides to: cool, slightly
+     *  desaturated, ~0.79 effective darkness regardless of surface hour. */
+    private static readonly UG_AMBIENT;
+    /**
+     * Blend this frame's sky sample toward the fixed cave ambient.
+     * Mutates the object daylightAt() built THIS frame (a fresh sample
+     * every render — nothing else aliases it). Sun, moon and shadow
+     * alpha die with the blend so tile shadows fade out underground;
+     * flame rides to 1 so braziers carry the scene no matter what the
+     * surface clock says; darkness is re-derived from the blended
+     * ambient so the lightmap gate, glow boosts and grade all agree.
+     */
+    private applyUnderground;
     /**
      * The frame's standing light sources, from one tile scan: each pushes
      * an emissive glow (additive bloom) AND a WorldLight (lightmap punch,
@@ -593,6 +614,23 @@ export declare class Renderer {
      * Walls: continuous top mass with rounded exposed corners, a darker
      * front face where the wall meets open ground, and a hard shadow.
      */
+    /**
+     * DUNGEON CUTAWAY LAW: underground (player y >= UNDERGROUND_Y) there
+     * are no interior regions — cavern flood-fills blow past MAX_REGION —
+     * so the building cutaway never fires. Instead ANY wall-run tile
+     * fronting walkable floor to its NORTH sinks toward the stub while
+     * it stands in the player's occlusion window: dy = ty − playerY in
+     * ~[0..6] rows south, |dx| ≤ ~10 columns. Returns the cut factor
+     * 0 (full height) → 1 (full stub), SMOOTHSTEP-eased over ~2 tiles at
+     * every window edge on the CONTINUOUS player position, so walls sink
+     * and rise as you walk instead of popping per row. ugBlend scales it
+     * so a portal drop fades the cut in with the darkness. Deliberately
+     * cheap: a few clamps and multiplies per visible wall, no allocation,
+     * nothing cached — the wall painter is live, so a per-frame height
+     * is free. Never called above ground (ugCutOn gates every call
+     * site); the surface keeps the region-based law untouched.
+     */
+    private dungeonCut;
     private wallItem;
     /**
      * A wood crown is the top of the squared CAP BEAM the wall carries

@@ -257,6 +257,8 @@ h3 {
 .stat-plaque,
 .shelf-card,
 .loot-row,
+.rift-row,
+.rift-power,
 .skills-total,
 .technique-chip,
 .price-tag,
@@ -2630,6 +2632,124 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   box-shadow: 2px 2px 0 rgba(10, 6, 16, 0.5);
 }
 
+/* ==================================================================
+   THE RIFTGATE — the gate's question: which key turns? Each row is a
+   dungeon read pure from a key's roll; its tier paints the leading
+   edge and the POWER plaque leads, because "am I strong enough" is
+   the question you stand at the gate asking.
+   ================================================================== */
+
+.screen-riftgate {
+  width: min(680px, 64vw);
+}
+
+#riftgate-list {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  padding: 2px 4px 2px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* A whole row is one brass-touchable choice — states are brightness,
+   never background swaps (the painted-kit law). */
+.rift-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--raise);
+  border: 1.5px solid var(--line);
+  border-left: 4px solid var(--rift-tint, var(--line));
+  border-radius: 7px;
+  padding: 10px 14px;
+  text-shadow: var(--punch-small);
+  cursor: pointer;
+  flex: none;
+}
+
+.rift-row:hover {
+  filter: brightness(1.12);
+}
+
+.rift-mid {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rift-name {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--parchment);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rift-sub {
+  font-size: 13.5px;
+  color: var(--parchment-dim);
+  text-transform: capitalize;
+}
+
+/* The sigil is a minted code, not a word — set like an engraving. */
+.rift-sigil {
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #b8a8e8;
+}
+
+/* The headline number, told huge (the inspect card's plaque dialect). */
+.rift-power {
+  flex: none;
+  min-width: 84px;
+  padding: 8px 12px 6px;
+  background: var(--sunk);
+  border: 1.5px solid var(--line);
+  text-align: center;
+  --cut: 10px;
+}
+
+.rift-power strong {
+  display: block;
+  font-family: var(--serif);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--rift-tint, var(--gold-bright));
+  text-shadow: var(--punch);
+}
+
+.rift-power span {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+/* No key, no passage — the parchment says so in ink. */
+.rift-empty {
+  border: 9px solid transparent;
+  border-image: var(--ui-sheet) 45 fill / 9px;
+  padding: 10px 12px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 16.5px;
+  color: var(--sheet-ink);
+  text-shadow: none;
+  filter: drop-shadow(4px 5px 0 var(--shadow));
+}
+
 /* ---------------------------------- hotbar */
 
 /* The hotbar: ability keys set in the same riveted console tray. */
@@ -3719,4 +3839,119 @@ body.pad-mode .hint-inline { display: none; }
   to {
     transform: translateX(420%);
   }
+}
+
+/* ---------------------------------- dungeon entry banner
+   The threshold announcement (ui/dungeonBanner.ts): the moment the
+   veil sets you down, a tray names where you now stand — title large,
+   sigil and power beneath, keyed to the key's tier. A toast, not a
+   screen: pointer-events none, gone on its own. Like the level-up
+   card it wears its OWN copy of the tray chrome, never .ui-tray (the
+   panel-semantics / input-gate class), and borrows the ceremony's
+   slam/exit/shine keyframes — same stagecraft, different act. */
+
+#dungeon-stage {
+  position: fixed;
+  left: 50%;
+  top: 12%;
+  transform: translateX(-50%);
+  z-index: 57;
+  pointer-events: none;
+}
+
+.rift-card {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 24px;
+  width: max-content;
+  max-width: min(560px, 92vw);
+  background-color: var(--panel);
+  background-clip: padding-box;
+  border: var(--tray-border) solid transparent;
+  border-image-source: var(--ui-tray-frame);
+  border-image-slice: var(--tray-slice);
+  border-image-width: var(--tray-border);
+  border-image-repeat: round;
+  border-radius: 0;
+  color: var(--parchment);
+  filter: drop-shadow(7px 8px 0 var(--shadow));
+  animation: lvl-slam 620ms cubic-bezier(0.2, 1.35, 0.32, 1) both;
+}
+
+#dungeon-stage.leaving .rift-card {
+  animation: lvl-exit 650ms ease-in both;
+}
+
+/* The key that brought you: a socket well ringed in its tier. */
+.rift-plaque {
+  flex: none;
+  width: 68px;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 7px solid transparent;
+  border-image: var(--ui-socket) 35 fill / 7px;
+  box-shadow:
+    0 0 0 2px var(--rift-accent),
+    0 0 16px var(--rift-accent);
+}
+
+.rift-plaque img {
+  width: 48px;
+  height: 48px;
+  animation: lvl-pop 460ms cubic-bezier(0.2, 1.6, 0.4, 1) 180ms both;
+}
+
+.rift-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-right: 6px;
+}
+
+/* "rare crypt" — the tier speaks in its own color. */
+.rift-kicker {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3.5px;
+  text-transform: uppercase;
+  color: var(--gold-hot);
+  text-shadow: var(--punch-small);
+}
+
+.rift-title {
+  font-family: var(--serif);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--gold-bright);
+  text-shadow: var(--punch);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The tier's enamel inlay under the name (the ceremony's dialect). */
+.rift-title::after {
+  content: '';
+  display: block;
+  height: 4px;
+  margin-top: 4px;
+  background: var(--rift-accent);
+  box-shadow: 1.5px 1.5px 0 rgba(14, 10, 5, 0.9);
+}
+
+/* "sigil KAR-VOTH · power 30" — the trade name and the warning. */
+.rift-fact {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
 }

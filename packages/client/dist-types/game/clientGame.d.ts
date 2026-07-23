@@ -144,6 +144,16 @@ export interface GameEvents {
         item: string;
         roll: ItemRoll;
     }>): void;
+    /** The Riftgate answered an interact — open the key panel over these pack slots. */
+    onRiftgate?(keySlots: number[]): void;
+    /** Crossed into a dungeon — everything the entry banner tells. */
+    onDungeon?(d: {
+        name: string;
+        sigil: string;
+        tier: string;
+        theme: string;
+        power: number;
+    }): void;
     onHit(hit: {
         x: number;
         y: number;
@@ -407,6 +417,8 @@ export declare class ClientGame {
     invMove(from: number, to: number): void;
     /** Drop a pack slot onto the ground where you stand. */
     dropSend(slot: number, qty: number): void;
+    /** Turn the dungeon key in this pack slot — only heard at a riftgate. */
+    useKeySend(slot: number): void;
     /** Confirm character creation (optimistic — the server locks it). */
     setLookSend(look: Look): void;
     shopSend(op: 'buy' | 'sell', item: string, qty: number, slot?: number): void;

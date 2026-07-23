@@ -1,7 +1,9 @@
 import {
+  DUNGEON_TIER_LAWS,
   PASSIVES,
   HIDDEN_SKILLS,
   SKILL_IDS,
+  dungeonSpecFromRoll,
   levelForXp,
   xpForLevel,
   type EquipSlot,
@@ -451,6 +453,7 @@ export class Panels {
 
   private static categoryLine(def: ItemDef): string {
     if (def.id === 'coins') return 'Currency';
+    if (def.dungeonKey) return 'Dungeon Key';
     if (def.weapon) {
       const style = def.weapon.style;
       return `Weapon · ${style.charAt(0).toUpperCase()}${style.slice(1)}`;
@@ -473,6 +476,9 @@ export class Panels {
     }
     // Rolled gear derives its true numbers from the instance roll.
     const rolled = rolledStats(itemId, roll);
+    // A dungeon key IS its dungeon (the seed-is-the-dungeon law): the
+    // card reads the same pure spec the server generates from.
+    const dungeon = def.dungeonKey ? dungeonSpecFromRoll(roll) : null;
     this.card.innerHTML = '';
 
     const head = document.createElement('div');
@@ -483,8 +489,9 @@ export class Panels {
     const title = document.createElement('div');
     const name = document.createElement('div');
     name.className = 'card-name';
-    // A rolled instance is named by its dominant affix — "of Strength".
-    name.textContent = instanceName(itemId, roll);
+    // A rolled instance is named by its dominant affix — "of Strength";
+    // a dungeon key is named by where it leads — "The Ashen Barrow".
+    name.textContent = dungeon ? dungeon.name : instanceName(itemId, roll);
     // Rarity speaks through the nameplate; legendary keeps the molten
     // gold treatment from the stylesheet.
     const tier = rarityOfInstance(itemId, roll);
@@ -532,6 +539,14 @@ export class Panels {
     if (headArmor > 0) headline.push({ v: `+${headArmor}`, l: 'armor', c: '#8ac4e8' });
     if (def.heals) headline.push({ v: `+${def.heals}`, l: 'heals HP', c: '#7dc46a' });
     if (def.tool) headline.push({ v: `${def.tool.power}`, l: 'tool power', c: '#e8b64c' });
+    // A key's defining number is the level its garrison is scaled to.
+    if (dungeon) {
+      headline.push({
+        v: `${dungeon.power}`,
+        l: 'power · suggested level',
+        c: RARITY_COLORS[dungeon.tier] ?? '#e8b64c',
+      });
+    }
     if (headline.length > 0) {
       const strip = document.createElement('div');
       strip.className = 'card-headline';
@@ -570,6 +585,13 @@ export class Panels {
       row.append(chip, lab, val);
       this.card.appendChild(row);
     };
+
+    // The key's fine print: the trade name, then what kind of halls
+    // wait behind the veil. (Power already leads the headline.)
+    if (dungeon) {
+      stat('Sigil', dungeon.sigil, '#8f7bd9');
+      stat('Theme', dungeon.theme.charAt(0).toUpperCase() + dungeon.theme.slice(1), '#c4b590');
+    }
 
     const w = def.weapon;
     if (w) {
@@ -706,7 +728,8 @@ export class Panels {
     foot.className = 'card-foot';
     const value = document.createElement('span');
     value.className = 'card-value';
-    const worth = rolled?.value ?? def.value;
+    // A key's worth follows its tier's economy floor, not the base def.
+    const worth = dungeon ? DUNGEON_TIER_LAWS[dungeon.tier].value : rolled?.value ?? def.value;
     const coinImg = document.createElement('img');
     coinImg.src = itemIconUrl('coins', 20);
     coinImg.draggable = false;
