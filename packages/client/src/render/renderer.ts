@@ -3404,10 +3404,7 @@ export class Renderer {
           // same way it composes with wcut: full height unless the run
           // sits in the player's occlusion window.
           let dwhT = dcut ? 0.62 : WALL_H;
-          if (!dcut && this.ugCutOn) {
-            const cut = this.dungeonCut(game, ax, ty);
-            if (cut > 0) dwhT = WALL_H + (0.62 - WALL_H) * cut;
-          }
+          if (!dcut && this.ugCutOn) dwhT = this.dungeonWallHeight(game, ax, ty);
           const item = this.doorwayItem(ground, ax, ty, game, dwhT, runLen, dregion);
           if (game.world.elevAt(ax, ty) !== 0) item.elevated = true;
           items.push(item);
@@ -3467,10 +3464,7 @@ export class Renderer {
           // (cavern floods dwarf MAX_REGION) — the occlusion-window
           // rule takes over, with a continuously eased height.
           let whT = wcut ? 0.62 : WALL_H;
-          if (!wcut && this.ugCutOn) {
-            const cut = this.dungeonCut(game, tx, ty);
-            if (cut > 0) whT = WALL_H + (0.62 - WALL_H) * cut;
-          }
+          if (!wcut && this.ugCutOn) whT = this.dungeonWallHeight(game, tx, ty);
           const item = this.wallItem(
             ground as Tile,
             tx,
@@ -3574,21 +3568,44 @@ export class Renderer {
    * is free. Never called above ground (ugCutOn gates every call
    * site); the surface keeps the region-based law untouched.
    */
-  private dungeonCut(game: ClientGame, tx: number, ty: number): number {
+  /**
+   * THE TRENCH LAW (corridors): one stubbed row is not enough in a
+   * dungeon — wall MASS is thick, and at WALL_H 2.05 the row BEHIND
+   * a knee-high stub still throws its crown over the corridor floor.
+   * So the cut reaches through the mass: a wall with walkable floor
+   * 1, 2, or 3 rows to its north sinks toward a stepped target
+   * (0.62 / 1.0 / 1.4) — nearest row lowest, each row behind a step
+   * taller, so the opening reads as a carved trench with depth
+   * rather than a flat shelf. Rows 4+ never overhang the floor at
+   * this WALL_H, so three probes is the whole cost.
+   */
+  private dungeonWallHeight(game: ClientGame, tx: number, ty: number): number {
     const dy = ty - this.ownPY;
-    if (dy < -2 || dy > 7) return 0;
+    if (dy < -2 || dy > 9) return WALL_H;
     const adx = Math.abs(tx + 0.5 - this.ownPX);
-    if (adx > 11) return 0;
-    const nt = game.world.groundAt(tx, ty - 1);
-    if (nt === undefined || tileDef(nt).solid) return 0;
+    if (adx > 13) return WALL_H;
+    // Nearest walkable floor straight north through the wall mass.
+    let depth = 0;
+    for (let d = 1; d <= 3; d++) {
+      const nt = game.world.groundAt(tx, ty - d);
+      if (nt === undefined) return WALL_H;
+      if (!tileDef(nt).solid) {
+        depth = d;
+        break;
+      }
+    }
+    if (depth === 0) return WALL_H;
     // Window margins: ease in over dy [-2..-0.5] (the wall row you
-    // stand on is fully cut), out over dy [5..7] and |dx| [9..11].
-    let ey = Math.min((dy + 2) / 1.5, (7 - dy) / 2, 1);
-    let ex = Math.min((11 - adx) / 2, 1);
-    if (ey <= 0 || ex <= 0) return 0;
+    // stand on is fully cut), out over dy [7..9] and |dx| [10.5..13].
+    let ey = Math.min((dy + 2) / 1.5, (9 - dy) / 2, 1);
+    let ex = Math.min((13 - adx) / 2.5, 1);
+    if (ey <= 0 || ex <= 0) return WALL_H;
     ey = ey * ey * (3 - 2 * ey);
     ex = ex * ex * (3 - 2 * ex);
-    return ey * ex * this.ugBlend;
+    const cut = ey * ex * this.ugBlend;
+    if (cut <= 0) return WALL_H;
+    const stub = depth === 1 ? 0.62 : depth === 2 ? 1.0 : 1.4;
+    return WALL_H + (stub - WALL_H) * cut;
   }
 
   private wallItem(

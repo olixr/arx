@@ -297,8 +297,15 @@ function carveHall(c: Carver, cx: number, cy: number, rng: Rng): { w: number; h:
   return { w, h };
 }
 
-/** A drunk tunnel: momentum + jitter, disc brush — reads as grown. */
-function tunnelCave(c: Carver, a: Vec2, b: Vec2, rng: Rng): void {
+/**
+ * A drunk tunnel: momentum + jitter, disc brush — reads as grown.
+ * WIDTH IS READABILITY: the 2.5D camera hides thin passages behind
+ * their own south walls, so the brush stays generous (~3-4 tiles,
+ * bulging wider) — a corridor you can fight in, not a crack you
+ * squeeze through. Carved centers are recorded so the dressing pass
+ * can light the way.
+ */
+function tunnelCave(c: Carver, a: Vec2, b: Vec2, rng: Rng, path?: Array<{ x: number; y: number }>): void {
   let x = a.x;
   let y = a.y;
   let guard = c.s * 6;
@@ -306,29 +313,33 @@ function tunnelCave(c: Carver, a: Vec2, b: Vec2, rng: Rng): void {
     const ang = Math.atan2(b.y - y, b.x - x) + rng.range(-0.9, 0.9);
     x += Math.cos(ang);
     y += Math.sin(ang);
-    const r = rng.chance(0.3) ? 2 : 1;
-    for (let dy = -r; dy <= r; dy++) {
-      for (let dx = -r; dx <= r; dx++) {
+    const r = rng.chance(0.3) ? 2.3 : 1.7;
+    const ri = Math.ceil(r);
+    for (let dy = -ri; dy <= ri; dy++) {
+      for (let dx = -ri; dx <= ri; dx++) {
         if (dx * dx + dy * dy <= r * r) {
           c.carve(Math.round(x) + dx, Math.round(y) + dy, Tile.CaveFloor);
         }
       }
     }
+    path?.push({ x: Math.round(x), y: Math.round(y) });
   }
 }
 
-/** A worked corridor: straight L, even width — reads as built. */
-function tunnelBuilt(c: Carver, a: Vec2, b: Vec2, rng: Rng): void {
-  const width = rng.chance(0.4) ? 3 : 2;
-  const half = width >> 1;
+/** A worked corridor: straight L, even width 3 (sometimes 4). */
+function tunnelBuilt(c: Carver, a: Vec2, b: Vec2, rng: Rng, path?: Array<{ x: number; y: number }>): void {
+  const width = rng.chance(0.35) ? 4 : 3;
+  const lo = -((width - 1) >> 1);
+  const hi = width >> 1;
   const horizFirst = rng.chance(0.5);
   const carveSpan = (x0: number, x1: number, y0: number, y1: number) => {
     for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) {
       for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) {
-        for (let o = -half; o <= half - (width === 2 ? 1 : 0); o++) {
+        for (let o = lo; o <= hi; o++) {
           if (x0 === x1) c.carve(x + o, y, Tile.DungeonFloor);
           else c.carve(x, y + o, Tile.DungeonFloor);
         }
+        path?.push({ x, y });
       }
     }
   };
@@ -379,8 +390,8 @@ function stampPrefab(
     }
   }
   // Sealed set-pieces hang a shut stone door in a narrow breach; a
-  // wide breach simply stays an open mouth.
-  if (opts?.sealed && breaches.length > 0 && breaches.length <= 2) {
+  // breach wider than a triple door simply stays an open mouth.
+  if (opts?.sealed && breaches.length > 0 && breaches.length <= 3) {
     for (const b of breaches) c.set(b.x, b.y, Tile.DoorwayStoneShut);
   }
   return { breaches };
@@ -580,13 +591,14 @@ export function generateDungeon(
     }
   }
 
+  const corridorPath: Array<{ x: number; y: number }> = [];
   for (const [i, j] of edges) {
     const a = anchors[i]!;
     const b = anchors[j]!;
     if (a.style === 'hall' && b.style === 'hall') {
-      tunnelBuilt(c, a, b, rCarve);
+      tunnelBuilt(c, a, b, rCarve, corridorPath);
     } else {
-      tunnelCave(c, a, b, rCarve);
+      tunnelCave(c, a, b, rCarve, corridorPath);
     }
   }
 
@@ -644,7 +656,7 @@ export function generateDungeon(
         }
       }
     }
-    tunnelCave(c, { x: bx, y: by }, missing, rCarve);
+    tunnelCave(c, { x: bx, y: by }, missing, rCarve, corridorPath);
   }
 
   // ---- 3. SECRETS: hidden rooms behind cracked walls -----------------
@@ -885,10 +897,11 @@ export function generateDungeon(
     }
     return true;
   };
-  const putProp = (x: number, y: number, t: Tile, mask?: Uint8Array): void => {
-    if (!canProp(x, y, mask)) return;
+  const putProp = (x: number, y: number, t: Tile, mask?: Uint8Array): boolean => {
+    if (!canProp(x, y, mask)) return false;
     removables.push({ x, y, was: c.get(x, y) });
     c.set(x, y, t);
+    return true;
   };
   for (const a of anchors) {
     if (a.kind === 'entry') continue; // the landing stays clear
@@ -942,6 +955,36 @@ export function generateDungeon(
   for (const h of hiddenRooms) {
     for (let i = 0; i < 2; i++) {
       putProp(h.x + rSecret.int(-2, 2), h.y + rSecret.int(-2, 2), Tile.GlowShroom, secretMask);
+    }
+  }
+
+  // CORRIDOR LIGHTS: seeing the fight matters most in the halls
+  // between rooms — every ~7-11 path tiles, one light goes up against
+  // the corridor wall: a brazier where the floor is worked flagstone,
+  // glowshrooms where the rock is raw. putProp's guards keep them out
+  // of the walkway (wall-hugging, three open neighbors), and the
+  // repair sweep keeps them honest like every other placed piece.
+  {
+    let next = 5 + rDress.int(0, 3);
+    for (let i = 0; i < corridorPath.length; i++) {
+      if (i < next) continue;
+      const pc = corridorPath[i]!;
+      let placed = false;
+      for (const [dx, dy] of [[0, -1], [0, 1], [1, 0], [-1, 0], [0, 0]] as const) {
+        const x = pc.x + dx;
+        const y = pc.y + dy;
+        let wallAdj = false;
+        for (const [wx, wy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+          if (c.isRock(x + wx, y + wy)) wallAdj = true;
+        }
+        if (!wallAdj) continue;
+        const t = c.get(x, y) === Tile.DungeonFloor ? Tile.Brazier : Tile.GlowShroom;
+        if (putProp(x, y, t)) {
+          placed = true;
+          break;
+        }
+      }
+      next = i + (placed ? 7 + rDress.int(0, 4) : 2);
     }
   }
 

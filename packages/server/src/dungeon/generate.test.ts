@@ -171,6 +171,40 @@ test('the entry landing is never inside a wall or prop', () => {
   }
 });
 
+test('corridors are wide enough to read: 1-wide pinches stay rare', () => {
+  // A pinch is a floor cell squeezed solid-to-solid on an axis —
+  // exactly the passage the 2.5D camera hides behind its own south
+  // wall. Hidden-room tunnels are 1-wide BY DESIGN (a secret should
+  // feel like a crack); everything else the carve brushes keep 3+
+  // wide, so the total stays a whisper of the floor count.
+  for (const tier of ['common', 'rare', 'legendary'] as const) {
+    for (let seed = 1; seed <= 15; seed++) {
+      const { zone } = gen(seed * 31337, tier);
+      const s = zone.width;
+      // Only WALL MASS counts as a squeeze — a cell beside a chest or
+      // an ore node is furniture clearance, not a thin corridor.
+      const WALLS = new Set<number>([Tile.CaveWall, Tile.WallStone, Tile.CrackedCaveWall]);
+      const wallAt = (x: number, y: number) =>
+        x < 0 || y < 0 || x >= s || y >= s || WALLS.has(zone.ground[y * s + x]!);
+      let pinches = 0;
+      let floors = 0;
+      for (let y = 1; y < s - 1; y++) {
+        for (let x = 1; x < s - 1; x++) {
+          if (isSolidTile(zone.ground[y * s + x]!)) continue;
+          floors++;
+          if ((wallAt(x, y - 1) && wallAt(x, y + 1)) || (wallAt(x - 1, y) && wallAt(x + 1, y))) {
+            pinches++;
+          }
+        }
+      }
+      assert.ok(
+        pinches <= 45 && pinches / floors < 0.03,
+        `${tier}/${seed}: ${pinches} wall-pinch cells of ${floors} floor`,
+      );
+    }
+  }
+});
+
 test('dungeon origin slots never overlap', () => {
   const a = dungeonOrigin(0);
   const b = dungeonOrigin(1);

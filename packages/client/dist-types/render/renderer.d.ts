@@ -630,7 +630,18 @@ export declare class Renderer {
      * is free. Never called above ground (ugCutOn gates every call
      * site); the surface keeps the region-based law untouched.
      */
-    private dungeonCut;
+    /**
+     * THE TRENCH LAW (corridors): one stubbed row is not enough in a
+     * dungeon — wall MASS is thick, and at WALL_H 2.05 the row BEHIND
+     * a knee-high stub still throws its crown over the corridor floor.
+     * So the cut reaches through the mass: a wall with walkable floor
+     * 1, 2, or 3 rows to its north sinks toward a stepped target
+     * (0.62 / 1.0 / 1.4) — nearest row lowest, each row behind a step
+     * taller, so the opening reads as a carved trench with depth
+     * rather than a flat shelf. Rows 4+ never overhang the floor at
+     * this WALL_H, so three probes is the whole cost.
+     */
+    private dungeonWallHeight;
     private wallItem;
     /**
      * A wood crown is the top of the squared CAP BEAM the wall carries
