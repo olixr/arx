@@ -513,6 +513,16 @@ export class Renderer {
   private viewShiftX = 0;
   private viewShiftTargetX = 0;
   /**
+   * Dialogue cinematics: while a conversation runs, the camera leaves
+   * the player-centered follow and frames BOTH conversants — glides
+   * to their midpoint, pulls in to a close zoom, and breathes (a slow
+   * ±zoom drift) so the held shot stays alive. The pair sits in the
+   * upper two-thirds: the speech sheet owns the lower third.
+   */
+  private cineEid: number | null = null;
+  private cineSavedZoom: number | null = null;
+  private cineT0 = 0;
+  /**
    * True while the player zoom is gliding toward its target. Every
    * cached sprite/shadow/chunk holds its bake and scale-blits for the
    * ride: a glide crosses the 20% scale-drift threshold on the whole
@@ -590,6 +600,21 @@ export class Renderer {
    */
   setViewShift(px: number): void {
     this.viewShiftTargetX = px;
+  }
+
+  /** Begin the dialogue cinematic: frame the player and this entity. */
+  startDialogueCine(eid: number): void {
+    if (this.cineEid === null) this.cineSavedZoom = this.camera.targetZoom;
+    this.cineEid = eid;
+    this.cineT0 = performance.now();
+  }
+
+  /** End the cinematic: glide back to the player's chosen framing. */
+  endDialogueCine(): void {
+    if (this.cineEid === null) return;
+    this.cineEid = null;
+    if (this.cineSavedZoom !== null) this.camera.setZoom(this.cineSavedZoom);
+    this.cineSavedZoom = null;
   }
 
   /** A fading, flattening silhouette where something died. */
@@ -2113,8 +2138,25 @@ export class Renderer {
       (this.viewShiftTargetX - this.viewShiftX) * (1 - Math.exp(-7 * frameDt));
     const own = game.predictor.renderPos();
     const k = 1 - Math.exp(-8 * frameDt);
-    this.camera.x += (own.x + this.viewShiftX / this.camera.scale - this.camera.x) * k;
-    this.camera.y += (own.y - this.camera.y) * k;
+    const cine = this.cineEid !== null ? game.entities.get(this.cineEid) : undefined;
+    if (cine) {
+      // Dialogue cinematic: pull PAST the player's zoom ceiling — an
+      // intimacy the wheel can't reach. The zoom target holds STILL so
+      // sprite bakes settle sharp; the living breath rides the
+      // screen-space scale below instead (zero re-bakes).
+      this.camera.targetZoom = 2.1;
+      const last = cine.buffer.latest();
+      const nx = last?.x ?? cine.meta.x;
+      const ny = last?.y ?? cine.meta.y;
+      // Look below the midpoint so the figures ride the upper 2/3 —
+      // the speech sheet owns the bottom of the screen.
+      const lift = (this.h * 0.1) / (this.camera.scale * this.camera.yScale);
+      this.camera.x += ((own.x + nx) / 2 - this.camera.x) * k;
+      this.camera.y += ((own.y + ny) / 2 + lift - this.camera.y) * k;
+    } else {
+      this.camera.x += (own.x + this.viewShiftX / this.camera.scale - this.camera.x) * k;
+      this.camera.y += (own.y - this.camera.y) * k;
+    }
 
     this.shakeAmount *= Math.exp(-7 * frameDt);
     if (this.shakeAmount > 0.2) {
@@ -2125,10 +2167,17 @@ export class Renderer {
     this.ctx.fillStyle = '#141020';
     this.ctx.fillRect(0, 0, this.w, this.h);
 
-    // Kill zoom-pulse: a screen-space scale kick easing back out.
+    // Kill zoom-pulse: a screen-space scale kick easing back out. The
+    // dialogue cinematic adds its slow breath here too — a 0..1.4%
+    // swell (never below 1: shrinking would peel the canvas edge) that
+    // keeps the held shot alive without invalidating a single bake.
     this.zoomPulseAmount *= Math.exp(-6 * frameDt);
-    if (this.zoomPulseAmount > 0.001) {
-      const z = 1 + this.zoomPulseAmount;
+    const cineBreath =
+      this.cineEid !== null
+        ? (Math.sin(((performance.now() - this.cineT0) / 1000) * 0.5) + 1) * 0.007
+        : 0;
+    if (this.zoomPulseAmount > 0.001 || cineBreath > 0) {
+      const z = 1 + this.zoomPulseAmount + cineBreath;
       this.ctx.translate(this.w / 2, this.h / 2);
       this.ctx.scale(z, z);
       this.ctx.translate(-this.w / 2, -this.h / 2);

@@ -33,6 +33,12 @@ export declare class InputManager {
      * and steer the ghost while you build. main.ts owns this flag.
      */
     buildCapture: boolean;
+    /**
+     * A cinematic (dialogue) owns the stage: movement and every combat
+     * button go quiet so a Space-to-advance never swings a sword and a
+     * WASD twitch never walks you out of the frame. main.ts owns this.
+     */
+    cinemaCapture: boolean;
     /** While a DOM field (chat) has focus, movement keys are ignored. */
     private typingCheck;
     /**

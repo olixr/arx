@@ -249,6 +249,24 @@ export class Session {
         this.game.useKey(this.playerEid, msg.slot);
         return;
       }
+      case 'dlgadv': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.dialogueAdvance(this.playerEid);
+        return;
+      }
+      case 'dlgchoice': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.dialogueChoose(this.playerEid, msg.idx);
+        return;
+      }
+      case 'dlgend': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.dialogueEnd(this.playerEid);
+        return;
+      }
     }
   }
 

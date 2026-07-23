@@ -1,0 +1,42 @@
+{
+  "id": "alda_watch",
+  "actor": "captain_alda",
+  "start": "post",
+  "nodes": [
+    {
+      "id": "post",
+      "text": "State your business. The arch stays clear.",
+      "choices": [
+        { "text": "Any trouble on the roads?", "next": "trouble" },
+        {
+          "text": "Old Maren said I should speak with you.",
+          "next": "maren_word",
+          "requires": ["maren_sent_you"],
+          "forbids": ["alda_met"],
+          "set": ["alda_met"]
+        },
+        { "text": "What does the watch watch for?", "next": "watch", "requires": ["alda_met"] },
+        { "text": "Just passing through.", "next": "dismiss" }
+      ]
+    },
+    {
+      "id": "trouble",
+      "text": "Goblins test the south road when the moon runs thin, and something in Gloomhollow has the miners spooked. Keep your blade oiled and your boasts small.",
+      "next": "post"
+    },
+    {
+      "id": "maren_word",
+      "text": "Maren vouches for you? Hm. That's worth more than a letter from a crown. Very well — you'll have the watch's courtesy, and my name: Alda. Don't wear either out.",
+      "next": "post"
+    },
+    {
+      "id": "watch",
+      "text": "The gate. The roads. The gloom past the treeline. And lately that Riftgate — it hums louder some nights. If it ever starts singing, you run and you find me.",
+      "next": "post"
+    },
+    {
+      "id": "dismiss",
+      "text": "Then pass. Keep your hands where the watch can see them."
+    }
+  ]
+}

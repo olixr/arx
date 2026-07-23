@@ -33,6 +33,16 @@ test('pickup targets one drop entity and rejects bad eids', () => {
   assert.equal(parseC2S(JSON.stringify({ t: 'pickup' })), null);
 });
 
+test('dialogue intents parse; choice index stays inside the plate row', () => {
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'dlgadv' })), { t: 'dlgadv' });
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'dlgend' })), { t: 'dlgend' });
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'dlgchoice', idx: 3 })), { t: 'dlgchoice', idx: 3 });
+  assert.equal(parseC2S(JSON.stringify({ t: 'dlgchoice', idx: 4 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'dlgchoice', idx: -1 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'dlgchoice', idx: 1.5 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'dlgchoice' })), null);
+});
+
 test('input viewMs (v8) is optional, clamped, and hostile-proof', () => {
   const frame = { seq: 1, mx: 0, my: 0, aim: 0, buttons: 0 };
   const plain = parseC2S(JSON.stringify({ t: 'input', frame }));

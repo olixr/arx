@@ -1,0 +1,23 @@
+{
+  "id": "hetty_farm",
+  "actor": "farmer_hetty",
+  "start": "fence",
+  "nodes": [
+    {
+      "id": "fence",
+      "text": "Mind the fence — the hens think it's a suggestion.",
+      "choices": [
+        { "text": "How's the harvest?", "next": "harvest" },
+        { "text": "Need a hand around the farm?", "next": "hand" }
+      ]
+    },
+    {
+      "id": "harvest",
+      "text": "Coming in fat and golden, thank the rain. If you've a plot of your own, get seeds in the ground before the season turns — soil doesn't hold grudges, but it does hold schedules."
+    },
+    {
+      "id": "hand",
+      "text": "Ha! Careful what you offer — there's always mud that needs moving. Come back when the notice board goes up; I'll have a list as long as a hoe."
+    }
+  ]
+}

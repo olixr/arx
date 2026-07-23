@@ -162,6 +162,12 @@ export interface GameEvents {
   }): void;
   /** This character has never chosen a look — open the creator. */
   onNeedLook?(): void;
+  /** A conversation began — raise the cinematic frame around `eid`. */
+  onDialogueOpen?(o: { eid: EntityId; name: string; title?: string }): void;
+  /** One beat of conversation — typewriter it out. */
+  onDialogueNode?(n: { speaker: 'npc' | 'player'; text: string; choices?: string[]; last?: boolean }): void;
+  /** The conversation is over — tear the frame down. */
+  onDialogueClose?(): void;
 }
 
 export class ClientGame {
@@ -788,6 +794,23 @@ export class ClientGame {
         });
         break;
       }
+      case 'dlgopen': {
+        this.events.onDialogueOpen?.({ eid: msg.eid, name: msg.name, title: msg.title });
+        break;
+      }
+      case 'dlgnode': {
+        this.events.onDialogueNode?.({
+          speaker: msg.speaker,
+          text: msg.text,
+          choices: msg.choices,
+          last: msg.last,
+        });
+        break;
+      }
+      case 'dlgclose': {
+        this.events.onDialogueClose?.();
+        break;
+      }
       case 'death': {
         if (this.npcDeaths.length < 32) {
           const remote = this.entities.get(msg.eid);
@@ -977,7 +1000,13 @@ export class ClientGame {
     for (const [eid, remote] of this.entities) {
       if (remote.meta.kind !== EntityKind.Npc) continue;
       const def = npcDef(remote.meta.defId ?? '');
-      const verb = def?.produce ? 'Milk' : remote.meta.friendly ? 'Talk' : null;
+      // A voice (dialogue tree or barks) offers Talk even on fightable
+      // neutrals — the guard you COULD strike would rather chat.
+      const verb = def?.produce
+        ? 'Milk'
+        : remote.meta.talk || remote.meta.friendly
+          ? 'Talk'
+          : null;
       if (!verb) continue;
       const latest = remote.buffer.latest();
       const x = latest?.x ?? remote.meta.x;
@@ -1114,9 +1143,24 @@ export class ClientGame {
     this.conn?.send({ t: 'plant', tx, ty, seed });
   }
 
-  /** Interact with a living NPC (milk a cow). */
+  /** Interact with a living NPC (talk to an actor, milk a cow). */
   interactNpc(eid: EntityId): void {
     this.conn?.send({ t: 'interactnpc', eid });
+  }
+
+  /** Advance the current dialogue beat (the server owns the walk). */
+  dialogueAdvance(): void {
+    this.conn?.send({ t: 'dlgadv' });
+  }
+
+  /** Answer the current dialogue question by choice index. */
+  dialogueChoose(idx: number): void {
+    this.conn?.send({ t: 'dlgchoice', idx });
+  }
+
+  /** Excuse yourself from the conversation early. */
+  dialogueEnd(): void {
+    this.conn?.send({ t: 'dlgend' });
   }
 
   bankSend(op: 'deposit' | 'withdraw', item: string, qty: number, slot?: number, gearId?: number): void {

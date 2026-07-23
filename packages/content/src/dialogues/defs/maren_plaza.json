@@ -1,0 +1,29 @@
+{
+  "id": "maren_plaza",
+  "actor": "old_maren",
+  "start": "bench",
+  "nodes": [
+    {
+      "id": "bench",
+      "text": "Back again? Good. The bench was getting cold.",
+      "next": "news"
+    },
+    {
+      "id": "news",
+      "text": "The well's still sweet, the guards still grumble, and the Riftgate still hums. Steady as ever — and steady is a gift, mark me.",
+      "choices": [
+        { "text": "Anything worth hearing today?", "next": "gossip" },
+        { "text": "Rest easy, Maren.", "next": "rest" }
+      ]
+    },
+    {
+      "id": "gossip",
+      "text": "Hetty's hens got out twice this week, and Tobbin swears he saw a light over Gloomhollow. Between you and me? Tobbin also swears his scales are honest.",
+      "next": "rest"
+    },
+    {
+      "id": "rest",
+      "text": "Off you go, dear. These old bones and I have important sitting to do."
+    }
+  ]
+}

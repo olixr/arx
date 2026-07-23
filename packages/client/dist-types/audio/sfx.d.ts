@@ -126,6 +126,19 @@ export declare class Sfx {
     uiTap(): void;
     /** The pad cursor stepping between controls — barely-there tick. */
     uiTick(): void;
+    /** The cinematic frame rising: cloth settles, two warm low touches. */
+    dialogueOpen(): void;
+    /** …and bowing out: the pair descending, a last cloth breath. */
+    dialogueClose(): void;
+    /**
+     * The typewriter's voice: one quill scratch per few letters —
+     * pitch-wobbled noise ticks so a sentence reads as writing, not a
+     * metronome. THE QUIET-HANDS LAW applies doubly: this fires dozens
+     * of times per line and must stay at the edge of hearing.
+     */
+    dialogueScratch(): void;
+    /** A choice plate sliding in — soft parchment tap, one per plate. */
+    dialogueChoiceIn(): void;
     /** Gear going on: leather shifts, a clasp snicks, weight settles. */
     equipGear(): void;
     /** Gear coming off — the softer reverse. */

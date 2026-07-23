@@ -1,0 +1,25 @@
+{
+  "id": "grib_friend",
+  "actor": "grib",
+  "start": "happy",
+  "priority": 5,
+  "requires": ["grib_friend"],
+  "nodes": [
+    {
+      "id": "happy",
+      "text": "Friend! The road is kinder today. Grib counted seven carts and nobody threw anything at Grib. A good week!",
+      "choices": [
+        { "text": "Keep counting, Grib.", "next": "count" },
+        { "text": "Anyone give you trouble?", "next": "trouble" }
+      ]
+    },
+    {
+      "id": "count",
+      "text": "Grib will! Numbers are honest. Not like camps. Safe travels, friend — Grib keeps this stretch of road lucky for you."
+    },
+    {
+      "id": "trouble",
+      "text": "The guards squint. The merchant counts his spoons when Grib walks past. But the old one by the well shares her bread. Bramblewick is... mostly soft. Grib likes mostly soft."
+    }
+  ]
+}

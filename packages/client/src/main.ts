@@ -26,6 +26,7 @@ import { PORTAL_BURST_COLORS } from './render/portal.js';
 import { installChrome } from './ui/chrome.js';
 import { dressPanel } from './ui/panel.js';
 import { LookCreator } from './ui/lookCreator.js';
+import { DialogueCinema } from './ui/dialogueCinema.js';
 
 // Paint the HUD's chrome (the flat chamfered frame) before any panel
 // shows — the stylesheet reads it from CSS custom properties.
@@ -416,6 +417,15 @@ const looks = new LookCreator((look) => {
   chat.addLine({ channel: 'system', text: 'Your look is set. Welcome to the world.' });
 });
 
+// The dialogue cinema: server-driven like the vault, cinematic like
+// the level ceremony. Its hooks call into `game` lazily — both close
+// over the const declared just below.
+const cinema = new DialogueCinema(sfx, {
+  onAdvance: () => game.dialogueAdvance(),
+  onChoose: (idx) => game.dialogueChoose(idx),
+  onEnd: () => game.dialogueEnd(),
+});
+
 const game = new ClientGame(input, {
   onChat: (line) => chat.addLine(line),
   onNeedLook: () => looks.show(),
@@ -533,6 +543,25 @@ const game = new ClientGame(input, {
     // A server-driven screen, like the vault: through the one gate.
     closeAllUi();
     riftgate.open(keySlots);
+  },
+  onDialogueOpen: (o) => {
+    // A conversation takes the whole stage: every screen closes, the
+    // camera leaves the follow, and the input goes quiet — Space
+    // turns pages now, it doesn't swing swords.
+    closeAllUi();
+    buildMode = null;
+    renderer.buildGhost = null;
+    cinema.show(o);
+    renderer.startDialogueCine(o.eid);
+    input.cinemaCapture = true;
+    document.body.classList.add('in-dialogue'); // the HUD bows out
+  },
+  onDialogueNode: (n) => cinema.showNode(n),
+  onDialogueClose: () => {
+    cinema.close();
+    renderer.endDialogueCine();
+    input.cinemaCapture = false;
+    document.body.classList.remove('in-dialogue');
   },
   onDungeon: (d) => {
     // A toast, not a screen — it overlays like the level-up card.
@@ -1104,6 +1133,12 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
 // Panel hotkeys + interact key.
 window.addEventListener('keydown', (e) => {
   if (chat.isTyping || game.ownEid === null) return;
+  // A running cinematic owns the keyboard: advance, choose, or excuse
+  // yourself — no screen may open over a conversation.
+  if (cinema.open) {
+    cinema.handleKey(e.code);
+    return;
+  }
   if (e.code === 'KeyI') toggleScreen('inv');
   if (e.code === 'KeyK') toggleScreen('skills');
   if (e.code === 'KeyO') toggleScreen('audio');
@@ -1399,7 +1434,7 @@ function frame(now: number): void {
 
   // World interact prompt: a glyph chip floating over whatever the
   // Interact button would use — the console-native "press Ⓧ" read.
-  if (game.ownEid !== null && !uiOpen && !buildMode) {
+  if (game.ownEid !== null && !uiOpen && !buildMode && !cinema.open) {
     const target = game.findNearbyTarget();
     if (target) {
       const p = renderer.camera.worldToScreen(target.tx + 0.5, target.ty + 0.5, window.innerWidth, window.innerHeight);

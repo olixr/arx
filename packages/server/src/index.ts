@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { WebSocketServer } from 'ws';
 import {
+  DIALOGUES,
   NPC_ACTORS,
   buildBramblewick,
   buildGloomhollow,
@@ -13,6 +14,7 @@ import {
 import { config } from './config.js';
 import { AccountStore } from './db/accounts.js';
 import { openDb } from './db/db.js';
+import { loadDialogues, syncDialogues } from './db/dialogues.js';
 import { loadNpcActors, syncNpcActors } from './db/npcActors.js';
 import { GameServer } from './game/gameServer.js';
 import { Session } from './net/session.js';
@@ -59,6 +61,16 @@ for (const zone of zones) {
 console.log(
   `[npc] actors: ${actorLoad.actors.length} loaded ` +
     `(+${actorSync.added} ~${actorSync.updated} -${actorSync.removed} =${actorSync.unchanged})`,
+);
+
+// Dialogue trees, same DB-first flow: content seeds, the DB speaks.
+const dlgSync = syncDialogues(db, [...DIALOGUES.values()]);
+const dlgLoad = loadDialogues(db);
+for (const err of dlgLoad.errors) console.warn(`[npc] invalid DB dialogue: ${err}`);
+game.registerDialogues(dlgLoad.dialogues);
+console.log(
+  `[npc] dialogues: ${dlgLoad.dialogues.length} loaded ` +
+    `(+${dlgSync.added} ~${dlgSync.updated} -${dlgSync.removed} =${dlgSync.unchanged})`,
 );
 
 game.start();

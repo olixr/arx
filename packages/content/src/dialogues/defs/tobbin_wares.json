@@ -1,0 +1,22 @@
+{
+  "id": "tobbin_wares",
+  "actor": "merchant_tobbin",
+  "start": "counter",
+  "nodes": [
+    {
+      "id": "counter",
+      "text": "Welcome, welcome! Tobbin's General Store — if it fits on a shelf, I sell it.",
+      "next": "admire"
+    },
+    {
+      "id": "admire",
+      "speaker": "player",
+      "text": "Quite the collection you've got back there.",
+      "next": "reply"
+    },
+    {
+      "id": "reply",
+      "text": "Collection! I like you already. Browse the counter any time — and should you find coin out adventuring, you know where it spends best."
+    }
+  ]
+}

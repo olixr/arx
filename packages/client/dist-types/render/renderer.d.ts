@@ -152,6 +152,16 @@ export declare class Renderer {
     private viewShiftX;
     private viewShiftTargetX;
     /**
+     * Dialogue cinematics: while a conversation runs, the camera leaves
+     * the player-centered follow and frames BOTH conversants — glides
+     * to their midpoint, pulls in to a close zoom, and breathes (a slow
+     * ±zoom drift) so the held shot stays alive. The pair sits in the
+     * upper two-thirds: the speech sheet owns the lower third.
+     */
+    private cineEid;
+    private cineSavedZoom;
+    private cineT0;
+    /**
      * True while the player zoom is gliding toward its target. Every
      * cached sprite/shadow/chunk holds its bake and scale-blits for the
      * ride: a glide crosses the 20% scale-drift threshold on the whole
@@ -200,6 +210,10 @@ export declare class Renderer {
      * by main while a docked screen owns the right of the viewport.
      */
     setViewShift(px: number): void;
+    /** Begin the dialogue cinematic: frame the player and this entity. */
+    startDialogueCine(eid: number): void;
+    /** End the cinematic: glide back to the player's chosen framing. */
+    endDialogueCine(): void;
     /** A fading, flattening silhouette where something died. */
     /** Freeze-frame: animation and particles crawl for a beat on impact. */
     hitstop(seconds: number): void;

@@ -1,0 +1,48 @@
+{
+  "id": "maren_welcome",
+  "actor": "old_maren",
+  "start": "greet",
+  "priority": 10,
+  "once": true,
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Well now. A new face in Bramblewick — and the road still on your boots. Come here, let me look at you.",
+      "next": "look"
+    },
+    {
+      "id": "look",
+      "text": "Mm. Bright eyes. Strong hands. The town could use both. I'm Maren — folk say Old Maren, and they're not wrong.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Go on then, ask. Everyone does.",
+      "choices": [
+        { "text": "What is this place?", "next": "about" },
+        { "text": "Any advice for a newcomer?", "next": "advice", "set": ["maren_sent_you"] },
+        { "text": "Just wanted to say hello.", "next": "farewell" }
+      ]
+    },
+    {
+      "id": "about",
+      "text": "Bramblewick. Quiet town, loud history. Farms to the west, a deep cave northeast, and that Riftgate humming away like it pays rent. We manage.",
+      "next": "hub"
+    },
+    {
+      "id": "advice",
+      "text": "Speak with Captain Alda at the north arch — tell her Maren sent you. She growls, but she keeps this town breathing. And keep bread in your pack; heroics run on crumbs.",
+      "next": "gift"
+    },
+    {
+      "id": "farewell",
+      "text": "Hello back, dear. It's been a while since anyone bothered. Here — you look hungry.",
+      "next": "gift"
+    },
+    {
+      "id": "gift",
+      "text": "Take these loaves. Fresh this morning, more or less. Now off with you — the world doesn't wait politely.",
+      "hooks": [{ "kind": "give", "item": "bread", "qty": 2 }]
+    }
+  ]
+}

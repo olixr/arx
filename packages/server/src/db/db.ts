@@ -261,6 +261,61 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (actor_slug, idx)
   );
   `,
+  // 19 — dialogue trees + the character flag ledger. Dialogues follow
+  // the actor pattern: authored JSON (content/dialogues/defs) seeds
+  // these tables at boot (db/dialogues.ts), the runtime reads back
+  // from them, dev tools will edit them. Entities are relational
+  // (dialogue → nodes → choices); the small polymorphic value-lists
+  // (hooks, flag conditions) ride as JSON arrays in a column — they
+  // are open-ended sockets, not queryable relations. No FK to
+  // npc_actors: the one validator is the cross-reference gate, same
+  // as items/loot everywhere else.
+  //
+  // character_flags is the durable "this happened" ledger — dialogue
+  // completions (dlg:<id>), story choices, and soon quest/faction
+  // state all share it.
+  `
+  CREATE TABLE dialogues (
+    id TEXT PRIMARY KEY,
+    actor_slug TEXT NOT NULL,
+    start_node TEXT NOT NULL,
+    priority INTEGER NOT NULL DEFAULT 0,
+    once INTEGER NOT NULL DEFAULT 0,
+    requires TEXT,
+    forbids TEXT,
+    content_hash TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  CREATE INDEX idx_dialogues_actor ON dialogues(actor_slug);
+  CREATE TABLE dialogue_nodes (
+    dialogue_id TEXT NOT NULL REFERENCES dialogues(id) ON DELETE CASCADE,
+    node_id TEXT NOT NULL,
+    idx INTEGER NOT NULL,
+    speaker TEXT,
+    text TEXT NOT NULL,
+    next_node TEXT,
+    hooks TEXT,
+    PRIMARY KEY (dialogue_id, node_id)
+  );
+  CREATE TABLE dialogue_choices (
+    dialogue_id TEXT NOT NULL REFERENCES dialogues(id) ON DELETE CASCADE,
+    node_id TEXT NOT NULL,
+    idx INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    next_node TEXT,
+    requires TEXT,
+    forbids TEXT,
+    set_flags TEXT,
+    PRIMARY KEY (dialogue_id, node_id, idx)
+  );
+  CREATE TABLE character_flags (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    flag TEXT NOT NULL,
+    value INTEGER NOT NULL DEFAULT 1,
+    set_at INTEGER NOT NULL,
+    PRIMARY KEY (character_id, flag)
+  );
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

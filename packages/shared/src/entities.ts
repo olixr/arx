@@ -55,6 +55,11 @@ export interface EntityMeta {
    * instead of a fight. Absent on every fightable thing.
    */
   friendly?: boolean;
+  /**
+   * NPC actors: this one has a voice (a dialogue tree or spoken
+   * lines) — clients offer Talk even on fightable neutrals.
+   */
+  talk?: boolean;
   /** Content definition id, e.g. npc/item/node/prop type. */
   defId?: string;
   /** Player/NPC visual loadout for the procedural rig. */

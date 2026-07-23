@@ -40,6 +40,13 @@ export class InputManager {
    */
   buildCapture = false;
 
+  /**
+   * A cinematic (dialogue) owns the stage: movement and every combat
+   * button go quiet so a Space-to-advance never swings a sword and a
+   * WASD twitch never walks you out of the frame. main.ts owns this.
+   */
+  cinemaCapture = false;
+
   /** While a DOM field (chat) has focus, movement keys are ignored. */
   private typingCheck: () => boolean = () => false;
 
@@ -58,8 +65,8 @@ export class InputManager {
   constructor(target: HTMLElement) {
     window.addEventListener('keydown', (e) => {
       if (this.typingCheck()) return;
-      if (e.code === 'KeyZ' && !e.repeat) this.walkMode = !this.walkMode;
-      if (e.code === 'KeyC' && !e.repeat) this.sneakMode = !this.sneakMode;
+      if (e.code === 'KeyZ' && !e.repeat && !this.cinemaCapture) this.walkMode = !this.walkMode;
+      if (e.code === 'KeyC' && !e.repeat && !this.cinemaCapture) this.sneakMode = !this.sneakMode;
       this.keys.add(e.code);
       // Keep the page from scrolling on space/arrows; Alt is the loot
       // reveal, so it must not focus the browser's menu bar.
@@ -127,6 +134,7 @@ export class InputManager {
 
   /** Movement axes in [-1, 1] — keyboard, gamepad, or touch stick. */
   moveAxes(): { mx: number; my: number } {
+    if (this.cinemaCapture) return { mx: 0, my: 0 };
     let mx = 0;
     let my = 0;
     if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) mx -= 1;
@@ -172,6 +180,7 @@ export class InputManager {
   }
 
   buttons(): number {
+    if (this.cinemaCapture) return 0;
     let b = 0;
     // Build mode holsters the weapons on EVERY device: the click (or
     // Space, or Q/E/R/T) that places a wall must never double as an

@@ -65,6 +65,8 @@ import {
   actorAppearance,
   actorCombatDef,
   bandDy,
+  dialogueDoneFlag,
+  pickDialogue,
   growMs,
   isCropTile,
   aggregateGearStats,
@@ -89,6 +91,10 @@ import {
   tileForStage,
   type BuildableDef,
   type CropDef,
+  type DialogueChoice,
+  type DialogueDef,
+  type DialogueHook,
+  type DialogueNode,
   type NodeDef,
   type NpcActorDef,
   type NpcDef,
@@ -284,6 +290,19 @@ interface ActorComp {
   homeDir: number;
   /** Rotating cursor into actor.lines for interactions. */
   nextLine: number;
+}
+
+/**
+ * One player's live conversation. The server owns the walk: the
+ * client only ever holds text and choice labels, so node ids, flag
+ * conditions, and hooks can never be probed or forged from outside.
+ */
+interface ActiveDialogue {
+  targetEid: EntityId;
+  def: DialogueDef;
+  nodeId: string;
+  /** The eligible choices exactly as sent — dlgchoice indexes these. */
+  choices: DialogueChoice[];
 }
 
 interface DropComp {
@@ -530,6 +549,14 @@ interface PlayerComp {
   revealLockUntilTick: number;
   /** Tiles moved while sneaking since the last XP pulse (anti-AFK gate). */
   sneakMoveAccum: number;
+  /**
+   * Durable story flags: dialogue completions (dlg:<id>), authored
+   * choices, and — soon — quest and faction state. Persisted the
+   * moment they're set; guests keep them in memory only.
+   */
+  flags: Map<string, number>;
+  /** The conversation this player is inside, if any. */
+  dialogue: ActiveDialogue | null;
 }
 
 /** A timed self-effect; multiple can ride at once (speeds multiply). */
@@ -631,6 +658,10 @@ export class GameServer {
   /** Actor definitions by slug — loaded from the DB at boot (DB-first). */
   private readonly actorDefs = new Map<string, NpcActorDef>();
   private readonly actorSpawnPoints: ActorSpawnState[] = [];
+  /** Dialogue defs by owning actor slug — loaded from the DB at boot. */
+  private readonly dialoguesByActor = new Map<string, DialogueDef[]>();
+  /** Node lookup per dialogue id, built once at registration. */
+  private readonly dialogueNodes = new Map<string, ReadonlyMap<string, DialogueNode>>();
 
   private readonly sessions = new Set<Session>();
   /** In-world players by character id (blocks duplicate logins). */
@@ -850,6 +881,23 @@ export class GameServer {
     }
   }
 
+  /**
+   * Register dialogue trees (DB-loaded, already validated). Call after
+   * registerActors — a conversation without its speaker is an error.
+   */
+  registerDialogues(defs: Iterable<DialogueDef>): void {
+    for (const def of defs) {
+      if (!this.actorDefs.has(def.actor)) {
+        console.warn(`[npc] dialogue '${def.id}' names unknown actor '${def.actor}' — skipped`);
+        continue;
+      }
+      const list = this.dialoguesByActor.get(def.actor) ?? [];
+      list.push(def);
+      this.dialoguesByActor.set(def.actor, list);
+      this.dialogueNodes.set(def.id, new Map(def.nodes.map((n) => [n.id, n])));
+    }
+  }
+
   start(): void {
     let next = performance.now();
     const loop = () => {
@@ -1047,6 +1095,8 @@ export class GameServer {
       sneaking: false,
       sneakStillTicks: 0,
       hidden: false,
+      flags: character.id > 0 ? this.accounts.loadFlags(character.id) : new Map(),
+      dialogue: null,
       revealLockUntilTick: 0,
       sneakMoveAccum: 0,
     });
@@ -1111,6 +1161,8 @@ export class GameServer {
     if (!player || player.session !== session) return;
     player.session = null;
     player.disconnectedAt = Date.now();
+    // A dropped socket hangs up any conversation (nothing to notify).
+    player.dialogue = null;
     // No unpiloted invisible bodies during the reconnect grace window.
     player.sneaking = false;
     if (player.hidden) this.setHidden(eid, player, false);
@@ -2676,17 +2728,37 @@ export class GameServer {
     const dy = npos.y - pos.y;
     if (dx * dx + dy * dy > 2.2 * 2.2) return;
 
-    // Actors speak: rotate through their authored lines. A stopgap
-    // voice until the dialogue system claims the `dialogue` hook.
+    // Mid-conversation, the world waits — no second talk, no milking.
+    if (player.dialogue) return;
+
     const actorComp = this.actors.get(targetEid);
-    if (actorComp && actorComp.actor.lines && actorComp.actor.lines.length > 0) {
-      const lines = actorComp.actor.lines;
-      const line = lines[actorComp.nextLine % lines.length]!;
-      actorComp.nextLine++;
-      // The spoken-to turn to face you — small thing, reads as alive.
-      npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
-      sys(`${actorComp.actor.name}: "${line}"`);
-      return;
+    if (actorComp) {
+      // The dialogue system speaks first: the highest-priority tree
+      // this player's flags make eligible opens the cinematic frame.
+      const defs = this.dialoguesByActor.get(actorComp.actor.id);
+      const def = defs ? pickDialogue(defs, (f) => player.flags.has(f)) : null;
+      if (def) {
+        // The spoken-to turn to face you — small thing, reads as alive.
+        npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
+        player.dialogue = { targetEid, def, nodeId: def.start, choices: [] };
+        player.session.sendJson({
+          t: 'dlgopen',
+          eid: targetEid,
+          name: actorComp.actor.name,
+          title: actorComp.actor.title,
+        });
+        this.dialogueEnterNode(eid, player, def.start);
+        return;
+      }
+      // No eligible tree: fall back to the rotating one-line barks.
+      if (actorComp.actor.lines && actorComp.actor.lines.length > 0) {
+        const lines = actorComp.actor.lines;
+        const line = lines[actorComp.nextLine % lines.length]!;
+        actorComp.nextLine++;
+        npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
+        sys(`${actorComp.actor.name}: "${line}"`);
+        return;
+      }
     }
 
     const npc = this.npcs.get(targetEid);
@@ -2709,6 +2781,136 @@ export class GameServer {
     this.setPose(eid, PoseState.Gather, 8);
     player.session.sendJson({ t: 'inv', slots: player.inventory });
     sys(`You collect ${itemDef(produce.item)?.name.toLowerCase() ?? produce.item} from the ${npc.def.name.toLowerCase()}.`);
+  }
+
+  // ------------------------------------------------------- dialogue
+
+  /**
+   * Enter a node: fire its hooks, filter its choices against the
+   * player's flags, and send the beat. Reaching an authored ending
+   * (no continuation, no offerable choices) records completion —
+   * walking away never does.
+   */
+  private dialogueEnterNode(eid: EntityId, player: PlayerComp, nodeId: string): void {
+    const dlg = player.dialogue;
+    if (!dlg || player.session === null) return;
+    const node = this.dialogueNodes.get(dlg.def.id)?.get(nodeId);
+    if (!node) {
+      this.dialogueClose(player);
+      return;
+    }
+    dlg.nodeId = nodeId;
+    for (const hook of node.hooks ?? []) this.runDialogueHook(eid, player, hook);
+    const eligible = (node.choices ?? []).filter(
+      (c) =>
+        !c.requires?.some((f) => !player.flags.has(f)) &&
+        !c.forbids?.some((f) => player.flags.has(f)),
+    );
+    dlg.choices = eligible;
+    const last = node.next === undefined && eligible.length === 0;
+    if (last) this.setPlayerFlag(player, dialogueDoneFlag(dlg.def.id));
+    player.session.sendJson({
+      t: 'dlgnode',
+      speaker: node.speaker ?? 'npc',
+      text: node.text,
+      choices: eligible.length > 0 ? eligible.map((c) => c.text) : undefined,
+      last: last || undefined,
+    });
+  }
+
+  /** Advance a linear beat (questions are answered, never skipped). */
+  dialogueAdvance(eid: EntityId): void {
+    const player = this.players.get(eid);
+    const dlg = player?.dialogue;
+    if (!player || !dlg || !this.dialogueGuard(eid, player, dlg)) return;
+    if (dlg.choices.length > 0) return;
+    const node = this.dialogueNodes.get(dlg.def.id)?.get(dlg.nodeId);
+    if (node?.next !== undefined) this.dialogueEnterNode(eid, player, node.next);
+    else this.dialogueClose(player); // completion was recorded on entry
+  }
+
+  /** Answer the current question by sent-choice index. */
+  dialogueChoose(eid: EntityId, idx: number): void {
+    const player = this.players.get(eid);
+    const dlg = player?.dialogue;
+    if (!player || !dlg || !this.dialogueGuard(eid, player, dlg)) return;
+    const choice = dlg.choices[idx];
+    if (!choice) return;
+    for (const f of choice.set ?? []) this.setPlayerFlag(player, f);
+    if (choice.next !== undefined) {
+      this.dialogueEnterNode(eid, player, choice.next);
+    } else {
+      // An authored farewell is a real ending, not an interruption.
+      this.setPlayerFlag(player, dialogueDoneFlag(dlg.def.id));
+      this.dialogueClose(player);
+    }
+  }
+
+  /** The player excuses themselves (Esc) — no completion recorded. */
+  dialogueEnd(eid: EntityId): void {
+    const player = this.players.get(eid);
+    if (player?.dialogue) this.dialogueClose(player);
+  }
+
+  /** A conversation needs a living partner within earshot. */
+  private dialogueGuard(eid: EntityId, player: PlayerComp, dlg: ActiveDialogue): boolean {
+    const pos = this.positions.get(eid);
+    const npos = this.positions.get(dlg.targetEid);
+    if (!pos || !npos || !this.actors.has(dlg.targetEid)) {
+      this.dialogueClose(player);
+      return false;
+    }
+    const dx = npos.x - pos.x;
+    const dy = npos.y - pos.y;
+    if (dx * dx + dy * dy > 4 * 4) {
+      this.dialogueClose(player);
+      return false;
+    }
+    return true;
+  }
+
+  private dialogueClose(player: PlayerComp): void {
+    if (!player.dialogue) return;
+    player.dialogue = null;
+    player.session?.sendJson({ t: 'dlgclose' });
+  }
+
+  /**
+   * Node effects — the open socket future systems plug into (quest
+   * grants, faction shifts). Always server-side, always idempotent
+   * per node entry.
+   */
+  private runDialogueHook(eid: EntityId, player: PlayerComp, hook: DialogueHook): void {
+    switch (hook.kind) {
+      case 'flag':
+        this.setPlayerFlag(player, hook.flag);
+        break;
+      case 'give': {
+        const added = addItem(player.inventory, hook.item, hook.qty);
+        if (added > 0) {
+          player.session?.sendJson({ t: 'inv', slots: player.inventory });
+          const name = itemDef(hook.item)?.name ?? hook.item;
+          player.session?.sendJson({
+            t: 'chat',
+            channel: 'system',
+            text: `You receive ${added > 1 ? `${added} × ` : ''}${name}.`,
+          });
+        }
+        if (added < hook.qty) {
+          // A full pack never eats a gift — the rest lands at your feet.
+          const pos = this.positions.get(eid);
+          if (pos) this.spawnDrop(hook.item, hook.qty - added, pos.x, pos.y, eid);
+        }
+        break;
+      }
+    }
+  }
+
+  /** Set a durable story flag; persisted immediately (guests: memory). */
+  private setPlayerFlag(player: PlayerComp, flag: string, value = 1): void {
+    if (player.flags.get(flag) === value) return;
+    player.flags.set(flag, value);
+    if (player.characterId > 0) this.accounts.setFlag(player.characterId, flag, value);
   }
 
   unequip(eid: EntityId, slot: EquipSlot): void {
@@ -4859,6 +5061,8 @@ export class GameServer {
     // Getting hit blows your cover even if armor soaks the damage to 0 —
     // and it must land before NPC retaliation picks a target.
     if (raw > 0) this.revealPlayer(eid, player);
+    // A blow breaks any conversation — the cinematic frame drops with it.
+    if (raw > 0 && player.dialogue) this.dialogueClose(player);
 
     const defLevel = this.effectiveLevel(player, 'defence');
     // The gear cache already sums rolled armor (rarity-scaled) plus
@@ -5063,6 +5267,11 @@ export class GameServer {
    */
   private tickActors(): void {
     if (this.tickCount % 10 !== 0) return;
+    // Conversations stay honest even against a client that keeps
+    // walking: drifting out of earshot hangs up server-side.
+    for (const [eid, player] of this.players) {
+      if (player.dialogue) this.dialogueGuard(eid, player, player.dialogue);
+    }
     for (const [eid, comp] of this.actors) {
       const npc = this.npcs.get(eid);
       if (npc && npc.state !== 'idle') continue; // combat owns the body
@@ -5716,6 +5925,46 @@ export class GameServer {
       player.session?.sendJson({ t: 'chat', channel: 'system', text: `Spawned ${actor.name}.` });
       return;
     }
+    if (config.devCommands && text.startsWith('/flagreset')) {
+      // /flagreset [prefix] — wipe story flags (optionally by prefix,
+      // e.g. `/flagreset dlg:` replays every one-time conversation).
+      const prefix = text.slice('/flagreset'.length).trim();
+      let n = 0;
+      for (const flag of [...player.flags.keys()]) {
+        if (prefix && !flag.startsWith(prefix)) continue;
+        player.flags.delete(flag);
+        if (player.characterId > 0) this.accounts.clearFlag(player.characterId, flag);
+        n++;
+      }
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `Cleared ${n} flag${n === 1 ? '' : 's'}.`,
+      });
+      return;
+    }
+    if (config.devCommands && text.startsWith('/flag')) {
+      // /flag — list; /flag <name> [value] — set; /flag <name> 0 — clear.
+      const [, flag, valueRaw] = text.split(/\s+/);
+      if (!flag) {
+        const list = [...player.flags.keys()].sort().join(', ');
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: player.flags.size === 0 ? 'No flags set.' : `Flags: ${list}`,
+        });
+        return;
+      }
+      if (valueRaw === '0') {
+        player.flags.delete(flag);
+        if (player.characterId > 0) this.accounts.clearFlag(player.characterId, flag);
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: `Flag '${flag}' cleared.` });
+      } else {
+        this.setPlayerFlag(player, flag, Number.parseInt(valueRaw ?? '1', 10) || 1);
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: `Flag '${flag}' set.` });
+      }
+      return;
+    }
     if (config.devCommands && text.startsWith('/givekey')) {
       // /givekey [tier] [power] [seed] — mint a dungeon key. The
       // staging lever for the whole dungeon system: any tier, any
@@ -6237,6 +6486,10 @@ export class GameServer {
       // No combat body = never attackable: clients offer Talk, and no
       // combat loop can even see this entity.
       if (!npc) meta.friendly = true;
+      // Has a voice — clients offer Talk even on fightable neutrals.
+      if (this.dialoguesByActor.has(actor.id) || (actor.lines?.length ?? 0) > 0) {
+        meta.talk = true;
+      }
     }
     const drop = this.drops.get(eid);
     if (drop) {

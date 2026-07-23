@@ -178,6 +178,21 @@ export interface GameEvents {
     }): void;
     /** This character has never chosen a look — open the creator. */
     onNeedLook?(): void;
+    /** A conversation began — raise the cinematic frame around `eid`. */
+    onDialogueOpen?(o: {
+        eid: EntityId;
+        name: string;
+        title?: string;
+    }): void;
+    /** One beat of conversation — typewriter it out. */
+    onDialogueNode?(n: {
+        speaker: 'npc' | 'player';
+        text: string;
+        choices?: string[];
+        last?: boolean;
+    }): void;
+    /** The conversation is over — tear the frame down. */
+    onDialogueClose?(): void;
 }
 export declare class ClientGame {
     private readonly input;
@@ -413,8 +428,14 @@ export declare class ClientGame {
     craft(recipe: string, qty: number): void;
     /** Plant a seed into a tilled plot. */
     plantSend(tx: number, ty: number, seed: string): void;
-    /** Interact with a living NPC (milk a cow). */
+    /** Interact with a living NPC (talk to an actor, milk a cow). */
     interactNpc(eid: EntityId): void;
+    /** Advance the current dialogue beat (the server owns the walk). */
+    dialogueAdvance(): void;
+    /** Answer the current dialogue question by choice index. */
+    dialogueChoose(idx: number): void;
+    /** Excuse yourself from the conversation early. */
+    dialogueEnd(): void;
     bankSend(op: 'deposit' | 'withdraw', item: string, qty: number, slot?: number, gearId?: number): void;
     invMove(from: number, to: number): void;
     /** Drop a pack slot onto the ground where you stand. */

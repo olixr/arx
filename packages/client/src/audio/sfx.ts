@@ -472,6 +472,38 @@ export class Sfx {
     this.tone(600, 0.025, { type: 'sine', volume: 0.045, detune: false });
   }
 
+  // ---- dialogue cinema ----------------------------------------------
+
+  /** The cinematic frame rising: cloth settles, two warm low touches. */
+  dialogueOpen(): void {
+    this.noise(0.18, 0.08, 0, { band: 800 });
+    this.tone(220, 0.16, { type: 'sine', volume: 0.09, detune: false });
+    this.tone(330, 0.18, { type: 'sine', volume: 0.06, delay: 0.08, detune: false });
+  }
+
+  /** …and bowing out: the pair descending, a last cloth breath. */
+  dialogueClose(): void {
+    this.tone(330, 0.1, { type: 'sine', volume: 0.07, detune: false });
+    this.tone(196, 0.16, { type: 'sine', volume: 0.08, delay: 0.06, detune: false });
+    this.noise(0.12, 0.05, 0.05, { band: 700 });
+  }
+
+  /**
+   * The typewriter's voice: one quill scratch per few letters —
+   * pitch-wobbled noise ticks so a sentence reads as writing, not a
+   * metronome. THE QUIET-HANDS LAW applies doubly: this fires dozens
+   * of times per line and must stay at the edge of hearing.
+   */
+  dialogueScratch(): void {
+    this.noise(0.02, 0.035, 0, { band: 2400 + Math.random() * 900 });
+  }
+
+  /** A choice plate sliding in — soft parchment tap, one per plate. */
+  dialogueChoiceIn(): void {
+    this.noise(0.04, 0.05, 0, { band: 1700 });
+    this.tone(500, 0.03, { type: 'sine', volume: 0.04, delay: 0.01, detune: false });
+  }
+
   /** Gear going on: leather shifts, a clasp snicks, weight settles. */
   equipGear(): void {
     this.noise(0.09, 0.12, 0, { band: 900 });

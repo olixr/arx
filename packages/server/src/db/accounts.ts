@@ -151,6 +151,34 @@ export class AccountStore {
     for (const [skill, value] of Object.entries(xp)) stmt.run(characterId, skill, value);
   }
 
+  /**
+   * The flag ledger: dialogue completions, story choices, and (soon)
+   * quest/faction state. Written flag-at-a-time the moment a flag is
+   * set — a story beat must never be lost to a crash before the next
+   * periodic save.
+   */
+  loadFlags(characterId: number): Map<string, number> {
+    const rows = this.db
+      .prepare('SELECT flag, value FROM character_flags WHERE character_id = ?')
+      .all(characterId) as Array<{ flag: string; value: number }>;
+    return new Map(rows.map((r) => [r.flag, r.value]));
+  }
+
+  setFlag(characterId: number, flag: string, value: number): void {
+    this.db
+      .prepare(
+        'INSERT INTO character_flags (character_id, flag, value, set_at) VALUES (?, ?, ?, ?) ' +
+          'ON CONFLICT(character_id, flag) DO UPDATE SET value = excluded.value, set_at = excluded.set_at',
+      )
+      .run(characterId, flag, value, Date.now());
+  }
+
+  clearFlag(characterId: number, flag: string): void {
+    this.db
+      .prepare('DELETE FROM character_flags WHERE character_id = ? AND flag = ?')
+      .run(characterId, flag);
+  }
+
   loadInventory(
     characterId: number,
     size: number,

@@ -174,10 +174,31 @@ export interface C2SUseKey {
   slot: number;
 }
 
-/** Interact with a living NPC (milk a cow, ...). */
+/** Interact with a living NPC (talk to an actor, milk a cow, ...). */
 export interface C2SInteractNpc {
   t: 'interactnpc';
   eid: EntityId;
+}
+
+/**
+ * Dialogue intents. The server owns the whole walk — the client never
+ * sees node ids or conditions, it only answers the beat it was shown:
+ * advance a linear line, pick a choice by the index it was sent, or
+ * excuse itself early. Anything out of step is silently ignored.
+ */
+export interface C2SDialogueAdvance {
+  t: 'dlgadv';
+}
+
+export interface C2SDialogueChoose {
+  t: 'dlgchoice';
+  /** Index into the choices of the last dlgnode. */
+  idx: number;
+}
+
+/** Leave the conversation early (Esc / walking off). */
+export interface C2SDialogueEnd {
+  t: 'dlgend';
 }
 
 /**
@@ -234,7 +255,10 @@ export type C2SMessage =
   | C2STechnique
   | C2SSetLook
   | C2SCarryStyle
-  | C2SUseKey;
+  | C2SUseKey
+  | C2SDialogueAdvance
+  | C2SDialogueChoose
+  | C2SDialogueEnd;
 
 // ---------------------------------------------------------------- S2C
 
@@ -489,6 +513,34 @@ export interface S2CRiftgate {
   keySlots: number[];
 }
 
+/**
+ * A conversation began: raise the cinematic frame around this entity.
+ * Node beats follow as dlgnode messages; dlgclose tears it down.
+ */
+export interface S2CDialogueOpen {
+  t: 'dlgopen';
+  /** The conversation partner — the camera frames you both. */
+  eid: EntityId;
+  name: string;
+  title?: string;
+}
+
+/** One beat of conversation — everything the client may know. */
+export interface S2CDialogueNode {
+  t: 'dlgnode';
+  speaker: 'npc' | 'player';
+  text: string;
+  /** Present = the beat is a question; answer with dlgchoice. */
+  choices?: string[];
+  /** Terminal beat — the next advance closes instead of continuing. */
+  last?: boolean;
+}
+
+/** The conversation is over (finished, excused, or interrupted). */
+export interface S2CDialogueClose {
+  t: 'dlgclose';
+}
+
 /** Crossed into a dungeon: everything the entry banner needs. */
 export interface S2CDungeonEnter {
   t: 'dungeon';
@@ -523,7 +575,10 @@ export type S2CMessage =
   | S2CTechniques
   | S2CBuffs
   | S2CRiftgate
-  | S2CDungeonEnter;
+  | S2CDungeonEnter
+  | S2CDialogueOpen
+  | S2CDialogueNode
+  | S2CDialogueClose;
 
 // ------------------------------------------------------- validation
 
@@ -684,6 +739,16 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (!isFiniteNum(msg.eid) || !Number.isInteger(msg.eid) || msg.eid < 0) return null;
       return { t: 'interactnpc', eid: msg.eid };
     }
+    case 'dlgadv':
+      return { t: 'dlgadv' };
+    case 'dlgchoice': {
+      if (!isFiniteNum(msg.idx) || !Number.isInteger(msg.idx) || msg.idx < 0 || msg.idx > 3) {
+        return null;
+      }
+      return { t: 'dlgchoice', idx: msg.idx };
+    }
+    case 'dlgend':
+      return { t: 'dlgend' };
     case 'usekey': {
       if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot) || msg.slot < 0 || msg.slot > 63) {
         return null;

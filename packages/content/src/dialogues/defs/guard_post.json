@@ -1,0 +1,23 @@
+{
+  "id": "guard_post",
+  "actor": "bramblewick_gate_guard",
+  "start": "halt",
+  "nodes": [
+    {
+      "id": "halt",
+      "text": "Bramblewick watch. The arch stays clear.",
+      "choices": [
+        { "text": "Anything to report?", "next": "report" },
+        { "text": "Carry on.", "next": "carry" }
+      ]
+    },
+    {
+      "id": "report",
+      "text": "Quiet shift — the kind we like. If the Riftgate ever starts singing instead of humming, that changes fast."
+    },
+    {
+      "id": "carry",
+      "text": "Aye. Move safe."
+    }
+  ]
+}

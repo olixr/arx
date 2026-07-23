@@ -3955,3 +3955,285 @@ body.pad-mode .hint-inline { display: none; }
   color: var(--parchment-dim);
   text-shadow: var(--punch-small);
 }
+
+/* ================================================================== */
+/* THE DIALOGUE CINEMA — a conversation takes the whole stage.        */
+/* Letterbox bars ease in, a masked backdrop blur softens the world's */
+/* edges (the speakers stay sharp at center), and a lower-third rises:*/
+/* brass name banner over a parchment speech sheet. NPC lines are ink */
+/* on parchment; player lines flip the sheet to the iron tray.        */
+/* ================================================================== */
+
+#dlg-cinema {
+  position: fixed;
+  inset: 0;
+  z-index: 52;
+}
+
+#dlg-cinema.hidden {
+  display: none;
+}
+
+/* Letterbox: warm near-black bands with a faint brass rule. */
+.dlg-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 88px;
+  background: #0d0a06;
+  transition: transform 420ms cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+
+.dlg-bar.top {
+  top: 0;
+  transform: translateY(-100%);
+  border-bottom: 2px solid rgba(217, 164, 65, 0.22);
+}
+
+.dlg-bar.bot {
+  bottom: 0;
+  transform: translateY(100%);
+  border-top: 2px solid rgba(217, 164, 65, 0.22);
+}
+
+#dlg-cinema.open .dlg-bar {
+  transform: none;
+}
+
+/* The depth ring: blur the world's rim, keep the speakers crisp.
+   GPU-composited backdrop-filter behind a radial mask — no canvas
+   work, the renderer never pays for it. */
+.dlg-depth {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  backdrop-filter: blur(2.6px) saturate(1.05);
+  -webkit-backdrop-filter: blur(2.6px) saturate(1.05);
+  -webkit-mask-image: radial-gradient(ellipse 62% 54% at 50% 40%, transparent 42%, #000 82%);
+  mask-image: radial-gradient(ellipse 62% 54% at 50% 40%, transparent 42%, #000 82%);
+  opacity: 0;
+  transition: opacity 520ms ease;
+}
+
+#dlg-cinema.open .dlg-depth {
+  opacity: 1;
+}
+
+/* The lower-third stage: rises late so the camera lands first. */
+.dlg-stage {
+  position: absolute;
+  left: 50%;
+  bottom: 104px;
+  width: min(860px, 92vw);
+  transform: translate(-50%, 26px);
+  opacity: 0;
+  transition:
+    transform 380ms cubic-bezier(0.22, 0.9, 0.3, 1) 140ms,
+    opacity 380ms ease 140ms;
+}
+
+#dlg-cinema.open .dlg-stage {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+
+#dlg-cinema.closing .dlg-bar.top {
+  transform: translateY(-100%);
+}
+
+#dlg-cinema.closing .dlg-bar.bot {
+  transform: translateY(100%);
+}
+
+#dlg-cinema.closing .dlg-stage {
+  transition-delay: 0ms;
+  transform: translate(-50%, 26px);
+  opacity: 0;
+}
+
+#dlg-cinema.closing .dlg-depth {
+  opacity: 0;
+}
+
+/* The speaker's banner: brass-bound leather, overlapping the sheet. */
+.dlg-name {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 -13px 20px;
+  padding: 7px 26px 9px;
+  border: 11px solid transparent;
+  border-image-source: var(--ui-banner);
+  border-image-slice: 55 fill;
+  border-image-width: 11px;
+  border-image-repeat: round;
+  filter: drop-shadow(3px 4px 0 rgba(12, 8, 4, 0.4));
+}
+
+.dlg-name-text {
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--parchment);
+  text-shadow: 1px 2px 0 rgba(12, 8, 4, 0.6);
+}
+
+.dlg-name-title {
+  font-size: 12.5px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  opacity: 0.9;
+}
+
+.dlg-name-title:empty {
+  display: none;
+}
+
+/* The speech sheet: a parchment page, ink text, generous reading. */
+.dlg-sheet {
+  position: relative;
+  min-height: 118px;
+  padding: 24px 30px 26px;
+  border: 9px solid transparent;
+  border-image: var(--ui-sheet) 45 fill / 9px;
+  color: var(--sheet-ink);
+  filter: drop-shadow(6px 8px 0 var(--shadow));
+}
+
+.dlg-text {
+  font-family: var(--serif);
+  font-size: 19.5px;
+  line-height: 1.55;
+  max-width: 62ch;
+}
+
+/* Words wrap as units; glyphs fade up individually — the typewriter. */
+.dlg-word {
+  display: inline-block;
+}
+
+.dlg-ch {
+  opacity: 0;
+}
+
+.dlg-ch.lit {
+  opacity: 1;
+  transition: opacity 80ms ease-out;
+}
+
+/* Player beats flip the page: iron tray, light text, your voice. */
+.dlg-stage.player .dlg-sheet {
+  background-color: var(--panel);
+  background-clip: padding-box;
+  border: var(--tray-border) solid transparent;
+  border-image-source: var(--ui-tray-frame);
+  border-image-slice: var(--tray-slice);
+  border-image-width: var(--tray-border);
+  border-image-repeat: round;
+  color: var(--parchment);
+}
+
+/* The page-turn invitation: a chevron breathing at the sheet's foot. */
+.dlg-more {
+  position: absolute;
+  right: 26px;
+  bottom: 10px;
+  font-size: 15px;
+  opacity: 0;
+  animation: none;
+}
+
+.dlg-more.show {
+  opacity: 0.75;
+  animation: dlg-more-bob 950ms ease-in-out infinite;
+}
+
+@keyframes dlg-more-bob {
+  0%,
+  100% {
+    transform: none;
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+/* Choice plates: chamfered iron slats that slide in staggered. The
+   selected plate warms to brass and steps forward. */
+.dlg-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 0 26px;
+  align-items: flex-start;
+}
+
+.dlg-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 44px;
+  padding: 8px 26px 8px 10px;
+  background: #221c14;
+  color: var(--parchment);
+  border: none;
+  font-family: var(--serif);
+  font-size: 17.5px;
+  text-align: left;
+  cursor: pointer;
+  clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+  filter: drop-shadow(4px 5px 0 rgba(12, 8, 4, 0.45));
+  transform: translateX(0);
+  transition:
+    background-color 120ms ease,
+    transform 140ms ease;
+  animation: dlg-choice-in 260ms cubic-bezier(0.22, 0.9, 0.3, 1) both;
+}
+
+@keyframes dlg-choice-in {
+  from {
+    opacity: 0;
+    transform: translateX(-22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.dlg-choice.sel {
+  background: color-mix(in srgb, var(--gold-deep) 42%, #221c14);
+  transform: translateX(8px);
+}
+
+.dlg-choice-num {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #2a1f0e;
+  background: var(--gold);
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+}
+
+.dlg-choice.sel .dlg-choice-num {
+  background: var(--gold-hot);
+}
+
+/* While a conversation holds the stage, the HUD bows out entirely —
+   no hotbar, no chat, no gauges competing with the scene. */
+body.in-dialogue #hud {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+
+#hud {
+  transition: opacity 300ms ease;
+}
