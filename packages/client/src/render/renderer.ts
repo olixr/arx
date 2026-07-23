@@ -14648,6 +14648,15 @@ export class Renderer {
     // with what other players see.
     const varEid = typeof e.eid === 'number' ? e.eid : (this.game?.ownEid ?? 0);
     const sitVariant = (Math.abs(varEid) % 2) as 0 | 1;
+    // THE CROWD BREATHES OUT OF STEP: every body owns a fixed offset
+    // on the cosmetic clock — the idle wrist life, blade flourishes,
+    // standing breath, and station strokes all read rig.nowMs, so one
+    // shared clock plays every idler in unison like a chorus line.
+    // Hashed off the eid: stable per body, scattered per crowd, and
+    // 9973 (prime > FLOURISH_PERIOD_MS) spans every cosmetic cycle.
+    // The strike-beat fx below MUST ride the same shifted clock so
+    // sparks and chips keep landing exactly on the visual impacts.
+    const lifeMs = ((Math.abs(varEid) * 2654435761) >>> 0) % 9973;
     // Footstep events: a touchdown happened inside that update.
     if (anim.lastPlants === undefined) {
       anim.lastPlants = anim.legs.plants;
@@ -14870,8 +14879,8 @@ export class Renderer {
         // timed to the tool's own cycle.
         const toolType = itemDef(e.equip.tool ?? '')?.tool?.type;
         if (gather && gather.kind === 'tree' && toolType === 'axe') {
-          const cycle = Math.floor(performance.now() / CHOP_CYCLE_MS);
-          const u = (performance.now() % CHOP_CYCLE_MS) / CHOP_CYCLE_MS;
+          const cycle = Math.floor((performance.now() + lifeMs) / CHOP_CYCLE_MS);
+          const u = ((performance.now() + lifeMs) % CHOP_CYCLE_MS) / CHOP_CYCLE_MS;
           if (u >= 0.54 && anim.lastChopHit !== cycle) {
             anim.lastChopHit = cycle;
             const chipX = gather.tx + 0.5 - Math.cos(dir) * 0.38;
@@ -14887,8 +14896,8 @@ export class Renderer {
             this.onGatherImpact?.('tree');
           }
         } else if (gather && gather.kind === 'rock' && toolType === 'pickaxe') {
-          const cycle = Math.floor(performance.now() / MINE_CYCLE_MS);
-          const u = (performance.now() % MINE_CYCLE_MS) / MINE_CYCLE_MS;
+          const cycle = Math.floor((performance.now() + lifeMs) / MINE_CYCLE_MS);
+          const u = ((performance.now() + lifeMs) % MINE_CYCLE_MS) / MINE_CYCLE_MS;
           if (u >= 0.54 && anim.lastChopHit !== cycle) {
             anim.lastChopHit = cycle;
             const chipX = gather.tx + 0.5 - Math.cos(dir) * 0.42;
@@ -14920,8 +14929,8 @@ export class Renderer {
           // The pluck beat: leaves shiver loose as the stem snaps,
           // colored by the plant itself, with a drift of its payload
           // accent — soft debris, never chips of wood or stone.
-          const cycle = Math.floor(performance.now() / FORAGE_CYCLE_MS);
-          const u = (performance.now() % FORAGE_CYCLE_MS) / FORAGE_CYCLE_MS;
+          const cycle = Math.floor((performance.now() + lifeMs) / FORAGE_CYCLE_MS);
+          const u = ((performance.now() + lifeMs) % FORAGE_CYCLE_MS) / FORAGE_CYCLE_MS;
           if (u >= 0.44 && anim.lastChopHit !== cycle) {
             anim.lastChopHit = cycle;
             const nodeTile = this.game?.world.groundAt(gather.tx, gather.ty);
@@ -14947,8 +14956,8 @@ export class Renderer {
             this.onGatherImpact?.('forage');
           }
         } else if (station?.kind === 'anvil') {
-          const cycle = Math.floor(performance.now() / ANVIL_CYCLE_MS);
-          const u = (performance.now() % ANVIL_CYCLE_MS) / ANVIL_CYCLE_MS;
+          const cycle = Math.floor((performance.now() + lifeMs) / ANVIL_CYCLE_MS);
+          const u = ((performance.now() + lifeMs) % ANVIL_CYCLE_MS) / ANVIL_CYCLE_MS;
           if (u >= 0.42 && anim.lastChopHit !== cycle) {
             anim.lastChopHit = cycle;
             // Sparks ring off the billet between smith and anvil.
@@ -14966,8 +14975,8 @@ export class Renderer {
             this.onGatherImpact?.('anvil');
           }
         } else if (station?.kind === 'furnace') {
-          const cycle = Math.floor(performance.now() / FURNACE_CYCLE_MS);
-          const u = (performance.now() % FURNACE_CYCLE_MS) / FURNACE_CYCLE_MS;
+          const cycle = Math.floor((performance.now() + lifeMs) / FURNACE_CYCLE_MS);
+          const u = ((performance.now() + lifeMs) % FURNACE_CYCLE_MS) / FURNACE_CYCLE_MS;
           if (u >= 0.42 && anim.lastChopHit !== cycle) {
             anim.lastChopHit = cycle;
             // The mouth flares and a swarm of embers climbs the draft.
@@ -14996,7 +15005,7 @@ export class Renderer {
           poseT,
           drawT,
           restT,
-          nowMs: now,
+          nowMs: now + lifeMs,
           feet,
           bob: legPose.bob,
           rise: legPose.rise,

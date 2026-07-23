@@ -312,8 +312,19 @@ interface ActorComp {
   actor: NpcActorDef;
   /** Index into actorSpawnPoints to free on death; -1 = ephemeral. */
   spawnIndex: number;
-  /** Resting facing — where the post looks when nobody's around. */
+  /** The authored (or scattered-default) spawn facing. */
   homeDir: number;
+  /**
+   * The CURRENT rest anchor — where the alone-gaze drifts around.
+   * Starts at homeDir; a routine re-pins it to the walk-in facing at
+   * every unauthored stop, so a body lingering across town never
+   * snaps back to the morning's spawn facing.
+   */
+  restDir: number;
+  /** The live idle gaze: restDir plus the current drift. */
+  gazeDir: number;
+  /** Tick when the idle gaze next wanders (8–20s apart). */
+  nextGazeTick: number;
   /** Rotating cursor into actor.lines for interactions. */
   nextLine: number;
 }
@@ -5425,11 +5436,24 @@ export class GameServer {
     routine?: string,
   ): EntityId {
     const eid = this.ecs.create();
-    const homeDir = dir ?? Math.PI / 2; // face south — toward the camera
+    // No authored facing: south-ish, but SCATTERED — a seeded ±~50°
+    // per placement so a street of townsfolk stands like people, not
+    // a rank on parade. Seeded by the spawn slot, so the same body
+    // keeps the same habitual stance across respawns and restarts.
+    const seed = Math.sin((spawnIndex + 3) * 12.9898) * 43758.5453;
+    const homeDir = dir ?? Math.PI / 2 + (seed - Math.floor(seed) - 0.5) * 1.8;
     this.kinds.set(eid, EntityKind.Npc);
     this.positions.set(eid, { x, y, dir: homeDir });
     this.poses.set(eid, PoseState.Idle);
-    this.actors.set(eid, { actor, spawnIndex, homeDir, nextLine: 0 });
+    this.actors.set(eid, {
+      actor,
+      spawnIndex,
+      homeDir,
+      restDir: homeDir,
+      gazeDir: homeDir,
+      nextGazeTick: 0,
+      nextLine: 0,
+    });
     // The daily life rides its own comp: slot -2 forces a schedule
     // resolve on the very first tick, so a respawn (or a boot at any
     // hour) walks straight to wherever the day says this body belongs.
@@ -5530,7 +5554,18 @@ export class GameServer {
           found = true;
         }
       }
-      pos.dir = found ? Math.atan2(bestY, bestX) : comp.homeDir;
+      if (found) {
+        pos.dir = Math.atan2(bestY, bestX);
+      } else {
+        // THE IDLE GAZE: alone, the look wanders a little around the
+        // rest anchor every 8–20s — a held stare reads as a mannequin,
+        // a drifting one as a person with a mind somewhere else.
+        if (this.tickCount >= comp.nextGazeTick) {
+          comp.gazeDir = comp.restDir + (Math.random() - 0.5) * 0.8;
+          comp.nextGazeTick = this.tickCount + 160 + Math.floor(Math.random() * 240);
+        }
+        pos.dir = comp.gazeDir;
+      }
     }
   }
 
@@ -5745,6 +5780,17 @@ export class GameServer {
               ? this.tickCount + Math.round((2 + Math.random() * 5) * (1000 / TICK_MS))
               : Number.MAX_SAFE_INTEGER;
         this.routinePose(eid, npc, PoseState.Idle);
+        // The walk-in facing becomes the rest anchor at this stop:
+        // the alone-gaze drifts around wherever the errand left the
+        // body looking, never snapping back to the spawn facing from
+        // across town. (An authored task dir still overrides in the
+        // linger branch above.)
+        const arrived = this.actors.get(eid);
+        if (arrived) {
+          arrived.restDir = pos.dir;
+          arrived.gazeDir = pos.dir;
+          arrived.nextGazeTick = this.tickCount + 160 + Math.floor(Math.random() * 240);
+        }
         continue;
       }
 
