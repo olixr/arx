@@ -15,6 +15,7 @@ export * from './sim/combat.js';
 export * from './sim/abilities.js';
 export * from './sim/sneak.js';
 export * from './sim/daylight.js';
+export * from './dungeon/key.js';
 export * from './world/collision.js';
 export * from './world/tiles.js';
 export * from './world/chunk.js';

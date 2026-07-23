@@ -227,6 +227,26 @@ export enum Tile {
   RockObsidian = 124,
   /** A fallen star half-buried in its scorched crater. Mining 90. */
   RockStarfall = 125,
+  /**
+   * The dungeon dressing set — props and grounds for generated
+   * dungeons. Caverns grow stalagmites and glowshrooms; worked halls
+   * hang braziers and scatter bone piles; cracked walls hide the
+   * secret rooms (smashable — the destructible law opens them).
+   */
+  /** A floor-to-ceiling drip-stone column. Solid, centered mass. */
+  Stalagmite = 126,
+  /** Old bones heaped in a corner. One kick scatters them. */
+  BonePile = 127,
+  /** An iron fire-basket on a stand — the dungeon's lamp post. */
+  Brazier = 128,
+  /** A cluster of pale glowing cave mushrooms. */
+  GlowShroom = 129,
+  /** Rubble-strewn cave floor — walkable texture, reads as debris. */
+  CaveRubble = 130,
+  /** Cave wall with a visible fracture: three blows open the way. */
+  CrackedCaveWall = 131,
+  /** Worked flagstone floor — the masonry dialect of dungeon halls. */
+  DungeonFloor = 132,
 }
 
 export enum Detail {
@@ -420,6 +440,15 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.RockAdamant]: { name: 'adamant rock', solid: true, color: '#6e6a75', raised: true, topColor: '#5fa06a' },
   [Tile.RockObsidian]: { name: 'obsidian flow', solid: true, color: '#6e6a75', raised: true, topColor: '#38304a' },
   [Tile.RockStarfall]: { name: 'starfall crater', solid: true, color: '#6e6a75', raised: true, topColor: '#cabdf2' },
+  [Tile.Stalagmite]: { name: 'stalagmite', solid: true, color: '#3a3444', raised: true, topColor: '#5a5370' },
+  [Tile.BonePile]: { name: 'bone pile', solid: true, color: '#8b8272', raised: true, topColor: '#cfc7ae' },
+  [Tile.Brazier]: { name: 'brazier', solid: true, color: '#3c3640', raised: true, topColor: '#e8933c' },
+  [Tile.GlowShroom]: { name: 'glowshrooms', solid: true, color: '#3f4a52', raised: true, topColor: '#8fe0cf' },
+  [Tile.CaveRubble]: { name: 'rubble', solid: false, color: '#544e5f', variants: ['#4f4959', '#585264'] },
+  // Deliberately the CaveWall palette: the crack is a whisper, not a
+  // signpost — spotting one is the discovery.
+  [Tile.CrackedCaveWall]: { name: 'cracked wall', solid: true, color: '#2e2937', raised: true, topColor: '#3d3749' },
+  [Tile.DungeonFloor]: { name: 'flagstones', solid: false, color: '#514b58', variants: ['#4c4653', '#56505e'] },
 };
 
 /**
@@ -431,6 +460,7 @@ export const WALL_RUN_TILES: readonly Tile[] = [
   Tile.WallStone,
   Tile.WallWood,
   Tile.CaveWall,
+  Tile.CrackedCaveWall,
   Tile.WallStoneWindow,
   Tile.WallWoodWindow,
   Tile.DoorwayStone,
@@ -512,6 +542,7 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
   Tile.WallStone,
   Tile.WallWood,
   Tile.CaveWall,
+  Tile.CrackedCaveWall,
   Tile.WallStoneWindow,
   Tile.WallWoodWindow,
   Tile.PillarStone,
@@ -697,6 +728,11 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.FibrePlant, 0.24],
   [Tile.WildSagewort, 0.3],
   [Tile.WildMoonbell, 0.24],
+  // Dungeon props: centered masses you brush past, not full blocks.
+  [Tile.Stalagmite, 0.34],
+  [Tile.BonePile, 0.34],
+  [Tile.Brazier, 0.28],
+  [Tile.GlowShroom, 0.3],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -794,7 +830,15 @@ export function openChestTile(kind: ChestKind): Tile {
  * up a few minutes later, never onto a body and never over something
  * newly built there.
  */
-export type DestructibleKind = 'barrel' | 'crate' | 'goods' | 'chair' | 'table' | 'bench';
+export type DestructibleKind =
+  | 'barrel'
+  | 'crate'
+  | 'goods'
+  | 'chair'
+  | 'table'
+  | 'bench'
+  | 'bonepile'
+  | 'crackedwall';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -818,6 +862,11 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.Chair, { kind: 'chair', respawnSec: 150, hits: 1 }],
   [Tile.Table, { kind: 'table', respawnSec: 240, hits: 3 }],
   [Tile.Bench, { kind: 'bench', respawnSec: 180, hits: 2 }],
+  [Tile.BonePile, { kind: 'bonepile', respawnSec: 600, hits: 1 }],
+  // The secret-door law: a cracked wall is a wall until three blows
+  // say otherwise. The long respawn means a found passage stays found
+  // for the whole run (dungeon instances die before it ever restands).
+  [Tile.CrackedCaveWall, { kind: 'crackedwall', respawnSec: 3600, hits: 3 }],
 ]);
 
 /** Every smashable prop tile. */
@@ -842,7 +891,12 @@ export function nearestFloorTile(
   ty: number,
 ): Tile {
   const isFloor = (t: number | undefined) =>
-    t === Tile.WoodFloor || t === Tile.StoneFloor || t === Tile.CaveFloor || t === Tile.Dirt;
+    t === Tile.WoodFloor ||
+    t === Tile.StoneFloor ||
+    t === Tile.CaveFloor ||
+    t === Tile.DungeonFloor ||
+    t === Tile.CaveRubble ||
+    t === Tile.Dirt;
   for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]] as const) {
     const t = ground(tx + dx, ty + dy);
     if (isFloor(t)) return t as Tile;

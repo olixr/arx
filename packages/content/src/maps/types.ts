@@ -16,6 +16,13 @@ export interface ZoneSpawn {
   y: number;
   radius: number;
   count: number;
+  /**
+   * Scale the def to this combat level (dungeon garrisons). Absent =
+   * the def's authored level, exactly as before.
+   */
+  level?: number;
+  /** Display-name override — how a scaled troll becomes a Hold-Warden. */
+  name?: string;
 }
 
 /**

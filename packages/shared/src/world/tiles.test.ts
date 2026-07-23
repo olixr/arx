@@ -83,7 +83,7 @@ test('non-door tiles report null', () => {
 
 // ------------------------------------------------- destructible props
 
-test('the six smashable props carry a break-up kind, respawn law, and durability', () => {
+test('the smashable props carry a break-up kind, respawn law, and durability', () => {
   const expect: Array<[Tile, string, number]> = [
     [Tile.Barrel, 'barrel', 1],
     [Tile.Crate, 'crate', 1],
@@ -91,6 +91,10 @@ test('the six smashable props carry a break-up kind, respawn law, and durability
     [Tile.Chair, 'chair', 1],
     [Tile.Table, 'table', 3],
     [Tile.Bench, 'bench', 2],
+    // The dungeon pair: bones scatter on a kick; the cracked wall is
+    // the secret-door law — three blows open the hidden room.
+    [Tile.BonePile, 'bonepile', 1],
+    [Tile.CrackedCaveWall, 'crackedwall', 3],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {
@@ -100,8 +104,11 @@ test('the six smashable props carry a break-up kind, respawn law, and durability
     // pinned per prop so a rebalance is a deliberate act.
     assert.equal(info!.hits, hits);
     assert.ok(info!.hits >= 1);
-    // The absence must be worth enjoying, and never permanent.
-    assert.ok(info!.respawnSec >= 120 && info!.respawnSec <= 600);
+    // The absence must be worth enjoying, and never permanent. The
+    // cracked wall runs long on purpose: a found passage stays found
+    // for the whole run (instances die before it restands).
+    const cap = kind === 'crackedwall' ? 3600 : 600;
+    assert.ok(info!.respawnSec >= 120 && info!.respawnSec <= cap);
     // Only SOLID clutter is smashable — bursting a walkable tile
     // would patch the floor out from under someone's feet.
     assert.ok(tileDef(tile).solid, `${tileDef(tile).name} is solid`);
