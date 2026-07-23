@@ -1,4 +1,4 @@
-import type { ZoneDef } from './types.js';
+import type { ZoneActorSpawn, ZoneDef } from './types.js';
 
 /**
  * Zone <-> JSON. Tile arrays are base64-encoded little-endian u16 so
@@ -17,6 +17,8 @@ export interface ZoneJson {
   /** Base64 of the signed Int8 elevation layer; absent ⇒ flat 0. */
   elev?: string;
   spawn?: { x: number; y: number };
+  /** Placed NPC actors (plain JSON — tiny lists, no encoding needed). */
+  actorSpawns?: ZoneActorSpawn[];
 }
 
 function u16ToBase64(arr: Uint16Array): string {
@@ -78,6 +80,7 @@ export function zoneToJson(zone: ZoneDef): ZoneJson {
     detail: u16ToBase64(zone.detail),
     elev: zone.elev ? i8ToBase64(zone.elev) : undefined,
     spawn: zone.spawn,
+    actorSpawns: zone.actorSpawns,
   };
 }
 
@@ -98,5 +101,6 @@ export function zoneFromJson(json: ZoneJson): ZoneDef {
     // mentions elevation decode identically.
     elev: json.elev ? base64ToI8(json.elev, size) : new Int8Array(size),
     spawn: json.spawn,
+    actorSpawns: json.actorSpawns,
   };
 }

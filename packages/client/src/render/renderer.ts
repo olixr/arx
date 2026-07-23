@@ -1,6 +1,8 @@
 import {
   CHUNK_SIZE,
   CLOTH_COLORS,
+  HAIR_COLORS,
+  SKIN_TONES,
   DRAW_FULL_TICKS,
   EntityKind,
   PoseState,
@@ -14311,7 +14313,29 @@ export class Renderer {
           break;
         }
         case EntityKind.Npc: {
-          const item = this.npcItem(eid, remote.meta.defId ?? '', remote.meta, s, hurt);
+          // Humanoid ACTORS (named townsfolk) broadcast appearance
+          // exactly like players — one rig renders both. Creature
+          // actors and the bestiary go through npcItem's body art.
+          const item = remote.meta.appearance
+            ? this.humanoidItem({
+                eid,
+                x: s.x,
+                y: s.y,
+                dir: s.dir,
+                pose: s.pose,
+                hpPct: s.hpPct,
+                name: remote.meta.name,
+                level: remote.meta.level,
+                isOwn: false,
+                hurt,
+                equip: remote.meta.appearance.equip ?? {},
+                ench: remote.meta.appearance.ench,
+                look: remote.meta.appearance.look,
+                color: remote.meta.appearance.look
+                  ? CLOTH_COLORS[remote.meta.appearance.look.shirt]!
+                  : '#c8b89a',
+              })
+            : this.npcItem(eid, remote.meta.defId ?? '', remote.meta, s, hurt);
           this.dressForWater(game, item, eid, s.x, s.y);
           items.push(item);
           const pins = this.npcArrows.get(eid);
@@ -16326,9 +16350,11 @@ export class Renderer {
     ky: number;
     crit: boolean;
     dmg: number;
+    look?: Look;
   }): void {
+    // Humanoid actors have no bestiary def — their look IS the body
+    // (the def-less case bails inside the branch chain below).
     const def = npcDef(death.defId);
-    if (!def) return;
     // Slimes leave no body — the mass divides (the server spawns the
     // halves) or, for a half, simply bursts. The death particle burst
     // is the whole funeral.
@@ -16366,7 +16392,23 @@ export class Renderer {
       death.defId === 'troll';
     let rag: Ragdoll;
     let look: (typeof this.corpses)[number]['look'];
-    if (humanoid) {
+    if (death.look) {
+      // A named humanoid actor falls on the player rig's proportions,
+      // wearing its own skin, hair, and tunic colors.
+      rag = buildHumanoidRagdoll(1, seed);
+      rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
+      look = {
+        kind: 'humanoid',
+        h: {
+          bodyColor: CLOTH_COLORS[death.look.shirt] ?? '#8a7a5c',
+          skinColor: SKIN_TONES[death.look.skin] ?? '#e8b98a',
+          hairColor: HAIR_COLORS[death.look.hairColor] ?? '#4a3221',
+          size: 1,
+        },
+      };
+    } else if (!def) {
+      return; // narrows: the branches below all read the bestiary def
+    } else if (humanoid) {
       const size =
         Renderer.SKELETON_SIZE[death.defId] ?? (death.defId === 'troll' ? 1.4 : 0.85);
       const bodyColor = def.color ?? '#999';

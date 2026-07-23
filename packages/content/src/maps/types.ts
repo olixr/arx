@@ -26,6 +26,21 @@ export interface ZoneSpawn {
 }
 
 /**
+ * A placed NPC actor (actors/types.ts) — the PLACEMENT layer of the
+ * actor system: which named individual stands where in this zone.
+ * Waypoint routes will extend this record when the patrol system
+ * lands; identity stays in the actor def, never here.
+ */
+export interface ZoneActorSpawn {
+  /** NpcActorDef slug. */
+  actor: string;
+  x: number;
+  y: number;
+  /** Resting facing in radians (absent = facing south). */
+  dir?: number;
+}
+
+/**
  * An authored zone: a rectangle of tiles stamped over the procedural
  * world. The overlay clips per chunk, so origin and size need no chunk
  * alignment — small zones stamp only their own rectangle.
@@ -52,4 +67,6 @@ export interface ZoneDef {
   spawn?: Vec2;
   portals?: PortalDef[];
   spawns?: ZoneSpawn[];
+  /** Placed NPC actors — the who-stands-where layer. */
+  actorSpawns?: ZoneActorSpawn[];
 }

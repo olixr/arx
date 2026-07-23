@@ -48,6 +48,13 @@ export interface EntityMeta {
   x: number;
   y: number;
   name?: string;
+  /** NPC actors: epithet under the name — "Captain of the Watch". */
+  title?: string;
+  /**
+   * NPC actors: this one cannot be attacked — clients offer Talk
+   * instead of a fight. Absent on every fightable thing.
+   */
+  friendly?: boolean;
   /** Content definition id, e.g. npc/item/node/prop type. */
   defId?: string;
   /** Player/NPC visual loadout for the procedural rig. */

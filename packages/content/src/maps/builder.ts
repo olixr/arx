@@ -11,7 +11,7 @@ import {
 } from '@devcraft/shared';
 import { stampTemplate } from '../structures/stamp.js';
 import type { StructureTemplate } from '../structures/types.js';
-import type { PortalDef, ZoneDef, ZoneSpawn } from './types.js';
+import type { PortalDef, ZoneActorSpawn, ZoneDef, ZoneSpawn } from './types.js';
 
 /**
  * Authoring API for hand-made zones. Zones are built by carving shapes
@@ -30,6 +30,7 @@ export class ZoneBuilder {
   private spawnPoint: Vec2 | undefined;
   private readonly portals: PortalDef[] = [];
   private readonly zoneSpawns: ZoneSpawn[] = [];
+  private readonly zoneActorSpawns: ZoneActorSpawn[] = [];
   private readonly rng: Rng;
 
   constructor(
@@ -287,6 +288,17 @@ export class ZoneBuilder {
     return this;
   }
 
+  /** Place a named NPC actor (local coords; stored in world coords). */
+  actor(slug: string, x: number, y: number, dir?: number): this {
+    this.zoneActorSpawns.push({
+      actor: slug,
+      x: this.origin.x + x,
+      y: this.origin.y + y,
+      dir,
+    });
+    return this;
+  }
+
   /** NPC spawn cluster (local coords; stored in world coords). */
   npcSpawn(npc: string, x: number, y: number, radius: number, count: number): this {
     this.zoneSpawns.push({
@@ -478,6 +490,7 @@ export class ZoneBuilder {
       spawn: this.spawnPoint,
       portals: this.portals,
       spawns: this.zoneSpawns,
+      actorSpawns: this.zoneActorSpawns,
     };
   }
 }

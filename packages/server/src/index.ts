@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { WebSocketServer } from 'ws';
 import {
+  NPC_ACTORS,
   buildBramblewick,
   buildGloomhollow,
   buildHollowStair,
@@ -12,6 +13,7 @@ import {
 import { config } from './config.js';
 import { AccountStore } from './db/accounts.js';
 import { openDb } from './db/db.js';
+import { loadNpcActors, syncNpcActors } from './db/npcActors.js';
 import { GameServer } from './game/gameServer.js';
 import { Session } from './net/session.js';
 import { WorldSource } from './world/worldSource.js';
@@ -43,6 +45,22 @@ game.loadCrops(accounts.loadCrops());
 for (const zone of zones) {
   if (zone.spawns && zone.spawns.length > 0) game.registerSpawns(zone.spawns);
 }
+
+// NPC actors, DB-first: authored JSON seeds the relational tables,
+// then the runtime roster is read BACK from the DB — the same tables
+// dev tools will edit. One validator guards both directions.
+const actorSync = syncNpcActors(db, [...NPC_ACTORS.values()]);
+const actorLoad = loadNpcActors(db);
+for (const err of actorLoad.errors) console.warn(`[npc] invalid DB actor: ${err}`);
+game.registerActors(actorLoad.actors);
+for (const zone of zones) {
+  if (zone.actorSpawns && zone.actorSpawns.length > 0) game.registerActorSpawns(zone.actorSpawns);
+}
+console.log(
+  `[npc] actors: ${actorLoad.actors.length} loaded ` +
+    `(+${actorSync.added} ~${actorSync.updated} -${actorSync.removed} =${actorSync.unchanged})`,
+);
+
 game.start();
 
 const wss = new WebSocketServer({

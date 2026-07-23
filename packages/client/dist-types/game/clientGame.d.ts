@@ -268,6 +268,8 @@ export declare class ClientGame {
         crit: boolean;
         /** Damage of the killing blow — scales the ragdoll launch. */
         dmg: number;
+        /** Humanoid actors: the base look, so the corpse keeps its face. */
+        look?: Look;
     }>;
     /** Combat effects in flight; pruned by the renderer. */
     readonly fx: ActiveFx[];

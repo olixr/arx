@@ -230,6 +230,20 @@ export function buildBramblewick(): ZoneDef {
   b.set(19, 45, Tile.TreeOak);
   b.set(17, 46, Tile.TreeOak);
 
+  // The townsfolk — named actors (content/actors) at their posts.
+  // Guards flank the south arch run; the captain keeps the north arch.
+  b.actor('bramblewick_gate_guard', 46.3, 55.5, Math.PI / 2);
+  b.actor('bramblewick_gate_guard', 50.3, 55.5, Math.PI / 2);
+  b.actor('captain_alda', 46.4, 41.5, Math.PI / 2);
+  // Hetty works her fenced plots; Tobbin minds the store counter;
+  // Maren holds the bench pair by the well.
+  b.actor('farmer_hetty', 17.5, 27.5, 0);
+  b.actor('merchant_tobbin', 65.5, 43.4, Math.PI / 2);
+  b.actor('old_maren', 44.4, 45.6, 0);
+  // Grib the Unbanded loiters on the south road, well clear of the
+  // camp that threw him out.
+  b.actor('grib', 47.5, 82.5, -Math.PI / 2);
+
   b.spawn(48.5, 52.5);
   return b.build();
 }

@@ -200,6 +200,67 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE characters ADD COLUMN carry_style_off TEXT;
   `,
+  // 18 — NPC actors: the identity layer of the NPC system, relational
+  // by design (db/npcActors.ts owns sync + load). Authored JSON
+  // (content/actors/defs) is the seed; these tables are what the
+  // server actually reads at boot, and what dev tools will edit.
+  // `look` is a JSON blob of palette indices — the exact encoding
+  // characters.look already uses (the index-stability law covers both).
+  `
+  CREATE TABLE npc_actors (
+    slug TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    title TEXT,
+    examine TEXT,
+    disposition TEXT NOT NULL,
+    model_kind TEXT NOT NULL,
+    creature_id TEXT,
+    look TEXT,
+    dialogue_id TEXT,
+    shop_id TEXT,
+    content_hash TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  CREATE TABLE npc_actor_equipment (
+    actor_slug TEXT NOT NULL REFERENCES npc_actors(slug) ON DELETE CASCADE,
+    slot TEXT NOT NULL,
+    item_id TEXT NOT NULL,
+    PRIMARY KEY (actor_slug, slot)
+  );
+  CREATE TABLE npc_actor_inventory (
+    actor_slug TEXT NOT NULL REFERENCES npc_actors(slug) ON DELETE CASCADE,
+    idx INTEGER NOT NULL,
+    item_id TEXT NOT NULL,
+    qty INTEGER NOT NULL,
+    PRIMARY KEY (actor_slug, idx)
+  );
+  CREATE TABLE npc_actor_lines (
+    actor_slug TEXT NOT NULL REFERENCES npc_actors(slug) ON DELETE CASCADE,
+    idx INTEGER NOT NULL,
+    line TEXT NOT NULL,
+    PRIMARY KEY (actor_slug, idx)
+  );
+  CREATE TABLE npc_actor_combat (
+    actor_slug TEXT PRIMARY KEY REFERENCES npc_actors(slug) ON DELETE CASCADE,
+    level INTEGER NOT NULL,
+    base_creature TEXT,
+    respawn_sec REAL,
+    max_hp INTEGER,
+    damage INTEGER,
+    attack_range REAL,
+    attack_cooldown_ticks INTEGER,
+    aggro_range REAL,
+    leash_range REAL,
+    speed REAL,
+    xp_reward INTEGER
+  );
+  CREATE TABLE npc_actor_loot (
+    actor_slug TEXT NOT NULL REFERENCES npc_actors(slug) ON DELETE CASCADE,
+    idx INTEGER NOT NULL,
+    table_id TEXT NOT NULL,
+    PRIMARY KEY (actor_slug, idx)
+  );
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

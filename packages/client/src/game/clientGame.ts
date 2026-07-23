@@ -240,6 +240,8 @@ export class ClientGame {
     crit: boolean;
     /** Damage of the killing blow — scales the ragdoll launch. */
     dmg: number;
+    /** Humanoid actors: the base look, so the corpse keeps its face. */
+    look?: Look;
   }> = [];
   /** Combat effects in flight; pruned by the renderer. */
   readonly fx: ActiveFx[] = [];
@@ -801,6 +803,7 @@ export class ClientGame {
             ky: fresh?.ky ?? 0,
             crit: fresh?.crit ?? false,
             dmg: fresh?.dmg ?? 2,
+            look: remote?.meta.appearance?.look,
           });
         }
         this.events.onDeath({ x: msg.x, y: msg.y, defId: msg.defId });
@@ -969,11 +972,13 @@ export class ClientGame {
         if (d <= 2.2 * 2.2 && (!best || d < best.d)) best = { target, d };
       }
     }
-    // Livestock: a cow in milking range beats a further-away tile.
+    // NPCs in reach: livestock offer their produce, friendly actors
+    // offer a word — either beats a further-away tile.
     for (const [eid, remote] of this.entities) {
       if (remote.meta.kind !== EntityKind.Npc) continue;
       const def = npcDef(remote.meta.defId ?? '');
-      if (!def?.produce) continue;
+      const verb = def?.produce ? 'Milk' : remote.meta.friendly ? 'Talk' : null;
+      if (!verb) continue;
       const latest = remote.buffer.latest();
       const x = latest?.x ?? remote.meta.x;
       const y = latest?.y ?? remote.meta.y;
@@ -982,7 +987,7 @@ export class ClientGame {
       const d = dx * dx + dy * dy;
       if (d <= 2.2 * 2.2 && (!best || d < best.d)) {
         best = {
-          target: { kind: 'npc', tx: Math.floor(x), ty: Math.floor(y), eid, verb: 'Milk' },
+          target: { kind: 'npc', tx: Math.floor(x), ty: Math.floor(y), eid, verb },
           d,
         };
       }

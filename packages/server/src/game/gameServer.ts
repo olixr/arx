@@ -62,6 +62,8 @@ import {
   TOOL_TIER_NAMES,
   TOWN_SPAWNS,
   abilityDef,
+  actorAppearance,
+  actorCombatDef,
   bandDy,
   growMs,
   isCropTile,
@@ -88,7 +90,9 @@ import {
   type BuildableDef,
   type CropDef,
   type NodeDef,
+  type NpcActorDef,
   type NpcDef,
+  type ZoneActorSpawn,
   type RecipeDef,
   type WeaponStats,
 } from '@devcraft/content';
@@ -265,6 +269,23 @@ interface NpcComp {
   nextLayAt: number;
 }
 
+/**
+ * A placed NPC actor — the IDENTITY riding an entity (content/actors).
+ * Fightable actors also carry NpcComp (their combat body, synthesized
+ * by actorCombatDef); friendly ones carry only this, which is exactly
+ * what makes them unhittable — no NpcComp, no membership in any
+ * combat loop, by construction.
+ */
+interface ActorComp {
+  actor: NpcActorDef;
+  /** Index into actorSpawnPoints to free on death; -1 = ephemeral. */
+  spawnIndex: number;
+  /** Resting facing — where the post looks when nobody's around. */
+  homeDir: number;
+  /** Rotating cursor into actor.lines for interactions. */
+  nextLine: number;
+}
+
 interface DropComp {
   item: string;
   qty: number;
@@ -405,6 +426,16 @@ interface SpawnState {
   level?: number;
   /** Display-name override (named bosses, hidden-room wardens). */
   name?: string;
+}
+
+/** One placed actor's post — exact spot, no scatter, no count. */
+interface ActorSpawnState {
+  actor: string;
+  x: number;
+  y: number;
+  dir?: number;
+  eid: EntityId | null;
+  respawnAt: number;
 }
 
 /**
@@ -584,6 +615,7 @@ export class GameServer {
   readonly healths = this.ecs.register<HealthComp>();
   readonly players = this.ecs.register<PlayerComp>();
   readonly npcs = this.ecs.register<NpcComp>();
+  readonly actors = this.ecs.register<ActorComp>();
   readonly drops = this.ecs.register<DropComp>();
   readonly projectiles = this.ecs.register<ProjectileComp>();
   readonly statuses = this.ecs.register<ServerStatus[]>();
@@ -596,6 +628,9 @@ export class GameServer {
   private readonly activeFields: ActiveField[] = [];
 
   private readonly spawnPoints: SpawnState[] = [];
+  /** Actor definitions by slug — loaded from the DB at boot (DB-first). */
+  private readonly actorDefs = new Map<string, NpcActorDef>();
+  private readonly actorSpawnPoints: ActorSpawnState[] = [];
 
   private readonly sessions = new Set<Session>();
   /** In-world players by character id (blocks duplicate logins). */
@@ -786,6 +821,33 @@ export class GameServer {
       }
     }
     return indexes;
+  }
+
+  /**
+   * Install the actor roster (loaded DB-first at boot). Must run
+   * before registerActorSpawns — a placement without its identity is
+   * a content error worth hearing about.
+   */
+  registerActors(defs: Iterable<NpcActorDef>): void {
+    for (const def of defs) this.actorDefs.set(def.id, def);
+  }
+
+  /** Register placed actors — exact posts, one body each. */
+  registerActorSpawns(spawns: ReadonlyArray<ZoneActorSpawn>): void {
+    for (const spawn of spawns) {
+      if (!this.actorDefs.has(spawn.actor)) {
+        console.warn(`[npc] placement references unknown actor '${spawn.actor}' — skipped`);
+        continue;
+      }
+      this.actorSpawnPoints.push({
+        actor: spawn.actor,
+        x: spawn.x,
+        y: spawn.y,
+        dir: spawn.dir,
+        eid: null,
+        respawnAt: 0,
+      });
+    }
   }
 
   start(): void {
@@ -2608,12 +2670,27 @@ export class GameServer {
     if (!player || !pos || player.session === null) return;
     const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
 
-    const npc = this.npcs.get(targetEid);
     const npos = this.positions.get(targetEid);
-    if (!npc || !npos || !npc.def.produce) return;
+    if (!npos) return;
     const dx = npos.x - pos.x;
     const dy = npos.y - pos.y;
     if (dx * dx + dy * dy > 2.2 * 2.2) return;
+
+    // Actors speak: rotate through their authored lines. A stopgap
+    // voice until the dialogue system claims the `dialogue` hook.
+    const actorComp = this.actors.get(targetEid);
+    if (actorComp && actorComp.actor.lines && actorComp.actor.lines.length > 0) {
+      const lines = actorComp.actor.lines;
+      const line = lines[actorComp.nextLine % lines.length]!;
+      actorComp.nextLine++;
+      // The spoken-to turn to face you — small thing, reads as alive.
+      npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
+      sys(`${actorComp.actor.name}: "${line}"`);
+      return;
+    }
+
+    const npc = this.npcs.get(targetEid);
+    if (!npc || !npc.def.produce) return;
 
     const produce = npc.def.produce;
     const now = Date.now();
@@ -4728,6 +4805,15 @@ export class GameServer {
       spawn.eid = null;
       spawn.respawnAt = Date.now() + NPCS.get(spawn.npc)!.respawnSec * 1000;
     }
+    // A slain actor's post refills on the synthesized def's clock.
+    const actorComp = this.actors.get(npcEid);
+    if (actorComp && actorComp.spawnIndex >= 0) {
+      const post = this.actorSpawnPoints[actorComp.spawnIndex];
+      if (post) {
+        post.eid = null;
+        post.respawnAt = Date.now() + npc.def.respawnSec * 1000;
+      }
+    }
     this.removeFromChunks(npcEid);
     this.ecs.destroy(npcEid);
 
@@ -4880,6 +4966,15 @@ export class GameServer {
       }
       spawn.eid = this.spawnNpc(def, x, y, i);
     }
+
+    // Placed actors stand back up the same way beasts do.
+    for (let i = 0; i < this.actorSpawnPoints.length; i++) {
+      const spawn = this.actorSpawnPoints[i]!;
+      if (spawn.eid !== null || spawn.respawnAt > now) continue;
+      const def = this.actorDefs.get(spawn.actor);
+      if (!def) continue;
+      spawn.eid = this.spawnActor(def, spawn.x, spawn.y, i, spawn.dir);
+    }
   }
 
   /**
@@ -4914,6 +5009,85 @@ export class GameServer {
     });
     this.updateChunkMembership(eid);
     return eid;
+  }
+
+  /**
+   * Materialize one NPC actor at its post. Fightable actors (a combat
+   * block on the def) also get the full NpcComp body — every existing
+   * combat, damage, loot, and lag-comp path works on them unchanged.
+   * Their NpcComp.spawnIndex stays -1; respawn belongs to the ACTOR
+   * spawn table, which killNpc services through the ActorComp.
+   */
+  private spawnActor(
+    actor: NpcActorDef,
+    x: number,
+    y: number,
+    spawnIndex: number,
+    dir?: number,
+  ): EntityId {
+    const eid = this.ecs.create();
+    const homeDir = dir ?? Math.PI / 2; // face south — toward the camera
+    this.kinds.set(eid, EntityKind.Npc);
+    this.positions.set(eid, { x, y, dir: homeDir });
+    this.poses.set(eid, PoseState.Idle);
+    this.actors.set(eid, { actor, spawnIndex, homeDir, nextLine: 0 });
+    const combatDef = actorCombatDef(actor);
+    if (combatDef) {
+      this.healths.set(eid, { hp: combatDef.maxHp, maxHp: combatDef.maxHp });
+      this.npcs.set(eid, {
+        def: combatDef,
+        originX: x,
+        originY: y,
+        state: 'idle',
+        targetEid: null,
+        wanderUntilTick: 0,
+        wanderX: 0,
+        wanderY: 0,
+        attackCooldown: 0,
+        windupTicks: 0,
+        spawnIndex: -1,
+        poseUntilTick: 0,
+        specialCooldown: 60,
+        nextProduceAt: 0,
+        nextLayAt: 0,
+      });
+    }
+    this.updateChunkMembership(eid);
+    return eid;
+  }
+
+  /**
+   * Posted actors stay put but stay alive: face the nearest player in
+   * a short radius, drift back to the home facing when alone. Cheap —
+   * a handful of actors, every 10th tick, no movement or pathing.
+   */
+  private tickActors(): void {
+    if (this.tickCount % 10 !== 0) return;
+    for (const [eid, comp] of this.actors) {
+      const npc = this.npcs.get(eid);
+      if (npc && npc.state !== 'idle') continue; // combat owns the body
+      const pos = this.positions.get(eid);
+      if (!pos) continue;
+      let bestD = 3 * 3;
+      let bestX = 0;
+      let bestY = 0;
+      let found = false;
+      for (const [playerEid, player] of this.players) {
+        if (player.session === null && player.disconnectedAt !== null) continue;
+        const ppos = this.positions.get(playerEid);
+        if (!ppos) continue;
+        const dx = ppos.x - pos.x;
+        const dy = ppos.y - pos.y;
+        const d = dx * dx + dy * dy;
+        if (d < bestD) {
+          bestD = d;
+          bestX = dx;
+          bestY = dy;
+          found = true;
+        }
+      }
+      pos.dir = found ? Math.atan2(bestY, bestX) : comp.homeDir;
+    }
   }
 
   /** Resolve an NPC's chase target: a live player or a straw decoy. */
@@ -5129,6 +5303,10 @@ export class GameServer {
           moveX = dx / dist;
           moveY = dy / dist;
         }
+      } else if (this.actors.has(eid)) {
+        // Posted actors hold their spot: the wander drift belongs to
+        // beasts. A guard leaves the arch only to fight, and 'return'
+        // walks it back to the post it was placed on.
       } else {
         // Idle wander: drift somewhere near the origin now and then.
         if (this.tickCount >= npc.wanderUntilTick) {
@@ -5508,6 +5686,36 @@ export class GameServer {
       player.session?.sendJson({ t: 'chat', channel: 'system', text: `Spawned ${def.name} ×${placed}.` });
       return;
     }
+    if (config.devCommands && text.startsWith('/spawnnpc')) {
+      // /spawnnpc <slug> — ephemeral copy of a defined actor beside
+      // the caller (no post, no respawn). The staging lever: audit any
+      // actor's face, gear, and voice without walking to their post.
+      const [, slug] = text.split(/\s+/);
+      const actor = slug ? this.actorDefs.get(slug) : undefined;
+      if (!actor) {
+        const ids = [...this.actorDefs.keys()].join(', ');
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: `/spawnnpc <slug> — ${ids}` });
+        return;
+      }
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      let x = pos.x + 1.5;
+      let y = pos.y;
+      for (let tries = 0; tries < 10; tries++) {
+        const a = Math.random() * Math.PI * 2;
+        const r = 1.2 + Math.random() * 1.6;
+        const tx = pos.x + Math.cos(a) * r;
+        const ty = pos.y + Math.sin(a) * r;
+        if (!this.world.isSolid(Math.floor(tx), Math.floor(ty))) {
+          x = tx;
+          y = ty;
+          break;
+        }
+      }
+      this.spawnActor(actor, x, y, -1);
+      player.session?.sendJson({ t: 'chat', channel: 'system', text: `Spawned ${actor.name}.` });
+      return;
+    }
     if (config.devCommands && text.startsWith('/givekey')) {
       // /givekey [tier] [power] [seed] — mint a dungeon key. The
       // staging lever for the whole dungeon system: any tier, any
@@ -5611,6 +5819,7 @@ export class GameServer {
 
     this.tickSpawns(now);
     this.tickNpcs(now);
+    this.tickActors();
     // NPC positions are final for this tick — log the lag-comp ring.
     this.recordNpcHistory();
     this.tickSneakXp();
@@ -6010,6 +6219,24 @@ export class GameServer {
       meta.name = npc.def.name;
       meta.defId = npc.def.id;
       meta.level = npc.def.level;
+    }
+    const actorComp = this.actors.get(eid);
+    if (actorComp) {
+      const actor = actorComp.actor;
+      meta.name = actor.name;
+      if (actor.title) meta.title = actor.title;
+      if (actor.model.kind === 'creature') {
+        // The bestiary body carries the art; the actor carries the name.
+        meta.defId = actor.model.creature;
+      } else {
+        // Humanoids ride the wire exactly like players: a Look plus
+        // worn item ids, rendered by the one humanoid rig.
+        const appearance = actorAppearance(actor);
+        if (appearance) meta.appearance = appearance;
+      }
+      // No combat body = never attackable: clients offer Talk, and no
+      // combat loop can even see this entity.
+      if (!npc) meta.friendly = true;
     }
     const drop = this.drops.get(eid);
     if (drop) {

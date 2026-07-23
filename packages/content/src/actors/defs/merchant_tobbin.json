@@ -1,0 +1,28 @@
+{
+  "id": "merchant_tobbin",
+  "name": "Tobbin",
+  "title": "General Trader",
+  "examine": "Knows the price of everything and the weight of your coin purse.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 0, "hair": 10, "hairColor": 2, "beard": 1, "eyes": 3, "shirt": 3, "pants": 6 }
+  },
+  "equipment": {
+    "boots": "leather_boots",
+    "gloves": "padded_mitts"
+  },
+  "inventory": [
+    { "item": "bronze_axe", "qty": 2 },
+    { "item": "bronze_pickaxe", "qty": 2 },
+    { "item": "fishing_rod", "qty": 3 },
+    { "item": "arrow", "qty": 200 },
+    { "item": "watering_can", "qty": 1 }
+  ],
+  "lines": [
+    "Welcome, welcome! Finest goods this side of the well.",
+    "Buy an axe, sell me the logs — that's what I call a partnership.",
+    "Everything's for sale, friend. Well. Almost everything."
+  ],
+  "shop": "general_store"
+}

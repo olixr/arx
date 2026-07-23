@@ -1,0 +1,29 @@
+{
+  "id": "captain_alda",
+  "name": "Captain Alda",
+  "title": "Captain of the Watch",
+  "examine": "Steel polished to a mirror. The watch answers to her.",
+  "disposition": "neutral",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 3, "hair": 5, "hairColor": 0, "beard": 0, "eyes": 1, "feature": 4, "shirt": 10, "pants": 7 }
+  },
+  "equipment": {
+    "body": "steel_platebody",
+    "legs": "steel_greaves",
+    "gloves": "steel_gauntlets",
+    "boots": "steel_sabatons",
+    "weapon": "steel_sword",
+    "offhand": "tower_shield"
+  },
+  "lines": [
+    "Captain Alda. State your business or keep walking.",
+    "The watch holds the arches. What happens past the treeline is your own lookout.",
+    "Earn a name out there and maybe we'll talk properly."
+  ],
+  "combat": {
+    "level": 30,
+    "respawnSec": 120,
+    "stats": { "maxHp": 120, "damage": 6, "speed": 3.6, "leashRange": 16 }
+  }
+}

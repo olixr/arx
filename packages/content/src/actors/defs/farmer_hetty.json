@@ -1,0 +1,26 @@
+{
+  "id": "farmer_hetty",
+  "name": "Farmer Hetty",
+  "examine": "Mud to the elbows and proud of every carrot.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 1, "hair": 4, "hairColor": 4, "beard": 0, "eyes": 0, "feature": 5, "shirt": 9, "pants": 11 }
+  },
+  "equipment": {
+    "body": "apprentice_robe",
+    "legs": "woven_trousers",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    { "item": "watering_can", "qty": 1 },
+    { "item": "carrot_seed", "qty": 12 },
+    { "item": "wheat_seed", "qty": 8 },
+    { "item": "egg", "qty": 3 }
+  ],
+  "lines": [
+    "Mind the fence — the bull minds it for me.",
+    "Seeds want dirt, water, and patience. Two of those I can sell you.",
+    "The chickens lay when they please. Like everyone else around here."
+  ]
+}

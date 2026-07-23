@@ -6,6 +6,6 @@
     "noEmit": false,
     "emitDeclarationOnly": true
   },
-  "include": ["src"],
+  "include": ["src", "src/**/*.json"],
   "references": [{ "path": "../shared" }]
 }
