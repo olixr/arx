@@ -525,21 +525,16 @@ const game = new ClientGame(input, {
     }
   },
   onXp: (msg) => {
-    // The xp drip above the player's head SAYS what went up — a bare
-    // number reads as damage. It wears the skill's accent color and
-    // its true name (hidden arts included), same as the skills hall.
-    const own = game.predictor.renderPos();
-    const face = SKILL_FACE[msg.skill] ?? { icon: 'bread', color: '#e8b64c' };
-    const skillName = (isSkillId(msg.skill) ? HIDDEN_SKILLS[msg.skill]?.name : undefined) ?? msg.skill;
-    game.floaties.push({
-      x: own.x + 0.35,
-      y: own.y - 1.15,
-      text: `+${msg.gained} ${skillName}`,
-      color: face.color,
-      bornAt: performance.now(),
-      sizeMul: 0.72,
-    });
+    // NO xp floaty: combat kills feed several skills at once and the
+    // drips stacked into unreadable mush over the damage numbers (user
+    // verdict). The float channel is COMBAT ONLY — damage in and out,
+    // statuses, buffs. Skill progress speaks through the skills hall,
+    // and a level-up still gets the full ceremony below.
     if (msg.levelledUp) {
+      const own = game.predictor.renderPos();
+      const face = SKILL_FACE[msg.skill] ?? { icon: 'bread', color: '#e8b64c' };
+      const skillName =
+        (isSkillId(msg.skill) ? HIDDEN_SKILLS[msg.skill]?.name : undefined) ?? msg.skill;
       // The full reward ceremony: the renderer stages the world show
       // (pillar, rings, fountain — ~5.6s) while the ceremony card
       // slams in up top with the skill's face and the new level.
