@@ -66,10 +66,26 @@ export declare class DialogueCinema {
     private choicesShown;
     private selIdx;
     private closeTimer;
+    /**
+     * Gamepad state — the cinema drives the pad itself (it is not a
+     * .ui-screen, so UiNav's capture never claims it). Edge-detected
+     * against the previous frame; everything held at open (the Ⓧ that
+     * started the talk) is swallowed until released.
+     */
+    private padPrev;
+    private padArmed;
+    private padDir;
+    private padDirSince;
+    private padDirLast;
+    /** Current legend state + device, so a mid-talk device swap re-renders. */
+    private hintState;
+    private hintMode;
     constructor(sfx: Sfx, hooks: {
         onAdvance: () => void;
         onChoose: (idx: number) => void;
         onEnd: () => void;
+        /** A gift landed — a soft pulse through pad hands. */
+        onGift?: () => void;
     });
     /** Raise the frame. Beats arrive separately via showNode. */
     show(o: {
@@ -92,6 +108,18 @@ export declare class DialogueCinema {
     private stopReveal;
     /** The line has fully landed: gifts, then the answer or page-turn. */
     private finishReveal;
+    /**
+     * Drive the conversation from the pad — called every frame by main
+     * with the raw snapshot. The vocabulary mirrors the whole game's:
+     * Ⓐ turns the page / confirms (Ⓧ, the talk button, does too — the
+     * finger that started the conversation continues it), Ⓑ excuses
+     * you, and the d-pad or left stick walks the choice plates with the
+     * same initial-delay-then-repeat cadence every menu uses.
+     */
+    tickPad(snap: {
+        buttons: readonly GamepadButton[];
+        axes: readonly number[];
+    } | null, nowMs: number): void;
     /** A gift is a MOMENT: socket chip, name, count, chime. */
     private stageGifts;
     private buildChoices;
@@ -99,6 +127,12 @@ export declare class DialogueCinema {
     private choose;
     /** The key legend in the bottom bar — always honest about the verbs. */
     private setHints;
+    /**
+     * Render the legend in the player's own language: keyboard chips or
+     * the console's colored face-button glyphs — parity of experience,
+     * down to the letters on the buttons.
+     */
+    private renderHints;
     /**
      * The one verb the player needs: finish the line if it's still
      * arriving, otherwise turn the page (questions wait for an answer).

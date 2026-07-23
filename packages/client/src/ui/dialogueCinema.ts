@@ -90,12 +90,29 @@ export class DialogueCinema {
   private selIdx = 0;
   private closeTimer = 0;
 
+  /**
+   * Gamepad state — the cinema drives the pad itself (it is not a
+   * .ui-screen, so UiNav's capture never claims it). Edge-detected
+   * against the previous frame; everything held at open (the Ⓧ that
+   * started the talk) is swallowed until released.
+   */
+  private padPrev = new Set<number>();
+  private padArmed = false;
+  private padDir: 'up' | 'down' | null = null;
+  private padDirSince = 0;
+  private padDirLast = 0;
+  /** Current legend state + device, so a mid-talk device swap re-renders. */
+  private hintState: 'reading' | 'question' | 'farewell' = 'reading';
+  private hintMode: 'kb' | 'pad' = 'kb';
+
   constructor(
     private readonly sfx: Sfx,
     private readonly hooks: {
       onAdvance: () => void;
       onChoose: (idx: number) => void;
       onEnd: () => void;
+      /** A gift landed — a soft pulse through pad hands. */
+      onGift?: () => void;
     },
   ) {
     this.root = document.createElement('div');
@@ -180,6 +197,8 @@ export class DialogueCinema {
     this.open = false;
     this.stopReveal();
     this.node = null;
+    this.padArmed = false;
+    this.padDir = null;
     this.root.classList.remove('open');
     this.root.classList.add('closing');
     this.sfx.dialogueClose();
@@ -332,6 +351,73 @@ export class DialogueCinema {
     }
   }
 
+  /**
+   * Drive the conversation from the pad — called every frame by main
+   * with the raw snapshot. The vocabulary mirrors the whole game's:
+   * Ⓐ turns the page / confirms (Ⓧ, the talk button, does too — the
+   * finger that started the conversation continues it), Ⓑ excuses
+   * you, and the d-pad or left stick walks the choice plates with the
+   * same initial-delay-then-repeat cadence every menu uses.
+   */
+  tickPad(
+    snap: { buttons: readonly GamepadButton[]; axes: readonly number[] } | null,
+    nowMs: number,
+  ): void {
+    if (!this.open) {
+      this.padArmed = false;
+      return;
+    }
+    // The legend follows the player's hands: UiNav stamps pad-mode on
+    // <body>, and a mid-conversation device swap re-letters the verbs.
+    const mode: 'kb' | 'pad' = document.body.classList.contains('pad-mode') ? 'pad' : 'kb';
+    if (mode !== this.hintMode) {
+      this.hintMode = mode;
+      this.renderHints();
+    }
+    if (!snap) {
+      this.padPrev.clear();
+      return;
+    }
+    const pressed = new Set<number>();
+    snap.buttons.forEach((b, i) => {
+      if (b.pressed) pressed.add(i);
+    });
+    if (!this.padArmed) {
+      // First frame: whatever is already down (the Ⓧ that opened the
+      // talk) is old news — swallow it until released.
+      this.padArmed = true;
+      this.padPrev = pressed;
+      return;
+    }
+    const edge = (i: number): boolean => pressed.has(i) && !this.padPrev.has(i);
+    if (edge(0) || edge(2)) this.advance(); // Ⓐ / Ⓧ
+    if (edge(1)) this.hooks.onEnd(); // Ⓑ
+
+    // Choice walking: d-pad or stick, UiNav's exact repeat cadence.
+    const ay = snap.axes[1] ?? 0;
+    const dir: 'up' | 'down' | null =
+      pressed.has(12) || ay < -0.55 ? 'up' : pressed.has(13) || ay > 0.55 ? 'down' : null;
+    if (dir === null) {
+      this.padDir = null;
+    } else if (this.choicesShown && !this.typing) {
+      const len = this.choicesEl.children.length;
+      const step = (): void => {
+        this.select((this.selIdx + (dir === 'up' ? len - 1 : 1)) % len);
+        this.sfx.uiTick();
+      };
+      if (dir !== this.padDir) {
+        this.padDir = dir;
+        this.padDirSince = nowMs;
+        this.padDirLast = nowMs;
+        step();
+      } else if (nowMs - this.padDirSince > 300 && nowMs - this.padDirLast > 125) {
+        this.padDirLast = nowMs;
+        step();
+      }
+    }
+    this.padPrev = pressed;
+  }
+
   /** A gift is a MOMENT: socket chip, name, count, chime. */
   private stageGifts(gifts: Array<{ item: string; qty: number }>): void {
     this.giftsEl.textContent = '';
@@ -352,6 +438,7 @@ export class DialogueCinema {
       this.giftsEl.appendChild(chip);
     });
     this.sfx.dialogueGift();
+    this.hooks.onGift?.();
   }
 
   private buildChoices(choices: string[]): void {
@@ -397,19 +484,42 @@ export class DialogueCinema {
 
   /** The key legend in the bottom bar — always honest about the verbs. */
   private setHints(state: 'reading' | 'question' | 'farewell'): void {
+    this.hintState = state;
+    this.renderHints();
+  }
+
+  /**
+   * Render the legend in the player's own language: keyboard chips or
+   * the console's colored face-button glyphs — parity of experience,
+   * down to the letters on the buttons.
+   */
+  private renderHints(): void {
     this.hintsEl.textContent = '';
-    const pair = (key: string, verb: string): void => {
+    const state = this.hintState;
+    const pad = this.hintMode === 'pad';
+    const chip = (cls: string, glyph: string, verb: string): void => {
       const k = document.createElement('span');
-      k.className = 'dlg-key';
-      k.textContent = key;
+      k.className = cls;
+      k.textContent = glyph;
       const v = document.createElement('span');
       v.className = 'dlg-verb';
       v.textContent = verb;
       this.hintsEl.append(k, v);
     };
-    if (state === 'question') pair('1–4', 'Choose');
-    else pair('Space', state === 'farewell' ? 'Farewell' : 'Continue');
-    pair('Esc', 'Leave');
+    if (state === 'question') {
+      if (pad) {
+        chip('dlg-key', '↑↓', 'Select');
+        chip('pad-glyph a', 'A', 'Choose');
+      } else {
+        chip('dlg-key', '1–4', 'Choose');
+      }
+    } else {
+      const verb = state === 'farewell' ? 'Farewell' : 'Continue';
+      if (pad) chip('pad-glyph a', 'A', verb);
+      else chip('dlg-key', 'Space', verb);
+    }
+    if (pad) chip('pad-glyph b', 'B', 'Leave');
+    else chip('dlg-key', 'Esc', 'Leave');
   }
 
   /**

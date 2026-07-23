@@ -4506,3 +4506,10 @@ body.in-dialogue #hud {
 #hud {
   transition: opacity 300ms ease;
 }
+
+/* Pad glyphs in the cinema legend sit tight beside the verb text. */
+.dlg-hints .pad-glyph {
+  min-width: 22px;
+  height: 22px;
+  font-size: 12px;
+}

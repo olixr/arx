@@ -111,7 +111,9 @@ export class InputManager {
   pollGamepad(): void {
     const pad = this.pad();
     this.gamepadAim = null;
-    if (!pad || this.uiCapture) return;
+    // A cinematic freezes the aim too — the speaker must not spin on
+    // an idle right-stick brush mid-conversation.
+    if (!pad || this.uiCapture || this.cinemaCapture) return;
     const ax = pad.axes[2] ?? 0;
     const ay = pad.axes[3] ?? 0;
     if (Math.hypot(ax, ay) > 0.35) {

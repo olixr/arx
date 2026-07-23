@@ -364,6 +364,10 @@ function closeAllUi(): void {
 }
 
 function toggleScreen(which: 'inv' | 'skills' | 'craft' | 'build' | 'audio' | 'loot'): void {
+  // A conversation owns the stage: no screen may open over it, from
+  // any device — hotkeys, dock clicks, and pad shortcuts all pass
+  // through this one gate.
+  if (cinema.open) return;
   const wasOpen =
     which === 'inv'
       ? panels.invOpen
@@ -424,6 +428,7 @@ const cinema = new DialogueCinema(sfx, {
   onAdvance: () => game.dialogueAdvance(),
   onChoose: (idx) => game.dialogueChoose(idx),
   onEnd: () => game.dialogueEnd(),
+  onGift: () => input.rumble(0.15, 0.35, 130),
 });
 
 const game = new ClientGame(input, {
@@ -1420,15 +1425,18 @@ function frame(now: number): void {
     nav.clearModeStrip();
   }
   nav.update(now, uiOpen, buildMode !== null);
+  // The cinema drives its own pad verbs (Ⓐ/Ⓧ advance, Ⓑ leave,
+  // d-pad walks the plates) — same frame cadence as UiNav.
+  cinema.tickPad(input.padSnapshot(), now);
   const padInteract = input.padInteractPressed();
-  if (padInteract && !padInteractWasDown && game.ownEid !== null) {
+  if (padInteract && !padInteractWasDown && game.ownEid !== null && !cinema.open) {
     activateTarget(game.findNearbyTarget());
   }
   padInteractWasDown = padInteract;
 
   // L3 (left-stick click) toggles the sneak latch on pads.
   const padSneak =
-    !input.uiCapture && (input.padSnapshot()?.buttons[10]?.pressed ?? false);
+    !input.uiCapture && !cinema.open && (input.padSnapshot()?.buttons[10]?.pressed ?? false);
   if (padSneak && !padSneakWasDown) input.sneakMode = !input.sneakMode;
   padSneakWasDown = padSneak;
 
