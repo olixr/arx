@@ -2,6 +2,19 @@ import type { SkillId, StationType } from '@devcraft/shared';
 import { COMPILED_EQUIPMENT } from './equipment/defs.js';
 import { ELEMENT_GEM, ELEMENT_REAGENT, ENCHANT_DEFS } from './equipment/enchants.js';
 
+/**
+ * THE RECIPE IS KNOWLEDGE: how a character comes to know a recipe.
+ * - 'core'    — everyone knows it always: baseline metals, essential
+ *               material processing, the food and tools of daily life.
+ * - 'trainer' — sold as a written scroll by the profession trainers in
+ *               town; coin buys the guild's teaching.
+ * - 'drop'    — found, never taught: chests, dungeons, and the wilds
+ *               hold the luxurious and the forbidden.
+ * Non-core recipes exist as `recipe_<id>` scroll items (items.ts) that
+ * teach on use; knowledge persists per character (character_recipes).
+ */
+export type RecipeUnlock = 'core' | 'trainer' | 'drop';
+
 export interface RecipeDef {
   id: string;
   name: string;
@@ -17,9 +30,11 @@ export interface RecipeDef {
   /** Cooking-style failure chance at the required level (fades with levels). */
   burnChance?: number;
   burnResult?: string;
+  /** How this recipe is learned (see RecipeUnlock). */
+  unlock: RecipeUnlock;
 }
 
-const defs: RecipeDef[] = [
+const defs: Array<Omit<RecipeDef, 'unlock'>> = [
   // ------------------------------------------------ cooking (fire)
   {
     id: 'cook_trout',
@@ -649,6 +664,9 @@ const enchantRecipes: RecipeDef[] = ENCHANT_DEFS.map((e) => {
     inputs,
     output: { item: `scroll_${e.id}`, qty: 1 },
     ticks: TICKS_BY_TIER[e.tier],
+    // Tier ladder of knowledge: entry inscriptions come with the
+    // profession, journeyman work is guild-taught, capstones are found.
+    unlock: (e.tier === 1 ? 'core' : e.tier === 2 ? 'trainer' : 'drop') as RecipeUnlock,
   };
 });
 
@@ -664,6 +682,7 @@ const grindRecipes: RecipeDef[] = Object.entries(ELEMENT_GEM).map(([, gem]) => (
   inputs: [{ item: gem, qty: 1 }],
   output: { item: 'arcane_dust', qty: 3 },
   ticks: 25,
+  unlock: 'core' as RecipeUnlock,
 }));
 
 /**
@@ -689,10 +708,86 @@ const toolRecipes: RecipeDef[] = TOOL_RECIPES.flatMap((t) =>
     inputs: [{ item: t.bar, qty: t.bars }, { item: 'log', qty: 1 }],
     output: { item: `${t.metal}_${kind}`, qty: 1 },
     ticks: t.ticks,
+    // The tool that speeds the bracket is never held hostage to it.
+    unlock: 'core' as RecipeUnlock,
   })),
 );
 
-const allRecipes: RecipeDef[] = [...defs, ...enchantRecipes, ...grindRecipes, ...toolRecipes, ...COMPILED_EQUIPMENT.recipes];
+/**
+ * Every inline recipe classified, TOTAL over the defs array — a def
+ * missing here throws at module load, so no recipe ever ships
+ * unclassified. Generated rosters (enchants, grinds, tools, equipment)
+ * carry their own rules.
+ */
+const INLINE_UNLOCK: Record<string, RecipeUnlock> = {
+  // Cooking — the hearth is everyone's birthright…
+  cook_trout: 'core',
+  cook_chicken: 'core',
+  cook_beef: 'core',
+  cook_fried_egg: 'core',
+  mill_flour: 'core',
+  cook_bread: 'core',
+  // …but the fancier table is taught at the inn.
+  cook_hearty_stew: 'trainer',
+  cook_cake: 'trainer',
+
+  // Smithing — baseline metals stay open to all hands.
+  smelt_bronze: 'core',
+  smelt_iron: 'core',
+  smelt_steel: 'core',
+  smelt_gold: 'core',
+  smelt_silver: 'core',
+  smelt_mithril: 'core',
+  smelt_adamant: 'core',
+  smelt_starsteel: 'core',
+  smith_watering_can: 'core',
+  // Jeweller's work is guild knowledge.
+  smith_gold_ring: 'trainer',
+  smith_silver_ring: 'trainer',
+  smith_spiked_buckler: 'trainer',
+
+  // Leatherworking / tailoring — material processing is core: gating
+  // the tannery would deadlock every pattern that builds on leather.
+  craft_leather: 'core',
+  craft_leather_scraps: 'core',
+  craft_hardened_leather: 'core',
+  weave_linen: 'core',
+  weave_gloomsilk: 'core',
+  craft_twine: 'core',
+  craft_cloth: 'core',
+  fletch_arrows: 'core',
+  // The wardrobe pieces are the tanner's trade secrets.
+  craft_cape_ragged: 'core',
+  craft_cape_traveler: 'trainer',
+  craft_cape_huntsman: 'trainer',
+  craft_cape_gilded: 'trainer',
+  craft_wolf_pelt_cloak: 'trainer',
+  craft_frost_quiver: 'trainer',
+
+  // Herbalism — the healer's first tincture is free; the rest is taught.
+  brew_healing_tincture: 'core',
+  brew_gatherers_brew: 'trainer',
+  brew_swiftness_tonic: 'trainer',
+  brew_ironbark_tonic: 'trainer',
+  brew_mending_salve: 'trainer',
+  // The dark branch is never taught — poison lore is FOUND.
+  brew_adderfang_oil: 'drop',
+  brew_hobble_brew: 'drop',
+  brew_vipers_kiss: 'drop',
+  brew_leadfoot_oil: 'drop',
+  brew_wyrmtongue_oil: 'drop',
+};
+
+const inlineRecipes: RecipeDef[] = defs.map((d) => {
+  const unlock = INLINE_UNLOCK[d.id];
+  if (!unlock) throw new Error(`recipe '${d.id}' missing from INLINE_UNLOCK`);
+  return { ...d, unlock };
+});
+for (const id of Object.keys(INLINE_UNLOCK)) {
+  if (!defs.some((d) => d.id === id)) throw new Error(`INLINE_UNLOCK names unknown recipe '${id}'`);
+}
+
+const allRecipes: RecipeDef[] = [...inlineRecipes, ...enchantRecipes, ...grindRecipes, ...toolRecipes, ...COMPILED_EQUIPMENT.recipes];
 
 export const RECIPES: ReadonlyMap<string, RecipeDef> = new Map(allRecipes.map((d) => [d.id, d]));
 
@@ -703,3 +798,11 @@ if (RECIPES.size !== allRecipes.length) {
 export function recipesForStation(station: StationType | null): RecipeDef[] {
   return [...RECIPES.values()].filter((r) => r.station === station);
 }
+
+/** The scroll item that teaches a non-core recipe. */
+export function recipeScrollId(recipeId: string): string {
+  return `recipe_${recipeId}`;
+}
+
+/** Every recipe that must be learned (has a scroll item). */
+export const UNLOCKABLE_RECIPES: readonly RecipeDef[] = allRecipes.filter((r) => r.unlock !== 'core');

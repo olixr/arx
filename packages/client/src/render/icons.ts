@@ -1,4 +1,4 @@
-import { ELEMENT_COLORS, ENCHANT_DEFS, itemDef } from '@devcraft/content';
+import { ELEMENT_COLORS, ENCHANT_DEFS, UNLOCKABLE_RECIPES, itemDef, recipeScrollId } from '@devcraft/content';
 import { shade } from './rig.js';
 import { BOW_STYLES, DAGGER_STYLES, STAFF_STYLES, SWORD_STYLES, drawBow, drawStaff, drawSword } from './weapons.js';
 import { TOOL_STYLES, drawTool } from './tools.js';
@@ -2763,6 +2763,36 @@ const PAINTERS: Record<string, IconPainter> = {
       c.stroke();
     }
   },
+  // The recipe scroll: rolled parchment lying on the diagonal, bound
+  // by a ribbon in the profession's ink and sealed with a wax drop —
+  // knowledge still wrapped, unlike the flat enchant scroll.
+  recipe: (c, col) => {
+    const parch = '#d8c69a';
+    c.translate(0.5, 0.5);
+    c.rotate(-Math.PI / 8);
+    c.fillStyle = parch;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.roundRect(-0.32, -0.13, 0.64, 0.26, 0.04);
+    c.fill();
+    c.stroke();
+    // Rolled ends: darker cores peeking out of each end of the tube.
+    c.fillStyle = shade(parch, -34);
+    for (const x of [-0.32, 0.24] as const) {
+      c.beginPath();
+      c.roundRect(x, -0.11, 0.08, 0.22, 0.035);
+      c.fill();
+      c.stroke();
+    }
+    // The profession's ribbon, cinched off-center, wax drop on the knot.
+    c.fillStyle = col;
+    c.beginPath();
+    c.roundRect(-0.07, -0.15, 0.14, 0.3, 0.03);
+    c.fill();
+    c.stroke();
+    dot(c, shade(col, -28), 0, 0.02, 0.055);
+  },
   hammer: (c, col) => {
     c.translate(0.5, 0.55);
     c.rotate(-Math.PI / 5);
@@ -4415,6 +4445,16 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
 {
   for (const e of ENCHANT_DEFS) {
     ITEM_ICON[`scroll_${e.id}`] = { icon: 'scroll', color: ELEMENT_COLORS[e.element] };
+  }
+}
+
+// ---- recipe scrolls: one rolled-parchment painter, ribbon tinted by
+// the profession's ink (the item def's color) — new unlockable recipes
+// get icons for free.
+{
+  for (const r of UNLOCKABLE_RECIPES) {
+    const id = recipeScrollId(r.id);
+    ITEM_ICON[id] = { icon: 'recipe', color: itemDef(id)?.color ?? '#c9b98a' };
   }
 }
 

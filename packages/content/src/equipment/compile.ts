@@ -93,6 +93,12 @@ export function compileEquipment(defs: readonly EquipmentDef[]): {
         inputs: def.recipe.inputs,
         output: { item: def.id, qty: 1 },
         ticks: def.recipe.ticks,
+        // The level band is the default ladder of knowledge: the
+        // starter kit is everyone's, the working tiers are guild-
+        // taught, the high shelf is found in the world.
+        unlock:
+          def.recipe.unlock ??
+          (def.recipe.levelReq <= 10 ? 'core' : def.recipe.levelReq < 40 ? 'trainer' : 'drop'),
       });
     }
   }

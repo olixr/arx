@@ -100,6 +100,12 @@ export interface EquipmentDef {
     station: StationType | null;
     ticks: number;
     inputs: Array<{ item: string; qty: number }>;
+    /**
+     * How the recipe is learned. Default follows the level band:
+     * ≤10 core (starter kit), 11–39 trainer (guild-taught), 40+ drop
+     * (found in the world). Set explicitly to move a piece off-band.
+     */
+    unlock?: 'core' | 'trainer' | 'drop';
   };
   /** Vendor value at common; rarity multiplies it. */
   value: number;

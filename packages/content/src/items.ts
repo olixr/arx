@@ -2,6 +2,7 @@ import type { EquipSlot, PassiveId, RarityTier, SkillId, StatusApply } from '@de
 import { COMPILED_EQUIPMENT } from './equipment/defs.js';
 import { ELEMENT_COLORS, ENCHANT_DEFS, type EnchantEffect } from './equipment/enchants.js';
 import type { ArmorClass, GearSlot } from './equipment/types.js';
+import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
 
 export type ToolType = 'axe' | 'pickaxe' | 'rod';
 export type CombatStyle = 'melee' | 'archery' | 'magic';
@@ -155,6 +156,13 @@ export interface ItemDef {
    * reads them.
    */
   dungeonKey?: boolean;
+  /**
+   * Recipe scroll: using it teaches this RECIPE id, permanently and
+   * per character (character_recipes). Refused if already known —
+   * the scroll survives to trade on. Generated one-per-unlockable
+   * recipe below; never hand-authored.
+   */
+  teaches?: string;
 }
 
 const defs: ItemDef[] = [
@@ -944,7 +952,42 @@ const scrollDefs: ItemDef[] = ENCHANT_DEFS.map((e, i) => ({
   code: `x${i.toString(36).toUpperCase()}`,
 }));
 
-const allDefs: ItemDef[] = [...defs, ...scrollDefs, ...COMPILED_EQUIPMENT.items];
+// Recipe scrolls — one per unlockable recipe, pure generation. Each
+// profession writes in its own voice (a smith draws schematics, a cook
+// jots recipes), and the scroll is an ordinary stackable trade good:
+// buy it from a trainer, loot it from a chest, sell it to a friend.
+// Using it is what turns paper into knowledge (see gameServer.useItem).
+const RECIPE_NOUN: Partial<Record<SkillId, string>> = {
+  cooking: 'Recipe',
+  smithing: 'Schematic',
+  leatherworking: 'Pattern',
+  tailoring: 'Pattern',
+  woodworking: 'Plans',
+  herbalism: 'Formula',
+  enchanting: 'Treatise',
+};
+const RECIPE_INK: Partial<Record<SkillId, string>> = {
+  cooking: '#e0995a',
+  smithing: '#9aa7b8',
+  leatherworking: '#b07d4f',
+  tailoring: '#b06fb8',
+  woodworking: '#8a9455',
+  herbalism: '#69a869',
+  enchanting: '#8f7fd4',
+};
+const recipeScrollDefs: ItemDef[] = UNLOCKABLE_RECIPES.map((r) => ({
+  id: recipeScrollId(r.id),
+  name: `${RECIPE_NOUN[r.skill] ?? 'Recipe'}: ${r.name}`,
+  stackable: true,
+  // Found lore prices above taught lore — it can't simply be bought.
+  value: Math.round((20 + r.levelReq * 12) * (r.unlock === 'drop' ? 2 : 1)),
+  teaches: r.id,
+  desc: `Study to learn ${r.name.toLowerCase()} (${r.skill} ${r.levelReq}).`,
+  color: RECIPE_INK[r.skill] ?? '#c9b98a',
+  code: 'Rx',
+}));
+
+const allDefs: ItemDef[] = [...defs, ...scrollDefs, ...recipeScrollDefs, ...COMPILED_EQUIPMENT.items];
 
 export const ITEMS: ReadonlyMap<string, ItemDef> = new Map(allDefs.map((d) => [d.id, d]));
 
