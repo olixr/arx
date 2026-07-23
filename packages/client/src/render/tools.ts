@@ -254,38 +254,64 @@ function drawPickHead(
 ): void {
   const edge = hurt ? '#ffffff' : (st.edge ?? shade(st.color, 34));
   const cheek = hurt ? '#ffffff' : (st.cheek ?? shade(st.color, -22));
-  // A broad double-pointed crescent mounted ACROSS the haft: spur tips
-  // perpendicular to the wood, the belly bulging away from the wielder
-  // — a downward chop leads with the lower point. This is the classic
-  // pick anatomy the old glyph proved readable.
-  const span = 0.34 * s * hs;
-  const belly = 0.3 * s * hs;
+  // TRUE PICK ANATOMY: a slim head seated on the eye, two tapered
+  // tines mounted ACROSS the haft — a long spike on −y (the bit side,
+  // per the bit-leads law) and a shorter squared chisel arm opposite,
+  // both curling gently toward the work like drop-forged steel. Every
+  // facet is a FILLED sliver inside the silhouette — no boundary
+  // strokes, so nothing can ever poke past the head again.
+  const L = 0.32 * s * hs; // leading spike length off the eye
+  const T = 0.23 * s * hs; // trailing chisel arm length
+  const bw = 0.048 * s * hs; // tine half-thickness at the eye
+  const sweep = 0.12 * s * hs; // forward curl of the tips
+  const chin = ex + sweep * 0.35; // chisel tip x
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.moveTo(ex - 0.03 * s, -span);
-  ctx.quadraticCurveTo(ex + belly * 1.55, 0, ex - 0.03 * s, span);
-  ctx.quadraticCurveTo(ex + belly * 0.62, 0, ex - 0.03 * s, -span);
+  // Up the spike's back edge to the point...
+  ctx.moveTo(ex - bw, -0.02 * s);
+  ctx.quadraticCurveTo(ex - bw * 0.9, -L * 0.55, ex + sweep, -L);
+  // ...down its front edge to the eye...
+  ctx.quadraticCurveTo(ex + bw * 1.4, -L * 0.45, ex + bw, -0.02 * s);
+  // ...through the eye boss, down the chisel arm's front edge...
+  ctx.lineTo(ex + bw, 0.02 * s);
+  ctx.quadraticCurveTo(ex + bw * 1.3, T * 0.45, chin + 0.034 * s, T * 0.96);
+  // ...across the chisel flat, back up its rear edge and home.
+  ctx.lineTo(chin - 0.014 * s, T);
+  ctx.quadraticCurveTo(ex - bw * 0.85, T * 0.6, ex - bw, 0.02 * s);
   ctx.closePath();
   ctx.fill();
   if (hurt) return;
-  // Lit crown along the upper outer sweep.
-  ctx.strokeStyle = edge;
-  ctx.lineWidth = Math.max(1, 0.02 * s);
+  // Lit face down the spike's front edge — the honed taper.
+  ctx.fillStyle = edge;
   ctx.beginPath();
-  ctx.moveTo(ex - 0.015 * s, -span * 0.92);
-  ctx.quadraticCurveTo(ex + belly * 1.06, -span * 0.3, ex + belly * 1.08, -0.015 * s);
-  ctx.stroke();
-  // Cheek shading down the lower inner sweep.
-  ctx.strokeStyle = cheek;
-  ctx.lineWidth = Math.max(1, 0.017 * s);
+  ctx.moveTo(ex + sweep, -L);
+  ctx.quadraticCurveTo(ex + bw * 1.4, -L * 0.45, ex + bw, -0.02 * s);
+  ctx.lineTo(ex + bw * 0.45, -0.02 * s);
+  ctx.quadraticCurveTo(ex + bw * 0.6, -L * 0.42, ex + sweep, -L);
+  ctx.closePath();
+  ctx.fill();
+  // Cheek shade up the spike's back edge — the forged spine.
+  ctx.fillStyle = cheek;
   ctx.beginPath();
-  ctx.moveTo(ex + belly * 0.78, span * 0.28);
-  ctx.quadraticCurveTo(ex + belly * 0.42, span * 0.6, ex - 0.015 * s, span * 0.88);
-  ctx.stroke();
+  ctx.moveTo(ex + sweep, -L);
+  ctx.quadraticCurveTo(ex - bw * 0.9, -L * 0.55, ex - bw, -0.02 * s);
+  ctx.lineTo(ex - bw * 0.55, -0.02 * s);
+  ctx.quadraticCurveTo(ex - bw * 0.5, -L * 0.5, ex + sweep, -L);
+  ctx.closePath();
+  ctx.fill();
+  // Cheek shade down the chisel arm's rear face.
+  ctx.fillStyle = cheek;
+  ctx.beginPath();
+  ctx.moveTo(ex - bw, 0.02 * s);
+  ctx.quadraticCurveTo(ex - bw * 0.85, T * 0.6, chin - 0.014 * s, T);
+  ctx.lineTo(chin, T * 0.88);
+  ctx.quadraticCurveTo(ex - bw * 0.35, T * 0.5, ex - bw * 0.5, 0.02 * s);
+  ctx.closePath();
+  ctx.fill();
   if (st.stud) {
     ctx.fillStyle = st.stud;
     ctx.beginPath();
-    ctx.arc(ex + belly * 0.62, 0, 0.016 * s, 0, Math.PI * 2);
+    ctx.arc(ex + 0.012 * s, -0.1 * s * hs, 0.016 * s, 0, Math.PI * 2);
     ctx.fill();
   }
 }

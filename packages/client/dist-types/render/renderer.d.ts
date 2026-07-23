@@ -361,7 +361,15 @@ export declare class Renderer {
         ty: number;
     } | null;
     private tickStationHeat;
-    /** Nearest gatherable node around a world position, if any. */
+    /** Classify a tile as a gatherable node kind, if it is one. */
+    private gatherKindAt;
+    /**
+     * The gatherable node a working body should square up to. The
+     * server never names the action's tile, so remote players get the
+     * nearest-node guess — but the OWN player passes the tile of the
+     * interact that started the work (prefer), so standing between two
+     * nodes never swings the tool at the wrong one.
+     */
     private findGatherNode;
     shake(amount: number): void;
     /**

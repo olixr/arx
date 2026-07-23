@@ -1669,6 +1669,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   if (drawing) lean = -Math.sign(fx || 1) * 0.07 * drawT; // braced back
 
   let reach = 0.25 * s;
+  // THE SWING MIRROR: the chop/mine cycles are authored for a right-
+  // facer — windup over the shoulder, arc sweeping clockwise down into
+  // the work. Applying rel unmirrored kept that clockwise sweep at
+  // EVERY facing, so a left-facer wound up low behind the hip and
+  // scooped UP into the tree, poll first. Negating rel reflects the
+  // whole arc across the facing line — overhead stays overhead, the
+  // bite lands down-forward — and pairs with the BIT-LEADS flip law in
+  // drawHeldItem (same cos(dir) > 0 test) so the honed edge leads the
+  // sweep on both sides of the node.
+  const workSide = Math.cos(rig.dir) > 0 ? 1 : -1;
   // The chop: raise the axe up over the shoulder, slam it down into the
   // node, hold through the bite, recover — every beat readable.
   if (chopping) {
@@ -1700,8 +1710,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       reach = (0.33 - 0.1 * p2) * s;
       lean = 0.1 * (1 - p2);
     }
-    swingOffset = rel;
-    lean *= Math.sign(fx || 1);
+    swingOffset = rel * workSide;
+    lean *= workSide;
   }
   // The mine: a pick is NOT an axe. Haul it straight overhead with the
   // whole back, hang at the top of the heave, drive it down into the
@@ -1748,8 +1758,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       reach = (0.28 - 0.06 * p2) * s;
       lean = -0.02 * (1 - p2);
     }
-    swingOffset = rel;
-    lean *= Math.sign(fx || 1);
+    swingOffset = rel * workSide;
+    lean *= workSide;
   }
   // The forage: no tool, no swing — herbalist's hands. Bend toward
   // the plant, reach the working hand deep into it, TUG with a little

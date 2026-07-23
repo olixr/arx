@@ -399,6 +399,16 @@ export declare class ClientGame {
     private handleTilePatch;
     /** Bump neighboring chunks' revs so organic borders re-bake. */
     private touchNeighbors;
+    /**
+     * The tile of the last interact we sent. The server never names the
+     * tile a gather action works, so the renderer squares the OWN rig up
+     * to this one — standing between two nodes must never swing the tool
+     * at the wrong neighbor.
+     */
+    lastInteract: {
+        tx: number;
+        ty: number;
+    } | null;
     /** Send an interact intent for a specific world tile. */
     interact(tx: number, ty: number): void;
     /** Use (equip/eat) the item in an inventory slot. */

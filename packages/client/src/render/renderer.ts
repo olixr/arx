@@ -1183,42 +1183,59 @@ export class Renderer {
     }
   }
 
-  /** Nearest gatherable node around a world position, if any. */
+  /** Classify a tile as a gatherable node kind, if it is one. */
+  private gatherKindAt(tx: number, ty: number): 'tree' | 'rock' | 'fish' | 'forage' | null {
+    const game = this.game;
+    if (!game) return null;
+    const t = game.world.groundAt(tx, ty);
+    return t === Tile.Tree || t === Tile.TreeOak || t === Tile.TreeWillow || t === Tile.TreeYew
+      ? 'tree'
+      : t === Tile.Rock ||
+          t === Tile.RockCopper ||
+          t === Tile.RockTin ||
+          t === Tile.RockIron ||
+          t === Tile.RockCoal ||
+          t === Tile.RockGold ||
+          t === Tile.RockSilver ||
+          t === Tile.RockMithril ||
+          t === Tile.RockAdamant ||
+          t === Tile.RockObsidian ||
+          t === Tile.RockStarfall
+        ? 'rock'
+        : t === Tile.FishingSpot
+          ? 'fish'
+          : t === Tile.BerryBush ||
+              t === Tile.FibrePlant ||
+              t === Tile.WildSagewort ||
+              t === Tile.WildMoonbell
+            ? 'forage'
+            : null;
+  }
+
+  /**
+   * The gatherable node a working body should square up to. The
+   * server never names the action's tile, so remote players get the
+   * nearest-node guess — but the OWN player passes the tile of the
+   * interact that started the work (prefer), so standing between two
+   * nodes never swings the tool at the wrong one.
+   */
   private findGatherNode(
     x: number,
     y: number,
+    prefer?: { tx: number; ty: number } | null,
   ): { tx: number; ty: number; kind: 'tree' | 'rock' | 'fish' | 'forage' } | null {
     const game = this.game;
     if (!game) return null;
+    if (prefer && Math.hypot(prefer.tx + 0.5 - x, prefer.ty + 0.5 - y) < 3) {
+      const kind = this.gatherKindAt(prefer.tx, prefer.ty);
+      if (kind) return { tx: prefer.tx, ty: prefer.ty, kind };
+    }
     const cx = Math.floor(x);
     const cy = Math.floor(y);
     let best: { tx: number; ty: number; kind: 'tree' | 'rock' | 'fish' | 'forage'; d: number } | null = null;
     for (let ty = cy - 2; ty <= cy + 2; ty++) {
       for (let tx = cx - 2; tx <= cx + 2; tx++) {
-        const t = game.world.groundAt(tx, ty);
-        const kind =
-          t === Tile.Tree || t === Tile.TreeOak || t === Tile.TreeWillow || t === Tile.TreeYew
-            ? ('tree' as const)
-            : t === Tile.Rock ||
-                t === Tile.RockCopper ||
-                t === Tile.RockTin ||
-                t === Tile.RockIron ||
-                t === Tile.RockCoal ||
-                t === Tile.RockGold ||
-                t === Tile.RockSilver ||
-                t === Tile.RockMithril ||
-                t === Tile.RockAdamant ||
-                t === Tile.RockObsidian ||
-                t === Tile.RockStarfall
-              ? ('rock' as const)
-              : t === Tile.FishingSpot
-                ? ('fish' as const)
-                : t === Tile.BerryBush ||
-                    t === Tile.FibrePlant ||
-                    t === Tile.WildSagewort ||
-                    t === Tile.WildMoonbell
-                  ? ('forage' as const)
-                  : null;
+        const kind = this.gatherKindAt(tx, ty);
         if (!kind) continue;
         const d = Math.hypot(tx + 0.5 - x, ty + 0.5 - y);
         if (!best || d < best.d) best = { tx, ty, kind, d };
@@ -14803,7 +14820,10 @@ export class Renderer {
     // Gathering: square up to the node and swing the belt tool at it.
     // Crafting: square up to the station and work it.
     let dir = e.dir;
-    const gather = e.pose === PoseState.Gather ? this.findGatherNode(e.x, e.y) : null;
+    const gather =
+      e.pose === PoseState.Gather
+        ? this.findGatherNode(e.x, e.y, e.eid === 'own' ? this.game?.lastInteract : null)
+        : null;
     if (gather) dir = Math.atan2(gather.ty + 0.5 - e.y, gather.tx + 0.5 - e.x);
     const station = e.pose === PoseState.Craft ? this.findStation(e.x, e.y) : null;
     if (station) dir = Math.atan2(station.ty + 0.5 - e.y, station.tx + 0.5 - e.x);
