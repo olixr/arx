@@ -1840,6 +1840,80 @@ const PAINTERS: Record<string, IconPainter> = {
     c.fillRect(0.56, 0.815, 0.205, 0.045);
     c.restore();
   },
+  dungeonkey: (c, col) => {
+    // The Riftgate's ward-key: heavy dark iron on the jaunty key
+    // diagonal, its bow forged as a small RIFT RING — a violet-rimmed
+    // portal void — over a thick shank and two blocky ward teeth.
+    // `col` is the rift violet; the iron stays near-black so the glow
+    // owns the read.
+    const iron = '#4a4458';
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(Math.PI * 0.21);
+    c.translate(-0.5, -0.5);
+    // The bow: a heavy iron annulus around the rift.
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.2;
+    c.beginPath();
+    c.arc(0.5, 0.26, 0.16, 0, Math.PI * 2);
+    c.stroke();
+    c.strokeStyle = iron;
+    c.lineWidth = 0.135;
+    c.beginPath();
+    c.arc(0.5, 0.26, 0.16, 0, Math.PI * 2);
+    c.stroke();
+    // Lit arris riding the ring's upper shoulder.
+    c.strokeStyle = shade(iron, 26);
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.arc(0.5, 0.26, 0.19, Math.PI * 0.85, Math.PI * 1.5);
+    c.stroke();
+    // The void the wards answer to, with its violet glow rim.
+    c.fillStyle = '#161221';
+    c.beginPath();
+    c.arc(0.5, 0.26, 0.105, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = col;
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.arc(0.5, 0.26, 0.096, 0, Math.PI * 2);
+    c.stroke();
+    c.strokeStyle = shade(col, 30);
+    c.lineWidth = 0.018;
+    c.beginPath();
+    c.arc(0.5, 0.26, 0.072, Math.PI * 0.65, Math.PI * 1.75);
+    c.stroke();
+    // Swallowed sparks drifting in the vortex.
+    dot(c, shade(col, 44), 0.535, 0.225, 0.016);
+    dot(c, col, 0.462, 0.3, 0.011);
+    // Collar where the bow hands off to the shank.
+    c.fillStyle = shade(iron, -16);
+    c.fillRect(0.43, 0.42, 0.14, 0.05);
+    // The shank: thick square-cut iron, lit west, shaded east.
+    c.fillStyle = OUTLINE;
+    c.fillRect(0.435, 0.42, 0.13, 0.45);
+    c.fillStyle = iron;
+    c.fillRect(0.452, 0.44, 0.096, 0.42);
+    c.fillStyle = shade(iron, 22);
+    c.fillRect(0.452, 0.44, 0.036, 0.42);
+    c.fillStyle = shade(iron, -16);
+    c.fillRect(0.514, 0.44, 0.034, 0.42);
+    // A breath of the rift's charge running the shank groove.
+    c.fillStyle = shade(col, -8);
+    c.fillRect(0.492, 0.46, 0.018, 0.34);
+    // Two blocky ward teeth off the tip, stepped like the lock they
+    // were struck for.
+    c.fillStyle = OUTLINE;
+    c.fillRect(0.548, 0.69, 0.17, 0.08);
+    c.fillRect(0.548, 0.795, 0.245, 0.08);
+    c.fillStyle = iron;
+    c.fillRect(0.562, 0.705, 0.14, 0.05);
+    c.fillRect(0.562, 0.81, 0.215, 0.05);
+    c.fillStyle = shade(iron, 18);
+    c.fillRect(0.562, 0.705, 0.14, 0.02);
+    c.fillRect(0.562, 0.81, 0.215, 0.02);
+    c.restore();
+  },
   nuggets: (c, col) => {
     // Fat blocky nuggets of the good stuff, stacked like a hoard.
     oreChunk(c, 0.36, 0.62, 0.33, 0.12, col);
@@ -3881,6 +3955,7 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   // Enchanting reagents — dust on the nugget pile, essences on the gem.
   arcane_dust: { icon: 'dust', color: '#b8a8e0' },
   brass_key: { icon: 'key', color: '#c9a23e' },
+  dungeon_key: { icon: 'dungeonkey', color: '#8f7bd9' },
   ember_essence: { icon: 'essence', color: '#e8885c' },
   frost_essence: { icon: 'essence', color: '#b8e0f4' },
   storm_essence: { icon: 'essence', color: '#f0eab8' },

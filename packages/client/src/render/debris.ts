@@ -28,7 +28,15 @@ const BRAND_OUTLINE = '#241a2e';
 
 export const DEBRIS_CAP = 220;
 
-export type SmashKind = 'barrel' | 'crate' | 'goods' | 'chair' | 'table' | 'bench';
+export type SmashKind =
+  | 'barrel'
+  | 'crate'
+  | 'goods'
+  | 'chair'
+  | 'table'
+  | 'bench'
+  | 'bonepile'
+  | 'crackedwall';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -291,6 +299,8 @@ const CHIP_TONE: Record<SmashKind, string> = {
   chair: '#7a552e',
   table: '#9c7040',
   bench: '#9c7040',
+  bonepile: '#cfc7ae',
+  crackedwall: '#5a5370',
 };
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
@@ -383,6 +393,46 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       wood('#9c7040', 2, 0.42, 0.6, 0.13);
       for (let i = 0; i < 4; i++) {
         out.push({ len: 0.24 + rand() * 0.06, wid: 0.05, color: '#6f4d26' });
+      }
+      break;
+    }
+    case 'bonepile': {
+      // The heap comes apart the way it went together: a couple of
+      // long-bones cartwheeling, the skull dome rolling clear, and a
+      // rattle of pale shards — no stripe, bone isn't turned lumber.
+      const bones = ['#cfc7ae', '#c2b99d', '#e6dfc8', '#8b8272'];
+      for (let i = 0; i < 2 + Math.floor(rand() * 2); i++) {
+        out.push({
+          len: 0.28 + rand() * 0.14,
+          wid: 0.055,
+          color: pick(rand, bones),
+          stripe: shade('#cfc7ae', 16),
+        });
+      }
+      // The skull, flung whole — the round chunk that sells the kind.
+      out.push({ len: 0.2 + rand() * 0.05, wid: 0.2, color: '#cfc7ae', stripe: '#ddd6c0', round: true, pace: 1.2 });
+      for (let i = 0; i < 3 + Math.floor(rand() * 3); i++) {
+        out.push({ len: 0.09 + rand() * 0.07, wid: 0.05, color: pick(rand, bones) });
+      }
+      break;
+    }
+    case 'crackedwall': {
+      // The seam gives: raw cave rock in the wall's own palette —
+      // big angular chunks thrown HEAVY (low pace: they drop short
+      // and thud, stone never sails like barrel staves) plus a spray
+      // of smaller spall.
+      const rock = ['#3a3444', '#2e2937', '#4a4458', '#5a5370'];
+      for (let i = 0; i < 3 + Math.floor(rand() * 2); i++) {
+        out.push({
+          len: 0.24 + rand() * 0.16,
+          wid: 0.16 * (0.8 + rand() * 0.5),
+          color: pick(rand, rock),
+          stripe: rand() < 0.4 ? '#5a5370' : null,
+          pace: 0.65,
+        });
+      }
+      for (let i = 0; i < 4 + Math.floor(rand() * 3); i++) {
+        out.push({ len: 0.08 + rand() * 0.08, wid: 0.06, color: pick(rand, rock), pace: 0.85 });
       }
       break;
     }

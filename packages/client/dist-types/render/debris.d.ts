@@ -21,7 +21,7 @@
  * warm, and a room-clearing rampage can never grow the draw bill.
  */
 export declare const DEBRIS_CAP = 220;
-export type SmashKind = 'barrel' | 'crate' | 'goods' | 'chair' | 'table' | 'bench';
+export type SmashKind = 'barrel' | 'crate' | 'goods' | 'chair' | 'table' | 'bench' | 'bonepile' | 'crackedwall';
 export interface DebrisChunk {
     x: number;
     y: number;

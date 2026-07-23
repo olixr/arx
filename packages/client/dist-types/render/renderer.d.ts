@@ -915,6 +915,10 @@ export declare class Renderer {
      * shudders in place, spits a few short-lived chips WITH the blow,
      * and coughs a breath of dust — the "keep hitting" feedback.
      */
+    /** Dust + splinter tones per smash kind — wood props share the
+     *  joinery palette; bone bursts pale, cave rock bursts in the wall's
+     *  own stone. */
+    private static readonly SMASH_TONES;
     crackProp(wx: number, wy: number, dir: number, kind: SmashKind): void;
     smashProp(wx: number, wy: number, dir: number, kind: SmashKind): void;
     /**
