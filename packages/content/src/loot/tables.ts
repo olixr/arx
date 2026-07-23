@@ -1,6 +1,7 @@
 import { RARITY_TIERS } from '@devcraft/shared';
 import { HEIRLOOM_CHANCE } from '../equipment/tables.js';
 import { ITEMS } from '../items.js';
+import { UNLOCKABLE_RECIPES, recipeScrollId } from '../recipes.js';
 import type { LootEntryDef, LootTableDef } from './types.js';
 
 /**
@@ -640,6 +641,65 @@ const defs: LootTableDef[] = [
     ],
   },
 ];
+
+/**
+ * The recipe troves — GENERATED pick-tables over every drop-unlock
+ * recipe scroll, banded by the recipe's level so a roadside chest
+ * never spills a starsteel schematic. A trove always pays exactly one
+ * scroll (the CHEST entry carries the find-chance); within a band the
+ * humbler recipes turn up a little more often. New drop recipes join
+ * their trove without touching this file.
+ */
+function recipeTrove(id: string, desc: string, lo: number, hi: number): LootTableDef {
+  const entries: LootEntryDef[] = UNLOCKABLE_RECIPES.filter(
+    (r) => r.unlock === 'drop' && r.levelReq >= lo && r.levelReq <= hi,
+  ).map((r) => ({
+    item: recipeScrollId(r.id),
+    w: Math.max(1, Math.round(120 / Math.max(8, r.levelReq))),
+  }));
+  if (entries.length === 0) throw new Error(`recipe trove '${id}' has no recipes in [${lo}, ${hi}]`);
+  return { id, desc, mode: 'pick', entries };
+}
+
+defs.push(
+  recipeTrove(
+    'recipe_trove_field',
+    'Field lore: the forbidden brews and early found-knowledge the road hides.',
+    1,
+    39,
+  ),
+  recipeTrove(
+    'recipe_trove_vault',
+    'Vault lore: the high shelf of the working trades, under lock for a reason.',
+    40,
+    64,
+  ),
+  recipeTrove(
+    'recipe_trove_crown',
+    'Crown lore: capstone schematics and treatises the deep places keep.',
+    65,
+    200,
+  ),
+);
+
+// Every chest tier carries its rumor of lore; the deeper ladders reach
+// the higher shelves. Dungeon chests roll these same tables, so delve
+// and Gloomhollow treasure inherits the chase automatically.
+const TROVE_IN_CHESTS: Array<[chest: string, trove: string, chance: number]> = [
+  ['chest_wood', 'recipe_trove_field', 0.07],
+  ['chest_mossy', 'recipe_trove_field', 0.1],
+  ['chest_iron', 'recipe_trove_field', 0.08],
+  ['chest_iron', 'recipe_trove_vault', 0.08],
+  ['chest_gilded', 'recipe_trove_vault', 0.15],
+  ['chest_gilded', 'recipe_trove_crown', 0.05],
+  ['chest_boss', 'recipe_trove_vault', 0.15],
+  ['chest_boss', 'recipe_trove_crown', 0.15],
+];
+for (const [chest, trove, chance] of TROVE_IN_CHESTS) {
+  const t = defs.find((d) => d.id === chest);
+  if (!t) throw new Error(`trove wiring: unknown chest table '${chest}'`);
+  t.entries.push({ table: trove, chance });
+}
 
 /**
  * Structural validation — run at module load and by the JSON path, so a
