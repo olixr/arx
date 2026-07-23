@@ -79,6 +79,7 @@ import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
 import { dealWoodSkin, type WoodSkin } from './woodSkins.js';
+import { drawPortalArch, drawPortalGround, spawnPortalFx, PORTAL_PLANE } from './portal.js';
 import {
   bakeChunk,
   bakeElevated,
@@ -2187,6 +2188,21 @@ export class Renderer {
     );
     this.grass.drawUnder(this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
 
+    // The Riftgates' blighted ground: painted OVER the meadow (like a
+    // decal) so the stain visibly smothers the blades, but under the
+    // y-sorted world so bodies stand on it.
+    for (const pr of this.portalsInView) {
+      drawPortalGround(
+        this.ctx,
+        pr.tx,
+        pr.ty,
+        pr.up,
+        this.liftedWTS,
+        this.camera.scale,
+        performance.now() / 1000,
+      );
+    }
+
     // Ground-level combat FX — decals, hazard zones, and telegraphs
     // paint UNDER the y-sorted world so bodies stand on them.
     this.drawGroundFx(game);
@@ -2357,10 +2373,15 @@ export class Renderer {
    * flame-gated so man-made fire only carries the scene after dark).
    * Bloom alpha swells with darkness — fires read hotter at night.
    */
+  /** Visible Riftgates this frame — filled by the static-light scan,
+   * consumed by the blight-apron pass after the grass under-pass. */
+  private readonly portalsInView: Array<{ tx: number; ty: number; up: boolean }> = [];
+
   private collectStaticLights(
     game: ClientGame,
     bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number },
   ): void {
+    this.portalsInView.length = 0;
     const t = performance.now() / 1000;
     const flame = this.sky.flame;
     const boost = 1 + 0.8 * this.sky.darkness;
@@ -2385,9 +2406,34 @@ export class Renderer {
           this.glows.push({ x: tx + 0.5, y: ty + 0.45, r: 1.4 * pulse, rgb: '235, 150, 62', a: 0.26 * pulse * boost });
           this.lights.push({ x: tx + 0.5, y: ty + 0.7, r: 4.2, rgb: [255, 190, 120], intensity: 0.85 * flame * pulse, occlude: true });
         } else if (tile === Tile.PortalDown || tile === Tile.PortalUp) {
-          const pulse = 0.85 + Math.sin(t * 2.2 + tx) * 0.15;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.5, r: 1.5 * pulse, rgb: '164, 134, 232', a: 0.26 * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 3.6, rgb: [172, 140, 240], intensity: 0.55 * pulse, occlude: true });
+          // The Riftgate: bloom rides the vortex heart (raised off the
+          // ground — divide the squash back out, the projAir law), a
+          // second faint pool licks the blighted apron, and the light-
+          // map pulse carries the purple across the scene after dark.
+          const up = tile === Tile.PortalUp;
+          const pulse = 0.82 + Math.sin(t * 1.7 + tx * 1.3) * 0.12 + Math.sin(t * 3.9 + ty) * 0.06;
+          this.glows.push({
+            x: tx + 0.5,
+            y: ty + PORTAL_PLANE - 0.78 / this.camera.yScale,
+            r: (up ? 1.6 : 1.9) * pulse,
+            rgb: up ? '196, 176, 255' : '164, 118, 240',
+            a: 0.3 * pulse * boost,
+          });
+          this.glows.push({ x: tx + 0.5, y: ty + 0.6, r: 1.3, rgb: '122, 86, 200', a: 0.12 * boost });
+          this.lights.push({
+            x: tx + 0.5,
+            y: ty + 0.5,
+            r: 4.6 * pulse,
+            rgb: up ? [190, 170, 255] : [168, 128, 245],
+            intensity: 0.62 * pulse,
+            occlude: true,
+          });
+          // The gate breathes here too: this is the one per-frame scan
+          // that knows every visible portal, so the suction motes and
+          // blight embers spawn from it (dt-gated, a few quads/sec),
+          // and the blight-apron pass reads the list it builds.
+          spawnPortalFx(this.particles, tx, ty, up, this.frameDt);
+          this.portalsInView.push({ tx, ty, up });
         } else if (tile === Tile.LampPost) {
           const flick = 0.92 + Math.sin(t * 9 + tx * 2.3 + ty) * 0.05 + Math.sin(t * 17 + ty * 1.7) * 0.03;
           if (flame > 0.05) {
@@ -3214,7 +3260,15 @@ export class Renderer {
       for (let tx = b.minTx - 1; tx <= b.maxTx + 1; tx++) {
         const ground = game.world.groundAt(tx, ty);
         if (ground === undefined) continue;
-        if (deepSouth && !TREE_TILES.has(ground as Tile)) continue;
+        // Deep-south rows also admit portals: the Riftgate stands ~2
+        // tiles tall, so its crown pokes into view like a low tree.
+        if (
+          deepSouth &&
+          !TREE_TILES.has(ground as Tile) &&
+          ground !== Tile.PortalDown &&
+          ground !== Tile.PortalUp
+        )
+          continue;
         if (ground === Tile.Cliff) continue; // faces come from collectCliffFaces
         if (ground === Tile.Ramp) {
           items.push(this.rampItem(tx, ty, game));
@@ -3278,6 +3332,12 @@ export class Renderer {
         }
         if (ground === Tile.ArchStone) {
           const item = this.archItem(tx, ty, game);
+          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+          items.push(item);
+          continue;
+        }
+        if (ground === Tile.PortalDown || ground === Tile.PortalUp) {
+          const item = this.portalItem(tx, ty, ground === Tile.PortalUp, game);
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
@@ -4804,6 +4864,45 @@ export class Renderer {
           ctx.stroke(outline);
         }
       },
+    };
+  }
+
+  /**
+   * The Riftgate: the dungeon portal's monumental stone archway with
+   * its vortex membrane (portal.ts owns the painters). The plane sits
+   * at the tile's SOUTH edge, so a body standing on the tile sorts
+   * behind the veil — stepping onto the portal reads as being
+   * swallowed by it. Always live-painted: the vortex never sleeps, and
+   * portals are rare enough that caching would buy nothing.
+   */
+  private portalItem(tx: number, ty: number, up: boolean, game: ClientGame): DrawItem {
+    const s = this.camera.scale;
+    const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const syT = s * this.camera.yScale;
+    const yB = p.y + PORTAL_PLANE * syT + 0.12 * syT;
+    const X0 = p.x - 0.16 * s;
+    const X1 = p.x + 1.16 * s;
+    const pw = 0.26 * s;
+    return {
+      sortY: ty + PORTAL_PLANE,
+      drawShadow: () => {
+        // The piers cast like wall-ends; the open mouth casts nothing.
+        this.castEdgeQuad(X0, yB, X0 + pw, yB, 1.4);
+        this.castEdgeQuad(X1 - pw, yB, X1, yB, 1.4);
+      },
+      draw: () =>
+        drawPortalArch(this.ctx, {
+          px: p.x,
+          py: p.y,
+          s,
+          syT,
+          up,
+          t: performance.now() / 1000,
+          tx,
+          ty,
+          outline: this.outlineOn ? () => this.beginStructOutline() : null,
+        }),
     };
   }
 

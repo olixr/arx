@@ -20,6 +20,7 @@ import { zoneWeights } from './audio/zones.js';
 import { setupTouch } from './input/touch.js';
 import { itemIconUrl, uiIconUrl } from './render/icons.js';
 import { fxStyleFor } from './render/abilityFx.js';
+import { PORTAL_BURST_COLORS } from './render/portal.js';
 import { installChrome } from './ui/chrome.js';
 import { dressPanel } from './ui/panel.js';
 import { LookCreator } from './ui/lookCreator.js';
@@ -1016,10 +1017,32 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       lastBankAnchor = { tx: target.tx, ty: target.ty };
       game.interact(target.tx, target.ty); // server replies with the vault
       break;
-    case 'portal':
+    case 'portal': {
       game.interact(target.tx, target.ty);
       sfx.portal();
+      // The veil takes you: tumbling riftshards imploding around the
+      // mouth plus a flash of streaks — cover for the teleport cut.
+      const mx = target.tx + 0.5;
+      const my = target.ty + 0.55;
+      renderer.particles.burst(mx, my, 18, PORTAL_BURST_COLORS, {
+        shape: 'shard',
+        spin: 9,
+        speed: 3.2,
+        life: 0.55,
+        size: 0.09,
+        gravity: 0,
+        drag: 2.4,
+        flicker: 0.5,
+      });
+      renderer.particles.burst(mx, my - 0.4, 10, ['#f1e9ff', '#c9aeff'], {
+        shape: 'streak',
+        speed: 5,
+        life: 0.35,
+        size: 0.07,
+        gravity: 0,
+      });
       break;
+    }
     case 'shop':
       closeAllUi();
       stationPanels.openShop(target);
@@ -1205,6 +1228,9 @@ let lastFrame = performance.now();
 let fpsCounter = 0;
 let fps = 0;
 let fpsWindowStart = performance.now();
+// Riftgate earshot: throttled nearest-portal scan feeding the drone.
+let nextPortalScanAt = 0;
+let portalNear = 0;
 
 let lastOwnPose = 0;
 let padInteractWasDown = false;
@@ -1492,7 +1518,24 @@ function frame(now: number): void {
     const w = zoneWeights(own.x, own.y);
     const hours = game.clockHoursNow();
     music.update(w, hours);
-    ambience.update(own.x, own.y, w, hours, now / 1000);
+    // The Riftgate's hum: a throttled scan (2.5 Hz, ~440 tile reads)
+    // finds the nearest portal in earshot; closeness drives the drone.
+    if (now >= nextPortalScanAt) {
+      nextPortalScanAt = now + 400;
+      const cx = Math.floor(own.x);
+      const cy = Math.floor(own.y);
+      let best = Infinity;
+      for (let dy = -10; dy <= 10; dy++) {
+        for (let dx = -10; dx <= 10; dx++) {
+          const tl = game.world.groundAt(cx + dx, cy + dy);
+          if (tl === Tile.PortalDown || tl === Tile.PortalUp) {
+            best = Math.min(best, Math.hypot(cx + dx + 0.5 - own.x, cy + dy + 0.5 - own.y));
+          }
+        }
+      }
+      portalNear = best === Infinity ? 0 : Math.max(0, Math.min(1, 1 - best / 9.5));
+    }
+    ambience.update(own.x, own.y, w, hours, now / 1000, portalNear);
   }
 
   fpsCounter++;

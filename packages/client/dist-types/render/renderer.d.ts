@@ -476,6 +476,9 @@ export declare class Renderer {
      * flame-gated so man-made fire only carries the scene after dark).
      * Bloom alpha swells with darkness — fires read hotter at night.
      */
+    /** Visible Riftgates this frame — filled by the static-light scan,
+     * consumed by the blight-apron pass after the grass under-pass. */
+    private readonly portalsInView;
     private collectStaticLights;
     /**
      * Emissive bloom: campfires, furnace mouths, portals, and magic bolts
@@ -690,6 +693,15 @@ export declare class Renderer {
      * colonnades (piers on the shared edge are skipped).
      */
     private archItem;
+    /**
+     * The Riftgate: the dungeon portal's monumental stone archway with
+     * its vortex membrane (portal.ts owns the painters). The plane sits
+     * at the tile's SOUTH edge, so a body standing on the tile sorts
+     * behind the veil — stepping onto the portal reads as being
+     * swallowed by it. Always live-painted: the vortex never sleeps, and
+     * portals are rare enough that caching would buy nothing.
+     */
+    private portalItem;
     /**
      * A freestanding column: faceted plinth, tapered shaft that leans
      * with the camera, chamfered capital. Solid, walk-around, y-sorted

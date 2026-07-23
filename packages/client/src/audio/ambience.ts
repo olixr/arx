@@ -26,6 +26,13 @@
  *    drips; the ambience bus reverb makes each drip a cavern.
  *  - TOWN: a distant smithy tink now and then by day — the sound of
  *    other lives being lived somewhere behind the houses.
+ *  - RIFTGATE (near a portal): a low beating drone — detuned sine
+ *    pairs, a slow-wobbling harmonic, a hollow whistle riding on top
+ *    — that swells as the listener approaches (closeness², so it
+ *    arrives late and lands hard), plus eerie one-shot moods: warped
+ *    whines glissing up or down and the occasional deep womp, exactly
+ *    the "distant otherworld" register of a Minecraft portal. All
+ *    oscillators — the noise-bed ban holds here too.
  *
  * All scheduling is wall-clock ctx time; the per-frame update only
  * nudges gain targets (throttled to 10 Hz) and rolls dice for the
@@ -50,12 +57,19 @@ export class AmbienceSystem {
   private nextTownAt = 0;
   private nextDoveAt = 0;
   private nextPeckAt = 0;
+  private portalGain: GainNode | null = null;
+  private nextPortalMoodAt = 0;
   /** Debug mirrors for live verification. */
-  gates = { wind: 0, birds: 0, crickets: 0, cave: 0 };
+  gates = { wind: 0, birds: 0, crickets: 0, cave: 0, portal: 0 };
 
   constructor(private engine: AudioEngine) {}
 
-  update(x: number, y: number, w: ZoneWeights, hours: number, tSec: number): void {
+  /**
+   * `portalNear` is 0..1 closeness to the nearest Riftgate (0 beyond
+   * hearing range) — main.ts scans for it on a throttle and feeds it
+   * through here.
+   */
+  update(x: number, y: number, w: ZoneWeights, hours: number, tSec: number, portalNear = 0): void {
     const ctx = this.engine.ctx;
     const bus = this.engine.ambience;
     if (!ctx || !bus) return;
@@ -82,7 +96,17 @@ export class AmbienceSystem {
       this.rumbleGain!.gain.setTargetAtTime(w.cave * 0.1, t, 0.8);
       const cr = night * outdoor * 0.038;
       for (const g of this.cricketGains) g.gain.setTargetAtTime(cr, t, 0.6);
-      this.gates = { wind: windLevel, birds: day * outdoor, crickets: night * outdoor, cave: w.cave };
+      // The Riftgate drone: closeness² so it fades in late and swells
+      // hard at the threshold — you HEAR when you've entered its yard.
+      const pg = portalNear * portalNear * 0.1;
+      this.portalGain!.gain.setTargetAtTime(pg, t, 0.5);
+      this.gates = {
+        wind: windLevel,
+        birds: day * outdoor,
+        crickets: night * outdoor,
+        cave: w.cave,
+        portal: pg,
+      };
     }
 
     // ---- one-shots.
@@ -115,6 +139,10 @@ export class AmbienceSystem {
     if (t >= this.nextPeckAt) {
       if (day * outdoor * w.wild > 0.3) this.woodpecker(ctx, bus, t);
       this.nextPeckAt = t + 35 + Math.random() * 45;
+    }
+    if (t >= this.nextPortalMoodAt) {
+      if (portalNear > 0.2) this.portalMood(ctx, bus, t, portalNear);
+      this.nextPortalMoodAt = t + 2.8 + Math.random() * 5;
     }
   }
 
@@ -167,6 +195,45 @@ export class AmbienceSystem {
     rlp.connect(this.rumbleGain);
     this.rumbleGain.connect(bus);
     rumble.start();
+
+    // The Riftgate drone: three voices under one gate, all oscillators.
+    //  - a beating sub pair (64 / 64.7 Hz — the ~0.7 Hz beat is the
+    //    "presence" you feel before you name it);
+    //  - a third-harmonic shimmer whose detune wanders on a slow LFO;
+    //  - a hollow whistle far above, vibrato-wobbled, barely there —
+    //    the eerie edge that says "this hum is not machinery".
+    this.portalGain = ctx.createGain();
+    this.portalGain.gain.value = 0;
+    this.portalGain.connect(bus);
+    const droneVoice = (freq: number, type: OscillatorType, level: number): OscillatorNode => {
+      const o = ctx.createOscillator();
+      o.type = type;
+      o.frequency.value = freq;
+      const g = ctx.createGain();
+      g.gain.value = level;
+      o.connect(g);
+      g.connect(this.portalGain!);
+      o.start();
+      return o;
+    };
+    droneVoice(64, 'sine', 1);
+    droneVoice(64.7, 'sine', 0.85);
+    const harm = droneVoice(193, 'sine', 0.3);
+    const wobble = ctx.createOscillator();
+    wobble.frequency.value = 0.13;
+    const wobbleAmt = ctx.createGain();
+    wobbleAmt.gain.value = 11; // cents of wander
+    wobble.connect(wobbleAmt);
+    wobbleAmt.connect(harm.detune);
+    wobble.start();
+    const whistle = droneVoice(431, 'triangle', 0.09);
+    const vib = ctx.createOscillator();
+    vib.frequency.value = 0.31;
+    const vibAmt = ctx.createGain();
+    vibAmt.gain.value = 28;
+    vib.connect(vibAmt);
+    vibAmt.connect(whistle.detune);
+    vib.start();
 
     // Two cricket carriers: gated sines, panned left and right of the
     // listener; bursts modulate per-voice gain on top of the night gate.
@@ -386,6 +453,61 @@ export class AmbienceSystem {
     g.connect(pan);
     o.start(t);
     o.stop(t + 0.12);
+  }
+
+  /**
+   * A Riftgate mood: mostly a warped whine — a sine gliss bending up
+   * or down through a dark filter, doubled a few cents off so the pair
+   * phases as it moves — and now and then a deep womp from somewhere
+   * inside the gate. Panned wide at random; louder the closer you are.
+   */
+  private portalMood(ctx: AudioContext, bus: GainNode, t: number, near: number): void {
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = (Math.random() * 2 - 1) * 0.75;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1500;
+    lp.Q.value = 0.5;
+    lp.connect(pan);
+    pan.connect(bus);
+
+    if (Math.random() < 0.32) {
+      // The womp: a pressure swell falling into the sub.
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(96, t);
+      o.frequency.exponentialRampToValueAtTime(44, t + 0.5);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.06 * near, t + 0.06);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+      o.connect(g);
+      g.connect(lp);
+      o.start(t);
+      o.stop(t + 0.6);
+      return;
+    }
+    // The whine: up or down, never the same twice.
+    const f0 = 260 + Math.random() * 620;
+    const ratio = Math.random() < 0.5 ? 0.42 + Math.random() * 0.25 : 1.6 + Math.random() * 0.9;
+    const dur = 0.5 + Math.random() * 0.7;
+    const vol = (0.02 + 0.045 * near) * (0.7 + Math.random() * 0.5);
+    for (const cents of [0, 9]) {
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.detune.value = cents;
+      o.frequency.setValueAtTime(f0, t);
+      o.frequency.exponentialRampToValueAtTime(f0 * ratio, t + dur);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.09);
+      g.gain.setValueAtTime(vol, t + dur * 0.55);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g);
+      g.connect(lp);
+      o.start(t);
+      o.stop(t + dur + 0.05);
+    }
   }
 
   /** A far-off hammer on a far-off anvil: Bramblewick at work. */

@@ -201,9 +201,24 @@ export class Sfx {
     this.noise(0.5, 0.045, chordAt, { band: 5200 });
   }
 
+  /**
+   * Stepping through the Riftgate — a dimensional plunge, not a blip:
+   * the deep mouth swallows (a falling sub womp), the veil tears (a
+   * focused hiss of air), and a doubled shimmer climbs out the far
+   * side with a sparkle landing on top. ~0.9s, sized to the swallow.
+   */
   portal(): void {
-    this.tone(220, 0.4, { type: 'sine', slide: 440, volume: 0.3 });
-    this.tone(140, 0.4, { type: 'sine', slide: 260, volume: 0.25, delay: 0.05 });
+    // The swallow: a sub-heavy womp folding downward.
+    this.tone(150, 0.5, { type: 'sine', slide: -95, volume: 0.5 });
+    this.tone(78, 0.62, { type: 'sine', slide: -32, volume: 0.34, delay: 0.04 });
+    // The veil tearing: bright air, band-focused so it hisses, not static.
+    this.noise(0.34, 0.16, 0.02, { band: 2400 });
+    // The shimmer through: two staggered glisses rising past each other.
+    this.tone(340, 0.45, { type: 'triangle', slide: 620, volume: 0.15, delay: 0.1 });
+    this.tone(520, 0.42, { type: 'triangle', slide: 940, volume: 0.11, delay: 0.2 });
+    // Arrival glitter on the far side.
+    this.tone(1320, 0.18, { type: 'triangle', volume: 0.08, delay: 0.42, detune: false });
+    this.tone(1760, 0.22, { type: 'triangle', volume: 0.06, delay: 0.54, detune: false });
   }
 
   death(): void {

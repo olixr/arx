@@ -26,6 +26,13 @@
  *    drips; the ambience bus reverb makes each drip a cavern.
  *  - TOWN: a distant smithy tink now and then by day — the sound of
  *    other lives being lived somewhere behind the houses.
+ *  - RIFTGATE (near a portal): a low beating drone — detuned sine
+ *    pairs, a slow-wobbling harmonic, a hollow whistle riding on top
+ *    — that swells as the listener approaches (closeness², so it
+ *    arrives late and lands hard), plus eerie one-shot moods: warped
+ *    whines glissing up or down and the occasional deep womp, exactly
+ *    the "distant otherworld" register of a Minecraft portal. All
+ *    oscillators — the noise-bed ban holds here too.
  *
  * All scheduling is wall-clock ctx time; the per-frame update only
  * nudges gain targets (throttled to 10 Hz) and rolls dice for the
@@ -48,15 +55,23 @@ export declare class AmbienceSystem {
     private nextTownAt;
     private nextDoveAt;
     private nextPeckAt;
+    private portalGain;
+    private nextPortalMoodAt;
     /** Debug mirrors for live verification. */
     gates: {
         wind: number;
         birds: number;
         crickets: number;
         cave: number;
+        portal: number;
     };
     constructor(engine: AudioEngine);
-    update(x: number, y: number, w: ZoneWeights, hours: number, tSec: number): void;
+    /**
+     * `portalNear` is 0..1 closeness to the nearest Riftgate (0 beyond
+     * hearing range) — main.ts scans for it on a throttle and feeds it
+     * through here.
+     */
+    update(x: number, y: number, w: ZoneWeights, hours: number, tSec: number, portalNear?: number): void;
     private build;
     /**
      * Pre-render the leaf texture: white noise multiplied by a granular
@@ -83,6 +98,13 @@ export declare class AmbienceSystem {
     private cricketBurst;
     /** A single water drip somewhere off in the dark. */
     private drip;
+    /**
+     * A Riftgate mood: mostly a warped whine — a sine gliss bending up
+     * or down through a dark filter, doubled a few cents off so the pair
+     * phases as it moves — and now and then a deep womp from somewhere
+     * inside the gate. Panned wide at random; louder the closer you are.
+     */
+    private portalMood;
     /** A far-off hammer on a far-off anvil: Bramblewick at work. */
     private townTink;
 }

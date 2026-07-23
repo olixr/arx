@@ -213,11 +213,9 @@ export function buildBramblewick(): ZoneDef {
   b.set(56, 37, Tile.RockIron);
   b.set(58, 36, Tile.RockTin);
   b.set(58, 37, Tile.RockTin);
-  b.set(59, 35, Tile.Rock);
-
-  // The mouth of Gloomhollow Cave, framed in rock.
-  b.set(58, 33, Tile.Rock);
-  b.set(60, 33, Tile.Rock);
+  // The Riftgate to Gloomhollow: the archway frames itself (plinth +
+  // blight apron live in the portal art), so the yard stays clear —
+  // the old flat cave-mouth's rock framing crowded the monument.
   b.portal(59, 33, Tile.PortalDown, GLOOMHOLLOW_ENTRY);
   b.set(38, 56, Tile.Rock);
   b.set(59, 64, Tile.RockCopper);

@@ -2227,9 +2227,10 @@ export function drawLiveGround(
             }
           }
         }
-      } else if (tile === Tile.PortalDown || tile === Tile.PortalUp) {
-        drawPortal(ctx, tx, ty, tile === Tile.PortalUp, worldToScreen, s, t);
       }
+      // (Portals are no longer painted here: the Riftgate's blight
+      // apron must smother the meadow, so it draws AFTER the grass
+      // under-pass — see renderer.drawPortalGrounds / portal.ts.)
     }
   }
   bk.flush(ctx, s);
@@ -2461,44 +2462,3 @@ function drawShorelines(
 }
 
 
-function drawPortal(
-  ctx: CanvasRenderingContext2D,
-  tx: number,
-  ty: number,
-  up: boolean,
-  worldToScreen: (wx: number, wy: number) => { x: number; y: number },
-  s: number,
-  t: number,
-): void {
-  const p = worldToScreen(tx + 0.5, ty + 0.5);
-  const base = up ? '#b8a5e8' : '#7a68b0';
-  // Dark pool.
-  ctx.fillStyle = up ? 'rgba(65, 56, 98, 0.9)' : 'rgba(26, 22, 38, 0.9)';
-  ctx.beginPath();
-  ctx.ellipse(p.x, p.y, s * 0.4, s * 0.32, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Rotating spiral arms.
-  ctx.strokeStyle = base;
-  ctx.lineWidth = Math.max(1.5, s * 0.06);
-  ctx.lineCap = 'round';
-  for (let arm = 0; arm < 3; arm++) {
-    const a0 = t * 1.4 + (arm * Math.PI * 2) / 3;
-    ctx.beginPath();
-    for (let i = 0; i <= 8; i++) {
-      const f = i / 8;
-      const ang = a0 + f * 2.2;
-      const rad = (0.06 + f * 0.28) * s;
-      const x = p.x + Math.cos(ang) * rad;
-      const y = p.y + Math.sin(ang) * rad * 0.8;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-  }
-  ctx.lineCap = 'butt';
-  // Center glow dot.
-  ctx.fillStyle = '#efe3ff';
-  ctx.beginPath();
-  ctx.arc(p.x, p.y, s * 0.05 + Math.sin(t * 3) * s * 0.015, 0, Math.PI * 2);
-  ctx.fill();
-}

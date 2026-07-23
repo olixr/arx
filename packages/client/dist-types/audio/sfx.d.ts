@@ -43,6 +43,12 @@ export declare class Sfx {
      * the world show (~5.6s of pillar and rings) without overstaying.
      */
     levelUp(): void;
+    /**
+     * Stepping through the Riftgate — a dimensional plunge, not a blip:
+     * the deep mouth swallows (a falling sub womp), the veil tears (a
+     * focused hiss of air), and a doubled shimmer climbs out the far
+     * side with a sparkle landing on top. ~0.9s, sized to the swallow.
+     */
     portal(): void;
     death(): void;
     crit(): void;
