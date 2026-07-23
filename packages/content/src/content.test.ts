@@ -22,7 +22,9 @@ import { LOOT_TABLES } from './loot/tables.js';
 import { RECIPES } from './recipes.js';
 import { NODES } from './nodes.js';
 import { BUILDABLES } from './buildables.js';
-import { GENERAL_STORE } from './shop.js';
+import { GENERAL_STORE, SHOPS } from './shop.js';
+import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
+import { NPC_ACTORS } from './actors/registry.js';
 import {
   CROPS,
   CROP_BY_SEED,
@@ -519,6 +521,66 @@ test('foraging nodes, buildables, and shop stock resolve', () => {
   }
   for (const entry of GENERAL_STORE) {
     assert.ok(ITEMS.has(entry.item), `shop '${entry.item}' missing`);
+  }
+  for (const shop of SHOPS.values()) {
+    assert.ok(shop.stock.length > 0, `shop '${shop.id}' has an empty shelf`);
+    for (const entry of shop.stock) {
+      assert.ok(ITEMS.has(entry.item), `shop '${shop.id}': '${entry.item}' missing`);
+      assert.ok(entry.price > 0, `shop '${shop.id}': '${entry.item}' has no price`);
+    }
+  }
+});
+
+/**
+ * THE RECIPE IS KNOWLEDGE — acquisition honesty. Every unlockable
+ * recipe has a scroll that teaches it; every trainer scroll is on a
+ * shelf somewhere; every drop scroll is reachable in a loot table;
+ * and neither route leaks into the other. Core recipes never get
+ * scrolls — everyone already knows them.
+ */
+test('recipe unlocks are honest: scrolls exist, shelves and troves cover them', () => {
+  // Which items each acquisition route can actually pay out.
+  const shelved = new Set<string>();
+  for (const shop of SHOPS.values()) for (const e of shop.stock) shelved.add(e.item);
+  const lootable = new Set<string>();
+  for (const t of LOOT_TABLES.values()) {
+    for (const e of t.entries) if (e.item) lootable.add(e.item);
+  }
+
+  for (const r of RECIPES.values()) {
+    const scroll = recipeScrollId(r.id);
+    if (r.unlock === 'core') {
+      assert.ok(!ITEMS.has(scroll), `core recipe '${r.id}' should not have a scroll`);
+      continue;
+    }
+    const def = ITEMS.get(scroll);
+    assert.ok(def, `unlockable recipe '${r.id}' has no scroll item`);
+    assert.equal(def!.teaches, r.id, `scroll '${scroll}' teaches the wrong recipe`);
+    if (r.unlock === 'trainer') {
+      assert.ok(shelved.has(scroll), `trainer recipe '${r.id}' is on no shop shelf`);
+      assert.ok(!lootable.has(scroll), `trainer recipe '${r.id}' leaked into loot`);
+    } else {
+      assert.ok(lootable.has(scroll), `drop recipe '${r.id}' is in no loot table`);
+      assert.ok(!shelved.has(scroll), `drop recipe '${r.id}' leaked onto a shelf`);
+    }
+  }
+  // Every teaches pointer resolves to a real, non-core recipe.
+  for (const def of ITEMS.values()) {
+    if (!def.teaches) continue;
+    const r = RECIPES.get(def.teaches);
+    assert.ok(r, `item '${def.id}' teaches unknown recipe '${def.teaches}'`);
+    assert.notEqual(r!.unlock, 'core', `item '${def.id}' teaches a core recipe`);
+  }
+  // Every shop an actor advertises exists; every trainer shop has a keeper.
+  const carried = new Set<string>();
+  for (const actor of NPC_ACTORS.values()) {
+    if (!actor.shop) continue;
+    assert.ok(SHOPS.has(actor.shop), `actor '${actor.id}' advertises unknown shop '${actor.shop}'`);
+    carried.add(actor.shop);
+  }
+  for (const shop of SHOPS.values()) {
+    if (shop.id === 'general_store') continue; // the counter tile serves it too
+    assert.ok(carried.has(shop.id), `shop '${shop.id}' has no actor to keep it`);
   }
 });
 
