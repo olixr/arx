@@ -18806,6 +18806,10 @@ export class Renderer {
 
   private drawHpBar(game: ClientGame): void {
     if (game.ownEid === null) return;
+    // A cinematic owns the frame: the gauge bows out with the HUD
+    // (it pokes over the letterbox otherwise — nothing may compete
+    // with the scene).
+    if (this.cineEid !== null) return;
     const ctx = this.ctx;
     const bw = Math.min(260, this.w * 0.36);
     const bh = 14;

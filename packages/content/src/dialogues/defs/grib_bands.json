@@ -1,18 +1,17 @@
 {
   "id": "grib_bands",
-  "actor": "grib",
   "start": "flinch",
-  "priority": 10,
   "once": true,
+  "bindings": [{ "kind": "actor", "target": "grib", "priority": 10 }],
   "nodes": [
     {
       "id": "flinch",
-      "text": "Wait! Wait. No stabbing. Grib is unbanded — see? No war-paint, no band. Just Grib.",
+      "text": "Wait! Wait. No stabbing. Grib is *unbanded* — see? No war-paint, no band. Just Grib.",
       "next": "ask"
     },
     {
       "id": "ask",
-      "text": "The camps would take Grib back if Grib brought them your boots. Grib does not want your boots. Grib wants... a town. Maybe a friend?",
+      "text": "The camps would take Grib back if Grib brought them your boots. Grib does not want your boots. Grib wants... a town. Maybe a *friend*?",
       "choices": [
         { "text": "Bramblewick can be your home too, Grib.", "next": "warm_end", "set": ["grib_friend"] },
         { "text": "I'll be watching you, goblin.", "next": "wary_end", "set": ["grib_wary"] }
@@ -20,11 +19,11 @@
     },
     {
       "id": "warm_end",
-      "text": "Home! Grib will remember this. Grib remembers everything — every kindness, every crumb. You will see!"
+      "text": "*Home!* Grib will remember this. Grib remembers everything — every kindness, every crumb. You will see!"
     },
     {
       "id": "wary_end",
-      "text": "Yes... watching. Everyone watches Grib. But Grib will show you. Grib is patient like stone."
+      "text": "Yes... watching. Everyone watches Grib. But Grib will show you. Grib is _patient like stone_."
     }
   ]
 }

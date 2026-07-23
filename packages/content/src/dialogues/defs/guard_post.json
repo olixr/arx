@@ -1,7 +1,7 @@
 {
   "id": "guard_post",
-  "actor": "bramblewick_gate_guard",
   "start": "halt",
+  "bindings": [{ "kind": "actor", "target": "bramblewick_gate_guard" }],
   "nodes": [
     {
       "id": "halt",
@@ -13,7 +13,7 @@
     },
     {
       "id": "report",
-      "text": "Quiet shift — the kind we like. If the Riftgate ever starts singing instead of humming, that changes fast."
+      "text": "Quiet shift — the kind we like. _If the Riftgate ever starts singing instead of humming, that changes fast._"
     },
     {
       "id": "carry",

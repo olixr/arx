@@ -1,18 +1,17 @@
 {
   "id": "maren_welcome",
-  "actor": "old_maren",
   "start": "greet",
-  "priority": 10,
   "once": true,
+  "bindings": [{ "kind": "actor", "target": "old_maren", "priority": 10 }],
   "nodes": [
     {
       "id": "greet",
-      "text": "Well now. A new face in Bramblewick — and the road still on your boots. Come here, let me look at you.",
+      "text": "Well now. A *new face* in Bramblewick — and the road still on your boots. Come here, let me look at you.",
       "next": "look"
     },
     {
       "id": "look",
-      "text": "Mm. Bright eyes. Strong hands. The town could use both. I'm Maren — folk say Old Maren, and they're not wrong.",
+      "text": "Mm. Bright eyes. Strong hands. The town could use both. I'm *Maren* — folk say Old Maren, and they're not wrong.",
       "next": "hub"
     },
     {
@@ -26,12 +25,12 @@
     },
     {
       "id": "about",
-      "text": "Bramblewick. Quiet town, loud history. Farms to the west, a deep cave northeast, and that Riftgate humming away like it pays rent. We manage.",
+      "text": "Bramblewick. Quiet town, loud history. Farms to the west, a deep cave northeast, and that Riftgate humming away like it pays rent. The elders say this plaza was a battlefield once — that the well was dug to give the fallen something sweet to remember. I say the elders enjoy scaring the young. Still... _some nights the Riftgate hums a note nobody taught it_, and I keep my shutters latched. We manage.",
       "next": "hub"
     },
     {
       "id": "advice",
-      "text": "Speak with Captain Alda at the north arch — tell her Maren sent you. She growls, but she keeps this town breathing. And keep bread in your pack; heroics run on crumbs.",
+      "text": "Speak with *Captain Alda* at the north arch — tell her Maren sent you. She growls, but she keeps this town breathing. And keep bread in your pack; heroics run on crumbs.",
       "next": "gift"
     },
     {
@@ -41,7 +40,7 @@
     },
     {
       "id": "gift",
-      "text": "Take these loaves. Fresh this morning, more or less. Now off with you — the world doesn't wait politely.",
+      "text": "Take these — {item:bread}, fresh this morning, more or less. Now off with you — the world doesn't wait politely.",
       "hooks": [{ "kind": "give", "item": "bread", "qty": 2 }]
     }
   ]

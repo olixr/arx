@@ -60,25 +60,36 @@ export function dialogueEligible(def: DialogueDef, has: (flag: string) => boolea
 }
 
 /**
- * The voice an actor answers with: the highest-priority eligible def
- * (ties broken by id, so the pick is deterministic). PURE — the server
- * calls this with its DB-loaded defs and each player's flag set, and
- * dev tools can preview "what would they say?" with any flags at all.
+ * One target's menu entry: a bound tree and the priority its binding
+ * carries THERE (the same tree may be a headline on one target and a
+ * fallback on another).
+ */
+export interface DialogueOffer {
+  def: DialogueDef;
+  priority: number;
+}
+
+/**
+ * The voice a target answers with: the highest-priority eligible
+ * offer (ties broken by id, so the pick is deterministic). PURE — the
+ * server calls this with its DB-loaded bindings and each player's
+ * flag set, and dev tools can preview "what would they say?" with any
+ * flags at all.
  */
 export function pickDialogue(
-  defs: readonly DialogueDef[],
+  offers: readonly DialogueOffer[],
   has: (flag: string) => boolean,
 ): DialogueDef | null {
-  let best: DialogueDef | null = null;
-  for (const def of defs) {
-    if (!dialogueEligible(def, has)) continue;
+  let best: DialogueOffer | null = null;
+  for (const offer of offers) {
+    if (!dialogueEligible(offer.def, has)) continue;
     if (
       !best ||
-      (def.priority ?? 0) > (best.priority ?? 0) ||
-      ((def.priority ?? 0) === (best.priority ?? 0) && def.id < best.id)
+      offer.priority > best.priority ||
+      (offer.priority === best.priority && offer.def.id < best.def.id)
     ) {
-      best = def;
+      best = offer;
     }
   }
-  return best;
+  return best?.def ?? null;
 }

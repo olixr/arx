@@ -95,6 +95,7 @@ import {
   type DialogueDef,
   type DialogueHook,
   type DialogueNode,
+  type DialogueOffer,
   type NodeDef,
   type NpcActorDef,
   type NpcDef,
@@ -658,10 +659,20 @@ export class GameServer {
   /** Actor definitions by slug — loaded from the DB at boot (DB-first). */
   private readonly actorDefs = new Map<string, NpcActorDef>();
   private readonly actorSpawnPoints: ActorSpawnState[] = [];
-  /** Dialogue defs by owning actor slug — loaded from the DB at boot. */
-  private readonly dialoguesByActor = new Map<string, DialogueDef[]>();
+  /**
+   * Dialogue offers by bound actor slug — assembled from the BINDINGS
+   * of DB-loaded trees. The tree stands alone; only bindings put words
+   * in a mouth (props and objects will index here under new kinds).
+   */
+  private readonly dialoguesByActor = new Map<string, DialogueOffer[]>();
   /** Node lookup per dialogue id, built once at registration. */
   private readonly dialogueNodes = new Map<string, ReadonlyMap<string, DialogueNode>>();
+  /**
+   * Re-reads dialogues from the DB (wired by index.ts at boot). The
+   * tooling edits rows, then /dlgreload swaps the live registry — no
+   * restart between an edit and hearing it spoken.
+   */
+  dialogueSource: (() => { dialogues: DialogueDef[]; errors: string[] }) | null = null;
 
   private readonly sessions = new Set<Session>();
   /** In-world players by character id (blocks duplicate logins). */
@@ -882,19 +893,23 @@ export class GameServer {
   }
 
   /**
-   * Register dialogue trees (DB-loaded, already validated). Call after
-   * registerActors — a conversation without its speaker is an error.
+   * Register dialogue trees (DB-loaded, already validated) and index
+   * their bindings. Call after registerActors — a binding without its
+   * target is a warning, not a wire.
    */
   registerDialogues(defs: Iterable<DialogueDef>): void {
     for (const def of defs) {
-      if (!this.actorDefs.has(def.actor)) {
-        console.warn(`[npc] dialogue '${def.id}' names unknown actor '${def.actor}' — skipped`);
-        continue;
-      }
-      const list = this.dialoguesByActor.get(def.actor) ?? [];
-      list.push(def);
-      this.dialoguesByActor.set(def.actor, list);
       this.dialogueNodes.set(def.id, new Map(def.nodes.map((n) => [n.id, n])));
+      for (const b of def.bindings ?? []) {
+        if (b.kind !== 'actor') continue; // future kinds index elsewhere
+        if (!this.actorDefs.has(b.target)) {
+          console.warn(`[npc] dialogue '${def.id}' binds unknown actor '${b.target}' — skipped`);
+          continue;
+        }
+        const list = this.dialoguesByActor.get(b.target) ?? [];
+        list.push({ def, priority: b.priority ?? 0 });
+        this.dialoguesByActor.set(b.target, list);
+      }
     }
   }
 
@@ -2809,12 +2824,18 @@ export class GameServer {
     dlg.choices = eligible;
     const last = node.next === undefined && eligible.length === 0;
     if (last) this.setPlayerFlag(player, dialogueDoneFlag(dlg.def.id));
+    // Gifts ride the beat itself so the cinema can stage the moment —
+    // the pack update travels separately (runDialogueHook already sent it).
+    const gifts = (node.hooks ?? [])
+      .filter((h): h is Extract<DialogueHook, { kind: 'give' }> => h.kind === 'give')
+      .map((h) => ({ item: h.item, qty: h.qty }));
     player.session.sendJson({
       t: 'dlgnode',
       speaker: node.speaker ?? 'npc',
       text: node.text,
       choices: eligible.length > 0 ? eligible.map((c) => c.text) : undefined,
       last: last || undefined,
+      gifts: gifts.length > 0 ? gifts : undefined,
     });
   }
 
@@ -5923,6 +5944,23 @@ export class GameServer {
       }
       this.spawnActor(actor, x, y, -1);
       player.session?.sendJson({ t: 'chat', channel: 'system', text: `Spawned ${actor.name}.` });
+      return;
+    }
+    if (config.devCommands && text.startsWith('/dlgreload')) {
+      // /dlgreload — swap in the DB's current dialogues, live. Open
+      // conversations keep their old tree (their walk holds a ref);
+      // the next talk speaks the new truth.
+      if (!this.dialogueSource) return;
+      const fresh = this.dialogueSource();
+      this.dialoguesByActor.clear();
+      this.dialogueNodes.clear();
+      this.registerDialogues(fresh.dialogues);
+      const errs = fresh.errors.length > 0 ? `, ${fresh.errors.length} invalid` : '';
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `Dialogues reloaded: ${fresh.dialogues.length}${errs}.`,
+      });
       return;
     }
     if (config.devCommands && text.startsWith('/flagreset')) {

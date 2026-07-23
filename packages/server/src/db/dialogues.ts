@@ -2,26 +2,51 @@ import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import {
   validateDialogue,
+  type DialogueBinding,
   type DialogueChoice,
   type DialogueDef,
   type DialogueNode,
 } from '@devcraft/content';
 
 /**
- * Dialogue trees, DB-first: the relational tables (migration 19) are
- * what the server reads at boot and what dev tools will edit. Authored
- * JSON in content/dialogues/defs is the SEED — syncDialogues
- * reconciles it in on every boot (content-as-code wins), hashing each
- * def so unchanged trees cost one indexed SELECT and no writes.
+ * Dialogues in the database — THE DATABASE IS THE TRUTH.
  *
- * loadDialogues reassembles rows into the exact JSON interchange shape
- * and runs them back through validateDialogue — the one validator
- * guards the DB path the same as the authoring path.
+ * The relational tables (migration 20) are what the game reads and
+ * what internal tooling edits. The shipped JSON (content/dialogues/
+ * defs) is the SEED and the import/export envelope, nothing more.
+ *
+ * Every row carries two hashes:
+ *   content_hash   what the row holds right now
+ *   authored_hash  the shipped JSON that last seeded it (NULL = the
+ *                  row was born in the tooling, no shipped twin)
+ *
+ * seedDialogues resolves the three honest states per shipped def:
+ *   new          → insert (both hashes = the def's hash)
+ *   pure seed    → content_hash == authored_hash: the tooling never
+ *                  touched it, so newer shipped JSON flows through
+ *   tool-owned   → the hashes diverged: the DB wins, permanently.
+ *                  We still record the new authored_hash so the def
+ *                  isn't re-considered every boot — divergence stays
+ *                  divergent either way.
+ * Pruning is equally respectful: only PURE SEEDS whose shipped file
+ * vanished are removed. Tool-created and tool-edited rows are never
+ * deleted by a seed pass.
+ *
+ * exportDialogue/importDialogue are the managerial envelope: export
+ * emits the exact interchange JSON; import is a TOOL WRITE (content
+ * hash moves, authored hash doesn't), so an imported edit is owned by
+ * the DB like any other tool edit.
+ *
+ * loadDialogues reassembles rows into the interchange shape and runs
+ * them back through validateDialogue — the one validator guards the
+ * DB path the same as the authoring path.
  */
 
-export interface DialogueSyncResult {
+export interface DialogueSeedResult {
   added: number;
   updated: number;
+  /** Tool-owned rows a changed seed respectfully left alone. */
+  kept: number;
   removed: number;
   unchanged: number;
 }
@@ -50,6 +75,9 @@ function insertChildren(db: DatabaseSync, def: DialogueDef): void {
       (dialogue_id, node_id, idx, text, next_node, requires, forbids, set_flags)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
+  const binding = db.prepare(
+    'INSERT INTO dialogue_bindings (dialogue_id, kind, target, priority) VALUES (?, ?, ?, ?)',
+  );
   def.nodes.forEach((n, i) => {
     node.run(def.id, n.id, i, n.speaker ?? null, n.text, n.next ?? null, packList(n.hooks));
     (n.choices ?? []).forEach((c, j) => {
@@ -65,71 +93,86 @@ function insertChildren(db: DatabaseSync, def: DialogueDef): void {
       );
     });
   });
+  (def.bindings ?? []).forEach((b) => binding.run(def.id, b.kind, b.target, b.priority ?? 0));
 }
 
 function deleteChildren(db: DatabaseSync, id: string): void {
   db.prepare('DELETE FROM dialogue_nodes WHERE dialogue_id = ?').run(id);
   db.prepare('DELETE FROM dialogue_choices WHERE dialogue_id = ?').run(id);
+  db.prepare('DELETE FROM dialogue_bindings WHERE dialogue_id = ?').run(id);
 }
 
-/** Reconcile authored defs into the DB. Content is the source of truth. */
-export function syncDialogues(
+/** Write one def's rows wholesale (caller decides the hash columns). */
+function writeDef(
+  db: DatabaseSync,
+  def: DialogueDef,
+  contentHash: string,
+  authoredHash: string | null,
+): void {
+  db.prepare(
+    `INSERT INTO dialogues (id, start_node, once, requires, forbids, content_hash, authored_hash, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       start_node = excluded.start_node, once = excluded.once,
+       requires = excluded.requires, forbids = excluded.forbids,
+       content_hash = excluded.content_hash, authored_hash = excluded.authored_hash,
+       updated_at = excluded.updated_at`,
+  ).run(
+    def.id,
+    def.start,
+    def.once ? 1 : 0,
+    packList(def.requires),
+    packList(def.forbids),
+    contentHash,
+    authoredHash,
+    Date.now(),
+  );
+  deleteChildren(db, def.id);
+  insertChildren(db, def);
+}
+
+/** Seed shipped defs into the DB without ever clobbering tool work. */
+export function seedDialogues(
   db: DatabaseSync,
   defs: readonly DialogueDef[],
-): DialogueSyncResult {
-  const result: DialogueSyncResult = { added: 0, updated: 0, removed: 0, unchanged: 0 };
+): DialogueSeedResult {
+  const result: DialogueSeedResult = { added: 0, updated: 0, kept: 0, removed: 0, unchanged: 0 };
   db.exec('BEGIN');
   try {
-    const existing = new Map<string, string>();
-    for (const row of db.prepare('SELECT id, content_hash FROM dialogues').all() as Array<{
-      id: string;
-      content_hash: string;
-    }>) {
-      existing.set(row.id, row.content_hash);
+    const existing = new Map<string, { content: string; authored: string | null }>();
+    for (const row of db
+      .prepare('SELECT id, content_hash, authored_hash FROM dialogues')
+      .all() as Array<{ id: string; content_hash: string; authored_hash: string | null }>) {
+      existing.set(row.id, { content: row.content_hash, authored: row.authored_hash });
     }
-
-    const now = Date.now();
-    const upsert = db.prepare(
-      `INSERT INTO dialogues
-        (id, actor_slug, start_node, priority, once, requires, forbids, content_hash, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET
-         actor_slug = excluded.actor_slug, start_node = excluded.start_node,
-         priority = excluded.priority, once = excluded.once,
-         requires = excluded.requires, forbids = excluded.forbids,
-         content_hash = excluded.content_hash, updated_at = excluded.updated_at`,
-    );
 
     for (const def of defs) {
       const hash = dialogueHash(def);
-      const prev = existing.get(def.id);
+      const row = existing.get(def.id);
       existing.delete(def.id);
-      if (prev === hash) {
-        result.unchanged++;
-        continue;
+      if (!row) {
+        writeDef(db, def, hash, hash);
+        result.added++;
+      } else if (row.authored === hash) {
+        result.unchanged++; // this exact JSON already seeded it
+      } else if (row.content === row.authored) {
+        writeDef(db, def, hash, hash); // pure seed: the new JSON flows through
+        result.updated++;
+      } else {
+        // Tool-owned: the DB wins. Note the new authored hash so this
+        // def isn't re-weighed every boot; the divergence remains.
+        db.prepare('UPDATE dialogues SET authored_hash = ? WHERE id = ?').run(hash, def.id);
+        result.kept++;
       }
-      upsert.run(
-        def.id,
-        def.actor,
-        def.start,
-        def.priority ?? 0,
-        def.once ? 1 : 0,
-        packList(def.requires),
-        packList(def.forbids),
-        hash,
-        now,
-      );
-      deleteChildren(db, def.id);
-      insertChildren(db, def);
-      if (prev === undefined) result.added++;
-      else result.updated++;
     }
 
-    // Trees gone from content leave the DB too — a retired conversation
-    // must not keep speaking from stale rows.
-    for (const id of existing.keys()) {
-      db.prepare('DELETE FROM dialogues WHERE id = ?').run(id);
-      result.removed++;
+    // A retired shipped file removes ONLY its untouched seed. Rows the
+    // tooling created or edited belong to the DB and stay.
+    for (const [id, row] of existing) {
+      if (row.authored !== null && row.content === row.authored) {
+        db.prepare('DELETE FROM dialogues WHERE id = ?').run(id);
+        result.removed++;
+      }
     }
 
     db.exec('COMMIT');
@@ -138,6 +181,30 @@ export function syncDialogues(
     throw err;
   }
   return result;
+}
+
+/**
+ * A TOOL WRITE: import one interchange def into the DB as the new
+ * truth. content_hash moves to the imported content; authored_hash is
+ * left as-is (or NULL for a new row) — the row is tool-owned now.
+ * Returns validation errors instead of writing anything unsound.
+ */
+export function importDialogue(db: DatabaseSync, raw: unknown): { ok: true } | { ok: false; errors: string[] } {
+  const res = validateDialogue(raw);
+  if (!res.ok) return res;
+  const def = res.dialogue;
+  const prev = db
+    .prepare('SELECT authored_hash FROM dialogues WHERE id = ?')
+    .get(def.id) as { authored_hash: string | null } | undefined;
+  db.exec('BEGIN');
+  try {
+    writeDef(db, def, dialogueHash(def), prev?.authored_hash ?? null);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  return { ok: true };
 }
 
 export interface DialogueLoadResult {
@@ -153,9 +220,7 @@ export function loadDialogues(db: DatabaseSync): DialogueLoadResult {
 
   interface DefRow {
     id: string;
-    actor_slug: string;
     start_node: string;
-    priority: number;
     once: number;
     requires: string | null;
     forbids: string | null;
@@ -174,6 +239,11 @@ export function loadDialogues(db: DatabaseSync): DialogueLoadResult {
     requires: string | null;
     forbids: string | null;
     set_flags: string | null;
+  }
+  interface BindingRow {
+    kind: string;
+    target: string;
+    priority: number;
   }
 
   for (const row of db
@@ -203,22 +273,37 @@ export function loadDialogues(db: DatabaseSync): DialogueLoadResult {
       node.hooks = unpackList(n.hooks);
       nodes.push(node);
     }
+    const bindings: DialogueBinding[] = [];
+    for (const b of db
+      .prepare('SELECT * FROM dialogue_bindings WHERE dialogue_id = ? ORDER BY kind, target')
+      .all(row.id) as unknown as BindingRow[]) {
+      bindings.push({
+        kind: b.kind as DialogueBinding['kind'],
+        target: b.target,
+        priority: b.priority !== 0 ? b.priority : undefined,
+      });
+    }
 
-    // Reassemble the interchange shape and re-validate: the DB is a
-    // peer of the JSON files, not a trusted bypass around the rules.
+    // Reassemble the interchange shape and re-validate: the DB is the
+    // truth, but never a bypass around the rules.
     const res = validateDialogue({
       id: row.id,
-      actor: row.actor_slug,
       start: row.start_node,
-      priority: row.priority,
       once: row.once === 1 ? true : undefined,
       requires: unpackList(row.requires),
       forbids: unpackList(row.forbids),
       nodes,
+      bindings: bindings.length > 0 ? bindings : undefined,
     });
     if (res.ok) dialogues.push(res.dialogue);
     else errors.push(...res.errors);
   }
 
   return { dialogues, errors };
+}
+
+/** Export one dialogue in the exact interchange shape (or null). */
+export function exportDialogue(db: DatabaseSync, id: string): DialogueDef | null {
+  const all = loadDialogues(db);
+  return all.dialogues.find((d) => d.id === id) ?? null;
 }

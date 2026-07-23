@@ -3958,10 +3958,13 @@ body.pad-mode .hint-inline { display: none; }
 
 /* ================================================================== */
 /* THE DIALOGUE CINEMA — a conversation takes the whole stage.        */
-/* Letterbox bars ease in, a masked backdrop blur softens the world's */
-/* edges (the speakers stay sharp at center), and a lower-third rises:*/
-/* brass name banner over a parchment speech sheet. NPC lines are ink */
-/* on parchment; player lines flip the sheet to the iron tray.        */
+/* Letterbox bars ease in (the bottom one carries the key legend), a  */
+/* masked backdrop blur + a warm vignette grade soften the world's    */
+/* rim while the speakers stay sharp, and a lower-third rises: brass  */
+/* name banner over a parchment speech sheet. NPC lines are ink on    */
+/* parchment; player lines flip the sheet to the iron tray. Markup    */
+/* acts: emphasis lands gold, foreboding drops cold, items sit in the */
+/* sentence as chips, gifts arrive as socketed moments.               */
 /* ================================================================== */
 
 #dlg-cinema {
@@ -3974,13 +3977,13 @@ body.pad-mode .hint-inline { display: none; }
   display: none;
 }
 
-/* Letterbox: warm near-black bands with a faint brass rule. */
+/* Letterbox: warm near-black bands, a faint iron bevel, brass rule. */
 .dlg-bar {
   position: absolute;
   left: 0;
   right: 0;
   height: 88px;
-  background: #0d0a06;
+  background: linear-gradient(#100c08, #0d0a06 30%, #0a0704);
   transition: transform 420ms cubic-bezier(0.22, 0.9, 0.3, 1);
 }
 
@@ -3994,10 +3997,46 @@ body.pad-mode .hint-inline { display: none; }
   bottom: 0;
   transform: translateY(100%);
   border-top: 2px solid rgba(217, 164, 65, 0.22);
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 0 26px 14px 0;
 }
 
 #dlg-cinema.open .dlg-bar {
   transform: none;
+}
+
+/* The key legend: honest verbs in the bottom band, whispering. */
+.dlg-hints {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 400ms ease 400ms;
+}
+
+#dlg-cinema.open .dlg-hints {
+  opacity: 0.85;
+}
+
+.dlg-key {
+  padding: 2px 9px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--gold-bright);
+  background: rgba(217, 164, 65, 0.13);
+  border: 1px solid rgba(217, 164, 65, 0.4);
+  clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
+}
+
+.dlg-verb {
+  margin-right: 12px;
+  font-size: 12px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
 }
 
 /* The depth ring: blur the world's rim, keep the speakers crisp.
@@ -4015,7 +4054,25 @@ body.pad-mode .hint-inline { display: none; }
   transition: opacity 520ms ease;
 }
 
-#dlg-cinema.open .dlg-depth {
+/* The grade: a warm candlelit vignette pulling the eye to center —
+   color the FILM, never the subjects (the clear ellipse matches the
+   depth ring's sharp zone). */
+.dlg-grade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 66% 58% at 50% 40%,
+    transparent 48%,
+    rgba(26, 14, 6, 0.14) 74%,
+    rgba(16, 8, 4, 0.42) 100%
+  );
+  opacity: 0;
+  transition: opacity 520ms ease;
+}
+
+#dlg-cinema.open .dlg-depth,
+#dlg-cinema.open .dlg-grade {
   opacity: 1;
 }
 
@@ -4051,7 +4108,8 @@ body.pad-mode .hint-inline { display: none; }
   opacity: 0;
 }
 
-#dlg-cinema.closing .dlg-depth {
+#dlg-cinema.closing .dlg-depth,
+#dlg-cinema.closing .dlg-grade {
   opacity: 0;
 }
 
@@ -4070,6 +4128,23 @@ body.pad-mode .hint-inline { display: none; }
   border-image-width: 11px;
   border-image-repeat: round;
   filter: drop-shadow(3px 4px 0 rgba(12, 8, 4, 0.4));
+}
+
+/* The banner flips hands: a quick press-and-return when the voice
+   changes (You <-> the speaker). */
+.dlg-name.swap {
+  animation: dlg-name-swap 240ms cubic-bezier(0.3, 1.2, 0.4, 1);
+}
+
+@keyframes dlg-name-swap {
+  0% {
+    transform: translateY(6px) scaleY(0.7);
+    opacity: 0.4;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
 }
 
 .dlg-name-text {
@@ -4092,7 +4167,9 @@ body.pad-mode .hint-inline { display: none; }
   display: none;
 }
 
-/* The speech sheet: a parchment page, ink text, generous reading. */
+/* The speech sheet: a parchment page, ink text, generous reading.
+   Long, running lines simply grow the page — the 62ch measure keeps
+   every line length comfortable, never a wall. */
 .dlg-sheet {
   position: relative;
   min-height: 118px;
@@ -4103,6 +4180,22 @@ body.pad-mode .hint-inline { display: none; }
   filter: drop-shadow(6px 8px 0 var(--shadow));
 }
 
+/* Each beat settles the page — a soft breath, not a slam. */
+.dlg-sheet.turn {
+  animation: dlg-sheet-turn 200ms ease-out;
+}
+
+@keyframes dlg-sheet-turn {
+  0% {
+    transform: translateY(5px);
+    opacity: 0.75;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
 .dlg-text {
   font-family: var(--serif);
   font-size: 19.5px;
@@ -4110,18 +4203,91 @@ body.pad-mode .hint-inline { display: none; }
   max-width: 62ch;
 }
 
-/* Words wrap as units; glyphs fade up individually — the typewriter. */
+/* Words wrap as units; glyphs rise into place — the typewriter. */
 .dlg-word {
   display: inline-block;
 }
 
 .dlg-ch {
+  display: inline-block;
   opacity: 0;
+  transform: translateY(5px);
 }
 
 .dlg-ch.lit {
   opacity: 1;
-  transition: opacity 80ms ease-out;
+  transform: none;
+  transition:
+    opacity 110ms ease-out,
+    transform 140ms cubic-bezier(0.2, 1.1, 0.4, 1);
+}
+
+/* EMPHASIS — spoken with warmth and weight: gold ink, a firm hand. */
+.dlg-ch.dlg-em {
+  font-weight: 700;
+  color: var(--gold-deep);
+}
+
+/* FOREBODING — the temperature drops: cold ink, spaced, and each
+   glyph settles slowly out of a shiver. */
+.dlg-ch.dlg-grim {
+  font-weight: 650;
+  letter-spacing: 0.4px;
+  color: #43405e;
+}
+
+.dlg-ch.dlg-grim.lit {
+  transition:
+    opacity 300ms ease-out,
+    transform 340ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  animation: dlg-grim-settle 340ms ease-out;
+}
+
+@keyframes dlg-grim-settle {
+  0% {
+    transform: translate(1px, 5px);
+  }
+  40% {
+    transform: translate(-1px, 2px);
+  }
+  70% {
+    transform: translate(0.5px, 0.5px);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* AN ITEM IN THE SENTENCE: a small iron plate carrying the icon and
+   name — the thing itself, set into the words. Pops in as one beat. */
+.dlg-item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 2px;
+  padding: 2px 10px 2px 4px;
+  vertical-align: -6px;
+  background: #221c14;
+  color: var(--gold-bright);
+  font-size: 16.5px;
+  font-weight: 700;
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.dlg-item-chip img {
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+}
+
+.dlg-item-chip.lit {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 160ms ease-out,
+    transform 220ms cubic-bezier(0.2, 1.4, 0.4, 1);
 }
 
 /* Player beats flip the page: iron tray, light text, your voice. */
@@ -4136,18 +4302,30 @@ body.pad-mode .hint-inline { display: none; }
   color: var(--parchment);
 }
 
-/* The page-turn invitation: a chevron breathing at the sheet's foot. */
+.dlg-stage.player .dlg-ch.dlg-em {
+  color: var(--gold-bright);
+}
+
+.dlg-stage.player .dlg-ch.dlg-grim {
+  color: #a9a3cf;
+}
+
+/* The page-turn invitation: a brass stud breathing at the sheet's
+   foot — painted kit, not a text glyph. */
 .dlg-more {
   position: absolute;
-  right: 26px;
-  bottom: 10px;
-  font-size: 15px;
+  right: 24px;
+  bottom: 14px;
+  width: 13px;
+  height: 13px;
+  background: var(--gold);
+  clip-path: polygon(50% 100%, 0 30%, 25% 0, 50% 32%, 75% 0, 100% 30%);
+  filter: drop-shadow(1px 2px 0 rgba(12, 8, 4, 0.4));
   opacity: 0;
-  animation: none;
 }
 
 .dlg-more.show {
-  opacity: 0.75;
+  opacity: 0.9;
   animation: dlg-more-bob 950ms ease-in-out infinite;
 }
 
@@ -4161,29 +4339,93 @@ body.pad-mode .hint-inline { display: none; }
   }
 }
 
+/* A GIFT IS A MOMENT: a socketed chip descending over the sheet's
+   shoulder with the item and its count, gold-ringed for one breath. */
+.dlg-gifts {
+  position: absolute;
+  right: 14px;
+  top: -26px;
+  z-index: 3;
+  display: flex;
+  gap: 10px;
+}
+
+.dlg-gift {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 16px 5px 6px;
+  background-color: var(--panel);
+  background-clip: padding-box;
+  border: var(--tray-border) solid transparent;
+  border-image-source: var(--ui-tray-frame);
+  border-image-slice: var(--tray-slice);
+  border-image-width: var(--tray-border);
+  border-image-repeat: round;
+  filter: drop-shadow(4px 5px 0 rgba(12, 8, 4, 0.45));
+  animation: dlg-gift-land 460ms cubic-bezier(0.2, 1.3, 0.35, 1) both;
+}
+
+@keyframes dlg-gift-land {
+  0% {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.dlg-gift-well {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 7px solid transparent;
+  border-image: var(--ui-socket) 35 fill / 7px;
+}
+
+.dlg-gift-well img {
+  width: 30px;
+  height: 30px;
+  image-rendering: pixelated;
+}
+
+.dlg-gift-label {
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gold-bright);
+  text-shadow: 1px 2px 0 rgba(12, 8, 4, 0.6);
+}
+
 /* Choice plates: chamfered iron slats that slide in staggered. The
-   selected plate warms to brass and steps forward. */
+   selected plate warms to brass, steps forward, and points. */
 .dlg-choices {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin: 12px 0 0 26px;
+  margin: 12px 26px 0;
   align-items: flex-start;
 }
 
 .dlg-choice {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 13px;
+  max-width: 100%;
   min-height: 44px;
-  padding: 8px 26px 8px 10px;
+  padding: 9px 40px 9px 10px;
   background: #221c14;
   color: var(--parchment);
   border: none;
   font-family: var(--serif);
   font-size: 17.5px;
+  line-height: 1.35;
   text-align: left;
   cursor: pointer;
+  position: relative;
   clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
   filter: drop-shadow(4px 5px 0 rgba(12, 8, 4, 0.45));
   transform: translateX(0);
@@ -4191,6 +4433,10 @@ body.pad-mode .hint-inline { display: none; }
     background-color 120ms ease,
     transform 140ms ease;
   animation: dlg-choice-in 260ms cubic-bezier(0.22, 0.9, 0.3, 1) both;
+}
+
+.dlg-choice:active {
+  transform: translateX(8px) scale(0.985);
 }
 
 @keyframes dlg-choice-in {
@@ -4209,10 +4455,30 @@ body.pad-mode .hint-inline { display: none; }
   transform: translateX(8px);
 }
 
+/* The selected plate points at its own words. */
+.dlg-choice::after {
+  content: '';
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  margin-top: -4.5px;
+  background: var(--gold-bright);
+  clip-path: polygon(0 0, 100% 50%, 0 100%, 22% 50%);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.dlg-choice.sel::after {
+  opacity: 1;
+}
+
 .dlg-choice-num {
   flex: none;
   width: 26px;
   height: 26px;
+  margin-top: 1px;
   display: grid;
   place-items: center;
   font-size: 13.5px;
@@ -4226,12 +4492,15 @@ body.pad-mode .hint-inline { display: none; }
   background: var(--gold-hot);
 }
 
+.dlg-choice-label {
+  padding-top: 2px;
+}
+
 /* While a conversation holds the stage, the HUD bows out entirely —
    no hotbar, no chat, no gauges competing with the scene. */
 body.in-dialogue #hud {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 300ms ease;
 }
 
 #hud {

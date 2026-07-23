@@ -3,11 +3,23 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { NPC_ACTORS } from '../actors/registry.js';
-import { DIALOGUES, dialogueEligible, pickDialogue } from './registry.js';
+import { parseDialogueMarkup, stripDialogueMarkup } from './markup.js';
+import { DIALOGUES, dialogueEligible, pickDialogue, type DialogueOffer } from './registry.js';
 import { dialogueDoneFlag } from './types.js';
 import { validateDialogue } from './validate.js';
 
 const DEFS_DIR = new URL('./defs/', import.meta.url).pathname;
+
+/** All offers a given actor carries, straight from authored bindings. */
+function offersFor(actor: string): DialogueOffer[] {
+  const out: DialogueOffer[] = [];
+  for (const def of DIALOGUES.values()) {
+    for (const b of def.bindings ?? []) {
+      if (b.kind === 'actor' && b.target === actor) out.push({ def, priority: b.priority ?? 0 });
+    }
+  }
+  return out;
+}
 
 test('every defs/*.json file is registered and valid', () => {
   const files = readdirSync(DEFS_DIR).filter((f) => f.endsWith('.json'));
@@ -21,9 +33,12 @@ test('every defs/*.json file is registered and valid', () => {
   assert.equal(DIALOGUES.size, files.length, 'registry holds exactly the authored files');
 });
 
-test('every dialogue binds to a real actor and a sound graph', () => {
+test('every dialogue has sound bindings and a sound graph', () => {
   for (const def of DIALOGUES.values()) {
-    assert.ok(NPC_ACTORS.has(def.actor), `${def.id}: actor '${def.actor}' exists`);
+    assert.ok((def.bindings ?? []).length > 0, `${def.id}: shipped trees are bound somewhere`);
+    for (const b of def.bindings ?? []) {
+      assert.ok(NPC_ACTORS.has(b.target), `${def.id}: binding target '${b.target}' exists`);
+    }
     const ids = new Set(def.nodes.map((n) => n.id));
     assert.ok(ids.has(def.start), `${def.id}: start node exists`);
     for (const node of def.nodes) {
@@ -33,6 +48,38 @@ test('every dialogue binds to a real actor and a sound graph', () => {
       }
     }
   }
+});
+
+test('markup: the one parser tokenizes emphasis, foreboding, and items', () => {
+  const p = parseDialogueMarkup('Take these — {item:bread}, and mind the *gate*. _Run._');
+  assert.deepEqual(p.errors, []);
+  assert.deepEqual(p.tokens, [
+    { kind: 'text', text: 'Take these — ' },
+    { kind: 'item', item: 'bread' },
+    { kind: 'text', text: ', and mind the ' },
+    { kind: 'em', text: 'gate' },
+    { kind: 'text', text: '. ' },
+    { kind: 'grim', text: 'Run.' },
+  ]);
+  assert.equal(
+    stripDialogueMarkup('Mind the *gate*. _Run._ {item:bread}'),
+    'Mind the gate. Run. bread',
+  );
+});
+
+test('markup: unbalanced, nested, empty, and ghost directives are refused', () => {
+  assert.ok(parseDialogueMarkup('an *unclosed span').errors.length > 0);
+  assert.ok(parseDialogueMarkup('a *nested _mess_*').errors.length > 0);
+  assert.ok(parseDialogueMarkup('an empty ** span').errors.length > 0);
+  assert.ok(parseDialogueMarkup('a {potion:red} ghost').errors.length > 0);
+  // ...and the validator carries those refusals plus item existence.
+  const bad = validateDialogue({
+    id: 'test_markup',
+    start: 'a',
+    bindings: [{ kind: 'actor', target: 'old_maren' }],
+    nodes: [{ id: 'a', text: 'a ghost gift: {item:nonsense_loaf}' }],
+  });
+  assert.ok(!bad.ok && bad.errors.some((e) => e.includes('unknown item')));
 });
 
 test('eligibility: once-completion, requires and forbids gate the voice', () => {
@@ -47,8 +94,8 @@ test('eligibility: once-completion, requires and forbids gate the voice', () => 
   assert.ok(dialogueEligible(friend, (f) => f === 'grib_friend'));
 });
 
-test('pickDialogue: priority wins, completion falls through to the default', () => {
-  const maren = [...DIALOGUES.values()].filter((d) => d.actor === 'old_maren');
+test('pickDialogue: binding priority wins, completion falls to the default', () => {
+  const maren = offersFor('old_maren');
   assert.equal(maren.length, 2);
   const fresh = pickDialogue(maren, () => false);
   assert.equal(fresh?.id, 'maren_welcome', 'the once-intro outranks the default');
@@ -57,11 +104,28 @@ test('pickDialogue: priority wins, completion falls through to the default', () 
   assert.equal(after?.id, 'maren_plaza', 'the repeatable default takes over');
 
   // Grib: the branch flags pick between two unlocked defaults.
-  const grib = [...DIALOGUES.values()].filter((d) => d.actor === 'grib');
+  const grib = offersFor('grib');
   const gribFlags = new Set([dialogueDoneFlag('grib_bands'), 'grib_wary']);
   assert.equal(pickDialogue(grib, (f) => gribFlags.has(f))?.id, 'grib_wary');
   gribFlags.add('grib_friend'); // softened later — friend def ties, id order breaks it
   assert.equal(pickDialogue(grib, (f) => gribFlags.has(f))?.id, 'grib_friend');
+});
+
+test('bindings make trees interchangeable: one tree, many targets', () => {
+  const res = validateDialogue({
+    id: 'test_shared',
+    start: 'a',
+    bindings: [
+      { kind: 'actor', target: 'old_maren', priority: 3 },
+      { kind: 'actor', target: 'captain_alda' },
+    ],
+    nodes: [{ id: 'a', text: 'The same words, wherever they hang.' }],
+  });
+  assert.ok(res.ok);
+  assert.equal(res.dialogue.bindings?.length, 2);
+  // The SAME def carries different weights at different targets.
+  const atMaren = pickDialogue([{ def: res.dialogue, priority: 3 }], () => false);
+  assert.equal(atMaren?.id, 'test_shared');
 });
 
 test('validator rejects the dishonest defs', () => {
@@ -75,12 +139,23 @@ test('validator rejects the dishonest defs', () => {
   };
   const base = {
     id: 'test_talk',
-    actor: 'old_maren',
     start: 'a',
+    bindings: [{ kind: 'actor', target: 'old_maren' }],
     nodes: [{ id: 'a', text: 'Hello.' }],
   };
   bad({ ...base, id: 'Bad Id!' }, 'must match');
-  bad({ ...base, actor: 'nobody' }, 'unknown actor');
+  bad({ ...base, bindings: [{ kind: 'actor', target: 'nobody' }] }, 'unknown actor');
+  bad({ ...base, bindings: [{ kind: 'door', target: 'old_maren' }] }, 'unknown');
+  bad(
+    {
+      ...base,
+      bindings: [
+        { kind: 'actor', target: 'old_maren' },
+        { kind: 'actor', target: 'old_maren' },
+      ],
+    },
+    'duplicates',
+  );
   bad({ ...base, start: 'missing' }, 'not a node id');
   bad({ ...base, nodes: [{ id: 'a', text: 'Hi.', next: 'ghost' }] }, 'unknown node');
   bad(
@@ -124,8 +199,8 @@ test('validator rejects the dishonest defs', () => {
 test('hub cycles are legal: a choice may loop back to its question', () => {
   const res = validateDialogue({
     id: 'test_hub',
-    actor: 'old_maren',
     start: 'hub',
+    bindings: [{ kind: 'actor', target: 'old_maren' }],
     nodes: [
       { id: 'hub', text: 'Ask.', choices: [{ text: 'Topic?', next: 'topic' }, { text: 'Bye.' }] },
       { id: 'topic', text: 'An answer.', next: 'hub' },

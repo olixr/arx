@@ -498,10 +498,29 @@ export class Sfx {
     this.noise(0.02, 0.035, 0, { band: 2400 + Math.random() * 900 });
   }
 
+  /**
+   * The foreboding register: the same quill, dropped an octave and
+   * dragged — a _grim_ span is HEARD slowing down before it's read.
+   */
+  dialogueScratchGrim(): void {
+    this.noise(0.035, 0.045, 0, { band: 900 + Math.random() * 300 });
+  }
+
   /** A choice plate sliding in — soft parchment tap, one per plate. */
   dialogueChoiceIn(): void {
     this.noise(0.04, 0.05, 0, { band: 1700 });
     this.tone(500, 0.03, { type: 'sine', volume: 0.04, delay: 0.01, detune: false });
+  }
+
+  /**
+   * A gift landing mid-conversation: two warm bell partials over a
+   * felt strike, and a little shimmer — generosity, not a jackpot.
+   */
+  dialogueGift(): void {
+    this.noise(0.03, 0.05, 0, { band: 2600 });
+    this.tone(1040, 0.4, { type: 'sine', volume: 0.1, detune: false });
+    this.tone(1560, 0.3, { type: 'sine', volume: 0.06, delay: 0.06, detune: false });
+    this.tone(2080, 0.22, { type: 'sine', volume: 0.035, delay: 0.12, detune: false });
   }
 
   /** Gear going on: leather shifts, a clasp snicks, weight settles. */

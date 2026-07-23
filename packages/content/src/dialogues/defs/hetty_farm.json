@@ -1,11 +1,11 @@
 {
   "id": "hetty_farm",
-  "actor": "farmer_hetty",
   "start": "fence",
+  "bindings": [{ "kind": "actor", "target": "farmer_hetty" }],
   "nodes": [
     {
       "id": "fence",
-      "text": "Mind the fence — the hens think it's a suggestion.",
+      "text": "Mind the fence — the hens think it's a *suggestion*.",
       "choices": [
         { "text": "How's the harvest?", "next": "harvest" },
         { "text": "Need a hand around the farm?", "next": "hand" }
@@ -13,7 +13,7 @@
     },
     {
       "id": "harvest",
-      "text": "Coming in fat and golden, thank the rain. If you've a plot of your own, get seeds in the ground before the season turns — soil doesn't hold grudges, but it does hold schedules."
+      "text": "Coming in *fat and golden*, thank the rain. If you've a plot of your own, get seeds in the ground before the season turns — soil doesn't hold grudges, but it does hold schedules."
     },
     {
       "id": "hand",

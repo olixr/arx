@@ -1,6 +1,8 @@
 import { ITEMS } from '../items.js';
 import { NPC_ACTORS } from '../actors/registry.js';
+import { parseDialogueMarkup } from './markup.js';
 import type {
+  DialogueBinding,
   DialogueChoice,
   DialogueDef,
   DialogueHook,
@@ -134,10 +136,19 @@ function validateNode(raw: unknown, index: number, errors: string[]): DialogueNo
       node.speaker = raw.speaker;
     }
   }
-  if (typeof raw.text !== 'string' || raw.text.length === 0 || raw.text.length > 300) {
-    errors.push(`${where}.text must be a non-empty string of at most 300 chars`);
+  if (typeof raw.text !== 'string' || raw.text.length === 0 || raw.text.length > 480) {
+    errors.push(`${where}.text must be a non-empty string of at most 480 chars`);
   } else {
     node.text = raw.text;
+    // The one markup parser rules here too: an unbalanced span or a
+    // ghost item never survives to a player's screen.
+    const parsed = parseDialogueMarkup(raw.text);
+    for (const e of parsed.errors) errors.push(`${where}.text: ${e}`);
+    for (const tok of parsed.tokens) {
+      if (tok.kind === 'item' && !ITEMS.has(tok.item)) {
+        errors.push(`${where}.text: {item:${tok.item}} references an unknown item`);
+      }
+    }
   }
   if (raw.next !== undefined) {
     if (typeof raw.next !== 'string') errors.push(`${where}.next must be a node id string`);
@@ -159,22 +170,6 @@ export function validateDialogue(raw: unknown): ValidateDialogueResult {
   const id = typeof raw.id === 'string' ? raw.id : '';
   if (!SLUG_RE.test(id) || id.length > 48) {
     errors.push(`id '${String(raw.id)}' must match ^[a-z][a-z0-9_]*$ (max 48 chars)`);
-  }
-  const actor = typeof raw.actor === 'string' ? raw.actor : '';
-  if (!NPC_ACTORS.has(actor)) {
-    errors.push(`actor references unknown actor slug '${String(raw.actor)}'`);
-  }
-  let priority = 0;
-  if (raw.priority !== undefined) {
-    if (
-      typeof raw.priority !== 'number' ||
-      !Number.isInteger(raw.priority) ||
-      Math.abs(raw.priority) > 1000
-    ) {
-      errors.push('priority must be an integer -1000..1000');
-    } else {
-      priority = raw.priority;
-    }
   }
   let once: boolean | undefined;
   if (raw.once !== undefined) {
@@ -230,9 +225,56 @@ export function validateDialogue(raw: unknown): ValidateDialogueResult {
     }
   }
 
+  const bindings = validateBindings(raw.bindings, errors);
+
   if (errors.length > 0) return { ok: false, errors: errors.map((e) => `${id || '<dialogue>'}: ${e}`) };
   return {
     ok: true,
-    dialogue: { id, actor, start, priority, once, requires, forbids, nodes },
+    dialogue: { id, start, once, requires, forbids, nodes, bindings },
   };
+}
+
+/**
+ * The association layer: where in the world this tree is offered.
+ * 'actor' is the only kind today; each future kind (prop, item,
+ * monolith…) adds one namespace check here and nothing anywhere else.
+ */
+function validateBindings(raw: unknown, errors: string[]): DialogueBinding[] | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw) || raw.length > 8) {
+    errors.push('bindings must be an array of at most 8 entries');
+    return undefined;
+  }
+  const out: DialogueBinding[] = [];
+  const seen = new Set<string>();
+  for (const [i, b] of raw.entries()) {
+    if (!isRecord(b)) {
+      errors.push(`bindings[${i}] must be an object`);
+      continue;
+    }
+    if (b.kind !== 'actor') {
+      errors.push(`bindings[${i}].kind '${String(b.kind)}' is unknown (only 'actor' exists yet)`);
+      continue;
+    }
+    if (typeof b.target !== 'string' || !NPC_ACTORS.has(b.target)) {
+      errors.push(`bindings[${i}] references unknown actor '${String(b.target)}'`);
+      continue;
+    }
+    const key = `${b.kind}:${b.target}`;
+    if (seen.has(key)) {
+      errors.push(`bindings[${i}] duplicates ${key}`);
+      continue;
+    }
+    seen.add(key);
+    const binding: DialogueBinding = { kind: 'actor', target: b.target };
+    if (b.priority !== undefined) {
+      if (typeof b.priority !== 'number' || !Number.isInteger(b.priority) || Math.abs(b.priority) > 1000) {
+        errors.push(`bindings[${i}].priority must be an integer -1000..1000`);
+        continue;
+      }
+      binding.priority = b.priority;
+    }
+    out.push(binding);
+  }
+  return out;
 }

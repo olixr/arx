@@ -1,13 +1,12 @@
 {
   "id": "grib_friend",
-  "actor": "grib",
   "start": "happy",
-  "priority": 5,
   "requires": ["grib_friend"],
+  "bindings": [{ "kind": "actor", "target": "grib", "priority": 5 }],
   "nodes": [
     {
       "id": "happy",
-      "text": "Friend! The road is kinder today. Grib counted seven carts and nobody threw anything at Grib. A good week!",
+      "text": "*Friend!* The road is kinder today. Grib counted seven carts and nobody threw anything at Grib. A good week!",
       "choices": [
         { "text": "Keep counting, Grib.", "next": "count" },
         { "text": "Anyone give you trouble?", "next": "trouble" }
@@ -15,7 +14,7 @@
     },
     {
       "id": "count",
-      "text": "Grib will! Numbers are honest. Not like camps. Safe travels, friend — Grib keeps this stretch of road lucky for you."
+      "text": "Grib will! Numbers are honest. Not like camps. Safe travels, friend — Grib keeps this stretch of road *lucky* for you."
     },
     {
       "id": "trouble",

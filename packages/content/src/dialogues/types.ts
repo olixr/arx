@@ -1,19 +1,26 @@
 /**
  * DIALOGUE TREES — the conversations of the world.
  *
- * A dialogue is its own def, keyed by the ACTOR SLUG it belongs to
- * (the actor/archetype/placement law: systems attach to actors, they
- * never grow fields inside NpcActorDef). Talking to an actor picks ONE
- * eligible dialogue — the highest-priority def whose flag conditions
- * pass — so an actor's voice evolves: a one-time welcome completes and
- * a repeatable default takes its place; a befriending choice unlocks a
- * warmer tree forever.
+ * A dialogue STANDS ALONE: the tree is pure conversation, and a
+ * separate BINDINGS list is the only thing tying it to the world —
+ * "this tree is offered by actor old_maren", tomorrow "by the sealed
+ * door", "by the strange monolith". The same tree can bind to many
+ * targets, a target can offer many trees, and re-wiring who says what
+ * is a data change, never a content rewrite. (This is the dialogue
+ * system's copy of the actor/archetype/placement law.)
  *
- * INTERCHANGE FORMAT: dialogues are authored as JSON files in
- * `src/dialogues/defs/*.json` — one tree per file, filename = id. The
- * same shape is what dev tools read/write and what the server syncs
- * into its relational tables (db/dialogues.ts). One validator
- * (validate.ts) guards every path.
+ * THE DATABASE IS THE TRUTH: the relational tables (server/db) are
+ * what the game reads and what internal tooling edits. These JSON
+ * files are the interchange format — the seed shipped with the game
+ * and the import/export envelope for moving content around. The sync
+ * respects tool edits: a row the tooling has touched is never
+ * clobbered by a JSON re-seed (see db/dialogues.ts).
+ *
+ * Selection: interacting with a bound target picks ONE eligible
+ * dialogue — highest binding priority whose flag conditions pass — so
+ * a voice evolves: a one-time welcome completes and a repeatable
+ * default takes its place; a befriending choice unlocks a warmer tree
+ * forever.
  *
  * FLAGS are the memory between conversations: plain slugs set by
  * choices or hook effects, checked by `requires`/`forbids` on defs and
@@ -22,6 +29,11 @@
  * can require that another conversation happened first. The flag store
  * is per-character and shared with the systems still to come — quests
  * and factions read and write the very same ledger.
+ *
+ * SPOKEN TEXT carries light markup (see markup.ts): *word* speaks
+ * with warm emphasis, _word_ lands cold and foreboding, {item:bread}
+ * sets the item itself — icon and name — into the sentence. One
+ * parser serves the validator and the client's typewriter.
  *
  * The server owns the walk: clients see only text and choice labels,
  * never node ids or conditions, and every hook fires server-side.
@@ -79,16 +91,26 @@ export interface DialogueNode {
   hooks?: DialogueHook[];
 }
 
-/** A whole conversation tree, bound to one actor. */
+/**
+ * One place in the world a dialogue is offered. `kind` is the open
+ * axis: 'actor' today; props, items, and world objects join as new
+ * kinds without touching the tree format — the target column is just
+ * a slug in that kind's namespace.
+ */
+export interface DialogueBinding {
+  kind: 'actor';
+  /** Slug in the kind's namespace (NpcActorDef.id for 'actor'). */
+  target: string;
+  /** Among a target's eligible dialogues, highest priority speaks (default 0). */
+  priority?: number;
+}
+
+/** A whole conversation tree — standalone; bindings tie it to the world. */
 export interface DialogueDef {
   /** Unique slug: ^[a-z][a-z0-9_]*$ — referenced by tools and flags. */
   id: string;
-  /** The NpcActorDef slug this conversation belongs to. */
-  actor: string;
   /** Entry node id. */
   start: string;
-  /** Among eligible defs, highest priority speaks (default 0). */
-  priority?: number;
   /**
    * One-time: after completion (flag `dlg:<id>`) this def is never
    * offered again — the next-priority eligible def becomes the voice.
@@ -99,6 +121,11 @@ export interface DialogueDef {
   /** Flags that must NOT be set. */
   forbids?: string[];
   nodes: DialogueNode[];
+  /**
+   * Where this conversation is offered. A tree may ship unbound (a
+   * tool will wire it later) — it simply never fires until bound.
+   */
+  bindings?: DialogueBinding[];
 }
 
 /** The completion flag a finished dialogue records. */

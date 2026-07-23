@@ -3,15 +3,15 @@ import { test } from 'node:test';
 import { DIALOGUES, type DialogueDef } from '@devcraft/content';
 import { AccountStore } from './accounts.js';
 import { openDb } from './db.js';
-import { loadDialogues, syncDialogues } from './dialogues.js';
+import { exportDialogue, importDialogue, loadDialogues, seedDialogues } from './dialogues.js';
 
 const ALL = [...DIALOGUES.values()];
 
-test('sync + load round-trips the authored trees exactly', () => {
+test('seed + load round-trips the shipped trees exactly', () => {
   const db = openDb(':memory:');
-  const res = syncDialogues(db, ALL);
+  const res = seedDialogues(db, ALL);
   assert.equal(res.added, ALL.length);
-  assert.equal(res.removed, 0);
+  assert.equal(res.removed + res.kept, 0);
 
   const loaded = loadDialogues(db);
   assert.deepEqual(loaded.errors, []);
@@ -28,41 +28,82 @@ test('sync + load round-trips the authored trees exactly', () => {
   }
 });
 
-test('second sync of identical content writes nothing', () => {
+test('second seed of identical content writes nothing', () => {
   const db = openDb(':memory:');
-  syncDialogues(db, ALL);
-  const res = syncDialogues(db, ALL);
+  seedDialogues(db, ALL);
+  const res = seedDialogues(db, ALL);
   assert.equal(res.unchanged, ALL.length);
-  assert.equal(res.added + res.updated + res.removed, 0);
+  assert.equal(res.added + res.updated + res.removed + res.kept, 0);
 });
 
-test('changed defs update; retired defs are pruned with their children', () => {
+test('a changed shipped file flows into an untouched seed', () => {
   const db = openDb(':memory:');
-  syncDialogues(db, ALL);
-
+  seedDialogues(db, ALL);
   const welcome = ALL.find((d) => d.id === 'maren_welcome')!;
-  const edited: DialogueDef = { ...welcome, priority: 20 };
-  const res = syncDialogues(db, [edited]); // every other tree retires
+  const edited: DialogueDef = { ...welcome, once: undefined };
+  const res = seedDialogues(db, [edited, ...ALL.filter((d) => d.id !== 'maren_welcome')]);
   assert.equal(res.updated, 1);
-  assert.equal(res.removed, ALL.length - 1);
-
   const loaded = loadDialogues(db);
-  assert.equal(loaded.dialogues.length, 1);
-  assert.equal(loaded.dialogues[0]!.priority, 20);
-  // Child rows of retired dialogues are gone (cascade).
+  assert.equal(loaded.dialogues.find((d) => d.id === 'maren_welcome')!.once, undefined);
+});
+
+test('THE DATABASE IS THE TRUTH: a tool edit survives every re-seed', () => {
+  const db = openDb(':memory:');
+  seedDialogues(db, ALL);
+
+  // The tooling rewrites a line (importDialogue = a tool write).
+  const tool = JSON.parse(JSON.stringify(ALL.find((d) => d.id === 'guard_post')!)) as DialogueDef;
+  tool.nodes.find((n) => n.id === 'carry')!.text = 'Aye. The town thanks you.';
+  assert.ok(importDialogue(db, tool).ok);
+
+  // A NEWER shipped version arrives — and must be respectfully kept out.
+  const shipped = JSON.parse(JSON.stringify(ALL.find((d) => d.id === 'guard_post')!)) as DialogueDef;
+  shipped.nodes.find((n) => n.id === 'carry')!.text = 'SHIPPED CLOBBER ATTEMPT';
+  const res = seedDialogues(db, [shipped, ...ALL.filter((d) => d.id !== 'guard_post')]);
+  assert.equal(res.kept, 1);
+  const after = exportDialogue(db, 'guard_post')!;
+  assert.equal(after.nodes.find((n) => n.id === 'carry')!.text, 'Aye. The town thanks you.');
+
+  // ...and the divergence is remembered: the same seed stays quiet.
+  const again = seedDialogues(db, [shipped, ...ALL.filter((d) => d.id !== 'guard_post')]);
+  assert.equal(again.kept + again.updated + again.added, 0);
+});
+
+test('pruning removes only pure seeds; tool-born rows are permanent', () => {
+  const db = openDb(':memory:');
+  seedDialogues(db, ALL);
+
+  // A tool-created tree with no shipped twin.
+  const toolBorn = {
+    id: 'monolith_whisper',
+    start: 'a',
+    bindings: [{ kind: 'actor', target: 'old_maren' }],
+    nodes: [{ id: 'a', text: 'The stone says nothing. _Loudly._' }],
+  };
+  assert.ok(importDialogue(db, toolBorn).ok);
+
+  // Retire every shipped file: pure seeds go, the tool's tree stays.
+  const res = seedDialogues(db, []);
+  assert.equal(res.removed, ALL.length);
+  const loaded = loadDialogues(db);
+  assert.deepEqual(loaded.dialogues.map((d) => d.id), ['monolith_whisper']);
+  // Cascade check: no orphaned children of the pruned trees.
   const orphans = db
-    .prepare(
-      `SELECT (SELECT COUNT(*) FROM dialogue_nodes WHERE dialogue_id = 'alda_watch')
-            + (SELECT COUNT(*) FROM dialogue_choices WHERE dialogue_id = 'alda_watch') AS n`,
-    )
+    .prepare(`SELECT COUNT(*) AS n FROM dialogue_bindings WHERE dialogue_id != 'monolith_whisper'`)
     .get() as { n: number };
   assert.equal(orphans.n, 0);
 });
 
+test('importDialogue refuses unsound content instead of writing it', () => {
+  const db = openDb(':memory:');
+  const res = importDialogue(db, { id: 'broken', start: 'ghost', nodes: [{ id: 'a', text: 'x' }] });
+  assert.ok(!res.ok);
+  assert.equal(loadDialogues(db).dialogues.length, 0);
+});
+
 test('a hand-broken DB row is rejected at load, not at talk time', () => {
   const db = openDb(':memory:');
-  syncDialogues(db, ALL);
-  // Point a node at a ghost — the kind of edit a buggy tool could make.
+  seedDialogues(db, ALL);
   db.prepare(
     `UPDATE dialogue_nodes SET next_node = 'ghost' WHERE dialogue_id = 'tobbin_wares' AND node_id = 'counter'`,
   ).run();

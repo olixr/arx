@@ -316,6 +316,66 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (character_id, flag)
   );
   `,
+  // 20 — dialogues v2: THE DATABASE IS THE TRUTH, and dialogues stand
+  // alone. Two structural changes over v19 (which shipped a day
+  // earlier, seed-data only — safe to rebuild):
+  //   1. The tree loses its actor column; a dialogue_bindings table
+  //      is the ONLY tie between a conversation and the world
+  //      (kind + target: 'actor' today, props/items later). One tree
+  //      can hang on many targets, each with its own priority.
+  //   2. Rows carry TWO hashes. content_hash = what the row holds
+  //      now; authored_hash = the shipped JSON that last seeded it.
+  //      While they match, the row is a pure seed and newer shipped
+  //      JSON may update it; the moment tooling edits a row (and
+  //      bumps content_hash), the pair diverges and no re-seed will
+  //      ever clobber the tool's work. authored_hash NULL = born in
+  //      the tooling, no shipped counterpart at all.
+  // JSON files remain the import/export envelope; db/dialogues.ts
+  // owns the seed/export logic.
+  `
+  DROP TABLE dialogue_choices;
+  DROP TABLE dialogue_nodes;
+  DROP TABLE dialogues;
+  CREATE TABLE dialogues (
+    id TEXT PRIMARY KEY,
+    start_node TEXT NOT NULL,
+    once INTEGER NOT NULL DEFAULT 0,
+    requires TEXT,
+    forbids TEXT,
+    content_hash TEXT NOT NULL,
+    authored_hash TEXT,
+    updated_at INTEGER NOT NULL
+  );
+  CREATE TABLE dialogue_nodes (
+    dialogue_id TEXT NOT NULL REFERENCES dialogues(id) ON DELETE CASCADE,
+    node_id TEXT NOT NULL,
+    idx INTEGER NOT NULL,
+    speaker TEXT,
+    text TEXT NOT NULL,
+    next_node TEXT,
+    hooks TEXT,
+    PRIMARY KEY (dialogue_id, node_id)
+  );
+  CREATE TABLE dialogue_choices (
+    dialogue_id TEXT NOT NULL REFERENCES dialogues(id) ON DELETE CASCADE,
+    node_id TEXT NOT NULL,
+    idx INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    next_node TEXT,
+    requires TEXT,
+    forbids TEXT,
+    set_flags TEXT,
+    PRIMARY KEY (dialogue_id, node_id, idx)
+  );
+  CREATE TABLE dialogue_bindings (
+    dialogue_id TEXT NOT NULL REFERENCES dialogues(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    target TEXT NOT NULL,
+    priority INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (dialogue_id, kind, target)
+  );
+  CREATE INDEX idx_dialogue_bindings_target ON dialogue_bindings(kind, target);
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

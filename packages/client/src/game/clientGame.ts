@@ -165,7 +165,13 @@ export interface GameEvents {
   /** A conversation began — raise the cinematic frame around `eid`. */
   onDialogueOpen?(o: { eid: EntityId; name: string; title?: string }): void;
   /** One beat of conversation — typewriter it out. */
-  onDialogueNode?(n: { speaker: 'npc' | 'player'; text: string; choices?: string[]; last?: boolean }): void;
+  onDialogueNode?(n: {
+    speaker: 'npc' | 'player';
+    text: string;
+    choices?: string[];
+    last?: boolean;
+    gifts?: Array<{ item: string; qty: number }>;
+  }): void;
   /** The conversation is over — tear the frame down. */
   onDialogueClose?(): void;
 }
@@ -804,6 +810,7 @@ export class ClientGame {
           text: msg.text,
           choices: msg.choices,
           last: msg.last,
+          gifts: msg.gifts,
         });
         break;
       }

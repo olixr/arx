@@ -1,7 +1,7 @@
 {
   "id": "alda_watch",
-  "actor": "captain_alda",
   "start": "post",
+  "bindings": [{ "kind": "actor", "target": "captain_alda" }],
   "nodes": [
     {
       "id": "post",
@@ -21,17 +21,17 @@
     },
     {
       "id": "trouble",
-      "text": "Goblins test the south road when the moon runs thin, and something in Gloomhollow has the miners spooked. Keep your blade oiled and your boasts small.",
+      "text": "Goblins test the south road when the moon runs thin, and _something in Gloomhollow has the miners spooked_. Keep your blade oiled and your boasts small.",
       "next": "post"
     },
     {
       "id": "maren_word",
-      "text": "Maren vouches for you? Hm. That's worth more than a letter from a crown. Very well — you'll have the watch's courtesy, and my name: Alda. Don't wear either out.",
+      "text": "Maren vouches for you? Hm. That's worth more than a letter from a crown. Very well — you'll have the watch's courtesy, and my name: *Alda*. Don't wear either out.",
       "next": "post"
     },
     {
       "id": "watch",
-      "text": "The gate. The roads. The gloom past the treeline. And lately that Riftgate — it hums louder some nights. If it ever starts singing, you run and you find me.",
+      "text": "The gate. The roads. The gloom past the treeline. And lately that Riftgate — it hums louder some nights. _If it ever starts singing, you run and you find me._",
       "next": "post"
     },
     {

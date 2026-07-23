@@ -534,6 +534,12 @@ export interface S2CDialogueNode {
   choices?: string[];
   /** Terminal beat — the next advance closes instead of continuing. */
   last?: boolean;
+  /**
+   * Items granted as this beat lands — the cinema stages the moment
+   * (icon chip, chime). Ids + counts only; the pack update travels on
+   * its own inv message as always.
+   */
+  gifts?: Array<{ item: string; qty: number }>;
 }
 
 /** The conversation is over (finished, excused, or interrupted). */

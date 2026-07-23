@@ -14,7 +14,7 @@ import {
 import { config } from './config.js';
 import { AccountStore } from './db/accounts.js';
 import { openDb } from './db/db.js';
-import { loadDialogues, syncDialogues } from './db/dialogues.js';
+import { loadDialogues, seedDialogues } from './db/dialogues.js';
 import { loadNpcActors, syncNpcActors } from './db/npcActors.js';
 import { GameServer } from './game/gameServer.js';
 import { Session } from './net/session.js';
@@ -63,14 +63,16 @@ console.log(
     `(+${actorSync.added} ~${actorSync.updated} -${actorSync.removed} =${actorSync.unchanged})`,
 );
 
-// Dialogue trees, same DB-first flow: content seeds, the DB speaks.
-const dlgSync = syncDialogues(db, [...DIALOGUES.values()]);
+// Dialogue trees — THE DATABASE IS THE TRUTH. Shipped JSON seeds it
+// (respecting every tool edit); the runtime reads only the DB.
+const dlgSeed = seedDialogues(db, [...DIALOGUES.values()]);
 const dlgLoad = loadDialogues(db);
 for (const err of dlgLoad.errors) console.warn(`[npc] invalid DB dialogue: ${err}`);
 game.registerDialogues(dlgLoad.dialogues);
+game.dialogueSource = () => loadDialogues(db); // /dlgreload's live wire
 console.log(
   `[npc] dialogues: ${dlgLoad.dialogues.length} loaded ` +
-    `(+${dlgSync.added} ~${dlgSync.updated} -${dlgSync.removed} =${dlgSync.unchanged})`,
+    `(+${dlgSeed.added} ~${dlgSeed.updated} !${dlgSeed.kept} -${dlgSeed.removed} =${dlgSeed.unchanged})`,
 );
 
 game.start();

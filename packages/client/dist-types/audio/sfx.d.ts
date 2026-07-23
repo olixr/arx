@@ -137,8 +137,18 @@ export declare class Sfx {
      * of times per line and must stay at the edge of hearing.
      */
     dialogueScratch(): void;
+    /**
+     * The foreboding register: the same quill, dropped an octave and
+     * dragged — a _grim_ span is HEARD slowing down before it's read.
+     */
+    dialogueScratchGrim(): void;
     /** A choice plate sliding in — soft parchment tap, one per plate. */
     dialogueChoiceIn(): void;
+    /**
+     * A gift landing mid-conversation: two warm bell partials over a
+     * felt strike, and a little shimmer — generosity, not a jackpot.
+     */
+    dialogueGift(): void;
     /** Gear going on: leather shifts, a clasp snicks, weight settles. */
     equipGear(): void;
     /** Gear coming off — the softer reverse. */

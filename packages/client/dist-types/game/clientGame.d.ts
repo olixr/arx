@@ -190,6 +190,10 @@ export interface GameEvents {
         text: string;
         choices?: string[];
         last?: boolean;
+        gifts?: Array<{
+            item: string;
+            qty: number;
+        }>;
     }): void;
     /** The conversation is over — tear the frame down. */
     onDialogueClose?(): void;
