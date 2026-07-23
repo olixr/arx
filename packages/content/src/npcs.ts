@@ -538,6 +538,29 @@ const defs: NpcDef[] = [
 export const NPCS: ReadonlyMap<string, NpcDef> = new Map(defs.map((d) => [d.id, d]));
 
 /**
+ * ONE BESTIARY, EVERY TIER — scale a def to a target combat level.
+ * Dungeon garrisons are the authored beasts re-issued at the key's
+ * power: hp grows a touch superlinearly (fights lengthen with the
+ * ladder), damage sublinearly (a level-68 skeleton stings, it doesn't
+ * one-shot), xp tracks level honestly. Everything else — speed, reach,
+ * specials, resists, art — is the def's own; a scaled troll still
+ * fights like a troll. Loot rolls read the SCALED level, so deep
+ * dungeon beasts pay out deep-level loot by construction.
+ */
+export function scaleNpcDef(def: NpcDef, level: number, name?: string): NpcDef {
+  if (level === def.level && !name) return def;
+  const ratio = level / Math.max(1, def.level);
+  return {
+    ...def,
+    name: name ?? def.name,
+    level,
+    maxHp: Math.max(1, Math.round(def.maxHp * Math.pow(ratio, 1.12))),
+    damage: def.damage > 0 ? Math.max(1, Math.round(def.damage * Math.pow(ratio, 0.82))) : 0,
+    xpReward: Math.max(1, Math.round(def.xpReward * Math.pow(ratio, 1.05))),
+  };
+}
+
+/**
  * World-y extent of the visual body above the ground point. Projectile
  * hit tests (and the client's stuck-arrow attach) measure against the
  * feet→crown band [y − hitHeight, y], never a bare circle at the feet —

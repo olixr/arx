@@ -1,4 +1,4 @@
-import { RARITY_TIERS, rarityIndex, type ItemRoll, type RarityTier } from '@devcraft/shared';
+import { RARITY_TIERS, mintKeyPower, rarityIndex, type ItemRoll, type RarityTier } from '@devcraft/shared';
 import { itemDef } from '../items.js';
 import { dropRarityWeights } from '../equipment/tables.js';
 import { heirloomFor, makeRoll, pickRarity } from '../equipment/roll.js';
@@ -98,6 +98,17 @@ function stampRoll(
 ): ItemRoll | undefined {
   const def = itemDef(item);
   if (!def) return undefined;
+  // Dungeon keys mint their own identity: tier weighted by the
+  // source's level (floored by the table, so boss chests never pay
+  // out worn commons), a fresh 32-bit seed — a dungeon nobody has
+  // ever walked — and the tier's power with seeded jitter.
+  if (def.dungeonKey) {
+    const allowed = floorRarities(RARITY_TIERS, table.minRarity);
+    const weights = dropRarityWeights(ctx.level + (table.rarityBonus ?? 0));
+    const rar = pickRarity(weights, allowed, ctx.rand);
+    const seed = Math.floor(ctx.rand() * 0x100000000) >>> 0;
+    return { rar, seed, pwr: mintKeyPower(rar, seed) };
+  }
   const gear = def.gear;
   const rollable = force || gear?.acquisition.drop || def.relic || def.sigil;
   if (!rollable) return undefined;

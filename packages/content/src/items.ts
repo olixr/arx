@@ -148,6 +148,13 @@ export interface ItemDef {
   backMounted?: boolean;
   /** Rolled-equipment facts — compiled from the equipment schema. */
   gear?: GearInfo;
+  /**
+   * Dungeon key: the instance roll IS the dungeon (seed = layout,
+   * rarity = tier, pwr = power level — see shared/dungeon/key.ts).
+   * The loot resolver mints these rolls specially; the Riftgate
+   * reads them.
+   */
+  dungeonKey?: boolean;
 }
 
 const defs: ItemDef[] = [
@@ -521,6 +528,16 @@ const defs: ItemDef[] = [
     desc: 'Heavy, cold, and exactly the shape of a strongchest\'s appetite. Spent in the turning.',
     color: '#c9a23e',
     code: 'Bk',
+  },
+  {
+    id: 'dungeon_key',
+    name: 'Dungeon key',
+    stackable: false,
+    value: 120,
+    desc: 'A rift-cut key humming with somewhere else. The same key always opens the same halls — never spent, only carried.',
+    color: '#8f7bd9',
+    code: 'Dk',
+    dungeonKey: true,
   },
   {
     id: 'snare_kit',

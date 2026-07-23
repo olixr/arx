@@ -243,6 +243,12 @@ export class Session {
         this.game.setCarryStyle(this.playerEid, msg.style, msg.hand ?? 'main');
         return;
       }
+      case 'usekey': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.useKey(this.playerEid, msg.slot);
+        return;
+      }
     }
   }
 

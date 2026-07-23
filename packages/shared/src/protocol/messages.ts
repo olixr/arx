@@ -164,6 +164,16 @@ export interface C2SPlant {
   seed: string;
 }
 
+/**
+ * Turn a dungeon key at a Riftgate: the pack slot names WHICH key
+ * (instance-addressing law — the roll in that slot is the dungeon).
+ * Only valid while standing at a riftgate portal.
+ */
+export interface C2SUseKey {
+  t: 'usekey';
+  slot: number;
+}
+
 /** Interact with a living NPC (milk a cow, ...). */
 export interface C2SInteractNpc {
   t: 'interactnpc';
@@ -223,7 +233,8 @@ export type C2SMessage =
   | C2SPickup
   | C2STechnique
   | C2SSetLook
-  | C2SCarryStyle;
+  | C2SCarryStyle
+  | C2SUseKey;
 
 // ---------------------------------------------------------------- S2C
 
@@ -467,6 +478,27 @@ export interface S2CBuffs {
   buffs: BuffInfo[];
 }
 
+/**
+ * The Riftgate answered an interact: show the key panel. The client
+ * reads key details from its own inventory (slots carry rolls); this
+ * message just opens the gate's side of the conversation.
+ */
+export interface S2CRiftgate {
+  t: 'riftgate';
+  /** Pack slot indexes currently holding dungeon keys. */
+  keySlots: number[];
+}
+
+/** Crossed into a dungeon: everything the entry banner needs. */
+export interface S2CDungeonEnter {
+  t: 'dungeon';
+  name: string;
+  sigil: string;
+  tier: string;
+  theme: string;
+  power: number;
+}
+
 export type S2CMessage =
   | S2CWelcome
   | S2CReject
@@ -489,7 +521,9 @@ export type S2CMessage =
   | S2CFx
   | S2CTime
   | S2CTechniques
-  | S2CBuffs;
+  | S2CBuffs
+  | S2CRiftgate
+  | S2CDungeonEnter;
 
 // ------------------------------------------------------- validation
 
@@ -649,6 +683,12 @@ export function parseC2S(raw: string): C2SMessage | null {
     case 'interactnpc': {
       if (!isFiniteNum(msg.eid) || !Number.isInteger(msg.eid) || msg.eid < 0) return null;
       return { t: 'interactnpc', eid: msg.eid };
+    }
+    case 'usekey': {
+      if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot) || msg.slot < 0 || msg.slot > 63) {
+        return null;
+      }
+      return { t: 'usekey', slot: msg.slot };
     }
     case 'pickup': {
       if (!isFiniteNum(msg.eid) || !Number.isInteger(msg.eid) || msg.eid < 0) return null;

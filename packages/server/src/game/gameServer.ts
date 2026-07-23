@@ -170,7 +170,15 @@ import { config } from '../config.js';
 import { Session, sanitizeName } from '../net/session.js';
 import type { AccountStore, CharacterRow } from '../db/accounts.js';
 import type { WorldSource } from '../world/worldSource.js';
-import { delveOrigin, generateDelve } from '../world/dungeonGen.js';
+import { dungeonOrigin, generateDungeon } from '../dungeon/generate.js';
+import {
+  DUNGEON_KEY_ITEM,
+  RARITY_TIERS,
+  dungeonSpecFromRoll,
+  mintKeyPower,
+  type DungeonSpec,
+} from '@devcraft/shared';
+import { scaleNpcDef } from '@devcraft/content';
 import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem, takeSlot } from './inventory.js';
 import { DROP_MERGE_RADIUS, canMergeDrop } from './drops.js';
 
@@ -391,15 +399,32 @@ interface SpawnState {
   radius: number;
   eid: EntityId | null;
   respawnAt: number;
-  /** Inactive spawn points are skipped (torn-down delve instances). */
+  /** Inactive spawn points are skipped (torn-down dungeon instances). */
   active: boolean;
+  /** Scale the def to this combat level (dungeon garrisons). */
+  level?: number;
+  /** Display-name override (named bosses, hidden-room wardens). */
+  name?: string;
 }
 
-interface DelveInstance {
+/**
+ * A live dungeon instance — one per character, cut from a key. The
+ * key identity (seed/tier/power) is stored so turning the SAME key
+ * walks back into the same live run, while a different key tears the
+ * old instance down and cuts a new one.
+ */
+interface DungeonInstance {
   zoneId: string;
   spawnIndexes: number[];
   slot: number;
   entry: { x: number; y: number };
+  seed: number;
+  tier: string;
+  /** Recommended combat level — dungeon chests roll at least this. */
+  power: number;
+  /** Zone x-extent, for locating which instance owns a tile. */
+  x0: number;
+  x1: number;
 }
 
 interface PlayerComp {
@@ -683,9 +708,9 @@ export class GameServer {
 
   private timer: NodeJS.Timeout | null = null;
 
-  /** Active per-character delve instances. */
-  private readonly delves = new Map<number, DelveInstance>();
-  private nextDelveSlot = 0;
+  /** Active per-character dungeon instances. */
+  private readonly dungeons = new Map<number, DungeonInstance>();
+  private nextDungeonSlot = 0;
 
   constructor(
     private readonly world: WorldSource,
@@ -731,7 +756,15 @@ export class GameServer {
 
   /** Expand spawn tables into scattered points; returns their indexes. */
   registerSpawns(
-    spawns: ReadonlyArray<{ npc: string; x: number; y: number; radius: number; count: number }>,
+    spawns: ReadonlyArray<{
+      npc: string;
+      x: number;
+      y: number;
+      radius: number;
+      count: number;
+      level?: number;
+      name?: string;
+    }>,
   ): number[] {
     const indexes: number[] = [];
     for (const spawn of spawns) {
@@ -747,6 +780,8 @@ export class GameServer {
           eid: null,
           respawnAt: 0,
           active: true,
+          level: spawn.level,
+          name: spawn.name,
         });
       }
     }
@@ -1025,16 +1060,17 @@ export class GameServer {
     const player = this.players.get(eid);
     if (!player) return;
     // A logged-out delver's instance dies with them; pull them out first
-    // so they don't reload inside sealed rock.
-    const delve = this.delves.get(player.characterId);
-    if (delve) {
+    // so they don't reload inside sealed rock. The key in their pack
+    // remembers the dungeon — the run resets, the place doesn't.
+    const dungeon = this.dungeons.get(player.characterId);
+    if (dungeon) {
       const pos = this.positions.must(eid);
       if (pos.y >= 8192) {
         const spawn = this.world.spawn;
         pos.x = spawn.x;
         pos.y = spawn.y;
       }
-      this.teardownDelve(player.characterId);
+      this.teardownDungeon(player.characterId);
     }
     this.savePlayer(eid);
     this.characterEids.delete(player.characterId);
@@ -1101,16 +1137,16 @@ export class GameServer {
     this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
     const ground = this.world.groundAt(tx, ty);
 
-    // Portals teleport (and may spin up a personal delve).
+    // Portals teleport; Riftgates open the key panel instead.
     if (ground === Tile.PortalDown || ground === Tile.PortalUp) {
       const portal = this.world.portalAt(tx, ty);
       if (!portal) return;
       if (portal.delve) {
-        this.enterDelve(eid, player, { x: pos.x, y: pos.y });
+        this.openRiftgate(eid, player);
       } else if (portal.dest) {
         this.teleport(eid, portal.dest.x, portal.dest.y);
-        // Using a delve's exit (the portal lives at y>=8192) tears it down.
-        if (ty >= 8192) this.teardownDelve(player.characterId);
+        // Using a dungeon's exit (the portal lives at y>=8192) ends the run.
+        if (ty >= 8192) this.teardownDungeon(player.characterId);
       }
       return;
     }
@@ -1249,7 +1285,10 @@ export class GameServer {
     dx /= d;
     dy /= d;
     const now = Date.now();
-    for (const drop of rollLoot(law.table, { level: law.level, rand: Math.random })) {
+    // Inside a dungeon the chest ladder rides the key: loot rolls at
+    // the instance's power when it out-levels the chest's own law.
+    const chestLevel = Math.max(law.level, this.dungeonPowerAt(tx, ty) ?? 0);
+    for (const drop of rollLoot(law.table, { level: chestLevel, rand: Math.random })) {
       this.placeDrop(
         drop.item,
         drop.qty,
@@ -2091,7 +2130,7 @@ export class GameServer {
     }
   }
 
-  // --------------------------------------------------- portals & delves
+  // ------------------------------------------------- portals & dungeons
 
   private teleport(eid: EntityId, x: number, y: number): void {
     const player = this.players.get(eid);
@@ -2104,30 +2143,114 @@ export class GameServer {
     this.updateChunkMembership(eid);
   }
 
-  private enterDelve(eid: EntityId, player: PlayerComp, returnTo: { x: number; y: number }): void {
-    let delve = this.delves.get(player.characterId);
-    if (!delve) {
-      const slot = this.nextDelveSlot++;
-      const origin = delveOrigin(slot);
-      const seed = (Date.now() ^ (player.characterId * 7919) ^ slot) >>> 0;
-      const result = generateDelve(seed, origin, returnTo);
-      this.world.addZone(result.zone);
-      const spawnIndexes = this.registerSpawns(result.zone.spawns ?? []);
-      delve = { zoneId: result.zone.id, spawnIndexes, slot, entry: result.entry };
-      this.delves.set(player.characterId, delve);
+  /**
+   * The Riftgate answers an interact by opening the key panel — the
+   * client lists the keys from its own pack; `usekey` names one.
+   */
+  private openRiftgate(eid: EntityId, player: PlayerComp): void {
+    const keySlots: number[] = [];
+    for (let i = 0; i < player.inventory.length; i++) {
+      if (player.inventory[i]?.item === DUNGEON_KEY_ITEM) keySlots.push(i);
+    }
+    player.session?.sendJson({ t: 'riftgate', keySlots });
+    if (keySlots.length === 0) {
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',
-        text: 'You descend into your own delve. Slay the champion — or flee through the portal.',
+        text: 'The Riftgate stands dark. It wants a dungeon key — the deep places and their keepers drop them.',
       });
     }
-    this.teleport(eid, delve.entry.x, delve.entry.y);
   }
 
-  private teardownDelve(characterId: number): void {
-    const delve = this.delves.get(characterId);
-    if (!delve) return;
-    for (const idx of delve.spawnIndexes) {
+  /** A riftgate portal tile within reach of this position, or null. */
+  private riftgateNear(pos: { x: number; y: number }): { x: number; y: number } | null {
+    const cx = Math.floor(pos.x);
+    const cy = Math.floor(pos.y);
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const t = this.world.groundAt(cx + dx, cy + dy);
+        if (t !== Tile.PortalDown && t !== Tile.PortalUp) continue;
+        const portal = this.world.portalAt(cx + dx, cy + dy);
+        if (portal?.delve) return { x: cx + dx, y: cy + dy };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Turn the key in the named pack slot. The key is never consumed —
+   * a key IS a place, and places keep. Same live key: walk back into
+   * the run. A different key: the old instance dies, the new one is
+   * cut fresh from the seed.
+   */
+  useKey(eid: EntityId, slot: number): void {
+    const player = this.players.get(eid);
+    const pos = this.positions.get(eid);
+    if (!player || !pos || player.session === null) return;
+    const sys = (text: string) =>
+      player.session!.sendJson({ t: 'chat', channel: 'system', text });
+    if (!this.riftgateNear(pos)) {
+      sys('You need to stand at a Riftgate to turn a dungeon key.');
+      return;
+    }
+    const held = player.inventory[slot];
+    if (!held || held.item !== DUNGEON_KEY_ITEM) {
+      sys('That slot holds no dungeon key.');
+      return;
+    }
+    const spec = dungeonSpecFromRoll(held.roll);
+    this.enterDungeon(eid, player, spec, { x: pos.x, y: pos.y });
+  }
+
+  private enterDungeon(
+    eid: EntityId,
+    player: PlayerComp,
+    spec: DungeonSpec,
+    returnTo: { x: number; y: number },
+  ): void {
+    let inst = this.dungeons.get(player.characterId);
+    if (inst && inst.seed === spec.seed && inst.tier === spec.tier && inst.power === spec.power) {
+      this.teleport(eid, inst.entry.x, inst.entry.y);
+      return;
+    }
+    if (inst) this.teardownDungeon(player.characterId);
+    const slot = this.nextDungeonSlot++;
+    const origin = dungeonOrigin(slot);
+    const result = generateDungeon(spec, origin, returnTo, slot);
+    this.world.addZone(result.zone);
+    const spawnIndexes = this.registerSpawns(result.zone.spawns ?? []);
+    inst = {
+      zoneId: result.zone.id,
+      spawnIndexes,
+      slot,
+      entry: result.entry,
+      seed: spec.seed,
+      tier: spec.tier,
+      power: spec.power,
+      x0: origin.x,
+      x1: origin.x + spec.size,
+    };
+    this.dungeons.set(player.characterId, inst);
+    player.session?.sendJson({
+      t: 'dungeon',
+      name: spec.name,
+      sigil: spec.sigil,
+      tier: spec.tier,
+      theme: spec.theme,
+      power: spec.power,
+    });
+    player.session?.sendJson({
+      t: 'chat',
+      channel: 'system',
+      text: `${spec.name} — sigil ${spec.sigil}, power ${spec.power}. The way out is where you land; the boss is where you'd least like him.`,
+    });
+    this.teleport(eid, result.entry.x, result.entry.y);
+  }
+
+  private teardownDungeon(characterId: number): void {
+    const dungeon = this.dungeons.get(characterId);
+    if (!dungeon) return;
+    for (const idx of dungeon.spawnIndexes) {
       const spawn = this.spawnPoints[idx];
       if (!spawn) continue;
       spawn.active = false;
@@ -2137,8 +2260,17 @@ export class GameServer {
         spawn.eid = null;
       }
     }
-    this.world.removeZone(delve.zoneId);
-    this.delves.delete(characterId);
+    this.world.removeZone(dungeon.zoneId);
+    this.dungeons.delete(characterId);
+  }
+
+  /** The dungeon instance owning this tile, if any (chests scale by it). */
+  private dungeonPowerAt(tx: number, ty: number): number | null {
+    if (ty < 8192) return null;
+    for (const inst of this.dungeons.values()) {
+      if (tx >= inst.x0 && tx < inst.x1) return inst.power;
+    }
+    return null;
   }
 
   // ------------------------------------------------------- equipment
@@ -4730,8 +4862,10 @@ export class GameServer {
     for (let i = 0; i < this.spawnPoints.length; i++) {
       const spawn = this.spawnPoints[i]!;
       if (!spawn.active || spawn.eid !== null || spawn.respawnAt > now) continue;
-      const def = NPCS.get(spawn.npc);
-      if (!def) continue;
+      const base = NPCS.get(spawn.npc);
+      if (!base) continue;
+      // Dungeon garrisons: the authored def re-issued at the key's power.
+      const def = spawn.level !== undefined ? scaleNpcDef(base, spawn.level, spawn.name) : base;
       // Find a walkable scatter position.
       let x = spawn.x;
       let y = spawn.y;
@@ -5372,6 +5506,41 @@ export class GameServer {
         placed++;
       }
       player.session?.sendJson({ t: 'chat', channel: 'system', text: `Spawned ${def.name} ×${placed}.` });
+      return;
+    }
+    if (config.devCommands && text.startsWith('/givekey')) {
+      // /givekey [tier] [power] [seed] — mint a dungeon key. The
+      // staging lever for the whole dungeon system: any tier, any
+      // power, or an exact seed to revisit a known layout.
+      const [, tierRaw, powerRaw, seedRaw] = text.split(/\s+/);
+      const tier = tierRaw ?? 'common';
+      if (!isRarityTier(tier)) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `/givekey [${RARITY_TIERS.join('|')}] [power] [seed]`,
+        });
+        return;
+      }
+      const seed = seedRaw !== undefined
+        ? (Number.parseInt(seedRaw, 10) >>> 0)
+        : (Math.floor(Math.random() * 0x100000000) >>> 0);
+      const powerNum = Number.parseInt(powerRaw ?? '', 10);
+      const pwr = Number.isFinite(powerNum) && powerNum >= 1
+        ? Math.min(99, powerNum)
+        : mintKeyPower(tier, seed);
+      const got = addItem(player.inventory, DUNGEON_KEY_ITEM, 1, { rar: tier, seed, pwr });
+      if (got === 0) {
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: 'Pack is full.' });
+        return;
+      }
+      const spec = dungeonSpecFromRoll({ rar: tier, seed, pwr });
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `Key minted: ${spec.name} (${spec.sigil}) — ${tier}, power ${spec.power}.`,
+      });
       return;
     }
     if (config.devCommands && text.startsWith('/spawnchest')) {
