@@ -376,6 +376,14 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX idx_dialogue_bindings_target ON dialogue_bindings(kind, target);
   `,
+  // 21 — actor combat protection: the safety switch over a
+  // disposition. 'invulnerable' = fights but every blow wards to
+  // zero; 'untargetable' = never gets a combat body, attacks pass
+  // straight through (talk stays safe). NULL = disposition alone
+  // rules, exactly as before.
+  `
+  ALTER TABLE npc_actors ADD COLUMN protection TEXT;
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

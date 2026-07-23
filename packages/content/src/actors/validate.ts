@@ -236,6 +236,11 @@ export function validateNpcActor(raw: unknown): ValidateActorResult {
     errors.push(`disposition must be friendly | neutral | hostile`);
   }
 
+  const protection = raw.protection;
+  if (protection !== undefined && protection !== 'invulnerable' && protection !== 'untargetable') {
+    errors.push(`protection must be invulnerable | untargetable (or absent)`);
+  }
+
   const model = validateModel(raw.model, errors);
   const equipment = validateEquipment(raw.equipment, model, errors);
   const inventory = validateInventory(raw.inventory, errors);
@@ -257,6 +262,19 @@ export function validateNpcActor(raw: unknown): ValidateActorResult {
   if (disposition === 'hostile' && !combat) {
     errors.push('hostile actors require a combat block');
   }
+  // Protection coherence: friendly is already beyond combat's reach;
+  // an invulnerable actor must be fightable for the ward to mean
+  // anything; a hostile nobody can strike back against is griefing
+  // by construction, not content.
+  if (disposition === 'friendly' && protection !== undefined) {
+    errors.push('friendly actors cannot carry protection (they are already unhittable)');
+  }
+  if (protection === 'invulnerable' && !combat) {
+    errors.push('invulnerable requires a combat block (there is nothing to ward without one)');
+  }
+  if (disposition === 'hostile' && protection === 'untargetable') {
+    errors.push('hostile actors cannot be untargetable (an unstrikeable aggressor is incoherent)');
+  }
 
   if (errors.length > 0) return { ok: false, errors: errors.map((e) => `${id || '<actor>'}: ${e}`) };
   return {
@@ -267,6 +285,7 @@ export function validateNpcActor(raw: unknown): ValidateActorResult {
       title,
       examine,
       disposition: disposition as NpcActorDef['disposition'],
+      protection: protection as NpcActorDef['protection'],
       model: model!,
       equipment,
       inventory,

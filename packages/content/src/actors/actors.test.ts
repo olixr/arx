@@ -132,6 +132,48 @@ test('validator rejects the dishonest defs', () => {
     'only valid on humanoid',
   );
   bad({ ...base, combat: undefined, model: { kind: 'humanoid', look: { skin: 99 } } }, 'valid look');
+  // Protection coherence: friendly is already unhittable; a ward
+  // needs a combat block to mean anything; an unstrikeable aggressor
+  // is griefing, not content.
+  bad({ ...base, protection: 'untargetable' }, 'friendly actors cannot carry protection');
+  bad({ ...base, disposition: 'neutral', protection: 'godmode' }, 'protection must be');
+  bad({ ...base, disposition: 'neutral', protection: 'invulnerable' }, 'requires a combat block');
+  bad(
+    { ...base, disposition: 'hostile', protection: 'untargetable', combat: { level: 5 } },
+    'cannot be untargetable',
+  );
+});
+
+test('protection: the two switches validate and ride the roster', () => {
+  const warded = validateNpcActor({
+    id: 'test_warded',
+    name: 'Warded',
+    disposition: 'neutral',
+    protection: 'invulnerable',
+    model: { kind: 'humanoid', look: {} },
+    combat: { level: 10 },
+  });
+  assert.ok(warded.ok);
+  assert.equal(warded.actor.protection, 'invulnerable');
+
+  // untargetable keeps its authored combat block, dormant — tooling
+  // can flip the switch back without re-authoring stats.
+  const ghost = validateNpcActor({
+    id: 'test_ghost',
+    name: 'Ghost',
+    disposition: 'neutral',
+    protection: 'untargetable',
+    model: { kind: 'humanoid', look: {} },
+    combat: { level: 30 },
+  });
+  assert.ok(ghost.ok);
+  assert.equal(ghost.actor.protection, 'untargetable');
+  assert.equal(ghost.actor.combat?.level, 30);
+
+  // The shipped roster: the watch cannot be killed, the captain
+  // cannot even be swung at.
+  assert.equal(NPC_ACTORS.get('bramblewick_gate_guard')!.protection, 'invulnerable');
+  assert.equal(NPC_ACTORS.get('captain_alda')!.protection, 'untargetable');
 });
 
 test('actor placements survive the zone JSON round-trip', () => {

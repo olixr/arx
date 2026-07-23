@@ -58,6 +58,25 @@ export type NpcModel = NpcModelHumanoid | NpcModelCreature;
  */
 export type NpcDisposition = 'friendly' | 'neutral' | 'hostile';
 
+/**
+ * Combat protection — the safety switch OVER a disposition:
+ *  - invulnerable:  a full combat participant that cannot be worn
+ *    down. Attacks connect and the actor fights back per its combat
+ *    block, but every blow is warded to zero ("Immune" on screen) —
+ *    no damage, no statuses, no knockback, no XP farming. The town
+ *    watch: swing at them and they'll thump you, but you can't kill
+ *    the law.
+ *  - untargetable:  outside combat entirely, BY CONSTRUCTION — the
+ *    spawn path never builds a combat body, so no damage loop can
+ *    even see the entity and attacks pass straight through (the same
+ *    mechanism that guards friendly actors). Talk and interact work
+ *    untouched; an authored combat block stays on the def, dormant,
+ *    so tooling can flip the switch without re-authoring stats.
+ * Friendly actors never carry protection — they are already beyond
+ * combat's reach (validator-enforced coherence).
+ */
+export type NpcActorProtection = 'invulnerable' | 'untargetable';
+
 /** One inventory row — what the actor carries (future: pickpocketing, trade stock). */
 export interface NpcActorStock {
   item: string;
@@ -109,6 +128,11 @@ export interface NpcActorDef {
   /** One-line examine/flavor text. */
   examine?: string;
   disposition: NpcDisposition;
+  /**
+   * Combat safety switch (see NpcActorProtection). Absent = the
+   * disposition alone decides how combat treats the actor.
+   */
+  protection?: NpcActorProtection;
   model: NpcModel;
   /**
    * Worn gear by slot (humanoid models only) — item ids whose defs

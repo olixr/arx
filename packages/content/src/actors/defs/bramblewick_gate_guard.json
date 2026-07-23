@@ -3,6 +3,7 @@
   "name": "Bramblewick Guard",
   "examine": "Iron-shod and bored, but the eyes miss nothing.",
   "disposition": "neutral",
+  "protection": "invulnerable",
   "model": {
     "kind": "humanoid",
     "look": { "skin": 2, "hair": 0, "hairColor": 1, "beard": 6, "eyes": 1, "shirt": 10, "pants": 10 }

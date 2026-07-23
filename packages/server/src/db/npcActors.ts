@@ -104,12 +104,13 @@ export function syncNpcActors(
     const now = Date.now();
     const upsert = db.prepare(
       `INSERT INTO npc_actors
-        (slug, name, title, examine, disposition, model_kind, creature_id, look,
+        (slug, name, title, examine, disposition, protection, model_kind, creature_id, look,
          dialogue_id, shop_id, content_hash, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(slug) DO UPDATE SET
          name = excluded.name, title = excluded.title, examine = excluded.examine,
-         disposition = excluded.disposition, model_kind = excluded.model_kind,
+         disposition = excluded.disposition, protection = excluded.protection,
+         model_kind = excluded.model_kind,
          creature_id = excluded.creature_id, look = excluded.look,
          dialogue_id = excluded.dialogue_id, shop_id = excluded.shop_id,
          content_hash = excluded.content_hash, updated_at = excluded.updated_at`,
@@ -129,6 +130,7 @@ export function syncNpcActors(
         actor.title ?? null,
         actor.examine ?? null,
         actor.disposition,
+        actor.protection ?? null,
         actor.model.kind,
         actor.model.kind === 'creature' ? actor.model.creature : null,
         actor.model.kind === 'humanoid' ? JSON.stringify(actor.model.look) : null,
@@ -175,6 +177,7 @@ export function loadNpcActors(db: DatabaseSync): NpcActorLoadResult {
     title: string | null;
     examine: string | null;
     disposition: string;
+    protection: string | null;
     model_kind: string;
     creature_id: string | null;
     look: string | null;
@@ -254,6 +257,7 @@ export function loadNpcActors(db: DatabaseSync): NpcActorLoadResult {
       title: row.title ?? undefined,
       examine: row.examine ?? undefined,
       disposition: row.disposition,
+      protection: row.protection ?? undefined,
       model:
         row.model_kind === 'creature'
           ? { kind: 'creature', creature: row.creature_id }

@@ -747,14 +747,18 @@ export class ClientGame {
           this.floaties.push({
             x: x + (Math.random() - 0.5) * 0.3,
             y: y - 0.4,
-            text: String(msg.dmg),
+            // A warded blow says so in words — a bare "0" reads as a
+            // bad roll, not an unbreakable guard.
+            text: msg.im ? 'Immune' : String(msg.dmg),
             color: crit
               ? '#ffd24a'
-              : msg.dmg === 0
-                ? '#7fb2d9'
-                : msg.eid === this.ownEid
-                  ? '#ff7b6b'
-                  : '#f4efe4',
+              : msg.im
+                ? '#9db7d6'
+                : msg.dmg === 0
+                  ? '#7fb2d9'
+                  : msg.eid === this.ownEid
+                    ? '#ff7b6b'
+                    : '#f4efe4',
             bornAt: performance.now(),
             sizeMul: crit ? 1.6 : 1,
           });

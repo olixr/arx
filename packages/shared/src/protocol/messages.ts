@@ -370,6 +370,11 @@ export interface S2CHit {
   ky?: number;
   /** Backstab — struck from stealth or from behind while sneaking. */
   bs?: boolean;
+  /**
+   * The blow was warded by an invulnerable actor — dmg is 0 and the
+   * client says "Immune" instead of painting a zero.
+   */
+  im?: boolean;
 }
 
 /** An NPC died (killed by someone) — drives the death effect. */

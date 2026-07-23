@@ -4,6 +4,7 @@
   "title": "Captain of the Watch",
   "examine": "Steel polished to a mirror. The watch answers to her.",
   "disposition": "neutral",
+  "protection": "untargetable",
   "model": {
     "kind": "humanoid",
     "look": { "skin": 3, "hair": 5, "hairColor": 0, "beard": 0, "eyes": 1, "feature": 4, "shirt": 10, "pants": 7 }

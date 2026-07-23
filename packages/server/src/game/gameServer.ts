@@ -4268,6 +4268,9 @@ export class GameServer {
   ): void {
     const npc = this.npcs.get(npcEid);
     if (!npc) return;
+    // The ward keeps venom off the blade's target entirely — no
+    // status decals, no reaction fuel, nothing to detonate later.
+    if (this.actors.get(npcEid)?.actor.protection === 'invulnerable') return;
     if (npc.def.resist?.includes(apply.status)) {
       const pos = this.positions.get(npcEid);
       if (pos) {
@@ -4455,6 +4458,9 @@ export class GameServer {
     const npc = this.npcs.get(npcEid);
     const health = this.healths.get(npcEid);
     if (!npc || !health || dmg <= 0) return;
+    // Nothing burns through the ward — a status that somehow landed
+    // before protection was set still ticks for zero.
+    if (this.actors.get(npcEid)?.actor.protection === 'invulnerable') return;
     this.broadcastHit(npcEid, dmg);
     health.hp -= dmg;
     const source = this.players.get(sourceEid);
@@ -4848,6 +4854,20 @@ export class GameServer {
     const health = this.healths.get(npcEid);
     if (!npc || !health) return;
 
+    // THE WARD: an invulnerable actor is a full combat participant
+    // that cannot be worn down. The blow connects — and stops there:
+    // no damage, no statuses or coats, no knockback, no haste feed,
+    // no XP. The one thing that DOES land is the insult — an idle
+    // guard you swing at swings back.
+    if (this.actors.get(npcEid)?.actor.protection === 'invulnerable') {
+      this.broadcastHit(npcEid, 0, false, 0, 0, false, true);
+      if (npc.state === 'idle' && npc.def.damage > 0) {
+        npc.state = 'chase';
+        npc.targetEid = attackerEid;
+      }
+      return;
+    }
+
     // The rhythm engine: every landed basic pulls both ability
     // cooldowns forward. Whiffs never count — you have to CONNECT.
     if (opts.basic) {
@@ -5139,7 +5159,15 @@ export class GameServer {
     }
   }
 
-  private broadcastHit(eid: EntityId, dmg: number, crit = false, kx = 0, ky = 0, backstab = false): void {
+  private broadcastHit(
+    eid: EntityId,
+    dmg: number,
+    crit = false,
+    kx = 0,
+    ky = 0,
+    backstab = false,
+    immune = false,
+  ): void {
     const hasDir = kx !== 0 || ky !== 0;
     for (const s of this.sessions) {
       if (s.playerEid === eid || s.knownEntities.has(eid)) {
@@ -5151,6 +5179,7 @@ export class GameServer {
           kx: hasDir ? Math.round(kx * 100) / 100 : undefined,
           ky: hasDir ? Math.round(ky * 100) / 100 : undefined,
           bs: backstab || undefined,
+          im: immune || undefined,
         });
       }
     }
@@ -5256,7 +5285,12 @@ export class GameServer {
     this.positions.set(eid, { x, y, dir: homeDir });
     this.poses.set(eid, PoseState.Idle);
     this.actors.set(eid, { actor, spawnIndex, homeDir, nextLine: 0 });
-    const combatDef = actorCombatDef(actor);
+    // The untargetable switch works BY CONSTRUCTION: no combat body,
+    // so no damage loop, projectile sweep, or blast radius can even
+    // see this entity — attacks pass straight through, exactly the
+    // mechanism that already guards friendly actors. The authored
+    // combat block stays on the def, dormant, for tooling to re-arm.
+    const combatDef = actor.protection === 'untargetable' ? null : actorCombatDef(actor);
     if (combatDef) {
       this.healths.set(eid, { hp: combatDef.maxHp, maxHp: combatDef.maxHp });
       this.npcs.set(eid, {
