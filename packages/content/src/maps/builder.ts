@@ -289,13 +289,13 @@ export class ZoneBuilder {
   }
 
   /** Place a named NPC actor (local coords; stored in world coords). */
-  actor(slug: string, x: number, y: number, dir?: number): this {
-    this.zoneActorSpawns.push({
-      actor: slug,
-      x: this.origin.x + x,
-      y: this.origin.y + y,
-      dir,
-    });
+  actor(slug: string, x: number, y: number, dir?: number, routine?: string): this {
+    // Absent fields stay absent — placements survive the zone JSON
+    // round-trip byte-exact (JSON drops undefined; deepEqual doesn't).
+    const spawn: ZoneActorSpawn = { actor: slug, x: this.origin.x + x, y: this.origin.y + y };
+    if (dir !== undefined) spawn.dir = dir;
+    if (routine !== undefined) spawn.routine = routine;
+    this.zoneActorSpawns.push(spawn);
     return this;
   }
 

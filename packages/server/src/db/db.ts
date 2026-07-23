@@ -384,6 +384,29 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE npc_actors ADD COLUMN protection TEXT;
   `,
+  // 22 — routines: the daily lives placed actors keep (content/
+  // routines). Same truth law as dialogues: shipped JSON seeds these
+  // tables, tooling edits them, the game reads only the DB, and the
+  // content_hash/authored_hash pair keeps tool edits sacred. Tasks
+  // are small polymorphic objects (post/path/wander) and ride as
+  // JSON TEXT sockets, not relations — one row per schedule window.
+  `
+  CREATE TABLE routines (
+    id TEXT PRIMARY KEY,
+    base TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    authored_hash TEXT,
+    updated_at INTEGER NOT NULL
+  );
+  CREATE TABLE routine_slots (
+    routine_id TEXT NOT NULL REFERENCES routines(id) ON DELETE CASCADE,
+    idx INTEGER NOT NULL,
+    from_hours REAL NOT NULL,
+    to_hours REAL NOT NULL,
+    task TEXT NOT NULL,
+    PRIMARY KEY (routine_id, idx)
+  );
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

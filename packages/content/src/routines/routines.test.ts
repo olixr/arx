@@ -1,0 +1,99 @@
+import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { test } from 'node:test';
+import { buildBramblewick } from '../maps/bramblewick.js';
+import { ROUTINES } from './registry.js';
+import { pickRoutineSlot, routineTaskAt, slotContains } from './schedule.js';
+import { validateRoutine } from './validate.js';
+
+const DEFS_DIR = new URL('./defs/', import.meta.url).pathname;
+
+test('every defs/*.json file is registered and valid', () => {
+  const files = readdirSync(DEFS_DIR).filter((f) => f.endsWith('.json'));
+  assert.ok(files.length > 0, 'defs directory holds routine files');
+  for (const file of files) {
+    const raw = JSON.parse(readFileSync(join(DEFS_DIR, file), 'utf8')) as { id?: string };
+    const slug = file.replace(/\.json$/, '');
+    assert.equal(raw.id, slug, `${file}: filename must equal the routine id`);
+    assert.ok(ROUTINES.has(slug), `${file}: missing from the registry SOURCES roster`);
+  }
+  assert.equal(ROUTINES.size, files.length, 'registry holds exactly the authored files');
+});
+
+test('every placed routine reference resolves', () => {
+  const zone = buildBramblewick();
+  const placed = (zone.actorSpawns ?? []).filter((s) => s.routine !== undefined);
+  assert.ok(placed.length >= 6, 'bramblewick keeps hours');
+  for (const s of placed) {
+    assert.ok(ROUTINES.has(s.routine!), `placement of '${s.actor}' names known routine '${s.routine}'`);
+  }
+});
+
+test('schedule windows: plain, wrapping, and the authored-order priority', () => {
+  // Plain window.
+  assert.ok(slotContains(6, 19, 6));
+  assert.ok(slotContains(6, 19, 18.99));
+  assert.ok(!slotContains(6, 19, 19));
+  assert.ok(!slotContains(6, 19, 3));
+  // A night watch wraps midnight.
+  assert.ok(slotContains(21, 5.5, 23));
+  assert.ok(slotContains(21, 5.5, 0));
+  assert.ok(slotContains(21, 5.5, 5.4));
+  assert.ok(!slotContains(21, 5.5, 12));
+
+  // The smith: lunch slot sits before the night slot; unclaimed hours
+  // fall to the base work loop.
+  const smith = ROUTINES.get('smith_day')!;
+  assert.equal(pickRoutineSlot(smith, 12.5), 0, 'lunch owns 12:30');
+  assert.equal(pickRoutineSlot(smith, 23), 1, 'the night post owns 23:00');
+  assert.equal(pickRoutineSlot(smith, 3), 1, 'the night post wraps past midnight');
+  assert.equal(pickRoutineSlot(smith, 9), -1, 'morning falls to base');
+  assert.equal(routineTaskAt(smith, 9).kind, 'path');
+  assert.equal(routineTaskAt(smith, 22).kind, 'post');
+});
+
+test('validator rejects the dishonest defs', () => {
+  const bad = (raw: unknown, needle: string) => {
+    const res = validateRoutine(raw);
+    assert.ok(!res.ok, `expected rejection for ${needle}`);
+    assert.ok(
+      res.errors.some((e) => e.includes(needle)),
+      `errors mention ${needle}: ${res.errors.join(' | ')}`,
+    );
+  };
+  const base = { id: 'test_ok', base: { kind: 'post' } };
+  bad({ ...base, id: 'Bad Slug!' }, 'must match');
+  bad({ id: 'test_ok' }, 'base must be an object');
+  bad({ ...base, base: { kind: 'loiter' } }, "must be 'post', 'path', or 'wander'");
+  bad({ ...base, base: { kind: 'path', waypoints: [] } }, '1..32 waypoints');
+  bad({ ...base, base: { kind: 'path', waypoints: [{ x: 1 }] } }, 'y is required');
+  bad({ ...base, base: { kind: 'path', waypoints: [{ x: 1, y: 500 }] } }, 'within ±128');
+  bad(
+    { ...base, base: { kind: 'path', mode: 'shuffle', waypoints: [{ x: 1, y: 1 }] } },
+    "'loop', 'bounce', or 'once'",
+  );
+  bad({ ...base, base: { kind: 'wander' } }, 'radius');
+  bad({ ...base, base: { kind: 'wander', radius: 90 } }, '0.5..32');
+  bad({ ...base, slots: [{ from: 25, to: 3, task: { kind: 'post' } }] }, '[0, 24)');
+  bad({ ...base, slots: [{ from: 6, to: 6, task: { kind: 'post' } }] }, 'covers no hours');
+  bad(
+    { ...base, base: { kind: 'path', waypoints: [{ x: 0, y: 0, waitSec: 2000 }] } },
+    '0..900',
+  );
+  bad({ ...base, base: { kind: 'post', dir: 9 } }, 'radians');
+  bad({ ...base, base: { kind: 'post', work: 'yes' } }, 'boolean');
+});
+
+test('validator normalizes defaults away (interchange stays minimal)', () => {
+  const res = validateRoutine({
+    id: 'test_min',
+    base: { kind: 'path', mode: 'loop', waypoints: [{ x: 1, y: 0, waitSec: 0, work: false }] },
+  });
+  assert.ok(res.ok);
+  const path = res.routine.base;
+  assert.ok(path.kind === 'path');
+  assert.equal(path.mode, undefined, "mode 'loop' is the default and stores as absent");
+  assert.equal(path.waypoints[0]!.waitSec, undefined, 'waitSec 0 stores as absent');
+  assert.equal(path.waypoints[0]!.work, undefined, 'work false stores as absent');
+});

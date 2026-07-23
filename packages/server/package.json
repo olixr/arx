@@ -7,7 +7,8 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "test": "tsx --test 'src/**/*.test.ts'",
-    "dialogues": "tsx src/tools/dialoguesCli.ts"
+    "dialogues": "tsx src/tools/dialoguesCli.ts",
+    "routines": "tsx src/tools/routinesCli.ts"
   },
   "dependencies": {
     "@devcraft/shared": "*",

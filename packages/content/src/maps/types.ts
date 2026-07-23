@@ -28,8 +28,7 @@ export interface ZoneSpawn {
 /**
  * A placed NPC actor (actors/types.ts) — the PLACEMENT layer of the
  * actor system: which named individual stands where in this zone.
- * Waypoint routes will extend this record when the patrol system
- * lands; identity stays in the actor def, never here.
+ * Identity stays in the actor def, never here.
  */
 export interface ZoneActorSpawn {
   /** NpcActorDef slug. */
@@ -38,6 +37,15 @@ export interface ZoneActorSpawn {
   y: number;
   /** Resting facing in radians (absent = facing south). */
   dir?: number;
+  /**
+   * RoutineDef id (routines/types.ts) — the daily life this body
+   * keeps. Routine coordinates are offsets from THIS placement (the
+   * post-is-the-origin law), which is why the routine reference lives
+   * here and not on the actor: the same routine paces two different
+   * gates, and the same actor keeps different hours in different
+   * zones. Absent = the actor simply holds its post.
+   */
+  routine?: string;
 }
 
 /**

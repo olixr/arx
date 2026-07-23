@@ -9,6 +9,7 @@ import farmerHetty from './defs/farmer_hetty.json';
 import grib from './defs/grib.json';
 import merchantTobbin from './defs/merchant_tobbin.json';
 import oldMaren from './defs/old_maren.json';
+import smithBrannock from './defs/smith_brannock.json';
 
 /**
  * Every authored actor JSON, registered here. A def that isn't listed
@@ -23,6 +24,7 @@ const SOURCES: readonly unknown[] = [
   grib,
   merchantTobbin,
   oldMaren,
+  smithBrannock,
 ];
 
 function buildRegistry(): ReadonlyMap<string, NpcActorDef> {

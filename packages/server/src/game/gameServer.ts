@@ -67,6 +67,7 @@ import {
   bandDy,
   dialogueDoneFlag,
   pickDialogue,
+  pickRoutineSlot,
   growMs,
   isCropTile,
   aggregateGearStats,
@@ -99,6 +100,9 @@ import {
   type NodeDef,
   type NpcActorDef,
   type NpcDef,
+  type RoutineDef,
+  type RoutineTask,
+  type RoutineTaskPath,
   type ZoneActorSpawn,
   type RecipeDef,
   type WeaponStats,
@@ -454,8 +458,48 @@ interface ActorSpawnState {
   x: number;
   y: number;
   dir?: number;
+  /** RoutineDef id — the daily life this post keeps (offsets from here). */
+  routine?: string;
   eid: EntityId | null;
   respawnAt: number;
+}
+
+/**
+ * A placed actor's daily life in motion — the runtime walk through a
+ * RoutineDef (content/routines). The routine only ever steers an
+ * OTHERWISE IDLE body: combat owns a fighting NpcComp outright (the
+ * leash/return laws answer every interruption by walking the body
+ * back to originX/Y, which this comp keeps pinned to the routine's
+ * last spot), and open conversations hold the walker still. Resuming
+ * is therefore never a special case — the body simply walks from
+ * wherever life left it toward whatever the schedule says now.
+ */
+interface RoutineComp {
+  def: RoutineDef;
+  /** The post — every routine coordinate is an offset from here. */
+  anchorX: number;
+  anchorY: number;
+  /** Schedule slot owning the body (-1 = base, -2 = not yet resolved). */
+  slot: number;
+  wpIndex: number;
+  /** Path direction for bounce mode: 1 forward, -1 backward. */
+  wpDir: 1 | -1;
+  phase: 'travel' | 'linger';
+  /** Current travel destination (world coords; wander re-rolls it). */
+  targetX: number;
+  targetY: number;
+  /** Linger deadline; MAX_SAFE_INTEGER = hold until the schedule flips. */
+  lingerUntilTick: number;
+  /** Barked interactions freeze the walk for a beat. */
+  pauseUntilTick: number;
+  /** Progress watchdog: ticks spent traveling without getting anywhere. */
+  stuckTicks: number;
+  /**
+   * True while the routine owns the body's facing (mid-stride, working
+   * a station, or lingering on an authored dir) — tickActors' greet-
+   * the-passerby glance yields to it.
+   */
+  holdFacing: boolean;
 }
 
 /**
@@ -644,6 +688,7 @@ export class GameServer {
   readonly players = this.ecs.register<PlayerComp>();
   readonly npcs = this.ecs.register<NpcComp>();
   readonly actors = this.ecs.register<ActorComp>();
+  readonly routines = this.ecs.register<RoutineComp>();
   readonly drops = this.ecs.register<DropComp>();
   readonly projectiles = this.ecs.register<ProjectileComp>();
   readonly statuses = this.ecs.register<ServerStatus[]>();
@@ -659,6 +704,14 @@ export class GameServer {
   /** Actor definitions by slug — loaded from the DB at boot (DB-first). */
   private readonly actorDefs = new Map<string, NpcActorDef>();
   private readonly actorSpawnPoints: ActorSpawnState[] = [];
+  /** Routine definitions by id — loaded from the DB at boot (DB-first). */
+  private readonly routineDefs = new Map<string, RoutineDef>();
+  /**
+   * Re-reads routines from the DB (wired by index.ts at boot). The
+   * tooling edits rows, then /routinereload swaps the live registry —
+   * no restart between an edit and watching the new day unfold.
+   */
+  routineSource: (() => { routines: RoutineDef[]; errors: string[] }) | null = null;
   /**
    * Dialogue offers by bound actor slug — assembled from the BINDINGS
    * of DB-loaded trees. The tree stands alone; only bindings put words
@@ -874,6 +927,15 @@ export class GameServer {
     for (const def of defs) this.actorDefs.set(def.id, def);
   }
 
+  /**
+   * Install the routine roster (loaded DB-first at boot). Must run
+   * before registerActorSpawns — a placement keeping unknown hours is
+   * a content error worth hearing about.
+   */
+  registerRoutines(defs: Iterable<RoutineDef>): void {
+    for (const def of defs) this.routineDefs.set(def.id, def);
+  }
+
   /** Register placed actors — exact posts, one body each. */
   registerActorSpawns(spawns: ReadonlyArray<ZoneActorSpawn>): void {
     for (const spawn of spawns) {
@@ -881,11 +943,17 @@ export class GameServer {
         console.warn(`[npc] placement references unknown actor '${spawn.actor}' — skipped`);
         continue;
       }
+      if (spawn.routine !== undefined && !this.routineDefs.has(spawn.routine)) {
+        console.warn(
+          `[npc] placement of '${spawn.actor}' references unknown routine '${spawn.routine}' — posted still`,
+        );
+      }
       this.actorSpawnPoints.push({
         actor: spawn.actor,
         x: spawn.x,
         y: spawn.y,
         dir: spawn.dir,
+        routine: spawn.routine,
         eid: null,
         respawnAt: 0,
       });
@@ -2771,6 +2839,13 @@ export class GameServer {
         const line = lines[actorComp.nextLine % lines.length]!;
         actorComp.nextLine++;
         npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
+        // A barked line earns a beat of stillness — nobody talks over
+        // their shoulder while marching off on an errand.
+        const rc = this.routines.get(targetEid);
+        if (rc) {
+          rc.pauseUntilTick = this.tickCount + 80;
+          rc.holdFacing = false;
+        }
         sys(`${actorComp.actor.name}: "${line}"`);
         return;
       }
@@ -5227,7 +5302,7 @@ export class GameServer {
       if (spawn.eid !== null || spawn.respawnAt > now) continue;
       const def = this.actorDefs.get(spawn.actor);
       if (!def) continue;
-      spawn.eid = this.spawnActor(def, spawn.x, spawn.y, i, spawn.dir);
+      spawn.eid = this.spawnActor(def, spawn.x, spawn.y, i, spawn.dir, spawn.routine);
     }
   }
 
@@ -5278,6 +5353,7 @@ export class GameServer {
     y: number,
     spawnIndex: number,
     dir?: number,
+    routine?: string,
   ): EntityId {
     const eid = this.ecs.create();
     const homeDir = dir ?? Math.PI / 2; // face south — toward the camera
@@ -5285,6 +5361,27 @@ export class GameServer {
     this.positions.set(eid, { x, y, dir: homeDir });
     this.poses.set(eid, PoseState.Idle);
     this.actors.set(eid, { actor, spawnIndex, homeDir, nextLine: 0 });
+    // The daily life rides its own comp: slot -2 forces a schedule
+    // resolve on the very first tick, so a respawn (or a boot at any
+    // hour) walks straight to wherever the day says this body belongs.
+    const routineDef = routine !== undefined ? this.routineDefs.get(routine) : undefined;
+    if (routineDef) {
+      this.routines.set(eid, {
+        def: routineDef,
+        anchorX: x,
+        anchorY: y,
+        slot: -2,
+        wpIndex: 0,
+        wpDir: 1,
+        phase: 'travel',
+        targetX: x,
+        targetY: y,
+        lingerUntilTick: 0,
+        pauseUntilTick: 0,
+        stuckTicks: 0,
+        holdFacing: false,
+      });
+    }
     // The untargetable switch works BY CONSTRUCTION: no combat body,
     // so no damage loop, projectile sweep, or blast radius can even
     // see this entity — attacks pass straight through, exactly the
@@ -5330,6 +5427,9 @@ export class GameServer {
     for (const [eid, comp] of this.actors) {
       const npc = this.npcs.get(eid);
       if (npc && npc.state !== 'idle') continue; // combat owns the body
+      // Mid-stride or working a station, the routine owns the eyes —
+      // a smith who greets every passerby never finishes a blade.
+      if (this.routines.get(eid)?.holdFacing) continue;
       const pos = this.positions.get(eid);
       if (!pos) continue;
       let bestD = 3 * 3;
@@ -5351,6 +5451,242 @@ export class GameServer {
         }
       }
       pos.dir = found ? Math.atan2(bestY, bestX) : comp.homeDir;
+    }
+  }
+
+  // ------------------------------------------------------- routines
+
+  /** A townsperson's stride — calmer than any combat speed. */
+  private static readonly ROUTINE_WALK_SPEED = 1.8;
+  /** Close enough to a target counts as standing on it. */
+  private static readonly ROUTINE_ARRIVE = 0.3;
+  /** Travel ticks without progress before the watchdog intervenes (3s). */
+  private static readonly ROUTINE_STUCK_TICKS = 60;
+
+  /** The task the schedule assigns this comp right now. */
+  private routineTask(rc: RoutineComp): RoutineTask {
+    return rc.slot < 0 ? rc.def.base : (rc.def.slots?.[rc.slot]?.task ?? rc.def.base);
+  }
+
+  /** Point the comp at its task's current destination (world coords). */
+  private routineRetarget(rc: RoutineComp, task: RoutineTask): void {
+    if (task.kind === 'path') {
+      const wp = task.waypoints[Math.min(rc.wpIndex, task.waypoints.length - 1)]!;
+      rc.targetX = rc.anchorX + wp.x;
+      rc.targetY = rc.anchorY + wp.y;
+    } else if (task.kind === 'wander') {
+      this.routineRollWander(rc, task);
+    } else {
+      rc.targetX = rc.anchorX + (task.x ?? 0);
+      rc.targetY = rc.anchorY + (task.y ?? 0);
+    }
+  }
+
+  /** Roll a fresh walkable drift target inside the wander circle. */
+  private routineRollWander(rc: RoutineComp, task: { x?: number; y?: number; radius: number }): void {
+    const cx = rc.anchorX + (task.x ?? 0);
+    const cy = rc.anchorY + (task.y ?? 0);
+    rc.targetX = cx;
+    rc.targetY = cy;
+    for (let tries = 0; tries < 8; tries++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = Math.sqrt(Math.random()) * task.radius;
+      const tx = cx + Math.cos(a) * r;
+      const ty = cy + Math.sin(a) * r;
+      if (!this.world.isSolid(Math.floor(tx), Math.floor(ty))) {
+        rc.targetX = tx;
+        rc.targetY = ty;
+        break;
+      }
+    }
+  }
+
+  /** Step the path cursor per its mode; 'once' holds at the last stop. */
+  private routineAdvance(rc: RoutineComp, path: RoutineTaskPath): void {
+    const n = path.waypoints.length;
+    const mode = path.mode ?? 'loop';
+    if (n <= 1 || (mode === 'once' && rc.wpIndex >= n - 1)) {
+      rc.phase = 'linger';
+      rc.lingerUntilTick = Number.MAX_SAFE_INTEGER;
+      return;
+    }
+    if (mode === 'bounce') {
+      let next = rc.wpIndex + rc.wpDir;
+      if (next < 0 || next >= n) {
+        rc.wpDir = rc.wpDir === 1 ? -1 : 1;
+        next = rc.wpIndex + rc.wpDir;
+      }
+      rc.wpIndex = next;
+    } else {
+      rc.wpIndex = (rc.wpIndex + 1) % n;
+    }
+    rc.phase = 'travel';
+    rc.stuckTicks = 0;
+    this.routineRetarget(rc, path);
+  }
+
+  /** Set a routine body's pose without stomping a combat flinch. */
+  private routinePose(eid: EntityId, npc: NpcComp | undefined, pose: PoseState): void {
+    if (npc && this.tickCount < npc.poseUntilTick) return;
+    this.poses.set(eid, pose);
+  }
+
+  /**
+   * The daily lives, one step per tick. Runs AFTER tickNpcs so the
+   * routine's pose wins over the combat ticker's idle reset, and only
+   * ever steers bodies whose combat state (if any) is 'idle' — chase
+   * and return own the legs outright, and the leash anchor (originX/Y)
+   * is pinned to the routine's last spot so a fight always resolves
+   * by walking back to the interrupted errand.
+   */
+  private tickRoutines(): void {
+    if (this.routines.size === 0) return;
+    // Who is being talked AT: a conversation holds the walker still.
+    let talking: Set<EntityId> | null = null;
+    for (const [, player] of this.players) {
+      if (player.dialogue) (talking ??= new Set()).add(player.dialogue.targetEid);
+    }
+    const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
+
+    for (const [eid, rc] of this.routines) {
+      const pos = this.positions.get(eid);
+      if (!pos) continue;
+      const npc = this.npcs.get(eid);
+      if (npc && npc.state !== 'idle') {
+        // Combat owns the body; the errand resumes where life left it.
+        rc.holdFacing = false;
+        rc.stuckTicks = 0;
+        continue;
+      }
+
+      // Schedule resolve — a flip resets progression onto the new task.
+      const slot = pickRoutineSlot(rc.def, hours);
+      if (slot !== rc.slot) {
+        rc.slot = slot;
+        rc.wpIndex = 0;
+        rc.wpDir = 1;
+        rc.phase = 'travel';
+        rc.stuckTicks = 0;
+        this.routineRetarget(rc, this.routineTask(rc));
+      }
+      const task = this.routineTask(rc);
+
+      // Conversations and barks park the body mid-errand.
+      if (talking?.has(eid) || this.tickCount < rc.pauseUntilTick) {
+        rc.holdFacing = false;
+        rc.stuckTicks = 0;
+        this.routinePose(eid, npc, PoseState.Idle);
+        continue;
+      }
+
+      const wp =
+        task.kind === 'path'
+          ? task.waypoints[Math.min(rc.wpIndex, task.waypoints.length - 1)]!
+          : undefined;
+
+      if (rc.phase === 'linger') {
+        // Knocked (or leashed) off the spot? Walk back — the errand
+        // re-establishes itself, never teleports.
+        const ddx = rc.targetX - pos.x;
+        const ddy = rc.targetY - pos.y;
+        if (ddx * ddx + ddy * ddy > 0.8 * 0.8) {
+          rc.phase = 'travel';
+          rc.stuckTicks = 0;
+        } else if (this.tickCount >= rc.lingerUntilTick) {
+          if (task.kind === 'path') {
+            this.routineAdvance(rc, task);
+          } else if (task.kind === 'wander') {
+            this.routineRollWander(rc, task);
+            rc.phase = 'travel';
+            rc.stuckTicks = 0;
+          }
+          // A post lingers forever; only a schedule flip moves it.
+        }
+        if (rc.phase === 'linger') {
+          const working = task.kind === 'post' ? task.work : wp?.work;
+          const dir = task.kind === 'path' ? wp?.dir : task.kind === 'post' ? task.dir : undefined;
+          if (working) {
+            // The client squares the rig up to the nearest station and
+            // plays the full work choreography off this one byte.
+            this.routinePose(eid, npc, PoseState.Craft);
+            rc.holdFacing = true;
+          } else {
+            this.routinePose(eid, npc, PoseState.Idle);
+            // An authored facing is held; otherwise tickActors may
+            // let the body glance at whoever wanders past.
+            rc.holdFacing = dir !== undefined;
+            if (dir !== undefined) pos.dir = dir;
+          }
+          continue;
+        }
+      }
+
+      // Travel.
+      const dx = rc.targetX - pos.x;
+      const dy = rc.targetY - pos.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist <= GameServer.ROUTINE_ARRIVE) {
+        rc.stuckTicks = 0;
+        if (task.kind === 'path' && !(wp!.waitSec || (task.mode === 'once' && rc.wpIndex >= task.waypoints.length - 1))) {
+          // A pass-through stop: no linger, straight to the next leg.
+          this.routineAdvance(rc, task);
+          this.routinePose(eid, npc, PoseState.Walk);
+          continue;
+        }
+        rc.phase = 'linger';
+        rc.lingerUntilTick =
+          task.kind === 'path'
+            ? task.mode === 'once' && rc.wpIndex >= task.waypoints.length - 1
+              ? Number.MAX_SAFE_INTEGER
+              : this.tickCount + Math.round((wp!.waitSec ?? 0) * (1000 / TICK_MS))
+            : task.kind === 'wander'
+              ? this.tickCount + Math.round((2 + Math.random() * 5) * (1000 / TICK_MS))
+              : Number.MAX_SAFE_INTEGER;
+        this.routinePose(eid, npc, PoseState.Idle);
+        continue;
+      }
+
+      const speed = Math.min(GameServer.ROUTINE_WALK_SPEED, npc?.def.speed ?? Infinity);
+      const radius = npc?.def.radius ?? 0.3;
+      const next = stepMovement(pos, { mx: dx / dist, my: dy / dist }, speed, TICK_DT, this.world, radius);
+      const stepped = Math.hypot(next.x - pos.x, next.y - pos.y);
+      if (stepped > 0.001) {
+        pos.dir = Math.atan2(dy, dx);
+        pos.x = next.x;
+        pos.y = next.y;
+        this.updateChunkMembership(eid);
+        // The leash anchor rides along: a fight picked mid-errand
+        // returns the body HERE, not to the morning's post.
+        if (npc) {
+          npc.originX = pos.x;
+          npc.originY = pos.y;
+        }
+        rc.holdFacing = true;
+        this.routinePose(eid, npc, PoseState.Walk);
+      } else {
+        this.routinePose(eid, npc, PoseState.Idle);
+      }
+      // Progress watchdog: authored paths are walked segments, not a
+      // pathfinder — a blocked leg (moved furniture, a body wedged in
+      // a doorway) skips forward rather than pushing a wall forever.
+      rc.stuckTicks = stepped < speed * TICK_DT * 0.25 ? rc.stuckTicks + 1 : 0;
+      if (rc.stuckTicks >= GameServer.ROUTINE_STUCK_TICKS) {
+        rc.stuckTicks = 0;
+        if (task.kind === 'path') {
+          this.routineAdvance(rc, task);
+        } else if (task.kind === 'wander') {
+          this.routineRollWander(rc, task);
+        } else if (!this.world.isSolid(Math.floor(rc.targetX), Math.floor(rc.targetY))) {
+          // A post has nowhere else to go — snap the last stretch.
+          pos.x = rc.targetX;
+          pos.y = rc.targetY;
+          this.updateChunkMembership(eid);
+          if (npc) {
+            npc.originX = pos.x;
+            npc.originY = pos.y;
+          }
+        }
+      }
     }
   }
 
@@ -5997,6 +6333,55 @@ export class GameServer {
       });
       return;
     }
+    if (config.devCommands && text.startsWith('/routinereload')) {
+      // /routinereload — swap in the DB's current routines, live.
+      // Walking bodies re-resolve their schedule on the next tick.
+      if (!this.routineSource) return;
+      const fresh = this.routineSource();
+      this.routineDefs.clear();
+      this.registerRoutines(fresh.routines);
+      for (const [, rc] of this.routines) {
+        const def = this.routineDefs.get(rc.def.id);
+        if (def) {
+          rc.def = def;
+          rc.slot = -2; // force a fresh schedule resolve
+        }
+      }
+      const errs = fresh.errors.length > 0 ? `, ${fresh.errors.length} invalid` : '';
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `Routines reloaded: ${fresh.routines.length}${errs}.`,
+      });
+      return;
+    }
+    if (config.devCommands && text.startsWith('/routines')) {
+      // /routines — where is everyone in their day right now?
+      const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
+      const hh = Math.floor(hours);
+      const mm = Math.floor((hours - hh) * 60);
+      const lines: string[] = [`Routines at ${hh}:${String(mm).padStart(2, '0')} —`];
+      for (const [eid, rc] of this.routines) {
+        const actor = this.actors.get(eid)?.actor;
+        const pos = this.positions.get(eid);
+        const npc = this.npcs.get(eid);
+        const task = this.routineTask(rc);
+        const state =
+          npc && npc.state !== 'idle'
+            ? npc.state
+            : this.tickCount < rc.pauseUntilTick
+              ? 'paused'
+              : rc.phase;
+        const where = pos ? ` @ ${pos.x.toFixed(1)},${pos.y.toFixed(1)}` : '';
+        const leg = task.kind === 'path' ? ` wp${rc.wpIndex}` : '';
+        lines.push(
+          `${actor?.name ?? '?'}: ${rc.def.id} slot ${rc.slot} ${task.kind}${leg} ${state}${where}`,
+        );
+      }
+      if (this.routines.size === 0) lines.push('nobody keeps hours here');
+      player.session?.sendJson({ t: 'chat', channel: 'system', text: lines.join('\n') });
+      return;
+    }
     if (config.devCommands && text.startsWith('/flagreset')) {
       // /flagreset [prefix] — wipe story flags (optionally by prefix,
       // e.g. `/flagreset dlg:` replays every one-time conversation).
@@ -6140,6 +6525,7 @@ export class GameServer {
 
     this.tickSpawns(now);
     this.tickNpcs(now);
+    this.tickRoutines();
     this.tickActors();
     // NPC positions are final for this tick — log the lag-comp ring.
     this.recordNpcHistory();

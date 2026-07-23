@@ -4,6 +4,7 @@ import { WebSocketServer } from 'ws';
 import {
   DIALOGUES,
   NPC_ACTORS,
+  ROUTINES,
   buildBramblewick,
   buildGloomhollow,
   buildHollowStair,
@@ -16,6 +17,7 @@ import { AccountStore } from './db/accounts.js';
 import { openDb } from './db/db.js';
 import { loadDialogues, seedDialogues } from './db/dialogues.js';
 import { loadNpcActors, syncNpcActors } from './db/npcActors.js';
+import { loadRoutines, seedRoutines } from './db/routines.js';
 import { GameServer } from './game/gameServer.js';
 import { Session } from './net/session.js';
 import { WorldSource } from './world/worldSource.js';
@@ -55,6 +57,20 @@ const actorSync = syncNpcActors(db, [...NPC_ACTORS.values()]);
 const actorLoad = loadNpcActors(db);
 for (const err of actorLoad.errors) console.warn(`[npc] invalid DB actor: ${err}`);
 game.registerActors(actorLoad.actors);
+
+// Routines, DB-first under the same truth law — registered BEFORE the
+// placements that reference them, so a dangling routine id warns at
+// boot instead of failing silently at spawn time.
+const rtnSeed = seedRoutines(db, [...ROUTINES.values()]);
+const rtnLoad = loadRoutines(db);
+for (const err of rtnLoad.errors) console.warn(`[npc] invalid DB routine: ${err}`);
+game.registerRoutines(rtnLoad.routines);
+game.routineSource = () => loadRoutines(db); // /routinereload's live wire
+console.log(
+  `[npc] routines: ${rtnLoad.routines.length} loaded ` +
+    `(+${rtnSeed.added} ~${rtnSeed.updated} !${rtnSeed.kept} -${rtnSeed.removed} =${rtnSeed.unchanged})`,
+);
+
 for (const zone of zones) {
   if (zone.actorSpawns && zone.actorSpawns.length > 0) game.registerActorSpawns(zone.actorSpawns);
 }
