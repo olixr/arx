@@ -175,6 +175,8 @@ export interface GameEvents {
   }): void;
   /** The conversation is over — tear the frame down. */
   onDialogueClose?(): void;
+  /** A trainer opened their wares — render the named shop's shelf. */
+  onShopOpen?(shop: string): void;
 }
 
 export class ClientGame {
@@ -684,6 +686,10 @@ export class ClientGame {
       }
       case 'recipes': {
         this.knownRecipes = new Set(msg.known);
+        break;
+      }
+      case 'shopopen': {
+        this.events.onShopOpen?.(msg.shop);
         break;
       }
       case 'xp': {
@@ -1217,8 +1223,8 @@ export class ClientGame {
     this.conn?.send({ t: 'setlook', look });
   }
 
-  shopSend(op: 'buy' | 'sell', item: string, qty: number, slot?: number): void {
-    this.conn?.send({ t: 'shop', op, item, qty, slot });
+  shopSend(op: 'buy' | 'sell', item: string, qty: number, slot?: number, shop?: string): void {
+    this.conn?.send({ t: 'shop', op, item, qty, slot, shop });
   }
 
   buildSend(buildable: string, tx: number, ty: number): void {

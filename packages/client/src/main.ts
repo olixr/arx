@@ -218,9 +218,9 @@ const stationPanels = new StationPanels(
     if (op === 'withdraw') sfx.stow();
     game.bankSend(op, item, qty, undefined, gearId);
   },
-  (op, item, qty) => {
+  (op, item, qty, shop) => {
     sfx.coins();
-    game.shopSend(op, item, qty);
+    game.shopSend(op, item, qty, undefined, shop);
   },
   (buildable) => {
     buildMode = buildable;
@@ -568,6 +568,12 @@ const game = new ClientGame(input, {
     renderer.endDialogueCine();
     input.cinemaCapture = false;
     document.body.classList.remove('in-dialogue');
+  },
+  onShopOpen: (shop) => {
+    // A trainer opened their wares — same store screen, their shelf.
+    closeAllUi();
+    stationPanels.openShop(shop);
+    panels.showInventory();
   },
   onDungeon: (d) => {
     // A toast, not a screen — it overlays like the level-up card.
@@ -1103,7 +1109,7 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
     }
     case 'shop':
       closeAllUi();
-      stationPanels.openShop(target);
+      stationPanels.openShop('general_store', target);
       panels.showInventory();
       break;
     case 'plot':

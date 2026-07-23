@@ -197,6 +197,8 @@ export interface GameEvents {
     }): void;
     /** The conversation is over — tear the frame down. */
     onDialogueClose?(): void;
+    /** A trainer opened their wares — render the named shop's shelf. */
+    onShopOpen?(shop: string): void;
 }
 export declare class ClientGame {
     private readonly input;
@@ -452,7 +454,7 @@ export declare class ClientGame {
     useKeySend(slot: number): void;
     /** Confirm character creation (optimistic — the server locks it). */
     setLookSend(look: Look): void;
-    shopSend(op: 'buy' | 'sell', item: string, qty: number, slot?: number): void;
+    shopSend(op: 'buy' | 'sell', item: string, qty: number, slot?: number, shop?: string): void;
     buildSend(buildable: string, tx: number, ty: number): void;
     demolishSend(tx: number, ty: number): void;
     private handleSnapshot;

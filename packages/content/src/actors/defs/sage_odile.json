@@ -1,0 +1,23 @@
+{
+  "id": "sage_odile",
+  "name": "Odile",
+  "title": "Sage of the Arcanum",
+  "examine": "Smells of dried moonbell and old paper. Reads three books at once and finishes all of them.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 1, "hair": 9, "hairColor": 6, "beard": 0, "eyes": 3, "shirt": 2, "pants": 8 }
+  },
+  "inventory": [
+    { "item": "arcane_dust", "qty": 5 },
+    { "item": "sagewort", "qty": 3 },
+    { "item": "moonbell", "qty": 2 }
+  ],
+  "lines": [
+    "Formulas and treatises, copied fair. The brewing is still on you.",
+    "Knowledge keeps better than bread and costs more. As it should.",
+    "The capstone treatises? Not on my shelf. The deep places keep those.",
+    "Mind the lectern. It's older than the town and twice as stubborn."
+  ],
+  "shop": "trainer_sage"
+}

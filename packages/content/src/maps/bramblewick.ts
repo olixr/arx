@@ -246,6 +246,11 @@ export function buildBramblewick(): ZoneDef {
   b.actor('merchant_tobbin', 65.5, 43.4, Math.PI / 2, 'shopkeeper_hours');
   b.actor('old_maren', 44.4, 45.6, 0, 'plaza_idler');
   b.actor('smith_brannock', 63.5, 61.5, -Math.PI / 2, 'smith_day');
+  // The recipe trainers: Weslin keeps the crafters' yard (patterns for
+  // the soft trades), Odile keeps the Arcanum (formulas + treatises).
+  // Brannock above doubles as the smithing trainer at his forge.
+  b.actor('artisan_weslin', 67.5, 55.5, -Math.PI / 2);
+  b.actor('sage_odile', 74.5, 55.4, -Math.PI / 2);
   // Grib the Unbanded loiters on the south road, well clear of the
   // camp that threw him out.
   b.actor('grib', 47.5, 82.5, -Math.PI / 2, 'road_wanderer');

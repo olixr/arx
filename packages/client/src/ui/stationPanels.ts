@@ -9,7 +9,7 @@ import {
 import {
   BUILDABLES,
   CROP_BY_SEED,
-  GENERAL_STORE,
+  shopDef,
   instanceName,
   itemDef,
   recipesForStation,
@@ -142,6 +142,8 @@ export class StationPanels {
   private craftSort: 'reach' | 'level' | 'az' = 'reach';
   /** World tile center the open panel is bound to (null = untethered). */
   private anchor: { x: number; y: number } | null = null;
+  /** Which shop's shelf is on screen — echoed on every buy. */
+  private shopId = 'general_store';
   /** What the open maker screen is showing — refreshOpen re-renders it. */
   private showing:
     | { kind: 'craft'; station: StationType | null; skills: SkillXp; known: ReadonlySet<string>; sel: string | null }
@@ -157,7 +159,7 @@ export class StationPanels {
       qty: number,
       gearId?: number,
     ) => void,
-    private readonly onShop: (op: 'buy' | 'sell', item: string, qty: number) => void,
+    private readonly onShop: (op: 'buy' | 'sell', item: string, qty: number, shop?: string) => void,
     private readonly onPickBuildable: (id: string) => void,
     /** The live pack — feeds every have/need figure. */
     private readonly getInventory: () => InvSlot[] = () => [],
@@ -933,11 +935,16 @@ export class StationPanels {
    * coin price tag, and the buy buttons right on the shelf. Your pack
    * stands beside the counter; tap items there to sell them.
    */
-  openShop(at?: { tx: number; ty: number }): void {
+  openShop(shopId = 'general_store', at?: { tx: number; ty: number }): void {
+    const shop = shopDef(shopId);
+    if (!shop) return;
     this.closeAll();
+    this.shopId = shopId;
     if (at) this.anchor = { x: at.tx + 0.5, y: at.ty + 0.5 };
+    const head = this.shopPanel.querySelector('h3');
+    if (head) head.textContent = shop.name;
     this.shopList.innerHTML = '';
-    for (const entry of GENERAL_STORE) {
+    for (const entry of shop.stock) {
       const def = itemDef(entry.item);
       const card = document.createElement('div');
       card.className = 'shelf-card';
@@ -967,7 +974,7 @@ export class StationPanels {
         ['Buy 5', 5],
       ] as const) {
         actions.appendChild(
-          bigButton(label, `shop:${entry.item}:${n}`, () => this.onShop('buy', entry.item, n), {
+          bigButton(label, `shop:${entry.item}:${n}`, () => this.onShop('buy', entry.item, n, this.shopId), {
             acta: 'Buy',
             minor: n !== 1,
           }),

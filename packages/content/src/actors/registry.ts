@@ -3,12 +3,14 @@ import { NPCS, scaleNpcDef, type NpcDef } from '../npcs.js';
 import type { NpcActorDef } from './types.js';
 import { validateNpcActor } from './validate.js';
 
+import artisanWeslin from './defs/artisan_weslin.json';
 import bramblewickGateGuard from './defs/bramblewick_gate_guard.json';
 import captainAlda from './defs/captain_alda.json';
 import farmerHetty from './defs/farmer_hetty.json';
 import grib from './defs/grib.json';
 import merchantTobbin from './defs/merchant_tobbin.json';
 import oldMaren from './defs/old_maren.json';
+import sageOdile from './defs/sage_odile.json';
 import smithBrannock from './defs/smith_brannock.json';
 
 /**
@@ -18,12 +20,14 @@ import smithBrannock from './defs/smith_brannock.json';
  * a test failure, not a silent hole in the world.
  */
 const SOURCES: readonly unknown[] = [
+  artisanWeslin,
   bramblewickGateGuard,
   captainAlda,
   farmerHetty,
   grib,
   merchantTobbin,
   oldMaren,
+  sageOdile,
   smithBrannock,
 ];
 

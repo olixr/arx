@@ -24,5 +24,6 @@
     "Anvil before noon, furnace after. Iron keeps a stricter schedule than I do.",
     "Bring me ore worth the coal and we'll talk.",
     "The fire goes cold at eight bells. So do I."
-  ]
+  ],
+  "shop": "trainer_smithing"
 }

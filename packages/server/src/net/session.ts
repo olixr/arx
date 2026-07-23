@@ -192,7 +192,7 @@ export class Session {
       case 'shop': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
-        this.game.shopOp(this.playerEid, msg.op, msg.item, msg.qty, msg.slot);
+        this.game.shopOp(this.playerEid, msg.op, msg.item, msg.qty, msg.slot, msg.shop);
         return;
       }
       case 'build': {

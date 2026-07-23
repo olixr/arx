@@ -138,6 +138,11 @@ export interface C2SShop {
   qty: number;
   /** Sell: exact pack slot, for the same instance-addressing reason. */
   slot?: number;
+  /**
+   * Which shop's shelf (default 'general_store'). Trainer shops hang
+   * off actors — the server checks the named trainer is within reach.
+   */
+  shop?: string;
 }
 
 /** Place a buildable on a world tile. */
@@ -336,6 +341,16 @@ export interface S2CSkills {
 export interface S2CRecipes {
   t: 'recipes';
   known: string[];
+}
+
+/**
+ * A trainer opened their wares (interacting with an actor that
+ * carries a shop). The client renders the named shop's shelf from
+ * content; purchases echo the shop id back for proximity checks.
+ */
+export interface S2CShopOpen {
+  t: 'shopopen';
+  shop: string;
 }
 
 /** One skill gained XP. */
@@ -584,6 +599,7 @@ export type S2CMessage =
   | S2CInventory
   | S2CSkills
   | S2CRecipes
+  | S2CShopOpen
   | S2CXp
   | S2CAction
   | S2CEquipment
@@ -738,7 +754,10 @@ export function parseC2S(raw: string): C2SMessage | null {
         if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot)) return null;
         if (msg.slot < 0 || msg.slot >= 64) return null;
       }
-      return { t: 'shop', op: msg.op, item: msg.item, qty: msg.qty, slot: msg.slot };
+      if (msg.shop !== undefined && (typeof msg.shop !== 'string' || msg.shop.length > 48)) {
+        return null;
+      }
+      return { t: 'shop', op: msg.op, item: msg.item, qty: msg.qty, slot: msg.slot, shop: msg.shop };
     }
     case 'build': {
       if (typeof msg.buildable !== 'string' || msg.buildable.length > 64) return null;

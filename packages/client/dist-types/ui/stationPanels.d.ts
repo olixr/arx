@@ -33,9 +33,11 @@ export declare class StationPanels {
     private craftSort;
     /** World tile center the open panel is bound to (null = untethered). */
     private anchor;
+    /** Which shop's shelf is on screen — echoed on every buy. */
+    private shopId;
     /** What the open maker screen is showing — refreshOpen re-renders it. */
     private showing;
-    constructor(onCraft: (recipe: string, qty: number) => void, onBank: (op: 'deposit' | 'withdraw', item: string, qty: number, gearId?: number) => void, onShop: (op: 'buy' | 'sell', item: string, qty: number) => void, onPickBuildable: (id: string) => void, 
+    constructor(onCraft: (recipe: string, qty: number) => void, onBank: (op: 'deposit' | 'withdraw', item: string, qty: number, gearId?: number) => void, onShop: (op: 'buy' | 'sell', item: string, qty: number, shop?: string) => void, onPickBuildable: (id: string) => void, 
     /** The live pack — feeds every have/need figure. */
     getInventory?: () => InvSlot[]);
     /** Main hands over the Workshop head's dress handles once, at boot. */
@@ -133,7 +135,7 @@ export declare class StationPanels {
      * coin price tag, and the buy buttons right on the shelf. Your pack
      * stands beside the counter; tap items there to sell them.
      */
-    openShop(at?: {
+    openShop(shopId?: string, at?: {
         tx: number;
         ty: number;
     }): void;

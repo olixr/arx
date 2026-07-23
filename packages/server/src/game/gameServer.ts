@@ -54,7 +54,7 @@ import {
   buildableGround,
   CROP_BY_SEED,
   CROPS,
-  GENERAL_STORE,
+  SHOPS,
   NODES_BY_TILE,
   NPCS,
   RECIPES,
@@ -2320,16 +2320,41 @@ export class GameServer {
     player.session.sendJson({ t: 'bank', items: player.bank, gear });
   }
 
-  shopOp(eid: EntityId, op: 'buy' | 'sell', item: string, qty: number, slot?: number): void {
+  /** Is any placed actor carrying this shop id within reach? */
+  private nearShopkeeper(eid: EntityId, shop: string): boolean {
+    const pos = this.positions.get(eid);
+    if (!pos) return false;
+    for (const [aeid, comp] of this.actors) {
+      if (comp.actor.shop !== shop) continue;
+      const apos = this.positions.get(aeid);
+      if (!apos) continue;
+      const dx = apos.x - pos.x;
+      const dy = apos.y - pos.y;
+      // Forgiving reach: routines may shuffle the keeper a step or two
+      // between opening the shelf and paying.
+      if (dx * dx + dy * dy <= 4 * 4) return true;
+    }
+    return false;
+  }
+
+  shopOp(eid: EntityId, op: 'buy' | 'sell', item: string, qty: number, slot?: number, shop?: string): void {
     const player = this.players.get(eid);
     if (!player || player.session === null) return;
-    if (!this.nearTile(eid, Tile.ShopCounter)) return;
+    const shopId = shop ?? 'general_store';
+    const shopDef = SHOPS.get(shopId);
+    if (!shopDef) return;
+    // The general store answers to its counter tile; a trainer's shop
+    // answers to the trainer standing near.
+    const near =
+      (shopId === 'general_store' && this.nearTile(eid, Tile.ShopCounter)) ||
+      this.nearShopkeeper(eid, shopId);
+    if (!near) return;
     const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
     const def = itemDef(item);
     if (!def) return;
 
     if (op === 'buy') {
-      const entry = GENERAL_STORE.find((e) => e.item === item);
+      const entry = shopDef.stock.find((e) => e.item === item);
       if (!entry) return;
       const coins = countItem(player.inventory, 'coins');
       const affordable = Math.min(qty, Math.floor(coins / entry.price));
@@ -2944,6 +2969,18 @@ export class GameServer {
           title: actorComp.actor.title,
         });
         this.dialogueEnterNode(eid, player, def.start);
+        return;
+      }
+      // A trainer's counter opens next: no story to tell means it's
+      // business hours — the client renders the named shop's shelf.
+      if (actorComp.actor.shop) {
+        npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
+        const rc = this.routines.get(targetEid);
+        if (rc) {
+          rc.pauseUntilTick = this.tickCount + 200;
+          rc.holdFacing = false;
+        }
+        player.session.sendJson({ t: 'shopopen', shop: actorComp.actor.shop });
         return;
       }
       // No eligible tree: fall back to the rotating one-line barks.
