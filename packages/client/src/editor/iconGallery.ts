@@ -4,6 +4,7 @@ import {
   allIconBuildableIds,
   allIconItemIds,
   buildableIconUrl,
+  dockGlyphUrl,
   itemIconUrl,
   slotGlyphUrl,
   uiIconUrl,
@@ -161,6 +162,15 @@ export function showIconGallery(): void {
       label: k,
       url64: uiIconUrl(k, 64),
       url24: uiIconUrl(k, 24),
+    })),
+  });
+  groups.push({
+    name: 'Dock glyphs',
+    entries: (['pack', 'skills', 'handiwork', 'build', 'sound', 'attack'] as const).map((k) => ({
+      id: `dock_${k}`,
+      label: k,
+      url64: dockGlyphUrl(k, 64),
+      url24: dockGlyphUrl(k, 24),
     })),
   });
 

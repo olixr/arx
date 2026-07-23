@@ -5,8 +5,12 @@
  * artifacts, drawn here by the same flat-facet hand that paints the
  * world, and handed to the stylesheet as 9-slice images. Materials:
  *
- * - IRON   — the structure. Case frames, console trays, key buttons:
- *            riveted dark bands with one hard lit facet.
+ * - IRON   — the structure. Case frames and key buttons: riveted dark
+ *            bands with one hard lit facet.
+ * - SMOKED GLASS — the live HUD. The hotbar and dock float over the
+ *            world itself, so they wear translucent quiet wells and
+ *            keys instead of case furniture: the world reads through
+ *            them and the chrome only whispers.
  * - BRASS  — the touchable. Action buttons, corner brackets, crests,
  *            fillet lines: warm metal that says "press me".
  * - OAK/LEATHER — the field. Panel interiors are the dark oiled case
@@ -247,50 +251,73 @@ function trayFrame(): string {
 }
 
 /**
- * THE CONSOLE TRAY — the always-on-screen chrome the hotbar and dock
- * ride in: a low iron tray, riveted, chamfered, leather-bottomed.
+ * THE QUIET WELL — the always-on-screen socket the hotbar's ability
+ * plates sit in. Unlike the case furniture, the live HUD floats over
+ * the world, so this material is smoked glass over leather: a
+ * translucent chamfered well, a dark rim hairline, one whisper of
+ * warm light on the lip. The world reads through it; the socket only
+ * asserts itself when something is in it.
  */
-function consoleTray(): string {
-  const B = 13;
+function quietWell(): string {
+  const B = 6;
   const S = B * K * 3;
   const { c, ctx } = makeCanvas(S);
   const px = (v: number): number => v * K;
+  const cut = 5;
 
-  chamferPath(ctx, S, 0.8, 10);
-  ctx.fillStyle = '#211b14';
+  // Smoked translucent floor — the world glows through.
+  chamferPath(ctx, S, 0.6, cut);
+  ctx.fillStyle = 'rgba(13, 10, 6, 0.62)';
   ctx.fill();
-  chamferPath(ctx, S, 3.4, 10);
-  ctx.strokeStyle = IRON.base;
-  ctx.lineWidth = px(5);
+  // Dark rim hairline against the world.
+  chamferPath(ctx, S, 0.6, cut);
+  ctx.strokeStyle = 'rgba(8, 6, 3, 0.8)';
+  ctx.lineWidth = px(1.3);
   ctx.stroke();
-  chamferPath(ctx, S, 1.4, 10);
-  ctx.strokeStyle = IRON.lit;
-  ctx.lineWidth = px(1.2);
+  // One whisper of warm brass on the lip — the premium tell.
+  chamferPath(ctx, S, 1.7, cut);
+  ctx.strokeStyle = 'rgba(222, 190, 128, 0.16)';
+  ctx.lineWidth = px(0.9);
   ctx.stroke();
-  chamferPath(ctx, S, 0.8, 10);
-  ctx.strokeStyle = IRON.rim;
-  ctx.lineWidth = px(1.8);
+  // Faint inset shade under the top lip so it still reads as a well.
+  ctx.save();
+  chamferPath(ctx, S, 1.7, cut);
+  ctx.clip();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+  ctx.fillRect(0, px(1.7), S, px(1.8));
+  ctx.restore();
+  return c.toDataURL();
+}
+
+/**
+ * THE QUIET KEY — the dock's pressable: same smoked-glass family as
+ * the quiet well but read as raised, not sunk — a lit hairline on the
+ * top edge, a dark facet along the bottom. No rivets, no tray; each
+ * key is its own small object resting on the world.
+ */
+function quietKey(): string {
+  const B = 6;
+  const S = B * K * 3;
+  const { c, ctx } = makeCanvas(S);
+  const px = (v: number): number => v * K;
+  const cut = 5;
+
+  chamferPath(ctx, S, 0.6, cut);
+  ctx.fillStyle = 'rgba(22, 17, 11, 0.68)';
+  ctx.fill();
+  ctx.save();
+  chamferPath(ctx, S, 1.5, cut);
+  ctx.clip();
+  // Lit shelf on top, dark shelf on the bottom — raised, quietly.
+  ctx.fillStyle = 'rgba(222, 190, 128, 0.14)';
+  ctx.fillRect(0, px(1.5), S, px(1.5));
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
+  ctx.fillRect(0, S - px(3), S, px(1.5));
+  ctx.restore();
+  chamferPath(ctx, S, 0.6, cut);
+  ctx.strokeStyle = 'rgba(8, 6, 3, 0.78)';
+  ctx.lineWidth = px(1.3);
   ctx.stroke();
-  chamferPath(ctx, S, 6.2, 10);
-  ctx.strokeStyle = LEATHER.seam;
-  ctx.lineWidth = px(1.2);
-  ctx.stroke();
-  const mid = px(3.4);
-  const cen = S / 2;
-  for (const [x, y] of [
-    [cen, mid],
-    [cen, S - mid],
-    [mid, cen],
-    [S - mid, cen],
-  ] as const) {
-    rivet(ctx, x, y, px(2.2));
-  }
-  // Corner rivets instead of brackets — the tray is working chrome.
-  const cm = px(6);
-  rivet(ctx, cm, cm, px(2.2));
-  rivet(ctx, S - cm, cm, px(2.2));
-  rivet(ctx, cm, S - cm, px(2.2));
-  rivet(ctx, S - cm, S - cm, px(2.2));
   return c.toDataURL();
 }
 
@@ -510,7 +537,8 @@ export function installChrome(): void {
   root.setProperty('--ui-tray-frame', `url(${trayFrame()})`);
   root.setProperty('--tray-slice', String(TRAY_SLICE));
   root.setProperty('--tray-border', `${TRAY_BORDER}px`);
-  root.setProperty('--ui-console', `url(${consoleTray()})`);
+  root.setProperty('--ui-quiet', `url(${quietWell()})`);
+  root.setProperty('--btn-quiet', `url(${quietKey()})`);
   root.setProperty('--ui-banner', `url(${titleBanner()})`);
   root.setProperty('--ui-crest', `url(${crestMedallion()})`);
   root.setProperty('--ui-socket', `url(${socketWell()})`);

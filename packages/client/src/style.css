@@ -745,15 +745,17 @@ h3 {
   pointer-events: auto;
 }
 
+/* The touch attack key joins the quiet console: smoked glass, one
+   whisper of brass on the rim, soft shadow. */
 #touch-attack {
-  width: 82px;
-  height: 82px;
+  width: 78px;
+  height: 78px;
   border-radius: 50%;
-  background: var(--raise);
-  border: 2px solid #10091c;
+  background: rgba(22, 17, 11, 0.68);
+  border: 1.5px solid rgba(8, 6, 3, 0.78);
   box-shadow:
-    inset 0 0 0 2px rgba(217, 164, 65, 0.5),
-    5px 5px 0 var(--shadow);
+    inset 0 0 0 2px rgba(222, 190, 128, 0.16),
+    0 2px 6px rgba(6, 4, 2, 0.5);
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -763,61 +765,61 @@ h3 {
 }
 
 #touch-attack img {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   pointer-events: none;
 }
 
 #touch-attack:active {
-  transform: translate(2px, 2px);
+  transform: scale(0.94);
   box-shadow:
-    inset 0 0 0 2px rgba(217, 164, 65, 0.5),
-    3px 3px 0 var(--shadow);
+    inset 0 0 0 2px rgba(222, 190, 128, 0.3),
+    0 1px 3px rgba(6, 4, 2, 0.5);
 }
 
 /* ---------------------------------- dock buttons */
 
-/* The dock: iron keys set in a riveted console tray. */
+/* The dock — the quiet console: no tray, no rivets. A short row of
+   small smoked-glass keys resting directly on the world, engraved
+   with monoline brass sigils. Present, never shouting. */
 #panel-buttons {
   position: absolute;
-  right: 14px;
-  bottom: 14px;
+  right: 12px;
+  bottom: 12px;
   display: flex;
-  gap: 8px;
+  gap: 7px;
   pointer-events: auto;
-  padding: 4px 6px;
-  border: 13px solid transparent;
-  border-image: var(--ui-console) 65 fill / 13px;
-  border-image-repeat: round;
-  filter: drop-shadow(5px 6px 0 var(--shadow));
 }
 
 #panel-buttons button {
   position: relative;
-  width: 72px;
-  height: 72px;
+  width: 46px;
+  height: 46px;
   background: none;
-  border: 11px solid transparent;
-  border-image: var(--btn-iron) 55 fill / 11px;
+  border: 6px solid transparent;
+  border-image: var(--btn-quiet) 30 fill / 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  filter: drop-shadow(0 2px 5px rgba(6, 4, 2, 0.55));
+  transition: filter 0.12s ease-out, transform 0.12s ease-out;
 }
 
 #panel-buttons button img {
-  width: 48px;
-  height: 48px;
+  width: 30px;
+  height: 30px;
   pointer-events: none;
-  filter: drop-shadow(2px 2px 0 rgba(12, 8, 4, 0.5));
 }
 
 #panel-buttons button:hover {
-  filter: brightness(1.25);
+  filter: drop-shadow(0 3px 6px rgba(6, 4, 2, 0.6)) brightness(1.45);
+  transform: translateY(-1px);
 }
 
 #panel-buttons button:active {
-  transform: translate(2px, 2px);
+  transform: translateY(1px);
+  filter: drop-shadow(0 1px 3px rgba(6, 4, 2, 0.55)) brightness(1.2);
 }
 
 /* ==================================================================
@@ -2752,40 +2754,39 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 
 /* ---------------------------------- hotbar */
 
-/* The hotbar: ability keys set in the same riveted console tray. */
+/* The hotbar — the quiet console: four smoked-glass wells floating
+   over the world, no tray around them. The ability plates carry the
+   color; the sockets only whisper. */
 #hotbar {
   position: absolute;
   left: 50%;
   bottom: 14px;
   transform: translateX(-50%);
   display: flex;
-  gap: 9px;
+  gap: 8px;
   pointer-events: auto;
-  padding: 4px 6px;
-  border: 13px solid transparent;
-  border-image: var(--ui-console) 65 fill / 13px;
-  border-image-repeat: round;
-  filter: drop-shadow(5px 6px 0 var(--shadow));
 }
 
 .hotbar-slot {
   position: relative;
-  width: 72px;
-  height: 72px;
+  width: 60px;
+  height: 60px;
   padding: 0;
   border-radius: 0;
   background: none;
-  border: 8px solid transparent;
-  border-image: var(--ui-socket) 40 fill / 8px;
+  border: 6px solid transparent;
+  border-image: var(--ui-quiet) 30 fill / 6px;
   cursor: pointer;
   overflow: hidden;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
+  filter: drop-shadow(0 2px 5px rgba(6, 4, 2, 0.5));
 }
 
+/* An empty socket is a promise, not a demand — nearly let go of. */
 .hotbar-slot.empty {
-  opacity: 0.5;
+  opacity: 0.34;
   cursor: default;
 }
 
@@ -2815,8 +2816,8 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 
 .hotbar-key {
   position: absolute;
-  right: 4px;
-  bottom: 3px;
+  right: 3px;
+  bottom: 2px;
   font-weight: 700;
   color: var(--parchment);
   text-shadow: var(--punch-small);
@@ -2831,23 +2832,26 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   animation: hotbar-flash 0.35s ease-out;
 }
 
+/* border-color is dead on border-image cells — the ready flash is an
+   inset ring over the well art plus one soft outer bloom. */
 @keyframes hotbar-flash {
   0% {
-    border-color: var(--gold-hot);
     box-shadow:
-      0 0 14px 3px rgba(242, 201, 76, 0.7),
-      4px 5px 0 var(--shadow);
+      inset 0 0 0 2.5px rgba(242, 201, 76, 0.85),
+      0 0 14px 3px rgba(242, 201, 76, 0.55);
   }
   100% {
-    border-color: var(--line-strong);
-    box-shadow: 4px 5px 0 var(--shadow);
+    box-shadow:
+      inset 0 0 0 2.5px rgba(242, 201, 76, 0),
+      0 0 14px 3px rgba(242, 201, 76, 0);
   }
 }
 
+/* The side trays hug the slimmed hotbar (60px wells, no tray chrome). */
 #passive-tray {
   position: absolute;
-  left: calc(50% + 244px);
-  bottom: 30px;
+  left: calc(50% + 150px);
+  bottom: 18px;
   display: flex;
   gap: 7px;
   pointer-events: auto;
@@ -2860,9 +2864,9 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--sunk);
-  border: 2px solid #10091c;
-  box-shadow: 2px 2px 0 var(--shadow);
+  background: rgba(16, 12, 8, 0.62);
+  border: 1.5px solid rgba(8, 6, 3, 0.75);
+  box-shadow: 0 2px 4px rgba(6, 4, 2, 0.45);
 }
 
 .passive-chip img {
@@ -2874,8 +2878,8 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
    from the passive tray. Icon chip + live countdown underneath. */
 #buff-tray {
   position: absolute;
-  right: calc(50% + 244px);
-  bottom: 30px;
+  right: calc(50% + 150px);
+  bottom: 18px;
   display: flex;
   gap: 9px;
   pointer-events: auto;
@@ -2886,17 +2890,17 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   width: 38px;
   height: 38px;
   border-radius: 5px;
-  background: var(--raise);
-  border: 2px solid #10091c;
-  box-shadow: inset 0 0 0 1.5px rgba(217, 164, 65, 0.45), 3px 3px 0 var(--shadow);
+  background: rgba(24, 18, 12, 0.68);
+  border: 1.5px solid rgba(8, 6, 3, 0.75);
+  box-shadow: inset 0 0 0 1.5px rgba(217, 164, 65, 0.4), 0 2px 4px rgba(6, 4, 2, 0.45);
 }
 
 .buff-chip.tonic {
-  box-shadow: inset 0 0 0 1.5px rgba(127, 201, 179, 0.65), 3px 3px 0 var(--shadow);
+  box-shadow: inset 0 0 0 1.5px rgba(127, 201, 179, 0.55), 0 2px 4px rgba(6, 4, 2, 0.45);
 }
 
 .buff-chip.food {
-  box-shadow: inset 0 0 0 1.5px rgba(232, 182, 76, 0.65), 3px 3px 0 var(--shadow);
+  box-shadow: inset 0 0 0 1.5px rgba(232, 182, 76, 0.55), 0 2px 4px rgba(6, 4, 2, 0.45);
 }
 
 .buff-chip img {
@@ -2909,7 +2913,7 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 }
 
 .buff-chip.sneak-eye {
-  box-shadow: inset 0 0 0 1.5px rgba(138, 127, 174, 0.65), 3px 3px 0 var(--shadow);
+  box-shadow: inset 0 0 0 1.5px rgba(138, 127, 174, 0.55), 0 2px 4px rgba(6, 4, 2, 0.45);
 }
 
 .buff-chip.sneak-eye.hidden-pulse {
@@ -2917,8 +2921,8 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 }
 
 @keyframes sneak-pulse {
-  0%, 100% { box-shadow: inset 0 0 0 1.5px rgba(138, 127, 174, 0.65), 3px 3px 0 var(--shadow); }
-  50% { box-shadow: inset 0 0 0 1.5px rgba(180, 170, 216, 0.95), 3px 3px 0 var(--shadow); }
+  0%, 100% { box-shadow: inset 0 0 0 1.5px rgba(138, 127, 174, 0.55), 0 2px 4px rgba(6, 4, 2, 0.45); }
+  50% { box-shadow: inset 0 0 0 1.5px rgba(180, 170, 216, 0.95), 0 2px 4px rgba(6, 4, 2, 0.45); }
 }
 
 .buff-chip .buff-secs {
@@ -3017,15 +3021,36 @@ body.pad-mode .hint-inline { display: none; }
 
 /* ---- hotbar + dock badges ---- */
 
+/* On the quiet console the shortcut letter is an engraving, not a
+   key cap: a bare small letter in a translucent chip. */
 .hotbar-key .kb-glyph,
-.hotbar-key .pad-glyph {
-  box-shadow: 1.5px 1.5px 0 var(--shadow);
+.dock-badge .kb-glyph {
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  font-size: 9.5px;
+  color: rgba(233, 220, 186, 0.85);
+  background: rgba(10, 7, 4, 0.62);
+  border: none;
+  border-radius: 3px;
+  box-shadow: none;
+}
+
+/* Pad glyphs keep their console-color language, shrunk to match. */
+.hotbar-key .pad-glyph,
+.dock-badge .pad-glyph {
+  min-width: 18px;
+  height: 18px;
+  font-size: 10px;
+  background: rgba(10, 7, 4, 0.62);
+  border-width: 1.5px;
+  box-shadow: none;
 }
 
 .dock-badge {
   position: absolute;
-  right: -6px;
-  top: -8px;
+  right: -3px;
+  top: -5px;
   pointer-events: none;
 }
 
@@ -3066,7 +3091,7 @@ body.pad-mode .hint-inline { display: none; }
 #ui-action-strip {
   position: fixed;
   left: 50%;
-  bottom: 118px;
+  bottom: 92px;
   transform: translateX(-50%);
   z-index: 55;
   display: flex;

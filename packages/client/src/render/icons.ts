@@ -4647,3 +4647,193 @@ export function uiIconUrl(
   };
   return renderIcon(kind, colors[kind]!, size);
 }
+
+/* ------------------------------------------------------------------ */
+/* DOCK GLYPHS — the quiet console's menu language.                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The dock speaks a different dialect from item icons: not painted
+ * objects wearing the world's fat outline ring, but thin monoline
+ * sigils in one muted brass — engraved instrument markings, not loot.
+ * One soft under-shade keeps them legible over the open world without
+ * the contrast of the item pipeline.
+ */
+type DockGlyphPainter = (c: CanvasRenderingContext2D) => void;
+
+/** The one ink every dock sigil is engraved in. */
+const GLYPH_INK = '#d8c08c';
+
+export type DockGlyph = 'pack' | 'skills' | 'handiwork' | 'build' | 'sound' | 'attack';
+
+const DOCK_GLYPHS: Record<DockGlyph, DockGlyphPainter> = {
+  // The satchel: body, drooping flap, buckle strap, carry handle.
+  pack: (c) => {
+    c.lineWidth = 0.07;
+    c.beginPath();
+    c.moveTo(0.38, 0.33);
+    c.quadraticCurveTo(0.5, 0.15, 0.62, 0.33);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.26, 0.34);
+    c.lineTo(0.74, 0.34);
+    c.quadraticCurveTo(0.83, 0.34, 0.83, 0.43);
+    c.lineTo(0.83, 0.75);
+    c.quadraticCurveTo(0.83, 0.84, 0.74, 0.84);
+    c.lineTo(0.26, 0.84);
+    c.quadraticCurveTo(0.17, 0.84, 0.17, 0.75);
+    c.lineTo(0.17, 0.43);
+    c.quadraticCurveTo(0.17, 0.34, 0.26, 0.34);
+    c.closePath();
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.17, 0.49);
+    c.quadraticCurveTo(0.5, 0.6, 0.83, 0.49);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.5, 0.56);
+    c.lineTo(0.5, 0.67);
+    c.stroke();
+  },
+  // Three rising columns on a baseline: the skill ladder itself.
+  skills: (c) => {
+    c.lineWidth = 0.058;
+    c.beginPath();
+    c.moveTo(0.18, 0.84);
+    c.lineTo(0.82, 0.84);
+    c.stroke();
+    c.lineWidth = 0.105;
+    for (const [x, top] of [
+      [0.3, 0.62],
+      [0.5, 0.45],
+      [0.7, 0.28],
+    ] as const) {
+      c.beginPath();
+      c.moveTo(x, 0.73);
+      c.lineTo(x, top);
+      c.stroke();
+    }
+  },
+  // The smith's hammer mid-swing, two spark ticks off the face.
+  handiwork: (c) => {
+    c.save();
+    c.translate(0.44, 0.4);
+    c.rotate(-0.62);
+    c.lineWidth = 0.15;
+    c.beginPath();
+    c.moveTo(-0.16, 0);
+    c.lineTo(0.16, 0);
+    c.stroke();
+    c.lineWidth = 0.07;
+    c.beginPath();
+    c.moveTo(0, 0.1);
+    c.lineTo(0, 0.46);
+    c.stroke();
+    c.restore();
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(0.68, 0.2);
+    c.lineTo(0.75, 0.13);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.73, 0.33);
+    c.lineTo(0.82, 0.3);
+    c.stroke();
+  },
+  // Gable, walls, door — the builder's mark.
+  build: (c) => {
+    c.lineWidth = 0.07;
+    c.beginPath();
+    c.moveTo(0.14, 0.5);
+    c.lineTo(0.5, 0.18);
+    c.lineTo(0.86, 0.5);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.24, 0.56);
+    c.lineTo(0.24, 0.84);
+    c.lineTo(0.76, 0.84);
+    c.lineTo(0.76, 0.56);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.44, 0.84);
+    c.lineTo(0.44, 0.66);
+    c.lineTo(0.56, 0.66);
+    c.lineTo(0.56, 0.84);
+    c.stroke();
+  },
+  // Three mixer rails with set knobs — the settings drawer.
+  sound: (c) => {
+    c.lineWidth = 0.058;
+    for (const [y, kx] of [
+      [0.28, 0.6],
+      [0.5, 0.34],
+      [0.72, 0.68],
+    ] as const) {
+      c.beginPath();
+      c.moveTo(0.18, y);
+      c.lineTo(0.82, y);
+      c.stroke();
+      c.beginPath();
+      c.arc(kx, y, 0.068, 0, Math.PI * 2);
+      c.fill();
+    }
+  },
+  // The drawn blade for the touch attack key.
+  attack: (c) => {
+    c.lineWidth = 0.095;
+    c.beginPath();
+    c.moveTo(0.74, 0.22);
+    c.lineTo(0.46, 0.5);
+    c.stroke();
+    c.lineWidth = 0.06;
+    c.beginPath();
+    c.moveTo(0.34, 0.46);
+    c.lineTo(0.54, 0.66);
+    c.stroke();
+    c.lineWidth = 0.08;
+    c.beginPath();
+    c.moveTo(0.41, 0.59);
+    c.lineTo(0.28, 0.72);
+    c.stroke();
+  },
+};
+
+/** Data URL for a dock sigil — monoline, muted brass, soft under-shade. */
+export function dockGlyphUrl(kind: DockGlyph, size = 30): string {
+  const key = `dock|${kind}|${size}`;
+  const hit = cache.get(key);
+  if (hit) return hit;
+
+  const painter = DOCK_GLYPHS[kind];
+  const px = size * SS;
+  const inset = Math.ceil(px * 0.06);
+  const big = document.createElement('canvas');
+  big.width = px;
+  big.height = px;
+  const bctx = big.getContext('2d')!;
+  const pass = (ink: string, dx: number, dy: number): void => {
+    bctx.save();
+    bctx.translate(inset + dx, inset + dy);
+    bctx.scale(px - inset * 2, px - inset * 2);
+    bctx.lineCap = 'round';
+    bctx.lineJoin = 'round';
+    bctx.strokeStyle = ink;
+    bctx.fillStyle = ink;
+    painter(bctx);
+    bctx.restore();
+  };
+  pass('rgba(9, 6, 3, 0.85)', px * 0.022, px * 0.022);
+  pass(GLYPH_INK, 0, 0);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(big, 0, 0, size, size);
+
+  const url = canvas.toDataURL();
+  cache.set(key, url);
+  return url;
+}

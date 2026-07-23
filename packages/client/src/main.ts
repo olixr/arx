@@ -20,7 +20,7 @@ import { AmbienceSystem } from './audio/ambience.js';
 import { AudioMenu } from './ui/audioMenu.js';
 import { zoneWeights } from './audio/zones.js';
 import { setupTouch } from './input/touch.js';
-import { itemIconUrl, uiIconUrl } from './render/icons.js';
+import { dockGlyphUrl, itemIconUrl, uiIconUrl } from './render/icons.js';
 import { fxStyleFor } from './render/abilityFx.js';
 import { PORTAL_BURST_COLORS } from './render/portal.js';
 import { installChrome } from './ui/chrome.js';
@@ -39,20 +39,21 @@ if (new URLSearchParams(location.search).has('icons')) {
   showIconGallery();
 }
 
-// Painted UI glyphs — no emoji anywhere in the universe. Each dock
-// button wears a device-aware shortcut badge (letter or pad glyph).
+// Painted UI glyphs — no emoji anywhere in the universe. The dock
+// wears the quiet console's monoline sigils; each button carries a
+// device-aware shortcut badge (letter or pad glyph).
 for (const [id, kind, tip, kbKey, padCls, padLabel] of [
-  ['btn-inventory', 'backpack', 'Pack', 'I', 'start', '☰'],
-  ['btn-skills', 'scroll', 'Skills', 'K', 'select', '⧉'],
-  ['btn-craft', 'hammer', 'Handiwork', 'C', 'ddown', '▼'],
-  ['btn-build', 'house', 'Build', 'B', 'dright', '▶'],
-  ['btn-audio', 'bell', 'Sound', 'O', '', ''],
+  ['btn-inventory', 'pack', 'Pack', 'I', 'start', '☰'],
+  ['btn-skills', 'skills', 'Skills', 'K', 'select', '⧉'],
+  ['btn-craft', 'handiwork', 'Handiwork', 'C', 'ddown', '▼'],
+  ['btn-build', 'build', 'Build', 'B', 'dright', '▶'],
+  ['btn-audio', 'sound', 'Sound', 'O', '', ''],
   ['touch-attack', 'attack', '', '', '', ''],
 ] as const) {
   const btn = document.getElementById(id);
   if (btn) {
     const img = document.createElement('img');
-    img.src = uiIconUrl(kind, 44);
+    img.src = dockGlyphUrl(kind, id === 'touch-attack' ? 48 : 30);
     img.draggable = false;
     btn.appendChild(img);
     if (tip) {

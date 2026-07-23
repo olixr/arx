@@ -5,8 +5,12 @@
  * artifacts, drawn here by the same flat-facet hand that paints the
  * world, and handed to the stylesheet as 9-slice images. Materials:
  *
- * - IRON   — the structure. Case frames, console trays, key buttons:
- *            riveted dark bands with one hard lit facet.
+ * - IRON   — the structure. Case frames and key buttons: riveted dark
+ *            bands with one hard lit facet.
+ * - SMOKED GLASS — the live HUD. The hotbar and dock float over the
+ *            world itself, so they wear translucent quiet wells and
+ *            keys instead of case furniture: the world reads through
+ *            them and the chrome only whispers.
  * - BRASS  — the touchable. Action buttons, corner brackets, crests,
  *            fillet lines: warm metal that says "press me".
  * - OAK/LEATHER — the field. Panel interiors are the dark oiled case
