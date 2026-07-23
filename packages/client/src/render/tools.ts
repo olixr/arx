@@ -256,56 +256,59 @@ function drawPickHead(
   const cheek = hurt ? '#ffffff' : (st.cheek ?? shade(st.color, -22));
   // TRUE PICK ANATOMY: a slim head seated on the eye, two tapered
   // tines mounted ACROSS the haft — a long spike on −y (the bit side,
-  // per the bit-leads law) and a shorter squared chisel arm opposite,
-  // both curling gently toward the work like drop-forged steel. Every
+  // per the bit-leads law) and a shorter squared chisel arm opposite.
+  // THE BOW LAW: the crescent's belly bulges AWAY from the hands
+  // (+x, past the eye) and the tips hook back TOWARD the haft — bow
+  // it the other way and the whole head reads upside down. Every
   // facet is a FILLED sliver inside the silhouette — no boundary
   // strokes, so nothing can ever poke past the head again.
   const L = 0.32 * s * hs; // leading spike length off the eye
   const T = 0.23 * s * hs; // trailing chisel arm length
   const bw = 0.048 * s * hs; // tine half-thickness at the eye
-  const sweep = 0.12 * s * hs; // forward curl of the tips
-  const chin = ex + sweep * 0.35; // chisel tip x
+  const bow = 0.15 * s * hs; // mid-arm belly, out past the eye
+  const hook = 0.05 * s * hs; // how far the tips curl back behind it
+  const chin = ex - hook * 0.6; // chisel tip x
   ctx.fillStyle = color;
   ctx.beginPath();
-  // Up the spike's back edge to the point...
+  // Up the spike's concave inner edge to the point...
   ctx.moveTo(ex - bw, -0.02 * s);
-  ctx.quadraticCurveTo(ex - bw * 0.9, -L * 0.55, ex + sweep, -L);
-  // ...down its front edge to the eye...
-  ctx.quadraticCurveTo(ex + bw * 1.4, -L * 0.45, ex + bw, -0.02 * s);
-  // ...through the eye boss, down the chisel arm's front edge...
+  ctx.quadraticCurveTo(ex + bow * 0.2, -L * 0.5, ex - hook, -L);
+  // ...down its convex outer edge to the eye...
+  ctx.quadraticCurveTo(ex + bow, -L * 0.55, ex + bw, -0.02 * s);
+  // ...through the eye boss, down the chisel arm's outer edge...
   ctx.lineTo(ex + bw, 0.02 * s);
-  ctx.quadraticCurveTo(ex + bw * 1.3, T * 0.45, chin + 0.034 * s, T * 0.96);
-  // ...across the chisel flat, back up its rear edge and home.
-  ctx.lineTo(chin - 0.014 * s, T);
-  ctx.quadraticCurveTo(ex - bw * 0.85, T * 0.6, ex - bw, 0.02 * s);
+  ctx.quadraticCurveTo(ex + bow * 0.85, T * 0.5, chin + 0.04 * s, T * 0.93);
+  // ...across the chisel flat, back up its inner edge and home.
+  ctx.lineTo(chin - 0.01 * s, T);
+  ctx.quadraticCurveTo(ex + bow * 0.15, T * 0.45, ex - bw, 0.02 * s);
   ctx.closePath();
   ctx.fill();
   if (hurt) return;
-  // Lit face down the spike's front edge — the honed taper.
+  // Lit face down the spike's outer sweep — the honed taper.
   ctx.fillStyle = edge;
   ctx.beginPath();
-  ctx.moveTo(ex + sweep, -L);
-  ctx.quadraticCurveTo(ex + bw * 1.4, -L * 0.45, ex + bw, -0.02 * s);
-  ctx.lineTo(ex + bw * 0.45, -0.02 * s);
-  ctx.quadraticCurveTo(ex + bw * 0.6, -L * 0.42, ex + sweep, -L);
+  ctx.moveTo(ex - hook, -L);
+  ctx.quadraticCurveTo(ex + bow, -L * 0.55, ex + bw, -0.02 * s);
+  ctx.lineTo(ex + bw * 0.4, -0.02 * s);
+  ctx.quadraticCurveTo(ex + bow * 0.62, -L * 0.5, ex - hook, -L);
   ctx.closePath();
   ctx.fill();
-  // Cheek shade up the spike's back edge — the forged spine.
+  // Cheek shade up the spike's concave inner edge.
   ctx.fillStyle = cheek;
   ctx.beginPath();
-  ctx.moveTo(ex + sweep, -L);
-  ctx.quadraticCurveTo(ex - bw * 0.9, -L * 0.55, ex - bw, -0.02 * s);
-  ctx.lineTo(ex - bw * 0.55, -0.02 * s);
-  ctx.quadraticCurveTo(ex - bw * 0.5, -L * 0.5, ex + sweep, -L);
+  ctx.moveTo(ex - hook, -L);
+  ctx.quadraticCurveTo(ex + bow * 0.2, -L * 0.5, ex - bw, -0.02 * s);
+  ctx.lineTo(ex - bw * 0.4, -0.02 * s);
+  ctx.quadraticCurveTo(ex + bow * 0.32, -L * 0.46, ex - hook, -L);
   ctx.closePath();
   ctx.fill();
-  // Cheek shade down the chisel arm's rear face.
+  // Cheek shade along the chisel arm's concave inner face.
   ctx.fillStyle = cheek;
   ctx.beginPath();
   ctx.moveTo(ex - bw, 0.02 * s);
-  ctx.quadraticCurveTo(ex - bw * 0.85, T * 0.6, chin - 0.014 * s, T);
-  ctx.lineTo(chin, T * 0.88);
-  ctx.quadraticCurveTo(ex - bw * 0.35, T * 0.5, ex - bw * 0.5, 0.02 * s);
+  ctx.quadraticCurveTo(ex + bow * 0.15, T * 0.45, chin - 0.01 * s, T);
+  ctx.lineTo(chin + 0.008 * s, T * 0.86);
+  ctx.quadraticCurveTo(ex + bow * 0.26, T * 0.42, ex - bw * 0.4, 0.02 * s);
   ctx.closePath();
   ctx.fill();
   if (st.stud) {
