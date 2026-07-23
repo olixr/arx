@@ -2,6 +2,6 @@
   "id": "shopkeeper_hours",
   "base": { "kind": "post", "dir": 1.5707963 },
   "slots": [
-    { "from": 21, "to": 8, "task": { "kind": "post", "x": 1.5, "y": 2.5, "dir": 3.14159 } }
+    { "from": 21, "to": 8, "task": { "kind": "post", "x": 1.5, "y": 2.5, "dir": 3.14159, "speed": 2.4 } }
   ]
 }

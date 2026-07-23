@@ -8,6 +8,7 @@
       "task": {
         "kind": "path",
         "mode": "bounce",
+        "speed": 1.5,
         "waypoints": [
           { "x": 0, "y": 0, "waitSec": 8, "dir": 1.5707963 },
           { "x": 2.6, "y": 0, "waitSec": 5, "dir": 1.5707963 }

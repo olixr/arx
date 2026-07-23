@@ -495,6 +495,13 @@ interface RoutineComp {
   /** Progress watchdog: ticks spent traveling without getting anywhere. */
   stuckTicks: number;
   /**
+   * Closest approach to the target this leg. The watchdog trips on
+   * NO PROGRESS, not no movement — a body wedged in a furniture
+   * corner slides a full stride every tick while going nowhere, so
+   * step distance alone would never see it stuck.
+   */
+  progressBest: number;
+  /**
    * True while the routine owns the body's facing (mid-stride, working
    * a station, or lingering on an authored dir) — tickActors' greet-
    * the-passerby glance yields to it.
@@ -5379,6 +5386,7 @@ export class GameServer {
         lingerUntilTick: 0,
         pauseUntilTick: 0,
         stuckTicks: 0,
+        progressBest: Infinity,
         holdFacing: false,
       });
     }
@@ -5522,6 +5530,7 @@ export class GameServer {
     }
     rc.phase = 'travel';
     rc.stuckTicks = 0;
+    rc.progressBest = Infinity;
     this.routineRetarget(rc, path);
   }
 
@@ -5556,6 +5565,7 @@ export class GameServer {
         // Combat owns the body; the errand resumes where life left it.
         rc.holdFacing = false;
         rc.stuckTicks = 0;
+        rc.progressBest = Infinity; // the fight moved us — re-baseline
         continue;
       }
 
@@ -5567,6 +5577,7 @@ export class GameServer {
         rc.wpDir = 1;
         rc.phase = 'travel';
         rc.stuckTicks = 0;
+        rc.progressBest = Infinity;
         this.routineRetarget(rc, this.routineTask(rc));
       }
       const task = this.routineTask(rc);
@@ -5592,6 +5603,7 @@ export class GameServer {
         if (ddx * ddx + ddy * ddy > 0.8 * 0.8) {
           rc.phase = 'travel';
           rc.stuckTicks = 0;
+          rc.progressBest = Infinity;
         } else if (this.tickCount >= rc.lingerUntilTick) {
           if (task.kind === 'path') {
             this.routineAdvance(rc, task);
@@ -5599,6 +5611,7 @@ export class GameServer {
             this.routineRollWander(rc, task);
             rc.phase = 'travel';
             rc.stuckTicks = 0;
+            rc.progressBest = Infinity;
           }
           // A post lingers forever; only a schedule flip moves it.
         }
@@ -5634,11 +5647,15 @@ export class GameServer {
           continue;
         }
         rc.phase = 'linger';
+        // THE HUMAN WOBBLE: authored waits stretch a random 0-20% so
+        // two bodies sharing one routine drift out of lockstep within
+        // a few rounds instead of pacing like clockwork twins.
         rc.lingerUntilTick =
           task.kind === 'path'
             ? task.mode === 'once' && rc.wpIndex >= task.waypoints.length - 1
               ? Number.MAX_SAFE_INTEGER
-              : this.tickCount + Math.round((wp!.waitSec ?? 0) * (1000 / TICK_MS))
+              : this.tickCount +
+                Math.round((wp!.waitSec ?? 0) * (1 + Math.random() * 0.2) * (1000 / TICK_MS))
             : task.kind === 'wander'
               ? this.tickCount + Math.round((2 + Math.random() * 5) * (1000 / TICK_MS))
               : Number.MAX_SAFE_INTEGER;
@@ -5646,7 +5663,10 @@ export class GameServer {
         continue;
       }
 
-      const speed = Math.min(GameServer.ROUTINE_WALK_SPEED, npc?.def.speed ?? Infinity);
+      // THE PACE IS AUTHORED CHARACTER: the leg's waypoint speed, else
+      // the task's, else the default townsfolk stride — a shuffling
+      // elder and a jogging courier come from content, not code.
+      const speed = wp?.speed ?? task.speed ?? GameServer.ROUTINE_WALK_SPEED;
       const radius = npc?.def.radius ?? 0.3;
       const next = stepMovement(pos, { mx: dx / dist, my: dy / dist }, speed, TICK_DT, this.world, radius);
       const stepped = Math.hypot(next.x - pos.x, next.y - pos.y);
@@ -5667,11 +5687,20 @@ export class GameServer {
         this.routinePose(eid, npc, PoseState.Idle);
       }
       // Progress watchdog: authored paths are walked segments, not a
-      // pathfinder — a blocked leg (moved furniture, a body wedged in
-      // a doorway) skips forward rather than pushing a wall forever.
-      rc.stuckTicks = stepped < speed * TICK_DT * 0.25 ? rc.stuckTicks + 1 : 0;
+      // pathfinder. The trip condition is CLOSEST APPROACH stalling,
+      // never step distance — a body wedged in a furniture corner
+      // slides a full stride every tick while going nowhere (verified
+      // live: the smith oscillating between tool rack and anvil).
+      const newDist = Math.hypot(rc.targetX - pos.x, rc.targetY - pos.y);
+      if (newDist < rc.progressBest - 0.15) {
+        rc.progressBest = newDist;
+        rc.stuckTicks = 0;
+      } else {
+        rc.stuckTicks++;
+      }
       if (rc.stuckTicks >= GameServer.ROUTINE_STUCK_TICKS) {
         rc.stuckTicks = 0;
+        rc.progressBest = Infinity;
         if (task.kind === 'path') {
           this.routineAdvance(rc, task);
         } else if (task.kind === 'wander') {

@@ -1,7 +1,7 @@
 {
   "id": "plaza_idler",
-  "base": { "kind": "post", "dir": 0 },
+  "base": { "kind": "post", "dir": 0, "speed": 1.1 },
   "slots": [
-    { "from": 8, "to": 18, "task": { "kind": "wander", "x": 4.1, "y": 4.9, "radius": 4 } }
+    { "from": 8, "to": 18, "task": { "kind": "wander", "x": 4.1, "y": 4.9, "radius": 4, "speed": 1.1 } }
   ]
 }

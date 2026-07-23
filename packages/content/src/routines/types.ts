@@ -44,7 +44,24 @@ export interface RoutineWaypoint {
    * furnace. Author the stop beside the station it should work.
    */
   work?: boolean;
+  /**
+   * Stride for the leg INTO this stop, tiles/sec — overrides the
+   * task's speed for that one segment (a dash across the yard on an
+   * otherwise ambling round). Absent = the task's pace.
+   */
+  speed?: number;
 }
+
+/**
+ * How fast a body travels its legs, tiles/sec. THE PACE IS AUTHORED
+ * CHARACTER: old Maren shuffles at 1.2, a guard marches at 1.6, a
+ * hungry smith jogs to lunch at 2.8 — varied strides are what keep a
+ * street of walkers from reading as one clockwork. Layering: a
+ * waypoint's speed rules its own leg, else the task's speed, else the
+ * default townsfolk stride (1.8). Reference points: bestiary walkers
+ * sit around 1.8-3.6, the player runs at 5.
+ */
+export type RoutineSpeed = number;
 
 /** Stand at one spot (the post itself unless offset), optionally working. */
 export interface RoutineTaskPost {
@@ -56,6 +73,8 @@ export interface RoutineTaskPost {
   dir?: number;
   /** Work the nearest station the whole time (see RoutineWaypoint.work). */
   work?: boolean;
+  /** Stride when traveling to (or back to) the post, tiles/sec. */
+  speed?: RoutineSpeed;
 }
 
 /**
@@ -67,6 +86,8 @@ export interface RoutineTaskPath {
   kind: 'path';
   mode?: 'loop' | 'bounce' | 'once';
   waypoints: RoutineWaypoint[];
+  /** Default stride for every leg, tiles/sec (waypoint speed overrides). */
+  speed?: RoutineSpeed;
 }
 
 /**
@@ -80,6 +101,8 @@ export interface RoutineTaskWander {
   x?: number;
   y?: number;
   radius: number;
+  /** Drift stride, tiles/sec. */
+  speed?: RoutineSpeed;
 }
 
 export type RoutineTask = RoutineTaskPost | RoutineTaskPath | RoutineTaskWander;

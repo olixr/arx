@@ -68,6 +68,16 @@ function validateWork(raw: unknown, where: string, errors: string[]): boolean | 
   return raw ? true : undefined;
 }
 
+/** Strides live between a hobble and a sprint (player speed is 5). */
+function validateSpeed(raw: unknown, where: string, errors: string[]): number | undefined {
+  if (raw === undefined) return undefined;
+  if (!finiteIn(raw, 0.3, 6)) {
+    errors.push(`${where}.speed must be a number 0.3..6 (tiles/sec)`);
+    return undefined;
+  }
+  return raw;
+}
+
 function validateWaypoint(
   raw: unknown,
   where: string,
@@ -89,6 +99,7 @@ function validateWaypoint(
   }
   wp.dir = validateDir(raw.dir, where, errors);
   wp.work = validateWork(raw.work, where, errors);
+  wp.speed = validateSpeed(raw.speed, where, errors);
   return wp;
 }
 
@@ -104,6 +115,7 @@ function validateTask(raw: unknown, where: string, errors: string[]): RoutineTas
     if (off.y !== undefined) task.y = off.y;
     task.dir = validateDir(raw.dir, where, errors);
     task.work = validateWork(raw.work, where, errors);
+    task.speed = validateSpeed(raw.speed, where, errors);
     return task;
   }
   if (raw.kind === 'path') {
@@ -124,7 +136,7 @@ function validateTask(raw: unknown, where: string, errors: string[]): RoutineTas
       const v = validateWaypoint(wp, `${where}.waypoints[${i}]`, errors);
       if (v) waypoints.push(v);
     }
-    return { kind: 'path', mode, waypoints };
+    return { kind: 'path', mode, waypoints, speed: validateSpeed(raw.speed, where, errors) };
   }
   if (raw.kind === 'wander') {
     const off = validateOffset(raw, where, false, errors);
@@ -135,6 +147,7 @@ function validateTask(raw: unknown, where: string, errors: string[]): RoutineTas
     const task: RoutineTask = { kind: 'wander', radius: raw.radius };
     if (off.x !== undefined) task.x = off.x;
     if (off.y !== undefined) task.y = off.y;
+    task.speed = validateSpeed(raw.speed, where, errors);
     return task;
   }
   errors.push(`${where}.kind must be 'post', 'path', or 'wander'`);

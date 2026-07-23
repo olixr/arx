@@ -83,6 +83,32 @@ test('validator rejects the dishonest defs', () => {
   );
   bad({ ...base, base: { kind: 'post', dir: 9 } }, 'radians');
   bad({ ...base, base: { kind: 'post', work: 'yes' } }, 'boolean');
+  bad({ ...base, base: { kind: 'post', speed: 0.1 } }, '0.3..6');
+  bad({ ...base, base: { kind: 'wander', radius: 3, speed: 12 } }, '0.3..6');
+  bad(
+    { ...base, base: { kind: 'path', waypoints: [{ x: 1, y: 1, speed: 'fast' }] } },
+    '0.3..6',
+  );
+});
+
+test('speed layers survive validation at every level', () => {
+  const res = validateRoutine({
+    id: 'test_pace',
+    base: { kind: 'path', speed: 1.2, waypoints: [{ x: 1, y: 0 }, { x: 2, y: 0, speed: 3.5 }] },
+    slots: [
+      { from: 20, to: 6, task: { kind: 'post', speed: 2.4 } },
+      { from: 8, to: 12, task: { kind: 'wander', radius: 4, speed: 1.1 } },
+    ],
+  });
+  assert.ok(res.ok);
+  const path = res.routine.base;
+  assert.ok(path.kind === 'path');
+  assert.equal(path.speed, 1.2, 'task-level stride');
+  assert.equal(path.waypoints[0]!.speed, undefined, 'unset leg falls to the task');
+  assert.equal(path.waypoints[1]!.speed, 3.5, 'per-leg override');
+  const night = res.routine.slots![0]!.task;
+  assert.ok(night.kind === 'post');
+  assert.equal(night.speed, 2.4);
 });
 
 test('validator normalizes defaults away (interchange stays minimal)', () => {
