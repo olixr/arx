@@ -1527,6 +1527,18 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   text-shadow: var(--punch-small);
 }
 
+/* The rumor line under the recipe ledger: what the station still
+   keeps from you — a whisper, not a list. */
+.make-undiscovered {
+  margin-top: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--parchment-dim);
+  opacity: 0.75;
+  text-shadow: var(--punch-small);
+}
+
 .out-qty {
   position: absolute;
   right: 2px;

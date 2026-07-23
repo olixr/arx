@@ -391,7 +391,7 @@ function toggleScreen(which: 'inv' | 'skills' | 'craft' | 'build' | 'audio' | 'l
       panels.showSkills();
       break;
     case 'craft':
-      stationPanels.openCraft(null, game.skills);
+      stationPanels.openCraft(null, game.skills, game.knownRecipes);
       break;
     case 'build':
       stationPanels.openBuild(game.skills);
@@ -1068,7 +1068,7 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       // The Workshop tells the whole material story itself — the pack
       // stays closed so the bench gets the room.
       closeAllUi();
-      stationPanels.openCraft(target.station, game.skills, target);
+      stationPanels.openCraft(target.station, game.skills, game.knownRecipes, target);
       break;
     case 'bank':
       closeAllUi();

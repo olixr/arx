@@ -232,6 +232,8 @@ export declare class ClientGame {
     timeOfs: number;
     inventory: InvSlot[];
     skills: SkillXp;
+    /** Recipes known beyond the core set (server-owned; see 'recipes'). */
+    knownRecipes: ReadonlySet<string>;
     equipment: Partial<Record<string, EquippedItem>>;
     /** Cosmetic idle weapon-carry preference (server-confirmed). */
     carryStyle: 'normal' | 'rogue';

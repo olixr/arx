@@ -211,6 +211,8 @@ export class ClientGame {
 
   inventory: InvSlot[] = [];
   skills: SkillXp = {};
+  /** Recipes known beyond the core set (server-owned; see 'recipes'). */
+  knownRecipes: ReadonlySet<string> = new Set();
   equipment: Partial<Record<string, EquippedItem>> = {};
   /** Cosmetic idle weapon-carry preference (server-confirmed). */
   carryStyle: 'normal' | 'rogue' = 'normal';
@@ -678,6 +680,10 @@ export class ClientGame {
       case 'skills': {
         this.skills = msg.xp;
         this.events.onSkills(msg.xp);
+        break;
+      }
+      case 'recipes': {
+        this.knownRecipes = new Set(msg.known);
         break;
       }
       case 'xp': {

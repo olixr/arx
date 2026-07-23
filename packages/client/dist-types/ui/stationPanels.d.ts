@@ -95,7 +95,7 @@ export declare class StationPanels {
     /** One material row in the Workshop detail: the full story of a need. */
     private materialRow;
     private renderPlant;
-    openCraft(station: StationType | null, skills: SkillXp, at?: {
+    openCraft(station: StationType | null, skills: SkillXp, known: ReadonlySet<string>, at?: {
         tx: number;
         ty: number;
     }): void;

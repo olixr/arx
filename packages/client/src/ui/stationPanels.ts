@@ -144,7 +144,7 @@ export class StationPanels {
   private anchor: { x: number; y: number } | null = null;
   /** What the open maker screen is showing — refreshOpen re-renders it. */
   private showing:
-    | { kind: 'craft'; station: StationType | null; skills: SkillXp; sel: string | null }
+    | { kind: 'craft'; station: StationType | null; skills: SkillXp; known: ReadonlySet<string>; sel: string | null }
     | { kind: 'plant'; tx: number; ty: number; skills: SkillXp; sel: string | null }
     | { kind: 'build'; skills: SkillXp }
     | null = null;
@@ -536,10 +536,15 @@ export class StationPanels {
 
   // ------------------------------------------------------------ craft
 
-  openCraft(station: StationType | null, skills: SkillXp, at?: { tx: number; ty: number }): void {
+  openCraft(
+    station: StationType | null,
+    skills: SkillXp,
+    known: ReadonlySet<string>,
+    at?: { tx: number; ty: number },
+  ): void {
     this.closeAll();
     if (at) this.anchor = { x: at.tx + 0.5, y: at.ty + 0.5 };
-    this.showing = { kind: 'craft', station, skills, sel: null };
+    this.showing = { kind: 'craft', station, skills, known, sel: null };
     const face = (station && STATION_FACE[station]) || HANDIWORK_FACE;
     this.dressCraft(
       face.label,
@@ -568,15 +573,23 @@ export class StationPanels {
   private renderCraft(): void {
     if (this.showing?.kind !== 'craft') return;
     const showing = this.showing;
-    const { station, skills } = showing;
+    const { station, skills, known } = showing;
     const face = (station && STATION_FACE[station]) || HANDIWORK_FACE;
     this.craftList.innerHTML = '';
     this.craftDetail.innerHTML = '';
-    const recipes = recipesForStation(station);
+    // The ledger lists only what this character KNOWS: core recipes
+    // plus learned scrolls. What's undiscovered stays a rumor — a
+    // count in the footer, never an endless list of futures.
+    const all = recipesForStation(station);
+    const recipes = all.filter((r) => r.unlock === 'core' || known.has(r.id));
+    const undiscovered = all.length - recipes.length;
     if (recipes.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'make-empty';
-      empty.textContent = 'Nothing can be made here yet.';
+      empty.textContent =
+        undiscovered > 0
+          ? `You know no recipes for this station yet — ${undiscovered} await discovery.`
+          : 'Nothing can be made here yet.';
       this.craftList.appendChild(empty);
       return;
     }
@@ -633,6 +646,14 @@ export class StationPanels {
           },
         }),
       );
+    }
+
+    // The rumor line: how much this station still keeps from you.
+    if (undiscovered > 0) {
+      const hint = document.createElement('div');
+      hint.className = 'make-undiscovered';
+      hint.textContent = `${undiscovered} more ${undiscovered === 1 ? 'recipe waits' : 'recipes wait'} to be discovered — trainers sell some, the wilds hide the rest.`;
+      this.craftList.appendChild(hint);
     }
 
     // ---- the chosen work, laid out large
