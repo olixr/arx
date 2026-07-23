@@ -11,6 +11,7 @@ export * from './protocol/snapshot.js';
 export * from './protocol/messages.js';
 export * from './sim/input.js';
 export * from './sim/movement.js';
+export * from './sim/steering.js';
 export * from './sim/combat.js';
 export * from './sim/abilities.js';
 export * from './sim/sneak.js';

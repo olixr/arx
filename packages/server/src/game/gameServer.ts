@@ -161,7 +161,9 @@ import {
   orientDiagWall,
   chargedShot,
   circleHitsSolid,
+  newSteerMemory,
   pointHitsSolid,
+  steerToward,
   drawCharge,
   hasButton,
   hasteOnHit,
@@ -180,6 +182,7 @@ import {
   type PassiveId,
   type S2CFx,
   type StatusApply,
+  type SteerMemory,
 } from '@devcraft/shared';
 import { config } from '../config.js';
 import { Session, sanitizeName } from '../net/session.js';
@@ -278,6 +281,17 @@ interface NpcComp {
   nextProduceAt: number;
   /** Livestock: next wall-clock ms this animal lays (0 = never). */
   nextLayAt: number;
+  /** Obstacle-avoidance swerve memory for chase/return legs. */
+  steer: SteerMemory;
+  /** Closest approach yet to the current nav goal (stall watchdog). */
+  navBest: number;
+  /** Consecutive ticks without closing on the nav goal. */
+  navStuck: number;
+  /** Where the chase target stood at the last stall re-baseline. */
+  navRefX: number;
+  navRefY: number;
+  /** A failed chase sulks: no aggro scans until this tick. */
+  noAggroUntilTick: number;
 }
 
 /**
@@ -501,6 +515,8 @@ interface RoutineComp {
    * step distance alone would never see it stuck.
    */
   progressBest: number;
+  /** Obstacle-avoidance swerve memory for travel legs. */
+  steer: SteerMemory;
   /**
    * True while the routine owns the body's facing (mid-stride, working
    * a station, or lingering on an authored dir) — tickActors' greet-
@@ -4307,8 +4323,7 @@ export class GameServer {
             if (!npos) continue;
             if (Math.hypot(npos.x - pos.x, npos.y - pos.y) > spec.radius) continue;
             if (npc.def.damage <= 0) continue;
-            npc.state = 'chase';
-            npc.targetEid = eid;
+            this.npcAggro(npc, eid);
           }
         }
         break;
@@ -4944,8 +4959,7 @@ export class GameServer {
     if (this.actors.get(npcEid)?.actor.protection === 'invulnerable') {
       this.broadcastHit(npcEid, 0, false, 0, 0, false, true);
       if (npc.state === 'idle' && npc.def.damage > 0) {
-        npc.state = 'chase';
-        npc.targetEid = attackerEid;
+        this.npcAggro(npc, attackerEid);
       }
       return;
     }
@@ -5065,8 +5079,7 @@ export class GameServer {
 
     // Fight back!
     if (npc.state === 'idle' && npc.def.damage > 0) {
-      npc.state = 'chase';
-      npc.targetEid = attackerEid;
+      this.npcAggro(npc, attackerEid);
     }
 
     if (health.hp <= 0) this.killNpc(npcEid, npc, attackerEid);
@@ -5164,8 +5177,7 @@ export class GameServer {
           const childEid = this.spawnNpc(childDef, cx, cy, -1);
           const child = this.npcs.get(childEid)!;
           if (this.players.has(killerEid)) {
-            child.state = 'chase';
-            child.targetEid = killerEid;
+            this.npcAggro(child, killerEid);
           }
         }
       }
@@ -5342,6 +5354,12 @@ export class GameServer {
       nextLayAt: def.lays
         ? Date.now() + (def.lays.minSec + Math.random() * (def.lays.maxSec - def.lays.minSec)) * 1000
         : 0,
+      steer: newSteerMemory(),
+      navBest: Infinity,
+      navStuck: 0,
+      navRefX: Infinity,
+      navRefY: Infinity,
+      noAggroUntilTick: 0,
     });
     this.updateChunkMembership(eid);
     return eid;
@@ -5387,6 +5405,7 @@ export class GameServer {
         pauseUntilTick: 0,
         stuckTicks: 0,
         progressBest: Infinity,
+        steer: newSteerMemory(),
         holdFacing: false,
       });
     }
@@ -5414,6 +5433,12 @@ export class GameServer {
         specialCooldown: 60,
         nextProduceAt: 0,
         nextLayAt: 0,
+        steer: newSteerMemory(),
+        navBest: Infinity,
+        navStuck: 0,
+        navRefX: Infinity,
+        navRefY: Infinity,
+        noAggroUntilTick: 0,
       });
     }
     this.updateChunkMembership(eid);
@@ -5470,6 +5495,12 @@ export class GameServer {
   private static readonly ROUTINE_ARRIVE = 0.3;
   /** Travel ticks without progress before the watchdog intervenes (3s). */
   private static readonly ROUTINE_STUCK_TICKS = 60;
+  /** Chase ticks without closing on a STATIONARY target before giving up (4.5s). */
+  private static readonly CHASE_STALL_TICKS = 90;
+  /** Homeward ticks without progress before the leash snaps the rest (5s). */
+  private static readonly RETURN_STALL_TICKS = 100;
+  /** How long an abandoned chase sulks before scanning for aggro again (12s). */
+  private static readonly NO_AGGRO_TICKS = 240;
 
   /** The task the schedule assigns this comp right now. */
   private routineTask(rc: RoutineComp): RoutineTask {
@@ -5668,10 +5699,14 @@ export class GameServer {
       // elder and a jogging courier come from content, not code.
       const speed = wp?.speed ?? task.speed ?? GameServer.ROUTINE_WALK_SPEED;
       const radius = npc?.def.radius ?? 0.3;
-      const next = stepMovement(pos, { mx: dx / dist, my: dy / dist }, speed, TICK_DT, this.world, radius);
+      // Authored legs are straight and walkable — the steer fan only
+      // earns its keep when a fight (or a shove) left the body off the
+      // rails, walking back through furniture it never planned to meet.
+      const h = steerToward(pos, rc.targetX, rc.targetY, this.world, radius, rc.steer);
+      const next = stepMovement(pos, { mx: h.mx, my: h.my }, speed, TICK_DT, this.world, radius);
       const stepped = Math.hypot(next.x - pos.x, next.y - pos.y);
       if (stepped > 0.001) {
-        pos.dir = Math.atan2(dy, dx);
+        pos.dir = Math.atan2(h.my, h.mx);
         pos.x = next.x;
         pos.y = next.y;
         this.updateChunkMembership(eid);
@@ -5717,6 +5752,23 @@ export class GameServer {
         }
       }
     }
+  }
+
+  /**
+   * Point a combat body at a target: chase state plus a fresh nav
+   * slate — the stall watchdog and swerve memory must never carry
+   * over from a previous pursuit. Every path into 'chase' goes
+   * through here.
+   */
+  private npcAggro(npc: NpcComp, targetEid: EntityId): void {
+    npc.state = 'chase';
+    npc.targetEid = targetEid;
+    npc.navBest = Infinity;
+    npc.navStuck = 0;
+    npc.navRefX = Infinity;
+    npc.navRefY = Infinity;
+    npc.steer.side = 0;
+    npc.steer.ticks = 0;
   }
 
   /** Resolve an NPC's chase target: a live player or a straw decoy. */
@@ -5790,8 +5842,15 @@ export class GameServer {
         continue;
       }
 
-      // Aggro scan (cheap: only when idle, every 5 ticks).
-      if (npc.state === 'idle' && npc.def.aggroRange > 0 && (this.tickCount + eid) % 5 === 0) {
+      // Aggro scan (cheap: only when idle, every 5 ticks). A body
+      // still sulking from an abandoned chase keeps its eyes down —
+      // a direct hit re-arms it regardless, through damageNpc.
+      if (
+        npc.state === 'idle' &&
+        npc.def.aggroRange > 0 &&
+        this.tickCount >= npc.noAggroUntilTick &&
+        (this.tickCount + eid) % 5 === 0
+      ) {
         for (const [playerEid, player] of this.players) {
           if (player.session === null && player.disconnectedAt !== null) continue;
           if (player.hidden) continue;
@@ -5806,8 +5865,7 @@ export class GameServer {
             aggro *= sneakDetectionFactor(this.effectiveLevel(player, 'sneak'));
           }
           if (dx * dx + dy * dy < aggro * aggro) {
-            npc.state = 'chase';
-            npc.targetEid = playerEid;
+            this.npcAggro(npc, playerEid);
             break;
           }
         }
@@ -5823,6 +5881,8 @@ export class GameServer {
           npc.state = 'return';
           npc.targetEid = null;
           npc.windupTicks = 0;
+          npc.navBest = Infinity;
+          npc.navStuck = 0;
         } else {
           const dx = tpos.x - pos.x;
           const dy = tpos.y - pos.y;
@@ -5916,8 +5976,33 @@ export class GameServer {
               this.setNpcPose(eid, npc, PoseState.Attack, npc.def.ranged ? 10 : 8);
             }
           } else {
-            moveX = dx / dist;
-            moveY = dy / dist;
+            // Steer, don't beeline: the fan probe swings the pursuit
+            // around trees and walls instead of grinding into them.
+            const h = steerToward(pos, tpos.x, tpos.y, this.world, npc.def.radius, npc.steer);
+            moveX = h.mx;
+            moveY = h.my;
+            // Stall watch, closest-approach law: only a STATIONARY
+            // target counts — a fleeing player re-baselines the ledger
+            // every stride, so open-field pursuit can never trip it.
+            if (Math.hypot(tpos.x - npc.navRefX, tpos.y - npc.navRefY) > 0.6) {
+              npc.navRefX = tpos.x;
+              npc.navRefY = tpos.y;
+              npc.navBest = dist;
+              npc.navStuck = 0;
+            } else if (dist < npc.navBest - 0.15) {
+              npc.navBest = dist;
+              npc.navStuck = 0;
+            } else if (++npc.navStuck >= GameServer.CHASE_STALL_TICKS) {
+              // The target is unreachable — parked behind a fence or a
+              // tree pocket the fan can't round. Give up, leash home
+              // (which heals), and sulk: the trap stops paying.
+              npc.state = 'return';
+              npc.targetEid = null;
+              npc.windupTicks = 0;
+              npc.navBest = Infinity;
+              npc.navStuck = 0;
+              npc.noAggroUntilTick = this.tickCount + GameServer.NO_AGGRO_TICKS;
+            }
           }
         }
       } else if (npc.state === 'return') {
@@ -5929,8 +6014,21 @@ export class GameServer {
           const health = this.healths.must(eid);
           health.hp = health.maxHp; // reset like classic MMO leashing
         } else {
-          moveX = dx / dist;
-          moveY = dy / dist;
+          const h = steerToward(pos, npc.originX, npc.originY, this.world, npc.def.radius, npc.steer);
+          moveX = h.mx;
+          moveY = h.my;
+          // A homeward walk that stalls out (closest-approach law) has
+          // exhausted the fan — snap the rest, the classic leash reset.
+          if (dist < npc.navBest - 0.15) {
+            npc.navBest = dist;
+            npc.navStuck = 0;
+          } else if (++npc.navStuck >= GameServer.RETURN_STALL_TICKS) {
+            pos.x = npc.originX;
+            pos.y = npc.originY;
+            this.updateChunkMembership(eid);
+            npc.navBest = Infinity;
+            npc.navStuck = 0;
+          }
         }
       } else if (this.actors.has(eid)) {
         // Posted actors hold their spot: the wander drift belongs to
