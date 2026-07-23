@@ -2767,6 +2767,8 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   pointer-events: auto;
 }
 
+/* No overflow clip: the key token overhangs the well's corner (the
+   cooldown wipe is a bounded conic background, it never spills). */
 .hotbar-slot {
   position: relative;
   width: 60px;
@@ -2777,7 +2779,6 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   border: 6px solid transparent;
   border-image: var(--ui-quiet) 30 fill / 6px;
   cursor: pointer;
-  overflow: hidden;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
@@ -2814,10 +2815,12 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   pointer-events: none;
 }
 
+/* The key token hangs off the well's bottom-right corner — half on,
+   half off — so it never covers the ability plate. */
 .hotbar-key {
   position: absolute;
-  right: 3px;
-  bottom: 2px;
+  right: -7px;
+  bottom: -7px;
   font-weight: 700;
   color: var(--parchment);
   text-shadow: var(--punch-small);
@@ -3021,36 +3024,38 @@ body.pad-mode .hint-inline { display: none; }
 
 /* ---- hotbar + dock badges ---- */
 
-/* On the quiet console the shortcut letter is an engraving, not a
-   key cap: a bare small letter in a translucent chip. */
+/* The shortcut token: a small solid tab that overhangs the tile's
+   bottom-right corner — big enough to read at a glance, hanging off
+   the edge so it never covers the icon it belongs to. */
 .hotbar-key .kb-glyph,
 .dock-badge .kb-glyph {
-  min-width: 15px;
-  height: 15px;
-  padding: 0 3px;
-  font-size: 9.5px;
-  color: rgba(233, 220, 186, 0.85);
-  background: rgba(10, 7, 4, 0.62);
-  border: none;
-  border-radius: 3px;
-  box-shadow: none;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 4px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: rgba(240, 228, 196, 0.95);
+  background: rgba(12, 9, 5, 0.92);
+  border: 1px solid rgba(222, 190, 128, 0.3);
+  border-radius: 4px;
+  box-shadow: 0 2px 3px rgba(6, 4, 2, 0.5);
 }
 
-/* Pad glyphs keep their console-color language, shrunk to match. */
+/* Pad glyphs keep their console-color language at the same weight. */
 .hotbar-key .pad-glyph,
 .dock-badge .pad-glyph {
-  min-width: 18px;
-  height: 18px;
-  font-size: 10px;
-  background: rgba(10, 7, 4, 0.62);
+  min-width: 21px;
+  height: 21px;
+  font-size: 11px;
+  background: rgba(12, 9, 5, 0.92);
   border-width: 1.5px;
-  box-shadow: none;
+  box-shadow: 0 2px 3px rgba(6, 4, 2, 0.5);
 }
 
 .dock-badge {
   position: absolute;
-  right: -3px;
-  top: -5px;
+  right: -7px;
+  bottom: -7px;
   pointer-events: none;
 }
 
