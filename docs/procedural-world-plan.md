@@ -218,6 +218,16 @@ each green.
 
 ## Phase 2 — The Grammar Goes to the Studio
 
+**SHIPPED 2026-07-24** (commits 8c86333 JSON defs/validator/live registry →
+f606aef content_docs + /dev/content pois + reload + bench APIs → e27f2ea
+patrol loops → 3fce4b1 approach cues → 171b625 the CMS bench → 455d1f7 Map
+Studio transparency + POI shelf). Verified live: a patrol sentry walked 9.3
+tiles of its ring in 8s; the worn approach path + banner + felled clearing
+read from the townward walk-in; a PUT rename ("Skarn the Burnt", +8 levels)
+recomposed the standing camp within ~3s while the deterministic muster held;
+the bench's survey and stage both answer through the real scaffold — the
+stage even found the same cell the organic camp stands in.
+
 Goal: POI archetypes become designer-owned content, and camps read as *inhabited*.
 
 - **`PoiDef` joins the content-docs law**: JSON defs in `content/src/pois/defs/*.json`
