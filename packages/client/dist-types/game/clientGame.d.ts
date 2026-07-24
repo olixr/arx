@@ -271,12 +271,19 @@ export declare class ClientGame {
         oy: number;
         capturedAt: number;
     }>;
-    /** Local staff-cadence mirror (bolt-bolt-HEAVY, same shared laws). */
-    private staffReadyAt;
+    /**
+     * Local staff-cadence mirror (bolt-bolt-HEAVY, same shared laws).
+     * Gated in the SEQ domain, not wall-clock ms: one input frame is one
+     * server tick, and the server re-arms in ticks. A ms-based gate can
+     * only ever fire a frame LATE (rAF jitter), so its fire-seq drifts
+     * monotonically behind the server's until the ±2 handoff window
+     * breaks and every bolt draws twice — tracer plus real entity.
+     */
+    private staffReadySeq;
     private boltStageLocal;
-    private boltGraceUntilMs;
+    private boltGraceUntilSeq;
     /** Local mirror of the cast commitment window (holds basics back). */
-    private castFreezeUntilMs;
+    private castFreezeUntilSeq;
     /** NPC deaths this frame — drives the ragdoll + stuck-arrow scatter. */
     readonly npcDeaths: Array<{
         eid: EntityId;

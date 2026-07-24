@@ -237,12 +237,19 @@ export class ClientGame {
    * predicted flight blends into the authoritative one seamlessly.
    */
   readonly projHandoffs = new Map<EntityId, { shot: OwnShot; ox: number; oy: number; capturedAt: number }>();
-  /** Local staff-cadence mirror (bolt-bolt-HEAVY, same shared laws). */
-  private staffReadyAt = 0;
+  /**
+   * Local staff-cadence mirror (bolt-bolt-HEAVY, same shared laws).
+   * Gated in the SEQ domain, not wall-clock ms: one input frame is one
+   * server tick, and the server re-arms in ticks. A ms-based gate can
+   * only ever fire a frame LATE (rAF jitter), so its fire-seq drifts
+   * monotonically behind the server's until the ±2 handoff window
+   * breaks and every bolt draws twice — tracer plus real entity.
+   */
+  private staffReadySeq = 0;
   private boltStageLocal = 0;
-  private boltGraceUntilMs = 0;
+  private boltGraceUntilSeq = 0;
   /** Local mirror of the cast commitment window (holds basics back). */
-  private castFreezeUntilMs = 0;
+  private castFreezeUntilSeq = 0;
   /** NPC deaths this frame — drives the ragdoll + stuck-arrow scatter. */
   readonly npcDeaths: Array<{
     eid: EntityId;
@@ -425,7 +432,7 @@ export class ClientGame {
       this.abilityReadyAt[slot] = now + ab.cooldownTicks * TICK_MS;
       this.abilityMax[slot] = ab.cooldownTicks;
       this.drawStartAt = 0; // casting lets the bowstring down
-      this.castFreezeUntilMs = now + (ab.castFreezeTicks ?? 0) * TICK_MS;
+      this.castFreezeUntilSeq = frame.seq + (ab.castFreezeTicks ?? 0);
       this.predictor.registerCast(
         frame.seq,
         ab.castFreezeTicks ?? 0,
@@ -485,19 +492,19 @@ export class ClientGame {
    * recovery. A mispredicted bolt (rare cadence drift) simply never
    * matches an entity and fades.
    */
-  private trackOwnStaff(frame: InputFrame, now: number): void {
+  private trackOwnStaff(frame: InputFrame): void {
     const weapon = this.equippedWeaponDef();
     if (!weapon || weapon.style !== 'magic') return;
     if (!hasButton(frame.buttons, InputButton.Attack)) return;
-    if (now < this.staffReadyAt || now < this.castFreezeUntilMs) return;
-    const stage = nextComboStage(this.boltStageLocal, now <= this.boltGraceUntilMs);
+    if (frame.seq < this.staffReadySeq || frame.seq < this.castFreezeUntilSeq) return;
+    const stage = nextComboStage(this.boltStageLocal, frame.seq <= this.boltGraceUntilSeq);
     this.boltStageLocal = stage;
     const heavy = stage === COMBO_STAGES - 1;
     const cdTicks = heavy
       ? Math.round(weapon.cooldownTicks * HEAVY_BOLT_RECOVERY_MULT)
       : weapon.cooldownTicks;
-    this.staffReadyAt = now + cdTicks * TICK_MS;
-    this.boltGraceUntilMs = this.staffReadyAt + COMBO_GRACE_TICKS * TICK_MS;
+    this.staffReadySeq = frame.seq + cdTicks;
+    this.boltGraceUntilSeq = this.staffReadySeq + COMBO_GRACE_TICKS;
     const base = heavy ? 'magic_heavy' : 'magic';
     const defId = weapon.element ? `${base}:${weapon.element}` : base;
     this.predictShot(
@@ -583,10 +590,10 @@ export class ClientGame {
         this.entities.clear();
         this.ownShots.length = 0;
         this.projHandoffs.clear();
-        this.staffReadyAt = 0;
+        this.staffReadySeq = 0;
         this.boltStageLocal = 0;
-        this.boltGraceUntilMs = 0;
-        this.castFreezeUntilMs = 0;
+        this.boltGraceUntilSeq = 0;
+        this.castFreezeUntilSeq = 0;
         this.clockOffset = null;
         this.reconnectDelay = 500;
         this.events.onStatus('ingame');
@@ -642,6 +649,22 @@ export class ClientGame {
               if (!best || d < Math.abs(best.seq - meta.seq)) {
                 best = shot;
                 bestIdx = i;
+              }
+            }
+            // Staff fallback: a server input-queue stall drops frames and
+            // permanently shifts the seq↔tick mapping, pushing every later
+            // bolt outside the ±2 window. Both streams are ordered, so
+            // marry the oldest unclaimed tracer of the same bolt kind
+            // rather than draw the shot twice. Magic only — the archery
+            // snap-fan's second arrow shares a seq and must stay
+            // unpredicted.
+            if (!best && meta.defId?.startsWith('magic')) {
+              for (let i = 0; i < this.ownShots.length; i++) {
+                if (this.ownShots[i]!.defId === meta.defId) {
+                  best = this.ownShots[i]!;
+                  bestIdx = i;
+                  break;
+                }
               }
             }
             if (best) {
@@ -1395,7 +1418,7 @@ export class ClientGame {
       this.conn.send({ t: 'input', frame, viewMs: Math.round(this.interpDelayMs) });
       this.predictor.applyInput(frame);
       this.trackOwnDraw(frame, now);
-      this.trackOwnStaff(frame, now);
+      this.trackOwnStaff(frame);
     }
     // A walk-to-loot errand completes the moment the bag is in reach
     // (or dissolves if someone else took it first).
