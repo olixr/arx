@@ -17240,6 +17240,34 @@ export class Renderer {
   }
 
   /**
+   * Jagged energy forks biting outward from a strike point — the
+   * shared "after-zap" vocabulary. The caller sets stroke style and
+   * width, opens ONE path, and strokes after; each fork is a boltPath
+   * with its own kink seed, so feeding a re-kinking clock seed makes
+   * the whole splash writhe frame to frame. `baseA` + `arc` aim the
+   * splay (2π = full radial burst); the 0.85 vertical squeeze keeps
+   * the splash reading at body height, not flat on the turf.
+   */
+  private fxForks(
+    cx: number,
+    cy: number,
+    seed: number,
+    n: number,
+    lenPx: number,
+    baseA: number,
+    arc: number,
+    jagPx: number,
+  ): void {
+    const ctx = this.ctx;
+    const rand = srand(seed);
+    for (let k = 0; k < n; k++) {
+      const a = baseA - arc / 2 + (arc * (k + 0.5)) / n + (rand() - 0.5) * 0.35;
+      const L = lenPx * (0.6 + rand() * 0.7);
+      boltPath(ctx, cx, cy, cx + Math.cos(a) * L, cy + Math.sin(a) * L * 0.85, seed + k * 13, jagPx);
+    }
+  }
+
+  /**
    * The ring silhouette pass novas and blasts expand with. Every
    * family is a three-layer read — dark pressure band under, identity
    * silhouette over, hot inner edge — and the rim SHEDS: sparks fly
@@ -17896,13 +17924,23 @@ export class Renderer {
                 ctx.lineTo(q.x, q.y + dy);
                 ctx.stroke();
               } else {
-                // Landing pop + a flat ripple spreading where it struck.
+                // Splatter + a flat ripple spreading where it struck:
+                // three slivers kick up-and-out — real splash matter,
+                // not a star stamp.
                 const pt = (drop - 0.82) / 0.18;
                 ctx.globalAlpha = fade * (1 - pt);
                 ctx.fillStyle = st.spark;
-                ctx.beginPath();
-                burstStarPath(ctx, q.x, q.y, sc * 0.14 * (1 - pt * 0.5), sc * 0.05, 4, kk * 1.3, squash);
-                ctx.fill();
+                const tw = Math.max(1, sc * 0.022);
+                for (let j = 0; j < 3; j++) {
+                  const sa = -Math.PI / 2 + (j - 1) * 0.85 + (kk % 3) * 0.2;
+                  const d0 = sc * (0.04 + pt * 0.16);
+                  const tl = sc * (0.07 + 0.05 * ((kk + j) % 2)) * (1 - pt * 0.5);
+                  ctx.save();
+                  ctx.translate(q.x + Math.cos(sa) * d0, q.y + Math.sin(sa) * d0 * 0.7);
+                  ctx.rotate(sa);
+                  ctx.fillRect(0, -tw / 2, tl, tw);
+                  ctx.restore();
+                }
                 ctx.globalAlpha = fade * (1 - pt) * 0.6;
                 ctx.strokeStyle = st.mid;
                 ctx.lineWidth = Math.max(1, sc * 0.025);
@@ -18501,12 +18539,37 @@ export class Renderer {
             const gy = p.y + Math.sin(a) * rPx * 0.82 * squash;
             ctx.fillRect(gx - g / 2, gy - g, g, g * 2);
           }
-          // Center sigil pulses harder as the fuse runs out.
-          ctx.globalAlpha = 0.55 + 0.35 * Math.sin(now / (t > 0.72 ? 45 : 110));
+          // Center sigil: a rotating hollow rune diamond over a solid
+          // heart, with cardinal ticks pulling inward as the fuse
+          // runs — an instrument arming, not a cartoon star.
+          const pulse2 = 0.55 + 0.35 * Math.sin(now / (t > 0.72 ? 45 : 110));
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.scale(1, squash);
+          ctx.rotate(now / 1400);
+          const ds = sc * 0.16 * urgency;
+          ctx.globalAlpha = pulse2;
+          ctx.strokeStyle = st.mid;
+          ctx.lineWidth = Math.max(1.5, sc * 0.035);
+          ctx.strokeRect(-ds, -ds, ds * 2, ds * 2);
+          ctx.rotate(-now / 1400 + Math.PI / 4);
           ctx.fillStyle = st.mid;
-          ctx.beginPath();
-          burstStarPath(ctx, p.x, p.y, sc * 0.2 * urgency, sc * 0.08, 4, now / 900, squash);
-          ctx.fill();
+          const hs = ds * 0.5;
+          ctx.fillRect(-hs, -hs, hs * 2, hs * 2);
+          ctx.restore();
+          // Cardinal ticks close on the heart with the fuse.
+          ctx.globalAlpha = pulse2 * 0.9;
+          ctx.fillStyle = st.core;
+          for (let k = 0; k < 4; k++) {
+            const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+            const d0 = sc * (0.42 - 0.16 * t);
+            const g2 = sc * 0.028;
+            ctx.save();
+            ctx.translate(p.x + Math.cos(a) * d0, p.y + Math.sin(a) * d0 * squash);
+            ctx.rotate(a);
+            ctx.fillRect(-sc * 0.06, -g2 / 2, sc * 0.12, g2);
+            ctx.restore();
+          }
           ctx.restore();
           if (t > 0.72 && Math.random() < this.frameDt * 10) {
             this.particles.burst(fx.x + (Math.random() - 0.5) * fx.radius, fx.y + (Math.random() - 0.5) * fx.radius * 0.6, 1, [st.spark, st.core], { speed: 1.2, life: 0.3, size: 0.07, gravity: -2 });
@@ -18969,22 +19032,48 @@ export class Renderer {
                 ctx.globalAlpha = ft * 0.5;
                 ctx.fillRect(p.x - kw * 1.6, p.y - rPx * 1.1, kw * 3.2, rPx * 0.16);
               }
-              const starR = rPx * (0.55 + 0.35 * Math.min(1, t / 0.3));
-              ctx.globalAlpha = (1 - t) * 0.55;
-              ctx.fillStyle = st.deep;
-              ctx.beginPath();
-              burstStarPath(ctx, p.x, p.y - sc * 0.06, starR * 1.04, starR * 0.52, 9, (seed % 6) + 0.15, 0.8);
-              ctx.fill();
-              ctx.globalAlpha = (1 - t) * 0.6;
-              ctx.fillStyle = st.mid;
-              ctx.beginPath();
-              burstStarPath(ctx, p.x, p.y - sc * 0.1, starR, starR * 0.5, 9, seed % 6, 0.8);
-              ctx.fill();
-              ctx.globalAlpha = (1 - t) * 0.8;
-              ctx.fillStyle = st.core;
-              ctx.beginPath();
-              burstStarPath(ctx, p.x, p.y - sc * 0.1, starR * 0.6, starR * 0.28, 7, seed % 6 + 0.4, 0.8);
-              ctx.fill();
+              // The fire is a MASS, not a sign: a cluster of seeded
+              // billow lobes that ignite staggered, rise, and shred —
+              // soot mantle on the crown, melt hanging under it, the
+              // hot core biting each lobe's UNDERSIDE because fire
+              // feeds from beneath and cools at the top. No two
+              // blasts share a silhouette; nothing pops-and-scales.
+              const randB = srand(seed ^ 0x9e);
+              for (let k = 0; k < 9; k++) {
+                const ang = randB() * Math.PI * 2;
+                const rad = rPx * (0.1 + randB() * 0.32);
+                const szR = randB();
+                const tilt = (randB() - 0.5) * 0.6;
+                const lt = Math.max(0, Math.min(1, (t - k * 0.045) / 0.78));
+                if (lt <= 0 || lt >= 1) continue;
+                const rise = lt * rPx * (0.45 + szR * 0.5);
+                const swell = 0.55 + 0.75 * Math.min(1, lt / 0.16);
+                const s = rPx * (0.15 + szR * 0.13) * swell * (1 - 0.5 * lt * lt);
+                const bx = p.x + Math.cos(ang) * rad * (1 + lt * 0.35);
+                const by = p.y - sc * 0.1 - rise + Math.sin(ang) * rad * 0.5;
+                const inner = rad < rPx * 0.24; // heart lobes burn hotter
+                const gut = 0.85 + 0.15 * Math.sin(now / 55 + k * 2.3);
+                ctx.save();
+                ctx.translate(bx, by);
+                ctx.rotate(tilt + lt * (k % 2 === 0 ? 0.4 : -0.4));
+                ctx.globalAlpha = (1 - lt) * (1 - lt) * 0.92 * gut;
+                ctx.fillStyle = lt > 0.55 ? shade(st.deep, -10) : st.deep;
+                ctx.fillRect(-s * 0.62, -s * 0.66, s * 1.24, s * 0.72);
+                ctx.fillStyle = inner ? st.mid : shade(st.mid, -12);
+                ctx.fillRect(-s * 0.55, -s * 0.3, s * 1.1, s * 0.78);
+                if (lt < 0.6) {
+                  ctx.globalAlpha = (1 - lt / 0.6) * 0.95 * gut;
+                  ctx.fillStyle = inner ? st.core : st.spark;
+                  ctx.fillRect(-s * 0.34, s * 0.04, s * 0.68, s * 0.42);
+                }
+                ctx.restore();
+              }
+              // Shred embers gutter off the rising mass while it burns.
+              if (t < 0.6 && Math.random() < this.frameDt * 22 * (1 - t)) {
+                this.particles.burst(fx.x + (Math.random() - 0.5) * fx.radius * 0.5, fx.y - 0.3 - Math.random() * 0.5, 1, [st.spark, st.core], {
+                  speed: 1.4, life: 0.45, size: 0.06, gravity: -1.8, flicker: 0.8, shape: 'streak',
+                });
+              }
               ctx.restore();
             },
           });
@@ -19056,12 +19145,49 @@ export class Renderer {
               sortY: fx.y + 0.01,
               draw: () => {
                 const p = this.liftedWTS(fx.x, fx.y);
+                const cy0 = p.y - sc * 0.25;
                 ctx.save();
-                ctx.globalAlpha = (1 - t) * 0.75;
-                ctx.fillStyle = st.core;
-                ctx.beginPath();
-                burstStarPath(ctx, p.x, p.y - sc * 0.25, sc * 0.32 * (1 - t * 0.4), sc * 0.13, 6, seed % 5, 0.85);
-                ctx.fill();
+                // Core flash: a hot diamond that COOLS — never grows.
+                if (t < 0.35) {
+                  const ft = 1 - t / 0.35;
+                  const cs = sc * 0.09 * (0.6 + 0.4 * ft);
+                  ctx.globalAlpha = ft * 0.95;
+                  ctx.save();
+                  ctx.translate(p.x, cy0);
+                  ctx.rotate(Math.PI / 4);
+                  ctx.fillStyle = st.core;
+                  ctx.fillRect(-cs, -cs, cs * 2, cs * 2);
+                  ctx.fillStyle = '#ffffff';
+                  ctx.fillRect(-cs * 0.45, -cs * 0.45, cs * 0.9, cs * 0.9);
+                  ctx.restore();
+                }
+                // Shrapnel slivers fly the ring — detached matter with
+                // real trajectories, not a connected star silhouette.
+                const randR = srand(seed ^ 0x3d);
+                ctx.globalAlpha = (1 - t) * 0.85;
+                ctx.fillStyle = st.spark;
+                for (let k = 0; k < 8; k++) {
+                  const a = randR() * Math.PI * 2;
+                  const sp = 0.35 + randR() * 0.5;
+                  const d = sc * (0.12 + t * sp);
+                  const tl = sc * (0.1 + 0.06 * randR()) * (1 - t * 0.6);
+                  ctx.save();
+                  ctx.translate(p.x + Math.cos(a) * d, cy0 + Math.sin(a) * d * 0.85);
+                  ctx.rotate(a);
+                  ctx.fillRect(0, -Math.max(1, sc * 0.02) / 2, tl, Math.max(1, sc * 0.02));
+                  ctx.restore();
+                }
+                // The pressure ring in the air — thin, near-circular
+                // (the ground ring lives in the ground pass).
+                if (t < 0.5) {
+                  ctx.globalAlpha = (1 - t / 0.5) * 0.6;
+                  ctx.strokeStyle = st.mid;
+                  ctx.lineWidth = Math.max(1, sc * 0.025);
+                  ctx.beginPath();
+                  const ir = sc * (0.1 + t * 0.55);
+                  ctx.ellipse(p.x, cy0, ir, ir * 0.85, 0, 0, Math.PI * 2);
+                  ctx.stroke();
+                }
                 ctx.restore();
               },
             });
@@ -19308,6 +19434,11 @@ export class Renderer {
           if (!fx.spawned) {
             fx.spawned = true;
             this.fxDebris(fx.x2 ?? fx.x, fx.y2 ?? fx.y, st, 6);
+            // The strike THROWS sparks: a fan of fast slivers off the
+            // hit point — small and many beats big and one.
+            this.particles.burst(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.4, 7, [st.spark, st.core], {
+              speed: 3.4, life: 0.3, size: 0.05, gravity: 4, up: true, shape: 'streak',
+            });
             this.queueGlow(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.3, 1.1, st.glow, 0.5);
             this.queueGlow(fx.x, fx.y - 0.3, 0.8, st.glow, 0.35);
           }
@@ -19337,16 +19468,37 @@ export class Renderer {
           ctx.beginPath();
           boltPath(ctx, mx, my, mx + Math.cos(ba) * sc * 0.9, my + Math.sin(ba) * sc * 0.9, kinkSeed + 11, sc * 0.2);
           ctx.stroke();
-          // Impact star bites at the target end.
-          ctx.globalAlpha = 0.9 * fade;
-          ctx.fillStyle = st.spark;
+          // The strike's aftermath — no stamped star. Grounding forks
+          // bite outward from the hit point, re-kinking on the bolt's
+          // own 70ms clock so the splash WRITHES; a hot core point
+          // cools where the charge landed; one thin ionization ring
+          // snaps out and dies.
+          ctx.globalAlpha = 0.95 * fade;
+          ctx.strokeStyle = st.spark;
+          ctx.lineWidth = Math.max(1.5, sc * 0.035);
           ctx.beginPath();
-          burstStarPath(ctx, q.x, q.y - lift, sc * 0.3 * (1 - t * 0.5), sc * 0.12, 5, seed % 7);
-          ctx.fill();
-          ctx.fillStyle = st.core;
-          ctx.beginPath();
-          burstStarPath(ctx, q.x, q.y - lift, sc * 0.16 * (1 - t * 0.5), sc * 0.06, 5, seed % 7 + 0.6);
-          ctx.fill();
+          this.fxForks(q.x, q.y - lift, kinkSeed ^ 0x1b, 5, sc * 0.55 * (1 - t * 0.35), 0, Math.PI * 2, sc * 0.12);
+          ctx.stroke();
+          if (t < 0.45) {
+            const ft = 1 - t / 0.45;
+            const cs = sc * 0.08 * (0.5 + 0.5 * ft);
+            ctx.globalAlpha = ft;
+            ctx.save();
+            ctx.translate(q.x, q.y - lift);
+            ctx.rotate(Math.PI / 4);
+            ctx.fillStyle = st.core;
+            ctx.fillRect(-cs, -cs, cs * 2, cs * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-cs * 0.4, -cs * 0.4, cs * 0.8, cs * 0.8);
+            ctx.restore();
+            ctx.globalAlpha = ft * 0.7;
+            ctx.strokeStyle = st.core;
+            ctx.lineWidth = Math.max(1, sc * 0.02);
+            ctx.beginPath();
+            const ir = sc * (0.08 + (1 - ft) * 0.5);
+            ctx.ellipse(q.x, q.y - lift, ir, ir * 0.85, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
           ctx.restore();
           break;
         }
@@ -19413,16 +19565,51 @@ export class Renderer {
             ctx.lineTo(bx + nx * side * (halfW * 1.6 + sc * (0.12 + rand() * 0.14)), by + ny * side * (halfW * 1.6 + sc * 0.12));
             ctx.stroke();
           }
-          // Muzzle and terminus stars.
+          // MUZZLE: a charge slit standing on the corridor axis with
+          // feed ticks converging INTO it — energy entering the line,
+          // not a star badge stamped over it.
+          const ux = dx / len;
+          const uy = dy / len;
+          const bAng = Math.atan2(dy, dx);
           ctx.globalAlpha = 0.9 * fade;
+          ctx.save();
+          ctx.translate(p.x, p.y - lift);
+          ctx.rotate(bAng);
           ctx.fillStyle = st.core;
+          const ms = sc * (0.2 + 0.05 * Math.sin(now / 90)) * grow;
+          ctx.fillRect(-ms * 0.3, -halfW * 1.5, ms, halfW * 3);
+          ctx.restore();
+          ctx.strokeStyle = st.spark;
+          ctx.lineWidth = Math.max(1, sc * 0.03);
+          for (let k = 0; k < 3; k++) {
+            const off = (k - 1) * halfW * 2.6;
+            const pull = (now / 260 + k * 0.37) % 1;
+            const d0 = sc * (0.55 - pull * 0.4);
+            ctx.globalAlpha = (1 - pull) * 0.8 * fade;
+            ctx.beginPath();
+            ctx.moveTo(p.x - ux * d0 + nx * off, p.y - uy * d0 + ny * off - lift);
+            ctx.lineTo(p.x - ux * (d0 - sc * 0.14) + nx * off * 0.6, p.y - uy * (d0 - sc * 0.14) + ny * off * 0.6 - lift);
+            ctx.stroke();
+          }
+          // TERMINUS: the corridor SPLASHES — energy forks shear off
+          // past the endpoint in the beam's own direction, and a hot
+          // core point cools against the stop.
+          ctx.globalAlpha = 0.85 * fade;
+          ctx.strokeStyle = st.spark;
+          ctx.lineWidth = Math.max(1, sc * 0.03);
           ctx.beginPath();
-          burstStarPath(ctx, p.x, p.y - lift, sc * 0.26 * grow, sc * 0.1, 4, now / 300);
-          ctx.fill();
-          ctx.fillStyle = st.spark;
-          ctx.beginPath();
-          burstStarPath(ctx, q.x, q.y - lift, sc * 0.4 * grow * (1 - t * 0.4), sc * 0.16, 6, -now / 260);
-          ctx.fill();
+          this.fxForks(q.x, q.y - lift, (seed ^ 0x6c) + Math.floor(age / 90) * 17, 4, sc * 0.5 * grow, bAng, 1.9, sc * 0.1);
+          ctx.stroke();
+          {
+            const cs = sc * 0.09 * grow * (1 - t * 0.35);
+            ctx.globalAlpha = 0.95 * fade;
+            ctx.save();
+            ctx.translate(q.x, q.y - lift);
+            ctx.rotate(Math.PI / 4);
+            ctx.fillStyle = st.core;
+            ctx.fillRect(-cs, -cs, cs * 2, cs * 2);
+            ctx.restore();
+          }
           ctx.restore();
           break;
         }
