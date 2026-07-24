@@ -10,7 +10,8 @@ import {
 import { itemIconUrl } from '../render/icons.js';
 import { iconImg } from '../editor/editorIcons.js';
 import { markDirty, persistence, setSection, state, toast, zoneAt } from './cms.js';
-import { actorBust, creatureCrest } from './portraits.js';
+import { creatureRender } from './gameRender.js';
+import { actorBust } from './portraits.js';
 import { entryShare, simulate, type SimAggregate } from './simulate.js';
 import {
   bar,
@@ -298,7 +299,7 @@ function npcDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
   const build = (): void => {
     body.appendChild(
       detailHead(
-        creatureCrest(draft, 132),
+        creatureRender(draft, 132),
         draft.name,
         draft.id,
         derivedPills(draft),
@@ -937,7 +938,7 @@ function actorDetail(body: HTMLElement, linkage: HTMLElement, slug: string): voi
         ? actorBust(draft, 132)
         : (() => {
             const base = state.npcs.find((n) => n.def.id === (draft.model as { creature?: string }).creature);
-            return base ? creatureCrest(base.def, 132) : null;
+            return base ? creatureRender(base.def, 132) : null;
           })();
     const pills: HTMLElement[] = [
       pill(draft.disposition, 'how combat treats this actor', draft.disposition === 'hostile' ? 'danger' : 'ink'),

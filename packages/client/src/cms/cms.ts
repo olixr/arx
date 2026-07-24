@@ -20,6 +20,8 @@ import {
   type ZoneRect,
 } from './api.js';
 import { buildDetail, newLootTable, newNpcDef } from './editors.js';
+import { creatureRender } from './gameRender.js';
+import { actorBust } from './portraits.js';
 
 /**
  * DevCraft Content Studio — the CMS over the running game's DB-first
@@ -237,12 +239,18 @@ interface ListEntry {
   group?: string;
 }
 
+/** List thumbs are the REAL body render, ring and all, at coin size. */
 function npcIco(def: NpcDef): HTMLElement {
-  const el = document.createElement('span');
-  el.className = 'ico';
-  el.style.background = def.color;
-  el.style.boxShadow = 'inset 0 0 0 1px rgba(0,0,0,0.4)';
-  return el;
+  const canvas = creatureRender(def, 26);
+  canvas.className = 'ico';
+  return canvas;
+}
+
+function actorIco(def: NpcActorDef): HTMLElement | null {
+  const bust = actorBust(def, 26);
+  if (!bust) return null;
+  bust.className = 'ico';
+  return bust;
 }
 
 function itemIco(id: string): HTMLElement {
@@ -301,7 +309,7 @@ function listEntries(): ListEntry[] {
         sub: a.def.title ?? a.def.id,
         badge: a.def.disposition,
         badgeEdited: a.edited,
-        ico: iconWrap(iconImg('actor', 18)),
+        ico: actorIco(a.def) ?? iconWrap(iconImg('actor', 18)),
         group: cap(a.def.disposition),
       }));
   }
