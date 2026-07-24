@@ -50,9 +50,11 @@ import {
   paintStagBody,
   paintWolfBody,
   paintWorgBody,
+  scaleRibbon,
   shade,
   taperedSpinePath,
   type BeastSpec,
+  type KoboldLook,
   type SkeletonLook,
 } from './rig.js';
 
@@ -429,6 +431,8 @@ export interface HumanoidCorpseLook {
   size: number;
   /** Set = this corpse is a skeleton: paint bones, not flesh. */
   skel?: SkeletonLook;
+  /** Set = this corpse is a kobold: horns, muzzle, and tail stay. */
+  kob?: KoboldLook;
 }
 
 /**
@@ -452,9 +456,12 @@ export function drawHumanoidRagdoll(
   const pelvis = P(f, g[H.pelvis]!);
   const chest = P(f, g[H.chest]!);
   const head = P(f, g[H.head]!);
-  const legCol = shade(look.bodyColor, -28);
-  const shinCol = legCol;
+  // Kobold corpses keep bare scaled legs and feet — no cloth, no boots
+  // (the live dialect's law carried into death).
+  const legCol = look.kob ? shade(look.kob.hide, -5) : shade(look.bodyColor, -28);
+  const shinCol = look.kob ? shade(look.kob.hide, -12) : legCol;
   const sleeveCol = shade(look.bodyColor, -10);
+  const footCol = look.kob ? shade(look.kob.hide, -8) : BOOT;
 
   // Torso frame: axis pelvis→chest, widths from the live proportions.
   let ux = chest.x - pelvis.x;
@@ -475,7 +482,7 @@ export function drawHumanoidRagdoll(
     const k = P(f, g[knee]!);
     const ft = P(f, g[foot]!);
     limb(ctx, hip, k, ft, legCol, shinCol, s * 0.09, s * 0.082);
-    chip(ctx, ft, k, s * 0.1, s * 0.09, BOOT);
+    chip(ctx, ft, k, s * 0.1, s * 0.09, footCol);
   };
   const drawArm = (elbow: number, hand: number, side: number): void => {
     const sh = {
@@ -487,6 +494,35 @@ export function drawHumanoidRagdoll(
     limb(ctx, sh, el, hd, sleeveCol, look.skinColor, s * 0.08, s * 0.06);
     chip(ctx, hd, el, s * 0.075, s * 0.07, look.skinColor);
   };
+
+  // The kobold tail goes down first — slack on the ground under the
+  // body, trailing off the pelvis away from the chest, ridge chips
+  // still marking the dorsal line (corpse identity law).
+  if (look.kob) {
+    const kb = look.kob;
+    const tipX = pelvis.x - ux * s * 0.52 * kb.heavy;
+    const tipY = pelvis.y - uy * s * 0.52 * kb.heavy + s * 0.1;
+    const cx = pelvis.x - ux * s * 0.24 * kb.heavy + s * 0.02;
+    const cy = pelvis.y - uy * s * 0.24 * kb.heavy + s * 0.08;
+    const spine = scaleRibbon(
+      ctx, pelvis.x, pelvis.y, cx, cy, tipX, tipY,
+      s * 0.08 * kb.heavy, kb.hide, shade(kb.hide, -28),
+    );
+    ctx.fillStyle = kb.crest ?? shade(kb.hide, -18);
+    for (const i of [2, 4, 6]) {
+      const p = spine[i]!;
+      const sgn = p.py >= 0 ? -1 : 1;
+      const bx = p.x + p.px * p.w * sgn;
+      const by = p.y + p.py * p.w * sgn;
+      const r = Math.max(1.5, p.w * 0.9);
+      ctx.beginPath();
+      ctx.moveTo(bx - r * 0.6, by);
+      ctx.lineTo(bx, by - r);
+      ctx.lineTo(bx + r * 0.6, by);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
 
   // Far pair behind the trunk.
   drawArm(H.elbowL, H.handL, -1);
@@ -537,14 +573,72 @@ export function drawHumanoidRagdoll(
   ctx.save();
   ctx.translate(head.x, head.y);
   ctx.rotate(Math.atan2(hy, hx) + Math.PI / 2);
-  ctx.fillStyle = look.skinColor;
-  ctx.beginPath();
-  chamferRect(ctx, -hw, -hh, hw * 2, hh * 2, cut);
-  ctx.fill();
-  ctx.fillStyle = look.hairColor;
-  ctx.beginPath();
-  chamferRect(ctx, -hw * 0.96, -hh * 0.98, hw * 1.92, hh * 0.62, [cut * 0.85, cut * 0.85, 0, 0]);
-  ctx.fill();
+  if (look.kob) {
+    // The kobold corpse head in profile: wedge cranium, muzzle out one
+    // side with the jaw hanging slack, horns swept off the crown to
+    // the other — and the candle eyes are simply GONE (the light goes
+    // out on death, the skeleton epic's law). Identity by silhouette.
+    const kb = look.kob;
+    const hv = kb.heavy;
+    // Horns behind the block, swept toward -x (away from the muzzle).
+    for (const [ox, oy] of [[-hw * 0.3, -hh * 0.55], [hw * 0.05, -hh * 0.7]] as const) {
+      scaleRibbon(
+        ctx, ox, oy,
+        ox - hw * 0.7, oy - hh * 0.35,
+        ox - hw * 1.25, oy - hh * (0.55 + 0.15 * hv),
+        hh * 0.24 * hv, kb.horn, shade(kb.horn, -26),
+      );
+    }
+    // Wedge cranium, lower than a villager skull.
+    ctx.fillStyle = kb.hide;
+    ctx.beginPath();
+    chamferRect(ctx, -hw, -hh * 0.85, hw * 2, hh * 1.5, [cut * 1.3, cut * 1.3, cut * 0.5, cut * 0.5]);
+    ctx.fill();
+    // Muzzle out the +x side, slack pale mandible dropped under it.
+    ctx.fillStyle = kb.hide;
+    ctx.beginPath();
+    chamferRect(ctx, hw * 0.55, -hh * 0.28, hw * 0.95, hh * 0.6, [0, cut * 0.4, cut * 0.5, 0]);
+    ctx.fill();
+    ctx.fillStyle = kb.belly;
+    ctx.beginPath();
+    chamferRect(ctx, hw * 0.5, hh * 0.38, hw * 0.85, hh * 0.26, [0, 0, cut * 0.4, cut * 0.4]);
+    ctx.fill();
+    // One dark nostril pit at the snout tip; no eye ever again.
+    ctx.fillStyle = shade(kb.hide, -30);
+    ctx.beginPath();
+    ctx.arc(hw * 1.32, -hh * 0.12, hh * 0.07, 0, Math.PI * 2);
+    ctx.fill();
+    // The ear fin, folded flat against the fall.
+    ctx.fillStyle = shade(kb.hide, -10);
+    ctx.beginPath();
+    ctx.moveTo(-hw * 0.75, -hh * 0.1);
+    ctx.lineTo(-hw * 1.25, -hh * 0.3);
+    ctx.lineTo(-hw * 0.85, hh * 0.28);
+    ctx.closePath();
+    ctx.fill();
+    // The digmaster's crest sail collapses but keeps its ember.
+    if (kb.crest) {
+      ctx.fillStyle = kb.crest;
+      for (let i = 0; i < 3; i++) {
+        const bx = -hw * 0.45 + i * hw * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(bx - hw * 0.12, -hh * 0.82);
+        ctx.lineTo(bx - hw * 0.3, -hh * 1.25);
+        ctx.lineTo(bx + hw * 0.14, -hh * 0.78);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  } else {
+    ctx.fillStyle = look.skinColor;
+    ctx.beginPath();
+    chamferRect(ctx, -hw, -hh, hw * 2, hh * 2, cut);
+    ctx.fill();
+    ctx.fillStyle = look.hairColor;
+    ctx.beginPath();
+    chamferRect(ctx, -hw * 0.96, -hh * 0.98, hw * 1.92, hh * 0.62, [cut * 0.85, cut * 0.85, 0, 0]);
+    ctx.fill();
+  }
   ctx.restore();
 
   // Near pair over the trunk.

@@ -1232,6 +1232,14 @@ export declare class Renderer {
      * rank-and-file, the champion looming over all of them.
      */
     private static readonly SKELETON_SIZE;
+    /**
+     * Kobold kit: the loot-story law — every carried piece really drops
+     * from the wearer's table. The digger swings the bronze pick it
+     * mines with; the digmaster's iron pick is the tier's chase drop.
+     */
+    private static readonly KOBOLD_EQUIP;
+    /** Kobold stature: knee-high nuisance to a boss you look up at. */
+    private static readonly KOBOLD_SIZE;
     private npcItem;
     /**
      * The leg-less menagerie: slimes (hopping gel blocks), cave bats

@@ -116,6 +116,12 @@ export interface RigPose {
      * rig, carriage, capes, and helmets keep working untouched.
      */
     skeletal?: SkeletonLook;
+    /**
+     * THE SCALE DIALECT: swap the flesh head for the kobold's horned
+     * muzzle, grow a tail off the hip, and claw the bare feet — while
+     * the rig, carriage, and facing bands keep working untouched.
+     */
+    kobold?: KoboldLook;
     /** Time-based swing driver for the gather pose. */
     gatherPhase: number;
     /**
@@ -242,6 +248,86 @@ export interface RibcageFrame {
  * pelvis. The see-through waist is the whole-body skeleton read.
  */
 export declare function paintRibcage(ctx: CanvasRenderingContext2D, sk: SkeletonLook, f: RibcageFrame): void;
+export interface KoboldLook {
+    /** Scale-hide base — each variant weathered its own tunnel. */
+    hide: string;
+    /** Pale under-scale: jaw, muzzle underside, the tail's low edge. */
+    belly: string;
+    /** The candle-eye — a lit iris that must OWN the socket (glow law). */
+    eye: string;
+    /** Keratin of horns and claws. */
+    horn: string;
+    /** The digmaster's sail: ember membrane crown-to-tail; undefined = none. */
+    crest?: string;
+    /** Frame multiplier: jaw mass, horn girth, tail thickness. */
+    heavy: number;
+}
+export declare const KOBOLD_LOOKS: Record<string, KoboldLook>;
+/** Variant lookup with the rank-and-file as the unknown-id fallback. */
+export declare function koboldLook(defId: string): KoboldLook;
+/**
+ * A tapered filled ribbon along a quadratic spine — the horn/tail law
+ * learned on the ram: curved keratin and muscle read as carved MASS
+ * only when drawn as a filled shape with an outline, never as a
+ * stroke chain. Width tapers base→tip; returns the sampled spine so
+ * callers can seat ridge chips or growth ribs on it.
+ */
+export declare function scaleRibbon(ctx: CanvasRenderingContext2D, x0: number, y0: number, cx: number, cy: number, x1: number, y1: number, w0: number, fill: string, outline: string): Array<{
+    x: number;
+    y: number;
+    px: number;
+    py: number;
+    w: number;
+}>;
+export interface KoboldHeadFrame {
+    s: number;
+    headX: number;
+    headY: number;
+    hw: number;
+    hh: number;
+    cut: number;
+    fx: number;
+    fy: number;
+    profileK: number;
+    backK: number;
+    lead: number;
+    hurt: boolean;
+    nowMs: number;
+    /** 0..1 jaw drop — the combat yip-and-snap; 0 keeps the jaw seated. */
+    gape: number;
+}
+/**
+ * The kobold head, drawn in the head block's own frame. Reads kobold
+ * by SILHOUETTE first: a low wedge cranium under backswept horns, a
+ * muzzle that leads the facing — short and dropped face-on, run out
+ * long at profile — then the band-aware face: candle eyes that slide
+ * with the facing and vanish around the corner, nostril pits at the
+ * snout tip, a pale mandible that drops with the gape. From behind
+ * there is NO face: occiput scale plates, a nape ridge, splayed horns.
+ */
+export declare function paintKoboldHead(ctx: CanvasRenderingContext2D, kb: KoboldLook, f: KoboldHeadFrame): void;
+export interface KoboldTailFrame {
+    s: number;
+    fx: number;
+    fy: number;
+    profileK: number;
+    backK: number;
+    lead: number;
+    nowMs: number;
+    runF: number;
+    poleX: number;
+    hurt: boolean;
+}
+/**
+ * The tail, drawn in the torso's squashed local frame BEFORE the
+ * garment so the root always tucks behind the body. It trails the
+ * facing: run out long at profile, hanging low and swaying when seen
+ * from behind, a tip peeking past the hip when the kobold faces the
+ * camera. Ridge chips run the top edge — the dorsal line continuing
+ * off the nape (and on the digmaster they burn crest-ember the whole
+ * way down).
+ */
+export declare function paintKoboldTail(ctx: CanvasRenderingContext2D, kb: KoboldLook, f: KoboldTailFrame): void;
 export declare function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void;
 /**
  * Back-mounted gear layered relative to the CAPE — called by the

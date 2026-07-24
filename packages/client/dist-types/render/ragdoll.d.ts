@@ -14,7 +14,7 @@
  * the body decelerates — that inertia is what pitches a sliding corpse
  * over its own pinned feet.
  */
-import { type BeastSpec, type SkeletonLook } from './rig.js';
+import { type BeastSpec, type KoboldLook, type SkeletonLook } from './rig.js';
 export interface RagPoint {
     x: number;
     y: number;
@@ -124,6 +124,8 @@ export interface HumanoidCorpseLook {
     size: number;
     /** Set = this corpse is a skeleton: paint bones, not flesh. */
     skel?: SkeletonLook;
+    /** Set = this corpse is a kobold: horns, muzzle, and tail stay. */
+    kob?: KoboldLook;
 }
 /**
  * Paint a humanoid ragdoll in the rig's own dialect: trapezoid torso

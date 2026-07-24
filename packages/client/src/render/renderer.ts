@@ -52,8 +52,10 @@ import {
   drawSlime,
   drawSnake,
   shade,
+  koboldLook,
   skeletonLook,
   type RigPose,
+  type KoboldLook,
   type SkeletonLook,
 } from './rig.js';
 import { LegRig } from './legs.js';
@@ -14638,6 +14640,8 @@ export class Renderer {
     drawTOverride?: number;
     /** Bone-dialect override: this humanoid is a skeleton. */
     skeletal?: SkeletonLook;
+    /** Scale-dialect override: this humanoid is a kobold. */
+    kobold?: KoboldLook;
     /** Weapons stowed on the body (snapshot SHEATHED_BIT). */
     sheathed?: boolean;
   }): DrawItem {
@@ -15085,6 +15089,7 @@ export class Renderer {
           skinColor: e.skinColor,
           look: e.look,
           skeletal: e.skeletal,
+          kobold: e.kobold,
           gatherPhase: now / 1000,
           craftKind: station?.kind ?? null,
           foraging: gather?.kind === 'forage',
@@ -15245,6 +15250,22 @@ export class Renderer {
     skeleton_champion: 1.25,
   };
 
+  /**
+   * Kobold kit: the loot-story law — every carried piece really drops
+   * from the wearer's table. The digger swings the bronze pick it
+   * mines with; the digmaster's iron pick is the tier's chase drop.
+   */
+  private static readonly KOBOLD_EQUIP: Record<string, Partial<Record<string, string>>> = {
+    kobold: { weapon: 'bronze_pickaxe' },
+    kobold_digmaster: { weapon: 'iron_pickaxe' },
+  };
+
+  /** Kobold stature: knee-high nuisance to a boss you look up at. */
+  private static readonly KOBOLD_SIZE: Record<string, number> = {
+    kobold: 0.75,
+    kobold_digmaster: 1.0,
+  };
+
   private npcItem(
     eid: number,
     defId: string,
@@ -15253,9 +15274,15 @@ export class Renderer {
     hurt: boolean,
   ): DrawItem {
     // Humanoid monsters use the full IK rig with size/skin overrides.
-    if (defId.startsWith('goblin') || defId.startsWith('skeleton') || defId === 'troll') {
+    if (
+      defId.startsWith('goblin') ||
+      defId.startsWith('skeleton') ||
+      defId.startsWith('kobold') ||
+      defId === 'troll'
+    ) {
       const def = npcDef(defId);
       const skel = defId.startsWith('skeleton') ? skeletonLook(defId) : undefined;
+      const kob = defId.startsWith('kobold') ? koboldLook(defId) : undefined;
       return this.humanoidItem({
         eid,
         x: s.x,
@@ -15272,12 +15299,22 @@ export class Renderer {
         equip:
           defId === 'goblin'
             ? { weapon: 'bronze_sword' }
-            : (Renderer.SKELETON_EQUIP[defId] ?? {}),
+            : (Renderer.KOBOLD_EQUIP[defId] ?? Renderer.SKELETON_EQUIP[defId] ?? {}),
         color: def?.color ?? '#999',
         skinColor:
-          defId === 'troll' ? '#6a7d5c' : defId.startsWith('goblin') ? '#7aa74a' : undefined,
-        size: Renderer.SKELETON_SIZE[defId] ?? (defId === 'troll' ? 1.4 : 0.85),
+          defId === 'troll'
+            ? '#6a7d5c'
+            : defId.startsWith('goblin')
+              ? '#7aa74a'
+              : kob
+                ? kob.hide
+                : undefined,
+        size:
+          Renderer.KOBOLD_SIZE[defId] ??
+          Renderer.SKELETON_SIZE[defId] ??
+          (defId === 'troll' ? 1.4 : 0.85),
         skeletal: skel,
+        kobold: kob,
       });
     }
 
@@ -16581,6 +16618,7 @@ export class Renderer {
     const humanoid =
       death.defId.startsWith('goblin') ||
       death.defId.startsWith('skeleton') ||
+      death.defId.startsWith('kobold') ||
       death.defId === 'troll';
     let rag: Ragdoll;
     let look: (typeof this.corpses)[number]['look'];
@@ -16602,21 +16640,29 @@ export class Renderer {
       return; // narrows: the branches below all read the bestiary def
     } else if (humanoid) {
       const size =
-        Renderer.SKELETON_SIZE[death.defId] ?? (death.defId === 'troll' ? 1.4 : 0.85);
+        Renderer.KOBOLD_SIZE[death.defId] ??
+        Renderer.SKELETON_SIZE[death.defId] ??
+        (death.defId === 'troll' ? 1.4 : 0.85);
       const bodyColor = def.color ?? '#999';
+      const corpseKob = death.defId.startsWith('kobold')
+        ? koboldLook(death.defId)
+        : undefined;
       rag = buildHumanoidRagdoll(size, seed);
       rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
       look = {
         kind: 'humanoid',
         h: {
           bodyColor,
-          skinColor: death.defId === 'troll' ? '#6a7d5c' : '#7aa74a',
+          skinColor:
+            death.defId === 'troll' ? '#6a7d5c' : (corpseKob?.hide ?? '#7aa74a'),
           hairColor: shade(bodyColor, -24),
           size,
-          // Skeleton corpses keep the bone dialect — crown and all.
+          // Skeleton corpses keep the bone dialect — crown and all;
+          // kobold corpses keep the scale dialect — horns and tail.
           skel: death.defId.startsWith('skeleton')
             ? skeletonLook(death.defId)
             : undefined,
+          kob: corpseKob,
         },
       };
     } else {

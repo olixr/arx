@@ -111,6 +111,49 @@ const defs: LootTableDef[] = [
     ],
   },
 
+  // ---------------------------------------------------- kobold warren
+  // Kobolds hoard ore the way dragons hoard gold — they just can't
+  // smelt any of it. Every drop line tells the quarry story: pocket
+  // ore, the pick off its back (the carried weapon really drops), and
+  // keys dug out of places keys should not have been.
+  {
+    id: 'kobold',
+    desc: 'Warren pickings: pocket ore and a dead digger’s kit.',
+    entries: [
+      { item: 'bones' },
+      { item: 'coins', qty: [2, 12], chance: 0.75 },
+      { item: 'copper_ore', chance: 0.25 },
+      { item: 'tin_ore', chance: 0.25 },
+      { item: 'coal', chance: 0.1 },
+      { item: 'iron_ore', chance: 0.06 },
+      { item: 'bronze_pickaxe', chance: 0.05 },
+      { item: 'brass_key', chance: 0.02 },
+      { item: 'dungeon_key', chance: 0.015 },
+      { item: 'linen_scrap', qty: [1, 2], chance: 0.3 },
+      { item: 'ember_essence', qty: [1, 2], chance: 0.12 },
+      { item: 'arcane_dust', chance: 0.08 },
+    ],
+  },
+  {
+    id: 'kobold_digmaster',
+    desc: 'The digmaster’s cut: the iron pick and the best of the hoard.',
+    entries: [
+      { item: 'bones' },
+      { item: 'coins', qty: [15, 50], chance: 0.9 },
+      { item: 'iron_ore', qty: [1, 3], chance: 0.5 },
+      { item: 'coal', qty: [1, 2], chance: 0.4 },
+      { item: 'copper_ore', qty: [2, 4], chance: 0.35 },
+      { item: 'tin_ore', qty: [2, 4], chance: 0.35 },
+      // The chase drop: his own pick, an early miner's first upgrade.
+      { item: 'iron_pickaxe', chance: 0.05 },
+      { item: 'dungeon_key', chance: 0.1 },
+      { item: 'brass_key', chance: 0.06 },
+      { item: 'emberstone', chance: 0.03 },
+      { item: 'ember_essence', qty: [2, 4], chance: 0.3 },
+      { item: 'arcane_dust', qty: [1, 2], chance: 0.2 },
+    ],
+  },
+
   // ------------------------------------------------------- goblin camp
   {
     id: 'goblin',

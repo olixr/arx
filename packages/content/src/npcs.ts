@@ -194,6 +194,56 @@ const defs: NpcDef[] = [
     ranged: { range: 5.5, projectileSpeed: 9 },
   },
   {
+    id: 'kobold',
+    name: 'Kobold',
+    level: 4,
+    maxHp: 10,
+    damage: 1,
+    attackRange: 0.95,
+    attackCooldownTicks: 46,
+    aggroRange: 4,
+    leashRange: 11,
+    speed: 3.5,
+    xpReward: 42,
+    loot: ['kobold'],
+    respawnSec: 20,
+    color: '#7a5a3c',
+    radius: 0.26,
+    hitHeight: 1.7,
+    // Cold-blooded tunnel folk: a chill gets into the scales and stays.
+    weak: ['chill'],
+    // A lone kobold is a coward; a warren is a threat. The pack law
+    // makes every quarry scuffle an ambush — yip at one, meet them all.
+    pack: 'kobold',
+  },
+  {
+    id: 'kobold_digmaster',
+    name: 'Kobold digmaster',
+    level: 12,
+    maxHp: 42,
+    damage: 3,
+    attackRange: 1.1,
+    attackCooldownTicks: 52,
+    aggroRange: 5,
+    leashRange: 12,
+    speed: 3.3,
+    xpReward: 150,
+    loot: ['kobold_digmaster', 'heirlooms'],
+    respawnSec: 100,
+    color: '#5c3a30',
+    radius: 0.36,
+    hitHeight: 2.2,
+    // Years in the delve dark: bites and stings stopped mattering,
+    // but the cold never did.
+    resist: ['venom'],
+    weak: ['chill'],
+    // Shares the warren's pack tag — pull the boss, raise the dig.
+    pack: 'kobold',
+    // The iron pick comes down on the quarry floor — the same slam
+    // school as the troll, telegraphed and sidesteppable.
+    special: { ability: 'ground_slam', everyTicks: 150 },
+  },
+  {
     id: 'skeleton',
     name: 'Skeleton',
     level: 8,
@@ -667,6 +717,15 @@ export const TOWN_SPAWNS: readonly SpawnPoint[] = [
   { npc: 'goblin', x: 44, y: 110, radius: 8, count: 4 },
   { npc: 'goblin', x: 60, y: 116, radius: 8, count: 3 },
   { npc: 'goblin_thrower', x: 52, y: 113, radius: 8, count: 2 },
+  // The kobold warren claimed the abandoned Hollow Stair quarry east
+  // of town: sentries on the meadow rim, diggers down in the dell, and
+  // the digmaster holding the quarry core by the delve mouth. All
+  // centers walkability-audited against seed-1337 worldgen + the zone
+  // overlay (cliff rings fence the sinks; the stairs at x=131 connect).
+  { npc: 'kobold', x: 122, y: 12, radius: 4, count: 2 },
+  { npc: 'kobold', x: 127, y: 18, radius: 3, count: 3 },
+  { npc: 'kobold', x: 137, y: 25, radius: 3, count: 2 },
+  { npc: 'kobold_digmaster', x: 130, y: 23, radius: 2, count: 1 },
   // Wolves in the western woods.
   { npc: 'wolf', x: -18, y: 40, radius: 8, count: 2 },
   { npc: 'wolf', x: -24, y: 60, radius: 8, count: 2 },
