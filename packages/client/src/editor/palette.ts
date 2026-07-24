@@ -187,13 +187,55 @@ function bakeStrip(entries: Array<{ ground: Tile; detail: Detail }>): HTMLCanvas
   return out;
 }
 
+/**
+ * Ground swatches every standing-tile thumb sits on: real baked art,
+ * chosen to match where the prop naturally lives. One strip bake
+ * serves the whole palette.
+ */
+type ThumbGround = 'grass' | 'wood' | 'stone' | 'cave';
+let thumbGrounds: Record<ThumbGround, HTMLCanvasElement> | null = null;
+
+function groundSwatches(): Record<ThumbGround, HTMLCanvasElement> {
+  if (thumbGrounds) return thumbGrounds;
+  const strip = bakeStrip([
+    { ground: Tile.Grass, detail: Detail.None },
+    { ground: Tile.WoodFloor, detail: Detail.None },
+    { ground: Tile.StoneFloor, detail: Detail.None },
+    { ground: Tile.CaveFloor, detail: Detail.None },
+  ]);
+  thumbGrounds = { grass: strip[0]!, wood: strip[1]!, stone: strip[2]!, cave: strip[3]! };
+  return thumbGrounds;
+}
+
+const CAVE_TILES = new Set<Tile>([
+  Tile.CaveWall, Tile.CrackedCaveWall, Tile.Stalagmite, Tile.BonePile,
+  Tile.Brazier, Tile.GlowShroom,
+]);
+const WOOD_GROUND_TILES = new Set<Tile>([
+  Tile.Table, Tile.Chair, Tile.Bench, Tile.Bed, Tile.Bookshelf, Tile.Cabinet,
+  Tile.Counter, Tile.Hearth, Tile.Barrel, Tile.Crate, Tile.CrateGoods,
+  Tile.ToolRack, Tile.WeaponRack, Tile.Lectern, Tile.Vault,
+]);
+const STONE_GROUND_TILES = new Set<Tile>([
+  Tile.WallStone, Tile.WallStoneWindow, Tile.PillarStone, Tile.ArchStone,
+  Tile.ChestIron, Tile.ChestIronOpen, Tile.ChestGilded, Tile.ChestGildedOpen,
+  Tile.ChestBoss, Tile.ChestBossOpen, Tile.Anvil, Tile.Furnace,
+]);
+
+function thumbGroundFor(tile: Tile): HTMLCanvasElement {
+  const g = groundSwatches();
+  if (CAVE_TILES.has(tile)) return g.cave;
+  if (WOOD_GROUND_TILES.has(tile)) return g.wood;
+  if (STONE_GROUND_TILES.has(tile)) return g.stone;
+  return g.grass;
+}
+
 function treeThumb(tile: Tile, grow: number): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = THUMB;
   canvas.height = THUMB;
   const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#4c7136';
-  ctx.fillRect(0, 0, THUMB, THUMB);
+  ctx.drawImage(groundSwatches().grass, 0, 0);
   const s = THUMB / 3.4;
   paintTree(ctx, treeModel(tile, 3), {
     bx: THUMB / 2,
@@ -209,14 +251,14 @@ function treeThumb(tile: Tile, grow: number): HTMLCanvasElement {
   return canvas;
 }
 
+/** A standing tile drawn on its natural baked ground. */
 function blockThumb(tile: Tile): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = THUMB;
   canvas.height = THUMB;
   const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#2a2133';
-  ctx.fillRect(0, 0, THUMB, THUMB);
-  drawBlockTile(ctx, 6, 12, THUMB - 12, tile);
+  ctx.drawImage(thumbGroundFor(tile), 0, 0);
+  drawBlockTile(ctx, 7, 13, THUMB - 14, tile);
   return canvas;
 }
 

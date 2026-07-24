@@ -11,36 +11,34 @@
       <header id="topbar">
         <div class="brand">DevCraft <span>Map Studio</span></div>
         <div class="group">
-          <button id="btn-new">New</button>
-          <button id="btn-open">Open ⌘O</button>
-          <button id="btn-save" class="primary">Save ▸ Live ⌘S</button>
-          <span id="dirty-dot" title="unsaved changes"></span>
+          <button id="btn-new" title="Start a fresh zone">New</button>
+          <button id="btn-open" title="Open a zone from the server (⌘O)">Open</button>
+          <button id="btn-save" class="primary" title="Save to the server and hot-swap it into the running world (⌘S)">Save ▸ Live</button>
+          <span id="dirty-dot" title="Unsaved changes"></span>
         </div>
-        <div class="group meta">
-          <label>id <input id="zone-id" size="10" /></label>
-          <label>name <input id="zone-name" size="12" /></label>
-          <label>origin
-            <input id="zone-ox" type="number" step="32" />
-            <input id="zone-oy" type="number" step="32" />
-          </label>
-          <label>size
-            <input id="zone-w" type="number" min="8" max="512" />
-            ×
-            <input id="zone-h" type="number" min="8" max="512" />
-          </label>
-          <button id="btn-resize" title="apply origin/size changes">apply</button>
-        </div>
-        <div class="group">
-          <button id="btn-validate">Validate</button>
-          <button id="btn-import">Import</button>
-          <button id="btn-export">Export</button>
-          <button id="btn-fit" title="fit zone (0)">Fit</button>
-          <button id="btn-help">?</button>
+        <button id="zone-chip" title="Zone properties — id, name, origin, and size"></button>
+        <div class="group push-right">
+          <button id="btn-validate" title="Run the zone laws without saving">Validate</button>
+          <button id="btn-import" title="Load a local .json zone file">Import</button>
+          <button id="btn-export" title="Download this zone as .json">Export</button>
+          <button id="btn-help" title="Shortcuts and how saves work">Help</button>
         </div>
       </header>
       <div id="main">
         <nav id="toolbar"></nav>
-        <div id="canvas-wrap"><canvas id="editor-canvas"></canvas></div>
+        <div id="canvas-wrap">
+          <canvas id="editor-canvas"></canvas>
+          <div id="zoom-cluster">
+            <button id="zoom-out" title="Zoom out">−</button>
+            <button id="zoom-pct" title="Zoom to 100%">100%</button>
+            <button id="zoom-in" title="Zoom in">+</button>
+            <span class="zoom-rule"></span>
+            <button id="zoom-fit" title="Fit the zone in view (0)">Fit</button>
+          </div>
+          <div id="minimap-wrap" title="Click to jump; drag to pan">
+            <canvas id="minimap"></canvas>
+          </div>
+        </div>
         <aside id="sidebar">
           <section id="tool-options"></section>
           <section id="validation" class="hidden"></section>
@@ -51,10 +49,9 @@
         </aside>
       </div>
       <footer id="statusbar">
-        <span id="st-coords">—</span>
-        <span id="st-tile"></span>
         <span id="st-hint" class="hint"></span>
-        <span id="st-zone"></span>
+        <span id="st-tile"></span>
+        <span id="st-coords">—</span>
         <span id="st-zoom"></span>
         <span id="st-server">…</span>
       </footer>

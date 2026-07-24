@@ -36,6 +36,7 @@ import { iconImg } from './editorIcons.js';
 import { History, StrokeRecorder, cloneZone } from './history.js';
 import { PaletteUI } from './palette.js';
 import { buildPlacementsPanel, buildStructuresPanel, type PanelDeps } from './panels.js';
+import { drawPreviewPins, prefabLayers, renderLayersPreview } from './preview.js';
 import {
   clusterEdgeAt,
   deletePlacement,
@@ -90,6 +91,45 @@ let registry: RegistrySnapshot = {
 let prefabList: PrefabListEntry[] = [];
 let prefabsOnline = false;
 
+/** Real-art prefab card previews, rendered lazily off the fetched def. */
+const prefabPreviews = new Map<string, HTMLCanvasElement>();
+const prefabPreviewPending = new Set<string>();
+
+function prefabPreviewFor(id: string): HTMLCanvasElement | null {
+  const hit = prefabPreviews.get(id);
+  if (hit) return hit;
+  if (!prefabPreviewPending.has(id)) {
+    prefabPreviewPending.add(id);
+    void fetchPrefab(id)
+      .then((json) => {
+        const def = prefabFromJson(json);
+        const layers = prefabLayers(def);
+        const canvas = renderLayersPreview(layers, 150);
+        drawPreviewPins(canvas, layers, [
+          ...def.spawns.map((s) => ({ dx: s.dx, dy: s.dy, color: '#d4544a' })),
+          ...def.actorSpawns.map((a) => ({ dx: a.dx, dy: a.dy, color: '#5fc9c4' })),
+          ...def.portals.map((p) => ({ dx: p.dx, dy: p.dy, color: '#b48fe8' })),
+        ], 150);
+        prefabPreviews.set(id, canvas);
+        prefabPreviewPending.delete(id);
+        state.changed();
+      })
+      .catch(() => prefabPreviewPending.delete(id));
+  }
+  return null;
+}
+
+/** Put an armed structure/prefab stamp away without placing it. */
+function disarmStamp(quiet = false): boolean {
+  if (state.armedTemplate === null && state.armedPrefab === null) return false;
+  state.armedTemplate = null;
+  state.armedPrefab = null;
+  view.ghost = null;
+  state.changed();
+  if (!quiet) toast('stamp put away');
+  return true;
+}
+
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
   document.getElementById(id) as T;
 
@@ -99,10 +139,10 @@ const idx = (x: number, y: number): number => y * state.zone.width + x;
 const inBounds = (x: number, y: number): boolean =>
   x >= 0 && y >= 0 && x < state.zone.width && y < state.zone.height;
 
-function toast(text: string, ms = 2600): void {
+function toast(text: string, ms = 2600, kind: 'info' | 'success' | 'error' = 'info'): void {
   const el = $('toast');
   el.textContent = text;
-  el.classList.add('show');
+  el.className = `show ${kind}`;
   window.clearTimeout((toast as { t?: number }).t);
   (toast as { t?: number }).t = window.setTimeout(() => el.classList.remove('show'), ms);
 }
@@ -676,10 +716,13 @@ canvas.addEventListener('mousedown', (e) => {
       pickAt(t.x, t.y);
       break;
     case 'structure':
-      if (!erase) stampTemplateAt(t);
+      // Right-click puts the stamp away — the no-surprises exit.
+      if (erase) disarmStamp();
+      else stampTemplateAt(t);
       break;
     case 'prefab':
-      if (!erase) stampPrefabAt(t);
+      if (erase) disarmStamp();
+      else stampPrefabAt(t);
       break;
     case 'portal':
     case 'cluster':
@@ -1022,15 +1065,32 @@ window.addEventListener('keydown', (e) => {
     case 'Enter':
       if (state.tool === 'road' && roadPts.length >= 2) commitRoad();
       break;
-    case 'Escape':
-      roadPts = [];
-      pasteArmed = false;
-      view.ghost = null;
-      view.preview = null;
-      state.selection = null;
-      state.selected = null;
-      state.changed();
+    case 'Escape': {
+      // One cancel per press, most-transient first — predictable exits.
+      if (pasteArmed) {
+        pasteArmed = false;
+        view.ghost = null;
+        toast('paste cancelled');
+        break;
+      }
+      if (disarmStamp()) break;
+      if (roadPts.length > 0) {
+        roadPts = [];
+        view.preview = null;
+        toast('road abandoned');
+        break;
+      }
+      if (state.selected) {
+        state.selected = null;
+        state.changed();
+        break;
+      }
+      if (state.selection) {
+        state.selection = null;
+        state.changed();
+      }
       break;
+    }
     case 'Delete':
     case 'Backspace': {
       // A selected placement outranks a tile selection.
@@ -1063,12 +1123,11 @@ function adoptZone(zone: ZoneDef, serverBacked: boolean): void {
   history.clear();
   view.markAllDirty();
   view.fitZone();
-  syncMetaInputs();
+  syncZoneChip();
   updateStatus();
 }
 
 async function saveToServer(): Promise<void> {
-  readMetaInputs();
   const v = validateZone(state.zone);
   showValidation(v.ok ? (v.fenceAdded > 0 ? `auto-fence will add ${v.fenceAdded} cliff tiles` : 'zone is valid') : v.error!, v.ok);
   if (!v.ok) {
@@ -1226,79 +1285,132 @@ function newZoneDialog(): void {
   });
 }
 
-// -------------------------------------------------------- meta panel
+// ----------------------------------------------- zone identity chip
 
-function syncMetaInputs(): void {
+function syncZoneChip(): void {
   const z = state.zone;
-  ($('zone-id') as HTMLInputElement).value = z.id;
-  ($('zone-name') as HTMLInputElement).value = z.name;
-  ($('zone-ox') as HTMLInputElement).value = String(z.origin.x);
-  ($('zone-oy') as HTMLInputElement).value = String(z.origin.y);
-  ($('zone-w') as HTMLInputElement).value = String(z.width);
-  ($('zone-h') as HTMLInputElement).value = String(z.height);
+  $('zone-chip').innerHTML =
+    `<b>${z.name}</b><span>${z.id} · ${z.width}×${z.height} @ ${z.origin.x},${z.origin.y}</span>`;
 }
 
-function readMetaInputs(): void {
+/**
+ * Zone properties live in one calm dialog — identity, origin, and
+ * size, each explained, applied together as undoable operations.
+ */
+function zonePropertiesDialog(): void {
   const z = state.zone;
-  const id = ($('zone-id') as HTMLInputElement).value.trim();
-  if (id && /^[a-z][a-z0-9_-]*$/.test(id)) z.id = id;
-  z.name = ($('zone-name') as HTMLInputElement).value.trim() || z.id;
-}
-
-/** Origin moves carry every world-coord marker with the content. */
-function applyOrigin(): void {
-  const nx = Number(($('zone-ox') as HTMLInputElement).value) || 0;
-  const ny = Number(($('zone-oy') as HTMLInputElement).value) || 0;
-  const z = state.zone;
-  const dx = nx - z.origin.x;
-  const dy = ny - z.origin.y;
-  if (dx === 0 && dy === 0) return;
-  zoneOp('move origin', (zone) => {
-    zone.origin = { x: nx, y: ny };
-    if (zone.spawn) {
-      zone.spawn.x += dx;
-      zone.spawn.y += dy;
-    }
-    for (const p of zone.portals ?? []) {
-      p.x += dx;
-      p.y += dy;
-    }
-    for (const s of zone.spawns ?? []) {
-      s.x += dx;
-      s.y += dy;
-    }
-    for (const a of zone.actorSpawns ?? []) {
-      a.x += dx;
-      a.y += dy;
-    }
-  });
-  toast(`origin → ${nx},${ny} (markers moved with it)`);
-}
-
-function applyResize(): void {
-  const w = Math.max(8, Math.min(512, Number(($('zone-w') as HTMLInputElement).value) || 0));
-  const h = Math.max(8, Math.min(512, Number(($('zone-h') as HTMLInputElement).value) || 0));
-  const z = state.zone;
-  if (w === z.width && h === z.height) return;
-  zoneOp(`resize to ${w}×${h}`, (zone) => {
-    const ground = new Uint16Array(w * h).fill(Tile.Grass);
-    const detail = new Uint16Array(w * h);
-    const elev = new Int8Array(w * h);
-    for (let y = 0; y < Math.min(h, zone.height); y++) {
-      for (let x = 0; x < Math.min(w, zone.width); x++) {
-        ground[y * w + x] = zone.ground[y * zone.width + x]!;
-        detail[y * w + x] = zone.detail[y * zone.width + x]!;
-        elev[y * w + x] = zone.elev![y * zone.width + x]!;
+  showModal((body, close) => {
+    body.innerHTML = `
+      <h2>Zone properties</h2>
+      <div class="form-rows">
+        <label class="form-row">
+          <span>id</span>
+          <input id="zp-id" value="${z.id}" pattern="[a-z][a-z0-9_-]*">
+          <em>The save file name and reference key — lowercase, stable once shipped.</em>
+        </label>
+        <label class="form-row">
+          <span>name</span>
+          <input id="zp-name" value="${z.name}">
+          <em>The display name players and teammates see.</em>
+        </label>
+        <label class="form-row">
+          <span>origin</span>
+          <span class="pair">
+            <input id="zp-ox" type="number" step="32" value="${z.origin.x}">
+            <input id="zp-oy" type="number" step="32" value="${z.origin.y}">
+          </span>
+          <em>World tile of the top-left corner. Moving it carries the spawn,
+          portals, and every placement along with the content.</em>
+        </label>
+        <label class="form-row">
+          <span>size</span>
+          <span class="pair">
+            <input id="zp-w" type="number" min="8" max="512" value="${z.width}">
+            <input id="zp-h" type="number" min="8" max="512" value="${z.height}">
+          </span>
+          <em>8–512 tiles per side. Shrinking crops from the south-east;
+          growth fills with meadow.</em>
+        </label>
+      </div>`;
+    const row = document.createElement('div');
+    row.className = 'dialog-actions';
+    const cancel = document.createElement('button');
+    cancel.textContent = 'Cancel';
+    cancel.onclick = close;
+    const apply = document.createElement('button');
+    apply.className = 'primary';
+    apply.textContent = 'Apply';
+    apply.onclick = () => {
+      const id = ($('zp-id') as HTMLInputElement).value.trim();
+      const name = ($('zp-name') as HTMLInputElement).value.trim();
+      if (!/^[a-z][a-z0-9_-]*$/.test(id)) {
+        toast('id must be lowercase [a-z0-9_-]', 3200, 'error');
+        return;
       }
-    }
-    zone.width = w;
-    zone.height = h;
-    zone.ground = ground;
-    zone.detail = detail;
-    zone.elev = elev;
+      const nx = Number(($('zp-ox') as HTMLInputElement).value) || 0;
+      const ny = Number(($('zp-oy') as HTMLInputElement).value) || 0;
+      const w = Math.max(8, Math.min(512, Number(($('zp-w') as HTMLInputElement).value) || z.width));
+      const h = Math.max(8, Math.min(512, Number(($('zp-h') as HTMLInputElement).value) || z.height));
+      const changes: string[] = [];
+      if (id !== z.id || name !== (z.name || z.id)) {
+        zoneOp('rename zone', (zone) => {
+          zone.id = id;
+          zone.name = name || id;
+        }, { tiles: false });
+        changes.push('identity');
+      }
+      const dx = nx - state.zone.origin.x;
+      const dy = ny - state.zone.origin.y;
+      if (dx !== 0 || dy !== 0) {
+        zoneOp('move origin', (zone) => {
+          zone.origin = { x: nx, y: ny };
+          if (zone.spawn) {
+            zone.spawn.x += dx;
+            zone.spawn.y += dy;
+          }
+          for (const p of zone.portals ?? []) {
+            p.x += dx;
+            p.y += dy;
+          }
+          for (const s of zone.spawns ?? []) {
+            s.x += dx;
+            s.y += dy;
+          }
+          for (const a of zone.actorSpawns ?? []) {
+            a.x += dx;
+            a.y += dy;
+          }
+        });
+        changes.push(`origin → ${nx},${ny}`);
+      }
+      if (w !== state.zone.width || h !== state.zone.height) {
+        zoneOp(`resize to ${w}×${h}`, (zone) => {
+          const ground = new Uint16Array(w * h).fill(Tile.Grass);
+          const detail = new Uint16Array(w * h);
+          const elev = new Int8Array(w * h);
+          for (let y = 0; y < Math.min(h, zone.height); y++) {
+            for (let x = 0; x < Math.min(w, zone.width); x++) {
+              ground[y * w + x] = zone.ground[y * zone.width + x]!;
+              detail[y * w + x] = zone.detail[y * zone.width + x]!;
+              elev[y * w + x] = zone.elev![y * zone.width + x]!;
+            }
+          }
+          zone.width = w;
+          zone.height = h;
+          zone.ground = ground;
+          zone.detail = detail;
+          zone.elev = elev;
+        });
+        state.selection = null;
+        changes.push(`resized to ${w}×${h}`);
+      }
+      syncZoneChip();
+      close();
+      if (changes.length > 0) toast(changes.join(' · '), 3200, 'success');
+    };
+    row.append(cancel, apply);
+    body.appendChild(row);
   });
-  state.selection = null;
-  toast(`resized to ${w}×${h}`);
 }
 
 // ----------------------------------------------------- toolbar & opts
@@ -1580,21 +1692,32 @@ function panelDeps(): PanelDeps {
     registry,
     prefabs: prefabList,
     prefabsOnline,
+    prefabPreview: prefabPreviewFor,
     actions: {
       armTemplate(id) {
+        if (!id) {
+          disarmStamp();
+          return;
+        }
         state.armedTemplate = id;
+        state.armedPrefab = null;
         state.stampFlip = false;
         setTool('structure');
-        toast(`armed ${id} — click the map to stamp, X mirrors`);
+        toast(`armed ${id} — click the map to stamp · X mirrors · Esc puts it away`);
       },
       armPrefab(id) {
+        if (!id) {
+          disarmStamp();
+          return;
+        }
         void (async () => {
           try {
             state.armedPrefab = prefabFromJson(await fetchPrefab(id));
+            state.armedTemplate = null;
             setTool('prefab');
-            toast(`armed '${state.armedPrefab.name}' — click the map to stamp`);
+            toast(`armed '${state.armedPrefab.name}' — click the map to stamp · Esc puts it away`);
           } catch (err) {
-            toast(`prefab load failed: ${(err as Error).message}`, 4000);
+            toast(`prefab load failed: ${(err as Error).message}`, 4000, 'error');
           }
         })();
       },
@@ -1631,7 +1754,10 @@ async function refreshPrefabs(announce = false): Promise<void> {
   try {
     prefabList = await listPrefabs();
     prefabsOnline = true;
-    if (announce) toast(`prefab library: ${prefabList.length} saved`);
+    // Content may have changed under any id — re-render cards lazily.
+    prefabPreviews.clear();
+    prefabPreviewPending.clear();
+    if (announce) toast(`prefab library: ${prefabList.length} saved`, 2600, 'success');
   } catch {
     prefabsOnline = false;
   }
@@ -1789,8 +1915,9 @@ function updateStatus(): void {
   } else {
     $('st-tile').textContent = '';
   }
-  $('st-zone').textContent = `${z.id} ${z.width}×${z.height} @ ${z.origin.x},${z.origin.y}`;
-  $('st-zoom').textContent = `${Math.round(view.scale * 100 / 32)}%`;
+  const pct = `${Math.round((view.scale * 100) / 32)}%`;
+  $('st-zoom').textContent = pct;
+  $('zoom-pct').textContent = pct;
   $('dirty-dot').classList.toggle('on', state.dirty);
 }
 
@@ -1807,7 +1934,6 @@ $('btn-new').onclick = () => newZoneDialog();
 $('btn-open').onclick = () => void openBrowser();
 $('btn-save').onclick = () => void saveToServer();
 $('btn-validate').onclick = () => {
-  readMetaInputs();
   const v = validateZone(state.zone);
   showValidation(
     v.ok
@@ -1818,15 +1944,22 @@ $('btn-validate').onclick = () => {
     v.ok,
   );
 };
-$('btn-fit').onclick = () => view.fitZone();
-$('btn-resize').onclick = () => {
-  readMetaInputs();
-  applyOrigin();
-  applyResize();
-  syncMetaInputs();
+$('zone-chip').onclick = () => zonePropertiesDialog();
+$('zoom-fit').onclick = () => view.fitZone();
+$('zoom-in').onclick = () => zoomFromCenter(1.25);
+$('zoom-out').onclick = () => zoomFromCenter(1 / 1.25);
+$('zoom-pct').onclick = () => {
+  const rect = canvas.getBoundingClientRect();
+  view.zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, 32 / view.scale);
+  updateStatus();
 };
+
+function zoomFromCenter(factor: number): void {
+  const rect = canvas.getBoundingClientRect();
+  view.zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, factor);
+  updateStatus();
+}
 $('btn-export').onclick = () => {
-  readMetaInputs();
   const json = JSON.stringify(zoneToJson(state.zone), null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const a = document.createElement('a');
@@ -1873,7 +2006,112 @@ state.onChange(() => {
   buildOptions();
   palette?.rebuild();
   buildPanels();
+  syncZoneChip();
   updateStatus();
+  mmDirty = true;
+});
+
+// ----------------------------------------------------------- minimap
+
+const minimap = $('minimap') as HTMLCanvasElement;
+const MM_SIZE = 168;
+let mmBitmap: HTMLCanvasElement | null = null;
+let mmDirty = true;
+let mmLastBuild = 0;
+let mmDragging = false;
+
+/** Tile id → rgb, decoded once. */
+const mmColors = new Map<number, [number, number, number]>();
+function mmColor(t: number): [number, number, number] {
+  let c = mmColors.get(t);
+  if (!c) {
+    const hex = tileDef(t).color;
+    const n = parseInt(hex.slice(1), 16);
+    c = [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
+    mmColors.set(t, c);
+  }
+  return c;
+}
+
+function minimapRebuild(): void {
+  const z = state.zone;
+  const bmp = document.createElement('canvas');
+  bmp.width = z.width;
+  bmp.height = z.height;
+  const ctx = bmp.getContext('2d')!;
+  const img = ctx.createImageData(z.width, z.height);
+  for (let i = 0; i < z.ground.length; i++) {
+    const [r, g, b] = mmColor(z.ground[i]!);
+    img.data[i * 4] = r;
+    img.data[i * 4 + 1] = g;
+    img.data[i * 4 + 2] = b;
+    img.data[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  mmBitmap = bmp;
+}
+
+/** Screen box the zone occupies inside the minimap canvas. */
+function mmLayout(): { x: number; y: number; w: number; h: number; s: number } {
+  const z = state.zone;
+  const s = Math.min(MM_SIZE / z.width, MM_SIZE / z.height);
+  const w = z.width * s;
+  const h = z.height * s;
+  return { x: (MM_SIZE - w) / 2, y: (MM_SIZE - h) / 2, w, h, s };
+}
+
+function minimapDraw(nowMs: number): void {
+  if (mmDirty && nowMs - mmLastBuild > 350) {
+    minimapRebuild();
+    mmDirty = false;
+    mmLastBuild = nowMs;
+  }
+  if (!mmBitmap) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (minimap.width !== MM_SIZE * dpr) {
+    minimap.width = MM_SIZE * dpr;
+    minimap.height = MM_SIZE * dpr;
+  }
+  const ctx = minimap.getContext('2d')!;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, MM_SIZE, MM_SIZE);
+  const box = mmLayout();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(mmBitmap, box.x, box.y, box.w, box.h);
+  // The viewport window.
+  const z = state.zone;
+  const vx0 = -view.panX / view.scale;
+  const vy0 = -view.panY / view.scale;
+  const vw = canvas.clientWidth / view.scale;
+  const vh = canvas.clientHeight / view.scale;
+  ctx.strokeStyle = '#f2c94c';
+  ctx.lineWidth = 1.25;
+  ctx.strokeRect(
+    box.x + Math.max(0, vx0) * box.s,
+    box.y + Math.max(0, vy0) * box.s,
+    Math.min(vw, z.width - Math.max(0, vx0)) * box.s,
+    Math.min(vh, z.height - Math.max(0, vy0)) * box.s,
+  );
+}
+
+function mmJump(e: MouseEvent): void {
+  const rect = minimap.getBoundingClientRect();
+  const box = mmLayout();
+  const tx = (e.clientX - rect.left - box.x) / box.s;
+  const ty = (e.clientY - rect.top - box.y) / box.s;
+  view.centerOn(tx, ty);
+  updateStatus();
+}
+
+minimap.addEventListener('mousedown', (e) => {
+  mmDragging = true;
+  mmJump(e);
+});
+window.addEventListener('mousemove', (e) => {
+  if (mmDragging) mmJump(e);
+});
+window.addEventListener('mouseup', () => {
+  mmDragging = false;
 });
 
 // ------------------------------------------------------------- boot
@@ -1935,6 +2173,7 @@ void boot();
 
 function frame(nowMs: number): void {
   view.render(nowMs);
+  minimapDraw(nowMs);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

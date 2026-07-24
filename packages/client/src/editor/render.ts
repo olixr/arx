@@ -205,6 +205,22 @@ function treeSprite(tile: Tile, h: number, s: number, grow: number): TreeSprite 
   return sprite;
 }
 
+/** Paint one tree tile's sprite at a screen cell — shared with previews. */
+export function drawTreeSprite(
+  ctx: CanvasRenderingContext2D,
+  tile: Tile,
+  tx: number,
+  ty: number,
+  px: number,
+  py: number,
+  s: number,
+): void {
+  const spec = TREE_LIKE.get(tile);
+  if (!spec) return;
+  const sprite = treeSprite(spec.tile, hash2(tx, ty), s, spec.grow);
+  ctx.drawImage(sprite.canvas, px + s / 2 + sprite.ox, py + s * 0.82 + sprite.oy);
+}
+
 // ------------------------------------------------------ the viewport
 
 export interface PreviewOverlay {
@@ -758,6 +774,21 @@ export class EditorView {
     ctx.lineDashOffset = -(nowMs / 40) % 9;
     ctx.strokeRect(x, y, w, h);
     ctx.setLineDash([]);
+    // Dimensions chip — the measurement every builder wants mid-drag.
+    const label = `${Math.abs(sel.x1 - sel.x0) + 1} × ${Math.abs(sel.y1 - sel.y0) + 1}`;
+    ctx.font = '600 11px ui-monospace, Menlo, monospace';
+    const tw = ctx.measureText(label).width;
+    const lx = x;
+    const ly = y - 20 < 4 ? y + h + 4 : y - 20;
+    ctx.fillStyle = 'rgba(10, 6, 18, 0.85)';
+    ctx.fillRect(lx, ly, tw + 12, 16);
+    ctx.strokeStyle = 'rgba(232, 223, 200, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(lx + 0.5, ly + 0.5, tw + 11, 15);
+    ctx.fillStyle = '#e8dfc8';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, lx + 6, ly + 8.5);
   }
 
   private drawZoneFrame(ctx: CanvasRenderingContext2D): void {

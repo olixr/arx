@@ -1,15 +1,13 @@
-import { Detail, Tile, tileDef } from '@devcraft/shared';
 import {
   STRUCTURE_TEMPLATES,
   templateWidth,
   templateHeight,
-  type PrefabDef,
-  type StructureTemplate,
   type ZoneDef,
 } from '@devcraft/content';
 import type { PrefabListEntry, RegistrySnapshot } from './api.js';
 import { iconImg } from './editorIcons.js';
 import { placementLabel, sameRef } from './placements.js';
+import { renderLayersPreview, templateLayers } from './preview.js';
 import type { EditorState, PlacementRef } from './state.js';
 
 /**
@@ -37,72 +35,23 @@ export interface PanelDeps {
   registry: RegistrySnapshot;
   prefabs: PrefabListEntry[];
   prefabsOnline: boolean;
+  /** Real-art preview for a prefab, or null while it loads. */
+  prefabPreview: (id: string) => HTMLCanvasElement | null;
   actions: PanelActions;
 }
 
 // ------------------------------------------------------ previews
 
-/** Schematic mini-render of a template's cells. */
-export function templatePreview(tpl: StructureTemplate, box = 116): HTMLCanvasElement {
-  const w = templateWidth(tpl);
-  const h = templateHeight(tpl);
-  const cell = Math.max(3, Math.floor(Math.min(box / w, box / h)));
-  const canvas = document.createElement('canvas');
-  canvas.width = w * cell;
-  canvas.height = h * cell;
-  const ctx = canvas.getContext('2d')!;
-  for (let y = 0; y < h; y++) {
-    const row = tpl.rows[y]!;
-    for (let x = 0; x < w; x++) {
-      const ch = row[x]!;
-      if (ch === ' ') continue;
-      const def = tpl.legend[ch];
-      if (!def) continue;
-      if (def.tile !== undefined) {
-        const td = tileDef(def.tile);
-        ctx.fillStyle = td.color;
-        ctx.fillRect(x * cell, y * cell, cell, cell);
-        if (td.raised && td.topColor) {
-          ctx.fillStyle = td.topColor;
-          ctx.fillRect(x * cell, y * cell, cell, Math.max(1, cell * 0.4));
-        }
-      }
-      if (def.detail !== undefined && def.detail !== Detail.None) {
-        ctx.fillStyle = 'rgba(240, 230, 200, 0.8)';
-        ctx.fillRect(x * cell + cell * 0.35, y * cell + cell * 0.35, cell * 0.3, cell * 0.3);
-      }
-    }
-  }
-  return canvas;
-}
+/** Template cards render through the real bake, cached per template. */
+const templateThumbs = new Map<string, HTMLCanvasElement>();
 
-/** Schematic mini-render of a prefab's captured tiles + pins. */
-export function prefabPreview(p: PrefabDef, box = 116): HTMLCanvasElement {
-  const cell = Math.max(2, Math.floor(Math.min(box / p.width, box / p.height)));
-  const canvas = document.createElement('canvas');
-  canvas.width = p.width * cell;
-  canvas.height = p.height * cell;
-  const ctx = canvas.getContext('2d')!;
-  for (let y = 0; y < p.height; y++) {
-    for (let x = 0; x < p.width; x++) {
-      const td = tileDef(p.ground[y * p.width + x]!);
-      ctx.fillStyle = td.color;
-      ctx.fillRect(x * cell, y * cell, cell, cell);
-      if (td.raised && td.topColor) {
-        ctx.fillStyle = td.topColor;
-        ctx.fillRect(x * cell, y * cell, cell, Math.max(1, cell * 0.4));
-      }
-    }
-  }
-  const pin = (dx: number, dy: number, color: string): void => {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(dx * cell + cell / 2, dy * cell + cell / 2, Math.max(2, cell * 0.45), 0, Math.PI * 2);
-    ctx.fill();
-  };
-  for (const s of p.spawns) pin(s.dx, s.dy, '#d4544a');
-  for (const a of p.actorSpawns) pin(a.dx, a.dy, '#5fc9c4');
-  for (const pt of p.portals) pin(pt.dx, pt.dy, '#b48fe8');
+function templateThumb(id: string): HTMLCanvasElement | null {
+  const hit = templateThumbs.get(id);
+  if (hit) return hit;
+  const tpl = STRUCTURE_TEMPLATES.find((t) => t.id === id);
+  if (!tpl) return null;
+  const canvas = renderLayersPreview(templateLayers(tpl), 150);
+  templateThumbs.set(id, canvas);
   return canvas;
 }
 
@@ -125,18 +74,22 @@ export function buildStructuresPanel(root: HTMLElement, deps: PanelDeps): void {
   const grid = document.createElement('div');
   grid.className = 'card-grid';
   for (const tpl of STRUCTURE_TEMPLATES) {
+    const armed = state.tool === 'structure' && state.armedTemplate === tpl.id;
     const card = document.createElement('button');
-    card.className =
-      'card' + (state.tool === 'structure' && state.armedTemplate === tpl.id ? ' armed' : '');
+    card.className = 'card' + (armed ? ' armed' : '');
+    card.title = armed
+      ? 'Armed — click the map to stamp, click here or press Esc to put it away'
+      : `Arm ${tpl.meta?.label ?? tpl.id} for stamping`;
     const pic = document.createElement('div');
     pic.className = 'card-pic';
-    pic.appendChild(templatePreview(tpl));
+    const thumb = templateThumb(tpl.id);
+    if (thumb) pic.appendChild(thumb);
     card.appendChild(pic);
     const cap = document.createElement('div');
     cap.className = 'card-cap';
     cap.innerHTML = `<b>${tpl.meta?.label ?? tpl.id}</b><span>${templateWidth(tpl)}×${templateHeight(tpl)}</span>`;
     card.appendChild(cap);
-    card.onclick = () => actions.armTemplate(tpl.id);
+    card.onclick = () => (armed ? actions.armTemplate('') : actions.armTemplate(tpl.id));
     grid.appendChild(card);
   }
   root.appendChild(grid);
@@ -184,9 +137,21 @@ export function buildStructuresPanel(root: HTMLElement, deps: PanelDeps): void {
   const pgrid = document.createElement('div');
   pgrid.className = 'card-grid';
   for (const p of deps.prefabs) {
+    const armed = state.tool === 'prefab' && state.armedPrefab?.id === p.id;
     const card = document.createElement('div');
-    card.className =
-      'card' + (state.tool === 'prefab' && state.armedPrefab?.id === p.id ? ' armed' : '');
+    card.className = 'card' + (armed ? ' armed' : '');
+    const pic = document.createElement('div');
+    pic.className = 'card-pic';
+    const thumb = deps.prefabPreview(p.id);
+    if (thumb) {
+      pic.appendChild(thumb);
+    } else {
+      const loading = document.createElement('span');
+      loading.className = 'pic-loading';
+      loading.textContent = 'rendering…';
+      pic.appendChild(loading);
+    }
+    card.appendChild(pic);
     const cap = document.createElement('div');
     cap.className = 'card-cap';
     const bits = [
@@ -200,8 +165,11 @@ export function buildStructuresPanel(root: HTMLElement, deps: PanelDeps): void {
     const row = document.createElement('div');
     row.className = 'card-actions';
     const stamp = document.createElement('button');
-    stamp.textContent = 'Stamp';
-    stamp.onclick = () => actions.armPrefab(p.id);
+    stamp.textContent = armed ? 'Put away' : 'Stamp';
+    stamp.title = armed
+      ? 'Disarm the stamp (Esc does this too)'
+      : 'Arm this prefab, then click the map to plant it';
+    stamp.onclick = () => actions.armPrefab(armed ? '' : p.id);
     row.appendChild(stamp);
     const del = document.createElement('button');
     del.className = 'mini danger';

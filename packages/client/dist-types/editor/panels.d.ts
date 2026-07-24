@@ -1,4 +1,4 @@
-import { type PrefabDef, type StructureTemplate, type ZoneDef } from '@devcraft/content';
+import { type ZoneDef } from '@devcraft/content';
 import type { PrefabListEntry, RegistrySnapshot } from './api.js';
 import type { EditorState, PlacementRef } from './state.js';
 /**
@@ -24,12 +24,10 @@ export interface PanelDeps {
     registry: RegistrySnapshot;
     prefabs: PrefabListEntry[];
     prefabsOnline: boolean;
+    /** Real-art preview for a prefab, or null while it loads. */
+    prefabPreview: (id: string) => HTMLCanvasElement | null;
     actions: PanelActions;
 }
-/** Schematic mini-render of a template's cells. */
-export declare function templatePreview(tpl: StructureTemplate, box?: number): HTMLCanvasElement;
-/** Schematic mini-render of a prefab's captured tiles + pins. */
-export declare function prefabPreview(p: PrefabDef, box?: number): HTMLCanvasElement;
 export declare function buildStructuresPanel(root: HTMLElement, deps: PanelDeps): void;
 export declare function buildPlacementsPanel(root: HTMLElement, deps: PanelDeps): void;
 //# sourceMappingURL=panels.d.ts.map

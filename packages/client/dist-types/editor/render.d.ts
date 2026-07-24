@@ -10,6 +10,8 @@ export declare function overlayKind(t: Tile): OverlayKind;
  * the swatch you pick is the block you see.
  */
 export declare function drawBlockTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, s: number, t: Tile): void;
+/** Paint one tree tile's sprite at a screen cell — shared with previews. */
+export declare function drawTreeSprite(ctx: CanvasRenderingContext2D, tile: Tile, tx: number, ty: number, px: number, py: number, s: number): void;
 export interface PreviewOverlay {
     /** Local tile indices to highlight. */
     indices: Set<number>;
