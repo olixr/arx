@@ -15129,12 +15129,25 @@ export class Renderer {
           if (rigPose.hasCape) drawBackGear(ctx, rigPose);
         }
       },
-      body: {
-        x: p.x - 1.55 * s * capeK,
-        y: p.y - 1.75 * s * capeK,
-        w: 3.1 * s * capeK,
-        h: 2.7 * s * capeK,
-      },
+      // THE REACH ENVELOPE: the outline scratch rasterizes ONLY this
+      // box — anything painted past it is cropped on a hard edge. The
+      // bare-body box fits idle limbs and every hairstyle, but an
+      // armed character swings, casts, and stows: a staff at full
+      // extension or a strike trail reaches ~2.4s from the ground
+      // point, so wielded or stowed gear (weapon OR offhand) grows
+      // the box to contain the whole arc. Unarmed civilians keep the
+      // tight box — scratch area is the outline pass's cost.
+      body: (() => {
+        const armed = e.equip.weapon !== undefined || e.equip.offhand !== undefined;
+        const rx = armed ? 1.0 : 0;
+        const ry = armed ? 1.2 : 0;
+        return {
+          x: p.x - (1.55 + rx) * s * capeK,
+          y: p.y - (1.75 + ry) * s * capeK,
+          w: (3.1 + rx * 2) * s * capeK,
+          h: (2.7 + ry) * s * capeK,
+        };
+      })(),
       drawLabel: () => {
         const ctx = this.ctx;
         // Nameplate baseline: clear of the tallest headwear (helmet
