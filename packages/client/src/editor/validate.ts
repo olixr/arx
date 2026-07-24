@@ -1,4 +1,4 @@
-import { Tile } from '@devcraft/shared';
+import { TILE_SKIP, Tile } from '@devcraft/shared';
 import { ZoneBuilder, type ZoneDef } from '@devcraft/content';
 
 /**
@@ -26,6 +26,9 @@ export function validateZone(zone: ZoneDef): ValidationResult {
     for (let x = 0; x < zone.width; x++) {
       const i = y * zone.width + x;
       const g = zone.ground[i]! as Tile;
+      // Transparent cells belong to the world beneath — the builder
+      // never sees them, and the fence pass must never pave them.
+      if ((g as number) === TILE_SKIP) continue;
       if (g === Tile.Ramp) b.stairs(x, y);
       else b.set(x, y, g);
       const d = zone.detail[i]!;
@@ -48,13 +51,19 @@ export function validateZone(zone: ZoneDef): ValidationResult {
   } catch (err) {
     return { ok: false, error: (err as Error).message, fenceAdded: 0 };
   }
+  // Restore the sentinel before diffing: the builder replayed those
+  // cells as its Grass base, but they are the world's, not ours.
+  const fenced = new Uint16Array(built.ground);
+  for (let i = 0; i < fenced.length; i++) {
+    if (zone.ground[i] === TILE_SKIP) fenced[i] = TILE_SKIP;
+  }
   let fenceAdded = 0;
-  for (let i = 0; i < built.ground.length; i++) {
-    if (built.ground[i] !== zone.ground[i]) fenceAdded++;
+  for (let i = 0; i < fenced.length; i++) {
+    if (fenced[i] !== zone.ground[i]) fenceAdded++;
   }
   return {
     ok: true,
-    fencedGround: fenceAdded > 0 ? built.ground : undefined,
+    fencedGround: fenceAdded > 0 ? fenced : undefined,
     fenceAdded,
   };
 }

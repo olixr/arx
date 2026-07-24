@@ -1,4 +1,4 @@
-import { Detail, TILE_PX, Tile, tileDef } from '@devcraft/shared';
+import { Detail, TILE_PX, TILE_SKIP, Tile, tileDef } from '@devcraft/shared';
 import { BUILDABLES } from '@devcraft/content';
 import { bakeChunk, bakeGutter } from '../render/terrain.js';
 import { buildableIconUrl } from '../render/icons.js';
@@ -28,7 +28,7 @@ export const TILE_CATEGORIES: TileCategory[] = [
       Tile.Grass, Tile.GrassTall, Tile.Dirt, Tile.Path, Tile.Sand, Tile.Snow,
       Tile.Swamp, Tile.Tilled, Tile.StoneFloor, Tile.WoodFloor, Tile.CaveFloor,
       Tile.CaveRubble, Tile.DungeonFloor, Tile.Bridge, Tile.Ramp, Tile.Cliff,
-      Tile.Void,
+      Tile.Void, TILE_SKIP as Tile,
     ],
   },
   {
@@ -127,6 +127,11 @@ export const DETAILS: Array<{ d: Detail; label: string }> = [
   { d: Detail.Sawdust, label: 'sawdust' },
   { d: Detail.Straw, label: 'straw' },
 ];
+
+/** Palette display name — the transparency sentinel isn't a TileDef. */
+export function paletteTileName(t: Tile): string {
+  return (t as number) === TILE_SKIP ? 'transparent (keep ground)' : tileDef(t).name;
+}
 
 // -------------------------------------------------------- thumbnails
 
@@ -286,13 +291,37 @@ function asImg(canvas: HTMLCanvasElement): HTMLImageElement {
   return img;
 }
 
+/** The transparency swatch: a checkerboard — nothing painted here. */
+function checkerThumb(): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = THUMB;
+  canvas.height = THUMB;
+  const ctx = canvas.getContext('2d')!;
+  const cell = THUMB / 6;
+  for (let y = 0; y < 6; y++) {
+    for (let x = 0; x < 6; x++) {
+      ctx.fillStyle = (x + y) % 2 === 0 ? '#3a3244' : '#262031';
+      ctx.fillRect(x * cell, y * cell, cell, cell);
+    }
+  }
+  ctx.strokeStyle = '#57506b';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1, 1, THUMB - 2, THUMB - 2);
+  return canvas;
+}
+
 /** Build (once) every tile thumbnail as a DOM element. */
 export function buildThumbs(): Map<Tile, HTMLElement> {
   const thumbs = new Map<Tile, HTMLElement>();
   const allTiles = TILE_CATEGORIES.flatMap((c) => c.tiles);
 
+  // The sentinel first — it must never reach the chunk bake.
+  thumbs.set(TILE_SKIP as Tile, asImg(checkerThumb()));
+
   // Which tiles ride the ground bake for their look.
-  const bakeable = allTiles.filter((t) => overlayKind(t) === 'none' && !TREE_THUMBS.has(t));
+  const bakeable = allTiles.filter(
+    (t) => !thumbs.has(t) && overlayKind(t) === 'none' && !TREE_THUMBS.has(t),
+  );
   const baked = bakeStrip(bakeable.map((t) => ({ ground: t, detail: Detail.None })));
   bakeable.forEach((t, i) => thumbs.set(t, asImg(baked[i]!)));
 
@@ -436,7 +465,7 @@ export class PaletteUI {
     if (q) {
       for (const cat of TILE_CATEGORIES) {
         for (const t of cat.tiles) {
-          const name = tileDef(t).name;
+          const name = paletteTileName(t);
           if (!name.toLowerCase().includes(q)) continue;
           grid.appendChild(
             this.swatch(
@@ -471,7 +500,7 @@ export class PaletteUI {
         grid.appendChild(
           this.swatch(
             this.thumbs.get(t)!,
-            tileDef(t).name,
+            paletteTileName(t),
             this.state.layer === 'ground' && this.state.brushTile === t,
             () => this.hooks.onPickTile(t),
           ),
@@ -501,7 +530,7 @@ export class PaletteUI {
       grid.appendChild(
         this.swatch(
           this.thumbs.get(t)!,
-          tileDef(t).name,
+          paletteTileName(t),
           this.state.layer === 'ground' && this.state.brushTile === t,
           () => this.hooks.onPickTile(t),
         ),

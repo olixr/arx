@@ -443,7 +443,13 @@ export class EditorView {
       if (y < 0) continue;
       for (let x = x0; x < x0 + CHUNK_SIZE && x < z.width; x++) {
         if (x < 0) continue;
-        const def = tileDef(z.ground[y * z.width + x]!);
+        const g = z.ground[y * z.width + x]!;
+        if (g === GHOST_SKIP) {
+          ctx.fillStyle = (x + y) % 2 === 0 ? '#3a3244' : '#262031';
+          ctx.fillRect(this.sx(x), this.sy(y), s + 0.5, s + 0.5);
+          continue;
+        }
+        const def = tileDef(g);
         const vars = def.variants;
         ctx.fillStyle =
           vars && vars.length > 0 && hash2(x, y) % 3 === 0 ? vars[hash2(x, y) % vars.length]! : def.color;
@@ -454,10 +460,13 @@ export class EditorView {
 
   private bakeLocal(cx: number, cy: number): HTMLCanvasElement {
     const z = this.state.zone;
-    const ground = (tx: number, ty: number): number | undefined =>
-      tx >= 0 && ty >= 0 && tx < z.width && ty < z.height
-        ? z.ground[ty * z.width + tx]!
-        : undefined;
+    const ground = (tx: number, ty: number): number | undefined => {
+      if (tx < 0 || ty < 0 || tx >= z.width || ty >= z.height) return undefined;
+      const g = z.ground[ty * z.width + tx]!;
+      // Transparent cells bake as the meadow they'll reveal; the
+      // overlay pass draws their checker marker on top.
+      return g === GHOST_SKIP ? Tile.Grass : g;
+    };
     const detail = (tx: number, ty: number): number =>
       tx >= 0 && ty >= 0 && tx < z.width && ty < z.height
         ? z.detail[ty * z.width + tx]!
@@ -481,6 +490,20 @@ export class EditorView {
     for (let y = ty0; y <= ty1; y++) {
       for (let x = tx0; x <= tx1; x++) {
         const t = z.ground[y * z.width + x]! as Tile;
+        if ((t as number) === GHOST_SKIP) {
+          // Transparency marker: a soft checker so authors SEE the
+          // cells the stamp will leave to the world beneath.
+          const px = this.sx(x);
+          const py = this.sy(y);
+          const s2 = this.scale / 2;
+          ctx.fillStyle = 'rgba(40, 32, 54, 0.42)';
+          ctx.fillRect(px, py, s2, s2);
+          ctx.fillRect(px + s2, py + s2, s2, s2);
+          ctx.fillStyle = 'rgba(88, 78, 112, 0.28)';
+          ctx.fillRect(px + s2, py, s2, s2);
+          ctx.fillRect(px, py + s2, s2, s2);
+          continue;
+        }
         const kind = overlayKind(t);
         if (kind === 'none') continue;
         const px = this.sx(x);

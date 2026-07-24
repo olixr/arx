@@ -134,9 +134,32 @@ export function buildStructuresPanel(root: HTMLElement, deps: PanelDeps): void {
     return;
   }
 
+  // POI footprints file separately — they're the wilderness system's
+  // curated pool (data/prefabs/poi_*), edited here, picked by hash out
+  // in the frontier.
+  const groups: Array<[string, typeof deps.prefabs]> = [
+    ['POI footprints', deps.prefabs.filter((p) => p.id.startsWith('poi_'))],
+    ['Structures & set pieces', deps.prefabs.filter((p) => !p.id.startsWith('poi_'))],
+  ];
+  for (const [glabel, gprefabs] of groups) {
+    if (gprefabs.length === 0) continue;
+    const ghead = document.createElement('div');
+    ghead.className = 'panel-head';
+    ghead.textContent = glabel;
+    root.appendChild(ghead);
+    root.appendChild(buildPrefabGrid(gprefabs, state, actions, deps));
+  }
+}
+
+function buildPrefabGrid(
+  prefabs: PrefabListEntry[],
+  state: EditorState,
+  actions: PanelActions,
+  deps: PanelDeps,
+): HTMLElement {
   const pgrid = document.createElement('div');
   pgrid.className = 'card-grid';
-  for (const p of deps.prefabs) {
+  for (const p of prefabs) {
     const armed = state.tool === 'prefab' && state.armedPrefab?.id === p.id;
     const card = document.createElement('div');
     card.className = 'card' + (armed ? ' armed' : '');
@@ -180,7 +203,7 @@ export function buildStructuresPanel(root: HTMLElement, deps: PanelDeps): void {
     card.appendChild(row);
     pgrid.appendChild(card);
   }
-  root.appendChild(pgrid);
+  return pgrid;
 }
 
 // ------------------------------------------------ placements panel
