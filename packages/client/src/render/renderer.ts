@@ -15281,7 +15281,13 @@ export class Renderer {
       }
       capeSim = anim.cape;
       const hSc = 1 + (1 - legPose.wScale) * 0.55;
-      const az = (legPose.rise + legPose.bob * 0.45 + 0.44 * hSc) * capeK;
+      // Seated the clasp comes DOWN with the shoulders — the hip line
+      // settles ~0.13 off the ground and the torso rides on top of it
+      // (the rig's own seat law), so the cloth's slack pools on the
+      // ground behind the sitter instead of hanging from thin air.
+      const azStand = legPose.rise + legPose.bob * 0.45 + 0.44 * hSc;
+      const azSeat = 0.13 + 0.44 * hSc;
+      const az = (azStand + (azSeat - azStand) * sitE) * capeK;
       capeSim.update(
         e.x + Math.cos(dir) * lunge,
         e.y + Math.sin(dir) * lunge,
@@ -15291,6 +15297,7 @@ export class Renderer {
         windAtInto(WIND_TMP, e.x, e.y, now / 1000),
         now / 1000,
         capeK,
+        sitE,
       );
     } else if (anim.cape) {
       anim.cape = undefined;
@@ -15347,6 +15354,7 @@ export class Renderer {
               hemGlow: Math.min(1, capeSim.hemSpd / 4.5),
               tSec: now / 1000,
               phase: capeSim.phase,
+              spread: sitE,
             });
           }
         : null;

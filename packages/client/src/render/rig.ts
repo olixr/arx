@@ -3469,6 +3469,27 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // (and eases out when seated; a sitting kobold just slumps).
   if (kob) lean += 0.12 * fx * (1 - sit);
 
+  // Seated drape info for the garment painter: the ground line and the
+  // solved knees mapped into the torso local frame (translate → lean
+  // rotate → squash scale, inverted) so a robe's skirt can pool at the
+  // TRUE ground and tent over a raised knee. Knees read from
+  // KNEE_SCRATCH — legs solve before the torso, the ordering is
+  // load-bearing.
+  let seatDrape: { groundY: number; knees: Array<{ x: number; y: number }> } | undefined;
+  if (sit > 0.01 && bodySt && bodySt.skirt > 0) {
+    const cosL = Math.cos(lean);
+    const sinL = Math.sin(lean);
+    const loc = (px: number, py: number): { x: number; y: number } => {
+      const dx = px - rig.x;
+      const dy = py - hipY;
+      return { x: (dx * cosL + dy * sinL) / wS, y: (-dx * sinL + dy * cosL) / hScale };
+    };
+    seatDrape = {
+      groundY: loc(rig.x, rig.y).y,
+      knees: KNEE_SCRATCH.map((kn) => loc(kn.x, kn.y)),
+    };
+  }
+
   // ---- torso + head, drawn in a local frame at the hip line with the
   // fake-3D squash: narrow side profile, full front/back profile, height
   // compensating inversely so the turn reads as orientation.
@@ -3535,6 +3556,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         strideSw: ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP,
         nowMs: rig.nowMs,
         runF: rig.runF,
+        sit,
+        groundY: seatDrape?.groundY,
+        seatKnees: seatDrape?.knees,
         // Cloth trails the travel: the hem drags OPPOSITE the motion,
         // un-squashed into the local frame so profile runs still read.
         dragX:

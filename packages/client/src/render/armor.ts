@@ -1370,6 +1370,15 @@ export interface TorsoFrame {
    * real cloth (screen travel, un-squashed by the caller). Signed.
    */
   dragX: number;
+  /**
+   * Seated blend 0..1 (the caller-smoothed sit channel). A seated robe
+   * cannot hang its full length — the skirt pools on the ground.
+   */
+  sit?: number;
+  /** Ground line under the body in torso-local units (seated drape). */
+  groundY?: number;
+  /** Solved knees in the torso local frame (seated knee tents). */
+  seatKnees?: Array<{ x: number; y: number }>;
 }
 
 /**
@@ -1396,9 +1405,17 @@ export function drawTorsoGarment(
   // earlier are covered naturally; hem stays above the boots.
   if (st.skirt > 0) {
     const y0 = -0.075 * s;
-    const hemY = 0.02 * s + st.skirt * s;
-    const hemW = ww * 1.3;
-    const stride = f.strideSw * 0.025 * s;
+    // THE SEATED POOL: a seated hip line rides a hand's width off the
+    // ground, so a full-length hem hanging from it would plunge through
+    // the floor. Seated, the hem pulls UP to the true ground line and
+    // SPREADS around the hips — cloth tucked under the sitter, not a
+    // standing tube — while the travel life calms to a resting breath.
+    const seatK = f.sit ?? 0;
+    const hemYHang = 0.02 * s + st.skirt * s;
+    const hemY = hemYHang + ((f.groundY ?? 0) + 0.05 * s - hemYHang) * seatK;
+    const hemW = ww * (1.3 + 0.65 * seatK);
+    const calm = 1 - 0.85 * seatK;
+    const stride = f.strideSw * 0.025 * s * calm;
     const trail = f.dragX === 0 ? 0 : Math.sign(f.dragX);
     // Five hem points, left to right; drag bows the middle hardest,
     // flutter gives each point its own beat, speed lifts the trailing
@@ -1408,13 +1425,17 @@ export function drawTorsoGarment(
       const u = i / 4;
       const bx = -hemW + u * 2 * hemW;
       const flutter =
-        Math.sin(nowMs * 0.005 + i * 1.9) * 0.013 * s * (0.3 + 0.7 * runF) +
+        Math.sin(nowMs * 0.005 + i * 1.9) * 0.013 * s * (0.3 + 0.7 * runF) * calm +
         stride * Math.sin(u * Math.PI);
-      const dx = f.dragX * (0.5 + 0.4 * Math.sin(u * Math.PI)) * s + flutter;
+      const dx = f.dragX * (0.5 + 0.4 * Math.sin(u * Math.PI)) * s * calm + flutter;
       const lift =
-        runF * 0.055 * s * Math.max(0, (bx * trail) / hemW) +
-        Math.abs(f.dragX) * 0.18 * s * Math.sin(u * Math.PI) * runF;
-      hem.push({ x: bx + dx, y: hemY - lift });
+        (runF * 0.055 * s * Math.max(0, (bx * trail) / hemW) +
+          Math.abs(f.dragX) * 0.18 * s * Math.sin(u * Math.PI) * runF) *
+        calm;
+      // Pooled mounds: resting cloth holds FOLDS, not waves — a fixed
+      // per-point undulation, no clock.
+      const pool = seatK * 0.016 * s * Math.sin(i * 2.6 + 1.1);
+      hem.push({ x: bx + dx, y: hemY - lift + pool });
     }
     // The underskirt: a second cloth layer swinging on a counter-phase
     // beneath the hem — layered depth is what makes a robe MAJESTIC
@@ -1506,8 +1527,9 @@ export function drawTorsoGarment(
         }
         ctx.globalAlpha = 1;
       }
-      if (st.skirtSlit && !back) {
-        // The center slit lets the stride read through the cloth.
+      if (st.skirtSlit && !back && seatK < 0.5) {
+        // The center slit lets the stride read through the cloth —
+        // pooled seated cloth has no stride, the slit closes.
         ctx.fillStyle = 'rgba(24, 15, 26, 0.55)';
         ctx.beginPath();
         ctx.moveTo(hem[2]!.x * 0.5, hemY - st.skirt * s * 0.6);
@@ -2154,7 +2176,12 @@ export function drawTorsoGarment(
         const a = Math.sin(cyc * Math.PI) * 0.55;
         if (a <= 0.03) continue;
         const mx = Math.sin(i * 2.4 + Math.floor(ph) * 1.7) * ww * 1.5;
-        const my = 0.05 * s + st.skirt * s - cyc * (th + st.skirt * s) * 0.9;
+        // Motes are born at the hem — seated, the hem is the POOL, so
+        // they rise from the pooled cloth, never from under the floor.
+        const born = 0.05 * s + st.skirt * s;
+        const moteK = f.sit ?? 0;
+        const myBase = born + ((f.groundY ?? 0) + 0.05 * s - born) * moteK;
+        const my = myBase - cyc * (th + st.skirt * s) * 0.9;
         const r = (0.016 + 0.006 * Math.sin(i * 5.1)) * s;
         ctx.globalAlpha = a;
         ctx.beginPath();
@@ -2164,6 +2191,52 @@ export function drawTorsoGarment(
         ctx.lineTo(mx - r, my);
         ctx.closePath();
         ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // ---- seated knee tents: a raised knee lifts the robe's front into
+  // a cloth peak — the skirt drapes OVER the leg instead of the shin
+  // punching bare through the pooled hem. Painted last: the tented
+  // cloth is the nearest layer of the whole garment (it covers the
+  // lower torso exactly as a knee held to the chest does). Facing away
+  // the legs live behind the torso and the back panel hides them.
+  const seatK = f.sit ?? 0;
+  if (st.skirt > 0 && seatK > 0.35 && f.seatKnees && !back) {
+    const gy = (f.groundY ?? 0) + 0.05 * s;
+    const a = Math.min(1, (seatK - 0.35) / 0.4);
+    for (const kn of f.seatKnees) {
+      const peakY = kn.y - 0.02 * s;
+      // A low knee (the lounger's stretch) stays under the pool; only
+      // a genuinely raised knee tents the cloth.
+      if (peakY > gy - 0.1 * s) continue;
+      if (Math.abs(kn.x) > ww * 2.6) continue;
+      const bw = 0.115 * s;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(kn.x - bw, gy);
+      ctx.quadraticCurveTo(kn.x - bw * 0.55, peakY + 0.02 * s, kn.x, peakY);
+      ctx.quadraticCurveTo(kn.x + bw * 0.55, peakY + 0.02 * s, kn.x + bw, gy);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The trailing face folds dark; the ridge line catches light —
+        // the same one-cut shading the hanging skirt lives by.
+        ctx.fillStyle = shade(st.color, -18);
+        ctx.beginPath();
+        ctx.moveTo(kn.x, peakY);
+        ctx.quadraticCurveTo(kn.x + bw * 0.55, peakY + 0.02 * s, kn.x + bw, gy);
+        ctx.lineTo(kn.x, gy);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, 12);
+        ctx.lineWidth = Math.max(1, s * 0.018);
+        ctx.beginPath();
+        ctx.moveTo(kn.x - bw * 0.72, gy - (gy - peakY) * 0.35);
+        ctx.quadraticCurveTo(kn.x - bw * 0.3, peakY + 0.016 * s, kn.x, peakY);
+        ctx.stroke();
       }
       ctx.globalAlpha = 1;
     }

@@ -290,6 +290,7 @@ export class CapeSim {
     wind: { bx: number; by: number },
     tSec: number,
     sizeK: number,
+    seatK = 0,
   ): void {
     const st = this.style;
     const n = st.segs + 1;
@@ -355,6 +356,15 @@ export class CapeSim {
       const sideK = Math.abs(fx) * (1 - Math.abs(fy));
       gx += -fx * 3.2 * sideK * (0.5 + 0.5 * ti);
       gy += (cy - nd.y) * 2.8 * sideK * (1 - 0.4 * ti);
+      // THE SEATED TUCK: with the clasp down at seated-shoulder height
+      // the slack has to live on the ground — nudge it home BEHIND the
+      // sitter along the facing so the pool settles at the back like
+      // cloth swept aside to sit, and can never creep under the body.
+      if (seatK > 0) {
+        const settle = 6 * seatK * ti;
+        gx -= fx * settle;
+        gy -= fy * settle;
+      }
       // Gravity vs the running billow: speed converts hang into stream.
       const gz = -26 * st.weight + spd * (1.4 + 0.8 * ti) + Math.abs(wind.bx + wind.by) * 0.4 * ti;
 
@@ -403,8 +413,11 @@ export class CapeSim {
         if (q.z < GROUND_Z) {
           q.z = GROUND_Z;
           // Ground drag: the hem brushes the grass, it doesn't skate.
-          q.px += (q.x - q.px) * 0.5;
-          q.py += (q.y - q.py) * 0.5;
+          // Seated, the ground grips harder — pooled cloth is TUCKED,
+          // it doesn't wander with every breath of wind.
+          const grip = 0.5 + 0.4 * seatK;
+          q.px += (q.x - q.px) * grip;
+          q.py += (q.y - q.py) * grip;
         }
       }
     }
@@ -450,6 +463,12 @@ export interface CapeDrawOpts {
   /** Wall-clock seconds + per-cape phase drive the living effects. */
   tSec: number;
   phase: number;
+  /**
+   * 0..1 seated pooling — grounded cloth relaxes and SPREADS toward
+   * the hem, so the pooled slack reads as fabric fanned on the ground
+   * instead of a taut hanging ribbon lying on its side.
+   */
+  spread?: number;
 }
 
 const lerpPt = (a: Pt, b: Pt, t: number): Pt => ({
@@ -494,7 +513,10 @@ export function drawCape(
     ty /= tl;
     const t = i / (n - 1);
     const persp = breadthK + (1 - breadthK) * 0.45 * t;
-    const w = (style.shoulderW + (style.hemW - style.shoulderW) * t) * wk * persp;
+    // Seated pool: spread grows quadratically down the cloth so the
+    // shoulders stay fitted while the grounded hem fans out.
+    const pool = 1 + (opts.spread ?? 0) * 0.55 * t * t;
+    const w = (style.shoulderW + (style.hemW - style.shoulderW) * t) * wk * persp * pool;
     widths.push(w);
     left.push({ x: pts[i]!.x + ty * w, y: pts[i]!.y - tx * w });
     right.push({ x: pts[i]!.x - ty * w, y: pts[i]!.y + tx * w });
