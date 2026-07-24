@@ -43,6 +43,12 @@ export interface FxStyle {
     motif?: MotifKind;
     /** Camera drama weight 0..1 — scales shake on detonation. */
     punch: number;
+    /**
+     * Interior ground light-wash strength 0..1 — how hard the turf
+     * INSIDE a young nova/blast lights up. Big detonations sear the
+     * ground; utility pulses barely kiss it. Undefined = 0.45.
+     */
+    wash?: number;
 }
 /**
  * Every ability's face. Layer swaps keep siblings distinct: two fire

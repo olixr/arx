@@ -2015,13 +2015,24 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
     const fxx = hipX + ex;
     const fyy = hipY + ey;
+    // THE FOOT CAPS THE LEG: the shin stroke ends at the ANKLE — the
+    // endpoint pulled back up the bone so its round cap tucks inside
+    // the footwear painted below. Stroked all the way to the sole, the
+    // cap's half-disc poked out under every foot chip at zoom.
+    const shinLen0 = Math.hypot(fxx - kx, fyy - ky) || 1;
+    const aux = (fxx - kx) / shinLen0;
+    const auy = (fyy - ky) / shinLen0;
+    const shinLW = Math.max(2, s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : 0.09));
+    const ankPull = shinLW * 0.55;
+    const ankX = fxx - aux * ankPull;
+    const ankY = fyy - auy * ankPull;
     ctx.strokeStyle = thighCol;
     ctx.lineWidth = Math.max(2, s * (skel ? 0.066 * skel.heavy : 0.09));
     ctx.beginPath();
     ctx.moveTo(hipX, hipY);
     ctx.lineTo(kx, ky);
     if (shinCol === thighCol && !skel) {
-      ctx.lineTo(fxx, fyy);
+      ctx.lineTo(ankX, ankY);
       ctx.stroke();
     } else {
       ctx.stroke();
@@ -2029,7 +2040,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       if (skel) ctx.lineWidth = Math.max(2, s * 0.052 * skel.heavy);
       ctx.beginPath();
       ctx.moveTo(kx, ky);
-      ctx.lineTo(fxx, fyy);
+      ctx.lineTo(ankX, ankY);
       ctx.stroke();
     }
     if (skel) {
@@ -2080,7 +2091,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ctx.lineWidth = Math.max(2.5, s * 0.1);
       ctx.beginPath();
       ctx.moveTo(topX, topY);
-      ctx.lineTo(fxx, fyy);
+      ctx.lineTo(ankX, ankY);
       ctx.stroke();
       if (bootSt.cuff && !rig.hurt) {
         ctx.strokeStyle = bootSt.cuff.color;
@@ -2168,16 +2179,59 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         }
       }
     } else {
+      // The shoe: a heel-to-toe sole block pointed by the facing, an
+      // instep collar carrying the leg's line down into it, a sole
+      // shadow along the ground and a lit toe face at profile —
+      // footwear with anatomy, not a floating pill.
+      const toe = fx * 0.026 * s;
+      const fw = 0.082 * s;
+      const x0 = fxx - fw + Math.min(0, toe);
+      const wF = fw * 2 + Math.abs(toe);
+      if (!rig.hurt) {
+        // Instep first, so the sole block laps over its base.
+        const pxw = -auy * shinLW * 0.62;
+        const pyw = aux * shinLW * 0.62;
+        ctx.fillStyle = shade(bootCol, -6);
+        ctx.beginPath();
+        ctx.moveTo(ankX - pxw, ankY - pyw);
+        ctx.lineTo(ankX + pxw, ankY + pyw);
+        ctx.lineTo(fxx + fw * 0.55, fyy - 0.02 * s);
+        ctx.lineTo(fxx - fw * 0.55, fyy - 0.02 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
       ctx.fillStyle = bootCol;
       ctx.beginPath();
-      chamferRect(ctx, fxx - 0.075 * s, fyy - 0.03 * s, 0.15 * s, 0.06 * s, 0.022 * s);
+      chamferRect(ctx, x0, fyy - 0.031 * s, wF, 0.062 * s, 0.02 * s);
       ctx.fill();
+      if (!rig.hurt) {
+        // Sole shadow: the dark welt line the shoe stands on.
+        ctx.fillStyle = shade(bootCol, -22);
+        ctx.fillRect(x0 + 0.008 * s, fyy + 0.017 * s, wF - 0.016 * s, 0.014 * s);
+        if (Math.abs(fx) > 0.35) {
+          // Toe face catches the light at profile; the heel counter
+          // behind darkens — the shoe points where the body walks.
+          ctx.fillStyle = shade(bootCol, 9);
+          ctx.beginPath();
+          chamferRect(
+            ctx,
+            fx > 0 ? x0 + wF - 0.048 * s : x0 + 0.003 * s,
+            fyy - 0.026 * s,
+            0.045 * s,
+            0.032 * s,
+            0.012 * s,
+          );
+          ctx.fill();
+          ctx.fillStyle = shade(bootCol, -12);
+          ctx.fillRect(fx > 0 ? x0 + 0.004 * s : x0 + wF - 0.026 * s, fyy - 0.024 * s, 0.022 * s, 0.04 * s);
+        }
+      }
     }
     if (bootSt?.toe && !rig.hurt) {
       // Steel toe on the leading half of the foot.
       ctx.fillStyle = bootSt.toe;
       ctx.beginPath();
-      chamferRect(ctx, fxx + (lead > 0 ? 0.01 : -0.075) * s, fyy - 0.028 * s, 0.065 * s, 0.055 * s, 0.018 * s);
+      chamferRect(ctx, fxx + (lead > 0 ? 0.022 : -0.088) * s, fyy - 0.028 * s, 0.066 * s, 0.056 * s, 0.018 * s);
       ctx.fill();
     }
     if (bootSt?.curl && !rig.hurt) {
@@ -2186,8 +2240,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ctx.lineWidth = Math.max(2, s * 0.042);
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(fxx + lead * 0.06 * s, fyy - 0.004 * s);
-      ctx.quadraticCurveTo(fxx + lead * 0.13 * s, fyy + 0.006 * s, fxx + lead * 0.108 * s, fyy - 0.052 * s);
+      ctx.moveTo(fxx + lead * 0.068 * s, fyy - 0.004 * s);
+      ctx.quadraticCurveTo(fxx + lead * 0.14 * s, fyy + 0.006 * s, fxx + lead * 0.118 * s, fyy - 0.052 * s);
       ctx.stroke();
       ctx.lineCap = 'butt';
     }
@@ -3621,6 +3675,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ? HAIR_COLORS[rig.look.hairColor]!
       : shade(bodyColor, -24);
 
+  // THE OVERHANG LAW: any slab that caps the skull spans PAST the head
+  // silhouette — hair sits ON a skull, never inside one. The old 0.96
+  // inset left the head's chamfered skin corners flaring out past the
+  // hairline (a pale "brim" riding every haircut at zoom). capX/capTop/
+  // capCut clear the head block with ~4% of headR to spare; every
+  // crown-covering slab (fringe, mop, sweep, shag) builds from these.
+  const capX = hw * 1.04;
+  const capTop = hh * 1.05;
+  const capCut = cut * 1.15;
+
   // A hanging plait: stacked beads narrowing to a tuft, tie bands
   // between beads — the braid vocabulary for hair AND beards. Beads
   // alternate their lit half left/right so the column reads as a
@@ -3714,6 +3778,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Ears ride the head sides UNDER the hair (curtains lie over the
   // roots; pointed tips break the silhouette — that is the point).
   // Round ears vanish into the block head; metal and cloth cover all.
+  // Each ear is a FACETED LEAF, not a paper dart: a broad-rooted
+  // silhouette split along its central rib into a lit upper face and
+  // a shaded under-face, a hollow nested at the root, and a root seam
+  // where cartilage meets skull — the kit that keeps the point crisp
+  // and readable instead of a two-pixel sliver.
   const earStyle = rig.look?.ears ?? 0;
   if (earStyle > 0 && (cover === 'free' || cover === 'brim')) {
     for (const es of [-1, 1]) {
@@ -3725,37 +3794,88 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       const rootY = headY + headR * 0.1 + fy * headR * 0.05;
       // Each ear sits on the head's x=0 light: the screen-right ear
       // wears the shade tone, so the pair belongs to the same skull.
-      ctx.fillStyle = es > 0 && !rig.hurt ? shade(skin, -9) : skin;
-      ctx.beginPath();
+      const earBase = es > 0 && !rig.hurt ? shade(skin, -9) : skin;
+      ctx.fillStyle = earBase;
       if (earStyle === 1) {
-        // Pointed: a long leaf wedge running outward — the drow read.
-        ctx.moveTo(rootX, rootY - headR * 0.2);
-        ctx.lineTo(rootX + es * headR * 0.6 * wK, rootY - headR * 0.32);
-        ctx.lineTo(rootX, rootY + headR * 0.16);
-      } else {
-        // Upswept: a high fey point angling toward the crown.
-        ctx.moveTo(rootX, rootY + headR * 0.16);
-        ctx.lineTo(rootX + es * headR * 0.42 * wK, rootY - headR * 0.62);
-        ctx.lineTo(rootX + es * headR * 0.03, rootY - headR * 0.16);
-      }
-      ctx.closePath();
-      ctx.fill();
-      if (!rig.hurt) {
-        // The inner ear: a smaller shade wedge nested toward the
-        // root — the hollow that makes the flap read as an EAR.
-        ctx.fillStyle = shade(skin, -20);
+        // Pointed — the long leaf running outward, tip a hair proud of
+        // the root line so the point reads UP-and-out, drow fashion.
+        const eL = headR * 0.62 * wK;
+        const topY = rootY - headR * 0.26;
+        const tipX = rootX + es * eL;
+        const tipY = rootY - headR * 0.34;
+        const botY = rootY + headR * 0.2;
         ctx.beginPath();
-        if (earStyle === 1) {
-          ctx.moveTo(rootX + es * headR * 0.04, rootY - headR * 0.1);
-          ctx.lineTo(rootX + es * headR * 0.32 * wK, rootY - headR * 0.19);
-          ctx.lineTo(rootX + es * headR * 0.04, rootY + headR * 0.08);
-        } else {
-          ctx.moveTo(rootX + es * headR * 0.05, rootY + headR * 0.05);
-          ctx.lineTo(rootX + es * headR * 0.22 * wK, rootY - headR * 0.32);
-          ctx.lineTo(rootX + es * headR * 0.06, rootY - headR * 0.1);
-        }
+        ctx.moveTo(rootX, topY);
+        ctx.lineTo(tipX, tipY);
+        ctx.lineTo(rootX + es * eL * 0.3, rootY + headR * 0.08);
+        ctx.lineTo(rootX, botY);
         ctx.closePath();
         ctx.fill();
+        if (!rig.hurt) {
+          // Under-face: everything below the rib line falls into
+          // shade, giving the leaf its fold and thickness.
+          ctx.fillStyle = shade(earBase, -12);
+          ctx.beginPath();
+          ctx.moveTo(rootX, rootY - headR * 0.03);
+          ctx.lineTo(tipX, tipY);
+          ctx.lineTo(rootX + es * eL * 0.3, rootY + headR * 0.08);
+          ctx.lineTo(rootX, botY);
+          ctx.closePath();
+          ctx.fill();
+          // The hollow: a concha wedge nested against the root.
+          ctx.fillStyle = shade(skin, -24);
+          ctx.beginPath();
+          ctx.moveTo(rootX + es * headR * 0.03, rootY - headR * 0.12);
+          ctx.lineTo(rootX + es * eL * 0.42, rootY - headR * 0.16);
+          ctx.lineTo(rootX + es * headR * 0.03, rootY + headR * 0.1);
+          ctx.closePath();
+          ctx.fill();
+          // Root seam: cartilage meets skull on a hard dark line.
+          ctx.fillStyle = shade(skin, -30);
+          ctx.fillRect(rootX - es * headR * 0.005, topY + headR * 0.06, es * headR * 0.035, botY - topY - headR * 0.12);
+        }
+      } else {
+        // Upswept — the tall fey blade angling for the crown.
+        const kX = es * headR * wK;
+        const botY = rootY + headR * 0.2;
+        const tipX = rootX + kX * 0.5;
+        const tipY = rootY - headR * 0.74;
+        ctx.beginPath();
+        ctx.moveTo(rootX, botY);
+        ctx.lineTo(rootX + kX * 0.34, rootY - headR * 0.06);
+        ctx.lineTo(tipX, tipY);
+        ctx.lineTo(rootX + es * headR * 0.05, rootY - headR * 0.24);
+        ctx.lineTo(rootX, rootY - headR * 0.02);
+        ctx.closePath();
+        ctx.fill();
+        if (!rig.hurt) {
+          // Leading face: the outer half of the blade catches light,
+          // the inner half turns away — a standing fin, not a stripe.
+          ctx.fillStyle = shade(earBase, 8);
+          ctx.beginPath();
+          ctx.moveTo(rootX + kX * 0.34, rootY - headR * 0.06);
+          ctx.lineTo(tipX, tipY);
+          ctx.lineTo(rootX + kX * 0.24, rootY - headR * 0.3);
+          ctx.closePath();
+          ctx.fill();
+          // The hollow nested low, against the skull.
+          ctx.fillStyle = shade(skin, -24);
+          ctx.beginPath();
+          ctx.moveTo(rootX + es * headR * 0.04, rootY + headR * 0.08);
+          ctx.lineTo(rootX + kX * 0.24, rootY - headR * 0.14);
+          ctx.lineTo(rootX + es * headR * 0.05, rootY - headR * 0.12);
+          ctx.closePath();
+          ctx.fill();
+          // Dark tip bead: the point ends in shadow, and stays a
+          // point at any zoom instead of dissolving into the sky.
+          ctx.fillStyle = shade(earBase, -16);
+          ctx.beginPath();
+          ctx.moveTo(tipX, tipY);
+          ctx.lineTo(tipX - kX * 0.14, tipY + headR * 0.2);
+          ctx.lineTo(tipX - kX * 0.02, tipY + headR * 0.22);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
     }
   }
@@ -3885,12 +4005,15 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
                   : TWIN
                     ? hh * 1.38
                     : hh * 1.52;
-        const mopY = headY - hh * 0.98;
+        // Overhang: the mop's top rises past the skull and its hem
+        // stays where the cut always fell — height absorbs the lift.
+        const mopY = headY - capTop;
+        const mopFullH = mopH + (capTop - hh * 0.98);
         const mopCorners: [number, number, number, number] = BOB
-          ? [cut * 0.85, cut * 0.85, cut * 1.4, cut * 1.4]
-          : [cut * 0.85, cut * 0.85, 0, 0];
+          ? [capCut, capCut, cut * 1.4, cut * 1.4]
+          : [capCut, capCut, 0, 0];
         ctx.beginPath();
-        chamferRect(ctx, headX - hw * 0.96, mopY, hw * 1.92, mopH, mopCorners);
+        chamferRect(ctx, headX - capX, mopY, capX * 2, mopFullH, mopCorners);
         ctx.fill();
         if (!rig.hurt) {
           // THE DEPTH KIT, clipped to the mop so no facet leaks past
@@ -3899,18 +4022,18 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           // hem, and the lit crown plane.
           ctx.save();
           ctx.beginPath();
-          chamferRect(ctx, headX - hw * 0.96, mopY, hw * 1.92, mopH, mopCorners);
+          chamferRect(ctx, headX - capX, mopY, capX * 2, mopFullH, mopCorners);
           ctx.clip();
           ctx.fillStyle = shade(hairCol, -12);
-          ctx.fillRect(headX, mopY, hw * 0.96, mopH);
+          ctx.fillRect(headX, mopY, capX, mopFullH);
           ctx.fillStyle = shade(hairCol, -22);
-          ctx.fillRect(headX - hw * 0.96, mopY + mopH - hh * 0.1, hw * 1.92, hh * 0.1);
+          ctx.fillRect(headX - capX, mopY + mopFullH - hh * 0.1, capX * 2, hh * 0.1);
           for (const [ox, dh] of [
             [-0.55, 0.36],
             [0.02, 0.5],
             [0.55, 0.32],
           ] as const) {
-            ctx.fillRect(headX + ox * hw - hw * 0.05, mopY + mopH - dh * hh, hw * 0.1, dh * hh);
+            ctx.fillRect(headX + ox * hw - hw * 0.05, mopY + mopFullH - dh * hh, hw * 0.1, dh * hh);
           }
           if (cover === 'free') {
             ctx.fillStyle = shade(hairCol, 10);
@@ -3925,7 +4048,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           // The hem step chip rides OVER the shade — a nearer strand.
           ctx.fillRect(
             headX - lead * hw * 0.5 - hw * 0.28,
-            mopY + mopH - hh * 0.06,
+            mopY + mopFullH - hh * 0.06,
             hw * 0.56,
             hh * 0.22,
           );
@@ -3933,7 +4056,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
             ctx.fillStyle = shade(hairCol, -22);
             ctx.fillRect(
               headX - lead * hw * 0.5 - hw * 0.28,
-              mopY + mopH + hh * 0.11,
+              mopY + mopFullH + hh * 0.11,
               hw * 0.56,
               hh * 0.05,
             );
@@ -3943,10 +4066,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         if (SWEEP) {
           // The sweep drops one long lock past the hem, trailing side.
           const lx = headX - lead * hw * 0.72 - hw * 0.15;
-          ctx.fillRect(lx, mopY + mopH - hh * 0.1, hw * 0.3, hh * 0.65);
+          ctx.fillRect(lx, mopY + mopFullH - hh * 0.1, hw * 0.3, hh * 0.65);
           if (!rig.hurt) {
             ctx.fillStyle = shade(hairCol, -18);
-            ctx.fillRect(lx + hw * 0.19, mopY + mopH - hh * 0.1, hw * 0.11, hh * 0.65);
+            ctx.fillRect(lx + hw * 0.19, mopY + mopFullH - hh * 0.1, hw * 0.11, hh * 0.65);
             ctx.fillStyle = hairCol;
           }
         }
@@ -3955,7 +4078,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           // the shag reads as layered tufts.
           for (let i = 0; i < 4; i++) {
             const bx = headX - hw * 0.66 + i * hw * 0.44;
-            const by = mopY + mopH - hh * 0.02;
+            const by = mopY + mopFullH - hh * 0.02;
             ctx.fillStyle = !rig.hurt && i % 2 === 1 ? shade(hairCol, -14) : hairCol;
             ctx.beginPath();
             ctx.moveTo(bx - hw * 0.16, by);
@@ -4018,10 +4141,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         const hemR = lead > 0 ? hemLead : hemTrail;
         const hemL = lead > 0 ? hemTrail : hemLead;
         ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.96, headY - hh * 0.98);
-        ctx.lineTo(headX + hw * 0.96, headY - hh * 0.98);
-        ctx.lineTo(headX + hw * 0.96, hemR);
-        ctx.lineTo(headX - hw * 0.96, hemL);
+        ctx.moveTo(headX - capX, headY - capTop);
+        ctx.lineTo(headX + capX, headY - capTop);
+        ctx.lineTo(headX + capX, hemR);
+        ctx.lineTo(headX - capX, hemL);
         ctx.closePath();
         ctx.fill();
         if (!rig.hurt) {
@@ -4029,10 +4152,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           // underside of the sweep, carrying its direction.
           ctx.fillStyle = shade(hairCol, -16);
           ctx.beginPath();
-          ctx.moveTo(headX + hw * 0.96, hemR - hh * 0.16);
-          ctx.lineTo(headX + hw * 0.96, hemR);
-          ctx.lineTo(headX - hw * 0.96, hemL);
-          ctx.lineTo(headX - hw * 0.96, hemL - hh * 0.16);
+          ctx.moveTo(headX + capX, hemR - hh * 0.16);
+          ctx.lineTo(headX + capX, hemR);
+          ctx.lineTo(headX - capX, hemL);
+          ctx.lineTo(headX - capX, hemL - hh * 0.16);
           ctx.closePath();
           ctx.fill();
           ctx.fillStyle = hairCol;
@@ -4051,16 +4174,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         // Jagged fringe: teeth biting down over the brow, every other
         // tooth shaded — layered shag, not a zigzag sticker.
         ctx.beginPath();
-        chamferRect(ctx, headX - hw * 0.96, headY - hh * 0.98, hw * 1.92, hh * 0.5, [
-          cut * 0.85,
-          cut * 0.85,
+        chamferRect(ctx, headX - capX, headY - capTop, capX * 2, hh * 0.5 + (capTop - hh * 0.98), [
+          capCut,
+          capCut,
           0,
           0,
         ]);
         ctx.fill();
         if (!rig.hurt) {
           ctx.fillStyle = shade(hairCol, -12);
-          ctx.fillRect(headX, headY - hh * 0.94, hw * 0.9, hh * 0.46);
+          ctx.fillRect(headX, headY - hh * 0.99, hw * 0.98, hh * 0.51);
           ctx.fillStyle = hairCol;
         }
         for (let i = 0; i < 4; i++) {
@@ -4078,10 +4201,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         if (crownFree) paintCrownSpikes();
       } else {
         // The classic fringe slab with its stepped notch trailing.
+        // Overhang: top and sides clear the skull; the brow hem holds
+        // its old line — the extra height rides above, not below.
+        const slabH = fringeH + (capTop - hh * 0.98);
         ctx.beginPath();
-        chamferRect(ctx, headX - hw * 0.96, headY - hh * 0.98, hw * 1.92, fringeH, [
-          cut * 0.85,
-          cut * 0.85,
+        chamferRect(ctx, headX - capX, headY - capTop, capX * 2, slabH, [
+          capCut,
+          capCut,
           0,
           0,
         ]);
@@ -4091,21 +4217,21 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           // shade, and two strand notches parting the brow line.
           ctx.save();
           ctx.beginPath();
-          chamferRect(ctx, headX - hw * 0.96, headY - hh * 0.98, hw * 1.92, fringeH, [
-            cut * 0.85,
-            cut * 0.85,
+          chamferRect(ctx, headX - capX, headY - capTop, capX * 2, slabH, [
+            capCut,
+            capCut,
             0,
             0,
           ]);
           ctx.clip();
           ctx.fillStyle = shade(hairCol, -12);
-          ctx.fillRect(headX, headY - hh * 0.98, hw * 0.96, fringeH);
+          ctx.fillRect(headX, headY - capTop, capX, slabH);
           ctx.fillStyle = shade(hairCol, -20);
-          ctx.fillRect(headX - hw * 0.96, headY - hh * 0.98 + fringeH - hh * 0.08, hw * 1.92, hh * 0.08);
+          ctx.fillRect(headX - capX, headY - capTop + slabH - hh * 0.08, capX * 2, hh * 0.08);
           for (const ox of [-0.38, 0.3] as const) {
             ctx.fillRect(
               headX + ox * hw - hw * 0.045,
-              headY - hh * 0.98 + fringeH - hh * 0.26,
+              headY - capTop + slabH - hh * 0.26,
               hw * 0.09,
               hh * 0.26,
             );

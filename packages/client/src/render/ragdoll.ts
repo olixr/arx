@@ -805,9 +805,11 @@ export function drawHumanoidRagdoll(
     // shows where the headwear allows it — a helmet stays seated on
     // the corpse, it never rolls away.
     if (!helmSt || helmSt.kind === 'circlet') {
+      // THE OVERHANG LAW rides into death too: the slab clears the
+      // skull's chamfered corners instead of leaving skin flares.
       ctx.fillStyle = look.hairColor;
       ctx.beginPath();
-      chamferRect(ctx, -hw * 0.96, -hh * 0.98, hw * 1.92, hh * 0.62, [cut * 0.85, cut * 0.85, 0, 0]);
+      chamferRect(ctx, -hw * 1.04, -hh * 1.05, hw * 2.08, hh * 0.69, [cut * 1.15, cut * 1.15, 0, 0]);
       ctx.fill();
     }
     if (helmSt) {

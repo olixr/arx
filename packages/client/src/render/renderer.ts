@@ -15172,10 +15172,19 @@ export class Renderer {
 
   private paintOutlined(item: DrawItem): void {
     const b = item.body!;
+    // DEVICE-PIXEL LAW (same as bakeOutlineRing): the scratches work in
+    // device pixels. Rasterizing at 1× CSS resolution and letting the
+    // dpr-transformed main ctx upscale the bitmap rendered every living
+    // body at HALF resolution on retina — the "soft characters in a
+    // crisp world" bug. Scratch A now rasterizes at dpr and the final
+    // blit maps texels 1:1, so the sprite is as sharp as direct paint.
+    const dpr = window.devicePixelRatio || 1;
     const r = Math.max(1.25, this.camera.scale * 0.04);
     const m = Math.ceil(r) + 2;
-    const w = Math.ceil(b.w) + m * 2;
-    const h = Math.ceil(b.h) + m * 2;
+    const wCss = Math.ceil(b.w) + m * 2;
+    const hCss = Math.ceil(b.h) + m * 2;
+    const w = Math.ceil(wCss * dpr);
+    const h = Math.ceil(hCss * dpr);
     if (this.outlineA.width < w) this.outlineA.width = this.outlineB.width = w;
     if (this.outlineA.height < h) this.outlineA.height = this.outlineB.height = h;
     const a = this.outlineACtx;
@@ -15187,14 +15196,14 @@ export class Renderer {
     // border, and the source-in tint turns the bleed into a faint dark
     // rectangle riding the sprite (the "corner line" bug on chickens
     // after any cow died).
-    const apron = Math.ceil(r) + 4;
+    const apron = Math.ceil(r * dpr) + 4;
     const cw = Math.min(this.outlineA.width, w + apron);
     const ch = Math.min(this.outlineA.height, h + apron);
     // 1. The entity paints itself into scratch A, believing it is the
     // frame — the main ctx is swapped out from under its closures.
     a.clearRect(0, 0, cw, ch);
     a.save();
-    a.translate(m - b.x, m - b.y);
+    a.setTransform(dpr, 0, 0, dpr, (m - b.x) * dpr, (m - b.y) * dpr);
     const prev = this.ctx;
     this.ctx = a;
     try {
@@ -15214,8 +15223,8 @@ export class Renderer {
     // ≤0.5px, invisible at the ring's 1.3-3.2px range; the per-entity
     // jitter law only bars quantizing the final smooth-camera blit,
     // which stays fractional below.
-    const ri = Math.max(1, Math.round(r));
-    const rd = Math.max(1, Math.round(r * 0.71));
+    const ri = Math.max(1, Math.round(r * dpr));
+    const rd = Math.max(1, Math.round(r * 0.71 * dpr));
     o.clearRect(0, 0, cw, ch);
     for (const [tx, ty] of Renderer.OUTLINE_TAPS) {
       const diag = tx !== 0 && ty !== 0;
@@ -15227,9 +15236,10 @@ export class Renderer {
     o.fillStyle = '#241a2e';
     o.fillRect(0, 0, w, h);
     o.globalCompositeOperation = 'source-over';
-    // 3. Ring first, sprite on top.
-    this.ctx.drawImage(this.outlineB, 0, 0, w, h, b.x - m, b.y - m, w, h);
-    this.ctx.drawImage(this.outlineA, 0, 0, w, h, b.x - m, b.y - m, w, h);
+    // 3. Ring first, sprite on top. Destination sized w/dpr so the
+    // dpr-transformed main ctx lands device texels 1:1 — no resample.
+    this.ctx.drawImage(this.outlineB, 0, 0, w, h, b.x - m, b.y - m, w / dpr, h / dpr);
+    this.ctx.drawImage(this.outlineA, 0, 0, w, h, b.x - m, b.y - m, w / dpr, h / dpr);
   }
 
   /**

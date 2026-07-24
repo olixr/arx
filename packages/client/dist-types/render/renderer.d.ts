@@ -1352,6 +1352,16 @@ export declare class Renderer {
     /** Overlay lifetime per fx kind, ms (telegraph/field ride their fuse). */
     private fxLife;
     /**
+     * Jagged energy forks biting outward from a strike point — the
+     * shared "after-zap" vocabulary. The caller sets stroke style and
+     * width, opens ONE path, and strokes after; each fork is a boltPath
+     * with its own kink seed, so feeding a re-kinking clock seed makes
+     * the whole splash writhe frame to frame. `baseA` + `arc` aim the
+     * splay (2π = full radial burst); the 0.85 vertical squeeze keeps
+     * the splash reading at body height, not flat on the turf.
+     */
+    private fxForks;
+    /**
      * The ring silhouette pass novas and blasts expand with. Every
      * family is a three-layer read — dark pressure band under, identity
      * silhouette over, hot inner edge — and the rim SHEDS: sparks fly
@@ -1367,13 +1377,28 @@ export declare class Renderer {
      */
     private fxDebris;
     /**
-     * The SIGNATURE layer — each ability's bespoke set-piece, drawn over
-     * the shared kind grammar. This is where a fire nova stops being "a
-     * ring, but orange": the pillar climbs, the spikes erupt, the rift
-     * tears open. Everything stays flat and blocky; drama comes from
-     * staged geometry, not gradients.
+     * The signature layer, GROUND HALF — the parts of each ability's
+     * bespoke set-piece that lie FLAT on the turf: light pools, spiral
+     * arms, wheeling rays, fissures, petals, root-bites. Painted in the
+     * under pass so bodies stand ON the mark. The standing parts of the
+     * same motifs (spears, bars, pillars, rifts, rain) live in
+     * collectMotifVolumes and y-sort with the world.
+     *
+     * SHARED-SEED LAW: when a motif splits one element across both
+     * halves (a spear's root-bite here, its standing blade in the
+     * volume pass), both walks consume the seeded PRNG identically per
+     * element so the halves always agree where the element stands.
      */
-    private fxMotif;
+    private fxMotifGround;
+    /**
+     * The signature layer, VOLUME HALF — every standing part of a motif
+     * becomes its own y-sorted world item anchored where it touches the
+     * ground: spears and cage bars wrap AROUND bodies, rain falls past
+     * shoulders, wisps weave between fighters, the rift swallows what
+     * walks behind it. This is what makes a spell feel cast IN the
+     * world instead of printed on the screen.
+     */
+    private collectMotifVolumes;
     /**
      * One lingering ground decal — the mark the hit leaves behind, in
      * three acts. `t` is the whole 5s life; `active` is hot aftermath
@@ -1387,11 +1412,34 @@ export declare class Renderer {
      * telegraph circles — painted under the y-sorted world so bodies
      * stand ON them. Pruning happens in the overlay pass.
      */
+    /**
+     * The GROUND stratum of combat FX — everything a spell lays flat on
+     * the turf paints here, UNDER the y-sorted world: lingering decals,
+     * telegraph sigils, hazard floors, and every expanding ring, light
+     * wash, and crescent sweep. Bodies stand ON these marks — the far
+     * rim of a nova hides behind the caster, the near rim rolls out in
+     * front of their feet. That one fact seats the magic in the world.
+     */
     private drawGroundFx;
     /**
-     * Overlay combat FX — every ability moment as a staged presentation:
-     * flash, body, rim, debris, decal, glow. All silhouettes stay blocky
-     * (jagged polygons, hard rects) — the world's magic is chunky too.
+     * The VOLUME stratum of combat FX — kind-level standing matter,
+     * collected into the world y-sort: the blast's fireball body, the
+     * nova's vertical light kick, buff runes orbiting the caster's
+     * body, summon glyphs riding their ring, reaction stars at chest
+     * height, the tall furniture standing in hazard fields — plus every
+     * motif's volume half. Each element anchors at its OWN ground point
+     * so spells wrap around bodies instead of covering them.
+     */
+    private collectFxVolumes;
+    /**
+     * The AIR stratum of combat FX — the overlay pass. After the v3
+     * split this owns only what genuinely flies ABOVE the scene: the
+     * traveling line effects (dash streaks, lightning, beam corridors)
+     * and their impact glints. Everything a spell lays on the ground
+     * paints in drawGroundFx; everything standing IN the world y-sorts
+     * via collectFxVolumes. This pass also runs the fx lifecycle:
+     * expiry, spawn-moment debris/decals, and the scheduled aftermath
+     * beats — one place owns the clock.
      */
     private drawCombatFx;
     /** An annular sector (arc band) path in ground perspective. */
