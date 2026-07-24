@@ -2528,6 +2528,49 @@ export class GameServer {
   }
 
   /**
+   * Bestiary edit applied live: future spawns and respawns resolve
+   * through NPCS at call time, so replacing the registry is enough
+   * for them — this retires the STANDING bodies of the edited kind
+   * (silent removal, respawn timers zeroed) so their spawn points
+   * stand fresh ones up next tick with the new def. Actor bodies are
+   * skipped: their combat defs ride actorDefs, not the bestiary.
+   */
+  reloadNpcDef(id: string): void {
+    const doomed: Array<{ eid: EntityId; spawnIndex: number }> = [];
+    for (const [eid, npc] of this.npcs) {
+      if (npc.def.id !== id || this.actors.has(eid)) continue;
+      doomed.push({ eid, spawnIndex: npc.spawnIndex });
+    }
+    for (const d of doomed) {
+      this.removeFromChunks(d.eid);
+      this.ecs.destroy(d.eid);
+      const spawn = d.spawnIndex >= 0 ? this.spawnPoints[d.spawnIndex] : undefined;
+      if (spawn) {
+        spawn.eid = null;
+        spawn.respawnAt = 0;
+      }
+    }
+  }
+
+  /**
+   * Actor-def edit applied live: swap the registry entry and retire
+   * the standing body at every post wearing that slug — tickSpawns
+   * re-reads actorDefs and stands the new version up next tick. A
+   * null def removes the slug (tool-born actor deleted).
+   */
+  reloadActorDef(slug: string, def: NpcActorDef | null): void {
+    if (def) this.actorDefs.set(slug, def);
+    else this.actorDefs.delete(slug);
+    for (const post of this.actorSpawnPoints) {
+      if (post.actor !== slug || post.eid === null) continue;
+      this.removeFromChunks(post.eid);
+      this.ecs.destroy(post.eid);
+      post.eid = null;
+      post.respawnAt = 0;
+    }
+  }
+
+  /**
    * The live pick lists for dev tooling: bestiary archetypes from
    * content, actors and routines from the DB-loaded registries — the
    * same truth the running world spawns from.
@@ -2545,6 +2588,21 @@ export class GameServer {
         ...(a.title ? { title: a.title } : {}),
       })),
       routines: [...this.routineDefs.keys()],
+    };
+  }
+
+  /** Every live spawn slot and actor post — the CMS linkage truth. */
+  spawnSiteSnapshot(): {
+    npcs: Array<{ npc: string; x: number; y: number }>;
+    actors: Array<{ actor: string; x: number; y: number }>;
+  } {
+    return {
+      npcs: this.spawnPoints
+        .filter((s) => s.active)
+        .map((s) => ({ npc: s.npc, x: Math.round(s.x), y: Math.round(s.y) })),
+      actors: this.actorSpawnPoints
+        .filter((a) => a.active)
+        .map((a) => ({ actor: a.actor, x: a.x, y: a.y })),
     };
   }
 

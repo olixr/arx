@@ -844,3 +844,31 @@ export function validateLootTables(tables: readonly LootTableDef[]): void {
 validateLootTables(defs);
 
 export const LOOT_TABLES: ReadonlyMap<string, LootTableDef> = new Map(defs.map((t) => [t.id, t]));
+
+/** The authored tables exactly as shipped — the CMS revert target. */
+export const AUTHORED_LOOT_TABLES: ReadonlyMap<string, LootTableDef> = new Map(
+  defs.map((t) => [t.id, t]),
+);
+
+/**
+ * THE CMS HOOK: repopulate the live loot registry in place. rollLoot
+ * resolves tables through this map on every roll, so a replaced set
+ * pays out on the very next kill — no restart, no captured state.
+ * Callers validate the FULL candidate set first (validateLootTables
+ * throws on dangling refs and cycles); this function trusts its input.
+ */
+export function replaceLootTables(next: Iterable<LootTableDef>): void {
+  const map = LOOT_TABLES as Map<string, LootTableDef>;
+  map.clear();
+  for (const t of next) map.set(t.id, t);
+}
+
+/** validateLootTables, collecting instead of throwing — the CMS gate. */
+export function lootTableErrors(tables: readonly LootTableDef[]): string[] {
+  try {
+    validateLootTables(tables);
+    return [];
+  } catch (err) {
+    return [(err as Error).message];
+  }
+}

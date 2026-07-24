@@ -3,18 +3,27 @@ import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { WebSocketServer } from 'ws';
 import {
+  AUTHORED_LOOT_TABLES,
+  AUTHORED_NPCS,
   DIALOGUES,
   NPC_ACTORS,
   ROUTINES,
   buildBramblewick,
   buildGloomhollow,
   buildHollowStair,
+  lootTableErrors,
+  replaceLootTables,
+  replaceNpcDefs,
+  validateNpcDef,
   zoneFromJson,
+  type LootTableDef,
+  type NpcDef,
   type ZoneDef,
   type ZoneJson,
 } from '@devcraft/content';
 import { config } from './config.js';
 import { AccountStore } from './db/accounts.js';
+import { loadContentDocs, seedContentDocs } from './db/contentDocs.js';
 import { createMapsApi } from './dev/mapsApi.js';
 import { openDb } from './db/db.js';
 import { loadDialogues, seedDialogues } from './db/dialogues.js';
@@ -53,6 +62,54 @@ try {
 
 const db = openDb();
 const accounts = new AccountStore(db);
+
+// Bestiary + loot tables, DB-first under the two-hash truth law: the
+// shipped registries seed content_docs, the runtime reads BACK from
+// the DB, and the live module maps are repopulated — every consumer
+// resolves through them at call time. Invalid docs are reported and
+// the authored def stands in, so a bad tool edit can't brick a boot.
+{
+  const npcSeed = seedContentDocs(
+    db,
+    'npc',
+    [...AUTHORED_NPCS.values()].map((d) => ({ id: d.id, doc: d })),
+  );
+  const lootSeed = seedContentDocs(
+    db,
+    'loot',
+    [...AUTHORED_LOOT_TABLES.values()].map((t) => ({ id: t.id, doc: t })),
+  );
+  const lootDocs = loadContentDocs(db, 'loot');
+  const lootDefs = lootDocs.map((d) => d.doc as LootTableDef);
+  const lootProblems = lootTableErrors(lootDefs);
+  if (lootProblems.length > 0) {
+    console.warn(`[content] DB loot tables invalid (${lootProblems[0]}) — authored set stands`);
+  } else {
+    replaceLootTables(lootDefs);
+  }
+  const lootIds = new Set((lootProblems.length > 0 ? [...AUTHORED_LOOT_TABLES.keys()] : lootDefs.map((t) => t.id)));
+  const npcDocs = loadContentDocs(db, 'npc');
+  const npcIds = new Set(npcDocs.map((d) => d.id));
+  const goodNpcs: NpcDef[] = [];
+  for (const docRow of npcDocs) {
+    const errors = validateNpcDef(docRow.doc, { lootTables: lootIds, npcIds });
+    if (errors.length > 0) {
+      console.warn(`[content] DB npc '${docRow.id}' invalid (${errors[0]}) — authored def stands`);
+      const authored = AUTHORED_NPCS.get(docRow.id);
+      if (authored) goodNpcs.push(authored);
+    } else {
+      goodNpcs.push(docRow.doc as NpcDef);
+    }
+  }
+  replaceNpcDefs(goodNpcs);
+  console.log(
+    `[content] npcs: ${goodNpcs.length} loaded ` +
+      `(+${npcSeed.added} ~${npcSeed.updated} !${npcSeed.kept} -${npcSeed.removed} =${npcSeed.unchanged}) · ` +
+      `loot tables: ${lootDefs.length} ` +
+      `(+${lootSeed.added} ~${lootSeed.updated} !${lootSeed.kept} -${lootSeed.removed} =${lootSeed.unchanged})`,
+  );
+}
+
 const world = new WorldSource(config.worldSeed, zones);
 for (const built of accounts.loadBuiltTiles()) {
   world.registerBuilt(built.tx, built.ty, built.tile, built.owner, built.prevTile);
@@ -91,7 +148,7 @@ for (const zone of zones) {
 }
 console.log(
   `[npc] actors: ${actorLoad.actors.length} loaded ` +
-    `(+${actorSync.added} ~${actorSync.updated} -${actorSync.removed} =${actorSync.unchanged})`,
+    `(+${actorSync.added} ~${actorSync.updated} !${actorSync.kept} -${actorSync.removed} =${actorSync.unchanged})`,
 );
 
 // Dialogue trees — THE DATABASE IS THE TRUTH. Shipped JSON seeds it
@@ -111,7 +168,7 @@ game.start();
 // One shared http server: the WebSocket rides it at /ws, and the dev
 // maps API (the map editor's save/load/hot-reload wire) answers under
 // /dev/maps on the same port.
-const mapsApi = createMapsApi(game, builtinZones);
+const mapsApi = createMapsApi(game, builtinZones, db);
 const httpServer = createServer((req, res) => {
   mapsApi(req, res)
     .then((handled) => {

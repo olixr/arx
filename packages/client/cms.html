@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DevCraft Content Studio</title>
+    <link rel="stylesheet" href="/src/cms/cms.css" />
+  </head>
+  <body>
+    <div id="cms">
+      <header id="topbar">
+        <div class="brand">DevCraft <span>Content Studio</span></div>
+        <nav id="rail-top"></nav>
+        <div class="group push-right">
+          <a class="studio-link" href="/editor.html" title="Open the map editor">Map Studio ↗</a>
+          <span id="server-pill" class="pill">…</span>
+        </div>
+      </header>
+      <div id="main">
+        <section id="list-col">
+          <div id="list-head">
+            <input id="list-search" type="search" placeholder="Search…  (/)" />
+            <button id="btn-new-entry" class="primary" title="Create a new entry in this section">New</button>
+          </div>
+          <div id="list-rows"></div>
+        </section>
+        <section id="detail-col">
+          <div id="detail-body">
+            <div class="empty-state">
+              <p class="muted">Pick an entry on the left — or create a new one.</p>
+            </div>
+          </div>
+        </section>
+        <aside id="linkage-col"></aside>
+      </div>
+      <footer id="statusbar">
+        <span id="st-hint" class="hint"></span>
+        <span id="st-state"></span>
+      </footer>
+    </div>
+    <dialog id="modal"><div id="modal-body"></div></dialog>
+    <div id="toast"></div>
+    <script type="module" src="/src/cms/cms.ts"></script>
+  </body>
+</html>

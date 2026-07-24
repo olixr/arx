@@ -25,6 +25,8 @@ export interface NpcActorSyncResult {
   updated: number;
   removed: number;
   unchanged: number;
+  /** Tool-owned rows the seed respected (the dialogues two-hash law). */
+  kept: number;
 }
 
 /** Stable content hash of a def's interchange JSON. */
@@ -85,71 +87,100 @@ function deleteChildren(db: DatabaseSync, slug: string): void {
   }
 }
 
-/** Reconcile authored defs into the DB. Content is the source of truth. */
+/** Write one actor's rows (parent upsert + children replace). */
+function writeActorRows(
+  db: DatabaseSync,
+  actor: NpcActorDef,
+  hash: string,
+  authoredHash: string | null,
+  keepAuthored: boolean,
+): void {
+  db.prepare(
+    `INSERT INTO npc_actors
+      (slug, name, title, examine, disposition, protection, model_kind, creature_id, look,
+       dialogue_id, shop_id, content_hash, authored_hash, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(slug) DO UPDATE SET
+       name = excluded.name, title = excluded.title, examine = excluded.examine,
+       disposition = excluded.disposition, protection = excluded.protection,
+       model_kind = excluded.model_kind,
+       creature_id = excluded.creature_id, look = excluded.look,
+       dialogue_id = excluded.dialogue_id, shop_id = excluded.shop_id,
+       content_hash = excluded.content_hash,
+       authored_hash = ${keepAuthored ? 'npc_actors.authored_hash' : 'excluded.authored_hash'},
+       updated_at = excluded.updated_at`,
+  ).run(
+    actor.id,
+    actor.name,
+    actor.title ?? null,
+    actor.examine ?? null,
+    actor.disposition,
+    actor.protection ?? null,
+    actor.model.kind,
+    actor.model.kind === 'creature' ? actor.model.creature : null,
+    actor.model.kind === 'humanoid' ? JSON.stringify(actor.model.look) : null,
+    actor.dialogue ?? null,
+    actor.shop ?? null,
+    hash,
+    authoredHash,
+    Date.now(),
+  );
+  deleteChildren(db, actor.id);
+  insertChildren(db, actor);
+}
+
+/**
+ * Reconcile authored defs into the DB under the dialogues two-hash
+ * law: pure seeds flow, tool-owned rows are kept (their authored twin
+ * is recorded so they stop being re-weighed), and only untouched
+ * seeds are pruned when their authored def retires.
+ */
 export function syncNpcActors(
   db: DatabaseSync,
   actors: readonly NpcActorDef[],
 ): NpcActorSyncResult {
-  const result: NpcActorSyncResult = { added: 0, updated: 0, removed: 0, unchanged: 0 };
+  const result: NpcActorSyncResult = {
+    added: 0,
+    updated: 0,
+    removed: 0,
+    unchanged: 0,
+    kept: 0,
+  };
   db.exec('BEGIN');
   try {
-    const existing = new Map<string, string>();
-    for (const row of db.prepare('SELECT slug, content_hash FROM npc_actors').all() as Array<{
-      slug: string;
-      content_hash: string;
-    }>) {
-      existing.set(row.slug, row.content_hash);
+    const existing = new Map<string, { content: string; authored: string | null }>();
+    for (const row of db
+      .prepare('SELECT slug, content_hash, authored_hash FROM npc_actors')
+      .all() as Array<{ slug: string; content_hash: string; authored_hash: string | null }>) {
+      existing.set(row.slug, { content: row.content_hash, authored: row.authored_hash });
     }
-
-    const now = Date.now();
-    const upsert = db.prepare(
-      `INSERT INTO npc_actors
-        (slug, name, title, examine, disposition, protection, model_kind, creature_id, look,
-         dialogue_id, shop_id, content_hash, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(slug) DO UPDATE SET
-         name = excluded.name, title = excluded.title, examine = excluded.examine,
-         disposition = excluded.disposition, protection = excluded.protection,
-         model_kind = excluded.model_kind,
-         creature_id = excluded.creature_id, look = excluded.look,
-         dialogue_id = excluded.dialogue_id, shop_id = excluded.shop_id,
-         content_hash = excluded.content_hash, updated_at = excluded.updated_at`,
-    );
 
     for (const actor of actors) {
       const hash = actorHash(actor);
       const prev = existing.get(actor.id);
       existing.delete(actor.id);
-      if (prev === hash) {
+      if (!prev) {
+        writeActorRows(db, actor, hash, hash, false);
+        result.added++;
+      } else if (prev.authored === hash) {
         result.unchanged++;
-        continue;
+      } else if (prev.content === prev.authored) {
+        writeActorRows(db, actor, hash, hash, false);
+        result.updated++;
+      } else {
+        // Tool-owned: the DB wins; remember the new authored twin.
+        db.prepare('UPDATE npc_actors SET authored_hash = ? WHERE slug = ?').run(hash, actor.id);
+        result.kept++;
       }
-      upsert.run(
-        actor.id,
-        actor.name,
-        actor.title ?? null,
-        actor.examine ?? null,
-        actor.disposition,
-        actor.protection ?? null,
-        actor.model.kind,
-        actor.model.kind === 'creature' ? actor.model.creature : null,
-        actor.model.kind === 'humanoid' ? JSON.stringify(actor.model.look) : null,
-        actor.dialogue ?? null,
-        actor.shop ?? null,
-        hash,
-        now,
-      );
-      deleteChildren(db, actor.id);
-      insertChildren(db, actor);
-      if (prev === undefined) result.added++;
-      else result.updated++;
     }
 
-    // Actors gone from content leave the DB too — a retired slug must
-    // not keep spawning from stale rows.
-    for (const slug of existing.keys()) {
-      db.prepare('DELETE FROM npc_actors WHERE slug = ?').run(slug);
-      result.removed++;
+    // A retired authored actor deletes only its untouched pure seed;
+    // tool-created or tool-edited rows survive.
+    for (const [slug, prev] of existing) {
+      if (prev.authored !== null && prev.content === prev.authored) {
+        db.prepare('DELETE FROM npc_actors WHERE slug = ?').run(slug);
+        result.removed++;
+      }
     }
 
     db.exec('COMMIT');
@@ -158,6 +189,63 @@ export function syncNpcActors(
     throw err;
   }
   return result;
+}
+
+/**
+ * Tool write: content moves, authored stays — the row becomes owned.
+ * Returns the validator-normalized def (the index-stability law fills
+ * Look defaults) — callers register THAT, never the raw input.
+ */
+export function importNpcActor(db: DatabaseSync, raw: unknown): NpcActorDef {
+  const result = validateNpcActor(raw);
+  if (!result.ok) throw new Error(result.errors.join('; '));
+  const actor = result.actor;
+  db.exec('BEGIN');
+  try {
+    writeActorRows(db, actor, actorHash(actor), null, true);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  return actor;
+}
+
+/**
+ * Revert an actor: with its authored def, the row becomes a pure seed
+ * again; a tool-born slug (no authored twin) is deleted outright.
+ */
+export function revertNpcActor(
+  db: DatabaseSync,
+  slug: string,
+  authored: NpcActorDef | null,
+): 'reverted' | 'deleted' {
+  db.exec('BEGIN');
+  try {
+    if (authored) {
+      const hash = actorHash(authored);
+      writeActorRows(db, authored, hash, hash, false);
+      db.exec('COMMIT');
+      return 'reverted';
+    }
+    deleteChildren(db, slug);
+    db.prepare('DELETE FROM npc_actors WHERE slug = ?').run(slug);
+    db.exec('COMMIT');
+    return 'deleted';
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}
+
+/** Slugs whose rows diverged from their authored twin (CMS badges). */
+export function editedActorSlugs(db: DatabaseSync): Set<string> {
+  const rows = db
+    .prepare(
+      'SELECT slug FROM npc_actors WHERE authored_hash IS NULL OR content_hash != authored_hash',
+    )
+    .all() as Array<{ slug: string }>;
+  return new Set(rows.map((r) => r.slug));
 }
 
 export interface NpcActorLoadResult {

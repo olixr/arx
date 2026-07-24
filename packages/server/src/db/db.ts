@@ -419,6 +419,26 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (character_id, recipe)
   );
   `,
+  // 24 — the content CMS: bestiary defs and loot tables become
+  // DB-first docs under the dialogues two-hash truth law (content_hash
+  // = what the row holds, authored_hash = the shipped JSON that last
+  // seeded it; divergence marks a tool-owned row that re-seeds never
+  // clobber). Docs are whole JSON defs — the validators in content/
+  // are the schema. npc_actors joins the same law via authored_hash
+  // (existing rows are pure seeds, so it starts equal to content_hash).
+  `
+  CREATE TABLE content_docs (
+    kind TEXT NOT NULL,
+    id TEXT NOT NULL,
+    doc TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    authored_hash TEXT,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (kind, id)
+  );
+  ALTER TABLE npc_actors ADD COLUMN authored_hash TEXT;
+  UPDATE npc_actors SET authored_hash = content_hash;
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

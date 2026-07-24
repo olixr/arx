@@ -650,6 +650,106 @@ const defs: NpcDef[] = [
 
 export const NPCS: ReadonlyMap<string, NpcDef> = new Map(defs.map((d) => [d.id, d]));
 
+/** The authored bestiary exactly as shipped — the CMS revert target. */
+export const AUTHORED_NPCS: ReadonlyMap<string, NpcDef> = new Map(defs.map((d) => [d.id, d]));
+
+/**
+ * THE CMS HOOK: repopulate the live bestiary in place. Every runtime
+ * consumer resolves through NPCS.get() at call time, so future spawns
+ * and respawns read the new truth immediately; bodies already standing
+ * keep their captured def until they respawn (the server despawns the
+ * edited kind to hurry that along). Content-as-code remains the seed —
+ * this only ever runs against validated DB-loaded docs.
+ */
+export function replaceNpcDefs(next: Iterable<NpcDef>): void {
+  const map = NPCS as Map<string, NpcDef>;
+  map.clear();
+  for (const d of next) map.set(d.id, d);
+}
+
+/**
+ * JSON-shape validator for a bestiary doc — the DB-first gate. Field
+ * errors name the field; reference checks (loot tables, split
+ * children) run against the caller-provided id sets so a whole
+ * candidate registry can validate as one world.
+ */
+export function validateNpcDef(
+  doc: unknown,
+  refs: { lootTables: ReadonlySet<string>; npcIds: ReadonlySet<string> },
+): string[] {
+  const errors: string[] = [];
+  if (typeof doc !== 'object' || doc === null) return ['doc is not an object'];
+  const d = doc as Record<string, unknown>;
+  const need = (field: string, type: 'string' | 'number'): void => {
+    if (typeof d[field] !== type) errors.push(`${field} must be a ${type}`);
+  };
+  need('id', 'string');
+  need('name', 'string');
+  need('color', 'string');
+  for (const f of [
+    'level', 'maxHp', 'damage', 'attackRange', 'attackCooldownTicks', 'aggroRange',
+    'leashRange', 'speed', 'xpReward', 'respawnSec', 'radius',
+  ]) {
+    need(f, 'number');
+    if (typeof d[f] === 'number' && (!Number.isFinite(d[f] as number) || (d[f] as number) < 0)) {
+      errors.push(`${f} must be a non-negative number`);
+    }
+  }
+  if (typeof d.id === 'string' && !/^[a-z][a-z0-9_]*$/.test(d.id)) {
+    errors.push('id must be lowercase [a-z0-9_]');
+  }
+  if (!Array.isArray(d.loot)) {
+    errors.push('loot must be an array of loot-table ids');
+  } else {
+    for (const t of d.loot) {
+      if (typeof t !== 'string' || !refs.lootTables.has(t)) {
+        errors.push(`loot table '${String(t)}' does not exist`);
+      }
+    }
+  }
+  if (d.hitHeight !== undefined && typeof d.hitHeight !== 'number') {
+    errors.push('hitHeight must be a number');
+  }
+  if (d.special !== undefined) {
+    const s = d.special as Record<string, unknown>;
+    if (typeof s?.ability !== 'string' || typeof s?.everyTicks !== 'number') {
+      errors.push('special needs {ability: string, everyTicks: number}');
+    }
+  }
+  if (d.ranged !== undefined) {
+    const r = d.ranged as Record<string, unknown>;
+    if (typeof r?.range !== 'number' || typeof r?.projectileSpeed !== 'number') {
+      errors.push('ranged needs {range: number, projectileSpeed: number}');
+    }
+  }
+  if (d.splitInto !== undefined) {
+    const s = d.splitInto as Record<string, unknown>;
+    if (typeof s?.npc !== 'string' || !refs.npcIds.has(s.npc as string)) {
+      errors.push(`splitInto.npc '${String((s as { npc?: unknown })?.npc)}' does not exist`);
+    }
+    if (typeof s?.count !== 'number' || (s.count as number) < 1) {
+      errors.push('splitInto.count must be ≥ 1');
+    }
+  }
+  if (d.produce !== undefined) {
+    const p = d.produce as Record<string, unknown>;
+    if (typeof p?.item !== 'string' || typeof p?.cooldownSec !== 'number' || typeof p?.xp !== 'number') {
+      errors.push('produce needs {item, cooldownSec, xp}');
+    }
+  }
+  if (d.lays !== undefined) {
+    const p = d.lays as Record<string, unknown>;
+    if (typeof p?.item !== 'string' || typeof p?.minSec !== 'number' || typeof p?.maxSec !== 'number') {
+      errors.push('lays needs {item, minSec, maxSec, xp}');
+    }
+  }
+  for (const f of ['pounce'] as const) {
+    if (d[f] !== undefined && typeof d[f] !== 'boolean') errors.push(`${f} must be a boolean`);
+  }
+  if (d.pack !== undefined && typeof d.pack !== 'string') errors.push('pack must be a string');
+  return errors;
+}
+
 /**
  * ONE BESTIARY, EVERY TIER — scale a def to a target combat level.
  * Dungeon garrisons are the authored beasts re-issued at the key's

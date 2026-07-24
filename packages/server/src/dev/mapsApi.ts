@@ -2,16 +2,36 @@ import { mkdirSync } from 'node:fs';
 import { readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { DatabaseSync } from 'node:sqlite';
 import {
+  AUTHORED_LOOT_TABLES,
+  AUTHORED_NPCS,
+  ITEMS,
+  LOOT_TABLES,
+  NPCS,
+  NPC_ACTORS,
+  lootTableErrors,
   prefabFromJson,
   prefabToJson,
+  replaceLootTables,
+  replaceNpcDefs,
+  validateNpcDef,
   zoneFromJson,
   zoneToJson,
+  type LootTableDef,
+  type NpcActorDef,
+  type NpcDef,
   type PrefabJson,
   type ZoneDef,
   type ZoneJson,
 } from '@devcraft/content';
 import { config } from '../config.js';
+import {
+  importContentDoc,
+  loadContentDocs,
+  revertContentDoc,
+} from '../db/contentDocs.js';
+import { editedActorSlugs, importNpcActor, loadNpcActors, revertNpcActor } from '../db/npcActors.js';
 import type { GameServer } from '../game/gameServer.js';
 
 /**
@@ -46,6 +66,7 @@ export type MapsApiHandler = (req: IncomingMessage, res: ServerResponse) => Prom
 export function createMapsApi(
   game: GameServer,
   builtinZones: ReadonlyMap<string, ZoneDef>,
+  db: DatabaseSync,
 ): MapsApiHandler {
   const mapsDir = join(config.dataDir, 'maps');
 
@@ -97,7 +118,8 @@ export function createMapsApi(
       url.pathname.startsWith('/dev/maps/') ||
       url.pathname === '/dev/registry' ||
       url.pathname === '/dev/prefabs' ||
-      url.pathname.startsWith('/dev/prefabs/');
+      url.pathname.startsWith('/dev/prefabs/') ||
+      url.pathname.startsWith('/dev/content/');
     if (!isDev) return false;
 
     if (req.method === 'OPTIONS') {
@@ -112,6 +134,200 @@ export function createMapsApi(
     try {
       if (url.pathname === '/dev/registry' && req.method === 'GET') {
         sendJson(res, 200, game.registrySnapshot());
+        return true;
+      }
+
+      // ------------------------------------------------ content CMS
+      // Bestiary and loot tables are DB-first content_docs; actors
+      // ride their relational tables. Every write validates against
+      // the FULL candidate world, imports as a tool-owned row, swaps
+      // the live registry, and retires standing bodies so the world
+      // reflects the edit within a tick.
+
+      if (url.pathname === '/dev/content/npcs' && req.method === 'GET') {
+        const edited = new Set(
+          loadContentDocs(db, 'npc').filter((d) => d.edited).map((d) => d.id),
+        );
+        sendJson(res, 200, {
+          npcs: [...NPCS.values()].map((d) => ({
+            def: d,
+            edited: edited.has(d.id),
+            authored: AUTHORED_NPCS.has(d.id),
+          })),
+        });
+        return true;
+      }
+
+      const npcMatch = /^\/dev\/content\/npcs\/([^/]+)$/.exec(url.pathname);
+      if (npcMatch) {
+        const id = npcMatch[1]!;
+        if (req.method === 'PUT') {
+          let doc: NpcDef;
+          try {
+            doc = JSON.parse(await readBody(req)) as NpcDef;
+            if (doc.id !== id) throw new Error(`body id '${doc.id}' does not match URL '${id}'`);
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          const npcIds = new Set(NPCS.keys());
+          npcIds.add(id);
+          const errors = validateNpcDef(doc, {
+            lootTables: new Set(LOOT_TABLES.keys()),
+            npcIds,
+          });
+          if (errors.length > 0) {
+            sendJson(res, 400, { error: errors.join('; ') });
+            return true;
+          }
+          importContentDoc(db, 'npc', id, doc);
+          const next = new Map(NPCS);
+          next.set(id, doc);
+          replaceNpcDefs(next.values());
+          game.reloadNpcDef(id);
+          console.log(`[content] npc '${id}' saved + live`);
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const authored = AUTHORED_NPCS.get(id) ?? null;
+          const outcome = revertContentDoc(db, 'npc', id, authored);
+          const next = new Map(NPCS);
+          if (authored) next.set(id, authored);
+          else next.delete(id);
+          replaceNpcDefs(next.values());
+          game.reloadNpcDef(id);
+          console.log(`[content] npc '${id}' ${outcome}`);
+          sendJson(res, 200, { ok: true, outcome });
+          return true;
+        }
+      }
+
+      if (url.pathname === '/dev/content/loot' && req.method === 'GET') {
+        const edited = new Set(
+          loadContentDocs(db, 'loot').filter((d) => d.edited).map((d) => d.id),
+        );
+        sendJson(res, 200, {
+          tables: [...LOOT_TABLES.values()].map((t) => ({
+            def: t,
+            edited: edited.has(t.id),
+            authored: AUTHORED_LOOT_TABLES.has(t.id),
+          })),
+        });
+        return true;
+      }
+
+      const lootMatch = /^\/dev\/content\/loot\/([^/]+)$/.exec(url.pathname);
+      if (lootMatch) {
+        const id = lootMatch[1]!;
+        if (req.method === 'PUT') {
+          let doc: LootTableDef;
+          try {
+            doc = JSON.parse(await readBody(req)) as LootTableDef;
+            if (doc.id !== id) throw new Error(`body id '${doc.id}' does not match URL '${id}'`);
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          // Validate the whole world with the candidate swapped in —
+          // dangling refs and cycles surface here, not at roll time.
+          const candidate = new Map(LOOT_TABLES);
+          candidate.set(id, doc);
+          const errors = lootTableErrors([...candidate.values()]);
+          if (errors.length > 0) {
+            sendJson(res, 400, { error: errors.join('; ') });
+            return true;
+          }
+          importContentDoc(db, 'loot', id, doc);
+          replaceLootTables(candidate.values());
+          console.log(`[content] loot table '${id}' saved + live`);
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const authored = AUTHORED_LOOT_TABLES.get(id) ?? null;
+          const candidate = new Map(LOOT_TABLES);
+          if (authored) candidate.set(id, authored);
+          else candidate.delete(id);
+          const errors = lootTableErrors([...candidate.values()]);
+          if (errors.length > 0) {
+            sendJson(res, 400, {
+              error: `cannot remove — still referenced: ${errors[0]}`,
+            });
+            return true;
+          }
+          const outcome = revertContentDoc(db, 'loot', id, authored);
+          replaceLootTables(candidate.values());
+          console.log(`[content] loot table '${id}' ${outcome}`);
+          sendJson(res, 200, { ok: true, outcome });
+          return true;
+        }
+      }
+
+      if (url.pathname === '/dev/content/actors' && req.method === 'GET') {
+        const load = loadNpcActors(db);
+        const edited = editedActorSlugs(db);
+        sendJson(res, 200, {
+          actors: load.actors.map((a) => ({
+            def: a,
+            edited: edited.has(a.id),
+            authored: NPC_ACTORS.has(a.id),
+          })),
+          errors: load.errors,
+        });
+        return true;
+      }
+
+      const actorMatch = /^\/dev\/content\/actors\/([^/]+)$/.exec(url.pathname);
+      if (actorMatch) {
+        const slug = actorMatch[1]!;
+        if (req.method === 'PUT') {
+          let raw: { id?: string };
+          try {
+            raw = JSON.parse(await readBody(req)) as { id?: string };
+            if (raw.id !== slug) throw new Error(`body id '${raw.id}' does not match URL '${slug}'`);
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          let actor: NpcActorDef;
+          try {
+            actor = importNpcActor(db, raw);
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          game.reloadActorDef(slug, actor);
+          console.log(`[content] actor '${slug}' saved + live`);
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const authored = NPC_ACTORS.get(slug) ?? null;
+          const outcome = revertNpcActor(db, slug, authored);
+          game.reloadActorDef(slug, authored);
+          console.log(`[content] actor '${slug}' ${outcome}`);
+          sendJson(res, 200, { ok: true, outcome });
+          return true;
+        }
+      }
+
+      if (url.pathname === '/dev/content/items' && req.method === 'GET') {
+        sendJson(res, 200, {
+          items: [...ITEMS.values()].map((i) => ({
+            id: i.id,
+            name: i.name,
+            value: i.value,
+            stackable: i.stackable,
+            slot: i.gear?.slot ?? i.equipSlot ?? null,
+            desc: i.desc ?? null,
+          })),
+        });
+        return true;
+      }
+
+      if (url.pathname === '/dev/content/usage' && req.method === 'GET') {
+        sendJson(res, 200, game.spawnSiteSnapshot());
         return true;
       }
 
