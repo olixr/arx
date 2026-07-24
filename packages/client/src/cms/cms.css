@@ -1958,3 +1958,120 @@ details[open] > summary {
     min-width: 0;
   }
 }
+
+/* ------------------------------------------------ POI bench */
+
+.poi-hero-glyph {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+}
+
+.form-grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 14px;
+  align-items: end;
+}
+
+.lbl {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ink-mid);
+  min-width: 0;
+}
+
+.poi-pool {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.poi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-m);
+  font-size: 11.5px;
+  min-width: 0;
+}
+
+.poi-card b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.poi-card-pic {
+  height: 132px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-3);
+  border-radius: var(--radius-s);
+  overflow: hidden;
+}
+
+.poi-card.add {
+  justify-content: center;
+  border-style: dashed;
+}
+
+.poi-garrison,
+.poi-cues {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.poi-grow {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-m);
+}
+
+.poi-grow .combo {
+  min-width: 170px;
+}
+
+.poi-grow input[type='number'] {
+  width: 58px;
+}
+
+.poi-grow input:not([type]) {
+  width: 130px;
+}
+
+.poi-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.poi-stage canvas {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--panel-3);
+}
+
+button.sm {
+  height: 24px;
+  padding: 0 9px;
+  font-size: 11px;
+}

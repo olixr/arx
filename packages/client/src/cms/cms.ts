@@ -1,4 +1,4 @@
-import type { LootTableDef, NpcActorDef, NpcDef } from '@devcraft/content';
+import type { LootTableDef, NpcActorDef, NpcDef, PoiDef } from '@devcraft/content';
 import { iconImg } from '../editor/editorIcons.js';
 import { itemIconUrl } from '../render/icons.js';
 import {
@@ -7,20 +7,23 @@ import {
   listItems,
   listLoot,
   listNpcs,
+  listPois,
   listZoneRects,
   revertActor,
   revertLoot,
   revertNpc,
+  revertPoi,
   saveActor,
   saveLoot,
   saveNpc,
+  savePoi,
   type Editable,
   type ItemRow,
   type SpawnSites,
   type ZoneRect,
 } from './api.js';
 import { openActorWizard } from './actorWizard.js';
-import { buildDetail, newLootTable, newNpcDef } from './editors.js';
+import { buildDetail, newLootTable, newNpcDef, newPoiDef } from './editors.js';
 import { creatureRender } from './gameRender.js';
 import { actorBust } from './portraits.js';
 
@@ -33,7 +36,7 @@ import { actorBust } from './portraits.js';
  * new numbers within a tick.
  */
 
-export type Section = 'npcs' | 'loot' | 'actors' | 'items';
+export type Section = 'npcs' | 'loot' | 'actors' | 'pois' | 'items';
 
 export interface CmsState {
   section: Section;
@@ -42,6 +45,9 @@ export interface CmsState {
   npcs: Array<Editable<NpcDef>>;
   loot: Array<Editable<LootTableDef>>;
   actors: Array<Editable<NpcActorDef>>;
+  pois: Array<Editable<PoiDef>>;
+  /** The live POI prefab library's ids (pool pickers + validation). */
+  poiPrefabIds: string[];
   items: ItemRow[];
   sites: SpawnSites;
   zones: ZoneRect[];
@@ -57,6 +63,8 @@ export const state: CmsState = {
   npcs: [],
   loot: [],
   actors: [],
+  pois: [],
+  poiPrefabIds: [],
   items: [],
   sites: { npcs: [], actors: [] },
   zones: [],
@@ -93,6 +101,10 @@ export async function reloadSection(section: Section): Promise<void> {
       const res = await listActors();
       state.actors = res.actors;
       for (const err of res.errors) toast(`DB actor invalid: ${err}`, 5000, 'error');
+    } else if (section === 'pois') {
+      const res = await listPois();
+      state.pois = res.pois;
+      state.poiPrefabIds = res.prefabIds;
     } else state.items = await listItems();
     state.online = true;
   } catch (err) {
@@ -104,10 +116,11 @@ export async function reloadSection(section: Section): Promise<void> {
 
 async function loadEverything(): Promise<void> {
   try {
-    const [npcs, loot, actors, items, sites, zones] = await Promise.all([
+    const [npcs, loot, actors, pois, items, sites, zones] = await Promise.all([
       listNpcs(),
       listLoot(),
       listActors(),
+      listPois(),
       listItems(),
       fetchSpawnSites(),
       listZoneRects(),
@@ -115,6 +128,8 @@ async function loadEverything(): Promise<void> {
     state.npcs = npcs;
     state.loot = loot;
     state.actors = actors.actors;
+    state.pois = pois.pois;
+    state.poiPrefabIds = pois.prefabIds;
     state.items = items;
     state.sites = sites;
     state.zones = zones;
@@ -170,6 +185,12 @@ const SECTIONS: Array<{ id: Section; label: string; icon: string; hint: string }
     hint: 'Named townsfolk — identity, disposition, wardrobe, and combat. Posted bodies respawn with the edit.',
   },
   {
+    id: 'pois',
+    label: 'Points of Interest',
+    icon: 'stamp',
+    hint: 'Wilderness archetypes — prefab pools, tier-scaled garrisons, and approach cues. Standing sites recompose on save.',
+  },
+  {
     id: 'items',
     label: 'Items',
     icon: 'picker',
@@ -215,7 +236,9 @@ function renderRail(): void {
           ? state.loot.length
           : s.id === 'actors'
             ? state.actors.length
-            : state.items.length;
+            : s.id === 'pois'
+              ? state.pois.length
+              : state.items.length;
     const b = document.createElement('button');
     b.className = 'rail-tab' + (state.section === s.id ? ' active' : '');
     b.appendChild(iconImg(s.icon, 15));
@@ -324,6 +347,20 @@ function listEntries(): ListEntry[] {
         group: cap(a.def.disposition),
       }));
   }
+  if (state.section === 'pois') {
+    return state.pois
+      .filter((p) => match(p.def.id, p.def.name, p.def.description ?? ''))
+      .sort((a, b) => a.def.tiers[0] - b.def.tiers[0] || a.def.name.localeCompare(b.def.name))
+      .map((p) => ({
+        id: p.def.id,
+        title: p.def.name,
+        sub: `${p.def.prefabs.length} prefab${p.def.prefabs.length === 1 ? '' : 's'} · ${p.def.garrison.length} garrison entr${p.def.garrison.length === 1 ? 'y' : 'ies'}`,
+        badge: `tiers ${p.def.tiers[0]}–${p.def.tiers[1]}`,
+        badgeEdited: p.edited,
+        ico: iconWrap(iconImg('stamp', 18)),
+        group: p.def.tiers[0] <= 1 ? 'Near frontier' : p.def.tiers[0] <= 3 ? 'Expedition line' : 'Deep frontier',
+      }));
+  }
   return state.items
     .filter((i) => match(i.id, i.name))
     .sort(
@@ -421,7 +458,9 @@ $('btn-new-entry').onclick = () => {
   const id = window.prompt(
     state.section === 'npcs'
       ? 'New creature id (lowercase, e.g. bog_fiend):'
-      : 'New loot table id (lowercase, e.g. bog_fiend_drops):',
+      : state.section === 'pois'
+        ? 'New archetype id (lowercase, e.g. bandit_watch):'
+        : 'New loot table id (lowercase, e.g. bog_fiend_drops):',
   );
   if (!id) return;
   if (!/^[a-z][a-z0-9_]*$/.test(id)) {
@@ -440,6 +479,12 @@ $('btn-new-entry').onclick = () => {
       return;
     }
     state.loot.push({ def: newLootTable(id), edited: true, authored: false });
+  } else if (state.section === 'pois') {
+    if (state.pois.some((p) => p.def.id === id)) {
+      toast(`'${id}' already exists`, 3000, 'error');
+      return;
+    }
+    state.pois.push({ def: newPoiDef(id), edited: true, authored: false });
   }
   select(id);
   markDirty();
@@ -472,7 +517,7 @@ window.addEventListener('beforeunload', (e) => {
 const hash = location.hash.replace(/^#/, '');
 if (hash) {
   const [sect, id] = hash.split('/') as [Section, string?];
-  if (['npcs', 'loot', 'actors', 'items'].includes(sect)) {
+  if (['npcs', 'loot', 'actors', 'pois', 'items'].includes(sect)) {
     state.section = sect;
     state.selectedId = id ?? null;
   }
@@ -511,6 +556,21 @@ export const persistence = {
     if (outcome === 'deleted') state.selectedId = null;
     renderAll();
     toast(outcome === 'reverted' ? 'restored the shipped table' : 'deleted', 3000, 'success');
+  },
+  async savePoiDef(def: PoiDef): Promise<void> {
+    await savePoi(def);
+    state.dirty = false;
+    await reloadSection('pois');
+    setSaveState('all changes saved');
+    toast(`'${def.name}' saved — standing sites recompose`, 3000, 'success');
+  },
+  async revertPoiDef(id: string): Promise<void> {
+    const { outcome } = await revertPoi(id);
+    state.dirty = false;
+    await reloadSection('pois');
+    if (outcome === 'deleted') state.selectedId = null;
+    renderAll();
+    toast(outcome === 'reverted' ? 'restored the shipped archetype' : 'deleted', 3000, 'success');
   },
   async saveActorDef(def: NpcActorDef): Promise<void> {
     await saveActor(def);

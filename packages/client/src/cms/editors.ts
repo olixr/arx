@@ -1,15 +1,20 @@
 import { DEFAULT_LOOK, STATUS_IDS, type Look } from '@devcraft/shared';
 import {
   ABILITIES,
+  DANGER_LAWS,
   DIALOGUES,
   RECIPES,
   SHOPS,
   actorCombatDef,
+  prefabFromJson,
+  zoneFromJson,
   type LootEntryDef,
   type LootTableDef,
   type NpcActorCombatStats,
   type NpcActorDef,
   type NpcDef,
+  type PoiDef,
+  type PoiGarrisonEntry,
 } from '@devcraft/content';
 import { itemIconUrl } from '../render/icons.js';
 import { iconImg } from '../editor/editorIcons.js';
@@ -18,6 +23,13 @@ import { creatureRender } from './gameRender.js';
 import { lookDesigner } from './lookDesigner.js';
 import { actorBust, actorFigure } from './portraits.js';
 import { entryShare, simulate, type SimAggregate } from './simulate.js';
+import { fetchPrefab, stagePoi, surveyFrontier } from './api.js';
+import {
+  drawPreviewPins,
+  prefabLayers,
+  renderLayersPreview,
+  type PreviewLayers,
+} from '../editor/preview.js';
 import {
   bar,
   bigSlider,
@@ -1966,6 +1978,589 @@ function itemDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
 
 // ------------------------------------------------------------ dispatch
 
+// ------------------------------------------------------------- POIs
+
+export function newPoiDef(id: string): PoiDef {
+  const pretty = id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return {
+    id,
+    name: pretty,
+    description: '',
+    tiers: [1, 3],
+    weight: 2,
+    prefabs: state.poiPrefabIds.slice(0, 1),
+    garrison: [],
+  };
+}
+
+/** The cue-scatter vocabulary the bench offers (Tile enum NAMES). */
+const CUE_TILES: ComboOption[] = [
+  { id: 'BonePile', label: 'Bone pile', sub: 'a warning underfoot' },
+  { id: 'BannerPole', label: 'Banner pole', sub: 'a claim staked' },
+  { id: 'Stump', label: 'Stump', sub: 'felled timber' },
+  { id: 'Campfire', label: 'Cold campfire', sub: 'someone stopped here' },
+  { id: 'Rock', label: 'Boulder', sub: 'a cairn stone' },
+];
+
+function poiPrefabOptions(): ComboOption[] {
+  return state.poiPrefabIds
+    .slice()
+    .sort()
+    .map((id) => ({ id, label: id.replace(/^poi_/, '').replace(/_/g, ' '), sub: id }));
+}
+
+function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
+  const row = state.pois.find((p) => p.def.id === id);
+  if (!row) {
+    body.appendChild(el('p', 'muted empty', `No archetype '${id}'.`));
+    return;
+  }
+  const draft: PoiDef = JSON.parse(JSON.stringify(row.def)) as PoiDef;
+  const tierLaw = (t: number) => DANGER_LAWS[Math.max(0, Math.min(DANGER_LAWS.length - 1, t))]!;
+
+  const pills = (): HTMLElement[] => [
+    pill(`tiers ${draft.tiers[0]}–${draft.tiers[1]}`, 'danger tiers this archetype rolls at'),
+    pill(`weight ${draft.weight}`, 'pick weight among tier-eligible archetypes', 'brass'),
+    pill(`${draft.prefabs.length} prefab${draft.prefabs.length === 1 ? '' : 's'}`, 'the curated footprint pool'),
+    pill(
+      `musters lv ${tierLaw(draft.tiers[0]).npcLevel[0]}–${tierLaw(draft.tiers[1]).npcLevel[1]}`,
+      'garrison level span across the eligible tiers (DANGER_LAWS)',
+    ),
+    ...(draft.chestTierBonus !== undefined
+      ? [
+          pill(
+            `chest: ${tierLaw(draft.tiers[1] + draft.chestTierBonus).chest} at best`,
+            'strongbox kind at the top tier under the chest law',
+            'ok',
+          ),
+        ]
+      : []),
+  ];
+
+  body.appendChild(
+    detailHead(
+      iconWrap27(iconImg('stamp', 34)),
+      draft.name,
+      draft.id,
+      pills(),
+      row.edited,
+      row.authored,
+      () => void persistence.savePoiDef(draft).catch((err) => toast((err as Error).message, 5000, 'error')),
+      () => void persistence.revertPoiDef(draft.id).catch((err) => toast((err as Error).message, 5000, 'error')),
+    ),
+  );
+
+  // The story line — what this place IS, in the designer's words.
+  const desc = textIn(draft.description ?? '', (v) => {
+    draft.description = v || undefined;
+  }, 'One line of story: what is this place?');
+  desc.className = 'desc-line';
+  body.appendChild(desc);
+
+  // ------------------------------------------------------- territory
+  const nameRow = el('div', 'form-grid2');
+  const nameWrap = el('label', 'lbl', 'Name');
+  nameWrap.appendChild(textIn(draft.name, (v) => (draft.name = v)));
+  nameRow.appendChild(nameWrap);
+  const weightWrap = el('label', 'lbl', 'Pick weight');
+  weightWrap.appendChild(
+    statSlider({
+      label: 'weight',
+      value: draft.weight,
+      min: 0.5,
+      max: 10,
+      step: 0.5,
+      note: 'pick weight among tier-eligible archetypes',
+      dist: distribution(state.pois.map((p) => p.def.weight)),
+      onInput: (v) => {
+        draft.weight = v;
+        markDirty();
+      },
+    }),
+  );
+  nameRow.appendChild(weightWrap);
+  const tiersWrap = el('label', 'lbl', 'Danger tiers (min–max)');
+  tiersWrap.appendChild(
+    rangePair(draft.tiers[0], draft.tiers[1], 1, DANGER_LAWS.length - 1, (lo, hi) => {
+      draft.tiers = [lo, hi];
+      markDirty();
+      rebuildLaws();
+    }),
+  );
+  nameRow.appendChild(tiersWrap);
+  const lawsBox = el('div', 'hero-pills');
+  const rebuildLaws = (): void => {
+    lawsBox.innerHTML = '';
+    for (let t = draft.tiers[0]; t <= draft.tiers[1]; t++) {
+      const law = tierLaw(t);
+      lawsBox.appendChild(
+        pill(
+          `tier ${t}: lv ${law.npcLevel[0]}–${law.npcLevel[1]} · ${law.chest} chest · ${Math.round(law.poiChance * 100)}% cells`,
+          'what DANGER_LAWS grants at this tier',
+        ),
+      );
+    }
+  };
+  rebuildLaws();
+  body.appendChild(
+    sect(
+      'Territory',
+      'Where this archetype lives and how often the frontier deals it. Every number a tier grants comes from the one law table.',
+      nameRow,
+      lawsBox,
+    ),
+  );
+
+  // ----------------------------------------------------- prefab pool
+  const poolGrid = el('div', 'poi-pool');
+  const rebuildPool = (): void => {
+    poolGrid.innerHTML = '';
+    for (const [i, pid] of draft.prefabs.entries()) {
+      const card = el('div', 'poi-card');
+      const stage = el('div', 'poi-card-pic');
+      stage.appendChild(el('span', 'muted', '…'));
+      card.appendChild(stage);
+      void fetchPrefab(pid)
+        .then((json) => {
+          const def = prefabFromJson(json);
+          const layers = prefabLayers(def);
+          const canvas = renderLayersPreview(layers, 132);
+          drawPreviewPins(
+            canvas,
+            layers,
+            def.spawns.map((s) => ({ dx: s.dx, dy: s.dy, color: '#d96f6f' })),
+            132,
+          );
+          stage.innerHTML = '';
+          stage.appendChild(canvas);
+          meta.textContent = `${def.width}×${def.height} · ${def.spawns.length} hand-placed`;
+        })
+        .catch(() => {
+          stage.innerHTML = '';
+          stage.appendChild(el('span', 'muted', 'missing from the library'));
+        });
+      card.appendChild(el('b', '', pid));
+      const meta = el('span', 'muted', '…');
+      card.appendChild(meta);
+      const rm = el('button', 'danger sm', 'Remove') as HTMLButtonElement;
+      rm.disabled = draft.prefabs.length <= 1;
+      rm.title = rm.disabled ? 'A pool needs at least one prefab' : 'Drop this variant from the pool';
+      rm.onclick = () => {
+        draft.prefabs = draft.prefabs.filter((_, j) => j !== i);
+        markDirty();
+        rebuildPool();
+      };
+      card.appendChild(rm);
+      poolGrid.appendChild(card);
+    }
+    const adder = el('div', 'poi-card add');
+    adder.appendChild(
+      combobox(
+        () => poolPrefabChoices(),
+        undefined,
+        (pid) => {
+          draft.prefabs = [...draft.prefabs, pid];
+          markDirty();
+          rebuildPool();
+        },
+        'Add a prefab…',
+      ),
+    );
+    adder.appendChild(
+      el('p', 'muted', 'Capture new footprints in Map Studio — “Save selection as prefab”. The pool picks per-site by hash.'),
+    );
+    poolGrid.appendChild(adder);
+  };
+  const poolPrefabChoices = (): ComboOption[] =>
+    poiPrefabOptions().filter((o) => !draft.prefabs.includes(o.id));
+  rebuildPool();
+  body.appendChild(
+    sect(
+      'Footprint pool',
+      'Hand-authored prefabs this archetype stands on — curated variety, hash-picked per site. Red pins are the prefab’s own hand-placed spawns.',
+      poolGrid,
+    ),
+  );
+
+  // -------------------------------------------------------- garrison
+  const garrisonBox = el('div', 'poi-garrison');
+  const rebuildGarrison = (): void => {
+    garrisonBox.innerHTML = '';
+    draft.garrison.forEach((g, gi) => {
+      const grow = el('div', 'poi-grow');
+      const npcPick = combobox(npcOptions, g.npc, (npc) => {
+        patchG(gi, { npc });
+      });
+      grow.appendChild(npcPick);
+      const roleSeg = el('div', 'seg-row mini-seg');
+      for (const role of ['holdfast', 'sentry'] as const) {
+        const b = el('button', 'opt-btn' + (g.role === role ? ' active' : ''), role) as HTMLButtonElement;
+        b.title =
+          role === 'holdfast'
+            ? 'Lives inside the footprint, clustered at the heart'
+            : 'Posted on the approach ring outside — the tell';
+        b.onclick = () => patchG(gi, { role, ...(role === 'holdfast' ? { patrol: undefined } : {}) });
+        roleSeg.appendChild(b);
+      }
+      grow.appendChild(roleSeg);
+      if (g.role === 'sentry') {
+        grow.appendChild(
+          featureChip('patrols', g.patrol === true, 'Paces the whole perimeter ring instead of holding one post', (on) =>
+            patchG(gi, { patrol: on || undefined }),
+          ),
+        );
+      }
+      const countWrap = el('label', 'lbl', 'count');
+      countWrap.appendChild(
+        rangePair(g.count[0], g.count[1], 0, 12, (lo, hi) => patchG(gi, { count: [lo, hi] })),
+      );
+      grow.appendChild(countWrap);
+      const tierWrap = el('label', 'lbl', 'from tier');
+      const tierIn = numIn(g.minTier ?? draft.tiers[0], (v) =>
+        patchG(gi, { minTier: v <= draft.tiers[0] ? undefined : v }),
+      );
+      tierIn.min = String(draft.tiers[0]);
+      tierIn.max = String(draft.tiers[1]);
+      tierWrap.appendChild(tierIn);
+      grow.appendChild(tierWrap);
+      const offWrap = el('label', 'lbl', '+levels');
+      offWrap.appendChild(
+        numIn(g.levelOffset ?? 0, (v) => patchG(gi, { levelOffset: v > 0 ? v : undefined })),
+      );
+      grow.appendChild(offWrap);
+      const nameWrap2 = el('label', 'lbl', 'named');
+      nameWrap2.appendChild(
+        textIn(g.name ?? '', (v) => patchG(gi, { name: v || undefined }), 'champion name…'),
+      );
+      grow.appendChild(nameWrap2);
+      const del = el('button', 'danger sm', '✕') as HTMLButtonElement;
+      del.title = 'Remove this muster entry';
+      del.onclick = () => {
+        draft.garrison = draft.garrison.filter((_, j) => j !== gi);
+        markDirty();
+        rebuildGarrison();
+      };
+      grow.appendChild(del);
+      garrisonBox.appendChild(grow);
+    });
+    const add = el('button', 'sm', '+ muster entry') as HTMLButtonElement;
+    add.onclick = () => {
+      draft.garrison = [
+        ...draft.garrison,
+        { npc: state.npcs[0]?.def.id ?? 'goblin', count: [1, 2], role: 'holdfast' },
+      ];
+      markDirty();
+      rebuildGarrison();
+    };
+    garrisonBox.appendChild(add);
+  };
+  const patchG = (gi: number, patch: Partial<PoiGarrisonEntry>): void => {
+    const next = draft.garrison.slice();
+    const merged = { ...next[gi]!, ...patch } as PoiGarrisonEntry & Record<string, unknown>;
+    for (const k of Object.keys(merged)) {
+      if (merged[k] === undefined) delete merged[k];
+    }
+    next[gi] = merged;
+    draft.garrison = next;
+    markDirty();
+    rebuildGarrison();
+  };
+  rebuildGarrison();
+  body.appendChild(
+    sect(
+      'Garrison',
+      'The muster recipe. Levels come from the tier band; holdfasts cluster at the heart, sentries take the townward ring — patrollers pace the whole of it.',
+      garrisonBox,
+    ),
+  );
+
+  // ------------------------------------------------------- strongbox
+  const chestSeg = el('div', 'seg-row mini-seg');
+  const chestChoices: Array<{ label: string; v: number | undefined; hint: string }> = [
+    { label: 'no chest law', v: undefined, hint: 'chest tiles in the prefab stand exactly as drawn' },
+    { label: 'tier law', v: 0, hint: 'chest re-keys to the tier’s own kind' },
+    { label: 'law +1', v: 1, hint: 'one kind above the land — a reason to come' },
+    { label: 'law +2', v: 2, hint: 'two above — the chest IS the site' },
+  ];
+  const rebuildChest = (): void => {
+    chestSeg.innerHTML = '';
+    for (const c of chestChoices) {
+      const b = el('button', 'opt-btn' + (draft.chestTierBonus === c.v ? ' active' : ''), c.label) as HTMLButtonElement;
+      b.title = c.hint;
+      b.onclick = () => {
+        draft.chestTierBonus = c.v;
+        markDirty();
+        rebuildChest();
+      };
+      chestSeg.appendChild(b);
+    }
+  };
+  rebuildChest();
+  body.appendChild(
+    sect('Strongbox law', 'How the prefab’s chest re-keys against the danger tier.', chestSeg),
+  );
+
+  // ------------------------------------------------------------ cues
+  const cuesBox = el('div', 'poi-cues');
+  const cues = (): NonNullable<PoiDef['cues']> => (draft.cues ??= {});
+  const tidyCues = (): void => {
+    if (draft.cues && Object.values(draft.cues).every((v) => v === undefined || (Array.isArray(v) && v.length === 0))) {
+      draft.cues = undefined;
+    }
+  };
+  const rebuildCues = (): void => {
+    cuesBox.innerHTML = '';
+    const rowTop = el('div', 'form-grid2');
+    const clearWrap = el('label', 'lbl', 'Felled clearing (tiles past the footprint; 0 = none)');
+    clearWrap.appendChild(
+      statSlider({
+        label: 'clearing',
+        value: draft.cues?.clearing ?? 0,
+        min: 0,
+        max: 10,
+        step: 1,
+        unit: 'tiles',
+        note: 'forest this far past the footprint is cut to stumps',
+        onInput: (v) => {
+          if (v >= 1) cues().clearing = v;
+          else if (draft.cues) draft.cues.clearing = undefined;
+          tidyCues();
+          markDirty();
+        },
+      }),
+    );
+    rowTop.appendChild(clearWrap);
+    const chipWrap = el('div', 'lbl');
+    chipWrap.appendChild(
+      featureChip(
+        'worn approach path',
+        draft.cues?.approachPath === true,
+        'A dirt stub worn outward on the townward bearing — the way players come',
+        (on) => {
+          if (on) cues().approachPath = true;
+          else if (draft.cues) draft.cues.approachPath = undefined;
+          tidyCues();
+          markDirty();
+        },
+      ),
+    );
+    rowTop.appendChild(chipWrap);
+    cuesBox.appendChild(rowTop);
+    const scatterList = el('div');
+    (draft.cues?.scatter ?? []).forEach((sc, si) => {
+      const srow = el('div', 'poi-grow');
+      srow.appendChild(
+        combobox(
+          () => CUE_TILES,
+          sc.tile,
+          (tile) => {
+            const next = (draft.cues?.scatter ?? []).slice();
+            next[si] = { ...next[si]!, tile };
+            cues().scatter = next;
+            markDirty();
+            rebuildCues();
+          },
+        ),
+      );
+      const cWrap = el('label', 'lbl', 'count');
+      cWrap.appendChild(
+        numIn(sc.count, (v) => {
+          const next = (draft.cues?.scatter ?? []).slice();
+          next[si] = { ...next[si]!, count: Math.max(1, Math.min(8, v)) };
+          cues().scatter = next;
+          markDirty();
+        }),
+      );
+      srow.appendChild(cWrap);
+      const del = el('button', 'danger sm', '✕') as HTMLButtonElement;
+      del.onclick = () => {
+        const next = (draft.cues?.scatter ?? []).filter((_, j) => j !== si);
+        if (next.length > 0) cues().scatter = next;
+        else if (draft.cues) draft.cues.scatter = undefined;
+        tidyCues();
+        markDirty();
+        rebuildCues();
+      };
+      srow.appendChild(del);
+      scatterList.appendChild(srow);
+    });
+    const addScatter = el('button', 'sm', '+ cue scatter') as HTMLButtonElement;
+    addScatter.onclick = () => {
+      cues().scatter = [...(draft.cues?.scatter ?? []), { tile: 'BonePile', count: 2 }];
+      markDirty();
+      rebuildCues();
+    };
+    scatterList.appendChild(addScatter);
+    cuesBox.appendChild(scatterList);
+  };
+  rebuildCues();
+  body.appendChild(
+    sect(
+      'Approach cues',
+      'The warning vocabulary stamped OUTSIDE the footprint — a player should read the site before they’re in it. Cues only ever replace natural ground.',
+      cuesBox,
+    ),
+  );
+
+  // ------------------------------------------- the frontier survey
+  const surveyBox = el('div');
+  const surveyBtn = el('button', 'sm', 'Survey 300 cells') as HTMLButtonElement;
+  const runSurvey = async (): Promise<void> => {
+    surveyBtn.disabled = true;
+    surveyBtn.textContent = 'Surveying…';
+    try {
+      const stats = await surveyFrontier(draft, 300);
+      surveyBox.innerHTML = '';
+      const pillsRow = el('div', 'hero-pills');
+      pillsRow.appendChild(
+        pill(`${stats.sites} sites / ${stats.evaluated} frontier cells`, 'the real scaffold, fresh scan, draft included'),
+      );
+      const mine = stats.byDef[draft.id]?.count ?? 0;
+      pillsRow.appendChild(
+        pill(
+          `${mine} of them this archetype (${stats.sites > 0 ? Math.round((mine / stats.sites) * 100) : 0}%)`,
+          'share of all rolled sites',
+          mine > 0 ? 'ok' : 'danger',
+        ),
+      );
+      surveyBox.appendChild(pillsRow);
+      const maxCount = Math.max(1, ...Object.values(stats.byDef).map((r) => r.count));
+      for (const [did, rec] of Object.entries(stats.byDef).sort((a, b) => b[1].count - a[1].count)) {
+        surveyBox.appendChild(
+          bar(did === draft.id ? `${did} (this)` : did, rec.count, maxCount, did === draft.id ? '#d9a441' : '#8a94a8', `${rec.count}`),
+        );
+      }
+      const rec = stats.byDef[draft.id];
+      if (rec) {
+        const tierRow = el('div', 'hero-pills');
+        for (const [t, c] of Object.entries(rec.tiers).sort()) {
+          tierRow.appendChild(pill(`tier ${t}: ${c}`, 'sites rolled at this tier'));
+        }
+        for (const [pid, c] of Object.entries(rec.prefabs).sort((a, b) => b[1] - a[1])) {
+          tierRow.appendChild(pill(`${pid.replace(/^poi_/, '')}: ${c}`, 'variant frequency', 'brass'));
+        }
+        surveyBox.appendChild(tierRow);
+      }
+    } catch (err) {
+      surveyBox.innerHTML = '';
+      surveyBox.appendChild(el('p', 'muted empty', (err as Error).message));
+    }
+    surveyBtn.disabled = false;
+    surveyBtn.textContent = 'Survey 300 cells';
+  };
+  surveyBtn.onclick = () => void runSurvey();
+  body.appendChild(
+    sect(
+      'The frontier survey',
+      'Observed, not computed: the server runs the REAL cell scaffold over a fresh scan with your unsaved draft riding along.',
+      surveyBtn,
+      surveyBox,
+    ),
+  );
+  void runSurvey();
+
+  // ------------------------------------------------------ the stage
+  const stageBox = el('div', 'poi-stage');
+  const stageSeg = el('div', 'seg-row mini-seg');
+  let stageTier = draft.tiers[1];
+  const rebuildStageSeg = (): void => {
+    stageSeg.innerHTML = '';
+    for (let t = draft.tiers[0]; t <= draft.tiers[1]; t++) {
+      const b = el('button', 'opt-btn' + (t === stageTier ? ' active' : ''), `tier ${t}`) as HTMLButtonElement;
+      b.onclick = () => {
+        stageTier = t;
+        rebuildStageSeg();
+        void runStage();
+      };
+      stageSeg.appendChild(b);
+    }
+  };
+  const runStage = async (): Promise<void> => {
+    stageBox.innerHTML = '';
+    stageBox.appendChild(el('p', 'muted', 'Composing a real site…'));
+    try {
+      const shown = await stagePoi({ draft, tier: stageTier });
+      const zone = zoneFromJson(shown.zone);
+      const layers: PreviewLayers = {
+        width: zone.width,
+        height: zone.height,
+        ground: zone.ground,
+        detail: zone.detail,
+        elev: zone.elev,
+      };
+      const canvas = renderLayersPreview(layers, 340);
+      const pins = (zone.spawns ?? []).map((s) => ({
+        dx: Math.floor(s.x - zone.origin.x),
+        dy: Math.floor(s.y - zone.origin.y),
+        color: s.patrol ? '#6fb2d9' : '#d96f6f',
+      }));
+      drawPreviewPins(canvas, layers, pins, 340);
+      stageBox.innerHTML = '';
+      stageBox.appendChild(canvas);
+      const muster = el('div', 'hero-pills');
+      for (const s of zone.spawns ?? []) {
+        const base = state.npcs.find((n) => n.def.id === s.npc);
+        const label = `${s.name ?? base?.def.name ?? s.npc} lv ${s.level ?? '?'}${s.count > 1 ? ` ×${s.count}` : ''}`;
+        muster.appendChild(
+          pill(label, s.patrol ? 'patrols the perimeter ring' : 'holds its ground', s.patrol ? 'brass' : 'ink'),
+        );
+      }
+      stageBox.appendChild(muster);
+      stageBox.appendChild(
+        el(
+          'p',
+          'muted',
+          `A real site at cell ${shown.site.cellX},${shown.site.cellY} — ${shown.site.prefabId}, anchor ${shown.site.anchorX},${shown.site.anchorY}. Blue pins patrol; red hold.`,
+        ),
+      );
+    } catch (err) {
+      stageBox.innerHTML = '';
+      stageBox.appendChild(el('p', 'muted empty', (err as Error).message));
+    }
+  };
+  rebuildStageSeg();
+  body.appendChild(
+    sect(
+      'The stage',
+      'One honest composed site at a chosen tier — footprint, cues, chest law, muster, and the sentry ring, exactly as the world would stand it up.',
+      stageSeg,
+      stageBox,
+    ),
+  );
+  void runStage();
+
+  // --------------------------------------------------------- linkage
+  const standing = state.zones.filter((z) => z.id.startsWith('poi:') && z.name === draft.name);
+  linkHead(linkage, 'stamp', 'Standing sites', standing.length);
+  if (standing.length === 0) {
+    emptyLink(linkage, 'No materialized sites in the loaded world right now — walk the frontier or /poi here.');
+  } else {
+    for (const z of standing) {
+      linkRow(linkage, z.id, `${z.origin.x},${z.origin.y} · ${z.width}×${z.height}`, () => {
+        window.open(`/editor.html?zone=${encodeURIComponent(z.id)}`, '_blank');
+      });
+    }
+  }
+  linkHead(linkage, 'cluster', 'Garrison kinds', draft.garrison.length);
+  if (draft.garrison.length === 0) emptyLink(linkage, 'No muster entries yet.');
+  for (const g of draft.garrison) {
+    const base = state.npcs.find((n) => n.def.id === g.npc);
+    linkRow(
+      linkage,
+      base?.def.name ?? g.npc,
+      `${g.role}${g.patrol ? ' · patrols' : ''}${g.minTier !== undefined ? ` · tier ${g.minTier}+` : ''}`,
+      base ? () => setSection('npcs', g.npc) : null,
+      base ? (() => { const c = creatureRender(base.def, 26); c.className = 'ico'; return c; })() : undefined,
+    );
+  }
+}
+
+function iconWrap27(img: HTMLElement): HTMLElement {
+  const wrap = el('div', 'poi-hero-glyph');
+  wrap.appendChild(img);
+  return wrap;
+}
+
 export function buildDetail(body: HTMLElement, linkage: HTMLElement): void {
   body.innerHTML = '';
   linkage.innerHTML = '';
@@ -1983,5 +2578,6 @@ export function buildDetail(body: HTMLElement, linkage: HTMLElement): void {
   if (state.section === 'npcs') npcDetail(body, linkage, id);
   else if (state.section === 'loot') lootDetail(body, linkage, id);
   else if (state.section === 'actors') actorDetail(body, linkage, id);
+  else if (state.section === 'pois') poiDetail(body, linkage, id);
   else itemDetail(body, linkage, id);
 }

@@ -1,4 +1,4 @@
-import type { LootTableDef, NpcActorDef, NpcDef } from '@devcraft/content';
+import type { LootTableDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, ZoneJson } from '@devcraft/content';
 
 /** Content Studio's wire to the running server's /dev/content API. */
 
@@ -107,6 +107,79 @@ export async function revertActor(slug: string): Promise<{ outcome: string }> {
   return (await (
     await request(`/dev/content/actors/${slug}`, { method: 'DELETE' })
   ).json()) as { outcome: string };
+}
+
+export async function listPois(): Promise<{ pois: Array<Editable<PoiDef>>; prefabIds: string[] }> {
+  return (await (await request('/dev/content/pois')).json()) as {
+    pois: Array<Editable<PoiDef>>;
+    prefabIds: string[];
+  };
+}
+
+export async function savePoi(def: PoiDef): Promise<void> {
+  await request(`/dev/content/pois/${def.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(def),
+  });
+}
+
+export async function revertPoi(id: string): Promise<{ outcome: string }> {
+  return (await (
+    await request(`/dev/content/pois/${id}`, { method: 'DELETE' })
+  ).json()) as { outcome: string };
+}
+
+export interface PoiSimStats {
+  evaluated: number;
+  settledSkipped: number;
+  sites: number;
+  empty: number;
+  byDef: Record<
+    string,
+    { count: number; tiers: Record<number, number>; prefabs: Record<string, number> }
+  >;
+}
+
+/** The observed panel: the server runs the REAL scaffold over a fresh scan. */
+export async function surveyFrontier(draft?: PoiDef, cells = 300): Promise<PoiSimStats> {
+  return (await (
+    await request('/dev/pois/simulate', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ cells, ...(draft ? { draft } : {}) }),
+    })
+  ).json()) as PoiSimStats;
+}
+
+export interface PoiStage {
+  site: {
+    cellX: number;
+    cellY: number;
+    tier: number;
+    defId: string;
+    prefabId: string;
+    anchorX: number;
+    anchorY: number;
+  };
+  zone: ZoneJson;
+}
+
+/** The stage: a real composed site at the requested tier (draft included). */
+export async function stagePoi(
+  args: { id?: string; draft?: PoiDef; tier: number; prefab?: string },
+): Promise<PoiStage> {
+  return (await (
+    await request('/dev/pois/preview', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(args),
+    })
+  ).json()) as PoiStage;
+}
+
+export async function fetchPrefab(id: string): Promise<PrefabJson> {
+  return (await (await request(`/dev/prefabs/${id}`)).json()) as PrefabJson;
 }
 
 export async function listItems(): Promise<ItemRow[]> {
