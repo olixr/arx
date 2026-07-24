@@ -4741,7 +4741,7 @@ const ENCH_STAFF_FX: Record<string, StaffFx> = {
  * style object is data, so a shallow clone re-aims the existing mote
  * painters at the enchant's element without touching the silhouette.
  */
-function enchantedStyle<T extends { fx?: unknown; fxColor?: string }>(
+export function enchantedStyle<T extends { fx?: unknown; fxColor?: string }>(
   st: T,
   ench: string | undefined,
   family: 'blade' | 'staff',

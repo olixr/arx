@@ -30,6 +30,7 @@ import {
   type ChestKind,
   type ChunkData,
   type DaylightSample,
+  type EquipSlot,
   type ItemRoll,
   type Look,
   type Vec2,
@@ -16580,6 +16581,8 @@ export class Renderer {
     crit: boolean;
     dmg: number;
     look?: Look;
+    equip?: Partial<Record<EquipSlot, string>>;
+    ench?: Partial<Record<EquipSlot, string>>;
   }): void {
     // Humanoid actors have no bestiary def — their look IS the body
     // (the def-less case bails inside the branch chain below).
@@ -16624,9 +16627,25 @@ export class Renderer {
     let look: (typeof this.corpses)[number]['look'];
     if (death.look) {
       // A named humanoid actor falls on the player rig's proportions,
-      // wearing its own skin, hair, and tunic colors.
+      // wearing its own skin, hair, and tunic colors — and every piece
+      // of gear it died in. Defeat never strips the body.
       rag = buildHumanoidRagdoll(1, seed);
       rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
+      const eq = death.equip;
+      const gear =
+        eq && (eq.head || eq.body || eq.legs || eq.boots || eq.gloves || eq.weapon || eq.offhand)
+          ? {
+              head: eq.head,
+              body: eq.body,
+              legs: eq.legs,
+              boots: eq.boots,
+              gloves: eq.gloves,
+              weapon: eq.weapon,
+              offhand: eq.offhand,
+              weaponEnch: death.ench?.weapon,
+              offhandEnch: death.ench?.offhand,
+            }
+          : undefined;
       look = {
         kind: 'humanoid',
         h: {
@@ -16634,6 +16653,7 @@ export class Renderer {
           skinColor: SKIN_TONES[death.look.skin] ?? '#e8b98a',
           hairColor: HAIR_COLORS[death.look.hairColor] ?? '#4a3221',
           size: 1,
+          gear,
         },
       };
     } else if (!def) {
@@ -16789,10 +16809,18 @@ export class Renderer {
                 ? 0.25
                 : 0
         : 0;
+    // A geared humanoid reaches further still: a staff runs ~0.75 t
+    // past the fist, a tall helm past the crown — grow the scratch
+    // rect or the outline pass rings the clipped cut.
+    const gear = c.look.kind === 'humanoid' ? c.look.h.gear : undefined;
     const margin =
       (c.look.kind === 'beast'
         ? 0.35 + c.look.b.spec.bodyLen * 0.6 + reach + (cattle ? cattle.hornLen * 1.5 + 0.2 : 0)
-        : 0.25) * scale;
+        : gear?.weapon || gear?.offhand
+          ? 0.95
+          : gear
+            ? 0.6
+            : 0.25) * scale;
     return {
       sortY: c.y + 0.02,
       elevated: this.renderLift(c.x, c.y) !== 0,
@@ -16828,7 +16856,7 @@ export class Renderer {
         // would paint past the ring straight onto the frame (the
         // outline-less corpse bug).
         const frame = { ax: p.x, ay: p.y, s: scale };
-        if (c.look.kind === 'humanoid') drawHumanoidRagdoll(this.ctx, c.rag, frame, c.look.h);
+        if (c.look.kind === 'humanoid') drawHumanoidRagdoll(this.ctx, c.rag, frame, c.look.h, now);
         else drawBeastRagdoll(this.ctx, c.rag, frame, c.look.b);
       },
     };

@@ -360,6 +360,15 @@ export declare function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose
 /** Darken/lighten a hex color by a flat amount — flat-art shading. */
 export declare function shade(hex: string, amount: number): string;
 /**
+ * Overlay an enchant's fx channel on a resolved weapon style — the
+ * style object is data, so a shallow clone re-aims the existing mote
+ * painters at the enchant's element without touching the silhouette.
+ */
+export declare function enchantedStyle<T extends {
+    fx?: unknown;
+    fxColor?: string;
+}>(st: T, ench: string | undefined, family: 'blade' | 'staff'): T;
+/**
  * Beast bodies: every non-humanoid NPC walks on the same universal
  * LegRig as the player — planted feet, committed steps, two-segment
  * IK. Each species is a spec: where its legs live under the body,

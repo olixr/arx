@@ -13,6 +13,8 @@ import {
   Ragdoll,
   buildBeastRagdoll,
   buildHumanoidRagdoll,
+  drawHumanoidRagdoll,
+  type HumanoidCorpseLook,
   type RagImpact,
 } from './ragdoll.js';
 import { beastSpec } from './rig.js';
@@ -116,6 +118,76 @@ test('beast ragdoll builds one chain per leg and settles', () => {
   settle(rag, -4.5);
   assert.ok(rag.settled, 'beast ragdoll must come to rest');
   for (const p of rag.pts) assert.ok(p.y <= p.floor + 1e-3);
+});
+
+/** A recording 2D-context stand-in: counts fills, rejects NaN coords. */
+function mockCtx(): CanvasRenderingContext2D & { fills: number } {
+  const counter = {
+    fills: 0,
+    fillStyle: '#000' as string,
+    strokeStyle: '#000' as string,
+    lineWidth: 1,
+    lineCap: 'butt',
+    lineJoin: 'miter',
+    globalAlpha: 1,
+  };
+  const checkNums = (args: unknown[]): void => {
+    for (const a of args) {
+      if (typeof a === 'number') assert.ok(Number.isFinite(a), 'painter emitted NaN geometry');
+    }
+  };
+  const noop = (...args: unknown[]): void => checkNums(args);
+  return new Proxy(counter, {
+    get(target, prop: string) {
+      if (prop in target) return target[prop as keyof typeof target];
+      if (prop === 'fill') return () => target.fills++;
+      if (prop === 'fillRect') {
+        return (...args: unknown[]) => {
+          checkNums(args);
+          target.fills++;
+        };
+      }
+      return noop;
+    },
+    set(target, prop: string, value) {
+      (target as Record<string, unknown>)[prop] = value;
+      return true;
+    },
+  }) as unknown as CanvasRenderingContext2D & { fills: number };
+}
+
+test('a geared corpse paints its armor and steel — death never strips the body', () => {
+  const base: HumanoidCorpseLook = {
+    bodyColor: '#8a7a5c',
+    skinColor: '#e8b98a',
+    hairColor: '#4a3221',
+    size: 1,
+  };
+  const paint = (look: HumanoidCorpseLook): number => {
+    const rag = buildHumanoidRagdoll(1, 77);
+    rag.launch(0.8, 0, 0.6, HUMANOID_UPPER, HUMANOID_FEET);
+    settle(rag, 2.5);
+    const ctx = mockCtx();
+    drawHumanoidRagdoll(ctx, rag, { ax: 400, ay: 300, s: 96 }, look, 1234);
+    return ctx.fills;
+  };
+  const bare = paint(base);
+  const geared = paint({
+    ...base,
+    gear: {
+      head: 'iron_helm',
+      body: 'iron_platebody',
+      legs: 'iron_greaves',
+      boots: 'iron_sabatons',
+      gloves: 'iron_gauntlets',
+      weapon: 'iron_sword',
+      offhand: 'oak_kiteshield',
+    },
+  });
+  assert.ok(
+    geared > bare + 4,
+    `gear must add paint on the fallen body (bare ${bare}, geared ${geared})`,
+  );
 });
 
 test('a settled ragdoll sleeps — stepping it further moves nothing', () => {

@@ -259,6 +259,10 @@ export class ClientGame {
     dmg: number;
     /** Humanoid actors: the base look, so the corpse keeps its face. */
     look?: Look;
+    /** Worn gear ids by slot — the corpse keeps its armor and steel. */
+    equip?: Partial<Record<EquipSlot, string>>;
+    /** Enchant ids riding the gear — a flaming blade burns beside the body. */
+    ench?: Partial<Record<EquipSlot, string>>;
   }> = [];
   /** Combat effects in flight; pruned by the renderer. */
   readonly fx: ActiveFx[] = [];
@@ -856,6 +860,8 @@ export class ClientGame {
             crit: fresh?.crit ?? false,
             dmg: fresh?.dmg ?? 2,
             look: remote?.meta.appearance?.look,
+            equip: remote?.meta.appearance?.equip,
+            ench: remote?.meta.appearance?.ench,
           });
         }
         this.events.onDeath({ x: msg.x, y: msg.y, defId: msg.defId });

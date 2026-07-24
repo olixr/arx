@@ -100,7 +100,7 @@ export declare const H: {
  */
 export declare function buildHumanoidRagdoll(size: number, seed: number): Ragdoll;
 /** Upper-body / feet index groups for launch(). */
-export declare const HUMANOID_UPPER: (1 | 2 | 10 | 8 | 9 | 7)[];
+export declare const HUMANOID_UPPER: (2 | 1 | 8 | 10 | 9 | 7)[];
 export declare const HUMANOID_FEET: (4 | 6)[];
 /**
  * Beast skeleton: rear hip, front chest, head, then one two-segment
@@ -117,6 +117,25 @@ export interface RagFrame {
     /** Pixels per tile. */
     s: number;
 }
+/**
+ * The gear a humanoid was wearing at the death instant. Death never
+ * strips a body: the corpse falls in the same armor colors, the helmet
+ * stays seated, the shield rides the fallen forearm, and the weapon
+ * lies along the fist that held it — defeating a knight leaves a
+ * knight on the ground, not an undressed villager.
+ */
+export interface CorpseGear {
+    head?: string;
+    body?: string;
+    legs?: string;
+    boots?: string;
+    gloves?: string;
+    weapon?: string;
+    offhand?: string;
+    /** Enchant ids riding the weapons — the fx channel survives death. */
+    weaponEnch?: string;
+    offhandEnch?: string;
+}
 export interface HumanoidCorpseLook {
     bodyColor: string;
     skinColor: string;
@@ -126,6 +145,8 @@ export interface HumanoidCorpseLook {
     skel?: SkeletonLook;
     /** Set = this corpse is a kobold: horns, muzzle, and tail stay. */
     kob?: KoboldLook;
+    /** Worn equipment — the corpse keeps everything it died in. */
+    gear?: CorpseGear;
 }
 /**
  * Paint a humanoid ragdoll in the rig's own dialect: trapezoid torso
@@ -133,7 +154,7 @@ export interface HumanoidCorpseLook {
  * two-segment limbs, square mitts, boot chips. Far-side limbs go
  * behind the trunk, near-side in front — a sprawl, not a stack.
  */
-export declare function drawHumanoidRagdoll(ctx: CanvasRenderingContext2D, rag: Ragdoll, f: RagFrame, look: HumanoidCorpseLook): void;
+export declare function drawHumanoidRagdoll(ctx: CanvasRenderingContext2D, rag: Ragdoll, f: RagFrame, look: HumanoidCorpseLook, nowMs?: number): void;
 export interface BeastCorpseLook {
     spec: BeastSpec;
     radius: number;

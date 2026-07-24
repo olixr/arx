@@ -293,6 +293,10 @@ export declare class ClientGame {
         dmg: number;
         /** Humanoid actors: the base look, so the corpse keeps its face. */
         look?: Look;
+        /** Worn gear ids by slot — the corpse keeps its armor and steel. */
+        equip?: Partial<Record<EquipSlot, string>>;
+        /** Enchant ids riding the gear — a flaming blade burns beside the body. */
+        ench?: Partial<Record<EquipSlot, string>>;
     }>;
     /** Combat effects in flight; pruned by the renderer. */
     readonly fx: ActiveFx[];

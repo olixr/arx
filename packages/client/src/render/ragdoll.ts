@@ -15,7 +15,20 @@
  * over its own pinned feet.
  */
 
+import { itemDef } from '@devcraft/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
+import {
+  bodyStyle,
+  bootStyle,
+  drawHelmet,
+  drawOffhandOnArm,
+  gloveStyle,
+  helmStyle,
+  legStyle,
+  offhandStyle,
+} from './armor.js';
+import { bladeStyle, bowStyle, drawBow, drawStaff, drawSword, staffStyle } from './weapons.js';
+import { drawTool, toolStyle } from './tools.js';
 import {
   BEAR_LOOK,
   BEETLE_LOOK,
@@ -38,6 +51,7 @@ import {
   drawStagHead,
   drawWolfHead,
   drawWorgHead,
+  enchantedStyle,
   paintBearBody,
   paintBeetleBody,
   paintBoarBody,
@@ -424,6 +438,26 @@ function chip(
   ctx.restore();
 }
 
+/**
+ * The gear a humanoid was wearing at the death instant. Death never
+ * strips a body: the corpse falls in the same armor colors, the helmet
+ * stays seated, the shield rides the fallen forearm, and the weapon
+ * lies along the fist that held it — defeating a knight leaves a
+ * knight on the ground, not an undressed villager.
+ */
+export interface CorpseGear {
+  head?: string;
+  body?: string;
+  legs?: string;
+  boots?: string;
+  gloves?: string;
+  weapon?: string;
+  offhand?: string;
+  /** Enchant ids riding the weapons — the fx channel survives death. */
+  weaponEnch?: string;
+  offhandEnch?: string;
+}
+
 export interface HumanoidCorpseLook {
   bodyColor: string;
   skinColor: string;
@@ -433,6 +467,44 @@ export interface HumanoidCorpseLook {
   skel?: SkeletonLook;
   /** Set = this corpse is a kobold: horns, muzzle, and tail stay. */
   kob?: KoboldLook;
+  /** Worn equipment — the corpse keeps everything it died in. */
+  gear?: CorpseGear;
+}
+
+/**
+ * A weapon painted in the fallen-fist frame (origin at the hand, +x
+ * along the forearm's line) — the same routing drawHeldItem uses, so
+ * every blade, tool, bow, and staff resolves its own bespoke painter.
+ */
+function drawFallenWeapon(
+  ctx: CanvasRenderingContext2D,
+  itemId: string,
+  s: number,
+  nowMs: number,
+  ench?: string,
+): void {
+  const color = itemDef(itemId)?.color ?? '#8d9299';
+  const blade = bladeStyle(itemId, color);
+  if (blade) {
+    drawSword(ctx, enchantedStyle(blade, ench, 'blade'), s, nowMs);
+    return;
+  }
+  const tool = toolStyle(itemId, color);
+  if (tool && !itemId.includes('rod')) {
+    drawTool(ctx, tool, s, nowMs);
+    return;
+  }
+  const bow = bowStyle(itemId, color);
+  if (bow) {
+    drawBow(ctx, enchantedStyle(bow, ench, 'blade'), s, nowMs, false, 0);
+    return;
+  }
+  const staff = staffStyle(itemId, color);
+  if (staff) {
+    drawStaff(ctx, enchantedStyle(staff, ench, 'staff'), s, nowMs, false, 0.34, 0);
+    return;
+  }
+  if (tool) drawTool(ctx, tool, s, nowMs);
 }
 
 /**
@@ -446,6 +518,7 @@ export function drawHumanoidRagdoll(
   rag: Ragdoll,
   f: RagFrame,
   look: HumanoidCorpseLook,
+  nowMs = 0,
 ): void {
   if (look.skel) {
     drawSkeletonRagdoll(ctx, rag, f, look.size, look.skel);
@@ -456,12 +529,25 @@ export function drawHumanoidRagdoll(
   const pelvis = P(f, g[H.pelvis]!);
   const chest = P(f, g[H.chest]!);
   const head = P(f, g[H.head]!);
+  // Worn gear resolves through the SAME style records that dress the
+  // live rig — the corpse wears the armor's own colors, not a costume.
+  const gear = look.gear;
+  const bodySt = gear?.body ? bodyStyle(gear.body) : null;
+  const legSt = gear?.legs ? legStyle(gear.legs) : null;
+  const bootSt = gear?.boots ? bootStyle(gear.boots) : null;
+  const gloveSt = gear?.gloves ? gloveStyle(gear.gloves) : null;
+  const helmSt = gear?.head ? helmStyle(gear.head) : null;
+  const cloth = bodySt?.color ?? look.bodyColor;
   // Kobold corpses keep bare scaled legs and feet — no cloth, no boots
   // (the live dialect's law carried into death).
-  const legCol = look.kob ? shade(look.kob.hide, -5) : shade(look.bodyColor, -28);
-  const shinCol = look.kob ? shade(look.kob.hide, -12) : legCol;
-  const sleeveCol = shade(look.bodyColor, -10);
-  const footCol = look.kob ? shade(look.kob.hide, -8) : BOOT;
+  const legCol = look.kob
+    ? shade(look.kob.hide, -5)
+    : (legSt?.thigh ?? shade(look.bodyColor, -28));
+  const shinCol = look.kob ? shade(look.kob.hide, -12) : (legSt?.shin ?? legCol);
+  const sleeveCol = bodySt?.sleeve ?? shade(cloth, -10);
+  const footCol = look.kob ? shade(look.kob.hide, -8) : (bootSt?.color ?? BOOT);
+  const mittCol = gloveSt?.color ?? look.skinColor;
+  const foreCol = gloveSt ? (gloveSt.bracer ?? shade(gloveSt.color, -8)) : look.skinColor;
 
   // Torso frame: axis pelvis→chest, widths from the live proportions.
   let ux = chest.x - pelvis.x;
@@ -491,8 +577,30 @@ export function drawHumanoidRagdoll(
     };
     const el = P(f, g[elbow]!);
     const hd = P(f, g[hand]!);
-    limb(ctx, sh, el, hd, sleeveCol, look.skinColor, s * 0.08, s * 0.06);
-    chip(ctx, hd, el, s * 0.075, s * 0.07, look.skinColor);
+    limb(ctx, sh, el, hd, sleeveCol, foreCol, s * 0.08, s * 0.06);
+    chip(ctx, hd, el, s * 0.075, s * 0.07, mittCol);
+    // The pauldron stays seated on the fallen shoulder.
+    if (bodySt && bodySt.pauldron !== 'none') {
+      const pc = bodySt.pauldronColor ?? bodySt.metal ?? shade(bodySt.color, -20);
+      ctx.fillStyle = pc;
+      ctx.beginPath();
+      facetCircle(ctx, sh.x, sh.y, s * 0.078, 6, side);
+      ctx.fill();
+      ctx.strokeStyle = bodySt.pauldronTrim ?? shade(pc, -22);
+      ctx.lineWidth = Math.max(1, s * 0.016);
+      ctx.stroke();
+    }
+  };
+  // A fallen weapon lies along the forearm's own line, still in the
+  // fist that held it — the grip is the last thing a warrior gives up.
+  const drawHandWeapon = (elbow: number, hand: number, itemId: string, ench?: string): void => {
+    const el = P(f, g[elbow]!);
+    const hd = P(f, g[hand]!);
+    ctx.save();
+    ctx.translate(hd.x, hd.y);
+    ctx.rotate(Math.atan2(hd.y - el.y, hd.x - el.x));
+    drawFallenWeapon(ctx, itemId, s, nowMs, ench);
+    ctx.restore();
   };
 
   // The kobold tail goes down first — slack on the ground under the
@@ -527,12 +635,48 @@ export function drawHumanoidRagdoll(
   drawArm(H.elbowL, H.handL, -1);
   drawLeg(H.kneeL, H.footL, -1);
 
+  // The off hand keeps what it carried: a shield rides the fallen
+  // forearm (half-pinned under the trunk, as a real fall would leave
+  // it), a dual-wielded second blade lies along the far fist. Quivers
+  // live on the back — under the body, nothing to show.
+  if (gear?.offhand) {
+    const offSt = offhandStyle(gear.offhand);
+    if (offSt.kind === 'weapon') {
+      drawHandWeapon(H.elbowL, H.handL, gear.offhand, gear.offhandEnch);
+    } else if (offSt.kind !== 'quiver') {
+      const el = P(f, g[H.elbowL]!);
+      const hd = P(f, g[H.handL]!);
+      drawOffhandOnArm(ctx, offSt, { kx: el.x, ky: el.y, ex: hd.x, ey: hd.y }, s, 0.3, false);
+    }
+  }
+
+  // A robe's skirt lies past the hips, a slack cloth fan behind the
+  // trunk — no flutter on the dead.
+  if (bodySt && bodySt.skirt > 0) {
+    const skL = bodySt.skirt * s;
+    const hemW = ww * 1.3;
+    ctx.fillStyle = cloth;
+    ctx.beginPath();
+    ctx.moveTo(pelvis.x + nx * ww, pelvis.y + ny * ww);
+    ctx.lineTo(pelvis.x - nx * ww, pelvis.y - ny * ww);
+    ctx.lineTo(pelvis.x - ux * skL - nx * hemW, pelvis.y - uy * skL - ny * hemW);
+    ctx.lineTo(pelvis.x - ux * skL + nx * hemW, pelvis.y - uy * skL + ny * hemW);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = bodySt.trim;
+    ctx.lineWidth = Math.max(1, s * 0.024);
+    ctx.beginPath();
+    ctx.moveTo(pelvis.x - ux * skL - nx * hemW, pelvis.y - uy * skL - ny * hemW);
+    ctx.lineTo(pelvis.x - ux * skL + nx * hemW, pelvis.y - uy * skL + ny * hemW);
+    ctx.stroke();
+  }
+
   // Trunk: shoulders→waist trapezoid + hard shade half + belt band.
   const c1 = { x: chest.x + nx * tw, y: chest.y + ny * tw };
   const c2 = { x: chest.x - nx * tw, y: chest.y - ny * tw };
   const p1 = { x: pelvis.x + nx * ww, y: pelvis.y + ny * ww };
   const p2 = { x: pelvis.x - nx * ww, y: pelvis.y - ny * ww };
-  ctx.fillStyle = look.bodyColor;
+  ctx.fillStyle = cloth;
   ctx.beginPath();
   ctx.moveTo(c1.x, c1.y);
   ctx.lineTo(c2.x, c2.y);
@@ -542,7 +686,7 @@ export function drawHumanoidRagdoll(
   ctx.fill();
   // Shade the half facing screen-down — the side against the ground.
   const downSide = ny >= 0 ? 1 : -1;
-  ctx.fillStyle = shade(look.bodyColor, -14);
+  ctx.fillStyle = shade(cloth, -14);
   ctx.beginPath();
   ctx.moveTo(chest.x, chest.y);
   ctx.lineTo(chest.x + nx * downSide * tw, chest.y + ny * downSide * tw);
@@ -550,8 +694,17 @@ export function drawHumanoidRagdoll(
   ctx.lineTo(pelvis.x, pelvis.y);
   ctx.closePath();
   ctx.fill();
+  // A plated cuirass keeps its center seam on the fallen breastplate.
+  if (bodySt?.cls === 'plate') {
+    ctx.strokeStyle = bodySt.metal ?? shade(bodySt.color, -20);
+    ctx.lineWidth = Math.max(1, s * 0.022);
+    ctx.beginPath();
+    ctx.moveTo(pelvis.x + ux * s * 0.12, pelvis.y + uy * s * 0.12);
+    ctx.lineTo(chest.x, chest.y);
+    ctx.stroke();
+  }
   // Belt band riding just above the pelvis.
-  ctx.strokeStyle = shade(look.bodyColor, -34);
+  ctx.strokeStyle = bodySt ? bodySt.trim : shade(look.bodyColor, -34);
   ctx.lineWidth = Math.max(1.5, s * 0.05);
   ctx.beginPath();
   ctx.moveTo(pelvis.x + ux * s * 0.06 + nx * ww, pelvis.y + uy * s * 0.06 + ny * ww);
@@ -648,16 +801,44 @@ export function drawHumanoidRagdoll(
     ctx.beginPath();
     chamferRect(ctx, -hw, -hh, hw * 2, hh * 2, cut);
     ctx.fill();
-    ctx.fillStyle = look.hairColor;
-    ctx.beginPath();
-    chamferRect(ctx, -hw * 0.96, -hh * 0.98, hw * 1.92, hh * 0.62, [cut * 0.85, cut * 0.85, 0, 0]);
-    ctx.fill();
+    // THE COVERAGE LAW carries into death: the crown slab of hair only
+    // shows where the headwear allows it — a helmet stays seated on
+    // the corpse, it never rolls away.
+    if (!helmSt || helmSt.kind === 'circlet') {
+      ctx.fillStyle = look.hairColor;
+      ctx.beginPath();
+      chamferRect(ctx, -hw * 0.96, -hh * 0.98, hw * 1.92, hh * 0.62, [cut * 0.85, cut * 0.85, 0, 0]);
+      ctx.fill();
+    }
+    if (helmSt) {
+      // The live helmet painter runs inside the fallen head's rotated
+      // frame — crown toward -y, face up out of the sprawl (the skull
+      // painter's own read), so every kind keeps its silhouette.
+      drawHelmet(ctx, helmSt, {
+        s,
+        headX: 0,
+        headY: 0,
+        hw,
+        hh,
+        cut,
+        headR,
+        fx: 0,
+        profileK: 0,
+        backK: 0,
+        lead: 1,
+        hurt: false,
+        nowMs,
+      });
+    }
   }
   ctx.restore();
 
   // Near pair over the trunk.
   drawLeg(H.kneeR, H.footR, 1);
   drawArm(H.elbowR, H.handR, 1);
+
+  // The steel goes with them: the mainhand lies in the near fist.
+  if (gear?.weapon) drawHandWeapon(H.elbowR, H.handR, gear.weapon, gear.weaponEnch);
 }
 
 /**
