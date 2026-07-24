@@ -3647,12 +3647,11 @@ export class Renderer {
    * DUNGEON CUTAWAY LAW: underground (player y >= UNDERGROUND_Y) there
    * are no interior regions — cavern flood-fills blow past MAX_REGION —
    * so the building cutaway never fires. Instead ANY wall-run tile
-   * fronting walkable floor to its NORTH sinks toward the stub while
-   * it stands in the player's occlusion window: dy = ty − playerY in
-   * ~[0..6] rows south, |dx| ≤ ~10 columns. Returns the cut factor
-   * 0 (full height) → 1 (full stub), SMOOTHSTEP-eased over ~2 tiles at
-   * every window edge on the CONTINUOUS player position, so walls sink
-   * and rise as you walk instead of popping per row. ugBlend scales it
+   * fronting walkable floor to its NORTH sinks toward the knee stub
+   * while it stands in the player's occlusion window. Returns the cut
+   * factor 0 (full height) → 1 (full stub), SMOOTHSTEP-eased at every
+   * window edge on the CONTINUOUS player position, so walls sink and
+   * rise as you walk instead of popping per row. ugBlend scales it
    * so a portal drop fades the cut in with the darkness. Deliberately
    * cheap: a few clamps and multiplies per visible wall, no allocation,
    * nothing cached — the wall painter is live, so a per-frame height
@@ -3660,19 +3659,29 @@ export class Renderer {
    * site); the surface keeps the region-based law untouched.
    */
   /**
-   * THE TRENCH LAW (corridors): one stubbed row is not enough in a
-   * dungeon — wall MASS is thick, and at WALL_H 2.05 the row BEHIND
-   * a knee-high stub still throws its crown over the corridor floor.
-   * So the cut reaches through the mass: a wall with walkable floor
-   * 1, 2, or 3 rows to its north sinks toward a stepped target
-   * (0.62 / 1.0 / 1.4) — nearest row lowest, each row behind a step
-   * taller, so the opening reads as a carved trench with depth
-   * rather than a flat shelf. Rows 4+ never overhang the floor at
-   * this WALL_H, so three probes is the whole cost.
+   * THE ONE-SLAB LAW (corridors): one stubbed row is not enough in a
+   * dungeon — wall MASS is thick, and at WALL_H 2.05 the two rows
+   * BEHIND a knee-high stub still throw their crowns over the
+   * corridor floor. So the cut reaches through the mass: rows 1–3
+   * from the floor all sink, and they sink to the SAME height on the
+   * SAME ease, keyed to the mass's FRONT row (the one touching the
+   * floor). Equal heights are load-bearing: same-height crowns tile
+   * seamlessly on screen, so the mass reads as one solid slab sinking
+   * together. Per-row heights or per-row eases are BANNED here — each
+   * row's crown then floats at its own offset and slides at its own
+   * rate as the window eases past it, which reads as the wall tearing
+   * into parallax slices (interior rows draw no south face — a crown
+   * with no riser under it has nothing to anchor the gap). Rows 4+
+   * stay full: at WALL_H 2.05 and yScale 0.6 a row 4 deep never
+   * overhangs the floor, and its fixed crown edge over the sunken
+   * slab is correct occlusion (the tall mass hides the trench bottom,
+   * never the floor), so three probes is the whole cost.
    */
   private dungeonWallHeight(game: ClientGame, tx: number, ty: number): number {
     const dy = ty - this.ownPY;
-    if (dy < -2 || dy > 9) return WALL_H;
+    // Front-row dy can be up to 2 rows north of ours — the window is
+    // on the FRONT row, so accept dy up to 9 + 2 here.
+    if (dy < -2 || dy > 11) return WALL_H;
     const adx = Math.abs(tx + 0.5 - this.ownPX);
     if (adx > 13) return WALL_H;
     // Nearest walkable floor straight north through the wall mass.
@@ -3686,17 +3695,19 @@ export class Renderer {
       }
     }
     if (depth === 0) return WALL_H;
-    // Window margins: ease in over dy [-2..-0.5] (the wall row you
-    // stand on is fully cut), out over dy [7..9] and |dx| [10.5..13].
-    let ey = Math.min((dy + 2) / 1.5, (9 - dy) / 2, 1);
+    // Window margins on the FRONT row — every row of the mass shares
+    // its front row's ease, so the slab moves as one. Ease in over
+    // dyF [-2..-0.5] (a mass you stand at is fully cut), out over
+    // dyF [7..9] and |dx| [10.5..13].
+    const dyF = dy - (depth - 1);
+    let ey = Math.min((dyF + 2) / 1.5, (9 - dyF) / 2, 1);
     let ex = Math.min((13 - adx) / 2.5, 1);
     if (ey <= 0 || ex <= 0) return WALL_H;
     ey = ey * ey * (3 - 2 * ey);
     ex = ex * ex * (3 - 2 * ex);
     const cut = ey * ex * this.ugBlend;
     if (cut <= 0) return WALL_H;
-    const stub = depth === 1 ? 0.62 : depth === 2 ? 1.0 : 1.4;
-    return WALL_H + (stub - WALL_H) * cut;
+    return WALL_H + (0.62 - WALL_H) * cut;
   }
 
   private wallItem(
