@@ -67,7 +67,17 @@ export interface NpcDef {
   splitInto?: { npc: string; count: number };
   /** Melee windup ends in a leap that closes the gap (wolves, boars). */
   pounce?: boolean;
+  /**
+   * Pack tag: bodies sharing a tag hunt together. When one enters
+   * combat, idle packmates within PACK_RALLY_RANGE join the same
+   * target — wolves are never a duel, and the matriarch's rallying
+   * howl re-gathers the pack mid-fight.
+   */
+  pack?: string;
 }
+
+/** How far a pack answers a packmate's aggro (tiles). */
+export const PACK_RALLY_RANGE = 7;
 
 const defs: NpcDef[] = [
   {
@@ -532,6 +542,59 @@ const defs: NpcDef[] = [
     // Wolf bites tear — running from a wolf keeps costing you.
     attackStatus: { status: 'bleed', power: 1, durationTicks: 60 },
     pounce: true,
+    pack: 'wolfkin',
+  },
+  {
+    id: 'worg',
+    name: 'Worg',
+    level: 14,
+    maxHp: 46,
+    damage: 4,
+    attackRange: 1.0,
+    attackCooldownTicks: 36,
+    // Cunning hunter: it marks you further out than anything its size.
+    aggroRange: 7,
+    leashRange: 16,
+    // The fastest pursuit in the wilds — you do not outrun a worg.
+    speed: 5.0,
+    xpReward: 170,
+    loot: ['worg', 'wolf_arms', 'heirlooms'],
+    respawnSec: 45,
+    color: '#6b5f47',
+    radius: 0.37,
+    hitHeight: 1.1,
+    // The hamstring bite: it doesn't want you dead yet, it wants you
+    // SLOW — then the bonded mate arrives.
+    attackStatus: { status: 'chill', power: 1, durationTicks: 60 },
+    pounce: true,
+    pack: 'worg',
+  },
+  {
+    id: 'dire_wolf',
+    name: 'Dire wolf',
+    level: 20,
+    maxHp: 95,
+    damage: 6,
+    attackRange: 1.1,
+    // She presses faster than her pack — the matriarch sets the tempo.
+    attackCooldownTicks: 34,
+    aggroRange: 7,
+    // A roaming matriarch ranges wide of any one den.
+    leashRange: 18,
+    speed: 4.8,
+    xpReward: 340,
+    loot: ['dire_wolf', 'wolf_wardrobe', 'wolf_arms', 'heirlooms'],
+    respawnSec: 90,
+    color: '#4b4854',
+    radius: 0.44,
+    hitHeight: 1.4,
+    // Matriarch jaws tear twice as deep.
+    attackStatus: { status: 'bleed', power: 2, durationTicks: 70 },
+    pounce: true,
+    pack: 'wolfkin',
+    // The howl: dread shoves you off her, and every wolf in earshot
+    // answers — the champion fight is the PACK, not the duel.
+    special: { ability: 'rallying_howl', everyTicks: 150 },
   },
 ];
 
@@ -607,6 +670,11 @@ export const TOWN_SPAWNS: readonly SpawnPoint[] = [
   // Wolves in the western woods.
   { npc: 'wolf', x: -18, y: 40, radius: 8, count: 2 },
   { npc: 'wolf', x: -24, y: 60, radius: 8, count: 2 },
+  // The matriarch roams the ground between her two packs — meet her
+  // near either den and the howl brings the rest.
+  { npc: 'dire_wolf', x: -21, y: 50, radius: 10, count: 1 },
+  // Goblin war-hounds: a bonded pair prowling south of the camp.
+  { npc: 'worg', x: 58, y: 122, radius: 7, count: 2 },
   // The pond ecosystem, tiered: crabs on the bank, slimes in the
   // marsh south of it, one old adder in the reeds.
   { npc: 'mudcrab', x: 82, y: 70, radius: 5, count: 3 },

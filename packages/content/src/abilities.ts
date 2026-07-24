@@ -1286,6 +1286,19 @@ const defs: AbilityDef[] = [
     fuseTicks: 24, // generous 1.2 s telegraph — dodgeable on reaction
     knockback: 2.0,
   },
+  {
+    id: 'rallying_howl',
+    name: 'Rallying Howl',
+    desc: 'The matriarch throws her head back — dread roots your legs, and the pack answers.',
+    color: '#9aa2b8',
+    code: 'Rh',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'nova',
+    damage: 2, // the howl itself barely bruises — the PACK is the payload
+    radius: 2.6,
+    // Dread runs cold: slowed legs while every wolf in earshot closes.
+    status: { status: 'chill', power: 1, durationTicks: 50 },
+  },
 ];
 
 export const ABILITIES: ReadonlyMap<string, AbilityDef> = new Map(defs.map((d) => [d.id, d]));

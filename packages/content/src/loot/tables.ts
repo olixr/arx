@@ -501,6 +501,34 @@ const defs: LootTableDef[] = [
     ],
   },
   {
+    id: 'worg',
+    desc: 'Goblin war-hound pickings: mangy hide, a knife-length fang, and whatever the camp hung on it.',
+    entries: [
+      { item: 'bones' },
+      { item: 'worg_fang', chance: 0.55 },
+      { item: 'scrap_hide', qty: [1, 2], chance: 0.5 },
+      { item: 'coins', qty: [4, 14], chance: 0.4 },
+      { item: 'venom_gland', chance: 0.15 },
+      { item: 'crimson_essence', chance: 0.14 },
+    ],
+  },
+  {
+    id: 'dire_wolf',
+    desc: 'The matriarch pays like the champion she is: the great pelt, and the pack\'s hoard snagged in it.',
+    rarityBonus: 3,
+    entries: [
+      { item: 'bones' },
+      { item: 'direwolf_pelt', chance: 0.9 },
+      { item: 'wolf_fur', qty: [1, 2], chance: 0.6 },
+      { item: 'coins', qty: [30, 80], chance: 0.7 },
+      { item: 'crimson_essence', qty: [1, 3], chance: 0.35 },
+      { item: 'verdant_totem', chance: 0.1 },
+      { item: 'bloomstone', chance: 0.04 },
+      { item: 'brass_key', chance: 0.08 },
+      { item: 'dungeon_key', chance: 0.04 },
+    ],
+  },
+  {
     id: 'wolf_arms',
     desc: 'The pack’s blades, bows, and argued-over staves.',
     entries: [

@@ -4207,6 +4207,46 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     foot: 'paw',
     legColor: '#5d6270',
   },
+  // The matriarch: longer-limbed and heavier than any wolf — she
+  // covers ground in strides the pack can't match.
+  dire_wolf: {
+    rig: {
+      legs: quadLegs(0.34, 0.15),
+      legLen: 0.47,
+      rise: 0.4,
+      liftAmp: 0.11,
+      runSpeed: 4.8,
+      turnRate: 7,
+    },
+    bodyLen: 0.52,
+    bodyRise: 0.49,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.1,
+    foot: 'paw',
+    legColor: '#3e3a48',
+  },
+  // The war-hound: front legs longer than the rear carriage suggests —
+  // the hyena slope on the move, fast and wrong-looking.
+  worg: {
+    rig: {
+      legs: quadLegs(0.3, 0.14),
+      legLen: 0.4,
+      rise: 0.33,
+      liftAmp: 0.09,
+      runSpeed: 5.0,
+      turnRate: 9,
+    },
+    bodyLen: 0.46,
+    bodyRise: 0.38,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.085,
+    foot: 'paw',
+    legColor: '#4e4436',
+  },
   rat: {
     rig: {
       legs: quadLegs(0.19, 0.13),
@@ -5245,6 +5285,721 @@ export function drawWolfHead(
       ctx.fillStyle = C(look.eye);
       ctx.fillRect(-w * 0.078, -h * 0.055, w * 0.156, h * 0.11);
       ctx.restore();
+    }
+  }
+}
+
+/**
+ * The dire wolf: the matriarch — a storm-charcoal predator half again
+ * the wolf's mass, designed around ONE silhouette element: the HACKLE
+ * RIDGE, a serrated mane standing permanently proud of the spine from
+ * skull to mid-back. Frost-grizzled guard hairs tick the dark saddle,
+ * an old rake of scars crosses the near flank, the ears carry a
+ * bitten-out notch, and the eyes burn ember — the champion tier reads
+ * through them the way it does through a crowned skeleton's sockets.
+ * Never a scale-up of the wolf: heavier skull, deeper chest over a
+ * gaunter tuck, and the brush ends PALE where the wolf's ends dark.
+ */
+export interface DireWolfLook {
+  coat: string;
+  saddle: string;
+  under: string;
+  /** Frost-tipped guard hairs ticking the saddle line. */
+  grizzle: string;
+  /** The raised mane crest — darker than the saddle, near-black. */
+  hackle: string;
+  earIn: string;
+  eye: string;
+  eyeCore: string;
+  /** Old rake scars, pale where fur never grew back. */
+  scar: string;
+  bodyW: number;
+  backH: number;
+  shoulderH: number;
+  chestH: number;
+  tuckH: number;
+  headW: number;
+  headH: number;
+}
+
+export const DIREWOLF_LOOK: DireWolfLook = {
+  coat: '#4b4854',
+  saddle: '#312e3c',
+  under: '#9d97a0',
+  grizzle: '#8d8fa0',
+  hackle: '#232030',
+  earIn: '#241f2c',
+  eye: '#ff9a3d',
+  eyeCore: '#ffe4ac',
+  scar: '#8f8494',
+  bodyW: 0.215,
+  backH: 0.68,
+  shoulderH: 0.16,
+  chestH: 0.3,
+  tuckH: 0.46,
+  headW: 0.385,
+  headH: 0.3,
+};
+
+export function paintDireWolfBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: DireWolfLook,
+  f: BeastBlockFrame,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  // Harder wedge than the wolf: the chest carries even more of the
+  // width and the waist pulls in tighter — massive AND gaunt, the
+  // starved-winter matriarch, never a fattened scale-up.
+  const foot: Array<[number, number]> = [
+    [hl, -hw * 0.84],
+    [hl, hw * 0.84],
+    [hl * 0.55, hw],
+    [-hl * 0.42, hw * 0.82],
+    [-hl, hw * 0.56],
+    [-hl, -hw * 0.56],
+    [-hl * 0.42, -hw * 0.82],
+    [hl * 0.55, -hw],
+  ];
+  const coat = shade(look.coat, (((f.seed >>> 5) & 7) - 3) * 2);
+  // Withers carry the drama: a taller shoulder ramp than the wolf's,
+  // then the spine falls away down a low-slung rump.
+  const topH = (X: number): number =>
+    look.backH +
+    Math.max(0, X / hl + 0.05) * look.shoulderH -
+    0.07 * Math.max(0, (-X / hl - 0.3) / 0.7);
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    topH,
+    (X) => look.chestH + (look.tuckH - look.chestH) * Math.min(1, Math.max(0, (0.5 - X / hl) / 1.1)),
+    coat,
+    (gx, gyy, lift) => {
+      const s = f.s;
+      const tk = f.topScale ?? 1;
+      // The great saddle cape: broader and darker than a wolf's,
+      // reaching down the flanks.
+      ctx.save();
+      ctx.translate(gx(hl * 0.02, 0), gyy(hl * 0.02, 0) - look.backH * tk * s * 0.92 - lift);
+      ctx.rotate(Math.atan2(f.fy * f.ys, f.fx));
+      ctx.fillStyle = look.saddle;
+      ctx.beginPath();
+      facetBlob(ctx, 0, 0, hl * s * 0.88, f.seed | 1, 9, (hw * 1.3) / (hl * 0.88), 0.35);
+      ctx.fill();
+      // Frost grizzle: pale guard-hair ticks riding the saddle's
+      // edge — the winters she's carried, seeded so no two matriarchs
+      // frost alike.
+      ctx.strokeStyle = look.grizzle;
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 7; i++) {
+        const gseed = (f.seed >>> (i * 3)) & 15;
+        const tx = hl * s * (0.62 - 0.19 * i) * 0.9;
+        const ty = -hw * s * (0.35 + (gseed & 3) * 0.14) * ((i & 1) === 0 ? 1 : -1);
+        ctx.beginPath();
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(tx - s * 0.05, ty + s * 0.028 * ((i & 1) === 0 ? 1 : -1));
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+      ctx.restore();
+      // Pale chest bib — only while the chest can face the camera.
+      if (f.fy > -0.15) {
+        ctx.fillStyle = look.under;
+        ctx.beginPath();
+        facetBlob(
+          ctx,
+          gx(hl * 0.9, 0),
+          gyy(hl * 0.9, 0) - (look.chestH + 0.12) * s,
+          hw * s * 0.82,
+          f.seed ^ 0x33,
+          7,
+          0.85,
+          1.7,
+        );
+        ctx.fill();
+      }
+      // The old rake: three parallel scar lines across the ribs,
+      // near flank only — the story the pack reads at a glance.
+      if (Math.abs(f.fy) < 0.92) {
+        ctx.strokeStyle = look.scar;
+        ctx.lineWidth = Math.max(1, s * 0.016);
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 3; i++) {
+          const sx = gx(hl * (0.34 - i * 0.13), hw * 0.55);
+          const sy = gyy(hl * (0.34 - i * 0.13), hw * 0.55) - (look.chestH + 0.2) * s - lift * 0.6;
+          ctx.beginPath();
+          ctx.moveTo(sx - s * 0.02, sy - s * 0.075);
+          ctx.lineTo(sx + s * 0.024, sy + s * 0.055);
+          ctx.stroke();
+        }
+        ctx.lineCap = 'butt';
+      }
+    },
+  );
+  // THE HACKLE RIDGE — the signature. Serrated mane spikes standing
+  // proud of the spine, tallest over the withers, dying out mid-back.
+  // Painted AFTER the body: the hull clip eats anything above it.
+  const { bx, gy, s, fx, fy, ys } = f;
+  const lift = f.bob * 0.35 * s;
+  const tk = f.topScale ?? 1;
+  const spineAt = (X: number): { x: number; y: number } => ({
+    x: bx + fx * X * s,
+    y: gy + fy * X * ys * s - topH(X) * tk * s - lift,
+  });
+  ctx.fillStyle = f.hurt ? '#ffffff' : look.hackle;
+  const N = 5;
+  for (let i = 0; i < N; i++) {
+    const t = i / (N - 1);
+    // Skull to mid-back only — the rump stays smooth.
+    const X0 = hl * (0.92 - 0.95 * t);
+    const X1 = X0 - hl * 0.16;
+    const a = spineAt(X0);
+    const b = spineAt(X1);
+    // Serration: alternating tall/short teeth, all raked BACK.
+    const hgt = s * tk * (0.115 - 0.055 * t) * ((i & 1) === 0 ? 1 : 0.72);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y + s * 0.012);
+    ctx.lineTo((a.x + b.x) / 2 - fx * s * 0.035, (a.y + b.y) / 2 - hgt);
+    ctx.lineTo(b.x, b.y + s * 0.012);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Frost tips on the tallest hackles — the ridge catches the light.
+  if (!f.hurt) {
+    ctx.fillStyle = look.grizzle;
+    for (const i of [0, 2]) {
+      const t = i / (N - 1);
+      const X0 = hl * (0.92 - 0.95 * t);
+      const X1 = X0 - hl * 0.16;
+      const a = spineAt(X0);
+      const b = spineAt(X1);
+      const hgt = s * tk * (0.115 - 0.055 * t);
+      const tipX = (a.x + b.x) / 2 - fx * s * 0.035;
+      const tipY = (a.y + b.y) / 2 - hgt;
+      ctx.beginPath();
+      ctx.moveTo(tipX - s * 0.014, tipY + s * 0.03);
+      ctx.lineTo(tipX, tipY);
+      ctx.lineTo(tipX + s * 0.014, tipY + s * 0.03);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+}
+
+/**
+ * The dire wolf head: a heavier skull than any wolf's — broad brow
+ * ledge over ember eyes, a longer deeper muzzle whose fangs show even
+ * at rest, and tall ears with a bitten-out notch on the near side.
+ * `snarl` drops the whole jaw and bares the full rack.
+ */
+export function drawDireWolfHead(
+  ctx: CanvasRenderingContext2D,
+  look: DireWolfLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** 0..1 through the attack telegraph. */
+    snarl?: number;
+    /** 0..1 quick idle ear twitch. */
+    flick?: number;
+  },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+  const snarl = o.snarl ?? 0;
+
+  // Tall ears — the NEAR ear (es > 0) carries the notch, a triangular
+  // bite taken out of its trailing edge: the matriarch's history in
+  // silhouette. Both pin flat mid-snarl.
+  for (const es of [-1, 1]) {
+    const bxr = cx + px * es * w * 0.3 + fx * es * w * 0.1;
+    const byr = cy + (py * es * w * 0.3 + fy * es * w * 0.1) * ys - h * 0.4;
+    const pin = Math.min(1, snarl * 0.6 + (es > 0 ? (o.flick ?? 0) * 0.35 : 0));
+    const tx = bxr + px * es * w * 0.16 - fx * w * 0.24 * pin;
+    const ty = byr - h * (0.92 - 0.4 * pin) - fy * w * 0.24 * pin * ys;
+    ctx.fillStyle = C(shade(look.coat, -8));
+    ctx.beginPath();
+    ctx.moveTo(bxr - px * es * w * 0.18, byr + h * 0.06);
+    if (es > 0) {
+      // Notched trailing edge: out to the tip, then a V bitten into
+      // the way back down.
+      ctx.lineTo(tx, ty);
+      ctx.lineTo(bxr + px * es * w * 0.24 + (tx - bxr) * 0.42, byr + (ty - byr) * 0.55);
+      ctx.lineTo(bxr + px * es * w * 0.1 + (tx - bxr) * 0.3, byr + (ty - byr) * 0.42);
+      ctx.lineTo(bxr + px * es * w * 0.21, byr + h * 0.12);
+    } else {
+      ctx.lineTo(tx, ty);
+      ctx.lineTo(bxr + px * es * w * 0.21, byr + h * 0.12);
+    }
+    ctx.closePath();
+    ctx.fill();
+    if (fy > 0.05 && !o.hurt && !o.dead) {
+      ctx.fillStyle = look.earIn;
+      ctx.beginPath();
+      ctx.moveTo(bxr - px * es * w * 0.06, byr + h * 0.02);
+      ctx.lineTo(bxr + (tx - bxr) * 0.55, byr + (ty - byr) * 0.55);
+      ctx.lineTo(bxr + px * es * w * 0.12, byr + h * 0.07);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Skull block: broader than the wolf's, chamfered heavier.
+  ctx.fillStyle = C(look.coat);
+  ctx.beginPath();
+  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.2, w * 0.2, w * 0.28, w * 0.28]);
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.2, w * 0.2, w * 0.28, w * 0.28]);
+    ctx.clip();
+    // Lit crown, then the BROW LEDGE: a hard dark band over the eye
+    // line that the wolf head doesn't carry — the glower.
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.14)';
+    ctx.fillRect(cx - w / 2, cy - h / 2, w, h * 0.18);
+    ctx.fillStyle = C(shade(look.saddle, -6));
+    ctx.fillRect(cx - w / 2, cy - h * 0.28, w, h * 0.17);
+    ctx.fillStyle = C(look.under);
+    ctx.fillRect(cx - w / 2, cy + h * 0.18, w, h * 0.34);
+    ctx.restore();
+  }
+
+  // Muzzle: longer and deeper than the wolf's — the bone-crusher jaw.
+  if (fy > -0.3) {
+    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const bx0 = cx + fx * w * 0.28;
+    const by0 = cy + fy * w * 0.28 * ys + h * 0.12;
+    const sl = w * (0.36 + 0.32 * profileK);
+    const tx = bx0 + fx * sl;
+    const ty = by0 + fy * sl * ys + h * 0.1;
+    const axv = tx - bx0;
+    const ayv = ty - by0;
+    const al = Math.hypot(axv, ayv) || 1e-4;
+    const nx = -ayv / al;
+    const ny = axv / al;
+    const hb = w * 0.23 * (1 - profileK * 0.22);
+    const ht = hb * 0.66;
+    ctx.fillStyle = C(shade(look.coat, 6));
+    ctx.beginPath();
+    ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
+    ctx.lineTo(tx + nx * ht, ty + ny * ht);
+    ctx.lineTo(tx - nx * ht, ty - ny * ht);
+    ctx.lineTo(bx0 - nx * hb, by0 - ny * hb);
+    ctx.closePath();
+    ctx.fill();
+    if (snarl > 0.15 && !o.dead && !o.hurt) {
+      // The full rack: a deeper gape than any wolf, three fangs and a
+      // dark gum line.
+      const gape = h * 0.46 * Math.min(1, snarl);
+      ctx.fillStyle = '#2a1420';
+      ctx.beginPath();
+      ctx.moveTo(tx - nx * ht * 0.95, ty - ny * ht * 0.95);
+      ctx.lineTo(tx + nx * ht * 0.95, ty + ny * ht * 0.95);
+      ctx.lineTo(tx + (axv / al) * ht * 0.45, ty + gape);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#efe9d8';
+      for (const ts of [-0.55, 0, 0.45]) {
+        ctx.beginPath();
+        ctx.moveTo(tx + nx * ht * ts - w * 0.022, ty + ny * ht * ts);
+        ctx.lineTo(tx + nx * ht * ts + w * 0.022, ty + ny * ht * ts);
+        ctx.lineTo(tx + nx * ht * ts, ty + ny * ht * ts + gape * 0.5);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else if (!o.dead && !o.hurt && fy > 0.05) {
+      // At rest the fangs still show — two pale ticks hooking down
+      // from the jawline near the tip. The wolf hides its teeth; the
+      // matriarch never does.
+      ctx.fillStyle = '#e8e2d0';
+      for (const ts of [-0.62, 0.52]) {
+        ctx.beginPath();
+        ctx.moveTo(tx + nx * ht * ts - w * 0.016, ty + ny * ht * ts + h * 0.05);
+        ctx.lineTo(tx + nx * ht * ts + w * 0.016, ty + ny * ht * ts + h * 0.05);
+        ctx.lineTo(tx + nx * ht * ts, ty + ny * ht * ts + h * 0.14);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    // Nose chip seated on the tip.
+    ctx.fillStyle = C(OUTLINE);
+    ctx.beginPath();
+    facetCircle(ctx, tx - (axv / al) * w * 0.02, ty - (ayv / al) * w * 0.02, w * 0.095, 5, fx);
+    ctx.fill();
+  }
+
+  // Ember eyes under the brow ledge — a soft heat-glow OWNS the
+  // socket (the tiny-tint failure from the skeleton epic), then the
+  // slit, then a hot core. Dark and dead on a corpse.
+  if (!o.dead && fy > -0.45) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const ex = cx + fx * w * 0.12 + px * es * w * 0.3;
+      const ey = cy + (fy * w * 0.12 + py * es * w * 0.3) * ys - h * 0.08;
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(es * (0.28 + snarl * 0.3));
+      if (!o.hurt) {
+        ctx.fillStyle = 'rgba(255, 154, 61, 0.28)';
+        ctx.fillRect(-w * 0.13, -h * 0.1, w * 0.26, h * 0.2);
+      }
+      ctx.fillStyle = C(look.eye);
+      ctx.fillRect(-w * 0.088, -h * 0.06, w * 0.176, h * 0.12);
+      if (!o.hurt) {
+        ctx.fillStyle = look.eyeCore;
+        ctx.fillRect(-w * 0.032, -h * 0.032, w * 0.064, h * 0.064);
+      }
+      ctx.restore();
+    }
+  }
+}
+
+/**
+ * The worg: goblin-kin war-hound, designed around ONE silhouette
+ * element: the HYENA SLOPE — towering shoulders falling hard down a
+ * pencil-thin rump, the head slung LOW off the withers. A bear-trap
+ * skull with an underbite whose fang-tusks hook up past the muzzle,
+ * big ragged bat ears torn at the edges, mange-dappled dun hide over
+ * a bare-skin chest, a short ratty kink of a tail — nothing about it
+ * reads noble. The eyes are sickly green and set forward: it is
+ * thinking about you specifically.
+ */
+export interface WorgLook {
+  hide: string;
+  /** Mange dapple blotches across the shoulders. */
+  dapple: string;
+  /** The short choppy bristle strip down the nape — patchy, not a mane. */
+  mane: string;
+  /** Bare skin: chest bib, muzzle, tail hide. */
+  bare: string;
+  earIn: string;
+  eye: string;
+  fang: string;
+  bodyW: number;
+  /** Withers height — the tall front of the slope. */
+  shoulderH: number;
+  /** Rump height — the low rear of the slope. */
+  rumpH: number;
+  chestH: number;
+  headW: number;
+  headH: number;
+}
+
+export const WORG_LOOK: WorgLook = {
+  hide: '#6b5f47',
+  dapple: '#544a36',
+  mane: '#38301f',
+  bare: '#8f7a62',
+  earIn: '#4a3a30',
+  eye: '#b8d44a',
+  fang: '#e8dfc8',
+  bodyW: 0.2,
+  shoulderH: 0.6,
+  rumpH: 0.34,
+  chestH: 0.22,
+  headW: 0.34,
+  headH: 0.27,
+};
+
+export function paintWorgBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: WorgLook,
+  f: BeastBlockFrame,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  // Front-loaded footprint: all the width lives at the shoulders, the
+  // haunches pinch to almost nothing — the slope in plan view.
+  const foot: Array<[number, number]> = [
+    [hl, -hw * 0.85],
+    [hl, hw * 0.85],
+    [hl * 0.5, hw],
+    [-hl * 0.55, hw * 0.68],
+    [-hl, hw * 0.42],
+    [-hl, -hw * 0.42],
+    [-hl * 0.55, -hw * 0.68],
+    [hl * 0.5, -hw],
+  ];
+  const hide = shade(look.hide, (((f.seed >>> 5) & 7) - 3) * 2);
+  // THE HYENA SLOPE: withers tower at the front and the spine falls
+  // away in one hard line to the low rump — the anti-wolf silhouette.
+  const topH = (X: number): number => {
+    const t = Math.min(1, Math.max(0, (X / hl + 1) / 1.5));
+    return look.rumpH + (look.shoulderH - look.rumpH) * t * t;
+  };
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    topH,
+    // Deep chest shallowing toward the tucked rear.
+    (X) => look.chestH + 0.05 * Math.min(1, Math.max(0, (0.4 - X / hl) / 1.4)),
+    hide,
+    (gx, gyy, lift) => {
+      const s = f.s;
+      const tk = f.topScale ?? 1;
+      // Mange dapple: seeded blotches scattered down the upper flank,
+      // painted in the body's rotated frame so they ride every facing.
+      ctx.save();
+      ctx.translate(gx(hl * 0.06, 0), gyy(hl * 0.06, 0) - look.shoulderH * tk * s * 0.7 - lift);
+      ctx.rotate(Math.atan2(f.fy * f.ys, f.fx));
+      ctx.fillStyle = look.dapple;
+      for (let i = 0; i < 5; i++) {
+        const dseed = (f.seed >>> (i * 4)) & 31;
+        const dx = hl * s * (0.55 - 0.28 * i + (dseed & 3) * 0.02);
+        const dy = ((dseed >> 2) & 3) * hw * s * 0.22 * ((i & 1) === 0 ? 1 : -1);
+        ctx.beginPath();
+        facetBlob(ctx, dx, dy, s * (0.055 + (dseed & 1) * 0.02), f.seed ^ (i * 77), 6, 0.8);
+        ctx.fill();
+      }
+      ctx.restore();
+      // Bare-skin chest bib, camera-side only.
+      if (f.fy > -0.15) {
+        ctx.fillStyle = look.bare;
+        ctx.beginPath();
+        facetBlob(
+          ctx,
+          gx(hl * 0.88, 0),
+          gyy(hl * 0.88, 0) - (look.chestH + 0.1) * s,
+          hw * s * 0.72,
+          f.seed ^ 0x2f,
+          7,
+          0.85,
+          1.6,
+        );
+        ctx.fill();
+      }
+    },
+  );
+  // The nape bristle strip: short choppy spikes from skull to
+  // mid-back — PATCHY, with seeded gaps. A mangy war-hound's roach,
+  // never the matriarch's proud ridge. Painted after the body.
+  const { bx, gy, s, fx, fy, ys } = f;
+  const lift = f.bob * 0.35 * s;
+  const tk = f.topScale ?? 1;
+  ctx.fillStyle = f.hurt ? '#ffffff' : look.mane;
+  const spineAt = (X: number): { x: number; y: number } => ({
+    x: bx + fx * X * s,
+    y: gy + fy * X * ys * s - topH(X) * tk * s - lift,
+  });
+  const N = 8;
+  for (let i = 0; i < N; i++) {
+    // Mange gaps: the seeded bits eat two of the eight tufts.
+    if (((f.seed >>> (i + 2)) & 7) === 3) continue;
+    const t = i / (N - 1);
+    const X0 = hl * (0.95 - 1.0 * t);
+    const X1 = X0 - hl * 0.1;
+    const a = spineAt(X0);
+    const b = spineAt(X1);
+    const hgt = s * tk * (0.055 - 0.02 * t);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y + s * 0.01);
+    ctx.lineTo((a.x + b.x) / 2 - fx * s * 0.012, (a.y + b.y) / 2 - hgt);
+    ctx.lineTo(b.x, b.y + s * 0.01);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/**
+ * The worg head: a bear-trap — broad short skull, heavier below than
+ * above, the UNDERBITE fang-tusks hooking up past the muzzle sides
+ * even at rest. Big ragged bat ears with torn edges; forward-set
+ * sickly-green eyes. `gape` swings the whole lower jaw open through
+ * the lunge — the trap showing you its hinge.
+ */
+export function drawWorgHead(
+  ctx: CanvasRenderingContext2D,
+  look: WorgLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** 0..1 through the attack telegraph — the trap opens. */
+    gape?: number;
+    /** 0..1 idle ear swivel. */
+    flick?: number;
+  },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+  const gape = o.gape ?? 0;
+
+  // Ragged bat ears: broad-based sails with a torn V down the outer
+  // edge. Painted in the MANE tone — the head hangs low against the
+  // worg's own withers, and hide-toned ears vanished into the body
+  // mass (caught in matrix v2).
+  for (const es of [-1, 1]) {
+    const bxr = cx + px * es * w * 0.3 + fx * es * w * 0.08;
+    const byr = cy + (py * es * w * 0.3 + fy * es * w * 0.08) * ys - h * 0.34;
+    const swiv = es > 0 ? (o.flick ?? 0) * 0.2 : 0;
+    const tx = bxr + px * es * w * (0.24 + swiv);
+    const ty = byr - h * 0.82;
+    ctx.fillStyle = C(look.mane);
+    ctx.beginPath();
+    ctx.moveTo(bxr - px * es * w * 0.2, byr + h * 0.05);
+    // Inner edge straight up to the tip.
+    ctx.lineTo(tx - px * es * w * 0.12, ty + h * 0.08);
+    ctx.lineTo(tx, ty);
+    // Outer edge falls with a torn V halfway down.
+    ctx.lineTo(tx + px * es * w * 0.14, ty + h * 0.28);
+    ctx.lineTo(tx + px * es * w * 0.03, ty + h * 0.4);
+    ctx.lineTo(tx + px * es * w * 0.2, ty + h * 0.54);
+    ctx.lineTo(bxr + px * es * w * 0.26, byr + h * 0.1);
+    ctx.closePath();
+    ctx.fill();
+    if (fy > 0.05 && !o.hurt && !o.dead) {
+      ctx.fillStyle = look.earIn;
+      ctx.beginPath();
+      ctx.moveTo(bxr - px * es * w * 0.08, byr + h * 0.02);
+      ctx.lineTo(bxr + (tx - bxr) * 0.66, byr + (ty - byr) * 0.66);
+      ctx.lineTo(bxr + px * es * w * 0.14, byr + h * 0.07);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Skull: broad and SHORT — wider than the dire wolf's in proportion,
+  // bottom-heavy chamfer (the jaw carries the mass).
+  ctx.fillStyle = C(look.hide);
+  ctx.beginPath();
+  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.3, w * 0.3, w * 0.16, w * 0.16]);
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.3, w * 0.3, w * 0.16, w * 0.16]);
+    ctx.clip();
+    // Heavy brow shade, bare-skin jaw band low.
+    ctx.fillStyle = 'rgba(30, 20, 36, 0.22)';
+    ctx.fillRect(cx - w / 2, cy - h * 0.5, w, h * 0.2);
+    ctx.fillStyle = C(look.bare);
+    ctx.fillRect(cx - w / 2, cy + h * 0.2, w, h * 0.32);
+    ctx.restore();
+  }
+
+  // Muzzle: SHORT and thick — a stub next to the wolves' spike, the
+  // trap's front plate. Gone from behind.
+  if (fy > -0.3) {
+    const profileK = Math.min(1, Math.abs(fx) * 1.15);
+    const bx0 = cx + fx * w * 0.24;
+    const by0 = cy + fy * w * 0.24 * ys + h * 0.14;
+    const sl = w * (0.22 + 0.18 * profileK);
+    const tx = bx0 + fx * sl;
+    const ty = by0 + fy * sl * ys + h * 0.08;
+    const axv = tx - bx0;
+    const ayv = ty - by0;
+    const al = Math.hypot(axv, ayv) || 1e-4;
+    const nx = -ayv / al;
+    const ny = axv / al;
+    const hb = w * 0.27 * (1 - profileK * 0.18);
+    const ht = hb * 0.78;
+    ctx.fillStyle = C(shade(look.bare, -4));
+    ctx.beginPath();
+    ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
+    ctx.lineTo(tx + nx * ht, ty + ny * ht);
+    ctx.lineTo(tx - nx * ht, ty - ny * ht);
+    ctx.lineTo(bx0 - nx * hb, by0 - ny * hb);
+    ctx.closePath();
+    ctx.fill();
+    if (gape > 0.15 && !o.dead && !o.hurt) {
+      // THE TRAP OPENS: the whole lower jaw swings, dark gullet
+      // behind a fence of teeth, the fang-tusks riding the jaw down.
+      const drop = h * 0.55 * Math.min(1, gape);
+      ctx.fillStyle = '#241018';
+      ctx.beginPath();
+      ctx.moveTo(bx0 - nx * hb * 0.9, by0 - ny * hb * 0.9);
+      ctx.lineTo(tx - nx * ht * 0.9, ty - ny * ht * 0.9);
+      ctx.lineTo(tx + (axv / al) * ht * 0.2, ty + drop);
+      ctx.lineTo(bx0, by0 + drop * 0.8);
+      ctx.closePath();
+      ctx.fill();
+      // The dropped jaw slab under the gullet.
+      ctx.fillStyle = C(shade(look.bare, -12));
+      ctx.beginPath();
+      ctx.moveTo(bx0 - nx * hb * 0.7, by0 + drop * 0.82);
+      ctx.lineTo(tx - nx * ht * 0.6, ty + drop * 0.98);
+      ctx.lineTo(tx + nx * ht * 0.6, ty + drop);
+      ctx.lineTo(bx0 + nx * hb * 0.7, by0 + drop * 0.86);
+      ctx.closePath();
+      ctx.fill();
+      // Teeth fence on the upper plate.
+      ctx.fillStyle = look.fang;
+      for (const ts of [-0.5, -0.05, 0.42]) {
+        ctx.beginPath();
+        ctx.moveTo(tx + nx * ht * ts - w * 0.018, ty + ny * ht * ts + h * 0.02);
+        ctx.lineTo(tx + nx * ht * ts + w * 0.018, ty + ny * ht * ts + h * 0.02);
+        ctx.lineTo(tx + nx * ht * ts, ty + ny * ht * ts + drop * 0.42);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    // THE UNDERBITE — the signature read. Two fang-tusks hooking UP
+    // from the lower jaw past the muzzle sides, always shown (rest or
+    // gape), obeying the far-side-skip law at profile.
+    if (!o.hurt) {
+      const jawDrop = gape > 0.15 && !o.dead ? h * 0.5 * Math.min(1, gape) : 0;
+      for (const ts of [-1, 1]) {
+        if (Math.abs(fx) > 0.7 && ts * py < 0) continue;
+        const fxp = tx + nx * ht * ts * 0.82;
+        const fyp = ty + ny * ht * ts * 0.82 + h * 0.1 + jawDrop;
+        ctx.fillStyle = look.fang;
+        ctx.beginPath();
+        ctx.moveTo(fxp - w * 0.028, fyp);
+        ctx.lineTo(fxp + w * 0.028, fyp + h * 0.02);
+        // The up-hook: tip pulled back toward the skull.
+        ctx.lineTo(fxp + w * 0.012 - fx * w * 0.05, fyp - h * 0.2);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    // Broad nose bar across the stub tip.
+    ctx.fillStyle = C(OUTLINE);
+    ctx.beginPath();
+    facetCircle(ctx, tx - (axv / al) * w * 0.015, ty - (ayv / al) * w * 0.015, w * 0.1, 5, fx);
+    ctx.fill();
+  }
+
+  // Sickly green eyes — round and FORWARD-SET (closer to the muzzle
+  // root than any wolf's), a black slit pupil. It is not hunting; it
+  // is planning.
+  if (!o.dead && fy > -0.45) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const ex = cx + fx * w * 0.17 + px * es * w * 0.22;
+      const ey = cy + (fy * w * 0.17 + py * es * w * 0.22) * ys - h * 0.12;
+      ctx.fillStyle = C(look.eye);
+      ctx.beginPath();
+      ctx.arc(ex, ey, w * 0.075, 0, Math.PI * 2);
+      ctx.fill();
+      if (!o.hurt) {
+        ctx.fillStyle = '#1a1610';
+        ctx.fillRect(ex - w * 0.014, ey - w * 0.055, w * 0.028, w * 0.11);
+      }
     }
   }
 }
@@ -7496,6 +8251,8 @@ export function drawBeast(
   seed = (seed ^ ((opts.seed ?? 0) * 2654435761)) | 0;
   const cattle = CATTLE_LOOKS[opts.defId];
   const wolfL = opts.defId === 'wolf' ? WOLF_LOOK : undefined;
+  const direL = opts.defId === 'dire_wolf' ? DIREWOLF_LOOK : undefined;
+  const worgL = opts.defId === 'worg' ? WORG_LOOK : undefined;
   const ratL = opts.defId === 'rat' ? RAT_LOOK : undefined;
   const boarL = opts.defId === 'boar' ? BOAR_LOOK : undefined;
   const spiderL = opts.defId === 'giant_spider' ? SPIDER_LOOK : undefined;
@@ -7521,6 +8278,14 @@ export function drawBeast(
   const paintBody = (): void => {
     if (wolfL) {
       paintWolfBody(ctx, spec, wolfL, blockFrame());
+      return;
+    }
+    if (direL) {
+      paintDireWolfBody(ctx, spec, direL, blockFrame());
+      return;
+    }
+    if (worgL) {
+      paintWorgBody(ctx, spec, worgL, blockFrame());
       return;
     }
     if (ratL) {
@@ -7796,6 +8561,107 @@ export function drawBeast(
       });
       return;
     }
+    if (direL) {
+      const hl = spec.bodyLen * s;
+      const hw2 = direL.headW * s;
+      const nod = opts.pose.bob * 0.5 * s;
+      // The matriarch stalks lower and longer than her pack through
+      // the windup — the whole front end sinks toward the kill line.
+      const stalk = at > 0 ? Math.min(1, at / 0.7) * 0.11 * s : 0;
+      const chx = bx + fx * (hl + hw2 * 0.44);
+      const chy =
+        by +
+        fy * (hl + hw2 * 0.44) * ys -
+        (direL.backH + direL.shoulderH * 0.7) * 1.1 * s -
+        nod +
+        stalk;
+      // The ruff: a thick coat quad off the withers into the head
+      // sides, its lower edge breaking into fur chops — the storm
+      // collar no lean wolf carries.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(direL.coat, -9);
+      ctx.beginPath();
+      const nb = (direL.backH + direL.shoulderH) * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * direL.bodyW * 0.62 * s;
+      const nwy = py * direL.bodyW * 0.62 * s;
+      const rax = bx + fx * hl * 0.7;
+      const ray = by + fy * hl * 0.7 * ys;
+      ctx.moveTo(rax + nwx, ray + nwy * ys - nb * 0.88);
+      ctx.lineTo(rax - nwx, ray - nwy * ys - nb * 0.88);
+      ctx.lineTo(chx - px * hw2 * 0.4, chy - py * hw2 * 0.4 * ys + direL.headH * s * 0.26);
+      ctx.lineTo(chx + px * hw2 * 0.4, chy + py * hw2 * 0.4 * ys + direL.headH * s * 0.26);
+      ctx.closePath();
+      ctx.fill();
+      // Fur chops hanging off the ruff's throat line.
+      if (!opts.hurt) {
+        ctx.fillStyle = shade(direL.coat, -9);
+        for (const cs of [-0.55, 0, 0.55]) {
+          const chpx = chx - px * hw2 * 0.4 * cs - fx * hw2 * 0.18;
+          const chpy =
+            chy - (py * hw2 * 0.4 * cs + fy * hw2 * 0.18) * ys + direL.headH * s * 0.3;
+          ctx.beginPath();
+          ctx.moveTo(chpx - hw2 * 0.09, chpy - hw2 * 0.04);
+          ctx.lineTo(chpx + hw2 * 0.09, chpy - hw2 * 0.04);
+          ctx.lineTo(chpx, chpy + hw2 * 0.14);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      const flick =
+        now > 0 ? Math.max(0, Math.sin(now * 0.0017 + seed) - 0.94) / 0.06 * idle : 0;
+      drawDireWolfHead(ctx, direL, {
+        x: chx,
+        y: chy,
+        s,
+        fx,
+        fy,
+        ys,
+        hurt: opts.hurt,
+        snarl: at > 0 ? Math.min(1, at * 2.2) : 0,
+        flick,
+      });
+      return;
+    }
+    if (worgL) {
+      const hl = spec.bodyLen * s;
+      const hw2 = worgL.headW * s;
+      const nod = opts.pose.bob * 0.5 * s;
+      // The lunge THRUSTS the head forward off the low carriage — the
+      // worg doesn't stalk down like a wolf, it snaps OUT.
+      const thrust = at > 0 ? Math.min(1, at / 0.7) * 0.14 * s : 0;
+      const chx = bx + fx * (hl + hw2 * 0.46 + thrust);
+      // THE LOW CARRIAGE: the skull hangs well BELOW the withers peak —
+      // the hyena head-slung read that makes the slope mean something.
+      const chy =
+        by + (fy * (hl + hw2 * 0.46) + fy * thrust * 0.5) * ys - worgL.shoulderH * 0.78 * s - nod;
+      // Neck: a thick quad falling DOWN from the withers to the skull.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(worgL.hide, -8);
+      ctx.beginPath();
+      const nb = worgL.shoulderH * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * worgL.bodyW * 0.6 * s;
+      const nwy = py * worgL.bodyW * 0.6 * s;
+      const rax = bx + fx * hl * 0.68;
+      const ray = by + fy * hl * 0.68 * ys;
+      ctx.moveTo(rax + nwx, ray + nwy * ys - nb * 0.95);
+      ctx.lineTo(rax - nwx, ray - nwy * ys - nb * 0.95);
+      ctx.lineTo(chx - px * hw2 * 0.38, chy - py * hw2 * 0.38 * ys + worgL.headH * s * 0.2);
+      ctx.lineTo(chx + px * hw2 * 0.38, chy + py * hw2 * 0.38 * ys + worgL.headH * s * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      const flick =
+        now > 0 ? Math.max(0, Math.sin(now * 0.0026 + seed) - 0.92) / 0.08 * idle : 0;
+      drawWorgHead(ctx, worgL, {
+        x: chx,
+        y: chy,
+        s,
+        fx,
+        fy,
+        ys,
+        hurt: opts.hurt,
+        gape: at > 0 ? Math.min(1, at * 2.2) : 0,
+        flick,
+      });
+      return;
+    }
     if (ratL) {
       const hl = spec.bodyLen * s;
       const hw2 = ratL.headW * s;
@@ -7989,6 +8855,64 @@ export function drawBeast(
       ctx.beginPath();
       facetCircle(ctx, tex, tey, s * 0.042, 5, seed * 0.4);
       ctx.fill();
+      return;
+    }
+    if (direL) {
+      // The matriarch's brush: heavier than any wolf's, hung low and
+      // ending PALE — the frost tip, the inverse of the pack's dark
+      // ones. Sways slower; she wastes no motion.
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      const sway =
+        Math.sin(opts.walkPhase * Math.PI * 2) * 0.035 * s +
+        (now > 0 ? Math.sin(now * 0.0008 + seed) * 0.045 * s * idle : 0);
+      const tbx = bx - fx * hl * 0.96;
+      const tby = by - fy * hl * 0.96 * ys - direL.backH * 0.74 * s - lift;
+      const cxq = tbx - fx * hl * 0.4 + px * sway * 0.7;
+      const cyq = tby + direL.backH * 0.16 * s;
+      const tex = tbx - fx * hl * 0.74 + px * sway * 1.5;
+      const tey = tby + direL.backH * 0.58 * s;
+      const brush = taperedSpinePath(tbx, tby, cxq, cyq, tex, tey, (t) =>
+        s * (0.042 + 0.072 * Math.sin(Math.PI * Math.pow(t, 0.9))),
+      );
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(direL.coat, -6);
+      ctx.fill(brush);
+      ctx.fillStyle = opts.hurt ? '#ffffff' : direL.grizzle;
+      ctx.beginPath();
+      facetCircle(ctx, tex, tey, s * 0.05, 5, seed * 0.4);
+      ctx.fill();
+      return;
+    }
+    if (worgL) {
+      // The ratty crook: a thin kinked whip off the low rump, bare at
+      // the tip — nothing a wolf would admit to. Flicks fast at idle.
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      const sway =
+        Math.sin(opts.walkPhase * Math.PI * 2) * 0.03 * s +
+        (now > 0 ? Math.sin(now * 0.0023 + seed) * 0.035 * s * idle : 0);
+      const tbx = bx - fx * hl * 0.94;
+      const tby = by - fy * hl * 0.94 * ys - worgL.rumpH * 0.82 * s - lift;
+      ctx.strokeStyle = opts.hurt ? '#ffffff' : shade(worgL.hide, -14);
+      ctx.lineWidth = Math.max(1.5, s * 0.028);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tbx, tby);
+      // Down, then the kink hooks it back up — the crook.
+      ctx.quadraticCurveTo(
+        tbx - fx * hl * 0.2 + px * sway,
+        tby + s * 0.12,
+        tbx - fx * hl * 0.3 + px * sway * 2,
+        tby + s * 0.05,
+      );
+      ctx.stroke();
+      ctx.lineWidth = Math.max(1, s * 0.018);
+      ctx.strokeStyle = opts.hurt ? '#ffffff' : worgL.bare;
+      ctx.beginPath();
+      ctx.moveTo(tbx - fx * hl * 0.3 + px * sway * 2, tby + s * 0.05);
+      ctx.lineTo(tbx - fx * hl * 0.36 + px * sway * 2.4, tby + s * 0.11);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
       return;
     }
     if (ratL) {

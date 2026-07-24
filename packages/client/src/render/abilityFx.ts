@@ -263,6 +263,7 @@ export const FX_STYLES: Record<string, FxStyle> = {
 
   // ------------------------------------------------------ npc specials
   ground_slam: BONE({ debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.9 }),
+  rallying_howl: SHADOW({ mid: '#9aa2b8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6 }),
 };
 
 /**

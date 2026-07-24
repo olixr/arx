@@ -1949,6 +1949,39 @@ Object.assign(PLATES, {
       c.stroke();
     }
   },
+  // Rallying Howl — the matriarch's head thrown back, the call rolling
+  // out in rings. (NPC special: bestiary and staging tools only.)
+  rallying_howl: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    // The howl rings, spreading up and out from the raised muzzle.
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    for (const [r, w] of [[0.22, 0.05], [0.33, 0.04], [0.44, 0.032]] as const) {
+      c.lineWidth = w;
+      c.beginPath();
+      c.arc(0.1, -0.12, r, -2.2, -0.9);
+      c.stroke();
+    }
+    // Wolf head in profile, muzzle to the sky: skull wedge, thrown-back
+    // ear, the throat line dropping to a chest hint.
+    c.fillStyle = st.deep;
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(0.14, -0.22); // muzzle tip, raised
+    c.lineTo(-0.02, -0.1); // jawline down
+    c.lineTo(-0.08, 0.08); // throat
+    c.quadraticCurveTo(-0.1, 0.3, -0.3, 0.38); // chest fall-away
+    c.lineTo(-0.34, 0.12); // back of shoulder
+    c.lineTo(-0.26, -0.02); // nape
+    c.lineTo(-0.3, -0.2); // ear pinned back
+    c.lineTo(-0.16, -0.12); // skull crown
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The ember eye — the champion tier reads through it.
+    dot(c, '#ff9a3d', -0.15, -0.07, 0.032);
+  },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
 // ------------------------------------------------------------ lookup

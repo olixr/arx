@@ -15357,7 +15357,8 @@ export class Renderer {
         // Tall headgear reaches past the spec envelope — the stag's
         // antlers ride a raised neck and clip at the top edge without
         // their own headroom (user-flagged walking up-screen).
-        const headroom = defId === 'stag' ? 0.7 : defId === 'ram' ? 0.25 : 0;
+        const headroom =
+          defId === 'stag' ? 0.7 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'worg' ? 0.25 : 0;
         const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom) * scale + r;
         const bottom = (spec.rig.legLen + 0.7) * scale;
         return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };
@@ -16738,7 +16739,9 @@ export class Renderer {
             ? 0.3
             : c.look.b.defId === 'mudcrab'
               ? 0.35
-              : 0
+              : c.look.b.defId === 'dire_wolf' || c.look.b.defId === 'worg'
+                ? 0.25
+                : 0
         : 0;
     const margin =
       (c.look.kind === 'beast'

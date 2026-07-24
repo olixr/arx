@@ -440,6 +440,113 @@ export declare function drawWolfHead(ctx: CanvasRenderingContext2D, look: WolfLo
     flick?: number;
 }): void;
 /**
+ * The dire wolf: the matriarch — a storm-charcoal predator half again
+ * the wolf's mass, designed around ONE silhouette element: the HACKLE
+ * RIDGE, a serrated mane standing permanently proud of the spine from
+ * skull to mid-back. Frost-grizzled guard hairs tick the dark saddle,
+ * an old rake of scars crosses the near flank, the ears carry a
+ * bitten-out notch, and the eyes burn ember — the champion tier reads
+ * through them the way it does through a crowned skeleton's sockets.
+ * Never a scale-up of the wolf: heavier skull, deeper chest over a
+ * gaunter tuck, and the brush ends PALE where the wolf's ends dark.
+ */
+export interface DireWolfLook {
+    coat: string;
+    saddle: string;
+    under: string;
+    /** Frost-tipped guard hairs ticking the saddle line. */
+    grizzle: string;
+    /** The raised mane crest — darker than the saddle, near-black. */
+    hackle: string;
+    earIn: string;
+    eye: string;
+    eyeCore: string;
+    /** Old rake scars, pale where fur never grew back. */
+    scar: string;
+    bodyW: number;
+    backH: number;
+    shoulderH: number;
+    chestH: number;
+    tuckH: number;
+    headW: number;
+    headH: number;
+}
+export declare const DIREWOLF_LOOK: DireWolfLook;
+export declare function paintDireWolfBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: DireWolfLook, f: BeastBlockFrame): void;
+/**
+ * The dire wolf head: a heavier skull than any wolf's — broad brow
+ * ledge over ember eyes, a longer deeper muzzle whose fangs show even
+ * at rest, and tall ears with a bitten-out notch on the near side.
+ * `snarl` drops the whole jaw and bares the full rack.
+ */
+export declare function drawDireWolfHead(ctx: CanvasRenderingContext2D, look: DireWolfLook, o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** 0..1 through the attack telegraph. */
+    snarl?: number;
+    /** 0..1 quick idle ear twitch. */
+    flick?: number;
+}): void;
+/**
+ * The worg: goblin-kin war-hound, designed around ONE silhouette
+ * element: the HYENA SLOPE — towering shoulders falling hard down a
+ * pencil-thin rump, the head slung LOW off the withers. A bear-trap
+ * skull with an underbite whose fang-tusks hook up past the muzzle,
+ * big ragged bat ears torn at the edges, mange-dappled dun hide over
+ * a bare-skin chest, a short ratty kink of a tail — nothing about it
+ * reads noble. The eyes are sickly green and set forward: it is
+ * thinking about you specifically.
+ */
+export interface WorgLook {
+    hide: string;
+    /** Mange dapple blotches across the shoulders. */
+    dapple: string;
+    /** The short choppy bristle strip down the nape — patchy, not a mane. */
+    mane: string;
+    /** Bare skin: chest bib, muzzle, tail hide. */
+    bare: string;
+    earIn: string;
+    eye: string;
+    fang: string;
+    bodyW: number;
+    /** Withers height — the tall front of the slope. */
+    shoulderH: number;
+    /** Rump height — the low rear of the slope. */
+    rumpH: number;
+    chestH: number;
+    headW: number;
+    headH: number;
+}
+export declare const WORG_LOOK: WorgLook;
+export declare function paintWorgBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: WorgLook, f: BeastBlockFrame): void;
+/**
+ * The worg head: a bear-trap — broad short skull, heavier below than
+ * above, the UNDERBITE fang-tusks hooking up past the muzzle sides
+ * even at rest. Big ragged bat ears with torn edges; forward-set
+ * sickly-green eyes. `gape` swings the whole lower jaw open through
+ * the lunge — the trap showing you its hinge.
+ */
+export declare function drawWorgHead(ctx: CanvasRenderingContext2D, look: WorgLook, o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** 0..1 through the attack telegraph — the trap opens. */
+    gape?: number;
+    /** 0..1 idle ear swivel. */
+    flick?: number;
+}): void;
+/**
  * The giant rat: a low hunched wedge — rump high and round, body
  * tapering into a pointed twitchy head with big dish ears, whiskers,
  * buck teeth and a long naked tail dragging an S behind it.

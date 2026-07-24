@@ -57,6 +57,7 @@ import {
   SHOPS,
   NODES_BY_TILE,
   NPCS,
+  PACK_RALLY_RANGE,
   RECIPES,
   STARTER_KIT,
   TOOL_TIER_NAMES,
@@ -4461,7 +4462,7 @@ export class GameServer {
             if (!npos) continue;
             if (Math.hypot(npos.x - pos.x, npos.y - pos.y) > spec.radius) continue;
             if (npc.def.damage <= 0) continue;
-            this.npcAggro(npc, eid);
+            this.npcAggro(npcEid, npc, eid);
           }
         }
         break;
@@ -5108,7 +5109,7 @@ export class GameServer {
     if (this.actors.get(npcEid)?.actor.protection === 'invulnerable') {
       this.broadcastHit(npcEid, 0, false, 0, 0, false, true);
       if (npc.state === 'idle' && npc.def.damage > 0) {
-        this.npcAggro(npc, attackerEid);
+        this.npcAggro(npcEid, npc, attackerEid);
       }
       return;
     }
@@ -5228,7 +5229,7 @@ export class GameServer {
 
     // Fight back!
     if (npc.state === 'idle' && npc.def.damage > 0) {
-      this.npcAggro(npc, attackerEid);
+      this.npcAggro(npcEid, npc, attackerEid);
     }
 
     if (health.hp <= 0) this.killNpc(npcEid, npc, attackerEid);
@@ -5326,7 +5327,7 @@ export class GameServer {
           const childEid = this.spawnNpc(childDef, cx, cy, -1);
           const child = this.npcs.get(childEid)!;
           if (this.players.has(killerEid)) {
-            this.npcAggro(child, killerEid);
+            this.npcAggro(childEid, child, killerEid);
           }
         }
       }
@@ -5953,9 +5954,18 @@ export class GameServer {
    * Point a combat body at a target: chase state plus a fresh nav
    * slate — the stall watchdog and swerve memory must never carry
    * over from a previous pursuit. Every path into 'chase' goes
-   * through here.
+   * through here — which is exactly why the pack law lives here too:
+   * bodies sharing a `pack` tag hunt together, so one packmate's
+   * aggro pulls every idle packmate in earshot onto the same target.
+   * Rallied joins pass `rally: false` — one hop, never a chain that
+   * drags a whole forest of dens into the fight.
    */
-  private npcAggro(npc: NpcComp, targetEid: EntityId): void {
+  private npcAggro(
+    eid: EntityId,
+    npc: NpcComp,
+    targetEid: EntityId,
+    opts: { rally?: boolean } = {},
+  ): void {
     npc.state = 'chase';
     npc.targetEid = targetEid;
     npc.navBest = Infinity;
@@ -5964,6 +5974,30 @@ export class GameServer {
     npc.navRefY = Infinity;
     npc.steer.side = 0;
     npc.steer.ticks = 0;
+    if (npc.def.pack && (opts.rally ?? true)) {
+      this.rallyPack(eid, npc, targetEid, PACK_RALLY_RANGE);
+    }
+  }
+
+  /**
+   * The pack answers: idle packmates within `range` of the caller
+   * join its target. Sulking bodies (noAggroUntilTick) keep their
+   * eyes down — the give-up ledger outranks pack loyalty, or the
+   * trap-cheese the sulk exists to kill comes straight back through
+   * the packmate's aggro.
+   */
+  private rallyPack(eid: EntityId, npc: NpcComp, targetEid: EntityId, range: number): void {
+    const pos = this.positions.get(eid);
+    if (!pos) return;
+    for (const [oEid, other] of this.npcs) {
+      if (oEid === eid || other.def.pack !== npc.def.pack) continue;
+      if (other.state !== 'idle' || other.def.damage <= 0) continue;
+      if (this.tickCount < other.noAggroUntilTick) continue;
+      const opos = this.positions.get(oEid);
+      if (!opos) continue;
+      if (Math.hypot(opos.x - pos.x, opos.y - pos.y) > range) continue;
+      this.npcAggro(oEid, other, targetEid, { rally: false });
+    }
   }
 
   /** Resolve an NPC's chase target: a live player or a straw decoy. */
@@ -6060,7 +6094,7 @@ export class GameServer {
             aggro *= sneakDetectionFactor(this.effectiveLevel(player, 'sneak'));
           }
           if (dx * dx + dy * dy < aggro * aggro) {
-            this.npcAggro(npc, playerEid);
+            this.npcAggro(eid, npc, playerEid);
             break;
           }
         }
@@ -6098,6 +6132,12 @@ export class GameServer {
                 x: tpos.x,
                 y: tpos.y,
               });
+              // The howl carries further than sight: a pack leader's
+              // special re-gathers everyone in earshot mid-fight —
+              // leashed escorts turn back, stragglers converge.
+              if (npc.def.pack && npc.targetEid !== null) {
+                this.rallyPack(eid, npc, npc.targetEid, PACK_RALLY_RANGE + 4);
+              }
             }
           }
 

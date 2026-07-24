@@ -22,28 +22,34 @@ import {
   BOAR_LOOK,
   CATTLE_LOOKS,
   CRAB_LOOK,
+  DIREWOLF_LOOK,
   RAM_LOOK,
   RAT_LOOK,
   SPIDER_LOOK,
   STAG_LOOK,
   WOLF_LOOK,
+  WORG_LOOK,
   drawBearHead,
   drawBoarHead,
   drawCattleHead,
+  drawDireWolfHead,
   drawRamHead,
   drawRatHead,
   drawStagHead,
   drawWolfHead,
+  drawWorgHead,
   paintBearBody,
   paintBeetleBody,
   paintBoarBody,
   paintCattleBody,
   paintCrabBody,
+  paintDireWolfBody,
   paintRamBody,
   paintRatBody,
   paintSpiderBody,
   paintStagBody,
   paintWolfBody,
+  paintWorgBody,
   shade,
   taperedSpinePath,
   type BeastSpec,
@@ -873,6 +879,37 @@ export function drawBeastRagdoll(
     ctx.beginPath();
     facetCircle(ctx, tx, tipY, s * 0.038, 5, spineA);
     ctx.fill();
+  } else if (look.defId === 'dire_wolf') {
+    // The great brush lies limp, the frost tip still pale on the dead.
+    const tx = rear.x - Math.cos(spineA) * len * 0.58;
+    const tipY = f.ay + g[0]!.floor * f.s + s * 0.02;
+    const brush = taperedSpinePath(
+      rear.x,
+      rear.y,
+      (rear.x + tx) / 2,
+      Math.max(rear.y, tipY) + s * 0.03,
+      tx,
+      tipY,
+      (t) => s * (0.038 + 0.056 * Math.sin(Math.PI * Math.pow(t, 0.9))),
+    );
+    ctx.fillStyle = shade(DIREWOLF_LOOK.coat, -6);
+    ctx.fill(brush);
+    ctx.fillStyle = DIREWOLF_LOOK.grizzle;
+    ctx.beginPath();
+    facetCircle(ctx, tx, tipY, s * 0.044, 5, spineA);
+    ctx.fill();
+  } else if (look.defId === 'worg') {
+    // The ratty crook drops dead straight — no kink left in it.
+    const tx = rear.x - Math.cos(spineA) * len * 0.5;
+    const tipY = f.ay + g[0]!.floor * f.s + s * 0.015;
+    ctx.strokeStyle = shade(WORG_LOOK.hide, -14);
+    ctx.lineWidth = Math.max(1.5, s * 0.026);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(rear.x, rear.y);
+    ctx.quadraticCurveTo((rear.x + tx) / 2, Math.max(rear.y, tipY) + s * 0.02, tx, tipY);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
   } else if (look.defId === 'rat') {
     const tx = rear.x - Math.cos(spineA) * len * 1.5;
     const tipY = f.ay + g[0]!.floor * f.s + s * 0.012;
@@ -919,6 +956,38 @@ export function drawBeastRagdoll(
       bob: 0,
       roll: 0,
       topScale: 0.5,
+      botH: 0.02,
+    });
+  } else if (look.defId === 'dire_wolf') {
+    // The hackle ridge keeps the corpse's identity — paintDireWolfBody
+    // draws it outside the hull, so it survives the collapse.
+    paintDireWolfBody(ctx, spec, DIREWOLF_LOOK, {
+      bx: midX,
+      gy: midY + r * 0.4,
+      s,
+      fx: Math.cos(spineA),
+      fy: Math.sin(spineA),
+      ys: 1,
+      seed: look.seed,
+      hurt: false,
+      bob: 0,
+      roll: 0,
+      topScale: 0.5,
+      botH: 0.02,
+    });
+  } else if (look.defId === 'worg') {
+    paintWorgBody(ctx, spec, WORG_LOOK, {
+      bx: midX,
+      gy: midY + r * 0.4,
+      s,
+      fx: Math.cos(spineA),
+      fy: Math.sin(spineA),
+      ys: 1,
+      seed: look.seed,
+      hurt: false,
+      bob: 0,
+      roll: 0,
+      topScale: 0.55,
       botH: 0.02,
     });
   } else if (look.defId === 'rat') {
@@ -1138,6 +1207,27 @@ export function drawBeastRagdoll(
     });
   } else if (look.defId === 'wolf') {
     drawWolfHead(ctx, WOLF_LOOK, {
+      x: head.x,
+      y: head.y,
+      s,
+      fx: Math.cos(neckA),
+      fy: Math.sin(neckA),
+      ys: 1,
+      dead: true,
+    });
+  } else if (look.defId === 'dire_wolf') {
+    // The ember goes out — dead eyes law, notch and fangs stay.
+    drawDireWolfHead(ctx, DIREWOLF_LOOK, {
+      x: head.x,
+      y: head.y,
+      s,
+      fx: Math.cos(neckA),
+      fy: Math.sin(neckA),
+      ys: 1,
+      dead: true,
+    });
+  } else if (look.defId === 'worg') {
+    drawWorgHead(ctx, WORG_LOOK, {
       x: head.x,
       y: head.y,
       s,

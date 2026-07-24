@@ -3441,6 +3441,46 @@ const PAINTERS: Record<string, IconPainter> = {
     c.fill();
     c.restore();
   },
+  fang: (c, col) => {
+    // The trophy tooth: a stout up-hooked tusk fang, root socket at
+    // the base, enamel sheen down the outer curve, honed tip.
+    c.save();
+    c.translate(0.5, 0.52);
+    c.rotate(-0.35);
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.16, 0.3);
+    c.quadraticCurveTo(-0.3, 0.02, -0.14, -0.24);
+    c.quadraticCurveTo(-0.02, -0.4, 0.14, -0.42);
+    c.quadraticCurveTo(0.02, -0.28, -0.01, -0.1);
+    c.quadraticCurveTo(-0.03, 0.12, 0.1, 0.3);
+    c.quadraticCurveTo(-0.02, 0.38, -0.16, 0.3);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // Root socket band — the raw end the charm-cord ties around.
+    c.fillStyle = shade(col, -26);
+    c.beginPath();
+    c.moveTo(-0.16, 0.3);
+    c.quadraticCurveTo(-0.02, 0.38, 0.1, 0.3);
+    c.quadraticCurveTo(0.03, 0.24, -0.03, 0.24);
+    c.quadraticCurveTo(-0.1, 0.24, -0.16, 0.3);
+    c.closePath();
+    c.fill();
+    // Enamel sheen riding the outer curve to the tip.
+    c.strokeStyle = shade(col, 30);
+    c.lineWidth = 0.045;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.19, 0.14);
+    c.quadraticCurveTo(-0.22, -0.06, -0.1, -0.24);
+    c.stroke();
+    c.lineCap = 'butt';
+    dot(c, shade(col, 42), 0.09, -0.36, 0.025);
+    c.restore();
+  },
   vial: (c, col) => {
     // The tonic: a tall slim vial, corked and collared, the draught
     // filling two-thirds with one rising bubble.
@@ -3949,6 +3989,8 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   gloomsilk_thread: { icon: 'twine', color: '#5a4a78' },
   gloomsilk: { icon: 'clothbolt', color: '#6a5690' },
   wolf_fur: { icon: 'hide', color: '#8a90a0' },
+  direwolf_pelt: { icon: 'hide', color: '#5d5a68' },
+  worg_fang: { icon: 'fang', color: '#d8ccb0' },
   leather_body: { icon: 'jerkin', color: '#b08a5c' },
   bones: { icon: 'bones', color: '#efe8d8' },
   feather: { icon: 'feather', color: '#f4efe4' },
