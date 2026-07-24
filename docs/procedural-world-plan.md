@@ -42,6 +42,15 @@ Current ground truth (verified 2026-07-24):
 
 ## Phase 1 — The Danger Field & the First Camps
 
+**SHIPPED 2026-07-24** (commits 0b114ea danger field → e03c945 sentinel/probes →
+985ed45 grammar/prefabs → 498c806 scaffold/composer → b0513ec materialization/
+ledger/levers). Verified live: a tier-3 goblin warcamp materialized organically
+within one tick of a player entering the cell — named War-chief, worg pair,
+tier-banded levels 15–24, sentries posted on the townward ring; a tier-1 grove
+wipe stamped `cleared_at`; `/poi reroll` bumped the epoch and dissolved the
+standing site back to procedural meadow live under the player. 121 fps
+throughout.
+
 Goal: prove the whole pipeline — field → scaffold → composition → materialization —
 with three archetypes standing in the live world.
 
