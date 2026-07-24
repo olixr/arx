@@ -23,7 +23,7 @@ const CTX: PoiContext = {
     { x: 0, y: 0, w: 96, h: 96 }, // bramblewick
     { x: 120, y: 8, w: 24, h: 24 }, // hollow stair
   ],
-  defs: POI_DEFS,
+  defs: [...POI_DEFS.values()],
   prefabs: POI_PREFABS,
 };
 
@@ -48,7 +48,7 @@ test('the frontier hosts POIs and every archetype occurs', () => {
   const sites = scanSites();
   assert.ok(sites.length >= 8, `only ${sites.length} sites in the scan`);
   const kinds = new Set(sites.map((s) => s.defId));
-  for (const def of POI_DEFS) {
+  for (const def of POI_DEFS.values()) {
     assert.ok(kinds.has(def.id), `archetype '${def.id}' never rolled in the scan`);
   }
 });
@@ -82,7 +82,7 @@ test('composed zones muster inside the tier laws', () => {
     const zone = composePoi(SEED, site, CTX)!;
     assert.ok(zone, 'compose failed for a decided site');
     assert.ok(zone.spawns && zone.spawns.length > 0, `${zone.id} has no garrison`);
-    const def = POI_DEFS.find((d) => d.id === site.defId)!;
+    const def = POI_DEFS.get(site.defId)!;
     const law = dangerLaw(site.tier);
     const maxOffset = Math.max(0, ...def.garrison.map((g) => g.levelOffset ?? 0));
     for (const s of zone.spawns) {

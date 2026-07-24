@@ -1,0 +1,25 @@
+{
+  "id": "forest_ruin",
+  "name": "Forgotten ruin",
+  "description": "Old stones the forest failed to swallow. The dead still keep the vault, and the bones on the path are a warning.",
+  "tiers": [2, 4],
+  "weight": 2,
+  "prefabs": ["poi_ruin_keep", "poi_ruin_circle"],
+  "garrison": [
+    { "npc": "skeleton", "count": [1, 2], "role": "holdfast" },
+    { "npc": "skeleton_archer", "count": [1, 1], "role": "sentry", "minTier": 3 },
+    {
+      "npc": "skeleton_champion",
+      "count": [1, 1],
+      "role": "holdfast",
+      "minTier": 4,
+      "levelOffset": 3,
+      "name": "Warden of the Stones"
+    }
+  ],
+  "chestTierBonus": 1,
+  "cues": {
+    "approachPath": true,
+    "scatter": [{ "tile": "BonePile", "count": 3 }]
+  }
+}

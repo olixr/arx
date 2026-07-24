@@ -30,11 +30,47 @@ export interface PoiGarrisonEntry {
   levelOffset?: number;
   /** Display-name override (named champions). */
   name?: string;
+  /**
+   * Sentries only: instead of holding a post, the body walks the
+   * perimeter — the composer lays a waypoint loop around the footprint
+   * and the idle brain paces it (combat and chase own the body; the
+   * patrol resumes when they let go).
+   */
+  patrol?: boolean;
+}
+
+/**
+ * The warning vocabulary — approach cues stamped OUTSIDE the prefab at
+ * compose time, so a player reads the site before they're in it. All
+ * cues land in the composed zone's transparent fringe and only ever
+ * replace natural ground (trees/grass), never rock, water, or another
+ * zone's work.
+ */
+export interface PoiCues {
+  /**
+   * Felled-clearing radius (tiles past the footprint edge): forest
+   * inside it is cut to stumps and trampled grass — a camp burns wood,
+   * and the wood came from somewhere.
+   */
+  clearing?: number;
+  /**
+   * Wear a dirt path stub from the footprint edge outward on the
+   * townward bearing — the direction players arrive from.
+   */
+  approachPath?: boolean;
+  /**
+   * Cue tiles scattered on the approach bearings (bone piles before a
+   * ruin, a banner before a warcamp). Tile is a Tile enum NAME so the
+   * JSON reads as content, not magic numbers.
+   */
+  scatter?: ReadonlyArray<{ tile: string; count: number }>;
 }
 
 export interface PoiDef {
   id: string;
   name: string;
+  /** One-line story for the bench — what this place IS. */
+  description?: string;
   /** Danger tiers this archetype can roll at, inclusive. */
   tiers: readonly [number, number];
   /** Pick weight among archetypes eligible at a tier. */
@@ -48,4 +84,6 @@ export interface PoiDef {
    * prefab's authored chest stands as drawn.
    */
   chestTierBonus?: number;
+  /** Approach cues stamped around the footprint at compose time. */
+  cues?: PoiCues;
 }

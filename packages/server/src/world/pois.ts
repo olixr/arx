@@ -392,7 +392,7 @@ export function poiContext(
     zoneRects: zones
       .filter((z) => !z.id.startsWith('poi:'))
       .map((z) => ({ x: z.origin.x, y: z.origin.y, w: z.width, h: z.height })),
-    defs: POI_DEFS,
+    defs: [...POI_DEFS.values()],
     prefabs,
   };
 }

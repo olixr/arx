@@ -1,13 +1,29 @@
 import assert from 'node:assert/strict';
+import { readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { TILE_SKIP, Tile, chestInfo } from '@devcraft/shared';
 import { DANGER_LAWS } from '../danger.js';
 import { NPCS } from '../npcs.js';
-import { POI_DEFS } from './defs.js';
+import { AUTHORED_POI_DEFS, POI_DEFS } from './defs.js';
 import { POI_PREFABS } from './prefabs.js';
+import { validatePoiDef } from './validate.js';
+
+const DEFS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'defs');
+
+test('every defs/*.json file is on the SOURCES roster', () => {
+  const files = readdirSync(DEFS_DIR).filter((f) => f.endsWith('.json'));
+  assert.ok(files.length >= 3, 'defs directory looks empty');
+  for (const file of files) {
+    const id = file.replace(/\.json$/, '');
+    assert.ok(POI_DEFS.has(id), `${file}: missing from the registry SOURCES roster`);
+  }
+  assert.equal(POI_DEFS.size, files.length, 'registry holds defs with no file');
+});
 
 test('every archetype references known prefabs and bestiary ids', () => {
-  for (const def of POI_DEFS) {
+  for (const def of POI_DEFS.values()) {
     assert.ok(def.prefabs.length > 0, `${def.id} has an empty prefab pool`);
     for (const id of def.prefabs) {
       assert.ok(POI_PREFABS.has(id), `${def.id} references unknown prefab '${id}'`);
@@ -21,12 +37,78 @@ test('every archetype references known prefabs and bestiary ids', () => {
           `${def.id}/${g.npc} minTier outside the archetype's tiers`,
         );
       }
+      if (g.patrol) assert.equal(g.role, 'sentry', `${def.id}/${g.npc}: patrol on a holdfast`);
     }
     assert.ok(
       def.tiers[0] >= 1 && def.tiers[1] < DANGER_LAWS.length && def.tiers[0] <= def.tiers[1],
       `${def.id} tier range invalid`,
     );
   }
+});
+
+test('the authored roster and live registry start identical', () => {
+  assert.deepEqual([...POI_DEFS.entries()], [...AUTHORED_POI_DEFS.entries()]);
+});
+
+test('the validator normalizes a good doc and names every fault in a bad one', () => {
+  const good = validatePoiDef({
+    id: 'test_camp',
+    name: 'Test camp',
+    tiers: [1, 3],
+    weight: 2,
+    prefabs: ['poi_goblin_camp_ring'],
+    garrison: [
+      { npc: 'goblin', count: [1, 2], role: 'sentry', patrol: true },
+    ],
+    cues: { clearing: 3, approachPath: true, scatter: [{ tile: 'BonePile', count: 2 }] },
+  });
+  assert.ok(good.ok, JSON.stringify(good));
+  if (good.ok) {
+    assert.equal(good.def.cues?.clearing, 3);
+    assert.equal(good.def.garrison[0]!.patrol, true);
+  }
+
+  const bad = validatePoiDef({
+    id: 'Bad Id!',
+    name: '',
+    tiers: [0, 9],
+    weight: -1,
+    prefabs: [],
+    garrison: [
+      { npc: 'no_such_beast', count: [3, 1], role: 'boss' },
+      { npc: 'goblin', count: [1, 1], role: 'holdfast', patrol: true },
+    ],
+    chestTierBonus: 7,
+    cues: { clearing: 99, scatter: [{ tile: 'NoSuchTile', count: 1 }] },
+  });
+  assert.ok(!bad.ok);
+  if (!bad.ok) {
+    const text = bad.errors.join('\n');
+    for (const needle of [
+      'id', 'name is empty', 'tiers', 'weight', 'prefabs',
+      "unknown npc 'no_such_beast'", 'count 3..1', 'role',
+      'patrol is a sentry trait', 'chestTierBonus', 'cues.clearing',
+      "unknown tile name 'NoSuchTile'",
+    ]) {
+      assert.ok(text.includes(needle), `missing error about: ${needle}\n${text}`);
+    }
+  }
+});
+
+test('the validator cross-checks prefab ids when given the library', () => {
+  const res = validatePoiDef(
+    {
+      id: 'ghost_camp',
+      name: 'Ghost camp',
+      tiers: [1, 2],
+      weight: 1,
+      prefabs: ['poi_that_never_was'],
+      garrison: [],
+    },
+    { prefabIds: new Set(POI_PREFABS.keys()) },
+  );
+  assert.ok(!res.ok);
+  if (!res.ok) assert.ok(res.errors.join(' ').includes("unknown prefab 'poi_that_never_was'"));
 });
 
 test('prefab spawns reference known bestiary ids', () => {
@@ -38,7 +120,7 @@ test('prefab spawns reference known bestiary ids', () => {
 });
 
 test('warcamp and ruin prefabs carry exactly one closed strongbox', () => {
-  for (const def of POI_DEFS) {
+  for (const def of POI_DEFS.values()) {
     if (def.chestTierBonus === undefined) continue;
     for (const id of def.prefabs) {
       const p = POI_PREFABS.get(id)!;
@@ -57,7 +139,6 @@ test('prefabs keep a transparent fringe so stamps sit in the terrain', () => {
     let skips = 0;
     for (const g of p.ground) if (g === TILE_SKIP) skips++;
     assert.ok(skips > 0, `${p.id} has no TILE_SKIP cells — it would stamp a hard rectangle`);
-    // Corners specifically stay transparent: the classic seam tell.
     const { width: w, height: h } = p;
     for (const [x, y] of [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]] as const) {
       assert.equal(p.ground[y * w + x], TILE_SKIP, `${p.id} corner ${x},${y} not transparent`);

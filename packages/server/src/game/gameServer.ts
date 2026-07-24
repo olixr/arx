@@ -7232,8 +7232,8 @@ export class GameServer {
         say(
           site
             ? `${site.defId} (${site.prefabId}) stands at ${site.anchorX},${site.anchorY}.`
-            : arg !== undefined && !POI_DEFS.some((d) => d.id === arg)
-              ? `Unknown archetype '${arg}' — ${POI_DEFS.map((d) => d.id).join(', ')}.`
+            : arg !== undefined && !POI_DEFS.has(arg)
+              ? `Unknown archetype '${arg}' — ${[...POI_DEFS.keys()].join(', ')}.`
               : 'No suitable ground in this cell (settled, water, or broken terrain).',
         );
         return;

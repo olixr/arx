@@ -1,72 +1,59 @@
 import type { PoiDef } from './types.js';
+import { validatePoiDef } from './validate.js';
+
+import forestRuin from './defs/forest_ruin.json';
+import goblinWarcamp from './defs/goblin_warcamp.json';
+import wildGrove from './defs/wild_grove.json';
 
 /**
- * The shipped archetype roster — phase 1's three families. Prefab
- * spawns are the hand-placed core; garrison entries are the
- * tier-scaled muscle composed around them (holdfast inside, sentries
- * on the approach ring). Every level and chest kind resolves through
- * DANGER_LAWS at compose time — the defs themselves never name a
- * number a tier already owns.
+ * Every authored POI archetype JSON, registered here. A def that isn't
+ * listed doesn't exist — pois.test.ts walks the defs/ directory and
+ * fails if a file is missing from this roster (the actors precedent),
+ * so forgetting the import is a test failure, not a hole in the
+ * frontier.
  */
-export const POI_DEFS: readonly PoiDef[] = [
-  {
-    id: 'goblin_warcamp',
-    name: 'Goblin warcamp',
-    tiers: [1, 3],
-    weight: 3,
-    prefabs: ['poi_goblin_camp_ring', 'poi_goblin_camp_pair'],
-    garrison: [
-      // The camp fills out as the frontier deepens.
-      { npc: 'goblin', count: [1, 3], role: 'holdfast' },
-      // Watchers posted on the townward approach — the tell.
-      { npc: 'goblin', count: [1, 2], role: 'sentry' },
-      // War-hounds prowl the deep-tier camps.
-      { npc: 'worg', count: [1, 2], role: 'holdfast', minTier: 3 },
-      // The war-chief wears a name where the land is worst.
-      {
-        npc: 'goblin',
-        count: [1, 1],
-        role: 'holdfast',
-        minTier: 3,
-        levelOffset: 5,
-        name: 'Goblin War-chief',
-      },
-    ],
-    chestTierBonus: 0,
-  },
-  {
-    id: 'forest_ruin',
-    name: 'Forgotten ruin',
-    tiers: [2, 4],
-    weight: 2,
-    prefabs: ['poi_ruin_keep', 'poi_ruin_circle'],
-    garrison: [
-      { npc: 'skeleton', count: [1, 2], role: 'holdfast' },
-      // The dead keep a wide watch.
-      { npc: 'skeleton_archer', count: [1, 1], role: 'sentry', minTier: 3 },
-      {
-        npc: 'skeleton_champion',
-        count: [1, 1],
-        role: 'holdfast',
-        minTier: 4,
-        levelOffset: 3,
-        name: 'Warden of the Stones',
-      },
-    ],
-    // The chest IS the point of a ruin — one kind above the land's law.
-    chestTierBonus: 1,
-  },
-  {
-    id: 'wild_grove',
-    name: 'Wild grove',
-    tiers: [1, 4],
-    weight: 2,
-    prefabs: ['poi_grove_ore', 'poi_grove_yew'],
-    garrison: [
-      // The nodes are the loot; the guardians are the price.
-      { npc: 'wolf', count: [1, 2], role: 'holdfast', minTier: 2 },
-      { npc: 'worg', count: [1, 1], role: 'holdfast', minTier: 4 },
-      { npc: 'bear', count: [1, 1], role: 'sentry', minTier: 3 },
-    ],
-  },
-];
+const SOURCES: readonly unknown[] = [forestRuin, goblinWarcamp, wildGrove];
+
+function buildRegistry(): ReadonlyMap<string, PoiDef> {
+  const map = new Map<string, PoiDef>();
+  const errors: string[] = [];
+  for (const raw of SOURCES) {
+    const res = validatePoiDef(raw);
+    if (!res.ok) {
+      errors.push(...res.errors);
+      continue;
+    }
+    if (map.has(res.def.id)) errors.push(`${res.def.id}: duplicate poi id`);
+    else map.set(res.def.id, res.def);
+  }
+  // Authored content is code: a bad def fails the build, loudly.
+  if (errors.length > 0) throw new Error(`invalid POI defs:\n  ${errors.join('\n  ')}`);
+  return map;
+}
+
+/**
+ * The LIVE archetype registry — every runtime consumer resolves
+ * through .get()/.values() at call time (the live-registry law), so
+ * replacePoiDefs applies edits to the very next cell decision.
+ */
+export const POI_DEFS: ReadonlyMap<string, PoiDef> = buildRegistry();
+
+/** The authored roster exactly as shipped — the CMS revert target. */
+export const AUTHORED_POI_DEFS: ReadonlyMap<string, PoiDef> = buildRegistry();
+
+export function poiDef(id: string): PoiDef | undefined {
+  return POI_DEFS.get(id);
+}
+
+/**
+ * THE CMS HOOK: repopulate the live registry in place. Cells already
+ * standing keep their materialized zones until the server retires
+ * them (reloadPoiDef hurries that along); every future decision and
+ * composition reads the new truth immediately. Only ever runs against
+ * validated DB-loaded docs.
+ */
+export function replacePoiDefs(next: Iterable<PoiDef>): void {
+  const map = POI_DEFS as Map<string, PoiDef>;
+  map.clear();
+  for (const def of next) map.set(def.id, def);
+}
