@@ -3778,39 +3778,83 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Ears ride the head sides UNDER the hair (curtains lie over the
   // roots; pointed tips break the silhouette — that is the point).
   // Round ears vanish into the block head; metal and cloth cover all.
-  // Each ear is a FACETED LEAF, not a paper dart: a broad-rooted
-  // silhouette split along its central rib into a lit upper face and
-  // a shaded under-face, a hollow nested at the root, and a root seam
-  // where cartilage meets skull — the kit that keeps the point crisp
-  // and readable instead of a two-pixel sliver.
+  //
+  // THE AZIMUTH LAW: each ear lives at a fixed bearing on the skull —
+  // 90° either side of the nose — and every facing question is
+  // answered by projecting that bearing, never by special-casing
+  // bands. For ear `es`, azimuth φ = dir − es·π/2 gives:
+  //   cosP = es·fy   — where the ear sits across the screen (±1 = the
+  //                    silhouette edges, 0 = mid-skull at profile);
+  //   sinP = −es·fx  — how much it faces the camera (>0 in front of
+  //                    the skull, <0 tucked behind the turned head).
+  // So the TRAILING ear stays in view through a turn (riding toward
+  // mid-skull at profile, exactly where a portrait puts it) while the
+  // LEADING ear forshortens and ducks behind the face — it never
+  // crosses onto the eyes. From behind, the pair swaps screen sides
+  // (a mirror does that) and shows ear BACKS: no concha, no seam.
+  // Each ear is a FACETED LEAF: rib-split lit/shaded faces, a concha
+  // hollow scaled by how much the flap faces the camera, a root seam
+  // against the skull, and a sweep-back lean that grows as the radial
+  // axis leaves the screen plane (elf ears trail the facing).
   const earStyle = rig.look?.ears ?? 0;
   if (earStyle > 0 && (cover === 'free' || cover === 'brim')) {
     for (const es of [-1, 1]) {
-      // The far ear ducks behind the skull through three-quarter.
-      const far = es !== lead;
-      const wK = far ? Math.max(0, 1 - Math.max(0, (profileK - 0.42) / 0.3)) : 1;
-      if (wK <= 0.05) continue;
-      const rootX = headX - fx * headR * 0.16 + es * hw * (0.94 - 0.2 * profileK);
+      const cosP = es * fy;
+      const sinP = -es * fx;
+      // Visible facing the camera, or protruding at the silhouette
+      // edge (pure front/back). The leading ear fades smoothly as it
+      // slides behind the turned face.
+      const vis = Math.max((sinP + 0.12) / 0.6, (Math.abs(cosP) - 0.86) / 0.14);
+      if (vis <= 0.05) continue;
+      const v = Math.min(1, vis);
+      const rootX = headX - fx * headR * 0.16 + cosP * hw * 0.94;
       const rootY = headY + headR * 0.1 + fy * headR * 0.05;
-      // Each ear sits on the head's x=0 light: the screen-right ear
-      // wears the shade tone, so the pair belongs to the same skull.
-      const earBase = es > 0 && !rig.hurt ? shade(skin, -9) : skin;
+      // The leaf's horizontal run: radial reach plus sweep-back. At
+      // the back quarters the two nearly cancel — the ear points at
+      // the camera — so a floor keeps the flap a readable nub.
+      const dirRaw = cosP + -fx * 0.85;
+      const dSign = dirRaw >= 0 ? 1 : -1;
+      const dLen = Math.max(0.5, Math.min(1, Math.abs(dirRaw))) * v;
+      const earBack = backK > 0.55;
+      // How much of the flap's front face shows: full at profile and
+      // the front quarters, partial head-on, none from behind.
+      const hollowK = earBack ? 0 : Math.max(0, Math.min(1, (sinP + 0.5) / 0.7));
+      // Screen-side light law by actual screen position, so the pair
+      // keeps the head's x=0 split even after the behind-the-head
+      // mirror swap; ear backs sit a step darker (nape shadow).
+      const earBase = rig.hurt
+        ? skin
+        : shade(skin, (cosP > 0 ? -9 : 0) + (earBack ? -7 : 0));
+      // A flap riding IN FRONT of the skull (the profile band) is
+      // skin against skin — it needs its own rim to read. Front and
+      // back ears break the silhouette and the sky separates them.
+      const contourK = Math.max(0, Math.min(1, (sinP - 0.45) / 0.55));
+      const rimEar = (path: Path2D): void => {
+        if (rig.hurt || contourK <= 0.15) return;
+        ctx.strokeStyle = shade(skin, -22);
+        ctx.lineWidth = headR * 0.055 * contourK;
+        ctx.lineJoin = 'round';
+        ctx.stroke(path);
+        ctx.lineJoin = 'miter';
+      };
       ctx.fillStyle = earBase;
       if (earStyle === 1) {
-        // Pointed — the long leaf running outward, tip a hair proud of
-        // the root line so the point reads UP-and-out, drow fashion.
-        const eL = headR * 0.62 * wK;
+        // Pointed — the long leaf, tip rising as the head turns (the
+        // swept-back drow read at profile, level at front).
+        const eL = headR * 0.62 * dLen;
+        const upT = 0.34 + 0.16 * (1 - Math.abs(cosP));
         const topY = rootY - headR * 0.26;
-        const tipX = rootX + es * eL;
-        const tipY = rootY - headR * 0.34;
+        const tipX = rootX + dSign * eL;
+        const tipY = rootY - headR * upT;
         const botY = rootY + headR * 0.2;
-        ctx.beginPath();
-        ctx.moveTo(rootX, topY);
-        ctx.lineTo(tipX, tipY);
-        ctx.lineTo(rootX + es * eL * 0.3, rootY + headR * 0.08);
-        ctx.lineTo(rootX, botY);
-        ctx.closePath();
-        ctx.fill();
+        const leaf = new Path2D();
+        leaf.moveTo(rootX, topY);
+        leaf.lineTo(tipX, tipY);
+        leaf.lineTo(rootX + dSign * eL * 0.3, rootY + headR * 0.08);
+        leaf.lineTo(rootX, botY);
+        leaf.closePath();
+        rimEar(leaf);
+        ctx.fill(leaf);
         if (!rig.hurt) {
           // Under-face: everything below the rib line falls into
           // shade, giving the leaf its fold and thickness.
@@ -3818,36 +3862,48 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           ctx.beginPath();
           ctx.moveTo(rootX, rootY - headR * 0.03);
           ctx.lineTo(tipX, tipY);
-          ctx.lineTo(rootX + es * eL * 0.3, rootY + headR * 0.08);
+          ctx.lineTo(rootX + dSign * eL * 0.3, rootY + headR * 0.08);
           ctx.lineTo(rootX, botY);
           ctx.closePath();
           ctx.fill();
-          // The hollow: a concha wedge nested against the root.
-          ctx.fillStyle = shade(skin, -24);
-          ctx.beginPath();
-          ctx.moveTo(rootX + es * headR * 0.03, rootY - headR * 0.12);
-          ctx.lineTo(rootX + es * eL * 0.42, rootY - headR * 0.16);
-          ctx.lineTo(rootX + es * headR * 0.03, rootY + headR * 0.1);
-          ctx.closePath();
-          ctx.fill();
-          // Root seam: cartilage meets skull on a hard dark line.
-          ctx.fillStyle = shade(skin, -30);
-          ctx.fillRect(rootX - es * headR * 0.005, topY + headR * 0.06, es * headR * 0.035, botY - topY - headR * 0.12);
+          if (hollowK > 0.1) {
+            // The hollow: a concha wedge nested against the root,
+            // opening wider the more the flap faces the camera.
+            ctx.fillStyle = shade(skin, -24);
+            ctx.beginPath();
+            ctx.moveTo(rootX + dSign * headR * 0.03, rootY - headR * 0.12);
+            ctx.lineTo(rootX + dSign * eL * 0.42 * hollowK, rootY - headR * 0.16);
+            ctx.lineTo(rootX + dSign * headR * 0.03, rootY + headR * 0.1);
+            ctx.closePath();
+            ctx.fill();
+          }
+          if (!earBack) {
+            // Root seam: cartilage meets skull on a hard dark line.
+            ctx.fillStyle = shade(skin, -30);
+            ctx.fillRect(
+              rootX - dSign * headR * 0.005,
+              topY + headR * 0.06,
+              dSign * headR * 0.035,
+              botY - topY - headR * 0.12,
+            );
+          }
         }
       } else {
-        // Upswept — the tall fey blade angling for the crown.
-        const kX = es * headR * wK;
+        // Upswept — the tall fey blade angling for the crown, leaning
+        // with the sweep so it trails the facing through a turn.
+        const kX = dSign * headR * dLen;
         const botY = rootY + headR * 0.2;
         const tipX = rootX + kX * 0.5;
-        const tipY = rootY - headR * 0.74;
-        ctx.beginPath();
-        ctx.moveTo(rootX, botY);
-        ctx.lineTo(rootX + kX * 0.34, rootY - headR * 0.06);
-        ctx.lineTo(tipX, tipY);
-        ctx.lineTo(rootX + es * headR * 0.05, rootY - headR * 0.24);
-        ctx.lineTo(rootX, rootY - headR * 0.02);
-        ctx.closePath();
-        ctx.fill();
+        const tipY = rootY - headR * (0.74 - 0.1 * (1 - v));
+        const blade = new Path2D();
+        blade.moveTo(rootX, botY);
+        blade.lineTo(rootX + kX * 0.34, rootY - headR * 0.06);
+        blade.lineTo(tipX, tipY);
+        blade.lineTo(rootX + dSign * headR * 0.05, rootY - headR * 0.24);
+        blade.lineTo(rootX, rootY - headR * 0.02);
+        blade.closePath();
+        rimEar(blade);
+        ctx.fill(blade);
         if (!rig.hurt) {
           // Leading face: the outer half of the blade catches light,
           // the inner half turns away — a standing fin, not a stripe.
@@ -3858,14 +3914,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           ctx.lineTo(rootX + kX * 0.24, rootY - headR * 0.3);
           ctx.closePath();
           ctx.fill();
-          // The hollow nested low, against the skull.
-          ctx.fillStyle = shade(skin, -24);
-          ctx.beginPath();
-          ctx.moveTo(rootX + es * headR * 0.04, rootY + headR * 0.08);
-          ctx.lineTo(rootX + kX * 0.24, rootY - headR * 0.14);
-          ctx.lineTo(rootX + es * headR * 0.05, rootY - headR * 0.12);
-          ctx.closePath();
-          ctx.fill();
+          if (hollowK > 0.1) {
+            // The hollow nested low, against the skull.
+            ctx.fillStyle = shade(skin, -24);
+            ctx.beginPath();
+            ctx.moveTo(rootX + dSign * headR * 0.04, rootY + headR * 0.08);
+            ctx.lineTo(rootX + kX * 0.24 * hollowK, rootY - headR * 0.14);
+            ctx.lineTo(rootX + dSign * headR * 0.05, rootY - headR * 0.12);
+            ctx.closePath();
+            ctx.fill();
+          }
           // Dark tip bead: the point ends in shadow, and stays a
           // point at any zoom instead of dissolving into the sky.
           ctx.fillStyle = shade(earBase, -16);
