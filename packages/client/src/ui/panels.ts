@@ -933,7 +933,8 @@ export class Panels {
         });
         const item = document.createElement('img');
         item.className = 'inv-item';
-        item.src = itemIconUrl(slot.item, 52);
+        // Rastered at ~2x the big socket's art box so retina stays crisp.
+        item.src = itemIconUrl(slot.item, 96);
         item.draggable = false;
         cell.appendChild(item);
         if (slot.qty > 1) {
@@ -994,7 +995,7 @@ export class Panels {
       });
       const item = document.createElement('img');
       item.className = 'inv-item';
-      item.src = itemIconUrl(worn.id, 44);
+      item.src = itemIconUrl(worn.id, 96);
       item.draggable = false;
       cell.appendChild(item);
     } else {
@@ -1002,7 +1003,7 @@ export class Panels {
       cell.dataset.tipname = slot.charAt(0).toUpperCase() + slot.slice(1);
       const ghost = document.createElement('img');
       ghost.className = 'slot-ghost';
-      ghost.src = slotGlyphUrl(slot, 40);
+      ghost.src = slotGlyphUrl(slot, 64);
       ghost.draggable = false;
       cell.appendChild(ghost);
     }

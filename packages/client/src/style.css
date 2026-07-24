@@ -832,8 +832,12 @@ h3 {
    worn kit (identity, armor stand, ledger) is the LEFT wing; the
    backpack is the RIGHT wing and the protagonist. The wings sit side
    by side so neither steals the other's height, and THE WHOLE PACK IS
-   ALWAYS ON SCREEN: 4 across × 7 down, cells sized by the room the
+   ALWAYS ON SCREEN: 6 across × 5 down, cells sized by the room the
    case actually has (container query), never scrolled out of reach.
+   THE BIG-SOCKET LAW: the pack spreads WIDE (6×5, not tall) so its
+   cells run ~82px on a full screen — an item is readable at a glance,
+   not a thumbnail you must hover to understand. Every socket in the
+   case (stand and pack alike) wears the same 82px scale.
    ================================================================== */
 
 /* A true dock: the case rides the right EDGE, full height, leaving
@@ -844,7 +848,7 @@ h3 {
   top: 14px;
   bottom: 14px;
   transform: none;
-  width: min(672px, max(560px, 50vw));
+  width: min(920px, max(600px, 64vw));
   height: auto;
   max-height: none;
 }
@@ -856,7 +860,7 @@ h3 {
   flex-direction: column;
   align-items: flex-start;
   gap: 7px;
-  margin: 2px 0 14px;
+  margin: 2px 0 10px;
   max-width: 100%;
 }
 
@@ -900,7 +904,7 @@ h3 {
 
 .worn-kit {
   flex: none;
-  width: 228px; /* the stand's exact span: 3 sockets + 2 gaps */
+  width: 258px; /* the stand's exact span: 3 big sockets + 2 gaps */
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -924,13 +928,15 @@ h3 {
 
 /* The armor stand itself: a quiet spine + shoulder bar the sockets
    hang on, visible only in the gaps between wells. Pixel-anchored:
-   the rows are fixed 74px + 9px gaps, the container may run taller. */
+   the rows are fixed 80px + 9px gaps, the container may run taller.
+   (80 beside the pack's ~82 reads as one scale; the 2px buys the
+   ledger its clean fit below.) */
 #equip-anatomy::before {
   content: '';
   position: absolute;
   left: 50%;
-  top: 35px;
-  height: 237px;
+  top: 40px;
+  height: 267px;
   width: 3px;
   transform: translateX(-50%);
   background: var(--line);
@@ -942,15 +948,15 @@ h3 {
   position: absolute;
   left: 13px;
   right: 13px;
-  top: 72px;
+  top: 82px;
   height: 3px;
   background: var(--line);
   pointer-events: none;
 }
 
 #equip-anatomy .inv-slot {
-  width: 70px;
-  height: 70px;
+  width: 80px;
+  height: 80px;
   z-index: 1;
 }
 
@@ -961,11 +967,11 @@ h3 {
   min-width: 0;
   flex: 1;
   min-height: 0;
-  margin-top: 16px;
+  margin-top: 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 10px 12px;
   background: var(--sunk);
   border: 1.5px solid var(--line);
   border-radius: 7px;
@@ -994,15 +1000,15 @@ h3 {
 }
 
 #gear-strip .stat-plaque {
-  padding: 8px 10px 7px;
+  padding: 6px 9px 5px;
 }
 
 #gear-strip .stat-plaque-value {
-  font-size: 21px;
+  font-size: 18px;
 }
 
 #gear-strip .stat-plaque-label {
-  font-size: 11px;
+  font-size: 10.5px;
 }
 
 /* Bare kit: one quiet line where the plaques will be. */
@@ -1023,9 +1029,9 @@ h3 {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 4px;
+  bottom: 5px;
   text-align: center;
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 800;
   letter-spacing: 0.8px;
   text-transform: uppercase;
@@ -1151,11 +1157,13 @@ h3 {
   filter: saturate(0.3);
 }
 
-/* THE WHOLE-PACK LAW: 4 across × 7 down = all 28 sockets on screen,
-   always. The case measures the room the pack actually has (this
-   wrapper is a size container) and the cells size themselves to fit —
-   height-fit and width-fit both, capped at the kit's 70px socket.
-   Scrolling is the emergency exit (sub-44px rooms), never the plan. */
+/* THE WHOLE-PACK LAW: 6 across × 5 down = all 28 sockets on screen,
+   always (the last row runs four and rests). The case measures the
+   room the pack actually has (this wrapper is a size container) and
+   the cells size themselves to fit — height-fit and width-fit both,
+   capped at 92px. Five rows instead of seven is what buys the BIG
+   sockets: ~82px on a full screen, readable without hovering.
+   Scrolling is the emergency exit (sub-40px rooms), never the plan. */
 .pack-case {
   flex: 1;
   min-height: 0;
@@ -1168,11 +1176,11 @@ h3 {
 #inventory-grid {
   --pack-cell: clamp(
     40px,
-    min(calc((100cqh - 54px) / 7), calc((100cqw - 27px) / 4)),
-    70px
+    min(calc((100cqh - 36px) / 5), calc((100cqw - 45px) / 6)),
+    92px
   );
   display: grid;
-  grid-template-columns: repeat(4, var(--pack-cell));
+  grid-template-columns: repeat(6, var(--pack-cell));
   grid-auto-rows: var(--pack-cell);
   gap: 9px;
   justify-content: center;
@@ -1253,10 +1261,10 @@ h3 {
 
 .inv-qty {
   position: absolute;
-  right: 3px;
-  bottom: 3px;
-  padding: 1px 7px;
-  font-size: 14.5px;
+  right: 4px;
+  bottom: 4px;
+  padding: 1px 8px;
+  font-size: 16px;
   font-weight: bold;
   color: var(--gold-bright);
   text-shadow: var(--punch-small);
@@ -1278,7 +1286,7 @@ body:has(#shop-panel:not(.hidden)) #inventory-panel {
   top: 47%;
   bottom: auto;
   transform: translate(0, -50%);
-  width: min(460px, 34vw);
+  width: min(560px, 40vw);
   height: min(840px, 88vh);
 }
 
