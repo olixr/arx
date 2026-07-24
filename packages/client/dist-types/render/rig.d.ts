@@ -253,16 +253,15 @@ export interface KoboldLook {
     hide: string;
     /** Pale under-hide: jaw, muzzle underside, the tail's low edge. */
     belly: string;
-    /** The candle-lit eye bead — small, bright, watching. */
+    /** The lit eye bead — small, bright, watching. */
     eye: string;
     /** The bare nose pad at the snout tip. */
     nose: string;
-    /** Tallow of the crown candles. */
-    wax: string;
-    /** Ragged mane shag over crown and nape; undefined = bald hide. */
+    /**
+     * Ragged mane shag over crown and nape; undefined = the digger's
+     * short bristle scruff instead.
+     */
     mane?: string;
-    /** Crown candles: the digger carries one, the digmaster three. */
-    candles: number;
     /** Frame multiplier: jaw mass, ear dish, tail girth. */
     heavy: number;
 }
@@ -307,7 +306,7 @@ export interface KoboldHeadFrame {
  * face-on, run out level and drooping at profile — ending in a bare
  * nose pad with whiskers and buck incisors. The pale mandible drops
  * with the gape. From behind there is NO face: hide plates, the nape,
- * the ears' backs, the mane — and the candle still burning above.
+ * the ears' backs, and the scruff or mane riding the crown.
  */
 export declare function paintKoboldHead(ctx: CanvasRenderingContext2D, kb: KoboldLook, f: KoboldHeadFrame): void;
 export interface KoboldHumpFrame {
@@ -339,11 +338,14 @@ export interface KoboldTailFrame {
     hurt: boolean;
 }
 /**
- * The naked tail, drawn in the torso's squashed local frame BEFORE
- * the garment so the root always tucks behind the body. A smooth
- * tunnel-rat whip: hide at the root easing to bare flesh at the tip.
- * It trails the facing — run out long at profile, hanging low and
- * swaying when seen from behind, tip peeking past the hip face-on.
+ * The naked tail — THE LIVING WHIP. Drawn in the torso's squashed
+ * local frame BEFORE the garment so the root always tucks behind the
+ * body. A wave travels root-to-tip on the wall clock, quickening and
+ * widening with the gait, so the tail is never a dead ribbon: it
+ * snakes at a stand, lashes at a run. Hide at the root eases to bare
+ * flesh at the tip. It trails the facing — run out long at profile,
+ * hanging low and swaying seen from behind, tip peeking past the hip
+ * face-on.
  */
 export declare function paintKoboldTail(ctx: CanvasRenderingContext2D, kb: KoboldLook, f: KoboldTailFrame): void;
 export declare function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void;

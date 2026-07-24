@@ -630,17 +630,19 @@ export function drawHumanoidRagdoll(
     ctx.beginPath();
     chamferRect(ctx, hw * 1.5, hh * 0.14, hh * 0.09, hh * 0.2, [0, 0, hh * 0.03, hh * 0.03]);
     ctx.fill();
-    // The snuffed candle stub, still seated on the crown.
-    ctx.fillStyle = kb.wax;
-    ctx.beginPath();
-    chamferRect(ctx, -hw * 0.32, -hh * (1.1 + 0.1 * hv), hw * 0.3, hh * 0.44, cut * 0.2);
-    ctx.fill();
-    ctx.strokeStyle = '#3a2d28';
-    ctx.lineWidth = Math.max(1, hh * 0.03);
-    ctx.beginPath();
-    ctx.moveTo(-hw * 0.17, -hh * (1.1 + 0.1 * hv));
-    ctx.lineTo(-hw * 0.13, -hh * (1.2 + 0.1 * hv));
-    ctx.stroke();
+    // The digger's bristle scruff, flattened by the fall.
+    if (!kb.mane) {
+      ctx.fillStyle = shade(kb.hide, -20);
+      for (let i = 0; i < 3; i++) {
+        const bx = -hw * 0.42 + i * hw * 0.34;
+        ctx.beginPath();
+        ctx.moveTo(bx - hw * 0.1, -hh * 0.62);
+        ctx.lineTo(bx - hw * 0.16, -hh * (0.82 + 0.06 * Math.sin(i * 2.1)));
+        ctx.lineTo(bx + hw * 0.12, -hh * 0.58);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
   } else {
     ctx.fillStyle = look.skinColor;
     ctx.beginPath();

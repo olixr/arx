@@ -1,11 +1,11 @@
 /**
  * Scale-dialect laws: every kobold NPC id owns a bespoke look (no
  * variant falls back to a reskin), the digmaster is a DESIGN and not a
- * scale-up (own hide, the only mane, a three-candle crown over the
- * digger's one), the head and tail painters run clean across all
- * eight facing bands (no NaN geometry), the face — pupils, nose —
- * never shows from behind while the crown candle burns at EVERY
- * facing, and the loot-story law holds: the pick each variant swings
+ * scale-up (own hide, the only mane over the digger's bristle scruff),
+ * the head and tail painters run clean across all eight facing bands
+ * (no NaN geometry), the face — pupils, nose — never shows from
+ * behind, the tail is a LIVING whip (its geometry moves on the wall
+ * clock), and the loot-story law holds: the pick each variant swings
  * really drops from its own table.
  */
 import { test } from 'node:test';
@@ -35,10 +35,6 @@ test('the digmaster is a design, not a scale-up', () => {
   assert.ok(digger.heavy < boss.heavy, 'the digmaster carries the heavier frame');
   assert.notEqual(digger.hide, boss.hide, 'each variant weathered its own hide');
   assert.ok(boss.mane && !digger.mane, 'only the digmaster wears the ragged mane');
-  assert.ok(
-    digger.candles === 1 && boss.candles >= 3,
-    'one candle for the digger, a crown of them for the boss',
-  );
 });
 
 test('the warren hunts as one pack and the boss slams', () => {
@@ -61,12 +57,12 @@ test('the loot-story law: each variant really drops the pick it swings', () => {
 function mockCtx(): CanvasRenderingContext2D & {
   fills: number;
   darkFills: number;
-  waxFills: number;
+  coordSum: number;
 } {
   const counter = {
     fills: 0,
     darkFills: 0,
-    waxFills: 0,
+    coordSum: 0,
     fillStyle: '#000' as string,
     strokeStyle: '#000' as string,
     lineWidth: 1,
@@ -76,7 +72,10 @@ function mockCtx(): CanvasRenderingContext2D & {
   };
   const checkNums = (args: unknown[]): void => {
     for (const a of args) {
-      if (typeof a === 'number') assert.ok(Number.isFinite(a), 'painter emitted NaN geometry');
+      if (typeof a === 'number') {
+        assert.ok(Number.isFinite(a), 'painter emitted NaN geometry');
+        counter.coordSum += a;
+      }
     }
   };
   const noop = (...args: unknown[]): void => checkNums(args);
@@ -88,7 +87,6 @@ function mockCtx(): CanvasRenderingContext2D & {
         if (typeof target.fillStyle === 'string' && target.fillStyle.startsWith('#2')) {
           target.darkFills++;
         }
-        if (target.fillStyle === '#e9dcc2') target.waxFills++;
       };
       if (prop === 'fill') return count;
       if (prop === 'fillRect') {
@@ -106,7 +104,7 @@ function mockCtx(): CanvasRenderingContext2D & {
   }) as unknown as CanvasRenderingContext2D & {
     fills: number;
     darkFills: number;
-    waxFills: number;
+    coordSum: number;
   };
 }
 
@@ -162,7 +160,7 @@ test('head and tail paint clean at all eight facings for every variant', () => {
   }
 });
 
-test('the face never shows from behind — but the candle always burns', () => {
+test('the face never shows from behind', () => {
   for (const kb of Object.values(KOBOLD_LOOKS) as KoboldLook[]) {
     const front = mockCtx();
     paintKoboldHead(front, kb, headFrame(Math.PI / 2)); // facing down-screen
@@ -172,10 +170,19 @@ test('the face never shows from behind — but the candle always burns', () => {
     // is hide plates and nape — no face marks at all.
     assert.ok(front.darkFills >= 2, 'front band carries both pupils');
     assert.equal(back.darkFills, 0, 'back band shows hide plates, not a face');
-    // The crown light rides the top of the head at EVERY facing.
-    assert.ok(front.waxFills >= kb.candles, 'candles burn facing the camera');
-    assert.ok(back.waxFills >= kb.candles, 'candles burn from behind too');
   }
+});
+
+test('the tail is a living whip — its geometry moves on the clock', () => {
+  const kb = KOBOLD_LOOKS['kobold']!;
+  const sums: number[] = [];
+  for (const nowMs of [0, 400, 800]) {
+    const ctx = mockCtx();
+    paintKoboldTail(ctx, kb, { ...tailFrame(0), nowMs });
+    sums.push(ctx.coordSum);
+  }
+  assert.notEqual(sums[0], sums[1], 'the wave travels between frames');
+  assert.notEqual(sums[1], sums[2], 'and keeps traveling');
 });
 
 test('the jaw yips through the strike beat', () => {
