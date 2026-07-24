@@ -4451,40 +4451,76 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // One fixed eye line: a whisper of vertical drift for life, never
     // a slide onto the scalp or chin.
     const eyeLineY = headY + headR * 0.1 + fy * headR * 0.06;
+    // The big symmetric slabs (beard, mouth line) ride a simple pair
+    // slide; the face FEATURES project off the skull ring below.
     const pairX = headX + fx * headR * 0.36;
-    const sep = headR * (0.42 - 0.16 * profileK);
     const eyeStyle = rig.look?.eyes ?? 0;
     const feature = rig.look?.feature ?? 0;
-    // WIDTH IS NEVER A TURN CUE: the pair slide (pairX) and the
-    // narrowing separation carry the turned-face read — both eyes
-    // keep their full width through the three-quarter band (a half-
-    // squished eye reads as broken, not as perspective). The far side
-    // only collapses in the last stretch before profile, where it
-    // genuinely rounds the corner of the skull and vanishes.
-    const sideK = (es: number): number =>
-      es !== lead
-        ? Math.max(0, Math.min(1, 1 - (profileK - 0.78) / 0.19))
-        : 1;
+    // THE FACE WRAPS THE SKULL (supersedes the pair-slide + far-side
+    // collapse): every feature lives at a fixed bearing off the nose
+    // (u = sin of its angle, −1..1 across the face) and every facing
+    // question is answered by PROJECTING that bearing, the ears'
+    // azimuth law brought onto the face:
+    //   screen x       = (fx·√(1−u²) + fy·u)·headR
+    //   camera-facing  =  fy·√(1−u²) − fx·u
+    // So a turn slides BOTH eyes toward the leading edge: the leading
+    // eye rides out to the silhouette, forshortens, and slips around
+    // the corner (gone well before pure profile), while the trailing
+    // eye crosses the face and lands by the nose as the single
+    // profile eye. A feature only ever narrows while it is rounding
+    // the corner — the exit is a slide off the edge, never an
+    // in-place squish or crop.
+    // ORBIT: features sit on the chamfered front FACET of the block
+    // head, recessed inside the full silhouette — so a feature that
+    // survives to profile lands just behind the nose instead of on
+    // the outermost edge. Eyes are DEEP-SET a step further (EYE_R):
+    // the surviving profile eye must stop short of the hair's dark
+    // side curtain, or a black eye dies against it on every dark-
+    // haired look at the cardinal E/W facings.
+    const ORBIT = 0.875;
+    const EYE_R = 0.78;
+    const featX = (u: number, r = ORBIT): number =>
+      headX + (fx * Math.sqrt(Math.max(0, 1 - u * u)) + fy * u) * headR * r;
+    // Width factor: camera-facing normalized so a head-on face reads
+    // exactly 1 (the front look is unchanged) and 0 = rounded the
+    // corner. The 0.05 floor kills lingering one-pixel slivers.
+    const featK = (u: number): number => {
+      const c0 = Math.sqrt(Math.max(0, 1 - u * u));
+      return Math.max(
+        0,
+        Math.min(1, (fy * c0 - fx * u - 0.05) / (c0 - 0.05)),
+      );
+    };
+    // Eye bearing: sin picked so the FRONT separation stays exactly
+    // the old 0.42·headR (0.538·EYE_R = 0.42) — every bearing below
+    // is pre-divided by its recess the same way to hold every front
+    // position where it has always been.
+    const EYE_U = 0.538;
 
     // The scar rides UNDER the eye slit, so the slash reads as
     // crossing it — always on the leading side of the face.
     if (feature === 4 && !rig.hurt) {
-      ctx.strokeStyle = shade(skin, -42);
-      ctx.lineWidth = headR * 0.085;
-      const sx = pairX + lead * sep;
-      ctx.beginPath();
-      ctx.moveTo(sx - lead * headR * 0.1, eyeLineY - headR * 0.42);
-      ctx.lineTo(sx + lead * headR * 0.14, eyeLineY + headR * 0.46);
-      ctx.stroke();
-      // Two stitch ticks across the slash.
-      ctx.lineWidth = headR * 0.045;
-      for (const t of [-0.16, 0.2]) {
-        const mx = sx + lead * headR * 0.02 + lead * headR * 0.24 * t;
-        const my = eyeLineY + headR * 0.88 * t;
+      // The scar rides its eye's skull bearing, so it wraps out of
+      // view with that cheek instead of squishing in place.
+      const sk = featK(lead * EYE_U);
+      if (sk > 0.05) {
+        ctx.strokeStyle = shade(skin, -42);
+        ctx.lineWidth = headR * 0.085;
+        const sx = featX(lead * EYE_U, EYE_R);
         ctx.beginPath();
-        ctx.moveTo(mx - headR * 0.09, my - headR * 0.03);
-        ctx.lineTo(mx + headR * 0.09, my + headR * 0.03);
+        ctx.moveTo(sx - lead * headR * 0.1 * sk, eyeLineY - headR * 0.42);
+        ctx.lineTo(sx + lead * headR * 0.14 * sk, eyeLineY + headR * 0.46);
         ctx.stroke();
+        // Two stitch ticks across the slash.
+        ctx.lineWidth = headR * 0.045;
+        for (const t of [-0.16, 0.2]) {
+          const mx = sx + lead * headR * (0.02 + 0.24 * t) * sk;
+          const my = eyeLineY + headR * 0.88 * t;
+          ctx.beginPath();
+          ctx.moveTo(mx - headR * 0.09 * sk, my - headR * 0.03);
+          ctx.lineTo(mx + headR * 0.09 * sk, my + headR * 0.03);
+          ctx.stroke();
+        }
       }
     }
 
@@ -4499,10 +4535,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     if (!rig.hurt) {
       ctx.fillStyle = shade(hairCol, -6);
       for (const es of [-1, 1]) {
-        const wK = sideK(es);
+        const wK = featK(es * EYE_U);
         if (wK <= 0.02) continue;
         const bw = eyeW * 1.3 * wK;
-        const bx = pairX + es * sep;
+        const bx = featX(es * EYE_U, EYE_R);
         const by =
           eyeLineY - eyeH * (eyeStyle === 2 ? 0.98 : 0.85) - headR * 0.06;
         const innerX = bx - es * (bw / 2);
@@ -4520,10 +4556,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       }
     }
     for (const es of [-1, 1]) {
-      const wK = sideK(es);
+      const wK = featK(es * EYE_U);
       if (wK <= 0.02) continue;
       const w = eyeW * wK;
-      const cx = pairX + es * sep;
+      const cx = featX(es * EYE_U, EYE_R);
       ctx.fillStyle = OUTLINE;
       if (eyeStyle === 1) {
         // Sharp: a hard slanted blade, outer corner riding high.
@@ -4575,10 +4611,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     if (!rig.hurt && feature !== 3) {
       ctx.fillStyle = 'rgba(214, 118, 96, 0.45)';
       for (const es of [-1, 1]) {
-        const wK = sideK(es);
+        const wK = featK(es * EYE_U);
         if (wK <= 0.02) continue;
         ctx.fillRect(
-          pairX + es * sep - headR * 0.14 * wK,
+          featX(es * EYE_U, EYE_R) - headR * 0.14 * wK,
           eyeLineY + headR * 0.24,
           headR * 0.28 * wK,
           headR * 0.16,
@@ -4590,12 +4626,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // shorten and drift as they descend, the way dragged fingers
       // actually land, each with a dried-blood edge beneath it.
       for (const es of [-1, 1]) {
-        const wK = sideK(es);
+        const wK = featK(es * EYE_U);
         if (wK <= 0.05) continue;
         for (const row of [0, 1, 2]) {
           const y0 = eyeLineY + headR * (0.18 + row * 0.15);
           const bw = headR * (0.4 - row * 0.06) * wK;
-          const x0 = pairX + es * sep - bw / 2 + es * headR * 0.03 * row;
+          const x0 = featX(es * EYE_U, EYE_R) - bw / 2 + es * headR * 0.03 * row;
           ctx.fillStyle = 'rgba(120, 24, 20, 0.55)';
           ctx.beginPath();
           ctx.moveTo(x0, y0 + headR * 0.075);
@@ -4625,11 +4661,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         [0.3, 0.25],
         [0.05, 0.4],
       ];
+      // Each spot projects at its own bearing — the scatter bunches
+      // toward the leading edge and wraps off spot by spot.
       for (const [ox, oy] of spots) {
-        const wK = sideK(ox < 0 ? -1 : 1);
-        if (wK <= 0.15) continue;
+        const u = ox * 1.2;
+        if (featK(u) <= 0.15) continue;
         ctx.fillRect(
-          pairX + ox * headR * 1.05 * (1 - 0.3 * profileK),
+          featX(u),
           eyeLineY + oy * headR,
           headR * 0.055,
           headR * 0.055,
@@ -4694,9 +4732,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       } else if (beard === 5) {
         // Mutton chops: side slabs hugging the jaw, chin left bare.
         for (const es of [-1, 1]) {
-          const wK = sideK(es);
+          // Chops hug the jaw sides (bearing well past the eyes) — the
+          // leading one ducks behind the turned face like the ears do.
+          const wK = featK(es * 0.9);
           if (wK <= 0.05) continue;
-          const sideX = headX - fx * headR * 0.12 + es * hw * 0.76;
+          const sideX = featX(es * 0.9);
           ctx.beginPath();
           chamferRect(
             ctx,
@@ -4764,9 +4804,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         ctx.fill();
       }
       for (const es of [-1, 1]) {
-        const wK = sideK(es);
+        const tu = es * (big ? 0.343 : 0.251);
+        const wK = featK(tu);
         if (wK <= 0.05) continue;
-        const bx = pairX + es * headR * (big ? 0.3 : 0.22) * (1 - 0.2 * profileK);
+        const bx = featX(tu);
         const baseY = headY + hh * (big ? 0.82 : 0.72);
         const len = headR * (big ? 0.52 : 0.28);
         const w = headR * (big ? 0.15 : 0.1) * wK;
