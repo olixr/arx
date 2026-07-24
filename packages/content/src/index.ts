@@ -41,6 +41,7 @@ export * from './structures/templates.js';
 export * from './maps/types.js';
 export * from './maps/builder.js';
 export * from './maps/serialize.js';
+export * from './maps/prefab.js';
 export * from './maps/bramblewick.js';
 export * from './maps/gloomhollow.js';
 export * from './maps/hollowstair.js';

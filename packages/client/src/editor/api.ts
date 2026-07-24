@@ -1,4 +1,4 @@
-import type { ZoneJson } from '@devcraft/content';
+import type { PrefabJson, ZoneJson } from '@devcraft/content';
 
 /**
  * The editor's wire to the game server's dev maps API (/dev/maps on
@@ -67,4 +67,52 @@ export async function saveZone(json: ZoneJson): Promise<void> {
 export async function deleteZone(id: string): Promise<{ reverted?: string; unloaded?: boolean }> {
   const res = await request(`/dev/maps/zone/${id}`, { method: 'DELETE' });
   return (await res.json()) as { reverted?: string; unloaded?: boolean };
+}
+
+// ------------------------------------------------- live registries
+
+/** The running server's pick lists — the same truth it spawns from. */
+export interface RegistrySnapshot {
+  npcs: Array<{ id: string; name: string; level: number }>;
+  actors: Array<{ id: string; name: string; title?: string }>;
+  routines: string[];
+}
+
+export async function fetchRegistry(): Promise<RegistrySnapshot> {
+  const res = await request('/dev/registry');
+  return (await res.json()) as RegistrySnapshot;
+}
+
+// ------------------------------------------------- prefab library
+
+export interface PrefabListEntry {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  portals: number;
+  spawns: number;
+  actorSpawns: number;
+}
+
+export async function listPrefabs(): Promise<PrefabListEntry[]> {
+  const res = await request('/dev/prefabs');
+  return ((await res.json()) as { prefabs: PrefabListEntry[] }).prefabs;
+}
+
+export async function fetchPrefab(id: string): Promise<PrefabJson> {
+  const res = await request(`/dev/prefabs/${id}`);
+  return (await res.json()) as PrefabJson;
+}
+
+export async function savePrefab(json: PrefabJson): Promise<void> {
+  await request(`/dev/prefabs/${json.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(json),
+  });
+}
+
+export async function deletePrefab(id: string): Promise<void> {
+  await request(`/dev/prefabs/${id}`, { method: 'DELETE' });
 }

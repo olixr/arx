@@ -9,6 +9,7 @@ import type { ZoneDef } from '@devcraft/content';
 import { bakeChunk, bakeGutter } from '../render/terrain.js';
 import { paintTree, treeModel } from '../render/trees.js';
 import type { EditorState } from './state.js';
+import { sameRef } from './placements.js';
 
 /**
  * The editor viewport. Ground is the REAL game art — zone chunks run
@@ -21,6 +22,9 @@ import type { EditorState } from './state.js';
  */
 
 const OUTLINE = '#241a2e';
+
+/** Sentinel ground value marking a transparent ghost cell. */
+export const GHOST_SKIP = 0xffff;
 
 function hash2(x: number, y: number): number {
   let h = (x * 73856093) ^ (y * 19349663);
@@ -219,12 +223,19 @@ export class EditorView {
   showElev = true;
   /** Live tool feedback painted over the map. */
   preview: PreviewOverlay | null = null;
-  /** Floating paste ghost anchored at a local tile. */
+  /**
+   * Floating stamp ghost anchored at a local tile — paste buffers,
+   * structure templates, and prefabs all preview through this. Cells
+   * equal to GHOST_SKIP are transparent; pins preview placements a
+   * prefab will drop.
+   */
   ghost: {
     w: number;
     h: number;
     ground: Uint16Array;
+    detail?: Uint16Array;
     at: { x: number; y: number };
+    pins?: Array<{ dx: number; dy: number; color: string }>;
   } | null = null;
   /** While a stroke is live, chunk rebakes are throttled hard. */
   strokeActive = false;
@@ -244,6 +255,15 @@ export class EditorView {
     return {
       x: Math.floor((clientX - rect.left - this.panX) / this.scale),
       y: Math.floor((clientY - rect.top - this.panY) / this.scale),
+    };
+  }
+
+  /** Sub-tile coordinates — placement hit tests want exact distance. */
+  tileAtFloat(clientX: number, clientY: number): { x: number; y: number } {
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      x: (clientX - rect.left - this.panX) / this.scale,
+      y: (clientY - rect.top - this.panY) / this.scale,
     };
   }
 
@@ -567,29 +587,46 @@ export class EditorView {
       ctx.fillStyle = color;
       ctx.fillText(text, x, y);
     };
+    /** Selection/hover halo behind a marker anchor. */
+    const halo = (kind: 'portal' | 'cluster' | 'actor' | 'spawn', index: number, lx: number, ly: number): void => {
+      const sel = sameRef(this.state.selected, { kind, index });
+      const hov = sameRef(this.state.hoverPlacement, { kind, index });
+      if (!sel && !hov) return;
+      ctx.strokeStyle = sel ? '#f2c94c' : 'rgba(242, 201, 76, 0.45)';
+      ctx.lineWidth = sel ? 2.5 : 1.5;
+      ctx.beginPath();
+      ctx.arc(lx, ly, Math.max(7, s * 0.5), 0, Math.PI * 2);
+      ctx.stroke();
+    };
 
     // Respawning NPC clusters: ring at the cluster radius.
-    for (const sp of z.spawns ?? []) {
+    (z.spawns ?? []).forEach((sp, i) => {
       const lx = this.sx(sp.x - z.origin.x + 0.5);
       const ly = this.sy(sp.y - z.origin.y + 0.5);
-      ctx.strokeStyle = 'rgba(212, 84, 74, 0.55)';
+      const selected = sameRef(this.state.selected, { kind: 'cluster', index: i });
+      ctx.strokeStyle = selected ? 'rgba(242, 160, 140, 0.9)' : 'rgba(212, 84, 74, 0.55)';
       ctx.setLineDash([5, 4]);
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = selected ? 2.2 : 1.5;
       ctx.beginPath();
       ctx.arc(lx, ly, Math.max(3, sp.radius * s), 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
+      halo('cluster', i, lx, ly);
       ctx.fillStyle = '#d4544a';
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(lx, ly, Math.max(2.5, s * 0.18), 0, Math.PI * 2);
+      ctx.arc(lx, ly, Math.max(3, s * 0.2), 0, Math.PI * 2);
       ctx.fill();
+      ctx.stroke();
       label(`${sp.npc} ×${sp.count}`, lx, ly + Math.max(3, sp.radius * s) + 3, '#e79a92');
-    }
+    });
 
     // Named actors.
-    for (const a of z.actorSpawns ?? []) {
+    (z.actorSpawns ?? []).forEach((a, i) => {
       const lx = this.sx(a.x - z.origin.x + 0.5);
       const ly = this.sy(a.y - z.origin.y + 0.5);
+      halo('actor', i, lx, ly);
       ctx.fillStyle = '#5fc9c4';
       ctx.strokeStyle = OUTLINE;
       ctx.lineWidth = 1.5;
@@ -597,13 +634,26 @@ export class EditorView {
       ctx.arc(lx, ly, Math.max(3, s * 0.22), 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
+      // Facing tick when the placement declares one.
+      if (a.dir !== undefined) {
+        ctx.strokeStyle = '#5fc9c4';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(lx, ly);
+        ctx.lineTo(
+          lx + Math.cos(a.dir) * Math.max(6, s * 0.45),
+          ly + Math.sin(a.dir) * Math.max(6, s * 0.45),
+        );
+        ctx.stroke();
+      }
       label(a.actor, lx, ly + Math.max(3, s * 0.22) + 2, '#9adfdb');
-    }
+    });
 
     // Portals (the tile itself also renders; this is the badge).
-    for (const p of z.portals ?? []) {
+    (z.portals ?? []).forEach((p, i) => {
       const lx = this.sx(p.x - z.origin.x + 0.5);
       const ly = this.sy(p.y - z.origin.y + 0.5);
+      halo('portal', i, lx, ly);
       ctx.strokeStyle = '#b48fe8';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -614,12 +664,13 @@ export class EditorView {
       ctx.closePath();
       ctx.stroke();
       label(p.delve ? 'delve' : `→ ${p.dest?.x},${p.dest?.y}`, lx, ly + s * 0.5 + 2, '#c9aef0');
-    }
+    });
 
     // The world spawn.
     if (z.spawn) {
       const lx = this.sx(z.spawn.x - z.origin.x);
       const ly = this.sy(z.spawn.y - z.origin.y);
+      halo('spawn', 0, lx, ly);
       ctx.fillStyle = '#f2c94c';
       ctx.strokeStyle = OUTLINE;
       ctx.lineWidth = 2;
@@ -648,18 +699,42 @@ export class EditorView {
     const z = this.state.zone;
     const s = this.scale;
     const g = this.ghost;
-    ctx.globalAlpha = 0.65;
+    ctx.globalAlpha = 0.68;
     for (let y = 0; y < g.h; y++) {
       for (let x = 0; x < g.w; x++) {
         const t = g.ground[y * g.w + x]!;
+        if (t === GHOST_SKIP) continue;
         const lx = g.at.x + x;
         const ly = g.at.y + y;
         if (lx < 0 || ly < 0 || lx >= z.width || ly >= z.height) continue;
-        ctx.fillStyle = tileDef(t).color;
+        const def = tileDef(t);
+        ctx.fillStyle = def.color;
         ctx.fillRect(this.sx(lx), this.sy(ly), s, s);
+        if (def.raised && def.topColor) {
+          ctx.fillStyle = def.topColor;
+          ctx.fillRect(this.sx(lx), this.sy(ly), s, s * 0.35);
+        }
+        const d = g.detail?.[y * g.w + x] ?? 0;
+        if (d !== 0) {
+          ctx.fillStyle = 'rgba(240, 230, 200, 0.7)';
+          ctx.beginPath();
+          ctx.arc(this.sx(lx) + s / 2, this.sy(ly) + s / 2, Math.max(1.5, s * 0.14), 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
     ctx.globalAlpha = 1;
+    for (const pin of g.pins ?? []) {
+      const lx = g.at.x + pin.dx;
+      const ly = g.at.y + pin.dy;
+      ctx.fillStyle = pin.color;
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(this.sx(lx) + s / 2, this.sy(ly) + s / 2, Math.max(3, s * 0.22), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
     ctx.strokeStyle = '#e8a33d';
     ctx.setLineDash([4, 3]);
     ctx.strokeRect(this.sx(g.at.x), this.sy(g.at.y), g.w * s, g.h * s);

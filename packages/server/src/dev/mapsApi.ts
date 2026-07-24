@@ -2,7 +2,15 @@ import { mkdirSync } from 'node:fs';
 import { readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { zoneFromJson, zoneToJson, type ZoneDef, type ZoneJson } from '@devcraft/content';
+import {
+  prefabFromJson,
+  prefabToJson,
+  zoneFromJson,
+  zoneToJson,
+  type PrefabJson,
+  type ZoneDef,
+  type ZoneJson,
+} from '@devcraft/content';
 import { config } from '../config.js';
 import type { GameServer } from '../game/gameServer.js';
 
@@ -13,10 +21,15 @@ import type { GameServer } from '../game/gameServer.js';
  * next boot agrees) and swaps into the running WorldSource in the same
  * breath, restreaming the zone's chunks to every connected client.
  *
- *   GET    /dev/maps            list live zones (+ whether a file backs them)
- *   GET    /dev/maps/zone/<id>  ZoneJson of the live zone
- *   PUT    /dev/maps/zone/<id>  validate, write data/maps/<id>.json, hot-reload
- *   DELETE /dev/maps/zone/<id>  remove override file; builtins revert to code
+ *   GET    /dev/maps               list live zones (+ whether a file backs them)
+ *   GET    /dev/maps/zone/<id>     ZoneJson of the live zone
+ *   PUT    /dev/maps/zone/<id>     validate, write data/maps/<id>.json, hot-reload
+ *   DELETE /dev/maps/zone/<id>     remove override file; builtins revert to code
+ *   GET    /dev/registry           live pick lists (npc archetypes, actors, routines)
+ *   GET    /dev/prefabs            list the shared POI prefab library
+ *   GET    /dev/prefabs/<id>       one PrefabJson from data/prefabs/
+ *   PUT    /dev/prefabs/<id>       validate + write data/prefabs/<id>.json
+ *   DELETE /dev/prefabs/<id>       remove a prefab from the library
  *
  * Gated on config.devCommands — the same switch as the chat dev
  * commands — and open CORS, so the Vite-served editor can reach a
@@ -75,9 +88,17 @@ export function createMapsApi(
     }
   };
 
+  const prefabsDir = join(config.dataDir, 'prefabs');
+
   return async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
-    if (url.pathname !== '/dev/maps' && !url.pathname.startsWith('/dev/maps/')) return false;
+    const isDev =
+      url.pathname === '/dev/maps' ||
+      url.pathname.startsWith('/dev/maps/') ||
+      url.pathname === '/dev/registry' ||
+      url.pathname === '/dev/prefabs' ||
+      url.pathname.startsWith('/dev/prefabs/');
+    if (!isDev) return false;
 
     if (req.method === 'OPTIONS') {
       sendJson(res, 204, {});
@@ -89,6 +110,98 @@ export function createMapsApi(
     }
 
     try {
+      if (url.pathname === '/dev/registry' && req.method === 'GET') {
+        sendJson(res, 200, game.registrySnapshot());
+        return true;
+      }
+
+      if (url.pathname === '/dev/prefabs' && req.method === 'GET') {
+        const prefabs: Array<{
+          id: string;
+          name: string;
+          width: number;
+          height: number;
+          portals: number;
+          spawns: number;
+          actorSpawns: number;
+        }> = [];
+        try {
+          for (const file of (await readdir(prefabsDir)).filter((f) => f.endsWith('.json'))) {
+            try {
+              const json = JSON.parse(
+                await readFile(join(prefabsDir, file), 'utf8'),
+              ) as PrefabJson;
+              prefabs.push({
+                id: json.id,
+                name: json.name,
+                width: json.width,
+                height: json.height,
+                portals: json.portals?.length ?? 0,
+                spawns: json.spawns?.length ?? 0,
+                actorSpawns: json.actorSpawns?.length ?? 0,
+              });
+            } catch {
+              // A bad file shouldn't hide the rest of the library.
+            }
+          }
+        } catch {
+          // No prefabs dir yet — empty library.
+        }
+        prefabs.sort((a, b) => a.name.localeCompare(b.name));
+        sendJson(res, 200, { prefabs });
+        return true;
+      }
+
+      const prefabMatch = /^\/dev\/prefabs\/([^/]+)$/.exec(url.pathname);
+      if (prefabMatch) {
+        const id = prefabMatch[1]!;
+        if (!ID_RE.test(id)) {
+          sendJson(res, 400, { error: `prefab id must match ${ID_RE}` });
+          return true;
+        }
+        if (req.method === 'GET') {
+          try {
+            const text = await readFile(join(prefabsDir, `${id}.json`), 'utf8');
+            res.writeHead(200, {
+              'content-type': 'application/json',
+              'access-control-allow-origin': '*',
+            });
+            res.end(text);
+          } catch {
+            sendJson(res, 404, { error: `no prefab '${id}'` });
+          }
+          return true;
+        }
+        if (req.method === 'PUT') {
+          let json: PrefabJson;
+          try {
+            json = JSON.parse(await readBody(req)) as PrefabJson;
+            if (json.id !== id) throw new Error(`body id '${json.id}' does not match URL '${id}'`);
+            prefabFromJson(json); // full validation round-trip
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          mkdirSync(prefabsDir, { recursive: true });
+          await writeFile(
+            join(prefabsDir, `${id}.json`),
+            JSON.stringify(prefabToJson(prefabFromJson(json)), null, 2),
+          );
+          console.log(`[maps] saved prefab '${id}' (${json.width}x${json.height})`);
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          try {
+            await unlink(join(prefabsDir, `${id}.json`));
+            console.log(`[maps] deleted prefab '${id}'`);
+            sendJson(res, 200, { ok: true });
+          } catch {
+            sendJson(res, 404, { error: `no prefab '${id}'` });
+          }
+          return true;
+        }
+      }
       if (url.pathname === '/dev/maps' && req.method === 'GET') {
         const onDisk = await fileIds();
         const zones = game.world.zoneDefs.map((z) => ({

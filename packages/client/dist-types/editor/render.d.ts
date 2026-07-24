@@ -1,5 +1,7 @@
 import { Tile } from '@devcraft/shared';
 import type { EditorState } from './state.js';
+/** Sentinel ground value marking a transparent ghost cell. */
+export declare const GHOST_SKIP = 65535;
 export type OverlayKind = 'none' | 'block' | 'tree' | 'door' | 'portal';
 export declare function overlayKind(t: Tile): OverlayKind;
 /**
@@ -25,15 +27,26 @@ export declare class EditorView {
     showElev: boolean;
     /** Live tool feedback painted over the map. */
     preview: PreviewOverlay | null;
-    /** Floating paste ghost anchored at a local tile. */
+    /**
+     * Floating stamp ghost anchored at a local tile — paste buffers,
+     * structure templates, and prefabs all preview through this. Cells
+     * equal to GHOST_SKIP are transparent; pins preview placements a
+     * prefab will drop.
+     */
     ghost: {
         w: number;
         h: number;
         ground: Uint16Array;
+        detail?: Uint16Array;
         at: {
             x: number;
             y: number;
         };
+        pins?: Array<{
+            dx: number;
+            dy: number;
+            color: string;
+        }>;
     } | null;
     /** While a stroke is live, chunk rebakes are throttled hard. */
     strokeActive: boolean;
@@ -41,6 +54,11 @@ export declare class EditorView {
     private lastStrokeBakeAt;
     constructor(canvas: HTMLCanvasElement, state: EditorState);
     tileAt(clientX: number, clientY: number): {
+        x: number;
+        y: number;
+    };
+    /** Sub-tile coordinates — placement hit tests want exact distance. */
+    tileAtFloat(clientX: number, clientY: number): {
         x: number;
         y: number;
     };

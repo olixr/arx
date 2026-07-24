@@ -1,5 +1,5 @@
 import { Detail, Tile } from '@devcraft/shared';
-import type { ZoneDef } from '@devcraft/content';
+import type { PrefabDef, ZoneDef } from '@devcraft/content';
 
 /** The editor's document + tool state. Plain and observable. */
 
@@ -13,7 +13,23 @@ export type ToolId =
   | 'road'
   | 'select'
   | 'picker'
+  | 'structure'
+  | 'prefab'
+  | 'portal'
+  | 'cluster'
+  | 'actor'
   | 'spawn';
+
+/** Which sidebar tab is showing. */
+export type SidebarTab = 'tiles' | 'structures' | 'placements';
+
+export type PlacementKind = 'portal' | 'cluster' | 'actor' | 'spawn';
+
+/** A handle to one placement in the zone (spawn point uses index 0). */
+export interface PlacementRef {
+  kind: PlacementKind;
+  index: number;
+}
 
 export type LayerId = 'ground' | 'detail' | 'elev';
 
@@ -69,6 +85,19 @@ export class EditorState {
   clip: ClipBuf | null = null;
   hover: { x: number; y: number } | null = null;
 
+  /** Sidebar tab; placement/structure tools auto-switch it. */
+  tab: SidebarTab = 'tiles';
+  /** Armed structure template id (structure tool). */
+  armedTemplate: string | null = null;
+  /** Armed prefab (prefab tool) — fetched def, ready to stamp. */
+  armedPrefab: PrefabDef | null = null;
+  /** Mirror the armed stamp east-west (X key). */
+  stampFlip = false;
+  /** The selected placement, if any — inspector target. */
+  selected: PlacementRef | null = null;
+  /** Placement under the cursor (hover affordance). */
+  hoverPlacement: PlacementRef | null = null;
+
   private readonly listeners = new Set<() => void>();
 
   onChange(fn: () => void): void {
@@ -89,6 +118,10 @@ export class EditorState {
     this.dirty = false;
     this.serverBacked = opts.serverBacked;
     this.selection = null;
+    this.selected = null;
+    this.hoverPlacement = null;
+    this.armedPrefab = null;
+    this.armedTemplate = null;
     this.changed();
   }
 }

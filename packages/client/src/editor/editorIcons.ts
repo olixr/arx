@@ -1,0 +1,324 @@
+/**
+ * Bespoke tool sigils for Map Studio — hand-drawn monoline glyphs in
+ * the one-ink dock-sigil dialect the game HUD uses. Never emoji, never
+ * font glyphs: every icon is authored strokes on a canvas, served as a
+ * data URL so buttons can clone them freely.
+ */
+
+const SIZE = 44;
+const INK = '#ece4d0';
+
+type Painter = (ctx: CanvasRenderingContext2D) => void;
+
+function draw(painter: Painter): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = SIZE * 2;
+  canvas.height = SIZE * 2;
+  const ctx = canvas.getContext('2d')!;
+  ctx.scale(2, 2);
+  // Authored in a 24x24 box, centered in the 44px tile.
+  ctx.translate((SIZE - 24) / 2, (SIZE - 24) / 2);
+  ctx.strokeStyle = INK;
+  ctx.fillStyle = INK;
+  ctx.lineWidth = 1.9;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  painter(ctx);
+  return canvas.toDataURL();
+}
+
+const path = (ctx: CanvasRenderingContext2D, pts: Array<[number, number]>, close = false): void => {
+  ctx.beginPath();
+  ctx.moveTo(pts[0]![0], pts[0]![1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i]![0], pts[i]![1]);
+  if (close) ctx.closePath();
+};
+
+/** A round-tipped painter's brush, loaded, at working angle. */
+const brush: Painter = (ctx) => {
+  // Handle.
+  path(ctx, [[19.5, 2.5], [11.5, 10.5]]);
+  ctx.stroke();
+  // Ferrule.
+  path(ctx, [[12.8, 9.2], [14.8, 11.2]]);
+  ctx.lineWidth = 3.4;
+  ctx.stroke();
+  ctx.lineWidth = 1.9;
+  // Bristle body sweeping to the tip.
+  ctx.beginPath();
+  ctx.moveTo(11.6, 10.4);
+  ctx.quadraticCurveTo(7.5, 12.5, 5.8, 16.2);
+  ctx.quadraticCurveTo(4.8, 18.6, 3.2, 20.8);
+  ctx.quadraticCurveTo(6.8, 20.9, 9.2, 19.2);
+  ctx.quadraticCurveTo(12.4, 17, 13.6, 12.4);
+  ctx.closePath();
+  ctx.fill();
+};
+
+/** A block eraser mid-swipe, crumbs trailing. */
+const eraser: Painter = (ctx) => {
+  ctx.save();
+  ctx.translate(12, 10);
+  ctx.rotate(-0.6);
+  ctx.strokeRect(-6.5, -4.5, 13, 9);
+  // The sleeve band.
+  path(ctx, [[-1.5, -4.5], [-1.5, 4.5]]);
+  ctx.stroke();
+  ctx.restore();
+  // Swipe crumbs.
+  for (const [x, y, r] of [[5, 19.5, 1.1], [10, 21, 0.9], [15, 20, 1.2]] as const) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+};
+
+/** A ruled segment with endpoint anchors. */
+const line: Painter = (ctx) => {
+  path(ctx, [[4.5, 19.5], [19.5, 4.5]]);
+  ctx.stroke();
+  for (const [x, y] of [[4.5, 19.5], [19.5, 4.5]] as const) {
+    ctx.beginPath();
+    ctx.arc(x, y, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+};
+
+/** Rectangle with drafting handles. */
+const rect: Painter = (ctx) => {
+  ctx.strokeRect(4, 6, 16, 12);
+  for (const [x, y] of [[4, 6], [20, 6], [4, 18], [20, 18]] as const) {
+    ctx.fillRect(x - 1.7, y - 1.7, 3.4, 3.4);
+  }
+};
+
+/** Ellipse with two handles on the cardinal points. */
+const ellipse: Painter = (ctx) => {
+  ctx.beginPath();
+  ctx.ellipse(12, 12, 8.5, 6, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  for (const [x, y] of [[12, 6], [12, 18]] as const) {
+    ctx.fillRect(x - 1.6, y - 1.6, 3.2, 3.2);
+  }
+};
+
+/** A tipped bucket, paint committing to the ground. */
+const fill: Painter = (ctx) => {
+  ctx.save();
+  ctx.translate(11, 10);
+  ctx.rotate(0.5);
+  // Bucket body.
+  path(ctx, [[-4.5, -3], [-3.5, 5], [3.5, 5], [4.5, -3]], true);
+  ctx.stroke();
+  // Rim.
+  ctx.beginPath();
+  ctx.ellipse(0, -3, 4.5, 1.6, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+  // The poured wave.
+  ctx.beginPath();
+  ctx.moveTo(3.5, 18.5);
+  ctx.quadraticCurveTo(8, 16, 12, 18);
+  ctx.quadraticCurveTo(16.5, 20.2, 21, 18.2);
+  ctx.stroke();
+};
+
+/** A road receding: two edges and its center dashes. */
+const road: Painter = (ctx) => {
+  path(ctx, [[7, 21], [10.2, 3]]);
+  ctx.stroke();
+  path(ctx, [[17, 21], [13.8, 3]]);
+  ctx.stroke();
+  ctx.lineWidth = 1.6;
+  for (const [y0, y1] of [[19, 16.4], [13.5, 11.4], [8.6, 7]] as const) {
+    path(ctx, [[12, y0], [12, y1]]);
+    ctx.stroke();
+  }
+};
+
+/** Marching-ants marquee. */
+const select: Painter = (ctx) => {
+  ctx.setLineDash([3.2, 2.6]);
+  ctx.strokeRect(4.5, 5.5, 15, 13);
+  ctx.setLineDash([]);
+};
+
+/** A dropper taking its sample. */
+const picker: Painter = (ctx) => {
+  // Bulb + stem.
+  ctx.save();
+  ctx.translate(15.5, 8.5);
+  ctx.rotate(Math.PI / 4);
+  ctx.beginPath();
+  ctx.arc(0, -4.6, 3, Math.PI, 0);
+  ctx.lineTo(1.6, 3.5);
+  ctx.lineTo(0, 6.5);
+  ctx.lineTo(-1.6, 3.5);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+  // The sampled drop.
+  ctx.beginPath();
+  ctx.arc(6.5, 18.5, 2, 0, Math.PI * 2);
+  ctx.fill();
+};
+
+/** The spawn banner: a pennant planted at the starting point. */
+const spawn: Painter = (ctx) => {
+  path(ctx, [[8.5, 21], [8.5, 3.5]]);
+  ctx.stroke();
+  path(ctx, [[8.5, 4.5], [18.5, 7], [8.5, 9.5]], true);
+  ctx.fill();
+  // Ground tick.
+  path(ctx, [[5, 21], [12, 21]]);
+  ctx.stroke();
+};
+
+/** A gabled hall — the structure stamp. */
+const structure: Painter = (ctx) => {
+  path(ctx, [[3.5, 11.5], [12, 4], [20.5, 11.5]]);
+  ctx.stroke();
+  path(ctx, [[5.5, 10.5], [5.5, 20], [18.5, 20], [18.5, 10.5]]);
+  ctx.stroke();
+  // Doorway.
+  path(ctx, [[10.2, 20], [10.2, 14.5], [13.8, 14.5], [13.8, 20]]);
+  ctx.stroke();
+};
+
+/** A rubber stamp mid-press — the prefab. */
+const prefab: Painter = (ctx) => {
+  // Knob + neck.
+  ctx.beginPath();
+  ctx.arc(12, 5, 2.6, 0, Math.PI * 2);
+  ctx.stroke();
+  path(ctx, [[12, 7.6], [12, 10.5]]);
+  ctx.stroke();
+  // Base block.
+  path(ctx, [[6, 10.5], [18, 10.5], [18, 14], [6, 14]], true);
+  ctx.stroke();
+  // The impression it leaves.
+  ctx.lineWidth = 1.6;
+  path(ctx, [[5, 19], [19, 19]]);
+  ctx.setLineDash([2.6, 2.2]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+};
+
+/** A standing arch with the swirl inside — the portal. */
+const portal: Painter = (ctx) => {
+  ctx.beginPath();
+  ctx.moveTo(6, 20.5);
+  ctx.lineTo(6, 10.5);
+  ctx.arc(12, 10.5, 6, Math.PI, 0);
+  ctx.lineTo(18, 20.5);
+  ctx.stroke();
+  // Inner swirl.
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.arc(12, 13, 2.8, -0.4, Math.PI * 1.35);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(12, 13, 1.1, Math.PI * 0.7, Math.PI * 2.1);
+  ctx.stroke();
+};
+
+/** Three heads inside the wander ring — an NPC cluster. */
+const cluster: Painter = (ctx) => {
+  ctx.setLineDash([2.8, 2.4]);
+  ctx.beginPath();
+  ctx.arc(12, 13, 9, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  for (const [x, y] of [[12, 8.5], [8.2, 15.5], [15.8, 15.5]] as const) {
+    ctx.beginPath();
+    ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+};
+
+/** One named body: head and shoulders. */
+const actor: Painter = (ctx) => {
+  ctx.beginPath();
+  ctx.arc(12, 8, 3.6, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(5.5, 20.5);
+  ctx.quadraticCurveTo(6, 14.2, 12, 14.2);
+  ctx.quadraticCurveTo(18, 14.2, 18.5, 20.5);
+  ctx.stroke();
+};
+
+/** Mirror arrows for the flip control. */
+const flip: Painter = (ctx) => {
+  ctx.setLineDash([2.4, 2]);
+  path(ctx, [[12, 3], [12, 21]]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  path(ctx, [[9, 8], [4, 12], [9, 16]], true);
+  ctx.fill();
+  path(ctx, [[15, 8], [20, 12], [15, 16]], true);
+  ctx.fill();
+};
+
+/** A lidded bin for destructive row actions. */
+const trash: Painter = (ctx) => {
+  path(ctx, [[6, 8], [7.2, 20], [16.8, 20], [18, 8]]);
+  ctx.stroke();
+  path(ctx, [[4.5, 7.5], [19.5, 7.5]]);
+  ctx.stroke();
+  path(ctx, [[9.5, 7.5], [10, 5], [14, 5], [14.5, 7.5]]);
+  ctx.stroke();
+  ctx.lineWidth = 1.5;
+  path(ctx, [[9.7, 10.5], [10.2, 17.5]]);
+  ctx.stroke();
+  path(ctx, [[14.3, 10.5], [13.8, 17.5]]);
+  ctx.stroke();
+};
+
+/** Crosshair reticle — focus a placement on the map. */
+const focus: Painter = (ctx) => {
+  ctx.beginPath();
+  ctx.arc(12, 12, 5.5, 0, Math.PI * 2);
+  ctx.stroke();
+  for (const [x0, y0, x1, y1] of [
+    [12, 3, 12, 6.5], [12, 17.5, 12, 21], [3, 12, 6.5, 12], [17.5, 12, 21, 12],
+  ] as const) {
+    path(ctx, [[x0, y0], [x1, y1]]);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(12, 12, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+};
+
+export const EDITOR_ICONS: Record<string, string> = {
+  paint: draw(brush),
+  erase: draw(eraser),
+  line: draw(line),
+  rect: draw(rect),
+  ellipse: draw(ellipse),
+  fill: draw(fill),
+  road: draw(road),
+  select: draw(select),
+  picker: draw(picker),
+  spawn: draw(spawn),
+  structure: draw(structure),
+  prefab: draw(prefab),
+  portal: draw(portal),
+  cluster: draw(cluster),
+  actor: draw(actor),
+  flip: draw(flip),
+  trash: draw(trash),
+  focus: draw(focus),
+};
+
+/** An <img> for a sigil, sized for toolbar/button use. */
+export function iconImg(name: string, size = 22): HTMLImageElement {
+  const img = document.createElement('img');
+  img.src = EDITOR_ICONS[name] ?? EDITOR_ICONS.paint!;
+  img.width = size;
+  img.height = size;
+  img.draggable = false;
+  img.alt = '';
+  return img;
+}

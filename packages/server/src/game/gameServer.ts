@@ -496,6 +496,8 @@ interface ActorSpawnState {
   routine?: string;
   eid: EntityId | null;
   respawnAt: number;
+  /** Inactive posts are skipped (zone hot-reload retired them). */
+  active: boolean;
 }
 
 /**
@@ -956,6 +958,24 @@ export class GameServer {
     }
   }
 
+  /**
+   * Per-zone placement bookkeeping for live map-editor reloads: which
+   * spawnPoints/actorSpawnPoints indexes each authored zone owns. The
+   * arrays themselves NEVER shrink — spawnIndex fields on live bodies
+   * are absolute positions (the dungeon-teardown law) — so a reload
+   * deactivates the old records in place and appends the new ones.
+   */
+  private readonly zonePlacements = new Map<string, { spawns: number[]; actors: number[] }>();
+
+  private zonePlacementIdx(zoneId: string): { spawns: number[]; actors: number[] } {
+    let rec = this.zonePlacements.get(zoneId);
+    if (!rec) {
+      rec = { spawns: [], actors: [] };
+      this.zonePlacements.set(zoneId, rec);
+    }
+    return rec;
+  }
+
   /** Expand spawn tables into scattered points; returns their indexes. */
   registerSpawns(
     spawns: ReadonlyArray<{
@@ -967,6 +987,7 @@ export class GameServer {
       level?: number;
       name?: string;
     }>,
+    zoneId?: string,
   ): number[] {
     const indexes: number[] = [];
     for (const spawn of spawns) {
@@ -987,6 +1008,7 @@ export class GameServer {
         });
       }
     }
+    if (zoneId !== undefined) this.zonePlacementIdx(zoneId).spawns.push(...indexes);
     return indexes;
   }
 
@@ -1009,7 +1031,7 @@ export class GameServer {
   }
 
   /** Register placed actors — exact posts, one body each. */
-  registerActorSpawns(spawns: ReadonlyArray<ZoneActorSpawn>): void {
+  registerActorSpawns(spawns: ReadonlyArray<ZoneActorSpawn>, zoneId?: string): void {
     for (const spawn of spawns) {
       if (!this.actorDefs.has(spawn.actor)) {
         console.warn(`[npc] placement references unknown actor '${spawn.actor}' — skipped`);
@@ -1020,6 +1042,9 @@ export class GameServer {
           `[npc] placement of '${spawn.actor}' references unknown routine '${spawn.routine}' — posted still`,
         );
       }
+      if (zoneId !== undefined) {
+        this.zonePlacementIdx(zoneId).actors.push(this.actorSpawnPoints.length);
+      }
       this.actorSpawnPoints.push({
         actor: spawn.actor,
         x: spawn.x,
@@ -1028,6 +1053,7 @@ export class GameServer {
         routine: spawn.routine,
         eid: null,
         respawnAt: 0,
+        active: true,
       });
     }
   }
@@ -2452,13 +2478,74 @@ export class GameServer {
    * the keys from knownChunks is enough — updateInterest runs every
    * tick and restreams anything visible that isn't known, and the
    * client's full-chunk replace re-bakes render + collision for free.
-   * Geometry only: spawn tables/actor placements register at boot.
+   * Placements reload too: the zone's old spawn points and actor
+   * posts retire (bodies removed silently, records deactivated in
+   * place — never spliced, spawnIndex is absolute) and the new lists
+   * register; tickSpawns stands the new residents up next tick.
    */
   reloadZone(zone: ZoneDef): void {
     const old = this.world.zoneById(zone.id);
     this.world.replaceZone(zone);
     this.dropClientChunks(old);
     this.dropClientChunks(zone);
+    this.retireZonePlacements(zone.id);
+    if (zone.spawns && zone.spawns.length > 0) this.registerSpawns(zone.spawns, zone.id);
+    if (zone.actorSpawns && zone.actorSpawns.length > 0) {
+      this.registerActorSpawns(zone.actorSpawns, zone.id);
+    }
+  }
+
+  /**
+   * Deactivate a zone's placement records and silently remove their
+   * live bodies — the dungeon-teardown law (removeFromChunks +
+   * ecs.destroy, no loot, no death burst; ecs.destroy clears every
+   * component store, dialogue/projectile/aggro guards self-heal).
+   */
+  private retireZonePlacements(zoneId: string): void {
+    const rec = this.zonePlacements.get(zoneId);
+    if (!rec) return;
+    for (const i of rec.spawns) {
+      const spawn = this.spawnPoints[i];
+      if (!spawn) continue;
+      spawn.active = false;
+      if (spawn.eid !== null) {
+        this.removeFromChunks(spawn.eid);
+        this.ecs.destroy(spawn.eid);
+        spawn.eid = null;
+      }
+    }
+    for (const i of rec.actors) {
+      const post = this.actorSpawnPoints[i];
+      if (!post) continue;
+      post.active = false;
+      if (post.eid !== null) {
+        this.removeFromChunks(post.eid);
+        this.ecs.destroy(post.eid);
+        post.eid = null;
+      }
+    }
+    this.zonePlacements.delete(zoneId);
+  }
+
+  /**
+   * The live pick lists for dev tooling: bestiary archetypes from
+   * content, actors and routines from the DB-loaded registries — the
+   * same truth the running world spawns from.
+   */
+  registrySnapshot(): {
+    npcs: Array<{ id: string; name: string; level: number }>;
+    actors: Array<{ id: string; name: string; title?: string }>;
+    routines: string[];
+  } {
+    return {
+      npcs: [...NPCS.values()].map((d) => ({ id: d.id, name: d.name, level: d.level })),
+      actors: [...this.actorDefs.values()].map((a) => ({
+        id: a.id,
+        name: a.name,
+        ...(a.title ? { title: a.title } : {}),
+      })),
+      routines: [...this.routineDefs.keys()],
+    };
   }
 
   /** Remove an authored zone live; its ground reverts to procgen. */
@@ -2467,6 +2554,7 @@ export class GameServer {
     if (!old) return;
     this.world.removeZone(zoneId);
     this.dropClientChunks(old);
+    this.retireZonePlacements(zoneId);
   }
 
   private dropClientChunks(zone: ZoneDef | undefined): void {
@@ -5508,7 +5596,7 @@ export class GameServer {
     // Placed actors stand back up the same way beasts do.
     for (let i = 0; i < this.actorSpawnPoints.length; i++) {
       const spawn = this.actorSpawnPoints[i]!;
-      if (spawn.eid !== null || spawn.respawnAt > now) continue;
+      if (!spawn.active || spawn.eid !== null || spawn.respawnAt > now) continue;
       const def = this.actorDefs.get(spawn.actor);
       if (!def) continue;
       spawn.eid = this.spawnActor(def, spawn.x, spawn.y, i, spawn.dir, spawn.routine);

@@ -60,7 +60,7 @@ for (const built of accounts.loadBuiltTiles()) {
 const game = new GameServer(world, accounts);
 game.loadCrops(accounts.loadCrops());
 for (const zone of zones) {
-  if (zone.spawns && zone.spawns.length > 0) game.registerSpawns(zone.spawns);
+  if (zone.spawns && zone.spawns.length > 0) game.registerSpawns(zone.spawns, zone.id);
 }
 
 // NPC actors, DB-first: authored JSON seeds the relational tables,
@@ -85,7 +85,9 @@ console.log(
 );
 
 for (const zone of zones) {
-  if (zone.actorSpawns && zone.actorSpawns.length > 0) game.registerActorSpawns(zone.actorSpawns);
+  if (zone.actorSpawns && zone.actorSpawns.length > 0) {
+    game.registerActorSpawns(zone.actorSpawns, zone.id);
+  }
 }
 console.log(
   `[npc] actors: ${actorLoad.actors.length} loaded ` +

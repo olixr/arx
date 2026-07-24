@@ -25,7 +25,7 @@ export interface ZoneJson {
   spawns?: ZoneSpawn[];
 }
 
-function u16ToBase64(arr: Uint16Array): string {
+export function u16ToBase64(arr: Uint16Array): string {
   const bytes = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
   let bin = '';
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);
@@ -33,7 +33,7 @@ function u16ToBase64(arr: Uint16Array): string {
   return typeof btoa === 'function' ? btoa(bin) : Buffer.from(bytes).toString('base64');
 }
 
-function base64ToU16(s: string, expected: number): Uint16Array {
+export function base64ToU16(s: string, expected: number): Uint16Array {
   let bytes: Uint8Array;
   if (typeof atob === 'function') {
     const bin = atob(s);
@@ -49,7 +49,7 @@ function base64ToU16(s: string, expected: number): Uint16Array {
   return new Uint16Array(arr); // copy to a tightly-owned buffer
 }
 
-function i8ToBase64(arr: Int8Array): string {
+export function i8ToBase64(arr: Int8Array): string {
   // Reinterpret the bytes: base64 doesn't care about sign, only the
   // decoder's view does.
   const bytes = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
@@ -58,7 +58,7 @@ function i8ToBase64(arr: Int8Array): string {
   return typeof btoa === 'function' ? btoa(bin) : Buffer.from(bytes).toString('base64');
 }
 
-function base64ToI8(s: string, expected: number): Int8Array {
+export function base64ToI8(s: string, expected: number): Int8Array {
   let bytes: Uint8Array;
   if (typeof atob === 'function') {
     const bin = atob(s);

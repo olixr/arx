@@ -1,0 +1,594 @@
+import { Detail, Tile, tileDef } from '@devcraft/shared';
+import {
+  STRUCTURE_TEMPLATES,
+  templateWidth,
+  templateHeight,
+  type PrefabDef,
+  type StructureTemplate,
+  type ZoneDef,
+} from '@devcraft/content';
+import type { PrefabListEntry, RegistrySnapshot } from './api.js';
+import { iconImg } from './editorIcons.js';
+import { placementLabel, sameRef } from './placements.js';
+import type { EditorState, PlacementRef } from './state.js';
+
+/**
+ * The sidebar's Structures and Placements panels. Everything here is
+ * pure DOM assembly — the editor supplies the actions, the panels
+ * supply the affordances: previews you can read, rows you can focus,
+ * and an inspector that edits the selected placement in place.
+ */
+
+export interface PanelActions {
+  armTemplate(id: string): void;
+  armPrefab(id: string): void;
+  saveSelectionAsPrefab(): void;
+  removePrefab(id: string): void;
+  refreshPrefabs(): void;
+  selectPlacement(ref: PlacementRef | null): void;
+  focusPlacement(ref: PlacementRef): void;
+  removePlacement(ref: PlacementRef): void;
+  /** Mutate the selected placement inside one undoable operation. */
+  editPlacement(ref: PlacementRef, label: string, mutate: (zone: ZoneDef) => void): void;
+}
+
+export interface PanelDeps {
+  state: EditorState;
+  registry: RegistrySnapshot;
+  prefabs: PrefabListEntry[];
+  prefabsOnline: boolean;
+  actions: PanelActions;
+}
+
+// ------------------------------------------------------ previews
+
+/** Schematic mini-render of a template's cells. */
+export function templatePreview(tpl: StructureTemplate, box = 116): HTMLCanvasElement {
+  const w = templateWidth(tpl);
+  const h = templateHeight(tpl);
+  const cell = Math.max(3, Math.floor(Math.min(box / w, box / h)));
+  const canvas = document.createElement('canvas');
+  canvas.width = w * cell;
+  canvas.height = h * cell;
+  const ctx = canvas.getContext('2d')!;
+  for (let y = 0; y < h; y++) {
+    const row = tpl.rows[y]!;
+    for (let x = 0; x < w; x++) {
+      const ch = row[x]!;
+      if (ch === ' ') continue;
+      const def = tpl.legend[ch];
+      if (!def) continue;
+      if (def.tile !== undefined) {
+        const td = tileDef(def.tile);
+        ctx.fillStyle = td.color;
+        ctx.fillRect(x * cell, y * cell, cell, cell);
+        if (td.raised && td.topColor) {
+          ctx.fillStyle = td.topColor;
+          ctx.fillRect(x * cell, y * cell, cell, Math.max(1, cell * 0.4));
+        }
+      }
+      if (def.detail !== undefined && def.detail !== Detail.None) {
+        ctx.fillStyle = 'rgba(240, 230, 200, 0.8)';
+        ctx.fillRect(x * cell + cell * 0.35, y * cell + cell * 0.35, cell * 0.3, cell * 0.3);
+      }
+    }
+  }
+  return canvas;
+}
+
+/** Schematic mini-render of a prefab's captured tiles + pins. */
+export function prefabPreview(p: PrefabDef, box = 116): HTMLCanvasElement {
+  const cell = Math.max(2, Math.floor(Math.min(box / p.width, box / p.height)));
+  const canvas = document.createElement('canvas');
+  canvas.width = p.width * cell;
+  canvas.height = p.height * cell;
+  const ctx = canvas.getContext('2d')!;
+  for (let y = 0; y < p.height; y++) {
+    for (let x = 0; x < p.width; x++) {
+      const td = tileDef(p.ground[y * p.width + x]!);
+      ctx.fillStyle = td.color;
+      ctx.fillRect(x * cell, y * cell, cell, cell);
+      if (td.raised && td.topColor) {
+        ctx.fillStyle = td.topColor;
+        ctx.fillRect(x * cell, y * cell, cell, Math.max(1, cell * 0.4));
+      }
+    }
+  }
+  const pin = (dx: number, dy: number, color: string): void => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(dx * cell + cell / 2, dy * cell + cell / 2, Math.max(2, cell * 0.45), 0, Math.PI * 2);
+    ctx.fill();
+  };
+  for (const s of p.spawns) pin(s.dx, s.dy, '#d4544a');
+  for (const a of p.actorSpawns) pin(a.dx, a.dy, '#5fc9c4');
+  for (const pt of p.portals) pin(pt.dx, pt.dy, '#b48fe8');
+  return canvas;
+}
+
+// ------------------------------------------------- structures panel
+
+export function buildStructuresPanel(root: HTMLElement, deps: PanelDeps): void {
+  const { state, actions } = deps;
+  root.innerHTML = '';
+
+  const head = document.createElement('div');
+  head.className = 'panel-head';
+  head.textContent = 'Structure templates';
+  root.appendChild(head);
+  const note = document.createElement('p');
+  note.className = 'muted';
+  note.textContent =
+    'Pick one, then click the map to stamp it. X mirrors east-west; buildings never rotate (the camera reads south faces).';
+  root.appendChild(note);
+
+  const grid = document.createElement('div');
+  grid.className = 'card-grid';
+  for (const tpl of STRUCTURE_TEMPLATES) {
+    const card = document.createElement('button');
+    card.className =
+      'card' + (state.tool === 'structure' && state.armedTemplate === tpl.id ? ' armed' : '');
+    const pic = document.createElement('div');
+    pic.className = 'card-pic';
+    pic.appendChild(templatePreview(tpl));
+    card.appendChild(pic);
+    const cap = document.createElement('div');
+    cap.className = 'card-cap';
+    cap.innerHTML = `<b>${tpl.meta?.label ?? tpl.id}</b><span>${templateWidth(tpl)}×${templateHeight(tpl)}</span>`;
+    card.appendChild(cap);
+    card.onclick = () => actions.armTemplate(tpl.id);
+    grid.appendChild(card);
+  }
+  root.appendChild(grid);
+
+  // ------------------------------------------------ prefab library
+  const phead = document.createElement('div');
+  phead.className = 'panel-head';
+  phead.textContent = 'Prefab library';
+  const refresh = document.createElement('button');
+  refresh.className = 'mini';
+  refresh.textContent = 'refresh';
+  refresh.onclick = () => actions.refreshPrefabs();
+  phead.appendChild(refresh);
+  root.appendChild(phead);
+
+  const saveRow = document.createElement('div');
+  saveRow.className = 'opt-row';
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Save selection as prefab';
+  saveBtn.disabled = !state.selection;
+  saveBtn.title = state.selection
+    ? 'Capture the selected tiles and every placement inside them'
+    : 'Make a selection first (M) — the prefab captures its tiles and placements';
+  saveBtn.onclick = () => actions.saveSelectionAsPrefab();
+  saveRow.appendChild(saveBtn);
+  root.appendChild(saveRow);
+
+  if (!deps.prefabsOnline) {
+    const off = document.createElement('p');
+    off.className = 'muted';
+    off.textContent = 'Server offline — the shared library needs the game server running.';
+    root.appendChild(off);
+    return;
+  }
+
+  if (deps.prefabs.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'muted empty';
+    empty.textContent =
+      'No prefabs yet. Select a camp, a shrine, a guard post — anything worth planting twice — and save it here.';
+    root.appendChild(empty);
+    return;
+  }
+
+  const pgrid = document.createElement('div');
+  pgrid.className = 'card-grid';
+  for (const p of deps.prefabs) {
+    const card = document.createElement('div');
+    card.className =
+      'card' + (state.tool === 'prefab' && state.armedPrefab?.id === p.id ? ' armed' : '');
+    const cap = document.createElement('div');
+    cap.className = 'card-cap';
+    const bits = [
+      `${p.width}×${p.height}`,
+      p.spawns > 0 ? `${p.spawns} spawn${p.spawns > 1 ? 's' : ''}` : '',
+      p.actorSpawns > 0 ? `${p.actorSpawns} actor${p.actorSpawns > 1 ? 's' : ''}` : '',
+      p.portals > 0 ? `${p.portals} portal${p.portals > 1 ? 's' : ''}` : '',
+    ].filter(Boolean).join(' · ');
+    cap.innerHTML = `<b>${p.name}</b><span>${bits}</span>`;
+    card.appendChild(cap);
+    const row = document.createElement('div');
+    row.className = 'card-actions';
+    const stamp = document.createElement('button');
+    stamp.textContent = 'Stamp';
+    stamp.onclick = () => actions.armPrefab(p.id);
+    row.appendChild(stamp);
+    const del = document.createElement('button');
+    del.className = 'mini danger';
+    del.appendChild(iconImg('trash', 14));
+    del.title = `Delete '${p.name}' from the shared library`;
+    del.onclick = () => actions.removePrefab(p.id);
+    row.appendChild(del);
+    card.appendChild(row);
+    pgrid.appendChild(card);
+  }
+  root.appendChild(pgrid);
+}
+
+// ------------------------------------------------ placements panel
+
+const KIND_META: Record<PlacementRef['kind'], { icon: string; title: string }> = {
+  cluster: { icon: 'cluster', title: 'NPC spawn clusters' },
+  actor: { icon: 'actor', title: 'Placed actors' },
+  portal: { icon: 'portal', title: 'Portals' },
+  spawn: { icon: 'spawn', title: 'World spawn' },
+};
+
+export function buildPlacementsPanel(root: HTMLElement, deps: PanelDeps): void {
+  const { state, actions } = deps;
+  const zone = state.zone;
+  root.innerHTML = '';
+
+  // ------------------------------------------------- the inspector
+  if (state.selected) {
+    root.appendChild(buildInspector(deps, state.selected));
+  } else {
+    const hint = document.createElement('p');
+    hint.className = 'muted';
+    hint.textContent =
+      'Place with the portal / cluster / actor / spawn tools, or select a marker (click it) to edit its properties here.';
+    root.appendChild(hint);
+  }
+
+  // ------------------------------------------------- grouped lists
+  const groups: Array<{ kind: PlacementRef['kind']; count: number }> = [
+    { kind: 'cluster', count: zone.spawns?.length ?? 0 },
+    { kind: 'actor', count: zone.actorSpawns?.length ?? 0 },
+    { kind: 'portal', count: zone.portals?.length ?? 0 },
+    { kind: 'spawn', count: zone.spawn ? 1 : 0 },
+  ];
+  for (const g of groups) {
+    const head = document.createElement('div');
+    head.className = 'panel-head';
+    head.appendChild(iconImg(KIND_META[g.kind].icon, 15));
+    head.append(` ${KIND_META[g.kind].title}`);
+    const count = document.createElement('span');
+    count.className = 'count';
+    count.textContent = String(g.count);
+    head.appendChild(count);
+    root.appendChild(head);
+
+    if (g.count === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'muted empty';
+      empty.textContent =
+        g.kind === 'cluster'
+          ? 'None — the cluster tool (N) plants a respawning mob camp.'
+          : g.kind === 'actor'
+            ? 'None — the actor tool (A) posts a named townsfolk here.'
+            : g.kind === 'portal'
+              ? 'None — the portal tool (U) links this zone somewhere else.'
+              : 'Unset — the spawn tool (P) marks where players arrive.';
+      root.appendChild(empty);
+      continue;
+    }
+
+    const list = document.createElement('div');
+    list.className = 'row-list';
+    const rows: PlacementRef[] =
+      g.kind === 'spawn'
+        ? [{ kind: 'spawn', index: 0 }]
+        : Array.from({ length: g.count }, (_, i) => ({ kind: g.kind, index: i }));
+    for (const ref of rows) {
+      list.appendChild(placementRow(deps, ref));
+    }
+    root.appendChild(list);
+  }
+}
+
+function placementRow(deps: PanelDeps, ref: PlacementRef): HTMLElement {
+  const { state, actions } = deps;
+  const zone = state.zone;
+  const row = document.createElement('div');
+  row.className = 'p-row' + (sameRef(state.selected, ref) ? ' selected' : '');
+  const name = document.createElement('button');
+  name.className = 'p-name';
+  const pos =
+    ref.kind === 'spawn'
+      ? zone.spawn
+      : ref.kind === 'portal'
+        ? zone.portals?.[ref.index]
+        : ref.kind === 'cluster'
+          ? zone.spawns?.[ref.index]
+          : zone.actorSpawns?.[ref.index];
+  name.innerHTML =
+    `<b>${placementLabel(zone, ref)}</b>` +
+    (pos ? `<span>${Math.floor(pos.x)}, ${Math.floor(pos.y)}</span>` : '');
+  name.title = 'Select and center the view on it';
+  name.onclick = () => {
+    actions.selectPlacement(ref);
+    actions.focusPlacement(ref);
+  };
+  row.appendChild(name);
+  const del = document.createElement('button');
+  del.className = 'mini danger';
+  del.appendChild(iconImg('trash', 14));
+  del.title = 'Remove this placement';
+  del.onclick = () => actions.removePlacement(ref);
+  row.appendChild(del);
+  return row;
+}
+
+// ---------------------------------------------------- the inspector
+
+function field(label: string, input: HTMLElement): HTMLElement {
+  const wrap = document.createElement('label');
+  wrap.className = 'insp-field';
+  const span = document.createElement('span');
+  span.textContent = label;
+  wrap.appendChild(span);
+  wrap.appendChild(input);
+  return wrap;
+}
+
+function numInput(value: number, min: number, max: number, onCommit: (v: number) => void): HTMLInputElement {
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = String(min);
+  input.max = String(max);
+  input.value = String(value);
+  input.onchange = () => {
+    const v = Math.max(min, Math.min(max, Number(input.value) || min));
+    input.value = String(v);
+    onCommit(v);
+  };
+  return input;
+}
+
+function selectInput(
+  options: Array<{ value: string; label: string }>,
+  current: string,
+  onCommit: (v: string) => void,
+): HTMLSelectElement {
+  const sel = document.createElement('select');
+  for (const o of options) {
+    const opt = document.createElement('option');
+    opt.value = o.value;
+    opt.textContent = o.label;
+    if (o.value === current) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  sel.onchange = () => onCommit(sel.value);
+  return sel;
+}
+
+const DIRS: Array<{ label: string; rad: number }> = [
+  { label: 'S', rad: Math.PI / 2 },
+  { label: 'SW', rad: (Math.PI * 3) / 4 },
+  { label: 'W', rad: Math.PI },
+  { label: 'NW', rad: (-Math.PI * 3) / 4 },
+  { label: 'N', rad: -Math.PI / 2 },
+  { label: 'NE', rad: -Math.PI / 4 },
+  { label: 'E', rad: 0 },
+  { label: 'SE', rad: Math.PI / 4 },
+];
+
+function buildInspector(deps: PanelDeps, ref: PlacementRef): HTMLElement {
+  const { state, registry, actions } = deps;
+  const zone = state.zone;
+  const box = document.createElement('div');
+  box.className = 'inspector';
+
+  const head = document.createElement('div');
+  head.className = 'insp-head';
+  head.appendChild(iconImg(KIND_META[ref.kind].icon, 16));
+  const title = document.createElement('b');
+  title.textContent = placementLabel(zone, ref);
+  head.appendChild(title);
+  const focusBtn = document.createElement('button');
+  focusBtn.className = 'mini';
+  focusBtn.appendChild(iconImg('focus', 14));
+  focusBtn.title = 'Center the view on this placement';
+  focusBtn.onclick = () => actions.focusPlacement(ref);
+  head.appendChild(focusBtn);
+  const delBtn = document.createElement('button');
+  delBtn.className = 'mini danger';
+  delBtn.appendChild(iconImg('trash', 14));
+  delBtn.title = 'Remove this placement (Delete)';
+  delBtn.onclick = () => actions.removePlacement(ref);
+  head.appendChild(delBtn);
+  box.appendChild(head);
+
+  const hint = document.createElement('p');
+  hint.className = 'muted';
+  hint.textContent = 'Drag the marker on the map to move it.';
+  box.appendChild(hint);
+
+  if (ref.kind === 'cluster') {
+    const sp = zone.spawns?.[ref.index];
+    if (!sp) return box;
+    const npcOpts = registry.npcs
+      .slice()
+      .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name))
+      .map((n) => ({ value: n.id, label: `${n.name}  (lv ${n.level})` }));
+    box.appendChild(
+      field(
+        'creature',
+        selectInput(npcOpts, sp.npc, (v) =>
+          actions.editPlacement(ref, 'cluster creature', (z) => {
+            z.spawns![ref.index]!.npc = v;
+          }),
+        ),
+      ),
+    );
+    box.appendChild(
+      field(
+        'count',
+        numInput(sp.count, 1, 12, (v) =>
+          actions.editPlacement(ref, 'cluster count', (z) => {
+            z.spawns![ref.index]!.count = v;
+          }),
+        ),
+      ),
+    );
+    box.appendChild(
+      field(
+        'radius',
+        numInput(sp.radius, 0, 24, (v) =>
+          actions.editPlacement(ref, 'cluster radius', (z) => {
+            z.spawns![ref.index]!.radius = v;
+          }),
+        ),
+      ),
+    );
+    const lvl = numInput(sp.level ?? 0, 0, 99, (v) =>
+      actions.editPlacement(ref, 'cluster level', (z) => {
+        if (v > 0) z.spawns![ref.index]!.level = v;
+        else delete z.spawns![ref.index]!.level;
+      }),
+    );
+    lvl.placeholder = 'authored';
+    lvl.title = "0 = the creature's authored level; anything else re-scales the def";
+    box.appendChild(field('level override', lvl));
+    const nameIn = document.createElement('input');
+    nameIn.value = sp.name ?? '';
+    nameIn.placeholder = 'authored name';
+    nameIn.title = 'Display-name override for scaled variants (e.g. Hold-Warden)';
+    nameIn.onchange = () =>
+      actions.editPlacement(ref, 'cluster name', (z) => {
+        const v = nameIn.value.trim();
+        if (v) z.spawns![ref.index]!.name = v;
+        else delete z.spawns![ref.index]!.name;
+      });
+    box.appendChild(field('name override', nameIn));
+    const tip = document.createElement('p');
+    tip.className = 'muted';
+    tip.textContent = 'Drag the dashed ring edge on the map to resize the wander radius.';
+    box.appendChild(tip);
+  }
+
+  if (ref.kind === 'actor') {
+    const a = zone.actorSpawns?.[ref.index];
+    if (!a) return box;
+    const actorOpts = registry.actors
+      .slice()
+      .sort((x, y) => x.name.localeCompare(y.name))
+      .map((x) => ({ value: x.id, label: x.title ? `${x.name} — ${x.title}` : x.name }));
+    box.appendChild(
+      field(
+        'actor',
+        selectInput(actorOpts, a.actor, (v) =>
+          actions.editPlacement(ref, 'actor identity', (z) => {
+            z.actorSpawns![ref.index]!.actor = v;
+          }),
+        ),
+      ),
+    );
+    const routineOpts = [{ value: '', label: 'none — holds the post' }].concat(
+      registry.routines.sort().map((r) => ({ value: r, label: r })),
+    );
+    box.appendChild(
+      field(
+        'routine',
+        selectInput(routineOpts, a.routine ?? '', (v) =>
+          actions.editPlacement(ref, 'actor routine', (z) => {
+            if (v) z.actorSpawns![ref.index]!.routine = v;
+            else delete z.actorSpawns![ref.index]!.routine;
+          }),
+        ),
+      ),
+    );
+    const dirRow = document.createElement('div');
+    dirRow.className = 'dir-dial';
+    for (const d of DIRS) {
+      const b = document.createElement('button');
+      b.className =
+        'opt-btn' +
+        (a.dir !== undefined && Math.abs(a.dir - d.rad) < 0.01 ? ' active' : '');
+      b.textContent = d.label;
+      b.title = `Face ${d.label}`;
+      b.onclick = () =>
+        actions.editPlacement(ref, 'actor facing', (z) => {
+          z.actorSpawns![ref.index]!.dir = d.rad;
+        });
+      dirRow.appendChild(b);
+    }
+    const clr = document.createElement('button');
+    clr.className = 'opt-btn' + (a.dir === undefined ? ' active' : '');
+    clr.textContent = 'auto';
+    clr.title = 'No authored facing (rests facing south)';
+    clr.onclick = () =>
+      actions.editPlacement(ref, 'actor facing', (z) => {
+        delete z.actorSpawns![ref.index]!.dir;
+      });
+    dirRow.appendChild(clr);
+    box.appendChild(field('facing', dirRow));
+    const note = document.createElement('p');
+    note.className = 'muted';
+    note.textContent =
+      'Routine steps are offsets from this post — moving the post moves the whole day with it.';
+    box.appendChild(note);
+  }
+
+  if (ref.kind === 'portal') {
+    const p = zone.portals?.[ref.index];
+    if (!p) return box;
+    const kindSel = selectInput(
+      [
+        { value: 'dest', label: 'travel — to world coordinates' },
+        { value: 'delve', label: 'delve — per-player procedural dungeon' },
+      ],
+      p.delve ? 'delve' : 'dest',
+      (v) =>
+        actions.editPlacement(ref, 'portal kind', (z) => {
+          const portal = z.portals![ref.index]!;
+          if (v === 'delve') {
+            portal.delve = true;
+            delete portal.dest;
+          } else {
+            delete portal.delve;
+            portal.dest = portal.dest ?? { x: z.origin.x, y: z.origin.y };
+          }
+        }),
+    );
+    box.appendChild(field('kind', kindSel));
+    if (!p.delve) {
+      box.appendChild(
+        field(
+          'dest x',
+          numInput(p.dest?.x ?? 0, -100000, 100000, (v) =>
+            actions.editPlacement(ref, 'portal dest', (z) => {
+              const portal = z.portals![ref.index]!;
+              portal.dest = { x: v, y: portal.dest?.y ?? 0 };
+            }),
+          ),
+        ),
+      );
+      box.appendChild(
+        field(
+          'dest y',
+          numInput(p.dest?.y ?? 0, -100000, 100000, (v) =>
+            actions.editPlacement(ref, 'portal dest', (z) => {
+              const portal = z.portals![ref.index]!;
+              portal.dest = { x: portal.dest?.x ?? 0, y: v };
+            }),
+          ),
+        ),
+      );
+    }
+    const tileNote = document.createElement('p');
+    tileNote.className = 'muted';
+    tileNote.textContent =
+      'The portal stands on its tile — moving the marker carries the entrance tile with it.';
+    box.appendChild(tileNote);
+  }
+
+  if (ref.kind === 'spawn' && zone.spawn) {
+    const note = document.createElement('p');
+    note.className = 'muted';
+    note.textContent = `Players arrive at ${zone.spawn.x}, ${zone.spawn.y}. Only the first zone that declares a spawn names the world's arrival point.`;
+    box.appendChild(note);
+  }
+
+  return box;
+}

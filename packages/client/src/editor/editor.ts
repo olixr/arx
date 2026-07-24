@@ -1,16 +1,58 @@
 import { Detail, Tile, tileDef } from '@devcraft/shared';
 import {
+  NPCS,
+  NPC_ACTORS,
+  ROUTINES,
+  STRUCTURE_TEMPLATES,
   buildBramblewick,
+  flipTemplate,
+  prefabFromJson,
+  prefabToJson,
+  templateHeight,
+  templateWidth,
+  validatePrefab,
   zoneFromJson,
   zoneToJson,
+  type PrefabDef,
+  type StructureTemplate,
   type ZoneDef,
   type ZoneJson,
 } from '@devcraft/content';
-import { deleteZone, fetchZone, listMaps, saveZone, type MapListEntry } from './api.js';
+import {
+  deletePrefab,
+  deleteZone,
+  fetchPrefab,
+  fetchRegistry,
+  fetchZone,
+  listMaps,
+  listPrefabs,
+  savePrefab,
+  saveZone,
+  type MapListEntry,
+  type PrefabListEntry,
+  type RegistrySnapshot,
+} from './api.js';
+import { iconImg } from './editorIcons.js';
 import { History, StrokeRecorder, cloneZone } from './history.js';
 import { PaletteUI } from './palette.js';
-import { EditorView } from './render.js';
-import { EditorState, newZone, type LayerId, type ToolId } from './state.js';
+import { buildPlacementsPanel, buildStructuresPanel, type PanelDeps } from './panels.js';
+import {
+  clusterEdgeAt,
+  deletePlacement,
+  movePlacement,
+  placementAt,
+  placementPos,
+  sameRef,
+} from './placements.js';
+import { EditorView, GHOST_SKIP } from './render.js';
+import {
+  EditorState,
+  newZone,
+  type LayerId,
+  type PlacementRef,
+  type SidebarTab,
+  type ToolId,
+} from './state.js';
 import {
   ellipseCells,
   floodCells,
@@ -34,6 +76,19 @@ const state = new EditorState();
 const view = new EditorView(canvas, state);
 const history = new History();
 let palette: PaletteUI;
+
+/** Live pick lists — served by the running game, content as fallback. */
+let registry: RegistrySnapshot = {
+  npcs: [...NPCS.values()].map((d) => ({ id: d.id, name: d.name, level: d.level })),
+  actors: [...NPC_ACTORS.values()].map((a) => ({
+    id: a.id,
+    name: a.name,
+    ...(a.title ? { title: a.title } : {}),
+  })),
+  routines: [...ROUTINES.keys()],
+};
+let prefabList: PrefabListEntry[] = [];
+let prefabsOnline = false;
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
   document.getElementById(id) as T;
@@ -100,13 +155,38 @@ function applyCellsOp(label: string, pts: Pt[], erase = false): void {
   commitStroke(rec, label, pts);
 }
 
-/** Structural zone op (resize, origin, markers): full snapshots. */
-function zoneOp(label: string, mutate: (z: ZoneDef) => void): void {
+/**
+ * Structural zone op (resize, origin, placements): full snapshots.
+ * Placement-only edits pass tiles:false and skip the ground rebake.
+ */
+function zoneOp(label: string, mutate: (z: ZoneDef) => void, opts?: { tiles?: boolean }): void {
   const before = cloneZone(state.zone);
   mutate(state.zone);
   history.push({ kind: 'zone', label, before, after: cloneZone(state.zone) });
   state.dirty = true;
-  view.markAllDirty();
+  if (opts?.tiles !== false) view.markAllDirty();
+  state.changed();
+}
+
+/**
+ * Drag-spanning zone op: snapshot at gesture start, mutate freely
+ * while the pointer moves, commit one undo entry on release.
+ */
+let pendingZoneBefore: ZoneDef | null = null;
+function beginZoneGesture(): void {
+  pendingZoneBefore = cloneZone(state.zone);
+}
+function endZoneGesture(label: string, opts?: { tiles?: boolean }): void {
+  if (!pendingZoneBefore) return;
+  history.push({
+    kind: 'zone',
+    label,
+    before: pendingZoneBefore,
+    after: cloneZone(state.zone),
+  });
+  pendingZoneBefore = null;
+  state.dirty = true;
+  if (opts?.tiles !== false) view.markAllDirty();
   state.changed();
 }
 
@@ -135,12 +215,261 @@ type Drag =
   | { kind: 'stroke'; rec: StrokeRecorder; erase: boolean; last: Pt; pts: Pt[] }
   | { kind: 'shape'; anchor: Pt; cur: Pt; erase: boolean }
   | { kind: 'marquee'; anchor: Pt; cur: Pt }
-  | { kind: 'movesel'; from: Pt; cur: Pt; copy: boolean };
+  | { kind: 'movesel'; from: Pt; cur: Pt; copy: boolean }
+  | { kind: 'placeMove'; ref: PlacementRef; label: string; moved: boolean }
+  | { kind: 'clusterSize'; index: number };
 
 let drag: Drag = { kind: 'none' };
 let roadPts: Pt[] = [];
 let spaceHeld = false;
 let pasteArmed = false;
+
+// -------------------------------------------------------- placements
+
+const PLACEMENT_TOOLS: ReadonlySet<ToolId> = new Set(['portal', 'cluster', 'actor', 'spawn']);
+
+function selectPlacement(ref: PlacementRef | null): void {
+  state.selected = ref;
+  if (ref) state.tab = 'placements';
+  state.changed();
+}
+
+function focusPlacement(ref: PlacementRef): void {
+  const pos = placementPos(state.zone, ref);
+  if (pos) view.centerOn(pos.x, pos.y);
+}
+
+function removePlacementRef(ref: PlacementRef): void {
+  const label = `remove ${ref.kind}`;
+  zoneOp(
+    label,
+    (z) => {
+      if (ref.kind === 'portal') {
+        // The entrance tile leaves with its portal.
+        const p = z.portals?.[ref.index];
+        if (p) {
+          const lx = p.x - z.origin.x;
+          const ly = p.y - z.origin.y;
+          if (lx >= 0 && ly >= 0 && lx < z.width && ly < z.height) {
+            z.ground[ly * z.width + lx] = Tile.Grass;
+          }
+        }
+      }
+      deletePlacement(z, ref);
+    },
+    { tiles: ref.kind === 'portal' },
+  );
+  state.selected = null;
+  state.changed();
+  toast(`${label}d`);
+}
+
+/** Portal markers carry their entrance tile: moving one swaps tiles. */
+function carryPortalTile(z: ZoneDef, fromW: Pt, toW: Pt): void {
+  const li = (w: Pt): number | null => {
+    const lx = w.x - z.origin.x;
+    const ly = w.y - z.origin.y;
+    return lx >= 0 && ly >= 0 && lx < z.width && ly < z.height ? ly * z.width + lx : null;
+  };
+  const a = li(fromW);
+  const b = li(toW);
+  if (a === null || b === null || a === b) return;
+  const t = z.ground[a]!;
+  z.ground[a] = z.ground[b]!;
+  z.ground[b] = t;
+  view.markDirty(fromW.x - z.origin.x, fromW.y - z.origin.y, fromW.x - z.origin.x, fromW.y - z.origin.y);
+  view.markDirty(toW.x - z.origin.x, toW.y - z.origin.y, toW.x - z.origin.x, toW.y - z.origin.y);
+}
+
+/** Create the active placement tool's object at a local tile. */
+function createPlacementAt(t: Pt): PlacementRef | null {
+  const z = state.zone;
+  if (!inBounds(t.x, t.y)) return null;
+  const wx = z.origin.x + t.x;
+  const wy = z.origin.y + t.y;
+  switch (state.tool) {
+    case 'portal': {
+      z.portals ??= [];
+      z.portals.push({ x: wx, y: wy, dest: { x: z.origin.x, y: z.origin.y } });
+      const i = t.y * z.width + t.x;
+      z.ground[i] = Tile.PortalDown;
+      view.markDirty(t.x, t.y, t.x, t.y);
+      return { kind: 'portal', index: z.portals.length - 1 };
+    }
+    case 'cluster': {
+      z.spawns ??= [];
+      const npc = registry.npcs[0]?.id ?? 'goblin';
+      z.spawns.push({ npc, x: wx, y: wy, radius: 4, count: 3 });
+      return { kind: 'cluster', index: z.spawns.length - 1 };
+    }
+    case 'actor': {
+      z.actorSpawns ??= [];
+      const actor = registry.actors[0]?.id;
+      if (!actor) {
+        toast('no actors in the registry — is the server running?', 3600);
+        return null;
+      }
+      z.actorSpawns.push({ actor, x: wx, y: wy });
+      return { kind: 'actor', index: z.actorSpawns.length - 1 };
+    }
+    case 'spawn': {
+      z.spawn = { x: wx + 0.5, y: wy + 0.5 };
+      return { kind: 'spawn', index: 0 };
+    }
+    default:
+      return null;
+  }
+}
+
+// ------------------------------------------------------------ stamps
+
+function armedTemplateDef(): StructureTemplate | null {
+  const tpl = STRUCTURE_TEMPLATES.find((t) => t.id === state.armedTemplate) ?? null;
+  return tpl && state.stampFlip ? flipTemplate(tpl) : tpl;
+}
+
+function templateGhost(t: Pt): void {
+  const tpl = armedTemplateDef();
+  if (!tpl) {
+    view.ghost = null;
+    return;
+  }
+  const w = templateWidth(tpl);
+  const h = templateHeight(tpl);
+  const ground = new Uint16Array(w * h).fill(GHOST_SKIP);
+  const detail = new Uint16Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const row = tpl.rows[y]!;
+    for (let x = 0; x < w; x++) {
+      const cell = row[x] === ' ' ? undefined : tpl.legend[row[x]!];
+      if (!cell) continue;
+      if (cell.tile !== undefined) ground[y * w + x] = cell.tile;
+      else ground[y * w + x] = GHOST_SKIP;
+      if (cell.detail !== undefined) detail[y * w + x] = cell.detail;
+    }
+  }
+  view.ghost = { w, h, ground, detail, at: { x: t.x - (w >> 1), y: t.y - (h >> 1) } };
+}
+
+function stampTemplateAt(t: Pt): void {
+  const tpl = armedTemplateDef();
+  if (!tpl) {
+    toast('pick a structure template first (Structures tab)');
+    return;
+  }
+  const w = templateWidth(tpl);
+  const h = templateHeight(tpl);
+  const at = { x: t.x - (w >> 1), y: t.y - (h >> 1) };
+  const rec = new StrokeRecorder();
+  const pts: Pt[] = [];
+  const z = state.zone;
+  for (let y = 0; y < h; y++) {
+    const row = tpl.rows[y]!;
+    for (let x = 0; x < w; x++) {
+      const cell = row[x] === ' ' ? undefined : tpl.legend[row[x]!];
+      if (!cell) continue;
+      const lx = at.x + x;
+      const ly = at.y + y;
+      if (!inBounds(lx, ly)) continue;
+      const i = idx(lx, ly);
+      const c = rec.record(i, z.ground[i]!, z.detail[i]!, z.elev![i]!);
+      if (cell.tile !== undefined) {
+        c.g1 = cell.tile;
+        z.ground[i] = c.g1;
+      }
+      if (cell.detail !== undefined) {
+        c.d1 = cell.detail;
+        z.detail[i] = c.d1;
+      }
+      pts.push({ x: lx, y: ly });
+    }
+  }
+  commitStroke(rec, `stamp ${tpl.meta?.label ?? tpl.id}`, pts);
+  toast(`stamped ${tpl.meta?.label ?? tpl.id}${state.stampFlip ? ' (mirrored)' : ''}`);
+}
+
+function prefabGhost(t: Pt): void {
+  const p = state.armedPrefab;
+  if (!p) {
+    view.ghost = null;
+    return;
+  }
+  const pins = [
+    ...p.spawns.map((s) => ({ dx: s.dx, dy: s.dy, color: '#d4544a' })),
+    ...p.actorSpawns.map((a) => ({ dx: a.dx, dy: a.dy, color: '#5fc9c4' })),
+    ...p.portals.map((pt) => ({ dx: pt.dx, dy: pt.dy, color: '#b48fe8' })),
+  ];
+  view.ghost = {
+    w: p.width,
+    h: p.height,
+    ground: p.ground,
+    detail: p.detail,
+    at: { x: t.x - (p.width >> 1), y: t.y - (p.height >> 1) },
+    pins,
+  };
+}
+
+function stampPrefabAt(t: Pt): void {
+  const p = state.armedPrefab;
+  if (!p) {
+    toast('arm a prefab first (Structures tab)');
+    return;
+  }
+  const at = { x: t.x - (p.width >> 1), y: t.y - (p.height >> 1) };
+  zoneOp(`stamp prefab ${p.name}`, (z) => {
+    for (let y = 0; y < p.height; y++) {
+      for (let x = 0; x < p.width; x++) {
+        const lx = at.x + x;
+        const ly = at.y + y;
+        if (lx < 0 || ly < 0 || lx >= z.width || ly >= z.height) continue;
+        const i = ly * z.width + lx;
+        z.ground[i] = p.ground[y * p.width + x]!;
+        z.detail[i] = p.detail[y * p.width + x]!;
+        z.elev![i] = p.elev[y * p.width + x]!;
+      }
+    }
+    const inZone = (dx: number, dy: number): boolean => {
+      const lx = at.x + dx;
+      const ly = at.y + dy;
+      return lx >= 0 && ly >= 0 && lx < z.width && ly < z.height;
+    };
+    z.portals ??= [];
+    z.spawns ??= [];
+    z.actorSpawns ??= [];
+    for (const pt of p.portals) {
+      if (!inZone(pt.dx, pt.dy)) continue;
+      z.portals.push({
+        x: z.origin.x + at.x + pt.dx,
+        y: z.origin.y + at.y + pt.dy,
+        ...(pt.delve ? { delve: true } : { dest: pt.dest ?? { x: z.origin.x, y: z.origin.y } }),
+      });
+    }
+    for (const s of p.spawns) {
+      if (!inZone(s.dx, s.dy)) continue;
+      z.spawns.push({
+        npc: s.npc,
+        x: z.origin.x + at.x + s.dx,
+        y: z.origin.y + at.y + s.dy,
+        radius: s.radius,
+        count: s.count,
+        ...(s.level !== undefined ? { level: s.level } : {}),
+        ...(s.name !== undefined ? { name: s.name } : {}),
+      });
+    }
+    for (const a of p.actorSpawns) {
+      if (!inZone(a.dx, a.dy)) continue;
+      z.actorSpawns.push({
+        actor: a.actor,
+        x: z.origin.x + at.x + a.dx,
+        y: z.origin.y + at.y + a.dy,
+        ...(a.dir !== undefined ? { dir: a.dir } : {}),
+        ...(a.routine !== undefined ? { routine: a.routine } : {}),
+      });
+    }
+  });
+  const dropped = p.spawns.length + p.actorSpawns.length + p.portals.length;
+  toast(`stamped '${p.name}'${dropped > 0 ? ` with ${dropped} placement${dropped > 1 ? 's' : ''}` : ''}`);
+}
 
 function setPreview(pts: Pt[], erase: boolean): void {
   const indices = new Set<number>();
@@ -346,12 +675,48 @@ canvas.addEventListener('mousedown', (e) => {
     case 'picker':
       pickAt(t.x, t.y);
       break;
+    case 'structure':
+      if (!erase) stampTemplateAt(t);
+      break;
+    case 'prefab':
+      if (!erase) stampPrefabAt(t);
+      break;
+    case 'portal':
+    case 'cluster':
+    case 'actor':
     case 'spawn': {
+      if (erase) {
+        // Right-click a marker removes it — the eraser law for pins.
+        const f = view.tileAtFloat(e.clientX, e.clientY);
+        const hitR = placementAt(state.zone, f.x, f.y);
+        if (hitR) removePlacementRef(hitR);
+        break;
+      }
+      const f = view.tileAtFloat(e.clientX, e.clientY);
+      // Ring edge first: resizing a big cluster must beat re-selecting it.
+      const edge = clusterEdgeAt(state.zone, f.x, f.y, Math.max(0.35, 8 / view.scale));
+      if (edge !== null) {
+        beginZoneGesture();
+        selectPlacement({ kind: 'cluster', index: edge });
+        drag = { kind: 'clusterSize', index: edge };
+        break;
+      }
+      const hit = placementAt(state.zone, f.x, f.y);
+      if (hit) {
+        beginZoneGesture();
+        selectPlacement(hit);
+        drag = { kind: 'placeMove', ref: hit, label: `move ${hit.kind}`, moved: false };
+        break;
+      }
       if (!inBounds(t.x, t.y)) break;
-      zoneOp('set spawn', (z) => {
-        z.spawn = { x: z.origin.x + t.x + 0.5, y: z.origin.y + t.y + 0.5 };
-      });
-      toast(`spawn set to ${t.x},${t.y}`);
+      beginZoneGesture();
+      const ref = createPlacementAt(t);
+      if (!ref) {
+        pendingZoneBefore = null;
+        break;
+      }
+      selectPlacement(ref);
+      drag = { kind: 'placeMove', ref, label: `place ${ref.kind}`, moved: true };
       break;
     }
   }
@@ -408,8 +773,37 @@ window.addEventListener('mousemove', (e) => {
       : null;
     return;
   }
+  if (drag.kind === 'placeMove') {
+    if (!inBounds(t.x, t.y)) return;
+    const cur = placementPos(state.zone, drag.ref);
+    if (cur && (Math.floor(cur.x) !== t.x || Math.floor(cur.y) !== t.y)) {
+      if (drag.ref.kind === 'portal') {
+        carryPortalTile(
+          state.zone,
+          { x: state.zone.origin.x + Math.floor(cur.x), y: state.zone.origin.y + Math.floor(cur.y) },
+          { x: state.zone.origin.x + t.x, y: state.zone.origin.y + t.y },
+        );
+      }
+      movePlacement(state.zone, drag.ref, t.x, t.y);
+      drag.moved = true;
+    }
+    return;
+  }
+  if (drag.kind === 'clusterSize') {
+    const sp = state.zone.spawns?.[drag.index];
+    if (sp) {
+      const f = view.tileAtFloat(e.clientX, e.clientY);
+      const d = Math.hypot(
+        f.x - (sp.x - state.zone.origin.x + 0.5),
+        f.y - (sp.y - state.zone.origin.y + 0.5),
+      );
+      sp.radius = Math.max(0, Math.min(24, Math.round(d)));
+    }
+    return;
+  }
 
-  // Idle hover: brush ghost for the painting tools.
+  // Idle hover: brush ghost for the painting tools, marker hover for
+  // the placement tools, stamp ghosts for structures and prefabs.
   if (state.tool === 'paint' || state.tool === 'erase') {
     setPreview(footprint(t.x, t.y, state.brushSize, state.brushShape), state.tool === 'erase');
   } else if (state.tool === 'road' && roadPts.length > 0) {
@@ -417,13 +811,26 @@ window.addEventListener('mousemove', (e) => {
   } else if (drag.kind === 'none' && state.tool !== 'select') {
     view.preview = null;
   }
-  if (pasteArmed && state.clip) {
+  if (state.tool === 'structure') {
+    templateGhost(t);
+  } else if (state.tool === 'prefab') {
+    prefabGhost(t);
+  } else if (pasteArmed && state.clip) {
     view.ghost = {
       w: state.clip.w,
       h: state.clip.h,
       ground: state.clip.ground,
       at: { x: t.x - (state.clip.w >> 1), y: t.y - (state.clip.h >> 1) },
     };
+  }
+  if (PLACEMENT_TOOLS.has(state.tool)) {
+    const f = view.tileAtFloat(e.clientX, e.clientY);
+    state.hoverPlacement = placementAt(state.zone, f.x, f.y);
+    const edge = clusterEdgeAt(state.zone, f.x, f.y, Math.max(0.35, 8 / view.scale));
+    canvas.style.cursor = state.hoverPlacement ? 'grab' : edge !== null ? 'ew-resize' : 'crosshair';
+  } else {
+    state.hoverPlacement = null;
+    canvas.style.cursor = 'crosshair';
   }
 });
 
@@ -469,6 +876,15 @@ window.addEventListener('mouseup', (e) => {
       };
     }
     view.ghost = null;
+  } else if (drag.kind === 'placeMove') {
+    if (drag.moved) {
+      endZoneGesture(drag.label, { tiles: drag.ref.kind === 'portal' });
+      toast(drag.label);
+    } else {
+      pendingZoneBefore = null;
+    }
+  } else if (drag.kind === 'clusterSize') {
+    endZoneGesture('cluster radius', { tiles: false });
   }
   drag = { kind: 'none' };
 });
@@ -507,6 +923,11 @@ const TOOL_KEYS: Record<string, ToolId> = {
   KeyT: 'road',
   KeyM: 'select',
   KeyI: 'picker',
+  KeyH: 'structure',
+  KeyF: 'prefab',
+  KeyU: 'portal',
+  KeyN: 'cluster',
+  KeyA: 'actor',
   KeyP: 'spawn',
 };
 
@@ -560,11 +981,13 @@ window.addEventListener('keydown', (e) => {
   }
   const tool = TOOL_KEYS[e.code];
   if (tool) {
-    state.tool = tool;
-    if (tool !== 'road') {
-      roadPts = [];
-      view.preview = null;
-    }
+    setTool(tool);
+    return;
+  }
+  if (e.code === 'KeyX' && (state.tool === 'structure' || state.tool === 'prefab')) {
+    state.stampFlip = !state.stampFlip;
+    if (state.tool === 'prefab') toast('prefabs stamp as captured (no mirror) — flip applies to structures');
+    else toast(state.stampFlip ? 'mirrored east-west' : 'mirror off');
     state.changed();
     return;
   }
@@ -605,10 +1028,16 @@ window.addEventListener('keydown', (e) => {
       view.ghost = null;
       view.preview = null;
       state.selection = null;
+      state.selected = null;
       state.changed();
       break;
     case 'Delete':
     case 'Backspace': {
+      // A selected placement outranks a tile selection.
+      if (state.selected) {
+        removePlacementRef(state.selected);
+        break;
+      }
       const r = selRect();
       if (r) {
         clearRegion(r, 'delete selection');
@@ -874,39 +1303,142 @@ function applyResize(): void {
 
 // ----------------------------------------------------- toolbar & opts
 
-const TOOLS: Array<{ id: ToolId; label: string; key: string; hint: string }> = [
-  { id: 'paint', label: '🖌', key: 'B', hint: 'Paint (B) — drag to paint, right-drag erases' },
-  { id: 'erase', label: '⌫', key: 'E', hint: 'Erase (E) — ground→grass, detail→none, elev→0' },
-  { id: 'line', label: '╱', key: 'L', hint: 'Line (L) — drag; Shift constrains' },
-  { id: 'rect', label: '▭', key: 'R', hint: 'Rectangle (R) — drag; Shift = square' },
-  { id: 'ellipse', label: '◯', key: 'O', hint: 'Ellipse (O) — drag; Shift = circle' },
-  { id: 'fill', label: '▨', key: 'G', hint: 'Flood fill (G) — click a region' },
-  { id: 'road', label: '🛤', key: 'T', hint: 'Road (T) — click waypoints, Enter/dbl-click lays it, Esc cancels' },
-  { id: 'select', label: '⬚', key: 'M', hint: 'Select (M) — drag marquee; drag inside moves, Alt-drag copies' },
-  { id: 'picker', label: '💧', key: 'I', hint: 'Picker (I) — or Alt-click any time' },
-  { id: 'spawn', label: '★', key: 'P', hint: 'Spawn point (P) — click to place the world spawn' },
+interface ToolSpec {
+  id: ToolId;
+  name: string;
+  key: string;
+  hint: string;
+  tab?: SidebarTab;
+}
+
+const TOOL_GROUPS: Array<{ caption: string; tools: ToolSpec[] }> = [
+  {
+    caption: 'Draw',
+    tools: [
+      { id: 'paint', name: 'Paint', key: 'B', hint: 'Drag to paint the active layer · right-drag erases · [ ] size the brush' },
+      { id: 'erase', name: 'Erase', key: 'E', hint: 'Ground back to grass, detail to none, elevation to flat' },
+      { id: 'line', name: 'Line', key: 'L', hint: 'Drag a straight run · Shift snaps the angle' },
+      { id: 'rect', name: 'Rectangle', key: 'R', hint: 'Drag a rectangle · Shift squares it · filled/outline in options' },
+      { id: 'ellipse', name: 'Ellipse', key: 'O', hint: 'Drag an ellipse · Shift rounds it · filled/outline in options' },
+      { id: 'fill', name: 'Fill', key: 'G', hint: 'Flood a connected region on the active layer' },
+      { id: 'road', name: 'Road', key: 'T', hint: 'Click waypoints · Enter or double-click lays the road · Esc abandons' },
+    ],
+  },
+  {
+    caption: 'Build',
+    tools: [
+      { id: 'structure', name: 'Structure', key: 'H', hint: 'Stamp a building template · X mirrors it · pick one in the Structures tab', tab: 'structures' },
+      { id: 'prefab', name: 'Prefab', key: 'F', hint: 'Stamp a saved point of interest — tiles and placements together', tab: 'structures' },
+    ],
+  },
+  {
+    caption: 'Place',
+    tools: [
+      { id: 'portal', name: 'Portal', key: 'U', hint: 'Click to plant a portal · drag a marker to move it · right-click removes', tab: 'placements' },
+      { id: 'cluster', name: 'NPC cluster', key: 'N', hint: 'Click to plant a respawning mob camp · drag the ring edge to resize', tab: 'placements' },
+      { id: 'actor', name: 'Actor', key: 'A', hint: 'Click to post a named NPC · bind identity and routine in the inspector', tab: 'placements' },
+      { id: 'spawn', name: 'World spawn', key: 'P', hint: 'Click to set where players arrive in the world', tab: 'placements' },
+    ],
+  },
+  {
+    caption: 'Edit',
+    tools: [
+      { id: 'select', name: 'Select', key: 'M', hint: 'Drag a marquee · drag inside moves it · Alt-drag copies · Delete clears' },
+      { id: 'picker', name: 'Picker', key: 'I', hint: 'Click any tile to make it the brush · Alt-click works from any tool' },
+    ],
+  },
 ];
+
+const TOOL_SPECS = new Map<ToolId, ToolSpec>(
+  TOOL_GROUPS.flatMap((g) => g.tools).map((t) => [t.id, t]),
+);
+
+function setTool(tool: ToolId): void {
+  state.tool = tool;
+  if (tool !== 'road') {
+    roadPts = [];
+    view.preview = null;
+  }
+  if (tool !== 'structure' && tool !== 'prefab') view.ghost = null;
+  const spec = TOOL_SPECS.get(tool);
+  if (spec?.tab) state.tab = spec.tab;
+  else if (tool === 'paint' || tool === 'fill' || tool === 'line' || tool === 'rect' || tool === 'ellipse' || tool === 'road') {
+    state.tab = 'tiles';
+  }
+  state.changed();
+}
 
 function buildToolbar(): void {
   const bar = $('toolbar');
   bar.innerHTML = '';
-  for (const t of TOOLS) {
-    const b = document.createElement('button');
-    b.className = 'tool' + (state.tool === t.id ? ' active' : '');
-    b.title = t.hint;
-    b.innerHTML = `<span class="glyph">${t.label}</span><span class="key">${t.key}</span>`;
-    b.onclick = () => {
-      state.tool = t.id;
-      if (t.id !== 'road') roadPts = [];
-      state.changed();
-    };
-    bar.appendChild(b);
+  for (const group of TOOL_GROUPS) {
+    const cap = document.createElement('div');
+    cap.className = 'tool-caption';
+    cap.textContent = group.caption;
+    bar.appendChild(cap);
+    for (const t of group.tools) {
+      const b = document.createElement('button');
+      b.className = 'tool' + (state.tool === t.id ? ' active' : '');
+      b.title = `${t.name} (${t.key})\n${t.hint}`;
+      b.appendChild(iconImg(t.id, 22));
+      const key = document.createElement('span');
+      key.className = 'key';
+      key.textContent = t.key;
+      b.appendChild(key);
+      b.onclick = () => setTool(t.id);
+      bar.appendChild(b);
+    }
   }
+  const spec = TOOL_SPECS.get(state.tool);
+  $('st-hint').textContent = spec ? `${spec.name} — ${spec.hint}` : '';
 }
 
 function buildOptions(): void {
   const root = $('tool-options');
   root.innerHTML = '';
+
+  // Stamp tools carry their own compact option row and no layers.
+  if (state.tool === 'structure' || state.tool === 'prefab') {
+    const row = document.createElement('div');
+    row.className = 'opt-row';
+    const armed =
+      state.tool === 'structure'
+        ? STRUCTURE_TEMPLATES.find((t) => t.id === state.armedTemplate)?.meta?.label ?? 'nothing armed'
+        : state.armedPrefab?.name ?? 'nothing armed';
+    const chip = document.createElement('span');
+    chip.className = 'armed-chip';
+    chip.textContent = armed;
+    row.appendChild(chip);
+    if (state.tool === 'structure') {
+      const flipBtn = document.createElement('button');
+      flipBtn.className = 'opt-btn' + (state.stampFlip ? ' active' : '');
+      flipBtn.appendChild(iconImg('flip', 14));
+      flipBtn.append(' mirror (X)');
+      flipBtn.onclick = () => {
+        state.stampFlip = !state.stampFlip;
+        state.changed();
+      };
+      row.appendChild(flipBtn);
+    }
+    root.appendChild(row);
+    const note = document.createElement('p');
+    note.className = 'muted';
+    note.textContent =
+      state.tool === 'structure'
+        ? 'Click the map to stamp. Buildings mirror but never rotate — the camera reads south faces.'
+        : 'Click the map to stamp tiles and placements together. Stays armed for repeats.';
+    root.appendChild(note);
+    return;
+  }
+
+  if (PLACEMENT_TOOLS.has(state.tool)) {
+    const note = document.createElement('p');
+    note.className = 'muted';
+    note.textContent =
+      'Click empty ground to place · click a marker to select it · drag to move · right-click removes. Properties live in the Placements tab.';
+    root.appendChild(note);
+    return;
+  }
 
   const layerRow = document.createElement('div');
   layerRow.className = 'opt-row';
@@ -1034,6 +1566,207 @@ function buildOptions(): void {
   root.appendChild(view4);
 }
 
+// ------------------------------------------------- sidebar tabs
+
+const TAB_LABELS: Array<[SidebarTab, string, string]> = [
+  ['tiles', 'Tiles', 'paint'],
+  ['structures', 'Structures', 'structure'],
+  ['placements', 'Placements', 'actor'],
+];
+
+function panelDeps(): PanelDeps {
+  return {
+    state,
+    registry,
+    prefabs: prefabList,
+    prefabsOnline,
+    actions: {
+      armTemplate(id) {
+        state.armedTemplate = id;
+        state.stampFlip = false;
+        setTool('structure');
+        toast(`armed ${id} — click the map to stamp, X mirrors`);
+      },
+      armPrefab(id) {
+        void (async () => {
+          try {
+            state.armedPrefab = prefabFromJson(await fetchPrefab(id));
+            setTool('prefab');
+            toast(`armed '${state.armedPrefab.name}' — click the map to stamp`);
+          } catch (err) {
+            toast(`prefab load failed: ${(err as Error).message}`, 4000);
+          }
+        })();
+      },
+      saveSelectionAsPrefab() {
+        savePrefabDialog();
+      },
+      removePrefab(id) {
+        if (!window.confirm(`Delete prefab '${id}' from the shared library? Every teammate loses it.`)) return;
+        void (async () => {
+          try {
+            await deletePrefab(id);
+            if (state.armedPrefab?.id === id) state.armedPrefab = null;
+            await refreshPrefabs();
+            toast(`deleted prefab '${id}'`);
+          } catch (err) {
+            toast(`delete failed: ${(err as Error).message}`, 4000);
+          }
+        })();
+      },
+      refreshPrefabs() {
+        void refreshPrefabs(true);
+      },
+      selectPlacement,
+      focusPlacement,
+      removePlacement: removePlacementRef,
+      editPlacement(ref, label, mutate) {
+        zoneOp(label, mutate, { tiles: false });
+      },
+    },
+  };
+}
+
+async function refreshPrefabs(announce = false): Promise<void> {
+  try {
+    prefabList = await listPrefabs();
+    prefabsOnline = true;
+    if (announce) toast(`prefab library: ${prefabList.length} saved`);
+  } catch {
+    prefabsOnline = false;
+  }
+  state.changed();
+}
+
+function buildPanels(): void {
+  const tabs = $('side-tabs');
+  tabs.innerHTML = '';
+  for (const [id, label, icon] of TAB_LABELS) {
+    const b = document.createElement('button');
+    b.className = 'side-tab' + (state.tab === id ? ' active' : '');
+    b.appendChild(iconImg(icon, 15));
+    b.append(` ${label}`);
+    b.onclick = () => {
+      state.tab = id;
+      state.changed();
+    };
+    tabs.appendChild(b);
+  }
+  $('tab-tiles').classList.toggle('hidden', state.tab !== 'tiles');
+  $('tab-structures').classList.toggle('hidden', state.tab !== 'structures');
+  $('tab-placements').classList.toggle('hidden', state.tab !== 'placements');
+  if (state.tab === 'structures') buildStructuresPanel($('tab-structures'), panelDeps());
+  if (state.tab === 'placements') buildPlacementsPanel($('tab-placements'), panelDeps());
+}
+
+function savePrefabDialog(): void {
+  const r = selRect();
+  if (!r) {
+    toast('select the region first (M), then save it as a prefab');
+    return;
+  }
+  showModal((body, close) => {
+    const w = r.x1 - r.x0 + 1;
+    const h = r.y1 - r.y0 + 1;
+    body.innerHTML = `
+      <h2>Save selection as prefab</h2>
+      <p class="muted">Captures the ${w}×${h} selection — all three tile layers plus every
+      portal, spawn cluster, and actor standing inside it — into the shared library.</p>
+      <div class="form-grid">
+        <label>id <input id="pf-id" placeholder="guard_post" pattern="[a-z][a-z0-9_-]*"></label>
+        <label>name <input id="pf-name" placeholder="Guard Post"></label>
+      </div>`;
+    const go = document.createElement('button');
+    go.textContent = 'Save to library';
+    go.className = 'primary';
+    go.onclick = () => {
+      const id = ($('pf-id') as HTMLInputElement).value.trim();
+      const name = ($('pf-name') as HTMLInputElement).value.trim() || id;
+      if (!/^[a-z][a-z0-9_-]*$/.test(id)) {
+        toast('prefab id must be lowercase [a-z0-9_-]');
+        return;
+      }
+      const z = state.zone;
+      const def: PrefabDef = {
+        id,
+        name,
+        width: w,
+        height: h,
+        ground: new Uint16Array(w * h),
+        detail: new Uint16Array(w * h),
+        elev: new Int8Array(w * h),
+        portals: [],
+        spawns: [],
+        actorSpawns: [],
+      };
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const src = idx(r.x0 + x, r.y0 + y);
+          def.ground[y * w + x] = z.ground[src]!;
+          def.detail[y * w + x] = z.detail[src]!;
+          def.elev[y * w + x] = z.elev![src]!;
+        }
+      }
+      const contains = (wx: number, wy: number): boolean => {
+        const lx = wx - z.origin.x;
+        const ly = wy - z.origin.y;
+        return lx >= r.x0 && lx <= r.x1 && ly >= r.y0 && ly <= r.y1;
+      };
+      for (const p of z.portals ?? []) {
+        if (contains(p.x, p.y)) {
+          def.portals.push({
+            dx: p.x - z.origin.x - r.x0,
+            dy: p.y - z.origin.y - r.y0,
+            ...(p.delve ? { delve: true } : {}),
+            ...(p.dest ? { dest: { ...p.dest } } : {}),
+          });
+        }
+      }
+      for (const s of z.spawns ?? []) {
+        if (contains(s.x, s.y)) {
+          def.spawns.push({
+            dx: s.x - z.origin.x - r.x0,
+            dy: s.y - z.origin.y - r.y0,
+            npc: s.npc,
+            radius: s.radius,
+            count: s.count,
+            ...(s.level !== undefined ? { level: s.level } : {}),
+            ...(s.name !== undefined ? { name: s.name } : {}),
+          });
+        }
+      }
+      for (const a of z.actorSpawns ?? []) {
+        if (contains(a.x, a.y)) {
+          def.actorSpawns.push({
+            dx: a.x - z.origin.x - r.x0,
+            dy: a.y - z.origin.y - r.y0,
+            actor: a.actor,
+            ...(a.dir !== undefined ? { dir: a.dir } : {}),
+            ...(a.routine !== undefined ? { routine: a.routine } : {}),
+          });
+        }
+      }
+      const errors = validatePrefab(def);
+      if (errors.length > 0) {
+        toast(`prefab invalid: ${errors[0]}`, 4500);
+        return;
+      }
+      void (async () => {
+        try {
+          await savePrefab(prefabToJson(def));
+          await refreshPrefabs();
+          const n = def.portals.length + def.spawns.length + def.actorSpawns.length;
+          toast(`saved '${name}' to the library${n > 0 ? ` (${n} placement${n > 1 ? 's' : ''} captured)` : ''}`);
+          close();
+        } catch (err) {
+          toast(`save failed: ${(err as Error).message}`, 4500);
+        }
+      })();
+    };
+    body.appendChild(go);
+  });
+}
+
 // -------------------------------------------------------- status bar
 
 function setServerStatus(text: string): void {
@@ -1139,6 +1872,7 @@ state.onChange(() => {
   buildToolbar();
   buildOptions();
   palette?.rebuild();
+  buildPanels();
   updateStatus();
 });
 
@@ -1169,6 +1903,15 @@ buildToolbar();
 buildOptions();
 
 async function boot(): Promise<void> {
+  // Live pick lists + the shared prefab library, in parallel with the
+  // zone list; content-registry fallbacks already stand if offline.
+  void fetchRegistry()
+    .then((r) => {
+      registry = r;
+      state.changed();
+    })
+    .catch(() => {});
+  void refreshPrefabs();
   const wanted = new URLSearchParams(location.search).get('zone');
   try {
     const list = await listMaps();
