@@ -63,7 +63,7 @@ export declare class CapeSim {
     update(ax: number, ay: number, az: number, dir: number, dt: number, wind: {
         bx: number;
         by: number;
-    }, tSec: number, sizeK: number): void;
+    }, tSec: number, sizeK: number, seatK?: number): void;
     /**
      * Paint side is a FACING law, not a cloth-position law — the same
      * convention as the beast head/tail and the weapon-behind rule. The
@@ -95,6 +95,12 @@ export interface CapeDrawOpts {
     /** Wall-clock seconds + per-cape phase drive the living effects. */
     tSec: number;
     phase: number;
+    /**
+     * 0..1 seated pooling — grounded cloth relaxes and SPREADS toward
+     * the hem, so the pooled slack reads as fabric fanned on the ground
+     * instead of a taut hanging ribbon lying on its side.
+     */
+    spread?: number;
 }
 /**
  * Paint the projected ribbon: base fill, hard-shade fold half, spine

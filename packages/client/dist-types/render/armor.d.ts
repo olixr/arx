@@ -281,6 +281,18 @@ export interface TorsoFrame {
      * real cloth (screen travel, un-squashed by the caller). Signed.
      */
     dragX: number;
+    /**
+     * Seated blend 0..1 (the caller-smoothed sit channel). A seated robe
+     * cannot hang its full length — the skirt pools on the ground.
+     */
+    sit?: number;
+    /** Ground line under the body in torso-local units (seated drape). */
+    groundY?: number;
+    /** Solved knees in the torso local frame (seated knee tents). */
+    seatKnees?: Array<{
+        x: number;
+        y: number;
+    }>;
 }
 /**
  * Torso garment. Replaces the fixed tunic: the `tunic` silhouette with
