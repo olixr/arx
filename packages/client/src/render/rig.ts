@@ -3658,22 +3658,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // hairstyle, it CONTAINS it.
   //   free   — bare head or a circlet: the full hairdo.
   //   brim   — wizard's hat: fringe locks only (cloth holds the rest).
-  //   open   — open-face metal (dome, horned): steel owns the crown,
-  //            but curtains, side locks, and tails show below the rim.
-  //   sealed — greathelm, bascinet: only the long styles' nape-fall
+  //   sealed — every forged metal kind (THE FORGE LAW: all metal is
+  //            full-face now): only the long styles' nape-fall
   //            escapes below the back rim.
   //   cloth  — hoods: the cloth wraps everything.
   const helmKind = helmSt?.kind;
-  const cover: 'free' | 'brim' | 'open' | 'sealed' | 'cloth' =
+  const cover: 'free' | 'brim' | 'sealed' | 'cloth' =
     !helm || helmKind === 'circlet'
       ? 'free'
       : helmKind === 'wizard'
         ? 'brim'
-        : helmKind === 'dome' || helmKind === 'horned'
-          ? 'open'
-          : helmKind === 'hood'
-            ? 'cloth'
-            : 'sealed';
+        : helmKind === 'hood'
+          ? 'cloth'
+          : 'sealed';
   const hairCol = rig.hurt
     ? '#ffffff'
     : rig.look
@@ -4405,7 +4402,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           // Turned: the plait trails behind the skull.
           paintPlait(
             headX - lead * hw * 0.95,
-            headY - hh * (cover === 'open' ? 0.1 : 0.35),
+            headY - hh * 0.35,
             hw * 0.34,
             3,
           );

@@ -43,8 +43,11 @@ export function helmIconPainter(st: HelmStyle): Painter {
       st.halo !== undefined ||
       (st.ears?.tall ?? false) ||
       (st.horns !== undefined && st.horns.size > 0.45);
-    const k = st.kind === 'circlet' ? 2.3 : tall ? 1.62 : 2.05;
-    const cy = st.kind === 'wizard' ? 0.66 : tall ? 0.62 : 0.56;
+    // Great horns (dread-sized) earn the widest stage of all — a
+    // clipped horn tip reads as a broken horn.
+    const hornsBig = st.horns !== undefined && st.horns.size > 1.2;
+    const k = st.kind === 'circlet' ? 2.3 : hornsBig ? 1.42 : tall ? 1.62 : 2.05;
+    const cy = st.kind === 'wizard' ? 0.66 : hornsBig ? 0.64 : tall ? 0.62 : 0.56;
     ctx.translate(0.5, cy);
     ctx.scale(1 / 64, 1 / 64);
     const s = 64 * k;
