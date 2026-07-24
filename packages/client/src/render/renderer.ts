@@ -155,6 +155,21 @@ const CHUNK_BAKE_MS = 3;
  * bake (a skipped visible bake would be pop-in, the worse artifact).
  */
 const SPRITE_BAKE_MS = 2.5;
+/**
+ * Idle body-sprite re-sample cadence, in frames (see the olKey fields
+ * on DrawItem): a resting body's cosmetic life — breathing, gaze,
+ * tail swish, blade shimmer — re-bakes every 8th frame on a per-key
+ * stagger (15Hz at 120fps), the same animation-rate sampling the tree
+ * cache established. Locomotion re-bakes every other frame, combat
+ * and blends every frame.
+ */
+const OL_IDLE_CADENCE = 8;
+/**
+ * Frames a body stays "dynamic" after its position/facing last
+ * changed: leg-rig settles, facing eases and pose blends finish at
+ * full rate before the cadence takes over (~0.2s at 120fps).
+ */
+const OL_COOL_FRAMES = 24;
 /** Cadence bounds: never faster than 6 frames, never slower than 24. */
 const TREE_CADENCE_MAX = 24;
 const CONTACT_MIN = 0.15;
@@ -350,6 +365,12 @@ interface AnimState {
   cape?: CapeSim;
   /** Which cape item `cape` was built for; a change rebuilds the cloth. */
   capeKey?: string;
+  /** Body-sprite cache motion tracker (see bodyMotion): last observed
+   *  world pos/facing, and the frame the dynamic cool window ends. */
+  olX?: number;
+  olY?: number;
+  olDir?: number;
+  olCoolUntil?: number;
 }
 
 /** Player zoom bounds: 1 = the classic framing (also the default). */
@@ -488,6 +509,23 @@ interface DrawItem {
    * OUTSIDE the outline pass so the silhouette ring fades with the body.
    */
   alpha?: number;
+  /**
+   * BODY-SPRITE CACHE fields (see paintOutlined). A stable identity
+   * opts this item into the outlined-composite cache: while `olSig`
+   * matches the cached bake and `olDyn` is false, the frame pays ONE
+   * blit instead of paint + 8-tap dilate + tint (~47μs/body — 40% of
+   * a town frame at 57 bodies). Idle micro-life (breathing, tail
+   * swish, blade shimmer) re-samples on the OL_IDLE_CADENCE stagger —
+   * the tree-cadence law applied to living bodies. Items without a
+   * key (live stations, legless bodies whose whole locomotion is
+   * time-driven) keep the direct per-frame pass.
+   */
+  olKey?: number | string;
+  /** Content signature: any change forces a re-bake this frame. */
+  olSig?: string;
+  /** True while genuinely animating (moving/turning/fighting/blending)
+   *  — forces full-rate re-bakes; cheap idle life waits for cadence. */
+  olDyn?: boolean;
 }
 
 export class Renderer {
@@ -582,6 +620,33 @@ export class Renderer {
   private readonly outlineB = document.createElement('canvas');
   private readonly outlineACtx = this.outlineA.getContext('2d')!;
   private readonly outlineBCtx = this.outlineB.getContext('2d')!;
+  /** Cached outlined composites (ring + art) per body — see the olKey
+   *  fields on DrawItem. Canvases ride the shared sprite pool. */
+  private readonly bodySprites = new Map<
+    number | string,
+    {
+      canvas: HTMLCanvasElement;
+      ctx: CanvasRenderingContext2D;
+      /** Device-pixel region used within the (possibly larger) canvas. */
+      w: number;
+      h: number;
+      /** CSS size of the region and the ring margin at bake time. */
+      wCss: number;
+      hCss: number;
+      m: number;
+      scale: number;
+      dpr: number;
+      sig: string;
+      frame: number;
+      used: number;
+    }
+  >();
+  /** Cached content signatures for appearance objects (equip/ench/
+   *  look), keyed by object identity — see olObjSig. */
+  private readonly olObjSigs = new WeakMap<object, string>();
+  /** Identity ids for corpse records (stable objects) — cache keys. */
+  private readonly olObjIds = new WeakMap<object, number>();
+  private olObjSeq = 1;
   private readonly baked = new Map<string, BakedChunk>();
   /** Per-frame queue of chunks with pending sliced bakes (scan order:
    *  visible chunks first, then the pre-bake ring). Scratch, rebuilt
@@ -2118,6 +2183,9 @@ export class Renderer {
       });
     }
     const orig = item.draw;
+    // Wading bodies stay on the live pass: the waterline clip and the
+    // sink ride the breathing surface, not a cacheable still.
+    item.olDyn = true;
     item.draw = () => {
       const ctx = this.ctx; // read at draw time — the outline pass swaps it
       const p = this.liftedWTS(x, y);
@@ -3570,6 +3638,66 @@ export class Renderer {
         if (this.treeSprites.size <= 560) break;
       }
     }
+    // Body sprites ride the interest radius: entities leave, corpses
+    // rot — drop composites unseen for ~2s, canvases back to the pool.
+    for (const [key, sp] of this.bodySprites) {
+      if (sp.used < cutoff) {
+        this.bodySprites.delete(key);
+        if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(sp.canvas);
+      }
+    }
+    if (this.bodySprites.size > 200) {
+      for (const [key, sp] of this.bodySprites) {
+        if (sp.used < this.frameNo - 2) {
+          this.bodySprites.delete(key);
+          if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(sp.canvas);
+        }
+        if (this.bodySprites.size <= 160) break;
+      }
+    }
+  }
+
+  /**
+   * Movement/turn tracker for the body-sprite cache: a body is
+   * "dynamic" while its position or facing changes and for
+   * OL_COOL_FRAMES after — leg settles, facing eases and pose blends
+   * finish at full rate before the idle cadence takes over.
+   */
+  private bodyMotion(anim: AnimState, x: number, y: number, dir: number): boolean {
+    if (anim.olX !== x || anim.olY !== y || anim.olDir !== dir) {
+      anim.olX = x;
+      anim.olY = y;
+      anim.olDir = dir;
+      anim.olCoolUntil = this.frameNo + OL_COOL_FRAMES;
+    }
+    return this.frameNo < (anim.olCoolUntil ?? 0);
+  }
+
+  /** Content signature for an appearance object (equip/ench/look) —
+   *  computed once per object IDENTITY and cached in a WeakMap, so a
+   *  server that re-sends an identical appearance object every tick
+   *  (actors do) still yields a STABLE signature. Never use raw
+   *  identity ids here: a churning identity re-baked one body every
+   *  frame forever (caught live on a Bramblewick actor). */
+  private olObjSig(o: object | undefined): string {
+    if (o === undefined) return '';
+    let sig = this.olObjSigs.get(o);
+    if (sig === undefined) {
+      sig = JSON.stringify(o);
+      this.olObjSigs.set(o, sig);
+    }
+    return sig;
+  }
+
+  /** Stable id per long-lived record (corpses) — a cache KEY, where
+   *  identity is exactly right; never use for signature content. */
+  private olObjId(o: object): number {
+    let id = this.olObjIds.get(o);
+    if (id === undefined) {
+      id = this.olObjSeq++;
+      this.olObjIds.set(o, id);
+    }
+    return id;
   }
 
   // ------------------------------------------------------- raised tiles
@@ -15171,6 +15299,37 @@ export class Renderer {
     // Paint side follows the FACING (the beast head/tail convention):
     // the back — and the cloth on it — is toward the camera only when
     // facing up-screen. Hysteresis in front() keeps the flip steady.
+    // Body-sprite cache identity (see paintOutlined) — THREE RATES:
+    // combat, pose blends, the hurt flash, wind-live cape cloth and
+    // the own hero re-bake at FULL rate; plain locomotion (walking,
+    // sneaking, the leg-settle after stopping, gaze turns) re-bakes
+    // every OTHER frame — 60Hz limb sampling at 120fps, indistinguish-
+    // able, and the town's wander crowd was the whole remaining cost;
+    // true idlers wait for the cadence to re-sample their cosmetic
+    // life. The signature folds every input that changes painted
+    // pixels; the dir term also catches facing snaps.
+    const olMoving = this.bodyMotion(anim, e.x, e.y, e.dir);
+    const locomotion =
+      olMoving || e.pose === PoseState.Walk || e.pose === PoseState.Sneak;
+    const fullDyn =
+      (e.pose !== PoseState.Idle &&
+        e.pose !== PoseState.Walk &&
+        e.pose !== PoseState.Sneak &&
+        e.pose !== PoseState.Sit) ||
+      now - anim.poseStartedAt < 900 ||
+      (e.hurt ?? false) ||
+      capeSim !== null ||
+      (sitK > 0 && sitK < 1) ||
+      (sheathK > 0 && sheathK < 1) ||
+      (e.drawTOverride !== undefined && e.drawTOverride > 0) ||
+      (e.isOwn && locomotion);
+    const olDyn = fullDyn || (locomotion && (this.frameNo + varEid) % 2 === 0);
+    const olSig = `${e.dir.toFixed(3)}|${e.pose}|${e.hurt ? 1 : 0}|${e.sheathed ? 1 : 0}|${
+      e.color
+    }|${e.size ?? 1}|${e.carry ?? ''}|${e.carryOff ?? ''}|${e.skinColor ?? ''}|${this.olObjSig(
+      e.equip,
+    )}|${this.olObjSig(e.ench)}|${this.olObjSig(e.look)}|${e.skeletal ? 1 : 0}${e.kobold ? 'k' : ''}`;
+
     const capeFront = capeSim !== null && capeSim.front(Math.sin(dir));
     const paintCape =
       capeSim !== null && capeItem
@@ -15195,6 +15354,9 @@ export class Renderer {
     return {
       sortY: e.y,
       elevated: terrainLift !== 0,
+      olKey: varEid,
+      olSig,
+      olDyn,
       drawShadow: () => {
         this.castBody(p.x, p.y + s * 0.05, 0.26 * s * (e.size ?? 1));
       },
@@ -15458,7 +15620,149 @@ export class Renderer {
     [-0.71, -0.71],
   ];
 
+  /**
+   * THE BODY-SPRITE CACHE (the "entity-outline rework" the 120fps
+   * pass called for). Keyed items cache their finished composite —
+   * ring UNDER art, exactly what the direct path draws — in a
+   * per-body canvas: an idle body costs ONE blit per frame instead of
+   * a full paint + dilate (~47μs each; town at 0.85× carried 57 of
+   * them = 40% of the frame). Re-bakes happen at full rate while
+   * `olDyn` (moving/turning/fighting/blending), when `olSig` changes
+   * (gear swap, hp tick, hurt flash), on zoom drift past 20% (held
+   * during glides — the freeze law), and otherwise on the
+   * OL_IDLE_CADENCE stagger so idle micro-life keeps breathing at
+   * animation rate. In the mirror pass (bakingMask) the cache is
+   * READ-ONLY: a cadence-stale sprite under 0.38-alpha sheared water
+   * is invisible, and baking there would fire draw-closure side
+   * effects (gather chips, footsteps) twice a frame.
+   */
   private paintOutlined(item: DrawItem): void {
+    const key = item.olKey;
+    if (key !== undefined) {
+      const b = item.body!;
+      const s = this.camera.scale;
+      const sp = this.bodySprites.get(key);
+      if (this.bakingMask) {
+        if (sp) {
+          this.blitBodySprite(sp, b, s);
+          return;
+        }
+        // No sprite yet: fall through to the direct path (no write —
+        // the main pass owns the cache).
+      } else if (sp) {
+        const dpr = window.devicePixelRatio || 1;
+        const phase = typeof key === 'number' ? key : 7;
+        const due = (this.frameNo + phase) % OL_IDLE_CADENCE === 0;
+        const drift = Math.abs(sp.scale - s) > s * 0.2;
+        const fresh =
+          sp.dpr === dpr &&
+          sp.sig === item.olSig &&
+          !item.olDyn &&
+          !(due && sp.frame !== this.frameNo) &&
+          !drift;
+        if (fresh || (this.zoomGliding && sp.sig === item.olSig && !item.olDyn)) {
+          sp.used = this.frameNo;
+          this.blitBodySprite(sp, b, s);
+          return;
+        }
+        this.bakeBodySprite(item, key);
+        return;
+      } else {
+        this.bakeBodySprite(item, key);
+        return;
+      }
+    }
+    this.paintOutlinedDirect(item);
+  }
+
+  /** Blit a cached body composite at the item's CURRENT body rect —
+   *  scale-compensated like the tree cache when mid-glide. */
+  private blitBodySprite(
+    sp: NonNullable<ReturnType<(typeof this.bodySprites)['get']>>,
+    b: { x: number; y: number; w: number; h: number },
+    s: number,
+  ): void {
+    const k = s / sp.scale;
+    this.ctx.drawImage(
+      sp.canvas,
+      0,
+      0,
+      sp.w,
+      sp.h,
+      b.x - sp.m * k,
+      b.y - sp.m * k,
+      sp.wCss * k,
+      sp.hCss * k,
+    );
+  }
+
+  /** Re-bake a keyed body: run the scratch pass, composite ring+art
+   *  into the body's own canvas, blit it. Costs the direct pass plus
+   *  two small copies — paid only on dynamic/cadence/sig frames. */
+  private bakeBodySprite(item: DrawItem, key: number | string): void {
+    const b = item.body!;
+    const s = this.camera.scale;
+    const dpr = window.devicePixelRatio || 1;
+    const geo = this.paintOutlineScratch(item);
+    let sp = this.bodySprites.get(key);
+    const prev = sp ? { canvas: sp.canvas, ctx: sp.ctx } : undefined;
+    const { canvas, sctx } = this.acquireSpriteCanvas(prev, geo.w, geo.h);
+    // Apron-clear past the used region (the stale-bleed law): pooled
+    // canvases carry older, larger sprites' pixels just outside this
+    // region, and the fractional final blit bilinear-samples ~1px
+    // past the source rect.
+    const apron = 4;
+    sctx.setTransform(1, 0, 0, 1, 0, 0);
+    sctx.clearRect(0, 0, Math.min(canvas.width, geo.w + apron), Math.min(canvas.height, geo.h + apron));
+    sctx.drawImage(this.outlineB, 0, 0, geo.w, geo.h, 0, 0, geo.w, geo.h);
+    sctx.drawImage(this.outlineA, 0, 0, geo.w, geo.h, 0, 0, geo.w, geo.h);
+    if (!sp) {
+      sp = {
+        canvas,
+        ctx: sctx,
+        w: geo.w,
+        h: geo.h,
+        wCss: geo.wCss,
+        hCss: geo.hCss,
+        m: geo.m,
+        scale: s,
+        dpr,
+        sig: item.olSig ?? '',
+        frame: this.frameNo,
+        used: this.frameNo,
+      };
+      this.bodySprites.set(key, sp);
+    } else {
+      sp.canvas = canvas;
+      sp.ctx = sctx;
+      sp.w = geo.w;
+      sp.h = geo.h;
+      sp.wCss = geo.wCss;
+      sp.hCss = geo.hCss;
+      sp.m = geo.m;
+      sp.scale = s;
+      sp.dpr = dpr;
+      sp.sig = item.olSig ?? '';
+      sp.frame = this.frameNo;
+      sp.used = this.frameNo;
+    }
+    this.blitBodySprite(sp, b, s);
+  }
+
+  /** Direct (uncached) outline pass: scratch build + two blits. */
+  private paintOutlinedDirect(item: DrawItem): void {
+    const b = item.body!;
+    const dpr = window.devicePixelRatio || 1;
+    const geo = this.paintOutlineScratch(item);
+    this.ctx.drawImage(this.outlineB, 0, 0, geo.w, geo.h, b.x - geo.m, b.y - geo.m, geo.w / dpr, geo.h / dpr);
+    this.ctx.drawImage(this.outlineA, 0, 0, geo.w, geo.h, b.x - geo.m, b.y - geo.m, geo.w / dpr, geo.h / dpr);
+  }
+
+  /**
+   * The shared scratch build: art into A, dilated tinted ring into B.
+   * Returns the region geometry (device px + css + margin).
+   */
+  private paintOutlineScratch(item: DrawItem): { w: number; h: number; wCss: number; hCss: number; m: number } {
     const b = item.body!;
     // DEVICE-PIXEL LAW (same as bakeOutlineRing): the scratches work in
     // device pixels. Rasterizing at 1× CSS resolution and letting the
@@ -15524,10 +15828,9 @@ export class Renderer {
     o.fillStyle = '#241a2e';
     o.fillRect(0, 0, w, h);
     o.globalCompositeOperation = 'source-over';
-    // 3. Ring first, sprite on top. Destination sized w/dpr so the
-    // dpr-transformed main ctx lands device texels 1:1 — no resample.
-    this.ctx.drawImage(this.outlineB, 0, 0, w, h, b.x - m, b.y - m, w / dpr, h / dpr);
-    this.ctx.drawImage(this.outlineA, 0, 0, w, h, b.x - m, b.y - m, w / dpr, h / dpr);
+    // 3. Callers finish it: ring first, sprite on top — straight to
+    // the frame (direct path) or into the body's cache canvas.
+    return { w, h, wCss, hCss, m };
   }
 
   /**
@@ -15543,6 +15846,13 @@ export class Renderer {
     skeleton_guard: { weapon: 'iron_sword', offhand: 'oak_kiteshield', head: 'iron_helm' },
     skeleton_champion: { weapon: 'iron_sword', cape: 'cape_champion' },
   };
+
+  private static readonly GOBLIN_EQUIP: Record<string, Partial<Record<string, string>>> = {
+    goblin: { weapon: 'bronze_sword' },
+  };
+
+  /** Shared empty kit — stable identity for the body-sprite signature. */
+  private static readonly NO_EQUIP: Partial<Record<string, string>> = {};
 
   /**
    * Skeleton stature ladder: the dead stand taller and gaunter than
@@ -15603,9 +15913,9 @@ export class Renderer {
         // Every skeleton carries what it was buried with — the gear is
         // the variant's silhouette (and each piece really drops).
         equip:
-          defId === 'goblin'
-            ? { weapon: 'bronze_sword' }
-            : (Renderer.KOBOLD_EQUIP[defId] ?? Renderer.SKELETON_EQUIP[defId] ?? {}),
+          // Static per defId — a fresh literal here would churn the
+          // body-sprite signature's identity ids every frame.
+          Renderer.GOBLIN_EQUIP[defId] ?? Renderer.KOBOLD_EQUIP[defId] ?? Renderer.SKELETON_EQUIP[defId] ?? Renderer.NO_EQUIP,
         color: def?.color ?? '#999',
         skinColor:
           defId === 'troll'
@@ -15664,9 +15974,23 @@ export class Renderer {
       s.pose === PoseState.Attack
         ? Math.min(1, (performance.now() - anim.poseStartedAt) / 420)
         : 0;
+    // Body-sprite cache identity (see paintOutlined): grazing herds
+    // are the town-crowd of the wilds — idle cud-chew/tail-swish life
+    // re-samples on the cadence, plain locomotion at half rate, and
+    // anything fighting or flinching at full rate.
+    const olMoving = this.bodyMotion(anim, s.x, s.y, s.dir);
+    const locomotion = olMoving || s.pose === PoseState.Walk;
+    const fullDyn =
+      (s.pose !== PoseState.Idle && s.pose !== PoseState.Walk) ||
+      hurt ||
+      performance.now() - anim.poseStartedAt < 900;
+    const olDyn = fullDyn || (locomotion && (this.frameNo + eid) % 2 === 0);
     return {
       sortY: s.y,
       elevated: terrainLift !== 0,
+      olKey: eid,
+      olSig: `${s.dir.toFixed(3)}|${s.pose}|${hurt ? 1 : 0}|${defId}`,
+      olDyn,
       drawShadow: () => {
         this.castBody(p.x, p.y + r * 0.25, r * 1.05);
       },
@@ -17130,6 +17454,13 @@ export class Renderer {
       sortY: c.y + 0.02,
       elevated: this.renderLift(c.x, c.y) !== 0,
       alpha: alpha < 1 ? alpha : undefined,
+      // Body-sprite cache: a settled corpse is the stillest body in
+      // the game — one blit for its whole 8s lie. Dynamic while the
+      // ragdoll still tumbles and through the wisp fade (the fade
+      // alpha itself rides item.alpha, outside the cache).
+      olKey: `c${this.olObjId(c)}`,
+      olSig: `${c.x.toFixed(3)}|${c.y.toFixed(3)}`,
+      olDyn: c.settledAt === null || alpha < 1,
       body: {
         x: p.x + b.minX * scale - margin,
         y: p.y + b.minY * scale - margin,

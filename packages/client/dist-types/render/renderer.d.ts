@@ -140,6 +140,15 @@ export declare class Renderer {
     private readonly outlineB;
     private readonly outlineACtx;
     private readonly outlineBCtx;
+    /** Cached outlined composites (ring + art) per body — see the olKey
+     *  fields on DrawItem. Canvases ride the shared sprite pool. */
+    private readonly bodySprites;
+    /** Cached content signatures for appearance objects (equip/ench/
+     *  look), keyed by object identity — see olObjSig. */
+    private readonly olObjSigs;
+    /** Identity ids for corpse records (stable objects) — cache keys. */
+    private readonly olObjIds;
+    private olObjSeq;
     private readonly baked;
     /** Per-frame queue of chunks with pending sliced bakes (scan order:
      *  visible chunks first, then the pre-bake ring). Scratch, rebuilt
@@ -632,6 +641,23 @@ export declare class Renderer {
      * worst-case memory, not the typical count.
      */
     private evictTreeSprites;
+    /**
+     * Movement/turn tracker for the body-sprite cache: a body is
+     * "dynamic" while its position or facing changes and for
+     * OL_COOL_FRAMES after — leg settles, facing eases and pose blends
+     * finish at full rate before the idle cadence takes over.
+     */
+    private bodyMotion;
+    /** Content signature for an appearance object (equip/ench/look) —
+     *  computed once per object IDENTITY and cached in a WeakMap, so a
+     *  server that re-sends an identical appearance object every tick
+     *  (actors do) still yields a STABLE signature. Never use raw
+     *  identity ids here: a churning identity re-baked one body every
+     *  frame forever (caught live on a Bramblewick actor). */
+    private olObjSig;
+    /** Stable id per long-lived record (corpses) — a cache KEY, where
+     *  identity is exactly right; never use for signature content. */
+    private olObjId;
     /** Wall-run auto-tiler membership — shared law (tiles.ts). */
     private static readonly WALL_TILES;
     /** Every doorway tile — open and shut, both orientations and widths. */
@@ -1259,7 +1285,37 @@ export declare class Renderer {
     private drawMiniHp;
     /** Eight-tap alpha dilate → tinted ring under the sprite. */
     private static readonly OUTLINE_TAPS;
+    /**
+     * THE BODY-SPRITE CACHE (the "entity-outline rework" the 120fps
+     * pass called for). Keyed items cache their finished composite —
+     * ring UNDER art, exactly what the direct path draws — in a
+     * per-body canvas: an idle body costs ONE blit per frame instead of
+     * a full paint + dilate (~47μs each; town at 0.85× carried 57 of
+     * them = 40% of the frame). Re-bakes happen at full rate while
+     * `olDyn` (moving/turning/fighting/blending), when `olSig` changes
+     * (gear swap, hp tick, hurt flash), on zoom drift past 20% (held
+     * during glides — the freeze law), and otherwise on the
+     * OL_IDLE_CADENCE stagger so idle micro-life keeps breathing at
+     * animation rate. In the mirror pass (bakingMask) the cache is
+     * READ-ONLY: a cadence-stale sprite under 0.38-alpha sheared water
+     * is invisible, and baking there would fire draw-closure side
+     * effects (gather chips, footsteps) twice a frame.
+     */
     private paintOutlined;
+    /** Blit a cached body composite at the item's CURRENT body rect —
+     *  scale-compensated like the tree cache when mid-glide. */
+    private blitBodySprite;
+    /** Re-bake a keyed body: run the scratch pass, composite ring+art
+     *  into the body's own canvas, blit it. Costs the direct pass plus
+     *  two small copies — paid only on dynamic/cadence/sig frames. */
+    private bakeBodySprite;
+    /** Direct (uncached) outline pass: scratch build + two blits. */
+    private paintOutlinedDirect;
+    /**
+     * The shared scratch build: art into A, dilated tinted ring into B.
+     * Returns the region geometry (device px + css + margin).
+     */
+    private paintOutlineScratch;
     /**
      * The crypt garrison's kit, variant by variant — the warrior's grave
      * iron, the archer's bone-and-iron Marrowpoint with a hip quiver, the
@@ -1268,6 +1324,9 @@ export declare class Renderer {
      * (or its tier) actually drops: the look IS the loot story.
      */
     private static readonly SKELETON_EQUIP;
+    private static readonly GOBLIN_EQUIP;
+    /** Shared empty kit — stable identity for the body-sprite signature. */
+    private static readonly NO_EQUIP;
     /**
      * Skeleton stature ladder: the dead stand taller and gaunter than
      * goblins — the archer a touch lighter, the guard a head above the
