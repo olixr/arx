@@ -3635,18 +3635,23 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // THE FORM SPLIT: the head shares the torso's screen-fixed x=0
     // light — hard shade on the right half, a lit crown band, and a
     // jaw under-shade, so the block reads as a skull, not a sticker.
+    // CLIPPED TO THE SKULL: chamferRect clamps a corner cut to half a
+    // shape's height, so the thin crown/jaw bands used to end in
+    // near-square corners that poked PAST the head's chamfer — pale
+    // skin chips floating at the head corners under every hairline.
+    // Inside the clip the bands are plain rects; the silhouette owns
+    // every edge.
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, headX - hw, headY - hh, hw * 2, hh * 2, cut);
+    ctx.clip();
     ctx.fillStyle = shade(skin, -9);
-    ctx.beginPath();
-    chamferRect(ctx, headX, headY - hh, hw, hh * 2, [0, cut, cut, 0]);
-    ctx.fill();
+    ctx.fillRect(headX, headY - hh, hw, hh * 2);
     ctx.fillStyle = shade(skin, -16);
-    ctx.beginPath();
-    chamferRect(ctx, headX - hw, headY + hh * 0.8, hw * 2, hh * 0.2, [0, 0, cut, cut]);
-    ctx.fill();
+    ctx.fillRect(headX - hw, headY + hh * 0.8, hw * 2, hh * 0.2);
     ctx.fillStyle = shade(skin, 8);
-    ctx.beginPath();
-    chamferRect(ctx, headX - hw, headY - hh, hw * 2, hh * 0.18, [cut, cut, 0, 0]);
-    ctx.fill();
+    ctx.fillRect(headX - hw, headY - hh, hw * 2, hh * 0.18);
+    ctx.restore();
   }
   // ---- hair, ears, and the face: all band-aware, all gated by what
   // the headwear allows. THE COVERAGE LAW: a helmet never deletes a
