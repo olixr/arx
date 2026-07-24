@@ -1,9 +1,13 @@
-import { STATUS_IDS } from '@devcraft/shared';
+import { DEFAULT_LOOK, STATUS_IDS, type Look } from '@devcraft/shared';
 import {
   ABILITIES,
+  DIALOGUES,
   RECIPES,
+  SHOPS,
+  actorCombatDef,
   type LootEntryDef,
   type LootTableDef,
+  type NpcActorCombatStats,
   type NpcActorDef,
   type NpcDef,
 } from '@devcraft/content';
@@ -11,7 +15,8 @@ import { itemIconUrl } from '../render/icons.js';
 import { iconImg } from '../editor/editorIcons.js';
 import { markDirty, persistence, setSection, state, toast, zoneAt } from './cms.js';
 import { creatureRender } from './gameRender.js';
-import { actorBust } from './portraits.js';
+import { lookDesigner } from './lookDesigner.js';
+import { actorBust, actorFigure } from './portraits.js';
 import { entryShare, simulate, type SimAggregate } from './simulate.js';
 import {
   bar,
@@ -1124,34 +1129,85 @@ const EQUIP_SLOTS: Array<{ slot: string; label: string }> = [
   { slot: 'cape', label: 'cape' },
 ];
 
+/** Combat-stat overrides an actor may pin over its derived base. */
+const OVERRIDE_STATS: Array<{
+  key: keyof NpcActorCombatStats;
+  label: string;
+  min: number;
+  max: number;
+  step?: number;
+  note?: string;
+}> = [
+  { key: 'maxHp', label: 'max hp', min: 1, max: 400 },
+  { key: 'damage', label: 'damage', min: 1, max: 40 },
+  { key: 'attackRange', label: 'attack range', min: 0.5, max: 8, step: 0.5, note: 'tiles' },
+  { key: 'attackCooldownTicks', label: 'attack cooldown', min: 10, max: 120, note: 'ticks (20/s)' },
+  { key: 'aggroRange', label: 'aggro range', min: 0, max: 16, note: '0 = never starts it' },
+  { key: 'leashRange', label: 'leash range', min: 2, max: 40, note: 'tiles from the post' },
+  { key: 'speed', label: 'speed', min: 0.5, max: 6, step: 0.1, note: 'tiles/s' },
+  { key: 'xpReward', label: 'xp reward', min: 1, max: 2000 },
+];
+
+function creatureOptions(): ComboOption[] {
+  return state.npcs
+    .slice()
+    .sort((a, b) => a.def.level - b.def.level)
+    .map((n) => ({
+      id: n.def.id,
+      label: n.def.name,
+      sub: `lv ${n.def.level}`,
+      icon: creatureRender(n.def, 22).toDataURL(),
+    }));
+}
+
+function baseNpcOf(draft: NpcActorDef): NpcDef | undefined {
+  return draft.model.kind === 'creature'
+    ? state.npcs.find((n) => n.def.id === (draft.model as { creature: string }).creature)?.def
+    : undefined;
+}
+
+/** The stage art: the full standing body, exactly as the world draws it. */
+function actorStageArt(draft: NpcActorDef, size: number): HTMLElement {
+  const box = el('div', 'stage-art');
+  const art =
+    draft.model.kind === 'humanoid'
+      ? actorFigure(draft, size)
+      : (() => {
+          const base = baseNpcOf(draft);
+          return base ? creatureRender(base, size) : null;
+        })();
+  if (art) box.appendChild(art);
+  else box.appendChild(el('p', 'muted empty', 'no body to render'));
+  return box;
+}
+
+function actorPills(draft: NpcActorDef): HTMLElement[] {
+  const pills: HTMLElement[] = [
+    pill(
+      draft.disposition,
+      'how combat treats this actor',
+      draft.disposition === 'hostile' ? 'danger' : draft.disposition === 'friendly' ? 'ok' : 'ink',
+    ),
+  ];
+  if (draft.protection) pills.push(pill(draft.protection, 'the safety switch over the disposition', 'brass'));
+  const eff = actorCombatDef(draft);
+  if (eff) pills.push(pill(`fights at lv ${draft.combat!.level}`, `${eff.maxHp} hp · ${eff.damage} damage`, 'danger'));
+  if (draft.dialogue) pills.push(pill('speaks', `dialogue: ${draft.dialogue}`, 'brass'));
+  if (draft.shop) pills.push(pill('trades', `shop: ${draft.shop}`, 'brass'));
+  return pills;
+}
+
 function actorDetail(body: HTMLElement, linkage: HTMLElement, slug: string): void {
   const entry = state.actors.find((a) => a.def.id === slug);
   if (!entry) return;
   const draft: NpcActorDef = JSON.parse(JSON.stringify(entry.def)) as NpcActorDef;
 
-  let jsonBox: HTMLTextAreaElement | null = null;
+  // Stashes so flipping the body kind back restores what was there.
+  let stashedLook: Look | null = draft.model.kind === 'humanoid' ? null : { ...DEFAULT_LOOK };
+  let stashedCreature: string | null = null;
+
   const save = (): void => {
-    let full: NpcActorDef = draft;
-    if (jsonBox && jsonBox.value.trim()) {
-      try {
-        full = JSON.parse(jsonBox.value) as NpcActorDef;
-      } catch (err) {
-        toast(`definition JSON: ${(err as Error).message}`, 4200, 'error');
-        return;
-      }
-      // Structured controls win the fields they own.
-      full.id = draft.id;
-      full.name = draft.name;
-      full.title = draft.title;
-      full.examine = draft.examine;
-      full.disposition = draft.disposition;
-      if (draft.protection) full.protection = draft.protection;
-      else delete (full as unknown as Record<string, unknown>).protection;
-      full.equipment = draft.equipment;
-      full.inventory = draft.inventory;
-      full.lines = draft.lines;
-    }
-    void persistence.saveActorDef(full).catch((err: Error) => toast(err.message, 5200, 'error'));
+    void persistence.saveActorDef(draft).catch((err: Error) => toast(err.message, 5200, 'error'));
   };
   const rebuild = (): void => {
     body.innerHTML = '';
@@ -1159,36 +1215,120 @@ function actorDetail(body: HTMLElement, linkage: HTMLElement, slug: string): voi
     build();
   };
 
+  // ------------------------------------------- live stage refresh
+  // The look designer and wardrobe patch the renders in place — the
+  // page never rebuilds mid-fitting (the live-answer law).
+  let stageBox: HTMLElement | null = null;
+  let factsBox: HTMLElement | null = null;
+  const refreshStage = (): void => {
+    if (stageBox) {
+      stageBox.innerHTML = '';
+      stageBox.appendChild(actorStageArt(draft, 224));
+    }
+    if (factsBox) {
+      factsBox.innerHTML = '';
+      buildFacts(factsBox);
+    }
+    const heroFrame = body.querySelector<HTMLElement>('.hero-portrait');
+    if (heroFrame) {
+      const bust =
+        draft.model.kind === 'humanoid'
+          ? actorBust(draft, 132)
+          : (() => {
+              const base = baseNpcOf(draft);
+              return base ? creatureRender(base, 132) : null;
+            })();
+      if (bust) {
+        heroFrame.innerHTML = '';
+        heroFrame.appendChild(bust);
+      }
+    }
+  };
+
+  const buildFacts = (box: HTMLElement): void => {
+    const fact = (label: string, value: string, hint = ''): void => {
+      const row = el('div', 'fact-row');
+      row.appendChild(el('span', 'fact-label', label));
+      const v = el('b', 'fact-value', value);
+      if (hint) v.title = hint;
+      row.appendChild(v);
+      box.appendChild(row);
+    };
+    fact(
+      'body',
+      draft.model.kind === 'humanoid'
+        ? 'the player rig'
+        : (baseNpcOf(draft)?.name ?? draft.model.creature),
+      draft.model.kind === 'humanoid' ? 'renders through the same rig as players' : 'a bestiary body',
+    );
+    const worn = Object.values(draft.equipment ?? {}).filter(Boolean).length;
+    if (draft.model.kind === 'humanoid') fact('wearing', worn === 0 ? 'street clothes' : `${worn} piece${worn === 1 ? '' : 's'}`);
+    const eff = actorCombatDef(draft);
+    if (eff) {
+      const dps = eff.damage > 0 ? eff.damage / (eff.attackCooldownTicks / 20) : 0;
+      fact('combat', `lv ${draft.combat!.level} · ${eff.maxHp} hp`, 'derived from the base, overrides applied');
+      fact('output', eff.damage === 0 ? 'harmless' : `${eff.damage} dmg · ${dps.toFixed(1)} dps`);
+      fact('temper', eff.aggroRange <= 0 ? 'never starts it' : `aggro ${eff.aggroRange} tiles`);
+      fact('pays', `${eff.xpReward} xp`, 'on death');
+    } else {
+      fact('combat', 'beyond reach', 'no combat body is ever built — attacks pass through');
+    }
+    fact('carries', `${(draft.inventory ?? []).length} item row${(draft.inventory ?? []).length === 1 ? '' : 's'}`);
+    if (draft.lines?.length) fact('voice', `${draft.lines.length} line${draft.lines.length === 1 ? '' : 's'}`);
+  };
+
   const build = (): void => {
     const portrait =
       draft.model.kind === 'humanoid'
         ? actorBust(draft, 132)
         : (() => {
-            const base = state.npcs.find((n) => n.def.id === (draft.model as { creature?: string }).creature);
-            return base ? creatureRender(base.def, 132) : null;
+            const base = baseNpcOf(draft);
+            return base ? creatureRender(base, 132) : null;
           })();
-    const pills: HTMLElement[] = [
-      pill(draft.disposition, 'how combat treats this actor', draft.disposition === 'hostile' ? 'danger' : 'ink'),
-    ];
-    if (draft.protection) pill(draft.protection, '', 'brass');
-    if (draft.combat) pills.push(pill(`fights at lv ${draft.combat.level}`, '', 'danger'));
-    if (draft.dialogue) pills.push(pill('speaks', `dialogue: ${draft.dialogue}`, 'brass'));
-    if (draft.shop) pills.push(pill('trades', `shop: ${draft.shop}`, 'brass'));
 
+    const head = detailHead(
+      portrait,
+      draft.name,
+      draft.id,
+      actorPills(draft),
+      entry.edited,
+      entry.authored,
+      save,
+      () => void persistence.revertActorDef(slug).catch((err: Error) => toast(err.message, 4600, 'error')),
+    );
+    // Duplicate — the fastest way to a family of guards.
+    const dup = el('button', '', 'Duplicate') as HTMLButtonElement;
+    dup.title = 'Clone this actor under a new slug';
+    dup.onclick = () => {
+      const id = window.prompt(`New slug for the copy of '${draft.name}':`, `${draft.id}_2`);
+      if (!id) return;
+      if (!/^[a-z][a-z0-9_]*$/.test(id) || state.actors.some((a) => a.def.id === id)) {
+        toast('slug must be unique lowercase [a-z0-9_]', 3600, 'error');
+        return;
+      }
+      const clone = JSON.parse(JSON.stringify(draft)) as NpcActorDef;
+      clone.id = id;
+      state.actors.push({ def: clone, edited: true, authored: false });
+      setSection('actors', id);
+      markDirty();
+      toast(`'${id}' drafted from '${draft.id}' — Save ▸ Live to keep it`, 3600);
+    };
+    head.querySelector('.hero-actions')?.prepend(dup);
+    body.appendChild(head);
+
+    // ------------------------------------------------- the stage
+    const stageWrap = el('div', 'stage-flex');
+    stageBox = el('div', 'stage-well');
+    stageBox.appendChild(actorStageArt(draft, 224));
+    stageWrap.appendChild(stageBox);
+    factsBox = el('div', 'fact-col');
+    buildFacts(factsBox);
+    stageWrap.appendChild(factsBox);
     body.appendChild(
-      detailHead(
-        portrait,
-        draft.name,
-        draft.id,
-        pills,
-        entry.edited,
-        entry.authored,
-        save,
-        () => void persistence.revertActorDef(slug).catch((err: Error) => toast(err.message, 4600, 'error')),
-      ),
+      sect('On the stage', 'The true render — this exact body, ring and all, is what walks the world.', stageWrap),
     );
 
-    // Identity.
+    // -------------------------------------------------- identity
     const identity = el('div', 'fgrid');
     const f = (label: string, input: HTMLElement, note?: string, wide = false): HTMLElement => {
       const w = el('label', 'ffield' + (wide ? ' wide' : ''));
@@ -1200,43 +1340,147 @@ function actorDetail(body: HTMLElement, linkage: HTMLElement, slug: string): voi
     identity.append(
       f('name', textIn(draft.name, (v) => (draft.name = v))),
       f('title', textIn(draft.title ?? '', (v) => (draft.title = v || undefined)), 'the epithet under the nameplate'),
-      f('examine', textIn(draft.examine ?? '', (v) => (draft.examine = v || undefined)), '', true),
+      f('examine', textIn(draft.examine ?? '', (v) => (draft.examine = v || undefined)), 'what a curious player reads', true),
     );
-    const dispSeg = el('div', 'seg-row');
-    for (const [v, tip] of [
-      ['friendly', 'no combat body — beyond harm'],
-      ['neutral', 'fightable, never starts it'],
-      ['hostile', 'attacks on sight'],
+    body.appendChild(sect('Identity', '', identity));
+
+    // ---------------------------------------------- temperament
+    const temper = el('div');
+    const dispCards = el('div', 'mode-cards');
+    for (const [v, label, blurb] of [
+      ['friendly', 'Friendly', 'Beyond harm — no combat body is ever built.'],
+      ['neutral', 'Neutral', 'Fightable when combat stats exist; never starts it.'],
+      ['hostile', 'Hostile', 'A named enemy — attacks on sight, combat required.'],
     ] as const) {
-      const b = el('button', 'opt-btn' + (draft.disposition === v ? ' active' : ''), v) as HTMLButtonElement;
-      b.title = tip;
-      b.onclick = () => {
+      const card = el('button', 'mode-card' + (draft.disposition === v ? ' active' : '')) as HTMLButtonElement;
+      card.type = 'button';
+      card.appendChild(el('b', '', label));
+      card.appendChild(el('span', '', blurb));
+      card.onclick = () => {
         draft.disposition = v;
+        // Keep the def coherent under the validator's laws.
+        if (v === 'friendly' && draft.combat) {
+          delete draft.combat;
+          toast('friendly folk stand beyond combat — the combat block was removed', 3600);
+        }
+        if (v === 'friendly') delete draft.protection;
+        if (v === 'hostile' && !draft.combat) {
+          draft.combat = { level: baseNpcOf(draft)?.level ?? 5 };
+          toast('hostile requires combat stats — a starter block was added below', 3600);
+        }
+        if (v === 'hostile' && draft.protection === 'untargetable') delete draft.protection;
         markDirty();
         rebuild();
       };
-      dispSeg.appendChild(b);
+      dispCards.appendChild(card);
     }
-    identity.appendChild(f('disposition', dispSeg));
-    const protSeg = el('div', 'seg-row');
-    for (const [v, l, tip] of [
-      ['', 'none', 'the disposition alone decides'],
-      ['invulnerable', 'invulnerable', '"Immune" ward — still retaliates'],
-      ['untargetable', 'untargetable', 'attacks pass through entirely'],
+    temper.appendChild(dispCards);
+
+    const protCards = el('div', 'mode-cards prot');
+    for (const [v, label, blurb] of [
+      ['', 'No ward', 'The disposition alone decides.'],
+      ['invulnerable', 'Invulnerable', 'Fights back, but every blow reads "Immune" — you cannot kill the law.'],
+      ['untargetable', 'Untargetable', 'Outside combat entirely — attacks pass straight through.'],
     ] as const) {
-      const b = el('button', 'opt-btn' + ((draft.protection ?? '') === v ? ' active' : ''), l) as HTMLButtonElement;
-      b.title = tip;
-      b.onclick = () => {
+      const active = (draft.protection ?? '') === v;
+      const card = el('button', 'mode-card' + (active ? ' active' : '')) as HTMLButtonElement;
+      card.type = 'button';
+      const blocked =
+        (draft.disposition === 'friendly' && v !== '') ||
+        (v === 'invulnerable' && !draft.combat) ||
+        (v === 'untargetable' && draft.disposition === 'hostile');
+      card.disabled = blocked;
+      card.title = blocked
+        ? draft.disposition === 'friendly'
+          ? 'friendly actors are already beyond combat'
+          : v === 'invulnerable'
+            ? 'needs a combat block — there is nothing to ward without one'
+            : 'an unstrikeable aggressor is incoherent'
+        : '';
+      card.appendChild(el('b', '', label));
+      card.appendChild(el('span', '', blurb));
+      card.onclick = () => {
         draft.protection = (v || undefined) as NpcActorDef['protection'];
         markDirty();
         rebuild();
       };
-      protSeg.appendChild(b);
+      protCards.appendChild(card);
     }
-    identity.appendChild(f('protection', protSeg, 'the safety switch over the disposition'));
-    body.appendChild(sect('Identity', '', identity));
+    temper.appendChild(el('p', 'mirror-label prot-label', 'Protection — the safety switch'));
+    temper.appendChild(protCards);
+    body.appendChild(
+      sect('Temperament', 'How the actor meets the world, and the ward over it.', temper),
+    );
 
-    // Wardrobe — slot grid with pickers; the portrait re-renders live.
+    // --------------------------------------------------- the body
+    const bodyBox = el('div');
+    const kindCards = el('div', 'mode-cards');
+    for (const [kind, label, blurb] of [
+      ['humanoid', 'A person — the player rig', 'Face, hair, heritage, and a wardrobe of real gear.'],
+      ['creature', 'A creature — a bestiary body', 'A named beast wearing any body from the bestiary.'],
+    ] as const) {
+      const card = el('button', 'mode-card' + (draft.model.kind === kind ? ' active' : '')) as HTMLButtonElement;
+      card.type = 'button';
+      card.appendChild(el('b', '', label));
+      card.appendChild(el('span', '', blurb));
+      card.onclick = () => {
+        if (draft.model.kind === kind) return;
+        if (kind === 'creature') {
+          stashedLook = { ...(draft.model as { look: Look }).look };
+          const first = stashedCreature ?? state.npcs[0]?.def.id;
+          if (!first) return;
+          draft.model = { kind: 'creature', creature: first };
+          delete draft.equipment;
+        } else {
+          stashedCreature = (draft.model as { creature: string }).creature;
+          draft.model = { kind: 'humanoid', look: { ...(stashedLook ?? DEFAULT_LOOK) } };
+        }
+        markDirty();
+        rebuild();
+      };
+      kindCards.appendChild(card);
+    }
+    bodyBox.appendChild(kindCards);
+
+    if (draft.model.kind === 'humanoid') {
+      // The Hero's Mirror — every choice repaints the stage live.
+      bodyBox.appendChild(
+        lookDesigner((draft.model as { look: Look }).look, () => {
+          markDirty();
+          refreshStage();
+        }),
+      );
+    } else {
+      const chosen = (draft.model as { creature: string }).creature;
+      const grid = el('div', 'creature-grid');
+      for (const n of state.npcs.slice().sort((a, b) => a.def.level - b.def.level)) {
+        const tile = el('button', 'creature-tile' + (chosen === n.def.id ? ' active' : '')) as HTMLButtonElement;
+        tile.type = 'button';
+        const face = el('div', 'creature-face');
+        face.appendChild(creatureRender(n.def, 84));
+        tile.appendChild(face);
+        tile.appendChild(el('b', '', n.def.name));
+        tile.appendChild(el('span', '', `lv ${n.def.level}`));
+        tile.onclick = () => {
+          (draft.model as { creature: string }).creature = n.def.id;
+          markDirty();
+          rebuild();
+        };
+        grid.appendChild(tile);
+      }
+      bodyBox.appendChild(grid);
+    }
+    body.appendChild(
+      sect(
+        'The body',
+        draft.model.kind === 'humanoid'
+          ? 'The Hero’s Mirror — the same choices players get at creation.'
+          : 'True in-game renders — pick the body this named soul wears.',
+        bodyBox,
+      ),
+    );
+
+    // --------------------------------------------------- wardrobe
     if (draft.model.kind === 'humanoid') {
       const grid = el('div', 'slot-grid');
       for (const { slot, label } of EQUIP_SLOTS) {
@@ -1263,7 +1507,18 @@ function actorDetail(body: HTMLElement, linkage: HTMLElement, slug: string): voi
               if (v) (draft.equipment as Record<string, string>)[slot] = v;
               else delete (draft.equipment as Record<string, string>)[slot];
               markDirty();
-              rebuild();
+              const img = icoBox.querySelector('img');
+              icoBox.innerHTML = '';
+              if (v) {
+                const next = img ?? document.createElement('img');
+                next.src = itemIconUrl(v, 34);
+                next.width = 34;
+                next.height = 34;
+                icoBox.appendChild(next);
+              } else {
+                icoBox.appendChild(el('span', 'note', '—'));
+              }
+              refreshStage();
             },
             '(bare)',
           ),
@@ -1271,11 +1526,221 @@ function actorDetail(body: HTMLElement, linkage: HTMLElement, slug: string): voi
         grid.appendChild(cell);
       }
       body.appendChild(
-        sect('Wardrobe', 'Worn gear renders on the portrait exactly as it will in the world.', grid),
+        sect('Wardrobe', 'Worn gear renders on the stage exactly as it will in the world.', grid),
       );
     }
 
-    // Pockets.
+    // ----------------------------------------------- combat bench
+    const bench = el('div');
+    if (draft.disposition === 'friendly') {
+      bench.appendChild(
+        el('p', 'muted empty', 'Friendly folk stand beyond combat’s reach — switch to neutral or hostile to arm them.'),
+      );
+    } else if (!draft.combat) {
+      const ghost = el('div', 'arm-card');
+      ghost.appendChild(el('b', '', 'Unarmed'));
+      ghost.appendChild(el('span', '', 'No combat block — attacks pass through this actor.'));
+      const arm = el('button', 'primary', 'Give combat stats') as HTMLButtonElement;
+      arm.onclick = () => {
+        draft.combat = { level: baseNpcOf(draft)?.level ?? 5 };
+        markDirty();
+        rebuild();
+      };
+      ghost.appendChild(arm);
+      bench.appendChild(ghost);
+    } else {
+      const combat = draft.combat;
+      const sliders = el('div', 'slider-grid');
+      sliders.appendChild(
+        statSlider({
+          label: 'combat level',
+          value: combat.level,
+          min: 1,
+          max: 126,
+          note: 'the base body is re-issued at this level',
+          onInput: (v) => {
+            combat.level = v;
+            markDirty();
+          },
+        }),
+      );
+      sliders.appendChild(
+        statSlider({
+          label: 'respawn',
+          value: combat.respawnSec ?? baseNpcOf(draft)?.respawnSec ?? 60,
+          min: 5,
+          max: 1200,
+          unit: 's',
+          note: 'delay before the post refills',
+          onInput: (v) => {
+            combat.respawnSec = v;
+            markDirty();
+          },
+        }),
+      );
+      bench.appendChild(sliders);
+
+      const baseField = el('div', 'ffield');
+      baseField.appendChild(el('span', '', 'stat chassis'));
+      const defaultBase =
+        draft.model.kind === 'creature' ? 'its own creature body' : 'the town-guard chassis';
+      baseField.appendChild(
+        combobox(
+          () => [{ id: '', label: `(default — ${defaultBase})` } as ComboOption].concat(creatureOptions()),
+          combat.base ?? '',
+          (v) => {
+            if (v) combat.base = v;
+            else delete combat.base;
+            markDirty();
+            rebuild();
+          },
+          `(default — ${defaultBase})`,
+        ),
+      );
+      baseField.appendChild(
+        el('span', 'note', 'stats derive from this bestiary body scaled to the level; overrides land on top'),
+      );
+      bench.appendChild(baseField);
+
+      // What actually walks: the derived block, live.
+      const eff = actorCombatDef(draft);
+      if (eff) {
+        const plaques = el('div', 'fact-grid');
+        const plaque = (label: string, value: string): void => {
+          const p = el('div', 'fact-plaque');
+          p.appendChild(el('span', '', label));
+          p.appendChild(el('b', '', value));
+          plaques.appendChild(p);
+        };
+        plaque('max hp', String(eff.maxHp));
+        plaque('damage', String(eff.damage));
+        plaque('dps', eff.damage > 0 ? (eff.damage / (eff.attackCooldownTicks / 20)).toFixed(1) : '0');
+        plaque('speed', `${eff.speed}`);
+        plaque('aggro', eff.aggroRange <= 0 ? '—' : `${eff.aggroRange}t`);
+        plaque('xp', String(eff.xpReward));
+        bench.appendChild(el('p', 'mirror-label prot-label', 'What actually walks — derived, overrides applied'));
+        bench.appendChild(plaques);
+      }
+
+      // Overrides — pin any stat over the derived base.
+      const ovWrap = el('div');
+      const stats = combat.stats ?? {};
+      const activeKeys = OVERRIDE_STATS.filter((s) => stats[s.key] !== undefined);
+      if (activeKeys.length > 0) {
+        const grid = el('div', 'slider-grid');
+        for (const s of activeKeys) {
+          const row = el('div', 'ov-row');
+          row.appendChild(
+            statSlider({
+              label: s.label,
+              value: stats[s.key]!,
+              min: s.min,
+              max: s.max,
+              step: s.step,
+              note: s.note,
+              onInput: (v) => {
+                combat.stats ??= {};
+                combat.stats[s.key] = v;
+                markDirty();
+              },
+            }),
+          );
+          const clear = el('button', 'mini danger', '✕') as HTMLButtonElement;
+          clear.title = 'drop the override — back to derived';
+          clear.onclick = () => {
+            if (combat.stats) delete combat.stats[s.key];
+            if (combat.stats && Object.keys(combat.stats).length === 0) delete combat.stats;
+            markDirty();
+            rebuild();
+          };
+          row.appendChild(clear);
+          grid.appendChild(row);
+        }
+        ovWrap.appendChild(grid);
+      }
+      const remaining = OVERRIDE_STATS.filter((s) => stats[s.key] === undefined);
+      if (remaining.length > 0) {
+        const addRow = el('div', 'quick-add');
+        addRow.appendChild(el('span', 'note', 'pin a stat:'));
+        addRow.appendChild(
+          combobox(
+            () => remaining.map((s) => ({ id: s.key as string, label: s.label, sub: s.note })),
+            '',
+            (key) => {
+              const spec = OVERRIDE_STATS.find((s) => (s.key as string) === key)!;
+              const current = actorCombatDef(draft);
+              combat.stats ??= {};
+              combat.stats[spec.key] = Math.min(
+                spec.max,
+                Math.max(spec.min, Number(current?.[spec.key] ?? spec.min)),
+              );
+              markDirty();
+              rebuild();
+            },
+            'override a stat…',
+          ),
+        );
+        ovWrap.appendChild(addRow);
+      }
+      bench.appendChild(el('p', 'mirror-label prot-label', 'Overrides'));
+      bench.appendChild(ovWrap);
+
+      // Death pays: the loot tables this actor rolls.
+      const lootBox = el('div');
+      const lootRow = el('div', 'chip-row');
+      for (const [i, t] of (combat.loot ?? []).entries()) {
+        const chip = el('span', 'chip on loot-chip');
+        const open = el('button', '', t) as HTMLButtonElement;
+        open.onclick = () => setSection('loot', t);
+        chip.appendChild(open);
+        const x = el('button', 'chip-x', '✕') as HTMLButtonElement;
+        x.title = 'remove this table';
+        x.onclick = () => {
+          combat.loot!.splice(i, 1);
+          if (combat.loot!.length === 0) delete combat.loot;
+          markDirty();
+          rebuild();
+        };
+        chip.appendChild(x);
+        lootRow.appendChild(chip);
+      }
+      lootBox.appendChild(lootRow);
+      const addLoot = el('div', 'quick-add');
+      addLoot.appendChild(el('span', 'note', 'add a table:'));
+      addLoot.appendChild(
+        combobox(
+          () => tableOptions().filter((o) => !(combat.loot ?? []).includes(o.id)),
+          '',
+          (v) => {
+            combat.loot ??= [];
+            combat.loot.push(v);
+            markDirty();
+            rebuild();
+          },
+          'roll another table…',
+        ),
+      );
+      lootBox.appendChild(addLoot);
+      bench.appendChild(el('p', 'mirror-label prot-label', 'Death pays'));
+      bench.appendChild(lootBox);
+
+      if (draft.disposition !== 'hostile') {
+        const disarm = el('button', 'mini danger', 'Remove combat block') as HTMLButtonElement;
+        disarm.style.marginTop = '12px';
+        disarm.onclick = () => {
+          delete draft.combat;
+          delete draft.protection;
+          markDirty();
+          rebuild();
+        };
+        bench.appendChild(disarm);
+      }
+    }
+    body.appendChild(
+      sect('Combat', 'Stats derive from a bestiary chassis scaled to the level; every number below is the real block.', bench),
+    );
+
+    // ----------------------------------------------------- pockets
     const inv = el('div');
     (draft.inventory ?? []).forEach((row, i) => {
       const r = el('div', 'inv-row');
@@ -1314,7 +1779,7 @@ function actorDetail(body: HTMLElement, linkage: HTMLElement, slug: string): voi
     inv.appendChild(addInv);
     body.appendChild(sect('Pockets', 'Carried goods — what pickpockets and trades see.', inv));
 
-    // Voice.
+    // ------------------------------------------------------- voice
     const voice = el('div');
     (draft.lines ?? []).forEach((line, i) => {
       const r = el('div', 'line-row');
@@ -1324,6 +1789,7 @@ function actorDetail(body: HTMLElement, linkage: HTMLElement, slug: string): voi
       del.appendChild(iconImg('trash', 13));
       del.onclick = () => {
         draft.lines!.splice(i, 1);
+        if (draft.lines!.length === 0) delete draft.lines;
         markDirty();
         rebuild();
       };
@@ -1336,27 +1802,81 @@ function actorDetail(body: HTMLElement, linkage: HTMLElement, slug: string): voi
     const addLine = el('button', 'mini', 'Add line') as HTMLButtonElement;
     addLine.onclick = () => {
       draft.lines ??= [];
-      draft.lines.push('');
+      draft.lines.push('…');
       markDirty();
       rebuild();
     };
     voice.appendChild(addLine);
-    body.appendChild(sect('Voice', 'Spoken lines rotate on interaction; a bound dialogue tree takes over when present.', voice));
+    body.appendChild(
+      sect('Voice', 'Spoken lines rotate on interaction; a bound dialogue tree takes over when present.', voice),
+    );
 
-    // Advanced drawer.
-    jsonBox = document.createElement('textarea');
-    jsonBox.rows = 12;
+    // ------------------------------------------------------- hooks
+    const hooks = el('div', 'fgrid');
+    const dlgField = el('div', 'ffield');
+    dlgField.appendChild(el('span', '', 'dialogue tree'));
+    dlgField.appendChild(
+      combobox(
+        () =>
+          [{ id: '', label: '(none)' } as ComboOption].concat(
+            [...DIALOGUES.keys()].sort().map((id) => ({ id, label: id })),
+          ),
+        draft.dialogue ?? '',
+        (v) => {
+          draft.dialogue = v || undefined;
+          markDirty();
+          rebuild();
+        },
+        '(none)',
+      ),
+    );
+    dlgField.appendChild(el('span', 'note', 'shipped trees listed; DB-authored trees bind by id too'));
+    hooks.appendChild(dlgField);
+    const shopField = el('div', 'ffield');
+    shopField.appendChild(el('span', '', 'shop counter'));
+    shopField.appendChild(
+      combobox(
+        () =>
+          [{ id: '', label: '(none)' } as ComboOption].concat(
+            [...SHOPS.values()].map((s) => ({ id: s.id, label: s.name, sub: `${s.stock.length} wares` })),
+          ),
+        draft.shop ?? '',
+        (v) => {
+          draft.shop = v || undefined;
+          markDirty();
+          rebuild();
+        },
+        '(none)',
+      ),
+    );
+    shopField.appendChild(el('span', 'note', 'talking opens these wares'));
+    hooks.appendChild(shopField);
+    body.appendChild(sect('Hooks', 'What talking to them opens.', hooks));
+
+    // ---------------------------------------------- the JSON drawer
+    const jsonBox = document.createElement('textarea');
+    jsonBox.rows = 14;
     jsonBox.style.width = '100%';
     jsonBox.value = JSON.stringify(draft, null, 2);
-    jsonBox.oninput = () => markDirty();
+    const apply = el('button', 'mini', 'Apply JSON to the editor') as HTMLButtonElement;
+    apply.onclick = () => {
+      try {
+        const parsed = JSON.parse(jsonBox.value) as NpcActorDef;
+        parsed.id = draft.id;
+        Object.keys(draft).forEach((k) => delete (draft as unknown as Record<string, unknown>)[k]);
+        Object.assign(draft, parsed);
+        markDirty();
+        rebuild();
+        toast('JSON applied — review and Save ▸ Live', 3000);
+      } catch (err) {
+        toast(`definition JSON: ${(err as Error).message}`, 4200, 'error');
+      }
+    };
     const wrap = el('div');
     wrap.appendChild(jsonBox);
+    wrap.appendChild(apply);
     wrap.appendChild(
-      el(
-        'p',
-        'muted',
-        'Look palette, combat stats and loot, dialogue and shop hooks. The structured sections above win where they overlap; the one validator checks every reference on save.',
-      ),
+      el('p', 'muted', 'The full definition, exactly what saves. Paste a def and apply to load it into the structured editor; the slug stays.'),
     );
     const details = document.createElement('details');
     const summary = document.createElement('summary');
@@ -1367,7 +1887,7 @@ function actorDetail(body: HTMLElement, linkage: HTMLElement, slug: string): voi
     detSect.appendChild(details);
     body.appendChild(detSect);
 
-    // Linkage.
+    // ----------------------------------------------------- linkage
     const posts = state.sites.actors.filter((a) => a.actor === slug);
     linkHead(linkage, 'actor', 'Posted at', posts.length);
     if (posts.length === 0) emptyLink(linkage, 'No posts. Place this actor in Map Studio.');
@@ -1384,6 +1904,15 @@ function actorDetail(body: HTMLElement, linkage: HTMLElement, slug: string): voi
     linkHead(linkage, 'prefab', 'Drops', lootTables.length);
     if (lootTables.length === 0) emptyLink(linkage, 'No combat loot.');
     for (const t of lootTables) linkRow(linkage, t, '', () => setSection('loot', t));
+    if (draft.shop) {
+      const shop = SHOPS.get(draft.shop);
+      linkHead(linkage, 'structure', 'Sells', shop?.stock.length ?? 0);
+      linkRow(linkage, shop?.name ?? draft.shop, `${shop?.stock.length ?? '?'} wares`, null);
+    }
+    if (draft.dialogue) {
+      linkHead(linkage, 'actor', 'Speaks');
+      linkRow(linkage, draft.dialogue, 'dialogue tree', null);
+    }
   };
   build();
 }

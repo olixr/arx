@@ -19,6 +19,7 @@ import {
   type SpawnSites,
   type ZoneRect,
 } from './api.js';
+import { openActorWizard } from './actorWizard.js';
 import { buildDetail, newLootTable, newNpcDef } from './editors.js';
 import { creatureRender } from './gameRender.js';
 import { actorBust } from './portraits.js';
@@ -247,6 +248,13 @@ function npcIco(def: NpcDef): HTMLElement {
 }
 
 function actorIco(def: NpcActorDef): HTMLElement | null {
+  if (def.model.kind === 'creature') {
+    const base = state.npcs.find((n) => n.def.id === (def.model as { creature: string }).creature);
+    if (!base) return null;
+    const canvas = creatureRender(base.def, 26);
+    canvas.className = 'ico';
+    return canvas;
+  }
   const bust = actorBust(def, 26);
   if (!bust) return null;
   bust.className = 'ico';
@@ -402,12 +410,18 @@ $('list-search').addEventListener('input', () => {
 });
 
 $('btn-new-entry').onclick = () => {
+  if (state.section === 'actors') {
+    // Actors get the full foundry — identity, then a body: the
+    // Hero's Mirror or a bestiary pick, all live-rendered.
+    if (state.dirty && !window.confirm('Discard unsaved changes?')) return;
+    state.dirty = false;
+    openActorWizard();
+    return;
+  }
   const id = window.prompt(
     state.section === 'npcs'
       ? 'New creature id (lowercase, e.g. bog_fiend):'
-      : state.section === 'loot'
-        ? 'New loot table id (lowercase, e.g. bog_fiend_drops):'
-        : 'New actor slug (lowercase, e.g. herbalist_mira):',
+      : 'New loot table id (lowercase, e.g. bog_fiend_drops):',
   );
   if (!id) return;
   if (!/^[a-z][a-z0-9_]*$/.test(id)) {
@@ -426,9 +440,6 @@ $('btn-new-entry').onclick = () => {
       return;
     }
     state.loot.push({ def: newLootTable(id), edited: true, authored: false });
-  } else if (state.section === 'actors') {
-    toast('Clone an existing actor: open one, change its slug, save.', 4200);
-    return;
   }
   select(id);
   markDirty();

@@ -1491,3 +1491,470 @@ details[open] > summary {
   flex-shrink: 0;
   font-family: ui-monospace, Menlo, monospace;
 }
+
+/* ------------------------------------------------- the actor stage */
+
+.stage-flex {
+  display: flex;
+  gap: 22px;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.stage-well {
+  flex: 0 0 auto;
+  background:
+    radial-gradient(ellipse 62% 20% at 50% 84%, rgba(232, 163, 61, 0.14), transparent 70%),
+    linear-gradient(180deg, #171126 0%, #0d0916 100%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  padding: 10px 26px 4px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.stage-art {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.fact-col {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+}
+
+.fact-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  border-bottom: 1px dashed var(--line-soft);
+  padding-bottom: 6px;
+}
+
+.fact-label {
+  flex: 0 0 84px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--ink-dim);
+}
+
+.fact-value {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.fact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.fact-plaque {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fact-plaque span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--ink-dim);
+}
+
+.fact-plaque b {
+  font-size: 16px;
+  color: var(--brass);
+}
+
+/* ----------------------------------------------- the Hero's Mirror */
+
+.mirror {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.mirror-row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.mirror-label,
+.prot-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  color: var(--ink-dim);
+  margin: 0;
+}
+
+.prot-label {
+  margin: 14px 0 8px;
+}
+
+.heritage-row {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.heritage-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: auto;
+  gap: 5px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: 9px 12px 8px;
+  cursor: pointer;
+  color: var(--ink-mid);
+  min-width: 78px;
+}
+
+.heritage-card:hover {
+  border-color: var(--brass-soft);
+  color: var(--ink);
+}
+
+.heritage-card b {
+  font-size: 11.5px;
+}
+
+.heritage-face {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #0d0916;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dice-face {
+  font-size: 24px;
+  color: var(--brass);
+  font-weight: 700;
+}
+
+.swatch-row {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--swatch);
+  border: 2px solid rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  padding: 0;
+  box-shadow: inset 0 -4px 8px rgba(0, 0, 0, 0.25);
+}
+
+.swatch:hover {
+  transform: scale(1.12);
+}
+
+.swatch.active {
+  border-color: var(--brass);
+  outline: 2px solid var(--brass-soft);
+  outline-offset: 1px;
+}
+
+.style-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.style-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: auto;
+  gap: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: 7px 9px 6px;
+  cursor: pointer;
+  color: var(--ink-dim);
+  min-width: 64px;
+}
+
+.style-tile:hover {
+  border-color: var(--brass-soft);
+  color: var(--ink-mid);
+}
+
+.style-tile.active {
+  border-color: var(--brass);
+  background: rgba(232, 163, 61, 0.09);
+  color: var(--ink);
+}
+
+.style-face {
+  width: 46px;
+  height: 46px;
+  border-radius: 8px;
+  background: #0d0916;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.style-name {
+  font-size: 10.5px;
+}
+
+/* -------------------------------------------- creature body picker */
+
+.creature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.creature-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: auto;
+  gap: 3px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: 9px 6px 8px;
+  cursor: pointer;
+  color: var(--ink-mid);
+}
+
+.creature-tile:hover {
+  border-color: var(--brass-soft);
+}
+
+.creature-tile.active {
+  border-color: var(--brass);
+  background: rgba(232, 163, 61, 0.09);
+  color: var(--ink);
+}
+
+.creature-tile b {
+  font-size: 11.5px;
+  text-align: center;
+}
+
+.creature-tile > span {
+  font-size: 10px;
+  color: var(--ink-dim);
+}
+
+.creature-face {
+  width: 84px;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* -------------------------------------------------- combat bench */
+
+.arm-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  background: repeating-linear-gradient(
+      -45deg,
+      transparent 0 10px,
+      rgba(143, 132, 153, 0.05) 10px 20px
+    ),
+    var(--panel-2);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-m);
+  padding: 14px 16px;
+}
+
+.arm-card b {
+  color: var(--ink-mid);
+}
+
+.arm-card span {
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.arm-card button {
+  margin-top: 4px;
+}
+
+.ov-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.ov-row .stat-field {
+  flex: 1;
+}
+
+.ov-row .mini {
+  margin-bottom: 8px;
+}
+
+.mode-cards.prot .mode-card:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.loot-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.loot-chip button {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+
+.chip-x {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.chip-x:hover {
+  opacity: 1;
+  color: var(--danger);
+}
+
+/* ------------------------------------------------ the actor foundry */
+
+#modal {
+  min-width: 640px;
+  max-width: 940px;
+  width: min(92vw, 940px);
+}
+
+.wiz-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.wiz-head h2 {
+  margin: 0;
+}
+
+.wiz-close {
+  background: none;
+  border: none;
+  color: var(--ink-dim);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.wiz-close:hover {
+  color: var(--ink);
+}
+
+.wiz-steps {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--ink-dim);
+  margin-bottom: 16px;
+  white-space: pre;
+}
+
+.wiz-name {
+  font-size: 16px;
+  padding: 9px 12px;
+}
+
+.wiz-gap {
+  margin: 16px 0 8px;
+}
+
+.wiz-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.wiz-mirror {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.wiz-stage {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background:
+    radial-gradient(ellipse 62% 18% at 50% 86%, rgba(232, 163, 61, 0.14), transparent 70%),
+    linear-gradient(180deg, #171126 0%, #0d0916 100%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  padding: 14px 12px 12px;
+}
+
+.wiz-stage-art {
+  min-height: 224px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.wiz-stage-name {
+  font-size: 14px;
+  color: var(--brass);
+}
+
+.note.bad {
+  color: var(--danger);
+}
+
+@media (max-width: 900px) {
+  .wiz-mirror {
+    grid-template-columns: 1fr;
+  }
+  #modal {
+    min-width: 0;
+  }
+}

@@ -268,13 +268,25 @@ function paintLegless(ctx: CanvasRenderingContext2D, px: number, def: NpcDef): v
 const creatureCache = new Map<string, HTMLCanvasElement>();
 
 /**
+ * A canvas is a DOM node with one parent — handing the cached element
+ * to two mounts would silently move it. Callers get a pixel copy.
+ */
+function displayCopy(src: HTMLCanvasElement): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = src.width;
+  c.height = src.height;
+  c.getContext('2d')!.drawImage(src, 0, 0);
+  return c;
+}
+
+/**
  * A creature exactly as the game draws it: its own body painter,
  * standing, facing the camera, wearing the world's outline ring.
  */
 export function creatureRender(def: NpcDef, size = 176): HTMLCanvasElement {
   const key = `${size}:${def.id}:${def.color}:${def.radius}:${def.speed}`;
   const hit = creatureCache.get(key);
-  if (hit) return hit;
+  if (hit) return displayCopy(hit);
   if (creatureCache.size > 200) creatureCache.clear();
   const canvas = ringComposite(size, (ctx, px) => {
     try {
@@ -287,7 +299,7 @@ export function creatureRender(def: NpcDef, size = 176): HTMLCanvasElement {
     }
   });
   creatureCache.set(key, canvas);
-  return canvas;
+  return displayCopy(canvas);
 }
 
 export { ringComposite };
