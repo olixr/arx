@@ -4453,10 +4453,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const sep = headR * (0.42 - 0.16 * profileK);
     const eyeStyle = rig.look?.eyes ?? 0;
     const feature = rig.look?.feature ?? 0;
-    // The far side of anything on the face narrows through
-    // three-quarter and disappears around the corner at profile.
+    // WIDTH IS NEVER A TURN CUE: the pair slide (pairX) and the
+    // narrowing separation carry the turned-face read — both eyes
+    // keep their full width through the three-quarter band (a half-
+    // squished eye reads as broken, not as perspective). The far side
+    // only collapses in the last stretch before profile, where it
+    // genuinely rounds the corner of the skull and vanishes.
     const sideK = (es: number): number =>
-      es !== lead ? Math.max(0, 1 - Math.max(0, (profileK - 0.5) / 0.28)) : 1;
+      es !== lead
+        ? Math.max(0, Math.min(1, 1 - (profileK - 0.78) / 0.19))
+        : 1;
 
     // The scar rides UNDER the eye slit, so the slash reads as
     // crossing it — always on the leading side of the face.
