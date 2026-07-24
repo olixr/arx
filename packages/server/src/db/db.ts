@@ -439,6 +439,28 @@ const MIGRATIONS: string[] = [
   ALTER TABLE npc_actors ADD COLUMN authored_hash TEXT;
   UPDATE npc_actors SET authored_hash = content_hash;
   `,
+  // 25 — the world_pois ledger: the procedural POI system stores only
+  // DEVIATIONS from determinism (the ledger-records-deviations law).
+  // A decided cell is written once — poi_id NULL means "decided
+  // empty", so it never re-rolls by accident; epoch is the
+  // regeneration lever (bumping it re-rolls the cell on fresh RNG
+  // streams); cleared_at records the last full garrison wipe for the
+  // phase-3 fallow sweep.
+  `
+  CREATE TABLE world_pois (
+    cell_x INTEGER NOT NULL,
+    cell_y INTEGER NOT NULL,
+    epoch INTEGER NOT NULL DEFAULT 0,
+    poi_id TEXT,
+    prefab_id TEXT,
+    tier INTEGER,
+    anchor_x INTEGER,
+    anchor_y INTEGER,
+    first_seen_at INTEGER NOT NULL,
+    cleared_at INTEGER,
+    PRIMARY KEY (cell_x, cell_y)
+  );
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

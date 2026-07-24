@@ -255,6 +255,63 @@ export class AccountStore {
     this.db.prepare('DELETE FROM built_tiles WHERE tx = ? AND ty = ?').run(tx, ty);
   }
 
+  // --------------------------------------------- world_pois ledger
+
+  loadPoiCells(): Array<{
+    cellX: number;
+    cellY: number;
+    epoch: number;
+    poiId: string | null;
+    prefabId: string | null;
+    tier: number | null;
+    anchorX: number | null;
+    anchorY: number | null;
+    clearedAt: number | null;
+  }> {
+    return this.db
+      .prepare(
+        'SELECT cell_x AS cellX, cell_y AS cellY, epoch, poi_id AS poiId, ' +
+          'prefab_id AS prefabId, tier, anchor_x AS anchorX, anchor_y AS anchorY, ' +
+          'cleared_at AS clearedAt FROM world_pois',
+      )
+      .all() as ReturnType<AccountStore['loadPoiCells']>;
+  }
+
+  /** Record a decided cell (poiId null = decided empty). Write-once per epoch. */
+  recordPoiCell(
+    cellX: number,
+    cellY: number,
+    epoch: number,
+    site: { poiId: string; prefabId: string; tier: number; anchorX: number; anchorY: number } | null,
+  ): void {
+    this.db
+      .prepare(
+        'INSERT INTO world_pois (cell_x, cell_y, epoch, poi_id, prefab_id, tier, anchor_x, anchor_y, first_seen_at, cleared_at) ' +
+          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL) ' +
+          'ON CONFLICT(cell_x, cell_y) DO UPDATE SET epoch = excluded.epoch, ' +
+          'poi_id = excluded.poi_id, prefab_id = excluded.prefab_id, tier = excluded.tier, ' +
+          'anchor_x = excluded.anchor_x, anchor_y = excluded.anchor_y, cleared_at = NULL',
+      )
+      .run(
+        cellX,
+        cellY,
+        epoch,
+        site?.poiId ?? null,
+        site?.prefabId ?? null,
+        site?.tier ?? null,
+        site?.anchorX ?? null,
+        site?.anchorY ?? null,
+        Date.now(),
+      );
+  }
+
+  /** Stamp the last full garrison wipe (the phase-3 fallow sweep reads it). */
+  markPoiCleared(cellX: number, cellY: number): void {
+    this.db
+      .prepare('UPDATE world_pois SET cleared_at = ? WHERE cell_x = ? AND cell_y = ?')
+      .run(Date.now(), cellX, cellY);
+  }
+
   loadCrops(): Array<{
     tx: number;
     ty: number;

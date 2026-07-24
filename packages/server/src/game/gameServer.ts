@@ -108,7 +108,22 @@ import {
   type ZoneDef,
   type RecipeDef,
   type WeaponStats,
+  type PrefabDef,
+  POI_DEFS,
+  SETTLED_ANCHORS,
+  dangerTierAt,
 } from '@devcraft/content';
+import {
+  POI_CELL,
+  composePoi,
+  loadPoiPrefabs,
+  poiCellKey,
+  poiCellOf,
+  poiContext,
+  poiForCell,
+  type PoiSite,
+} from '../world/pois.js';
+import { DARK_BAND_Y } from '../world/worldgen.js';
 import {
   COMBO_GRACE_TICKS,
   COMBO_STAGES,
@@ -914,6 +929,17 @@ export class GameServer {
   /** Active per-character dungeon instances. */
   private readonly dungeons = new Map<number, DungeonInstance>();
   private nextDungeonSlot = 0;
+
+  // ------------------------------------------------- procedural POIs
+
+  /** Ledger cache by cell key: decided cells (site null = decided empty). */
+  private readonly poiLedger = new Map<string, { epoch: number; site: PoiSite | null }>();
+  /** Cells handled this uptime (live zone or decided empty). */
+  private readonly poiLive = new Map<string, { zoneId?: string; spawnIdx: number[] }>();
+  /** spawnPoints index → owning POI cell key (cleared-wipe detection). */
+  private readonly poiSpawnCells = new Map<number, string>();
+  /** POI prefab library; null until initPois — tickPois no-ops before boot wiring. */
+  private poiPrefabs: Map<string, PrefabDef> | null = null;
 
   constructor(
     // Public: the dev maps API reads the live zone list off it.
@@ -2627,6 +2653,162 @@ export class GameServer {
         for (const s of this.sessions) s.knownChunks.delete(key);
       }
     }
+  }
+
+  // ------------------------------------------------- procedural POIs
+
+  /**
+   * Boot wiring: load the prefab library (seeding data/prefabs with
+   * any missing builtins) and warm the ledger cache. Until this runs,
+   * tickPois no-ops — unit tests that construct a bare GameServer
+   * never touch the filesystem.
+   */
+  initPois(rows: ReturnType<AccountStore['loadPoiCells']>): void {
+    this.poiPrefabs = loadPoiPrefabs(config.dataDir);
+    let sites = 0;
+    for (const row of rows) {
+      const site: PoiSite | null =
+        row.poiId !== null && row.prefabId !== null
+          ? {
+              cellX: row.cellX,
+              cellY: row.cellY,
+              epoch: row.epoch,
+              tier: row.tier ?? 1,
+              defId: row.poiId,
+              prefabId: row.prefabId,
+              anchorX: row.anchorX ?? 0,
+              anchorY: row.anchorY ?? 0,
+            }
+          : null;
+      if (site) sites++;
+      this.poiLedger.set(poiCellKey(row.cellX, row.cellY), { epoch: row.epoch, site });
+    }
+    console.log(
+      `[poi] ledger: ${rows.length} cells decided (${sites} sites) · ` +
+        `${this.poiPrefabs.size} prefabs in the library`,
+    );
+  }
+
+  /**
+   * The slow pass (every 20 ticks): find the first undecided cell
+   * within any player's padded interest window and materialize it —
+   * at most ONE cell per pass (the sliced-job law), so a sprinting
+   * scout never stalls the tick.
+   */
+  private tickPois(): void {
+    if (!this.poiPrefabs) return;
+    const pad = (INTEREST_CHUNK_RADIUS + 2) * CHUNK_SIZE;
+    for (const session of this.sessions) {
+      if (session.playerEid === null) continue;
+      const pos = this.positions.get(session.playerEid);
+      if (!pos || pos.y >= DARK_BAND_Y) continue; // the underworld has its own generator
+      const c0x = poiCellOf(pos.x - pad);
+      const c1x = poiCellOf(pos.x + pad);
+      const c0y = poiCellOf(pos.y - pad);
+      const c1y = poiCellOf(pos.y + pad);
+      for (let cy = c0y; cy <= c1y; cy++) {
+        for (let cx = c0x; cx <= c1x; cx++) {
+          if (this.poiLive.has(poiCellKey(cx, cy))) continue;
+          this.materializePoiCell(cx, cy);
+          return;
+        }
+      }
+    }
+  }
+
+  /**
+   * Decide (or recall) a cell and stand its POI up as a tiny zone
+   * through the SAME machinery authored zones use: addZone + client
+   * chunk drop + tagged registerSpawns — retire is free by
+   * construction. The ledger records the decision (deviations only:
+   * settled tier-0 cells are skipped, they can never host a POI).
+   */
+  private materializePoiCell(
+    cellX: number,
+    cellY: number,
+    opts: { force?: string | true; epoch?: number } = {},
+  ): PoiSite | null {
+    if (!this.poiPrefabs) return null;
+    const key = poiCellKey(cellX, cellY);
+    const ctx = poiContext(SETTLED_ANCHORS, this.world.zoneDefs, this.poiPrefabs);
+    let row = this.poiLedger.get(key);
+    if (!row || opts.epoch !== undefined) {
+      const epoch = opts.epoch ?? 0;
+      const site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx, opts.force);
+      row = { epoch, site };
+      // Deviations only: a settled cell writes no row (it is 0 by law).
+      const centerTier = dangerTierAt(
+        config.worldSeed,
+        cellX * POI_CELL + POI_CELL / 2,
+        cellY * POI_CELL + POI_CELL / 2,
+      );
+      if (site !== null || centerTier > 0) {
+        this.accounts.recordPoiCell(
+          cellX,
+          cellY,
+          epoch,
+          site && {
+            poiId: site.defId,
+            prefabId: site.prefabId,
+            tier: site.tier,
+            anchorX: site.anchorX,
+            anchorY: site.anchorY,
+          },
+        );
+        this.poiLedger.set(key, row);
+      }
+    }
+    if (!row.site) {
+      this.poiLive.set(key, { spawnIdx: [] });
+      return null;
+    }
+    const zone = composePoi(config.worldSeed, row.site, ctx);
+    if (!zone) {
+      // A ledger row referencing retired content — stand nothing, keep
+      // the row (an edit or revert can bring it back).
+      console.warn(`[poi] cell ${key}: cannot compose '${row.site.defId}' — content missing`);
+      this.poiLive.set(key, { spawnIdx: [] });
+      return null;
+    }
+    this.world.addZone(zone);
+    this.dropClientChunks(zone);
+    const spawnIdx = this.registerSpawns(zone.spawns ?? [], zone.id);
+    for (const i of spawnIdx) this.poiSpawnCells.set(i, key);
+    this.poiLive.set(key, { zoneId: zone.id, spawnIdx });
+    console.log(
+      `[poi] ${row.site.defId} (${row.site.prefabId}) stands at ` +
+        `${row.site.anchorX},${row.site.anchorY} — tier ${row.site.tier}`,
+    );
+    return row.site;
+  }
+
+  /**
+   * Garrison-wipe watch: when the LAST living body of a POI's spawn
+   * set falls, stamp cleared_at — the phase-3 fallow sweep reads it.
+   * Respawns refill on their own clocks; a later re-wipe re-stamps
+   * (the ledger keeps the LATEST clear).
+   */
+  private notePoiKill(spawnIndex: number): void {
+    const key = this.poiSpawnCells.get(spawnIndex);
+    if (key === undefined) return;
+    const live = this.poiLive.get(key);
+    if (!live) return;
+    for (const i of live.spawnIdx) {
+      const s = this.spawnPoints[i];
+      if (s?.active && s.eid !== null) return;
+    }
+    const [cx, cy] = key.split(',').map(Number);
+    this.accounts.markPoiCleared(cx!, cy!);
+  }
+
+  /** Retire a cell's standing zone + bodies (the /poi levers ride this). */
+  private retirePoiCell(key: string): void {
+    const live = this.poiLive.get(key);
+    if (live?.zoneId) {
+      this.unloadZone(live.zoneId);
+      for (const i of live.spawnIdx) this.poiSpawnCells.delete(i);
+    }
+    this.poiLive.delete(key);
   }
 
   // ------------------------------------------------- portals & dungeons
@@ -5477,6 +5659,7 @@ export class GameServer {
     if (spawn) {
       spawn.eid = null;
       spawn.respawnAt = Date.now() + NPCS.get(spawn.npc)!.respawnSec * 1000;
+      this.notePoiKill(npc.spawnIndex);
     }
     // A slain actor's post refills on the synthesized def's clock.
     const actorComp = this.actors.get(npcEid);
@@ -7004,6 +7187,82 @@ export class GameServer {
       });
       return;
     }
+    if (config.devCommands && text.startsWith('/danger')) {
+      // /danger — the field readout at your feet: tier, cell, ledger.
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      const tx = Math.floor(pos.x);
+      const ty = Math.floor(pos.y);
+      const tier = dangerTierAt(config.worldSeed, tx, ty);
+      const cx = poiCellOf(tx);
+      const cy = poiCellOf(ty);
+      const row = this.poiLedger.get(poiCellKey(cx, cy));
+      const state =
+        row === undefined ? 'undecided'
+        : row.site === null ? `decided empty (epoch ${row.epoch})`
+        : `${row.site.defId} at ${row.site.anchorX},${row.site.anchorY} (epoch ${row.epoch})`;
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `Danger tier ${tier} · cell ${cx},${cy} · ${state}.`,
+      });
+      return;
+    }
+    if (config.devCommands && text.startsWith('/poi')) {
+      // /poi info — this cell's state.
+      // /poi here [archetype] — force-materialize the current cell.
+      // /poi reroll — retire the cell and re-roll it at epoch+1.
+      const [, sub, arg] = text.split(/\s+/);
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      const cx = poiCellOf(pos.x);
+      const cy = poiCellOf(pos.y);
+      const key = poiCellKey(cx, cy);
+      const say = (t: string) =>
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      if (sub === 'here') {
+        const live = this.poiLive.get(key);
+        if (live?.zoneId) {
+          say(`Cell ${key} already hosts '${live.zoneId}' — /poi reroll to replace it.`);
+          return;
+        }
+        this.poiLive.delete(key);
+        this.poiLedger.delete(key);
+        const site = this.materializePoiCell(cx, cy, { force: arg ?? true, epoch: 0 });
+        say(
+          site
+            ? `${site.defId} (${site.prefabId}) stands at ${site.anchorX},${site.anchorY}.`
+            : arg !== undefined && !POI_DEFS.some((d) => d.id === arg)
+              ? `Unknown archetype '${arg}' — ${POI_DEFS.map((d) => d.id).join(', ')}.`
+              : 'No suitable ground in this cell (settled, water, or broken terrain).',
+        );
+        return;
+      }
+      if (sub === 'reroll') {
+        const epoch = (this.poiLedger.get(key)?.epoch ?? 0) + 1;
+        this.retirePoiCell(key);
+        this.poiLedger.delete(key);
+        const site = this.materializePoiCell(cx, cy, { epoch });
+        say(
+          site
+            ? `Epoch ${epoch}: ${site.defId} stands at ${site.anchorX},${site.anchorY}.`
+            : `Epoch ${epoch}: the cell rolled empty.`,
+        );
+        return;
+      }
+      const row = this.poiLedger.get(key);
+      const live = this.poiLive.get(key);
+      say(
+        `Cell ${key}: ` +
+          (row === undefined ? 'undecided' :
+            row.site === null ? `decided empty (epoch ${row.epoch})` :
+            `${row.site.defId} (${row.site.prefabId}) tier ${row.site.tier} at ` +
+            `${row.site.anchorX},${row.site.anchorY}, epoch ${row.epoch}`) +
+          (live?.zoneId ? ' · standing' : '') +
+          ' — /poi here [archetype] · /poi reroll',
+      );
+      return;
+    }
     if (config.devCommands && text.startsWith('/spawnchest')) {
       // /spawnchest [wood|iron|gilded|mossy] — a closed chest on the
       // nearest open tile beside the caller. Transient (not a built
@@ -7084,6 +7343,7 @@ export class GameServer {
     this.tickDrops(now);
     this.tickRegen(now);
     if (this.tickCount % 40 === 0) this.tickCrops(now);
+    if (this.tickCount % 20 === 0) this.tickPois();
 
     // Respawn depleted nodes (and pull forgotten doors to).
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
