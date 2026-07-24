@@ -1283,48 +1283,64 @@ export function paintRibcage(
 }
 
 /* ========================== THE SCALE DIALECT ==========================
- * Kobolds are NOT reskinned villagers. When RigPose.kobold is set, the
- * flesh head swaps for a wedge-skulled draconic muzzle with candle
- * eyes and backswept horn ribbons, a live tail rides the torso frame,
- * and the bare feet grow claws — while the IK rig, weapon carriage,
- * and all eight facing bands keep working untouched. Each variant is
- * its own DESIGN, never a scale-up: the russet rank-and-file digger
- * with its bronze pick, and the digmaster's oxblood bulk under an
- * ember crest sail that runs from crown to tail.
+ * Kobolds are NOT small villagers with horns and a tail. When
+ * RigPose.kobold is set, the flesh head swaps for a hunched tunnel-rat
+ * skull — a low cranium sunk into the shoulders under two big dish
+ * ears, a LONG drooping snout ending in a bare nose pad with whiskers
+ * and buck incisors, and a lit tallow candle seated on the crown (a
+ * miner carries its own light). The body hunches with it: the torso
+ * tips forward, the head hangs low and thrust ahead over a bent
+ * shoulder hump, a naked tail rides the hip, and the bare feet grow
+ * claws — while the IK rig, weapon carriage, and all eight facing
+ * bands keep working untouched. Each variant is its own DESIGN, never
+ * a scale-up: the dusty rank-and-file digger under one candle, and
+ * the digmaster's dark bulk under a ragged mane and a three-candle
+ * crown.
  */
 export interface KoboldLook {
-  /** Scale-hide base — each variant weathered its own tunnel. */
+  /** Hide base — each variant weathered its own tunnel. */
   hide: string;
-  /** Pale under-scale: jaw, muzzle underside, the tail's low edge. */
+  /** Pale under-hide: jaw, muzzle underside, the tail's low edge. */
   belly: string;
-  /** The candle-eye — a lit iris that must OWN the socket (glow law). */
+  /** The candle-lit eye bead — small, bright, watching. */
   eye: string;
-  /** Keratin of horns and claws. */
-  horn: string;
-  /** The digmaster's sail: ember membrane crown-to-tail; undefined = none. */
-  crest?: string;
-  /** Frame multiplier: jaw mass, horn girth, tail thickness. */
+  /** The bare nose pad at the snout tip. */
+  nose: string;
+  /** Tallow of the crown candles. */
+  wax: string;
+  /** Ragged mane shag over crown and nape; undefined = bald hide. */
+  mane?: string;
+  /** Crown candles: the digger carries one, the digmaster three. */
+  candles: number;
+  /** Frame multiplier: jaw mass, ear dish, tail girth. */
   heavy: number;
 }
 
+/** The inner ear membrane — thin skin, always flesh-pink. */
+const KOBOLD_EAR_INNER = '#c78e7f';
+
 export const KOBOLD_LOOKS: Record<string, KoboldLook> = {
-  // The rank-and-file digger: russet scales dusted quarry-pale, amber
-  // candle eyes, short dark horns — a coward alone, a warren together.
+  // The rank-and-file digger: dusty tan hide, one stub of candle,
+  // whiskers full of rock dust — a coward alone, a warren together.
   kobold: {
-    hide: '#9a5c3c',
-    belly: '#d9b98c',
-    eye: '#ffc23d',
-    horn: '#4e4038',
+    hide: '#9c6a4a',
+    belly: '#d8bf9a',
+    eye: '#f0b93a',
+    nose: '#43302c',
+    wax: '#e9dcc2',
+    candles: 1,
     heavy: 1,
   },
-  // The digmaster: oxblood hide gone dark in the delve air, hot gold
-  // eyes, heavy horns, and the ember sail — the warren's one banner.
+  // The digmaster: dark umber hide, a ragged slate mane, and a crown
+  // of three candles — the warren's one walking chandelier.
   kobold_digmaster: {
-    hide: '#7a3a30',
-    belly: '#c9a878',
+    hide: '#6f4838',
+    belly: '#c2a480',
     eye: '#ffd24a',
-    horn: '#382d26',
-    crest: '#d9622e',
+    nose: '#352624',
+    wax: '#e9dcc2',
+    mane: '#4a4252',
+    candles: 3,
     heavy: 1.3,
   },
 };
@@ -1335,11 +1351,11 @@ export function koboldLook(defId: string): KoboldLook {
 }
 
 /**
- * A tapered filled ribbon along a quadratic spine — the horn/tail law
- * learned on the ram: curved keratin and muscle read as carved MASS
- * only when drawn as a filled shape with an outline, never as a
- * stroke chain. Width tapers base→tip; returns the sampled spine so
- * callers can seat ridge chips or growth ribs on it.
+ * A tapered filled ribbon along a quadratic spine — the law learned on
+ * the ram's horns: curved mass reads as carved form only when drawn as
+ * a filled shape with an outline, never as a stroke chain. Width
+ * tapers base→tip; returns the sampled spine so callers can seat
+ * details on it.
  */
 export function scaleRibbon(
   ctx: CanvasRenderingContext2D,
@@ -1404,13 +1420,100 @@ export interface KoboldHeadFrame {
 }
 
 /**
+ * One crown candle: a wax stub with a drip, a wick, and a live flame
+ * that flickers on the wall clock — plus the warm glow that must OWN
+ * its halo (the skeleton epic's law: a small tint reads as nothing).
+ * Drawn at every facing: the light rides the top of the head.
+ */
+function paintCandle(
+  ctx: CanvasRenderingContext2D,
+  kb: KoboldLook,
+  cx: number,
+  cy: number,
+  w: number,
+  h: number,
+  hh: number,
+  nowMs: number,
+  phase: number,
+  hurt: boolean,
+): void {
+  const wax = hurt ? '#ffffff' : kb.wax;
+  // The stub, wax rim, and one drip running down the side.
+  ctx.fillStyle = wax;
+  ctx.beginPath();
+  chamferRect(ctx, cx - w / 2, cy - h, w, h, w * 0.16);
+  ctx.fill();
+  if (!hurt) {
+    ctx.fillStyle = shade(kb.wax, -12);
+    ctx.fillRect(cx, cy - h, w / 2, h);
+    ctx.fillStyle = shade(kb.wax, 8);
+    ctx.fillRect(cx - w / 2, cy - h, w, h * 0.18);
+    ctx.beginPath();
+    ctx.arc(cx - w * 0.34, cy - h * 0.35, w * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // The flame: glow halo first, then the outer tongue and hot core,
+  // swaying on the clock so every candle burns out of step.
+  const sway = Math.sin(nowMs * 0.008 + phase) * hh * 0.05;
+  const rise = 1 + Math.sin(nowMs * 0.013 + phase * 1.7) * 0.12;
+  const fxp = cx + sway;
+  const fyp = cy - h - hh * 0.06;
+  if (!hurt) {
+    ctx.globalAlpha = 0.24;
+    ctx.fillStyle = '#ffb64a';
+    ctx.beginPath();
+    ctx.arc(fxp, fyp - hh * 0.08, hh * 0.34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  ctx.strokeStyle = '#3a2d28';
+  ctx.lineWidth = Math.max(1, hh * 0.03);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - h);
+  ctx.lineTo(fxp, fyp + hh * 0.05);
+  ctx.stroke();
+  ctx.fillStyle = hurt ? '#ffffff' : '#ff9a3d';
+  ctx.beginPath();
+  ctx.moveTo(fxp - hh * 0.075, fyp + hh * 0.05);
+  ctx.quadraticCurveTo(fxp - hh * 0.09, fyp - hh * 0.1 * rise, fxp, fyp - hh * 0.22 * rise);
+  ctx.quadraticCurveTo(fxp + hh * 0.09, fyp - hh * 0.1 * rise, fxp + hh * 0.075, fyp + hh * 0.05);
+  ctx.closePath();
+  ctx.fill();
+  if (!hurt) {
+    ctx.fillStyle = '#ffe9a8';
+    ctx.beginPath();
+    ctx.arc(fxp, fyp - hh * 0.02, hh * 0.055 * rise, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+/** The crown candles, seated just behind the skull's high point. */
+function paintCandleCrown(
+  ctx: CanvasRenderingContext2D,
+  kb: KoboldLook,
+  f: KoboldHeadFrame,
+  crTop: number,
+): void {
+  const { headX, hw, hh, fx, nowMs, hurt } = f;
+  const baseX = headX - fx * hw * 0.18;
+  const baseY = crTop + hh * 0.1;
+  if (kb.candles >= 3) {
+    paintCandle(ctx, kb, baseX - hw * 0.44, baseY + hh * 0.06, hw * 0.2, hh * 0.34, hh, nowMs, 2.1, hurt);
+    paintCandle(ctx, kb, baseX + hw * 0.44, baseY + hh * 0.08, hw * 0.2, hh * 0.28, hh, nowMs, 4.4, hurt);
+    paintCandle(ctx, kb, baseX, baseY, hw * 0.3, hh * 0.6, hh, nowMs, 0, hurt);
+  } else {
+    paintCandle(ctx, kb, baseX, baseY, hw * 0.28, hh * 0.5, hh, nowMs, 0, hurt);
+  }
+}
+
+/**
  * The kobold head, drawn in the head block's own frame. Reads kobold
- * by SILHOUETTE first: a low wedge cranium under backswept horns, a
- * muzzle that leads the facing — short and dropped face-on, run out
- * long at profile — then the band-aware face: candle eyes that slide
- * with the facing and vanish around the corner, nostril pits at the
- * snout tip, a pale mandible that drops with the gape. From behind
- * there is NO face: occiput scale plates, a nape ridge, splayed horns.
+ * by SILHOUETTE first: a low cranium between big dish ears under the
+ * candle crown, and a LONG snout that leads the facing — hanging low
+ * face-on, run out level and drooping at profile — ending in a bare
+ * nose pad with whiskers and buck incisors. The pale mandible drops
+ * with the gape. From behind there is NO face: hide plates, the nape,
+ * the ears' backs, the mane — and the candle still burning above.
  */
 export function paintKoboldHead(
   ctx: CanvasRenderingContext2D,
@@ -1421,203 +1524,234 @@ export function paintKoboldHead(
   const hv = kb.heavy;
   const hide = hurt ? '#ffffff' : kb.hide;
   const belly = hurt ? '#ffffff' : kb.belly;
-  const horn = hurt ? '#ffffff' : kb.horn;
   const back = backK > 0.55;
-  const front = Math.max(0, 1 - profileK * 1.6) * (back ? 0 : 1);
 
-  // --- the wedge cranium: LOWER than a villager head — kobolds carry
-  // flat reptile skulls, all brow and jaw, no dome to speak of.
-  const crTop = headY - hh * 0.88;
-  const crBot = headY + hh * 0.46;
+  // --- the low cranium: a shallow dome sunk into the shoulders — all
+  // ear and snout, no proud brow. Silhouette before detail.
+  const crTop = headY - hh * 0.72;
+  const crBot = headY + hh * 0.5;
 
-  // --- horns: tapered keratin ribbons sweeping back and up off the
-  // crown rear. Far-side-skip at profile; from behind both read,
-  // splayed toward the camera. Ribs = the ram's growth-ring law.
-  const drawHorn = (side: number): void => {
-    const bx = headX + side * hw * 0.52 - fx * hw * 0.3;
-    const by = crTop + hh * 0.22;
-    const splay = 0.35 + backK * 0.5;
-    const tipX = bx - fx * hh * 1.05 + side * hh * splay;
-    const tipY = by - hh * (0.85 + 0.15 * hv);
-    const cxc = bx - fx * hh * 0.22 + side * hh * splay * 0.25;
-    const cyc = by - hh * 0.6;
-    // The ram's ribbon law: a horn is carved MASS, so the base is wide
-    // enough to read as keratin, not antenna wire, even at world zoom.
-    const spine = scaleRibbon(
-      ctx, bx, by, cxc, cyc, tipX, tipY,
-      hh * 0.36 * hv, horn, hurt ? '#ffffff' : shade(kb.horn, -26),
-    );
+  // --- dish ears: big round tunnel-rat ears riding high and wide.
+  // Far-side-skip at profile; from behind both read (backs only —
+  // the pink membrane faces forward, never the camera's back band).
+  const drawEar = (side: number): void => {
+    const ex = headX - fx * hw * 0.38 + side * hw * 0.8;
+    const ey = crTop + hh * 0.24;
+    const r = hh * 0.42 * (0.85 + 0.15 * hv);
+    ctx.fillStyle = hide;
+    ctx.beginPath();
+    ctx.arc(ex, ey, r, 0, Math.PI * 2);
+    ctx.fill();
     if (!hurt) {
-      // Growth ribs: two cross ticks a third and two-thirds up.
-      ctx.strokeStyle = shade(kb.horn, 16);
-      ctx.lineWidth = Math.max(1, hh * 0.05);
-      for (const i of [3, 5]) {
-        const p = spine[i]!;
+      ctx.strokeStyle = shade(kb.hide, -24);
+      ctx.lineWidth = Math.max(1, r * 0.16);
+      ctx.stroke();
+      if (!back) {
+        ctx.fillStyle = KOBOLD_EAR_INNER;
         ctx.beginPath();
-        ctx.moveTo(p.x - p.px * p.w, p.y - p.py * p.w);
-        ctx.lineTo(p.x + p.px * p.w, p.y + p.py * p.w);
-        ctx.stroke();
+        ctx.arc(ex + fx * r * 0.14, ey + r * 0.08, r * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(KOBOLD_EAR_INNER, -18);
+        ctx.beginPath();
+        ctx.arc(ex + fx * r * 0.18, ey + r * 0.16, r * 0.26, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
   };
-  // --- ear fins: ragged membrane triangles behind the jaw hinge.
-  // Far-side-skip at profile (the beetle's antenna law) — from behind
-  // both read, framing the occiput.
-  const drawEar = (side: number): void => {
-    const ex = headX + side * hw * 0.92 - fx * hw * 0.2;
-    const ey = headY - hh * 0.06;
-    ctx.fillStyle = hide;
-    ctx.beginPath();
-    ctx.moveTo(ex, ey - hh * 0.16);
-    ctx.lineTo(ex + side * hw * 0.5, ey - hh * 0.34);
-    ctx.lineTo(ex + side * hw * 0.34, ey + hh * 0.02);
-    ctx.lineTo(ex + side * hw * 0.42, ey + hh * 0.2);
-    ctx.lineTo(ex, ey + hh * 0.22);
-    ctx.closePath();
-    ctx.fill();
-    if (!hurt && !back) {
-      // The membrane's inner wash — thin skin the light gets through.
-      // Never from behind: the back of an ear is hide, not membrane.
-      ctx.fillStyle = shade(kb.belly, -8);
-      ctx.beginPath();
-      ctx.moveTo(ex + side * hw * 0.1, ey - hh * 0.1);
-      ctx.lineTo(ex + side * hw * 0.38, ey - hh * 0.22);
-      ctx.lineTo(ex + side * hw * 0.3, ey + hh * 0.1);
-      ctx.closePath();
-      ctx.fill();
-    }
-  };
-
   const nearSide = lead;
-  const showFar = profileK < 0.7 || back;
-  // Behind the cranium: the far horn and far ear, then (facing away)
-  // everything reorders after the block so it reads in front.
-  if (!back) {
-    if (showFar) {
-      drawHorn(-nearSide);
-      drawEar(-nearSide);
-    }
-    drawEar(nearSide);
-  }
+  if (profileK < 0.7 || back) drawEar(-nearSide);
+  drawEar(nearSide);
 
   // --- cranium block.
   ctx.fillStyle = hide;
   ctx.beginPath();
-  chamferRect(ctx, headX - hw, crTop, hw * 2, crBot - crTop, [cut * 1.3, cut * 1.3, cut * 0.5, cut * 0.5]);
+  chamferRect(ctx, headX - hw, crTop, hw * 2, crBot - crTop, [cut * 1.4, cut * 1.4, cut * 0.5, cut * 0.5]);
   ctx.fill();
   if (!hurt) {
-    // THE FORM SPLIT restated for scale: hard shade right half, lit
-    // crown band, jaw under-shade — the wedge reads as mass.
+    // THE FORM SPLIT restated for hide: hard shade right half, lit
+    // crown band, jaw under-shade — the dome reads as mass.
     ctx.save();
     ctx.beginPath();
-    chamferRect(ctx, headX - hw, crTop, hw * 2, crBot - crTop, [cut * 1.3, cut * 1.3, cut * 0.5, cut * 0.5]);
+    chamferRect(ctx, headX - hw, crTop, hw * 2, crBot - crTop, [cut * 1.4, cut * 1.4, cut * 0.5, cut * 0.5]);
     ctx.clip();
     ctx.fillStyle = shade(kb.hide, -10);
     ctx.fillRect(headX, crTop, hw, crBot - crTop);
     ctx.fillStyle = shade(kb.hide, 9);
-    ctx.fillRect(headX - hw, crTop, hw * 2, hh * 0.16);
+    ctx.fillRect(headX - hw, crTop, hw * 2, hh * 0.14);
     ctx.fillStyle = shade(kb.hide, -16);
-    ctx.fillRect(headX - hw, crBot - hh * 0.12, hw * 2, hh * 0.12);
+    ctx.fillRect(headX - hw, crBot - hh * 0.1, hw * 2, hh * 0.1);
     ctx.restore();
   }
 
+  // --- the mane: ragged shag over the crown and pouring down the
+  // nape. The digmaster's slate mop; the digger goes bald-hided.
+  if (kb.mane && !hurt) {
+    ctx.fillStyle = kb.mane;
+    const mBase = headX - fx * hw * 0.24;
+    for (let i = 0; i < 5; i++) {
+      const t = (i / 4) * 2 - 1;
+      const bx = mBase + t * hw * 0.72;
+      const by = crTop + hh * 0.14;
+      const tall = hh * (0.42 + 0.2 * Math.sin(i * 2.6 + 1)) * (1 + 0.2 * (1 - Math.abs(t)));
+      ctx.beginPath();
+      ctx.moveTo(bx - hw * 0.2, by + hh * 0.08);
+      ctx.lineTo(bx - fx * hw * 0.24 + t * hw * 0.1, by - tall);
+      ctx.lineTo(bx + hw * 0.2, by + hh * 0.1);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // The nape shag: a heavy lock falling off the trailing edge of
+    // the crown — the mop reads even at profile, under the candles.
+    const nx0 = headX - fx * hw * 0.98;
+    ctx.beginPath();
+    ctx.moveTo(nx0 + fx * hw * 0.3, crTop + hh * 0.1);
+    ctx.lineTo(nx0 - fx * hw * 0.22, crTop + hh * 0.7);
+    ctx.lineTo(nx0 - fx * hw * 0.1, crBot + hh * 0.16);
+    ctx.lineTo(nx0 + fx * hw * 0.34, crBot - hh * 0.12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = shade(kb.mane, -14);
+    ctx.beginPath();
+    ctx.moveTo(nx0 + fx * hw * 0.1, crTop + hh * 0.34);
+    ctx.lineTo(nx0 - fx * hw * 0.16, crTop + hh * 0.9);
+    ctx.lineTo(nx0 + fx * hw * 0.16, crBot + hh * 0.02);
+    ctx.closePath();
+    ctx.fill();
+  }
+
   if (back) {
-    // --- the occiput: no face ever shows from behind. Scale plates in
-    // courses, the nape ridge running down the center, horns and ears
-    // splayed toward the camera.
+    // --- the occiput: no face ever shows from behind. Hide plates in
+    // courses, the nape shadow, the ears' backs — and the candlelight
+    // still riding the crown.
     if (!hurt) {
       ctx.strokeStyle = shade(kb.hide, -14);
       ctx.lineWidth = Math.max(1, hh * 0.045);
-      for (const t of [0.3, 0.58]) {
+      for (const t of [0.32, 0.6]) {
         ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.62, crTop + (crBot - crTop) * t);
-        ctx.lineTo(headX + hw * 0.62, crTop + (crBot - crTop) * t);
+        ctx.moveTo(headX - hw * 0.6, crTop + (crBot - crTop) * t);
+        ctx.lineTo(headX + hw * 0.6, crTop + (crBot - crTop) * t);
         ctx.stroke();
       }
-      // Nape ridge chips: the dorsal line starts at the crown.
-      ctx.fillStyle = shade(kb.crest ?? kb.hide, kb.crest ? 0 : -20);
-      for (let i = 0; i < 3; i++) {
-        const ry = crTop + hh * 0.34 + i * hh * 0.38;
-        ctx.beginPath();
-        ctx.moveTo(headX - hh * 0.1, ry + hh * 0.12);
-        ctx.lineTo(headX, ry - hh * 0.1);
-        ctx.lineTo(headX + hh * 0.1, ry + hh * 0.12);
-        ctx.closePath();
-        ctx.fill();
+      // The nape shadow where the head sinks into the hump.
+      ctx.fillStyle = shade(kb.hide, -18);
+      ctx.beginPath();
+      chamferRect(ctx, headX - hw * 0.4, crBot - hh * 0.16, hw * 0.8, hh * 0.16, cut * 0.3);
+      ctx.fill();
+      if (kb.mane) {
+        // Nape shag trailing down the back of the skull.
+        ctx.fillStyle = kb.mane;
+        for (let i = 0; i < 3; i++) {
+          const bx = headX + (i - 1) * hw * 0.3;
+          ctx.beginPath();
+          ctx.moveTo(bx - hw * 0.14, crTop + hh * 0.4);
+          ctx.lineTo(bx + hw * 0.02, crBot + hh * (0.14 + 0.08 * Math.sin(i * 2.2)));
+          ctx.lineTo(bx + hw * 0.16, crTop + hh * 0.42);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
     }
-    drawEar(-1);
-    drawEar(1);
-    drawHorn(-1);
-    drawHorn(1);
-    // Edge-on from behind, the digmaster's sail is still a proud ridge
-    // above the crown — the banner never disappears.
-    if (kb.crest && !hurt) {
-      ctx.fillStyle = kb.crest;
-      ctx.beginPath();
-      chamferRect(ctx, headX - hw * 0.09, crTop - hh * 0.42, hw * 0.18, hh * 0.52, cut * 0.25);
-      ctx.fill();
-      ctx.strokeStyle = shade(kb.crest, -24);
-      ctx.lineWidth = Math.max(1, hh * 0.03);
-      ctx.strokeRect(headX - hw * 0.09, crTop - hh * 0.42, hw * 0.18, hh * 0.52);
-    }
+    paintCandleCrown(ctx, kb, f, crTop);
     return;
   }
 
-  // --- the muzzle: leads the facing. Face-on it sits centered and
-  // dropped (foreshortened); at profile it runs out long and level.
+  // --- the snout: LONG, leading the facing. Face-on it hangs low and
+  // narrow off the skull; at profile it runs out level, the bridge
+  // easing down toward the nose pad. Two-piece with the mandible.
   const jawDrop = f.gape * hh * 0.3;
-  const mzHw = hw * (0.52 - 0.16 * profileK);
-  const mzCx = headX + fx * hw * (0.28 + 0.95 * profileK);
-  const mzTop = headY + hh * (0.12 - 0.14 * profileK);
-  const mzBot = headY + hh * (0.72 - 0.12 * profileK);
+  const snLen = hw * (0.5 + 1.15 * profileK);
+  const rootX = headX + fx * hw * 0.16;
+  const tipX = rootX + fx * snLen;
+  const snHw = hw * (0.44 - 0.12 * profileK);
+  const x0 = Math.min(rootX, tipX) - snHw * (1 - profileK);
+  const x1 = Math.max(rootX, tipX) + snHw * (1 - profileK);
+  const topY = headY - hh * (0.24 - 0.08 * profileK);
+  const botY = headY + hh * (0.6 + 0.26 * (1 - profileK));
   ctx.fillStyle = hide;
   ctx.beginPath();
-  chamferRect(ctx, mzCx - mzHw, mzTop, mzHw * 2, mzBot - mzTop, [cut * 0.3, cut * 0.3, cut * 0.55, cut * 0.55]);
+  chamferRect(ctx, x0, topY, x1 - x0, botY - topY, [cut * 0.4, cut * 0.4, cut * 0.6, cut * 0.6]);
   ctx.fill();
   if (!hurt) {
-    // Snout bridge highlight + the leading-tip under-shade.
+    // Bridge highlight sloping toward the tip, form-split shade, and
+    // the drooped under-tip shadow that sells the hang of the snout.
     ctx.fillStyle = shade(kb.hide, 10);
-    ctx.fillRect(mzCx - mzHw * 0.7, mzTop, mzHw * 1.4, hh * 0.1);
+    ctx.fillRect(x0 + (x1 - x0) * 0.12, topY, (x1 - x0) * 0.76, hh * 0.1);
     ctx.fillStyle = shade(kb.hide, -9);
     ctx.beginPath();
-    chamferRect(ctx, mzCx, mzTop, mzHw, mzBot - mzTop, [0, cut * 0.3, cut * 0.55, 0]);
+    chamferRect(ctx, headX > (x0 + x1) / 2 ? (x0 + x1) / 2 : headX, topY, x1 - (headX > (x0 + x1) / 2 ? (x0 + x1) / 2 : headX), botY - topY, [0, cut * 0.4, cut * 0.6, 0]);
     ctx.fill();
+    ctx.fillStyle = shade(kb.hide, -14);
+    ctx.fillRect(x0, botY - hh * 0.12, x1 - x0, hh * 0.12);
   }
-  // Nostril pits at the snout tip: two face-on, one at profile riding
-  // the leading edge — never from behind (we already returned).
+
+  // --- the nose pad: bare flesh at the very tip, nostril dot beside.
+  const nx = rootX + fx * snLen * 0.96;
+  const ny = headY + hh * (0.12 * profileK) + (1 - profileK) * (botY - headY - hh * 0.26);
+  const nr = hh * 0.15 * (0.9 + 0.2 * hv);
+  ctx.fillStyle = hurt ? '#ffffff' : kb.nose;
+  ctx.beginPath();
+  ctx.arc(nx, ny, nr, 0, Math.PI * 2);
+  ctx.fill();
   if (!hurt) {
-    ctx.fillStyle = shade(kb.hide, -30);
+    ctx.fillStyle = shade(kb.nose, 16);
+    ctx.beginPath();
+    ctx.arc(nx - nr * 0.3, ny - nr * 0.35, nr * 0.34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = shade(kb.nose, -26);
     if (profileK < 0.55) {
       for (const sd of [-1, 1]) {
         ctx.beginPath();
-        ctx.arc(mzCx + sd * mzHw * 0.34, mzTop + hh * 0.16, hh * 0.055, 0, Math.PI * 2);
+        ctx.arc(nx + sd * nr * 0.5, ny + nr * 0.25, nr * 0.2, 0, Math.PI * 2);
         ctx.fill();
       }
     } else {
       ctx.beginPath();
-      ctx.arc(mzCx + lead * mzHw * 0.68, mzTop + hh * 0.14, hh * 0.06, 0, Math.PI * 2);
+      ctx.arc(nx + lead * nr * 0.45, ny + nr * 0.2, nr * 0.22, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
-  // --- the mandible: pale under-jaw, its own piece, dropping with the
-  // gape — the kobold yips and snaps through every swing.
-  const mdHw = mzHw * 0.84;
-  const mdTop = mzBot - hh * 0.08 + jawDrop;
+  // --- whiskers: dust-pale threads swept back off the snout. Near
+  // side only at profile (the far cheek is around the corner).
+  if (!hurt) {
+    ctx.strokeStyle = 'rgba(238,228,205,0.85)';
+    ctx.lineWidth = Math.max(1, hh * 0.035);
+    for (const sd of [-1, 1]) {
+      if (sd !== nearSide && profileK > 0.7) continue;
+      const wx = nx - fx * hw * 0.2 + sd * snHw * 0.4 * (1 - profileK * 0.6);
+      const wy = ny - hh * 0.04;
+      for (const [dy0, dy1] of [[-0.04, -0.14], [0.04, 0.1]] as const) {
+        ctx.beginPath();
+        ctx.moveTo(wx, wy + dy0 * hh * 3);
+        ctx.quadraticCurveTo(
+          wx - fx * hw * 0.1 + sd * hw * 0.34,
+          wy + dy0 * hh * 3 + hh * 0.06,
+          wx - fx * hw * 0.18 + sd * hw * 0.62,
+          wy + dy1 * hh * 3 + hh * 0.22,
+        );
+        ctx.stroke();
+      }
+    }
+  }
+
+  // --- the mandible: pale under-jaw, its own piece, dropping with
+  // the gape — the kobold yips and snaps through every swing.
+  const mdHw = snHw * 0.82;
+  const mdX = rootX + fx * snLen * 0.42;
+  const mdTop = botY - hh * 0.08 + jawDrop;
   if (jawDrop > hh * 0.03) {
     // The open mouth behind the dropped jaw, and the tooth row above.
     ctx.fillStyle = hurt ? '#241a2e' : '#3a2028';
     ctx.beginPath();
-    chamferRect(ctx, mzCx - mdHw * 0.92, mzBot - hh * 0.1, mdHw * 1.84, mdTop - mzBot + hh * 0.16, cut * 0.25);
+    chamferRect(ctx, mdX - mdHw * 0.94, botY - hh * 0.1, mdHw * 1.88, mdTop - botY + hh * 0.16, cut * 0.25);
     ctx.fill();
     if (!hurt) {
       ctx.fillStyle = '#e8ddc2';
       for (let i = -1; i <= 1; i++) {
         ctx.beginPath();
-        ctx.moveTo(mzCx + i * mdHw * 0.5 - hh * 0.05, mzBot - hh * 0.08);
-        ctx.lineTo(mzCx + i * mdHw * 0.5, mzBot + hh * 0.08);
-        ctx.lineTo(mzCx + i * mdHw * 0.5 + hh * 0.05, mzBot - hh * 0.08);
+        ctx.moveTo(mdX + i * mdHw * 0.5 - hh * 0.05, botY - hh * 0.08);
+        ctx.lineTo(mdX + i * mdHw * 0.5, botY + hh * 0.08);
+        ctx.lineTo(mdX + i * mdHw * 0.5 + hh * 0.05, botY - hh * 0.08);
         ctx.closePath();
         ctx.fill();
       }
@@ -1625,112 +1759,111 @@ export function paintKoboldHead(
   }
   ctx.fillStyle = belly;
   ctx.beginPath();
-  chamferRect(ctx, mzCx - mdHw, mdTop, mdHw * 2, hh * 0.26, [0, 0, cut * 0.5, cut * 0.5]);
+  chamferRect(ctx, mdX - mdHw, mdTop, mdHw * 2, hh * 0.24, [0, 0, cut * 0.5, cut * 0.5]);
   ctx.fill();
-  // The digmaster's underbite: two tusklets proud of the jaw even shut.
-  if (hv > 1.15 && !hurt) {
-    ctx.fillStyle = '#e8ddc2';
+
+  // --- buck incisors: the tunnel-rat's chisels, proud of the jaw
+  // even shut, hanging just behind the nose pad.
+  if (!hurt) {
+    ctx.fillStyle = '#efe6cf';
     for (const sd of [-1, 1]) {
+      const ix = nx - fx * hw * 0.12 + sd * nr * 0.55;
       ctx.beginPath();
-      ctx.moveTo(mzCx + sd * mdHw * 0.62 - hh * 0.05, mdTop + hh * 0.02);
-      ctx.lineTo(mzCx + sd * mdHw * 0.62, mdTop - hh * 0.16);
-      ctx.lineTo(mzCx + sd * mdHw * 0.62 + hh * 0.05, mdTop + hh * 0.02);
-      ctx.closePath();
+      chamferRect(ctx, ix - hh * 0.045, ny + nr * 0.5, hh * 0.09, hh * 0.2 * (1 + 0.25 * hv), [0, 0, hh * 0.03, hh * 0.03]);
       ctx.fill();
     }
   }
 
-  // --- brow ledge: the scaly shelf that makes the eyes read sunken.
+  // --- the eyes: small lit beads under a shading brow — watching,
+  // not draconic. They slide with the facing; the far eye slips
+  // around the corner at profile.
+  const eyeY = headY - hh * 0.3;
+  const pairX = headX + fx * hw * 0.34;
+  const eyeDx = hw * 0.42 * (1 - profileK * 0.5);
   if (!hurt) {
     ctx.fillStyle = shade(kb.hide, -18);
     ctx.beginPath();
-    chamferRect(
-      ctx,
-      headX - hw * 0.88 + fx * hw * 0.14,
-      headY - hh * 0.52,
-      hw * 1.76,
-      hh * 0.16,
-      cut * 0.3,
-    );
+    chamferRect(ctx, pairX - hw * 0.62, eyeY - hh * 0.22, hw * 1.24, hh * 0.14, cut * 0.3);
     ctx.fill();
   }
-
-  // --- the candle eyes: the glow must OWN the socket (the skeleton
-  // epic's law — a small tint reads as nothing). Halo, lit iris, dark
-  // slit pupil, one glint. They slide with the facing; the far eye
-  // slips around the corner at profile.
-  const eyeY = headY - hh * 0.24;
-  const pairX = headX + fx * hw * 0.4;
-  const eyeDx = hw * 0.42 * (1 - profileK * 0.5);
   for (const sd of [-1, 1]) {
     if (sd !== nearSide && profileK > 0.78) continue;
     const ex = pairX + sd * eyeDx;
     if (!hurt) {
-      ctx.globalAlpha = 0.32;
+      ctx.globalAlpha = 0.2;
       ctx.fillStyle = kb.eye;
       ctx.beginPath();
-      ctx.arc(ex, eyeY, hh * 0.3, 0, Math.PI * 2);
+      ctx.arc(ex, eyeY, hh * 0.2, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
     }
     ctx.fillStyle = hurt ? '#241a2e' : kb.eye;
     ctx.beginPath();
-    ctx.arc(ex, eyeY, hh * 0.17, 0, Math.PI * 2);
+    ctx.arc(ex, eyeY, hh * 0.115, 0, Math.PI * 2);
     ctx.fill();
     if (!hurt) {
       ctx.fillStyle = '#241a2e';
-      ctx.fillRect(ex - hh * 0.035, eyeY - hh * 0.14, hh * 0.07, hh * 0.28);
-      ctx.fillStyle = 'rgba(255,255,255,0.85)';
       ctx.beginPath();
-      ctx.arc(ex - hh * 0.06, eyeY - hh * 0.08, hh * 0.035, 0, Math.PI * 2);
+      ctx.arc(ex + fx * hh * 0.02, eyeY + hh * 0.01, hh * 0.055, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.beginPath();
+      ctx.arc(ex - hh * 0.045, eyeY - hh * 0.05, hh * 0.028, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
-  // --- near horn, in front of the cranium.
-  drawHorn(nearSide);
+  // --- and above it all, the light the miner lives by.
+  paintCandleCrown(ctx, kb, f, crTop);
+}
 
-  // --- the digmaster's crest sail: a sagittal fan crown-to-nape. At
-  // profile the full sail reads; face-on it forshortens to the proud
-  // center ridge — always drawn AFTER the block (the razorback law:
-  // silhouette add-ons paint outside the mass, never clipped).
-  if (kb.crest) {
-    const crest = hurt ? '#ffffff' : kb.crest;
-    if (profileK > 0.35) {
-      const n = 4;
-      for (let i = 0; i < n; i++) {
-        const t = i / (n - 1);
-        const bx = headX + fx * hw * (0.42 - 1.0 * t);
-        const by = crTop + hh * (0.06 + 0.18 * t);
-        const hgt = hh * (0.42 + 0.3 * Math.sin(Math.PI * (0.25 + 0.55 * t))) * profileK;
-        ctx.fillStyle = crest;
-        ctx.beginPath();
-        ctx.moveTo(bx - hw * 0.14, by);
-        ctx.lineTo(bx - fx * hw * 0.22, by - hgt);
-        ctx.lineTo(bx + hw * 0.14, by + hh * 0.04);
-        ctx.closePath();
-        ctx.fill();
-        if (!hurt) {
-          ctx.strokeStyle = shade(kb.crest, -24);
-          ctx.lineWidth = Math.max(1, hh * 0.035);
-          ctx.beginPath();
-          ctx.moveTo(bx, by);
-          ctx.lineTo(bx - fx * hw * 0.22, by - hgt);
-          ctx.stroke();
-        }
-      }
-    } else {
-      // Edge-on: the sail is a single proud ridge above the crown.
-      ctx.fillStyle = crest;
-      ctx.beginPath();
-      chamferRect(ctx, headX - hw * 0.09, crTop - hh * 0.42, hw * 0.18, hh * 0.52, cut * 0.25);
-      ctx.fill();
-      if (!hurt) {
-        ctx.strokeStyle = shade(kb.crest, -24);
-        ctx.lineWidth = Math.max(1, hh * 0.03);
-        ctx.strokeRect(headX - hw * 0.09, crTop - hh * 0.42, hw * 0.18, hh * 0.52);
-      }
-    }
+export interface KoboldHumpFrame {
+  s: number;
+  tw: number;
+  th: number;
+  fx: number;
+  backK: number;
+  hurt: boolean;
+}
+
+/**
+ * The shoulder hump: the bent back the whole species carries, drawn
+ * in the torso's local frame AFTER the garment and BEFORE the head —
+ * a rounded mass rising behind the neck that the low-slung skull sinks
+ * into. It trails the facing at profile and reads as bowed shoulders
+ * face-on and from behind.
+ */
+export function paintKoboldHump(
+  ctx: CanvasRenderingContext2D,
+  kb: KoboldLook,
+  garment: string,
+  f: KoboldHumpFrame,
+): void {
+  const { tw, th, fx, backK, hurt } = f;
+  const cx = -fx * tw * 0.4;
+  const cy = -th + th * 0.02;
+  const rx = tw * (1.02 + 0.12 * backK);
+  const ry = th * 0.24 * (1 + 0.18 * kb.heavy - 0.18);
+  ctx.fillStyle = hurt ? '#ffffff' : garment;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, Math.PI, Math.PI * 2);
+  ctx.lineTo(cx + rx, cy + ry * 0.35);
+  ctx.lineTo(cx - rx, cy + ry * 0.35);
+  ctx.closePath();
+  ctx.fill();
+  if (!hurt) {
+    // The form split carries over the hump: lit crown line, shaded
+    // trailing slope — a bent back, not a collar.
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, Math.PI, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.fillStyle = shade(garment, -9);
+    ctx.fillRect(cx, cy - ry, rx, ry * 2);
+    ctx.fillStyle = shade(garment, 8);
+    ctx.fillRect(cx - rx, cy - ry, rx * 2, ry * 0.42);
+    ctx.restore();
   }
 }
 
@@ -1748,13 +1881,11 @@ export interface KoboldTailFrame {
 }
 
 /**
- * The tail, drawn in the torso's squashed local frame BEFORE the
- * garment so the root always tucks behind the body. It trails the
- * facing: run out long at profile, hanging low and swaying when seen
- * from behind, a tip peeking past the hip when the kobold faces the
- * camera. Ridge chips run the top edge — the dorsal line continuing
- * off the nape (and on the digmaster they burn crest-ember the whole
- * way down).
+ * The naked tail, drawn in the torso's squashed local frame BEFORE
+ * the garment so the root always tucks behind the body. A smooth
+ * tunnel-rat whip: hide at the root easing to bare flesh at the tip.
+ * It trails the facing — run out long at profile, hanging low and
+ * swaying when seen from behind, tip peeking past the hip face-on.
  */
 export function paintKoboldTail(
   ctx: CanvasRenderingContext2D,
@@ -1768,20 +1899,33 @@ export function paintKoboldTail(
   const frontK = Math.max(0, fy);
   const rootX = -fx * 0.05 * s;
   const rootY = -0.06 * s;
-  const tipX = -fx * (0.5 + 0.12 * profileK) * s + sway + trail - lead * 0.18 * s * frontK;
-  const tipY = 0.16 * s + 0.18 * s * backK;
+  const tipX = -fx * (0.56 + 0.14 * profileK) * s + sway + trail - lead * 0.2 * s * frontK;
+  const tipY = 0.18 * s + 0.18 * s * backK;
   const cx = rootX + (tipX - rootX) * 0.42;
-  const cy = rootY + 0.1 * s + 0.06 * s * backK;
+  const cy = rootY + 0.11 * s + 0.06 * s * backK;
   const spine = scaleRibbon(
     ctx, rootX, rootY, cx, cy, tipX, tipY,
-    0.085 * s * kb.heavy, hide, hurt ? '#ffffff' : shade(kb.hide, -28),
+    0.07 * s * kb.heavy, hide, hurt ? '#ffffff' : shade(kb.hide, -26),
   );
   if (hurt) return;
+  // The bare flesh tip: the last third of the whip pales out.
+  ctx.strokeStyle = shade(KOBOLD_EAR_INNER, -4);
+  ctx.lineCap = 'round';
+  for (let i = 5; i < spine.length - 1; i++) {
+    const p = spine[i]!;
+    const q = spine[i + 1]!;
+    ctx.lineWidth = Math.max(1, p.w * 1.7);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(q.x, q.y);
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
   // Pale underside: the belly line along the low edge of the ribbon.
   ctx.strokeStyle = shade(kb.belly, -6);
-  ctx.lineWidth = Math.max(1, s * 0.018);
+  ctx.lineWidth = Math.max(1, s * 0.016);
   ctx.beginPath();
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i <= 4; i++) {
     const p = spine[i]!;
     // The perpendicular can flip along the spine — always take the
     // down-screen side for the belly edge.
@@ -1792,21 +1936,6 @@ export function paintKoboldTail(
     else ctx.lineTo(x, y);
   }
   ctx.stroke();
-  // Dorsal ridge chips riding the top (up-screen) edge at thirds.
-  ctx.fillStyle = kb.crest ?? shade(kb.hide, -18);
-  for (const i of [2, 4, 6]) {
-    const p = spine[i]!;
-    const sgn = p.py >= 0 ? -1 : 1;
-    const bx = p.x + p.px * p.w * sgn;
-    const by = p.y + p.py * p.w * sgn - Math.abs(p.w) * 0.2;
-    const r = Math.max(1.5, p.w * 0.9);
-    ctx.beginPath();
-    ctx.moveTo(bx - r * 0.6, by);
-    ctx.lineTo(bx, by - r);
-    ctx.lineTo(bx + r * 0.6, by);
-    ctx.closePath();
-    ctx.fill();
-  }
 }
 
 export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void {
@@ -3309,6 +3438,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Sprint lean: the torso tips into a full-tilt forward run — reads
   // side-on only (fx), and never when backpedaling against the aim.
   lean += 0.09 * rig.runF * Math.max(0, rig.align) * fx;
+  // The kobold hunch: the whole species stands bent over its next
+  // hole — a standing forward tip that stacks under the sprint lean
+  // (and eases out when seated; a sitting kobold just slumps).
+  if (kob) lean += 0.12 * fx * (1 - sit);
 
   // ---- torso + head, drawn in a local frame at the hip line with the
   // fake-3D squash: narrow side profile, full front/back profile, height
@@ -3385,6 +3518,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     );
   }
 
+  // The kobold's shoulder hump rises OVER the garment and UNDER the
+  // head — the bent back the low-slung skull sinks into.
+  if (kob) {
+    paintKoboldHump(ctx, kob, bodyColor, {
+      s,
+      tw,
+      th,
+      fx,
+      backK,
+      hurt: rig.hurt,
+    });
+  }
+
   // ---- head (inside the squash frame so turning carries it too).
   // A chamfered block, not a ball — and a BILLBOARD FACE, not a dial:
   // the head reads in bands (front, three-quarter, profile, back).
@@ -3394,8 +3540,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // hair, not features. Sliding features vertically with fy is what
   // made the old head read top-down.
   const headR = 0.15 * s;
-  const headX = fx * 0.05 * s;
-  const headY = -th - headR * 0.82;
+  // The kobold skull hangs LOW and thrust FORWARD off the hump — the
+  // hunch is half carriage, half where the head sits.
+  const headX = kob ? fx * 0.14 * s : fx * 0.05 * s;
+  const headY = kob ? -th - headR * 0.5 : -th - headR * 0.82;
   const hw = headR * 1.04; // half-width
   const hh = headR * 1.0; // half-height
   const cut = headR * 0.34;

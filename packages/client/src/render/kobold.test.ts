@@ -1,11 +1,12 @@
 /**
  * Scale-dialect laws: every kobold NPC id owns a bespoke look (no
  * variant falls back to a reskin), the digmaster is a DESIGN and not a
- * scale-up (own hide, own horn tone, the only crest), the head and
- * tail painters run clean across all eight facing bands (no NaN
- * geometry), the face — pupils, nostrils — never shows from behind,
- * and the loot-story law holds: the pick each variant swings really
- * drops from its own table.
+ * scale-up (own hide, the only mane, a three-candle crown over the
+ * digger's one), the head and tail painters run clean across all
+ * eight facing bands (no NaN geometry), the face — pupils, nose —
+ * never shows from behind while the crown candle burns at EVERY
+ * facing, and the loot-story law holds: the pick each variant swings
+ * really drops from its own table.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -33,8 +34,11 @@ test('the digmaster is a design, not a scale-up', () => {
   const boss = KOBOLD_LOOKS['kobold_digmaster']!;
   assert.ok(digger.heavy < boss.heavy, 'the digmaster carries the heavier frame');
   assert.notEqual(digger.hide, boss.hide, 'each variant weathered its own hide');
-  assert.notEqual(digger.horn, boss.horn, 'each variant grew its own horn');
-  assert.ok(boss.crest && !digger.crest, 'only the digmaster flies the crest sail');
+  assert.ok(boss.mane && !digger.mane, 'only the digmaster wears the ragged mane');
+  assert.ok(
+    digger.candles === 1 && boss.candles >= 3,
+    'one candle for the digger, a crown of them for the boss',
+  );
 });
 
 test('the warren hunts as one pack and the boss slams', () => {
@@ -54,10 +58,15 @@ test('the loot-story law: each variant really drops the pick it swings', () => {
 });
 
 /** A recording 2D-context stand-in: counts calls, rejects NaN coords. */
-function mockCtx(): CanvasRenderingContext2D & { fills: number; darkFills: number } {
+function mockCtx(): CanvasRenderingContext2D & {
+  fills: number;
+  darkFills: number;
+  waxFills: number;
+} {
   const counter = {
     fills: 0,
     darkFills: 0,
+    waxFills: 0,
     fillStyle: '#000' as string,
     strokeStyle: '#000' as string,
     lineWidth: 1,
@@ -74,21 +83,18 @@ function mockCtx(): CanvasRenderingContext2D & { fills: number; darkFills: numbe
   return new Proxy(counter, {
     get(target, prop: string) {
       if (prop in target) return target[prop as keyof typeof target];
-      if (prop === 'fill') {
-        return () => {
-          target.fills++;
-          if (typeof target.fillStyle === 'string' && target.fillStyle.startsWith('#2')) {
-            target.darkFills++;
-          }
-        };
-      }
+      const count = () => {
+        target.fills++;
+        if (typeof target.fillStyle === 'string' && target.fillStyle.startsWith('#2')) {
+          target.darkFills++;
+        }
+        if (target.fillStyle === '#e9dcc2') target.waxFills++;
+      };
+      if (prop === 'fill') return count;
       if (prop === 'fillRect') {
         return (...args: unknown[]) => {
           checkNums(args);
-          target.fills++;
-          if (typeof target.fillStyle === 'string' && target.fillStyle.startsWith('#2')) {
-            target.darkFills++;
-          }
+          count();
         };
       }
       return noop;
@@ -97,7 +103,11 @@ function mockCtx(): CanvasRenderingContext2D & { fills: number; darkFills: numbe
       (target as Record<string, unknown>)[prop] = value;
       return true;
     },
-  }) as unknown as CanvasRenderingContext2D & { fills: number; darkFills: number };
+  }) as unknown as CanvasRenderingContext2D & {
+    fills: number;
+    darkFills: number;
+    waxFills: number;
+  };
 }
 
 const FACINGS = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => (i / 8) * Math.PI * 2);
@@ -152,16 +162,20 @@ test('head and tail paint clean at all eight facings for every variant', () => {
   }
 });
 
-test('candle eyes face the camera, never the back of the skull', () => {
-  const kb = KOBOLD_LOOKS['kobold']!;
-  const front = mockCtx();
-  paintKoboldHead(front, kb, headFrame(Math.PI / 2)); // facing down-screen
-  const back = mockCtx();
-  paintKoboldHead(back, kb, headFrame(-Math.PI / 2)); // facing away
-  // Facing the camera carries the slit pupils; from behind the head is
-  // occiput plates and nape ridge — no face marks at all.
-  assert.ok(front.darkFills >= 2, 'front band carries both slit pupils');
-  assert.equal(back.darkFills, 0, 'back band shows scale plates, not a face');
+test('the face never shows from behind — but the candle always burns', () => {
+  for (const kb of Object.values(KOBOLD_LOOKS) as KoboldLook[]) {
+    const front = mockCtx();
+    paintKoboldHead(front, kb, headFrame(Math.PI / 2)); // facing down-screen
+    const back = mockCtx();
+    paintKoboldHead(back, kb, headFrame(-Math.PI / 2)); // facing away
+    // Facing the camera carries both bead pupils; from behind the head
+    // is hide plates and nape — no face marks at all.
+    assert.ok(front.darkFills >= 2, 'front band carries both pupils');
+    assert.equal(back.darkFills, 0, 'back band shows hide plates, not a face');
+    // The crown light rides the top of the head at EVERY facing.
+    assert.ok(front.waxFills >= kb.candles, 'candles burn facing the camera');
+    assert.ok(back.waxFills >= kb.candles, 'candles burn from behind too');
+  }
 });
 
 test('the jaw yips through the strike beat', () => {

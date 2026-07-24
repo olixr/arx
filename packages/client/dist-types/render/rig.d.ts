@@ -249,28 +249,32 @@ export interface RibcageFrame {
  */
 export declare function paintRibcage(ctx: CanvasRenderingContext2D, sk: SkeletonLook, f: RibcageFrame): void;
 export interface KoboldLook {
-    /** Scale-hide base — each variant weathered its own tunnel. */
+    /** Hide base — each variant weathered its own tunnel. */
     hide: string;
-    /** Pale under-scale: jaw, muzzle underside, the tail's low edge. */
+    /** Pale under-hide: jaw, muzzle underside, the tail's low edge. */
     belly: string;
-    /** The candle-eye — a lit iris that must OWN the socket (glow law). */
+    /** The candle-lit eye bead — small, bright, watching. */
     eye: string;
-    /** Keratin of horns and claws. */
-    horn: string;
-    /** The digmaster's sail: ember membrane crown-to-tail; undefined = none. */
-    crest?: string;
-    /** Frame multiplier: jaw mass, horn girth, tail thickness. */
+    /** The bare nose pad at the snout tip. */
+    nose: string;
+    /** Tallow of the crown candles. */
+    wax: string;
+    /** Ragged mane shag over crown and nape; undefined = bald hide. */
+    mane?: string;
+    /** Crown candles: the digger carries one, the digmaster three. */
+    candles: number;
+    /** Frame multiplier: jaw mass, ear dish, tail girth. */
     heavy: number;
 }
 export declare const KOBOLD_LOOKS: Record<string, KoboldLook>;
 /** Variant lookup with the rank-and-file as the unknown-id fallback. */
 export declare function koboldLook(defId: string): KoboldLook;
 /**
- * A tapered filled ribbon along a quadratic spine — the horn/tail law
- * learned on the ram: curved keratin and muscle read as carved MASS
- * only when drawn as a filled shape with an outline, never as a
- * stroke chain. Width tapers base→tip; returns the sampled spine so
- * callers can seat ridge chips or growth ribs on it.
+ * A tapered filled ribbon along a quadratic spine — the law learned on
+ * the ram's horns: curved mass reads as carved form only when drawn as
+ * a filled shape with an outline, never as a stroke chain. Width
+ * tapers base→tip; returns the sampled spine so callers can seat
+ * details on it.
  */
 export declare function scaleRibbon(ctx: CanvasRenderingContext2D, x0: number, y0: number, cx: number, cy: number, x1: number, y1: number, w0: number, fill: string, outline: string): Array<{
     x: number;
@@ -298,14 +302,30 @@ export interface KoboldHeadFrame {
 }
 /**
  * The kobold head, drawn in the head block's own frame. Reads kobold
- * by SILHOUETTE first: a low wedge cranium under backswept horns, a
- * muzzle that leads the facing — short and dropped face-on, run out
- * long at profile — then the band-aware face: candle eyes that slide
- * with the facing and vanish around the corner, nostril pits at the
- * snout tip, a pale mandible that drops with the gape. From behind
- * there is NO face: occiput scale plates, a nape ridge, splayed horns.
+ * by SILHOUETTE first: a low cranium between big dish ears under the
+ * candle crown, and a LONG snout that leads the facing — hanging low
+ * face-on, run out level and drooping at profile — ending in a bare
+ * nose pad with whiskers and buck incisors. The pale mandible drops
+ * with the gape. From behind there is NO face: hide plates, the nape,
+ * the ears' backs, the mane — and the candle still burning above.
  */
 export declare function paintKoboldHead(ctx: CanvasRenderingContext2D, kb: KoboldLook, f: KoboldHeadFrame): void;
+export interface KoboldHumpFrame {
+    s: number;
+    tw: number;
+    th: number;
+    fx: number;
+    backK: number;
+    hurt: boolean;
+}
+/**
+ * The shoulder hump: the bent back the whole species carries, drawn
+ * in the torso's local frame AFTER the garment and BEFORE the head —
+ * a rounded mass rising behind the neck that the low-slung skull sinks
+ * into. It trails the facing at profile and reads as bowed shoulders
+ * face-on and from behind.
+ */
+export declare function paintKoboldHump(ctx: CanvasRenderingContext2D, kb: KoboldLook, garment: string, f: KoboldHumpFrame): void;
 export interface KoboldTailFrame {
     s: number;
     fx: number;
@@ -319,13 +339,11 @@ export interface KoboldTailFrame {
     hurt: boolean;
 }
 /**
- * The tail, drawn in the torso's squashed local frame BEFORE the
- * garment so the root always tucks behind the body. It trails the
- * facing: run out long at profile, hanging low and swaying when seen
- * from behind, a tip peeking past the hip when the kobold faces the
- * camera. Ridge chips run the top edge — the dorsal line continuing
- * off the nape (and on the digmaster they burn crest-ember the whole
- * way down).
+ * The naked tail, drawn in the torso's squashed local frame BEFORE
+ * the garment so the root always tucks behind the body. A smooth
+ * tunnel-rat whip: hide at the root easing to bare flesh at the tip.
+ * It trails the facing — run out long at profile, hanging low and
+ * swaying when seen from behind, tip peeking past the hip face-on.
  */
 export declare function paintKoboldTail(ctx: CanvasRenderingContext2D, kb: KoboldLook, f: KoboldTailFrame): void;
 export declare function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void;

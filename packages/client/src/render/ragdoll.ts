@@ -506,22 +506,21 @@ export function drawHumanoidRagdoll(
     const cy = pelvis.y - uy * s * 0.24 * kb.heavy + s * 0.08;
     const spine = scaleRibbon(
       ctx, pelvis.x, pelvis.y, cx, cy, tipX, tipY,
-      s * 0.08 * kb.heavy, kb.hide, shade(kb.hide, -28),
+      s * 0.07 * kb.heavy, kb.hide, shade(kb.hide, -26),
     );
-    ctx.fillStyle = kb.crest ?? shade(kb.hide, -18);
-    for (const i of [2, 4, 6]) {
+    // The bare flesh tip: the last third of the whip pales out.
+    ctx.strokeStyle = '#bd8578';
+    ctx.lineCap = 'round';
+    for (let i = 5; i < spine.length - 1; i++) {
       const p = spine[i]!;
-      const sgn = p.py >= 0 ? -1 : 1;
-      const bx = p.x + p.px * p.w * sgn;
-      const by = p.y + p.py * p.w * sgn;
-      const r = Math.max(1.5, p.w * 0.9);
+      const q = spine[i + 1]!;
+      ctx.lineWidth = Math.max(1, p.w * 1.7);
       ctx.beginPath();
-      ctx.moveTo(bx - r * 0.6, by);
-      ctx.lineTo(bx, by - r);
-      ctx.lineTo(bx + r * 0.6, by);
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(q.x, q.y);
+      ctx.stroke();
     }
+    ctx.lineCap = 'butt';
   }
 
   // Far pair behind the trunk.
@@ -574,61 +573,74 @@ export function drawHumanoidRagdoll(
   ctx.translate(head.x, head.y);
   ctx.rotate(Math.atan2(hy, hx) + Math.PI / 2);
   if (look.kob) {
-    // The kobold corpse head in profile: wedge cranium, muzzle out one
-    // side with the jaw hanging slack, horns swept off the crown to
-    // the other — and the candle eyes are simply GONE (the light goes
-    // out on death, the skeleton epic's law). Identity by silhouette.
+    // The kobold corpse head in profile: the big dish ear behind a
+    // low cranium, the long snout out one side with the pale jaw
+    // slack under it, whiskers gone still — and the crown candle
+    // SNUFFED, a bare wax stub with no flame (the light goes out on
+    // death, the skeleton epic's law). Identity by silhouette.
     const kb = look.kob;
     const hv = kb.heavy;
-    // Horns behind the block, swept toward -x (away from the muzzle).
-    for (const [ox, oy] of [[-hw * 0.3, -hh * 0.55], [hw * 0.05, -hh * 0.7]] as const) {
-      scaleRibbon(
-        ctx, ox, oy,
-        ox - hw * 0.7, oy - hh * 0.35,
-        ox - hw * 1.25, oy - hh * (0.55 + 0.15 * hv),
-        hh * 0.24 * hv, kb.horn, shade(kb.horn, -26),
-      );
-    }
-    // Wedge cranium, lower than a villager skull.
+    // The dish ear behind the skull, membrane down against the fall.
+    ctx.fillStyle = shade(kb.hide, -8);
+    ctx.beginPath();
+    ctx.arc(-hw * 0.62, -hh * 0.42, hh * 0.5 * (0.85 + 0.15 * hv), 0, Math.PI * 2);
+    ctx.fill();
+    // Low cranium, sunk and small.
     ctx.fillStyle = kb.hide;
     ctx.beginPath();
-    chamferRect(ctx, -hw, -hh * 0.85, hw * 2, hh * 1.5, [cut * 1.3, cut * 1.3, cut * 0.5, cut * 0.5]);
+    chamferRect(ctx, -hw, -hh * 0.7, hw * 2, hh * 1.3, [cut * 1.4, cut * 1.4, cut * 0.5, cut * 0.5]);
     ctx.fill();
-    // Muzzle out the +x side, slack pale mandible dropped under it.
-    ctx.fillStyle = kb.hide;
-    ctx.beginPath();
-    chamferRect(ctx, hw * 0.55, -hh * 0.28, hw * 0.95, hh * 0.6, [0, cut * 0.4, cut * 0.5, 0]);
-    ctx.fill();
-    ctx.fillStyle = kb.belly;
-    ctx.beginPath();
-    chamferRect(ctx, hw * 0.5, hh * 0.38, hw * 0.85, hh * 0.26, [0, 0, cut * 0.4, cut * 0.4]);
-    ctx.fill();
-    // One dark nostril pit at the snout tip; no eye ever again.
-    ctx.fillStyle = shade(kb.hide, -30);
-    ctx.beginPath();
-    ctx.arc(hw * 1.32, -hh * 0.12, hh * 0.07, 0, Math.PI * 2);
-    ctx.fill();
-    // The ear fin, folded flat against the fall.
-    ctx.fillStyle = shade(kb.hide, -10);
-    ctx.beginPath();
-    ctx.moveTo(-hw * 0.75, -hh * 0.1);
-    ctx.lineTo(-hw * 1.25, -hh * 0.3);
-    ctx.lineTo(-hw * 0.85, hh * 0.28);
-    ctx.closePath();
-    ctx.fill();
-    // The digmaster's crest sail collapses but keeps its ember.
-    if (kb.crest) {
-      ctx.fillStyle = kb.crest;
+    // The mane collapses over the crown on the digmaster.
+    if (kb.mane) {
+      ctx.fillStyle = kb.mane;
       for (let i = 0; i < 3; i++) {
-        const bx = -hw * 0.45 + i * hw * 0.4;
+        const bx = -hw * 0.5 + i * hw * 0.42;
         ctx.beginPath();
-        ctx.moveTo(bx - hw * 0.12, -hh * 0.82);
-        ctx.lineTo(bx - hw * 0.3, -hh * 1.25);
-        ctx.lineTo(bx + hw * 0.14, -hh * 0.78);
+        ctx.moveTo(bx - hw * 0.14, -hh * 0.6);
+        ctx.lineTo(bx - hw * 0.28, -hh * (0.95 + 0.1 * Math.sin(i * 2.4)));
+        ctx.lineTo(bx + hw * 0.16, -hh * 0.56);
         ctx.closePath();
         ctx.fill();
       }
     }
+    // The long snout out the +x side, jaw slack beneath it.
+    ctx.fillStyle = kb.hide;
+    ctx.beginPath();
+    chamferRect(ctx, hw * 0.5, -hh * 0.34, hw * 1.35, hh * 0.66, [0, cut * 0.4, cut * 0.5, 0]);
+    ctx.fill();
+    ctx.fillStyle = kb.belly;
+    ctx.beginPath();
+    chamferRect(ctx, hw * 0.45, hh * 0.42, hw * 1.05, hh * 0.24, [0, 0, cut * 0.4, cut * 0.4]);
+    ctx.fill();
+    // The nose pad at the tip; whiskers slack; no eye ever again.
+    ctx.fillStyle = kb.nose;
+    ctx.beginPath();
+    ctx.arc(hw * 1.78, -hh * 0.04, hh * 0.14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(238,228,205,0.7)';
+    ctx.lineWidth = Math.max(1, hh * 0.035);
+    for (const dy of [0.08, 0.22]) {
+      ctx.beginPath();
+      ctx.moveTo(hw * 1.5, hh * 0.02);
+      ctx.quadraticCurveTo(hw * 1.2, hh * (dy + 0.1), hw * 0.95, hh * (dy + 0.3));
+      ctx.stroke();
+    }
+    // Buck incisors resting on the slack jaw.
+    ctx.fillStyle = '#efe6cf';
+    ctx.beginPath();
+    chamferRect(ctx, hw * 1.5, hh * 0.14, hh * 0.09, hh * 0.2, [0, 0, hh * 0.03, hh * 0.03]);
+    ctx.fill();
+    // The snuffed candle stub, still seated on the crown.
+    ctx.fillStyle = kb.wax;
+    ctx.beginPath();
+    chamferRect(ctx, -hw * 0.32, -hh * (1.1 + 0.1 * hv), hw * 0.3, hh * 0.44, cut * 0.2);
+    ctx.fill();
+    ctx.strokeStyle = '#3a2d28';
+    ctx.lineWidth = Math.max(1, hh * 0.03);
+    ctx.beginPath();
+    ctx.moveTo(-hw * 0.17, -hh * (1.1 + 0.1 * hv));
+    ctx.lineTo(-hw * 0.13, -hh * (1.2 + 0.1 * hv));
+    ctx.stroke();
   } else {
     ctx.fillStyle = look.skinColor;
     ctx.beginPath();
