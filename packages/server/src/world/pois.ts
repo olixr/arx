@@ -270,7 +270,7 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
 
   // Garrison muster.
   const holdR = Math.max(2, Math.min(prefab.width, prefab.height) / 2 - 1);
-  const sentryWants: Array<{ npc: string; level: number; name?: string }> = [];
+  const sentryWants: Array<{ npc: string; level: number; name?: string; patrol?: boolean }> = [];
   for (const [gi, g] of def.garrison.entries()) {
     if (g.minTier !== undefined && site.tier < g.minTier) continue;
     const count =
@@ -292,12 +292,14 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
           npc: g.npc,
           level: levelRoll(n++) + (g.levelOffset ?? 0),
           name: g.name,
+          patrol: g.patrol,
         });
       }
     }
   }
 
-  // Sentry ring: score bearings by (a) standable ground and (b) how
+  // Sentry ring: 12 bearings probed for standable ground, kept in
+  // ANGULAR order (the patrol loop walks them) and also scored by how
   // squarely they face the nearest settled anchor — the camp watches
   // the road in.
   if (sentryWants.length > 0) {
@@ -313,7 +315,7 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
       }
     }
     const ringR = Math.max(prefab.width, prefab.height) / 2 + 5;
-    const bearings: Array<{ x: number; y: number; score: number }> = [];
+    const ring: Array<{ x: number; y: number; score: number }> = [];
     for (let b = 0; b < 12; b++) {
       const ang = (b / 12) * Math.PI * 2;
       const dirX = Math.cos(ang);
@@ -321,19 +323,58 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
       const px = Math.round(site.anchorX + dirX * (ringR + (hashCoords(musterBase, b, 29) % 4)));
       const py = Math.round(site.anchorY + dirY * (ringR + (hashCoords(musterBase, b, 31) % 4)));
       if (!standable(groundProbeAt(seed, px, py))) continue;
-      bearings.push({ x: px, y: py, score: dirX * ax + dirY * ay });
+      ring.push({ x: px + 0.5, y: py + 0.5, score: dirX * ax + dirY * ay });
     }
-    bearings.sort((a, b) => b.score - a.score);
-    for (let i = 0; i < sentryWants.length && i < bearings.length; i++) {
-      const want = sentryWants[i]!;
+    const byScore = [...ring].sort((a, b) => b.score - a.score);
+    const patrollers = sentryWants.filter((w) => w.patrol);
+    const watchers = sentryWants.filter((w) => !w.patrol);
+    // Standing watchers take the townward posts, best bearing first.
+    for (let i = 0; i < watchers.length && i < byScore.length; i++) {
+      const want = watchers[i]!;
       spawns.push({
         npc: want.npc,
-        x: bearings[i]!.x + 0.5,
-        y: bearings[i]!.y + 0.5,
+        x: byScore[i]!.x,
+        y: byScore[i]!.y,
         radius: 2,
         count: 1,
         level: want.level,
         name: want.name,
+      });
+    }
+    // Patrollers pace the whole ring; a loop needs at least 3 honest
+    // waypoints or the round degrades to a static townward post.
+    for (let i = 0; i < patrollers.length; i++) {
+      const want = patrollers[i]!;
+      if (ring.length < 3) {
+        const spot = byScore[(watchers.length + i) % Math.max(1, byScore.length)];
+        if (!spot) break;
+        spawns.push({
+          npc: want.npc,
+          x: spot.x,
+          y: spot.y,
+          radius: 2,
+          count: 1,
+          level: want.level,
+          name: want.name,
+        });
+        continue;
+      }
+      // Spread starts around the loop so two patrollers walk opposite
+      // arcs instead of marching in single file.
+      const start = Math.floor((i * ring.length) / Math.max(1, patrollers.length));
+      const loop = [...ring.slice(start), ...ring.slice(0, start)].map((p) => ({
+        x: p.x,
+        y: p.y,
+      }));
+      spawns.push({
+        npc: want.npc,
+        x: loop[0]!.x,
+        y: loop[0]!.y,
+        radius: 1.2,
+        count: 1,
+        level: want.level,
+        name: want.name,
+        patrol: loop,
       });
     }
   }

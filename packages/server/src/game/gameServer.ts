@@ -319,6 +319,13 @@ interface NpcComp {
    * on aggro and re-stowing after a leash need no bookkeeping.
    */
   sheathePref?: boolean;
+  /**
+   * The sentry's round: a waypoint loop the idle brain paces (walk a
+   * leg, linger, move on). Combat/chase own the body as ever; each
+   * reached waypoint re-pins origin, so a leash walks the body back
+   * to its ROUND, not the morning post (the routine-origin law).
+   */
+  patrol?: { pts: ReadonlyArray<{ x: number; y: number }>; idx: number; waitUntilTick: number };
 }
 
 /**
@@ -502,6 +509,8 @@ interface SpawnState {
   level?: number;
   /** Display-name override (named bosses, hidden-room wardens). */
   name?: string;
+  /** Idle waypoint loop (POI sentry rounds) — survives respawns. */
+  patrol?: ReadonlyArray<{ x: number; y: number }>;
 }
 
 /** One placed actor's post — exact spot, no scatter, no count. */
@@ -1015,6 +1024,7 @@ export class GameServer {
       count: number;
       level?: number;
       name?: string;
+      patrol?: ReadonlyArray<{ x: number; y: number }>;
     }>,
     zoneId?: string,
   ): number[] {
@@ -1034,6 +1044,7 @@ export class GameServer {
           active: true,
           level: spawn.level,
           name: spawn.name,
+          patrol: spawn.patrol,
         });
       }
     }
@@ -5885,7 +5896,7 @@ export class GameServer {
           break;
         }
       }
-      spawn.eid = this.spawnNpc(def, x, y, i);
+      spawn.eid = this.spawnNpc(def, x, y, i, spawn.patrol);
     }
 
     // Placed actors stand back up the same way beasts do.
@@ -5903,7 +5914,13 @@ export class GameServer {
    * halves, dev-spawned): killNpc's spawn-point lookup finds nothing and
    * schedules no respawn.
    */
-  private spawnNpc(def: NpcDef, x: number, y: number, spawnIndex: number): EntityId {
+  private spawnNpc(
+    def: NpcDef,
+    x: number,
+    y: number,
+    spawnIndex: number,
+    patrol?: ReadonlyArray<{ x: number; y: number }>,
+  ): EntityId {
     const eid = this.ecs.create();
     this.kinds.set(eid, EntityKind.Npc);
     this.positions.set(eid, { x, y, dir: Math.random() * Math.PI * 2 });
@@ -5933,6 +5950,10 @@ export class GameServer {
       navRefX: Infinity,
       navRefY: Infinity,
       noAggroUntilTick: 0,
+      patrol:
+        patrol && patrol.length >= 2
+          ? { pts: patrol, idx: 0, waitUntilTick: 0 }
+          : undefined,
     });
     this.updateChunkMembership(eid);
     return eid;
@@ -6691,6 +6712,40 @@ export class GameServer {
         // Posted actors hold their spot: the wander drift belongs to
         // beasts. A guard leaves the arch only to fight, and 'return'
         // walks it back to the post it was placed on.
+      } else if (npc.patrol) {
+        // The sentry's round: walk a leg, linger, move on. Idle-body
+        // law holds — this branch only runs when combat isn't using
+        // the body, and each reached waypoint re-pins origin so a
+        // chase leashes back to the round, not the morning post.
+        const p = npc.patrol;
+        if (this.tickCount >= p.waitUntilTick) {
+          const wp = p.pts[p.idx]!;
+          const dx = wp.x - pos.x;
+          const dy = wp.y - pos.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 0.6) {
+            npc.originX = wp.x;
+            npc.originY = wp.y;
+            p.idx = (p.idx + 1) % p.pts.length;
+            p.waitUntilTick = this.tickCount + 40 + Math.floor(Math.random() * 100);
+            npc.navBest = Infinity;
+            npc.navStuck = 0;
+          } else {
+            const h = steerToward(pos, wp.x, wp.y, this.world, npc.def.radius, npc.steer);
+            moveX = h.mx;
+            moveY = h.my;
+            // A blocked leg skips its waypoint — the closest-approach
+            // watchdog is a corner-wedge escape, never a pathfinder.
+            if (dist < npc.navBest - 0.15) {
+              npc.navBest = dist;
+              npc.navStuck = 0;
+            } else if (++npc.navStuck >= GameServer.RETURN_STALL_TICKS) {
+              p.idx = (p.idx + 1) % p.pts.length;
+              npc.navBest = Infinity;
+              npc.navStuck = 0;
+            }
+          }
+        }
       } else {
         // Idle wander: drift somewhere near the origin now and then.
         if (this.tickCount >= npc.wanderUntilTick) {

@@ -23,6 +23,14 @@ export interface ZoneSpawn {
   level?: number;
   /** Display-name override — how a scaled troll becomes a Hold-Warden. */
   name?: string;
+  /**
+   * A waypoint loop the body paces while idle (POI sentry rounds).
+   * World coords; the idle brain walks leg to leg with the steering
+   * fan and lingers at each stop. Combat and chase own the body as
+   * ever — the round resumes when they let go. Only meaningful with
+   * count 1 (each patroller gets its own rotated loop).
+   */
+  patrol?: ReadonlyArray<{ x: number; y: number }>;
 }
 
 /**

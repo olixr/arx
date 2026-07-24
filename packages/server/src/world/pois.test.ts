@@ -139,6 +139,31 @@ test('settled cells never host POIs, even forced', () => {
   assert.equal(poiForCell(SEED, 0, 0, 0, CTX, true), null);
 });
 
+test('patrol sentries walk a real ring and watchers hold the townward post', () => {
+  let patrols = 0;
+  for (const site of scanSites()) {
+    const zone = composePoi(SEED, site, CTX)!;
+    for (const s of zone.spawns ?? []) {
+      if (!s.patrol) continue;
+      patrols++;
+      assert.ok(s.patrol.length >= 3, `${zone.id} patrol loop too short`);
+      assert.equal(s.count, 1, 'patrollers are single bodies');
+      // The loop starts at the body's own post.
+      assert.equal(s.x, s.patrol[0]!.x);
+      assert.equal(s.y, s.patrol[0]!.y);
+      const prefab = POI_PREFABS.get(site.prefabId)!;
+      const ringR = Math.max(prefab.width, prefab.height) / 2 + 5;
+      for (const wp of s.patrol) {
+        const d = Math.hypot(wp.x - (site.anchorX + 0.5), wp.y - (site.anchorY + 0.5));
+        assert.ok(d > 2 && d < ringR + 6, `${zone.id} waypoint off the ring (d=${d.toFixed(1)})`);
+        const cls = groundProbeAt(SEED, Math.floor(wp.x), Math.floor(wp.y));
+        assert.ok(cls === 'grass' || cls === 'forest', `${zone.id} waypoint on '${cls}'`);
+      }
+    }
+  }
+  assert.ok(patrols > 0, 'no patrol loops composed across the whole scan');
+});
+
 test('the simulator observes the scaffold honestly and hears a draft def', () => {
   const stats = simulatePois(SEED, CTX, 200);
   assert.equal(stats.evaluated, 200);
