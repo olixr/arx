@@ -288,7 +288,10 @@ function listEntries(): ListEntry[] {
       tid.startsWith('recipes_') || tid.includes('heirloom') ? 'Special pools' : 'Creature drops';
     return state.loot
       .filter((t) => match(t.def.id, t.def.desc ?? ''))
-      .sort((a, b) => a.def.id.localeCompare(b.def.id))
+      .sort(
+        (a, b) =>
+          family(a.def.id).localeCompare(family(b.def.id)) || a.def.id.localeCompare(b.def.id),
+      )
       .map((t) => ({
         id: t.def.id,
         title: t.def.id,
@@ -315,7 +318,10 @@ function listEntries(): ListEntry[] {
   }
   return state.items
     .filter((i) => match(i.id, i.name))
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort(
+      (a, b) =>
+        Number(!!b.slot) - Number(!!a.slot) || a.name.localeCompare(b.name),
+    )
     .map((i) => ({
       id: i.id,
       title: i.name,

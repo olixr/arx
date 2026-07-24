@@ -214,6 +214,113 @@ export function statSlider(opts: {
   return wrap;
 }
 
+/**
+ * The marquee slider — a tall, generous track with a live fill, a big
+ * formatted readout, and an optional fine-tune number box. Built for
+ * the values a designer drags by feel (drop chances, pool weights)
+ * rather than types by hand.
+ */
+export function bigSlider(opts: {
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  /** Large readout, e.g. (v) => `${v}%` or (v) => `×${v}`. */
+  format: (v: number) => string;
+  hint?: string;
+  /** Show a fine-tune number input beside the readout. */
+  fine?: boolean;
+  onInput: (v: number) => void;
+  /** Called on release — rebuild-heavy work goes here, not onInput. */
+  onCommit?: () => void;
+}): HTMLElement {
+  const step = opts.step ?? 1;
+  const wrap = el('div', 'big-slider');
+  const track = el('div', 'big-track');
+  const fill = el('div', 'big-fill');
+  track.appendChild(fill);
+  const range = document.createElement('input');
+  range.type = 'range';
+  range.min = String(opts.min);
+  range.max = String(opts.max);
+  range.step = String(step);
+  range.value = String(opts.value);
+  range.className = 'big-range';
+  if (opts.hint) range.title = opts.hint;
+  track.appendChild(range);
+  wrap.appendChild(track);
+
+  const readout = el('span', 'big-readout', opts.format(opts.value));
+  wrap.appendChild(readout);
+
+  let fine: HTMLInputElement | null = null;
+  if (opts.fine) {
+    fine = document.createElement('input');
+    fine.type = 'number';
+    fine.step = String(step);
+    fine.min = String(opts.min);
+    fine.max = String(opts.max);
+    fine.value = String(opts.value);
+    fine.className = 'big-fine';
+    wrap.appendChild(fine);
+  }
+
+  const paint = (v: number): void => {
+    const pct = Math.max(0, Math.min(1, (v - opts.min) / (opts.max - opts.min)));
+    fill.style.width = `${pct * 100}%`;
+    readout.textContent = opts.format(v);
+  };
+  paint(opts.value);
+
+  range.addEventListener('input', () => {
+    const v = Number(range.value);
+    if (fine) fine.value = range.value;
+    paint(v);
+    opts.onInput(v);
+  });
+  range.addEventListener('change', () => opts.onCommit?.());
+  fine?.addEventListener('input', () => {
+    const v = Math.max(opts.min, Math.min(opts.max, Number(fine!.value) || opts.min));
+    range.value = String(v);
+    paint(v);
+    opts.onInput(v);
+  });
+  fine?.addEventListener('change', () => opts.onCommit?.());
+  return wrap;
+}
+
+/** A labeled stepper pair for ranged quantities (min–max). */
+export function rangePair(
+  lo: number,
+  hi: number,
+  min: number,
+  max: number,
+  onInput: (lo: number, hi: number) => void,
+): HTMLElement {
+  const wrap = el('div', 'range-pair');
+  const loIn = document.createElement('input');
+  loIn.type = 'number';
+  loIn.min = String(min);
+  loIn.max = String(max);
+  loIn.value = String(lo);
+  const dash = el('span', 'range-dash', '–');
+  const hiIn = document.createElement('input');
+  hiIn.type = 'number';
+  hiIn.min = String(min);
+  hiIn.max = String(max);
+  hiIn.value = String(hi);
+  const clamp = (): void => {
+    let a = Math.max(min, Number(loIn.value) || min);
+    let b = Math.max(min, Number(hiIn.value) || min);
+    if (b < a) b = a;
+    onInput(a, b);
+  };
+  loIn.addEventListener('input', clamp);
+  hiIn.addEventListener('input', clamp);
+  wrap.append(loIn, dash, hiIn);
+  return wrap;
+}
+
 // ----------------------------------------------------- status chips
 
 const STATUS_STYLE: Record<string, { color: string; label: string }> = {

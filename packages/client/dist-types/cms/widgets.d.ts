@@ -39,6 +39,28 @@ export declare function statSlider(opts: {
     dist?: StatDistribution;
     onInput: (v: number) => void;
 }): HTMLElement;
+/**
+ * The marquee slider — a tall, generous track with a live fill, a big
+ * formatted readout, and an optional fine-tune number box. Built for
+ * the values a designer drags by feel (drop chances, pool weights)
+ * rather than types by hand.
+ */
+export declare function bigSlider(opts: {
+    value: number;
+    min: number;
+    max: number;
+    step?: number;
+    /** Large readout, e.g. (v) => `${v}%` or (v) => `×${v}`. */
+    format: (v: number) => string;
+    hint?: string;
+    /** Show a fine-tune number input beside the readout. */
+    fine?: boolean;
+    onInput: (v: number) => void;
+    /** Called on release — rebuild-heavy work goes here, not onInput. */
+    onCommit?: () => void;
+}): HTMLElement;
+/** A labeled stepper pair for ranged quantities (min–max). */
+export declare function rangePair(lo: number, hi: number, min: number, max: number, onInput: (lo: number, hi: number) => void): HTMLElement;
 /** Element-colored multi-select chips (resistances, weaknesses). */
 export declare function statusChips(active: readonly string[], onToggle: (id: string, on: boolean) => void): HTMLElement;
 /** One on/off feature chip with an explanation tooltip. */

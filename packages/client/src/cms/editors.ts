@@ -15,11 +15,13 @@ import { actorBust } from './portraits.js';
 import { entryShare, simulate, type SimAggregate } from './simulate.js';
 import {
   bar,
+  bigSlider,
   combobox,
   distribution,
   el,
   featureChip,
   pill,
+  rangePair,
   statSlider,
   statusChips,
   type ComboOption,
@@ -634,17 +636,262 @@ function lootDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
   };
   const isPick = (): boolean => draft.mode === 'pick';
 
+  // Live-updated share readouts: sliders patch these in place — no
+  // rebuild mid-drag, the whole page answers as you pull.
+  interface ShareRef {
+    idx: number | 'nothing';
+    fill: HTMLElement;
+    pct: HTMLElement;
+    seg?: HTMLElement;
+  }
+  let shareRefs: ShareRef[] = [];
+  let expectedChip: HTMLElement | null = null;
+
+  const shareOf = (idx: number | 'nothing'): number => {
+    if (idx === 'nothing') {
+      if (!isPick()) return 0;
+      const totalW = draft.entries.reduce((s, x) => s + (x.w ?? 1), 0) + (draft.nothingW ?? 0);
+      return totalW > 0 ? (draft.nothingW ?? 0) / totalW : 0;
+    }
+    return entryShare(draft, idx);
+  };
+
+  const updateShares = (): void => {
+    for (const ref of shareRefs) {
+      const share = shareOf(ref.idx);
+      ref.fill.style.width = `${Math.max(2, Math.min(100, share * 100))}%`;
+      ref.pct.textContent = `${(share * 100).toFixed(share < 0.1 ? 1 : 0)}%`;
+      if (ref.seg) ref.seg.style.flexGrow = String(Math.max(0.001, share));
+    }
+    if (expectedChip) {
+      const expected = isPick()
+        ? draft.picks
+          ? (draft.picks[0] + draft.picks[1]) / 2
+          : 1
+        : draft.entries.reduce((s, e) => s + Math.min(1, e.chance ?? 1), 0);
+      expectedChip.textContent = `≈${expected.toFixed(1)} drops/roll`;
+    }
+    markDirty();
+  };
+
+  // ------------------------------------------------------ entry card
+  const entryCard = (e: LootEntryDef, i: number): HTMLElement => {
+    const kind = e.item !== undefined ? 'item' : e.table !== undefined ? 'table' : 'pool';
+    const card = el('div', 'ecard');
+    card.draggable = true;
+    card.dataset.idx = String(i);
+
+    // Drag-to-reorder: the order is the table's authored story.
+    card.addEventListener('dragstart', (ev) => {
+      ev.dataTransfer?.setData('text/plain', String(i));
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    card.addEventListener('dragover', (ev) => {
+      ev.preventDefault();
+      card.classList.add('drop-here');
+    });
+    card.addEventListener('dragleave', () => card.classList.remove('drop-here'));
+    card.addEventListener('drop', (ev) => {
+      ev.preventDefault();
+      card.classList.remove('drop-here');
+      const from = Number(ev.dataTransfer?.getData('text/plain') ?? -1);
+      if (from < 0 || from === i) return;
+      const [moved] = draft.entries.splice(from, 1);
+      draft.entries.splice(i, 0, moved!);
+      markDirty();
+      rebuild();
+    });
+
+    // --- the face: icon + what drops
+    const face = el('div', 'ecard-face');
+    const icoBox = el('div', 'ecard-ico');
+    if (e.item) {
+      const img = document.createElement('img');
+      img.src = itemIconUrl(e.item, 44);
+      img.width = 44;
+      img.height = 44;
+      icoBox.appendChild(img);
+    } else {
+      icoBox.appendChild(iconImg(kind === 'table' ? 'prefab' : 'picker', 30));
+    }
+    face.appendChild(icoBox);
+    const faceCol = el('div', 'ecard-what');
+    const kindSeg = el('div', 'seg-row mini-seg');
+    for (const [v, l, tip] of [
+      ['item', 'item', 'drops a specific item'],
+      ['table', 'table', 'rolls another table (composition)'],
+      ['pool', 'heirloom', 'a piece from the heirloom gear pool'],
+    ] as const) {
+      const b = el('button', 'opt-btn' + (kind === v ? ' active' : ''), l) as HTMLButtonElement;
+      b.title = tip;
+      b.onclick = () => {
+        delete e.item;
+        delete e.table;
+        delete e.pool;
+        delete e.mult;
+        if (v === 'item') e.item = 'coins';
+        else if (v === 'table') e.table = state.loot.find((t) => t.def.id !== draft.id)?.def.id;
+        else e.pool = 'heirloom';
+        markDirty();
+        rebuild();
+      };
+      kindSeg.appendChild(b);
+    }
+    faceCol.appendChild(kindSeg);
+    if (kind === 'item') {
+      faceCol.appendChild(
+        combobox(() => itemOptions(), e.item, (v) => {
+          e.item = v;
+          markDirty();
+          rebuild();
+        }),
+      );
+    } else if (kind === 'table') {
+      faceCol.appendChild(
+        combobox(() => tableOptions(draft.id), e.table, (v) => {
+          e.table = v;
+          markDirty();
+          rebuild();
+        }),
+      );
+    } else {
+      faceCol.appendChild(el('p', 'muted', 'Rolled gear from the heirloom pool — rarity rides the table knobs.'));
+    }
+    face.appendChild(faceCol);
+    card.appendChild(face);
+
+    // --- the odds: one big slider, chance or weight by mode
+    const odds = el('div', 'ecard-odds');
+    if (isPick()) {
+      const wMax = Math.max(
+        20,
+        Math.ceil(
+          Math.max(...draft.entries.map((x) => x.w ?? 1), draft.nothingW ?? 0) * 1.3,
+        ),
+      );
+      odds.appendChild(el('span', 'ecard-odds-label', 'weight in the pool'));
+      odds.appendChild(
+        bigSlider({
+          value: e.w ?? 1,
+          min: 0,
+          max: wMax,
+          step: 1,
+          format: (v) => `${v}`,
+          fine: true,
+          hint: 'heavier = drawn more often',
+          onInput: (v) => {
+            e.w = v;
+            delete e.chance;
+            updateShares();
+          },
+        }),
+      );
+    } else {
+      odds.appendChild(el('span', 'ecard-odds-label', 'drop chance'));
+      odds.appendChild(
+        bigSlider({
+          value: Math.round((e.chance ?? 1) * 1000) / 10,
+          min: 0.1,
+          max: 100,
+          step: 0.1,
+          format: (v) => `${v}%`,
+          fine: true,
+          hint: 'this entry rolls on its own, every kill',
+          onInput: (v) => {
+            e.chance = Math.round(v * 10) / 1000;
+            delete e.w;
+            updateShares();
+          },
+        }),
+      );
+    }
+    card.appendChild(odds);
+
+    // --- quantity + mult
+    const nums = el('div', 'ecard-nums');
+    const qtyF = el('label', 'nfield');
+    qtyF.appendChild(el('span', '', 'quantity'));
+    qtyF.appendChild(
+      rangePair(e.qty?.[0] ?? 1, e.qty?.[1] ?? e.qty?.[0] ?? 1, 1, 999, (lo, hi) => {
+        e.qty = [lo, hi];
+        markDirty();
+      }),
+    );
+    nums.appendChild(qtyF);
+    if (kind === 'table') {
+      const multF = el('label', 'nfield');
+      multF.appendChild(el('span', '', 'roll it × times'));
+      const multIn = document.createElement('input');
+      multIn.type = 'number';
+      multIn.step = '0.5';
+      multIn.min = '0.5';
+      multIn.value = String(e.mult ?? 1);
+      multIn.oninput = () => {
+        const v = Number(multIn.value) || 1;
+        e.mult = v === 1 ? undefined : v;
+        markDirty();
+      };
+      multF.appendChild(multIn);
+      nums.appendChild(multF);
+    }
+    card.appendChild(nums);
+
+    // --- actions
+    const actions = el('div', 'ecard-actions');
+    const dup = el('button', 'mini', '⧉') as HTMLButtonElement;
+    dup.title = 'Duplicate this entry';
+    dup.onclick = () => {
+      draft.entries.splice(i + 1, 0, JSON.parse(JSON.stringify(e)) as LootEntryDef);
+      markDirty();
+      rebuild();
+    };
+    const del = el('button', 'mini danger') as HTMLButtonElement;
+    del.appendChild(iconImg('trash', 14));
+    del.title = 'Remove this entry';
+    del.onclick = () => {
+      draft.entries.splice(i, 1);
+      markDirty();
+      rebuild();
+    };
+    const grip = el('span', 'ecard-grip', '⋮⋮');
+    grip.title = 'Drag to reorder';
+    actions.append(dup, del, grip);
+    card.appendChild(actions);
+
+    // --- the live share strip along the card's foot
+    const strip = el('div', 'ecard-strip');
+    const fill = el('div', 'ecard-strip-fill');
+    strip.appendChild(fill);
+    const pct = el('span', 'ecard-strip-pct');
+    strip.appendChild(pct);
+    strip.title = isPick()
+      ? 'effective share of the pool (weight over total, times draws)'
+      : 'this entry’s own drop chance';
+    card.appendChild(strip);
+    shareRefs.push({ idx: i, fill, pct });
+
+    return card;
+  };
+
+  // -------------------------------------------------- the build pass
   const build = (): void => {
+    shareRefs = [];
     const quick = simulate(id, simLevel, 300, draft);
+    expectedChip = pill('…', 'average drops per roll', 'ink');
     body.appendChild(
       detailHead(
         null,
         draft.id,
-        draft.desc ?? '',
+        '',
         [
-          pill(isPick() ? 'pick — weighted pool' : 'each — independent chances', 'roll mode', 'brass'),
           pill(`${draft.entries.length} entries`, '', 'ink'),
-          pill(`≈${quick.evCoins.toFixed(1)} coins/roll`, 'catalog value of an average roll (300-roll observation)', 'brass'),
+          expectedChip,
+          pill(
+            `≈${quick.evCoins.toFixed(1)} coins/roll`,
+            'catalog value of an average roll (300-roll observation)',
+            'brass',
+          ),
           pill(`${Math.round((quick.emptyRolls / quick.rolls) * 100)}% empty`, 'rolls that pay nothing', 'ink'),
         ],
         entry.edited,
@@ -654,83 +901,182 @@ function lootDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
       ),
     );
 
-    // Table knobs.
-    const knobs = el('div', 'fgrid');
-    const descF = el('label', 'ffield wide');
-    descF.appendChild(el('span', '', 'description'));
-    descF.appendChild(textIn(draft.desc ?? '', (v) => (draft.desc = v || undefined), 'What story does this table pay out?'));
-    knobs.appendChild(descF);
-    const modeF = el('label', 'ffield');
-    modeF.appendChild(el('span', '', 'mode'));
-    const modeSeg = el('div', 'seg-row');
-    for (const [v, l, tip] of [
-      ['each', 'each', 'every entry rolls its own chance independently'],
-      ['pick', 'pick', 'weighted draws from one pool'],
+    // Editable story line right under the name — the description IS
+    // the table's purpose; it deserves the top of the page.
+    const descIn = document.createElement('input');
+    descIn.className = 'desc-line';
+    descIn.placeholder = 'What story does this table pay out? (description)';
+    descIn.value = draft.desc ?? '';
+    descIn.oninput = () => {
+      draft.desc = descIn.value || undefined;
+      markDirty();
+    };
+    body.appendChild(descIn);
+
+    // ------------------------------------------------- mode as cards
+    const modeRow = el('div', 'mode-cards');
+    for (const [v, title, sub] of [
+      ['each', 'Each — independent chances', 'Every entry rolls its own percentage on every kill. Bones at 100% and a totem at 4% coexist happily.'],
+      ['pick', 'Pick — a weighted pool', 'The table draws N times from one pool; weights set the odds against each other. Classic rare-table shape.'],
     ] as const) {
-      const b = el('button', 'opt-btn' + ((draft.mode ?? 'each') === v ? ' active' : ''), l) as HTMLButtonElement;
-      b.title = tip;
-      b.onclick = () => {
+      const active = (draft.mode ?? 'each') === v;
+      const cardB = el('button', 'mode-card' + (active ? ' active' : '')) as HTMLButtonElement;
+      cardB.appendChild(el('b', '', title));
+      cardB.appendChild(el('span', '', sub));
+      cardB.onclick = () => {
+        if ((draft.mode ?? 'each') === v) return;
         draft.mode = v === 'pick' ? 'pick' : undefined;
         if (v === 'pick' && !draft.picks) draft.picks = [1, 2];
         markDirty();
         rebuild();
       };
-      modeSeg.appendChild(b);
+      modeRow.appendChild(cardB);
     }
-    modeF.appendChild(modeSeg);
-    knobs.appendChild(modeF);
-    if (isPick()) {
-      const picksF = el('label', 'ffield');
-      picksF.appendChild(el('span', '', 'draws per roll (min–max)'));
-      const pair = el('span', 'pair');
-      pair.append(
-        numIn(draft.picks?.[0] ?? 1, (v) => (draft.picks = [v, draft.picks?.[1] ?? v])),
-        numIn(draft.picks?.[1] ?? 1, (v) => (draft.picks = [draft.picks?.[0] ?? 1, v])),
-      );
-      picksF.appendChild(pair);
-      knobs.appendChild(picksF);
-      const nothingF = el('label', 'ffield');
-      nothingF.appendChild(el('span', '', 'nothing weight'));
-      nothingF.appendChild(numIn(draft.nothingW ?? 0, (v) => (draft.nothingW = v || undefined)));
-      nothingF.appendChild(el('span', 'note', 'empty-handed weight in the pool'));
-      knobs.appendChild(nothingF);
-    }
-    body.appendChild(sect('Table', '', knobs));
+    body.appendChild(sect('How it rolls', '', modeRow));
 
-    // Entries — pickers with live share bars.
-    const entries = el('div');
-    draft.entries.forEach((e, i) => {
-      entries.appendChild(entryRow(draft, e, i, rebuild));
-    });
-    if (draft.entries.length === 0) {
-      entries.appendChild(el('p', 'muted empty', 'No entries — this table pays out nothing.'));
-    }
-    const addRow = el('div', 'add-row');
-    const add = el('button', '', 'Add entry') as HTMLButtonElement;
-    add.onclick = () => {
-      draft.entries.push(
-        isPick() ? { item: 'coins', w: 1, qty: [1, 1] } : ({ item: 'coins', chance: 0.5, qty: [1, 1] } as LootEntryDef),
+    if (isPick()) {
+      const picksRow = el('div', 'opt-row picks-row');
+      picksRow.appendChild(el('span', 'ecard-odds-label', 'draws per roll'));
+      picksRow.appendChild(
+        rangePair(draft.picks?.[0] ?? 1, draft.picks?.[1] ?? 1, 1, 12, (lo, hi) => {
+          draft.picks = [lo, hi];
+          updateShares();
+        }),
       );
+      body.appendChild(picksRow);
+
+      // The pool at a glance: one stacked bar, every share visible.
+      const dist = el('div', 'pool-bar');
+      draft.entries.forEach((e, i) => {
+        const seg = el('div', 'pool-seg');
+        seg.style.background = `hsl(${(i * 63) % 360} 45% 46%)`;
+        seg.title = e.item ?? e.table ?? 'heirloom';
+        const ref = shareRefs.find((r) => r.idx === i);
+        if (ref) ref.seg = seg;
+        else shareRefs.push({ idx: i, fill: el('i'), pct: el('i'), seg });
+        dist.appendChild(seg);
+      });
+      const nothingSeg = el('div', 'pool-seg nothing');
+      nothingSeg.title = 'nothing — empty hands';
+      dist.appendChild(nothingSeg);
+      shareRefs.push({ idx: 'nothing', fill: el('i'), pct: el('i'), seg: nothingSeg });
+      body.appendChild(sect('The pool', 'Each band is an entry’s slice of the draw; the dark band is empty hands.', dist));
+    }
+
+    // ------------------------------------------------------ entries
+    const list = el('div', 'ecard-list');
+    draft.entries.forEach((e, i) => list.appendChild(entryCard(e, i)));
+
+    if (isPick()) {
+      // Empty hands is part of the pool — it gets a card like anything
+      // else, so "how often nothing?" is designed, not computed.
+      const ghost = el('div', 'ecard ghost');
+      const face = el('div', 'ecard-face');
+      const icoBox = el('div', 'ecard-ico ghost-ico');
+      icoBox.appendChild(el('span', '', '∅'));
+      face.appendChild(icoBox);
+      const what = el('div', 'ecard-what');
+      what.appendChild(el('b', 'ghost-title', 'Empty hands'));
+      what.appendChild(el('p', 'muted', 'The draw that pays nothing — tension in the pool.'));
+      face.appendChild(what);
+      ghost.appendChild(face);
+      const odds = el('div', 'ecard-odds');
+      odds.appendChild(el('span', 'ecard-odds-label', 'weight in the pool'));
+      const wMax = Math.max(
+        20,
+        Math.ceil(Math.max(...draft.entries.map((x) => x.w ?? 1), draft.nothingW ?? 0, 1) * 1.3),
+      );
+      odds.appendChild(
+        bigSlider({
+          value: draft.nothingW ?? 0,
+          min: 0,
+          max: wMax,
+          step: 1,
+          format: (v) => `${v}`,
+          fine: true,
+          onInput: (v) => {
+            draft.nothingW = v || undefined;
+            updateShares();
+          },
+        }),
+      );
+      ghost.appendChild(odds);
+      ghost.appendChild(el('div', 'ecard-nums'));
+      ghost.appendChild(el('div', 'ecard-actions'));
+      const strip = el('div', 'ecard-strip');
+      const fill = el('div', 'ecard-strip-fill nothing');
+      strip.appendChild(fill);
+      const pct = el('span', 'ecard-strip-pct');
+      strip.appendChild(pct);
+      ghost.appendChild(strip);
+      shareRefs.push({ idx: 'nothing', fill, pct });
+      list.appendChild(ghost);
+    }
+
+    if (draft.entries.length === 0) {
+      list.appendChild(el('p', 'muted empty', 'No entries — this table pays out nothing. Add the first drop below.'));
+    }
+
+    // Quick add: pick the thing, get the entry — one gesture.
+    const addRow = el('div', 'quick-add');
+    addRow.appendChild(el('span', 'ecard-odds-label', 'add a drop'));
+    addRow.appendChild(
+      combobox(
+        () => itemOptions(),
+        undefined,
+        (v) => {
+          draft.entries.push(
+            isPick() ? { item: v, w: 5, qty: [1, 1] } : { item: v, chance: 0.25, qty: [1, 1] },
+          );
+          markDirty();
+          rebuild();
+        },
+        'item…',
+      ),
+    );
+    addRow.appendChild(
+      combobox(
+        () => tableOptions(draft.id),
+        undefined,
+        (v) => {
+          draft.entries.push(isPick() ? { table: v, w: 3 } : { table: v, chance: 1 });
+          markDirty();
+          rebuild();
+        },
+        'sub-table…',
+      ),
+    );
+    const heirloomBtn = el('button', '', '+ heirloom piece') as HTMLButtonElement;
+    heirloomBtn.title = 'A rolled gear piece from the heirloom pool';
+    heirloomBtn.onclick = () => {
+      draft.entries.push(isPick() ? { pool: 'heirloom', w: 1 } : { pool: 'heirloom', chance: 0.05 });
       markDirty();
       rebuild();
     };
-    addRow.appendChild(add);
-    entries.appendChild(addRow);
+    addRow.appendChild(heirloomBtn);
+    list.appendChild(addRow);
+
     body.appendChild(
       sect(
         'Entries',
         isPick()
-          ? 'The bar is each entry\'s share of the pool (weights over the total, times average draws).'
-          : 'The bar is each entry\'s own chance — entries roll independently.',
-        entries,
+          ? 'Drag cards to reorder. The foot of each card is its live share of the pool — pull a weight and watch every share answer.'
+          : 'Drag cards to reorder. Each card rolls independently at its own chance, every single kill.',
+        list,
       ),
     );
 
-    // The laboratory.
+    // -------------------------------------------------- the laboratory
     const lab = el('div');
-    const labRow = el('div', 'add-row');
-    labRow.appendChild(el('span', 'note', 'foe level'));
-    labRow.appendChild(numIn(simLevel, (v) => (simLevel = v)));
+    const labRow = el('div', 'quick-add');
+    labRow.appendChild(el('span', 'ecard-odds-label', 'foe level'));
+    const lvlIn = document.createElement('input');
+    lvlIn.type = 'number';
+    lvlIn.min = '1';
+    lvlIn.max = '99';
+    lvlIn.value = String(simLevel);
+    lvlIn.oninput = () => (simLevel = Math.max(1, Number(lvlIn.value) || 1));
+    labRow.appendChild(lvlIn);
     const roll = el('button', 'primary', 'Roll ×300') as HTMLButtonElement;
     roll.onclick = rebuild;
     labRow.appendChild(roll);
@@ -740,134 +1086,11 @@ function lootDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
       sect('The laboratory', 'Rolls the REAL roller against your unsaved draft — what you see is what a player farms.', lab),
     );
 
+    updateShares();
+    state.dirty = false; // updateShares marks dirty; a fresh build isn't an edit
     lootUsedByRows(linkage, id);
   };
   build();
-}
-
-function entryRow(
-  draft: LootTableDef,
-  e: LootEntryDef,
-  i: number,
-  rebuild: () => void,
-): HTMLElement {
-  const isPick = draft.mode === 'pick';
-  const row = el('div', 'entry-row');
-  const kind = e.item !== undefined ? 'item' : e.table !== undefined ? 'table' : 'pool';
-
-  // Icon + share bar column.
-  const share = entryShare(draft, i);
-  const left = el('div', 'entry-left');
-  if (e.item) {
-    const img = document.createElement('img');
-    img.src = itemIconUrl(e.item, 30);
-    img.width = 30;
-    img.height = 30;
-    left.appendChild(img);
-  } else {
-    left.appendChild(iconImg(kind === 'table' ? 'prefab' : 'picker', 22));
-  }
-  const shareBar = el('div', 'share-track');
-  const fill = el('div', 'share-fill');
-  fill.style.width = `${Math.max(3, share * 100)}%`;
-  shareBar.appendChild(fill);
-  shareBar.title = `effective share ≈ ${(share * 100).toFixed(1)}%`;
-  left.appendChild(shareBar);
-  left.appendChild(el('span', 'share-pct', `${(share * 100).toFixed(share < 0.1 ? 1 : 0)}%`));
-  row.appendChild(left);
-
-  // Target picker.
-  const target = el('div', 'entry-target');
-  const kindSeg = el('div', 'seg-row mini-seg');
-  for (const [v, l] of [
-    ['item', 'item'],
-    ['table', 'table'],
-    ['pool', 'heirloom'],
-  ] as const) {
-    const b = el('button', 'opt-btn' + (kind === v ? ' active' : ''), l) as HTMLButtonElement;
-    b.onclick = () => {
-      delete e.item;
-      delete e.table;
-      delete e.pool;
-      delete e.mult;
-      if (v === 'item') e.item = 'coins';
-      else if (v === 'table') e.table = state.loot.find((t) => t.def.id !== draft.id)?.def.id;
-      else e.pool = 'heirloom';
-      markDirty();
-      rebuild();
-    };
-    kindSeg.appendChild(b);
-  }
-  target.appendChild(kindSeg);
-  if (kind === 'item') {
-    target.appendChild(
-      combobox(() => itemOptions(), e.item, (v) => {
-        e.item = v;
-        markDirty();
-        rebuild();
-      }),
-    );
-  } else if (kind === 'table') {
-    target.appendChild(
-      combobox(() => tableOptions(draft.id), e.table, (v) => {
-        e.table = v;
-        markDirty();
-        rebuild();
-      }),
-    );
-  } else {
-    target.appendChild(el('span', 'note', 'a piece from the heirloom pool'));
-  }
-  row.appendChild(target);
-
-  // Numbers.
-  const nums = el('div', 'entry-nums');
-  const numField = (label: string, input: HTMLElement): HTMLElement => {
-    const f = el('label', 'nfield');
-    f.appendChild(el('span', '', label));
-    f.appendChild(input);
-    return f;
-  };
-  nums.appendChild(numField('qty', (() => {
-    const pair = el('span', 'pair tight');
-    pair.append(
-      numIn(e.qty?.[0] ?? 1, (v) => (e.qty = [v, e.qty?.[1] ?? v])),
-      numIn(e.qty?.[1] ?? e.qty?.[0] ?? 1, (v) => (e.qty = [e.qty?.[0] ?? 1, v])),
-    );
-    return pair;
-  })()));
-  if (isPick) {
-    nums.appendChild(
-      numField('weight', numIn(e.w ?? 1, (v) => {
-        e.w = v;
-        delete e.chance;
-        rebuild();
-      })),
-    );
-  } else {
-    nums.appendChild(
-      numField('chance', numIn(e.chance ?? 1, (v) => {
-        e.chance = v;
-        delete e.w;
-        rebuild();
-      }, 0.01)),
-    );
-  }
-  if (kind === 'table') {
-    nums.appendChild(numField('mult', numIn(e.mult ?? 1, (v) => (e.mult = v === 1 ? undefined : v), 0.1)));
-  }
-  row.appendChild(nums);
-
-  const del = el('button', 'mini danger entry-del') as HTMLButtonElement;
-  del.appendChild(iconImg('trash', 13));
-  del.title = 'Remove this entry';
-  del.onclick = () => {
-    draft.entries.splice(i, 1);
-    markDirty();
-    rebuild();
-  };
-  row.appendChild(del);
-  return row;
 }
 
 function lootUsedByRows(root: HTMLElement, tableId: string): void {
@@ -876,7 +1099,11 @@ function lootUsedByRows(root: HTMLElement, tableId: string): void {
   const tables = state.loot.filter((t) => t.def.entries.some((e) => e.table === tableId));
   linkHead(root, 'cluster', 'Dropped by', npcs.length + actors.length);
   if (npcs.length + actors.length === 0) emptyLink(root, 'No creature rolls this table directly.');
-  for (const n of npcs) linkRow(root, n.def.name, `lv ${n.def.level}`, () => setSection('npcs', n.def.id));
+  for (const n of npcs) {
+    const thumb = creatureRender(n.def, 30);
+    thumb.style.borderRadius = '5px';
+    linkRow(root, n.def.name, `lv ${n.def.level}`, () => setSection('npcs', n.def.id), thumb);
+  }
   for (const a of actors) linkRow(root, a.def.name, 'actor', () => setSection('actors', a.def.id));
   if (tables.length > 0) {
     linkHead(root, 'prefab', 'Composed into', tables.length);
