@@ -1,4 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { WebSocketServer } from 'ws';
 import {
@@ -14,6 +15,7 @@ import {
 } from '@devcraft/content';
 import { config } from './config.js';
 import { AccountStore } from './db/accounts.js';
+import { createMapsApi } from './dev/mapsApi.js';
 import { openDb } from './db/db.js';
 import { loadDialogues, seedDialogues } from './db/dialogues.js';
 import { loadNpcActors, syncNpcActors } from './db/npcActors.js';
@@ -22,17 +24,28 @@ import { GameServer } from './game/gameServer.js';
 import { Session } from './net/session.js';
 import { WorldSource } from './world/worldSource.js';
 
-// Authored zones: built-ins from content, plus editor-exported JSON
-// dropped into data/maps/. Later zones win where they overlap.
-// Bramblewick stays first: WorldSource takes the world spawn from the
-// first zone that declares one.
-const zones: ZoneDef[] = [buildBramblewick(), buildGloomhollow(), buildHollowStair()];
+// Authored zones: built-ins from content, plus map-editor JSON saved
+// in data/maps/. Later zones win where they overlap. Bramblewick
+// stays first: WorldSource takes the world spawn from the first zone
+// that declares one. A file whose id matches a built-in REPLACES it
+// in place (same overlay slot) — that's how an edited town ships.
+const builtinZones = new Map<string, ZoneDef>(
+  [buildBramblewick(), buildGloomhollow(), buildHollowStair()].map((z) => [z.id, z]),
+);
+const zones: ZoneDef[] = [...builtinZones.values()];
 try {
   const mapsDir = join(config.dataDir, 'maps');
   for (const file of readdirSync(mapsDir).filter((f) => f.endsWith('.json')).sort()) {
-    const json = JSON.parse(readFileSync(join(mapsDir, file), 'utf8')) as ZoneJson;
-    zones.push(zoneFromJson(json));
-    console.log(`[server] loaded zone '${json.id}' from data/maps/${file}`);
+    try {
+      const json = JSON.parse(readFileSync(join(mapsDir, file), 'utf8')) as ZoneJson;
+      const zone = zoneFromJson(json);
+      const idx = zones.findIndex((z) => z.id === zone.id);
+      if (idx === -1) zones.push(zone);
+      else zones[idx] = zone;
+      console.log(`[server] loaded zone '${json.id}' from data/maps/${file}`);
+    } catch (err) {
+      console.warn(`[server] skipped bad map file ${file}: ${(err as Error).message}`);
+    }
   }
 } catch {
   // no data/maps directory — built-in zones only
@@ -93,13 +106,31 @@ console.log(
 
 game.start();
 
+// One shared http server: the WebSocket rides it at /ws, and the dev
+// maps API (the map editor's save/load/hot-reload wire) answers under
+// /dev/maps on the same port.
+const mapsApi = createMapsApi(game, builtinZones);
+const httpServer = createServer((req, res) => {
+  mapsApi(req, res)
+    .then((handled) => {
+      if (!handled) {
+        res.writeHead(404, { 'content-type': 'text/plain' });
+        res.end('devcraft server');
+      }
+    })
+    .catch((err: Error) => {
+      if (!res.headersSent) res.writeHead(500, { 'content-type': 'text/plain' });
+      res.end(`error: ${err.message}`);
+    });
+});
 const wss = new WebSocketServer({
-  port: config.port,
+  server: httpServer,
   path: '/ws',
   // Snapshots are 20Hz and tiny — compression would add per-message
   // CPU + latency for nothing. Explicit so nobody "enables a win".
   perMessageDeflate: false,
 });
+httpServer.listen(config.port);
 wss.on('connection', (ws, req) => {
   // KILL NAGLE. Node sockets batch small writes by default; a 20Hz
   // stream of sub-MTU snapshots is Nagle's worst case — it can hold a
@@ -120,6 +151,7 @@ function shutdown(): void {
   console.log('[server] shutting down');
   game.stop();
   wss.close();
+  httpServer.close();
   process.exit(0);
 }
 process.on('SIGINT', shutdown);

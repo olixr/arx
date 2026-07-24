@@ -105,6 +105,7 @@ import {
   type RoutineTask,
   type RoutineTaskPath,
   type ZoneActorSpawn,
+  type ZoneDef,
   type RecipeDef,
   type WeaponStats,
 } from '@devcraft/content';
@@ -913,7 +914,8 @@ export class GameServer {
   private nextDungeonSlot = 0;
 
   constructor(
-    private readonly world: WorldSource,
+    // Public: the dev maps API reads the live zone list off it.
+    readonly world: WorldSource,
     private readonly accounts: AccountStore,
   ) {
     this.registerSpawns(TOWN_SPAWNS);
@@ -2441,6 +2443,43 @@ export class GameServer {
     const patch = encodeTilePatch({ tx, ty, ground: tile });
     for (const s of this.sessions) {
       if (s.knownChunks.has(key)) s.sendBinary(patch);
+    }
+  }
+
+  /**
+   * Live map-editor save: swap the authored zone into the world and
+   * make every client that has its chunks fetch them fresh. Dropping
+   * the keys from knownChunks is enough — updateInterest runs every
+   * tick and restreams anything visible that isn't known, and the
+   * client's full-chunk replace re-bakes render + collision for free.
+   * Geometry only: spawn tables/actor placements register at boot.
+   */
+  reloadZone(zone: ZoneDef): void {
+    const old = this.world.zoneById(zone.id);
+    this.world.replaceZone(zone);
+    this.dropClientChunks(old);
+    this.dropClientChunks(zone);
+  }
+
+  /** Remove an authored zone live; its ground reverts to procgen. */
+  unloadZone(zoneId: string): void {
+    const old = this.world.zoneById(zoneId);
+    if (!old) return;
+    this.world.removeZone(zoneId);
+    this.dropClientChunks(old);
+  }
+
+  private dropClientChunks(zone: ZoneDef | undefined): void {
+    if (!zone) return;
+    const c0x = Math.floor(zone.origin.x / CHUNK_SIZE);
+    const c0y = Math.floor(zone.origin.y / CHUNK_SIZE);
+    const c1x = Math.floor((zone.origin.x + zone.width - 1) / CHUNK_SIZE);
+    const c1y = Math.floor((zone.origin.y + zone.height - 1) / CHUNK_SIZE);
+    for (let cy = c0y; cy <= c1y; cy++) {
+      for (let cx = c0x; cx <= c1x; cx++) {
+        const key = chunkKey(cx, cy);
+        for (const s of this.sessions) s.knownChunks.delete(key);
+      }
     }
   }
 

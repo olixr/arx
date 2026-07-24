@@ -18,6 +18,10 @@ export default defineConfig({
         target: 'ws://localhost:8787',
         ws: true,
       },
+      // The map editor's save/load/hot-reload API on the game server.
+      '/dev': {
+        target: 'http://localhost:8787',
+      },
     },
   },
 });

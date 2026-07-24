@@ -46,6 +46,39 @@ export class WorldSource extends ChunkStore {
     this.dropZoneChunks(zone!);
   }
 
+  /**
+   * Swap a zone in place, keeping its slot in the overlay order — a
+   * live map-editor save must not change which zone wins overlaps or
+   * which spawn the world reports. Unknown ids append like addZone.
+   */
+  replaceZone(zone: ZoneDef): void {
+    const idx = this.zones.findIndex((z) => z.id === zone.id);
+    if (idx === -1) {
+      this.addZone(zone);
+      return;
+    }
+    const old = this.zones[idx]!;
+    for (const portal of old.portals ?? []) {
+      this.portals.delete(`${portal.x},${portal.y}`);
+    }
+    this.zones[idx] = zone;
+    for (const portal of zone.portals ?? []) {
+      this.portals.set(`${portal.x},${portal.y}`, portal);
+    }
+    // Old and new rects can differ (resize/move) — drop both.
+    this.dropZoneChunks(old);
+    this.dropZoneChunks(zone);
+  }
+
+  zoneById(zoneId: string): ZoneDef | undefined {
+    return this.zones.find((z) => z.id === zoneId);
+  }
+
+  /** The live authored-zone list, in overlay order. */
+  get zoneDefs(): readonly ZoneDef[] {
+    return this.zones;
+  }
+
   portalAt(tx: number, ty: number): PortalDef | undefined {
     return this.portals.get(`${tx},${ty}`);
   }
