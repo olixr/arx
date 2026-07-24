@@ -21,6 +21,7 @@ import { AudioMenu } from './ui/audioMenu.js';
 import { zoneWeights } from './audio/zones.js';
 import { setupTouch } from './input/touch.js';
 import { dockGlyphUrl, itemIconUrl, uiIconUrl } from './render/icons.js';
+import { abilityIconUrl } from './render/abilityIcons.js';
 import { fxStyleFor } from './render/abilityFx.js';
 import { PORTAL_BURST_COLORS } from './render/portal.js';
 import { installChrome } from './ui/chrome.js';
@@ -45,6 +46,7 @@ if (new URLSearchParams(location.search).has('icons')) {
 for (const [id, kind, tip, kbKey, padCls, padLabel] of [
   ['btn-inventory', 'pack', 'Pack', 'I', 'start', '☰'],
   ['btn-skills', 'skills', 'Skills', 'K', 'select', '⧉'],
+  ['btn-arts', 'arts', 'Techniques', 'V', '', ''],
   ['btn-craft', 'handiwork', 'Handiwork', 'C', 'ddown', '▼'],
   ['btn-build', 'build', 'Build', 'B', 'dright', '▶'],
   ['btn-audio', 'sound', 'Sound', 'O', '', ''],
@@ -298,6 +300,7 @@ const panels = new Panels(
   (hand) => (hand === 'off' ? game.carryOff : game.carryStyle),
   (style, hand) => game.setCarryStyle(style, hand),
   () => ({ name: game.ownName }),
+  () => toggleScreen('arts'),
 );
 
 /** Drop a whole pack slot onto the ground (drag-out / pad Ⓨ). */
@@ -364,7 +367,9 @@ function closeAllUi(): void {
   audioMenu.close();
 }
 
-function toggleScreen(which: 'inv' | 'skills' | 'craft' | 'build' | 'audio' | 'loot'): void {
+function toggleScreen(
+  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot',
+): void {
   // A conversation owns the stage: no screen may open over it, from
   // any device — hotkeys, dock clicks, and pad shortcuts all pass
   // through this one gate.
@@ -374,13 +379,15 @@ function toggleScreen(which: 'inv' | 'skills' | 'craft' | 'build' | 'audio' | 'l
       ? panels.invOpen
       : which === 'skills'
         ? panels.skillsOpen
-        : which === 'craft'
-          ? stationPanels.craftOpen
-          : which === 'build'
-            ? stationPanels.buildOpen
-            : which === 'audio'
-              ? audioMenu.isOpen
-              : lootPanel.isOpen;
+        : which === 'arts'
+          ? panels.artsOpen
+          : which === 'craft'
+            ? stationPanels.craftOpen
+            : which === 'build'
+              ? stationPanels.buildOpen
+              : which === 'audio'
+                ? audioMenu.isOpen
+                : lootPanel.isOpen;
   closeAllUi();
   if (wasOpen) return;
   switch (which) {
@@ -389,6 +396,9 @@ function toggleScreen(which: 'inv' | 'skills' | 'craft' | 'build' | 'audio' | 'l
       break;
     case 'skills':
       panels.showSkills();
+      break;
+    case 'arts':
+      panels.showArts();
       break;
     case 'craft':
       stationPanels.openCraft(null, game.skills, game.knownRecipes);
@@ -407,6 +417,7 @@ function toggleScreen(which: 'inv' | 'skills' | 'craft' | 'build' | 'audio' | 'l
 
 document.getElementById('btn-inventory')!.addEventListener('click', () => toggleScreen('inv'));
 document.getElementById('btn-skills')!.addEventListener('click', () => toggleScreen('skills'));
+document.getElementById('btn-arts')!.addEventListener('click', () => toggleScreen('arts'));
 document.getElementById('btn-craft')!.addEventListener('click', () => toggleScreen('craft'));
 document.getElementById('btn-build')!.addEventListener('click', () => toggleScreen('build'));
 document.getElementById('btn-audio')!.addEventListener('click', () => toggleScreen('audio'));
@@ -630,7 +641,12 @@ dressPanel(el('inventory-panel'), {
 });
 dressPanel(el('skills-panel'), {
   icon: uiIconUrl('scroll', 34),
-  hint: 'Deeds raise levels. Combat skills offer a Technique — pick yours.',
+  hint: 'Every discipline in one hall — levels, progress, mastery.',
+  onClose: () => panels.closeAll(),
+});
+dressPanel(el('arts-panel'), {
+  icon: abilityIconUrl('whirlwind', 34),
+  hint: 'Your combat arts, school by school — choose what the R key carries.',
   onClose: () => panels.closeAll(),
 });
 stationPanels.setCraftDress(
@@ -1155,6 +1171,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.code === 'KeyI') toggleScreen('inv');
   if (e.code === 'KeyK') toggleScreen('skills');
+  if (e.code === 'KeyV') toggleScreen('arts');
   if (e.code === 'KeyO') toggleScreen('audio');
   if (e.code === 'KeyC') toggleScreen('craft');
   if (e.code === 'KeyB') toggleScreen('build');
@@ -1194,6 +1211,7 @@ const panelSeen = {
   loot: false,
   inv: false,
   skills: false,
+  arts: false,
   audio: false,
   riftgate: false,
 };
@@ -1218,6 +1236,7 @@ function panelAudioCues(): void {
   cue('loot', vis('loot-panel'), () => sfx.satchel(), () => sfx.uiClose());
   cue('inv', vis('inventory-panel'), () => sfx.satchel(), () => sfx.uiClose());
   cue('skills', vis('skills-panel'), () => sfx.parchment(), () => sfx.uiClose());
+  cue('arts', vis('arts-panel'), () => sfx.parchment(), () => sfx.uiClose());
   cue('audio', vis('audio-panel'), () => sfx.uiOpen(), () => sfx.uiClose());
   cue('riftgate', vis('riftgate-panel'), () => sfx.uiOpen(), () => sfx.uiClose());
 }
@@ -1229,7 +1248,7 @@ document.addEventListener('click', (e) => {
   const t = e.target as HTMLElement | null;
   if (
     t?.closest?.(
-      '.act-btn, .menu-item, .panel-close, #panel-buttons button, .technique-chip:not(.locked), .look-swatch, .look-stepper button, .look-actions button',
+      '.act-btn, .menu-item, .panel-close, #panel-buttons button, .tech-plate-btn, .tech-link-go, .look-swatch, .look-stepper button, .look-actions button',
     )
   ) {
     sfx.uiTap();

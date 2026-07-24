@@ -34,6 +34,8 @@ export declare class Panels {
     private readonly onCarryStyle;
     /** The case's owner: the adventurer name on the identity line. */
     private readonly identityInfo;
+    /** Opens the Techniques codex (skill cards link into it). */
+    private readonly onOpenArts;
     private readonly invPanel;
     private readonly invGrid;
     private readonly equipAnatomy;
@@ -46,6 +48,14 @@ export declare class Panels {
     private readonly identDeed;
     private readonly skillsPanel;
     private readonly skillsList;
+    private readonly artsPanel;
+    private readonly artsLoadout;
+    private readonly artsSchools;
+    private readonly artsDetail;
+    /** The technique the codex bench is laying out (null = auto-pick). */
+    private artsSel;
+    /** Unlocked techniques the player has inspected — the NEW-pip ledger. */
+    private readonly seenTech;
     private readonly gearStrip;
     private readonly card;
     private readonly menu;
@@ -69,13 +79,17 @@ export declare class Panels {
     /** The case's owner: the adventurer name on the identity line. */
     identityInfo?: () => {
         name?: string;
-    });
+    }, 
+    /** Opens the Techniques codex (skill cards link into it). */
+    onOpenArts?: () => void);
     toggleInventory(): void;
     showInventory(): void;
     toggleSkills(): void;
     showSkills(): void;
+    showArts(): void;
     get invOpen(): boolean;
     get skillsOpen(): boolean;
+    get artsOpen(): boolean;
     closeAll(): void;
     get anyOpen(): boolean;
     private dragMove;
@@ -123,7 +137,7 @@ export declare class Panels {
      * the world beside the case, wearing every change as it lands.
      */
     private renderIdentity;
-    /** Server-confirmed technique choices; re-renders the picker. */
+    /** Server-confirmed technique choices; re-renders whoever shows them. */
     setTechniques(chosen: Record<string, string>): void;
     /** Build one skill card for the hall. */
     private skillCard;
@@ -134,5 +148,25 @@ export declare class Panels {
      * discovered. A total-level crown plaque presides over the hall.
      */
     renderSkills(xp: SkillXp): void;
+    /** Roman numerals for the four rungs of every school's ladder. */
+    private static readonly RANKS;
+    /** Combat schools owning a technique ladder, hidden law honored. */
+    private artsSchoolIds;
+    /** The ladder the R key channels right now (bare hands = melee). */
+    private wieldingStyle;
+    /** A technique's rung state against the player's skill level. */
+    private techState;
+    /** Record that an unlocked art has been laid eyes on. */
+    private markTechSeen;
+    /** The dock button's glint: any unlocked art not yet inspected. */
+    private updateArtsPip;
+    /** The codex, whole: loadout strip, school ladders, the bench. */
+    renderArts(): void;
+    /** The live Q/E/R/T strip: every slot, its source, its ability. */
+    private renderArtsLoadout;
+    /** One school: its face, level, and the four-rung ladder. */
+    private artsSchool;
+    /** The bench: the chosen art laid out large, stats told honestly. */
+    private renderArtsBench;
 }
 //# sourceMappingURL=panels.d.ts.map

@@ -4746,7 +4746,7 @@ type DockGlyphPainter = (c: CanvasRenderingContext2D) => void;
 /** The one ink every dock sigil is engraved in. */
 const GLYPH_INK = '#d8c08c';
 
-export type DockGlyph = 'pack' | 'skills' | 'handiwork' | 'build' | 'sound' | 'attack';
+export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'attack';
 
 const DOCK_GLYPHS: Record<DockGlyph, DockGlyphPainter> = {
   // The satchel: body, drooping flap, buckle strap, carry handle.
@@ -4795,6 +4795,40 @@ const DOCK_GLYPHS: Record<DockGlyph, DockGlyphPainter> = {
       c.lineTo(x, top);
       c.stroke();
     }
+  },
+  // A spell-plate held aloft, radiating four spark ticks — the codex
+  // of techniques: power you choose and carry.
+  arts: (c) => {
+    c.lineWidth = 0.07;
+    c.beginPath();
+    c.moveTo(0.5, 0.26);
+    c.lineTo(0.72, 0.48);
+    c.lineTo(0.5, 0.7);
+    c.lineTo(0.28, 0.48);
+    c.closePath();
+    c.stroke();
+    c.beginPath();
+    c.arc(0.5, 0.48, 0.045, 0, Math.PI * 2);
+    c.fill();
+    c.lineWidth = 0.055;
+    for (const [x1, y1, x2, y2] of [
+      [0.5, 0.16, 0.5, 0.08],
+      [0.82, 0.48, 0.9, 0.48],
+      [0.18, 0.48, 0.1, 0.48],
+      [0.71, 0.25, 0.77, 0.19],
+      [0.29, 0.25, 0.23, 0.19],
+    ] as const) {
+      c.beginPath();
+      c.moveTo(x1, y1);
+      c.lineTo(x2, y2);
+      c.stroke();
+    }
+    // The plate rests on an open stand: the choosing hand's cradle.
+    c.lineWidth = 0.06;
+    c.beginPath();
+    c.moveTo(0.3, 0.84);
+    c.quadraticCurveTo(0.5, 0.72, 0.7, 0.84);
+    c.stroke();
   },
   // The smith's hammer mid-swing, two spark ticks off the face.
   handiwork: (c) => {

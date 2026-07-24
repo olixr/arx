@@ -16,7 +16,7 @@ const SLOT_PAD = [
 const EMPTY_HINTS = [
   'Equip a weapon to gain its Art',
   'Wear a relic to gain its power',
-  'Learn a Technique in the Skills panel (K)',
+  'Choose a Technique in the codex (V)',
   'Claim a Sigil from a fallen boss',
 ] as const;
 

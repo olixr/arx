@@ -260,7 +260,6 @@ h3 {
 .rift-row,
 .rift-power,
 .skills-total,
-.technique-chip,
 .price-tag,
 .pack-foot,
 .make-empty,
@@ -285,7 +284,6 @@ h3 {
     inset 0 -3px 0 rgba(10, 7, 3, 0.4);
 }
 
-.technique-chip,
 .price-tag,
 .card-tier {
   --cut: 6px;
@@ -1693,10 +1691,9 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   border-left: 5px solid var(--skill-accent, var(--line));
 }
 
-/* The technique ladder anchors to the card's floor. */
-.skill-card .technique-row {
+/* The technique link anchors to the card's floor. */
+.skill-card .tech-link-row {
   margin-top: auto;
-  padding-top: 10px;
 }
 
 .skill-card .skill-story {
@@ -1819,14 +1816,15 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   text-shadow: var(--punch-small);
 }
 
-/* -------------------------- technique picker */
+/* ------------- the technique LINK on combat skill cards ------------
+   The picker itself moved to its own codex screen; a combat card just
+   shows what rides your R today and hands you through. */
 
-.technique-row {
+.tech-link-row {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   margin-top: 10px;
-  flex-wrap: wrap;
   border-top: 1.5px solid var(--line);
   padding-top: 10px;
 }
@@ -1841,47 +1839,534 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   margin-right: 3px;
 }
 
-.technique-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 14px 7px 9px;
-  font-size: 14.5px;
-  font-weight: 700;
-  color: var(--parchment);
-  text-shadow: var(--punch-small);
-  background: var(--sunk);
-  border: 1.5px solid var(--line);
-  border-radius: 5px;
-  cursor: pointer;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
 .technique-plate {
   width: 26px;
   height: 26px;
   flex: none;
 }
 
-.technique-chip.locked .technique-plate {
-  filter: saturate(0.2) brightness(0.75);
+.tech-link-name {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.technique-chip:hover {
-  border-color: var(--line-strong);
-  background: var(--raise-hi);
+.tech-link-none {
+  font-size: 13.5px;
+  font-style: italic;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
 }
 
-.technique-chip.locked {
+.act-btn.minor.tech-link-go {
+  margin-left: auto;
+  min-height: 36px;
+  font-size: 13px;
+  padding: 0 8px;
+  flex: none;
+}
+
+/* ==================================================================
+   THE TECHNIQUES CODEX — the combat arts' own screen. The live
+   Q/E/R/T loadout strip up top tells the R key's place in the kit;
+   below it every school lays its four-rung ladder on a rail, and the
+   chosen art is spread out large on the bench to the right.
+   ================================================================== */
+
+.screen-arts {
+  width: min(1240px, 94vw);
+  height: min(860px, 90vh);
+}
+
+/* ---- the loadout strip: four keys, four sources, one story. */
+
+#arts-loadout {
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  padding: 12px 18px 10px;
+  margin-bottom: 14px;
+  background: var(--sunk);
+  border: 2px solid var(--line);
+}
+
+.load-title {
+  align-self: center;
+  flex: none;
+  width: 96px;
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.35;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.load-slot {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.load-well {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 7px solid transparent;
+  border-image: var(--ui-socket) 35 fill / 7px;
+}
+
+.load-well img {
+  width: 44px;
+  height: 44px;
+}
+
+.load-well.empty::after {
+  content: '—';
+  font-size: 20px;
+  color: var(--parchment-dim);
   opacity: 0.45;
-  cursor: default;
 }
 
-.technique-chip.active {
-  border-color: var(--gold);
+/* The key badge overhangs the well's corner, hotbar-style. */
+.load-key {
+  position: absolute;
+  right: -12px;
+  bottom: -12px;
+}
+
+/* The R slot is why this screen exists — it wears the gold lining. */
+.load-slot.the-r .load-well {
+  box-shadow:
+    inset 0 0 0 2.5px var(--gold),
+    inset 0 0 200px rgba(217, 164, 65, 0.13);
+}
+
+.load-slot.the-r .load-src {
   color: var(--gold-bright);
-  background: var(--raise-hi);
+}
+
+.load-src {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.load-name {
+  max-width: 100%;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.load-name.empty {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--parchment-dim);
+  opacity: 0.75;
+}
+
+/* ---- the body: school ladders left, the bench right. */
+
+.arts-main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 14px;
+}
+
+#arts-schools {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.arts-school {
+  flex: none;
+  background: color-mix(in srgb, var(--skill-accent, var(--line)) 9%, var(--raise));
+  border: 1.5px solid color-mix(in srgb, var(--skill-accent, var(--line)) 45%, var(--line));
+  border-left: 5px solid var(--skill-accent, var(--line));
+  padding: 12px 16px 14px;
+}
+
+.arts-school-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.skill-plaque.sm {
+  width: 42px;
+  height: 42px;
+}
+
+.skill-plaque.sm img {
+  width: 30px;
+  height: 30px;
+}
+
+.arts-school-name {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: capitalize;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+}
+
+.arts-school.secret-skill .arts-school-name {
+  color: var(--gold-bright);
+}
+
+.arts-school-lv {
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  padding: 3px 9px;
+  color: var(--parchment-dim);
+  background: var(--sunk);
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
+  text-shadow: var(--punch-small);
+}
+
+/* "In hand": this ladder is the one the R key channels right now. */
+.in-hand {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  color: var(--gold-bright);
+  background: color-mix(in srgb, var(--gold) 18%, var(--sunk));
+  border: 1.5px solid var(--gold);
+  border-radius: 4px;
+  text-shadow: var(--punch-small);
+}
+
+/* The ladder: four plates riding one rail. */
+.tech-rail {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.tech-rail::before {
+  content: '';
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 31px;
+  height: 2px;
+  background: var(--line);
+}
+
+.tech-plate-btn {
+  position: relative;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--parchment);
+}
+
+.tech-plate-well {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 7px solid transparent;
+  border-image: var(--ui-socket) 35 fill / 7px;
+}
+
+.tech-plate-well img {
+  width: 42px;
+  height: 42px;
+}
+
+.tech-plate-btn:hover .tech-plate-well {
+  filter: brightness(1.18);
+}
+
+.tech-plate-btn.locked {
+  color: var(--parchment-dim);
+}
+
+.tech-plate-btn.locked .tech-plate-well img {
+  filter: saturate(0.2) brightness(0.55);
+}
+
+.tech-plate-btn.veiled {
+  color: var(--parchment-dim);
+}
+
+.tech-mystery {
+  font-family: var(--serif);
+  font-size: 27px;
+  font-weight: 700;
+  color: rgba(216, 192, 140, 0.38);
+  text-shadow: var(--punch-small);
+}
+
+.tech-mystery.lg {
+  font-size: 48px;
+}
+
+/* Rarity-law states: rings are INSET box-shadows over the well art. */
+.tech-plate-btn.equipped .tech-plate-well {
+  box-shadow:
+    inset 0 0 0 2.5px var(--gold),
+    inset 0 0 200px rgba(217, 164, 65, 0.14);
+}
+
+.tech-plate-btn.selected .tech-plate-well {
+  box-shadow:
+    inset 0 0 0 2.5px rgba(239, 227, 194, 0.9),
+    inset 0 0 200px rgba(239, 227, 194, 0.08);
+}
+
+.tech-plate-btn.equipped.selected .tech-plate-well {
+  box-shadow:
+    inset 0 0 0 2.5px var(--gold-hot),
+    inset 0 0 200px rgba(217, 164, 65, 0.2);
+}
+
+.tech-plate-btn.selected .tech-plate-name {
+  color: var(--gold-bright);
+}
+
+.tech-plate-name {
+  max-width: 100%;
+  font-size: 13px;
+  font-weight: 700;
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tech-plate-sub {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.tech-plate-btn.equipped .tech-plate-sub {
+  color: var(--gold-bright);
+}
+
+/* The chosen-on-R brass seal, overhanging the well's corner. */
+.r-badge {
+  position: absolute;
+  right: -9px;
+  bottom: -9px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+  font-weight: 900;
+  color: #241a08;
+  background: var(--gold);
+  border: 1.5px solid #140e04;
+  border-radius: 4px;
+}
+
+/* A freshly unlocked art announces itself until inspected once. */
+.new-pip {
+  position: absolute;
+  left: -9px;
+  top: -9px;
+  padding: 2px 5px;
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  color: #f6ead0;
+  background: var(--red-soft);
+  border: 1.5px solid #140e04;
+  border-radius: 3px;
+  text-shadow: none;
+}
+
+/* The dock button's glint: something new waits in the codex. */
+#btn-arts.has-new::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ffd98a;
+  box-shadow: 0 0 6px rgba(255, 217, 138, 0.8);
+}
+
+/* ---- the bench: the chosen art, spread out and told honestly. */
+
+#arts-detail {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  padding: 18px 20px;
+  background: var(--sunk);
+  border: 2px solid var(--line);
+}
+
+.bench-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.bench-plate {
+  flex: none;
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 7px solid transparent;
+  border-image: var(--ui-socket) 35 fill / 7px;
+}
+
+.bench-plate img {
+  width: 74px;
+  height: 74px;
+}
+
+.bench-names {
+  min-width: 0;
+}
+
+.bench-name {
+  font-family: var(--serif);
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--parchment);
+  text-shadow: var(--punch);
+}
+
+.bench-line {
+  margin-top: 4px;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.art-state {
+  align-self: flex-start;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  border: 1.5px solid var(--line);
+  text-shadow: var(--punch-small);
+}
+
+.art-state.equipped {
+  color: var(--gold-bright);
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 14%, var(--sunk));
+}
+
+.art-state.unlocked {
+  color: var(--green);
+  border-color: rgba(125, 196, 106, 0.5);
+}
+
+.art-state.locked {
+  color: var(--red-soft);
+  border-color: rgba(217, 87, 99, 0.5);
+}
+
+.art-state.veiled {
+  font-style: italic;
+  color: var(--parchment-dim);
+}
+
+.bench-desc {
+  margin: 0;
+  font-size: 15.5px;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+}
+
+.bench-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+}
+
+#arts-detail .act-btn {
+  align-self: stretch;
+  margin-top: 2px;
+}
+
+.bench-teach {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1.5px solid var(--line);
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.bench-empty {
+  font-style: italic;
+  color: var(--parchment-dim);
 }
 
 /* ==================================================================

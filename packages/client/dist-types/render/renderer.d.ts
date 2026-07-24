@@ -640,12 +640,11 @@ export declare class Renderer {
      * DUNGEON CUTAWAY LAW: underground (player y >= UNDERGROUND_Y) there
      * are no interior regions — cavern flood-fills blow past MAX_REGION —
      * so the building cutaway never fires. Instead ANY wall-run tile
-     * fronting walkable floor to its NORTH sinks toward the stub while
-     * it stands in the player's occlusion window: dy = ty − playerY in
-     * ~[0..6] rows south, |dx| ≤ ~10 columns. Returns the cut factor
-     * 0 (full height) → 1 (full stub), SMOOTHSTEP-eased over ~2 tiles at
-     * every window edge on the CONTINUOUS player position, so walls sink
-     * and rise as you walk instead of popping per row. ugBlend scales it
+     * fronting walkable floor to its NORTH sinks toward the knee stub
+     * while it stands in the player's occlusion window. Returns the cut
+     * factor 0 (full height) → 1 (full stub), SMOOTHSTEP-eased at every
+     * window edge on the CONTINUOUS player position, so walls sink and
+     * rise as you walk instead of popping per row. ugBlend scales it
      * so a portal drop fades the cut in with the darkness. Deliberately
      * cheap: a few clamps and multiplies per visible wall, no allocation,
      * nothing cached — the wall painter is live, so a per-frame height
@@ -653,15 +652,23 @@ export declare class Renderer {
      * site); the surface keeps the region-based law untouched.
      */
     /**
-     * THE TRENCH LAW (corridors): one stubbed row is not enough in a
-     * dungeon — wall MASS is thick, and at WALL_H 2.05 the row BEHIND
-     * a knee-high stub still throws its crown over the corridor floor.
-     * So the cut reaches through the mass: a wall with walkable floor
-     * 1, 2, or 3 rows to its north sinks toward a stepped target
-     * (0.62 / 1.0 / 1.4) — nearest row lowest, each row behind a step
-     * taller, so the opening reads as a carved trench with depth
-     * rather than a flat shelf. Rows 4+ never overhang the floor at
-     * this WALL_H, so three probes is the whole cost.
+     * THE ONE-SLAB LAW (corridors): one stubbed row is not enough in a
+     * dungeon — wall MASS is thick, and at WALL_H 2.05 the two rows
+     * BEHIND a knee-high stub still throw their crowns over the
+     * corridor floor. So the cut reaches through the mass: rows 1–3
+     * from the floor all sink, and they sink to the SAME height on the
+     * SAME ease, keyed to the mass's FRONT row (the one touching the
+     * floor). Equal heights are load-bearing: same-height crowns tile
+     * seamlessly on screen, so the mass reads as one solid slab sinking
+     * together. Per-row heights or per-row eases are BANNED here — each
+     * row's crown then floats at its own offset and slides at its own
+     * rate as the window eases past it, which reads as the wall tearing
+     * into parallax slices (interior rows draw no south face — a crown
+     * with no riser under it has nothing to anchor the gap). Rows 4+
+     * stay full: at WALL_H 2.05 and yScale 0.6 a row 4 deep never
+     * overhangs the floor, and its fixed crown edge over the sunken
+     * slab is correct occlusion (the tall mass hides the trench bottom,
+     * never the floor), so three probes is the whole cost.
      */
     private dungeonWallHeight;
     private wallItem;
