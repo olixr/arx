@@ -141,6 +141,10 @@ export declare class Renderer {
     private readonly outlineACtx;
     private readonly outlineBCtx;
     private readonly baked;
+    /** Per-frame queue of chunks with pending sliced bakes (scan order:
+     *  visible chunks first, then the pre-bake ring). Scratch, rebuilt
+     *  every frame by drawGroundChunks. */
+    private readonly chunkJobQueue;
     private readonly anims;
     private shakeAmount;
     /**
@@ -457,9 +461,20 @@ export declare class Renderer {
      * to the contact line at every hour.
      */
     private castMask;
-    /** A rock/ore formation's exact silhouette, thrown as its shadow. */
+    /**
+     * A rock/ore formation's silhouette, thrown as its shadow. The mask
+     * VARIANT is the per-tile hash folded to 8 — a sheared dark blob
+     * from a sibling formation is indistinguishable from the exact one,
+     * and folding turns "one mask bake per formation" (a cold ore field
+     * baked dozens in one frame, the worst arrival stagger) into a tiny
+     * fixed set per ore kind.
+     */
     private castRockShadow;
-    /** A grown plant's silhouette — forage node or farm crop (calm: wind zeroed). */
+    /**
+     * A grown plant's silhouette — forage node or farm crop (calm: wind
+     * zeroed). Same variant-fold law as castRockShadow: 8 masks per
+     * plant kind, a sibling's sheared silhouette reads identically.
+     */
     private castFloraShadow;
     /**
      * Screen → world with elevation: a click on a plateau top must land
@@ -591,8 +606,23 @@ export declare class Renderer {
      */
     private bakePx;
     private drawGroundChunks;
-    /** Bake one chunk (base blit + elevated bands) and cache it. */
-    private bakeChunkEntry;
+    /**
+     * Start a sliced bake for a chunk with no cache entry. `live` jobs
+     * blit their in-progress canvas (brand-new ground shows its meadow
+     * placeholder immediately, then sweeps in detail); the entry is
+     * cached and returned with `pending` set.
+     */
+    private startChunkEntry;
+    /**
+     * Start a sliced RE-bake behind an existing entry: the old canvas
+     * keeps blitting (stale content over a hole every time) and the
+     * finished job swaps in atomically at completion.
+     */
+    private startChunkReplace;
+    /** The shared job body: terrain steps + one step per elevation level. */
+    private buildChunkPending;
+    /** Run ONE slice of a pending chunk bake; finalize when done. */
+    private advanceChunkPending;
     private evictBaked;
     private evictAnims;
     /**
@@ -1015,6 +1045,11 @@ export declare class Renderer {
     private readonly treeShadows;
     private treeBakeBudget;
     private treeShadowBudget;
+    /** Per-frame time budget for non-visible sprite bakes (pad bands,
+     *  cadence re-bakes) — see SPRITE_BAKE_MS. */
+    private spriteBakeMsLeft;
+    /** Per-frame shadow-mask bake allowance — see shadowMask. */
+    private maskBakeBudget;
     private frameNo;
     /** Trees drawn last frame — feeds the adaptive re-bake cadence. */
     private treesVisible;

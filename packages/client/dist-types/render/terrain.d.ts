@@ -40,6 +40,33 @@ export declare const SOIL_TILES: Set<number>;
  * (the canvas merely clipped it), so the gutter costs only pixels.
  */
 export declare function bakeGutter(px: number): number;
+/**
+ * TIME-SLICED CHUNK BAKING. A full chunk bake costs 10-40ms — far past
+ * any 120fps frame budget, so it must never run whole inside a frame.
+ * startChunkBake paints the cheap meadow base synchronously (~0.1ms, a
+ * usable placeholder) and returns a job whose remaining steps — one
+ * material layer per step, the elev mask + planks, the per-tile detail
+ * pass in row bands, docks last — each fit a small slice of a frame.
+ * The renderer advances jobs against a per-frame time budget and blits
+ * the canvas at whatever completeness it has: brand-new ground sweeps
+ * its detail in over a few frames instead of hitching one.
+ *
+ * Step ORDER is the paint order of the old monolithic bake, so a
+ * finished job is pixel-identical to bakeChunk's output. Partial
+ * states are always "lower passes complete, higher passes absent" —
+ * never residue that a later pass fails to cover.
+ */
+export interface ChunkBakeJob {
+    canvas: HTMLCanvasElement;
+    /** Remaining paint steps; each sized to fit a slice of frame budget. */
+    steps: Array<() => void>;
+    next: number;
+}
+/** Advance a sliced bake by one step; true when the bake is complete. */
+export declare function stepChunkBake(job: ChunkBakeJob): boolean;
+export declare function startChunkBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler): ChunkBakeJob;
+/** The one-shot bake: start + run every step. Output is identical to
+ *  the sliced path — this is the sliced path, run to completion. */
 export declare function bakeChunk(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler): HTMLCanvasElement;
 /**
  * Bake the LIFTED terrain surface of one chunk at one elevation level:

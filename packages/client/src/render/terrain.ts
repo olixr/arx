@@ -373,7 +373,43 @@ export function bakeGutter(px: number): number {
   return Math.max(4, px >> 3);
 }
 
-export function bakeChunk(
+/**
+ * TIME-SLICED CHUNK BAKING. A full chunk bake costs 10-40ms — far past
+ * any 120fps frame budget, so it must never run whole inside a frame.
+ * startChunkBake paints the cheap meadow base synchronously (~0.1ms, a
+ * usable placeholder) and returns a job whose remaining steps — one
+ * material layer per step, the elev mask + planks, the per-tile detail
+ * pass in row bands, docks last — each fit a small slice of a frame.
+ * The renderer advances jobs against a per-frame time budget and blits
+ * the canvas at whatever completeness it has: brand-new ground sweeps
+ * its detail in over a few frames instead of hitching one.
+ *
+ * Step ORDER is the paint order of the old monolithic bake, so a
+ * finished job is pixel-identical to bakeChunk's output. Partial
+ * states are always "lower passes complete, higher passes absent" —
+ * never residue that a later pass fails to cover.
+ */
+export interface ChunkBakeJob {
+  canvas: HTMLCanvasElement;
+  /** Remaining paint steps; each sized to fit a slice of frame budget. */
+  steps: Array<() => void>;
+  next: number;
+}
+
+/** Advance a sliced bake by one step; true when the bake is complete. */
+export function stepChunkBake(job: ChunkBakeJob): boolean {
+  const s = job.steps[job.next];
+  if (s !== undefined) {
+    s();
+    job.next++;
+  }
+  return job.next >= job.steps.length;
+}
+
+/** Rows of the per-tile detail pass per step — the heaviest pass. */
+const DETAIL_STEP_ROWS = 5;
+
+export function startChunkBake(
   ground: GroundSampler,
   detail: DetailSampler,
   elev: ElevSampler,
@@ -381,7 +417,7 @@ export function bakeChunk(
   cy: number,
   px: number,
   woodSkin?: WoodSkinSampler,
-): HTMLCanvasElement {
+): ChunkBakeJob {
   const G = bakeGutter(px);
   const canvas = document.createElement('canvas');
   canvas.width = CHUNK_SIZE * px + G * 2;
@@ -394,6 +430,8 @@ export function bakeChunk(
   const g = effectiveGround(ground);
 
   // 1. Meadow base: large soft noise patches, no per-tile checker.
+  // Painted synchronously — it is the placeholder a brand-new in-view
+  // chunk shows while its remaining steps stream in.
   const cell = Math.max(4, Math.floor(px / 4));
   for (let y = -G; y < CHUNK_SIZE * px + G; y += cell) {
     for (let x = -G; x < CHUNK_SIZE * px + G; x += cell) {
@@ -406,47 +444,79 @@ export function bakeChunk(
     ctx.fillStyle = '#2e2938';
     ctx.fillRect(-G, -G, canvas.width, canvas.height);
   }
+  // Raised/sunken regions darken in the placeholder too — a fresh
+  // mountain chunk must never flash meadow-green while its layers
+  // stream in. The 2b step repeats this AFTER the skins, restoring
+  // the real paint order.
+  fillMask(ctx, (tx, ty) => elev(tx, ty) !== 0, baseX, baseY, px, '#282334');
 
-  // 2. Material skins, lowest to highest, contoured on the dual grid.
-  drawLayerSkins(ctx, g, baseX, baseY, px);
+  const steps: Array<() => void> = [];
 
-  // 2b. Ground under raised OR sunken terrain: the lifted surfaces and
-  // cliff faces cover almost all of it, but any sliver that survives a
-  // seam must read as shadowed rock — never sunny grass peeking out
-  // from inside a mountain, and a pit mouth reads as darkness before
-  // its floor paints over it.
-  fillMask(
-    ctx,
-    (tx, ty) => elev(tx, ty) !== 0,
-    baseX,
-    baseY,
-    px,
-    '#282334',
-  );
+  // 2. Material skins, lowest to highest, contoured on the dual grid —
+  // one layer per step. The halo index is shared by every layer step.
+  let idx: Int8Array | null = null;
+  for (let li = 0; li < BLOB_LAYERS.length; li++) {
+    steps.push(() => {
+      idx ??= computeLayerIdx(g, baseX, baseY);
+      paintLayerSkin(ctx, idx, li, baseX, baseY, px);
+    });
+  }
 
-  // 3. Wood-floor plank seams (subtle, flat).
-  drawPlanks(ctx, g, baseX, baseY, px, woodSkin);
+  steps.push(() => {
+    // 2b. Ground under raised OR sunken terrain: the lifted surfaces
+    // and cliff faces cover almost all of it, but any sliver that
+    // survives a seam must read as shadowed rock — never sunny grass
+    // peeking out from inside a mountain, and a pit mouth reads as
+    // darkness before its floor paints over it.
+    fillMask(ctx, (tx, ty) => elev(tx, ty) !== 0, baseX, baseY, px, '#282334');
+
+    // 3. Wood-floor plank seams (subtle, flat).
+    drawPlanks(ctx, g, baseX, baseY, px, woodSkin);
+  });
 
   // 4. Baked micro-details (static ones only; swaying ones are live).
   // One tile of margin so flecks straddling a chunk edge reach into
   // the gutter — the neighbor bakes the identical fleck at the same
-  // world position, so both sides agree.
-  for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
-    for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
-      const tx = baseX + lx;
-      const ty = baseY + ly;
-      // Raised/sunken tiles' details belong to their lifted layer.
-      if (elev(tx, ty) !== 0) continue;
-      drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail, g);
-    }
+  // world position, so both sides agree. Sliced in row bands.
+  for (let r0 = -1; r0 <= CHUNK_SIZE; r0 += DETAIL_STEP_ROWS) {
+    const r1 = Math.min(r0 + DETAIL_STEP_ROWS - 1, CHUNK_SIZE);
+    steps.push(() => {
+      for (let ly = r0; ly <= r1; ly++) {
+        for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
+          const tx = baseX + lx;
+          const ty = baseY + ly;
+          // Raised/sunken tiles' details belong to their lifted layer.
+          if (elev(tx, ty) !== 0) continue;
+          drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail, g);
+        }
+      }
+    });
   }
 
   // 5. Docks: raised decks over the water painted LAST, so the deck's
   // lifted top (which reaches into the north neighbor's cell) covers
   // that neighbor's water details instead of wearing them.
-  drawDocks(ctx, ground, baseX, baseY, px);
+  steps.push(() => drawDocks(ctx, ground, baseX, baseY, px));
 
-  return canvas;
+  return { canvas, steps, next: 0 };
+}
+
+/** The one-shot bake: start + run every step. Output is identical to
+ *  the sliced path — this is the sliced path, run to completion. */
+export function bakeChunk(
+  ground: GroundSampler,
+  detail: DetailSampler,
+  elev: ElevSampler,
+  cx: number,
+  cy: number,
+  px: number,
+  woodSkin?: WoodSkinSampler,
+): HTMLCanvasElement {
+  const job = startChunkBake(ground, detail, elev, cx, cy, px, woodSkin);
+  while (!stepChunkBake(job)) {
+    /* run to completion */
+  }
+  return job.canvas;
 }
 
 /** Weathered board tones for dock decks — hash-dealt per board. */
@@ -1686,14 +1756,8 @@ function drawGrassFringe(
  * higher ones and the base can never peek through a boundary. Painted
  * lowest → highest, higher skins cover the underlap.
  */
-function drawLayerSkins(
-  ctx: CanvasRenderingContext2D,
-  g: GroundSampler,
-  baseX: number,
-  baseY: number,
-  px: number,
-): void {
-  // Precompute the layer index of every tile touching this chunk once.
+/** The layer index of every tile touching this chunk (34² halo grid). */
+function computeLayerIdx(g: GroundSampler, baseX: number, baseY: number): Int8Array {
   const N = CHUNK_SIZE + 2;
   const idx = new Int8Array(N * N);
   for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
@@ -1701,12 +1765,44 @@ function drawLayerSkins(
       idx[lx + 1 + (ly + 1) * N] = layerIndexOf(g(baseX + lx, baseY + ly) ?? Tile.Grass);
     }
   }
+  return idx;
+}
+
+function drawLayerSkins(
+  ctx: CanvasRenderingContext2D,
+  g: GroundSampler,
+  baseX: number,
+  baseY: number,
+  px: number,
+): void {
+  const idx = computeLayerIdx(g, baseX, baseY);
+  for (let li = 0; li < BLOB_LAYERS.length; li++) {
+    paintLayerSkin(ctx, idx, li, baseX, baseY, px);
+  }
+}
+
+/**
+ * ONE material layer's contoured skin — the body of the old per-layer
+ * loop, split out so the sliced chunk bake can spend one layer per
+ * step (see startChunkBake). Layers paint lowest → highest, each an
+ * independent opaque pass, so a partially-skinned chunk on screen for
+ * a frame is just "the higher materials arrive next frame".
+ */
+function paintLayerSkin(
+  ctx: CanvasRenderingContext2D,
+  idx: Int8Array,
+  li: number,
+  baseX: number,
+  baseY: number,
+  px: number,
+): void {
+  const N = CHUNK_SIZE + 2;
   const at = (lx: number, ly: number): number => idx[lx + 1 + (ly + 1) * N]!;
 
   const toX = (wx: number): number => (wx - baseX) * px;
   const toY = (wy: number): number => (wy - baseY) * px;
 
-  for (let li = 0; li < BLOB_LAYERS.length; li++) {
+  {
     const layer = BLOB_LAYERS[li]!;
     const wob = layer.wobble;
     const region = new Path2D();

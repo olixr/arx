@@ -88,12 +88,14 @@ import { UNDERGROUND_Y } from '../audio/zones.js';
 import { dealWoodSkin, type WoodSkin } from './woodSkins.js';
 import { drawPortalArch, drawPortalGround, spawnPortalFx, PORTAL_PLANE } from './portal.js';
 import {
-  bakeChunk,
   bakeElevated,
   bakeGutter,
   DOCK_LIFT,
   drawLiveGround,
+  startChunkBake,
+  stepChunkBake,
   waterRegionPath,
+  type ChunkBakeJob,
   type WaterFx,
 } from './terrain.js';
 import {
@@ -139,6 +141,20 @@ const TREE_REBAKE_FRAMES = 6;
 const TREE_BAKES_PER_FRAME = 28;
 /** Hard per-frame backstop (teleports/zoom flips force-bake herds). */
 const TREE_BAKE_BUDGET = 48;
+/**
+ * Per-frame time budget (ms) for sliced chunk-bake steps — ground
+ * layers, detail row bands, elevation levels (see startChunkBake). A
+ * full chunk bake is 10-40ms; slices keep every frame inside the
+ * 8.3ms/120fps budget while a fresh area sweeps in over a few frames.
+ */
+const CHUNK_BAKE_MS = 3;
+/**
+ * Per-frame time budget (ms) for tree/flora/prop sprite bakes BEYOND
+ * the truly-visible set: pad-band pre-bakes and cadence re-bakes stop
+ * when it runs out. Sprites whose extent is on screen RIGHT NOW always
+ * bake (a skipped visible bake would be pop-in, the worse artifact).
+ */
+const SPRITE_BAKE_MS = 2.5;
 /** Cadence bounds: never faster than 6 frames, never slower than 24. */
 const TREE_CADENCE_MAX = 24;
 const CONTACT_MIN = 0.15;
@@ -176,6 +192,38 @@ const ELEV_H = 1.35;
  * cutscene-camera, but gameplay is straight-vertical.
  */
 const PERSP_LEAN = 0;
+
+/**
+ * TALL-CONTENT CULLING PADS. 2.5D law: an h-tile-tall thing spans
+ * h / yScale SCREEN ROWS above its base row, because heights rise in
+ * straight s-units while ground rows compress by yScale (0.6). Every
+ * pad below is sized against the tallest/widest content of its class
+ * PLUS slack — if content ever grows taller or wider, grow the pad
+ * with it, or its top visibly pops in at the viewport edge.
+ */
+/**
+ * Rows south of the shared bounds that scan for TREE/portal tiles
+ * only. Tallest tree sprite extent measured live: ~7.1 tiles drawn
+ * (incl. the bake's crown margin) = 11.9 rows at yScale 0.6.
+ */
+const TREE_PAD_S = 14;
+/**
+ * Columns past the shared ±(2+1) side pad that scan tree tiles only —
+ * the widest canopy half-spread measured live is ~3.9 tiles.
+ */
+const TREE_PAD_X = 4;
+/**
+ * Extra full-scan rows south of the shared bounds for walls, stations
+ * and props: WALL_H 2.05 + crown lip ≈ 2.2 tiles = 3.7 rows, past the
+ * shared +2.
+ */
+const PROP_PAD_S = 3;
+/**
+ * The static-light scan pads ALL sides: light pools reach 4.4 tiles
+ * (campfire), so an off-screen fire must still light the visible
+ * floor and push its glow into frame.
+ */
+const LIGHT_PAD = 5;
 
 const PLAYER_COLORS = ['#c4553d', '#3d78c4', '#3da865', '#c4a03d', '#8a55c4', '#3da8a0', '#c47a3d'];
 /** Flight height of projectiles above their ground point, in tiles —
@@ -397,6 +445,23 @@ interface BakedChunk {
     canvas: HTMLCanvasElement;
     bands: Array<[number, number]>;
   }>;
+  /**
+   * In-flight sliced bake (see startChunkBake). `live` jobs blit their
+   * progressively-filling canvas (brand-new chunks — a placeholder
+   * beats a hole); replacement jobs build behind the old blit and swap
+   * at completion. Cleared when the bake finalizes.
+   */
+  pending?: {
+    job: ChunkBakeJob;
+    /** Elevation levels still to bake after the ground steps. */
+    levels: number[];
+    lifted: BakedChunk['lifted'];
+    live: boolean;
+    data: ChunkData;
+    rev: number;
+    px: number;
+    bakeElev: (level: number) => ReturnType<typeof bakeElevated>;
+  };
 }
 
 interface DrawItem {
@@ -518,6 +583,10 @@ export class Renderer {
   private readonly outlineACtx = this.outlineA.getContext('2d')!;
   private readonly outlineBCtx = this.outlineB.getContext('2d')!;
   private readonly baked = new Map<string, BakedChunk>();
+  /** Per-frame queue of chunks with pending sliced bakes (scan order:
+   *  visible chunks first, then the pre-bake ring). Scratch, rebuilt
+   *  every frame by drawGroundChunks. */
+  private readonly chunkJobQueue: BakedChunk[] = [];
   private readonly anims = new Map<number | 'own', AnimState>();
   private shakeAmount = 0;
   /**
@@ -1571,12 +1640,28 @@ export class Renderer {
     upTiles: number,
     downTiles: number,
     paint: (ctx: CanvasRenderingContext2D, au: number, av: number) => void,
-  ): { cv: HTMLCanvasElement; au: number; av: number } {
+  ): { cv: HTMLCanvasElement; au: number; av: number } | null {
     const moon = this.sky.moonlit;
     const full = `${key}:${moon ? 'm' : 's'}`;
     const hit = this.shadowMasks.get(full);
     if (hit) return hit;
-    if (this.shadowMasks.size > 240) this.shadowMasks.clear();
+    // Cache misses are BUDGETED: a cold dense field wants dozens of
+    // masks in one frame, and each bake costs real paint. A skipped
+    // cast simply appears a frame or two later — invisible, unlike
+    // the multi-hundred-ms arrival hitch this replaced.
+    if (this.maskBakeBudget <= 0) return null;
+    this.maskBakeBudget--;
+    if (this.shadowMasks.size > 320) {
+      // Trim the OLDEST entries (Map preserves insertion order) — a
+      // full clear() here made a dense ore field re-bake its whole
+      // mask set in one frame, a recurring stagger every time the
+      // cache wrapped.
+      let drop = 64;
+      for (const k of this.shadowMasks.keys()) {
+        this.shadowMasks.delete(k);
+        if (--drop <= 0) break;
+      }
+    }
     const B = Renderer.MASK_S;
     const cv = document.createElement('canvas');
     cv.width = Math.ceil(wTiles * B);
@@ -1590,22 +1675,22 @@ export class Renderer {
     paint(mctx, au, av);
     this.bakingMask = false;
     this.ctx = saved;
-    // Flatten: every solid pixel becomes shadow color; translucent
-    // garnish (glow halos, soft stains) drops out entirely.
-    const img = mctx.getImageData(0, 0, cv.width, cv.height);
-    const d = img.data;
-    const [rr, gg, bb] = moon ? [14, 20, 48] : [24, 14, 32];
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i + 3]! > 110) {
-        d[i] = rr;
-        d[i + 1] = gg;
-        d[i + 2] = bb;
-        d[i + 3] = 255;
-      } else {
-        d[i + 3] = 0;
-      }
-    }
-    mctx.putImageData(img, 0, 0);
+    // Flatten ON THE GPU — the old getImageData readback stalled the
+    // pipeline ~1-2ms per mask, the dominant cost of a cold ore
+    // field. Alpha knee a→a² (destination-in self-draw) suppresses
+    // translucent garnish, a→2a−a² (source-over self-draw) restores
+    // the opaque mass toward solid, then source-in stamps the shadow
+    // color. Glows/sparkles are already gated off via bakingMask.
+    mctx.save();
+    mctx.setTransform(1, 0, 0, 1, 0, 0);
+    mctx.globalCompositeOperation = 'destination-in';
+    mctx.drawImage(cv, 0, 0);
+    mctx.globalCompositeOperation = 'source-over';
+    mctx.drawImage(cv, 0, 0);
+    mctx.globalCompositeOperation = 'source-in';
+    mctx.fillStyle = moon ? 'rgb(14, 20, 48)' : 'rgb(24, 14, 32)';
+    mctx.fillRect(0, 0, cv.width, cv.height);
+    mctx.restore();
     const entry = { cv, au, av };
     this.shadowMasks.set(full, entry);
     return entry;
@@ -1645,23 +1730,36 @@ export class Renderer {
     }
   }
 
-  /** A rock/ore formation's exact silhouette, thrown as its shadow. */
+  /**
+   * A rock/ore formation's silhouette, thrown as its shadow. The mask
+   * VARIANT is the per-tile hash folded to 8 — a sheared dark blob
+   * from a sibling formation is indistinguishable from the exact one,
+   * and folding turns "one mask bake per formation" (a cold ore field
+   * baked dozens in one frame, the worst arrival stagger) into a tiny
+   * fixed set per ore kind.
+   */
   private castRockShadow(px: number, py: number, tile: Tile, h: number, crowded: boolean): void {
     if (this.sky.shadowAlpha < 0.02 && this.frameLights.length === 0) return;
     const B = Renderer.MASK_S;
-    const entry = this.shadowMask(`r${tile}.${h}.${crowded ? 1 : 0}`, 2.7, 2.0, 0.4, (_m, au, av) => {
-      this.drawRockFormation(au, av - B * 0.28, B, h, tile, 0, crowded);
+    const hv = (((h % 8) + 8) % 8) * 2654435761;
+    const entry = this.shadowMask(`r${tile}.${hv}.${crowded ? 1 : 0}`, 2.7, 2.0, 0.4, (_m, au, av) => {
+      this.drawRockFormation(au, av - B * 0.28, B, hv, tile, 0, crowded);
     });
-    this.castMask(entry, px, py + this.camera.scale * 0.28);
+    if (entry) this.castMask(entry, px, py + this.camera.scale * 0.28);
   }
 
-  /** A grown plant's silhouette — forage node or farm crop (calm: wind zeroed). */
+  /**
+   * A grown plant's silhouette — forage node or farm crop (calm: wind
+   * zeroed). Same variant-fold law as castRockShadow: 8 masks per
+   * plant kind, a sibling's sheared silhouette reads identically.
+   */
   private castFloraShadow(px: number, baseY: number, tile: Tile, h: number): void {
     if (this.sky.shadowAlpha < 0.02 && this.frameLights.length === 0) return;
-    const fm = plantModel(tile, h);
+    const hv = (((h % 8) + 8) % 8) * 2654435761;
+    const fm = plantModel(tile, hv);
     const B = Renderer.MASK_S;
     const entry = this.shadowMask(
-      `f${tile}.${h}`,
+      `f${tile}.${hv}`,
       fm.spread * 2 + 0.7,
       fm.height + 0.45,
       0.35,
@@ -1678,7 +1776,7 @@ export class Renderer {
         });
       },
     );
-    this.castMask(entry, px, baseY);
+    if (entry) this.castMask(entry, px, baseY);
   }
 
   /**
@@ -1707,8 +1805,12 @@ export class Renderer {
     const s = this.camera.scale;
     const minCx = Math.floor(b.minTx / CHUNK_SIZE);
     const maxCx = Math.floor(b.maxTx / CHUNK_SIZE);
+    // South pad: a level-L crown row lifts L * ELEV_H / yScale rows
+    // up-screen — a 3-level plateau just south of the bottom edge
+    // reaches ~6.8 rows into view.
+    const elevPadS = Math.ceil((ELEV_H * 3) / this.camera.yScale);
     const minCy = Math.floor((b.minTy - ELEV_H * 3 - 1) / CHUNK_SIZE);
-    const maxCy = Math.floor(b.maxTy / CHUNK_SIZE);
+    const maxCy = Math.floor((b.maxTy + elevPadS) / CHUNK_SIZE);
     for (let cy = minCy; cy <= maxCy; cy++) {
       for (let cx = minCx; cx <= maxCx; cx++) {
         const baked = this.baked.get(`${cx},${cy}`);
@@ -1722,7 +1824,7 @@ export class Renderer {
           for (const [r0, r1] of layer.bands) {
             for (let r = r0; r <= r1; r++) {
               const worldTy = cy * CHUNK_SIZE + r;
-              if (worldTy > b.maxTy || worldTy < b.minTy - ELEV_H * 3 - 1) continue;
+              if (worldTy > b.maxTy + elevPadS || worldTy < b.minTy - ELEV_H * 3 - 1) continue;
               const level = layer.level;
               items.push({
                 sortY: worldTy - 0.01,
@@ -2132,6 +2234,12 @@ export class Renderer {
     this.frameNo++;
     this.treeBakeBudget = TREE_BAKE_BUDGET;
     this.treeShadowBudget = TREE_BAKE_BUDGET;
+    this.spriteBakeMsLeft = SPRITE_BAKE_MS;
+    // Shadow-mask misses per frame: masks are shared per (kind,
+    // variant) — see castRockShadow — so a handful per frame drains
+    // any cold field's set within a second, and a skipped cast just
+    // lands a frame later.
+    this.maskBakeBudget = 6;
     // Zoomed out, the same world-space sway spans FEWER screen pixels —
     // stretch the sampling floor so wide framings stop paying the full
     // re-bake rate for sub-pixel motion. Cadence 10 at ≤0.85× steps
@@ -2267,7 +2375,14 @@ export class Renderer {
     // Standing lights gather FIRST: the shadow prepass needs to know
     // every pool before anything casts. (Moving lights announce via
     // queueGlow during the draw pass and cast one frame later.)
-    this.collectStaticLights(game, bounds);
+    // Padded on ALL sides: a campfire's pool reaches 4.4 tiles, so a
+    // fire just past any edge still lights the visible floor.
+    this.collectStaticLights(game, {
+      minTx: bounds.minTx - LIGHT_PAD,
+      maxTx: bounds.maxTx + LIGHT_PAD,
+      minTy: bounds.minTy - LIGHT_PAD,
+      maxTy: bounds.maxTy + LIGHT_PAD,
+    });
     // Ground-level tiles only: lifted tiles get their own live layer
     // drawn OVER their plateau band (see collectElevatedGround).
     drawLiveGround(
@@ -3138,8 +3253,11 @@ export class Renderer {
   private visibleTileBounds(): { minTx: number; maxTx: number; minTy: number; maxTy: number } {
     const s = this.camera.scale;
     return {
-      // Canopies overhang ~1.3 tiles sideways and reach ~3.5 tiles
-      // above their base — pad so off-screen bases still draw.
+      // These are the GROUND bounds: modest pads for flat content.
+      // Tall content adds its own class pad on top (TREE_PAD_S/X,
+      // PROP_PAD_S, LIGHT_PAD, the elevated-ground south pad) — never
+      // widen these shared pads for one tall class, every consumer
+      // pays for the extra rows (the grass pass even shrinks them).
       minTx: Math.floor(this.camera.x - this.w / 2 / s) - 2,
       maxTx: Math.floor(this.camera.x + this.w / 2 / s) + 2,
       minTy: Math.floor(this.camera.y - this.h / 2 / (s * this.camera.yScale)) - 5,
@@ -3164,20 +3282,16 @@ export class Renderer {
     const minCy = Math.floor(b.minTy / CHUNK_SIZE);
     const maxCy = Math.floor(b.maxTy / CHUNK_SIZE);
     const bakePx = this.bakePx();
-    // Resolution-only rebakes are budgeted per frame: a zoom-tier flip
-    // re-bakes visible chunks over a few frames (the stale-res bake is
-    // still correct content) instead of hitching on one. ONE per frame:
-    // a hi-res bake is ~10ms, so even two in a frame blows the 8.3ms
-    // budget — the heal takes ~20 frames and is invisible (the stale
-    // tier is correct content, merely softer).
-    let resBudget = 1;
-    // Content re-bakes are budgeted too — but only when an OLD bake
-    // exists to blit meanwhile. A server tick can bump the rev on
-    // several visible chunks at once (crop growth, tree respawns), and
-    // unbudgeted that was a 2-3 bake hitch in one frame. A truly
-    // missing chunk still bakes immediately: a hole is worse than a
-    // hitch.
-    let contentBudget = 2;
+    // ALL bake work is TIME-SLICED (see startChunkBake): a full chunk
+    // bake is 10-40ms, so nothing here ever runs one whole inside a
+    // frame. The visible loop only DISCOVERS work — brand-new chunks
+    // get a job whose placeholder canvas blits immediately (meadow
+    // base, then material layers, then detail bands sweep in over a
+    // few frames), while content/res re-bakes build into a fresh
+    // canvas behind the old blit and swap at completion. The budget
+    // loop after the blits advances every queued job against ONE
+    // per-frame time budget.
+    this.chunkJobQueue.length = 0;
 
     for (let cy = minCy; cy <= maxCy; cy++) {
       for (let cx = minCx; cx <= maxCx; cx++) {
@@ -3185,19 +3299,28 @@ export class Renderer {
         if (!data) continue;
         const key = `${cx},${cy}`;
         let baked = this.baked.get(key);
-        const contentStale =
-          (baked !== undefined && (baked.data !== data || baked.rev !== (data.rev ?? 0)) && contentBudget > 0) ||
-          !baked;
-        // Tier flips wait out the glide: bakePx is keyed off targetZoom,
-        // so mid-glide re-bakes render for a scale the camera hasn't
-        // reached — and the settle pass would just re-blit them anyway.
-        const resStale = !contentStale && baked!.px !== bakePx && resBudget > 0 && !this.zoomGliding;
-        if (contentStale || resStale) {
-          if (resStale) resBudget--;
-          else if (baked) contentBudget--;
-          baked = this.bakeChunkEntry(game, cx, cy, data, bakePx);
+        if (!baked) {
+          // Brand-new chunk: start a live job — the placeholder blits
+          // this same frame, so streaming never leaves a hole.
+          baked = this.startChunkEntry(game, cx, cy, data, bakePx, true);
+        } else if (baked.pending) {
+          // Mid-bake: if the world moved on underneath, restart the
+          // job at the new content — never finish a stale bake.
+          const p = baked.pending;
+          if (p.data !== data || p.rev !== (data.rev ?? 0)) {
+            this.startChunkReplace(baked, game, cx, cy, data, bakePx);
+          }
+        } else if (baked.data !== data || baked.rev !== (data.rev ?? 0)) {
+          // Content re-bake behind the old blit.
+          this.startChunkReplace(baked, game, cx, cy, data, bakePx);
+        } else if (baked.px !== bakePx && !this.zoomGliding) {
+          // Tier flips wait out the glide: bakePx is keyed off
+          // targetZoom, so mid-glide re-bakes render for a scale the
+          // camera hasn't reached — and the settle pass would just
+          // re-blit them anyway.
+          this.startChunkReplace(baked, game, cx, cy, data, bakePx);
         }
-        if (!baked) continue; // unreachable: contentStale covers !baked
+        if (baked.pending) this.chunkJobQueue.push(baked);
         // SHARED-CORNER SNAP LAW: each chunk's destination rect comes
         // from rounding its corner projections — the same corner a
         // neighbor rounds to the same integer, so adjacent blits share
@@ -3232,30 +3355,99 @@ export class Renderer {
     }
     // PRE-BAKE RING: chunks one step outside the viewport bake (one
     // per frame) BEFORE they scroll in. Interest radius 2 streams
-    // their data well ahead, so without this a fresh chunk column hit
-    // the view edge un-baked and did 2-3 full 1024px bakes in a single
-    // frame — the worst walking hitch in a forest (measured 34ms).
-    outer: for (let cy = minCy - 1; cy <= maxCy + 1; cy++) {
+    // their data well ahead, so a ring job is nearly always COMPLETE
+    // by the time its chunk crosses the view edge. Ring jobs join the
+    // same budgeted queue as visible work, behind it in priority.
+    ring: for (let cy = minCy - 1; cy <= maxCy + 1; cy++) {
       for (let cx = minCx - 1; cx <= maxCx + 1; cx++) {
         if (cx >= minCx && cx <= maxCx && cy >= minCy && cy <= maxCy) continue;
         const data = game.world.get(cx, cy);
         if (!data) continue;
-        const baked = this.baked.get(`${cx},${cy}`);
-        if (baked && baked.data === data && baked.rev === (data.rev ?? 0)) continue;
-        this.bakeChunkEntry(game, cx, cy, data, bakePx);
-        break outer;
+        const key = `${cx},${cy}`;
+        const baked = this.baked.get(key);
+        if (!baked) {
+          const entry = this.startChunkEntry(game, cx, cy, data, bakePx, true);
+          this.chunkJobQueue.push(entry);
+          break ring; // one new ring job per frame is plenty of lead
+        }
+        if (baked.pending) {
+          this.chunkJobQueue.push(baked);
+        } else if (baked.data !== data || baked.rev !== (data.rev ?? 0)) {
+          this.startChunkReplace(baked, game, cx, cy, data, bakePx);
+          this.chunkJobQueue.push(baked);
+          break ring;
+        }
       }
+    }
+
+    // THE BAKE BUDGET: advance queued jobs (visible first — the queue
+    // was filled in scan order, ring work appended last) until the
+    // per-frame slice budget is spent. At least one step always runs
+    // when work exists, so progress is guaranteed even if a single
+    // step overruns the budget (a hi-res detail band can).
+    let msLeft = CHUNK_BAKE_MS;
+    for (const entry of this.chunkJobQueue) {
+      while (entry.pending && msLeft > 0) {
+        const t0 = performance.now();
+        this.advanceChunkPending(entry);
+        msLeft -= performance.now() - t0;
+      }
+      if (msLeft <= 0) break;
     }
   }
 
-  /** Bake one chunk (base blit + elevated bands) and cache it. */
-  private bakeChunkEntry(
+  /**
+   * Start a sliced bake for a chunk with no cache entry. `live` jobs
+   * blit their in-progress canvas (brand-new ground shows its meadow
+   * placeholder immediately, then sweeps in detail); the entry is
+   * cached and returned with `pending` set.
+   */
+  private startChunkEntry(
     game: ClientGame,
     cx: number,
     cy: number,
     data: NonNullable<ReturnType<ClientGame['world']['get']>>,
     bakePx: number,
+    live: boolean,
   ): BakedChunk {
+    const pending = this.buildChunkPending(game, cx, cy, data, bakePx, live);
+    const baked: BakedChunk = {
+      canvas: pending.job.canvas,
+      data,
+      rev: data.rev ?? 0,
+      px: bakePx,
+      lifted: [],
+      pending,
+    };
+    this.baked.set(`${cx},${cy}`, baked);
+    return baked;
+  }
+
+  /**
+   * Start a sliced RE-bake behind an existing entry: the old canvas
+   * keeps blitting (stale content over a hole every time) and the
+   * finished job swaps in atomically at completion.
+   */
+  private startChunkReplace(
+    entry: BakedChunk,
+    game: ClientGame,
+    cx: number,
+    cy: number,
+    data: NonNullable<ReturnType<ClientGame['world']['get']>>,
+    bakePx: number,
+  ): void {
+    entry.pending = this.buildChunkPending(game, cx, cy, data, bakePx, false);
+  }
+
+  /** The shared job body: terrain steps + one step per elevation level. */
+  private buildChunkPending(
+    game: ClientGame,
+    cx: number,
+    cy: number,
+    data: NonNullable<ReturnType<ClientGame['world']['get']>>,
+    bakePx: number,
+    live: boolean,
+  ): NonNullable<BakedChunk['pending']> {
     const ground = (tx: number, ty: number) => game.world.groundAt(tx, ty);
     const detail = (tx: number, ty: number) => this.detailAt(game, tx, ty);
     const elev = (tx: number, ty: number) => game.world.elevAt(tx, ty);
@@ -3271,39 +3463,61 @@ export class Renderer {
       if (e > maxLevel) maxLevel = e;
       if (e < minLevel) minLevel = e;
     }
-    const lifted: BakedChunk['lifted'] = [];
     // Levels bake in ASCENDING order — same-row crown items tie
     // on sortY and rely on stable sort, so 0 must paint over −1's
     // down-shifted spill, −1 over −2's. A chunk without pits
     // skips the level-0 layer entirely: the flat base blit is it.
+    const levels: number[] = [];
     for (let level = minLevel; level <= maxLevel; level++) {
       if (level === 0 && minLevel >= 0) continue;
-      const bake = bakeElevated(ground, detail, elev, cx, cy, bakePx, level);
-      if (!bake) continue;
-      // Contiguous row runs, merged across small gaps, padded one
-      // row each way for the half-tile contour bleed.
-      const bands: Array<[number, number]> = [];
-      for (let r = 0; r < CHUNK_SIZE; r++) {
-        if (!bake.rows[r]) continue;
-        const last = bands[bands.length - 1];
-        if (last && r - last[1] <= 3) last[1] = r;
-        else bands.push([r, r]);
-      }
-      for (const band of bands) {
-        band[0] = Math.max(0, band[0] - 1);
-        band[1] = Math.min(CHUNK_SIZE - 1, band[1] + 1);
-      }
-      lifted.push({ level, canvas: bake.canvas, bands });
+      levels.push(level);
     }
-    const baked: BakedChunk = {
-      canvas: bakeChunk(ground, detail, elev, cx, cy, bakePx, woodSkin),
+    return {
+      job: startChunkBake(ground, detail, elev, cx, cy, bakePx, woodSkin),
+      levels,
+      lifted: [],
+      live,
       data,
       rev: data.rev ?? 0,
       px: bakePx,
-      lifted,
+      bakeElev: (level: number) => bakeElevated(ground, detail, elev, cx, cy, bakePx, level),
     };
-    this.baked.set(`${cx},${cy}`, baked);
-    return baked;
+  }
+
+  /** Run ONE slice of a pending chunk bake; finalize when done. */
+  private advanceChunkPending(entry: BakedChunk): void {
+    const p = entry.pending!;
+    if (p.job.next < p.job.steps.length) {
+      stepChunkBake(p.job);
+      if (p.job.next < p.job.steps.length || p.levels.length > 0) return;
+    } else if (p.levels.length > 0) {
+      const level = p.levels.shift()!;
+      const bake = p.bakeElev(level);
+      if (bake) {
+        // Contiguous row runs, merged across small gaps, padded one
+        // row each way for the half-tile contour bleed.
+        const bands: Array<[number, number]> = [];
+        for (let r = 0; r < CHUNK_SIZE; r++) {
+          if (!bake.rows[r]) continue;
+          const last = bands[bands.length - 1];
+          if (last && r - last[1] <= 3) last[1] = r;
+          else bands.push([r, r]);
+        }
+        for (const band of bands) {
+          band[0] = Math.max(0, band[0] - 1);
+          band[1] = Math.min(CHUNK_SIZE - 1, band[1] + 1);
+        }
+        p.lifted.push({ level, canvas: bake.canvas, bands });
+      }
+      if (p.levels.length > 0) return;
+    }
+    // Complete: swap the finished bake into the entry.
+    entry.canvas = p.job.canvas;
+    entry.lifted = p.lifted;
+    entry.data = p.data;
+    entry.rev = p.rev;
+    entry.px = p.px;
+    entry.pending = undefined;
   }
 
   private evictBaked(): void {
@@ -3416,20 +3630,24 @@ export class Renderer {
     // Run-merged furniture components already emitted this frame,
     // keyed by anchor tile.
     const runSeen = new Set<number>();
-    // Trees now stand up to ~6 tiles: a base up to height/yScale rows
-    // SOUTH of the viewport bottom still pokes its crown into view.
-    // Deep-south rows scan for tree tiles only — walls and props are
-    // short enough for the shared bounds.
-    const TREE_PAD = 10;
-    for (let ty = b.minTy; ty <= b.maxTy + TREE_PAD; ty++) {
-      const deepSouth = ty > b.maxTy;
-      for (let tx = b.minTx - 1; tx <= b.maxTx + 1; tx++) {
+    // Tall-content pads (see TREE_PAD_S/TREE_PAD_X/PROP_PAD_S): rows
+    // up to PROP_PAD_S past the shared bounds scan everything (walls
+    // and stations are ~2.2 tiles tall — their crowns reach 3.7 rows
+    // up-screen); rows beyond that, and the side columns past ±1, scan
+    // for tree/portal tiles only — a 7-tile tree pokes its crown into
+    // view from ~12 rows south, and a ~4-tile-wide canopy reaches in
+    // from 4 columns past the side edges.
+    for (let ty = b.minTy; ty <= b.maxTy + TREE_PAD_S; ty++) {
+      const deepSouth = ty > b.maxTy + PROP_PAD_S;
+      for (let tx = b.minTx - 1 - TREE_PAD_X; tx <= b.maxTx + 1 + TREE_PAD_X; tx++) {
         const ground = game.world.groundAt(tx, ty);
         if (ground === undefined) continue;
-        // Deep-south rows also admit portals: the Riftgate stands ~2
-        // tiles tall, so its crown pokes into view like a low tree.
+        // Deep-south rows and side columns admit trees + portals only:
+        // the Riftgate stands ~2 tiles tall, so its crown pokes into
+        // view like a low tree.
+        const sideBand = tx < b.minTx - 1 || tx > b.maxTx + 1;
         if (
-          deepSouth &&
+          (deepSouth || sideBand) &&
           !TREE_TILES.has(ground as Tile) &&
           ground !== Tile.PortalDown &&
           ground !== Tile.PortalUp
@@ -7391,6 +7609,11 @@ export class Renderer {
   >();
   private treeBakeBudget = 0;
   private treeShadowBudget = 0;
+  /** Per-frame time budget for non-visible sprite bakes (pad bands,
+   *  cadence re-bakes) — see SPRITE_BAKE_MS. */
+  private spriteBakeMsLeft = 0;
+  /** Per-frame shadow-mask bake allowance — see shadowMask. */
+  private maskBakeBudget = 0;
   private frameNo = 0;
   /** Trees drawn last frame — feeds the adaptive re-bake cadence. */
   private treesVisible = 0;
@@ -7779,15 +8002,28 @@ export class Renderer {
     const due = (this.frameNo + key) % cadence === 0;
     const stale =
       !sp || (due && sp.frame !== this.frameNo) || Math.abs(sp.scale - s) > s * 0.2 || !sp.outlined;
-    if (stale && (!sp || (this.treeBakeBudget > 0 && !this.zoomGliding))) {
-      this.treeBakeBudget--;
-      sp = this.bakePropSprite(sp, b, paint);
-      this.treeSprites.set(key, sp);
+    if (stale) {
+      // THE STORM LAW (shared by drawTree/drawFlora): a missing sprite
+      // bakes UNBUDGETED only when its extent is on screen RIGHT NOW —
+      // skipping that bake would be visible pop-in. Missing sprites in
+      // the tall-content pad bands (most of a fresh area) and cadence
+      // re-bakes go through the per-frame time budget instead, so a
+      // dense field streaming in bakes across frames, not in one.
+      const visNow = b.x < this.w && b.x + b.w > 0 && b.y < this.h && b.y + b.h > 0;
+      const allow = !sp
+        ? visNow || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0)
+        : this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0 && !this.zoomGliding;
+      if (allow) {
+        this.treeBakeBudget--;
+        const t0 = performance.now();
+        sp = this.bakePropSprite(sp, b, paint);
+        this.spriteBakeMsLeft -= performance.now() - t0;
+        this.treeSprites.set(key, sp);
+      }
     }
-    if (!sp) {
-      this.paintOutlined({ sortY: ty, draw: paint, body: b });
-      return;
-    }
+    // Off-screen (a pad band) with no sprite yet: nothing to draw —
+    // a budgeted frame bakes it before it scrolls in.
+    if (!sp) return;
     sp.used = this.frameNo;
     const dpr = window.devicePixelRatio || 1;
     const k = s / sp.scale;
@@ -7914,10 +8150,23 @@ export class Renderer {
       (due && sp.frame !== this.frameNo) ||
       Math.abs(sp.scale - s) > s * 0.2 ||
       sp.outlined !== this.outlineOn;
-    if (stale && (!sp || (this.treeBakeBudget > 0 && !this.zoomGliding))) {
-      this.treeBakeBudget--;
-      sp = this.bakeFloraSprite(sp, fm, tx + 0.5, ty + 0.5, tSec);
-      this.treeSprites.set(key, sp);
+    if (stale) {
+      // The storm law (see drawPropOutlined): visible-now misses bake
+      // unbudgeted, pad-band misses and re-bakes ride the time budget.
+      const half = (fm.spread * 1.3 + 0.2) * s;
+      const top = (fm.height * 1.25 + 0.2) * s;
+      const gy = by + syT * 0.3;
+      const visNow = bx + half > 0 && bx - half < this.w && gy + s * 0.5 > 0 && gy - top < this.h;
+      const allow = !sp
+        ? visNow || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0)
+        : this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0 && !this.zoomGliding;
+      if (allow) {
+        this.treeBakeBudget--;
+        const t0 = performance.now();
+        sp = this.bakeFloraSprite(sp, fm, tx + 0.5, ty + 0.5, tSec);
+        this.spriteBakeMsLeft -= performance.now() - t0;
+        this.treeSprites.set(key, sp);
+      }
     }
     if (!sp) return;
     sp.used = this.frameNo;
@@ -8030,10 +8279,25 @@ export class Renderer {
         (due && sp.frame !== this.frameNo) ||
         Math.abs(sp.scale - s) > s * 0.2 ||
         sp.outlined !== this.outlineOn;
-      if (stale && (!sp || (this.treeBakeBudget > 0 && !this.zoomGliding))) {
-        this.treeBakeBudget--;
-        sp = this.bakeTreeSprite(sp, m, wx, wy, tSec);
-        this.treeSprites.set(key, sp);
+      if (stale) {
+        // The storm law (see drawPropOutlined): visible-now misses
+        // bake unbudgeted, pad-band misses and re-bakes ride the time
+        // budget — the tall-content pads mean most of a fresh forest
+        // enters as pad rows and pre-bakes across many frames.
+        const half = (m.spread * 1.15 + 0.08 * m.height + 0.45) * s;
+        const top = (m.height * 1.18 + 0.45) * s;
+        const gy = by + syT * 0.3;
+        const visNow = bx + half > 0 && bx - half < this.w && gy + s * 0.5 > 0 && gy - top < this.h;
+        const allow = !sp
+          ? visNow || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0)
+          : this.treeBakeBudget > 0 && this.spriteBakeMsLeft > 0 && !this.zoomGliding;
+        if (allow) {
+          this.treeBakeBudget--;
+          const t0 = performance.now();
+          sp = this.bakeTreeSprite(sp, m, wx, wy, tSec);
+          this.spriteBakeMsLeft -= performance.now() - t0;
+          this.treeSprites.set(key, sp);
+        }
       }
       if (!sp) return;
       sp.used = this.frameNo;
