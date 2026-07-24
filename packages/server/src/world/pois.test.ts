@@ -12,6 +12,8 @@ import {
   POI_CELL,
   composePoi,
   poiForCell,
+  previewPoi,
+  simulatePois,
   type PoiContext,
   type PoiSite,
 } from './pois.js';
@@ -135,6 +137,51 @@ test('composition is deterministic and epoch changes re-roll the cell', () => {
 test('settled cells never host POIs, even forced', () => {
   assert.equal(poiForCell(SEED, 0, 0, 0, CTX), null);
   assert.equal(poiForCell(SEED, 0, 0, 0, CTX, true), null);
+});
+
+test('the simulator observes the scaffold honestly and hears a draft def', () => {
+  const stats = simulatePois(SEED, CTX, 200);
+  assert.equal(stats.evaluated, 200);
+  assert.deepEqual(simulatePois(SEED, CTX, 200), stats, 'simulation not deterministic');
+  assert.equal(
+    stats.sites + stats.empty,
+    stats.evaluated,
+    'every evaluated cell is a site or empty',
+  );
+  assert.ok(stats.sites > 0, 'no sites in a 200-cell scan');
+  let counted = 0;
+  for (const rec of Object.values(stats.byDef)) counted += rec.count;
+  assert.equal(counted, stats.sites);
+  // A draft archetype that outweighs everything must show up in the mix.
+  const draft = {
+    id: 'draft_menace',
+    name: 'Draft menace',
+    tiers: [1, 5] as const,
+    weight: 50,
+    prefabs: ['poi_goblin_camp_ring'],
+    garrison: [],
+  };
+  const withDraft = simulatePois(SEED, { ...CTX, defs: [...CTX.defs, draft] }, 200);
+  assert.ok(
+    (withDraft.byDef['draft_menace']?.count ?? 0) > 0,
+    'a weight-50 draft never rolled — the simulator ignores drafts',
+  );
+});
+
+test('the preview stages a real composed site at the requested tier', () => {
+  for (const tier of [1, 3]) {
+    const shown = previewPoi(SEED, CTX, 'goblin_warcamp', tier);
+    assert.ok(shown, `no tier-${tier} preview site found`);
+    assert.equal(shown!.site.tier, tier);
+    assert.equal(shown!.site.defId, 'goblin_warcamp');
+    assert.ok(shown!.zone.spawns!.length > 0);
+    // Deterministic: the bench shows the same stage twice.
+    assert.deepEqual(previewPoi(SEED, CTX, 'goblin_warcamp', tier), shown);
+  }
+  // Pool narrowing swaps the variant in before composition.
+  const narrowed = previewPoi(SEED, CTX, 'goblin_warcamp', 2, 'poi_goblin_camp_pair');
+  assert.ok(narrowed);
+  assert.equal(narrowed!.site.prefabId, 'poi_goblin_camp_pair');
 });
 
 test('the dev force lever honors the site scan', () => {

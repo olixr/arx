@@ -5,6 +5,7 @@ import { WebSocketServer } from 'ws';
 import {
   AUTHORED_LOOT_TABLES,
   AUTHORED_NPCS,
+  AUTHORED_POI_DEFS,
   DIALOGUES,
   NPC_ACTORS,
   ROUTINES,
@@ -14,10 +15,13 @@ import {
   lootTableErrors,
   replaceLootTables,
   replaceNpcDefs,
+  replacePoiDefs,
   validateNpcDef,
+  validatePoiDef,
   zoneFromJson,
   type LootTableDef,
   type NpcDef,
+  type PoiDef,
   type ZoneDef,
   type ZoneJson,
 } from '@devcraft/content';
@@ -107,6 +111,31 @@ const accounts = new AccountStore(db);
       `(+${npcSeed.added} ~${npcSeed.updated} !${npcSeed.kept} -${npcSeed.removed} =${npcSeed.unchanged}) · ` +
       `loot tables: ${lootDefs.length} ` +
       `(+${lootSeed.added} ~${lootSeed.updated} !${lootSeed.kept} -${lootSeed.removed} =${lootSeed.unchanged})`,
+  );
+
+  // POI archetypes join the same law: authored JSON seeds, DB rows
+  // load back through the one validator, the live registry swaps.
+  const poiSeed = seedContentDocs(
+    db,
+    'poi',
+    [...AUTHORED_POI_DEFS.values()].map((d) => ({ id: d.id, doc: d })),
+  );
+  const poiDocs = loadContentDocs(db, 'poi');
+  const goodPois: PoiDef[] = [];
+  for (const docRow of poiDocs) {
+    const res = validatePoiDef(docRow.doc);
+    if (!res.ok) {
+      console.warn(`[content] DB poi '${docRow.id}' invalid (${res.errors[0]}) — authored def stands`);
+      const authored = AUTHORED_POI_DEFS.get(docRow.id);
+      if (authored) goodPois.push(authored);
+    } else {
+      goodPois.push(res.def);
+    }
+  }
+  replacePoiDefs(goodPois);
+  console.log(
+    `[content] pois: ${goodPois.length} loaded ` +
+      `(+${poiSeed.added} ~${poiSeed.updated} !${poiSeed.kept} -${poiSeed.removed} =${poiSeed.unchanged})`,
   );
 }
 

@@ -6,21 +6,26 @@ import type { DatabaseSync } from 'node:sqlite';
 import {
   AUTHORED_LOOT_TABLES,
   AUTHORED_NPCS,
+  AUTHORED_POI_DEFS,
   ITEMS,
   LOOT_TABLES,
   NPCS,
   NPC_ACTORS,
+  POI_DEFS,
   lootTableErrors,
   prefabFromJson,
   prefabToJson,
   replaceLootTables,
   replaceNpcDefs,
+  replacePoiDefs,
   validateNpcDef,
+  validatePoiDef,
   zoneFromJson,
   zoneToJson,
   type LootTableDef,
   type NpcActorDef,
   type NpcDef,
+  type PoiDef,
   type PrefabJson,
   type ZoneDef,
   type ZoneJson,
@@ -32,6 +37,7 @@ import {
   revertContentDoc,
 } from '../db/contentDocs.js';
 import { editedActorSlugs, importNpcActor, loadNpcActors, revertNpcActor } from '../db/npcActors.js';
+import { previewPoi, simulatePoisSteps, type PoiSimStats } from '../world/pois.js';
 import type { GameServer } from '../game/gameServer.js';
 
 /**
@@ -119,7 +125,8 @@ export function createMapsApi(
       url.pathname === '/dev/registry' ||
       url.pathname === '/dev/prefabs' ||
       url.pathname.startsWith('/dev/prefabs/') ||
-      url.pathname.startsWith('/dev/content/');
+      url.pathname.startsWith('/dev/content/') ||
+      url.pathname.startsWith('/dev/pois/');
     if (!isDev) return false;
 
     if (req.method === 'OPTIONS') {
@@ -312,6 +319,145 @@ export function createMapsApi(
         }
       }
 
+      // ------------------------------------------------ POI archetypes
+      // Same two-hash law as the bestiary: content_docs kind 'poi',
+      // the one validator on every write (with the LIVE prefab library
+      // as refs), live-registry swap, and reloadPoiDef so standing
+      // cells recompose under the edit within a tick.
+
+      if (url.pathname === '/dev/content/pois' && req.method === 'GET') {
+        const edited = new Set(
+          loadContentDocs(db, 'poi').filter((d) => d.edited).map((d) => d.id),
+        );
+        sendJson(res, 200, {
+          pois: [...POI_DEFS.values()].map((d) => ({
+            def: d,
+            edited: edited.has(d.id),
+            authored: AUTHORED_POI_DEFS.has(d.id),
+          })),
+          prefabIds: [...game.poiPrefabIds()],
+        });
+        return true;
+      }
+
+      const poiMatch = /^\/dev\/content\/pois\/([^/]+)$/.exec(url.pathname);
+      if (poiMatch) {
+        const id = poiMatch[1]!;
+        if (req.method === 'PUT') {
+          let raw: { id?: string };
+          try {
+            raw = JSON.parse(await readBody(req)) as { id?: string };
+            if (raw.id !== id) throw new Error(`body id '${raw.id}' does not match URL '${id}'`);
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          const result = validatePoiDef(raw, { prefabIds: game.poiPrefabIds() });
+          if (!result.ok) {
+            sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          importContentDoc(db, 'poi', id, result.def);
+          const next = new Map(POI_DEFS);
+          next.set(id, result.def);
+          replacePoiDefs(next.values());
+          game.reloadPoiDef(id);
+          console.log(`[content] poi '${id}' saved + live`);
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const authored = AUTHORED_POI_DEFS.get(id) ?? null;
+          const outcome = revertContentDoc(db, 'poi', id, authored);
+          const next = new Map(POI_DEFS);
+          if (authored) next.set(id, authored);
+          else next.delete(id);
+          replacePoiDefs(next.values());
+          game.reloadPoiDef(id);
+          console.log(`[content] poi '${id}' ${outcome}`);
+          sendJson(res, 200, { ok: true, outcome });
+          return true;
+        }
+      }
+
+      // The bench's observed panel: run the REAL scaffold over a fresh
+      // scan (draft def included, unsaved) — batched between event-loop
+      // turns so the game tick never waits on a simulation.
+      if (url.pathname === '/dev/pois/simulate' && req.method === 'POST') {
+        let body: { cells?: number; draft?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch (err) {
+          sendJson(res, 400, { error: (err as Error).message });
+          return true;
+        }
+        let draft: PoiDef | undefined;
+        if (body.draft !== undefined) {
+          const v = validatePoiDef(body.draft, { prefabIds: game.poiPrefabIds() });
+          if (!v.ok) {
+            sendJson(res, 400, { error: v.errors.join('; ') });
+            return true;
+          }
+          draft = v.def;
+        }
+        const ctx = game.poiBenchContext(draft);
+        if (!ctx) {
+          sendJson(res, 503, { error: 'poi system not initialized' });
+          return true;
+        }
+        const cells = Math.max(20, Math.min(1000, body.cells ?? 300));
+        const steps = simulatePoisSteps(config.worldSeed, ctx, cells);
+        const stats = await new Promise<PoiSimStats>((resolve) => {
+          const drain = (): void => {
+            const r = steps.next();
+            if (r.done) resolve(r.value);
+            else setImmediate(drain);
+          };
+          drain();
+        });
+        sendJson(res, 200, stats);
+        return true;
+      }
+
+      // The bench's stage: a REAL composed site for an archetype at a
+      // requested tier — cues, garrison, patrol ring and all.
+      if (url.pathname === '/dev/pois/preview' && req.method === 'POST') {
+        let body: { id?: string; tier?: number; prefab?: string; draft?: unknown };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch (err) {
+          sendJson(res, 400, { error: (err as Error).message });
+          return true;
+        }
+        let draft: PoiDef | undefined;
+        if (body.draft !== undefined) {
+          const v = validatePoiDef(body.draft, { prefabIds: game.poiPrefabIds() });
+          if (!v.ok) {
+            sendJson(res, 400, { error: v.errors.join('; ') });
+            return true;
+          }
+          draft = v.def;
+        }
+        const defId = draft?.id ?? body.id;
+        const tier = body.tier ?? 2;
+        if (typeof defId !== 'string' || !Number.isInteger(tier)) {
+          sendJson(res, 400, { error: 'needs { id or draft, tier }' });
+          return true;
+        }
+        const ctx = game.poiBenchContext(draft);
+        if (!ctx) {
+          sendJson(res, 503, { error: 'poi system not initialized' });
+          return true;
+        }
+        const shown = previewPoi(config.worldSeed, ctx, defId, tier, body.prefab);
+        if (!shown) {
+          sendJson(res, 404, { error: `no honest tier-${tier} ground found for '${defId}'` });
+          return true;
+        }
+        sendJson(res, 200, { site: shown.site, zone: zoneToJson(shown.zone) });
+        return true;
+      }
+
       if (url.pathname === '/dev/content/items' && req.method === 'GET') {
         sendJson(res, 200, {
           items: [...ITEMS.values()].map((i) => ({
@@ -399,10 +545,14 @@ export function createMapsApi(
             return true;
           }
           mkdirSync(prefabsDir, { recursive: true });
+          const def = prefabFromJson(json);
           await writeFile(
             join(prefabsDir, `${id}.json`),
-            JSON.stringify(prefabToJson(prefabFromJson(json)), null, 2),
+            JSON.stringify(prefabToJson(def), null, 2),
           );
+          // The POI system reads the SAME library: standing sites
+          // wearing this prefab re-dress within a tick of the save.
+          game.reloadPoiPrefab(id, def);
           console.log(`[maps] saved prefab '${id}' (${json.width}x${json.height})`);
           sendJson(res, 200, { ok: true });
           return true;
@@ -410,6 +560,7 @@ export function createMapsApi(
         if (req.method === 'DELETE') {
           try {
             await unlink(join(prefabsDir, `${id}.json`));
+            game.reloadPoiPrefab(id, null);
             console.log(`[maps] deleted prefab '${id}'`);
             sendJson(res, 200, { ok: true });
           } catch {

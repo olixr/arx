@@ -1,6 +1,7 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
+  DANGER_BAND,
   chestInfo,
   closedChestTile,
   dangerAt,
@@ -353,23 +354,20 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
 /**
  * The POI prefab library, file-overrides-builtin: every shipped
  * POI_PREFABS entry that has no data/prefabs/<id>.json is written out
- * once (so Map Studio can curate it); a file that exists WINS — parse
- * errors warn and fall back to the builtin, never brick a boot.
+ * once (so Map Studio can curate it), then EVERY prefab file in the
+ * library is loaded — a hand-captured prefab is as good a footprint
+ * as a shipped one, which is how new variety ships as content. Parse
+ * errors warn and fall back to the builtin (or skip a file-only
+ * prefab), never brick a boot.
  */
 export function loadPoiPrefabs(dataDir: string): Map<string, PrefabDef> {
   const dir = join(dataDir, 'prefabs');
   mkdirSync(dir, { recursive: true });
   const out = new Map<string, PrefabDef>();
+  // Builtins first (and seed any missing files).
   for (const [id, builtin] of POI_PREFABS) {
     const file = join(dir, `${id}.json`);
-    if (existsSync(file)) {
-      try {
-        out.set(id, prefabFromJson(JSON.parse(readFileSync(file, 'utf8'))));
-        continue;
-      } catch (err) {
-        console.warn(`[poi] bad prefab file ${file} — using builtin (${String(err)})`);
-      }
-    } else {
+    if (!existsSync(file)) {
       try {
         writeFileSync(file, JSON.stringify(prefabToJson(builtin), null, 2));
       } catch (err) {
@@ -378,7 +376,162 @@ export function loadPoiPrefabs(dataDir: string): Map<string, PrefabDef> {
     }
     out.set(id, builtin);
   }
+  // Every library file wins over its builtin twin (or joins fresh).
+  let files: string[] = [];
+  try {
+    files = readdirSync(dir).filter((f) => f.endsWith('.json'));
+  } catch {
+    return out;
+  }
+  for (const f of files) {
+    const file = join(dir, f);
+    try {
+      const def = prefabFromJson(JSON.parse(readFileSync(file, 'utf8')));
+      out.set(def.id, def);
+    } catch (err) {
+      console.warn(`[poi] bad prefab file ${file} — skipped (${String(err)})`);
+    }
+  }
   return out;
+}
+
+// ------------------------------------------------- bench instruments
+
+/**
+ * Deterministic cell scan order for simulation/preview: square rings
+ * spiraling outward from the world-origin cell. Settled cells come
+ * back too — the consumer counts or skips them (that IS a stat).
+ */
+export function* poiScanOrder(maxRadius: number): Generator<{ cx: number; cy: number }> {
+  yield { cx: 0, cy: 0 };
+  for (let r = 1; r <= maxRadius; r++) {
+    for (let x = -r; x <= r; x++) yield { cx: x, cy: -r };
+    for (let y = -r + 1; y <= r; y++) yield { cx: r, cy: y };
+    for (let x = r - 1; x >= -r; x--) yield { cx: x, cy: r };
+    for (let y = r - 1; y >= -r + 1; y--) yield { cx: -r, cy: y };
+  }
+}
+
+export interface PoiSimStats {
+  /** Frontier cells actually decided (settled cells don't count). */
+  evaluated: number;
+  settledSkipped: number;
+  sites: number;
+  empty: number;
+  byDef: Record<
+    string,
+    { count: number; tiers: Record<number, number>; prefabs: Record<string, number> }
+  >;
+}
+
+/**
+ * THE OBSERVED PANEL's engine — run the REAL poiForCell over a fresh
+ * scan (no ledger, chosen epoch) and report what the frontier would
+ * actually host. A draft def rides in `ctx.defs` (the caller overlays
+ * it), so the bench answers for UNSAVED edits — the loot-laboratory
+ * law: drop design is observed, not computed.
+ *
+ * A generator so the /dev endpoint can breathe between batches (the
+ * game tick shares this event loop): each yield marks `batch`
+ * evaluated cells; the return value is the finished stats.
+ */
+export function* simulatePoisSteps(
+  seed: number,
+  ctx: PoiContext,
+  maxCells: number,
+  epoch = 0,
+  batch = 8,
+): Generator<void, PoiSimStats> {
+  const stats: PoiSimStats = {
+    evaluated: 0,
+    settledSkipped: 0,
+    sites: 0,
+    empty: 0,
+    byDef: {},
+  };
+  for (const { cx, cy } of poiScanOrder(64)) {
+    if (stats.evaluated >= maxCells) break;
+    const tier = dangerAt(
+      seed,
+      cx * POI_CELL + POI_CELL / 2,
+      cy * POI_CELL + POI_CELL / 2,
+      ctx.anchors,
+    );
+    if (tier === 0) {
+      stats.settledSkipped++;
+      continue;
+    }
+    stats.evaluated++;
+    if (stats.evaluated % batch === 0) yield;
+    const site = poiForCell(seed, cx, cy, epoch, ctx);
+    if (!site) {
+      stats.empty++;
+      continue;
+    }
+    stats.sites++;
+    const rec = (stats.byDef[site.defId] ??= { count: 0, tiers: {}, prefabs: {} });
+    rec.count++;
+    rec.tiers[site.tier] = (rec.tiers[site.tier] ?? 0) + 1;
+    rec.prefabs[site.prefabId] = (rec.prefabs[site.prefabId] ?? 0) + 1;
+  }
+  return stats;
+}
+
+/** Synchronous drain of simulatePoisSteps (tests, small scans). */
+export function simulatePois(
+  seed: number,
+  ctx: PoiContext,
+  maxCells: number,
+  epoch = 0,
+): PoiSimStats {
+  const it = simulatePoisSteps(seed, ctx, maxCells, epoch);
+  let r = it.next();
+  while (!r.done) r = it.next();
+  return r.value;
+}
+
+/**
+ * Bench preview: find a REAL site for an archetype at a requested
+ * tier and compose it — the danger bands are radial, so the scan
+ * jumps straight to cells whose centers sit mid-band and walks the
+ * circle. Returns the composed zone (cues, garrison, sentries and
+ * all) plus the site, or null when no honest ground exists at that
+ * tier within the sweep. `prefabId` narrows the preview to one pool
+ * variant (swapped in before composition — preview-only surgery).
+ */
+export function previewPoi(
+  seed: number,
+  ctx: PoiContext,
+  defId: string,
+  tier: number,
+  prefabId?: string,
+): { site: PoiSite; zone: ZoneDef } | null {
+  const def = ctx.defs.find((d) => d.id === defId);
+  if (!def) return null;
+  // Mid-band radius from the FIRST anchor (the hearth): tier T spans
+  // [safeR + (T-1)·band, safeR + T·band).
+  const hearth = ctx.anchors[0] ?? { x: 0, y: 0, safeR: 0 };
+  const radius = hearth.safeR + (tier - 0.5) * DANGER_BAND;
+  const seen = new Set<string>();
+  for (let step = 0; step < 96; step++) {
+    const ang = (step / 96) * Math.PI * 2;
+    const tx = hearth.x + Math.cos(ang) * radius;
+    const ty = hearth.y + Math.sin(ang) * radius;
+    const cx = poiCellOf(tx);
+    const cy = poiCellOf(ty);
+    const key = poiCellKey(cx, cy);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const site = poiForCell(seed, cx, cy, 0, ctx, defId);
+    if (!site || site.tier !== tier) continue;
+    const shown =
+      prefabId !== undefined && ctx.prefabs.has(prefabId)
+        ? { ...site, prefabId }
+        : site;
+    const zone = composePoi(seed, shown, ctx);
+    if (zone) return { site: shown, zone };
+  }
+  return null;
 }
 
 /** The default context over the live zone list. */

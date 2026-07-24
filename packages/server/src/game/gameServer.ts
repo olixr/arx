@@ -109,7 +109,9 @@ import {
   type RecipeDef,
   type WeaponStats,
   type PrefabDef,
+  type PoiDef,
   POI_DEFS,
+  POI_PREFABS,
   SETTLED_ANCHORS,
   dangerTierAt,
 } from '@devcraft/content';
@@ -121,6 +123,7 @@ import {
   poiCellOf,
   poiContext,
   poiForCell,
+  type PoiContext,
   type PoiSite,
 } from '../world/pois.js';
 import { DARK_BAND_Y } from '../world/worldgen.js';
@@ -2809,6 +2812,57 @@ export class GameServer {
       for (const i of live.spawnIdx) this.poiSpawnCells.delete(i);
     }
     this.poiLive.delete(key);
+  }
+
+  /** The live prefab-library ids — the /dev/content validator's refs. */
+  poiPrefabIds(): ReadonlySet<string> {
+    return new Set(this.poiPrefabs?.keys() ?? []);
+  }
+
+  /**
+   * Archetype edit applied live (registry already swapped by the
+   * caller — the reloadNpcDef pattern): retire every standing cell of
+   * the edited kind and forget its live state; tickPois re-stands each
+   * from its LEDGER row next pass, so the site keeps its anchor and
+   * prefab while garrison/cues/chest recompose under the new def.
+   */
+  reloadPoiDef(id: string): void {
+    for (const [key, row] of this.poiLedger) {
+      if (row.site?.defId !== id || !this.poiLive.has(key)) continue;
+      this.retirePoiCell(key);
+    }
+  }
+
+  /**
+   * Prefab edit applied live: swap the library entry (null = file
+   * deleted — builtin twin stands back in if one exists, else the
+   * prefab is gone) and re-stand every cell whose site wears it, so
+   * the curated art lands in the world within a tick of the save.
+   */
+  reloadPoiPrefab(id: string, def: PrefabDef | null): void {
+    if (!this.poiPrefabs) return;
+    if (def) this.poiPrefabs.set(id, def);
+    else {
+      const builtin = POI_PREFABS.get(id);
+      if (builtin) this.poiPrefabs.set(id, builtin);
+      else this.poiPrefabs.delete(id);
+    }
+    for (const [key, row] of this.poiLedger) {
+      if (row.site?.prefabId !== id || !this.poiLive.has(key)) continue;
+      this.retirePoiCell(key);
+    }
+  }
+
+  /**
+   * The bench's context: the live world's anchors/zones/prefabs with
+   * an optional DRAFT def overlaid — unsaved edits answer honestly.
+   */
+  poiBenchContext(draft?: PoiDef): PoiContext | null {
+    if (!this.poiPrefabs) return null;
+    const defs = new Map(POI_DEFS);
+    if (draft) defs.set(draft.id, draft);
+    const ctx = poiContext(SETTLED_ANCHORS, this.world.zoneDefs, this.poiPrefabs);
+    return { ...ctx, defs: [...defs.values()] };
   }
 
   // ------------------------------------------------- portals & dungeons
