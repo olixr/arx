@@ -29,7 +29,7 @@ import {
  * at cliff feet, formations along plateau rims, the richest veins up on
  * the mesas, and a modest bonus seam on the quarry floors.
  */
-function elevationAt(seed: number, tx: number, ty: number): number {
+export function elevationAt(seed: number, tx: number, ty: number): number {
   let elevation = fbm(seed, tx * 0.015, ty * 0.015, 4);
   // Continental bias: dry land guaranteed near the town.
   const distFromOrigin = Math.hypot(tx - 48, ty - 48);
@@ -46,7 +46,7 @@ function elevationAt(seed: number, tx: number, ty: number): number {
 const PLATEAU_T1 = 0.615;
 const PLATEAU_T2 = 0.705;
 
-function plateauFieldAt(seed: number, tx: number, ty: number): number {
+export function plateauFieldAt(seed: number, tx: number, ty: number): number {
   const f = fbm(seed + 31337, tx * 0.012, ty * 0.012, 3);
   const distFromTown = Math.hypot(tx - 48, ty - 48);
   return f - Math.max(0, 1 - distFromTown / 130) * 0.45;
@@ -106,6 +106,36 @@ export function sandbarAt(seed: number, tx: number, ty: number): boolean {
 
 /** Below this world-y everything defaults to solid cave (dungeon land). */
 export const DARK_BAND_Y = 512;
+
+/** Signed terrain level (−2..2) at a world tile — the fields combined. */
+export function levelAt(seed: number, tx: number, ty: number): number {
+  return levelOf(
+    plateauFieldAt(seed, tx, ty),
+    basinFieldAt(seed, tx, ty),
+    elevationAt(seed, tx, ty),
+  );
+}
+
+export type GroundClass = 'water' | 'sand' | 'grass' | 'forest' | 'rock' | 'cave';
+
+/**
+ * Cheap terrain classifier for suitability scans (POI scaffolding):
+ * answers "what kind of ground is here" from the fields alone, without
+ * generating a chunk. 'rock' covers every non-flat terrain level —
+ * plateaus, dells, and their cliff fences — because a site scan wants
+ * FLAT, not climbable. This is a pre-filter: authored zones, player
+ * builds, and per-tile hash content (trees, ore, chests) are invisible
+ * to it, so any final check must read the live world.
+ */
+export function groundProbeAt(seed: number, tx: number, ty: number): GroundClass {
+  if (ty >= DARK_BAND_Y) return 'cave';
+  const e = elevationAt(seed, tx, ty);
+  if (e < 0.37) return 'water';
+  if (e < 0.4) return 'sand';
+  if (levelAt(seed, tx, ty) !== 0) return 'rock';
+  const moisture = fbm(seed + 9999, tx * 0.03, ty * 0.03, 3);
+  return moisture > 0.62 ? 'forest' : 'grass';
+}
 
 /** Sampled-neighborhood margin: rim checks 1 + ramp-top interior 1 + talus 1. */
 const M = 3;

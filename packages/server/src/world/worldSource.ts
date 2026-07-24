@@ -1,6 +1,7 @@
 import {
   CHUNK_SIZE,
   ChunkStore,
+  TILE_SKIP,
   chunkKey,
   tileIndex,
   type ChunkData,
@@ -185,9 +186,13 @@ export class WorldSource extends ChunkStore {
     for (let ty = y0; ty < y1; ty++) {
       for (let tx = x0; tx < x1; tx++) {
         const zi = (ty - zone.origin.y) * zone.width + (tx - zone.origin.x);
+        // TILE_SKIP cells are transparent: the ground beneath (procgen
+        // or an earlier zone) shows through untouched — elev included,
+        // or a skipped cell would flatten the terrain it reveals.
+        if (zone.ground[zi] === TILE_SKIP) continue;
         const ci = tileIndex(tx, ty);
         chunk.ground[ci] = zone.ground[zi]!;
-        chunk.detail[ci] = zone.detail[zi]!;
+        chunk.detail[ci] = zone.detail[zi] === TILE_SKIP ? 0 : zone.detail[zi]!;
         // A zone without an elev layer is flat ground: any generated
         // plateau under it is levelled (it carries no cliffs to fence
         // one). Zones WITH a layer stamp it verbatim — ZoneBuilder

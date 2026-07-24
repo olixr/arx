@@ -3,6 +3,15 @@
  * (shared) and rendering (client). Detail-layer tiles are cosmetic only.
  */
 
+/**
+ * Transparency sentinel for layer stamps: a cell holding this value in
+ * a zone/prefab layer is SKIPPED by the overlay — the ground beneath
+ * (procedural or earlier zone) shows through. Not a legal tile id; it
+ * never reaches a chunk. The editor's structure-ghost GHOST_SKIP is
+ * this same value.
+ */
+export const TILE_SKIP = 0xffff;
+
 export enum Tile {
   Void = 0,
   Grass = 1,

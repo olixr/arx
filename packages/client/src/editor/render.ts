@@ -2,6 +2,7 @@ import {
   CHUNK_SIZE,
   Detail,
   TILE_PX,
+  TILE_SKIP,
   Tile,
   tileDef,
 } from '@devcraft/shared';
@@ -24,7 +25,7 @@ import { sameRef } from './placements.js';
 const OUTLINE = '#241a2e';
 
 /** Sentinel ground value marking a transparent ghost cell. */
-export const GHOST_SKIP = 0xffff;
+export const GHOST_SKIP = TILE_SKIP;
 
 function hash2(x: number, y: number): number {
   let h = (x * 73856093) ^ (y * 19349663);
