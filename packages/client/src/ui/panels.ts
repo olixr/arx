@@ -769,15 +769,22 @@ export class Panels {
     }
     this.card.appendChild(hints);
 
-    // Pin beside the CELL it describes, like a game tooltip: the side
-    // with room wins, clamped on-screen. The anchor survives refreshes.
+    // Pin where the case stays readable: with the character case docked
+    // at the right edge, the card stands in the OPEN WORLD at the case's
+    // left, riding the hovered row. In a station pairing (bank/shop) it
+    // pins beside the cell like a game tooltip — transient overlap there
+    // beats covering the world conversation. Clamped on-screen always.
     this.card.classList.remove('hidden');
     const anchor = this.cardAnchor?.getBoundingClientRect();
     const cw = this.card.offsetWidth;
     const chh = this.card.offsetHeight;
     let x: number;
     let y: number;
-    if (anchor) {
+    if (anchor && this.stationContext() === null && !this.invPanel.classList.contains('hidden')) {
+      const pr = this.invPanel.getBoundingClientRect();
+      x = Math.max(8, pr.left - cw - 12);
+      y = Math.min(Math.max(10, anchor.top - 24), window.innerHeight - chh - 10);
+    } else if (anchor) {
       x = anchor.left - cw - 14;
       if (x < 8) x = Math.min(window.innerWidth - cw - 8, anchor.right + 14);
       y = Math.min(Math.max(10, anchor.top - 24), window.innerHeight - chh - 10);

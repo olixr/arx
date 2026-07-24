@@ -82,12 +82,13 @@
            change the moment you make it. No duplicate figure. -->
       <div id="inventory-panel" class="ui-screen screen-character hidden">
         <h3>Character</h3>
-        <div class="char-identity">
-          <span id="char-name" class="ident-name"></span>
-          <span id="char-deed" class="ident-deed"></span>
-        </div>
         <div class="char-body">
+          <!-- LEFT WING: who you are + what you wear + what it sums to. -->
           <section class="worn-kit">
+            <div class="char-identity">
+              <span id="char-name" class="ident-name"></span>
+              <span id="char-deed" class="ident-deed"></span>
+            </div>
             <div id="equip-anatomy"></div>
             <div class="kit-ledger">
               <div class="kit-ledger-title">The kit&rsquo;s sum</div>
@@ -95,17 +96,18 @@
               <div class="kit-empty">Nothing worn adds to the sum yet &mdash; armor and trinkets will.</div>
             </div>
           </section>
+          <!-- RIGHT WING: the whole backpack, every socket on screen. -->
           <section class="char-pack-col">
             <div class="pack-header">
               <div class="section-title">Backpack</div>
-              <div id="pack-filters"></div>
               <span id="pack-fill" class="pack-fill"></span>
             </div>
-            <div id="inventory-grid"></div>
+            <div id="pack-filters"></div>
+            <div class="pack-case">
+              <div id="inventory-grid"></div>
+            </div>
             <div class="pack-foot">
-              <span class="pack-hint hint-inline"
-                >Drag an item onto the world to drop it</span
-              >
+              <span class="purse-label">Purse</span>
               <span id="coin-readout" data-tipname="Coins" title="Coins"></span>
             </div>
           </section>

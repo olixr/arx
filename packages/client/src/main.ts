@@ -625,7 +625,7 @@ const riftgate = new RiftgatePanel(game);
 const el = (id: string): HTMLElement => document.getElementById(id)!;
 dressPanel(el('inventory-panel'), {
   icon: uiIconUrl('backpack', 34),
-  hint: 'You wear what you equip — watch yourself beside the case.',
+  hint: 'Drag an item onto the open world to drop it.',
   onClose: () => panels.closeAll(),
 });
 dressPanel(el('skills-panel'), {

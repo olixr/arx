@@ -826,9 +826,14 @@ h3 {
    THE CHARACTER SCREEN — the expedition case docked at the RIGHT edge
    of the world. It deliberately owns only that column: the camera
    slides the world so your live character stands in the open ground
-   to its left — the game itself is the mirror. Inside the case: the
-   worn kit hung on an armor stand, its sum as a ledger, the backpack
-   below as one spread of sockets.
+   to its left — the game itself is the mirror.
+
+   THE TWO-WING LAW: inside, the case opens like a field kit — the
+   worn kit (identity, armor stand, ledger) is the LEFT wing; the
+   backpack is the RIGHT wing and the protagonist. The wings sit side
+   by side so neither steals the other's height, and THE WHOLE PACK IS
+   ALWAYS ON SCREEN: 4 across × 7 down, cells sized by the room the
+   case actually has (container query), never scrolled out of reach.
    ================================================================== */
 
 /* A true dock: the case rides the right EDGE, full height, leaving
@@ -839,24 +844,25 @@ h3 {
   top: 14px;
   bottom: 14px;
   transform: none;
-  width: min(620px, 46vw);
+  width: min(672px, max(560px, 50vw));
   height: auto;
   max-height: none;
 }
 
-/* The identity line: who this case belongs to. */
+/* The identity plate: who this case belongs to, atop the armor stand. */
 .char-identity {
   flex: none;
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 14px;
-  margin: 2px 2px 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 2px 0 14px;
+  max-width: 100%;
 }
 
 .ident-name {
   font-family: var(--serif);
-  font-size: 23px;
+  font-size: 21px;
   font-weight: 700;
   letter-spacing: 1px;
   color: var(--gold-bright);
@@ -864,11 +870,12 @@ h3 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .ident-deed {
   flex: none;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
@@ -884,18 +891,19 @@ h3 {
   flex: 1;
   min-height: 0;
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  flex-direction: row;
+  gap: 20px;
+  align-items: stretch;
 }
 
-/* ---- the worn kit: an armor stand of sockets + the ledger ---- */
+/* ---- LEFT WING: identity + armor stand + the kit's sum ---- */
 
 .worn-kit {
   flex: none;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 18px;
-  align-items: stretch;
+  width: 228px; /* the stand's exact span: 3 sockets + 2 gaps */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* The stand: sockets hung where they sit on the body — head over
@@ -903,6 +911,7 @@ h3 {
    shield hand right, cape at the shoulder, tools on the belt. */
 #equip-anatomy {
   position: relative;
+  flex: none;
   display: grid;
   grid-template-areas:
     'cape   head  sigil'
@@ -945,9 +954,14 @@ h3 {
   z-index: 1;
 }
 
-/* The ledger column: the worn kit's sum, told in plaques. */
+/* The ledger: the worn kit's sum, told in plaques at the stand's
+   feet. It takes whatever height the wing has left and scrolls only
+   if a kit ever outgrows it. */
 .kit-ledger {
   min-width: 0;
+  flex: 1;
+  min-height: 0;
+  margin-top: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -955,6 +969,9 @@ h3 {
   background: var(--sunk);
   border: 1.5px solid var(--line);
   border-radius: 7px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
 .kit-ledger-title {
@@ -970,7 +987,8 @@ h3 {
 #gear-strip {
   flex: none;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  /* Two plaques per row in the wing's 197px inner span. */
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
   gap: 8px;
   align-content: start;
 }
@@ -1023,7 +1041,7 @@ h3 {
   margin: 0 6px;
 }
 
-/* ---- the backpack column ---- */
+/* ---- RIGHT WING: the backpack, the screen's protagonist ---- */
 
 .char-pack-col {
   min-width: 0;
@@ -1034,10 +1052,19 @@ h3 {
 }
 
 .pack-header {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 14px;
-  margin: 2px 0 12px;
+  margin: 2px 0 10px;
+}
+
+/* The filter lens rides its own rail under the title. */
+#pack-filters {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  margin: 0 0 12px;
 }
 
 .section-title {
@@ -1068,7 +1095,7 @@ h3 {
   border-color: rgba(217, 87, 99, 0.55);
 }
 
-/* The purse shelf under the pack: coins big, one quiet lesson. */
+/* The purse shelf under the pack: the coins, told big and plain. */
 .pack-foot {
   flex: none;
   display: flex;
@@ -1076,17 +1103,20 @@ h3 {
   justify-content: space-between;
   gap: 12px;
   margin-top: 12px;
-  padding: 10px 14px;
+  padding: 8px 14px;
   background: var(--sunk);
   border: 1.5px solid var(--line);
   border-radius: 7px;
 }
 
-.pack-hint {
+.purse-label {
+  font-family: var(--serif);
   font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
   color: var(--parchment-dim);
   text-shadow: var(--punch-small);
-  font-style: italic;
 }
 
 .pack-foot #coin-readout {
@@ -1121,17 +1151,31 @@ h3 {
   filter: saturate(0.3);
 }
 
-/* The pack: 7 across × 4 down = the whole 28-slot spread in view. */
-#inventory-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 9px;
+/* THE WHOLE-PACK LAW: 4 across × 7 down = all 28 sockets on screen,
+   always. The case measures the room the pack actually has (this
+   wrapper is a size container) and the cells size themselves to fit —
+   height-fit and width-fit both, capped at the kit's 70px socket.
+   Scrolling is the emergency exit (sub-44px rooms), never the plan. */
+.pack-case {
   flex: 1;
-  min-height: 130px;
+  min-height: 0;
+  container-type: size;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
-  padding-right: 3px;
+}
+
+#inventory-grid {
+  --pack-cell: clamp(
+    40px,
+    min(calc((100cqh - 54px) / 7), calc((100cqw - 27px) / 4)),
+    70px
+  );
+  display: grid;
+  grid-template-columns: repeat(4, var(--pack-cell));
+  grid-auto-rows: var(--pack-cell);
+  gap: 9px;
+  justify-content: center;
   align-content: start;
 }
 
@@ -1222,7 +1266,10 @@ h3 {
 
 /* ---- station pairing: talking to a bank chest or shop counter, the
    character screen steps aside into a right-hand PACK COLUMN so the
-   deposit/sell conversation reads left-to-right as one composition. */
+   deposit/sell conversation reads left-to-right as one composition.
+   The left wing (identity + stand + ledger) folds away with it; the
+   pack keeps its whole 4×7 spread and the purse — you sell for coins,
+   the coins stay in view. */
 
 body:has(#bank-panel:not(.hidden)) #inventory-panel,
 body:has(#shop-panel:not(.hidden)) #inventory-panel {
@@ -1231,14 +1278,24 @@ body:has(#shop-panel:not(.hidden)) #inventory-panel {
   top: 47%;
   bottom: auto;
   transform: translate(0, -50%);
-  width: min(640px, 46vw);
+  width: min(460px, 34vw);
   height: min(840px, 88vh);
+}
+
+/* The narrow pack column tells its name in smaller capitals so the
+   banner never ellipsizes the word CHARACTER. */
+body:has(#bank-panel:not(.hidden)) #inventory-panel .panel-head h3,
+body:has(#shop-panel:not(.hidden)) #inventory-panel .panel-head h3 {
+  font-size: 22px;
+  letter-spacing: 2px;
 }
 
 body:has(#bank-panel:not(.hidden)) #inventory-panel .worn-kit,
 body:has(#shop-panel:not(.hidden)) #inventory-panel .worn-kit,
-body:has(#bank-panel:not(.hidden)) #inventory-panel .char-identity,
-body:has(#shop-panel:not(.hidden)) #inventory-panel .char-identity {
+/* The drop-to-world lesson is the station's noise — the bank/shop
+   panel carries its own hint; the pack spends the line on sockets. */
+body:has(#bank-panel:not(.hidden)) #inventory-panel .panel-hint,
+body:has(#shop-panel:not(.hidden)) #inventory-panel .panel-hint {
   display: none;
 }
 
