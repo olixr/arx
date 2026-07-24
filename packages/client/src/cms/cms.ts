@@ -233,6 +233,8 @@ interface ListEntry {
   badge?: string;
   badgeEdited?: boolean;
   ico?: HTMLElement;
+  /** Section header this entry files under (grouped lists). */
+  group?: string;
 }
 
 function npcIco(def: NpcDef): HTMLElement {
@@ -255,6 +257,8 @@ function listEntries(): ListEntry[] {
   const match = (...hay: string[]): boolean =>
     !q || hay.some((h) => h.toLowerCase().includes(q));
   if (state.section === 'npcs') {
+    const band = (lv: number): string =>
+      lv <= 5 ? 'Meadow (lv 1–5)' : lv <= 12 ? 'Frontier (lv 6–12)' : lv <= 25 ? 'Deepwood (lv 13–25)' : 'Champions (lv 26+)';
     return state.npcs
       .filter((n) => match(n.def.id, n.def.name))
       .sort((a, b) => a.def.level - b.def.level || a.def.name.localeCompare(b.def.name))
@@ -265,9 +269,15 @@ function listEntries(): ListEntry[] {
         badge: `lv ${n.def.level}`,
         badgeEdited: n.edited,
         ico: npcIco(n.def),
+        group: band(n.def.level),
       }));
   }
   if (state.section === 'loot') {
+    const family = (tid: string): string =>
+      tid.startsWith('chest_') ? 'Chests' :
+      tid.startsWith('champion_') || tid.startsWith('crypt_') || tid.startsWith('dire_') ? 'Champions & crypts' :
+      tid.includes('wardrobe') || tid.includes('arms') || tid.includes('armory') ? 'Gear wardrobes' :
+      tid.startsWith('recipes_') || tid.includes('heirloom') ? 'Special pools' : 'Creature drops';
     return state.loot
       .filter((t) => match(t.def.id, t.def.desc ?? ''))
       .sort((a, b) => a.def.id.localeCompare(b.def.id))
@@ -277,12 +287,14 @@ function listEntries(): ListEntry[] {
         sub: t.def.desc ?? `${t.def.mode ?? 'each'} · ${t.def.entries.length} entries`,
         badge: `${t.def.entries.length}`,
         badgeEdited: t.edited,
+        group: family(t.def.id),
       }));
   }
   if (state.section === 'actors') {
+    const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
     return state.actors
       .filter((a) => match(a.def.id, a.def.name, a.def.title ?? ''))
-      .sort((a, b) => a.def.name.localeCompare(b.def.name))
+      .sort((a, b) => a.def.disposition.localeCompare(b.def.disposition) || a.def.name.localeCompare(b.def.name))
       .map((a) => ({
         id: a.def.id,
         title: a.def.name,
@@ -290,6 +302,7 @@ function listEntries(): ListEntry[] {
         badge: a.def.disposition,
         badgeEdited: a.edited,
         ico: iconWrap(iconImg('actor', 18)),
+        group: cap(a.def.disposition),
       }));
   }
   return state.items
@@ -301,6 +314,7 @@ function listEntries(): ListEntry[] {
       sub: i.slot ? `${i.id} · ${i.slot}` : i.id,
       badge: `${i.value}c`,
       ico: itemIco(i.id),
+      group: i.slot ? 'Gear' : 'Goods & materials',
     }));
 }
 
@@ -328,7 +342,15 @@ function renderList(): void {
     rows.appendChild(p);
     return;
   }
+  let lastGroup: string | undefined;
   for (const e of entries) {
+    if (e.group && e.group !== lastGroup) {
+      lastGroup = e.group;
+      const head = document.createElement('div');
+      head.className = 'list-sect';
+      head.textContent = e.group;
+      rows.appendChild(head);
+    }
     const row = document.createElement('button');
     row.className = 'list-row' + (state.selectedId === e.id ? ' active' : '');
     if (e.ico) row.appendChild(e.ico);
