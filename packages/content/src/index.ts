@@ -17,6 +17,7 @@ export * from './loot/types.js';
 export * from './loot/tables.js';
 export * from './loot/roll.js';
 export * from './loot/serialize.js';
+export * from './danger.js';
 export * from './nodes.js';
 export * from './crops.js';
 export * from './npcs.js';

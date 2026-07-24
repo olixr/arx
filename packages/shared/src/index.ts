@@ -18,6 +18,7 @@ export * from './sim/sneak.js';
 export * from './sim/daylight.js';
 export * from './dungeon/key.js';
 export * from './world/collision.js';
+export * from './world/danger.js';
 export * from './world/tiles.js';
 export * from './world/chunk.js';
 export * from './world/pathfind.js';
