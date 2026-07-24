@@ -75,6 +75,12 @@ export interface FxStyle {
   motif?: MotifKind;
   /** Camera drama weight 0..1 — scales shake on detonation. */
   punch: number;
+  /**
+   * Interior ground light-wash strength 0..1 — how hard the turf
+   * INSIDE a young nova/blast lights up. Big detonations sear the
+   * ground; utility pulses barely kiss it. Undefined = 0.45.
+   */
+  wash?: number;
 }
 
 function fx(
@@ -94,56 +100,71 @@ function fx(
 
 // The elemental family voices. Individual abilities start from one and
 // swap layers so siblings share a language yet keep their own face.
+// Each family carries its own ground-wash temperament: fire SEARS the
+// turf it lands on, shadow barely lets light touch it.
 const EMBER = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#fff3d0', '#ff9a44', '#c43a18', '#ffd24a', '255, 150, 70', 'teeth', 'ember', 'scorch'),
+  wash: 0.62,
   ...over,
 });
 const FROST = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#f0fbff', '#8ac4e8', '#3a6c94', '#d8f2ff', '150, 208, 240', 'frost', 'ice', 'rime'),
+  wash: 0.48,
   ...over,
 });
 const STORM = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#fffce0', '#e8e06a', '#8a7a2a', '#ffffff', '240, 228, 120', 'teeth', 'spark', undefined, 0.6),
+  wash: 0.55,
   ...over,
 });
 const VERDANT = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#eaffd8', '#7ac46a', '#3a6a34', '#c8e89a', '140, 208, 120', 'petals', 'leaf', 'roots'),
+  wash: 0.35,
   ...over,
 });
 const BLOOD = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#ffd8d8', '#c4372a', '#6a1518', '#ff6a5a', '220, 80, 60', 'shards', 'blood', 'stain'),
+  wash: 0.42,
   ...over,
 });
 const VOID = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#e8e0ff', '#7a68a8', '#2a2244', '#b49af0', '150, 120, 220', 'runes', 'shadow', 'glow'),
+  wash: 0.5,
   ...over,
 });
 const RADIANT = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#fffbe8', '#ffd98a', '#b8862a', '#ffffff', '255, 220, 140', 'halo', 'star', 'glow', 0.6),
+  wash: 0.7,
   ...over,
 });
 const BONE = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#fffcf0', '#e2dcc8', '#8a8474', '#ffffff', '220, 214, 190', 'shards', 'bone', 'cracks'),
+  wash: 0.3,
   ...over,
 });
 const STEEL = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#ffffff', '#b8bec8', '#5a6068', '#e8eef8', '200, 208, 220', 'teeth', 'rock', 'cracks'),
+  wash: 0.3,
   ...over,
 });
 const GOLD = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#fff8d8', '#e8c04c', '#9a7a1c', '#ffffff', '240, 200, 90', 'halo', 'star', 'glow', 0.6),
+  wash: 0.62,
   ...over,
 });
 const TIDE = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#e0f8f8', '#6aa0c8', '#2a5a78', '#b8e8e8', '120, 180, 210', 'petals', 'ice', 'glow'),
+  wash: 0.42,
   ...over,
 });
 const ARCANE = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#f4ecff', '#b49af0', '#5a4088', '#ffffff', '190, 160, 250', 'runes', 'star', 'runes'),
+  wash: 0.52,
   ...over,
 });
 const SHADOW = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#d8d4e8', '#6a6080', '#1a1626', '#8a7fae', '120, 110, 160', 'shards', 'shadow', 'glow'),
+  wash: 0.22,
   ...over,
 });
 
@@ -155,115 +176,115 @@ const SHADOW = (over: Partial<FxStyle> = {}): FxStyle => ({
  */
 export const FX_STYLES: Record<string, FxStyle> = {
   // ---------------------------------------------- founding weapon arts
-  crescent_sweep: STEEL({ mid: '#d9a05a', deep: '#7a5426', spark: '#ffe8b0', ring: 'petals' }),
+  crescent_sweep: STEEL({ mid: '#d9a05a', deep: '#7a5426', spark: '#ffe8b0', ring: 'petals', wash: 0.35 }),
   lunge: STEEL({ ring: 'shards', decal: undefined, punch: 0.4 }),
-  shadowstep: SHADOW({ ring: 'runes', motif: 'tear', punch: 0.3 }),
-  shockwave: STEEL({ ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.9 }),
+  shadowstep: SHADOW({ ring: 'runes', motif: 'tear', punch: 0.3, wash: 0.1 }),
+  shockwave: STEEL({ ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.9, wash: 0.5 }),
   volley: VERDANT({ mid: '#8a6a45', deep: '#4a3822', ring: 'shards', debris: 'spark', decal: undefined, motif: 'rain' }),
   piercing_bolt: VERDANT({ mid: '#6b8a5a', ring: 'shards', decal: undefined, punch: 0.4 }),
-  frost_nova: FROST({ motif: 'spikes', punch: 0.6 }),
-  fireburst: EMBER({ motif: 'pillar', punch: 0.8 }),
+  frost_nova: FROST({ motif: 'spikes', punch: 0.6, wash: 0.5 }),
+  fireburst: EMBER({ motif: 'pillar', punch: 0.8, wash: 0.75 }),
 
   // ------------------------------------------------- blade-roster arts
-  sundering_chop: STEEL({ mid: '#a4744b', deep: '#5a3c22', debris: 'rock', motif: 'quake', punch: 0.8 }),
+  sundering_chop: STEEL({ mid: '#a4744b', deep: '#5a3c22', debris: 'rock', motif: 'quake', punch: 0.8, wash: 0.5 }),
   thorn_lash: VERDANT({ mid: '#5a7a42', ring: 'shards', debris: 'leaf', motif: 'spikes' }),
-  quicksilver: STEEL({ core: '#ffffff', mid: '#e6ddc8', ring: 'shards', decal: undefined, motif: 'echo', punch: 0.3 }),
-  riptide: TIDE({ mid: '#3d7a78', ring: 'petals', debris: 'ice', motif: 'wave' }),
+  quicksilver: STEEL({ core: '#ffffff', mid: '#e6ddc8', ring: 'shards', decal: undefined, motif: 'echo', punch: 0.3, wash: 0.25 }),
+  riptide: TIDE({ mid: '#3d7a78', ring: 'petals', debris: 'ice', motif: 'wave', wash: 0.5 }),
   cinder_arc: EMBER({ mid: '#c4623c', ring: 'shards', punch: 0.5 }),
   winters_edge: FROST({ mid: '#a8c8dc', ring: 'shards', punch: 0.4 }),
-  reapers_arc: VERDANT({ mid: '#4a5a48', deep: '#242e22', ring: 'shards', debris: 'leaf', decal: 'stain', motif: 'wisps' }),
-  red_harvest: BLOOD({ ring: 'teeth', motif: 'wave', punch: 0.7 }),
+  reapers_arc: VERDANT({ mid: '#4a5a48', deep: '#242e22', ring: 'shards', debris: 'leaf', decal: 'stain', motif: 'wisps', wash: 0.2 }),
+  red_harvest: BLOOD({ ring: 'teeth', motif: 'wave', punch: 0.7, wash: 0.45 }),
   storm_brand: STORM({ mid: '#5a6a9c', ring: 'runes', motif: 'echo' }),
-  kings_decree: GOLD({ ring: 'teeth', debris: 'star', motif: 'crown', punch: 0.9 }),
-  sunburst: RADIANT({ mid: '#e8b64c', ring: 'teeth', debris: 'ember', decal: 'scorch', motif: 'rays', punch: 0.8 }),
-  starfall_strike: VOID({ mid: '#4a4066', spark: '#ffd98a', debris: 'star', decal: 'scorch', motif: 'rain', punch: 0.9 }),
-  vow_unbroken: RADIANT({ mid: '#e8e8f0', ring: 'halo', debris: 'star', motif: 'echo', punch: 0.2 }),
+  kings_decree: GOLD({ ring: 'teeth', debris: 'star', motif: 'crown', punch: 0.9, wash: 0.7 }),
+  sunburst: RADIANT({ mid: '#e8b64c', ring: 'teeth', debris: 'ember', decal: 'scorch', motif: 'rays', punch: 0.8, wash: 0.8 }),
+  starfall_strike: VOID({ mid: '#4a4066', spark: '#ffd98a', debris: 'star', decal: 'scorch', motif: 'rain', punch: 0.9, wash: 0.65 }),
+  vow_unbroken: RADIANT({ mid: '#e8e8f0', ring: 'halo', debris: 'star', motif: 'echo', punch: 0.2, wash: 0.35 }),
 
   // ------------------------------------------------- rogue-roster arts
   serpents_kiss: VERDANT({ mid: '#8a9a4a', ring: 'shards', debris: 'spark', decal: 'stain', motif: 'spikes' }),
   stinger: GOLD({ mid: '#e8b64c', ring: 'shards', debris: 'spark', decal: undefined, motif: 'swarm', punch: 0.3 }),
-  cold_snap: FROST({ ring: 'teeth', motif: 'echo', punch: 0.5 }),
+  cold_snap: FROST({ ring: 'teeth', motif: 'echo', punch: 0.5, wash: 0.45 }),
   bone_needle: BONE({ ring: 'shards', decal: undefined, motif: 'spikes', punch: 0.3 }),
   shadow_fang: SHADOW({ ring: 'shards', debris: 'shadow', motif: 'wisps', punch: 0.5 }),
-  crimson_tithe: BLOOD({ ring: 'halo', motif: 'swarm', punch: 0.2 }),
+  crimson_tithe: BLOOD({ ring: 'halo', motif: 'swarm', punch: 0.2, wash: 0.2 }),
   pale_flame: FROST({ mid: '#c8dce8', ring: 'petals', debris: 'spark', motif: 'wisps', punch: 0.4 }),
   spark_lash: STORM({ mid: '#7a88b8', ring: 'runes', motif: 'swarm', punch: 0.4 }),
-  kings_bane: GOLD({ mid: '#c9a23c', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'crown', punch: 0.7 }),
-  last_word: STEEL({ core: '#ffffff', mid: '#f0f0f4', ring: 'halo', debris: 'spark', motif: 'echo', punch: 0.9 }),
+  kings_bane: GOLD({ mid: '#c9a23c', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'crown', punch: 0.7, wash: 0.5 }),
+  last_word: STEEL({ core: '#ffffff', mid: '#f0f0f4', ring: 'halo', debris: 'spark', motif: 'echo', punch: 0.9, wash: 0.6 }),
 
   // ------------------------------------------------ archer-roster arts
   broadhead: STEEL({ mid: '#7a5a36', ring: 'shards', debris: 'blood', decal: 'stain', punch: 0.5 }),
   wingbeat: TIDE({ mid: '#4a8ab8', ring: 'petals', debris: 'spark', decal: undefined, motif: 'wave', punch: 0.3 }),
-  verdant_burst: VERDANT({ motif: 'bloom', punch: 0.7 }),
+  verdant_burst: VERDANT({ motif: 'bloom', punch: 0.7, wash: 0.45 }),
   windsong: TIDE({ mid: '#8ab4c8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.5 }),
   thorn_fan: VERDANT({ mid: '#6a8a4a', ring: 'shards', decal: undefined, motif: 'spikes', punch: 0.4 }),
   howling_loose: FROST({ mid: '#9ab8d8', ring: 'shards', debris: 'spark', motif: 'wave', punch: 0.4 }),
-  hoarfrost: FROST({ ring: 'frost', motif: 'rain', punch: 0.7 }),
+  hoarfrost: FROST({ ring: 'frost', motif: 'rain', punch: 0.7, wash: 0.55 }),
   ghost_shaft: SHADOW({ mid: '#a8a4c0', ring: 'runes', debris: 'spark', motif: 'wisps', punch: 0.4 }),
-  cinder_rain: EMBER({ mid: '#e8823d', ring: 'shards', motif: 'rain', punch: 0.7 }),
+  cinder_rain: EMBER({ mid: '#e8823d', ring: 'shards', motif: 'rain', punch: 0.7, wash: 0.55 }),
   kings_arrow: GOLD({ mid: '#c9a23c', ring: 'halo', debris: 'spark', motif: 'crown', punch: 0.6 }),
-  starfall_arrows: VOID({ mid: '#8a90d8', spark: '#fffbe8', debris: 'star', motif: 'rain', punch: 0.5 }),
+  starfall_arrows: VOID({ mid: '#8a90d8', spark: '#fffbe8', debris: 'star', motif: 'rain', punch: 0.5, wash: 0.55 }),
   skyrend: STORM({ mid: '#d8e4f0', deep: '#5a6a8a', ring: 'teeth', motif: 'tear', punch: 0.9 }),
 
   // ---------------------------------------------- archmage-roster arts
-  arcane_ring: ARCANE({ motif: 'echo', punch: 0.5 }),
+  arcane_ring: ARCANE({ motif: 'echo', punch: 0.5, wash: 0.5 }),
   wisp_flare: RADIANT({ mid: '#efe8c0', ring: 'petals', debris: 'spark', decal: undefined, motif: 'swarm', punch: 0.3 }),
-  hearth_flare: EMBER({ mid: '#e8944a', ring: 'petals', motif: 'bloom', punch: 0.6 }),
-  undertow: TIDE({ ring: 'petals', debris: 'ice', decal: 'glow', motif: 'vortex', punch: 0.7 }),
+  hearth_flare: EMBER({ mid: '#e8944a', ring: 'petals', motif: 'bloom', punch: 0.6, wash: 0.65 }),
+  undertow: TIDE({ ring: 'petals', debris: 'ice', decal: 'glow', motif: 'vortex', punch: 0.7, wash: 0.45 }),
   stormlash: STORM({ motif: 'pillar', punch: 0.8 }),
-  cinderstorm: EMBER({ mid: '#e8683c', ring: 'teeth', debris: 'ember', motif: 'vortex', punch: 0.7 }),
-  glaciate: FROST({ ring: 'frost', motif: 'cage', punch: 0.8 }),
+  cinderstorm: EMBER({ mid: '#e8683c', ring: 'teeth', debris: 'ember', motif: 'vortex', punch: 0.7, wash: 0.6 }),
+  glaciate: FROST({ ring: 'frost', motif: 'cage', punch: 0.8, wash: 0.55 }),
   galvanic_arc: STORM({ mid: '#e8e29a', ring: 'runes', motif: 'echo', punch: 0.5 }),
-  overgrowth: VERDANT({ motif: 'bloom', punch: 0.6 }),
-  grave_chill: BONE({ mid: '#8a9484', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'wisps', punch: 0.5 }),
-  gloom_burst: VOID({ mid: '#9a6ab8', ring: 'petals', debris: 'shadow', decal: 'stain', motif: 'tear', punch: 0.6 }),
+  overgrowth: VERDANT({ motif: 'bloom', punch: 0.6, wash: 0.4 }),
+  grave_chill: BONE({ mid: '#8a9484', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'wisps', punch: 0.5, wash: 0.25 }),
+  gloom_burst: VOID({ mid: '#9a6ab8', ring: 'petals', debris: 'shadow', decal: 'stain', motif: 'tear', punch: 0.6, wash: 0.3 }),
   venom_lash: VERDANT({ mid: '#a0c050', ring: 'shards', debris: 'spark', decal: 'stain', motif: 'rain', punch: 0.4 }),
-  magma_orb: EMBER({ deep: '#8a2008', ring: 'teeth', debris: 'rock', motif: 'quake', punch: 0.8 }),
-  shatterfrost: FROST({ ring: 'teeth', debris: 'ice', motif: 'quake', punch: 0.8 }),
-  solar_lance: RADIANT({ motif: 'rays', punch: 0.8 }),
-  rune_echo: ARCANE({ mid: '#b0a0d8', decal: 'glow', motif: 'echo', punch: 0.5 }),
-  marrow_pulse: BONE({ ring: 'runes', motif: 'echo', punch: 0.5 }),
-  void_rift: VOID({ motif: 'vortex', punch: 0.9 }),
-  eye_of_the_storm: STORM({ mid: '#c8d0e8', ring: 'halo', motif: 'vortex', punch: 0.6 }),
-  red_eclipse: BLOOD({ mid: '#c84a5a', ring: 'halo', debris: 'blood', motif: 'rays', punch: 0.8 }),
+  magma_orb: EMBER({ deep: '#8a2008', ring: 'teeth', debris: 'rock', motif: 'quake', punch: 0.8, wash: 0.75 }),
+  shatterfrost: FROST({ ring: 'teeth', debris: 'ice', motif: 'quake', punch: 0.8, wash: 0.6 }),
+  solar_lance: RADIANT({ motif: 'rays', punch: 0.8, wash: 0.75 }),
+  rune_echo: ARCANE({ mid: '#b0a0d8', decal: 'glow', motif: 'echo', punch: 0.5, wash: 0.5 }),
+  marrow_pulse: BONE({ ring: 'runes', motif: 'echo', punch: 0.5, wash: 0.3 }),
+  void_rift: VOID({ motif: 'vortex', punch: 0.9, wash: 0.35 }),
+  eye_of_the_storm: STORM({ mid: '#c8d0e8', ring: 'halo', motif: 'vortex', punch: 0.6, wash: 0.45 }),
+  red_eclipse: BLOOD({ mid: '#c84a5a', ring: 'halo', debris: 'blood', motif: 'rays', punch: 0.8, wash: 0.6 }),
   realm_rend: fx('#ffffff', '#9ae8de', '#2a6a64', '#e0fffb', '160, 235, 225', 'teeth', 'star', 'glow', 0.9, 'tear'),
 
   // ------------------------------------------------------ relic actives
   ember_dash: EMBER({ ring: 'shards', decal: 'scorch', punch: 0.5 }),
-  healing_totem: VERDANT({ ring: 'halo', debris: 'leaf', decal: 'glow', motif: 'bloom', punch: 0.2 }),
-  snare_trap: VERDANT({ mid: '#a08a4a', ring: 'shards', debris: 'leaf', motif: 'cage', punch: 0.3 }),
-  storm_bell: STORM({ ring: 'halo', motif: 'echo', punch: 0.8 }),
+  healing_totem: VERDANT({ ring: 'halo', debris: 'leaf', decal: 'glow', motif: 'bloom', punch: 0.2, wash: 0.4 }),
+  snare_trap: VERDANT({ mid: '#a08a4a', ring: 'shards', debris: 'leaf', motif: 'cage', punch: 0.3, wash: 0.2 }),
+  storm_bell: STORM({ ring: 'halo', motif: 'echo', punch: 0.8, wash: 0.65 }),
   hunters_decoy: fx('#fff8e0', '#c4a35a', '#6a5426', '#e8d8a0', '200, 170, 100', 'shards', 'leaf', undefined, 0.2),
-  stone_aegis: STEEL({ mid: '#8a9484', ring: 'halo', debris: 'rock', motif: 'cage', punch: 0.3 }),
+  stone_aegis: STEEL({ mid: '#8a9484', ring: 'halo', debris: 'rock', motif: 'cage', punch: 0.3, wash: 0.25 }),
   coil_lance: STORM({ mid: '#d8cc5a', ring: 'runes', motif: 'cage', punch: 0.7 }),
-  bramble_burst: VERDANT({ ring: 'shards', motif: 'spikes', punch: 0.6 }),
+  bramble_burst: VERDANT({ ring: 'shards', motif: 'spikes', punch: 0.6, wash: 0.3 }),
   arcane_seekers: ARCANE({ ring: 'petals', debris: 'star', decal: 'glow', motif: 'swarm', punch: 0.4 }),
   venom_dart: VERDANT({ mid: '#a0c050', ring: 'runes', debris: 'spark', decal: undefined, punch: 0.3 }),
 
   // -------------------------------------------------------- techniques
-  heavy_slam: STEEL({ mid: '#b8865a', debris: 'rock', motif: 'quake', punch: 0.9 }),
-  whirlwind: STEEL({ mid: '#d9a05a', ring: 'petals', debris: 'spark', decal: undefined, motif: 'vortex', punch: 0.5 }),
-  bloodlust: BLOOD({ ring: 'teeth', motif: 'wisps', punch: 0.3 }),
+  heavy_slam: STEEL({ mid: '#b8865a', debris: 'rock', motif: 'quake', punch: 0.9, wash: 0.55 }),
+  whirlwind: STEEL({ mid: '#d9a05a', ring: 'petals', debris: 'spark', decal: undefined, motif: 'vortex', punch: 0.5, wash: 0.35 }),
+  bloodlust: BLOOD({ ring: 'teeth', motif: 'wisps', punch: 0.3, wash: 0.3 }),
   tumble_shot: VERDANT({ mid: '#8a9a5a', ring: 'shards', debris: 'spark', decal: undefined, punch: 0.3 }),
-  rain_of_arrows: VERDANT({ mid: '#6b8a5a', ring: 'shards', debris: 'spark', motif: 'rain', punch: 0.7 }),
+  rain_of_arrows: VERDANT({ mid: '#6b8a5a', ring: 'shards', debris: 'spark', motif: 'rain', punch: 0.7, wash: 0.45 }),
   twin_strike: STEEL({ mid: '#5a7a4a', ring: 'shards', decal: undefined, motif: 'echo', punch: 0.4 }),
   arc_bolt: STORM({ punch: 0.5 }),
-  blink: ARCANE({ ring: 'halo', decal: 'runes', motif: 'tear', punch: 0.3 }),
-  meteor_shard: EMBER({ mid: '#e85a3c', debris: 'rock', motif: 'quake', punch: 1.0 }),
-  earthbreaker: STEEL({ mid: '#a4744b', deep: '#4a3018', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 1.0 }),
-  storm_of_shafts: STORM({ mid: '#8ab4c8', ring: 'shards', debris: 'spark', decal: undefined, motif: 'rain', punch: 0.6 }),
-  maelstrom: TIDE({ ring: 'frost', debris: 'ice', motif: 'vortex', punch: 0.8 }),
+  blink: ARCANE({ ring: 'halo', decal: 'runes', motif: 'tear', punch: 0.3, wash: 0.3 }),
+  meteor_shard: EMBER({ mid: '#e85a3c', debris: 'rock', motif: 'quake', punch: 1.0, wash: 0.8 }),
+  earthbreaker: STEEL({ mid: '#a4744b', deep: '#4a3018', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 1.0, wash: 0.7 }),
+  storm_of_shafts: STORM({ mid: '#8ab4c8', ring: 'shards', debris: 'spark', decal: undefined, motif: 'rain', punch: 0.6, wash: 0.5 }),
+  maelstrom: TIDE({ ring: 'frost', debris: 'ice', motif: 'vortex', punch: 0.8, wash: 0.5 }),
   rend: BLOOD({ ring: 'shards', debris: 'blood', decal: 'stain', punch: 0.4 }),
-  smoke_bomb: SHADOW({ mid: '#8a8794', ring: 'petals', decal: undefined, motif: 'wisps', punch: 0.5 }),
-  envenom: VERDANT({ mid: '#a0c050', ring: 'halo', debris: 'leaf', decal: undefined, motif: 'swarm', punch: 0.2 }),
-  night_fangs: SHADOW({ mid: '#4a4058', ring: 'shards', debris: 'blood', decal: undefined, motif: 'spikes', punch: 0.4 }),
+  smoke_bomb: SHADOW({ mid: '#8a8794', ring: 'petals', decal: undefined, motif: 'wisps', punch: 0.5, wash: 0.12 }),
+  envenom: VERDANT({ mid: '#a0c050', ring: 'halo', debris: 'leaf', decal: undefined, motif: 'swarm', punch: 0.2, wash: 0.15 }),
+  night_fangs: SHADOW({ mid: '#4a4058', ring: 'shards', debris: 'blood', decal: undefined, motif: 'spikes', punch: 0.4, wash: 0.2 }),
 
   // ------------------------------------------------------------ sigils
-  bone_tempest: BONE({ motif: 'vortex', punch: 0.9 }),
+  bone_tempest: BONE({ motif: 'vortex', punch: 0.9, wash: 0.4 }),
 
   // ------------------------------------------------------ npc specials
-  ground_slam: BONE({ debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.9 }),
-  rallying_howl: SHADOW({ mid: '#9aa2b8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6 }),
+  ground_slam: BONE({ debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.9, wash: 0.45 }),
+  rallying_howl: SHADOW({ mid: '#9aa2b8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6, wash: 0.3 }),
 };
 
 /**
@@ -289,6 +310,7 @@ export function fxStyleFor(id: string | undefined, color: string | undefined): F
     ring: 'teeth',
     debris: 'spark',
     punch: 0.5,
+    wash: 0.45,
   };
 }
 
