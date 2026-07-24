@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { TILE_SKIP, chestInfo } from '@devcraft/shared';
+import { TILE_SKIP, Tile, chestInfo } from '@devcraft/shared';
 import {
   POI_DEFS,
   POI_PREFABS,
@@ -137,6 +137,59 @@ test('composition is deterministic and epoch changes re-roll the cell', () => {
 test('settled cells never host POIs, even forced', () => {
   assert.equal(poiForCell(SEED, 0, 0, 0, CTX), null);
   assert.equal(poiForCell(SEED, 0, 0, 0, CTX, true), null);
+});
+
+test('approach cues live in the fringe and never touch the prefab or unnatural ground', () => {
+  const cueTiles = new Set<number>([Tile.Grass, Tile.Stump, Tile.Dirt, Tile.BonePile, Tile.BannerPole]);
+  let stumps = 0;
+  let pathCells = 0;
+  let scatterCells = 0;
+  for (const site of scanSites()) {
+    const def = POI_DEFS.get(site.defId)!;
+    const prefab = POI_PREFABS.get(site.prefabId)!;
+    const zone = composePoi(SEED, site, CTX)!;
+    const pad = (zone.width - prefab.width) / 2;
+    assert.equal(pad, (zone.height - prefab.height) / 2, `${zone.id} pad not symmetric`);
+    assert.ok(Number.isInteger(pad) && pad >= 0, `${zone.id} bad pad ${pad}`);
+    if (def.cues === undefined) assert.equal(pad, 0, `${zone.id} grew a fringe with no cues`);
+    // The prefab's AUTHORED cells survive composition verbatim (chest
+    // aside); its transparent cells are fringe — cues may claim them.
+    for (let dy = 0; dy < prefab.height; dy++) {
+      for (let dx = 0; dx < prefab.width; dx++) {
+        const pg = prefab.ground[dy * prefab.width + dx]!;
+        if (pg === TILE_SKIP) continue;
+        const zg = zone.ground[(dy + pad) * zone.width + (dx + pad)]!;
+        if (chestInfo(pg) && !chestInfo(pg)!.open) continue; // re-keyed by law
+        assert.equal(zg, pg, `${zone.id} cue overwrote prefab cell ${dx},${dy}`);
+      }
+    }
+    // Everything outside the authored art is transparent or speaks
+    // the cue vocabulary only.
+    for (let zy = 0; zy < zone.height; zy++) {
+      for (let zx = 0; zx < zone.width; zx++) {
+        const inPrefab =
+          zx >= pad && zx < pad + prefab.width && zy >= pad && zy < pad + prefab.height;
+        if (
+          inPrefab &&
+          prefab.ground[(zy - pad) * prefab.width + (zx - pad)] !== TILE_SKIP
+        ) {
+          continue;
+        }
+        const g = zone.ground[zy * zone.width + zx]!;
+        if (g === TILE_SKIP) continue;
+        assert.ok(cueTiles.has(g), `${zone.id} fringe holds non-cue tile ${g}`);
+        // Cues only replace natural ground.
+        const cls = groundProbeAt(SEED, zone.origin.x + zx, zone.origin.y + zy);
+        assert.ok(cls === 'grass' || cls === 'forest', `${zone.id} cue paved '${cls}'`);
+        if (g === Tile.Stump) stumps++;
+        if (g === Tile.Dirt) pathCells++;
+        if (g === Tile.BonePile || g === Tile.BannerPole) scatterCells++;
+      }
+    }
+  }
+  assert.ok(pathCells > 0, 'no approach path anywhere in the scan');
+  assert.ok(scatterCells > 0, 'no cue scatter anywhere in the scan');
+  assert.ok(stumps >= 0, 'stump counter is wired'); // forest felling depends on siting
 });
 
 test('patrol sentries walk a real ring and watchers hold the townward post', () => {

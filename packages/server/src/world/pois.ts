@@ -2,6 +2,8 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { join } from 'node:path';
 import {
   DANGER_BAND,
+  TILE_SKIP,
+  Tile,
   chestInfo,
   closedChestTile,
   dangerAt,
@@ -240,27 +242,160 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
   const levelRoll = (i: number): number =>
     law.npcLevel[0] + (hashCoords(musterBase, i, 7) % (law.npcLevel[1] - law.npcLevel[0] + 1));
 
-  const originX = site.anchorX - Math.floor(prefab.width / 2);
-  const originY = site.anchorY - Math.floor(prefab.height / 2);
+  // The townward bearing — nearest settled anchor; players arrive
+  // from there, so the path, the cue scatter, and the watchers all
+  // face it. Computed once, shared by cues and sentries.
+  let ax = 0;
+  let ay = -1;
+  {
+    let bestD = Infinity;
+    for (const a of ctx.anchors) {
+      const d = Math.hypot(a.x - site.anchorX, a.y - site.anchorY);
+      if (d < bestD) {
+        bestD = d;
+        ax = (a.x - site.anchorX) / Math.max(1, d);
+        ay = (a.y - site.anchorY) / Math.max(1, d);
+      }
+    }
+  }
 
-  // Layers: copy ground so the chest upgrade never mutates the prefab.
-  const ground = new Uint16Array(prefab.ground);
-  if (def.chestTierBonus !== undefined) {
-    const kind = dangerLaw(site.tier + def.chestTierBonus).chest;
-    for (let i = 0; i < ground.length; i++) {
-      const info = chestInfo(ground[i]!);
-      if (info && !info.open) ground[i] = closedChestTile(kind);
+  // The composed zone is the prefab plus a transparent fringe wide
+  // enough to carry the approach cues; with no cues the pad is 0 and
+  // the zone is exactly the footprint, as in phase 1.
+  const cues = def.cues;
+  const pad = cues
+    ? Math.max(
+        cues.clearing ?? 0,
+        cues.approachPath ? 9 : 0,
+        cues.scatter && cues.scatter.length > 0 ? 7 : 0,
+      )
+    : 0;
+  const zw = prefab.width + pad * 2;
+  const zh = prefab.height + pad * 2;
+  const originX = site.anchorX - Math.floor(prefab.width / 2) - pad;
+  const originY = site.anchorY - Math.floor(prefab.height / 2) - pad;
+
+  // Layers: fringe starts fully transparent; the prefab blits into
+  // the center (chest re-keyed under the tier law as it lands).
+  const chestKind =
+    def.chestTierBonus !== undefined
+      ? dangerLaw(site.tier + def.chestTierBonus).chest
+      : null;
+  const ground = new Uint16Array(zw * zh).fill(TILE_SKIP);
+  const detail = new Uint16Array(zw * zh);
+  for (let dy = 0; dy < prefab.height; dy++) {
+    for (let dx = 0; dx < prefab.width; dx++) {
+      let g = prefab.ground[dy * prefab.width + dx]!;
+      if (chestKind) {
+        const info = chestInfo(g);
+        if (info && !info.open) g = closedChestTile(chestKind);
+      }
+      const zi = (dy + pad) * zw + (dx + pad);
+      ground[zi] = g;
+      detail[zi] = prefab.detail[dy * prefab.width + dx]!;
+    }
+  }
+
+  // ---- THE WARNING VOCABULARY: cues stamped into the fringe only —
+  // a cell the prefab owns is never touched, and every cue verifies
+  // the ground it replaces is natural (grass/forest probe) so cues
+  // never pave water, rock, or another zone's work (zone clearance
+  // already keeps the whole rect 24 tiles from authored land).
+  const fringeSkip = (zx: number, zy: number): boolean =>
+    ground[zy * zw + zx] === TILE_SKIP;
+  const worldOf = (zx: number, zy: number): { wx: number; wy: number } => ({
+    wx: originX + zx,
+    wy: originY + zy,
+  });
+
+  if (cues?.clearing) {
+    // The felled clearing: forest within `clearing` of the footprint
+    // edge is cut — stumps where the trees stood thickest, trampled
+    // grass elsewhere. The camp burns wood, and the wood came from
+    // somewhere.
+    for (let zy = 0; zy < zh; zy++) {
+      for (let zx = 0; zx < zw; zx++) {
+        if (!fringeSkip(zx, zy)) continue;
+        const ex = Math.max(pad - zx, zx - (zw - 1 - pad), 0);
+        const ey = Math.max(pad - zy, zy - (zh - 1 - pad), 0);
+        const edgeDist = Math.max(ex, ey);
+        if (edgeDist > cues.clearing) continue;
+        const { wx, wy } = worldOf(zx, zy);
+        if (groundProbeAt(seed, wx, wy) !== 'forest') continue;
+        const h = hashCoords(musterBase ^ 0x25, wx, wy);
+        ground[zy * zw + zx] = h % 100 < 30 ? Tile.Stump : Tile.Grass;
+      }
+    }
+  }
+
+  if (cues?.approachPath) {
+    // The worn path: a wobbling dirt stub from the footprint edge
+    // outward on the townward bearing — it dies honestly at water or
+    // rock instead of paving them.
+    const half = Math.max(prefab.width, prefab.height) / 2;
+    for (let t = Math.floor(half) - 1; t <= half + pad; t++) {
+      const wob = ((hashCoords(musterBase ^ 0x29, t, 0) % 3) - 1) * 0.7;
+      const wx = Math.round(site.anchorX + ax * t - ay * wob);
+      const wy = Math.round(site.anchorY + ay * t + ax * wob);
+      const zx = wx - originX;
+      const zy = wy - originY;
+      if (zx < 0 || zy < 0 || zx >= zw || zy >= zh) break;
+      if (!fringeSkip(zx, zy)) continue; // the prefab's own ground wins
+      const cls = groundProbeAt(seed, wx, wy);
+      if (cls !== 'grass' && cls !== 'forest') break;
+      ground[zy * zw + zx] = Tile.Dirt;
+      // A worn path is two ruts wide more often than one.
+      const sx = wx - Math.round(ay);
+      const sy = wy + Math.round(ax);
+      const szx = sx - originX;
+      const szy = sy - originY;
+      if (
+        szx >= 0 && szy >= 0 && szx < zw && szy < zh &&
+        fringeSkip(szx, szy) &&
+        hashCoords(musterBase ^ 0x2b, sx, sy) % 100 < 55
+      ) {
+        const scls = groundProbeAt(seed, sx, sy);
+        if (scls === 'grass' || scls === 'forest') ground[szy * zw + szx] = Tile.Dirt;
+      }
+    }
+  }
+
+  for (const [si, sc] of (cues?.scatter ?? []).entries()) {
+    // Cue tiles on the approach cone — the bones before the ruin, the
+    // banner before the camp. Hash-placed, standable-probed, and only
+    // into still-transparent fringe (the path keeps its ruts).
+    const tile = Tile[sc.tile as keyof typeof Tile];
+    if (typeof tile !== 'number') continue;
+    const half = Math.max(prefab.width, prefab.height) / 2;
+    let placed = 0;
+    for (let k = 0; k < sc.count * 8 && placed < sc.count; k++) {
+      const h = hashCoords(musterBase ^ 0x2f, si * 131 + k, 0);
+      const spread = (((h >>> 4) % 1000) / 1000 - 0.5) * (Math.PI * 0.66);
+      const baseAng = Math.atan2(ay, ax);
+      const ang = baseAng + spread;
+      const r = half + 2 + ((h >>> 14) % Math.max(1, pad - 2));
+      const wx = Math.round(site.anchorX + Math.cos(ang) * r);
+      const wy = Math.round(site.anchorY + Math.sin(ang) * r);
+      const zx = wx - originX;
+      const zy = wy - originY;
+      if (zx < 0 || zy < 0 || zx >= zw || zy >= zh) continue;
+      if (!fringeSkip(zx, zy)) continue;
+      const cls = groundProbeAt(seed, wx, wy);
+      if (cls !== 'grass' && cls !== 'forest') continue;
+      ground[zy * zw + zx] = tile;
+      placed++;
     }
   }
 
   const spawns: ZoneSpawn[] = [];
   let n = 0;
-  // Hand-placed prefab spawns, leveled into the band.
+  // Hand-placed prefab spawns, leveled into the band. Their relative
+  // coords are prefab-local — the fringe pad shifts them in the zone.
   for (const s of prefab.spawns) {
     spawns.push({
       npc: s.npc,
-      x: originX + s.dx + 0.5,
-      y: originY + s.dy + 0.5,
+      x: originX + pad + s.dx + 0.5,
+      y: originY + pad + s.dy + 0.5,
       radius: s.radius,
       count: s.count,
       level: s.level ?? levelRoll(n++),
@@ -300,20 +435,9 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
 
   // Sentry ring: 12 bearings probed for standable ground, kept in
   // ANGULAR order (the patrol loop walks them) and also scored by how
-  // squarely they face the nearest settled anchor — the camp watches
-  // the road in.
+  // squarely they face the townward bearing computed above — the camp
+  // watches the road in.
   if (sentryWants.length > 0) {
-    let ax = 0;
-    let ay = -1;
-    let bestD = Infinity;
-    for (const a of ctx.anchors) {
-      const d = Math.hypot(a.x - site.anchorX, a.y - site.anchorY);
-      if (d < bestD) {
-        bestD = d;
-        ax = (a.x - site.anchorX) / Math.max(1, d);
-        ay = (a.y - site.anchorY) / Math.max(1, d);
-      }
-    }
     const ringR = Math.max(prefab.width, prefab.height) / 2 + 5;
     const ring: Array<{ x: number; y: number; score: number }> = [];
     for (let b = 0; b < 12; b++) {
@@ -383,10 +507,10 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
     id: poiZoneId(site.cellX, site.cellY),
     name: def.name,
     origin: { x: originX, y: originY },
-    width: prefab.width,
-    height: prefab.height,
+    width: zw,
+    height: zh,
     ground,
-    detail: new Uint16Array(prefab.detail),
+    detail,
     elev: undefined, // flat: the site scan guaranteed level-0 ground
     spawns,
   };
