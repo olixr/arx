@@ -1,4 +1,4 @@
-import type { LootTableDef, NpcActorDef, NpcDef } from '@devcraft/content';
+import type { LootTableDef, NpcActorDef, NpcDef, PoiDef } from '@devcraft/content';
 import { type Editable, type ItemRow, type SpawnSites, type ZoneRect } from './api.js';
 /**
  * DevCraft Content Studio — the CMS over the running game's DB-first
@@ -8,7 +8,7 @@ import { type Editable, type ItemRow, type SpawnSites, type ZoneRect } from './a
  * live registry, and retires standing bodies so the world plays the
  * new numbers within a tick.
  */
-export type Section = 'npcs' | 'loot' | 'actors' | 'items';
+export type Section = 'npcs' | 'loot' | 'actors' | 'pois' | 'items';
 export interface CmsState {
     section: Section;
     selectedId: string | null;
@@ -16,6 +16,9 @@ export interface CmsState {
     npcs: Array<Editable<NpcDef>>;
     loot: Array<Editable<LootTableDef>>;
     actors: Array<Editable<NpcActorDef>>;
+    pois: Array<Editable<PoiDef>>;
+    /** The live POI prefab library's ids (pool pickers + validation). */
+    poiPrefabIds: string[];
     items: ItemRow[];
     sites: SpawnSites;
     zones: ZoneRect[];
@@ -40,6 +43,8 @@ export declare const persistence: {
     revertNpcDef(id: string): Promise<void>;
     saveLootDef(def: LootTableDef): Promise<void>;
     revertLootDef(id: string): Promise<void>;
+    savePoiDef(def: PoiDef): Promise<void>;
+    revertPoiDef(id: string): Promise<void>;
     saveActorDef(def: NpcActorDef): Promise<void>;
     revertActorDef(slug: string): Promise<void>;
 };

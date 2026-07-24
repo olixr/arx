@@ -17,6 +17,8 @@ export declare const DETAILS: Array<{
     d: Detail;
     label: string;
 }>;
+/** Palette display name — the transparency sentinel isn't a TileDef. */
+export declare function paletteTileName(t: Tile): string;
 /** Build (once) every tile thumbnail as a DOM element. */
 export declare function buildThumbs(): Map<Tile, HTMLElement>;
 /** Detail-layer thumbnails off the same bake path (grass underlay). */
