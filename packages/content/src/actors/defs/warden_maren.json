@@ -1,0 +1,37 @@
+{
+  "id": "warden_maren",
+  "name": "High Warden Maren",
+  "title": "Warden of Silverfall",
+  "examine": "Silver-haired and slow-moving, like the mountain: nothing about her hurries, and nothing about her stops.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 9,
+      "hair": 2,
+      "hairColor": 7,
+      "beard": 0,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 4,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "warden_platebody",
+    "boots": "warden_sabatons",
+    "cape": "cape_banner"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 120
+    }
+  ],
+  "lines": [
+    "The mountain was here first. Everything I decide, I decide as its guest.",
+    "I ordered the seal broken. If that was wrong, the error is mine and the mountain may collect it from me personally.",
+    "Silverfall is not a city with a mine. It is a mine that learnt manners."
+  ]
+}

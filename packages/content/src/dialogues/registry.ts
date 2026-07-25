@@ -1,6 +1,19 @@
 import { dialogueDoneFlag, type DialogueDef } from './types.js';
 import { validateDialogue } from './validate.js';
 
+import ballaForge from './defs/balla_forge.json';
+import grettirYard from './defs/grettir_yard.json';
+import ivoGreenstair from './defs/ivo_greenstair.json';
+import kestrelChapter from './defs/kestrel_chapter.json';
+import marenHold from './defs/maren_hold.json';
+import odeleVaults from './defs/odele_vaults.json';
+import osaYard from './defs/osa_yard.json';
+import ottilieLoom from './defs/ottilie_loom.json';
+import petraSeal from './defs/petra_seal.json';
+import sellaShrine from './defs/sella_shrine.json';
+import signyMess from './defs/signy_mess.json';
+import solveiArcanum from './defs/solvei_arcanum.json';
+import wynRemedies from './defs/wyn_remedies.json';
 import aldisGate from './defs/aldis_gate.json';
 import aldisWatchHeeded from './defs/aldis_watch_heeded.json';
 import aldisWatchWry from './defs/aldis_watch_wry.json';
@@ -37,6 +50,19 @@ import waywardRoad from './defs/wayward_road.json';
  * and fails if a file is missing from this roster.
  */
 const SOURCES: readonly unknown[] = [
+  ballaForge,
+  grettirYard,
+  ivoGreenstair,
+  kestrelChapter,
+  marenHold,
+  odeleVaults,
+  osaYard,
+  ottilieLoom,
+  petraSeal,
+  sellaShrine,
+  signyMess,
+  solveiArcanum,
+  wynRemedies,
   aldisGate,
   aldisWatchHeeded,
   aldisWatchWry,

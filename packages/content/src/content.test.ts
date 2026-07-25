@@ -977,7 +977,30 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   // Rams only — the people arrive in Epic 6.
   const spawnKinds = new Map((z.spawns ?? []).map((s) => [s.npc, s.count]));
   assert.equal(spawnKinds.get('ram'), 3);
-  assert.equal((z.actorSpawns ?? []).length, 0, 'actors belong to the people pass');
+  // The people pass: thirteen named keepers + the watch + the stalls.
+  const fallActors = z.actorSpawns ?? [];
+  assert.equal(fallActors.length, 21, 'Silverfall lost residents');
+  for (const slug of [
+    'warden_maren',
+    'bursar_odele',
+    'enchantress_solvei',
+    'marshal_kestrel',
+    'forgemistress_balla',
+    'foreman_grettir',
+    'weaver_ottilie',
+    'herbalist_wyn',
+    'cook_signy',
+    'hostler_osa',
+    'mason_petra',
+    'gardener_ivo',
+    'shrinekeeper_sella',
+  ]) {
+    assert.ok(fallActors.some((a) => a.actor === slug), `${slug} missing from Silverfall`);
+  }
+  assert.equal(fallActors.filter((a) => a.actor === 'silverfall_watch').length, 3);
+  assert.equal(fallActors.filter((a) => a.actor === 'galleria_trader').length, 3);
+  assert.equal(fallActors.filter((a) => a.actor === 'gate_monger').length, 2);
+  assert.equal(fallActors.filter((a) => a.routine).length, 21, 'every keeper keeps hours');
   // The editor JSON round trip holds WITH the elevation layer.
   const json = zoneToJson(z);
   assert.ok(json.elev !== undefined, 'the elevation layer must serialize');

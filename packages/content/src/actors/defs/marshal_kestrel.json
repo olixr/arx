@@ -1,0 +1,50 @@
+{
+  "id": "marshal_kestrel",
+  "name": "Marshal Kestrel",
+  "title": "Marshal of the Waykeepers",
+  "examine": "The road made flesh: weathered, direct, and carrying the whole map of the High Road behind her eyes.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 34,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 200,
+      "damage": 11,
+      "speed": 3.6,
+      "leashRange": 12
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 5,
+      "hairColor": 0,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 4,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "wayfarer_jerkin",
+    "legs": "wayfarer_chaps",
+    "boots": "wayfarer_boots",
+    "weapon": "steel_sword",
+    "cape": "cape_huntsman"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 60
+    }
+  ],
+  "lines": [
+    "Every lamp between here and the ford answers to this room. Sit down if you've news; stand if you've complaints.",
+    "My grandmother built the first waystation out of her own crew's wages and a temper. The order keeps both traditions.",
+    "Edda taught me the lamp drill when I was nine. She'll outlast the mountain out of pure disapproval of the alternative."
+  ]
+}

@@ -739,6 +739,34 @@ export function buildSilverfall(): ZoneDef {
     }
   }
 
+  // ---------------------------------------------------------------
+  // THE PEOPLE (Epic 6): the mountain's keepers, every building's
+  // comment-promise kept. Placements are each routine's post.
+  // ---------------------------------------------------------------
+  b.actor('warden_maren', 66.5, 14.3, -Math.PI / 2, 'fall_warden');
+  b.actor('bursar_odele', 53.5, 40.5, 0, 'fall_bursar');
+  b.actor('enchantress_solvei', 37.5, 55.3, -Math.PI / 2, 'fall_enchantress');
+  b.actor('marshal_kestrel', 71.5, 55.3, Math.PI / 2, 'fall_marshal');
+  b.actor('forgemistress_balla', 59.5, 70.2, Math.PI, 'fall_forgemistress');
+  b.actor('foreman_grettir', 20.5, 79.5, 0, 'fall_foreman');
+  b.actor('weaver_ottilie', 109.5, 69.3, Math.PI, 'fall_weaver');
+  b.actor('herbalist_wyn', 139.5, 69.3, -Math.PI / 2, 'fall_herbalist');
+  b.actor('cook_signy', 133.5, 84.3, -Math.PI / 2, 'fall_cook');
+  b.actor('hostler_osa', 60.5, 101.5, -Math.PI / 2, 'fall_hostler');
+  b.actor('mason_petra', 39.5, 87.3, -Math.PI / 2, 'fall_mason');
+  b.actor('gardener_ivo', 157.5, 71.5, Math.PI / 2, 'fall_gardener');
+  b.actor('shrinekeeper_sella', 118.5, 20.5, -Math.PI / 2, 'fall_shrinekeeper');
+  // The watch: both gate towers and the gatehouse desk.
+  b.actor('silverfall_watch', 79.5, 110.5, Math.PI / 2, 'fall_watch');
+  b.actor('silverfall_watch', 96.5, 110.5, Math.PI / 2, 'fall_watch');
+  b.actor('silverfall_watch', 41.5, 105.5, 0, 'fall_watch');
+  // The markets: galleria stalls above, pool stalls below.
+  b.actor('galleria_trader', 110.5, 52.4, Math.PI / 2, 'fall_trader');
+  b.actor('galleria_trader', 126.5, 52.4, Math.PI / 2, 'fall_trader');
+  b.actor('galleria_trader', 114.5, 57.4, Math.PI / 2, 'fall_trader');
+  b.actor('gate_monger', 120.5, 102.4, Math.PI / 2, 'fall_trader');
+  b.actor('gate_monger', 130.5, 106.4, Math.PI / 2, 'fall_trader');
+
   // The crag pasture's rams — the city's only livestock, on purpose.
   b.npcSpawn('ram', 35, 31.5, 3, 3);
 

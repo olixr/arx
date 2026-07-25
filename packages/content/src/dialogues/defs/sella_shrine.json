@@ -1,0 +1,64 @@
+{
+  "id": "sella_shrine",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "shrinekeeper_sella"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Peace at the top of the road, traveler. This is the *Silver Shrine* \u2014 the mother-flame of every lamp in the Dawnlands. You've walked past a dozen of its children to stand here.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Warm yourself. Ask, if asking's why you climbed.",
+      "choices": [
+        {
+          "text": "What is the mother-flame?",
+          "next": "flame"
+        },
+        {
+          "text": "Edda of the Last Lamp is your sister?",
+          "next": "edda"
+        },
+        {
+          "text": "May I light a thought before the road?",
+          "next": "bless",
+          "forbids": [
+            "sella_blessed"
+          ],
+          "set": [
+            "sella_blessed"
+          ]
+        },
+        {
+          "text": "Peace on your mountain, Keeper.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "flame",
+      "text": "Older than the city \u2014 the shepherds kept it on this shore before the first terrace was cut, a fire against the dark that never went out. Every road lamp from here to the ford was first lit from a wick carried down this hill. That's the whole faith, if faith's the word: _the dark is large, and we pass the light along._ Everything else is commentary.",
+      "next": "hub"
+    },
+    {
+      "id": "edda",
+      "text": "My elder sister, and the family stubbornness went to her with interest. She took a wick down the mountain forty years ago and planted it at the worst mile of the road on purpose \u2014 'the flame belongs where the dark is thickest, Sella, not where the view's nice.' She writes twice a year to check I haven't let the mother go out. Forty years. The mother-flame predates our family by centuries. I answer politely both times.",
+      "next": "hub"
+    },
+    {
+      "id": "bless",
+      "text": "Then light it. ...There. The flame doesn't grant things \u2014 that's not its work. It *remembers you asked*, and it will be remembering all the way down the mountain, at every lamp you pass, in every window at dusk. Travelers tell me the road feels shorter afterward. I tell them that's the remembering, doing what remembering does.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Peace on your road. Pass the light along, in whatever coin you carry it."
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "id": "enchantress_solvei",
+  "name": "Solvei",
+  "title": "Enchantress of the Arcanum",
+  "examine": "Ink on her fingers, frost in her hair that isn't age, and the particular stillness of somebody listening to something you can't hear.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 12,
+      "hair": 2,
+      "hairColor": 8,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 2,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "starweaver_robe",
+    "boots": "starweaver_slippers"
+  },
+  "inventory": [
+    {
+      "item": "arcane_dust",
+      "qty": 6
+    },
+    {
+      "item": "emberstone",
+      "qty": 1
+    },
+    {
+      "item": "moonbell",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "Runes burn brighter at altitude. Nobody knows why. I have four theories and a burn mark for each.",
+    "I petitioned eleven years for the seal to open. Now it's open, and I find my sleep has opinions about what I asked for.",
+    "The Riftgate below hums in a key I almost recognize. Almost is the most important word in my profession."
+  ]
+}

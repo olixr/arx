@@ -1,0 +1,55 @@
+{
+  "id": "signy_mess",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "cook_signy"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Terrace kitchen! Miners eat first, smiths second, travelers wherever there's a bench-end going spare. You look like a bench-end sort. Sit \u2014 the stew's at the good stage.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "What'll it be?",
+      "choices": [
+        {
+          "text": "Two hundred hands off two hearths \u2014 how?",
+          "next": "how"
+        },
+        {
+          "text": "What's the terrace saying these days?",
+          "next": "talk"
+        },
+        {
+          "text": "Feed me, Signy.",
+          "next": "browse"
+        }
+      ]
+    },
+    {
+      "id": "how",
+      "text": "Volume, timing, and fear. The stew never stops \u2014 it's the same pot my predecessor lit, topped and tended, older than half the miners eating from it. The bread runs on Ivo's wheat and the trout on the gate mongers, and the whole machine turns on everyone being too well-fed to argue with me. Armies march on their stomachs. My terrace *sprints*.",
+      "next": "hub"
+    },
+    {
+      "id": "talk",
+      "text": "Deep talk, all of it. Who's transferred below, what the ore broker's paying, whether the digmaster's tunnel truly points at the starfall \u2014 and every third bowl, somebody's heard the spider's web creak personally. The mountain gossips upward, traveler. It all reaches my benches eventually, salted.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Stew, bread, roast, and pool trout done proper. Eat it while it's arguing.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "signy_board"
+        }
+      ]
+    }
+  ]
+}

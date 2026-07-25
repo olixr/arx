@@ -1,0 +1,40 @@
+{
+  "id": "gate_monger",
+  "name": "Gate Monger",
+  "title": "Pool Market Monger",
+  "examine": "Smells of trout and coal dust in defiantly equal measure. Shouts prices at arriving caravans before they've stopped rolling.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 8,
+      "hairColor": 2,
+      "beard": 2,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 5,
+      "shirt": 1,
+      "pants": 11
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "raw_trout",
+      "qty": 5
+    },
+    {
+      "item": "coal",
+      "qty": 4
+    }
+  ],
+  "lines": [
+    "Fresh from the Roaring Pool, cold as the falls that filled it!",
+    "Fish for the pot, coal for the grate, ore for the ambitious \u2014 the gate market has your whole evening planned.",
+    "Caravan in? Prices up. Caravan out? Prices up. It's a system."
+  ],
+  "shop": "gate_market_stock"
+}

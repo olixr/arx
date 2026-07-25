@@ -1,0 +1,40 @@
+{
+  "id": "bursar_odele",
+  "name": "Bursar Odele",
+  "title": "Bursar of the Bank of Silverfall",
+  "examine": "Dry as slate and twice as durable. Her signature underwrites every honest vault on two roads.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 7,
+      "hairColor": 6,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "body": "apprentice_robe",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 400
+    },
+    {
+      "item": "silver_bar",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "State your business in figures where possible.",
+    "Four vaults, one ledger, zero exceptions. The poetry of banking is that there isn't any.",
+    "Young Cormund at the ford writes me twelve pages a season. I reply in one. He keeps them. I know, because he told me \u2014 in writing."
+  ]
+}

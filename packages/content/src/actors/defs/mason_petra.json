@@ -1,0 +1,37 @@
+{
+  "id": "mason_petra",
+  "name": "Mistress Petra",
+  "title": "Master Mason",
+  "examine": "Granite hands, chalk-line eye. Her guild raised the terraces you're standing on, and she can tell you which course her grandfather laid.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 0,
+      "hairColor": 6,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 7,
+      "pants": 11
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "iron_sabatons",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 40
+    }
+  ],
+  "lines": [
+    "Every course in this city is guild work. The mountain holds us up; we return the favor.",
+    "My grandfather helped set the Undercroft seal. Last month I swung the first pick that broke it. Family trade, both directions.",
+    "Stone doesn't lie, doesn't hurry, doesn't forgive. Best colleague I ever had."
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "id": "weaver_ottilie",
+  "name": "Master Weaver Ottilie",
+  "title": "Master of the Artisans' Hall",
+  "examine": "Thread-ends pinned to her sleeve in an order that is absolutely a filing system. The Hold's banners were born on her looms.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 7,
+      "hairColor": 10,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 8,
+      "pants": 9
+    }
+  },
+  "equipment": {
+    "body": "apprentice_robe",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "cloth",
+      "qty": 4
+    },
+    {
+      "item": "linen",
+      "qty": 2
+    },
+    {
+      "item": "cotton",
+      "qty": 6
+    }
+  ],
+  "lines": [
+    "Mind the loom tension \u2014 it's set finer than your nerves.",
+    "I wove every banner in the High Hall. The Warden asked for 'something dignified'. I gave her dignity with a thread of arrogance; nobody's noticed the difference yet.",
+    "Lowland cotton, mountain wool, and patience. Cloth is just weather you've organized."
+  ],
+  "shop": "ottilie_bolts"
+}

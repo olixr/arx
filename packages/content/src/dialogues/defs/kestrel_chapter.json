@@ -1,0 +1,58 @@
+{
+  "id": "kestrel_chapter",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "marshal_kestrel"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Chapter house of the Waykeepers. If you walked the High Road to get here, then you've already met my order \u2014 every lamp, every palisade, every sergeant who checked the road behind you. Sit. Travelers' news pays for itself in this room.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "What's your business with the order?",
+      "choices": [
+        {
+          "text": "How did the Waykeepers begin?",
+          "next": "founding"
+        },
+        {
+          "text": "Who keeps the road, day to day?",
+          "next": "sergeants"
+        },
+        {
+          "text": "I met an old Waykeeper at the ford. Hask.",
+          "next": "hask"
+        },
+        {
+          "text": "Keep the lamps lit, Marshal.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "founding",
+      "text": "My grandmother was a caravan mistress in the bad years after the seal \u2014 roads feral, lamps dark, every ford a toll and every toll a knife. She built the first waystation at her own crew's expense and posted one rule over the door: _the lamp stays lit._ The order is that rule, with better funding. Forty years, three stations, one Last Lamp, and a registry of everyone the road has kept.",
+      "next": "hub"
+    },
+    {
+      "id": "sergeants",
+      "text": "Hale, Odessa, and Brant hold the stations by rotation; Edda holds the Last Lamp by force of personality; Keeper Ansel holds the ford end and the registry. And every crofter who feeds a traveler, every watch that walks a wall \u2014 auxiliaries, whether they've sworn or not. The road is kept by everyone it hasn't killed. I just do the paperwork.",
+      "next": "hub"
+    },
+    {
+      "id": "hask",
+      "text": "*Sergeant Hask.* Fifteen years, the middle marches, and the worg winter that cost him two of his own inside the Fork's fence. He hung up the cloak and took up outfitting, and I'll tell you what I told the moot: the man still serves. Every traveler he equips properly is a report I never have to write. If he checked your boots, consider yourself inspected by the order.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Road keep you. And if you pass a dark lamp anywhere on my road \u2014 *tell someone.* That's how the whole thing works."
+    }
+  ]
+}

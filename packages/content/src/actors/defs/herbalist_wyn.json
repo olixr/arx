@@ -1,0 +1,45 @@
+{
+  "id": "herbalist_wyn",
+  "name": "Wyn",
+  "title": "Herbalist",
+  "examine": "Smells of crushed sagewort and clean snow. Speaks softly, as though the tinctures were sleeping.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 0,
+      "hair": 3,
+      "hairColor": 9,
+      "beard": 0,
+      "eyes": 0,
+      "ears": 1,
+      "feature": 5,
+      "shirt": 9,
+      "pants": 9
+    }
+  },
+  "equipment": {
+    "body": "hedgemage_robe",
+    "boots": "hedgemage_slippers"
+  },
+  "inventory": [
+    {
+      "item": "healing_tincture",
+      "qty": 5
+    },
+    {
+      "item": "mending_salve",
+      "qty": 3
+    },
+    {
+      "item": "sagewort",
+      "qty": 8
+    }
+  ],
+  "lines": [
+    "The ledge-flowers up here bloom a week later and last a month longer. Everything at altitude learns to hold on.",
+    "I send a crate of tinctures down to Edda's lamp every season. She sends back complaints and empty bottles, which from Edda is warm correspondence.",
+    "Drink the green one for wounds, the amber for weariness, and water for most things people buy potions for."
+  ],
+  "shop": "wyn_remedies"
+}

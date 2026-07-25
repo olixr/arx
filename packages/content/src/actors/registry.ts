@@ -3,6 +3,22 @@ import { NPCS, scaleNpcDef, type NpcDef } from '../npcs.js';
 import type { NpcActorDef } from './types.js';
 import { validateNpcActor } from './validate.js';
 
+import bursarOdele from './defs/bursar_odele.json';
+import cookSigny from './defs/cook_signy.json';
+import enchantressSolvei from './defs/enchantress_solvei.json';
+import foremanGrettir from './defs/foreman_grettir.json';
+import forgemistressBalla from './defs/forgemistress_balla.json';
+import galleriaTrader from './defs/galleria_trader.json';
+import gardenerIvo from './defs/gardener_ivo.json';
+import gateMonger from './defs/gate_monger.json';
+import herbalistWyn from './defs/herbalist_wyn.json';
+import hostlerOsa from './defs/hostler_osa.json';
+import marshalKestrel from './defs/marshal_kestrel.json';
+import masonPetra from './defs/mason_petra.json';
+import shrinekeeperSella from './defs/shrinekeeper_sella.json';
+import silverfallWatch from './defs/silverfall_watch.json';
+import wardenMaren from './defs/warden_maren.json';
+import weaverOttilie from './defs/weaver_ottilie.json';
 import bankerCormund from './defs/banker_cormund.json';
 import captainAldis from './defs/captain_aldis.json';
 import courierNib from './defs/courier_nib.json';
@@ -49,6 +65,22 @@ import youngPip from './defs/young_pip.json';
 // Waykeeper sergeants holding the marches, and Edda holding the
 // Last Lamp against the Silverspine dark.
 const SOURCES: readonly unknown[] = [
+  bursarOdele,
+  cookSigny,
+  enchantressSolvei,
+  foremanGrettir,
+  forgemistressBalla,
+  galleriaTrader,
+  gardenerIvo,
+  gateMonger,
+  herbalistWyn,
+  hostlerOsa,
+  marshalKestrel,
+  masonPetra,
+  shrinekeeperSella,
+  silverfallWatch,
+  wardenMaren,
+  weaverOttilie,
   bankerCormund,
   captainAldis,
   courierNib,

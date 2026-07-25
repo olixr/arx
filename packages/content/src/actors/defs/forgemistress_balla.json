@@ -1,0 +1,46 @@
+{
+  "id": "forgemistress_balla",
+  "name": "Forgemistress Balla",
+  "title": "Mistress of the Grand Forge",
+  "examine": "Shoulders that have argued with mithril and won. The forge quiets a little when she crosses it, out of respect.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 8,
+      "hairColor": 6,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 3,
+      "shirt": 7,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "steel_platebody",
+    "boots": "steel_sabatons",
+    "gloves": "steel_gauntlets"
+  },
+  "inventory": [
+    {
+      "item": "steel_bar",
+      "qty": 3
+    },
+    {
+      "item": "silver_bar",
+      "qty": 2
+    },
+    {
+      "item": "coal",
+      "qty": 8
+    }
+  ],
+  "lines": [
+    "You're standing in the Grand Forge. Stand straighter.",
+    "Bretta Ironhewn keeps a forge at the ford now. Best rival I ever had. Tell her the anvil's still here \u2014 she'll know which one.",
+    "Silver is vanity, steel is policy, and starfall \u2014 starfall is a rumor I intend to hammer personally."
+  ],
+  "shop": "balla_stock"
+}

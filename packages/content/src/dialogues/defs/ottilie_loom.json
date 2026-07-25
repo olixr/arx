@@ -1,0 +1,55 @@
+{
+  "id": "ottilie_loom",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "weaver_ottilie"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Welcome to the artisans' hall \u2014 looms left, carving right, commissions by appointment, opinions free of charge. I'm Ottilie. Mind the thread tension; it's set finer than most tempers.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Yes?",
+      "choices": [
+        {
+          "text": "You wove the Hold's banners?",
+          "next": "banners"
+        },
+        {
+          "text": "Where does mountain cloth come from?",
+          "next": "cloth"
+        },
+        {
+          "text": "Show me the bolts.",
+          "next": "browse"
+        }
+      ]
+    },
+    {
+      "id": "banners",
+      "text": "Every one. The Warden asked for 'something dignified' and I delivered dignity with one thread of arrogance woven through the field \u2014 silver on silver, visible only when the hall fires gutter. Twenty years and nobody's spotted it. Maren would approve, which is why I'll never tell her.",
+      "next": "hub"
+    },
+    {
+      "id": "cloth",
+      "text": "Lowland cotton up the High Road, mountain wool off Ivo's neighbors' rams, and lately gloomsilk thread out of the deep \u2014 the spiders below spin finer than anything under the sun, which is the sort of sentence my trade makes you say with a straight face. Weaving is just weather, organized. Down there it's darkness, organized. The loom doesn't care.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Bolts and thread, mountain grade. If it frays before the year turns, bring it back and watch me not believe you.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "ottilie_bolts"
+        }
+      ]
+    }
+  ]
+}

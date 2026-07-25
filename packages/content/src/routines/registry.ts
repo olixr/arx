@@ -1,6 +1,21 @@
 import type { RoutineDef } from './types.js';
 import { validateRoutine } from './validate.js';
 
+import fallBursar from './defs/fall_bursar.json';
+import fallCook from './defs/fall_cook.json';
+import fallEnchantress from './defs/fall_enchantress.json';
+import fallForeman from './defs/fall_foreman.json';
+import fallForgemistress from './defs/fall_forgemistress.json';
+import fallGardener from './defs/fall_gardener.json';
+import fallHerbalist from './defs/fall_herbalist.json';
+import fallHostler from './defs/fall_hostler.json';
+import fallMarshal from './defs/fall_marshal.json';
+import fallMason from './defs/fall_mason.json';
+import fallShrinekeeper from './defs/fall_shrinekeeper.json';
+import fallTrader from './defs/fall_trader.json';
+import fallWarden from './defs/fall_warden.json';
+import fallWatch from './defs/fall_watch.json';
+import fallWeaver from './defs/fall_weaver.json';
 import amberArtisan from './defs/amber_artisan.json';
 import amberBanker from './defs/amber_banker.json';
 import amberCaptain from './defs/amber_captain.json';
@@ -31,6 +46,21 @@ import waystationKeeper from './defs/waystation_keeper.json';
  * import is a test failure, not a silent hole in someone's day.
  */
 const SOURCES: readonly unknown[] = [
+  fallBursar,
+  fallCook,
+  fallEnchantress,
+  fallForeman,
+  fallForgemistress,
+  fallGardener,
+  fallHerbalist,
+  fallHostler,
+  fallMarshal,
+  fallMason,
+  fallShrinekeeper,
+  fallTrader,
+  fallWarden,
+  fallWatch,
+  fallWeaver,
   amberArtisan,
   amberBanker,
   amberCaptain,

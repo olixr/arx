@@ -180,6 +180,78 @@ const defs: ShopDef[] = [
       { item: 'healing_tincture', price: 65 },
     ],
   },
+  // Silverfall's counters — the mountain trades at mountain prices.
+  {
+    id: 'balla_stock',
+    name: 'The Grand Rack',
+    stock: [
+      { item: 'bronze_bar', price: 30 },
+      { item: 'iron_bar', price: 60 },
+      { item: 'steel_bar', price: 130 },
+      { item: 'silver_bar', price: 180 },
+      { item: 'coal', price: 18 },
+    ],
+  },
+  {
+    id: 'ottilie_bolts',
+    name: "Ottilie's Bolts",
+    stock: [
+      { item: 'cloth', price: 20 },
+      { item: 'linen', price: 46 },
+      { item: 'cotton', price: 8 },
+      { item: 'twine', price: 7 },
+      { item: 'leather', price: 26 },
+    ],
+  },
+  {
+    id: 'wyn_remedies',
+    name: "Wyn's Remedies",
+    stock: [
+      { item: 'healing_tincture', price: 60 },
+      { item: 'mending_salve', price: 85 },
+      { item: 'gatherers_brew', price: 95 },
+      { item: 'swiftness_tonic', price: 110 },
+      { item: 'ironbark_tonic', price: 130 },
+      { item: 'sagewort', price: 10 },
+      { item: 'moonbell', price: 16 },
+    ],
+  },
+  {
+    id: 'signy_board',
+    name: "Signy's Terrace Kitchen",
+    stock: [
+      { item: 'hearty_stew', price: 24 },
+      { item: 'bread', price: 9 },
+      { item: 'cooked_beef', price: 22 },
+      { item: 'trout', price: 20 },
+      { item: 'fried_egg', price: 11 },
+      { item: 'milk', price: 8 },
+    ],
+  },
+  {
+    id: 'galleria_stalls',
+    name: 'The Galleria',
+    stock: [
+      { item: 'cloth', price: 22 },
+      { item: 'leather', price: 28 },
+      { item: 'silver_ring', price: 220 },
+      { item: 'gold_ring', price: 320 },
+      { item: 'arcane_dust', price: 90 },
+      { item: 'cape_traveler', price: 130 },
+    ],
+  },
+  {
+    id: 'gate_market_stock',
+    name: 'The Gate Market',
+    stock: [
+      { item: 'raw_trout', price: 12 },
+      { item: 'trout', price: 22 },
+      { item: 'coal', price: 16 },
+      { item: 'iron_ore', price: 30 },
+      { item: 'silver_ore', price: 70 },
+      { item: 'bread', price: 11 },
+    ],
+  },
   // Bretta sells the forge's knowledge: every guild-taught schematic
   // in the smithing line, jewellery to platebodies.
   { id: 'trainer_smithing', name: 'Ironhewn Schematics', stock: trainerStock(['smithing']) },

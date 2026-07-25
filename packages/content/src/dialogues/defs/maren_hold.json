@@ -1,0 +1,77 @@
+{
+  "id": "maren_hold",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "warden_maren"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "You've climbed a long way to stand in a drafty hall. Welcome to it. I'm *Maren* \u2014 the mountain lets me call myself High Warden, and mostly doesn't contradict me.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Ask what you came to ask.",
+      "choices": [
+        {
+          "text": "You broke the Undercroft seal. Why?",
+          "next": "seal"
+        },
+        {
+          "text": "What is Silverfall, to you?",
+          "next": "city"
+        },
+        {
+          "text": "What should I know about the Hold?",
+          "next": "hold"
+        },
+        {
+          "text": "Thank you, High Warden.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "seal",
+      "text": "Because the upper veins are thinning, because Solvei's rift-mathematics finally frightened me in the right direction, and because a city that lives by silver cannot spend a generation pretending its own cellar isn't there. The Masons counseled patience. Petra's guild broke it anyway, on my order \u2014 _her grandfather set those stones._ If the dark sends up more than ore, the account is mine to settle.",
+      "choices": [
+        {
+          "text": "And the kobolds?",
+          "next": "kobolds"
+        },
+        {
+          "text": "A hard call, cleanly made.",
+          "next": "hard"
+        }
+      ]
+    },
+    {
+      "id": "kobolds",
+      "text": "Still down there. We hold the market spine and the swept galleries; past the rubble line, the warren holds itself. Grettir's crews go armed and come back counted. It is not a victory. It is a *ledger*, and for now the ledger balances. Adventurers who tilt it further into our favor find the city grateful in coin.",
+      "next": "hub"
+    },
+    {
+      "id": "hard",
+      "text": "All the calls up here are hard. The trick is making them slowly enough to be right and quickly enough to matter. My predecessor used to say the mountain doesn't mind mistakes \u2014 it just keeps them. I try to hand it fewer.",
+      "next": "hub"
+    },
+    {
+      "id": "city",
+      "text": "A mine that learnt manners. Everything else \u2014 the terraces, the banners, Ottilie's dignity-with-arrogance hanging over my head \u2014 is what the silver bought. But listen at any wall on a quiet night and you'll hear picks. That's the city's true heart, and it has never once stopped beating.",
+      "next": "hub"
+    },
+    {
+      "id": "hold",
+      "text": "The feast hall seats the moot; the armory arms the watch; the wardens' wing sleeps light. The Mirrormere behind us feeds the falls, the falls feed the pool, and the pool has caught three careless wardens that the histories admit to. *Mind the edge.* It's the city motto for excellent reasons.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "The road down is easier than the road up. Almost everything is. Walk well."
+    }
+  ]
+}

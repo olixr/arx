@@ -1,0 +1,44 @@
+{
+  "id": "gardener_ivo",
+  "name": "Ivo",
+  "title": "Keeper of the Greenstair",
+  "examine": "Sunburnt at altitude, soil to the wrists. Talks to the wheat rows in a tone most people save for children and dogs.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 9,
+      "hairColor": 3,
+      "beard": 6,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 5,
+      "shirt": 9,
+      "pants": 9
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    {
+      "item": "carrot",
+      "qty": 6
+    },
+    {
+      "item": "wheat",
+      "qty": 8
+    },
+    {
+      "item": "berries",
+      "qty": 4
+    }
+  ],
+  "lines": [
+    "Farming a mountain is just farming, plus stairs.",
+    "The lowlands get two harvests and no view. I get one harvest and *this*. I've done the arithmetic; I'm ahead.",
+    "Snow in the morning, sun by noon, wind with opinions all day. The Greenstair grows stubborn food for stubborn people."
+  ]
+}

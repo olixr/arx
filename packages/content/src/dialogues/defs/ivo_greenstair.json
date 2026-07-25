@@ -1,0 +1,44 @@
+{
+  "id": "ivo_greenstair",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "gardener_ivo"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Welcome to the Greenstair \u2014 highest farm in the Dawnlands, and don't let the terraces fool you, the mountain fights for every row. What do you need?",
+      "choices": [
+        {
+          "text": "How do you farm a mountain?",
+          "next": "how"
+        },
+        {
+          "text": "What do you grow up here?",
+          "next": "grow"
+        },
+        {
+          "text": "Keep at it, Ivo.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "how",
+      "text": "Terraces, stubbornness, and reading the sky like Signy reads a queue. Snow in the morning, sun by noon, wind with opinions all day. Lowland farmers get two harvests and no view; I get one harvest and *this* \u2014 he gestures at forty miles of world \u2014 and I've done the arithmetic. I'm ahead.",
+      "next": "hub"
+    },
+    {
+      "id": "grow",
+      "text": "Wheat and cotton on the high pads, sagewort and moonbell for Wyn behind the fence, carrots that come up sweet as apology \u2014 cold ground does that, concentrates the sugar. The whole terrace eats off these rows and Signy turns the surplus into that immortal stew. If the ford's farmers ever get their cotton scheme going, I'll happily lose that trade and keep the carrots. Root vegetables are where the mountain shows off.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Mind the rows \u2014 and take a carrot if one's leaning. The leaning ones have decided."
+    }
+  ]
+}

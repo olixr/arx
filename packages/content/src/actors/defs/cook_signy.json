@@ -1,0 +1,44 @@
+{
+  "id": "cook_signy",
+  "name": "Signy",
+  "title": "Cook of the Working Terrace",
+  "examine": "One wooden spoon, absolute authority. The mess terrace runs on her clock and everyone knows it, including the clock.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 4,
+      "hairColor": 5,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 5,
+      "shirt": 0,
+      "pants": 6
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "hearty_stew",
+      "qty": 8
+    },
+    {
+      "item": "bread",
+      "qty": 6
+    },
+    {
+      "item": "trout",
+      "qty": 3
+    }
+  ],
+  "lines": [
+    "Miners eat first, smiths second, opinions last.",
+    "I feed two hundred hands a day off two hearths and a temper. The temper does most of the seasoning.",
+    "Nobody works the terrace hungry. Not on my watch, not on anybody's."
+  ],
+  "shop": "signy_board"
+}

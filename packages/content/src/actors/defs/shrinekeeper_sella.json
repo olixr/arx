@@ -1,0 +1,36 @@
+{
+  "id": "shrinekeeper_sella",
+  "name": "Sella",
+  "title": "Keeper of the Silver Shrine",
+  "examine": "Wind-braided hair and lamp-oil hands. The mother-flame behind her has burned since before the city had walls.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 2,
+      "hairColor": 7,
+      "beard": 0,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "dawnsworn_robe",
+    "boots": "dawnsworn_slippers"
+  },
+  "inventory": [
+    {
+      "item": "berries",
+      "qty": 3
+    }
+  ],
+  "lines": [
+    "This is the mother-flame \u2014 every road lamp in the Dawnlands is lit in its name, one wick at a time, all the way down.",
+    "My sister keeps the Last Lamp on the climb. Edda got the stubbornness; I got the altitude. We consider it a fair split.",
+    "Travelers light a thought here before the road down. The flame doesn't grant things. It just remembers you asked."
+  ]
+}

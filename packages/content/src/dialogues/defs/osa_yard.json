@@ -1,0 +1,61 @@
+{
+  "id": "osa_yard",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "hostler_osa"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Mind the trough \u2014 the mules queue politer than the caravans do. Osa. Hostler. You've the road on your boots; sit on a rail and scrape it off while you talk.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Go on then.",
+      "choices": [
+        {
+          "text": "You came up the High Road at sixty?",
+          "next": "climb"
+        },
+        {
+          "text": "I know your daughter \u2014 Dunna, at the ford.",
+          "next": "dunna",
+          "requires": [
+            "dlg:dunna_rest"
+          ]
+        },
+        {
+          "text": "What passes through this yard?",
+          "next": "yard"
+        },
+        {
+          "text": "Rest easy, Osa.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "climb",
+      "text": "Sixty years old, one pack, uphill, alone, spring after my man died. Everyone at the ford said the road would kill me, and I said *good, let it try, it'll be the most interesting conversation I've had all year.* The road and I settled on mutual respect somewhere past the Fork. Grief needs altitude, traveler. The mountain's got plenty going spare.",
+      "next": "hub"
+    },
+    {
+      "id": "dunna",
+      "text": "You've sat at my daughter's bar! Ha! Then you tell me true \u2014 did the stew want thyme? ...It wanted thyme. It ALWAYS wants thyme. Thirty years I ran that room and she won't take one herb of advice from me, which is exactly, *precisely* what I was like, so fair play. Tell her the mountain air is kind, her mother's hips are winning, and the thyme grows wild not ten steps from her own back door. She'll ignore all three. Family is a recipe you don't get to edit.",
+      "next": "hub"
+    },
+    {
+      "id": "yard",
+      "text": "Everything the mountain buys and everything it sells, with mules in between. Silver down, cotton up, deep-ore out of the new cellar, and every kind of traveler the road makes \u2014 the eager ones going up to the Undercroft and the thoughtful ones coming back from it. The mules like the thoughtful ones better. Mules are excellent judges.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Walk well. And eat something before the stair \u2014 the Silver Stair has strong opinions about empty stomachs."
+    }
+  ]
+}

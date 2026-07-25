@@ -1,0 +1,81 @@
+{
+  "id": "grettir_yard",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "foreman_grettir"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Helmets past the rope line \u2014 that includes helmets you don't own yet. Grettir. Foreman. If you're here to swing a pick, the mountain pays honest wages. If you're here to ask about the upper vein, we're done early.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "What?",
+      "choices": [
+        {
+          "text": "What's the upper vein?",
+          "next": "vein"
+        },
+        {
+          "text": "How goes the mining?",
+          "next": "mining"
+        },
+        {
+          "text": "I've been below. The old galleries are worked again.",
+          "next": "below",
+          "requires": [
+            "dlg:coppin_reeve"
+          ]
+        },
+        {
+          "text": "I'll leave you to your count.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "vein",
+      "text": "The vein we don't discuss. Mithril, since you'll hear it from some coal boy anyway. It runs shallow at the top of the deep galleries, and every foreman before me left it alone, and I leave it alone, and the *reasons* are between me and the mountain. Dig your fortune anywhere else in my yard with my blessing.",
+      "next": "hub"
+    },
+    {
+      "id": "mining",
+      "text": "Silver holds, iron's steady, coal does what coal does. My crews go down on my count and come up on my count, twenty years matched. Now the Undercroft's open below us and half my shift wants transfer papers to the deep galleries \u2014 better ore, worse neighbors. I sign them. I count them extra.",
+      "next": "hub"
+    },
+    {
+      "id": "below",
+      "text": "...You've talked to Coppin. Then you've stood in the old works. My brother's crew cut those galleries, before the trouble \u2014 he was setting shot-holes past the rubble line the day the kobolds came through, and the seal went up with the count *unmatched*. First unmatched count in the yard's books. If the reeve's crews ever clear the far warren... there'll be tools down there with our mark on the hafts. I'd want to know. That's all. I'd want to know.",
+      "choices": [
+        {
+          "text": "If I find anything with your mark, I'll bring word.",
+          "next": "word",
+          "set": [
+            "grettir_word"
+          ]
+        },
+        {
+          "text": "I'm sorry, Foreman.",
+          "next": "sorry"
+        }
+      ]
+    },
+    {
+      "id": "word",
+      "text": "...Aye. Well. The yard's grateful, and the yard doesn't say that often. Helmets past the rope line, traveler. Even below. _Especially below._"
+    },
+    {
+      "id": "sorry",
+      "text": "Twenty years of practice at it. Go on now \u2014 the count doesn't keep itself."
+    },
+    {
+      "id": "bye",
+      "text": "Count yourself out at the rope. Everyone counts out. House rule."
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "id": "fall_forgemistress",
+  "base": {
+    "kind": "post",
+    "dir": 3.141592653589793,
+    "work": true,
+    "speed": 1.7
+  },
+  "slots": [
+    {
+      "from": 12,
+      "to": 13.5,
+      "task": {
+        "kind": "post",
+        "x": 1.5,
+        "y": 7.8,
+        "dir": 1.5707963267948966,
+        "speed": 1.7
+      }
+    },
+    {
+      "from": 16,
+      "to": 18,
+      "task": {
+        "kind": "post",
+        "x": 2.5,
+        "y": 0.8,
+        "dir": 3.141592653589793,
+        "work": true,
+        "speed": 1.7
+      }
+    },
+    {
+      "from": 21.5,
+      "to": 6,
+      "task": {
+        "kind": "post",
+        "x": -2.5,
+        "y": 3.8,
+        "dir": -1.5707963267948966,
+        "speed": 1.4
+      }
+    }
+  ]
+}

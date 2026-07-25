@@ -1,0 +1,45 @@
+{
+  "id": "foreman_grettir",
+  "name": "Foreman Grettir",
+  "title": "Foreman of the Mine Yard",
+  "examine": "Stone dust in every seam of him. He counts his crews out and counts them back, and the counting is the whole of his religion.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 0,
+      "hairColor": 2,
+      "beard": 3,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 4,
+      "shirt": 11,
+      "pants": 11
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "iron_sabatons",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    {
+      "item": "iron_ore",
+      "qty": 4
+    },
+    {
+      "item": "silver_ore",
+      "qty": 3
+    },
+    {
+      "item": "coal",
+      "qty": 5
+    }
+  ],
+  "lines": [
+    "Helmets on past the rope line. Yes, you.",
+    "The upper vein? We don't discuss the upper vein. It and I have an arrangement and you're not in it.",
+    "Every crew goes down on my count and comes up on my count. Twenty years, the numbers have matched. There was a time before that. We don't discuss that either."
+  ]
+}
