@@ -259,6 +259,16 @@ Goal: POI archetypes become designer-owned content, and camps read as *inhabited
 
 ## Phase 3 — The Clock, the Wilds, and the Turning World
 
+**SHIPPED 2026-07-24** (commits 4b0f501 activity windows → eecdd62 wild
+ambience → 3e29aa6 fallow sweep → e8c9412 danger music + shelved tracks →
+2d26ac7 ambient hours fix → d2816ef spot-tier scaling fix). Verified live: at
+noon two holdfast worgs held the warcamp heart and no night creature stood
+anywhere; at 23h a third worg mustered onto the ring within seconds and paced
+its patrol; the midnight meadow ran bats/adder/rat while stags and rams stayed
+home; a wiped grove `/poi fallow 0`-turned to epoch+1 and dissolved to meadow
+under the player; `boss_fight_1` crossfaded in at tier 5; `adventure_7` (one
+of six tracks that had never been registered) played from the shelf.
+
 Goal: time-of-day life, ambient wilderness, and the regeneration loop.
 
 - **Activity windows**: `hours?: { from: number; to: number }` (game hours,
