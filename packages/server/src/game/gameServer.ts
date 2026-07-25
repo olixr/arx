@@ -6020,8 +6020,9 @@ export class GameServer {
 
   // --------------------------------------------- wilderness ambience
 
-  /** Live ambient bodies (spawnIndex -1); killNpc and despawn prune it. */
-  private readonly wildBodies = new Set<EntityId>();
+  /** Live ambient bodies (spawnIndex -1) and the roster window each
+   * came in on; killNpc and the despawn pass prune it. */
+  private readonly wildBodies = new Map<EntityId, { from: number; to: number } | null>();
 
   /** Ambient spawns keep this far out / this near a player (tiles). */
   private static readonly WILD_MIN_R = 34;
@@ -6039,14 +6040,25 @@ export class GameServer {
    */
   private tickWildSpawns(): void {
     const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
-    // Despawn first: a body no one is near stops existing.
-    for (const eid of this.wildBodies) {
+    // Despawn first: a body no one is near stops existing — and a
+    // creature whose hours have passed slips away with the same
+    // dignity the garrison keeps (idle, nobody within earshot). A
+    // stag never grazes at midnight, and it never vanishes in front
+    // of anyone either.
+    for (const [eid, window] of this.wildBodies) {
       if (!this.ecs.isAlive(eid)) {
         this.wildBodies.delete(eid);
         continue;
       }
       const pos = this.positions.get(eid);
-      if (!pos || this.playerWithin(pos.x, pos.y, GameServer.WILD_DESPAWN_R)) continue;
+      if (!pos) continue;
+      const farGone = !this.playerWithin(pos.x, pos.y, GameServer.WILD_DESPAWN_R);
+      const overstayed =
+        window !== null &&
+        !slotContains(window.from, window.to, hours) &&
+        this.npcs.get(eid)?.state === 'idle' &&
+        !this.playerWithin(pos.x, pos.y, 20);
+      if (!farGone && !overstayed) continue;
       this.removeFromChunks(eid);
       this.ecs.destroy(eid);
       this.wildBodies.delete(eid);
@@ -6061,7 +6073,7 @@ export class GameServer {
       const budget = Math.round(8 * law.wildDensity);
       if (budget <= 0) continue;
       let near = 0;
-      for (const eid of this.wildBodies) {
+      for (const eid of this.wildBodies.keys()) {
         const pos = this.positions.get(eid);
         if (pos && Math.hypot(pos.x - ppos.x, pos.y - ppos.y) <= GameServer.WILD_MAX_R + 24) near++;
       }
@@ -6095,7 +6107,7 @@ export class GameServer {
           ? scaleNpcDef(base, bandMin + (Math.floor(Math.random() * 3) - 1))
           : base;
       const eid = this.spawnNpc(def, tx + 0.5, ty + 0.5, -1);
-      this.wildBodies.add(eid);
+      this.wildBodies.set(eid, entry.hours ?? null);
     }
   }
 
