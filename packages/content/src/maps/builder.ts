@@ -427,8 +427,10 @@ export class ZoneBuilder {
    */
   private validateReachable(): void {
     if (!this.spawnPoint) return;
-    const sx = this.spawnPoint.x - this.origin.x;
-    const sy = this.spawnPoint.y - this.origin.y;
+    // Spawns are usually tile-centered (x.5): floor to the tile, or
+    // the fractional index silently breaks the flood fill.
+    const sx = Math.floor(this.spawnPoint.x - this.origin.x);
+    const sy = Math.floor(this.spawnPoint.y - this.origin.y);
     const seen = new Set<number>();
     const stack = [sy * this.width + sx];
     while (stack.length > 0) {

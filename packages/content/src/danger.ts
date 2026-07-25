@@ -20,10 +20,15 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // Amberford — the crossroads market town (the master plan's second
   // hearth). With both lowland anchors lit, the First Road corridor
   // between them reads tier 1-2 — a first journey, never a gauntlet —
-  // while the northwest march toward Silverfall stays deep. Silverfall
-  // itself will anchor as a HAVEN, not a settled hearth: its walls
-  // must never tame the tier-4/5 country it stands in.
+  // while the northwest march toward Silverfall stays deep.
   { x: 160, y: 24, safeR: 72 },
+  // Silverfall — the mountain capital, and a HAVEN, not a hearth
+  // (the haven law): its lamp keeps the terraces tier 0 and relieves
+  // a graded rim, but it never joins the band march — the High Road
+  // approach stays tier 4-5 to the last brazier, exactly as the
+  // master plan demands. The walk is the game; the walls are the
+  // reward.
+  { x: -288, y: -160, safeR: 72, haven: true },
 ];
 
 export interface DangerLaw {

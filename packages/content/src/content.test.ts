@@ -4,7 +4,8 @@ import { Detail, PASSIVES, STATUS_IDS, Tile, TILE_DEFS } from '@devcraft/shared'
 import { ZoneBuilder } from './maps/builder.js';
 import { buildDawnmead } from './maps/dawnmead.js';
 import { buildAmberford } from './maps/amberford.js';
-import { AMBERFORD_RECT } from './geography.js';
+import { buildSilverfall } from './maps/silverfall.js';
+import { AMBERFORD_RECT, SILVERFALL_RECT } from './geography.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { compileTemplate, templateHeight, templateWidth } from './structures/stamp.js';
 import { templateFromJson, templateToJson } from './structures/serialize.js';
@@ -897,6 +898,132 @@ test('amberford: every doorway walks from the Round, and all three gates connect
   // And the banking floor is truly public: the lobby rug between the
   // two (solid) banking chests must be walkable from the door.
   assert.equal(seen[32 * z.width + 40], 1, 'the bank floor is unreachable');
+});
+
+test('silverfall: the mountain capital holds its terraces, stations, and gate', () => {
+  const z = buildSilverfall();
+  assert.equal(z.id, 'silverfall');
+  // The zone stamps into the master plan's rect exactly.
+  assert.deepEqual(z.origin, { x: SILVERFALL_RECT.x, y: SILVERFALL_RECT.y });
+  assert.equal(z.width, SILVERFALL_RECT.w);
+  assert.equal(z.height, SILVERFALL_RECT.h);
+  const at = (x: number, y: number): Tile => z.ground[y * z.width + x]! as Tile;
+  // The hearth of the north: respawn inside the gate on the avenue.
+  assert.deepEqual(z.spawn, { x: -287.5, y: -119.5 });
+  // ELEVATION IS REAL: the first terraced town exports a layer that
+  // climbs all the way to the Hold, flat at the border apron.
+  assert.ok(z.elev, 'silverfall must carry an elevation layer');
+  let maxLvl = 0;
+  for (const l of z.elev!) maxLvl = Math.max(maxLvl, l);
+  assert.equal(maxLvl, 3, 'the Hold stands on the third terrace');
+  // The gate road reaches the south border where the High Road lands.
+  for (const y of [126, 127]) {
+    assert.equal(at(88, y), Tile.Path, `the approach road must reach row ${y}`);
+  }
+  const counts = new Map<number, number>();
+  for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
+  const n = (t: Tile): number => counts.get(t) ?? 0;
+  // The terraces are fenced and staired by the builder's own law.
+  assert.equal(n(Tile.Ramp), 39, 'the Silver Stair lost a flight');
+  assert.ok(n(Tile.Cliff) > 500, 'the terrace fences are missing');
+  // The mountain's ladder: silver in numbers, the deep teases above.
+  assert.ok(n(Tile.RockSilver) >= 8, 'Silverfall without silver');
+  assert.ok(n(Tile.RockMithril) >= 1 && n(Tile.RockAdamant) >= 1 && n(Tile.RockGold) >= 1);
+  // Every profession works here: the full station roster.
+  for (const [tile, name] of [
+    [Tile.Furnace, 'furnace'],
+    [Tile.Anvil, 'anvil'],
+    [Tile.Loom, 'loom'],
+    [Tile.TanningRack, 'tanning rack'],
+    [Tile.CarvingBench, 'carving bench'],
+    [Tile.Alembic, 'alembic'],
+    [Tile.Workbench, 'workbench'],
+    [Tile.EnchantingTable, 'enchanting table'],
+    [Tile.Hearth, 'hearth'],
+  ] as const) {
+    assert.ok(n(tile) >= 1, `station missing: ${name}`);
+  }
+  assert.ok(n(Tile.Furnace) >= 5 && n(Tile.Anvil) >= 3, 'the forge city smelts at scale');
+  // The bank, the markets, the waters, the high snow.
+  assert.ok(n(Tile.Vault) >= 4 && n(Tile.BankChest) >= 3, 'the mountain bank is short');
+  assert.ok(n(Tile.MarketStall) >= 7, 'galleria + gate market thinned');
+  assert.ok(n(Tile.FishingSpot) >= 4, 'the mere and the pool must fish');
+  assert.ok(n(Tile.ArchStone) >= 9, 'the gate arch fell');
+  assert.ok(n(Tile.Snow) > 0, 'the high ground lost its snow');
+  assert.ok(n(Tile.Brazier) >= 10, 'the stair burns by brazier');
+  // Rams only — the people arrive in Epic 6.
+  const spawnKinds = new Map((z.spawns ?? []).map((s) => [s.npc, s.count]));
+  assert.equal(spawnKinds.get('ram'), 3);
+  assert.equal((z.actorSpawns ?? []).length, 0, 'actors belong to the people pass');
+  // The editor JSON round trip holds WITH the elevation layer.
+  const json = zoneToJson(z);
+  assert.ok(json.elev !== undefined, 'the elevation layer must serialize');
+  assert.deepEqual(zoneToJson(zoneFromJson(json)), json);
+});
+
+test('silverfall: the Silver Stair connects every terrace and every doorway walks', () => {
+  const z = buildSilverfall();
+  const lvl = (i: number): number => z.elev![i] ?? 0;
+  const walkable = (x: number, y: number): boolean =>
+    x >= 0 && y >= 0 && x < z.width && y < z.height &&
+    !TILE_DEFS[z.ground[y * z.width + x]! as Tile].solid;
+  const seen = new Uint8Array(z.width * z.height);
+  const start = 104 * z.width + 88; // the spawn tile inside the gate
+  const queue: number[] = [start];
+  seen[start] = 1;
+  while (queue.length > 0) {
+    const i = queue.pop()!;
+    const x = i % z.width;
+    const y = Math.floor(i / z.width);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!walkable(nx, ny)) continue;
+      const ni = ny * z.width + nx;
+      if (seen[ni]) continue;
+      // The builder's own law: level changes cross only on a stair.
+      if (
+        lvl(ni) !== lvl(i) &&
+        z.ground[i] !== Tile.Ramp &&
+        z.ground[ni] !== Tile.Ramp
+      ) {
+        continue;
+      }
+      seen[ni] = 1;
+      queue.push(ni);
+    }
+  }
+  // Every doorway in the city walks from the gate.
+  const unreachable: string[] = [];
+  for (let i = 0; i < z.ground.length; i++) {
+    const t = z.ground[i];
+    if (
+      (t === Tile.DoorwayStone ||
+        t === Tile.DoorwayWood ||
+        t === Tile.DoorwayStoneWide ||
+        t === Tile.DoorwayWoodWide) &&
+      !seen[i]
+    ) {
+      unreachable.push(`(${i % z.width},${Math.floor(i / z.width)})`);
+    }
+  }
+  assert.deepEqual(unreachable, [], `doorways cut off from the gate: ${unreachable.join(' ')}`);
+  // The gate mouth, the three stair crowns, and the deep gallery.
+  assert.equal(seen[127 * z.width + 88], 1, 'the High Road mouth is severed');
+  assert.equal(seen[95 * z.width + 88], 1, 'the first flight is severed');
+  assert.equal(seen[63 * z.width + 88], 1, 'the second flight is severed');
+  assert.equal(seen[31 * z.width + 88], 1, 'the third flight is severed');
+  assert.equal(seen[11 * z.width + 14], 1, 'the deep gallery is severed');
+  // Every market stall keeps a walkable approach.
+  for (let i = 0; i < z.ground.length; i++) {
+    if (z.ground[i] !== Tile.MarketStall) continue;
+    const x = i % z.width;
+    const y = Math.floor(i / z.width);
+    const open =
+      seen[i + z.width] === 1 || seen[i - z.width] === 1 ||
+      seen[i + 1] === 1 || seen[i - 1] === 1;
+    assert.ok(open, `stall at (${x},${y}) has no reachable approach`);
+  }
 });
 
 test('daggers: backstab multiplier, fast cadence, and a real Art', () => {
