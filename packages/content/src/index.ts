@@ -19,6 +19,7 @@ export * from './loot/roll.js';
 export * from './loot/serialize.js';
 export * from './danger.js';
 export * from './nodes.js';
+export * from './wilds.js';
 export * from './pois/types.js';
 export * from './pois/validate.js';
 export * from './pois/prefabs.js';

@@ -114,7 +114,10 @@ import {
   POI_DEFS,
   POI_PREFABS,
   SETTLED_ANCHORS,
+  dangerLaw,
   dangerTierAt,
+  pickWild,
+  wildCandidates,
 } from '@devcraft/content';
 import {
   POI_CELL,
@@ -127,7 +130,7 @@ import {
   type PoiContext,
   type PoiSite,
 } from '../world/pois.js';
-import { DARK_BAND_Y } from '../world/worldgen.js';
+import { DARK_BAND_Y, groundProbeAt } from '../world/worldgen.js';
 import {
   COMBO_GRACE_TICKS,
   COMBO_STAGES,
@@ -5731,6 +5734,7 @@ export class GameServer {
       spawn.respawnAt = Date.now() + NPCS.get(spawn.npc)!.respawnSec * 1000;
       this.notePoiKill(npc.spawnIndex);
     }
+    this.wildBodies.delete(npcEid);
     // A slain actor's post refills on the synthesized def's clock.
     const actorComp = this.actors.get(npcEid);
     if (actorComp && actorComp.spawnIndex >= 0) {
@@ -5952,6 +5956,87 @@ export class GameServer {
       if (pos && Math.hypot(pos.x - x, pos.y - y) <= r) return true;
     }
     return false;
+  }
+
+  // --------------------------------------------- wilderness ambience
+
+  /** Live ambient bodies (spawnIndex -1); killNpc and despawn prune it. */
+  private readonly wildBodies = new Set<EntityId>();
+
+  /** Ambient spawns keep this far out / this near a player (tiles). */
+  private static readonly WILD_MIN_R = 34;
+  private static readonly WILD_MAX_R = 56;
+  /** Beyond this from every player an ambient body slips away. */
+  private static readonly WILD_DESPAWN_R = 100;
+
+  /**
+   * The space between POIs breathes: near each player in the open
+   * frontier, keep a small budget of ambient wildlife rolled from
+   * WILD_ROSTER — biome- and clock-gated, tier-leveled, spawned in
+   * the just-offscreen annulus with no respawn record, and gone again
+   * once nobody is near. Ambience, not geography: deliberately
+   * non-deterministic, never persisted, never a landmark.
+   */
+  private tickWildSpawns(): void {
+    const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
+    // Despawn first: a body no one is near stops existing.
+    for (const eid of this.wildBodies) {
+      if (!this.ecs.isAlive(eid)) {
+        this.wildBodies.delete(eid);
+        continue;
+      }
+      const pos = this.positions.get(eid);
+      if (!pos || this.playerWithin(pos.x, pos.y, GameServer.WILD_DESPAWN_R)) continue;
+      this.removeFromChunks(eid);
+      this.ecs.destroy(eid);
+      this.wildBodies.delete(eid);
+    }
+    for (const [peid, player] of this.players) {
+      if (player.session === null) continue;
+      const ppos = this.positions.get(peid);
+      if (!ppos || ppos.y >= DARK_BAND_Y) continue;
+      const tier = dangerTierAt(config.worldSeed, Math.floor(ppos.x), Math.floor(ppos.y));
+      if (tier === 0) continue; // settled land keeps only authored life
+      const law = dangerLaw(tier);
+      const budget = Math.round(8 * law.wildDensity);
+      if (budget <= 0) continue;
+      let near = 0;
+      for (const eid of this.wildBodies) {
+        const pos = this.positions.get(eid);
+        if (pos && Math.hypot(pos.x - ppos.x, pos.y - ppos.y) <= GameServer.WILD_MAX_R + 24) near++;
+      }
+      if (near >= budget) continue;
+      // One attempt per pass per under-budget player — the wilds fill
+      // in over half a minute, never in a visible burst.
+      const ang = Math.random() * Math.PI * 2;
+      const r =
+        GameServer.WILD_MIN_R + Math.random() * (GameServer.WILD_MAX_R - GameServer.WILD_MIN_R);
+      const tx = Math.floor(ppos.x + Math.cos(ang) * r);
+      const ty = Math.floor(ppos.y + Math.sin(ang) * r);
+      if (ty >= DARK_BAND_Y) continue;
+      // Live-world checks: open natural grass (keeps ambient life out
+      // of camps, ruins, roads, and anything authored), walkable now.
+      const ground = this.world.groundAt(tx, ty);
+      if (ground !== Tile.Grass && ground !== Tile.GrassTall) continue;
+      const spotTier = dangerTierAt(config.worldSeed, tx, ty);
+      if (spotTier === 0) continue;
+      const biome = groundProbeAt(config.worldSeed, tx, ty);
+      if (biome !== 'grass' && biome !== 'forest') continue;
+      const candidates = wildCandidates(spotTier, biome, hours);
+      const entry = pickWild(candidates, Math.random());
+      if (!entry) continue;
+      const base = NPCS.get(entry.npc);
+      if (!base) continue;
+      // The band lifts what it must: a tier-4 wolf is a dire threat,
+      // but a stag never becomes one — prey keeps its authored level.
+      const bandMin = law.npcLevel[0];
+      const def =
+        base.aggroRange > 0 && base.level < bandMin
+          ? scaleNpcDef(base, bandMin + (Math.floor(Math.random() * 3) - 1))
+          : base;
+      const eid = this.spawnNpc(def, tx + 0.5, ty + 0.5, -1);
+      this.wildBodies.add(eid);
+    }
   }
 
   /**
@@ -7498,6 +7583,7 @@ export class GameServer {
     this.tickRegen(now);
     if (this.tickCount % 40 === 0) this.tickCrops(now);
     if (this.tickCount % 20 === 0) this.tickPois();
+    if (this.tickCount % 40 === 20) this.tickWildSpawns();
 
     // Respawn depleted nodes (and pull forgotten doors to).
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
