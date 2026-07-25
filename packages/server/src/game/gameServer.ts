@@ -951,7 +951,10 @@ export class GameServer {
   // ------------------------------------------------- procedural POIs
 
   /** Ledger cache by cell key: decided cells (site null = decided empty). */
-  private readonly poiLedger = new Map<string, { epoch: number; site: PoiSite | null }>();
+  private readonly poiLedger = new Map<
+    string,
+    { epoch: number; site: PoiSite | null; clearedAt: number | null }
+  >();
   /** Cells handled this uptime (live zone or decided empty). */
   private readonly poiLive = new Map<string, { zoneId?: string; spawnIdx: number[] }>();
   /** spawnPoints index → owning POI cell key (cleared-wipe detection). */
@@ -2703,12 +2706,66 @@ export class GameServer {
             }
           : null;
       if (site) sites++;
-      this.poiLedger.set(poiCellKey(row.cellX, row.cellY), { epoch: row.epoch, site });
+      this.poiLedger.set(poiCellKey(row.cellX, row.cellY), {
+        epoch: row.epoch,
+        site,
+        clearedAt: row.clearedAt,
+      });
     }
     console.log(
       `[poi] ledger: ${rows.length} cells decided (${sites} sites) · ` +
         `${this.poiPrefabs.size} prefabs in the library`,
     );
+    // THE EPOCH TURN: cells cleared and left fallow long enough
+    // re-roll on fresh streams — the frontier churns exactly where
+    // players stopped caring, and nowhere else.
+    const turned = this.fallowSweep(Date.now() - GameServer.POI_FALLOW_DAYS * 86_400_000);
+    if (turned.turned > 0) {
+      console.log(
+        `[poi] fallow turn: ${turned.turned} cleared cells re-rolled ` +
+          `(${turned.rerolled} stand anew, ${turned.turned - turned.rerolled} rolled empty)`,
+      );
+    }
+  }
+
+  /** Real days a cleared cell lies fallow before the epoch turns it. */
+  private static readonly POI_FALLOW_DAYS = 7;
+
+  /**
+   * Turn every cell whose last full wipe predates the cutoff: bump
+   * its epoch, retire whatever still stands, and decide it AGAIN
+   * immediately (fresh streams — new archetype, new anchor, or honest
+   * emptiness). The re-decision writes through recordPoiCell, so the
+   * ledger keeps exactly one row per cell and cleared_at resets.
+   */
+  private fallowSweep(cutoffMs: number): { turned: number; rerolled: number } {
+    if (!this.poiPrefabs) return { turned: 0, rerolled: 0 };
+    const ctx = poiContext(SETTLED_ANCHORS, this.world.zoneDefs, this.poiPrefabs);
+    let turned = 0;
+    let rerolled = 0;
+    for (const [key, row] of this.poiLedger) {
+      if (row.site === null || row.clearedAt === null || row.clearedAt >= cutoffMs) continue;
+      const { cellX, cellY } = row.site;
+      this.retirePoiCell(key);
+      const epoch = row.epoch + 1;
+      const site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx);
+      this.accounts.recordPoiCell(
+        cellX,
+        cellY,
+        epoch,
+        site && {
+          poiId: site.defId,
+          prefabId: site.prefabId,
+          tier: site.tier,
+          anchorX: site.anchorX,
+          anchorY: site.anchorY,
+        },
+      );
+      this.poiLedger.set(key, { epoch, site, clearedAt: null });
+      turned++;
+      if (site) rerolled++;
+    }
+    return { turned, rerolled };
   }
 
   /**
@@ -2757,7 +2814,7 @@ export class GameServer {
     if (!row || opts.epoch !== undefined) {
       const epoch = opts.epoch ?? 0;
       const site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx, opts.force);
-      row = { epoch, site };
+      row = { epoch, site, clearedAt: null };
       // Deviations only: a settled cell writes no row (it is 0 by law).
       const centerTier = dangerTierAt(
         config.worldSeed,
@@ -2821,6 +2878,8 @@ export class GameServer {
     }
     const [cx, cy] = key.split(',').map(Number);
     this.accounts.markPoiCleared(cx!, cy!);
+    const row = this.poiLedger.get(key);
+    if (row) row.clearedAt = Date.now();
   }
 
   /** Retire a cell's standing zone + bodies (the /poi levers ride this). */
@@ -7489,6 +7548,20 @@ export class GameServer {
         );
         return;
       }
+      if (sub === 'fallow') {
+        // /poi fallow [days] — run the epoch turn now. 0 = every
+        // cleared cell turns immediately (the staging lever).
+        const days = Number.parseFloat(arg ?? '');
+        const cutoff = Date.now() - (Number.isFinite(days) && days >= 0 ? days : 7) * 86_400_000;
+        const res = this.fallowSweep(cutoff);
+        say(
+          res.turned === 0
+            ? 'No cleared cells past the fallow cutoff.'
+            : `Fallow turn: ${res.turned} cells re-rolled — ${res.rerolled} stand anew, ` +
+              `${res.turned - res.rerolled} rolled empty. Walk near them to see.`,
+        );
+        return;
+      }
       const row = this.poiLedger.get(key);
       const live = this.poiLive.get(key);
       say(
@@ -7497,8 +7570,9 @@ export class GameServer {
             row.site === null ? `decided empty (epoch ${row.epoch})` :
             `${row.site.defId} (${row.site.prefabId}) tier ${row.site.tier} at ` +
             `${row.site.anchorX},${row.site.anchorY}, epoch ${row.epoch}`) +
+          (row?.clearedAt ? ` · cleared ${Math.round((Date.now() - row.clearedAt) / 60000)}m ago` : '') +
           (live?.zoneId ? ' · standing' : '') +
-          ' — /poi here [archetype] · /poi reroll',
+          ' — /poi here [archetype] · /poi reroll · /poi fallow [days]',
       );
       return;
     }
