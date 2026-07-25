@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { TILE_DEFS, TILE_SKIP, Tile, chestInfo, closedChestTile } from '@devcraft/shared';
 import {
+  AMBERFORD_RECT,
+  PLANNED_ZONE_RECTS,
   POI_DEFS,
   POI_PREFABS,
   SETTLED_ANCHORS,
@@ -11,7 +13,9 @@ import { DARK_BAND_Y, groundProbeAt } from './worldgen.js';
 import {
   POI_CELL,
   composePoi,
+  poiContext,
   poiForCell,
+  poiSiteBlocked,
   previewPoi,
   simulatePois,
   type PoiContext,
@@ -43,6 +47,49 @@ function scanSites(): PoiSite[] {
 
 test('the scaffold is deterministic', () => {
   assert.deepEqual(scanSites(), scanSites());
+});
+
+test('the planned rects join the clearance list and flag stale sites', () => {
+  // poiContext folds the master plan's rects in even when the live
+  // zone list carries only Dawnmead — the frontier keeps out of
+  // streets that haven't been built yet.
+  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS);
+  for (const rect of PLANNED_ZONE_RECTS) {
+    assert.ok(
+      ctx.zoneRects.some(
+        (r) => r.x === rect.x && r.y === rect.y && r.w === rect.w && r.h === rect.h,
+      ),
+      `planned rect (${rect.x},${rect.y}) missing from the context`,
+    );
+  }
+  // A synthetic site parked inside Amberford's future market reads as
+  // blocked; a genuine scanned site never does.
+  const prefabId = [...POI_PREFABS.keys()][0]!;
+  const stale: PoiSite = {
+    cellX: 1,
+    cellY: 0,
+    epoch: 0,
+    tier: 2,
+    defId: 'goblin_warcamp',
+    prefabId,
+    anchorX: AMBERFORD_RECT.x + 40,
+    anchorY: AMBERFORD_RECT.y + 40,
+  };
+  assert.equal(poiSiteBlocked(stale, ctx), true);
+  // Sites rolled UNDER the full context never read as blocked by it —
+  // the roll-time clearance and the retro check agree.
+  for (let cy = -SCAN; cy <= SCAN; cy++) {
+    for (let cx = -SCAN; cx <= SCAN; cx++) {
+      const site = poiForCell(SEED, cx, cy, 0, ctx);
+      if (site) {
+        assert.equal(
+          poiSiteBlocked(site, ctx),
+          false,
+          `${site.defId}@${cx},${cy} rolled into a planned rect`,
+        );
+      }
+    }
+  }
 });
 
 test('the frontier hosts POIs and every archetype occurs', () => {

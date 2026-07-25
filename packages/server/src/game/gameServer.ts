@@ -113,9 +113,11 @@ import {
   type PoiDef,
   POI_DEFS,
   POI_PREFABS,
+  ROAD_CALM,
   SETTLED_ANCHORS,
   dangerLaw,
   pickWild,
+  roadDistanceAt,
   wildCandidates,
 } from '@devcraft/content';
 import {
@@ -126,6 +128,7 @@ import {
   poiCellOf,
   poiContext,
   poiForCell,
+  poiSiteBlocked,
   type PoiContext,
   type PoiSite,
 } from '../world/pois.js';
@@ -2832,6 +2835,15 @@ export class GameServer {
     // The lamps light BEFORE the sweep: fallow re-decisions read the
     // field with every standing haven in it.
     this.rebuildHavens();
+    // THE PLAN SWEEP: the master plan reserves zone rects (Amberford,
+    // Silverfall) before their epics build them, but the site-pick
+    // honors zones only at roll time — so any cell decided under an
+    // older plan whose footprint now collides re-rolls on a fresh
+    // epoch and finds a home clear of tomorrow's streets.
+    const evicted = this.zonePlanSweep();
+    if (evicted > 0) {
+      console.log(`[poi] plan sweep: ${evicted} site(s) re-rolled off planned zone rects`);
+    }
     // THE EPOCH TURN: cells cleared and left fallow long enough
     // re-roll on fresh streams — the frontier churns exactly where
     // players stopped caring, and nowhere else.
@@ -2845,6 +2857,40 @@ export class GameServer {
     if (this.poiHavens.size > 0) {
       console.log(`[poi] ${this.poiHavens.size} haven lamp(s) burning on the frontier`);
     }
+  }
+
+  /**
+   * Re-roll every decided site whose footprint collides with a zone
+   * rect it predates (fallowSweep's shape, rect-triggered). Runs at
+   * boot before anything materializes, so retire is pure bookkeeping.
+   */
+  private zonePlanSweep(): number {
+    if (!this.poiPrefabs) return 0;
+    const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
+    let evicted = 0;
+    for (const [key, row] of this.poiLedger) {
+      if (row.site === null || !poiSiteBlocked(row.site, ctx)) continue;
+      const { cellX, cellY } = row.site;
+      this.retirePoiCell(key);
+      const epoch = row.epoch + 1;
+      const site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx);
+      this.accounts.recordPoiCell(
+        cellX,
+        cellY,
+        epoch,
+        site && {
+          poiId: site.defId,
+          prefabId: site.prefabId,
+          tier: site.tier,
+          anchorX: site.anchorX,
+          anchorY: site.anchorY,
+        },
+      );
+      this.poiLedger.set(key, { epoch, site, clearedAt: null });
+      evicted++;
+    }
+    if (evicted > 0) this.rebuildHavens();
+    return evicted;
   }
 
   /** Real days a cleared cell lies fallow before the epoch turns it. */
@@ -6291,6 +6337,10 @@ export class GameServer {
       if (ground !== Tile.Grass && ground !== Tile.GrassTall) continue;
       const spotTier = this.liveDangerTier(tx, ty);
       if (spotTier === 0) continue;
+      // Roads read as traveled: no ambient body musters within earshot
+      // of the carved routes (danger tiers still apply on them — a
+      // tier-4 road is quiet, never safe).
+      if (roadDistanceAt(config.worldSeed, tx, ty) <= ROAD_CALM) continue;
       const biome = groundProbeAt(config.worldSeed, tx, ty);
       if (biome !== 'grass' && biome !== 'forest') continue;
       const candidates = wildCandidates(spotTier, biome, hours);

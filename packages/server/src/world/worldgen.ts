@@ -7,6 +7,20 @@ import {
   hashCoords,
   type ChunkData,
 } from '@devcraft/shared';
+import {
+  ROAD_APRON,
+  ROAD_HALF,
+  ROAD_SHOULDER,
+  TRAIL_APRON,
+  TRAIL_HALF,
+  TRAIL_SHOULDER,
+  fieldApronAt,
+  massifAt,
+  nearRoads,
+  roadDistanceAt,
+  roadHitAt,
+  thornveilAt,
+} from '@devcraft/content';
 
 /**
  * Procedural wilderness. Elevation and moisture fields pick a biome per
@@ -35,7 +49,14 @@ export function elevationAt(seed: number, tx: number, ty: number): number {
   // settled hearth the world grows out from.
   const distFromOrigin = Math.hypot(tx + 64, ty - 48);
   const lift = Math.max(0, 1 - distFromOrigin / 400);
-  return elevation * (1 - lift * 0.6) + 0.55 * lift * 0.6;
+  elevation = elevation * (1 - lift * 0.6) + 0.55 * lift * 0.6;
+  // The Silverspine lift: the massif rides past the continental
+  // shelf's edge, so the mountain province around Silverfall is high
+  // dry ground on every seed — with room left in the blend for the
+  // odd tarn where the base noise dips.
+  const m = massifAt(tx, ty);
+  if (m > 0) elevation = elevation * (1 - m * 0.5) + 0.62 * m * 0.5;
+  return elevation;
 }
 
 /**
@@ -48,9 +69,20 @@ const PLATEAU_T1 = 0.615;
 const PLATEAU_T2 = 0.705;
 
 export function plateauFieldAt(seed: number, tx: number, ty: number): number {
-  const f = fbm(seed + 31337, tx * 0.012, ty * 0.012, 3);
+  let f = fbm(seed + 31337, tx * 0.012, ty * 0.012, 3);
+  // The Silverspine bias: crag country guaranteed around Silverfall —
+  // mesa-dominant at the heart, breaking into plateaus and valley
+  // floors toward the rim. The noise still decides every edge.
+  f += massifAt(tx, ty) * 0.24;
   const distFromTown = Math.hypot(tx + 64, ty - 48);
-  return f - Math.max(0, 1 - distFromTown / 130) * 0.45;
+  f -= Math.max(0, 1 - distFromTown / 130) * 0.45;
+  // Planned-zone aprons: plateaus hold a short walk off new town
+  // borders (their fence is on their own crown, so this is mostly
+  // aesthetics: no cliff wall jammed against a gate). Strength 0.65
+  // beats the theoretical field maximum (1.0 noise + 0.24 massif −
+  // 0.65 < the level-1 threshold), so rect interiors are GUARANTEED
+  // flat canvases for their zone builds.
+  return f - fieldApronAt(tx, ty, 28) * 0.65;
 }
 
 /**
@@ -76,7 +108,12 @@ export function basinFieldAt(seed: number, tx: number, ty: number): number {
   if (ty >= DARK_BAND_Y) return 0; // caves carve the underworld, not basins
   const f = fbm(seed + 77713, tx * 0.012, ty * 0.012, 3);
   const distFromTown = Math.hypot(tx + 64, ty - 48);
-  return f - Math.max(0, 1 - distFromTown / 200) * 0.6;
+  // Legacy Dawnmead radial + planned-zone rect aprons: a basin's
+  // fence lives INSIDE its rim, so it keeps a generous distance from
+  // every authored border, future ones included.
+  return (
+    f - Math.max(0, 1 - distFromTown / 200) * 0.6 - fieldApronAt(tx, ty, 64) * 0.6
+  );
 }
 
 function levelOf(pf: number, bf: number, elevation: number): number {
@@ -98,6 +135,16 @@ function levelOf(pf: number, bf: number, elevation: number): number {
  */
 export function sandbarAt(seed: number, tx: number, ty: number): boolean {
   return fbm(seed + 51151, tx * 0.035, ty * 0.035, 2) > 0.64;
+}
+
+/**
+ * Moisture decides meadow vs forest and how thick the canopy grows.
+ * The Thornveil bias guarantees the deep wood across Silverfall's
+ * approach: near the veil's heart the whole band reads damp forest,
+ * with the willow/moonbell thresholds coming into reach.
+ */
+export function moistureAt(seed: number, tx: number, ty: number): number {
+  return fbm(seed + 9999, tx * 0.03, ty * 0.03, 3) + thornveilAt(tx, ty) * 0.3;
 }
 
 /** Below this world-y everything defaults to solid cave (dungeon land). */
@@ -129,8 +176,10 @@ export function groundProbeAt(seed: number, tx: number, ty: number): GroundClass
   if (e < 0.37) return 'water';
   if (e < 0.4) return 'sand';
   if (levelAt(seed, tx, ty) !== 0) return 'rock';
-  const moisture = fbm(seed + 9999, tx * 0.03, ty * 0.03, 3);
-  return moisture > 0.62 ? 'forest' : 'grass';
+  // Roads read as not-standable so no POI footprint ever severs one —
+  // camps prey on the road from beside it, never across it.
+  if (roadDistanceAt(seed, tx, ty) <= ROAD_SHOULDER) return 'rock';
+  return moistureAt(seed, tx, ty) > 0.62 ? 'forest' : 'grass';
 }
 
 /** Sampled-neighborhood margin: rim checks 1 + ramp-top interior 1 + talus 1. */
@@ -153,16 +202,36 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
   const N = CHUNK_SIZE + M * 2;
   const el = new Float64Array(N * N);
   const lv = new Int8Array(N * N); // signed: sinks store negative levels
+  // Road distances, only for chunks a route passes near (the frontier
+  // at large skips the whole field). THE ROAD LEARNS THE LAND: inside
+  // the graded ribbon terrain levels are forced flat, so the carve
+  // cuts cliff-walled passages through crag country and embanks
+  // walled causeways across dells — and because the forcing reaches
+  // ROAD_APRON while the trodden surface stops at ROAD_HALF, the
+  // cliff fence the level law grows always lands on the ribbon's
+  // hem, never on the road itself.
+  const roadNear = nearRoads(baseX - M, baseY - M, baseX + CHUNK_SIZE + M, baseY + CHUNK_SIZE + M);
+  const rd = roadNear ? new Float64Array(N * N).fill(Infinity) : null;
+  const rtrail = roadNear ? new Uint8Array(N * N) : null;
   for (let ly = -M; ly < CHUNK_SIZE + M; ly++) {
     for (let lx = -M; lx < CHUNK_SIZE + M; lx++) {
       const e = elevationAt(seed, baseX + lx, baseY + ly);
       const i = lx + M + (ly + M) * N;
       el[i] = e;
-      lv[i] = levelOf(
+      let level = levelOf(
         plateauFieldAt(seed, baseX + lx, baseY + ly),
         basinFieldAt(seed, baseX + lx, baseY + ly),
         e,
       );
+      if (rd && rtrail) {
+        const hit = roadHitAt(seed, baseX + lx, baseY + ly);
+        if (hit) {
+          rd[i] = hit.dist;
+          rtrail[i] = hit.trail ? 1 : 0;
+          if (hit.dist <= (hit.trail ? TRAIL_APRON : ROAD_APRON)) level = 0;
+        }
+      }
+      lv[i] = level;
     }
   }
   const L = (lx: number, ly: number): number => lv[lx + M + (ly + M) * N]!;
@@ -267,7 +336,7 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
 
       const elevation = E(lx, ly);
       const lvl = L(lx, ly);
-      const moisture = fbm(seed + 9999, tx * 0.03, ty * 0.03, 3);
+      const moisture = moistureAt(seed, tx, ty);
       const roll = hashCoords(seed ^ 0xabcdef, tx, ty) / 4294967296;
 
       let ground: Tile;
@@ -471,9 +540,49 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
         }
       }
 
+      // The road carve, last word on the surface: the trodden track
+      // becomes Path (Bridge over water — the road narrows to a span
+      // while the graded verge stays wet), and the shoulder is felled
+      // — trees, loose boulders, the odd lost chest — while ore veins,
+      // berry banks, and the herb layer stay: the road was cleared by
+      // people who kept what was worth keeping. Cliff and Ramp are
+      // NEVER touched here; the fence law owns them.
+      if (rd && rtrail) {
+        const gi = lx + M + (ly + M) * N;
+        const dist = rd[gi]!;
+        const trail = rtrail[gi] === 1;
+        if (dist <= (trail ? TRAIL_HALF : ROAD_HALF)) {
+          if (elevation < 0.37) {
+            // Water crossings: the built road bridges in earnest, the
+            // trail throws a plank span — same tile, the deck reads.
+            ground = Tile.Bridge;
+            detail = Detail.None;
+          } else {
+            ground = trail ? Tile.Dirt : Tile.Path;
+            detail = !trail && roll > 0.94 ? Detail.Pebbles : Detail.None;
+          }
+        } else if (dist <= (trail ? TRAIL_SHOULDER : ROAD_SHOULDER) && ROAD_FELLED.has(ground)) {
+          ground = roll < 0.05 ? Tile.Stump : Tile.Grass;
+          detail = roll > 0.88 ? Detail.Tuft : Detail.None;
+        }
+      }
+
       chunk.ground[i] = ground;
       chunk.detail[i] = detail;
     }
   }
   return chunk;
 }
+
+/**
+ * What the road crews felled from the shoulders. Everything else —
+ * ore, forage, water, and above all the Cliff/Ramp fence — stands.
+ */
+const ROAD_FELLED: ReadonlySet<number> = new Set([
+  Tile.Tree,
+  Tile.TreeOak,
+  Tile.TreeWillow,
+  Tile.TreeYew,
+  Tile.Rock,
+  Tile.ChestWood,
+]);

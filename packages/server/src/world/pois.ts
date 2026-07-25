@@ -12,6 +12,7 @@ import {
   type DangerAnchor,
 } from '@devcraft/shared';
 import {
+  PLANNED_ZONE_RECTS,
   POI_DEFS,
   POI_PREFABS,
   dangerLaw,
@@ -815,7 +816,12 @@ export function previewPoi(
   return null;
 }
 
-/** The default context over the live zone list. */
+/**
+ * The default context over the live zone list — PLUS the master plan's
+ * planned zone rects (Amberford, Silverfall), so the frontier keeps
+ * out of streets that haven't been built yet. A rect listed twice
+ * (planned AND registered) costs one redundant intersection test.
+ */
 export function poiContext(
   anchors: readonly DangerAnchor[],
   zones: readonly ZoneDef[],
@@ -823,10 +829,28 @@ export function poiContext(
 ): PoiContext {
   return {
     anchors,
-    zoneRects: zones
-      .filter((z) => !z.id.startsWith('poi:'))
-      .map((z) => ({ x: z.origin.x, y: z.origin.y, w: z.width, h: z.height })),
+    zoneRects: [
+      ...zones
+        .filter((z) => !z.id.startsWith('poi:'))
+        .map((z) => ({ x: z.origin.x, y: z.origin.y, w: z.width, h: z.height })),
+      ...PLANNED_ZONE_RECTS,
+    ],
     defs: [...POI_DEFS.values()],
     prefabs,
   };
+}
+
+/**
+ * Would this decided site's footprint collide with the context's zone
+ * rects today? The site-pick honors zones only at ROLL time, so a rect
+ * planned after a cell was decided needs this retro check — the boot
+ * sweep re-rolls any row it flags. A site whose prefab has left the
+ * library counts as blocked (it can never compose again anyway).
+ */
+export function poiSiteBlocked(site: PoiSite, ctx: PoiContext): boolean {
+  const prefab = ctx.prefabs.get(site.prefabId);
+  if (!prefab) return true;
+  const fx0 = site.anchorX - Math.floor(prefab.width / 2);
+  const fy0 = site.anchorY - Math.floor(prefab.height / 2);
+  return intersectsZones(fx0, fy0, prefab.width, prefab.height, ctx.zoneRects);
 }

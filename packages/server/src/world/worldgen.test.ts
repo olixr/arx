@@ -8,8 +8,23 @@ import {
   encodeChunk,
   isSolidTile,
 } from '@devcraft/shared';
-import { buildDawnmead } from '@devcraft/content';
-import { basinFieldAt, generateChunk } from './worldgen.js';
+import {
+  AMBERFORD_RECT,
+  ROAD_ROUTES,
+  SILVERFALL_RECT,
+  SILVERSPINE,
+  THORNVEIL,
+  buildDawnmead,
+  roadDistanceAt,
+  roadHitAt,
+} from '@devcraft/content';
+import {
+  basinFieldAt,
+  elevationAt,
+  generateChunk,
+  levelAt,
+  moistureAt,
+} from './worldgen.js';
 import { WorldSource } from './worldSource.js';
 
 /**
@@ -316,6 +331,173 @@ test('chunk codec round-trips the elevation layer, negatives included', () => {
   const decoded = decodeChunk(r);
   assert.deepEqual(Array.from(decoded.elev), Array.from(chunk.elev));
   assert.deepEqual(Array.from(decoded.ground), Array.from(chunk.ground));
+});
+
+// --------------------------------------------------------------------
+// Epic 1 — the land learns its shape: roads, the Silverspine, the
+// Thornveil, and the planned-zone aprons.
+// --------------------------------------------------------------------
+
+/** Every route sampled at ~2-tile steps along its polyline. */
+function routeSamples(routeId: string): Array<[number, number]> {
+  const route = ROAD_ROUTES.find((r) => r.id === routeId)!;
+  const out: Array<[number, number]> = [];
+  for (let i = 0; i < route.pts.length - 1; i++) {
+    const a = route.pts[i]!;
+    const b = route.pts[i + 1]!;
+    const seg = Math.hypot(b.x - a.x, b.y - a.y);
+    for (let s = 0; s < seg; s += 2) {
+      out.push([
+        Math.round(a.x + ((b.x - a.x) * s) / seg),
+        Math.round(a.y + ((b.y - a.y) * s) / seg),
+      ]);
+    }
+  }
+  return out;
+}
+
+test('roads carve a walkable surface end to end', () => {
+  const seed = 1337;
+  const chunkCache = new Map<string, ReturnType<typeof generateChunk>>();
+  const groundAt = (tx: number, ty: number): number => {
+    const cx = Math.floor(tx / CHUNK_SIZE);
+    const cy = Math.floor(ty / CHUNK_SIZE);
+    const key = `${cx},${cy}`;
+    let c = chunkCache.get(key);
+    if (!c) {
+      c = generateChunk(seed, cx, cy);
+      chunkCache.set(key, c);
+    }
+    return c.ground[(ty - cy * CHUNK_SIZE) * CHUNK_SIZE + (tx - cx * CHUNK_SIZE)]!;
+  };
+  for (const route of ROAD_ROUTES) {
+    const surface = new Set<number>(
+      route.kind === 'trail' ? [Tile.Dirt, Tile.Bridge] : [Tile.Path, Tile.Bridge],
+    );
+    for (const [px, py] of routeSamples(route.id)) {
+      // The wander can push the carved centerline a couple of tiles off
+      // the authored polyline — find the nearest carved tile and check
+      // THAT (the surface the player actually walks).
+      let found: number | null = null;
+      outer: for (let r = 0; r <= 4; r++) {
+        for (let dy = -r; dy <= r; dy++) {
+          for (let dx = -r; dx <= r; dx++) {
+            const g = groundAt(px + dx, py + dy);
+            if (surface.has(g)) {
+              found = g;
+              break outer;
+            }
+          }
+        }
+      }
+      assert.ok(
+        found !== null,
+        `${route.name}: no carved surface within 4 tiles of (${px},${py})`,
+      );
+      assert.ok(!isSolidTile(found), `${route.name}: solid surface tile at (${px},${py})`);
+    }
+  }
+});
+
+test('road cuttings keep the fence law: no walkable level step off the carve', () => {
+  // The carve forces terrain levels flat inside the ribbon; the cliff
+  // fence must land on the ribbon hem, never on the trodden surface,
+  // and every level change around a cutting must still be fenced.
+  const seed = 1337;
+  // Find High Road chunks that cut through raised country.
+  const cuts = new Set<string>();
+  for (const [px, py] of routeSamples('high_road')) {
+    for (const [dx, dy] of [[-6, 0], [6, 0], [0, -6], [0, 6]] as const) {
+      if (levelAt(seed, px + dx, py + dy) > 0) {
+        cuts.add(`${Math.floor(px / CHUNK_SIZE)},${Math.floor(py / CHUNK_SIZE)}`);
+      }
+    }
+  }
+  assert.ok(cuts.size >= 3, `expected the High Road to cut raised country, found ${cuts.size}`);
+  for (const key of [...cuts].slice(0, 6)) {
+    const [cx, cy] = key.split(',').map(Number) as [number, number];
+    const tiles = tileBlock(seed, cx, cy);
+    for (const [tkey, t] of tiles) {
+      if (isSolidTile(t.g) || t.g === Tile.Ramp) continue;
+      const [x, y] = tkey.split(',').map(Number) as [number, number];
+      for (const [dx, dy] of [[1, 0], [0, 1]] as const) {
+        const n = tiles.get(`${x + dx},${y + dy}`);
+        if (!n || isSolidTile(n.g) || n.g === Tile.Ramp) continue;
+        assert.equal(
+          t.e,
+          n.e,
+          `unfenced level step beside the road at (${x},${y})→(${x + dx},${y + dy})`,
+        );
+      }
+    }
+  }
+});
+
+test('the Silverspine stands: crag country cradles the Silverfall rect', () => {
+  const seed = 1337;
+  let n = 0;
+  let raised = 0;
+  let water = 0;
+  const inRect = (tx: number, ty: number): boolean =>
+    tx >= SILVERFALL_RECT.x &&
+    tx < SILVERFALL_RECT.x + SILVERFALL_RECT.w &&
+    ty >= SILVERFALL_RECT.y &&
+    ty < SILVERFALL_RECT.y + SILVERFALL_RECT.h;
+  for (let ty = SILVERSPINE.y - 105; ty < SILVERSPINE.y + 105; ty += 3) {
+    for (let tx = SILVERSPINE.x - 105; tx < SILVERSPINE.x + 105; tx += 3) {
+      if (Math.hypot(tx - SILVERSPINE.x, ty - SILVERSPINE.y) > 105) continue;
+      if (inRect(tx, ty)) continue; // the city rect is a flat canvas by design
+      n++;
+      if (elevationAt(seed, tx, ty) < 0.37) water++;
+      else if (levelAt(seed, tx, ty) >= 1) raised++;
+    }
+  }
+  assert.ok(raised / n > 0.3, `massif heart ring only ${((raised / n) * 100).toFixed(1)}% raised`);
+  assert.ok(water / n < 0.08, `massif heart ring is ${((water / n) * 100).toFixed(1)}% water`);
+});
+
+test('the Thornveil is a true wood', () => {
+  const seed = 1337;
+  let n = 0;
+  let forest = 0;
+  for (let ty = THORNVEIL.y - 112; ty < THORNVEIL.y + 112; ty += 3) {
+    for (let tx = THORNVEIL.x - 112; tx < THORNVEIL.x + 112; tx += 3) {
+      if (Math.hypot(tx - THORNVEIL.x, ty - THORNVEIL.y) > 112) continue;
+      if (elevationAt(seed, tx, ty) < 0.4 || levelAt(seed, tx, ty) !== 0) continue;
+      n++;
+      if (moistureAt(seed, tx, ty) > 0.62) forest++;
+    }
+  }
+  assert.ok(forest / n > 0.35, `Thornveil core only ${((forest / n) * 100).toFixed(1)}% forest`);
+});
+
+test('planned zone rects are flat canvases: no levels, no basins inside', () => {
+  const seed = 1337;
+  for (const rect of [AMBERFORD_RECT, SILVERFALL_RECT]) {
+    for (let ty = rect.y; ty < rect.y + rect.h; ty += 5) {
+      for (let tx = rect.x; tx < rect.x + rect.w; tx += 5) {
+        assert.equal(
+          levelAt(seed, tx, ty),
+          0,
+          `terrain level inside planned rect at (${tx},${ty})`,
+        );
+      }
+    }
+  }
+});
+
+test('roads read as not-standable to the POI probe and calm to the wilds', () => {
+  const seed = 1337;
+  // Centerline distances are ~0; the probe treats the whole shoulder
+  // as rock so no POI footprint can sever a route.
+  const samples = routeSamples('high_road');
+  for (let k = 0; k < samples.length; k += 10) {
+    const [px, py] = samples[k]!;
+    const hit = roadHitAt(seed, px, py);
+    assert.ok(hit !== null && hit.dist < 6, `route sample (${px},${py}) reads far from its road`);
+  }
+  // And far country is genuinely Infinity — the frontier skips the field.
+  assert.equal(roadDistanceAt(seed, 5000, 5000), Infinity);
 });
 
 test('chunk boundaries are seamless (tiles agree across the seam)', () => {
