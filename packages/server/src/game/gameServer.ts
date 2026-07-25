@@ -6101,7 +6101,9 @@ export class GameServer {
       if (!base) continue;
       // The band lifts what it must: a tier-4 wolf is a dire threat,
       // but a stag never becomes one — prey keeps its authored level.
-      const bandMin = law.npcLevel[0];
+      // The SPOT's law, not the player's: a jitter pocket of calmer
+      // ground grows calmer beasts, exactly as the field reads there.
+      const bandMin = dangerLaw(spotTier).npcLevel[0];
       const def =
         base.aggroRange > 0 && base.level < bandMin
           ? scaleNpcDef(base, bandMin + (Math.floor(Math.random() * 3) - 1))
