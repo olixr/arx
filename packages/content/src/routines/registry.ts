@@ -7,6 +7,7 @@ import plazaIdler from './defs/plaza_idler.json';
 import roadWanderer from './defs/road_wanderer.json';
 import shopkeeperHours from './defs/shopkeeper_hours.json';
 import smithDay from './defs/smith_day.json';
+import waystationKeeper from './defs/waystation_keeper.json';
 
 /**
  * Every authored routine JSON, registered here. A def that isn't
@@ -21,6 +22,7 @@ const SOURCES: readonly unknown[] = [
   roadWanderer,
   shopkeeperHours,
   smithDay,
+  waystationKeeper,
 ];
 
 function buildRegistry(): ReadonlyMap<string, RoutineDef> {

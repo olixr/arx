@@ -104,7 +104,7 @@ function stampRoll(
   // ever walked — and the tier's power with seeded jitter.
   if (def.dungeonKey) {
     const allowed = floorRarities(RARITY_TIERS, table.minRarity);
-    const weights = dropRarityWeights(ctx.level + (table.rarityBonus ?? 0));
+    const weights = dropRarityWeights(ctx.level + (table.rarityBonus ?? 0) + (ctx.rarityBonus ?? 0));
     const rar = pickRarity(weights, allowed, ctx.rand);
     const seed = Math.floor(ctx.rand() * 0x100000000) >>> 0;
     return { rar, seed, pwr: mintKeyPower(rar, seed) };
@@ -113,7 +113,7 @@ function stampRoll(
   const rollable = force || gear?.acquisition.drop || def.relic || def.sigil;
   if (!rollable) return undefined;
   const allowed = floorRarities(gear?.rarities ?? RARITY_TIERS, table.minRarity);
-  const weights = dropRarityWeights(ctx.level + (table.rarityBonus ?? 0));
+  const weights = dropRarityWeights(ctx.level + (table.rarityBonus ?? 0) + (ctx.rarityBonus ?? 0));
   const roll = makeRoll(pickRarity(weights, allowed, ctx.rand));
   if ((table.power ?? 'source') === 'source') {
     const native = gear?.levelReq?.level ?? 0;

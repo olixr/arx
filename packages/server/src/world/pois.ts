@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { join } from 'node:path';
 import {
   DANGER_BAND,
+  TILE_DEFS,
   TILE_SKIP,
   Tile,
   chestInfo,
@@ -18,6 +19,7 @@ import {
   prefabToJson,
   type PoiDef,
   type PrefabDef,
+  type ZoneActorSpawn,
   type ZoneDef,
   type ZoneSpawn,
 } from '@devcraft/content';
@@ -404,7 +406,9 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
     });
   }
 
-  // Garrison muster.
+  // Garrison muster. A name pool crowns the site's own champion —
+  // hash-picked once, stable forever (the hill has always been
+  // Korga's), winning over any static name.
   const holdR = Math.max(2, Math.min(prefab.width, prefab.height) / 2 - 1);
   const sentryWants: Array<{
     npc: string;
@@ -418,6 +422,9 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
     const count =
       g.count[0] + (hashCoords(musterBase, gi, 13) % (g.count[1] - g.count[0] + 1));
     if (count <= 0) continue;
+    const gname = g.names
+      ? g.names[hashCoords(musterBase, gi, 41) % g.names.length]
+      : g.name;
     if (g.role === 'holdfast') {
       spawns.push({
         npc: g.npc,
@@ -426,7 +433,7 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
         radius: holdR,
         count,
         level: levelRoll(n++) + (g.levelOffset ?? 0),
-        name: g.name,
+        name: gname,
         hours: g.hours,
       });
     } else {
@@ -434,7 +441,7 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
         sentryWants.push({
           npc: g.npc,
           level: levelRoll(n++) + (g.levelOffset ?? 0),
-          name: g.name,
+          name: gname,
           patrol: g.patrol,
           hours: g.hours,
         });
@@ -445,10 +452,13 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
   // Sentry ring: 12 bearings probed for standable ground, kept in
   // ANGULAR order (the patrol loop walks them) and also scored by how
   // squarely they face the townward bearing computed above — the camp
-  // watches the road in.
-  if (sentryWants.length > 0) {
+  // watches the road in. Friendly watch actors share the same ring:
+  // the Wayward Watch stands exactly where a goblin sentry would,
+  // because both are watching the same road.
+  const staff = def.actors ?? [];
+  const ring: Array<{ x: number; y: number; score: number }> = [];
+  if (sentryWants.length > 0 || staff.some((s) => s.post === 'watch')) {
     const ringR = Math.max(prefab.width, prefab.height) / 2 + 5;
-    const ring: Array<{ x: number; y: number; score: number }> = [];
     for (let b = 0; b < 12; b++) {
       const ang = (b / 12) * Math.PI * 2;
       const dirX = Math.cos(ang);
@@ -458,7 +468,10 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
       if (!standable(groundProbeAt(seed, px, py))) continue;
       ring.push({ x: px + 0.5, y: py + 0.5, score: dirX * ax + dirY * ay });
     }
-    const byScore = [...ring].sort((a, b) => b.score - a.score);
+  }
+  const byScore = [...ring].sort((a, b) => b.score - a.score);
+  const sentryWatchPosts = sentryWants.filter((w) => !w.patrol).length;
+  if (sentryWants.length > 0) {
     const patrollers = sentryWants.filter((w) => w.patrol);
     const watchers = sentryWants.filter((w) => !w.patrol);
     // Standing watchers take the townward posts, best bearing first.
@@ -515,6 +528,95 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
     }
   }
 
+  // ---- THE FRIENDLY STAFF + carried placements.
+  const actorSpawns: ZoneActorSpawn[] = [];
+  // Prefab-authored actors ride the stamp verbatim (curated posts).
+  for (const a of prefab.actorSpawns) {
+    actorSpawns.push({
+      actor: a.actor,
+      x: originX + pad + a.dx + 0.5,
+      y: originY + pad + a.dy + 0.5,
+      ...(a.dir !== undefined ? { dir: a.dir } : {}),
+      ...(a.routine !== undefined ? { routine: a.routine } : {}),
+    });
+  }
+  if (staff.length > 0) {
+    // Hearth posts: open tiles beside the prefab's campfire when it
+    // keeps one (the keeper stands BY the fire — semantic placement,
+    // not a coordinate), else the first open tiles around the anchor.
+    // Solid props (the stall, the crates) are never a post.
+    const open = (zx: number, zy: number): boolean => {
+      if (zx < 0 || zy < 0 || zx >= zw || zy >= zh) return false;
+      const t = ground[zy * zw + zx]!;
+      return t !== TILE_SKIP && !TILE_DEFS[t as Tile]!.solid;
+    };
+    let fireZ: { x: number; y: number } | null = null;
+    for (let i = 0; i < ground.length; i++) {
+      if (ground[i] === Tile.Campfire) {
+        fireZ = { x: i % zw, y: Math.floor(i / zw) };
+        break;
+      }
+    }
+    const heart = fireZ ?? { x: site.anchorX - originX, y: site.anchorY - originY };
+    const hearthSpots: Array<{ x: number; y: number; dir: number }> = [];
+    for (let r = 1; r <= 4 && hearthSpots.length < 6; r++) {
+      for (let dy = -r; dy <= r && hearthSpots.length < 6; dy++) {
+        for (let dx = -r; dx <= r && hearthSpots.length < 6; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const zx = heart.x + dx;
+          const zy = heart.y + dy;
+          if (!open(zx, zy)) continue;
+          hearthSpots.push({
+            x: originX + zx + 0.5,
+            y: originY + zy + 0.5,
+            // Face the fire — the keeper minds the pot, not the void.
+            dir: Math.atan2(heart.y - zy, heart.x - zx),
+          });
+        }
+      }
+    }
+    let hearthI = 0;
+    let watchI = 0;
+    for (const [ei, entry] of staff.entries()) {
+      const slug = entry.pool[hashCoords(musterBase ^ 0x37, ei, 3) % entry.pool.length]!;
+      if (entry.post === 'hearth') {
+        const spot = hearthSpots[hearthI++];
+        if (!spot) continue; // a prefab with no open interior posts nobody
+        actorSpawns.push({
+          actor: slug,
+          x: spot.x,
+          y: spot.y,
+          dir: spot.dir,
+          ...(entry.routine !== undefined ? { routine: entry.routine } : {}),
+        });
+      } else {
+        // Watch posts continue past the hostile sentries' claims, best
+        // townward bearing first; with no honest ring the watch falls
+        // back to the hearth (a guard indoors beats no guard).
+        const post = byScore[sentryWatchPosts + watchI++];
+        const spot = post ?? hearthSpots[hearthI++];
+        if (!spot) continue;
+        actorSpawns.push({
+          actor: slug,
+          x: spot.x,
+          y: spot.y,
+          // The watch faces down the road players arrive by.
+          dir: Math.atan2(ay, ax),
+          ...(entry.routine !== undefined ? { routine: entry.routine } : {}),
+        });
+      }
+    }
+  }
+
+  // Prefab portals ride the stamp — a delve gate in the sketch is a
+  // WORKING riftgate in the world (worldSource indexes zone portals).
+  const portals = prefab.portals.map((p) => ({
+    x: originX + pad + p.dx,
+    y: originY + pad + p.dy,
+    ...(p.dest !== undefined ? { dest: p.dest } : {}),
+    ...(p.delve !== undefined ? { delve: p.delve } : {}),
+  }));
+
   return {
     id: poiZoneId(site.cellX, site.cellY),
     name: def.name,
@@ -525,6 +627,8 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
     detail,
     elev: undefined, // flat: the site scan guaranteed level-0 ground
     spawns,
+    ...(actorSpawns.length > 0 ? { actorSpawns } : {}),
+    ...(portals.length > 0 ? { portals } : {}),
   };
 }
 

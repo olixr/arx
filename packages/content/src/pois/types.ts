@@ -43,6 +43,34 @@ export interface PoiGarrisonEntry {
    * after dusk, hounds that hunt at night. Absent = round the clock.
    */
   hours?: { from: number; to: number };
+  /**
+   * Champion name pool: the site hash picks ONE display name from it
+   * (stable per site, forever — the champion of that hill has always
+   * been Korga Hillbreaker). Wins over `name`. Meant for count [1,1]
+   * entries — a pool names one body per site, not a platoon.
+   */
+  names?: readonly string[];
+}
+
+/**
+ * Friendly staff placed at compose time — the waystation vocabulary.
+ * Identity stays in NpcActorDef (the actor/archetype/placement split);
+ * this is pure placement: WHO (hash-picked from a pool, so two
+ * waystations keep different traders) and WHERE (semantic posts, not
+ * coordinates — the composer knows the site's shape and the townward
+ * bearing, the def only states intent).
+ */
+export interface PoiActorEntry {
+  /** Actor slugs — the site hash picks ONE identity per entry. */
+  pool: readonly string[];
+  /**
+   * hearth = beside the anchor (the fire, the stall — the heart of
+   * the site); watch = posted on the approach ring facing the
+   * townward road, the way players come.
+   */
+  post: 'hearth' | 'watch';
+  /** RoutineDef id bound at the placement (post-is-the-origin law). */
+  routine?: string;
 }
 
 /**
@@ -92,4 +120,37 @@ export interface PoiDef {
   chestTierBonus?: number;
   /** Approach cues stamped around the footprint at compose time. */
   cues?: PoiCues;
+  /**
+   * Friendly staff — placed semantically at compose time (hearth
+   * cluster, townward watch posts). A def with actors is a civilized
+   * site; its bodies come from the actor registry with all its laws
+   * (disposition, protection, dialogue bindings, shops) intact.
+   */
+  actors?: readonly PoiActorEntry[];
+  /**
+   * A materialized site with a haven becomes a runtime danger anchor
+   * (DangerAnchor.haven — the lamp, not the hearth): tier 0 inside
+   * safeR, graded relief on the rim, no reach beyond it. Civilization
+   * genuinely pushes the danger back, and the field stays the single
+   * source of truth.
+   */
+  haven?: { safeR: number };
+  /**
+   * Loot-table override for the site's strongboxes — the dungeon-mouth
+   * key faucet rides this. Absent = the chest kind's own table.
+   */
+  chestLoot?: string;
+  /**
+   * The strongbox stays WARDED while any garrison body stands — the
+   * champion's cache cannot be sneaked out from under him. Cleared
+   * garrison = the ward breaks until the respawn clock refills it.
+   */
+  chestWarded?: boolean;
+  /**
+   * character_flags key stamped on the player who fells the LAST
+   * garrison body — the hook that turns a broken warcamp into story
+   * (dialogue requires/forbids read the same ledger). Never 'dlg:'
+   * (the dialogue system owns that namespace).
+   */
+  clearedFlag?: string;
 }

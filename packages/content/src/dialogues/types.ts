@@ -55,11 +55,23 @@ export interface DialogueHookGive {
 }
 
 /**
+ * Open the named shop when this conversation ENDS WELL (terminal node
+ * reached or a farewell picked — never on Esc or an interrupt): the
+ * trader says "have a look" and the shelf appears as the frame drops.
+ * This is how a shopkeeper keeps both a voice and a counter — the
+ * dialogue outranks the shop on interact, so the shop rides a hook.
+ */
+export interface DialogueHookShop {
+  kind: 'shop';
+  shop: string;
+}
+
+/**
  * Node effects, executed server-side when the node is entered. This
  * union is THE open socket: quest grants, faction shifts, and shop
- * unlocks will land here as new kinds without touching the walk logic.
+ * unlocks land here as new kinds without touching the walk logic.
  */
-export type DialogueHook = DialogueHookFlag | DialogueHookGive;
+export type DialogueHook = DialogueHookFlag | DialogueHookGive | DialogueHookShop;
 
 /** One answer the player may pick (at most 4 per node). */
 export interface DialogueChoice {

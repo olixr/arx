@@ -511,6 +511,19 @@ const defs: LootTableDef[] = [
       { item: 'crimson_essence', qty: [2, 4], chance: 0.5 },
     ],
   },
+  {
+    id: 'chest_riftgate',
+    desc: 'The gatekeeper’s cache: a dungeon key near-certain, and the kit of whoever failed to turn it.',
+    rarityBonus: 3,
+    entries: [
+      { item: 'coins', qty: [30, 90] },
+      { item: 'dungeon_key', chance: 0.75 },
+      { item: 'brass_key', chance: 0.12 },
+      { item: 'arcane_dust', qty: [2, 5], chance: 0.6 },
+      { item: 'storm_essence', qty: [1, 2], chance: 0.25 },
+      { table: 'crypt_arms', mult: 2 },
+    ],
+  },
 
   // ------------------------------------------------------- wolf packs
   {

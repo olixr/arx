@@ -91,4 +91,10 @@ export interface LootCtx {
   level: number;
   /** Randomness source — inject a seeded fn for deterministic tests. */
   rand: () => number;
+  /**
+   * Context rarity bonus stacked ON TOP of the table's own — the
+   * danger field's reader (a chest opened in tier-4 land pays the
+   * tier's bonus without the table knowing where it stood).
+   */
+  rarityBonus?: number;
 }

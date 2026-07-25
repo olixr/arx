@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { TILE_SKIP, Tile, chestInfo } from '@devcraft/shared';
+import { TILE_DEFS, TILE_SKIP, Tile, chestInfo, closedChestTile } from '@devcraft/shared';
 import {
   POI_DEFS,
   POI_PREFABS,
@@ -83,7 +83,11 @@ test('composed zones muster inside the tier laws', () => {
   for (const site of scanSites()) {
     const zone = composePoi(SEED, site, CTX)!;
     assert.ok(zone, 'compose failed for a decided site');
-    assert.ok(zone.spawns && zone.spawns.length > 0, `${zone.id} has no garrison`);
+    // Somebody must hold every site: a garrison, or friendly staff.
+    assert.ok(
+      (zone.spawns?.length ?? 0) > 0 || (zone.actorSpawns?.length ?? 0) > 0,
+      `${zone.id} stands empty — no garrison, no staff`,
+    );
     const def = POI_DEFS.get(site.defId)!;
     const law = dangerLaw(site.tier);
     const maxOffset = Math.max(0, ...def.garrison.map((g) => g.levelOffset ?? 0));
@@ -140,7 +144,15 @@ test('settled cells never host POIs, even forced', () => {
 });
 
 test('approach cues live in the fringe and never touch the prefab or unnatural ground', () => {
-  const cueTiles = new Set<number>([Tile.Grass, Tile.Stump, Tile.Dirt, Tile.BonePile, Tile.BannerPole]);
+  // The cue vocabulary: the fixed clearing/path tiles plus whatever
+  // scatter tiles the archetypes themselves declare — the whitelist
+  // derives from content, so new cue vocabulary never rots this test.
+  const cueTiles = new Set<number>([Tile.Grass, Tile.Stump, Tile.Dirt]);
+  for (const def of POI_DEFS.values()) {
+    for (const sc of def.cues?.scatter ?? []) {
+      cueTiles.add(Tile[sc.tile as keyof typeof Tile] as number);
+    }
+  }
   let stumps = 0;
   let pathCells = 0;
   let scatterCells = 0;
@@ -298,4 +310,69 @@ test('the dev force lever honors the site scan', () => {
     assert.equal(site.defId, 'goblin_warcamp');
   }
   assert.ok(forced > 0, 'force lever produced nothing across a whole row');
+});
+
+// ------------------------------------------- phase 4: friendly lights
+
+test('the waystation staffs itself: keeper by the fire, watch on the townward ring', () => {
+  const shown = previewPoi(SEED, CTX, 'waystation', 3);
+  assert.ok(shown, 'no tier-3 waystation site found');
+  const zone = shown!.zone;
+  const actors = zone.actorSpawns ?? [];
+  assert.equal(actors.length, 3, `expected keeper + two watch, got ${actors.length}`);
+  const traders = ['wayfarer_senna', 'wayfarer_dray', 'wayfarer_petch'];
+  const keeper = actors.find((a) => traders.includes(a.actor));
+  assert.ok(keeper, 'no trader identity picked from the pool');
+  assert.equal(keeper!.routine, 'waystation_keeper');
+  const watch = actors.filter((a) => a.actor === 'wayward_watch');
+  assert.equal(watch.length, 2);
+  // The keeper stands INSIDE the footprint on an open (non-solid,
+  // non-transparent) tile — never in the stall, never in a crate.
+  const kz = {
+    x: Math.floor(keeper!.x) - zone.origin.x,
+    y: Math.floor(keeper!.y) - zone.origin.y,
+  };
+  const kt = zone.ground[kz.y * zone.width + kz.x]!;
+  assert.ok(kt !== TILE_SKIP, 'keeper posted on transparent fringe');
+  assert.equal(TILE_DEFS[kt as Tile]!.solid, false, `keeper posted inside solid tile ${kt}`);
+  // Determinism: same site, same staff, forever.
+  assert.deepEqual(previewPoi(SEED, CTX, 'waystation', 3), shown);
+});
+
+test('the ruined riftgate keeps a WORKING delve gate and the key-faucet chest', () => {
+  const shown = previewPoi(SEED, CTX, 'riftgate_ruin', 4);
+  assert.ok(shown, 'no tier-4 riftgate site found');
+  const zone = shown!.zone;
+  const portals = zone.portals ?? [];
+  assert.equal(portals.length, 1, 'the gate lost its portal');
+  assert.equal(portals[0]!.delve, true, 'the gate is not a delve gate');
+  // The portal's world coords land exactly on the PortalDown tile.
+  const zx = portals[0]!.x - zone.origin.x;
+  const zy = portals[0]!.y - zone.origin.y;
+  assert.equal(zone.ground[zy * zone.width + zx], Tile.PortalDown, 'portal offset drifted');
+  // The court still keeps its iron cache (tier 4 law: gilded upgrade
+  // is chestTierBonus 0 → the tier's own kind).
+  const wantChest = closedChestTile(dangerLaw(4).chest);
+  assert.ok(
+    [...zone.ground].includes(wantChest),
+    'the gatekeeper cache lost its chest re-key',
+  );
+});
+
+test("the champion's tor crowns a stable name from the pool", () => {
+  const shown = previewPoi(SEED, CTX, 'champions_tor', 3);
+  assert.ok(shown, 'no tier-3 tor site found');
+  const def = POI_DEFS.get('champions_tor')!;
+  const pool = def.garrison[0]!.names!;
+  const champ = shown!.zone.spawns!.find((s) => s.npc === 'troll');
+  assert.ok(champ, 'the tor lost its champion');
+  assert.ok(pool.includes(champ!.name!), `name '${champ!.name}' not from the pool`);
+  const law = dangerLaw(3);
+  assert.ok(
+    champ!.level! >= law.npcLevel[0] + 6 && champ!.level! <= law.npcLevel[1] + 6,
+    `champion level ${champ!.level} outside band+6`,
+  );
+  // The hill has always been Korga's: the name never re-rolls.
+  const again = previewPoi(SEED, CTX, 'champions_tor', 3);
+  assert.equal(again!.zone.spawns!.find((s) => s.npc === 'troll')!.name, champ!.name);
 });

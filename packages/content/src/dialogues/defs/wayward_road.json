@@ -1,0 +1,40 @@
+{
+  "id": "wayward_road",
+  "start": "watchpost",
+  "bindings": [{ "kind": "actor", "target": "wayward_watch" }],
+  "nodes": [
+    {
+      "id": "watchpost",
+      "text": "Warm yourself and move on when you're able. Cold iron, colder nights — that's the posting.",
+      "choices": [
+        { "text": "How goes the watch?", "next": "report" },
+        {
+          "text": "I broke one of the warcamps out there.",
+          "next": "respect_camp",
+          "requires": ["poi_warcamp_broken"]
+        },
+        {
+          "text": "I felled one of the named terrors.",
+          "next": "respect_champion",
+          "requires": ["poi_champion_felled"]
+        },
+        { "text": "Stay sharp." }
+      ]
+    },
+    {
+      "id": "report",
+      "text": "Quiet at the fire, loud everywhere else. Warcamps on the rises, old ruins that _don't stay quiet after dusk_, and stones out deep that folk hang names on. We hold the lamplight. Past that, the road belongs to whoever's holding it.",
+      "next": "watchpost"
+    },
+    {
+      "id": "respect_camp",
+      "text": "That was *you*? Then the road east breathes easier for a season. The Watch pays in nothing but respect — but you have all of mine.",
+      "next": "watchpost"
+    },
+    {
+      "id": "respect_champion",
+      "text": "We heard the name went quiet. Named things grow back slower than camps — you bought the frontier a real breath. Drink's on the fire, such as it is.",
+      "next": "watchpost"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "id": "champions_tor",
+  "name": "Champion's tor",
+  "description": "A ring of standing stones where something with a name keeps a black chest. The ward on the strongbox holds while its keeper stands — folk hang the names on the stones after.",
+  "tiers": [2, 5],
+  "weight": 2,
+  "prefabs": ["poi_champions_tor"],
+  "garrison": [
+    {
+      "npc": "troll",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 6,
+      "names": [
+        "Korga Hillbreaker",
+        "Old Mawfist",
+        "Bragga the Toll",
+        "Henge-Warden Ulm",
+        "Gnarl of the Nine Stones",
+        "Thudd Kingsfear",
+        "Half-Ear Hrolgar",
+        "The Quiet Tonnage"
+      ]
+    },
+    { "npc": "wolf", "count": [1, 2], "role": "sentry" },
+    {
+      "npc": "dire_wolf",
+      "count": [1, 1],
+      "role": "sentry",
+      "patrol": true,
+      "minTier": 4
+    }
+  ],
+  "chestTierBonus": 1,
+  "chestWarded": true,
+  "clearedFlag": "poi_champion_felled",
+  "cues": {
+    "clearing": 3,
+    "approachPath": true,
+    "scatter": [{ "tile": "BonePile", "count": 4 }]
+  }
+}

@@ -65,8 +65,27 @@ export const GENERAL_STORE: readonly ShopEntry[] = [
   ...trainerStock(['cooking']),
 ];
 
+/**
+ * The frontier counter: everything a road asks of you, at a frontier
+ * markup — the waystation is a lifeline, not a bargain. Brass keys on
+ * the shelf close the strongbox economy's loop: the deep-band iron
+ * chests always have an answer, if you can pay for it.
+ */
+export const WAYSTATION_SUPPLIES: readonly ShopEntry[] = [
+  { item: 'bread', price: 25 },
+  { item: 'cooked_beef', price: 15 },
+  { item: 'hearty_stew', price: 45 },
+  { item: 'healing_tincture', price: 55 },
+  { item: 'mending_salve', price: 165 },
+  { item: 'swiftness_tonic', price: 110 },
+  { item: 'ironbark_tonic', price: 130 },
+  { item: 'arrow', price: 5 },
+  { item: 'brass_key', price: 240 },
+];
+
 const defs: ShopDef[] = [
   { id: 'general_store', name: 'General Store', stock: GENERAL_STORE },
+  { id: 'waystation_supplies', name: "The Wayfarer's Pack", stock: WAYSTATION_SUPPLIES },
   // Brannock sells the forge's knowledge: every guild-taught schematic
   // in the smithing line, jewellery to platebodies.
   { id: 'trainer_smithing', name: "Brannock's Schematics", stock: trainerStock(['smithing']) },

@@ -1,7 +1,10 @@
 import { Tile } from '@devcraft/shared';
+import { NPC_ACTORS } from '../actors/registry.js';
 import { DANGER_LAWS } from '../danger.js';
+import { LOOT_TABLES } from '../loot/tables.js';
 import { NPCS } from '../npcs.js';
-import type { PoiCues, PoiDef, PoiGarrisonEntry } from './types.js';
+import { ROUTINES } from '../routines/registry.js';
+import type { PoiActorEntry, PoiCues, PoiDef, PoiGarrisonEntry } from './types.js';
 
 /**
  * THE ONE VALIDATOR — every path a PoiDef can enter the game walks
@@ -30,15 +33,32 @@ function isIntPair(v: unknown): v is [number, number] {
 }
 
 /**
+ * Flag keys the cleared ledger accepts — the same slug shape dialogue
+ * requires/forbids read, so a broken warcamp can gate a guard's line.
+ * (No colons: the dlg: namespace stays the system's by construction.)
+ */
+const FLAG_RE = /^[a-z][a-z0-9_]{0,63}$/;
+
+/**
  * Validate a raw doc into a normalized PoiDef. `refs.prefabIds`
  * (when supplied — the server knows the live library, authored code
  * knows the builtins) turns unknown-prefab references into errors;
- * without it they pass here and warn at compose time.
+ * without it they pass here and warn at compose time. Actor, routine,
+ * and loot-table references check the live registries by default;
+ * refs may override with the server's DB-loaded sets.
  */
 export function validatePoiDef(
   raw: unknown,
-  refs: { prefabIds?: ReadonlySet<string> } = {},
+  refs: {
+    prefabIds?: ReadonlySet<string>;
+    actorIds?: ReadonlySet<string>;
+    routineIds?: ReadonlySet<string>;
+    lootTables?: ReadonlySet<string>;
+  } = {},
 ): ValidatePoiResult {
+  const hasActor = (id: string) => refs.actorIds?.has(id) ?? NPC_ACTORS.has(id);
+  const hasRoutine = (id: string) => refs.routineIds?.has(id) ?? ROUTINES.has(id);
+  const hasTable = (id: string) => refs.lootTables?.has(id) ?? LOOT_TABLES.has(id);
   if (!isRecord(raw)) return { ok: false, errors: ['poi def must be an object'] };
   const errors: string[] = [];
   const id = typeof raw.id === 'string' ? raw.id : '';
@@ -156,6 +176,19 @@ export function validatePoiDef(
           hours = { from: h.from, to: h.to };
         }
       }
+      let names: string[] | undefined;
+      if (g.names !== undefined) {
+        if (!Array.isArray(g.names) || g.names.length === 0) {
+          errors.push(`${at}: names must be a non-empty array of strings`);
+        } else if (g.names.some((n) => typeof n !== 'string' || !n.trim())) {
+          errors.push(`${at}: names entries must be non-empty strings`);
+        } else {
+          names = g.names as string[];
+          if (count[1] > 1) {
+            errors.push(`${at}: a name pool crowns one champion — count must be [1, 1]`);
+          }
+        }
+      }
       if (role) {
         garrison.push({
           npc,
@@ -166,6 +199,7 @@ export function validatePoiDef(
           ...(gname !== undefined ? { name: gname } : {}),
           ...(patrol !== undefined ? { patrol } : {}),
           ...(hours !== undefined ? { hours } : {}),
+          ...(names !== undefined ? { names } : {}),
         });
       }
     }
@@ -231,6 +265,79 @@ export function validatePoiDef(
     }
   }
 
+  // Friendly staff.
+  const actors: PoiActorEntry[] = [];
+  if (raw.actors !== undefined && !Array.isArray(raw.actors)) {
+    errors.push('actors must be an array');
+  } else {
+    for (const [i, a] of ((raw.actors as unknown[]) ?? []).entries()) {
+      const at = `actors[${i}]`;
+      if (!isRecord(a)) {
+        errors.push(`${at}: must be an object`);
+        continue;
+      }
+      const pool: string[] = [];
+      if (!Array.isArray(a.pool) || a.pool.length === 0) {
+        errors.push(`${at}: pool must be a non-empty array of actor slugs`);
+      } else {
+        for (const p of a.pool) {
+          if (typeof p !== 'string' || !hasActor(p)) {
+            errors.push(`${at}: unknown actor '${String(p)}'`);
+            continue;
+          }
+          pool.push(p);
+        }
+      }
+      const post = a.post === 'hearth' || a.post === 'watch' ? a.post : null;
+      if (!post) errors.push(`${at}: post must be 'hearth' or 'watch'`);
+      const routine =
+        a.routine === undefined
+          ? undefined
+          : typeof a.routine === 'string' && hasRoutine(a.routine)
+            ? a.routine
+            : (errors.push(`${at}: unknown routine '${String(a.routine)}'`), undefined);
+      if (pool.length > 0 && post) {
+        actors.push({ pool, post, ...(routine !== undefined ? { routine } : {}) });
+      }
+    }
+  }
+
+  // Haven.
+  const haven =
+    raw.haven === undefined
+      ? undefined
+      : isRecord(raw.haven) && Number.isInteger(raw.haven.safeR) &&
+          (raw.haven.safeR as number) >= 6 && (raw.haven.safeR as number) <= 40
+        ? { safeR: raw.haven.safeR as number }
+        : (errors.push('haven must be {safeR: int 6..40}'), undefined);
+
+  // Strongbox overrides.
+  const chestLoot =
+    raw.chestLoot === undefined
+      ? undefined
+      : typeof raw.chestLoot === 'string' && hasTable(raw.chestLoot)
+        ? raw.chestLoot
+        : (errors.push(`unknown chestLoot table '${String(raw.chestLoot)}'`), undefined);
+  const chestWarded =
+    raw.chestWarded === undefined
+      ? undefined
+      : typeof raw.chestWarded === 'boolean'
+        ? raw.chestWarded
+        : (errors.push('chestWarded must be a boolean'), undefined);
+  if (chestWarded && (!Array.isArray(raw.garrison) || raw.garrison.length === 0)) {
+    errors.push('chestWarded needs a garrison — a ward with no keeper never breaks');
+  }
+
+  // The cleared-flag hook.
+  const clearedFlag =
+    raw.clearedFlag === undefined
+      ? undefined
+      : typeof raw.clearedFlag === 'string' && FLAG_RE.test(raw.clearedFlag)
+        ? raw.clearedFlag
+        : (errors.push(
+            `clearedFlag '${String(raw.clearedFlag)}' must match ${FLAG_RE}`,
+          ), undefined);
+
   if (errors.length > 0) {
     return { ok: false, errors: errors.map((e) => `${id || '<poi>'}: ${e}`) };
   }
@@ -246,6 +353,11 @@ export function validatePoiDef(
       garrison,
       ...(chestTierBonus !== undefined ? { chestTierBonus } : {}),
       ...(cues !== undefined ? { cues } : {}),
+      ...(actors.length > 0 ? { actors } : {}),
+      ...(haven !== undefined ? { haven } : {}),
+      ...(chestLoot !== undefined ? { chestLoot } : {}),
+      ...(chestWarded !== undefined ? { chestWarded } : {}),
+      ...(clearedFlag !== undefined ? { clearedFlag } : {}),
     },
   };
 }

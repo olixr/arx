@@ -1,5 +1,6 @@
 import { ITEMS } from '../items.js';
 import { NPC_ACTORS } from '../actors/registry.js';
+import { SHOPS } from '../shop.js';
 import { parseDialogueMarkup } from './markup.js';
 import type {
   DialogueBinding,
@@ -74,8 +75,14 @@ function validateHooks(raw: unknown, where: string, errors: string[]): DialogueH
         continue;
       }
       out.push({ kind: 'give', item: h.item, qty: h.qty });
+    } else if (h.kind === 'shop') {
+      if (typeof h.shop !== 'string' || !SHOPS.has(h.shop)) {
+        errors.push(`${where}.hooks[${i}] references unknown shop '${String(h.shop)}'`);
+        continue;
+      }
+      out.push({ kind: 'shop', shop: h.shop });
     } else {
-      errors.push(`${where}.hooks[${i}].kind must be 'flag' or 'give'`);
+      errors.push(`${where}.hooks[${i}].kind must be 'flag', 'give', or 'shop'`);
     }
   }
   return out;

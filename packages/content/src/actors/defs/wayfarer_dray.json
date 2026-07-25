@@ -1,0 +1,26 @@
+{
+  "id": "wayfarer_dray",
+  "name": "Dray",
+  "title": "Road Peddler",
+  "examine": "Half his teeth and all his wits. The pack never leaves his shoulder, even seated.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 3, "hair": 2, "hairColor": 0, "beard": 4, "eyes": 1, "shirt": 8, "pants": 10 }
+  },
+  "equipment": {
+    "boots": "leather_boots",
+    "gloves": "padded_mitts"
+  },
+  "inventory": [
+    { "item": "cooked_beef", "qty": 3 },
+    { "item": "arrow", "qty": 60 },
+    { "item": "mending_salve", "qty": 1 }
+  ],
+  "lines": [
+    "Bought dear, sold fair — that's the peddler's arithmetic.",
+    "Past this fire it's teeth and weather all the way out.",
+    "I've walked further for worse coin than yours."
+  ],
+  "shop": "waystation_supplies"
+}

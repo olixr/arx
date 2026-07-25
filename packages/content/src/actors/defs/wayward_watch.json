@@ -1,0 +1,31 @@
+{
+  "id": "wayward_watch",
+  "name": "Wayward Watch",
+  "title": "Roadwarden",
+  "examine": "The uniform is patched and the blade is not. Waystations stand because these do.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 2, "hair": 0, "hairColor": 1, "beard": 2, "eyes": 1, "shirt": 10, "pants": 10 }
+  },
+  "equipment": {
+    "head": "iron_helm",
+    "body": "iron_platebody",
+    "legs": "iron_greaves",
+    "gloves": "iron_gauntlets",
+    "boots": "iron_sabatons",
+    "weapon": "iron_sword",
+    "offhand": "oak_kiteshield"
+  },
+  "lines": [
+    "The fire's free. The quiet costs us a watch apiece.",
+    "Trouble walks the road same as you. We just make it think twice.",
+    "Sleep with your boots on out here. We do."
+  ],
+  "combat": {
+    "level": 24,
+    "respawnSec": 90,
+    "stats": { "maxHp": 80, "damage": 5, "speed": 3.4, "leashRange": 12 }
+  }
+}

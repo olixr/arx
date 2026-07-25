@@ -19,6 +19,13 @@ import { validatePrefab } from '../maps/prefab.js';
  *   r rock          C copper      T tin          I iron ore
  *   t tree          O oak         Y yew          u stump
  *   B berry bush    h fibre       s sagewort
+ *   L lamp post     M market stall  a barrel     c crate
+ *   e bench         l wood rail   P pillar       R cave rubble
+ *   D delve gate    X iron chest  Z boss chest
+ * A 'D' is a WORKING riftgate: the sketch helper registers a delve
+ * portal on every PortalDown tile (the tile IS the gate — same law as
+ * chests and doors), so keys found in the wild can be turned in the
+ * wild.
  * Digits 1-9 are spawn markers: each occurrence posts ONE body of the
  * kind the sketch's marker table names, standing on trampled dirt
  * (camps) or grass (wilds). Hand-placed positions; counts live in the
@@ -49,6 +56,17 @@ const LEGEND: Record<string, number> = {
   B: Tile.BerryBush,
   h: Tile.FibrePlant,
   s: Tile.WildSagewort,
+  L: Tile.LampPost,
+  M: Tile.MarketStall,
+  a: Tile.Barrel,
+  c: Tile.Crate,
+  e: Tile.Bench,
+  l: Tile.RailWood,
+  P: Tile.PillarStone,
+  R: Tile.CaveRubble,
+  D: Tile.PortalDown,
+  X: Tile.ChestIron,
+  Z: Tile.ChestBoss,
 };
 
 interface Marker {
@@ -85,6 +103,14 @@ function sketch(
       ground[y * width + x] = tile;
     }
   }
+  // The tile is the gate: every PortalDown in a POI sketch is a delve
+  // riftgate — no second bookkeeping to forget.
+  const portals: PrefabDef['portals'] = [];
+  for (let i = 0; i < ground.length; i++) {
+    if (ground[i] === Tile.PortalDown) {
+      portals.push({ dx: i % width, dy: Math.floor(i / width), delve: true });
+    }
+  }
   const def: PrefabDef = {
     id,
     name,
@@ -93,7 +119,7 @@ function sketch(
     ground,
     detail: new Uint16Array(width * height),
     elev: new Int8Array(width * height),
-    portals: [],
+    portals,
     spawns,
     actorSpawns: [],
   };
@@ -225,6 +251,105 @@ const groveYew = sketch(
   wolfMarks,
 );
 
+/**
+ * A lamplit rest on the long road: keeper's stall by the fire, lamp
+ * posts that carry real light after dusk, benches for the sit emote.
+ * No spawn markers — the staff arrives through the def's actor
+ * entries, placed semantically at compose time.
+ */
+const waystationCamp = sketch(
+  'poi_waystation_camp',
+  "Wayfarers' waystation",
+  [
+    '_____,,,_____',
+    '__,:::::::,__',
+    '_,:.L...e.:,_',
+    '_,:.M..f..:,_',
+    '_,:.a.c..e:,_',
+    '_,:.L.....:,_',
+    '__,:::::::,__',
+    '_____,,,_____',
+  ],
+);
+
+/** The road-house variant: hitching rails, two benches, one lamp. */
+const waystationRest = sketch(
+  'poi_waystation_rest',
+  'Roadside rest',
+  [
+    '______,,,______',
+    '__,::::::::,___',
+    '_,:.l.l.l..:,__',
+    '_,:.e..f..e:,__',
+    '_,:.M....a.:,__',
+    '_,:.L..c...:,__',
+    '__,::::::::,___',
+    '______,,_______',
+  ],
+);
+
+const riftMarks: Record<string, Marker> = {
+  '1': { npc: 'skeleton', radius: 2, under: Tile.StoneFloor },
+  '2': { npc: 'skeleton_guard', radius: 2, under: Tile.StoneFloor },
+};
+
+/**
+ * A broken gate the land forgot: two pillars over a WORKING delve
+ * portal (the 'D' registers it), the gatekeeper's iron cache on the
+ * court, and the dead still holding the yard.
+ */
+const riftgateRuin = sketch(
+  'poi_riftgate_ruin',
+  'Ruined riftgate',
+  [
+    '_____________',
+    '__R..P.P..R__',
+    '_.SSSSDSSSS._',
+    '_.SS..o..SS._',
+    '_,SR..X..RS,_',
+    '_.S1S...S2S._',
+    '_.RS..b..SR._',
+    '__..SSoSS..__',
+    '_____________',
+  ],
+  riftMarks,
+);
+
+/**
+ * The champion's tor: a ring of standing stones around a plinth and a
+ * black chest. The named keeper comes from the def's garrison (names
+ * pool + level offset) and clusters at the anchor — the heart of the
+ * ring — so the prefab carries no marker.
+ */
+const championsTor = sketch(
+  'poi_champions_tor',
+  "Champion's tor",
+  [
+    '_____________',
+    '____P...P____',
+    '__P,,,.,,,P__',
+    '__,..o...,,__',
+    '_P,..SSS.,,P_',
+    '_.,..SZS..,._',
+    '_P,..S.S..,P_',
+    '_.,...n...,._',
+    '__P,,,o,,,P__',
+    '____P...P____',
+    '_____________',
+  ],
+);
+
 export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
-  [goblinCampRing, goblinCampPair, ruinKeep, ruinCircle, groveOre, groveYew].map((p) => [p.id, p]),
+  [
+    goblinCampRing,
+    goblinCampPair,
+    ruinKeep,
+    ruinCircle,
+    groveOre,
+    groveYew,
+    waystationCamp,
+    waystationRest,
+    riftgateRuin,
+    championsTor,
+  ].map((p) => [p.id, p]),
 );

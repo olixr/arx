@@ -10,6 +10,8 @@ import hettyFarm from './defs/hetty_farm.json';
 import marenPlaza from './defs/maren_plaza.json';
 import marenWelcome from './defs/maren_welcome.json';
 import tobbinWares from './defs/tobbin_wares.json';
+import wayfarerCamp from './defs/wayfarer_camp.json';
+import waywardRoad from './defs/wayward_road.json';
 
 /**
  * Every authored dialogue JSON, registered here. A def that isn't
@@ -26,6 +28,8 @@ const SOURCES: readonly unknown[] = [
   marenPlaza,
   marenWelcome,
   tobbinWares,
+  wayfarerCamp,
+  waywardRoad,
 ];
 
 function buildRegistry(): ReadonlyMap<string, DialogueDef> {

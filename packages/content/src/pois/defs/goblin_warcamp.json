@@ -27,6 +27,7 @@
     }
   ],
   "chestTierBonus": 0,
+  "clearedFlag": "poi_warcamp_broken",
   "cues": {
     "clearing": 4,
     "approachPath": true,

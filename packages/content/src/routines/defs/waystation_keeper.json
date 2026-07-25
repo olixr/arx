@@ -1,0 +1,7 @@
+{
+  "id": "waystation_keeper",
+  "base": { "kind": "wander", "radius": 2.5, "speed": 1.1 },
+  "slots": [
+    { "from": 20.5, "to": 6, "task": { "kind": "post", "sit": true, "speed": 1.1 } }
+  ]
+}

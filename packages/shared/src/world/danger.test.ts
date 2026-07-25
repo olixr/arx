@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DANGER_BAND, DANGER_MAX, dangerAt, type DangerAnchor } from './danger.js';
+import { DANGER_BAND, DANGER_MAX, HAVEN_FADE, dangerAt, type DangerAnchor } from './danger.js';
 
 const SEED = 1337;
 const ANCHORS: DangerAnchor[] = [
@@ -58,4 +58,41 @@ test('deterministic from its inputs', () => {
 test('no anchors: the origin plays the hearth', () => {
   assert.equal(dangerAt(SEED, 0, 0, []), 0);
   assert.ok(dangerAt(SEED, 1500, 0, []) >= DANGER_MAX - 1);
+});
+
+// ---------------------------------------------------- the haven law
+
+/** A haven planted deep in the frontier east of the hearth. */
+const HAVEN: DangerAnchor = { x: 48 + 96 + DANGER_BAND * 3.5, y: 48, safeR: 18, haven: true };
+const WITH_HAVEN = [...ANCHORS, HAVEN];
+
+test('haven: tier 0 inside the lamplight, graded rim outside', () => {
+  // Inside safeR: calm by construction.
+  assert.equal(dangerAt(SEED, HAVEN.x, HAVEN.y, WITH_HAVEN), 0);
+  assert.equal(dangerAt(SEED, HAVEN.x + 17, HAVEN.y, WITH_HAVEN), 0);
+  // The rim relieves but never re-settles: everything outside safeR is ≥ 1.
+  for (let d = HAVEN.safeR + 1; d < HAVEN.safeR + HAVEN_FADE * 2 + 20; d += 3) {
+    const near = dangerAt(SEED, HAVEN.x + d, HAVEN.y, WITH_HAVEN);
+    const without = dangerAt(SEED, HAVEN.x + d, HAVEN.y, ANCHORS);
+    assert.ok(near >= 1, `rim tile at +${d} fell to ${near}`);
+    assert.ok(near <= without, `haven raised danger at +${d}: ${near} > ${without}`);
+    const fade = d - HAVEN.safeR;
+    const relief = fade < HAVEN_FADE ? 2 : fade < HAVEN_FADE * 2 ? 1 : 0;
+    assert.ok(without - near <= relief, `relief ${without - near} exceeds law at +${d}`);
+  }
+});
+
+test('haven never re-origins the band march', () => {
+  // Well past the rim the field must be EXACTLY what it was without
+  // the haven — a lamp lights its own clearing and nothing else.
+  for (let i = 0; i < 400; i++) {
+    const tx = ((i * 137) % 2400) - 1200;
+    const ty = ((i * 251) % 2400) - 1200;
+    if (Math.hypot(tx - HAVEN.x, ty - HAVEN.y) < HAVEN.safeR + HAVEN_FADE * 2 + 2) continue;
+    assert.equal(
+      dangerAt(SEED, tx, ty, WITH_HAVEN),
+      dangerAt(SEED, tx, ty, ANCHORS),
+      `haven leaked to ${tx},${ty}`,
+    );
+  }
 });

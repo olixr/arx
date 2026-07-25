@@ -1,0 +1,25 @@
+{
+  "id": "wayfarer_petch",
+  "name": "Petch",
+  "title": "Frontier Sutler",
+  "examine": "Counts stock twice and strangers three times. Nothing personal.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 0, "hair": 4, "hairColor": 6, "beard": 0, "eyes": 3, "shirt": 2, "pants": 3 }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    { "item": "bread", "qty": 6 },
+    { "item": "swiftness_tonic", "qty": 1 },
+    { "item": "ironbark_tonic", "qty": 1 }
+  ],
+  "lines": [
+    "Stew's fresh. Fresh-ish. The road doesn't grade on freshness.",
+    "You'd be surprised what folk pay for bread past the last fence.",
+    "Keys, tonics, arrows. The three food groups out here."
+  ],
+  "shop": "waystation_supplies"
+}

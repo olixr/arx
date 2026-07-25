@@ -1,8 +1,11 @@
 import type { PoiDef } from './types.js';
 import { validatePoiDef } from './validate.js';
 
+import championsTor from './defs/champions_tor.json';
 import forestRuin from './defs/forest_ruin.json';
 import goblinWarcamp from './defs/goblin_warcamp.json';
+import riftgateRuin from './defs/riftgate_ruin.json';
+import waystation from './defs/waystation.json';
 import wildGrove from './defs/wild_grove.json';
 
 /**
@@ -12,7 +15,14 @@ import wildGrove from './defs/wild_grove.json';
  * so forgetting the import is a test failure, not a hole in the
  * frontier.
  */
-const SOURCES: readonly unknown[] = [forestRuin, goblinWarcamp, wildGrove];
+const SOURCES: readonly unknown[] = [
+  championsTor,
+  forestRuin,
+  goblinWarcamp,
+  riftgateRuin,
+  waystation,
+  wildGrove,
+];
 
 function buildRegistry(): ReadonlyMap<string, PoiDef> {
   const map = new Map<string, PoiDef>();

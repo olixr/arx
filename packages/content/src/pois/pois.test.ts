@@ -190,3 +190,49 @@ test('markers stand on open ground, never inside walls or props', () => {
     }
   }
 });
+
+test('phase-4 grammar: the validator vets staff, havens, wards, names, and flags', () => {
+  const base = {
+    id: 'test_site',
+    name: 'Test site',
+    tiers: [2, 4],
+    weight: 1,
+    prefabs: ['poi_waystation_camp'],
+    garrison: [],
+  };
+  const good = validatePoiDef({
+    ...base,
+    actors: [
+      { pool: ['wayfarer_senna', 'wayfarer_dray'], post: 'hearth', routine: 'waystation_keeper' },
+      { pool: ['wayward_watch'], post: 'watch' },
+    ],
+    haven: { safeR: 18 },
+    chestLoot: 'chest_riftgate',
+    clearedFlag: 'poi_test_cleared',
+  });
+  assert.ok(good.ok, JSON.stringify(good));
+  assert.equal(good.ok && good.def.haven?.safeR, 18);
+  assert.equal(good.ok && good.def.actors?.length, 2);
+
+  const badCases: Array<[string, Record<string, unknown>]> = [
+    ['unknown actor', { actors: [{ pool: ['nobody_home'], post: 'hearth' }] }],
+    ['bad post', { actors: [{ pool: ['wayward_watch'], post: 'roof' }] }],
+    ['unknown routine', { actors: [{ pool: ['wayward_watch'], post: 'watch', routine: 'ghost_hours' }] }],
+    ['haven too wide', { haven: { safeR: 99 } }],
+    ['unknown chest table', { chestLoot: 'chest_of_wonders' }],
+    ['ward with no keeper', { chestWarded: true }],
+    ['flag in the dlg namespace', { clearedFlag: 'dlg:sneaky' }],
+    [
+      'name pool on a platoon',
+      {
+        garrison: [
+          { npc: 'troll', count: [1, 2], role: 'holdfast', names: ['Korga'] },
+        ],
+      },
+    ],
+  ];
+  for (const [label, patch] of badCases) {
+    const res = validatePoiDef({ ...base, ...patch });
+    assert.ok(!res.ok, `'${label}' passed validation`);
+  }
+});

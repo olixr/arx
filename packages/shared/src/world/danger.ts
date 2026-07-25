@@ -25,6 +25,19 @@ export interface DangerAnchor {
   y: number;
   /** Tiles of guaranteed tier-0 calm around the anchor. */
   safeR: number;
+  /**
+   * THE HAVEN LAW: a haven is a lamp, not a hearth. Settled anchors
+   * define the band march — every tile's tier is its distance past the
+   * NEAREST one. A haven (a materialized waystation) must never join
+   * that march, or one campfire in the deep frontier would re-origin
+   * the bands and flatten fifty tiles of tier-4 land to tier 1.
+   * Instead a haven carves a small tier-0 bubble inside safeR and
+   * RELIEVES the surrounding field on a graded rim (−2 tiers within
+   * HAVEN_FADE past the edge, −1 within twice that, floor 1) — the
+   * lamplight pushes the dark back, and the dark closes in again a
+   * stone's throw down the road.
+   */
+  haven?: boolean;
 }
 
 /** Highest danger tier. */
@@ -32,6 +45,9 @@ export const DANGER_MAX = 5;
 
 /** Width in tiles of each danger band past the safe radius. */
 export const DANGER_BAND = 56;
+
+/** Tiles of graded relief past a haven's safe edge (see DangerAnchor.haven). */
+export const HAVEN_FADE = 24;
 
 /** Salt for the border-wobble noise stream. */
 const JITTER_SALT = 0xda2e17;
@@ -47,12 +63,21 @@ export function dangerAt(
   ty: number,
   anchors: readonly DangerAnchor[],
 ): number {
-  // Distance past the nearest anchor's safe edge. With no anchors at
-  // all, the world origin plays the hearth so the field stays defined.
+  // Distance past the nearest SETTLED anchor's safe edge sets the band
+  // march; havens only relieve it (see the haven law above). With no
+  // anchors at all, the world origin plays the hearth so the field
+  // stays defined.
   let edge = Infinity;
+  let relief = 0;
   for (const a of anchors) {
     const d = Math.hypot(tx - a.x, ty - a.y) - a.safeR;
-    if (d < edge) edge = d;
+    if (a.haven) {
+      if (d <= 0) return 0;
+      const r = d < HAVEN_FADE ? 2 : d < HAVEN_FADE * 2 ? 1 : 0;
+      if (r > relief) relief = r;
+    } else if (d < edge) {
+      edge = d;
+    }
   }
   if (edge === Infinity) edge = Math.hypot(tx, ty);
   if (edge <= 0) return 0;
@@ -61,5 +86,5 @@ export function dangerAt(
   // Slow wobble bends band borders by at most one tier either way.
   const j = fbm(seed ^ JITTER_SALT, tx * 0.011, ty * 0.011, 2);
   const jitter = j > 0.62 ? 1 : j < 0.38 ? -1 : 0;
-  return Math.max(1, Math.min(DANGER_MAX, base + jitter));
+  return Math.max(1, Math.min(DANGER_MAX, base + jitter - relief));
 }

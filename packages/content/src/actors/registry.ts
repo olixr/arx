@@ -12,6 +12,10 @@ import merchantTobbin from './defs/merchant_tobbin.json';
 import oldMaren from './defs/old_maren.json';
 import sageOdile from './defs/sage_odile.json';
 import smithBrannock from './defs/smith_brannock.json';
+import wayfarerDray from './defs/wayfarer_dray.json';
+import wayfarerPetch from './defs/wayfarer_petch.json';
+import wayfarerSenna from './defs/wayfarer_senna.json';
+import waywardWatch from './defs/wayward_watch.json';
 
 /**
  * Every authored actor JSON, registered here. A def that isn't listed
@@ -29,6 +33,10 @@ const SOURCES: readonly unknown[] = [
   oldMaren,
   sageOdile,
   smithBrannock,
+  wayfarerDray,
+  wayfarerPetch,
+  wayfarerSenna,
+  waywardWatch,
 ];
 
 function buildRegistry(): ReadonlyMap<string, NpcActorDef> {

@@ -1,0 +1,38 @@
+{
+  "id": "wayfarer_camp",
+  "start": "fireside",
+  "bindings": [
+    { "kind": "actor", "target": "wayfarer_senna" },
+    { "kind": "actor", "target": "wayfarer_dray" },
+    { "kind": "actor", "target": "wayfarer_petch" }
+  ],
+  "nodes": [
+    {
+      "id": "fireside",
+      "text": "Sit if you're sitting, buy if you're buying. The fire doesn't care and neither do I — much.",
+      "choices": [
+        { "text": "Let me see your wares.", "next": "wares" },
+        { "text": "What's out past the lamplight?", "next": "rumor" },
+        { "text": "Just warming my hands." }
+      ]
+    },
+    {
+      "id": "wares",
+      "text": "Take your time. The shelf is honest even if the prices sting — *everything a road asks of you*, and a brass key for the chests that ask harder.",
+      "hooks": [{ "kind": "shop", "shop": "waystation_supplies" }]
+    },
+    {
+      "id": "rumor",
+      "text": "Past the lamplight? Camps with teeth, stones with names, and doors _the land itself forgot it was keeping shut_. The further the road runs, the better it pays — and the fewer walk back to spend it.",
+      "next": "rumor2"
+    },
+    {
+      "id": "rumor2",
+      "text": "You'll smell a camp before you see it — stumps, worn ruts, watchers on the rises. Read the ground and it will tell you what's waiting. Ignore it and, well. The Watch digs shallow graves this far out.",
+      "choices": [
+        { "text": "Let me see your wares.", "next": "wares" },
+        { "text": "I'll take my chances." }
+      ]
+    }
+  ]
+}

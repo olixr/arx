@@ -1,0 +1,26 @@
+{
+  "id": "wayfarer_senna",
+  "name": "Senna",
+  "title": "Waystation Keeper",
+  "examine": "Road dust on her boots and a ledger of every camp between here and nowhere.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 1, "hair": 7, "hairColor": 4, "beard": 0, "eyes": 2, "shirt": 4, "pants": 6 }
+  },
+  "equipment": {
+    "boots": "leather_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    { "item": "bread", "qty": 4 },
+    { "item": "hearty_stew", "qty": 2 },
+    { "item": "brass_key", "qty": 1 }
+  ],
+  "lines": [
+    "Fire's warm and the prices are fair. Fairer than the dark, anyway.",
+    "Everything a road asks of you, I sell the answer to.",
+    "Rest a while. The wilds will keep."
+  ],
+  "shop": "waystation_supplies"
+}
