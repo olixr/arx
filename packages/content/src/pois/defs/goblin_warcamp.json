@@ -10,6 +10,14 @@
     { "npc": "goblin", "count": [1, 2], "role": "sentry", "patrol": true },
     { "npc": "worg", "count": [1, 2], "role": "holdfast", "minTier": 3 },
     {
+      "npc": "worg",
+      "count": [1, 1],
+      "role": "sentry",
+      "patrol": true,
+      "minTier": 2,
+      "hours": { "from": 20.5, "to": 5.5 }
+    },
+    {
       "npc": "goblin",
       "count": [1, 1],
       "role": "holdfast",

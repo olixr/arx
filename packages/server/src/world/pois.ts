@@ -400,12 +400,19 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
       count: s.count,
       level: s.level ?? levelRoll(n++),
       name: s.name,
+      hours: s.hours,
     });
   }
 
   // Garrison muster.
   const holdR = Math.max(2, Math.min(prefab.width, prefab.height) / 2 - 1);
-  const sentryWants: Array<{ npc: string; level: number; name?: string; patrol?: boolean }> = [];
+  const sentryWants: Array<{
+    npc: string;
+    level: number;
+    name?: string;
+    patrol?: boolean;
+    hours?: { from: number; to: number };
+  }> = [];
   for (const [gi, g] of def.garrison.entries()) {
     if (g.minTier !== undefined && site.tier < g.minTier) continue;
     const count =
@@ -420,6 +427,7 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
         count,
         level: levelRoll(n++) + (g.levelOffset ?? 0),
         name: g.name,
+        hours: g.hours,
       });
     } else {
       for (let i = 0; i < count; i++) {
@@ -428,6 +436,7 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
           level: levelRoll(n++) + (g.levelOffset ?? 0),
           name: g.name,
           patrol: g.patrol,
+          hours: g.hours,
         });
       }
     }
@@ -463,6 +472,7 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
         count: 1,
         level: want.level,
         name: want.name,
+        hours: want.hours,
       });
     }
     // Patrollers pace the whole ring; a loop needs at least 3 honest
@@ -480,6 +490,7 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
           count: 1,
           level: want.level,
           name: want.name,
+          hours: want.hours,
         });
         continue;
       }
@@ -499,6 +510,7 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
         level: want.level,
         name: want.name,
         patrol: loop,
+        hours: want.hours,
       });
     }
   }

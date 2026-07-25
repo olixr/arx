@@ -69,6 +69,7 @@ import {
   dialogueDoneFlag,
   pickDialogue,
   pickRoutineSlot,
+  slotContains,
   growMs,
   isCropTile,
   aggregateGearStats,
@@ -511,6 +512,8 @@ interface SpawnState {
   name?: string;
   /** Idle waypoint loop (POI sentry rounds) — survives respawns. */
   patrol?: ReadonlyArray<{ x: number; y: number }>;
+  /** Activity window (game hours, midnight-wrapping) — see ZoneSpawn.hours. */
+  hours?: { from: number; to: number };
 }
 
 /** One placed actor's post — exact spot, no scatter, no count. */
@@ -1025,6 +1028,7 @@ export class GameServer {
       level?: number;
       name?: string;
       patrol?: ReadonlyArray<{ x: number; y: number }>;
+      hours?: { from: number; to: number };
     }>,
     zoneId?: string,
   ): number[] {
@@ -1045,6 +1049,7 @@ export class GameServer {
           level: spawn.level,
           name: spawn.name,
           patrol: spawn.patrol,
+          hours: spawn.hours,
         });
       }
     }
@@ -5877,9 +5882,16 @@ export class GameServer {
   // -------------------------------------------------------------- npcs
 
   private tickSpawns(now: number): void {
+    const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
+    // Hour-window keeping runs on a slow beat: out-of-window standing
+    // bodies slip away only when nothing is watching (idle, no player
+    // within earshot) — a nocturnal hunter never blinks out mid-fight
+    // or in front of someone.
+    if (this.tickCount % 20 === 0) this.keepSpawnHours(hours);
     for (let i = 0; i < this.spawnPoints.length; i++) {
       const spawn = this.spawnPoints[i]!;
       if (!spawn.active || spawn.eid !== null || spawn.respawnAt > now) continue;
+      if (spawn.hours && !slotContains(spawn.hours.from, spawn.hours.to, hours)) continue;
       const base = NPCS.get(spawn.npc);
       if (!base) continue;
       // Dungeon garrisons: the authored def re-issued at the key's power.
@@ -5907,6 +5919,39 @@ export class GameServer {
       if (!def) continue;
       spawn.eid = this.spawnActor(def, spawn.x, spawn.y, i, spawn.dir, spawn.routine);
     }
+  }
+
+  /**
+   * The clock's half of activity windows: standing bodies whose
+   * window has closed leave the world — but only with dignity. A body
+   * in combat keeps fighting; a body with a player within earshot
+   * waits for the road to clear; everyone else steps off between one
+   * glance and the next.
+   */
+  private keepSpawnHours(hours: number): void {
+    for (const spawn of this.spawnPoints) {
+      if (!spawn.hours || !spawn.active || spawn.eid === null) continue;
+      if (slotContains(spawn.hours.from, spawn.hours.to, hours)) continue;
+      const eid = spawn.eid;
+      const npc = this.npcs.get(eid);
+      if (!npc || npc.state !== 'idle') continue;
+      const pos = this.positions.get(eid);
+      if (pos && this.playerWithin(pos.x, pos.y, 20)) continue;
+      this.removeFromChunks(eid);
+      this.ecs.destroy(eid);
+      spawn.eid = null;
+      spawn.respawnAt = 0;
+    }
+  }
+
+  /** Any connected player within `r` tiles of a point? */
+  private playerWithin(x: number, y: number, r: number): boolean {
+    for (const [eid, player] of this.players) {
+      if (player.session === null && player.disconnectedAt !== null) continue;
+      const pos = this.positions.get(eid);
+      if (pos && Math.hypot(pos.x - x, pos.y - y) <= r) return true;
+    }
+    return false;
   }
 
   /**

@@ -27,6 +27,8 @@ export interface PrefabSpawn {
   count: number;
   level?: number;
   name?: string;
+  /** Activity window (game hours, midnight-wrapping) — see ZoneSpawn.hours. */
+  hours?: { from: number; to: number };
 }
 
 export interface PrefabActor {

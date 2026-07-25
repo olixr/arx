@@ -192,6 +192,32 @@ test('approach cues live in the fringe and never touch the prefab or unnatural g
   assert.ok(stumps >= 0, 'stump counter is wired'); // forest felling depends on siting
 });
 
+test('night entries compose with their hours riding the spawn records', () => {
+  // Every shipped archetype now carries a night window; across the
+  // scan the composed zones must surface them, wrapped exactly.
+  let windowed = 0;
+  for (const site of scanSites()) {
+    const def = POI_DEFS.get(site.defId)!;
+    const zone = composePoi(SEED, site, CTX)!;
+    const defHasNight = def.garrison.some(
+      (g) => g.hours && (g.minTier === undefined || site.tier >= g.minTier),
+    );
+    const zoneNight = (zone.spawns ?? []).filter((s) => s.hours);
+    for (const s of zoneNight) {
+      windowed++;
+      assert.ok(s.hours!.from >= 0 && s.hours!.from < 24);
+      assert.ok(s.hours!.to >= 0 && s.hours!.to < 24);
+    }
+    if (defHasNight) {
+      assert.ok(
+        zoneNight.length > 0,
+        `${zone.id}: def has an eligible night entry but no windowed spawn composed`,
+      );
+    }
+  }
+  assert.ok(windowed > 0, 'no hour-windowed spawns anywhere in the scan');
+});
+
 test('patrol sentries walk a real ring and watchers hold the townward post', () => {
   let patrols = 0;
   for (const site of scanSites()) {

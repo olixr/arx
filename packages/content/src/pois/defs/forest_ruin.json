@@ -9,6 +9,20 @@
     { "npc": "skeleton", "count": [1, 2], "role": "holdfast" },
     { "npc": "skeleton_archer", "count": [1, 1], "role": "sentry", "minTier": 3 },
     {
+      "npc": "skeleton",
+      "count": [2, 3],
+      "role": "holdfast",
+      "hours": { "from": 20.5, "to": 5.5 }
+    },
+    {
+      "npc": "skeleton_guard",
+      "count": [1, 1],
+      "role": "sentry",
+      "patrol": true,
+      "minTier": 3,
+      "hours": { "from": 20.5, "to": 5.5 }
+    },
+    {
       "npc": "skeleton_champion",
       "count": [1, 1],
       "role": "holdfast",

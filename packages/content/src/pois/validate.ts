@@ -143,6 +143,19 @@ export function validatePoiDef(
       if (patrol && role === 'holdfast') {
         errors.push(`${at}: patrol is a sentry trait (holdfast bodies keep the heart)`);
       }
+      let hours: { from: number; to: number } | undefined;
+      if (g.hours !== undefined) {
+        const h = g.hours as Record<string, unknown>;
+        const okHour = (v: unknown): v is number =>
+          typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < 24;
+        if (!isRecord(g.hours) || !okHour(h.from) || !okHour(h.to)) {
+          errors.push(`${at}: hours must be {from, to} in [0, 24)`);
+        } else if (h.from === h.to) {
+          errors.push(`${at}: hours from === to (an empty window; omit hours for always-on)`);
+        } else {
+          hours = { from: h.from, to: h.to };
+        }
+      }
       if (role) {
         garrison.push({
           npc,
@@ -152,6 +165,7 @@ export function validatePoiDef(
           ...(levelOffset !== undefined ? { levelOffset } : {}),
           ...(gname !== undefined ? { name: gname } : {}),
           ...(patrol !== undefined ? { patrol } : {}),
+          ...(hours !== undefined ? { hours } : {}),
         });
       }
     }

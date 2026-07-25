@@ -8,6 +8,13 @@
   "garrison": [
     { "npc": "wolf", "count": [1, 2], "role": "holdfast", "minTier": 2 },
     { "npc": "worg", "count": [1, 1], "role": "holdfast", "minTier": 4 },
-    { "npc": "bear", "count": [1, 1], "role": "sentry", "minTier": 3, "patrol": true }
+    { "npc": "bear", "count": [1, 1], "role": "sentry", "minTier": 3, "patrol": true },
+    {
+      "npc": "cave_bat",
+      "count": [1, 2],
+      "role": "sentry",
+      "minTier": 2,
+      "hours": { "from": 20.5, "to": 5.5 }
+    }
   ]
 }

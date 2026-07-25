@@ -2199,14 +2199,14 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
           role === 'holdfast'
             ? 'Lives inside the footprint, clustered at the heart'
             : 'Posted on the approach ring outside — the tell';
-        b.onclick = () => patchG(gi, { role, ...(role === 'holdfast' ? { patrol: undefined } : {}) });
+        b.onclick = () => patchG(gi, { role, ...(role === 'holdfast' ? { patrol: undefined } : {}) }, true);
         roleSeg.appendChild(b);
       }
       grow.appendChild(roleSeg);
       if (g.role === 'sentry') {
         grow.appendChild(
           featureChip('patrols', g.patrol === true, 'Paces the whole perimeter ring instead of holding one post', (on) =>
-            patchG(gi, { patrol: on || undefined }),
+            patchG(gi, { patrol: on || undefined }, true),
           ),
         );
       }
@@ -2233,6 +2233,39 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
         textIn(g.name ?? '', (v) => patchG(gi, { name: v || undefined }), 'champion name…'),
       );
       grow.appendChild(nameWrap2);
+      const hoursWrap = el('label', 'lbl', 'hours (empty = always)');
+      const hoursPair = el('div', 'pair tight');
+      const mkHour = (which: 'from' | 'to'): HTMLInputElement => {
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.step = '0.5';
+        inp.min = '0';
+        inp.max = '23.5';
+        inp.placeholder = which;
+        inp.title =
+          'Game-clock activity window [0–24); from > to wraps midnight (night = 20.5 → 5.5). ' +
+          'Outside it the entry neither spawns nor stays.';
+        inp.value = g.hours ? String(g.hours[which]) : '';
+        inp.oninput = () => {
+          const f = Number(fromIn.value);
+          const t = Number(toIn.value);
+          if (
+            fromIn.value !== '' && toIn.value !== '' &&
+            Number.isFinite(f) && Number.isFinite(t) &&
+            f >= 0 && f < 24 && t >= 0 && t < 24 && f !== t
+          ) {
+            patchG(gi, { hours: { from: f, to: t } });
+          } else {
+            patchG(gi, { hours: undefined });
+          }
+        };
+        return inp;
+      };
+      const fromIn = mkHour('from');
+      const toIn = mkHour('to');
+      hoursPair.append(fromIn, toIn);
+      hoursWrap.appendChild(hoursPair);
+      grow.appendChild(hoursWrap);
       const del = el('button', 'danger sm', '✕') as HTMLButtonElement;
       del.title = 'Remove this muster entry';
       del.onclick = () => {
@@ -2254,7 +2287,7 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
     };
     garrisonBox.appendChild(add);
   };
-  const patchG = (gi: number, patch: Partial<PoiGarrisonEntry>): void => {
+  const patchG = (gi: number, patch: Partial<PoiGarrisonEntry>, rebuild = false): void => {
     const next = draft.garrison.slice();
     const merged = { ...next[gi]!, ...patch } as PoiGarrisonEntry & Record<string, unknown>;
     for (const k of Object.keys(merged)) {
@@ -2263,7 +2296,9 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
     next[gi] = merged;
     draft.garrison = next;
     markDirty();
-    rebuildGarrison();
+    // Rebuilding mid-keystroke drops input focus — only structural
+    // changes (role/patrol swap the row's chips) re-render the list.
+    if (rebuild) rebuildGarrison();
   };
   rebuildGarrison();
   body.appendChild(
@@ -2500,9 +2535,15 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
       const muster = el('div', 'hero-pills');
       for (const s of zone.spawns ?? []) {
         const base = state.npcs.find((n) => n.def.id === s.npc);
-        const label = `${s.name ?? base?.def.name ?? s.npc} lv ${s.level ?? '?'}${s.count > 1 ? ` ×${s.count}` : ''}`;
+        const hourNote = s.hours ? ` · ${s.hours.from}–${s.hours.to}h` : '';
+        const label = `${s.name ?? base?.def.name ?? s.npc} lv ${s.level ?? '?'}${s.count > 1 ? ` ×${s.count}` : ''}${hourNote}`;
         muster.appendChild(
-          pill(label, s.patrol ? 'patrols the perimeter ring' : 'holds its ground', s.patrol ? 'brass' : 'ink'),
+          pill(
+            label,
+            (s.patrol ? 'patrols the perimeter ring' : 'holds its ground') +
+              (s.hours ? ` — keeps hours ${s.hours.from}–${s.hours.to}` : ''),
+            s.patrol ? 'brass' : 'ink',
+          ),
         );
       }
       stageBox.appendChild(muster);

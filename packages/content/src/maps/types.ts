@@ -31,6 +31,14 @@ export interface ZoneSpawn {
    * count 1 (each patroller gets its own rotated loop).
    */
   patrol?: ReadonlyArray<{ x: number; y: number }>;
+  /**
+   * Activity window in game-clock hours [0, 24), from > to wrapping
+   * midnight (the routine-slot law). Outside it the point neither
+   * spawns nor respawns, and a standing body slips away once nothing
+   * is watching — nocturnal predators, daylight traders. Absent =
+   * always active, exactly as before.
+   */
+  hours?: { from: number; to: number };
 }
 
 /**

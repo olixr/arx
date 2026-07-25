@@ -37,6 +37,12 @@ export interface PoiGarrisonEntry {
    * patrol resumes when they let go).
    */
   patrol?: boolean;
+  /**
+   * Activity window in game hours [0, 24), from > to wrapping
+   * midnight: the entry musters only inside it — skeletons that walk
+   * after dusk, hounds that hunt at night. Absent = round the clock.
+   */
+  hours?: { from: number; to: number };
 }
 
 /**

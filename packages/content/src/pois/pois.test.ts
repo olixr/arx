@@ -95,6 +95,39 @@ test('the validator normalizes a good doc and names every fault in a bad one', (
   }
 });
 
+test('the validator vets activity windows', () => {
+  const good = validatePoiDef({
+    id: 'night_test',
+    name: 'Night test',
+    tiers: [1, 2],
+    weight: 1,
+    prefabs: ['poi_grove_ore'],
+    garrison: [
+      { npc: 'wolf', count: [1, 1], role: 'holdfast', hours: { from: 20.5, to: 5.5 } },
+    ],
+  });
+  assert.ok(good.ok, JSON.stringify(good));
+  if (good.ok) assert.deepEqual(good.def.garrison[0]!.hours, { from: 20.5, to: 5.5 });
+
+  const bad = validatePoiDef({
+    id: 'bad_hours',
+    name: 'Bad hours',
+    tiers: [1, 2],
+    weight: 1,
+    prefabs: ['poi_grove_ore'],
+    garrison: [
+      { npc: 'wolf', count: [1, 1], role: 'holdfast', hours: { from: 25, to: 3 } },
+      { npc: 'wolf', count: [1, 1], role: 'holdfast', hours: { from: 4, to: 4 } },
+    ],
+  });
+  assert.ok(!bad.ok);
+  if (!bad.ok) {
+    const text = bad.errors.join('\n');
+    assert.ok(text.includes('hours must be'), text);
+    assert.ok(text.includes('empty window'), text);
+  }
+});
+
 test('the validator cross-checks prefab ids when given the library', () => {
   const res = validatePoiDef(
     {
