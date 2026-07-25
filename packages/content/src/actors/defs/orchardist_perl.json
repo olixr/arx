@@ -1,0 +1,39 @@
+{
+  "id": "orchardist_perl",
+  "name": "Goodwife Perl",
+  "title": "Orchardist",
+  "examine": "Twigs in her braid and a windfall bruise on one knuckle that she blames, with great specificity, on a cow.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 4,
+      "hairColor": 4,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 5,
+      "shirt": 4,
+      "pants": 8
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "berries",
+      "qty": 12
+    },
+    {
+      "item": "cake",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "My husband planted the oldest oak. I planted the rest around him, so he'd have company.",
+    "The pasture cows have declared war on my windfalls. I have taken it to the moot twice. The cows have taken it to the fence. The cows are winning.",
+    "An orchard is patience you can eat. Sit in the shade a while."
+  ]
+}

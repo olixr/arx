@@ -1,0 +1,63 @@
+{
+  "id": "garton_flour",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "miller_garton"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Mind the dust \u2014 that's not dirt, that's *product*. Garton. Forty years at this wheel, boy and man, and the pond hasn't missed a day's work yet, which is more than I can say for anyone else in this town.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "What d'you need?",
+      "choices": [
+        {
+          "text": "What's your quarrel with the ferry bell?",
+          "next": "bell"
+        },
+        {
+          "text": "Forty years \u2014 the town must have changed.",
+          "next": "years"
+        },
+        {
+          "text": "Sell me flour.",
+          "next": "browse"
+        },
+        {
+          "text": "Nothing \u2014 just passing.",
+          "next": "pass"
+        }
+      ]
+    },
+    {
+      "id": "bell",
+      "text": "Quarrel! It's not a *quarrel*, it's a position. The bell rings on a west wind whether there's a soul at the crossing or not, and it scares my herons off the shallows. I've raised it at the moot. Twice. But mind \u2014 the boy checks my mooring lines every morning like it's nothing, so the bell and I have settled into a working hatred. Don't you go fixing it.",
+      "next": "hub"
+    },
+    {
+      "id": "years",
+      "text": "Changed? When I started, the Round was mud, the bank was a toll box, and Silverfall silver came through four caravans a season. Then the mountain sealed its cellar and the caravans thinned and this town learnt to feed itself \u2014 fields, pond, orchard. Now the cellar's open again and everybody's dreaming of silver. *Flour*, I tell them. Empires run on flour.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Flour by the sack, wheat by the sheaf, and a loaf if the morning batch behaved.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "garton_mill"
+        }
+      ]
+    },
+    {
+      "id": "pass",
+      "text": "Passing's free. The gossip's ground fine here too \u2014 cheaper than Dunna's and twice as reliable."
+    }
+  ]
+}

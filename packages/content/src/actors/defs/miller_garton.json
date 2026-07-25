@@ -1,0 +1,45 @@
+{
+  "id": "miller_garton",
+  "name": "Old Garton",
+  "title": "Miller",
+  "examine": "Flour in every crease of him. Forty years of turning grain to bread have ground the hurry out of the man entirely.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 1,
+      "hairColor": 7,
+      "beard": 3,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 11,
+      "pants": 11
+    }
+  },
+  "equipment": {
+    "body": "apprentice_robe",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "flour",
+      "qty": 8
+    },
+    {
+      "item": "wheat",
+      "qty": 6
+    },
+    {
+      "item": "bread",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "Wheat comes in, flour goes out, and the pond does the pushing. Perfect arrangement until somebody rings a bell through it.",
+    "That ferry bell of Peld's rings on the wrong wind and scares my herons. I've told him. He rings it anyway. Boy's lucky I like him.",
+    "My knees know the rain three days out. Better than any sage, and they charge less."
+  ],
+  "shop": "garton_mill"
+}

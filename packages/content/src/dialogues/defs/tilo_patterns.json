@@ -1,0 +1,64 @@
+{
+  "id": "tilo_patterns",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "master_tilo"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Welcome to the hall! Mind the sawdust \u2014 actually no, don't mind it, sawdust on the floor means work on the bench. I'm *Tilo*. Loom, carving bench, and worktable, all public. The town that makes things together mends together.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "What can I do for you?",
+      "choices": [
+        {
+          "text": "Public? Anyone can use these stations?",
+          "next": "public"
+        },
+        {
+          "text": "Your sister says you never finish anything.",
+          "next": "chair"
+        },
+        {
+          "text": "You trained somewhere grand, I'd guess.",
+          "next": "galleria"
+        },
+        {
+          "text": "Show me the patterns.",
+          "next": "browse"
+        }
+      ]
+    },
+    {
+      "id": "public",
+      "text": "Anyone with the patience. That's the whole idea \u2014 a croft can't afford a loom, but a *town* can afford one everybody shares. Bring hide, cloth, or timber; leave with something that didn't exist at breakfast. Finest feeling there is.",
+      "next": "hub"
+    },
+    {
+      "id": "chair",
+      "text": "Merra told you about the chair. Of course she did. Three years, yes. But understand: the chair is *teaching* me. Every joint I cut for pay, I cut better because the chair at home is watching. She sells eggs; she wouldn't understand a long apprenticeship to your own furniture.",
+      "next": "hub"
+    },
+    {
+      "id": "galleria",
+      "text": "Silverfall's galleria \u2014 a clothier took me on as a boy to carry bolts up the Silver Stair. I came down before the deep trouble with one pattern-book and a needle case. The mountain teaches you the *grand* way to do things. The ford taught me the useful way. Between the two you get a decent craftsman.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Leather, cloth, and woodcraft patterns \u2014 the whole soft-trades ladder. Priced by what they'll ask of your hands.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "trainer_artisan"
+        }
+      ]
+    }
+  ]
+}

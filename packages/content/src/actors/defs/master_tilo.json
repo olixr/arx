@@ -1,0 +1,45 @@
+{
+  "id": "master_tilo",
+  "name": "Tilo",
+  "title": "Master Artisan",
+  "examine": "Sawdust on his cuffs, chalk on his fingers, a measuring string around his neck tied in a knot only he can undo.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 0,
+      "hair": 10,
+      "hairColor": 1,
+      "beard": 6,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 5,
+      "shirt": 5,
+      "pants": 11
+    }
+  },
+  "equipment": {
+    "body": "apprentice_robe",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "cloth",
+      "qty": 3
+    },
+    {
+      "item": "leather",
+      "qty": 2
+    },
+    {
+      "item": "twine",
+      "qty": 5
+    }
+  ],
+  "lines": [
+    "Measure twice. Then once more, for the pleasure of it.",
+    "My sister Merra says I never finish anything. I'm three years into a chair that will prove her wrong.",
+    "The hall's benches are for everyone \u2014 the town that makes things together mends together."
+  ],
+  "shop": "trainer_artisan"
+}

@@ -1,6 +1,25 @@
 import { dialogueDoneFlag, type DialogueDef } from './types.js';
 import { validateDialogue } from './validate.js';
 
+import aldisGate from './defs/aldis_gate.json';
+import aldisWatchHeeded from './defs/aldis_watch_heeded.json';
+import aldisWatchWry from './defs/aldis_watch_wry.json';
+import anselHall from './defs/ansel_hall.json';
+import anselRegistry from './defs/ansel_registry.json';
+import brettaForge from './defs/bretta_forge.json';
+import brettaMountain from './defs/bretta_mountain.json';
+import cormundLedger from './defs/cormund_ledger.json';
+import dunnaRest from './defs/dunna_rest.json';
+import elowenFolios from './defs/elowen_folios.json';
+import gartonFlour from './defs/garton_flour.json';
+import haskRoadgear from './defs/hask_roadgear.json';
+import jorelFields from './defs/jorel_fields.json';
+import merraMarket from './defs/merra_market.json';
+import nibStreets from './defs/nib_streets.json';
+import peldCrossing from './defs/peld_crossing.json';
+import perlOrchard from './defs/perl_orchard.json';
+import tamsinCoop from './defs/tamsin_coop.json';
+import tiloPatterns from './defs/tilo_patterns.json';
 import brynArms from './defs/bryn_arms.json';
 import brynYard from './defs/bryn_yard.json';
 import fenBench from './defs/fen_bench.json';
@@ -18,6 +37,25 @@ import waywardRoad from './defs/wayward_road.json';
  * and fails if a file is missing from this roster.
  */
 const SOURCES: readonly unknown[] = [
+  aldisGate,
+  aldisWatchHeeded,
+  aldisWatchWry,
+  anselHall,
+  anselRegistry,
+  brettaForge,
+  brettaMountain,
+  cormundLedger,
+  dunnaRest,
+  elowenFolios,
+  gartonFlour,
+  haskRoadgear,
+  jorelFields,
+  merraMarket,
+  nibStreets,
+  peldCrossing,
+  perlOrchard,
+  tamsinCoop,
+  tiloPatterns,
   brynArms,
   brynYard,
   fenBench,

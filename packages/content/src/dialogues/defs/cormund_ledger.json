@@ -1,0 +1,58 @@
+{
+  "id": "cormund_ledger",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "banker_cormund"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Welcome to the Amberford bank. Deposits at the counter, withdrawals at the counter, and the vault behind me holds both, which is the entire cleverness of the institution.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "How may the bank serve?",
+      "choices": [
+        {
+          "text": "How does banking work, exactly?",
+          "next": "how"
+        },
+        {
+          "text": "Why does a ford town have a bank?",
+          "next": "toll"
+        },
+        {
+          "text": "Silverfall countersigns your charter?",
+          "next": "odele"
+        },
+        {
+          "text": "That's all, thank you.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "how",
+      "text": "Use the *bank chests* \u2014 one by each rug. What you put in is yours, recorded twice and touchable from any bank chest in any town, because coin in a ledger travels faster than coin in a pocket and is considerably harder to stab. The service is free. Solvency is its own advertisement.",
+      "next": "hub"
+    },
+    {
+      "id": "toll",
+      "text": "My father kept the ford toll in a wooden box with a wooden lock. The autumn the Redmasks chained the ford and walked off with it, the town learnt what I'd been saying for years: _wood remembers nothing._ Stone and ink remember everything. Captain Aldis broke the chain; I built the vault. Between us it hasn't happened twice.",
+      "next": "hub"
+    },
+    {
+      "id": "odele",
+      "text": "Bursar Odele, Bank of Silverfall. Every charter bank on the two roads clears through her vault row. Her letters arrive with each caravan \u2014 terse to the point of geology. I have kept every one. In this business, a dry correspondent is worth a wet mine.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "The ledger notes your visit. It notes everything. Good day."
+    }
+  ]
+}

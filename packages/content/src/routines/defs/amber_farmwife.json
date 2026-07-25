@@ -1,0 +1,43 @@
+{
+  "id": "amber_farmwife",
+  "base": {
+    "kind": "wander",
+    "radius": 2.5,
+    "speed": 1.5
+  },
+  "slots": [
+    {
+      "from": 8.5,
+      "to": 12,
+      "task": {
+        "kind": "wander",
+        "x": 4,
+        "y": -28,
+        "radius": 5,
+        "speed": 1.5
+      }
+    },
+    {
+      "from": 12,
+      "to": 13.5,
+      "task": {
+        "kind": "post",
+        "x": 0.5,
+        "y": -10,
+        "dir": 3.141592653589793,
+        "speed": 1.6
+      }
+    },
+    {
+      "from": 19.5,
+      "to": 6,
+      "task": {
+        "kind": "post",
+        "x": 6.5,
+        "y": -9.5,
+        "dir": 0.0,
+        "speed": 1.4
+      }
+    }
+  ]
+}

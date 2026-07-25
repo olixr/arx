@@ -1,0 +1,54 @@
+{
+  "id": "amber_outfitter",
+  "base": {
+    "kind": "post",
+    "dir": 3.141592653589793,
+    "work": true,
+    "speed": 1.6
+  },
+  "slots": [
+    {
+      "from": 14,
+      "to": 16,
+      "task": {
+        "kind": "post",
+        "x": 3.8,
+        "y": -2.5,
+        "dir": 0.0,
+        "speed": 1.6
+      }
+    },
+    {
+      "from": 18.5,
+      "to": 20.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.5,
+        "waypoints": [
+          {
+            "x": -4.2,
+            "y": -0.5
+          },
+          {
+            "x": -11.2,
+            "y": -1.5,
+            "waitSec": 900,
+            "dir": -1.5707963267948966
+          }
+        ]
+      }
+    },
+    {
+      "from": 20.5,
+      "to": 7,
+      "task": {
+        "kind": "post",
+        "x": 2.8,
+        "y": 1.5,
+        "dir": 1.5707963267948966,
+        "speed": 1.4
+      }
+    }
+  ]
+}

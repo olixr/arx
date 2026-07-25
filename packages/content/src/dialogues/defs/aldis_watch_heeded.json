@@ -1,0 +1,48 @@
+{
+  "id": "aldis_watch_heeded",
+  "start": "hub",
+  "requires": [
+    "aldis_heeded"
+  ],
+  "priority": 5,
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "captain_aldis"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Still walking lamp to lamp? Good. What do you need?",
+      "choices": [
+        {
+          "text": "How's the road today?",
+          "next": "road"
+        },
+        {
+          "text": "What was the Toll War?",
+          "next": "toll"
+        },
+        {
+          "text": "Carry on, Captain.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "road",
+      "text": "Quiet to the Meadow, Redmask sign near the middle stretch, and the Fork tower's brazier was lit at the wrong hour twice this week \u2014 could be nothing, could be somebody's idea of a joke. If you pass the wardens' outpost, tell the sergeant I want her count. You've a listening face; use it out there.",
+      "next": "hub"
+    },
+    {
+      "id": "toll",
+      "text": "Before the bank, the ford toll sat in Cormund's father's wooden box. One autumn the Redmasks chained the ford and taxed the town at its own crossing. Three days. I went out on the fourth with a mattock and less patience than usual. The chain's in the vault now \u2014 Cormund keeps it the way the chapel keeps its registry. _Institutions are grudges with paperwork._",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Road keep you. Mind the bands."
+    }
+  ]
+}

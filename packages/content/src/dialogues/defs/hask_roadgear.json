@@ -1,0 +1,64 @@
+{
+  "id": "hask_roadgear",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "outfitter_hask"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Stop. Boots. ...Mm. They'll do to the Long Meadow. Past that we should talk. Hask \u2014 outfitter, fletcher, and the last professional opinion before the High Road starts charging for its lessons.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Speak your business.",
+      "choices": [
+        {
+          "text": "What does the road ask for?",
+          "next": "kit"
+        },
+        {
+          "text": "You were a Waykeeper?",
+          "next": "waykeeper"
+        },
+        {
+          "text": "Captain Aldis trained under you?",
+          "next": "aldis"
+        },
+        {
+          "text": "Kit me out.",
+          "next": "browse"
+        }
+      ]
+    },
+    {
+      "id": "kit",
+      "text": "Arrows \u2014 double what you brought. A snare kit, because dinner shouldn't cost steel. Spare bowstring, dry socks, and a coward's honest respect for nightfall. The road doesn't kill people. Being *underprepared* for the road kills people. I sell the difference at fair prices.",
+      "next": "hub"
+    },
+    {
+      "id": "waykeeper",
+      "text": "Fifteen years, escort sergeant, Amberford to the Last Lamp and back more times than I've got teeth left. Retired the winter the worgs came down on the Fork rest and took two of mine inside the fence line. _Inside the fence._ I keep their names off my tongue and their lesson on my shelves. Every buckle in this shop is that winter, remembered forward.",
+      "next": "hub"
+    },
+    {
+      "id": "aldis",
+      "text": "Best cadet I ever shouted at. Only one who ever shouted back with better information. When the Toll War broke she was the one who went out on the ice and broke the Redmask chain with a mattock \u2014 the town gave her the gate the same week. I'd say I taught her everything she knows, but she'd hear about it and correct me publicly.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Racks are yours. Buy for the road you're walking, not the one you're bragging about.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "hask_outfitting"
+        }
+      ]
+    }
+  ]
+}

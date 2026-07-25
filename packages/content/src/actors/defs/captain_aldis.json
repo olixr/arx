@@ -1,0 +1,49 @@
+{
+  "id": "captain_aldis",
+  "name": "Captain Aldis",
+  "title": "Warden of the North Gate",
+  "examine": "Stone house, stone gaze. The North Gate has opinions and she is all of them.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 30,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 170,
+      "damage": 9,
+      "speed": 3.6,
+      "leashRange": 12
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 0,
+      "hairColor": 0,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 4,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "iron_platebody",
+    "legs": "iron_greaves",
+    "boots": "iron_sabatons",
+    "weapon": "iron_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 30
+    }
+  ],
+  "lines": [
+    "The gate is open. Whether you should walk through it is a different question.",
+    "North of here the land stops being polite. I post the truth on this wall and let people spend it how they like.",
+    "Hask taught me to read a road. I taught him a sergeant's whistle carries further than a sergeant's opinion."
+  ]
+}

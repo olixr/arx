@@ -116,21 +116,83 @@ const defs: ShopDef[] = [
   { id: 'waystation_supplies', name: "The Wayfarer's Pack", stock: WAYSTATION_SUPPLIES },
   { id: 'hamlet_larder', name: 'The Croft Larder', stock: HAMLET_LARDER },
   { id: 'last_lamp_stores', name: "Edda's Stores", stock: LAST_LAMP_STORES },
-  // Brannock sells the forge's knowledge: every guild-taught schematic
+  // Amberford's counters — every shopkeeper a person, every shelf a
+  // livelihood (Epic 6: the people pass).
+  {
+    id: 'merra_goods',
+    name: "Merra's Provisions",
+    stock: [
+      { item: 'bread', price: 10 },
+      { item: 'egg', price: 6 },
+      { item: 'milk', price: 8 },
+      { item: 'berries', price: 4 },
+      { item: 'carrot', price: 5 },
+      { item: 'flour', price: 9 },
+      { item: 'twine', price: 7 },
+      { item: 'plant_fibre', price: 4 },
+    ],
+  },
+  {
+    id: 'dunna_board',
+    name: "The Wanderer's Table",
+    stock: [
+      { item: 'hearty_stew', price: 26 },
+      { item: 'bread', price: 10 },
+      { item: 'cooked_beef', price: 22 },
+      { item: 'fried_egg', price: 12 },
+      { item: 'cake', price: 45 },
+      { item: 'milk', price: 8 },
+    ],
+  },
+  {
+    id: 'garton_mill',
+    name: 'The Millstone',
+    stock: [
+      { item: 'flour', price: 8 },
+      { item: 'wheat', price: 5 },
+      { item: 'bread', price: 9 },
+    ],
+  },
+  {
+    id: 'peld_catch',
+    name: "Peld's Catch",
+    stock: [
+      { item: 'raw_trout', price: 14 },
+      { item: 'trout', price: 24 },
+      { item: 'fishing_rod', price: 60 },
+    ],
+  },
+  {
+    id: 'hask_outfitting',
+    name: "Hask's Outfitting",
+    stock: [
+      { item: 'arrow', price: 6 },
+      { item: 'snare_kit', price: 90 },
+      { item: 'straw_decoy', price: 70 },
+      { item: 'bronze_axe', price: 55 },
+      { item: 'bronze_pickaxe', price: 55 },
+      { item: 'fishing_rod', price: 60 },
+      { item: 'leather_hood', price: 48 },
+      { item: 'leather_body', price: 80 },
+      { item: 'leather_boots', price: 40 },
+      { item: 'leather_gloves', price: 36 },
+      { item: 'cape_traveler', price: 120 },
+      { item: 'healing_tincture', price: 65 },
+    ],
+  },
+  // Bretta sells the forge's knowledge: every guild-taught schematic
   // in the smithing line, jewellery to platebodies.
-  { id: 'trainer_smithing', name: "Brannock's Schematics", stock: trainerStock(['smithing']) },
-  // The crafters' yard artisan covers the soft trades: leather,
-  // cloth, and carved wood.
+  { id: 'trainer_smithing', name: 'Ironhewn Schematics', stock: trainerStock(['smithing']) },
+  // Tilo's hall covers the soft trades: leather, cloth, and carved wood.
   {
     id: 'trainer_artisan',
-    name: "The Artisan's Patterns",
+    name: "Tilo's Patterns",
     stock: trainerStock(['leatherworking', 'tailoring', 'woodworking']),
   },
-  // The Arcanum sage keeps the brewing formulas and the enchanter's
-  // journeyman treatises.
+  // Elowen keeps the brewing formulas and the enchanter's treatises.
   {
     id: 'trainer_sage',
-    name: "The Sage's Folios",
+    name: "Elowen's Folios",
     stock: trainerStock(['herbalism', 'enchanting']),
   },
 ];

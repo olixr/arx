@@ -1,0 +1,36 @@
+{
+  "id": "keeper_ansel",
+  "name": "Keeper Ansel",
+  "title": "Keeper of the Waykeepers' Hall",
+  "examine": "Lamp-oil and old paper. He walked the High Road three times end to end before his knees retired to the registry.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 12,
+      "hair": 1,
+      "hairColor": 7,
+      "beard": 4,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "body": "apprentice_robe",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "bread",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "Every lamp on every road is a promise somebody keeps. I keep two of them and a book.",
+    "The registry holds every name that walked north through our gate. Most came back. The hall's braziers burn for the rest.",
+    "The Waykeepers were founded on the mountain, but the order lives wherever a lamp does."
+  ]
+}

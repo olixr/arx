@@ -1,0 +1,46 @@
+{
+  "id": "outfitter_hask",
+  "name": "Hask",
+  "title": "Outfitter",
+  "examine": "Fifteen High Road winters are written on his face, mostly around the scar. He is looking at your boots and finding them wanting.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 0,
+      "hairColor": 6,
+      "beard": 6,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 4,
+      "shirt": 7,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "huntsman_jerkin",
+    "boots": "wanderer_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    {
+      "item": "arrow",
+      "qty": 40
+    },
+    {
+      "item": "snare_kit",
+      "qty": 2
+    },
+    {
+      "item": "twine",
+      "qty": 4
+    }
+  ],
+  "lines": [
+    "Show me your boots. Mm. You'll want better before the Fork.",
+    "Fifteen years walking Waykeeper escort. I trained half the watch on this wall \u2014 Aldis was the one who trained back.",
+    "The road doesn't kill people. Being underprepared for the road kills people. I sell the difference."
+  ],
+  "shop": "hask_outfitting"
+}

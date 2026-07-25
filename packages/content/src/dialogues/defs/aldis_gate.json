@@ -1,0 +1,47 @@
+{
+  "id": "aldis_gate",
+  "start": "truth",
+  "once": true,
+  "priority": 10,
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "captain_aldis"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "truth",
+      "text": "Hold up. New face, north gate \u2014 you get the speech. Short version: this wall is where the polite world ends. The land runs in *bands* \u2014 every mile north of here is meaner than the last, and it does not grade on effort. Goblins in the foothills. Wolves and worse under the Thornveil. Past the Last Lamp, things I write reports about instead of names.",
+      "next": "ask"
+    },
+    {
+      "id": "ask",
+      "text": "The Waykeepers keep three lamps on the way \u2014 Fernway, the Long Meadow, the Fork. Walk lamp to lamp, sleep behind their walls, and turn back the day the road stops being tired and starts being _interested_ in you. That's the truth as I post it. What you do with it is yours.",
+      "choices": [
+        {
+          "text": "Understood, Captain. Lamp to lamp.",
+          "next": "heeded",
+          "set": [
+            "aldis_heeded"
+          ]
+        },
+        {
+          "text": "I can handle the road.",
+          "next": "shrugged",
+          "set": [
+            "aldis_shrugged"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "heeded",
+      "text": "Then you're already better equipped than most of the confident ones. See Hask before you go \u2014 tell him I said fix the boots. Road keep you, traveler."
+    },
+    {
+      "id": "shrugged",
+      "text": "Mm. The confident ones all say that, and the road files them alphabetically. I'll keep a page free in the incident book. Prove me wrong \u2014 I'd genuinely enjoy it."
+    }
+  ]
+}

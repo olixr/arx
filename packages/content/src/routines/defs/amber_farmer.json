@@ -1,0 +1,32 @@
+{
+  "id": "amber_farmer",
+  "base": {
+    "kind": "wander",
+    "radius": 5,
+    "speed": 1.4
+  },
+  "slots": [
+    {
+      "from": 12,
+      "to": 13.5,
+      "task": {
+        "kind": "post",
+        "x": -4,
+        "y": 19,
+        "dir": 0.0,
+        "speed": 1.6
+      }
+    },
+    {
+      "from": 19.5,
+      "to": 6,
+      "task": {
+        "kind": "post",
+        "x": 2.5,
+        "y": 17,
+        "dir": 3.141592653589793,
+        "speed": 1.4
+      }
+    }
+  ]
+}

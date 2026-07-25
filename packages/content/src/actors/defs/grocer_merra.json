@@ -1,0 +1,48 @@
+{
+  "id": "grocer_merra",
+  "name": "Merra",
+  "title": "Grocer",
+  "examine": "Brisk as a morning market. The traveler's cape on her wall is older than her shop, and cleaner than anything in it.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 0,
+      "hair": 7,
+      "hairColor": 1,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 3,
+      "pants": 8
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "bread",
+      "qty": 3
+    },
+    {
+      "item": "egg",
+      "qty": 6
+    },
+    {
+      "item": "berries",
+      "qty": 10
+    },
+    {
+      "item": "carrot",
+      "qty": 5
+    }
+  ],
+  "lines": [
+    "Fresh eggs, yesterday's bread at half, and no credit \u2014 except for Nib, who eats free and pretends she doesn't.",
+    "My brother Tilo can carve a rose out of oak but can't finish a chair. Family is like that: all the talent, sideways.",
+    "The cape on the wall belonged to my Edwin. The road kept him. I keep the cape. We've an understanding, the road and I."
+  ],
+  "shop": "merra_goods"
+}

@@ -1,0 +1,71 @@
+{
+  "id": "perl_orchard",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "orchardist_perl"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Shade's free, windfalls aren't \u2014 the cows have taught me to say that up front. What brings you under my trees?",
+      "choices": [
+        {
+          "text": "Tell me about the orchard.",
+          "next": "trees"
+        },
+        {
+          "text": "What's this war with the cows?",
+          "next": "cows"
+        },
+        {
+          "text": "Anything sweet to spare?",
+          "next": "sweet",
+          "forbids": [
+            "perl_sweet"
+          ],
+          "set": [
+            "perl_sweet"
+          ]
+        },
+        {
+          "text": "Enjoy the shade, Goodwife.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "trees",
+      "text": "My Hollis planted the old oak at the east end the year we married \u2014 said a wedding wants a witness that'll outlive the gossip. I planted the rest around him when he passed, so he'd have company and I'd have somewhere to put my talking. Forty trees now. He always was a good listener; being an orchard's only improved him.",
+      "next": "hub"
+    },
+    {
+      "id": "cows",
+      "text": "The pasture cows have declared my windfalls a public entitlement. I've been to the moot *twice*. Motion carried, fence approved \u2014 and the next morning that brindled matriarch had the gate latch open like she'd read the minutes. I respect her. I'm going to lose this war to her. But there'll be a record, and history will know I fought.",
+      "next": "hub"
+    },
+    {
+      "id": "sweet",
+      "text": "Here \u2014 berry pressings and a slice of feast cake, because anybody polite enough to ask under the trees gets fed under them. {item:cake} Hollis's rule. The orchard enforces it now.",
+      "hooks": [
+        {
+          "kind": "give",
+          "item": "cake",
+          "qty": 1
+        },
+        {
+          "kind": "give",
+          "item": "berries",
+          "qty": 6
+        }
+      ],
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Mind where you step \u2014 windfalls underfoot, and every one of them legally contested."
+    }
+  ]
+}

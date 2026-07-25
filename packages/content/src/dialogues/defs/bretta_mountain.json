@@ -1,0 +1,66 @@
+{
+  "id": "bretta_mountain",
+  "start": "news",
+  "once": true,
+  "priority": 10,
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "smith_bretta"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "news",
+      "text": "You've the look of somebody who's been north. Then you'll know what the caravans are shouting \u2014 the Masons' Guild broke their own seal. The *Undercroft* is open again. Twenty years shut, and open again.",
+      "next": "father"
+    },
+    {
+      "id": "father",
+      "text": "I swung my first hammer down there, under the mountain. Grand Forge apprentice, me and *Balla* both, fighting over the same anvil like cats over a windowsill. Then the kobolds came up through the deep galleries, and the Guild closed the whole district with my father's crew still setting the last stones. He set stones the way I set edges \u2014 properly. _The seal was his._",
+      "next": "choice"
+    },
+    {
+      "id": "choice",
+      "text": "So when the coal boys sing about starfall veins and open galleries, I hear a door my father built being propped open with his own chisel. That's all the story. What do you want at my forge?",
+      "choices": [
+        {
+          "text": "Would you ever go back up?",
+          "next": "back"
+        },
+        {
+          "text": "I'm sorry about your father.",
+          "next": "sorry"
+        },
+        {
+          "text": "Show me what you sell.",
+          "next": "browse"
+        }
+      ]
+    },
+    {
+      "id": "back",
+      "text": "Balla's asked. Every solstice letter, one line at the bottom: *the anvil's still here*. Maybe now the door's open I'll walk up and lose the trials again, once, for the look on her face. If you pass the Grand Forge before I do \u2014 tell her Bretta says her quenches always ran cold.",
+      "next": "end"
+    },
+    {
+      "id": "sorry",
+      "text": "So am I, and I've had twenty years' practice at it. He'd have liked the town, I think. He always said stone should hold something \u2014 coin, bread, people. This one holds all three.",
+      "next": "end"
+    },
+    {
+      "id": "browse",
+      "text": "Schematics on the shelf, steel on the racks, and everything priced honest because I can't be bothered to haggle.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "trainer_smithing"
+        }
+      ]
+    },
+    {
+      "id": "end",
+      "text": "Right. Enough smoke without a fire under it. Come by the forge when you need steel or the knowing of it."
+    }
+  ]
+}

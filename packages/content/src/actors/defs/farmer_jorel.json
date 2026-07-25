@@ -1,0 +1,40 @@
+{
+  "id": "farmer_jorel",
+  "name": "Jorel Furrowfield",
+  "title": "Farmer",
+  "examine": "Built like his own barn door. Soil under his nails that no scrubbing has ever fully argued with.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 0,
+      "hairColor": 2,
+      "beard": 3,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 9,
+      "pants": 11
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    {
+      "item": "wheat",
+      "qty": 8
+    },
+    {
+      "item": "carrot",
+      "qty": 4
+    }
+  ],
+  "lines": [
+    "Wheat doesn't care what day it is. Suits me.",
+    "We crofted out past the hedges once \u2014 cousins to the Fernway folk. One bandit autumn cured us of the open country. Walls are underrated.",
+    "Tamsin plans the year, I dig it. Twenty seasons and neither of us has once wanted the other job."
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "id": "innkeep_dunna",
+  "name": "Dunna",
+  "title": "Keeper of the Wanderer's Rest",
+  "examine": "Flour to the elbows, copper hair escaping its knot, and a laugh you can hear from the Round.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 9,
+      "hairColor": 5,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 5,
+      "shirt": 0,
+      "pants": 6
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "hearty_stew",
+      "qty": 6
+    },
+    {
+      "item": "bread",
+      "qty": 4
+    },
+    {
+      "item": "cake",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "Sit anywhere that isn't the hearthstone. Stew's on.",
+    "My mother kept this bar before me. Now she waters mules at the Silverfall caravanserai \u2014 says the mountain air is kinder to her hips than my father ever was to her patience.",
+    "Every rumor on two roads stops at my bar to warm up. Most of them leave taller than they came in."
+  ],
+  "shop": "dunna_board"
+}

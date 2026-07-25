@@ -1,0 +1,49 @@
+{
+  "id": "sage_elowen",
+  "name": "Elowen",
+  "title": "Sage of the Dispensary",
+  "examine": "Moonbell pollen dusts her sleeves. Her eyes are the green of deep summer shade, and they miss nothing.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 6,
+      "hair": 2,
+      "hairColor": 9,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 1,
+      "feature": 0,
+      "shirt": 9,
+      "pants": 9
+    }
+  },
+  "equipment": {
+    "body": "thistledown_robe",
+    "boots": "thistledown_slippers"
+  },
+  "inventory": [
+    {
+      "item": "sagewort",
+      "qty": 6
+    },
+    {
+      "item": "moonbell",
+      "qty": 3
+    },
+    {
+      "item": "healing_tincture",
+      "qty": 4
+    },
+    {
+      "item": "mending_salve",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "Bring me sagewort and I'll pay in coin. Bring me gossip and I'll pay in tea.",
+    "Twelve years I've kept this garden. Where I kept the one before it is a story for a colder evening.",
+    "Most wounds want a salve. The rest want a chair, a fire, and someone who will listen."
+  ],
+  "shop": "trainer_sage"
+}

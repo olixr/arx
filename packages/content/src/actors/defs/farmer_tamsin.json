@@ -1,0 +1,43 @@
+{
+  "id": "farmer_tamsin",
+  "name": "Tamsin Furrowfield",
+  "title": "Farmer",
+  "examine": "A seed ledger under one arm and three schemes for next season behind her eyes.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 4,
+      "hairColor": 3,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 5,
+      "shirt": 2,
+      "pants": 9
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "egg",
+      "qty": 6
+    },
+    {
+      "item": "cotton_seed",
+      "qty": 4
+    },
+    {
+      "item": "wheat_seed",
+      "qty": 6
+    }
+  ],
+  "lines": [
+    "The hens lay for me because I ask nicely and carry grain. Mostly the grain.",
+    "Cotton, next year. Jorel says the soil's wrong. The soil and I have already agreed; we're letting him catch up.",
+    "A croft burns in a night. A town takes longer. That's the whole of why we're here."
+  ]
+}

@@ -647,6 +647,27 @@ export function buildAmberford(): ZoneDef {
   }
 
   // ---------------------------------------------------------------
+  // ---------------------------------------------------------------
+  // THE PEOPLE (Epic 6): fifteen lives on the town's own clock.
+  // Placements are the POST each routine measures from — the smith's
+  // anvil, the teller's counter, the lectern, the mid-field furrow.
+  // ---------------------------------------------------------------
+  b.actor('smith_bretta', 14.5, 14.5, -Math.PI / 2, 'amber_smith');
+  b.actor('master_tilo', 35.5, 17.5, Math.PI, 'amber_artisan');
+  b.actor('sage_elowen', 67.5, 17.5, 0, 'amber_sage');
+  b.actor('banker_cormund', 40.5, 28.3, Math.PI / 2, 'amber_banker');
+  b.actor('innkeep_dunna', 62.5, 51.2, Math.PI / 2, 'amber_innkeep');
+  b.actor('miller_garton', 74.5, 30.8, -Math.PI / 2, 'amber_miller');
+  b.actor('ferryman_peld', 83.5, 38.5, 0, 'amber_ferryman');
+  b.actor('grocer_merra', 23.5, 58.5, Math.PI / 2, 'amber_grocer');
+  b.actor('outfitter_hask', 63.2, 6.5, Math.PI, 'amber_outfitter');
+  b.actor('captain_aldis', 47.5, 4.5, Math.PI, 'amber_captain');
+  b.actor('farmer_jorel', 11.5, 41.5, Math.PI / 2, 'amber_farmer');
+  b.actor('farmer_tamsin', 7.5, 70.5, 0, 'amber_farmwife');
+  b.actor('keeper_ansel', 42.5, 69.5, Math.PI / 2, 'amber_keeper');
+  b.actor('orchardist_perl', 74.5, 68.5, -Math.PI / 2, 'amber_orchardist');
+  b.actor('courier_nib', 52.5, 44.5, 0, 'amber_courier');
+
   // The animals — the town's working livestock.
   // ---------------------------------------------------------------
   b.npcSpawn('cow', 85, 6.5, 2.5, 3);

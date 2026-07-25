@@ -1,0 +1,46 @@
+{
+  "id": "smith_bretta",
+  "name": "Bretta Ironhewn",
+  "title": "Master Smith",
+  "examine": "Forearms like bridge cables and a burn scar older than the town bank. The anvil answers her on the first strike.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 4,
+      "hairColor": 6,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 4,
+      "shirt": 7,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "iron_sabatons",
+    "gloves": "iron_gauntlets"
+  },
+  "inventory": [
+    {
+      "item": "iron_bar",
+      "qty": 4
+    },
+    {
+      "item": "coal",
+      "qty": 6
+    },
+    {
+      "item": "bronze_sword",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "Stand clear of the sparks or learn to like them.",
+    "I learned my trade at the Grand Forge, under Balla, before she was Forgemistress. Ask her who won the anvil trials. Then watch her face.",
+    "Good steel is honest. It does exactly what you made it to do, and nothing you didn't."
+  ],
+  "shop": "trainer_smithing"
+}

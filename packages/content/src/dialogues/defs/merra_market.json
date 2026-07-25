@@ -1,0 +1,84 @@
+{
+  "id": "merra_market",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "grocer_merra"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Shop's open \u2014 eggs from Tamsin's hens this morning, bread from Garton's flour, berries from Perl's hedges. Nothing in this room traveled more than a mile, which is exactly how I like my stock and my mornings.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Anything else, love?",
+      "choices": [
+        {
+          "text": "Whose cape is that on the wall?",
+          "next": "cape"
+        },
+        {
+          "text": "Tell me about your brother.",
+          "next": "tilo"
+        },
+        {
+          "text": "You feed the courier girl, I hear.",
+          "next": "nib"
+        },
+        {
+          "text": "Let me see the shelves.",
+          "next": "browse"
+        }
+      ]
+    },
+    {
+      "id": "cape",
+      "text": "My Edwin's. Wayfarer, caravan guard, best whistler on two roads. He walked north the spring the wolves came down early, and the road kept him. Keeper Ansel has his name in the registry and I have the cape, and between the two of us he's still *here*, in the only way the road leaves anybody anywhere.",
+      "choices": [
+        {
+          "text": "I'm sorry.",
+          "next": "cape2",
+          "set": [
+            "merra_edwin"
+          ]
+        },
+        {
+          "text": "(Say nothing, and let the shop be quiet a moment.)",
+          "next": "cape2",
+          "set": [
+            "merra_edwin"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cape2",
+      "text": "Don't be long about it \u2014 he wasn't. Fifteen good years and a clean cape. Most get less. Now buy something, or the sentiment gets dear.",
+      "next": "hub"
+    },
+    {
+      "id": "tilo",
+      "text": "Tilo? All the family's talent went into his hands and all the family's sense came to me, and we're both content with the split. He made every shelf in this shop in one week, then spent three years not finishing a chair. Genius is just patience pointed the wrong way.",
+      "next": "hub"
+    },
+    {
+      "id": "nib",
+      "text": "Nib eats free and we maintain the fiction that she doesn't. She hauled every one of these shelves' worth of gossip before breakfast. That girl will run this town someday, or at least know everything about whoever does.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Take your pick. Mind the eggs \u2014 Tamsin's hens take breakage personally.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "merra_goods"
+        }
+      ]
+    }
+  ]
+}

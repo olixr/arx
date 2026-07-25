@@ -1,0 +1,64 @@
+{
+  "id": "elowen_folios",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "sage_elowen"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Come in, mind the drying herbs. Sagewort on the left, moonbell on the right, and the smell in the middle is a tincture that is *supposed* to do that.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "What do you need?",
+      "choices": [
+        {
+          "text": "What do you buy?",
+          "next": "buy"
+        },
+        {
+          "text": "How did you come to Amberford?",
+          "next": "came"
+        },
+        {
+          "text": "Any advice for the road north?",
+          "next": "advice"
+        },
+        {
+          "text": "Show me the folios.",
+          "next": "browse"
+        }
+      ]
+    },
+    {
+      "id": "buy",
+      "text": "Sagewort, moonbell, and any honest herb you pull from the verges \u2014 coin on the counter, no questions. The garden gives what it gives; the wild fills the gaps. You'd be surprised how much of this town's health walks in through that door in a forager's pocket.",
+      "next": "hub"
+    },
+    {
+      "id": "came",
+      "text": "Down the High Road, twelve years back, with one book and a moonbell cutting wrapped in a stocking. Where from?_Further than the road goes._ The cutting took to the soil here. So did I. Some questions do better as gardens than as answers.",
+      "next": "hub"
+    },
+    {
+      "id": "advice",
+      "text": "Carry more tinctures than you think you need and drink them *earlier* than you think you should. Pride is the only wound I can't brew for. And past the Last Lamp \u2014 walk mornings. Everything old up there agrees with Edda about mornings.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Brewing formulas and the enchanter's treatises \u2014 the folios are on the shelf. The knowledge keeps; make sure you do the same.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "trainer_sage"
+        }
+      ]
+    }
+  ]
+}

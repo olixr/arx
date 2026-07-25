@@ -1,0 +1,63 @@
+{
+  "id": "peld_crossing",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "ferryman_peld"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "M-morning. Or whatever it is by now \u2014 the pond keeps its own clock and I keep the pond's.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Need something?",
+      "choices": [
+        {
+          "text": "Where does the water go, downriver?",
+          "next": "saltmere"
+        },
+        {
+          "text": "Why ring the bell at dawn?",
+          "next": "bell"
+        },
+        {
+          "text": "What's biting?",
+          "next": "browse"
+        },
+        {
+          "text": "Take care, Peld.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "saltmere",
+      "text": "Down to *Saltmere*, in the end \u2014 salt flats, grey gulls, boats with eyes painted on them. I walked up from there when I was small enough to count my ribs. One day I'll pole somebody the whole way back down, when the river and I have saved up the nerve between us. The water remembers the way. Rivers don't forget anything, they just c-carry it downstream.",
+      "next": "hub"
+    },
+    {
+      "id": "bell",
+      "text": "So the pond knows I'm here. So *Garton* knows I'm here \u2014 he'd never ask, but his window faces the water and the bell saves him the walk. And... the wind rings it sometimes on its own. I let it. Everything likes to say good morning.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Trout, mostly \u2014 the pond's generous if you're p-patient. Rod's for sale too, if you'd rather argue with the fish yourself.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "peld_catch"
+        }
+      ]
+    },
+    {
+      "id": "bye",
+      "text": "You too. Mind the reeds if you swim \u2014 they're friendlier than they look, but they *are* clingy."
+    }
+  ]
+}

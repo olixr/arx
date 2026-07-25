@@ -1,0 +1,35 @@
+{
+  "id": "courier_nib",
+  "name": "Nib",
+  "title": "Courier",
+  "examine": "All elbows, freckles, and forward motion. Her satchel has more patches than satchel, each one a story she'll sell you for a sweet.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 0,
+      "hair": 6,
+      "hairColor": 5,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 5,
+      "shirt": 6,
+      "pants": 4
+    }
+  },
+  "equipment": {
+    "boots": "swiftstep_boots"
+  },
+  "inventory": [
+    {
+      "item": "berries",
+      "qty": 4
+    }
+  ],
+  "lines": [
+    "Message for you? No. Message ABOUT you? ...Maybe.",
+    "Dunna gives me the box room, Merra gives me breakfast, Tilo made my satchel, and Captain Aldis gives me the LOOK. It's a good town.",
+    "I know where everyone is at every hour. It's not magic, it's just legs."
+  ]
+}

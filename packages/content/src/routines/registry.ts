@@ -1,6 +1,21 @@
 import type { RoutineDef } from './types.js';
 import { validateRoutine } from './validate.js';
 
+import amberArtisan from './defs/amber_artisan.json';
+import amberBanker from './defs/amber_banker.json';
+import amberCaptain from './defs/amber_captain.json';
+import amberCourier from './defs/amber_courier.json';
+import amberFarmer from './defs/amber_farmer.json';
+import amberFarmwife from './defs/amber_farmwife.json';
+import amberFerryman from './defs/amber_ferryman.json';
+import amberGrocer from './defs/amber_grocer.json';
+import amberInnkeep from './defs/amber_innkeep.json';
+import amberKeeper from './defs/amber_keeper.json';
+import amberMiller from './defs/amber_miller.json';
+import amberOrchardist from './defs/amber_orchardist.json';
+import amberOutfitter from './defs/amber_outfitter.json';
+import amberSage from './defs/amber_sage.json';
+import amberSmith from './defs/amber_smith.json';
 import dawnmeadFarmhand from './defs/dawnmead_farmhand.json';
 import greenScamp from './defs/green_scamp.json';
 import hearthHours from './defs/hearth_hours.json';
@@ -16,6 +31,21 @@ import waystationKeeper from './defs/waystation_keeper.json';
  * import is a test failure, not a silent hole in someone's day.
  */
 const SOURCES: readonly unknown[] = [
+  amberArtisan,
+  amberBanker,
+  amberCaptain,
+  amberCourier,
+  amberFarmer,
+  amberFarmwife,
+  amberFerryman,
+  amberGrocer,
+  amberInnkeep,
+  amberKeeper,
+  amberMiller,
+  amberOrchardist,
+  amberOutfitter,
+  amberSage,
+  amberSmith,
   dawnmeadFarmhand,
   greenScamp,
   hearthHours,

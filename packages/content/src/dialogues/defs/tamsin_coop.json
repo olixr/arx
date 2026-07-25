@@ -1,0 +1,66 @@
+{
+  "id": "tamsin_coop",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "farmer_tamsin"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Watch the hens \u2014 they've decided feet are a delicacy. What do you need?",
+      "choices": [
+        {
+          "text": "What's this about cotton?",
+          "next": "cotton"
+        },
+        {
+          "text": "Spare an egg for the road?",
+          "next": "egg",
+          "forbids": [
+            "tamsin_egg"
+          ],
+          "set": [
+            "tamsin_egg"
+          ]
+        },
+        {
+          "text": "How do you plan a farm year?",
+          "next": "ledger"
+        },
+        {
+          "text": "Good luck with the hens.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "cotton",
+      "text": "Next spring, the south strip goes to cotton. Jorel says the soil's wrong \u2014 the soil and I held a private meeting and the soil is *enthusiastic*. Tilo's loom sits hungry half the year and every bolt of cloth in this town walked here from somewhere else. Grow it, spin it, weave it, wear it \u2014 a whole trade, inside our own fence. Watch me.",
+      "next": "hub"
+    },
+    {
+      "id": "egg",
+      "text": "Here \u2014 laid this morning, and the hen wants you to know it was her best work. {item:egg} Crack it over a pan at any campfire. An egg on the road is a small unfair advantage, and I believe in those.",
+      "hooks": [
+        {
+          "kind": "give",
+          "item": "egg",
+          "qty": 2
+        }
+      ],
+      "next": "hub"
+    },
+    {
+      "id": "ledger",
+      "text": "In the seed ledger, in winter, by lamplight \u2014 every row, every rotation, three seasons deep. Jorel digs what I draw and swears the drawing's the easy half. He's right, but the ledger doesn't get blisters, so we've agreed not to compare.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Mind the gate latch \u2014 the cows have learnt Perl's and mine's likely next."
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "id": "banker_cormund",
+  "name": "Cormund",
+  "title": "Banker",
+  "examine": "Ink-stained fingers, a banker's stoop, and the calm of a man who has counted everything he owns twice.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 1,
+      "hairColor": 6,
+      "beard": 2,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "body": "apprentice_robe",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 240
+    },
+    {
+      "item": "gold_ring",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "The vault is stone, the ledger is ink, and both outlast a promise.",
+    "My father kept the ford toll in a wooden box. The year the Redmasks chained the ford, the box taught us all a lesson. The bank is that lesson, in stone.",
+    "Bursar Odele of Silverfall countersigns our charter. Her letters arrive with every caravan and are dryer than the flour Garton mills."
+  ]
+}

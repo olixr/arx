@@ -1,0 +1,58 @@
+{
+  "id": "bretta_forge",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "smith_bretta"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Forge is hot, temper's even. What'll it be?",
+      "choices": [
+        {
+          "text": "Teach me smithing.",
+          "next": "teach"
+        },
+        {
+          "text": "How does a ford town keep a master smith busy?",
+          "next": "busy"
+        },
+        {
+          "text": "Show me the schematics.",
+          "next": "browse"
+        },
+        {
+          "text": "Just warming my hands.",
+          "next": "warm"
+        }
+      ]
+    },
+    {
+      "id": "teach",
+      "text": "The scrolls on my shelf hold every pattern the guilds teach, jewellery to plate. Buy the one your hands are ready for \u2014 the metal will tell you if you've flattered yourself. Copper and tin first. *Everyone* starts at copper and tin, including the ones who are now statues.",
+      "next": "hub"
+    },
+    {
+      "id": "busy",
+      "text": "Two roads' worth of horseshoes, one bank's worth of hinges, and every plough blade from here to the hedgerows. And lately \u2014 arrowheads. More arrowheads than I like. When Hask doubles his order, the road is telling you something.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Take your time. The steel's not going anywhere it wasn't hammered to go.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "trainer_smithing"
+        }
+      ]
+    },
+    {
+      "id": "warm",
+      "text": "That's what the fire's for. That and the honest work of the whole world, but mostly the hands."
+    }
+  ]
+}

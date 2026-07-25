@@ -847,7 +847,29 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   const spawnKinds = new Map((z.spawns ?? []).map((s) => [s.npc, s.count]));
   assert.equal(spawnKinds.get('cow'), 3);
   assert.equal(spawnKinds.get('chicken'), 3);
-  assert.equal((z.actorSpawns ?? []).length, 0, 'actors belong to the people pass');
+  // The people pass: fifteen residents, every one on routine hours.
+  const amberActors = z.actorSpawns ?? [];
+  assert.equal(amberActors.length, 15, 'Amberford lost residents');
+  for (const slug of [
+    'smith_bretta',
+    'master_tilo',
+    'sage_elowen',
+    'banker_cormund',
+    'innkeep_dunna',
+    'miller_garton',
+    'ferryman_peld',
+    'grocer_merra',
+    'outfitter_hask',
+    'captain_aldis',
+    'farmer_jorel',
+    'farmer_tamsin',
+    'keeper_ansel',
+    'orchardist_perl',
+    'courier_nib',
+  ]) {
+    assert.ok(amberActors.some((a) => a.actor === slug), `${slug} missing from Amberford`);
+  }
+  assert.equal(amberActors.filter((a) => a.routine).length, 15, 'every resident keeps hours');
   // The editor JSON round trip holds, flat-zone law included.
   const json = zoneToJson(z);
   assert.equal(json.elev, undefined, 'amberford is a flat zone');

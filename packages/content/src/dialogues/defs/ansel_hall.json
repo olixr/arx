@@ -1,0 +1,58 @@
+{
+  "id": "ansel_hall",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "keeper_ansel"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Peace on your road, traveler. The hall is open \u2014 it's always open, that's most of what a hall is for. Sit if your feet have opinions. I'm *Ansel*; I keep the lamps, the benches, and the book.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "What would you know?",
+      "choices": [
+        {
+          "text": "What do the Waykeepers believe, exactly?",
+          "next": "faith"
+        },
+        {
+          "text": "Tell me about the order.",
+          "next": "order"
+        },
+        {
+          "text": "What's the book?",
+          "next": "book"
+        },
+        {
+          "text": "Peace on yours, Keeper.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "faith",
+      "text": "Nothing you'd need a robe for. We hold that a lit lamp is a *promise* \u2014 somebody made it, somebody keeps it, somebody walks safer because of it. The road gives and the road takes, and between the giving and the taking, people can at least keep the lamps burning for each other. That's the whole creed. It fits on a lamppost, which is the point.",
+      "next": "hub"
+    },
+    {
+      "id": "book",
+      "text": "The registry. Every soul who walks north through our gate signs, or I sign for them. Most names get a homecoming mark inside the year. Some don't. On feast nights I read the unmarked names to the braziers, so the hall remembers what the road wouldn't. It is the least glamorous holy work in the world and I would not trade it for a bishopric of anywhere.",
+      "next": "hub"
+    },
+    {
+      "id": "order",
+      "text": "Founded at Silverfall, in the bad years after the mountain sealed its deeps \u2014 the roads went feral, and Marshal Kestrel's grandmother said *enough* and built the first waystation with her own crew's wages. Now there's a chapter house on the mountain, sergeants at the stations, Edda at the Last Lamp, and me, keeping the southern end lit. I walked the whole High Road three times as a lamp-lighter, once. My knees remember every mile, loudly, in wet weather.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Peace on your road. Sign the book before you walk north \u2014 humor an old keeper's arithmetic."
+    }
+  ]
+}
