@@ -319,6 +319,48 @@ Goal: the POI system grows the *civilized* archetypes and closes the key-economy
   (`character_flags` ledger) so quests and dialogue can react to "you broke the
   warcamp at the ford" — the hook that turns POIs into story.
 
+### ✅ SHIPPED 2026-07-24 (commits e4036ed groundwork, 6e4f22c wiring)
+
+Everything above, plus what the build discovered along the way:
+
+- **THE HAVEN LAW** (shared `dangerAt`): a haven is *a lamp, not a hearth* —
+  tier 0 inside `safeR`, graded relief on the rim (−2 within `HAVEN_FADE`=24
+  tiles past the edge, −1 within 48, floor 1), and **no participation in the
+  band march** — the naive plan (append to the anchors list as-is) would have
+  flattened fifty tiles of tier-4 land to tier 1 around every campfire. Havens
+  derive from the **ledger**, not from materialization: the lamp burns whether
+  or not anyone is looking. They ride `S2CWelcome.havens` + a `havens`
+  broadcast, so the client's music calms exactly where the server's field does.
+- **The waystation** (`waystation`, tiers 2–4, haven safeR 18): keeper
+  hash-picked from three authored identities (Senna/Dray/Petch, each with a
+  voice), placed **beside the campfire** (open-tile scan — never inside the
+  stall), two invulnerable Wayward Watch on the townward sentry ring; the
+  `waystation_supplies` shop (frontier markup, brass keys at 240c) opens
+  through the new **dialogue `shop` hook** — armed on node entry, fired only
+  when the conversation *ends well*. Keeper routine sits her at the fire
+  20:30–6:00 (verified live: pose 14 at 23h).
+- **The ruined riftgate** (`riftgate_ruin`, tiers 3–5): the sketch's `D` tile
+  registers a **working delve portal** (tile-is-the-gate law), so keys found in
+  the wild turn in the wild; the cache rolls `chest_riftgate` (dungeon key 75%)
+  via the new per-tile strongbox override map. Verified end-to-end: a tier-5
+  cache paid an uncommon key that opened The Mossgrown Barrow at the same
+  ruin's own gate.
+- **The champion's tor** (`champions_tor`, tiers 2–5): garrison entries grew
+  `names` pools — the site hash crowns ONE stable name (met Bragga the Toll,
+  band+6); `chestWarded` keeps the lid shut while any garrison body stands
+  ("The lid will not lift — the ward holds while its keeper stands."), and the
+  full wipe stamps `clearedFlag` on whoever fells the last body plus the
+  broken-camp line. The Wayward Watch dialogue answers to the flags
+  (verified: "I felled one of the named terrors" appeared only after the wipe).
+- **Chests read the danger field at open time**: level floor =
+  `dangerLaw(tier).npcLevel[1]`, plus the tier's `rarityBonus` through the new
+  `LootCtx.rarityBonus` — a deep-band chest paid a power-50 weapon live. The
+  underground keeps its own ladders (gated on `DARK_BAND_Y`).
+- **Bench**: the POI editor gained name-pool inputs, loot override + ward
+  controls, the friendly-lights section (staff pools/posts/routines, haven
+  radius, cleared flag), green staff pins on the stage, and staff linkage.
+- All four suites green (89/118/75/152) + typecheck clean.
+
 ---
 
 ## Laws to hold the whole way
