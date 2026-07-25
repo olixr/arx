@@ -1,5 +1,5 @@
 import { EntityKind, HIDDEN_SKILLS, PoseState, ROCK_TILES, TREE_TILES, Tile, chestInfo, doorInfo, isSkillId, tileDef, treeOfSapling } from '@devcraft/shared';
-import { BUILDABLES, buildableGround, itemDef, npcDef } from '@devcraft/content';
+import { BUILDABLES, buildableGround, dangerTierAt, itemDef, npcDef } from '@devcraft/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
 import { Renderer } from './render/renderer.js';
@@ -18,7 +18,7 @@ import { AudioEngine } from './audio/engine.js';
 import { TrackPlayer } from './audio/tracks.js';
 import { AmbienceSystem } from './audio/ambience.js';
 import { AudioMenu } from './ui/audioMenu.js';
-import { zoneWeights } from './audio/zones.js';
+import { UNDERGROUND_Y, zoneWeights } from './audio/zones.js';
 import { setupTouch } from './input/touch.js';
 import { dockGlyphUrl, itemIconUrl, uiIconUrl } from './render/icons.js';
 import { abilityIconUrl } from './render/abilityIcons.js';
@@ -1623,7 +1623,14 @@ function frame(now: number): void {
     const own = game.predictor.renderPos();
     const w = zoneWeights(own.x, own.y);
     const hours = game.clockHoursNow();
-    music.update(w, hours);
+    // The danger field reaches the ear: same seed, same field, same
+    // anchors the server spawns by — the music darkens where the
+    // world actually does.
+    const dangerTier =
+      game.worldSeed !== null && own.y < UNDERGROUND_Y
+        ? dangerTierAt(game.worldSeed, own.x, own.y)
+        : 0;
+    music.update(w, hours, dangerTier);
     // The Riftgate's hum: a throttled scan (2.5 Hz, ~440 tile reads)
     // finds the nearest portal in earshot; closeness drives the drone.
     if (now >= nextPortalScanAt) {

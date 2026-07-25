@@ -189,6 +189,8 @@ export class ClientGame {
 
   ownEid: EntityId | null = null;
   ownName = '';
+  /** World seed from the welcome — the danger field's client-side key. */
+  worldSeed: number | null = null;
   /** Chosen base look; null until creation completes. */
   ownLook: Look | null = null;
   aim = 0;
@@ -584,6 +586,7 @@ export class ClientGame {
       case 'welcome': {
         this.ownEid = msg.eid;
         this.ownName = msg.name;
+        this.worldSeed = msg.seed ?? null;
         this.ownLook = msg.look ?? null;
         this.token = msg.token;
         this.serverTick = msg.tick;

@@ -278,6 +278,12 @@ export interface S2CWelcome {
   motd?: string;
   /** The character's chosen look; absent = not chosen yet (show creator). */
   look?: Look;
+  /**
+   * The world seed. Procgen is shared truth — with it the client can
+   * evaluate the same danger field the server spawns by (map tint,
+   * music mood) without any extra protocol.
+   */
+  seed?: number;
 }
 
 export interface S2CReject {

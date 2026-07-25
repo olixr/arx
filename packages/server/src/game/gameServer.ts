@@ -1380,6 +1380,7 @@ export class GameServer {
       token: player.token,
       motd: config.motd,
       look: player.look ?? undefined,
+      seed: config.worldSeed,
     });
     session.sendJson({ t: 'skills', xp: player.skills });
     session.sendJson({ t: 'recipes', known: [...player.knownRecipes] });

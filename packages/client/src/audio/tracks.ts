@@ -25,12 +25,17 @@
 import type { AudioEngine } from './engine.js';
 import { dominantZone, type ZoneWeights } from './zones.js';
 
-export type TrackMood = 'adventure' | 'night' | 'town';
+export type TrackMood = 'adventure' | 'night' | 'town' | 'danger';
 
 export const TRACK_LIBRARY: Record<TrackMood, string[]> = {
-  adventure: ['adventure_1', 'adventure_2', 'adventure_3', 'adventure_4', 'adventure_5'],
+  adventure: [
+    'adventure_1', 'adventure_2', 'adventure_3', 'adventure_4', 'adventure_5',
+    'adventure_6', 'adventure_7',
+  ],
   night: ['night_adventure_1', 'night_adventure_2'],
-  town: ['town_1', 'town_2'],
+  town: ['town_1', 'town_2', 'town_3', 'town_4'],
+  /** The deep frontier (danger tier 4+): the land itself is the boss. */
+  danger: ['boss_fight_1', 'boss_fight_2'],
 };
 
 const FADE_IN_SEC = 2.0;
@@ -49,19 +54,33 @@ const TRACK_TRIM: Record<string, number> = {
   adventure_3: 0.86, // −14.0
   adventure_4: 0.76, // −12.9
   adventure_5: 0.9, // −14.4
+  adventure_6: 0.74, // −12.7
+  adventure_7: 0.72, // −12.5
   night_adventure_1: 0.74, // −12.7
   night_adventure_2: 0.78, // −13.1
   town_1: 0.77, // −13.0
   town_2: 1, // −15.3
+  town_3: 0.76, // −12.9
+  town_4: 0.76, // −12.9
+  boss_fight_1: 0.85, // −13.9
+  boss_fight_2: 0.79, // −13.3
 };
 
-/** Which shelf suits this place and hour. Pure — tests could pin it. */
-export function moodFor(w: ZoneWeights, hours: number): TrackMood {
+/**
+ * Which shelf suits this place, hour, and how far past the lights the
+ * listener has walked. Pure — tests could pin it. The danger tier
+ * comes from the SAME shared field the server spawns by (the client
+ * holds the world seed), so the dread arrives exactly where the
+ * dire wolves do: tier 4+ plays the deep-frontier shelf, day or
+ * night — out there the land itself is the boss.
+ */
+export function moodFor(w: ZoneWeights, hours: number, dangerTier = 0): TrackMood {
   if (dominantZone(w) === 'town') return 'town';
   const night = hours < 5.5 || hours > 20.5;
   // The caves share the night shelf — dark and patient suits them.
-  if (night || dominantZone(w) === 'cave') return 'night';
-  return 'adventure';
+  if (dominantZone(w) === 'cave') return 'night';
+  if (dangerTier >= 4) return 'danger';
+  return night ? 'night' : 'adventure';
 }
 
 export class TrackPlayer {
@@ -82,7 +101,7 @@ export class TrackPlayer {
 
   constructor(private engine: AudioEngine) {}
 
-  update(w: ZoneWeights, hours: number): void {
+  update(w: ZoneWeights, hours: number, dangerTier = 0): void {
     const ctx = this.engine.ctx;
     const bus = this.engine.tracks;
     if (!ctx || !bus) return;
@@ -95,12 +114,12 @@ export class TrackPlayer {
     if (!this.booted) {
       // Let the world's own sounds greet the player first.
       this.booted = true;
-      this.mood = moodFor(w, hours);
+      this.mood = moodFor(w, hours, dangerTier);
       this.nextAt = t + 4 + Math.random() * 5;
     }
 
     // Mood commitment with hysteresis.
-    const want = moodFor(w, hours);
+    const want = moodFor(w, hours, dangerTier);
     if (want !== this.mood) {
       if (this.candidate !== want) {
         this.candidate = want;
