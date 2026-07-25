@@ -1,0 +1,35 @@
+{
+  "id": "veteran_skarn",
+  "name": "Old Skarn",
+  "title": "Kobold-War Veteran",
+  "examine": "One eye, one crutch, and the only living memory of the day the deep galleries fell. Drinks his stew by the brazier and watches the rubble line like it owes him.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 1,
+      "hairColor": 7,
+      "beard": 4,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 4,
+      "shirt": 11,
+      "pants": 11
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "hearty_stew",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "I was there the day the galleries fell. Youngest pick on Grettir's brother's crew. The seal went up eleven days after; I came out on the ninth.",
+    "The little diggers aren't wicked. They're *thorough*. There's a difference, and it matters exactly as much as your fence line holds.",
+    "Everyone hurries past the rubble line. I sit here and watch it. Somebody who remembers should."
+  ]
+}

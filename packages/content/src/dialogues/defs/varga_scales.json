@@ -1,0 +1,50 @@
+{
+  "id": "varga_scales",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "broker_varga"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Ore bought, ore sold, everything weighed where you can watch the needle. What's your business?",
+      "choices": [
+        {
+          "text": "What moves through the deep trade?",
+          "next": "trade"
+        },
+        {
+          "text": "Any advice for a gallery run?",
+          "next": "advice"
+        },
+        {
+          "text": "Show me the scales.",
+          "next": "browse"
+        }
+      ]
+    },
+    {
+      "id": "trade",
+      "text": "Silver out of the swept faces, iron and coal steady, and the first mithril dust anyone's weighed in twenty years \u2014 the old galleries run richer than the yard's, which is why half of Grettir's shift keeps filing transfer papers. Everything crosses this counter, gets its chalk mark, and walks up the stair to the bank at close. The dark keeps honest scales. Nothing down here to distract them.",
+      "next": "hub"
+    },
+    {
+      "id": "advice",
+      "text": "Chalk your name at the landing, keep the swept walks until you can hear your own nerve, and price the starfall honestly: the vein is real, the spider is realer, and the digmaster's tunnel gets closer to both every week. Come back with ore and I'll pay fair. Come back empty and alive and I'll call it a profit anyway. Broker's discretion.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "The counter's yours. Weighed to the grain, priced to the day.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "varga_ore"
+        }
+      ]
+    }
+  ]
+}

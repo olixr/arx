@@ -1,0 +1,44 @@
+{
+  "id": "curio_ninebrass",
+  "name": "Ninebrass",
+  "title": "Curio Dealer",
+  "examine": "Ash-grey, quick-fingered, and wearing nine brass rings that are absolutely not all his. The deep's oddities find his stall the way water finds low ground.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 11,
+      "hair": 8,
+      "hairColor": 6,
+      "beard": 6,
+      "eyes": 2,
+      "ears": 1,
+      "feature": 5,
+      "shirt": 4,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "emberstone",
+      "qty": 1
+    },
+    {
+      "item": "frostshard",
+      "qty": 1
+    },
+    {
+      "item": "arcane_dust",
+      "qty": 4
+    }
+  ],
+  "lines": [
+    "Curios, oddments, and things the dark coughed up \u2014 every piece with a story, half the stories true.",
+    "The glowshroom grotto grows my lamp-mushrooms, the cistern grows blindfish, and the galleries grow rumors. I retail all three.",
+    "Was I here before the seal broke? Now that's a *premium* story, friend. It costs more than you're holding."
+  ],
+  "shop": "ninebrass_curios"
+}

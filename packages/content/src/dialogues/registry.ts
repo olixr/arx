@@ -1,6 +1,10 @@
 import { dialogueDoneFlag, type DialogueDef } from './types.js';
 import { validateDialogue } from './validate.js';
 
+import coppinReeve from './defs/coppin_reeve.json';
+import ninebrassStall from './defs/ninebrass_stall.json';
+import skarnLine from './defs/skarn_line.json';
+import vargaScales from './defs/varga_scales.json';
 import ballaForge from './defs/balla_forge.json';
 import grettirYard from './defs/grettir_yard.json';
 import ivoGreenstair from './defs/ivo_greenstair.json';
@@ -50,6 +54,10 @@ import waywardRoad from './defs/wayward_road.json';
  * and fails if a file is missing from this roster.
  */
 const SOURCES: readonly unknown[] = [
+  coppinReeve,
+  ninebrassStall,
+  skarnLine,
+  vargaScales,
   ballaForge,
   grettirYard,
   ivoGreenstair,

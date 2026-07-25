@@ -1,0 +1,33 @@
+{
+  "id": "croft_veteran",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963267948966,
+    "sit": true,
+    "speed": 1.1
+  },
+  "slots": [
+    {
+      "from": 9,
+      "to": 10,
+      "task": {
+        "kind": "wander",
+        "x": -6,
+        "y": -3,
+        "radius": 3,
+        "speed": 1.1
+      }
+    },
+    {
+      "from": 17,
+      "to": 18,
+      "task": {
+        "kind": "post",
+        "x": 3.5,
+        "y": 3.5,
+        "dir": 1.5707963267948966,
+        "speed": 1.1
+      }
+    }
+  ]
+}

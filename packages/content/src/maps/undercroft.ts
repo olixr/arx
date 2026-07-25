@@ -210,6 +210,16 @@ export function buildUndercroft(): ZoneDef {
   b.npcSpawn('kobold', 78, 51.5, 4, 4); // the deep warren
   b.npcSpawn('kobold_digmaster', 87.5, 46, 2, 1); // the dig's owner
 
+  // ---------------------------------------------------------------
+  // THE PEOPLE (Epic 6): the Deep Market's keepers. The reeve walks
+  // her spine, Skarn watches the rubble line from his brazier, and
+  // the two counters hold the promenade.
+  // ---------------------------------------------------------------
+  b.actor('reeve_coppin', 40.5, 32.5, 0, 'croft_reeve');
+  b.actor('veteran_skarn', 51.5, 35.4, Math.PI / 2, 'croft_veteran');
+  b.actor('broker_varga', 38.5, 28.4, Math.PI / 2, 'croft_trader');
+  b.actor('curio_ninebrass', 44.5, 28.4, Math.PI / 2, 'croft_trader');
+
   // Cave-floor texture everywhere the rock shows.
   b.scatterDetail(Detail.Pebbles, 0.05, [Tile.CaveFloor]);
   b.scatterDetail(Detail.Mushroom, 0.02, [Tile.CaveFloor]);

@@ -3,6 +3,10 @@ import { NPCS, scaleNpcDef, type NpcDef } from '../npcs.js';
 import type { NpcActorDef } from './types.js';
 import { validateNpcActor } from './validate.js';
 
+import brokerVarga from './defs/broker_varga.json';
+import curioNinebrass from './defs/curio_ninebrass.json';
+import reeveCoppin from './defs/reeve_coppin.json';
+import veteranSkarn from './defs/veteran_skarn.json';
 import bursarOdele from './defs/bursar_odele.json';
 import cookSigny from './defs/cook_signy.json';
 import enchantressSolvei from './defs/enchantress_solvei.json';
@@ -65,6 +69,10 @@ import youngPip from './defs/young_pip.json';
 // Waykeeper sergeants holding the marches, and Edda holding the
 // Last Lamp against the Silverspine dark.
 const SOURCES: readonly unknown[] = [
+  brokerVarga,
+  curioNinebrass,
+  reeveCoppin,
+  veteranSkarn,
   bursarOdele,
   cookSigny,
   enchantressSolvei,

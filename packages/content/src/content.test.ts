@@ -1125,7 +1125,12 @@ test('undercroft: the cavern district holds its story, its metal, and its teeth'
   assert.equal(byNpc.get('kobold_digmaster'), 1);
   assert.equal(byNpc.get('giant_spider'), 1);
   assert.ok((byNpc.get('cave_bat') ?? 0) >= 5 && (byNpc.get('giant_beetle') ?? 0) >= 3);
-  assert.equal((z.actorSpawns ?? []).length, 0, 'the Deep Market keepers are Epic 6');
+  const croftActors = z.actorSpawns ?? [];
+  assert.equal(croftActors.length, 4, 'the Deep Market lost its keepers');
+  for (const slug of ['reeve_coppin', 'veteran_skarn', 'broker_varga', 'curio_ninebrass']) {
+    assert.ok(croftActors.some((a) => a.actor === slug), `${slug} missing from the Deep Market`);
+  }
+  assert.equal(croftActors.filter((a) => a.routine).length, 4, 'every keeper keeps hours');
   // The editor round trip holds WITH the portal records. (Flat zones
   // re-emit a zero elev layer after a round trip — compare without.)
   const json = zoneToJson(z);

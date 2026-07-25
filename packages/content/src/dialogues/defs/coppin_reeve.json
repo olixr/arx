@@ -1,0 +1,58 @@
+{
+  "id": "coppin_reeve",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "reeve_coppin"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Welcome below, traveler. *Mine-Reeve Coppin* \u2014 the Warden runs the mountain, I run what's under it. Market spine's swept and lit, guild law holds to the rubble line, and past that you're your own insurance. Questions are free; everything else has a price chalked on it.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "What'll it be?",
+      "choices": [
+        {
+          "text": "How does the Deep Market work?",
+          "next": "market"
+        },
+        {
+          "text": "What's past the rubble line?",
+          "next": "rubble"
+        },
+        {
+          "text": "The floor was swept when they opened the seal?",
+          "next": "swept"
+        },
+        {
+          "text": "Keep the lamps lit, Reeve.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "market",
+      "text": "Varga brokers the ore, Ninebrass retails the strange, the spring waters the lot, and every night the take walks up the stair to Odele's fifth column. The guild sweeps to the rubble line, Signy's stew comes down at shift change, and the Riftgate vault stays lit at guild expense \u2014 the Warden's one standing order: _the deep stays lamped._ It's a town, traveler. Just one with a ceiling.",
+      "next": "hub"
+    },
+    {
+      "id": "rubble",
+      "text": "The warren. Kobolds \u2014 the same stock that broke the first Undercroft, twenty years older and no less thorough. Their digmaster's cut a tunnel that aims straight at the starfall vein, and the spider in the deep walk answers to nobody's ledger. Adventurers who thin the warren find the reeve's office *generous*. The ones who don't come back get their names chalked by the landing. We keep both lists current.",
+      "next": "hub"
+    },
+    {
+      "id": "swept",
+      "text": "Aye. Twenty years sealed, and the guild broke through to a market floor clean as Signy's counters. Petra put it in her report; the report went up the stair; nobody sent a reply down. Skarn says the deep keeps its own house. I say I don't sweep it and it stays swept, and a reeve learns which questions pay wages. That one doesn't. ...It just stays swept, traveler. Mind the rubble line.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Lamps lit, counts matched. Mind the line \u2014 and if you're headed for the galleries, chalk your name by the landing. It's not superstition. It's arithmetic."
+    }
+  ]
+}

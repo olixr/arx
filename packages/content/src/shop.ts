@@ -252,6 +252,33 @@ const defs: ShopDef[] = [
       { item: 'bread', price: 11 },
     ],
   },
+  // The Deep Market's counters.
+  {
+    id: 'varga_ore',
+    name: "Varga's Scales",
+    stock: [
+      { item: 'copper_ore', price: 12 },
+      { item: 'tin_ore', price: 12 },
+      { item: 'iron_ore', price: 28 },
+      { item: 'coal', price: 15 },
+      { item: 'gold_ore', price: 90 },
+      { item: 'silver_ore', price: 65 },
+      { item: 'iron_bar', price: 62 },
+    ],
+  },
+  {
+    id: 'ninebrass_curios',
+    name: "Ninebrass's Curios",
+    stock: [
+      { item: 'emberstone', price: 240 },
+      { item: 'frostshard', price: 240 },
+      { item: 'stormpearl', price: 260 },
+      { item: 'bloomstone', price: 240 },
+      { item: 'arcane_dust', price: 85 },
+      { item: 'silver_ring', price: 210 },
+      { item: 'brass_key', price: 250 },
+    ],
+  },
   // Bretta sells the forge's knowledge: every guild-taught schematic
   // in the smithing line, jewellery to platebodies.
   { id: 'trainer_smithing', name: 'Ironhewn Schematics', stock: trainerStock(['smithing']) },

@@ -1,0 +1,41 @@
+{
+  "id": "reeve_coppin",
+  "name": "Mine-Reeve Coppin",
+  "title": "Reeve of the Deep Market",
+  "examine": "Lamp-soot freckles and a ring of chalk-marked keys. The Undercroft answers to the Warden, the Warden answers to the ledger, and the ledger answers to Coppin.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 9,
+      "hair": 1,
+      "hairColor": 6,
+      "beard": 2,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 4,
+      "shirt": 10,
+      "pants": 11
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "iron_sabatons",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 90
+    },
+    {
+      "item": "silver_ore",
+      "qty": 4
+    }
+  ],
+  "lines": [
+    "Welcome below. Market spine's swept and lit; past the rubble line you're your own insurance.",
+    "The guild broke the seal, the Warden signed for it, and I keep the books down here where the ink stays cool.",
+    "Twenty years sealed and the market floor was clean when they opened it. I don't sweep it either. It just stays swept. We've all agreed to be busy about it."
+  ]
+}

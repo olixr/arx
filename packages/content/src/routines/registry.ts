@@ -1,6 +1,9 @@
 import type { RoutineDef } from './types.js';
 import { validateRoutine } from './validate.js';
 
+import croftReeve from './defs/croft_reeve.json';
+import croftTrader from './defs/croft_trader.json';
+import croftVeteran from './defs/croft_veteran.json';
 import fallBursar from './defs/fall_bursar.json';
 import fallCook from './defs/fall_cook.json';
 import fallEnchantress from './defs/fall_enchantress.json';
@@ -46,6 +49,9 @@ import waystationKeeper from './defs/waystation_keeper.json';
  * import is a test failure, not a silent hole in someone's day.
  */
 const SOURCES: readonly unknown[] = [
+  croftReeve,
+  croftTrader,
+  croftVeteran,
   fallBursar,
   fallCook,
   fallEnchantress,
