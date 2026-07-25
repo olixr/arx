@@ -23,10 +23,17 @@
  */
 import type { AudioEngine } from './engine.js';
 import { type ZoneWeights } from './zones.js';
-export type TrackMood = 'adventure' | 'night' | 'town';
+export type TrackMood = 'adventure' | 'night' | 'town' | 'danger';
 export declare const TRACK_LIBRARY: Record<TrackMood, string[]>;
-/** Which shelf suits this place and hour. Pure — tests could pin it. */
-export declare function moodFor(w: ZoneWeights, hours: number): TrackMood;
+/**
+ * Which shelf suits this place, hour, and how far past the lights the
+ * listener has walked. Pure — tests could pin it. The danger tier
+ * comes from the SAME shared field the server spawns by (the client
+ * holds the world seed), so the dread arrives exactly where the
+ * dire wolves do: tier 4+ plays the deep-frontier shelf, day or
+ * night — out there the land itself is the boss.
+ */
+export declare function moodFor(w: ZoneWeights, hours: number, dangerTier?: number): TrackMood;
 export declare class TrackPlayer {
     private engine;
     /** Committed mood (readable for debugging). */
@@ -43,7 +50,7 @@ export declare class TrackPlayer {
     private activeEl;
     private booted;
     constructor(engine: AudioEngine);
-    update(w: ZoneWeights, hours: number): void;
+    update(w: ZoneWeights, hours: number, dangerTier?: number): void;
     private switchTo;
     /** Fade the sounding track down and stop it once it is inaudible. */
     private fadeOut;

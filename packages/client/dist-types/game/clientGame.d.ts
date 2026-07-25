@@ -211,6 +211,8 @@ export declare class ClientGame {
     readonly predictor: Predictor;
     ownEid: EntityId | null;
     ownName: string;
+    /** World seed from the welcome — the danger field's client-side key. */
+    worldSeed: number | null;
     /** Chosen base look; null until creation completes. */
     ownLook: Look | null;
     aim: number;
