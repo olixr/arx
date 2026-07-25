@@ -623,6 +623,8 @@ const game = new ClientGame(input, {
 // Dev handle: Playwright drives /give and friends through this —
 // window.game is stolen by the canvas id, so take a distinct name.
 (window as unknown as { dcGame: ClientGame }).dcGame = game;
+// Staging handle: the mood/track state, for Playwright verify passes.
+(window as unknown as { dcMusic: TrackPlayer }).dcMusic = music;
 // Dev/Playwright handle: the renderer beside the game (camera, anims).
 (window as unknown as { dcRenderer: Renderer }).dcRenderer = renderer;
 
