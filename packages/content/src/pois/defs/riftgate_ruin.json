@@ -2,24 +2,57 @@
   "id": "riftgate_ruin",
   "name": "Ruined riftgate",
   "description": "A broken gate the land forgot it was keeping shut. The dead still hold the court, the gate still turns a key — and the gatekeeper's cache nearly always holds one.",
-  "tiers": [3, 5],
+  "tiers": [
+    3,
+    5
+  ],
   "weight": 2,
-  "prefabs": ["poi_riftgate_ruin"],
+  "prefabs": [
+    "poi_riftgate_ruin",
+    "poi_riftgate_sunken"
+  ],
   "garrison": [
-    { "npc": "skeleton", "count": [1, 2], "role": "holdfast" },
-    { "npc": "skeleton_guard", "count": [1, 2], "role": "sentry", "patrol": true },
+    {
+      "npc": "skeleton",
+      "count": [
+        1,
+        2
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "skeleton_guard",
+      "count": [
+        1,
+        2
+      ],
+      "role": "sentry",
+      "patrol": true
+    },
     {
       "npc": "skeleton_archer",
-      "count": [1, 2],
+      "count": [
+        1,
+        2
+      ],
       "role": "sentry",
       "minTier": 4,
-      "hours": { "from": 20.5, "to": 5.5 }
+      "hours": {
+        "from": 20.5,
+        "to": 5.5
+      }
     },
     {
       "npc": "cave_bat",
-      "count": [1, 3],
+      "count": [
+        1,
+        3
+      ],
       "role": "holdfast",
-      "hours": { "from": 20.5, "to": 5.5 }
+      "hours": {
+        "from": 20.5,
+        "to": 5.5
+      }
     }
   ],
   "chestLoot": "chest_riftgate",
@@ -27,6 +60,15 @@
   "cues": {
     "clearing": 2,
     "approachPath": true,
-    "scatter": [{ "tile": "BonePile", "count": 3 }, { "tile": "CaveRubble", "count": 4 }]
+    "scatter": [
+      {
+        "tile": "BonePile",
+        "count": 3
+      },
+      {
+        "tile": "CaveRubble",
+        "count": 4
+      }
+    ]
   }
 }

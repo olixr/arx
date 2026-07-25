@@ -3,14 +3,22 @@ import { NPCS, scaleNpcDef, type NpcDef } from '../npcs.js';
 import type { NpcActorDef } from './types.js';
 import { validateNpcActor } from './validate.js';
 
+import crofterBeck from './defs/crofter_beck.json';
+import crofterHolt from './defs/crofter_holt.json';
+import crofterMaida from './defs/crofter_maida.json';
+import crofterTam from './defs/crofter_tam.json';
 import elderRowan from './defs/elder_rowan.json';
 import farmerHobb from './defs/farmer_hobb.json';
 import hearthkeeperIona from './defs/hearthkeeper_iona.json';
+import lampkeeperEdda from './defs/lampkeeper_edda.json';
 import tinkerFen from './defs/tinker_fen.json';
 import wardenBryn from './defs/warden_bryn.json';
 import wayfarerDray from './defs/wayfarer_dray.json';
 import wayfarerPetch from './defs/wayfarer_petch.json';
 import wayfarerSenna from './defs/wayfarer_senna.json';
+import waykeeperBrant from './defs/waykeeper_brant.json';
+import waykeeperHale from './defs/waykeeper_hale.json';
+import waykeeperOdessa from './defs/waykeeper_odessa.json';
 import waywardWatch from './defs/wayward_watch.json';
 import youngPip from './defs/young_pip.json';
 
@@ -20,18 +28,28 @@ import youngPip from './defs/young_pip.json';
  * if a file is missing from this roster, so forgetting the import is
  * a test failure, not a silent hole in the world.
  */
-// The living roster: Dawnmead's six villagers plus the waystation
-// cast the procedural havens post (wayfarers + the wayward watch).
-// The old placeholder town's people left with their town.
+// The living roster: Dawnmead's six villagers, the waystation cast
+// the procedural havens post (wayfarers + the wayward watch), and
+// the Wild Between's people — the crofters holding the verges, the
+// Waykeeper sergeants holding the marches, and Edda holding the
+// Last Lamp against the Silverspine dark.
 const SOURCES: readonly unknown[] = [
+  crofterBeck,
+  crofterHolt,
+  crofterMaida,
+  crofterTam,
   elderRowan,
   farmerHobb,
   hearthkeeperIona,
+  lampkeeperEdda,
   tinkerFen,
   wardenBryn,
   wayfarerDray,
   wayfarerPetch,
   wayfarerSenna,
+  waykeeperBrant,
+  waykeeperHale,
+  waykeeperOdessa,
   waywardWatch,
   youngPip,
 ];

@@ -1325,6 +1325,17 @@ export declare class Renderer {
      */
     private static readonly SKELETON_EQUIP;
     private static readonly GOBLIN_EQUIP;
+    /**
+     * The road-thieves' kit — leathers and honest iron, every piece a
+     * real drop from the wearer's table (the loot-story law). The
+     * archer slings a shortbow and quiver; the reaver fights sword-and-
+     * dagger, the dual-wield silhouette marking the camp's name.
+     */
+    private static readonly BRIGAND_EQUIP;
+    /** Human outlaws stand player-tall; the reaver a shade over. */
+    private static readonly BRIGAND_SIZE;
+    /** Weathered human hides — road tans, not goblin green. */
+    private static readonly BRIGAND_SKIN;
     /** Shared empty kit — stable identity for the body-sprite signature. */
     private static readonly NO_EQUIP;
     /**

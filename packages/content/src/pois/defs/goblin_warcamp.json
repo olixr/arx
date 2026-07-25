@@ -2,24 +2,63 @@
   "id": "goblin_warcamp",
   "name": "Goblin warcamp",
   "description": "A raiding band dug in around its fires — sentries walk the treeline, and the war-chief keeps the loot.",
-  "tiers": [1, 3],
+  "tiers": [
+    1,
+    3
+  ],
   "weight": 3,
-  "prefabs": ["poi_goblin_camp_ring", "poi_goblin_camp_pair"],
+  "prefabs": [
+    "poi_goblin_camp_ring",
+    "poi_goblin_camp_pair",
+    "poi_goblin_stockade"
+  ],
   "garrison": [
-    { "npc": "goblin", "count": [1, 3], "role": "holdfast" },
-    { "npc": "goblin", "count": [1, 2], "role": "sentry", "patrol": true },
-    { "npc": "worg", "count": [1, 2], "role": "holdfast", "minTier": 3 },
     {
-      "npc": "worg",
-      "count": [1, 1],
-      "role": "sentry",
-      "patrol": true,
-      "minTier": 2,
-      "hours": { "from": 20.5, "to": 5.5 }
+      "npc": "goblin",
+      "count": [
+        1,
+        3
+      ],
+      "role": "holdfast"
     },
     {
       "npc": "goblin",
-      "count": [1, 1],
+      "count": [
+        1,
+        2
+      ],
+      "role": "sentry",
+      "patrol": true
+    },
+    {
+      "npc": "worg",
+      "count": [
+        1,
+        2
+      ],
+      "role": "holdfast",
+      "minTier": 3
+    },
+    {
+      "npc": "worg",
+      "count": [
+        1,
+        1
+      ],
+      "role": "sentry",
+      "patrol": true,
+      "minTier": 2,
+      "hours": {
+        "from": 20.5,
+        "to": 5.5
+      }
+    },
+    {
+      "npc": "goblin",
+      "count": [
+        1,
+        1
+      ],
       "role": "holdfast",
       "minTier": 3,
       "levelOffset": 5,
@@ -31,6 +70,11 @@
   "cues": {
     "clearing": 4,
     "approachPath": true,
-    "scatter": [{ "tile": "BannerPole", "count": 1 }]
+    "scatter": [
+      {
+        "tile": "BannerPole",
+        "count": 1
+      }
+    ]
   }
 }

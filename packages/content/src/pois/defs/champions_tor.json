@@ -2,13 +2,22 @@
   "id": "champions_tor",
   "name": "Champion's tor",
   "description": "A ring of standing stones where something with a name keeps a black chest. The ward on the strongbox holds while its keeper stands — folk hang the names on the stones after.",
-  "tiers": [2, 5],
+  "tiers": [
+    2,
+    5
+  ],
   "weight": 2,
-  "prefabs": ["poi_champions_tor"],
+  "prefabs": [
+    "poi_champions_tor",
+    "poi_champions_barrow"
+  ],
   "garrison": [
     {
       "npc": "troll",
-      "count": [1, 1],
+      "count": [
+        1,
+        1
+      ],
       "role": "holdfast",
       "levelOffset": 6,
       "names": [
@@ -22,10 +31,20 @@
         "The Quiet Tonnage"
       ]
     },
-    { "npc": "wolf", "count": [1, 2], "role": "sentry" },
+    {
+      "npc": "wolf",
+      "count": [
+        1,
+        2
+      ],
+      "role": "sentry"
+    },
     {
       "npc": "dire_wolf",
-      "count": [1, 1],
+      "count": [
+        1,
+        1
+      ],
       "role": "sentry",
       "patrol": true,
       "minTier": 4
@@ -37,6 +56,11 @@
   "cues": {
     "clearing": 3,
     "approachPath": true,
-    "scatter": [{ "tile": "BonePile", "count": 4 }]
+    "scatter": [
+      {
+        "tile": "BonePile",
+        "count": 4
+      }
+    ]
   }
 }

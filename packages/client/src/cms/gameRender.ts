@@ -106,6 +106,20 @@ const MOB_EQUIP: Record<string, Partial<Record<string, string>>> = {
   skeleton_champion: { weapon: 'iron_sword', cape: 'cape_champion' },
   kobold: { weapon: 'bronze_pickaxe' },
   kobold_digmaster: { weapon: 'iron_pickaxe' },
+  brigand: { weapon: 'iron_sword', body: 'leather_body', head: 'leather_hood' },
+  brigand_archer: {
+    weapon: 'shortbow',
+    offhand: 'hunters_quiver',
+    body: 'leather_body',
+    legs: 'leather_chaps',
+  },
+  brigand_reaver: {
+    weapon: 'iron_sword',
+    offhand: 'iron_dagger',
+    head: 'leather_hood',
+    body: 'leather_body',
+    legs: 'leather_chaps',
+  },
 };
 const MOB_SIZE: Record<string, number> = {
   skeleton: 0.95,
@@ -115,6 +129,16 @@ const MOB_SIZE: Record<string, number> = {
   kobold: 0.75,
   kobold_digmaster: 1.0,
   troll: 1.4,
+  brigand: 1.0,
+  brigand_archer: 0.97,
+  brigand_reaver: 1.1,
+};
+
+/** Road tans for the human outlaws (the renderer's BRIGAND_SKIN twin). */
+const MOB_SKIN: Record<string, string> = {
+  brigand: '#d9a878',
+  brigand_archer: '#c69268',
+  brigand_reaver: '#b9825e',
 };
 
 function isHumanoidMob(defId: string): boolean {
@@ -122,6 +146,7 @@ function isHumanoidMob(defId: string): boolean {
     defId.startsWith('goblin') ||
     defId.startsWith('skeleton') ||
     defId.startsWith('kobold') ||
+    defId.startsWith('brigand') ||
     defId === 'troll'
   );
 }
@@ -162,7 +187,11 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     isOwn: false,
     equip: MOB_EQUIP[def.id] ?? {},
     skinColor:
-      def.id === 'troll' ? '#6a7d5c' : def.id.startsWith('goblin') ? '#7aa74a' : kob?.hide,
+      def.id === 'troll'
+        ? '#6a7d5c'
+        : def.id.startsWith('goblin')
+          ? '#7aa74a'
+          : (kob?.hide ?? MOB_SKIN[def.id]),
     size: sizeK,
     skeletal: skel,
     kobold: kob,

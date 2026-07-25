@@ -67,6 +67,28 @@ const LEGEND: Record<string, number> = {
   D: Tile.PortalDown,
   X: Tile.ChestIron,
   Z: Tile.ChestBoss,
+  // The Wild-Between extension: enough vocabulary for cabins, camps,
+  // and shrines — walls that enclose, doors that open, beds that say
+  // somebody LIVES here.
+  w: Tile.WallWood,
+  v: Tile.DoorwayWood,
+  p: Tile.WoodFloor,
+  g: Tile.WallWoodWindow,
+  z: Tile.WallStoneWindow,
+  y: Tile.DoorwayStone,
+  E: Tile.Bed,
+  K: Tile.WeaponRack,
+  i: Tile.HangingSign,
+  k: Tile.Table,
+  q: Tile.Chair,
+  H: Tile.Hearth,
+  G: Tile.CrateGoods,
+  V: Tile.CaveWall,
+  x: Tile.TreeWillow,
+  Q: Tile.ArchStone,
+  '~': Tile.WaterShallow,
+  '%': Tile.Tilled,
+  '*': Tile.WheatMid,
 };
 
 interface Marker {
@@ -75,6 +97,12 @@ interface Marker {
   radius: number;
   /** Ground tile under the marker. */
   under: Tile;
+  /**
+   * Authored level: the body keeps THIS level instead of rolling into
+   * the site's danger band — the brigands' stolen cows stay level-3
+   * cows no matter how deep the camp stands.
+   */
+  level?: number;
 }
 
 function sketch(
@@ -95,7 +123,14 @@ function sketch(
       const marker = markers[ch];
       if (marker) {
         ground[y * width + x] = marker.under;
-        spawns.push({ dx: x, dy: y, npc: marker.npc, radius: marker.radius, count: 1 });
+        spawns.push({
+          dx: x,
+          dy: y,
+          npc: marker.npc,
+          radius: marker.radius,
+          count: 1,
+          ...(marker.level !== undefined ? { level: marker.level } : {}),
+        });
         continue;
       }
       const tile = LEGEND[ch];
@@ -339,6 +374,526 @@ const championsTor = sketch(
   ],
 );
 
+// ------------------------------------------------------------------
+// THE WILD BETWEEN — Epic 3's scene library. Every prefab here is a
+// place where something HAPPENED: the stolen cow in the brigand pen,
+// the toll-gate nobody pays twice, the traveler's chest the wolves
+// still guard, the lamp somebody keeps lighting in a tower the Watch
+// officially abandoned. Story first, then tiles.
+// ------------------------------------------------------------------
+
+const brigandMarks: Record<string, Marker> = {
+  '1': { npc: 'brigand', radius: 2.5, under: Tile.Dirt },
+  '2': { npc: 'brigand', radius: 2.5, under: Tile.Dirt },
+  '3': { npc: 'brigand_archer', radius: 2, under: Tile.Dirt },
+  '9': { npc: 'cow', radius: 1, under: Tile.Grass, level: 3 },
+};
+
+/**
+ * A brigand camp dug into a stump-hollow — they felled the ring
+ * themselves. Stolen goods stacked by the fire, the reaver's warded
+ * strongbox, and a rail pen holding somebody's cows (the hamlets down
+ * the road count their herds and curse).
+ */
+const banditHollow = sketch(
+  'poi_bandit_hollow',
+  'Brigand hollow',
+  [
+    '________,,_______',
+    '___,::::::::,____',
+    '__,:u.G.c..u:,___',
+    '_,:.1...f..2.:,__',
+    '_,:..k......X:,__',
+    '_,:.3.f....n.:,__',
+    '_,:.llll.....:,__',
+    '_,:.l99l..a.u:,__',
+    '__,:llll...:,____',
+    '___,:::::::,_____',
+    '______,,_________',
+  ],
+  brigandMarks,
+);
+
+/**
+ * The toll-gate: an old cart track crosses the camp, banner poles
+ * flank it, and the strewn crates and bones tell you exactly how the
+ * last argument about the toll went.
+ */
+const banditToll = sketch(
+  'poi_bandit_toll',
+  "Thieves' toll",
+  [
+    '_____,,,________',
+    '__,::::::,,,____',
+    '_,:.c.a..G.:,___',
+    '_,:.1..f..2.:,__',
+    '_::::::::::::::_',
+    '_,:n..o...n.:,__',
+    '_,:.3...X...:,__',
+    '_,:..c.::.a.:,__',
+    '__,::::::::,____',
+    '______,,________',
+  ],
+  brigandMarks,
+);
+
+const hamletMarks: Record<string, Marker> = {
+  '8': { npc: 'chicken', radius: 1.5, under: Tile.Grass, level: 1 },
+  '9': { npc: 'cow', radius: 1, under: Tile.Grass, level: 3 },
+};
+
+/**
+ * A crofter's stead holding the verge: one snug cabin (hearth, bed,
+ * a table set for two), the fenced grain plot, hens loose in the
+ * yard, and the woodpile that says winter is taken seriously.
+ */
+const hamletCroft = sketch(
+  'poi_hamlet_croft',
+  'Roadside croft',
+  [
+    '_______,,,________',
+    '__,,.........,,___',
+    '_,.wwgww......,,__',
+    '_,.wpppw.FFFFF.,__',
+    '_,.wEppv.F%*%F.,__',
+    '_,.wkqHw.F*%*F.,__',
+    '_,.wwgww.F%*%F.,__',
+    '_,..:....FF.FF.,__',
+    '_,.c:.f........,__',
+    '_,.c:...8..8...,__',
+    '_,....i.......,,__',
+    '__,,.........,,___',
+    '________,,________',
+  ],
+  hamletMarks,
+);
+
+/**
+ * Two households, one fire — the cabins face each other across the
+ * pit the way old neighbors argue: daily, warmly, forever. The cow
+ * pen is shared. The chicken is nobody's and everybody's.
+ */
+const hamletPair = sketch(
+  'poi_hamlet_pair',
+  'Twin-hearth hamlet',
+  [
+    '________,,,________',
+    '__,,..........,,___',
+    '_,.wwgww..wwgww.,__',
+    '_,.wpppw..wpppw.,__',
+    '_,.wEppv..vppEw.,__',
+    '_,.wkqpw..wqkHw.,__',
+    '_,.wwgww..wwgww.,__',
+    '_,....:....:....,__',
+    '_,....:.f..:....,__',
+    '_,.llll.......i.,__',
+    '_,.l99l..8......,__',
+    '_,.llll........,,__',
+    '__,,..........,,___',
+    '_________,,________',
+  ],
+  hamletMarks,
+);
+
+const outpostMarks: Record<string, Marker> = {
+  // The pen's guest of honor: a raider the Watch actually caught —
+  // an ordinary one (level authored), not a tier-scaled terror.
+  '5': { npc: 'goblin', radius: 0.4, under: Tile.Dirt, level: 5 },
+};
+
+/**
+ * A Waykeeper watchtower on the wild marches: stone shell, brazier
+ * always lit, racks kept full — and the prisoner pen out front
+ * holding this week's catch, which yells at everyone who passes.
+ */
+const outpostTower = sketch(
+  'poi_outpost_tower',
+  "Waykeepers' watchtower",
+  [
+    '______,,,_______',
+    '__,..........,__',
+    '_,.##z##..n...,_',
+    '_,.#SKS#.llll.,_',
+    '_,.#SbSy.l5.l.,_',
+    '_,.#SSS#.llll.,_',
+    '_,.#####......,_',
+    '_,..:...f..c..,_',
+    '_,..:...a..K..,_',
+    '_,...i........,_',
+    '__,..........,__',
+    '_______,,_______',
+  ],
+  outpostMarks,
+);
+
+/**
+ * The palisade ring: a fence fort thrown up in a season, gate to the
+ * south, everything inside arranged by someone who has done this
+ * before — fire center, racks reachable, supplies off the mud.
+ */
+const outpostRing = sketch(
+  'poi_outpost_ring',
+  "Waykeepers' ring-fort",
+  [
+    '______,,________',
+    '__,..........,__',
+    '_,.PFFFFFFFFP.,_',
+    '_,.F...c..a.F.,_',
+    '_,.F..K.f...F.,_',
+    '_,.F.e....k.F.,_',
+    '_,.F........F.,_',
+    '_,.PFFF..FFFP.,_',
+    '_,....:..i....,_',
+    '_,....::......,_',
+    '__,..........,__',
+    '______,,________',
+  ],
+);
+
+const koboldDigMarks: Record<string, Marker> = {
+  '1': { npc: 'kobold', radius: 2, under: Tile.Dirt },
+  '2': { npc: 'kobold', radius: 2, under: Tile.Dirt },
+};
+
+/**
+ * An open dig biting into an ore seam — shoring timbers, spoil
+ * rubble, and the warren's strongbox sitting in the pit because
+ * kobolds trust holes more than they trust each other.
+ */
+const digsPit = sketch(
+  'poi_digs_pit',
+  'Kobold digs',
+  [
+    '_____,,________',
+    '__,::::::::,___',
+    '_,:RC::T::R:,__',
+    '_,:l::::::l:,__',
+    '_,:l1:I::2l:,__',
+    '_,:l::b:::l:,__',
+    '_,::c:W:a::,___',
+    '_,:R:::C:::,___',
+    '__,::::::::,___',
+    '_____,,________',
+  ],
+  koboldDigMarks,
+);
+
+/**
+ * A tunnel mouth into a rock knoll: braziers flank the dark, the
+ * cache sits just inside where the light gives out, and the spoil
+ * heap says the digging goes DEEP.
+ */
+const digsMouth = sketch(
+  'poi_digs_mouth',
+  'Warren mouth',
+  [
+    '____,,,,______',
+    '__,VVVVVV,____',
+    '_,:VVXVVV:,___',
+    '_,:Vb:bV::,___',
+    '_,::::::R:,___',
+    '_,:c:1:T::,___',
+    '_,:R:::a::,___',
+    '__,::::::,____',
+    '____,,,_______',
+  ],
+  koboldDigMarks,
+);
+
+/**
+ * The den in the rocks — and the story of how it got its bones: a
+ * traveler's cold camp, the crate torn open, the iron chest the pack
+ * neither opened nor left. Somebody should carry word back.
+ */
+const denBones = sketch(
+  'poi_den_bones',
+  'Wolfkin den',
+  [
+    '_____,,,_______',
+    '__,,......,,___',
+    '_,.rrr..o..,,__',
+    '_,rrXrr...1.,__',
+    '_,.r.r..o...,__',
+    '_,.o.....f..,__',
+    '_,.1...c....,__',
+    '__,..o...,,,___',
+    '____,,,________',
+  ],
+  wolfMarks,
+);
+
+/**
+ * A trampled hollow ringed by stumps the pack has scent-marked to
+ * death — bones dragged to the middle, and the last owner's chest
+ * shoved under the rocks by something that didn't understand locks.
+ */
+const denHollow = sketch(
+  'poi_den_hollow',
+  'Pack hollow',
+  [
+    '____,,,_______',
+    '__,u.....u,___',
+    '_,.,,o.,,.,,__',
+    '_,u.1...o.u,__',
+    '_,.o..rX...,__',
+    '_,....rr...,__',
+    '_,u..1...u.,__',
+    '__,o......,___',
+    '____,,,_______',
+  ],
+  wolfMarks,
+);
+
+/**
+ * A tower of the old Waykeeper line, breached and left. By daylight
+ * it's a free chest and a view; after dusk the garrison that died
+ * holding it stands its watch again. Loot fast or fight fair.
+ */
+const watchtowerHusk = sketch(
+  'poi_watchtower_husk',
+  'Broken watchtower',
+  [
+    '____,,,_______',
+    '__,.......,___',
+    '_,..##S##..,__',
+    '_,.#SSSSS#.,__',
+    '_,.#SXSbS..,__',
+    '_,.#SSSSSR.,__',
+    '_,..#SS#R..,__',
+    '_,...o.R...,__',
+    '_,..o...,,.,__',
+    '__,.......,___',
+    '____,,,_______',
+  ],
+);
+
+/**
+ * The tower's standing sibling: door on its hinges, bench swept,
+ * cache stocked — and the lamp over the door burning, though the
+ * Watch struck this post from the rolls thirty years ago. Somebody
+ * keeps lighting it. At night, you'll meet them.
+ */
+const watchtowerShelter = sketch(
+  'poi_watchtower_shelter',
+  'Wayline shelter',
+  [
+    '____,,,_______',
+    '__,........,__',
+    '_,..##z##..,__',
+    '_,.#SSSSS#.,__',
+    '_,.#SeSWS#.,__',
+    '_,.#SSSSS#.,__',
+    '_,..##y##..,__',
+    '_,...:L....,__',
+    '_,.l.:..l..,__',
+    '__,........,__',
+    '____,,,_______',
+  ],
+);
+
+/**
+ * A wayshrine of the road-faith: stones, a brazier the passing keep
+ * fed, a bench for the tired, and herbs seeded by a hundred grateful
+ * hands. Danger owns the miles; it does not own this circle.
+ */
+const wayshrineStones = sketch(
+  'poi_wayshrine_stones',
+  'Wayshrine',
+  [
+    '___,,,______',
+    '__,..P..,___',
+    '_,.s...B.,__',
+    '_,P.SSS..,__',
+    '_,..SbS.P,__',
+    '_,P.SeS..,__',
+    '_,...i.B.,__',
+    '__,.,,..,___',
+    '____,,______',
+  ],
+);
+
+/**
+ * A spring the road-faith blessed: clear water, one old stone, a
+ * bench under the willow. Travelers leave the pool cleaner than
+ * they found it. Even brigands. Nobody discusses this.
+ */
+const wayshrinePool = sketch(
+  'poi_wayshrine_pool',
+  'Blessed spring',
+  [
+    '___,,,,______',
+    '__,.....x,___',
+    '_,..~~~..,,__',
+    '_,.~~~~~.B,__',
+    '_,.~~~~~..,__',
+    '_,P.~~~.e.,__',
+    '_,.s..h..,___',
+    '__,.,,..i,___',
+    '____,,,______',
+  ],
+);
+
+/**
+ * The warcamp grown teeth: a full stockade with gates north and
+ * south, three fires' worth of warband, and banners at the south
+ * gate so you know whose toll you're refusing.
+ */
+const goblinStockade = sketch(
+  'poi_goblin_stockade',
+  'Goblin stockade',
+  [
+    '______,,,_______',
+    '__,::::::::::,__',
+    '_,:FFFF::FFFF:,_',
+    '_,:F........F:,_',
+    '_,:F.f.1..f.F:,_',
+    '_,:F...W....F:,_',
+    '_,:F.2...3..F:,_',
+    '_,:F...f....F:,_',
+    '_,:FFFF::FFFF:,_',
+    '_,::n::::::n::,_',
+    '__,::::::::::,__',
+    '_____,,,________',
+  ],
+  goblinMarks,
+);
+
+/**
+ * One arch still standing over a road that no longer exists — the
+ * pavers run twenty feet and stop. The dead hold the span like it
+ * still leads somewhere. Perhaps for them it does.
+ */
+const ruinArch = sketch(
+  'poi_ruin_arch',
+  'Orphaned arch',
+  [
+    '____,,,_______',
+    '__,.......,___',
+    '_,.P..o.P.,,__',
+    '_,.SS.SSS..,__',
+    '_,.SQSSWS..,__',
+    '_,.SS1SSS2.,__',
+    '_,..R.SS.R.,__',
+    '_,.o..S..,.,__',
+    '__,.......,___',
+    '____,,,_______',
+  ],
+  ruinMarks,
+);
+
+/**
+ * A cold spring rimmed in forage — berry, flax, sageweort all
+ * crowding the water. The grove's answer to a market square, with
+ * the grove's idea of a stall keeper.
+ */
+const groveSpring = sketch(
+  'poi_grove_spring',
+  'Cold spring',
+  [
+    '____,,,______',
+    '__,,...x,,___',
+    '_,.B.,,..B,__',
+    '_,,.~~~..s,__',
+    '_,.~~~~~..,__',
+    '_,s.~~~.h.,__',
+    '_,.h..1..B,__',
+    '_,x..,,.,,,__',
+    '____,,,______',
+  ],
+  wolfMarks,
+);
+
+/**
+ * A riftgate half-swallowed by the hill that grew over it — one
+ * pillar up, one down, the gate itself still humming under the
+ * rubble. The dead here aren't guarding it. They're waiting by it.
+ */
+const riftgateSunken = sketch(
+  'poi_riftgate_sunken',
+  'Sunken riftgate',
+  [
+    '____,,,______',
+    '__,R....R,___',
+    '_,.P.SSS..,__',
+    '_,.SSSDSR.,__',
+    '_,.RS.o.SS,__',
+    '_,.S1.X.2.,__',
+    '_,..RSSR..,__',
+    '__,..o...,___',
+    '____,,,______',
+  ],
+  riftMarks,
+);
+
+/**
+ * A turf barrow with a rock crown — older than the roads, older
+ * than the names on the stones. The black chest at its heart has
+ * outlasted every hand that closed it. The offerings outside are
+ * newer. Much newer.
+ */
+const championsBarrow = sketch(
+  'poi_champions_barrow',
+  "Champion's barrow",
+  [
+    '____,,,,______',
+    '__,......,,___',
+    '_,..:::r..,,__',
+    '_,.::::::o.,__',
+    '_,.:rZ:r:..,__',
+    '_,.::::::.,,__',
+    '_,..r:::o..,__',
+    '_,.o..:..,.,__',
+    '__,...:..,,___',
+    '____,,,_______',
+  ],
+);
+
+/**
+ * The walled rest: two stone windbreaks against the weather the
+ * high country throws, rails for the animals, and the keeper's
+ * stall in the lee corner. Lamps mark it long before you see walls.
+ */
+const waystationWalled = sketch(
+  'poi_waystation_walled',
+  'Walled rest',
+  [
+    '_____,,,_______',
+    '__,::::::::,___',
+    '_,:##..M.a.:,__',
+    '_,:#.e.f...:,__',
+    '_,:...e..c.:,__',
+    '_,:.L....##:,__',
+    '_,:l.l..L.#:,__',
+    '__,::::::::,___',
+    '_____,,________',
+  ],
+);
+
+/**
+ * THE LAST LAMP — the final light on the High Road before the
+ * Silverspine climb. Four lamps, a long wall against the north
+ * dark, and outside it the memorial row: bones and a banner for
+ * the ones who wouldn't wait for morning. The keeper's advice is
+ * one word long and free.
+ */
+const lastLamp = sketch(
+  'poi_last_lamp',
+  'The Last Lamp',
+  [
+    '______,,,________',
+    '__,.o.n..o..,____',
+    '_,:#########:,___',
+    '_,:#.L.e.L.#:,___',
+    '_,:...M.f...:,___',
+    '_,:.a...e.c.:,___',
+    '_,:.L..e..L.:,___',
+    '_,:l.l...l.l:,___',
+    '__,::::::::,_____',
+    '__,..i...,,,_____',
+    '_____,,,_________',
+  ],
+);
+
 export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
   [
     goblinCampRing,
@@ -351,5 +906,27 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     waystationRest,
     riftgateRuin,
     championsTor,
+    // The Wild Between (Epic 3):
+    banditHollow,
+    banditToll,
+    hamletCroft,
+    hamletPair,
+    outpostTower,
+    outpostRing,
+    digsPit,
+    digsMouth,
+    denBones,
+    denHollow,
+    watchtowerHusk,
+    watchtowerShelter,
+    wayshrineStones,
+    wayshrinePool,
+    goblinStockade,
+    ruinArch,
+    groveSpring,
+    riftgateSunken,
+    championsBarrow,
+    waystationWalled,
+    lastLamp,
   ].map((p) => [p.id, p]),
 );

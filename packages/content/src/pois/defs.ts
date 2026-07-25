@@ -1,12 +1,20 @@
 import type { PoiDef } from './types.js';
 import { validatePoiDef } from './validate.js';
 
+import banditCamp from './defs/bandit_camp.json';
 import championsTor from './defs/champions_tor.json';
 import forestRuin from './defs/forest_ruin.json';
 import goblinWarcamp from './defs/goblin_warcamp.json';
+import koboldDigs from './defs/kobold_digs.json';
+import lastLamp from './defs/last_lamp.json';
 import riftgateRuin from './defs/riftgate_ruin.json';
+import roadsideHamlet from './defs/roadside_hamlet.json';
+import wardensOutpost from './defs/wardens_outpost.json';
+import watchtowerRuin from './defs/watchtower_ruin.json';
+import wayshrine from './defs/wayshrine.json';
 import waystation from './defs/waystation.json';
 import wildGrove from './defs/wild_grove.json';
+import wolfkinDen from './defs/wolfkin_den.json';
 
 /**
  * Every authored POI archetype JSON, registered here. A def that isn't
@@ -16,12 +24,20 @@ import wildGrove from './defs/wild_grove.json';
  * frontier.
  */
 const SOURCES: readonly unknown[] = [
+  banditCamp,
   championsTor,
   forestRuin,
   goblinWarcamp,
+  koboldDigs,
+  lastLamp,
   riftgateRuin,
+  roadsideHamlet,
+  wardensOutpost,
+  watchtowerRuin,
+  wayshrine,
   waystation,
   wildGrove,
+  wolfkinDen,
 ];
 
 function buildRegistry(): ReadonlyMap<string, PoiDef> {

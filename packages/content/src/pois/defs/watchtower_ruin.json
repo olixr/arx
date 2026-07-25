@@ -1,0 +1,35 @@
+{
+  "id": "watchtower_ruin",
+  "name": "Watchtower of the old line",
+  "description": "A tower of the Waykeepers' first line, struck from the rolls a generation ago. By daylight it's a cache and a view. After dusk the garrison that died holding it stands its watch again — loot fast, or fight fair.",
+  "tiers": [2, 5],
+  "weight": 2,
+  "prefabs": ["poi_watchtower_husk", "poi_watchtower_shelter"],
+  "garrison": [
+    {
+      "npc": "skeleton_guard",
+      "count": [1, 2],
+      "role": "holdfast",
+      "hours": { "from": 20.5, "to": 5.5 }
+    },
+    {
+      "npc": "skeleton_archer",
+      "count": [1, 1],
+      "role": "sentry",
+      "hours": { "from": 20.5, "to": 5.5 }
+    },
+    {
+      "npc": "skeleton",
+      "count": [1, 2],
+      "role": "holdfast",
+      "minTier": 3,
+      "hours": { "from": 20.5, "to": 5.5 }
+    }
+  ],
+  "chestTierBonus": 0,
+  "cues": {
+    "clearing": 2,
+    "approachPath": true,
+    "scatter": [{ "tile": "BonePile", "count": 2 }]
+  }
+}

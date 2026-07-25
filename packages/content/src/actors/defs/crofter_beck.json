@@ -1,0 +1,22 @@
+{
+  "id": "crofter_beck",
+  "name": "Beck",
+  "title": "Crofter",
+  "examine": "Built like a gate post and about as talkative. The woodpile is squared to the finger.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 4, "hair": 0, "hairColor": 1, "beard": 3, "eyes": 1, "shirt": 5, "pants": 6 }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    { "item": "cooked_beef", "qty": 2 }
+  ],
+  "lines": [
+    "Wolves sing most nights. You learn the difference between singing and hunting.",
+    "Road's that way. Fire's this way. Sit or walk, either's fine.",
+    "Winter asks one question all year. The woodpile is my answer."
+  ]
+}

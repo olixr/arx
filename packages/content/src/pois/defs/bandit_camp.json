@@ -1,0 +1,29 @@
+{
+  "id": "bandit_camp",
+  "name": "Brigand camp",
+  "description": "Deserters and toll-thieves dug in off the road — stolen goods, stolen livestock, and a named reaver keeping the crew's shares in a warded box.",
+  "tiers": [2, 4],
+  "weight": 3,
+  "prefabs": ["poi_bandit_hollow", "poi_bandit_toll"],
+  "garrison": [
+    { "npc": "brigand", "count": [1, 2], "role": "holdfast" },
+    { "npc": "brigand_archer", "count": [1, 2], "role": "sentry", "patrol": true },
+    { "npc": "brigand", "count": [1, 1], "role": "sentry", "minTier": 3 },
+    {
+      "npc": "brigand_reaver",
+      "count": [1, 1],
+      "role": "holdfast",
+      "minTier": 3,
+      "levelOffset": 4,
+      "names": ["Redmask Orla", "Tallow Jack", "Old Grime", "The Whistler", "Copper Nell"]
+    }
+  ],
+  "chestTierBonus": 1,
+  "chestWarded": true,
+  "clearedFlag": "poi_bandits_broken",
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [{ "tile": "Crate", "count": 2 }]
+  }
+}

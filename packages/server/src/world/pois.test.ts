@@ -92,11 +92,38 @@ test('the planned rects join the clearance list and flag stale sites', () => {
   }
 });
 
-test('the frontier hosts POIs and every archetype occurs', () => {
-  const sites = scanSites();
+test('the frontier hosts POIs and every rollable archetype occurs', () => {
+  // Epic 3 grew the roster to 13 rollable archetypes — the coverage
+  // sweep widens with it (a fixed small window under-samples the
+  // rarer weights). Weight-0 defs are authored-only and must NOT
+  // appear (asserted in the Last Lamp test below).
+  // The scan window is almost all tier-4/5 country — the tier-1..3
+  // rings near the hearths are only ~15 cells, so low-tier archetypes
+  // (the hamlet, the warcamp) need those thin rings swept over MANY
+  // epochs to sample fairly (epochs are the fallow machinery's own
+  // re-roll lever, not a synthetic trick). Far cells get two.
+  const sites: PoiSite[] = [];
+  for (let epoch = 0; epoch < 2; epoch++) {
+    for (let cy = -16; cy <= 16; cy++) {
+      for (let cx = -16; cx <= 16; cx++) {
+        const site = poiForCell(SEED, cx, cy, epoch, CTX);
+        if (site) sites.push(site);
+      }
+    }
+  }
+  // The hearth-adjacent ring again, deep: 12 epochs over the ±3 cells.
+  for (let epoch = 2; epoch < 12; epoch++) {
+    for (let cy = -3; cy <= 3; cy++) {
+      for (let cx = -3; cx <= 3; cx++) {
+        const site = poiForCell(SEED, cx, cy, epoch, CTX);
+        if (site) sites.push(site);
+      }
+    }
+  }
   assert.ok(sites.length >= 8, `only ${sites.length} sites in the scan`);
   const kinds = new Set(sites.map((s) => s.defId));
   for (const def of POI_DEFS.values()) {
+    if (def.weight === 0) continue;
     assert.ok(kinds.has(def.id), `archetype '${def.id}' never rolled in the scan`);
   }
 });
@@ -129,16 +156,29 @@ test('composed zones muster inside the tier laws', () => {
   for (const site of scanSites()) {
     const zone = composePoi(SEED, site, CTX)!;
     assert.ok(zone, 'compose failed for a decided site');
-    // Somebody must hold every site: a garrison, or friendly staff.
-    assert.ok(
-      (zone.spawns?.length ?? 0) > 0 || (zone.actorSpawns?.length ?? 0) > 0,
-      `${zone.id} stands empty — no garrison, no staff`,
-    );
     const def = POI_DEFS.get(site.defId)!;
+    // Somebody must hold every site that DECLARES bodies — a scenic
+    // archetype (the wayshrine) stands honestly empty by design.
+    if (def.garrison.length > 0 || (def.actors?.length ?? 0) > 0) {
+      assert.ok(
+        (zone.spawns?.length ?? 0) > 0 || (zone.actorSpawns?.length ?? 0) > 0,
+        `${zone.id} stands empty — no garrison, no staff`,
+      );
+    }
     const law = dangerLaw(site.tier);
     const maxOffset = Math.max(0, ...def.garrison.map((g) => g.levelOffset ?? 0));
+    const prefab = POI_PREFABS.get(site.prefabId)!;
     for (const s of zone.spawns ?? []) {
       assert.ok(s.level !== undefined, `${zone.id} spawn '${s.npc}' has no level`);
+      // Prefab-authored levels ride verbatim (the pen's stolen cows
+      // stay level-3 cows) — danger scales only the rolled threats.
+      const authored = prefab.spawns.find(
+        (ps) => ps.npc === s.npc && ps.level !== undefined,
+      );
+      if (authored) {
+        assert.equal(s.level, authored.level, `${zone.id} '${s.npc}' ignored its authored level`);
+        continue;
+      }
       assert.ok(
         s.level! >= law.npcLevel[0] && s.level! <= law.npcLevel[1] + maxOffset,
         `${zone.id} '${s.npc}' level ${s.level} outside band ${law.npcLevel} (+${maxOffset})`,
@@ -422,4 +462,85 @@ test("the champion's tor crowns a stable name from the pool", () => {
   // The hill has always been Korga's: the name never re-rolls.
   const again = previewPoi(SEED, CTX, 'champions_tor', 3);
   assert.equal(again!.zone.spawns!.find((s) => s.npc === 'troll')!.name, champ!.name);
+});
+
+// ------------------------------------------------------------------
+// THE AUTHORED SITES LAW — the mileposts and dens the plan pins.
+// ------------------------------------------------------------------
+
+test('every authored wild site finds honest ground and composes', async () => {
+  const { AUTHORED_WILD_SITES } = await import('@devcraft/content');
+  const { findAuthoredAnchor, poiCellOf } = await import('./pois.js');
+  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS);
+  for (const want of AUTHORED_WILD_SITES) {
+    const def = POI_DEFS.get(want.defId);
+    assert.ok(def, `${want.id}: unknown archetype '${want.defId}'`);
+    let site: PoiSite | null = null;
+    if (want.cell) {
+      site = poiForCell(SEED, want.cell[0], want.cell[1], 0, ctx, want.defId);
+      assert.ok(site, `${want.id}: forced cell scan found no ground`);
+    } else {
+      for (const prefabId of def!.prefabs) {
+        const prefab = POI_PREFABS.get(prefabId)!;
+        const spot = findAuthoredAnchor(SEED, want.x!, want.y!, prefab, ctx);
+        assert.ok(spot, `${want.id}: no honest ground for '${prefabId}' near (${want.x},${want.y})`);
+        // The nudge must stay a nudge — the lamp belongs beside ITS road.
+        assert.ok(
+          Math.hypot(spot!.x - want.x!, spot!.y - want.y!) <= 14,
+          `${want.id}: anchor nudged too far`,
+        );
+        site = {
+          cellX: poiCellOf(want.x!),
+          cellY: poiCellOf(want.y!),
+          epoch: 0,
+          tier: 4,
+          defId: want.defId,
+          prefabId,
+          anchorX: spot!.x,
+          anchorY: spot!.y,
+        };
+      }
+    }
+    const zone = composePoi(SEED, site!, ctx);
+    assert.ok(zone, `${want.id}: site failed to compose`);
+  }
+});
+
+test('the Last Lamp composes with its lamps, its keeper, and its watch', async () => {
+  const { AUTHORED_WILD_SITES } = await import('@devcraft/content');
+  const { findAuthoredAnchor, poiCellOf } = await import('./pois.js');
+  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS);
+  const want = AUTHORED_WILD_SITES.find((s) => s.id === 'last_lamp')!;
+  const prefab = POI_PREFABS.get('poi_last_lamp')!;
+  const spot = findAuthoredAnchor(SEED, want.x!, want.y!, prefab, ctx)!;
+  const zone = composePoi(
+    SEED,
+    {
+      cellX: poiCellOf(want.x!),
+      cellY: poiCellOf(want.y!),
+      epoch: 0,
+      tier: 4,
+      defId: 'last_lamp',
+      prefabId: 'poi_last_lamp',
+      anchorX: spot.x,
+      anchorY: spot.y,
+    },
+    ctx,
+  )!;
+  let lamps = 0;
+  for (const t of zone.ground) if (t === Tile.LampPost) lamps++;
+  assert.ok(lamps >= 4, `the Last Lamp must burn at least four lamps (got ${lamps})`);
+  // Edda at the hearth, the watch on the ring.
+  const actors = zone.actorSpawns ?? [];
+  assert.ok(
+    actors.some((a) => a.actor === 'lampkeeper_edda'),
+    'Edda must keep the Last Lamp',
+  );
+  assert.ok(
+    actors.filter((a) => a.actor === 'wayward_watch').length >= 2,
+    'the watch must hold the Last Lamp',
+  );
+  // A weight-0 archetype never rolls on its own anywhere.
+  const stats = simulatePois(SEED, ctx, 600);
+  assert.equal(stats.byDef['last_lamp'], undefined, 'the Last Lamp rolled procedurally');
 });

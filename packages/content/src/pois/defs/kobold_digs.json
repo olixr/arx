@@ -1,0 +1,27 @@
+{
+  "id": "kobold_digs",
+  "name": "Kobold digs",
+  "description": "The warren broke ground topside — shoring timbers, spoil heaps, and an ore seam half-eaten. The digmaster's cache rides the pit, and the whole dig answers the first yip.",
+  "tiers": [2, 4],
+  "weight": 2,
+  "prefabs": ["poi_digs_pit", "poi_digs_mouth"],
+  "garrison": [
+    { "npc": "kobold", "count": [2, 3], "role": "holdfast" },
+    { "npc": "kobold", "count": [1, 2], "role": "sentry", "patrol": true },
+    {
+      "npc": "kobold_digmaster",
+      "count": [1, 1],
+      "role": "holdfast",
+      "minTier": 3,
+      "levelOffset": 3,
+      "names": ["Digmaster Snagg", "Digmaster Vrik", "Digmaster Chorl", "Digmaster Pebblewise"]
+    }
+  ],
+  "chestTierBonus": 1,
+  "clearedFlag": "poi_digs_broken",
+  "cues": {
+    "clearing": 3,
+    "approachPath": true,
+    "scatter": [{ "tile": "CaveRubble", "count": 3 }]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "waykeeper_hale",
+  "name": "Sergeant Hale",
+  "title": "Waykeeper Sergeant",
+  "examine": "Twenty years on the marches and a ledger of every camp broken and every mile held. Polishes the brazier like it outranks him.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 3, "hair": 2, "hairColor": 1, "beard": 2, "eyes": 1, "shirt": 10, "pants": 10 }
+  },
+  "equipment": {
+    "head": "iron_helm",
+    "body": "iron_platebody",
+    "legs": "iron_greaves",
+    "boots": "iron_sabatons",
+    "weapon": "iron_sword",
+    "offhand": "oak_kiteshield"
+  },
+  "lines": [
+    "This post holds fourteen miles of road. Some days it holds them by one lamp and my mood.",
+    "Brigands ambush the toll bends. Wolves work the trail. Kobolds take the rest. Everyone's got a trade.",
+    "The one in the pen? Caught him stealing our boots. IN our boots."
+  ],
+  "combat": {
+    "level": 26,
+    "respawnSec": 90,
+    "stats": { "maxHp": 90, "damage": 5, "speed": 3.4, "leashRange": 12 }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "waykeeper_brant",
+  "name": "Sergeant Brant",
+  "title": "Waykeeper Sergeant",
+  "examine": "Youngest sergeant on the marches — promoted the night the fork waystation held against Redmask Orla's crew. Still writes his mother that it's quiet out here.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 2, "hair": 5, "hairColor": 2, "beard": 1, "eyes": 3, "shirt": 10, "pants": 10 }
+  },
+  "equipment": {
+    "head": "iron_helm",
+    "body": "iron_platebody",
+    "legs": "iron_greaves",
+    "boots": "iron_sabatons",
+    "weapon": "iron_sword",
+    "offhand": "oak_kiteshield"
+  },
+  "lines": [
+    "Redmask's crew tried the fork twice. There isn't going to be a third — she counts as well as we do.",
+    "See a lamp burning where no lamp should be? Old line tower. Shelter by day. LEAVE by dusk.",
+    "It is quiet out here. Between things."
+  ],
+  "combat": {
+    "level": 25,
+    "respawnSec": 90,
+    "stats": { "maxHp": 82, "damage": 5, "speed": 3.6, "leashRange": 12 }
+  }
+}

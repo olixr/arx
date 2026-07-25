@@ -18,6 +18,7 @@ import {
   dangerLaw,
   prefabFromJson,
   prefabToJson,
+  roadBearingAt,
   type PoiDef,
   type PrefabDef,
   type ZoneActorSpawn,
@@ -138,8 +139,10 @@ export function poiForCell(
     def = ctx.defs.find((d) => d.id === force);
     if (!def) return null;
   } else {
+    // Weight-0 archetypes never roll on their own — they exist only
+    // for the authored-sites law (the Last Lamp is placed, not found).
     const eligible = ctx.defs.filter(
-      (d) => centerTier >= d.tiers[0] && centerTier <= d.tiers[1],
+      (d) => d.weight > 0 && centerTier >= d.tiers[0] && centerTier <= d.tiers[1],
     );
     if (eligible.length === 0) return null;
     const totalW = eligible.reduce((s, d) => s + d.weight, 0);
@@ -212,8 +215,8 @@ function intersectsZones(
   w: number,
   h: number,
   rects: readonly PoiZoneRect[],
+  pad = ZONE_CLEARANCE,
 ): boolean {
-  const pad = ZONE_CLEARANCE;
   for (const r of rects) {
     if (
       x - pad < r.x + r.w &&
@@ -245,12 +248,19 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
   const levelRoll = (i: number): number =>
     law.npcLevel[0] + (hashCoords(musterBase, i, 7) % (law.npcLevel[1] - law.npcLevel[0] + 1));
 
-  // The townward bearing — nearest settled anchor; players arrive
-  // from there, so the path, the cue scatter, and the watchers all
-  // face it. Computed once, shared by cues and sentries.
+  // The approach bearing — the way players actually come. A carved
+  // road within hailing distance wins (Epic 3's law: cues aim at
+  // ROADS — the worn path runs to the verge, the warning scatter
+  // faces the traveler); with no road near, the bee-line to the
+  // nearest settled anchor stands in. Computed once, shared by the
+  // cues and the watchers.
   let ax = 0;
   let ay = -1;
-  {
+  const roadWard = roadBearingAt(site.anchorX, site.anchorY, 40);
+  if (roadWard) {
+    ax = roadWard.x;
+    ay = roadWard.y;
+  } else {
     let bestD = Infinity;
     for (const a of ctx.anchors) {
       const d = Math.hypot(a.x - site.anchorX, a.y - site.anchorY);
@@ -392,8 +402,10 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
 
   const spawns: ZoneSpawn[] = [];
   let n = 0;
-  // Hand-placed prefab spawns, leveled into the band. Their relative
-  // coords are prefab-local — the fringe pad shifts them in the zone.
+  // Hand-placed prefab spawns, leveled into the band UNLESS the
+  // prefab authored a level (the stolen cows in a brigand pen stay
+  // level-3 cows — danger scales the threats, not the livestock).
+  // Their relative coords are prefab-local — the pad shifts them.
   for (const s of prefab.spawns) {
     spawns.push({
       npc: s.npc,
@@ -838,6 +850,48 @@ export function poiContext(
     defs: [...POI_DEFS.values()],
     prefabs,
   };
+}
+
+/**
+ * THE AUTHORED-SITES LAW's ground half: nudge a pinned anchor to the
+ * nearest spot whose whole footprint stands (spiral scan, radius ≤
+ * maxNudge). The standable probe already reads roads as 'rock' inside
+ * ROAD_SHOULDER, so a pinned site can hug a road and never block it.
+ * Zone rects are honored with a TIGHT pad (6, not the frontier's 24)
+ * — authored sites are the plan placing its own landmarks near its
+ * own streets, deliberately. Returns null when no honest ground
+ * exists in range (the seeder warns and stands nothing).
+ */
+export function findAuthoredAnchor(
+  seed: number,
+  x: number,
+  y: number,
+  prefab: PrefabDef,
+  ctx: PoiContext,
+  maxNudge = 14,
+): { x: number; y: number } | null {
+  const fits = (tx: number, ty: number): boolean => {
+    if (ty + prefab.height / 2 >= DARK_BAND_Y - ZONE_CLEARANCE) return false;
+    const fx0 = tx - Math.floor(prefab.width / 2);
+    const fy0 = ty - Math.floor(prefab.height / 2);
+    if (intersectsZones(fx0, fy0, prefab.width, prefab.height, ctx.zoneRects, 6)) return false;
+    for (let dy = 0; dy < prefab.height; dy++) {
+      for (let dx = 0; dx < prefab.width; dx++) {
+        if (!standable(groundProbeAt(seed, fx0 + dx, fy0 + dy))) return false;
+      }
+    }
+    return true;
+  };
+  if (fits(x, y)) return { x, y };
+  for (let r = 1; r <= maxNudge; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        if (fits(x + dx, y + dy)) return { x: x + dx, y: y + dy };
+      }
+    }
+  }
+  return null;
 }
 
 /**

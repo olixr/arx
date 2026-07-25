@@ -319,3 +319,124 @@ export function roadHitAt(seed: number, tx: number, ty: number): RoadHit | null 
 export function roadDistanceAt(seed: number, tx: number, ty: number): number {
   return roadHitAt(seed, tx, ty)?.dist ?? Infinity;
 }
+
+/**
+ * Unit bearing from a world point toward the nearest spot on any
+ * route's raw polyline, or null when every route is farther than
+ * maxDist. Wander is ignored — this steers APPROACH CUES (a POI's
+ * worn path and warning scatter face the road players actually
+ * arrive by), and a couple of tiles of wobble don't change which way
+ * the road lies.
+ */
+export function roadBearingAt(
+  tx: number,
+  ty: number,
+  maxDist: number,
+): { x: number; y: number } | null {
+  let best = Infinity;
+  let bx = 0;
+  let by = 0;
+  for (const b of ROAD_BOUNDS) {
+    if (
+      tx < b.x0 - maxDist ||
+      tx > b.x1 + maxDist ||
+      ty < b.y0 - maxDist ||
+      ty > b.y1 + maxDist
+    ) {
+      continue;
+    }
+    const pts = b.route.pts;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const ax = pts[i]!.x;
+      const ay = pts[i]!.y;
+      const dx = pts[i + 1]!.x - ax;
+      const dy = pts[i + 1]!.y - ay;
+      const len2 = dx * dx + dy * dy;
+      let t = len2 === 0 ? 0 : ((tx - ax) * dx + (ty - ay) * dy) / len2;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const px = ax + t * dx;
+      const py = ay + t * dy;
+      const d = Math.hypot(tx - px, ty - py);
+      if (d < best) {
+        best = d;
+        bx = px - tx;
+        by = py - ty;
+      }
+    }
+  }
+  if (best > maxDist || best < 0.5) return null; // too far — or standing ON it
+  return { x: bx / best, y: by / best };
+}
+
+// ------------------------------------------------------------------
+// THE AUTHORED WILD SITES — Epic 3's fixed points in the frontier.
+//
+// The POI scaffold rolls the wilds by hash; these entries OVERRIDE
+// the roll for specific cells, because some places are story, not
+// chance: the waystation mileposts that pace the High Road, the Last
+// Lamp before the Silverspine climb, and the named dens the Thornveil
+// has always held. The server seeds them at boot (idempotent — the
+// ledger keeps them), and both sweeps skip their cells so the plan
+// can never evict its own landmarks. One site per macro-cell is the
+// scaffold's law, so every entry here must claim a distinct cell.
+// ------------------------------------------------------------------
+
+export interface AuthoredWildSite {
+  /** Ledger note + log name — not a zone id. */
+  id: string;
+  /** POI archetype (pois/defs). Weight-0 defs only place through here. */
+  defId: string;
+  /**
+   * Pinned mode: preferred anchor in world tiles. The seeder nudges
+   * to the nearest footprint-standable spot (roads carve 'rock'
+   * probes for ROAD_SHOULDER, so a pinned site can hug a road but
+   * never block it). Omitted = cell mode: the honest site scan runs
+   * inside `cell` with the archetype forced.
+   */
+  x?: number;
+  y?: number;
+  /** Cell mode: [cellX, cellY] macro-cell to force the archetype in. */
+  cell?: readonly [number, number];
+}
+
+export const AUTHORED_WILD_SITES: readonly AuthoredWildSite[] = [
+  // The High Road mileposts — a lamp for each leg of the great
+  // journey, each in its own macro-cell (cells are 128 wide, so the
+  // road's five cells hold at most five stops — these claim four).
+  // The anchors follow the GROUND, not arithmetic: the mesa cutting
+  // (cum ~90–155) has no standable verge at all, so no rest stands
+  // on it — cross the cutting in one push, like the keepers warn.
+  //
+  // Fernway: the first rest out of Amberford, at the foot of the
+  // climb — the last grass before the cutting walls close in.
+  { id: 'fernway_rest', defId: 'waystation', x: 122, y: -53 },
+  // The Long Meadow rest: across the mesa, where the road flattens
+  // into the long dark mile and the night feels widest.
+  { id: 'longmeadow_rest', defId: 'waystation', x: -58, y: -108 },
+  // The Fork rest: in the pines where the Hunter's Trail comes out
+  // of the veil. Half its trade is people very glad to be out.
+  { id: 'fork_rest', defId: 'waystation', x: -150, y: -104 },
+  // THE LAST LAMP: the final haven before Silverfall's gate country.
+  // Its own weight-0 archetype — one lamp, one Edda, one warning.
+  { id: 'last_lamp', defId: 'last_lamp', x: -262, y: -70 },
+
+  // The named dens of the wild northwest — the veil has ALWAYS held
+  // these; the cell-forced scan finds them honest ground off-road.
+  // (Cell math note: the near-northwest is four giant cells, and the
+  // cell holding Dawnmead's meadows is settled at center — dead to
+  // the scaffold — so the dens take the veil's WESTERN cells.)
+  //
+  // The wolfkin den the Thornveil is famous for, west of the trail.
+  { id: 'veil_den', defId: 'wolfkin_den', cell: [-2, 0] },
+  // The kobold digs under the Silverspine's south skirts, tunneling
+  // toward the ore country one shored gallery at a time.
+  { id: 'spine_digs', defId: 'kobold_digs', cell: [-3, 0] },
+
+  // The First Road ambush: a brigand camp somewhere in the corridor
+  // between the hearths — every waker's first lesson that the space
+  // BETWEEN safeties is the game.
+  { id: 'first_road_toll', defId: 'bandit_camp', cell: [0, 0] },
+  // The broken tower on the High Road's first climb north of
+  // Amberford — the old line failed here first.
+  { id: 'first_climb_tower', defId: 'watchtower_ruin', cell: [1, -1] },
+];

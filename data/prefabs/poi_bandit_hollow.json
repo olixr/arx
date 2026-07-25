@@ -1,0 +1,47 @@
+{
+  "id": "poi_bandit_hollow",
+  "name": "Brigand hollow",
+  "width": 17,
+  "height": 11,
+  "ground": "/////////////////////wIAAgD//////////////////////////wIAAwADAAMAAwADAAMAAwADAAIA////////////////AgADAA4AAQBSAAEAUQABAAEADgADAAIA//////////8CAAMAAQADAAEAAQABABgAAQABAAMAAQADAAIA////////AgADAAEAAQBTAAEAAQABAAEAAQABAHEAAwACAP///////wIAAwABAAMAAQAYAAEAAQABAAEAXAABAAMAAgD///////8CAAMAAQBBAEEAQQBBAAEAAQABAAEAAQADAAIA////////AgADAAEAQQABAAEAQQABAAEAUAABAA4AAwACAP//////////AgADAEEAQQBBAEEAAQABAAEAAwACAP//////////////////AgADAAMAAwADAAMAAwADAAIA/////////////////////////////wIAAgD///////////////////////8=",
+  "detail": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+  "spawns": [
+    {
+      "dx": 4,
+      "dy": 3,
+      "npc": "brigand",
+      "radius": 2.5,
+      "count": 1
+    },
+    {
+      "dx": 11,
+      "dy": 3,
+      "npc": "brigand",
+      "radius": 2.5,
+      "count": 1
+    },
+    {
+      "dx": 4,
+      "dy": 5,
+      "npc": "brigand_archer",
+      "radius": 2,
+      "count": 1
+    },
+    {
+      "dx": 5,
+      "dy": 7,
+      "npc": "cow",
+      "radius": 1,
+      "count": 1,
+      "level": 3
+    },
+    {
+      "dx": 6,
+      "dy": 7,
+      "npc": "cow",
+      "radius": 1,
+      "count": 1,
+      "level": 3
+    }
+  ]
+}

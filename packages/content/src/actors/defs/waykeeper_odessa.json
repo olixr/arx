@@ -1,0 +1,30 @@
+{
+  "id": "waykeeper_odessa",
+  "name": "Sergeant Odessa",
+  "title": "Waykeeper Sergeant",
+  "examine": "Runs the outpost like a kitchen: everything sharp, everything where her hand expects it. Her watch reports are famously two words long.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 1, "hair": 4, "hairColor": 3, "beard": 0, "eyes": 2, "shirt": 10, "pants": 10 }
+  },
+  "equipment": {
+    "head": "iron_helm",
+    "body": "iron_platebody",
+    "legs": "iron_greaves",
+    "boots": "iron_sabatons",
+    "weapon": "iron_sword",
+    "offhand": "oak_kiteshield"
+  },
+  "lines": [
+    "Report: road holds.",
+    "You want stories, the crofters sell them with the eggs. Here we sell quiet, and it's paid for nightly.",
+    "The old line's towers stand empty north of here. We don't relight them. Ask me at dusk and I'll tell you why we don't have to."
+  ],
+  "combat": {
+    "level": 26,
+    "respawnSec": 90,
+    "stats": { "maxHp": 84, "damage": 6, "speed": 3.5, "leashRange": 12 }
+  }
+}

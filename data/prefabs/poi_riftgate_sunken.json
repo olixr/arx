@@ -1,0 +1,31 @@
+{
+  "id": "poi_riftgate_sunken",
+  "name": "Sunken riftgate",
+  "width": 13,
+  "height": 9,
+  "ground": "//////////8CAAIAAgD/////////////////////AgCCAAEAAQABAAEAggACAP//////////AgABAEAAAQAIAAgACAABAAEAAgD///////8CAAEACAAIAAgAIAAIAIIAAQACAP///////wIAAQCCAAgAAQB/AAEACAAIAAIA////////AgABAAgACAABAHEAAQAIAAEAAgD///////8CAAEAAQCCAAgACACCAAEAAQACAP//////////AgABAAEAfwABAAEAAQACAP//////////////////AgACAAIA////////////////",
+  "detail": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "portals": [
+    {
+      "dx": 6,
+      "dy": 3,
+      "delve": true
+    }
+  ],
+  "spawns": [
+    {
+      "dx": 4,
+      "dy": 5,
+      "npc": "skeleton",
+      "radius": 2,
+      "count": 1
+    },
+    {
+      "dx": 8,
+      "dy": 5,
+      "npc": "skeleton_guard",
+      "radius": 2,
+      "count": 1
+    }
+  ]
+}

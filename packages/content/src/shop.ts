@@ -83,9 +83,39 @@ export const WAYSTATION_SUPPLIES: readonly ShopEntry[] = [
   { item: 'brass_key', price: 240 },
 ];
 
+/**
+ * The hamlet larder — what a croft can spare, priced like the
+ * neighbors you are: food off the land, nothing exotic.
+ */
+export const HAMLET_LARDER: readonly ShopEntry[] = [
+  { item: 'bread', price: 18 },
+  { item: 'egg', price: 8 },
+  { item: 'milk', price: 12 },
+  { item: 'cooked_beef', price: 14 },
+  { item: 'hearty_stew', price: 40 },
+];
+
+/**
+ * Edda's stores at the Last Lamp — the final resupply before the
+ * Silverspine climb. Everything the dark ahead will ask of you,
+ * priced like the last chance it is.
+ */
+export const LAST_LAMP_STORES: readonly ShopEntry[] = [
+  { item: 'bread', price: 30 },
+  { item: 'hearty_stew', price: 55 },
+  { item: 'healing_tincture', price: 60 },
+  { item: 'mending_salve', price: 175 },
+  { item: 'swiftness_tonic', price: 120 },
+  { item: 'ironbark_tonic', price: 140 },
+  { item: 'arrow', price: 6 },
+  { item: 'brass_key', price: 260 },
+];
+
 const defs: ShopDef[] = [
   { id: 'general_store', name: 'General Store', stock: GENERAL_STORE },
   { id: 'waystation_supplies', name: "The Wayfarer's Pack", stock: WAYSTATION_SUPPLIES },
+  { id: 'hamlet_larder', name: 'The Croft Larder', stock: HAMLET_LARDER },
+  { id: 'last_lamp_stores', name: "Edda's Stores", stock: LAST_LAMP_STORES },
   // Brannock sells the forge's knowledge: every guild-taught schematic
   // in the smithing line, jewellery to platebodies.
   { id: 'trainer_smithing', name: "Brannock's Schematics", stock: trainerStock(['smithing']) },

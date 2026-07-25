@@ -1,0 +1,23 @@
+{
+  "id": "crofter_tam",
+  "name": "Tam",
+  "title": "Crofter",
+  "examine": "Was a Waykeeper once — the limp says where, the garden says why. Grows more than anyone can eat and gives the difference to the road.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 3, "hair": 1, "hairColor": 0, "beard": 4, "eyes": 2, "shirt": 9, "pants": 6 }
+  },
+  "equipment": {
+    "boots": "leather_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    { "item": "hearty_stew", "qty": 3 }
+  ],
+  "lines": [
+    "Held the fork post nine years. The veil never once came out to meet me. It waits for you to come in.",
+    "Eat before the climb, not during. You want your hands free on the High Road.",
+    "The Watch caught a kobold last month wearing a soup pot for a helmet. Didn't have the heart to keep him."
+  ]
+}

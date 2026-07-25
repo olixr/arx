@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   AMBERFORD_RECT,
+  AUTHORED_WILD_SITES,
   DAWNMEAD_RECT,
   PLANNED_ZONE_RECTS,
   ROAD_ROUTES,
@@ -10,6 +11,7 @@ import {
   fieldApronAt,
   massifAt,
   nearRoads,
+  roadBearingAt,
   roadDistanceAt,
   roadHitAt,
   thornveilAt,
@@ -86,4 +88,49 @@ test('distToRect is zero inside, exact outside', () => {
     distToRect(SILVERFALL_RECT.x + 5, SILVERFALL_RECT.y + 5, SILVERFALL_RECT),
     0,
   );
+});
+
+// ------------------------------------------------------------------
+// THE AUTHORED WILD SITES — Epic 3's fixed points. One site per
+// macro-cell is the scaffold's law; the mileposts must sit beside
+// their road (never ON it), and nothing may claim settled ground.
+// ------------------------------------------------------------------
+
+test('authored wild sites claim distinct macro-cells', () => {
+  const cells = new Set<string>();
+  for (const s of AUTHORED_WILD_SITES) {
+    const cx = s.cell ? s.cell[0] : Math.floor(s.x! / 128);
+    const cy = s.cell ? s.cell[1] : Math.floor(s.y! / 128);
+    const key = `${cx},${cy}`;
+    assert.ok(!cells.has(key), `${s.id} shares macro-cell ${key} with another site`);
+    cells.add(key);
+  }
+});
+
+test('pinned mileposts stand beside the road, never on it', () => {
+  for (const s of AUTHORED_WILD_SITES) {
+    if (s.x === undefined || s.y === undefined) continue;
+    const d = roadDistanceAt(1337, s.x, s.y);
+    assert.ok(d > 4.5, `${s.id} anchor sits inside the road shoulder (${d.toFixed(1)})`);
+    assert.ok(d < 26, `${s.id} anchor wandered off the road (${d.toFixed(1)})`);
+    // The plan never pins a landmark inside its own future streets.
+    for (const rect of PLANNED_ZONE_RECTS) {
+      assert.ok(
+        distToRect(s.x, s.y, rect) > 8,
+        `${s.id} anchors inside a planned zone rect's near apron`,
+      );
+    }
+  }
+});
+
+test('roadBearingAt points at the road, and honestly refuses far ground', () => {
+  // A point south of the First Road: the bearing must lead back to it.
+  const b = roadBearingAt(50, 60, 40);
+  assert.ok(b !== null, 'the First Road is within 40 of (50,60)');
+  const step = 10;
+  const before = roadDistanceAt(1337, 50, 60);
+  const after = roadDistanceAt(1337, Math.round(50 + b!.x * step), Math.round(60 + b!.y * step));
+  assert.ok(after < before, 'walking the bearing must close on the road');
+  // The deep frontier has no bearing to give.
+  assert.equal(roadBearingAt(2000, 2000, 40), null);
 });

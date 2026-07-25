@@ -1,0 +1,22 @@
+{
+  "id": "crofter_holt",
+  "name": "Holt",
+  "title": "Crofter",
+  "examine": "Young enough to still wave at travelers. The dog ran off with a wolfkin pack in the autumn and he maintains it will come back.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 1, "hair": 6, "hairColor": 2, "beard": 0, "eyes": 2, "shirt": 2, "pants": 1 }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    { "item": "bread", "qty": 2 }
+  ],
+  "lines": [
+    "If you see a black-eared dog with the wolves — that's Biscuit. He's ours. Mostly.",
+    "The shrine down the road works. I don't know HOW it works. But you sit a minute and things weigh less.",
+    "Grandda says the towers on the old line used to talk with lamplight. Three flashes meant run."
+  ]
+}

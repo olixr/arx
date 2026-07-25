@@ -84,9 +84,11 @@ export function validatePoiDef(
   }
 
   // Weight.
+  // Weight 0 is legal and means "never rolls on its own" — the
+  // authored-sites law places these by hand (the Last Lamp).
   const weight = typeof raw.weight === 'number' ? raw.weight : NaN;
-  if (!Number.isFinite(weight) || weight <= 0 || weight > 100) {
-    errors.push('weight must be a number in (0, 100]');
+  if (!Number.isFinite(weight) || weight < 0 || weight > 100) {
+    errors.push('weight must be a number in [0, 100]');
   }
 
   // Prefab pool.

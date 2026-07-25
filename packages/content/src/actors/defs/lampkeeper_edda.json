@@ -1,0 +1,26 @@
+{
+  "id": "lampkeeper_edda",
+  "name": "Edda",
+  "title": "Keeper of the Last Lamp",
+  "examine": "Older than the road she keeps, by her own accounting. Lights four lamps at dusk in an order that never varies, and has buried everyone who asked why out of turn.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 4, "hair": 3, "hairColor": 6, "beard": 0, "eyes": 1, "shirt": 8, "pants": 6 }
+  },
+  "equipment": {
+    "boots": "leather_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    { "item": "hearty_stew", "qty": 4 },
+    { "item": "healing_tincture", "qty": 2 },
+    { "item": "brass_key", "qty": 1 }
+  ],
+  "lines": [
+    "Advice? Morning. That's the whole of it. Everything north of my wall agrees with me.",
+    "The bones outside the wall are the ones who went on at night. I light the lamps so the pile stops growing. It hasn't stopped. I keep lighting them.",
+    "Silverfall's gate is a day out. The mountain doesn't mind you walking it. The dark between us minds very much."
+  ],
+  "shop": "last_lamp_stores"
+}

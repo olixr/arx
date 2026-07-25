@@ -1,0 +1,25 @@
+{
+  "id": "crofter_maida",
+  "name": "Maida",
+  "title": "Crofter",
+  "examine": "Flour to the elbows and a hoe within reach. The verge is hers as far as the fence, and the fence has opinions.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 2, "hair": 3, "hairColor": 5, "beard": 0, "eyes": 3, "shirt": 7, "pants": 3 }
+  },
+  "equipment": {
+    "boots": "leather_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    { "item": "bread", "qty": 6 },
+    { "item": "egg", "qty": 4 }
+  ],
+  "lines": [
+    "Town folk ask why we live out here. Out here, nobody asks.",
+    "The brigands took two cows in the spring. The Watch took three brigands in the summer. Sums even out.",
+    "Buy an egg or carry news. Either pays."
+  ],
+  "shop": "hamlet_larder"
+}

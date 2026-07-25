@@ -15859,6 +15859,43 @@ export class Renderer {
     goblin: { weapon: 'bronze_sword' },
   };
 
+  /**
+   * The road-thieves' kit — leathers and honest iron, every piece a
+   * real drop from the wearer's table (the loot-story law). The
+   * archer slings a shortbow and quiver; the reaver fights sword-and-
+   * dagger, the dual-wield silhouette marking the camp's name.
+   */
+  private static readonly BRIGAND_EQUIP: Record<string, Partial<Record<string, string>>> = {
+    brigand: { weapon: 'iron_sword', body: 'leather_body', head: 'leather_hood' },
+    brigand_archer: {
+      weapon: 'shortbow',
+      offhand: 'hunters_quiver',
+      body: 'leather_body',
+      legs: 'leather_chaps',
+    },
+    brigand_reaver: {
+      weapon: 'iron_sword',
+      offhand: 'iron_dagger',
+      head: 'leather_hood',
+      body: 'leather_body',
+      legs: 'leather_chaps',
+    },
+  };
+
+  /** Human outlaws stand player-tall; the reaver a shade over. */
+  private static readonly BRIGAND_SIZE: Record<string, number> = {
+    brigand: 1.0,
+    brigand_archer: 0.97,
+    brigand_reaver: 1.1,
+  };
+
+  /** Weathered human hides — road tans, not goblin green. */
+  private static readonly BRIGAND_SKIN: Record<string, string> = {
+    brigand: '#d9a878',
+    brigand_archer: '#c69268',
+    brigand_reaver: '#b9825e',
+  };
+
   /** Shared empty kit — stable identity for the body-sprite signature. */
   private static readonly NO_EQUIP: Partial<Record<string, string>> = {};
 
@@ -15902,6 +15939,7 @@ export class Renderer {
       defId.startsWith('goblin') ||
       defId.startsWith('skeleton') ||
       defId.startsWith('kobold') ||
+      defId.startsWith('brigand') ||
       defId === 'troll'
     ) {
       const def = npcDef(defId);
@@ -15923,7 +15961,7 @@ export class Renderer {
         equip:
           // Static per defId — a fresh literal here would churn the
           // body-sprite signature's identity ids every frame.
-          Renderer.GOBLIN_EQUIP[defId] ?? Renderer.KOBOLD_EQUIP[defId] ?? Renderer.SKELETON_EQUIP[defId] ?? Renderer.NO_EQUIP,
+          Renderer.GOBLIN_EQUIP[defId] ?? Renderer.KOBOLD_EQUIP[defId] ?? Renderer.SKELETON_EQUIP[defId] ?? Renderer.BRIGAND_EQUIP[defId] ?? Renderer.NO_EQUIP,
         color: def?.color ?? '#999',
         skinColor:
           defId === 'troll'
@@ -15932,10 +15970,11 @@ export class Renderer {
               ? '#7aa74a'
               : kob
                 ? kob.hide
-                : undefined,
+                : Renderer.BRIGAND_SKIN[defId],
         size:
           Renderer.KOBOLD_SIZE[defId] ??
           Renderer.SKELETON_SIZE[defId] ??
+          Renderer.BRIGAND_SIZE[defId] ??
           (defId === 'troll' ? 1.4 : 0.85),
         skeletal: skel,
         kobold: kob,
@@ -17259,6 +17298,7 @@ export class Renderer {
       death.defId.startsWith('goblin') ||
       death.defId.startsWith('skeleton') ||
       death.defId.startsWith('kobold') ||
+      death.defId.startsWith('brigand') ||
       death.defId === 'troll';
     let rag: Ragdoll;
     let look: (typeof this.corpses)[number]['look'];
@@ -17299,6 +17339,7 @@ export class Renderer {
       const size =
         Renderer.KOBOLD_SIZE[death.defId] ??
         Renderer.SKELETON_SIZE[death.defId] ??
+        Renderer.BRIGAND_SIZE[death.defId] ??
         (death.defId === 'troll' ? 1.4 : 0.85);
       const bodyColor = def.color ?? '#999';
       const corpseKob = death.defId.startsWith('kobold')
@@ -17311,7 +17352,9 @@ export class Renderer {
         h: {
           bodyColor,
           skinColor:
-            death.defId === 'troll' ? '#6a7d5c' : (corpseKob?.hide ?? '#7aa74a'),
+            death.defId === 'troll'
+              ? '#6a7d5c'
+              : (corpseKob?.hide ?? Renderer.BRIGAND_SKIN[death.defId] ?? '#7aa74a'),
           hairColor: shade(bodyColor, -24),
           size,
           // Skeleton corpses keep the bone dialect — crown and all;

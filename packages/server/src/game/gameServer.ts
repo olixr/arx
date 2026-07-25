@@ -111,6 +111,7 @@ import {
   type WeaponStats,
   type PrefabDef,
   type PoiDef,
+  AUTHORED_WILD_SITES,
   POI_DEFS,
   POI_PREFABS,
   ROAD_CALM,
@@ -123,6 +124,7 @@ import {
 import {
   POI_CELL,
   composePoi,
+  findAuthoredAnchor,
   loadPoiPrefabs,
   poiCellKey,
   poiCellOf,
@@ -221,6 +223,7 @@ import {
   RARITY_TIERS,
   dangerAt,
   dungeonSpecFromRoll,
+  hashCoords,
   mintKeyPower,
   type DangerAnchor,
   type DungeonSpec,
@@ -2854,9 +2857,98 @@ export class GameServer {
           `(${turned.rerolled} stand anew, ${turned.turned - turned.rerolled} rolled empty)`,
       );
     }
+    // THE AUTHORED SITES: the plan's fixed points in the wilds — the
+    // High Road mileposts, the Last Lamp, the veil's named dens —
+    // seeded (or restored) after every sweep, idempotently.
+    this.seedAuthoredSites();
     if (this.poiHavens.size > 0) {
       console.log(`[poi] ${this.poiHavens.size} haven lamp(s) burning on the frontier`);
     }
+  }
+
+  /**
+   * Macro-cells the authored-sites roster claims. Both sweeps skip
+   * them (the plan must never evict its own landmarks), and the
+   * seeder below restores them whenever the ledger disagrees.
+   */
+  private static readonly AUTHORED_CELLS: ReadonlySet<string> = new Set(
+    AUTHORED_WILD_SITES.map((s) =>
+      s.cell ? poiCellKey(s.cell[0], s.cell[1]) : poiCellKey(poiCellOf(s.x!), poiCellOf(s.y!)),
+    ),
+  );
+
+  /**
+   * Stand the master plan's authored wild sites in the ledger — the
+   * waystation mileposts pacing the High Road, the Last Lamp before
+   * the Silverspine climb, the Thornveil's named dens. Pinned entries
+   * nudge to honest ground beside their road (the standable probe
+   * already refuses the trodden surface); cell entries run the real
+   * site scan with the archetype forced. A ledger row that already
+   * holds the wanted archetype is left exactly alone — the seed is
+   * idempotent, and boots after the first are no-ops.
+   */
+  private seedAuthoredSites(): void {
+    if (!this.poiPrefabs) return;
+    const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
+    let seeded = 0;
+    for (const want of AUTHORED_WILD_SITES) {
+      const def = POI_DEFS.get(want.defId);
+      if (!def) {
+        console.warn(`[poi] authored site '${want.id}': unknown archetype '${want.defId}'`);
+        continue;
+      }
+      const cellX = want.cell ? want.cell[0] : poiCellOf(want.x!);
+      const cellY = want.cell ? want.cell[1] : poiCellOf(want.y!);
+      const key = poiCellKey(cellX, cellY);
+      const row = this.poiLedger.get(key);
+      if (row?.site?.defId === want.defId) continue; // already standing
+
+      // A different decision holds the cell — retire it; the epoch
+      // bump keeps the re-decision's muster streams fresh.
+      const epoch = row ? row.epoch + 1 : 0;
+      let site: PoiSite | null = null;
+      if (want.cell) {
+        site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx, want.defId);
+      } else {
+        const prefabId =
+          def.prefabs[hashCoords(config.worldSeed ^ 0xa07d, want.x!, want.y!) % def.prefabs.length]!;
+        const prefab = this.poiPrefabs.get(prefabId);
+        const spot = prefab
+          ? findAuthoredAnchor(config.worldSeed, want.x!, want.y!, prefab, ctx)
+          : null;
+        if (spot) {
+          site = {
+            cellX,
+            cellY,
+            epoch,
+            tier: this.liveDangerTier(spot.x, spot.y),
+            defId: want.defId,
+            prefabId,
+            anchorX: spot.x,
+            anchorY: spot.y,
+          };
+        }
+      }
+      if (!site) {
+        console.warn(`[poi] authored site '${want.id}': no honest ground — stood nothing`);
+        continue;
+      }
+      if (row) this.retirePoiCell(key);
+      this.accounts.recordPoiCell(cellX, cellY, epoch, {
+        poiId: site.defId,
+        prefabId: site.prefabId,
+        tier: site.tier,
+        anchorX: site.anchorX,
+        anchorY: site.anchorY,
+      });
+      this.poiLedger.set(key, { epoch, site, clearedAt: null });
+      seeded++;
+      console.log(
+        `[poi] authored site '${want.id}' (${want.defId}) stands at ` +
+          `${site.anchorX},${site.anchorY} — tier ${site.tier}`,
+      );
+    }
+    if (seeded > 0) this.rebuildHavens();
   }
 
   /**
@@ -2869,6 +2961,9 @@ export class GameServer {
     const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
     let evicted = 0;
     for (const [key, row] of this.poiLedger) {
+      // Authored cells are the plan's own landmarks — never evicted
+      // (they stand near planned rects deliberately, tight-padded).
+      if (GameServer.AUTHORED_CELLS.has(key)) continue;
       if (row.site === null || !poiSiteBlocked(row.site, ctx)) continue;
       const { cellX, cellY } = row.site;
       this.retirePoiCell(key);
@@ -2909,6 +3004,9 @@ export class GameServer {
     let turned = 0;
     let rerolled = 0;
     for (const [key, row] of this.poiLedger) {
+      // Authored landmarks don't churn: the veil has ALWAYS held its
+      // den — clear it and it comes back the same, not different.
+      if (GameServer.AUTHORED_CELLS.has(key)) continue;
       if (row.site === null || row.clearedAt === null || row.clearedAt >= cutoffMs) continue;
       const { cellX, cellY } = row.site;
       this.retirePoiCell(key);

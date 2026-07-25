@@ -201,6 +201,67 @@ const defs: LootTableDef[] = [
     ],
   },
   {
+    // The road-thieves' pockets: heavier coin than any beast carries
+    // (they've been TAKING it), trail rations, and the working kit of
+    // an ambush trade. What they wear is what they drop.
+    id: 'brigand',
+    desc: 'A road-thief’s pockets: stolen coin and an ambusher’s kit.',
+    entries: [
+      { item: 'bones' },
+      { item: 'coins', qty: [8, 32], chance: 0.9 },
+      { item: 'brass_key', chance: 0.035 },
+      { item: 'dungeon_key', chance: 0.02 },
+      { item: 'bread', chance: 0.2 },
+      { item: 'arrow', qty: [5, 14], chance: 0.35 },
+      { item: 'snare_kit', chance: 0.06 },
+      { item: 'leather_hood', chance: 0.05 },
+      { item: 'leather_body', chance: 0.05 },
+      { item: 'leather_chaps', chance: 0.04 },
+      { item: 'leather_boots', chance: 0.04 },
+      { item: 'scrap_hide', qty: [1, 2], chance: 0.3 },
+      { item: 'linen_scrap', qty: [1, 3], chance: 0.35 },
+      { item: 'arcane_dust', chance: 0.08 },
+    ],
+  },
+  {
+    id: 'brigand_wardrobe',
+    desc: 'Stolen wardrobes — cut purses and quieter boots.',
+    entries: [
+      ...setDrops('cutpurse', 0.02),
+      ...setDrops('fenwalker', 0.016),
+      ...setDrops('mothwing', 0.012),
+    ],
+  },
+  {
+    id: 'brigand_arms',
+    desc: 'Honest iron in dishonest hands.',
+    entries: [
+      { item: 'iron_sword', chance: 0.05 },
+      { item: 'iron_dagger', chance: 0.05 },
+      { item: 'shortbow', chance: 0.04 },
+      { item: 'hunters_quiver', chance: 0.02 },
+      { item: 'oak_kiteshield', chance: 0.02 },
+      { item: 'iron_helm', chance: 0.03 },
+    ],
+  },
+  {
+    // The reaver kept the crew's shares. Killing the name is the
+    // payday — and the second-best key faucet on the open road.
+    id: 'brigand_reaver',
+    desc: 'The crew’s shares, kept in the reaver’s own coat.',
+    entries: [
+      { item: 'bones' },
+      { item: 'coins', qty: [30, 90], chance: 1 },
+      { item: 'brass_key', chance: 0.14 },
+      { item: 'dungeon_key', chance: 0.07 },
+      { item: 'iron_dagger', chance: 0.1 },
+      { item: 'leather_hood', chance: 0.08 },
+      ...setDrops('cutpurse', 0.035),
+      { item: 'emberstone', chance: 0.02 },
+      { item: 'stormpearl', chance: 0.015 },
+    ],
+  },
+  {
     id: 'goblin_thrower',
     desc: 'Thrower basics: ammo and the warband’s colors.',
     entries: [
