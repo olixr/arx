@@ -896,7 +896,7 @@ test('amberford: every doorway walks from the Round, and all three gates connect
   assert.equal(seen[61 * z.width + 111], 1, 'the east stub is severed');
   // And the banking floor is truly public: the lobby rug between the
   // two (solid) banking chests must be walkable from the door.
-  assert.equal(seen[31 * z.width + 42], 1, 'the bank floor is unreachable');
+  assert.equal(seen[32 * z.width + 40], 1, 'the bank floor is unreachable');
 });
 
 test('daggers: backstab multiplier, fast cadence, and a real Art', () => {
