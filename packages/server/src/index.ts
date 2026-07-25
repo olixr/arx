@@ -9,6 +9,7 @@ import {
   DIALOGUES,
   NPC_ACTORS,
   ROUTINES,
+  buildAmberford,
   buildDawnmead,
   lootTableErrors,
   replaceLootTables,
@@ -43,7 +44,11 @@ import { WorldSource } from './world/worldSource.js';
 // The world is built out fresh from Dawnmead: the old placeholder
 // town, dungeon, and quarry zones are gone, and everything past the
 // hedgerows is the procedural frontier.
-const builtinZones = new Map<string, ZoneDef>([buildDawnmead()].map((z) => [z.id, z]));
+// Dawnmead stays FIRST: the world spawn (rescue law, underground
+// surfacing) is the first zone declaring one — the Waking Ring.
+const builtinZones = new Map<string, ZoneDef>(
+  [buildDawnmead(), buildAmberford()].map((z) => [z.id, z]),
+);
 const zones: ZoneDef[] = [...builtinZones.values()];
 try {
   const mapsDir = join(config.dataDir, 'maps');

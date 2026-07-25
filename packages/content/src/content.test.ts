@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { Detail, PASSIVES, STATUS_IDS, Tile, TILE_DEFS } from '@devcraft/shared';
 import { ZoneBuilder } from './maps/builder.js';
 import { buildDawnmead } from './maps/dawnmead.js';
+import { buildAmberford } from './maps/amberford.js';
+import { AMBERFORD_RECT } from './geography.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { compileTemplate, templateHeight, templateWidth } from './structures/stamp.js';
 import { templateFromJson, templateToJson } from './structures/serialize.js';
@@ -794,6 +796,107 @@ test('dawnmead: every doorway (shed included) walks from the spawn', () => {
   // The east lane truly connects: the edge tile the road leaves by is
   // reachable from the Ring, so a waker can walk to Bramblewick.
   assert.equal(seen[32 * z.width + 95], 1, 'the lane east is severed');
+});
+
+test('amberford: the crossroads town holds its anchors, stations, and gates', () => {
+  const z = buildAmberford();
+  assert.equal(z.id, 'amberford');
+  // The zone stamps into the master plan's rect exactly.
+  assert.deepEqual(z.origin, { x: AMBERFORD_RECT.x, y: AMBERFORD_RECT.y });
+  assert.equal(z.width, AMBERFORD_RECT.w);
+  assert.equal(z.height, AMBERFORD_RECT.h);
+  const at = (x: number, y: number): Tile => z.ground[y * z.width + x]! as Tile;
+  // The respawn hearth stands on the Market Round.
+  assert.deepEqual(z.spawn, { x: 156.5, y: 28.5 });
+  assert.equal(TILE_DEFS[at(52, 44)].solid, false, 'spawn tile must be walkable');
+  // The gates meet the carved worldgen roads tile-for-tile: the First
+  // Road's rows at the west edge, the High Road's mouth at the north.
+  for (const y of [51, 52, 53]) {
+    assert.equal(at(0, y), Tile.Path, `Fordgate row ${y} must reach the west edge`);
+  }
+  for (const x of [53, 54, 55]) {
+    assert.equal(at(x, 0), Tile.Path, `North Gate col ${x} must reach the north edge`);
+  }
+  // The East Road stub wanders out the east edge toward Saltmere-someday.
+  assert.equal(at(111, 61), Tile.Path, 'the east stub must reach the edge');
+  const counts = new Map<number, number>();
+  for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
+  // THE BANK: the world's first banking chests and the vault behind them.
+  assert.equal(counts.get(Tile.BankChest) ?? 0, 2, 'the bank floor lost its chests');
+  assert.ok((counts.get(Tile.Vault) ?? 0) >= 2, 'the vault room lost its boxes');
+  // Craft Row carries every trainer trade's station, plus the town mill.
+  for (const [tile, name] of [
+    [Tile.Furnace, 'furnace'],
+    [Tile.Anvil, 'anvil'],
+    [Tile.Loom, 'loom'],
+    [Tile.TanningRack, 'tanning rack'],
+    [Tile.CarvingBench, 'carving bench'],
+    [Tile.Alembic, 'alembic'],
+    [Tile.Workbench, 'workbench'],
+  ] as const) {
+    assert.ok((counts.get(tile) ?? 0) >= 1, `craft station missing: ${name}`);
+  }
+  // The market, the water, and the working town.
+  assert.ok((counts.get(Tile.MarketStall) ?? 0) >= 4, 'the Round lost its stalls');
+  assert.ok((counts.get(Tile.FishingSpot) ?? 0) >= 2, 'the pond lost its fishing');
+  assert.ok((counts.get(Tile.Bridge) ?? 0) >= 10, 'docks and spans missing');
+  assert.ok((counts.get(Tile.TreeOak) ?? 0) >= 18, 'the orchard thinned');
+  // Livestock only — the named people arrive in the people pass.
+  const spawnKinds = new Map((z.spawns ?? []).map((s) => [s.npc, s.count]));
+  assert.equal(spawnKinds.get('cow'), 3);
+  assert.equal(spawnKinds.get('chicken'), 3);
+  assert.equal((z.actorSpawns ?? []).length, 0, 'actors belong to the people pass');
+  // The editor JSON round trip holds, flat-zone law included.
+  const json = zoneToJson(z);
+  assert.equal(json.elev, undefined, 'amberford is a flat zone');
+  const { elev: _rt, ...back } = zoneToJson(zoneFromJson(json));
+  const { elev: _src, ...src } = json;
+  assert.deepEqual(back, src);
+});
+
+test('amberford: every doorway walks from the Round, and all three gates connect', () => {
+  const z = buildAmberford();
+  const walkable = (x: number, y: number): boolean =>
+    x >= 0 && y >= 0 && x < z.width && y < z.height &&
+    !TILE_DEFS[z.ground[y * z.width + x]! as Tile].solid;
+  const seen = new Uint8Array(z.width * z.height);
+  const queue: number[] = [44 * z.width + 52]; // the Market Round
+  seen[queue[0]!] = 1;
+  while (queue.length > 0) {
+    const i = queue.pop()!;
+    const x = i % z.width;
+    const y = Math.floor(i / z.width);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      const ni = ny * z.width + nx;
+      if (walkable(nx, ny) && !seen[ni]) {
+        seen[ni] = 1;
+        queue.push(ni);
+      }
+    }
+  }
+  const unreachable: string[] = [];
+  for (let i = 0; i < z.ground.length; i++) {
+    const t = z.ground[i];
+    if (
+      (t === Tile.DoorwayStone ||
+        t === Tile.DoorwayWood ||
+        t === Tile.DoorwayStoneWide ||
+        t === Tile.DoorwayWoodWide) &&
+      !seen[i]
+    ) {
+      unreachable.push(`(${i % z.width},${Math.floor(i / z.width)})`);
+    }
+  }
+  assert.deepEqual(unreachable, [], `doorways cut off from the Round: ${unreachable.join(' ')}`);
+  // All three road mouths connect to the Round.
+  assert.equal(seen[52 * z.width + 0], 1, 'the Fordgate is severed');
+  assert.equal(seen[1 * z.width + 54], 1, 'the North Gate is severed');
+  assert.equal(seen[61 * z.width + 111], 1, 'the east stub is severed');
+  // And the banking floor is truly public: the rug tile between the
+  // two (solid) banking chests must be walkable from the door.
+  assert.equal(seen[27 * z.width + 45], 1, 'the bank floor is unreachable');
 });
 
 test('daggers: backstab multiplier, fast cadence, and a real Art', () => {

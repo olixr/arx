@@ -50,3 +50,4 @@ export * from './maps/builder.js';
 export * from './maps/serialize.js';
 export * from './maps/prefab.js';
 export * from './maps/dawnmead.js';
+export * from './maps/amberford.js';

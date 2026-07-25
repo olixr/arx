@@ -223,6 +223,30 @@ export const CHAPEL: StructureTemplate = compileTemplate({
 });
 
 /**
+ * A gate watch-house: one stone room with the racks by the door and a
+ * table for the ledger — the building that says "someone minds this
+ * road". Door south; post it north of the lane it watches.
+ */
+export const GUARD_POST: StructureTemplate = compileTemplate({
+  id: 'guard_post',
+  legend: {
+    ...stone,
+    K: { tile: Tile.WeaponRack },
+    T: { tile: Tile.ToolRack },
+    A: { tile: Tile.Table },
+    C: { tile: Tile.Chair },
+  },
+  rows: [
+    '##W###',
+    '#KT..#',
+    '#.AC.#',
+    '#..d.#',
+    '##WD##',
+  ],
+  meta: { label: 'Guard Post' },
+});
+
+/**
  * A walkway-edge segment: one pillar at the west end of the north row
  * so E-W tiling yields a pillar every 3 tiles without doubling.
  */
@@ -271,6 +295,7 @@ export const STRUCTURE_TEMPLATES: readonly StructureTemplate[] = [
   MARKET_STALL,
   INN_LARGE,
   CHAPEL,
+  GUARD_POST,
   COLONNADE_SEG,
   WELL_PLAZA,
 ];

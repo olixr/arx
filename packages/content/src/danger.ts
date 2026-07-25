@@ -13,12 +13,17 @@ import { dangerAt, type ChestKind, type DangerAnchor } from '@devcraft/shared';
  */
 
 export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
-  // Dawnmead — the awakening village, and the world's ONE settled
-  // hearth. Its safe radius covers the village, its worked meadows,
-  // and the first stretch of the east lane; every danger band marches
-  // outward from here, and everything past it is the procedural
-  // frontier. New settlements earn their anchors as they're built.
+  // Dawnmead — the awakening village. Its safe radius covers the
+  // village, its worked meadows, and the first stretch of the east
+  // lane toward Amberford.
   { x: -64, y: 48, safeR: 64 },
+  // Amberford — the crossroads market town (the master plan's second
+  // hearth). With both lowland anchors lit, the First Road corridor
+  // between them reads tier 1-2 — a first journey, never a gauntlet —
+  // while the northwest march toward Silverfall stays deep. Silverfall
+  // itself will anchor as a HAVEN, not a settled hearth: its walls
+  // must never tame the tier-4/5 country it stands in.
+  { x: 160, y: 24, safeR: 72 },
 ];
 
 export interface DangerLaw {
