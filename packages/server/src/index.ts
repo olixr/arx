@@ -10,6 +10,7 @@ import {
   NPC_ACTORS,
   ROUTINES,
   buildBramblewick,
+  buildDawnmead,
   buildGloomhollow,
   buildHollowStair,
   lootTableErrors,
@@ -43,7 +44,10 @@ import { WorldSource } from './world/worldSource.js';
 // that declares one. A file whose id matches a built-in REPLACES it
 // in place (same overlay slot) — that's how an edited town ships.
 const builtinZones = new Map<string, ZoneDef>(
-  [buildBramblewick(), buildGloomhollow(), buildHollowStair()].map((z) => [z.id, z]),
+  [buildBramblewick(), buildDawnmead(), buildGloomhollow(), buildHollowStair()].map((z) => [
+    z.id,
+    z,
+  ]),
 );
 const zones: ZoneDef[] = [...builtinZones.values()];
 try {

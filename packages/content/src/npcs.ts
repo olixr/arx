@@ -826,12 +826,15 @@ export const TOWN_SPAWNS: readonly SpawnPoint[] = [
   { npc: 'kobold', x: 127, y: 18, radius: 3, count: 3 },
   { npc: 'kobold', x: 137, y: 25, radius: 3, count: 2 },
   { npc: 'kobold_digmaster', x: 130, y: 23, radius: 2, count: 1 },
-  // Wolves in the western woods.
-  { npc: 'wolf', x: -18, y: 40, radius: 8, count: 2 },
-  { npc: 'wolf', x: -24, y: 60, radius: 8, count: 2 },
+  // Wolves in the north-western woods, past Dawnmead's orchard rim.
+  // The packs moved when the awakening village took the west meadow:
+  // the whole hedgerow-lane corridor (y ~40-60, Dawnmead to town) is
+  // the beginner walk and stays predator-free by design.
+  { npc: 'wolf', x: -24, y: -4, radius: 6, count: 2 },
+  { npc: 'wolf', x: -40, y: 2, radius: 6, count: 2 },
   // The matriarch roams the ground between her two packs — meet her
   // near either den and the howl brings the rest.
-  { npc: 'dire_wolf', x: -21, y: 50, radius: 10, count: 1 },
+  { npc: 'dire_wolf', x: -32, y: -1, radius: 8, count: 1 },
   // Goblin war-hounds: a bonded pair prowling south of the camp.
   { npc: 'worg', x: 58, y: 122, radius: 7, count: 2 },
   // The pond ecosystem, tiered: crabs on the bank, slimes in the
@@ -847,10 +850,12 @@ export const TOWN_SPAWNS: readonly SpawnPoint[] = [
   { npc: 'boar', x: 32, y: 90, radius: 8, count: 3 },
   // Beetles trundle the dry scrub east of the goblin camp.
   { npc: 'giant_beetle', x: 76, y: 108, radius: 7, count: 2 },
-  // The dark forest southwest: webs above, wings at dusk.
-  { npc: 'giant_spider', x: -30, y: 82, radius: 7, count: 2 },
-  { npc: 'cave_bat', x: -36, y: 68, radius: 6, count: 2 },
-  // Past the wolf packs, the deep-wood threats.
-  { npc: 'bear', x: -43, y: 47, radius: 6, count: 1 },
-  { npc: 'troll', x: -55, y: 88, radius: 6, count: 1 },
+  // The Gloamwood — the dark forest south-west, pushed a hedge and a
+  // half below Dawnmead's brook meadow so the village's first walks
+  // never stumble into it: webs above, wings at dusk, and the old
+  // threats deeper in.
+  { npc: 'giant_spider', x: -30, y: 96, radius: 7, count: 2 },
+  { npc: 'cave_bat', x: -36, y: 88, radius: 6, count: 2 },
+  { npc: 'bear', x: -48, y: 100, radius: 6, count: 1 },
+  { npc: 'troll', x: -55, y: 108, radius: 6, count: 1 },
 ];

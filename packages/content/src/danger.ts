@@ -17,6 +17,10 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // pond, the near camps are all AUTHORED content; the procedural
   // world starts past them).
   { x: 48, y: 48, safeR: 96 },
+  // Dawnmead — the awakening village west of town. Its safe radius
+  // overlaps Bramblewick's, so the whole hedgerow lane between them
+  // is tier 0: a first walk that never bares its teeth.
+  { x: -64, y: 48, safeR: 64 },
   // The Hollow Stair quarry shelf: an authored site, not a haven — a
   // small bubble that only keeps POIs off the authored kobold warren.
   { x: 132, y: 20, safeR: 40 },

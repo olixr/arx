@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { Detail, PASSIVES, STATUS_IDS, Tile, TILE_DEFS } from '@devcraft/shared';
 import { ZoneBuilder } from './maps/builder.js';
 import { buildBramblewick } from './maps/bramblewick.js';
+import { buildDawnmead } from './maps/dawnmead.js';
 import { buildHollowStair } from './maps/hollowstair.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { compileTemplate, templateHeight, templateWidth } from './structures/stamp.js';
@@ -774,6 +775,87 @@ test('bramblewick: every doorway is walkable from the spawn', () => {
     }
   }
   assert.deepEqual(unreachable, [], `doorways cut off from spawn: ${unreachable.join(' ')}`);
+});
+
+test('dawnmead: awakening anchors, stations, pens, and the lane seam hold', () => {
+  const z = buildDawnmead();
+  const at = (x: number, y: number): Tile => z.ground[y * z.width + x]! as Tile;
+  // The spawn stands inside the Waking Ring (world coords).
+  assert.deepEqual(z.spawn, { x: -81.5, y: 48.5 });
+  assert.equal(TILE_DEFS[at(14, 32)].solid, false, 'spawn tile must be walkable');
+  // The lane exits the east edge on rows that meet Bramblewick's west
+  // road (world y 47-49 = local y 31-33 with origin y 16).
+  for (const y of [31, 32, 33]) {
+    assert.equal(at(95, y), Tile.Path, `lane row ${y} must reach the east edge`);
+  }
+  const counts = new Map<number, number>();
+  for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
+  assert.equal(counts.get(Tile.Campfire) ?? 0, 1, 'village campfire missing');
+  assert.equal(counts.get(Tile.Workbench) ?? 0, 1, 'village workbench missing');
+  assert.equal(counts.get(Tile.ChestWood) ?? 0, 1, 'the shed chest missing');
+  assert.ok((counts.get(Tile.BerryBush) ?? 0) >= 5, 'the berry banks thinned');
+  // The animals and their teacher-rats stand in the zone spawns.
+  const spawnKinds = new Map((z.spawns ?? []).map((s) => [s.npc, s.count]));
+  assert.equal(spawnKinds.get('chicken'), 4);
+  assert.equal(spawnKinds.get('cow'), 2);
+  assert.equal(spawnKinds.get('rat'), 3);
+  // Six villagers, each with their post; five keep routine hours.
+  const actors = z.actorSpawns ?? [];
+  assert.equal(actors.length, 6);
+  for (const slug of [
+    'elder_rowan',
+    'warden_bryn',
+    'hearthkeeper_iona',
+    'farmer_hobb',
+    'tinker_fen',
+    'young_pip',
+  ]) {
+    assert.ok(actors.some((a) => a.actor === slug), `${slug} missing from the village`);
+  }
+  assert.equal(actors.filter((a) => a.routine).length, 6, 'every villager keeps hours');
+  // The zone survives the editor's JSON round trip. zoneFromJson
+  // zero-fills the flat elev layer and the re-export then carries it,
+  // so elevation is compared out; everything else must be byte-exact.
+  const json = zoneToJson(z);
+  assert.equal(json.elev, undefined, 'dawnmead is a flat zone');
+  const { elev: _rt, ...back } = zoneToJson(zoneFromJson(json));
+  const { elev: _src, ...src } = json;
+  assert.deepEqual(back, src);
+});
+
+test('dawnmead: every doorway (shed included) walks from the spawn', () => {
+  const z = buildDawnmead();
+  const walkable = (x: number, y: number): boolean =>
+    x >= 0 && y >= 0 && x < z.width && y < z.height &&
+    !TILE_DEFS[z.ground[y * z.width + x]! as Tile].solid;
+  const seen = new Uint8Array(z.width * z.height);
+  const queue: number[] = [32 * z.width + 14]; // the Waking Ring
+  seen[queue[0]!] = 1;
+  while (queue.length > 0) {
+    const i = queue.pop()!;
+    const x = i % z.width;
+    const y = Math.floor(i / z.width);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      const ni = ny * z.width + nx;
+      if (walkable(nx, ny) && !seen[ni]) {
+        seen[ni] = 1;
+        queue.push(ni);
+      }
+    }
+  }
+  const unreachable: string[] = [];
+  for (let i = 0; i < z.ground.length; i++) {
+    const t = z.ground[i];
+    if ((t === Tile.DoorwayStone || t === Tile.DoorwayWood) && !seen[i]) {
+      unreachable.push(`(${i % z.width},${Math.floor(i / z.width)})`);
+    }
+  }
+  assert.deepEqual(unreachable, [], `doorways cut off from spawn: ${unreachable.join(' ')}`);
+  // The east lane truly connects: the edge tile the road leaves by is
+  // reachable from the Ring, so a waker can walk to Bramblewick.
+  assert.equal(seen[32 * z.width + 95], 1, 'the lane east is severed');
 });
 
 test('daggers: backstab multiplier, fast cadence, and a real Art', () => {

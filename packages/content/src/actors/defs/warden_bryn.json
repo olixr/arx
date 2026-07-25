@@ -1,0 +1,27 @@
+{
+  "id": "warden_bryn",
+  "name": "Warden Bryn",
+  "title": "Warden of Dawnmead",
+  "examine": "The village's whole militia, and enough of one.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 3, "hair": 5, "hairColor": 1, "beard": 0, "eyes": 1, "ears": 0, "feature": 4, "shirt": 6, "pants": 1 }
+  },
+  "equipment": {
+    "weapon": "bronze_sword",
+    "body": "leather_body",
+    "legs": "leather_chaps",
+    "gloves": "leather_gloves",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    { "item": "arrow", "qty": 20 },
+    { "item": "bread", "qty": 1 }
+  ],
+  "lines": [
+    "Blade, bow, or spark — pick the one that feels like yours, then learn the other two anyway.",
+    "The rats in the old shed breed faster than I can be bothered. Wakers keep the count honest.",
+    "Nothing in this valley will hurt you. Past the far hills, different story."
+  ]
+}

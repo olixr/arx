@@ -6,16 +6,22 @@ import { validateNpcActor } from './validate.js';
 import artisanWeslin from './defs/artisan_weslin.json';
 import bramblewickGateGuard from './defs/bramblewick_gate_guard.json';
 import captainAlda from './defs/captain_alda.json';
+import elderRowan from './defs/elder_rowan.json';
 import farmerHetty from './defs/farmer_hetty.json';
+import farmerHobb from './defs/farmer_hobb.json';
 import grib from './defs/grib.json';
+import hearthkeeperIona from './defs/hearthkeeper_iona.json';
 import merchantTobbin from './defs/merchant_tobbin.json';
 import oldMaren from './defs/old_maren.json';
 import sageOdile from './defs/sage_odile.json';
 import smithBrannock from './defs/smith_brannock.json';
+import tinkerFen from './defs/tinker_fen.json';
+import wardenBryn from './defs/warden_bryn.json';
 import wayfarerDray from './defs/wayfarer_dray.json';
 import wayfarerPetch from './defs/wayfarer_petch.json';
 import wayfarerSenna from './defs/wayfarer_senna.json';
 import waywardWatch from './defs/wayward_watch.json';
+import youngPip from './defs/young_pip.json';
 
 /**
  * Every authored actor JSON, registered here. A def that isn't listed
@@ -27,16 +33,22 @@ const SOURCES: readonly unknown[] = [
   artisanWeslin,
   bramblewickGateGuard,
   captainAlda,
+  elderRowan,
   farmerHetty,
+  farmerHobb,
   grib,
+  hearthkeeperIona,
   merchantTobbin,
   oldMaren,
   sageOdile,
   smithBrannock,
+  tinkerFen,
+  wardenBryn,
   wayfarerDray,
   wayfarerPetch,
   wayfarerSenna,
   waywardWatch,
+  youngPip,
 ];
 
 function buildRegistry(): ReadonlyMap<string, NpcActorDef> {

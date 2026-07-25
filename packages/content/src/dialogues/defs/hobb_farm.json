@@ -1,0 +1,36 @@
+{
+  "id": "hobb_farm",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "farmer_hobb" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Mind the gate latch — Bess leans on it when she's bored. Something I can do for you?",
+      "choices": [
+        { "text": "What do the animals give?", "next": "produce" },
+        { "text": "Mind if I practice my swings out here?", "next": "practice" },
+        { "text": "Who's the small loud one?", "next": "pip" },
+        { "text": "Just admiring the farm.", "next": "farewell" }
+      ]
+    },
+    {
+      "id": "produce",
+      "text": "Walk up to a cow with kind intentions and you'll come away with *milk* — Bess allows it, mostly. The hens drop *eggs* when the mood takes them; check the coop floor. Milk, eggs, berries from the brook — that's a breakfast nobody had to bleed for. The world will ask you to bleed for plenty later, so enjoy this part.",
+      "next": "hub"
+    },
+    {
+      "id": "practice",
+      "text": "Not on my girls, you don't — the hens have opinions and Bess holds grudges. Take it to the *old shed* past the ford; the rats there owe everyone in this village. And if a chicken squares up to you anyway… well. You'd win. Try to be gracious about it.",
+      "next": "hub"
+    },
+    {
+      "id": "pip",
+      "text": "That's Pip. Mine, allegedly, though I suspect the Ring left him too and the stones won't own up to it. If he asks you what being made of stones is like, I apologize in advance.",
+      "next": "hub"
+    },
+    {
+      "id": "farewell",
+      "text": "Aye, it's a good little patch. Gate latch! — sorry. Habit."
+    }
+  ]
+}

@@ -221,6 +221,7 @@ import {
   mintKeyPower,
   type DangerAnchor,
   type DungeonSpec,
+  type Vec2,
 } from '@devcraft/shared';
 import { scaleNpcDef } from '@devcraft/content';
 import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem, takeSlot } from './inventory.js';
@@ -848,6 +849,15 @@ export class GameServer {
   private nextGuestId = -1;
 
   /**
+   * Where brand-new characters open their eyes — the awakening zone's
+   * spawn (config.startZoneId). Death respawn and rescue keep using
+   * world.spawn: only a FIRST arrival ever starts here.
+   */
+  private get startSpawn(): Vec2 {
+    return this.world.spawnOf(config.startZoneId) ?? this.world.spawn;
+  }
+
+  /**
    * MELEE LAG COMPENSATION. A swing is aimed at what the attacker SAW —
    * NPC positions ~(half their RTT + interp delay) in the past. Testing
    * the live positions instead made strafing targets feel like they
@@ -1197,7 +1207,7 @@ export class GameServer {
         session.sendJson({ t: 'authErr', reason: 'invalid name' });
         return;
       }
-      const spawn = this.world.spawn;
+      const spawn = this.startSpawn;
       const character: CharacterRow = {
         id: this.nextGuestId--,
         account_id: 0,
@@ -1226,7 +1236,7 @@ export class GameServer {
   }
 
   register(session: Session, user: string, pass: string, name: string): void {
-    const res = this.accounts.register(user, pass, name, this.world.spawn);
+    const res = this.accounts.register(user, pass, name, this.startSpawn);
     if (!res.ok) {
       session.sendJson({ t: 'authErr', reason: res.reason });
       return;
@@ -6076,8 +6086,10 @@ export class GameServer {
     }
 
     if (health.hp <= 0) {
-      const spawn = this.world.spawn;
       const pos = this.positions.must(eid);
+      // Nearest settled spawn: a Dawnmead waker wakes back at the
+      // Ring, a veteran out east wakes in Bramblewick.
+      const spawn = this.world.respawnAt(pos.x, pos.y);
       pos.x = spawn.x;
       pos.y = spawn.y;
       health.hp = health.maxHp;

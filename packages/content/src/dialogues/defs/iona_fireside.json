@@ -1,0 +1,42 @@
+{
+  "id": "iona_fireside",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "hearthkeeper_iona" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Pot's warm, waker. What do you need?",
+      "choices": [
+        { "text": "What else can a fire do?", "next": "fires" },
+        { "text": "Where do the berries grow?", "next": "where" },
+        {
+          "text": "Anything warm to spare?",
+          "next": "spare",
+          "forbids": ["iona_fed"],
+          "set": ["iona_fed"]
+        },
+        { "text": "Just warming my hands.", "next": "farewell" }
+      ]
+    },
+    {
+      "id": "fires",
+      "text": "Anything you can catch or pull from the water, a fire will improve — chicken, beef, the brook's fish once you've the patience for the rod. Build your own fire out in the wild when you learn the knack, but any village hearth serves a traveller. Mine most of all.",
+      "next": "hub"
+    },
+    {
+      "id": "where",
+      "text": "Along the brook's near bank, south of the bridge — bushes, fibre, sageroot. Take a full pocket; the bank never begrudges it.",
+      "next": "hub"
+    },
+    {
+      "id": "spare",
+      "text": "For you? Once. {item:cooked_chicken} — mind, it's hot. After this you cook your own; that's how kindness works when it's doing its job.",
+      "hooks": [{ "kind": "give", "item": "cooked_chicken", "qty": 1 }],
+      "next": "hub"
+    },
+    {
+      "id": "farewell",
+      "text": "Warm hands, full pack, dry boots. Two out of three and you'll live."
+    }
+  ]
+}

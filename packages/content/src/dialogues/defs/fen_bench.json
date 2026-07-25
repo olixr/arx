@@ -1,0 +1,36 @@
+{
+  "id": "fen_bench",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "tinker_fen" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Watch the sawdust — it gets in everything, including conversations. You've the look of someone who wants to MAKE something. Am I right?",
+      "choices": [
+        { "text": "What can I make out here?", "next": "make" },
+        { "text": "Where does a crafter go to grow?", "next": "grow" },
+        { "text": "What's with all the twine?", "next": "twine" },
+        { "text": "Another time, Fen.", "next": "farewell" }
+      ]
+    },
+    {
+      "id": "make",
+      "text": "This *workbench* answers to anyone — bring it logs from the axe, hides from the hunt, ore from the pick, and it'll show you what your hands already know how to shape. Iona's fire handles the food, my bench handles the rest. Between the two of them you could walk out of this village wearing nothing you didn't make. People have.",
+      "next": "hub"
+    },
+    {
+      "id": "grow",
+      "text": "*Bramblewick*, end of the lane. A whole trades row — tannery rack, loom, carving bench, forge, even an enchanter's table humming to itself. The masters there sell *recipe scrolls* and lessons; some patterns you'll only ever pry out of chests and stubborn old chests-with-legs. Start simple here, get greedy there.",
+      "next": "hub"
+    },
+    {
+      "id": "twine",
+      "text": "Twine is civilization, friend. Fibre plant grows by the brook; twist it and suddenly bows have strings, hooks have lines, and half my repairs hold through winter. The humble ingredients are the ones the world runs on. Remember that when you're knee-deep in dragonbone or whatever the deep frontier is selling.",
+      "next": "hub"
+    },
+    {
+      "id": "farewell",
+      "text": "Bench is here when the urge strikes. It strikes everyone eventually."
+    }
+  ]
+}

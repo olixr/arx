@@ -1,0 +1,25 @@
+{
+  "id": "farmer_hobb",
+  "name": "Farmer Hobb",
+  "examine": "Talks to the cows. Swears they answer, and honestly, they might.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 4, "hair": 0, "hairColor": 1, "beard": 5, "eyes": 0, "ears": 0, "feature": 0, "shirt": 2, "pants": 10 }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "legs": "woven_trousers",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    { "item": "egg", "qty": 4 },
+    { "item": "milk", "qty": 2 },
+    { "item": "wheat", "qty": 3 }
+  ],
+  "lines": [
+    "Hens'll lay an egg for you if you stand there looking hopeful. Works on me too.",
+    "You can milk Bess if you like. She judges everyone the same amount.",
+    "Pip! Off the fence! — sorry. You were saying?"
+  ]
+}

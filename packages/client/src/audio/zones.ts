@@ -21,12 +21,15 @@ export interface ZoneWeights {
 
 export type ZoneId = keyof ZoneWeights;
 
-const TOWN_X = 48;
-const TOWN_Y = 48;
-/** Fully "in town" inside this radius… */
-const TOWN_FULL = 30;
-/** …fully in the wild past this one. */
-const TOWN_FADE_END = 48;
+/**
+ * The settled places the music treats as town: full weight inside
+ * `full`, trailing off to wild by `fade`. Bramblewick's ring is wide;
+ * Dawnmead is a hamlet and lets go of you sooner.
+ */
+const TOWNS = [
+  { x: 48, y: 48, full: 30, fade: 48 }, // Bramblewick
+  { x: -64, y: 48, full: 22, fade: 36 }, // Dawnmead
+] as const;
 /** The dark band: worldgen's underground begins here. */
 export const UNDERGROUND_Y = 512;
 
@@ -37,8 +40,11 @@ function smooth(t: number): number {
 
 export function zoneWeights(x: number, y: number): ZoneWeights {
   if (y >= UNDERGROUND_Y) return { town: 0, wild: 0, cave: 1 };
-  const d = Math.hypot(x - TOWN_X, y - TOWN_Y);
-  const town = smooth((TOWN_FADE_END - d) / (TOWN_FADE_END - TOWN_FULL));
+  let town = 0;
+  for (const t of TOWNS) {
+    const d = Math.hypot(x - t.x, y - t.y);
+    town = Math.max(town, smooth((t.fade - d) / (t.fade - t.full)));
+  }
   return { town, wild: 1 - town, cave: 0 };
 }
 

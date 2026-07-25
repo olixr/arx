@@ -1,0 +1,48 @@
+{
+  "id": "rowan_awakening",
+  "start": "wake",
+  "once": true,
+  "priority": 10,
+  "bindings": [{ "kind": "actor", "target": "elder_rowan" }],
+  "nodes": [
+    {
+      "id": "wake",
+      "text": "Easy now. Deep breaths. The Ring runs cold the first morning — it always does. There. You're standing, you're breathing, and you're *here*, which is more than most manage gracefully.",
+      "next": "stones"
+    },
+    {
+      "id": "stones",
+      "text": "I'm *Rowan*. Elder of Dawnmead, keeper of the Waking Ring — those five old stones you just stepped out of. Folk have been arriving through them since my grandmother's grandmother kept this watch. _Where you were before you woke, nobody remembers. Not you, not any waker before you._ We've stopped asking. The stones don't answer.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Ask what you like. First mornings are for questions.",
+      "choices": [
+        { "text": "What is this place?", "next": "village" },
+        { "text": "Why can't I remember anything?", "next": "memory" },
+        { "text": "What should I do now?", "next": "guidance" }
+      ]
+    },
+    {
+      "id": "village",
+      "text": "Dawnmead. A green, a brook, more chickens than people. The lane east runs to *Bramblewick* — the proper town, with its bank and forges and its humming Riftgate. Wakers rest here a day, learn what their hands are for, then take the lane. You will too. They all do.",
+      "next": "hub"
+    },
+    {
+      "id": "memory",
+      "text": "None of you do, child. You arrive with a pack on your back, strength in your limbs, and a name on your tongue — nothing else. _Some say the stones take the memories as toll. Some say you left them behind on purpose._ Either way: what you do NEXT is yours, and no toll can touch it.",
+      "next": "hub"
+    },
+    {
+      "id": "guidance",
+      "text": "Three doors, then the road. *Warden Bryn* keeps the yard south of the Ring — she'll wake up those arms of yours. *Iona* tends the fire by the south cottage — she'll teach you to feed yourself. And your pack is already heavier than you think: axe, pick, blade, bow, and a staff with a little weather in it. Go look. Then come back to me before you take the lane.",
+      "next": "gift"
+    },
+    {
+      "id": "gift",
+      "text": "Here — {item:bread}, baked before you were… well. Before this morning, at least. Welcome to the world, waker. It's mostly kind, out to the hedgerows anyway.",
+      "hooks": [{ "kind": "give", "item": "bread", "qty": 1 }]
+    }
+  ]
+}

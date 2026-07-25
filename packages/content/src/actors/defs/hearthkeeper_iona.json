@@ -1,0 +1,26 @@
+{
+  "id": "hearthkeeper_iona",
+  "name": "Iona",
+  "title": "Hearthkeeper",
+  "examine": "Smells of woodsmoke and berry preserve. The fire listens to her.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": { "skin": 1, "hair": 4, "hairColor": 3, "beard": 0, "eyes": 3, "ears": 0, "feature": 5, "shirt": 9, "pants": 11 }
+  },
+  "equipment": {
+    "body": "apprentice_robe",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    { "item": "bread", "qty": 2 },
+    { "item": "berries", "qty": 8 },
+    { "item": "cooked_chicken", "qty": 1 },
+    { "item": "milk", "qty": 1 }
+  ],
+  "lines": [
+    "A fire, a bird, and a little patience — that's supper anywhere in the world.",
+    "The berry banks by the brook give more than they're asked. Take some with you.",
+    "Burnt your first one? Good. Now you know what the fire thinks of hurrying."
+  ]
+}

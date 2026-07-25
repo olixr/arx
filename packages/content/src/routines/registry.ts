@@ -2,11 +2,17 @@ import type { RoutineDef } from './types.js';
 import { validateRoutine } from './validate.js';
 
 import archPatrol from './defs/arch_patrol.json';
+import dawnmeadFarmhand from './defs/dawnmead_farmhand.json';
 import farmhandDay from './defs/farmhand_day.json';
+import greenScamp from './defs/green_scamp.json';
+import hearthHours from './defs/hearth_hours.json';
 import plazaIdler from './defs/plaza_idler.json';
 import roadWanderer from './defs/road_wanderer.json';
+import rowanHours from './defs/rowan_hours.json';
 import shopkeeperHours from './defs/shopkeeper_hours.json';
 import smithDay from './defs/smith_day.json';
+import tinkerHours from './defs/tinker_hours.json';
+import wardenRounds from './defs/warden_rounds.json';
 import waystationKeeper from './defs/waystation_keeper.json';
 
 /**
@@ -17,11 +23,17 @@ import waystationKeeper from './defs/waystation_keeper.json';
  */
 const SOURCES: readonly unknown[] = [
   archPatrol,
+  dawnmeadFarmhand,
   farmhandDay,
+  greenScamp,
+  hearthHours,
   plazaIdler,
   roadWanderer,
+  rowanHours,
   shopkeeperHours,
   smithDay,
+  tinkerHours,
+  wardenRounds,
   waystationKeeper,
 ];
 

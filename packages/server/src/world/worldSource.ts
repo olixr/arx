@@ -105,6 +105,41 @@ export class WorldSource extends ChunkStore {
     return { x: 8, y: 8 };
   }
 
+  /**
+   * The spawn point a specific zone declares, if it does — reads the
+   * live zone list, so a hot-reloaded zone moves its spawn with it.
+   * The awakening flow (config.startZoneId) resolves through this.
+   */
+  spawnOf(zoneId: string): Vec2 | undefined {
+    for (const zone of this.zones) {
+      if (zone.id === zoneId && zone.spawn) return zone.spawn;
+    }
+    return undefined;
+  }
+
+  /**
+   * Where death sends you: the NEAREST settled spawn, so a waker who
+   * falls to the shed rats wakes back at Dawnmead's Ring instead of
+   * being teleported to a town they haven't earned yet — and a
+   * veteran dying out east still respawns in Bramblewick. Underground
+   * deaths (the dark band, dungeons, delves) always surface at the
+   * origin town's spawn: distance means nothing down there.
+   */
+  respawnAt(x: number, y: number): Vec2 {
+    if (y >= 512) return this.spawn;
+    let best = this.spawn;
+    let bestD = Infinity;
+    for (const zone of this.zones) {
+      if (!zone.spawn) continue;
+      const d = Math.hypot(zone.spawn.x - x, zone.spawn.y - y);
+      if (d < bestD) {
+        bestD = d;
+        best = zone.spawn;
+      }
+    }
+    return best;
+  }
+
   /** Player-built tiles, reapplied whenever a chunk regenerates. */
   private readonly builtTiles = new Map<string, { tile: number; owner: number; prevTile: number }>();
 

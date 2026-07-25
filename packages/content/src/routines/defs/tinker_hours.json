@@ -1,0 +1,39 @@
+{
+  "id": "tinker_hours",
+  "base": { "kind": "post", "dir": 1.5707963, "work": true, "speed": 1.7 },
+  "slots": [
+    {
+      "from": 12,
+      "to": 13,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.7,
+        "waypoints": [
+          { "x": -2, "y": 2.5 },
+          { "x": -5.5, "y": 3.3, "dir": 3.14159, "sit": true }
+        ]
+      }
+    },
+    {
+      "from": 18,
+      "to": 20,
+      "task": { "kind": "wander", "x": 0, "y": 0, "radius": 2.5, "speed": 1.7 }
+    },
+    {
+      "from": 21,
+      "to": 7,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.7,
+        "waypoints": [
+          { "x": -10, "y": -0.5 },
+          { "x": -17, "y": 4.3 },
+          { "x": -22, "y": 5 },
+          { "x": -21, "y": 8.9, "dir": 1.5707963 }
+        ]
+      }
+    }
+  ]
+}

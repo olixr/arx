@@ -1,0 +1,38 @@
+{
+  "id": "rowan_hours",
+  "base": { "kind": "post", "dir": 3.14159, "speed": 0.9 },
+  "slots": [
+    {
+      "from": 12,
+      "to": 14,
+      "task": { "kind": "wander", "x": 11, "y": 2, "radius": 2.5, "speed": 0.9 }
+    },
+    {
+      "from": 16,
+      "to": 18,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 0.9,
+        "waypoints": [
+          { "x": 5, "y": 2 },
+          { "x": 7, "y": 3.9, "dir": 1.5707963, "sit": true }
+        ]
+      }
+    },
+    {
+      "from": 19.5,
+      "to": 6.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 0.9,
+        "waypoints": [
+          { "x": 10, "y": -4 },
+          { "x": 10, "y": -6.5 },
+          { "x": 9, "y": -7, "dir": 1.5707963 }
+        ]
+      }
+    }
+  ]
+}

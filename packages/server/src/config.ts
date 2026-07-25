@@ -14,6 +14,14 @@ export const config = {
   /** Guest (accountless) joins — on by default for local dev and bots. */
   allowGuest: process.env.ALLOW_GUEST !== '0',
   worldSeed: envInt('WORLD_SEED', 1337),
+  /**
+   * Zone whose spawn point receives BRAND-NEW characters (the
+   * awakening). Death respawn and lost-position rescue keep using the
+   * world spawn (the first zone declaring one — Bramblewick), so only
+   * first arrivals ever start here. Falls back to the world spawn if
+   * the zone is missing or declares no spawn.
+   */
+  startZoneId: process.env.START_ZONE ?? 'dawnmead',
   /** Dev chat commands (/give) — on for local dev, off in production. */
   devCommands: process.env.DEV_COMMANDS !== '0',
   dataDir: process.env.DATA_DIR ?? new URL('../../../data/', import.meta.url).pathname,
