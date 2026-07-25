@@ -346,19 +346,21 @@ export function buildSilverfall(): ZoneDef {
   b.stamp(MARKET_STALL, 129, 58);
   b.set(107, 56, Tile.LampPost).set(138, 57, Tile.LampPost);
   b.set(137, 54, Tile.Bench).set(107, 59, Tile.Barrel);
-  // THE UNDERCROFT MOUTH — the sealed way down, set into its own
-  // rock knoll so the mountain face OWNS it: cave mass, flanking
-  // crag stones, scree at the foot, and the Masons' Guild seal.
-  // It opens in Epic 5, and everyone in the city knows it.
+  // THE UNDERCROFT MOUTH — the way down, OPEN since Epic 5: the
+  // Masons' Guild broke its own seal and the stair breathes again.
+  // The mouth sits in its own rock knoll so the mountain face OWNS
+  // it: cave mass, flanking crag stones, scree at the foot. The
+  // portal behind the arch drops you at the Landing; its twin down
+  // there brings you home to this apron.
   b.fillRect(33, 13, 11, 6, Tile.CaveWall);
   b.set(38, 18, Tile.ArchStone);
-  b.set(38, 17, Tile.CaveRubble); // the fill behind the arch
+  b.portal(38, 17, Tile.PortalDown, { x: -333.5, y: 552.5 }); // down to the Landing
   b.set(31, 16, Tile.Rock).set(32, 18, Tile.Rock).set(31, 19, Tile.Rock);
   b.set(44, 16, Tile.Rock).set(45, 18, Tile.Rock).set(45, 20, Tile.Rock);
   b.fillRect(35, 12, 3, 1, Tile.Snow).fillRect(40, 12, 2, 1, Tile.Snow);
   b.fillRect(36, 19, 5, 2, Tile.StoneFloor);
   b.set(36, 19, Tile.Brazier).set(40, 19, Tile.Brazier);
-  b.set(38, 21, Tile.HangingSign); // "THE UNDERCROFT — sealed by the Masons' Guild."
+  b.set(38, 21, Tile.HangingSign); // "THE UNDERCROFT — mind the step, mind the kobolds."
   b.set(34, 20, Tile.CaveRubble).set(42, 20, Tile.CaveRubble);
   b.setDetail(35, 21, Detail.Pebbles).setDetail(41, 22, Detail.Pebbles);
   b.setDetail(33, 21, Detail.Pebbles);

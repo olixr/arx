@@ -5,6 +5,7 @@ import { ZoneBuilder } from './maps/builder.js';
 import { buildDawnmead } from './maps/dawnmead.js';
 import { buildAmberford } from './maps/amberford.js';
 import { buildSilverfall } from './maps/silverfall.js';
+import { buildUndercroft } from './maps/undercroft.js';
 import { AMBERFORD_RECT, SILVERFALL_RECT } from './geography.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { compileTemplate, templateHeight, templateWidth } from './structures/stamp.js';
@@ -1023,6 +1024,131 @@ test('silverfall: the Silver Stair connects every terrace and every doorway walk
       seen[i + z.width] === 1 || seen[i - z.width] === 1 ||
       seen[i + 1] === 1 || seen[i - 1] === 1;
     assert.ok(open, `stall at (${x},${y}) has no reachable approach`);
+  }
+});
+
+test('undercroft: the cavern district holds its story, its metal, and its teeth', () => {
+  const z = buildUndercroft();
+  assert.equal(z.id, 'undercroft');
+  // The district lives in the dark band, directly under the mountain.
+  assert.ok(z.origin.y >= 512, 'the Undercroft must sit below DARK_BAND_Y');
+  assert.equal(z.width, 96);
+  assert.equal(z.height, 64);
+  // Dying below wakes you at the Landing (nearest-spawn law).
+  assert.deepEqual(z.spawn, { x: -332.5, y: 552.5 });
+  const counts = new Map<number, number>();
+  for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
+  const n = (t: Tile): number => counts.get(t) ?? 0;
+  // The Deep Market stands, and the metal ladder tops out here.
+  assert.ok(n(Tile.MarketStall) >= 5, 'the Deep Market thinned');
+  assert.ok(n(Tile.RockMithril) >= 2 && n(Tile.RockAdamant) >= 2, 'the high galleries lost their veins');
+  assert.ok(n(Tile.RockObsidian) >= 3 && n(Tile.RockStarfall) >= 1, 'the deep walk lost its prize');
+  assert.ok(n(Tile.RockSilver) >= 3, 'silver runs out before the deep does');
+  // The treasure ladder: iron on the walks, gilded behind the crack,
+  // mossy where the kobolds and the shrooms keep theirs.
+  assert.ok(n(Tile.ChestIron) >= 2 && n(Tile.ChestGilded) >= 1 && n(Tile.ChestMossy) >= 2);
+  assert.ok(n(Tile.CrackedCaveWall) >= 1, 'the guild keeps one secret');
+  // Cave dressing: the dark is furnished.
+  assert.ok(n(Tile.GlowShroom) >= 10 && n(Tile.Stalagmite) >= 8 && n(Tile.BonePile) >= 5);
+  assert.ok(n(Tile.Brazier) >= 10, 'the guild-swept spine must burn');
+  assert.ok(n(Tile.FishingSpot) >= 2, 'the cistern must fish');
+  // The two portals: the way home, and the resident Riftgate.
+  const portals = z.portals ?? [];
+  assert.equal(portals.length, 2, 'the Landing portal and the Riftgate');
+  const up = portals.find((p) => p.dest);
+  const rift = portals.find((p) => p.delve);
+  assert.ok(up && rift, 'one portal home, one delve gate');
+  assert.ok(
+    up!.dest!.x >= SILVERFALL_RECT.x && up!.dest!.x < SILVERFALL_RECT.x + SILVERFALL_RECT.w &&
+      up!.dest!.y >= SILVERFALL_RECT.y && up!.dest!.y < SILVERFALL_RECT.y + SILVERFALL_RECT.h,
+    'the way home must land inside Silverfall',
+  );
+  // And Silverfall's mouth answers: its portal lands inside this zone.
+  const sf = buildSilverfall();
+  const down = (sf.portals ?? []).find((p) => p.dest);
+  assert.ok(down, 'Silverfall must carry the mouth portal');
+  assert.ok(
+    down!.dest!.x >= z.origin.x && down!.dest!.x < z.origin.x + z.width &&
+      down!.dest!.y >= z.origin.y && down!.dest!.y < z.origin.y + z.height,
+    'the mouth must drop into the Undercroft',
+  );
+  // The authored ladder: kobolds hold the front, the digmaster digs,
+  // and the deep walk is webbed. No actors before Epic 6.
+  const byNpc = new Map<string, number>();
+  for (const s of z.spawns ?? []) byNpc.set(s.npc, (byNpc.get(s.npc) ?? 0) + s.count);
+  assert.equal(byNpc.get('kobold'), 8);
+  assert.equal(byNpc.get('kobold_digmaster'), 1);
+  assert.equal(byNpc.get('giant_spider'), 1);
+  assert.ok((byNpc.get('cave_bat') ?? 0) >= 5 && (byNpc.get('giant_beetle') ?? 0) >= 3);
+  assert.equal((z.actorSpawns ?? []).length, 0, 'the Deep Market keepers are Epic 6');
+  // The editor round trip holds WITH the portal records. (Flat zones
+  // re-emit a zero elev layer after a round trip — compare without.)
+  const json = zoneToJson(z);
+  assert.equal(json.portals?.length, 2, 'portals must serialize');
+  const { elev: _rt, ...back } = zoneToJson(zoneFromJson(json));
+  const { elev: _src, ...src } = json;
+  assert.deepEqual(back, src);
+});
+
+test('undercroft: every chamber walks from the Landing — except the secret', () => {
+  const z = buildUndercroft();
+  const idx = (x: number, y: number): number => y * z.width + x;
+  const reach = (cracksOpen: boolean): Uint8Array => {
+    const walkable = (x: number, y: number): boolean => {
+      if (x < 0 || y < 0 || x >= z.width || y >= z.height) return false;
+      const t = z.ground[idx(x, y)]! as Tile;
+      if (cracksOpen && t === Tile.CrackedCaveWall) return true;
+      return !TILE_DEFS[t].solid;
+    };
+    const seen = new Uint8Array(z.width * z.height);
+    const start = idx(11, 32); // the Landing spawn tile
+    const queue = [start];
+    seen[start] = 1;
+    while (queue.length > 0) {
+      const i = queue.pop()!;
+      const x = i % z.width;
+      const y = Math.floor(i / z.width);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        if (!walkable(x + dx, y + dy)) continue;
+        const ni = idx(x + dx, y + dy);
+        if (!seen[ni]) {
+          seen[ni] = 1;
+          queue.push(ni);
+        }
+      }
+    }
+    return seen;
+  };
+  const seen = reach(false);
+  // The spine and every district answer the flood.
+  for (const [x, y, what] of [
+    [44, 32, 'the Deep Market walk'],
+    [43, 12, 'the Riftgate ring (beside the gate)'],
+    [65, 24, 'the gallery junction'],
+    [87, 16, 'the upper walk at the mithril face'],
+    [86, 23, 'the mid walk at the adamant face'],
+    [88, 31, 'the deep walk at the starfall vein'],
+    [66, 45, 'the outer warren'],
+    [78, 51, 'the deep warren'],
+    [87, 46, "the digmaster's dig"],
+    [87, 38, 'the dig tunnel toward the starfall'],
+    [16, 49, 'the old works'],
+    [25, 52, 'the cistern shore'],
+    [46, 51, 'the glowshroom grotto'],
+    [9, 32, 'the Landing portal approach'],
+  ] as const) {
+    assert.equal(seen[idx(x, y)], 1, `${what} is cut off from the Landing`);
+  }
+  // The secret nook stays secret until three blows say otherwise.
+  assert.equal(seen[idx(93, 23)], 0, 'the cracked-wall nook must NOT walk while sealed');
+  const open = reach(true);
+  assert.equal(open[idx(93, 23)], 1, 'the nook must open when the crack does');
+  // Every stall on the promenade keeps a walkable approach.
+  for (let i = 0; i < z.ground.length; i++) {
+    if (z.ground[i] !== Tile.MarketStall) continue;
+    const ok =
+      seen[i + z.width] === 1 || seen[i - z.width] === 1 || seen[i + 1] === 1 || seen[i - 1] === 1;
+    assert.ok(ok, `stall at (${i % z.width},${Math.floor(i / z.width)}) has no approach`);
   }
 });
 

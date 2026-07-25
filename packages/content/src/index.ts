@@ -52,3 +52,4 @@ export * from './maps/prefab.js';
 export * from './maps/dawnmead.js';
 export * from './maps/amberford.js';
 export * from './maps/silverfall.js';
+export * from './maps/undercroft.js';

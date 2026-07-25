@@ -125,11 +125,20 @@ export class WorldSource extends ChunkStore {
    * surface at the world spawn: distance means nothing down there.
    */
   respawnAt(x: number, y: number): Vec2 {
-    if (y >= 512) return this.spawn;
+    // The instance band always surfaces — the rescue law: a personal
+    // dungeon may be torn down under the corpse, so its dead go home.
+    if (y >= 8192) return this.spawn;
+    // Everywhere else the nearest hearth answers — but only within
+    // the SAME band: the authored underground (the Undercroft's
+    // Landing) catches its own dead, and a surface death can never
+    // wake in the dark just because the dark was closer as the crow
+    // digs. No band-mate found ⇒ the world spawn, as ever.
+    const underground = y >= 512;
     let best = this.spawn;
     let bestD = Infinity;
     for (const zone of this.zones) {
       if (!zone.spawn) continue;
+      if (zone.spawn.y >= 512 !== underground) continue;
       const d = Math.hypot(zone.spawn.x - x, zone.spawn.y - y);
       if (d < bestD) {
         bestD = d;

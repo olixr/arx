@@ -26,6 +26,7 @@ import {
   moistureAt,
 } from './worldgen.js';
 import { WorldSource } from './worldSource.js';
+import { buildDawnmead, buildSilverfall, buildUndercroft } from '@devcraft/content';
 
 /**
  * A (2r+1)² chunk block flattened to a world-tile map so adjacency
@@ -513,4 +514,22 @@ test('chunk boundaries are seamless (tiles agree across the seam)', () => {
     assert.equal(right.ground[y * CHUNK_SIZE], rightAgain.ground[y * CHUNK_SIZE]);
   }
   assert.ok(left.ground.length === CHUNK_SIZE * CHUNK_SIZE);
+});
+
+test('respawnAt: bands keep their own dead (the Undercroft law)', () => {
+  const world = new WorldSource(1337, [buildDawnmead(), buildSilverfall(), buildUndercroft()]);
+  const dawn = buildDawnmead().spawn!;
+  const fall = buildSilverfall().spawn!;
+  const croft = buildUndercroft().spawn!;
+  // A death in the Undercroft wakes at the Landing, not the surface.
+  assert.deepEqual(world.respawnAt(croft.x + 40, croft.y + 5), croft);
+  // A surface death near Silverfall wakes at Silverfall...
+  assert.deepEqual(world.respawnAt(fall.x + 10, fall.y + 10), fall);
+  // ...and a surface death SOUTH of the map can never wake in the
+  // dark, even when the dark band is closer as the crow digs — the
+  // nearest SURFACE hearth answers instead (Dawnmead, from here).
+  assert.deepEqual(world.respawnAt(croft.x, 400), dawn);
+  // The instance band (personal dungeons) always surfaces to the
+  // world spawn — the rescue law stands.
+  assert.deepEqual(world.respawnAt(croft.x, 9000), dawn);
 });
