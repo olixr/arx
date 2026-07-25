@@ -2,9 +2,9 @@
   "id": "wayfarer_camp",
   "start": "fireside",
   "bindings": [
-    { "kind": "actor", "target": "wayfarer_senna" },
     { "kind": "actor", "target": "wayfarer_dray" },
-    { "kind": "actor", "target": "wayfarer_petch" }
+    { "kind": "actor", "target": "wayfarer_petch" },
+    { "kind": "actor", "target": "wayfarer_senna" }
   ],
   "nodes": [
     {

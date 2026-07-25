@@ -1,5 +1,5 @@
-import { EntityKind, HIDDEN_SKILLS, PoseState, ROCK_TILES, TREE_TILES, Tile, chestInfo, doorInfo, isSkillId, tileDef, treeOfSapling } from '@devcraft/shared';
-import { BUILDABLES, buildableGround, dangerTierAt, itemDef, npcDef } from '@devcraft/content';
+import { EntityKind, HIDDEN_SKILLS, PoseState, ROCK_TILES, TREE_TILES, Tile, chestInfo, dangerAt, doorInfo, isSkillId, tileDef, treeOfSapling } from '@devcraft/shared';
+import { BUILDABLES, buildableGround, itemDef, npcDef } from '@devcraft/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
 import { Renderer } from './render/renderer.js';
@@ -1626,11 +1626,11 @@ function frame(now: number): void {
     const w = zoneWeights(own.x, own.y);
     const hours = game.clockHoursNow();
     // The danger field reaches the ear: same seed, same field, same
-    // anchors the server spawns by — the music darkens where the
-    // world actually does.
+    // anchors the server spawns by — havens included, so the music
+    // calms exactly where a waystation's lamplight does.
     const dangerTier =
       game.worldSeed !== null && own.y < UNDERGROUND_Y
-        ? dangerTierAt(game.worldSeed, own.x, own.y)
+        ? dangerAt(game.worldSeed, own.x, own.y, game.dangerAnchors)
         : 0;
     music.update(w, hours, dangerTier);
     // The Riftgate's hum: a throttled scan (2.5 Hz, ~440 tile reads)

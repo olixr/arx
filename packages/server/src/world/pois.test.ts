@@ -91,7 +91,7 @@ test('composed zones muster inside the tier laws', () => {
     const def = POI_DEFS.get(site.defId)!;
     const law = dangerLaw(site.tier);
     const maxOffset = Math.max(0, ...def.garrison.map((g) => g.levelOffset ?? 0));
-    for (const s of zone.spawns) {
+    for (const s of zone.spawns ?? []) {
       assert.ok(s.level !== undefined, `${zone.id} spawn '${s.npc}' has no level`);
       assert.ok(
         s.level! >= law.npcLevel[0] && s.level! <= law.npcLevel[1] + maxOffset,

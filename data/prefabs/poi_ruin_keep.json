@@ -1,0 +1,31 @@
+{
+  "id": "poi_ruin_keep",
+  "name": "Fallen keep",
+  "width": 11,
+  "height": 9,
+  "ground": "////////////////////////////////CgAKAAEACgABAAoACgAKAP///////woACAAIAAgACAAIAAgACgD///////8BAAgACAAIAAEAAQAIAAEA////////CgAIAAEAgAABAG8ACAAKAP///////woACAABAAEACAAIAAgAAQD///////8KAAgACAAIAAEAfwAIAAoA////////CgAKAAEACgAKAAEACgAKAP//////////////////////////////////",
+  "detail": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "spawns": [
+    {
+      "dx": 3,
+      "dy": 3,
+      "npc": "skeleton",
+      "radius": 2,
+      "count": 1
+    },
+    {
+      "dx": 5,
+      "dy": 5,
+      "npc": "skeleton_guard",
+      "radius": 2,
+      "count": 1
+    },
+    {
+      "dx": 3,
+      "dy": 6,
+      "npc": "skeleton_archer",
+      "radius": 2,
+      "count": 1
+    }
+  ]
+}

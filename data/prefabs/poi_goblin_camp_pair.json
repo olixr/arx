@@ -1,0 +1,31 @@
+{
+  "id": "poi_goblin_camp_pair",
+  "name": "Goblin twin-fires",
+  "width": 15,
+  "height": 8,
+  "ground": "////////////////AgACAAIAAgD//////////////////wIAAwADAAMAAwADAAMAAwADAAIA//////////8CAAMAAwAYAAEAAQABAAEAAwADAAMAAgD/////AgADAAEAAwABAAEAAQADAAEAAQAYAAMAAwACAP//AgADAAMAAQABAAEAbwABAAEAAQABAAEAAwACAP////8CAAMAAQABAFwAAQABAAEAAwABAAEAAwACAP////8CAAMAAwADAAMAAwADAAMAAwADAAMAAgD/////////////AgACAAMAAwADAAMAAgACAP//////////",
+  "detail": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "spawns": [
+    {
+      "dx": 3,
+      "dy": 3,
+      "npc": "goblin",
+      "radius": 2.5,
+      "count": 1
+    },
+    {
+      "dx": 7,
+      "dy": 3,
+      "npc": "goblin",
+      "radius": 2.5,
+      "count": 1
+    },
+    {
+      "dx": 9,
+      "dy": 5,
+      "npc": "goblin_thrower",
+      "radius": 2,
+      "count": 1
+    }
+  ]
+}

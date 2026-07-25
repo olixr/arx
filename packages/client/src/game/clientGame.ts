@@ -43,9 +43,9 @@ import {
   type TilePatch,
   type Vec2,
 } from '@devcraft/shared';
-import { MATURE_TILES, NODES_BY_TILE, isCropTile, abilityDef, itemDef, npcDef } from '@devcraft/content';
+import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, isCropTile, abilityDef, itemDef, npcDef } from '@devcraft/content';
 import { EntityKind } from '@devcraft/shared';
-import type { AbilityDef, AbilitySlot, Look } from '@devcraft/shared';
+import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@devcraft/shared';
 
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
@@ -191,6 +191,13 @@ export class ClientGame {
   ownName = '';
   /** World seed from the welcome — the danger field's client-side key. */
   worldSeed: number | null = null;
+  /**
+   * The live danger anchors: content's settled lights merged with the
+   * server's runtime havens (waystations). Rebuilt whenever the haven
+   * list arrives — every client danger read (music mood, map tint)
+   * uses this array so it stays in lockstep with the server's field.
+   */
+  dangerAnchors: readonly DangerAnchor[] = SETTLED_ANCHORS;
   /** Chosen base look; null until creation completes. */
   ownLook: Look | null = null;
   aim = 0;
@@ -581,12 +588,23 @@ export class ClientGame {
     return this.token;
   }
 
+  /** Merge the server's haven triples with the settled anchors. */
+  private setHavens(list: number[][]): void {
+    this.dangerAnchors = [
+      ...SETTLED_ANCHORS,
+      ...list
+        .filter((h) => h.length >= 3)
+        .map(([x, y, safeR]) => ({ x: x!, y: y!, safeR: safeR!, haven: true })),
+    ];
+  }
+
   private handleMessage(msg: S2CMessage): void {
     switch (msg.t) {
       case 'welcome': {
         this.ownEid = msg.eid;
         this.ownName = msg.name;
         this.worldSeed = msg.seed ?? null;
+        this.setHavens(msg.havens ?? []);
         this.ownLook = msg.look ?? null;
         this.token = msg.token;
         this.serverTick = msg.tick;
@@ -912,6 +930,12 @@ export class ClientGame {
       }
       case 'time': {
         this.timeOfs = msg.ofs;
+        break;
+      }
+      case 'havens': {
+        // A waystation stood up (or turned fallow) — the danger field
+        // shifts under our feet, and the music with it.
+        this.setHavens(msg.list);
         break;
       }
       case 'fx': {

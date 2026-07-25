@@ -1,5 +1,5 @@
 import { ChunkStore, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type EquippedItem, type S2CFx, type SkillXp, type StationType, type Vec2 } from '@devcraft/shared';
-import type { AbilityDef, AbilitySlot, Look } from '@devcraft/shared';
+import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@devcraft/shared';
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
  * fire gate passes (the same mirrored gate the server applies), flown
@@ -213,6 +213,13 @@ export declare class ClientGame {
     ownName: string;
     /** World seed from the welcome — the danger field's client-side key. */
     worldSeed: number | null;
+    /**
+     * The live danger anchors: content's settled lights merged with the
+     * server's runtime havens (waystations). Rebuilt whenever the haven
+     * list arrives — every client danger read (music mood, map tint)
+     * uses this array so it stays in lockstep with the server's field.
+     */
+    dangerAnchors: readonly DangerAnchor[];
     /** Chosen base look; null until creation completes. */
     ownLook: Look | null;
     aim: number;
@@ -405,6 +412,8 @@ export declare class ClientGame {
     sendRegister(user: string, pass: string, name: string): void;
     private openConnection;
     get sessionToken(): string | null;
+    /** Merge the server's haven triples with the settled anchors. */
+    private setHavens;
     private handleMessage;
     private handleChunk;
     /** Fires with (tx, ty, previous, next) whenever a tile mutates. */

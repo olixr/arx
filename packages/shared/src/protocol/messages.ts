@@ -284,6 +284,20 @@ export interface S2CWelcome {
    * music mood) without any extra protocol.
    */
   seed?: number;
+  /**
+   * Runtime haven anchors as [x, y, safeR] triples — the waystations
+   * standing in the world's ledger right now. The client merges them
+   * with the settled anchors it already knows from content, so its
+   * danger reads stay in lockstep with the server's.
+   */
+  havens?: number[][];
+}
+
+/** The haven list changed (a waystation stood up or turned fallow). */
+export interface S2CHavens {
+  t: 'havens';
+  /** [x, y, safeR] triples — replaces the whole list. */
+  list: number[][];
 }
 
 export interface S2CReject {
@@ -622,7 +636,8 @@ export type S2CMessage =
   | S2CDungeonEnter
   | S2CDialogueOpen
   | S2CDialogueNode
-  | S2CDialogueClose;
+  | S2CDialogueClose
+  | S2CHavens;
 
 // ------------------------------------------------------- validation
 

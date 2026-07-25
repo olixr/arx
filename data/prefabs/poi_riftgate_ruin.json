@@ -1,0 +1,31 @@
+{
+  "id": "poi_riftgate_ruin",
+  "name": "Ruined riftgate",
+  "width": 13,
+  "height": 9,
+  "ground": "////////////////////////////////////////ggABAAEAQAABAEAAAQABAIIA////////AQAIAAgACAAIACAACAAIAAgACAABAP////8BAAgACAABAAEAfwABAAEACAAIAAEA/////wIACACCAAEAAQBxAAEAAQCCAAgAAgD/////AQAIAAgACAABAAEAAQAIAAgACAABAP////8BAIIACAABAAEAgAABAAEACACCAAEA////////AQABAAgACAB/AAgACAABAAEA////////////////////////////////////////",
+  "detail": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "portals": [
+    {
+      "dx": 6,
+      "dy": 2,
+      "delve": true
+    }
+  ],
+  "spawns": [
+    {
+      "dx": 3,
+      "dy": 5,
+      "npc": "skeleton",
+      "radius": 2,
+      "count": 1
+    },
+    {
+      "dx": 9,
+      "dy": 5,
+      "npc": "skeleton_guard",
+      "radius": 2,
+      "count": 1
+    }
+  ]
+}

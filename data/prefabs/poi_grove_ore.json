@@ -1,0 +1,24 @@
+{
+  "id": "poi_grove_ore",
+  "name": "Ore knoll",
+  "width": 9,
+  "height": 7,
+  "ground": "//////////8CAP///////////////w0AAgAUAAIADQD///////8CACQAAQANAAEAFAACAP////8BAA0AAQAVAAEADQABAP////8CABQAAQANAAEAJAACAP///////w0AAgAkAAEADQD///////////////8CAP//////////",
+  "detail": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "spawns": [
+    {
+      "dx": 3,
+      "dy": 3,
+      "npc": "wolf",
+      "radius": 3,
+      "count": 1
+    },
+    {
+      "dx": 5,
+      "dy": 5,
+      "npc": "wolf",
+      "radius": 3,
+      "count": 1
+    }
+  ]
+}

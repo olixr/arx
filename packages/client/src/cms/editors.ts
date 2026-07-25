@@ -2035,6 +2035,13 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
           ),
         ]
       : []),
+    ...(draft.haven !== undefined
+      ? [pill(`haven r${draft.haven.safeR}`, 'a runtime danger anchor — the lamp in the dark', 'ok')]
+      : []),
+    ...(draft.chestWarded ? [pill('warded chest', 'the lid holds while the garrison stands', 'brass')] : []),
+    ...(draft.clearedFlag !== undefined
+      ? [pill(`flag: ${draft.clearedFlag}`, 'stamped on whoever fells the last garrison body', 'brass')]
+      : []),
   ];
 
   body.appendChild(
@@ -2233,6 +2240,19 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
         textIn(g.name ?? '', (v) => patchG(gi, { name: v || undefined }), 'champion name…'),
       );
       grow.appendChild(nameWrap2);
+      const poolWrap = el('label', 'lbl', 'name pool (comma-sep, count 1–1)');
+      const poolIn = textIn(
+        (g.names ?? []).join(', '),
+        (v) => {
+          const names = v.split(',').map((s) => s.trim()).filter(Boolean);
+          patchG(gi, { names: names.length > 0 ? names : undefined });
+        },
+        'Korga Hillbreaker, Old Mawfist…',
+      );
+      poolIn.title =
+        'The site hash crowns ONE stable name per site from this pool — the hill has always been Korga’s. Wins over “named”; needs count [1, 1].';
+      poolWrap.appendChild(poolIn);
+      grow.appendChild(poolWrap);
       const hoursWrap = el('label', 'lbl', 'hours (empty = always)');
       const hoursPair = el('div', 'pair tight');
       const mkHour = (which: 'from' | 'to'): HTMLInputElement => {
@@ -2331,8 +2351,43 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
     }
   };
   rebuildChest();
+  const chestExtras = el('div', 'form-grid2');
+  const lootWrap = el('label', 'lbl', 'Loot override (empty = the chest kind’s own table)');
+  lootWrap.appendChild(
+    combobox(
+      () => [
+        { id: '', label: '— the chest kind’s own table —' },
+        ...state.loot.map((t) => ({ id: t.def.id, label: t.def.id, sub: t.def.desc })),
+      ],
+      draft.chestLoot ?? '',
+      (v) => {
+        draft.chestLoot = v || undefined;
+        markDirty();
+      },
+      'chest table…',
+    ),
+  );
+  chestExtras.appendChild(lootWrap);
+  const wardWrap = el('div', 'lbl');
+  wardWrap.appendChild(
+    featureChip(
+      'warded while the garrison stands',
+      draft.chestWarded === true,
+      'The lid will not lift while any garrison body of the site lives — the champion’s cache cannot be sneaked out from under him',
+      (on) => {
+        draft.chestWarded = on || undefined;
+        markDirty();
+      },
+    ),
+  );
+  chestExtras.appendChild(wardWrap);
   body.appendChild(
-    sect('Strongbox law', 'How the prefab’s chest re-keys against the danger tier.', chestSeg),
+    sect(
+      'Strongbox law',
+      'How the prefab’s chest re-keys against the danger tier — and what it pays. Danger adds its level floor and rarity bonus at open time either way.',
+      chestSeg,
+      chestExtras,
+    ),
   );
 
   // ------------------------------------------------------------ cues
@@ -2437,6 +2492,145 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
     ),
   );
 
+  // ------------------------------------------- the friendly lights
+  const lightsBox = el('div', 'poi-cues');
+  const actorOptions = (): ComboOption[] =>
+    state.actors.map((a) => ({
+      id: a.def.id,
+      label: a.def.name,
+      sub: a.def.title ?? a.def.disposition,
+    }));
+  const patchA = (
+    ai: number,
+    patch: Partial<NonNullable<PoiDef['actors']>[number]>,
+    rebuild = false,
+  ): void => {
+    const next = (draft.actors ?? []).slice();
+    const merged = { ...next[ai]!, ...patch } as NonNullable<PoiDef['actors']>[number] &
+      Record<string, unknown>;
+    for (const k of Object.keys(merged)) {
+      if (merged[k] === undefined) delete merged[k];
+    }
+    next[ai] = merged;
+    draft.actors = next;
+    markDirty();
+    if (rebuild) rebuildLights();
+  };
+  const rebuildLights = (): void => {
+    lightsBox.innerHTML = '';
+    const topRow = el('div', 'form-grid2');
+    const havenWrap = el('div', 'lbl');
+    havenWrap.appendChild(
+      featureChip(
+        'haven — the lamp in the dark',
+        draft.haven !== undefined,
+        'A materialized site becomes a runtime danger anchor: tier 0 inside safeR, graded relief on the rim. Civilization pushes the field back.',
+        (on) => {
+          draft.haven = on ? { safeR: 18 } : undefined;
+          markDirty();
+          rebuildLights();
+        },
+      ),
+    );
+    topRow.appendChild(havenWrap);
+    if (draft.haven) {
+      const rWrap = el('label', 'lbl', 'Lamplight radius (tiles of tier-0 calm)');
+      rWrap.appendChild(
+        statSlider({
+          label: 'safeR',
+          value: draft.haven.safeR,
+          min: 6,
+          max: 40,
+          step: 1,
+          unit: 'tiles',
+          note: 'the relief rim extends ~48 tiles past this edge, then the dark closes in again',
+          onInput: (v) => {
+            draft.haven = { safeR: v };
+            markDirty();
+          },
+        }),
+      );
+      topRow.appendChild(rWrap);
+    }
+    lightsBox.appendChild(topRow);
+    (draft.actors ?? []).forEach((a, ai) => {
+      const arow = el('div', 'poi-grow');
+      const poolLbl = el('label', 'lbl', 'identity pool (comma-sep slugs)');
+      const poolIn = textIn(
+        a.pool.join(', '),
+        (v) => {
+          const pool = v.split(',').map((s) => s.trim()).filter(Boolean);
+          if (pool.length > 0) patchA(ai, { pool });
+        },
+        'wayfarer_senna, wayfarer_dray…',
+      );
+      poolIn.title = 'Actor slugs — the site hash picks ONE identity per entry, stable per site.';
+      poolLbl.appendChild(poolIn);
+      arow.appendChild(poolLbl);
+      const addPick = combobox(
+        () => actorOptions().filter((o) => !a.pool.includes(o.id)),
+        undefined,
+        (slug) => patchA(ai, { pool: [...a.pool, slug] }, true),
+        '+ add to pool…',
+      );
+      arow.appendChild(addPick);
+      const postSeg = el('div', 'seg-row mini-seg');
+      for (const post of ['hearth', 'watch'] as const) {
+        const b = el('button', 'opt-btn' + (a.post === post ? ' active' : ''), post) as HTMLButtonElement;
+        b.title =
+          post === 'hearth'
+            ? 'Stands beside the fire at the heart of the site'
+            : 'Posted on the approach ring, facing the townward road';
+        b.onclick = () => patchA(ai, { post }, true);
+        postSeg.appendChild(b);
+      }
+      arow.appendChild(postSeg);
+      const routineLbl = el('label', 'lbl', 'routine (optional)');
+      routineLbl.appendChild(
+        textIn(a.routine ?? '', (v) => patchA(ai, { routine: v || undefined }), 'waystation_keeper…'),
+      );
+      arow.appendChild(routineLbl);
+      const del = el('button', 'danger sm', '✕') as HTMLButtonElement;
+      del.title = 'Remove this staff entry';
+      del.onclick = () => {
+        const next = (draft.actors ?? []).filter((_, j) => j !== ai);
+        draft.actors = next.length > 0 ? next : undefined;
+        markDirty();
+        rebuildLights();
+      };
+      arow.appendChild(del);
+      lightsBox.appendChild(arow);
+    });
+    const addStaff = el('button', 'sm', '+ staff entry') as HTMLButtonElement;
+    addStaff.onclick = () => {
+      const first = state.actors[0]?.def.id ?? 'wayfarer_senna';
+      draft.actors = [...(draft.actors ?? []), { pool: [first], post: 'hearth' }];
+      markDirty();
+      rebuildLights();
+    };
+    lightsBox.appendChild(addStaff);
+    const flagWrap = el('label', 'lbl', 'Cleared flag (set on the player who fells the last garrison body)');
+    flagWrap.appendChild(
+      textIn(
+        draft.clearedFlag ?? '',
+        (v) => {
+          draft.clearedFlag = v || undefined;
+          markDirty();
+        },
+        'poi_warcamp_broken…',
+      ),
+    );
+    lightsBox.appendChild(flagWrap);
+  };
+  rebuildLights();
+  body.appendChild(
+    sect(
+      'The friendly lights',
+      'The civilized grammar: staff placed semantically (keeper by the fire, watch on the townward ring), the haven lamp that pushes the danger field back, and the story flag a full clear stamps on the ledger.',
+      lightsBox,
+    ),
+  );
+
   // ------------------------------------------- the frontier survey
   const surveyBox = el('div');
   const surveyBtn = el('button', 'sm', 'Survey 300 cells') as HTMLButtonElement;
@@ -2524,11 +2718,18 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
         elev: zone.elev,
       };
       const canvas = renderLayersPreview(layers, 340);
-      const pins = (zone.spawns ?? []).map((s) => ({
-        dx: Math.floor(s.x - zone.origin.x),
-        dy: Math.floor(s.y - zone.origin.y),
-        color: s.patrol ? '#6fb2d9' : '#d96f6f',
-      }));
+      const pins = [
+        ...(zone.spawns ?? []).map((s) => ({
+          dx: Math.floor(s.x - zone.origin.x),
+          dy: Math.floor(s.y - zone.origin.y),
+          color: s.patrol ? '#6fb2d9' : '#d96f6f',
+        })),
+        ...(zone.actorSpawns ?? []).map((a) => ({
+          dx: Math.floor(a.x - zone.origin.x),
+          dy: Math.floor(a.y - zone.origin.y),
+          color: '#7fca6f',
+        })),
+      ];
       drawPreviewPins(canvas, layers, pins, 340);
       stageBox.innerHTML = '';
       stageBox.appendChild(canvas);
@@ -2546,12 +2747,22 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
           ),
         );
       }
+      for (const a of zone.actorSpawns ?? []) {
+        const who = state.actors.find((x) => x.def.id === a.actor);
+        muster.appendChild(
+          pill(
+            `${who?.def.name ?? a.actor}${a.routine ? ` · ${a.routine}` : ''}`,
+            'friendly staff — identity, disposition, dialogue, and shop all ride the actor laws',
+            'ok',
+          ),
+        );
+      }
       stageBox.appendChild(muster);
       stageBox.appendChild(
         el(
           'p',
           'muted',
-          `A real site at cell ${shown.site.cellX},${shown.site.cellY} — ${shown.site.prefabId}, anchor ${shown.site.anchorX},${shown.site.anchorY}. Blue pins patrol; red hold.`,
+          `A real site at cell ${shown.site.cellX},${shown.site.cellY} — ${shown.site.prefabId}, anchor ${shown.site.anchorX},${shown.site.anchorY}. Blue pins patrol; red hold; green are friendly staff.`,
         ),
       );
     } catch (err) {
@@ -2593,6 +2804,19 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
       base ? () => setSection('npcs', g.npc) : null,
       base ? (() => { const c = creatureRender(base.def, 26); c.className = 'ico'; return c; })() : undefined,
     );
+  }
+  const staffSlugs = [...new Set((draft.actors ?? []).flatMap((a) => [...a.pool]))];
+  if (staffSlugs.length > 0) {
+    linkHead(linkage, 'person', 'Friendly staff', staffSlugs.length);
+    for (const slug of staffSlugs) {
+      const who = state.actors.find((x) => x.def.id === slug);
+      linkRow(
+        linkage,
+        who?.def.name ?? slug,
+        who?.def.title ?? 'actor',
+        who ? () => setSection('actors', slug) : null,
+      );
+    }
   }
 }
 

@@ -352,7 +352,7 @@ export function createMapsApi(
             sendJson(res, 400, { error: (err as Error).message });
             return true;
           }
-          const result = validatePoiDef(raw, { prefabIds: game.poiPrefabIds() });
+          const result = validatePoiDef(raw, { prefabIds: game.poiPrefabIds(), actorIds: game.actorIds(), routineIds: game.routineIds() });
           if (!result.ok) {
             sendJson(res, 400, { error: result.errors.join('; ') });
             return true;
@@ -393,7 +393,7 @@ export function createMapsApi(
         }
         let draft: PoiDef | undefined;
         if (body.draft !== undefined) {
-          const v = validatePoiDef(body.draft, { prefabIds: game.poiPrefabIds() });
+          const v = validatePoiDef(body.draft, { prefabIds: game.poiPrefabIds(), actorIds: game.actorIds(), routineIds: game.routineIds() });
           if (!v.ok) {
             sendJson(res, 400, { error: v.errors.join('; ') });
             return true;
@@ -431,7 +431,7 @@ export function createMapsApi(
         }
         let draft: PoiDef | undefined;
         if (body.draft !== undefined) {
-          const v = validatePoiDef(body.draft, { prefabIds: game.poiPrefabIds() });
+          const v = validatePoiDef(body.draft, { prefabIds: game.poiPrefabIds(), actorIds: game.actorIds(), routineIds: game.routineIds() });
           if (!v.ok) {
             sendJson(res, 400, { error: v.errors.join('; ') });
             return true;

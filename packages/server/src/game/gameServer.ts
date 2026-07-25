@@ -115,7 +115,6 @@ import {
   POI_PREFABS,
   SETTLED_ANCHORS,
   dangerLaw,
-  dangerTierAt,
   pickWild,
   wildCandidates,
 } from '@devcraft/content';
@@ -217,8 +216,10 @@ import { dungeonOrigin, generateDungeon } from '../dungeon/generate.js';
 import {
   DUNGEON_KEY_ITEM,
   RARITY_TIERS,
+  dangerAt,
   dungeonSpecFromRoll,
   mintKeyPower,
+  type DangerAnchor,
   type DungeonSpec,
 } from '@devcraft/shared';
 import { scaleNpcDef } from '@devcraft/content';
@@ -371,6 +372,12 @@ interface ActiveDialogue {
   nodeId: string;
   /** The eligible choices exactly as sent — dlgchoice indexes these. */
   choices: DialogueChoice[];
+  /**
+   * A shop hook armed along the walk: the shelf opens when the
+   * conversation ENDS WELL (terminal advance or farewell) — never on
+   * Esc, damage, or drifting out of earshot.
+   */
+  shop?: string;
 }
 
 interface DropComp {
@@ -961,6 +968,24 @@ export class GameServer {
   private readonly poiSpawnCells = new Map<number, string>();
   /** POI prefab library; null until initPois — tickPois no-ops before boot wiring. */
   private poiPrefabs: Map<string, PrefabDef> | null = null;
+  /**
+   * Runtime haven anchors by cell key — every LEDGER site whose def
+   * declares a haven, materialized or not (the lamp burns whether or
+   * not anyone is looking at it). Rebuilt from the ledger whenever it
+   * changes; every danger read in this class goes through
+   * dangerAnchors(), so civilization genuinely pushes the field back.
+   */
+  private readonly poiHavens = new Map<string, DangerAnchor>();
+  private anchorCache: DangerAnchor[] | null = null;
+  /**
+   * Strongbox overrides by world-tile key "tx,ty": POI chests whose
+   * def re-tables the loot (the riftgate key faucet) or wards the lid
+   * while the garrison stands (the champion's cache).
+   */
+  private readonly poiChests = new Map<
+    string,
+    { cell: string; table?: string; warded?: boolean }
+  >();
 
   constructor(
     // Public: the dev maps API reads the live zone list off it.
@@ -1381,6 +1406,7 @@ export class GameServer {
       motd: config.motd,
       look: player.look ?? undefined,
       seed: config.worldSeed,
+      havens: this.havenWire(),
     });
     session.sendJson({ t: 'skills', xp: player.skills });
     session.sendJson({ t: 'recipes', known: [...player.knownRecipes] });
@@ -1624,6 +1650,14 @@ export class GameServer {
       return;
     }
     const law = GameServer.CHEST_LAWS[chest.kind];
+    // THE WARD: a POI chest whose def wards it stays shut while any
+    // garrison body of its site stands — the champion's cache cannot
+    // be sneaked out from under him.
+    const over = this.poiChests.get(`${tx},${ty}`);
+    if (over?.warded && this.poiGarrisonStands(over.cell)) {
+      sys('The lid will not lift — the ward holds while its keeper stands.');
+      return;
+    }
     if (law.key) {
       if (countItem(player.inventory, law.key) < 1) {
         sys('Locked fast. The hasp wants a brass key.');
@@ -1647,8 +1681,23 @@ export class GameServer {
     const now = Date.now();
     // Inside a dungeon the chest ladder rides the key: loot rolls at
     // the instance's power when it out-levels the chest's own law.
-    const chestLevel = Math.max(law.level, this.dungeonPowerAt(tx, ty) ?? 0);
-    for (const drop of rollLoot(law.table, { level: chestLevel, rand: Math.random })) {
+    // In the open world it rides the danger field instead — a chest
+    // opened in tier-4 land pays tier-4 wages (level floor + rarity
+    // bonus), one field, many readers. The underground keeps its own
+    // ladders.
+    const tier = ty < DARK_BAND_Y ? this.liveDangerTier(tx, ty) : 0;
+    const dlaw = dangerLaw(tier);
+    const chestLevel = Math.max(
+      law.level,
+      this.dungeonPowerAt(tx, ty) ?? 0,
+      tier > 0 ? dlaw.npcLevel[1] : 0,
+    );
+    const table = over?.table ?? law.table;
+    for (const drop of rollLoot(table, {
+      level: chestLevel,
+      rand: Math.random,
+      rarityBonus: tier > 0 ? dlaw.rarityBonus : 0,
+    })) {
       this.placeDrop(
         drop.item,
         drop.qty,
@@ -2689,6 +2738,59 @@ export class GameServer {
    * tickPois no-ops — unit tests that construct a bare GameServer
    * never touch the filesystem.
    */
+  /**
+   * The live danger anchors: content's settled lights plus every
+   * haven the POI ledger keeps. THE one anchor list — POI decisions,
+   * wild spawns, chest laws, and the /danger lever all read the field
+   * through here, so a waystation standing up calms all of them at
+   * once.
+   */
+  dangerAnchors(): readonly DangerAnchor[] {
+    if (!this.anchorCache) {
+      this.anchorCache = [...SETTLED_ANCHORS, ...this.poiHavens.values()];
+    }
+    return this.anchorCache;
+  }
+
+  /** Danger tier at a world tile over the LIVE anchor list. */
+  private liveDangerTier(tx: number, ty: number): number {
+    return dangerAt(config.worldSeed, tx, ty, this.dangerAnchors());
+  }
+
+  /** The haven list as wire triples for welcome + change broadcasts. */
+  private havenWire(): number[][] {
+    return [...this.poiHavens.values()].map((a) => [a.x, a.y, a.safeR]);
+  }
+
+  /**
+   * Re-derive the haven set from the ledger (the ledger IS the truth:
+   * a decided waystation lights its lamp whether or not it is
+   * materialized right now). Broadcasts the new list when it changed
+   * so client danger reads stay in lockstep.
+   */
+  private rebuildHavens(): void {
+    const before = JSON.stringify(this.havenWire());
+    this.poiHavens.clear();
+    for (const [key, row] of this.poiLedger) {
+      if (!row.site) continue;
+      const def = POI_DEFS.get(row.site.defId);
+      if (!def?.haven) continue;
+      this.poiHavens.set(key, {
+        x: row.site.anchorX,
+        y: row.site.anchorY,
+        safeR: def.haven.safeR,
+        haven: true,
+      });
+    }
+    this.anchorCache = null;
+    const wire = this.havenWire();
+    if (JSON.stringify(wire) !== before) {
+      for (const s of this.sessions) {
+        if (s.playerEid !== null) s.sendJson({ t: 'havens', list: wire });
+      }
+    }
+  }
+
   initPois(rows: ReturnType<AccountStore['loadPoiCells']>): void {
     this.poiPrefabs = loadPoiPrefabs(config.dataDir);
     let sites = 0;
@@ -2717,6 +2819,9 @@ export class GameServer {
       `[poi] ledger: ${rows.length} cells decided (${sites} sites) · ` +
         `${this.poiPrefabs.size} prefabs in the library`,
     );
+    // The lamps light BEFORE the sweep: fallow re-decisions read the
+    // field with every standing haven in it.
+    this.rebuildHavens();
     // THE EPOCH TURN: cells cleared and left fallow long enough
     // re-roll on fresh streams — the frontier churns exactly where
     // players stopped caring, and nowhere else.
@@ -2726,6 +2831,9 @@ export class GameServer {
         `[poi] fallow turn: ${turned.turned} cleared cells re-rolled ` +
           `(${turned.rerolled} stand anew, ${turned.turned - turned.rerolled} rolled empty)`,
       );
+    }
+    if (this.poiHavens.size > 0) {
+      console.log(`[poi] ${this.poiHavens.size} haven lamp(s) burning on the frontier`);
     }
   }
 
@@ -2741,7 +2849,7 @@ export class GameServer {
    */
   private fallowSweep(cutoffMs: number): { turned: number; rerolled: number } {
     if (!this.poiPrefabs) return { turned: 0, rerolled: 0 };
-    const ctx = poiContext(SETTLED_ANCHORS, this.world.zoneDefs, this.poiPrefabs);
+    const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
     let turned = 0;
     let rerolled = 0;
     for (const [key, row] of this.poiLedger) {
@@ -2766,6 +2874,8 @@ export class GameServer {
       turned++;
       if (site) rerolled++;
     }
+    // A turned cell may have raised or dimmed a lamp.
+    if (turned > 0) this.rebuildHavens();
     return { turned, rerolled };
   }
 
@@ -2810,15 +2920,14 @@ export class GameServer {
   ): PoiSite | null {
     if (!this.poiPrefabs) return null;
     const key = poiCellKey(cellX, cellY);
-    const ctx = poiContext(SETTLED_ANCHORS, this.world.zoneDefs, this.poiPrefabs);
+    const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
     let row = this.poiLedger.get(key);
     if (!row || opts.epoch !== undefined) {
       const epoch = opts.epoch ?? 0;
       const site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx, opts.force);
       row = { epoch, site, clearedAt: null };
       // Deviations only: a settled cell writes no row (it is 0 by law).
-      const centerTier = dangerTierAt(
-        config.worldSeed,
+      const centerTier = this.liveDangerTier(
         cellX * POI_CELL + POI_CELL / 2,
         cellY * POI_CELL + POI_CELL / 2,
       );
@@ -2836,6 +2945,10 @@ export class GameServer {
           },
         );
         this.poiLedger.set(key, row);
+        // A fresh decision may have lit (or re-rolled away) a lamp.
+        if (POI_DEFS.get(site?.defId ?? '')?.haven || opts.epoch !== undefined) {
+          this.rebuildHavens();
+        }
       }
     }
     if (!row.site) {
@@ -2854,6 +2967,29 @@ export class GameServer {
     this.dropClientChunks(zone);
     const spawnIdx = this.registerSpawns(zone.spawns ?? [], zone.id);
     for (const i of spawnIdx) this.poiSpawnCells.set(i, key);
+    // The friendly staff stands up through the actor machinery —
+    // identity, disposition, protection, dialogue, and shop all ride
+    // the same laws the town's own people keep.
+    if (zone.actorSpawns && zone.actorSpawns.length > 0) {
+      this.registerActorSpawns(zone.actorSpawns, zone.id);
+    }
+    // Strongbox overrides: the def's loot table and ward, addressed by
+    // the chest's world tile (the tile is the state — the override
+    // rides beside it).
+    const def = POI_DEFS.get(row.site.defId);
+    if (def && (def.chestLoot !== undefined || def.chestWarded)) {
+      for (let i = 0; i < zone.ground.length; i++) {
+        const info = chestInfo(zone.ground[i]!);
+        if (!info || info.open) continue;
+        const wx = zone.origin.x + (i % zone.width);
+        const wy = zone.origin.y + Math.floor(i / zone.width);
+        this.poiChests.set(`${wx},${wy}`, {
+          cell: key,
+          ...(def.chestLoot !== undefined ? { table: def.chestLoot } : {}),
+          ...(def.chestWarded ? { warded: true } : {}),
+        });
+      }
+    }
     this.poiLive.set(key, { zoneId: zone.id, spawnIdx });
     console.log(
       `[poi] ${row.site.defId} (${row.site.prefabId}) stands at ` +
@@ -2868,7 +3004,7 @@ export class GameServer {
    * Respawns refill on their own clocks; a later re-wipe re-stamps
    * (the ledger keeps the LATEST clear).
    */
-  private notePoiKill(spawnIndex: number): void {
+  private notePoiKill(spawnIndex: number, killerEid?: EntityId): void {
     const key = this.poiSpawnCells.get(spawnIndex);
     if (key === undefined) return;
     const live = this.poiLive.get(key);
@@ -2881,6 +3017,20 @@ export class GameServer {
     this.accounts.markPoiCleared(cx!, cy!);
     const row = this.poiLedger.get(key);
     if (row) row.clearedAt = Date.now();
+    // THE STORY HOOK: the hand that felled the last body carries the
+    // deed into the flag ledger — dialogue and quests read it from
+    // there ("you broke the warcamp at the ford"). The moment gets a
+    // line either way: a wiped site should FEEL wiped.
+    const def = row?.site ? POI_DEFS.get(row.site.defId) : undefined;
+    const killer = killerEid !== undefined ? this.players.get(killerEid) : undefined;
+    if (def && killer) {
+      if (def.clearedFlag !== undefined) this.setPlayerFlag(killer, def.clearedFlag);
+      killer.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `The last of them falls. ${def.name} is broken — word of it will travel.`,
+      });
+    }
   }
 
   /** Retire a cell's standing zone + bodies (the /poi levers ride this). */
@@ -2890,12 +3040,36 @@ export class GameServer {
       this.unloadZone(live.zoneId);
       for (const i of live.spawnIdx) this.poiSpawnCells.delete(i);
     }
+    for (const [tileKey, over] of this.poiChests) {
+      if (over.cell === key) this.poiChests.delete(tileKey);
+    }
     this.poiLive.delete(key);
+  }
+
+  /** Does any garrison body of this POI cell still stand? */
+  private poiGarrisonStands(cellKey: string): boolean {
+    const live = this.poiLive.get(cellKey);
+    if (!live) return false;
+    for (const i of live.spawnIdx) {
+      const s = this.spawnPoints[i];
+      if (s?.active && s.eid !== null) return true;
+    }
+    return false;
   }
 
   /** The live prefab-library ids — the /dev/content validator's refs. */
   poiPrefabIds(): ReadonlySet<string> {
     return new Set(this.poiPrefabs?.keys() ?? []);
+  }
+
+  /** The live DB-loaded actor slugs — tool-born actors count too. */
+  actorIds(): ReadonlySet<string> {
+    return new Set(this.actorDefs.keys());
+  }
+
+  /** The live DB-loaded routine ids. */
+  routineIds(): ReadonlySet<string> {
+    return new Set(this.routineDefs.keys());
   }
 
   /**
@@ -2940,7 +3114,7 @@ export class GameServer {
     if (!this.poiPrefabs) return null;
     const defs = new Map(POI_DEFS);
     if (draft) defs.set(draft.id, draft);
-    const ctx = poiContext(SETTLED_ANCHORS, this.world.zoneDefs, this.poiPrefabs);
+    const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
     return { ...ctx, defs: [...defs.values()] };
   }
 
@@ -3583,8 +3757,15 @@ export class GameServer {
     if (!player || !dlg || !this.dialogueGuard(eid, player, dlg)) return;
     if (dlg.choices.length > 0) return;
     const node = this.dialogueNodes.get(dlg.def.id)?.get(dlg.nodeId);
-    if (node?.next !== undefined) this.dialogueEnterNode(eid, player, node.next);
-    else this.dialogueClose(player); // completion was recorded on entry
+    if (node?.next !== undefined) {
+      this.dialogueEnterNode(eid, player, node.next);
+    } else {
+      // Completion was recorded on entry; an armed shop opens as the
+      // frame drops — "have a look, then" becomes the shelf.
+      const shop = dlg.shop;
+      this.dialogueClose(player);
+      if (shop !== undefined) player.session?.sendJson({ t: 'shopopen', shop });
+    }
   }
 
   /** Answer the current question by sent-choice index. */
@@ -3600,7 +3781,9 @@ export class GameServer {
     } else {
       // An authored farewell is a real ending, not an interruption.
       this.setPlayerFlag(player, dialogueDoneFlag(dlg.def.id));
+      const shop = dlg.shop;
       this.dialogueClose(player);
+      if (shop !== undefined) player.session?.sendJson({ t: 'shopopen', shop });
     }
   }
 
@@ -3642,6 +3825,10 @@ export class GameServer {
     switch (hook.kind) {
       case 'flag':
         this.setPlayerFlag(player, hook.flag);
+        break;
+      case 'shop':
+        // Armed now, fired at a good ending (see dialogueAdvance).
+        if (player.dialogue) player.dialogue.shop = hook.shop;
         break;
       case 'give': {
         const added = addItem(player.inventory, hook.item, hook.qty);
@@ -5792,7 +5979,7 @@ export class GameServer {
     if (spawn) {
       spawn.eid = null;
       spawn.respawnAt = Date.now() + NPCS.get(spawn.npc)!.respawnSec * 1000;
-      this.notePoiKill(npc.spawnIndex);
+      this.notePoiKill(npc.spawnIndex, killerEid);
     }
     this.wildBodies.delete(npcEid);
     // A slain actor's post refills on the synthesized def's clock.
@@ -6067,7 +6254,7 @@ export class GameServer {
       if (player.session === null) continue;
       const ppos = this.positions.get(peid);
       if (!ppos || ppos.y >= DARK_BAND_Y) continue;
-      const tier = dangerTierAt(config.worldSeed, Math.floor(ppos.x), Math.floor(ppos.y));
+      const tier = this.liveDangerTier(Math.floor(ppos.x), Math.floor(ppos.y));
       if (tier === 0) continue; // settled land keeps only authored life
       const law = dangerLaw(tier);
       const budget = Math.round(8 * law.wildDensity);
@@ -6090,7 +6277,7 @@ export class GameServer {
       // of camps, ruins, roads, and anything authored), walkable now.
       const ground = this.world.groundAt(tx, ty);
       if (ground !== Tile.Grass && ground !== Tile.GrassTall) continue;
-      const spotTier = dangerTierAt(config.worldSeed, tx, ty);
+      const spotTier = this.liveDangerTier(tx, ty);
       if (spotTier === 0) continue;
       const biome = groundProbeAt(config.worldSeed, tx, ty);
       if (biome !== 'grass' && biome !== 'forest') continue;
@@ -7506,7 +7693,7 @@ export class GameServer {
       if (!pos) return;
       const tx = Math.floor(pos.x);
       const ty = Math.floor(pos.y);
-      const tier = dangerTierAt(config.worldSeed, tx, ty);
+      const tier = this.liveDangerTier(tx, ty);
       const cx = poiCellOf(tx);
       const cy = poiCellOf(ty);
       const row = this.poiLedger.get(poiCellKey(cx, cy));
@@ -7577,6 +7764,17 @@ export class GameServer {
         );
         return;
       }
+      if (sub === 'havens') {
+        // /poi havens — every lamp burning on the frontier.
+        say(
+          this.poiHavens.size === 0
+            ? 'No haven lamps burning.'
+            : [...this.poiHavens.entries()]
+                .map(([k, a]) => `${k}: ${a.x},${a.y} r${a.safeR}`)
+                .join(' · '),
+        );
+        return;
+      }
       const row = this.poiLedger.get(key);
       const live = this.poiLive.get(key);
       say(
@@ -7587,7 +7785,7 @@ export class GameServer {
             `${row.site.anchorX},${row.site.anchorY}, epoch ${row.epoch}`) +
           (row?.clearedAt ? ` · cleared ${Math.round((Date.now() - row.clearedAt) / 60000)}m ago` : '') +
           (live?.zoneId ? ' · standing' : '') +
-          ' — /poi here [archetype] · /poi reroll · /poi fallow [days]',
+          ' — /poi here [archetype] · /poi reroll · /poi fallow [days] · /poi havens',
       );
       return;
     }
