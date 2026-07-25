@@ -456,7 +456,7 @@ const game = new ClientGame(input, {
         for (const tip of [
           'Move with WASD. Click or press F to chop, mine, fish, and use things. Q and E fire your abilities.',
           'Press I for your pack — click a tool or weapon to wield it.',
-          'A cave lurks in the rocks north-east of the plaza. Bring a sword.',
+          'The villagers of Dawnmead know this land. Talk to them (F) before you take the lane east.',
         ]) {
           chat.addLine({ channel: 'system', text: `Tip: ${tip}` });
         }

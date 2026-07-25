@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import { EQUIP_SLOTS } from '@devcraft/shared';
 import { ITEMS } from '../items.js';
 import { NPCS } from '../npcs.js';
-import { buildBramblewick } from '../maps/bramblewick.js';
+import { buildDawnmead } from '../maps/dawnmead.js';
 import { zoneFromJson, zoneToJson } from '../maps/serialize.js';
 import { actorAppearance, actorCombatDef, HUMANOID_BASE, NPC_ACTORS } from './registry.js';
 import { validateNpcActor } from './validate.js';
@@ -40,28 +40,41 @@ test('registry cross-references resolve', () => {
 });
 
 test('humanoid actors produce wire appearance; creature actors do not', () => {
-  const guard = NPC_ACTORS.get('bramblewick_gate_guard')!;
-  const app = actorAppearance(guard);
+  const bryn = NPC_ACTORS.get('warden_bryn')!;
+  const app = actorAppearance(bryn);
   assert.ok(app);
-  assert.equal(app.equip.weapon, 'iron_sword');
-  assert.equal(app.look?.beard, 6);
+  assert.equal(app.equip.weapon, 'bronze_sword');
+  assert.equal(app.look?.feature, 4);
 
-  const grib = NPC_ACTORS.get('grib')!;
-  assert.equal(actorAppearance(grib), null);
+  const res = validateNpcActor({
+    id: 'test_beast',
+    name: 'Beast',
+    disposition: 'friendly',
+    model: { kind: 'creature', creature: 'goblin' },
+  });
+  assert.ok(res.ok);
+  assert.equal(actorAppearance(res.actor), null);
 });
 
 test('combat synthesis: scaled base + overrides + neutral aggro clamp', () => {
-  const guard = NPC_ACTORS.get('bramblewick_gate_guard')!;
-  const def = actorCombatDef(guard)!;
-  assert.equal(def.id, 'actor:bramblewick_gate_guard');
+  const res0 = validateNpcActor({
+    id: 'test_guard',
+    name: 'Guard',
+    title: 'of the Watch',
+    disposition: 'neutral',
+    model: { kind: 'humanoid', look: {} },
+    combat: { level: 18, stats: { maxHp: 60 } },
+  });
+  assert.ok(res0.ok);
+  const def = actorCombatDef(res0.actor)!;
+  assert.equal(def.id, 'actor:test_guard');
   assert.equal(def.level, 18);
   assert.equal(def.maxHp, 60); // stats override wins over scaling
   assert.equal(def.aggroRange, 0); // neutral never aggros
-  assert.equal(def.name, 'Bramblewick Guard');
   assert.deepEqual(def.loot, []);
 
-  const hetty = NPC_ACTORS.get('farmer_hetty')!;
-  assert.equal(actorCombatDef(hetty), null); // friendly = unhittable
+  const rowan = NPC_ACTORS.get('elder_rowan')!;
+  assert.equal(actorCombatDef(rowan), null); // friendly = unhittable
 
   // A creature actor with combat but no base derives from its own body.
   const res = validateNpcActor({
@@ -170,15 +183,11 @@ test('protection: the two switches validate and ride the roster', () => {
   assert.equal(ghost.actor.protection, 'untargetable');
   assert.equal(ghost.actor.combat?.level, 30);
 
-  // The shipped roster: the watch cannot be killed, the captain
-  // cannot even be swung at.
-  assert.equal(NPC_ACTORS.get('bramblewick_gate_guard')!.protection, 'invulnerable');
-  assert.equal(NPC_ACTORS.get('captain_alda')!.protection, 'untargetable');
 });
 
 test('actor placements survive the zone JSON round-trip', () => {
-  const zone = buildBramblewick();
-  assert.ok(zone.actorSpawns && zone.actorSpawns.length >= 7, 'bramblewick places the roster');
+  const zone = buildDawnmead();
+  assert.ok(zone.actorSpawns && zone.actorSpawns.length >= 6, 'dawnmead places the roster');
   for (const s of zone.actorSpawns!) {
     assert.ok(NPC_ACTORS.has(s.actor), `placed actor '${s.actor}' exists`);
   }

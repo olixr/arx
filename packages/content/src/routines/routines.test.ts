@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { buildBramblewick } from '../maps/bramblewick.js';
+import { buildDawnmead } from '../maps/dawnmead.js';
 import { ROUTINES } from './registry.js';
 import { pickRoutineSlot, routineTaskAt, slotContains } from './schedule.js';
 import { validateRoutine } from './validate.js';
@@ -22,9 +22,9 @@ test('every defs/*.json file is registered and valid', () => {
 });
 
 test('every placed routine reference resolves', () => {
-  const zone = buildBramblewick();
+  const zone = buildDawnmead();
   const placed = (zone.actorSpawns ?? []).filter((s) => s.routine !== undefined);
-  assert.ok(placed.length >= 6, 'bramblewick keeps hours');
+  assert.ok(placed.length >= 6, 'dawnmead keeps hours');
   for (const s of placed) {
     assert.ok(ROUTINES.has(s.routine!), `placement of '${s.actor}' names known routine '${s.routine}'`);
   }
@@ -42,15 +42,16 @@ test('schedule windows: plain, wrapping, and the authored-order priority', () =>
   assert.ok(slotContains(21, 5.5, 5.4));
   assert.ok(!slotContains(21, 5.5, 12));
 
-  // The smith: lunch slot sits before the night slot; unclaimed hours
-  // fall to the base work loop.
-  const smith = ROUTINES.get('smith_day')!;
-  assert.equal(pickRoutineSlot(smith, 12.5), 0, 'lunch owns 12:30');
-  assert.equal(pickRoutineSlot(smith, 23), 1, 'the night post owns 23:00');
-  assert.equal(pickRoutineSlot(smith, 3), 1, 'the night post wraps past midnight');
-  assert.equal(pickRoutineSlot(smith, 9), -1, 'morning falls to base');
-  assert.equal(routineTaskAt(smith, 9).kind, 'path');
-  assert.equal(routineTaskAt(smith, 22).kind, 'post');
+  // The hearthkeeper: authored slot order wins, the night walk wraps
+  // midnight, and unclaimed hours fall to the base fire post.
+  const iona = ROUTINES.get('hearth_hours')!;
+  assert.equal(pickRoutineSlot(iona, 10), 0, 'the morning round owns 10:00');
+  assert.equal(pickRoutineSlot(iona, 15), 1, 'the afternoon round owns 15:00');
+  assert.equal(pickRoutineSlot(iona, 23), 2, 'the night walk owns 23:00');
+  assert.equal(pickRoutineSlot(iona, 3), 2, 'the night walk wraps past midnight');
+  assert.equal(pickRoutineSlot(iona, 8), -1, 'breakfast hours fall to base');
+  assert.equal(routineTaskAt(iona, 8).kind, 'post');
+  assert.equal(routineTaskAt(iona, 22).kind, 'path');
 });
 
 test('validator rejects the dishonest defs', () => {

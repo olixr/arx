@@ -1,23 +1,14 @@
 import { dialogueDoneFlag, type DialogueDef } from './types.js';
 import { validateDialogue } from './validate.js';
 
-import aldaWatch from './defs/alda_watch.json';
 import brynArms from './defs/bryn_arms.json';
 import brynYard from './defs/bryn_yard.json';
 import fenBench from './defs/fen_bench.json';
-import gribBands from './defs/grib_bands.json';
-import gribFriend from './defs/grib_friend.json';
-import gribWary from './defs/grib_wary.json';
-import guardPost from './defs/guard_post.json';
-import hettyFarm from './defs/hetty_farm.json';
 import hobbFarm from './defs/hobb_farm.json';
 import ionaFireside from './defs/iona_fireside.json';
 import ionaHearth from './defs/iona_hearth.json';
-import marenPlaza from './defs/maren_plaza.json';
-import marenWelcome from './defs/maren_welcome.json';
 import rowanAwakening from './defs/rowan_awakening.json';
 import rowanGreen from './defs/rowan_green.json';
-import tobbinWares from './defs/tobbin_wares.json';
 import wayfarerCamp from './defs/wayfarer_camp.json';
 import waywardRoad from './defs/wayward_road.json';
 
@@ -27,23 +18,14 @@ import waywardRoad from './defs/wayward_road.json';
  * and fails if a file is missing from this roster.
  */
 const SOURCES: readonly unknown[] = [
-  aldaWatch,
   brynArms,
   brynYard,
   fenBench,
-  gribBands,
-  gribFriend,
-  gribWary,
-  guardPost,
-  hettyFarm,
   hobbFarm,
   ionaFireside,
   ionaHearth,
-  marenPlaza,
-  marenWelcome,
   rowanAwakening,
   rowanGreen,
-  tobbinWares,
   wayfarerCamp,
   waywardRoad,
 ];

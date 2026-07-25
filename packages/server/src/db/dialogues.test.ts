@@ -39,12 +39,12 @@ test('second seed of identical content writes nothing', () => {
 test('a changed shipped file flows into an untouched seed', () => {
   const db = openDb(':memory:');
   seedDialogues(db, ALL);
-  const welcome = ALL.find((d) => d.id === 'maren_welcome')!;
+  const welcome = ALL.find((d) => d.id === 'rowan_awakening')!;
   const edited: DialogueDef = { ...welcome, once: undefined };
-  const res = seedDialogues(db, [edited, ...ALL.filter((d) => d.id !== 'maren_welcome')]);
+  const res = seedDialogues(db, [edited, ...ALL.filter((d) => d.id !== 'rowan_awakening')]);
   assert.equal(res.updated, 1);
   const loaded = loadDialogues(db);
-  assert.equal(loaded.dialogues.find((d) => d.id === 'maren_welcome')!.once, undefined);
+  assert.equal(loaded.dialogues.find((d) => d.id === 'rowan_awakening')!.once, undefined);
 });
 
 test('THE DATABASE IS THE TRUTH: a tool edit survives every re-seed', () => {
@@ -52,20 +52,20 @@ test('THE DATABASE IS THE TRUTH: a tool edit survives every re-seed', () => {
   seedDialogues(db, ALL);
 
   // The tooling rewrites a line (importDialogue = a tool write).
-  const tool = JSON.parse(JSON.stringify(ALL.find((d) => d.id === 'guard_post')!)) as DialogueDef;
-  tool.nodes.find((n) => n.id === 'carry')!.text = 'Aye. The town thanks you.';
+  const tool = JSON.parse(JSON.stringify(ALL.find((d) => d.id === 'bryn_yard')!)) as DialogueDef;
+  tool.nodes.find((n) => n.id === 'recap')!.text = 'Aye. The village thanks you.';
   assert.ok(importDialogue(db, tool).ok);
 
   // A NEWER shipped version arrives — and must be respectfully kept out.
-  const shipped = JSON.parse(JSON.stringify(ALL.find((d) => d.id === 'guard_post')!)) as DialogueDef;
-  shipped.nodes.find((n) => n.id === 'carry')!.text = 'SHIPPED CLOBBER ATTEMPT';
-  const res = seedDialogues(db, [shipped, ...ALL.filter((d) => d.id !== 'guard_post')]);
+  const shipped = JSON.parse(JSON.stringify(ALL.find((d) => d.id === 'bryn_yard')!)) as DialogueDef;
+  shipped.nodes.find((n) => n.id === 'recap')!.text = 'SHIPPED CLOBBER ATTEMPT';
+  const res = seedDialogues(db, [shipped, ...ALL.filter((d) => d.id !== 'bryn_yard')]);
   assert.equal(res.kept, 1);
-  const after = exportDialogue(db, 'guard_post')!;
-  assert.equal(after.nodes.find((n) => n.id === 'carry')!.text, 'Aye. The town thanks you.');
+  const after = exportDialogue(db, 'bryn_yard')!;
+  assert.equal(after.nodes.find((n) => n.id === 'recap')!.text, 'Aye. The village thanks you.');
 
   // ...and the divergence is remembered: the same seed stays quiet.
-  const again = seedDialogues(db, [shipped, ...ALL.filter((d) => d.id !== 'guard_post')]);
+  const again = seedDialogues(db, [shipped, ...ALL.filter((d) => d.id !== 'bryn_yard')]);
   assert.equal(again.kept + again.updated + again.added, 0);
 });
 
@@ -77,7 +77,7 @@ test('pruning removes only pure seeds; tool-born rows are permanent', () => {
   const toolBorn = {
     id: 'monolith_whisper',
     start: 'a',
-    bindings: [{ kind: 'actor', target: 'old_maren' }],
+    bindings: [{ kind: 'actor', target: 'elder_rowan' }],
     nodes: [{ id: 'a', text: 'The stone says nothing. _Loudly._' }],
   };
   assert.ok(importDialogue(db, toolBorn).ok);
@@ -105,7 +105,7 @@ test('a hand-broken DB row is rejected at load, not at talk time', () => {
   const db = openDb(':memory:');
   seedDialogues(db, ALL);
   db.prepare(
-    `UPDATE dialogue_nodes SET next_node = 'ghost' WHERE dialogue_id = 'tobbin_wares' AND node_id = 'counter'`,
+    `UPDATE dialogue_nodes SET next_node = 'ghost' WHERE dialogue_id = 'hobb_farm' AND node_id = 'produce'`,
   ).run();
   const loaded = loadDialogues(db);
   assert.equal(loaded.dialogues.length, ALL.length - 1);
@@ -119,15 +119,15 @@ test('the flag ledger: set, overwrite, clear, reload', () => {
   assert.ok(reg.ok);
   const cid = reg.character.id;
 
-  accounts.setFlag(cid, 'dlg:maren_welcome', 1);
-  accounts.setFlag(cid, 'grib_friend', 1);
-  accounts.setFlag(cid, 'grib_friend', 2); // upsert overwrites
+  accounts.setFlag(cid, 'dlg:rowan_awakening', 1);
+  accounts.setFlag(cid, 'dawn_rats_task', 1);
+  accounts.setFlag(cid, 'dawn_rats_task', 2); // upsert overwrites
   let flags = accounts.loadFlags(cid);
-  assert.equal(flags.get('dlg:maren_welcome'), 1);
-  assert.equal(flags.get('grib_friend'), 2);
+  assert.equal(flags.get('dlg:rowan_awakening'), 1);
+  assert.equal(flags.get('dawn_rats_task'), 2);
 
-  accounts.clearFlag(cid, 'grib_friend');
+  accounts.clearFlag(cid, 'dawn_rats_task');
   flags = accounts.loadFlags(cid);
-  assert.equal(flags.has('grib_friend'), false);
+  assert.equal(flags.has('dawn_rats_task'), false);
   assert.equal(flags.size, 1);
 });

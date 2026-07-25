@@ -105,7 +105,7 @@ export declare class AmbienceSystem {
      * inside the gate. Panned wide at random; louder the closer you are.
      */
     private portalMood;
-    /** A far-off hammer on a far-off anvil: Bramblewick at work. */
+    /** A far-off hammer on a far-off anvil: the village at work. */
     private townTink;
 }
 //# sourceMappingURL=ambience.d.ts.map

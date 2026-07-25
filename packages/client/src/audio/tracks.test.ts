@@ -24,7 +24,7 @@ test('every music file on disk sits on a shelf, and every shelf entry exists', (
 });
 
 test('the mood law: town outranks all, caves brood, the deep frontier darkens the day', () => {
-  const town = zoneWeights(48, 48);
+  const town = zoneWeights(-64, 48);
   const wild = zoneWeights(300, 48);
   const cave = zoneWeights(300, 9000);
   assert.equal(moodFor(town, 12, 5), 'town'); // settled land never plays dread

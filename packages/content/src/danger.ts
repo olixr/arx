@@ -13,17 +13,12 @@ import { dangerAt, type ChestKind, type DangerAnchor } from '@devcraft/shared';
  */
 
 export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
-  // Bramblewick — the origin town and its worked surroundings (farms,
-  // pond, the near camps are all AUTHORED content; the procedural
-  // world starts past them).
-  { x: 48, y: 48, safeR: 96 },
-  // Dawnmead — the awakening village west of town. Its safe radius
-  // overlaps Bramblewick's, so the whole hedgerow lane between them
-  // is tier 0: a first walk that never bares its teeth.
+  // Dawnmead — the awakening village, and the world's ONE settled
+  // hearth. Its safe radius covers the village, its worked meadows,
+  // and the first stretch of the east lane; every danger band marches
+  // outward from here, and everything past it is the procedural
+  // frontier. New settlements earn their anchors as they're built.
   { x: -64, y: 48, safeR: 64 },
-  // The Hollow Stair quarry shelf: an authored site, not a haven — a
-  // small bubble that only keeps POIs off the authored kobold warren.
-  { x: 132, y: 20, safeR: 40 },
 ];
 
 export interface DangerLaw {

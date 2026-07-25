@@ -510,7 +510,7 @@ export class AmbienceSystem {
     }
   }
 
-  /** A far-off hammer on a far-off anvil: Bramblewick at work. */
+  /** A far-off hammer on a far-off anvil: the village at work. */
   private townTink(ctx: AudioContext, bus: GainNode, t: number): void {
     const pan = ctx.createStereoPanner();
     pan.pan.value = (Math.random() * 2 - 1) * 0.6;

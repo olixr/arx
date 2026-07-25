@@ -4,7 +4,7 @@ import {
   NPC_ACTORS,
   ROUTINES,
   STRUCTURE_TEMPLATES,
-  buildBramblewick,
+  buildDawnmead,
   flipTemplate,
   prefabFromJson,
   prefabToJson,
@@ -1257,7 +1257,7 @@ function newZoneDialog(): void {
         <label>origin y <input id="nz-oy" type="number" value="0" step="32"></label>
       </div>
       <p class="muted">Tip: chunk-align the origin (multiples of 32) and keep clear of
-      Bramblewick (0,0–96,96) unless you mean to override it.</p>`;
+      Dawnmead (-96,16–0,80) unless you mean to override it.</p>`;
     const go = document.createElement('button');
     go.textContent = 'Create';
     go.className = 'primary';
@@ -2156,7 +2156,7 @@ async function boot(): Promise<void> {
     setServerStatus('connected');
     const pick =
       (wanted && list.zones.find((z) => z.id === wanted)) ??
-      list.zones.find((z) => z.id === 'bramblewick') ??
+      list.zones.find((z) => z.id === 'dawnmead') ??
       list.zones[0];
     if (pick) {
       adoptZone(zoneFromJson(await fetchZone(pick.id)), true);
@@ -2166,7 +2166,7 @@ async function boot(): Promise<void> {
   } catch {
     setServerStatus('offline — local mode (Import/Export only)');
   }
-  adoptZone(buildBramblewick(), false);
+  adoptZone(buildDawnmead(), false);
 }
 
 void boot();

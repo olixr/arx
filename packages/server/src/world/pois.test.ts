@@ -22,14 +22,13 @@ const SEED = 1337;
 const CTX: PoiContext = {
   anchors: SETTLED_ANCHORS,
   zoneRects: [
-    { x: 0, y: 0, w: 96, h: 96 }, // bramblewick
-    { x: 120, y: 8, w: 24, h: 24 }, // hollow stair
+    { x: -96, y: 16, w: 96, h: 64 }, // dawnmead
   ],
   defs: [...POI_DEFS.values()],
   prefabs: POI_PREFABS,
 };
 
-const SCAN = 7; // cells −7..7 in both axes
+const SCAN = 9; // cells −9..9 in both axes
 
 function scanSites(): PoiSite[] {
   const sites: PoiSite[] = [];
@@ -139,8 +138,9 @@ test('composition is deterministic and epoch changes re-roll the cell', () => {
 });
 
 test('settled cells never host POIs, even forced', () => {
-  assert.equal(poiForCell(SEED, 0, 0, 0, CTX), null);
-  assert.equal(poiForCell(SEED, 0, 0, 0, CTX, true), null);
+  // Dawnmead's anchor (-64,48) lives in macro-cell (-1,0).
+  assert.equal(poiForCell(SEED, -1, 0, 0, CTX), null);
+  assert.equal(poiForCell(SEED, -1, 0, 0, CTX, true), null);
 });
 
 test('approach cues live in the fringe and never touch the prefab or unnatural ground', () => {

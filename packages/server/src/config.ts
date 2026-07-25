@@ -16,10 +16,10 @@ export const config = {
   worldSeed: envInt('WORLD_SEED', 1337),
   /**
    * Zone whose spawn point receives BRAND-NEW characters (the
-   * awakening). Death respawn and lost-position rescue keep using the
-   * world spawn (the first zone declaring one — Bramblewick), so only
-   * first arrivals ever start here. Falls back to the world spawn if
-   * the zone is missing or declares no spawn.
+   * awakening). Death respawn resolves separately (nearest settled
+   * spawn) and lost-position rescue uses the world spawn (the first
+   * zone declaring one). Falls back to the world spawn if the zone is
+   * missing or declares no spawn.
    */
   startZoneId: process.env.START_ZONE ?? 'dawnmead',
   /** Dev chat commands (/give) — on for local dev, off in production. */

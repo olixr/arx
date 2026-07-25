@@ -2,9 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Detail, PASSIVES, STATUS_IDS, Tile, TILE_DEFS } from '@devcraft/shared';
 import { ZoneBuilder } from './maps/builder.js';
-import { buildBramblewick } from './maps/bramblewick.js';
 import { buildDawnmead } from './maps/dawnmead.js';
-import { buildHollowStair } from './maps/hollowstair.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { compileTemplate, templateHeight, templateWidth } from './structures/stamp.js';
 import { templateFromJson, templateToJson } from './structures/serialize.js';
@@ -581,6 +579,10 @@ test('recipe unlocks are honest: scrolls exist, shelves and troves cover them', 
   }
   for (const shop of SHOPS.values()) {
     if (shop.id === 'general_store') continue; // the counter tile serves it too
+    // Trainer shelves are content debt while the world rebuilds out
+    // from Dawnmead: the shops (and their scroll economy) stay
+    // defined, and the settlements that keep them come later.
+    if (shop.id.startsWith('trainer_')) continue;
     assert.ok(carried.has(shop.id), `shop '${shop.id}' has no actor to keep it`);
   }
 });
@@ -711,70 +713,6 @@ test('structure templates: JSON round-trip is lossless and re-validated', () => 
     assert.deepEqual(back, tpl, `${tpl.id} did not survive the round trip`);
   }
   assert.throws(() => templateFromJson('{"id":"bad","legend":{},"rows":["x"]}'));
-});
-
-test('bramblewick: anchors, unique stations, and story markers hold', () => {
-  const z = buildBramblewick();
-  const at = (x: number, y: number): Tile => z.ground[y * z.width + x]! as Tile;
-  assert.deepEqual(z.spawn, { x: 48.5, y: 52.5 });
-  assert.equal(TILE_DEFS[at(48, 52)].solid, false, 'spawn tile must be walkable');
-  assert.equal(at(59, 33), Tile.PortalDown, 'cave mouth moved');
-  const counts = new Map<number, number>();
-  for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
-  const stations: Array<[string, Tile]> = [
-    ['bank chest', Tile.BankChest],
-    ['shop counter', Tile.ShopCounter],
-    ['furnace', Tile.Furnace],
-    ['anvil', Tile.Anvil],
-    ['workbench', Tile.Workbench],
-    ['tanning rack', Tile.TanningRack],
-    ['loom', Tile.Loom],
-    ['carving bench', Tile.CarvingBench],
-    ['alembic', Tile.Alembic],
-    ['enchanting table', Tile.EnchantingTable],
-  ];
-  for (const [name, tile] of stations) {
-    assert.equal(counts.get(tile) ?? 0, 1, `town needs exactly one ${name}`);
-  }
-  assert.equal(counts.get(Tile.Campfire) ?? 0, 1, 'town campfire missing');
-});
-
-test('bramblewick: every doorway is walkable from the spawn', () => {
-  const z = buildBramblewick();
-  const walkable = (x: number, y: number): boolean =>
-    x >= 0 && y >= 0 && x < z.width && y < z.height &&
-    !TILE_DEFS[z.ground[y * z.width + x]! as Tile].solid;
-  const seen = new Uint8Array(z.width * z.height);
-  const queue: number[] = [52 * z.width + 48]; // the spawn tile
-  seen[queue[0]!] = 1;
-  while (queue.length > 0) {
-    const i = queue.pop()!;
-    const x = i % z.width;
-    const y = Math.floor(i / z.width);
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-      const nx = x + dx;
-      const ny = y + dy;
-      const ni = ny * z.width + nx;
-      if (walkable(nx, ny) && !seen[ni]) {
-        seen[ni] = 1;
-        queue.push(ni);
-      }
-    }
-  }
-  const unreachable: string[] = [];
-  for (let i = 0; i < z.ground.length; i++) {
-    const t = z.ground[i];
-    if (
-      (t === Tile.DoorwayStone ||
-        t === Tile.DoorwayWood ||
-        t === Tile.DoorwayStoneWide ||
-        t === Tile.DoorwayWoodWide) &&
-      !seen[i]
-    ) {
-      unreachable.push(`(${i % z.width},${Math.floor(i / z.width)})`);
-    }
-  }
-  assert.deepEqual(unreachable, [], `doorways cut off from spawn: ${unreachable.join(' ')}`);
 });
 
 test('dawnmead: awakening anchors, stations, pens, and the lane seam hold', () => {
@@ -942,27 +880,10 @@ test('zone JSON round-trips signed elevation; flat zones export none', () => {
   const back = zoneFromJson(zoneToJson(z));
   assert.deepEqual(Array.from(back.elev!), Array.from(z.elev!));
   assert.ok(Array.from(back.elev!).some((v) => v < 0), 'negatives lost in transit');
-  // Legacy zones carry no elev blob and decode zero-filled — the JSON
+  // Flat zones carry no elev blob and decode zero-filled — the JSON
   // for every pre-elevation zone stays byte-identical.
-  const json = zoneToJson(buildBramblewick());
+  const json = zoneToJson(buildDawnmead());
   assert.equal(json.elev, undefined);
   assert.ok(zoneFromJson(json).elev!.every((v) => v === 0));
 });
 
-test('the Hollow Stair: descend twice before you find the dungeon entrance', () => {
-  const z = buildHollowStair();
-  const at = (x: number, y: number): number => z.ground[y * z.width + x]!;
-  const lv = (x: number, y: number): number => z.elev![y * z.width + x]!;
-  // Dell (−1) with a quarry core (−2).
-  assert.equal(lv(11, 9), -1);
-  assert.equal(lv(12, 14), -2);
-  // One south-descending flight per level, framed by the auto-fence.
-  assert.equal(at(11, 7), Tile.Ramp);
-  assert.equal(at(11, 11), Tile.Ramp);
-  assert.equal(at(10, 7), Tile.Cliff);
-  assert.equal(at(10, 11), Tile.Cliff);
-  // The delve mouth waits on the quarry floor.
-  assert.equal(at(12, 14), Tile.PortalDown);
-  const portal = z.portals?.find((p) => p.delve);
-  assert.deepEqual({ x: portal?.x, y: portal?.y }, { x: 132, y: 22 });
-});

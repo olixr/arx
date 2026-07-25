@@ -76,39 +76,59 @@ test('markup: unbalanced, nested, empty, and ghost directives are refused', () =
   const bad = validateDialogue({
     id: 'test_markup',
     start: 'a',
-    bindings: [{ kind: 'actor', target: 'old_maren' }],
+    bindings: [{ kind: 'actor', target: 'elder_rowan' }],
     nodes: [{ id: 'a', text: 'a ghost gift: {item:nonsense_loaf}' }],
   });
   assert.ok(!bad.ok && bad.errors.some((e) => e.includes('unknown item')));
 });
 
 test('eligibility: once-completion, requires and forbids gate the voice', () => {
-  const welcome = DIALOGUES.get('maren_welcome')!;
+  const welcome = DIALOGUES.get('rowan_awakening')!;
   const none = () => false;
-  assert.ok(dialogueEligible(welcome, none), 'fresh player gets the welcome');
-  const done = new Set([dialogueDoneFlag('maren_welcome')]);
+  assert.ok(dialogueEligible(welcome, none), 'fresh player gets the awakening');
+  const done = new Set([dialogueDoneFlag('rowan_awakening')]);
   assert.ok(!dialogueEligible(welcome, (f) => done.has(f)), 'completed once never re-offers');
 
-  const friend = DIALOGUES.get('grib_friend')!;
-  assert.ok(!dialogueEligible(friend, none), 'locked until the flag is earned');
-  assert.ok(dialogueEligible(friend, (f) => f === 'grib_friend'));
+  // A requires-gated tree stays silent until its flag is earned.
+  const gated = validateDialogue({
+    id: 'test_gated',
+    start: 'a',
+    requires: ['earned_it'],
+    bindings: [{ kind: 'actor', target: 'elder_rowan' }],
+    nodes: [{ id: 'a', text: 'You earned this.' }],
+  });
+  assert.ok(gated.ok);
+  assert.ok(!dialogueEligible(gated.dialogue, none), 'locked until the flag is earned');
+  assert.ok(dialogueEligible(gated.dialogue, (f) => f === 'earned_it'));
 });
 
 test('pickDialogue: binding priority wins, completion falls to the default', () => {
-  const maren = offersFor('old_maren');
-  assert.equal(maren.length, 2);
-  const fresh = pickDialogue(maren, () => false);
-  assert.equal(fresh?.id, 'maren_welcome', 'the once-intro outranks the default');
-  const flags = new Set([dialogueDoneFlag('maren_welcome')]);
-  const after = pickDialogue(maren, (f) => flags.has(f));
-  assert.equal(after?.id, 'maren_plaza', 'the repeatable default takes over');
+  const rowan = offersFor('elder_rowan');
+  assert.equal(rowan.length, 2);
+  const fresh = pickDialogue(rowan, () => false);
+  assert.equal(fresh?.id, 'rowan_awakening', 'the once-intro outranks the default');
+  const flags = new Set([dialogueDoneFlag('rowan_awakening')]);
+  const after = pickDialogue(rowan, (f) => flags.has(f));
+  assert.equal(after?.id, 'rowan_green', 'the repeatable default takes over');
 
-  // Grib: the branch flags pick between two unlocked defaults.
-  const grib = offersFor('grib');
-  const gribFlags = new Set([dialogueDoneFlag('grib_bands'), 'grib_wary']);
-  assert.equal(pickDialogue(grib, (f) => gribFlags.has(f))?.id, 'grib_wary');
-  gribFlags.add('grib_friend'); // softened later — friend def ties, id order breaks it
-  assert.equal(pickDialogue(grib, (f) => gribFlags.has(f))?.id, 'grib_friend');
+  // Branch flags pick between two conditional defaults; a tie on
+  // priority breaks by id order (the grib-friend/wary precedent).
+  const mk = (id: string, flag: string) => {
+    const res = validateDialogue({
+      id,
+      start: 'a',
+      requires: [flag],
+      bindings: [{ kind: 'actor', target: 'elder_rowan' }],
+      nodes: [{ id: 'a', text: 'Words for a mood.' }],
+    });
+    assert.ok(res.ok);
+    return { def: res.dialogue, priority: 5 };
+  };
+  const offers = [mk('test_wary', 'mood_wary'), mk('test_friend', 'mood_friend')];
+  const moods = new Set(['mood_wary']);
+  assert.equal(pickDialogue(offers, (f) => moods.has(f))?.id, 'test_wary');
+  moods.add('mood_friend'); // softened later — friend ties, id order breaks it
+  assert.equal(pickDialogue(offers, (f) => moods.has(f))?.id, 'test_friend');
 });
 
 test('bindings make trees interchangeable: one tree, many targets', () => {
@@ -116,16 +136,16 @@ test('bindings make trees interchangeable: one tree, many targets', () => {
     id: 'test_shared',
     start: 'a',
     bindings: [
-      { kind: 'actor', target: 'old_maren', priority: 3 },
-      { kind: 'actor', target: 'captain_alda' },
+      { kind: 'actor', target: 'elder_rowan', priority: 3 },
+      { kind: 'actor', target: 'warden_bryn' },
     ],
     nodes: [{ id: 'a', text: 'The same words, wherever they hang.' }],
   });
   assert.ok(res.ok);
   assert.equal(res.dialogue.bindings?.length, 2);
   // The SAME def carries different weights at different targets.
-  const atMaren = pickDialogue([{ def: res.dialogue, priority: 3 }], () => false);
-  assert.equal(atMaren?.id, 'test_shared');
+  const atRowan = pickDialogue([{ def: res.dialogue, priority: 3 }], () => false);
+  assert.equal(atRowan?.id, 'test_shared');
 });
 
 test('validator rejects the dishonest defs', () => {
@@ -140,18 +160,18 @@ test('validator rejects the dishonest defs', () => {
   const base = {
     id: 'test_talk',
     start: 'a',
-    bindings: [{ kind: 'actor', target: 'old_maren' }],
+    bindings: [{ kind: 'actor', target: 'elder_rowan' }],
     nodes: [{ id: 'a', text: 'Hello.' }],
   };
   bad({ ...base, id: 'Bad Id!' }, 'must match');
   bad({ ...base, bindings: [{ kind: 'actor', target: 'nobody' }] }, 'unknown actor');
-  bad({ ...base, bindings: [{ kind: 'door', target: 'old_maren' }] }, 'unknown');
+  bad({ ...base, bindings: [{ kind: 'door', target: 'elder_rowan' }] }, 'unknown');
   bad(
     {
       ...base,
       bindings: [
-        { kind: 'actor', target: 'old_maren' },
-        { kind: 'actor', target: 'old_maren' },
+        { kind: 'actor', target: 'elder_rowan' },
+        { kind: 'actor', target: 'elder_rowan' },
       ],
     },
     'duplicates',
@@ -190,7 +210,7 @@ test('validator rejects the dishonest defs', () => {
   bad(
     {
       ...base,
-      nodes: [{ id: 'a', text: 'Pick.', choices: [{ text: 'Done.', set: ['dlg:maren_welcome'] }] }],
+      nodes: [{ id: 'a', text: 'Pick.', choices: [{ text: 'Done.', set: ['dlg:rowan_awakening'] }] }],
     },
     'completions are automatic',
   );
@@ -200,7 +220,7 @@ test('hub cycles are legal: a choice may loop back to its question', () => {
   const res = validateDialogue({
     id: 'test_hub',
     start: 'hub',
-    bindings: [{ kind: 'actor', target: 'old_maren' }],
+    bindings: [{ kind: 'actor', target: 'elder_rowan' }],
     nodes: [
       { id: 'hub', text: 'Ask.', choices: [{ text: 'Topic?', next: 'topic' }, { text: 'Bye.' }] },
       { id: 'topic', text: 'An answer.', next: 'hub' },

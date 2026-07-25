@@ -1,7 +1,7 @@
 /**
  * THE SHOPS OF THE REALM. Each shop is a stock list with fixed prices
  * and infinite supply; selling anything anywhere pays half its item
- * value. 'general_store' is the counter-tile shop Bramblewick has
+ * value. 'general_store' is the counter-tile shop the starter town has
  * always had; the trainer shops hang off ACTORS (NpcActorDef.shop) —
  * talk to the profession's trainer and their wares open.
  *

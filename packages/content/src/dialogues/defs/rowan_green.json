@@ -21,7 +21,7 @@
     },
     {
       "id": "ring",
-      "text": "Five stones, older than any map of them. They sleep for a week or a season, then one dawn the frost melts off them in a ring and someone new is standing where you stood. _Bramblewick's sages say the Riftgate and our stones are cousins. I say one hums and one breathes, and I trust the one that breathes._",
+      "text": "Five stones, older than any map of them. They sleep for a week or a season, then one dawn the frost melts off them in a ring and someone new is standing where you stood. _Out in the deep wilds stand ruined gates that hum a colder note — cousins to our stones, I fear. One hums and one breathes, and I trust the one that breathes._",
       "next": "hub"
     },
     {
@@ -31,13 +31,13 @@
     },
     {
       "id": "road",
-      "text": "Then hear the send-off, same as I've said it forty years: you woke with nothing, and look at you now — armed, fed, and upright. Take the lane east over the brook. In *Bramblewick*, find *Old Maren* by the well; she's soft on new faces. And take this — {item:coins} — every road is shorter with a jingle in your pocket. The Ring chose a good one this time. Off you go.",
+      "text": "Then hear the send-off: you woke with nothing, and look at you — armed, fed, and upright. Take the lane east over the brook and keep the sunrise ahead of you. The frontier grows teeth the farther you walk, but the *wayfarers* keep lantern-lit waystations along the old ways — rest often. And take this — {item:coins} — every road is shorter with a jingle in it. The Ring chose a good one this time. Off you go.",
       "hooks": [{ "kind": "give", "item": "coins", "qty": 30 }],
       "next": "hub"
     },
     {
       "id": "road_again",
-      "text": "East over the bridge, follow the lamps, and Bramblewick will find you before you find it. Maren, by the well. And eat something before you set out — pride is not a meal.",
+      "text": "East over the bridge, past the last lamp, and the world is yours to name. Watch for wayfarer lanterns when the light goes. And eat something before you set out — pride is not a meal.",
       "next": "hub"
     }
   ]

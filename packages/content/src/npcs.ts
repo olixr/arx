@@ -806,56 +806,28 @@ export interface SpawnPoint {
   count: number;
 }
 
+/**
+ * Fixed spawn points ringing Dawnmead, the starter village — the ONLY
+ * authored wilderness left. Everything farther out belongs to the
+ * procedural frontier (the danger field, POIs, and the wild roster).
+ * THE CORRIDOR LAW: the village core and the east lane (y ~40-60 out
+ * to the hedgerows) stay predator-free — new spawns keep clear.
+ */
 export const TOWN_SPAWNS: readonly SpawnPoint[] = [
-  // The farm pen holds livestock.
-  { npc: 'chicken', x: 20, y: 28, radius: 4, count: 3 },
-  { npc: 'cow', x: 20, y: 30, radius: 4, count: 2 },
-  { npc: 'bull', x: 23, y: 32, radius: 3, count: 1 },
-  // Rats skulk near the pond.
-  { npc: 'rat', x: 86, y: 66, radius: 5, count: 3 },
-  // Goblins camp south of town.
-  { npc: 'goblin', x: 44, y: 110, radius: 8, count: 4 },
-  { npc: 'goblin', x: 60, y: 116, radius: 8, count: 3 },
-  { npc: 'goblin_thrower', x: 52, y: 113, radius: 8, count: 2 },
-  // The kobold warren claimed the abandoned Hollow Stair quarry east
-  // of town: sentries on the meadow rim, diggers down in the dell, and
-  // the digmaster holding the quarry core by the delve mouth. All
-  // centers walkability-audited against seed-1337 worldgen + the zone
-  // overlay (cliff rings fence the sinks; the stairs at x=131 connect).
-  { npc: 'kobold', x: 122, y: 12, radius: 4, count: 2 },
-  { npc: 'kobold', x: 127, y: 18, radius: 3, count: 3 },
-  { npc: 'kobold', x: 137, y: 25, radius: 3, count: 2 },
-  { npc: 'kobold_digmaster', x: 130, y: 23, radius: 2, count: 1 },
-  // Wolves in the north-western woods, past Dawnmead's orchard rim.
-  // The packs moved when the awakening village took the west meadow:
-  // the whole hedgerow-lane corridor (y ~40-60, Dawnmead to town) is
-  // the beginner walk and stays predator-free by design.
+  // The wolfkin dens in the north-western woods, past the orchard rim
+  // — far enough that only a waker who goes LOOKING for trouble finds
+  // the matriarch roaming between her packs.
   { npc: 'wolf', x: -24, y: -4, radius: 6, count: 2 },
   { npc: 'wolf', x: -40, y: 2, radius: 6, count: 2 },
-  // The matriarch roams the ground between her two packs — meet her
-  // near either den and the howl brings the rest.
   { npc: 'dire_wolf', x: -32, y: -1, radius: 8, count: 1 },
-  // Goblin war-hounds: a bonded pair prowling south of the camp.
-  { npc: 'worg', x: 58, y: 122, radius: 7, count: 2 },
-  // The pond ecosystem, tiered: crabs on the bank, slimes in the
-  // marsh south of it, one old adder in the reeds.
-  { npc: 'mudcrab', x: 82, y: 70, radius: 5, count: 3 },
-  { npc: 'slime', x: 90, y: 78, radius: 6, count: 3 },
-  { npc: 'adder', x: 96, y: 64, radius: 5, count: 1 },
-  // Rams graze the rocky rise north of the farms.
-  { npc: 'ram', x: 11, y: 9, radius: 8, count: 2 },
-  // Stags browse the wood's edge where the wolves hunt.
-  { npc: 'stag', x: 0, y: 32, radius: 8, count: 2 },
-  // Boars root the south woods between town and the goblin camp.
-  { npc: 'boar', x: 32, y: 90, radius: 8, count: 3 },
-  // Beetles trundle the dry scrub east of the goblin camp.
-  { npc: 'giant_beetle', x: 76, y: 108, radius: 7, count: 2 },
-  // The Gloamwood — the dark forest south-west, pushed a hedge and a
-  // half below Dawnmead's brook meadow so the village's first walks
-  // never stumble into it: webs above, wings at dusk, and the old
-  // threats deeper in.
+  // The Gloamwood — the dark forest south of the brook meadow: webs
+  // above, wings at dusk, and the old threats deeper in.
   { npc: 'giant_spider', x: -30, y: 96, radius: 7, count: 2 },
   { npc: 'cave_bat', x: -36, y: 88, radius: 6, count: 2 },
   { npc: 'bear', x: -48, y: 100, radius: 6, count: 1 },
   { npc: 'troll', x: -55, y: 108, radius: 6, count: 1 },
+  // Gentle life on the village's shoulders: stags browse the east
+  // meadow along the lane, rams keep the rocky rise out west.
+  { npc: 'stag', x: 12, y: 40, radius: 7, count: 2 },
+  { npc: 'ram', x: -112, y: 28, radius: 7, count: 2 },
 ];

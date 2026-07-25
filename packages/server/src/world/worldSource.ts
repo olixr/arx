@@ -118,12 +118,11 @@ export class WorldSource extends ChunkStore {
   }
 
   /**
-   * Where death sends you: the NEAREST settled spawn, so a waker who
-   * falls to the shed rats wakes back at Dawnmead's Ring instead of
-   * being teleported to a town they haven't earned yet — and a
-   * veteran dying out east still respawns in Bramblewick. Underground
-   * deaths (the dark band, dungeons, delves) always surface at the
-   * origin town's spawn: distance means nothing down there.
+   * Where death sends you: the NEAREST settled spawn. With Dawnmead
+   * the world's only hearth that means the Waking Ring; as new
+   * settlements declare spawns, the walk back shortens on its own.
+   * Underground deaths (the dark band, dungeons, delves) always
+   * surface at the world spawn: distance means nothing down there.
    */
   respawnAt(x: number, y: number): Vec2 {
     if (y >= 512) return this.spawn;

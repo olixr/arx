@@ -31,8 +31,9 @@ import {
  */
 export function elevationAt(seed: number, tx: number, ty: number): number {
   let elevation = fbm(seed, tx * 0.015, ty * 0.015, 4);
-  // Continental bias: dry land guaranteed near the town.
-  const distFromOrigin = Math.hypot(tx - 48, ty - 48);
+  // Continental bias: dry land guaranteed around Dawnmead, the one
+  // settled hearth the world grows out from.
+  const distFromOrigin = Math.hypot(tx + 64, ty - 48);
   const lift = Math.max(0, 1 - distFromOrigin / 400);
   return elevation * (1 - lift * 0.6) + 0.55 * lift * 0.6;
 }
@@ -48,7 +49,7 @@ const PLATEAU_T2 = 0.705;
 
 export function plateauFieldAt(seed: number, tx: number, ty: number): number {
   const f = fbm(seed + 31337, tx * 0.012, ty * 0.012, 3);
-  const distFromTown = Math.hypot(tx - 48, ty - 48);
+  const distFromTown = Math.hypot(tx + 64, ty - 48);
   return f - Math.max(0, 1 - distFromTown / 130) * 0.45;
 }
 
@@ -65,7 +66,7 @@ export function plateauFieldAt(seed: number, tx: number, ty: number): number {
  * authored zone's border would put the fence tile INSIDE the zone where
  * the overlay erases it (plateaus are safe — their fence is outside, on
  * their own crown). Basins therefore keep a generous distance from
- * every overworld authored site: the town and the Hollow Stair shelf.
+ * the one overworld authored site: Dawnmead.
  */
 const BASIN_T1 = 0.72;
 const BASIN_T2 = 0.8;
@@ -74,13 +75,8 @@ const BASIN_T2 = 0.8;
 export function basinFieldAt(seed: number, tx: number, ty: number): number {
   if (ty >= DARK_BAND_Y) return 0; // caves carve the underworld, not basins
   const f = fbm(seed + 77713, tx * 0.012, ty * 0.012, 3);
-  const distFromTown = Math.hypot(tx - 48, ty - 48);
-  const distFromHollow = Math.hypot(tx - 132, ty - 20);
-  return (
-    f -
-    Math.max(0, 1 - distFromTown / 200) * 0.6 -
-    Math.max(0, 1 - distFromHollow / 60) * 0.6
-  );
+  const distFromTown = Math.hypot(tx + 64, ty - 48);
+  return f - Math.max(0, 1 - distFromTown / 200) * 0.6;
 }
 
 function levelOf(pf: number, bf: number, elevation: number): number {

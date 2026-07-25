@@ -1,7 +1,0 @@
-{
-  "id": "road_wanderer",
-  "base": { "kind": "post", "dir": -1.5707963, "speed": 1.5 },
-  "slots": [
-    { "from": 7, "to": 21, "task": { "kind": "wander", "radius": 3.5, "speed": 1.5 } }
-  ]
-}

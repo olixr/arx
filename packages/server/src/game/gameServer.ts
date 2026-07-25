@@ -6087,8 +6087,8 @@ export class GameServer {
 
     if (health.hp <= 0) {
       const pos = this.positions.must(eid);
-      // Nearest settled spawn: a Dawnmead waker wakes back at the
-      // Ring, a veteran out east wakes in Bramblewick.
+      // Nearest settled spawn — with one hearth in the world that's
+      // the Waking Ring; future settlements shorten the walk back.
       const spawn = this.world.respawnAt(pos.x, pos.y);
       pos.x = spawn.x;
       pos.y = spawn.y;
@@ -6100,7 +6100,7 @@ export class GameServer {
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',
-        text: 'You were defeated! You wake up back in Bramblewick.',
+        text: 'You were defeated! You wake back at the nearest hearth.',
       });
     }
   }

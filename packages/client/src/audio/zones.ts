@@ -2,15 +2,15 @@
  * Where the ear is — the audio's map of the world, pure and testable.
  *
  * Three listening zones, weighted continuously so music and ambience
- * can crossfade instead of switching: TOWN (the Bramblewick plaza and
- * its ring of buildings), WILD (the open overworld), CAVE (anything
+ * can crossfade instead of switching: TOWN (Dawnmead's green and its
+ * ring of cottages), WILD (the open overworld), CAVE (anything
  * underground). The weights always sum to 1.
  *
- * Geography facts these lean on: the authored town zone spans
- * (0,0)–(96,96) with its plaza at (48,48); everything at y ≥ 512 is
- * the dark band — Gloomhollow sits at y 1024+, per-player delves at
- * y ≥ 8192 — where worldgen emits solid cave. The town radii hug the
- * built-up ring (~30 tiles) and let the last houses trail off by ~48.
+ * Geography facts these lean on: the village zone spans (-96,16)-(0,80)
+ * with its green near (-64,48); everything at y ≥ 512 is the dark band
+ * — per-player delves sit at y ≥ 8192 — where worldgen emits solid
+ * cave. The town radii hug the built-up hamlet (~22 tiles) and let the
+ * last hedgerows trail off by ~36.
  */
 
 export interface ZoneWeights {
@@ -23,11 +23,10 @@ export type ZoneId = keyof ZoneWeights;
 
 /**
  * The settled places the music treats as town: full weight inside
- * `full`, trailing off to wild by `fade`. Bramblewick's ring is wide;
- * Dawnmead is a hamlet and lets go of you sooner.
+ * `full`, trailing off to wild by `fade`. Dawnmead is the world's one
+ * hearth for now — future settlements add rows here as they're built.
  */
 const TOWNS = [
-  { x: 48, y: 48, full: 30, fade: 48 }, // Bramblewick
   { x: -64, y: 48, full: 22, fade: 36 }, // Dawnmead
 ] as const;
 /** The dark band: worldgen's underground begins here. */

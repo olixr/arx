@@ -9,10 +9,7 @@ import {
   DIALOGUES,
   NPC_ACTORS,
   ROUTINES,
-  buildBramblewick,
   buildDawnmead,
-  buildGloomhollow,
-  buildHollowStair,
   lootTableErrors,
   replaceLootTables,
   replaceNpcDefs,
@@ -39,16 +36,14 @@ import { Session } from './net/session.js';
 import { WorldSource } from './world/worldSource.js';
 
 // Authored zones: built-ins from content, plus map-editor JSON saved
-// in data/maps/. Later zones win where they overlap. Bramblewick
-// stays first: WorldSource takes the world spawn from the first zone
-// that declares one. A file whose id matches a built-in REPLACES it
-// in place (same overlay slot) — that's how an edited town ships.
-const builtinZones = new Map<string, ZoneDef>(
-  [buildBramblewick(), buildDawnmead(), buildGloomhollow(), buildHollowStair()].map((z) => [
-    z.id,
-    z,
-  ]),
-);
+// in data/maps/. Later zones win where they overlap. Dawnmead comes
+// first: WorldSource takes the world spawn from the first zone that
+// declares one. A file whose id matches a built-in REPLACES it in
+// place (same overlay slot) — that's how an edited village ships.
+// The world is built out fresh from Dawnmead: the old placeholder
+// town, dungeon, and quarry zones are gone, and everything past the
+// hedgerows is the procedural frontier.
+const builtinZones = new Map<string, ZoneDef>([buildDawnmead()].map((z) => [z.id, z]));
 const zones: ZoneDef[] = [...builtinZones.values()];
 try {
   const mapsDir = join(config.dataDir, 'maps');

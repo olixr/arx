@@ -12,9 +12,9 @@ test('zone weights always sum to 1 and never leave [0,1]', () => {
   }
 });
 
-test('the plaza is town, the far field is wild, underground is cave', () => {
-  assert.equal(zoneWeights(48, 48).town, 1);
-  assert.equal(dominantZone(zoneWeights(48, 48)), 'town');
+test('the green is town, the far field is wild, underground is cave', () => {
+  assert.equal(zoneWeights(-64, 48).town, 1);
+  assert.equal(dominantZone(zoneWeights(-64, 48)), 'town');
   assert.equal(zoneWeights(300, 48).wild, 1);
   assert.equal(dominantZone(zoneWeights(300, 48)), 'wild');
   assert.equal(zoneWeights(20, 1040).cave, 1);
@@ -22,8 +22,8 @@ test('the plaza is town, the far field is wild, underground is cave', () => {
 });
 
 test('the town edge fades — no cliff in the crossfade', () => {
-  let prev = zoneWeights(48, 48).town;
-  for (let x = 48; x < 110; x += 0.5) {
+  let prev = zoneWeights(-64, 48).town;
+  for (let x = -64; x < -2; x += 0.5) {
     const cur = zoneWeights(x, 48).town;
     assert.ok(cur <= prev + 1e-9, 'town weight is monotone outward');
     assert.ok(Math.abs(cur - prev) < 0.06, `smooth at x=${x}`);

@@ -8,7 +8,7 @@ import {
   encodeChunk,
   isSolidTile,
 } from '@devcraft/shared';
-import { buildBramblewick, buildHollowStair } from '@devcraft/content';
+import { buildDawnmead } from '@devcraft/content';
 import { basinFieldAt, generateChunk } from './worldgen.js';
 import { WorldSource } from './worldSource.js';
 
@@ -97,57 +97,58 @@ test('different seeds give different terrain', () => {
 });
 
 test('authored zone overlays the procedural world exactly', () => {
-  const town = buildBramblewick();
+  const town = buildDawnmead();
   const world = new WorldSource(1337, [town]);
-  // The town spans chunks (0,0)-(2,2); its well sits at (47,47).
-  world.ensure(1, 1);
-  assert.equal(world.groundAt(47, 47), Tile.WallStone);
-  // Plaza center is walkable stone.
-  assert.equal(world.groundAt(48, 50), Tile.StoneFloor);
-  assert.equal(world.isSolid(48, 50), false);
+  // The village spans world (-96,16)-(-1,79); its well sits at (-63,43).
+  world.ensure(-3, 1);
+  world.ensure(-2, 1);
+  assert.equal(world.groundAt(-63, 43), Tile.WallStone);
+  // The Waking Ring's pad is walkable stone.
+  assert.equal(world.groundAt(-82, 48), Tile.StoneFloor);
+  assert.equal(world.isSolid(-82, 48), false);
 });
 
-test('spawn point is walkable and inside the town', () => {
-  const town = buildBramblewick();
+test('spawn point is walkable and inside the village', () => {
+  const town = buildDawnmead();
   const world = new WorldSource(1337, [town]);
   const spawn = world.spawn;
-  assert.ok(spawn.x > 0 && spawn.x < 96 && spawn.y > 0 && spawn.y < 96);
+  assert.ok(spawn.x > -96 && spawn.x < 0 && spawn.y > 16 && spawn.y < 80);
   assert.equal(world.isSolid(Math.floor(spawn.x), Math.floor(spawn.y)), false);
 });
 
-test('town interiors are enterable: every building has a door', () => {
-  const town = buildBramblewick();
+test('village interiors are enterable: every building has a door', () => {
+  const town = buildDawnmead();
   const world = new WorldSource(1337, [town]);
-  world.ensure(0, 0);
-  world.ensure(1, 1);
-  // Flood-fill from spawn; count reachable walkable tiles in the zone.
+  world.ensure(-3, 1);
+  world.ensure(-2, 1);
+  world.ensure(-1, 1);
+  // Flood-fill from the Waking Ring; count reachable walkable tiles.
   const seen = new Set<string>();
-  const queue: Array<[number, number]> = [[48, 52]];
+  const queue: Array<[number, number]> = [[-81, 48]];
   while (queue.length > 0) {
     const [x, y] = queue.pop()!;
     const key = `${x},${y}`;
     if (seen.has(key)) continue;
-    if (x < 0 || y < 0 || x >= 96 || y >= 96) continue;
+    if (x < -96 || y < 16 || x >= 0 || y >= 80) continue;
     if (world.isSolid(x, y)) continue;
     seen.add(key);
     queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
   }
   // Every floor tile of every building must be reachable from spawn.
   let unreachableFloors = 0;
-  for (let y = 0; y < 96; y++) {
+  for (let y = 0; y < 64; y++) {
     for (let x = 0; x < 96; x++) {
       const g = town.ground[y * 96 + x]!;
       if ((g === Tile.WoodFloor || g === Tile.StoneFloor) && !isSolidTile(g)) {
-        if (!seen.has(`${x},${y}`)) unreachableFloors++;
+        if (!seen.has(`${x - 96},${y + 16}`)) unreachableFloors++;
       }
     }
   }
   assert.equal(unreachableFloors, 0, `${unreachableFloors} floor tiles unreachable`);
 
-  // All four road mouths must be reachable so the town connects to the wild.
-  for (const [x, y] of [[1, 48], [94, 48], [48, 1], [48, 94]] as const) {
-    assert.ok(seen.has(`${x},${y}`), `road mouth (${x},${y}) blocked`);
-  }
+  // The east lane mouth must be reachable so the village connects to
+  // the frontier (and the world beyond the seam).
+  assert.ok(seen.has('-1,48'), 'the east lane mouth is blocked');
 });
 
 test('levels are fenced: no walkable step between levels except ramps', () => {
@@ -285,22 +286,6 @@ test('sink regions get entrance ramps (most enterable, some scenic)', () => {
   );
 });
 
-test('the Hollow Stair zone stamps signed elevation over the wilds', () => {
-  const world = new WorldSource(1337, [buildHollowStair()]);
-  world.ensure(3, 0);
-  world.ensure(4, 0);
-  // Zone origin (120,8): dell floor at local (11,9), quarry at (12,14).
-  assert.equal(world.elevAt(131, 17), -1);
-  assert.equal(world.elevAt(132, 22), -2);
-  assert.equal(world.groundAt(132, 22), Tile.PortalDown);
-  assert.ok(world.portalAt(132, 22)?.delve, 'delve portal missing on the quarry floor');
-  // Both flights present, framed by the auto-fence.
-  assert.equal(world.groundAt(131, 15), Tile.Ramp);
-  assert.equal(world.elevAt(131, 15), 0);
-  assert.equal(world.groundAt(130, 15), Tile.Cliff);
-  assert.equal(world.groundAt(131, 19), Tile.Ramp);
-  assert.equal(world.elevAt(131, 19), -1);
-});
 
 test('ramps exist and connect a lower walkable tile to a higher one', () => {
   // Scan a broad band of wilderness for ramps; every ramp must have a
