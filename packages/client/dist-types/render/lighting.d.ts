@@ -13,18 +13,23 @@
  * - LIGHT IS GEOGRAPHY. The map is drawn in WORLD space through the
  *   camera transform, so light pools are ground ellipses (foreshortened
  *   by the camera pitch like everything else), not screen-space discs.
- * - WALLS STOP LIGHT. Big static lights cast hard 2D shadows: solid
- *   tiles project silhouette quads that erase the light behind them.
- *   Sharp-edged, like every shadow in this game.
- * - LIGHT CLIMBS WHAT IT MEETS (v2). EVERY tall thing standing in a
- *   pool — wall, stall, station, pillar, tree — catches the light on
- *   the face the camera sees: a vertical gradient rising from its BASE
- *   row, graded by N·L (how squarely the face looks at the light) and
- *   the pool's falloff, hottest at the foot and dying up the face.
- *   Heights come from the renderer's `tallH(tx,ty)` callback (world-y
- *   units — screen-vertical faces divide the camera squash back out).
- *   Faces behind an occluder stay dark: a coarse line-of-sight walk
- *   against `blocks` gates every face an occluding light paints.
+ * - GEOMETRY, NOT TILES (v3). The world is tiled but its light is not:
+ *   occluders inside a light's reach are greedily merged into
+ *   RECTANGLES before anything casts, so a straight wall throws ONE
+ *   clean-edged shadow instead of a scallop of per-tile wedges; lit
+ *   faces merge into RUNS shaded continuously (light sampled at tile
+ *   CORNERS, interpolated along the run) — a wall is one face of
+ *   geometry, never a row of individually-lit blocks.
+ * - SHADOWS ARE NOT VOIDS (v3). The umbra keeps ~10% of the pool (the
+ *   world has bounce light), penumbras grade over two widening bands,
+ *   and after the erase a soft WRAP halo puts indirect light back into
+ *   the shadowed nooks — a lamp in a boxed room illuminates the room.
+ * - THE MAP IS FILTERED (v3). One down-up blur pass smooths the whole
+ *   field before the multiply — pool falloff, shadow rims and face
+ *   gradients all soften together. Light is low-frequency; nothing in
+ *   this map is allowed a razor edge.
+ * - WALLS STOP LIGHT. Big static lights cast real 2D shadows; a coarse
+ *   line-of-sight walk gates every lit face an occluding light paints.
  * - DAYLIGHT IS FREE. At full sun the ambient is white and the entire
  *   pass is skipped — the system costs nothing until dusk.
  * - QUARTER RES IS PLENTY. Light is low-frequency; the map renders at
@@ -58,8 +63,16 @@ export declare class LightingSystem {
     private readonly mctx;
     private readonly tmp;
     private readonly tctx;
-    /** Scratch face list, reused across lights — no per-frame garbage. */
-    private readonly faces;
+    /** Face-run scratch: one run at a time is shaped here (horizontal
+     *  intensity gradient ∩ vertical base fade) then composited. */
+    private readonly face;
+    private readonly fctx;
+    /** Half-res bounce buffer for the map's blur pass. */
+    private readonly blur;
+    private readonly bctx;
+    /** Scratch collections, reused across lights — no per-frame garbage. */
+    private readonly rects;
+    private readonly runs;
     /**
      * Paint the frame's exposure. `blocks` answers whether a tile stops
      * light (walls, cliffs); it is only consulted near occluding lights.
@@ -70,36 +83,60 @@ export declare class LightingSystem {
     draw(ctx: CanvasRenderingContext2D, view: LightView, sky: DaylightSample, lights: WorldLight[], blocks: (tx: number, ty: number) => boolean, tallH: (tx: number, ty: number) => number): void;
     /** The light's radial falloff, in the ctx's world-space frame. */
     private gradient;
+    /** The soft indirect halo: wider and dimmer than the pool. */
+    private wrapGradient;
     /**
-     * Fill `this.faces` with every camera-visible face this light
-     * strikes: any tile reporting a tall face whose south edge looks at
-     * the light. Brightness follows N·L and the pool's falloff. When
-     * `blocks` is given (occluding lights), a coarse tile walk along the
-     * sight line drops faces standing behind a wall — light lands ON the
-     * first thing it meets, never through it.
+     * The light's brightness on a camera-facing face at world x, base
+     * row ye: N·L (how squarely the face looks at the pool) times the
+     * pool's falloff. Sampled at tile CORNERS so neighbouring faces
+     * shade continuously — the run reads as one surface.
      */
-    private gatherFaces;
+    private faceK;
+    /**
+     * Fill `this.runs` with the light's lit faces, merged into
+     * continuous runs: contiguous tiles on one base row with one height
+     * fuse, carrying corner-sampled intensities. When `blocks` is given
+     * (occluding lights), a coarse sight-line walk zeroes the shadowed
+     * stretch of a run — light lands on the first thing it meets.
+     */
+    private gatherFaceRuns;
     /** Coarse LOS: sample the sight line one tile at a time, keeping
      *  0.7 tiles clear of both endpoints so neither the light's own tile
      *  nor the face's body blocks itself. */
-    private faceVisible;
-    /** Paint the gathered faces into a world-transformed ctx: a vertical
-     *  gradient rising from each base row, hottest at the foot. */
-    private paintFaces;
+    private sightClear;
+    /**
+     * Shape and composite the gathered runs. Face brightness is
+     * SEPARABLE — k(x) along the run times the base-anchored vertical
+     * fade — so each run is built exactly on the face scratch: fill the
+     * horizontal corner-stop gradient, intersect (destination-in) with
+     * the vertical fade, then screen the patch onto the destination.
+     * One run, three fills, one blit; no per-tile seams anywhere.
+     */
+    private paintFaceRuns;
+    /**
+     * GEOMETRY, NOT TILES: greedily merge every blocking tile in the
+     * light's reach into rectangles (row runs, then identical runs fuse
+     * downward). A straight wall becomes ONE rect casting ONE shadow —
+     * the per-tile wedge scallops this replaces were the tile grid
+     * showing through the light.
+     */
+    private collectRects;
     /**
      * A light with wall shadows: painted alone on a scratch canvas, its
-     * shadow quads erased, then screened onto the map — so erasing the
-     * shadow never bites into the ambient or any other light. Lit faces
-     * paint AFTER the erase: they re-light exactly the band a wall's own
-     * occlusion wedge blacked out.
+     * shadow erased from merged geometry, then screened onto the map.
+     * The erase is GRADED — two widening penumbra bands, then the core
+     * at SHADOW_DENSITY (never to zero: the world has bounce light) —
+     * and after it the wrap halo pours indirect light back over
+     * everything, corners included. Lit faces paint last: they re-light
+     * exactly the band a wall's own occlusion blacked out.
      */
     private drawOccludedLight;
     /**
-     * Project the tile square's silhouette away from the light. Each
-     * occluding edge erases twice: a slightly splayed half-alpha quad
-     * (penumbra), then the exact hard quad (umbra) — the shadow's rim
-     * softens the further it runs, the core stays black.
+     * Project a merged rectangle's silhouette away from the light with
+     * corner rays splayed outward by `splay` radians (0 = the exact hard
+     * silhouette). Every back-facing edge of the rect erases one quad;
+     * with rects merged there are no interior edges left to seam.
      */
-    private castTileShadow;
+    private castRectShadow;
 }
 //# sourceMappingURL=lighting.d.ts.map

@@ -2704,11 +2704,12 @@ export class Renderer {
   }
 
   /** Deep-cave ambient the underground blend rides to: cool, slightly
-   *  desaturated, ~0.76 effective darkness regardless of surface hour.
-   *  Lifted from the original [48,54,70] in the cave-light rework: the
-   *  silhouette floor was below readability, and the drama now comes
-   *  from pools, lit faces and body relights, not from raw murk. */
-  private static readonly UG_AMBIENT: readonly [number, number, number] = [56, 62, 80];
+   *  desaturated, ~0.72 effective darkness regardless of surface hour.
+   *  Lifted twice from the original [48,54,70] in the cave-light
+   *  reworks: the silhouette floor sat below readability, and the
+   *  drama now comes from pools, lit faces, bounce wrap and body
+   *  relights, not from raw murk. */
+  private static readonly UG_AMBIENT: readonly [number, number, number] = [64, 70, 88];
 
   /**
    * Blend this frame's sky sample toward the fixed cave ambient.
@@ -2925,9 +2926,9 @@ export class Renderer {
         this.lights.push({
           x: own.x,
           y: own.y,
-          r: 3.8,
+          r: 4.6,
           rgb: [255, 213, 156],
-          intensity: 0.42 * ug * breathe,
+          intensity: 0.5 * ug * breathe,
         });
       }
     }
@@ -15739,9 +15740,12 @@ export class Renderer {
       if (Math.abs(dx) >= L.r || Math.abs(dy) >= L.r) continue;
       const d = Math.hypot(dx, dy);
       if (d >= L.r) continue;
-      if (L.occlude && d > 1.4 && !this.lightSees(L.x, L.y, wx, wy, d)) continue;
+      // Behind a wall the map still delivers the bounce-wrap fraction
+      // (lighting.ts WRAP/SHADOW_DENSITY) — model it, don't zero it.
+      const shade =
+        L.occlude && d > 1.4 && !this.lightSees(L.x, L.y, wx, wy, d) ? 0.25 : 1;
       const lum = (0.299 * L.rgb[0] + 0.587 * L.rgb[1] + 0.114 * L.rgb[2]) / 255;
-      const li = Math.min(1, L.intensity * lum * Math.pow(1 - d / L.r, 1.3));
+      const li = Math.min(1, L.intensity * lum * Math.pow(1 - d / L.r, 1.3) * shade);
       dark *= 1 - li;
       if (wantDom && li > this.domK) {
         this.domK = li;

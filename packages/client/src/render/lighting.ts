@@ -13,18 +13,23 @@
  * - LIGHT IS GEOGRAPHY. The map is drawn in WORLD space through the
  *   camera transform, so light pools are ground ellipses (foreshortened
  *   by the camera pitch like everything else), not screen-space discs.
- * - WALLS STOP LIGHT. Big static lights cast hard 2D shadows: solid
- *   tiles project silhouette quads that erase the light behind them.
- *   Sharp-edged, like every shadow in this game.
- * - LIGHT CLIMBS WHAT IT MEETS (v2). EVERY tall thing standing in a
- *   pool — wall, stall, station, pillar, tree — catches the light on
- *   the face the camera sees: a vertical gradient rising from its BASE
- *   row, graded by N·L (how squarely the face looks at the light) and
- *   the pool's falloff, hottest at the foot and dying up the face.
- *   Heights come from the renderer's `tallH(tx,ty)` callback (world-y
- *   units — screen-vertical faces divide the camera squash back out).
- *   Faces behind an occluder stay dark: a coarse line-of-sight walk
- *   against `blocks` gates every face an occluding light paints.
+ * - GEOMETRY, NOT TILES (v3). The world is tiled but its light is not:
+ *   occluders inside a light's reach are greedily merged into
+ *   RECTANGLES before anything casts, so a straight wall throws ONE
+ *   clean-edged shadow instead of a scallop of per-tile wedges; lit
+ *   faces merge into RUNS shaded continuously (light sampled at tile
+ *   CORNERS, interpolated along the run) — a wall is one face of
+ *   geometry, never a row of individually-lit blocks.
+ * - SHADOWS ARE NOT VOIDS (v3). The umbra keeps ~10% of the pool (the
+ *   world has bounce light), penumbras grade over two widening bands,
+ *   and after the erase a soft WRAP halo puts indirect light back into
+ *   the shadowed nooks — a lamp in a boxed room illuminates the room.
+ * - THE MAP IS FILTERED (v3). One down-up blur pass smooths the whole
+ *   field before the multiply — pool falloff, shadow rims and face
+ *   gradients all soften together. Light is low-frequency; nothing in
+ *   this map is allowed a razor edge.
+ * - WALLS STOP LIGHT. Big static lights cast real 2D shadows; a coarse
+ *   line-of-sight walk gates every lit face an occluding light paints.
  * - DAYLIGHT IS FREE. At full sun the ambient is white and the entire
  *   pass is skipped — the system costs nothing until dusk.
  * - QUARTER RES IS PLENTY. Light is low-frequency; the map renders at
@@ -56,18 +61,55 @@ export interface LightView {
   oy: number;
 }
 
-/** One camera-facing face a light strikes: [x0, x1, baseY, k, h]. */
-type LitFace = [number, number, number, number, number];
+/** A merged occluder rectangle, in whole tiles. */
+interface OccRect {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** A continuous run of camera-facing faces sharing a base row and
+ *  height, with the light sampled at every tile corner along it. */
+interface FaceRun {
+  x0: number;
+  x1: number;
+  ye: number;
+  h: number;
+  /** Corner intensities, length (x1−x0)+1 — k interpolates between. */
+  ks: number[];
+}
 
 const MAP_DOWNSCALE = 3;
+/** How much of the direct pool the umbra erase removes: the remainder
+ *  is the scene's implicit first-bounce fill. */
+const SHADOW_DENSITY = 0.82;
+/** Penumbra bands: [splay radians, erase alpha] — widest first, so the
+ *  shadow rim grades dark→light over two steps before the blur. */
+const PENUMBRA: ReadonlyArray<readonly [number, number]> = [
+  [0.14, 0.22],
+  [0.07, 0.3],
+];
+/** The wrap halo: indirect light painted AFTER the shadow erase —
+ *  bounce that turns corners and fills the boxed room. */
+const WRAP_K = 0.12;
+const WRAP_R = 1.25;
 
 export class LightingSystem {
   private readonly map = document.createElement('canvas');
   private readonly mctx = this.map.getContext('2d')!;
   private readonly tmp = document.createElement('canvas');
   private readonly tctx = this.tmp.getContext('2d')!;
-  /** Scratch face list, reused across lights — no per-frame garbage. */
-  private readonly faces: LitFace[] = [];
+  /** Face-run scratch: one run at a time is shaped here (horizontal
+   *  intensity gradient ∩ vertical base fade) then composited. */
+  private readonly face = document.createElement('canvas');
+  private readonly fctx = this.face.getContext('2d')!;
+  /** Half-res bounce buffer for the map's blur pass. */
+  private readonly blur = document.createElement('canvas');
+  private readonly bctx = this.blur.getContext('2d')!;
+  /** Scratch collections, reused across lights — no per-frame garbage. */
+  private readonly rects: OccRect[] = [];
+  private readonly runs: FaceRun[] = [];
 
   /**
    * Paint the frame's exposure. `blocks` answers whether a tile stops
@@ -90,6 +132,10 @@ export class LightingSystem {
     if (this.map.width !== mw || this.map.height !== mh) {
       this.map.width = mw;
       this.map.height = mh;
+    }
+    if (this.face.width < mw || this.face.height < mh) {
+      this.face.width = Math.max(this.face.width, mw);
+      this.face.height = Math.max(this.face.height, mh);
     }
     const m = this.mctx;
     m.setTransform(1, 0, 0, 1, 0, 0);
@@ -116,13 +162,28 @@ export class LightingSystem {
         m.fillRect(light.x - light.r, light.y - light.r, light.r * 2, light.r * 2);
         // Standing content in the pool catches the light — no shadow
         // math for free-floating lights, so no LOS gate either.
-        this.gatherFaces(light, tallH, null);
-        this.paintFaces(m, light);
+        this.gatherFaceRuns(light, tallH, null);
+        this.paintFaceRuns(m, light, sx, sy, tx, ty);
       }
     }
 
+    // THE FILTER: one down-up resample softens the whole field —
+    // shadow rims, face seams, pool banding — before the multiply.
+    // Bilinear resampling IS the blur (the tilt-shift law).
+    const bw = Math.max(1, Math.ceil(mw / 2));
+    const bh = Math.max(1, Math.ceil(mh / 2));
+    if (this.blur.width !== bw || this.blur.height !== bh) {
+      this.blur.width = bw;
+      this.blur.height = bh;
+    }
     m.setTransform(1, 0, 0, 1, 0, 0);
     m.globalCompositeOperation = 'source-over';
+    m.globalAlpha = 1;
+    this.bctx.imageSmoothingEnabled = true;
+    this.bctx.clearRect(0, 0, bw, bh);
+    this.bctx.drawImage(this.map, 0, 0, mw, mh, 0, 0, bw, bh);
+    m.imageSmoothingEnabled = true;
+    m.drawImage(this.blur, 0, 0, bw, bh, 0, 0, mw, mh);
 
     ctx.save();
     ctx.globalCompositeOperation = 'multiply';
@@ -137,55 +198,105 @@ export class LightingSystem {
     const grad = g.createRadialGradient(light.x, light.y, light.r * 0.06, light.x, light.y, light.r);
     const stop = (a: number): string => `rgba(${r}, ${gg}, ${b}, ${a * light.intensity})`;
     grad.addColorStop(0, stop(1));
-    grad.addColorStop(0.35, stop(0.66));
-    grad.addColorStop(0.7, stop(0.24));
+    grad.addColorStop(0.4, stop(0.72));
+    grad.addColorStop(0.75, stop(0.28));
     grad.addColorStop(1, stop(0));
     return grad;
   }
 
+  /** The soft indirect halo: wider and dimmer than the pool. */
+  private wrapGradient(g: CanvasRenderingContext2D, light: WorldLight): CanvasGradient {
+    const [r, gg, b] = light.rgb;
+    const wr = light.r * WRAP_R;
+    const grad = g.createRadialGradient(light.x, light.y, wr * 0.05, light.x, light.y, wr);
+    const a = light.intensity * WRAP_K;
+    grad.addColorStop(0, `rgba(${r}, ${gg}, ${b}, ${a})`);
+    grad.addColorStop(0.6, `rgba(${r}, ${gg}, ${b}, ${a * 0.55})`);
+    grad.addColorStop(1, `rgba(${r}, ${gg}, ${b}, 0)`);
+    return grad;
+  }
+
   /**
-   * Fill `this.faces` with every camera-visible face this light
-   * strikes: any tile reporting a tall face whose south edge looks at
-   * the light. Brightness follows N·L and the pool's falloff. When
-   * `blocks` is given (occluding lights), a coarse tile walk along the
-   * sight line drops faces standing behind a wall — light lands ON the
-   * first thing it meets, never through it.
+   * The light's brightness on a camera-facing face at world x, base
+   * row ye: N·L (how squarely the face looks at the pool) times the
+   * pool's falloff. Sampled at tile CORNERS so neighbouring faces
+   * shade continuously — the run reads as one surface.
    */
-  private gatherFaces(
+  private faceK(light: WorldLight, x: number, ye: number): number {
+    const mx = x - light.x;
+    const my = ye - light.y;
+    if (my >= 0) return 0;
+    const d = Math.hypot(mx, my) || 1;
+    if (d >= light.r) return 0;
+    const fall = 1 - d / light.r;
+    return Math.min(0.6, light.intensity * Math.pow(fall, 1.4) * (-my / d) * 0.85);
+  }
+
+  /**
+   * Fill `this.runs` with the light's lit faces, merged into
+   * continuous runs: contiguous tiles on one base row with one height
+   * fuse, carrying corner-sampled intensities. When `blocks` is given
+   * (occluding lights), a coarse sight-line walk zeroes the shadowed
+   * stretch of a run — light lands on the first thing it meets.
+   */
+  private gatherFaceRuns(
     light: WorldLight,
     tallH: (tx: number, ty: number) => number,
     blocks: ((tx: number, ty: number) => boolean) | null,
   ): void {
-    this.faces.length = 0;
+    this.runs.length = 0;
     const t0x = Math.floor(light.x - light.r);
     const t1x = Math.ceil(light.x + light.r);
     const t0y = Math.floor(light.y - light.r);
     const t1y = Math.ceil(light.y + light.r);
     for (let cy = t0y; cy <= t1y; cy++) {
-      for (let cx = t0x; cx <= t1x; cx++) {
-        const h = tallH(cx, cy);
+      const ye = cy + 1;
+      if (ye - light.y >= 0) continue; // light must stand south of it
+      let run: FaceRun | null = null;
+      let live = false;
+      for (let cx = t0x; cx <= t1x + 1; cx++) {
+        let h = cx <= t1x ? tallH(cx, cy) : 0;
+        let k0 = 0;
+        let k1 = 0;
+        if (h > 0) {
+          k0 = this.faceK(light, cx, ye);
+          k1 = this.faceK(light, cx + 1, ye);
+          if (k0 <= 0.005 && k1 <= 0.005) h = 0;
+          else if (blocks) {
+            const mx = cx + 0.5 - light.x;
+            const my = ye - light.y;
+            const d = Math.hypot(mx, my) || 1;
+            if (d > 2 && !this.sightClear(light, cx + 0.5, ye, d, blocks)) {
+              // Shadowed stretch: the run continues but dips to dark.
+              k0 = 0;
+              k1 = 0;
+            }
+          }
+        }
+        if (run && (h !== run.h || cx > run.x1)) {
+          if (live) this.runs.push(run);
+          run = null;
+          live = false;
+        }
         if (h <= 0) continue;
-        // South edge midpoint, relative to the light. The face is lit
-        // only when the light stands SOUTH of it (the side the camera
-        // sees); N·L is how squarely it faces the pool.
-        const mx = cx + 0.5 - light.x;
-        const my = cy + 1 - light.y;
-        if (my >= 0) continue;
-        const d = Math.hypot(mx, my) || 1;
-        if (d >= light.r) continue;
-        const fall = 1 - d / light.r;
-        const k = Math.min(0.6, light.intensity * Math.pow(fall, 1.4) * (-my / d) * 0.85);
-        if (k <= 0.03) continue;
-        if (blocks && d > 2 && !this.faceVisible(light, cx + 0.5, cy + 1, d, blocks)) continue;
-        this.faces.push([cx, cx + 1, cy + 1, k, h]);
+        if (!run) {
+          run = { x0: cx, x1: cx + 1, ye, h, ks: [k0, k1] };
+        } else {
+          // Shared corner: keep the brighter sample (LOS dips write 0).
+          run.ks[run.ks.length - 1] = Math.max(run.ks[run.ks.length - 1]!, k0);
+          run.ks.push(k1);
+          run.x1 = cx + 1;
+        }
+        if (k0 > 0.03 || k1 > 0.03) live = true;
       }
+      if (run && live) this.runs.push(run);
     }
   }
 
   /** Coarse LOS: sample the sight line one tile at a time, keeping
    *  0.7 tiles clear of both endpoints so neither the light's own tile
    *  nor the face's body blocks itself. */
-  private faceVisible(
+  private sightClear(
     light: WorldLight,
     fx: number,
     fy: number,
@@ -200,26 +311,117 @@ export class LightingSystem {
     return true;
   }
 
-  /** Paint the gathered faces into a world-transformed ctx: a vertical
-   *  gradient rising from each base row, hottest at the foot. */
-  private paintFaces(g: CanvasRenderingContext2D, light: WorldLight): void {
-    const [r, gg, b] = light.rgb;
-    for (const [x0, x1, ye, k, h] of this.faces) {
-      const grad = g.createLinearGradient(0, ye, 0, ye - h);
-      grad.addColorStop(0, `rgba(${r}, ${gg}, ${b}, ${k})`);
-      grad.addColorStop(0.55, `rgba(${r}, ${gg}, ${b}, ${k * 0.45})`);
-      grad.addColorStop(1, `rgba(${r}, ${gg}, ${b}, 0)`);
-      g.fillStyle = grad;
-      g.fillRect(x0, ye - h, x1 - x0, h);
+  /**
+   * Shape and composite the gathered runs. Face brightness is
+   * SEPARABLE — k(x) along the run times the base-anchored vertical
+   * fade — so each run is built exactly on the face scratch: fill the
+   * horizontal corner-stop gradient, intersect (destination-in) with
+   * the vertical fade, then screen the patch onto the destination.
+   * One run, three fills, one blit; no per-tile seams anywhere.
+   */
+  private paintFaceRuns(
+    dest: CanvasRenderingContext2D,
+    light: WorldLight,
+    a: number,
+    d: number,
+    e: number,
+    f: number,
+  ): void {
+    if (this.runs.length === 0) return;
+    const [lr, lg, lb] = light.rgb;
+    const fc = this.fctx;
+    for (const run of this.runs) {
+      // Device-px bbox of the run on the destination, padded a pixel.
+      const bx0 = Math.max(0, Math.floor(run.x0 * a + e) - 1);
+      const by0 = Math.max(0, Math.floor((run.ye - run.h) * d + f) - 1);
+      const bx1 = Math.min(this.face.width, Math.ceil(run.x1 * a + e) + 1);
+      const by1 = Math.min(this.face.height, Math.ceil(run.ye * d + f) + 1);
+      if (bx1 <= bx0 || by1 <= by0) continue;
+      fc.setTransform(1, 0, 0, 1, 0, 0);
+      fc.globalCompositeOperation = 'source-over';
+      fc.clearRect(bx0, by0, bx1 - bx0, by1 - by0);
+      fc.setTransform(a, 0, 0, d, e, f);
+      // The run's intensity ride: one gradient, a stop per corner.
+      const hg = fc.createLinearGradient(run.x0, 0, run.x1, 0);
+      const n = run.ks.length - 1;
+      for (let i = 0; i <= n; i++) {
+        hg.addColorStop(i / n, `rgba(${lr}, ${lg}, ${lb}, ${run.ks[i]!.toFixed(4)})`);
+      }
+      fc.fillStyle = hg;
+      fc.fillRect(run.x0, run.ye - run.h, run.x1 - run.x0, run.h);
+      // The base-anchored fade: hottest at the foot, dead at the top.
+      fc.globalCompositeOperation = 'destination-in';
+      const vg = fc.createLinearGradient(0, run.ye, 0, run.ye - run.h);
+      vg.addColorStop(0, 'rgba(255,255,255,1)');
+      vg.addColorStop(0.55, 'rgba(255,255,255,0.45)');
+      vg.addColorStop(1, 'rgba(255,255,255,0)');
+      fc.fillStyle = vg;
+      fc.fillRect(run.x0, run.ye - run.h, run.x1 - run.x0, run.h);
+      dest.save();
+      dest.setTransform(1, 0, 0, 1, 0, 0);
+      dest.globalCompositeOperation = 'screen';
+      dest.drawImage(this.face, bx0, by0, bx1 - bx0, by1 - by0, bx0, by0, bx1 - bx0, by1 - by0);
+      dest.restore();
     }
   }
 
   /**
+   * GEOMETRY, NOT TILES: greedily merge every blocking tile in the
+   * light's reach into rectangles (row runs, then identical runs fuse
+   * downward). A straight wall becomes ONE rect casting ONE shadow —
+   * the per-tile wedge scallops this replaces were the tile grid
+   * showing through the light.
+   */
+  private collectRects(
+    light: WorldLight,
+    blocks: (tx: number, ty: number) => boolean,
+  ): void {
+    this.rects.length = 0;
+    const t0x = Math.floor(light.x - light.r);
+    const t1x = Math.ceil(light.x + light.r);
+    const t0y = Math.floor(light.y - light.r);
+    const t1y = Math.ceil(light.y + light.r);
+    const lTx = Math.floor(light.x);
+    const lTy = Math.floor(light.y);
+    // Rects still open to downward fusion, from the previous row.
+    let open: OccRect[] = [];
+    for (let cy = t0y; cy <= t1y; cy++) {
+      const rowRuns: OccRect[] = [];
+      let x0 = -1;
+      for (let cx = t0x; cx <= t1x + 1; cx++) {
+        const solid =
+          cx <= t1x && !(cx === lTx && cy === lTy) && blocks(cx, cy);
+        if (solid && x0 < 0) x0 = cx;
+        else if (!solid && x0 >= 0) {
+          rowRuns.push({ x0, y0: cy, x1: cx, y1: cy + 1 });
+          x0 = -1;
+        }
+      }
+      // Fuse runs that exactly continue an open rect; retire the rest.
+      const next: OccRect[] = [];
+      for (const rr of rowRuns) {
+        const prev = open.find((o) => o.x0 === rr.x0 && o.x1 === rr.x1 && o.y1 === rr.y0);
+        if (prev) {
+          prev.y1 = rr.y1;
+          next.push(prev);
+        } else {
+          next.push(rr);
+        }
+      }
+      for (const o of open) if (!next.includes(o)) this.rects.push(o);
+      open = next;
+    }
+    for (const o of open) this.rects.push(o);
+  }
+
+  /**
    * A light with wall shadows: painted alone on a scratch canvas, its
-   * shadow quads erased, then screened onto the map — so erasing the
-   * shadow never bites into the ambient or any other light. Lit faces
-   * paint AFTER the erase: they re-light exactly the band a wall's own
-   * occlusion wedge blacked out.
+   * shadow erased from merged geometry, then screened onto the map.
+   * The erase is GRADED — two widening penumbra bands, then the core
+   * at SHADOW_DENSITY (never to zero: the world has bounce light) —
+   * and after it the wrap halo pours indirect light back over
+   * everything, corners included. Lit faces paint last: they re-light
+   * exactly the band a wall's own occlusion blacked out.
    */
   private drawOccludedLight(
     light: WorldLight,
@@ -230,51 +432,60 @@ export class LightingSystem {
     tx: number,
     ty: number,
   ): void {
-    // Scratch bbox in map pixels around the light.
-    const bx = Math.floor(light.x * sx + tx - light.r * sx) - 1;
-    const by = Math.floor(light.y * sy + ty - light.r * sy) - 1;
-    const bw = Math.ceil(light.r * 2 * sx) + 2;
-    const bh = Math.ceil(light.r * 2 * sy) + 2;
+    // Scratch bbox in map pixels around the light's WRAP reach.
+    const reach = light.r * WRAP_R;
+    const bx = Math.floor(light.x * sx + tx - reach * sx) - 1;
+    const by = Math.floor(light.y * sy + ty - reach * sy) - 1;
+    const bw = Math.ceil(reach * 2 * sx) + 2;
+    const bh = Math.ceil(reach * 2 * sy) + 2;
     if (bw <= 0 || bh <= 0) return;
     if (this.tmp.width < bw || this.tmp.height < bh) {
       this.tmp.width = Math.max(this.tmp.width, bw);
       this.tmp.height = Math.max(this.tmp.height, bh);
     }
+    if (this.face.width < this.tmp.width || this.face.height < this.tmp.height) {
+      this.face.width = Math.max(this.face.width, this.tmp.width);
+      this.face.height = Math.max(this.face.height, this.tmp.height);
+    }
     const t = this.tctx;
     t.setTransform(1, 0, 0, 1, 0, 0);
     t.globalCompositeOperation = 'source-over';
+    t.globalAlpha = 1;
     t.clearRect(0, 0, bw, bh);
     // Same world→map transform, shifted into the scratch frame.
     t.setTransform(sx, 0, 0, sy, tx - bx, ty - by);
     t.fillStyle = this.gradient(t, light);
     t.fillRect(light.x - light.r, light.y - light.r, light.r * 2, light.r * 2);
 
-    // Hard shadows: every back-facing edge of every solid tile in
-    // reach projects away from the light to beyond its radius — with
-    // a half-strength penumbra fringe so the wedge softens toward its
-    // rim instead of ending on a razor line.
-    t.globalCompositeOperation = 'destination-out';
-    t.fillStyle = '#000';
-    const t0x = Math.floor(light.x - light.r);
-    const t1x = Math.ceil(light.x + light.r);
-    const t0y = Math.floor(light.y - light.r);
-    const t1y = Math.ceil(light.y + light.r);
-    const lTx = Math.floor(light.x);
-    const lTy = Math.floor(light.y);
-    for (let cy = t0y; cy <= t1y; cy++) {
-      for (let cx = t0x; cx <= t1x; cx++) {
-        if (cx === lTx && cy === lTy) continue;
-        if (!blocks(cx, cy)) continue;
-        this.castTileShadow(t, light, cx, cy);
+    // Shadows from merged geometry, graded rim to core.
+    this.collectRects(light, blocks);
+    if (this.rects.length > 0) {
+      t.globalCompositeOperation = 'destination-out';
+      t.fillStyle = '#000';
+      for (const [splay, alpha] of PENUMBRA) {
+        t.globalAlpha = alpha;
+        for (const rect of this.rects) this.castRectShadow(t, light, rect, splay);
       }
+      t.globalAlpha = SHADOW_DENSITY;
+      for (const rect of this.rects) this.castRectShadow(t, light, rect, 0);
+      t.globalAlpha = 1;
+      t.globalCompositeOperation = 'source-over';
     }
+
+    // THE WRAP: indirect light, painted OVER the shadow erase — the
+    // bounce that turns corners, fills the boxed room, and keeps a
+    // shadowed nook readable beside a burning brazier.
+    t.globalCompositeOperation = 'screen';
+    t.fillStyle = this.wrapGradient(t, light);
+    t.fillRect(light.x - reach, light.y - reach, reach * 2, reach * 2);
     t.globalCompositeOperation = 'source-over';
+
     // THE LIT FACES: everything standing in the pool — the walls that
     // just erased their own wedges AND the stalls, stations and trees
     // the shadow math never knew — catches the lamp on the side the
     // camera sees, LOS-gated so nothing glows through a wall.
-    this.gatherFaces(light, tallH, blocks);
-    this.paintFaces(t, light);
+    this.gatherFaceRuns(light, tallH, blocks);
+    this.paintFaceRuns(t, light, sx, sy, tx - bx, ty - by);
     t.setTransform(1, 0, 0, 1, 0, 0);
 
     const m = this.mctx;
@@ -284,23 +495,22 @@ export class LightingSystem {
   }
 
   /**
-   * Project the tile square's silhouette away from the light. Each
-   * occluding edge erases twice: a slightly splayed half-alpha quad
-   * (penumbra), then the exact hard quad (umbra) — the shadow's rim
-   * softens the further it runs, the core stays black.
+   * Project a merged rectangle's silhouette away from the light with
+   * corner rays splayed outward by `splay` radians (0 = the exact hard
+   * silhouette). Every back-facing edge of the rect erases one quad;
+   * with rects merged there are no interior edges left to seam.
    */
-  private castTileShadow(
+  private castRectShadow(
     t: CanvasRenderingContext2D,
     light: WorldLight,
-    cx: number,
-    cy: number,
+    rect: OccRect,
+    splay: number,
   ): void {
-    // Corners clockwise; edges (a,b) with outward normals.
     const c: Array<[number, number]> = [
-      [cx, cy],
-      [cx + 1, cy],
-      [cx + 1, cy + 1],
-      [cx, cy + 1],
+      [rect.x0, rect.y0],
+      [rect.x1, rect.y0],
+      [rect.x1, rect.y1],
+      [rect.x0, rect.y1],
     ];
     const normals: Array<[number, number]> = [
       [0, -1],
@@ -309,9 +519,8 @@ export class LightingSystem {
       [-1, 0],
     ];
     const reach = light.r * 2.2;
-    const PEN = 0.085; // penumbra splay, radians
-    const cosP = Math.cos(PEN);
-    const sinP = Math.sin(PEN);
+    const cosP = Math.cos(splay);
+    const sinP = Math.sin(splay);
     for (let e = 0; e < 4; e++) {
       const a = c[e]!;
       const b = c[(e + 1) % 4]!;
@@ -329,23 +538,11 @@ export class LightingSystem {
       const uay = day / da;
       const ubx = dbx / db;
       const uby = dby / db;
-      // Penumbra: corner rays splayed outward (a away from b's side,
-      // b away from a's side), erased at half strength.
-      t.globalAlpha = 0.45;
       t.beginPath();
       t.moveTo(a[0], a[1]);
       t.lineTo(b[0], b[1]);
       t.lineTo(b[0] + (ubx * cosP - uby * sinP) * reach, b[1] + (uby * cosP + ubx * sinP) * reach);
       t.lineTo(a[0] + (uax * cosP + uay * sinP) * reach, a[1] + (uay * cosP - uax * sinP) * reach);
-      t.closePath();
-      t.fill();
-      // Umbra: the exact silhouette wedge, fully dark.
-      t.globalAlpha = 1;
-      t.beginPath();
-      t.moveTo(a[0], a[1]);
-      t.lineTo(b[0], b[1]);
-      t.lineTo(b[0] + ubx * reach, b[1] + uby * reach);
-      t.lineTo(a[0] + uax * reach, a[1] + uay * reach);
       t.closePath();
       t.fill();
     }

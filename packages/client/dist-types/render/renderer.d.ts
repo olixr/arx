@@ -537,10 +537,11 @@ export declare class Renderer {
     private resize;
     render(game: ClientGame, frameDt: number): void;
     /** Deep-cave ambient the underground blend rides to: cool, slightly
-     *  desaturated, ~0.76 effective darkness regardless of surface hour.
-     *  Lifted from the original [48,54,70] in the cave-light rework: the
-     *  silhouette floor was below readability, and the drama now comes
-     *  from pools, lit faces and body relights, not from raw murk. */
+     *  desaturated, ~0.72 effective darkness regardless of surface hour.
+     *  Lifted twice from the original [48,54,70] in the cave-light
+     *  reworks: the silhouette floor sat below readability, and the
+     *  drama now comes from pools, lit faces, bounce wrap and body
+     *  relights, not from raw murk. */
     private static readonly UG_AMBIENT;
     /**
      * Blend this frame's sky sample toward the fixed cave ambient.
