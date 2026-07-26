@@ -461,6 +461,16 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (cell_x, cell_y)
   );
   `,
+  // 26 — the claimed hearth: interacting with a bed makes it home
+  // (home_x/home_y are the bed's TILE, NULL = never claimed). Defeat
+  // wakes you beside it and /recall carries you back on a long
+  // cooldown; hearth_at stamps the last recall so the wait survives
+  // logout.
+  `
+  ALTER TABLE characters ADD COLUMN home_x INTEGER;
+  ALTER TABLE characters ADD COLUMN home_y INTEGER;
+  ALTER TABLE characters ADD COLUMN hearth_at INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {

@@ -716,6 +716,14 @@ interface PlayerComp {
   flags: Map<string, number>;
   /** The conversation this player is inside, if any. */
   dialogue: ActiveDialogue | null;
+  /**
+   * Claimed home bed TILE (any town bed, or a bed this character
+   * built — another settler's built bed refuses). Defeat wakes you
+   * beside it and /recall carries you back; null until claimed.
+   */
+  home: { x: number; y: number } | null;
+  /** Last hearth recall (ms since epoch) — the /recall cooldown clock. */
+  hearthAt: number;
 }
 
 /** A timed self-effect; multiple can ride at once (speeds multiply). */
@@ -1221,6 +1229,9 @@ export class GameServer {
         x: spawn.x,
         y: spawn.y,
         hp: 10,
+        home_x: null,
+        home_y: null,
+        hearth_at: 0,
       };
       const token = randomBytes(18).toString('base64url');
       const eid = this.enterWorld(session, character, null, token);
@@ -1376,6 +1387,11 @@ export class GameServer {
       dialogue: null,
       revealLockUntilTick: 0,
       sneakMoveAccum: 0,
+      home:
+        character.home_x !== null && character.home_y !== null
+          ? { x: character.home_x, y: character.home_y }
+          : null,
+      hearthAt: character.hearth_at,
     });
     this.characterEids.set(character.id, eid);
     this.updateChunkMembership(eid);
@@ -1578,6 +1594,13 @@ export class GameServer {
     const door = ground === undefined ? null : doorInfo(ground);
     if (door) {
       this.interactDoor(tx, ty, door, sys);
+      return;
+    }
+
+    // Beds: lying claim makes this bed HOME — defeat wakes you beside
+    // it, and /recall carries you back on the hearth cooldown.
+    if (ground === Tile.Bed) {
+      this.interactBed(player, tx, ty, sys);
       return;
     }
 
@@ -1946,6 +1969,59 @@ export class GameServer {
    * Interacting with a planted crop: harvest if ripe, water if you
    * carry a can and it's thirsty, otherwise report the wait.
    */
+  /** How long the hearth rests between recalls. */
+  private static readonly HEARTH_CD_MS = 10 * 60 * 1000;
+
+  /**
+   * Claim a bed as home. Town beds are open to all — for now the only
+   * gate is on PLAYER-BUILT beds, which answer to their builder alone
+   * (the built-tiles ledger already remembers whose hands placed it).
+   */
+  private interactBed(player: PlayerComp, tx: number, ty: number, sys: (text: string) => void): void {
+    const built = this.world.builtAt(tx, ty);
+    if (built && built.owner !== player.characterId) {
+      sys('This bed was built by another settler — only its builder may call it home.');
+      return;
+    }
+    if (player.home && player.home.x === tx && player.home.y === ty) {
+      sys('This bed is already your home.');
+      return;
+    }
+    player.home = { x: tx, y: ty };
+    if (player.characterId > 0) this.accounts.saveHome(player.characterId, tx, ty);
+    sys(
+      'You claim this bed as your home. Defeat wakes you here, and /recall carries you back (10 minute rest between recalls).',
+    );
+  }
+
+  /**
+   * The open ground beside the claimed bed, or null. A demolished or
+   * replaced bed dissolves the claim on the spot — home is the BED,
+   * not the coordinates it used to stand on.
+   */
+  private homeBedside(player: PlayerComp): { x: number; y: number } | null {
+    const home = player.home;
+    if (!home) return null;
+    this.world.ensure(Math.floor(home.x / CHUNK_SIZE), Math.floor(home.y / CHUNK_SIZE));
+    if (this.world.groundAt(home.x, home.y) !== Tile.Bed) {
+      player.home = null;
+      if (player.characterId > 0) this.accounts.clearHome(player.characterId);
+      return null;
+    }
+    // Cardinals first so you wake square beside the bed, corners as a
+    // fallback for tightly furnished rooms.
+    const steps = [
+      [0, 1], [0, -1], [1, 0], [-1, 0],
+      [1, 1], [-1, 1], [1, -1], [-1, -1],
+    ];
+    for (const [dx, dy] of steps) {
+      const bx = home.x + dx!;
+      const by = home.y + dy!;
+      if (!this.world.isSolid(bx, by)) return { x: bx + 0.5, y: by + 0.5 };
+    }
+    return null; // walled in on all eight sides — no floor to wake on
+  }
+
   private interactCrop(
     eid: EntityId,
     player: PlayerComp,
@@ -6231,9 +6307,11 @@ export class GameServer {
 
     if (health.hp <= 0) {
       const pos = this.positions.must(eid);
-      // Nearest settled spawn — with one hearth in the world that's
+      // The claimed home bed answers first; everyone else wakes at the
+      // nearest settled spawn — with one hearth in the world that's
       // the Waking Ring; future settlements shorten the walk back.
-      const spawn = this.world.respawnAt(pos.x, pos.y);
+      const bedside = this.homeBedside(player);
+      const spawn = bedside ?? this.world.respawnAt(pos.x, pos.y);
       pos.x = spawn.x;
       pos.y = spawn.y;
       health.hp = health.maxHp;
@@ -6244,7 +6322,9 @@ export class GameServer {
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',
-        text: 'You were defeated! You wake back at the nearest hearth.',
+        text: bedside
+          ? 'You were defeated! You wake at your own bed.'
+          : 'You were defeated! You wake back at the nearest hearth.',
       });
     }
   }
@@ -7530,6 +7610,49 @@ export class GameServer {
         this.doorLocks.add(key);
         sys('The lock snaps shut.');
       }
+      return;
+    }
+    // /recall (or /home) — the hearth pull: carry the body back to the
+    // claimed home bed. A player feature, not dev-gated. Out of combat
+    // only, and the hearth rests ten minutes between recalls.
+    if (text.trim() === '/recall' || text.trim() === '/home') {
+      const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      if (!player.home) {
+        sys('You have no home yet — walk up to a bed and interact with it to claim one.');
+        return;
+      }
+      const now = Date.now();
+      if (now - player.lastCombatAt < 8000) {
+        sys('The hearth cannot reach you in the heat of battle — break away from combat first.');
+        return;
+      }
+      const left = player.hearthAt + GameServer.HEARTH_CD_MS - now;
+      if (left > 0) {
+        const mins = Math.floor(left / 60000);
+        const secs = Math.ceil((left % 60000) / 1000);
+        sys(
+          `The hearth still gathers its strength — ready in ${mins > 0 ? `${mins}m ${secs}s` : `${secs}s`}.`,
+        );
+        return;
+      }
+      const bedside = this.homeBedside(player);
+      if (!bedside) {
+        sys(
+          player.home
+            ? 'Your bed is walled in — there is no floor beside it to wake on.'
+            : 'Your bed is gone — claim another to recall again.',
+        );
+        return;
+      }
+      const pos = this.positions.get(eid);
+      const fromInstance = pos !== undefined && pos.y >= 8192;
+      this.teleport(eid, bedside.x, bedside.y);
+      // Recalling out of a personal dungeon ends the run, same as
+      // walking its exit portal.
+      if (fromInstance) this.teardownDungeon(player.characterId);
+      player.hearthAt = now;
+      if (player.characterId > 0) this.accounts.saveHearthAt(player.characterId, now);
+      sys('The world folds around you — you are home.');
       return;
     }
     // Dev-only utility commands, never broadcast.

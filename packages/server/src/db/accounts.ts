@@ -32,6 +32,11 @@ export interface CharacterRow {
   x: number;
   y: number;
   hp: number;
+  /** Claimed home bed TILE; null until a bed is claimed. */
+  home_x: number | null;
+  home_y: number | null;
+  /** Last hearth recall timestamp (ms); the cooldown survives logout. */
+  hearth_at: number;
 }
 
 export type AuthResult =
@@ -85,6 +90,9 @@ export class AccountStore {
         x: spawn.x,
         y: spawn.y,
         hp: 10,
+        home_x: null,
+        home_y: null,
+        hearth_at: 0,
       },
     };
   }
@@ -99,7 +107,7 @@ export class AccountStore {
       return { ok: false, reason: 'Unknown username or wrong password' };
     }
     const character = this.db
-      .prepare('SELECT id, account_id, name, x, y, hp FROM characters WHERE account_id = ? ORDER BY id LIMIT 1')
+      .prepare('SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at FROM characters WHERE account_id = ? ORDER BY id LIMIT 1')
       .get(acc.id) as CharacterRow | undefined;
     if (!character) return { ok: false, reason: 'Account has no character' };
     return { ok: true, accountId: acc.id, character };
@@ -122,7 +130,7 @@ export class AccountStore {
       .get(token, Date.now()) as { account_id: number } | undefined;
     if (!row) return { ok: false, reason: 'Session expired' };
     const character = this.db
-      .prepare('SELECT id, account_id, name, x, y, hp FROM characters WHERE account_id = ? ORDER BY id LIMIT 1')
+      .prepare('SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at FROM characters WHERE account_id = ? ORDER BY id LIMIT 1')
       .get(row.account_id) as CharacterRow | undefined;
     if (!character) return { ok: false, reason: 'Account has no character' };
     return { ok: true, accountId: row.account_id, character };
@@ -132,6 +140,20 @@ export class AccountStore {
     this.db
       .prepare('UPDATE characters SET x = ?, y = ?, hp = ?, last_seen = ? WHERE id = ?')
       .run(x, y, hp, Date.now(), id);
+  }
+
+  /** Claim (or move) the home bed — written the moment it's claimed. */
+  saveHome(id: number, tx: number, ty: number): void {
+    this.db.prepare('UPDATE characters SET home_x = ?, home_y = ? WHERE id = ?').run(tx, ty, id);
+  }
+
+  /** The bed is gone — home dissolves with it. */
+  clearHome(id: number): void {
+    this.db.prepare('UPDATE characters SET home_x = NULL, home_y = NULL WHERE id = ?').run(id);
+  }
+
+  saveHearthAt(id: number, at: number): void {
+    this.db.prepare('UPDATE characters SET hearth_at = ? WHERE id = ?').run(at, id);
   }
 
   loadSkills(characterId: number): Record<string, number> {
