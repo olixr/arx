@@ -84,7 +84,8 @@ export type InteractTarget =
   | { kind: 'npc'; tx: number; ty: number; eid: EntityId; verb: string }
   | { kind: 'loot'; tx: number; ty: number; eid: EntityId }
   | { kind: 'chest'; tx: number; ty: number; chest: ChestKind }
-  | { kind: 'door'; tx: number; ty: number; open: boolean };
+  | { kind: 'door'; tx: number; ty: number; open: boolean }
+  | { kind: 'bed'; tx: number; ty: number };
 import { Connection } from '../net/connection.js';
 import { InterpBuffer } from '../net/interpolation.js';
 import { Predictor } from '../net/prediction.js';
@@ -1068,6 +1069,8 @@ export class ClientGame {
     if (door) return { kind: 'door', tx, ty, open: door.open };
     if (ground === Tile.BankChest) return { kind: 'bank', tx, ty };
     if (ground === Tile.ShopCounter) return { kind: 'shop', tx, ty };
+    // Beds offer the home claim — the server arbitrates ownership.
+    if (ground === Tile.Bed) return { kind: 'bed', tx, ty };
     if (ground === Tile.PortalDown || ground === Tile.PortalUp) return { kind: 'portal', tx, ty };
     return null;
   }

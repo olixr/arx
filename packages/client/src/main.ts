@@ -211,6 +211,7 @@ const PROMPT_LABELS: Record<string, string> = {
   workbench: 'Craft',
   alembic: 'Brew',
   plot: 'Plant',
+  bed: 'Claim Home',
 };
 
 const stationPanels = new StationPanels(
@@ -1145,6 +1146,10 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
     case 'door':
       // The server decides: swing it, refuse it (locked rattle), or
       // hold it open because someone stands in the way.
+      game.interact(target.tx, target.ty);
+      break;
+    case 'bed':
+      // The server decides: claim it, or refuse another builder's bed.
       game.interact(target.tx, target.ty);
       break;
     case 'npc':
