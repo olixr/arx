@@ -66,10 +66,17 @@ export declare class Renderer {
      *  0 = surface sky rules, 1 = the fixed underground ambient. */
     private ugBlend;
     /** Local player's render position + the underground gate, sampled
-     *  once per frame — the dungeon wall cutaway reads these. */
+     *  once per frame — the wall reveal reads these. */
     private ugCutOn;
     private ownPX;
     private ownPY;
+    /** THE SHELTER GATE's temporal ease (0 = outdoors, 1 = sheltered):
+     *  walls bow down over ~0.35s when you step inside and rise the same
+     *  way when you leave — never a per-tile pop at a region boundary. */
+    private shelterK;
+    /** This frame's reveal strength: shelterK smoothstepped, and ridden
+     *  down to the darkness fade (ugBlend) on a portal drop. */
+    private cutCtx;
     /** Scene lights gathered this frame (tiles, projectiles, flames). */
     private readonly lights;
     /** This frame's light-blocker test (walls/cliffs) — shared by the
@@ -680,6 +687,13 @@ export declare class Renderer {
     private static readonly WALL_TILES;
     /** Every doorway tile — open and shut, both orientations and widths. */
     private static readonly DOOR_TILES;
+    /** Man-made ground the wall reveal counts as "a room to see into":
+     *  the surface gate for both the player's feet (shelter) and the
+     *  floor a wall fronts. Deliberately excludes Bridge (docks stay
+     *  neutral) and natural ground — a garden wall on grass keeps its
+     *  facade; underground skips this gate entirely (cave floor is the
+     *  only floor there is). */
+    private static readonly REVEAL_FLOORS;
     /**
      * SIDE-DOORWAY LAW: a doorway's orientation comes from the wall run
      * it pierces. Wall (or same-doorway run) north AND south with open
@@ -711,25 +725,38 @@ export declare class Renderer {
      * front face where the wall meets open ground, and a hard shadow.
      */
     /**
-     * DUNGEON CUTAWAY LAW: underground (player y >= UNDERGROUND_Y) there
-     * are no interior regions — cavern flood-fills blow past MAX_REGION —
-     * so the building cutaway never fires. Instead ANY wall-run tile
-     * fronting walkable floor to its NORTH sinks toward the knee stub
-     * while it stands in the player's occlusion window. Returns the cut
-     * factor 0 (full height) → 1 (full stub), SMOOTHSTEP-eased at every
-     * window edge on the CONTINUOUS player position, so walls sink and
-     * rise as you walk instead of popping per row. ugBlend scales it
-     * so a portal drop fades the cut in with the darkness. Deliberately
-     * cheap: a few clamps and multiplies per visible wall, no allocation,
-     * nothing cached — the wall painter is live, so a per-frame height
-     * is free. Never called above ground (ugCutOn gates every call
-     * site); the surface keeps the region-based law untouched.
+     * THE ONE VEIL LAW — the single wall-reveal mechanic, everywhere.
+     * ANY wall-run tile fronting revealable ground to its NORTH sinks
+     * toward the knee stub while it stands in the player's occlusion
+     * window, scaled by the frame's shelter gate (cutCtx). One law
+     * covers what used to be two: the surface building cutaway and the
+     * dungeon corridor cut are the same window now, so multi-room
+     * buildings drop EVERY occluding wall (facade, partitions, sub-room
+     * walls), broken/segmented walls reveal per tile with no enclosure
+     * required, and doorframes and diagonal corners ride the exact same
+     * height field as the runs they sit in.
+     *
+     * Returns the height in tiles, WALL_H (full) → WALL_STUB (cut),
+     * SMOOTHSTEP-eased at every window edge on the CONTINUOUS player
+     * position, so walls sink and rise as you walk instead of popping
+     * per row. Deliberately cheap: a few clamps and multiplies per
+     * visible wall, no allocation, nothing cached — the wall painter is
+     * live, so a per-frame height is free.
+     *
+     * THE SURFACE GATE: above ground, the floor found north of the wall
+     * must be interior-ish — man-made floor (REVEAL_FLOORS) or any tile
+     * of an enclosed region (which covers furniture, hearths, and
+     * enclosed courtyards). That keeps freestanding garden walls and a
+     * building's REAR facade standing when seen from outdoors (grass to
+     * their north is not a room), while everything that fronts a room
+     * bows. Underground any walkable floor qualifies — cave floor is
+     * the only floor there is.
      */
     /**
-     * THE ONE-SLAB LAW (corridors): one stubbed row is not enough in a
-     * dungeon — wall MASS is thick, and at WALL_H 2.05 the two rows
+     * THE ONE-SLAB LAW (thick masses): one stubbed row is not enough —
+     * wall MASS can be rows thick, and at WALL_H 2.05 the two rows
      * BEHIND a knee-high stub still throw their crowns over the
-     * corridor floor. So the cut reaches through the mass: rows 1–3
+     * floor in front. So the cut reaches through the mass: rows 1–3
      * from the floor all sink, and they sink to the SAME height on the
      * SAME ease, keyed to the mass's FRONT row (the one touching the
      * floor). Equal heights are load-bearing: same-height crowns tile
@@ -742,9 +769,10 @@ export declare class Renderer {
      * stay full: at WALL_H 2.05 and yScale 0.6 a row 4 deep never
      * overhangs the floor, and its fixed crown edge over the sunken
      * slab is correct occlusion (the tall mass hides the trench bottom,
-     * never the floor), so three probes is the whole cost.
+     * never the floor) — the REAR RISER in the wall painter anchors the
+     * step between the sunken slab and the full mass behind it.
      */
-    private dungeonWallHeight;
+    private wallHeightAt;
     private wallItem;
     /**
      * A wood crown is the top of the squared CAP BEAM the wall carries

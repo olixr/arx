@@ -192,6 +192,14 @@ const CONTACT_MAX = 0.3;
  */
 const WALL_H = 2.05;
 /**
+ * The knee-high stub every revealed wall sinks to — ONE height, shared
+ * by every wall kind in every zone, so adjacent runs of different
+ * materials (or a doorframe mid-run) always meet at the same crown
+ * line while cut. Waist on the body scale: low enough to see over,
+ * tall enough to still read as the wall's footprint.
+ */
+const WALL_STUB = 0.62;
+/**
  * Height of ONE terrain elevation level, in tiles of screen rise.
  * Deliberately shorter than a story wall: a cliff STEP is a landform
  * increment (levels stack to any height), masonry is a built story.
@@ -550,10 +558,17 @@ export class Renderer {
    *  0 = surface sky rules, 1 = the fixed underground ambient. */
   private ugBlend = 0;
   /** Local player's render position + the underground gate, sampled
-   *  once per frame — the dungeon wall cutaway reads these. */
+   *  once per frame — the wall reveal reads these. */
   private ugCutOn = false;
   private ownPX = 0;
   private ownPY = 0;
+  /** THE SHELTER GATE's temporal ease (0 = outdoors, 1 = sheltered):
+   *  walls bow down over ~0.35s when you step inside and rise the same
+   *  way when you leave — never a per-tile pop at a region boundary. */
+  private shelterK = 0;
+  /** This frame's reveal strength: shelterK smoothstepped, and ridden
+   *  down to the darkness fade (ugBlend) on a portal drop. */
+  private cutCtx = 0;
   /** Scene lights gathered this frame (tiles, projectiles, flames). */
   private readonly lights: WorldLight[] = [];
   /** This frame's light-blocker test (walls/cliffs) — shared by the
@@ -2450,14 +2465,35 @@ export class Renderer {
     if (game.ownEid !== null) {
       const own = game.predictor.renderPos();
       this.localRegion = this.interiors.regionAt(game, Math.floor(own.x), Math.floor(own.y));
-      // The dungeon cutaway eases on the CONTINUOUS render position —
+      // The wall reveal eases on the CONTINUOUS render position —
       // floor()ing here would make the occlusion window pop per row.
       this.ownPX = own.x;
       this.ownPY = own.y;
       this.ugCutOn = own.y >= UNDERGROUND_Y;
+      // THE SHELTER GATE: the reveal only arms while you are INSIDE
+      // somewhere — underground, in any enclosed region, or standing
+      // on man-made floor / a threshold (the floor IS the room: a
+      // broken-open ruin with no enclosure still counts the moment
+      // your feet find its boards). Eased over ~0.35s so entering a
+      // building bows its walls down and leaving raises them, instead
+      // of the old binary region snap.
+      const ownT = game.world.groundAt(Math.floor(own.x), Math.floor(own.y));
+      const sheltered =
+        this.ugCutOn ||
+        this.localRegion !== null ||
+        (ownT !== undefined &&
+          (Renderer.REVEAL_FLOORS.has(ownT) || Renderer.DOOR_TILES.has(ownT)));
+      const step = frameDt / 0.35;
+      this.shelterK += Math.max(-step, Math.min(step, (sheltered ? 1 : 0) - this.shelterK));
+      const shel = this.shelterK * this.shelterK * (3 - 2 * this.shelterK);
+      // Underground the reveal rides the darkness fade too, so a
+      // portal drop reveals with the gloom instead of ahead of it.
+      this.cutCtx = this.ugCutOn ? Math.min(shel, this.ugBlend) : shel;
     } else {
       this.localRegion = null;
       this.ugCutOn = false;
+      this.shelterK = 0;
+      this.cutCtx = 0;
     }
     // Standing lights gather FIRST: the shadow prepass needs to know
     // every pool before anything casts. (Moving lights announce via
@@ -3785,6 +3821,20 @@ export class Renderer {
   /** Every doorway tile — open and shut, both orientations and widths. */
   private static readonly DOOR_TILES = new Set<number>(DOOR_TILES);
 
+  /** Man-made ground the wall reveal counts as "a room to see into":
+   *  the surface gate for both the player's feet (shelter) and the
+   *  floor a wall fronts. Deliberately excludes Bridge (docks stay
+   *  neutral) and natural ground — a garden wall on grass keeps its
+   *  facade; underground skips this gate entirely (cave floor is the
+   *  only floor there is). */
+  private static readonly REVEAL_FLOORS = new Set<number>([
+    Tile.WoodFloor,
+    Tile.StoneFloor,
+    Tile.CaveFloor,
+    Tile.DungeonFloor,
+    Tile.CaveRubble,
+  ]);
+
   /**
    * SIDE-DOORWAY LAW: a doorway's orientation comes from the wall run
    * it pierces. Wall (or same-doorway run) north AND south with open
@@ -3908,17 +3958,9 @@ export class Renderer {
             runSeen.add(runKey);
           }
           const dregion = this.wallRegion(game, ax, ty);
-          // CUTAWAY LAW: fronting your own room, the frame drops to a
-          // stub so the room is yours to see.
-          const dcut =
-            this.localRegion !== null &&
-            dregion === this.localRegion &&
-            this.localRegion.tiles.has(packTile(ax, ty - 1));
-          // Underground the frame follows the dungeon cutaway rule the
-          // same way it composes with wcut: full height unless the run
-          // sits in the player's occlusion window.
-          let dwhT = dcut ? 0.62 : WALL_H;
-          if (!dcut && this.ugCutOn) dwhT = this.dungeonWallHeight(game, ax, ty);
+          // ONE VEIL LAW: the frame rides the same reveal height field
+          // as the wall run it pierces — never its own rule.
+          const dwhT = this.wallHeightAt(game, ax, ty);
           const item = this.doorwayItem(ground, ax, ty, game, dwhT, runLen, dregion);
           if (game.world.elevAt(ax, ty) !== 0) item.elevated = true;
           items.push(item);
@@ -3959,26 +4001,20 @@ export class Renderer {
         }
         if (DIAG_WALL_TILES.has(ground as Tile)) {
           // 45° corners: their own painter (triangular crown + sloped
-          // facade). No cutaway — the straight camera-side run still
-          // drops to a stub; the corner stumps would read amputated.
-          const item = this.diagWallItem(ground as Tile, tx, ty, game, WALL_H, this.wallRegion(game, tx, ty));
+          // facade). They ride the SAME reveal height field as the
+          // straight runs — the whole corner bows with its walls, so
+          // a cut run never ends at a full-height stump.
+          const item = this.diagWallItem(ground as Tile, tx, ty, game, this.wallHeightAt(game, tx, ty), this.wallRegion(game, tx, ty));
           if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
           items.push(item);
           continue;
         }
         if (Renderer.WALL_TILES.has(ground)) {
           const wregion = this.wallRegion(game, tx, ty);
-          // CUTAWAY LAW: the wall run between you and the camera drops
-          // to a knee-high stub while you stand inside its room.
-          const wcut =
-            this.localRegion !== null &&
-            wregion === this.localRegion &&
-            this.localRegion.tiles.has(packTile(tx, ty - 1));
-          // DUNGEON CUTAWAY: underground the region law never fires
-          // (cavern floods dwarf MAX_REGION) — the occlusion-window
-          // rule takes over, with a continuously eased height.
-          let whT = wcut ? 0.62 : WALL_H;
-          if (!wcut && this.ugCutOn) whT = this.dungeonWallHeight(game, tx, ty);
+          // ONE VEIL LAW: every wall tile between the player and the
+          // camera reads its height off the one reveal field —
+          // surface buildings, ruins, and dungeon corridors alike.
+          const whT = this.wallHeightAt(game, tx, ty);
           const item = this.wallItem(
             ground as Tile,
             tx,
@@ -4067,25 +4103,38 @@ export class Renderer {
    * front face where the wall meets open ground, and a hard shadow.
    */
   /**
-   * DUNGEON CUTAWAY LAW: underground (player y >= UNDERGROUND_Y) there
-   * are no interior regions — cavern flood-fills blow past MAX_REGION —
-   * so the building cutaway never fires. Instead ANY wall-run tile
-   * fronting walkable floor to its NORTH sinks toward the knee stub
-   * while it stands in the player's occlusion window. Returns the cut
-   * factor 0 (full height) → 1 (full stub), SMOOTHSTEP-eased at every
-   * window edge on the CONTINUOUS player position, so walls sink and
-   * rise as you walk instead of popping per row. ugBlend scales it
-   * so a portal drop fades the cut in with the darkness. Deliberately
-   * cheap: a few clamps and multiplies per visible wall, no allocation,
-   * nothing cached — the wall painter is live, so a per-frame height
-   * is free. Never called above ground (ugCutOn gates every call
-   * site); the surface keeps the region-based law untouched.
+   * THE ONE VEIL LAW — the single wall-reveal mechanic, everywhere.
+   * ANY wall-run tile fronting revealable ground to its NORTH sinks
+   * toward the knee stub while it stands in the player's occlusion
+   * window, scaled by the frame's shelter gate (cutCtx). One law
+   * covers what used to be two: the surface building cutaway and the
+   * dungeon corridor cut are the same window now, so multi-room
+   * buildings drop EVERY occluding wall (facade, partitions, sub-room
+   * walls), broken/segmented walls reveal per tile with no enclosure
+   * required, and doorframes and diagonal corners ride the exact same
+   * height field as the runs they sit in.
+   *
+   * Returns the height in tiles, WALL_H (full) → WALL_STUB (cut),
+   * SMOOTHSTEP-eased at every window edge on the CONTINUOUS player
+   * position, so walls sink and rise as you walk instead of popping
+   * per row. Deliberately cheap: a few clamps and multiplies per
+   * visible wall, no allocation, nothing cached — the wall painter is
+   * live, so a per-frame height is free.
+   *
+   * THE SURFACE GATE: above ground, the floor found north of the wall
+   * must be interior-ish — man-made floor (REVEAL_FLOORS) or any tile
+   * of an enclosed region (which covers furniture, hearths, and
+   * enclosed courtyards). That keeps freestanding garden walls and a
+   * building's REAR facade standing when seen from outdoors (grass to
+   * their north is not a room), while everything that fronts a room
+   * bows. Underground any walkable floor qualifies — cave floor is
+   * the only floor there is.
    */
   /**
-   * THE ONE-SLAB LAW (corridors): one stubbed row is not enough in a
-   * dungeon — wall MASS is thick, and at WALL_H 2.05 the two rows
+   * THE ONE-SLAB LAW (thick masses): one stubbed row is not enough —
+   * wall MASS can be rows thick, and at WALL_H 2.05 the two rows
    * BEHIND a knee-high stub still throw their crowns over the
-   * corridor floor. So the cut reaches through the mass: rows 1–3
+   * floor in front. So the cut reaches through the mass: rows 1–3
    * from the floor all sink, and they sink to the SAME height on the
    * SAME ease, keyed to the mass's FRONT row (the one touching the
    * floor). Equal heights are load-bearing: same-height crowns tile
@@ -4098,39 +4147,53 @@ export class Renderer {
    * stay full: at WALL_H 2.05 and yScale 0.6 a row 4 deep never
    * overhangs the floor, and its fixed crown edge over the sunken
    * slab is correct occlusion (the tall mass hides the trench bottom,
-   * never the floor), so three probes is the whole cost.
+   * never the floor) — the REAR RISER in the wall painter anchors the
+   * step between the sunken slab and the full mass behind it.
    */
-  private dungeonWallHeight(game: ClientGame, tx: number, ty: number): number {
+  private wallHeightAt(game: ClientGame, tx: number, ty: number): number {
+    if (this.cutCtx <= 0.001) return WALL_H;
     const dy = ty - this.ownPY;
     // Front-row dy can be up to 2 rows north of ours — the window is
     // on the FRONT row, so accept dy up to 9 + 2 here.
     if (dy < -2 || dy > 11) return WALL_H;
     const adx = Math.abs(tx + 0.5 - this.ownPX);
     if (adx > 13) return WALL_H;
-    // Nearest walkable floor straight north through the wall mass.
+    // Nearest revealable floor straight north through the wall mass.
     let depth = 0;
     for (let d = 1; d <= 3; d++) {
       const nt = game.world.groundAt(tx, ty - d);
       if (nt === undefined) return WALL_H;
       if (!tileDef(nt).solid) {
+        // The surface gate: only a room is worth revealing.
+        if (
+          !this.ugCutOn &&
+          !Renderer.REVEAL_FLOORS.has(nt) &&
+          this.interiors.regionAt(game, tx, ty - d) === null
+        ) {
+          return WALL_H;
+        }
         depth = d;
         break;
       }
     }
     if (depth === 0) return WALL_H;
     // Window margins on the FRONT row — every row of the mass shares
-    // its front row's ease, so the slab moves as one. Ease in over
-    // dyF [-2..-0.5] (a mass you stand at is fully cut), out over
-    // dyF [7..9] and |dx| [10.5..13].
+    // its front row's ease, so the slab moves as one. Underground the
+    // window opens 2 rows north of you (peek over the corridor wall
+    // you stand against); on the SURFACE it opens at your own row —
+    // a facade only bows once you are level with or past it, so
+    // standing on paving outside a building's front never dips the
+    // face you are looking at. Ease out over dyF [7..9], |dx|
+    // [10.5..13] everywhere.
     const dyF = dy - (depth - 1);
-    let ey = Math.min((dyF + 2) / 1.5, (9 - dyF) / 2, 1);
+    let ey = Math.min(this.ugCutOn ? (dyF + 2) / 1.5 : (dyF + 0.5) / 1.5, (9 - dyF) / 2, 1);
     let ex = Math.min((13 - adx) / 2.5, 1);
     if (ey <= 0 || ex <= 0) return WALL_H;
     ey = ey * ey * (3 - 2 * ey);
     ex = ex * ex * (3 - 2 * ex);
-    const cut = ey * ex * this.ugBlend;
+    const cut = ey * ex * this.cutCtx;
     if (cut <= 0) return WALL_H;
-    return WALL_H + (0.62 - WALL_H) * cut;
+    return WALL_H + (WALL_STUB - WALL_H) * cut;
   }
 
   private wallItem(
@@ -4160,7 +4223,16 @@ export class Renderer {
     // into the south face — resolve to the base material for colors.
     const mat =
       tile === Tile.WallWoodWindow ? Tile.WallWood : tile === Tile.WallStoneWindow ? Tile.WallStone : tile;
-    const window = mat !== tile && whT > 1; // stubs carry no glazing
+    // Glazing needs the full face behind it: the opening's head sits at
+    // 1.62 tiles, so any reveal-eased height below ~1.75 would poke the
+    // hole through the crown — sinking walls shed their glass first.
+    const window = mat !== tile && whT > 1.75;
+    // THE REAR RISER: when the wall directly NORTH of this one is
+    // sunk lower (the mass in front of a revealed slab), the step
+    // between its stub crown and our full crown would otherwise show
+    // a floating band of the ground drawn behind — paint our interior
+    // back face down to the stub so the step reads as solid mass.
+    const nH = n ? this.wallHeightAt(game, tx, ty - 1) : whT;
     const skin = this.woodSkinFor(region);
     const top = mat === Tile.WallWood ? skin.top : mat === Tile.WallStone ? '#8c8798' : '#3a3444';
     const face = mat === Tile.WallWood ? skin.log : mat === Tile.WallStone ? '#5b5566' : '#221d2c';
@@ -4575,6 +4647,24 @@ export class Renderer {
             ctx.fillRect(wx + ww / 2 - s * 0.022, wy, s * 0.044, wh2);
             ctx.fillRect(wx, wy + wh2 * 0.46 - s * 0.02, ww, s * 0.04);
             ctx.restore();
+          }
+        }
+        // REAR RISER (see above): the interior back face exposed when
+        // the wall ahead of us sinks lower. Spans from our crown's
+        // north edge down to the sunken neighbour's crown north edge;
+        // our own crown and the neighbour's stub overdraw the rest.
+        if (n && nH < whT - 0.04) {
+          const yRTop = p.y - hs;
+          const yRBot = p.y - syT - nH * s;
+          if (yRBot > yRTop + 0.5) {
+            ctx.fillStyle = shade(face, -14);
+            ctx.beginPath();
+            ctx.moveTo(lx(x0), yRTop);
+            ctx.lineTo(lx(x1), yRTop);
+            ctx.lineTo(this.leanX(x1, nH), yRBot);
+            ctx.lineTo(this.leanX(x0, nH), yRBot);
+            ctx.closePath();
+            ctx.fill();
           }
         }
         // Crown: the whole top layer drawn in the leaned height frame —
