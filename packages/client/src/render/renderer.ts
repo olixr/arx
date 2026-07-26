@@ -526,6 +526,10 @@ interface DrawItem {
   /** True while genuinely animating (moving/turning/fighting/blending)
    *  — forces full-rate re-bakes; cheap idle life waits for cadence. */
   olDyn?: boolean;
+  /** World-space ground anchor of the body — opts the item into the
+   *  base-exposure relight pass (see relightBody). */
+  baseX?: number;
+  baseY?: number;
 }
 
 export class Renderer {
@@ -552,6 +556,18 @@ export class Renderer {
   private ownPY = 0;
   /** Scene lights gathered this frame (tiles, projectiles, flames). */
   private readonly lights: WorldLight[] = [];
+  /** This frame's light-blocker test (walls/cliffs) — shared by the
+   *  lightmap and the body-relight LOS walks. */
+  private blocksAt: (tx: number, ty: number) => boolean = () => false;
+  /** Body-relight scratch (see relightBody) + per-frame budget. */
+  private readonly relightCanvas = document.createElement('canvas');
+  private readonly relightCtx = this.relightCanvas.getContext('2d')!;
+  private relitLeft = 0;
+  /** Dominant-light stash filled by sampleExposure(wantDom=true). */
+  private domK = 0;
+  private domX = 0;
+  private domY = 0;
+  private domRgb: [number, number, number] = [255, 255, 255];
   /** Ground shadows batch here, composited once at the sky's alpha. */
   private readonly shadowLayer = document.createElement('canvas');
   private readonly shadowLayerCtx = this.shadowLayer.getContext('2d')!;
@@ -2308,6 +2324,9 @@ export class Renderer {
     // any cold field's set within a second, and a skipped cast just
     // lands a frame later.
     this.maskBakeBudget = 6;
+    // Base-exposure body relights per frame: covers every body a busy
+    // market frame can show; past it, the plain multiply map stands.
+    this.relitLeft = 48;
     // Zoomed out, the same world-space sway spans FEWER screen pixels —
     // stretch the sampling floor so wide framings stop paying the full
     // re-bake rate for sub-pixel motion. Cadence 10 at ≤0.85× steps
@@ -2451,6 +2470,12 @@ export class Renderer {
       minTy: bounds.minTy - LIGHT_PAD,
       maxTy: bounds.maxTy + LIGHT_PAD,
     });
+    // The frame's blocker test: armed here (lights are gathered, items
+    // not yet drawn) so the body-relight pass can walk sight lines.
+    this.blocksAt = (tx, ty) => {
+      const t = game.world.groundAt(tx, ty);
+      return t !== undefined && (Renderer.LIGHT_BLOCKERS.has(t) || t === Tile.Cliff);
+    };
     // Ground-level tiles only: lifted tiles get their own live layer
     // drawn OVER their plateau band (see collectElevatedGround).
     drawLiveGround(
@@ -2634,18 +2659,28 @@ export class Renderer {
     // the scene's darkness, THEN emissive bloom pops over it, then the
     // tilted-camera tilt-shift bands and the grade. HUD stays crisp.
     const origin = this.camera.worldToScreen(0, 0, this.w, this.h);
+    // Lit-face heights in world-y units: faces rise N tiles of SCREEN
+    // height, so divide the camera squash back out.
+    const ys = this.camera.yScale;
     this.lighting.draw(
       this.ctx,
-      { w: this.w, h: this.h, scale: this.camera.scale, yScale: this.camera.yScale, ox: origin.x, oy: origin.y },
+      { w: this.w, h: this.h, scale: this.camera.scale, yScale: ys, ox: origin.x, oy: origin.y },
       this.sky,
       this.lights,
+      this.blocksAt,
+      // LIGHT CLIMBS WHAT IT MEETS: every tall thing reports the face
+      // the camera sees — walls at full prism height, cliffs at their
+      // ledge, stations/stalls/furniture at standing-prop height,
+      // trees a modest trunk wash under the canopy.
       (tx, ty) => {
         const t = game.world.groundAt(tx, ty);
-        return t !== undefined && (Renderer.LIGHT_BLOCKERS.has(t) || t === Tile.Cliff);
+        if (t === undefined) return 0;
+        if (Renderer.LIGHT_BLOCKERS.has(t)) return WALL_H / ys;
+        if (t === Tile.Cliff) return ELEV_H / ys;
+        if (TREE_TILES.has(t as Tile)) return 1.5 / ys;
+        if (tileDef(t).raised) return 1.05 / ys;
+        return 0;
       },
-      // Lit-face height in world-y units: wall faces rise WALL_H tiles
-      // of SCREEN height, so divide the camera squash back out.
-      WALL_H / this.camera.yScale,
     );
     this.lights.length = 0;
     // Moving lights hand their positions to next frame's shadow pass.
@@ -2669,8 +2704,11 @@ export class Renderer {
   }
 
   /** Deep-cave ambient the underground blend rides to: cool, slightly
-   *  desaturated, ~0.79 effective darkness regardless of surface hour. */
-  private static readonly UG_AMBIENT: readonly [number, number, number] = [48, 54, 70];
+   *  desaturated, ~0.76 effective darkness regardless of surface hour.
+   *  Lifted from the original [48,54,70] in the cave-light rework: the
+   *  silhouette floor was below readability, and the drama now comes
+   *  from pools, lit faces and body relights, not from raw murk. */
+  private static readonly UG_AMBIENT: readonly [number, number, number] = [56, 62, 80];
 
   /**
    * Blend this frame's sky sample toward the fixed cave ambient.
@@ -2863,6 +2901,36 @@ export class Renderer {
         }
       }
     }
+    // THE DEEP DEMANDS MORE OF ITS FIRES: underground there is no sky
+    // to help, so every standing pool reaches further and burns harder
+    // — the readable band around a brazier is the whole difference
+    // between a cave and a void — while the bloom TIGHTENS to the
+    // emitter's core: the halo that washed over stall canopies was
+    // bloom doing the lightmap's job, and down here the pool does it.
+    const ug = this.ugBlend;
+    if (ug > 0.01) {
+      for (const L of this.lights) {
+        L.r *= 1 + 0.3 * ug;
+        L.intensity = Math.min(1, L.intensity * (1 + 0.2 * ug));
+      }
+      for (const g of this.glows) g.r *= 1 - 0.3 * ug;
+      // THE CARRIED LANTERN: below ground the own hero always holds a
+      // small warm light — enough to read the floor, the props and the
+      // bodies around you, never enough to kill the dark's drama. It
+      // breathes slowly (a flame in still air), joins the shadow
+      // prepass like any pool, and fades in with the ambient blend.
+      if (game.ownEid !== null) {
+        const own = game.predictor.renderPos();
+        const breathe = 0.93 + Math.sin(t * 2.1) * 0.05 + Math.sin(t * 5.7) * 0.02;
+        this.lights.push({
+          x: own.x,
+          y: own.y,
+          r: 3.8,
+          rgb: [255, 213, 156],
+          intensity: 0.42 * ug * breathe,
+        });
+      }
+    }
   }
 
   /**
@@ -2982,8 +3050,12 @@ export class Renderer {
     ctx.fillRect(0, 0, this.w, this.h * 0.34);
     ctx.save();
     ctx.globalCompositeOperation = 'soft-light';
+    // Underground the grade stands down: the cool bottom-wash and the
+    // closing vignette were both stacking MORE dark on a scene the
+    // cave ambient already darkened — the lightmap owns that mood now.
+    const ugEase = 1 - 0.55 * this.ugBlend;
     const warm = 0.36 * (0.2 + 0.8 * day.sun);
-    const cool = 0.3 + 0.18 * day.darkness;
+    const cool = (0.3 + 0.18 * day.darkness) * ugEase;
     const grad = ctx.createLinearGradient(0, 0, 0, this.h);
     grad.addColorStop(0, `rgba(255, 214, 150, ${warm})`);
     grad.addColorStop(0.45, `rgba(255, 236, 210, ${warm * 0.28})`);
@@ -3000,7 +3072,7 @@ export class Renderer {
       Math.max(this.w, this.h) * 0.72,
     );
     vig.addColorStop(0, 'rgba(20, 12, 28, 0)');
-    vig.addColorStop(1, `rgba(20, 12, 28, ${0.26 + 0.14 * day.darkness})`);
+    vig.addColorStop(1, `rgba(20, 12, 28, ${(0.26 + 0.14 * day.darkness) * (1 - 0.45 * this.ugBlend)})`);
     ctx.fillStyle = vig;
     ctx.fillRect(0, 0, this.w, this.h);
   }
@@ -15365,6 +15437,8 @@ export class Renderer {
       olKey: varEid,
       olSig,
       olDyn,
+      baseX: e.x,
+      baseY: e.y,
       drawShadow: () => {
         this.castBody(p.x, p.y + s * 0.05, 0.26 * s * (e.size ?? 1));
       },
@@ -15644,6 +15718,153 @@ export class Renderer {
    * is invisible, and baking there would fire draw-closure side
    * effects (gather chips, footsteps) twice a frame.
    */
+  // ------------------------------------------------------- body relight
+
+  /**
+   * The exposure the multiply map resolves at a world point: ambient
+   * screened with every pool in reach — 1 − (1−amb)·Π(1−Lᵢ) — with a
+   * coarse LOS walk so lamplight doesn't reach through walls. With
+   * `wantDom`, the strongest single pool is stashed in dom* for the
+   * rim-light pass.
+   */
+  private sampleExposure(wx: number, wy: number, wantDom: boolean): number {
+    const s = this.sky;
+    const amb = (0.299 * s.ambient[0] + 0.587 * s.ambient[1] + 0.114 * s.ambient[2]) / 255;
+    let dark = 1 - amb;
+    if (wantDom) this.domK = 0;
+    for (const L of this.lights) {
+      if (L.intensity <= 0.01) continue;
+      const dx = wx - L.x;
+      const dy = wy - L.y;
+      if (Math.abs(dx) >= L.r || Math.abs(dy) >= L.r) continue;
+      const d = Math.hypot(dx, dy);
+      if (d >= L.r) continue;
+      if (L.occlude && d > 1.4 && !this.lightSees(L.x, L.y, wx, wy, d)) continue;
+      const lum = (0.299 * L.rgb[0] + 0.587 * L.rgb[1] + 0.114 * L.rgb[2]) / 255;
+      const li = Math.min(1, L.intensity * lum * Math.pow(1 - d / L.r, 1.3));
+      dark *= 1 - li;
+      if (wantDom && li > this.domK) {
+        this.domK = li;
+        this.domX = L.x;
+        this.domY = L.y;
+        this.domRgb = L.rgb;
+      }
+    }
+    return 1 - dark;
+  }
+
+  /** Coarse LOS for relight: one blocker sample per tile along the
+   *  line, clear of both endpoints. */
+  private lightSees(lx: number, ly: number, wx: number, wy: number, d: number): boolean {
+    const ux = (wx - lx) / d;
+    const uy = (wy - ly) / d;
+    for (let t = 0.7; t < d - 0.7; t += 1) {
+      if (this.blocksAt(Math.floor(lx + ux * t), Math.floor(ly + uy * t))) return false;
+    }
+    return true;
+  }
+
+  /**
+   * THE BODY STANDS IN ITS OWN LIGHT. The multiply map exposes a tall
+   * sprite by the ground rows BEHIND it (screen pixels are geography),
+   * so a body at a brazier kept a cold head while the floor behind it
+   * glowed, and a body north of a pool wore light that wasn't its own.
+   * This pass corrects the just-blitted sprite toward the exposure at
+   * its BASE: under-lit bodies get the pool's color lifted in, hottest
+   * at the feet and dying up the body (light lands from the base, like
+   * every pool in the game), plus a rim crescent on the edge facing
+   * the dominant light — silhouette-shift masking, the poor man's
+   * normal map. Over-lit bodies get the difference multiplied back
+   * out. Skipped in daylight, in the mirror pass, and past the
+   * per-frame budget; the whole pass costs a few small composites.
+   */
+  private relightBody(
+    item: DrawItem,
+    srcs: CanvasImageSource[],
+    sw: number,
+    sh: number,
+    dx: number,
+    dy: number,
+    dw: number,
+    dh: number,
+  ): void {
+    if (item.baseX === undefined || item.baseY === undefined) return;
+    if (this.bakingMask || this.sky.darkness < 0.06 || this.relitLeft <= 0) return;
+    if (sw < 2 || sh < 2) return;
+    const expBase = this.sampleExposure(item.baseX, item.baseY, true);
+    // What the map will actually multiply over these pixels: the
+    // ground roughly a body-height of rows up-screen from the feet.
+    const expBehind = this.sampleExposure(
+      item.baseX,
+      item.baseY - 1.25 / this.camera.yScale,
+      false,
+    );
+    const delta = expBase - expBehind;
+    const lift = delta > 0.045;
+    const dim = delta < -0.07;
+    const rim = this.domK > 0.09;
+    if (!lift && !dim && !rim) return;
+    this.relitLeft--;
+    const rc = this.relightCtx;
+    if (this.relightCanvas.width < sw || this.relightCanvas.height < sh) {
+      this.relightCanvas.width = Math.max(this.relightCanvas.width, sw);
+      this.relightCanvas.height = Math.max(this.relightCanvas.height, sh);
+    }
+    const ctx = this.ctx;
+    const baseAlpha = item.alpha ?? 1;
+    const [lr, lg, lb] = this.domRgb;
+    if (lift || dim) {
+      rc.setTransform(1, 0, 0, 1, 0, 0);
+      rc.globalCompositeOperation = 'source-over';
+      rc.globalAlpha = 1;
+      rc.clearRect(0, 0, sw + 2, sh + 2);
+      for (const src of srcs) rc.drawImage(src, 0, 0, sw, sh, 0, 0, sw, sh);
+      rc.globalCompositeOperation = 'source-in';
+      if (lift) {
+        // The pool's own color climbs the body from the feet.
+        const grad = rc.createLinearGradient(0, 0, 0, sh);
+        grad.addColorStop(0, `rgba(${lr}, ${lg}, ${lb}, 0.30)`);
+        grad.addColorStop(0.55, `rgba(${lr}, ${lg}, ${lb}, 0.72)`);
+        grad.addColorStop(1, `rgba(${lr}, ${lg}, ${lb}, 1)`);
+        rc.fillStyle = grad;
+      } else {
+        rc.fillStyle = 'rgb(20, 15, 32)';
+      }
+      rc.fillRect(0, 0, sw, sh);
+      ctx.save();
+      ctx.globalCompositeOperation = lift ? 'lighter' : 'multiply';
+      ctx.globalAlpha = baseAlpha * (lift ? Math.min(0.5, delta * 1.1) : Math.min(0.38, -delta * 0.85));
+      ctx.drawImage(this.relightCanvas, 0, 0, sw, sh, dx, dy, dw, dh);
+      ctx.restore();
+    }
+    if (rim) {
+      // Screen-space direction AWAY from the dominant light; the
+      // shifted-copy erase leaves a crescent on the side FACING it.
+      let ax = (item.baseX - this.domX) * this.camera.scale;
+      let ay = (item.baseY - this.domY) * this.camera.scale * this.camera.yScale;
+      const al = Math.hypot(ax, ay) || 1;
+      const mag = Math.max(2, sw * 0.055);
+      ax = (ax / al) * mag;
+      ay = (ay / al) * mag;
+      rc.setTransform(1, 0, 0, 1, 0, 0);
+      rc.globalCompositeOperation = 'source-over';
+      rc.globalAlpha = 1;
+      rc.clearRect(0, 0, sw + 2, sh + 2);
+      for (const src of srcs) rc.drawImage(src, 0, 0, sw, sh, 0, 0, sw, sh);
+      rc.globalCompositeOperation = 'destination-out';
+      for (const src of srcs) rc.drawImage(src, 0, 0, sw, sh, ax, ay, sw, sh);
+      rc.globalCompositeOperation = 'source-in';
+      // Rim reads hot: the light's color pushed toward white.
+      rc.fillStyle = `rgb(${(lr + 255) >> 1}, ${(lg + 255) >> 1}, ${(lb + 255) >> 1})`;
+      rc.fillRect(0, 0, sw, sh);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = baseAlpha * Math.min(0.42, this.domK * 1.35);
+      ctx.drawImage(this.relightCanvas, 0, 0, sw, sh, dx, dy, dw, dh);
+      ctx.restore();
+    }
+  }
+
   private paintOutlined(item: DrawItem): void {
     const key = item.olKey;
     if (key !== undefined) {
@@ -15670,7 +15891,7 @@ export class Renderer {
           !drift;
         if (fresh || (this.zoomGliding && sp.sig === item.olSig && !item.olDyn)) {
           sp.used = this.frameNo;
-          this.blitBodySprite(sp, b, s);
+          this.blitBodySprite(sp, b, s, item);
           return;
         }
         this.bakeBodySprite(item, key);
@@ -15689,19 +15910,15 @@ export class Renderer {
     sp: NonNullable<ReturnType<(typeof this.bodySprites)['get']>>,
     b: { x: number; y: number; w: number; h: number },
     s: number,
+    item?: DrawItem,
   ): void {
     const k = s / sp.scale;
-    this.ctx.drawImage(
-      sp.canvas,
-      0,
-      0,
-      sp.w,
-      sp.h,
-      b.x - sp.m * k,
-      b.y - sp.m * k,
-      sp.wCss * k,
-      sp.hCss * k,
-    );
+    const dx = b.x - sp.m * k;
+    const dy = b.y - sp.m * k;
+    const dw = sp.wCss * k;
+    const dh = sp.hCss * k;
+    this.ctx.drawImage(sp.canvas, 0, 0, sp.w, sp.h, dx, dy, dw, dh);
+    if (item) this.relightBody(item, [sp.canvas], sp.w, sp.h, dx, dy, dw, dh);
   }
 
   /** Re-bake a keyed body: run the scratch pass, composite ring+art
@@ -15754,7 +15971,7 @@ export class Renderer {
       sp.frame = this.frameNo;
       sp.used = this.frameNo;
     }
-    this.blitBodySprite(sp, b, s);
+    this.blitBodySprite(sp, b, s, item);
   }
 
   /** Direct (uncached) outline pass: scratch build + two blits. */
@@ -15764,6 +15981,16 @@ export class Renderer {
     const geo = this.paintOutlineScratch(item);
     this.ctx.drawImage(this.outlineB, 0, 0, geo.w, geo.h, b.x - geo.m, b.y - geo.m, geo.w / dpr, geo.h / dpr);
     this.ctx.drawImage(this.outlineA, 0, 0, geo.w, geo.h, b.x - geo.m, b.y - geo.m, geo.w / dpr, geo.h / dpr);
+    this.relightBody(
+      item,
+      [this.outlineB, this.outlineA],
+      geo.w,
+      geo.h,
+      b.x - geo.m,
+      b.y - geo.m,
+      geo.w / dpr,
+      geo.h / dpr,
+    );
   }
 
   /**
@@ -16038,6 +16265,8 @@ export class Renderer {
       olKey: eid,
       olSig: `${s.dir.toFixed(3)}|${s.pose}|${hurt ? 1 : 0}|${defId}`,
       olDyn,
+      baseX: s.x,
+      baseY: s.y,
       drawShadow: () => {
         this.castBody(p.x, p.y + r * 0.25, r * 1.05);
       },
@@ -17512,6 +17741,8 @@ export class Renderer {
       olKey: `c${this.olObjId(c)}`,
       olSig: `${c.x.toFixed(3)}|${c.y.toFixed(3)}`,
       olDyn: c.settledAt === null || alpha < 1,
+      baseX: c.x,
+      baseY: c.y,
       body: {
         x: p.x + b.minX * scale - margin,
         y: p.y + b.minY * scale - margin,

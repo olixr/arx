@@ -6,14 +6,25 @@
  * - ONE MAP RULES EXPOSURE. The daylight ambient fills the map; every
  *   point light punches brightness back in with `screen` compositing.
  *   Multiply once over the frame and the whole scene — terrain, grass,
- *   sprites, particles — darkens and warms coherently. No per-sprite
- *   tinting, ever.
+ *   sprites, particles — darkens and warms coherently. (The body
+ *   relight pass in the renderer is the map's one licensed partner: it
+ *   CORRECTS a sprite toward the exposure at its own base, it never
+ *   invents light the map doesn't know about.)
  * - LIGHT IS GEOGRAPHY. The map is drawn in WORLD space through the
  *   camera transform, so light pools are ground ellipses (foreshortened
  *   by the camera pitch like everything else), not screen-space discs.
  * - WALLS STOP LIGHT. Big static lights cast hard 2D shadows: solid
  *   tiles project silhouette quads that erase the light behind them.
  *   Sharp-edged, like every shadow in this game.
+ * - LIGHT CLIMBS WHAT IT MEETS (v2). EVERY tall thing standing in a
+ *   pool — wall, stall, station, pillar, tree — catches the light on
+ *   the face the camera sees: a vertical gradient rising from its BASE
+ *   row, graded by N·L (how squarely the face looks at the light) and
+ *   the pool's falloff, hottest at the foot and dying up the face.
+ *   Heights come from the renderer's `tallH(tx,ty)` callback (world-y
+ *   units — screen-vertical faces divide the camera squash back out).
+ *   Faces behind an occluder stay dark: a coarse line-of-sight walk
+ *   against `blocks` gates every face an occluding light paints.
  * - DAYLIGHT IS FREE. At full sun the ambient is white and the entire
  *   pass is skipped — the system costs nothing until dusk.
  * - QUARTER RES IS PLENTY. Light is low-frequency; the map renders at
@@ -45,6 +56,9 @@ export interface LightView {
   oy: number;
 }
 
+/** One camera-facing face a light strikes: [x0, x1, baseY, k, h]. */
+type LitFace = [number, number, number, number, number];
+
 const MAP_DOWNSCALE = 3;
 
 export class LightingSystem {
@@ -52,15 +66,15 @@ export class LightingSystem {
   private readonly mctx = this.map.getContext('2d')!;
   private readonly tmp = document.createElement('canvas');
   private readonly tctx = this.tmp.getContext('2d')!;
+  /** Scratch face list, reused across lights — no per-frame garbage. */
+  private readonly faces: LitFace[] = [];
 
   /**
    * Paint the frame's exposure. `blocks` answers whether a tile stops
    * light (walls, cliffs); it is only consulted near occluding lights.
-   * `faceH` is the height of a blocking face in WORLD-y units
-   * (screen-vertical walls divide the camera squash back out) — it
-   * sizes the lit-face response, the map's one piece of normal-aware
-   * shading: a wall standing south of a lamp catches the light on the
-   * face the camera sees.
+   * `tallH` reports the camera-facing face height of whatever stands
+   * on a tile, in WORLD-y units (0 = nothing tall) — it drives the
+   * lit-face response for walls AND standing props alike.
    */
   draw(
     ctx: CanvasRenderingContext2D,
@@ -68,7 +82,7 @@ export class LightingSystem {
     sky: DaylightSample,
     lights: WorldLight[],
     blocks: (tx: number, ty: number) => boolean,
-    faceH = 0,
+    tallH: (tx: number, ty: number) => number,
   ): void {
     if (sky.darkness < 0.02) return; // full daylight: multiply-by-white
     const mw = Math.max(1, Math.ceil(view.w / MAP_DOWNSCALE));
@@ -94,12 +108,16 @@ export class LightingSystem {
     for (const light of lights) {
       if (light.intensity <= 0.01) continue;
       if (light.occlude) {
-        this.drawOccludedLight(light, blocks, sx, sy, tx, ty, faceH);
+        this.drawOccludedLight(light, blocks, tallH, sx, sy, tx, ty);
       } else {
         m.setTransform(sx, 0, 0, sy, tx, ty);
         m.globalCompositeOperation = 'screen';
         m.fillStyle = this.gradient(m, light);
         m.fillRect(light.x - light.r, light.y - light.r, light.r * 2, light.r * 2);
+        // Standing content in the pool catches the light — no shadow
+        // math for free-floating lights, so no LOS gate either.
+        this.gatherFaces(light, tallH, null);
+        this.paintFaces(m, light);
       }
     }
 
@@ -126,18 +144,91 @@ export class LightingSystem {
   }
 
   /**
+   * Fill `this.faces` with every camera-visible face this light
+   * strikes: any tile reporting a tall face whose south edge looks at
+   * the light. Brightness follows N·L and the pool's falloff. When
+   * `blocks` is given (occluding lights), a coarse tile walk along the
+   * sight line drops faces standing behind a wall — light lands ON the
+   * first thing it meets, never through it.
+   */
+  private gatherFaces(
+    light: WorldLight,
+    tallH: (tx: number, ty: number) => number,
+    blocks: ((tx: number, ty: number) => boolean) | null,
+  ): void {
+    this.faces.length = 0;
+    const t0x = Math.floor(light.x - light.r);
+    const t1x = Math.ceil(light.x + light.r);
+    const t0y = Math.floor(light.y - light.r);
+    const t1y = Math.ceil(light.y + light.r);
+    for (let cy = t0y; cy <= t1y; cy++) {
+      for (let cx = t0x; cx <= t1x; cx++) {
+        const h = tallH(cx, cy);
+        if (h <= 0) continue;
+        // South edge midpoint, relative to the light. The face is lit
+        // only when the light stands SOUTH of it (the side the camera
+        // sees); N·L is how squarely it faces the pool.
+        const mx = cx + 0.5 - light.x;
+        const my = cy + 1 - light.y;
+        if (my >= 0) continue;
+        const d = Math.hypot(mx, my) || 1;
+        if (d >= light.r) continue;
+        const fall = 1 - d / light.r;
+        const k = Math.min(0.6, light.intensity * Math.pow(fall, 1.4) * (-my / d) * 0.85);
+        if (k <= 0.03) continue;
+        if (blocks && d > 2 && !this.faceVisible(light, cx + 0.5, cy + 1, d, blocks)) continue;
+        this.faces.push([cx, cx + 1, cy + 1, k, h]);
+      }
+    }
+  }
+
+  /** Coarse LOS: sample the sight line one tile at a time, keeping
+   *  0.7 tiles clear of both endpoints so neither the light's own tile
+   *  nor the face's body blocks itself. */
+  private faceVisible(
+    light: WorldLight,
+    fx: number,
+    fy: number,
+    d: number,
+    blocks: (tx: number, ty: number) => boolean,
+  ): boolean {
+    const ux = (fx - light.x) / d;
+    const uy = (fy - light.y) / d;
+    for (let t = 0.7; t < d - 0.7; t += 1) {
+      if (blocks(Math.floor(light.x + ux * t), Math.floor(light.y + uy * t))) return false;
+    }
+    return true;
+  }
+
+  /** Paint the gathered faces into a world-transformed ctx: a vertical
+   *  gradient rising from each base row, hottest at the foot. */
+  private paintFaces(g: CanvasRenderingContext2D, light: WorldLight): void {
+    const [r, gg, b] = light.rgb;
+    for (const [x0, x1, ye, k, h] of this.faces) {
+      const grad = g.createLinearGradient(0, ye, 0, ye - h);
+      grad.addColorStop(0, `rgba(${r}, ${gg}, ${b}, ${k})`);
+      grad.addColorStop(0.55, `rgba(${r}, ${gg}, ${b}, ${k * 0.45})`);
+      grad.addColorStop(1, `rgba(${r}, ${gg}, ${b}, 0)`);
+      g.fillStyle = grad;
+      g.fillRect(x0, ye - h, x1 - x0, h);
+    }
+  }
+
+  /**
    * A light with wall shadows: painted alone on a scratch canvas, its
    * shadow quads erased, then screened onto the map — so erasing the
-   * shadow never bites into the ambient or any other light.
+   * shadow never bites into the ambient or any other light. Lit faces
+   * paint AFTER the erase: they re-light exactly the band a wall's own
+   * occlusion wedge blacked out.
    */
   private drawOccludedLight(
     light: WorldLight,
     blocks: (tx: number, ty: number) => boolean,
+    tallH: (tx: number, ty: number) => number,
     sx: number,
     sy: number,
     tx: number,
     ty: number,
-    faceH: number,
   ): void {
     // Scratch bbox in map pixels around the light.
     const bx = Math.floor(light.x * sx + tx - light.r * sx) - 1;
@@ -170,33 +261,20 @@ export class LightingSystem {
     const t1y = Math.ceil(light.y + light.r);
     const lTx = Math.floor(light.x);
     const lTy = Math.floor(light.y);
-    const faces: Array<[number, number, number, number]> = [];
     for (let cy = t0y; cy <= t1y; cy++) {
       for (let cx = t0x; cx <= t1x; cx++) {
         if (cx === lTx && cy === lTy) continue;
         if (!blocks(cx, cy)) continue;
-        this.castTileShadow(t, light, cx, cy, faces);
+        this.castTileShadow(t, light, cx, cy);
       }
     }
     t.globalCompositeOperation = 'source-over';
-    // THE LIT FACES: a south face standing in the pool catches the
-    // lamp on the side the camera sees — brightness follows N·L (how
-    // squarely the face looks at the light) and the pool's falloff,
-    // hottest at the foot and dying up the wall. Painted after the
-    // shadow erase, it re-lights exactly the band the wall's own
-    // occlusion wedge blacked out — light lands ON the wall, not
-    // through it.
-    if (faceH > 0) {
-      const [r, g, b] = light.rgb;
-      for (const [x0, x1, ye, k] of faces) {
-        const grad = t.createLinearGradient(0, ye, 0, ye - faceH);
-        grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${k})`);
-        grad.addColorStop(0.55, `rgba(${r}, ${g}, ${b}, ${k * 0.45})`);
-        grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
-        t.fillStyle = grad;
-        t.fillRect(x0, ye - faceH, x1 - x0, faceH);
-      }
-    }
+    // THE LIT FACES: everything standing in the pool — the walls that
+    // just erased their own wedges AND the stalls, stations and trees
+    // the shadow math never knew — catches the lamp on the side the
+    // camera sees, LOS-gated so nothing glows through a wall.
+    this.gatherFaces(light, tallH, blocks);
+    this.paintFaces(t, light);
     t.setTransform(1, 0, 0, 1, 0, 0);
 
     const m = this.mctx;
@@ -206,18 +284,16 @@ export class LightingSystem {
   }
 
   /**
-   * Project the tile square's silhouette away from the light, and
-   * report any camera-visible face the light strikes. Each occluding
-   * edge erases twice: a slightly splayed half-alpha quad (penumbra),
-   * then the exact hard quad (umbra) — the shadow's rim softens the
-   * further it runs, the core stays black.
+   * Project the tile square's silhouette away from the light. Each
+   * occluding edge erases twice: a slightly splayed half-alpha quad
+   * (penumbra), then the exact hard quad (umbra) — the shadow's rim
+   * softens the further it runs, the core stays black.
    */
   private castTileShadow(
     t: CanvasRenderingContext2D,
     light: WorldLight,
     cx: number,
     cy: number,
-    faces: Array<[number, number, number, number]>,
   ): void {
     // Corners clockwise; edges (a,b) with outward normals.
     const c: Array<[number, number]> = [
@@ -241,19 +317,8 @@ export class LightingSystem {
       const b = c[(e + 1) % 4]!;
       const mx = (a[0] + b[0]) / 2 - light.x;
       const my = (a[1] + b[1]) / 2 - light.y;
-      // Front-facing: the light strikes this side. The south face
-      // (e === 2) is the one the camera sees — record it for the
-      // lit-face pass, graded by falloff and how squarely it faces
-      // the pool (N·L).
-      if (mx * normals[e]![0] + my * normals[e]![1] <= 0) {
-        if (e === 2 && my < 0) {
-          const d = Math.hypot(mx, my) || 1;
-          const fall = 1 - d / light.r;
-          const k = Math.min(0.6, light.intensity * Math.pow(Math.max(0, fall), 1.4) * (-my / d) * 0.85);
-          if (k > 0.03) faces.push([Math.min(a[0], b[0]), Math.max(a[0], b[0]), a[1], k]);
-        }
-        continue;
-      }
+      // Front-facing: the light strikes this side — nothing to erase.
+      if (mx * normals[e]![0] + my * normals[e]![1] <= 0) continue;
       const dax = a[0] - light.x;
       const day = a[1] - light.y;
       const dbx = b[0] - light.x;

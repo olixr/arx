@@ -72,6 +72,18 @@ export declare class Renderer {
     private ownPY;
     /** Scene lights gathered this frame (tiles, projectiles, flames). */
     private readonly lights;
+    /** This frame's light-blocker test (walls/cliffs) — shared by the
+     *  lightmap and the body-relight LOS walks. */
+    private blocksAt;
+    /** Body-relight scratch (see relightBody) + per-frame budget. */
+    private readonly relightCanvas;
+    private readonly relightCtx;
+    private relitLeft;
+    /** Dominant-light stash filled by sampleExposure(wantDom=true). */
+    private domK;
+    private domX;
+    private domY;
+    private domRgb;
     /** Ground shadows batch here, composited once at the sky's alpha. */
     private readonly shadowLayer;
     private readonly shadowLayerCtx;
@@ -525,7 +537,10 @@ export declare class Renderer {
     private resize;
     render(game: ClientGame, frameDt: number): void;
     /** Deep-cave ambient the underground blend rides to: cool, slightly
-     *  desaturated, ~0.79 effective darkness regardless of surface hour. */
+     *  desaturated, ~0.76 effective darkness regardless of surface hour.
+     *  Lifted from the original [48,54,70] in the cave-light rework: the
+     *  silhouette floor was below readability, and the drama now comes
+     *  from pools, lit faces and body relights, not from raw murk. */
     private static readonly UG_AMBIENT;
     /**
      * Blend this frame's sky sample toward the fixed cave ambient.
@@ -1301,6 +1316,32 @@ export declare class Renderer {
      * is invisible, and baking there would fire draw-closure side
      * effects (gather chips, footsteps) twice a frame.
      */
+    /**
+     * The exposure the multiply map resolves at a world point: ambient
+     * screened with every pool in reach — 1 − (1−amb)·Π(1−Lᵢ) — with a
+     * coarse LOS walk so lamplight doesn't reach through walls. With
+     * `wantDom`, the strongest single pool is stashed in dom* for the
+     * rim-light pass.
+     */
+    private sampleExposure;
+    /** Coarse LOS for relight: one blocker sample per tile along the
+     *  line, clear of both endpoints. */
+    private lightSees;
+    /**
+     * THE BODY STANDS IN ITS OWN LIGHT. The multiply map exposes a tall
+     * sprite by the ground rows BEHIND it (screen pixels are geography),
+     * so a body at a brazier kept a cold head while the floor behind it
+     * glowed, and a body north of a pool wore light that wasn't its own.
+     * This pass corrects the just-blitted sprite toward the exposure at
+     * its BASE: under-lit bodies get the pool's color lifted in, hottest
+     * at the feet and dying up the body (light lands from the base, like
+     * every pool in the game), plus a rim crescent on the edge facing
+     * the dominant light — silhouette-shift masking, the poor man's
+     * normal map. Over-lit bodies get the difference multiplied back
+     * out. Skipped in daylight, in the mirror pass, and past the
+     * per-frame budget; the whole pass costs a few small composites.
+     */
+    private relightBody;
     private paintOutlined;
     /** Blit a cached body composite at the item's CURRENT body rect —
      *  scale-compensated like the tree cache when mid-glide. */
