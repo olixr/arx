@@ -2704,12 +2704,12 @@ export class Renderer {
   }
 
   /** Deep-cave ambient the underground blend rides to: cool, slightly
-   *  desaturated, ~0.72 effective darkness regardless of surface hour.
-   *  Lifted twice from the original [48,54,70] in the cave-light
-   *  reworks: the silhouette floor sat below readability, and the
-   *  drama now comes from pools, lit faces, bounce wrap and body
-   *  relights, not from raw murk. */
-  private static readonly UG_AMBIENT: readonly [number, number, number] = [64, 70, 88];
+   *  desaturated, ~0.64 effective darkness regardless of surface hour.
+   *  Lifted repeatedly from the original [48,54,70] by user decree:
+   *  lights don't reach every gallery, so the UNLIT cave must read on
+   *  its own — a moonlit-cavern floor, with the drama coming from
+   *  pools, lit faces, bounce wrap and body relights over it. */
+  private static readonly UG_AMBIENT: readonly [number, number, number] = [86, 92, 112];
 
   /**
    * Blend this frame's sky sample toward the fixed cave ambient.
@@ -2726,11 +2726,13 @@ export class Renderer {
     s.ambient[0] += (ur - s.ambient[0]) * k;
     s.ambient[1] += (ug - s.ambient[1]) * k;
     s.ambient[2] += (ub - s.ambient[2]) * k;
-    // The horizon haze sinks to cave gloom — near-black, faintly blue.
-    s.sky[0] += (14 - s.sky[0]) * k;
-    s.sky[1] += (16 - s.sky[1]) * k;
-    s.sky[2] += (26 - s.sky[2]) * k;
-    s.skyAlpha += (0.4 - s.skyAlpha) * k;
+    // The horizon haze sinks to cave gloom — deep blue, no longer
+    // near-black: the brighter ambient floor needs a top band that
+    // shades, not swallows.
+    s.sky[0] += (24 - s.sky[0]) * k;
+    s.sky[1] += (28 - s.sky[1]) * k;
+    s.sky[2] += (44 - s.sky[2]) * k;
+    s.skyAlpha += (0.32 - s.skyAlpha) * k;
     s.sun *= 1 - k;
     s.moon *= 1 - k;
     s.shadowAlpha *= 1 - k; // no sun down there
