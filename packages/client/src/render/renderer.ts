@@ -2704,12 +2704,14 @@ export class Renderer {
   }
 
   /** Deep-cave ambient the underground blend rides to: cool, slightly
-   *  desaturated, ~0.64 effective darkness regardless of surface hour.
+   *  desaturated, ~0.58 effective darkness regardless of surface hour.
    *  Lifted repeatedly from the original [48,54,70] by user decree:
    *  lights don't reach every gallery, so the UNLIT cave must read on
    *  its own — a moonlit-cavern floor, with the drama coming from
-   *  pools, lit faces, bounce wrap and body relights over it. */
-  private static readonly UG_AMBIENT: readonly [number, number, number] = [86, 92, 112];
+   *  pools, lit faces, bounce wrap and body relights over it. The one
+   *  constant serves caves AND dungeon instances (both live below
+   *  UNDERGROUND_Y — dungeons park at y 8192). */
+  private static readonly UG_AMBIENT: readonly [number, number, number] = [100, 106, 126];
 
   /**
    * Blend this frame's sky sample toward the fixed cave ambient.
