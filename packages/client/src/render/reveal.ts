@@ -6,10 +6,11 @@
  * never LOSE you.
  *
  * 1. THE THICKET VEIL: a soft elliptical window of screen-door dither
- *    punched out of any tree canopy that draws over your own body.
- *    The window is centered on YOU and reaches ~2 tiles — you can read
- *    the ground you stand on inside a deep forest, but nothing at
- *    range is revealed. The dither punches the OCCLUDER's sprite, so
+ *    punched through every tall cached sprite it touches — tree
+ *    canopies and man-height props alike (THE LENS LAW below). The
+ *    window is centered on YOU and reaches ~3 tiles — you can read
+ *    the ground story around you inside a deep forest, but nothing at
+ *    range is revealed. The dither punches the OCCLUDERS' sprites, so
  *    whatever was already painted beneath (you, props, a mob at your
  *    heels) shows through at reduced strength: navigation, not x-ray.
  *
@@ -29,8 +30,13 @@
  * compositing lives in renderer.ts.
  */
 
-/** Horizontal half-reach of the veil window, in tiles. */
-export const VEIL_R_TILES = 2.3;
+/**
+ * Horizontal half-reach of the veil window, in tiles. v2: widened
+ * from 2.3 — the user verdict on v1 was "too small a radius to be
+ * useful"; 3.1 shows the ground story around a whole engagement
+ * circle while still capping what the lens can ever reveal.
+ */
+export const VEIL_R_TILES = 3.1;
 /**
  * Vertical squash of the window ellipse. Matches the 2.5D camera's
  * compressed rows AND protects the trunk zone below the window — a
@@ -41,9 +47,20 @@ export const VEIL_SQUASH = 0.8;
  * Peak alpha the veil may punch from a canopy at the window center.
  * Deliberately < 1: the canopy stays present as a translucent lace —
  * "I can see where I am", never "the tree is gone". Calibrated live
- * against a 40-tree canopy stack: 0.7 read too murky at the center.
+ * twice: 0.7 read murky, 0.74 still starved 3-deep stacks → 0.82.
  */
-export const VEIL_MAX = 0.74;
+export const VEIL_MAX = 0.82;
+/**
+ * THE STACK LAW: a uniform translucency floor under the Bayer weave
+ * (per-pixel mask alpha ≈ CORE + bayer·(1−CORE), then feathered).
+ * The lens's dither cells align across every laced sprite (all masks
+ * are player-centered), so open cells compound to full holes in a
+ * stack — but WITHOUT this floor the dark cells barely compounded at
+ * all and 3-deep canopies read as murk (v1 verdict: "multiple items
+ * stacked on top of each other is not revealing enough"). The floor
+ * guarantees every stacked layer cedes at least ~VEIL_MAX·CORE.
+ */
+export const VEIL_CORE = 0.4;
 /** Dither cell size in css px — chunky enough to read as screen-door. */
 export const DITHER_CELL = 2;
 /**
@@ -79,10 +96,15 @@ export function smoothstep01(t: number): number {
 }
 
 /**
- * A tree only veils (and only counts as cover) while it FRONTS the
- * body — its base row at or south of yours, so the y-sort draws it
- * over you. Eased over a fraction of a tile so a tree entering
- * candidacy while you strafe never pops its window in.
+ * THE LENS LAW (v2): the window is ONE coherent lens — EVERY tall
+ * sprite intersecting it laces, fronting or not. v1 punched only
+ * fronting trees, and stacked scenes read as patchwork: laced south
+ * canopies interleaved with solid north canopies inside the same
+ * window ("the layering isn't held up correctly" — user verdict).
+ * frontEase now gates only the GHOST EMBER's cover registration: a
+ * sprite counts as HIDING the body only while its base row sits at
+ * or south of yours (the y-sort draws it over you). Eased over a
+ * fraction of a tile so cover never pops while you strafe.
  */
 export function frontEase(dyWorld: number): number {
   return smoothstep01((dyWorld + 0.15) / 0.65);

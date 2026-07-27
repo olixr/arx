@@ -87,12 +87,32 @@ export declare class Renderer {
     /** The elliptical feathered dither window (device px), rebuilt when
      *  the camera scale drifts >2% or dpr changes. */
     private veilMask;
-    /** Scratch for the per-tree punch composite (grows monotonically). */
-    private readonly veilScratch;
-    private readonly veilScratchCtx;
-    /** Tree cover registered DURING the draw pass (max of residuals);
-     *  read next frame — the 0.22s ember ease swallows the 1-frame lag. */
-    private treeGhostCover;
+    /**
+     * THE TWO STRATA: veiled sprites deposit their window sub-rects
+     * here instead of paying a per-sprite punch (a deep forest lands
+     * ~90 sprites in the lens — per-sprite mask+blit cost 3.1ms/frame,
+     * measured). BEHIND holds sprites the y-sort draws under the own
+     * body, FRONT the ones over it (split = frontEase, the same law
+     * the ember reads). Each stratum is punched ONCE and composited:
+     * behind right under the own body, front after the world pass —
+     * the player's own layering stays exact; other ground items inside
+     * the window trade exact interleave for a light lace (accepted:
+     * the lens is translucent there by definition).
+     */
+    private readonly veilStratumB;
+    private readonly veilStratumBCtx;
+    private readonly veilStratumF;
+    private readonly veilStratumFCtx;
+    /** Integer-snapped window bbox origin (css px), stamped per frame. */
+    private veilWX0;
+    private veilWY0;
+    /** Which strata carry deposits this frame (cleared lazily). */
+    private veilUsedB;
+    private veilUsedF;
+    /** Occluder cover registered DURING the draw pass by veilBlit
+     *  (max of tree/prop residuals); read next frame — the 0.22s ember
+     *  ease swallows the 1-frame lag. */
+    private veilGhostCover;
     /** The ember's temporal ease toward this frame's occlusion cover. */
     private ghostK;
     /** Own player's DrawItem, stashed by collectEntities for the ember. */
@@ -1314,6 +1334,30 @@ export declare class Renderer {
      * contact or it reads as floating.
      */
     private veilWindowMask;
+    /**
+     * THE LENS LAW blit: if the veil window touches the sprite's dest
+     * rect, blit it through the dither punch (scratch composite — the
+     * cached sprite stays pristine) and return true; the caller draws
+     * normally on false. Purely geometric arming: the feather is fully
+     * inside the overlap margin, so a sprite entering candidacy
+     * contributes zero at the boundary — no temporal state, no pop.
+     *
+     * coverEy — frontEase of the sprite's base row vs the body: >0
+     * means this sprite actually DRAWS OVER the body, and if the
+     * anchor sits inside the sprite rect its veilResidual feeds the
+     * ghost ember. Punching itself is deliberately NOT gated on it
+     * (v1 was, and stacked scenes read as patchwork).
+     */
+    private veilBlit;
+    /** The stratum canvas for one side of the body, sized to the mask
+     *  and cleared on first deposit each frame. */
+    private ensureVeilStratum;
+    /**
+     * Punch a stratum ONCE with the window mask and composite it home.
+     * Called at the two ordained points: behind-stratum just before
+     * the own body draws, front-stratum after the world pass.
+     */
+    private compositeVeilStratum;
     private drawTree;
     /**
      * TRUE-FORM tree shadow: the same skeleton paintTree draws — trunk
