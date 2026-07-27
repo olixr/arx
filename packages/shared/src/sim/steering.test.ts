@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { NO_COLLISION, type CollisionSource } from '../world/collision.js';
 import { Tile } from '../world/tiles.js';
-import { newSteerMemory, steerToward } from './steering.js';
+import { lineClear, newSteerMemory, steerToward } from './steering.js';
 
 const RADIUS = 0.35;
 
@@ -10,6 +10,17 @@ const RADIUS = 0.35;
 const wallAtX5: CollisionSource = {
   isSolid: (tx, ty) => tx === 5 && ty >= -10 && ty <= 10,
 };
+
+test('lineClear: open ground is clear, a wall across the line is not', () => {
+  assert.ok(lineClear(NO_COLLISION, 0, 0, 10, 3, RADIUS));
+  assert.ok(!lineClear(wallAtX5, 0, 0.5, 10, 0.5, RADIUS));
+});
+
+test('lineClear: never probes at the endpoint itself', () => {
+  // The goal stands hard against the wall column; the walk up to it
+  // is still clear — that wall is not on our path.
+  assert.ok(lineClear(wallAtX5, 0, 0.5, 4.55, 0.5, RADIUS));
+});
 
 test('open field: heads straight at the goal, unit length', () => {
   const mem = newSteerMemory();

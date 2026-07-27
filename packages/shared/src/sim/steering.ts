@@ -52,6 +52,33 @@ function headingClear(
 }
 
 /**
+ * Can a body of `radius` walk the straight line from (x0,y0) to
+ * (x1,y1)? Samples every 0.35 tiles but never AT the endpoint — the
+ * target itself may stand hard against a wall, and that wall is not
+ * on our path. This is walk-clearance, not sight: solids that could
+ * be seen past (a fence, a boulder) still block it.
+ */
+export function lineClear(
+  collision: CollisionSource,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  radius: number,
+): boolean {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 1e-6) return true;
+  const ux = dx / dist;
+  const uy = dy / dist;
+  for (let d = 0.35; d < dist - 0.05; d += 0.35) {
+    if (circleHitsSolid(collision, x0 + ux * d, y0 + uy * d, radius)) return false;
+  }
+  return true;
+}
+
+/**
  * The unit heading toward (goalX, goalY), deflected just enough to miss
  * whatever stands in the way. Returns {0,0} at the goal. Mutates `mem`.
  */

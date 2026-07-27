@@ -195,6 +195,8 @@ import {
   orientDiagFence,
   chargedShot,
   circleHitsSolid,
+  findPathNav,
+  lineClear,
   newSteerMemory,
   pointHitsSolid,
   steerToward,
@@ -331,6 +333,19 @@ interface NpcComp {
   navRefY: number;
   /** A failed chase sulks: no aggro scans until this tick. */
   noAggroUntilTick: number;
+  /**
+   * The learned lane: cached A* waypoints toward the nav goal, alive
+   * only while the straight walk-line is blocked. null = steering
+   * direct (the cheap, common case).
+   */
+  nav: { pts: Vec2[]; idx: number; goalX: number; goalY: number } | null;
+  /** Earliest tick this body may ask the pathfinder again. */
+  nextRepathTick: number;
+  /** Cached walk-line verdict toward (losGoalX, losGoalY). */
+  losClear: boolean;
+  losUntilTick: number;
+  losGoalX: number;
+  losGoalY: number;
   /**
    * This body keeps its weapons stowed when at peace (non-hostile
    * actors). The snapshot bit derives from pref + state, so drawing
@@ -6896,6 +6911,12 @@ export class GameServer {
       navRefX: Infinity,
       navRefY: Infinity,
       noAggroUntilTick: 0,
+      nav: null,
+      nextRepathTick: 0,
+      losClear: false,
+      losUntilTick: 0,
+      losGoalX: Infinity,
+      losGoalY: Infinity,
       patrol:
         patrol && patrol.length >= 2
           ? { pts: patrol, idx: 0, waitUntilTick: 0 }
@@ -6992,6 +7013,12 @@ export class GameServer {
         navRefX: Infinity,
         navRefY: Infinity,
         noAggroUntilTick: 0,
+        nav: null,
+        nextRepathTick: 0,
+        losClear: false,
+        losUntilTick: 0,
+        losGoalX: Infinity,
+        losGoalY: Infinity,
         // A guard at peace keeps the blade on the hip; hostiles walk
         // with steel out. The bit derives from this + state === 'idle'.
         sheathePref: actor.disposition !== 'hostile',
@@ -7068,6 +7095,99 @@ export class GameServer {
   private static readonly RETURN_STALL_TICKS = 100;
   /** How long an abandoned chase sulks before scanning for aggro again (12s). */
   private static readonly NO_AGGRO_TICKS = 240;
+  /** Ticks a cached walk-line verdict stays trusted (0.2s). */
+  private static readonly LOS_RECHECK_TICKS = 4;
+  /** Per-body floor between pathfinder requests (0.5s). */
+  private static readonly REPATH_TICKS = 10;
+  /** A nav goal drifting this far from its lane forces a repath. */
+  private static readonly PATH_GOAL_DRIFT = 1.4;
+  /** Global A* grants per tick — everyone else keeps the steer fan. */
+  private static readonly MAX_PATHFINDS_PER_TICK = 4;
+
+  /** Pathfinder grants left this tick (reset at the top of tickNpcs). */
+  private pathfindsLeft = 0;
+
+  /**
+   * The chase learns the map: the heading toward (goalX, goalY) for a
+   * pursuing body. When the straight walk-line is clear — the common,
+   * open-field case — this is exactly the old steer fan at zero extra
+   * cost. When it is not, the body keeps a cached A* lane (bounded by
+   * its own leash circle, best-effort when the goal is sealed off) and
+   * steers waypoint to waypoint, so buildings, rock pockets, and fence
+   * lines get ROUNDED instead of ground against. The pathfinder is
+   * budgeted per tick and per body; a denied grant degrades to the
+   * plain fan for a few ticks, never a freeze — and the caller's stall
+   * ladder keeps sole ownership of giving up.
+   */
+  private npcNavToward(
+    npc: NpcComp,
+    pos: { x: number; y: number },
+    goalX: number,
+    goalY: number,
+  ): { mx: number; my: number } {
+    const radius = npc.def.radius;
+    // Walk-line check, cached a few ticks. A goal that moved (chase
+    // target, state flip) invalidates the cache immediately.
+    if (
+      this.tickCount >= npc.losUntilTick ||
+      Math.hypot(goalX - npc.losGoalX, goalY - npc.losGoalY) > 0.6
+    ) {
+      npc.losClear = lineClear(this.world, pos.x, pos.y, goalX, goalY, radius);
+      npc.losUntilTick = this.tickCount + GameServer.LOS_RECHECK_TICKS;
+      npc.losGoalX = goalX;
+      npc.losGoalY = goalY;
+    }
+    if (npc.losClear) {
+      npc.nav = null;
+      return steerToward(pos, goalX, goalY, this.world, radius, npc.steer);
+    }
+
+    const stale =
+      npc.nav === null ||
+      npc.nav.idx >= npc.nav.pts.length ||
+      Math.hypot(goalX - npc.nav.goalX, goalY - npc.nav.goalY) > GameServer.PATH_GOAL_DRIFT;
+    if (stale && this.tickCount >= npc.nextRepathTick && this.pathfindsLeft > 0) {
+      this.pathfindsLeft--;
+      npc.nextRepathTick = this.tickCount + GameServer.REPATH_TICKS;
+      const found = findPathNav(this.world, pos.x, pos.y, goalX, goalY, {
+        cx: npc.originX,
+        cy: npc.originY,
+        r: npc.def.leashRange + 2,
+      });
+      npc.nav = found.path.length > 0 ? { pts: found.path, idx: 0, goalX, goalY } : null;
+    }
+
+    const nav = npc.nav;
+    if (nav) {
+      while (nav.idx < nav.pts.length) {
+        const wp = nav.pts[nav.idx]!;
+        const d = Math.hypot(wp.x - pos.x, wp.y - pos.y);
+        if (d < 0.35) {
+          nav.idx++;
+          continue;
+        }
+        // Passed-it skip: a pounce leap or wall-slide can leave the
+        // body nearer the NEXT waypoint — but only skip when the
+        // straight walk there is actually open, or a U-bend around a
+        // building would collapse back into wall-grinding.
+        const next = nav.pts[nav.idx + 1];
+        if (
+          next &&
+          Math.hypot(next.x - pos.x, next.y - pos.y) < d &&
+          lineClear(this.world, pos.x, pos.y, next.x, next.y, radius)
+        ) {
+          nav.idx++;
+          continue;
+        }
+        return steerToward(pos, wp.x, wp.y, this.world, radius, npc.steer);
+      }
+      npc.nav = null;
+    }
+
+    // No lane granted (budget) or the lane ran out short of the goal:
+    // the fan pushes on and the stall ladder owns what happens next.
+    return steerToward(pos, goalX, goalY, this.world, radius, npc.steer);
+  }
 
   /** The task the schedule assigns this comp right now. */
   private routineTask(rc: RoutineComp): RoutineTask {
@@ -7363,6 +7483,9 @@ export class GameServer {
     npc.navRefY = Infinity;
     npc.steer.side = 0;
     npc.steer.ticks = 0;
+    npc.nav = null;
+    npc.nextRepathTick = 0;
+    npc.losUntilTick = 0;
     if (npc.def.pack && (opts.rally ?? true)) {
       this.rallyPack(eid, npc, targetEid, PACK_RALLY_RANGE);
     }
@@ -7425,6 +7548,7 @@ export class GameServer {
   }
 
   private tickNpcs(now: number): void {
+    this.pathfindsLeft = GameServer.MAX_PATHFINDS_PER_TICK;
     for (const [eid, npc] of this.npcs) {
       const pos = this.positions.must(eid);
       if (npc.attackCooldown > 0) npc.attackCooldown--;
@@ -7600,9 +7724,10 @@ export class GameServer {
               this.setNpcPose(eid, npc, PoseState.Attack, npc.def.ranged ? 10 : 8);
             }
           } else {
-            // Steer, don't beeline: the fan probe swings the pursuit
-            // around trees and walls instead of grinding into them.
-            const h = steerToward(pos, tpos.x, tpos.y, this.world, npc.def.radius, npc.steer);
+            // Navigate, don't beeline: the steer fan in the open, a
+            // budgeted A* lane around anything the fan can't round —
+            // buildings, rock pockets, fence lines.
+            const h = this.npcNavToward(npc, pos, tpos.x, tpos.y);
             moveX = h.mx;
             moveY = h.my;
             // Stall watch, closest-approach law: only a STATIONARY
@@ -7638,7 +7763,7 @@ export class GameServer {
           const health = this.healths.must(eid);
           health.hp = health.maxHp; // reset like classic MMO leashing
         } else {
-          const h = steerToward(pos, npc.originX, npc.originY, this.world, npc.def.radius, npc.steer);
+          const h = this.npcNavToward(npc, pos, npc.originX, npc.originY);
           moveX = h.mx;
           moveY = h.my;
           // A homeward walk that stalls out (closest-approach law) has
@@ -7677,7 +7802,7 @@ export class GameServer {
             npc.navBest = Infinity;
             npc.navStuck = 0;
           } else {
-            const h = steerToward(pos, wp.x, wp.y, this.world, npc.def.radius, npc.steer);
+            const h = this.npcNavToward(npc, pos, wp.x, wp.y);
             moveX = h.mx;
             moveY = h.my;
             // A blocked leg skips its waypoint — the closest-approach
