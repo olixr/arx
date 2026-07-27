@@ -229,6 +229,7 @@ export function createMapsApi(
             anchors: AUTHORED_GEOGRAPHY.anchors.map((a) => ({ ...a })),
             massifs: AUTHORED_GEOGRAPHY.massifs.map((m) => ({ ...m })),
             veils: AUTHORED_GEOGRAPHY.veils.map((v) => ({ ...v })),
+            fens: AUTHORED_GEOGRAPHY.fens.map((f) => ({ ...f })),
             planned: AUTHORED_GEOGRAPHY.planned.map((p) => ({ ...p })),
           });
           console.log(`[content] geography ${outcome} — shipped plan stands`);

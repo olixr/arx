@@ -9,6 +9,7 @@ import {
   ROAD_ROUTES,
   SILVERFALL_RECT,
   distToRect,
+  fenAt,
   fieldApronAt,
   geographySnapshot,
   geographyWarnings,
@@ -72,23 +73,24 @@ test('routes stay far above the dark band', () => {
 test('the fields fall off to honest zero in the far frontier', () => {
   assert.equal(massifAt(2000, 2000), 0);
   assert.equal(thornveilAt(2000, 2000), 0);
+  assert.equal(fenAt(2000, 2000), 0);
   assert.equal(fieldApronAt(2000, 2000, 64), 0);
   assert.equal(roadDistanceAt(1337, 2000, 2000), Infinity);
   assert.equal(nearRoads(1900, 1900, 2100, 2100), false);
 });
 
 test('road queries agree with themselves (deterministic, kind-aware)', () => {
-  const a = roadHitAt(1337, 50, 45);
-  const b = roadHitAt(1337, 50, 45);
+  const a = roadHitAt(1337, 56, 64);
+  const b = roadHitAt(1337, 56, 64);
   assert.deepEqual(a, b);
-  assert.ok(a !== null && a.dist < 8, 'the First Road runs near (50,45)');
+  assert.ok(a !== null && a.dist < 8, 'the First Road runs near (56,64)');
   assert.equal(a!.trail, false);
   const t = roadHitAt(1337, -60, -10);
   assert.ok(t !== null && t.trail, "the Hunter's Trail near (-60,-10) reads as a trail");
 });
 
 test('distToRect is zero inside, exact outside', () => {
-  assert.equal(distToRect(120, 20, AMBERFORD_RECT), 0);
+  assert.equal(distToRect(AMBERFORD_RECT.x + 16, 20, AMBERFORD_RECT), 0);
   assert.equal(distToRect(AMBERFORD_RECT.x - 10, 20, AMBERFORD_RECT), 10);
   assert.equal(
     distToRect(SILVERFALL_RECT.x + 5, SILVERFALL_RECT.y + 5, SILVERFALL_RECT),
@@ -131,11 +133,11 @@ test('pinned mileposts stand beside the road, never on it', () => {
 
 test('roadBearingAt points at the road, and honestly refuses far ground', () => {
   // A point south of the First Road: the bearing must lead back to it.
-  const b = roadBearingAt(50, 60, 40);
-  assert.ok(b !== null, 'the First Road is within 40 of (50,60)');
+  const b = roadBearingAt(56, 84, 40);
+  assert.ok(b !== null, 'the First Road is within 40 of (56,84)');
   const step = 10;
-  const before = roadDistanceAt(1337, 50, 60);
-  const after = roadDistanceAt(1337, Math.round(50 + b!.x * step), Math.round(60 + b!.y * step));
+  const before = roadDistanceAt(1337, 56, 84);
+  const after = roadDistanceAt(1337, Math.round(56 + b!.x * step), Math.round(84 + b!.y * step));
   assert.ok(after < before, 'walking the bearing must close on the road');
   // The deep frontier has no bearing to give.
   assert.equal(roadBearingAt(2000, 2000, 40), null);
@@ -213,14 +215,14 @@ test('replaceGeography moves the roads, the anchors, and every query with them',
     assert.equal(AUTHORED_WILD_SITES[0]!.id, 'east_rest');
     // The road queries answer from the new plan (derived bounds moved).
     assert.ok(roadDistanceAt(1337, 1100, 100) < 8, 'the East Reach exists');
-    assert.equal(roadDistanceAt(1337, 50, 45), Infinity, 'the First Road is gone');
+    assert.equal(roadDistanceAt(1337, 56, 64), Infinity, 'the First Road is gone');
     assert.equal(nearRoads(0, 0, 200, 200), false);
     assert.ok(nearRoads(990, 90, 1010, 110));
   } finally {
     replaceGeography(before);
   }
   // The restoration is honest: shipped queries answer as ever.
-  assert.ok(roadDistanceAt(1337, 50, 45) < 8);
+  assert.ok(roadDistanceAt(1337, 56, 64) < 8);
   assert.equal(SETTLED_ANCHORS.length, AUTHORED_GEOGRAPHY.anchors.length);
 });
 

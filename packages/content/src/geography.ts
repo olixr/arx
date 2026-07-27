@@ -68,12 +68,13 @@ export interface Landform {
 export const DAWNMEAD_RECT: ZoneRect = { x: -96, y: 16, w: 96, h: 64 };
 
 /**
- * Amberford — the crossroads market town (epic 2). Center (160, 24):
- * far enough east that the First Road is a real first journey (~40
- * tiles of tier-1 country between the safe edges), close enough that
- * a fresh waker survives the walk.
+ * Amberford — the crossroads market town (epic 2). Center (352, 24):
+ * pushed a full ~300 tiles past Dawnmead's east hem so the First Road
+ * is a REAL first journey (~90 seconds of honest walking through the
+ * Amberfen, not a stroll) — the corridor carries a toll narrows, a
+ * crofter haven, and the fen's islet country to explore on the way.
  */
-export const AMBERFORD_RECT: ZoneRect = { x: 104, y: -16, w: 112, h: 80 };
+export const AMBERFORD_RECT: ZoneRect = { x: 296, y: -16, w: 112, h: 80 };
 
 /**
  * Silverfall — the mountain capital (epic 4). Center (-288, -160):
@@ -88,6 +89,18 @@ export const SILVERSPINE = { x: -320, y: -192, r: 210 } as const;
 
 /** The Thornveil — the dark wood between the lowlands and the climb. */
 export const THORNVEIL = { x: -130, y: -70, r: 160 } as const;
+
+/**
+ * THE AMBERFEN — the wetland the First Road threads, and the water
+ * that names Amberford: the ford over the amber fen. Two overlapping
+ * hearts make a lake-chain with a narrow waist between them — reed
+ * banks, sandbar crossings, willow islets — so the journey east reads
+ * shore → narrows → causeway → ford instead of "some lakes happened".
+ * Worldgen pulls elevation toward the wet line and lifts moisture
+ * inside the fen; the noise still decides every shoreline.
+ */
+export const AMBERFEN_WEST = { x: 92, y: 40, r: 68 } as const;
+export const AMBERFEN_EAST = { x: 206, y: 34, r: 66 } as const;
 
 export interface RoadRoute {
   id: string;
@@ -133,6 +146,8 @@ export interface GeographyDef {
   anchors: DangerAnchor[];
   massifs: Landform[];
   veils: Landform[];
+  /** Wetland hearts — elevation pulled to the wet line, moisture up. */
+  fens: Landform[];
   planned: PlannedRect[];
 }
 
@@ -146,13 +161,27 @@ const AUTHORED_PLAN: GeographyDef = {
       id: 'first_road',
       name: 'The First Road',
       kind: 'road',
-      // Dawnmead's east lane mouth to Amberford's Fordgate: the
-      // graduate walk. Tier 1 the whole way, wobble tier 2.
+      // Dawnmead's east lane mouth to Amberford's Fordgate: the first
+      // journey, laid THROUGH the Amberfen with intent. It swings
+      // SOUTH around the west heart's open water (the scenic shore
+      // miles), climbs back through the waist between the two hearts
+      // (the narrows — and the toll camp's hunting ground), runs the
+      // NORTH shore of the east heart, and descends to the ford.
+      // Serpentine on purpose: ~326 tiles of road where the crow
+      // flies 296 — the distance IS the design. Tier 1-2 throughout.
       pts: [
         { x: 0, y: 48 },
-        { x: 36, y: 46 },
-        { x: 70, y: 42 },
-        { x: 105, y: 36 },
+        { x: 28, y: 56 },
+        { x: 56, y: 66 },
+        { x: 86, y: 74 },
+        { x: 118, y: 62 },
+        { x: 144, y: 48 },
+        { x: 166, y: 38 },
+        { x: 186, y: 20 },
+        { x: 208, y: 4 },
+        { x: 236, y: 8 },
+        { x: 264, y: 20 },
+        { x: 296, y: 36 },
       ],
     },
     {
@@ -161,9 +190,15 @@ const AUTHORED_PLAN: GeographyDef = {
       kind: 'road',
       // Amberford's north gate to Silverfall's south gate: the game's
       // great journey. Foothills (T2), the Thornveil crossing (T3),
-      // then crag country past the Last Lamp (T4-5).
+      // then crag country past the Last Lamp (T4-5). The eastern leg
+      // arcs over the Amberfen's north rim into the old foothill line
+      // at (140,-56) — everything west of there is untouched ground
+      // (fernway_rest and the Thornveil Fork keep their pins).
       pts: [
-        { x: 158, y: -15 },
+        { x: 350, y: -15 },
+        { x: 312, y: -42 },
+        { x: 258, y: -56 },
+        { x: 196, y: -60 },
         { x: 140, y: -56 },
         { x: 104, y: -88 },
         { x: 48, y: -112 },
@@ -207,14 +242,26 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'veil_den', defId: 'wolfkin_den', cell: [-2, 0] },
     { id: 'spine_digs', defId: 'kobold_digs', cell: [-3, 0] },
     // The First Road ambush — every waker's first lesson that the
-    // space BETWEEN safeties is the game.
-    { id: 'first_road_toll', defId: 'bandit_camp', cell: [0, 0] },
+    // space BETWEEN safeties is the game. PINNED to the dry bank
+    // above the south-shore bend (the fen owns most of its cell now,
+    // so the honest scan has no room): the camp watches the one
+    // stretch where the road has water on one side and them on the
+    // other.
+    { id: 'first_road_toll', defId: 'bandit_camp', x: 120, y: 78 },
     // The broken tower on the High Road's first climb.
     { id: 'first_climb_tower', defId: 'watchtower_ruin', cell: [1, -1] },
+    // THE FENSIDE CROFTS — the mid-journey haven: fisher-crofters on
+    // the waist between the fen's two hearts, a lamp and a larder at
+    // the halfway mark so the long walk east has a place to breathe.
+    { id: 'fenside_crofts', defId: 'roadside_hamlet', x: 152, y: 32 },
   ],
   anchors: SETTLED_ANCHORS.map((a) => ({ ...a })),
   massifs: [{ id: 'silverspine', ...SILVERSPINE }],
   veils: [{ id: 'thornveil', ...THORNVEIL }],
+  fens: [
+    { id: 'amberfen_west', ...AMBERFEN_WEST },
+    { id: 'amberfen_east', ...AMBERFEN_EAST },
+  ],
   planned: [
     { id: 'dawnmead', name: 'Dawnmead', ...DAWNMEAD_RECT },
     { id: 'amberford', name: 'Amberford', ...AMBERFORD_RECT, apron: true },
@@ -233,6 +280,7 @@ export const PLANNED_ZONE_RECTS: readonly PlannedRect[] = [];
 export const FIELD_APRON_RECTS: readonly PlannedRect[] = [];
 const MASSIFS: Landform[] = [];
 const VEILS: Landform[] = [];
+const FENS: Landform[] = [];
 
 interface RouteBounds {
   route: RoadRoute;
@@ -260,6 +308,7 @@ export function geographySnapshot(): GeographyDef {
     anchors: SETTLED_ANCHORS.map((a) => ({ ...a })),
     massifs: MASSIFS.map((m) => ({ ...m })),
     veils: VEILS.map((v) => ({ ...v })),
+    fens: FENS.map((f) => ({ ...f })),
     planned: PLANNED_ZONE_RECTS.map((p) => ({ ...p })),
   };
 }
@@ -276,6 +325,7 @@ export function replaceGeography(def: GeographyDef): void {
   refill(FIELD_APRON_RECTS, def.planned.filter((p) => p.apron).map((p) => ({ ...p })));
   refill(MASSIFS, def.massifs.map((m) => ({ ...m })));
   refill(VEILS, def.veils.map((v) => ({ ...v })));
+  refill(FENS, (def.fens ?? []).map((f) => ({ ...f })));
   replaceSettledAnchors(def.anchors);
   ROAD_BOUNDS = ROAD_ROUTES.map((route) => {
     let x0 = Infinity;
@@ -455,12 +505,13 @@ export function validateGeographyDef(
     }
   }
 
-  const landforms = (kind: 'massifs' | 'veils'): Landform[] => {
+  const landforms = (kind: 'massifs' | 'veils' | 'fens', optional = false): Landform[] => {
     const out: Landform[] = [];
     const list = r[kind];
     const seen = new Set<string>();
     if (!Array.isArray(list)) {
-      errors.push(`${kind} must be an array`);
+      // Fens joined the plan after ship — an older doc simply has none.
+      if (!optional) errors.push(`${kind} must be an array`);
       return out;
     }
     for (const [i, m] of list.entries()) {
@@ -481,6 +532,7 @@ export function validateGeographyDef(
   };
   const massifs = landforms('massifs');
   const veils = landforms('veils');
+  const fens = landforms('fens', true);
 
   const planned: PlannedRect[] = [];
   const seenPlanned = new Set<string>();
@@ -511,7 +563,7 @@ export function validateGeographyDef(
   }
 
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, def: { routes, sites, anchors, massifs, veils, planned } };
+  return { ok: true, def: { routes, sites, anchors, massifs, veils, fens, planned } };
 }
 
 /**
@@ -618,6 +670,16 @@ export function thornveilAt(tx: number, ty: number): number {
   for (const v of VEILS) {
     const f = 1 - Math.hypot(tx - v.x, ty - v.y) / v.r;
     if (f > s) s = f;
+  }
+  return s;
+}
+
+/** Radial falloff for the fens' wet (1 at a heart, 0 past every rim). */
+export function fenAt(tx: number, ty: number): number {
+  let s = 0;
+  for (const f of FENS) {
+    const v = 1 - Math.hypot(tx - f.x, ty - f.y) / f.r;
+    if (v > s) s = v;
   }
   return s;
 }

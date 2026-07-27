@@ -18,10 +18,13 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // lane toward Amberford.
   { x: -64, y: 48, safeR: 64 },
   // Amberford — the crossroads market town (the master plan's second
-  // hearth). With both lowland anchors lit, the First Road corridor
-  // between them reads tier 1-2 — a first journey, never a gauntlet —
-  // while the northwest march toward Silverfall stays deep.
-  { x: 160, y: 24, safeR: 72 },
+  // hearth), a real journey east across the Amberfen now. The corridor
+  // bands tier 1 at the hems up to tier 3 at its deep middle — but the
+  // ROAD stays spawn-calm the whole way and the Fenside Crofts' lamp
+  // breaks the journey at the waist: dangers stand BESIDE the road
+  // (the toll camp law), so the walk has teeth without being a
+  // gauntlet. The northwest march toward Silverfall stays deep.
+  { x: 352, y: 24, safeR: 72 },
   // Silverfall — the mountain capital, and a HAVEN, not a hearth
   // (the haven law): its lamp keeps the terraces tier 0 and relieves
   // a graded rim, but it never joins the band march — the High Road

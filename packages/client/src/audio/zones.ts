@@ -28,7 +28,7 @@ export type ZoneId = keyof ZoneWeights;
  */
 const TOWNS = [
   { x: -64, y: 48, full: 22, fade: 36 }, // Dawnmead
-  { x: 160, y: 24, full: 30, fade: 48 }, // Amberford — the bigger hearth
+  { x: 352, y: 24, full: 30, fade: 48 }, // Amberford — the bigger hearth
   { x: -288, y: -160, full: 44, fade: 72 }, // Silverfall — the mountain capital
 ] as const;
 /** The dark band: worldgen's underground begins here. */

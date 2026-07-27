@@ -809,7 +809,7 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   assert.equal(z.height, AMBERFORD_RECT.h);
   const at = (x: number, y: number): Tile => z.ground[y * z.width + x]! as Tile;
   // The respawn hearth stands on the Market Round.
-  assert.deepEqual(z.spawn, { x: 156.5, y: 28.5 });
+  assert.deepEqual(z.spawn, { x: AMBERFORD_RECT.x + 52.5, y: AMBERFORD_RECT.y + 44.5 });
   assert.equal(TILE_DEFS[at(52, 44)].solid, false, 'spawn tile must be walkable');
   // The gates meet the carved worldgen roads tile-for-tile: the First
   // Road's rows at the west edge, the High Road's mouth at the north.

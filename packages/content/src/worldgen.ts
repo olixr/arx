@@ -14,6 +14,7 @@ import {
   TRAIL_APRON,
   TRAIL_HALF,
   TRAIL_SHOULDER,
+  fenAt,
   fieldApronAt,
   massifAt,
   nearRoads,
@@ -63,6 +64,19 @@ export function elevationAt(seed: number, tx: number, ty: number): number {
   // odd tarn where the base noise dips.
   const m = massifAt(tx, ty);
   if (m > 0) elevation = elevation * (1 - m * 0.5) + 0.62 * m * 0.5;
+  // The Amberfen: inside a fen heart the land trades the continental
+  // field for the fen's OWN marsh noise, centered on the waterline —
+  // a dealt mosaic of lake, shallows, reed bank, and islet (roughly
+  // half wet at a heart's core), immune to the Dawnmead lift that
+  // would otherwise keep the lowland dry. The blend saturates toward
+  // the heart and feathers at the rim, and 15% of the base field
+  // always survives so islets keep the continent's grain.
+  const fen = fenAt(tx, ty);
+  if (fen > 0) {
+    const marsh = 0.37 + (fbm(seed + 4242, tx * 0.03, ty * 0.03, 2) - 0.5) * 0.4;
+    const k = Math.min(1, fen * 1.4) * 0.85;
+    elevation = elevation * (1 - k) + marsh * k;
+  }
   // THE EDGE-HARMONY LAW: near a registered zone border the field
   // honors the border's authored intention — water edges keep flowing
   // outward as coves and creeks, sand continues as beach, and every
@@ -165,7 +179,12 @@ export function sandbarAt(seed: number, tx: number, ty: number): boolean {
  * with the willow/moonbell thresholds coming into reach.
  */
 export function moistureAt(seed: number, tx: number, ty: number): number {
-  const m = fbm(seed + 9999, tx * 0.03, ty * 0.03, 3) + thornveilAt(tx, ty) * 0.3;
+  // The fen breathes damp over its whole reach: willow banks, reed
+  // flats, and the herb layer (moonbell opens in the deepest wet).
+  const m =
+    fbm(seed + 9999, tx * 0.03, ty * 0.03, 3) +
+    thornveilAt(tx, ty) * 0.3 +
+    fenAt(tx, ty) * 0.22;
   // The edge-harmony law: an authored tree line keeps going as wild
   // forest; a road stub leaving a gate dries into an open clearing.
   return edgeBlendMoisture(seed, tx, ty, m);
@@ -493,8 +512,17 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
           E(lx, ly - 1) < 0.345;
         ground = offMargin && roll < 0.06 ? Tile.FishingSpot : Tile.WaterShallow;
       } else if (elevation < 0.4) {
-        ground = Tile.Sand;
-        if (roll < 0.04) detail = Detail.Pebbles;
+        // Shore band: beach sand — except inside the fen, where a damp
+        // shore grows reed flats instead (walkable wet ground, the
+        // Amberfen's signature), salted with the weaver's fibre plants.
+        if (fenAt(tx, ty) > 0.3 && moisture > 0.5) {
+          const flora = hashCoords(seed ^ 0xf10a5, tx, ty) / 4294967296;
+          ground = flora < 0.02 ? Tile.FibrePlant : Tile.Swamp;
+          if (ground === Tile.Swamp && roll > 0.8) detail = Detail.Tuft;
+        } else {
+          ground = Tile.Sand;
+          if (roll < 0.04) detail = Detail.Pebbles;
+        }
       } else if (atCliffBase(lx, ly)) {
         // Talus at the cliff's foot: tumbled boulders seeded with the
         // shallow ores — mining starts where the rock face meets the

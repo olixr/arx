@@ -458,6 +458,35 @@ test('the Silverspine stands: crag country cradles the Silverfall rect', () => {
   assert.ok(water / n < 0.08, `massif heart ring is ${((water / n) * 100).toFixed(1)}% water`);
 });
 
+test('the Amberfen is a true wetland: wet mosaic, reed banks, dry islets', () => {
+  const seed = 1337;
+  let n = 0;
+  let wet = 0;
+  let reeds = 0;
+  let dry = 0;
+  // Sample chunks across the west heart — the fen character must hold
+  // on any seed's noise: a real mosaic, not solid water or solid land.
+  for (const [cx, cy] of [[2, 1], [3, 1], [2, 0], [3, 0]] as const) {
+    const c = generateChunk(seed, cx, cy);
+    for (let i = 0; i < c.ground.length; i++) {
+      n++;
+      const g = c.ground[i]!;
+      if (
+        g === Tile.Water ||
+        g === Tile.WaterDeep ||
+        g === Tile.WaterShallow ||
+        g === Tile.FishingSpot
+      ) {
+        wet++;
+      } else if (g === Tile.Swamp) reeds++;
+      else dry++;
+    }
+  }
+  assert.ok(wet / n > 0.15, `fen heart only ${((wet / n) * 100).toFixed(1)}% open water`);
+  assert.ok(reeds / n > 0.02, `fen heart only ${((reeds / n) * 100).toFixed(1)}% reed bank`);
+  assert.ok(dry / n > 0.2, `fen heart drowned: only ${((dry / n) * 100).toFixed(1)}% dry ground`);
+});
+
 test('the Thornveil is a true wood', () => {
   const seed = 1337;
   let n = 0;
