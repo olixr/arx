@@ -24,6 +24,9 @@
 /** Brand ink — the same #241a2e every outlined body wears. */
 const INK = '#241a2e';
 const SHADOW_INK = '#141020';
+/** The camera's pitch squash — flight orients in the world plane and
+ *  the view foreshortens it, same as every ground ellipse. */
+const YSQ = 0.6;
 
 export type BirdMode = 'flyin' | 'ground' | 'scatter' | 'pass';
 
@@ -82,6 +85,13 @@ export interface Bird {
   speed: number;
   /** Seconds alive in scatter (hard despawn backstop). */
   scatterT: number;
+  /** World-plane velocity + climb rate, tracked every sim step — the
+   *  draw pass orients the body along the TRUE path, not a mirror. */
+  vx: number;
+  vy: number;
+  vAlt: number;
+  /** Wings set (gliding) vs beating — the plan view spreads held wings. */
+  gliding: boolean;
 }
 
 interface Flock {
@@ -295,6 +305,10 @@ export class Birds {
       headY: 0,
       speed: 0,
       scatterT: 0,
+      vx: 0,
+      vy: 0,
+      vAlt: 0,
+      gliding: false,
     };
   }
 
@@ -323,14 +337,18 @@ export class Birds {
       b.x += (dx / dist) * step;
       b.y += (dy / dist) * step;
       b.dir = dx >= 0 ? 1 : -1;
+      b.vx = (dx / dist) * v;
+      b.vy = (dy / dist) * v;
     }
+    const oldAlt = b.alt;
     const wantAlt = Math.min(b.alt, dist * 0.32);
     b.alt = Math.max(0, b.alt + (wantAlt - b.alt) * Math.min(1, dt * 5));
+    b.vAlt = dt > 0 ? (b.alt - oldAlt) / dt : 0;
     // Flap-and-glide: bursts of wingbeats, then set wings; a fast flare
     // right before the perch.
     const flare = dist < 1.4;
-    const gliding = !flare && Math.sin(b.phase + dist * 0.9) < -0.2;
-    b.flap += dt * Math.PI * 2 * (flare ? 13 : gliding ? 1.2 : 9);
+    b.gliding = !flare && Math.sin(b.phase + dist * 0.9) < -0.2;
+    b.flap += dt * Math.PI * 2 * (flare ? 13 : b.gliding ? 1.2 : 9);
   }
 
   private stepGround(b: Bird, f: Flock, dt: number, env: BirdEnv): void {
@@ -401,15 +419,21 @@ export class Birds {
     if (b.mode === 'scatter') {
       // Burst off the turf: speed and altitude both climb out.
       b.speed = Math.min(8.5, b.speed + 15 * dt);
+      const oldAlt = b.alt;
       b.alt = Math.min(4.6, b.alt + (1.4 + b.alt * 0.7) * dt);
+      b.vAlt = dt > 0 ? (b.alt - oldAlt) / dt : 0;
+      b.gliding = false;
       b.flap += dt * Math.PI * 2 * 14;
     } else {
       // The flyover holds a steady cruise with lazy flap-and-glide.
-      const gliding = Math.sin(b.phase + b.scatterT * 1.1) < -0.35;
-      b.flap += dt * Math.PI * 2 * (gliding ? 1.2 : 8);
+      b.gliding = Math.sin(b.phase + b.scatterT * 1.1) < -0.35;
+      b.vAlt = 0;
+      b.flap += dt * Math.PI * 2 * (b.gliding ? 1.2 : 8);
     }
     b.x += b.headX * b.speed * dt;
     b.y += b.headY * b.speed * dt;
+    b.vx = b.headX * b.speed;
+    b.vy = b.headY * b.speed;
     b.dir = b.headX >= 0 ? 1 : -1;
   }
 
@@ -524,14 +548,44 @@ export class Birds {
 
     ctx.save();
     ctx.translate(p.x, p.y - b.alt * scale * 0.92);
-    ctx.scale(b.dir * k, k);
-    if (flying && b.mode === 'scatter') ctx.rotate(-0.16 * Math.min(1, b.scatterT * 1.4));
-
     // A lighter ring than a full-size body wears: at sparrow scale the
     // standard dilation swallows the fill (the debris tiny-chip clamp).
     const ring = Math.min(Math.max(1.1, scale * 0.03), 2.0) / k;
-    if (flying) this.paintFlying(ctx, b, ring, outlined);
-    else this.paintGrounded(ctx, b, ring, outlined, tSec);
+    if (!flying) {
+      ctx.scale(b.dir * k, k);
+      this.paintGrounded(ctx, b, ring, outlined, tSec);
+    } else {
+      // THE HEADING LAW: a flying body orients along its TRUE path.
+      // Near-lateral flight keeps the side profile, tilted to the
+      // screen-space velocity (climb noses up, descent noses down).
+      // Steep north/south flight switches to the plan view — the bird
+      // seen from the tilted sky: rotate in the WORLD plane, then the
+      // camera squash foreshortens it, so a southbound bird comes at
+      // you with both wings out instead of sliding sideways-on. The
+      // landing flare always plays in profile (it hands off to the
+      // grounded bird).
+      const flare =
+        b.mode === 'flyin' && Math.hypot(b.landX - b.x, b.landY - b.y) < 1.4;
+      const steep = !flare && Math.abs(b.vy) > Math.abs(b.vx) * 0.9;
+      if (steep) {
+        ctx.scale(k, k * YSQ);
+        ctx.rotate(Math.atan2(b.vy, b.vx));
+        this.paintPlan(ctx, b, ring, outlined);
+      } else {
+        // Screen-space path: world velocity through the pitch squash,
+        // minus the climb (altitude is a screen lift).
+        const svx = b.vx;
+        const svy = b.vy * YSQ - b.vAlt * 0.92;
+        const d = svx !== 0 ? (svx > 0 ? 1 : -1) : b.dir;
+        const tilt =
+          Math.hypot(svx, svy) > 0.2
+            ? Math.max(-0.55, Math.min(0.55, Math.atan2(svy, Math.abs(svx))))
+            : 0;
+        ctx.scale(d * k, k);
+        ctx.rotate(tilt);
+        this.paintFlying(ctx, b, ring, outlined);
+      }
+    }
     ctx.restore();
   }
 
@@ -745,5 +799,106 @@ export class Birds {
     ctx.fillRect(6.6, -13.2, 1.4, 1.4);
 
     wing(false);
+  }
+
+  /**
+   * The plan view: the bird from the tilted sky, nose along +x, drawn
+   * CENTERED on the origin and fully symmetric — the caller rotates it
+   * to the world heading and the camera squash foreshortens it, so it
+   * serves every compass direction. Wings beat by sweeping span in and
+   * out (the flap reads as reach from above); set wings hold wide.
+   */
+  private paintPlan(ctx: CanvasRenderingContext2D, b: Bird, ring: number, outlined: boolean): void {
+    const sp = b.species;
+    // Span never fully folds — a collapsed plan wing reads as a dart,
+    // not a bird; the beat lives in the outer half of the reach.
+    const span = b.gliding ? 1 : 0.5 + 0.5 * Math.abs(Math.sin(b.flap));
+    // Tips rake back on the up-beat; a glide holds a steady sweep.
+    const sweep = b.gliding ? -1 : Math.sin(b.flap) * 2.2;
+
+    const wing = (side: 1 | -1): void => {
+      ctx.beginPath();
+      ctx.moveTo(3.5, side * 3);
+      ctx.lineTo(1.5 + sweep, side * (4 + 9.5 * span));
+      ctx.lineTo(-2.5 + sweep, side * (3.5 + 10.5 * span));
+      ctx.lineTo(-4, side * 3.2);
+      ctx.closePath();
+      if (outlined) {
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = ring * 2;
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+      }
+      ctx.fillStyle = sp.wing;
+      ctx.fill();
+      // Lit leading-edge facet.
+      ctx.fillStyle = sp.lit;
+      ctx.beginPath();
+      ctx.moveTo(3.5, side * 3);
+      ctx.lineTo(1.5 + sweep, side * (4 + 9.5 * span));
+      ctx.lineTo(0.5 + sweep * 0.7, side * (3.6 + 6 * span));
+      ctx.closePath();
+      ctx.fill();
+    };
+    wing(1);
+    wing(-1);
+
+    // Body dart: head knob to fanned tail, over the wing roots.
+    ctx.beginPath();
+    ctx.moveTo(13.5, 0); // nose
+    ctx.lineTo(9, 2.8);
+    ctx.lineTo(4.5, 4);
+    ctx.lineTo(-3, 3.4);
+    ctx.lineTo(-7, 2.4); // tail base
+    ctx.lineTo(-14.5, 4.6); // fan tip
+    ctx.lineTo(-11.5, 0); // fan notch
+    ctx.lineTo(-14.5, -4.6);
+    ctx.lineTo(-7, -2.4);
+    ctx.lineTo(-3, -3.4);
+    ctx.lineTo(4.5, -4);
+    ctx.lineTo(9, -2.8);
+    ctx.closePath();
+    if (outlined) {
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = ring * 2;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+    ctx.fillStyle = sp.body;
+    ctx.fill();
+    // Crown light + saddle shade + tail fan shade.
+    ctx.fillStyle = sp.lit;
+    ctx.beginPath();
+    ctx.moveTo(10, 1.8);
+    ctx.lineTo(6, 2.6);
+    ctx.lineTo(6, -2.6);
+    ctx.lineTo(10, -1.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = sp.wing;
+    ctx.beginPath();
+    ctx.moveTo(-3, 2.6);
+    ctx.lineTo(-7, 2);
+    ctx.lineTo(-7, -2);
+    ctx.lineTo(-3, -2.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-8.5, 2.2);
+    ctx.lineTo(-14.5, 4.6);
+    ctx.lineTo(-11.5, 0);
+    ctx.lineTo(-14.5, -4.6);
+    ctx.lineTo(-8.5, -2.2);
+    ctx.closePath();
+    ctx.fill();
+    // Beak past the nose.
+    ctx.fillStyle = sp.beak;
+    ctx.beginPath();
+    ctx.moveTo(13, 1);
+    ctx.lineTo(16, 0);
+    ctx.lineTo(13, -1);
+    ctx.closePath();
+    ctx.fill();
   }
 }

@@ -67,6 +67,13 @@ export interface Bird {
     speed: number;
     /** Seconds alive in scatter (hard despawn backstop). */
     scatterT: number;
+    /** World-plane velocity + climb rate, tracked every sim step — the
+     *  draw pass orients the body along the TRUE path, not a mirror. */
+    vx: number;
+    vy: number;
+    vAlt: number;
+    /** Wings set (gliding) vs beating — the plan view spreads held wings. */
+    gliding: boolean;
 }
 /**
  * Everything the sim needs from the frame, handed in by the renderer.
@@ -143,6 +150,14 @@ export declare class Birds {
      * the shoulder — up-beat sweeps high, down-beat spreads flat.
      */
     private paintFlying;
+    /**
+     * The plan view: the bird from the tilted sky, nose along +x, drawn
+     * CENTERED on the origin and fully symmetric — the caller rotates it
+     * to the world heading and the camera squash foreshortens it, so it
+     * serves every compass direction. Wings beat by sweeping span in and
+     * out (the flap reads as reach from above); set wings hold wide.
+     */
+    private paintPlan;
 }
 export {};
 //# sourceMappingURL=birds.d.ts.map
