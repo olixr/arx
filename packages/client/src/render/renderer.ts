@@ -4327,25 +4327,42 @@ export class Renderer {
     if (dy < -2 || dy > 11) return WALL_H;
     const adx = Math.abs(tx + 0.5 - this.ownPX);
     if (adx > 13) return WALL_H;
-    // Nearest revealable floor straight north through the wall mass.
+    // Nearest revealable ground straight north through the wall mass.
+    // Only WALL-family tiles are mass to reach through: a solid prop
+    // (bookshelf, station, strongbox) standing against the wall is
+    // room CONTENT the wall must bow for, so the window keys to the
+    // prop's own row like any floor. Treating props as mass keyed the
+    // window one row north, and that one column lagged its whole run —
+    // still ~80% tall at the wall-adjacent row, full height when
+    // level with the wall — exactly over the thing it was hiding.
     let depth = 0;
+    let open = false;
     for (let d = 1; d <= 3; d++) {
       const nt = game.world.groundAt(tx, ty - d);
       if (nt === undefined) return WALL_H;
-      if (!tileDef(nt).solid) {
-        // The surface gate: only a room is worth revealing.
-        if (
-          !this.ugCutOn &&
-          !Renderer.REVEAL_FLOORS.has(nt) &&
-          this.interiors.regionAt(game, tx, ty - d) === null
-        ) {
-          return WALL_H;
-        }
-        depth = d;
+      if (tileDef(nt).solid && Renderer.WALL_TILES.has(nt)) {
+        // True wall mass — reach through. But a prop already found is
+        // NICHED into the mass, not standing in a room: stay full.
+        if (depth !== 0) break;
+        continue;
+      }
+      if (depth === 0) depth = d;
+      if (this.ugCutOn) {
+        open = true;
         break;
       }
+      // The surface gate: only a room is worth revealing. Solid props
+      // replaced their floor tile, so they never sit in REVEAL_FLOORS —
+      // they qualify through their room's region (furniture is flooded
+      // into region tiles), and a regionless prop (a stall on courtyard
+      // paving) falls through to the ground it stands against.
+      if (Renderer.REVEAL_FLOORS.has(nt) || this.interiors.regionAt(game, tx, ty - d) !== null) {
+        open = true;
+        break;
+      }
+      if (!tileDef(nt).solid) break;
     }
-    if (depth === 0) return WALL_H;
+    if (!open) return WALL_H;
     // Window margins on the FRONT row — every row of the mass shares
     // its front row's ease, so the slab moves as one. Underground the
     // window opens 2 rows north of you (peek over the corridor wall
