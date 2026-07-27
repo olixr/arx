@@ -120,29 +120,29 @@ export const CLOTH_COLORS = [
   '#6b4a2c',
 ] as const;
 
-export const HAIR_STYLES = [
-  'Crop',
-  'Bald',
-  'Long',
-  'Topknot',
-  'Braid',
-  'Ponytail',
-  'Twin tails',
-  'Bob',
-  'Mohawk',
-  'Wild',
-  'Side sweep',
-] as const;
+/**
+ * THE SHEARING (2026-07-27): the eleven placeholder hairstyles and six
+ * beards were retired wholesale — they were screen-space slabs that
+ * snapped between facing bands instead of riding the skull. Hair is
+ * rebuilt on the skull-ring projection (client render/hair.ts); styles
+ * return one at a time as they earn their place. Index 0 stays the
+ * default head of hair and index 1 stays Bald, so the two indices that
+ * survive keep their stored meaning; every retired index is migrated
+ * to 0 by sanitizeLook (see LEGACY_HAIR_MAX below). From here the
+ * INDEX STABILITY LAW resumes: append, never reorder.
+ */
+export const HAIR_STYLES = ['Wayfarer', 'Bald'] as const;
 
-export const BEARD_STYLES = [
-  'Clean-shaven',
-  'Mustache',
-  'Goatee',
-  'Full beard',
-  'Braided beard',
-  'Mutton chops',
-  'Stubble',
-] as const;
+/**
+ * Beards were retired with the shear and return on the same ring
+ * foundation. The field stays on the wire and in the DB; every stored
+ * index migrates to clean-shaven.
+ */
+export const BEARD_STYLES = ['Clean-shaven'] as const;
+
+/** Highest style index ever stored by the retired systems. */
+const LEGACY_HAIR_MAX = 10;
+const LEGACY_BEARD_MAX = 6;
 
 export const EYE_STYLES = ['Calm', 'Sharp', 'Wide', 'Lashed'] as const;
 
@@ -216,11 +216,10 @@ export const HERITAGES: readonly Heritage[] = [
   },
   {
     name: 'Stoneborn',
-    blurb: 'Mountain-hewn folk, bearded like the crags.',
+    blurb: 'Mountain-hewn folk, patient as the crags they came from.',
     skins: [9, 3, 4],
     ears: 0,
     feature: 0,
-    beards: [3, 4, 5],
   },
 ] as const;
 
@@ -266,14 +265,26 @@ function idxOpt(v: unknown, max: number): number | null {
   return idx(v, max);
 }
 
+/**
+ * THE SHEARING migration: a stored index from the retired style range
+ * collapses to 0 instead of invalidating the whole look — a player
+ * who wore a topknot logs in wearing the default cut, never a broken
+ * character. Anything outside even the legacy range is still garbage.
+ */
+function idxSheared(v: unknown, max: number, legacyMax: number): number | null {
+  if (typeof v !== 'number' || !Number.isInteger(v) || v < 0) return null;
+  if (v < max) return v;
+  return v <= legacyMax ? 0 : null;
+}
+
 /** Validate an untrusted look; null when any field is out of range. */
 export function sanitizeLook(raw: unknown): Look | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const r = raw as Record<string, unknown>;
   const skin = idx(r.skin, SKIN_TONES.length);
-  const hair = idx(r.hair, HAIR_STYLES.length);
+  const hair = idxSheared(r.hair, HAIR_STYLES.length, LEGACY_HAIR_MAX);
   const hairColor = idx(r.hairColor, HAIR_COLORS.length);
-  const beard = idx(r.beard, BEARD_STYLES.length);
+  const beard = idxSheared(r.beard, BEARD_STYLES.length, LEGACY_BEARD_MAX);
   const eyes = idxOpt(r.eyes, EYE_STYLES.length);
   const ears = idxOpt(r.ears, EAR_STYLES.length);
   const feature = idxOpt(r.feature, FACE_FEATURES.length);
@@ -303,9 +314,10 @@ export function randomLook(rand: () => number = Math.random): Look {
   const green = skin === 6 || skin === 10;
   return {
     skin,
-    hair: pick(HAIR_STYLES.length),
+    // A full head of hair is the norm; bald is a choice, not a roll of five.
+    hair: rand() < 0.86 ? 0 : 1,
     hairColor: pick(HAIR_COLORS.length),
-    beard: pick(BEARD_STYLES.length),
+    beard: 0,
     eyes: pick(EYE_STYLES.length),
     // Most rolls keep round ears; green skins lean into pointed kinds.
     ears: rand() < (green ? 0.3 : 0.78) ? 0 : 1 + pick(EAR_STYLES.length - 1),

@@ -1,5 +1,4 @@
 import {
-  BEARD_STYLES,
   CLOTH_COLORS,
   DEFAULT_LOOK,
   EAR_STYLES,
@@ -84,7 +83,6 @@ export function lookDesigner(look: Look, onChange: () => void): HTMLElement {
     for (const h of HERITAGES) {
       const signature: Look = {
         ...DEFAULT_LOOK,
-        hair: 2,
         skin: h.skins[0]!,
         ears: h.ears,
         feature: h.feature,
@@ -152,17 +150,8 @@ export function lookDesigner(look: Look, onChange: () => void): HTMLElement {
     });
     wrap.appendChild(row('Hair color', hairColors, HAIR_COLOR_NAMES[look.hairColor] ?? ''));
 
-    // Beard.
-    const beard = el('div', 'style-row');
-    BEARD_STYLES.forEach((name, i) => {
-      beard.appendChild(
-        styleTile({ ...look, beard: i }, name, look.beard === i, () => {
-          look.beard = i;
-          changed();
-        }),
-      );
-    });
-    wrap.appendChild(row('Beard', beard));
+    // Beards left with THE SHEARING — the row returns when facial hair
+    // is rebuilt on the skull ring (client render/hair.ts).
 
     // The face: eyes, ears, features — tiles again, the art decides.
     const eyes = el('div', 'style-row');
