@@ -1,4 +1,5 @@
 import { shade } from './rig.js';
+import { chamferRect } from './shapes.js';
 import {
   azDelta,
   bandPath,
@@ -67,6 +68,13 @@ interface BeardDef {
   fall: (a: number) => number;
   /** Stubble paints as a translucent shadow rather than as mass. */
   alpha?: number;
+  /**
+   * SKIN-BOUND art: shadow lying ON the face rather than hair growing
+   * off it. It takes no chin jut, and it is CLIPPED TO THE SKULL so it
+   * can never cross the silhouette — including the chamfered jaw
+   * corners, which no authored curve can anticipate.
+   */
+  onSkin?: boolean;
   mustache?: Mustache;
   /** Strand seams down the mass, at their own jaw bearings. */
   seams?: readonly { a: number; w: number }[];
@@ -251,32 +259,39 @@ const CHOPS: BeardDef = {
   ],
 };
 
+// Kept BELOW the eye line by a clear margin at every bearing. Stubble
+// that climbs to the cheekbone stops reading as an unshaven jaw and
+// starts reading as a mask edge ruled across the face.
 const STUBBLE_TOP = curve([
-  [0, 0.26], // up over the lip: stubble covers the mustache area too
-  [0.7, 0.16],
-  [1.1, 0.08],
-  [1.4, 0.04],
+  [0, 0.28], // up over the lip: stubble covers the mustache area too
+  [0.7, 0.24],
+  [1.1, 0.2],
+  [1.4, 0.16],
 ]);
 
 /**
  * Style 6 — STUBBLE: no mass at all, just a translucent shadow over
- * the jaw and lip. It is the one kind whose `fall` is a coverage area
- * rather than a hanging length, and it wears no gather — stubble does
- * not hang off anything.
+ * the jaw and lip. It is the one kind whose `fall` is a COVERAGE AREA
+ * rather than a hanging length, and the difference is load-bearing:
+ * unshaven skin cannot overhang a jaw. Its hem therefore stops just
+ * inside the chin (0.97 against the jaw's 1.0) instead of past it the
+ * way a real beard does, it takes no chin jut, and `onSkin` clips it
+ * to the skull so the chamfered jaw corners can never leak.
  */
 const STUBBLE: BeardDef = {
   top: STUBBLE_TOP,
   fall: hemTo(
     STUBBLE_TOP,
     curve([
-      [0, 1.16],
-      [0.8, 1.12],
-      [1.2, 0.96],
-      [1.42, 0.5],
-      [1.56, 0.04], // ends exactly ON the top curve
+      [0, 0.97], // the jaw line — never below it
+      [0.8, 0.93],
+      [1.2, 0.84],
+      [1.45, 0.4],
+      [1.56, 0.16], // ends exactly ON the top curve
     ]),
   ),
   alpha: 0.34,
+  onSkin: true,
 };
 
 /**
@@ -315,6 +330,8 @@ const JAW_R = 0.9;
  * corners, which is exactly the shape wanted.
  */
 const CHIN_OUT = 0.17;
+/** Skin-bound art reaches the silhouette exactly, and never past it. */
+const SKIN_R = 1.0;
 const jawRadius = (a: number): number => JAW_R + CHIN_OUT * Math.cos(a) ** 2;
 /**
  * NO GATHER ON THE JAW. The hair mantle narrows as it falls because it
@@ -350,7 +367,9 @@ function stationAt(
     if (bot <= floorY) return null;
     if (top < floorY) top = floorY;
   }
-  const x = ringX(f, psi, jawRadius(a));
+  // Skin-bound art rides a flat radius: a shadow lies on the face, it
+  // does not stand out in front of the chin the way hair does.
+  const x = ringX(f, psi, st.onSkin ? SKIN_R : jawRadius(a));
   return { x, xr: x, top, bot };
 }
 
@@ -404,6 +423,17 @@ export function drawBeard(
   const lip = st.mustache ? mustacheBand(f, st.mustache, phi, psis, floorY) : null;
 
   const base = hurt ? col : col;
+  // SKIN-BOUND art is clipped to the skull itself. An authored curve
+  // can be told where the jaw line is, but not where the head's
+  // CHAMFERED CORNERS cut in — and a shadow that overhangs a jaw stops
+  // being a shadow and becomes a beard. The clip is the guarantee.
+  const bound = st.onSkin === true;
+  if (bound) {
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, headX - hw, headY - hh, hw * 2, hh * 2, f.cut);
+    ctx.clip();
+  }
   if (st.alpha) ctx.globalAlpha = st.alpha;
   ctx.fillStyle = base;
   const hasMass = bandPath(ctx, sts);
@@ -414,8 +444,10 @@ export function drawBeard(
   }
   if (st.alpha) {
     ctx.globalAlpha = 1;
+    if (bound) ctx.restore();
     return; // stubble is a shadow: it carries no facets of its own
   }
+  if (bound) ctx.restore();
   if (hurt || !hasMass) return;
 
   // ---- the depth kit, clipped to the beard's own band.
