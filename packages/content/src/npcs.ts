@@ -861,6 +861,20 @@ export function npcDef(id: string): NpcDef | undefined {
   return NPCS.get(id);
 }
 
+/**
+ * Livestock and critters: kept animals (they produce or lay — the
+ * stolen cows in a brigand pen) and creatures that can neither hurt
+ * nor aggro. They never spring traps and never count as a POI
+ * garrison keeper — a warded chest opens over a cow's objection. A
+ * bear (real damage, provoked-only) is NOT livestock: it fights.
+ */
+export function npcLivestock(
+  def: Pick<NpcDef, 'damage' | 'aggroRange' | 'produce' | 'lays'>,
+): boolean {
+  if (def.produce !== undefined || def.lays !== undefined) return true;
+  return def.damage <= 0 && def.aggroRange === 0;
+}
+
 /** Fixed spawn points around the starter town. */
 export interface SpawnPoint {
   npc: string;

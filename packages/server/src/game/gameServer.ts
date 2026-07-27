@@ -80,6 +80,7 @@ import {
   itemDef,
   makeRoll,
   npcHitHeight,
+  npcLivestock,
   GEM_BATTLESTAFFS,
   pickRarity,
   enchantDef,
@@ -3251,6 +3252,13 @@ export class GameServer {
   private static readonly POI_FALLOW_DAYS = 7;
 
   /**
+   * Floor (seconds) on every POI garrison respawn — and the grace a
+   * full wipe grants the whole site. Long enough to finish the clear
+   * and loot the warded chest before the camp restaffs.
+   */
+  private static readonly POI_RESPAWN_MIN_SEC = 180;
+
+  /**
    * Turn every cell whose last full wipe predates the cutoff: bump
    * its epoch, retire whatever still stands, and decide it AGAIN
    * immediately (fresh streams — new archetype, new anchor, or honest
@@ -3584,10 +3592,22 @@ export class GameServer {
   }
 
   /**
-   * Garrison-wipe watch: when the LAST living body of a POI's spawn
-   * set falls, stamp cleared_at — the phase-3 fallow sweep reads it.
-   * Respawns refill on their own clocks; a later re-wipe re-stamps
-   * (the ledger keeps the LATEST clear).
+   * Does this spawn point field a FIGHTING body? Livestock (no damage,
+   * no aggro — the stolen cows in a brigand pen) are loot, not keepers:
+   * they never hold the ward and never stall the wipe.
+   */
+  private poiSpawnFights(s: SpawnState): boolean {
+    const def = NPCS.get(s.npc);
+    return def !== undefined && !npcLivestock(def);
+  }
+
+  /**
+   * Garrison-wipe watch: when the LAST living FIGHTING body of a POI's
+   * spawn set falls, stamp cleared_at — the phase-3 fallow sweep reads
+   * it. The wipe also aligns the whole garrison's respawn clocks to
+   * one grace window (POI_RESPAWN_MIN_SEC from the wipe), so a cleared
+   * site stays cleared as a unit long enough to loot; a later re-wipe
+   * re-stamps (the ledger keeps the LATEST clear).
    */
   private notePoiKill(spawnIndex: number, killerEid?: EntityId): void {
     const key = this.poiSpawnCells.get(spawnIndex);
@@ -3596,7 +3616,14 @@ export class GameServer {
     if (!live) return;
     for (const i of live.spawnIdx) {
       const s = this.spawnPoints[i];
-      if (s?.active && s.eid !== null) return;
+      if (s?.active && s.eid !== null && this.poiSpawnFights(s)) return;
+    }
+    const graceAt = Date.now() + GameServer.POI_RESPAWN_MIN_SEC * 1000;
+    for (const i of live.spawnIdx) {
+      const s = this.spawnPoints[i];
+      if (s?.active && s.eid === null && this.poiSpawnFights(s)) {
+        s.respawnAt = Math.max(s.respawnAt, graceAt);
+      }
     }
     const [cx, cy] = key.split(',').map(Number);
     this.accounts.markPoiCleared(cx!, cy!);
@@ -3631,13 +3658,13 @@ export class GameServer {
     this.poiLive.delete(key);
   }
 
-  /** Does any garrison body of this POI cell still stand? */
+  /** Does any FIGHTING garrison body of this POI cell still stand? */
   private poiGarrisonStands(cellKey: string): boolean {
     const live = this.poiLive.get(cellKey);
     if (!live) return false;
     for (const i of live.spawnIdx) {
       const s = this.spawnPoints[i];
-      if (s?.active && s.eid !== null) return true;
+      if (s?.active && s.eid !== null && this.poiSpawnFights(s)) return true;
     }
     return false;
   }
@@ -6040,7 +6067,7 @@ export class GameServer {
         }
       } else if (sum.kind === 'snare_trap') {
         for (const [npcEid, npc] of this.npcs) {
-          if (npc.def.damage <= 0 && npc.def.aggroRange === 0) continue; // livestock won't spring it
+          if (npcLivestock(npc.def)) continue; // livestock won't spring it
           const npos = this.positions.get(npcEid);
           if (!npos) continue;
           if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > sum.radius) continue;
@@ -6563,7 +6590,14 @@ export class GameServer {
     const spawn = this.spawnPoints[npc.spawnIndex];
     if (spawn) {
       spawn.eid = null;
-      spawn.respawnAt = Date.now() + NPCS.get(spawn.npc)!.respawnSec * 1000;
+      // POI garrisons refill on a slow clock: the bestiary's 15–40s
+      // beats suit open-field hunting, but a camp that restaffs while
+      // you fight it can never be wiped — the floor buys the clear.
+      const baseSec = NPCS.get(spawn.npc)!.respawnSec;
+      const sec = this.poiSpawnCells.has(npc.spawnIndex)
+        ? Math.max(baseSec, GameServer.POI_RESPAWN_MIN_SEC)
+        : baseSec;
+      spawn.respawnAt = Date.now() + sec * 1000;
       this.notePoiKill(npc.spawnIndex, killerEid);
     }
     this.wildBodies.delete(npcEid);
