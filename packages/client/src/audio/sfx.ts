@@ -734,4 +734,29 @@ export class Sfx {
     this.noise(0.06, vol, 0.015, { band: 2900 });
     this.noise(0.12, vol * 0.45, 0.05, { band: 2100 });
   }
+
+  /**
+   * A flock flushing off the turf: a quick ripple of banded wing puffs
+   * (the soft-step dialect — air brushed by feathers, never a clap)
+   * climbing slightly in pitch as the birds lift, capped with two tiny
+   * alarm chips. One emitter at the flock's centroid; distance and pan
+   * come from the spatial law.
+   */
+  birdFlutter(): void {
+    for (let i = 0; i < 7; i++) {
+      this.noise(0.045, 0.19 - i * 0.013, i * 0.05, { band: 2300 + i * 240 });
+    }
+    this.tone(3050, 0.05, { type: 'sine', slide: 420, volume: 0.045, delay: 0.03 });
+    this.tone(3400, 0.05, { type: 'sine', slide: -550, volume: 0.035, delay: 0.12 });
+  }
+
+  /**
+   * One idle chip from a grounded bird — two grains, up then down,
+   * quieter and shorter than the ambience bed's songbird phrases so it
+   * reads as THIS bird here, not the far chorus.
+   */
+  birdChip(): void {
+    this.tone(3100, 0.045, { type: 'sine', slide: 350, volume: 0.04 });
+    this.tone(2750, 0.05, { type: 'sine', slide: -420, volume: 0.03, delay: 0.07 });
+  }
 }

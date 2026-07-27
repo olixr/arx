@@ -910,6 +910,12 @@ renderer.onCorpseThud = (heavy, x, y) => {
   }
 };
 
+// Ambient birds: the flush sounds from where the flock stood — a soft
+// ripple of wing puffs — and idle chips ride the same emitter. Both
+// spatial (a place in the world), unlike the ambience bed's far chorus.
+renderer.birds.onFlutter = (x, y) => sfx.spatial({ x, y }, 'near', () => sfx.birdFlutter());
+renderer.birds.onChirp = (x, y) => sfx.spatial({ x, y }, 'near', () => sfx.birdChip());
+
 // Other bodies' combat beats: the renderer's pose-transition edge —
 // the same one that restarts the swing animation — voices swings and
 // casts for everyone who isn't you, sitting where they stand. Your

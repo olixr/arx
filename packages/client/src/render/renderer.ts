@@ -78,6 +78,7 @@ import {
 import { BLOB_M, chamferRect, facetBlob, facetCircle, unitBlob } from './shapes.js';
 import { Particles } from './particles.js';
 import { Debris, type SmashKind } from './debris.js';
+import { Birds, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
 import { paintTree, treeModel, type TreeModel } from './trees.js';
 import {
@@ -585,6 +586,23 @@ export class Renderer {
   readonly particles = new Particles();
   /** Smashed-prop chunk bodies — pooled, wall-aware, self-clearing. */
   readonly debris = new Debris();
+  /** Ambient bird flocks — land, peck, and flush when a body comes close. */
+  readonly birds = new Birds();
+  /** Threat scratch for the bird sim — pooled points, reused every frame. */
+  private readonly birdThreats: Array<{ x: number; y: number }> = [];
+  /** Reused frame env for the bird sim (scratch-pool law: one object, ever). */
+  private readonly birdEnv: BirdEnv = {
+    tSec: 0,
+    minTx: 0,
+    maxTx: 0,
+    minTy: 0,
+    maxTy: 0,
+    night: false,
+    underground: false,
+    groundOk: (tx, ty) => this.birdGroundOk(tx, ty),
+    threats: this.birdThreats,
+    threatCount: 0,
+  };
   private readonly grass = new GrassSystem();
   private readonly lighting = new LightingSystem();
   /** Derived building-interior regions (cutaway, facades, windows). */
@@ -1582,6 +1600,35 @@ export class Renderer {
       this.dockMemo.set(key, v);
     }
     return v;
+  }
+
+  /**
+   * A tile a bird may stand on: open NATURAL ground only. Floors,
+   * stone, and cave rock all refuse — which quietly keeps flocks out
+   * of interiors and dungeons without ever asking about walls.
+   */
+  private birdGroundOk(tx: number, ty: number): boolean {
+    const g = this.game?.world.groundAt(tx, ty);
+    return (
+      g === Tile.Grass ||
+      g === Tile.GrassTall ||
+      g === Tile.Dirt ||
+      g === Tile.Path ||
+      g === Tile.Sand ||
+      g === Tile.Snow
+    );
+  }
+
+  /** Write a threat point into the pooled scratch; returns the new count. */
+  private pushBirdThreat(n: number, x: number, y: number): number {
+    let t = this.birdThreats[n];
+    if (!t) {
+      t = { x: 0, y: 0 };
+      this.birdThreats.push(t);
+    }
+    t.x = x;
+    t.y = y;
+    return n + 1;
   }
 
   /** worldToScreen that also rides the terrain lift under the point. */
@@ -2810,6 +2857,44 @@ export class Renderer {
           this.debris.drawOne(this.ctx, c, this.liftedWTS, this.camera.scale, this.outlineOn),
       });
     }
+    // AMBIENT BIRDS: the flock lives with the world. THE FLUSH LAW —
+    // the threat scan feeds every nearby body, players AND npcs, so a
+    // grazing stag flushes a flock exactly like a sprinting hero.
+    // Grounded birds join the y-sort here; the airborne cross over the
+    // world pass below (their contact shadows ride inside drawOne,
+    // debris-style).
+    {
+      const bb = this.visibleTileBounds();
+      const env = this.birdEnv;
+      env.tSec = performance.now() / 1000;
+      env.minTx = bb.minTx;
+      env.maxTx = bb.maxTx;
+      env.minTy = bb.minTy;
+      env.maxTy = bb.maxTy;
+      env.night = this.sky.moonlit;
+      env.underground = this.ugBlend > 0.4;
+      let tc = 0;
+      if (game.ownEid !== null) {
+        const own = game.predictor.renderPos();
+        tc = this.pushBirdThreat(tc, own.x, own.y);
+      }
+      const btl = game.renderTime();
+      for (const [, remote] of game.entities) {
+        const kind = remote.meta.kind;
+        if (kind !== EntityKind.Player && kind !== EntityKind.Npc) continue;
+        const bs = remote.buffer.sampleAt(btl);
+        tc = this.pushBirdThreat(tc, bs?.x ?? remote.meta.x, bs?.y ?? remote.meta.y);
+      }
+      env.threatCount = tc;
+      this.birds.update(this.frameDt, env);
+      for (const bd of this.birds.grounded()) {
+        items.push({
+          sortY: bd.y + 0.01,
+          draw: () =>
+            this.birds.drawOne(this.ctx, bd, this.liftedWTS, this.camera.scale, this.outlineOn, env.tSec),
+        });
+      }
+    }
     items.sort((a, b) => a.sortY - b.sortY);
     for (const item of items) {
       // Stealth ghost: wrap OUTSIDE the outline pass so the dilated
@@ -2824,6 +2909,12 @@ export class Renderer {
     }
     // THE GHOST EMBER rides over the world pass, under the overlay FX.
     this.drawGhostEmber();
+
+    // Birds on the wing cross OVER the world, under the overlay FX —
+    // altitude is a screen lift; the turf shadow stays at the ground point.
+    for (const bd of this.birds.airborne()) {
+      this.birds.drawOne(this.ctx, bd, this.liftedWTS, this.camera.scale, this.outlineOn, this.birdEnv.tSec);
+    }
 
     this.particles.draw(this.ctx, this.liftedWTS, this.camera.scale);
     // The aim guide rides OVER the world pass: elevated ground repaints

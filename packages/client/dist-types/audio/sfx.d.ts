@@ -242,6 +242,20 @@ export declare class Sfx {
      * only (the granular ambience law: no continuous noise beds, ever).
      */
     splash(vol: number): void;
+    /**
+     * A flock flushing off the turf: a quick ripple of banded wing puffs
+     * (the soft-step dialect — air brushed by feathers, never a clap)
+     * climbing slightly in pitch as the birds lift, capped with two tiny
+     * alarm chips. One emitter at the flock's centroid; distance and pan
+     * come from the spatial law.
+     */
+    birdFlutter(): void;
+    /**
+     * One idle chip from a grounded bird — two grains, up then down,
+     * quieter and shorter than the ambience bed's songbird phrases so it
+     * reads as THIS bird here, not the far chorus.
+     */
+    birdChip(): void;
 }
 export {};
 //# sourceMappingURL=sfx.d.ts.map

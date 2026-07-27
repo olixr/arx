@@ -2,6 +2,7 @@ import { Tile, type Vec2 } from '@devcraft/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import { Particles } from './particles.js';
 import { Debris, type SmashKind } from './debris.js';
+import { Birds } from './birds.js';
 import { InteriorMap } from './interiors.js';
 /** Player zoom bounds: 1 = the classic framing (also the default). */
 export declare const ZOOM_MIN = 0.85;
@@ -53,6 +54,12 @@ export declare class Renderer {
     readonly particles: Particles;
     /** Smashed-prop chunk bodies — pooled, wall-aware, self-clearing. */
     readonly debris: Debris;
+    /** Ambient bird flocks — land, peck, and flush when a body comes close. */
+    readonly birds: Birds;
+    /** Threat scratch for the bird sim — pooled points, reused every frame. */
+    private readonly birdThreats;
+    /** Reused frame env for the bird sim (scratch-pool law: one object, ever). */
+    private readonly birdEnv;
     private readonly grass;
     private readonly lighting;
     /** Derived building-interior regions (cutaway, facades, windows). */
@@ -451,6 +458,14 @@ export declare class Renderer {
     private readonly dockMemo;
     private dockMemoVersion;
     private isDockAt;
+    /**
+     * A tile a bird may stand on: open NATURAL ground only. Floors,
+     * stone, and cave rock all refuse — which quietly keeps flocks out
+     * of interiors and dungeons without ever asking about walls.
+     */
+    private birdGroundOk;
+    /** Write a threat point into the pooled scratch; returns the new count. */
+    private pushBirdThreat;
     /** worldToScreen that also rides the terrain lift under the point. */
     private liftedWTS;
     /**
