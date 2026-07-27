@@ -8,7 +8,7 @@ import {
   type Vec2,
 } from '@devcraft/shared';
 import type { PortalDef, ZoneDef } from '@devcraft/content';
-import { generateChunk } from './worldgen.js';
+import { generateChunk } from '@devcraft/content';
 
 /**
  * The server's world: procedural chunks with authored zones stamped on

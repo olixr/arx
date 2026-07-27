@@ -25,7 +25,7 @@ import {
   type ZoneDef,
   type ZoneSpawn,
 } from '@devcraft/content';
-import { DARK_BAND_Y, groundProbeAt } from './worldgen.js';
+import { DARK_BAND_Y, groundProbeAt } from '@devcraft/content';
 
 /**
  * THE POI SCAFFOLD — the wilderness sibling of the dungeon generator.

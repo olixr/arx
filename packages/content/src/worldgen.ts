@@ -20,7 +20,7 @@ import {
   roadDistanceAt,
   roadHitAt,
   thornveilAt,
-} from '@devcraft/content';
+} from './geography.js';
 
 /**
  * Procedural wilderness. Elevation and moisture fields pick a biome per

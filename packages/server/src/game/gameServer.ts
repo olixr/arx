@@ -137,7 +137,7 @@ import {
   type PoiContext,
   type PoiSite,
 } from '../world/pois.js';
-import { DARK_BAND_Y, groundProbeAt } from '../world/worldgen.js';
+import { DARK_BAND_Y, groundProbeAt } from '@devcraft/content';
 import {
   COMBO_GRACE_TICKS,
   COMBO_STAGES,

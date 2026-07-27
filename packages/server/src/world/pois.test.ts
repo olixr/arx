@@ -9,7 +9,7 @@ import {
   SETTLED_ANCHORS,
   dangerLaw,
 } from '@devcraft/content';
-import { DARK_BAND_Y, groundProbeAt } from './worldgen.js';
+import { DARK_BAND_Y, groundProbeAt } from '@devcraft/content';
 import {
   POI_CELL,
   composePoi,

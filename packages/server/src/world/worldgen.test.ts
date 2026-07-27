@@ -26,7 +26,7 @@ import {
   generateChunk,
   levelAt,
   moistureAt,
-} from './worldgen.js';
+} from '@devcraft/content';
 import { WorldSource } from './worldSource.js';
 
 /**
