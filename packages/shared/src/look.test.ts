@@ -71,12 +71,12 @@ test('sanitizeLook rejects out-of-range, fractional, and malformed input', () =>
 
 test('sanitizeLook defaults the expansion fields for pre-expansion DB looks', () => {
   // A look saved before eyes/ears/feature existed must load unchanged,
-  // with the new fields zeroed — never rejected. Its retired hair and
-  // beard indices ride THE SHEARING migration down to 0.
+  // with the new fields zeroed — never rejected. Its retired beard
+  // index rides THE SHEARING migration down to clean-shaven; hair 2 is
+  // a live index again (the Crop) and so is kept as-is.
   const stored = { skin: 3, hair: 2, hairColor: 5, beard: 1, shirt: 0, pants: 7 };
   assert.deepEqual(sanitizeLook(stored), {
     ...stored,
-    hair: 0,
     beard: 0,
     eyes: 0,
     ears: 0,
@@ -96,16 +96,18 @@ test('THE SHEARING: retired style indices migrate to 0, garbage still dies', () 
     shirt: 0,
     pants: 0,
   };
-  // Every index the old systems ever stored loads as the default cut —
-  // a topknot from 2026-07 logs in as a Wayfarer, never a broken look.
-  for (let h = 2; h <= 10; h++) {
+  // Every retired index loads as the default cut — a topknot from
+  // 2026-07 logs in as a Wayfarer, never as a broken look.
+  for (let h = HAIR_STYLES.length; h <= 10; h++) {
     assert.deepEqual(sanitizeLook({ ...ok, hair: h }), ok, `hair ${h}`);
   }
   for (let b = 1; b <= 6; b++) {
     assert.deepEqual(sanitizeLook({ ...ok, beard: b }), ok, `beard ${b}`);
   }
-  // Bald survives as itself — the one retired-era index with meaning.
-  assert.deepEqual(sanitizeLook({ ...ok, hair: 1 }), { ...ok, hair: 1 });
+  // Live indices survive as themselves, retired-era origin or not.
+  for (let h = 0; h < HAIR_STYLES.length; h++) {
+    assert.deepEqual(sanitizeLook({ ...ok, hair: h }), { ...ok, hair: h }, `live ${h}`);
+  }
   // Beyond the legacy range was never valid in any era.
   assert.equal(sanitizeLook({ ...ok, hair: 11 }), null);
   assert.equal(sanitizeLook({ ...ok, beard: 7 }), null);

@@ -130,8 +130,15 @@ export const CLOTH_COLORS = [
  * survive keep their stored meaning; every retired index is migrated
  * to 0 by sanitizeLook (see LEGACY_HAIR_MAX below). From here the
  * INDEX STABILITY LAW resumes: append, never reorder.
+ *
+ * 'Crop' (the short cut) was appended at index 2, which the retired
+ * table used for 'Long'. There is no way to tell a pre-shearing 2 from
+ * a post-shearing 2, so a character stored with the old Long loads
+ * with the Crop. That is a deliberate, one-time cosmetic shift: the
+ * alternative is a hole in the table, and a hole is a permanent bug
+ * for every UI that enumerates styles.
  */
-export const HAIR_STYLES = ['Wayfarer', 'Bald'] as const;
+export const HAIR_STYLES = ['Wayfarer', 'Bald', 'Crop'] as const;
 
 /**
  * Beards were retired with the shear and return on the same ring
@@ -314,8 +321,8 @@ export function randomLook(rand: () => number = Math.random): Look {
   const green = skin === 6 || skin === 10;
   return {
     skin,
-    // A full head of hair is the norm; bald is a choice, not a roll of five.
-    hair: rand() < 0.86 ? 0 : 1,
+    // A full head of hair is the norm; bald is a choice, not a coin flip.
+    hair: rand() < 0.45 ? 0 : rand() < 0.86 ? 2 : 1,
     hairColor: pick(HAIR_COLORS.length),
     beard: 0,
     eyes: pick(EYE_STYLES.length),

@@ -39,7 +39,7 @@ import {
   type StrikeTrail,
 } from './carriage.js';
 import { STOW_HANDOFF, sheathePhases, stowBack, stowBlade } from './sheath.js';
-import { drawHairBack, drawHairFront, type HairCover } from './hair.js';
+import { NPC_HAIR_STYLE, drawHairBack, drawHairFront, type HairCover } from './hair.js';
 import {
   bodyStyle,
   bootStyle,
@@ -3554,7 +3554,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     : rig.look
       ? HAIR_COLORS[rig.look.hairColor]!
       : shade(bodyColor, -24);
-  const hairIx = rig.look?.hair ?? 0;
+  // NPC humanoids carry no Look — they wear the neutral short cut, not
+  // the player default (a town where every crofter has collar-length
+  // hair reads as a costume choice nobody made).
+  const hairIx = rig.look?.hair ?? NPC_HAIR_STYLE;
   const hairFrame = {
     headX,
     headY,

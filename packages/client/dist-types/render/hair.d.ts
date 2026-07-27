@@ -6,25 +6,25 @@
  * where a mop, tail, or curtain SNAPPED into a new position. The face
  * and the ears never had that problem, because they live on continuous
  * projection laws (featX/featK, the azimuth law). This module brings
- * hair onto the same footing: every part of the hairdo lives at a fixed
+ * hair onto the same footing: every part of a hairdo lives at a fixed
  * AZIMUTH on the scalp ring, and every facing question is answered by
  * projecting that azimuth — never by choosing a band.
  *
  * THE ONE PIECE OF ALGEBRA. Write the facing as φ = atan2(fy, fx) and
- * measure each scalp azimuth against it, θ = a − φ. Then the whole
+ * measure each scalp azimuth against it, ψ = φ − a. Then the whole
  * projection collapses to a single pair:
  *
- *   screen x   u(θ) =  cos θ      (−1 … 1 across the skull silhouette)
- *   depth      d(θ) = −sin θ      (> 0 = camera side, < 0 = behind)
+ *   screen x   u(ψ) = cos ψ      (−1 … 1 across the skull silhouette)
+ *   depth      d(ψ) = sin ψ      (> 0 = camera side, < 0 = behind)
  *
  * Three facts fall straight out of that, and they are the reason this
  * module has no facing bands anywhere in it:
  *
- *   1. The camera-facing half is exactly θ ∈ (−π, 0), and across it u
- *      sweeps −1 → 1 MONOTONICALLY. So a hair mass can be drawn as one
- *      polygon sampled in θ — the samples are already sorted in screen
+ *   1. The camera-facing half is exactly ψ ∈ (0, π), and across it u
+ *      sweeps −1 → 1 MONOTONICALLY. So the hair can be drawn as one
+ *      polygon sampled in ψ — the samples are already sorted in screen
  *      x, at every facing, with no seams and nothing to sort.
- *   2. |d| is the tangential foreshortening at that azimuth, so a lock
+ *   2. |d| is the tangential foreshortening at that azimuth, so hair
  *      rounding the silhouette compresses on its own.
  *   3. Inverting u gives the hairline solve: the scalp azimuth visible
  *      at screen column x is a = φ − acos(x). The hem is SAMPLED, not
@@ -37,23 +37,32 @@
  * head-local y and never move with the facing (sliding them with fy is
  * what made the old head read as a top-down dial).
  *
- * THE MANTLE. Hanging hair is ONE sampled polygon per pass, not a row
- * of discrete locks — v1 shipped discrete locks and they read as a
- * picket fence of slivers at every profile facing, because each lock
- * narrowed independently and the gaps between them opened up. The
- * mantle spans the whole fall band as a continuous body: its top edge
- * is the hairline curve, its bottom edge the fall curve, and the fall
- * curve's own ripple cuts the strand tips into the hem. Locks survive
- * only as SEAMS painted on that body.
+ * THE ONE-SILHOUETTE LAW. A pass is ONE polygon — crown and hanging
+ * mass together, never a cap shape plus a fall shape. Two shapes were
+ * tried first and always showed a hairline-shaped seam across the head
+ * where they met: they sampled the same hem curve with DIFFERENT
+ * parameterizations (one uniform in screen x, one uniform in azimuth)
+ * at slightly different radii, so their polyline vertices could not
+ * agree, and the sliver between two chords is visible at any zoom. No
+ * amount of tuning fixes that; sharing one station walk does. Every
+ * interior mark (contact shadow, cut hem, seams, strand notches) is
+ * driven off those SAME stations, so nothing can drift against the
+ * silhouette that contains it.
  *
- * TWO PASSES. drawHairBack paints the far half (θ ∈ (0, π)) before the
- * torso, so hair down the back is occluded by the shoulders exactly as
- * it should be; drawHairFront paints the near half after the ears
- * (curtains overlay ear roots — the ear law holds) and before the face.
+ * Because both passes walk identical station math, they also agree
+ * EXACTLY at ψ = 0 and ψ = π — the two points where the near and far
+ * halves meet at the silhouette edge. That is why the head never shows
+ * a notch at its own profile.
+ *
+ * TWO PASSES. drawHairBack paints the far half (ψ ∈ (−π, 0)) before
+ * the torso, so hair down the back is occluded by the shoulders
+ * exactly as it should be; drawHairFront paints the near half after
+ * the ears (curtains overlay ear roots — the ear law holds) and before
+ * the face.
  *
  * Styles are DATA (HairstyleDef): a hairline curve, a fall curve, a
- * parting notch, seams, and hem chips — all azimuth-anchored. New
- * styles are authored, not re-coded.
+ * parting notch, seams, hem chips, and strand notches — all azimuth-
+ * anchored. New styles are authored, not re-coded.
  *
  * Lighting keeps the DEPTH-PASS one-sun law: screen-fixed x=0 form
  * split (trailing half −12), hem under-shade, lit crown band, chips
@@ -77,6 +86,12 @@ export interface HairFrame {
 }
 /** THE COVERAGE LAW tiers, resolved by rig.ts from the worn helm. */
 export type HairCover = 'free' | 'brim' | 'sealed' | 'cloth';
+/**
+ * What a humanoid with no Look wears — every NPC in the world. The
+ * short cut is the neutral one: a town full of guards and crofters in
+ * collar-length hair reads as a costume choice nobody made.
+ */
+export declare const NPC_HAIR_STYLE = 2;
 /**
  * Everything behind the skull: called by rig.ts BEFORE the torso, so
  * hair down the back is occluded by the shoulders exactly as it

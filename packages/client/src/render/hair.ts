@@ -9,25 +9,25 @@ import { shade } from './rig.js';
  * where a mop, tail, or curtain SNAPPED into a new position. The face
  * and the ears never had that problem, because they live on continuous
  * projection laws (featX/featK, the azimuth law). This module brings
- * hair onto the same footing: every part of the hairdo lives at a fixed
+ * hair onto the same footing: every part of a hairdo lives at a fixed
  * AZIMUTH on the scalp ring, and every facing question is answered by
  * projecting that azimuth — never by choosing a band.
  *
  * THE ONE PIECE OF ALGEBRA. Write the facing as φ = atan2(fy, fx) and
- * measure each scalp azimuth against it, θ = a − φ. Then the whole
+ * measure each scalp azimuth against it, ψ = φ − a. Then the whole
  * projection collapses to a single pair:
  *
- *   screen x   u(θ) =  cos θ      (−1 … 1 across the skull silhouette)
- *   depth      d(θ) = −sin θ      (> 0 = camera side, < 0 = behind)
+ *   screen x   u(ψ) = cos ψ      (−1 … 1 across the skull silhouette)
+ *   depth      d(ψ) = sin ψ      (> 0 = camera side, < 0 = behind)
  *
  * Three facts fall straight out of that, and they are the reason this
  * module has no facing bands anywhere in it:
  *
- *   1. The camera-facing half is exactly θ ∈ (−π, 0), and across it u
- *      sweeps −1 → 1 MONOTONICALLY. So a hair mass can be drawn as one
- *      polygon sampled in θ — the samples are already sorted in screen
+ *   1. The camera-facing half is exactly ψ ∈ (0, π), and across it u
+ *      sweeps −1 → 1 MONOTONICALLY. So the hair can be drawn as one
+ *      polygon sampled in ψ — the samples are already sorted in screen
  *      x, at every facing, with no seams and nothing to sort.
- *   2. |d| is the tangential foreshortening at that azimuth, so a lock
+ *   2. |d| is the tangential foreshortening at that azimuth, so hair
  *      rounding the silhouette compresses on its own.
  *   3. Inverting u gives the hairline solve: the scalp azimuth visible
  *      at screen column x is a = φ − acos(x). The hem is SAMPLED, not
@@ -40,23 +40,32 @@ import { shade } from './rig.js';
  * head-local y and never move with the facing (sliding them with fy is
  * what made the old head read as a top-down dial).
  *
- * THE MANTLE. Hanging hair is ONE sampled polygon per pass, not a row
- * of discrete locks — v1 shipped discrete locks and they read as a
- * picket fence of slivers at every profile facing, because each lock
- * narrowed independently and the gaps between them opened up. The
- * mantle spans the whole fall band as a continuous body: its top edge
- * is the hairline curve, its bottom edge the fall curve, and the fall
- * curve's own ripple cuts the strand tips into the hem. Locks survive
- * only as SEAMS painted on that body.
+ * THE ONE-SILHOUETTE LAW. A pass is ONE polygon — crown and hanging
+ * mass together, never a cap shape plus a fall shape. Two shapes were
+ * tried first and always showed a hairline-shaped seam across the head
+ * where they met: they sampled the same hem curve with DIFFERENT
+ * parameterizations (one uniform in screen x, one uniform in azimuth)
+ * at slightly different radii, so their polyline vertices could not
+ * agree, and the sliver between two chords is visible at any zoom. No
+ * amount of tuning fixes that; sharing one station walk does. Every
+ * interior mark (contact shadow, cut hem, seams, strand notches) is
+ * driven off those SAME stations, so nothing can drift against the
+ * silhouette that contains it.
  *
- * TWO PASSES. drawHairBack paints the far half (θ ∈ (0, π)) before the
- * torso, so hair down the back is occluded by the shoulders exactly as
- * it should be; drawHairFront paints the near half after the ears
- * (curtains overlay ear roots — the ear law holds) and before the face.
+ * Because both passes walk identical station math, they also agree
+ * EXACTLY at ψ = 0 and ψ = π — the two points where the near and far
+ * halves meet at the silhouette edge. That is why the head never shows
+ * a notch at its own profile.
+ *
+ * TWO PASSES. drawHairBack paints the far half (ψ ∈ (−π, 0)) before
+ * the torso, so hair down the back is occluded by the shoulders
+ * exactly as it should be; drawHairFront paints the near half after
+ * the ears (curtains overlay ear roots — the ear law holds) and before
+ * the face.
  *
  * Styles are DATA (HairstyleDef): a hairline curve, a fall curve, a
- * parting notch, seams, and hem chips — all azimuth-anchored. New
- * styles are authored, not re-coded.
+ * parting notch, seams, hem chips, and strand notches — all azimuth-
+ * anchored. New styles are authored, not re-coded.
  *
  * Lighting keeps the DEPTH-PASS one-sun law: screen-fixed x=0 form
  * split (trailing half −12), hem under-shade, lit crown band, chips
@@ -96,8 +105,8 @@ interface HairstyleDef {
   hairline: (a: number) => number;
   /**
    * Fall length below the hairline (× hh) at azimuth a — 0 across the
-   * face, rising through the temples into the full nape mass. Its own
-   * ripple cuts the strand tips, so the hem is never a flat bar.
+   * face, rising through the temples into whatever mass the cut has.
+   * Its own ripple cuts the strand tips, so a hem is never a flat bar.
    */
   fall: (a: number) => number;
   /**
@@ -107,11 +116,11 @@ interface HairstyleDef {
    * hem never dips low enough to crowd the eye line.
    */
   notch?: { a: number; half: number; raise: number };
-  /** Strand seams down the mantle, at their own skull bearings. */
+  /** Strand seams down the mass, at their own skull bearings. */
   seams: readonly { a: number; w: number }[];
-  /** Near-strand chips riding the cap hem. */
+  /** Near-strand chips riding the hem. */
   chips: readonly HemChip[];
-  /** Dark parting notches rising off the cap hem into the crown. */
+  /** Dark parting notches rising off the hem into the crown. */
   strands: readonly { a: number; w: number; rise: number }[];
 }
 
@@ -141,34 +150,40 @@ const curve =
   };
 
 /**
- * Style 0 — THE WAYFARER: the game's default head of hair. A layered,
- * collar-length cut — straight brow fringe with one parting notch,
- * temple wisps framing the face, and a nape mass falling to the
- * collarbone. It reads as the same haircut from every one of the 360
- * degrees, which is the entire point of it.
+ * A hem ripple: the small unevenness that makes a cut edge read as
+ * hair rather than as a ruled line. Amplitude is per style — a long
+ * layered cut wants more than a barbered crop.
  */
-// THE EAR-LINE LAW: hanging hair begins at the temple, ~80° off the
-// nose — never earlier. The fall band is projected onto the CHEEK at
-// three-quarter facings (that is honest geometry: near-side hair does
-// overlap the face), so a band that opens at 70° swallows half the
-// face at 45°. Start it at the ear and the face stays clear at every
-// facing while the mass still frames it.
-// THE LEVEL-HEM LAW: past the ear the fall lengths stay nearly EQUAL
-// around the ring. Hair is cut to one length, so its hem hangs level;
-// a fall that keeps growing toward the occiput makes the mass shear
-// into a long diagonal wedge that tapers to a point in mid-air past
-// the shoulder at every profile facing (it did). The small remaining
-// rise is the extra distance around the back of a real skull.
-const WAYFARER_FALL = curve([
-  [0, 0], // across the face there is no fall — the fringe IS the hem
-  [1.16, 0.14], // the sideburn: a short lock, never zero — a fall that
-  [1.36, 0.34], // hits exactly 0 tapers the mass to a needle point on
-  [1.54, 0.68], // the cheek at every three-quarter facing
-  [1.82, 1.0], // clearing the ear: the mass is at full length
-  [2.3, 1.12],
-  [Math.PI, 1.16], // the occiput, barely longer than the flanks
-]);
+const ripple =
+  (base: (a: number) => number, amp: number, amp2 = amp * 0.5) =>
+  (a: number): number => {
+    const v = base(a);
+    if (v <= 0.02) return v;
+    // Low frequencies only. A ripple that cycles fast against the ring
+    // scallops the hem into a row of lobes that read as melted wax at
+    // any real zoom; hair unevenness is a few long waves with a finer
+    // one riding them, and it must also EASE OUT as the fall shortens
+    // so a barbered edge stays barbered.
+    const k = Math.min(1, v / 0.5);
+    return v + k * (amp * Math.cos(a * 2.5 + 0.4) + amp2 * Math.cos(a * 5.5 + 1.1));
+  };
 
+/**
+ * Style 0 — THE WAYFARER: a layered, collar-length cut. Straight brow
+ * fringe with one parting notch, temple wisps framing the face, and a
+ * nape mass falling to the collarbone.
+ *
+ * THE EAR-LINE LAW: hanging hair begins at the temple, ~80° off the
+ * nose — never earlier. The fall band projects onto the CHEEK at
+ * three-quarter facings (honest geometry: near-side hair does overlap
+ * the face), so a band that opens at 70° swallows half the face at
+ * 45°. THE LEVEL-HEM LAW: past the ear the fall lengths stay nearly
+ * EQUAL around the ring — hair is cut to one length, so its hem hangs
+ * level; a fall that keeps growing toward the occiput shears the mass
+ * into a wedge that tapers to a point in mid-air past the shoulder at
+ * every profile facing. The small remaining rise is the extra distance
+ * around the back of a real skull.
+ */
 const WAYFARER: HairstyleDef = {
   hairline: curve([
     [0, -0.44], // the brow window: a straight, confident fringe
@@ -178,13 +193,19 @@ const WAYFARER: HairstyleDef = {
     [2.3, 0.44], // the behind-ear drop
     [Math.PI, 0.66], // the nape
   ]),
-  // The ripple cuts strand tips into the hem — a fall of hair ends in
-  // uneven points, never on a ruler line. Six lobes around the ring.
-  fall: (a) => {
-    const base = WAYFARER_FALL(a);
-    if (base <= 0.02) return base;
-    return base + 0.055 * Math.cos(a * 4.5) + 0.028 * Math.cos(a * 9 + 1.1);
-  },
+  fall: ripple(
+    curve([
+      [0, 0], // across the face there is no fall — the fringe IS the hem
+      [1.16, 0.14], // the sideburn: a short lock, never zero — a fall that
+      [1.36, 0.34], // hits exactly 0 tapers the mass to a needle point on
+      [1.54, 0.68], // the cheek at every three-quarter facing
+      [1.82, 1.0], // clearing the ear: the mass is at full length
+      [2.3, 1.12],
+      [Math.PI, 1.16], // the occiput, barely longer than the flanks
+    ]),
+    0.055,
+    0.028,
+  ),
   notch: { a: 0.42, half: 0.26, raise: 0.19 },
   seams: [
     { a: -1.72, w: 0.055 },
@@ -209,45 +230,99 @@ const WAYFARER: HairstyleDef = {
 };
 
 /**
- * The style table. Index 1 is Bald (both passes no-op); everything
- * else indexes here. Future styles append — the INDEX STABILITY LAW
- * of look.ts reaches into this table.
+ * Style 2 — THE CROP: the short cut, barbered close. Everything that
+ * makes it read as short is in the HAIRLINE, not in the fall: the hem
+ * climbs ABOVE the ear root (so the ears show, which is most of the
+ * silhouette read), and the nape ends high on the neck instead of on
+ * the collar. What little fall there is stays under a fifth of a head
+ * — a sideburn in front of the ear, and just enough weight at the
+ * nape that the back of the head is not a bare dome.
+ *
+ * The ripple is HALF the Wayfarer's: a barbered edge is tidy, and at
+ * this length a big ripple reads as a ragged mistake rather than as
+ * layering. The part is deeper and set further round — a side part is
+ * this cut's one piece of character.
  */
-const STYLES: readonly (HairstyleDef | null)[] = [WAYFARER, null];
+const CROP: HairstyleDef = {
+  hairline: curve([
+    [0, -0.52], // a higher brow window than the long cut
+    [0.58, -0.52],
+    [1.0, -0.36],
+    [1.5, -0.16], // ABOVE the ear root: the ear reads, and that is the cut
+    [2.1, 0.06],
+    [Math.PI, 0.24], // the nape, high on the neck
+  ]),
+  fall: ripple(
+    curve([
+      [0, 0],
+      [1.1, 0],
+      [1.34, 0.16], // the sideburn, in front of the ear
+      [1.62, 0.1],
+      [2.2, 0.13],
+      [Math.PI, 0.18], // a little weight at the nape, nothing more
+    ]),
+    0.026,
+    0.014,
+  ),
+  notch: { a: 0.62, half: 0.3, raise: 0.16 },
+  seams: [
+    { a: -2.3, w: 0.05 },
+    { a: 2.5, w: 0.05 },
+  ],
+  chips: [
+    { a: -0.26, w: 0.42, drop: 0.16 },
+    { a: 0.9, w: 0.3, drop: 0.13 },
+  ],
+  strands: [
+    { a: -0.7, w: 0.08, rise: 0.24 },
+    { a: 0.34, w: 0.09, rise: 0.26 },
+    { a: -1.7, w: 0.08, rise: 0.3 },
+    { a: 1.9, w: 0.08, rise: 0.32 },
+    { a: 2.7, w: 0.07, rise: 0.28 },
+  ],
+};
 
-/** Overhang law: every cap clears the skull silhouette, never insets it. */
-const CAP_R = 1.04;
-/** The mantle hangs a hair's breadth wider than the cap. */
-const MANTLE_R = 1.07;
 /**
- * Mantle sampling. THE NYQUIST LAW: this must comfortably out-sample
- * the hem ripple's highest frequency, or the strand tips alias into a
- * stair-step of little rectangles (they did at 34 steps against a
- * 9-per-radian ripple) — sampling artifacts read as broken art, not
- * as hair. Same reason the cap hem samples at CAP_STEPS.
+ * The style table, indexed by Look.hair. Index 1 is Bald — a real
+ * null entry, so every lookup must bounds-check BEFORE falling back
+ * or a bald head grows hair. Future styles append; the INDEX
+ * STABILITY LAW of look.ts reaches into this table.
  */
-const MANTLE_STEPS = 72;
-/** Hairline solve resolution — the acos crowds azimuths near the edges. */
-const CAP_STEPS = 48;
-/** A sealed helm's box: nape geometry must start below this to exist. */
-const SEALED_FLOOR = 0.86;
+const STYLES: readonly (HairstyleDef | null)[] = [WAYFARER, null, CROP];
+
+/**
+ * What a humanoid with no Look wears — every NPC in the world. The
+ * short cut is the neutral one: a town full of guards and crofters in
+ * collar-length hair reads as a costume choice nobody made.
+ */
+export const NPC_HAIR_STYLE = 2;
+
+/** Overhang law: the crown clears the skull silhouette, never insets it. */
+const CAP_R = 1.04;
 /**
  * THE GATHER LAW: the mass narrows as it falls. Hair hangs off a head
- * and converges toward the neck — a mantle that keeps full skull width
- * all the way down reads as a cape or a hood, not as hair (it did).
+ * and converges toward the neck — a mass that keeps full skull width
+ * all the way down reads as a cape or a hood, not as hair. Blended in
+ * by how much fall a column actually has, so there is no width step
+ * where the hanging part begins.
  */
 const GATHER = 0.84;
-
-const clamp = (v: number, lo: number, hi: number): number =>
-  v < lo ? lo : v > hi ? hi : v;
+/** Fall length (× hh) at which the gather is fully applied. */
+const GATHER_FULL = 0.9;
+/**
+ * Station count for the silhouette walk. THE NYQUIST LAW: this must
+ * comfortably out-sample the hem ripple's highest frequency, or the
+ * strand tips alias into a stair-step of little rectangles — sampling
+ * artifacts read as broken art, not as hair.
+ */
+const STEPS = 84;
+/** A sealed helm's box: nape geometry must start below this to exist. */
+const SEALED_FLOOR = 0.86;
+/** Below this fall a column is bare skin under the hem, not hair. */
+const BARE = 0.05;
 
 /** Signed shortest distance between two azimuths. */
-const azDelta = (a: number, b: number): number => {
-  let d = a - b;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return d;
-};
+const azDelta = (a: number, b: number): number => wrapAz(a - b);
 
 /** Hem height at azimuth a, with the parting notch folded in. */
 const hemAt = (st: HairstyleDef, a: number): number => {
@@ -262,136 +337,138 @@ const hemAt = (st: HairstyleDef, a: number): number => {
   return y;
 };
 
+interface Station {
+  /** Screen x of the silhouette's bottom edge at this azimuth. */
+  x: number;
+  /** Screen x on the skull ring itself (no gather) — for interior marks. */
+  xr: number;
+  /** Hem (hair-meets-skin) y, and the bottom-of-fall y. */
+  hemY: number;
+  botY: number;
+  fall: number;
+}
+
 /**
- * THE MANTLE: the hanging mass of one pass, as a single continuous
- * polygon sampled in θ. Front pass sweeps θ −π → 0 (screen left to
- * right); back pass sweeps π → 0, which is the same screen sweep for
- * the far half. Returns false when the pass has no hanging hair at
- * all (a cropped style, or every sample sitting above a helm floor).
+ * One station of the silhouette walk. Both passes and every interior
+ * mark go through here, which is what keeps them all in register.
  */
-function mantlePath(
+function stationAt(f: HairFrame, st: HairstyleDef, phi: number, psi: number): Station {
+  const a = phi - psi;
+  const fall = Math.max(0, st.fall(a));
+  const hemY = f.headY + hemAt(st, a) * f.hh;
+  // The gather eases in with the fall, so the crown's full width and
+  // the mass's narrowed width are the same curve, never a step.
+  const g = 1 - (1 - GATHER) * Math.min(1, fall / GATHER_FULL);
+  const xr = f.headX + Math.cos(psi) * f.hw * CAP_R;
+  return {
+    x: f.headX + Math.cos(psi) * f.hw * CAP_R * g,
+    xr,
+    hemY,
+    botY: hemY + fall * f.hh,
+    fall,
+  };
+}
+
+/** Walk one pass's half of the ring, screen-left to screen-right. */
+function walk(f: HairFrame, st: HairstyleDef, phi: number, back: boolean): Station[] {
+  const out: Station[] = [];
+  for (let i = 0; i <= STEPS; i++) {
+    const t = i / STEPS;
+    // The camera side is d = sin ψ > 0, so the FRONT pass is
+    // ψ ∈ (0, π) and the far pass is ψ ∈ (−π, 0) — and the azimuth is
+    // recovered by a = φ − ψ, never φ + ψ (that sign swaps the passes
+    // wholesale: the far mass paints over the face and the near mass
+    // hides behind the shoulders).
+    const psi = back ? -Math.PI + t * Math.PI : Math.PI - t * Math.PI;
+    out.push(stationAt(f, st, phi, psi));
+  }
+  return out;
+}
+
+/**
+ * THE ONE SILHOUETTE: crown overhang across the top, then the bottom
+ * edge sampled through the stations — hem where the cut ends on skin,
+ * hem + fall where it hangs. One path, so there is no internal join
+ * to show a seam.
+ */
+function silhouettePath(ctx: CanvasRenderingContext2D, f: HairFrame, sts: Station[]): void {
+  const { headX, headY, hw, hh, cut } = f;
+  const capX = hw * CAP_R;
+  const topY = headY - hh * 1.05;
+  const capCut = cut * 1.15;
+  const first = sts[0]!;
+  const last = sts[sts.length - 1]!;
+  ctx.beginPath();
+  ctx.moveTo(headX - capX + capCut, topY);
+  ctx.lineTo(headX + capX - capCut, topY);
+  ctx.lineTo(headX + capX, topY + capCut);
+  // THE SHOULDER: the silhouette keeps full skull width down to the
+  // hairline at each edge before the gather draws it in. Running the
+  // crown corner straight to the gathered hem tip instead makes the
+  // side one long blade-straight diagonal — the mass reads as a sheet
+  // of card, not as hair with a head inside it.
+  ctx.lineTo(last.xr, last.hemY);
+  for (let i = sts.length - 1; i >= 0; i--) ctx.lineTo(sts[i]!.x, sts[i]!.botY);
+  ctx.lineTo(first.xr, first.hemY);
+  ctx.lineTo(headX - capX, topY + capCut);
+  ctx.closePath();
+}
+
+/**
+ * The sealed-helm silhouette: no crown at all (the helm owns it), just
+ * the nape geometry that escapes below the rim.
+ */
+function napePath(
   ctx: CanvasRenderingContext2D,
   f: HairFrame,
-  st: HairstyleDef,
-  phi: number,
-  back: boolean,
-  floor: number | null,
+  sts: Station[],
+  floorY: number,
 ): boolean {
-  const { headX, headY, hw, hh } = f;
-  const top: [number, number][] = [];
-  const bot: [number, number][] = [];
-  for (let i = 0; i <= MANTLE_STEPS; i++) {
-    const t = i / MANTLE_STEPS;
-    // ψ runs over this pass's half of the ring, ordered so that
-    // u = cos ψ walks screen-left to screen-right either way. The
-    // camera side is d = sin ψ > 0, so the FRONT pass is ψ ∈ (0, π)
-    // and the far pass is ψ ∈ (−π, 0) — and the azimuth is recovered
-    // by a = φ − ψ, never φ + ψ (getting that sign backwards swaps
-    // the two passes wholesale: the far mass paints over the face and
-    // the near mass hides behind the shoulders).
-    const psi = back ? -Math.PI + t * Math.PI : Math.PI - t * Math.PI;
-    const a = phi - psi;
-    const th = psi;
-    const fall = st.fall(a);
-    if (fall <= 0.02) continue;
-    const x = headX + Math.cos(th) * hw * MANTLE_R;
-    // THE GATHER LAW: the bottom edge draws in toward the head's axis.
-    const xb = headX + (x - headX) * GATHER;
-    let y0 = headY + hemAt(st, a) * hh;
-    const y1 = y0 + fall * hh;
-    // A sealed helm owns everything above its rim: the mantle starts
-    // below the box or it simply is not there.
-    if (floor !== null) {
-      const fy0 = headY + floor * hh;
-      if (y1 <= fy0) continue;
-      if (y0 < fy0) y0 = fy0;
-    }
-    top.push([x, y0]);
-    bot.push([xb, y1]);
-  }
-  if (top.length < 2) return false;
+  const live = sts.filter((s) => s.botY > floorY && s.fall > BARE);
+  if (live.length < 2) return false;
   ctx.beginPath();
-  ctx.moveTo(top[0]![0], top[0]![1]);
-  for (let i = 1; i < top.length; i++) ctx.lineTo(top[i]![0], top[i]![1]);
-  for (let i = bot.length - 1; i >= 0; i--) ctx.lineTo(bot[i]![0], bot[i]![1]);
+  ctx.moveTo(live[0]!.x, Math.max(live[0]!.hemY, floorY));
+  for (const s of live) ctx.lineTo(s.x, Math.max(s.hemY, floorY));
+  for (let i = live.length - 1; i >= 0; i--) ctx.lineTo(live[i]!.x, live[i]!.botY);
   ctx.closePath();
   return true;
 }
 
-/** Paint one pass's mantle: body, form split, seams, and cut hem. */
-function paintMantle(
+/**
+ * Paint a band that hugs the bottom edge over a contiguous run of
+ * stations — used for BOTH hem shadows, so each tracks the silhouette
+ * it belongs to exactly.
+ *
+ * THE CONTACT-SHADOW LAW: the hem under-shade is the shadow the hair
+ * casts ON SKIN. Where the mass continues below the hem there is no
+ * skin, and painting it there lays a hard line across the middle of
+ * the hair that reads as a scratch. So the skin band is cut wherever a
+ * fall hangs under that column, and the cut end gets its own band.
+ */
+function hemBand(
   ctx: CanvasRenderingContext2D,
-  f: HairFrame,
-  st: HairstyleDef,
-  phi: number,
-  back: boolean,
-  floor: number | null,
+  sts: Station[],
+  keep: (s: Station) => boolean,
+  yOf: (s: Station) => number,
+  depth: number,
 ): void {
-  const { headX, headY, hw, hh, col, hurt } = f;
-  // The far half lies in the head's own shadow — a step darker, the
-  // same nape tone the ear backs wear.
-  const base = hurt ? col : back ? shade(col, -10) : col;
-  ctx.fillStyle = base;
-  if (!mantlePath(ctx, f, st, phi, back, floor)) return;
-  ctx.fill();
-  if (hurt) return;
-  ctx.save();
-  mantlePath(ctx, f, st, phi, back, floor);
-  ctx.clip();
-  // Trailing-half shade: the mass keeps the head's screen-fixed light.
-  ctx.fillStyle = shade(base, -12);
-  ctx.fillRect(headX, headY - hh * 2, hw * 2, hh * 6);
-  // Strand seams at their own bearings, foreshortening with the skull.
-  ctx.fillStyle = shade(base, -20);
-  for (const sm of st.seams) {
-    const psi = azDelta(phi, sm.a);
-    const d = Math.sin(psi);
-    if (back ? d > -0.04 : d < 0.04) continue;
-    const w = sm.w * hw * (0.45 + 0.55 * Math.abs(d));
-    const x = headX + Math.cos(psi) * hw * MANTLE_R;
-    ctx.fillRect(x - w / 2, headY - hh, w, hh * 4);
+  let run: Station[] = [];
+  const flush = (): void => {
+    if (run.length >= 2) {
+      ctx.beginPath();
+      ctx.moveTo(run[0]!.x, yOf(run[0]!));
+      for (const s of run) ctx.lineTo(s.x, yOf(s));
+      for (let i = run.length - 1; i >= 0; i--) ctx.lineTo(run[i]!.x, yOf(run[i]!) - depth);
+      ctx.closePath();
+      ctx.fill();
+    }
+    run = [];
+  };
+  for (const s of sts) {
+    if (keep(s)) run.push(s);
+    else flush();
   }
-  ctx.restore();
-  // The cut hem: a shadow band riding just inside the bottom edge, so
-  // the fall ends heavy instead of stopping on a bright line.
-  ctx.save();
-  mantlePath(ctx, f, st, phi, back, floor);
-  ctx.clip();
-  ctx.fillStyle = shade(base, -26);
-  for (let i = 0; i <= MANTLE_STEPS; i++) {
-    const t = i / MANTLE_STEPS;
-    const psi = back ? -Math.PI + t * Math.PI : Math.PI - t * Math.PI;
-    const a = phi - psi;
-    const fall = st.fall(a);
-    if (fall <= 0.02) continue;
-    const x = headX + Math.cos(psi) * hw * MANTLE_R * GATHER;
-    const y1 = headY + (hemAt(st, a) + fall) * hh;
-    const w = (hw * 2 * Math.PI) / MANTLE_STEPS;
-    ctx.fillRect(x - w, y1 - hh * 0.1, w * 2, hh * 0.1);
-  }
-  ctx.restore();
-}
-
-/** Build the cap silhouette path: overhang crown + the SOLVED hem. */
-function capPath(ctx: CanvasRenderingContext2D, f: HairFrame, st: HairstyleDef, phi: number): void {
-  const { headX, headY, hw, hh, cut } = f;
-  const capX = hw * CAP_R;
-  const capTop = hh * 1.05;
-  const capCut = cut * 1.15;
-  const topY = headY - capTop;
-  const N = CAP_STEPS;
-  ctx.moveTo(headX - capX + capCut, topY);
-  ctx.lineTo(headX + capX - capCut, topY);
-  ctx.lineTo(headX + capX, topY + capCut);
-  // Hem stations, right edge to left edge — each column reads its own
-  // visible azimuth through the hairline solve, a = φ − acos(u).
-  for (let i = N; i >= 0; i--) {
-    const u = (i / N) * 2 - 1;
-    const a = phi - Math.acos(clamp(u, -1, 1));
-    ctx.lineTo(headX + u * capX, headY + hemAt(st, a) * hh);
-  }
-  ctx.lineTo(headX - capX, topY + capCut);
-  ctx.closePath();
+  flush();
 }
 
 function drawPass(
@@ -402,104 +479,115 @@ function drawPass(
   back: boolean,
 ): void {
   if (cover === 'cloth') return;
-  // Out-of-table indices fall to the default cut; index 1 is Bald and
-  // its entry is genuinely null — `??` would resurrect hair on a bald
-  // head, so the bounds check comes first.
-  const st = styleIx < STYLES.length ? STYLES[styleIx] : STYLES[0];
+  const st = styleIx >= 0 && styleIx < STYLES.length ? STYLES[styleIx] : STYLES[0];
   if (!st) return; // bald
+  const { headX, headY, hw, hh, cut, col, hurt } = f;
   const phi = Math.atan2(f.fy, f.fx);
   const sealed = cover === 'sealed';
-  // A wizard's brim holds every hanging strand; a sealed helm keeps
-  // only what falls below its rim.
-  if (cover !== 'brim') {
-    paintMantle(ctx, f, st, phi, back, sealed ? SEALED_FLOOR : null);
-  }
+  const sts = walk(f, st, phi, back);
+  // The far half lies in the head's own shadow — a step darker, the
+  // same nape tone the ear backs wear.
+  const base = hurt ? col : back ? shade(col, -10) : col;
 
-  // ---- the cap: camera-facing scalp only, and never under a helm
-  // that owns the crown line.
-  if (back || sealed) return;
-  const { headX, headY, hw, hh, cut, col, hurt } = f;
-  const capX = hw * CAP_R;
-  const capTop = hh * 1.05;
-  ctx.fillStyle = col;
-  ctx.beginPath();
-  capPath(ctx, f, st, phi);
-  ctx.fill();
-  if (!hurt) {
-    // THE DEPTH KIT, clipped to the cap so no facet leaks past the
-    // silhouette: trailing-half shade, a hem under-shade tracking the
-    // solved hairline, strand notches, and the lit crown plane.
-    ctx.save();
-    ctx.beginPath();
-    capPath(ctx, f, st, phi);
-    ctx.clip();
-    ctx.fillStyle = shade(col, -12);
-    ctx.fillRect(headX, headY - capTop, capX, capTop + hh * 2.2);
-    // THE CONTACT-SHADOW LAW: the hem under-shade is the shadow the
-    // fringe casts ON SKIN. Where the mantle continues below the hem
-    // there IS no skin — painting it there lays a thin hard line across
-    // the middle of the hair mass that reads as a scratch, not a hem.
-    // So the band is cut wherever a fall hangs under that column.
-    ctx.fillStyle = shade(col, -22);
-    const N = CAP_STEPS;
-    let run: [number, number][] = [];
-    const flushRun = (): void => {
-      if (run.length >= 2) {
-        ctx.beginPath();
-        ctx.moveTo(run[0]![0], run[0]![1]);
-        for (let i = 1; i < run.length; i++) ctx.lineTo(run[i]![0], run[i]![1]);
-        for (let i = run.length - 1; i >= 0; i--) {
-          ctx.lineTo(run[i]![0], run[i]![1] - hh * 0.09);
-        }
-        ctx.closePath();
-        ctx.fill();
-      }
-      run = [];
-    };
-    for (let i = 0; i <= N; i++) {
-      const u = (i / N) * 2 - 1;
-      const a = phi - Math.acos(clamp(u, -1, 1));
-      if (st.fall(a) > 0.05) {
-        flushRun();
-        continue;
-      }
-      run.push([headX + u * capX, headY + hemAt(st, a) * hh]);
-    }
-    flushRun();
-    // Strand notches rise off the hem at their own skull bearings —
-    // they slide across the cap with the turn and thin out as their
-    // patch of scalp rounds the silhouette.
-    ctx.fillStyle = shade(col, -22);
-    for (const sn of st.strands) {
-      const th = azDelta(sn.a, phi);
-      const d = -Math.sin(th);
-      if (d <= 0.06) continue;
-      const sx = headX + Math.cos(th) * hw;
-      const hy = headY + hemAt(st, sn.a) * hh;
-      const w = sn.w * hw * (0.6 + 0.4 * d);
-      ctx.fillRect(sx - w / 2, hy - sn.rise * hh, w, sn.rise * hh + hh * 0.02);
-    }
-    ctx.fillStyle = shade(col, 10);
+  // ---- the silhouette.
+  ctx.fillStyle = base;
+  if (sealed) {
+    if (!napePath(ctx, f, sts, headY + SEALED_FLOOR * hh)) return;
+    ctx.fill();
+  } else {
+    silhouettePath(ctx, f, sts);
+    ctx.fill();
+  }
+  if (hurt) return;
+
+  // ---- the depth kit, clipped to whatever silhouette this pass drew.
+  ctx.save();
+  if (sealed) napePath(ctx, f, sts, headY + SEALED_FLOOR * hh);
+  else silhouettePath(ctx, f, sts);
+  ctx.clip();
+  // Trailing-half shade: the hair keeps the head's screen-fixed light.
+  ctx.fillStyle = shade(base, -12);
+  ctx.fillRect(headX, headY - hh * 2, hw * 3, hh * 6);
+  // The lit crown plane — the top of the head catches the sun.
+  if (!sealed && !back) {
+    ctx.fillStyle = shade(base, 10);
     ctx.beginPath();
     chamferRect(ctx, headX - hw * 0.8, headY - hh * 0.98, hw * 1.6, hh * 0.22, cut * 0.4);
     ctx.fill();
-    ctx.restore();
   }
-  // Hem chips — nearer strands riding OVER the kit, azimuth-anchored
-  // so they slide across the brow with the turn and round the corner.
-  for (const ch of st.chips) {
-    const th = azDelta(ch.a, phi);
-    const d = -Math.sin(th);
-    if (d <= 0.08) continue; // rounded the corner with its scalp patch
-    const cx = headX + Math.cos(th) * hw;
-    const hy = headY + hemAt(st, ch.a) * hh;
-    const w = ch.w * hw * Math.max(0.35, d);
-    ctx.fillStyle = col;
-    ctx.fillRect(cx - w / 2, hy - hh * 0.12, w, hh * (0.12 + ch.drop));
-    if (!hurt) {
-      ctx.fillStyle = shade(col, -20);
-      ctx.fillRect(cx - w / 2, hy + hh * ch.drop, w, hh * 0.05);
+  // Strand seams at their own bearings, foreshortening with the skull.
+  ctx.fillStyle = shade(base, -20);
+  for (const sm of st.seams) {
+    const psi = azDelta(phi, sm.a);
+    const d = Math.sin(psi);
+    if (back ? d > -0.04 : d < 0.04) continue;
+    const w = sm.w * hw * (0.45 + 0.55 * Math.abs(d));
+    const x = headX + Math.cos(psi) * hw * CAP_R;
+    ctx.fillRect(x - w / 2, headY - hh, w, hh * 4);
+  }
+  // Strand notches: parting lines that rise off the hem and TAPER OUT
+  // into the crown. They must be wedges, not bars — a constant-width
+  // rect ends on a hard horizontal edge partway up the head, which at
+  // zoom reads as a floating dash of debris rather than as a parting.
+  if (!sealed && !back) {
+    ctx.fillStyle = shade(base, -22);
+    for (const sn of st.strands) {
+      const psi = azDelta(phi, sn.a);
+      const d = Math.sin(psi);
+      if (d <= 0.06) continue;
+      const s = stationAt(f, st, phi, psi);
+      const w = sn.w * hw * (0.6 + 0.4 * d);
+      const topY = s.hemY - sn.rise * hh;
+      ctx.beginPath();
+      ctx.moveTo(s.xr - w / 2, s.hemY + hh * 0.02);
+      ctx.lineTo(s.xr + w / 2, s.hemY + hh * 0.02);
+      ctx.lineTo(s.xr + w * 0.16, topY);
+      ctx.lineTo(s.xr - w * 0.16, topY);
+      ctx.closePath();
+      ctx.fill();
     }
+  }
+  // The two hem shadows, both walking the same stations as the edge.
+  ctx.fillStyle = shade(base, -22);
+  if (!sealed) {
+    hemBand(ctx, sts, (s) => s.fall <= BARE, (s) => s.hemY, -hh * 0.09);
+  }
+  ctx.fillStyle = shade(base, -26);
+  hemBand(ctx, sts, (s) => s.fall > BARE, (s) => s.botY, hh * 0.1);
+  ctx.restore();
+
+  // ---- hem chips: the nearest locks of the fringe, hanging a little
+  // past the hem OVER the depth kit. They TAPER to their tip: a square
+  // chip reads as a block bitten out of the forehead (it did), a
+  // tapered one reads as a lock of hair lying in front of the rest.
+  if (sealed || back) return;
+  for (const ch of st.chips) {
+    const psi = azDelta(phi, ch.a);
+    const d = Math.sin(psi);
+    if (d <= 0.08) continue;
+    const s = stationAt(f, st, phi, psi);
+    if (s.fall > BARE) continue; // a chip only reads against skin
+    const w = ch.w * hw * Math.max(0.35, d);
+    const tipY = s.hemY + ch.drop * hh;
+    const tw = w * 0.42;
+    const lean = w * 0.12;
+    ctx.fillStyle = base;
+    ctx.beginPath();
+    ctx.moveTo(s.xr - w / 2, s.hemY - hh * 0.12);
+    ctx.lineTo(s.xr + w / 2, s.hemY - hh * 0.12);
+    ctx.lineTo(s.xr + tw / 2 + lean, tipY);
+    ctx.lineTo(s.xr - tw / 2 + lean, tipY);
+    ctx.closePath();
+    ctx.fill();
+    // The lock's own under-tip shadow, so it sits IN FRONT of the hem.
+    ctx.fillStyle = shade(base, -20);
+    ctx.beginPath();
+    ctx.moveTo(s.xr - tw / 2 + lean, tipY);
+    ctx.lineTo(s.xr + tw / 2 + lean, tipY);
+    ctx.lineTo(s.xr + tw / 2 + lean, tipY - hh * 0.05);
+    ctx.lineTo(s.xr - tw / 2 + lean, tipY - hh * 0.05);
+    ctx.closePath();
+    ctx.fill();
   }
 }
 
