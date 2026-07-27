@@ -153,6 +153,42 @@ export class Session {
         this.game.interact(this.playerEid, msg.tx, msg.ty);
         return;
       }
+      case 'social': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.socialSnapshot(this.playerEid, this);
+        return;
+      }
+      case 'friendsearch': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.friendSearch(this.playerEid, this, msg.query);
+        return;
+      }
+      case 'friendrequest': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.friendRequest(this.playerEid, this, msg.name);
+        return;
+      }
+      case 'friendaccept': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.friendAccept(this.playerEid, this, msg.name);
+        return;
+      }
+      case 'frienddecline': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.friendDecline(this.playerEid, this, msg.name);
+        return;
+      }
+      case 'friendremove': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.friendRemove(this.playerEid, this, msg.name);
+        return;
+      }
       case 'use': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

@@ -11,6 +11,7 @@ import { showLevelUp } from './ui/levelToast.js';
 import { StationPanels } from './ui/stationPanels.js';
 import { UiNav } from './ui/padUI.js';
 import { LootPanel } from './ui/lootPanel.js';
+import { SocialPanel } from './ui/socialPanel.js';
 import { RiftgatePanel } from './ui/riftgate.js';
 import { showDungeonEntry } from './ui/dungeonBanner.js';
 import { Sfx } from './audio/sfx.js';
@@ -49,6 +50,7 @@ for (const [id, kind, tip, kbKey, padCls, padLabel] of [
   ['btn-arts', 'arts', 'Techniques', 'V', '', ''],
   ['btn-craft', 'handiwork', 'Handiwork', 'C', 'ddown', '▼'],
   ['btn-build', 'build', 'Build', 'B', 'dright', '▶'],
+  ['btn-social', 'social', 'Social', 'U', '', ''],
   ['btn-audio', 'sound', 'Sound', 'O', '', ''],
   ['touch-attack', 'attack', '', '', '', ''],
 ] as const) {
@@ -192,7 +194,7 @@ renderer.waterFxFull = localStorage.getItem('devcraft.waterfx') !== 'basic';
     localStorage.setItem('devcraft.waterfx', on ? 'full' : 'basic');
   });
 }
-input.setTypingCheck(() => chat.isTyping || looks.open);
+input.setTypingCheck(() => chat.isTyping || looks.open || socialPanel.isTyping);
 let buildMode: string | null = null;
 /** The bank chest tile that asked the server for the vault — anchors the panel. */
 let lastBankAnchor: { tx: number; ty: number } | null = null;
@@ -366,10 +368,11 @@ function closeAllUi(): void {
   lootPanel.close();
   riftgate.close();
   audioMenu.close();
+  socialPanel.close();
 }
 
 function toggleScreen(
-  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot',
+  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot' | 'social',
 ): void {
   // A conversation owns the stage: no screen may open over it, from
   // any device — hotkeys, dock clicks, and pad shortcuts all pass
@@ -388,7 +391,9 @@ function toggleScreen(
               ? stationPanels.buildOpen
               : which === 'audio'
                 ? audioMenu.isOpen
-                : lootPanel.isOpen;
+                : which === 'social'
+                  ? socialPanel.isOpen
+                  : lootPanel.isOpen;
   closeAllUi();
   if (wasOpen) return;
   switch (which) {
@@ -410,6 +415,9 @@ function toggleScreen(
     case 'audio':
       audioMenu.open();
       break;
+    case 'social':
+      socialPanel.open();
+      break;
     case 'loot':
       if (game.nearbyLoot(2.4).length > 0) lootPanel.open();
       break;
@@ -422,6 +430,7 @@ document.getElementById('btn-arts')!.addEventListener('click', () => toggleScree
 document.getElementById('btn-craft')!.addEventListener('click', () => toggleScreen('craft'));
 document.getElementById('btn-build')!.addEventListener('click', () => toggleScreen('build'));
 document.getElementById('btn-audio')!.addEventListener('click', () => toggleScreen('audio'));
+document.getElementById('btn-social')!.addEventListener('click', () => toggleScreen('social'));
 
 function showLoginError(text: string): void {
   loginError.textContent = text;
@@ -605,6 +614,24 @@ const game = new ClientGame(input, {
     // A toast, not a screen — it overlays like the level-up card.
     showDungeonEntry(d);
   },
+  onSocial: (snap) => socialPanel.onSnapshot(snap),
+  onFriendSearch: (results) => socialPanel.onSearchResults(results),
+  onFriendEvent: (ev) => {
+    // Announce what the receiver should act on or feel; declines and
+    // removals pass silently — the ledger simply reflects them.
+    if (ev.kind === 'request') {
+      chat.addLine({ channel: 'system', text: `${ev.name} wants to be your friend — press U.` });
+      sfx.uiOpen();
+    } else if (ev.kind === 'accepted') {
+      chat.addLine({ channel: 'system', text: `You are now friends with ${ev.name}.` });
+      sfx.uiOpen();
+    } else if (ev.kind === 'online') {
+      chat.addLine({ channel: 'system', text: `${ev.name} has come online.` });
+    } else if (ev.kind === 'offline') {
+      chat.addLine({ channel: 'system', text: `${ev.name} has gone offline.` });
+    }
+    socialPanel.notifyEvent();
+  },
   onXp: (msg) => {
     // NO xp floaty: combat kills feed several skills at once and the
     // drips stacked into unreadable mush over the damage numbers (user
@@ -648,6 +675,9 @@ const lootPanel = new LootPanel(game);
 
 // The Riftgate's key chooser — opens when the gate answers an interact.
 const riftgate = new RiftgatePanel(game);
+
+// The fellowship ledger: nearby players, friends, and requests.
+const socialPanel = new SocialPanel(game);
 
 // ---- one anatomy for every panel: icon plaque, title, hint, close ----
 const el = (id: string): HTMLElement => document.getElementById(id)!;
@@ -702,6 +732,11 @@ dressPanel(el('audio-panel'), {
   icon: uiIconUrl('bell', 34),
   hint: 'Sound and picture, dialed to taste — changes stick.',
   onClose: () => audioMenu.close(),
+});
+dressPanel(el('social-panel'), {
+  icon: dockGlyphUrl('social', 34),
+  hint: 'See who stands near, ask for friends, and keep your ledger.',
+  onClose: () => socialPanel.close(),
 });
 
 // Dodge dash feedback: whoosh + a streak of dust kicked out behind.
@@ -1198,7 +1233,7 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
 
 // Panel hotkeys + interact key.
 window.addEventListener('keydown', (e) => {
-  if (chat.isTyping || game.ownEid === null) return;
+  if (chat.isTyping || socialPanel.isTyping || game.ownEid === null) return;
   // A running cinematic owns the keyboard: advance, choose, or excuse
   // yourself — no screen may open over a conversation.
   if (cinema.open) {
@@ -1211,11 +1246,13 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyO') toggleScreen('audio');
   if (e.code === 'KeyC') toggleScreen('craft');
   if (e.code === 'KeyB') toggleScreen('build');
+  if (e.code === 'KeyU') toggleScreen('social');
   if (e.code === 'Escape') {
     stationPanels.closeAll();
     panels.closeAll();
     lootPanel.close();
     riftgate.close();
+    socialPanel.close();
     buildMode = null;
     renderer.buildGhost = null;
   }
@@ -1250,6 +1287,7 @@ const panelSeen = {
   arts: false,
   audio: false,
   riftgate: false,
+  social: false,
 };
 function panelAudioCues(): void {
   const vis = (id: string): boolean =>
@@ -1275,6 +1313,7 @@ function panelAudioCues(): void {
   cue('arts', vis('arts-panel'), () => sfx.parchment(), () => sfx.uiClose());
   cue('audio', vis('audio-panel'), () => sfx.uiOpen(), () => sfx.uiClose());
   cue('riftgate', vis('riftgate-panel'), () => sfx.uiOpen(), () => sfx.uiClose());
+  cue('social', vis('social-panel'), () => sfx.parchment(), () => sfx.uiClose());
 }
 
 // EVERY CONTROL ANSWERS: one delegated listener gives all buttons the

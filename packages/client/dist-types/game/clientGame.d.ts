@@ -203,6 +203,26 @@ export interface GameEvents {
     onDialogueClose?(): void;
     /** A trainer opened their wares — render the named shop's shelf. */
     onShopOpen?(shop: string): void;
+    /** The full social snapshot answered a request. */
+    onSocial?(snap: {
+        friends: Array<{
+            name: string;
+            online: boolean;
+            zone?: string;
+        }>;
+        incoming: string[];
+        outgoing: string[];
+    }): void;
+    /** Name-search results came back. */
+    onFriendSearch?(results: Array<{
+        name: string;
+        online: boolean;
+    }>): void;
+    /** Something social happened involving `name` — refetch, maybe announce. */
+    onFriendEvent?(ev: {
+        kind: 'request' | 'accepted' | 'declined' | 'removed' | 'online' | 'offline';
+        name: string;
+    }): void;
 }
 export declare class ClientGame {
     private readonly input;
@@ -483,6 +503,23 @@ export declare class ClientGame {
     /** Excuse yourself from the conversation early. */
     dialogueEnd(): void;
     bankSend(op: 'deposit' | 'withdraw', item: string, qty: number, slot?: number, gearId?: number): void;
+    requestSocial(): void;
+    friendSearch(query: string): void;
+    friendRequest(name: string): void;
+    friendAccept(name: string): void;
+    friendDecline(name: string): void;
+    friendRemove(name: string): void;
+    /**
+     * The players standing inside our interest window right now, nearest
+     * first. Pure client knowledge — the entities map only ever holds
+     * remotes, so our own rig never appears.
+     */
+    nearbyPlayers(): Array<{
+        eid: EntityId;
+        name: string;
+        dist: number;
+        meta: EntityMeta;
+    }>;
     invMove(from: number, to: number): void;
     /** Drop a pack slot onto the ground where you stand. */
     dropSend(slot: number, qty: number): void;

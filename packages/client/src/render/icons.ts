@@ -4746,7 +4746,7 @@ type DockGlyphPainter = (c: CanvasRenderingContext2D) => void;
 /** The one ink every dock sigil is engraved in. */
 const GLYPH_INK = '#d8c08c';
 
-export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'attack';
+export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack';
 
 const DOCK_GLYPHS: Record<DockGlyph, DockGlyphPainter> = {
   // The satchel: body, drooping flap, buckle strap, carry handle.
@@ -4893,6 +4893,27 @@ const DOCK_GLYPHS: Record<DockGlyph, DockGlyphPainter> = {
       c.arc(kx, y, 0.068, 0, Math.PI * 2);
       c.fill();
     }
+  },
+  // Two head-and-shoulder arcs, the far one half-risen behind the
+  // near — company kept: the fellowship ledger.
+  social: (c) => {
+    c.lineWidth = 0.07;
+    // The companion behind: head + shoulder line, higher and smaller.
+    c.beginPath();
+    c.arc(0.64, 0.33, 0.11, 0, Math.PI * 2);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.5, 0.62);
+    c.quadraticCurveTo(0.64, 0.47, 0.82, 0.6);
+    c.stroke();
+    // The near figure: bigger head, full shoulder sweep to a baseline.
+    c.beginPath();
+    c.arc(0.36, 0.45, 0.135, 0, Math.PI * 2);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.14, 0.84);
+    c.quadraticCurveTo(0.36, 0.6, 0.58, 0.84);
+    c.stroke();
   },
   // The drawn blade for the touch attack key.
   attack: (c) => {

@@ -178,6 +178,19 @@ export interface GameEvents {
   onDialogueClose?(): void;
   /** A trainer opened their wares — render the named shop's shelf. */
   onShopOpen?(shop: string): void;
+  /** The full social snapshot answered a request. */
+  onSocial?(snap: {
+    friends: Array<{ name: string; online: boolean; zone?: string }>;
+    incoming: string[];
+    outgoing: string[];
+  }): void;
+  /** Name-search results came back. */
+  onFriendSearch?(results: Array<{ name: string; online: boolean }>): void;
+  /** Something social happened involving `name` — refetch, maybe announce. */
+  onFriendEvent?(ev: {
+    kind: 'request' | 'accepted' | 'declined' | 'removed' | 'online' | 'offline';
+    name: string;
+  }): void;
 }
 
 export class ClientGame {
@@ -939,6 +952,18 @@ export class ClientGame {
         this.setHavens(msg.list);
         break;
       }
+      case 'social': {
+        this.events.onSocial?.({ friends: msg.friends, incoming: msg.incoming, outgoing: msg.outgoing });
+        break;
+      }
+      case 'friendsearch': {
+        this.events.onFriendSearch?.(msg.results);
+        break;
+      }
+      case 'friendevent': {
+        this.events.onFriendEvent?.({ kind: msg.kind, name: msg.name });
+        break;
+      }
       case 'fx': {
         // Door rattles and prop smashes are scenery feedback, not
         // combat VFX — hand them straight to the fx hook without
@@ -1262,6 +1287,57 @@ export class ClientGame {
 
   bankSend(op: 'deposit' | 'withdraw', item: string, qty: number, slot?: number, gearId?: number): void {
     this.conn?.send({ t: 'bank', op, item, qty, slot, gearId });
+  }
+
+  // ----------------------------------------------------------- social
+
+  requestSocial(): void {
+    this.conn?.send({ t: 'social' });
+  }
+
+  friendSearch(query: string): void {
+    this.conn?.send({ t: 'friendsearch', query });
+  }
+
+  friendRequest(name: string): void {
+    this.conn?.send({ t: 'friendrequest', name });
+  }
+
+  friendAccept(name: string): void {
+    this.conn?.send({ t: 'friendaccept', name });
+  }
+
+  friendDecline(name: string): void {
+    this.conn?.send({ t: 'frienddecline', name });
+  }
+
+  friendRemove(name: string): void {
+    this.conn?.send({ t: 'friendremove', name });
+  }
+
+  /**
+   * The players standing inside our interest window right now, nearest
+   * first. Pure client knowledge — the entities map only ever holds
+   * remotes, so our own rig never appears.
+   */
+  nearbyPlayers(): Array<{ eid: EntityId; name: string; dist: number; meta: EntityMeta }> {
+    if (this.ownEid === null) return [];
+    const pos = this.predictor.pos;
+    const out: Array<{ eid: EntityId; name: string; dist: number; meta: EntityMeta }> = [];
+    for (const [eid, remote] of this.entities) {
+      if (remote.meta.kind !== EntityKind.Player) continue;
+      const latest = remote.buffer.latest();
+      const x = latest?.x ?? remote.meta.x;
+      const y = latest?.y ?? remote.meta.y;
+      out.push({
+        eid,
+        name: remote.meta.name ?? 'Wanderer',
+        dist: Math.hypot(x - pos.x, y - pos.y),
+        meta: remote.meta,
+      });
+    }
+    out.sort((a, b) => a.dist - b.dist);
+    return out;
   }
 
   invMove(from: number, to: number): void {

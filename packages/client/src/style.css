@@ -5136,3 +5136,77 @@ body.in-dialogue #hud {
   height: 22px;
   font-size: 12px;
 }
+
+/* ==================================================================
+   SOCIAL — the fellowship ledger: who stands near, who walks with
+   you, who is asking to. Rows speak the loot-row dialect; the search
+   box is the HUD's one typing field outside chat, dressed like it.
+   ================================================================== */
+
+.screen-social {
+  width: min(640px, 62vw);
+  height: min(800px, 88vh);
+}
+
+.social-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  padding-right: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.social-search {
+  display: flex;
+  gap: 10px;
+}
+
+.social-search input {
+  flex: 1;
+  min-width: 0;
+  background: var(--sunk);
+  border: 1.5px solid var(--line);
+  border-radius: 5px;
+  color: var(--parchment);
+  padding: 10px 12px;
+  font-size: 16px;
+  outline: none;
+}
+
+.social-search input:focus {
+  border-color: var(--gold);
+}
+
+/* An online friend's row carries the accent on its leading edge. */
+.social-online {
+  border-left-color: var(--screen-accent);
+}
+
+/* Offline and awaiting rows step back into the case's shadow. */
+.social-dim {
+  opacity: 0.72;
+}
+
+.social-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.social-empty {
+  font-size: 14.5px;
+  font-style: italic;
+  color: var(--parchment-dim);
+  padding: 2px 4px;
+}
+
+.social-inspect-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0 8px;
+}

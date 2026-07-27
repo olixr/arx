@@ -221,6 +221,131 @@ export class AccountStore {
       .run(characterId, flag);
   }
 
+  /**
+   * The social ledger. Friendships are mutual — two mirrored rows in
+   * character_friends written in one transaction — so every load stays
+   * a single-key SELECT. Requests are directional; the handler
+   * auto-accepts a mutual request, so at most one direction is ever
+   * pending between two characters. All writes land the moment the
+   * action happens (a friendship must never be lost to a crash).
+   */
+  findCharacterByName(name: string): { id: number; name: string } | null {
+    // '=' on the COLLATE NOCASE column resolves any casing; the row
+    // echoes the canonical spelling back.
+    const row = this.db
+      .prepare('SELECT id, name FROM characters WHERE name = ?')
+      .get(name) as { id: number; name: string } | undefined;
+    return row ?? null;
+  }
+
+  searchCharacters(prefix: string, excludeId: number, limit = 10): Array<{ id: number; name: string }> {
+    const escaped = prefix.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+    return this.db
+      .prepare(
+        "SELECT id, name FROM characters WHERE name LIKE ? ESCAPE '\\' AND id <> ? ORDER BY name LIMIT ?",
+      )
+      .all(`${escaped}%`, excludeId, limit) as Array<{ id: number; name: string }>;
+  }
+
+  loadFriends(characterId: number): Array<{ id: number; name: string }> {
+    return this.db
+      .prepare(
+        'SELECT c.id, c.name FROM character_friends f JOIN characters c ON c.id = f.friend_id ' +
+          'WHERE f.character_id = ? ORDER BY c.name',
+      )
+      .all(characterId) as Array<{ id: number; name: string }>;
+  }
+
+  loadFriendRequests(characterId: number): {
+    incoming: Array<{ id: number; name: string }>;
+    outgoing: Array<{ id: number; name: string }>;
+  } {
+    const incoming = this.db
+      .prepare(
+        'SELECT c.id, c.name FROM friend_requests r JOIN characters c ON c.id = r.from_id ' +
+          'WHERE r.to_id = ? ORDER BY r.created_at',
+      )
+      .all(characterId) as Array<{ id: number; name: string }>;
+    const outgoing = this.db
+      .prepare(
+        'SELECT c.id, c.name FROM friend_requests r JOIN characters c ON c.id = r.to_id ' +
+          'WHERE r.from_id = ? ORDER BY r.created_at',
+      )
+      .all(characterId) as Array<{ id: number; name: string }>;
+    return { incoming, outgoing };
+  }
+
+  areFriends(aId: number, bId: number): boolean {
+    return (
+      this.db
+        .prepare('SELECT 1 FROM character_friends WHERE character_id = ? AND friend_id = ?')
+        .get(aId, bId) !== undefined
+    );
+  }
+
+  hasFriendRequest(fromId: number, toId: number): boolean {
+    return (
+      this.db
+        .prepare('SELECT 1 FROM friend_requests WHERE from_id = ? AND to_id = ?')
+        .get(fromId, toId) !== undefined
+    );
+  }
+
+  countFriends(characterId: number): number {
+    const row = this.db
+      .prepare('SELECT COUNT(*) AS n FROM character_friends WHERE character_id = ?')
+      .get(characterId) as { n: number };
+    return row.n;
+  }
+
+  createFriendRequest(fromId: number, toId: number): void {
+    this.db
+      .prepare('INSERT OR IGNORE INTO friend_requests (from_id, to_id, created_at) VALUES (?, ?, ?)')
+      .run(fromId, toId, Date.now());
+  }
+
+  deleteFriendRequest(fromId: number, toId: number): boolean {
+    const res = this.db
+      .prepare('DELETE FROM friend_requests WHERE from_id = ? AND to_id = ?')
+      .run(fromId, toId);
+    return Number(res.changes) > 0;
+  }
+
+  addFriendship(aId: number, bId: number): void {
+    const now = Date.now();
+    this.db.exec('BEGIN');
+    try {
+      // Clear both pending directions, then lay both mirrored rows.
+      const clear = this.db.prepare('DELETE FROM friend_requests WHERE from_id = ? AND to_id = ?');
+      clear.run(aId, bId);
+      clear.run(bId, aId);
+      const insert = this.db.prepare(
+        'INSERT OR IGNORE INTO character_friends (character_id, friend_id, created_at) VALUES (?, ?, ?)',
+      );
+      insert.run(aId, bId, now);
+      insert.run(bId, aId, now);
+      this.db.exec('COMMIT');
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
+    }
+  }
+
+  removeFriendship(aId: number, bId: number): void {
+    this.db.exec('BEGIN');
+    try {
+      const stmt = this.db.prepare(
+        'DELETE FROM character_friends WHERE character_id = ? AND friend_id = ?',
+      );
+      stmt.run(aId, bId);
+      stmt.run(bId, aId);
+      this.db.exec('COMMIT');
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
+    }
+  }
+
   loadInventory(
     characterId: number,
     size: number,

@@ -237,6 +237,45 @@ export interface C2SCarryStyle {
   hand?: GripHand;
 }
 
+/** Ask for the full social snapshot (friends + pending requests). */
+export interface C2SSocial {
+  t: 'social';
+}
+
+/** Search characters by name prefix. */
+export interface C2SFriendSearch {
+  t: 'friendsearch';
+  query: string;
+}
+
+/** Send a friend request (by character name). */
+export interface C2SFriendRequest {
+  t: 'friendrequest';
+  name: string;
+}
+
+/** Accept a pending incoming friend request. */
+export interface C2SFriendAccept {
+  t: 'friendaccept';
+  name: string;
+}
+
+/**
+ * Decline an incoming request — or cancel your own outgoing one.
+ * Unambiguous because mutual requests auto-accept, so between two
+ * characters at most one direction is ever pending.
+ */
+export interface C2SFriendDecline {
+  t: 'frienddecline';
+  name: string;
+}
+
+/** Remove an existing friend (severs both sides). */
+export interface C2SFriendRemove {
+  t: 'friendremove';
+  name: string;
+}
+
 export type C2SMessage =
   | C2SHello
   | C2SLogin
@@ -263,7 +302,13 @@ export type C2SMessage =
   | C2SUseKey
   | C2SDialogueAdvance
   | C2SDialogueChoose
-  | C2SDialogueEnd;
+  | C2SDialogueEnd
+  | C2SSocial
+  | C2SFriendSearch
+  | C2SFriendRequest
+  | C2SFriendAccept
+  | C2SFriendDecline
+  | C2SFriendRemove;
 
 // ---------------------------------------------------------------- S2C
 
@@ -607,6 +652,36 @@ export interface S2CDungeonEnter {
   power: number;
 }
 
+/** One friend on the social snapshot. */
+export interface SocialFriend {
+  name: string;
+  online: boolean;
+  /** Where they stand right now — only present while online. */
+  zone?: string;
+}
+
+/** The full social snapshot, sent on request. */
+export interface S2CSocial {
+  t: 'social';
+  friends: SocialFriend[];
+  /** Names with a pending request TO you. */
+  incoming: string[];
+  /** Names you have asked and who haven't answered. */
+  outgoing: string[];
+}
+
+export interface S2CFriendSearch {
+  t: 'friendsearch';
+  results: Array<{ name: string; online: boolean }>;
+}
+
+/** A thin push: something social happened involving `name`. */
+export interface S2CFriendEvent {
+  t: 'friendevent';
+  kind: 'request' | 'accepted' | 'declined' | 'removed' | 'online' | 'offline';
+  name: string;
+}
+
 export type S2CMessage =
   | S2CWelcome
   | S2CReject
@@ -637,7 +712,10 @@ export type S2CMessage =
   | S2CDialogueOpen
   | S2CDialogueNode
   | S2CDialogueClose
-  | S2CHavens;
+  | S2CHavens
+  | S2CSocial
+  | S2CFriendSearch
+  | S2CFriendEvent;
 
 // ------------------------------------------------------- validation
 
@@ -835,6 +913,28 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (msg.style !== 'normal' && msg.style !== 'rogue') return null;
       if (msg.hand !== undefined && msg.hand !== 'main' && msg.hand !== 'off') return null;
       return { t: 'carrystyle', style: msg.style, hand: msg.hand };
+    }
+    case 'social':
+      return { t: 'social' };
+    case 'friendsearch': {
+      if (typeof msg.query !== 'string' || msg.query.length > 24) return null;
+      return { t: 'friendsearch', query: msg.query };
+    }
+    case 'friendrequest': {
+      if (typeof msg.name !== 'string' || msg.name.length > 32) return null;
+      return { t: 'friendrequest', name: msg.name };
+    }
+    case 'friendaccept': {
+      if (typeof msg.name !== 'string' || msg.name.length > 32) return null;
+      return { t: 'friendaccept', name: msg.name };
+    }
+    case 'frienddecline': {
+      if (typeof msg.name !== 'string' || msg.name.length > 32) return null;
+      return { t: 'frienddecline', name: msg.name };
+    }
+    case 'friendremove': {
+      if (typeof msg.name !== 'string' || msg.name.length > 32) return null;
+      return { t: 'friendremove', name: msg.name };
     }
     default:
       return null;

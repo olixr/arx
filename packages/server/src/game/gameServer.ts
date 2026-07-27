@@ -232,6 +232,7 @@ import {
 import { scaleNpcDef } from '@devcraft/content';
 import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem, takeSlot } from './inventory.js';
 import { DROP_MERGE_RADIUS, canMergeDrop } from './drops.js';
+import { SocialSystem } from './social.js';
 
 interface PositionComp {
   x: number;
@@ -1017,6 +1018,40 @@ export class GameServer {
     private readonly accounts: AccountStore,
   ) {
     this.registerSpawns(TOWN_SPAWNS);
+    this.social = new SocialSystem(accounts, {
+      isOnline: (characterId) => this.characterEids.has(characterId),
+      zoneOfCharacter: (characterId) => {
+        const eid = this.characterEids.get(characterId);
+        if (eid === undefined) return null;
+        const pos = this.positions.get(eid);
+        return pos ? this.zoneNameAt(pos.x, pos.y) : null;
+      },
+      sendToCharacter: (characterId, msg) => {
+        const eid = this.characterEids.get(characterId);
+        if (eid === undefined) return false;
+        const session = this.players.get(eid)?.session;
+        if (!session) return false;
+        session.sendJson(msg);
+        return true;
+      },
+    });
+  }
+
+  /** Friends, requests, and presence pushes. */
+  private readonly social: SocialSystem;
+
+  /**
+   * Name the ground under (x, y). Every zone — authored or dungeon
+   * instance — registers a ZoneDef rectangle, so one containment scan
+   * covers town streets and delve halls alike; everywhere else is wilds.
+   */
+  private zoneNameAt(x: number, y: number): string {
+    for (const z of this.world.zoneDefs) {
+      if (x >= z.origin.x && x < z.origin.x + z.width && y >= z.origin.y && y < z.origin.y + z.height) {
+        return z.name;
+      }
+    }
+    return 'The Wilds';
   }
 
   /**
@@ -1412,6 +1447,19 @@ export class GameServer {
     this.updateChunkMembership(eid);
     this.bindSession(session, eid);
     this.systemChatAll(`${character.name} has joined the world.`);
+    // A true arrival (reconnects within grace rebind without passing
+    // here) — tell online friends, and surface any waiting asks.
+    if (character.id > 0) {
+      this.social.notifyOnline(character.id, character.name);
+      const pending = this.social.pendingCount(character.id);
+      if (pending > 0) {
+        session.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `You have ${pending} pending friend request${pending === 1 ? '' : 's'} — press U.`,
+        });
+      }
+    }
     console.log(`[game] ${character.name} joined (eid ${eid}), ${this.players.size} online`);
     return eid;
   }
@@ -1499,6 +1547,8 @@ export class GameServer {
     }
     this.savePlayer(eid);
     this.characterEids.delete(player.characterId);
+    // Only now — past the reconnect grace — do friends see "offline".
+    if (player.characterId > 0) this.social.notifyOffline(player.characterId, player.name);
     if (player.accountId === null) {
       for (const [token, guestEid] of this.guestTokens) {
         if (guestEid === eid) this.guestTokens.delete(token);
@@ -1508,6 +1558,52 @@ export class GameServer {
     this.ecs.destroy(eid);
     this.systemChatAll(`${player.name} has left the world.`);
     console.log(`[game] ${player.name} despawned, ${this.players.size} online`);
+  }
+
+  // ----------------------------------------------------------- social
+
+  /**
+   * Resolve a social sender: a real, persisted character. Guests get a
+   * gentle nudge — the friend ledger lives in the database they don't have.
+   */
+  private socialActor(eid: EntityId, session: Session): { id: number; name: string } | null {
+    const player = this.players.get(eid);
+    if (!player) return null;
+    if (player.characterId <= 0) {
+      session.sendJson({ t: 'chat', channel: 'system', text: 'Social features need an account.' });
+      return null;
+    }
+    return { id: player.characterId, name: player.name };
+  }
+
+  socialSnapshot(eid: EntityId, session: Session): void {
+    const actor = this.socialActor(eid, session);
+    if (actor) this.social.snapshot(actor.id, (msg) => session.sendJson(msg));
+  }
+
+  friendSearch(eid: EntityId, session: Session, query: string): void {
+    const actor = this.socialActor(eid, session);
+    if (actor) this.social.search(actor.id, query, (msg) => session.sendJson(msg));
+  }
+
+  friendRequest(eid: EntityId, session: Session, name: string): void {
+    const actor = this.socialActor(eid, session);
+    if (actor) this.social.request(actor.id, actor.name, name, (msg) => session.sendJson(msg));
+  }
+
+  friendAccept(eid: EntityId, session: Session, name: string): void {
+    const actor = this.socialActor(eid, session);
+    if (actor) this.social.accept(actor.id, actor.name, name, (msg) => session.sendJson(msg));
+  }
+
+  friendDecline(eid: EntityId, session: Session, name: string): void {
+    const actor = this.socialActor(eid, session);
+    if (actor) this.social.decline(actor.id, actor.name, name, (msg) => session.sendJson(msg));
+  }
+
+  friendRemove(eid: EntityId, session: Session, name: string): void {
+    const actor = this.socialActor(eid, session);
+    if (actor) this.social.remove(actor.id, actor.name, name, (msg) => session.sendJson(msg));
   }
 
   // ------------------------------------------------------ persistence

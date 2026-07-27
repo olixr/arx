@@ -471,6 +471,29 @@ const MIGRATIONS: string[] = [
   ALTER TABLE characters ADD COLUMN home_y INTEGER;
   ALTER TABLE characters ADD COLUMN hearth_at INTEGER NOT NULL DEFAULT 0;
   `,
+  // 27 — the social ledger: friendships are MUTUAL and stored as two
+  // mirrored rows written in one transaction, so "who are my friends"
+  // stays a single-key indexed SELECT (the row-presence house pattern).
+  // friend_requests is the directional pending edge; a mutual request
+  // auto-accepts at the handler, so between any two characters at most
+  // one direction ever holds a pending row.
+  `
+  CREATE TABLE character_friends (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    friend_id    INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    created_at   INTEGER NOT NULL,
+    PRIMARY KEY (character_id, friend_id),
+    CHECK (character_id <> friend_id)
+  );
+  CREATE TABLE friend_requests (
+    from_id    INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    to_id      INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (from_id, to_id),
+    CHECK (from_id <> to_id)
+  );
+  CREATE INDEX idx_friend_requests_to ON friend_requests(to_id);
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {
