@@ -80,6 +80,20 @@ import { Particles } from './particles.js';
 import { Debris, type SmashKind } from './debris.js';
 import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
 import { paintTree, treeModel, type TreeModel } from './trees.js';
+import {
+  DITHER_CELL,
+  GHOST_ALPHA,
+  GHOST_EASE_S,
+  GHOST_TINT,
+  VEIL_MAX,
+  VEIL_R_TILES,
+  VEIL_SQUASH,
+  bayerAlpha,
+  emberEase,
+  frontEase,
+  veilResidual,
+  wallCover,
+} from './reveal.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
@@ -590,6 +604,38 @@ export class Renderer {
   /** This frame's reveal strength: shelterK smoothstepped, and ridden
    *  down to the darkness fade (ugBlend) on a portal drop. */
   private cutCtx = 0;
+  // ------------------------------------------------------------------
+  // THE THICKET VEIL + GHOST EMBER (reveal.ts holds the pure laws).
+  // Everything below keys off the LOCAL player only — the anti-
+  // wallhack law: no other body opens a window or earns an ember.
+  // ------------------------------------------------------------------
+  /** The veil window's screen anchor (own torso), sampled per frame. */
+  private veilVX = 0;
+  private veilVY = 0;
+  /** Anchor valid this frame (own player exists and is on screen). */
+  private veilArmed = false;
+  /** Bayer screen-door tile, rebuilt when dpr drifts. */
+  private ditherPat: { canvas: HTMLCanvasElement; dpr: number } | null = null;
+  /** The elliptical feathered dither window (device px), rebuilt when
+   *  the camera scale drifts >2% or dpr changes. */
+  private veilMask: {
+    canvas: HTMLCanvasElement;
+    scale: number;
+    dpr: number;
+    /** device-px half extents */
+    hx: number;
+    hy: number;
+  } | null = null;
+  /** Scratch for the per-tree punch composite (grows monotonically). */
+  private readonly veilScratch = document.createElement('canvas');
+  private readonly veilScratchCtx = this.veilScratch.getContext('2d')!;
+  /** Tree cover registered DURING the draw pass (max of residuals);
+   *  read next frame — the 0.22s ember ease swallows the 1-frame lag. */
+  private treeGhostCover = 0;
+  /** The ember's temporal ease toward this frame's occlusion cover. */
+  private ghostK = 0;
+  /** Own player's DrawItem, stashed by collectEntities for the ember. */
+  private ownItem: DrawItem | null = null;
   /** Scene lights gathered this frame (tiles, projectiles, flames). */
   private readonly lights: WorldLight[] = [];
   /** This frame's light-blocker test (walls/cliffs) — shared by the
@@ -2542,6 +2588,41 @@ export class Renderer {
       this.shelterK = 0;
       this.cutCtx = 0;
     }
+    // THE THICKET VEIL anchor + THE GHOST EMBER's cover probe. The
+    // anchor rides the CONTINUOUS render position (same law as the
+    // wall reveal — flooring pops per row). Tree cover was registered
+    // by drawTree during LAST frame's pass; wall cover probes fresh
+    // here, veil-cut aware via wallHeightAt so a sunken stub never
+    // argues with the wall reveal.
+    this.veilArmed = game.ownEid !== null;
+    this.ownItem = null; // collectEntities re-stashes each frame
+    let cover = 0;
+    if (this.veilArmed) {
+      const a = this.liftedWTS(this.ownPX, this.ownPY);
+      this.veilVX = a.x;
+      // Torso height: the window centers on the body, not the feet.
+      this.veilVY = a.y - 0.62 * this.camera.scale;
+      cover = this.treeGhostCover;
+      const btx = Math.floor(this.ownPX);
+      const bty = Math.floor(this.ownPY);
+      for (let dyRow = 1; dyRow <= 3; dyRow++) {
+        for (let dxCol = -1; dxCol <= 1; dxCol++) {
+          const tx = btx + dxCol;
+          const ty = bty + dyRow;
+          if (!this.wallish(game, tx, ty)) continue;
+          const k = wallCover(
+            this.wallHeightAt(game, tx, ty),
+            ty + 1 - this.ownPY,
+            Math.abs(tx + 0.5 - this.ownPX),
+            this.camera.yScale,
+          );
+          if (k > cover) cover = k;
+        }
+      }
+    }
+    this.treeGhostCover = 0;
+    const gStep = frameDt / GHOST_EASE_S;
+    this.ghostK += Math.max(-gStep, Math.min(gStep, cover - this.ghostK));
     // Standing lights gather FIRST: the shadow prepass needs to know
     // every pool before anything casts. (Moving lights announce via
     // queueGlow during the draw pass and cast one frame later.)
@@ -2728,6 +2809,8 @@ export class Renderer {
       if (item.alpha !== undefined) this.ctx.globalAlpha = 1;
       item.drawLabel?.();
     }
+    // THE GHOST EMBER rides over the world pass, under the overlay FX.
+    this.drawGhostEmber();
 
     this.particles.draw(this.ctx, this.liftedWTS, this.camera.scale);
     // The aim guide rides OVER the world pass: elevated ground repaints
@@ -8866,6 +8949,117 @@ export class Renderer {
     sctx.restore();
   }
 
+  /**
+   * THE GHOST EMBER: while the standing world mostly hides the own
+   * body — a rear facade seen from the street, a canopy the veil only
+   * half-opens — a dithered lantern-gold silhouette of the rig draws
+   * over the occluders. Deliberately a POSITION CUE, not an x-ray:
+   * flat tint (no equipment detail), screen-door weave, eased over
+   * GHOST_EASE_S, and multiplied by the stealth ghost's own alpha.
+   * Own player only — no other body ever earns one (anti-wallhack).
+   */
+  private drawGhostEmber(): void {
+    const item = this.ownItem;
+    if (!this.veilArmed || !item?.body || this.ghostK < 0.03) return;
+    const b = item.body;
+    const dpr = window.devicePixelRatio || 1;
+    // Art-only scratch bake; glow/sparkle side effects gated exactly
+    // like the mirror pass.
+    this.bakingMask = true;
+    let geo: { w: number; h: number; m: number };
+    try {
+      geo = this.paintOutlineScratch(item, true);
+    } finally {
+      this.bakingMask = false;
+    }
+    const a = this.outlineACtx;
+    a.save();
+    a.setTransform(1, 0, 0, 1, 0, 0);
+    a.globalCompositeOperation = 'source-in';
+    a.fillStyle = GHOST_TINT;
+    a.fillRect(0, 0, geo.w, geo.h);
+    a.globalCompositeOperation = 'destination-in';
+    a.fillStyle = a.createPattern(this.ditherPattern(dpr), 'repeat')!;
+    a.fillRect(0, 0, geo.w, geo.h);
+    a.restore();
+    this.ctx.save();
+    this.ctx.globalAlpha = GHOST_ALPHA * emberEase(this.ghostK) * (item.alpha ?? 1);
+    this.ctx.drawImage(
+      this.outlineA,
+      0,
+      0,
+      geo.w,
+      geo.h,
+      b.x - geo.m,
+      b.y - geo.m,
+      geo.w / dpr,
+      geo.h / dpr,
+    );
+    this.ctx.restore();
+  }
+
+  /** The Bayer screen-door tile at device resolution — shared by the
+   *  veil window and the ghost ember's weave. */
+  private ditherPattern(dpr: number): HTMLCanvasElement {
+    if (this.ditherPat && this.ditherPat.dpr === dpr) return this.ditherPat.canvas;
+    const cell = Math.max(1, Math.round(DITHER_CELL * dpr));
+    const c = document.createElement('canvas');
+    c.width = c.height = cell * 4;
+    const g = c.getContext('2d')!;
+    for (let j = 0; j < 4; j++) {
+      for (let i = 0; i < 4; i++) {
+        g.fillStyle = `rgba(0,0,0,${bayerAlpha(i, j)})`;
+        g.fillRect(i * cell, j * cell, cell, cell);
+      }
+    }
+    this.ditherPat = { canvas: c, dpr };
+    return c;
+  }
+
+  /**
+   * THE THICKET VEIL's window: an elliptical, feather-edged field of
+   * Bayer screen-door in device px, centered on the own torso when
+   * stamped. Baked once and reused for every punched canopy until the
+   * camera scale drifts >2% or dpr changes. The ellipse's vertical
+   * squash (VEIL_SQUASH) matches the 2.5D row compression AND keeps
+   * the reach off the trunk zone — a tree must hold its ground
+   * contact or it reads as floating.
+   */
+  private veilWindowMask(dpr: number): NonNullable<typeof this.veilMask> {
+    const s = this.camera.scale;
+    const m = this.veilMask;
+    if (m && m.dpr === dpr && Math.abs(m.scale - s) <= s * 0.02) return m;
+    const hx = Math.ceil(VEIL_R_TILES * s * dpr);
+    const hy = Math.ceil(hx * VEIL_SQUASH);
+    const c = m?.canvas ?? document.createElement('canvas');
+    c.width = hx * 2;
+    c.height = hy * 2;
+    const g = c.getContext('2d')!;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = g.createPattern(this.ditherPattern(dpr), 'repeat')!;
+    g.fillRect(0, 0, hx * 2, hy * 2);
+    // Feather: radial stops tracing a smoothstep, squashed into the
+    // ellipse by scaling gradient space. Never a hard rim.
+    g.globalCompositeOperation = 'destination-in';
+    g.save();
+    g.translate(hx, hy);
+    g.scale(1, VEIL_SQUASH);
+    const grad = g.createRadialGradient(0, 0, 0, 0, 0, hx);
+    grad.addColorStop(0, 'rgba(0,0,0,1)');
+    grad.addColorStop(0.4, 'rgba(0,0,0,0.97)');
+    grad.addColorStop(0.6, 'rgba(0,0,0,0.82)');
+    grad.addColorStop(0.75, 'rgba(0,0,0,0.55)');
+    grad.addColorStop(0.88, 'rgba(0,0,0,0.24)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad;
+    g.fillRect(-hx, -hx, hx * 2, hx * 2);
+    g.restore();
+    g.globalCompositeOperation = 'source-over';
+    const built = { canvas: c, scale: s, dpr, hx, hy };
+    this.veilMask = built;
+    return built;
+  }
+
   private drawTree(
     bx: number,
     by: number,
@@ -8931,17 +9125,74 @@ export class Renderer {
       sp.used = this.frameNo;
       const dpr = window.devicePixelRatio || 1;
       const k = s / sp.scale;
-      this.ctx.drawImage(
-        sp.canvas,
-        0,
-        0,
-        Math.ceil(sp.cw * dpr),
-        Math.ceil(sp.ch * dpr),
-        bx - sp.ax * k,
-        by + syT * 0.3 - sp.ay * k,
-        sp.cw * k,
-        sp.ch * k,
-      );
+      const sw = Math.ceil(sp.cw * dpr);
+      const sh = Math.ceil(sp.ch * dpr);
+      const dx0 = bx - sp.ax * k;
+      const dy0 = by + syT * 0.3 - sp.ay * k;
+      const dw = sp.cw * k;
+      const dh = sp.ch * k;
+      // THE THICKET VEIL: a canopy that FRONTS the own body (draws
+      // over it) and reaches the window gets the dither punched
+      // through — on a scratch, so the cached sprite stays pristine.
+      // Purely geometric arming: the window's feather is fully inside
+      // the overlap margin, so a tree entering candidacy contributes
+      // zero at the boundary — no temporal state, no pop.
+      let veiled = false;
+      if (this.veilArmed) {
+        const ey = frontEase(wy - this.ownPY);
+        if (ey > 0.01) {
+          const mask = this.veilWindowMask(dpr);
+          const mhx = mask.hx / dpr;
+          const mhy = mask.hy / dpr;
+          if (
+            this.veilVX + mhx > dx0 &&
+            this.veilVX - mhx < dx0 + dw &&
+            this.veilVY + mhy > dy0 &&
+            this.veilVY - mhy < dy0 + dh
+          ) {
+            // Anchor inside the sprite proper = real cover. The ember
+            // reads the RESIDUAL — the window already shows the body.
+            if (
+              this.veilVX > dx0 &&
+              this.veilVX < dx0 + dw &&
+              this.veilVY > dy0 &&
+              this.veilVY < dy0 + dh
+            ) {
+              const res = veilResidual(ey);
+              if (res > this.treeGhostCover) this.treeGhostCover = res;
+            }
+            veiled = true;
+            const vw = Math.ceil(dw * dpr);
+            const vh = Math.ceil(dh * dpr);
+            if (this.veilScratch.width < vw) this.veilScratch.width = vw;
+            if (this.veilScratch.height < vh) this.veilScratch.height = vh;
+            const vs = this.veilScratchCtx;
+            vs.setTransform(1, 0, 0, 1, 0, 0);
+            // Apron-clear past the region (the stale-bleed law): the
+            // final fractional blit bilinear-samples ~1px outside.
+            vs.clearRect(
+              0,
+              0,
+              Math.min(this.veilScratch.width, vw + 4),
+              Math.min(this.veilScratch.height, vh + 4),
+            );
+            vs.drawImage(sp.canvas, 0, 0, sw, sh, 0, 0, vw, vh);
+            vs.globalCompositeOperation = 'destination-out';
+            vs.globalAlpha = VEIL_MAX * ey;
+            vs.drawImage(
+              mask.canvas,
+              (this.veilVX - dx0) * dpr - mask.hx,
+              (this.veilVY - dy0) * dpr - mask.hy,
+            );
+            vs.globalAlpha = 1;
+            vs.globalCompositeOperation = 'source-over';
+            this.ctx.drawImage(this.veilScratch, 0, 0, vw, vh, dx0, dy0, dw, dh);
+          }
+        }
+      }
+      if (!veiled) {
+        this.ctx.drawImage(sp.canvas, 0, 0, sw, sh, dx0, dy0, dw, dh);
+      }
       wind = windScalarAt(wx, wy, tSec);
     }
 
@@ -15813,6 +16064,9 @@ export class Renderer {
       if (game.isHidden) ownItem.alpha = 0.45;
       else if (game.isSneaking) ownItem.alpha = 0.8;
       this.dressForWater(game, ownItem, 'own', own.x, own.y);
+      // The ghost ember pass reads this after the sorted loop — the
+      // ONLY body it may redraw (the anti-wallhack law).
+      this.ownItem = ownItem;
       items.push(ownItem);
     }
   }
@@ -16797,7 +17051,10 @@ export class Renderer {
    * The shared scratch build: art into A, dilated tinted ring into B.
    * Returns the region geometry (device px + css + margin).
    */
-  private paintOutlineScratch(item: DrawItem): { w: number; h: number; wCss: number; hCss: number; m: number } {
+  private paintOutlineScratch(
+    item: DrawItem,
+    artOnly = false,
+  ): { w: number; h: number; wCss: number; hCss: number; m: number } {
     const b = item.body!;
     // DEVICE-PIXEL LAW (same as bakeOutlineRing): the scratches work in
     // device pixels. Rasterizing at 1× CSS resolution and letting the
@@ -16850,19 +17107,23 @@ export class Renderer {
     // ≤0.5px, invisible at the ring's 1.3-3.2px range; the per-entity
     // jitter law only bars quantizing the final smooth-camera blit,
     // which stays fractional below.
-    const ri = Math.max(1, Math.round(r * dpr));
-    const rd = Math.max(1, Math.round(r * 0.71 * dpr));
-    o.clearRect(0, 0, cw, ch);
-    for (const [tx, ty] of Renderer.OUTLINE_TAPS) {
-      const diag = tx !== 0 && ty !== 0;
-      const ox = Math.sign(tx) * (diag ? rd : ri);
-      const oy = Math.sign(ty) * (diag ? rd : ri);
-      o.drawImage(this.outlineA, 0, 0, w, h, ox, oy, w, h);
+    // artOnly (the ghost ember): the caller wants scratch A's art
+    // alone — skip the ring dilate entirely.
+    if (!artOnly) {
+      const ri = Math.max(1, Math.round(r * dpr));
+      const rd = Math.max(1, Math.round(r * 0.71 * dpr));
+      o.clearRect(0, 0, cw, ch);
+      for (const [tx, ty] of Renderer.OUTLINE_TAPS) {
+        const diag = tx !== 0 && ty !== 0;
+        const ox = Math.sign(tx) * (diag ? rd : ri);
+        const oy = Math.sign(ty) * (diag ? rd : ri);
+        o.drawImage(this.outlineA, 0, 0, w, h, ox, oy, w, h);
+      }
+      o.globalCompositeOperation = 'source-in';
+      o.fillStyle = '#241a2e';
+      o.fillRect(0, 0, w, h);
+      o.globalCompositeOperation = 'source-over';
     }
-    o.globalCompositeOperation = 'source-in';
-    o.fillStyle = '#241a2e';
-    o.fillRect(0, 0, w, h);
-    o.globalCompositeOperation = 'source-over';
     // 3. Callers finish it: ring first, sprite on top — straight to
     // the frame (direct path) or into the body's cache canvas.
     return { w, h, wCss, hCss, m };

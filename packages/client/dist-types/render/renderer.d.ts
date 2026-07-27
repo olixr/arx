@@ -77,6 +77,26 @@ export declare class Renderer {
     /** This frame's reveal strength: shelterK smoothstepped, and ridden
      *  down to the darkness fade (ugBlend) on a portal drop. */
     private cutCtx;
+    /** The veil window's screen anchor (own torso), sampled per frame. */
+    private veilVX;
+    private veilVY;
+    /** Anchor valid this frame (own player exists and is on screen). */
+    private veilArmed;
+    /** Bayer screen-door tile, rebuilt when dpr drifts. */
+    private ditherPat;
+    /** The elliptical feathered dither window (device px), rebuilt when
+     *  the camera scale drifts >2% or dpr changes. */
+    private veilMask;
+    /** Scratch for the per-tree punch composite (grows monotonically). */
+    private readonly veilScratch;
+    private readonly veilScratchCtx;
+    /** Tree cover registered DURING the draw pass (max of residuals);
+     *  read next frame — the 0.22s ember ease swallows the 1-frame lag. */
+    private treeGhostCover;
+    /** The ember's temporal ease toward this frame's occlusion cover. */
+    private ghostK;
+    /** Own player's DrawItem, stashed by collectEntities for the ember. */
+    private ownItem;
     /** Scene lights gathered this frame (tiles, projectiles, flames). */
     private readonly lights;
     /** This frame's light-blocker test (walls/cliffs) — shared by the
@@ -1271,6 +1291,29 @@ export declare class Renderer {
      * the fractional-tap bleed law only needs the apron clear on B.
      */
     private bakeOutlineRing;
+    /**
+     * THE GHOST EMBER: while the standing world mostly hides the own
+     * body — a rear facade seen from the street, a canopy the veil only
+     * half-opens — a dithered lantern-gold silhouette of the rig draws
+     * over the occluders. Deliberately a POSITION CUE, not an x-ray:
+     * flat tint (no equipment detail), screen-door weave, eased over
+     * GHOST_EASE_S, and multiplied by the stealth ghost's own alpha.
+     * Own player only — no other body ever earns one (anti-wallhack).
+     */
+    private drawGhostEmber;
+    /** The Bayer screen-door tile at device resolution — shared by the
+     *  veil window and the ghost ember's weave. */
+    private ditherPattern;
+    /**
+     * THE THICKET VEIL's window: an elliptical, feather-edged field of
+     * Bayer screen-door in device px, centered on the own torso when
+     * stamped. Baked once and reused for every punched canopy until the
+     * camera scale drifts >2% or dpr changes. The ellipse's vertical
+     * squash (VEIL_SQUASH) matches the 2.5D row compression AND keeps
+     * the reach off the trunk zone — a tree must hold its ground
+     * contact or it reads as floating.
+     */
+    private veilWindowMask;
     private drawTree;
     /**
      * TRUE-FORM tree shadow: the same skeleton paintTree draws — trunk
