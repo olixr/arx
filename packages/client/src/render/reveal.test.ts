@@ -3,15 +3,40 @@ import assert from 'node:assert/strict';
 import {
   BAYER4,
   BODY_H,
-  VEIL_CORE,
-  VEIL_MAX,
+  OCCLUDED_MAX,
   bayerAlpha,
   emberEase,
-  frontEase,
+  perLayerAlpha,
   smoothstep01,
-  veilResidual,
   wallCover,
 } from './reveal.js';
+
+// ------------------------------------------------------------- fade budget
+
+test('one occluder fades to exactly the occlusion ceiling', () => {
+  assert.ok(Math.abs(perLayerAlpha(1) - OCCLUDED_MAX) < 1e-12);
+});
+
+test('any stack depth composites to the same ceiling — deep forest reads like one tree', () => {
+  for (let n = 1; n <= 6; n++) {
+    const a = perLayerAlpha(n);
+    const combined = 1 - (1 - a) ** n;
+    assert.ok(Math.abs(combined - OCCLUDED_MAX) < 1e-9, `n=${n} combined ${combined}`);
+  }
+});
+
+test('per-layer alpha falls as the stack deepens (each layer cedes ground)', () => {
+  let prev = 1;
+  for (let n = 1; n <= 6; n++) {
+    const a = perLayerAlpha(n);
+    assert.ok(a < prev, `n=${n}: ${a} < ${prev}`);
+    prev = a;
+  }
+});
+
+test('the ceiling itself keeps the body clearly readable', () => {
+  assert.ok(OCCLUDED_MAX <= 0.45 && OCCLUDED_MAX >= 0.2, `${OCCLUDED_MAX}`);
+});
 
 // ---------------------------------------------------------------- dither
 
@@ -38,25 +63,6 @@ test('adjacent bayer cells never share a density (the pattern reads as weave, no
       assert.notEqual(BAYER4[j]![i], BAYER4[(j + 1) & 3]![i]);
     }
   }
-});
-
-// ---------------------------------------------------------------- fronting
-
-test('a tree north of the body (drawn behind it) never veils', () => {
-  assert.equal(frontEase(-0.5), 0);
-  assert.equal(frontEase(-0.16), 0);
-});
-
-test('a tree clearly south of the body veils at full strength', () => {
-  assert.equal(frontEase(0.6), 1);
-  assert.equal(frontEase(3), 1);
-});
-
-test('front candidacy eases — no binary pop as you strafe past a trunk row', () => {
-  const a = frontEase(0.0);
-  const b = frontEase(0.25);
-  assert.ok(a > 0 && a < 1, `at own row: ${a}`);
-  assert.ok(b > a && b < 1, `mid-ease monotonic: ${b} > ${a}`);
 });
 
 // ---------------------------------------------------------------- wall cover
@@ -102,52 +108,13 @@ test('cover is judged against the body, not the wall: taller walls hide sooner',
   assert.ok(tall > story, `${tall} > ${story}`);
 });
 
-// ---------------------------------------------------------------- residual
+// ---------------------------------------------------------------- ember
 
-test('an open veil window damps the ember but never kills it in deep cover', () => {
-  const r = veilResidual(1);
-  assert.ok(r > 0.2 && r < 0.6, `full-front residual ${r}`);
-  assert.ok(veilResidual(0.4) < 0.4, 'partial cover is also damped');
-  assert.equal(veilResidual(0), 0);
-});
-
-test('residual never exceeds the raw cover (the veil only ever helps)', () => {
-  for (let e = 0; e <= 1.001; e += 0.1) {
-    assert.ok(veilResidual(e) <= e + 1e-9);
-  }
-});
-
-test('ember brightness: deep-forest residual keeps a visible whisper', () => {
-  // v2: the stronger window (VEIL_MAX 0.82 + core) shows the real
-  // body better, so the ember correctly defers — but never vanishes.
-  const mid = emberEase(veilResidual(1));
-  assert.ok(mid > 0.3 && mid < 0.65, `mid-cover ember ${mid}`);
+test('ember brightness: partial wall cover stays clearly lit, endpoints exact', () => {
   assert.equal(emberEase(0), 0);
   assert.equal(emberEase(1), 1);
-  assert.ok(emberEase(0.15) < mid);
-});
-
-test('stack law: 3 aligned laced layers open EVERY dither cell', () => {
-  // Masks are player-centered → cells align across a canopy stack;
-  // the core floor guarantees even the darkest cell compounds open.
-  for (let j = 0; j < 4; j++) {
-    for (let i = 0; i < 4; i++) {
-      const a = Math.min(1, VEIL_CORE + bayerAlpha(i, j) * (1 - VEIL_CORE));
-      const retained = (1 - VEIL_MAX * a) ** 3;
-      assert.ok(retained < 0.4, `cell ${i},${j} retains ${retained} after 3 layers`);
-    }
-  }
-});
-
-test('stack law: a single layer still keeps the canopy present', () => {
-  let minRetain = 1;
-  for (let j = 0; j < 4; j++) {
-    for (let i = 0; i < 4; i++) {
-      const a = Math.min(1, VEIL_CORE + bayerAlpha(i, j) * (1 - VEIL_CORE));
-      minRetain = Math.min(minRetain, 1 - VEIL_MAX * a);
-    }
-  }
-  assert.ok(minRetain > 0.12, `brightest cell retains only ${minRetain}`);
+  assert.ok(emberEase(0.5) > 0.55, `half cover ${emberEase(0.5)}`);
+  assert.ok(emberEase(0.2) < emberEase(0.5));
 });
 
 // ---------------------------------------------------------------- misc
@@ -159,7 +126,6 @@ test('smoothstep01 clamps and eases', () => {
   assert.ok(smoothstep01(0.25) < 0.25);
 });
 
-test('sanity: VEIL_MAX leaves the canopy present (never a full erase)', () => {
-  assert.ok(VEIL_MAX < 0.85 && VEIL_MAX > 0.4);
+test('sanity: the body stays the unit of measure', () => {
   assert.ok(BODY_H > 1 && BODY_H < 1.3);
 });

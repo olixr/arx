@@ -77,43 +77,24 @@ export declare class Renderer {
     /** This frame's reveal strength: shelterK smoothstepped, and ridden
      *  down to the darkness fade (ugBlend) on a portal drop. */
     private cutCtx;
-    /** The veil window's screen anchor (own torso), sampled per frame. */
-    private veilVX;
-    private veilVY;
-    /** Anchor valid this frame (own player exists and is on screen). */
-    private veilArmed;
-    /** Bayer screen-door tile, rebuilt when dpr drifts. */
+    /** Reveal armed this frame (own player exists). */
+    private revealArmed;
+    /** The own body's occlusion box in screen css px, per frame. */
+    private fadeBX0;
+    private fadeBY0;
+    private fadeBX1;
+    private fadeBY1;
+    /** Per-occluder fade ease, keyed by the sprite-cache key. */
+    private readonly fadeMap;
+    /** Occluders at (or easing toward) full fade last frame — sizes the
+     *  per-layer alpha so any stack composites to OCCLUDED_MAX. */
+    private fadeCount;
+    private fadeCountNew;
+    /** Eased per-layer alpha (avoids steps when the stack count changes). */
+    private fadePerLayer;
+    /** Bayer screen-door tile (the ember's weave), rebuilt on dpr drift. */
     private ditherPat;
-    /** The elliptical feathered dither window (device px), rebuilt when
-     *  the camera scale drifts >2% or dpr changes. */
-    private veilMask;
-    /**
-     * THE TWO STRATA: veiled sprites deposit their window sub-rects
-     * here instead of paying a per-sprite punch (a deep forest lands
-     * ~90 sprites in the lens — per-sprite mask+blit cost 3.1ms/frame,
-     * measured). BEHIND holds sprites the y-sort draws under the own
-     * body, FRONT the ones over it (split = frontEase, the same law
-     * the ember reads). Each stratum is punched ONCE and composited:
-     * behind right under the own body, front after the world pass —
-     * the player's own layering stays exact; other ground items inside
-     * the window trade exact interleave for a light lace (accepted:
-     * the lens is translucent there by definition).
-     */
-    private readonly veilStratumB;
-    private readonly veilStratumBCtx;
-    private readonly veilStratumF;
-    private readonly veilStratumFCtx;
-    /** Integer-snapped window bbox origin (css px), stamped per frame. */
-    private veilWX0;
-    private veilWY0;
-    /** Which strata carry deposits this frame (cleared lazily). */
-    private veilUsedB;
-    private veilUsedF;
-    /** Occluder cover registered DURING the draw pass by veilBlit
-     *  (max of tree/prop residuals); read next frame — the 0.22s ember
-     *  ease swallows the 1-frame lag. */
-    private veilGhostCover;
-    /** The ember's temporal ease toward this frame's occlusion cover. */
+    /** The ember's temporal ease toward this frame's wall cover. */
     private ghostK;
     /** Own player's DrawItem, stashed by collectEntities for the ember. */
     private ownItem;
@@ -1325,39 +1306,18 @@ export declare class Renderer {
      *  veil window and the ghost ember's weave. */
     private ditherPattern;
     /**
-     * THE THICKET VEIL's window: an elliptical, feather-edged field of
-     * Bayer screen-door in device px, centered on the own torso when
-     * stamped. Baked once and reused for every punched canopy until the
-     * camera scale drifts >2% or dpr changes. The ellipse's vertical
-     * squash (VEIL_SQUASH) matches the 2.5D row compression AND keeps
-     * the reach off the trunk zone — a tree must hold its ground
-     * contact or it reads as floating.
+     * THE STEP-ASIDE FADE's per-sprite gate: returns the alpha this
+     * occluder should draw at. Fades ONLY when the sprite truly
+     * occludes the own body — it FRONTS the body (base row at/south of
+     * yours, so the y-sort draws it over you) AND its inset silhouette
+     * overlaps the body box. OCCLUSION, NOT PROXIMITY: approaching or
+     * standing beside something in the open fades nothing (the v2
+     * proximity window was rejected for firing early). Eased per
+     * sprite over FADE_EASE_S; the per-layer strength divides the
+     * OCCLUDED_MAX budget across the current stack so one tree fades
+     * gently while a 4-deep canopy stack fades each layer hard.
      */
-    private veilWindowMask;
-    /**
-     * THE LENS LAW blit: if the veil window touches the sprite's dest
-     * rect, blit it through the dither punch (scratch composite — the
-     * cached sprite stays pristine) and return true; the caller draws
-     * normally on false. Purely geometric arming: the feather is fully
-     * inside the overlap margin, so a sprite entering candidacy
-     * contributes zero at the boundary — no temporal state, no pop.
-     *
-     * coverEy — frontEase of the sprite's base row vs the body: >0
-     * means this sprite actually DRAWS OVER the body, and if the
-     * anchor sits inside the sprite rect its veilResidual feeds the
-     * ghost ember. Punching itself is deliberately NOT gated on it
-     * (v1 was, and stacked scenes read as patchwork).
-     */
-    private veilBlit;
-    /** The stratum canvas for one side of the body, sized to the mask
-     *  and cleared on first deposit each frame. */
-    private ensureVeilStratum;
-    /**
-     * Punch a stratum ONCE with the window mask and composite it home.
-     * Called at the two ordained points: behind-stratum just before
-     * the own body draws, front-stratum after the world pass.
-     */
-    private compositeVeilStratum;
+    private occluderFade;
     private drawTree;
     /**
      * TRUE-FORM tree shadow: the same skeleton paintTree draws — trunk

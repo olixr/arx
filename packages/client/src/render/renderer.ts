@@ -82,17 +82,20 @@ import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample 
 import { paintTree, treeModel, type TreeModel } from './trees.js';
 import {
   DITHER_CELL,
+  FADE_BODY_BELOW,
+  FADE_BODY_HT,
+  FADE_BODY_HW,
+  FADE_EASE_S,
+  FADE_INSET_TOP,
+  FADE_INSET_X,
+  FADE_TALL_TILES,
+  FRONT_EPS,
   GHOST_ALPHA,
   GHOST_EASE_S,
   GHOST_TINT,
-  VEIL_CORE,
-  VEIL_MAX,
-  VEIL_R_TILES,
-  VEIL_SQUASH,
   bayerAlpha,
   emberEase,
-  frontEase,
-  veilResidual,
+  perLayerAlpha,
   wallCover,
 } from './reveal.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
@@ -606,54 +609,31 @@ export class Renderer {
    *  down to the darkness fade (ugBlend) on a portal drop. */
   private cutCtx = 0;
   // ------------------------------------------------------------------
-  // THE THICKET VEIL + GHOST EMBER (reveal.ts holds the pure laws).
+  // THE STEP-ASIDE FADE + GHOST EMBER (reveal.ts holds the pure laws).
   // Everything below keys off the LOCAL player only — the anti-
-  // wallhack law: no other body opens a window or earns an ember.
+  // wallhack law: no other body fades anything or earns an ember.
+  // The fade is nothing but globalAlpha on draws that already happen;
+  // the v1/v2 dither-window (masks, scratches, strata) was measured
+  // and rejected — do not resurrect it.
   // ------------------------------------------------------------------
-  /** The veil window's screen anchor (own torso), sampled per frame. */
-  private veilVX = 0;
-  private veilVY = 0;
-  /** Anchor valid this frame (own player exists and is on screen). */
-  private veilArmed = false;
-  /** Bayer screen-door tile, rebuilt when dpr drifts. */
+  /** Reveal armed this frame (own player exists). */
+  private revealArmed = false;
+  /** The own body's occlusion box in screen css px, per frame. */
+  private fadeBX0 = 0;
+  private fadeBY0 = 0;
+  private fadeBX1 = 0;
+  private fadeBY1 = 0;
+  /** Per-occluder fade ease, keyed by the sprite-cache key. */
+  private readonly fadeMap = new Map<number, { k: number; used: number }>();
+  /** Occluders at (or easing toward) full fade last frame — sizes the
+   *  per-layer alpha so any stack composites to OCCLUDED_MAX. */
+  private fadeCount = 0;
+  private fadeCountNew = 0;
+  /** Eased per-layer alpha (avoids steps when the stack count changes). */
+  private fadePerLayer = 0.35;
+  /** Bayer screen-door tile (the ember's weave), rebuilt on dpr drift. */
   private ditherPat: { canvas: HTMLCanvasElement; dpr: number } | null = null;
-  /** The elliptical feathered dither window (device px), rebuilt when
-   *  the camera scale drifts >2% or dpr changes. */
-  private veilMask: {
-    canvas: HTMLCanvasElement;
-    scale: number;
-    dpr: number;
-    /** device-px half extents */
-    hx: number;
-    hy: number;
-  } | null = null;
-  /**
-   * THE TWO STRATA: veiled sprites deposit their window sub-rects
-   * here instead of paying a per-sprite punch (a deep forest lands
-   * ~90 sprites in the lens — per-sprite mask+blit cost 3.1ms/frame,
-   * measured). BEHIND holds sprites the y-sort draws under the own
-   * body, FRONT the ones over it (split = frontEase, the same law
-   * the ember reads). Each stratum is punched ONCE and composited:
-   * behind right under the own body, front after the world pass —
-   * the player's own layering stays exact; other ground items inside
-   * the window trade exact interleave for a light lace (accepted:
-   * the lens is translucent there by definition).
-   */
-  private readonly veilStratumB = document.createElement('canvas');
-  private readonly veilStratumBCtx = this.veilStratumB.getContext('2d')!;
-  private readonly veilStratumF = document.createElement('canvas');
-  private readonly veilStratumFCtx = this.veilStratumF.getContext('2d')!;
-  /** Integer-snapped window bbox origin (css px), stamped per frame. */
-  private veilWX0 = 0;
-  private veilWY0 = 0;
-  /** Which strata carry deposits this frame (cleared lazily). */
-  private veilUsedB = false;
-  private veilUsedF = false;
-  /** Occluder cover registered DURING the draw pass by veilBlit
-   *  (max of tree/prop residuals); read next frame — the 0.22s ember
-   *  ease swallows the 1-frame lag. */
-  private veilGhostCover = 0;
-  /** The ember's temporal ease toward this frame's occlusion cover. */
+  /** The ember's temporal ease toward this frame's wall cover. */
   private ghostK = 0;
   /** Own player's DrawItem, stashed by collectEntities for the ember. */
   private ownItem: DrawItem | null = null;
@@ -2609,28 +2589,21 @@ export class Renderer {
       this.shelterK = 0;
       this.cutCtx = 0;
     }
-    // THE THICKET VEIL anchor + THE GHOST EMBER's cover probe. The
-    // anchor rides the CONTINUOUS render position (same law as the
-    // wall reveal — flooring pops per row). Tree cover was registered
-    // by drawTree during LAST frame's pass; wall cover probes fresh
-    // here, veil-cut aware via wallHeightAt so a sunken stub never
-    // argues with the wall reveal.
-    this.veilArmed = game.ownEid !== null;
+    // THE STEP-ASIDE FADE's body box + THE GHOST EMBER's wall probe.
+    // Both ride the CONTINUOUS render position (same law as the wall
+    // reveal — flooring pops per row) and both gate on OCCLUSION,
+    // never proximity. Wall cover is veil-cut aware via wallHeightAt
+    // so a sunken stub never argues with the wall reveal.
+    this.revealArmed = game.ownEid !== null;
     this.ownItem = null; // collectEntities re-stashes each frame
-    this.veilUsedB = false;
-    this.veilUsedF = false;
     let cover = 0;
-    if (this.veilArmed) {
+    if (this.revealArmed) {
+      const s = this.camera.scale;
       const a = this.liftedWTS(this.ownPX, this.ownPY);
-      this.veilVX = a.x;
-      // Torso height: the window centers on the body, not the feet.
-      this.veilVY = a.y - 0.62 * this.camera.scale;
-      // Integer-snapped window origin — the strata's shared frame.
-      const dprV = window.devicePixelRatio || 1;
-      const mask = this.veilWindowMask(dprV);
-      this.veilWX0 = Math.floor(this.veilVX - mask.hx / dprV);
-      this.veilWY0 = Math.floor(this.veilVY - mask.hy / dprV);
-      cover = this.veilGhostCover;
+      this.fadeBX0 = a.x - FADE_BODY_HW * s;
+      this.fadeBX1 = a.x + FADE_BODY_HW * s;
+      this.fadeBY0 = a.y - FADE_BODY_HT * s;
+      this.fadeBY1 = a.y + FADE_BODY_BELOW * s;
       const btx = Math.floor(this.ownPX);
       const bty = Math.floor(this.ownPY);
       for (let dyRow = 1; dyRow <= 3; dyRow++) {
@@ -2648,9 +2621,22 @@ export class Renderer {
         }
       }
     }
-    this.veilGhostCover = 0;
     const gStep = frameDt / GHOST_EASE_S;
     this.ghostK += Math.max(-gStep, Math.min(gStep, cover - this.ghostK));
+    // Per-layer fade alpha from LAST frame's stack count (the 0.18s
+    // ease swallows the lag), eased itself so a count change slides.
+    const layerTarget = perLayerAlpha(Math.max(1, this.fadeCount));
+    const lStep = frameDt / 0.25;
+    this.fadePerLayer += Math.max(-lStep, Math.min(lStep, layerTarget - this.fadePerLayer));
+    this.fadeCount = this.fadeCountNew;
+    this.fadeCountNew = 0;
+    // Fade-ease bookkeeping decays even for sprites that left the
+    // screen; sweep long-unused entries.
+    if (this.frameNo % 240 === 0) {
+      for (const [key, f] of this.fadeMap) {
+        if (f.used < this.frameNo - 120) this.fadeMap.delete(key);
+      }
+    }
     // Standing lights gather FIRST: the shadow prepass needs to know
     // every pool before anything casts. (Moving lights announce via
     // queueGlow during the draw pass and cast one frame later.)
@@ -2827,10 +2813,6 @@ export class Renderer {
     }
     items.sort((a, b) => a.sortY - b.sortY);
     for (const item of items) {
-      // The behind-stratum lands just under the own body: everything
-      // north of you (including laced canopies) is painted, and YOUR
-      // sprite draws over the lace — your own layering stays exact.
-      if (item === this.ownItem) this.compositeVeilStratum(false);
       // Stealth ghost: wrap OUTSIDE the outline pass so the dilated
       // silhouette ring fades with the body (alpha inside draw() would
       // leave the ring solid). The nameplate stays opaque.
@@ -2841,10 +2823,6 @@ export class Renderer {
       if (item.alpha !== undefined) this.ctx.globalAlpha = 1;
       item.drawLabel?.();
     }
-    // Strata home: behind first (a safety net if the own item never
-    // drew this frame), then the front lace over the world pass.
-    this.compositeVeilStratum(false);
-    this.compositeVeilStratum(true);
     // THE GHOST EMBER rides over the world pass, under the overlay FX.
     this.drawGhostEmber();
 
@@ -8780,17 +8758,16 @@ export class Renderer {
     const dy0 = b.y - sp.ay * k;
     const dw = sp.cw * k;
     const dh = sp.ch * k;
-    // THE LENS LAW reaches man-height props: a bookshelf or pillar
-    // stacked into the window laces like a canopy. Short furniture
-    // (barrels, chairs) can't hide a body and stays solid — the lens
-    // must not eat a furnished room's dressing as you walk it.
-    if (
-      dh >= 1.45 * s &&
-      this.veilBlit(sp.canvas, sw, sh, dx0, dy0, dw, dh, frontEase(ty + 0.9 - this.ownPY))
-    ) {
-      return;
-    }
+    // THE STEP-ASIDE FADE reaches man-height props: a bookshelf or
+    // pillar truly hiding the body fades like a canopy. Short
+    // furniture (barrels, chairs) can't hide a body and never fades.
+    const fade =
+      dh >= FADE_TALL_TILES * s
+        ? this.occluderFade(key, dx0, dy0, dw, dh, ty + 0.9 - this.ownPY > -FRONT_EPS)
+        : 1;
+    if (fade < 1) this.ctx.globalAlpha = fade;
     this.ctx.drawImage(sp.canvas, 0, 0, sw, sh, dx0, dy0, dw, dh);
+    if (fade < 1) this.ctx.globalAlpha = 1;
   }
 
   /** Pool-aware canvas acquisition shared by the world-prop sprite bakes. */
@@ -9002,7 +8979,7 @@ export class Renderer {
    */
   private drawGhostEmber(): void {
     const item = this.ownItem;
-    if (!this.veilArmed || !item?.body || this.ghostK < 0.03) return;
+    if (!this.revealArmed || !item?.body || this.ghostK < 0.03) return;
     const b = item.body;
     const dpr = window.devicePixelRatio || 1;
     // Art-only scratch bake; glow/sparkle side effects gated exactly
@@ -9059,207 +9036,50 @@ export class Renderer {
   }
 
   /**
-   * THE THICKET VEIL's window: an elliptical, feather-edged field of
-   * Bayer screen-door in device px, centered on the own torso when
-   * stamped. Baked once and reused for every punched canopy until the
-   * camera scale drifts >2% or dpr changes. The ellipse's vertical
-   * squash (VEIL_SQUASH) matches the 2.5D row compression AND keeps
-   * the reach off the trunk zone — a tree must hold its ground
-   * contact or it reads as floating.
+   * THE STEP-ASIDE FADE's per-sprite gate: returns the alpha this
+   * occluder should draw at. Fades ONLY when the sprite truly
+   * occludes the own body — it FRONTS the body (base row at/south of
+   * yours, so the y-sort draws it over you) AND its inset silhouette
+   * overlaps the body box. OCCLUSION, NOT PROXIMITY: approaching or
+   * standing beside something in the open fades nothing (the v2
+   * proximity window was rejected for firing early). Eased per
+   * sprite over FADE_EASE_S; the per-layer strength divides the
+   * OCCLUDED_MAX budget across the current stack so one tree fades
+   * gently while a 4-deep canopy stack fades each layer hard.
    */
-  private veilWindowMask(dpr: number): NonNullable<typeof this.veilMask> {
-    const s = this.camera.scale;
-    const m = this.veilMask;
-    if (m && m.dpr === dpr && Math.abs(m.scale - s) <= s * 0.02) return m;
-    const hx = Math.ceil(VEIL_R_TILES * s * dpr);
-    const hy = Math.ceil(hx * VEIL_SQUASH);
-    const c = m?.canvas ?? document.createElement('canvas');
-    c.width = hx * 2;
-    c.height = hy * 2;
-    const g = c.getContext('2d')!;
-    g.setTransform(1, 0, 0, 1, 0, 0);
-    g.fillStyle = g.createPattern(this.ditherPattern(dpr), 'repeat')!;
-    g.fillRect(0, 0, hx * 2, hy * 2);
-    // THE STACK LAW: the uniform core under the weave — per-pixel
-    // alpha becomes CORE + bayer·(1−CORE), so every laced layer in a
-    // stack cedes at least VEIL_MAX·CORE and 3-deep canopies open
-    // instead of compounding into murk.
-    g.fillStyle = `rgba(0,0,0,${VEIL_CORE})`;
-    g.fillRect(0, 0, hx * 2, hy * 2);
-    // Feather: radial stops tracing a smoothstep, squashed into the
-    // ellipse by scaling gradient space. Never a hard rim.
-    g.globalCompositeOperation = 'destination-in';
-    g.save();
-    g.translate(hx, hy);
-    g.scale(1, VEIL_SQUASH);
-    const grad = g.createRadialGradient(0, 0, 0, 0, 0, hx);
-    grad.addColorStop(0, 'rgba(0,0,0,1)');
-    grad.addColorStop(0.4, 'rgba(0,0,0,0.97)');
-    grad.addColorStop(0.6, 'rgba(0,0,0,0.82)');
-    grad.addColorStop(0.75, 'rgba(0,0,0,0.55)');
-    grad.addColorStop(0.88, 'rgba(0,0,0,0.24)');
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = grad;
-    g.fillRect(-hx, -hx, hx * 2, hx * 2);
-    g.restore();
-    g.globalCompositeOperation = 'source-over';
-    const built = { canvas: c, scale: s, dpr, hx, hy };
-    this.veilMask = built;
-    return built;
-  }
-
-  /**
-   * THE LENS LAW blit: if the veil window touches the sprite's dest
-   * rect, blit it through the dither punch (scratch composite — the
-   * cached sprite stays pristine) and return true; the caller draws
-   * normally on false. Purely geometric arming: the feather is fully
-   * inside the overlap margin, so a sprite entering candidacy
-   * contributes zero at the boundary — no temporal state, no pop.
-   *
-   * coverEy — frontEase of the sprite's base row vs the body: >0
-   * means this sprite actually DRAWS OVER the body, and if the
-   * anchor sits inside the sprite rect its veilResidual feeds the
-   * ghost ember. Punching itself is deliberately NOT gated on it
-   * (v1 was, and stacked scenes read as patchwork).
-   */
-  private veilBlit(
-    src: CanvasImageSource,
-    sw: number,
-    sh: number,
+  private occluderFade(
+    key: number,
     dx0: number,
     dy0: number,
     dw: number,
     dh: number,
-    coverEy: number,
-  ): boolean {
-    if (!this.veilArmed) return false;
-    const dpr = window.devicePixelRatio || 1;
-    const mask = this.veilWindowMask(dpr);
-    const mhx = mask.hx / dpr;
-    const mhy = mask.hy / dpr;
-    // Exact ellipse arming (not bbox): nearest rect point to the
-    // window center, normalized by the ellipse radii. A sprite whose
-    // corner grazes the bbox but misses the ellipse would be punched
-    // by zero-alpha feather — pure cost, no pixels changed. Skipping
-    // at nd ≥ 1 is therefore visually lossless AND pop-free (the
-    // feather is zero exactly at the boundary this test draws).
-    const ncx = Math.max(dx0, Math.min(this.veilVX, dx0 + dw));
-    const ncy = Math.max(dy0, Math.min(this.veilVY, dy0 + dh));
-    const ndx = (ncx - this.veilVX) / mhx;
-    const ndy = (ncy - this.veilVY) / mhy;
-    if (ndx * ndx + ndy * ndy >= 1) return false;
-    if (
-      coverEy > 0.01 &&
-      this.veilVX > dx0 &&
-      this.veilVX < dx0 + dw &&
-      this.veilVY > dy0 &&
-      this.veilVY < dy0 + dh
-    ) {
-      const res = veilResidual(coverEy);
-      if (res > this.veilGhostCover) this.veilGhostCover = res;
+    fronts: boolean,
+  ): number {
+    if (!this.revealArmed) return 1;
+    const ix = dw * FADE_INSET_X;
+    const occludes =
+      fronts &&
+      dx0 + ix < this.fadeBX1 &&
+      dx0 + dw - ix > this.fadeBX0 &&
+      dy0 + dh * FADE_INSET_TOP < this.fadeBY1 &&
+      dy0 + dh > this.fadeBY0;
+    let f = this.fadeMap.get(key);
+    if (!f) {
+      if (!occludes) return 1;
+      f = { k: 0, used: this.frameNo };
+      this.fadeMap.set(key, f);
     }
-    // Window sub-rect, INTEGER-snapped in dest space so the four
-    // remainder bands abut the deposited region without bilinear
-    // seams; edges clamped to the sprite's own (fractional) rim have
-    // no band neighbor, so no seam can show there.
-    const ix0 = Math.max(dx0, this.veilWX0);
-    const iy0 = Math.max(dy0, this.veilWY0);
-    const ix1 = Math.min(dx0 + dw, this.veilWX0 + Math.ceil(mhx * 2) + 1);
-    const iy1 = Math.min(dy0 + dh, this.veilWY0 + Math.ceil(mhy * 2) + 1);
-    const iw = ix1 - ix0;
-    const ih = iy1 - iy0;
-    if (iw <= 0 || ih <= 0) return false;
-    const kx = sw / dw;
-    const ky = sh / dh;
-    // Deposit into the stratum for this side of the body: the window
-    // part composites punched later (behind = under the own body,
-    // front = over the world pass); the bands draw at TRUE sort
-    // position right now.
-    const front = coverEy > 0.01;
-    const st = this.ensureVeilStratum(front);
-    st.drawImage(
-      src,
-      (ix0 - dx0) * kx,
-      (iy0 - dy0) * ky,
-      iw * kx,
-      ih * ky,
-      (ix0 - this.veilWX0) * dpr,
-      (iy0 - this.veilWY0) * dpr,
-      iw * dpr,
-      ih * dpr,
-    );
-    // The un-punched remainder, as up to four bands around the region.
-    const ctx = this.ctx;
-    if (iy0 > dy0) ctx.drawImage(src, 0, 0, sw, (iy0 - dy0) * ky, dx0, dy0, dw, iy0 - dy0);
-    if (iy1 < dy0 + dh) {
-      ctx.drawImage(src, 0, (iy1 - dy0) * ky, sw, sh - (iy1 - dy0) * ky, dx0, iy1, dw, dy0 + dh - iy1);
+    f.used = this.frameNo;
+    const step = this.frameDt / FADE_EASE_S;
+    f.k += Math.max(-step, Math.min(step, (occludes ? 1 : 0) - f.k));
+    if (occludes) this.fadeCountNew++;
+    if (f.k <= 0.001) {
+      if (!occludes) this.fadeMap.delete(key);
+      return 1;
     }
-    if (ix0 > dx0) {
-      ctx.drawImage(src, 0, (iy0 - dy0) * ky, (ix0 - dx0) * kx, ih * ky, dx0, iy0, ix0 - dx0, ih);
-    }
-    if (ix1 < dx0 + dw) {
-      ctx.drawImage(
-        src,
-        (ix1 - dx0) * kx,
-        (iy0 - dy0) * ky,
-        sw - (ix1 - dx0) * kx,
-        ih * ky,
-        ix1,
-        iy0,
-        dx0 + dw - ix1,
-        ih,
-      );
-    }
-    return true;
+    return 1 - f.k * (1 - this.fadePerLayer);
   }
 
-  /** The stratum canvas for one side of the body, sized to the mask
-   *  and cleared on first deposit each frame. */
-  private ensureVeilStratum(front: boolean): CanvasRenderingContext2D {
-    const mask = this.veilMask!;
-    const canvas = front ? this.veilStratumF : this.veilStratumB;
-    const st = front ? this.veilStratumFCtx : this.veilStratumBCtx;
-    const pw = mask.hx * 2 + 4;
-    const ph = mask.hy * 2 + 4;
-    if (canvas.width < pw) canvas.width = pw;
-    if (canvas.height < ph) canvas.height = ph;
-    const used = front ? this.veilUsedF : this.veilUsedB;
-    if (!used) {
-      st.setTransform(1, 0, 0, 1, 0, 0);
-      st.clearRect(0, 0, canvas.width, canvas.height);
-      if (front) this.veilUsedF = true;
-      else this.veilUsedB = true;
-    }
-    return st;
-  }
-
-  /**
-   * Punch a stratum ONCE with the window mask and composite it home.
-   * Called at the two ordained points: behind-stratum just before
-   * the own body draws, front-stratum after the world pass.
-   */
-  private compositeVeilStratum(front: boolean): void {
-    if (front ? !this.veilUsedF : !this.veilUsedB) return;
-    if (front) this.veilUsedF = false;
-    else this.veilUsedB = false;
-    const mask = this.veilMask!;
-    const dpr = window.devicePixelRatio || 1;
-    const canvas = front ? this.veilStratumF : this.veilStratumB;
-    const st = front ? this.veilStratumFCtx : this.veilStratumBCtx;
-    st.setTransform(1, 0, 0, 1, 0, 0);
-    st.globalCompositeOperation = 'destination-out';
-    st.globalAlpha = VEIL_MAX;
-    st.drawImage(
-      mask.canvas,
-      (this.veilVX - this.veilWX0) * dpr - mask.hx,
-      (this.veilVY - this.veilWY0) * dpr - mask.hy,
-    );
-    st.globalAlpha = 1;
-    st.globalCompositeOperation = 'source-over';
-    const pw = mask.hx * 2 + 4;
-    const ph = mask.hy * 2 + 4;
-    this.ctx.drawImage(canvas, 0, 0, pw, ph, this.veilWX0, this.veilWY0, pw / dpr, ph / dpr);
-  }
 
   private drawTree(
     bx: number,
@@ -9277,7 +9097,19 @@ export class Renderer {
     const m = treeModel(tile, h);
     let wind: number;
     if (bendOverride !== undefined || grow < 1) {
-      // Shape changes every frame — paint live.
+      // Shape changes every frame — paint live. The step-aside fade
+      // still applies (felling the very tree that hides you).
+      const half = (m.spread * 1.15 + 0.08 * m.height + 0.45) * s;
+      const top = (m.height * 1.18 + 0.45) * s;
+      const fade = this.occluderFade(
+        Renderer.treeKey(wx, wy, tile),
+        bx - half,
+        by + syT * 0.3 - top,
+        half * 2,
+        top + 0.3 * s,
+        wy - this.ownPY > -FRONT_EPS,
+      );
+      if (fade < 1) this.ctx.globalAlpha = fade;
       wind = paintTree(this.ctx, m, {
         bx,
         groundY: by + syT * 0.3,
@@ -9289,6 +9121,7 @@ export class Renderer {
         windOverride: bendOverride,
         grow,
       });
+      if (fade < 1) this.ctx.globalAlpha = 1;
     } else {
       const key = Renderer.treeKey(wx, wy, tile);
       this.treesVisible++;
@@ -9332,12 +9165,12 @@ export class Renderer {
       const dy0 = by + syT * 0.3 - sp.ay * k;
       const dw = sp.cw * k;
       const dh = sp.ch * k;
-      // THE THICKET VEIL (lens law): any canopy the window touches
-      // laces — punched on a scratch so the cached sprite stays
-      // pristine. frontEase gates only the ember's cover reading.
-      if (!this.veilBlit(sp.canvas, sw, sh, dx0, dy0, dw, dh, frontEase(wy - this.ownPY))) {
-        this.ctx.drawImage(sp.canvas, 0, 0, sw, sh, dx0, dy0, dw, dh);
-      }
+      // THE STEP-ASIDE FADE: a canopy that truly occludes the own
+      // body politely fades — plain globalAlpha, exact layering.
+      const fade = this.occluderFade(key, dx0, dy0, dw, dh, wy - this.ownPY > -FRONT_EPS);
+      if (fade < 1) this.ctx.globalAlpha = fade;
+      this.ctx.drawImage(sp.canvas, 0, 0, sw, sh, dx0, dy0, dw, dh);
+      if (fade < 1) this.ctx.globalAlpha = 1;
       wind = windScalarAt(wx, wy, tSec);
     }
 
