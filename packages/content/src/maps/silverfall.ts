@@ -686,9 +686,10 @@ export function buildSilverfall(): ZoneDef {
   b.stamp(MARKET_STALL, 129, 107);
   b.set(118, 106, Tile.LampPost).set(137, 106, Tile.LampPost);
   b.set(117, 104, Tile.Bench); // the pool overlook
-  // The quay: planks to the Roaring Pool's deep water.
-  b.set(96, 108, Tile.Bridge).set(97, 108, Tile.Bridge);
-  b.set(96, 109, Tile.Bridge).set(97, 109, Tile.Bridge);
+  // The quay: planks to the Roaring Pool's deep water — a jetty
+  // (Tile.Dock) on piles, not a crossing.
+  b.set(96, 108, Tile.Dock).set(97, 108, Tile.Dock);
+  b.set(96, 109, Tile.Dock).set(97, 109, Tile.Dock);
   b.set(99, 107, Tile.FishingSpot).set(111, 104, Tile.FishingSpot);
   b.set(94, 110, Tile.Crate).set(116, 108, Tile.LampPost);
   // The wall's inside lamp and the pool-walk bench.

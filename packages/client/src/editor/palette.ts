@@ -27,7 +27,7 @@ export const TILE_CATEGORIES: TileCategory[] = [
     tiles: [
       Tile.Grass, Tile.GrassTall, Tile.Dirt, Tile.Path, Tile.Sand, Tile.Snow,
       Tile.Swamp, Tile.Tilled, Tile.StoneFloor, Tile.WoodFloor, Tile.CaveFloor,
-      Tile.CaveRubble, Tile.DungeonFloor, Tile.Bridge, Tile.Ramp, Tile.Cliff,
+      Tile.CaveRubble, Tile.DungeonFloor, Tile.Bridge, Tile.Dock, Tile.Ramp, Tile.Cliff,
       Tile.Void, TILE_SKIP as Tile,
     ],
   },

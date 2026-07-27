@@ -90,6 +90,7 @@ import { drawPortalArch, drawPortalGround, spawnPortalFx, PORTAL_PLANE } from '.
 import {
   bakeElevated,
   bakeGutter,
+  deckWalkIsVertical,
   DOCK_LIFT,
   drawLiveGround,
   startChunkBake,
@@ -1445,9 +1446,10 @@ export class Renderer {
     const ty = Math.floor(y);
     const lvl = game.world.elevAt(tx, ty);
     const t = game.world.groundAt(tx, ty);
-    // Docks: the deck rides DOCK_LIFT above the ground, and so does
-    // everything standing on it — feet meet boards by construction.
-    if (t === Tile.Bridge && this.isDockAt(game, tx, ty)) {
+    // Raised decks (docks AND bridges): the deck rides DOCK_LIFT
+    // above the ground, and so does everything standing on it — feet
+    // meet boards by construction.
+    if ((t === Tile.Bridge || t === Tile.Dock) && this.isDockAt(game, tx, ty)) {
       return lvl * ELEV_H + DOCK_LIFT;
     }
     if (t === Tile.Ramp) {
@@ -1470,7 +1472,8 @@ export class Renderer {
     return lvl * ELEV_H;
   }
 
-  /** Memoized dock test (Bridge + water within Chebyshev 2), keyed by
+  /** Memoized deck test (water within Chebyshev 2 — callers gate on
+   *  the Dock/Bridge tile themselves), keyed by
    *  tile and cleared on any world change — renderLift is hot and the
    *  25-tile scan must run once per tile, not once per query. */
   private readonly dockMemo = new Map<number, boolean>();
@@ -4013,6 +4016,12 @@ export class Renderer {
           items.push(item);
           continue;
         }
+        if (ground === Tile.Bridge && this.isDockAt(game, tx, ty)) {
+          // A bridge grows its own parapet: live rail items on every
+          // deck edge that faces water, so bodies sort against them.
+          this.bridgeRailItems(tx, ty, game, items);
+          continue;
+        }
         if (DIAG_WALL_TILES.has(ground as Tile)) {
           // 45° corners: their own painter (triangular crown + sloped
           // facade). They ride the SAME reveal height field as the
@@ -5928,6 +5937,121 @@ export class Renderer {
         }
       },
     };
+  }
+
+  /** Memoized span walk-axis (true = walk runs N-S), cleared on any
+   *  world change — one flood per span, shared with the bake's law. */
+  private readonly bridgeAxisMemo = new Map<number, boolean>();
+  private bridgeAxisVersion = -1;
+
+  private bridgeWalkVert(game: ClientGame, tx: number, ty: number): boolean {
+    if (game.worldVersion !== this.bridgeAxisVersion) {
+      this.bridgeAxisMemo.clear();
+      this.bridgeAxisVersion = game.worldVersion;
+    }
+    const key = tx * 100000 + ty;
+    let v = this.bridgeAxisMemo.get(key);
+    if (v === undefined) {
+      v = deckWalkIsVertical((x, y) => game.world.groundAt(x, y), tx, ty, this.bridgeAxisMemo);
+    }
+    return v;
+  }
+
+  /**
+   * A bridge's hip-height parapet: one live rail item per exposed
+   * SIDE edge — the edges perpendicular to the span's walk axis — so
+   * the rail line runs the whole crossing, bank apron to bank apron,
+   * while both walk ends stay open. These are y-sorted items, never
+   * bake: a body crossing the deck sorts behind the south rail.
+   */
+  private bridgeRailItems(tx: number, ty: number, game: ClientGame, items: DrawItem[]): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    const isDeck = (t: number | undefined): boolean => t === Tile.Bridge || t === Tile.Dock;
+    const g = (x: number, y: number): number | undefined => game.world.groundAt(x, y);
+    // A tile carries this edge's rail if it's a bridge deck whose
+    // matching edge is an exposed SIDE — the same test decides the
+    // neighbors, so runs read as one continuous parapet.
+    const railEdge = (x: number, y: number, dx: number, dy: number): boolean =>
+      g(x, y) === Tile.Bridge &&
+      this.isDockAt(game, x, y) &&
+      !isDeck(g(x + dx, y + dy)) &&
+      (dy !== 0 ? !this.bridgeWalkVert(game, x, y) : this.bridgeWalkVert(game, x, y));
+    const elevated = game.world.elevAt(tx, ty) !== 0;
+    const lift = game.world.elevAt(tx, ty) * ELEV_H + DOCK_LIFT;
+    const post = '#6f4d26';
+    const rail = '#8a6534';
+    const RAIL_H = 0.46;
+    const hr = RAIL_H * s;
+    const railT = Math.max(2, s * 0.07);
+
+    for (const [dx, dy] of [
+      [0, -1],
+      [0, 1],
+      [-1, 0],
+      [1, 0],
+    ] as const) {
+      if (!railEdge(tx, ty, dx, dy)) continue;
+      if (dy !== 0) {
+        const north = dy < 0;
+        const contW = railEdge(tx - 1, ty, dx, dy);
+        const contE = railEdge(tx + 1, ty, dx, dy);
+        items.push({
+          sortY: north ? ty + 0.04 : ty + 1.02,
+          elevated,
+          draw: () => {
+            const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
+            p.y -= lift * s;
+            const yLine = p.y + (north ? 0 : syT);
+            ctx.fillStyle = post;
+            for (const fx of [0.28, 0.72]) {
+              ctx.fillRect(p.x + s * fx - s * 0.035, yLine - hr, s * 0.07, hr);
+            }
+            if (!contW) ctx.fillRect(p.x - 0.25, yLine - hr, s * 0.1, hr);
+            if (!contE) ctx.fillRect(p.x + s + 0.25 - s * 0.1, yLine - hr, s * 0.1, hr);
+            // Mid rail behind the posts, then the top member with a
+            // lit crown — the fence law at parapet height.
+            ctx.fillStyle = shade(rail, -10);
+            ctx.fillRect(p.x - 0.25, yLine - hr * 0.52, s + 0.5, railT * 0.7);
+            ctx.fillStyle = rail;
+            ctx.beginPath();
+            chamferRect(ctx, p.x - 0.25, yLine - hr, s + 0.5, railT * 1.15, s * 0.02);
+            ctx.fill();
+            ctx.fillStyle = shade(rail, 14);
+            ctx.fillRect(p.x - 0.25, yLine - hr, s + 0.5, Math.max(1, s * 0.02));
+          },
+        });
+      } else {
+        const west = dx < 0;
+        const contN = railEdge(tx, ty - 1, dx, dy);
+        const contS = railEdge(tx, ty + 1, dx, dy);
+        items.push({
+          sortY: ty + 1,
+          elevated,
+          draw: () => {
+            const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
+            p.y -= lift * s;
+            const ex = p.x + (west ? s * 0.055 : s - s * 0.055);
+            const cy = p.y + syT * 0.5;
+            const yTop = contN ? p.y : cy;
+            const yBot = contS ? p.y + syT : cy;
+            // Twin thin rails marching in depth through a
+            // chamfer-topped post at the tile's middle.
+            ctx.fillStyle = rail;
+            for (const rx of [-0.045, 0.045]) {
+              ctx.fillRect(ex + rx * s - railT / 2, yTop - hr * 0.88, railT, yBot - yTop + railT);
+            }
+            ctx.fillStyle = post;
+            ctx.beginPath();
+            chamferRect(ctx, ex - s * 0.06, cy - hr, s * 0.12, hr, [s * 0.035, s * 0.035, 0, 0]);
+            ctx.fill();
+            ctx.fillStyle = shade(post, 16);
+            ctx.fillRect(ex - s * 0.045, cy - hr + s * 0.015, s * 0.09, s * 0.045);
+          },
+        });
+      }
+    }
   }
 
   // ----------------------------------------------------------- interiors
@@ -15153,6 +15277,7 @@ export class Renderer {
         return { colors: ['#9aa2ac', '#8a8494', '#a7aeb8'], mult: 0.45 };
       case Tile.WoodFloor:
       case Tile.Bridge:
+      case Tile.Dock:
         return { colors: ['#b5a488', '#a5936f'], mult: 0.35 };
       case Tile.CaveFloor:
       case Tile.CaveWall:

@@ -424,7 +424,8 @@ export declare class Renderer {
      * one function.
      */
     renderLift(x: number, y: number): number;
-    /** Memoized dock test (Bridge + water within Chebyshev 2), keyed by
+    /** Memoized deck test (water within Chebyshev 2 — callers gate on
+     *  the Dock/Bridge tile themselves), keyed by
      *  tile and cleared on any world change — renderLift is hot and the
      *  25-tile scan must run once per tile, not once per query. */
     private readonly dockMemo;
@@ -905,6 +906,19 @@ export declare class Renderer {
      * merge with rails only — a railing never joins a wall mass.
      */
     private railItem;
+    /** Memoized span walk-axis (true = walk runs N-S), cleared on any
+     *  world change — one flood per span, shared with the bake's law. */
+    private readonly bridgeAxisMemo;
+    private bridgeAxisVersion;
+    private bridgeWalkVert;
+    /**
+     * A bridge's hip-height parapet: one live rail item per exposed
+     * SIDE edge — the edges perpendicular to the span's walk axis — so
+     * the rail line runs the whole crossing, bank apron to bank apron,
+     * while both walk ends stay open. These are y-sorted items, never
+     * bake: a body crossing the deck sorts behind the south rail.
+     */
+    private bridgeRailItems;
     /** The interior region a wall-run tile fronts: any adjacent
      *  enclosed floor claims it (per-frame cached in the InteriorMap). */
     private wallRegion;

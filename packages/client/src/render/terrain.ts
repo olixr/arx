@@ -260,10 +260,11 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
   const g = (tx: number, ty: number): number => {
     const t = ground(tx, ty);
     if (t === undefined) return Tile.Grass;
-    // Docks: the SKIN under a deck is the water it spans — organic
-    // contours, depth bands and shorelines all flow beneath the
-    // boards; the deck itself is painted by drawDocks, raised.
-    if (t === Tile.Bridge && isDockTile(ground, tx, ty)) {
+    // Raised decks: the SKIN under a dock or bridge is the water it
+    // spans — organic contours, depth bands and shorelines all flow
+    // beneath the boards; the deck itself is painted raised, by
+    // drawDocks or drawBridges.
+    if (isDeckGround(t) && isDeckTile(ground, tx, ty)) {
       return dockUnderWater(ground, tx, ty);
     }
     if (GRASS_LIKE.has(t)) return Tile.Grass;
@@ -493,10 +494,15 @@ export function startChunkBake(
     });
   }
 
-  // 5. Docks: raised decks over the water painted LAST, so the deck's
-  // lifted top (which reaches into the north neighbor's cell) covers
-  // that neighbor's water details instead of wearing them.
-  steps.push(() => drawDocks(ctx, ground, baseX, baseY, px));
+  // 5. Raised decks: docks and bridges over the water painted LAST,
+  // so the deck's lifted top (which reaches into the north neighbor's
+  // cell) covers that neighbor's water details instead of wearing
+  // them. Ground-level decks only — a deck on a terrace paints into
+  // its own elevated layer (bakeElevated), which blits over these
+  // rows shifted; painting it here too would bury it.
+  const groundDeck = (tx: number, ty: number): boolean => elev(tx, ty) === 0;
+  steps.push(() => drawDocks(ctx, ground, baseX, baseY, px, groundDeck));
+  steps.push(() => drawBridges(ctx, ground, baseX, baseY, px, groundDeck));
 
   return { canvas, steps, next: 0 };
 }
@@ -535,8 +541,9 @@ const DOCK_TONES = ['#9c7a4a', '#92714a', '#a5834f', '#8a683c'];
  *   tiles → a perimeter stroke on EXPOSED edges only (the
  *   architecture outline law — no seams inside a run).
  *
- * Connectivity is by raw Bridge neighbors, so runs merge; everything
- * is world-keyed, so chunk seams and resolution tiers agree.
+ * Connectivity is by raw deck-family neighbors, so runs merge (a dock
+ * butting a bridge keeps its boards open); everything is world-keyed,
+ * so chunk seams and resolution tiers agree.
  */
 function drawDocks(
   ctx: CanvasRenderingContext2D,
@@ -544,6 +551,7 @@ function drawDocks(
   baseX: number,
   baseY: number,
   px: number,
+  include?: (tx: number, ty: number) => boolean,
 ): void {
   const liftB = Math.round((DOCK_LIFT / FLAT) * px);
   const seam = Math.max(1, px * 0.02);
@@ -552,12 +560,13 @@ function drawDocks(
       const tx = baseX + lx;
       const ty = baseY + ly;
       if (!isDockTile(ground, tx, ty)) continue;
+      if (include && !include(tx, ty)) continue;
       const gx = lx * px;
       const gy = ly * px;
-      const hasN = ground(tx, ty - 1) === Tile.Bridge;
-      const hasS = ground(tx, ty + 1) === Tile.Bridge;
-      const hasE = ground(tx + 1, ty) === Tile.Bridge;
-      const hasW = ground(tx - 1, ty) === Tile.Bridge;
+      const hasN = isDeckGround(ground(tx, ty - 1));
+      const hasS = isDeckGround(ground(tx, ty + 1));
+      const hasE = isDeckGround(ground(tx + 1, ty));
+      const hasW = isDeckGround(ground(tx - 1, ty));
       const southWater = isWaterTile(ground(tx, ty + 1));
 
       // Standing shadow: two stepped bands, flat-art AO.
@@ -629,6 +638,287 @@ function drawDocks(
       }
 
       // Perimeter stroke, exposed edges only.
+      ctx.strokeStyle = 'rgba(42, 28, 14, 0.85)';
+      ctx.lineWidth = Math.max(1.5, px * 0.045);
+      ctx.beginPath();
+      if (!hasN) {
+        ctx.moveTo(gx, dy0);
+        ctx.lineTo(gx + px, dy0);
+      }
+      if (!hasS) {
+        ctx.moveTo(gx, dy0 + px);
+        ctx.lineTo(gx + px, dy0 + px);
+      }
+      if (!hasW) {
+        ctx.moveTo(gx, dy0);
+        ctx.lineTo(gx, dy0 + px);
+      }
+      if (!hasE) {
+        ctx.moveTo(gx + px, dy0);
+        ctx.lineTo(gx + px, dy0 + px);
+      }
+      ctx.stroke();
+    }
+  }
+}
+
+/** Bridge masonry tones — abutment steps, piers, fascia, thresholds. */
+const BRIDGE_STONE = {
+  face: '#7b7568',
+  lit: '#8f897b',
+  dark: '#5d5849',
+  top: '#918b7d',
+};
+
+/** Board tones for bridge decks — a touch greyer than dock lumber:
+ *  a public crossing weathered by every boot in town. */
+const BRIDGE_TONES = ['#997a50', '#8e7049', '#a28356', '#856a44'];
+
+/**
+ * THE BRIDGE PASS. A bridge is the dock's opposite statement: not
+ * suspended over the water but SEATED INTO both banks. Every tile
+ * paints, bottom to top:
+ *
+ *   standing shadow on the water south of the span → chunky STONE
+ *   PIERS at south water edges with waterline collars → the south
+ *   face: over water a stone FASCIA with a chamfered ARCH shadow
+ *   sprung between the piers; at a land threshold two STONE STEP
+ *   courses that walk the deck down onto the bank → the plank deck
+ *   (boards run ACROSS the walk axis; the axis is read from how each
+ *   run terminates — water ends the cross axis, land ends the walk,
+ *   so any span two to five tiles wide lays its boards the same way)
+ *   → dark KERB stringers along water edges (the curb the rails bolt
+ *   to) and a stone threshold course across every land entrance,
+ *   flanked by squat NEWEL blocks → perimeter strokes on exposed
+ *   edges.
+ *
+ * The hip-height rails along the water edges are NOT baked — the
+ * renderer emits them as y-sorted items so bodies walk behind them.
+ */
+function drawBridges(
+  ctx: CanvasRenderingContext2D,
+  ground: GroundSampler,
+  baseX: number,
+  baseY: number,
+  px: number,
+  include?: (tx: number, ty: number) => boolean,
+): void {
+  const liftB = Math.round((DOCK_LIFT / FLAT) * px);
+  const seam = Math.max(1, px * 0.02);
+  const isLand = (t: number | undefined): boolean =>
+    t !== undefined && !isDeckGround(t) && !isWaterTile(t);
+  // One walk-axis flood per span, shared by every member tile.
+  const axisMemo = new Map<number, boolean>();
+  for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
+    for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
+      const tx = baseX + lx;
+      const ty = baseY + ly;
+      if (!isBridgeTile(ground, tx, ty)) continue;
+      if (include && !include(tx, ty)) continue;
+      const gx = lx * px;
+      const gy = ly * px;
+      const nT = ground(tx, ty - 1);
+      const sT = ground(tx, ty + 1);
+      const eT = ground(tx + 1, ty);
+      const wT = ground(tx - 1, ty);
+      const hasN = isDeckGround(nT);
+      const hasS = isDeckGround(sT);
+      const hasE = isDeckGround(eT);
+      const hasW = isDeckGround(wT);
+      const landN = !hasN && isLand(nT);
+      const landS = !hasS && isLand(sT);
+      const landE = !hasE && isLand(eT);
+      const landW = !hasW && isLand(wT);
+      const waterS = isWaterTile(sT);
+
+      // Standing shadow: the span's mass hangs over the water.
+      if (!hasS && waterS) {
+        ctx.fillStyle = 'rgba(20, 34, 62, 0.26)';
+        ctx.fillRect(gx, gy + px, px, px * 0.2);
+        ctx.fillStyle = 'rgba(20, 34, 62, 0.12)';
+        ctx.fillRect(gx, gy + px + px * 0.2, px, px * 0.18);
+      }
+      // Contact shade where the deck meets the north bank.
+      if (landN) {
+        ctx.fillStyle = 'rgba(30, 22, 12, 0.22)';
+        ctx.fillRect(gx, gy - liftB - px * 0.05, px, px * 0.05);
+      }
+
+      // Stone piers: the masonry the crossing stands on.
+      if (!hasS && waterS) {
+        for (const fpos of [0.18, 0.82]) {
+          const pw = px * 0.16;
+          const pxl = gx + fpos * px - pw / 2;
+          const top = gy + px - liftB * 0.3;
+          const bot = gy + px + px * 0.16;
+          ctx.fillStyle = BRIDGE_STONE.dark;
+          ctx.fillRect(pxl, top, pw, bot - top);
+          ctx.fillStyle = BRIDGE_STONE.lit; // sun-law lit west edge
+          ctx.fillRect(pxl, top, Math.max(1, pw * 0.32), bot - top);
+          ctx.strokeStyle = 'rgba(226, 240, 251, 0.5)';
+          ctx.lineWidth = Math.max(1.2, px * 0.03);
+          ctx.beginPath();
+          ctx.ellipse(pxl + pw / 2, bot, pw * 0.8, pw * 0.8 * FLAT, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      // The south face.
+      if (!hasS) {
+        if (landS) {
+          // Abutment: two stone step courses walking down to the bank.
+          ctx.fillStyle = BRIDGE_STONE.top;
+          ctx.fillRect(gx, gy + px - liftB, px, liftB * 0.5);
+          ctx.fillStyle = BRIDGE_STONE.face;
+          ctx.fillRect(gx, gy + px - liftB * 0.5, px, liftB * 0.5);
+          const nose = Math.max(1, px * 0.018);
+          ctx.fillStyle = 'rgba(30, 24, 14, 0.35)';
+          ctx.fillRect(gx, gy + px - liftB * 0.5, px, nose);
+          ctx.fillRect(gx, gy + px - nose, px, nose);
+          // The seat shadow on the bank: the mass presses into land.
+          ctx.fillStyle = 'rgba(30, 22, 12, 0.2)';
+          ctx.fillRect(gx, gy + px, px, px * 0.07);
+        } else {
+          // Stone fascia with the arch shadow sprung between piers.
+          ctx.fillStyle = BRIDGE_STONE.face;
+          ctx.fillRect(gx, gy + px - liftB, px, liftB);
+          if (waterS) {
+            const springY = gy + px - liftB * 0.5;
+            ctx.fillStyle = 'rgba(22, 17, 10, 0.5)';
+            ctx.beginPath();
+            ctx.moveTo(gx + 0.23 * px, gy + px);
+            ctx.lineTo(gx + 0.28 * px, springY);
+            ctx.lineTo(gx + 0.72 * px, springY);
+            ctx.lineTo(gx + 0.77 * px, gy + px);
+            ctx.closePath();
+            ctx.fill();
+          }
+          // One masonry course joint, the coping catch-light, and the
+          // shade at the waterline foot.
+          ctx.fillStyle = 'rgba(30, 24, 14, 0.3)';
+          ctx.fillRect(gx, gy + px - liftB * 0.45, px, Math.max(1, px * 0.015));
+          ctx.fillStyle = 'rgba(228, 222, 204, 0.32)';
+          ctx.fillRect(gx, gy + px - liftB, px, Math.max(1, px * 0.02));
+          ctx.fillStyle = 'rgba(20, 16, 8, 0.4)';
+          ctx.fillRect(gx, gy + px - Math.max(1.5, liftB * 0.14), px, Math.max(1.5, liftB * 0.14));
+        }
+      }
+
+      // The deck. Walk axis first — one verdict per span, memoized.
+      const dy0 = gy - liftB;
+      let vertRun = axisMemo.get(packDeck(tx, ty)); // true = walk runs N-S
+      if (vertRun === undefined) vertRun = deckWalkIsVertical(ground, tx, ty, axisMemo);
+      ctx.fillStyle = '#54402a';
+      ctx.fillRect(gx, dy0, px, px);
+      const rows = 5;
+      for (let r = 0; r < rows; r++) {
+        const hh = vertRun ? hashCoords(151, ty * 8 + r, 0) : hashCoords(153, tx * 8 + r, 0);
+        ctx.fillStyle = BRIDGE_TONES[hh % 4]!;
+        if (vertRun) ctx.fillRect(gx, dy0 + (r / rows) * px, px, px / rows - seam);
+        else ctx.fillRect(gx + (r / rows) * px, dy0, px / rows - seam, px);
+      }
+      ctx.fillStyle = 'rgba(40, 26, 14, 0.5)';
+      for (let r = 0; r < rows; r++) {
+        const hh = hashCoords(155, (vertRun ? ty : tx) * 8 + r, vertRun ? tx : ty);
+        if (hh % 3 !== 0) continue;
+        const at = 0.25 + ((hh >>> 4) % 50) / 100;
+        if (vertRun) ctx.fillRect(gx + at * px, dy0 + (r / rows) * px, seam, px / rows - seam);
+        else ctx.fillRect(gx + (r / rows) * px, dy0 + at * px, px / rows - seam, seam);
+      }
+
+      // Sides vs ends, by the span's walk axis: the SIDES (the edges
+      // a rail runs along) are perpendicular to the walk; the ENDS
+      // carry the entrances. Kerbs dress every exposed side — over
+      // water AND over the bank aprons, so the parapet line runs the
+      // whole span; thresholds and newels only ever face the walk.
+      const kerbN = !hasN && !vertRun;
+      const kerbS = !hasS && !vertRun;
+      const kerbW = !hasW && vertRun;
+      const kerbE = !hasE && vertRun;
+      const thN = landN && vertRun;
+      const thS = landS && vertRun;
+      const thW = landW && !vertRun;
+      const thE = landE && !vertRun;
+
+      // Kerb stringers: the dark curb the rails bolt to, with a lit
+      // inner line to pop it off the boards.
+      const kerb = Math.max(1.5, px * 0.085);
+      const lit = Math.max(1, px * 0.015);
+      ctx.fillStyle = '#63492c';
+      if (kerbN) ctx.fillRect(gx, dy0, px, kerb);
+      if (kerbS) ctx.fillRect(gx, dy0 + px - kerb, px, kerb);
+      if (kerbW) ctx.fillRect(gx, dy0, kerb, px);
+      if (kerbE) ctx.fillRect(gx + px - kerb, dy0, kerb, px);
+      ctx.fillStyle = 'rgba(214, 178, 120, 0.25)';
+      if (kerbN) ctx.fillRect(gx, dy0 + kerb, px, lit);
+      if (kerbS) ctx.fillRect(gx, dy0 + px - kerb - lit, px, lit);
+      if (kerbW) ctx.fillRect(gx + kerb, dy0, lit, px);
+      if (kerbE) ctx.fillRect(gx + px - kerb - lit, dy0, lit, px);
+
+      // Land entrances: a stone threshold course across the walk,
+      // flanked by squat newel blocks — the bridge visibly GRIPS the
+      // bank instead of hovering beside it.
+      const th = Math.max(2, px * 0.13);
+      const newel = px * 0.15;
+      const joint = Math.max(1, px * 0.02);
+      const drawNewel = (nx: number, nyDeck: number): void => {
+        const h = liftB * 0.5;
+        const cap = newel * FLAT * 0.7;
+        ctx.fillStyle = BRIDGE_STONE.face;
+        ctx.fillRect(nx, nyDeck - h, newel, h);
+        ctx.fillStyle = 'rgba(20, 16, 8, 0.35)';
+        ctx.fillRect(nx, nyDeck - joint, newel, joint);
+        ctx.fillStyle = BRIDGE_STONE.top;
+        ctx.fillRect(nx, nyDeck - h - cap, newel, cap);
+      };
+      ctx.fillStyle = BRIDGE_STONE.top;
+      if (thN) ctx.fillRect(gx, dy0, px, th);
+      if (thS) ctx.fillRect(gx, dy0 + px - th, px, th);
+      if (thW) ctx.fillRect(gx, dy0, th, px);
+      if (thE) ctx.fillRect(gx + px - th, dy0, th, px);
+      ctx.fillStyle = 'rgba(30, 24, 14, 0.35)';
+      if (thN) ctx.fillRect(gx, dy0 + th, px, joint);
+      if (thS) ctx.fillRect(gx, dy0 + px - th - joint, px, joint);
+      if (thW) ctx.fillRect(gx + th, dy0, joint, px);
+      if (thE) ctx.fillRect(gx + px - th - joint, dy0, joint, px);
+      if (thN) {
+        drawNewel(gx + px * 0.02, dy0 + newel * FLAT + px * 0.02);
+        drawNewel(gx + px - newel - px * 0.02, dy0 + newel * FLAT + px * 0.02);
+      }
+      if (thS) {
+        drawNewel(gx + px * 0.02, dy0 + px - px * 0.02);
+        drawNewel(gx + px - newel - px * 0.02, dy0 + px - px * 0.02);
+      }
+      if (thW) {
+        drawNewel(gx + px * 0.02, dy0 + newel * FLAT + px * 0.02);
+        drawNewel(gx + px * 0.02, dy0 + px - px * 0.02);
+      }
+      if (thE) {
+        drawNewel(gx + px - newel - px * 0.02, dy0 + newel * FLAT + px * 0.02);
+        drawNewel(gx + px - newel - px * 0.02, dy0 + px - px * 0.02);
+      }
+      // A walk-end entrance shows its abutment's south return: a
+      // small stone wedge stepping the riser down onto the bank.
+      if (thW && !hasS) {
+        ctx.fillStyle = BRIDGE_STONE.face;
+        ctx.beginPath();
+        ctx.moveTo(gx, dy0 + px);
+        ctx.lineTo(gx, gy + px);
+        ctx.lineTo(gx - px * 0.14, gy + px);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (thE && !hasS) {
+        ctx.fillStyle = BRIDGE_STONE.face;
+        ctx.beginPath();
+        ctx.moveTo(gx + px, dy0 + px);
+        ctx.lineTo(gx + px, gy + px);
+        ctx.lineTo(gx + px + px * 0.14, gy + px);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Perimeter stroke, exposed edges only (architecture outline law).
       ctx.strokeStyle = 'rgba(42, 28, 14, 0.85)';
       ctx.lineWidth = Math.max(1.5, px * 0.045);
       ctx.beginPath();
@@ -1399,6 +1689,15 @@ export function bakeElevated(
   ctx.lineJoin = 'miter';
   ctx.restore();
 
+  // Raised decks on THIS terrace: the same dock and bridge passes as
+  // the ground floor, drawn unclipped (a lifted top reaches into the
+  // cell north of the deck) and gated to tiles of exactly this level,
+  // so a lower span in the same chunk never paints into a layer that
+  // blits shifted.
+  const deckHere = (tx: number, ty: number): boolean => elev(tx, ty) === level;
+  drawDocks(ctx, ground, baseX, baseY, px, deckHere);
+  drawBridges(ctx, ground, baseX, baseY, px, deckHere);
+
   return { canvas, rows };
 }
 
@@ -1951,7 +2250,8 @@ function drawPlanks(
   px: number,
   woodSkin?: WoodSkinSampler,
 ): void {
-  const isPlank = (t: number | undefined): boolean => t === Tile.WoodFloor || t === Tile.Bridge;
+  const isPlank = (t: number | undefined): boolean =>
+    t === Tile.WoodFloor || t === Tile.Bridge || t === Tile.Dock;
   const jointW = Math.max(1, px * 0.035);
   // One tile of margin fills the gutter (see bakeGutter).
   for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
@@ -2064,28 +2364,120 @@ const WB_ALPHA_UNIT = 0.07;
 const FLAT = 0.6;
 
 /**
- * DOCKS. A Bridge tile near water is a DOCK: the ground under it is
- * painted as real water (the skin, contours and depth all run beneath
- * the boards) and a raised plank deck stands over it on driven piles.
- * The deck rides DOCK_LIFT tiles of SCREEN height above the surface —
- * renderLift lifts every body standing on one by the same amount, so
- * feet and boards agree by construction. Bake-space vertical offsets
- * must divide by FLAT (the bake squashes at blit time; screen height
- * does not).
+ * RAISED DECKS. Two structures stride over the water, and they are
+ * NOT the same build:
+ *
+ *   DOCK (Tile.Dock) — the exposed jetty: a plank deck suspended on
+ *   driven wooden piles, deliberately reading as "placed over" the
+ *   water. Painted by drawDocks.
+ *
+ *   BRIDGE (Tile.Bridge) — the seated crossing: the same raised walk,
+ *   but SEATED INTO both banks — stone abutment steps at every land
+ *   threshold, chunky stone piers with an arched fascia over the
+ *   water, kerbed board edges, and hip-height rails along every edge
+ *   that faces water (the rails are live renderer items so bodies
+ *   sort against them). Painted by drawBridges.
+ *
+ * Both share the deck mechanics: the ground under them is painted as
+ * real water (skin, contours and depth all run beneath the boards)
+ * and the deck rides DOCK_LIFT tiles of SCREEN height above the
+ * surface — renderLift lifts every body standing on one by the same
+ * amount, so feet and boards agree by construction. Bake-space
+ * vertical offsets must divide by FLAT (the bake squashes at blit
+ * time; screen height does not).
  */
 export const DOCK_LIFT = 0.22;
 
-/** Bridge with any water within Chebyshev distance 2 — a dock. The
- *  radius-2 scan keeps a whole jetty uniform (interior tiles of a
- *  2-wide run don't all touch water) so the lift never dips mid-run. */
-export function isDockTile(ground: GroundSampler, tx: number, ty: number): boolean {
-  if (ground(tx, ty) !== Tile.Bridge) return false;
+/** Deck-family ground: the two raised-walk tiles. */
+export function isDeckGround(t: number | undefined): boolean {
+  return t === Tile.Bridge || t === Tile.Dock;
+}
+
+/** Any water within Chebyshev distance 2. The radius-2 scan keeps a
+ *  whole span uniform (interior tiles of a 2-wide run don't all touch
+ *  water) so the lift never dips mid-run. */
+function waterNear2(ground: GroundSampler, tx: number, ty: number): boolean {
   for (let dy = -2; dy <= 2; dy++) {
     for (let dx = -2; dx <= 2; dx++) {
       if (isWaterTile(ground(tx + dx, ty + dy))) return true;
     }
   }
   return false;
+}
+
+/** Dock tile near water — a raised jetty deck. */
+export function isDockTile(ground: GroundSampler, tx: number, ty: number): boolean {
+  return ground(tx, ty) === Tile.Dock && waterNear2(ground, tx, ty);
+}
+
+/** Bridge tile near water — a raised, seated crossing. */
+export function isBridgeTile(ground: GroundSampler, tx: number, ty: number): boolean {
+  return ground(tx, ty) === Tile.Bridge && waterNear2(ground, tx, ty);
+}
+
+/** Either raised deck — everything the water must flow quietly under. */
+export function isDeckTile(ground: GroundSampler, tx: number, ty: number): boolean {
+  return isDeckGround(ground(tx, ty)) && waterNear2(ground, tx, ty);
+}
+
+/** World-keyed map key for deck-span memoization. */
+const packDeck = (x: number, y: number): number => x * 100000 + y;
+
+/**
+ * The walk axis of a whole connected deck span, decided ONCE for the
+ * span so every member tile lays its boards, kerbs and rails the same
+ * way (a per-tile guess splits a wobbly-banked crossing into mixed
+ * directions): flood the deck region (4-way, capped), count exposed
+ * edges that meet water on each axis — a river runs past the SIDES —
+ * and fall back to the region's long axis when the water reads
+ * ambiguous. Returns true when the walk runs N-S. `out` collects the
+ * verdict for every member tile so callers memoize one flood per span.
+ */
+export function deckWalkIsVertical(
+  ground: GroundSampler,
+  tx: number,
+  ty: number,
+  out?: Map<number, boolean>,
+): boolean {
+  const seen = new Set<number>([packDeck(tx, ty)]);
+  const queue: Array<[number, number]> = [[tx, ty]];
+  const tiles: Array<[number, number]> = [];
+  let waterNS = 0;
+  let waterEW = 0;
+  let minX = tx;
+  let maxX = tx;
+  let minY = ty;
+  let maxY = ty;
+  const CAP = 160;
+  while (queue.length > 0 && tiles.length < CAP) {
+    const [x, y] = queue.pop()!;
+    tiles.push([x, y]);
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+    for (const [dx, dy] of [
+      [0, -1],
+      [0, 1],
+      [1, 0],
+      [-1, 0],
+    ] as const) {
+      const t = ground(x + dx, y + dy);
+      if (isDeckGround(t)) {
+        const k = packDeck(x + dx, y + dy);
+        if (!seen.has(k)) {
+          seen.add(k);
+          queue.push([x + dx, y + dy]);
+        }
+      } else if (isWaterTile(t)) {
+        if (dy !== 0) waterNS++;
+        else waterEW++;
+      }
+    }
+  }
+  const vert = waterEW !== waterNS ? waterEW > waterNS : maxY - minY > maxX - minX;
+  if (out) for (const [x, y] of tiles) out.set(packDeck(x, y), vert);
+  return vert;
 }
 
 /** The water that continues under a dock: the most common depth among
@@ -2214,10 +2606,10 @@ export function drawLiveGround(
 
       // Grass and flowers live in the bespoke GrassSystem (grass.ts) —
       // this layer keeps the water, portals, and shorelines breathing.
-      // A dock's lifted deck reaches into the cell NORTH of it — no
-      // glitter may paint over those boards (the deck is baked; the
-      // breeze layer is live and would land on top).
-      const southIsDeck = ground(tx, ty + 1) === Tile.Bridge;
+      // A dock's or bridge's lifted deck reaches into the cell NORTH
+      // of it — no glitter may paint over those boards (the deck is
+      // baked; the breeze layer is live and would land on top).
+      const southIsDeck = isDeckGround(ground(tx, ty + 1));
 
       if (tile === Tile.Water || tile === Tile.WaterDeep) {
         // Calm water still reads as water — the field shapes glitter,
@@ -2332,13 +2724,13 @@ export function drawLiveGround(
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
-      } else if (tile === Tile.Bridge) {
-        // The dock's live waterline: the surface visibly LAPS against
+      } else if (isDeckGround(tile)) {
+        // The deck's live waterline: the surface visibly LAPS against
         // the structure — breathing white lines hug every deck edge
-        // that meets water, and the piles nurse slow ripple collars.
-        // All positions sample JUST OUTSIDE the dock tile (the dock
-        // tile itself is lifted by renderLift; the water is not).
-        if (fx.full && isDockTile(ground, tx, ty)) {
+        // that meets water, and the piles/piers nurse slow ripple
+        // collars. All positions sample JUST OUTSIDE the deck tile
+        // (the tile itself is lifted by renderLift; the water is not).
+        if (fx.full && isDeckTile(ground, tx, ty)) {
           const hd = hashCoords(163, tx, ty);
           const lapA = (0.16 + 0.14 * Math.sin(t * 0.9 + (hd % 63) / 10)) * tones.dim;
           const lap = (x0: number, y0: number, x1: number, y1: number): void => {
@@ -2459,14 +2851,14 @@ function drawShorelines(
       const c10 = ground(i, j - 1);
       const c11 = ground(i, j);
       const c01 = ground(i - 1, j);
-      // Dock cells get NO shoreline: the water slides quietly under
-      // the raised deck — foam ringing a dock would paint it back
-      // into a flat peninsula (piles carry their own ripples).
+      // Deck cells get NO shoreline: the water slides quietly under
+      // a raised dock or bridge — foam ringing a deck would paint it
+      // back into a flat peninsula (piles carry their own ripples).
       if (
-        (c00 === Tile.Bridge && isDockTile(ground, i - 1, j - 1)) ||
-        (c10 === Tile.Bridge && isDockTile(ground, i, j - 1)) ||
-        (c11 === Tile.Bridge && isDockTile(ground, i, j)) ||
-        (c01 === Tile.Bridge && isDockTile(ground, i - 1, j))
+        (isDeckGround(c00) && isDeckTile(ground, i - 1, j - 1)) ||
+        (isDeckGround(c10) && isDeckTile(ground, i, j - 1)) ||
+        (isDeckGround(c11) && isDeckTile(ground, i, j)) ||
+        (isDeckGround(c01) && isDeckTile(ground, i - 1, j))
       ) {
         continue;
       }

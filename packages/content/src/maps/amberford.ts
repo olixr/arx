@@ -370,10 +370,11 @@ export function buildAmberford(): ZoneDef {
   b.set(78, 35, Tile.CrateGoods).set(79, 36, Tile.CrateGoods); // flour by the sack
   b.setDetail(74, 36, Detail.Doormat).setDetail(77, 34, Detail.Straw);
   b.set(69, 36, Tile.HangingSign); // "GARTON'S MILL — flour, meal, gossip."
-  // The docks: the pier planks, the mooring barrels, the catch.
+  // The docks: the pier planks, the mooring barrels, the catch — a
+  // true jetty (Tile.Dock), suspended on piles, not a bridge.
   for (let x = 81; x <= 86; x++) {
-    b.set(x, 38, Tile.Bridge);
-    b.set(x, 39, Tile.Bridge);
+    b.set(x, 38, Tile.Dock);
+    b.set(x, 39, Tile.Dock);
   }
   b.set(82, 37, Tile.LampPost);
   b.set(82, 41, Tile.Barrel);

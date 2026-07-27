@@ -98,20 +98,48 @@ export interface WaterFx {
     moonlit: boolean;
 }
 /**
- * DOCKS. A Bridge tile near water is a DOCK: the ground under it is
- * painted as real water (the skin, contours and depth all run beneath
- * the boards) and a raised plank deck stands over it on driven piles.
- * The deck rides DOCK_LIFT tiles of SCREEN height above the surface —
- * renderLift lifts every body standing on one by the same amount, so
- * feet and boards agree by construction. Bake-space vertical offsets
- * must divide by FLAT (the bake squashes at blit time; screen height
- * does not).
+ * RAISED DECKS. Two structures stride over the water, and they are
+ * NOT the same build:
+ *
+ *   DOCK (Tile.Dock) — the exposed jetty: a plank deck suspended on
+ *   driven wooden piles, deliberately reading as "placed over" the
+ *   water. Painted by drawDocks.
+ *
+ *   BRIDGE (Tile.Bridge) — the seated crossing: the same raised walk,
+ *   but SEATED INTO both banks — stone abutment steps at every land
+ *   threshold, chunky stone piers with an arched fascia over the
+ *   water, kerbed board edges, and hip-height rails along every edge
+ *   that faces water (the rails are live renderer items so bodies
+ *   sort against them). Painted by drawBridges.
+ *
+ * Both share the deck mechanics: the ground under them is painted as
+ * real water (skin, contours and depth all run beneath the boards)
+ * and the deck rides DOCK_LIFT tiles of SCREEN height above the
+ * surface — renderLift lifts every body standing on one by the same
+ * amount, so feet and boards agree by construction. Bake-space
+ * vertical offsets must divide by FLAT (the bake squashes at blit
+ * time; screen height does not).
  */
 export declare const DOCK_LIFT = 0.22;
-/** Bridge with any water within Chebyshev distance 2 — a dock. The
- *  radius-2 scan keeps a whole jetty uniform (interior tiles of a
- *  2-wide run don't all touch water) so the lift never dips mid-run. */
+/** Deck-family ground: the two raised-walk tiles. */
+export declare function isDeckGround(t: number | undefined): boolean;
+/** Dock tile near water — a raised jetty deck. */
 export declare function isDockTile(ground: GroundSampler, tx: number, ty: number): boolean;
+/** Bridge tile near water — a raised, seated crossing. */
+export declare function isBridgeTile(ground: GroundSampler, tx: number, ty: number): boolean;
+/** Either raised deck — everything the water must flow quietly under. */
+export declare function isDeckTile(ground: GroundSampler, tx: number, ty: number): boolean;
+/**
+ * The walk axis of a whole connected deck span, decided ONCE for the
+ * span so every member tile lays its boards, kerbs and rails the same
+ * way (a per-tile guess splits a wobbly-banked crossing into mixed
+ * directions): flood the deck region (4-way, capped), count exposed
+ * edges that meet water on each axis — a river runs past the SIDES —
+ * and fall back to the region's long axis when the water reads
+ * ambiguous. Returns true when the walk runs N-S. `out` collects the
+ * verdict for every member tile so callers memoize one flood per span.
+ */
+export declare function deckWalkIsVertical(ground: GroundSampler, tx: number, ty: number, out?: Map<number, boolean>): boolean;
 /**
  * The breeze layer: drifting water glints, swell bands, shallow-water
  * caustics, the surf shoreline and portal swirls. Drawn every frame

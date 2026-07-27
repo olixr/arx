@@ -841,7 +841,8 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   // The market, the water, and the working town.
   assert.ok((counts.get(Tile.MarketStall) ?? 0) >= 4, 'the Round lost its stalls');
   assert.ok((counts.get(Tile.FishingSpot) ?? 0) >= 2, 'the pond lost its fishing');
-  assert.ok((counts.get(Tile.Bridge) ?? 0) >= 10, 'docks and spans missing');
+  assert.ok((counts.get(Tile.Bridge) ?? 0) >= 10, 'the road spans went missing');
+  assert.ok((counts.get(Tile.Dock) ?? 0) >= 8, 'the mill pier went missing');
   assert.ok((counts.get(Tile.TreeOak) ?? 0) >= 18, 'the orchard thinned');
   // Livestock only — the named people arrive in the people pass.
   const spawnKinds = new Map((z.spawns ?? []).map((s) => [s.npc, s.count]));

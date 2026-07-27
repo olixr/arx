@@ -949,6 +949,7 @@ function stepMaterial(tx: number, ty: number): 'grass' | 'stone' | 'wood' | 'dir
       return 'stone';
     case Tile.WoodFloor:
     case Tile.Bridge:
+    case Tile.Dock:
       return 'wood';
     case Tile.Sand:
     case Tile.Snow:

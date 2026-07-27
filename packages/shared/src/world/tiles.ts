@@ -256,6 +256,13 @@ export enum Tile {
   CrackedCaveWall = 131,
   /** Worked flagstone floor — the masonry dialect of dungeon halls. */
   DungeonFloor = 132,
+  /**
+   * A jetty deck striding out over the water on driven piles — the
+   * EXPOSED, suspended structure. Bridge is its sibling: the same
+   * raised walk, but seated INTO both banks with stone abutments,
+   * piers, and rails. The renderer paints them as different builds.
+   */
+  Dock = 133,
 }
 
 export enum Detail {
@@ -326,6 +333,7 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.Stump]: { name: 'stump', solid: false, color: '#8a6a45' },
   [Tile.Fence]: { name: 'fence', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
   [Tile.Bridge]: { name: 'bridge', solid: false, color: '#96703c', variants: ['#8e6836'] },
+  [Tile.Dock]: { name: 'dock', solid: false, color: '#9c7a4a', variants: ['#92714a'] },
   [Tile.Snow]: { name: 'snow', solid: false, color: '#e8ecf2', variants: ['#dfe4ec'] },
   [Tile.Swamp]: { name: 'swamp', solid: false, color: '#4d6b3c', variants: ['#476339'] },
   [Tile.TreeOak]: { name: 'oak tree', solid: true, color: '#3f7d3a', raised: true, topColor: '#1f5426' },
