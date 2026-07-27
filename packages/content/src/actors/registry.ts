@@ -161,7 +161,7 @@ export const HUMANOID_BASE: NpcDef = {
   attackRange: 1.0,
   attackCooldownTicks: 44,
   aggroRange: 0,
-  leashRange: 10,
+  leashRange: 20,
   speed: 3.6,
   xpReward: 90,
   loot: [],
