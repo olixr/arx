@@ -115,11 +115,14 @@ import {
   POI_DEFS,
   POI_PREFABS,
   ROAD_CALM,
+  ROAD_SHOULDER,
   SETTLED_ANCHORS,
   dangerLaw,
   pickWild,
+  replaceGeography,
   roadDistanceAt,
   wildCandidates,
+  type GeographyDef,
 } from '@devcraft/content';
 import {
   POI_CELL,
@@ -1504,6 +1507,7 @@ export class GameServer {
       look: player.look ?? undefined,
       seed: config.worldSeed,
       havens: this.havenWire(),
+      anchors: this.anchorWire(),
     });
     session.sendJson({ t: 'skills', xp: player.skills });
     session.sendJson({ t: 'recipes', known: [...player.knownRecipes] });
@@ -3006,7 +3010,9 @@ export class GameServer {
     const wire = this.havenWire();
     if (JSON.stringify(wire) !== before) {
       for (const s of this.sessions) {
-        if (s.playerEid !== null) s.sendJson({ t: 'havens', list: wire });
+        if (s.playerEid !== null) {
+          s.sendJson({ t: 'havens', list: wire, settled: this.anchorWire() });
+        }
       }
     }
   }
@@ -3074,12 +3080,20 @@ export class GameServer {
    * Macro-cells the authored-sites roster claims. Both sweeps skip
    * them (the plan must never evict its own landmarks), and the
    * seeder below restores them whenever the ledger disagrees.
+   * Computed at CALL time — the geography is a live registry now, and
+   * a cached projection would go stale the moment the studio moves a
+   * milepost (the ROAD_BOUNDS lesson).
    */
-  private static readonly AUTHORED_CELLS: ReadonlySet<string> = new Set(
-    AUTHORED_WILD_SITES.map((s) =>
-      s.cell ? poiCellKey(s.cell[0], s.cell[1]) : poiCellKey(poiCellOf(s.x!), poiCellOf(s.y!)),
-    ),
-  );
+  private authoredCells(): Map<string, string> {
+    const cells = new Map<string, string>();
+    for (const s of AUTHORED_WILD_SITES) {
+      const key = s.cell
+        ? poiCellKey(s.cell[0], s.cell[1])
+        : poiCellKey(poiCellOf(s.x!), poiCellOf(s.y!));
+      cells.set(key, s.id);
+    }
+    return cells;
+  }
 
   /**
    * Stand the master plan's authored wild sites in the ledger — the
@@ -3163,11 +3177,12 @@ export class GameServer {
   private zonePlanSweep(): number {
     if (!this.poiPrefabs) return 0;
     const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
+    const authored = this.authoredCells();
     let evicted = 0;
     for (const [key, row] of this.poiLedger) {
       // Authored cells are the plan's own landmarks — never evicted
       // (they stand near planned rects deliberately, tight-padded).
-      if (GameServer.AUTHORED_CELLS.has(key)) continue;
+      if (authored.has(key)) continue;
       if (row.site === null || !poiSiteBlocked(row.site, ctx)) continue;
       const { cellX, cellY } = row.site;
       this.retirePoiCell(key);
@@ -3205,12 +3220,13 @@ export class GameServer {
   private fallowSweep(cutoffMs: number): { turned: number; rerolled: number } {
     if (!this.poiPrefabs) return { turned: 0, rerolled: 0 };
     const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
+    const authored = this.authoredCells();
     let turned = 0;
     let rerolled = 0;
     for (const [key, row] of this.poiLedger) {
       // Authored landmarks don't churn: the veil has ALWAYS held its
       // den — clear it and it comes back the same, not different.
-      if (GameServer.AUTHORED_CELLS.has(key)) continue;
+      if (authored.has(key)) continue;
       if (row.site === null || row.clearedAt === null || row.clearedAt >= cutoffMs) continue;
       const { cellX, cellY } = row.site;
       this.retirePoiCell(key);
@@ -3235,6 +3251,177 @@ export class GameServer {
     // A turned cell may have raised or dimmed a lamp.
     if (turned > 0) this.rebuildHavens();
     return { turned, rerolled };
+  }
+
+  /** Settled anchors as wire quads [x, y, safeR, haven] for the client. */
+  private anchorWire(): number[][] {
+    return SETTLED_ANCHORS.map((a) => [a.x, a.y, a.safeR, a.haven ? 1 : 0]);
+  }
+
+  /**
+   * THE GEOGRAPHY RELOAD — the World Studio's save lands here. Swap
+   * the live plan, forget every generated chunk (terrain is a pure
+   * function of the plan, so the whole world redraws on demand),
+   * restream everything each client can see, push the fresh anchor
+   * list, and re-judge the POI ledger under the new plan. Player
+   * built/crop tiles reapply on regeneration — an edit never eats a
+   * player's fence.
+   */
+  reloadGeography(def: GeographyDef): { evicted: number; orphaned: number } {
+    replaceGeography(def);
+    this.world.dropAll();
+    for (const s of this.sessions) s.knownChunks.clear();
+    this.anchorCache = null;
+    // Anchors may have moved even when no haven changed — push both.
+    const wire = { t: 'havens' as const, list: this.havenWire(), settled: this.anchorWire() };
+    for (const s of this.sessions) {
+      if (s.playerEid !== null) s.sendJson(wire);
+    }
+    const swept = this.geographySweep();
+    this.seedAuthoredSites();
+    this.rebuildHavens();
+    console.log(
+      `[geo] plan reloaded — ${def.routes.length} routes, ${def.sites.length} sites, ` +
+        `${def.anchors.length} anchors · ${swept.evicted} cell(s) re-rolled, ` +
+        `${swept.orphaned} orphaned landmark(s) dissolved`,
+    );
+    return swept;
+  }
+
+  /**
+   * Re-judge every decided cell under the CURRENT plan: a site whose
+   * footprint a new rect or road now crosses re-rolls (epoch+1), and
+   * a cell that used to be an authored landmark but has left the
+   * roster dissolves back to the honest roll — an orphaned Last Lamp
+   * must not keep burning after the plan strikes it.
+   */
+  private geographySweep(): { evicted: number; orphaned: number } {
+    if (!this.poiPrefabs) return { evicted: 0, orphaned: 0 };
+    const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
+    const authored = this.authoredCells();
+    const authoredOnly = new Set(
+      [...POI_DEFS.values()].filter((d) => d.weight === 0).map((d) => d.id),
+    );
+    let evicted = 0;
+    let orphaned = 0;
+    for (const [key, row] of this.poiLedger) {
+      if (authored.has(key)) continue; // the seeder owns these
+      if (row.site === null) continue;
+      const blocked = poiSiteBlocked(row.site, ctx);
+      // A weight-0 archetype only ever places through the authored
+      // roster — a row wearing one outside the roster is an orphan.
+      const orphan = authoredOnly.has(row.site.defId);
+      // A road redrawn through a standing camp: the anchor's distance
+      // to the carve says whether the site now blocks the way.
+      const paved =
+        roadDistanceAt(config.worldSeed, row.site.anchorX, row.site.anchorY) <= ROAD_SHOULDER;
+      if (!blocked && !orphan && !paved) continue;
+      const { cellX, cellY } = row.site;
+      this.retirePoiCell(key);
+      const epoch = row.epoch + 1;
+      const site = orphan ? null : poiForCell(config.worldSeed, cellX, cellY, epoch, ctx);
+      this.accounts.recordPoiCell(
+        cellX,
+        cellY,
+        epoch,
+        site && {
+          poiId: site.defId,
+          prefabId: site.prefabId,
+          tier: site.tier,
+          anchorX: site.anchorX,
+          anchorY: site.anchorY,
+        },
+      );
+      this.poiLedger.set(key, { epoch, site, clearedAt: null });
+      if (orphan) orphaned++;
+      else evicted++;
+    }
+    if (evicted + orphaned > 0) this.rebuildHavens();
+    return { evicted, orphaned };
+  }
+
+  /**
+   * THE WORLD SNAPSHOT — everything the studio's World view needs in
+   * one read: the seed (so the editor runs the same worldgen), the
+   * macro-cell law, and every ledger row with its live/authored state.
+   */
+  worldSnapshot(): {
+    seed: number;
+    poiCell: number;
+    cells: Array<{
+      cellX: number;
+      cellY: number;
+      epoch: number;
+      clearedAt: number | null;
+      site: PoiSite | null;
+      defName: string | null;
+      zoneId: string | null;
+      authoredId: string | null;
+    }>;
+  } {
+    const authored = this.authoredCells();
+    const cells = [...this.poiLedger.entries()].map(([key, row]) => ({
+      cellX: row.site?.cellX ?? Number(key.split(',')[0]),
+      cellY: row.site?.cellY ?? Number(key.split(',')[1]),
+      epoch: row.epoch,
+      clearedAt: row.clearedAt,
+      site: row.site ? { ...row.site } : null,
+      defName: row.site ? (POI_DEFS.get(row.site.defId)?.name ?? row.site.defId) : null,
+      zoneId: this.poiLive.get(key)?.zoneId ?? null,
+      authoredId: authored.get(key) ?? null,
+    }));
+    return { seed: config.worldSeed, poiCell: POI_CELL, cells };
+  }
+
+  /**
+   * POI cell administration — the studio's levers, the /poi chat
+   * commands' exact semantics behind an API surface.
+   */
+  poiCellAction(
+    cellX: number,
+    cellY: number,
+    action: 'reroll' | 'dissolve' | 'force',
+    defId?: string,
+  ): { ok: true; site: PoiSite | null } | { ok: false; error: string } {
+    if (!this.poiPrefabs) return { ok: false, error: 'poi system not initialized' };
+    const key = poiCellKey(cellX, cellY);
+    if (action === 'force' && defId !== undefined && !POI_DEFS.has(defId)) {
+      return { ok: false, error: `unknown archetype '${defId}'` };
+    }
+    const epoch = (this.poiLedger.get(key)?.epoch ?? 0) + 1;
+    this.retirePoiCell(key);
+    if (action === 'dissolve') {
+      // Decided-empty at a fresh epoch: the cell stays quiet until a
+      // sweep or an explicit re-roll turns it again.
+      this.accounts.recordPoiCell(cellX, cellY, epoch, null);
+      this.poiLedger.set(key, { epoch, site: null, clearedAt: null });
+      this.rebuildHavens();
+      return { ok: true, site: null };
+    }
+    this.poiLedger.delete(key);
+    const site = this.materializePoiCell(cellX, cellY, {
+      epoch,
+      ...(action === 'force' ? { force: defId ?? true } : {}),
+    });
+    return { ok: true, site };
+  }
+
+  /**
+   * The composed zone standing in a cell — materializing it first if
+   * the ledger has decided a site nobody has walked near yet. The
+   * studio reads this to open a POI like any other map, and the adopt
+   * flow freezes it into an authored zone.
+   */
+  poiCellZone(cellX: number, cellY: number): ZoneDef | null {
+    const key = poiCellKey(cellX, cellY);
+    let live = this.poiLive.get(key);
+    if (!live?.zoneId) {
+      const row = this.poiLedger.get(key);
+      if (!row?.site) return null;
+      this.materializePoiCell(cellX, cellY);
+      live = this.poiLive.get(key);
+    }
+    return live?.zoneId ? (this.world.zoneById(live.zoneId) ?? null) : null;
   }
 
   /**

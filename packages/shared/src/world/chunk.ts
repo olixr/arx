@@ -123,6 +123,18 @@ export class ChunkStore implements CollisionSource {
     this.memoCx = NaN;
   }
 
+  /**
+   * Forget every chunk. The lever for "a worldgen input changed":
+   * geography edits redraw terrain everywhere, so rect-scoped drops
+   * can't cover it — regeneration is on-demand and player-built tiles
+   * reapply on regen, so a full clear is always safe.
+   */
+  dropAll(): void {
+    this.chunks.clear();
+    this.memoCx = NaN;
+    this.memoChunk = undefined;
+  }
+
   get(cx: number, cy: number): ChunkData | undefined {
     return this.chunks.get(chunkKey(cx, cy));
   }

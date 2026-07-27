@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   AMBERFORD_RECT,
+  AUTHORED_GEOGRAPHY,
   AUTHORED_WILD_SITES,
   DAWNMEAD_RECT,
   PLANNED_ZONE_RECTS,
@@ -9,13 +10,18 @@ import {
   SILVERFALL_RECT,
   distToRect,
   fieldApronAt,
+  geographySnapshot,
+  geographyWarnings,
   massifAt,
   nearRoads,
+  replaceGeography,
   roadBearingAt,
   roadDistanceAt,
   roadHitAt,
   thornveilAt,
+  validateGeographyDef,
 } from './geography.js';
+import { SETTLED_ANCHORS } from './danger.js';
 import { buildDawnmead } from './maps/dawnmead.js';
 
 /**
@@ -133,4 +139,101 @@ test('roadBearingAt points at the road, and honestly refuses far ground', () => 
   assert.ok(after < before, 'walking the bearing must close on the road');
   // The deep frontier has no bearing to give.
   assert.equal(roadBearingAt(2000, 2000, 40), null);
+});
+
+// ------------------------------------------------------------------
+// THE LIVE REGISTRY — the plan is editable data now. The validator is
+// the one gate; replaceGeography must move every query and every
+// exported array in the same breath, and the authored plan must
+// round-trip through its own validator (the seed law).
+// ------------------------------------------------------------------
+
+test('the authored plan passes its own validator, byte-honest', () => {
+  const res = validateGeographyDef(AUTHORED_GEOGRAPHY);
+  assert.ok(res.ok, 'authored plan must validate');
+  if (res.ok) {
+    assert.equal(res.def.routes.length, AUTHORED_GEOGRAPHY.routes.length);
+    assert.equal(res.def.sites.length, AUTHORED_GEOGRAPHY.sites.length);
+    assert.equal(res.def.anchors.length, AUTHORED_GEOGRAPHY.anchors.length);
+  }
+});
+
+test('the authored plan earns no warnings from its own counsel', () => {
+  assert.deepEqual(geographyWarnings(AUTHORED_GEOGRAPHY), []);
+});
+
+test('the validator collects every error and names its subject', () => {
+  const res = validateGeographyDef({
+    routes: [{ id: 'Bad Id', name: '', kind: 'lane', pts: [{ x: 0, y: 0 }] }],
+    sites: [
+      { id: 'twin_a', defId: 'waystation', x: 10, y: 10 },
+      { id: 'twin_b', defId: 'waystation', x: 20, y: 20 },
+      { id: 'confused', defId: 'waystation', x: 5, y: 5, cell: [3, 3] },
+    ],
+    anchors: [],
+    massifs: [{ id: 'flat', x: 0, y: 0, r: 2 }],
+    veils: [],
+    planned: [{ id: 'huge', x: 0, y: 0, w: 9999, h: 4 }],
+  });
+  assert.ok(!res.ok);
+  if (!res.ok) {
+    const all = res.errors.join(' | ');
+    assert.match(all, /routes\[0\]\.id/);
+    assert.match(all, /shares macro-cell/);
+    assert.match(all, /'confused'.*not both/);
+    assert.match(all, /anchors must be a non-empty array/);
+    assert.match(all, /massifs\[0\]/);
+    assert.match(all, /planned\[0\]/);
+  }
+});
+
+test('the validator refuses a site wearing an unknown archetype when refs are given', () => {
+  const snap = geographySnapshot();
+  snap.sites = [{ id: 'lost', defId: 'no_such_place', x: 500, y: 500 }];
+  const res = validateGeographyDef(snap, { poiDefIds: new Set(['waystation']) });
+  assert.ok(!res.ok);
+  if (!res.ok) assert.match(res.errors.join(' '), /unknown POI archetype 'no_such_place'/);
+});
+
+test('replaceGeography moves the roads, the anchors, and every query with them', () => {
+  const before = geographySnapshot();
+  try {
+    const draft = geographySnapshot();
+    // A brand-new road through the far east, far from every shipped route.
+    draft.routes = [
+      { id: 'east_reach', name: 'The East Reach', kind: 'road', pts: [{ x: 1000, y: 100 }, { x: 1200, y: 100 }] },
+    ];
+    draft.anchors = [{ x: 900, y: 100, safeR: 64 }];
+    draft.sites = [{ id: 'east_rest', defId: 'waystation', x: 1100, y: 92 }];
+    replaceGeography(draft);
+    // The exported arrays kept their identity but hold the new truth.
+    assert.equal(ROAD_ROUTES.length, 1);
+    assert.equal(ROAD_ROUTES[0]!.id, 'east_reach');
+    assert.equal(SETTLED_ANCHORS.length, 1);
+    assert.equal(AUTHORED_WILD_SITES[0]!.id, 'east_rest');
+    // The road queries answer from the new plan (derived bounds moved).
+    assert.ok(roadDistanceAt(1337, 1100, 100) < 8, 'the East Reach exists');
+    assert.equal(roadDistanceAt(1337, 50, 45), Infinity, 'the First Road is gone');
+    assert.equal(nearRoads(0, 0, 200, 200), false);
+    assert.ok(nearRoads(990, 90, 1010, 110));
+  } finally {
+    replaceGeography(before);
+  }
+  // The restoration is honest: shipped queries answer as ever.
+  assert.ok(roadDistanceAt(1337, 50, 45) < 8);
+  assert.equal(SETTLED_ANCHORS.length, AUTHORED_GEOGRAPHY.anchors.length);
+});
+
+test('the warnings counsel flags loose ends without blocking them', () => {
+  const draft = geographySnapshot();
+  draft.routes.push({
+    id: 'nowhere_road',
+    name: 'The Road to Nowhere',
+    kind: 'road',
+    pts: [{ x: 800, y: 300 }, { x: 900, y: 300 }],
+  });
+  const v = validateGeographyDef(draft);
+  assert.ok(v.ok, 'a loose road is legal — the studio warns, never blocks');
+  const warnings = geographyWarnings(draft).join(' | ');
+  assert.match(warnings, /nowhere_road.*loose/);
 });

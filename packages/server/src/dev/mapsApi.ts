@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import {
+  AUTHORED_GEOGRAPHY,
   AUTHORED_LOOT_TABLES,
   AUTHORED_NPCS,
   AUTHORED_POI_DEFS,
@@ -13,12 +14,15 @@ import {
   NPCS,
   NPC_ACTORS,
   POI_DEFS,
+  geographySnapshot,
+  geographyWarnings,
   lootTableErrors,
   prefabFromJson,
   prefabToJson,
   replaceLootTables,
   replaceNpcDefs,
   replacePoiDefs,
+  validateGeographyDef,
   validateNpcDef,
   validatePoiDef,
   zoneFromJson,
@@ -130,6 +134,7 @@ export function createMapsApi(
       url.pathname === '/dev/maps' ||
       url.pathname.startsWith('/dev/maps/') ||
       url.pathname === '/dev/registry' ||
+      url.pathname === '/dev/world' ||
       url.pathname === '/dev/prefabs' ||
       url.pathname.startsWith('/dev/prefabs/') ||
       url.pathname.startsWith('/dev/content/') ||
@@ -148,6 +153,158 @@ export function createMapsApi(
     try {
       if (url.pathname === '/dev/registry' && req.method === 'GET') {
         sendJson(res, 200, game.registrySnapshot());
+        return true;
+      }
+
+      // ------------------------------------------------ the world
+      // One read for the World view: seed (the editor runs the same
+      // worldgen), the POI ledger with live/authored states, and the
+      // geography plan with its advisory warnings.
+      if (url.pathname === '/dev/world' && req.method === 'GET') {
+        const snap = game.worldSnapshot();
+        const def = geographySnapshot();
+        const edited =
+          loadContentDocs(db, 'geography').find((d) => d.id === 'world')?.edited ?? false;
+        sendJson(res, 200, {
+          ...snap,
+          geography: def,
+          geographyEdited: edited,
+          warnings: geographyWarnings(def),
+          poiDefs: [...POI_DEFS.values()].map((d) => ({
+            id: d.id,
+            name: d.name,
+            weight: d.weight,
+            tiers: d.tiers,
+            haven: d.haven?.safeR ?? null,
+          })),
+        });
+        return true;
+      }
+
+      // ------------------------------------------------ geography
+      // The whole plan is ONE document under the two-hash law. A save
+      // swaps the live registry, regenerates the world, restreams
+      // every client, and re-surveys the POI ledger in the same breath.
+      if (url.pathname === '/dev/content/geography') {
+        if (req.method === 'GET') {
+          const def = geographySnapshot();
+          const edited =
+            loadContentDocs(db, 'geography').find((d) => d.id === 'world')?.edited ?? false;
+          sendJson(res, 200, {
+            def,
+            edited,
+            warnings: geographyWarnings(def),
+          });
+          return true;
+        }
+        if (req.method === 'PUT') {
+          let raw: unknown;
+          try {
+            raw = JSON.parse(await readBody(req));
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          const result = validateGeographyDef(raw, { poiDefIds: new Set(POI_DEFS.keys()) });
+          if (!result.ok) {
+            sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          importContentDoc(db, 'geography', 'world', result.def);
+          const swept = game.reloadGeography(result.def);
+          console.log(`[content] geography saved + live (world regenerating)`);
+          sendJson(res, 200, { ok: true, swept, warnings: geographyWarnings(result.def) });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const outcome = revertContentDoc(db, 'geography', 'world', AUTHORED_GEOGRAPHY);
+          const swept = game.reloadGeography({
+            routes: AUTHORED_GEOGRAPHY.routes.map((r) => ({ ...r, pts: r.pts.map((p) => ({ ...p })) })),
+            sites: AUTHORED_GEOGRAPHY.sites.map((s) => ({ ...s })),
+            anchors: AUTHORED_GEOGRAPHY.anchors.map((a) => ({ ...a })),
+            massifs: AUTHORED_GEOGRAPHY.massifs.map((m) => ({ ...m })),
+            veils: AUTHORED_GEOGRAPHY.veils.map((v) => ({ ...v })),
+            planned: AUTHORED_GEOGRAPHY.planned.map((p) => ({ ...p })),
+          });
+          console.log(`[content] geography ${outcome} — shipped plan stands`);
+          sendJson(res, 200, { ok: true, outcome, swept });
+          return true;
+        }
+      }
+
+      // ------------------------------------------------ POI cells
+      // The studio's levers over the frontier ledger — the /poi chat
+      // commands' semantics behind an API.
+      if (url.pathname === '/dev/pois/cell' && req.method === 'POST') {
+        let body: { cellX?: number; cellY?: number; action?: string; defId?: string };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch (err) {
+          sendJson(res, 400, { error: (err as Error).message });
+          return true;
+        }
+        const { cellX, cellY, action } = body;
+        if (
+          !Number.isInteger(cellX) ||
+          !Number.isInteger(cellY) ||
+          (action !== 'reroll' && action !== 'dissolve' && action !== 'force')
+        ) {
+          sendJson(res, 400, { error: "needs { cellX, cellY, action: 'reroll'|'dissolve'|'force' }" });
+          return true;
+        }
+        const result = game.poiCellAction(cellX!, cellY!, action, body.defId);
+        if (!result.ok) {
+          sendJson(res, 400, { error: result.error });
+          return true;
+        }
+        sendJson(res, 200, { ok: true, site: result.site });
+        return true;
+      }
+
+      // Adopt: freeze a composed POI site into an authored zone the
+      // editor owns — the ground the scaffold rolled becomes ground
+      // the studio curates. The cell itself dissolves (decided-empty)
+      // so the frontier never re-stands a twin under the new zone.
+      if (url.pathname === '/dev/maps/adopt' && req.method === 'POST') {
+        let body: { cellX?: number; cellY?: number; id?: string; name?: string };
+        try {
+          body = JSON.parse((await readBody(req)) || '{}') as typeof body;
+        } catch (err) {
+          sendJson(res, 400, { error: (err as Error).message });
+          return true;
+        }
+        const { cellX, cellY, id } = body;
+        if (!Number.isInteger(cellX) || !Number.isInteger(cellY) || typeof id !== 'string') {
+          sendJson(res, 400, { error: 'needs { cellX, cellY, id }' });
+          return true;
+        }
+        if (!ID_RE.test(id)) {
+          sendJson(res, 400, { error: `zone id must match ${ID_RE}` });
+          return true;
+        }
+        if (game.world.zoneById(id) || builtinZones.has(id)) {
+          sendJson(res, 400, { error: `zone id '${id}' is taken` });
+          return true;
+        }
+        const composed = game.poiCellZone(cellX!, cellY!);
+        if (!composed) {
+          sendJson(res, 404, { error: `cell ${cellX},${cellY} holds no site to adopt` });
+          return true;
+        }
+        const adopted: ZoneDef = {
+          ...composed,
+          id,
+          name: body.name?.trim() || composed.name,
+        };
+        mkdirSync(mapsDir, { recursive: true });
+        await writeFile(join(mapsDir, `${id}.json`), JSON.stringify(zoneToJson(adopted), null, 2));
+        // Dissolve FIRST (retires the poi zone + its placements), then
+        // stand the authored twin in its place — same tick, no gap a
+        // player could fall through.
+        game.poiCellAction(cellX!, cellY!, 'dissolve');
+        game.reloadZone(adopted);
+        console.log(`[maps] adopted poi cell ${cellX},${cellY} as zone '${id}'`);
+        sendJson(res, 200, { ok: true, id });
         return true;
       }
 
@@ -639,6 +796,7 @@ export function createMapsApi(
           spawn: z.spawn ?? null,
           builtin: builtinZones.has(z.id),
           hasFile: onDisk.has(z.id),
+          poi: z.id.startsWith('poi:'),
           actorSpawns: z.actorSpawns?.length ?? 0,
           npcSpawns: z.spawns?.length ?? 0,
           portals: z.portals?.length ?? 0,
@@ -653,7 +811,22 @@ export function createMapsApi(
 
       const zoneMatch = /^\/dev\/maps\/zone\/([^/]+)$/.exec(url.pathname);
       if (zoneMatch) {
-        const id = zoneMatch[1]!;
+        const id = decodeURIComponent(zoneMatch[1]!);
+        // Composed POI zones open read-only: the scaffold owns their
+        // ground (edits belong to the archetype bench or the adopt
+        // flow), but the studio may LOOK at anything the world holds.
+        if (id.startsWith('poi:')) {
+          if (req.method === 'GET') {
+            const live = game.world.zoneById(id);
+            if (live) sendJson(res, 200, zoneToJson(live));
+            else sendJson(res, 404, { error: `no standing site '${id}' — it may not be materialized` });
+            return true;
+          }
+          sendJson(res, 400, {
+            error: `'${id}' is a composed site — edit its archetype in the Content Studio, or adopt it as an authored zone`,
+          });
+          return true;
+        }
         if (!ID_RE.test(id)) {
           sendJson(res, 400, { error: `zone id must match ${ID_RE}` });
           return true;

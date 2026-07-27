@@ -31,6 +31,18 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   { x: -288, y: -160, safeR: 72, haven: true },
 ];
 
+/**
+ * Swap the settled anchors live (the geography live-registry law —
+ * `replaceGeography` calls this; nothing else should). The array
+ * identity is stable: consumers that captured the reference keep
+ * reading the fresh truth.
+ */
+export function replaceSettledAnchors(anchors: readonly DangerAnchor[]): void {
+  const live = SETTLED_ANCHORS as DangerAnchor[];
+  live.length = 0;
+  for (const a of anchors) live.push({ ...a });
+}
+
 export interface DangerLaw {
   /** Combat-level band for spawns scaled at this tier. */
   npcLevel: readonly [number, number];

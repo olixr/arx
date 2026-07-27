@@ -437,6 +437,11 @@ export declare class ClientGame {
     sendRegister(user: string, pass: string, name: string): void;
     private openConnection;
     get sessionToken(): string | null;
+    /**
+     * The settled anchors as last pushed by the server — the geography
+     * is live data there, so the wire wins over the bundled constants.
+     */
+    private settledAnchors;
     /** Merge the server's haven triples with the settled anchors. */
     private setHavens;
     private handleMessage;

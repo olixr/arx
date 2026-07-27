@@ -602,10 +602,26 @@ export class ClientGame {
     return this.token;
   }
 
+  /**
+   * The settled anchors as last pushed by the server — the geography
+   * is live data there, so the wire wins over the bundled constants.
+   */
+  private settledAnchors: readonly DangerAnchor[] = SETTLED_ANCHORS;
+
   /** Merge the server's haven triples with the settled anchors. */
-  private setHavens(list: number[][]): void {
+  private setHavens(list: number[][], settled?: number[][]): void {
+    if (settled) {
+      this.settledAnchors = settled
+        .filter((a) => a.length >= 3)
+        .map(([x, y, safeR, haven]) => ({
+          x: x!,
+          y: y!,
+          safeR: safeR!,
+          ...(haven ? { haven: true } : {}),
+        }));
+    }
     this.dangerAnchors = [
-      ...SETTLED_ANCHORS,
+      ...this.settledAnchors,
       ...list
         .filter((h) => h.length >= 3)
         .map(([x, y, safeR]) => ({ x: x!, y: y!, safeR: safeR!, haven: true })),
@@ -618,7 +634,7 @@ export class ClientGame {
         this.ownEid = msg.eid;
         this.ownName = msg.name;
         this.worldSeed = msg.seed ?? null;
-        this.setHavens(msg.havens ?? []);
+        this.setHavens(msg.havens ?? [], msg.anchors);
         this.ownLook = msg.look ?? null;
         this.token = msg.token;
         this.serverTick = msg.tick;
@@ -947,9 +963,10 @@ export class ClientGame {
         break;
       }
       case 'havens': {
-        // A waystation stood up (or turned fallow) — the danger field
-        // shifts under our feet, and the music with it.
-        this.setHavens(msg.list);
+        // A waystation stood up (or turned fallow) — or the plan
+        // itself changed. The danger field shifts under our feet,
+        // and the music with it.
+        this.setHavens(msg.list, msg.settled);
         break;
       }
       case 'social': {

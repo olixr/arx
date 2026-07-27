@@ -336,6 +336,13 @@ export interface S2CWelcome {
    * danger reads stay in lockstep with the server's.
    */
   havens?: number[][];
+  /**
+   * Settled anchors as [x, y, safeR, haven] quads — the LIVE hearth
+   * list. The geography is editable data now, so the client must not
+   * trust its bundled copy: absent (old server) it falls back to the
+   * content constants, present it replaces them wholesale.
+   */
+  anchors?: number[][];
 }
 
 /** The haven list changed (a waystation stood up or turned fallow). */
@@ -343,6 +350,8 @@ export interface S2CHavens {
   t: 'havens';
   /** [x, y, safeR] triples — replaces the whole list. */
   list: number[][];
+  /** Settled-anchor quads [x, y, safeR, haven] — present when the plan itself changed. */
+  settled?: number[][];
 }
 
 export interface S2CReject {

@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { WebSocketServer } from 'ws';
 import {
+  AUTHORED_GEOGRAPHY,
   AUTHORED_LOOT_TABLES,
   AUTHORED_NPCS,
   AUTHORED_POI_DEFS,
@@ -14,9 +15,11 @@ import {
   buildSilverfall,
   buildUndercroft,
   lootTableErrors,
+  replaceGeography,
   replaceLootTables,
   replaceNpcDefs,
   replacePoiDefs,
+  validateGeographyDef,
   validateNpcDef,
   validatePoiDef,
   zoneFromJson,
@@ -143,6 +146,27 @@ const accounts = new AccountStore(db);
     `[content] pois: ${goodPois.length} loaded ` +
       `(+${poiSeed.added} ~${poiSeed.updated} !${poiSeed.kept} -${poiSeed.removed} =${poiSeed.unchanged})`,
   );
+
+  // THE GEOGRAPHY joins the law: one 'world' doc holding the whole
+  // plan — roads, authored wild sites, anchors, landform fields,
+  // planned rects. It MUST swap in before WorldSource exists: the
+  // first generated chunk and every boot sweep read the live plan.
+  seedContentDocs(db, 'geography', [{ id: 'world', doc: AUTHORED_GEOGRAPHY }]);
+  const geoDocs = loadContentDocs(db, 'geography');
+  const geoRow = geoDocs.find((d) => d.id === 'world');
+  if (geoRow) {
+    const res = validateGeographyDef(geoRow.doc);
+    if (!res.ok) {
+      console.warn(`[content] DB geography invalid (${res.errors[0]}) — authored plan stands`);
+    } else {
+      replaceGeography(res.def);
+      console.log(
+        `[content] geography: ${res.def.routes.length} routes · ${res.def.sites.length} wild sites · ` +
+          `${res.def.anchors.length} anchors · ${res.def.planned.length} planned rects` +
+          (geoRow.edited ? ' (tool-edited)' : ''),
+      );
+    }
+  }
 }
 
 const world = new WorldSource(config.worldSeed, zones);
