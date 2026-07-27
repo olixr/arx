@@ -1208,69 +1208,225 @@ function showModal(builder: (body: HTMLElement, close: () => void) => void): voi
   const modal = $('modal') as HTMLDialogElement;
   const body = $('modal-body');
   body.innerHTML = '';
+  body.className = '';
   builder(body, () => modal.close());
   modal.showModal();
 }
 
+/** Recently opened zone ids, newest first (localStorage-backed). */
+function recentZones(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem('dc-editor-recent') ?? '[]') as string[];
+  } catch {
+    return [];
+  }
+}
+
+function noteRecentZone(id: string): void {
+  const list = [id, ...recentZones().filter((x) => x !== id)].slice(0, 8);
+  localStorage.setItem('dc-editor-recent', JSON.stringify(list));
+}
+
+/**
+ * THE OPEN BROWSER — everything the world holds, one dialog: towns,
+ * the dark band, every composed frontier site, files, orphans. Search
+ * filters as you type; every row can open, show itself on the world
+ * map, or take its kind's actions (revert/delete/adopt).
+ */
 async function openBrowser(): Promise<void> {
   let list;
+  let cells: typeof world.ws.cells = world.ws.cells;
   try {
     list = await listMaps();
+    world.ws.setZones(list.zones);
+    cells = world.ws.cells;
     setServerStatus('connected');
   } catch (err) {
     toast(`server list failed: ${(err as Error).message}`, 4000);
     setServerStatus('offline — Import a local file instead');
     return;
   }
+  const zones = list.zones;
+  const orphans = list.orphans;
   showModal((body, close) => {
+    body.className = 'open-browser';
     const h = document.createElement('h2');
-    h.textContent = 'Open zone from server';
+    h.textContent = 'Open';
     body.appendChild(h);
-    const table = document.createElement('table');
-    table.className = 'map-table';
-    table.innerHTML =
-      '<thead><tr><th>zone</th><th>size</th><th>origin</th><th>content</th><th>kind</th><th></th></tr></thead>';
-    const tbody = document.createElement('tbody');
-    for (const z of list.zones) {
-      tbody.appendChild(mapRow(z, close));
-    }
-    table.appendChild(tbody);
-    body.appendChild(table);
-    if (list.orphans.length > 0) {
-      const p = document.createElement('p');
-      p.className = 'muted';
-      p.textContent = `on disk but not loaded: ${list.orphans.join(', ')}`;
-      body.appendChild(p);
-    }
+    const search = document.createElement('input');
+    search.type = 'search';
+    search.id = 'ob-search';
+    search.placeholder = 'Search zones and frontier sites… (name, id, archetype)';
+    body.appendChild(search);
+    const listHost = document.createElement('div');
+    listHost.className = 'ob-list';
+    body.appendChild(listHost);
+
+    const defNameOf = (id: string): string | null => {
+      const m = /^poi:(-?\d+),(-?\d+)$/.exec(id);
+      if (!m) return null;
+      const cell = cells.find((c) => c.cellX === Number(m[1]) && c.cellY === Number(m[2]));
+      return cell?.defName ?? null;
+    };
+
+    const rebuild = (): void => {
+      const q = search.value.trim().toLowerCase();
+      listHost.innerHTML = '';
+      const match = (z: MapListEntry): boolean =>
+        q === '' ||
+        z.id.toLowerCase().includes(q) ||
+        z.name.toLowerCase().includes(q) ||
+        (defNameOf(z.id)?.toLowerCase().includes(q) ?? false);
+
+      const recent = recentZones()
+        .map((id) => zones.find((z) => z.id === id))
+        .filter((z): z is MapListEntry => z !== undefined && match(z));
+      const towns = zones.filter((z) => !z.poi && z.origin.y < 512 && match(z));
+      const dark = zones.filter((z) => !z.poi && z.origin.y >= 512 && match(z));
+      // Every decided cell belongs in the catalog — the dormant ones
+      // (no zone standing yet) open by composing on demand.
+      const standing = new Set(zones.filter((z) => z.poi).map((z) => z.id));
+      const dormant: MapListEntry[] = cells
+        .filter((c) => c.site && !standing.has(`poi:${c.cellX},${c.cellY}`))
+        .map((c) => ({
+          id: `poi:${c.cellX},${c.cellY}`,
+          name: c.defName ?? c.site!.defId,
+          width: 0,
+          height: 0,
+          origin: { x: c.site!.anchorX, y: c.site!.anchorY },
+          spawn: null,
+          builtin: false,
+          hasFile: false,
+          poi: true,
+          actorSpawns: 0,
+          npcSpawns: 0,
+          portals: 0,
+          dormant: true,
+        }));
+      const sites = [...zones.filter((z) => z.poi), ...dormant].filter(match);
+
+      const section = (title: string, entries: MapListEntry[]): void => {
+        if (entries.length === 0) return;
+        const head = document.createElement('div');
+        head.className = 'ob-head';
+        head.textContent = `${title} (${entries.length})`;
+        listHost.appendChild(head);
+        for (const z of entries) listHost.appendChild(openRow(z, close));
+      };
+      if (q === '' && recent.length > 0) section('Recent', recent);
+      section('Towns & authored zones', towns);
+      section('The dark band', dark);
+      section('Frontier sites — composed by the scaffold', sites);
+      if (orphans.length > 0 && q === '') {
+        const p = document.createElement('p');
+        p.className = 'muted';
+        p.textContent = `On disk but not loaded (bad parse?): ${orphans.join(', ')}`;
+        listHost.appendChild(p);
+      }
+      if (listHost.childElementCount === 0) {
+        const p = document.createElement('p');
+        p.className = 'muted';
+        p.textContent = 'Nothing matches — the world holds no such place.';
+        listHost.appendChild(p);
+      }
+    };
+    search.oninput = rebuild;
+    rebuild();
+    search.focus();
   });
 }
 
-function mapRow(z: MapListEntry, close: () => void): HTMLTableRowElement {
-  const tr = document.createElement('tr');
-  const badges = [
-    z.builtin ? 'built-in' : '',
-    z.hasFile ? 'file' : '',
-  ].filter(Boolean).join(' + ');
-  tr.innerHTML =
-    `<td><b>${z.name}</b> <span class="muted">${z.id}</span></td>` +
-    `<td>${z.width}×${z.height}</td>` +
-    `<td>${z.origin.x},${z.origin.y}</td>` +
-    `<td class="muted">${z.npcSpawns} spawns · ${z.actorSpawns} actors · ${z.portals} portals</td>` +
-    `<td>${badges}</td>`;
-  const td = document.createElement('td');
-  const open = document.createElement('button');
-  open.textContent = 'Open';
-  open.onclick = async () => {
-    try {
-      const json = await fetchZone(z.id);
-      adoptZone(zoneFromJson(json), true);
-      close();
-      toast(`opened '${z.id}' from server`);
-    } catch (err) {
-      toast(`open failed: ${(err as Error).message}`, 4000);
-    }
+function openRow(z: MapListEntry, close: () => void): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'ob-row';
+  const pic = document.createElement('div');
+  pic.className = 'ob-pic';
+  if (z.dormant) {
+    // A thumbnail would force the site to compose server-side —
+    // browsing must never change the world. The lamp stands in.
+    pic.appendChild(iconImg('wsite', 30));
+  } else {
+    void world.view.thumbUrl(z.id).then((url) => {
+      if (url && row.isConnected) {
+        const img = document.createElement('img');
+        img.src = url;
+        pic.appendChild(img);
+      }
+    });
+  }
+  row.appendChild(pic);
+
+  const facts = document.createElement('div');
+  facts.className = 'ob-facts';
+  const title = document.createElement('div');
+  title.className = 'ob-title';
+  title.innerHTML = `<b></b><span class="muted"></span>`;
+  (title.firstChild as HTMLElement).textContent = z.name;
+  (title.lastChild as HTMLElement).textContent = z.id;
+  facts.appendChild(title);
+  const sub = document.createElement('div');
+  sub.className = 'ob-sub muted';
+  sub.textContent = z.dormant
+    ? `anchor @ ${z.origin.x},${z.origin.y} · dormant — composes when opened or approached`
+    : `${z.width}×${z.height} @ ${z.origin.x},${z.origin.y} · ` +
+      `${z.npcSpawns} spawns · ${z.actorSpawns} actors · ${z.portals} portals`;
+  facts.appendChild(sub);
+  const badges = document.createElement('div');
+  badges.className = 'ob-badges';
+  const badge = (text: string, cls = ''): void => {
+    const b = document.createElement('span');
+    b.className = `pill ${cls}`;
+    b.textContent = text;
+    badges.appendChild(b);
   };
-  td.appendChild(open);
+  if (z.builtin) badge('built-in');
+  if (z.hasFile) badge('file', 'brass');
+  if (z.poi) badge('frontier site', 'blue');
+  if (z.dormant) badge('dormant');
+  if (!z.dormant && z.origin.y >= 512) badge('dark band');
+  facts.appendChild(badges);
+  row.appendChild(facts);
+
+  const actions = document.createElement('div');
+  actions.className = 'ob-actions';
+  const open = document.createElement('button');
+  open.className = 'primary';
+  open.textContent = z.poi ? 'Look' : 'Open';
+  open.title = z.poi
+    ? 'Open read-only — the scaffold owns composed ground (Adopt to edit)'
+    : 'Open in the zone editor';
+  open.onclick = () => {
+    close();
+    noteRecentZone(z.id);
+    void openZoneById(z.id);
+  };
+  actions.appendChild(open);
+  if (z.origin.y < 512) {
+    const show = document.createElement('button');
+    show.textContent = 'Map';
+    show.title = 'Show on the world map';
+    show.onclick = () => {
+      close();
+      setMode('world');
+      world.select({ kind: 'zone', id: z.id });
+      world.centerOn({ kind: 'zone', id: z.id });
+    };
+    actions.appendChild(show);
+  }
+  if (z.poi) {
+    const m = /^poi:(-?\d+),(-?\d+)$/.exec(z.id);
+    if (m) {
+      const adopt = document.createElement('button');
+      adopt.textContent = 'Adopt…';
+      adopt.title = 'Freeze this composed site into an authored zone you own';
+      adopt.onclick = () => {
+        close();
+        setMode('world');
+        world.adoptCell(Number(m[1]), Number(m[2]));
+      };
+      actions.appendChild(adopt);
+    }
+  }
   if (z.hasFile) {
     const del = document.createElement('button');
     del.textContent = z.builtin ? 'Revert' : 'Delete';
@@ -1283,16 +1439,17 @@ function mapRow(z: MapListEntry, close: () => void): HTMLTableRowElement {
       try {
         await deleteZone(z.id);
         toast(`${z.builtin ? 'reverted' : 'deleted'} '${z.id}'`);
+        world.view.invalidateZone(z.id);
         close();
         void openBrowser();
       } catch (err) {
         toast(`delete failed: ${(err as Error).message}`, 4000);
       }
     };
-    td.appendChild(del);
+    actions.appendChild(del);
   }
-  tr.appendChild(td);
-  return tr;
+  row.appendChild(actions);
+  return row;
 }
 
 function newZoneDialog(): void {
@@ -1350,8 +1507,9 @@ function syncZoneChip(): void {
     return;
   }
   const z = state.zone;
+  const readOnly = z.id.startsWith('poi:') ? ' · composed site (adopt to own it)' : '';
   $('zone-chip').innerHTML =
-    `<b>${z.name}</b><span>${z.id} · ${z.width}×${z.height} @ ${z.origin.x},${z.origin.y}</span>`;
+    `<b>${z.name}</b><span>${z.id} · ${z.width}×${z.height} @ ${z.origin.x},${z.origin.y}${readOnly}</span>`;
 }
 
 /**
@@ -2097,16 +2255,25 @@ $('btn-help').onclick = () =>
   showModal((body) => {
     body.innerHTML = `
       <h2>Map Studio</h2>
-      <p><b>Save</b> writes <code>data/maps/&lt;id&gt;.json</code> on the server and hot-swaps the
-      zone into the running world — anyone standing in it sees the change within a tick.</p>
+      <p><b>The World view</b> is the whole plan on one canvas — every zone, road, landmark,
+      hearth, and frontier site, rendered through the real worldgen. <b>Save</b> there PUTs the
+      geography document: the server regenerates terrain everywhere, restreams every client,
+      and re-surveys the frontier ledger. <b>The Zone view</b> edits one zone tile-by-tile;
+      Save writes <code>data/maps/&lt;id&gt;.json</code> and hot-swaps it into the running world.</p>
       <ul class="help">
-        <li><b>Paint B · Erase E</b> — right-drag always erases; [ ] size the brush</li>
-        <li><b>Line L · Rect R · Ellipse O</b> — Shift constrains; filled/outline in options</li>
-        <li><b>Fill G</b> — flood the hovered region on the active layer</li>
-        <li><b>Road T</b> — click waypoints, Enter lays L-shaped legs at road width</li>
-        <li><b>Select M</b> — drag inside to move; Alt-drag copies; ⌘C/⌘X/⌘V, Delete clears</li>
-        <li><b>Layers 1/2/3</b> — ground, detail, elevation; Alt-click picks anywhere</li>
-        <li><b>Pan</b> space-drag or middle-drag · <b>Zoom</b> wheel · <b>0</b> fits the zone</li>
+        <li><b>World ⇄ Zone</b> — W / Z, or the segment in the topbar; double-click a zone
+            on the world map to step in</li>
+        <li><b>World tools</b> — Survey V · Road R · Trail T · Landmark N · Hearth A ·
+            Plan ground P; drag things to move them, the carve re-cuts when you drop</li>
+        <li><b>Roads</b> — click waypoints, Enter/double-click opens the way; Alt-click a
+            segment adds a waypoint; Delete removes a point (a 2-point route dissolves)</li>
+        <li><b>The frontier</b> — click a diamond to administer its cell: open, re-roll,
+            force an archetype, dissolve, or <i>adopt</i> it into an authored zone you own</li>
+        <li><b>Lenses</b> — toggle zones/roads/landmarks/hearths/frontier/danger overlays</li>
+        <li><b>Zone tools</b> — Paint B · Erase E · Line L · Rect R · Ellipse O · Fill G ·
+            Road T · Select M · Picker I; layers 1/2/3; [ ] brush size</li>
+        <li><b>Everywhere</b> — space/middle-drag pans · wheel zooms · 0 fits ·
+            ⌘Z undoes · ⌘S saves · ⌘O opens · Esc cancels the most-transient thing</li>
         <li><b>Elevation</b> — paint levels, add stone-stair tiles on straight rims;
             Save runs the cliff auto-fence and stair/reachability laws</li>
       </ul>`;
@@ -2272,6 +2439,7 @@ async function openZoneById(id: string): Promise<void> {
   try {
     const json = await fetchZone(id);
     adoptZone(zoneFromJson(json), true);
+    noteRecentZone(id);
     if (id.startsWith('poi:')) {
       toast('a composed frontier site — look freely; adopt it from the World view to make it yours', 4600);
     } else {

@@ -335,6 +335,24 @@ export class WorldView {
       .catch(() => this.zoneArt.set(id, 'failed'));
   }
 
+  /**
+   * A zone's ground art as a data URL — the Open browser's thumbs
+   * ride the same cache the map draws from.
+   */
+  async thumbUrl(id: string): Promise<string | null> {
+    let art = this.zoneArt.get(id);
+    if (art === undefined || art === 'loading') {
+      try {
+        const json = await fetchZone(id);
+        this.buildZoneArt(id, json);
+      } catch {
+        this.zoneArt.set(id, 'failed');
+      }
+      art = this.zoneArt.get(id);
+    }
+    return art && art !== 'loading' && art !== 'failed' ? art.canvas.toDataURL() : null;
+  }
+
   private dangerBlock(bx: number, by: number): HTMLCanvasElement {
     const key = `${bx},${by}:${this.dangerRev}`;
     let cnv = this.dangerBlocks.get(key);

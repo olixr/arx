@@ -43,6 +43,8 @@ export declare class WorldMode {
     private drag;
     private spaceHeld;
     private booted;
+    /** Fit deferred until the canvas has real pixels (it may boot hidden). */
+    private needsFit;
     constructor(deps: WorldModeDeps);
     boot(): Promise<void>;
     /** Re-read ledger + zone list (after cell actions / zone saves). */

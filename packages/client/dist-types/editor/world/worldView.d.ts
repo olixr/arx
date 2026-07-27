@@ -54,6 +54,11 @@ export declare class WorldView {
     /** One pixel per tile of a zone's authored ground (+elev shade). */
     private buildZoneArt;
     private requestZoneArt;
+    /**
+     * A zone's ground art as a data URL — the Open browser's thumbs
+     * ride the same cache the map draws from.
+     */
+    thumbUrl(id: string): Promise<string | null>;
     private dangerBlock;
     render(): void;
     private isSel;

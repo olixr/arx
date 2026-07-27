@@ -25,6 +25,11 @@ export interface MapListEntry {
     actorSpawns: number;
     npcSpawns: number;
     portals: number;
+    /**
+     * Client-side synthetic: a ledger-decided site nobody has walked
+     * near yet — no zone stands, but opening it will compose one.
+     */
+    dormant?: boolean;
 }
 export interface MapList {
     zones: MapListEntry[];
