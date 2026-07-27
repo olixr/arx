@@ -1,10 +1,11 @@
-import { DEFAULT_LOOK, STATUS_IDS, type Look } from '@devcraft/shared';
+import { DEFAULT_LOOK, RARITY_TIERS, STATUS_IDS, type Look, type RarityTier } from '@devcraft/shared';
 import {
   ABILITIES,
   DANGER_LAWS,
   RECIPES,
   SHOPS,
   actorCombatDef,
+  expectedYield,
   prefabFromJson,
   zoneFromJson,
   type LootEntryDef,
@@ -663,6 +664,7 @@ function lootDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
   }
   let shareRefs: ShareRef[] = [];
   let expectedChip: HTMLElement | null = null;
+  let gearChip: HTMLElement | null = null;
 
   const shareOf = (idx: number | 'nothing'): number => {
     if (idx === 'nothing') {
@@ -680,13 +682,22 @@ function lootDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
       ref.pct.textContent = `${(share * 100).toFixed(share < 0.1 ? 1 : 0)}%`;
       if (ref.seg) ref.seg.style.flexGrow = String(Math.max(0.001, share));
     }
-    if (expectedChip) {
-      const expected = isPick()
-        ? draft.picks
-          ? (draft.picks[0] + draft.picks[1]) / 2
-          : 1
-        : draft.entries.reduce((s, e) => s + Math.min(1, e.chance ?? 1), 0);
-      expectedChip.textContent = `≈${expected.toFixed(1)} drops/roll`;
+    if (expectedChip || gearChip) {
+      // The analytic expectation — nested sub-tables included, the same
+      // math the flood-law test holds every foe to.
+      const tables = new Map<string, LootTableDef>(state.loot.map((t) => [t.def.id, t.def]));
+      tables.set(draft.id, draft);
+      let y = { stacks: 0, gearStacks: 0 };
+      try {
+        y = expectedYield(draft.id, tables);
+      } catch {
+        // a broken draft mid-edit just holds the last good figures
+      }
+      if (expectedChip) expectedChip.textContent = `≈${y.stacks.toFixed(2)} drops/roll`;
+      if (gearChip) {
+        gearChip.textContent =
+          y.gearStacks >= 0.005 ? `gear 1-in-${Math.round(1 / y.gearStacks)}` : 'no gear';
+      }
     }
     markDirty();
   };
@@ -895,7 +906,8 @@ function lootDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
   const build = (): void => {
     shareRefs = [];
     const quick = simulate(id, simLevel, 300, draft);
-    expectedChip = pill('…', 'average drops per roll', 'ink');
+    expectedChip = pill('…', 'analytic expected stacks per roll, sub-tables included', 'ink');
+    gearChip = pill('…', 'analytic odds a roll pays equipment (gear, relic, sigil, heirloom)', 'ink');
     body.appendChild(
       detailHead(
         null,
@@ -904,6 +916,7 @@ function lootDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
         [
           pill(`${draft.entries.length} entries`, '', 'ink'),
           expectedChip,
+          gearChip,
           pill(
             `≈${quick.evCoins.toFixed(1)} coins/roll`,
             'catalog value of an average roll (300-roll observation)',
@@ -950,6 +963,69 @@ function lootDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
       modeRow.appendChild(cardB);
     }
     body.appendChild(sect('How it rolls', '', modeRow));
+
+    // ---------------------------------------------- calibration knobs
+    // Every economy dial lives in the table data — retuning the world
+    // is a content edit, never a code change.
+    const calib = el('div', 'opt-row calib-row');
+    const knob = (label: string, input: HTMLElement): void => {
+      calib.appendChild(el('span', 'ecard-odds-label', label));
+      calib.appendChild(input);
+    };
+    const numIn = (
+      value: number | undefined,
+      min: number | undefined,
+      title: string,
+      onInput: (v: number | undefined) => void,
+    ): HTMLInputElement => {
+      const input = document.createElement('input');
+      input.type = 'number';
+      if (min !== undefined) input.min = String(min);
+      input.step = '1';
+      input.title = title;
+      input.value = value !== undefined ? String(value) : '';
+      input.oninput = () => {
+        const v = input.value === '' ? undefined : Number(input.value);
+        onInput(v !== undefined && Number.isFinite(v) ? v : undefined);
+        updateShares();
+      };
+      return input;
+    };
+    knob(
+      'max drops',
+      numIn(draft.maxDrops, 1, 'Hard ceiling on stacks per roll (blank = uncapped). A safety rail — balance with chances and weights.', (v) => {
+        draft.maxDrops = v !== undefined && v >= 1 ? Math.floor(v) : undefined;
+      }),
+    );
+    knob(
+      'rarity bonus',
+      numIn(draft.rarityBonus, undefined, 'Rolls weight rarities as if the source were this many levels higher (negative allowed).', (v) => {
+        draft.rarityBonus = v || undefined;
+      }),
+    );
+    const raritySel = document.createElement('select');
+    raritySel.title = 'Rolled drops never land below this tier.';
+    raritySel.appendChild(new Option('no floor', ''));
+    for (const r of RARITY_TIERS) raritySel.appendChild(new Option(r, r));
+    raritySel.value = draft.minRarity ?? '';
+    raritySel.onchange = () => {
+      draft.minRarity = (raritySel.value || undefined) as RarityTier | undefined;
+      updateShares();
+    };
+    knob('rarity floor', raritySel);
+    const powerSel = document.createElement('select');
+    powerSel.title = 'source: a strong foe re-issues old gear at its own level. native: never promotes.';
+    powerSel.appendChild(new Option('source (promotes)', ''));
+    powerSel.appendChild(new Option('native (never)', 'native'));
+    powerSel.value = draft.power === 'native' ? 'native' : '';
+    powerSel.onchange = () => {
+      draft.power = powerSel.value === 'native' ? 'native' : undefined;
+      updateShares();
+    };
+    knob('item power', powerSel);
+    body.appendChild(
+      sect('Calibration', 'The table’s economy dials: payout ceiling, rarity weighting, and power stamping.', calib),
+    );
 
     if (isPick()) {
       const picksRow = el('div', 'opt-row picks-row');

@@ -6,6 +6,7 @@ import { HEIRLOOM_MIN_SURPLUS } from '../equipment/tables.js';
 import { NPCS } from '../npcs.js';
 import { LOOT_TABLES, setDrops, validateLootTables } from './tables.js';
 import { reachableItems, rollLoot } from './roll.js';
+import { expectedYield } from './analyze.js';
 import { lootTablesFromJson, lootTablesToJson } from './serialize.js';
 import type { LootTableDef } from './types.js';
 
@@ -37,6 +38,8 @@ test('validation rejects malformed tables', () => {
     ['bad chance', [{ id: 'b', entries: [{ item: 'bones', chance: 1.5 }] }]],
     ['w in each mode', [{ id: 'b', entries: [{ item: 'bones', w: 2 }] }]],
     ['picks in each mode', [{ id: 'b', picks: [1, 2], entries: [{ item: 'bones' }] }]],
+    ['zero maxDrops', [{ id: 'b', maxDrops: 0, entries: [{ item: 'bones' }] }]],
+    ['fractional maxDrops', [{ id: 'b', maxDrops: 1.5, entries: [{ item: 'bones' }] }]],
     ['bad qty', [{ id: 'b', entries: [{ item: 'bones', qty: [3, 1] }] }]],
     ['mult off a table ref', [{ id: 'b', entries: [{ item: 'bones', mult: 0.5 }] }]],
     [
@@ -89,7 +92,55 @@ test('each-mode: guaranteed lines always pay, chances converge, qty stays in ran
     if (goblin.some((d) => d.item === 'coins')) coins++;
   }
   assert.ok(Math.abs(feathers / N - 5.5) < 0.15, `feather mean ${feathers / N} off 5.5`);
-  assert.ok(Math.abs(coins / N - 0.8) < 0.03, `coin rate ${coins / N} off 0.8`);
+  assert.ok(Math.abs(coins / N - 0.7) < 0.03, `coin rate ${coins / N} off 0.7`);
+});
+
+test('pick-mode racks scale their hit odds under mult — the chest dial', () => {
+  const rackDef: LootTableDef = {
+    id: 'rack',
+    mode: 'pick',
+    nothingW: 90,
+    entries: [{ item: 'bones', w: 10 }],
+  };
+  const tables = registry(
+    rackDef,
+    { id: 'kill', entries: [{ table: 'rack' }] },
+    { id: 'chest', entries: [{ table: 'rack', mult: 9 }] },
+  );
+  const rand = srand(19);
+  let killHits = 0;
+  let chestHits = 0;
+  const N = 6000;
+  for (let i = 0; i < N; i++) {
+    if (rollLoot('kill', { level: 1, rand }, tables).length) killHits++;
+    if (rollLoot('chest', { level: 1, rand }, tables).length) chestHits++;
+  }
+  assert.ok(Math.abs(killHits / N - 0.1) < 0.02, `base rack rate ${killHits / N} off 0.1`);
+  // mult 9: 9·10 / (9·10 + 90) = 0.5 — the chest carries the rack hot.
+  assert.ok(Math.abs(chestHits / N - 0.5) < 0.03, `mult rack rate ${chestHits / N} off 0.5`);
+});
+
+test('maxDrops caps a table’s payout, nested refs included, without favoring entry order', () => {
+  const tables = registry(
+    { id: 'purse', entries: [{ item: 'coins' }, { item: 'feather' }] },
+    {
+      id: 'hoard',
+      maxDrops: 2,
+      entries: [{ item: 'bones' }, { item: 'arrow' }, { table: 'purse' }],
+    },
+  );
+  const rand = srand(23);
+  const kept = new Map<string, number>();
+  for (let i = 0; i < 3000; i++) {
+    const drops = rollLoot('hoard', { level: 1, rand }, tables);
+    assert.equal(drops.length, 2, 'four guaranteed lines always cull to the cap');
+    for (const d of drops) kept.set(d.item, (kept.get(d.item) ?? 0) + 1);
+  }
+  // Random culling: every line survives sometimes, none dominates.
+  for (const item of ['bones', 'arrow', 'coins', 'feather']) {
+    const share = (kept.get(item) ?? 0) / 6000;
+    assert.ok(share > 0.15 && share < 0.35, `${item} survival share ${share} off 0.25`);
+  }
 });
 
 test('pick-mode: at most one draw pays, frequencies follow weights', () => {
@@ -203,4 +254,26 @@ test('every foe’s tables preserve its signature loot — reserved pieces stay 
   assert.ok(!reach.get('skeleton')!.has('nightveil_jerkin'), 'jerkin leaked to skeletons');
   assert.ok(!reach.get('skeleton')!.has('voidwhisper_robe'), 'robe leaked to skeletons');
   assert.ok(!reach.get('wolf')!.has('frostplate_platebody'), 'guarded frostplate leaked to wolves');
+});
+
+test('the flood law: every foe’s per-kill expectation stays under its station’s ceiling', () => {
+  // Pure table math via expectedYield — no player state, no pity, no
+  // time-played dials: the odds ARE the economy. Regular foes pay a
+  // couple of stacks and treat gear as an event; named foes pay richer;
+  // the Champion alone showers. A retune (code or CMS) that breaks a
+  // ceiling is a flood, not a balance pass.
+  const NAMED = new Set(['kobold_digmaster', 'brigand_reaver', 'dire_wolf']);
+  const BOSS = new Set(['skeleton_champion']);
+  for (const [id, npc] of NPCS) {
+    let stacks = 0;
+    let gear = 0;
+    for (const t of npc.loot) {
+      const y = expectedYield(t);
+      stacks += y.stacks;
+      gear += y.gearStacks;
+    }
+    const [maxStacks, maxGear] = BOSS.has(id) ? [8, 2.2] : NAMED.has(id) ? [4.5, 0.5] : [3.2, 0.2];
+    assert.ok(stacks <= maxStacks, `${id} expects ${stacks.toFixed(2)} stacks/kill > ${maxStacks}`);
+    assert.ok(gear <= maxGear, `${id} expects ${gear.toFixed(3)} gear/kill > ${maxGear}`);
+  }
 });

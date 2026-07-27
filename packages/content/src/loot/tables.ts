@@ -54,6 +54,29 @@ export function setDrops(
   return entries;
 }
 
+/**
+ * A pick-mode gear rack: ONE weighted draw per kill, tuned to a single
+ * total hit rate — the rack pays that often no matter how many lines it
+ * carries. Authored chances become relative weights (×1000) and
+ * nothingW is derived, so a new piece DILUTES its siblings instead of
+ * inflating the rack: adding a sword never mints more swords per kill.
+ * This is the flood law's spine — gear is an event, not a shower.
+ */
+function rack(
+  id: string,
+  desc: string,
+  hitChance: number,
+  lines: LootEntryDef[],
+): LootTableDef {
+  const entries = lines.map((e) => {
+    const { chance, ...rest } = e;
+    return { ...rest, w: Math.max(1, Math.round((chance ?? 1) * 1000)) };
+  });
+  const sumW = entries.reduce((a, e) => a + (e.w ?? 1), 0);
+  const nothingW = Math.round((sumW * (1 - hitChance)) / hitChance);
+  return { id, desc, mode: 'pick', nothingW, entries };
+}
+
 const defs: LootTableDef[] = [
   // ------------------------------------------------- shared mechanisms
   {
@@ -89,27 +112,19 @@ const defs: LootTableDef[] = [
       { item: 'crimson_essence', chance: 0.08 },
     ],
   },
-  {
-    id: 'rat_wardrobe',
-    desc: 'Cloth and leathers dragged into the nest.',
-    entries: [
-      ...setDrops('mothwing', 0.028),
-      ...setDrops('fenwalker', 0.014, { colorway: 'rustsedge' }),
-      ...setDrops('cutpurse', 0.014, { colorway: 'alleyrat' }),
-    ],
-  },
-  {
-    id: 'rat_arms',
-    desc: 'The gutter arms rack: what beat the rats, kept.',
-    entries: [
-      { item: 'rustbite', chance: 0.02 },
-      { item: 'shiv', chance: 0.03 },
-      { item: 'ratter', chance: 0.02 },
-      { item: 'stickbow', chance: 0.03 },
-      { item: 'poachers_friend', chance: 0.015 },
-      { item: 'hazel_switch', chance: 0.025 },
-    ],
-  },
+  rack('rat_wardrobe', 'Cloth and leathers dragged into the nest.', 0.03, [
+    ...setDrops('mothwing', 0.028),
+    ...setDrops('fenwalker', 0.014, { colorway: 'rustsedge' }),
+    ...setDrops('cutpurse', 0.014, { colorway: 'alleyrat' }),
+  ]),
+  rack('rat_arms', 'The gutter arms rack: what beat the rats, kept.', 0.035, [
+    { item: 'rustbite', chance: 0.02 },
+    { item: 'shiv', chance: 0.03 },
+    { item: 'ratter', chance: 0.02 },
+    { item: 'stickbow', chance: 0.03 },
+    { item: 'poachers_friend', chance: 0.015 },
+    { item: 'hazel_switch', chance: 0.025 },
+  ]),
 
   // ---------------------------------------------------- kobold warren
   // Kobolds hoard ore the way dragons hoard gold — they just can't
@@ -121,17 +136,17 @@ const defs: LootTableDef[] = [
     desc: 'Warren pickings: pocket ore and a dead digger’s kit.',
     entries: [
       { item: 'bones' },
-      { item: 'coins', qty: [2, 12], chance: 0.75 },
-      { item: 'copper_ore', chance: 0.25 },
-      { item: 'tin_ore', chance: 0.25 },
-      { item: 'coal', chance: 0.1 },
-      { item: 'iron_ore', chance: 0.06 },
-      { item: 'bronze_pickaxe', chance: 0.05 },
+      { item: 'coins', qty: [3, 14], chance: 0.65 },
+      { item: 'copper_ore', qty: [1, 2], chance: 0.18 },
+      { item: 'tin_ore', qty: [1, 2], chance: 0.18 },
+      { item: 'coal', chance: 0.08 },
+      { item: 'iron_ore', chance: 0.05 },
+      { item: 'bronze_pickaxe', chance: 0.02 },
       { item: 'brass_key', chance: 0.02 },
       { item: 'dungeon_key', chance: 0.015 },
-      { item: 'linen_scrap', qty: [1, 2], chance: 0.3 },
-      { item: 'ember_essence', qty: [1, 2], chance: 0.12 },
-      { item: 'arcane_dust', chance: 0.08 },
+      { item: 'linen_scrap', qty: [2, 3], chance: 0.2 },
+      { item: 'ember_essence', qty: [1, 2], chance: 0.1 },
+      { item: 'arcane_dust', chance: 0.06 },
     ],
   },
   {
@@ -140,66 +155,58 @@ const defs: LootTableDef[] = [
     entries: [
       { item: 'bones' },
       { item: 'coins', qty: [15, 50], chance: 0.9 },
-      { item: 'iron_ore', qty: [1, 3], chance: 0.5 },
-      { item: 'coal', qty: [1, 2], chance: 0.4 },
-      { item: 'copper_ore', qty: [2, 4], chance: 0.35 },
-      { item: 'tin_ore', qty: [2, 4], chance: 0.35 },
+      { item: 'iron_ore', qty: [2, 4], chance: 0.4 },
+      { item: 'coal', qty: [1, 3], chance: 0.3 },
+      { item: 'copper_ore', qty: [2, 4], chance: 0.25 },
+      { item: 'tin_ore', qty: [2, 4], chance: 0.25 },
       // The chase drop: his own pick, an early miner's first upgrade.
       { item: 'iron_pickaxe', chance: 0.05 },
       { item: 'dungeon_key', chance: 0.1 },
       { item: 'brass_key', chance: 0.06 },
       { item: 'emberstone', chance: 0.03 },
-      { item: 'ember_essence', qty: [2, 4], chance: 0.3 },
-      { item: 'arcane_dust', qty: [1, 2], chance: 0.2 },
+      { item: 'ember_essence', qty: [2, 4], chance: 0.25 },
+      { item: 'arcane_dust', qty: [1, 2], chance: 0.15 },
     ],
   },
 
   // ------------------------------------------------------- goblin camp
   {
     id: 'goblin',
-    desc: 'Camp basics: pocket change, scavenged kit.',
+    desc: 'Camp basics: pocket change, scavenged kit. Materials land seldom but heavy — same craft flow, fewer piles.',
     entries: [
       { item: 'bones' },
-      { item: 'coins', qty: [3, 18], chance: 0.8 },
-      { item: 'brass_key', chance: 0.025 },
-      { item: 'dungeon_key', chance: 0.02 },
-      { item: 'bronze_sword', chance: 0.08 },
-      { item: 'arrow', qty: [4, 12], chance: 0.25 },
-      { item: 'snare_kit', chance: 0.04 },
-      { item: 'leather_body', chance: 0.05 },
-      { item: 'leather_chaps', chance: 0.04 },
-      { item: 'scrap_hide', qty: [1, 2], chance: 0.35 },
-      { item: 'linen_scrap', qty: [1, 3], chance: 0.4 },
-      { item: 'emberstone', chance: 0.012 },
-      { item: 'bloomstone', chance: 0.012 },
-      { item: 'ember_essence', qty: [1, 2], chance: 0.15 },
-      { item: 'arcane_dust', chance: 0.1 },
+      { item: 'coins', qty: [4, 22], chance: 0.7 },
+      { item: 'brass_key', chance: 0.02 },
+      { item: 'dungeon_key', chance: 0.015 },
+      { item: 'bronze_sword', chance: 0.02 },
+      { item: 'arrow', qty: [8, 20], chance: 0.12 },
+      { item: 'snare_kit', chance: 0.025 },
+      { item: 'leather_body', chance: 0.015 },
+      { item: 'leather_chaps', chance: 0.012 },
+      { item: 'scrap_hide', qty: [2, 3], chance: 0.2 },
+      { item: 'linen_scrap', qty: [2, 4], chance: 0.25 },
+      { item: 'emberstone', chance: 0.01 },
+      { item: 'bloomstone', chance: 0.01 },
+      { item: 'ember_essence', qty: [1, 2], chance: 0.12 },
+      { item: 'arcane_dust', qty: [1, 2], chance: 0.08 },
     ],
   },
-  {
-    id: 'goblin_wardrobe',
-    desc: 'Singed, stolen, and hacked-apart wardrobes of the camp.',
-    entries: [
-      ...setDrops('mothwing', 0.018, { colorway: 'ember' }),
-      ...setDrops('fenwalker', 0.016),
-      ...setDrops('cutpurse', 0.016),
-      ...setDrops('briarplate', 0.01, { colorway: 'bloodbriar' }),
-    ],
-  },
-  {
-    id: 'goblin_arms',
-    desc: 'Camp ironwork and stolen hedge-magic.',
-    entries: [
-      { item: 'rustbite', chance: 0.03 },
-      { item: 'gobsplitter', chance: 0.025 },
-      { item: 'shiv', chance: 0.025 },
-      { item: 'stickbow', chance: 0.03 },
-      { item: 'knucklebow', chance: 0.025 },
-      { item: 'bramblethorn', chance: 0.015 },
-      { item: 'hazel_switch', chance: 0.03 },
-      { item: 'wisplight', chance: 0.012 },
-    ],
-  },
+  rack('goblin_wardrobe', 'Singed, stolen, and hacked-apart wardrobes of the camp.', 0.04, [
+    ...setDrops('mothwing', 0.018, { colorway: 'ember' }),
+    ...setDrops('fenwalker', 0.016),
+    ...setDrops('cutpurse', 0.016),
+    ...setDrops('briarplate', 0.01, { colorway: 'bloodbriar' }),
+  ]),
+  rack('goblin_arms', 'Camp ironwork and stolen hedge-magic.', 0.045, [
+    { item: 'rustbite', chance: 0.03 },
+    { item: 'gobsplitter', chance: 0.025 },
+    { item: 'shiv', chance: 0.025 },
+    { item: 'stickbow', chance: 0.03 },
+    { item: 'knucklebow', chance: 0.025 },
+    { item: 'bramblethorn', chance: 0.015 },
+    { item: 'hazel_switch', chance: 0.03 },
+    { item: 'wisplight', chance: 0.012 },
+  ]),
   {
     // The road-thieves' pockets: heavier coin than any beast carries
     // (they've been TAKING it), trail rations, and the working kit of
@@ -208,42 +215,34 @@ const defs: LootTableDef[] = [
     desc: 'A road-thief’s pockets: stolen coin and an ambusher’s kit.',
     entries: [
       { item: 'bones' },
-      { item: 'coins', qty: [8, 32], chance: 0.9 },
+      { item: 'coins', qty: [10, 36], chance: 0.8 },
       { item: 'brass_key', chance: 0.035 },
       { item: 'dungeon_key', chance: 0.02 },
-      { item: 'bread', chance: 0.2 },
-      { item: 'arrow', qty: [5, 14], chance: 0.35 },
-      { item: 'snare_kit', chance: 0.06 },
-      { item: 'leather_hood', chance: 0.05 },
-      { item: 'leather_body', chance: 0.05 },
-      { item: 'leather_chaps', chance: 0.04 },
-      { item: 'leather_boots', chance: 0.04 },
-      { item: 'scrap_hide', qty: [1, 2], chance: 0.3 },
-      { item: 'linen_scrap', qty: [1, 3], chance: 0.35 },
-      { item: 'arcane_dust', chance: 0.08 },
+      { item: 'bread', chance: 0.15 },
+      { item: 'arrow', qty: [8, 18], chance: 0.15 },
+      { item: 'snare_kit', chance: 0.03 },
+      { item: 'leather_hood', chance: 0.015 },
+      { item: 'leather_body', chance: 0.012 },
+      { item: 'leather_chaps', chance: 0.01 },
+      { item: 'leather_boots', chance: 0.01 },
+      { item: 'scrap_hide', qty: [2, 3], chance: 0.18 },
+      { item: 'linen_scrap', qty: [2, 4], chance: 0.22 },
+      { item: 'arcane_dust', chance: 0.06 },
     ],
   },
-  {
-    id: 'brigand_wardrobe',
-    desc: 'Stolen wardrobes — cut purses and quieter boots.',
-    entries: [
-      ...setDrops('cutpurse', 0.02),
-      ...setDrops('fenwalker', 0.016),
-      ...setDrops('mothwing', 0.012),
-    ],
-  },
-  {
-    id: 'brigand_arms',
-    desc: 'Honest iron in dishonest hands.',
-    entries: [
-      { item: 'iron_sword', chance: 0.05 },
-      { item: 'iron_dagger', chance: 0.05 },
-      { item: 'shortbow', chance: 0.04 },
-      { item: 'hunters_quiver', chance: 0.02 },
-      { item: 'oak_kiteshield', chance: 0.02 },
-      { item: 'iron_helm', chance: 0.03 },
-    ],
-  },
+  rack('brigand_wardrobe', 'Stolen wardrobes — cut purses and quieter boots.', 0.04, [
+    ...setDrops('cutpurse', 0.02),
+    ...setDrops('fenwalker', 0.016),
+    ...setDrops('mothwing', 0.012),
+  ]),
+  rack('brigand_arms', 'Honest iron in dishonest hands.', 0.05, [
+    { item: 'iron_sword', chance: 0.05 },
+    { item: 'iron_dagger', chance: 0.05 },
+    { item: 'shortbow', chance: 0.04 },
+    { item: 'hunters_quiver', chance: 0.02 },
+    { item: 'oak_kiteshield', chance: 0.02 },
+    { item: 'iron_helm', chance: 0.03 },
+  ]),
   {
     // The reaver kept the crew's shares. Killing the name is the
     // payday — and the second-best key faucet on the open road.
@@ -254,9 +253,9 @@ const defs: LootTableDef[] = [
       { item: 'coins', qty: [30, 90], chance: 1 },
       { item: 'brass_key', chance: 0.14 },
       { item: 'dungeon_key', chance: 0.07 },
-      { item: 'iron_dagger', chance: 0.1 },
-      { item: 'leather_hood', chance: 0.08 },
-      ...setDrops('cutpurse', 0.035),
+      { item: 'iron_dagger', chance: 0.05 },
+      { item: 'leather_hood', chance: 0.03 },
+      ...setDrops('cutpurse', 0.012),
       { item: 'emberstone', chance: 0.02 },
       { item: 'stormpearl', chance: 0.015 },
     ],
@@ -266,46 +265,38 @@ const defs: LootTableDef[] = [
     desc: 'Thrower basics: ammo and the warband’s colors.',
     entries: [
       { item: 'bones' },
-      { item: 'coins', qty: [4, 20], chance: 0.8 },
-      { item: 'arrow', qty: [6, 14], chance: 0.5 },
-      { item: 'straw_decoy', chance: 0.05 },
-      { item: 'cape_banner', chance: 0.06 },
-      { item: 'apprentice_robe', chance: 0.04 },
-      { item: 'linen_scrap', qty: [1, 3], chance: 0.45 },
+      { item: 'coins', qty: [5, 24], chance: 0.7 },
+      { item: 'arrow', qty: [8, 18], chance: 0.45 },
+      { item: 'straw_decoy', chance: 0.03 },
+      { item: 'cape_banner', chance: 0.02 },
+      { item: 'apprentice_robe', chance: 0.015 },
+      { item: 'linen_scrap', qty: [2, 4], chance: 0.28 },
       { item: 'stormpearl', chance: 0.01 },
-      { item: 'fang_band', chance: 0.03 },
-      { item: 'storm_essence', qty: [1, 2], chance: 0.16 },
-      { item: 'arcane_dust', chance: 0.1 },
+      { item: 'fang_band', chance: 0.02 },
+      { item: 'storm_essence', qty: [1, 2], chance: 0.13 },
+      { item: 'arcane_dust', chance: 0.07 },
     ],
   },
-  {
-    id: 'thrower_wardrobe',
-    desc: 'Coast plunder and trampled-fen cloth.',
-    entries: [
-      ...setDrops('tidecaller', 0.02),
-      ...setDrops('fenwalker', 0.014, { colorway: 'mirebloom' }),
-      ...setDrops('cutpurse', 0.012, { colorway: 'redhand' }),
-      ...setDrops('briarplate', 0.009, { colorway: 'nightbriar' }),
-    ],
-  },
-  {
-    id: 'thrower_arms',
-    desc: 'Raider blades off the coast and the fens.',
-    entries: [
-      { item: 'gobsplitter', chance: 0.02 },
-      { item: 'fenreaper', chance: 0.015 },
-      { item: 'bogsting', chance: 0.018 },
-      { item: 'scaler', chance: 0.015 },
-      { item: 'redhand', chance: 0.012 },
-      { item: 'knucklebow', chance: 0.03 },
-      { item: 'driftwood', chance: 0.02 },
-      { item: 'fishspine', chance: 0.015 },
-      { item: 'bramblethorn', chance: 0.012 },
-      { item: 'wisplight', chance: 0.02 },
-      { item: 'shepherds_crook', chance: 0.02 },
-      { item: 'serpentcoil', chance: 0.008 },
-    ],
-  },
+  rack('thrower_wardrobe', 'Coast plunder and trampled-fen cloth.', 0.04, [
+    ...setDrops('tidecaller', 0.02),
+    ...setDrops('fenwalker', 0.014, { colorway: 'mirebloom' }),
+    ...setDrops('cutpurse', 0.012, { colorway: 'redhand' }),
+    ...setDrops('briarplate', 0.009, { colorway: 'nightbriar' }),
+  ]),
+  rack('thrower_arms', 'Raider blades off the coast and the fens.', 0.045, [
+    { item: 'gobsplitter', chance: 0.02 },
+    { item: 'fenreaper', chance: 0.015 },
+    { item: 'bogsting', chance: 0.018 },
+    { item: 'scaler', chance: 0.015 },
+    { item: 'redhand', chance: 0.012 },
+    { item: 'knucklebow', chance: 0.03 },
+    { item: 'driftwood', chance: 0.02 },
+    { item: 'fishspine', chance: 0.015 },
+    { item: 'bramblethorn', chance: 0.012 },
+    { item: 'wisplight', chance: 0.02 },
+    { item: 'shepherds_crook', chance: 0.02 },
+    { item: 'serpentcoil', chance: 0.008 },
+  ]),
 
   // -------------------------------------------------------------- crypt
   {
@@ -313,23 +304,23 @@ const defs: LootTableDef[] = [
     desc: 'Grave-goods: old iron and the shield-stone.',
     entries: [
       { item: 'bones', qty: [1, 2] },
-      { item: 'coins', qty: [5, 25], chance: 0.7 },
+      { item: 'coins', qty: [6, 28], chance: 0.6 },
       { item: 'brass_key', chance: 0.05 },
       { item: 'dungeon_key', chance: 0.02 },
-      { item: 'iron_ore', chance: 0.15 },
-      { item: 'gloomsilk_thread', chance: 0.35 },
-      { item: 'ember_charm', chance: 0.03 },
-      { item: 'aegis_stone', chance: 0.025 },
-      { item: 'seeker_stone', chance: 0.015 },
-      { item: 'cape_emberweave', chance: 0.04 },
-      { item: 'cape_midnight', chance: 0.035 },
-      { item: 'iron_helm', chance: 0.05 },
-      { item: 'iron_greaves', chance: 0.04 },
-      { item: 'iron_sabatons', chance: 0.04 },
-      { item: 'iron_gauntlets', chance: 0.04 },
-      { item: 'frostshard', chance: 0.012 },
-      { item: 'arcane_dust', qty: [1, 2], chance: 0.35 },
-      { item: 'frost_essence', chance: 0.14 },
+      { item: 'iron_ore', chance: 0.1 },
+      { item: 'gloomsilk_thread', qty: [1, 2], chance: 0.22 },
+      { item: 'ember_charm', chance: 0.012 },
+      { item: 'aegis_stone', chance: 0.01 },
+      { item: 'seeker_stone', chance: 0.008 },
+      { item: 'cape_emberweave', chance: 0.012 },
+      { item: 'cape_midnight', chance: 0.01 },
+      { item: 'iron_helm', chance: 0.015 },
+      { item: 'iron_greaves', chance: 0.01 },
+      { item: 'iron_sabatons', chance: 0.01 },
+      { item: 'iron_gauntlets', chance: 0.01 },
+      { item: 'frostshard', chance: 0.01 },
+      { item: 'arcane_dust', qty: [1, 3], chance: 0.22 },
+      { item: 'frost_essence', chance: 0.11 },
     ],
   },
   {
@@ -337,23 +328,24 @@ const defs: LootTableDef[] = [
     desc: 'The key-keeper of the crypt: the watch carried the brass, the iron, and the shield-stone.',
     entries: [
       { item: 'bones', qty: [1, 2] },
-      { item: 'coins', qty: [8, 32], chance: 0.7 },
+      { item: 'coins', qty: [8, 32], chance: 0.65 },
       // The guards hold the keys — the strongchest story sends you
       // through them.
       { item: 'brass_key', chance: 0.12 },
-      { item: 'iron_ore', chance: 0.2 },
-      { item: 'iron_helm', chance: 0.06 },
-      { item: 'oak_kiteshield', chance: 0.035 },
-      { item: 'aegis_stone', chance: 0.04 },
-      { item: 'gloomsilk_thread', chance: 0.3 },
-      { item: 'arcane_dust', qty: [1, 2], chance: 0.35 },
-      { item: 'frost_essence', chance: 0.14 },
+      { item: 'iron_ore', chance: 0.12 },
+      { item: 'iron_helm', chance: 0.02 },
+      { item: 'oak_kiteshield', chance: 0.015 },
+      { item: 'aegis_stone', chance: 0.02 },
+      { item: 'gloomsilk_thread', qty: [1, 2], chance: 0.2 },
+      { item: 'arcane_dust', qty: [1, 3], chance: 0.22 },
+      { item: 'frost_essence', chance: 0.11 },
     ],
   },
-  {
-    id: 'crypt_wardrobe',
-    desc: 'What the crypt’s prowlers and its watch wore in. The Nightveil jerkin and Voidwhisper robe stay with the Champion.',
-    entries: [
+  rack(
+    'crypt_wardrobe',
+    'What the crypt’s prowlers and its watch wore in. The Nightveil jerkin and Voidwhisper robe stay with the Champion.',
+    0.05,
+    [
       ...setDrops('nightveil', 0.025, { skip: ['jerkin'] }),
       ...setDrops('voidwhisper', 0.02, { skip: ['robe'] }),
       ...setDrops('mothwing', 0.016, { colorway: 'dusk' }),
@@ -365,26 +357,22 @@ const defs: LootTableDef[] = [
       ...setDrops('sentinel', 0.01),
       ...setDrops('sentinel', 0.008, { colorway: 'bloodwatch' }),
     ],
-  },
-  {
-    id: 'crypt_arms',
-    desc: 'Blades, bows, and staves the dead still carry.',
-    entries: [
-      { item: 'fenreaper', chance: 0.01 },
-      { item: 'gravewhisper', chance: 0.012 },
-      { item: 'bloodletter', chance: 0.008 },
-      { item: 'bonepick', chance: 0.015 },
-      { item: 'redhand', chance: 0.01 },
-      { item: 'nightthorn', chance: 0.01 },
-      { item: 'leech', chance: 0.008 },
-      { item: 'marrowpoint', chance: 0.015 },
-      { item: 'whisperwind', chance: 0.012 },
-      { item: 'emberglow', chance: 0.006 },
-      { item: 'gravewood', chance: 0.03 },
-      { item: 'gloomthorn', chance: 0.012 },
-      { item: 'boneharrow', chance: 0.004 },
-    ],
-  },
+  ),
+  rack('crypt_arms', 'Blades, bows, and staves the dead still carry.', 0.045, [
+    { item: 'fenreaper', chance: 0.01 },
+    { item: 'gravewhisper', chance: 0.012 },
+    { item: 'bloodletter', chance: 0.008 },
+    { item: 'bonepick', chance: 0.015 },
+    { item: 'redhand', chance: 0.01 },
+    { item: 'nightthorn', chance: 0.01 },
+    { item: 'leech', chance: 0.008 },
+    { item: 'marrowpoint', chance: 0.015 },
+    { item: 'whisperwind', chance: 0.012 },
+    { item: 'emberglow', chance: 0.006 },
+    { item: 'gravewood', chance: 0.03 },
+    { item: 'gloomthorn', chance: 0.012 },
+    { item: 'boneharrow', chance: 0.004 },
+  ]),
 
   // ----------------------------------------------------- the Champion
   {
@@ -393,21 +381,21 @@ const defs: LootTableDef[] = [
     entries: [
       { item: 'bones', qty: [2, 4] },
       { item: 'coins', qty: [40, 120] },
-      { item: 'iron_sword', chance: 0.4 },
-      { item: 'iron_bar', qty: [1, 2], chance: 0.5 },
-      { item: 'gloomsilk_thread', qty: [2, 4], chance: 0.7 },
-      { item: 'storm_bell', chance: 0.12 },
-      { item: 'storm_coil', chance: 0.1 },
-      { item: 'seeker_stone', chance: 0.08 },
-      { item: 'fang_band', chance: 0.06 },
-      { item: 'ember_staff', chance: 0.1 },
-      { item: 'willow_longbow', chance: 0.1 },
-      { item: 'sigil_fallen_champion', chance: 0.25 },
-      { item: 'dungeon_key', chance: 0.35 },
-      { item: 'tome_of_embers', chance: 0.15 },
-      { item: 'arcane_dust', qty: [3, 6], chance: 0.8 },
-      { item: 'storm_essence', qty: [1, 3], chance: 0.5 },
-      { item: 'frost_essence', qty: [1, 3], chance: 0.5 },
+      { item: 'iron_sword', chance: 0.12 },
+      { item: 'iron_bar', qty: [1, 2], chance: 0.4 },
+      { item: 'gloomsilk_thread', qty: [2, 5], chance: 0.5 },
+      { item: 'storm_bell', chance: 0.08 },
+      { item: 'storm_coil', chance: 0.07 },
+      { item: 'seeker_stone', chance: 0.05 },
+      { item: 'fang_band', chance: 0.04 },
+      { item: 'ember_staff', chance: 0.05 },
+      { item: 'willow_longbow', chance: 0.05 },
+      { item: 'sigil_fallen_champion', chance: 0.2 },
+      { item: 'dungeon_key', chance: 0.3 },
+      { item: 'tome_of_embers', chance: 0.1 },
+      { item: 'arcane_dust', qty: [3, 6], chance: 0.6 },
+      { item: 'storm_essence', qty: [1, 3], chance: 0.35 },
+      { item: 'frost_essence', qty: [1, 3], chance: 0.35 },
     ],
   },
   {
@@ -423,10 +411,11 @@ const defs: LootTableDef[] = [
       { item: 'cape_phoenix', w: 4 },
     ],
   },
-  {
-    id: 'champion_wardrobe',
-    desc: 'The villain’s own wardrobe, and the reserved set pieces.',
-    entries: [
+  rack(
+    'champion_wardrobe',
+    'The villain’s own wardrobe, and the reserved set pieces.',
+    0.4,
+    [
       { item: 'horned_raider_helm', chance: 0.12 },
       { item: 'steel_greathelm', chance: 0.06 },
       { item: 'iron_platebody', chance: 0.15 },
@@ -440,11 +429,12 @@ const defs: LootTableDef[] = [
       ...setDrops('sentinel', 0.035, { colorway: 'daybreak' }),
       ...setDrops('sentinel', 0.03, { colorway: 'midnight' }),
     ],
-  },
-  {
-    id: 'champion_armory',
-    desc: 'The trophy racks of everyone who tried. The white whales only exist legendary.',
-    entries: [
+  ),
+  rack(
+    'champion_armory',
+    'The trophy racks of everyone who tried. The white whales only exist legendary.',
+    0.35,
+    [
       { item: 'duelists_grace', chance: 0.06 },
       { item: 'bloodletter', chance: 0.04 },
       { item: 'stormcall', chance: 0.05 },
@@ -472,7 +462,7 @@ const defs: LootTableDef[] = [
       { item: 'tempest_crown', chance: 0.02 },
       { item: 'worldsplinter', chance: 0.005 },
     ],
-  },
+  ),
 
   // ---------------------------------------------------- treasure chests
   // Interaction loot: rollLoot('chest_*', { level }) from the chest
@@ -488,7 +478,9 @@ const defs: LootTableDef[] = [
       { item: 'arcane_dust', qty: [1, 2], chance: 0.2 },
       { item: 'brass_key', chance: 0.1 },
       { item: 'dungeon_key', chance: 0.04 },
-      { table: 'goblin_arms', mult: 1.5 },
+      // Racks are pick-mode: mult scales the hit odds against nothingW,
+      // so a chest pays gear far oftener than the camp that guards it.
+      { table: 'goblin_arms', mult: 8 },
     ],
   },
   {
@@ -503,8 +495,8 @@ const defs: LootTableDef[] = [
       { item: 'ember_charm', chance: 0.05 },
       { item: 'aegis_stone', chance: 0.05 },
       { item: 'dungeon_key', chance: 0.1 },
-      { table: 'crypt_arms', mult: 3 },
-      { table: 'crypt_wardrobe', mult: 2 },
+      { table: 'crypt_arms', mult: 12 },
+      { table: 'crypt_wardrobe', mult: 10 },
     ],
   },
   {
@@ -553,8 +545,8 @@ const defs: LootTableDef[] = [
       { item: 'crimson_essence', qty: [1, 2], chance: 0.3 },
       { item: 'brass_key', chance: 0.08 },
       { item: 'dungeon_key', chance: 0.05 },
-      { table: 'crypt_arms', mult: 1.5 },
-      { table: 'wolf_arms', mult: 1.5 },
+      { table: 'crypt_arms', mult: 6 },
+      { table: 'wolf_arms', mult: 6 },
     ],
   },
   {
@@ -582,7 +574,7 @@ const defs: LootTableDef[] = [
       { item: 'brass_key', chance: 0.12 },
       { item: 'arcane_dust', qty: [2, 5], chance: 0.6 },
       { item: 'storm_essence', qty: [1, 2], chance: 0.25 },
-      { table: 'crypt_arms', mult: 2 },
+      { table: 'crypt_arms', mult: 8 },
     ],
   },
 
@@ -594,17 +586,18 @@ const defs: LootTableDef[] = [
       { item: 'bones' },
       { item: 'wolf_fur', chance: 0.9 },
       { item: 'venom_gland', chance: 0.25 },
-      { item: 'verdant_totem', chance: 0.05 },
-      { item: 'bramble_band', chance: 0.04 },
-      { item: 'bloomstone', chance: 0.015 },
-      { item: 'crimson_essence', qty: [1, 2], chance: 0.14 },
-      { item: 'verdant_essence', chance: 0.12 },
+      { item: 'verdant_totem', chance: 0.02 },
+      { item: 'bramble_band', chance: 0.015 },
+      { item: 'bloomstone', chance: 0.01 },
+      { item: 'crimson_essence', qty: [1, 2], chance: 0.12 },
+      { item: 'verdant_essence', chance: 0.1 },
     ],
   },
-  {
-    id: 'wolf_wardrobe',
-    desc: 'Hunt the pack, wear the pack. Frostplate walks with the winter packs — the body and greaves stay with the Champion.',
-    entries: [
+  rack(
+    'wolf_wardrobe',
+    'Hunt the pack, wear the pack. Frostplate walks with the winter packs — the body and greaves stay with the Champion.',
+    0.05,
+    [
       { item: 'wolfhide_hood', chance: 0.06 },
       { item: 'wanderer_boots', chance: 0.05 },
       { item: 'frostplate_helm', chance: 0.03 },
@@ -616,17 +609,17 @@ const defs: LootTableDef[] = [
       ...setDrops('emberfox', 0.009, { colorway: 'dawnfox' }),
       ...setDrops('briarplate', 0.012),
     ],
-  },
+  ),
   {
     id: 'worg',
     desc: 'Goblin war-hound pickings: mangy hide, a knife-length fang, and whatever the camp hung on it.',
     entries: [
       { item: 'bones' },
       { item: 'worg_fang', chance: 0.55 },
-      { item: 'scrap_hide', qty: [1, 2], chance: 0.5 },
+      { item: 'scrap_hide', qty: [1, 2], chance: 0.4 },
       { item: 'coins', qty: [4, 14], chance: 0.4 },
       { item: 'venom_gland', chance: 0.15 },
-      { item: 'crimson_essence', chance: 0.14 },
+      { item: 'crimson_essence', chance: 0.12 },
     ],
   },
   {
@@ -645,21 +638,17 @@ const defs: LootTableDef[] = [
       { item: 'dungeon_key', chance: 0.04 },
     ],
   },
-  {
-    id: 'wolf_arms',
-    desc: 'The pack’s blades, bows, and argued-over staves.',
-    entries: [
-      { item: 'wolffang', chance: 0.03 },
-      { item: 'frostbrand', chance: 0.01 },
-      { item: 'fangtooth', chance: 0.03 },
-      { item: 'palefire', chance: 0.008 },
-      { item: 'poachers_friend', chance: 0.02 },
-      { item: 'wolfsong', chance: 0.02 },
-      { item: 'rimewood', chance: 0.008 },
-      { item: 'shepherds_crook', chance: 0.03 },
-      { item: 'glacierbite', chance: 0.006 },
-    ],
-  },
+  rack('wolf_arms', 'The pack’s blades, bows, and argued-over staves.', 0.04, [
+    { item: 'wolffang', chance: 0.03 },
+    { item: 'frostbrand', chance: 0.01 },
+    { item: 'fangtooth', chance: 0.03 },
+    { item: 'palefire', chance: 0.008 },
+    { item: 'poachers_friend', chance: 0.02 },
+    { item: 'wolfsong', chance: 0.02 },
+    { item: 'rimewood', chance: 0.008 },
+    { item: 'shepherds_crook', chance: 0.03 },
+    { item: 'glacierbite', chance: 0.006 },
+  ]),
 
   // ------------------------------------------------------- the wilds
   {
@@ -757,10 +746,10 @@ const defs: LootTableDef[] = [
     desc: 'A quiver that outlived its owner.',
     entries: [
       { item: 'bones' },
-      { item: 'arrow', qty: [6, 18], chance: 0.8 },
-      { item: 'coins', qty: [4, 20], chance: 0.6 },
-      { item: 'arcane_dust', chance: 0.12 },
-      { item: 'frost_essence', chance: 0.12 },
+      { item: 'arrow', qty: [8, 20], chance: 0.6 },
+      { item: 'coins', qty: [4, 20], chance: 0.5 },
+      { item: 'arcane_dust', chance: 0.1 },
+      { item: 'frost_essence', chance: 0.1 },
     ],
   },
   {
@@ -770,9 +759,9 @@ const defs: LootTableDef[] = [
       { item: 'bones' },
       { item: 'coins', qty: [10, 40], chance: 0.9 },
       { item: 'dungeon_key', chance: 0.05 },
-      { item: 'arcane_dust', qty: [1, 2], chance: 0.2 },
-      { item: 'ember_essence', chance: 0.12 },
-      { item: 'leather', chance: 0.15 },
+      { item: 'arcane_dust', qty: [1, 2], chance: 0.15 },
+      { item: 'ember_essence', chance: 0.1 },
+      { item: 'leather', chance: 0.12 },
     ],
   },
   {
@@ -866,6 +855,9 @@ export function validateLootTables(tables: readonly LootTableDef[]): void {
     }
     if (t.picks && (t.picks[0] < 1 || t.picks[1] < t.picks[0])) {
       throw new Error(`loot table '${t.id}': malformed picks range`);
+    }
+    if (t.maxDrops !== undefined && (!Number.isInteger(t.maxDrops) || t.maxDrops < 1)) {
+      throw new Error(`loot table '${t.id}': maxDrops must be a positive integer`);
     }
     for (const e of t.entries) {
       const kinds = [e.item, e.table, e.pool].filter((k) => k !== undefined).length;

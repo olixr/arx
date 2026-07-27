@@ -45,8 +45,9 @@ export interface LootEntryDef {
   /** pick-mode: selection weight. Default 1. */
   w?: number;
   /**
-   * Table references only: scales the referenced table's each-mode
-   * chances — "this camp carries the crypt rack at half rates".
+   * Table references only: scales the referenced table's payout rate —
+   * each-mode chances, or pick-mode draw weights against nothingW.
+   * "This chest carries the crypt rack at triple rates."
    */
   mult?: number;
 }
@@ -61,6 +62,13 @@ export interface LootTableDef {
   picks?: [number, number];
   /** pick-mode: weight of a draw paying nothing. Default 0. */
   nothingW?: number;
+  /**
+   * Hard ceiling on stacks this table pays per roll, nested references
+   * included — an authoring safety rail, not a balance lever (balance
+   * lives in chances/weights). Overflow is discarded at random, so no
+   * entry order is privileged. Default: uncapped.
+   */
+  maxDrops?: number;
   entries: LootEntryDef[];
   /**
    * Rarity calibration: rolls weight rarities as if the source were

@@ -35,28 +35,39 @@ function rollInto(
   out: LootDrop[],
 ): void {
   if (depth > MAX_DEPTH) return;
+  // A capped table rolls into its own buffer so overflow can be culled
+  // at random — nested payouts included, no entry order privileged.
+  const sink: LootDrop[] = table.maxDrops !== undefined ? [] : out;
   if ((table.mode ?? 'each') === 'pick') {
     const [lo, hi] = table.picks ?? [1, 1];
     const picks = lo + Math.floor(ctx.rand() * (hi - lo + 1));
+    // A referencing entry's mult scales the rack's draw weights against
+    // nothingW — "carried at triple rates" means triple the hit odds.
     let total = table.nothingW ?? 0;
-    for (const e of table.entries) total += e.w ?? 1;
+    for (const e of table.entries) total += (e.w ?? 1) * chanceMult;
     for (let i = 0; i < picks; i++) {
       let draw = ctx.rand() * total;
       for (const e of table.entries) {
-        draw -= e.w ?? 1;
+        draw -= (e.w ?? 1) * chanceMult;
         if (draw < 0) {
-          resolveEntry(e, table, ctx, tables, 1, depth, out);
+          resolveEntry(e, table, ctx, tables, 1, depth, sink);
           break;
         }
       }
       // Remaining draw fell in the nothing-weight: this pick pays nothing.
     }
-    return;
+  } else {
+    for (const e of table.entries) {
+      const chance = (e.chance ?? 1) * chanceMult;
+      if (chance < 1 && ctx.rand() > chance) continue;
+      resolveEntry(e, table, ctx, tables, chanceMult, depth, sink);
+    }
   }
-  for (const e of table.entries) {
-    const chance = (e.chance ?? 1) * chanceMult;
-    if (chance < 1 && ctx.rand() > chance) continue;
-    resolveEntry(e, table, ctx, tables, chanceMult, depth, out);
+  if (table.maxDrops !== undefined && sink !== out) {
+    while (sink.length > table.maxDrops) {
+      sink.splice(Math.floor(ctx.rand() * sink.length), 1);
+    }
+    out.push(...sink);
   }
 }
 
