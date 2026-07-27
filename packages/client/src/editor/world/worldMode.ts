@@ -494,7 +494,11 @@ export class WorldMode {
       return;
     }
     if (this.ws.tool === 'site') {
-      const defId = this.ws.poiDefs.find((d) => d.weight > 0)?.id ?? this.ws.poiDefs[0]?.id ?? 'waystation';
+      const defId =
+        this.ws.poiDefs.find((d) => d.id === 'waystation')?.id ??
+        this.ws.poiDefs.find((d) => d.weight > 0)?.id ??
+        this.ws.poiDefs[0]?.id ??
+        'waystation';
       const id = freshId('landmark', (x) => geo.sites.some((s) => s.id === x));
       this.edit('pin landmark', (g) => {
         g.sites.push({ id, defId, x: t.x, y: t.y });

@@ -311,6 +311,9 @@ export class WorldView {
       const ctx = cnv.getContext('2d')!;
       const img = ctx.createImageData(w, h);
       for (let i = 0; i < w * h; i++) {
+        // TILE_SKIP cells keep the procedural ground — they must stay
+        // transparent so the terrain baked beneath shows through.
+        if (ground[i] === 0xffff) continue;
         const css = tileColor(ground[i]!);
         const v = parseInt(css.slice(1), 16);
         const lv = elev ? elev[i]! : 0;
