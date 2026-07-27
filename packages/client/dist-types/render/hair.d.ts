@@ -1,3 +1,4 @@
+import { type RingCover, type RingFrame } from './headRing.js';
 /**
  * THE HAIR RIDES THE SKULL RING — the hair foundation.
  *
@@ -69,23 +70,10 @@
  * riding OVER the kit as nearer strands; the far pass sits a step
  * darker (nape shadow). Hurt flash paints flat, like the body.
  */
-export interface HairFrame {
-    /** Head block center + measurements, straight from drawHumanoid. */
-    headX: number;
-    headY: number;
-    hw: number;
-    hh: number;
-    cut: number;
-    /** Facing: fx = cos(dir), fy = sin(dir); fy > 0 faces the camera. */
-    fx: number;
-    fy: number;
-    /** Resolved hair color (look palette / NPC tint). */
-    col: string;
-    /** Hurt flash — paint flat, no form facets. */
-    hurt: boolean;
-}
+/** The head block hair is painted onto (the shared ring frame). */
+export type HairFrame = RingFrame;
 /** THE COVERAGE LAW tiers, resolved by rig.ts from the worn helm. */
-export type HairCover = 'free' | 'brim' | 'sealed' | 'cloth';
+export type HairCover = RingCover;
 /**
  * What a humanoid with no Look wears — every NPC in the world. The
  * short cut is the neutral one: a town full of guards and crofters in

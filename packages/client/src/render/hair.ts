@@ -1,5 +1,19 @@
 import { chamferRect } from './shapes.js';
 import { shade } from './rig.js';
+import {
+  RING_STEPS,
+  azDelta,
+  bandPath,
+  curve,
+  facingOf,
+  ringDepth,
+  ringX,
+  ripple,
+  walkRing,
+  type BandStation,
+  type RingCover,
+  type RingFrame,
+} from './headRing.js';
 
 /**
  * THE HAIR RIDES THE SKULL RING — the hair foundation.
@@ -73,24 +87,10 @@ import { shade } from './rig.js';
  * darker (nape shadow). Hurt flash paints flat, like the body.
  */
 
-export interface HairFrame {
-  /** Head block center + measurements, straight from drawHumanoid. */
-  headX: number;
-  headY: number;
-  hw: number;
-  hh: number;
-  cut: number;
-  /** Facing: fx = cos(dir), fy = sin(dir); fy > 0 faces the camera. */
-  fx: number;
-  fy: number;
-  /** Resolved hair color (look palette / NPC tint). */
-  col: string;
-  /** Hurt flash — paint flat, no form facets. */
-  hurt: boolean;
-}
-
+/** The head block hair is painted onto (the shared ring frame). */
+export type HairFrame = RingFrame;
 /** THE COVERAGE LAW tiers, resolved by rig.ts from the worn helm. */
-export type HairCover = 'free' | 'brim' | 'sealed' | 'cloth';
+export type HairCover = RingCover;
 
 /** A near-strand chip riding the hem — paints over the depth kit. */
 interface HemChip {
@@ -123,50 +123,6 @@ interface HairstyleDef {
   /** Dark parting notches rising off the hem into the crown. */
   strands: readonly { a: number; w: number; rise: number }[];
 }
-
-/** Fold an azimuth into (−π, π] — a = φ − ψ can leave the range. */
-const wrapAz = (a: number): number => {
-  let v = a;
-  while (v > Math.PI) v -= Math.PI * 2;
-  while (v <= -Math.PI) v += Math.PI * 2;
-  return v;
-};
-
-/** Piecewise-linear curve over |a| — the authored knots. */
-const curve =
-  (knots: readonly (readonly [number, number])[]) =>
-  (a: number): number => {
-    const t = Math.abs(wrapAz(a));
-    let lo = knots[0]!;
-    for (const k of knots) {
-      if (k[0] <= t) {
-        lo = k;
-        continue;
-      }
-      const f = (t - lo[0]) / (k[0] - lo[0]);
-      return lo[1] + (k[1] - lo[1]) * f;
-    }
-    return lo[1];
-  };
-
-/**
- * A hem ripple: the small unevenness that makes a cut edge read as
- * hair rather than as a ruled line. Amplitude is per style — a long
- * layered cut wants more than a barbered crop.
- */
-const ripple =
-  (base: (a: number) => number, amp: number, amp2 = amp * 0.5) =>
-  (a: number): number => {
-    const v = base(a);
-    if (v <= 0.02) return v;
-    // Low frequencies only. A ripple that cycles fast against the ring
-    // scallops the hem into a row of lobes that read as melted wax at
-    // any real zoom; hair unevenness is a few long waves with a finer
-    // one riding them, and it must also EASE OUT as the fall shortens
-    // so a barbered edge stays barbered.
-    const k = Math.min(1, v / 0.5);
-    return v + k * (amp * Math.cos(a * 2.5 + 0.4) + amp2 * Math.cos(a * 5.5 + 1.1));
-  };
 
 /**
  * Style 0 — THE WAYFARER: a layered, collar-length cut. Straight brow
@@ -309,20 +265,11 @@ const CAP_R = 1.04;
 const GATHER = 0.84;
 /** Fall length (× hh) at which the gather is fully applied. */
 const GATHER_FULL = 0.9;
-/**
- * Station count for the silhouette walk. THE NYQUIST LAW: this must
- * comfortably out-sample the hem ripple's highest frequency, or the
- * strand tips alias into a stair-step of little rectangles — sampling
- * artifacts read as broken art, not as hair.
- */
-const STEPS = 84;
+
 /** A sealed helm's box: nape geometry must start below this to exist. */
 const SEALED_FLOOR = 0.86;
 /** Below this fall a column is bare skin under the hem, not hair. */
 const BARE = 0.05;
-
-/** Signed shortest distance between two azimuths. */
-const azDelta = (a: number, b: number): number => wrapAz(a - b);
 
 /** Hem height at azimuth a, with the parting notch folded in. */
 const hemAt = (st: HairstyleDef, a: number): number => {
@@ -359,9 +306,9 @@ function stationAt(f: HairFrame, st: HairstyleDef, phi: number, psi: number): St
   // The gather eases in with the fall, so the crown's full width and
   // the mass's narrowed width are the same curve, never a step.
   const g = 1 - (1 - GATHER) * Math.min(1, fall / GATHER_FULL);
-  const xr = f.headX + Math.cos(psi) * f.hw * CAP_R;
+  const xr = ringX(f, psi, CAP_R);
   return {
-    x: f.headX + Math.cos(psi) * f.hw * CAP_R * g,
+    x: ringX(f, psi, CAP_R * g),
     xr,
     hemY,
     botY: hemY + fall * f.hh,
@@ -371,18 +318,7 @@ function stationAt(f: HairFrame, st: HairstyleDef, phi: number, psi: number): St
 
 /** Walk one pass's half of the ring, screen-left to screen-right. */
 function walk(f: HairFrame, st: HairstyleDef, phi: number, back: boolean): Station[] {
-  const out: Station[] = [];
-  for (let i = 0; i <= STEPS; i++) {
-    const t = i / STEPS;
-    // The camera side is d = sin ψ > 0, so the FRONT pass is
-    // ψ ∈ (0, π) and the far pass is ψ ∈ (−π, 0) — and the azimuth is
-    // recovered by a = φ − ψ, never φ + ψ (that sign swaps the passes
-    // wholesale: the far mass paints over the face and the near mass
-    // hides behind the shoulders).
-    const psi = back ? -Math.PI + t * Math.PI : Math.PI - t * Math.PI;
-    out.push(stationAt(f, st, phi, psi));
-  }
-  return out;
+  return walkRing(back).map((psi) => stationAt(f, st, phi, psi));
 }
 
 /**
@@ -420,18 +356,16 @@ function silhouettePath(ctx: CanvasRenderingContext2D, f: HairFrame, sts: Statio
  */
 function napePath(
   ctx: CanvasRenderingContext2D,
-  f: HairFrame,
+  _f: HairFrame,
   sts: Station[],
   floorY: number,
 ): boolean {
-  const live = sts.filter((s) => s.botY > floorY && s.fall > BARE);
-  if (live.length < 2) return false;
-  ctx.beginPath();
-  ctx.moveTo(live[0]!.x, Math.max(live[0]!.hemY, floorY));
-  for (const s of live) ctx.lineTo(s.x, Math.max(s.hemY, floorY));
-  for (let i = live.length - 1; i >= 0; i--) ctx.lineTo(live[i]!.x, live[i]!.botY);
-  ctx.closePath();
-  return true;
+  const band: (BandStation | null)[] = sts.map((s) =>
+    s.botY > floorY && s.fall > BARE
+      ? { x: s.x, xr: s.xr, top: Math.max(s.hemY, floorY), bot: s.botY }
+      : null,
+  );
+  return bandPath(ctx, band);
 }
 
 /**
@@ -482,7 +416,7 @@ function drawPass(
   const st = styleIx >= 0 && styleIx < STYLES.length ? STYLES[styleIx] : STYLES[0];
   if (!st) return; // bald
   const { headX, headY, hw, hh, cut, col, hurt } = f;
-  const phi = Math.atan2(f.fy, f.fx);
+  const phi = facingOf(f);
   const sealed = cover === 'sealed';
   const sts = walk(f, st, phi, back);
   // The far half lies in the head's own shadow — a step darker, the
@@ -519,10 +453,10 @@ function drawPass(
   ctx.fillStyle = shade(base, -20);
   for (const sm of st.seams) {
     const psi = azDelta(phi, sm.a);
-    const d = Math.sin(psi);
+    const d = ringDepth(psi);
     if (back ? d > -0.04 : d < 0.04) continue;
     const w = sm.w * hw * (0.45 + 0.55 * Math.abs(d));
-    const x = headX + Math.cos(psi) * hw * CAP_R;
+    const x = ringX(f, psi, CAP_R);
     ctx.fillRect(x - w / 2, headY - hh, w, hh * 4);
   }
   // Strand notches: parting lines that rise off the hem and TAPER OUT
@@ -533,7 +467,7 @@ function drawPass(
     ctx.fillStyle = shade(base, -22);
     for (const sn of st.strands) {
       const psi = azDelta(phi, sn.a);
-      const d = Math.sin(psi);
+      const d = ringDepth(psi);
       if (d <= 0.06) continue;
       const s = stationAt(f, st, phi, psi);
       const w = sn.w * hw * (0.6 + 0.4 * d);
@@ -563,7 +497,7 @@ function drawPass(
   if (sealed || back) return;
   for (const ch of st.chips) {
     const psi = azDelta(phi, ch.a);
-    const d = Math.sin(psi);
+    const d = ringDepth(psi);
     if (d <= 0.08) continue;
     const s = stationAt(f, st, phi, psi);
     if (s.fall > BARE) continue; // a chip only reads against skin

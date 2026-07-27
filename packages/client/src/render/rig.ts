@@ -40,6 +40,7 @@ import {
 } from './carriage.js';
 import { STOW_HANDOFF, sheathePhases, stowBack, stowBlade } from './sheath.js';
 import { NPC_HAIR_STYLE, drawHairBack, drawHairFront, type HairCover } from './hair.js';
+import { drawBeard } from './beard.js';
 import {
   bodyStyle,
   bootStyle,
@@ -4118,6 +4119,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         );
       }
     }
+    // Facial hair: a BAND around the jaw on the shared skull ring
+    // (beard.ts), painted over the cheek marks it would really cover
+    // and under the teeth that grow in front of it.
+    drawBeard(ctx, hairFrame, rig.look?.beard ?? 0, cover);
     // Tusks and fangs rise off the underbite — teeth in front of skin.
     if (feature === 1 || feature === 2) {
       const big = feature === 1;

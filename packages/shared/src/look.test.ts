@@ -71,13 +71,11 @@ test('sanitizeLook rejects out-of-range, fractional, and malformed input', () =>
 
 test('sanitizeLook defaults the expansion fields for pre-expansion DB looks', () => {
   // A look saved before eyes/ears/feature existed must load unchanged,
-  // with the new fields zeroed — never rejected. Its retired beard
-  // index rides THE SHEARING migration down to clean-shaven; hair 2 is
-  // a live index again (the Crop) and so is kept as-is.
+  // with the new fields zeroed — never rejected. Hair 2 (the Crop) and
+  // beard 1 (the mustache) are both live indices, so they are kept.
   const stored = { skin: 3, hair: 2, hairColor: 5, beard: 1, shirt: 0, pants: 7 };
   assert.deepEqual(sanitizeLook(stored), {
     ...stored,
-    beard: 0,
     eyes: 0,
     ears: 0,
     feature: 0,
@@ -101,13 +99,23 @@ test('THE SHEARING: retired style indices migrate to 0, garbage still dies', () 
   for (let h = HAIR_STYLES.length; h <= 10; h++) {
     assert.deepEqual(sanitizeLook({ ...ok, hair: h }), ok, `hair ${h}`);
   }
-  for (let b = 1; b <= 6; b++) {
-    assert.deepEqual(sanitizeLook({ ...ok, beard: b }), ok, `beard ${b}`);
-  }
   // Live indices survive as themselves, retired-era origin or not.
   for (let h = 0; h < HAIR_STYLES.length; h++) {
-    assert.deepEqual(sanitizeLook({ ...ok, hair: h }), { ...ok, hair: h }, `live ${h}`);
+    assert.deepEqual(sanitizeLook({ ...ok, hair: h }), { ...ok, hair: h }, `live hair ${h}`);
   }
+  // THE BEARD ORDER IS LOAD-BEARING: every index the retired beard set
+  // stored is live again, so a stored beard keeps its own character
+  // instead of migrating. Reordering BEARD_STYLES would re-shave the
+  // world silently; this pins the contract.
+  for (let b = 0; b < BEARD_STYLES.length; b++) {
+    assert.deepEqual(sanitizeLook({ ...ok, beard: b }), { ...ok, beard: b }, `live beard ${b}`);
+  }
+  assert.equal(BEARD_STYLES.length, 7, 'the retired beard index range is fully covered');
+  assert.equal(BEARD_STYLES[1], 'Mustache');
+  assert.equal(BEARD_STYLES[2], 'Goatee');
+  assert.equal(BEARD_STYLES[3], 'Full beard');
+  assert.equal(BEARD_STYLES[5], 'Mutton chops');
+  assert.equal(BEARD_STYLES[6], 'Stubble');
   // Beyond the legacy range was never valid in any era.
   assert.equal(sanitizeLook({ ...ok, hair: 11 }), null);
   assert.equal(sanitizeLook({ ...ok, beard: 7 }), null);

@@ -1,4 +1,5 @@
 import {
+  BEARD_STYLES,
   CLOTH_COLORS,
   EAR_STYLES,
   EYE_STYLES,
@@ -301,6 +302,7 @@ export class LookCreator {
     );
     parts.push(`${EYE_STYLES[l.eyes]!.toLowerCase()} eyes`);
     if (l.ears > 0) parts.push(`${EAR_STYLES[l.ears]!.toLowerCase()} ears`);
+    if (l.beard > 0) parts.push(BEARD_STYLES[l.beard]!.toLowerCase());
     if (l.feature > 0) parts.push(FACE_FEATURES[l.feature]!.toLowerCase());
     this.summary.textContent = parts.join(' · ');
   }
@@ -356,12 +358,16 @@ export class LookCreator {
         );
         break;
       case 'face':
-        // Beards left with THE SHEARING — the row returns when facial
-        // hair is rebuilt on the skull ring.
         this.tabPanel.appendChild(
           this.tileRow('Eyes', EYE_STYLES, this.look.eyes, (i) => (this.look.eyes = i), {
             scale: 150,
             mutate: (l, i) => ({ ...l, eyes: i }),
+          }),
+        );
+        this.tabPanel.appendChild(
+          this.tileRow('Beard', BEARD_STYLES, this.look.beard, (i) => (this.look.beard = i), {
+            scale: 122,
+            mutate: (l, i) => ({ ...l, beard: i }),
           }),
         );
         break;

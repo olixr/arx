@@ -141,15 +141,28 @@ export const CLOTH_COLORS = [
 export const HAIR_STYLES = ['Wayfarer', 'Bald', 'Crop'] as const;
 
 /**
- * Beards were retired with the shear and return on the same ring
- * foundation. The field stays on the wire and in the DB; every stored
- * index migrates to clean-shaven.
+ * Beards, rebuilt on the skull ring (client render/beard.ts) — a band
+ * around the jaw rather than a slab pinned to the front of the face.
+ *
+ * The ORDER here is deliberate: it preserves the retired set's indices
+ * so stored looks keep their character. 1 mustache, 2 goatee, 3 full,
+ * 5 chops and 6 stubble all mean exactly what they always meant; only
+ * index 4 is reinterpreted, from a braided beard to the Patriarch —
+ * both being the big statement beard, so nobody's dwarf comes back
+ * clean-shaven. Reordering this list would silently re-shave the world.
  */
-export const BEARD_STYLES = ['Clean-shaven'] as const;
+export const BEARD_STYLES = [
+  'Clean-shaven',
+  'Mustache',
+  'Goatee',
+  'Full beard',
+  'Patriarch',
+  'Mutton chops',
+  'Stubble',
+] as const;
 
-/** Highest style index ever stored by the retired systems. */
+/** Highest style index ever stored by the retired hair systems. */
 const LEGACY_HAIR_MAX = 10;
-const LEGACY_BEARD_MAX = 6;
 
 export const EYE_STYLES = ['Calm', 'Sharp', 'Wide', 'Lashed'] as const;
 
@@ -223,10 +236,11 @@ export const HERITAGES: readonly Heritage[] = [
   },
   {
     name: 'Stoneborn',
-    blurb: 'Mountain-hewn folk, patient as the crags they came from.',
+    blurb: 'Mountain-hewn folk, bearded like the crags.',
     skins: [9, 3, 4],
     ears: 0,
     feature: 0,
+    beards: [4, 3, 5],
   },
 ] as const;
 
@@ -291,7 +305,9 @@ export function sanitizeLook(raw: unknown): Look | null {
   const skin = idx(r.skin, SKIN_TONES.length);
   const hair = idxSheared(r.hair, HAIR_STYLES.length, LEGACY_HAIR_MAX);
   const hairColor = idx(r.hairColor, HAIR_COLORS.length);
-  const beard = idxSheared(r.beard, BEARD_STYLES.length, LEGACY_BEARD_MAX);
+  // Every index the retired beard set ever stored is live again, so a
+  // plain range check is the whole migration.
+  const beard = idx(r.beard, BEARD_STYLES.length);
   const eyes = idxOpt(r.eyes, EYE_STYLES.length);
   const ears = idxOpt(r.ears, EAR_STYLES.length);
   const feature = idxOpt(r.feature, FACE_FEATURES.length);
@@ -323,8 +339,9 @@ export function randomLook(rand: () => number = Math.random): Look {
     skin,
     // A full head of hair is the norm; bald is a choice, not a coin flip.
     hair: rand() < 0.45 ? 0 : rand() < 0.86 ? 2 : 1,
+    // Most faces are shaved; the rest spread across the whole shelf.
+    beard: rand() < 0.55 ? 0 : 1 + pick(BEARD_STYLES.length - 1),
     hairColor: pick(HAIR_COLORS.length),
-    beard: 0,
     eyes: pick(EYE_STYLES.length),
     // Most rolls keep round ears; green skins lean into pointed kinds.
     ears: rand() < (green ? 0.3 : 0.78) ? 0 : 1 + pick(EAR_STYLES.length - 1),
