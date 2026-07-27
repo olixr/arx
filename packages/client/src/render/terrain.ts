@@ -582,14 +582,28 @@ function drawDocks(
     for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
       const tx = baseX + lx;
       const ty = baseY + ly;
-      if (!isDockTile(ground, tx, ty)) continue;
-      if (include && !include(tx, ty)) continue;
       const gx = lx * px;
       const gy = ly * px;
-      const hasN = isDeckGround(ground(tx, ty - 1));
-      const hasS = isDeckGround(ground(tx, ty + 1));
-      const hasE = isDeckGround(ground(tx + 1, ty));
-      const hasW = isDeckGround(ground(tx - 1, ty));
+      if (!isDockTile(ground, tx, ty)) {
+        // 45° notch fills owned by this pass (deckFillAt).
+        const f = deckFillAt(ground, tx, ty);
+        if (f !== null && f.family === 'dock' && (!include || include(tx, ty))) {
+          drawDeckFill(ctx, ground, f, tx, ty, gx, gy, px);
+        }
+        continue;
+      }
+      if (include && !include(tx, ty)) continue;
+      // Raw deck-family neighbors decide board direction; EXPOSURE
+      // (fascia, shadow, strokes) also honors a notch fill welded to
+      // the edge — a covered edge is interior, never a face.
+      const deckN = isDeckGround(ground(tx, ty - 1));
+      const deckS = isDeckGround(ground(tx, ty + 1));
+      const deckE = isDeckGround(ground(tx + 1, ty));
+      const deckW = isDeckGround(ground(tx - 1, ty));
+      const hasN = deckN || fillCoversEdge(ground, tx, ty - 1, 'S');
+      const hasS = deckS || fillCoversEdge(ground, tx, ty + 1, 'N');
+      const hasE = deckE || fillCoversEdge(ground, tx + 1, ty, 'W');
+      const hasW = deckW || fillCoversEdge(ground, tx - 1, ty, 'E');
       const southWater = isWaterTile(ground(tx, ty + 1));
 
       // Standing shadow: two stepped bands, flat-art AO.
@@ -640,7 +654,7 @@ function drawDocks(
       // The deck itself, lifted. Dark underlay first — the gaps
       // between boards read as shadowed seams.
       const dy0 = gy - liftB;
-      const vertRun = hasN || hasS || (!hasE && !hasW);
+      const vertRun = deckN || deckS || (!deckE && !deckW);
       ctx.fillStyle = '#5a4326';
       ctx.fillRect(gx, dy0, px, px);
       const rows = 5;
@@ -739,22 +753,36 @@ function drawBridges(
     for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
       const tx = baseX + lx;
       const ty = baseY + ly;
-      if (!isBridgeTile(ground, tx, ty)) continue;
-      if (include && !include(tx, ty)) continue;
       const gx = lx * px;
       const gy = ly * px;
+      if (!isBridgeTile(ground, tx, ty)) {
+        // 45° notch fills owned by this pass (deckFillAt).
+        const f = deckFillAt(ground, tx, ty);
+        if (f !== null && f.family === 'bridge' && (!include || include(tx, ty))) {
+          drawDeckFill(ctx, ground, f, tx, ty, gx, gy, px, axisMemo);
+        }
+        continue;
+      }
+      if (include && !include(tx, ty)) continue;
       const nT = ground(tx, ty - 1);
       const sT = ground(tx, ty + 1);
       const eT = ground(tx + 1, ty);
       const wT = ground(tx - 1, ty);
-      const hasN = isDeckGround(nT);
-      const hasS = isDeckGround(sT);
-      const hasE = isDeckGround(eT);
-      const hasW = isDeckGround(wT);
-      const landN = !hasN && isLand(nT);
-      const landS = !hasS && isLand(sT);
-      const landE = !hasE && isLand(eT);
-      const landW = !hasW && isLand(wT);
+      // Raw deck-family neighbors keep the land/apron laws honest;
+      // EXPOSURE (fascia, piers, kerbs, strokes) also honors a notch
+      // fill welded to the edge — a covered edge is interior.
+      const deckN = isDeckGround(nT);
+      const deckS = isDeckGround(sT);
+      const deckE = isDeckGround(eT);
+      const deckW = isDeckGround(wT);
+      const hasN = deckN || fillCoversEdge(ground, tx, ty - 1, 'S');
+      const hasS = deckS || fillCoversEdge(ground, tx, ty + 1, 'N');
+      const hasE = deckE || fillCoversEdge(ground, tx + 1, ty, 'W');
+      const hasW = deckW || fillCoversEdge(ground, tx - 1, ty, 'E');
+      const landN = !deckN && isLand(nT);
+      const landS = !deckS && isLand(sT);
+      const landE = !deckE && isLand(eT);
+      const landW = !deckW && isLand(wT);
       const waterS = isWaterTile(sT);
 
       // Walk axis + apron first — the whole tile's geometry hangs on
@@ -1037,6 +1065,201 @@ function drawBridges(
       }
     }
   }
+}
+
+/**
+ * ONE 45° NOTCH FILL (deckFillAt): the lifted half-tile deck triangle
+ * a stair-step notch grows. The two legs lie flush on the deck-
+ * neighbor edges (interior — those neighbors suppress their own edge
+ * kit there), the hypotenuse is the exposed 45° edge. The triangle
+ * rides DOCK_LIFT like every deck; a south-facing hypotenuse hangs
+ * the family's fascia (stone for a bridge, plank for a dock) with a
+ * standing shadow on the water and one pier/pile at its midpoint, so
+ * the diagonal edge carries the same weight as the straight runs.
+ * Paint order mirrors the tile painters: shadow → leg → face → boards
+ * → kerb → perimeter stroke.
+ */
+function drawDeckFill(
+  ctx: CanvasRenderingContext2D,
+  ground: GroundSampler,
+  fill: DeckFill,
+  tx: number,
+  ty: number,
+  gx: number,
+  gy: number,
+  px: number,
+  axisMemo?: Map<number, boolean>,
+): void {
+  const liftB = Math.round((DOCK_LIFT / FLAT) * px);
+  const seam = Math.max(1, px * 0.02);
+  const { legs, family } = fill;
+  const bridge = family === 'bridge';
+  const southFacing = legs[0] === 'N'; // hypotenuse faces the camera
+  // The hypotenuse runs corner to corner: NE/SW-leg fills span the
+  // main diagonal (NW->SE corner), NW/SE-leg fills the anti-diagonal.
+  const diagMain = legs === 'NE' || legs === 'SW';
+  const ax0 = diagMain ? gx : gx + px;
+  const bx0 = diagMain ? gx + px : gx;
+  // Ground-line hyp (a..b) and lifted hyp (deck height): both hyp
+  // orientations start on the tile's top row and end on its bottom.
+  const ayG = gy;
+  const byG = gy + px;
+  const ayL = ayG - liftB;
+  const byL = byG - liftB;
+  // The solid triangle's third corner (lifted), per legs.
+  const cx =
+    legs === 'NE' ? gx + px
+    : legs === 'NW' ? gx
+    : legs === 'SE' ? gx + px
+    : gx;
+  const cy = (legs === 'NE' || legs === 'NW' ? gy : gy + px) - liftB;
+  const triPath = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(ax0, ayL);
+    ctx.lineTo(bx0, byL);
+    ctx.lineTo(cx, cy);
+    ctx.closePath();
+  };
+  // Interior perpendicular of the hyp (unit, bake space, y down) —
+  // points from the hyp toward the solid corner.
+  const q = Math.SQRT1_2;
+  const ux = (legs === 'NE' || legs === 'SE' ? 1 : -1) * q;
+  const uy = (legs === 'SE' || legs === 'SW' ? 1 : -1) * q;
+
+  // Standing shadow on the water below a camera-facing hyp: the same
+  // two stepped AO bands as the straight south edges, sheared along
+  // the diagonal.
+  if (southFacing) {
+    const band = (y0: number, y1: number, style: string): void => {
+      ctx.fillStyle = style;
+      ctx.beginPath();
+      ctx.moveTo(ax0, ayG + y0);
+      ctx.lineTo(bx0, byG + y0);
+      ctx.lineTo(bx0, byG + y1);
+      ctx.lineTo(ax0, ayG + y1);
+      ctx.closePath();
+      ctx.fill();
+    };
+    band(0, px * 0.2, 'rgba(20, 34, 62, 0.26)');
+    band(px * 0.2, px * 0.38, 'rgba(20, 34, 62, 0.12)');
+
+    // One leg at the hyp midpoint: a stone pier for the bridge, a
+    // driven pile for the dock — the diagonal stands on the water
+    // like every straight bay does.
+    const mx = (ax0 + bx0) / 2;
+    const myG = (ayG + byG) / 2;
+    const pw = bridge ? px * 0.16 : px * 0.11;
+    const pxl = mx - pw / 2;
+    const top = myG - liftB * (bridge ? 0.3 : 0.25);
+    const bot = myG + px * (bridge ? 0.16 : 0.14);
+    ctx.fillStyle = bridge ? BRIDGE_STONE.dark : '#4e3a22';
+    ctx.fillRect(pxl, top, pw, bot - top);
+    ctx.fillStyle = bridge ? BRIDGE_STONE.lit : '#77593a'; // sun-law lit west edge
+    ctx.fillRect(pxl, top, Math.max(1, pw * (bridge ? 0.32 : 0.3)), bot - top);
+    ctx.strokeStyle = 'rgba(226, 240, 251, 0.5)';
+    ctx.lineWidth = Math.max(1.2, px * 0.03);
+    ctx.beginPath();
+    ctx.ellipse(mx, bot, pw * 0.8, pw * 0.8 * FLAT, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // The face under the hyp: deck thickness made visible, sheared
+    // along the diagonal — stone fascia for the bridge, plank face
+    // for the dock, each wearing its family's dressing lines.
+    const face = (yTop: number, yBot: number, style: string): void => {
+      ctx.fillStyle = style;
+      ctx.beginPath();
+      ctx.moveTo(ax0, ayL + yTop);
+      ctx.lineTo(bx0, byL + yTop);
+      ctx.lineTo(bx0, byL + yBot);
+      ctx.lineTo(ax0, ayL + yBot);
+      ctx.closePath();
+      ctx.fill();
+    };
+    face(0, liftB, bridge ? BRIDGE_STONE.face : '#6d5130');
+    if (bridge) {
+      face(liftB * 0.45, liftB * 0.45 + Math.max(1, px * 0.015), 'rgba(30, 24, 14, 0.3)');
+      face(0, Math.max(1, px * 0.02), 'rgba(228, 222, 204, 0.32)');
+      face(liftB - Math.max(1.5, liftB * 0.14), liftB, 'rgba(20, 16, 8, 0.4)');
+    } else {
+      face(liftB - Math.max(1.5, liftB * 0.22), liftB, 'rgba(30, 19, 9, 0.45)');
+      face(0, Math.max(1, px * 0.02), 'rgba(214, 178, 120, 0.28)');
+    }
+  }
+
+  // The boards, clipped to the lifted triangle. Direction and tones
+  // come from the span the fill welds into — the bridge asks the
+  // axis flood of its leg neighbor, the dock replays the neighbor's
+  // own per-tile rule — and the row hashes key on the same axes as
+  // the tile painters, so strips continue across the seam.
+  let vertRun: boolean;
+  const nx = tx;
+  const ny = legs[0] === 'N' ? ty - 1 : ty + 1;
+  if (bridge) {
+    let vr = axisMemo?.get(packDeck(nx, ny));
+    if (vr === undefined) vr = deckWalkIsVertical(ground, nx, ny, axisMemo);
+    vertRun = vr;
+  } else {
+    const dN = isDeckGround(ground(nx, ny - 1));
+    const dS = isDeckGround(ground(nx, ny + 1));
+    const dE = isDeckGround(ground(nx + 1, ny));
+    const dW = isDeckGround(ground(nx - 1, ny));
+    vertRun = dN || dS || (!dE && !dW);
+  }
+  ctx.save();
+  triPath();
+  ctx.clip();
+  const dy0 = gy - liftB;
+  ctx.fillStyle = bridge ? '#54402a' : '#5a4326';
+  ctx.fillRect(gx, dy0, px, px);
+  const tones = bridge ? BRIDGE_TONES : DOCK_TONES;
+  const rowSeed = bridge ? 151 : 137;
+  const colSeed = bridge ? 153 : 139;
+  const jointSeed = bridge ? 155 : 141;
+  const rows = 5;
+  for (let r = 0; r < rows; r++) {
+    const hh = vertRun ? hashCoords(rowSeed, ty * 8 + r, 0) : hashCoords(colSeed, tx * 8 + r, 0);
+    ctx.fillStyle = tones[hh % 4]!;
+    if (vertRun) ctx.fillRect(gx, dy0 + (r / rows) * px, px, px / rows - seam);
+    else ctx.fillRect(gx + (r / rows) * px, dy0, px / rows - seam, px);
+  }
+  ctx.fillStyle = 'rgba(40, 26, 14, 0.5)';
+  for (let r = 0; r < rows; r++) {
+    const hh = hashCoords(jointSeed, (vertRun ? ty : tx) * 8 + r, vertRun ? tx : ty);
+    if (hh % 3 !== 0) continue;
+    const at = 0.25 + ((hh >>> 4) % 50) / 100;
+    if (vertRun) ctx.fillRect(gx + at * px, dy0 + (r / rows) * px, seam, px / rows - seam);
+    else ctx.fillRect(gx + (r / rows) * px, dy0 + at * px, px / rows - seam, seam);
+  }
+
+  // Kerb stringer along the hyp (bridge only) — the dark curb the
+  // rail bolts to, with its lit inner pop, still inside the clip so
+  // only the deck-side half of each stroke survives.
+  if (bridge) {
+    const kerb = Math.max(1.5, px * 0.085);
+    const lit = Math.max(1, px * 0.015);
+    ctx.strokeStyle = '#63492c';
+    ctx.lineWidth = kerb * 2;
+    ctx.beginPath();
+    ctx.moveTo(ax0, ayL);
+    ctx.lineTo(bx0, byL);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(214, 178, 120, 0.25)';
+    ctx.lineWidth = lit;
+    ctx.beginPath();
+    ctx.moveTo(ax0 + ux * (kerb + lit), ayL + uy * (kerb + lit));
+    ctx.lineTo(bx0 + ux * (kerb + lit), byL + uy * (kerb + lit));
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Perimeter stroke on the exposed hyp (architecture outline law) —
+  // unclipped, like every straight deck edge.
+  ctx.strokeStyle = 'rgba(42, 28, 14, 0.85)';
+  ctx.lineWidth = Math.max(1.5, px * 0.045);
+  ctx.beginPath();
+  ctx.moveTo(ax0, ayL);
+  ctx.lineTo(bx0, byL);
+  ctx.stroke();
 }
 
 /**
@@ -2516,6 +2739,68 @@ export function isDeckTile(ground: GroundSampler, tx: number, ty: number): boole
   return isDeckGround(ground(tx, ty)) && waterNear2(ground, tx, ty);
 }
 
+/** A notch fill's orientation: which two adjacent tile edges the
+ *  half-tile deck triangle spans (the diag-wall suffix convention —
+ *  the named corner is the SOLID one, the hypotenuse faces away). */
+export type DeckFillLegs = 'NE' | 'NW' | 'SE' | 'SW';
+
+export interface DeckFill {
+  legs: DeckFillLegs;
+  /** Which painter owns the fill — bridge wins a mixed junction. */
+  family: 'bridge' | 'dock';
+}
+
+/**
+ * THE 45° NOTCH-FILL LAW. A stair-stepped span (a diagonal worldgen
+ * road crossing, an angled jetty) exposes inner corners: water tiles
+ * hugged by deck on exactly two ADJACENT sides. Each such notch grows
+ * a lifted half-tile deck TRIANGLE spanning those two edges, so the
+ * staircase reads as a clean 45° crossing — the same chamfer language
+ * as the diagonal walls, with no new tiles and no data changes (the
+ * notch tile stays water: solid, unwalkable, pure visual). The gate
+ * is deliberately narrow: three deck sides is an authored inlet (a
+ * boat slip must not seal over), opposite sides are a deliberate gap,
+ * a FishingSpot must never be boarded over, and fills never chain off
+ * other fills (legs demand real deck tiles).
+ */
+export function deckFillAt(ground: GroundSampler, tx: number, ty: number): DeckFill | null {
+  const t = ground(tx, ty);
+  if (!isWaterTile(t) || t === Tile.FishingSpot) return null;
+  const nT = ground(tx, ty - 1);
+  const sT = ground(tx, ty + 1);
+  const eT = ground(tx + 1, ty);
+  const wT = ground(tx - 1, ty);
+  const n = isDeckGround(nT);
+  const s = isDeckGround(sT);
+  const e = isDeckGround(eT);
+  const w = isDeckGround(wT);
+  if ((n ? 1 : 0) + (s ? 1 : 0) + (e ? 1 : 0) + (w ? 1 : 0) !== 2) return null;
+  const legs: DeckFillLegs | null =
+    n && e ? 'NE'
+    : n && w ? 'NW'
+    : s && e ? 'SE'
+    : s && w ? 'SW'
+    : null;
+  if (legs === null) return null;
+  const a = legs[0] === 'N' ? nT : sT;
+  const b = legs[1] === 'E' ? eT : wT;
+  return { legs, family: a === Tile.Bridge || b === Tile.Bridge ? 'bridge' : 'dock' };
+}
+
+/** Does a notch fill at (x,y) cover that tile's given edge? The two
+ *  leg edges are interior deck — every painter treats them exactly
+ *  like a deck neighbor (no fascia, no kerb, no stroke, no rail, no
+ *  lap line), so the fill welds seamlessly into the span. */
+export function fillCoversEdge(
+  ground: GroundSampler,
+  x: number,
+  y: number,
+  edge: 'N' | 'S' | 'E' | 'W',
+): boolean {
+  const f = deckFillAt(ground, x, y);
+  return f !== null && (f.legs[0] === edge || f.legs[1] === edge);
+}
+
 /** World-keyed map key for deck-span memoization. */
 const packDeck = (x: number, y: number): number => x * 100000 + y;
 
@@ -2823,14 +3108,18 @@ export function drawLiveGround(
       // this layer keeps the water, portals, and shorelines breathing.
       // A dock's or bridge's lifted deck reaches into the cell NORTH
       // of it — no glitter may paint over those boards (the deck is
-      // baked; the breeze layer is live and would land on top).
-      const southIsDeck = isDeckGround(ground(tx, ty + 1));
+      // baked; the breeze layer is live and would land on top). A
+      // notch fill's triangle counts as deck the same way, and a
+      // fill's own cell wears boards, so it never sparkles either.
+      const southIsDeck =
+        isDeckGround(ground(tx, ty + 1)) || fillCoversEdge(ground, tx, ty + 1, 'N');
 
       if (tile === Tile.Water || tile === Tile.WaterDeep) {
         // Calm water still reads as water — the field shapes glitter,
         // it never kills it.
         const act = 0.5 + 0.5 * liveliness(tx, ty, t);
-        if (h % 6 === 0 && !southIsDeck) {
+        const selfFill = deckFillAt(ground, tx, ty) !== null;
+        if (h % 6 === 0 && !southIsDeck && !selfFill) {
           // Drifting glint: a short dash that slides and fades, scaled
           // by the calm/surf field so still coves barely sparkle.
           const phase = (t * 0.35 + (h % 100) / 100) % 1;
@@ -2852,8 +3141,11 @@ export function drawLiveGround(
           fx.full &&
           h % 5 === 0 &&
           !southIsDeck &&
+          !selfFill &&
           isOpenWater(ground(tx + 1, ty)) &&
-          isOpenWater(ground(tx + 2, ty))
+          deckFillAt(ground, tx + 1, ty) === null &&
+          isOpenWater(ground(tx + 2, ty)) &&
+          deckFillAt(ground, tx + 2, ty) === null
         ) {
           const phase = (t * 0.05 + (h % 89) / 89) % 1;
           const alpha = Math.sin(phase * Math.PI) * 0.34 * act * tones.dim;
@@ -2889,10 +3181,11 @@ export function drawLiveGround(
         }
       } else if (tile === Tile.WaterShallow) {
         const act = 0.35 + 0.65 * liveliness(tx, ty, t);
+        const selfFill = deckFillAt(ground, tx, ty) !== null;
         // Caustic dapples: broken rings of sunlight wobbling on the
         // sandbed — the shallows' own signature. FLAT-squashed: light
         // lying on a tilted surface, never a top-down bubble.
-        if (fx.full && h % 5 === 0 && !southIsDeck) {
+        if (fx.full && h % 5 === 0 && !southIsDeck && !selfFill) {
           const phase = (t * 0.2 + (h % 83) / 83) % 1;
           const alpha = Math.sin(phase * Math.PI) * (fx.moonlit ? 0.16 : 0.3) * act;
           const path = bk.stroke('#93c4da', 0.035, alpha);
@@ -2911,7 +3204,7 @@ export function drawLiveGround(
         }
         // A rare, quiet glint — the shallows glitter less than open
         // water, and that difference IS the depth read.
-        if (h % 13 === 0 && !southIsDeck) {
+        if (h % 13 === 0 && !southIsDeck && !selfFill) {
           const phase = (t * 0.3 + (h % 100) / 100) % 1;
           const alpha = Math.sin(phase * Math.PI) * glintScale * 0.6 * act;
           const path = bk.stroke(tones.glint, 0.045, alpha);
@@ -2956,9 +3249,15 @@ export function drawLiveGround(
             path.moveTo(a.x, a.y);
             path.lineTo(b.x, b.y);
           };
-          if (isWaterTile(ground(tx - 1, ty))) lap(tx - 0.02, ty + 0.12, tx - 0.02, ty + 0.88);
-          if (isWaterTile(ground(tx + 1, ty))) lap(tx + 1.02, ty + 0.12, tx + 1.02, ty + 0.88);
-          if (isWaterTile(ground(tx, ty + 1))) {
+          // A notch fill welded to an edge makes it interior — the
+          // water laps against the fill's hypotenuse, not the seam.
+          if (isWaterTile(ground(tx - 1, ty)) && !fillCoversEdge(ground, tx - 1, ty, 'E')) {
+            lap(tx - 0.02, ty + 0.12, tx - 0.02, ty + 0.88);
+          }
+          if (isWaterTile(ground(tx + 1, ty)) && !fillCoversEdge(ground, tx + 1, ty, 'W')) {
+            lap(tx + 1.02, ty + 0.12, tx + 1.02, ty + 0.88);
+          }
+          if (isWaterTile(ground(tx, ty + 1)) && !fillCoversEdge(ground, tx, ty + 1, 'N')) {
             lap(tx + 0.1, ty + 1.04, tx + 0.9, ty + 1.04);
             // Pile ripple collars, phase-desynced per pile.
             for (const fpos of [0.18, 0.82]) {

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Tile } from '@devcraft/shared';
-import { bridgeApronAt, deckWalkIsVertical } from './terrain.js';
+import { bridgeApronAt, deckFillAt, deckWalkIsVertical, fillCoversEdge } from './terrain.js';
 
 /**
  * String-map worlds for the bridge laws: one char per tile, row-major,
@@ -14,6 +14,7 @@ function samplerOf(rows: string[]) {
     '~': Tile.Water,
     B: Tile.Bridge,
     D: Tile.Dock,
+    F: Tile.FishingSpot,
   };
   return (tx: number, ty: number): number | undefined => {
     if (ty < 0 || ty >= rows.length || tx < 0) return undefined;
@@ -68,6 +69,61 @@ test('a dock in the run flattens it — docks never slope', () => {
   const vert = deckWalkIsVertical(g, 2, 1);
   assert.equal(vert, false);
   assert.equal(bridgeApronAt(g, 1, 1, vert), 'none');
+});
+
+test('THE NOTCH-FILL LAW: a stair-step grows 45° fills on both shoulders', () => {
+  // A diagonal worldgen crossing: the upper row reaches east, the
+  // lower row west. The two inner corners — water hugged by deck on
+  // exactly two adjacent sides — fill; open water does not.
+  const g = samplerOf([
+    '~~~~~~',
+    '~~~BBB', // y1: x3-5
+    '~BBB~~', // y2: x1-3
+    '~~~~~~',
+  ]);
+  assert.deepEqual(deckFillAt(g, 2, 1), { legs: 'SE', family: 'bridge' }, 'upper-left notch');
+  assert.deepEqual(deckFillAt(g, 4, 2), { legs: 'NW', family: 'bridge' }, 'lower-right notch');
+  assert.equal(deckFillAt(g, 0, 0), null, 'open water never fills');
+  assert.equal(deckFillAt(g, 1, 1), null, 'one deck side is an edge, not a notch');
+  // The fill's leg edges read as covered (interior); the hyp-side
+  // edges stay open water.
+  assert.equal(fillCoversEdge(g, 2, 1, 'S'), true);
+  assert.equal(fillCoversEdge(g, 2, 1, 'E'), true);
+  assert.equal(fillCoversEdge(g, 2, 1, 'N'), false);
+  assert.equal(fillCoversEdge(g, 2, 1, 'W'), false);
+});
+
+test('the fill gate stays narrow: inlets, gaps and fishing spots never board over', () => {
+  const inlet = samplerOf([
+    'BBB',
+    'B~B', // three deck sides: an authored boat slip
+    '~~~',
+  ]);
+  assert.equal(deckFillAt(inlet, 1, 1), null, 'a three-sided inlet is authored, not a notch');
+  const gap = samplerOf([
+    '~B~',
+    '~~~',
+    '~B~',
+  ]);
+  assert.equal(deckFillAt(gap, 1, 1), null, 'opposite decks are a deliberate gap');
+  const spot = samplerOf([
+    'BB',
+    'FB',
+  ]);
+  assert.equal(deckFillAt(spot, 0, 1), null, 'a fishing spot must stay open water');
+});
+
+test('fill family: docks fill as docks, a mixed junction goes to the bridge', () => {
+  const dock = samplerOf([
+    'DD',
+    '~D',
+  ]);
+  assert.deepEqual(deckFillAt(dock, 0, 1), { legs: 'NE', family: 'dock' });
+  const mixed = samplerOf([
+    'BD',
+    '~D',
+  ]);
+  assert.deepEqual(deckFillAt(mixed, 0, 1), { legs: 'NE', family: 'bridge' });
 });
 
 test('a north-south walk ramps N/S, judged along the horizontal run', () => {

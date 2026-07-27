@@ -92,6 +92,9 @@ import {
   bakeElevated,
   bakeGutter,
   bridgeApronAt,
+  deckFillAt,
+  type DeckFill,
+  type DeckFillLegs,
   deckWalkIsVertical,
   DOCK_LIFT,
   drawLiveGround,
@@ -4055,6 +4058,20 @@ export class Renderer {
           this.bridgeRailItems(tx, ty, game, items);
           continue;
         }
+        if (
+          ground === Tile.Water ||
+          ground === Tile.WaterDeep ||
+          ground === Tile.WaterShallow
+        ) {
+          // A 45° notch fill on a bridge span carries the parapet
+          // across its hypotenuse — the diagonal rail is a live item
+          // like every straight one, so bodies sort against it.
+          const f = this.deckFill(game, tx, ty);
+          if (f !== null && f.family === 'bridge') {
+            this.deckFillRailItem(tx, ty, f.legs, game, items);
+          }
+          continue;
+        }
         if (DIAG_WALL_TILES.has(ground as Tile)) {
           // 45° corners: their own painter (triangular crown + sloped
           // facade). They ride the SAME reveal height field as the
@@ -6006,6 +6023,92 @@ export class Renderer {
     return v;
   }
 
+  /** Memoized 45° notch-fill verdict (deckFillAt) — probed per water
+   *  tile in the item collect and per rail edge, so it must cost one
+   *  neighbor scan per tile, not one per query. worldVersion-cleared
+   *  like the dock memo. */
+  private readonly deckFillMemo = new Map<number, DeckFill | null>();
+  private deckFillVersion = -1;
+
+  private deckFill(game: ClientGame, tx: number, ty: number): DeckFill | null {
+    if (game.worldVersion !== this.deckFillVersion) {
+      this.deckFillMemo.clear();
+      this.deckFillVersion = game.worldVersion;
+    }
+    const key = packTile(tx, ty);
+    let v = this.deckFillMemo.get(key);
+    if (v === undefined) {
+      v = deckFillAt((x, y) => game.world.groundAt(x, y), tx, ty);
+      this.deckFillMemo.set(key, v);
+    }
+    return v;
+  }
+
+  /**
+   * The parapet across a notch fill's hypotenuse: posts and slanted
+   * members spanning corner to corner of the 45° edge, riding the
+   * full deck lift (fills never sit in a ramping run — the run law
+   * flattens ragged spans). Sort follows the diagonal-sort law: a
+   * camera-facing hyp draws in front of the bodies north of it, a
+   * far-side hyp sorts behind the deck's traffic.
+   */
+  private deckFillRailItem(
+    tx: number,
+    ty: number,
+    legs: DeckFillLegs,
+    game: ClientGame,
+    items: DrawItem[],
+  ): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const elevated = game.world.elevAt(tx, ty) !== 0;
+    const lift = game.world.elevAt(tx, ty) * ELEV_H + DOCK_LIFT;
+    // Hyp endpoints in world corners: NE/SW legs span the main
+    // diagonal (NW->SE corner), NW/SE legs the anti-diagonal.
+    const diagMain = legs === 'NE' || legs === 'SW';
+    const ax = diagMain ? tx : tx + 1;
+    const bx = diagMain ? tx + 1 : tx;
+    const southFacing = legs[0] === 'N';
+    const post = '#6f4d26';
+    const rail = '#8a6534';
+    const hr = 0.46 * s;
+    const railT = Math.max(2, s * 0.07);
+    items.push({
+      sortY: southFacing ? ty + 1.02 : ty + 0.04,
+      elevated,
+      draw: () => {
+        const a = this.camera.worldToScreen(ax, ty, this.w, this.h);
+        const b = this.camera.worldToScreen(bx, ty + 1, this.w, this.h);
+        a.y -= lift * s;
+        b.y -= lift * s;
+        ctx.fillStyle = post;
+        for (const f of [0.3, 0.7]) {
+          const x = a.x + (b.x - a.x) * f;
+          const y = a.y + (b.y - a.y) * f;
+          ctx.fillRect(x - s * 0.035, y - hr, s * 0.07, hr);
+        }
+        // Members as quads between the two end heights — the same
+        // three-course build as the straight rails, slanted along
+        // the hypotenuse.
+        const member = (yOfs: number, tk: number): void => {
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y - yOfs);
+          ctx.lineTo(b.x, b.y - yOfs);
+          ctx.lineTo(b.x, b.y - yOfs + tk);
+          ctx.lineTo(a.x, a.y - yOfs + tk);
+          ctx.closePath();
+          ctx.fill();
+        };
+        ctx.fillStyle = shade(rail, -10);
+        member(hr * 0.52, railT * 0.7);
+        ctx.fillStyle = rail;
+        member(hr, railT * 1.15);
+        ctx.fillStyle = shade(rail, 14);
+        member(hr, Math.max(1, s * 0.02));
+      },
+    });
+  }
+
   /**
    * A bridge's hip-height parapet: one live rail item per exposed
    * SIDE edge — the edges perpendicular to the span's walk axis — so
@@ -6019,13 +6122,23 @@ export class Renderer {
     const syT = s * this.camera.yScale;
     const isDeck = (t: number | undefined): boolean => t === Tile.Bridge || t === Tile.Dock;
     const g = (x: number, y: number): number | undefined => game.world.groundAt(x, y);
+    const fill = (x: number, y: number): DeckFill | null => this.deckFill(game, x, y);
     // A tile carries this edge's rail if it's a bridge deck whose
     // matching edge is an exposed SIDE — the same test decides the
-    // neighbors, so runs read as one continuous parapet.
+    // neighbors, so runs read as one continuous parapet. An edge
+    // welded to a 45° notch fill is interior: the fill's own diagonal
+    // rail item carries the parapet across the hypotenuse instead.
+    const edgeFilled = (x: number, y: number, dx: number, dy: number): boolean => {
+      const f = fill(x + dx, y + dy);
+      if (f === null) return false;
+      const edge = dy < 0 ? 'S' : dy > 0 ? 'N' : dx < 0 ? 'E' : 'W';
+      return f.legs[0] === edge || f.legs[1] === edge;
+    };
     const railEdge = (x: number, y: number, dx: number, dy: number): boolean =>
       g(x, y) === Tile.Bridge &&
       this.isDockAt(game, x, y) &&
       !isDeck(g(x + dx, y + dy)) &&
+      !edgeFilled(x, y, dx, dy) &&
       (dy !== 0 ? !this.bridgeWalkVert(game, x, y) : this.bridgeWalkVert(game, x, y));
     const elevated = game.world.elevAt(tx, ty) !== 0;
     const elevLift = game.world.elevAt(tx, ty) * ELEV_H;
@@ -6052,8 +6165,14 @@ export class Renderer {
       if (!railEdge(tx, ty, dx, dy)) continue;
       if (dy !== 0) {
         const north = dy < 0;
-        const contW = railEdge(tx - 1, ty, dx, dy);
-        const contE = railEdge(tx + 1, ty, dx, dy);
+        // A rail continues past its end when the straight run does OR
+        // when a notch fill's hypotenuse picks the line up at exactly
+        // that corner — the specific legs whose hyp endpoint lands
+        // there. Continuation only suppresses the end post.
+        const contW =
+          railEdge(tx - 1, ty, dx, dy) || fill(tx - 1, ty)?.legs === (north ? 'SE' : 'NE');
+        const contE =
+          railEdge(tx + 1, ty, dx, dy) || fill(tx + 1, ty)?.legs === (north ? 'SW' : 'NW');
         items.push({
           sortY: north ? ty + 0.04 : ty + 1.02,
           elevated,
@@ -6090,8 +6209,14 @@ export class Renderer {
         });
       } else {
         const west = dx < 0;
-        const contN = railEdge(tx, ty - 1, dx, dy);
-        const contS = railEdge(tx, ty + 1, dx, dy);
+        // Same fill-continuation law as the horizontal rails: the
+        // twin verticals run all the way to the corner where a notch
+        // fill's diagonal rail takes over, instead of stopping at the
+        // half-tile end-of-run post.
+        const contN =
+          railEdge(tx, ty - 1, dx, dy) || fill(tx, ty - 1)?.legs === (west ? 'SE' : 'SW');
+        const contS =
+          railEdge(tx, ty + 1, dx, dy) || fill(tx, ty + 1)?.legs === (west ? 'NE' : 'NW');
         items.push({
           sortY: ty + 1,
           elevated,

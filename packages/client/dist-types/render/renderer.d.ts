@@ -919,6 +919,22 @@ export declare class Renderer {
      *  probes must run once per tile. Cleared with the axis memo. */
     private readonly bridgeApronMemo;
     private bridgeApron;
+    /** Memoized 45° notch-fill verdict (deckFillAt) — probed per water
+     *  tile in the item collect and per rail edge, so it must cost one
+     *  neighbor scan per tile, not one per query. worldVersion-cleared
+     *  like the dock memo. */
+    private readonly deckFillMemo;
+    private deckFillVersion;
+    private deckFill;
+    /**
+     * The parapet across a notch fill's hypotenuse: posts and slanted
+     * members spanning corner to corner of the 45° edge, riding the
+     * full deck lift (fills never sit in a ramping run — the run law
+     * flattens ragged spans). Sort follows the diagonal-sort law: a
+     * camera-facing hyp draws in front of the bodies north of it, a
+     * far-side hyp sorts behind the deck's traffic.
+     */
+    private deckFillRailItem;
     /**
      * A bridge's hip-height parapet: one live rail item per exposed
      * SIDE edge — the edges perpendicular to the span's walk axis — so

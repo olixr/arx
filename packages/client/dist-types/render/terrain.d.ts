@@ -129,6 +129,34 @@ export declare function isDockTile(ground: GroundSampler, tx: number, ty: number
 export declare function isBridgeTile(ground: GroundSampler, tx: number, ty: number): boolean;
 /** Either raised deck — everything the water must flow quietly under. */
 export declare function isDeckTile(ground: GroundSampler, tx: number, ty: number): boolean;
+/** A notch fill's orientation: which two adjacent tile edges the
+ *  half-tile deck triangle spans (the diag-wall suffix convention —
+ *  the named corner is the SOLID one, the hypotenuse faces away). */
+export type DeckFillLegs = 'NE' | 'NW' | 'SE' | 'SW';
+export interface DeckFill {
+    legs: DeckFillLegs;
+    /** Which painter owns the fill — bridge wins a mixed junction. */
+    family: 'bridge' | 'dock';
+}
+/**
+ * THE 45° NOTCH-FILL LAW. A stair-stepped span (a diagonal worldgen
+ * road crossing, an angled jetty) exposes inner corners: water tiles
+ * hugged by deck on exactly two ADJACENT sides. Each such notch grows
+ * a lifted half-tile deck TRIANGLE spanning those two edges, so the
+ * staircase reads as a clean 45° crossing — the same chamfer language
+ * as the diagonal walls, with no new tiles and no data changes (the
+ * notch tile stays water: solid, unwalkable, pure visual). The gate
+ * is deliberately narrow: three deck sides is an authored inlet (a
+ * boat slip must not seal over), opposite sides are a deliberate gap,
+ * a FishingSpot must never be boarded over, and fills never chain off
+ * other fills (legs demand real deck tiles).
+ */
+export declare function deckFillAt(ground: GroundSampler, tx: number, ty: number): DeckFill | null;
+/** Does a notch fill at (x,y) cover that tile's given edge? The two
+ *  leg edges are interior deck — every painter treats them exactly
+ *  like a deck neighbor (no fascia, no kerb, no stroke, no rail, no
+ *  lap line), so the fill welds seamlessly into the span. */
+export declare function fillCoversEdge(ground: GroundSampler, x: number, y: number, edge: 'N' | 'S' | 'E' | 'W'): boolean;
 /**
  * The walk axis of a whole connected deck span, decided ONCE for the
  * span so every member tile lays its boards, kerbs and rails the same
