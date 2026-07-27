@@ -8,7 +8,13 @@ import {
   type Vec2,
 } from '@devcraft/shared';
 import type { PortalDef, ZoneDef } from '@devcraft/content';
-import { generateChunk } from '@devcraft/content';
+import {
+  DARK_BAND_Y,
+  EDGE_BASIN_DAMP_RANGE,
+  generateChunk,
+  replaceZoneEdgeProfiles,
+  zoneEdgeProfileOf,
+} from '@devcraft/content';
 
 /**
  * The server's world: procedural chunks with authored zones stamped on
@@ -34,6 +40,7 @@ export class WorldSource extends ChunkStore {
     for (const portal of zone.portals ?? []) {
       this.portals.set(`${portal.x},${portal.y}`, portal);
     }
+    this.refreshEdgeProfiles();
     this.dropZoneChunks(zone);
   }
 
@@ -44,6 +51,7 @@ export class WorldSource extends ChunkStore {
     for (const portal of zone!.portals ?? []) {
       this.portals.delete(`${portal.x},${portal.y}`);
     }
+    this.refreshEdgeProfiles();
     this.dropZoneChunks(zone!);
   }
 
@@ -66,9 +74,25 @@ export class WorldSource extends ChunkStore {
     for (const portal of zone.portals ?? []) {
       this.portals.set(`${portal.x},${portal.y}`, portal);
     }
+    this.refreshEdgeProfiles();
     // Old and new rects can differ (resize/move) — drop both.
     this.dropZoneChunks(old);
     this.dropZoneChunks(zone);
+  }
+
+  /**
+   * THE EDGE-HARMONY LAW: every surface zone publishes its border's
+   * terrain intentions to the live registry the worldgen fields blend
+   * toward. Dark-band and instance zones sit in solid cave — they
+   * claim nothing from a wilderness they don't touch.
+   */
+  private refreshEdgeProfiles(): void {
+    replaceZoneEdgeProfiles(
+      this.zones
+        .filter((z) => z.origin.y < DARK_BAND_Y)
+        .map((z) => zoneEdgeProfileOf(z))
+        .filter((p): p is NonNullable<typeof p> => p !== null),
+    );
   }
 
   zoneById(zoneId: string): ZoneDef | undefined {
@@ -84,12 +108,18 @@ export class WorldSource extends ChunkStore {
     return this.portals.get(`${tx},${ty}`);
   }
 
-  /** Invalidate cached chunks the zone covers so they regenerate. */
+  /**
+   * Invalidate cached chunks the zone covers so they regenerate — plus
+   * the edge-harmony reach around it: the border's terrain intentions
+   * (and the basin damp, the farthest arm) shape chunks the rect never
+   * touches, and a moved or edited border must re-shape them.
+   */
   private dropZoneChunks(zone: ZoneDef): void {
-    const c0x = Math.floor(zone.origin.x / CHUNK_SIZE);
-    const c0y = Math.floor(zone.origin.y / CHUNK_SIZE);
-    const c1x = Math.floor((zone.origin.x + zone.width - 1) / CHUNK_SIZE);
-    const c1y = Math.floor((zone.origin.y + zone.height - 1) / CHUNK_SIZE);
+    const pad = EDGE_BASIN_DAMP_RANGE + 4;
+    const c0x = Math.floor((zone.origin.x - pad) / CHUNK_SIZE);
+    const c0y = Math.floor((zone.origin.y - pad) / CHUNK_SIZE);
+    const c1x = Math.floor((zone.origin.x + zone.width - 1 + pad) / CHUNK_SIZE);
+    const c1y = Math.floor((zone.origin.y + zone.height - 1 + pad) / CHUNK_SIZE);
     for (let cy = c0y; cy <= c1y; cy++) {
       for (let cx = c0x; cx <= c1x; cx++) {
         this.chunks.delete(chunkKey(cx, cy));

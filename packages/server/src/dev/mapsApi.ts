@@ -14,8 +14,10 @@ import {
   NPCS,
   NPC_ACTORS,
   POI_DEFS,
+  ZONE_EDGE_PROFILES,
   geographySnapshot,
   geographyWarnings,
+  packZoneEdgeProfile,
   lootTableErrors,
   prefabFromJson,
   prefabToJson,
@@ -170,6 +172,9 @@ export function createMapsApi(
           geography: def,
           geographyEdited: edited,
           warnings: geographyWarnings(def),
+          // The edge-harmony registry, packed — the editor mirrors it
+          // so its client-side worldgen blends exactly like the server.
+          edgeProfiles: ZONE_EDGE_PROFILES.map(packZoneEdgeProfile),
           poiDefs: [...POI_DEFS.values()].map((d) => ({
             id: d.id,
             name: d.name,

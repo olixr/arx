@@ -21,6 +21,13 @@ import {
   roadHitAt,
   thornveilAt,
 } from './geography.js';
+import {
+  EDGE_BASIN_DAMP_RANGE,
+  EDGE_PLATEAU_DAMP_RANGE,
+  edgeBlendElevation,
+  edgeBlendMoisture,
+  zoneFieldDampAt,
+} from './zoneEdges.js';
 
 /**
  * Procedural wilderness. Elevation and moisture fields pick a biome per
@@ -56,7 +63,12 @@ export function elevationAt(seed: number, tx: number, ty: number): number {
   // odd tarn where the base noise dips.
   const m = massifAt(tx, ty);
   if (m > 0) elevation = elevation * (1 - m * 0.5) + 0.62 * m * 0.5;
-  return elevation;
+  // THE EDGE-HARMONY LAW: near a registered zone border the field
+  // honors the border's authored intention — water edges keep flowing
+  // outward as coves and creeks, sand continues as beach, and every
+  // land edge lifts low ground so no procedural lake is ever sliced
+  // ruler-straight by a zone rect.
+  return edgeBlendElevation(seed, tx, ty, elevation);
 }
 
 /**
@@ -81,8 +93,14 @@ export function plateauFieldAt(seed: number, tx: number, ty: number): number {
   // aesthetics: no cliff wall jammed against a gate). Strength 0.65
   // beats the theoretical field maximum (1.0 noise + 0.24 massif −
   // 0.65 < the level-1 threshold), so rect interiors are GUARANTEED
-  // flat canvases for their zone builds.
-  return f - fieldApronAt(tx, ty, 28) * 0.65;
+  // flat canvases for their zone builds. Registered-zone edges damp
+  // the same way (the edge-harmony law) — except stark stone borders,
+  // which WANT the crags crowding in.
+  return (
+    f -
+    fieldApronAt(tx, ty, 28) * 0.65 -
+    zoneFieldDampAt(tx, ty, EDGE_PLATEAU_DAMP_RANGE, true) * 0.65
+  );
 }
 
 /**
@@ -112,7 +130,10 @@ export function basinFieldAt(seed: number, tx: number, ty: number): number {
   // fence lives INSIDE its rim, so it keeps a generous distance from
   // every authored border, future ones included.
   return (
-    f - Math.max(0, 1 - distFromTown / 200) * 0.6 - fieldApronAt(tx, ty, 64) * 0.6
+    f -
+    Math.max(0, 1 - distFromTown / 200) * 0.6 -
+    fieldApronAt(tx, ty, 64) * 0.6 -
+    zoneFieldDampAt(tx, ty, EDGE_BASIN_DAMP_RANGE) * 0.6
   );
 }
 
@@ -144,7 +165,10 @@ export function sandbarAt(seed: number, tx: number, ty: number): boolean {
  * with the willow/moonbell thresholds coming into reach.
  */
 export function moistureAt(seed: number, tx: number, ty: number): number {
-  return fbm(seed + 9999, tx * 0.03, ty * 0.03, 3) + thornveilAt(tx, ty) * 0.3;
+  const m = fbm(seed + 9999, tx * 0.03, ty * 0.03, 3) + thornveilAt(tx, ty) * 0.3;
+  // The edge-harmony law: an authored tree line keeps going as wild
+  // forest; a road stub leaving a gate dries into an open clearing.
+  return edgeBlendMoisture(seed, tx, ty, m);
 }
 
 /** Below this world-y everything defaults to solid cave (dungeon land). */

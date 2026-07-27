@@ -1,9 +1,12 @@
 import { dangerAt } from '@devcraft/shared';
 import {
   replaceGeography,
+  replaceZoneEdgeProfiles,
+  unpackZoneEdgeProfile,
   validateGeographyDef,
   geographyWarnings,
   type GeographyDef,
+  type PackedZoneEdgeProfile,
 } from '@devcraft/content';
 import {
   adoptPoiCell,
@@ -93,6 +96,7 @@ export class WorldMode {
       this.ws.setZones(maps.zones);
       this.ws.adopt(snap);
       replaceGeography(snap.geography);
+      this.adoptEdgeProfiles(snap.edgeProfiles);
       this.view.invalidateTerrain();
       this.view.invalidateDanger();
       this.needsFit = true;
@@ -113,6 +117,9 @@ export class WorldMode {
       this.ws.setZones(maps.zones);
       this.ws.adopt(snap, { keepDraft: this.ws.dirty });
       if (!this.ws.dirty && this.ws.geo) replaceGeography(this.ws.geo);
+      // A zone save can change its border's intentions — re-mirror the
+      // edge registry, and re-carve the terrain only if it moved.
+      if (this.adoptEdgeProfiles(snap.edgeProfiles)) this.view.invalidateTerrain();
       this.ws.sel = keepSel;
       this.ws.tool = keepTool;
       this.view.invalidateAllZones();
@@ -120,6 +127,17 @@ export class WorldMode {
     } catch {
       /* transient — the next action retries */
     }
+  }
+
+  /** Mirror the server's edge-harmony registry; true when it changed. */
+  private edgeProfilesJson = '';
+  private adoptEdgeProfiles(packed: PackedZoneEdgeProfile[] | undefined): boolean {
+    const list = packed ?? [];
+    const json = JSON.stringify(list);
+    if (json === this.edgeProfilesJson) return false;
+    this.edgeProfilesJson = json;
+    replaceZoneEdgeProfiles(list.map(unpackZoneEdgeProfile));
+    return true;
   }
 
   /** Whether boot() ever reached the server. */

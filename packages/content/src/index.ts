@@ -46,6 +46,7 @@ export * from './structures/serialize.js';
 export * from './structures/templates.js';
 export * from './geography.js';
 export * from './worldgen.js';
+export * from './zoneEdges.js';
 export * from './maps/types.js';
 export * from './maps/builder.js';
 export * from './maps/serialize.js';

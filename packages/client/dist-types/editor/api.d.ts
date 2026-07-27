@@ -1,4 +1,4 @@
-import type { GeographyDef, PrefabJson, ZoneJson } from '@devcraft/content';
+import type { GeographyDef, PackedZoneEdgeProfile, PrefabJson, ZoneJson } from '@devcraft/content';
 /**
  * The editor's wire to the game server's dev maps API (/dev/maps on
  * the game port, proxied by Vite in dev). Every save lands on disk
@@ -99,6 +99,8 @@ export interface WorldSnapshot {
     geography: GeographyDef;
     geographyEdited: boolean;
     warnings: string[];
+    /** Packed edge-harmony profiles — mirrored into the editor's registry. */
+    edgeProfiles: PackedZoneEdgeProfile[];
     poiDefs: Array<{
         id: string;
         name: string;

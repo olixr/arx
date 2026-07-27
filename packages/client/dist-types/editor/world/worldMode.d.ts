@@ -49,6 +49,9 @@ export declare class WorldMode {
     boot(): Promise<void>;
     /** Re-read ledger + zone list (after cell actions / zone saves). */
     refresh(): Promise<void>;
+    /** Mirror the server's edge-harmony registry; true when it changed. */
+    private edgeProfilesJson;
+    private adoptEdgeProfiles;
     /** Whether boot() ever reached the server. */
     get online(): boolean;
     /** One undoable draft mutation + honest preview. */
