@@ -190,10 +190,12 @@ console.log(
 // Dialogue trees — THE DATABASE IS THE TRUTH. Shipped JSON seeds it
 // (respecting every tool edit); the runtime reads only the DB.
 const dlgSeed = seedDialogues(db, [...DIALOGUES.values()]);
-const dlgLoad = loadDialogues(db);
+const dlgLoad = loadDialogues(db, { actorIds: game.actorIds() });
 for (const err of dlgLoad.errors) console.warn(`[npc] invalid DB dialogue: ${err}`);
 game.registerDialogues(dlgLoad.dialogues);
-game.dialogueSource = () => loadDialogues(db); // /dlgreload's live wire
+// The live wire for /dlgreload and the Content Studio — validated
+// against the LIVE actor roster, so studio-born actors may speak.
+game.dialogueSource = () => loadDialogues(db, { actorIds: game.actorIds() });
 console.log(
   `[npc] dialogues: ${dlgLoad.dialogues.length} loaded ` +
     `(+${dlgSeed.added} ~${dlgSeed.updated} !${dlgSeed.kept} -${dlgSeed.removed} =${dlgSeed.unchanged})`,

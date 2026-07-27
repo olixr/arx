@@ -21,6 +21,15 @@ export type ValidateDialogueResult =
   | { ok: true; dialogue: DialogueDef }
   | { ok: false; errors: string[] };
 
+/**
+ * Live cross-reference sets. The authored registries are the default;
+ * a running server passes its DB-loaded actor roster so a tree may
+ * bind a studio-born actor the shipped code never heard of.
+ */
+export interface ValidateDialogueRefs {
+  actorIds?: ReadonlySet<string>;
+}
+
 const SLUG_RE = /^[a-z][a-z0-9_]*$/;
 /** Flags may reference dialogue completions: `dlg:<dialogue_id>`. */
 const FLAG_RE = /^(dlg:)?[a-z][a-z0-9_]*$/;
@@ -170,7 +179,7 @@ function validateNode(raw: unknown, index: number, errors: string[]): DialogueNo
 }
 
 /** Validate one untrusted dialogue def (parsed JSON, DB row, tool input). */
-export function validateDialogue(raw: unknown): ValidateDialogueResult {
+export function validateDialogue(raw: unknown, refs?: ValidateDialogueRefs): ValidateDialogueResult {
   const errors: string[] = [];
   if (!isRecord(raw)) return { ok: false, errors: ['dialogue def must be an object'] };
 
@@ -232,7 +241,7 @@ export function validateDialogue(raw: unknown): ValidateDialogueResult {
     }
   }
 
-  const bindings = validateBindings(raw.bindings, errors);
+  const bindings = validateBindings(raw.bindings, errors, refs);
 
   if (errors.length > 0) return { ok: false, errors: errors.map((e) => `${id || '<dialogue>'}: ${e}`) };
   return {
@@ -246,7 +255,11 @@ export function validateDialogue(raw: unknown): ValidateDialogueResult {
  * 'actor' is the only kind today; each future kind (prop, item,
  * monolith…) adds one namespace check here and nothing anywhere else.
  */
-function validateBindings(raw: unknown, errors: string[]): DialogueBinding[] | undefined {
+function validateBindings(
+  raw: unknown,
+  errors: string[],
+  refs?: ValidateDialogueRefs,
+): DialogueBinding[] | undefined {
   if (raw === undefined) return undefined;
   if (!Array.isArray(raw) || raw.length > 8) {
     errors.push('bindings must be an array of at most 8 entries');
@@ -254,6 +267,8 @@ function validateBindings(raw: unknown, errors: string[]): DialogueBinding[] | u
   }
   const out: DialogueBinding[] = [];
   const seen = new Set<string>();
+  const knownActor = (id: string): boolean =>
+    refs?.actorIds ? refs.actorIds.has(id) : NPC_ACTORS.has(id);
   for (const [i, b] of raw.entries()) {
     if (!isRecord(b)) {
       errors.push(`bindings[${i}] must be an object`);
@@ -263,7 +278,7 @@ function validateBindings(raw: unknown, errors: string[]): DialogueBinding[] | u
       errors.push(`bindings[${i}].kind '${String(b.kind)}' is unknown (only 'actor' exists yet)`);
       continue;
     }
-    if (typeof b.target !== 'string' || !NPC_ACTORS.has(b.target)) {
+    if (typeof b.target !== 'string' || !knownActor(b.target)) {
       errors.push(`bindings[${i}] references unknown actor '${String(b.target)}'`);
       continue;
     }

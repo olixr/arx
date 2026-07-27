@@ -7,6 +7,7 @@ import {
   AUTHORED_LOOT_TABLES,
   AUTHORED_NPCS,
   AUTHORED_POI_DEFS,
+  DIALOGUES,
   ITEMS,
   LOOT_TABLES,
   NPCS,
@@ -36,6 +37,12 @@ import {
   loadContentDocs,
   revertContentDoc,
 } from '../db/contentDocs.js';
+import {
+  editedDialogueIds,
+  importDialogue,
+  loadDialogues,
+  revertDialogue,
+} from '../db/dialogues.js';
 import { editedActorSlugs, importNpcActor, loadNpcActors, revertNpcActor } from '../db/npcActors.js';
 import { previewPoi, simulatePoisSteps, type PoiSimStats } from '../world/pois.js';
 import type { GameServer } from '../game/gameServer.js';
@@ -456,6 +463,58 @@ export function createMapsApi(
         }
         sendJson(res, 200, { site: shown.site, zone: zoneToJson(shown.zone) });
         return true;
+      }
+
+      // ------------------------------------------------ dialogues
+      // Trees live in their relational tables under the two-hash law;
+      // every write validates through the ONE validator (against the
+      // LIVE actor roster) and swaps the running registry in the same
+      // breath — the next Talk speaks the edit.
+
+      if (url.pathname === '/dev/content/dialogues' && req.method === 'GET') {
+        const load = loadDialogues(db, { actorIds: game.actorIds() });
+        const edited = editedDialogueIds(db);
+        sendJson(res, 200, {
+          dialogues: load.dialogues.map((d) => ({
+            def: d,
+            edited: edited.has(d.id),
+            authored: DIALOGUES.has(d.id),
+          })),
+          errors: load.errors,
+        });
+        return true;
+      }
+
+      const dlgMatch = /^\/dev\/content\/dialogues\/([^/]+)$/.exec(url.pathname);
+      if (dlgMatch) {
+        const id = dlgMatch[1]!;
+        if (req.method === 'PUT') {
+          let raw: { id?: string };
+          try {
+            raw = JSON.parse(await readBody(req)) as { id?: string };
+            if (raw.id !== id) throw new Error(`body id '${raw.id}' does not match URL '${id}'`);
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          const result = importDialogue(db, raw, { actorIds: game.actorIds() });
+          if (!result.ok) {
+            sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          const fresh = game.reloadDialogues();
+          console.log(`[content] dialogue '${id}' saved + live (${fresh.count} registered)`);
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const authored = DIALOGUES.get(id) ?? null;
+          const outcome = revertDialogue(db, id, authored);
+          game.reloadDialogues();
+          console.log(`[content] dialogue '${id}' ${outcome}`);
+          sendJson(res, 200, { ok: true, outcome });
+          return true;
+        }
       }
 
       if (url.pathname === '/dev/content/items' && req.method === 'GET') {

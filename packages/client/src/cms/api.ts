@@ -1,4 +1,12 @@
-import type { LootTableDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, ZoneJson } from '@devcraft/content';
+import type {
+  DialogueDef,
+  LootTableDef,
+  NpcActorDef,
+  NpcDef,
+  PoiDef,
+  PrefabJson,
+  ZoneJson,
+} from '@devcraft/content';
 
 /** Content Studio's wire to the running server's /dev/content API. */
 
@@ -180,6 +188,30 @@ export async function stagePoi(
 
 export async function fetchPrefab(id: string): Promise<PrefabJson> {
   return (await (await request(`/dev/prefabs/${id}`)).json()) as PrefabJson;
+}
+
+export async function listDialogues(): Promise<{
+  dialogues: Array<Editable<DialogueDef>>;
+  errors: string[];
+}> {
+  return (await (await request('/dev/content/dialogues')).json()) as {
+    dialogues: Array<Editable<DialogueDef>>;
+    errors: string[];
+  };
+}
+
+export async function saveDialogue(def: DialogueDef): Promise<void> {
+  await request(`/dev/content/dialogues/${def.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(def),
+  });
+}
+
+export async function revertDialogue(id: string): Promise<{ outcome: string }> {
+  return (await (
+    await request(`/dev/content/dialogues/${id}`, { method: 'DELETE' })
+  ).json()) as { outcome: string };
 }
 
 export async function listItems(): Promise<ItemRow[]> {

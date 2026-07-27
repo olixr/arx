@@ -1,19 +1,22 @@
-import type { LootTableDef, NpcActorDef, NpcDef, PoiDef } from '@devcraft/content';
+import type { DialogueDef, LootTableDef, NpcActorDef, NpcDef, PoiDef } from '@devcraft/content';
 import { iconImg } from '../editor/editorIcons.js';
 import { itemIconUrl } from '../render/icons.js';
 import {
   fetchSpawnSites,
   listActors,
+  listDialogues,
   listItems,
   listLoot,
   listNpcs,
   listPois,
   listZoneRects,
   revertActor,
+  revertDialogue,
   revertLoot,
   revertNpc,
   revertPoi,
   saveActor,
+  saveDialogue,
   saveLoot,
   saveNpc,
   savePoi,
@@ -24,6 +27,7 @@ import {
 } from './api.js';
 import { openActorWizard } from './actorWizard.js';
 import { buildDetail, newLootTable, newNpcDef, newPoiDef } from './editors.js';
+import { newDialogueDef } from './dialogueEditor.js';
 import { creatureRender } from './gameRender.js';
 import { actorBust } from './portraits.js';
 
@@ -36,7 +40,7 @@ import { actorBust } from './portraits.js';
  * new numbers within a tick.
  */
 
-export type Section = 'npcs' | 'loot' | 'actors' | 'pois' | 'items';
+export type Section = 'npcs' | 'loot' | 'actors' | 'dialogues' | 'pois' | 'items';
 
 export interface CmsState {
   section: Section;
@@ -45,6 +49,7 @@ export interface CmsState {
   npcs: Array<Editable<NpcDef>>;
   loot: Array<Editable<LootTableDef>>;
   actors: Array<Editable<NpcActorDef>>;
+  dialogues: Array<Editable<DialogueDef>>;
   pois: Array<Editable<PoiDef>>;
   /** The live POI prefab library's ids (pool pickers + validation). */
   poiPrefabIds: string[];
@@ -63,6 +68,7 @@ export const state: CmsState = {
   npcs: [],
   loot: [],
   actors: [],
+  dialogues: [],
   pois: [],
   poiPrefabIds: [],
   items: [],
@@ -101,6 +107,10 @@ export async function reloadSection(section: Section): Promise<void> {
       const res = await listActors();
       state.actors = res.actors;
       for (const err of res.errors) toast(`DB actor invalid: ${err}`, 5000, 'error');
+    } else if (section === 'dialogues') {
+      const res = await listDialogues();
+      state.dialogues = res.dialogues;
+      for (const err of res.errors) toast(`DB dialogue invalid: ${err}`, 5000, 'error');
     } else if (section === 'pois') {
       const res = await listPois();
       state.pois = res.pois;
@@ -116,10 +126,11 @@ export async function reloadSection(section: Section): Promise<void> {
 
 async function loadEverything(): Promise<void> {
   try {
-    const [npcs, loot, actors, pois, items, sites, zones] = await Promise.all([
+    const [npcs, loot, actors, dialogues, pois, items, sites, zones] = await Promise.all([
       listNpcs(),
       listLoot(),
       listActors(),
+      listDialogues(),
       listPois(),
       listItems(),
       fetchSpawnSites(),
@@ -128,6 +139,7 @@ async function loadEverything(): Promise<void> {
     state.npcs = npcs;
     state.loot = loot;
     state.actors = actors.actors;
+    state.dialogues = dialogues.dialogues;
     state.pois = pois.pois;
     state.poiPrefabIds = pois.prefabIds;
     state.items = items;
@@ -185,6 +197,12 @@ const SECTIONS: Array<{ id: Section; label: string; icon: string; hint: string }
     hint: 'Named townsfolk — identity, disposition, wardrobe, and combat. Posted bodies respawn with the edit.',
   },
   {
+    id: 'dialogues',
+    label: 'Dialogues',
+    icon: 'speech',
+    hint: 'Conversation trees — beats, branches, gates, and who offers them. Saves go live; the next Talk speaks the edit.',
+  },
+  {
     id: 'pois',
     label: 'Points of Interest',
     icon: 'stamp',
@@ -236,9 +254,11 @@ function renderRail(): void {
           ? state.loot.length
           : s.id === 'actors'
             ? state.actors.length
-            : s.id === 'pois'
-              ? state.pois.length
-              : state.items.length;
+            : s.id === 'dialogues'
+              ? state.dialogues.length
+              : s.id === 'pois'
+                ? state.pois.length
+                : state.items.length;
     const b = document.createElement('button');
     b.className = 'rail-tab' + (state.section === s.id ? ' active' : '');
     b.appendChild(iconImg(s.icon, 15));
@@ -346,6 +366,43 @@ function listEntries(): ListEntry[] {
         ico: actorIco(a.def) ?? iconWrap(iconImg('actor', 18)),
         group: cap(a.def.disposition),
       }));
+  }
+  if (state.section === 'dialogues') {
+    const speakerOf = (d: Editable<DialogueDef>): NpcActorDef | null => {
+      const bindings = (d.def.bindings ?? []).slice().sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+      for (const b of bindings) {
+        const actor = state.actors.find((a) => a.def.id === b.target);
+        if (actor) return actor.def;
+      }
+      return null;
+    };
+    const groupOf = (d: Editable<DialogueDef>, speaker: NpcActorDef | null): string => {
+      if (!d.def.bindings || d.def.bindings.length === 0) return 'Unbound trees';
+      if (!speaker) return 'Unbound trees';
+      const post = state.sites.actors.find((s) => s.actor === speaker.id);
+      if (!post) return 'Unposted voices';
+      return zoneAt(post.x, post.y)?.name ?? 'The open frontier';
+    };
+    return state.dialogues
+      .filter((d) =>
+        match(d.def.id, ...d.def.nodes.map((n) => n.text), ...(d.def.bindings ?? []).map((b) => b.target)),
+      )
+      .map((d) => {
+        const speaker = speakerOf(d);
+        const choices = d.def.nodes.reduce((n, node) => n + (node.choices?.length ?? 0), 0);
+        return {
+          id: d.def.id,
+          title: d.def.id,
+          sub: `${speaker ? `${speaker.name} · ` : ''}${d.def.nodes.length} beat${d.def.nodes.length === 1 ? '' : 's'}${choices > 0 ? ` · ${choices} choices` : ''}`,
+          badge: d.def.once ? 'once' : 'evergreen',
+          badgeEdited: d.edited,
+          ico: (speaker ? actorIco(speaker) : null) ?? iconWrap(iconImg('speech', 18)),
+          group: groupOf(d, speaker),
+        };
+      })
+      .sort(
+        (a, b) => a.group!.localeCompare(b.group!) || a.sub.localeCompare(b.sub) || a.id.localeCompare(b.id),
+      );
   }
   if (state.section === 'pois') {
     return state.pois
@@ -460,7 +517,9 @@ $('btn-new-entry').onclick = () => {
       ? 'New creature id (lowercase, e.g. bog_fiend):'
       : state.section === 'pois'
         ? 'New archetype id (lowercase, e.g. bandit_watch):'
-        : 'New loot table id (lowercase, e.g. bog_fiend_drops):',
+        : state.section === 'dialogues'
+          ? 'New dialogue id (lowercase, e.g. ferryman_toll):'
+          : 'New loot table id (lowercase, e.g. bog_fiend_drops):',
   );
   if (!id) return;
   if (!/^[a-z][a-z0-9_]*$/.test(id)) {
@@ -479,6 +538,12 @@ $('btn-new-entry').onclick = () => {
       return;
     }
     state.loot.push({ def: newLootTable(id), edited: true, authored: false });
+  } else if (state.section === 'dialogues') {
+    if (state.dialogues.some((d) => d.def.id === id)) {
+      toast(`'${id}' already exists`, 3000, 'error');
+      return;
+    }
+    state.dialogues.push({ def: newDialogueDef(id), edited: true, authored: false });
   } else if (state.section === 'pois') {
     if (state.pois.some((p) => p.def.id === id)) {
       toast(`'${id}' already exists`, 3000, 'error');
@@ -517,7 +582,7 @@ window.addEventListener('beforeunload', (e) => {
 const hash = location.hash.replace(/^#/, '');
 if (hash) {
   const [sect, id] = hash.split('/') as [Section, string?];
-  if (['npcs', 'loot', 'actors', 'pois', 'items'].includes(sect)) {
+  if (['npcs', 'loot', 'actors', 'dialogues', 'pois', 'items'].includes(sect)) {
     state.section = sect;
     state.selectedId = id ?? null;
   }
@@ -571,6 +636,21 @@ export const persistence = {
     if (outcome === 'deleted') state.selectedId = null;
     renderAll();
     toast(outcome === 'reverted' ? 'restored the shipped archetype' : 'deleted', 3000, 'success');
+  },
+  async saveDialogueDef(def: DialogueDef): Promise<void> {
+    await saveDialogue(def);
+    state.dirty = false;
+    await reloadSection('dialogues');
+    setSaveState('all changes saved');
+    toast(`'${def.id}' saved — the next Talk speaks it`, 3000, 'success');
+  },
+  async revertDialogueDef(id: string): Promise<void> {
+    const { outcome } = await revertDialogue(id);
+    state.dirty = false;
+    await reloadSection('dialogues');
+    if (outcome === 'deleted') state.selectedId = null;
+    renderAll();
+    toast(outcome === 'reverted' ? 'restored the shipped tree' : 'deleted', 3000, 'success');
   },
   async saveActorDef(def: NpcActorDef): Promise<void> {
     await saveActor(def);

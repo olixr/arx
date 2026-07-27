@@ -1179,6 +1179,21 @@ export class GameServer {
     }
   }
 
+  /**
+   * Swap the live dialogue registry from dialogueSource (the DB).
+   * Open conversations keep their old tree — their walk holds a ref;
+   * the next talk speaks the new truth. Shared by /dlgreload and the
+   * Content Studio's save wire.
+   */
+  reloadDialogues(): { count: number; errors: string[] } {
+    if (!this.dialogueSource) return { count: 0, errors: ['no dialogue source wired'] };
+    const fresh = this.dialogueSource();
+    this.dialoguesByActor.clear();
+    this.dialogueNodes.clear();
+    this.registerDialogues(fresh.dialogues);
+    return { count: fresh.dialogues.length, errors: fresh.errors };
+  }
+
   start(): void {
     let next = performance.now();
     const loop = () => {
@@ -7830,19 +7845,13 @@ export class GameServer {
       return;
     }
     if (config.devCommands && text.startsWith('/dlgreload')) {
-      // /dlgreload — swap in the DB's current dialogues, live. Open
-      // conversations keep their old tree (their walk holds a ref);
-      // the next talk speaks the new truth.
       if (!this.dialogueSource) return;
-      const fresh = this.dialogueSource();
-      this.dialoguesByActor.clear();
-      this.dialogueNodes.clear();
-      this.registerDialogues(fresh.dialogues);
+      const fresh = this.reloadDialogues();
       const errs = fresh.errors.length > 0 ? `, ${fresh.errors.length} invalid` : '';
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',
-        text: `Dialogues reloaded: ${fresh.dialogues.length}${errs}.`,
+        text: `Dialogues reloaded: ${fresh.count}${errs}.`,
       });
       return;
     }

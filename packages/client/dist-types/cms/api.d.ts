@@ -1,4 +1,4 @@
-import type { LootTableDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, ZoneJson } from '@devcraft/content';
+import type { DialogueDef, LootTableDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, ZoneJson } from '@devcraft/content';
 /** Content Studio's wire to the running server's /dev/content API. */
 export interface Editable<T> {
     def: T;
@@ -86,6 +86,14 @@ export declare function stagePoi(args: {
     prefab?: string;
 }): Promise<PoiStage>;
 export declare function fetchPrefab(id: string): Promise<PrefabJson>;
+export declare function listDialogues(): Promise<{
+    dialogues: Array<Editable<DialogueDef>>;
+    errors: string[];
+}>;
+export declare function saveDialogue(def: DialogueDef): Promise<void>;
+export declare function revertDialogue(id: string): Promise<{
+    outcome: string;
+}>;
 export declare function listItems(): Promise<ItemRow[]>;
 export declare function fetchSpawnSites(): Promise<SpawnSites>;
 export interface ZoneRect {

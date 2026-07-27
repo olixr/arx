@@ -2,7 +2,6 @@ import { DEFAULT_LOOK, STATUS_IDS, type Look } from '@devcraft/shared';
 import {
   ABILITIES,
   DANGER_LAWS,
-  DIALOGUES,
   RECIPES,
   SHOPS,
   actorCombatDef,
@@ -19,6 +18,7 @@ import {
 import { itemIconUrl } from '../render/icons.js';
 import { iconImg } from '../editor/editorIcons.js';
 import { markDirty, persistence, setSection, state, toast, zoneAt } from './cms.js';
+import { dialogueDetail } from './dialogueEditor.js';
 import { creatureRender } from './gameRender.js';
 import { lookDesigner } from './lookDesigner.js';
 import { actorBust, actorFigure } from './portraits.js';
@@ -1831,7 +1831,9 @@ function actorDetail(body: HTMLElement, linkage: HTMLElement, slug: string): voi
       combobox(
         () =>
           [{ id: '', label: '(none)' } as ComboOption].concat(
-            [...DIALOGUES.keys()].sort().map((id) => ({ id, label: id })),
+            state.dialogues
+              .map((d) => ({ id: d.def.id, label: d.def.id, sub: `${d.def.nodes.length} beats` }))
+              .sort((a, b) => a.id.localeCompare(b.id)),
           ),
         draft.dialogue ?? '',
         (v) => {
@@ -1842,7 +1844,7 @@ function actorDetail(body: HTMLElement, linkage: HTMLElement, slug: string): voi
         '(none)',
       ),
     );
-    dlgField.appendChild(el('span', 'note', 'shipped trees listed; DB-authored trees bind by id too'));
+    dlgField.appendChild(el('span', 'note', 'reserved hook — trees actually bind from the Dialogues studio'));
     hooks.appendChild(dlgField);
     const shopField = el('div', 'ffield');
     shopField.appendChild(el('span', '', 'shop counter'));
@@ -2843,6 +2845,7 @@ export function buildDetail(body: HTMLElement, linkage: HTMLElement): void {
   if (state.section === 'npcs') npcDetail(body, linkage, id);
   else if (state.section === 'loot') lootDetail(body, linkage, id);
   else if (state.section === 'actors') actorDetail(body, linkage, id);
+  else if (state.section === 'dialogues') dialogueDetail(body, linkage, id);
   else if (state.section === 'pois') poiDetail(body, linkage, id);
   else itemDetail(body, linkage, id);
 }

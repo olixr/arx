@@ -275,6 +275,60 @@ const trash: Painter = (ctx) => {
   ctx.stroke();
 };
 
+/** Two slates in conversation — the dialogue section. */
+const speech: Painter = (ctx) => {
+  // The leading bubble, tail dropping toward its speaker.
+  ctx.beginPath();
+  ctx.moveTo(5.5, 4.5);
+  ctx.lineTo(16.5, 4.5);
+  ctx.quadraticCurveTo(18.5, 4.5, 18.5, 6.5);
+  ctx.lineTo(18.5, 9.5);
+  ctx.quadraticCurveTo(18.5, 11.5, 16.5, 11.5);
+  ctx.lineTo(9.5, 11.5);
+  ctx.lineTo(6.2, 14.4);
+  ctx.lineTo(7, 11.5);
+  ctx.quadraticCurveTo(3.5, 11.3, 3.5, 8.5);
+  ctx.lineTo(3.5, 6.5);
+  ctx.quadraticCurveTo(3.5, 4.5, 5.5, 4.5);
+  ctx.closePath();
+  ctx.stroke();
+  // The answering bubble, filled — the other voice.
+  ctx.beginPath();
+  ctx.moveTo(11.5, 14.5);
+  ctx.lineTo(18.8, 14.5);
+  ctx.quadraticCurveTo(20.5, 14.5, 20.5, 16.2);
+  ctx.lineTo(20.5, 17.8);
+  ctx.quadraticCurveTo(20.5, 19.5, 18.8, 19.5);
+  ctx.lineTo(17.5, 19.5);
+  ctx.lineTo(18.6, 21.8);
+  ctx.lineTo(15.4, 19.5);
+  ctx.lineTo(13.2, 19.5);
+  ctx.quadraticCurveTo(11.5, 19.5, 11.5, 17.8);
+  ctx.lineTo(11.5, 16.2);
+  ctx.quadraticCurveTo(11.5, 14.5, 13.2, 14.5);
+  ctx.closePath();
+  ctx.fill();
+};
+
+/** A planted pennant marking that something happened — the flag ledger. */
+const flagSigil: Painter = (ctx) => {
+  path(ctx, [[7.5, 21], [7.5, 3.5]]);
+  ctx.stroke();
+  // The waving cloth.
+  ctx.beginPath();
+  ctx.moveTo(7.5, 4.5);
+  ctx.quadraticCurveTo(11.5, 2.8, 14, 4.6);
+  ctx.quadraticCurveTo(16.2, 6.2, 19, 5.2);
+  ctx.lineTo(19, 10.8);
+  ctx.quadraticCurveTo(16.2, 11.8, 14, 10.2);
+  ctx.quadraticCurveTo(11.5, 8.4, 7.5, 10.1);
+  ctx.closePath();
+  ctx.fill();
+  // Ground tick.
+  path(ctx, [[4.5, 21], [11, 21]]);
+  ctx.stroke();
+};
+
 /** Crosshair reticle — focus a placement on the map. */
 const focus: Painter = (ctx) => {
   ctx.beginPath();
@@ -310,6 +364,8 @@ export const EDITOR_ICONS: Record<string, string> = {
   flip: draw(flip),
   trash: draw(trash),
   focus: draw(focus),
+  speech: draw(speech),
+  flag: draw(flagSigil),
 };
 
 /** An <img> for a sigil, sized for toolbar/button use. */

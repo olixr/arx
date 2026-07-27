@@ -6,6 +6,7 @@ import {
   type DialogueChoice,
   type DialogueDef,
   type DialogueNode,
+  type ValidateDialogueRefs,
 } from '@devcraft/content';
 
 /**
@@ -189,8 +190,12 @@ export function seedDialogues(
  * left as-is (or NULL for a new row) — the row is tool-owned now.
  * Returns validation errors instead of writing anything unsound.
  */
-export function importDialogue(db: DatabaseSync, raw: unknown): { ok: true } | { ok: false; errors: string[] } {
-  const res = validateDialogue(raw);
+export function importDialogue(
+  db: DatabaseSync,
+  raw: unknown,
+  refs?: ValidateDialogueRefs,
+): { ok: true } | { ok: false; errors: string[] } {
+  const res = validateDialogue(raw, refs);
   if (!res.ok) return res;
   const def = res.dialogue;
   const prev = db
@@ -214,7 +219,7 @@ export interface DialogueLoadResult {
 }
 
 /** Load every dialogue from the DB, revalidated through the one validator. */
-export function loadDialogues(db: DatabaseSync): DialogueLoadResult {
+export function loadDialogues(db: DatabaseSync, refs?: ValidateDialogueRefs): DialogueLoadResult {
   const dialogues: DialogueDef[] = [];
   const errors: string[] = [];
 
@@ -286,15 +291,18 @@ export function loadDialogues(db: DatabaseSync): DialogueLoadResult {
 
     // Reassemble the interchange shape and re-validate: the DB is the
     // truth, but never a bypass around the rules.
-    const res = validateDialogue({
-      id: row.id,
-      start: row.start_node,
-      once: row.once === 1 ? true : undefined,
-      requires: unpackList(row.requires),
-      forbids: unpackList(row.forbids),
-      nodes,
-      bindings: bindings.length > 0 ? bindings : undefined,
-    });
+    const res = validateDialogue(
+      {
+        id: row.id,
+        start: row.start_node,
+        once: row.once === 1 ? true : undefined,
+        requires: unpackList(row.requires),
+        forbids: unpackList(row.forbids),
+        nodes,
+        bindings: bindings.length > 0 ? bindings : undefined,
+      },
+      refs,
+    );
     if (res.ok) dialogues.push(res.dialogue);
     else errors.push(...res.errors);
   }
@@ -306,4 +314,45 @@ export function loadDialogues(db: DatabaseSync): DialogueLoadResult {
 export function exportDialogue(db: DatabaseSync, id: string): DialogueDef | null {
   const all = loadDialogues(db);
   return all.dialogues.find((d) => d.id === id) ?? null;
+}
+
+/**
+ * The two-hash truth per row, for the studio's badges: `edited` means
+ * the tooling owns this row (born there, or diverged from its seed).
+ */
+export function editedDialogueIds(db: DatabaseSync): Set<string> {
+  const edited = new Set<string>();
+  for (const row of db
+    .prepare('SELECT id, content_hash, authored_hash FROM dialogues')
+    .all() as Array<{ id: string; content_hash: string; authored_hash: string | null }>) {
+    if (row.authored_hash === null || row.content_hash !== row.authored_hash) edited.add(row.id);
+  }
+  return edited;
+}
+
+/**
+ * Undo the tooling's claim on one dialogue: with a shipped twin the
+ * row becomes a pure seed of it again ('reverted'); a tool-born row
+ * simply leaves ('deleted').
+ */
+export function revertDialogue(
+  db: DatabaseSync,
+  id: string,
+  authored: DialogueDef | null,
+): 'reverted' | 'deleted' {
+  db.exec('BEGIN');
+  try {
+    if (authored) {
+      const hash = dialogueHash(authored);
+      writeDef(db, authored, hash, hash);
+    } else {
+      deleteChildren(db, id);
+      db.prepare('DELETE FROM dialogues WHERE id = ?').run(id);
+    }
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  return authored ? 'reverted' : 'deleted';
 }
