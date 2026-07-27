@@ -817,9 +817,14 @@ export function createMapsApi(
         // flow), but the studio may LOOK at anything the world holds.
         if (id.startsWith('poi:')) {
           if (req.method === 'GET') {
-            const live = game.world.zoneById(id);
-            if (live) sendJson(res, 200, zoneToJson(live));
-            else sendJson(res, 404, { error: `no standing site '${id}' — it may not be materialized` });
+            // Materialize on demand — the studio may open a site the
+            // ledger decided but nobody has walked near yet.
+            const m = /^poi:(-?\d+),(-?\d+)$/.exec(id);
+            const zone = m
+              ? game.poiCellZone(Number(m[1]), Number(m[2]))
+              : (game.world.zoneById(id) ?? null);
+            if (zone) sendJson(res, 200, zoneToJson(zone));
+            else sendJson(res, 404, { error: `cell '${id}' holds no site` });
             return true;
           }
           sendJson(res, 400, {

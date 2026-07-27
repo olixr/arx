@@ -1,4 +1,4 @@
-import type { PrefabJson, ZoneJson } from '@devcraft/content';
+import type { GeographyDef, PrefabJson, ZoneJson } from '@devcraft/content';
 
 /**
  * The editor's wire to the game server's dev maps API (/dev/maps on
@@ -16,6 +16,8 @@ export interface MapListEntry {
   spawn: { x: number; y: number } | null;
   builtin: boolean;
   hasFile: boolean;
+  /** A composed frontier site (poi:cx,cy) — read-only until adopted. */
+  poi: boolean;
   actorSpawns: number;
   npcSpawns: number;
   portals: number;
@@ -52,7 +54,7 @@ export async function listMaps(): Promise<MapList> {
 }
 
 export async function fetchZone(id: string): Promise<ZoneJson> {
-  const res = await request(`/dev/maps/zone/${id}`);
+  const res = await request(`/dev/maps/zone/${encodeURIComponent(id)}`);
   return (await res.json()) as ZoneJson;
 }
 
@@ -115,4 +117,99 @@ export async function savePrefab(json: PrefabJson): Promise<void> {
 
 export async function deletePrefab(id: string): Promise<void> {
   await request(`/dev/prefabs/${id}`, { method: 'DELETE' });
+}
+
+// ------------------------------------------------- the world
+
+/** A decided site exactly as the world_pois ledger keeps it. */
+export interface PoiSiteWire {
+  cellX: number;
+  cellY: number;
+  epoch: number;
+  tier: number;
+  defId: string;
+  prefabId: string;
+  anchorX: number;
+  anchorY: number;
+}
+
+/** One POI ledger row with its live/authored state, as /dev/world tells it. */
+export interface WorldCell {
+  cellX: number;
+  cellY: number;
+  epoch: number;
+  clearedAt: number | null;
+  site: PoiSiteWire | null;
+  defName: string | null;
+  zoneId: string | null;
+  authoredId: string | null;
+}
+
+export interface WorldSnapshot {
+  seed: number;
+  poiCell: number;
+  cells: WorldCell[];
+  geography: GeographyDef;
+  geographyEdited: boolean;
+  warnings: string[];
+  poiDefs: Array<{
+    id: string;
+    name: string;
+    weight: number;
+    tiers: [number, number];
+    haven: number | null;
+  }>;
+}
+
+export async function fetchWorld(): Promise<WorldSnapshot> {
+  const res = await request('/dev/world');
+  return (await res.json()) as WorldSnapshot;
+}
+
+export interface GeographySaveResult {
+  ok: boolean;
+  swept?: { evicted: number; orphaned: number };
+  warnings?: string[];
+}
+
+export async function saveGeography(def: GeographyDef): Promise<GeographySaveResult> {
+  const res = await request('/dev/content/geography', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(def),
+  });
+  return (await res.json()) as GeographySaveResult;
+}
+
+export async function revertGeography(): Promise<GeographySaveResult> {
+  const res = await request('/dev/content/geography', { method: 'DELETE' });
+  return (await res.json()) as GeographySaveResult;
+}
+
+export async function poiCellAction(
+  cellX: number,
+  cellY: number,
+  action: 'reroll' | 'dissolve' | 'force',
+  defId?: string,
+): Promise<{ ok: boolean; site: PoiSiteWire | null }> {
+  const res = await request('/dev/pois/cell', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ cellX, cellY, action, ...(defId ? { defId } : {}) }),
+  });
+  return (await res.json()) as { ok: boolean; site: PoiSiteWire | null };
+}
+
+export async function adoptPoiCell(
+  cellX: number,
+  cellY: number,
+  id: string,
+  name?: string,
+): Promise<{ ok: boolean; id: string }> {
+  const res = await request('/dev/maps/adopt', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ cellX, cellY, id, ...(name ? { name } : {}) }),
+  });
+  return (await res.json()) as { ok: boolean; id: string };
 }

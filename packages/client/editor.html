@@ -10,9 +10,13 @@
     <div id="editor">
       <header id="topbar">
         <div class="brand">DevCraft <span>Map Studio</span></div>
+        <div id="mode-seg" class="mode-seg" role="tablist" aria-label="Studio view">
+          <button id="mode-world" title="The whole plan — zones, roads, landmarks, the frontier (W)">World</button>
+          <button id="mode-zone" title="The open zone, tile by tile">Zone</button>
+        </div>
         <div class="group">
           <button id="btn-new" title="Start a fresh zone">New</button>
-          <button id="btn-open" title="Open a zone from the server (⌘O)">Open</button>
+          <button id="btn-open" title="Open anything the world holds (⌘O)">Open</button>
           <button id="btn-save" class="primary" title="Save to the server and hot-swap it into the running world (⌘S)">Save ▸ Live</button>
           <span id="dirty-dot" title="Unsaved changes"></span>
         </div>
@@ -29,6 +33,7 @@
         <nav id="toolbar"></nav>
         <div id="canvas-wrap">
           <canvas id="editor-canvas"></canvas>
+          <canvas id="world-canvas" class="hidden"></canvas>
           <div id="zoom-cluster">
             <button id="zoom-out" title="Zoom out">−</button>
             <button id="zoom-pct" title="Zoom to 100%">100%</button>
@@ -47,6 +52,7 @@
           <section id="tab-tiles"><div id="palette"></div></section>
           <section id="tab-structures" class="hidden side-panel"></section>
           <section id="tab-placements" class="hidden side-panel"></section>
+          <section id="world-panel" class="hidden side-panel"></section>
         </aside>
       </div>
       <footer id="statusbar">

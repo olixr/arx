@@ -345,6 +345,115 @@ const focus: Painter = (ctx) => {
   ctx.fill();
 };
 
+// ------------------------------------------------- the world's sigils
+
+/** A small globe: meridian, equator, and the standing ring. */
+const world: Painter = (ctx) => {
+  ctx.beginPath();
+  ctx.arc(12, 12, 8.5, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(12, 12, 3.6, 8.5, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(12, 12, 8.5, 3.2, 0, 0, Math.PI * 2);
+  ctx.stroke();
+};
+
+/** An arrow cursor over a waypoint dot — the world's chooser. */
+const wselect: Painter = (ctx) => {
+  path(ctx, [[6, 3], [6, 17], [10.2, 13.6], [13.4, 20], [15.8, 18.8], [12.6, 12.6], [17.5, 12.2]], true);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(18.5, 5.5, 2.2, 0, Math.PI * 2);
+  ctx.stroke();
+};
+
+/** A road winding between two waypoint rings. */
+const wroute: Painter = (ctx) => {
+  ctx.beginPath();
+  ctx.moveTo(4.5, 19.5);
+  ctx.quadraticCurveTo(9, 15, 8, 11);
+  ctx.quadraticCurveTo(7.2, 7, 12.5, 5.5);
+  ctx.lineWidth = 3.2;
+  ctx.stroke();
+  ctx.lineWidth = 1.9;
+  ctx.beginPath();
+  ctx.arc(4.5, 19.5, 2.4, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(17.5, 5.5, 3, 0, Math.PI * 2);
+  ctx.stroke();
+};
+
+/** A hunter's trail — the same wander, cut to scuffs. */
+const wtrail: Painter = (ctx) => {
+  for (const [x, y] of [
+    [5, 20], [7.5, 16.5], [7, 12.5], [9.5, 9], [13, 7], [17, 5],
+  ] as const) {
+    ctx.beginPath();
+    ctx.arc(x, y, 1.25, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Two hoof-scuffs beside the line.
+  path(ctx, [[11, 13.5], [12.8, 12.4]]);
+  ctx.stroke();
+  path(ctx, [[13.5, 16.5], [15.3, 15.4]]);
+  ctx.stroke();
+};
+
+/** A road lamp on its post — the authored landmark. */
+const wsite: Painter = (ctx) => {
+  path(ctx, [[12, 21], [12, 9]]);
+  ctx.stroke();
+  path(ctx, [[8.5, 21], [15.5, 21]]);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(12, 6, 3.2, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(12, 6, 1.1, 0, Math.PI * 2);
+  ctx.fill();
+  // The light, thrown.
+  for (const [x0, y0, x1, y1] of [
+    [6.8, 6, 4.2, 6], [17.2, 6, 19.8, 6], [12, 0.8, 12, 1.8],
+  ] as const) {
+    path(ctx, [[x0, y0], [x1, y1]]);
+    ctx.stroke();
+  }
+};
+
+/** A hearth ring: the safe ground and its fire. */
+const wanchor: Painter = (ctx) => {
+  ctx.setLineDash([3.2, 2.6]);
+  ctx.beginPath();
+  ctx.arc(12, 13, 8.2, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // The flame.
+  ctx.beginPath();
+  ctx.moveTo(12, 8.6);
+  ctx.quadraticCurveTo(14.8, 11.2, 13.4, 13.6);
+  ctx.quadraticCurveTo(12.8, 14.8, 12, 15.4);
+  ctx.quadraticCurveTo(11.2, 14.8, 10.6, 13.6);
+  ctx.quadraticCurveTo(9.2, 11.2, 12, 8.6);
+  ctx.fill();
+  path(ctx, [[9, 17.4], [15, 17.4]]);
+  ctx.stroke();
+};
+
+/** Planned ground: a dashed claim with survey pegs. */
+const wplanned: Painter = (ctx) => {
+  ctx.setLineDash([3.4, 2.8]);
+  ctx.strokeRect(4.5, 6, 15, 12);
+  ctx.setLineDash([]);
+  for (const [x, y] of [[4.5, 6], [19.5, 6], [19.5, 18], [4.5, 18]] as const) {
+    ctx.beginPath();
+    ctx.arc(x, y, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+};
+
 export const EDITOR_ICONS: Record<string, string> = {
   paint: draw(brush),
   erase: draw(eraser),
@@ -366,6 +475,13 @@ export const EDITOR_ICONS: Record<string, string> = {
   focus: draw(focus),
   speech: draw(speech),
   flag: draw(flagSigil),
+  world: draw(world),
+  wselect: draw(wselect),
+  wroute: draw(wroute),
+  wtrail: draw(wtrail),
+  wsite: draw(wsite),
+  wanchor: draw(wanchor),
+  wplanned: draw(wplanned),
 };
 
 /** An <img> for a sigil, sized for toolbar/button use. */

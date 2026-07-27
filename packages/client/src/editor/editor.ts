@@ -64,19 +64,32 @@ import {
   type Pt,
 } from './tools.js';
 import { validateZone } from './validate.js';
+import { WorldMode } from './world/worldMode.js';
+import type { WorldTool } from './world/worldState.js';
 
 /**
- * DevCraft Map Studio — the in-browser zone editor, rebuilt around the
- * live server loop: open any zone the server is running, paint with
- * the real game art, and Save hot-swaps it into the world mid-session.
- * Local import/export still works when the server is down.
+ * DevCraft Map Studio — the world and its zones in one studio. The
+ * WORLD view is the home screen: the whole plan (zones, roads,
+ * landmarks, hearths, the frontier ledger) rendered through the real
+ * worldgen and edited in place. The ZONE view is the tile editor,
+ * reached by stepping into any zone from the world. Saves hot-swap
+ * into the running server mid-session; local import/export still
+ * works when the server is down.
  */
+
+// The DOM wakes in zone dress; boot flips to the world home screen
+// (setMode no-ops on a same-mode call, so the start value must be
+// the one the HTML shows).
+type StudioMode = 'world' | 'zone';
+let mode: StudioMode = 'zone';
 
 const canvas = document.getElementById('editor-canvas') as HTMLCanvasElement;
 const state = new EditorState();
 const view = new EditorView(canvas, state);
 const history = new History();
 let palette: PaletteUI;
+/** The zone view was framed while hidden — re-fit on first reveal. */
+let pendingZoneFit = false;
 
 /** Live pick lists — served by the running game, content as fallback. */
 let registry: RegistrySnapshot = {
@@ -977,8 +990,39 @@ const TOOL_KEYS: Record<string, ToolId> = {
 window.addEventListener('keydown', (e) => {
   const inField =
     document.activeElement instanceof HTMLInputElement ||
-    document.activeElement instanceof HTMLTextAreaElement;
+    document.activeElement instanceof HTMLTextAreaElement ||
+    document.activeElement instanceof HTMLSelectElement;
   const mod = e.metaKey || e.ctrlKey;
+
+  // The world hears its own keys while it is the view on stage.
+  if (mode === 'world') {
+    if (mod && e.code === 'KeyO') {
+      e.preventDefault();
+      void openBrowser();
+      return;
+    }
+    if (mod && (e.code === 'KeyZ' || e.code === 'KeyS')) {
+      e.preventDefault();
+      world.keydown(e);
+      return;
+    }
+    if (inField) return;
+    if (e.code === 'Space') {
+      e.preventDefault();
+      world.keydown(e);
+      return;
+    }
+    if (e.code === 'KeyZ') {
+      setMode('zone');
+      return;
+    }
+    if (world.keydown(e)) e.preventDefault();
+    return;
+  }
+  if (!inField && !mod && e.code === 'KeyW') {
+    setMode('world');
+    return;
+  }
 
   if (mod && e.code === 'KeyZ') {
     e.preventDefault();
@@ -1110,19 +1154,24 @@ window.addEventListener('keydown', (e) => {
 
 window.addEventListener('keyup', (e) => {
   if (e.code === 'Space') spaceHeld = false;
+  world.keyup(e);
 });
 
 window.addEventListener('beforeunload', (e) => {
-  if (state.dirty) e.preventDefault();
+  if (state.dirty || world.ws.dirty) e.preventDefault();
 });
 
 // ----------------------------------------------------------- file io
 
-function adoptZone(zone: ZoneDef, serverBacked: boolean): void {
+function adoptZone(zone: ZoneDef, serverBacked: boolean, opts: { stay?: boolean } = {}): void {
   state.adopt(zone, { serverBacked });
   history.clear();
   view.markAllDirty();
+  // Opening a zone steps into it — unless the caller is pre-warming
+  // the zone view behind the world screen (boot's background load).
+  if (!opts.stay) setMode('zone');
   view.fitZone();
+  if (opts.stay) pendingZoneFit = true;
   syncZoneChip();
   updateStatus();
 }
@@ -1147,6 +1196,8 @@ async function saveToServer(): Promise<void> {
     state.changed();
     toast(`saved '${state.zone.id}' — live on the server`);
     setServerStatus(`saved ${new Date().toLocaleTimeString()}`);
+    // The world map wears this zone's art — re-read it on return.
+    world.view.invalidateZone(state.zone.id);
   } catch (err) {
     toast(`save failed: ${(err as Error).message}`, 5000);
     setServerStatus('offline — Export keeps a local copy');
@@ -1288,6 +1339,16 @@ function newZoneDialog(): void {
 // ----------------------------------------------- zone identity chip
 
 function syncZoneChip(): void {
+  if (mode === 'world') {
+    const g = world.ws.geo;
+    const towns = world.ws.zones.filter((z) => !z.poi).length;
+    const sites = world.ws.cells.filter((c) => c.site).length;
+    $('zone-chip').innerHTML = g
+      ? `<b>The Dawnlands</b><span>${towns} zones · ${g.routes.length} routes · ` +
+        `${g.sites.length} landmarks · ${sites} frontier sites${world.ws.edited ? ' · edited plan' : ''}</span>`
+      : `<b>The Dawnlands</b><span>${world.ws.offline ? 'server asleep' : 'waking…'}</span>`;
+    return;
+  }
   const z = state.zone;
   $('zone-chip').innerHTML =
     `<b>${z.name}</b><span>${z.id} · ${z.width}×${z.height} @ ${z.origin.x},${z.origin.y}</span>`;
@@ -1481,6 +1542,10 @@ function setTool(tool: ToolId): void {
 }
 
 function buildToolbar(): void {
+  if (mode === 'world') {
+    buildWorldToolbar();
+    return;
+  }
   const bar = $('toolbar');
   bar.innerHTML = '';
   for (const group of TOOL_GROUPS) {
@@ -1900,6 +1965,12 @@ function setServerStatus(text: string): void {
 }
 
 function updateStatus(): void {
+  if (mode === 'world') {
+    $('st-tile').textContent = '';
+    $('dirty-dot').classList.toggle('on', world.ws.dirty);
+    world.syncZoom();
+    return;
+  }
   const z = state.zone;
   const h = state.hover;
   $('st-coords').textContent = h
@@ -1932,8 +2003,16 @@ function showValidation(text: string, ok: boolean): void {
 
 $('btn-new').onclick = () => newZoneDialog();
 $('btn-open').onclick = () => void openBrowser();
-$('btn-save').onclick = () => void saveToServer();
+$('btn-save').onclick = () => {
+  if (mode === 'world') void world.save();
+  else void saveToServer();
+};
 $('btn-validate').onclick = () => {
+  if (mode === 'world') {
+    const res = world.validate();
+    showValidation(res.text, res.ok);
+    return;
+  }
   const v = validateZone(state.zone);
   showValidation(
     v.ok
@@ -1944,30 +2023,55 @@ $('btn-validate').onclick = () => {
     v.ok,
   );
 };
-$('zone-chip').onclick = () => zonePropertiesDialog();
-$('zoom-fit').onclick = () => view.fitZone();
+$('zone-chip').onclick = () => {
+  if (mode === 'world') world.view.fitWorld();
+  else zonePropertiesDialog();
+};
+$('zoom-fit').onclick = () => {
+  if (mode === 'world') {
+    world.view.fitWorld();
+    world.syncZoom();
+  } else view.fitZone();
+};
 $('zoom-in').onclick = () => zoomFromCenter(1.25);
 $('zoom-out').onclick = () => zoomFromCenter(1 / 1.25);
 $('zoom-pct').onclick = () => {
+  if (mode === 'world') {
+    const rect = worldCanvas.getBoundingClientRect();
+    world.view.zoomAt(rect.width / 2, rect.height / 2, 8 / world.view.scale);
+    world.syncZoom();
+    return;
+  }
   const rect = canvas.getBoundingClientRect();
   view.zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, 32 / view.scale);
   updateStatus();
 };
 
 function zoomFromCenter(factor: number): void {
+  if (mode === 'world') {
+    const rect = worldCanvas.getBoundingClientRect();
+    world.view.zoomAt(rect.width / 2, rect.height / 2, factor);
+    world.syncZoom();
+    return;
+  }
   const rect = canvas.getBoundingClientRect();
   view.zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, factor);
   updateStatus();
 }
 $('btn-export').onclick = () => {
-  const json = JSON.stringify(zoneToJson(state.zone), null, 2);
+  const isWorld = mode === 'world';
+  if (isWorld && !world.ws.geo) return;
+  const json = isWorld
+    ? JSON.stringify(world.ws.geo, null, 2)
+    : JSON.stringify(zoneToJson(state.zone), null, 2);
+  const name = isWorld ? 'geography.json' : `${state.zone.id}.json`;
   const blob = new Blob([json], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `${state.zone.id}.json`;
+  a.download = name;
   a.click();
   URL.revokeObjectURL(a.href);
-  toast(`exported ${state.zone.id}.json`);
+  toast(`exported ${name}`);
 };
 const fileInput = $('file-load') as HTMLInputElement;
 $('btn-import').onclick = () => fileInput.click();
@@ -1975,8 +2079,15 @@ fileInput.addEventListener('change', async () => {
   const file = fileInput.files?.[0];
   if (!file) return;
   try {
-    adoptZone(zoneFromJson(JSON.parse(await file.text()) as ZoneJson), false);
-    toast(`imported ${file.name}`);
+    const parsed = JSON.parse(await file.text()) as Record<string, unknown>;
+    if (mode === 'world' || (Array.isArray(parsed.routes) && Array.isArray(parsed.planned))) {
+      world.importDraft(parsed);
+      setMode('world');
+      toast(`imported ${file.name} as the world plan draft — Save makes it live`);
+    } else {
+      adoptZone(zoneFromJson(parsed as unknown as ZoneJson), false);
+      toast(`imported ${file.name}`);
+    }
   } catch (err) {
     toast(`import failed: ${(err as Error).message}`, 4000);
   }
@@ -2114,6 +2225,140 @@ window.addEventListener('mouseup', () => {
   mmDragging = false;
 });
 
+// ---------------------------------------------------------- the world
+
+const worldCanvas = document.getElementById('world-canvas') as HTMLCanvasElement;
+
+const world = new WorldMode({
+  canvas: worldCanvas,
+  panelHost: $('world-panel'),
+  toast,
+  openZone: (id) => void openZoneById(id),
+  newZone: (spec) => {
+    const z = newZone(spec.id, spec.name, spec.w, spec.h);
+    z.origin = { x: spec.x, y: spec.y };
+    adoptZone(z, false);
+    toast(`new ${spec.w}×${spec.h} zone '${spec.id}' on its planned ground — Save stands it up live`);
+  },
+  showModal,
+  setHint: (text) => {
+    $('st-hint').textContent = text;
+  },
+  setCoords: (text) => {
+    $('st-coords').textContent = text;
+  },
+  setZoom: (text) => {
+    $('st-zoom').textContent = text;
+    $('zoom-pct').textContent = text;
+  },
+  refreshMaps: async () => {
+    try {
+      const l = await listMaps();
+      world.ws.setZones(l.zones);
+    } catch {
+      /* offline — the next action retries */
+    }
+  },
+});
+
+world.ws.onChange(() => {
+  if (mode !== 'world') return;
+  buildToolbar();
+  syncZoneChip();
+  updateStatus();
+});
+
+async function openZoneById(id: string): Promise<void> {
+  try {
+    const json = await fetchZone(id);
+    adoptZone(zoneFromJson(json), true);
+    if (id.startsWith('poi:')) {
+      toast('a composed frontier site — look freely; adopt it from the World view to make it yours', 4600);
+    } else {
+      toast(`opened '${id}'`);
+    }
+  } catch (err) {
+    toast(`open failed: ${(err as Error).message}`, 4000);
+  }
+}
+
+const WORLD_TOOLS: Array<{ id: WorldTool; icon: string; name: string; key: string; hint: string }> = [
+  { id: 'select', icon: 'wselect', name: 'Survey', key: 'V', hint: 'Click to inspect · drag to move · drag empty land to pan · double-click a zone to step in' },
+  { id: 'route', icon: 'wroute', name: 'Road', key: 'R', hint: 'Click waypoints · Enter or double-click opens the road · the land grades itself under it' },
+  { id: 'trail', icon: 'wtrail', name: 'Trail', key: 'T', hint: 'Click waypoints · a bare-dirt hunter’s track — unlit, barely cleared' },
+  { id: 'site', icon: 'wsite', name: 'Landmark', key: 'N', hint: 'Pin an authored wild site — a waystation, a den, a lamp' },
+  { id: 'anchor', icon: 'wanchor', name: 'Hearth', key: 'A', hint: 'Light a hearth or haven — its ring is the safe ground' },
+  { id: 'planned', icon: 'wplanned', name: 'Plan ground', key: 'P', hint: 'Drag out the rect a future town will claim' },
+];
+
+function buildWorldToolbar(): void {
+  const bar = $('toolbar');
+  bar.innerHTML = '';
+  const cap = document.createElement('div');
+  cap.className = 'tool-caption';
+  cap.textContent = 'World';
+  bar.appendChild(cap);
+  for (const t of WORLD_TOOLS) {
+    const b = document.createElement('button');
+    b.className = 'tool' + (world.ws.tool === t.id ? ' active' : '');
+    b.title = `${t.name} (${t.key})\n${t.hint}`;
+    b.appendChild(iconImg(t.icon, 22));
+    const key = document.createElement('span');
+    key.className = 'key';
+    key.textContent = t.key;
+    b.appendChild(key);
+    b.onclick = () => world.setTool(t.id);
+    bar.appendChild(b);
+  }
+  const spec = WORLD_TOOLS.find((t) => t.id === world.ws.tool);
+  if (spec) $('st-hint').textContent = `${spec.name} — ${spec.hint}`;
+}
+
+function setMode(m: StudioMode): void {
+  if (mode === m) return;
+  mode = m;
+  const isWorld = m === 'world';
+  $('mode-world').classList.toggle('active', isWorld);
+  $('mode-zone').classList.toggle('active', !isWorld);
+  canvas.classList.toggle('hidden', isWorld);
+  worldCanvas.classList.toggle('hidden', !isWorld);
+  $('minimap-wrap').classList.toggle('hidden', isWorld);
+  $('world-panel').classList.toggle('hidden', !isWorld);
+  $('tool-options').classList.toggle('hidden', isWorld);
+  $('side-tabs').classList.toggle('hidden', isWorld);
+  $('tab-tiles').classList.toggle('hidden', isWorld || state.tab !== 'tiles');
+  $('tab-structures').classList.toggle('hidden', isWorld || state.tab !== 'structures');
+  $('tab-placements').classList.toggle('hidden', isWorld || state.tab !== 'placements');
+  $('validation').classList.add('hidden');
+  // Deep links follow the view: ?zone= names the open zone, absent
+  // means the world. Refresh lands you where you were.
+  const url = new URL(location.href);
+  if (isWorld) url.searchParams.delete('zone');
+  else url.searchParams.set('zone', state.zone.id);
+  window.history.replaceState(null, '', url);
+  if (!isWorld && pendingZoneFit) {
+    view.fitZone();
+    pendingZoneFit = false;
+  }
+  buildToolbar();
+  syncZoneChip();
+  updateStatus();
+  if (isWorld) {
+    world.setTool(world.ws.tool);
+    world.syncZoom();
+    world.ws.changed();
+    // The zone we just left may have changed — its art on the map
+    // and the server's zone list both re-read.
+    world.view.invalidateZone(state.zone.id);
+    void world.refresh();
+  } else {
+    state.changed();
+  }
+}
+
+$('mode-world').onclick = () => setMode('world');
+$('mode-zone').onclick = () => setMode('zone');
+
 // ------------------------------------------------------------- boot
 
 palette = new PaletteUI($('palette'), state, {
@@ -2150,7 +2395,15 @@ async function boot(): Promise<void> {
     })
     .catch(() => {});
   void refreshPrefabs();
-  const wanted = new URLSearchParams(location.search).get('zone');
+  // The world wakes regardless of which view boots on stage.
+  void world.boot().then(() => {
+    if (mode === 'world') {
+      syncZoneChip();
+      updateStatus();
+    }
+  });
+  const params = new URLSearchParams(location.search);
+  const wanted = params.get('zone');
   try {
     const list = await listMaps();
     setServerStatus('connected');
@@ -2159,24 +2412,37 @@ async function boot(): Promise<void> {
       list.zones.find((z) => z.id === 'dawnmead') ??
       list.zones[0];
     if (pick) {
-      adoptZone(zoneFromJson(await fetchZone(pick.id)), true);
-      toast(`opened '${pick.id}' from server`);
-      return;
+      // A named zone deep-links straight into the zone editor; the
+      // bare studio opens on the world — the home screen.
+      adoptZone(zoneFromJson(await fetchZone(pick.id)), true, { stay: !wanted });
+      if (wanted) toast(`opened '${pick.id}' from server`);
     }
   } catch {
     setServerStatus('offline — local mode (Import/Export only)');
+    adoptZone(buildDawnmead(), false, { stay: true });
   }
-  adoptZone(buildDawnmead(), false);
+  if (!params.get('zone')) setMode('world');
+  const at = params.get('at');
+  if (at) {
+    const [x, y] = at.split(',').map(Number);
+    if (Number.isFinite(x) && Number.isFinite(y)) world.view.centerOn(x!, y!, 2);
+  }
 }
 
 void boot();
 
 function frame(nowMs: number): void {
-  view.render(nowMs);
-  minimapDraw(nowMs);
+  if (mode === 'world') {
+    world.frame();
+  } else {
+    view.render(nowMs);
+    minimapDraw(nowMs);
+  }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
 // Dev handle for Playwright audits, same law as the game's dcGame.
-Object.assign(window, { dcEditor: { state, view, history, validateZone } });
+Object.assign(window, {
+  dcEditor: { state, view, history, validateZone, world, setMode: (m: StudioMode) => setMode(m) },
+});

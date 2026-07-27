@@ -644,3 +644,192 @@
   flex-shrink: 0;
   white-space: nowrap;
 }
+
+/* ------------------------------------------------------- the world */
+
+.mode-seg {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  overflow: hidden;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+.mode-seg button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0 14px;
+  height: 28px;
+  color: var(--ink-mid);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.mode-seg button + button {
+  border-left: 1px solid var(--line);
+}
+.mode-seg button.active {
+  background: var(--panel-3);
+  color: var(--brass, #d9b06c);
+}
+
+#world-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  background: #100d18;
+}
+
+/* World panel — the plan's inspector, ledgers, and lenses. */
+#world-panel {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0 10px 14px;
+}
+.wp-inspector {
+  padding: 8px 2px 2px;
+}
+.wp-title {
+  font-weight: 700;
+  color: var(--ink);
+  margin: 4px 0 8px;
+}
+.wp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  min-width: 0;
+}
+.wp-label {
+  flex: 0 0 74px;
+  color: var(--ink-dim);
+  font-size: 12px;
+}
+.wp-controls {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.wp-controls input[type='number'] {
+  width: 72px;
+}
+.wp-controls input[type='text'],
+.wp-controls select {
+  flex: 1;
+  min-width: 0;
+}
+.wp-row > input[type='text'] {
+  flex: 1;
+  min-width: 0;
+}
+.wp-btnrow {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0 4px;
+  flex-wrap: wrap;
+}
+.wp-btnrow select {
+  flex: 1;
+  min-width: 0;
+}
+.wp-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 6px 0;
+}
+.wp-facts .pill,
+.pill {
+  display: inline-block;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 11px;
+  color: var(--ink-mid);
+  background: var(--panel-2);
+  white-space: nowrap;
+}
+.pill.brass { color: var(--brass, #d9b06c); border-color: color-mix(in srgb, var(--brass, #d9b06c) 40%, transparent); }
+.pill.gold { color: #f2c94c; border-color: rgba(242, 201, 76, 0.4); }
+.pill.green { color: #6fbf73; border-color: rgba(111, 191, 115, 0.4); }
+.pill.blue { color: #7ec8e3; border-color: rgba(126, 200, 227, 0.4); }
+
+.wp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0;
+}
+.wp-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  height: auto;
+  padding: 5px 9px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  min-width: 0;
+}
+.wp-item:hover {
+  background: var(--panel-2);
+  border-color: var(--line-soft);
+}
+.wp-item.active {
+  background: var(--panel-3);
+  border-color: var(--line);
+}
+.wp-item b {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wp-item span {
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.wp-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0;
+}
+.wp-warning {
+  font-size: 12px;
+  line-height: 1.45;
+  color: #e3b34e;
+  border-left: 2px solid #e3b34e;
+  padding: 3px 8px;
+  background: rgba(227, 179, 78, 0.06);
+  border-radius: 0 var(--radius-s) var(--radius-s) 0;
+}
+
+.wp-lenses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 6px 0;
+}
+.wp-lens {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 11px;
+  height: auto;
+  font-size: 12px;
+  background: transparent;
+  color: var(--ink-dim);
+}
+.wp-lens.active {
+  background: var(--panel-3);
+  color: var(--ink);
+  border-color: var(--ink-dim);
+}

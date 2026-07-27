@@ -99,8 +99,8 @@ export interface RoadRoute {
    * this" (plank spans still cross water; nobody swims to a shortcut).
    */
   kind: 'road' | 'trail';
-  /** Waypoints in world tiles, in travel order. */
-  pts: readonly Vec2[];
+  /** Waypoints in world tiles, in travel order (mutable — the World Studio edits drafts in place). */
+  pts: Vec2[];
 }
 
 export interface AuthoredWildSite {
