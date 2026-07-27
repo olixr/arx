@@ -19,7 +19,7 @@
     "kind": "humanoid",
     "look": {
       "skin": 4,
-      "hair": 0,
+      "hair": 3,
       "hairColor": 0,
       "beard": 0,
       "eyes": 1,

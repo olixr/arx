@@ -6,7 +6,7 @@
   "disposition": "friendly",
   "model": {
     "kind": "humanoid",
-    "look": { "skin": 2, "hair": 2, "hairColor": 8, "beard": 3, "eyes": 0, "ears": 0, "feature": 0, "shirt": 5, "pants": 10 }
+    "look": { "skin": 2, "hair": 0, "hairColor": 6, "beard": 4, "eyes": 0, "ears": 0, "feature": 0, "shirt": 5, "pants": 10 }
   },
   "equipment": {
     "body": "apprentice_robe",

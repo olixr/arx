@@ -8,9 +8,9 @@
     "kind": "humanoid",
     "look": {
       "skin": 1,
-      "hair": 8,
+      "hair": 2,
       "hairColor": 2,
-      "beard": 2,
+      "beard": 6,
       "eyes": 2,
       "ears": 0,
       "feature": 5,

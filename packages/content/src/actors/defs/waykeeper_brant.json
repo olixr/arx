@@ -7,7 +7,7 @@
   "protection": "invulnerable",
   "model": {
     "kind": "humanoid",
-    "look": { "skin": 2, "hair": 5, "hairColor": 2, "beard": 1, "eyes": 3, "shirt": 10, "pants": 10 }
+    "look": { "skin": 2, "hair": 3, "hairColor": 2, "beard": 1, "eyes": 3, "shirt": 10, "pants": 10 }
   },
   "equipment": {
     "head": "iron_helm",

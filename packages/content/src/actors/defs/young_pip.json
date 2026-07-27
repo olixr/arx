@@ -5,7 +5,7 @@
   "disposition": "friendly",
   "model": {
     "kind": "humanoid",
-    "look": { "skin": 2, "hair": 9, "hairColor": 4, "beard": 0, "eyes": 2, "ears": 0, "feature": 5, "shirt": 8, "pants": 3 }
+    "look": { "skin": 2, "hair": 2, "hairColor": 4, "beard": 0, "eyes": 2, "ears": 0, "feature": 5, "shirt": 8, "pants": 3 }
   },
   "inventory": [
     { "item": "egg", "qty": 1 }

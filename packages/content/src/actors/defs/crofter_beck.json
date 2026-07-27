@@ -6,7 +6,7 @@
   "disposition": "friendly",
   "model": {
     "kind": "humanoid",
-    "look": { "skin": 4, "hair": 0, "hairColor": 1, "beard": 3, "eyes": 1, "shirt": 5, "pants": 6 }
+    "look": { "skin": 4, "hair": 2, "hairColor": 1, "beard": 3, "eyes": 1, "shirt": 5, "pants": 6 }
   },
   "equipment": {
     "boots": "leather_boots"

@@ -6,7 +6,7 @@
   "disposition": "friendly",
   "model": {
     "kind": "humanoid",
-    "look": { "skin": 3, "hair": 5, "hairColor": 1, "beard": 0, "eyes": 1, "ears": 0, "feature": 4, "shirt": 6, "pants": 1 }
+    "look": { "skin": 3, "hair": 3, "hairColor": 1, "beard": 0, "eyes": 1, "ears": 0, "feature": 4, "shirt": 6, "pants": 1 }
   },
   "equipment": {
     "weapon": "bronze_sword",
