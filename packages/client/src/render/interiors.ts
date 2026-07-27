@@ -8,6 +8,15 @@
  * windows with zero server work, and a demolished wall un-rooms the
  * space the moment the patch lands.
  *
+ * THE BREACH LAW: a ONE-TILE hole in an otherwise continuous wall
+ * run — walkable ground flanked by boundary tiles on both sides of
+ * one axis — seals like a phantom doorway instead of leaking the
+ * flood. Dilapidated buildings (the Dawnmead rat shed's sagging
+ * walls) stay rooms, so the wall reveal and shelter gate still work
+ * inside them. Wider collapses stay open: at two-plus tiles the wall
+ * has stopped being a wall. Standing IN the hole itself resolves no
+ * region, exactly like standing on a doorway tile.
+ *
  * Regions are computed lazily per queried tile and cached until the
  * world changes (worldVersion bump ⇒ full clear; recompute is bounded
  * by MAX_REGION and only runs for tiles actually asked about).
@@ -65,10 +74,24 @@ export class InteriorMap {
     return this.flood(game, tx, ty);
   }
 
+  /** THE BREACH LAW: a walkable one-tile gap flanked by boundary
+   *  tiles across one axis is a hole in a wall run, not a way out. */
+  private isBreach(game: ClientGame, tx: number, ty: number): boolean {
+    const world = game.world;
+    const n = world.groundAt(tx, ty - 1);
+    const s = world.groundAt(tx, ty + 1);
+    if (n !== undefined && s !== undefined && BOUNDARY.has(n) && BOUNDARY.has(s)) return true;
+    const e = world.groundAt(tx + 1, ty);
+    const w = world.groundAt(tx - 1, ty);
+    return e !== undefined && w !== undefined && BOUNDARY.has(e) && BOUNDARY.has(w);
+  }
+
   private flood(game: ClientGame, sx: number, sy: number): InteriorRegion | null {
     const world = game.world;
     const start = world.groundAt(sx, sy);
-    if (start === undefined || BOUNDARY.has(start)) {
+    if (start === undefined || BOUNDARY.has(start) || this.isBreach(game, sx, sy)) {
+      // A breach start floods BOTH ways and would null-poison the
+      // room's cache — the hole is wall-line, same as a doorway.
       this.byTile.set(packTile(sx, sy), null);
       return null;
     }
@@ -124,6 +147,12 @@ export class InteriorMap {
           if (doorInfo(t) !== null) {
             doorTiles.push({ tx: nx, ty: ny });
           }
+          continue;
+        }
+        if (this.isBreach(game, nx, ny)) {
+          // Sealed hole in the run: bounds the room like the wall it
+          // tore out of, joins the ring, never expands the flood.
+          wallTiles.add(nk);
           continue;
         }
         if (world.elevAt(nx, ny) !== elevLevel) {

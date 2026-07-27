@@ -8,6 +8,15 @@
  * windows with zero server work, and a demolished wall un-rooms the
  * space the moment the patch lands.
  *
+ * THE BREACH LAW: a ONE-TILE hole in an otherwise continuous wall
+ * run — walkable ground flanked by boundary tiles on both sides of
+ * one axis — seals like a phantom doorway instead of leaking the
+ * flood. Dilapidated buildings (the Dawnmead rat shed's sagging
+ * walls) stay rooms, so the wall reveal and shelter gate still work
+ * inside them. Wider collapses stay open: at two-plus tiles the wall
+ * has stopped being a wall. Standing IN the hole itself resolves no
+ * region, exactly like standing on a doorway tile.
+ *
  * Regions are computed lazily per queried tile and cached until the
  * world changes (worldVersion bump ⇒ full clear; recompute is bounded
  * by MAX_REGION and only runs for tiles actually asked about).
@@ -44,6 +53,9 @@ export declare class InteriorMap {
     beginFrame(version: number): void;
     /** The enclosed region containing this tile, or null for outdoors. */
     regionAt(game: ClientGame, tx: number, ty: number): InteriorRegion | null;
+    /** THE BREACH LAW: a walkable one-tile gap flanked by boundary
+     *  tiles across one axis is a hole in a wall run, not a way out. */
+    private isBreach;
     private flood;
 }
 //# sourceMappingURL=interiors.d.ts.map
