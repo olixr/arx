@@ -3,39 +3,34 @@ import assert from 'node:assert/strict';
 import {
   BAYER4,
   BODY_H,
-  OCCLUDED_MAX,
+  FADE_ALPHA,
   bayerAlpha,
   emberEase,
-  perLayerAlpha,
   smoothstep01,
+  stackCover,
   wallCover,
 } from './reveal.js';
 
-// ------------------------------------------------------------- fade budget
+// ------------------------------------------------------------ presence floor
 
-test('one occluder fades to exactly the occlusion ceiling', () => {
-  assert.ok(Math.abs(perLayerAlpha(1) - OCCLUDED_MAX) < 1e-12);
+test('the presence floor keeps every faded occluder clearly visible', () => {
+  // Below ~0.25 trunks vanish ("invisible walls" verdict); above
+  // ~0.45 the body stops reading through a single canopy.
+  assert.ok(FADE_ALPHA >= 0.25 && FADE_ALPHA <= 0.45, `${FADE_ALPHA}`);
 });
 
-test('any stack depth composites to the same ceiling — deep forest reads like one tree', () => {
-  for (let n = 1; n <= 6; n++) {
-    const a = perLayerAlpha(n);
-    const combined = 1 - (1 - a) ** n;
-    assert.ok(Math.abs(combined - OCCLUDED_MAX) < 1e-9, `n=${n} combined ${combined}`);
+test('stack shade rises with core depth and summons the ember by ~3 canopies', () => {
+  assert.equal(stackCover(0), 0);
+  let prev = 0;
+  for (let m = 1; m <= 6; m++) {
+    const c = stackCover(m);
+    assert.ok(c > prev && c < 1, `m=${m}: ${c}`);
+    prev = c;
   }
-});
-
-test('per-layer alpha falls as the stack deepens (each layer cedes ground)', () => {
-  let prev = 1;
-  for (let n = 1; n <= 6; n++) {
-    const a = perLayerAlpha(n);
-    assert.ok(a < prev, `n=${n}: ${a} < ${prev}`);
-    prev = a;
-  }
-});
-
-test('the ceiling itself keeps the body clearly readable', () => {
-  assert.ok(OCCLUDED_MAX <= 0.45 && OCCLUDED_MAX >= 0.2, `${OCCLUDED_MAX}`);
+  // One tree = a light confirmation, never a blazing beacon.
+  assert.ok(emberEase(stackCover(1)) < 0.6, `single-tree ember ${emberEase(stackCover(1))}`);
+  // Three stacked canopies = the ember fully lit through the shade.
+  assert.ok(emberEase(stackCover(3)) > 0.9, `3-stack ember ${emberEase(stackCover(3))}`);
 });
 
 // ---------------------------------------------------------------- dither

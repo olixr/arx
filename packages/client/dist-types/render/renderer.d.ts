@@ -86,12 +86,11 @@ export declare class Renderer {
     private fadeBY1;
     /** Per-occluder fade ease, keyed by the sprite-cache key. */
     private readonly fadeMap;
-    /** Occluders at (or easing toward) full fade last frame — sizes the
-     *  per-layer alpha so any stack composites to OCCLUDED_MAX. */
-    private fadeCount;
-    private fadeCountNew;
-    /** Eased per-layer alpha (avoids steps when the stack count changes). */
-    private fadePerLayer;
+    /** CORE occluders last frame — fading sprites whose silhouette
+     *  covers the torso itself. Their combined shade (stackCover)
+     *  summons the ghost ember through deep canopy. */
+    private fadeCoreCount;
+    private fadeCoreCountNew;
     /** Bayer screen-door tile (the ember's weave), rebuilt on dpr drift. */
     private ditherPat;
     /** The ember's temporal ease toward this frame's wall cover. */
@@ -1313,9 +1312,11 @@ export declare class Renderer {
      * overlaps the body box. OCCLUSION, NOT PROXIMITY: approaching or
      * standing beside something in the open fades nothing (the v2
      * proximity window was rejected for firing early). Eased per
-     * sprite over FADE_EASE_S; the per-layer strength divides the
-     * OCCLUDED_MAX budget across the current stack so one tree fades
-     * gently while a 4-deep canopy stack fades each layer hard.
+     * sprite over FADE_EASE_S to THE PRESENCE FLOOR (FADE_ALPHA) —
+     * never lower: a faded tree stays readable to cut, dodge and
+     * navigate by (v3's stack-divided alphas drove dense forest to
+     * ~3% — "invisible walls", user verdict). Deep-canopy shade over
+     * the body is the ghost ember's job, not more transparency.
      */
     private occluderFade;
     private drawTree;

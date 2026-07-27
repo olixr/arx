@@ -7,18 +7,21 @@
  *
  * 1. THE STEP-ASIDE FADE: an occluder that truly stands between the
  *    camera and your own body — a tree canopy, a man-height prop —
- *    politely fades. The whole sprite drops to a translucent ghost
- *    (outline ring and all, so it still reads as a tree), eased over
- *    a fraction of a second. THE TRIGGER IS OCCLUSION, NOT
- *    PROXIMITY: the sprite must draw over the body (its base at or
- *    south of yours) AND its inset silhouette must overlap the body
- *    box. Standing in the open beside or approaching something fades
- *    nothing (v2's proximity window was rejected for exactly that).
+ *    politely fades to ONE readable ghost alpha (FADE_ALPHA, the
+ *    presence floor: outline, trunk and silhouette stay visible so
+ *    you can still cut it, dodge it, navigate by it). THE TRIGGER IS
+ *    OCCLUSION, NOT PROXIMITY: the sprite must draw over the body
+ *    (its base at or south of yours) AND its inset silhouette must
+ *    overlap the body box. Standing in the open beside or
+ *    approaching something fades nothing (v2's proximity window was
+ *    rejected for exactly that).
  *
- * 2. THE GHOST EMBER: walls never fade (fading them would see into
- *    buildings). When a standing wall hides most of the body, a
- *    dithered lantern-gold silhouette of your own rig draws over it —
- *    a position cue, never an x-ray.
+ * 2. THE GHOST EMBER: the body's own beacon. Walls never fade
+ *    (fading them would see into buildings) — behind one, a
+ *    dithered lantern-gold silhouette of your own rig draws over it.
+ *    Under stacked canopies the faded ghosts still shade the body
+ *    (stackCover), and the same ember rises through the shade — the
+ *    fade keeps the WORLD visible, the ember keeps YOU findable.
  *
  * ANTI-WALLHACK LAW: both mechanics key exclusively off the LOCAL
  * player. Other players and mobs fade nothing and earn no ember — an
@@ -35,18 +38,23 @@
  * bookkeeping lives in renderer.ts.
  */
 /**
- * Combined occlusion ceiling over the body: however many canopies
- * stack over you, together they may keep at most this much alpha.
- * The per-sprite fade divides the budget (perLayerAlpha), so one
- * tree fades gently while a 4-deep stack fades each layer hard —
- * the body reads equally through both.
+ * THE PRESENCE FLOOR: every faded occluder rests at this one alpha —
+ * a clearly visible ghost, never less. v3's stack-budget divided the
+ * fade across every rect-overlapping canopy (a deep forest drove 16
+ * trees to ~3% — "phasing out of existence, bumping into invisible
+ * walls", user verdict). A tree you are about to cut, a trunk you
+ * must steer around, stays readable at all times; the GHOST EMBER
+ * (not more transparency) is what keeps the body findable when
+ * several canopies genuinely shade it.
  */
-export declare const OCCLUDED_MAX = 0.35;
+export declare const FADE_ALPHA = 0.32;
 /**
- * Per-sprite alpha for one of n stacked occluders such that n layers
- * composite to exactly OCCLUDED_MAX: 1-(1-a)^n = OCCLUDED_MAX.
+ * Combined shade over the body under m core occluders (the ones
+ * whose silhouette covers the torso itself) — drives the ember: one
+ * tree throws a light gold confirmation, a 3-deep canopy stack
+ * summons it fully.
  */
-export declare function perLayerAlpha(n: number): number;
+export declare function stackCover(m: number): number;
 /** Seconds for a fade to ease in/out — never a pop. */
 export declare const FADE_EASE_S = 0.18;
 /**

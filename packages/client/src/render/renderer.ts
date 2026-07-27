@@ -93,9 +93,10 @@ import {
   GHOST_ALPHA,
   GHOST_EASE_S,
   GHOST_TINT,
+  FADE_ALPHA,
   bayerAlpha,
   emberEase,
-  perLayerAlpha,
+  stackCover,
   wallCover,
 } from './reveal.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
@@ -625,12 +626,11 @@ export class Renderer {
   private fadeBY1 = 0;
   /** Per-occluder fade ease, keyed by the sprite-cache key. */
   private readonly fadeMap = new Map<number, { k: number; used: number }>();
-  /** Occluders at (or easing toward) full fade last frame — sizes the
-   *  per-layer alpha so any stack composites to OCCLUDED_MAX. */
-  private fadeCount = 0;
-  private fadeCountNew = 0;
-  /** Eased per-layer alpha (avoids steps when the stack count changes). */
-  private fadePerLayer = 0.35;
+  /** CORE occluders last frame — fading sprites whose silhouette
+   *  covers the torso itself. Their combined shade (stackCover)
+   *  summons the ghost ember through deep canopy. */
+  private fadeCoreCount = 0;
+  private fadeCoreCountNew = 0;
   /** Bayer screen-door tile (the ember's weave), rebuilt on dpr drift. */
   private ditherPat: { canvas: HTMLCanvasElement; dpr: number } | null = null;
   /** The ember's temporal ease toward this frame's wall cover. */
@@ -2621,15 +2621,14 @@ export class Renderer {
         }
       }
     }
+    // Deep-canopy shade summons the ember too: core occluders from
+    // LAST frame's pass (the ember's 0.22s ease swallows the lag).
+    const shade = stackCover(this.fadeCoreCount);
+    if (shade > cover) cover = shade;
     const gStep = frameDt / GHOST_EASE_S;
     this.ghostK += Math.max(-gStep, Math.min(gStep, cover - this.ghostK));
-    // Per-layer fade alpha from LAST frame's stack count (the 0.18s
-    // ease swallows the lag), eased itself so a count change slides.
-    const layerTarget = perLayerAlpha(Math.max(1, this.fadeCount));
-    const lStep = frameDt / 0.25;
-    this.fadePerLayer += Math.max(-lStep, Math.min(lStep, layerTarget - this.fadePerLayer));
-    this.fadeCount = this.fadeCountNew;
-    this.fadeCountNew = 0;
+    this.fadeCoreCount = this.fadeCoreCountNew;
+    this.fadeCoreCountNew = 0;
     // Fade-ease bookkeeping decays even for sprites that left the
     // screen; sweep long-unused entries.
     if (this.frameNo % 240 === 0) {
@@ -9043,9 +9042,11 @@ export class Renderer {
    * overlaps the body box. OCCLUSION, NOT PROXIMITY: approaching or
    * standing beside something in the open fades nothing (the v2
    * proximity window was rejected for firing early). Eased per
-   * sprite over FADE_EASE_S; the per-layer strength divides the
-   * OCCLUDED_MAX budget across the current stack so one tree fades
-   * gently while a 4-deep canopy stack fades each layer hard.
+   * sprite over FADE_EASE_S to THE PRESENCE FLOOR (FADE_ALPHA) —
+   * never lower: a faded tree stays readable to cut, dodge and
+   * navigate by (v3's stack-divided alphas drove dense forest to
+   * ~3% — "invisible walls", user verdict). Deep-canopy shade over
+   * the body is the ghost ember's job, not more transparency.
    */
   private occluderFade(
     key: number,
@@ -9072,12 +9073,20 @@ export class Renderer {
     f.used = this.frameNo;
     const step = this.frameDt / FADE_EASE_S;
     f.k += Math.max(-step, Math.min(step, (occludes ? 1 : 0) - f.k));
-    if (occludes) this.fadeCountNew++;
+    // CORE = the silhouette covers the torso itself — this sprite
+    // genuinely shades the body, so it feeds the ember's stack.
+    if (occludes) {
+      const cx = (this.fadeBX0 + this.fadeBX1) / 2;
+      const cy = (this.fadeBY0 + this.fadeBY1) / 2;
+      if (dx0 + ix < cx && dx0 + dw - ix > cx && dy0 < cy && dy0 + dh > cy) {
+        this.fadeCoreCountNew++;
+      }
+    }
     if (f.k <= 0.001) {
       if (!occludes) this.fadeMap.delete(key);
       return 1;
     }
-    return 1 - f.k * (1 - this.fadePerLayer);
+    return 1 - f.k * (1 - FADE_ALPHA);
   }
 
 
