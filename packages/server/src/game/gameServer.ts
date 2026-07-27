@@ -213,6 +213,7 @@ import {
   type AbilityDef,
   type AbilitySlot,
   type ActiveStatus,
+  type CollisionSource,
   type CombatStyleId,
   type EquipSlot,
   type PassiveId,
@@ -300,6 +301,29 @@ interface CropState {
   lastStage: 0 | 1 | 2;
 }
 
+/**
+ * The lane-nav slate every walking body carries — chase pursuit and
+ * routine errands share one navigator (navToward), so both comps
+ * structurally include this.
+ */
+interface NavState {
+  /**
+   * The learned lane: cached A* waypoints toward the nav goal, alive
+   * only while the straight walk-line is blocked. null = steering
+   * direct (the cheap, common case).
+   */
+  nav: { pts: Vec2[]; idx: number; goalX: number; goalY: number } | null;
+  /** Earliest tick this body may ask the pathfinder again. */
+  nextRepathTick: number;
+  /** Cached walk-line verdict toward (losGoalX, losGoalY). */
+  losClear: boolean;
+  losUntilTick: number;
+  losGoalX: number;
+  losGoalY: number;
+  /** Obstacle-avoidance swerve memory between lane waypoints. */
+  steer: SteerMemory;
+}
+
 interface NpcComp {
   def: NpcDef;
   originX: number;
@@ -333,15 +357,9 @@ interface NpcComp {
   navRefY: number;
   /** A failed chase sulks: no aggro scans until this tick. */
   noAggroUntilTick: number;
-  /**
-   * The learned lane: cached A* waypoints toward the nav goal, alive
-   * only while the straight walk-line is blocked. null = steering
-   * direct (the cheap, common case).
-   */
+  /** Lane-nav slate (NavState) — see navToward. */
   nav: { pts: Vec2[]; idx: number; goalX: number; goalY: number } | null;
-  /** Earliest tick this body may ask the pathfinder again. */
   nextRepathTick: number;
-  /** Cached walk-line verdict toward (losGoalX, losGoalY). */
   losClear: boolean;
   losUntilTick: number;
   losGoalX: number;
@@ -607,6 +625,13 @@ interface RoutineComp {
   progressBest: number;
   /** Obstacle-avoidance swerve memory for travel legs. */
   steer: SteerMemory;
+  /** Lane-nav slate (NavState) — see navToward. */
+  nav: { pts: Vec2[]; idx: number; goalX: number; goalY: number } | null;
+  nextRepathTick: number;
+  losClear: boolean;
+  losUntilTick: number;
+  losGoalX: number;
+  losGoalY: number;
   /**
    * True while the routine owns the body's facing (mid-stride, working
    * a station, or lingering on an authored dir) — tickActors' greet-
@@ -6980,6 +7005,12 @@ export class GameServer {
         stuckTicks: 0,
         progressBest: Infinity,
         steer: newSteerMemory(),
+        nav: null,
+        nextRepathTick: 0,
+        losClear: false,
+        losUntilTick: 0,
+        losGoalX: Infinity,
+        losGoalY: Infinity,
         holdFacing: false,
       });
     }
@@ -7108,56 +7139,60 @@ export class GameServer {
   private pathfindsLeft = 0;
 
   /**
-   * The chase learns the map: the heading toward (goalX, goalY) for a
-   * pursuing body. When the straight walk-line is clear — the common,
+   * The walk learns the map: the heading toward (goalX, goalY) for any
+   * walking body carrying a nav slate (chase pursuit and routine
+   * errands alike). When the straight walk-line is clear — the common,
    * open-field case — this is exactly the old steer fan at zero extra
    * cost. When it is not, the body keeps a cached A* lane (bounded by
-   * its own leash circle, best-effort when the goal is sealed off) and
+   * the caller's circle, best-effort when the goal is sealed off) and
    * steers waypoint to waypoint, so buildings, rock pockets, and fence
    * lines get ROUNDED instead of ground against. The pathfinder is
    * budgeted per tick and per body; a denied grant degrades to the
    * plain fan for a few ticks, never a freeze — and the caller's stall
    * ladder keeps sole ownership of giving up.
+   *
+   * `laneWorld` is the map the LANE is planned on; steering and the
+   * walk-line always test the REAL world. An errand walker plans
+   * through shut-but-unlocked doors (and opens them on approach); a
+   * hostile pursuer never does — a shut door still stops a wolf.
    */
-  private npcNavToward(
-    npc: NpcComp,
+  private navToward(
+    state: NavState,
     pos: { x: number; y: number },
     goalX: number,
     goalY: number,
+    radius: number,
+    bounds: { cx: number; cy: number; r: number },
+    laneWorld: CollisionSource = this.world,
   ): { mx: number; my: number } {
-    const radius = npc.def.radius;
     // Walk-line check, cached a few ticks. A goal that moved (chase
     // target, state flip) invalidates the cache immediately.
     if (
-      this.tickCount >= npc.losUntilTick ||
-      Math.hypot(goalX - npc.losGoalX, goalY - npc.losGoalY) > 0.6
+      this.tickCount >= state.losUntilTick ||
+      Math.hypot(goalX - state.losGoalX, goalY - state.losGoalY) > 0.6
     ) {
-      npc.losClear = lineClear(this.world, pos.x, pos.y, goalX, goalY, radius);
-      npc.losUntilTick = this.tickCount + GameServer.LOS_RECHECK_TICKS;
-      npc.losGoalX = goalX;
-      npc.losGoalY = goalY;
+      state.losClear = lineClear(this.world, pos.x, pos.y, goalX, goalY, radius);
+      state.losUntilTick = this.tickCount + GameServer.LOS_RECHECK_TICKS;
+      state.losGoalX = goalX;
+      state.losGoalY = goalY;
     }
-    if (npc.losClear) {
-      npc.nav = null;
-      return steerToward(pos, goalX, goalY, this.world, radius, npc.steer);
+    if (state.losClear) {
+      state.nav = null;
+      return steerToward(pos, goalX, goalY, this.world, radius, state.steer);
     }
 
     const stale =
-      npc.nav === null ||
-      npc.nav.idx >= npc.nav.pts.length ||
-      Math.hypot(goalX - npc.nav.goalX, goalY - npc.nav.goalY) > GameServer.PATH_GOAL_DRIFT;
-    if (stale && this.tickCount >= npc.nextRepathTick && this.pathfindsLeft > 0) {
+      state.nav === null ||
+      state.nav.idx >= state.nav.pts.length ||
+      Math.hypot(goalX - state.nav.goalX, goalY - state.nav.goalY) > GameServer.PATH_GOAL_DRIFT;
+    if (stale && this.tickCount >= state.nextRepathTick && this.pathfindsLeft > 0) {
       this.pathfindsLeft--;
-      npc.nextRepathTick = this.tickCount + GameServer.REPATH_TICKS;
-      const found = findPathNav(this.world, pos.x, pos.y, goalX, goalY, {
-        cx: npc.originX,
-        cy: npc.originY,
-        r: npc.def.leashRange + 2,
-      });
-      npc.nav = found.path.length > 0 ? { pts: found.path, idx: 0, goalX, goalY } : null;
+      state.nextRepathTick = this.tickCount + GameServer.REPATH_TICKS;
+      const found = findPathNav(laneWorld, pos.x, pos.y, goalX, goalY, bounds);
+      state.nav = found.path.length > 0 ? { pts: found.path, idx: 0, goalX, goalY } : null;
     }
 
-    const nav = npc.nav;
+    const nav = state.nav;
     if (nav) {
       while (nav.idx < nav.pts.length) {
         const wp = nav.pts[nav.idx]!;
@@ -7179,14 +7214,129 @@ export class GameServer {
           nav.idx++;
           continue;
         }
-        return steerToward(pos, wp.x, wp.y, this.world, radius, npc.steer);
+        return steerToward(pos, wp.x, wp.y, this.world, radius, state.steer);
       }
-      npc.nav = null;
+      state.nav = null;
     }
 
     // No lane granted (budget) or the lane ran out short of the goal:
     // the fan pushes on and the stall ladder owns what happens next.
-    return steerToward(pos, goalX, goalY, this.world, radius, npc.steer);
+    return steerToward(pos, goalX, goalY, this.world, radius, state.steer);
+  }
+
+  /** The chase flavor: lane bounded by the pursuer's own leash circle. */
+  private npcNavToward(
+    npc: NpcComp,
+    pos: { x: number; y: number },
+    goalX: number,
+    goalY: number,
+  ): { mx: number; my: number } {
+    return this.navToward(npc, pos, goalX, goalY, npc.def.radius, {
+      cx: npc.originX,
+      cy: npc.originY,
+      r: npc.def.leashRange + 2,
+    });
+  }
+
+  /**
+   * The errand's lane map: shut but UNLOCKED doors read as walkable —
+   * a townsfolk's lane plans straight through them and the walker
+   * works the latch on approach (openDoorsOnLane). Locked doors stay
+   * walls. Only lane PLANNING sees this; steering and walk-line checks
+   * test the real world, so the body still walks up to the shut leaf
+   * instead of through it.
+   */
+  private readonly errandWorld: CollisionSource = {
+    isSolid: (tx, ty) => {
+      if (!this.world.isSolid(tx, ty)) return false;
+      const g = this.world.groundAt(tx, ty);
+      const info = g === undefined ? null : doorInfo(g);
+      if (!info || info.open) return true;
+      const unit = this.doorUnit(tx, ty, info);
+      return this.doorLocks.has(`${unit.ax},${unit.ay}`);
+    },
+    tileAt: (tx, ty) => this.world.tileAt?.(tx, ty),
+  };
+
+  /**
+   * An errand walker works latches: when the lane's next step or two
+   * sits on a shut, unlocked door within arm's reach, swing it open —
+   * the same atomic-unit toggle a player's hand gets, auto-close and
+   * all. Deliberately routine-only: hostiles never learn doors, so
+   * shutting one on a wolf still works.
+   */
+  private openDoorsOnLane(rc: RoutineComp, pos: { x: number; y: number }): void {
+    const nav = rc.nav;
+    if (!nav) return;
+    const end = Math.min(nav.idx + 2, nav.pts.length);
+    for (let i = nav.idx; i < end; i++) {
+      const wp = nav.pts[i]!;
+      if (Math.hypot(wp.x - pos.x, wp.y - pos.y) > 1.6) break;
+      const tx = Math.floor(wp.x);
+      const ty = Math.floor(wp.y);
+      const g = this.world.groundAt(tx, ty);
+      const info = g === undefined ? null : doorInfo(g);
+      if (!info || info.open) continue;
+      const unit = this.doorUnit(tx, ty, info);
+      if (this.doorLocks.has(`${unit.ax},${unit.ay}`)) continue;
+      this.interactDoor(tx, ty, info, () => {});
+    }
+  }
+
+  /**
+   * THE POLITE STEP-ASIDE: a walking body drifts off overlapping
+   * neighbors (other NPCs, players) instead of merging into them —
+   * two walkers meeting in a lane yield sideways and pass, no jostle,
+   * no body-block. A nudge blended into the heading, never a hard
+   * collision: nothing here can wedge a body or stop a chase, and a
+   * standing crowd (pack biting a target) is untouched because only
+   * MOVING bodies are steered through this.
+   */
+  private separateHeading(
+    eid: EntityId,
+    pos: { x: number; y: number },
+    radius: number,
+    mx: number,
+    my: number,
+  ): { mx: number; my: number } {
+    const ccx = Math.floor(pos.x / CHUNK_SIZE);
+    const ccy = Math.floor(pos.y / CHUNK_SIZE);
+    let px = 0;
+    let py = 0;
+    let crowded = false;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const set = this.chunks.get(chunkKey(ccx + dx, ccy + dy));
+        if (!set) continue;
+        for (const other of set) {
+          if (other === eid) continue;
+          const kind = this.kinds.get(other);
+          if (kind !== EntityKind.Npc && kind !== EntityKind.Player) continue;
+          const opos = this.positions.get(other);
+          if (!opos) continue;
+          const ox = pos.x - opos.x;
+          const oy = pos.y - opos.y;
+          const d = Math.hypot(ox, oy);
+          const reach = radius + (this.npcs.get(other)?.def.radius ?? 0.35) + 0.1;
+          if (d >= reach || d < 1e-4) continue;
+          const w = (reach - d) / reach;
+          px += (ox / d) * w;
+          py += (oy / d) * w;
+          crowded = true;
+        }
+      }
+    }
+    if (!crowded) return { mx, my };
+    let nx = mx + px * 0.9;
+    let ny = my + py * 0.9;
+    let n = Math.hypot(nx, ny);
+    if (n < 0.2) {
+      // Pushed square against the walk: sidestep, don't stall.
+      nx = -my + px * 0.5;
+      ny = mx + py * 0.5;
+      n = Math.hypot(nx, ny) || 1;
+    }
+    return { mx: nx / n, my: ny / n };
   }
 
   /** The task the schedule assigns this comp right now. */
@@ -7404,13 +7554,32 @@ export class GameServer {
       // elder and a jogging courier come from content, not code.
       const speed = wp?.speed ?? task.speed ?? GameServer.ROUTINE_WALK_SPEED;
       const radius = npc?.def.radius ?? 0.3;
-      // Authored legs are straight and walkable — the steer fan only
-      // earns its keep when a fight (or a shove) left the body off the
-      // rails, walking back through furniture it never planned to meet.
-      const h = steerToward(pos, rc.targetX, rc.targetY, this.world, radius, rc.steer);
-      const next = stepMovement(pos, { mx: h.mx, my: h.my }, speed, TICK_DT, this.world, radius);
+      // Authored legs are straight and walkable, so the fast path is
+      // the plain steer fan — but a fight, a shove, or a player-shut
+      // door leaves the body off the rails, and then the same nav
+      // lanes that drive pursuit walk the errand around furniture and
+      // THROUGH doors (the errand lane plans across shut unlocked
+      // doors; openDoorsOnLane works the latch on approach).
+      const h = this.navToward(
+        rc,
+        pos,
+        rc.targetX,
+        rc.targetY,
+        radius,
+        {
+          cx: (pos.x + rc.targetX) / 2,
+          cy: (pos.y + rc.targetY) / 2,
+          r: dist / 2 + 8,
+        },
+        this.errandWorld,
+      );
+      this.openDoorsOnLane(rc, pos);
+      const sep = this.separateHeading(eid, pos, radius, h.mx, h.my);
+      const next = stepMovement(pos, { mx: sep.mx, my: sep.my }, speed, TICK_DT, this.world, radius);
       const stepped = Math.hypot(next.x - pos.x, next.y - pos.y);
       if (stepped > 0.001) {
+        // Face the ERRAND's heading, not the sidestep — a body easing
+        // around a neighbor keeps looking where it is going.
         pos.dir = Math.atan2(h.my, h.mx);
         pos.x = next.x;
         pos.y = next.y;
@@ -7843,6 +8012,10 @@ export class GameServer {
       if (moveX !== 0 || moveY !== 0) {
         let speed = npc.state === 'chase' ? npc.def.speed : npc.def.speed * 0.6;
         if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
+        // The polite step-aside: converging packmates fan out around
+        // a target instead of stacking into one sprite; a returning
+        // wanderer eases around whoever it meets.
+        ({ mx: moveX, my: moveY } = this.separateHeading(eid, pos, npc.def.radius, moveX, moveY));
         const next = stepMovement(pos, { mx: moveX, my: moveY }, speed, TICK_DT, this.world, npc.def.radius);
         const moved = next.x !== pos.x || next.y !== pos.y;
         if (moved) {
