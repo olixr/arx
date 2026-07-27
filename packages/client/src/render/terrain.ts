@@ -2540,7 +2540,11 @@ export function deckWalkIsVertical(
   let maxX = tx;
   let minY = ty;
   let maxY = ty;
-  const CAP = 160;
+  // Generous: the cap exists only as a runaway guard. If a real span
+  // ever exceeded it, tiles could flood DIFFERENT subsets and reach
+  // different verdicts — mixed boards and torn lift profiles — so the
+  // cap must sit far above any span worldgen or a map can lay down.
+  const CAP = 1024;
   while (queue.length > 0 && tiles.length < CAP) {
     const [x, y] = queue.pop()!;
     tiles.push([x, y]);
@@ -2576,16 +2580,10 @@ export function deckWalkIsVertical(
  *  'none' for a full-height tile. */
 export type BridgeApron = 'none' | 'W' | 'E' | 'N' | 'S';
 
-/**
- * THE APRON LAW. An apron is the span's last tile before a walk-end
- * bank: its deck RAMPS from grade at the land edge up to DOCK_LIFT at
- * the deck side, exactly like the Ramp tile's flight — the road pours
- * onto the bridge with no step, no floating threshold, no water
- * peeking out under a hovering end. The bake shears the apron's deck
- * kit along this slope and renderLift interpolates the same slope
- * under every body, so feet and boards agree by construction.
- */
-export function bridgeApronAt(
+/** The per-tile ramp candidacy: land beyond the walk edge, deck
+ *  continuing on the opposite side. The RUN LAW below decides whether
+ *  a candidate may actually ramp. */
+function apronCandidate(
   ground: GroundSampler,
   tx: number,
   ty: number,
@@ -2605,6 +2603,48 @@ export function bridgeApronAt(
     if (isLand(eT) && isDeckGround(wT)) return 'E';
   }
   return 'none';
+}
+
+/**
+ * THE APRON LAW. An apron is the span's last tile before a walk-end
+ * bank: its deck RAMPS from grade at the land edge up to DOCK_LIFT at
+ * the deck side, exactly like the Ramp tile's flight — the road pours
+ * onto the bridge with no step, no floating threshold, no water
+ * peeking out under a hovering end. The bake shears the apron's deck
+ * kit along this slope and renderLift interpolates the same slope
+ * under every body, so feet and boards agree by construction.
+ *
+ * THE RUN LAW: a candidate only ramps if its ENTIRE cross-axis run of
+ * deck tiles carries the SAME candidacy — one row sloping beside a
+ * row still at full height tears the deck open along their shared
+ * edge (the exact seam artifact on ragged spans). Any run member with
+ * a different verdict — a row that continues further, a dock tile
+ * that can never slope, a row ending over water — flattens the whole
+ * run, and those ends wear the flat threshold kit instead. Seams are
+ * impossible by construction: lift profile is uniform per run.
+ */
+export function bridgeApronAt(
+  ground: GroundSampler,
+  tx: number,
+  ty: number,
+  walkVert: boolean,
+): BridgeApron {
+  const cand = apronCandidate(ground, tx, ty, walkVert);
+  if (cand === 'none') return 'none';
+  if (ground(tx, ty) !== Tile.Bridge) return 'none';
+  const cdx = walkVert ? 1 : 0;
+  const cdy = walkVert ? 0 : 1;
+  for (const sgn of [1, -1]) {
+    for (let i = 1; i <= 16; i++) {
+      const x = tx + cdx * i * sgn;
+      const y = ty + cdy * i * sgn;
+      const t = ground(x, y);
+      if (!isDeckGround(t)) break;
+      if (t !== Tile.Bridge) return 'none'; // a dock in the run never slopes
+      if (apronCandidate(ground, x, y, walkVert) !== cand) return 'none';
+    }
+  }
+  return cand;
 }
 
 /**
@@ -2640,7 +2680,9 @@ function deckUnderGround(
     }
     let best = -1;
     let bestT = -1;
+    let landTotal = 0;
     for (const [t, n] of land) {
+      landTotal += n;
       if (n > best) {
         best = n;
         bestT = t;
@@ -2648,11 +2690,22 @@ function deckUnderGround(
     }
     // A ramp apron is BANK-FIRST: any walkable land in the ring wins
     // over water, so the ground pours under the ramp mouth unbroken.
+    // Everywhere else the MAJORITY decides — a flat walk-end with one
+    // diagonal lick of water two banks over must still read as bank,
+    // never as a phantom pool peeking around the deck.
     if (bankFirst && bestT >= 0) return bestT;
-    if (deep > 0 && deep >= water && deep >= shallow) return Tile.WaterDeep;
-    if (water > 0 && water >= shallow) return Tile.Water;
-    if (shallow > 0) return Tile.WaterShallow;
+    const waterTotal = deep + water + shallow;
+    if (waterTotal >= landTotal && waterTotal > 0) {
+      if (deep >= water && deep >= shallow) return Tile.WaterDeep;
+      if (water >= shallow) return Tile.Water;
+      return Tile.WaterShallow;
+    }
     if (bestT >= 0) return bestT;
+    if (waterTotal > 0) {
+      if (deep >= water && deep >= shallow) return Tile.WaterDeep;
+      if (water >= shallow) return Tile.Water;
+      return Tile.WaterShallow;
+    }
   }
   return Tile.Grass;
 }

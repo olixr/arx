@@ -151,6 +151,15 @@ export type BridgeApron = 'none' | 'W' | 'E' | 'N' | 'S';
  * peeking out under a hovering end. The bake shears the apron's deck
  * kit along this slope and renderLift interpolates the same slope
  * under every body, so feet and boards agree by construction.
+ *
+ * THE RUN LAW: a candidate only ramps if its ENTIRE cross-axis run of
+ * deck tiles carries the SAME candidacy — one row sloping beside a
+ * row still at full height tears the deck open along their shared
+ * edge (the exact seam artifact on ragged spans). Any run member with
+ * a different verdict — a row that continues further, a dock tile
+ * that can never slope, a row ending over water — flattens the whole
+ * run, and those ends wear the flat threshold kit instead. Seams are
+ * impossible by construction: lift profile is uniform per run.
  */
 export declare function bridgeApronAt(ground: GroundSampler, tx: number, ty: number, walkVert: boolean): BridgeApron;
 /**
