@@ -504,17 +504,27 @@ const game = new ClientGame(input, {
       if (!hit.isOwn) renderer.hitstop(hit.crit ? 0.09 : 0.045);
     }
     if (hit.isOwn && hit.dmg > 0) {
+      // Taking a hit is body feedback, not world audio — always flat.
       renderer.shake(hit.crit ? 10 : 7);
       renderer.flashHurt();
       sfx.hurt();
       input.rumble(0.6, 0.25, 160);
-    } else if (hit.crit) {
-      renderer.shake(4);
-      sfx.crit();
-      input.rumble(0.7, 0.45, 170);
     } else {
-      sfx.hit();
-      if (hit.dmg > 0) input.rumble(0.3, 0.45, 80);
+      // A blow landing on someone else sounds from where it lands:
+      // your own strikes are at arm's reach (full volume), another
+      // player's brawl across the field arrives faint.
+      const at = { x: hit.x, y: hit.y };
+      if (hit.crit) sfx.spatial(at, 'mid', () => sfx.crit());
+      else sfx.spatial(at, 'mid', () => sfx.hit());
+      // Haptics/camera only when the blow is plausibly yours (close).
+      if (sfx.listenerDist(hit.x, hit.y) < 9) {
+        if (hit.crit) {
+          renderer.shake(4);
+          input.rumble(0.7, 0.45, 170);
+        } else if (hit.dmg > 0) {
+          input.rumble(0.3, 0.45, 80);
+        }
+      }
     }
   },
   onImpact: (impact) => {
@@ -544,10 +554,14 @@ const game = new ClientGame(input, {
       gravity: 5,
     });
     renderer.addRing(death.x, death.y - 0.2, color, 0.8);
-    renderer.hitstop(0.07);
-    renderer.zoomPulse();
-    sfx.kill();
-    input.rumble(0.8, 0.5, 220);
+    // The kill pop sounds from the body; the camera exclamation point
+    // (hitstop, zoom kick, rumble) belongs only to kills at your feet.
+    sfx.spatial({ x: death.x, y: death.y }, 'mid', () => sfx.kill());
+    if (sfx.listenerDist(death.x, death.y) < 10) {
+      renderer.hitstop(0.07);
+      renderer.zoomPulse();
+      input.rumble(0.8, 0.5, 220);
+    }
   },
   onBank: (items, gear) => {
     if (stationPanels.bankOpen) stationPanels.refreshBank(items, gear);
@@ -709,11 +723,15 @@ game.onCastFx = (_slot, ab) => {
 game.onFx = (fx) => {
   const own = game.predictor.renderPos();
   const dist = Math.hypot(fx.x - own.x, fx.y - own.y);
+  // Every fx sounds from where it lands (THE SPATIAL LAW) — the old
+  // hard `dist < N` audio gates are gone; the rolloff curve does the
+  // fading and the culling. Camera feel keeps its own close gates.
+  const at = { x: fx.x, y: fx.y };
   if (fx.kind === 'rattle') {
     // A locked door refusing: the leaf shudders in its frame and
     // knocks — scenery feedback, no camera punch.
     renderer.addDoorEase(Math.floor(fx.x), Math.floor(fx.y), 'shake');
-    if (dist < 12) sfx.doorRattle();
+    sfx.spatial(at, 'near', () => sfx.doorRattle());
     return;
   }
   if (fx.kind === 'smash') {
@@ -723,45 +741,45 @@ game.onFx = (fx) => {
     const kind = (fx.id ?? 'crate') as SmashKind;
     if (fx.radius > 0) {
       renderer.crackProp(fx.x, fx.y, fx.dir ?? 0, kind);
-      if (dist < 12) sfx.propCrack();
+      sfx.spatial(at, 'near', () => sfx.propCrack());
       if (dist < 2.5) input.rumble(0.18, 0.3, 60);
       return;
     }
     renderer.smashProp(fx.x, fx.y, fx.dir ?? 0, kind);
-    if (dist < 14) sfx.propSmash(kind === 'barrel');
+    sfx.spatial(at, 'far', () => sfx.propSmash(kind === 'barrel'));
     if (dist < 6) renderer.shake(kind === 'table' ? 3.2 : 2.2);
     if (dist < 2.5) input.rumble(0.32, 0.5, 90);
     return;
   }
   const punch = fxStyleFor(fx.id, fx.color).punch;
   if (fx.kind === 'blast') {
-    sfx.blast();
+    sfx.spatial(at, 'far', () => sfx.blast());
     if (dist < 7) renderer.shake((dist < fx.radius + 0.5 ? 8 : 4) * (0.5 + punch));
   } else if (fx.kind === 'reaction' && fx.text && fx.text !== 'Resist' && !fx.text.startsWith('+')) {
-    sfx.reaction();
-    renderer.hitstop(0.055);
+    sfx.spatial(at, 'mid', () => sfx.reaction());
+    if (dist < 10) renderer.hitstop(0.055);
     renderer.particles.burst(fx.x, fx.y - 0.3, 18, [fx.color ?? '#f4efe4', '#f4efe4'], {
       speed: 3.2,
       life: 0.5,
     });
   } else if (fx.kind === 'nova') {
-    if (dist > 0.9) sfx.zap(); // someone else's nova — a softer report
+    if (dist > 0.9) sfx.spatial(at, 'mid', () => sfx.zap()); // someone else's nova
     if (dist < 7) renderer.shake(5 * (0.4 + punch));
   } else if (fx.kind === 'arc') {
-    if (dist > 0.9 && dist < 9) sfx.swing(); // your own cast already sang
+    if (dist > 0.9) sfx.spatial(at, 'near', () => sfx.swing()); // your own cast already sang
   } else if (fx.kind === 'dash') {
-    if (dist > 0.9 && dist < 10) sfx.dash();
+    if (dist > 0.9) sfx.spatial(at, 'near', () => sfx.dash());
   } else if (fx.kind === 'bolt') {
-    sfx.chainZap();
+    sfx.spatial(at, 'mid', () => sfx.chainZap());
     if (dist < 7) renderer.shake(3.5 * (0.4 + punch));
   } else if (fx.kind === 'beam') {
-    sfx.beam();
+    sfx.spatial(at, 'mid', () => sfx.beam());
     if (dist < 9) renderer.shake(6 * (0.4 + punch));
   } else if (fx.kind === 'field') {
-    sfx.ignite();
+    sfx.spatial(at, 'mid', () => sfx.ignite());
     if (dist < 7) renderer.shake(3);
   } else if (fx.kind === 'buff') {
-    if (dist < 10) sfx.empower();
+    sfx.spatial(at, 'near', () => sfx.empower());
   } else if (fx.kind === 'vanish') {
     // A stealth flip: a soft gray-violet puff where the body was (or
     // reappears) so the interest pop reads as intentional.
@@ -772,7 +790,7 @@ game.onFx = (fx) => {
       gravity: -1.2,
     });
     renderer.addRing(fx.x, fx.y - 0.3, '#8a7fae', 0.5);
-    if (dist < 10) sfx.dash();
+    sfx.spatial(at, 'near', () => sfx.dash());
   }
 };
 
@@ -827,30 +845,48 @@ function autoEquipTool(): void {
 }
 
 // Each beat of work lands in the hands: chop knocks, pick clinks,
-// anvil rings, and the furnace's hot breath — each with its own rumble.
-renderer.onGatherImpact = (kind) => {
-  if (kind === 'rock') {
-    sfx.mineClink();
-    input.rumble(0.3, 0.38, 70);
-  } else if (kind === 'anvil') {
-    sfx.anvilClang();
-    input.rumble(0.34, 0.42, 80);
-  } else if (kind === 'furnace') {
-    sfx.furnaceRoar();
-    input.rumble(0.12, 0.2, 160);
-  } else if (kind === 'forage') {
-    sfx.forage();
-    input.rumble(0.06, 0.14, 45);
-  } else {
-    sfx.chop();
-    input.rumble(0.22, 0.32, 60);
+// anvil rings, and the furnace's hot breath. THE SPATIAL LAW: the
+// beat sounds from WHERE it strikes — your own swing rings at full
+// volume (you're standing on it), the village smith across the square
+// rings faint, and past earshot the clang costs nothing. Haptics are
+// the own body's privilege only.
+renderer.onGatherImpact = (kind, x, y, isOwn) => {
+  sfx.spatial({ x, y }, 'mid', () => {
+    if (kind === 'rock') sfx.mineClink();
+    else if (kind === 'anvil') sfx.anvilClang();
+    else if (kind === 'furnace') sfx.furnaceRoar();
+    else if (kind === 'forage') sfx.forage();
+    else sfx.chop();
+  });
+  if (!isOwn) return;
+  if (kind === 'rock') input.rumble(0.3, 0.38, 70);
+  else if (kind === 'anvil') input.rumble(0.34, 0.42, 80);
+  else if (kind === 'furnace') input.rumble(0.12, 0.2, 160);
+  else if (kind === 'forage') input.rumble(0.06, 0.14, 45);
+  else input.rumble(0.22, 0.32, 60);
+};
+
+// A felled body landing is its own beat — the dull thump under the
+// kill, heard from where the mass actually hits the ground.
+renderer.onCorpseThud = (heavy, x, y) => {
+  sfx.spatial({ x, y }, 'near', () => sfx.bodyThud(heavy));
+  if (sfx.listenerDist(x, y) < 8) {
+    input.rumble(heavy ? 0.2 : 0.1, heavy ? 0.28 : 0.16, heavy ? 90 : 55);
   }
 };
 
-// A felled body landing is its own beat — the dull thump under the kill.
-renderer.onCorpseThud = (heavy) => {
-  sfx.bodyThud(heavy);
-  input.rumble(heavy ? 0.2 : 0.1, heavy ? 0.28 : 0.16, heavy ? 90 : 55);
+// Other bodies' combat beats: the renderer's pose-transition edge —
+// the same one that restarts the swing animation — voices swings and
+// casts for everyone who isn't you, sitting where they stand. Your
+// own swings sing through the prediction path below (instant, flat).
+renderer.onPoseChange = (key, pose, x, y) => {
+  if (key === 'own' || key === game.ownEid) return;
+  const at = { x, y };
+  if (pose === PoseState.Attack) sfx.spatial(at, 'mid', () => sfx.swingCombo(0));
+  else if (pose === PoseState.Attack2) sfx.spatial(at, 'mid', () => sfx.swingCombo(1));
+  else if (pose === PoseState.Attack3) sfx.spatial(at, 'mid', () => sfx.swingCombo(2));
+  else if (pose === PoseState.Cast) sfx.spatial(at, 'mid', () => sfx.zap());
+  else if (pose === PoseState.Loose) sfx.spatial(at, 'mid', () => sfx.snapShot());
 };
 
 // Footsteps: every humanoid touchdown asks the ground what it's made
@@ -897,29 +933,18 @@ function stepMaterial(tx: number, ty: number): 'grass' | 'stone' | 'wood' | 'dir
 renderer.onFootstep = (x, y, speed, isOwn, sneaking) => {
   const mat = stepMaterial(Math.floor(x), Math.floor(y));
   // Kept soft by default (user: footsteps read too loud) — a step is
-  // felt underfoot, not announced.
+  // felt underfoot, not announced. Other feet carry a courtesy cut on
+  // top of the spatial rolloff so a crowd never drowns your own gait.
   let vol = 0.035 + 0.09 * Math.min(1, speed / 5);
-  let pan = 0;
   if (sneaking) vol *= 0.25;
-  if (!isOwn) {
-    const own = game.predictor.pos;
-    const dist = Math.hypot(x - own.x, y - own.y);
-    if (dist > 9) return;
-    vol *= 0.4 * (1 - dist / 9);
-    pan = Math.max(-0.8, Math.min(0.8, (x - own.x) / 8));
-  }
-  sfx.footstep(mat, vol, pan);
+  if (!isOwn) vol *= 0.5;
+  sfx.spatial({ x, y }, 'close', () => sfx.footstep(mat, vol));
 };
 
-// A body stepping into or out of shallow water — one honest plunk,
-// distance-attenuated like footsteps.
+// A body stepping into or out of shallow water — one honest plunk
+// from where it plunged.
 renderer.onSplash = (x, y) => {
-  const own = game.predictor.pos;
-  const dist = Math.hypot(x - own.x, y - own.y);
-  if (dist > 10) return;
-  const vol = dist < 1 ? 0.12 : 0.12 * 0.55 * (1 - dist / 10);
-  const pan = Math.max(-0.8, Math.min(0.8, (x - own.x) / 8));
-  sfx.splash(vol, pan);
+  sfx.spatial({ x, y }, 'close', () => sfx.splash(0.12));
 };
 
 // A felled tree topples away from whoever cut it, groans, and lands
@@ -931,9 +956,10 @@ game.onTileChange = (tx, ty, prev, next) => {
   // whatever it has been keeping (dust, must, or money-light).
   const prevChest = prev === undefined ? null : chestInfo(prev);
   const nextChest = chestInfo(next);
+  const tileAt = { x: tx + 0.5, y: ty + 0.5 };
   if (prevChest && nextChest && !prevChest.open && nextChest.open) {
     renderer.addChestEase(tx, ty, 'open');
-    sfx.chestOpen();
+    sfx.spatial(tileAt, 'near', () => sfx.chestOpen());
     const motes: Record<string, string[]> = {
       wood: ['#c9a76a', '#8a6534', '#e0d4b8'],
       iron: ['#8f96a3', '#5e5560', '#c9c4cf'],
@@ -955,7 +981,7 @@ game.onTileChange = (tx, ty, prev, next) => {
   if (prevChest && nextChest && prevChest.open && !nextChest.open) {
     // The respawn queue shutting a forgotten lid — soft, no fanfare.
     renderer.addChestEase(tx, ty, 'close');
-    sfx.chestClose();
+    sfx.spatial(tileAt, 'near', () => sfx.chestClose());
     return;
   }
   // Doors: the tile swap IS the state change, same law as chests. A
@@ -968,8 +994,10 @@ game.onTileChange = (tx, ty, prev, next) => {
     const now = performance.now();
     if (now - lastDoorSfxAt > 80) {
       lastDoorSfxAt = now;
-      if (nextDoor.open) sfx.doorOpen();
-      else sfx.doorClose();
+      sfx.spatial(tileAt, 'near', () => {
+        if (nextDoor.open) sfx.doorOpen();
+        else sfx.doorClose();
+      });
     }
     return;
   }
@@ -1005,11 +1033,12 @@ game.onTileChange = (tx, ty, prev, next) => {
     const own = game.predictor.pos;
     const dir = own.x <= tx + 0.5 ? 1 : -1;
     renderer.addFallingTree(tx, ty, prev, dir);
-    sfx.treeFall();
+    // A felled tree is a landmark event — heard far, but from its place.
+    sfx.spatial(tileAt, 'far', () => sfx.treeFall());
     // Impact lands at ~720ms of the 3.2s fall timeline.
     window.setTimeout(() => {
-      sfx.treeImpact();
-      input.rumble(0.45, 0.3, 150);
+      sfx.spatial(tileAt, 'far', () => sfx.treeImpact());
+      if (sfx.listenerDist(tileAt.x, tileAt.y) < 7) input.rumble(0.45, 0.3, 150);
     }, 720);
   } else if (
     prev !== undefined &&
@@ -1019,8 +1048,8 @@ game.onTileChange = (tx, ty, prev, next) => {
   ) {
     // A worked-out node crumbles instead of blinking to its husk.
     renderer.addRockBreak(tx, ty, prev);
-    sfx.rockCrumble();
-    input.rumble(0.35, 0.3, 140);
+    sfx.spatial(tileAt, 'mid', () => sfx.rockCrumble());
+    if (sfx.listenerDist(tileAt.x, tileAt.y) < 7) input.rumble(0.35, 0.3, 140);
   } else if (prev === Tile.RockDepleted && ROCK_TILES.includes(next)) {
     // Respawn: the fresh rock surfaces under a small dust puff.
     renderer.particles.burst(tx + 0.5, ty + 0.6, 7, ['#a89880', '#bcae94'], {
@@ -1056,7 +1085,7 @@ game.onLoose = (charge, aim) => {
 (window as unknown as Record<string, unknown>).__devcraft = {
   game,
   renderer,
-  audio: { engine: audioEngine, music, ambience },
+  audio: { engine: audioEngine, music, ambience, sfx },
 };
 
 loginToggle.addEventListener('click', () => {
@@ -1383,6 +1412,10 @@ function frame(now: number): void {
     stationPanels.enforceAnchor(pos.x, pos.y);
     // The loot panel is the same kind of conversation, with the pile.
     lootPanel.update(pos.x, pos.y);
+    // The spatial-audio listener rides the rendered body — every
+    // world-born sound measures its distance and pan against this.
+    const ear = game.predictor.renderPos();
+    sfx.setListener(ear.x, ear.y);
   }
   panelAudioCues();
   // The station being talked to (open panel) animates its in-use

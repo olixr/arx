@@ -1,4 +1,38 @@
 import type { AudioEngine } from './engine.js';
+/** A place in the world a sound is born at (tile coordinates). */
+export interface WorldAt {
+    x: number;
+    y: number;
+}
+/**
+ * How far each family of world sound carries, in tiles. `ref` is the
+ * full-volume radius (inside it you're "at" the source); past it the
+ * gain falls on a perceptual curve and reaches exactly zero at `max`,
+ * where the sound is CULLED before any synthesis happens.
+ */
+declare const RANGES: {
+    /** Personal-space sounds: footsteps, splashes, small handwork. */
+    readonly close: {
+        readonly ref: 1.5;
+        readonly max: 10;
+    };
+    /** Room-scale interactions: doors, chests, props, corpse thuds. */
+    readonly near: {
+        readonly ref: 2.5;
+        readonly max: 16;
+    };
+    /** Work and combat beats: anvil, mining, chopping, spells, hits. */
+    readonly mid: {
+        readonly ref: 4;
+        readonly max: 24;
+    };
+    /** Landmark events: tree falls, prop bursts, blasts, deaths. */
+    readonly far: {
+        readonly ref: 6;
+        readonly max: 34;
+    };
+};
+export type SoundRange = keyof typeof RANGES;
 /**
  * Procedural WebAudio SFX — no audio files, everything synthesized.
  * Kept short and soft; a local family server doesn't need ear-splitters.
@@ -6,10 +40,36 @@ import type { AudioEngine } from './engine.js';
  * low-pass, the glue compressor, and a touch of the shared room —
  * that shared air is what keeps synthesized blips from reading as
  * "computer noises" on top of the world instead of sounds inside it.
+ *
+ * THE SPATIAL LAW: any sound born at a place in the world plays
+ * through `spatial(at, range, …)` — distance sets its loudness on a
+ * shared rolloff curve, its side of you sets the stereo pan, and past
+ * the family's max range it is culled before a single node is built
+ * (cheaper than the flat world ever was). Sounds with no place — UI,
+ * music stingers, your own body's feedback — skip the layer and stay
+ * flat. Background music and ambience beds are NEVER spatialized.
  */
 export declare class Sfx {
     private engine;
     constructor(engine: AudioEngine);
+    /** The listener — the player's rendered position, set every frame. */
+    private lx;
+    private ly;
+    /** Emitter override: while set, tone/noise route through it. */
+    private dest;
+    /** Follow the camera's subject; called once per frame from the loop. */
+    setListener(x: number, y: number): void;
+    /** Distance to the listener — for gating haptics/camera feel. */
+    listenerDist(x: number, y: number): number;
+    /**
+     * Play `body`'s sounds from a place in the world. One shared
+     * emitter chain (gain → equal-power pan → sfx bus) carries every
+     * tone and noise the body fires, so a five-layer clang costs one
+     * extra gain and one panner — and an out-of-range clang costs
+     * nothing at all. Passing a null/undefined `at` plays flat, so
+     * shared code paths can serve both worlds.
+     */
+    spatial(at: WorldAt | null | undefined, range: SoundRange, body: () => void): void;
     /** Browsers require a user gesture before audio can start. */
     unlock(): void;
     private get ctx();
@@ -172,15 +232,16 @@ export declare class Sfx {
     /**
      * One foot meeting the ground. THE SOFT-STEP LAW: footsteps are felt
      * more than heard — grass is a brush of cloth against blades, stone
-     * a small dry contact, never a clop. `vol` arrives distance- and
-     * gait-scaled from the caller; everything here stays under it.
+     * a small dry contact, never a clop. `vol` arrives gait-scaled from
+     * the caller; distance and pan come from the spatial emitter.
      */
-    footstep(mat: 'grass' | 'stone' | 'wood' | 'dirt' | 'sand' | 'cave' | 'wet', vol: number, pan?: number): void;
+    footstep(mat: 'grass' | 'stone' | 'wood' | 'dirt' | 'sand' | 'cave' | 'wet', vol: number): void;
     /**
      * A body stepping into (or out of) shallow water: one honest plunk —
      * a pitched blip swallowed by a short bright spray. One-shot grains
      * only (the granular ambience law: no continuous noise beds, ever).
      */
-    splash(vol: number, pan?: number): void;
+    splash(vol: number): void;
 }
+export {};
 //# sourceMappingURL=sfx.d.ts.map

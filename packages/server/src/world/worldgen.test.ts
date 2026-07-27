@@ -15,6 +15,8 @@ import {
   SILVERSPINE,
   THORNVEIL,
   buildDawnmead,
+  buildSilverfall,
+  buildUndercroft,
   roadDistanceAt,
   roadHitAt,
 } from '@devcraft/content';
@@ -26,7 +28,6 @@ import {
   moistureAt,
 } from './worldgen.js';
 import { WorldSource } from './worldSource.js';
-import { buildDawnmead, buildSilverfall, buildUndercroft } from '@devcraft/content';
 
 /**
  * A (2r+1)² chunk block flattened to a world-tile map so adjacency

@@ -233,7 +233,7 @@ export declare class Renderer {
      */
     private readonly corpses;
     /** Body-thud hook: the renderer sees the landing, main.ts owns sfx. */
-    onCorpseThud?: (heavy: boolean) => void;
+    onCorpseThud?: (heavy: boolean, x: number, y: number) => void;
     /** A quick camera zoom kick — the killing-blow exclamation point. */
     zoomPulse(amount?: number): void;
     /**
@@ -354,8 +354,20 @@ export declare class Renderer {
     constructor(canvas: HTMLCanvasElement);
     /** The game being rendered this frame (for world lookups in painters). */
     private game;
-    /** Fires once per tool-impact while someone gathers ('tree' | 'rock'). */
-    onGatherImpact: ((kind: string) => void) | null;
+    /**
+     * Fires once per tool-impact while someone gathers ('tree' | 'rock'
+     * | 'forage' | 'anvil' | 'furnace') — with WHERE the beat landed and
+     * whose hands it is, so the sound can sit in the world (the far-off
+     * smith rings faint) and haptics stay on the own body only.
+     */
+    onGatherImpact: ((kind: string, x: number, y: number, isOwn: boolean) => void) | null;
+    /**
+     * A body's pose flipped this frame (renderer-side transition diff —
+     * the same edge that restarts the swing animation). main.ts voices
+     * OTHER bodies' swings/casts from it, spatialized; the own body's
+     * combat audio rides its own prediction path and skips this.
+     */
+    onPoseChange: ((key: number | 'own', pose: number, x: number, y: number) => void) | null;
     /**
      * Fires on every humanoid foot touchdown (the leg rig's plant
      * moment). `speed` is the gait vigor in tiles/sec — idle shuffles

@@ -76,6 +76,10 @@ export type InteractTarget = {
     tx: number;
     ty: number;
     open: boolean;
+} | {
+    kind: 'bed';
+    tx: number;
+    ty: number;
 };
 import { InterpBuffer } from '../net/interpolation.js';
 import { Predictor } from '../net/prediction.js';

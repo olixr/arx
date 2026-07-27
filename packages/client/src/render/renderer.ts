@@ -767,7 +767,7 @@ export class Renderer {
     settledAt: number | null;
   }> = [];
   /** Body-thud hook: the renderer sees the landing, main.ts owns sfx. */
-  onCorpseThud?: (heavy: boolean) => void;
+  onCorpseThud?: (heavy: boolean, x: number, y: number) => void;
 
   /** A quick camera zoom kick — the killing-blow exclamation point. */
   zoomPulse(amount = 0.045): void {
@@ -1117,8 +1117,21 @@ export class Renderer {
   /** The game being rendered this frame (for world lookups in painters). */
   private game: ClientGame | null = null;
 
-  /** Fires once per tool-impact while someone gathers ('tree' | 'rock'). */
-  onGatherImpact: ((kind: string) => void) | null = null;
+  /**
+   * Fires once per tool-impact while someone gathers ('tree' | 'rock'
+   * | 'forage' | 'anvil' | 'furnace') — with WHERE the beat landed and
+   * whose hands it is, so the sound can sit in the world (the far-off
+   * smith rings faint) and haptics stay on the own body only.
+   */
+  onGatherImpact: ((kind: string, x: number, y: number, isOwn: boolean) => void) | null = null;
+
+  /**
+   * A body's pose flipped this frame (renderer-side transition diff —
+   * the same edge that restarts the swing animation). main.ts voices
+   * OTHER bodies' swings/casts from it, spatialized; the own body's
+   * combat audio rides its own prediction path and skips this.
+   */
+  onPoseChange: ((key: number | 'own', pose: number, x: number, y: number) => void) | null = null;
 
   /**
    * Fires on every humanoid foot touchdown (the leg rig's plant
@@ -2309,6 +2322,7 @@ export class Renderer {
     if (pose !== anim.lastPose) {
       anim.lastPose = pose;
       anim.poseStartedAt = now;
+      this.onPoseChange?.(key, pose, x, y);
     }
     anim.lastSeen = now;
     return anim;
@@ -15557,7 +15571,7 @@ export class Renderer {
               dir: dir + Math.PI,
               spread: 1.3,
             });
-            this.onGatherImpact?.('tree');
+            this.onGatherImpact?.('tree', gather.tx + 0.5, gather.ty + 0.5, e.isOwn === true);
           }
         } else if (gather && gather.kind === 'rock' && toolType === 'pickaxe') {
           const cycle = Math.floor((performance.now() + lifeMs) / MINE_CYCLE_MS);
@@ -15587,7 +15601,7 @@ export class Renderer {
               up: true,
               spread: 2,
             });
-            this.onGatherImpact?.('rock');
+            this.onGatherImpact?.('rock', gather.tx + 0.5, gather.ty + 0.5, e.isOwn === true);
           }
         } else if (gather && gather.kind === 'forage') {
           // The pluck beat: leaves shiver loose as the stem snaps,
@@ -15617,7 +15631,7 @@ export class Renderer {
               dir: dir + Math.PI,
               spread: 1.6,
             });
-            this.onGatherImpact?.('forage');
+            this.onGatherImpact?.('forage', gather.tx + 0.5, gather.ty + 0.5, e.isOwn === true);
           }
         } else if (station?.kind === 'anvil') {
           const cycle = Math.floor((performance.now() + lifeMs) / ANVIL_CYCLE_MS);
@@ -15636,7 +15650,7 @@ export class Renderer {
               spread: 2.4,
             });
             this.queueGlow(sx, sy, 0.7, '255, 176, 82', 0.3);
-            this.onGatherImpact?.('anvil');
+            this.onGatherImpact?.('anvil', sx, sy, e.isOwn === true);
           }
         } else if (station?.kind === 'furnace') {
           const cycle = Math.floor((performance.now() + lifeMs) / FURNACE_CYCLE_MS);
@@ -15656,7 +15670,7 @@ export class Renderer {
               dir: -Math.PI / 2,
             });
             this.queueGlow(fx2, fy2, 1.4, '255, 138, 52', 0.4);
-            this.onGatherImpact?.('furnace');
+            this.onGatherImpact?.('furnace', fx2, fy2, e.isOwn === true);
           }
         }
 
@@ -17775,7 +17789,7 @@ export class Renderer {
         });
         if (imp.heavy && !c.thudded) {
           c.thudded = true;
-          this.onCorpseThud?.(imp.speed > 4);
+          this.onCorpseThud?.(imp.speed > 4, c.x + imp.x, c.y);
         }
       }
       if (c.rag.settled) c.settledAt = now;

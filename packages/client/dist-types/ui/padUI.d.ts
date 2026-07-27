@@ -52,6 +52,8 @@ export declare class UiNav {
     /** A gameplay MODE's action strip (build mode) — overrides focus strip. */
     private modeStrip;
     private promptKey;
+    /** When the current prompt target first appeared — drives .settled. */
+    private promptSince;
     /** Which side panels are open — focus re-lands when this changes. */
     private panelSig;
     /** Ring layout reads are throttled — forced layout every frame tanks fps. */
@@ -94,7 +96,9 @@ export declare class UiNav {
     private updateTooltip;
     /**
      * Glyph prompt floating over the tile the Interact button would use:
-     * `Ⓧ Open Bank` on pad, `F Open Bank` on keyboard.
+     * `Ⓧ Open Bank` on pad, `F Open Bank` on keyboard. After a few
+     * seconds parked on the same target the label folds away and only
+     * the dim key cap stays — a new target brings the verb back.
      */
     setPrompt(at: {
         sx: number;

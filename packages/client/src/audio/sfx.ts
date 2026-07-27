@@ -1,5 +1,34 @@
 import type { AudioEngine } from './engine.js';
 
+/** A place in the world a sound is born at (tile coordinates). */
+export interface WorldAt {
+  x: number;
+  y: number;
+}
+
+/**
+ * How far each family of world sound carries, in tiles. `ref` is the
+ * full-volume radius (inside it you're "at" the source); past it the
+ * gain falls on a perceptual curve and reaches exactly zero at `max`,
+ * where the sound is CULLED before any synthesis happens.
+ */
+const RANGES = {
+  /** Personal-space sounds: footsteps, splashes, small handwork. */
+  close: { ref: 1.5, max: 10 },
+  /** Room-scale interactions: doors, chests, props, corpse thuds. */
+  near: { ref: 2.5, max: 16 },
+  /** Work and combat beats: anvil, mining, chopping, spells, hits. */
+  mid: { ref: 4, max: 24 },
+  /** Landmark events: tree falls, prop bursts, blasts, deaths. */
+  far: { ref: 6, max: 34 },
+} as const;
+export type SoundRange = keyof typeof RANGES;
+
+/** Tiles of sideways offset that reach full stereo deflection. */
+const PAN_WIDTH = 12;
+/** Never pan fully hard — a sound at the ear still leaks both sides. */
+const PAN_MAX = 0.8;
+
 /**
  * Procedural WebAudio SFX — no audio files, everything synthesized.
  * Kept short and soft; a local family server doesn't need ear-splitters.
@@ -7,9 +36,73 @@ import type { AudioEngine } from './engine.js';
  * low-pass, the glue compressor, and a touch of the shared room —
  * that shared air is what keeps synthesized blips from reading as
  * "computer noises" on top of the world instead of sounds inside it.
+ *
+ * THE SPATIAL LAW: any sound born at a place in the world plays
+ * through `spatial(at, range, …)` — distance sets its loudness on a
+ * shared rolloff curve, its side of you sets the stereo pan, and past
+ * the family's max range it is culled before a single node is built
+ * (cheaper than the flat world ever was). Sounds with no place — UI,
+ * music stingers, your own body's feedback — skip the layer and stay
+ * flat. Background music and ambience beds are NEVER spatialized.
  */
 export class Sfx {
   constructor(private engine: AudioEngine) {}
+
+  /** The listener — the player's rendered position, set every frame. */
+  private lx = 0;
+  private ly = 0;
+  /** Emitter override: while set, tone/noise route through it. */
+  private dest: AudioNode | null = null;
+
+  /** Follow the camera's subject; called once per frame from the loop. */
+  setListener(x: number, y: number): void {
+    this.lx = x;
+    this.ly = y;
+  }
+
+  /** Distance to the listener — for gating haptics/camera feel. */
+  listenerDist(x: number, y: number): number {
+    return Math.hypot(x - this.lx, y - this.ly);
+  }
+
+  /**
+   * Play `body`'s sounds from a place in the world. One shared
+   * emitter chain (gain → equal-power pan → sfx bus) carries every
+   * tone and noise the body fires, so a five-layer clang costs one
+   * extra gain and one panner — and an out-of-range clang costs
+   * nothing at all. Passing a null/undefined `at` plays flat, so
+   * shared code paths can serve both worlds.
+   */
+  spatial(at: WorldAt | null | undefined, range: SoundRange, body: () => void): void {
+    if (!at) {
+      body();
+      return;
+    }
+    const ctx = this.ctx;
+    const bus = this.engine.sfx;
+    if (!ctx || !bus) return;
+    const { ref, max } = RANGES[range];
+    const dx = at.x - this.lx;
+    const d = Math.hypot(dx, at.y - this.ly);
+    if (d >= max) return; // inaudible — skip synthesis entirely
+    // Perceptual rolloff: flat inside ref, then (1-u)^1.6 to zero at
+    // max — monotonic, cheap, and silent exactly at the cull edge so
+    // walking the boundary never pops.
+    const u = d <= ref ? 0 : (d - ref) / (max - ref);
+    const g = Math.pow(1 - u, 1.6);
+    const gain = ctx.createGain();
+    gain.gain.value = g;
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = Math.max(-PAN_MAX, Math.min(PAN_MAX, dx / PAN_WIDTH));
+    gain.connect(pan);
+    pan.connect(bus);
+    this.dest = gain;
+    try {
+      body();
+    } finally {
+      this.dest = null;
+    }
+  }
 
   /** Browsers require a user gesture before audio can start. */
   unlock(): void {
@@ -33,7 +126,7 @@ export class Sfx {
     } = {},
   ): void {
     const ctx = this.ctx;
-    const out = this.engine.sfx;
+    const out = this.dest ?? this.engine.sfx;
     if (!ctx || !out) return;
     const t0 = ctx.currentTime + (opts.delay ?? 0);
     const osc = ctx.createOscillator();
@@ -60,7 +153,7 @@ export class Sfx {
 
   private noise(duration: number, volume = 0.3, delay = 0, opts: { band?: number; pan?: number } = {}): void {
     const ctx = this.ctx;
-    const out = this.engine.sfx;
+    const out = this.dest ?? this.engine.sfx;
     if (!ctx || !out) return;
     const t0 = ctx.currentTime + delay;
     const buffer = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
@@ -593,40 +686,40 @@ export class Sfx {
   /**
    * One foot meeting the ground. THE SOFT-STEP LAW: footsteps are felt
    * more than heard — grass is a brush of cloth against blades, stone
-   * a small dry contact, never a clop. `vol` arrives distance- and
-   * gait-scaled from the caller; everything here stays under it.
+   * a small dry contact, never a clop. `vol` arrives gait-scaled from
+   * the caller; distance and pan come from the spatial emitter.
    */
-  footstep(mat: 'grass' | 'stone' | 'wood' | 'dirt' | 'sand' | 'cave' | 'wet', vol: number, pan = 0): void {
+  footstep(mat: 'grass' | 'stone' | 'wood' | 'dirt' | 'sand' | 'cave' | 'wet', vol: number): void {
     switch (mat) {
       case 'grass':
         // Two tiny brushed puffs — the blade rustle the user asked for.
-        this.noise(0.055, vol * 0.9, 0, { band: 2600, pan });
-        this.noise(0.09, vol * 0.5, 0.035, { band: 1900, pan });
+        this.noise(0.055, vol * 0.9, 0, { band: 2600 });
+        this.noise(0.09, vol * 0.5, 0.035, { band: 1900 });
         break;
       case 'stone':
-        this.tone(190, 0.045, { type: 'triangle', slide: -60, volume: vol * 0.7, pan });
-        this.noise(0.035, vol * 0.55, 0, { band: 1400, pan });
+        this.tone(190, 0.045, { type: 'triangle', slide: -60, volume: vol * 0.7 });
+        this.noise(0.035, vol * 0.55, 0, { band: 1400 });
         break;
       case 'wood':
-        this.tone(130, 0.06, { type: 'triangle', slide: -40, volume: vol * 0.9, pan });
-        this.noise(0.03, vol * 0.3, 0, { band: 900, pan });
+        this.tone(130, 0.06, { type: 'triangle', slide: -40, volume: vol * 0.9 });
+        this.noise(0.03, vol * 0.3, 0, { band: 900 });
         break;
       case 'sand':
-        this.noise(0.1, vol * 0.7, 0, { band: 1500, pan });
+        this.noise(0.1, vol * 0.7, 0, { band: 1500 });
         break;
       case 'cave':
         // Same dry contact as stone, but the room hears it: the sfx bus
         // send carries the tail, so the echo comes free.
-        this.tone(170, 0.05, { type: 'triangle', slide: -55, volume: vol * 0.8, pan });
-        this.noise(0.045, vol * 0.6, 0, { band: 1200, pan });
+        this.tone(170, 0.05, { type: 'triangle', slide: -55, volume: vol * 0.8 });
+        this.noise(0.045, vol * 0.6, 0, { band: 1200 });
         break;
       case 'wet':
-        this.noise(0.08, vol * 0.8, 0, { band: 3200, pan });
-        this.tone(300, 0.05, { type: 'sine', slide: -140, volume: vol * 0.4, delay: 0.01, pan });
+        this.noise(0.08, vol * 0.8, 0, { band: 3200 });
+        this.tone(300, 0.05, { type: 'sine', slide: -140, volume: vol * 0.4, delay: 0.01 });
         break;
       default:
         // dirt: the soft default thud.
-        this.noise(0.06, vol * 0.7, 0, { band: 700, pan });
+        this.noise(0.06, vol * 0.7, 0, { band: 700 });
         break;
     }
   }
@@ -636,9 +729,9 @@ export class Sfx {
    * a pitched blip swallowed by a short bright spray. One-shot grains
    * only (the granular ambience law: no continuous noise beds, ever).
    */
-  splash(vol: number, pan = 0): void {
-    this.tone(340, 0.07, { type: 'sine', slide: -180, volume: vol * 0.8, pan });
-    this.noise(0.06, vol, 0.015, { band: 2900, pan });
-    this.noise(0.12, vol * 0.45, 0.05, { band: 2100, pan });
+  splash(vol: number): void {
+    this.tone(340, 0.07, { type: 'sine', slide: -180, volume: vol * 0.8 });
+    this.noise(0.06, vol, 0.015, { band: 2900 });
+    this.noise(0.12, vol * 0.45, 0.05, { band: 2100 });
   }
 }
