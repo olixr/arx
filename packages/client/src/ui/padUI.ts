@@ -95,6 +95,8 @@ export class UiNav {
   private modeStrip: { key: string; items: Array<[cls: string, glyph: string, label: string]> } | null =
     null;
   private promptKey = '';
+  /** When the current prompt target first appeared — drives .settled. */
+  private promptSince = 0;
   /** Which side panels are open — focus re-lands when this changes. */
   private panelSig = '';
   /** Ring layout reads are throttled — forced layout every frame tanks fps. */
@@ -541,7 +543,9 @@ export class UiNav {
 
   /**
    * Glyph prompt floating over the tile the Interact button would use:
-   * `Ⓧ Open Bank` on pad, `F Open Bank` on keyboard.
+   * `Ⓧ Open Bank` on pad, `F Open Bank` on keyboard. After a few
+   * seconds parked on the same target the label folds away and only
+   * the dim key cap stays — a new target brings the verb back.
    */
   setPrompt(at: { sx: number; sy: number; label: string } | null): void {
     if (!at) {
@@ -554,7 +558,8 @@ export class UiNav {
     const key = at.label;
     if (key !== this.promptKey) {
       this.promptKey = key;
-      this.prompt.classList.remove('hidden');
+      this.promptSince = performance.now();
+      this.prompt.classList.remove('hidden', 'settled');
       this.prompt.innerHTML = '';
       const glyph = document.createElement('span');
       if (this.mode === 'pad') {
@@ -565,9 +570,11 @@ export class UiNav {
         glyph.textContent = 'F';
       }
       const text = document.createElement('span');
+      text.className = 'prompt-label';
       text.textContent = at.label;
       this.prompt.append(glyph, text);
     }
+    this.prompt.classList.toggle('settled', performance.now() - this.promptSince > 4000);
     this.prompt.style.transform = `translate(calc(${Math.round(at.sx)}px - 50%), ${Math.round(at.sy)}px)`;
   }
 }

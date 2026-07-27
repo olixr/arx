@@ -3723,6 +3723,10 @@ body.pad-mode .hint-inline { display: none; }
 
 /* ---- world interact prompt ---- */
 
+/* The quiet console over the world: a small smoked-glass pill — key
+   cap + a short verb — never the case furniture. Park beside the same
+   target a few seconds and the label folds away (.settled), leaving
+   only a dim key cap so the world stays visible while you stand. */
 #ui-interact-prompt {
   position: fixed;
   left: 0;
@@ -3730,27 +3734,54 @@ body.pad-mode .hint-inline { display: none; }
   z-index: 40;
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  padding: 2px 8px 2px 2px;
-  font-size: 15.5px;
+  gap: 0;
+  padding: 2px 9px 2px 3px;
+  font-size: 12px;
   font-weight: 700;
-  color: var(--parchment);
-  text-shadow: var(--punch-small);
-  background-color: var(--panel);
-  background-clip: padding-box;
-  border: var(--tray-border) solid transparent;
-  border-image-source: var(--ui-tray-frame);
-  border-image-slice: var(--tray-slice);
-  border-image-width: var(--tray-border);
-  border-radius: 0;
-  filter: drop-shadow(3px 3px 0 var(--shadow));
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  color: rgba(240, 228, 196, 0.95);
+  text-shadow: 1px 1px 0 rgba(6, 4, 2, 0.85);
+  background: rgba(12, 9, 5, 0.68);
+  border: 1px solid rgba(222, 190, 128, 0.28);
+  border-radius: 13px;
+  box-shadow: 0 2px 5px rgba(6, 4, 2, 0.45);
   pointer-events: none;
-  animation: prompt-bob 1.4s ease-in-out infinite;
+  transition: padding 0.35s ease, opacity 0.4s ease;
+  animation: prompt-in 0.16s ease-out;
 }
 
-@keyframes prompt-bob {
-  0%, 100% { margin-top: 0; }
-  50% { margin-top: -4px; }
+@keyframes prompt-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+#ui-interact-prompt .kb-glyph,
+#ui-interact-prompt .pad-glyph {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  font-size: 10.5px;
+  border-width: 1.5px;
+  box-shadow: none;
+}
+
+#ui-interact-prompt .prompt-label {
+  max-width: 220px;
+  margin-left: 6px;
+  overflow: hidden;
+  transition: max-width 0.35s ease, opacity 0.25s ease, margin-left 0.35s ease;
+}
+
+#ui-interact-prompt.settled {
+  padding: 2px 3px;
+  opacity: 0.55;
+}
+
+#ui-interact-prompt.settled .prompt-label {
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
 }
 
 /* ---- inventory drag & drop ---- */
