@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   CHEST_TILES,
   DOOR_TILES,
+  FENCE_TILES,
   LIGHT_BLOCKING_TILES,
   WALL_RUN_TILES,
   Tile,
@@ -14,6 +15,7 @@ import {
   nearestFloorTile,
   openChestTile,
   openDoorTile,
+  orientDiagFence,
   shutDoorTile,
   tileDef,
   type ChestKind,
@@ -63,6 +65,17 @@ test('door posture drives solidity and lamplight', () => {
   for (const tile of DOOR_TILES) {
     const info = doorInfo(tile)!;
     assert.equal(tileDef(tile).solid, !info.open, `${tileDef(tile).name} solidity`);
+    if (info.material === 'fence') {
+      // THE GATE CARVE-OUT: a fence gate rides the door machinery but
+      // it is a waist-high slatted prop — never a wall member (a pen
+      // must not become a "room") and never a lamplight blocker.
+      assert.ok(!WALL_RUN_TILES.includes(tile), `${tileDef(tile).name} stays out of wall runs`);
+      assert.ok(
+        !LIGHT_BLOCKING_TILES.includes(tile),
+        `${tileDef(tile).name} never blocks lamplight`,
+      );
+      continue;
+    }
     assert.equal(
       LIGHT_BLOCKING_TILES.includes(tile),
       !info.open,
@@ -72,6 +85,26 @@ test('door posture drives solidity and lamplight', () => {
     // never re-shape the building around it.
     assert.ok(WALL_RUN_TILES.includes(tile), `${tileDef(tile).name} joins wall runs`);
   }
+});
+
+test('fence family: gates round-trip and diagonals stay solid', () => {
+  // The gate is a door of material 'fence' — the whole door pipeline
+  // (interact, locks, occupancy, auto-close) serves it unchanged.
+  assert.deepEqual(doorInfo(Tile.FenceGate), { material: 'fence', wide: false, open: true });
+  assert.deepEqual(doorInfo(Tile.FenceGateShut), { material: 'fence', wide: false, open: false });
+  assert.equal(shutDoorTile(Tile.FenceGate), Tile.FenceGateShut);
+  assert.equal(openDoorTile(Tile.FenceGateShut), Tile.FenceGate);
+  for (const tile of FENCE_TILES) {
+    assert.ok(tileDef(tile).raised, `${tileDef(tile).name} renders raised`);
+    // Only the open gate lets a body through.
+    assert.equal(tileDef(tile).solid, tile !== Tile.FenceGate, `${tileDef(tile).name} solidity`);
+  }
+  // The 45° turn joins whichever diagonal already carries fencing.
+  assert.equal(orientDiagFence(true, false, false, false), Tile.FenceDiagNE);
+  assert.equal(orientDiagFence(false, false, false, true), Tile.FenceDiagNE);
+  assert.equal(orientDiagFence(false, true, false, false), Tile.FenceDiagNW);
+  assert.equal(orientDiagFence(false, false, true, false), Tile.FenceDiagNW);
+  assert.equal(orientDiagFence(false, false, false, false), Tile.FenceDiagNE);
 });
 
 test('non-door tiles report null', () => {

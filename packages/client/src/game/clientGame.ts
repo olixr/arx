@@ -84,7 +84,7 @@ export type InteractTarget =
   | { kind: 'npc'; tx: number; ty: number; eid: EntityId; verb: string }
   | { kind: 'loot'; tx: number; ty: number; eid: EntityId }
   | { kind: 'chest'; tx: number; ty: number; chest: ChestKind }
-  | { kind: 'door'; tx: number; ty: number; open: boolean }
+  | { kind: 'door'; tx: number; ty: number; open: boolean; gate: boolean }
   | { kind: 'bed'; tx: number; ty: number };
 import { Connection } from '../net/connection.js';
 import { InterpBuffer } from '../net/interpolation.js';
@@ -1091,7 +1091,9 @@ export class ClientGame {
     // Doors: open ones offer a close, shut ones offer an open — the
     // server arbitrates locks and doorway occupancy.
     const door = doorInfo(ground);
-    if (door) return { kind: 'door', tx, ty, open: door.open };
+    if (door) {
+      return { kind: 'door', tx, ty, open: door.open, gate: door.material === 'fence' };
+    }
     if (ground === Tile.BankChest) return { kind: 'bank', tx, ty };
     if (ground === Tile.ShopCounter) return { kind: 'shop', tx, ty };
     // Beds offer the home claim — the server arbitrates ownership.

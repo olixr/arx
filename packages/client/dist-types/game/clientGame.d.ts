@@ -76,6 +76,7 @@ export type InteractTarget = {
     tx: number;
     ty: number;
     open: boolean;
+    gate: boolean;
 } | {
     kind: 'bed';
     tx: number;

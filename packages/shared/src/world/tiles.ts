@@ -263,6 +263,26 @@ export enum Tile {
    * piers, and rails. The renderer paints them as different builds.
    */
   Dock = 133,
+  /**
+   * Fence gates — a waist-high five-bar field gate hung in a fence
+   * line. THE TILE IS THE STATE, exactly the door law: the open gate
+   * is WALKABLE and the shut gate is SOLID, so posture, collision,
+   * and pathing all sync through the ordinary tile-patch pipeline.
+   * Gates ride the whole door machinery (interact, occupancy check,
+   * locks, auto-close) via DOOR_INFO material 'fence' — but they are
+   * NOT wall-run members and never bound an interior.
+   */
+  FenceGate = 134,
+  FenceGateShut = 135,
+  /**
+   * 45° fence segments. The rail line runs corner to corner: DiagNE
+   * rises to the northeast ("/" in plan, connecting the SW and NE
+   * corners), DiagNW rises to the northwest ("\", connecting SE and
+   * NW). Placement auto-orients from the diagonal fence neighbours —
+   * build the adjoining runs first, then the turn.
+   */
+  FenceDiagNE = 136,
+  FenceDiagNW = 137,
 }
 
 export enum Detail {
@@ -466,6 +486,12 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   // signpost — spotting one is the discovery.
   [Tile.CrackedCaveWall]: { name: 'cracked wall', solid: true, color: '#2e2937', raised: true, topColor: '#3d3749' },
   [Tile.DungeonFloor]: { name: 'flagstones', solid: false, color: '#514b58', variants: ['#4c4653', '#56505e'] },
+  // Fence gates: the open gate is a WALKABLE raised prop (the leaf
+  // stands swung aside); the shut gate bars the way like any fence.
+  [Tile.FenceGate]: { name: 'fence gate', solid: false, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
+  [Tile.FenceGateShut]: { name: 'shut fence gate', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
+  [Tile.FenceDiagNE]: { name: 'fence', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
+  [Tile.FenceDiagNW]: { name: 'fence', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
 };
 
 /**
@@ -576,8 +602,12 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
  * material, width, and posture; `shutDoorTile`/`openDoorTile` are the
  * two halves of the toggle. Frame material tracks the wall it pierces
  * (the leaf itself is always timber — stone shells hang oak doors).
+ * Material 'fence' is the waist-high field gate: it rides ALL the
+ * door machinery (interact, locks, occupancy, auto-close) but the
+ * renderer keeps it out of the wall-doorway pipeline — a gate is a
+ * fence prop, never a wall member.
  */
-export type DoorMaterial = 'stone' | 'wood';
+export type DoorMaterial = 'stone' | 'wood' | 'fence';
 
 export interface DoorInfo {
   material: DoorMaterial;
@@ -596,6 +626,8 @@ const DOOR_INFO = new Map<Tile, DoorInfo>([
   [Tile.DoorwayWoodShut, { material: 'wood', wide: false, open: false }],
   [Tile.DoorwayStoneWideShut, { material: 'stone', wide: true, open: false }],
   [Tile.DoorwayWoodWideShut, { material: 'wood', wide: true, open: false }],
+  [Tile.FenceGate, { material: 'fence', wide: false, open: true }],
+  [Tile.FenceGateShut, { material: 'fence', wide: false, open: false }],
 ]);
 
 /** Every doorway tile, open and shut, both widths and materials. */
@@ -611,6 +643,7 @@ const SHUT_OF = new Map<Tile, Tile>([
   [Tile.DoorwayWood, Tile.DoorwayWoodShut],
   [Tile.DoorwayStoneWide, Tile.DoorwayStoneWideShut],
   [Tile.DoorwayWoodWide, Tile.DoorwayWoodWideShut],
+  [Tile.FenceGate, Tile.FenceGateShut],
 ]);
 const OPEN_OF = new Map<Tile, Tile>([...SHUT_OF].map(([o, s]) => [s, o]));
 
@@ -626,6 +659,38 @@ export function openDoorTile(id: number): Tile | null {
   const t = id as Tile;
   if (SHUT_OF.has(t)) return t;
   return OPEN_OF.get(t) ?? null;
+}
+
+/**
+ * THE FENCE FAMILY — every tile that reads as post-and-rail fencing:
+ * straight runs, the two 45° turns, and gates in both postures. Rail
+ * connectivity, arrow-stick height, and the grass underlay all key
+ * off this one set so a pen always reads as one built line.
+ */
+export const FENCE_TILES: ReadonlySet<Tile> = new Set([
+  Tile.Fence,
+  Tile.FenceDiagNE,
+  Tile.FenceDiagNW,
+  Tile.FenceGate,
+  Tile.FenceGateShut,
+]);
+
+/**
+ * AUTO-ORIENT LAW for the 45° fence: the turn spans whichever
+ * diagonal already carries fencing — a fence-family neighbour on the
+ * NE or SW corner deals "/" (DiagNE), on the NW or SE corner "\"
+ * (DiagNW). With nothing to join it defaults to "/"; build the
+ * adjoining runs first, then the turn.
+ */
+export function orientDiagFence(
+  ne: boolean,
+  nw: boolean,
+  se: boolean,
+  sw: boolean,
+): Tile {
+  if (ne || sw) return Tile.FenceDiagNE;
+  if (nw || se) return Tile.FenceDiagNW;
+  return Tile.FenceDiagNE;
 }
 
 /** Every mineable/mined rock formation tile, ore-bearing or not. */

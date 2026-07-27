@@ -96,14 +96,18 @@ export function buildDawnmead(): ZoneDef {
   b.set(37, 19, Tile.Bed).set(42, 19, Tile.Bed); // Hobb's, and Pip's
   b.set(41, 19, Tile.Cabinet);
   // The chicken coop: fenced dirt, straw bedding, gate on the east.
+  // REAL gates now hang in both pen mouths — placed OPEN so Hobb's
+  // rounds (and the hens' underfoot scatter) stay unblocked until a
+  // player swings them shut; a closed pen truly closes (NPCs cannot
+  // work latches, so never author these shut).
   b.fillRect(27, 14, 6, 4, Tile.Dirt);
   b.outlineRect(26, 13, 8, 6, Tile.Fence);
-  b.set(33, 16, Tile.Dirt); // gate
+  b.set(33, 16, Tile.FenceGate); // the east gate, standing open
   b.setDetail(28, 15, Detail.Straw).setDetail(30, 16, Detail.Straw);
   b.setDetail(31, 14, Detail.Straw);
   // The cow pasture: grass kept, trough by the north rail, west gate.
   b.outlineRect(45, 14, 12, 9, Tile.Fence);
-  b.set(45, 18, Tile.Grass); // gate
+  b.set(45, 18, Tile.FenceGate); // the west gate, standing open
   b.set(50, 15, Tile.Basin);
   b.setDetail(47, 16, Detail.Straw).setDetail(53, 19, Detail.Straw);
 

@@ -2250,6 +2250,87 @@ const PAINTERS: Record<string, IconPainter> = {
     dot(c, shade(col, 30), 0.305, 0.3, 0.045);
     dot(c, shade(col, 30), 0.705, 0.3, 0.045);
   },
+  fencebuild: (c, col) => {
+    // The new pasture fence in miniature: two square-hewn capped
+    // posts carrying a pair of chunky rails with lit top edges.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    for (const x of [0.2, 0.66]) {
+      c.beginPath();
+      c.rect(x, 0.2, 0.14, 0.62);
+      c.fill();
+      c.stroke();
+    }
+    for (const y of [0.34, 0.58]) {
+      c.beginPath();
+      c.rect(0.08, y, 0.84, 0.13);
+      c.fillStyle = shade(col, 6);
+      c.fill();
+      c.stroke();
+      bar(c, shade(col, 26), 0.08, y, 0.84, 0.045);
+    }
+    // Post caps read over the rails.
+    c.fillStyle = col;
+    for (const x of [0.2, 0.66]) {
+      c.beginPath();
+      c.rect(x, 0.2, 0.14, 0.62);
+      c.fill();
+      bar(c, shade(col, 30), x, 0.2, 0.14, 0.06);
+    }
+  },
+  fencegate: (c, col) => {
+    // A five-bar field gate: stout hinge posts, slatted bars, and the
+    // signature Z-brace running hinge-heel to latch-head.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    for (const x of [0.08, 0.8]) {
+      c.beginPath();
+      c.rect(x, 0.16, 0.12, 0.68);
+      c.fill();
+      c.stroke();
+      bar(c, shade(col, 30), x, 0.16, 0.12, 0.06);
+    }
+    // Bars, top one heaviest.
+    bar(c, shade(col, 14), 0.2, 0.28, 0.6, 0.09);
+    bar(c, shade(col, 2), 0.2, 0.46, 0.6, 0.065);
+    bar(c, shade(col, -8), 0.2, 0.62, 0.6, 0.065);
+    // The Z-brace.
+    c.strokeStyle = shade(col, -26);
+    c.lineWidth = 0.06;
+    c.beginPath();
+    c.moveTo(0.23, 0.68);
+    c.lineTo(0.77, 0.31);
+    c.stroke();
+    // Iron hinge straps.
+    c.fillStyle = '#3a3644';
+    c.fillRect(0.17, 0.29, 0.1, 0.05);
+    c.fillRect(0.17, 0.63, 0.1, 0.05);
+  },
+  fencediag: (c, col) => {
+    // The 45° turn: a capped post with rails striding away downhill.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.save();
+    c.translate(0.5, 0.55);
+    c.rotate(-Math.PI / 5.2);
+    for (const y of [-0.15, 0.07]) {
+      c.beginPath();
+      c.rect(-0.44, y, 0.88, 0.1);
+      c.fillStyle = shade(col, y < 0 ? 14 : -6);
+      c.fill();
+      c.stroke();
+    }
+    c.restore();
+    c.fillStyle = col;
+    c.beginPath();
+    c.rect(0.43, 0.18, 0.14, 0.64);
+    c.fill();
+    c.stroke();
+    bar(c, shade(col, 30), 0.43, 0.18, 0.14, 0.06);
+  },
   barrel: (c, col) => {
     // Bulged oak staves bound by two dark iron hoops.
     c.fillStyle = col;
@@ -4519,7 +4600,9 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   stone_doorway: { icon: 'doorframe', color: '#767181' },
   wood_doorway_wide: { icon: 'doorframe', color: '#96703c' },
   stone_doorway_wide: { icon: 'doorframe', color: '#8a8496' },
-  fence: { icon: 'railing', color: '#8a6534' },
+  fence: { icon: 'fencebuild', color: '#8a6534' },
+  fence_gate: { icon: 'fencegate', color: '#8a6534' },
+  fence_corner: { icon: 'fencediag', color: '#8a6534' },
   wood_railing: { icon: 'railing', color: '#a5793f' },
   campfire: { icon: 'campfirebuild', color: '#e8823d' },
   furnace: { icon: 'furnacebuild', color: '#6e6a75' },

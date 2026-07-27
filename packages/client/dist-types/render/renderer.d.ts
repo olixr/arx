@@ -698,7 +698,11 @@ export declare class Renderer {
     private olObjId;
     /** Wall-run auto-tiler membership — shared law (tiles.ts). */
     private static readonly WALL_TILES;
-    /** Every doorway tile — open and shut, both orientations and widths. */
+    /** Every WALL doorway tile — open and shut, both orientations and
+     *  widths. Fence gates are doors on the wire (locks, occupancy,
+     *  auto-close all ride DOOR_INFO) but they are fence props to the
+     *  renderer — kept OUT of this set so the wall-doorway pipeline
+     *  (side-notch law, wide merges, veil, wallish) never sees them. */
     private static readonly DOOR_TILES;
     /** Man-made ground the wall reveal counts as "a room to see into":
      *  the surface gate for both the player's feet (shelter) and the
@@ -1333,6 +1337,47 @@ export declare class Renderer {
      */
     private drawChestBoss;
     /** Trees, rocks, stations — the object layer, redrawn with character. */
+    /** Fence-family connectivity: rails reach toward these neighbours. */
+    private fenceish;
+    /**
+     * A square-hewn fence post wearing a foreshortened cap plane — the
+     * 2.5D anchor every fence mass hangs from (crate-lid grammar: lit
+     * plane, shaded far edge, sunlit front arris). Paints its own brand
+     * outline; call it AFTER the rails so the post face covers their
+     * run-through seams and every joint reads carpentered.
+     */
+    private drawFencePost;
+    /**
+     * THE FENCE REBUILD — post-and-rail stock fencing in the game's
+     * 2.5D dialect. One capped post per tile; two rails with REAL board
+     * thickness (a lit top plane over a front face) reach half a tile
+     * toward every fence-family neighbour, so a run reads as one
+     * carpentered line. N-S runs are the honest edge-on projection:
+     * each rail shows only its top plane, a narrow strip marching
+     * up-screen — the sunlit upper strip overlays the shaded lower one,
+     * and the two-board step surfaces only where a run dies south into
+     * a post (never mid-run: the south neighbour repaints it). 45°
+     * tiles stride corner-to-corner with sheared boards; straight tiles
+     * grow a matching stub toward any 45° neighbour whose line points
+     * back at them, so turns are continuous rail, not butted ends.
+     * Every mass strokes its own structural outline live (the wall law:
+     * exposed edges only, shared edges never) — estate-length runs ring
+     * seamlessly with no bake cap, and the post, drawn last, covers
+     * every joint.
+     */
+    private fenceItem;
+    /**
+     * THE FENCE GATE — a waist-high five-bar field gate hung between
+     * two stout capped hinge posts, riding the door law wholesale (the
+     * tile is the state; doorOpenness eases the swing, a locked rattle
+     * shudders it). E-W gates swing the leaf flat against the west
+     * hinge (the door-leaf law: width compresses toward the hinge,
+     * edge-on shade deepens, detail collapses to a slab). N-S gates
+     * read edge-on when shut — a framed strip barring the gap — and
+     * throw ONE leaf front-on into the east column when open (the
+     * side-door law: never a pair).
+     */
+    private fenceGateItem;
     private objectItem;
     /**
      * Every body the grass should feel: players and NPCs, own player

@@ -19,6 +19,7 @@ import {
   chestInfo,
   destructibleInfo,
   DOOR_TILES,
+  FENCE_TILES,
   diagWallInfo,
   doorInfo,
   hashCoords,
@@ -301,9 +302,23 @@ const FALLING_SHAFT_ADVANCE = 0.55;
 /** How far past the last client sample to probe for the wall the server
  * actually hit — a tick-step of the fastest arrow plus interp slack. */
 const WALL_PROBE_TILES = 1.8;
+/**
+ * The fence family's timber — golden oak, the regionless wood-skin
+ * baseline, so player fencing matches unenclosed builds everywhere.
+ * One palette for straight runs, 45° turns, and gates: a pen must
+ * read as ONE carpentered line. Rail fills are deliberately constant
+ * per tile (no hash jitter) — N-S strips and E-W boards continue
+ * across tile joins, and any per-tile tone would print the grid.
+ */
+const FENCE_POST = '#6e4b29';
+const FENCE_RAIL = '#8a6534';
 /** Solid props too short for a chest-high stick: arrows lodge low. */
 const LOW_STICK_TILES = new Set<number>([
   Tile.Fence,
+  Tile.FenceDiagNE,
+  Tile.FenceDiagNW,
+  Tile.FenceGate,
+  Tile.FenceGateShut,
   Tile.RailWood,
   Tile.Table,
   Tile.Chair,
@@ -3847,8 +3862,14 @@ export class Renderer {
   /** Wall-run auto-tiler membership — shared law (tiles.ts). */
   private static readonly WALL_TILES = new Set<number>(WALL_RUN_TILES);
 
-  /** Every doorway tile — open and shut, both orientations and widths. */
-  private static readonly DOOR_TILES = new Set<number>(DOOR_TILES);
+  /** Every WALL doorway tile — open and shut, both orientations and
+   *  widths. Fence gates are doors on the wire (locks, occupancy,
+   *  auto-close all ride DOOR_INFO) but they are fence props to the
+   *  renderer — kept OUT of this set so the wall-doorway pipeline
+   *  (side-notch law, wide merges, veil, wallish) never sees them. */
+  private static readonly DOOR_TILES = new Set<number>(
+    [...DOOR_TILES].filter((t) => doorInfo(t)!.material !== 'fence'),
+  );
 
   /** Man-made ground the wall reveal counts as "a room to see into":
    *  the surface gate for both the player's feet (shelter) and the
@@ -8246,7 +8267,6 @@ export class Renderer {
    */
   private static readonly STATIC_RING_TILES = new Set<Tile>([
     Tile.Stump,
-    Tile.Fence,
     Tile.Crate,
     Tile.CrateGoods,
     Tile.Counter,
@@ -8290,7 +8310,9 @@ export class Renderer {
     [Tile.Bench, { hw: 0.75, up: 0.75, down: 0.45, sortOff: 0.68, cap: 8 }],
     [Tile.Bed, { hw: 0.85, up: 1.35, down: 0.6, sortOff: 0.72, cap: 4 }],
     [Tile.MarketStall, { hw: 1.35, up: 2.4, down: 0.8, sortOff: 0.78, cap: 8 }],
-    [Tile.Fence, { hw: 0.6, up: 1.0, down: 0.55, sortOff: 0.8, cap: 8 }],
+    // Fence left this map for good: the rebuilt fence paints its own
+    // structural outline live (the wall law — exposed edges only), so
+    // estate-length runs ring seamlessly with no bake cap at all.
   ]);
 
   /**
@@ -9821,6 +9843,431 @@ export class Renderer {
   }
 
   /** Trees, rocks, stations — the object layer, redrawn with character. */
+  // ------------------------------------------------------------ fences
+
+  /** Fence-family connectivity: rails reach toward these neighbours. */
+  private fenceish(game: ClientGame, x: number, y: number): boolean {
+    const t = game.world.groundAt(x, y);
+    return (
+      t !== undefined &&
+      (FENCE_TILES.has(t as Tile) ||
+        t === Tile.WallWood ||
+        t === Tile.WallStone ||
+        t === Tile.WallWoodWindow ||
+        t === Tile.WallStoneWindow)
+    );
+  }
+
+  /**
+   * A square-hewn fence post wearing a foreshortened cap plane — the
+   * 2.5D anchor every fence mass hangs from (crate-lid grammar: lit
+   * plane, shaded far edge, sunlit front arris). Paints its own brand
+   * outline; call it AFTER the rails so the post face covers their
+   * run-through seams and every joint reads carpentered.
+   */
+  private drawFencePost(x: number, baseY: number, w: number, hTot: number): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    const capD = 0.15 * syT;
+    const hw = w / 2;
+    const top = baseY - hTot;
+    // Contact shade roots it to the turf.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
+    ctx.beginPath();
+    ctx.ellipse(x, baseY + s * 0.012, hw * 1.7, s * 0.05, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Face, with a sunlit west arris and a shaded east fall-off — a
+    // turned square timber, not a flat card.
+    ctx.fillStyle = FENCE_POST;
+    ctx.fillRect(x - hw, top + capD, w, hTot - capD);
+    ctx.fillStyle = shade(FENCE_POST, 12);
+    ctx.fillRect(x - hw, top + capD, s * 0.03, hTot - capD);
+    ctx.fillStyle = shade(FENCE_POST, -14);
+    ctx.fillRect(x + hw - s * 0.03, top + capD, s * 0.03, hTot - capD);
+    // The cap: tilted bird's-eye top plane.
+    ctx.fillStyle = shade(FENCE_POST, 24);
+    ctx.fillRect(x - hw, top, w, capD);
+    ctx.fillStyle = shade(FENCE_POST, 2);
+    ctx.fillRect(x - hw, top, w, s * 0.018);
+    ctx.fillStyle = shade(FENCE_POST, 38);
+    ctx.fillRect(x - hw, top + capD - s * 0.016, w, s * 0.016);
+    if (this.outlineOn) {
+      this.beginStructOutline();
+      ctx.strokeRect(x - hw, top, w, hTot);
+    }
+  }
+
+  /**
+   * THE FENCE REBUILD — post-and-rail stock fencing in the game's
+   * 2.5D dialect. One capped post per tile; two rails with REAL board
+   * thickness (a lit top plane over a front face) reach half a tile
+   * toward every fence-family neighbour, so a run reads as one
+   * carpentered line. N-S runs are the honest edge-on projection:
+   * each rail shows only its top plane, a narrow strip marching
+   * up-screen — the sunlit upper strip overlays the shaded lower one,
+   * and the two-board step surfaces only where a run dies south into
+   * a post (never mid-run: the south neighbour repaints it). 45°
+   * tiles stride corner-to-corner with sheared boards; straight tiles
+   * grow a matching stub toward any 45° neighbour whose line points
+   * back at them, so turns are continuous rail, not butted ends.
+   * Every mass strokes its own structural outline live (the wall law:
+   * exposed edges only, shared edges never) — estate-length runs ring
+   * seamlessly with no bake cap, and the post, drawn last, covers
+   * every joint.
+   */
+  private fenceItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const h = hashCoords(41, tx, ty);
+    const baseY = p.y + syT * 0.14;
+    const straight = tile === Tile.Fence;
+    const gAt = (dx: number, dy: number) => game.world.groundAt(tx + dx, ty + dy);
+    const cn = straight && this.fenceish(game, tx, ty - 1);
+    const ce = straight && this.fenceish(game, tx + 1, ty);
+    const cs = straight && this.fenceish(game, tx, ty + 1);
+    const cw = straight && this.fenceish(game, tx - 1, ty);
+    // Diagonal joins: a 45° tile joins any fence-family diagonal on
+    // its own line; a straight tile only stubs toward a 45° tile
+    // whose rail line points back at this post.
+    const dNE =
+      tile === Tile.FenceDiagNE
+        ? this.fenceish(game, tx + 1, ty - 1)
+        : straight && gAt(1, -1) === Tile.FenceDiagNE;
+    const dSW =
+      tile === Tile.FenceDiagNE
+        ? this.fenceish(game, tx - 1, ty + 1)
+        : straight && gAt(-1, 1) === Tile.FenceDiagNE;
+    const dNW =
+      tile === Tile.FenceDiagNW
+        ? this.fenceish(game, tx - 1, ty - 1)
+        : straight && gAt(-1, -1) === Tile.FenceDiagNW;
+    const dSE =
+      tile === Tile.FenceDiagNW
+        ? this.fenceish(game, tx + 1, ty + 1)
+        : straight && gAt(1, 1) === Tile.FenceDiagNW;
+    const any = cn || ce || cs || cw || dNE || dSW || dNW || dSE;
+    // An isolated piece still shows its build: a straight post keeps
+    // a full rail panel, a 45° turn its full diagonal stride.
+    const isoEW = straight && !any;
+    const isoNE = tile === Tile.FenceDiagNE && !any;
+    const isoNW = tile === Tile.FenceDiagNW && !any;
+    // Rail metrics as tile fractions: silhouette top of the lit plane
+    // for the upper/lower board, plane depth, and board-face height.
+    const RT = 0.75;
+    const RB = 0.45;
+    const PLANE = 0.05;
+    const FACE = 0.11;
+    const THICK = (PLANE + FACE) * s;
+    const xw = cw || isoEW ? p.x - s * 0.5 : p.x;
+    const xe = ce || isoEW ? p.x + s * 0.5 : p.x;
+    return {
+      sortY: ty + 0.8,
+      drawShadow: () => {
+        // The rails' cast line follows every connected direction; the
+        // post always drops its own short anchor line.
+        if (cw || ce || isoEW) this.castEdgeQuad(xw, baseY, xe, baseY, 0.6);
+        if (cn) this.castEdgeQuad(p.x, baseY - syT * 0.5, p.x, baseY, 0.6);
+        if (cs) this.castEdgeQuad(p.x, baseY, p.x, baseY + syT * 0.5, 0.6);
+        if (dNE || isoNE) this.castEdgeQuad(p.x, baseY, p.x + s * 0.5, baseY - syT * 0.5, 0.6);
+        if (dSW || isoNE) this.castEdgeQuad(p.x - s * 0.5, baseY + syT * 0.5, p.x, baseY, 0.6);
+        if (dNW || isoNW) this.castEdgeQuad(p.x - s * 0.5, baseY - syT * 0.5, p.x, baseY, 0.6);
+        if (dSE || isoNW) this.castEdgeQuad(p.x, baseY, p.x + s * 0.5, baseY + syT * 0.5, 0.6);
+        this.castEdgeQuad(p.x - s * 0.085, baseY, p.x + s * 0.085, baseY, 0.85);
+      },
+      draw: () => {
+        // Draw-time ctx capture: the outline pass swaps this.ctx.
+        const ctx = this.ctx;
+
+        // E-W boards: lit top plane over a front face, an under-edge
+        // shadow seating each board. End grain only at exposed ends
+        // (isolated panels) — run ends die into posts.
+        const railEW = () => {
+          for (const T of [RB, RT]) {
+            const yPlane = baseY - T * s;
+            const yFace = yPlane + PLANE * s;
+            const yBot = yFace + FACE * s;
+            ctx.fillStyle = shade(FENCE_RAIL, 20);
+            ctx.fillRect(xw, yPlane, xe - xw, PLANE * s);
+            ctx.fillStyle = T === RT ? FENCE_RAIL : shade(FENCE_RAIL, -6);
+            ctx.fillRect(xw, yFace, xe - xw, FACE * s);
+            ctx.fillStyle = shade(FENCE_RAIL, -20);
+            ctx.fillRect(xw, yBot - s * 0.02, xe - xw, s * 0.02);
+            if (isoEW) {
+              ctx.fillStyle = shade(FENCE_RAIL, -16);
+              ctx.fillRect(xw, yPlane, s * 0.03, yBot - yPlane);
+              ctx.fillRect(xe - s * 0.03, yPlane, s * 0.03, yBot - yPlane);
+            }
+            if (this.outlineOn) {
+              this.beginStructOutline();
+              ctx.beginPath();
+              ctx.moveTo(xw, yPlane);
+              ctx.lineTo(xe, yPlane);
+              ctx.moveTo(xw, yBot);
+              ctx.lineTo(xe, yBot);
+              if (isoEW) {
+                ctx.moveTo(xw, yPlane);
+                ctx.lineTo(xw, yBot);
+                ctx.moveTo(xe, yPlane);
+                ctx.lineTo(xe, yBot);
+              }
+              ctx.stroke();
+            }
+          }
+          // A rare knot keeps long runs hand-made (mid-span only —
+          // edges must stay identical across tiles).
+          if (((h >> 6) & 7) === 1 && xe - xw > s * 0.6) {
+            ctx.fillStyle = shade(FENCE_RAIL, -24);
+            ctx.beginPath();
+            ctx.ellipse(
+              p.x + (((h >> 9) & 15) / 15 - 0.5) * s * 0.5,
+              baseY - (RT - PLANE - 0.05) * s,
+              s * 0.022,
+              s * 0.016,
+              0,
+              0,
+              Math.PI * 2,
+            );
+            ctx.fill();
+          }
+        };
+
+        // N-S half-strips: the two rails' top planes, edge-on.
+        const railNS = (yN: number, yS: number) => {
+          const hw2 = s * 0.05;
+          ctx.fillStyle = shade(FENCE_RAIL, -12);
+          ctx.fillRect(p.x - hw2, yN - RB * s, hw2 * 2, yS - yN + THICK);
+          ctx.fillStyle = shade(FENCE_RAIL, 14);
+          ctx.fillRect(p.x - hw2, yN - RT * s, hw2 * 2, yS - yN + THICK);
+          ctx.fillStyle = shade(FENCE_RAIL, 30);
+          ctx.fillRect(p.x - hw2, yN - RT * s, s * 0.016, yS - yN + THICK);
+          if (this.outlineOn) {
+            // Verticals only: both strip ends always die under posts.
+            this.beginStructOutline();
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw2, yN - RT * s);
+            ctx.lineTo(p.x - hw2, yS - RB * s + THICK);
+            ctx.moveTo(p.x + hw2, yN - RT * s);
+            ctx.lineTo(p.x + hw2, yS - RB * s + THICK);
+            ctx.stroke();
+          }
+        };
+
+        // 45° half-strides: sheared boards, corner-overlapped a hair
+        // when a partner continues (no antialias hairline at joins),
+        // end-grain capped when the stride ends mid-air.
+        const railDiag = (dx: number, dy: number, joined: boolean) => {
+          const k = joined ? 1.04 : 1;
+          const x1 = p.x + dx * k;
+          const y1b = baseY + dy * k;
+          for (const T of [RB, RT]) {
+            const y0 = baseY - T * s;
+            const y1 = y1b - T * s;
+            const quad = (a: number, b: number, fill: string) => {
+              ctx.fillStyle = fill;
+              ctx.beginPath();
+              ctx.moveTo(p.x, y0 + a);
+              ctx.lineTo(x1, y1 + a);
+              ctx.lineTo(x1, y1 + b);
+              ctx.lineTo(p.x, y0 + b);
+              ctx.closePath();
+              ctx.fill();
+            };
+            quad(0, PLANE * s, shade(FENCE_RAIL, 20));
+            quad(PLANE * s, THICK, T === RT ? FENCE_RAIL : shade(FENCE_RAIL, -6));
+            quad(THICK - s * 0.02, THICK, shade(FENCE_RAIL, -20));
+            if (!joined) {
+              ctx.fillStyle = shade(FENCE_RAIL, -16);
+              ctx.fillRect(x1 - (dx > 0 ? s * 0.03 : 0), y1, s * 0.03, THICK);
+            }
+            if (this.outlineOn) {
+              this.beginStructOutline();
+              ctx.beginPath();
+              ctx.moveTo(p.x, y0);
+              ctx.lineTo(x1, y1);
+              ctx.moveTo(p.x, y0 + THICK);
+              ctx.lineTo(x1, y1 + THICK);
+              if (!joined) {
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x1, y1 + THICK);
+              }
+              ctx.stroke();
+            }
+          }
+        };
+
+        // Back-to-front: up-screen masses, the E-W panel, the post
+        // (covering every joint), then down-screen masses.
+        if (cn) railNS(baseY - syT * 0.5, baseY);
+        if (dNE || isoNE) railDiag(s * 0.5, -syT * 0.5, dNE);
+        if (dNW || isoNW) railDiag(-s * 0.5, -syT * 0.5, dNW);
+        if (cw || ce || isoEW) railEW();
+        this.drawFencePost(p.x, baseY, s * 0.17, s * 0.92);
+        if (cs) railNS(baseY, baseY + syT * 0.5);
+        if (dSW || isoNE) railDiag(-s * 0.5, syT * 0.5, dSW);
+        if (dSE || isoNW) railDiag(s * 0.5, syT * 0.5, dSE);
+      },
+    };
+  }
+
+  /**
+   * THE FENCE GATE — a waist-high five-bar field gate hung between
+   * two stout capped hinge posts, riding the door law wholesale (the
+   * tile is the state; doorOpenness eases the swing, a locked rattle
+   * shudders it). E-W gates swing the leaf flat against the west
+   * hinge (the door-leaf law: width compresses toward the hinge,
+   * edge-on shade deepens, detail collapses to a slab). N-S gates
+   * read edge-on when shut — a framed strip barring the gap — and
+   * throw ONE leaf front-on into the east column when open (the
+   * side-door law: never a pair).
+   */
+  private fenceGateItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const baseY = p.y + syT * 0.14;
+    const open = doorInfo(tile)!.open;
+    const IRON = '#3a3444';
+    // Orientation follows the fence line the gate is hung in.
+    const vertical =
+      (this.fenceish(game, tx, ty - 1) || this.fenceish(game, tx, ty + 1)) &&
+      !(this.fenceish(game, tx + 1, ty) || this.fenceish(game, tx - 1, ty));
+    return {
+      sortY: ty + (vertical ? 0.75 : 0.8),
+      drawShadow: () => {
+        if (vertical) this.castEdgeQuad(p.x, baseY - syT * 0.5, p.x, baseY + syT * 0.5, 0.7);
+        else this.castEdgeQuad(p.x - s * 0.5, baseY, p.x + s * 0.5, baseY, 0.7);
+      },
+      draw: () => {
+        // Draw-time ctx capture: the outline pass swaps this.ctx.
+        const ctx = this.ctx;
+        const o = Math.min(1, this.doorOpenness(tx, ty, open));
+        const shakeX = this.doorShakeAt(tx, ty) * s * 0.03;
+        if (shakeX !== 0) {
+          ctx.save();
+          ctx.translate(shakeX, 0);
+        }
+
+        // The leaf, shared by both hangs: five-bar frame with real
+        // daylight between the bars, the signature Z-brace, iron
+        // straps at the heel and a latch tongue at the head. `dim`
+        // deepens as the swing turns the boards edge-on.
+        const drawLeaf = (hx: number, X: number, base: number, dim: number) => {
+          const w2 = X - hx;
+          if (w2 < s * 0.05) return;
+          const yTop = base - 0.72 * s;
+          const yBot = base - 0.1 * s;
+          const rc = (k: number) => shade(FENCE_RAIL, k + dim);
+          if (w2 < s * 0.32) {
+            // Edge-on: detail collapses to one turned slab.
+            ctx.fillStyle = rc(-10);
+            ctx.fillRect(hx, yTop, w2, yBot - yTop);
+            if (this.outlineOn) {
+              this.beginStructOutline();
+              ctx.strokeRect(hx, yTop, w2, yBot - yTop);
+            }
+            return;
+          }
+          const stW = 0.09 * s;
+          // Bars first — they tenon INTO the stiles. Top bar heavy,
+          // boot bar flush with the stile feet so the silhouette (and
+          // its ring) closes as one honest rectangle.
+          const bars: ReadonlyArray<readonly [number, number, number]> = [
+            [yTop, 0.1 * s, 14],
+            [base - 0.5 * s, 0.06 * s, 4],
+            [base - 0.335 * s, 0.06 * s, -4],
+            [yBot - 0.055 * s, 0.055 * s, -10],
+          ];
+          for (const [by, bh, tone] of bars) {
+            ctx.fillStyle = rc(tone);
+            ctx.fillRect(hx, by, w2, bh);
+            ctx.fillStyle = rc(tone + 16);
+            ctx.fillRect(hx, by, w2, s * 0.02);
+          }
+          // THE Z-BRACE: heel-bottom to head-top, the field-gate
+          // signature, riding proud of the bars.
+          ctx.fillStyle = rc(-20);
+          ctx.beginPath();
+          ctx.moveTo(hx + stW, yBot - 0.12 * s);
+          ctx.lineTo(X - stW, yTop + 0.06 * s);
+          ctx.lineTo(X - stW, yTop + 0.13 * s);
+          ctx.lineTo(hx + stW, yBot - 0.05 * s);
+          ctx.closePath();
+          ctx.fill();
+          // Stiles cap the bar ends; lit west arris + top plane each.
+          for (const sx of [hx, X - stW]) {
+            ctx.fillStyle = rc(0);
+            ctx.fillRect(sx, yTop, stW, yBot - yTop);
+            ctx.fillStyle = rc(14);
+            ctx.fillRect(sx, yTop, s * 0.022, yBot - yTop);
+            ctx.fillStyle = rc(28);
+            ctx.fillRect(sx, yTop, stW, s * 0.035);
+          }
+          // Ironmongery: hinge straps reach in from the heel, the
+          // latch tongue waits at the head.
+          ctx.fillStyle = IRON;
+          ctx.fillRect(hx - 0.02 * s, yTop + 0.035 * s, 0.2 * s, 0.045 * s);
+          ctx.fillRect(hx - 0.02 * s, yBot - 0.1 * s, 0.2 * s, 0.045 * s);
+          ctx.fillRect(X - 0.045 * s, base - 0.47 * s, 0.09 * s, 0.05 * s);
+          ctx.fillStyle = '#565064';
+          ctx.fillRect(hx - 0.02 * s, yTop + 0.035 * s, 0.2 * s, 0.014 * s);
+          if (this.outlineOn) {
+            this.beginStructOutline();
+            ctx.strokeRect(hx, yTop, w2, yBot - yTop);
+          }
+        };
+
+        if (!vertical) {
+          const hx = p.x - 0.4 * s;
+          const X0 = p.x + 0.4 * s;
+          drawLeaf(hx, hx + (X0 - hx) * (1 - o * 0.93), baseY, Math.round(-24 * o));
+          this.drawFencePost(p.x - 0.5 * s, baseY, s * 0.19, s * 0.98);
+          this.drawFencePost(p.x + 0.5 * s, baseY, s * 0.19, s * 0.98);
+        } else {
+          const yN = baseY - syT * 0.5;
+          const yS = baseY + syT * 0.5;
+          this.drawFencePost(p.x, yN, s * 0.19, s * 0.98);
+          if (o < 0.98) {
+            // Shut: the leaf edge-on, a framed strip barring the gap.
+            // Slit shadows hint the daylight between the bars; the
+            // strip retracts toward its north hinge as it swings.
+            const hw2 = 0.06 * s;
+            const top = yN - 0.72 * s;
+            const bot = top + (yS - 0.1 * s - top) * (1 - o);
+            ctx.fillStyle = shade(FENCE_RAIL, -2);
+            ctx.fillRect(p.x - hw2, top, hw2 * 2, bot - top);
+            ctx.fillStyle = shade(FENCE_RAIL, 22);
+            ctx.fillRect(p.x - hw2, top, s * 0.02, bot - top);
+            if (o < 0.35) {
+              ctx.fillStyle = 'rgba(20, 14, 26, 0.3)';
+              for (const fy of [0.3, 0.52, 0.74]) {
+                ctx.fillRect(p.x - hw2, top + (bot - top) * fy, hw2 * 2, s * 0.02);
+              }
+              ctx.fillStyle = IRON;
+              ctx.fillRect(p.x - hw2 - 0.01 * s, top + 0.06 * s, hw2 * 2 + 0.02 * s, 0.045 * s);
+              ctx.fillRect(p.x + hw2 - 0.008 * s, bot - 0.34 * s, 0.065 * s, 0.05 * s);
+            }
+            if (this.outlineOn) {
+              this.beginStructOutline();
+              ctx.strokeRect(p.x - hw2, top, hw2 * 2, bot - top);
+            }
+          }
+          if (o > 0.02) {
+            // Open: ONE leaf thrown front-on into the east column,
+            // hung from the north post — never a pair.
+            const oo = Math.sin((o * Math.PI) / 2);
+            drawLeaf(p.x + 0.06 * s, p.x + 0.06 * s + 0.86 * s * oo, yN, 0);
+          }
+          this.drawFencePost(p.x, yS, s * 0.19, s * 0.98);
+        }
+        if (shakeX !== 0) ctx.restore();
+      },
+    };
+  }
+
   private objectItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
@@ -9996,71 +10443,14 @@ export class Renderer {
         };
       }
 
-      case Tile.Fence: {
-        // Connected fencing: one post per tile, rails reaching toward
-        // every fence/wall neighbor so runs read as continuous built
-        // structure — never a row of disconnected pickets.
-        const isF = (t2: number | undefined): boolean =>
-          t2 === Tile.Fence ||
-          t2 === Tile.WallWood ||
-          t2 === Tile.WallStone ||
-          t2 === Tile.WallWoodWindow ||
-          t2 === Tile.WallStoneWindow;
-        const cn = isF(game.world.groundAt(tx, ty - 1));
-        const ce = isF(game.world.groundAt(tx + 1, ty));
-        const cs = isF(game.world.groundAt(tx, ty + 1));
-        const cw = isF(game.world.groundAt(tx - 1, ty));
-        const isolated = !cn && !ce && !cs && !cw;
-        const syT = s * this.camera.yScale;
-        const postC = '#7a552e';
-        const railC = '#94693a';
-        return {
-          sortY: ty + 0.8,
-          body: isolated ? stationBody(0.5, 0.95, 0.5) : undefined,
-          drawShadow: () => {
-            // The post's thin cast line — fences read by their posts.
-            const baseY = p.y + syT * 0.16;
-            this.castEdgeQuad(p.x - s * 0.055, baseY, p.x + s * 0.055, baseY, 0.55);
-          },
-          draw: () => {
-            // Draw-time ctx capture: the outline pass swaps this.ctx
-            // to its scratch — the build-time capture would paint past it.
-            const ctx = this.ctx;
-            const baseY = p.y + syT * 0.14;
-            const postH = 0.54 * s;
-            const railT = Math.max(2, s * 0.06);
-            // North-south rails: the run marches in depth, so its two
-            // rails read as parallel vertical lines through the posts.
-            ctx.fillStyle = railC;
-            if (cn || cs) {
-              const yTop = cn ? p.y - syT * 0.5 : p.y;
-              const yBot = cs ? p.y + syT * 0.5 : p.y;
-              for (const rx of [-0.085, 0.085]) {
-                ctx.fillRect(
-                  p.x + rx * s - railT / 2,
-                  yTop - postH * 0.52,
-                  railT,
-                  yBot - yTop,
-                );
-              }
-            }
-            // East-west rails: two horizontal bars at fence height.
-            if (ce || cw || isolated) {
-              const xw = cw || isolated ? p.x - s * 0.5 : p.x;
-              const xe = ce || isolated ? p.x + s * 0.5 : p.x;
-              ctx.fillRect(xw, baseY - postH * 0.74, xe - xw, railT);
-              ctx.fillRect(xw, baseY - postH * 0.4, xe - xw, railT);
-            }
-            // The post: a chamfer-topped picket with a lit cap.
-            ctx.fillStyle = postC;
-            ctx.beginPath();
-            chamferRect(ctx, p.x - s * 0.06, baseY - postH, s * 0.12, postH, [s * 0.035, s * 0.035, 0, 0]);
-            ctx.fill();
-            ctx.fillStyle = shade(postC, 16);
-            ctx.fillRect(p.x - s * 0.045, baseY - postH + s * 0.015, s * 0.09, s * 0.045);
-          },
-        };
-      }
+      case Tile.Fence:
+      case Tile.FenceDiagNE:
+      case Tile.FenceDiagNW:
+        return this.fenceItem(tile, tx, ty, game);
+
+      case Tile.FenceGate:
+      case Tile.FenceGateShut:
+        return this.fenceGateItem(tile, tx, ty, game);
 
       case Tile.Barrel: {
         const syT = s * this.camera.yScale;

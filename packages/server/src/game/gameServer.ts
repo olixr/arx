@@ -185,9 +185,11 @@ import {
   STATION_TILES,
   STATUS_BIT,
   WALL_RUN_TILES,
+  FENCE_TILES,
   applyDodge,
   diagWallInfo,
   orientDiagWall,
+  orientDiagFence,
   chargedShot,
   circleHitsSolid,
   newSteerMemory,
@@ -1942,10 +1944,11 @@ export class GameServer {
   private interactDoor(tx: number, ty: number, info: DoorInfo, sys: (text: string) => void): void {
     const unit = this.doorUnit(tx, ty, info);
     const lockKey = `${unit.ax},${unit.ay}`;
+    const gate = info.material === 'fence';
     if (info.open) {
       for (const t of unit.tiles) {
         if (this.bodyOnTile(t.x, t.y)) {
-          sys('Someone is standing in the doorway.');
+          sys(gate ? 'Someone is standing in the gateway.' : 'Someone is standing in the doorway.');
           return;
         }
       }
@@ -1962,7 +1965,7 @@ export class GameServer {
       return;
     }
     if (this.doorLocks.has(lockKey)) {
-      sys('Locked — the door holds fast.');
+      sys(gate ? 'Locked — the gate holds fast.' : 'Locked — the door holds fast.');
       this.broadcastFx({
         t: 'fx',
         kind: 'rattle',
@@ -2544,6 +2547,20 @@ export class GameServer {
         isWall(action.tx + 1, action.ty),
         isWall(action.tx, action.ty + 1),
         isWall(action.tx - 1, action.ty),
+      );
+    }
+    // A 45° fence turn joins whichever diagonal already carries
+    // fencing — same build-the-runs-first law as the wall corner.
+    if (def.tile === Tile.FenceDiagNE || def.tile === Tile.FenceDiagNW) {
+      const isFence = (x: number, y: number): boolean => {
+        const t = this.world.groundAt(x, y);
+        return t !== undefined && FENCE_TILES.has(t as Tile);
+      };
+      placed = orientDiagFence(
+        isFence(action.tx + 1, action.ty - 1),
+        isFence(action.tx - 1, action.ty - 1),
+        isFence(action.tx + 1, action.ty + 1),
+        isFence(action.tx - 1, action.ty + 1),
       );
     }
     // The ground being replaced is what demolish will restore. When
@@ -7711,7 +7728,11 @@ export class GameServer {
         return;
       }
       if (best.info.open) {
-        sys('Close the door before locking it.');
+        sys(
+          best.info.material === 'fence'
+            ? 'Close the gate before locking it.'
+            : 'Close the door before locking it.',
+        );
         return;
       }
       const unit = this.doorUnit(best.tx, best.ty, best.info);

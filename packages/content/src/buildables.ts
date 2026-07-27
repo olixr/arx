@@ -115,6 +115,28 @@ const defs: BuildableDef[] = [
     ticks: 20,
   },
   {
+    // Auto-orients to join whichever diagonal already carries
+    // fencing — build the adjoining runs first, then the turn.
+    id: 'fence_corner',
+    name: 'Fence corner',
+    tile: Tile.FenceDiagNE,
+    levelReq: 3,
+    xp: 20,
+    materials: [{ item: 'log', qty: 1 }],
+    ticks: 20,
+  },
+  {
+    // Placed standing open; walk through, or close it to pen the
+    // herd — the gate rides the whole door law (locks included).
+    id: 'fence_gate',
+    name: 'Fence gate',
+    tile: Tile.FenceGate,
+    levelReq: 4,
+    xp: 26,
+    materials: [{ item: 'log', qty: 2 }, { item: 'twine', qty: 1 }],
+    ticks: 25,
+  },
+  {
     id: 'wood_window',
     name: 'Wood wall window',
     tile: Tile.WallWoodWindow,

@@ -1570,7 +1570,7 @@ function frame(now: number): void {
         target.kind === 'station' ? PROMPT_LABELS[target.station]
         : target.kind === 'npc' ? target.verb
         : target.kind === 'crop' ? (target.mature ? 'Harvest' : 'Tend')
-        : target.kind === 'door' ? (target.open ? 'Close Door' : 'Open Door')
+        : target.kind === 'door' ? (target.open ? (target.gate ? 'Close Gate' : 'Close Door') : (target.gate ? 'Open Gate' : 'Open Door'))
         : PROMPT_LABELS[target.kind];
       nav.setPrompt({ sx: p.x, sy: p.y - renderer.camera.scale * 1.5, label: label ?? 'Use' });
     } else {
