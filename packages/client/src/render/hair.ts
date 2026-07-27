@@ -239,12 +239,119 @@ const CROP: HairstyleDef = {
 };
 
 /**
+ * Style 3 — THE SHORN: the soldier's cut, clipped to the scalp. It is
+ * the shortest thing that is not baldness, and its whole job is to be
+ * unmistakably NOT the Crop at a glance: the hem climbs clear of the
+ * ear on every bearing, the nape ends at the hairline instead of on
+ * the neck, and there is no hanging mass anywhere but a stub of
+ * sideburn.
+ *
+ * THE WIDOW'S PEAK is the character here, and it is why this cut has
+ * no parting notch. A buzz has nothing to part, so the only shape
+ * available is the hairline itself: the brow comes to a soft point at
+ * the nose and RECEDES at the temples. That recession is what makes a
+ * short cut read as a grown man rather than as a shaved head — and
+ * because the hairline is sampled per screen column, the peak slides
+ * across the brow with the turn and rounds off at profile on its own.
+ */
+const SHORN: HairstyleDef = {
+  hairline: curve([
+    [0, -0.5], // the peak: the one place the hair comes DOWN the brow
+    [0.3, -0.53],
+    [0.62, -0.64], // the temple recession, cut high
+    [1.05, -0.52],
+    [1.5, -0.32], // well clear of the ear root
+    [2.1, -0.12],
+    [Math.PI, 0.04], // the nape ends on the skull, not on the neck
+  ]),
+  fall: ripple(
+    curve([
+      [0, 0],
+      [1.15, 0],
+      [1.32, 0.1], // the sideburn stub, and the only fall in the cut
+      [1.55, 0.05],
+      [2.2, 0.02],
+      [Math.PI, 0.04],
+    ]),
+    0.012,
+    0.006,
+  ),
+  seams: [{ a: -2.5, w: 0.04 }, { a: 2.6, w: 0.04 }],
+  // NO CHIPS. A chip is a near lock hanging past the hem, and this cut
+  // has no locks — at zoom a small one reads as a square tab stuck to
+  // the forehead, which is exactly what a clipper cut cannot have. The
+  // peak is the hairline's job.
+  chips: [],
+  strands: [
+    { a: -0.9, w: 0.07, rise: 0.16 },
+    { a: 0.86, w: 0.07, rise: 0.16 },
+    { a: 1.95, w: 0.06, rise: 0.2 },
+  ],
+};
+
+/**
+ * Style 4 — THE SWEPT: the middle length nothing else covers. Ear
+ * tops are BURIED (the Crop shows the whole ear, the Shorn clears it
+ * entirely), the mass stops at the nape rather than the collar, and a
+ * deep side part throws the fringe across the brow.
+ *
+ * The part is the read, and it is deliberately asymmetric: the notch
+ * lives at ONE scalp bearing, so turning the head carries it across
+ * the forehead and off the far side exactly as a real part does. The
+ * seams are stacked on the heavy side of it for the same reason — a
+ * sweep that is symmetric is not a sweep, it is a bowl.
+ */
+const SWEPT: HairstyleDef = {
+  hairline: curve([
+    [0, -0.4], // a lower brow than the short cuts: there is weight here
+    [0.7, -0.4],
+    [1.05, -0.2],
+    [1.55, 0.06], // over the ear root — the ear tops go under
+    [2.2, 0.3],
+    [Math.PI, 0.5],
+  ]),
+  fall: ripple(
+    curve([
+      [0, 0],
+      [1.05, 0.06], // the sideburn, longer than the Crop's
+      [1.3, 0.18],
+      [1.55, 0.3],
+      [1.9, 0.36], // LEVEL-HEM: past the ear the length barely moves
+      [2.4, 0.38],
+      [Math.PI, 0.42], // the nape — the hem sits ON the neck, not below
+    ]),
+    0.03,
+    0.015,
+  ),
+  notch: { a: 0.72, half: 0.4, raise: 0.2 },
+  seams: [
+    { a: -1.2, w: 0.05 },
+    { a: -1.95, w: 0.06 },
+    { a: -2.55, w: 0.055 },
+    { a: 2.2, w: 0.05 },
+    { a: 2.85, w: 0.05 },
+  ],
+  // ONE chip, WIDE and SHALLOW — the swept fringe as a single lock
+  // lying across the brow. Two narrow deep ones stepped the hairline
+  // into a row of teeth at zoom; width is what makes a chip read as
+  // hair, and depth is what makes it read as a block.
+  chips: [{ a: -0.5, w: 0.78, drop: 0.14 }],
+  strands: [
+    { a: -0.28, w: 0.09, rise: 0.3 },
+    { a: -1.0, w: 0.09, rise: 0.28 },
+    { a: -1.85, w: 0.1, rise: 0.34 },
+    { a: 1.6, w: 0.09, rise: 0.3 },
+    { a: 2.6, w: 0.08, rise: 0.3 },
+  ],
+};
+
+/**
  * The style table, indexed by Look.hair. Index 1 is Bald — a real
  * null entry, so every lookup must bounds-check BEFORE falling back
  * or a bald head grows hair. Future styles append; the INDEX
  * STABILITY LAW of look.ts reaches into this table.
  */
-const STYLES: readonly (HairstyleDef | null)[] = [WAYFARER, null, CROP];
+const STYLES: readonly (HairstyleDef | null)[] = [WAYFARER, null, CROP, SHORN, SWEPT];
 
 /**
  * What a humanoid with no Look wears — every NPC in the world. The
@@ -271,11 +378,24 @@ const SEALED_FLOOR = 0.86;
 /** Below this fall a column is bare skin under the hem, not hair. */
 const BARE = 0.05;
 
-/** Hem height at azimuth a, with the parting notch folded in. */
-const hemAt = (st: HairstyleDef, a: number): number => {
+/**
+ * Hem height at azimuth a, with the parting notch folded in.
+ *
+ * THE PART IS A GROOVE, NOT A BITE. The notch fades out with the
+ * depth of its own azimuth, so it is at full strength facing the
+ * camera and gone by the time that patch of scalp reaches the
+ * silhouette edge. Without that fade the notch is still cutting at
+ * grazing angle, where it takes a trapezoid out of the OUTLINE of the
+ * hair at the temple — a chunk visibly missing from the head rather
+ * than a part in the hair. (The far pass gets depth < 0 and so no
+ * notch at all, which is right: you cannot see a part from behind.)
+ */
+const hemAt = (st: HairstyleDef, a: number, depth: number): number => {
   let y = st.hairline(a);
   if (st.notch) {
-    const k = 1 - Math.min(1, Math.abs(azDelta(a, st.notch.a)) / st.notch.half);
+    const lean = Math.min(1, Math.max(0, depth / 0.45));
+    const k =
+      (1 - Math.min(1, Math.abs(azDelta(a, st.notch.a)) / st.notch.half)) * lean;
     if (k > 0) {
       // Notch-HIGH law: the bite never drops the hem below −0.24·hh.
       y = Math.min(y - st.notch.raise * k, -0.24);
@@ -302,7 +422,7 @@ interface Station {
 function stationAt(f: HairFrame, st: HairstyleDef, phi: number, psi: number): Station {
   const a = phi - psi;
   const fall = Math.max(0, st.fall(a));
-  const hemY = f.headY + hemAt(st, a) * f.hh;
+  const hemY = f.headY + hemAt(st, a, ringDepth(psi)) * f.hh;
   // The gather eases in with the fall, so the crown's full width and
   // the mass's narrowed width are the same curve, never a step.
   const g = 1 - (1 - GATHER) * Math.min(1, fall / GATHER_FULL);
@@ -498,13 +618,22 @@ function drawPass(
   for (const ch of st.chips) {
     const psi = azDelta(phi, ch.a);
     const d = ringDepth(psi);
-    if (d <= 0.08) continue;
+    if (d <= 0.12) continue;
     const s = stationAt(f, st, phi, psi);
     if (s.fall > BARE) continue; // a chip only reads against skin
-    const w = ch.w * hw * Math.max(0.35, d);
+    // THE CHIP STAYS ON THE HEAD. A chip is a slab centered on its ring
+    // x, so one near the silhouette hangs HALF ITS WIDTH past the
+    // skull and reads as a rectangular ledge stuck to the brow in mid
+    // air. Foreshortening alone does not save it — sin ψ is still ~0.5
+    // where cos ψ is already 0.87 — so the width is CLAMPED to the room
+    // actually left between the chip and the silhouette edge, and a
+    // chip with no room left is not drawn at all.
+    const room = hw * CAP_R - Math.abs(s.xr - headX);
+    const w = Math.min(ch.w * hw * d, room * 1.6);
+    if (w < hw * 0.1) continue;
     const tipY = s.hemY + ch.drop * hh;
     const tw = w * 0.42;
-    const lean = w * 0.12;
+    const lean = Math.min(w * 0.12, Math.max(0, room - w / 2));
     ctx.fillStyle = base;
     ctx.beginPath();
     ctx.moveTo(s.xr - w / 2, s.hemY - hh * 0.12);

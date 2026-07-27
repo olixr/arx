@@ -103,6 +103,15 @@ test('THE SHEARING: retired style indices migrate to 0, garbage still dies', () 
   for (let h = 0; h < HAIR_STYLES.length; h++) {
     assert.deepEqual(sanitizeLook({ ...ok, hair: h }), { ...ok, hair: h }, `live hair ${h}`);
   }
+  // The hair order is load-bearing the same way the beard order is:
+  // these indices are in the DB, and the render table (client
+  // render/hair.ts STYLES) is indexed by them positionally. Index 1
+  // must stay Bald — it is a real null in that table.
+  assert.equal(HAIR_STYLES[0], 'Wayfarer');
+  assert.equal(HAIR_STYLES[1], 'Bald');
+  assert.equal(HAIR_STYLES[2], 'Crop');
+  assert.equal(HAIR_STYLES[3], 'Shorn');
+  assert.equal(HAIR_STYLES[4], 'Swept');
   // THE BEARD ORDER IS LOAD-BEARING: every index the retired beard set
   // stored is live again, so a stored beard keeps its own character
   // instead of migrating. Reordering BEARD_STYLES would re-shave the

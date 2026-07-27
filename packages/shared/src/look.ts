@@ -131,14 +131,20 @@ export const CLOTH_COLORS = [
  * to 0 by sanitizeLook (see LEGACY_HAIR_MAX below). From here the
  * INDEX STABILITY LAW resumes: append, never reorder.
  *
- * 'Crop' (the short cut) was appended at index 2, which the retired
- * table used for 'Long'. There is no way to tell a pre-shearing 2 from
- * a post-shearing 2, so a character stored with the old Long loads
- * with the Crop. That is a deliberate, one-time cosmetic shift: the
- * alternative is a hole in the table, and a hole is a permanent bug
- * for every UI that enumerates styles.
+ * Each rebuilt style is APPENDED into the retired range, so a stored
+ * index that used to mean a retired cut now means the new one at that
+ * slot (old 2 'Long' → Crop, old 3 → Shorn, old 4 → Swept). There is
+ * no way to tell a pre-shearing index from a post-shearing one, so
+ * that reassignment is a deliberate, one-time cosmetic shift per slot:
+ * the alternative is a hole in the table, and a hole is a permanent
+ * bug for every UI that enumerates styles. Anything still past the end
+ * migrates to 0 (see LEGACY_HAIR_MAX).
+ *
+ * The shelf reads male-heavy on purpose — three of the four cuts are
+ * short — because most characters in the world are men; the Wayfarer
+ * carries the long-haired look for everyone else.
  */
-export const HAIR_STYLES = ['Wayfarer', 'Bald', 'Crop'] as const;
+export const HAIR_STYLES = ['Wayfarer', 'Bald', 'Crop', 'Shorn', 'Swept'] as const;
 
 /**
  * Beards, rebuilt on the skull ring (client render/beard.ts) — a band
@@ -337,8 +343,9 @@ export function randomLook(rand: () => number = Math.random): Look {
   const green = skin === 6 || skin === 10;
   return {
     skin,
-    // A full head of hair is the norm; bald is a choice, not a coin flip.
-    hair: rand() < 0.45 ? 0 : rand() < 0.86 ? 2 : 1,
+    // A full head of hair is the norm; bald is a choice, not a coin
+    // flip. Past that the crowd spreads across the three short cuts.
+    hair: rand() < 0.28 ? 0 : rand() < 0.12 ? 1 : 2 + pick(3),
     // Most faces are shaved; the rest spread across the whole shelf.
     beard: rand() < 0.55 ? 0 : 1 + pick(BEARD_STYLES.length - 1),
     hairColor: pick(HAIR_COLORS.length),
