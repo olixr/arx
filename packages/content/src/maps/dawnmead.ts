@@ -139,10 +139,14 @@ export function buildDawnmead(): ZoneDef {
     b.set(cx, y, Tile.Water);
     b.set(cx + 1, y, Tile.WaterShallow);
   }
-  // The lane bridge: a raised plank deck carrying rows 31-33.
-  for (let y = 31; y <= 33; y++) {
-    const cx = 60 + Math.round(Math.sin(y * 0.16) * 1.6);
-    for (let x = cx - 2; x <= cx + 2; x++) b.set(x, y, Tile.Bridge);
+  // The lane bridge: a raised plank deck carrying rows 31-33. ONE
+  // rectangle, centered on the brook at the middle row — a ragged
+  // per-row span staggers the ramp mouths and rails at both banks.
+  {
+    const bcx = 60 + Math.round(Math.sin(32 * 0.16) * 1.6);
+    for (let y = 31; y <= 33; y++) {
+      for (let x = bcx - 2; x <= bcx + 2; x++) b.set(x, y, Tile.Bridge);
+    }
   }
   // The ford: knee-deep the whole way across, the honest shortcut to
   // the old shed.

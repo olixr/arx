@@ -257,15 +257,34 @@ function isCaveGround(t: number | undefined): boolean {
 
 /** Effective ground for blob purposes: objects show what's under them. */
 function effectiveGround(ground: GroundSampler): GroundSampler {
+  // Per-bake memos: one axis flood per span, one underground verdict
+  // per deck tile (the apron test needs the axis).
+  const deckAxisMemo = new Map<number, boolean>();
+  const deckUnderMemo = new Map<number, number>();
   const g = (tx: number, ty: number): number => {
     const t = ground(tx, ty);
     if (t === undefined) return Tile.Grass;
-    // Raised decks: the SKIN under a dock or bridge is the water it
-    // spans — organic contours, depth bands and shorelines all flow
-    // beneath the boards; the deck itself is painted raised, by
-    // drawDocks or drawBridges.
+    // Raised decks: the SKIN under a dock or bridge is whatever the
+    // structure actually spans — water over the pool, the BANK at the
+    // road aprons (a ramp is bank-first: even a diagonal lick of
+    // water two cells off may not paint a phantom pool under a deck
+    // that pours onto dry road) — so organic contours, depth bands
+    // and shorelines all flow beneath the boards; the deck itself is
+    // painted raised, by drawDocks or drawBridges.
     if (isDeckGround(t) && isDeckTile(ground, tx, ty)) {
-      return dockUnderWater(ground, tx, ty);
+      const key = packDeck(tx, ty);
+      let u = deckUnderMemo.get(key);
+      if (u === undefined) {
+        let bankFirst = false;
+        if (t === Tile.Bridge) {
+          let vert = deckAxisMemo.get(key);
+          if (vert === undefined) vert = deckWalkIsVertical(ground, tx, ty, deckAxisMemo);
+          bankFirst = bridgeApronAt(ground, tx, ty, vert) !== 'none';
+        }
+        u = deckUnderGround(ground, tx, ty, bankFirst);
+        deckUnderMemo.set(key, u);
+      }
+      return u;
     }
     if (GRASS_LIKE.has(t)) return Tile.Grass;
     if (SOIL_TILES.has(t)) return Tile.Tilled;
@@ -680,20 +699,23 @@ const BRIDGE_TONES = ['#997a50', '#8e7049', '#a28356', '#856a44'];
  * paints, bottom to top:
  *
  *   standing shadow on the water south of the span → chunky STONE
- *   PIERS at south water edges with waterline collars → the south
- *   face: over water a stone FASCIA with a chamfered ARCH shadow
- *   sprung between the piers; at a land threshold two STONE STEP
- *   courses that walk the deck down onto the bank → the plank deck
- *   (boards run ACROSS the walk axis; the axis is read from how each
- *   run terminates — water ends the cross axis, land ends the walk,
- *   so any span two to five tiles wide lays its boards the same way)
- *   → dark KERB stringers along water edges (the curb the rails bolt
- *   to) and a stone threshold course across every land entrance,
- *   flanked by squat NEWEL blocks → perimeter strokes on exposed
- *   edges.
+ *   PIERS at full-height south water edges with waterline collars →
+ *   the south face: over water a stone FASCIA with a chamfered ARCH
+ *   shadow sprung between the piers; at a land threshold two STONE
+ *   STEP courses → the plank deck (boards run ACROSS the walk axis,
+ *   one span-wide verdict) with dark KERB stringers along the sides
+ *   and a stone threshold course across every land entrance →
+ *   perimeter strokes on exposed edges, never across a ramp mouth.
  *
- * The hip-height rails along the water edges are NOT baked — the
- * renderer emits them as y-sorted items so bodies walk behind them.
+ * APRONS RAMP (bridgeApronAt): the walk-end tiles shear their whole
+ * deck kit from grade up to the full lift inside one canvas
+ * transform, and a west/east ramp grows a WING WALL — the sloping
+ * stone flank that seats the crossing into the bank. renderLift
+ * interpolates the identical slope, so bodies walk up the ramp.
+ *
+ * The hip-height rails along the sides are NOT baked — the renderer
+ * emits them as y-sorted items (slope-aware on aprons) so bodies
+ * walk behind them.
  */
 function drawBridges(
   ctx: CanvasRenderingContext2D,
@@ -731,21 +753,28 @@ function drawBridges(
       const landW = !hasW && isLand(wT);
       const waterS = isWaterTile(sT);
 
-      // Standing shadow: the span's mass hangs over the water.
-      if (!hasS && waterS) {
-        ctx.fillStyle = 'rgba(20, 34, 62, 0.26)';
+      // Walk axis + apron first — the whole tile's geometry hangs on
+      // them. One axis verdict per span (memoized flood); the apron
+      // is the walk-end tile that ramps down to grade.
+      let vertRun = axisMemo.get(packDeck(tx, ty)); // true = walk runs N-S
+      if (vertRun === undefined) vertRun = deckWalkIsVertical(ground, tx, ty, axisMemo);
+      const apron = bridgeApronAt(ground, tx, ty, vertRun);
+      const dy0 = gy - liftB;
+
+      // Standing shadow: the span's mass hangs over the water — a
+      // ramp's shadow thins with its falling height.
+      if (!hasS && waterS && apron !== 'S') {
+        const shA = apron === 'W' || apron === 'E' ? 0.6 : 1;
+        ctx.fillStyle = `rgba(20, 34, 62, ${0.26 * shA})`;
         ctx.fillRect(gx, gy + px, px, px * 0.2);
-        ctx.fillStyle = 'rgba(20, 34, 62, 0.12)';
+        ctx.fillStyle = `rgba(20, 34, 62, ${0.12 * shA})`;
         ctx.fillRect(gx, gy + px + px * 0.2, px, px * 0.18);
       }
-      // Contact shade where the deck meets the north bank.
-      if (landN) {
-        ctx.fillStyle = 'rgba(30, 22, 12, 0.22)';
-        ctx.fillRect(gx, gy - liftB - px * 0.05, px, px * 0.05);
-      }
 
-      // Stone piers: the masonry the crossing stands on.
-      if (!hasS && waterS) {
+      // Stone piers: the masonry the full-height span stands on (a
+      // ramp's mass is its wing wall — no legs). A north apron's
+      // south edge is at full lift, so it keeps its piers.
+      if (!hasS && waterS && (apron === 'none' || apron === 'N')) {
         for (const fpos of [0.18, 0.82]) {
           const pw = px * 0.16;
           const pxl = gx + fpos * px - pw / 2;
@@ -763,8 +792,14 @@ function drawBridges(
         }
       }
 
-      // The south face.
-      if (!hasS) {
+      // The south face of the full-height span (west/east ramps grow
+      // wing walls after the deck instead; a south ramp pours flush
+      // onto the bank and needs only its seat shadow).
+      if (apron === 'S') {
+        ctx.fillStyle = 'rgba(30, 22, 12, 0.2)';
+        ctx.fillRect(gx, gy + px, px, px * 0.05);
+      }
+      if (!hasS && (apron === 'none' || apron === 'N')) {
         if (landS) {
           // Abutment: two stone step courses walking down to the bank.
           ctx.fillStyle = BRIDGE_STONE.top;
@@ -804,10 +839,36 @@ function drawBridges(
         }
       }
 
-      // The deck. Walk axis first — one verdict per span, memoized.
-      const dy0 = gy - liftB;
-      let vertRun = axisMemo.get(packDeck(tx, ty)); // true = walk runs N-S
-      if (vertRun === undefined) vertRun = deckWalkIsVertical(ground, tx, ty, axisMemo);
+      // THE RAMP TRANSFORM: aprons draw the same flat deck kit and
+      // the canvas does the sloping — west/east ramps shear, north/
+      // south ramps stretch — so boards, kerbs, thresholds, contact
+      // shade and strokes all ride one surface.
+      ctx.save();
+      if (apron === 'W') {
+        ctx.translate(gx, 0);
+        ctx.transform(1, -liftB / px, 0, 1, 0, liftB);
+        ctx.translate(-gx, 0);
+      } else if (apron === 'E') {
+        ctx.translate(gx, 0);
+        ctx.transform(1, liftB / px, 0, 1, 0, 0);
+        ctx.translate(-gx, 0);
+      } else if (apron === 'N') {
+        ctx.translate(0, dy0 + liftB);
+        ctx.scale(1, 1 - liftB / px);
+        ctx.translate(0, -dy0);
+      } else if (apron === 'S') {
+        ctx.translate(0, dy0);
+        ctx.scale(1, 1 + liftB / px);
+        ctx.translate(0, -dy0);
+      }
+
+      // Contact shade where the deck meets the north bank — drawn in
+      // the ramp frame so it hugs a sloping seam too.
+      if (landN) {
+        ctx.fillStyle = 'rgba(30, 22, 12, 0.22)';
+        ctx.fillRect(gx, dy0 - px * 0.05, px, px * 0.05);
+      }
+
       ctx.fillStyle = '#54402a';
       ctx.fillRect(gx, dy0, px, px);
       const rows = 5;
@@ -881,64 +942,95 @@ function drawBridges(
       if (thS) ctx.fillRect(gx, dy0 + px - th - joint, px, joint);
       if (thW) ctx.fillRect(gx + th, dy0, joint, px);
       if (thE) ctx.fillRect(gx + px - th - joint, dy0, joint, px);
-      if (thN) {
-        drawNewel(gx + px * 0.02, dy0 + newel * FLAT + px * 0.02);
-        drawNewel(gx + px - newel - px * 0.02, dy0 + newel * FLAT + px * 0.02);
-      }
-      if (thS) {
-        drawNewel(gx + px * 0.02, dy0 + px - px * 0.02);
-        drawNewel(gx + px - newel - px * 0.02, dy0 + px - px * 0.02);
-      }
-      if (thW) {
-        drawNewel(gx + px * 0.02, dy0 + newel * FLAT + px * 0.02);
-        drawNewel(gx + px * 0.02, dy0 + px - px * 0.02);
-      }
-      if (thE) {
-        drawNewel(gx + px - newel - px * 0.02, dy0 + newel * FLAT + px * 0.02);
-        drawNewel(gx + px - newel - px * 0.02, dy0 + px - px * 0.02);
-      }
-      // A walk-end entrance shows its abutment's south return: a
-      // small stone wedge stepping the riser down onto the bank.
-      if (thW && !hasS) {
-        ctx.fillStyle = BRIDGE_STONE.face;
-        ctx.beginPath();
-        ctx.moveTo(gx, dy0 + px);
-        ctx.lineTo(gx, gy + px);
-        ctx.lineTo(gx - px * 0.14, gy + px);
-        ctx.closePath();
-        ctx.fill();
-      }
-      if (thE && !hasS) {
-        ctx.fillStyle = BRIDGE_STONE.face;
-        ctx.beginPath();
-        ctx.moveTo(gx + px, dy0 + px);
-        ctx.lineTo(gx + px, gy + px);
-        ctx.lineTo(gx + px + px * 0.14, gy + px);
-        ctx.closePath();
-        ctx.fill();
+      // Newels and step-down wedges belong to the FLAT-ended legacy
+      // entrance only — a ramp's rail posts land at grade and finish
+      // the entrance themselves.
+      if (apron === 'none') {
+        if (thN) {
+          drawNewel(gx + px * 0.02, dy0 + newel * FLAT + px * 0.02);
+          drawNewel(gx + px - newel - px * 0.02, dy0 + newel * FLAT + px * 0.02);
+        }
+        if (thS) {
+          drawNewel(gx + px * 0.02, dy0 + px - px * 0.02);
+          drawNewel(gx + px - newel - px * 0.02, dy0 + px - px * 0.02);
+        }
+        if (thW) {
+          drawNewel(gx + px * 0.02, dy0 + newel * FLAT + px * 0.02);
+          drawNewel(gx + px * 0.02, dy0 + px - px * 0.02);
+        }
+        if (thE) {
+          drawNewel(gx + px - newel - px * 0.02, dy0 + newel * FLAT + px * 0.02);
+          drawNewel(gx + px - newel - px * 0.02, dy0 + px - px * 0.02);
+        }
+        if (thW && !hasS) {
+          ctx.fillStyle = BRIDGE_STONE.face;
+          ctx.beginPath();
+          ctx.moveTo(gx, dy0 + px);
+          ctx.lineTo(gx, gy + px);
+          ctx.lineTo(gx - px * 0.14, gy + px);
+          ctx.closePath();
+          ctx.fill();
+        }
+        if (thE && !hasS) {
+          ctx.fillStyle = BRIDGE_STONE.face;
+          ctx.beginPath();
+          ctx.moveTo(gx + px, dy0 + px);
+          ctx.lineTo(gx + px, gy + px);
+          ctx.lineTo(gx + px + px * 0.14, gy + px);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
 
-      // Perimeter stroke, exposed edges only (architecture outline law).
+      // Perimeter stroke, exposed edges only (architecture outline
+      // law) — but NEVER across a ramp mouth: the road runs straight
+      // onto the boards, and a dark line there would cut the seam
+      // the whole apron exists to erase.
       ctx.strokeStyle = 'rgba(42, 28, 14, 0.85)';
       ctx.lineWidth = Math.max(1.5, px * 0.045);
       ctx.beginPath();
-      if (!hasN) {
+      if (!hasN && apron !== 'N') {
         ctx.moveTo(gx, dy0);
         ctx.lineTo(gx + px, dy0);
       }
-      if (!hasS) {
+      if (!hasS && apron !== 'S') {
         ctx.moveTo(gx, dy0 + px);
         ctx.lineTo(gx + px, dy0 + px);
       }
-      if (!hasW) {
+      if (!hasW && apron !== 'W') {
         ctx.moveTo(gx, dy0);
         ctx.lineTo(gx, dy0 + px);
       }
-      if (!hasE) {
+      if (!hasE && apron !== 'E') {
         ctx.moveTo(gx + px, dy0);
         ctx.lineTo(gx + px, dy0 + px);
       }
       ctx.stroke();
+      ctx.restore();
+
+      // WING WALLS: a west/east ramp shows its abutment's flank — the
+      // sloping stone mass that seats the crossing into the bank,
+      // from the deck's falling south edge down to the ground line.
+      if ((apron === 'W' || apron === 'E') && !hasS) {
+        const hiX = apron === 'W' ? gx + px : gx;
+        const loX = apron === 'W' ? gx : gx + px;
+        ctx.fillStyle = BRIDGE_STONE.face;
+        ctx.beginPath();
+        ctx.moveTo(loX, gy + px);
+        ctx.lineTo(hiX, gy + px - liftB);
+        ctx.lineTo(hiX, gy + px);
+        ctx.closePath();
+        ctx.fill();
+        // Sloped coping catch-light, and the seat shadow on the bank.
+        ctx.strokeStyle = 'rgba(228, 222, 204, 0.3)';
+        ctx.lineWidth = Math.max(1, px * 0.02);
+        ctx.beginPath();
+        ctx.moveTo(loX, gy + px);
+        ctx.lineTo(hiX, gy + px - liftB);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(30, 22, 12, 0.2)';
+        ctx.fillRect(gx, gy + px, px, px * 0.05);
+      }
     }
   }
 }
@@ -2480,23 +2572,89 @@ export function deckWalkIsVertical(
   return vert;
 }
 
-/** The water that continues under a dock: the most common depth among
- *  the 8 neighbors, so the pool keeps its own color beneath the boards. */
-function dockUnderWater(ground: GroundSampler, tx: number, ty: number): number {
-  let shallow = 0;
-  let water = 0;
-  let deep = 0;
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
-      const t = ground(tx + dx, ty + dy);
-      if (t === Tile.WaterShallow) shallow++;
-      else if (t === Tile.Water || t === Tile.FishingSpot) water++;
-      else if (t === Tile.WaterDeep) deep++;
-    }
+/** Which way a bridge tile ramps: the LAND side of an apron, or
+ *  'none' for a full-height tile. */
+export type BridgeApron = 'none' | 'W' | 'E' | 'N' | 'S';
+
+/**
+ * THE APRON LAW. An apron is the span's last tile before a walk-end
+ * bank: its deck RAMPS from grade at the land edge up to DOCK_LIFT at
+ * the deck side, exactly like the Ramp tile's flight — the road pours
+ * onto the bridge with no step, no floating threshold, no water
+ * peeking out under a hovering end. The bake shears the apron's deck
+ * kit along this slope and renderLift interpolates the same slope
+ * under every body, so feet and boards agree by construction.
+ */
+export function bridgeApronAt(
+  ground: GroundSampler,
+  tx: number,
+  ty: number,
+  walkVert: boolean,
+): BridgeApron {
+  const isLand = (t: number | undefined): boolean =>
+    t !== undefined && !isDeckGround(t) && !isWaterTile(t);
+  if (walkVert) {
+    const nT = ground(tx, ty - 1);
+    const sT = ground(tx, ty + 1);
+    if (isLand(nT) && isDeckGround(sT)) return 'N';
+    if (isLand(sT) && isDeckGround(nT)) return 'S';
+  } else {
+    const wT = ground(tx - 1, ty);
+    const eT = ground(tx + 1, ty);
+    if (isLand(wT) && isDeckGround(eT)) return 'W';
+    if (isLand(eT) && isDeckGround(wT)) return 'E';
   }
-  if (deep > 0 && deep >= water && deep >= shallow) return Tile.WaterDeep;
-  if (water > 0 && water >= shallow) return Tile.Water;
-  return Tile.WaterShallow;
+  return 'none';
+}
+
+/**
+ * The ground that continues under a deck tile. Over the span it is
+ * the water itself (most common depth among the neighbors, so the
+ * pool keeps its own color beneath the boards) — but at the BANK
+ * APRONS, where no water touches the ring, it is the bank (most
+ * common walkable land neighbor). The old default-to-shallow here
+ * painted phantom pools under every bridge end — water peeking out
+ * around a deck that stands on dry road. Never default to water.
+ */
+function deckUnderGround(
+  ground: GroundSampler,
+  tx: number,
+  ty: number,
+  bankFirst = false,
+): number {
+  for (const r of [1, 2]) {
+    let shallow = 0;
+    let water = 0;
+    let deep = 0;
+    const land = new Map<number, number>();
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const t = ground(tx + dx, ty + dy);
+        if (t === undefined || isDeckGround(t)) continue;
+        if (t === Tile.WaterShallow) shallow++;
+        else if (t === Tile.Water || t === Tile.FishingSpot) water++;
+        else if (t === Tile.WaterDeep) deep++;
+        else if (!tileDef(t).solid) land.set(t, (land.get(t) ?? 0) + 1);
+      }
+    }
+    let best = -1;
+    let bestT = -1;
+    for (const [t, n] of land) {
+      if (n > best) {
+        best = n;
+        bestT = t;
+      }
+    }
+    // A ramp apron is BANK-FIRST: any walkable land in the ring wins
+    // over water, so the ground pours under the ramp mouth unbroken.
+    if (bankFirst && bestT >= 0) return bestT;
+    if (deep > 0 && deep >= water && deep >= shallow) return Tile.WaterDeep;
+    if (water > 0 && water >= shallow) return Tile.Water;
+    if (shallow > 0) return Tile.WaterShallow;
+    if (bestT >= 0) return bestT;
+  }
+  return Tile.Grass;
 }
 
 interface WBucket {

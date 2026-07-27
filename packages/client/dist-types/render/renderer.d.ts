@@ -911,6 +911,10 @@ export declare class Renderer {
     private readonly bridgeAxisMemo;
     private bridgeAxisVersion;
     private bridgeWalkVert;
+    /** Memoized apron verdict — renderLift is hot and the neighbor
+     *  probes must run once per tile. Cleared with the axis memo. */
+    private readonly bridgeApronMemo;
+    private bridgeApron;
     /**
      * A bridge's hip-height parapet: one live rail item per exposed
      * SIDE edge — the edges perpendicular to the span's walk axis — so

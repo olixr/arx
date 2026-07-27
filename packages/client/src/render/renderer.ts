@@ -90,9 +90,11 @@ import { drawPortalArch, drawPortalGround, spawnPortalFx, PORTAL_PLANE } from '.
 import {
   bakeElevated,
   bakeGutter,
+  bridgeApronAt,
   deckWalkIsVertical,
   DOCK_LIFT,
   drawLiveGround,
+  type BridgeApron,
   startChunkBake,
   stepChunkBake,
   waterRegionPath,
@@ -1448,8 +1450,18 @@ export class Renderer {
     const t = game.world.groundAt(tx, ty);
     // Raised decks (docks AND bridges): the deck rides DOCK_LIFT
     // above the ground, and so does everything standing on it — feet
-    // meet boards by construction.
+    // meet boards by construction. A bridge APRON ramps from grade at
+    // its land edge to the full lift (the bake shears the boards on
+    // the identical slope), exactly like the Ramp tile's flight.
     if ((t === Tile.Bridge || t === Tile.Dock) && this.isDockAt(game, tx, ty)) {
+      if (t === Tile.Bridge) {
+        const ap = this.bridgeApron(game, tx, ty);
+        if (ap !== 'none') {
+          const u =
+            ap === 'W' ? x - tx : ap === 'E' ? 1 - (x - tx) : ap === 'N' ? y - ty : 1 - (y - ty);
+          return lvl * ELEV_H + DOCK_LIFT * Math.min(1, Math.max(0, u));
+        }
+      }
       return lvl * ELEV_H + DOCK_LIFT;
     }
     if (t === Tile.Ramp) {
@@ -5947,12 +5959,28 @@ export class Renderer {
   private bridgeWalkVert(game: ClientGame, tx: number, ty: number): boolean {
     if (game.worldVersion !== this.bridgeAxisVersion) {
       this.bridgeAxisMemo.clear();
+      this.bridgeApronMemo.clear();
       this.bridgeAxisVersion = game.worldVersion;
     }
     const key = tx * 100000 + ty;
     let v = this.bridgeAxisMemo.get(key);
     if (v === undefined) {
       v = deckWalkIsVertical((x, y) => game.world.groundAt(x, y), tx, ty, this.bridgeAxisMemo);
+    }
+    return v;
+  }
+
+  /** Memoized apron verdict — renderLift is hot and the neighbor
+   *  probes must run once per tile. Cleared with the axis memo. */
+  private readonly bridgeApronMemo = new Map<number, BridgeApron>();
+
+  private bridgeApron(game: ClientGame, tx: number, ty: number): BridgeApron {
+    const vert = this.bridgeWalkVert(game, tx, ty); // also version-syncs the memos
+    const key = tx * 100000 + ty;
+    let v = this.bridgeApronMemo.get(key);
+    if (v === undefined) {
+      v = bridgeApronAt((x, y) => game.world.groundAt(x, y), tx, ty, vert);
+      this.bridgeApronMemo.set(key, v);
     }
     return v;
   }
@@ -5979,7 +6007,15 @@ export class Renderer {
       !isDeck(g(x + dx, y + dy)) &&
       (dy !== 0 ? !this.bridgeWalkVert(game, x, y) : this.bridgeWalkVert(game, x, y));
     const elevated = game.world.elevAt(tx, ty) !== 0;
-    const lift = game.world.elevAt(tx, ty) * ELEV_H + DOCK_LIFT;
+    const elevLift = game.world.elevAt(tx, ty) * ELEV_H;
+    // On an apron the rail rides the ramp: lift varies along the walk
+    // fraction, matching renderLift and the bake's shear exactly.
+    const apron = this.bridgeApron(game, tx, ty);
+    const liftAt = (f: number): number => {
+      if (apron === 'none') return elevLift + DOCK_LIFT;
+      const u = apron === 'W' || apron === 'N' ? f : 1 - f;
+      return elevLift + DOCK_LIFT * u;
+    };
     const post = '#6f4d26';
     const rail = '#8a6534';
     const RAIL_H = 0.46;
@@ -6002,24 +6038,33 @@ export class Renderer {
           elevated,
           draw: () => {
             const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
-            p.y -= lift * s;
-            const yLine = p.y + (north ? 0 : syT);
+            const edge = north ? 0 : syT;
+            const yAt = (f: number): number => p.y + edge - liftAt(f) * s;
             ctx.fillStyle = post;
             for (const fx of [0.28, 0.72]) {
-              ctx.fillRect(p.x + s * fx - s * 0.035, yLine - hr, s * 0.07, hr);
+              ctx.fillRect(p.x + s * fx - s * 0.035, yAt(fx) - hr, s * 0.07, hr);
             }
-            if (!contW) ctx.fillRect(p.x - 0.25, yLine - hr, s * 0.1, hr);
-            if (!contE) ctx.fillRect(p.x + s + 0.25 - s * 0.1, yLine - hr, s * 0.1, hr);
-            // Mid rail behind the posts, then the top member with a
-            // lit crown — the fence law at parapet height.
+            if (!contW) ctx.fillRect(p.x - 0.25, yAt(0) - hr, s * 0.1, hr);
+            if (!contE) ctx.fillRect(p.x + s + 0.25 - s * 0.1, yAt(1) - hr, s * 0.1, hr);
+            // Members as quads between the two end heights, so a
+            // ramp's rail slopes with its deck; on a flat span they
+            // collapse to the straight fence law. Mid rail behind
+            // the posts, then the top member with a lit crown.
+            const member = (yOfs: number, tk: number): void => {
+              ctx.beginPath();
+              ctx.moveTo(p.x - 0.25, yAt(0) - yOfs);
+              ctx.lineTo(p.x + s + 0.25, yAt(1) - yOfs);
+              ctx.lineTo(p.x + s + 0.25, yAt(1) - yOfs + tk);
+              ctx.lineTo(p.x - 0.25, yAt(0) - yOfs + tk);
+              ctx.closePath();
+              ctx.fill();
+            };
             ctx.fillStyle = shade(rail, -10);
-            ctx.fillRect(p.x - 0.25, yLine - hr * 0.52, s + 0.5, railT * 0.7);
+            member(hr * 0.52, railT * 0.7);
             ctx.fillStyle = rail;
-            ctx.beginPath();
-            chamferRect(ctx, p.x - 0.25, yLine - hr, s + 0.5, railT * 1.15, s * 0.02);
-            ctx.fill();
+            member(hr, railT * 1.15);
             ctx.fillStyle = shade(rail, 14);
-            ctx.fillRect(p.x - 0.25, yLine - hr, s + 0.5, Math.max(1, s * 0.02));
+            member(hr, Math.max(1, s * 0.02));
           },
         });
       } else {
@@ -6031,16 +6076,19 @@ export class Renderer {
           elevated,
           draw: () => {
             const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
-            p.y -= lift * s;
             const ex = p.x + (west ? s * 0.055 : s - s * 0.055);
-            const cy = p.y + syT * 0.5;
-            const yTop = contN ? p.y : cy;
-            const yBot = contS ? p.y + syT : cy;
+            // Depth fraction → screen y, riding the ramp's lift.
+            const yAt = (f: number): number => p.y + syT * f - liftAt(f) * s;
+            const fTop = contN ? 0 : 0.5;
+            const fBot = contS ? 1 : 0.5;
+            const cy = yAt(0.5);
             // Twin thin rails marching in depth through a
             // chamfer-topped post at the tile's middle.
             ctx.fillStyle = rail;
             for (const rx of [-0.045, 0.045]) {
-              ctx.fillRect(ex + rx * s - railT / 2, yTop - hr * 0.88, railT, yBot - yTop + railT);
+              const yT = yAt(fTop) - hr * 0.88;
+              const yB = yAt(fBot) + railT;
+              ctx.fillRect(ex + rx * s - railT / 2, yT, railT, yB - yT);
             }
             ctx.fillStyle = post;
             ctx.beginPath();

@@ -140,6 +140,19 @@ export declare function isDeckTile(ground: GroundSampler, tx: number, ty: number
  * verdict for every member tile so callers memoize one flood per span.
  */
 export declare function deckWalkIsVertical(ground: GroundSampler, tx: number, ty: number, out?: Map<number, boolean>): boolean;
+/** Which way a bridge tile ramps: the LAND side of an apron, or
+ *  'none' for a full-height tile. */
+export type BridgeApron = 'none' | 'W' | 'E' | 'N' | 'S';
+/**
+ * THE APRON LAW. An apron is the span's last tile before a walk-end
+ * bank: its deck RAMPS from grade at the land edge up to DOCK_LIFT at
+ * the deck side, exactly like the Ramp tile's flight — the road pours
+ * onto the bridge with no step, no floating threshold, no water
+ * peeking out under a hovering end. The bake shears the apron's deck
+ * kit along this slope and renderLift interpolates the same slope
+ * under every body, so feet and boards agree by construction.
+ */
+export declare function bridgeApronAt(ground: GroundSampler, tx: number, ty: number, walkVert: boolean): BridgeApron;
 /**
  * The breeze layer: drifting water glints, swell bands, shallow-water
  * caustics, the surf shoreline and portal swirls. Drawn every frame
