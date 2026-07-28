@@ -855,13 +855,29 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   assert.ok((counts.get(Tile.Bridge) ?? 0) >= 10, 'the road spans went missing');
   assert.ok((counts.get(Tile.Dock) ?? 0) >= 8, 'the mill pier went missing');
   assert.ok((counts.get(Tile.TreeOak) ?? 0) >= 18, 'the orchard thinned');
+  // The living-town pass: the town that teaches holds every early
+  // loop on its own ground — cookfires, ore, flax, common furrows.
+  assert.equal(counts.get(Tile.Campfire) ?? 0, 2, 'the town lost a cookfire');
+  assert.ok((counts.get(Tile.RockCopper) ?? 0) >= 2, 'the Delf lost its copper');
+  assert.ok((counts.get(Tile.RockTin) ?? 0) >= 2, 'the Delf lost its tin');
+  assert.equal(counts.get(Tile.RockIron) ?? 0, 1, 'the Delf keeps exactly one iron face');
+  assert.ok((counts.get(Tile.FenceGate) ?? 0) >= 5, 'the town lost its gates');
+  assert.ok((counts.get(Tile.FibrePlant) ?? 0) >= 5, 'the retting bank lost its flax');
+  assert.ok((counts.get(Tile.ArchStone) ?? 0) >= 6, 'the gate arches came down');
+  assert.ok((counts.get(Tile.Tilled) ?? 0) >= 40, 'the Free Furrows went fallow');
   // Livestock only — the named people arrive in the people pass.
   const spawnKinds = new Map((z.spawns ?? []).map((s) => [s.npc, s.count]));
   assert.equal(spawnKinds.get('cow'), 3);
   assert.equal(spawnKinds.get('chicken'), 3);
-  // The people pass: fifteen residents, every one on routine hours.
+  // The people pass: fifteen residents plus the two traveling
+  // traders on the produce row, every one on routine hours.
   const amberActors = z.actorSpawns ?? [];
-  assert.equal(amberActors.length, 15, 'Amberford lost residents');
+  assert.equal(amberActors.length, 17, 'Amberford lost residents');
+  assert.equal(
+    amberActors.filter((a) => a.actor === 'round_trader').length,
+    2,
+    'the produce row lost its traders',
+  );
   for (const slug of [
     'smith_bretta',
     'master_tilo',
@@ -881,7 +897,7 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   ]) {
     assert.ok(amberActors.some((a) => a.actor === slug), `${slug} missing from Amberford`);
   }
-  assert.equal(amberActors.filter((a) => a.routine).length, 15, 'every resident keeps hours');
+  assert.equal(amberActors.filter((a) => a.routine).length, 17, 'every resident keeps hours');
   // The editor JSON round trip holds, flat-zone law included.
   const json = zoneToJson(z);
   assert.equal(json.elev, undefined, 'amberford is a flat zone');
@@ -933,6 +949,18 @@ test('amberford: every doorway walks from the Round, and all three gates connect
   // And the banking floor is truly public: the lobby rug between the
   // two (solid) banking chests must be walkable from the door.
   assert.equal(seen[32 * z.width + 40], 1, 'the bank floor is unreachable');
+  // The living-town posts walk from the Round too.
+  const reach = (x: number, y: number, what: string): void => {
+    assert.equal(seen[y * z.width + x], 1, `${what} cut off from the Round`);
+  };
+  reach(102, 8, 'the Delf floor');
+  reach(80, 43, "the anglers' fire ring");
+  reach(57, 54, 'the coaching-yard fire ring');
+  reach(27, 48, 'the Free Furrows interior');
+  reach(34, 38, 'the Toll War memorial floor');
+  reach(38, 59, 'the pilgrim alcove');
+  reach(84, 41, 'the jetty finger');
+  reach(88, 63, 'the Old Ford shallows');
 });
 
 test('silverfall: the mountain capital holds its terraces, stations, and gate', () => {

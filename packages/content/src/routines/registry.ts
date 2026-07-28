@@ -34,6 +34,8 @@ import amberOrchardist from './defs/amber_orchardist.json';
 import amberOutfitter from './defs/amber_outfitter.json';
 import amberSage from './defs/amber_sage.json';
 import amberSmith from './defs/amber_smith.json';
+import amberTraderA from './defs/amber_trader_a.json';
+import amberTraderB from './defs/amber_trader_b.json';
 import dawnmeadFarmhand from './defs/dawnmead_farmhand.json';
 import greenScamp from './defs/green_scamp.json';
 import hearthHours from './defs/hearth_hours.json';
@@ -82,6 +84,8 @@ const SOURCES: readonly unknown[] = [
   amberOutfitter,
   amberSage,
   amberSmith,
+  amberTraderA,
+  amberTraderB,
   dawnmeadFarmhand,
   greenScamp,
   hearthHours,

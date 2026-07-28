@@ -37,6 +37,7 @@ import farmerJorel from './defs/farmer_jorel.json';
 import farmerTamsin from './defs/farmer_tamsin.json';
 import ferrymanPeld from './defs/ferryman_peld.json';
 import grocerMerra from './defs/grocer_merra.json';
+import roundTrader from './defs/round_trader.json';
 import innkeepDunna from './defs/innkeep_dunna.json';
 import keeperAnsel from './defs/keeper_ansel.json';
 import lampkeeperEdda from './defs/lampkeeper_edda.json';
@@ -103,6 +104,7 @@ const SOURCES: readonly unknown[] = [
   farmerTamsin,
   ferrymanPeld,
   grocerMerra,
+  roundTrader,
   innkeepDunna,
   keeperAnsel,
   lampkeeperEdda,

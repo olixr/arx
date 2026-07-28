@@ -1,0 +1,40 @@
+{
+  "id": "round_trader",
+  "name": "Traveling Trader",
+  "title": "Produce Row",
+  "examine": "Road dust on the boots, a stall's worth of somewhere else on the table, and eyes that price you the moment you say hello.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 3,
+      "hairColor": 2,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 6,
+      "pants": 3
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    {
+      "item": "berries",
+      "qty": 6
+    },
+    {
+      "item": "bread",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "Fresh off the First Road — what the fen didn't take, you're looking at. Amberford's the only market worth stopping for between here and the mountain.",
+    "The trick to this town? Learn a trade before you leave it. Bretta, Tilo, Elowen — three masters on one lane. You won't see that again till Silverfall.",
+    "We sleep at the Wanderer's Rest and sell by the Round. Dunna's stew, Merra's prices, and a dry bed — a body could do worse than linger here."
+  ]
+}

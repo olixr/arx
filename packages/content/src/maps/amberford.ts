@@ -29,6 +29,21 @@ import type { ZoneDef } from './types.js';
  *    stations along a work wall; storerooms hold stock; bedrooms hold
  *    beds. Nothing is placed to fill space.
  *
+ * THE LIVING-TOWN LAW (the third polish pass): Amberford is the town
+ * that TEACHES. A waker's first real skills are learned here, so the
+ * town must hold every early loop on its own ground:
+ *  - Two cookfires (the anglers' Catch Fire on the shore, the inn's
+ *    coaching-yard fire) — the only Tile.Campfire stations for miles.
+ *  - The Amber Delf: copper and tin in the northeast cutting, with
+ *    one iron face as the told-you-so for level fifteen.
+ *  - The Free Furrows: gated common tilled ground, anyone may plant.
+ *  - The retting bank's flax, the pond's trout, the orchard, and the
+ *    pasture's milk close the loop for every Maker's Art trainer in
+ *    Craft Row.
+ *  - STORY ON THE GROUND. The Toll War memorial, the Old Ford, and
+ *    the waystones say who this town is without a single quest
+ *    marker: every plaque earns its place in the founding story.
+ *
  * The zone stamps into AMBERFORD_RECT exactly (geography.test pins
  * it), and the gates meet the carved worldgen roads tile-for-tile:
  * the First Road enters the Fordgate at world (105,36) = local
@@ -73,6 +88,19 @@ export function buildAmberford(): ZoneDef {
   b.set(48, 45, Tile.Bench).set(55, 45, Tile.Bench);
   b.set(46, 49, Tile.LampPost).set(58, 48, Tile.LampPost);
   b.set(43, 49, Tile.TreeOak); // the market oak, shade for the southwest corner
+  // The well dressed as the town's oldest fact: the trough the herds
+  // drink from on market days, the bucket barrel, and the notice
+  // board where the town speaks to strangers first.
+  b.set(53, 41, Tile.Basin); // the trough
+  b.set(50, 39, Tile.Barrel); // the bucket barrel
+  b.sign(55, 37, 'THE ROUND', ['market at midday', 'the well is sweet — help yourself'], Tile.Signpost);
+  // Produce row: two stands shoulder to shoulder where the spine
+  // country meets the dock lane — the market spilling up the road,
+  // the way real markets do. (The traveling traders' pitch.)
+  b.stamp(MARKET_STALL, 59, 28);
+  b.stamp(MARKET_STALL, 63, 28);
+  // The inn's terrace: tables on the grass apron facing the plaza.
+  b.set(56, 46, Tile.Bench).set(57, 46, Tile.Table).set(58, 46, Tile.Bench);
 
   // ---------------------------------------------------------------
   // The Bank of Amberford — a stone hall fronting the Round with its
@@ -116,6 +144,15 @@ export function buildAmberford(): ZoneDef {
   b.fillRect(39, 36, 4, 2, Tile.StoneFloor);
   b.path({ x: 41, y: 38 }, { x: 46, y: 39 }, 2, Tile.StoneFloor);
   b.set(38, 36, Tile.LampPost).set(43, 36, Tile.LampPost);
+  b.sign(37, 36, 'BANK OF AMBERFORD', ['coin kept, word kept']);
+  // The Toll War memorial — the reason there is a bank at all. A
+  // pillar for the ones who held the ford against the Redmasks,
+  // braziers the Waykeepers keep fed, and the plaque every newcomer
+  // walks past twice a day. Ansel and Aldis both stand here at dusk.
+  b.fillRect(33, 36, 3, 3, Tile.StoneFloor);
+  b.set(34, 37, Tile.PillarStone);
+  b.set(33, 38, Tile.Brazier).set(35, 38, Tile.Brazier);
+  b.sign(34, 40, 'THE TOLL WAR', ['for those who held the ford', 'the road stays free'], Tile.Signpost);
 
   // ---------------------------------------------------------------
   // Craft Row — the masters' workshops down the craft lane, each a
@@ -143,9 +180,14 @@ export function buildAmberford(): ZoneDef {
   b.set(11, 18, Tile.Crate).set(11, 19, Tile.Barrel); // the coal store
   b.setDetail(13, 14, Detail.Pebbles).setDetail(15, 17, Detail.Pebbles);
   b.setDetail(14, 11, Detail.Doormat).setDetail(15, 11, Detail.Doormat);
-  // The commission shop: counter facing the door, work on the walls.
+  // The commission shop: counter facing the door, work on the walls,
+  // and the ledger desk where Bretta prices what the road broke.
   for (let x = 20; x <= 22; x++) b.set(x, 13, Tile.Counter);
   b.set(24, 11, Tile.Cabinet).set(24, 13, Tile.WeaponRack);
+  b.set(19, 11, Tile.WeaponRack); // finished blades wait by the door
+  b.set(20, 16, Tile.Table).set(21, 16, Tile.Chair); // the commission ledger
+  b.setDetail(22, 16, Detail.RugRound);
+  b.set(24, 15, Tile.ToolRack);
   b.set(19, 18, Tile.Crate).set(24, 17, Tile.CrateGoods);
   b.setDetail(21, 11, Detail.Doormat);
   // The forge yard: trampled dirt, the outdoor rack, the deliveries.
@@ -182,10 +224,13 @@ export function buildAmberford(): ZoneDef {
   b.setDetail(36, 16, Detail.Sawdust).setDetail(41, 16, Detail.Sawdust);
   b.sign(36, 9, "TILO'S", ['cloth, carving, commissions']);
   b.set(38, 9, Tile.Dirt).set(39, 9, Tile.Dirt);
-  // The tanning pad, downwind off the east gable.
+  // The tanning pad, downwind off the east gable — hides stretched
+  // on the frame, lime in the barrel, straw where the drips land.
   b.fillRect(49, 12, 3, 3, Tile.Dirt);
   b.set(50, 13, Tile.TanningRack);
   b.set(49, 14, Tile.Barrel);
+  b.set(51, 12, Tile.ToolRack); // the drying frame
+  b.setDetail(50, 14, Detail.Straw);
 
   // ---------------------------------------------------------------
   // The North Gate — where the High Road starts. The WATCH TOWER is
@@ -216,6 +261,11 @@ export function buildAmberford(): ZoneDef {
   b.sign(56, 5, 'SILVERFALL', ['north, by the High Road', 'Go armed.'], Tile.Signpost);
   b.set(52, 6, Tile.WeaponRack);
   b.fillRect(53, 0, 3, 2, Tile.Path); // the mouth meets the carved High Road
+  // The gate reads as a GATE now: a stone arch over the High Road's
+  // mouth, sprung from the tower to an answering pillar — the line a
+  // waker crosses knowing they crossed it.
+  b.set(53, 1, Tile.ArchStone).set(54, 1, Tile.ArchStone).set(55, 1, Tile.ArchStone);
+  b.set(56, 1, Tile.PillarStone).set(56, 2, Tile.PillarStone);
   // The outfitter (Hask), the gate's east post: the last shop before
   // the climb. Shop floor by the road — packs stacked, bows racked,
   // counter facing the door — and the storeroom walled off east.
@@ -272,7 +322,7 @@ export function buildAmberford(): ZoneDef {
   b.setDetail(68, 22, Detail.RugRound);
   // The herb garden, fenced and worked in rows.
   b.outlineRect(74, 15, 9, 8, Tile.Fence);
-  b.set(74, 19, Tile.Dirt); // the garden gate
+  b.set(74, 19, Tile.FenceGate); // the garden gate, standing open
   for (let x = 76; x <= 81; x += 1) {
     b.set(x, 17, x % 2 === 0 ? Tile.SagewortRipe : Tile.Tilled);
     b.set(x, 19, x % 2 === 0 ? Tile.Tilled : Tile.SagewortMid);
@@ -332,6 +382,13 @@ export function buildAmberford(): ZoneDef {
   b.set(63, 43, Tile.Dirt).set(64, 43, Tile.Dirt);
   b.set(59, 49, Tile.Bench);
   b.set(75, 54, Tile.Barrel).set(75, 55, Tile.Barrel).set(75, 56, Tile.Crate);
+  // The coaching-yard fire on the lane side: where Dunna cooks the
+  // midday stew, and where a traveler who can't pay for the board
+  // is welcome to cook their own. The town's second cookfire.
+  b.set(57, 53, Tile.Campfire);
+  b.set(56, 52, Tile.Bench).set(58, 54, Tile.Bench);
+  b.set(56, 54, Tile.Barrel);
+  b.setDetail(58, 52, Detail.Straw);
 
   // ---------------------------------------------------------------
   // The millpond, the mill, and the docks — the Amber Water.
@@ -370,6 +427,12 @@ export function buildAmberford(): ZoneDef {
   b.set(78, 35, Tile.CrateGoods).set(79, 36, Tile.CrateGoods); // flour by the sack
   b.setDetail(74, 36, Detail.Doormat).setDetail(77, 34, Detail.Straw);
   b.sign(69, 36, "GARTON'S MILL", ['flour, meal, and gossip']);
+  // The millrace: the pond let through a sluice to lap the mill's
+  // east wall. The wheel itself is still on the mason's list, but
+  // the water already stands where the wheel will hang.
+  b.fillRect(81, 30, 3, 2, Tile.WaterShallow);
+  b.set(81, 29, Tile.RailWood).set(82, 29, Tile.RailWood).set(83, 29, Tile.RailWood);
+  b.set(81, 32, Tile.RailWood).set(82, 32, Tile.RailWood);
   // The docks: the pier planks, the mooring barrels, the catch — a
   // true jetty (Tile.Dock), suspended on piles, not a bridge.
   for (let x = 81; x <= 86; x++) {
@@ -380,6 +443,16 @@ export function buildAmberford(): ZoneDef {
   b.set(82, 41, Tile.Barrel);
   b.set(87, 40, Tile.FishingSpot);
   b.set(94, 29, Tile.FishingSpot);
+  // The jetty grows a finger south — mooring for the punt-to-be —
+  // and the ANGLERS' FIRE burns on the shore beside it: benches, a
+  // net rack, and coals hot enough to teach any waker what to do
+  // with a fresh trout. The first cookfire on the First Road.
+  b.fillRect(84, 40, 2, 3, Tile.Dock);
+  b.set(85, 42, Tile.Barrel); // the mooring barrel
+  b.set(82, 44, Tile.ToolRack); // nets and boathooks
+  b.set(80, 42, Tile.Campfire);
+  b.set(79, 41, Tile.Bench).set(81, 43, Tile.Bench);
+  b.sign(78, 43, 'THE CATCH FIRE', ['fresh trout, hot coals', 'cook your own'], Tile.Signpost);
   // The ferry shack (Peld's), down the shore path where the pond
   // narrows to the stream: his cot, his crates, his lamp lit late.
   b.fillRect(78, 48, 6, 5, Tile.WoodFloor);
@@ -392,6 +465,19 @@ export function buildAmberford(): ZoneDef {
   b.set(84, 51, Tile.ToolRack); // nets and boathooks
   for (let y = 45; y <= 47; y++) b.set(80, y, Tile.Dirt); // the shore path
   b.set(89, 55, Tile.FishingSpot);
+  // The punt's landing: two planks to the stream and the rail Peld
+  // leans on while he decides the water isn't ready yet.
+  b.set(87, 52, Tile.Dock).set(88, 52, Tile.Dock);
+  b.set(86, 52, Tile.RailWood);
+  b.sign(84, 47, 'THE CROSSING', ['ring for Peld', 'downriver — someday'], Tile.Signpost);
+  // The retting bank: flax cut, soaked, and spun to twine on the
+  // stream's slack side — a loom's whole supply line in thirty feet.
+  b.set(86, 54, Tile.FibrePlant).set(85, 56, Tile.FibrePlant).set(86, 58, Tile.FibrePlant);
+  b.sign(84, 55, 'THE RETTING BANK', ['flax for the loom', 'cut what you need'], Tile.Signpost);
+  // Reed shallows where the pond eases east.
+  b.fillEllipse(98, 31, 2, 1.5, Tile.Swamp);
+  b.fillEllipse(96, 45, 2, 1.5, Tile.Swamp);
+  b.set(99, 33, Tile.FibrePlant).set(97, 47, Tile.FibrePlant);
   // The willows lean where the water goes.
   b.set(88, 21, Tile.TreeWillow);
   b.set(97, 27, Tile.TreeWillow);
@@ -410,6 +496,14 @@ export function buildAmberford(): ZoneDef {
   }
   b.sign(105, 58, 'THE EAST ROAD', ['the coast, eventually'], Tile.Signpost);
   b.set(66, 59, Tile.LampPost).set(84, 59, Tile.LampPost);
+  // The Old Ford — the shallows the town is named for, kept beside
+  // the bridge the way a family keeps the first tool it ever owned.
+  for (const x of [87, 88, 89]) {
+    b.set(x, 62, Tile.WaterShallow);
+    b.set(x, 63, Tile.WaterShallow);
+  }
+  b.setDetail(86, 62, Detail.Pebbles).setDetail(90, 63, Detail.Pebbles);
+  b.sign(92, 59, 'THE OLD FORD', ['here the amber water ran shallow,', 'and a town grew on the crossing'], Tile.Signpost);
 
   // ---------------------------------------------------------------
   // The Waykeepers' Hall — the travelers' chapel FRONTS THE WEST
@@ -433,17 +527,27 @@ export function buildAmberford(): ZoneDef {
   b.set(39, 70, Tile.Brazier).set(46, 70, Tile.Brazier);
   b.setDetail(42, 69, Detail.Rug).setDetail(43, 69, Detail.Rug);
   b.set(38, 57, Tile.Bookshelf).set(47, 57, Tile.Cabinet);
-  // Pews flank the aisle; adjacent benches merge into full rows.
+  // East pews only — the west aisle became the PILGRIM ALCOVE: two
+  // cots and a locker for road-worn travelers, because the
+  // Waykeepers' faith has always been a roof first, sermon second.
   for (const y of [60, 63, 66]) {
-    b.set(39, y, Tile.Bench).set(40, y, Tile.Bench);
     b.set(45, y, Tile.Bench).set(46, y, Tile.Bench);
   }
+  b.set(38, 60, Tile.Bed).set(38, 63, Tile.Bed);
+  b.set(38, 66, Tile.Cabinet);
+  b.setDetail(39, 61, Detail.RugRound).setDetail(39, 64, Detail.RugRound);
+  // The REGISTRY corner: the book of who passed, at a desk by the
+  // door where any traveler can find a name — or leave one.
+  b.set(46, 59, Tile.Table).set(46, 58, Tile.Chair);
+  b.setDetail(45, 59, Detail.RugRound);
+  b.set(40, 58, Tile.Brazier).set(45, 58, Tile.Brazier); // the lamp kept lit, flanking the aisle
   b.setDetail(42, 57, Detail.Doormat).setDetail(43, 57, Detail.Doormat);
   // The chapel yard: the stone walk from the road, lamps and boxes.
   b.fillRect(42, 54, 2, 2, Tile.Path);
   b.set(40, 54, Tile.LampPost).set(45, 54, Tile.LampPost);
   b.set(39, 55, Tile.FlowerBox).set(46, 55, Tile.FlowerBox);
   b.set(35, 58, Tile.Bench);
+  b.sign(46, 54, "WAYKEEPERS' HALL", ['rest, register, remember']);
 
   // ---------------------------------------------------------------
   // The Commons — the town's homes, spread around a real green with
@@ -476,7 +580,7 @@ export function buildAmberford(): ZoneDef {
   // The coop, south of the woodpile; the hens go where they please.
   b.outlineRect(4, 68, 7, 6, Tile.Fence);
   b.fillRect(5, 69, 5, 4, Tile.Dirt);
-  b.set(10, 70, Tile.Dirt); // the gate, east
+  b.set(10, 70, Tile.FenceGate); // the gate, standing open
   b.setDetail(6, 70, Detail.Straw).setDetail(8, 71, Detail.Straw);
   b.set(11, 70, Tile.Dirt).set(12, 70, Tile.Dirt);
   // Merra the grocer's: pantry stacks by the wall, table set for two,
@@ -567,7 +671,7 @@ export function buildAmberford(): ZoneDef {
   // farmhouse, gate south so the family crosses to work.
   // ---------------------------------------------------------------
   b.outlineRect(3, 36, 19, 12, Tile.Fence);
-  b.set(12, 47, Tile.Dirt); // the field gate, south to the road
+  b.set(12, 47, Tile.FenceGate); // the field gate, standing open
   for (let y = 38; y <= 46; y += 2) {
     for (let x = 5; x <= 19; x++) {
       if (x % 2 === 0) {
@@ -588,14 +692,53 @@ export function buildAmberford(): ZoneDef {
   b.set(12, 48, Tile.Dirt).set(12, 49, Tile.Dirt).set(12, 50, Tile.Dirt);
 
   // ---------------------------------------------------------------
+  // The Free Furrows — common ground between the road and the bank's
+  // west meadow: fenced, gated, and open to any hand that wants to
+  // learn the spade. The town plants the odd rows; the empty ones
+  // wait for wakers. First farm a traveler is allowed to touch.
+  // ---------------------------------------------------------------
+  b.outlineRect(24, 44, 7, 6, Tile.Fence);
+  b.set(27, 49, Tile.FenceGate); // the gate, south to the road
+  for (const x of [25, 26, 27, 28, 29]) {
+    b.set(x, 45, Tile.Tilled);
+    b.set(x, 47, Tile.Tilled);
+  }
+  b.set(25, 45, Tile.CarrotMid).set(28, 45, Tile.WheatMid);
+  b.set(27, 47, Tile.SunflowerMid);
+  b.set(27, 50, Tile.Dirt); // the worn step to the road
+  b.sign(23, 49, 'THE FREE FURROWS', ['common ground', 'plant what you will, waker'], Tile.Signpost);
+
+  // ---------------------------------------------------------------
   // The pasture — the northeast grazing, trough by the west rail.
   // (Perl feuds with these cows. The cows are winning.)
   // ---------------------------------------------------------------
   b.outlineRect(73, 2, 25, 9, Tile.Fence);
-  b.set(78, 10, Tile.Dirt); // the gate, south
+  b.set(78, 10, Tile.FenceGate); // the gate, standing open
   b.set(75, 4, Tile.Basin);
+  b.set(74, 3, Tile.Crate); // the milking corner
   b.setDetail(80, 5, Detail.Straw).setDetail(88, 7, Detail.Straw);
   b.setDetail(93, 4, Detail.Straw);
+  b.sign(71, 7, 'HOLLOWAY PASTURE', ['fresh milk — mind the cows'], Tile.Signpost);
+
+  // ---------------------------------------------------------------
+  // The Amber Delf — the old cutting in the northeast birches where
+  // the town's copper and tin come out of the ground: spoil heaps,
+  // a work corner, a lamp for the early shift, and the one iron
+  // face nobody's bronze pick has beaten yet. The first forge
+  // lesson starts here, not at the anvil. Bretta walks up at dawn.
+  // ---------------------------------------------------------------
+  b.path({ x: 56, y: 13 }, { x: 101, y: 12 }, 1, Tile.Dirt); // the miners' trail
+  b.fillEllipse(104, 8, 5.5, 4.5, Tile.Dirt);
+  b.set(101, 5, Tile.RockCopper).set(106, 4, Tile.RockCopper);
+  b.set(103, 11, Tile.RockTin).set(108, 7, Tile.RockTin);
+  b.set(107, 10, Tile.RockIron); // the better-pick face
+  b.set(100, 9, Tile.Rock).set(105, 12, Tile.Rock); // spoil
+  b.set(100, 6, Tile.Crate).set(100, 7, Tile.Barrel); // the work corner
+  b.set(99, 11, Tile.LampPost); // the early shift's lamp
+  b.setDetail(103, 6, Detail.Pebbles).setDetail(105, 9, Detail.Pebbles);
+  b.setDetail(102, 9, Detail.Pebbles).setDetail(106, 11, Detail.Pebbles);
+  b.sign(57, 12, 'THE DELF', ['ore up the trail', 'mind your footing'], Tile.Signpost);
+  b.sign(99, 9, 'THE AMBER DELF', ['copper and tin for the forge', 'the north face wants a better pick'], Tile.Signpost);
 
   // ---------------------------------------------------------------
   // The orchard — Perl's apple rows between the east road and the
@@ -617,8 +760,15 @@ export function buildAmberford(): ZoneDef {
   b.set(4, 49, Tile.LampPost).set(4, 55, Tile.LampPost);
   b.sign(6, 49, 'DAWNMEAD', ['west, by the First Road'], Tile.Signpost);
   b.set(14, 49, Tile.LampPost).set(26, 49, Tile.LampPost);
+  // The Fordgate is a THRESHOLD now: the arch sprung between the
+  // pillars, wing walls into the meadow, and the waystone that says
+  // what this town is before a single door says anything else.
+  b.set(2, 51, Tile.ArchStone).set(2, 52, Tile.ArchStone).set(2, 53, Tile.ArchStone);
+  b.set(1, 49, Tile.WallStone).set(2, 49, Tile.WallStone).set(3, 49, Tile.WallStone);
+  b.set(1, 55, Tile.WallStone).set(2, 55, Tile.WallStone).set(3, 55, Tile.WallStone);
+  b.sign(5, 55, 'AMBERFORD', ['the ford holds', 'the lamp stays lit'], Tile.Signpost);
   // The other spines' lamps: sparse, where corners turn dark.
-  b.set(56, 13, Tile.LampPost).set(50, 26, Tile.LampPost);
+  b.set(56, 16, Tile.LampPost).set(50, 26, Tile.LampPost);
   b.set(50, 58, Tile.LampPost).set(55, 64, Tile.LampPost);
   // The smiths' lunch oak, alone in the west meadow.
   b.set(29, 28, Tile.TreeOak);
@@ -639,6 +789,7 @@ export function buildAmberford(): ZoneDef {
       if (Math.abs(y - 61) <= 4 && x > 100) continue; // East stub breathes
       if (x >= 2 && x <= 23 && y >= 35 && y <= 49) continue; // fields
       if (x >= 72 && x <= 98 && y >= 1 && y <= 11) continue; // pasture
+      if (x >= 97 && y <= 16) continue; // the Delf clearing
       if (x >= 3 && x <= 36 && y >= 66) continue; // the Commons' south yards
       if (x >= 64 && x <= 92 && y >= 62) continue; // the orchard floor
       const edge = Math.min(x, y, R.w - 1 - x, R.h - 1 - y);
@@ -668,6 +819,10 @@ export function buildAmberford(): ZoneDef {
   b.actor('keeper_ansel', 42.5, 69.5, Math.PI / 2, 'amber_keeper');
   b.actor('orchardist_perl', 74.5, 68.5, -Math.PI / 2, 'amber_orchardist');
   b.actor('courier_nib', 52.5, 44.5, 0, 'amber_courier');
+  // The traveling traders: stalls on the produce row by day, the
+  // inn's guest wing by night — the market finally has voices.
+  b.actor('round_trader', 60.0, 28.8, Math.PI / 2, 'amber_trader_a');
+  b.actor('round_trader', 64.0, 28.8, Math.PI / 2, 'amber_trader_b');
 
   // The animals — the town's working livestock.
   // ---------------------------------------------------------------

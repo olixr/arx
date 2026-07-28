@@ -1,0 +1,21 @@
+{
+  "id": "amber_trader_a",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963267948966,
+    "speed": 1.8
+  },
+  "slots": [
+    {
+      "from": 18.5,
+      "to": 7.5,
+      "task": {
+        "kind": "post",
+        "x": 11.5,
+        "y": 17.4,
+        "dir": 0.0,
+        "speed": 1.6
+      }
+    }
+  ]
+}
