@@ -23,8 +23,8 @@ import shrinekeeperSella from './defs/shrinekeeper_sella.json';
 import silverfallWatch from './defs/silverfall_watch.json';
 import wardenMaren from './defs/warden_maren.json';
 import weaverOttilie from './defs/weaver_ottilie.json';
-import kingHalvard from './defs/king_halvard.json';
-import queenEira from './defs/queen_eira.json';
+import kingAeriex from './defs/king_aeriex.json';
+import queenKayri from './defs/queen_kayri.json';
 import castleGuard from './defs/castle_guard.json';
 import smeltmasterKoll from './defs/smeltmaster_koll.json';
 import assayerRuna from './defs/assayer_runa.json';
@@ -104,8 +104,8 @@ const SOURCES: readonly unknown[] = [
   silverfallWatch,
   wardenMaren,
   weaverOttilie,
-  kingHalvard,
-  queenEira,
+  kingAeriex,
+  queenKayri,
   castleGuard,
   smeltmasterKoll,
   assayerRuna,

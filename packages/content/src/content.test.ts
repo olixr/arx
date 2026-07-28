@@ -1027,8 +1027,8 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   const fallActors = z.actorSpawns ?? [];
   assert.equal(fallActors.length, 38, 'Silverfall lost residents');
   for (const slug of [
-    'king_halvard',
-    'queen_eira',
+    'king_aeriex',
+    'queen_kayri',
     'warden_maren',
     'shrinekeeper_sella',
     'bursar_odele',

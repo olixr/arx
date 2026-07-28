@@ -43,12 +43,12 @@
     },
     {
       "id": "rookery",
-      "text": "Older than the castle, and I can prove it in stone. The first quarrymen pitched here — out of the wind, over the workings. Then a Halvard got called king, terraces got grand, and somebody drew the city's maps *around* us. We stopped minding. A quarter the maps forget is worth more than one they flatter. We're the grandchildren who found quieter work than quarrying. Mostly quieter.",
+      "text": "Older than the castle, and I can prove it in stone. The first quarrymen pitched here — out of the wind, over the workings. Then a Aeriex got called king, terraces got grand, and somebody drew the city's maps *around* us. We stopped minding. A quarter the maps forget is worth more than one they flatter. We're the grandchildren who found quieter work than quarrying. Mostly quieter.",
       "next": "hub"
     },
     {
       "id": "crown",
-      "text": "*Tolerates* is the castle's word. Mine is _arrangement_. The watch holds the wall and the road, but a city's real trouble comes up its alleys, and alleys are ours. When something moves in the dark that shouldn't, the castle hears about it before its own spies do. In exchange: no lamps back here, no ledgers, no questions at Calder's counter. Halvard's father shook on it. Halvard keeps it. Kings who keep their fathers' handshakes are rarer than honest fences.",
+      "text": "*Tolerates* is the castle's word. Mine is _arrangement_. The watch holds the wall and the road, but a city's real trouble comes up its alleys, and alleys are ours. When something moves in the dark that shouldn't, the castle hears about it before its own spies do. In exchange: no lamps back here, no ledgers, no questions at Calder's counter. Aeriex's father shook on it. Aeriex keeps it. Kings who keep their fathers' handshakes are rarer than honest fences.",
       "choices": [
         {
           "text": "Why keep the Undercroft braziers fed?",

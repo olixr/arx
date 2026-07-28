@@ -18,8 +18,8 @@ import sellaShrine from './defs/sella_shrine.json';
 import signyMess from './defs/signy_mess.json';
 import solveiArcanum from './defs/solvei_arcanum.json';
 import wynRemedies from './defs/wyn_remedies.json';
-import halvardCourt from './defs/halvard_court.json';
-import eiraMere from './defs/eira_mere.json';
+import aeriexCourt from './defs/aeriex_court.json';
+import kayriMere from './defs/kayri_mere.json';
 import kollPour from './defs/koll_pour.json';
 import runaScales from './defs/runa_scales.json';
 import stigGrain from './defs/stig_grain.json';
@@ -86,8 +86,8 @@ const SOURCES: readonly unknown[] = [
   signyMess,
   solveiArcanum,
   wynRemedies,
-  halvardCourt,
-  eiraMere,
+  aeriexCourt,
+  kayriMere,
   kollPour,
   runaScales,
   stigGrain,

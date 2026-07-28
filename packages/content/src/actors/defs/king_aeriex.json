@@ -1,8 +1,8 @@
 {
-  "id": "king_halvard",
-  "name": "King Halvard III",
+  "id": "king_aeriex",
+  "name": "King Aeriex",
   "title": "The Silver Line",
-  "examine": "The crown sits on him the way snow sits on the mountain: quietly, heavily, and as if it had always been there.",
+  "examine": "Winter-pale as the high snow, still as the mere. The crown sits on him the way snow sits on the mountain: quietly, heavily, and as if it had always been there.",
   "disposition": "neutral",
   "protection": "invulnerable",
   "combat": {
@@ -18,7 +18,7 @@
   "model": {
     "kind": "humanoid",
     "look": {
-      "skin": 8,
+      "skin": 12,
       "hair": 2,
       "hairColor": 7,
       "beard": 4,
@@ -43,7 +43,7 @@
   ],
   "lines": [
     "My grandfather cut the third terrace. My father paved the road you climbed. I sign papers. The Line, you'll notice, is getting comfortable.",
-    "A king outranks everything on this mountain except the mountain. Maren speaks for the mountain. Watch how carefully I listen to Maren.",
-    "The forge shift works harder than I do and I pay them accordingly. The crown is only heavy if you wear it wrong."
+    "The moonpale runs in the Line — my grandmother said the mountain keeps our color so we can't ever deny it's kin.",
+    "Ask Kayri anything I just told you. If our answers differ, hers is the true one. That arrangement has never once failed the realm."
   ]
 }

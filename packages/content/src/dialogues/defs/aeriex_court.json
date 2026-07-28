@@ -1,10 +1,10 @@
 {
-  "id": "halvard_court",
+  "id": "aeriex_court",
   "start": "greet",
   "bindings": [
     {
       "kind": "actor",
-      "target": "king_halvard"
+      "target": "king_aeriex"
     }
   ],
   "nodes": [
@@ -37,7 +37,7 @@
     },
     {
       "id": "line",
-      "text": "Five kings, one name. The first Halvard was a quarry foreman who paid the shepherds' debts in silver and got called *king* for it, half as a joke. He kept the half that wasn't. We've ruled the same way since: the Crown pays first, pays fairest, and keeps the roads lit. The day a Halvard breaks that bargain, the mountain will find another foreman.",
+      "text": "Five kings, one name. The first Aeriex was a quarry foreman who paid the shepherds' debts in silver and got called *king* for it, half as a joke. He kept the half that wasn't. We've ruled the same way since: the Crown pays first, pays fairest, and keeps the roads lit. The day an Aeriex breaks that bargain, the mountain will find another foreman.",
       "next": "hub"
     },
     {

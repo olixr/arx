@@ -171,8 +171,9 @@ export function buildSilverfall(): ZoneDef {
   // watches it feast.
   b.set(59, 12, Tile.Hearth).set(72, 12, Tile.Hearth);
   b.set(61, 13, Tile.BannerPole).set(70, 13, Tile.BannerPole);
-  b.set(64, 13, Tile.Chair).set(67, 13, Tile.Chair); // the thrones
-  b.setDetail(65, 13, Detail.Rug).setDetail(66, 13, Detail.Rug);
+  // The thrones stand TOGETHER — a hand's reach apart, at the King's
+  // own order. Two seats, one dais, no space for protocol between.
+  b.set(65, 13, Tile.Chair).set(66, 13, Tile.Chair);
   b.setDetail(64, 14, Detail.Rug).setDetail(65, 14, Detail.Rug);
   b.setDetail(66, 14, Detail.Rug).setDetail(67, 14, Detail.Rug);
   b.set(69, 15, Tile.Lectern); // the herald reads the day's decrees
@@ -957,8 +958,8 @@ export function buildSilverfall(): ZoneDef {
   // post (the post-is-the-origin law).
   // ---------------------------------------------------------------
   // The Crown.
-  b.actor('king_halvard', 64.5, 14.4, Math.PI / 2, 'fall_king');
-  b.actor('queen_eira', 67.5, 14.4, Math.PI / 2, 'fall_queen');
+  b.actor('king_aeriex', 65.5, 14.4, Math.PI / 2, 'fall_king');
+  b.actor('queen_kayri', 66.5, 14.4, Math.PI / 2, 'fall_queen');
   b.actor('warden_maren', 52.5, 18.4, 0, 'fall_warden');
   b.actor('castle_guard', 62.5, 29.5, Math.PI / 2, 'fall_castle_guard');
   b.actor('castle_guard', 69.5, 29.5, Math.PI / 2, 'fall_castle_guard');

@@ -1,10 +1,10 @@
 {
-  "id": "eira_mere",
+  "id": "kayri_mere",
   "start": "greet",
   "bindings": [
     {
       "kind": "actor",
-      "target": "queen_eira"
+      "target": "queen_kayri"
     }
   ],
   "nodes": [
@@ -37,7 +37,7 @@
     },
     {
       "id": "ford",
-      "text": "Ford-born and proud of it. My mother pulled toll wagons out of the mud during the war years; I counted them through from the bank steps. When Halvard came down-mountain to sign the peace ledgers, he added his sums wrong twice and I corrected him twice, out loud, in front of his guards. He says that's when he decided. I say a queen who can audit a toll book is worth two who can dance.",
+      "text": "Ford-born and proud of it. My mother pulled toll wagons out of the mud during the war years; I counted them through from the bank steps. When Aeriex came down-mountain to sign the peace ledgers, he added his sums wrong twice and I corrected him twice, out loud, in front of his guards. He says that's when he decided. I say a queen who can audit a toll book is worth two who can dance.",
       "next": "hub"
     },
     {
