@@ -31,10 +31,12 @@ import {
   TECHNIQUE_MAX_RANK,
   VENOM_TICK_EVERY,
   honedAbility,
+  techniqueRankFor,
   type AbilityDef,
   type StatusApply,
 } from '@arx/shared';
 import { ABILITIES, TECHNIQUES, abilityDef, techniquesFor } from './abilities.js';
+import { NPCS, scaleNpcDef } from './npcs.js';
 
 const TICK = 20;
 
@@ -262,6 +264,59 @@ test('techniques never fork identity: rank steps leave id/shape/fx face alone', 
 test('every style ladder still resolves against the ability book', () => {
   for (const style of ['melee', 'archery', 'magic', 'sneak']) {
     for (const t of techniquesFor(style)) assert.ok(ABILITIES.has(t.ability));
+  }
+});
+
+// ------------------------------------------------ THE PAYOFF BRACKET
+// The player-side twin of THE THREAT LAW's TTK brackets: at any base
+// level, the best technique payoff must stay a PAYOFF — meaningful
+// against an at-level line fighter, never a delete button. The line
+// fighter is the game's own scaling law (scaleNpcDef of the skeleton),
+// so these brackets ride the same curve dungeons do.
+
+test('THE PAYOFF BRACKET: one press never deletes an at-level line fighter', () => {
+  const skeleton = NPCS.get('skeleton')!;
+  const powerMult = (l: number): number => 1 + l * 0.05;
+  const oneTargetBeats = (ab: AbilityDef): number => {
+    switch (ab.shape) {
+      case 'pulse_nova':
+        return ab.pulses ?? 1;
+      case 'ground_field':
+        return Math.floor((ab.fieldTicks ?? 0) / (ab.pulseEveryTicks ?? 20));
+      case 'flurry':
+        return ab.hits ?? 1;
+      default:
+        return 1; // fans/dashes: one shaft connects with ONE target
+    }
+  };
+  for (const L of [10, 25, 50, 75, 95]) {
+    const fighterHp = scaleNpcDef(skeleton, L).maxHp;
+    for (const style of ['melee', 'archery', 'magic', 'sneak']) {
+      let instantBest = 0;
+      let channelBest = 0;
+      for (const t of techniquesFor(style)) {
+        if (!t.hidden && t.unlockLevel > L) continue;
+        const ab = honedAbility(abilityDef(t.ability)!, t.ranks, techniqueRankFor(t, L));
+        if (ab.damage < 3) continue;
+        const perBeat = Math.round(ab.damage * powerMult(L));
+        const beats = oneTargetBeats(ab);
+        const instant = beats === 1 ? perBeat : 0;
+        instantBest = Math.max(instantBest, instant);
+        channelBest = Math.max(channelBest, perBeat * beats);
+        assert.ok(
+          instant <= fighterHp * 0.75,
+          `${style}/${t.ability} @L${L}: instant ${instant} deletes the ${fighterHp}hp line fighter`,
+        );
+        assert.ok(
+          perBeat * beats <= fighterHp * 1.1,
+          `${style}/${t.ability} @L${L}: full channel ${perBeat * beats} vs ${fighterHp}hp exceeds the payoff cap`,
+        );
+      }
+      assert.ok(
+        channelBest >= fighterHp * 0.2,
+        `${style} @L${L}: best payoff ${channelBest} vs ${fighterHp}hp — payoffs must stay meaningful`,
+      );
+    }
   }
 });
 

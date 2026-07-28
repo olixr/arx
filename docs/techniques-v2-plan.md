@@ -1,9 +1,10 @@
 # Techniques v2 — The Honed Art & The Callings
 
-Status: **PHASES 1–5 SHIPPED** (2026-07-28; Phase 1 HONED-ART d101b22, Phase 2
-OPEN LADDER ebfe816, Phase 3 CALLINGS fe9f4b5, Phase 4 Codex v2 e814459,
-Phase 5 UNWRITTEN PAGE b0a2839 — 44 arts and 42 Callings live). Phase 6
-(the live balance pass) remains as planned below.
+Status: **ALL SIX PHASES SHIPPED** (2026-07-28; Phase 1 HONED-ART d101b22,
+Phase 2 OPEN LADDER ebfe816, Phase 3 CALLINGS fe9f4b5, Phase 4 Codex v2
+e814459, Phase 5 UNWRITTEN PAGE b0a2839, Phase 6 balance pass — 44 arts and
+42 Callings live, contract-tested and live-verified; the shipped balance
+ledger is the appendix at the end of this document).
 Companion to the combat-depth 4.1 slots, the Techniques codex (V screen), and
 THE THREAT LAW (`shared/sim/damage.ts`). Read those before touching anything here.
 
@@ -321,3 +322,86 @@ user asked for: veterans run visibly richer builds.**
   the authored deltas are the tuning surface; two dials invite drift.
 - **Third Calling per skill (Lv 90 keystones, cost 3)?** Recommend deferring to a
   follow-up epic once launch magnitudes settle.
+
+---
+
+## Appendix — the shipped ladder (balance ledger, 2026-07-28, Phase 6)
+
+Cycle values from THE LADDER MODEL (`content/src/ladder.test.ts`) at each rank —
+the numbers the contract tests pin. THE PAYOFF BRACKET (same file) additionally
+holds every art's one-press payload under 0.75× (instant) / 1.1× (full channel)
+of an at-level line fighter's HP on the game's own scaling curve, at levels
+10 through 95. Retune by editing rank steps and letting the tests judge —
+never by ear.
+
+**melee**
+
+| art | seat | I | II | III | IV |
+|---|---|---|---|---|---|
+| Heavy Slam | Lv 5 | 1.31 | 1.64 | 1.67 | 1.90 |
+| Bull Rush | Lv 10 | 1.30 | 1.55 | 1.72 | 1.92 |
+| Whirlwind | Lv 15 | 1.06 | 1.32 | 1.36 | 1.80 |
+| Warcry *(utility)* | Lv 20 | 0.00 | 0.00 | 0.00 | 0.00 |
+| Steel Wave | Lv 25 | 1.15 | 1.53 | 1.72 | 2.01 |
+| Bloodlust *(utility)* | Lv 30 | 0.00 | 0.00 | 0.00 | 0.00 |
+| Stagger Stomp | Lv 35 | 1.07 | 1.31 | 1.51 | 1.83 |
+| Headsman's Stroke | Lv 40 | 1.57 | 1.83 | 2.04 | 2.22 |
+| Earthbreaker | Lv 45 | 1.56 | 1.79 | 1.87 | 2.19 |
+| Warlord's Descent | Lv 50 | 1.51 | 1.72 | 1.92 | 1.95 |
+| Oathbound Edge | page (anchor 30) | 1.23 | 1.46 | 1.62 | 1.70 |
+
+Style mean at Rank IV **1.95**, band [1.56, 2.34] — all damage arts inside.
+
+**archery**
+
+| art | seat | I | II | III | IV |
+|---|---|---|---|---|---|
+| Tumble Shot | Lv 5 | 1.04 | 1.29 | 1.51 | 2.29 |
+| Longshot | Lv 10 | 1.22 | 1.49 | 1.69 | 1.99 |
+| Rain of Arrows | Lv 15 | 1.01 | 1.24 | 1.49 | 1.94 |
+| Snare Shot *(utility)* | Lv 20 | 0.31 | 0.31 | 0.36 | 0.36 |
+| Ricochet | Lv 25 | 1.19 | 1.52 | 1.76 | 2.21 |
+| Twin Strike | Lv 30 | 2.04 | 2.25 | 2.38 | 2.60 |
+| Skyfall Shot | Lv 35 | 1.37 | 1.59 | 1.82 | 2.25 |
+| Phantom Flight | Lv 40 | 1.47 | 1.84 | 2.04 | 2.57 |
+| Storm of Shafts | Lv 45 | 1.11 | 1.38 | 1.73 | 2.22 |
+| Arrow Tempest | Lv 50 | 1.67 | 2.00 | 2.18 | 2.59 |
+| Warden's Volley | page (anchor 30) | 1.10 | 1.27 | 1.45 | 1.87 |
+
+Style mean at Rank IV **2.25**, band [1.80, 2.70] — all damage arts inside.
+
+**magic**
+
+| art | seat | I | II | III | IV |
+|---|---|---|---|---|---|
+| Arc Bolt | Lv 5 | 1.85 | 2.05 | 2.35 | 2.66 |
+| Frost Lance | Lv 10 | 1.19 | 1.41 | 1.59 | 2.08 |
+| Blink *(utility)* | Lv 15 | 0.19 | 0.23 | 0.27 | 0.36 |
+| Ward Shell *(utility)* | Lv 20 | 0.00 | 0.00 | 0.00 | 0.00 |
+| Ember Fan | Lv 25 | 1.47 | 1.63 | 1.82 | 2.55 |
+| Meteor Shard | Lv 30 | 1.77 | 1.97 | 2.02 | 2.49 |
+| Stormcall | Lv 35 | 1.65 | 1.95 | 2.40 | 2.62 |
+| Mirror Image *(utility)* | Lv 40 | 0.00 | 0.00 | 0.00 | 0.00 |
+| Maelstrom | Lv 45 | 1.42 | 1.62 | 1.67 | 2.03 |
+| Daybreak | Lv 50 | 1.72 | 1.90 | 2.11 | 2.47 |
+| Riftwalker Step | page (anchor 30) | 1.31 | 1.52 | 1.75 | 2.02 |
+
+Style mean at Rank IV **2.36**, band [1.89, 2.84] — all damage arts inside.
+
+**sneak**
+
+| art | seat | I | II | III | IV |
+|---|---|---|---|---|---|
+| Rend | Lv 5 | 2.06 | 2.19 | 2.35 | 2.45 |
+| Ghost Step | Lv 10 | 1.36 | 1.59 | 1.86 | 2.62 |
+| Smoke Bomb *(utility)* | Lv 15 | 0.51 | 0.52 | 0.52 | 0.57 |
+| Caltrops | Lv 20 | 1.14 | 1.44 | 1.74 | 1.98 |
+| Fan of Knives | Lv 25 | 1.19 | 1.44 | 1.64 | 2.26 |
+| Envenom *(utility)* | Lv 30 | 0.00 | 0.00 | 0.00 | 0.00 |
+| Feint Double *(utility)* | Lv 35 | 0.00 | 0.00 | 0.00 | 0.00 |
+| Exposing Strike | Lv 40 | 1.20 | 1.51 | 1.71 | 1.97 |
+| Night Fangs | Lv 45 | 1.53 | 1.75 | 2.16 | 2.55 |
+| Thousand Cuts | Lv 50 | 1.49 | 1.90 | 2.45 | 2.73 |
+| Whisper Fang | page (anchor 30) | 1.40 | 1.61 | 1.80 | 2.64 |
+
+Style mean at Rank IV **2.40**, band [1.92, 2.88] — all damage arts inside.
