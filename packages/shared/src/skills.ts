@@ -104,6 +104,24 @@ export function levelForXp(xp: number): number {
 
 export type SkillXp = Partial<Record<SkillId, number>>;
 
+/**
+ * The one number a beast sizes you up by: staying power (vitality +
+ * defence) plus your best way of hurting it back. A player who trains
+ * all three combat pillars to L sits at combat level L; a pure skiller
+ * stays near 1 no matter how deep their trade runs — and the wilds
+ * treat them accordingly.
+ */
+export function combatLevel(skills: SkillXp): number {
+  const stay = (levelForXp(skills.vitality ?? 0) + levelForXp(skills.defence ?? 0)) / 4;
+  const strike =
+    Math.max(
+      levelForXp(skills.melee ?? 0),
+      levelForXp(skills.archery ?? 0),
+      levelForXp(skills.magic ?? 0),
+    ) / 2;
+  return Math.max(1, Math.round(stay + strike));
+}
+
 export function isSkillId(s: string): s is SkillId {
   return (SKILL_IDS as readonly string[]).includes(s);
 }

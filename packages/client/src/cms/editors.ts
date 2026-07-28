@@ -284,6 +284,7 @@ function derivedPills(d: NpcDef): HTMLElement[] {
   ];
   if (d.ranged) pills.push(pill(`ranged ${d.ranged.range}t`, 'shoots projectiles', 'ink'));
   if (d.pack) pills.push(pill(`pack: ${d.pack}`, 'shares aggro with its pack', 'ink'));
+  if (d.craven) pills.push(pill('craven', 'badly hurt, may run to fetch a packmate', 'ink'));
   if (d.special) pills.push(pill(d.special.ability, 'special ability', 'brass'));
   pills.push(
     pill(
@@ -432,6 +433,13 @@ function npcDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
         else delete draft.pack;
         markDirty();
         rebuild();
+      }),
+    );
+    chipRow.appendChild(
+      featureChip('craven', !!draft.craven, 'Badly hurt, may break off and run to fetch a resting packmate (needs a pack tag)', (on) => {
+        if (on) draft.craven = true;
+        else delete draft.craven;
+        markDirty();
       }),
     );
     nature.appendChild(chipRow);

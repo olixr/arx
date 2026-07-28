@@ -16,6 +16,7 @@ import {
   encodeChunk,
   encodeSnapshot,
   encodeTilePatch,
+  combatLevel,
   isSkillId,
   levelForXp,
   stepMovement,
@@ -61,6 +62,8 @@ import {
   NODES_BY_TILE,
   NPCS,
   PACK_RALLY_RANGE,
+  HELP_SEEK_RANGE,
+  levelAggroFactor,
   RECIPES,
   STARTER_KIT,
   TOOL_TIER_NAMES,
@@ -332,7 +335,13 @@ interface NpcComp {
   def: NpcDef;
   originX: number;
   originY: number;
-  state: 'idle' | 'chase' | 'return';
+  /**
+   * 'seekhelp' is the craven break: still in the fight (the eye chip
+   * stays lit, the leash still binds), but running for a resting
+   * packmate instead of swinging — the shout on arrival re-enters
+   * 'chase' through npcAggro like every other path into combat.
+   */
+  state: 'idle' | 'chase' | 'return' | 'seekhelp';
   targetEid: EntityId | null;
   /** Wander steering, re-rolled every few seconds. */
   wanderUntilTick: number;
@@ -361,6 +370,12 @@ interface NpcComp {
   navRefY: number;
   /** A failed chase sulks: no aggro scans until this tick. */
   noAggroUntilTick: number;
+  /** The packmate a craven runner is fleeing toward (seekhelp). */
+  helpEid: EntityId | null;
+  /** Give-up tick for the help run — shout where you stand and turn. */
+  helpUntilTick: number;
+  /** The craven decision is made once per life, whichever way it went. */
+  helpCalled: boolean;
   /** Lane-nav slate (NavState) — see navToward. */
   nav: { pts: Vec2[]; idx: number; goalX: number; goalY: number } | null;
   nextRepathTick: number;
@@ -6692,6 +6707,22 @@ export class GameServer {
       this.npcAggro(npcEid, npc, attackerEid);
     }
 
+    // The craven break: a badly hurt pack-fighter decides ONCE, at the
+    // wound that drops it low, whether to steel itself or bolt for a
+    // packmate still at rest. The flag is set either way — no re-roll
+    // per hit, no flip-flopping mid-duel.
+    if (
+      health.hp > 0 &&
+      npc.def.craven &&
+      npc.def.pack &&
+      npc.state === 'chase' &&
+      !npc.helpCalled &&
+      health.hp <= npc.def.maxHp * 0.35
+    ) {
+      npc.helpCalled = true;
+      if (Math.random() < 0.5) this.npcSeekHelp(npcEid, npc);
+    }
+
     if (health.hp <= 0) this.killNpc(npcEid, npc, attackerEid);
   }
 
@@ -7131,6 +7162,9 @@ export class GameServer {
       navRefX: Infinity,
       navRefY: Infinity,
       noAggroUntilTick: 0,
+      helpEid: null,
+      helpUntilTick: 0,
+      helpCalled: false,
       nav: null,
       nextRepathTick: 0,
       losClear: false,
@@ -7239,6 +7273,9 @@ export class GameServer {
         navRefX: Infinity,
         navRefY: Infinity,
         noAggroUntilTick: 0,
+        helpEid: null,
+        helpUntilTick: 0,
+        helpCalled: false,
         nav: null,
         nextRepathTick: 0,
         losClear: false,
@@ -7876,6 +7913,67 @@ export class GameServer {
     }
   }
 
+  /**
+   * The craven break, decided: find the nearest packmate still at
+   * rest and run to it. A companion already at arm's reach needs no
+   * journey — the cry goes up on the spot. Nobody within
+   * HELP_SEEK_RANGE means nobody to run to: the body stays and
+   * fights after all, and the once-per-life flag keeps it honest.
+   */
+  private npcSeekHelp(eid: EntityId, npc: NpcComp): void {
+    const pos = this.positions.get(eid);
+    const targetEid = npc.targetEid;
+    if (!pos || targetEid === null) return;
+    let bestEid: EntityId | null = null;
+    let bestDist = HELP_SEEK_RANGE;
+    for (const [oEid, other] of this.npcs) {
+      if (oEid === eid || other.def.pack !== npc.def.pack) continue;
+      if (other.state !== 'idle' || other.def.damage <= 0) continue;
+      if (this.tickCount < other.noAggroUntilTick) continue;
+      const opos = this.positions.get(oEid);
+      if (!opos) continue;
+      const d = Math.hypot(opos.x - pos.x, opos.y - pos.y);
+      if (d < bestDist) {
+        bestDist = d;
+        bestEid = oEid;
+      }
+    }
+    if (bestEid === null) return;
+    if (bestDist < 2.5) {
+      this.npcCryHelp(eid, npc, targetEid);
+      return;
+    }
+    npc.state = 'seekhelp';
+    npc.helpEid = bestEid;
+    npc.helpUntilTick = this.tickCount + 160; // ~8s of running, then shout anyway
+    npc.windupTicks = 0;
+    npc.navBest = Infinity;
+    npc.navStuck = 0;
+    npc.steer.side = 0;
+    npc.steer.ticks = 0;
+    npc.nav = null;
+    npc.nextRepathTick = 0;
+    npc.losUntilTick = 0;
+  }
+
+  /**
+   * The cry itself: a bark everyone nearby reads in local chat, a
+   * rally that carries a bit past the ordinary pack answer (a scream
+   * travels), and straight back into the chase through npcAggro.
+   */
+  private npcCryHelp(eid: EntityId, npc: NpcComp, targetEid: EntityId): void {
+    const cries = ['Help! Help!', 'To me! To me!', 'Get them off me!'];
+    const text = cries[eid % cries.length]!;
+    for (const s of this.sessions) {
+      if (s.knownEntities.has(eid)) {
+        s.sendJson({ t: 'chat', channel: 'local', from: npc.def.name, eid, text });
+      }
+    }
+    npc.helpEid = null;
+    this.npcAggro(eid, npc, targetEid, { rally: false });
+    this.rallyPack(eid, npc, targetEid, PACK_RALLY_RANGE + 2);
+  }
+
   /** Resolve an NPC's chase target: a live player or a straw decoy. */
   private npcTargetPos(targetEid: EntityId): { x: number; y: number } | null {
     const player = this.players.get(targetEid);
@@ -7964,9 +8062,14 @@ export class GameServer {
           if (!ppos) continue;
           const dx = ppos.x - pos.x;
           const dy = ppos.y - pos.y;
+          // THE SIZING-UP LAW: the posted range is for an even match.
+          // A beast that outclasses the waker marks them from much
+          // farther out; one they outgrew barely lifts its head —
+          // deep zones get MORE dangerous, farmed zones get quieter.
+          let aggro =
+            npc.def.aggroRange * levelAggroFactor(npc.def.level, combatLevel(player.skills));
           // Sneaking shrinks how close this NPC lets you get — the whole
           // point of the skill below the invisibility tiers.
-          let aggro = npc.def.aggroRange;
           if (player.sneaking) {
             aggro *= sneakDetectionFactor(this.effectiveLevel(player, 'sneak'));
           }
@@ -8118,6 +8221,43 @@ export class GameServer {
             }
           }
         }
+      } else if (npc.state === 'seekhelp') {
+        // The craven run: still bound to the quarry and the leash,
+        // but the legs belong to the errand — reach the packmate,
+        // shout, and wheel back into the fight.
+        const tpos = npc.targetEid !== null ? this.npcTargetPos(npc.targetEid) : null;
+        const fromOrigin = Math.hypot(pos.x - npc.originX, pos.y - npc.originY);
+        if (!tpos || npc.targetEid === null || fromOrigin > npc.def.leashRange) {
+          // The quarry vanished (or the run outran the leash): the
+          // errand dies with the chase.
+          npc.state = 'return';
+          npc.targetEid = null;
+          npc.helpEid = null;
+          npc.navBest = Infinity;
+          npc.navStuck = 0;
+        } else {
+          const helper = npc.helpEid !== null ? this.npcs.get(npc.helpEid) : undefined;
+          const hpos = npc.helpEid !== null ? this.positions.get(npc.helpEid) : undefined;
+          const hd = hpos ? Math.hypot(hpos.x - pos.x, hpos.y - pos.y) : Infinity;
+          if (!helper || !hpos || helper.state !== 'idle' || hd < 2.2 || this.tickCount >= npc.helpUntilTick) {
+            // Arrived — or the companion moved, died, or joined on its
+            // own, or the run dragged on: the cry goes up right here.
+            this.npcCryHelp(eid, npc, npc.targetEid);
+          } else {
+            const h = this.npcNavToward(npc, pos, hpos.x, hpos.y);
+            moveX = h.mx;
+            moveY = h.my;
+            // Closest-approach watchdog, same law as the homeward walk:
+            // a run that stops closing has hit something the fan can't
+            // round — shout from here rather than pace a fence forever.
+            if (hd < npc.navBest - 0.15) {
+              npc.navBest = hd;
+              npc.navStuck = 0;
+            } else if (++npc.navStuck >= GameServer.RETURN_STALL_TICKS) {
+              this.npcCryHelp(eid, npc, npc.targetEid);
+            }
+          }
+        }
       } else if (npc.state === 'return') {
         const dx = npc.originX - pos.x;
         const dy = npc.originY - pos.y;
@@ -8126,6 +8266,9 @@ export class GameServer {
           npc.state = 'idle';
           const health = this.healths.must(eid);
           health.hp = health.maxHp; // reset like classic MMO leashing
+          // A fresh life makes the craven choice fresh too.
+          npc.helpCalled = false;
+          npc.helpEid = null;
         } else {
           const h = this.npcNavToward(npc, pos, npc.originX, npc.originY);
           moveX = h.mx;
@@ -8205,7 +8348,12 @@ export class GameServer {
       }
 
       if (moveX !== 0 || moveY !== 0) {
-        let speed = npc.state === 'chase' ? npc.def.speed : npc.def.speed * 0.6;
+        // A craven runner flees at full chase speed — a stroll to
+        // fetch friends would read as a bug, not a plan.
+        let speed =
+          npc.state === 'chase' || npc.state === 'seekhelp'
+            ? npc.def.speed
+            : npc.def.speed * 0.6;
         if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
         // The polite step-aside: converging packmates fan out around
         // a target instead of stacking into one sprite; a returning
@@ -8230,7 +8378,11 @@ export class GameServer {
     // Fresh detection state for this tick's snapshots (the eye chip).
     this.chasedPlayers.clear();
     for (const [, npc] of this.npcs) {
-      if (npc.state === 'chase' && npc.targetEid !== null && this.players.has(npc.targetEid)) {
+      if (
+        (npc.state === 'chase' || npc.state === 'seekhelp') &&
+        npc.targetEid !== null &&
+        this.players.has(npc.targetEid)
+      ) {
         this.chasedPlayers.add(npc.targetEid);
       }
     }
@@ -8253,7 +8405,7 @@ export class GameServer {
       let best = 0;
       for (const [npcEid, npc] of this.npcs) {
         if (npc.def.aggroRange <= 0 || npc.def.damage <= 0) continue;
-        if (npc.state === 'chase' && npc.targetEid === eid) continue;
+        if ((npc.state === 'chase' || npc.state === 'seekhelp') && npc.targetEid === eid) continue;
         const npos = this.positions.get(npcEid);
         if (!npos) continue;
         const dist = Math.hypot(npos.x - pos.x, npos.y - pos.y);
@@ -8609,6 +8761,30 @@ export class GameServer {
         placed++;
       }
       player.session?.sendJson({ t: 'chat', channel: 'system', text: `Spawned ${def.name} ×${placed}.` });
+      return;
+    }
+    if (config.devCommands && text.startsWith('/npcstate')) {
+      // Nearby NPC combat brains, closest first — the aggro-debug lens.
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      const rows: string[] = [];
+      for (const [nEid, npc] of this.npcs) {
+        const npos = this.positions.get(nEid);
+        if (!npos) continue;
+        const d = Math.hypot(npos.x - pos.x, npos.y - pos.y);
+        if (d > 20) continue;
+        const hp = this.healths.get(nEid);
+        rows.push(
+          `${npc.def.id}#${nEid} d=${d.toFixed(1)} ${npc.state} tgt=${npc.targetEid ?? '-'} ` +
+          `hp=${hp?.hp}/${hp?.maxHp} sulk=${Math.max(0, npc.noAggroUntilTick - this.tickCount)} ` +
+          `helpEid=${npc.helpEid ?? '-'} called=${npc.helpCalled}`,
+        );
+      }
+      rows.sort();
+      const send = (t: string) =>
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      if (rows.length === 0) send('No NPCs within 20 tiles.');
+      for (const r of rows.slice(0, 12)) send(r);
       return;
     }
     if (config.devCommands && text.startsWith('/spawnnpc')) {

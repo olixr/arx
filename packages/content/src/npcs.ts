@@ -74,10 +74,37 @@ export interface NpcDef {
    * howl re-gathers the pack mid-fight.
    */
   pack?: string;
+  /**
+   * The craven break: badly hurt, this body SOMETIMES turns and runs
+   * for the nearest packmate still at rest, shouting the whole camp
+   * onto you when it gets there — and sometimes it steels itself and
+   * fights to the end. One decision per life. Bandits and goblins
+   * scream for their fellows; the dead and the beasts never do.
+   * Meaningless without a pack tag (nobody to run to).
+   */
+  craven?: boolean;
 }
 
 /** How far a pack answers a packmate's aggro (tiles). */
 export const PACK_RALLY_RANGE = 7;
+
+/** How far a craven body will run looking for a resting packmate (tiles). */
+export const HELP_SEEK_RANGE = 12;
+
+/**
+ * THE SIZING-UP LAW: aggro range scales by how the beast reads you.
+ * A wolf that outclasses a waker marks them far beyond its posted
+ * range (nothing to fear, everything to eat); the same wolf gives a
+ * seasoned slayer a wide berth and only bristles at close insult.
+ * Ratio-based so the law self-normalizes across the ladder — five
+ * levels means everything at level 5 and almost nothing at level 80.
+ * Floored, never zeroed: no beast is ever perfectly safe to stand on.
+ */
+export function levelAggroFactor(npcLevel: number, playerLevel: number): number {
+  const K = 8; // softening: keeps low-level ratios from exploding
+  const f = (npcLevel + K) / (playerLevel + K);
+  return Math.min(1.75, Math.max(0.35, f));
+}
 
 const defs: NpcDef[] = [
   {
@@ -171,6 +198,11 @@ const defs: NpcDef[] = [
     color: '#5c8a3a',
     radius: 0.3,
     hitHeight: 2.0,
+    // Greenskins swarm: poke one camp-squatter and the warband answers.
+    pack: 'goblin',
+    // And a goblin's courage lives in its numbers — bloodied, it may
+    // bolt for a fellow and drag the whole squabble back with it.
+    craven: true,
   },
   {
     id: 'goblin_thrower',
@@ -192,6 +224,9 @@ const defs: NpcDef[] = [
     // Keeps its distance and lobs rocks — punishes standing still,
     // rewards closing the gap or trading at range.
     ranged: { range: 5.5, projectileSpeed: 9 },
+    // Same warband as the choppers — the rocks start flying the
+    // moment any greenskin takes a hit.
+    pack: 'goblin',
   },
   {
     // The wilds' first HUMAN enemies — deserters and toll-thieves who
@@ -215,6 +250,9 @@ const defs: NpcDef[] = [
     radius: 0.3,
     hitHeight: 2.0,
     pack: 'brigand',
+    // A deserter deserts: pressed hard, he may break for the camp and
+    // come back with friends — or grit his teeth and finish it.
+    craven: true,
   },
   {
     id: 'brigand_archer',
@@ -280,6 +318,9 @@ const defs: NpcDef[] = [
     // A lone kobold is a coward; a warren is a threat. The pack law
     // makes every quarry scuffle an ambush — yip at one, meet them all.
     pack: 'kobold',
+    // Cowardice made literal: a bleeding kobold may scurry off to
+    // fetch the warren rather than die alone.
+    craven: true,
   },
   {
     id: 'kobold_digmaster',
@@ -808,7 +849,7 @@ export function validateNpcDef(
       errors.push('lays needs {item, minSec, maxSec, xp}');
     }
   }
-  for (const f of ['pounce'] as const) {
+  for (const f of ['pounce', 'craven'] as const) {
     if (d[f] !== undefined && typeof d[f] !== 'boolean') errors.push(`${f} must be a boolean`);
   }
   if (d.pack !== undefined && typeof d.pack !== 'string') errors.push('pack must be a string');
