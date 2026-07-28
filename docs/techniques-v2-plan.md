@@ -5,11 +5,15 @@ combat-depth 4.1 slots, the Techniques codex (V screen), and THE THREAT LAW
 (`shared/sim/damage.ts`). Read those before touching anything here.
 
 The brief: skills should feel like an investment with endless build expression.
-Three gaps close that brief — (1) techniques you unlocked early must keep growing
+Five gaps close that brief — (1) techniques you unlocked early must keep growing
 so the ladder is a *choice*, not a checklist; (2) every skill, combat or trade,
 should offer **chosen, toggleable passives** — an identity you opt into, not just
 stats your cape happens to carry; (3) a slow account-wide budget that deep
-investment enlarges, so veterans literally run richer builds.
+investment enlarges, so veterans literally run richer builds; (4) the roster
+itself must be wide enough to carry deep dungeon play — **ten arts per style
+minimum**, so two adventurers of the same school rarely fight alike; (5) beyond
+the ladder, **hidden arts earned from events, feats, and quests** — the rewards
+that make a veteran visibly, enviably unique.
 
 ---
 
@@ -161,7 +165,81 @@ Both feed the same hook sites.**
   no player-state drop luck, per the flood law. Yield doubles ride the existing
   bonusYield/qty paths.)
 
-### LAW 3 — THE FOCUS LAW (the budget that deep investment enlarges)
+### LAW 3 — THE OPEN LADDER (an art every five levels)
+
+**Each combat style carries ten leveled arts: a new technique every five levels
+from 5 through 50. The first fifty levels of a combat skill are the era of
+discovery; fifty to ninety-five are the era of honing.**
+
+- Unlock rungs: **5 / 10 / 15 / 20 / 25 / 30 / 35 / 40 / 45 / 50**. The existing
+  16 keep their seats (5/15/30/45); each style gains **6 new arts** at
+  10/20/25/35/40/50 — 24 new techniques, 40 total.
+- The cap at 50 is deliberate: with HONED-ART thresholds (+45 to Rank IV), the
+  level-50 art fully matures at **95** — every art in the game can be mastered
+  before 99, and the deepest art honing IS the 50→99 endgame.
+- With ten shapes per style and overlapping maturity curves, the R slot stops
+  being "the best one I own" and becomes a *loadout decision per dungeon* —
+  free respec is the point: swap arts at the gate like checking your pack.
+- **Concept roster** (names/numbers are placeholders for the VOICE + balance
+  pass; every art must map to an executor shape — new shapes flagged ⚠):
+
+| lvl | melee | archery | magic | sneak |
+|---|---|---|---|---|
+| 5 | heavy_slam ✓ | tumble_shot ✓ | arc_bolt ✓ | rend ✓ |
+| 10 | bull_rush — dash_strike gap-close + kb | piercing_bolt — projectile, pierce line | frost_lance — beam, chill | shadowstep — dash_strike, backstab-angle tele-lunge |
+| 15 | whirlwind ✓ | rain_of_arrows ✓ | blink ✓ | smoke_bomb ✓ |
+| 20 | rally_cry — self_buff shieldHp | snare_shot — summon snare_trap at range | ward_shell — self_buff shieldHp | caltrops — ground_field bleed+slow |
+| 25 | crescent_wave — projectile arc-wave, short range | ricochet — chain_zap arrow, 2 hops | ember_fan — projectile_fan ×3 burn | fan_of_knives — nova of blades, bleed |
+| 30 | bloodlust ✓ | twin_strike ✓ | meteor_shard ✓ | envenom ✓ |
+| 35 | stagger_stomp — nova kb + shock | skyfall_arrow — ground_aoe single heavy | stormcall — ground_field shock | feint_double — summon decoy |
+| 40 | headsman_stroke — melee_arc executeBelow | phantom_flight — returns (boomerang) pierce arrow | mirror_image — summon decoy | exposing_strike — melee_arc executeBelow |
+| 45 | earthbreaker ✓ | storm_of_shafts ✓ | maelstrom ✓ | night_fangs ✓ |
+| 50 | warlords_descent — leap_slam + brief war-shout buff ⚠(compound) | arrow_tempest — flurry single-target barrage | starfall — ground_aoe grand, radiant | thousand_cuts — flurry, bleed stacks |
+
+- All 24 ride existing executor shapes except the one flagged compound — the 13
+  shapes + modifier axes (executeBelow, drainFrac, negative knockback, returns,
+  homing, summons incl. snare_trap/decoy) already cover this roster. That was the
+  point of the interpreter design; we're finally spending it.
+- The content test tightens from "≥3 per style" to **exactly the rung table** —
+  every style has an art at every rung, no gaps, no doubles.
+- **THE FLOURISH CONTRACT** (extends the FX v2/v3 laws): a technique does not
+  ship until it has (a) a bespoke `FX_STYLES` entry — the existing uniqueness
+  test (no two abilities share the mid/ring/debris/decal/punch face) already
+  enforces this at scale, 24 new faces required; (b) a spell-plate icon; (c) its
+  Rank-IV signature visibly distinct in-world (the honed art must LOOK honed —
+  rank-aware fx accents: wider rims, deeper aftermath, added motif beats); (d) a
+  bench card in VOICE. The FX pass also revisits the original 16 under v3
+  (ground-truth AoE volumes, staged aftermath) so old arts don't read flat next
+  to new ones.
+
+### LAW 4 — THE UNWRITTEN PAGE (hidden arts, earned not leveled)
+
+**Beyond the ladder live hidden arts with no level rung: earned through events,
+feats, quests, and encounters. They are the ecosystem's envy engine — the art a
+player carries that you cannot get by grinding, only by having been there.**
+
+- **Data**: `TechniqueDef.hidden?: { anchorLevel: number }` — hidden arts belong
+  to a style but sit outside the rung table; `anchorLevel` seeds HONED-ART rank
+  derivation (surplus over anchor) so earned arts still grow with the hand.
+- **Unlock ledger**: the existing `character_flags` rail (`art:<id>` flags) —
+  the same durable-flag store dialogue already writes, and exactly what the
+  quest/faction state was reserved for. Granting an art = setting a flag from
+  any source: dialogue trees, feat detection in server hooks, boss first-kills,
+  seasonal events. No new table; `setTechnique` validation grows one branch
+  (rung arts check level, hidden arts check flag).
+- **Codex law**: hidden arts are invisible until earned — no veiled plate, no
+  rumor row, nothing to min-max against. The DISCOVERED ceremony pattern (Chart
+  epic) fires on the grant; the art then takes a normal seat in its style rail
+  wearing an earned-mark seal. What players see of each other IS the discovery
+  surface: an unfamiliar flourish in a dungeon is the advertisement.
+- **Launch seeds** (4, one per style, all grantable from existing systems):
+  riftwalker_step (magic — first riftgate dungeon clear), oathbound_edge (melee —
+  a Silverfall quest-line flag), warden_volley (archery — garrison event feat),
+  whisper_fang (sneak — Rookery dialogue chain). Sigils remain the boss-trophy
+  axis; hidden arts are the *deed* axis — never drop-luck, always a feat or a
+  story (the flood law's no-pity spirit applies: deeds, not dice).
+
+### LAW 5 — THE FOCUS LAW (the budget that deep investment enlarges)
 
 **Focus is the account's capacity to hold Callings answered. It grows only from
 skill milestones — breadth and depth both pay — and it is the endgame chase the
@@ -193,12 +271,15 @@ user asked for: veterans run visibly richer builds.**
 - **The codex was built for this.** The V screen grows a second wing: Actives
   (existing rails, now with live rank pips and next-rank bench preview via
   `honedTechnique`) and Callings (budget meter up top, per-skill rows, answered
-  toggles). NEW-pip/seen-ledger/veiling patterns reuse as-is. No new keys —
-  THE ONE KEYMAP stands.
+  toggles). NEW-pip/seen-ledger/veiling patterns reuse as-is; the tech rail
+  relayouts from 4 plates to a scrollable 10-rung column (NEXT-RUNG veiling law
+  unchanged — one upcoming rung visible, the deep ladder stays a mystery), with
+  earned-mark seats appearing as hidden arts land. No new keys — THE ONE KEYMAP
+  stands.
 - **Combinatorics without new slots.** Q/E/R/T keep their four-axis identity. The
-  build space becomes: 4 rungs × rank maturity per style × ~42 Callings chosen
-  under budget × gear passives × enchants × relics/sigils. That is the "endless
-  playstyles" surface — earned, not sprawled across new keybinds.
+  build space becomes: 10 rungs + hidden arts × rank maturity per style × ~42
+  Callings chosen under budget × gear passives × enchants × relics/sigils. That
+  is the "endless playstyles" surface — earned, not sprawled across new keybinds.
 - **Whiff-0, TTK brackets, and NPC-side scaling stay sacred.** Rank deltas and
   Calling magnitudes tune *inside* THE THREAT LAW; the balance contract tests
   extend the existing bracket suite rather than replacing it.
@@ -206,18 +287,28 @@ user asked for: veterans run visibly richer builds.**
 ## Part 4 — Implementation phases
 
 1. **The Honed Art** — shared `RankStep` + `honedTechnique` resolver; author 3 rank
-   steps × 16 techniques; server cast integration (rank at cast from base level);
-   codex bench rank preview + rank pips; ladder balance-contract test. No DB, no
-   protocol change.
-2. **The Callings foundation** — `content/src/callings.ts` (~42 defs) + shared
+   steps × 16 existing techniques; server cast integration (rank at cast from base
+   level); codex bench rank preview + rank pips; ladder balance-contract test.
+   No DB, no protocol change.
+2. **The Open Ladder** — author the 24 new arts (defs + rank steps + FLOURISH
+   CONTRACT: bespoke FX_STYLES faces, icons, VOICE bench copy); codex rail
+   relayout to 10 rungs; tighten the content test to the full rung table;
+   FX v3 revisit of the original 16. Ships in style-sized slices (one style per
+   session is a healthy bite); still no DB/protocol change.
+3. **The Callings foundation** — `content/src/callings.ts` (~42 defs) + shared
    types; `character_callings` table + accessors; protocol v12 (S2CCallings /
    C2SCalling); server fold + `hasPerk` generalization + Focus enforcement;
    content tests (every skill has ≥2, every effect names a real channel/hook).
-3. **Codex v2** — Callings wing in the V screen, Focus meter, toggle UX, pad nav
+4. **Codex v2** — Callings wing in the V screen, Focus meter, toggle UX, pad nav
    per THE ONE KEYMAP; NEW pips on unlock; skill-card cross-links.
-4. **The balance pass** — live-tune rank steps and Calling magnitudes against the
-   TTK brackets and gather/craft baselines; Playwright live-verify (rank IV
-   signature visible, toggle round-trip, Focus rejection message).
+5. **The Unwritten Page** — `hidden`/`anchorLevel` on TechniqueDef, `art:<id>`
+   flag branch in setTechnique validation, DISCOVERED-style grant ceremony, the
+   4 launch seeds wired to their sources (riftgate clear, quest flag, garrison
+   feat, Rookery dialogue).
+6. **The balance pass** — live-tune rank steps, roster cycle values, and Calling
+   magnitudes against the TTK brackets and gather/craft baselines; Playwright
+   live-verify (rank IV signature visible, toggle round-trip, Focus rejection
+   message, hidden-art grant ceremony).
 
 ## Open questions (recommendation first)
 
