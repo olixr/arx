@@ -9529,6 +9529,7 @@ export class GameServer {
           say(`Cell ${key} already hosts '${live.zoneId}' — /poi reroll to replace it.`);
           return;
         }
+        if (this.poiLedger.get(key)?.site) this.fadePoiDiscoveries(key);
         this.poiLive.delete(key);
         this.poiLedger.delete(key);
         const site = this.materializePoiCell(cx, cy, { force: arg ?? true, epoch: 0 });
@@ -9542,7 +9543,9 @@ export class GameServer {
         return;
       }
       if (sub === 'reroll') {
-        const epoch = (this.poiLedger.get(key)?.epoch ?? 0) + 1;
+        const prior = this.poiLedger.get(key);
+        const epoch = (prior?.epoch ?? 0) + 1;
+        if (prior?.site) this.fadePoiDiscoveries(key);
         this.retirePoiCell(key);
         this.poiLedger.delete(key);
         const site = this.materializePoiCell(cx, cy, { epoch });

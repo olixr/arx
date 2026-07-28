@@ -19,6 +19,7 @@ export class MapScreen {
   private lastX = 0;
   private lastY = 0;
   private centered = false;
+  private lastBand = 'surface';
   private readonly coordsEl: HTMLElement;
   private readonly hintDefault = 'Click to plant your waypoint · click the flag to lift it · drag to pan · wheel to zoom';
 
@@ -67,14 +68,20 @@ export class MapScreen {
 
   open(): void {
     this.panel.classList.remove('hidden');
-    // First open (or band change) frames the reader; later opens keep
-    // the chart where they left it — a map remembers its fold.
-    if (!this.centered) {
+    // First open (or a band crossing — dungeon in, dungeon out)
+    // frames the reader; later opens keep the chart where they left
+    // it — a map remembers its fold.
+    if (!this.centered || this.view.band() !== this.lastBand) {
       this.centerOnPlayer();
       this.centered = true;
+      this.lastBand = this.view.band();
     }
     const loop = (now: number): void => {
       if (!this.isOpen) return;
+      if (this.view.band() !== this.lastBand) {
+        this.lastBand = this.view.band();
+        this.centerOnPlayer();
+      }
       this.view.render(now);
       const pos = this.game.predictor.pos;
       this.coordsEl.textContent = `${Math.round(pos.x)}, ${Math.round(pos.y)}`;

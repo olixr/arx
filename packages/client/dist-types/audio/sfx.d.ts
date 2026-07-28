@@ -104,6 +104,14 @@ export declare class Sfx {
      */
     levelUp(): void;
     /**
+     * A place enters the chart — wonder, not triumph. A breath of
+     * parchment air, a rising call answered an octave up, a warm fourth
+     * held underneath, and the pin landing as one bright tick with
+     * glitter air. Smaller than the level-up herald by design: finding
+     * is a gift, leveling is a feat.
+     */
+    discovery(): void;
+    /**
      * Stepping through the Riftgate — a dimensional plunge, not a blip:
      * the deep mouth swallows (a falling sub womp), the veil tears (a
      * focused hiss of air), and a doubled shimmer climbs out the far

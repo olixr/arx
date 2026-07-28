@@ -14,6 +14,10 @@ export declare class MapView {
     scale: number;
     showDanger: boolean;
     hover: DiscoveryWire | null;
+    /** Uncharted ground wears the vellum (fullscreen) or nothing (overlay). */
+    parchment: boolean;
+    /** Overlay mode: quieter marks, no hover, town labels only. */
+    overlay: boolean;
     private blocks;
     private dangerBlocks;
     private dangerRev;

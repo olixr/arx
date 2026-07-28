@@ -17,6 +17,7 @@ export declare class MapScreen {
     private lastX;
     private lastY;
     private centered;
+    private lastBand;
     private readonly coordsEl;
     private readonly hintDefault;
     constructor(game: ClientGame);
