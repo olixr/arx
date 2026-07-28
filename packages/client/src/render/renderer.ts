@@ -77,6 +77,7 @@ import {
 } from './ragdoll.js';
 import { BLOB_M, chamferRect, facetBlob, facetCircle, unitBlob } from './shapes.js';
 import { Particles } from './particles.js';
+import { spillAt, type SpillInfo } from './waterfalls.js';
 import { Debris, type SmashKind } from './debris.js';
 import { Birds, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
@@ -126,6 +127,19 @@ import {
   type ChunkBakeJob,
   type WaterFx,
 } from './terrain.js';
+
+/** The waterfall palette for one lighting state (fallTones()). */
+interface FallTones {
+  foam: string;
+  crest: string;
+  /** rgba prefix (open paren) for the churn's shaded back lobes. */
+  churnBack: string;
+  /** rgba prefix (open paren) for the aerated outwash sheet. */
+  wash: string;
+  dim: number;
+  /** Sheet gradient stops, crest to landing. */
+  sheet: readonly string[];
+}
 import {
   boltPath,
   burstStarPath,
@@ -6776,11 +6790,16 @@ export class Renderer {
             for (const [pax, pay, pbx, pby] of parts) {
               if (sg.n[1] > 0.01) {
                 items.push(this.cliffFaceItem(game, pax, pay, pbx, pby, sg.n[0], level, i, j));
+                this.pushSouthFallItems(game, items, pax, pay, pbx, pby, sg.n[0], sg.n[1], level);
               } else if (Math.abs(sg.n[1]) <= 0.01) {
                 const key = `${sg.n[0] >= 0 ? 1 : 0}|${pax}`;
                 let runs = sideRuns.get(key);
                 if (!runs) sideRuns.set(key, (runs = []));
                 runs.push([Math.min(pay, pby), Math.max(pay, pby)]);
+              } else {
+                // Back faces are invisible — but a NORTH fall still
+                // shows its crest, its plume and its far basin.
+                this.pushNorthFallItems(game, items, pax, pay, pbx, pby, sg.n[0], sg.n[1], level);
               }
             }
           }
@@ -6796,11 +6815,38 @@ export class Renderer {
           // One slice per world row: caps land on the run's true ends,
           // while each slice y-sorts independently so props and
           // entities along the wall line draw over their own stretch.
+          // Water streaks along the run merge into ONE ribbon + dress
+          // pair per streak — the falling sheet's motion needs the
+          // whole height, not row-sliced phases.
+          let fallR0 = 0;
+          let fallInfo: SpillInfo | null = null;
+          const flushFall = (rEnd: number): void => {
+            if (!fallInfo) return;
+            items.push(this.fallRibbonItem(x, fallR0, rEnd, nx, level, fallInfo));
+            items.push(this.fallSideDressItem(x, fallR0, rEnd, nx, level, fallInfo));
+            fallInfo = null;
+          };
           for (let r = Math.floor(a); r < b; r++) {
             const s0 = Math.max(a, r);
             const s1 = Math.min(b, r + 1);
             items.push(this.cliffSideItem(x, s0, s1, nx, level, s0 === a, s1 === b));
+            const fi = this.fallAt(game, x, r + 0.5, nx, 0, level);
+            if (fi) {
+              if (!fallInfo) {
+                fallR0 = r;
+                fallInfo = fi;
+              } else {
+                fallInfo = {
+                  race: Math.min(fallInfo.race, fi.race),
+                  drop: Math.min(fallInfo.drop, fi.drop),
+                  landElev: Math.min(fallInfo.landElev, fi.landElev),
+                };
+              }
+            } else {
+              flushFall(r);
+            }
           }
+          flushFall(Math.ceil(b));
         };
         for (let k = 1; k <= spans.length; k++) {
           const next = spans[k];
@@ -7273,6 +7319,1146 @@ export class Renderer {
           ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
           ctx.fillRect(x0, yBot - Math.max(2, s * 0.05), w2, Math.max(2, s * 0.05));
         }
+      },
+    };
+  }
+
+  // ---------------------------------------------------------- waterfalls
+
+  /** Memoized SPILL-LAW lookup (waterfalls.ts) — pure world data, so
+   *  results cache across frames and clear with the world, like
+   *  dockMemo. Keys quantize the normal but pass the TRUE normal
+   *  through: the diagonal start-tile offsets depend on it. */
+  private readonly fallMemo = new Map<string, SpillInfo | null>();
+  private fallMemoVersion = -1;
+
+  private fallAt(
+    game: ClientGame,
+    mx: number,
+    my: number,
+    nx: number,
+    ny: number,
+    level: number,
+  ): SpillInfo | null {
+    if (game.worldVersion !== this.fallMemoVersion) {
+      this.fallMemo.clear();
+      this.fallMemoVersion = game.worldVersion;
+    }
+    const qn = (v: number) => (v > 0.01 ? 1 : v < -0.01 ? -1 : 0);
+    const key = `${mx},${my},${qn(nx)},${qn(ny)},${level}`;
+    let v = this.fallMemo.get(key);
+    if (v === undefined) {
+      v = spillAt(
+        (tx, ty) => game.world.groundAt(tx, ty),
+        (tx, ty) => game.world.elevAt(tx, ty),
+        mx,
+        my,
+        nx,
+        ny,
+        level,
+      );
+      this.fallMemo.set(key, v);
+    }
+    return v;
+  }
+
+  /** Smooth value noise over one world axis, level-salted — the falls'
+   *  anti-repetition lattice (the cliff-face world-keying law). */
+  private static fallNoise(v: number, salt: number, level: number, ks: number): number {
+    const t = v / ks;
+    const i = Math.floor(t);
+    const f = t - i;
+    const u = f * f * (3 - 2 * f);
+    return (
+      Renderer.stone01(i, salt, 911 + level * 17) * (1 - u) +
+      Renderer.stone01(i + 1, salt, 911 + level * 17) * u
+    );
+  }
+
+  private fallTones(): FallTones {
+    return this.sky.moonlit
+      ? {
+          foam: '#d4e0f2',
+          crest: '#ccd8ef',
+          churnBack: 'rgba(140,160,196,',
+          wash: 'rgba(204,216,238,',
+          dim: 0.62,
+          sheet: [
+            'rgba(20,38,72,0.55)',
+            'rgba(42,68,110,0.62)',
+            'rgba(74,98,138,0.70)',
+            'rgba(128,148,182,0.80)',
+            'rgba(204,216,238,0.88)',
+          ],
+        }
+      : {
+          foam: '#f2f8fd',
+          crest: '#eaf4fb',
+          churnBack: 'rgba(186,214,240,',
+          wash: 'rgba(236,245,252,',
+          dim: 1,
+          sheet: [
+            'rgba(36,66,118,0.58)',
+            'rgba(62,108,172,0.68)',
+            'rgba(108,152,204,0.76)',
+            'rgba(185,214,239,0.85)',
+            'rgba(236,245,252,0.92)',
+          ],
+        };
+  }
+
+  /** Churn along a world line just past a fall's foot — the boil.
+   *  Three passes of tightly-packed irregular lobes (deep back
+   *  billows, main foam, sparse bright caps), each with its own
+   *  jitter and pulse so the mound never reads as a row of eggs.
+   *  (ox,oy) pushes the boil off the line toward the low side. */
+  private drawFallChurn(
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    ox: number,
+    oy: number,
+    landLift: number,
+    level: number,
+    t: number,
+    tones: FallTones,
+  ): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const len = Math.hypot(x1 - x0, y1 - y0) || 1e-6;
+    const n01 = (a: number, sa: number) => Renderer.stone01(a, sa, 911 + level * 17);
+    for (let pass = 0; pass < 3; pass++) {
+      ctx.fillStyle =
+        pass === 0
+          ? `${tones.churnBack}${0.45 * tones.dim})`
+          : pass === 1
+            ? `${tones.wash}${0.68 * tones.dim})`
+            : tones.foam;
+      if (pass === 2) ctx.globalAlpha = 0.55 * tones.dim;
+      const off = pass === 0 ? 0.02 : pass === 1 ? 0.1 : 0.08;
+      const stp = pass === 2 ? 0.24 : 0.19;
+      for (let u = 0.08 + pass * 0.05; u < len; u += stp) {
+        const f = u / len;
+        const wx = x0 + (x1 - x0) * f;
+        const wy = y0 + (y1 - y0) * f;
+        const idx = Math.round(((wx + wy * 3) / stp) * 2) + pass * 37;
+        // Caps are sparse — only where the boil happens to leap.
+        if (pass === 2 && n01(idx, 78) < 0.42) continue;
+        const jw = (n01(idx, 70 + pass) - 0.5) * 0.16;
+        const p = this.camera.worldToScreen(wx + ox * off + jw, wy + oy * off, this.w, this.h);
+        const cy =
+          p.y -
+          landLift +
+          Math.sin(t * (2.1 + pass * 0.8) + idx * 1.9) * s * (0.018 + pass * 0.008) -
+          (pass === 2 ? s * 0.035 : 0);
+        const rr =
+          s *
+          (pass === 2
+            ? 0.03 + 0.05 * n01(idx, 74)
+            : 0.06 + 0.11 * n01(idx, 74 + pass) + 0.035 * Math.sin(t * 3.1 + idx * 2.3)) *
+          (pass === 0 ? 1.3 : 1);
+        ctx.beginPath();
+        ctx.ellipse(p.x, cy, Math.max(1, rr), Math.max(1, rr * 0.58), 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (pass === 2) ctx.globalAlpha = 1;
+    }
+  }
+
+  /** Airborne life at a fall's landing: drifting mist motes and darting
+   *  spray, dt-gated per visible fall (the portal-emitter idiom).
+   *  Enhancement layer — rides the Water motion setting. */
+  private emitFallHaze(x0: number, y0: number, x1: number, y1: number): void {
+    if (!this.waterFxFull) return;
+    const dt = this.frameDt;
+    const span = Math.max(0.4, Math.hypot(x1 - x0, y1 - y0));
+    if (Math.random() < dt * 2.2 * span) {
+      const f = Math.random();
+      this.particles.burst(
+        x0 + (x1 - x0) * f,
+        y0 + (y1 - y0) * f + 0.1 + Math.random() * 0.4,
+        1,
+        ['#dcebf7', '#cfe3f4'],
+        { speed: 0.3, life: 1.3, size: 0.07, up: true, gravity: -0.25, drag: 1.1, grow: 0.12 },
+      );
+    }
+    if (Math.random() < dt * 3.2 * span) {
+      const f = Math.random();
+      this.particles.burst(
+        x0 + (x1 - x0) * f,
+        y0 + (y1 - y0) * f + 0.08,
+        2,
+        ['#f4fafe', '#bfe0f2'],
+        { speed: 1.5, life: 0.35, size: 0.05, up: true, gravity: 5.5, drag: 1.6, shape: 'streak' },
+      );
+    }
+  }
+
+  /**
+   * Spill tests for one downhill face segment, emitting the curtain
+   * and its low-ground dressing. Halves are tested independently (the
+   * same quarter-offset law as ramp ownership) so the curtain starts
+   * and stops on the channel's tile edges, not the dual cell's.
+   */
+  private pushSouthFallItems(
+    game: ClientGame,
+    items: DrawItem[],
+    ax: number,
+    ay: number,
+    bx: number,
+    by: number,
+    nx: number,
+    ny: number,
+    level: number,
+  ): void {
+    if (ax > bx || (ax === bx && ay > by)) {
+      [ax, bx] = [bx, ax];
+      [ay, by] = [by, ay];
+    }
+    const mx = (ax + bx) / 2;
+    const my = (ay + by) / 2;
+    const iA = this.fallAt(game, (ax + mx) / 2, (ay + my) / 2, nx, ny, level);
+    const iB = this.fallAt(game, (mx + bx) / 2, (my + by) / 2, nx, ny, level);
+    if (!iA && !iB) return;
+    const x0 = iA ? ax : mx;
+    const y0 = iA ? ay : my;
+    const x1 = iB ? bx : mx;
+    const y1 = iB ? by : my;
+    const info: SpillInfo =
+      iA && iB
+        ? {
+            race: Math.min(iA.race, iB.race),
+            drop: Math.min(iA.drop, iB.drop),
+            landElev: Math.min(iA.landElev, iB.landElev),
+          }
+        : (iA ?? iB)!;
+    // Free ends taper the sheet; a continuing neighbour keeps it sealed.
+    const len = Math.hypot(bx - ax, by - ay) || 1;
+    const ux = (bx - ax) / len;
+    const uy = (by - ay) / len;
+    const edgeL = !this.fallAt(game, x0 - ux * 0.25, y0 - uy * 0.25, nx, ny, level);
+    const edgeR = !this.fallAt(game, x1 + ux * 0.25, y1 + uy * 0.25, nx, ny, level);
+    const diagonal = Math.abs(nx) > 0.01;
+    items.push(
+      this.waterfallItem(game, x0, y0, x1, y1, nx, ny, level, info, edgeL, edgeR, diagonal),
+    );
+    if (!diagonal) {
+      for (let r = 0; r <= info.drop; r++) {
+        items.push(this.fallOutwashRowItem(x0, x1, ay, r, info, level));
+      }
+    }
+  }
+
+  /**
+   * THE WATERFALL CURTAIN — water continuing over a cliff face. One
+   * sheet hangs from the crest of `level` to the elevation the water
+   * truly lands at (landElev — through any stacked intermediate faces:
+   * only the top face of a sheer multi-level drop passes the spill
+   * law, and its curtain covers the whole wall). Inside the item, top
+   * to bottom: the HEADRACE (the glassy tongue that carries the water
+   * across the lip and the Cliff rim strip — authored channels stop a
+   * tile shy of the rim by the auto-fence law), the falling SHEET
+   * (clipped quad: depth-graded body, world-keyed standing column
+   * tones, accelerating foam threads at constant SCREEN speed — the
+   * phase rate divides by the drop height so a two-level fall doesn't
+   * cascade twice as fast), and the CREST ROLL (under-curl shadow +
+   * bright arris + break combs). Churn, outwash, rings and mist live
+   * in per-row items on the low ground (fallOutwashRowItem) so
+   * elevated landing rows — which blit as items at rowTy-0.01 —
+   * can't paint over them; diagonals, whose landing is a corner
+   * pocket rather than a row, draw their dressing right here. Every
+   * mark is keyed to WORLD coordinates (the cliff-face law): the
+   * sheet runs unbroken across segment seams and around 45° turns.
+   */
+  private waterfallItem(
+    game: ClientGame,
+    ax: number,
+    ay: number,
+    bx: number,
+    by: number,
+    nx: number,
+    ny: number,
+    level: number,
+    info: SpillInfo,
+    edgeL: boolean,
+    edgeR: boolean,
+    diagonal: boolean,
+  ): DrawItem {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const topLift = level * ELEV_H * s;
+    const landLift = info.landElev * ELEV_H * s;
+    const levels = level - info.landElev;
+    return {
+      sortY: Math.min(ay, by) + 0.0015,
+      draw: () => {
+        const t = performance.now() / 1000;
+        const tones = this.fallTones();
+        const fine = s >= 26;
+        const A = this.camera.worldToScreen(ax, ay, this.w, this.h);
+        const B = this.camera.worldToScreen(bx, by, this.w, this.h);
+        A.x = Math.round(A.x);
+        A.y = Math.round(A.y);
+        B.x = Math.round(B.x);
+        B.y = Math.round(B.y);
+        const yTopA = A.y - topLift - 1.5;
+        const yTopB = B.y - topLift - 1.5;
+        const yBaseA = A.y - landLift;
+        const yBaseB = B.y - landLift;
+        const wxSpan = bx - ax || 1e-6;
+        const fOf = (wx: number) => (wx - ax) / wxSpan;
+        const sxAt = (f: number) => A.x + (B.x - A.x) * f;
+        const yTopAt = (f: number) => yTopA + (yTopB - yTopA) * f;
+        const yBaseAt = (f: number) => yBaseA + (yBaseB - yBaseA) * f;
+        const vn = (v: number, salt: number, ks: number) =>
+          Renderer.fallNoise(v, salt, level, ks);
+        const n01 = (a: number, sa: number) => Renderer.stone01(a, sa, 911 + level * 17);
+
+        // ---- the headrace ------------------------------------------
+        if (!diagonal) {
+          const raceTop = ay - info.race;
+          const RS = Math.max(2, info.race * 3);
+          ctx.beginPath();
+          for (let k = 0; k <= RS; k++) {
+            const wy = raceTop + (k / RS) * info.race;
+            const u = k / RS;
+            const insetL = edgeL ? 0.04 + 0.06 * u + (vn(wy, 21, 0.9) - 0.5) * 0.08 : 0;
+            const p = this.camera.worldToScreen(ax + insetL, wy, this.w, this.h);
+            ctx.lineTo(p.x, p.y - topLift);
+          }
+          for (let k = RS; k >= 0; k--) {
+            const wy = raceTop + (k / RS) * info.race;
+            const u = k / RS;
+            const insetR = edgeR ? 0.04 + 0.06 * u + (vn(wy, 22, 0.9) - 0.5) * 0.08 : 0;
+            const p = this.camera.worldToScreen(bx - insetR, wy, this.w, this.h);
+            ctx.lineTo(p.x, p.y - topLift);
+          }
+          ctx.closePath();
+          const pT = this.camera.worldToScreen((ax + bx) / 2, raceTop, this.w, this.h);
+          const gr = ctx.createLinearGradient(0, pT.y - topLift, 0, A.y - topLift);
+          gr.addColorStop(0, 'rgba(73,121,184,0)');
+          gr.addColorStop(0.45, `rgba(63,108,170,${0.38 * tones.dim})`);
+          gr.addColorStop(1, `rgba(30,58,106,${0.55 * tones.dim})`);
+          ctx.fillStyle = gr;
+          ctx.fill();
+          // Shear lines along the race's sides — the current pulling
+          // off the banks as it gathers for the drop.
+          ctx.strokeStyle = 'rgba(26,48,96,0.9)';
+          ctx.globalAlpha = 0.24 * tones.dim;
+          ctx.lineWidth = Math.max(1.2, s * 0.03);
+          for (const [ex, salt, free] of [
+            [ax, 21, edgeL],
+            [bx, 22, edgeR],
+          ] as const) {
+            ctx.beginPath();
+            for (let k = 0; k <= RS; k++) {
+              const wy = raceTop + (k / RS) * info.race;
+              const u = k / RS;
+              const inset = free ? 0.04 + 0.06 * u + (vn(wy, salt, 0.9) - 0.5) * 0.08 : 0;
+              const p = this.camera.worldToScreen(
+                ex === ax ? ax + inset + 0.03 : bx - inset - 0.03,
+                wy,
+                this.w,
+                this.h,
+              );
+              if (k === 0) ctx.moveTo(p.x, p.y - topLift);
+              else ctx.lineTo(p.x, p.y - topLift);
+            }
+            ctx.stroke();
+          }
+          // accelerating flow threads toward the lip
+          ctx.strokeStyle = tones.foam;
+          ctx.lineCap = 'round';
+          for (let wx = Math.ceil((ax + 0.08) / 0.22) * 0.22; wx < bx - 0.05; wx += 0.22) {
+            const idx = Math.round(wx / 0.22);
+            const ph = (t * 1.5 * (0.8 + 0.4 * n01(idx, 31)) + n01(idx, 32)) % 1;
+            const wy0 = raceTop + Math.pow(ph, 1.6) * info.race;
+            const wy1 = Math.min(ay, wy0 + 0.12 + 0.2 * ph);
+            const p0 = this.camera.worldToScreen(wx, wy0, this.w, this.h);
+            const p1 = this.camera.worldToScreen(wx, wy1, this.w, this.h);
+            ctx.globalAlpha = (0.14 + 0.3 * ph) * tones.dim;
+            ctx.lineWidth = Math.max(1.2, s * 0.028);
+            ctx.beginPath();
+            ctx.moveTo(p0.x, p0.y - topLift);
+            ctx.lineTo(p1.x, p1.y - topLift);
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+          ctx.lineCap = 'butt';
+        } else {
+          // Diagonal race: a short glassy tongue upstream along the
+          // normal — the bevel's feed arrives cornerwise.
+          const rr = Math.min(info.race, 1.2);
+          const p0 = this.camera.worldToScreen(ax - nx * rr, ay - ny * rr, this.w, this.h);
+          const p1 = this.camera.worldToScreen(bx - nx * rr, by - ny * rr, this.w, this.h);
+          ctx.beginPath();
+          ctx.moveTo(sxAt(0), yTopAt(0) + 1.5);
+          ctx.lineTo(sxAt(1), yTopAt(1) + 1.5);
+          ctx.lineTo(p1.x, p1.y - topLift);
+          ctx.lineTo(p0.x, p0.y - topLift);
+          ctx.closePath();
+          ctx.fillStyle = `rgba(40,74,128,${0.4 * tones.dim})`;
+          ctx.fill();
+        }
+
+        // ---- the sheet ---------------------------------------------
+        const dip = s * 0.1;
+        const flL = edgeL ? s * 0.05 : 0;
+        const flR = edgeR ? s * 0.05 : 0;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(sxAt(0), yTopAt(0));
+        ctx.lineTo(sxAt(1), yTopAt(1));
+        ctx.lineTo(sxAt(1) + flR, yBaseAt(1) + dip);
+        ctx.lineTo(sxAt(0) - flL, yBaseAt(0) + dip);
+        ctx.closePath();
+        ctx.clip();
+        const grad = ctx.createLinearGradient(
+          0,
+          (yTopA + yTopB) / 2,
+          0,
+          (yBaseA + yBaseB) / 2 + dip,
+        );
+        const STOPS = [0, 0.16, 0.46, 0.78, 1];
+        for (let k = 0; k < 5; k++) grad.addColorStop(STOPS[k]!, tones.sheet[k]!);
+        ctx.fillStyle = grad;
+        const cx0 = Math.min(sxAt(0), sxAt(1)) - flL - 1;
+        const cx1 = Math.max(sxAt(0), sxAt(1)) + flR + 1;
+        const cyT = Math.min(yTopA, yTopB) - 1;
+        ctx.fillRect(cx0, cyT, cx1 - cx0, Math.max(yBaseA, yBaseB) + dip - cyT + 1);
+        // Standing column tones — the fall's light and shadow ropes.
+        if (fine) {
+          for (let wx = Math.ceil(ax / 0.26) * 0.26; wx < bx; wx += 0.26) {
+            const vc = vn(wx, 3, 0.8);
+            if (vc > 0.6)
+              ctx.fillStyle = `rgba(255,255,255,${(0.07 + 0.1 * ((vc - 0.6) / 0.4)) * tones.dim})`;
+            else if (vc < 0.34) ctx.fillStyle = 'rgba(22,44,88,0.11)';
+            else continue;
+            const f = fOf(wx);
+            const x = sxAt(f) + Math.sin(t * 1.2 + wx * 5.3) * s * 0.012;
+            ctx.fillRect(x - s * 0.07, yTopAt(f), s * 0.14, yBaseAt(f) + dip - yTopAt(f));
+          }
+        }
+        // Falling foam threads.
+        const step = fine ? 0.22 : 0.42;
+        const vSpeed = 3.1 / (ELEV_H * levels);
+        ctx.lineCap = 'round';
+        for (let wx = Math.ceil(ax / step) * step; wx < bx; wx += step) {
+          const idx = Math.round(wx / step);
+          for (let k = 0; k < 2; k++) {
+            const ph = (t * vSpeed * (0.85 + 0.3 * n01(idx, 40 + k)) + n01(idx, 50 + k)) % 1;
+            const v0 = Math.pow(ph, 1.35);
+            const v1 = Math.min(1.05, v0 + 0.1 + 0.24 * v0);
+            const f = fOf(wx + (n01(idx, 45 + k) - 0.5) * 0.08);
+            const x = sxAt(f) + Math.sin(t * 1.4 + wx * 6.1 + k * 2.4) * s * 0.01;
+            const yT = yTopAt(f);
+            const yB = yBaseAt(f) + dip;
+            ctx.strokeStyle = tones.foam;
+            ctx.globalAlpha = (0.22 + 0.42 * v0) * tones.dim;
+            ctx.lineWidth = Math.max(1.2, s * (0.028 + 0.018 * n01(idx, 60 + k)));
+            ctx.beginPath();
+            ctx.moveTo(x, yT + (yB - yT) * v0);
+            ctx.lineTo(x, yT + (yB - yT) * v1);
+            ctx.stroke();
+          }
+          // A dark back-thread between the ropes — the sheet's depth.
+          if ((idx & 1) === 0) {
+            const ph = (t * vSpeed * 0.9 + n01(idx, 55) + 0.5) % 1;
+            const v0 = Math.pow(ph, 1.35);
+            const f = fOf(Math.min(bx, wx + step * 0.5));
+            const x = sxAt(f);
+            const yT = yTopAt(f);
+            const yB = yBaseAt(f) + dip;
+            ctx.strokeStyle = 'rgba(20,42,84,0.85)';
+            ctx.globalAlpha = 0.14;
+            ctx.lineWidth = Math.max(1.2, s * 0.032);
+            ctx.beginPath();
+            ctx.moveTo(x, yT + (yB - yT) * v0);
+            ctx.lineTo(x, yT + (yB - yT) * Math.min(1, v0 + 0.18));
+            ctx.stroke();
+          }
+        }
+        ctx.globalAlpha = 1;
+        ctx.lineCap = 'butt';
+        // Side trickles at free edges — a real fall's ragged margins.
+        if (fine) {
+          for (const [isEdge, f] of [
+            [edgeL, 0],
+            [edgeR, 1],
+          ] as const) {
+            if (!isEdge) continue;
+            const xe = sxAt(f);
+            const yT = yTopAt(f);
+            const yB = yBaseAt(f);
+            ctx.strokeStyle = tones.foam;
+            ctx.globalAlpha = 0.4 * tones.dim;
+            ctx.lineWidth = Math.max(1, s * 0.024);
+            ctx.beginPath();
+            for (let k = 0; k <= 6; k++) {
+              const v = k / 6;
+              const x = xe + Math.sin(t * 2 + v * 9 + f * 5) * s * 0.02 * v;
+              const y = yT + (yB - yT) * v;
+              if (k === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+        }
+        ctx.restore();
+
+        // ---- the crest roll ----------------------------------------
+        ctx.strokeStyle = '#1a3060';
+        ctx.globalAlpha = 0.35 * tones.dim;
+        ctx.lineWidth = Math.max(1.5, s * 0.05);
+        ctx.beginPath();
+        ctx.moveTo(sxAt(0), yTopAt(0) + s * 0.1);
+        ctx.lineTo(sxAt(1), yTopAt(1) + s * 0.1);
+        ctx.stroke();
+        ctx.strokeStyle = tones.crest;
+        ctx.globalAlpha = (0.7 + 0.18 * Math.sin(t * 2.3 + ax * 3.1)) * tones.dim;
+        ctx.lineWidth = Math.max(2, s * 0.07);
+        ctx.beginPath();
+        ctx.moveTo(sxAt(0), yTopAt(0) + s * 0.015);
+        ctx.lineTo(sxAt(1), yTopAt(1) + s * 0.015);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        if (fine) {
+          // Break combs where the water folds over the arris.
+          ctx.fillStyle = tones.foam;
+          for (let wx = Math.ceil(ax / 0.3) * 0.3; wx < bx; wx += 0.3) {
+            const idx = Math.round(wx / 0.3);
+            const f = fOf(wx);
+            ctx.globalAlpha =
+              (0.3 + 0.5 * n01(idx, 90)) *
+              (0.7 + 0.3 * Math.sin(t * 3.7 + idx * 2.2)) *
+              tones.dim;
+            ctx.fillRect(
+              sxAt(f) - s * 0.015,
+              yTopAt(f) + s * 0.03,
+              s * 0.03,
+              s * (0.06 + 0.08 * n01(idx, 91)),
+            );
+          }
+          ctx.globalAlpha = 1;
+        }
+
+        // ---- diagonal landing dressing -----------------------------
+        if (diagonal) {
+          this.drawFallChurn(ax, ay, bx, by, nx, ny, landLift, level, t, tones);
+          this.emitFallHaze(
+            ax + nx * (info.drop * 0.5 + 0.3),
+            ay + ny * (info.drop * 0.5 + 0.3),
+            bx + nx * (info.drop * 0.5 + 0.3),
+            by + ny * (info.drop * 0.5 + 0.3),
+          );
+        }
+      },
+    };
+  }
+
+  /**
+   * One low-ground row of a straight fall's landing: the outwash
+   * tongue slice (spreading as it runs, whitest at impact); row 0 adds
+   * the churn mound over the sheet's foot; the last row adds pool
+   * rings (FLAT-law 0.6 ellipses), drifting foam rafts, the mist veil,
+   * and owns the haze particles. Per-row items because elevated
+   * landing rows blit as items at rowTy-0.01 — one spanning item
+   * would be painted over by every row after its own.
+   */
+  private fallOutwashRowItem(
+    x0: number,
+    x1: number,
+    foot: number,
+    r: number,
+    info: SpillInfo,
+    level: number,
+  ): DrawItem {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const landLift = info.landElev * ELEV_H * s;
+    const rowY = foot + r;
+    const last = r === info.drop;
+    return {
+      sortY: rowY + 0.0015,
+      draw: () => {
+        const t = performance.now() / 1000;
+        const tones = this.fallTones();
+        const vn = (v: number, salt: number, ks: number) =>
+          Renderer.fallNoise(v, salt, level, ks);
+        const n01 = (a: number, sa: number) => Renderer.stone01(a, sa, 911 + level * 17);
+        const wts = (wx: number, wy: number) => {
+          const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
+          p.y -= landLift;
+          return p;
+        };
+        // The outwash tongue — spreads ~0.14 tiles per row it runs.
+        const spreadAt = (wy: number, side: number) =>
+          0.14 * (wy - foot) + (vn(wy, 25 + side, 0.7) - 0.5) * 0.1;
+        const depth = last ? 0.55 : 1;
+        const SS = 3;
+        ctx.beginPath();
+        for (let k = 0; k <= SS; k++) {
+          const wy = rowY + (k / SS) * depth;
+          const p = wts(x0 - spreadAt(wy, 0), wy);
+          ctx.lineTo(p.x, p.y);
+        }
+        for (let k = SS; k >= 0; k--) {
+          const wy = rowY + (k / SS) * depth;
+          const p = wts(x1 + spreadAt(wy, 1), wy);
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.closePath();
+        const aTop = Math.max(0.14, 0.5 - r * 0.13);
+        const aBot = last ? 0.05 : Math.max(0.12, 0.5 - (r + 1) * 0.13);
+        const g0 = wts((x0 + x1) / 2, rowY);
+        const g1 = wts((x0 + x1) / 2, rowY + depth);
+        const gr = ctx.createLinearGradient(0, g0.y, 0, g1.y);
+        gr.addColorStop(0, `${tones.wash}${aTop * tones.dim})`);
+        gr.addColorStop(1, `${tones.wash}${aBot * tones.dim})`);
+        ctx.fillStyle = gr;
+        ctx.fill();
+        // Streaming flow dashes.
+        ctx.strokeStyle = tones.foam;
+        ctx.lineCap = 'round';
+        for (let wx = Math.ceil((x0 + 0.1) / 0.33) * 0.33; wx < x1 - 0.05; wx += 0.33) {
+          const idx = Math.round(wx / 0.33);
+          const ph = (t * 1.25 * (0.85 + 0.3 * n01(idx, 33)) + n01(idx, 34)) % 1;
+          const wy0 = rowY + ph * depth;
+          const p0 = wts(wx, wy0);
+          const p1 = wts(wx, Math.min(rowY + depth, wy0 + 0.22));
+          ctx.globalAlpha = 0.3 * (1 - r * 0.18) * (1 - ph * 0.5) * tones.dim;
+          ctx.lineWidth = Math.max(1.2, s * 0.03);
+          ctx.beginPath();
+          ctx.moveTo(p0.x, p0.y);
+          ctx.lineTo(p1.x, p1.y);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.lineCap = 'butt';
+        if (r === 0) {
+          this.drawFallChurn(x0, foot, x1, foot, 0, 1, landLift, level, t, tones);
+        }
+        if (last) {
+          // Pool rings — THE FLAT LAW (0.6 squash: this camera never
+          // looks straight down).
+          for (let wx = Math.ceil((x0 + 0.15) / 0.55) * 0.55; wx < x1; wx += 0.55) {
+            const idx = Math.round(wx / 0.55);
+            for (let k = 0; k < 2; k++) {
+              const ph = (t * 0.5 + k * 0.41 + n01(idx, 80 + k)) % 1;
+              const rx = (0.1 + ph * 0.5) * s;
+              const p = wts(wx, rowY + 0.45);
+              ctx.strokeStyle = tones.foam;
+              ctx.globalAlpha = (1 - ph) * 0.38 * tones.dim;
+              ctx.lineWidth = Math.max(1.2, s * 0.028);
+              ctx.beginPath();
+              ctx.ellipse(p.x, p.y, rx, rx * 0.6, 0, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+          }
+          // Drifting foam rafts riding the outflow.
+          ctx.fillStyle = tones.foam;
+          for (let wx = Math.ceil(x0 / 0.7) * 0.7; wx < x1; wx += 0.7) {
+            const idx = Math.round(wx / 0.7);
+            const ph = (t * 0.28 + n01(idx, 86)) % 1;
+            const p = wts(wx + (n01(idx, 87) - 0.5) * 0.3, rowY + 0.25 + ph * 0.7);
+            ctx.globalAlpha = (1 - ph) * 0.3 * tones.dim;
+            const rr = s * (0.05 + 0.04 * n01(idx, 88));
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.y, rr * 1.6, rr * 0.6, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x + rr, p.y + rr * 0.3, rr, rr * 0.45, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+          // The mist veil over the whole landing.
+          const mid = (x0 + x1) / 2;
+          const pm = wts(mid, foot + 0.3);
+          const rx =
+            ((x1 - x0) * 0.62 + 0.5) * s * (1 + 0.05 * Math.sin(t * 0.9 + mid));
+          const ry = s * 0.55;
+          const rg = ctx.createRadialGradient(pm.x, pm.y, 0, pm.x, pm.y, rx);
+          rg.addColorStop(0, `rgba(238,246,253,${0.15 * tones.dim})`);
+          rg.addColorStop(0.6, `rgba(238,246,253,${0.07 * tones.dim})`);
+          rg.addColorStop(1, 'rgba(238,246,253,0)');
+          ctx.save();
+          ctx.translate(pm.x, pm.y);
+          ctx.scale(1, ry / rx);
+          ctx.translate(-pm.x, -pm.y);
+          ctx.fillStyle = rg;
+          ctx.fillRect(pm.x - rx, pm.y - rx, rx * 2, rx * 2);
+          ctx.restore();
+          this.emitFallHaze(x0, foot + 0.25, x1, foot + 0.25);
+        }
+      },
+    };
+  }
+
+  /**
+   * THE SIDE FALL — water over a pure north-south rim. The face is
+   * edge-on (the cliffSideItem cheat strip), so the fall reads as a
+   * narrow ribbon hugging the rim line: crest fold at the top, scroll
+   * threads at constant screen speed, aerating body, churn stack at
+   * the landing. One item per contiguous water streak of the run —
+   * the sheet's motion needs the whole height, not row-sliced phases.
+   * Sorts at its FIRST row without the side item's early bias: every
+   * wall slice that can overlap sorts earlier by construction (their
+   * bias is the full crown lift), while bodies beside the rim still
+   * win against the wall line itself.
+   */
+  private fallRibbonItem(
+    x: number,
+    r0: number,
+    r1: number,
+    nx: number,
+    level: number,
+    info: SpillInfo,
+  ): DrawItem {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const topLift = level * ELEV_H * s;
+    const landLift = info.landElev * ELEV_H * s;
+    const levels = level - info.landElev;
+    return {
+      sortY: r0 + 0.001,
+      draw: () => {
+        const t = performance.now() / 1000;
+        const tones = this.fallTones();
+        const fine = s >= 26;
+        const A = this.camera.worldToScreen(x, r0, this.w, this.h);
+        const B = this.camera.worldToScreen(x, r1, this.w, this.h);
+        const sx = Math.round(A.x);
+        const w = Math.max(5, s * 0.24);
+        const x0 = nx >= 0 ? sx - Math.max(1, s * 0.03) : sx - w + Math.max(1, s * 0.03);
+        const yT = Math.round(A.y - topLift) - 1;
+        const yLand = Math.round(B.y - landLift) + Math.round(s * 0.06);
+        const n01 = (a: number, sa: number) => Renderer.stone01(a, sa, 911 + level * 17);
+        const grad = ctx.createLinearGradient(0, yT, 0, yLand);
+        const STOPS = [0, 0.16, 0.46, 0.78, 1];
+        for (let k = 0; k < 5; k++) grad.addColorStop(STOPS[k]!, tones.sheet[k]!);
+        ctx.fillStyle = grad;
+        ctx.fillRect(x0, yT, w, yLand - yT);
+        // Crest fold — the bright cap where the water turns over the
+        // arris, with a glassy under-curl right below it.
+        ctx.fillStyle = tones.crest;
+        ctx.globalAlpha = (0.85 + 0.15 * Math.sin(t * 2.1 + r0)) * tones.dim;
+        ctx.fillRect(x0 - 1, yT - 1, w + 2, Math.max(2, s * 0.06));
+        ctx.fillStyle = '#1a3060';
+        ctx.globalAlpha = 0.35 * tones.dim;
+        ctx.fillRect(x0, yT + Math.max(2, s * 0.06), w, Math.max(1.5, s * 0.04));
+        // Wall-side sheen and outward silhouette seam.
+        ctx.globalAlpha = 0.4 * tones.dim;
+        ctx.fillStyle = tones.foam;
+        ctx.fillRect(nx >= 0 ? x0 : x0 + w - 1.5, yT, 1.5, yLand - yT);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = 'rgba(20,42,84,0.3)';
+        ctx.fillRect(nx >= 0 ? x0 + w - 1.5 : x0, yT, 1.5, yLand - yT);
+        // Scroll threads.
+        const H = yLand - yT;
+        const vSpeed = 3.1 / (ELEV_H * levels);
+        ctx.lineCap = 'round';
+        const cols = fine ? 3 : 2;
+        for (let c = 0; c < cols; c++) {
+          for (let k = 0; k < 2; k++) {
+            const idx = Math.round(x * 7 + r0 * 3) * 5 + c * 2 + k;
+            const ph = (t * vSpeed * (0.85 + 0.3 * n01(idx, 40)) + n01(idx, 50)) % 1;
+            const v0 = Math.pow(ph, 1.35);
+            const v1 = Math.min(1.02, v0 + 0.1 + 0.22 * v0);
+            const xx = x0 + w * ((c + 0.5) / cols) + Math.sin(t * 1.5 + c * 2.1 + r0 * 3) * s * 0.008;
+            ctx.strokeStyle = tones.foam;
+            ctx.globalAlpha = (0.24 + 0.4 * v0) * tones.dim;
+            ctx.lineWidth = Math.max(1.2, s * 0.026);
+            ctx.beginPath();
+            ctx.moveTo(xx, yT + H * v0);
+            ctx.lineTo(xx, yT + H * v1);
+            ctx.stroke();
+          }
+        }
+        ctx.globalAlpha = 1;
+        ctx.lineCap = 'butt';
+        // Churn stack along the vertical landing line.
+        const yFootTop = Math.round(A.y - landLift);
+        for (let pass = 0; pass < 2; pass++) {
+          ctx.fillStyle =
+            pass === 0
+              ? `${tones.churnBack}${0.5 * tones.dim})`
+              : `${tones.wash}${0.75 * tones.dim})`;
+          for (let yy = yFootTop; yy < yLand + s * 0.06; yy += s * 0.16) {
+            const idx = Math.round(yy / (s * 0.16));
+            const rr =
+              s * (0.07 + 0.06 * n01(idx, 74 + pass) + 0.03 * Math.sin(t * 3 + idx * 1.7)) *
+              (pass === 0 ? 1.2 : 1);
+            const cx =
+              x0 + w * 0.5 + (nx >= 0 ? 1 : -1) * (pass === 0 ? -s * 0.02 : s * 0.03);
+            ctx.beginPath();
+            ctx.ellipse(
+              cx + (n01(idx, 76 + pass) - 0.5) * w * 0.5,
+              yy + Math.sin(t * 2.4 + idx) * s * 0.02,
+              Math.max(1, rr),
+              Math.max(1, rr * 0.58),
+              0,
+              0,
+              Math.PI * 2,
+            );
+            ctx.fill();
+          }
+        }
+      },
+    };
+  }
+
+  /**
+   * A side fall's flat-ground dressing: the crown headrace running
+   * sideways into the rim line, the outwash fanning across the low
+   * ground, pool rings and the mist veil. Sorts after every crown and
+   * landing row blit it can touch ((r1-1)+0.03 beats rowTy-0.01).
+   */
+  private fallSideDressItem(
+    x: number,
+    r0: number,
+    r1: number,
+    nx: number,
+    level: number,
+    info: SpillInfo,
+  ): DrawItem {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const topLift = level * ELEV_H * s;
+    const landLift = info.landElev * ELEV_H * s;
+    const dir = nx >= 0 ? 1 : -1;
+    return {
+      sortY: r1 - 1 + 0.03,
+      draw: () => {
+        const t = performance.now() / 1000;
+        const tones = this.fallTones();
+        const vn = (v: number, salt: number, ks: number) =>
+          Renderer.fallNoise(v, salt, level, ks);
+        const n01 = (a: number, sa: number) => Renderer.stone01(a, sa, 911 + level * 17);
+        const wtsT = (wx: number, wy: number) => {
+          const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
+          p.y -= topLift;
+          return p;
+        };
+        const wtsL = (wx: number, wy: number) => {
+          const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
+          p.y -= landLift;
+          return p;
+        };
+        // Headrace: the sideways tongue from the feed to the rim line.
+        const feedX = x - dir * info.race;
+        const RS = Math.max(2, info.race * 3);
+        ctx.beginPath();
+        for (let k = 0; k <= RS; k++) {
+          const wx = feedX + (k / RS) * (x - feedX);
+          const u = k / RS;
+          const inset = 0.05 + 0.06 * u + (vn(wx, 21, 0.9) - 0.5) * 0.08;
+          const p = wtsT(wx, r0 + inset);
+          ctx.lineTo(p.x, p.y);
+        }
+        for (let k = RS; k >= 0; k--) {
+          const wx = feedX + (k / RS) * (x - feedX);
+          const u = k / RS;
+          const inset = 0.05 + 0.06 * u + (vn(wx, 22, 0.9) - 0.5) * 0.08;
+          const p = wtsT(wx, r1 - inset);
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.closePath();
+        const pF = wtsT(feedX, (r0 + r1) / 2);
+        const pR = wtsT(x, (r0 + r1) / 2);
+        const gr = ctx.createLinearGradient(pF.x, 0, pR.x, 0);
+        gr.addColorStop(0, 'rgba(73,121,184,0)');
+        gr.addColorStop(0.45, `rgba(63,108,170,${0.38 * tones.dim})`);
+        gr.addColorStop(1, `rgba(30,58,106,${0.55 * tones.dim})`);
+        ctx.fillStyle = gr;
+        ctx.fill();
+        // Flow threads accelerating into the rim.
+        ctx.strokeStyle = tones.foam;
+        ctx.lineCap = 'round';
+        for (let wy = r0 + 0.25; wy < r1 - 0.1; wy += 0.3) {
+          const idx = Math.round(wy / 0.3);
+          const ph = (t * 1.5 * (0.8 + 0.4 * n01(idx, 31)) + n01(idx, 32)) % 1;
+          const px0 = feedX + Math.pow(ph, 1.6) * (x - feedX);
+          const px1 = px0 + (x - px0) * Math.min(1, 0.25 + ph * 0.3);
+          const p0 = wtsT(px0, wy);
+          const p1 = wtsT(px1, wy);
+          ctx.globalAlpha = (0.14 + 0.3 * ph) * tones.dim;
+          ctx.lineWidth = Math.max(1.2, s * 0.028);
+          ctx.beginPath();
+          ctx.moveTo(p0.x, p0.y);
+          ctx.lineTo(p1.x, p1.y);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.lineCap = 'butt';
+        // Outwash fan across the low ground.
+        const fanEnd = x + dir * (info.drop + 0.6);
+        ctx.beginPath();
+        const FS = 4;
+        for (let k = 0; k <= FS; k++) {
+          const wx = x + ((fanEnd - x) * k) / FS;
+          const u = k / FS;
+          const spread = 0.1 + 0.2 * u + (vn(wx, 27, 0.7) - 0.5) * 0.1;
+          const p = wtsL(wx, r0 - spread);
+          ctx.lineTo(p.x, p.y);
+        }
+        for (let k = FS; k >= 0; k--) {
+          const wx = x + ((fanEnd - x) * k) / FS;
+          const u = k / FS;
+          const spread = 0.1 + 0.2 * u + (vn(wx, 28, 0.7) - 0.5) * 0.1;
+          const p = wtsL(wx, r1 + spread);
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.closePath();
+        const pI = wtsL(x, (r0 + r1) / 2);
+        const pE = wtsL(fanEnd, (r0 + r1) / 2);
+        const gw = ctx.createLinearGradient(pI.x, 0, pE.x, 0);
+        gw.addColorStop(0, `${tones.wash}${0.5 * tones.dim})`);
+        gw.addColorStop(1, `${tones.wash}${0.05 * tones.dim})`);
+        ctx.fillStyle = gw;
+        ctx.fill();
+        // Pool rings at the fan's end — THE FLAT LAW.
+        for (let wy = r0 + 0.3; wy < r1; wy += 0.55) {
+          const idx = Math.round(wy / 0.55);
+          for (let k = 0; k < 2; k++) {
+            const ph = (t * 0.5 + k * 0.41 + n01(idx, 80 + k)) % 1;
+            const rx = (0.1 + ph * 0.45) * s;
+            const p = wtsL(x + dir * (info.drop * 0.7 + 0.4), wy);
+            ctx.strokeStyle = tones.foam;
+            ctx.globalAlpha = (1 - ph) * 0.35 * tones.dim;
+            ctx.lineWidth = Math.max(1.2, s * 0.028);
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.y, rx, rx * 0.6, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+        ctx.globalAlpha = 1;
+        // Mist veil at the ribbon's foot.
+        const pm = wtsL(x + dir * 0.25, (r0 + r1) / 2);
+        const rx = ((r1 - r0) * 0.5 + 0.5) * s;
+        const rg = ctx.createRadialGradient(pm.x, pm.y, 0, pm.x, pm.y, rx);
+        rg.addColorStop(0, `rgba(238,246,253,${0.14 * tones.dim})`);
+        rg.addColorStop(1, 'rgba(238,246,253,0)');
+        ctx.save();
+        ctx.translate(pm.x, pm.y);
+        ctx.scale(1, 0.7);
+        ctx.translate(-pm.x, -pm.y);
+        ctx.fillStyle = rg;
+        ctx.fillRect(pm.x - rx, pm.y - rx, rx * 2, rx * 2);
+        ctx.restore();
+        this.emitFallHaze(x + dir * 0.25, r0 + 0.15, x + dir * 0.25, r1 - 0.15);
+      },
+    };
+  }
+
+  /**
+   * NORTH falls: the face looks away from the camera, so the visible
+   * story is the crown — the race running away toward the edge, the
+   * boil at the silhouette, the peeking top of the hidden sheet — and
+   * beyond the ridge, the far basin's churn (occluded by the lifted
+   * crown exactly where it should be) plus a rising plume. Diagonal
+   * back-bevels are skipped: the flanking cardinal faces carry them.
+   */
+  private pushNorthFallItems(
+    game: ClientGame,
+    items: DrawItem[],
+    ax: number,
+    ay: number,
+    bx: number,
+    by: number,
+    nx: number,
+    ny: number,
+    level: number,
+  ): void {
+    if (Math.abs(nx) > 0.01) return;
+    if (ax > bx) {
+      [ax, bx] = [bx, ax];
+      [ay, by] = [by, ay];
+    }
+    const mx = (ax + bx) / 2;
+    const iA = this.fallAt(game, (ax + mx) / 2, ay, nx, ny, level);
+    const iB = this.fallAt(game, (mx + bx) / 2, ay, nx, ny, level);
+    if (!iA && !iB) return;
+    const x0 = iA ? ax : mx;
+    const x1 = iB ? bx : mx;
+    const info: SpillInfo =
+      iA && iB
+        ? {
+            race: Math.min(iA.race, iB.race),
+            drop: Math.min(iA.drop, iB.drop),
+            landElev: Math.min(iA.landElev, iB.landElev),
+          }
+        : (iA ?? iB)!;
+    items.push(this.northFallRaceItem(x0, x1, ay, level, info));
+    items.push(this.northFallChurnItem(x0, x1, ay, level, info));
+  }
+
+  /** The crown half of a north fall: race away to the edge + the boil
+   *  line at the silhouette. Sorts after every crown row it crosses. */
+  private northFallRaceItem(
+    x0: number,
+    x1: number,
+    yEdge: number,
+    level: number,
+    info: SpillInfo,
+  ): DrawItem {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const topLift = level * ELEV_H * s;
+    return {
+      sortY: yEdge + info.race - 1 + 0.02,
+      draw: () => {
+        const t = performance.now() / 1000;
+        const tones = this.fallTones();
+        const fine = s >= 26;
+        const vn = (v: number, salt: number, ks: number) =>
+          Renderer.fallNoise(v, salt, level, ks);
+        const n01 = (a: number, sa: number) => Renderer.stone01(a, sa, 911 + level * 17);
+        const wtsT = (wx: number, wy: number) => {
+          const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
+          p.y -= topLift;
+          return p;
+        };
+        // The race, flowing AWAY (north) to the edge.
+        const raceEnd = yEdge + info.race;
+        const RS = Math.max(2, info.race * 3);
+        ctx.beginPath();
+        for (let k = 0; k <= RS; k++) {
+          const wy = raceEnd - (k / RS) * info.race;
+          const u = k / RS;
+          const inset = 0.04 + 0.06 * u + (vn(wy, 21, 0.9) - 0.5) * 0.08;
+          const p = wtsT(x0 + inset, wy);
+          ctx.lineTo(p.x, p.y);
+        }
+        for (let k = RS; k >= 0; k--) {
+          const wy = raceEnd - (k / RS) * info.race;
+          const u = k / RS;
+          const inset = 0.04 + 0.06 * u + (vn(wy, 22, 0.9) - 0.5) * 0.08;
+          const p = wtsT(x1 - inset, wy);
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.closePath();
+        const pS = wtsT((x0 + x1) / 2, raceEnd);
+        const pN = wtsT((x0 + x1) / 2, yEdge);
+        const gr = ctx.createLinearGradient(0, pS.y, 0, pN.y);
+        gr.addColorStop(0, 'rgba(73,121,184,0)');
+        gr.addColorStop(0.45, `rgba(63,108,170,${0.38 * tones.dim})`);
+        gr.addColorStop(1, `rgba(30,58,106,${0.55 * tones.dim})`);
+        ctx.fillStyle = gr;
+        ctx.fill();
+        // Flow threads accelerating toward the drop.
+        ctx.strokeStyle = tones.foam;
+        ctx.lineCap = 'round';
+        for (let wx = Math.ceil((x0 + 0.08) / 0.3) * 0.3; wx < x1 - 0.05; wx += 0.3) {
+          const idx = Math.round(wx / 0.3);
+          const ph = (t * 1.5 * (0.8 + 0.4 * n01(idx, 31)) + n01(idx, 32)) % 1;
+          const wy0 = raceEnd - Math.pow(ph, 1.6) * info.race;
+          const wy1 = Math.max(yEdge, wy0 - 0.12 - 0.2 * ph);
+          const p0 = wtsT(wx, wy0);
+          const p1 = wtsT(wx, wy1);
+          ctx.globalAlpha = (0.14 + 0.3 * ph) * tones.dim;
+          ctx.lineWidth = Math.max(1.2, s * 0.028);
+          ctx.beginPath();
+          ctx.moveTo(p0.x, p0.y);
+          ctx.lineTo(p1.x, p1.y);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.lineCap = 'butt';
+        // The boil at the silhouette: the sheet's top peeking over.
+        const pE0 = wtsT(x0, yEdge);
+        const pE1 = wtsT(x1, yEdge);
+        ctx.strokeStyle = tones.crest;
+        ctx.globalAlpha = 0.85 * tones.dim;
+        ctx.lineWidth = Math.max(1.5, s * 0.05);
+        ctx.beginPath();
+        ctx.moveTo(pE0.x, pE0.y - s * 0.02);
+        ctx.lineTo(pE1.x, pE1.y - s * 0.02);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        if (fine) {
+          ctx.fillStyle = tones.foam;
+          for (let wx = Math.ceil(x0 / 0.28) * 0.28; wx < x1; wx += 0.28) {
+            const idx = Math.round(wx / 0.28);
+            const p = wtsT(wx, yEdge);
+            ctx.globalAlpha =
+              (0.35 + 0.45 * n01(idx, 92)) *
+              (0.6 + 0.4 * Math.sin(t * 4.1 + idx * 2.7)) *
+              tones.dim;
+            const rr = s * (0.03 + 0.03 * n01(idx, 93));
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.y - s * 0.03, rr * 1.5, rr, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+        // The plume rising from behind the ridge (overlay pass).
+        if (this.waterFxFull && Math.random() < this.frameDt * 2.6 * (x1 - x0)) {
+          this.particles.burst(
+            x0 + Math.random() * (x1 - x0),
+            yEdge - 0.3 - Math.random() * Math.max(0.4, info.drop),
+            1,
+            ['#dcebf7', '#cfe3f4'],
+            { speed: 0.35, life: 1.6, size: 0.07, up: true, gravity: -0.3, drag: 1.0, grow: 0.16 },
+          );
+        }
+      },
+    };
+  }
+
+  /** The far-basin half of a north fall: churn, rings and a small
+   *  veil at the landing, sorted to draw BEFORE the lifted crown rows
+   *  so the ridge occludes it exactly where it should. */
+  private northFallChurnItem(
+    x0: number,
+    x1: number,
+    yEdge: number,
+    level: number,
+    info: SpillInfo,
+  ): DrawItem {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const landLift = info.landElev * ELEV_H * s;
+    const impactY = yEdge - info.drop - 0.45;
+    return {
+      sortY: yEdge - 1 + 0.001,
+      draw: () => {
+        const t = performance.now() / 1000;
+        const tones = this.fallTones();
+        const n01 = (a: number, sa: number) => Renderer.stone01(a, sa, 911 + level * 17);
+        this.drawFallChurn(x0, impactY, x1, impactY, 0, -1, landLift, level, t, tones);
+        // Rings pushing out into the basin.
+        const wts = (wx: number, wy: number) => {
+          const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
+          p.y -= landLift;
+          return p;
+        };
+        for (let wx = Math.ceil((x0 + 0.15) / 0.55) * 0.55; wx < x1; wx += 0.55) {
+          const idx = Math.round(wx / 0.55);
+          for (let k = 0; k < 2; k++) {
+            const ph = (t * 0.5 + k * 0.41 + n01(idx, 80 + k)) % 1;
+            const rx = (0.1 + ph * 0.5) * s;
+            const p = wts(wx, impactY - 0.25);
+            ctx.strokeStyle = tones.foam;
+            ctx.globalAlpha = (1 - ph) * 0.38 * tones.dim;
+            ctx.lineWidth = Math.max(1.2, s * 0.028);
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.y, rx, rx * 0.6, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+        ctx.globalAlpha = 1;
+        const pm = wts((x0 + x1) / 2, impactY);
+        const rx = ((x1 - x0) * 0.6 + 0.4) * s;
+        const rg = ctx.createRadialGradient(pm.x, pm.y, 0, pm.x, pm.y, rx);
+        rg.addColorStop(0, `rgba(238,246,253,${0.13 * tones.dim})`);
+        rg.addColorStop(1, 'rgba(238,246,253,0)');
+        ctx.save();
+        ctx.translate(pm.x, pm.y);
+        ctx.scale(1, 0.6);
+        ctx.translate(-pm.x, -pm.y);
+        ctx.fillStyle = rg;
+        ctx.fillRect(pm.x - rx, pm.y - rx, rx * 2, rx * 2);
+        ctx.restore();
       },
     };
   }
