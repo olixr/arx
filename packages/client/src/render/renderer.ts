@@ -4531,8 +4531,18 @@ export class Renderer {
     const syT = s * this.camera.yScale; // foreshortened tile depth
     const hs = whT * s;
     const lx = (x: number): number => this.leanX(x, whT);
-    const x0 = p.x - 0.25;
-    const x1 = p.x + s + 0.25;
+    // THE SHARED-EDGE LAW: run-mates meet on ONE pixel-snapped edge.
+    // A bleed on a joined side would overlap the neighbour by a
+    // half-pixel, and whichever tile draws second re-blends its whole
+    // paint stack (face, chink underlayer, course shading) over the
+    // finished neighbour at partial AA coverage — printing a pale
+    // seam column up the face at every joint. Abutting snapped edges
+    // cover exactly; the bleed survives only on exposed ends, where
+    // it hides the background sliver under the silhouette outline.
+    const x0 = w ? Math.round(p.x) : p.x - 0.25;
+    const x1 = e ? Math.round(p.x + s) : p.x + s + 0.25;
+    const y0 = n || nDoor ? Math.round(p.y) : p.y - 0.25;
+    const y1 = sw ? Math.round(p.y + syT) : p.y + syT + 0.25;
     const sideCol = shade(mat === Tile.WallWood ? skin.log : mat === Tile.WallStone ? '#6f697c' : '#2b2536', -6);
     // Shared timber course geometry — face, flanks, and corner ends
     // must agree on where every log beds. The stack reads bottom-up:
@@ -4553,8 +4563,9 @@ export class Renderer {
         ? undefined
         : () => {
             // A body this tall throws a real shadow across the ground,
-            // cast from its south base edge along the sun.
-            this.castEdgeQuad(p.x - 0.25, p.y + syT, p.x + s + 0.25, p.y + syT, whT);
+            // cast from its south base edge along the sun. Shared-edge
+            // spans keep run-mates' translucent shadows from doubling.
+            this.castEdgeQuad(x0, p.y + syT, x1, p.y + syT, whT);
           },
       draw: () => {
         const yBase = p.y + syT; // south edge at ground level
@@ -4777,9 +4788,13 @@ export class Renderer {
             // more courses, it doesn't stretch them.
             let band = 0;
             for (let cy2 = s * 0.39; cy2 < hs * 0.96; cy2 += s * 0.39, band++) {
+              // Mortar beds run the FULL span to the shared edges, so
+              // a course meets the neighbour tile's course head-on —
+              // stopping at the tile body printed a bright break in
+              // every bed line at every joint.
               ctx.beginPath();
-              ctx.moveTo(p.x, -cy2);
-              ctx.lineTo(p.x + s, -cy2);
+              ctx.moveTo(x0, -cy2);
+              ctx.lineTo(x1, -cy2);
               ctx.stroke();
               for (const fx of band % 2 === 0 ? [0.25, 0.75] : [0.5]) {
                 ctx.beginPath();
@@ -4789,7 +4804,7 @@ export class Renderer {
               }
             }
             ctx.fillStyle = 'rgba(20, 12, 26, 0.2)';
-            ctx.fillRect(p.x, -hs * 0.1, s, hs * 0.1);
+            ctx.fillRect(x0, -hs * 0.1, x1 - x0, hs * 0.1);
           }
           // THE SECRET SEAM: a CrackedCaveWall is the same cave mass
           // wearing one old fracture down its south face — SUBTLE by
@@ -4900,7 +4915,7 @@ export class Renderer {
           }
           // Ambient-occlusion seam where the face meets the ground.
           ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
-          ctx.fillRect(x0, -s * 0.06, s + 0.5, s * 0.06);
+          ctx.fillRect(x0, -s * 0.06, x1 - x0, s * 0.06);
           ctx.restore();
           if (hole) {
             // The glass itself, over the open hole: cold daylight
@@ -4954,13 +4969,14 @@ export class Renderer {
         this.beginHeightLayer(whT);
         ctx.fillStyle = top;
         ctx.beginPath();
-        chamferRect(ctx, x0, p.y - 0.25, s + 0.5, syT + 0.5, radii);
+        chamferRect(ctx, x0, y0, x1 - x0, y1 - y0, radii);
         ctx.fill();
-        if (mat === Tile.WallWood) this.woodCrownPlate(p, syT, s, x0, x1, tx, ty, (n || sw) && !(w || e));
+        if (mat === Tile.WallWood)
+          this.woodCrownPlate({ x: p.x, y: y0 }, y1 - y0, s, x0, x1, tx, ty, (n || sw) && !(w || e));
         // Lit south lip of the crown grounds the height read.
         if (!sw) {
           ctx.fillStyle = shade(top, 16);
-          ctx.fillRect(x0 + radii[3] * 0.8, p.y + syT - s * 0.08, s + 0.5 - (radii[2] + radii[3]) * 0.8, s * 0.08);
+          ctx.fillRect(x0 + radii[3] * 0.8, y1 - s * 0.08, x1 - x0 - (radii[2] + radii[3]) * 0.8, s * 0.08);
         }
         ctx.restore();
         // SILHOUETTE OUTLINE: the flat-art edge, on exposed perimeter
@@ -4968,8 +4984,8 @@ export class Renderer {
         // ground contact. Run-shared edges (n/e/w/sw) are skipped so
         // the run reads as one mass, only its outer boundary ringed.
         if (this.outlineOn) {
-          const cTop = p.y - 0.25 - hs; // crown north edge, lifted
-          const cBot = p.y + syT + 0.25 - hs; // crown south lip
+          const cTop = y0 - hs; // crown north edge, lifted
+          const cBot = y1 - hs; // crown south lip
           const fBot = p.y + syT; // face foot on the ground
           const sideBot = sw ? cBot : fBot; // no face ⇒ stop at the crown
           const outline = new Path2D();
