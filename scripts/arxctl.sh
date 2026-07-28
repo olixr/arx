@@ -29,10 +29,30 @@ PORT="${PORT:-8790}"
 ADDR="${HOST:-127.0.0.1}"
 [ "$ADDR" = "0.0.0.0" ] && ADDR="127.0.0.1"
 
-# supervisorctl needs root on a stock Forge box; fall back to sudo.
+# supervisorctl needs root on a stock Forge box; fall back to sudo -n
+# (non-interactive — a deploy must never hang on a password prompt).
+# supervisorctl can exit 0 while printing "ERROR (no such process)",
+# so the output text is part of the verdict.
 ctl() {
-  if supervisorctl "$@" 2>/dev/null; then return 0; fi
-  sudo supervisorctl "$@"
+  local out
+  if out=$(supervisorctl "$@" 2>&1) && ! grep -q 'ERROR' <<<"$out"; then
+    printf '%s\n' "$out"
+    return 0
+  fi
+  if out=$(sudo -n supervisorctl "$@" 2>&1) && ! grep -q 'ERROR' <<<"$out"; then
+    printf '%s\n' "$out"
+    return 0
+  fi
+  printf '%s\n' "$out" >&2
+  if grep -qE 'no such (process|group)' <<<"$out"; then
+    {
+      echo "hint: supervisor has no program named '$PROGRAM'."
+      echo "      Running the game server as a Forge Daemon? Set"
+      echo "      ARX_PROGRAM=\"daemon-<id>:*\" in the site environment"
+      echo "      (DEPLOY.md section 5)."
+    } >&2
+  fi
+  return 1
 }
 
 ping_server() {
