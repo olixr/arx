@@ -1,9 +1,9 @@
 # Techniques v2 — The Honed Art & The Callings
 
-Status: **PHASES 1–3 SHIPPED** (2026-07-28; Phase 1 HONED-ART d101b22, Phase 2
-OPEN LADDER ebfe816, Phase 3 CALLINGS foundation same-day — 42 Callings live on
-protocol v12 with the Focus budget enforced server-side). Phases 4–6 (Codex v2
-Callings wing, Unwritten Page, balance pass) remain as planned below.
+Status: **PHASES 1–5 SHIPPED** (2026-07-28; Phase 1 HONED-ART d101b22, Phase 2
+OPEN LADDER ebfe816, Phase 3 CALLINGS fe9f4b5, Phase 4 Codex v2 e814459,
+Phase 5 UNWRITTEN PAGE b0a2839 — 44 arts and 42 Callings live). Phase 6
+(the live balance pass) remains as planned below.
 Companion to the combat-depth 4.1 slots, the Techniques codex (V screen), and
 THE THREAT LAW (`shared/sim/damage.ts`). Read those before touching anything here.
 
