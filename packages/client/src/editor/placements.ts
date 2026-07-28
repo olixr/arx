@@ -2,9 +2,9 @@ import type { ZoneDef } from '@devcraft/content';
 import type { PlacementRef } from './state.js';
 
 /**
- * Placement geometry: hit-testing and shared accessors for the four
+ * Placement geometry: hit-testing and shared accessors for the
  * placement kinds a zone carries — portals, NPC spawn clusters, named
- * actor posts, and the world spawn. All coordinates here are LOCAL
+ * actor posts, signs, and the world spawn. All coordinates here are LOCAL
  * zone tiles (floats for hit tests); the zone stores world coords.
  */
 
@@ -25,6 +25,10 @@ export function placementPos(zone: ZoneDef, ref: PlacementRef): { x: number; y: 
       const a = zone.actorSpawns?.[ref.index];
       return a ? { x: a.x - ox + 0.5, y: a.y - oy + 0.5 } : null;
     }
+    case 'sign': {
+      const g = zone.signs?.[ref.index];
+      return g ? { x: g.x - ox + 0.5, y: g.y - oy + 0.5 } : null;
+    }
     case 'spawn':
       return zone.spawn ? { x: zone.spawn.x - ox, y: zone.spawn.y - oy } : null;
   }
@@ -43,6 +47,10 @@ export function placementLabel(zone: ZoneDef, ref: PlacementRef): string {
     case 'actor': {
       const a = zone.actorSpawns?.[ref.index];
       return a ? a.actor : 'actor';
+    }
+    case 'sign': {
+      const g = zone.signs?.[ref.index];
+      return g ? (g.title || g.lines?.[0] || 'blank sign') : 'sign';
     }
     case 'spawn':
       return 'world spawn';
@@ -69,6 +77,7 @@ export function placementAt(zone: ZoneDef, fx: number, fy: number): PlacementRef
   (zone.actorSpawns ?? []).forEach((_, i) => consider({ kind: 'actor', index: i }, 0.62));
   (zone.portals ?? []).forEach((_, i) => consider({ kind: 'portal', index: i }, 0.62));
   (zone.spawns ?? []).forEach((_, i) => consider({ kind: 'cluster', index: i }, 0.62));
+  (zone.signs ?? []).forEach((_, i) => consider({ kind: 'sign', index: i }, 0.62));
   if (zone.spawn) consider({ kind: 'spawn', index: 0 }, 0.62);
   candidates.sort((a, b) => a.d - b.d);
   return candidates[0]?.ref ?? null;
@@ -120,6 +129,14 @@ export function movePlacement(zone: ZoneDef, ref: PlacementRef, lx: number, ly: 
       }
       break;
     }
+    case 'sign': {
+      const g = zone.signs?.[ref.index];
+      if (g) {
+        g.x = wx;
+        g.y = wy;
+      }
+      break;
+    }
     case 'spawn':
       zone.spawn = { x: wx + 0.5, y: wy + 0.5 };
       break;
@@ -137,6 +154,9 @@ export function deletePlacement(zone: ZoneDef, ref: PlacementRef): void {
       break;
     case 'actor':
       zone.actorSpawns?.splice(ref.index, 1);
+      break;
+    case 'sign':
+      zone.signs?.splice(ref.index, 1);
       break;
     case 'spawn':
       zone.spawn = undefined;

@@ -4,6 +4,7 @@ import {
   templateHeight,
   type ZoneDef,
 } from '@devcraft/content';
+import { SIGN_MAX_LINE, SIGN_MAX_LINES, SIGN_MAX_TITLE, Tile, sanitizeSignLine } from '@devcraft/shared';
 import type { PrefabListEntry, RegistrySnapshot } from './api.js';
 import { iconImg } from './editorIcons.js';
 import { placementLabel, sameRef } from './placements.js';
@@ -212,6 +213,7 @@ const KIND_META: Record<PlacementRef['kind'], { icon: string; title: string }> =
   cluster: { icon: 'cluster', title: 'NPC spawn clusters' },
   actor: { icon: 'actor', title: 'Placed actors' },
   portal: { icon: 'portal', title: 'Portals' },
+  sign: { icon: 'sign', title: 'Signs' },
   spawn: { icon: 'spawn', title: 'World spawn' },
 };
 
@@ -227,7 +229,7 @@ export function buildPlacementsPanel(root: HTMLElement, deps: PanelDeps): void {
     const hint = document.createElement('p');
     hint.className = 'muted';
     hint.textContent =
-      'Place with the portal / cluster / actor / spawn tools, or select a marker (click it) to edit its properties here.';
+      'Place with the portal / cluster / actor / sign / spawn tools, or select a marker (click it) to edit its properties here.';
     root.appendChild(hint);
   }
 
@@ -236,6 +238,7 @@ export function buildPlacementsPanel(root: HTMLElement, deps: PanelDeps): void {
     { kind: 'cluster', count: zone.spawns?.length ?? 0 },
     { kind: 'actor', count: zone.actorSpawns?.length ?? 0 },
     { kind: 'portal', count: zone.portals?.length ?? 0 },
+    { kind: 'sign', count: zone.signs?.length ?? 0 },
     { kind: 'spawn', count: zone.spawn ? 1 : 0 },
   ];
   for (const g of groups) {
@@ -259,7 +262,9 @@ export function buildPlacementsPanel(root: HTMLElement, deps: PanelDeps): void {
             ? 'None — the actor tool (A) posts a named townsfolk here.'
             : g.kind === 'portal'
               ? 'None — the portal tool (U) links this zone somewhere else.'
-              : 'Unset — the spawn tool (P) marks where players arrive.';
+              : g.kind === 'sign'
+                ? 'None — the sign tool (G) raises a board and writes it.'
+                : 'Unset — the spawn tool (P) marks where players arrive.';
       root.appendChild(empty);
       continue;
     }
@@ -518,6 +523,71 @@ function buildInspector(deps: PanelDeps, ref: PlacementRef): HTMLElement {
     note.className = 'muted';
     note.textContent =
       'Routine steps are offsets from this post — moving the post moves the whole day with it.';
+    box.appendChild(note);
+  }
+
+  if (ref.kind === 'sign') {
+    const g = zone.signs?.[ref.index];
+    if (!g) return box;
+    // The board's own width is the only length law — the shared caps
+    // are what a player will actually be able to read, so the studio
+    // enforces exactly them rather than inventing an editor limit.
+    const line = (
+      label: string,
+      value: string,
+      max: number,
+      commit: (z: ZoneDef, v: string) => void,
+    ): void => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = value;
+      input.maxLength = max;
+      input.spellcheck = false;
+      input.onchange = () =>
+        actions.editPlacement(ref, 'sign copy', (z) => commit(z, input.value));
+      box.appendChild(field(label, input));
+    };
+    line('heading', g.title, SIGN_MAX_TITLE, (z, v) => {
+      z.signs![ref.index]!.title = sanitizeSignLine(v, SIGN_MAX_TITLE);
+    });
+    for (let i = 0; i < SIGN_MAX_LINES; i++) {
+      line(`line ${i + 1}`, g.lines?.[i] ?? '', SIGN_MAX_LINE, (z, v) => {
+        const sign = z.signs![ref.index]!;
+        const lines = (sign.lines ?? []).slice();
+        while (lines.length <= i) lines.push('');
+        lines[i] = sanitizeSignLine(v, SIGN_MAX_LINE);
+        while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
+        // Absent stays absent — the JSON round-trip law.
+        if (lines.length > 0) sign.lines = lines;
+        else delete sign.lines;
+      });
+    }
+    const kindRow = document.createElement('div');
+    kindRow.className = 'dir-dial';
+    for (const opt of [
+      { tile: Tile.HangingSign, label: 'shingle', tip: 'Hangs off a building and names it' },
+      { tile: Tile.Signpost, label: 'post', tip: 'Stands free at a fork or a gate' },
+    ]) {
+      const b = document.createElement('button');
+      const lx = g.x - zone.origin.x;
+      const ly = g.y - zone.origin.y;
+      const here = zone.ground[ly * zone.width + lx];
+      b.className = 'opt-btn' + (here === opt.tile ? ' active' : '');
+      b.textContent = opt.label;
+      b.title = opt.tip;
+      b.onclick = () =>
+        actions.editPlacement(ref, 'sign furniture', (z) => {
+          const sign = z.signs![ref.index]!;
+          const i = (sign.y - z.origin.y) * z.width + (sign.x - z.origin.x);
+          z.ground[i] = opt.tile;
+        });
+      kindRow.appendChild(b);
+    }
+    box.appendChild(field('board', kindRow));
+    const note = document.createElement('p');
+    note.className = 'muted';
+    note.textContent =
+      'The words live with the board: move the marker and the sign tile follows. Blank boards fail the zone build.';
     box.appendChild(note);
   }
 

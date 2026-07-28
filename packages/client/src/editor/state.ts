@@ -18,12 +18,13 @@ export type ToolId =
   | 'portal'
   | 'cluster'
   | 'actor'
+  | 'sign'
   | 'spawn';
 
 /** Which sidebar tab is showing. */
 export type SidebarTab = 'tiles' | 'structures' | 'placements';
 
-export type PlacementKind = 'portal' | 'cluster' | 'actor' | 'spawn';
+export type PlacementKind = 'portal' | 'cluster' | 'actor' | 'spawn' | 'sign';
 
 /** A handle to one placement in the zone (spawn point uses index 0). */
 export interface PlacementRef {

@@ -1,9 +1,9 @@
 import type { ZoneDef } from '@devcraft/content';
 import type { PlacementRef } from './state.js';
 /**
- * Placement geometry: hit-testing and shared accessors for the four
+ * Placement geometry: hit-testing and shared accessors for the
  * placement kinds a zone carries — portals, NPC spawn clusters, named
- * actor posts, and the world spawn. All coordinates here are LOCAL
+ * actor posts, signs, and the world spawn. All coordinates here are LOCAL
  * zone tiles (floats for hit tests); the zone stores world coords.
  */
 /** Local position of a placement's anchor (tile-center space). */

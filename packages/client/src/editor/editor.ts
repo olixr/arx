@@ -279,7 +279,13 @@ let pasteArmed = false;
 
 // -------------------------------------------------------- placements
 
-const PLACEMENT_TOOLS: ReadonlySet<ToolId> = new Set(['portal', 'cluster', 'actor', 'spawn']);
+const PLACEMENT_TOOLS: ReadonlySet<ToolId> = new Set([
+  'portal',
+  'cluster',
+  'actor',
+  'sign',
+  'spawn',
+]);
 
 function selectPlacement(ref: PlacementRef | null): void {
   state.selected = ref;
@@ -297,6 +303,17 @@ function removePlacementRef(ref: PlacementRef): void {
   zoneOp(
     label,
     (z) => {
+      if (ref.kind === 'sign') {
+        // The board leaves with its words — the pair is the unit.
+        const g = z.signs?.[ref.index];
+        if (g) {
+          const lx = g.x - z.origin.x;
+          const ly = g.y - z.origin.y;
+          if (lx >= 0 && ly >= 0 && lx < z.width && ly < z.height) {
+            z.ground[ly * z.width + lx] = Tile.Grass;
+          }
+        }
+      }
       if (ref.kind === 'portal') {
         // The entrance tile leaves with its portal.
         const p = z.portals?.[ref.index];
@@ -318,7 +335,7 @@ function removePlacementRef(ref: PlacementRef): void {
 }
 
 /** Portal markers carry their entrance tile: moving one swaps tiles. */
-function carryPortalTile(z: ZoneDef, fromW: Pt, toW: Pt): void {
+function carryPlacementTile(z: ZoneDef, fromW: Pt, toW: Pt): void {
   const li = (w: Pt): number | null => {
     const lx = w.x - z.origin.x;
     const ly = w.y - z.origin.y;
@@ -364,6 +381,17 @@ function createPlacementAt(t: Pt): PlacementRef | null {
       }
       z.actorSpawns.push({ actor, x: wx, y: wy });
       return { kind: 'actor', index: z.actorSpawns.length - 1 };
+    }
+    case 'sign': {
+      // Board AND words in one act: a sign tile with no record is a
+      // blank plank the zone build refuses, so the tool never makes
+      // one half of the pair.
+      z.signs ??= [];
+      z.signs.push({ x: wx, y: wy, title: 'NEW SIGN' });
+      const i = t.y * z.width + t.x;
+      z.ground[i] = Tile.Signpost;
+      view.markDirty(t.x, t.y, t.x, t.y);
+      return { kind: 'sign', index: z.signs.length - 1 };
     }
     case 'spawn': {
       z.spawn = { x: wx + 0.5, y: wy + 0.5 };
@@ -740,6 +768,7 @@ canvas.addEventListener('mousedown', (e) => {
     case 'portal':
     case 'cluster':
     case 'actor':
+    case 'sign':
     case 'spawn': {
       if (erase) {
         // Right-click a marker removes it — the eraser law for pins.
@@ -833,8 +862,8 @@ window.addEventListener('mousemove', (e) => {
     if (!inBounds(t.x, t.y)) return;
     const cur = placementPos(state.zone, drag.ref);
     if (cur && (Math.floor(cur.x) !== t.x || Math.floor(cur.y) !== t.y)) {
-      if (drag.ref.kind === 'portal') {
-        carryPortalTile(
+      if (drag.ref.kind === 'portal' || drag.ref.kind === 'sign') {
+        carryPlacementTile(
           state.zone,
           { x: state.zone.origin.x + Math.floor(cur.x), y: state.zone.origin.y + Math.floor(cur.y) },
           { x: state.zone.origin.x + t.x, y: state.zone.origin.y + t.y },
@@ -984,6 +1013,7 @@ const TOOL_KEYS: Record<string, ToolId> = {
   KeyU: 'portal',
   KeyN: 'cluster',
   KeyA: 'actor',
+  KeyJ: 'sign',
   KeyP: 'spawn',
 };
 
@@ -1668,6 +1698,7 @@ const TOOL_GROUPS: Array<{ caption: string; tools: ToolSpec[] }> = [
       { id: 'portal', name: 'Portal', key: 'U', hint: 'Click to plant a portal · drag a marker to move it · right-click removes', tab: 'placements' },
       { id: 'cluster', name: 'NPC cluster', key: 'N', hint: 'Click to plant a respawning mob camp · drag the ring edge to resize', tab: 'placements' },
       { id: 'actor', name: 'Actor', key: 'A', hint: 'Click to post a named NPC · bind identity and routine in the inspector', tab: 'placements' },
+      { id: 'sign', name: 'Sign', key: 'J', hint: 'Click to raise a board · write its words in the inspector · right-click removes', tab: 'placements' },
       { id: 'spawn', name: 'World spawn', key: 'P', hint: 'Click to set where players arrive in the world', tab: 'placements' },
     ],
   },

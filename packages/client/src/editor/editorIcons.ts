@@ -248,6 +248,17 @@ const actor: Painter = (ctx) => {
   ctx.stroke();
 };
 
+/** A signpost: a board on a driven post, two lines of writing on it. */
+const signIcon: Painter = (ctx) => {
+  ctx.strokeRect(4.5, 4.5, 15, 10);
+  path(ctx, [[12, 14.5], [12, 21]]);
+  ctx.stroke();
+  path(ctx, [[7.5, 8], [16.5, 8]]);
+  ctx.stroke();
+  path(ctx, [[7.5, 11], [14, 11]]);
+  ctx.stroke();
+};
+
 /** Mirror arrows for the flip control. */
 const flip: Painter = (ctx) => {
   ctx.setLineDash([2.4, 2]);
@@ -470,6 +481,7 @@ export const EDITOR_ICONS: Record<string, string> = {
   portal: draw(portal),
   cluster: draw(cluster),
   actor: draw(actor),
+  sign: draw(signIcon),
   flip: draw(flip),
   trash: draw(trash),
   focus: draw(focus),

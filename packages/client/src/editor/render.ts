@@ -628,7 +628,12 @@ export class EditorView {
       ctx.fillText(text, x, y);
     };
     /** Selection/hover halo behind a marker anchor. */
-    const halo = (kind: 'portal' | 'cluster' | 'actor' | 'spawn', index: number, lx: number, ly: number): void => {
+    const halo = (
+      kind: 'portal' | 'cluster' | 'actor' | 'sign' | 'spawn',
+      index: number,
+      lx: number,
+      ly: number,
+    ): void => {
       const sel = sameRef(this.state.selected, { kind, index });
       const hov = sameRef(this.state.hoverPlacement, { kind, index });
       if (!sel && !hov) return;
@@ -704,6 +709,29 @@ export class EditorView {
       ctx.closePath();
       ctx.stroke();
       label(p.delve ? 'delve' : `→ ${p.dest?.x},${p.dest?.y}`, lx, ly + s * 0.5 + 2, '#c9aef0');
+    });
+
+    // Signs: a small board badge over the tile, captioned with what it
+    // actually says — the whole point of the layer is reading it here.
+    (z.signs ?? []).forEach((g, i) => {
+      const lx = this.sx(g.x - z.origin.x + 0.5);
+      const ly = this.sy(g.y - z.origin.y + 0.5);
+      halo('sign', i, lx, ly);
+      const w = Math.max(6, s * 0.46);
+      const h = Math.max(4, s * 0.3);
+      ctx.fillStyle = '#c2a068';
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.rect(lx - w / 2, ly - h / 2 - h * 0.3, w, h);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = '#6b4a24';
+      ctx.beginPath();
+      ctx.moveTo(lx, ly + h * 0.2);
+      ctx.lineTo(lx, ly + h * 0.9);
+      ctx.stroke();
+      label(g.title || g.lines?.[0] || 'blank', lx, ly + h + 3, '#e2cda3');
     });
 
     // The world spawn.

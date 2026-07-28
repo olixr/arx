@@ -1,10 +1,10 @@
 import { Detail, Tile } from '@devcraft/shared';
 import type { PrefabDef, ZoneDef } from '@devcraft/content';
 /** The editor's document + tool state. Plain and observable. */
-export type ToolId = 'paint' | 'erase' | 'line' | 'rect' | 'ellipse' | 'fill' | 'road' | 'select' | 'picker' | 'structure' | 'prefab' | 'portal' | 'cluster' | 'actor' | 'spawn';
+export type ToolId = 'paint' | 'erase' | 'line' | 'rect' | 'ellipse' | 'fill' | 'road' | 'select' | 'picker' | 'structure' | 'prefab' | 'portal' | 'cluster' | 'actor' | 'sign' | 'spawn';
 /** Which sidebar tab is showing. */
 export type SidebarTab = 'tiles' | 'structures' | 'placements';
-export type PlacementKind = 'portal' | 'cluster' | 'actor' | 'spawn';
+export type PlacementKind = 'portal' | 'cluster' | 'actor' | 'spawn' | 'sign';
 /** A handle to one placement in the zone (spawn point uses index 0). */
 export interface PlacementRef {
     kind: PlacementKind;

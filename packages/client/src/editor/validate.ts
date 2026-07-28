@@ -38,6 +38,22 @@ export function validateZone(zone: ZoneDef): ValidationResult {
       else if (e < 0) b.sink(x, y, 1, 1, -e);
     }
   }
+  // Sign records replay through the SAME law: each is registered on
+  // the tile already painted under it, so a record whose board got
+  // erased (or was never a board) fails here exactly as it would at
+  // content build time. Passing the existing tile makes the placement
+  // a no-op — the studio's paint layer stays the source of truth.
+  for (const sign of zone.signs ?? []) {
+    const lx = sign.x - zone.origin.x;
+    const ly = sign.y - zone.origin.y;
+    if (lx < 0 || ly < 0 || lx >= zone.width || ly >= zone.height) continue;
+    const under = zone.ground[ly * zone.width + lx]!;
+    // A record over a transparent cell has no board at all — replay it
+    // as plain ground so the builder says exactly that, and never
+    // stamp the sentinel into the replay (the fence diff reads it).
+    b.sign(lx, ly, sign.title, sign.lines ?? [], (under === TILE_SKIP ? Tile.Grass : under) as Tile);
+  }
+
   if (zone.spawn) {
     const sx = zone.spawn.x - zone.origin.x;
     const sy = zone.spawn.y - zone.origin.y;
