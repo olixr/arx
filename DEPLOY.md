@@ -113,21 +113,32 @@ Production safety defaults: with `NODE_ENV=production`, dev chat
 commands, the `/dev` studio API, and guest (accountless) joins are all
 **off** unless explicitly enabled.
 
-## 5. Supervisor (the game-server process)
+## 5. The game-server process (Forge Daemon)
 
-Either install the shipped program (recommended — gives it the stable
-name `arx`):
+Create a **Forge Daemon** (server → Daemons → New Daemon):
 
-```bash
-sudo cp /home/forge/arx.gg/deploy/arx-supervisor.conf /etc/supervisor/conf.d/arx.conf
-sudo supervisorctl reread && sudo supervisorctl update
+| Field | Value |
+|---|---|
+| Command | `bash /home/forge/arx.gg/current/scripts/arx-run.sh` |
+| User | `forge` |
+| Directory | `/home/forge/arx.gg/current` |
+| Processes | `1` — one authoritative world, never more |
+| Start Seconds | `5` — boot runs DB migrations + content seeding |
+| Stop Seconds | `15` — SIGTERM saves players and drains the DB queue |
+| Stop Signal | `SIGTERM` |
+
+Then add the daemon's id to the site **Environment** so the control
+script can address it:
+
+```
+ARX_PROGRAM=daemon-<id>:*
 ```
 
-…or create a **Forge Daemon** with command
-`bash /home/forge/arx.gg/current/scripts/arx-run.sh`, directory
-`/home/forge/arx.gg/current`, user `forge` — then set
-`ARX_PROGRAM="daemon-<id>:*"` in the environment so the control script
-can address it.
+Logs: Forge's daemon panel, or `/home/forge/.forge/daemon-<id>.log`.
+
+(Alternative: `deploy/arx-supervisor.conf` is a hand-installed
+supervisor program with the stable name `arx` — only if you prefer
+managing supervisor yourself; then leave `ARX_PROGRAM` unset.)
 
 Operate it with the control script:
 
