@@ -295,6 +295,23 @@ export class Sfx {
   }
 
   /**
+   * A place enters the chart — wonder, not triumph. A breath of
+   * parchment air, a rising call answered an octave up, a warm fourth
+   * held underneath, and the pin landing as one bright tick with
+   * glitter air. Smaller than the level-up herald by design: finding
+   * is a gift, leveling is a feat.
+   */
+  discovery(): void {
+    this.noise(0.22, 0.055, 0, { band: 3600 });
+    this.tone(440, 0.2, { type: 'triangle', volume: 0.24, detune: false });
+    this.tone(587, 0.26, { type: 'triangle', volume: 0.28, delay: 0.14, detune: false });
+    this.tone(880, 0.6, { type: 'triangle', volume: 0.2, delay: 0.3, detune: false });
+    this.tone(293.7, 0.6, { type: 'sine', volume: 0.15, delay: 0.3, detune: false });
+    this.tone(1760, 0.26, { type: 'triangle', volume: 0.09, delay: 0.58, detune: false });
+    this.noise(0.4, 0.03, 0.58, { band: 5600 });
+  }
+
+  /**
    * Stepping through the Riftgate — a dimensional plunge, not a blip:
    * the deep mouth swallows (a falling sub womp), the veil tears (a
    * focused hiss of air), and a doubled shimmer climbs out the far

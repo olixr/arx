@@ -83,6 +83,10 @@ export class MapView {
 
   showDanger = false;
   hover: DiscoveryWire | null = null;
+  /** Uncharted ground wears the vellum (fullscreen) or nothing (overlay). */
+  parchment = true;
+  /** Overlay mode: quieter marks, no hover, town labels only. */
+  overlay = false;
 
   private blocks = new Map<string, HTMLCanvasElement | null>();
   private dangerBlocks = new Map<string, HTMLCanvasElement>();
@@ -309,9 +313,14 @@ export class MapView {
     const ctx = this.canvas.getContext('2d')!;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // The uncharted sheet under everything.
-    ctx.fillStyle = ctx.createPattern(parchmentCanvas(), 'repeat')!;
-    ctx.fillRect(0, 0, cw, ch);
+    if (this.parchment) {
+      // The uncharted sheet under everything.
+      ctx.fillStyle = ctx.createPattern(parchmentCanvas(), 'repeat')!;
+      ctx.fillRect(0, 0, cw, ch);
+    } else {
+      // The traveler's glass: uncharted ground simply is not there.
+      ctx.clearRect(0, 0, cw, ch);
+    }
 
     this.refreshLiveBlocks();
 
@@ -425,14 +434,15 @@ export class MapView {
     // 3. Marks over everything — a place once found is never lost to
     // the fog, even when its ground has gone parchment-blank.
     if (band === 'surface') {
-      const markerR = Math.max(7, Math.min(13, this.scale * 2.4));
+      const markerR = this.overlay ? 6.5 : Math.max(7, Math.min(13, this.scale * 2.4));
       for (const d of this.game.discoveries.values()) {
         const x = this.sx(d.x + 0.5);
         const y = this.sy(d.y + 0.5);
         if (x < -30 || y < -30 || x > cw + 30 || y > ch + 30) continue;
         drawDiscoveryMarker(ctx, d, x, y, markerR, this.hover?.id === d.id);
-        const showLabel =
-          this.hover?.id === d.id || (d.kind === 'town' && this.scale >= 0.9) || this.scale >= 5;
+        const showLabel = this.overlay
+          ? d.kind === 'town'
+          : this.hover?.id === d.id || (d.kind === 'town' && this.scale >= 0.9) || this.scale >= 5;
         if (showLabel) {
           const size = d.kind === 'town' ? 13 : 11.5;
           drawMapLabel(ctx, x, y - markerR - 4, d.faded ? `${d.name}?` : d.name, d.faded ? '#9a8f78' : '#ece4d0', size);

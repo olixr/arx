@@ -13,6 +13,9 @@ import { UiNav } from './ui/padUI.js';
 import { LootPanel } from './ui/lootPanel.js';
 import { SocialPanel } from './ui/socialPanel.js';
 import { MapScreen } from './ui/map/mapScreen.js';
+import { MapOverlay } from './ui/map/mapOverlay.js';
+import { WaypointHud } from './ui/waypointHud.js';
+import { showDiscovery } from './ui/discoveryBanner.js';
 import { RiftgatePanel } from './ui/riftgate.js';
 import { showDungeonEntry } from './ui/dungeonBanner.js';
 import { Sfx } from './audio/sfx.js';
@@ -634,6 +637,17 @@ const game = new ClientGame(input, {
     // A toast, not a screen — it overlays like the level-up card.
     showDungeonEntry(d);
   },
+  onDiscovery: (d) => {
+    // The riftgate's threshold banner is the dungeon kind's ceremony —
+    // the gate still pins itself on the chart silently.
+    if (d.kind === 'dungeon') return;
+    showDiscovery(d);
+    sfx.discovery();
+    const pos = game.predictor.pos;
+    renderer.addRing(pos.x, pos.y, '#f2c94c', 1.3);
+    renderer.zoomPulse(0.035);
+    chat.addLine({ channel: 'system', text: `Discovered: ${d.name} — marked on your chart (M).` });
+  },
   onSocial: (snap) => socialPanel.onSnapshot(snap),
   onFriendSearch: (results) => socialPanel.onSearchResults(results),
   onFriendEvent: (ev) => {
@@ -699,6 +713,8 @@ const riftgate = new RiftgatePanel(game);
 // The fellowship ledger: nearby players, friends, and requests.
 const socialPanel = new SocialPanel(game);
 const mapScreen = new MapScreen(game);
+const mapOverlay = new MapOverlay(game);
+const waypointHud = new WaypointHud();
 
 // Signage: the approach plaque over every board, and the sheet that
 // opens when you stop to read one properly.
@@ -1297,6 +1313,11 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyB') toggleScreen('build');
   if (e.code === 'KeyU') toggleScreen('social');
   if (e.code === 'KeyM') toggleScreen('map');
+  if (e.code === 'Tab') {
+    // The traveler's glass — stop the browser's focus walk cold.
+    e.preventDefault();
+    mapOverlay.toggle();
+  }
   if (e.code === 'Escape') {
     stationPanels.closeAll();
     panels.closeAll();
@@ -1570,6 +1591,10 @@ function frame(now: number): void {
   const uiOpen =
     document.querySelector('.ui-screen:not(.hidden), .ui-tray:not(.hidden)') !== null ||
     looks.open;
+  // The traveler's glass + the wayfinder ride the live HUD only — any
+  // opened screen (the chart included) supersedes them.
+  mapOverlay.update(now, uiOpen || cinema.open);
+  waypointHud.update(game, renderer, uiOpen || cinema.open || buildMode !== null);
   // The character case frames the LIVE you: with the case docked right
   // (and no bank/shop conversation borrowing the pack), the camera
   // slides the world so your character stands centered in the open
