@@ -95,17 +95,19 @@ the `citext` extension it needs is trusted (no superuser required).
 
 Paste the contents of `.env.production.example` into Forge's
 **Environment** tab for the site (it lands at `/home/forge/arx.gg/.env`
-and Forge links it into each release), and create the data dir:
+and Forge links it into each release). Review it — set the real
+credentials in `DB_USERNAME` / `DB_PASSWORD`
+(`DB_HOST`/`DB_PORT`/`DB_DATABASE` default sensibly).
 
-```bash
-mkdir -p /home/forge/arx-data
-```
+Everything stays inside the one site directory Forge manages:
 
-Review the env — set the real credentials in `DB_USERNAME` /
-`DB_PASSWORD` (`DB_HOST`/`DB_PORT`/`DB_DATABASE` default sensibly).
-`DATA_DIR=/home/forge/arx-data` holds disk-authored content (map
-overrides, POI prefabs); the deploy script ships the repo's data/ into
-it on every deploy. All player data lives in Postgres.
+- **Live world state** (accounts, characters, inventories, the POI
+  ledger, studio-edited content) lives in **Postgres** — releases
+  never touch it.
+- **Authored disk content** (`data/maps` zone overrides, `data/prefabs`
+  POI library) ships inside each release via git; the server reads the
+  release's own `data/` directory by default. No `DATA_DIR`, nothing
+  outside the repo.
 
 Production safety defaults: with `NODE_ENV=production`, dev chat
 commands, the `/dev` studio API, and guest (accountless) joins are all
@@ -139,7 +141,8 @@ scripts/arxctl.sh stop
 
 ## 6. Forge deploy script
 
-Release-based (Forge's default `$CREATE_RELEASE` scaffold, extended):
+Release-based (Forge's default `$CREATE_RELEASE` scaffold, extended).
+Every step stays inside the site directory:
 
 ```bash
 $CREATE_RELEASE()
@@ -151,17 +154,6 @@ cd $FORGE_RELEASE_DIRECTORY
 npm ci --include=dev
 npm run build                      # client bundle → <release>/public/
 
-# Ship authored content into the persistent data dir (one-way:
-# repo → server; the world DB itself is never touched).
-ENV_FILE=".env"
-[ -f "$ENV_FILE" ] || ENV_FILE="/home/forge/arx.gg/.env"
-DATA_DIR=$(grep -E '^DATA_DIR=' "$ENV_FILE" | cut -d= -f2)
-if [ -n "$DATA_DIR" ]; then
-  mkdir -p "$DATA_DIR"
-  [ -d data/prefabs ] && rsync -a --delete data/prefabs/ "$DATA_DIR/prefabs/"
-  [ -d data/maps ]    && rsync -a data/maps/ "$DATA_DIR/maps/"
-fi
-
 $ACTIVATE_RELEASE()
 
 # Swing the game server onto the new release and confirm it's alive.
@@ -170,10 +162,20 @@ sleep 2
 bash /home/forge/arx.gg/current/scripts/arxctl.sh ping || echo "WARNING: game server not answering /healthz"
 ```
 
-DB migrations run automatically at server boot. Note the restart drops
-connected players for a couple of seconds — a single authoritative
-world process can't hand off live sessions, so deploy at quiet hours
-once there's a population.
+There is no data-shipping step because the restart does it all:
+
+- **Schema migrations** run at boot against Postgres.
+- **Authored content seeding** runs at boot under the two-hash truth
+  law — new or changed bestiary defs, loot tables, dialogues, routines,
+  actors, POIs, and geography flow from the release's shipped code and
+  `data/` into the database, while any studio-edited rows are left
+  untouched.
+- **Zone overrides and prefabs** are simply read from the new
+  release's own `data/` directory.
+
+Note the restart drops connected players for a couple of seconds — a
+single authoritative world process can't hand off live sessions, so
+deploy at quiet hours once there's a population.
 
 ## 7. Verify
 
@@ -192,12 +194,15 @@ once there's a population.
   the studio locally against the tunnel with `DEV_COMMANDS=1` set on
   the server only for the session — or better, edit locally and deploy.
 - **Backups:** the whole world is the `arx` Postgres database. Forge
-  scheduled job (daily): `pg_dump -Fc arx > /home/forge/backups/arx-$(date +\%F).dump`
+  scheduled job (daily):
+  `mkdir -p /home/forge/arx.gg/backups && pg_dump -Fc arx > /home/forge/arx.gg/backups/arx-$(date +\%F).dump`
+  (the site-level `backups/` dir sits beside `releases/` and `current`,
+  untouched by deploys)
   — restore with `pg_restore -d arx --clean`. Forge's own database
   backup feature works too.
 - **Migrating an old SQLite world:** if you have a pre-Postgres
-  `arx.db`, copy it to the server and run
-  `npm run migrate:sqlite -w @arx/server -- /path/to/arx.db` once,
-  before opening the doors.
+  `arx.db`, copy it anywhere on the server (e.g. the site directory)
+  and run `npm run migrate:sqlite -w @arx/server -- /path/to/arx.db`
+  from `current/` once, before opening the doors.
 - **Scaling:** one process = one world. Keep it on one box; move the
   client to a CDN later if asset bandwidth ever matters.
