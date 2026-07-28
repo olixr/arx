@@ -436,6 +436,37 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (tx, ty)
   );
   `,
+  // v2: the map epic — per-player fog-of-war region bitmasks, the
+  // discovery ledger (name/x/y denormalized so a rumored marker keeps
+  // its story after the frontier rerolls), and the one active waypoint.
+  `
+  ALTER TABLE characters ADD COLUMN waypoint_x INTEGER;
+  ALTER TABLE characters ADD COLUMN waypoint_y INTEGER;
+
+  CREATE TABLE character_explored (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    rx INTEGER NOT NULL,
+    ry INTEGER NOT NULL,
+    bits BYTEA NOT NULL,
+    updated_at BIGINT NOT NULL,
+    PRIMARY KEY (character_id, rx, ry)
+  );
+
+  CREATE TABLE character_discoveries (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    name TEXT NOT NULL,
+    x INTEGER NOT NULL,
+    y INTEGER NOT NULL,
+    tier INTEGER,
+    epoch INTEGER,
+    faded INTEGER NOT NULL DEFAULT 0,
+    discovered_at BIGINT NOT NULL,
+    PRIMARY KEY (character_id, id)
+  );
+  CREATE INDEX idx_character_discoveries_id ON character_discoveries(id);
+  `,
 ];
 
 /**

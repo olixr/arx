@@ -37,6 +37,9 @@ export interface CharacterRow {
   home_y: number | null;
   /** Last hearth recall timestamp (ms); the cooldown survives logout. */
   hearth_at: number;
+  /** The one active waypoint TILE; null when none is set. */
+  waypoint_x: number | null;
+  waypoint_y: number | null;
 }
 
 export type AuthResult =
@@ -107,6 +110,8 @@ export class AccountStore {
         home_x: null,
         home_y: null,
         hearth_at: 0,
+        waypoint_x: null,
+        waypoint_y: null,
       },
     };
   }
@@ -122,7 +127,7 @@ export class AccountStore {
       return { ok: false, reason: 'Unknown username or wrong password' };
     }
     const character = await this.db.get<CharacterRow>(
-      'SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at FROM characters WHERE account_id = ? ORDER BY id LIMIT 1',
+      'SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at, waypoint_x, waypoint_y FROM characters WHERE account_id = ? ORDER BY id LIMIT 1',
       [acc.id],
     );
     if (!character) return { ok: false, reason: 'Account has no character' };
@@ -148,7 +153,7 @@ export class AccountStore {
     );
     if (!row) return { ok: false, reason: 'Session expired' };
     const character = await this.db.get<CharacterRow>(
-      'SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at FROM characters WHERE account_id = ? ORDER BY id LIMIT 1',
+      'SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at, waypoint_x, waypoint_y FROM characters WHERE account_id = ? ORDER BY id LIMIT 1',
       [row.account_id],
     );
     if (!character) return { ok: false, reason: 'Account has no character' };
@@ -177,6 +182,77 @@ export class AccountStore {
 
   saveHearthAt(id: number, at: number): void {
     this.db.fire('UPDATE characters SET hearth_at = ? WHERE id = ?', [at, id]);
+  }
+
+  /** Pin (or move) the one active waypoint — written the moment it's set. */
+  saveWaypoint(id: number, x: number, y: number): void {
+    this.db.fire('UPDATE characters SET waypoint_x = ?, waypoint_y = ? WHERE id = ?', [x, y, id]);
+  }
+
+  clearWaypoint(id: number): void {
+    this.db.fire('UPDATE characters SET waypoint_x = NULL, waypoint_y = NULL WHERE id = ?', [id]);
+  }
+
+  /**
+   * THE CHART — fog-of-war region bitmasks (shared/world/explored.ts
+   * owns the layout). Regions load whole at bind and flush dirty-only
+   * on the periodic save; a lost interval of walking is acceptable in
+   * a crash, so this is the batched cadence, not fire-at-the-moment.
+   */
+  async loadExplored(characterId: number): Promise<{ rx: number; ry: number; bits: Buffer }[]> {
+    return await this.db.query<{ rx: number; ry: number; bits: Buffer }>(
+      'SELECT rx, ry, bits FROM character_explored WHERE character_id = ?',
+      [characterId],
+    );
+  }
+
+  saveExploredRegion(characterId: number, rx: number, ry: number, bits: Uint8Array): void {
+    this.db.fire(
+      'INSERT INTO character_explored (character_id, rx, ry, bits, updated_at) VALUES (?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (character_id, rx, ry) DO UPDATE SET bits = excluded.bits, updated_at = excluded.updated_at',
+      [characterId, rx, ry, Buffer.from(bits.buffer, bits.byteOffset, bits.byteLength), Date.now()],
+    );
+  }
+
+  /**
+   * The place ledger — row-presence is the discovery, written the
+   * moment the splash fires (a first footfall must never be lost to a
+   * crash). name/x/y are denormalized so a rumored marker keeps its
+   * story after the frontier ledger forgets the site.
+   */
+  async loadDiscoveries(characterId: number): Promise<
+    {
+      id: string;
+      kind: string;
+      name: string;
+      x: number;
+      y: number;
+      tier: number | null;
+      epoch: number | null;
+      faded: number;
+    }[]
+  > {
+    return await this.db.query(
+      'SELECT id, kind, name, x, y, tier, epoch, faded FROM character_discoveries WHERE character_id = ?',
+      [characterId],
+    );
+  }
+
+  addDiscovery(
+    characterId: number,
+    d: { id: string; kind: string; name: string; x: number; y: number; tier?: number },
+    epoch?: number,
+  ): void {
+    this.db.fire(
+      'INSERT INTO character_discoveries (character_id, id, kind, name, x, y, tier, epoch, faded, discovered_at) ' +
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?) ON CONFLICT DO NOTHING',
+      [characterId, d.id, d.kind, d.name, d.x, d.y, d.tier ?? null, epoch ?? null, Date.now()],
+    );
+  }
+
+  /** The frontier turned over: every character's marker for this place ages to rumor. */
+  fadeDiscovery(id: string): void {
+    this.db.fire('UPDATE character_discoveries SET faded = 1 WHERE id = ?', [id]);
   }
 
   async loadSkills(characterId: number): Promise<Record<string, number>> {

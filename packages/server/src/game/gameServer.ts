@@ -241,16 +241,23 @@ import type { WorldSource } from '../world/worldSource.js';
 import { dungeonOrigin, generateDungeon } from '../dungeon/generate.js';
 import {
   DUNGEON_KEY_ITEM,
+  DUNGEON_MIN_Y,
+  EXPLORED_PUSH_BATCH,
+  ExploredMask,
   RARITY_TIERS,
+  SERVER_REVEAL_TICKS,
   dangerAt,
   dungeonSpecFromRoll,
   hashCoords,
   mintKeyPower,
+  persistRegion,
+  u8ToB64,
   type DangerAnchor,
+  type DiscoveryWire,
   type DungeonSpec,
   type Vec2,
 } from '@arx/shared';
-import { scaleNpcDef } from '@arx/content';
+import { geographySnapshot, scaleNpcDef } from '@arx/content';
 import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem, takeSlot } from './inventory.js';
 import { DROP_MERGE_RADIUS, canMergeDrop } from './drops.js';
 import { SocialSystem } from './social.js';
@@ -819,6 +826,19 @@ interface PlayerComp {
   home: { x: number; y: number } | null;
   /** Last hearth recall (ms since epoch) — the /recall cooldown clock. */
   hearthAt: number;
+  /**
+   * THE CHART: this character's fog-of-war mask. The server marks the
+   * same deterministic reveal disc the client draws, so the two never
+   * argue; only the login snapshot ever travels. Guests chart in
+   * memory only.
+   */
+  explored: ExploredMask;
+  /** Region keys touched since the last periodic flush. */
+  exploredDirty: Set<string>;
+  /** The place ledger: everything this character has ever discovered. */
+  discoveries: Map<string, DiscoveryWire>;
+  /** The one active waypoint; pure navigation state. */
+  waypoint: { x: number; y: number } | null;
 }
 
 /** A timed self-effect; multiple can ride at once (speeds multiply). */
@@ -1503,6 +1523,8 @@ export class GameServer {
         home_x: null,
         home_y: null,
         hearth_at: 0,
+        waypoint_x: null,
+        waypoint_y: null,
       };
       const token = randomBytes(18).toString('base64url');
       const eid = await this.enterWorld(session, character, null, token);
@@ -1612,6 +1634,27 @@ export class GameServer {
       }
     }
 
+    // The chart and the place ledger — loaded whole before the body
+    // stands (guests chart in memory only).
+    const explored = new ExploredMask();
+    const discoveries = new Map<string, DiscoveryWire>();
+    if (character.id > 0) {
+      for (const row of await this.accounts.loadExplored(character.id)) {
+        explored.loadRegion(row.rx, row.ry, row.bits);
+      }
+      for (const row of await this.accounts.loadDiscoveries(character.id)) {
+        discoveries.set(row.id, {
+          id: row.id,
+          kind: row.kind as DiscoveryWire['kind'],
+          name: row.name,
+          x: row.x,
+          y: row.y,
+          tier: row.tier ?? undefined,
+          faded: row.faded ? true : undefined,
+        });
+      }
+    }
+
     const eid = this.ecs.create();
     this.kinds.set(eid, EntityKind.Player);
     this.positions.set(eid, { x: spawnX, y: spawnY, dir: 0 });
@@ -1675,6 +1718,13 @@ export class GameServer {
           ? { x: character.home_x, y: character.home_y }
           : null,
       hearthAt: character.hearth_at,
+      explored,
+      exploredDirty: new Set(),
+      discoveries,
+      waypoint:
+        character.waypoint_x !== null && character.waypoint_y !== null
+          ? { x: character.waypoint_x, y: character.waypoint_y }
+          : null,
     });
     this.characterEids.set(character.id, eid);
     this.updateChunkMembership(eid);
@@ -1736,6 +1786,10 @@ export class GameServer {
       seed: config.worldSeed,
       havens: this.havenWire(),
       anchors: this.anchorWire(),
+      waypoint: player.waypoint ?? undefined,
+      // The plan is editable data — the map must chart the live truth,
+      // never the client's bundled copy.
+      geo: geographySnapshot(),
     });
     session.sendJson({ t: 'skills', xp: player.skills });
     session.sendJson({ t: 'recipes', known: [...player.knownRecipes] });
@@ -1744,6 +1798,24 @@ export class GameServer {
     session.sendJson({ t: 'techniques', chosen: player.techniques });
     session.sendJson({ t: 'time', ofs: this.timeOfsTicks });
     this.sendCooldowns(player);
+    // The chart snapshot — after this, fog only ever clears locally on
+    // both sides (the deterministic-reveal law).
+    {
+      let batch: [number, number, string][] = [];
+      for (const key of player.explored.regionKeys()) {
+        const [rx, ry] = key.split(',').map(Number) as [number, number];
+        if (!persistRegion(ry)) continue;
+        const bytes = player.explored.regionBytes(rx, ry);
+        if (!bytes) continue;
+        batch.push([rx, ry, u8ToB64(bytes)]);
+        if (batch.length >= EXPLORED_PUSH_BATCH) {
+          session.sendJson({ t: 'explored', regions: batch });
+          batch = [];
+        }
+      }
+      if (batch.length > 0) session.sendJson({ t: 'explored', regions: batch });
+    }
+    session.sendJson({ t: 'discoveries', list: [...player.discoveries.values()] });
   }
 
   onSessionClosed(session: Session): void {
@@ -1869,10 +1941,40 @@ export class GameServer {
       this.accounts.saveBank(player.characterId, player.bank);
       player.bankDirty = false;
     }
+    // Dirty-region chart flush (the bankDirty pattern). Instance-band
+    // rows never reach the DB — a dungeon is re-charted every run.
+    if (player.exploredDirty.size > 0) {
+      for (const key of player.exploredDirty) {
+        const [rx, ry] = key.split(',').map(Number) as [number, number];
+        if (!persistRegion(ry)) continue;
+        const bytes = player.explored.regionBytes(rx, ry);
+        if (bytes) this.accounts.saveExploredRegion(player.characterId, rx, ry, bytes);
+      }
+      player.exploredDirty.clear();
+    }
   }
 
   private saveAll(): void {
     for (const eid of this.players.keys()) this.savePlayer(eid);
+  }
+
+  /**
+   * THE CHART marches with the walker: every SERVER_REVEAL_TICKS each
+   * online body clears the shared deterministic disc around itself.
+   * Instance space (y >= DUNGEON_MIN_Y) is skipped wholesale — the
+   * client keeps its own session-only dungeon chart.
+   */
+  private tickReveal(): void {
+    for (const session of this.sessions) {
+      const eid = session.playerEid;
+      if (eid === null) continue;
+      const player = this.players.get(eid);
+      const pos = this.positions.get(eid);
+      if (!player || !pos || pos.y >= DUNGEON_MIN_Y) continue;
+      for (const key of player.explored.markDisc(pos.x, pos.y)) {
+        player.exploredDirty.add(key);
+      }
+    }
   }
 
   // ------------------------------------------------------------ intents
@@ -5343,6 +5445,24 @@ export class GameServer {
     if (player.characterId > 0) this.accounts.saveTechnique(player.characterId, style, ability);
     player.session?.sendJson({ t: 'techniques', chosen: player.techniques });
     this.sendCooldowns(player);
+  }
+
+  /**
+   * Pin or clear the one active waypoint. Pure navigation state — the
+   * validator already bounded the coordinates, so the server stores
+   * what the map asked for and echoes nothing (the client renders its
+   * own pin optimistically).
+   */
+  setWaypoint(eid: EntityId, x?: number, y?: number): void {
+    const player = this.players.get(eid);
+    if (!player) return;
+    if (x === undefined || y === undefined) {
+      player.waypoint = null;
+      if (player.characterId > 0) this.accounts.clearWaypoint(player.characterId);
+      return;
+    }
+    player.waypoint = { x, y };
+    if (player.characterId > 0) this.accounts.saveWaypoint(player.characterId, x, y);
   }
 
   /**
@@ -9456,6 +9576,7 @@ export class GameServer {
     if (this.tickCount % 40 === 0) this.tickCrops(now);
     if (this.tickCount % 20 === 0) this.tickPois();
     if (this.tickCount % 40 === 20) this.tickWildSpawns();
+    if (this.tickCount % SERVER_REVEAL_TICKS === 0) this.tickReveal();
 
     // Respawn depleted nodes (and pull forgotten doors to).
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {

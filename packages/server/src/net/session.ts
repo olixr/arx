@@ -277,6 +277,12 @@ export class Session {
         this.game.setTechnique(this.playerEid, msg.style, msg.ability);
         return;
       }
+      case 'waypoint': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.setWaypoint(this.playerEid, msg.x, msg.y);
+        return;
+      }
       case 'setlook': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
