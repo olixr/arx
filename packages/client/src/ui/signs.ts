@@ -248,6 +248,10 @@ export class SignHud {
       input.value = value;
       input.maxLength = max;
       input.spellcheck = false;
+      // Pad-focusable: Ⓐ takes the pen on this line, Ⓑ puts it down.
+      input.dataset.nav = '';
+      input.dataset.navkey = `sign:line:${label}`;
+      input.dataset.acta = 'Write';
       const count = document.createElement('span');
       count.className = 'sign-count';
       const tick = (): void => {

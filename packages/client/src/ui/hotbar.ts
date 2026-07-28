@@ -4,19 +4,14 @@ import type { ClientGame } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
 import { itemIconUrl, sneakEyeUrl } from '../render/icons.js';
 import { abilityIconUrl, passiveIconUrl } from '../render/abilityIcons.js';
+import { bindings, type ActionId } from '../input/bindings.js';
 
-const SLOT_KEYS = ['Q', 'E', 'R', 'T'] as const;
-/** Pad bindings for the same four slots: LB, RB, Y, d-pad up. */
-const SLOT_PAD = [
-  ['lb', 'LB'],
-  ['rb', 'RB'],
-  ['y', 'Y'],
-  ['dup', '▲'],
-] as const;
+/** The four slots' actions, in bar order — badges read live. */
+const SLOT_ACTIONS: readonly ActionId[] = ['ability1', 'ability2', 'ability3', 'ability4'];
 const EMPTY_HINTS = [
   'Equip a weapon to gain its Art',
   'Wear a relic to gain its power',
-  'Choose a Technique in the codex (V)',
+  'Choose a Technique in the codex',
   'Claim a Sigil from a fallen boss',
 ] as const;
 
@@ -62,16 +57,28 @@ export class Hotbar {
 
       // Device-aware key badge: keyboard letter or pad glyph, swapped
       // by body.pad-mode so the HUD always speaks the player's device.
+      // Read from the one keymap and redrawn on every rebind.
       const key = document.createElement('span');
       key.className = 'hotbar-key';
-      const kb = document.createElement('span');
-      kb.className = 'kb-glyph small';
-      kb.textContent = SLOT_KEYS[i]!;
-      const [padCls, padLabel] = SLOT_PAD[i]!;
-      const pad = document.createElement('span');
-      pad.className = `pad-glyph ${padCls}`;
-      pad.textContent = padLabel;
-      key.append(kb, pad);
+      const renderBadge = (): void => {
+        key.innerHTML = '';
+        const kbText = bindings.kbBadge(SLOT_ACTIONS[i]!);
+        if (kbText) {
+          const kb = document.createElement('span');
+          kb.className = 'kb-glyph small';
+          kb.textContent = kbText;
+          key.appendChild(kb);
+        }
+        const g = bindings.padBadge(SLOT_ACTIONS[i]!);
+        if (g) {
+          const pad = document.createElement('span');
+          pad.className = `pad-glyph ${g.cls}`;
+          pad.textContent = g.text;
+          key.appendChild(pad);
+        }
+      };
+      renderBadge();
+      bindings.onChange(renderBadge);
       slot.appendChild(key);
 
       // Press-and-release drives the same input bit the keyboard does;

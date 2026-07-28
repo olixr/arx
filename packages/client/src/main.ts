@@ -2,6 +2,8 @@ import { EntityKind, HIDDEN_SKILLS, PoseState, ROCK_TILES, TREE_TILES, Tile, che
 import { BUILDABLES, buildableGround, itemDef, npcDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
+import { bindings, type ActionId } from './input/bindings.js';
+import { installControlsMenu } from './ui/controlsMenu.js';
 import { Renderer } from './render/renderer.js';
 import type { SmashKind } from './render/debris.js';
 import { ChatUI } from './ui/chat.js';
@@ -48,18 +50,47 @@ if (new URLSearchParams(location.search).has('icons')) {
 
 // Painted UI glyphs — no emoji anywhere in the universe. The dock
 // wears the quiet console's monoline sigils; each button carries a
-// device-aware shortcut badge (letter or pad glyph).
-for (const [id, kind, tip, kbKey, padCls, padLabel] of [
-  ['btn-inventory', 'pack', 'Pack', 'I', 'start', '☰'],
-  ['btn-skills', 'skills', 'Skills', 'K', 'select', '⧉'],
-  ['btn-arts', 'arts', 'Techniques', 'V', '', ''],
-  ['btn-craft', 'handiwork', 'Handiwork', 'C', 'ddown', '▼'],
-  ['btn-build', 'build', 'Build', 'B', 'dright', '▶'],
-  ['btn-social', 'social', 'Social', 'U', '', ''],
-  ['btn-map', 'map', 'Map', 'M', '', ''],
-  ['btn-audio', 'sound', 'Sound', 'O', '', ''],
-  ['touch-attack', 'attack', '', '', '', ''],
-] as const) {
+// device-aware shortcut badge read LIVE from the one keymap, so a
+// rebind in Controls redraws every badge at once.
+const DOCK_BUTTONS = [
+  ['btn-inventory', 'pack', 'Pack', 'screenPack'],
+  ['btn-skills', 'skills', 'Skills', 'screenSkills'],
+  ['btn-arts', 'arts', 'Techniques', 'screenArts'],
+  ['btn-craft', 'handiwork', 'Handiwork', 'screenCraft'],
+  ['btn-build', 'build', 'Build', 'screenBuild'],
+  ['btn-social', 'social', 'Social', 'screenSocial'],
+  ['btn-map', 'map', 'Map', 'screenMap'],
+  ['btn-audio', 'sound', 'Settings', 'screenSettings'],
+] as const;
+
+function renderDockBadges(): void {
+  for (const [id, , tip, action] of DOCK_BUTTONS) {
+    const btn = document.getElementById(id);
+    const badge = document.querySelector<HTMLElement>(`#${id} .dock-badge`);
+    if (!btn || !badge) continue;
+    badge.innerHTML = '';
+    const kbKey = bindings.kbBadge(action);
+    btn.title = kbKey ? `${tip} (${kbKey})` : tip;
+    if (kbKey) {
+      const kb = document.createElement('span');
+      kb.className = 'kb-glyph small';
+      kb.textContent = kbKey;
+      badge.appendChild(kb);
+    }
+    const padG = bindings.padBadge(action);
+    if (padG) {
+      const pad = document.createElement('span');
+      pad.className = `pad-glyph ${padG.cls}`;
+      pad.textContent = padG.text;
+      badge.appendChild(pad);
+    }
+  }
+}
+
+for (const [id, kind, tip] of [
+  ...DOCK_BUTTONS.map(([i, k, t]) => [i, k, t] as const),
+  ['touch-attack', 'attack', ''] as const,
+]) {
   const btn = document.getElementById(id);
   if (btn) {
     const img = document.createElement('img');
@@ -73,20 +104,12 @@ for (const [id, kind, tip, kbKey, padCls, padLabel] of [
       btn.dataset.acta = 'Open';
       const badge = document.createElement('span');
       badge.className = 'dock-badge';
-      const kb = document.createElement('span');
-      kb.className = 'kb-glyph small';
-      kb.textContent = kbKey;
-      badge.appendChild(kb);
-      if (padCls) {
-        const pad = document.createElement('span');
-        pad.className = `pad-glyph ${padCls}`;
-        pad.textContent = padLabel;
-        badge.appendChild(pad);
-      }
       btn.appendChild(badge);
     }
   }
 }
+renderDockBadges();
+bindings.onChange(renderDockBadges);
 
 const audioEngine = new AudioEngine();
 const sfx = new Sfx(audioEngine);
@@ -187,6 +210,11 @@ renderer.waterFxFull = localStorage.getItem('arx.waterfx') !== 'basic';
     const box = document.createElement('input');
     box.type = 'checkbox';
     box.checked = initial;
+    // The pad walks the display toggles like everything else: Ⓐ flips.
+    box.dataset.nav = '';
+    box.dataset.navkey = `display:${label}`;
+    box.dataset.acta = 'Toggle';
+    box.dataset.tipname = label;
     box.addEventListener('change', () => apply(box.checked));
     row.appendChild(lab);
     row.appendChild(box);
@@ -332,19 +360,21 @@ const nav = new UiNav(input, {
     panels.openMenuFor(el);
   },
   closeItemMenu: (): boolean => panels.closeMenu(),
-  onCloseAll: () => {
-    stationPanels.closeAll();
-    panels.closeAll();
-    lootPanel.close();
-    riftgate.close();
-  },
-  onToggleInventory: () => toggleScreen('inv'),
-  onToggleSkills: () => toggleScreen('skills'),
-  onOpenCraft: () => toggleScreen('craft'),
-  onOpenBuild: () => toggleScreen('build'),
+  // Ⓑ closes EVERYTHING Esc closes — the two backstops must agree.
+  onCloseAll: () => closeAllUi(),
+  onScreenAction: (id) => screenAction(id),
+  onCycleScreen: (dir) => cycleScreen(dir),
   packActionLabel: () =>
     stationPanels.bankOpen ? 'Deposit' : stationPanels.shopOpen ? 'Sell' : null,
   onFocusMove: () => sfx.uiTick(),
+});
+
+// The Controls table in Settings: every binding shown, every binding
+// rebindable, conflicts resolved by stealing (and saying so).
+installControlsMenu({
+  nav,
+  input,
+  notice: (text) => chat.addLine({ channel: 'system', text }),
 });
 
 // One delegated hover path drives item inspection for the mouse: item
@@ -439,6 +469,64 @@ function toggleScreen(
   }
 }
 
+/**
+ * The shelf of screens, in bumper order — LB/RB walk it while any
+ * screen is open, so every screen is pad-reachable from any other.
+ */
+const SCREEN_ORDER = [
+  'inv',
+  'skills',
+  'arts',
+  'craft',
+  'build',
+  'social',
+  'map',
+  'audio',
+] as const;
+
+function currentScreen(): (typeof SCREEN_ORDER)[number] | null {
+  if (panels.invOpen) return 'inv';
+  if (panels.skillsOpen) return 'skills';
+  if (panels.artsOpen) return 'arts';
+  if (stationPanels.craftOpen) return 'craft';
+  if (stationPanels.buildOpen) return 'build';
+  if (socialPanel.isOpen) return 'social';
+  if (mapScreen.isOpen) return 'map';
+  if (audioMenu.isOpen) return 'audio';
+  return null;
+}
+
+function cycleScreen(dir: -1 | 1): void {
+  if (cinema.open) return;
+  const cur = currentScreen();
+  const idx = cur === null ? (dir === 1 ? -1 : 0) : SCREEN_ORDER.indexOf(cur);
+  const next = SCREEN_ORDER[(idx + dir + SCREEN_ORDER.length) % SCREEN_ORDER.length]!;
+  if (next === cur) return;
+  closeAllUi();
+  toggleScreen(next);
+}
+
+/** One rebindable screen shortcut fired — keyboard key or pad button. */
+function screenAction(id: ActionId): void {
+  if (id === 'mapGlass') {
+    if (!cinema.open) mapOverlay.toggle();
+    return;
+  }
+  const SCREEN_FOR: Partial<Record<ActionId, Parameters<typeof toggleScreen>[0]>> = {
+    screenPack: 'inv',
+    screenSkills: 'skills',
+    screenArts: 'arts',
+    screenCraft: 'craft',
+    screenBuild: 'build',
+    screenSocial: 'social',
+    screenMap: 'map',
+    screenSettings: 'audio',
+    screenLoot: 'loot',
+  };
+  const which = SCREEN_FOR[id];
+  if (which) toggleScreen(which);
+}
+
 document.getElementById('btn-inventory')!.addEventListener('click', () => toggleScreen('inv'));
 document.getElementById('btn-skills')!.addEventListener('click', () => toggleScreen('skills'));
 document.getElementById('btn-arts')!.addEventListener('click', () => toggleScreen('arts'));
@@ -479,10 +567,11 @@ const game = new ClientGame(input, {
       if (game.sessionToken) localStorage.setItem('arx.token', game.sessionToken);
       if (!localStorage.getItem('arx.tipsShown')) {
         localStorage.setItem('arx.tipsShown', '1');
+        const useKey = bindings.kbBadge('interact') || 'F';
         for (const tip of [
-          'Move with WASD. Click or press F to chop, mine, fish, and use things. Q and E fire your abilities.',
-          'Press I for your pack — click a tool or weapon to wield it.',
-          'The villagers of Dawnmead know this land. Talk to them (F) before you take the lane east.',
+          `Move with WASD. Click or press ${useKey} to chop, mine, fish, and use things. ${bindings.kbBadge('ability1') || 'Q'} and ${bindings.kbBadge('ability2') || 'E'} fire your abilities.`,
+          `Press ${bindings.kbBadge('screenPack') || 'I'} for your pack — click a tool or weapon to wield it.`,
+          `The villagers of Dawnmead know this land. Talk to them (${useKey}) before you take the lane east.`,
         ]) {
           chat.addLine({ channel: 'system', text: `Tip: ${tip}` });
         }
@@ -715,6 +804,9 @@ const riftgate = new RiftgatePanel(game);
 const socialPanel = new SocialPanel(game);
 const mapScreen = new MapScreen(game);
 const mapOverlay = new MapOverlay(game);
+// The chart pans with the left stick while open — UiNav lends it and
+// walks the rail chips on the d-pad alone.
+nav.claimStick = () => mapScreen.isOpen && nav.mode === 'pad';
 const waypointHud = new WaypointHud();
 
 // Signage: the approach plaque over every board, and the sheet that
@@ -781,7 +873,7 @@ dressPanel(el('loot-panel'), {
 });
 dressPanel(el('audio-panel'), {
   icon: uiIconUrl('bell', 34),
-  hint: 'Sound and picture, dialed to taste — changes stick.',
+  hint: 'Sound, picture, and controls, dialed to taste — changes stick.',
   onClose: () => audioMenu.close(),
 });
 dressPanel(el('social-panel'), {
@@ -1305,47 +1397,58 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
   }
 }
 
-// Panel hotkeys + interact key.
+/** The rebindable screen shortcuts the keyboard fires. */
+const KB_SCREEN_ACTIONS: readonly ActionId[] = [
+  'screenPack',
+  'screenSkills',
+  'screenArts',
+  'screenCraft',
+  'screenBuild',
+  'screenSocial',
+  'screenMap',
+  'screenSettings',
+  'screenLoot',
+  'mapGlass',
+];
+
+// Panel hotkeys + interact key — all read from the one keymap.
 window.addEventListener('keydown', (e) => {
-  if (chat.isTyping || socialPanel.isTyping || signHud.isTyping || game.ownEid === null) return;
+  // The look creator is modal from the FIRST frame: no screen may
+  // open under character creation (the same guard the movement layer
+  // already runs).
+  if (
+    chat.isTyping ||
+    socialPanel.isTyping ||
+    signHud.isTyping ||
+    looks.open ||
+    game.ownEid === null
+  ) {
+    return;
+  }
   // A running cinematic owns the keyboard: advance, choose, or excuse
   // yourself — no screen may open over a conversation.
   if (cinema.open) {
     cinema.handleKey(e.code);
     return;
   }
-  if (e.code === 'KeyI') toggleScreen('inv');
-  if (e.code === 'KeyK') toggleScreen('skills');
-  if (e.code === 'KeyV') toggleScreen('arts');
-  if (e.code === 'KeyO') toggleScreen('audio');
-  if (e.code === 'KeyC') toggleScreen('craft');
-  if (e.code === 'KeyB') toggleScreen('build');
-  if (e.code === 'KeyU') toggleScreen('social');
-  if (e.code === 'KeyM') toggleScreen('map');
-  if (e.code === 'Tab') {
-    // The traveler's glass — stop the browser's focus walk cold.
-    e.preventDefault();
-    mapOverlay.toggle();
+  for (const id of KB_SCREEN_ACTIONS) {
+    if (bindings.kbMatches(id, e.code)) {
+      // Tab (the glass's default) must stop the browser's focus walk.
+      e.preventDefault();
+      screenAction(id);
+    }
   }
   if (e.code === 'Escape') {
-    stationPanels.closeAll();
-    panels.closeAll();
-    lootPanel.close();
-    riftgate.close();
-    socialPanel.close();
-    mapScreen.close();
-    signHud.close();
+    closeAllUi();
     buildMode = null;
     renderer.buildGhost = null;
   }
-  if (e.code === 'KeyF') activateTarget(game.findNearbyTarget());
-  // G for "ground": toggle the loot manager over whatever lies in reach.
-  if (e.code === 'KeyG') toggleScreen('loot');
-  if (e.code === 'Equal' || e.code === 'NumpadAdd') {
+  if (bindings.kbMatches('interact', e.code)) activateTarget(game.findNearbyTarget());
+  if (bindings.kbMatches('zoomIn', e.code)) {
     renderer.camera.stepZoom(1.15);
     saveZoom();
   }
-  if (e.code === 'Minus' || e.code === 'NumpadSubtract') {
+  if (bindings.kbMatches('zoomOut', e.code)) {
     renderer.camera.stepZoom(1 / 1.15);
     saveZoom();
   }
@@ -1417,13 +1520,20 @@ document.addEventListener('click', (e) => {
 });
 
 // Click an interactable tile within reach to use it; in build mode the
-// click places the picked buildable; X+click demolishes your work.
+// click places the picked buildable and X+click demolishes — exactly
+// what the action strip promises. Demolition lives ONLY in build mode
+// now: in open play X is the sit key, and a key must not serve two
+// masters.
 canvas.addEventListener('mousedown', (e) => {
   if (game.ownEid === null) return;
   const w = renderer.pickWorld(e.clientX, e.clientY);
   const tx = Math.floor(w.x);
   const ty = Math.floor(w.y);
   if (buildMode) {
+    if (input.isDown('KeyX')) {
+      game.demolishSend(tx, ty);
+      return;
+    }
     sfx.buildThump();
     game.buildSend(buildMode, tx, ty);
     return;
@@ -1432,10 +1542,6 @@ canvas.addEventListener('mousedown', (e) => {
   // means "I'm doing something else now". Interacting with another
   // station below simply reopens the right panel.
   if (stationPanels.anyOpen) stationPanels.closeAll();
-  if (input.isDown('KeyX')) {
-    game.demolishSend(tx, ty);
-    return;
-  }
   // Ground loot outranks the tile under it: clicking a bag (or its
   // label) takes exactly that bag — in reach it goes straight to the
   // pack, out of reach the click is a walk-there-and-take errand. The
@@ -1487,7 +1593,6 @@ let portalNear = 0;
 
 let lastOwnPose = 0;
 let padInteractWasDown = false;
-let padSneakWasDown = false;
 let lastDrawT = 0;
 let lastSheathed = false;
 /** Pad button state last frame — build-mode verbs edge off this. */
@@ -1633,6 +1738,12 @@ function frame(now: number): void {
     nav.clearModeStrip();
   }
   nav.update(now, uiOpen, buildMode !== null);
+  // The chart reads the pad directly while open: stick pans, triggers
+  // zoom, Ⓨ works the waypoint — the borrowed-stick half of claimStick.
+  if (mapScreen.isOpen) {
+    if (nav.mode === 'pad') mapScreen.padUpdate(input.padSnapshot());
+    else mapScreen.kbHint();
+  }
   // The cinema drives its own pad verbs (Ⓐ/Ⓧ advance, Ⓑ leave,
   // d-pad walks the plates) — same frame cadence as UiNav.
   cinema.tickPad(input.padSnapshot(), now);
@@ -1641,12 +1752,6 @@ function frame(now: number): void {
     activateTarget(game.findNearbyTarget());
   }
   padInteractWasDown = padInteract;
-
-  // L3 (left-stick click) toggles the sneak latch on pads.
-  const padSneak =
-    !input.uiCapture && !cinema.open && (input.padSnapshot()?.buttons[10]?.pressed ?? false);
-  if (padSneak && !padSneakWasDown) input.sneakMode = !input.sneakMode;
-  padSneakWasDown = padSneak;
 
   // World interact prompt: a glyph chip floating over whatever the
   // Interact button would use — the console-native "press Ⓧ" read.
@@ -1778,17 +1883,22 @@ function frame(now: number): void {
     padBuildCur = null;
     renderer.buildGhost = null;
   }
-  // d-pad ◀ cycles the camera (free in gameplay and build mode; in
-  // menus it navigates, so uiCapture wins).
-  if (padEdge(14) && !input.uiCapture) cycleZoom();
+  // R3 steps the camera (free in gameplay and build mode; in menus
+  // the pad belongs to navigation, so uiCapture wins).
+  if (!input.uiCapture) {
+    for (const btn of bindings.pad('zoomCycle')) {
+      if (padEdge(btn)) cycleZoom();
+    }
+  }
   padPrevBtns = padBtns;
 
   // Walk latch feedback: one quiet system line per toggle.
   if (input.walkMode !== lastWalkMode) {
     lastWalkMode = input.walkMode;
+    const walkKey = bindings.kbBadge('walkToggle') || 'Z';
     chat.addLine({
       channel: 'system',
-      text: input.walkMode ? 'Walking. (Z to run)' : 'Running. (Z to walk)',
+      text: input.walkMode ? `Walking. (${walkKey} to run)` : `Running. (${walkKey} to walk)`,
     });
   }
 

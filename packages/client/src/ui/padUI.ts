@@ -1,4 +1,5 @@
 import type { InputManager } from '../input/inputManager.js';
+import { ACTIONS, bindings, type ActionId } from '../input/bindings.js';
 
 /**
  * Gamepad-first UI navigation — the console layer over the DOM UI.
@@ -39,6 +40,19 @@ const REPEAT_DELAY_MS = 300;
 const REPEAT_RATE_MS = 125;
 const STICK_NAV_THRESHOLD = 0.55;
 
+/**
+ * Buttons the MENU grammar owns while navigating: faces, bumpers, and
+ * the d-pad. A screen shortcut (rebindable) only fires inside menus
+ * when it lives on a button outside this set (Start/Select/L3/R3/LT/RT),
+ * so d-pad navigation never doubles as a shortcut.
+ */
+const NAV_RESERVED = new Set([0, 1, 2, 3, 4, 5, 12, 13, 14, 15]);
+
+/** The rebindable screen-opening actions the pad can fire directly. */
+const SCREEN_ACTIONS: readonly ActionId[] = ACTIONS.filter(
+  (a) => a.id.startsWith('screen') || a.id === 'mapGlass',
+).map((a) => a.id);
+
 export interface UiNavHooks {
   /** Swap two pack slots (pad carry mode). */
   onInvMove: (from: number, to: number) => void;
@@ -56,12 +70,13 @@ export interface UiNavHooks {
   closeItemMenu?: () => boolean;
   /** Close all station panels + side panels (the Ⓑ backstop). */
   onCloseAll: () => void;
-  /** Toggle the inventory / skills panels (Start / Select). */
-  onToggleInventory: () => void;
-  onToggleSkills: () => void;
-  /** Open the Handiwork / Build panels (d-pad down / right). */
-  onOpenCraft: () => void;
-  onOpenBuild: () => void;
+  /**
+   * A rebindable screen shortcut fired on its pad button — Start Pack,
+   * Select Chart by default. Same wire as the keyboard hotkeys.
+   */
+  onScreenAction: (id: ActionId) => void;
+  /** LB / RB with a screen open: step to the prev / next screen. */
+  onCycleScreen: (dir: -1 | 1) => void;
   /** Contextual Ⓐ label for pack items (Deposit at bank, Sell in shop). */
   packActionLabel?: () => string | null;
   /** Focus stepped to a new control — the barely-there cursor tick. */
@@ -71,6 +86,15 @@ export interface UiNavHooks {
 export class UiNav {
   /** 'kb' or 'pad' — mirrored onto <body> as .pad-mode for CSS glyphs. */
   mode: 'kb' | 'pad' = 'kb';
+
+  /** True while the Controls menu is capturing a new binding. */
+  suspended = false;
+
+  /**
+   * A screen may claim the left stick for itself (the Chart pans with
+   * it); while claimed, spatial focus walks on the d-pad alone.
+   */
+  claimStick: (() => boolean) | null = null;
 
   private focusKey: string | null = null;
   /** Pack slot index currently carried (pad move mode), or null. */
@@ -112,6 +136,11 @@ export class UiNav {
     this.strip = this.el('ui-action-strip');
     this.tooltip = this.el('ui-tooltip');
     this.prompt = this.el('ui-interact-prompt');
+    // A rebind redraws the cached chips (prompt glyph, action strip).
+    bindings.onChange(() => {
+      this.promptKey = '';
+      this.stripKey = '';
+    });
   }
 
   private el(id: string): HTMLElement {
@@ -200,6 +229,32 @@ export class UiNav {
 
   private setFocus(el: HTMLElement): void {
     this.focusKey = el.dataset.navkey ?? null;
+    // THE LIST FOLLOWS THE RING: every scrolling ledger (pack, bank,
+    // shop, skills, look options…) keeps the focused row in view, so
+    // spatial nav can never wander onto an invisible element.
+    el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+
+  /**
+   * One directional step: a focused slider consumes ◀ ▶ as value
+   * nudges (the audio menu's volumes, any future range row); everything
+   * else moves the focus ring spatially.
+   */
+  private navStep(dir: 'up' | 'down' | 'left' | 'right'): void {
+    if (dir === 'left' || dir === 'right') {
+      const el = this.focused();
+      if (el instanceof HTMLInputElement && el.type === 'range') {
+        const min = Number(el.min || 0);
+        const max = Number(el.max || 100);
+        const nudge = Math.max(Number(el.step) || 1, (max - min) / 20);
+        const next = Math.max(min, Math.min(max, Number(el.value) + (dir === 'right' ? nudge : -nudge)));
+        el.value = String(next);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        this.hooks.onFocusMove?.();
+        return;
+      }
+    }
+    this.moveFocus(dir);
   }
 
   /** Pick up / place the focused pack slot (Ⓧ). */
@@ -237,6 +292,17 @@ export class UiNav {
     const uiActive = uiOpen && this.mode === 'pad' && snap !== null;
     this.input.uiCapture = uiActive;
 
+    // The Controls menu's rebind overlay suspends the whole grammar:
+    // the next press must become a binding, never an action — and
+    // never a sword swing, whatever mode the HUD was in.
+    if (this.suspended) {
+      this.input.uiCapture = true;
+      this.prevPressed = snap
+        ? new Set(snap.buttons.map((b, i) => (b.pressed ? i : -1)).filter((i) => i >= 0))
+        : new Set();
+      return;
+    }
+
     if (!uiActive) {
       this.carrying = null;
       this.swallowDir = null;
@@ -268,8 +334,9 @@ export class UiNav {
     const edge = (i: number): boolean => pressed.has(i) && !this.prevPressed.has(i);
 
     // ---- directional nav with initial delay + repeat
-    const ax = snap!.axes[0] ?? 0;
-    const ay = snap!.axes[1] ?? 0;
+    const stickClaimed = this.claimStick?.() ?? false;
+    const ax = stickClaimed ? 0 : (snap!.axes[0] ?? 0);
+    const ay = stickClaimed ? 0 : (snap!.axes[1] ?? 0);
     let dir: 'up' | 'down' | 'left' | 'right' | null = null;
     if (pressed.has(BTN.up) || ay < -STICK_NAV_THRESHOLD) dir = 'up';
     else if (pressed.has(BTN.down) || ay > STICK_NAV_THRESHOLD) dir = 'down';
@@ -293,13 +360,13 @@ export class UiNav {
       this.navHeldDir = dir;
       this.navHeldSince = nowMs;
       this.navLastStep = nowMs;
-      this.moveFocus(dir);
+      this.navStep(dir);
     } else if (
       nowMs - this.navHeldSince > REPEAT_DELAY_MS &&
       nowMs - this.navLastStep > REPEAT_RATE_MS
     ) {
       this.navLastStep = nowMs;
-      this.moveFocus(dir);
+      this.navStep(dir);
     }
 
     // A freshly opened panel owns the cursor: whenever the set of open
@@ -316,11 +383,28 @@ export class UiNav {
       if (first) this.setFocus(first);
     }
 
+    // ---- typing: a text field the pad focused owns the stage until
+    // Ⓑ hands it back — every other verb stands down while it types.
+    const typingEl = document.activeElement;
+    if (
+      typingEl instanceof HTMLInputElement &&
+      (typingEl.type === 'text' || typingEl.type === 'password')
+    ) {
+      if (edge(BTN.b)) typingEl.blur();
+      this.prevPressed = pressed;
+      this.positionRing(nowMs);
+      return;
+    }
+
     // ---- actions
     if (edge(BTN.a)) {
       const el = this.focused();
       if (this.carrying !== null && el?.dataset.invslot !== undefined) {
         this.handleCarry(); // Ⓐ also places while carrying
+      } else if (el instanceof HTMLInputElement && (el.type === 'text' || el.type === 'password')) {
+        // Ⓐ on a writing line: take the pen (a hardware keyboard types;
+        // Ⓑ puts it down).
+        el.focus();
       } else {
         el?.click();
       }
@@ -362,8 +446,20 @@ export class UiNav {
         this.focusKey = this.menuReturnKey ?? null;
       }
     }
-    if (edge(BTN.start)) this.hooks.onToggleInventory();
-    if (edge(BTN.select)) this.hooks.onToggleSkills();
+    // LB / RB: walk the shelf of screens — every screen is one bumper
+    // away, so the pad reaches Social, the Chart, and Settings without
+    // a dock click.
+    if (edge(BTN.lb)) this.hooks.onCycleScreen(-1);
+    if (edge(BTN.rb)) this.hooks.onCycleScreen(1);
+
+    // Rebindable screen shortcuts still land inside menus (Start
+    // closes the pack it opened) — but only from buttons the menu
+    // grammar doesn't own.
+    for (const id of SCREEN_ACTIONS) {
+      for (const btn of bindings.pad(id)) {
+        if (!NAV_RESERVED.has(btn) && edge(btn)) this.hooks.onScreenAction(id);
+      }
+    }
 
     this.prevPressed = pressed;
 
@@ -376,9 +472,10 @@ export class UiNav {
   }
 
   /**
-   * Start/Select/d-pad work OUTSIDE menus too — that's how pads get
-   * in: Start Pack, Select Skills, d-pad ▼ Handiwork, d-pad ▶ Build.
-   * (D-pad ▲ stays an ability; down/right are free in gameplay.)
+   * Screen shortcuts work OUTSIDE menus too — that's how pads get in:
+   * Start Pack, Select Chart, d-pad ▶ the glass (all rebindable in
+   * Controls). Gameplay buttons never appear here: the one keymap
+   * guarantees no button serves both a screen and a swing.
    */
   private handleGlobalButtons(snap: {
     buttons: readonly GamepadButton[];
@@ -386,10 +483,11 @@ export class UiNav {
     const edge = (i: number): boolean =>
       (snap.buttons[i]?.pressed ?? false) && !this.prevPressed.has(i);
     if (this.mode !== 'pad') return;
-    if (edge(BTN.start)) this.hooks.onToggleInventory();
-    if (edge(BTN.select)) this.hooks.onToggleSkills();
-    if (edge(BTN.down)) this.hooks.onOpenCraft();
-    if (edge(BTN.right)) this.hooks.onOpenBuild();
+    for (const id of SCREEN_ACTIONS) {
+      for (const btn of bindings.pad(id)) {
+        if (edge(btn)) this.hooks.onScreenAction(id);
+      }
+    }
   }
 
   private positionRing(nowMs: number): void {
@@ -450,10 +548,14 @@ export class UiNav {
       if (el) actions.push(['a', el.dataset.acta ?? 'Select']);
       actions.push(['b', 'Close']);
     }
-    this.renderStrip(
-      actions.map((a) => a.join(':')).join('|'),
-      actions.map(([btn, label]) => [`pad-glyph ${btn}`, btn.toUpperCase(), label]),
-    );
+    const items: Array<[string, string, string]> = actions.map(([btn, label]) => [
+      `pad-glyph ${btn}`,
+      btn.toUpperCase(),
+      label,
+    ]);
+    // The standing bumper affordance: every screen is one LB/RB away.
+    items.push(['pad-glyph lb', 'LB', ''], ['pad-glyph rb', 'RB', 'Screens']);
+    this.renderStrip(actions.map((a) => a.join(':')).join('|') + '|cycle', items);
   }
 
   /**
@@ -563,11 +665,12 @@ export class UiNav {
       this.prompt.innerHTML = '';
       const glyph = document.createElement('span');
       if (this.mode === 'pad') {
-        glyph.className = 'pad-glyph x';
-        glyph.textContent = 'X';
+        const g = bindings.padBadge('interact') ?? { cls: 'a', text: 'A' };
+        glyph.className = `pad-glyph ${g.cls}`;
+        glyph.textContent = g.text;
       } else {
         glyph.className = 'kb-glyph';
-        glyph.textContent = 'F';
+        glyph.textContent = bindings.kbBadge('interact') || 'F';
       }
       const text = document.createElement('span');
       text.className = 'prompt-label';

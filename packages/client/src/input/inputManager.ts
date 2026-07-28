@@ -1,4 +1,5 @@
 import { InputButton, SNEAK_FACTOR, WALK_FACTOR } from '@arx/shared';
+import { bindings } from './bindings.js';
 
 const STICK_DEADZONE = 0.22;
 
@@ -75,20 +76,21 @@ export class InputManager {
    */
   private sheatheQueued = false;
   private padSheatheWasDown = false;
+  private padSneakWasDown = false;
 
   constructor(target: HTMLElement) {
     window.addEventListener('keydown', (e) => {
       if (this.typingCheck()) return;
-      if (e.code === 'KeyZ' && !e.repeat && !this.cinemaCapture) this.walkMode = !this.walkMode;
-      if (e.code === 'KeyC' && !e.repeat && !this.cinemaCapture) this.sneakMode = !this.sneakMode;
-      // The stance row: Z walk, X sit, C sneak. Build mode owns X
-      // (demolish), so the queue only arms in open play.
-      if (e.code === 'KeyX' && !e.repeat && !this.cinemaCapture && !this.buildCapture) {
-        this.sitQueued = true;
-      }
-      // H holsters: stow the weapons on the body / pull them back out.
-      if (e.code === 'KeyH' && !e.repeat && !this.cinemaCapture && !this.buildCapture) {
-        this.sheatheQueued = true;
+      // The stance latches (walk / sneak) and the one-frame queues
+      // (sit / sheathe) — all read from the one keymap. Build mode
+      // arms none of the queues; it owns the hands.
+      if (!e.repeat && !this.cinemaCapture) {
+        if (bindings.kbMatches('walkToggle', e.code)) this.walkMode = !this.walkMode;
+        if (bindings.kbMatches('sneakToggle', e.code)) this.sneakMode = !this.sneakMode;
+        if (!this.buildCapture) {
+          if (bindings.kbMatches('sit', e.code)) this.sitQueued = true;
+          if (bindings.kbMatches('sheathe', e.code)) this.sheatheQueued = true;
+        }
       }
       this.keys.add(e.code);
       // Keep the page from scrolling on space/arrows; Alt is the loot
@@ -162,10 +164,10 @@ export class InputManager {
     if (this.cinemaCapture) return { mx: 0, my: 0 };
     let mx = 0;
     let my = 0;
-    if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) mx -= 1;
-    if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) mx += 1;
-    if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) my -= 1;
-    if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) my += 1;
+    if (bindings.kbDown('moveLeft', this.keys)) mx -= 1;
+    if (bindings.kbDown('moveRight', this.keys)) mx += 1;
+    if (bindings.kbDown('moveUp', this.keys)) my -= 1;
+    if (bindings.kbDown('moveDown', this.keys)) my += 1;
 
     if (mx === 0 && my === 0 && !this.uiCapture) {
       const pad = this.pad();
@@ -218,34 +220,43 @@ export class InputManager {
     if (this.buildCapture) {
       this.sitQueued = false;
       this.sheatheQueued = false;
-      if (this.keys.has('ShiftLeft')) b |= InputButton.Dodge;
+      if (bindings.kbDown('dodge', this.keys)) b |= InputButton.Dodge;
       if (this.sneakMode) b |= InputButton.Sneak;
       return b;
     }
     const pad = this.uiCapture ? null : this.pad();
-    // RT / A hold to attack on pads; LB/RB/Y/D-up fire the abilities.
-    const padAttack =
-      pad !== null &&
-      ((pad.buttons[7]?.pressed ?? false) || (pad.buttons[0]?.pressed ?? false));
-    const padAb1 = pad !== null && (pad.buttons[4]?.pressed ?? false);
-    const padAb2 = pad !== null && (pad.buttons[5]?.pressed ?? false);
-    const padAb3 = pad !== null && (pad.buttons[3]?.pressed ?? false);
-    const padAb4 = pad !== null && (pad.buttons[12]?.pressed ?? false);
-    if (padAttack || padAb1 || padAb2 || padAb3 || padAb4) this.padUsed = true;
-    if (this.mouseDown || this.keys.has('Space') || padAttack || this.touchAttack) {
+    const snap = pad ? { buttons: pad.buttons } : null;
+    // Every pad read below goes through the one keymap — RT/Ⓧ attack,
+    // LB/RB/Ⓨ/▲ abilities, Ⓑ dodge by default, all rebindable.
+    const padAttack = bindings.padHeld('attack', snap);
+    const padAb1 = bindings.padHeld('ability1', snap);
+    const padAb2 = bindings.padHeld('ability2', snap);
+    const padAb3 = bindings.padHeld('ability3', snap);
+    const padAb4 = bindings.padHeld('ability4', snap);
+    const padDodge = bindings.padHeld('dodge', snap);
+    if (padAttack || padAb1 || padAb2 || padAb3 || padAb4 || padDodge) this.padUsed = true;
+    if (this.mouseDown || bindings.kbDown('attack', this.keys) || padAttack || this.touchAttack) {
       b |= InputButton.Attack;
     }
     // Q/E/R/T — Art, relic, technique, sigil: the fun row.
-    if (this.keys.has('KeyQ') || padAb1 || this.touchAbility1) b |= InputButton.Ability1;
-    if (this.keys.has('KeyE') || padAb2 || this.touchAbility2) b |= InputButton.Ability2;
-    if (this.keys.has('KeyR') || padAb3 || this.touchAbility3) b |= InputButton.Ability3;
-    if (this.keys.has('KeyT') || padAb4 || this.touchAbility4) b |= InputButton.Ability4;
-    if (this.keys.has('KeyF')) b |= InputButton.Interact;
-    if (this.keys.has('ShiftLeft')) b |= InputButton.Dodge;
+    if (bindings.kbDown('ability1', this.keys) || padAb1 || this.touchAbility1) b |= InputButton.Ability1;
+    if (bindings.kbDown('ability2', this.keys) || padAb2 || this.touchAbility2) b |= InputButton.Ability2;
+    if (bindings.kbDown('ability3', this.keys) || padAb3 || this.touchAbility3) b |= InputButton.Ability3;
+    if (bindings.kbDown('ability4', this.keys) || padAb4 || this.touchAbility4) b |= InputButton.Ability4;
+    if (bindings.kbDown('interact', this.keys)) b |= InputButton.Interact;
+    if (bindings.kbDown('dodge', this.keys) || padDodge) b |= InputButton.Dodge;
     if (this.sneakMode) b |= InputButton.Sneak;
-    // Sit: D-pad down edge on pads, or the queued X press — one frame
-    // carries the bit, the server flips the seat.
-    const padSit = !this.uiCapture && pad !== null && (pad.buttons[13]?.pressed ?? false);
+    // Sneak: press edge on the pad's toggle button (L3 by default)
+    // flips the same latch the keyboard's toggle drives.
+    const padSneak = bindings.padHeld('sneakToggle', snap);
+    if (padSneak && !this.padSneakWasDown) {
+      this.sneakMode = !this.sneakMode;
+      this.padUsed = true;
+    }
+    this.padSneakWasDown = padSneak;
+    // Sit: pad edge (d-pad ▼ default) or the queued key press — one
+    // frame carries the bit, the server flips the seat.
+    const padSit = bindings.padHeld('sit', snap);
     if (padSit && !this.padSitWasDown) {
       this.sitQueued = true;
       this.padUsed = true;
@@ -255,8 +266,8 @@ export class InputManager {
       b |= InputButton.Sit;
       this.sitQueued = false;
     }
-    // Sheathe: D-pad left edge on pads, or the queued H press.
-    const padSheathe = !this.uiCapture && pad !== null && (pad.buttons[14]?.pressed ?? false);
+    // Sheathe: pad edge (d-pad ◀ default) or the queued key press.
+    const padSheathe = bindings.padHeld('sheathe', snap);
     if (padSheathe && !this.padSheatheWasDown) {
       this.sheatheQueued = true;
       this.padUsed = true;
@@ -269,11 +280,11 @@ export class InputManager {
     return b;
   }
 
-  /** X button (west) on the pad — polled for interact edge detection. */
+  /** The pad's Interact button (Ⓐ default) — polled for edge detection. */
   padInteractPressed(): boolean {
     if (this.uiCapture || this.buildCapture) return false;
     const pad = this.pad();
-    return pad !== null && (pad.buttons[2]?.pressed ?? false);
+    return pad !== null && bindings.padHeld('interact', { buttons: pad.buttons });
   }
 
   /** True when a connected gamepad is the player's active input device. */

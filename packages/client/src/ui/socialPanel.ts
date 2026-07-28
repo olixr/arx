@@ -65,6 +65,11 @@ export class SocialPanel {
     this.searchInput.type = 'text';
     this.searchInput.maxLength = 16;
     this.searchInput.placeholder = 'Name…';
+    // A pad can land here: Ⓐ takes the pen (a keyboard types), Ⓑ puts
+    // it down.
+    this.searchInput.dataset.nav = '';
+    this.searchInput.dataset.navkey = 'social:searchline';
+    this.searchInput.dataset.acta = 'Write';
     this.searchInput.addEventListener('keydown', (e) => {
       // The input owns its keys: Enter asks, Escape lets go — and no
       // keystroke leaks through to movement or panel hotkeys.

@@ -1,4 +1,5 @@
 import type { InputManager } from '../input/inputManager.js';
+import { type ActionId } from '../input/bindings.js';
 export interface UiNavHooks {
     /** Swap two pack slots (pad carry mode). */
     onInvMove: (from: number, to: number) => void;
@@ -16,12 +17,13 @@ export interface UiNavHooks {
     closeItemMenu?: () => boolean;
     /** Close all station panels + side panels (the Ⓑ backstop). */
     onCloseAll: () => void;
-    /** Toggle the inventory / skills panels (Start / Select). */
-    onToggleInventory: () => void;
-    onToggleSkills: () => void;
-    /** Open the Handiwork / Build panels (d-pad down / right). */
-    onOpenCraft: () => void;
-    onOpenBuild: () => void;
+    /**
+     * A rebindable screen shortcut fired on its pad button — Start Pack,
+     * Select Chart by default. Same wire as the keyboard hotkeys.
+     */
+    onScreenAction: (id: ActionId) => void;
+    /** LB / RB with a screen open: step to the prev / next screen. */
+    onCycleScreen: (dir: -1 | 1) => void;
     /** Contextual Ⓐ label for pack items (Deposit at bank, Sell in shop). */
     packActionLabel?: () => string | null;
     /** Focus stepped to a new control — the barely-there cursor tick. */
@@ -32,6 +34,13 @@ export declare class UiNav {
     private readonly hooks;
     /** 'kb' or 'pad' — mirrored onto <body> as .pad-mode for CSS glyphs. */
     mode: 'kb' | 'pad';
+    /** True while the Controls menu is capturing a new binding. */
+    suspended: boolean;
+    /**
+     * A screen may claim the left stick for itself (the Chart pans with
+     * it); while claimed, spatial focus walks on the d-pad alone.
+     */
+    claimStick: (() => boolean) | null;
     private focusKey;
     /** Pack slot index currently carried (pad move mode), or null. */
     private carrying;
@@ -69,14 +78,21 @@ export declare class UiNav {
     /** Spatial move: best candidate in the pressed direction. */
     private moveFocus;
     private setFocus;
+    /**
+     * One directional step: a focused slider consumes ◀ ▶ as value
+     * nudges (the audio menu's volumes, any future range row); everything
+     * else moves the focus ring spatially.
+     */
+    private navStep;
     /** Pick up / place the focused pack slot (Ⓧ). */
     private handleCarry;
     /** Per-frame drive. Call after input.pollGamepad(). */
     update(nowMs: number, uiOpen: boolean, buildActive?: boolean): void;
     /**
-     * Start/Select/d-pad work OUTSIDE menus too — that's how pads get
-     * in: Start Pack, Select Skills, d-pad ▼ Handiwork, d-pad ▶ Build.
-     * (D-pad ▲ stays an ability; down/right are free in gameplay.)
+     * Screen shortcuts work OUTSIDE menus too — that's how pads get in:
+     * Start Pack, Select Chart, d-pad ▶ the glass (all rebindable in
+     * Controls). Gameplay buttons never appear here: the one keymap
+     * guarantees no button serves both a screen and a swing.
      */
     private handleGlobalButtons;
     private positionRing;

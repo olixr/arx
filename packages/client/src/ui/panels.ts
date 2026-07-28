@@ -32,6 +32,7 @@ import {
 import { itemIconUrl, slotGlyphUrl } from '../render/icons.js';
 import { abilityIconUrl, passiveIconUrl } from '../render/abilityIcons.js';
 import { bigButton, sectionHead, statPlaque } from './panel.js';
+import { bindings } from '../input/bindings.js';
 import { RARITY_COLORS, rarityOfInstance } from './rarity.js';
 
 /** Card display colors for the three armor weight classes. */
@@ -1037,6 +1038,10 @@ export class Panels {
       cell.appendChild(item);
     } else {
       // An empty socket shows its purpose: a dim glyph and its name.
+      // It is still a nav stop — the pad's focus can read every place
+      // on the stand, worn or waiting.
+      cell.dataset.nav = '';
+      cell.dataset.navkey = `equip:${slot}`;
       cell.dataset.tipname = slot.charAt(0).toUpperCase() + slot.slice(1);
       const ghost = document.createElement('img');
       ghost.className = 'slot-ghost';
@@ -1144,6 +1149,12 @@ export class Panels {
     if (level >= 99) card.classList.add('maxed');
     if (hidden) card.classList.add('secret-skill');
     card.style.setProperty('--skill-accent', face.color);
+    // Every card is a nav stop, so the pad can read (and scroll) the
+    // whole hall of deeds — not just the cards with a codex button.
+    card.dataset.nav = '';
+    card.dataset.navkey = `skill:${skill}`;
+    card.dataset.tipname = hidden ? hidden.name : skill;
+    card.dataset.acta = 'Read';
 
     const head = document.createElement('div');
     head.className = 'skill-card-head';
@@ -1401,17 +1412,16 @@ export class Panels {
     title.textContent = 'Battle loadout';
     this.artsLoadout.appendChild(title);
     for (const row of [
-      { cap: 'Q', pad: ['lb', 'LB'], src: 'Weapon Art', ab: w?.art, empty: 'Equip a weapon' },
-      { cap: 'E', pad: ['rb', 'RB'], src: 'Relic', ab: relic?.relic, empty: 'Wear a relic' },
+      { action: 'ability1', src: 'Weapon Art', ab: w?.art, empty: 'Equip a weapon' },
+      { action: 'ability2', src: 'Relic', ab: relic?.relic, empty: 'Wear a relic' },
       {
-        cap: 'R',
-        pad: ['y', 'Y'],
+        action: 'ability3',
         src: 'Technique',
         ab: this.techniques[wield],
         empty: 'Choose below',
         r: true,
       },
-      { cap: 'T', pad: ['dup', '▲'], src: 'Sigil', ab: sigil?.sigil, empty: 'Fell a boss' },
+      { action: 'ability4', src: 'Sigil', ab: sigil?.sigil, empty: 'Fell a boss' },
     ] as const) {
       const ab = row.ab ? abilityDef(row.ab) : undefined;
       const slot = document.createElement('div');
@@ -1428,13 +1438,20 @@ export class Panels {
       }
       const key = document.createElement('span');
       key.className = 'load-key';
-      const kb = document.createElement('span');
-      kb.className = 'kb-glyph small';
-      kb.textContent = row.cap;
-      const pad = document.createElement('span');
-      pad.className = `pad-glyph ${row.pad[0]}`;
-      pad.textContent = row.pad[1];
-      key.append(kb, pad);
+      const kbText = bindings.kbBadge(row.action);
+      if (kbText) {
+        const kb = document.createElement('span');
+        kb.className = 'kb-glyph small';
+        kb.textContent = kbText;
+        key.appendChild(kb);
+      }
+      const g = bindings.padBadge(row.action);
+      if (g) {
+        const pad = document.createElement('span');
+        pad.className = `pad-glyph ${g.cls}`;
+        pad.textContent = g.text;
+        key.appendChild(pad);
+      }
       well.appendChild(key);
       slot.appendChild(well);
       const src = document.createElement('span');

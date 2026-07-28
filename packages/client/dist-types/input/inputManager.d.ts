@@ -64,6 +64,7 @@ export declare class InputManager {
      */
     private sheatheQueued;
     private padSheatheWasDown;
+    private padSneakWasDown;
     constructor(target: HTMLElement);
     setTypingCheck(fn: () => boolean): void;
     isDown(code: string): boolean;
@@ -83,7 +84,7 @@ export declare class InputManager {
         my: number;
     };
     buttons(): number;
-    /** X button (west) on the pad — polled for interact edge detection. */
+    /** The pad's Interact button (Ⓐ default) — polled for edge detection. */
     padInteractPressed(): boolean;
     /** True when a connected gamepad is the player's active input device. */
     padPrimary(): boolean;

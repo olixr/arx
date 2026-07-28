@@ -2938,6 +2938,88 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   width: min(780px, 70vw);
 }
 
+/* Settings grew a Controls wing — the whole body scrolls as one page. */
+.settings-scroll {
+  max-height: min(66vh, 720px);
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* ---- the Controls table: one row per action, two chips per row ---- */
+
+.bind-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 7px 6px;
+  font-size: 16px;
+  text-shadow: var(--punch-small);
+}
+
+.bind-name {
+  flex: 1;
+  font-weight: 700;
+}
+
+.bind-chip {
+  flex: 0 0 auto;
+  min-width: 84px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 8px;
+  background: var(--sunk);
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.bind-chip:hover {
+  border-color: var(--line-strong);
+  background: var(--raise);
+}
+
+/* The table teaches both devices at once — chips ignore the device
+   swap (these outrank the body-level hide rules). */
+body:not(.pad-mode) .bind-chip .pad-glyph,
+body.pad-mode .bind-chip .kb-glyph,
+.bind-chip .kb-glyph,
+.bind-chip .pad-glyph {
+  display: inline-flex;
+}
+
+.bind-chip .kb-glyph.unbound {
+  opacity: 0.35;
+}
+
+.bind-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin: 16px 6px 6px;
+}
+
+/* The capture plate: the whole screen holds its breath for one press. */
+#bind-capture {
+  position: fixed;
+  left: 50%;
+  top: 38%;
+  transform: translate(-50%, -50%);
+  z-index: 400;
+  padding: 22px 34px;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--parchment);
+  background: var(--panel);
+  border: 3px solid var(--line-strong);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(6, 4, 2, 0.75);
+  text-shadow: var(--punch-small);
+}
+
+#bind-capture.hidden {
+  display: none;
+}
+
 .audio-row {
   display: flex;
   align-items: center;
@@ -3553,9 +3635,16 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
 
 .pad-glyph.dup,
 .pad-glyph.ddown,
+.pad-glyph.dleft,
 .pad-glyph.dright {
   border-radius: 4px;
   font-size: 11.5px;
+}
+
+/* Stick clicks: round like the sticks themselves. */
+.pad-glyph.l3,
+.pad-glyph.r3 {
+  font-size: 10.5px;
 }
 
 /* Key caps: square chips with the classic keyboard read. */
@@ -5402,6 +5491,38 @@ body.in-dialogue #hud {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: relative;
+}
+
+/* The pad's reading spot: where Ⓨ plants the flag. Pad mode only;
+   positioned over the canvas center by the chart each frame. */
+.map-reticle {
+  display: none;
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  transform: translate(-50%, -50%);
+  border: 2.5px solid rgba(240, 228, 196, 0.85);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(10, 6, 16, 0.55), inset 0 0 0 2px rgba(10, 6, 16, 0.55);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.map-reticle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(240, 228, 196, 0.9);
+}
+
+body.pad-mode .map-reticle {
+  display: block;
 }
 
 .map-canvas {
