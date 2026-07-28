@@ -127,18 +127,18 @@ Create a **Forge Daemon** (server → Daemons → New Daemon):
 | Stop Seconds | `15` — SIGTERM saves players and drains the DB queue |
 | Stop Signal | `SIGTERM` |
 
-Then add the daemon's id to the site **Environment** so the control
-script can address it:
-
-```
-ARX_PROGRAM=daemon-<id>:*
-```
+No env wiring needed: `scripts/arxctl.sh` **discovers** the daemon by
+scanning `/etc/supervisor/conf.d/` for the config whose command runs
+`arx-run.sh` — recreate the daemon as often as you like, the new id is
+found automatically. (`ARX_PROGRAM` still overrides discovery if you
+ever need to pin it.) If supervisor can't be addressed at all, the
+script falls back to a graceful SIGTERM at the game port's listener
+and lets the daemon's autorestart revive it on the current release.
 
 Logs: Forge's daemon panel, or `/home/forge/.forge/daemon-<id>.log`.
 
 (Alternative: `deploy/arx-supervisor.conf` is a hand-installed
-supervisor program with the stable name `arx` — only if you prefer
-managing supervisor yourself; then leave `ARX_PROGRAM` unset.)
+supervisor program — discovery finds it the same way.)
 
 Operate it with the control script:
 
@@ -167,12 +167,12 @@ npm run build                      # client bundle → <release>/public/
 
 $ACTIVATE_RELEASE()
 
-# Swing the game server onto the new release and confirm it's alive.
-# ($FORGE_RELEASE_DIRECTORY is the release `current` now points at —
-# no site path is hardcoded anywhere in this script.)
+# Swing the game server onto the new release. restart discovers the
+# daemon (no ids configured anywhere), stops it gracefully, and polls
+# /healthz until the new release answers — a dead server fails the
+# deploy right here. ($FORGE_RELEASE_DIRECTORY is the release
+# `current` now points at; no site path is hardcoded.)
 bash "$FORGE_RELEASE_DIRECTORY/scripts/arxctl.sh" restart
-sleep 2
-bash "$FORGE_RELEASE_DIRECTORY/scripts/arxctl.sh" ping || echo "WARNING: game server not answering /healthz"
 ```
 
 There is no data-shipping step because the restart does it all:
