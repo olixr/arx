@@ -291,6 +291,8 @@ export const CHOP_CYCLE_MS = 700;
 export const ANVIL_CYCLE_MS = 640;
 /** Duration of one forage pluck (reach→tug→snap→pouch), ms. */
 export const FORAGE_CYCLE_MS = 1050;
+/** Duration of one two-hand milking beat (each hand pulls once), ms. */
+export const MILK_CYCLE_MS = 640;
 /** Duration of one furnace stoking push, ms. */
 export const FURNACE_CYCLE_MS = 1700;
 
@@ -1940,8 +1942,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
 
   // Sneak crouch: dropping the hip line shortens the leg chain so the IK
   // bends the knees for free, and the whole arm frame (armY/shoulderY)
-  // hangs off hipY so the weapon carriage ducks with the body.
-  const crouch = rig.pose === PoseState.Sneak ? Math.min(1, rig.poseT) : 0;
+  // hangs off hipY so the weapon carriage ducks with the body. Milking
+  // settles into a shallower working crouch at the flank.
+  const crouch =
+    rig.pose === PoseState.Sneak
+      ? Math.min(1, rig.poseT)
+      : rig.pose === PoseState.Milk
+        ? 0.55 * Math.min(1, rig.poseT)
+        : 0;
   const sit = rig.sitT ?? 0;
 
   // The body rides the hip line, which rides the gait bob. Seated, the
@@ -2289,6 +2297,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Foraging outranks the belt tool: picking herbs is hand-work even
   // with an axe on the hip (the caller also holsters the tool sprite).
   const foraging = rig.pose === PoseState.Gather && rig.foraging === true;
+  // Milking is its own pose (never Gather): bare-handed dairy work,
+  // weapons stowed by the caller's sheathe blend.
+  const milking = rig.pose === PoseState.Milk;
   const chopping = rig.pose === PoseState.Gather && toolType === 'axe' && !foraging;
   const mining = rig.pose === PoseState.Gather && toolType === 'pickaxe' && !foraging;
   const craftKind = rig.pose === PoseState.Craft ? (rig.craftKind ?? 'workbench') : null;
@@ -2523,6 +2534,26 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     reach = r * s;
     lean *= Math.sign(fx || 1);
   }
+  // The milking: no tool, no swing — dairy hands. Settled low at the
+  // flank in the working crouch, both arms reach in together and pull
+  // down in alternation — a steady squeeze-and-release rhythm, the
+  // shoulders rocking faintly on the beat.
+  let milkDropMain = 0;
+  let milkDropOff = 0;
+  if (milking) {
+    const u = (rig.nowMs % MILK_CYCLE_MS) / MILK_CYCLE_MS;
+    // One hand's pull: a quick draw down, an easy ride back up.
+    const pull = (p: number) => {
+      const t2 = p < 0.4 ? p / 0.4 : 1 - (p - 0.4) / 0.6;
+      return t2 * t2 * (3 - 2 * t2);
+    };
+    milkDropMain = 0.06 + 0.085 * pull(u);
+    milkDropOff = 0.06 + 0.085 * pull((u + 0.5) % 1);
+    swingOffset = 0.3;
+    reach = 0.3 * s;
+    // Bent to the work, breathing with the alternating pulls.
+    lean = (0.14 + 0.018 * Math.sin(u * Math.PI * 4)) * Math.sign(fx || 1);
+  }
   // Station work: each craft station has its own body language.
   if (craftKind === 'anvil') {
     // Hammer blows: raise over the shoulder, ring it off the billet the
@@ -2615,6 +2646,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     mainY = armY + Math.sin(mainAngle) * reach * strikeReachK + strikeLiftS * s;
     // Foraging reaches DOWN into the plant regardless of facing.
     if (foraging) mainY += forageDrop * s;
+    // Milking pulls DOWN on its half of the beat at every facing.
+    if (milking) mainY += milkDropMain * s;
   }
   // The free hand hangs relaxed by the hip opposite the weapon hand;
   // during swings/casts it rides the counterbalance circle instead.
@@ -2662,6 +2695,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const steadyAngle = rig.dir - 0.42;
     offX = rig.x + Math.cos(steadyAngle) * 0.23 * s * wS;
     offY = armY + Math.sin(steadyAngle) * 0.23 * s + (0.11 + Math.sin(rig.nowMs * 0.0021) * 0.012) * s;
+  } else if (milking) {
+    // The other hand works the off-beat: planted just off the working
+    // axis, pulling opposite the main hand's rhythm.
+    const milkAngle = rig.dir - 0.34;
+    offX = rig.x + Math.cos(milkAngle) * 0.27 * s * wS;
+    offY = armY + Math.sin(milkAngle) * 0.27 * s + milkDropOff * s;
   } else if (craftKind === 'anvil') {
     // Tongs hand: planted toward the anvil, holding the work steady
     // while the hammer arm does everything else.
@@ -4243,7 +4282,12 @@ export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const k = rig.size ?? 1;
   const s = rig.scale * k;
   const fx = Math.cos(rig.dir);
-  const crouch = rig.pose === PoseState.Sneak ? Math.min(1, rig.poseT) : 0;
+  const crouch =
+    rig.pose === PoseState.Sneak
+      ? Math.min(1, rig.poseT)
+      : rig.pose === PoseState.Milk
+        ? 0.55 * Math.min(1, rig.poseT)
+        : 0;
   const hipY = rig.y - (rig.rise + rig.bob * 0.45) * s + 0.11 * s * crouch;
   const wS = rig.wScale;
   const hScale = 1 + (1 - wS) * 0.55;

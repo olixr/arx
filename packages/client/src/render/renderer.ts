@@ -1297,6 +1297,30 @@ export class Renderer {
   }
 
   /**
+   * The nearest milkable animal (livestock with produce) in hand
+   * reach of a Milk-posed body — what the milker squares up to.
+   */
+  private findMilkTarget(x: number, y: number): { x: number; y: number } | null {
+    const game = this.game;
+    if (!game) return null;
+    let best: { x: number; y: number } | null = null;
+    let bestD = 2.8 * 2.8;
+    for (const [, remote] of game.entities) {
+      if (remote.meta.kind !== EntityKind.Npc) continue;
+      if (!npcDef(remote.meta.defId ?? '')?.produce) continue;
+      const latest = remote.buffer.latest();
+      const ex = latest?.x ?? remote.meta.x;
+      const ey = latest?.y ?? remote.meta.y;
+      const d = (ex - x) * (ex - x) + (ey - y) * (ey - y);
+      if (d < bestD) {
+        bestD = d;
+        best = { x: ex, y: ey };
+      }
+    }
+    return best;
+  }
+
+  /**
    * The stall wardrobe: every market stand draws one bolt of cloth
    * from this roster, keyed by the run's west-anchor tile hash — so a
    * merged stall wears one banner, neighbouring stands differ, and
@@ -18772,6 +18796,9 @@ export class Renderer {
     if (gather) dir = Math.atan2(gather.ty + 0.5 - e.y, gather.tx + 0.5 - e.x);
     const station = e.pose === PoseState.Craft ? this.findStation(e.x, e.y) : null;
     if (station) dir = Math.atan2(station.ty + 0.5 - e.y, station.tx + 0.5 - e.x);
+    // Milking: square up to the animal being worked, same as a node.
+    const milkCow = e.pose === PoseState.Milk ? this.findMilkTarget(e.x, e.y) : null;
+    if (milkCow) dir = Math.atan2(milkCow.y - e.y, milkCow.x - e.x);
 
     // Seated lean: hips and torso settle BEHIND the ground point while
     // the feet hold their forward plant — the stretched-out rest.
@@ -18786,6 +18813,7 @@ export class Renderer {
       e.sheathed === true ||
       e.pose === PoseState.Craft ||
       e.pose === PoseState.Sit ||
+      e.pose === PoseState.Milk ||
       gather?.kind === 'forage'
         ? 1
         : 0;

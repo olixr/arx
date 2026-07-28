@@ -163,6 +163,8 @@ export declare const CHOP_CYCLE_MS = 700;
 export declare const ANVIL_CYCLE_MS = 640;
 /** Duration of one forage pluck (reach→tug→snap→pouch), ms. */
 export declare const FORAGE_CYCLE_MS = 1050;
+/** Duration of one two-hand milking beat (each hand pulls once), ms. */
+export declare const MILK_CYCLE_MS = 640;
 /** Duration of one furnace stoking push, ms. */
 export declare const FURNACE_CYCLE_MS = 1700;
 /**

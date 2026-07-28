@@ -290,7 +290,14 @@ interface HarvestAction {
   ticksLeft: number;
 }
 
-type PlayerAction = GatherAction | CraftAction | BuildAction | HarvestAction;
+/** Milking livestock: hands on the flank for a few seconds. */
+interface MilkAction {
+  kind: 'milk';
+  targetEid: EntityId;
+  ticksLeft: number;
+}
+
+type PlayerAction = GatherAction | CraftAction | BuildAction | HarvestAction | MilkAction;
 
 /** A planted crop; stage derives from (now − plantedAt + boostMs). */
 interface CropState {
@@ -362,6 +369,8 @@ interface NpcComp {
   specialCooldown: number;
   /** Livestock: earliest wall-clock ms this animal may be milked again. */
   nextProduceAt: number;
+  /** Hands on the flank: the idle wander stands still until this tick. */
+  holdUntilTick: number;
   /** Livestock: next wall-clock ms this animal lays (0 = never). */
   nextLayAt: number;
   /** Obstacle-avoidance swerve memory for chase/return legs. */
@@ -2247,6 +2256,7 @@ export class GameServer {
     if (kind === 'gather') this.tickGather(eid, player);
     else if (kind === 'craft') this.tickCraft(eid, player);
     else if (kind === 'harvest') this.tickHarvest(eid, player);
+    else if (kind === 'milk') this.tickMilk(eid, player);
     else this.tickBuild(eid, player);
   }
 
@@ -4542,12 +4552,60 @@ export class GameServer {
       sys('Your pack is full.');
       return;
     }
-    npc.nextProduceAt = now + produce.cooldownSec * 1000;
+    // Milking is handwork with a rhythm, not a vending machine: settle
+    // in for a few seconds while the animal stands for it. The yield,
+    // xp, and cooldown all land in tickMilk when the pail fills.
+    if (player.action) this.cancelAction(eid, player);
+    const ticks = Math.max(GameServer.MIN_GATHER_TICKS, Math.round(GameServer.MILK_TICKS / this.gatherSpeedOf(player)));
+    player.action = { kind: 'milk', targetEid, ticksLeft: ticks };
+    pos.dir = Math.atan2(npos.y - pos.y, npos.x - pos.x);
+    npc.holdUntilTick = this.tickCount + ticks + 20;
+    this.poses.set(eid, PoseState.Milk);
+    player.session.sendJson({ t: 'action', state: 'start', ticks });
+  }
+
+  /** One full milking, in ticks (3s), before gather-speed brews. */
+  private static readonly MILK_TICKS = 60;
+
+  private tickMilk(eid: EntityId, player: PlayerComp): void {
+    const action = player.action! as MilkAction;
+    const pos = this.positions.get(eid);
+    const npc = this.npcs.get(action.targetEid);
+    const npos = this.positions.get(action.targetEid);
+    // The animal died, despawned, or was spooked out of hand reach.
+    if (!pos || !npc || !npos || !npc.def.produce) {
+      this.cancelAction(eid, player, 'gone');
+      return;
+    }
+    const dx = npos.x - pos.x;
+    const dy = npos.y - pos.y;
+    if (dx * dx + dy * dy > 2.6 * 2.6) {
+      this.cancelAction(eid, player, 'gone');
+      return;
+    }
+    // Hands on the flank keep the animal planted, refreshed each tick
+    // so it wanders off shortly after the milking ends either way.
+    npc.holdUntilTick = this.tickCount + 10;
+    if (--action.ticksLeft > 0) return;
+
+    const produce = npc.def.produce;
+    const sys = (text: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text });
+    // Raced by another milker mid-squeeze: the udder ran dry first.
+    if (Date.now() < npc.nextProduceAt) {
+      sys(`The ${npc.def.name.toLowerCase()} has nothing left to give.`);
+      this.cancelAction(eid, player, 'gone');
+      return;
+    }
+    if (!hasSpaceFor(player.inventory, produce.item)) {
+      this.cancelAction(eid, player, 'full');
+      return;
+    }
+    npc.nextProduceAt = Date.now() + produce.cooldownSec * 1000;
     addItem(player.inventory, produce.item, 1);
     this.grantXp(eid, player, 'beastcraft', produce.xp);
-    this.setPose(eid, PoseState.Gather, 8);
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
+    player.session?.sendJson({ t: 'inv', slots: player.inventory });
     sys(`You collect ${itemDef(produce.item)?.name.toLowerCase() ?? produce.item} from the ${npc.def.name.toLowerCase()}.`);
+    this.cancelAction(eid, player, 'done');
   }
 
   // ------------------------------------------------------- dialogue
@@ -7206,6 +7264,7 @@ export class GameServer {
       poseUntilTick: 0,
       specialCooldown: 60, // never open with the special
       nextProduceAt: 0,
+      holdUntilTick: 0,
       nextLayAt: def.lays
         ? Date.now() + (def.lays.minSec + Math.random() * (def.lays.maxSec - def.lays.minSec)) * 1000
         : 0,
@@ -7321,6 +7380,7 @@ export class GameServer {
         poseUntilTick: 0,
         specialCooldown: 60,
         nextProduceAt: 0,
+        holdUntilTick: 0,
         nextLayAt: 0,
         steer: newSteerMemory(),
         navBest: Infinity,
@@ -8518,6 +8578,9 @@ export class GameServer {
             }
           }
         }
+      } else if (this.tickCount < npc.holdUntilTick) {
+        // Hands on the flank: a milked animal plants its feet — no
+        // wander roll, no origin pull, until the milker lets go.
       } else {
         // Idle wander: drift somewhere near the origin now and then.
         if (this.tickCount >= npc.wanderUntilTick) {
@@ -9528,11 +9591,16 @@ export class GameServer {
     } else if (this.tickCount < player.poseUntilTick) {
       // Hold a transient combat pose (attack/hurt) briefly.
     } else if (player.action) {
-      // Craft reads as station work (hammering, stoking); everything
-      // else keeps the tool-swinging gather pose.
+      // Craft reads as station work (hammering, stoking), milking as
+      // bare-handed dairy work; everything else keeps the
+      // tool-swinging gather pose.
       this.poses.set(
         eid,
-        player.action.kind === 'craft' ? PoseState.Craft : PoseState.Gather,
+        player.action.kind === 'craft'
+          ? PoseState.Craft
+          : player.action.kind === 'milk'
+            ? PoseState.Milk
+            : PoseState.Gather,
       );
     } else {
       this.poses.set(

@@ -417,6 +417,11 @@ export declare class Renderer {
     /** Nearest crafting station around a world position, if any. */
     private findStation;
     /**
+     * The nearest milkable animal (livestock with produce) in hand
+     * reach of a Milk-posed body — what the milker squares up to.
+     */
+    private findMilkTarget;
+    /**
      * The stall wardrobe: every market stand draws one bolt of cloth
      * from this roster, keyed by the run's west-anchor tile hash — so a
      * merged stall wears one banner, neighbouring stands differ, and

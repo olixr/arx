@@ -41,6 +41,12 @@ export enum PoseState {
    * posture per entity so a campfire circle never sits identically.
    */
   Sit = 14,
+  /**
+   * Milking livestock: bare-handed dairy work at the animal's flank.
+   * No tool comes out — the client stows weapons and plays the
+   * settled two-hand rhythm for the action's whole run.
+   */
+  Milk = 15,
 }
 
 /**
