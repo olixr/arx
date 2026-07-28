@@ -112,12 +112,25 @@ export declare class Renderer {
     /** Body-relight scratch (see relightBody) + per-frame budget. */
     private readonly relightCanvas;
     private readonly relightCtx;
+    /** The ART MASK scratch: the body's silhouette WITHOUT the outline
+     *  ring — relight paints clothing and skin, never the ring (a lit
+     *  ring reads as a detached pale halo outside the body). */
+    private readonly relightMask;
+    private readonly relightMaskCtx;
     private relitLeft;
-    /** Dominant-light stash filled by sampleExposure(wantDom=true). */
+    /** Top-two-light stash filled by sampleExposure(wantDom=true).
+     *  TWO slots, not one: a winner-take-all pick strobes when two
+     *  comparable flickering sources trade the crown frame to frame —
+     *  the rim pass draws each significant light by its own strength
+     *  instead, so rank swaps never change the picture. */
     private domK;
     private domX;
     private domY;
     private domRgb;
+    private dom2K;
+    private dom2X;
+    private dom2Y;
+    private dom2Rgb;
     /** Ground shadows batch here, composited once at the sky's alpha. */
     private readonly shadowLayer;
     private readonly shadowLayerCtx;
@@ -946,8 +959,16 @@ export declare class Renderer {
      */
     private pillarItem;
     /**
-     * A half-height railing: posts, a top rail, baluster slats. Rails
-     * merge with rails only — a railing never joins a wall mass.
+     * THE RAILING — a hip-height terrace rail in the fence rebuild's
+     * dialect: one capped post per tile (the same foreshortened-cap
+     * grammar as the field fence, cut short), ONE top board with real
+     * thickness (lit plane over a front face) reaching half a tile
+     * toward every railing neighbour, and thin baluster slats seated
+     * under the board. Rails merge with rails only — a railing never
+     * joins a wall mass. N-S runs are the honest edge-on projection:
+     * the board's top plane marching up-screen through the posts, and
+     * every connected direction draws, so corners and T-junctions stay
+     * one continuous handrail.
      */
     private railItem;
     /** Memoized span walk-axis (true = walk runs N-S), cleared on any
@@ -1034,6 +1055,10 @@ export declare class Renderer {
      * entities standing beside it; only the sky above them shows wall.
      */
     private cliffSideItem;
+    /** Descent direction of a Ramp tile: the cardinal neighbor a level down. */
+    private rampDir;
+    /** Deterministic per-stone jitter, world-keyed like the terrain bake. */
+    private static stone01;
     /**
      * A stone stair crossing the cliff line - real STEPPED PRISMS, not a
      * striped slab. Flights climbing away from the camera show receding
@@ -1043,6 +1068,14 @@ export declare class Renderer {
      * lip on every tread nose. Entities still ride the smooth
      * renderLift() gradient - a half-step of float against the drawn
      * treads is invisible at gait speed.
+     *
+     * ONE FLIGHT PER RUN: the collector hands N/S flights their whole
+     * E-W run (see STAIR-RUN LAW at the call site), so cheek walls stand
+     * only at the two exposed ends and every tread is a single fitted
+     * course across the full width. Running-bond joints and per-block
+     * tint (stone01) keep a wide course from reading as an extruded
+     * slab; the joints land differently on every flight, so no two
+     * staircases in the world are pixel-identical.
      */
     private rampItem;
     /**

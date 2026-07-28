@@ -59,6 +59,28 @@ test('commitment is sticky: the same side wins while blocked', () => {
   assert.equal(Math.sign(first.my), Math.sign(second.my), 'same swerve direction');
 });
 
+test('a committed side beats a smaller deflection on the other side', () => {
+  // Half wall: the column only stands at y <= 1, so a body at
+  // (4.2, 1.2) heading east can clear +30° (swing south, away from
+  // the wall) but a NORTH-committed swerve must exhaust its own fan
+  // — and find -90° clear — before the south side gets a look.
+  // Per-angle side trials would flip to +30° here every tick: the
+  // left-right dither the commitment exists to prevent.
+  const halfWall: CollisionSource = {
+    isSolid: (tx, ty) => tx === 5 && ty <= 0,
+  };
+  const mem = newSteerMemory();
+  mem.side = -1;
+  mem.ticks = 6;
+  const h = steerToward({ x: 4.2, y: 1.2 }, 8, 1.2, halfWall, RADIUS, mem);
+  assert.ok(h.my < 0, `stays with the committed swing, got (${h.mx}, ${h.my})`);
+  assert.equal(mem.side, -1, 'the commitment survives the tick');
+
+  // The same spot uncommitted picks the nearest way around instead.
+  const free = steerToward({ x: 4.2, y: 1.2 }, 8, 1.2, halfWall, RADIUS, newSteerMemory());
+  assert.ok(free.my > 0, `an uncommitted body takes the smaller deflection, got (${free.mx}, ${free.my})`);
+});
+
 test('clear runs bleed the commitment off and release the side', () => {
   const mem = newSteerMemory();
   mem.side = 1;

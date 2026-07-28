@@ -105,19 +105,36 @@ export function steerToward(
     return { mx: ux, my: uy };
   }
 
-  // Blocked: swing off the desired line, committed side first so a
-  // corner is rounded in one motion instead of oscillated against.
-  const firstSide = mem.side !== 0 ? mem.side : 1;
-  for (const a of FAN) {
-    for (const s of [firstSide, -firstSide]) {
-      const cos = Math.cos(a * s);
-      const sin = Math.sin(a * s);
-      const rx = ux * cos - uy * sin;
-      const ry = ux * sin + uy * cos;
-      if (headingClear(collision, pos, rx, ry, ahead, radius)) {
-        mem.side = s;
-        mem.ticks = COMMIT_TICKS;
-        return { mx: rx, my: ry };
+  // Blocked: swing off the desired line. A committed side is honored
+  // across the WHOLE fan before the other side gets a look — trying
+  // sides per-angle lets whichever side happens to clear at the
+  // smaller deflection win each tick, and against a flat wall that
+  // alternates: the left-right-left dither the commitment exists to
+  // prevent. Side-consistency beats smallest deflection while a
+  // swerve is live; an uncommitted body still picks the nearest way
+  // around.
+  const probe = (a: number, s: number): { mx: number; my: number } | null => {
+    const cos = Math.cos(a * s);
+    const sin = Math.sin(a * s);
+    const rx = ux * cos - uy * sin;
+    const ry = ux * sin + uy * cos;
+    if (!headingClear(collision, pos, rx, ry, ahead, radius)) return null;
+    mem.side = s;
+    mem.ticks = COMMIT_TICKS;
+    return { mx: rx, my: ry };
+  };
+  if (mem.side !== 0) {
+    for (const s of [mem.side, -mem.side]) {
+      for (const a of FAN) {
+        const h = probe(a, s);
+        if (h) return h;
+      }
+    }
+  } else {
+    for (const a of FAN) {
+      for (const s of [1, -1]) {
+        const h = probe(a, s);
+        if (h) return h;
       }
     }
   }

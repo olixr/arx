@@ -319,7 +319,7 @@ interface NavState {
    * only while the straight walk-line is blocked. null = steering
    * direct (the cheap, common case).
    */
-  nav: { pts: Vec2[]; idx: number; goalX: number; goalY: number } | null;
+  nav: { pts: Vec2[]; idx: number; goalX: number; goalY: number; complete: boolean } | null;
   /** Earliest tick this body may ask the pathfinder again. */
   nextRepathTick: number;
   /** Cached walk-line verdict toward (losGoalX, losGoalY). */
@@ -377,7 +377,7 @@ interface NpcComp {
   /** The craven decision is made once per life, whichever way it went. */
   helpCalled: boolean;
   /** Lane-nav slate (NavState) — see navToward. */
-  nav: { pts: Vec2[]; idx: number; goalX: number; goalY: number } | null;
+  nav: { pts: Vec2[]; idx: number; goalX: number; goalY: number; complete: boolean } | null;
   nextRepathTick: number;
   losClear: boolean;
   losUntilTick: number;
@@ -645,7 +645,7 @@ interface RoutineComp {
   /** Obstacle-avoidance swerve memory for travel legs. */
   steer: SteerMemory;
   /** Lane-nav slate (NavState) — see navToward. */
-  nav: { pts: Vec2[]; idx: number; goalX: number; goalY: number } | null;
+  nav: { pts: Vec2[]; idx: number; goalX: number; goalY: number; complete: boolean } | null;
   nextRepathTick: number;
   losClear: boolean;
   losUntilTick: number;
@@ -7465,7 +7465,10 @@ export class GameServer {
       this.pathfindsLeft--;
       state.nextRepathTick = this.tickCount + GameServer.REPATH_TICKS;
       const found = findPathNav(laneWorld, pos.x, pos.y, goalX, goalY, bounds);
-      state.nav = found.path.length > 0 ? { pts: found.path, idx: 0, goalX, goalY } : null;
+      // An incomplete lane is kept even when EMPTY — "nowhere better
+      // than where we stand" is an answer, and the walk branch below
+      // turns it into standing still instead of grinding the fan.
+      state.nav = { pts: found.path, idx: 0, goalX, goalY, complete: found.complete };
     }
 
     const nav = state.nav;
@@ -7492,11 +7495,21 @@ export class GameServer {
         }
         return steerToward(pos, wp.x, wp.y, this.world, radius, state.steer);
       }
+      // Lane walked to its end. A COMPLETE lane ends on the goal tile
+      // — drop it and let the fan close the last sub-tile stretch. An
+      // INCOMPLETE lane ends at the nearest reachable tile to a goal
+      // that is sealed off (fence line, water, a shut door): STAND
+      // THERE. Pushing the fan at the seal is the back-and-forth
+      // wall-grind jitter; standing reads as intent, the stale check
+      // keeps re-asking the pathfinder on the repath floor (the world
+      // may open up), and the caller's stall ladder still owns giving
+      // up entirely.
+      if (!nav.complete) return { mx: 0, my: 0 };
       state.nav = null;
     }
 
-    // No lane granted (budget) or the lane ran out short of the goal:
-    // the fan pushes on and the stall ladder owns what happens next.
+    // No lane granted (budget) or none cached yet: the fan pushes on
+    // and the stall ladder owns what happens next.
     return steerToward(pos, goalX, goalY, this.world, radius, state.steer);
   }
 
@@ -7603,16 +7616,23 @@ export class GameServer {
       }
     }
     if (!crowded) return { mx, my };
-    let nx = mx + px * 0.9;
-    let ny = my + py * 0.9;
-    let n = Math.hypot(nx, ny);
+    const nx = mx + px * 0.9;
+    const ny = my + py * 0.9;
+    const n = Math.hypot(nx, ny);
     if (n < 0.2) {
-      // Pushed square against the walk: sidestep, don't stall.
-      nx = -my + px * 0.5;
-      ny = mx + py * 0.5;
-      n = Math.hypot(nx, ny) || 1;
+      // Pushed square against the walk: sidestep at half pace — a
+      // full-speed perpendicular kick re-aimed every tick is an
+      // orbit, not a yield.
+      const sx = -my + px * 0.5;
+      const sy = mx + py * 0.5;
+      const sn = Math.hypot(sx, sy) || 1;
+      return { mx: (sx / sn) * 0.5, my: (sy / sn) * 0.5 };
     }
-    return { mx: nx / n, my: ny / n };
+    // Sub-unit blends keep their magnitude: a body easing past a
+    // neighbor SLOWS, it doesn't ricochet off at full stride in a
+    // freshly rotated direction every tick.
+    if (n > 1) return { mx: nx / n, my: ny / n };
+    return { mx: nx, my: ny };
   }
 
   /** The task the schedule assigns this comp right now. */
@@ -7645,7 +7665,12 @@ export class GameServer {
       const r = Math.sqrt(Math.random()) * task.radius;
       const tx = cx + Math.cos(a) * r;
       const ty = cy + Math.sin(a) * r;
-      if (!this.world.isSolid(Math.floor(tx), Math.floor(ty))) {
+      // The BODY must fit at the target, not just the tile be open —
+      // a point rolled into a fence-corner nook is unreachable by a
+      // body radius, and the walker hovers against the wall jittering
+      // until the stuck watchdog rerolls. 0.4 covers every townsfolk
+      // radius with margin.
+      if (!circleHitsSolid(this.world, tx, ty, 0.4)) {
         rc.targetX = tx;
         rc.targetY = ty;
         break;
