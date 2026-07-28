@@ -124,3 +124,25 @@ test('handles winding cave-scale maps within budget', () => {
   assert.ok(path, 'long serpentine path found');
   assert.ok(path.length > 500);
 });
+
+test('nav: the long-wall trap — tight bounds hug the wall, widened bounds complete', () => {
+  // A wall with EQUAL distance around either end, goal straight across:
+  // the classic jostle spot. The cheap bounded ask cannot complete (the
+  // detour exits the circle), and its best-effort lane ends hugging the
+  // wall right beside the goal — the trap. The escalated ask (the
+  // server's bounds.r + 14 / 4500-expansion retry) must COMPLETE around
+  // one end instead.
+  const rows: string[] = [];
+  for (let y = 0; y < 43; y++) rows.push(y === 0 || y === 42 ? '............' : '.....#......');
+  const world = gridWorld(rows);
+  const tight = findPathNav(world, 0.5, 21.5, 10.5, 21.5, { cx: 5.5, cy: 21.5, r: 13 });
+  assert.equal(tight.complete, false, 'the detour exits the tight circle');
+  const end = tight.path[tight.path.length - 1]!;
+  assert.ok(
+    end.x < 5 && Math.abs(end.y - 21.5) < 3,
+    `best-effort ends hugging the wall beside the goal, got (${end.x}, ${end.y})`,
+  );
+  const wide = findPathNav(world, 0.5, 21.5, 10.5, 21.5, { cx: 5.5, cy: 21.5, r: 27 }, 4500);
+  assert.equal(wide.complete, true, 'the widened search rounds the wall');
+  assert.ok(wide.path.some((p) => p.y < 1.1 || p.y > 41.9), 'the lane walks around a wall end');
+});

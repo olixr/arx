@@ -308,6 +308,9 @@ interface CropState {
   lastStage: 0 | 1 | 2;
 }
 
+/** A cached A* lane toward a nav goal — see NavState.nav. */
+type NavLane = { pts: Vec2[]; idx: number; goalX: number; goalY: number; complete: boolean };
+
 /**
  * The lane-nav slate every walking body carries — chase pursuit and
  * routine errands share one navigator (navToward), so both comps
@@ -319,7 +322,9 @@ interface NavState {
    * only while the straight walk-line is blocked. null = steering
    * direct (the cheap, common case).
    */
-  nav: { pts: Vec2[]; idx: number; goalX: number; goalY: number; complete: boolean } | null;
+  nav: NavLane | null;
+  /** The proven lane the stall ledger is crediting (navProgressDist). */
+  progressLane: NavLane | null;
   /** Earliest tick this body may ask the pathfinder again. */
   nextRepathTick: number;
   /** Cached walk-line verdict toward (losGoalX, losGoalY). */
@@ -377,7 +382,9 @@ interface NpcComp {
   /** The craven decision is made once per life, whichever way it went. */
   helpCalled: boolean;
   /** Lane-nav slate (NavState) — see navToward. */
-  nav: { pts: Vec2[]; idx: number; goalX: number; goalY: number; complete: boolean } | null;
+  nav: NavLane | null;
+  /** The proven lane the stall ledger is crediting (navProgressDist). */
+  progressLane: NavLane | null;
   nextRepathTick: number;
   losClear: boolean;
   losUntilTick: number;
@@ -645,7 +652,9 @@ interface RoutineComp {
   /** Obstacle-avoidance swerve memory for travel legs. */
   steer: SteerMemory;
   /** Lane-nav slate (NavState) — see navToward. */
-  nav: { pts: Vec2[]; idx: number; goalX: number; goalY: number; complete: boolean } | null;
+  nav: NavLane | null;
+  /** The proven lane the stall ledger is crediting (navProgressDist). */
+  progressLane: NavLane | null;
   nextRepathTick: number;
   losClear: boolean;
   losUntilTick: number;
@@ -7210,6 +7219,7 @@ export class GameServer {
       helpUntilTick: 0,
       helpCalled: false,
       nav: null,
+      progressLane: null,
       nextRepathTick: 0,
       losClear: false,
       losUntilTick: 0,
@@ -7279,6 +7289,7 @@ export class GameServer {
         progressBest: Infinity,
         steer: newSteerMemory(),
         nav: null,
+        progressLane: null,
         nextRepathTick: 0,
         losClear: false,
         losUntilTick: 0,
@@ -7321,6 +7332,7 @@ export class GameServer {
         helpUntilTick: 0,
         helpCalled: false,
         nav: null,
+        progressLane: null,
         nextRepathTick: 0,
         losClear: false,
         losUntilTick: 0,
@@ -7408,6 +7420,10 @@ export class GameServer {
   private static readonly REPATH_TICKS = 10;
   /** A nav goal drifting this far from its lane forces a repath. */
   private static readonly PATH_GOAL_DRIFT = 1.4;
+  /** Bounds-radius widening for an escalated (long-wall) repath. */
+  private static readonly PATH_BOOST_R = 14;
+  /** Expansion budget for an escalated repath (base is 1500). */
+  private static readonly PATH_BOOST_EXPANSIONS = 4500;
   /** Global A* grants per tick — everyone else keeps the steer fan. */
   private static readonly MAX_PATHFINDS_PER_TICK = 4;
 
@@ -7440,6 +7456,7 @@ export class GameServer {
     radius: number,
     bounds: { cx: number; cy: number; r: number },
     laneWorld: CollisionSource = this.world,
+    escalate = false,
   ): { mx: number; my: number } {
     // Walk-line check, cached a few ticks. A goal that moved (chase
     // target, state flip) invalidates the cache immediately.
@@ -7464,7 +7481,32 @@ export class GameServer {
     if (stale && this.tickCount >= state.nextRepathTick && this.pathfindsLeft > 0) {
       this.pathfindsLeft--;
       state.nextRepathTick = this.tickCount + GameServer.REPATH_TICKS;
-      const found = findPathNav(laneWorld, pos.x, pos.y, goalX, goalY, bounds);
+      // THE LONG WALL: a lane that came back incomplete for this same
+      // goal means the cheap bounded search hit its fence, not that
+      // the goal is sealed — a wall with equal distance either side
+      // needs a detour that leaves the tight circle (or outspends the
+      // base budget), and the consolation "closest reachable tile" is
+      // exactly the wall-hugging trap beside the goal. Escalating
+      // callers (errands walking their OWN static goals — routines,
+      // patrol legs, the walk home) re-ask WIDER so the detour can
+      // COMPLETE; chase pursuit never escalates, its leash circle is
+      // a game law, not a cost guard.
+      const boost =
+        escalate &&
+        state.nav !== null &&
+        !state.nav.complete &&
+        Math.hypot(goalX - state.nav.goalX, goalY - state.nav.goalY) <= GameServer.PATH_GOAL_DRIFT;
+      const found = boost
+        ? findPathNav(
+            laneWorld,
+            pos.x,
+            pos.y,
+            goalX,
+            goalY,
+            { cx: bounds.cx, cy: bounds.cy, r: bounds.r + GameServer.PATH_BOOST_R },
+            GameServer.PATH_BOOST_EXPANSIONS,
+          )
+        : findPathNav(laneWorld, pos.x, pos.y, goalX, goalY, bounds);
       // An incomplete lane is kept even when EMPTY — "nowhere better
       // than where we stand" is an answer, and the walk branch below
       // turns it into standing still instead of grinding the fan.
@@ -7519,12 +7561,54 @@ export class GameServer {
     pos: { x: number; y: number },
     goalX: number,
     goalY: number,
+    escalate = false,
   ): { mx: number; my: number } {
-    return this.navToward(npc, pos, goalX, goalY, npc.def.radius, {
-      cx: npc.originX,
-      cy: npc.originY,
-      r: npc.def.leashRange + 2,
-    });
+    return this.navToward(
+      npc,
+      pos,
+      goalX,
+      goalY,
+      npc.def.radius,
+      {
+        cx: npc.originX,
+        cy: npc.originY,
+        r: npc.def.leashRange + 2,
+      },
+      this.world,
+      escalate,
+    );
+  }
+
+  /**
+   * The stall ledgers' yardstick toward a nav goal. In the open it is
+   * plain euclidean distance — but while a PROVEN (complete) lane is
+   * being walked, it is the REMAINING LANE LENGTH. A legitimate detour
+   * around a long wall spends seconds getting euclidean-FARTHER from
+   * the goal, and a euclidean ledger reads that as wedged and aborts
+   * the walk mid-detour — the double-back jostle at long walls. Lane
+   * length only shrinks as the lane is actually consumed, so a body
+   * grinding against something new on a stale lane still runs out the
+   * clock. `freshLane` fires once per newly-proven lane; the caller
+   * re-arms its ledger on it (a proven route deserves a fresh clock).
+   * Incomplete lanes never earn this — standing at a sealed goal
+   * keeps the euclidean ledger counting toward giving up.
+   */
+  private navProgressDist(
+    state: NavState,
+    pos: { x: number; y: number },
+    goalX: number,
+    goalY: number,
+  ): { dist: number; freshLane: boolean } {
+    const nav = state.nav;
+    const lane = nav !== null && nav.complete && nav.idx < nav.pts.length ? nav : null;
+    const freshLane = lane !== null && lane !== state.progressLane;
+    state.progressLane = lane;
+    if (!lane) return { dist: Math.hypot(goalX - pos.x, goalY - pos.y), freshLane };
+    let d = Math.hypot(lane.pts[lane.idx]!.x - pos.x, lane.pts[lane.idx]!.y - pos.y);
+    for (let i = lane.idx; i + 1 < lane.pts.length; i++) {
+      d += Math.hypot(lane.pts[i + 1]!.x - lane.pts[i]!.x, lane.pts[i + 1]!.y - lane.pts[i]!.y);
+    }
+    return { dist: d, freshLane };
   }
 
   /**
@@ -7873,6 +7957,7 @@ export class GameServer {
           r: dist / 2 + 8,
         },
         this.errandWorld,
+        true,
       );
       this.openDoorsOnLane(rc, pos);
       const sep = this.separateHeading(eid, pos, radius, h.mx, h.my);
@@ -7901,9 +7986,13 @@ export class GameServer {
       // never step distance — a body wedged in a furniture corner
       // slides a full stride every tick while going nowhere (verified
       // live: the smith oscillating between tool rack and anvil).
-      const newDist = Math.hypot(rc.targetX - pos.x, rc.targetY - pos.y);
-      if (newDist < rc.progressBest - 0.15) {
-        rc.progressBest = newDist;
+      // The yardstick is lane-aware: a proven detour around a long
+      // wall counts remaining lane length, not the euclidean distance
+      // it is temporarily growing (navProgressDist).
+      const prog = this.navProgressDist(rc, pos, rc.targetX, rc.targetY);
+      if (prog.freshLane) rc.progressBest = Infinity;
+      if (prog.dist < rc.progressBest - 0.15) {
+        rc.progressBest = prog.dist;
         rc.stuckTicks = 0;
       } else {
         rc.stuckTicks++;
@@ -7954,6 +8043,7 @@ export class GameServer {
     npc.steer.side = 0;
     npc.steer.ticks = 0;
     npc.nav = null;
+    npc.progressLane = null;
     npc.nextRepathTick = 0;
     npc.losUntilTick = 0;
     if (npc.def.pack && (opts.rally ?? true)) {
@@ -8021,6 +8111,7 @@ export class GameServer {
     npc.steer.side = 0;
     npc.steer.ticks = 0;
     npc.nav = null;
+    npc.progressLane = null;
     npc.nextRepathTick = 0;
     npc.losUntilTick = 0;
   }
@@ -8269,13 +8360,18 @@ export class GameServer {
             // Stall watch, closest-approach law: only a STATIONARY
             // target counts — a fleeing player re-baselines the ledger
             // every stride, so open-field pursuit can never trip it.
+            // Lane-aware yardstick: a proven lane rounding a building
+            // counts remaining lane length, so the leg of the detour
+            // that walks AWAY from the target is not "stalling".
+            const prog = this.navProgressDist(npc, pos, tpos.x, tpos.y);
+            if (prog.freshLane) npc.navBest = Infinity;
             if (Math.hypot(tpos.x - npc.navRefX, tpos.y - npc.navRefY) > 0.6) {
               npc.navRefX = tpos.x;
               npc.navRefY = tpos.y;
-              npc.navBest = dist;
+              npc.navBest = prog.dist;
               npc.navStuck = 0;
-            } else if (dist < npc.navBest - 0.15) {
-              npc.navBest = dist;
+            } else if (prog.dist < npc.navBest - 0.15) {
+              npc.navBest = prog.dist;
               npc.navStuck = 0;
             } else if (++npc.navStuck >= GameServer.CHASE_STALL_TICKS) {
               // The target is unreachable — parked behind a fence or a
@@ -8319,8 +8415,10 @@ export class GameServer {
             // Closest-approach watchdog, same law as the homeward walk:
             // a run that stops closing has hit something the fan can't
             // round — shout from here rather than pace a fence forever.
-            if (hd < npc.navBest - 0.15) {
-              npc.navBest = hd;
+            const prog = this.navProgressDist(npc, pos, hpos.x, hpos.y);
+            if (prog.freshLane) npc.navBest = Infinity;
+            if (prog.dist < npc.navBest - 0.15) {
+              npc.navBest = prog.dist;
               npc.navStuck = 0;
             } else if (++npc.navStuck >= GameServer.RETURN_STALL_TICKS) {
               this.npcCryHelp(eid, npc, npc.targetEid);
@@ -8339,13 +8437,19 @@ export class GameServer {
           npc.helpCalled = false;
           npc.helpEid = null;
         } else {
-          const h = this.npcNavToward(npc, pos, npc.originX, npc.originY);
+          // The walk home is the body's own errand: it may search WIDE
+          // when the cheap lane can't complete (a long wall between
+          // the fight and home), so the leash resolves by walking
+          // around instead of the last-resort snap.
+          const h = this.npcNavToward(npc, pos, npc.originX, npc.originY, true);
           moveX = h.mx;
           moveY = h.my;
           // A homeward walk that stalls out (closest-approach law) has
           // exhausted the fan — snap the rest, the classic leash reset.
-          if (dist < npc.navBest - 0.15) {
-            npc.navBest = dist;
+          const prog = this.navProgressDist(npc, pos, npc.originX, npc.originY);
+          if (prog.freshLane) npc.navBest = Infinity;
+          if (prog.dist < npc.navBest - 0.15) {
+            npc.navBest = prog.dist;
             npc.navStuck = 0;
           } else if (++npc.navStuck >= GameServer.RETURN_STALL_TICKS) {
             pos.x = npc.originX;
@@ -8378,13 +8482,18 @@ export class GameServer {
             npc.navBest = Infinity;
             npc.navStuck = 0;
           } else {
-            const h = this.npcNavToward(npc, pos, wp.x, wp.y);
+            // A patrol leg is the sentry's own errand — escalate the
+            // search rather than skip the leg when a long wall stands
+            // between rounds.
+            const h = this.npcNavToward(npc, pos, wp.x, wp.y, true);
             moveX = h.mx;
             moveY = h.my;
             // A blocked leg skips its waypoint — the closest-approach
             // watchdog is a corner-wedge escape, never a pathfinder.
-            if (dist < npc.navBest - 0.15) {
-              npc.navBest = dist;
+            const prog = this.navProgressDist(npc, pos, wp.x, wp.y);
+            if (prog.freshLane) npc.navBest = Infinity;
+            if (prog.dist < npc.navBest - 0.15) {
+              npc.navBest = prog.dist;
               npc.navStuck = 0;
             } else if (++npc.navStuck >= GameServer.RETURN_STALL_TICKS) {
               p.idx = (p.idx + 1) % p.pts.length;
