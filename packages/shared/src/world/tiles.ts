@@ -293,6 +293,41 @@ export enum Tile {
    * this tile's coordinates.
    */
   Signpost = 138,
+  /**
+   * THE GARRISON FAMILY — fortification masonry, a whole dialect
+   * apart from building walls. A curtain wall is siege-work: half
+   * again the height of a house, a battered talus footing, great
+   * ashlar courses, and a crenellated wall-walk along the crown.
+   * THE SEPARATE-MASONRY LAW: garrison tiles merge ONLY with other
+   * garrison tiles — never with building walls (a keep's curtain
+   * abutting a cottage shows two honest constructions, not one
+   * smeared run) and never bounding an interior (a walled town is
+   * not a room; the sky is its ceiling).
+   */
+  /** A straight curtain-wall segment — the rampart itself. */
+  WallGarrison = 139,
+  /**
+   * 45° curtain segments, the diagonal-wall suffix convention: the
+   * suffix names the SOLID triangle, the open triangle faces the
+   * exterior, and placement auto-orients from the two perpendicular
+   * garrison neighbours (raise the adjoining runs first).
+   */
+  WallGarrisonDiagNE = 140,
+  WallGarrisonDiagNW = 141,
+  WallGarrisonDiagSE = 142,
+  WallGarrisonDiagSW = 143,
+  /**
+   * The garrison gate — a true gatehouse passage cut through the
+   * curtain. THE TILE IS THE STATE (the door law): open is walkable,
+   * shut is solid, and the whole machinery (interact, occupancy,
+   * locks, rattle, auto-close) rides DOOR_INFO material 'garrison'.
+   * Wide by construction: adjacent gate tiles in a run merge into
+   * ONE grand arched opening — flanking piers at the run ends, a
+   * voussoir arch, raised portcullis teeth in the soffit, and a
+   * pair of iron-bound leaves that the server toggles atomically.
+   */
+  GateGarrison = 144,
+  GateGarrisonShut = 145,
 }
 
 export enum Detail {
@@ -503,6 +538,17 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.FenceDiagNE]: { name: 'fence', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
   [Tile.FenceDiagNW]: { name: 'fence', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
   [Tile.Signpost]: { name: 'signpost', solid: true, color: '#6b4a24', raised: true, topColor: '#c2a068' },
+  // Garrison masonry: a shade deeper and cooler than house stone —
+  // rampart granite against the '#4a4554'/'#767181' of building walls.
+  [Tile.WallGarrison]: { name: 'garrison wall', solid: true, color: '#453f52', raised: true, topColor: '#716b80' },
+  [Tile.WallGarrisonDiagNE]: { name: 'garrison wall corner', solid: true, color: '#453f52', raised: true, topColor: '#716b80' },
+  [Tile.WallGarrisonDiagNW]: { name: 'garrison wall corner', solid: true, color: '#453f52', raised: true, topColor: '#716b80' },
+  [Tile.WallGarrisonDiagSE]: { name: 'garrison wall corner', solid: true, color: '#453f52', raised: true, topColor: '#716b80' },
+  [Tile.WallGarrisonDiagSW]: { name: 'garrison wall corner', solid: true, color: '#453f52', raised: true, topColor: '#716b80' },
+  // The open gate is a walkable passage under the gatehouse arch; the
+  // shut gate bars it with iron-bound leaves.
+  [Tile.GateGarrison]: { name: 'garrison gate', solid: false, color: '#453f52', raised: true, topColor: '#716b80' },
+  [Tile.GateGarrisonShut]: { name: 'shut garrison gate', solid: true, color: '#453f52', raised: true, topColor: '#716b80' },
 };
 
 /**
@@ -538,7 +584,10 @@ export const WALL_RUN_TILES: readonly Tile[] = [
 /** Which triangle of a 45° wall tile holds the mass. */
 export type DiagWallMass = 'NE' | 'NW' | 'SE' | 'SW';
 
-const DIAG_WALL_INFO = new Map<Tile, { material: 'stone' | 'wood'; mass: DiagWallMass }>([
+/** The three wall constructions that can turn a 45° corner. */
+export type DiagWallMaterial = 'stone' | 'wood' | 'garrison';
+
+const DIAG_WALL_INFO = new Map<Tile, { material: DiagWallMaterial; mass: DiagWallMass }>([
   [Tile.WallStoneDiagNE, { material: 'stone', mass: 'NE' }],
   [Tile.WallStoneDiagNW, { material: 'stone', mass: 'NW' }],
   [Tile.WallStoneDiagSE, { material: 'stone', mass: 'SE' }],
@@ -547,15 +596,19 @@ const DIAG_WALL_INFO = new Map<Tile, { material: 'stone' | 'wood'; mass: DiagWal
   [Tile.WallWoodDiagNW, { material: 'wood', mass: 'NW' }],
   [Tile.WallWoodDiagSE, { material: 'wood', mass: 'SE' }],
   [Tile.WallWoodDiagSW, { material: 'wood', mass: 'SW' }],
+  [Tile.WallGarrisonDiagNE, { material: 'garrison', mass: 'NE' }],
+  [Tile.WallGarrisonDiagNW, { material: 'garrison', mass: 'NW' }],
+  [Tile.WallGarrisonDiagSE, { material: 'garrison', mass: 'SE' }],
+  [Tile.WallGarrisonDiagSW, { material: 'garrison', mass: 'SW' }],
 ]);
 
-/** All 45° wall tiles, both materials. */
+/** All 45° wall tiles, every material. */
 export const DIAG_WALL_TILES: ReadonlySet<Tile> = new Set(DIAG_WALL_INFO.keys());
 
 /** Material + mass triangle of a 45° wall tile, or null. */
 export function diagWallInfo(
   id: number,
-): { material: 'stone' | 'wood'; mass: DiagWallMass } | null {
+): { material: DiagWallMaterial; mass: DiagWallMass } | null {
   return DIAG_WALL_INFO.get(id as Tile) ?? null;
 }
 
@@ -566,7 +619,7 @@ export function diagWallInfo(
  * build the adjoining walls first, then the corner.
  */
 export function orientDiagWall(
-  material: 'stone' | 'wood',
+  material: DiagWallMaterial,
   n: boolean,
   e: boolean,
   s: boolean,
@@ -577,8 +630,32 @@ export function orientDiagWall(
   for (const [tile, info] of DIAG_WALL_INFO) {
     if (info.material === material && info.mass === mass) return tile;
   }
-  return material === 'stone' ? Tile.WallStoneDiagNE : Tile.WallWoodDiagNE;
+  return material === 'stone'
+    ? Tile.WallStoneDiagNE
+    : material === 'garrison'
+      ? Tile.WallGarrisonDiagNE
+      : Tile.WallWoodDiagNE;
 }
+
+/**
+ * THE GARRISON FAMILY — every tile of the fortification dialect:
+ * straight curtain runs, the four 45° turns, and the gate in both
+ * postures. THE SEPARATE-MASONRY LAW: garrison runs merge only with
+ * this set — a curtain wall never joins a building's wall run (two
+ * constructions abutting show two honest ends), and it never bounds
+ * an interior region (a walled bailey is open sky, not a room). Run
+ * connectivity, the renderer's rampart auto-tiler, and the build
+ * auto-orient all key off this one set.
+ */
+export const GARRISON_TILES: ReadonlySet<Tile> = new Set([
+  Tile.WallGarrison,
+  Tile.WallGarrisonDiagNE,
+  Tile.WallGarrisonDiagNW,
+  Tile.WallGarrisonDiagSE,
+  Tile.WallGarrisonDiagSW,
+  Tile.GateGarrison,
+  Tile.GateGarrisonShut,
+]);
 
 /**
  * Tiles that bound an interior region (the room enclosure test).
@@ -606,6 +683,10 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
   Tile.DoorwayWoodShut,
   Tile.DoorwayStoneWideShut,
   Tile.DoorwayWoodWideShut,
+  // The curtain wall throws the longest shadow in town; an open gate
+  // spills torchlight through the passage, a shut one seals it.
+  Tile.WallGarrison,
+  Tile.GateGarrisonShut,
 ];
 
 /**
@@ -616,9 +697,13 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
  * Material 'fence' is the waist-high field gate: it rides ALL the
  * door machinery (interact, locks, occupancy, auto-close) but the
  * renderer keeps it out of the wall-doorway pipeline — a gate is a
- * fence prop, never a wall member.
+ * fence prop, never a wall member. Material 'garrison' is the
+ * gatehouse passage: the same carve-out from the BUILDING doorway
+ * pipeline (it lives in the garrison run family instead), but unlike
+ * a fence gate its shut leaves are full-height mass — they block
+ * lamplight and read as fortification.
  */
-export type DoorMaterial = 'stone' | 'wood' | 'fence';
+export type DoorMaterial = 'stone' | 'wood' | 'fence' | 'garrison';
 
 export interface DoorInfo {
   material: DoorMaterial;
@@ -639,6 +724,10 @@ const DOOR_INFO = new Map<Tile, DoorInfo>([
   [Tile.DoorwayWoodWideShut, { material: 'wood', wide: true, open: false }],
   [Tile.FenceGate, { material: 'fence', wide: false, open: true }],
   [Tile.FenceGateShut, { material: 'fence', wide: false, open: false }],
+  // Garrison gates are wide BY CONSTRUCTION: adjacent tiles merge
+  // into one arched opening and the server flips the unit atomically.
+  [Tile.GateGarrison, { material: 'garrison', wide: true, open: true }],
+  [Tile.GateGarrisonShut, { material: 'garrison', wide: true, open: false }],
 ]);
 
 /** Every doorway tile, open and shut, both widths and materials. */
@@ -655,6 +744,7 @@ const SHUT_OF = new Map<Tile, Tile>([
   [Tile.DoorwayStoneWide, Tile.DoorwayStoneWideShut],
   [Tile.DoorwayWoodWide, Tile.DoorwayWoodWideShut],
   [Tile.FenceGate, Tile.FenceGateShut],
+  [Tile.GateGarrison, Tile.GateGarrisonShut],
 ]);
 const OPEN_OF = new Map<Tile, Tile>([...SHUT_OF].map(([o, s]) => [s, o]));
 

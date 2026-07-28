@@ -1263,7 +1263,10 @@ export class ClientGame {
     // server arbitrates locks and doorway occupancy.
     const door = doorInfo(ground);
     if (door) {
-      return { kind: 'door', tx, ty, open: door.open, gate: door.material === 'fence' };
+      // Fence and garrison doors both answer to "gate" in the prompt
+      // — one pens the herd, the other bars the town.
+      const gate = door.material === 'fence' || door.material === 'garrison';
+      return { kind: 'door', tx, ty, open: door.open, gate };
     }
     if (ground === Tile.BankChest) return { kind: 'bank', tx, ty };
     if (ground === Tile.ShopCounter) return { kind: 'shop', tx, ty };

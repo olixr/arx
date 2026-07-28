@@ -56,6 +56,9 @@ const DOOR_LIKE = new Set<Tile>([
   Tile.DoorwayStoneWideShut,
   Tile.DoorwayWoodWideShut,
   Tile.ArchStone,
+  // The open garrison gate is a walk-through passage; the shut gate
+  // stays a solid block via its raised def.
+  Tile.GateGarrison,
 ]);
 
 const SHUT_DOORS = new Set<Tile>([

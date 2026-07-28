@@ -2,8 +2,11 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import {
   CHEST_TILES,
+  DIAG_WALL_TILES,
   DOOR_TILES,
   FENCE_TILES,
+  GARRISON_TILES,
+  INTERIOR_BOUNDARY_TILES,
   LIGHT_BLOCKING_TILES,
   WALL_RUN_TILES,
   Tile,
@@ -11,11 +14,13 @@ import {
   closedChestTile,
   destructibleInfo,
   DESTRUCTIBLE_TILES,
+  diagWallInfo,
   doorInfo,
   nearestFloorTile,
   openChestTile,
   openDoorTile,
   orientDiagFence,
+  orientDiagWall,
   shutDoorTile,
   tileDef,
   type ChestKind,
@@ -76,6 +81,19 @@ test('door posture drives solidity and lamplight', () => {
       );
       continue;
     }
+    if (info.material === 'garrison') {
+      // THE SEPARATE-MASONRY LAW: the gatehouse belongs to the
+      // garrison run family, never to building walls — and unlike a
+      // fence gate its shut leaves are full-height lamplight mass.
+      assert.ok(!WALL_RUN_TILES.includes(tile), `${tileDef(tile).name} stays out of wall runs`);
+      assert.ok(GARRISON_TILES.has(tile), `${tileDef(tile).name} joins the garrison family`);
+      assert.equal(
+        LIGHT_BLOCKING_TILES.includes(tile),
+        !info.open,
+        `${tileDef(tile).name} lamplight`,
+      );
+      continue;
+    }
     assert.equal(
       LIGHT_BLOCKING_TILES.includes(tile),
       !info.open,
@@ -105,6 +123,36 @@ test('fence family: gates round-trip and diagonals stay solid', () => {
   assert.equal(orientDiagFence(false, true, false, false), Tile.FenceDiagNW);
   assert.equal(orientDiagFence(false, false, true, false), Tile.FenceDiagNW);
   assert.equal(orientDiagFence(false, false, false, false), Tile.FenceDiagNE);
+});
+
+test('garrison family: the separate-masonry law holds', () => {
+  // The whole family stands apart from building walls: no member
+  // merges into a house run and none bounds an interior region —
+  // a walled bailey is open sky, not a room.
+  for (const tile of GARRISON_TILES) {
+    assert.ok(!WALL_RUN_TILES.includes(tile), `${tileDef(tile).name} out of wall runs`);
+    assert.ok(
+      !INTERIOR_BOUNDARY_TILES.includes(tile),
+      `${tileDef(tile).name} never encloses a room`,
+    );
+    // Only the open gate lets a body through the curtain.
+    assert.equal(tileDef(tile).solid, tile !== Tile.GateGarrison, `${tileDef(tile).name} solidity`);
+  }
+  // Solid curtain mass blocks lamplight; the open passage spills it.
+  assert.ok(LIGHT_BLOCKING_TILES.includes(Tile.WallGarrison));
+  assert.ok(!LIGHT_BLOCKING_TILES.includes(Tile.GateGarrison));
+  // The gate rides the door law, wide by construction, and
+  // round-trips its postures.
+  assert.deepEqual(doorInfo(Tile.GateGarrison), { material: 'garrison', wide: true, open: true });
+  assert.equal(shutDoorTile(Tile.GateGarrison), Tile.GateGarrisonShut);
+  assert.equal(openDoorTile(Tile.GateGarrisonShut), Tile.GateGarrison);
+  // The 45° turns carry material + mass and auto-orient like every
+  // diagonal wall — and they are diag-wall members (terrain's
+  // exterior-ground rule and lamplight both key off that set).
+  assert.deepEqual(diagWallInfo(Tile.WallGarrisonDiagSW), { material: 'garrison', mass: 'SW' });
+  assert.ok(DIAG_WALL_TILES.has(Tile.WallGarrisonDiagNE));
+  assert.equal(orientDiagWall('garrison', true, true, false, false), Tile.WallGarrisonDiagNE);
+  assert.equal(orientDiagWall('garrison', false, false, true, true), Tile.WallGarrisonDiagSW);
 });
 
 test('non-door tiles report null', () => {

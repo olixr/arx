@@ -2308,6 +2308,99 @@ const PAINTERS: Record<string, IconPainter> = {
     c.fillRect(0.17, 0.29, 0.1, 0.05);
     c.fillRect(0.17, 0.63, 0.1, 0.05);
   },
+  garrisonwall: (c, col) => {
+    // A crenellated curtain block: tall coursed body, two parapet
+    // teeth with bright caps — the castellated silhouette at a glance.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.16, 0.86);
+    c.lineTo(0.16, 0.3);
+    c.lineTo(0.28, 0.3);
+    c.lineTo(0.28, 0.18);
+    c.lineTo(0.44, 0.18);
+    c.lineTo(0.44, 0.3);
+    c.lineTo(0.56, 0.3);
+    c.lineTo(0.56, 0.18);
+    c.lineTo(0.72, 0.18);
+    c.lineTo(0.72, 0.3);
+    c.lineTo(0.84, 0.3);
+    c.lineTo(0.84, 0.86);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // Bright merlon caps + the wall-walk band.
+    c.fillStyle = shade(col, 30);
+    c.fillRect(0.28, 0.18, 0.16, 0.05);
+    c.fillRect(0.56, 0.18, 0.16, 0.05);
+    c.fillRect(0.16, 0.3, 0.68, 0.06);
+    // Great ashlar bed joints + staggered heads.
+    c.strokeStyle = shade(col, -28);
+    c.lineWidth = 0.024;
+    for (const y of [0.5, 0.66]) {
+      c.beginPath();
+      c.moveTo(0.16, y);
+      c.lineTo(0.84, y);
+      c.stroke();
+    }
+    for (const [x, y0, y1] of [[0.5, 0.38, 0.5], [0.34, 0.5, 0.66], [0.66, 0.5, 0.66], [0.5, 0.66, 0.86]] as const) {
+      c.beginPath();
+      c.moveTo(x, y0);
+      c.lineTo(x, y1);
+      c.stroke();
+    }
+    // The battered talus footing.
+    c.fillStyle = shade(col, -20);
+    c.fillRect(0.16, 0.78, 0.68, 0.08);
+  },
+  garrisongate: (c, col) => {
+    // The gatehouse: crenellated brow over a voussoir arch, with the
+    // raised portcullis showing its teeth in the opening.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.1, 0.88);
+    c.lineTo(0.1, 0.26);
+    c.lineTo(0.22, 0.26);
+    c.lineTo(0.22, 0.14);
+    c.lineTo(0.36, 0.14);
+    c.lineTo(0.36, 0.26);
+    c.lineTo(0.46, 0.26);
+    c.lineTo(0.46, 0.18);
+    c.lineTo(0.54, 0.18);
+    c.lineTo(0.54, 0.26);
+    c.lineTo(0.64, 0.26);
+    c.lineTo(0.64, 0.14);
+    c.lineTo(0.78, 0.14);
+    c.lineTo(0.78, 0.26);
+    c.lineTo(0.9, 0.26);
+    c.lineTo(0.9, 0.88);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The arched passage, dark.
+    c.fillStyle = '#181226';
+    c.beginPath();
+    c.moveTo(0.3, 0.88);
+    c.lineTo(0.3, 0.56);
+    c.quadraticCurveTo(0.5, 0.34, 0.7, 0.56);
+    c.lineTo(0.7, 0.88);
+    c.closePath();
+    c.fill();
+    c.strokeStyle = OUTLINE;
+    c.stroke();
+    // Portcullis teeth hanging in the arch head.
+    c.fillStyle = shade(col, -34);
+    for (const x of [0.38, 0.48, 0.58]) {
+      c.fillRect(x, 0.44, 0.04, 0.14);
+    }
+    // Keystone + bright cap band.
+    c.fillStyle = shade(col, 30);
+    c.fillRect(0.46, 0.36, 0.08, 0.08);
+    c.fillRect(0.1, 0.26, 0.8, 0.05);
+  },
   fencediag: (c, col) => {
     // The 45° turn: a capped post with rails striding away downhill.
     c.fillStyle = col;
@@ -4630,6 +4723,9 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   banner_pole: { icon: 'banner', color: '#7a3f8f' },
   stone_pillar: { icon: 'pillar', color: '#8c8798' },
   stone_arch: { icon: 'archway', color: '#8c8798' },
+  garrison_wall: { icon: 'garrisonwall', color: '#716b80' },
+  garrison_wall_corner: { icon: 'garrisonwall', color: '#544e61' },
+  garrison_gate: { icon: 'garrisongate', color: '#716b80' },
 };
 
 const cache = new Map<string, string>();

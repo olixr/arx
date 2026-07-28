@@ -760,8 +760,16 @@ export declare class Renderer {
      *  widths. Fence gates are doors on the wire (locks, occupancy,
      *  auto-close all ride DOOR_INFO) but they are fence props to the
      *  renderer — kept OUT of this set so the wall-doorway pipeline
-     *  (side-notch law, wide merges, veil, wallish) never sees them. */
+     *  (side-notch law, wide merges, veil, wallish) never sees them.
+     *  Garrison gates carve out the same way: they belong to the
+     *  garrison run pipeline, never the building-doorway one. */
     private static readonly DOOR_TILES;
+    /** The whole fortification family — shared law (tiles.ts). */
+    private static readonly GARRISON;
+    /** Garrison tiles that are MASS (wall, 45° turns, shut gate) — what
+     *  the curtain veil's north probe reaches through. The open gate is
+     *  a passage, not mass. */
+    private static readonly GARRISON_MASS;
     /** Man-made ground the wall reveal counts as "a room to see into":
      *  the surface gate for both the player's feet (shelter) and the
      *  floor a wall fronts. Deliberately excludes Bridge (docks stay
@@ -890,6 +898,113 @@ export declare class Renderer {
      * running-bond for stone) — change them together.
      */
     private paintFaceBands;
+    /** Rampart ashlar — cooler and deeper than house stone on purpose. */
+    private static readonly GAR_FACE;
+    /** The battered talus footing the curtain flares into. */
+    private static readonly GAR_PLINTH;
+    /** The wall-walk flags between the parapets. */
+    private static readonly GAR_TOP;
+    /** Sun-catching merlon caps — the lightest stone in the kit. */
+    private static readonly GAR_MERLON_TOP;
+    /** Dressed trim for gate piers, thresholds, and side-gate landings. */
+    private static readonly GAR_TRIM;
+    /** Gatehouse leaves: iron-bound oak, darker than any house door. */
+    private static readonly GAR_LEAF;
+    /** Portcullis and strap iron. */
+    private static readonly GAR_IRON;
+    /**
+     * Garrison-run neighbour test — the separate-masonry law's auto-
+     * tiler. Curtain runs merge ONLY with garrison tiles (a keep's
+     * curtain abutting a cottage shows two honest ends), and a gate in
+     * a N-S run breaks the run exactly like a side doorway, so the
+     * curtain shows real jambs at an edge-on passage.
+     */
+    private garrisonish;
+    /**
+     * SIDE-GATE LAW: a garrison gate's orientation comes from the
+     * curtain it pierces — solid garrison mass (or more of the same
+     * gate) north AND south, open flanks east/west, is an edge-on
+     * passage. Anything else keeps the south-facing gatehouse.
+     */
+    private isGarrisonSideGate;
+    /**
+     * THE CURTAIN VEIL — the one-veil window math, always armed. A
+     * curtain wall fronts open country, not rooms: there is no shelter
+     * gate to pass and no interior floor to find, so ANY walkable
+     * ground north of the mass opens the window (the sky is the
+     * bailey's ceiling). Same smoothstep window on the continuous
+     * render position as wallHeightAt, widened for the taller mass —
+     * a 3.4 crown overhangs ~6.5 rows, so the ease runs out at dyF
+     * [9..11] instead of [7..9]. Sinks to the same WALL_STUB as every
+     * wall kind, so a curtain meeting a building run cuts to one
+     * shared crown line.
+     */
+    private garrisonHeightAt;
+    /**
+     * Great-ashlar face masonry, drawn in the CURRENT frame with the
+     * base line at y = 0 and the face rising to -hs (callers set up
+     * plain or sheared frames — a diagonal's courses land parallel to
+     * its hypotenuse exactly like paintFaceBands). The block grid is
+     * WORLD-ANCHORED: joints and per-block tints key off world-space
+     * block indices, so a course runs unbroken across every tile of a
+     * run and two neighbours can never disagree about a joint.
+     */
+    private paintGarrisonMasonry;
+    /**
+     * One parapet merlon — a square-hewn tooth standing mh above the
+     * wall-walk. Drawn inside the crown's height layer in plan coords:
+     * (mx0, my0) is the tooth's plan footprint (mw × md); the outward
+     * face rises from the footprint's south edge and the cap plane
+     * lifts by mh, so the 2.5D top-plane law holds at parapet scale.
+     */
+    private merlonBox;
+    /**
+     * A straight curtain-wall tile. Same structural skeleton as
+     * wallItem (shared-edge snapping, rear riser, one crown layer) with
+     * the garrison dialect throughout — and the crenellated struct
+     * outline: the crown silhouette steps over every parapet tooth, so
+     * even at far zoom the black edge itself reads castellated.
+     */
+    private garrisonWallItem;
+    /**
+     * A 45° curtain turn. Same geometry laws as diagWallItem (near-row
+     * sort for camera-facing masses, sheared face frame so courses land
+     * parallel to the hypotenuse) with garrison masonry, and parapet
+     * teeth marching along the hyp — square-hewn blocks stepping the
+     * diagonal, which is exactly how real crenellation turns a corner.
+     */
+    private garrisonDiagItem;
+    /**
+     * One iron-bound gatehouse leaf, drawn in the door frame (y = 0 at
+     * the threshold). Heavier than any house door: vertical board
+     * seams, three full-width iron straps studded with nail heads, and
+     * the free edge catching light as it stands ajar. The swing
+     * compresses width toward the hinge exactly like the French pair.
+     */
+    private paintGarrisonLeaf;
+    /**
+     * THE GATEHOUSE — a merged E-W garrison gate run as ONE arched
+     * passage through the curtain. (tx,ty) is the run's west anchor.
+     * The composition, ground up: worn threshold flags; a pair of
+     * iron-bound leaves to the spring line (doorOpenness swings them,
+     * a locked refusal shudders them); the raised portcullis showing
+     * its teeth in the arch head; a dressed voussoir arch with a proud
+     * keystone; garrison ashlar above; a machicolation band under the
+     * parapet; flanking piers with quoined edges wearing raised caps —
+     * and the curtain's crenellation marching unbroken over the whole
+     * gate. Every element rides the same veil height as the runs it
+     * joins, so a revealed gate sinks with its wall.
+     */
+    private garrisonGateItem;
+    /**
+     * A garrison gate in a N-S curtain — the edge-on passage, in the
+     * side-doorway grammar at fortification scale: the curtain run ENDS
+     * at the opening (honest notch), worn passage flags with landing
+     * slabs poking out both approaches, and ONE tall iron-bound leaf —
+     * thrown open it stands outside the wall line in the neighbour
+     * column; shut it reads as the edge-on slab barring the notch.
+     */
+    private garrisonSideGateItems;
     /**
      * How veiled a doorway's dark interior fill is: 1 far away, easing
      * to 0 as any body nears the threshold — the door "opens" for

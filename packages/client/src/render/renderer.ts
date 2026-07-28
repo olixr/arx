@@ -15,6 +15,7 @@ import {
   Tile,
   WALL_RUN_TILES,
   DIAG_WALL_TILES,
+  GARRISON_TILES,
   TREE_TILES,
   chestInfo,
   destructibleInfo,
@@ -247,6 +248,19 @@ const WALL_H = 2.05;
  * tall enough to still read as the wall's footprint.
  */
 const WALL_STUB = 0.62;
+/**
+ * THE GARRISON SCALE — curtain-wall height in tiles. Fortification
+ * reads as fortification only when it dwarfs the house grammar: the
+ * rampart stands half again over WALL_H (2.05) and three bodies over
+ * the 1.15-tile rig, with the crenellated parapet rising MERLON_H
+ * above the wall-walk on top of that. Anything between "house" and
+ * "keep" muddies both reads — if this ever changes, re-audit the
+ * deep-south culling admission (a 3.4 + 0.5 crown spans ~6.5 screen
+ * rows at yScale 0.6) and the lighting tallH callback with it.
+ */
+const GARRISON_H = 3.4;
+/** Parapet tooth above the wall-walk — chest-high on the crown. */
+const MERLON_H = 0.5;
 // ELEV_H (one elevation level's screen rise) and the screen→world
 // elevation solve live in elevPick.ts so the solve stays pure and
 // testable; everything here still derives from that one number.
@@ -2719,9 +2733,14 @@ export class Renderer {
         for (let dxCol = -1; dxCol <= 1; dxCol++) {
           const tx = btx + dxCol;
           const ty = bty + dyRow;
-          if (!this.wallish(game, tx, ty)) continue;
+          // Garrison curtains occlude like walls do — their veil is
+          // always armed, so the cut height usually spares the ember,
+          // but the window's own edges still need the honest probe.
+          const isWall = this.wallish(game, tx, ty);
+          const isGar = !isWall && this.garrisonish(game, tx, ty);
+          if (!isWall && !isGar) continue;
           const k = wallCover(
-            this.wallHeightAt(game, tx, ty),
+            isGar ? this.garrisonHeightAt(game, tx, ty) : this.wallHeightAt(game, tx, ty),
             ty + 1 - this.ownPY,
             Math.abs(tx + 0.5 - this.ownPX),
             this.camera.yScale,
@@ -3007,6 +3026,10 @@ export class Renderer {
       (tx, ty) => {
         const t = game.world.groundAt(tx, ty);
         if (t === undefined) return 0;
+        // Garrison mass stands half again over the house walls — its
+        // lit faces climb the true curtain height. The open gate is a
+        // passage: light pours through it, nothing to climb.
+        if (Renderer.GARRISON_MASS.has(t)) return GARRISON_H / ys;
         if (Renderer.LIGHT_BLOCKERS.has(t)) return WALL_H / ys;
         if (t === Tile.Cliff) return ELEV_H / ys;
         if (TREE_TILES.has(t as Tile)) return 1.5 / ys;
@@ -4118,9 +4141,22 @@ export class Renderer {
    *  widths. Fence gates are doors on the wire (locks, occupancy,
    *  auto-close all ride DOOR_INFO) but they are fence props to the
    *  renderer — kept OUT of this set so the wall-doorway pipeline
-   *  (side-notch law, wide merges, veil, wallish) never sees them. */
+   *  (side-notch law, wide merges, veil, wallish) never sees them.
+   *  Garrison gates carve out the same way: they belong to the
+   *  garrison run pipeline, never the building-doorway one. */
   private static readonly DOOR_TILES = new Set<number>(
-    [...DOOR_TILES].filter((t) => doorInfo(t)!.material !== 'fence'),
+    [...DOOR_TILES].filter(
+      (t) => doorInfo(t)!.material !== 'fence' && doorInfo(t)!.material !== 'garrison',
+    ),
+  );
+
+  /** The whole fortification family — shared law (tiles.ts). */
+  private static readonly GARRISON = new Set<number>(GARRISON_TILES);
+  /** Garrison tiles that are MASS (wall, 45° turns, shut gate) — what
+   *  the curtain veil's north probe reaches through. The open gate is
+   *  a passage, not mass. */
+  private static readonly GARRISON_MASS = new Set<number>(
+    [...GARRISON_TILES].filter((t) => tileDef(t).solid),
   );
 
   /** Man-made ground the wall reveal counts as "a room to see into":
@@ -4201,11 +4237,14 @@ export class Renderer {
         if (ground === undefined) continue;
         // Deep-south rows and side columns admit trees + portals only:
         // the Riftgate stands ~2 tiles tall, so its crown pokes into
-        // view like a low tree.
+        // view like a low tree. Garrison masonry joins them — a 3.4
+        // curtain plus its parapet spans ~6.5 rows at yScale 0.6, past
+        // the PROP_PAD_S walls-and-stations band.
         const sideBand = tx < b.minTx - 1 || tx > b.maxTx + 1;
         if (
           (deepSouth || sideBand) &&
           !TREE_TILES.has(ground as Tile) &&
+          !Renderer.GARRISON.has(ground) &&
           ground !== Tile.PortalDown &&
           ground !== Tile.PortalUp
         )
@@ -4244,6 +4283,50 @@ export class Renderer {
           } else {
             items.push(this.rampItem(tx, ty, game, 1));
           }
+          continue;
+        }
+        // THE GARRISON FAMILY routes first — fortification is its own
+        // run pipeline (the separate-masonry law): curtain runs merge
+        // only with garrison tiles, gates merge into one gatehouse
+        // opening (E-W south-facing or N-S side passage), and the 45°
+        // turns ride the diagonal-sort law with rampart art.
+        if (Renderer.GARRISON.has(ground)) {
+          const ginfo = doorInfo(ground);
+          if (ginfo) {
+            if (this.isGarrisonSideGate(game, tx, ty)) {
+              // A gate in a N-S curtain: merge the vertical run and
+              // emit the edge-on passage once, at its north anchor.
+              let ay = ty;
+              let vLen = 1;
+              while (game.world.groundAt(tx, ay - 1) === ground) ay--;
+              while (game.world.groundAt(tx, ay + vLen) === ground) vLen++;
+              const vKey = packTile(tx, ay);
+              if (runSeen.has(vKey)) continue;
+              runSeen.add(vKey);
+              this.garrisonSideGateItems(ground as Tile, tx, ay, game, vLen, items);
+              continue;
+            }
+            // E-W gatehouse: adjacent gate tiles merge into ONE arched
+            // opening — walk to the west anchor and emit once.
+            let ax = tx;
+            let runLen = 1;
+            while (game.world.groundAt(ax - 1, ty) === ground) ax--;
+            while (game.world.groundAt(ax + runLen, ty) === ground) runLen++;
+            const runKey = packTile(ax, ty);
+            if (runSeen.has(runKey)) continue;
+            runSeen.add(runKey);
+            const gwhT = this.garrisonHeightAt(game, ax, ty);
+            const gitem = this.garrisonGateItem(ground as Tile, ax, ty, game, gwhT, runLen);
+            if (game.world.elevAt(ax, ty) !== 0) gitem.elevated = true;
+            items.push(gitem);
+            continue;
+          }
+          const whT = this.garrisonHeightAt(game, tx, ty);
+          const item = diagWallInfo(ground)
+            ? this.garrisonDiagItem(ground as Tile, tx, ty, game, whT)
+            : this.garrisonWallItem(ground as Tile, tx, ty, game, whT);
+          if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+          items.push(item);
           continue;
         }
         // Structural vocabulary routes before the generic wall/object
@@ -5446,6 +5529,1114 @@ export class Renderer {
     ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
     ctx.fillRect(0, -s * 0.06, w2, s * 0.06);
     ctx.restore();
+  }
+
+  // ------------------------------------------------------- the garrison
+  //
+  // THE GARRISON DIALECT — fortification masonry, bespoke end to end.
+  // Nothing here is a re-skin of the building wall: the curtain is
+  // sieged-scaled (GARRISON_H 3.4 + MERLON_H parapet vs the house's
+  // 2.05), its face is great ashlar with per-block tone dealt by the
+  // world-keyed stone01 hash (the stair-run masonry law, raised to a
+  // wall), it stands on a battered talus footing, carries a string
+  // course and hash-dealt arrow loops, and its crown is a walkable
+  // wall-walk ringed by crenellated parapet teeth on every exposed
+  // edge — which also gives the struct outline its castellated
+  // silhouette, the read that says "castle" from any distance.
+
+  /** Rampart ashlar — cooler and deeper than house stone on purpose. */
+  private static readonly GAR_FACE = '#544e61';
+  /** The battered talus footing the curtain flares into. */
+  private static readonly GAR_PLINTH = '#3d3849';
+  /** The wall-walk flags between the parapets. */
+  private static readonly GAR_TOP = '#655f72';
+  /** Sun-catching merlon caps — the lightest stone in the kit. */
+  private static readonly GAR_MERLON_TOP = '#847e91';
+  /** Dressed trim for gate piers, thresholds, and side-gate landings. */
+  private static readonly GAR_TRIM = '#7b7590';
+  /** Gatehouse leaves: iron-bound oak, darker than any house door. */
+  private static readonly GAR_LEAF = '#4e3a20';
+  /** Portcullis and strap iron. */
+  private static readonly GAR_IRON = '#2b2735';
+
+  /**
+   * Garrison-run neighbour test — the separate-masonry law's auto-
+   * tiler. Curtain runs merge ONLY with garrison tiles (a keep's
+   * curtain abutting a cottage shows two honest ends), and a gate in
+   * a N-S run breaks the run exactly like a side doorway, so the
+   * curtain shows real jambs at an edge-on passage.
+   */
+  private garrisonish(game: ClientGame, tx: number, ty: number): boolean {
+    const t = game.world.groundAt(tx, ty);
+    if (t === undefined || !Renderer.GARRISON.has(t)) return false;
+    return !(doorInfo(t) !== null && this.isGarrisonSideGate(game, tx, ty));
+  }
+
+  /**
+   * SIDE-GATE LAW: a garrison gate's orientation comes from the
+   * curtain it pierces — solid garrison mass (or more of the same
+   * gate) north AND south, open flanks east/west, is an edge-on
+   * passage. Anything else keeps the south-facing gatehouse.
+   */
+  private isGarrisonSideGate(game: ClientGame, tx: number, ty: number): boolean {
+    const t = game.world.groundAt(tx, ty);
+    if (t === undefined) return false;
+    const info = doorInfo(t);
+    if (info === null || info.material !== 'garrison') return false;
+    const g = (x: number, y: number) => game.world.groundAt(x, y);
+    const curtain = (tt: number | undefined): boolean =>
+      tt !== undefined && Renderer.GARRISON.has(tt) && doorInfo(tt) === null;
+    const along = (tt: number | undefined): boolean => curtain(tt) || tt === t;
+    const vert = along(g(tx, ty - 1)) && along(g(tx, ty + 1));
+    const horiz = along(g(tx + 1, ty)) && along(g(tx - 1, ty));
+    return vert && !horiz;
+  }
+
+  /**
+   * THE CURTAIN VEIL — the one-veil window math, always armed. A
+   * curtain wall fronts open country, not rooms: there is no shelter
+   * gate to pass and no interior floor to find, so ANY walkable
+   * ground north of the mass opens the window (the sky is the
+   * bailey's ceiling). Same smoothstep window on the continuous
+   * render position as wallHeightAt, widened for the taller mass —
+   * a 3.4 crown overhangs ~6.5 rows, so the ease runs out at dyF
+   * [9..11] instead of [7..9]. Sinks to the same WALL_STUB as every
+   * wall kind, so a curtain meeting a building run cuts to one
+   * shared crown line.
+   */
+  private garrisonHeightAt(game: ClientGame, tx: number, ty: number): number {
+    const dy = ty - this.ownPY;
+    if (dy < -2 || dy > 13) return GARRISON_H;
+    const adx = Math.abs(tx + 0.5 - this.ownPX);
+    if (adx > 13) return GARRISON_H;
+    // Nearest walkable ground straight north through the curtain
+    // mass — same one-slab law as wallHeightAt: rows of a thick
+    // rampart share the front row's ease and sink together.
+    let depth = 0;
+    let open = false;
+    for (let d = 1; d <= 3; d++) {
+      const nt = game.world.groundAt(tx, ty - d);
+      if (nt === undefined) return GARRISON_H;
+      if (Renderer.GARRISON_MASS.has(nt)) {
+        if (depth !== 0) break;
+        continue;
+      }
+      if (depth === 0) depth = d;
+      if (!tileDef(nt).solid) open = true;
+      break;
+    }
+    if (!open) return GARRISON_H;
+    const dyF = dy - (depth - 1);
+    let ey = Math.min((dyF + 0.5) / 1.5, (11 - dyF) / 2, 1);
+    let ex = Math.min((13 - adx) / 2.5, 1);
+    if (ey <= 0 || ex <= 0) return GARRISON_H;
+    ey = ey * ey * (3 - 2 * ey);
+    ex = ex * ex * (3 - 2 * ex);
+    const cut = ey * ex;
+    return GARRISON_H + (WALL_STUB - GARRISON_H) * cut;
+  }
+
+  /**
+   * Great-ashlar face masonry, drawn in the CURRENT frame with the
+   * base line at y = 0 and the face rising to -hs (callers set up
+   * plain or sheared frames — a diagonal's courses land parallel to
+   * its hypotenuse exactly like paintFaceBands). The block grid is
+   * WORLD-ANCHORED: joints and per-block tints key off world-space
+   * block indices, so a course runs unbroken across every tile of a
+   * run and two neighbours can never disagree about a joint.
+   */
+  private paintGarrisonMasonry(
+    x0: number,
+    w2: number,
+    hs: number,
+    s: number,
+    worldX: number,
+    tilesW: number,
+    tx: number,
+    ty: number,
+    whT: number,
+    loops: boolean,
+  ): void {
+    const ctx = this.ctx;
+    ctx.fillStyle = Renderer.GAR_FACE;
+    ctx.fillRect(x0, -hs, w2, hs);
+    // The battered talus: a flared footing read in flat vector — a
+    // darker base mass, a half-tone batter band, and one sun-caught
+    // chamfer arris where the slope meets the face.
+    const plinthH = Math.min(s * 0.55, hs * 0.42);
+    ctx.fillStyle = Renderer.GAR_PLINTH;
+    ctx.fillRect(x0, -plinthH, w2, plinthH);
+    ctx.fillStyle = shade(Renderer.GAR_PLINTH, 10);
+    ctx.fillRect(x0, -plinthH, w2, plinthH * 0.4);
+    ctx.fillStyle = 'rgba(255, 236, 200, 0.12)';
+    ctx.fillRect(x0, -plinthH, w2, s * 0.05);
+    // Great ashlar courses above the talus, at absolute stone height —
+    // a taller rampart lays MORE courses, never stretched ones. Blocks
+    // half again the house bond: siege masonry, cut big.
+    const cp = s * 0.5;
+    const bwW = 0.68; // block width in world tiles
+    const ppt = w2 / tilesW; // px per world tile along the base
+    const jw = Math.max(1, s * 0.03);
+    const topLimit = hs * 0.99;
+    const jointCol = 'rgba(20, 14, 28, 0.4)';
+    for (let ci = 0; ; ci++) {
+      const yb = -plinthH - ci * cp;
+      if (-yb >= topLimit) break;
+      const yt = Math.max(yb - cp, -topLimit);
+      const off = (ci % 2) * (bwW / 2);
+      const first = Math.floor((worldX - off) / bwW);
+      for (let bi = first; ; bi++) {
+        const wx0 = bi * bwW + off;
+        const px0 = x0 + (wx0 - worldX) * ppt;
+        if (px0 >= x0 + w2) break;
+        const px1 = Math.min(x0 + w2, px0 + bwW * ppt);
+        const cx0 = Math.max(x0, px0);
+        if (px1 <= cx0) continue;
+        // Per-block tone whisper, dealt by the world-keyed stone hash
+        // — the same deterministic masonry law as the grand stairs.
+        const t01 = Renderer.stone01(bi, ci, 733);
+        ctx.fillStyle = shade(Renderer.GAR_FACE, Math.round((t01 - 0.5) * 15));
+        ctx.fillRect(cx0, yt, px1 - cx0, yb - yt);
+        // Head joint on the block's west edge, inside the face only.
+        if (px0 > x0 + 0.5) {
+          ctx.fillStyle = jointCol;
+          ctx.fillRect(px0 - jw / 2, yt, jw, yb - yt);
+        }
+      }
+      // Bed joint under the course, full span — a mortar bed never
+      // breaks at a tile seam.
+      ctx.fillStyle = jointCol;
+      ctx.fillRect(x0, yb - jw, w2, jw);
+    }
+    // The string course: one projecting dressed band at shoulder
+    // height — the classic curtain-wall line. Only a full-standing
+    // face carries it; a veil-cut stub sheds it with the parapet.
+    if (hs > s * 2.5) {
+      const sy = -s * 2.2;
+      ctx.fillStyle = shade(Renderer.GAR_FACE, 20);
+      ctx.fillRect(x0, sy - s * 0.13, w2, s * 0.13);
+      ctx.fillStyle = 'rgba(255, 236, 200, 0.14)';
+      ctx.fillRect(x0, sy - s * 0.13, w2, s * 0.03);
+      ctx.fillStyle = 'rgba(18, 12, 26, 0.32)';
+      ctx.fillRect(x0, sy, w2, s * 0.045);
+    }
+    // Arrow loops, dealt sparsely by hash on straight curtain tiles —
+    // a garrison watches its approaches. Vertical slit + short cross
+    // arm in a dressed surround, set above the string course.
+    if (loops && hs > s * 2.9) {
+      const hl = hashCoords(419, tx, ty);
+      if (hl % 10 < 4) {
+        const lxc = x0 + w2 * (0.34 + ((hl >>> 4) % 33) / 100);
+        ctx.fillStyle = shade(Renderer.GAR_FACE, 12);
+        ctx.fillRect(lxc - s * 0.1, -s * 2.95, s * 0.2, s * 0.74);
+        ctx.fillStyle = 'rgba(10, 8, 16, 0.88)';
+        ctx.fillRect(lxc - s * 0.032, -s * 2.9, s * 0.064, s * 0.62);
+        ctx.fillRect(lxc - s * 0.11, -s * 2.66, s * 0.22, s * 0.055);
+        ctx.fillStyle = 'rgba(255, 236, 200, 0.14)';
+        ctx.fillRect(lxc - s * 0.09, -s * 2.28, s * 0.18, s * 0.035);
+      }
+    }
+    // Weather: a rain streak off the parapet drainage, and the damp
+    // line where the talus holds the ground's moisture.
+    const hw2 = hashCoords(431, tx, ty);
+    if ((hw2 & 3) === 1) {
+      ctx.fillStyle = 'rgba(20, 14, 28, 0.1)';
+      ctx.fillRect(x0 + w2 * ((10 + ((hw2 >>> 3) % 70)) / 100), -hs, s * 0.07, s * 0.9);
+    }
+    // Ambient-occlusion seam where the face meets the ground.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+    ctx.fillRect(x0, -s * 0.07, w2, s * 0.07);
+  }
+
+  /**
+   * One parapet merlon — a square-hewn tooth standing mh above the
+   * wall-walk. Drawn inside the crown's height layer in plan coords:
+   * (mx0, my0) is the tooth's plan footprint (mw × md); the outward
+   * face rises from the footprint's south edge and the cap plane
+   * lifts by mh, so the 2.5D top-plane law holds at parapet scale.
+   */
+  private merlonBox(
+    mx0: number,
+    my0: number,
+    mw: number,
+    md: number,
+    mh: number,
+    faceTone: string,
+  ): void {
+    const ctx = this.ctx;
+    const my1 = my0 + md;
+    // The tooth's face — the height read.
+    ctx.fillStyle = faceTone;
+    ctx.fillRect(mx0, my1 - mh, mw, mh);
+    // Contact shade where the face stands on the walk.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+    ctx.fillRect(mx0, my1 - Math.max(1, mh * 0.14), mw, Math.max(1, mh * 0.14));
+    // Cap plane, lifted by the tooth's own height: lit near arris,
+    // shaded far edge — the crate-lid treatment at parapet scale.
+    ctx.fillStyle = Renderer.GAR_MERLON_TOP;
+    ctx.fillRect(mx0, my0 - mh, mw, md);
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+    ctx.fillRect(mx0, my0 - mh, mw, md * 0.24);
+    ctx.fillStyle = 'rgba(255, 236, 200, 0.18)';
+    ctx.fillRect(mx0, my1 - mh - md * 0.18, mw, md * 0.18);
+  }
+
+  /**
+   * A straight curtain-wall tile. Same structural skeleton as
+   * wallItem (shared-edge snapping, rear riser, one crown layer) with
+   * the garrison dialect throughout — and the crenellated struct
+   * outline: the crown silhouette steps over every parapet tooth, so
+   * even at far zoom the black edge itself reads castellated.
+   */
+  private garrisonWallItem(
+    tile: Tile,
+    tx: number,
+    ty: number,
+    game: ClientGame,
+    whT: number,
+  ): DrawItem {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const n = this.garrisonish(game, tx, ty - 1);
+    const e = this.garrisonish(game, tx + 1, ty);
+    const sw = this.garrisonish(game, tx, ty + 1);
+    const w = this.garrisonish(game, tx - 1, ty);
+    const syT = s * this.camera.yScale;
+    const hs = whT * s;
+    // THE SHARED-EDGE LAW: run-mates meet on one pixel-snapped edge
+    // (the wallItem seam lesson — a bleed on a joined side prints a
+    // pale AA column up the face at every joint).
+    const x0 = w ? Math.round(p.x) : p.x - 0.25;
+    const x1 = e ? Math.round(p.x + s) : p.x + s + 0.25;
+    const y0 = n ? Math.round(p.y) : p.y - 0.25;
+    const y1 = sw ? Math.round(p.y + syT) : p.y + syT + 0.25;
+    const nH = n ? this.garrisonHeightAt(game, tx, ty - 1) : whT;
+    // Parapet teeth melt with the veil: full at standing height, gone
+    // at the stub, easing between on the same continuous cut.
+    const mkK = Math.max(0, Math.min(1, (whT - WALL_STUB) / (GARRISON_H - WALL_STUB)));
+    const mh = MERLON_H * s * mkK;
+    const md = syT * 0.34;
+    const mw = s * 0.34;
+    const cs = [0.25, 0.75]; // world-phase tooth centers, 2 per tile
+
+    return {
+      sortY: ty + 1,
+      drawShadow: sw
+        ? undefined
+        : () => this.castEdgeQuad(x0, p.y + syT, x1, p.y + syT, whT),
+      draw: () => {
+        const yBase = p.y + syT;
+        // South face: the great ashlar curtain.
+        if (!sw) {
+          ctx.save();
+          ctx.translate(0, yBase);
+          this.paintGarrisonMasonry(
+            x0,
+            x1 - x0,
+            hs,
+            s,
+            tx + (x0 - p.x) / s,
+            (x1 - x0) / s,
+            tx,
+            ty,
+            whT,
+            true,
+          );
+          ctx.restore();
+        }
+        // REAR RISER: the interior back face exposed when the curtain
+        // ahead sinks lower — same anchor law as building walls.
+        if (n && nH < whT - 0.04) {
+          const yRTop = p.y - hs;
+          const yRBot = p.y - syT - nH * s;
+          if (yRBot > yRTop + 0.5) {
+            ctx.fillStyle = shade(Renderer.GAR_FACE, -14);
+            ctx.fillRect(x0, yRTop, x1 - x0, yRBot - yRTop);
+          }
+        }
+        // Crown: the wall-walk, flag joints, embrasure sill, parapet.
+        this.beginHeightLayer(whT);
+        ctx.fillStyle = Renderer.GAR_TOP;
+        ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+        // Sparse walk flags — world-hashed so the paving never grids.
+        const hf = hashCoords(457, tx, ty);
+        ctx.fillStyle = 'rgba(20, 14, 28, 0.16)';
+        if ((hf & 3) !== 0)
+          ctx.fillRect(p.x + s * (0.2 + (hf % 60) / 100), y0, Math.max(1, s * 0.03), y1 - y0);
+        if ((hf & 4) === 0)
+          ctx.fillRect(
+            x0,
+            p.y + syT * (0.3 + ((hf >>> 6) % 40) / 100),
+            x1 - x0,
+            Math.max(1, s * 0.028),
+          );
+        // Sun-lit south lip: the embrasure sill between the teeth.
+        if (!sw) {
+          ctx.fillStyle = shade(Renderer.GAR_TOP, 16);
+          ctx.fillRect(x0, y1 - s * 0.08, x1 - x0, s * 0.08);
+        }
+        // Parapet teeth on every EXPOSED crown edge, up-screen edges
+        // first so southern teeth overdraw honestly. Tones follow the
+        // sun law: outward south faces lit, inward faces shadowed,
+        // west flank brighter than east.
+        if (mh > s * 0.05) {
+          if (!n)
+            for (const c of cs)
+              this.merlonBox(p.x + s * c - mw / 2, y0, mw, md, mh, shade(Renderer.GAR_FACE, -16));
+          if (!w)
+            for (const c of cs)
+              this.merlonBox(x0, p.y + syT * c - md / 2, mw, md, mh, shade(Renderer.GAR_FACE, 2));
+          if (!e)
+            for (const c of cs)
+              this.merlonBox(
+                x1 - mw,
+                p.y + syT * c - md / 2,
+                mw,
+                md,
+                mh,
+                shade(Renderer.GAR_FACE, -8),
+              );
+          if (!sw)
+            for (const c of cs)
+              this.merlonBox(
+                p.x + s * c - mw / 2,
+                y1 - md,
+                mw,
+                md,
+                mh,
+                shade(Renderer.GAR_FACE, 8),
+              );
+        }
+        ctx.restore();
+        // THE CASTELLATED OUTLINE: exposed perimeter only (the run
+        // reads as one mass), with the crown lines STEPPING over each
+        // parapet tooth — the silhouette is the signature.
+        if (this.outlineOn) {
+          const cTop = y0 - hs;
+          const cBot = y1 - hs;
+          const fBot = p.y + syT;
+          const sideBot = sw ? cBot : fBot;
+          const o = new Path2D();
+          const teeth = (rise: number): Array<[number, number]> =>
+            rise > 0.5 ? cs.map((c) => [p.x + s * c - mw / 2, p.x + s * c + mw / 2]) : [];
+          const crenel = (y: number, rise: number): void => {
+            o.moveTo(x0, y);
+            for (const [m0, m1] of teeth(rise)) {
+              o.lineTo(m0, y);
+              o.lineTo(m0, y - rise);
+              o.lineTo(m1, y - rise);
+              o.lineTo(m1, y);
+            }
+            o.lineTo(x1, y);
+          };
+          if (!n) crenel(cTop, mh);
+          if (!sw) crenel(cBot, mh + md);
+          if (!w) {
+            o.moveTo(x0, cTop);
+            o.lineTo(x0, sideBot);
+            // Flank teeth ring their own lifted boxes.
+            if (mh > s * 0.05)
+              for (const c of cs)
+                o.rect(x0, p.y + syT * c - md / 2 - mh, mw, md + mh);
+          }
+          if (!e) {
+            o.moveTo(x1, cTop);
+            o.lineTo(x1, sideBot);
+            if (mh > s * 0.05)
+              for (const c of cs)
+                o.rect(x1 - mw, p.y + syT * c - md / 2 - mh, mw, md + mh);
+          }
+          if (!sw) {
+            o.moveTo(x0, fBot);
+            o.lineTo(x1, fBot);
+          }
+          this.beginStructOutline();
+          ctx.stroke(o);
+        }
+      },
+    };
+  }
+
+  /**
+   * A 45° curtain turn. Same geometry laws as diagWallItem (near-row
+   * sort for camera-facing masses, sheared face frame so courses land
+   * parallel to the hypotenuse) with garrison masonry, and parapet
+   * teeth marching along the hyp — square-hewn blocks stepping the
+   * diagonal, which is exactly how real crenellation turns a corner.
+   */
+  private garrisonDiagItem(
+    tile: Tile,
+    tx: number,
+    ty: number,
+    game: ClientGame,
+    whT: number,
+  ): DrawItem {
+    const info = diagWallInfo(tile)!;
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const hs = whT * s;
+    const nE = this.garrisonish(game, tx + 1, ty);
+    const nS = this.garrisonish(game, tx, ty + 1);
+    const nW = this.garrisonish(game, tx - 1, ty);
+    const x0 = p.x - 0.25;
+    const x1 = p.x + s + 0.25;
+    const yN = p.y;
+    const yS = p.y + syT;
+    const mass = info.mass;
+    const hypW: [number, number] = mass === 'NE' || mass === 'SW' ? [x0, yN] : [x0, yS];
+    const hypE: [number, number] = mass === 'NE' || mass === 'SW' ? [x1, yS] : [x1, yN];
+    const tri: Array<[number, number]> =
+      mass === 'NE'
+        ? [[x0, yN], [x1, yN], [x1, yS]]
+        : mass === 'NW'
+          ? [[x0, yN], [x1, yN], [x0, yS]]
+          : mass === 'SE'
+            ? [[x1, yN], [x1, yS], [x0, yS]]
+            : [[x0, yN], [x1, yS], [x0, yS]];
+    const front = mass === 'NE' || mass === 'NW';
+    const mkK = Math.max(0, Math.min(1, (whT - WALL_STUB) / (GARRISON_H - WALL_STUB)));
+    const mh = MERLON_H * s * mkK;
+    const md = syT * 0.34;
+    const mw = s * 0.34;
+
+    return {
+      sortY: front ? ty + 0.001 : ty + 1,
+      drawShadow: front
+        ? () => this.castEdgeQuad(hypW[0], hypW[1], hypE[0], hypE[1], whT)
+        : nS
+          ? undefined
+          : () => this.castEdgeQuad(x0, yS, x1, yS, whT),
+      draw: () => {
+        // The visible face: sheared masonry along the hyp for front
+        // corners, the straight south edge for exposed back corners.
+        if (front) {
+          const w2 = hypE[0] - hypW[0];
+          const k = (hypE[1] - hypW[1]) / w2;
+          ctx.save();
+          ctx.translate(hypW[0], hypW[1]);
+          ctx.transform(1, k, 0, 1, 0, 0);
+          this.paintGarrisonMasonry(0, w2, hs, s, tx, 1, tx, ty, whT, false);
+          ctx.restore();
+        } else if (!nS) {
+          ctx.save();
+          ctx.translate(0, yS);
+          this.paintGarrisonMasonry(x0, x1 - x0, hs, s, tx, 1, tx, ty, whT, false);
+          ctx.restore();
+        }
+        // Crown: the mass triangle as wall-walk, then teeth along the
+        // hypotenuse continuing the parapet rhythm around the turn.
+        this.beginHeightLayer(whT);
+        const triPath = new Path2D();
+        triPath.moveTo(tri[0]![0], tri[0]![1]);
+        triPath.lineTo(tri[1]![0], tri[1]![1]);
+        triPath.lineTo(tri[2]![0], tri[2]![1]);
+        triPath.closePath();
+        ctx.fillStyle = Renderer.GAR_TOP;
+        ctx.fill(triPath);
+        ctx.save();
+        ctx.clip(triPath);
+        // Sun-lit lip on the camera-side arris grounds the height.
+        ctx.strokeStyle = shade(Renderer.GAR_TOP, 16);
+        ctx.lineWidth = s * 0.14;
+        ctx.beginPath();
+        if (front) {
+          ctx.moveTo(hypW[0], hypW[1]);
+          ctx.lineTo(hypE[0], hypE[1]);
+        } else {
+          ctx.moveTo(x0, yS);
+          ctx.lineTo(x1, yS);
+        }
+        ctx.stroke();
+        ctx.restore();
+        // Parapet teeth stepping the diagonal (or guarding the south
+        // edge of an exposed back corner) — outside the tri clip, the
+        // caps rise over the sky like every merlon.
+        if (mh > s * 0.05) {
+          for (const u of [0.25, 0.75]) {
+            const cx = hypW[0] + (hypE[0] - hypW[0]) * u;
+            const cy = hypW[1] + (hypE[1] - hypW[1]) * u;
+            this.merlonBox(
+              cx - mw / 2,
+              cy - md / 2,
+              mw,
+              md,
+              mh,
+              shade(Renderer.GAR_FACE, front ? 8 : -14),
+            );
+          }
+        }
+        ctx.restore(); // beginHeightLayer
+        // Castellated outline along the lifted arris + face contact +
+        // exposed end verticals, teeth ringed as their own boxes.
+        if (this.outlineOn) {
+          const o = new Path2D();
+          o.moveTo(hypW[0], hypW[1] - hs);
+          o.lineTo(hypE[0], hypE[1] - hs);
+          if (mh > s * 0.05) {
+            for (const u of [0.25, 0.75]) {
+              const cx = hypW[0] + (hypE[0] - hypW[0]) * u;
+              const cy = hypW[1] + (hypE[1] - hypW[1]) * u;
+              o.rect(cx - mw / 2, cy - md / 2 - hs - mh, mw, md + mh);
+            }
+          }
+          if (front) {
+            o.moveTo(hypW[0], hypW[1]);
+            o.lineTo(hypE[0], hypE[1]);
+            if (!nW) {
+              o.moveTo(hypW[0], hypW[1]);
+              o.lineTo(hypW[0], hypW[1] - hs);
+            }
+            if (!nE) {
+              o.moveTo(hypE[0], hypE[1]);
+              o.lineTo(hypE[0], hypE[1] - hs);
+            }
+          } else if (!nS) {
+            o.moveTo(x0, yS);
+            o.lineTo(x1, yS);
+            if (!nW) {
+              o.moveTo(x0, yS);
+              o.lineTo(x0, yS - hs);
+            }
+            if (!nE) {
+              o.moveTo(x1, yS);
+              o.lineTo(x1, yS - hs);
+            }
+          }
+          this.beginStructOutline();
+          ctx.stroke(o);
+        }
+      },
+    };
+  }
+
+  /**
+   * One iron-bound gatehouse leaf, drawn in the door frame (y = 0 at
+   * the threshold). Heavier than any house door: vertical board
+   * seams, three full-width iron straps studded with nail heads, and
+   * the free edge catching light as it stands ajar. The swing
+   * compresses width toward the hinge exactly like the French pair.
+   */
+  private paintGarrisonLeaf(
+    hx: number,
+    dir: 1 | -1,
+    w: number,
+    yTop: number,
+    h: number,
+    oc: number,
+    s: number,
+  ): void {
+    const ctx = this.ctx;
+    const lx = dir > 0 ? hx : hx - w;
+    ctx.fillStyle = shade(Renderer.GAR_LEAF, -Math.round(oc * 26));
+    ctx.fillRect(lx, yTop, w, h);
+    ctx.fillStyle = 'rgba(255, 224, 170, 0.12)';
+    ctx.fillRect(lx, yTop, w, s * 0.06);
+    const detail = 1 - oc * 0.75;
+    if (detail > 0.05) {
+      // Vertical board seams — gate carpentry, not panel casework.
+      ctx.fillStyle = `rgba(24, 15, 6, ${0.4 * detail})`;
+      for (const f of [0.27, 0.52, 0.77]) {
+        ctx.fillRect(lx + w * f, yTop + s * 0.04, Math.max(1, w * 0.045), h - s * 0.08);
+      }
+      // Three iron straps, studded — the siege-proof read.
+      for (const fy of [0.14, 0.48, 0.82]) {
+        const sy2 = yTop + h * fy;
+        ctx.fillStyle = `rgba(43, 39, 53, ${detail})`;
+        ctx.fillRect(lx, sy2, w, s * 0.07);
+        ctx.fillStyle = `rgba(122, 126, 148, ${0.75 * detail})`;
+        for (const fx of [0.14, 0.42, 0.7, 0.92]) {
+          ctx.fillRect(lx + w * fx, sy2 + s * 0.018, Math.max(1, s * 0.032), Math.max(1, s * 0.032));
+        }
+      }
+    }
+    if (oc > 0.15) {
+      ctx.fillStyle = `rgba(255, 224, 170, ${0.16 * Math.min(1, oc * 1.4)})`;
+      const edgeX = dir > 0 ? lx + w - s * 0.03 : lx;
+      ctx.fillRect(edgeX, yTop, s * 0.03, h);
+    }
+    if (this.outlineOn) {
+      this.beginStructOutline();
+      this.ctx.strokeRect(lx, yTop, w, h);
+    }
+  }
+
+  /**
+   * THE GATEHOUSE — a merged E-W garrison gate run as ONE arched
+   * passage through the curtain. (tx,ty) is the run's west anchor.
+   * The composition, ground up: worn threshold flags; a pair of
+   * iron-bound leaves to the spring line (doorOpenness swings them,
+   * a locked refusal shudders them); the raised portcullis showing
+   * its teeth in the arch head; a dressed voussoir arch with a proud
+   * keystone; garrison ashlar above; a machicolation band under the
+   * parapet; flanking piers with quoined edges wearing raised caps —
+   * and the curtain's crenellation marching unbroken over the whole
+   * gate. Every element rides the same veil height as the runs it
+   * joins, so a revealed gate sinks with its wall.
+   */
+  private garrisonGateItem(
+    tile: Tile,
+    tx: number,
+    ty: number,
+    game: ClientGame,
+    whT: number,
+    runLen: number,
+  ): DrawItem {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const syT = s * this.camera.yScale;
+    const hs = whT * s;
+    const rw = s * runLen;
+    const x0 = p.x - 0.25;
+    const x1 = p.x + rw + 0.25;
+    const w2 = x1 - x0;
+    // Flanking piers: chunky at a true multi-tile gate, slimmer on a
+    // single-tile postern so the passage still reads.
+    const pw = Math.min(s * 0.34, rw * 0.18);
+    const ox0 = x0 + pw;
+    const ox1 = x1 - pw;
+    const ow = ox1 - ox0;
+    const springH = s * 1.6; // leaf head / arch spring line
+    const rise = Math.min(ow * 0.5, s * 0.8);
+    const archOn = hs > springH + rise + s * 0.5;
+    const y0 = p.y - 0.25;
+    const y1 = p.y + syT + 0.25;
+    const mkK = Math.max(0, Math.min(1, (whT - WALL_STUB) / (GARRISON_H - WALL_STUB)));
+    const mh = MERLON_H * s * mkK;
+    const md = syT * 0.34;
+    const mw = s * 0.34;
+    const dinfo = doorInfo(tile)!;
+
+    // The arch opening as a path in the door frame (y = 0 at base).
+    const archPath = (): Path2D => {
+      const a = new Path2D();
+      a.moveTo(ox0, 0);
+      a.lineTo(ox0, -springH);
+      a.ellipse((ox0 + ox1) / 2, -springH, ow / 2, rise, 0, Math.PI, Math.PI * 2);
+      a.lineTo(ox1, 0);
+      a.closePath();
+      return a;
+    };
+
+    return {
+      sortY: ty + 1,
+      drawShadow: () => {
+        // Only the piers cast — daylight pours through the passage.
+        const yB = p.y + syT;
+        this.castEdgeQuad(x0, yB, x0 + pw, yB, whT);
+        this.castEdgeQuad(x1 - pw, yB, x1, yB, whT);
+      },
+      draw: () => {
+        const yBase = p.y + syT;
+        ctx.save();
+        ctx.translate(0, yBase);
+        // The curtain's ashlar carries across the whole gatehouse —
+        // with the passage CARVED THROUGH it (the true-glass law: an
+        // opening is a hole in the face, never paint over stone), so
+        // the baked road genuinely runs under the arch.
+        if (archOn) {
+          ctx.save();
+          const guard = new Path2D();
+          guard.rect(x0 - s, -hs - s, w2 + s * 2, hs + s * 2);
+          guard.addPath(archPath());
+          ctx.clip(guard, 'evenodd');
+        }
+        this.paintGarrisonMasonry(
+          x0,
+          w2,
+          hs,
+          s,
+          tx + (x0 - p.x) / s,
+          w2 / s,
+          tx,
+          ty,
+          whT,
+          false,
+        );
+        if (archOn) ctx.restore();
+        if (archOn) {
+          const arch = archPath();
+          // The passage: gatehouse depth holds real shadow, and the
+          // dark melts as anyone nears the threshold (the door-veil
+          // law) to show the road running through.
+          const veil = this.doorVeil(game, tx + runLen / 2, ty + 0.5);
+          ctx.fillStyle = `rgba(12, 9, 18, ${0.24 + 0.42 * veil})`;
+          ctx.fill(arch);
+          // Deep reveal shadows down the inner pier edges.
+          ctx.fillStyle = 'rgba(10, 8, 16, 0.4)';
+          ctx.fillRect(ox0, -springH, s * 0.05, springH);
+          ctx.fillRect(ox1 - s * 0.05, -springH, s * 0.05, springH);
+          // THE PORTCULLIS, raised: iron teeth hanging in the arch
+          // head with one binding rail — the promise of the drop.
+          // Lighter than strap iron so the grate reads against both
+          // the shadowed passage and the road showing through it.
+          ctx.save();
+          ctx.clip(arch);
+          const tipY = -springH - rise * 0.2;
+          const barW = Math.max(1.5, s * 0.065);
+          for (let bx = ox0 + s * 0.14; bx < ox1 - s * 0.08; bx += s * 0.23) {
+            ctx.fillStyle = '#3d3950';
+            ctx.fillRect(bx, -hs, barW, hs + tipY);
+            ctx.beginPath();
+            ctx.moveTo(bx, tipY);
+            ctx.lineTo(bx + barW, tipY);
+            ctx.lineTo(bx + barW / 2, tipY + s * 0.12);
+            ctx.closePath();
+            ctx.fill();
+            // Each bar catches a west-side edge light.
+            ctx.fillStyle = 'rgba(170, 178, 200, 0.28)';
+            ctx.fillRect(bx, -hs, Math.max(1, barW * 0.35), hs + tipY);
+          }
+          ctx.fillStyle = '#3d3950';
+          ctx.fillRect(ox0, tipY - s * 0.18, ow, Math.max(1.5, s * 0.06));
+          // A cold glint along the rail — iron, not timber.
+          ctx.fillStyle = 'rgba(170, 178, 200, 0.3)';
+          ctx.fillRect(ox0, tipY - s * 0.18, ow, Math.max(1, s * 0.022));
+          ctx.restore();
+          // THE LEAVES: an iron-bound pair to the spring line. The
+          // tile is the state; the swing eases through doorOpenness
+          // and a locked refusal shudders both leaves in the frame.
+          const o = Math.min(1, this.doorOpenness(tx, ty, dinfo.open));
+          const shakeDx = this.doorShakeAt(tx, ty) * s * 0.035;
+          const half = ow / 2;
+          const wLeaf = Math.max(half * 0.09, half * (1 - 0.91 * o));
+          this.paintGarrisonLeaf(ox0 + shakeDx, 1, wLeaf, -springH, springH, o, s);
+          this.paintGarrisonLeaf(ox1 + shakeDx, -1, wLeaf, -springH, springH, o, s);
+          if (o < 0.12) {
+            // The meeting seam, and the drawbar that says "barred".
+            ctx.fillStyle = 'rgba(18, 11, 5, 0.6)';
+            ctx.fillRect(ox0 + half - s * 0.018 + shakeDx, -springH, s * 0.036, springH);
+            ctx.fillStyle = Renderer.GAR_IRON;
+            ctx.fillRect(ox0 + ow * 0.08 + shakeDx, -springH * 0.42, ow * 0.84, s * 0.085);
+            ctx.fillStyle = 'rgba(170, 178, 200, 0.22)';
+            ctx.fillRect(ox0 + ow * 0.08 + shakeDx, -springH * 0.42, ow * 0.84, s * 0.022);
+          }
+          // THE VOUSSOIR ARCH: a dressed ring following the curve,
+          // radial joints, and a proud keystone at the apex. The
+          // annulus needs CLOSED full-ellipse subpaths (half arcs
+          // chain into one subpath and evenodd fills the whole
+          // lunette) intersected with an above-the-spring rect.
+          const cxA = (ox0 + ox1) / 2;
+          const ringW = s * 0.2;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(x0, -hs, w2, hs - springH);
+          ctx.clip();
+          ctx.beginPath();
+          ctx.ellipse(cxA, -springH, ow / 2 + ringW, rise + ringW, 0, 0, Math.PI * 2);
+          ctx.ellipse(cxA, -springH, ow / 2, rise, 0, 0, Math.PI * 2, true);
+          ctx.clip('evenodd');
+          ctx.fillStyle = shade(Renderer.GAR_FACE, 14);
+          ctx.fillRect(x0, -hs, w2, hs);
+          ctx.strokeStyle = 'rgba(20, 14, 28, 0.45)';
+          ctx.lineWidth = Math.max(1, s * 0.03);
+          for (let a = Math.PI + 0.28; a < Math.PI * 2 - 0.2; a += 0.34) {
+            ctx.beginPath();
+            ctx.moveTo(cxA + Math.cos(a) * (ow / 2), -springH + Math.sin(a) * rise);
+            ctx.lineTo(
+              cxA + Math.cos(a) * (ow / 2 + ringW * 1.1),
+              -springH + Math.sin(a) * (rise + ringW * 1.1),
+            );
+            ctx.stroke();
+          }
+          ctx.restore();
+          // Keystone, proud of the ring.
+          ctx.fillStyle = shade(Renderer.GAR_FACE, 26);
+          ctx.beginPath();
+          ctx.moveTo(cxA - s * 0.14, -springH - rise + s * 0.02);
+          ctx.lineTo(cxA + s * 0.14, -springH - rise + s * 0.02);
+          ctx.lineTo(cxA + s * 0.09, -springH - rise - ringW - s * 0.04);
+          ctx.lineTo(cxA - s * 0.09, -springH - rise - ringW - s * 0.04);
+          ctx.closePath();
+          ctx.fill();
+          // MACHICOLATIONS: the corbelled drop-band under the parapet
+          // — dark slots between stout corbel teeth, a defended gate's
+          // brow. Only a full-standing gatehouse carries it.
+          if (hs > s * 3.0) {
+            const bandT = -hs + s * 0.3;
+            ctx.fillStyle = 'rgba(12, 9, 18, 0.42)';
+            ctx.fillRect(x0 + s * 0.06, bandT, w2 - s * 0.12, s * 0.2);
+            ctx.fillStyle = shade(Renderer.GAR_FACE, 4);
+            for (let cxb = x0 + s * 0.1; cxb < x1 - s * 0.2; cxb += s * 0.28) {
+              ctx.fillRect(cxb, bandT, s * 0.15, s * 0.22);
+            }
+            ctx.fillStyle = 'rgba(255, 236, 200, 0.1)';
+            ctx.fillRect(x0 + s * 0.06, bandT + s * 0.2, w2 - s * 0.12, s * 0.04);
+          }
+        }
+        // FLANKING PIERS, proud of the wall plane: quoined edges over
+        // the ashlar, a talus base block, and honest AO at the foot.
+        for (const [px0, inner] of [
+          [x0, ox0],
+          [ox1, x1],
+        ] as const) {
+          const pwid = inner - px0 > 0 ? inner - px0 : 0;
+          if (pwid <= 0) continue;
+          ctx.fillStyle = shade(Renderer.GAR_FACE, 5);
+          ctx.fillRect(px0, -hs, pwid, hs);
+          // Quoin blocks alternating long and short up the pier.
+          let qi = 0;
+          for (let qy = -s * 0.55; qy > -hs + s * 0.2; qy -= s * 0.34, qi++) {
+            ctx.fillStyle = shade(Renderer.GAR_FACE, qi % 2 === 0 ? 16 : 6);
+            ctx.fillRect(px0, qy - s * 0.3, pwid, s * 0.3);
+            ctx.fillStyle = 'rgba(20, 14, 28, 0.35)';
+            ctx.fillRect(px0, qy - Math.max(1, s * 0.026), pwid, Math.max(1, s * 0.026));
+          }
+          ctx.fillStyle = Renderer.GAR_PLINTH;
+          ctx.fillRect(px0 - s * 0.02, -s * 0.55, pwid + s * 0.04, s * 0.55);
+          ctx.fillStyle = 'rgba(255, 236, 200, 0.12)';
+          ctx.fillRect(px0 - s * 0.02, -s * 0.55, pwid + s * 0.04, s * 0.05);
+          ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+          ctx.fillRect(px0 - s * 0.02, -s * 0.07, pwid + s * 0.04, s * 0.07);
+        }
+        // Worn threshold flags with two cart-wheel ruts.
+        if (archOn) {
+          ctx.fillStyle = shade(Renderer.GAR_TRIM, 12);
+          ctx.fillRect(ox0, -s * 0.07, ow, s * 0.07);
+          ctx.fillStyle = 'rgba(26, 20, 36, 0.3)';
+          ctx.fillRect(ox0 + ow * 0.3, -s * 0.06, s * 0.05, s * 0.05);
+          ctx.fillRect(ox0 + ow * 0.66, -s * 0.06, s * 0.05, s * 0.05);
+        }
+        ctx.restore();
+        // CROWN: the wall-walk runs unbroken over the passage, teeth
+        // marching the full span, and each pier wears a raised cap —
+        // the gatehouse towers reading over the curtain line.
+        this.beginHeightLayer(whT);
+        ctx.fillStyle = Renderer.GAR_TOP;
+        ctx.fillRect(x0, y0, w2, y1 - y0);
+        ctx.fillStyle = shade(Renderer.GAR_TOP, 16);
+        ctx.fillRect(x0, y1 - s * 0.08, w2, s * 0.08);
+        if (mh > s * 0.05) {
+          for (let i = 0; i < runLen; i++) {
+            for (const c of [0.25, 0.75]) {
+              this.merlonBox(
+                p.x + s * (i + c) - mw / 2,
+                y1 - md,
+                mw,
+                md,
+                mh,
+                shade(Renderer.GAR_FACE, 8),
+              );
+            }
+          }
+          // Pier caps: taller corner teeth anchoring the gate front.
+          this.merlonBox(x0, y1 - md * 1.15, pw, md * 1.15, mh * 1.45, shade(Renderer.GAR_FACE, 12));
+          this.merlonBox(x1 - pw, y1 - md * 1.15, pw, md * 1.15, mh * 1.45, shade(Renderer.GAR_FACE, 12));
+        }
+        ctx.restore();
+        // Outline: castellated crown, pier verticals, and the arch
+        // opening ringed — the threshold stays open underfoot.
+        if (this.outlineOn) {
+          const cBot = y1 - hs;
+          const fBot = p.y + syT;
+          const o = new Path2D();
+          o.moveTo(x0, cBot);
+          if (mh > s * 0.05) {
+            // Teeth across the run, pier caps at the ends.
+            o.lineTo(x0, cBot - md * 1.15 - mh * 1.45);
+            o.lineTo(x0 + pw, cBot - md * 1.15 - mh * 1.45);
+            o.lineTo(x0 + pw, cBot);
+            for (let i = 0; i < runLen; i++) {
+              for (const c of [0.25, 0.75]) {
+                const m0 = p.x + s * (i + c) - mw / 2;
+                const m1 = m0 + mw;
+                if (m0 < x0 + pw || m1 > x1 - pw) continue;
+                o.lineTo(m0, cBot);
+                o.lineTo(m0, cBot - md - mh);
+                o.lineTo(m1, cBot - md - mh);
+                o.lineTo(m1, cBot);
+              }
+            }
+            o.lineTo(x1 - pw, cBot);
+            o.lineTo(x1 - pw, cBot - md * 1.15 - mh * 1.45);
+            o.lineTo(x1, cBot - md * 1.15 - mh * 1.45);
+          }
+          o.lineTo(x1, cBot);
+          // Pier verticals to the ground.
+          o.moveTo(x0, cBot);
+          o.lineTo(x0, fBot);
+          o.moveTo(x1, cBot);
+          o.lineTo(x1, fBot);
+          // Ground contact either side of the passage.
+          o.moveTo(x0, fBot);
+          o.lineTo(ox0, fBot);
+          o.moveTo(ox1, fBot);
+          o.lineTo(x1, fBot);
+          if (archOn) {
+            // The opening: up the reveals and over the arch curve.
+            o.moveTo(ox0, fBot);
+            o.lineTo(ox0, fBot - springH);
+            o.ellipse(
+              (ox0 + ox1) / 2,
+              fBot - springH,
+              ow / 2,
+              rise,
+              0,
+              Math.PI,
+              Math.PI * 2,
+            );
+            o.lineTo(ox1, fBot);
+          }
+          this.beginStructOutline();
+          ctx.stroke(o);
+        }
+      },
+    };
+  }
+
+  /**
+   * A garrison gate in a N-S curtain — the edge-on passage, in the
+   * side-doorway grammar at fortification scale: the curtain run ENDS
+   * at the opening (honest notch), worn passage flags with landing
+   * slabs poking out both approaches, and ONE tall iron-bound leaf —
+   * thrown open it stands outside the wall line in the neighbour
+   * column; shut it reads as the edge-on slab barring the notch.
+   */
+  private garrisonSideGateItems(
+    tile: Tile,
+    tx: number,
+    ty: number,
+    game: ClientGame,
+    runLen: number,
+    items: DrawItem[],
+  ): void {
+    const s = this.camera.scale;
+    const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const elevated = game.world.elevAt(tx, ty) !== 0;
+    const syT = s * this.camera.yScale;
+    const x0 = p.x - 0.25;
+    const x1 = p.x + s + 0.25;
+    const gapH = syT * runLen;
+    const cy = p.y + gapH / 2;
+    const trim = Renderer.GAR_TRIM;
+    const push = (item: DrawItem): void => {
+      if (elevated) item.elevated = true;
+      items.push(item);
+    };
+
+    // Passage flags + landing slabs: the ground-level affordance that
+    // survives any run length (neighbour columns are never buried).
+    push({
+      sortY: ty,
+      draw: () => {
+        const ctx = this.ctx;
+        ctx.fillStyle = shade(trim, 14);
+        ctx.fillRect(p.x + s * 0.07, p.y + syT * 0.05, s * 0.86, gapH - syT * 0.1);
+        ctx.fillStyle = 'rgba(26, 20, 36, 0.16)';
+        ctx.fillRect(p.x + s * 0.07, cy - syT * 0.26, s * 0.86, syT * 0.13);
+        ctx.fillRect(p.x + s * 0.07, cy + syT * 0.13, s * 0.86, syT * 0.13);
+        const landH = gapH + syT * 0.26;
+        for (const [sx0, sx1] of [
+          [p.x - s * 0.42, p.x + s * 0.05],
+          [p.x + s * 0.95, p.x + s * 1.42],
+        ] as const) {
+          ctx.fillStyle = shade(trim, 4);
+          ctx.fillRect(sx0, cy - landH / 2, sx1 - sx0, landH);
+          ctx.fillStyle = 'rgba(255, 236, 200, 0.14)';
+          ctx.fillRect(sx0, cy - landH / 2, sx1 - sx0, syT * 0.12);
+          ctx.fillStyle = 'rgba(26, 20, 36, 0.3)';
+          ctx.fillRect(sx0, cy + landH / 2 - syT * 0.12, sx1 - sx0, syT * 0.12);
+          ctx.fillStyle = 'rgba(26, 20, 36, 0.18)';
+          ctx.fillRect(sx0, cy - Math.max(1, s * 0.015), sx1 - sx0, Math.max(1, s * 0.03));
+          if (this.outlineOn) {
+            this.beginStructOutline();
+            ctx.strokeRect(sx0, cy - landH / 2, sx1 - sx0, landH);
+          }
+        }
+      },
+    });
+
+    // THE LEAF — the tile is the state, the side-door open/shut/swing
+    // grammar at garrison weight.
+    const lw = s * (runLen > 1 ? 0.95 : 0.8);
+    const doorH = s * 1.9;
+    const side: -1 | 1 = -1; // the leaf hangs on the east column
+    const leafX0 = side < 0 ? x0 - lw : x1;
+    const dinfo = doorInfo(tile)!;
+    const oNow = Math.min(1, this.doorOpenness(tx, ty, dinfo.open));
+    push({
+      sortY: oNow > 0.5 ? ty + 0.05 : ty + 0.6,
+      drawShadow: () => {
+        const o = Math.min(1, this.doorOpenness(tx, ty, dinfo.open));
+        if (o > 0.5) {
+          const baseY = p.y + syT * 0.1;
+          this.castEdgeQuad(leafX0, baseY, leafX0 + lw, baseY, 1.9);
+        } else {
+          const xc = p.x + s * 0.5;
+          this.castEdgeQuad(xc, p.y + syT * 0.08, xc, p.y + gapH - syT * 0.08, 1.9);
+        }
+      },
+      draw: () => {
+        const ctx = this.ctx;
+        const o = Math.min(1, this.doorOpenness(tx, ty, dinfo.open));
+        const shake = this.doorShakeAt(tx, ty);
+        if (o >= 0.98) {
+          // FULLY OPEN: the iron-bound leaf face-on, grounded by its
+          // own contact shade.
+          const baseY = p.y + syT * 0.1;
+          ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+          ctx.fillRect(leafX0 + s * 0.02, baseY - s * 0.025, lw - s * 0.04, s * 0.06);
+          this.paintGarrisonLeaf(leafX0 + lw, -1, lw, baseY - doorH, doorH, 0, s);
+          return;
+        }
+        if (o <= 0.02) {
+          // SHUT: the slab in the wall plane, edge-on — a lifted top
+          // ribbon spanning the notch plus the south end face, with
+          // one iron strap tail visible on the end grain.
+          const xc = p.x + s * 0.5 + shake * s * 0.035;
+          const slabW = s * 0.2;
+          ctx.fillStyle = shade(Renderer.GAR_LEAF, -10);
+          ctx.fillRect(xc - slabW / 2, p.y + gapH - doorH, slabW, doorH);
+          ctx.fillStyle = Renderer.GAR_IRON;
+          ctx.fillRect(xc - slabW / 2, p.y + gapH - doorH * 0.55, slabW, s * 0.06);
+          ctx.fillStyle = shade(Renderer.GAR_LEAF, 18);
+          ctx.fillRect(xc - slabW / 2, p.y - doorH, slabW, gapH);
+          ctx.fillStyle = 'rgba(255, 224, 170, 0.12)';
+          ctx.fillRect(xc - slabW / 2, p.y + gapH - doorH - syT * 0.1, slabW, syT * 0.1);
+          ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+          ctx.fillRect(xc - slabW / 2 - s * 0.02, p.y + gapH - s * 0.03, slabW + s * 0.04, s * 0.05);
+          if (this.outlineOn) {
+            this.beginStructOutline();
+            ctx.strokeRect(xc - slabW / 2, p.y - doorH, slabW, gapH + doorH);
+          }
+          return;
+        }
+        // MID-SWING: one honest quad sweeping hinge-anchored from the
+        // wall plane out to the neighbour column.
+        const th = (o * Math.PI) / 2;
+        const hx = (side < 0 ? x0 : x1) + shake * s * 0.02;
+        const hyB = p.y + syT * 0.1;
+        const fxB = hx + side * lw * Math.sin(th);
+        const fyB = hyB + lw * 0.95 * Math.cos(th) * (syT / s);
+        const quad = new Path2D();
+        quad.moveTo(hx, hyB);
+        quad.lineTo(fxB, fyB);
+        quad.lineTo(fxB, fyB - doorH);
+        quad.lineTo(hx, hyB - doorH);
+        quad.closePath();
+        ctx.fillStyle = shade(Renderer.GAR_LEAF, -Math.round((1 - Math.sin(th)) * 24));
+        ctx.fill(quad);
+        ctx.beginPath();
+        ctx.moveTo(hx, hyB - doorH);
+        ctx.lineTo(fxB, fyB - doorH);
+        ctx.lineTo(fxB, fyB - doorH + s * 0.06);
+        ctx.lineTo(hx, hyB - doorH + s * 0.06);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(255, 224, 170, 0.14)';
+        ctx.fill();
+        if (this.outlineOn) {
+          this.beginStructOutline();
+          ctx.stroke(quad);
+        }
+      },
+    });
   }
 
   /**

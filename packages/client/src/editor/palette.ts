@@ -51,6 +51,15 @@ export const TILE_CATEGORIES: TileCategory[] = [
     ],
   },
   {
+    id: 'garrison',
+    label: 'Fortifications',
+    tiles: [
+      Tile.WallGarrison, Tile.GateGarrison, Tile.GateGarrisonShut,
+      Tile.WallGarrisonDiagNE, Tile.WallGarrisonDiagNW,
+      Tile.WallGarrisonDiagSE, Tile.WallGarrisonDiagSW,
+    ],
+  },
+  {
     id: 'nature',
     label: 'Trees & Flora',
     tiles: [

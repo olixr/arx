@@ -487,6 +487,51 @@ const defs: BuildableDef[] = [
     ticks: 80,
     ground: FLOORS,
   },
+  // THE GARRISON TIER — fortification is late-construction mastery:
+  // siege masonry costs real stone and real iron, and the wall it
+  // raises stands half again over any house.
+  {
+    id: 'garrison_wall',
+    name: 'Garrison wall',
+    tile: Tile.WallGarrison,
+    levelReq: 28,
+    xp: 220,
+    materials: [{ item: 'copper_ore', qty: 4 }, { item: 'iron_bar', qty: 1 }],
+    ticks: 70,
+    ground: OUTDOOR_AND_FLOORS,
+  },
+  {
+    // Auto-orients to span the corner between the two perpendicular
+    // GARRISON neighbours present at placement (the separate-masonry
+    // law: building walls never orient a curtain) — raise the
+    // adjoining runs first, then turn the corner.
+    id: 'garrison_wall_corner',
+    name: 'Garrison wall corner',
+    tile: Tile.WallGarrisonDiagNE,
+    levelReq: 30,
+    xp: 240,
+    materials: [{ item: 'copper_ore', qty: 4 }, { item: 'iron_bar', qty: 1 }],
+    ticks: 70,
+    ground: OUTDOOR_AND_FLOORS,
+  },
+  {
+    // Placed standing open. Lay two or three side by side in a
+    // curtain run and they merge into ONE arched gatehouse passage —
+    // portcullis in the soffit, iron-bound leaves, the whole door
+    // law (locks, occupancy, auto-close) riding underneath.
+    id: 'garrison_gate',
+    name: 'Garrison gate',
+    tile: Tile.GateGarrison,
+    levelReq: 32,
+    xp: 320,
+    materials: [
+      { item: 'copper_ore', qty: 3 },
+      { item: 'iron_bar', qty: 2 },
+      { item: 'oak_log', qty: 2 },
+    ],
+    ticks: 90,
+    ground: OUTDOOR_AND_FLOORS,
+  },
 ];
 
 export const BUILDABLES: ReadonlyMap<string, BuildableDef> = new Map(defs.map((d) => [d.id, d]));

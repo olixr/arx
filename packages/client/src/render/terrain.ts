@@ -344,6 +344,24 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
       return Tile.StoneFloor;
     }
     if (t === Tile.CaveWall || t === Tile.CrackedCaveWall) return Tile.CaveFloor;
+    // Garrison masonry stands in open country, not in a room: the
+    // ground beneath continues whichever walkable terrain the curtain
+    // fronts (south first — that side's base sliver is the visible
+    // one), so a rampart crossing meadow, road, and sand never prints
+    // interior flooring at its foot. The gate carries the same law:
+    // the road marches THROUGH the passage; dressed flags only when
+    // no open ground answers.
+    if (
+      t === Tile.WallGarrison ||
+      t === Tile.GateGarrison ||
+      t === Tile.GateGarrisonShut
+    ) {
+      const sT = ground(tx, ty + 1);
+      if (sT !== undefined && !tileDef(sT).solid) return sT;
+      const nT = ground(tx, ty - 1);
+      if (nT !== undefined && !tileDef(nT).solid) return nT;
+      return Tile.StoneFloor;
+    }
     // Walk-through structure: the ground continues under the frame —
     // a doorway's threshold carries the room's floor to the outside.
     if (

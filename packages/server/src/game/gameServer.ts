@@ -202,6 +202,7 @@ import {
   STATUS_BIT,
   WALL_RUN_TILES,
   FENCE_TILES,
+  GARRISON_TILES,
   applyDodge,
   diagWallInfo,
   orientDiagWall,
@@ -2381,7 +2382,7 @@ export class GameServer {
   private interactDoor(tx: number, ty: number, info: DoorInfo, sys: (text: string) => void): void {
     const unit = this.doorUnit(tx, ty, info);
     const lockKey = `${unit.ax},${unit.ay}`;
-    const gate = info.material === 'fence';
+    const gate = info.material === 'fence' || info.material === 'garrison';
     if (info.open) {
       for (const t of unit.tiles) {
         if (this.bodyOnTile(t.x, t.y)) {
@@ -2975,9 +2976,15 @@ export class GameServer {
     let placed = def.tile;
     const dw = diagWallInfo(def.tile);
     if (dw) {
+      // THE SEPARATE-MASONRY LAW: a garrison corner spans garrison
+      // neighbours, a building corner spans building-wall neighbours
+      // — the two families never orient off each other.
       const isWall = (x: number, y: number): boolean => {
         const t = this.world.groundAt(x, y);
-        return t !== undefined && WALL_RUN_TILES.includes(t as Tile);
+        if (t === undefined) return false;
+        return dw.material === 'garrison'
+          ? GARRISON_TILES.has(t as Tile)
+          : WALL_RUN_TILES.includes(t as Tile);
       };
       placed = orientDiagWall(
         dw.material,
