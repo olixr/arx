@@ -305,6 +305,12 @@ export const FX_STYLES: Record<string, FxStyle> = {
   exposing_strike: BLOOD({ mid: '#9a6a8a', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'echo', punch: 0.5 }),
   thousand_cuts: STEEL({ core: '#ffffff', mid: '#c4b8d8', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'swarm', punch: 0.6, wash: 0.3 }),
 
+  // ------------------------- THE UNWRITTEN PAGE — deed-earned arts
+  riftwalker_step: VOID({ ring: 'runes', debris: 'star', motif: 'tear', punch: 0.5, wash: 0.35 }),
+  oathbound_edge: GOLD({ ring: 'halo', debris: 'star', motif: 'crown', punch: 0.7, wash: 0.55 }),
+  warden_volley: VERDANT({ mid: '#8a9a78', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'rain', punch: 0.55 }),
+  whisper_fang: SHADOW({ mid: '#6a5a88', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'wisps', punch: 0.45, wash: 0.15 }),
+
   // ------------------------------------------------------------ sigils
   bone_tempest: BONE({ motif: 'vortex', punch: 0.9, wash: 0.4 }),
 

@@ -2562,6 +2562,23 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   filter: saturate(0.4) brightness(0.75);
 }
 
+/* THE UNWRITTEN PAGE's mark: this art was earned, not leveled. */
+.earned-seal {
+  position: absolute;
+  left: -7px;
+  bottom: -7px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: var(--gold-bright);
+  background: color-mix(in srgb, var(--gold) 22%, var(--sunk));
+  border: 1.5px solid var(--gold);
+  border-radius: 50%;
+  text-shadow: var(--punch-small);
+}
+
 /* THE HONED-ART ledger: four rank seals, brass when attained. */
 .rank-ledger {
   display: flex;

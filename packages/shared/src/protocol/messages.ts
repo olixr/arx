@@ -629,10 +629,15 @@ export interface S2CTime {
   ofs: number;
 }
 
-/** The player's chosen techniques per style (sent on join + change). */
+/**
+ * The player's chosen techniques per style (sent on join + change),
+ * plus THE UNWRITTEN PAGE's earned hidden arts — the codex shows a
+ * page only once the deed has filled it.
+ */
 export interface S2CTechniques {
   t: 'techniques';
   chosen: Record<string, string>;
+  earned?: string[];
 }
 
 /**

@@ -108,9 +108,11 @@ test('spread reactions always spread a real DoT', () => {
 import {
   RANK_SURPLUS,
   TECHNIQUE_MAX_RANK,
+  artFlag,
   honedAbility,
   rankLevel,
   techniqueRank,
+  techniqueRankFor,
   type AbilityDef,
   type RankStep,
 } from './abilities.js';
@@ -176,4 +178,14 @@ test('honedAbility merges steps in order and never mutates the base', () => {
 test('honedAbility clamps past the last authored step', () => {
   const r9 = honedAbility(baseArt, steps, 9);
   assert.deepEqual(r9, honedAbility(baseArt, steps, 4));
+});
+
+test('THE UNWRITTEN PAGE: earned pages rank from their anchor, never below I', () => {
+  const page = { ability: 'x', style: 'magic' as const, unlockLevel: 0, hidden: { anchorLevel: 30 } };
+  assert.equal(techniqueRankFor(page, 10), 1, 'below the anchor the page is simply unhoned');
+  assert.equal(techniqueRankFor(page, 45), 2, 'anchor +15 = rank II');
+  assert.equal(techniqueRankFor(page, 75), 4, 'the page masters at anchor +45');
+  const rung = { ability: 'y', style: 'magic' as const, unlockLevel: 15 };
+  assert.equal(techniqueRankFor(rung, 10), 0, 'ladder arts still gate on their rung');
+  assert.equal(artFlag('riftwalker_step'), 'art:riftwalker_step');
 });

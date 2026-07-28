@@ -10,7 +10,7 @@ import {
   honedAbility,
   levelForXp,
   rankLevel,
-  techniqueRank,
+  techniqueRankFor,
   xpForLevel,
   type EquipSlot,
   type EquippedItem,
@@ -235,6 +235,8 @@ export class Panels {
   private readonly menu: HTMLElement;
   /** The chosen technique per style, mirrored from the server. */
   private techniques: Record<string, string> = {};
+  /** Hidden arts earned by deed, mirrored from the server. */
+  private earnedArts: string[] = [];
   private lastSkills: SkillXp = {};
   private lastSlots: InvSlot[] = [];
   private lastEquipment: Partial<Record<string, EquippedItem>> = {};
@@ -1156,10 +1158,21 @@ export class Panels {
   }
 
   /** Server-confirmed technique choices; re-renders whoever shows them. */
-  setTechniques(chosen: Record<string, string>): void {
+  setTechniques(chosen: Record<string, string>, earned: string[] = []): void {
     this.techniques = chosen;
+    this.earnedArts = earned;
     this.renderSkills(this.lastSkills);
     if (this.artsOpen) this.renderArts();
+  }
+
+  /**
+   * THE UNWRITTEN PAGE's codex law: a hidden art simply does not exist
+   * here until its deed is done — no veiled plate, no rumor to min-max.
+   */
+  private visibleTechniques(style: SkillId): TechniqueDef[] {
+    return techniquesFor(style).filter(
+      (t) => !t.hidden || this.earnedArts.includes(t.ability),
+    );
   }
 
   /** Server-confirmed answered Callings; re-renders whoever shows them. */
@@ -1404,7 +1417,7 @@ export class Panels {
 
   /** THE HONED-ART LAW, mirrored: the rank the BASE level has earned. */
   private techRank(style: SkillId, tech: TechniqueDef): number {
-    return techniqueRank(tech.unlockLevel, levelForXp(this.lastSkills[style] ?? 0));
+    return techniqueRankFor(tech, levelForXp(this.lastSkills[style] ?? 0));
   }
 
   /** A technique's rung state against the player's skill level. */
@@ -1417,7 +1430,7 @@ export class Panels {
       return this.techniques[style] === tech.ability ? 'equipped' : 'unlocked';
     }
     const firstLocked = techniquesFor(style)
-      .filter((t) => level < t.unlockLevel)
+      .filter((t) => !t.hidden && level < t.unlockLevel)
       .reduce((m, t) => Math.min(m, t.unlockLevel), Infinity);
     return tech.unlockLevel > firstLocked ? 'veiled' : 'locked';
   }
@@ -1426,7 +1439,7 @@ export class Panels {
   private markTechSeen(ability: string | null): void {
     if (!ability || this.seenTech.has(ability)) return;
     const entry = this.artsSchoolIds()
-      .flatMap((s) => techniquesFor(s).map((t) => ({ style: s, t })))
+      .flatMap((s) => this.visibleTechniques(s).map((t) => ({ style: s, t })))
       .find((e) => e.t.ability === ability);
     if (!entry) return;
     const st = this.techState(entry.style, entry.t);
@@ -1439,7 +1452,7 @@ export class Panels {
   private updateArtsPip(): void {
     const unseen =
       this.artsSchoolIds().some((s) =>
-        techniquesFor(s).some((t) => {
+        this.visibleTechniques(s).some((t) => {
           const st = this.techState(s, t);
           return (st === 'unlocked' || st === 'equipped') && !this.seenTech.has(t.ability);
         }),
@@ -1486,7 +1499,7 @@ export class Panels {
       return;
     }
     const schools = this.artsSchoolIds();
-    const all = schools.flatMap((s) => techniquesFor(s).map((t) => ({ style: s, t })));
+    const all = schools.flatMap((s) => this.visibleTechniques(s).map((t) => ({ style: s, t })));
 
     // Resolve the bench's subject: keep the player's pick if it still
     // exists, else default to what the wielded ladder is running.
@@ -1834,7 +1847,7 @@ export class Panels {
 
     const rail = document.createElement('div');
     rail.className = 'tech-rail';
-    techniquesFor(style).forEach((tech) => {
+    this.visibleTechniques(style).forEach((tech) => {
       const ab = abilityDef(tech.ability);
       if (!ab) return;
       const st = this.techState(style, tech);
@@ -1867,6 +1880,14 @@ export class Panels {
           rBadge.className = 'r-badge';
           rBadge.textContent = 'R';
           wellEl.appendChild(rBadge);
+        }
+        if (tech.hidden) {
+          const seal = document.createElement('span');
+          seal.className = 'earned-seal';
+          seal.textContent = '❖';
+          seal.dataset.tipname = 'An unwritten page';
+          seal.dataset.tipsub = 'Earned by deed — no rung of the ladder holds it.';
+          wellEl.appendChild(seal);
         }
       }
       const nameEl = document.createElement('span');
@@ -1937,7 +1958,7 @@ export class Panels {
     line.className = 'bench-line';
     line.textContent =
       st === 'unlocked' || st === 'equipped'
-        ? `${styleName} · Rank ${RANK_ROMAN[rank]}`
+        ? `${styleName} · Rank ${RANK_ROMAN[rank]}${t.hidden ? ' · Earned' : ''}`
         : styleName;
     names.append(name, line);
     head.append(well, names);
@@ -2007,7 +2028,7 @@ export class Panels {
           seal.dataset.tipname = `Rank ${RANK_ROMAN[r]}`;
           seal.dataset.tipsub = note;
         } else {
-          seal.dataset.tipname = `Rank ${RANK_ROMAN[r]} — ${styleName} Lv ${rankLevel(t.unlockLevel, r)}`;
+          seal.dataset.tipname = `Rank ${RANK_ROMAN[r]} — ${styleName} Lv ${rankLevel(t.hidden?.anchorLevel ?? t.unlockLevel, r)}`;
           seal.dataset.tipsub = 'Train on, and the art will sharpen itself.';
         }
         ledger.appendChild(seal);
@@ -2018,7 +2039,7 @@ export class Panels {
         if (nextNote) {
           const next = document.createElement('div');
           next.className = 'bench-next';
-          next.textContent = `Rank ${RANK_ROMAN[rank + 1]} at ${styleName} ${rankLevel(t.unlockLevel, rank + 1)} — ${nextNote}`;
+          next.textContent = `Rank ${RANK_ROMAN[rank + 1]} at ${styleName} ${rankLevel(t.hidden?.anchorLevel ?? t.unlockLevel, rank + 1)} — ${nextNote}`;
           this.artsDetail.appendChild(next);
         }
       }

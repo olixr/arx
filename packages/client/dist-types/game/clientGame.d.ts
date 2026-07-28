@@ -372,6 +372,8 @@ export declare class ClientGame {
     abilityMax: [number, number, number, number];
     /** Chosen technique ability per combat style (server-confirmed). */
     techniques: Record<string, string>;
+    /** THE UNWRITTEN PAGE: hidden arts earned by deed (server truth). */
+    earnedArts: string[];
     /** Answered Callings (server truth; Focus derives from skills). */
     callings: string[];
     /** Active consumable buffs (tonic/food) for the HUD chip row. */

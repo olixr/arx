@@ -43,7 +43,7 @@ import {
   type ItemRoll,
   honedAbility,
   levelForXp,
-  techniqueRank,
+  techniqueRankFor,
   type DiscoveryWire,
   type EquippedItem,
   type S2CFx,
@@ -335,6 +335,8 @@ export class ClientGame {
   abilityMax: [number, number, number, number] = [0, 0, 0, 0];
   /** Chosen technique ability per combat style (server-confirmed). */
   techniques: Record<string, string> = {};
+  /** THE UNWRITTEN PAGE: hidden arts earned by deed (server truth). */
+  earnedArts: string[] = [];
   /** Answered Callings (server truth; Focus derives from skills). */
   callings: string[] = [];
   /** Active consumable buffs (tonic/food) for the HUD chip row. */
@@ -451,7 +453,7 @@ export class ClientGame {
         // THE HONED-ART LAW, mirrored: rank rides the BASE skill level.
         const tech = techniqueDef(chosen);
         if (!tech?.ranks) return ab;
-        const rank = techniqueRank(tech.unlockLevel, levelForXp(this.skills[tech.style] ?? 0));
+        const rank = techniqueRankFor(tech, levelForXp(this.skills[tech.style] ?? 0));
         return honedAbility(ab, tech.ranks, rank);
       }
       case 3: {
@@ -1022,6 +1024,7 @@ export class ClientGame {
       }
       case 'techniques': {
         this.techniques = msg.chosen;
+        this.earnedArts = msg.earned ?? [];
         this.onTechniques?.();
         break;
       }

@@ -374,6 +374,31 @@ export interface TechniqueDef {
    * order (index 0 = Rank II). Authored in content beside the ability.
    */
   ranks?: readonly RankStep[];
+  /**
+   * THE UNWRITTEN PAGE: a hidden art sits OUTSIDE the rung ladder —
+   * earned by deed (an `art:<ability>` character flag), never by
+   * level, and invisible everywhere until the deed is done. The
+   * anchorLevel seeds rank derivation in unlockLevel's place, so an
+   * earned art still grows with the hand that carries it.
+   */
+  hidden?: { anchorLevel: number };
+}
+
+/** The character flag that marks a hidden art as earned. */
+export function artFlag(ability: string): string {
+  return `art:${ability}`;
+}
+
+/**
+ * The level a technique's rank clock counts from: the rung for ladder
+ * arts, the anchor for the unwritten pages. The ONE place this choice
+ * lives — server casts, codex, and hotbar all rank through it. An
+ * earned page never ranks below I: the deed already opened it, so a
+ * hand below the anchor simply holds an unhoned art.
+ */
+export function techniqueRankFor(tech: TechniqueDef, baseLevel: number): number {
+  if (tech.hidden) return Math.max(1, techniqueRank(tech.hidden.anchorLevel, baseLevel));
+  return techniqueRank(tech.unlockLevel, baseLevel);
 }
 
 // ----------------------------------------------------------- honed arts

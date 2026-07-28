@@ -2249,6 +2249,58 @@ Object.assign(PLATES, {
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
+// ------------------------- THE UNWRITTEN PAGE — deed-earned arts
+Object.assign(PLATES, {
+  // Riftwalker Step — through the tear, out the far side of them.
+  riftwalker_step: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The rift: a tall torn slit, dark heart, bright lip.
+    poly(c, st.deep, [[-0.02, -0.36], [0.1, -0.1], [0.02, 0.34], [-0.1, 0.06]], 0.034);
+    fill(c, st.mid, [[-0.01, -0.3], [0.06, -0.08], [0.0, 0.28], [-0.06, 0.04]]);
+    chevrons(c, -0.34, 0, 0, st, 2, 1);
+    star4(c, 0.3, -0.16, 0.1, st.spark, Math.PI / 4);
+    star4(c, 0.34, 0.14, 0.06, st.core);
+  },
+  // Oathbound Edge — the crown remembers the sworn blade.
+  oathbound_edge: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    haloArcs(c, 0, -0.1, st);
+    blade(c, 0, 0.06, 0.62, -Math.PI / 2, st);
+    crown(c, 0, -0.38, 0.24, st.mid, st.core);
+  },
+  // Warden's Volley — the wall-top answer.
+  warden_volley: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    // The parapet: a crenellated line the shafts rise from.
+    poly(c, st.deep, [[-0.42, 0.3], [-0.42, 0.16], [-0.3, 0.16], [-0.3, 0.24], [-0.14, 0.24], [-0.14, 0.16], [0.02, 0.16], [0.02, 0.24], [0.18, 0.24], [0.18, 0.16], [0.3, 0.16], [0.3, 0.24], [0.42, 0.24], [0.42, 0.3]], 0.03);
+    for (let i = 0; i < 4; i++) {
+      const a = -Math.PI / 2 + (i - 1.5) * 0.34;
+      arrow(c, (i - 1.5) * 0.17, 0.02, a, 0.44, st, 0.9);
+    }
+  },
+  // Whisper Fang — one fang, softly spoken.
+  whisper_fang: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.globalAlpha = 0.55;
+    crescent(c, -0.22, 0, 0.16, 0.2, -1.1, 1.1, st.spark, 0.024);
+    crescent(c, -0.22, 0, 0.26, 0.3, -0.9, 0.9, st.spark, 0.022);
+    c.globalAlpha = 1;
+    // The fang: a single curved dark canine, mid-flight.
+    c.fillStyle = st.mid;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(-0.1, -0.1);
+    c.quadraticCurveTo(0.18, -0.16, 0.36, -0.02);
+    c.quadraticCurveTo(0.14, 0.0, -0.06, 0.08);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    fill(c, st.core, [[-0.06, -0.08], [0.14, -0.11], [0.26, -0.03], [-0.04, -0.02]]);
+    droplet(c, 0.3, 0.24, 0.7, st);
+  },
+} satisfies Record<string, (st: FxStyle) => Painter>);
+
 // ---------------------------------------------- sigils & npc specials
 Object.assign(PLATES, {
   // Bone Tempest — the fallen champion answers: the trophy skull inside

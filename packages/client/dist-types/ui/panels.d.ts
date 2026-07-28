@@ -72,6 +72,8 @@ export declare class Panels {
     private readonly menu;
     /** The chosen technique per style, mirrored from the server. */
     private techniques;
+    /** Hidden arts earned by deed, mirrored from the server. */
+    private earnedArts;
     private lastSkills;
     private lastSlots;
     private lastEquipment;
@@ -151,7 +153,12 @@ export declare class Panels {
      */
     private renderIdentity;
     /** Server-confirmed technique choices; re-renders whoever shows them. */
-    setTechniques(chosen: Record<string, string>): void;
+    setTechniques(chosen: Record<string, string>, earned?: string[]): void;
+    /**
+     * THE UNWRITTEN PAGE's codex law: a hidden art simply does not exist
+     * here until its deed is done — no veiled plate, no rumor to min-max.
+     */
+    private visibleTechniques;
     /** Server-confirmed answered Callings; re-renders whoever shows them. */
     setCallings(answered: string[]): void;
     /** Build one skill card for the hall. */

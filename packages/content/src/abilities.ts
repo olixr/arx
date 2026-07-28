@@ -1587,6 +1587,68 @@ const defs: AbilityDef[] = [
     status: { status: 'bleed', power: 1, durationTicks: 40 },
   },
 
+  // ------------------------- THE UNWRITTEN PAGE — deed-earned arts
+  // These never sit on a rung: an `art:<id>` flag opens each, set by
+  // a deed (never drop-luck). Invisible everywhere until earned.
+  {
+    id: 'riftwalker_step',
+    name: 'Riftwalker Step',
+    desc: 'Step the way the rift taught you — through, and out the far side of them.',
+    color: '#9a86d8',
+    code: 'Rw',
+    cooldownTicks: 190, // 9.5 s
+    shape: 'dash_strike',
+    damage: 8,
+    dashTiles: 4.4,
+    element: 'void',
+    status: { status: 'shock', power: 1, durationTicks: 50 },
+  },
+  {
+    id: 'oathbound_edge',
+    name: 'Oathbound Edge',
+    desc: 'A sworn stroke — the crown remembers, and the oath repays the arm.',
+    color: '#e8c04c',
+    code: 'Oe',
+    cooldownTicks: 200, // 10 s
+    castFreezeTicks: 4,
+    shape: 'melee_arc',
+    damage: 11,
+    range: 2.3,
+    arc: 1.2,
+    drainFrac: 0.2,
+  },
+  {
+    id: 'warden_volley',
+    name: "Warden's Volley",
+    desc: 'The wall-top answer: a spread of shafts that says NO further.',
+    color: '#8a9a78',
+    code: 'Wv',
+    cooldownTicks: 200, // 10 s
+    shape: 'projectile_fan',
+    damage: 6,
+    range: 11,
+    projectiles: 4,
+    spreadArc: 0.9,
+    projectileSpeed: 15,
+    knockback: 1.2,
+  },
+  {
+    id: 'whisper_fang',
+    name: 'Whisper Fang',
+    desc: 'One fang, spoken softly. It finds the throat that was named.',
+    color: '#6a5a88',
+    code: 'Wf',
+    cooldownTicks: 190, // 9.5 s
+    shape: 'projectile_fan',
+    damage: 9,
+    range: 12,
+    projectiles: 1,
+    projectileSpeed: 16,
+    homing: 7.0,
+    element: 'void',
+    status: { status: 'bleed', power: 1, durationTicks: 60 },
+  },
+
   // ----------------------------------------------------------- sigils
   {
     id: 'bone_tempest',
@@ -2169,6 +2231,59 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       {
         note: 'Count them later.',
         status: { status: 'bleed', power: 2, durationTicks: 40 },
+      },
+    ],
+  },
+
+  // ------------------------- THE UNWRITTEN PAGE — deed-earned seats
+  {
+    ability: 'riftwalker_step',
+    style: 'magic',
+    unlockLevel: 0,
+    hidden: { anchorLevel: 30 },
+    ranks: [
+      { note: 'You carry more of the far side back.', damage: 10 },
+      { note: 'The step lengthens; the rift stays open longer for you.', dashTiles: 5.2, cooldownTicks: 170 },
+      {
+        note: 'The static of the crossing clings to everything you pass.',
+        damage: 11,
+        status: { status: 'shock', power: 1, durationTicks: 80 },
+      },
+    ],
+  },
+  {
+    ability: 'oathbound_edge',
+    style: 'melee',
+    unlockLevel: 0,
+    hidden: { anchorLevel: 30 },
+    ranks: [
+      { note: 'The oath weighs more.', damage: 13 },
+      { note: 'The vow opens wider, oftener.', arc: 1.4, cooldownTicks: 180 },
+      { note: 'The oath repays in full.', drainFrac: 0.3 },
+    ],
+  },
+  {
+    ability: 'warden_volley',
+    style: 'archery',
+    unlockLevel: 0,
+    hidden: { anchorLevel: 30 },
+    ranks: [
+      { note: 'Each shaft means the NO harder.', damage: 7 },
+      { note: 'A fifth shaft joins the answer.', projectiles: 5 },
+      { note: 'The wall holds; they do not.', damage: 8, knockback: 2.0, cooldownTicks: 180 },
+    ],
+  },
+  {
+    ability: 'whisper_fang',
+    style: 'sneak',
+    unlockLevel: 0,
+    hidden: { anchorLevel: 30 },
+    ranks: [
+      { note: 'The whisper cuts deeper.', damage: 11 },
+      { note: 'The name is spoken sooner.', cooldownTicks: 170 },
+      {
+        note: 'The whisper keeps talking after it lands.',
+        status: { status: 'bleed', power: 2, durationTicks: 80 },
       },
     ],
   },

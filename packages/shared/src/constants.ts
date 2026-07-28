@@ -26,7 +26,8 @@
 // v12: the hand learns its Callings — S2CCallings carries the answered
 // toggleable skill passives on join + change, C2SCalling flips one.
 // A v11 client would never see the passive layer it is being served,
-// so reject cleanly.
+// so reject cleanly. (Same release: S2CTechniques grows `earned` for
+// THE UNWRITTEN PAGE's deed-earned hidden arts.)
 export const PROTOCOL_VERSION = 12;
 
 /** Server simulation ticks per second. */

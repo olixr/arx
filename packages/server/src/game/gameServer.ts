@@ -26,6 +26,8 @@ import {
   levelForXp,
   honedAbility,
   techniqueRank,
+  techniqueRankFor,
+  artFlag,
   RANK_ROMAN,
   stepMovement,
   xpForLevel,
@@ -107,6 +109,7 @@ import {
   stageForElapsed,
   techniqueDef,
   techniquesFor,
+  TECHNIQUES,
   callingDef,
   callingsFor,
   foldEffect,
@@ -1921,7 +1924,7 @@ export class GameServer {
     session.sendJson({ t: 'recipes', known: [...player.knownRecipes] });
     session.sendJson({ t: 'inv', slots: player.inventory });
     session.sendJson({ t: 'equip', equipment: player.equipment, carry: player.carryStyle, carryOff: player.carryOff });
-    session.sendJson({ t: 'techniques', chosen: player.techniques });
+    this.sendTechniques(player);
     // Answered Callings ride in after the skills that budget them; the
     // sanitize is belt-and-braces (skills only rise) plus the guard
     // against defs retired between sessions.
@@ -3473,8 +3476,10 @@ export class GameServer {
         continue;
       }
       if (!tech.ranks) continue;
-      const before = techniqueRank(tech.unlockLevel, levelBefore);
-      const after = techniqueRank(tech.unlockLevel, levelAfter);
+      // An unearned page has no rank to climb.
+      if (tech.hidden && !player.flags.has(artFlag(tech.ability))) continue;
+      const before = techniqueRankFor(tech, levelBefore);
+      const after = techniqueRankFor(tech, levelAfter);
       if (after > before && after >= 2) {
         ladderMoved = true;
         const step = tech.ranks[Math.min(after - 2, tech.ranks.length - 1)];
@@ -4311,6 +4316,8 @@ export class GameServer {
         channel: 'system',
         text: `The last of them falls. ${def.name} is broken — word of it will travel.`,
       });
+      // THE UNWRITTEN PAGE: breaking a garrison is the warden's deed.
+      this.grantArt(killer, 'warden_volley');
     }
   }
 
@@ -5220,6 +5227,60 @@ export class GameServer {
     if (player.flags.get(flag) === value) return;
     player.flags.set(flag, value);
     if (player.characterId > 0) this.accounts.setFlag(player.characterId, flag, value);
+    // THE UNWRITTEN PAGE: some story flags ARE the deed — completing
+    // the king's audience, earning Mab's word. The grant rides the one
+    // flag choke point, so any authored path to the flag counts.
+    const art = GameServer.DEED_FLAG_ARTS[flag];
+    if (art) this.grantArt(player, art);
+  }
+
+  /**
+   * Deeds told through flags → the unwritten page they fill. Kill-shaped
+   * deeds (the delve boss, the broken garrison) call grantArt directly.
+   */
+  private static readonly DEED_FLAG_ARTS: Record<string, string> = {
+    // The oath sworn before the twin thrones of Silverfall.
+    'dlg:aeriex_court': 'oathbound_edge',
+    // Magpie Mab's word — the end of the Rookery whisper-chain.
+    mab_word: 'whisper_fang',
+  };
+
+  /** Hidden arts this player has earned, for the codex wire. */
+  private earnedArts(player: PlayerComp): string[] {
+    return TECHNIQUES.filter(
+      (t) => t.hidden && player.flags.has(artFlag(t.ability)),
+    ).map((t) => t.ability);
+  }
+
+  private sendTechniques(player: PlayerComp): void {
+    player.session?.sendJson({
+      t: 'techniques',
+      chosen: player.techniques,
+      earned: this.earnedArts(player),
+    });
+  }
+
+  /**
+   * THE UNWRITTEN PAGE fills itself: a deed done once earns the art
+   * forever (an art:<id> flag — deeds, never dice). The ceremony is
+   * told to the doer alone; the codex seats the page on arrival.
+   */
+  private grantArt(player: PlayerComp, artId: string): void {
+    const tech = techniqueDef(artId);
+    if (!tech?.hidden) return;
+    const flag = artFlag(artId);
+    if (player.flags.has(flag)) return;
+    // Direct write — not setPlayerFlag — so a grant can never re-enter
+    // the deed watcher above.
+    player.flags.set(flag, 1);
+    if (player.characterId > 0) this.accounts.setFlag(player.characterId, flag, 1);
+    const name = abilityDef(artId)?.name ?? artId;
+    player.session?.sendJson({
+      t: 'chat',
+      channel: 'system',
+      text: `An unwritten page fills itself: ${name}. The codex will remember the deed.`,
+    });
+    this.sendTechniques(player);
   }
 
   unequip(eid: EntityId, slot: EquipSlot): void {
@@ -5858,7 +5919,7 @@ export class GameServer {
         // means casts, cooldown mirrors, and codex previews agree.
         const tech = techniqueDef(chosen);
         if (!tech?.ranks) return ab;
-        const rank = techniqueRank(tech.unlockLevel, levelForXp(player.skills[tech.style] ?? 0));
+        const rank = techniqueRankFor(tech, levelForXp(player.skills[tech.style] ?? 0));
         return honedAbility(ab, tech.ranks, rank);
       }
       case SLOT_SIGIL: {
@@ -5910,18 +5971,23 @@ export class GameServer {
     if (!(COMBAT_STYLES as readonly string[]).includes(style)) return;
     const tech = techniqueDef(ability);
     if (!tech || tech.style !== style) return;
-    const level = levelForXp(player.skills[tech.style] ?? 0);
-    if (level < tech.unlockLevel) {
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: `${abilityDef(ability)?.name ?? ability} unlocks at ${tech.style} level ${tech.unlockLevel}.`,
-      });
-      return;
+    if (tech.hidden) {
+      // An unwritten page opens by deed, never by level.
+      if (!player.flags.has(artFlag(ability))) return;
+    } else {
+      const level = levelForXp(player.skills[tech.style] ?? 0);
+      if (level < tech.unlockLevel) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `${abilityDef(ability)?.name ?? ability} unlocks at ${tech.style} level ${tech.unlockLevel}.`,
+        });
+        return;
+      }
     }
     player.techniques[style] = ability;
     if (player.characterId > 0) this.accounts.saveTechnique(player.characterId, style, ability);
-    player.session?.sendJson({ t: 'techniques', chosen: player.techniques });
+    this.sendTechniques(player);
     this.sendCooldowns(player);
   }
 
@@ -7583,6 +7649,12 @@ export class GameServer {
         : baseSec;
       spawn.respawnAt = Date.now() + sec * 1000;
       this.notePoiKill(npc.spawnIndex, killerEid);
+      // THE UNWRITTEN PAGE: felling a delve's named boss (the only
+      // named spawn a dungeon seeds) is the riftwalker's deed.
+      if (spawn.name !== undefined && pos.y >= DUNGEON_MIN_Y) {
+        const killer = this.players.get(killerEid);
+        if (killer) this.grantArt(killer, 'riftwalker_step');
+      }
     }
     this.wildBodies.delete(npcEid);
     // A slain actor's post refills on the synthesized def's clock.

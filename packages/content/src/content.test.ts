@@ -97,9 +97,10 @@ test('techniques resolve, ladder is sane, and each style has a tree', () => {
   const styles = new Map<string, number[]>();
   for (const t of TECHNIQUES) {
     assert.ok(abilityDef(t.ability), `technique '${t.ability}' missing`);
-    assert.ok(t.unlockLevel >= 1 && t.unlockLevel <= 99);
+    // Hidden pages have no rung — their clock is the anchor (ladder.test).
+    if (!t.hidden) assert.ok(t.unlockLevel >= 1 && t.unlockLevel <= 99);
     const levels = styles.get(t.style) ?? [];
-    levels.push(t.unlockLevel);
+    if (!t.hidden) levels.push(t.unlockLevel);
     styles.set(t.style, levels);
   }
   for (const style of ['melee', 'archery', 'magic', 'sneak']) {

@@ -97,6 +97,8 @@ function utilityCredit(ab: AbilityDef): number {
   if (ab.dashTiles) u += Math.abs(ab.dashTiles) * 0.5;
   if (ab.knockback) u += Math.abs(ab.knockback) * (ab.knockback < 0 ? 0.8 : 0.4);
   if (ab.executeBelow) u += ab.damage * (ab.executeBelow.mult - 1) * ab.executeBelow.frac;
+  // Drained life is sustain — worth a little less than the damage it rode.
+  if (ab.drainFrac) u += ab.damage * ab.drainFrac * 0.6;
   return u;
 }
 
@@ -206,8 +208,9 @@ test('THE RELEVANCE LAW: every fully-honed art sits within ±20% of its style me
 test('the rank clock is uniform and the ladder mastered before 99', () => {
   assert.deepEqual([...RANK_SURPLUS], [0, 15, 30, 45]);
   for (const tech of TECHNIQUES) {
+    const clock = tech.hidden?.anchorLevel ?? tech.unlockLevel;
     assert.ok(
-      tech.unlockLevel + RANK_SURPLUS[TECHNIQUE_MAX_RANK - 1]! <= 99,
+      clock + RANK_SURPLUS[TECHNIQUE_MAX_RANK - 1]! <= 99,
       `${tech.ability} reaches Rank IV before 99`,
     );
   }
@@ -216,13 +219,29 @@ test('the rank clock is uniform and the ladder mastered before 99', () => {
 test('THE OPEN LADDER: an art every five levels, 5 through 50, no gaps, no doubles', () => {
   const RUNGS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
   for (const style of ['melee', 'archery', 'magic', 'sneak']) {
-    const arts = techniquesFor(style);
+    const arts = techniquesFor(style).filter((t) => !t.hidden);
     assert.deepEqual(
       arts.map((t) => t.unlockLevel),
       RUNGS,
       `${style} ladder must fill every rung in order`,
     );
     assert.equal(new Set(arts.map((t) => t.ability)).size, RUNGS.length);
+  }
+});
+
+test('THE UNWRITTEN PAGE: hidden arts are well-formed, one per style at launch', () => {
+  const hidden = TECHNIQUES.filter((t) => t.hidden);
+  const byStyle = new Map<string, number>();
+  for (const t of hidden) {
+    byStyle.set(t.style, (byStyle.get(t.style) ?? 0) + 1);
+    assert.equal(t.unlockLevel, 0, `${t.ability}: a page has no rung`);
+    const anchor = t.hidden!.anchorLevel;
+    assert.ok(anchor >= 1 && anchor <= 54, `${t.ability}: anchor ${anchor} must mature before 99`);
+    assert.ok(t.ranks?.length === TECHNIQUE_MAX_RANK - 1, `${t.ability} climbs to Rank IV too`);
+    assert.ok(abilityDef(t.ability), `${t.ability} resolves`);
+  }
+  for (const style of ['melee', 'archery', 'magic', 'sneak']) {
+    assert.equal(byStyle.get(style), 1, `${style} carries exactly one unwritten page at launch`);
   }
 });
 

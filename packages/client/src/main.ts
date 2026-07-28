@@ -886,7 +886,7 @@ dressPanel(el('social-panel'), {
 // Dodge dash feedback: whoosh + a streak of dust kicked out behind.
 const hotbar = new Hotbar(input);
 hotbar.onReady = () => sfx.abilityReady();
-game.onTechniques = () => panels.setTechniques(game.techniques);
+game.onTechniques = () => panels.setTechniques(game.techniques, game.earnedArts);
 game.onCallings = () => panels.setCallings(game.callings);
 
 // Committing to a cast: sound, hands, and a wind-up ring at the feet.
