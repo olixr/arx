@@ -167,6 +167,12 @@ import {
   HEAVY_BOLT_SPLASH,
   HOMING_SEEK_RANGE,
   VENOM_TICK_EVERY,
+  NPC_POWER_PER_LEVEL,
+  PLAYER_POWER_PER_LEVEL,
+  npcMaxHit,
+  mitigate,
+  powerMult as powerMultFn,
+  scaledMaxHit,
   InputButton,
   SHOCK_MAX_TICKS,
   SLOT_ART,
@@ -503,6 +509,8 @@ interface ProjectileComp {
   hitEids?: Set<EntityId>;
   /** NPC-fired: seeks players (and decoys) instead of NPCs. */
   fromNpc?: boolean;
+  /** Firing NPC's level — pierces the target's armor class on impact. */
+  attackerLevel?: number;
   /** The wand's heavy third bolt — fat visual, shove on impact. */
   heavy?: boolean;
   /** Splash damage radius around the impact point. */
@@ -556,6 +564,8 @@ interface PendingBlast {
   style: SkillId;
   /** NPC blasts hurt players; player blasts hurt NPCs. */
   fromNpc: boolean;
+  /** NPC caster's level — pierces the victims' armor class. */
+  attackerLevel?: number;
   color: string;
   /** pulse_nova: burst at the caster's LIVE position (spin that moves). */
   followCaster?: boolean;
@@ -584,6 +594,8 @@ interface ActiveField {
   ownerEid: EntityId;
   style: SkillId;
   fromNpc: boolean;
+  /** NPC caster's level — pierces the victims' armor class. */
+  attackerLevel?: number;
   knockback: number;
   drainFrac?: number;
 }
@@ -4901,7 +4913,10 @@ export class GameServer {
     const maxHit = Math.max(
       1,
       Math.round(
-        weapon.damage * (1 + level * 0.05) * player.gear.styleDmgMult[weapon.style] * elementMult,
+        weapon.damage *
+          powerMultFn(level, PLAYER_POWER_PER_LEVEL) *
+          player.gear.styleDmgMult[weapon.style] *
+          elementMult,
       ),
     );
 
@@ -4997,7 +5012,7 @@ export class GameServer {
       1,
       Math.round(
         off.weapon.damage *
-          (1 + level * 0.05) *
+          powerMultFn(level, PLAYER_POWER_PER_LEVEL) *
           player.gear.styleDmgMult.melee *
           offhandDamageFactor(dwLevel),
       ),
@@ -5494,9 +5509,19 @@ export class GameServer {
       ? ((casterPlayer.gear.styleDmgMult as Record<string, number>)[style] ?? 1) *
         (style === 'magic' && element ? (casterPlayer.gear.elementDmgMult[element] ?? 1) : 1)
       : 1;
+    // THE THREAT LAW: NPC casters climb the steeper NPC curve — the
+    // level line is all they have; players compound gear on top.
     const maxHit =
       ab.damage > 0
-        ? Math.max(1, Math.round(ab.damage * (1 + level * 0.05) * gearMult * powerMult))
+        ? Math.max(
+            1,
+            Math.round(
+              ab.damage *
+                powerMultFn(level, fromNpc ? NPC_POWER_PER_LEVEL : PLAYER_POWER_PER_LEVEL) *
+                gearMult *
+                powerMult,
+            ),
+          )
         : 0;
     const knockbackMult = ab.knockback ?? 1;
 
@@ -5548,7 +5573,7 @@ export class GameServer {
           color: ab.color,
         });
         if (fromNpc) {
-          this.blastPlayers(pos.x, pos.y, radius, maxHit, ab.status);
+          this.blastPlayers(pos.x, pos.y, radius, maxHit, ab.status, level);
         } else {
           for (const [npcEid, npc] of this.npcs) {
             const npos = this.positions.get(npcEid);
@@ -5629,6 +5654,7 @@ export class GameServer {
             distLeft: ab.range ?? 6,
             status: ab.status,
             fromNpc,
+            attackerLevel: fromNpc ? level : undefined,
             element: ab.element ?? (style === 'magic' ? element : undefined),
             homingTurn: ab.homing,
           });
@@ -5710,6 +5736,7 @@ export class GameServer {
             ownerEid: casterEid,
             style,
             fromNpc,
+            attackerLevel: fromNpc ? level : undefined,
             color: ab.color,
             followCaster: true,
             abilityId: ab.id,
@@ -5747,6 +5774,7 @@ export class GameServer {
             status: ab.status,
             pierce: ab.pierce,
             fromNpc,
+            attackerLevel: fromNpc ? level : undefined,
             element: projElement,
             homingTurn: ab.homing,
             targetEid: marks.length > 0 ? marks[i % marks.length] : undefined,
@@ -5774,6 +5802,7 @@ export class GameServer {
           ownerEid: casterEid,
           style,
           fromNpc,
+          attackerLevel: fromNpc ? level : undefined,
           color: ab.color,
           abilityId: ab.id,
           executeBelow: ab.executeBelow,
@@ -5809,6 +5838,7 @@ export class GameServer {
           ownerEid: casterEid,
           style,
           fromNpc,
+          attackerLevel: fromNpc ? level : undefined,
           knockback: ab.knockback ?? 0,
           drainFrac: ab.drainFrac,
         });
@@ -5869,6 +5899,8 @@ export class GameServer {
             if (!strike(playerEid, BODY_RADIUS, ppos.x, ppos.y)) continue;
             this.damagePlayer(playerEid, Math.floor(Math.random() * (maxHit + 1)), {
               status: ab.status,
+              attackerLevel: level,
+              sourceEid: casterEid,
             });
           }
         } else {
@@ -5928,7 +5960,7 @@ export class GameServer {
         const cx = pos.x;
         const cy = pos.y;
         if (fromNpc) {
-          this.blastPlayers(cx, cy, radius, maxHit, ab.status);
+          this.blastPlayers(cx, cy, radius, maxHit, ab.status, level);
         } else {
           for (const [npcEid, npc] of this.npcs) {
             const npos = this.positions.get(npcEid);
@@ -5965,6 +5997,7 @@ export class GameServer {
             ownerEid: casterEid,
             style,
             fromNpc,
+            attackerLevel: fromNpc ? level : undefined,
             color: ab.color,
             followCaster: true,
             abilityId: ab.id,
@@ -6057,13 +6090,23 @@ export class GameServer {
   }
 
   /** NPC-owned blast: hits players and straw decoys. */
-  private blastPlayers(x: number, y: number, radius: number, maxHit: number, status?: StatusApply): void {
+  private blastPlayers(
+    x: number,
+    y: number,
+    radius: number,
+    maxHit: number,
+    status?: StatusApply,
+    attackerLevel?: number,
+  ): void {
     for (const [playerEid, player] of this.players) {
       if (player.session === null && player.disconnectedAt !== null) continue;
       const ppos = this.positions.get(playerEid);
       if (!ppos) continue;
       if (Math.hypot(ppos.x - x, ppos.y - y) > radius) continue;
-      this.damagePlayer(playerEid, Math.floor(Math.random() * (maxHit + 1)), { status });
+      this.damagePlayer(playerEid, Math.floor(Math.random() * (maxHit + 1)), {
+        status,
+        attackerLevel,
+      });
     }
     for (const [sumEid, sum] of this.summons) {
       if (sum.kind !== 'decoy') continue;
@@ -6361,7 +6404,7 @@ export class GameServer {
           // Sprung: bite, chill, and the trap is spent.
           const owner = this.players.get(sum.ownerEid);
           const level = owner ? this.effectiveLevel(owner, 'melee') : 1;
-          const dmg = Math.max(1, Math.round(3 * (1 + level * 0.05)));
+          const dmg = scaledMaxHit(3, level, PLAYER_POWER_PER_LEVEL);
           this.damageNpc(npcEid, dmg, sum.ownerEid, 'melee', {
             status: { status: 'chill', power: sum.power, durationTicks: 80 },
           });
@@ -6400,7 +6443,7 @@ export class GameServer {
       });
       if (blast.fromNpc) {
         // NPC flurries read as full circles — a fair trade for one code path.
-        this.blastPlayers(blast.x, blast.y, blast.radius, blast.damage, blast.status);
+        this.blastPlayers(blast.x, blast.y, blast.radius, blast.damage, blast.status, blast.attackerLevel);
       } else {
         for (const [npcEid, npc] of this.npcs) {
           const npos = this.positions.get(npcEid);
@@ -6441,7 +6484,7 @@ export class GameServer {
       }
       if (field.ticksLeft % field.everyTicks !== 0) continue;
       if (field.fromNpc) {
-        this.blastPlayers(field.x, field.y, field.radius, field.damage, field.status);
+        this.blastPlayers(field.x, field.y, field.radius, field.damage, field.status, field.attackerLevel);
         continue;
       }
       for (const [npcEid, npc] of this.npcs) {
@@ -6571,6 +6614,8 @@ export class GameServer {
           if (dx * dx + dy * dy < 0.45 ** 2) {
             this.damagePlayer(playerEid, Math.floor(Math.random() * (proj.maxHit + 1)), {
               status: proj.status,
+              attackerLevel: proj.attackerLevel,
+              sourceEid: proj.ownerEid,
             });
             dead = true;
             break;
@@ -6948,7 +6993,13 @@ export class GameServer {
   private damagePlayer(
     eid: EntityId,
     raw: number,
-    opts: { status?: StatusApply; pierceArmor?: boolean; sourceEid?: EntityId } = {},
+    opts: {
+      status?: StatusApply;
+      pierceArmor?: boolean;
+      sourceEid?: EntityId;
+      /** Attacker's level — feeds armor-class piercing (default 1). */
+      attackerLevel?: number;
+    } = {},
   ): void {
     const player = this.players.get(eid);
     const health = this.healths.get(eid);
@@ -6964,11 +7015,12 @@ export class GameServer {
     // The gear cache already sums rolled armor (rarity-scaled) plus
     // legacy flat armor — the per-hit loop over worn items is gone.
     const armor = player.gear.armor;
-    // Defence + armor shave hits down, never below 0. DoTs pierce —
-    // the wound is already inside the armor.
+    // THE THREAT LAW mitigation: percentage armor class from trained
+    // defence + worn armor, pierced by the attacker's level. DoTs skip
+    // it entirely — the wound is already inside the armor.
     let dmg = opts.pierceArmor
       ? raw
-      : Math.max(0, raw - Math.floor(defLevel / 10) - Math.floor(armor / 2));
+      : mitigate(raw, defLevel, armor, opts.attackerLevel ?? 1);
     if (opts.status) this.applyStatusToPlayer(eid, opts.status, opts.sourceEid ?? 0);
     // Ability shields soak damage before flesh does.
     for (const b of player.buffs) {
@@ -8233,6 +8285,7 @@ export class GameServer {
       this.damagePlayer(targetEid, raw, {
         status: npc.def.attackStatus,
         sourceEid: npcEid,
+        attackerLevel: npc.def.level,
       });
       // Thorns: biting the buckler costs a point; bristling enchants
       // stack more points on top of the passive's one.
@@ -8371,7 +8424,8 @@ export class GameServer {
                 this.projectiles.set(proj, {
                   ownerEid: eid,
                   style: 'archery',
-                  maxHit: npc.def.damage,
+                  maxHit: npcMaxHit(npc.def.damage, npc.def.level),
+                  attackerLevel: npc.def.level,
                   dirX: Math.cos(angle),
                   dirY: Math.sin(angle),
                   speed: npc.def.ranged.projectileSpeed,
@@ -8404,7 +8458,10 @@ export class GameServer {
                 const ndx = tpos.x - pos.x;
                 const ndy = tpos.y - pos.y;
                 if (Math.hypot(ndx, ndy) <= npc.def.attackRange + 0.55) {
-                  this.npcStrike(eid, npc, npc.targetEid, Math.floor(Math.random() * (npc.def.damage + 1)));
+                  // THE THREAT LAW: the die is carried by the level; the
+                  // 0-roll whiff below is deliberate and stays.
+                  const hit = npcMaxHit(npc.def.damage, npc.def.level);
+                  this.npcStrike(eid, npc, npc.targetEid, Math.floor(Math.random() * (hit + 1)));
                 }
               }
             }
@@ -9652,7 +9709,9 @@ export class GameServer {
     const level = this.effectiveLevel(player, 'archery');
     const base = Math.max(
       1,
-      Math.round(weapon.damage * (1 + level * 0.05) * player.gear.styleDmgMult.archery),
+      Math.round(
+        weapon.damage * powerMultFn(level, PLAYER_POWER_PER_LEVEL) * player.gear.styleDmgMult.archery,
+      ),
     );
     const pos = this.positions.must(eid);
     const fire = (shot: { maxHit: number; speed: number; range: number }, angle: number, fullDraw: boolean) => {

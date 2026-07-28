@@ -186,7 +186,7 @@ const defs: NpcDef[] = [
     name: 'Goblin',
     level: 5,
     maxHp: 14,
-    damage: 1,
+    damage: 2,
     attackRange: 1.0,
     attackCooldownTicks: 50,
     aggroRange: 4,
@@ -301,7 +301,7 @@ const defs: NpcDef[] = [
     name: 'Kobold',
     level: 4,
     maxHp: 10,
-    damage: 1,
+    damage: 2,
     attackRange: 0.95,
     attackCooldownTicks: 46,
     aggroRange: 4,
@@ -440,7 +440,7 @@ const defs: NpcDef[] = [
     name: 'Slime',
     level: 4,
     maxHp: 14,
-    damage: 1,
+    damage: 2,
     attackRange: 0.8,
     attackCooldownTicks: 48,
     aggroRange: 0,
@@ -860,11 +860,14 @@ export function validateNpcDef(
  * ONE BESTIARY, EVERY TIER — scale a def to a target combat level.
  * Dungeon garrisons are the authored beasts re-issued at the key's
  * power: hp grows a touch superlinearly (fights lengthen with the
- * ladder), damage sublinearly (a level-68 skeleton stings, it doesn't
- * one-shot), xp tracks level honestly. Everything else — speed, reach,
- * specials, resists, art — is the def's own; a scaled troll still
- * fights like a troll. Loot rolls read the SCALED level, so deep
- * dungeon beasts pay out deep-level loot by construction.
+ * ladder), xp tracks level honestly. The damage DIE drifts only
+ * gently (^0.5) — under THE THREAT LAW the level itself already
+ * multiplies every strike (shared/sim/damage.ts npcMaxHit), so a
+ * steeper die here would compound into one-shot territory; a
+ * level-68 skeleton bites hard, it doesn't delete. Everything else —
+ * speed, reach, specials, resists, art — is the def's own; a scaled
+ * troll still fights like a troll. Loot rolls read the SCALED level,
+ * so deep dungeon beasts pay out deep-level loot by construction.
  */
 export function scaleNpcDef(def: NpcDef, level: number, name?: string): NpcDef {
   if (level === def.level && !name) return def;
@@ -874,7 +877,7 @@ export function scaleNpcDef(def: NpcDef, level: number, name?: string): NpcDef {
     name: name ?? def.name,
     level,
     maxHp: Math.max(1, Math.round(def.maxHp * Math.pow(ratio, 1.12))),
-    damage: def.damage > 0 ? Math.max(1, Math.round(def.damage * Math.pow(ratio, 0.82))) : 0,
+    damage: def.damage > 0 ? Math.max(1, Math.round(def.damage * Math.pow(ratio, 0.5))) : 0,
     xpReward: Math.max(1, Math.round(def.xpReward * Math.pow(ratio, 1.05))),
   };
 }
