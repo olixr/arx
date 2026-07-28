@@ -2073,22 +2073,30 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   text-shadow: var(--punch-small);
 }
 
-/* The ladder: four plates riding one rail. */
+/* THE OPEN LADDER: ten plates, five to a row — the rail line rides
+   behind each row of wells (top row at the well line, second row one
+   plate-height down), so both rows read as rungs of one ladder. */
 .tech-rail {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px 10px;
 }
 
-.tech-rail::before {
+.tech-rail::before,
+.tech-rail::after {
   content: '';
   position: absolute;
-  left: 10%;
-  right: 10%;
+  left: 8%;
+  right: 8%;
   top: 31px;
   height: 2px;
   background: var(--line);
+}
+
+.tech-rail::after {
+  top: auto;
+  bottom: 71px;
 }
 
 .tech-plate-btn {

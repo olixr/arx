@@ -6319,50 +6319,21 @@ export class GameServer {
       }
 
       case 'self_buff': {
-        const player = this.players.get(casterEid);
-        const self = ab.self;
-        if (!player || !self) break;
-        // The empowerment is VISIBLE: everyone nearby sees the flourish.
-        this.broadcastFx({
-          t: 'fx',
-          kind: 'buff',
-          x: pos.x,
-          y: pos.y,
-          radius: 0.9,
-          ticks: self.durationTicks,
-          id: ab.id,
-          color: ab.color,
-        });
-        // A trinket's shield and heal grow with the instance too.
-        if (self.heal) {
-          const health = this.healths.must(casterEid);
-          health.hp = Math.min(health.maxHp, health.hp + Math.round(self.heal * powerMult));
-        }
-        if (
-          self.speedMult !== undefined ||
-          self.shieldHp !== undefined ||
-          self.meleeLifesteal !== undefined ||
-          self.onHitStatus !== undefined
-        ) {
-          player.buffs.push(
-            mkBuff({
-              speedMult: self.speedMult ?? 1,
-              shieldHp: Math.round((self.shieldHp ?? 0) * powerMult),
-              meleeLifesteal: self.meleeLifesteal ?? 0,
-              onHitStatus: self.onHitStatus,
-              untilTick: this.tickCount + self.durationTicks,
-            }),
-          );
-        }
+        this.applySelf(casterEid, ab, powerMult, pos);
         break;
       }
 
       case 'summon': {
         const spec = ab.summon;
         if (!spec) break;
+        // A ranged summon plants at the aimed point (Snare Shot rides
+        // the arrow out); rangeless summons keep dropping at the feet.
+        const at = ab.range
+          ? (targetPos ?? this.resolveGroundTarget(pos, aim, ab.range))
+          : { x: pos.x, y: pos.y };
         const eid = this.ecs.create();
         this.kinds.set(eid, EntityKind.Prop);
-        this.positions.set(eid, { x: pos.x, y: pos.y, dir: aim });
+        this.positions.set(eid, { x: at.x, y: at.y, dir: aim });
         this.summons.set(eid, {
           kind: spec.kind,
           ownerEid: casterEid,
@@ -6375,8 +6346,8 @@ export class GameServer {
         this.broadcastFx({
           t: 'fx',
           kind: 'summon',
-          x: pos.x,
-          y: pos.y,
+          x: at.x,
+          y: at.y,
           radius: spec.radius,
           ticks: spec.durationTicks,
           id: ab.id,
@@ -6387,13 +6358,67 @@ export class GameServer {
           for (const [npcEid, npc] of this.npcs) {
             const npos = this.positions.get(npcEid);
             if (!npos) continue;
-            if (Math.hypot(npos.x - pos.x, npos.y - pos.y) > spec.radius) continue;
+            if (Math.hypot(npos.x - at.x, npos.y - at.y) > spec.radius) continue;
             if (npc.def.damage <= 0) continue;
             this.npcAggro(npcEid, npc, eid);
           }
         }
         break;
       }
+    }
+
+    // THE COMPOUND LAW: `self` rides ANY shape — a leap that lands with
+    // a war-shout, a wave that steels the thrower. The self_buff shape
+    // handles its own inside the switch; every other shape applies the
+    // rider here, at the cast's final position (a leap shouts where it
+    // LANDS, not where it left).
+    if (ab.shape !== 'self_buff' && ab.self) this.applySelf(casterEid, ab, powerMult, pos);
+  }
+
+  /**
+   * The caster's own empowerment: heal, shield, haste, oiled edge.
+   * One body serves the self_buff shape and every compound art's
+   * `self` rider — the empowerment is VISIBLE either way.
+   */
+  private applySelf(
+    casterEid: EntityId,
+    ab: AbilityDef,
+    powerMult: number,
+    pos: { x: number; y: number },
+  ): void {
+    const player = this.players.get(casterEid);
+    const self = ab.self;
+    if (!player || !self) return;
+    this.broadcastFx({
+      t: 'fx',
+      kind: 'buff',
+      x: pos.x,
+      y: pos.y,
+      radius: 0.9,
+      ticks: self.durationTicks,
+      id: ab.id,
+      color: ab.color,
+    });
+    // A trinket's shield and heal grow with the instance too.
+    if (self.heal) {
+      const health = this.healths.must(casterEid);
+      health.hp = Math.min(health.maxHp, health.hp + Math.round(self.heal * powerMult));
+    }
+    if (
+      self.speedMult !== undefined ||
+      self.shieldHp !== undefined ||
+      self.meleeLifesteal !== undefined ||
+      self.onHitStatus !== undefined
+    ) {
+      player.buffs.push(
+        mkBuff({
+          speedMult: self.speedMult ?? 1,
+          shieldHp: Math.round((self.shieldHp ?? 0) * powerMult),
+          meleeLifesteal: self.meleeLifesteal ?? 0,
+          onHitStatus: self.onHitStatus,
+          untilTick: this.tickCount + self.durationTicks,
+        }),
+      );
     }
   }
 

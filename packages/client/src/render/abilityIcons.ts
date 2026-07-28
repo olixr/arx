@@ -1903,6 +1903,352 @@ Object.assign(PLATES, {
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
+// ------------------------------- THE OPEN LADDER — the 24 new arts
+Object.assign(PLATES, {
+  // Bull Rush — the lowered shoulder becomes a wedge; the dust agrees.
+  bull_rush: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    chevrons(c, -0.34, -0.02, 0, st, 2, 1.1);
+    poly(c, st.mid, [[-0.08, -0.22], [0.34, -0.04], [0.34, 0.12], [-0.12, 0.18]], 0.036);
+    fill(c, st.core, [[-0.06, -0.18], [0.26, -0.04], [-0.08, 0.0]]);
+    puff(c, -0.18, 0.22, 0.09, st.deep);
+    puff(c, 0.02, 0.26, 0.07, st.deep);
+  },
+  // Warcry — the shout leaves the mouth and hardens into rings.
+  warcry: (st) => (c) => {
+    c.translate(0.42, 0.5);
+    dot(c, st.deep, -0.16, 0, 0.1);
+    for (const [r, a] of [[0.2, 0.9], [0.32, 0.65], [0.44, 0.4]] as const) {
+      c.globalAlpha = a;
+      crescent(c, -0.1, 0, r, r + 0.055, -0.9, 0.9, st.mid, 0.03);
+    }
+    c.globalAlpha = 1;
+    star4(c, 0.36, -0.3, 0.09, st.spark);
+    star4(c, 0.4, 0.26, 0.07, st.core);
+  },
+  // Steel Wave — the swing leaves the sword and keeps rolling.
+  steel_wave: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, -0.05, 0, 0.3, 0.44, -0.75, 0.75, st.mid, 0.036);
+    crescent(c, -0.05, 0, 0.32, 0.4, -0.55, 0.55, st.core, 0.024);
+    chevrons(c, -0.3, 0, 0, st, 2, 0.9);
+    for (const a of [-0.5, 0, 0.5]) {
+      star4(c, Math.cos(a) * 0.52 - 0.02, Math.sin(a) * 0.52, 0.06, st.spark, a);
+    }
+  },
+  // Stagger Stomp — the heel arrives; the floor passes it on.
+  stagger_stomp: (st) => (c) => {
+    c.translate(0.5, 0.48);
+    c.globalAlpha = 0.5;
+    novaRing(c, 0, 0.18, 0.34, st, 10, 0.2, 0.034);
+    c.globalAlpha = 1;
+    poly(c, st.mid, [[-0.14, -0.34], [0.12, -0.34], [0.16, 0.0], [0.08, 0.1], [-0.18, 0.06]], 0.036);
+    fill(c, st.core, [[-0.1, -0.3], [0.08, -0.3], [0.1, -0.1], [-0.12, -0.12]]);
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.035;
+    c.lineCap = 'round';
+    for (const [x1, y1] of [[-0.38, 0.28], [0.36, 0.3], [-0.1, 0.38]] as const) {
+      c.beginPath();
+      c.moveTo(-0.02, 0.12);
+      c.lineTo(x1, y1);
+      c.stroke();
+    }
+  },
+  // Headsman's Stroke — the axe over the block; the arc is clean.
+  headsman_stroke: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    poly(c, '#6a4a2e', [[-0.3, 0.14], [0.3, 0.14], [0.26, 0.32], [-0.26, 0.32]], 0.036);
+    c.strokeStyle = '#7a5a38';
+    c.lineWidth = 0.06;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(0.3, -0.42);
+    c.lineTo(0.06, -0.08);
+    c.stroke();
+    poly(c, st.mid, [[-0.26, -0.34], [0.02, -0.42], [0.08, -0.12], [-0.14, -0.06]], 0.036);
+    fill(c, st.core, [[-0.22, -0.32], [0.0, -0.38], [0.02, -0.26], [-0.18, -0.22]]);
+    crescent(c, -0.06, 0.02, 0.3, 0.35, 1.9, 2.9, st.spark, 0.026);
+  },
+  // Warlord's Descent — the banner comes down with the man.
+  warlords_descent: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crown(c, 0, -0.34, 0.3, st.mid, st.core);
+    chevrons(c, 0, -0.06, Math.PI / 2, st, 2, 1.1);
+    c.globalAlpha = 0.6;
+    novaRing(c, 0, 0.3, 0.3, st, 10, 0.24, 0.04);
+    c.globalAlpha = 1;
+    ground(c, 0, 0.34, st);
+  },
+  // Longshot — one line, drawn to the edge of the plate.
+  longshot: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.024;
+    c.setLineDash([0.03, 0.05]);
+    c.beginPath();
+    c.moveTo(-0.44, 0.16);
+    c.lineTo(0.44, -0.16);
+    c.stroke();
+    c.setLineDash([]);
+    arrow(c, 0, 0, -0.35, 0.92, st, 1.15);
+    star4(c, 0.42, -0.16, 0.07, st.spark);
+  },
+  // Snare Shot — the arrow delivers the trap; the ground keeps it.
+  snare_shot: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.026;
+    c.setLineDash([0.04, 0.05]);
+    c.beginPath();
+    c.moveTo(-0.42, -0.3);
+    c.quadraticCurveTo(-0.05, -0.5, 0.16, -0.08);
+    c.stroke();
+    c.setLineDash([]);
+    ground(c, 0.1, 0.26, st);
+    ringDot(c, st.mid, 0.1, 0.04, 0.16, 0.034);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      thorn(c, 0.1 + Math.cos(a) * 0.17, 0.04 + Math.sin(a) * 0.17, a, 0.55, st.spark);
+    }
+  },
+  // Ricochet — the flight path changes its mind, twice.
+  ricochet: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.05;
+    c.lineCap = 'round';
+    c.lineJoin = 'round';
+    c.beginPath();
+    c.moveTo(-0.42, -0.26);
+    c.lineTo(-0.02, 0.08);
+    c.lineTo(0.3, -0.22);
+    c.stroke();
+    star4(c, -0.02, 0.08, 0.09, st.spark, Math.PI / 4);
+    arrow(c, 0.28, 0.02, 0.85, 0.42, st, 1);
+    star4(c, 0.32, -0.24, 0.07, st.core);
+  },
+  // Skyfall Shot — count to two; the shadow is already there.
+  skyfall_shot: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    ground(c, 0, 0.3, st);
+    arrow(c, 0, -0.08, Math.PI / 2, 0.6, st, 1.2);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.026;
+    c.lineCap = 'round';
+    for (const dx of [-0.14, 0.14]) {
+      c.beginPath();
+      c.moveTo(dx, -0.4);
+      c.lineTo(dx, -0.22);
+      c.stroke();
+    }
+  },
+  // Phantom Flight — out pale, home red.
+  phantom_flight: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.026;
+    c.setLineDash([0.05, 0.05]);
+    c.beginPath();
+    c.ellipse(0, 0.02, 0.36, 0.2, -0.25, 0, Math.PI * 2);
+    c.stroke();
+    c.setLineDash([]);
+    arrow(c, 0.02, -0.16, -0.12, 0.5, st, 1);
+    droplet(c, -0.26, 0.26, 0.75, st);
+  },
+  // Arrow Tempest — five shafts, five verdicts, one storm.
+  arrow_tempest: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.04;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.arc(0, 0.1, 0.14, 0.4, Math.PI * 1.8);
+    c.stroke();
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + (i - 2) * 0.42;
+      arrow(c, Math.cos(a) * 0.3, 0.02 + Math.sin(a) * 0.3, a, 0.4, st, 0.9);
+    }
+  },
+  // Frost Lance — one cold line; it holds.
+  frost_lance: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    poly(c, st.mid, [[-0.42, 0.18], [0.3, -0.14], [0.44, -0.2], [0.34, -0.02], [-0.38, 0.26]], 0.032);
+    fill(c, st.core, [[-0.38, 0.18], [0.28, -0.12], [-0.36, 0.22]]);
+    snowflake(c, -0.3, -0.2, 0.11, st.spark, 0.04);
+    snowflake(c, 0.12, 0.26, 0.08, st.mid, 0.035);
+  },
+  // Ward Shell — the dome takes the blow; you take the step.
+  ward_shell: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    c.fillStyle = st.mid;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.globalAlpha = 0.85;
+    c.beginPath();
+    c.arc(0, 0.06, 0.34, Math.PI, 0);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.globalAlpha = 1;
+    crescent(c, 0, 0.06, 0.24, 0.3, -Math.PI, -0.2, st.core, 0.024);
+    ground(c, 0, 0.1, st);
+    star4(c, 0.26, -0.34, 0.08, st.spark);
+  },
+  // Ember Fan — a hand of fire, every finger burning.
+  ember_fan: (st) => (c) => {
+    c.translate(0.5, 0.62);
+    for (let i = -2; i <= 2; i++) {
+      const a = i * 0.42;
+      flame(c, Math.sin(a) * 0.3, -Math.abs(Math.cos(a)) * 0.26 - 0.02, 0.72 - Math.abs(i) * 0.1, st, i * 0.1);
+    }
+    crescent(c, 0, 0.12, 0.16, 0.22, -Math.PI, 0, st.deep, 0.03);
+  },
+  // Stormcall — the appointment, kept from above.
+  stormcall: (st) => (c) => {
+    c.translate(0.5, 0.46);
+    puff(c, -0.16, -0.26, 0.14, st.deep);
+    puff(c, 0.08, -0.3, 0.16, st.deep);
+    puff(c, 0.26, -0.24, 0.11, st.deep);
+    bolt(c, -0.08, 0.06, 0.8, st, 0.3);
+    bolt(c, 0.22, 0.1, 0.55, st, 0.5);
+    ground(c, 0.04, 0.34, st);
+  },
+  // Mirror Image — one of you is a rumor.
+  mirror_image: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    poly(c, st.mid, [[-0.3, 0.3], [-0.3, -0.06], [-0.2, -0.22], [-0.1, -0.06], [-0.1, 0.3]], 0.034);
+    dot(c, st.core, -0.2, -0.26, 0.09);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.026;
+    c.setLineDash([0.045, 0.045]);
+    c.beginPath();
+    c.moveTo(0.12, 0.3);
+    c.lineTo(0.12, -0.06);
+    c.lineTo(0.22, -0.22);
+    c.lineTo(0.32, -0.06);
+    c.lineTo(0.32, 0.3);
+    c.stroke();
+    c.beginPath();
+    c.arc(0.22, -0.26, 0.09, 0, Math.PI * 2);
+    c.stroke();
+    c.setLineDash([]);
+    star4(c, 0.02, -0.38, 0.08, st.spark);
+  },
+  // Daybreak — noon, delivered to the address you chose.
+  daybreak: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    ground(c, 0, 0.24, st);
+    c.fillStyle = st.mid;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.arc(0, 0.1, 0.24, Math.PI, 0);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    crescent(c, 0, 0.1, 0.15, 0.2, -Math.PI, 0, st.core, 0.02);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.036;
+    c.lineCap = 'round';
+    for (let i = 0; i < 5; i++) {
+      const a = Math.PI + (i / 4) * Math.PI;
+      c.beginPath();
+      c.moveTo(Math.cos(a) * 0.3, 0.1 + Math.sin(a) * 0.3);
+      c.lineTo(Math.cos(a) * 0.42, 0.1 + Math.sin(a) * 0.42);
+      c.stroke();
+    }
+  },
+  // Ghost Step — you pass; the wound stays.
+  ghost_step: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.028;
+    c.setLineDash([0.04, 0.05]);
+    c.beginPath();
+    c.moveTo(-0.28, 0.3);
+    c.lineTo(-0.28, -0.04);
+    c.lineTo(-0.18, -0.2);
+    c.lineTo(-0.08, -0.04);
+    c.lineTo(-0.08, 0.3);
+    c.stroke();
+    c.setLineDash([]);
+    chevrons(c, 0.1, 0.05, 0, st, 2, 0.9);
+    dagger(c, 0.3, -0.12, 0.5, 0.5, st);
+    droplet(c, 0.32, 0.24, 0.7, st);
+  },
+  // Caltrops — iron teeth, sown where feet argue.
+  caltrops: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    ground(c, 0, 0.3, st);
+    for (const [x, y, s] of [[-0.22, 0.02, 1], [0.14, -0.08, 0.85], [0.06, 0.22, 0.9]] as const) {
+      thorn(c, x, y, -Math.PI / 2, s, st.mid);
+      thorn(c, x - 0.07, y + 0.08, Math.PI * 0.8, s * 0.7, st.deep);
+      thorn(c, x + 0.07, y + 0.08, Math.PI * 0.2, s * 0.7, st.deep);
+      dot(c, st.core, x, y + 0.03, 0.028);
+    }
+  },
+  // Fan of Knives — every direction at once.
+  fan_of_knives: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+      dagger(c, Math.cos(a) * 0.26, Math.sin(a) * 0.26, a + Math.PI / 2, 0.52, st);
+    }
+    ringDot(c, st.deep, 0, 0, 0.08, 0.03);
+    dot(c, st.core, 0, 0, 0.035);
+  },
+  // Feint Double — the lie you leave standing.
+  feint_double: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    poly(c, st.deep, [[-0.26, 0.3], [-0.26, -0.02], [-0.14, -0.2], [-0.02, -0.02], [-0.02, 0.3]], 0.034);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.026;
+    c.setLineDash([0.04, 0.05]);
+    c.beginPath();
+    c.moveTo(0.08, 0.3);
+    c.lineTo(0.08, -0.02);
+    c.lineTo(0.2, -0.2);
+    c.lineTo(0.32, -0.02);
+    c.lineTo(0.32, 0.3);
+    c.stroke();
+    c.setLineDash([]);
+    chevrons(c, -0.36, -0.32, Math.PI, st, 2, 0.7);
+  },
+  // Exposing Strike — the seam, made official.
+  exposing_strike: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    ringDot(c, st.deep, 0, 0.02, 0.3, 0.04);
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.045;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.06, -0.24);
+    c.lineTo(0.04, -0.04);
+    c.lineTo(-0.04, 0.1);
+    c.lineTo(0.06, 0.28);
+    c.stroke();
+    dagger(c, 0.3, -0.3, Math.PI * 0.75, 0.5, st);
+    star4(c, 0.05, -0.05, 0.09, st.spark, Math.PI / 4);
+  },
+  // Thousand Cuts — stop counting.
+  thousand_cuts: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.04;
+    c.lineCap = 'round';
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const r0 = 0.18 + (i % 3) * 0.07;
+      c.beginPath();
+      c.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+      c.lineTo(Math.cos(a + 0.5) * (r0 + 0.14), Math.sin(a + 0.5) * (r0 + 0.14));
+      c.stroke();
+    }
+    dagger(c, 0, 0, Math.PI / 5, 0.6, st);
+    droplet(c, -0.3, -0.28, 0.6, st);
+  },
+} satisfies Record<string, (st: FxStyle) => Painter>);
+
 // ---------------------------------------------- sigils & npc specials
 Object.assign(PLATES, {
   // Bone Tempest — the fallen champion answers: the trophy skull inside

@@ -12,8 +12,9 @@
  * - Value = (direct damage x expected single-target hits x aoe credit
  *   + status value + utility credit) / cooldown seconds.
  * - DoTs are real damage: power x duration / tick-cadence (the shared
- *   BURN/BLEED/VENOM constants — not guesses).
- * - Chill/shock are control: 0.9 per second of duration.
+ *   BURN/BLEED/VENOM constants — not guesses) — discounted past the
+ *   4-second horizon, because fights end and long tails go unpaid.
+ * - Chill/shock are control: 0.9 per second, same horizon.
  * - Mobility (dash) 0.5/tile; shove 0.4/unit; a PULL is worth 0.8/unit
  *   (grouping enemies is setup, not just denial).
  * - Execute: direct x (mult-1) x frac — the low-HP window, discounted.
@@ -37,18 +38,23 @@ import { ABILITIES, TECHNIQUES, abilityDef, techniquesFor } from './abilities.js
 
 const TICK = 20;
 
+/** Value past this many seconds of status is discounted — fights end. */
+const DOT_HORIZON_SECS = 4;
+
 function statusValue(s: StatusApply | undefined): number {
   if (!s) return 0;
+  const secs = s.durationTicks / TICK;
+  const horizon = Math.min(1, DOT_HORIZON_SECS / secs);
   switch (s.status) {
     case 'burn':
-      return s.power * (s.durationTicks / BURN_TICK_EVERY);
+      return s.power * (s.durationTicks / BURN_TICK_EVERY) * horizon;
     case 'bleed':
-      return s.power * (s.durationTicks / BLEED_TICK_EVERY);
+      return s.power * (s.durationTicks / BLEED_TICK_EVERY) * horizon;
     case 'venom':
-      return s.power * (s.durationTicks / VENOM_TICK_EVERY);
+      return s.power * (s.durationTicks / VENOM_TICK_EVERY) * horizon;
     case 'chill':
     case 'shock':
-      return (s.durationTicks / TICK) * 0.9;
+      return secs * 0.9 * horizon;
   }
 }
 
@@ -64,7 +70,8 @@ function singleTargetHits(ab: AbilityDef): number {
       // dash_strike fires its projectile fan too (the tumble family).
       const n = ab.projectiles ?? 1;
       const per = ab.homing ? 0.75 : (ab.spreadArc ?? 0) <= 0.2 ? 0.6 : 0.25;
-      return 1 + (n - 1) * per;
+      // A boomerang strikes on the way home too.
+      return (1 + (n - 1) * per) * (ab.returns ? 1.6 : 1);
     }
     case 'flurry':
       return (ab.hits ?? 1) * 0.9;
@@ -98,7 +105,9 @@ export function cycleValue(ab: AbilityDef): number {
   return (direct + statusValue(ab.status) + utilityCredit(ab)) / (ab.cooldownTicks / TICK);
 }
 
-const isUtilityArt = (ab: AbilityDef): boolean => ab.damage < 3;
+// Summons are worth their effect, not their stamp damage — band-exempt
+// beside the low-damage utility arts (blink, smoke, the shields).
+const isUtilityArt = (ab: AbilityDef): boolean => ab.damage < 3 || ab.shape === 'summon';
 
 /** Fields a rank step may hone. Identity fields are excluded by type, this locks it at runtime too. */
 const HONABLE = new Set([
@@ -128,6 +137,7 @@ const HONABLE = new Set([
   'returns',
   'executeBelow',
   'drainFrac',
+  'summon',
 ]);
 
 test('every technique carries a full honing ladder of well-formed steps', () => {
@@ -203,6 +213,19 @@ test('the rank clock is uniform and the ladder mastered before 99', () => {
   }
 });
 
+test('THE OPEN LADDER: an art every five levels, 5 through 50, no gaps, no doubles', () => {
+  const RUNGS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+  for (const style of ['melee', 'archery', 'magic', 'sneak']) {
+    const arts = techniquesFor(style);
+    assert.deepEqual(
+      arts.map((t) => t.unlockLevel),
+      RUNGS,
+      `${style} ladder must fill every rung in order`,
+    );
+    assert.equal(new Set(arts.map((t) => t.ability)).size, RUNGS.length);
+  }
+});
+
 test('techniques never fork identity: rank steps leave id/shape/fx face alone', () => {
   for (const tech of TECHNIQUES) {
     const ab = abilityDef(tech.ability)!;
@@ -220,5 +243,20 @@ test('techniques never fork identity: rank steps leave id/shape/fx face alone', 
 test('every style ladder still resolves against the ability book', () => {
   for (const style of ['melee', 'archery', 'magic', 'sneak']) {
     for (const t of techniquesFor(style)) assert.ok(ABILITIES.has(t.ability));
+  }
+});
+
+test('honed defs obey the seeker laws at every rank', () => {
+  // The base-def seeker test lives in content.test.ts; ranks must not
+  // sneak past it — a step that adds homing to a piercing schoolless
+  // art would orbit-farm in a way no base def is allowed to.
+  for (const tech of TECHNIQUES) {
+    const ab = abilityDef(tech.ability)!;
+    for (let rank = 1; rank <= TECHNIQUE_MAX_RANK; rank++) {
+      const honed = honedAbility(ab, tech.ranks, rank);
+      if (honed.homing === undefined) continue;
+      assert.ok(honed.element, `${tech.ability} rank ${rank}: seekers must name a school`);
+      assert.ok(!honed.pierce, `${tech.ability} rank ${rank}: homing + pierce orbit-farms`);
+    }
   }
 });

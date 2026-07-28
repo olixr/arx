@@ -1,8 +1,10 @@
 # Techniques v2 — The Honed Art & The Callings
 
-Status: **PROPOSAL** (design review 2026-07-28, pre-implementation). Companion to the
-combat-depth 4.1 slots, the Techniques codex (V screen), and THE THREAT LAW
-(`shared/sim/damage.ts`). Read those before touching anything here.
+Status: **PHASES 1–2 SHIPPED** (2026-07-28; Phase 1 HONED-ART commit d101b22,
+Phase 2 OPEN LADDER same-day follow-up — 40 arts live, 10 per style). Phases
+3–6 (Callings, Codex v2, Unwritten Page, balance pass) remain as planned below.
+Companion to the combat-depth 4.1 slots, the Techniques codex (V screen), and
+THE THREAT LAW (`shared/sim/damage.ts`). Read those before touching anything here.
 
 The brief: skills should feel like an investment with endless build expression.
 Five gaps close that brief — (1) techniques you unlocked early must keep growing

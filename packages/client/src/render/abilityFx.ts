@@ -279,6 +279,32 @@ export const FX_STYLES: Record<string, FxStyle> = {
   envenom: VERDANT({ mid: '#a0c050', ring: 'halo', debris: 'leaf', decal: undefined, motif: 'swarm', punch: 0.2, wash: 0.15 }),
   night_fangs: SHADOW({ mid: '#4a4058', ring: 'shards', debris: 'blood', decal: undefined, motif: 'spikes', punch: 0.4, wash: 0.2 }),
 
+  // ------------------------------- THE OPEN LADDER — the 24 new arts
+  bull_rush: STEEL({ mid: '#c48a5a', ring: 'teeth', debris: 'rock', decal: undefined, motif: 'wave', punch: 0.7, wash: 0.4 }),
+  warcry: GOLD({ mid: '#d9b05a', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.4, wash: 0.4 }),
+  steel_wave: STEEL({ ring: 'petals', debris: 'spark', decal: undefined, motif: 'wave', punch: 0.5, wash: 0.3 }),
+  stagger_stomp: STEEL({ mid: '#a4886a', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'echo', punch: 0.8, wash: 0.5 }),
+  headsman_stroke: BLOOD({ mid: '#8a4a3a', ring: 'teeth', debris: 'blood', decal: 'stain', motif: 'tear', punch: 0.8, wash: 0.45 }),
+  warlords_descent: GOLD({ mid: '#d9a05a', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'crown', punch: 1.0, wash: 0.6 }),
+  longshot: VERDANT({ mid: '#7a9a5a', ring: 'shards', debris: 'spark', decal: undefined, punch: 0.35 }),
+  snare_shot: VERDANT({ mid: '#a08a4a', ring: 'shards', debris: 'leaf', decal: undefined, motif: 'cage', punch: 0.25, wash: 0.2 }),
+  ricochet: STEEL({ mid: '#8a7a4a', ring: 'shards', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.4 }),
+  skyfall_shot: VERDANT({ mid: '#6b8a6a', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'rain', punch: 0.8, wash: 0.5 }),
+  phantom_flight: SHADOW({ mid: '#9aa8b8', ring: 'runes', debris: 'spark', decal: undefined, motif: 'wisps', punch: 0.35 }),
+  arrow_tempest: STORM({ mid: '#5a7a8a', ring: 'shards', debris: 'spark', decal: undefined, motif: 'swarm', punch: 0.6, wash: 0.45 }),
+  frost_lance: FROST({ ring: 'frost', debris: 'ice', decal: 'rime', motif: 'rays', punch: 0.5 }),
+  ward_shell: ARCANE({ ring: 'halo', debris: 'star', decal: 'glow', motif: 'cage', punch: 0.2, wash: 0.35 }),
+  ember_fan: EMBER({ ring: 'petals', debris: 'ember', decal: 'scorch', motif: 'swarm', punch: 0.5 }),
+  stormcall: STORM({ ring: 'runes', debris: 'spark', decal: undefined, motif: 'rain', punch: 0.7, wash: 0.55 }),
+  mirror_image: ARCANE({ mid: '#b8a8e8', ring: 'runes', debris: 'star', decal: 'runes', motif: 'echo', punch: 0.25, wash: 0.3 }),
+  daybreak: RADIANT({ ring: 'teeth', debris: 'star', decal: 'scorch', motif: 'rays', punch: 0.9, wash: 0.8 }),
+  ghost_step: SHADOW({ ring: 'shards', debris: 'blood', decal: undefined, motif: 'tear', punch: 0.35, wash: 0.15 }),
+  caltrops: STEEL({ mid: '#7a7468', ring: 'shards', debris: 'rock', decal: 'cracks', motif: 'spikes', punch: 0.3, wash: 0.2 }),
+  fan_of_knives: STEEL({ mid: '#a8a4b8', ring: 'shards', debris: 'blood', decal: undefined, motif: 'spikes', punch: 0.5, wash: 0.3 }),
+  feint_double: SHADOW({ mid: '#8a8494', ring: 'runes', debris: 'shadow', decal: undefined, motif: 'tear', punch: 0.2, wash: 0.12 }),
+  exposing_strike: BLOOD({ mid: '#9a6a8a', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'echo', punch: 0.5 }),
+  thousand_cuts: STEEL({ core: '#ffffff', mid: '#c4b8d8', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'swarm', punch: 0.6, wash: 0.3 }),
+
   // ------------------------------------------------------------ sigils
   bone_tempest: BONE({ motif: 'vortex', punch: 0.9, wash: 0.4 }),
 

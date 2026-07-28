@@ -1253,6 +1253,340 @@ const defs: AbilityDef[] = [
     status: { status: 'chill', power: 1, durationTicks: 80 },
   },
 
+  // ------------------------------------ THE OPEN LADDER — new melee arts
+  {
+    id: 'bull_rush',
+    name: 'Bull Rush',
+    desc: 'Lower the shoulder and become the argument.',
+    color: '#c48a5a',
+    code: 'Br',
+    cooldownTicks: 160, // 8 s
+    shape: 'dash_strike',
+    damage: 8,
+    dashTiles: 3.2,
+    knockback: 2.0,
+  },
+  {
+    id: 'warcry',
+    name: 'Warcry',
+    desc: 'A shout that hardens into armor around you.',
+    color: '#d9b05a',
+    code: 'Wc',
+    cooldownTicks: 280, // 14 s
+    shape: 'self_buff',
+    damage: 0,
+    self: { shieldHp: 6, speedMult: 1.1, durationTicks: 120 },
+  },
+  {
+    id: 'steel_wave',
+    name: 'Steel Wave',
+    desc: 'Hurl the swing itself — an arc of edges that keeps going.',
+    color: '#b8bec8',
+    code: 'Sw',
+    cooldownTicks: 180, // 9 s
+    shape: 'projectile_fan',
+    damage: 6,
+    range: 4.5,
+    projectiles: 3,
+    spreadArc: 0.5,
+    projectileSpeed: 14,
+    pierce: true,
+  },
+  {
+    id: 'stagger_stomp',
+    name: 'Stagger Stomp',
+    desc: 'Bring your heel down; the floor passes it on.',
+    color: '#a4886a',
+    code: 'Sp',
+    cooldownTicks: 200, // 10 s
+    castFreezeTicks: 4,
+    shape: 'nova',
+    damage: 7,
+    radius: 2.0,
+    knockback: 1.6,
+    status: { status: 'shock', power: 1, durationTicks: 30 },
+  },
+  {
+    id: 'headsman_stroke',
+    name: "Headsman's Stroke",
+    desc: 'One clean arc for those already kneeling.',
+    color: '#8a4a3a',
+    code: 'Hk',
+    cooldownTicks: 190, // 9.5 s
+    castFreezeTicks: 5,
+    shape: 'melee_arc',
+    damage: 12,
+    range: 2.2,
+    arc: 0.9,
+    executeBelow: { frac: 0.3, mult: 1.8 },
+  },
+  {
+    id: 'warlords_descent',
+    name: "Warlord's Descent",
+    desc: 'Arrive like a banner planted — the shout follows you down.',
+    color: '#d9a05a',
+    code: 'Wd',
+    cooldownTicks: 240, // 12 s
+    castFreezeTicks: 4,
+    shape: 'leap_slam',
+    damage: 12,
+    dashTiles: 4.0,
+    radius: 2.3,
+    knockback: 2.0,
+    self: { shieldHp: 5, speedMult: 1.1, durationTicks: 100 },
+  },
+
+  // ---------------------------------- THE OPEN LADDER — new archery arts
+  {
+    id: 'longshot',
+    name: 'Longshot',
+    desc: 'One arrow, one line, everything on it.',
+    color: '#7a9a5a',
+    code: 'Lo',
+    cooldownTicks: 170, // 8.5 s
+    shape: 'projectile_fan',
+    damage: 9,
+    range: 18,
+    projectiles: 1,
+    projectileSpeed: 20,
+    pierce: true,
+  },
+  {
+    id: 'snare_shot',
+    name: 'Snare Shot',
+    desc: 'Loose a trap instead of an arrow — the ground keeps it.',
+    color: '#a08a4a',
+    code: 'Ss',
+    cooldownTicks: 260, // 13 s
+    shape: 'summon',
+    damage: 4,
+    range: 8, // rides the arrow: the trap plants at the aimed point
+    summon: { kind: 'snare_trap', durationTicks: 500, radius: 1.2, power: 1 },
+  },
+  {
+    id: 'ricochet',
+    name: 'Ricochet',
+    desc: 'An arrow that changes its mind mid-air — twice.',
+    color: '#8a7a4a',
+    code: 'Rc',
+    cooldownTicks: 170, // 8.5 s
+    shape: 'chain_zap',
+    damage: 7,
+    range: 12,
+    radius: 3.5,
+    chainTargets: 2,
+  },
+  {
+    id: 'skyfall_shot',
+    name: 'Skyfall Shot',
+    desc: 'Loose it at the clouds and count to two.',
+    color: '#6b8a6a',
+    code: 'Sk',
+    cooldownTicks: 220, // 11 s
+    shape: 'ground_aoe',
+    damage: 12,
+    range: 13,
+    radius: 1.8,
+    fuseTicks: 16,
+    knockback: 1.2,
+  },
+  {
+    id: 'phantom_flight',
+    name: 'Phantom Flight',
+    desc: 'An arrow that flies out pale and comes home red.',
+    color: '#9aa8b8',
+    code: 'Pf',
+    cooldownTicks: 200, // 10 s
+    shape: 'projectile_fan',
+    damage: 8,
+    range: 11,
+    projectiles: 1,
+    projectileSpeed: 15,
+    pierce: true,
+    returns: true,
+  },
+  {
+    id: 'arrow_tempest',
+    name: 'Arrow Tempest',
+    desc: 'Five shafts loosed as one storm, each picking its own throat.',
+    color: '#5a7a8a',
+    code: 'At',
+    cooldownTicks: 240, // 12 s
+    shape: 'projectile_fan',
+    damage: 5,
+    range: 10,
+    projectiles: 5,
+    spreadArc: 1.2,
+    projectileSpeed: 15,
+    homing: 5.0,
+    element: 'storm', // storm-wreathed seekers — the school the eye reads
+  },
+
+  // ------------------------------------ THE OPEN LADDER — new magic arts
+  {
+    id: 'frost_lance',
+    name: 'Frost Lance',
+    desc: 'One cold line from your hand to the horizon — it holds.',
+    color: '#8ac4e8',
+    code: 'Fl',
+    cooldownTicks: 180, // 9 s
+    castFreezeTicks: 4,
+    shape: 'beam',
+    damage: 8,
+    range: 12,
+    width: 0.6,
+    status: { status: 'chill', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'ward_shell',
+    name: 'Ward Shell',
+    desc: 'A shell of quiet light that takes the blows meant for you.',
+    color: '#b49af0',
+    code: 'Ws',
+    cooldownTicks: 320, // 16 s
+    shape: 'self_buff',
+    damage: 0,
+    self: { shieldHp: 10, durationTicks: 160 },
+  },
+  {
+    id: 'ember_fan',
+    name: 'Ember Fan',
+    desc: 'Spread a hand of fire — every finger burns.',
+    color: '#ff9a44',
+    code: 'Ef',
+    cooldownTicks: 190, // 9.5 s
+    shape: 'projectile_fan',
+    damage: 6,
+    range: 9,
+    projectiles: 3,
+    spreadArc: 0.7,
+    projectileSpeed: 14,
+    element: 'ember',
+    status: { status: 'burn', power: 1, durationTicks: 50 },
+  },
+  {
+    id: 'stormcall',
+    name: 'Stormcall',
+    desc: 'Ask the sky to strike here, and keep striking.',
+    color: '#e8e06a',
+    code: 'Sc',
+    cooldownTicks: 240, // 12 s
+    shape: 'ground_field',
+    damage: 5,
+    range: 11,
+    radius: 2.2,
+    fieldTicks: 100,
+    pulseEveryTicks: 12,
+    status: { status: 'shock', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'mirror_image',
+    name: 'Mirror Image',
+    desc: 'Step aside and leave yourself standing there.',
+    color: '#b8a8e8',
+    code: 'Mi',
+    cooldownTicks: 320, // 16 s
+    shape: 'summon',
+    damage: 0,
+    summon: { kind: 'decoy', durationTicks: 160, radius: 5, power: 0 },
+  },
+  {
+    id: 'daybreak',
+    name: 'Daybreak',
+    desc: 'Noon, delivered early, to an address of your choosing.',
+    color: '#ffd98a',
+    code: 'Db',
+    cooldownTicks: 280, // 14 s
+    castFreezeTicks: 4,
+    shape: 'ground_aoe',
+    damage: 14,
+    range: 12,
+    radius: 2.4,
+    fuseTicks: 22,
+    element: 'radiant',
+    status: { status: 'burn', power: 1, durationTicks: 60 },
+  },
+
+  // ------------------------------------ THE OPEN LADDER — new sneak arts
+  {
+    id: 'ghost_step',
+    name: 'Ghost Step',
+    desc: 'Walk through them like a rumor — the cut arrives before you do.',
+    color: '#8a7fae',
+    code: 'Gt',
+    cooldownTicks: 170, // 8.5 s
+    shape: 'dash_strike',
+    damage: 7,
+    dashTiles: 3.4,
+    status: { status: 'bleed', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'caltrops',
+    name: 'Caltrops',
+    desc: 'Sow the floor with iron teeth; whoever crosses, pays.',
+    color: '#7a7468',
+    code: 'Ca',
+    cooldownTicks: 240, // 12 s
+    shape: 'ground_field',
+    damage: 3,
+    range: 7,
+    radius: 1.8,
+    fieldTicks: 140,
+    pulseEveryTicks: 16,
+    status: { status: 'bleed', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'fan_of_knives',
+    name: 'Fan of Knives',
+    desc: 'Every direction at once, every edge yours.',
+    color: '#a8a4b8',
+    code: 'Fk',
+    cooldownTicks: 200, // 10 s
+    shape: 'nova',
+    damage: 6,
+    radius: 2.2,
+    status: { status: 'bleed', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'feint_double',
+    name: 'Feint Double',
+    desc: 'Leave a lie standing where you were.',
+    color: '#8a8494',
+    code: 'Fd',
+    cooldownTicks: 300, // 15 s
+    shape: 'summon',
+    damage: 0,
+    summon: { kind: 'decoy', durationTicks: 140, radius: 5, power: 0 },
+  },
+  {
+    id: 'exposing_strike',
+    name: 'Exposing Strike',
+    desc: 'Find the seam in them and make it official.',
+    color: '#9a6a8a',
+    code: 'Ex',
+    cooldownTicks: 170, // 8.5 s
+    shape: 'melee_arc',
+    damage: 8,
+    range: 2.0,
+    arc: 0.9,
+    executeBelow: { frac: 0.35, mult: 1.8 },
+  },
+  {
+    id: 'thousand_cuts',
+    name: 'Thousand Cuts',
+    desc: 'Stop counting. Start cutting.',
+    color: '#c4b8d8',
+    code: 'Tc',
+    cooldownTicks: 220, // 11 s
+    shape: 'flurry',
+    damage: 3,
+    range: 2.0,
+    arc: 0.9,
+    hits: 5,
+    pulseEveryTicks: 4,
+    status: { status: 'bleed', power: 1, durationTicks: 40 },
+  },
+
   // ----------------------------------------------------------- sigils
   {
     id: 'bone_tempest',
@@ -1338,6 +1672,16 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'bull_rush',
+    style: 'melee',
+    unlockLevel: 10,
+    ranks: [
+      { note: 'The shoulder hits harder.', damage: 10 },
+      { note: 'A longer charge, sooner ready.', dashTiles: 4.2, cooldownTicks: 150 },
+      { note: 'Nothing stands where you arrive.', damage: 11, knockback: 3.2 },
+    ],
+  },
+  {
     ability: 'whirlwind',
     style: 'melee',
     unlockLevel: 15,
@@ -1345,6 +1689,32 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       { note: 'Each cut bites deeper.', damage: 5 },
       { note: 'The blade reaches a step farther.', radius: 2.1 },
       { note: 'The storm turns a fourth time.', pulses: 4 },
+    ],
+  },
+  {
+    ability: 'warcry',
+    style: 'melee',
+    unlockLevel: 20,
+    ranks: [
+      {
+        note: 'The shout holds more of the blow.',
+        self: { shieldHp: 8, speedMult: 1.1, durationTicks: 120 },
+      },
+      { note: 'Your voice recovers faster.', cooldownTicks: 240 },
+      {
+        note: 'The war hears you, and hurries.',
+        self: { shieldHp: 8, speedMult: 1.15, durationTicks: 140 },
+      },
+    ],
+  },
+  {
+    ability: 'steel_wave',
+    style: 'melee',
+    unlockLevel: 25,
+    ranks: [
+      { note: 'The edges bite deeper.', damage: 8 },
+      { note: 'The wave rolls out oftener.', cooldownTicks: 160 },
+      { note: 'A fourth blade joins the wave.', projectiles: 4, spreadArc: 0.6 },
     ],
   },
   {
@@ -1367,6 +1737,31 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'stagger_stomp',
+    style: 'melee',
+    unlockLevel: 35,
+    ranks: [
+      { note: 'The heel falls heavier.', damage: 9 },
+      { note: 'The floor passes it farther.', radius: 2.4, cooldownTicks: 180 },
+      {
+        note: 'The ring of it holds them reeling.',
+        damage: 10,
+        knockback: 2.2,
+        status: { status: 'shock', power: 1, durationTicks: 60 },
+      },
+    ],
+  },
+  {
+    ability: 'headsman_stroke',
+    style: 'melee',
+    unlockLevel: 40,
+    ranks: [
+      { note: 'The arc lands heavier.', damage: 14 },
+      { note: 'The stroke returns to the shoulder sooner.', cooldownTicks: 170 },
+      { note: 'The verdict widens.', executeBelow: { frac: 0.35, mult: 2.0 } },
+    ],
+  },
+  {
     ability: 'earthbreaker',
     style: 'melee',
     unlockLevel: 45,
@@ -1374,6 +1769,20 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       { note: 'You land heavier.', damage: 13 },
       { note: 'The leap carries farther; the verdict spreads wider.', dashTiles: 5.5, radius: 2.5 },
       { note: 'The mountain falls oftener, and harder.', cooldownTicks: 190, knockback: 3.0 },
+    ],
+  },
+  {
+    ability: 'warlords_descent',
+    style: 'melee',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'You land heavier still.', damage: 14 },
+      { note: 'The banner spreads wider, oftener.', radius: 2.6, cooldownTicks: 220 },
+      {
+        note: 'The war answers its lord — shield and stride.',
+        knockback: 2.6,
+        self: { shieldHp: 8, speedMult: 1.18, durationTicks: 120 },
+      },
     ],
   },
   {
@@ -1387,16 +1796,52 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'longshot',
+    style: 'archery',
+    unlockLevel: 10,
+    ranks: [
+      { note: 'The line lands heavier.', damage: 11 },
+      { note: 'The draw comes back to you sooner.', cooldownTicks: 150 },
+      { note: 'The line it draws does not bend, or end kindly.', damage: 13 },
+    ],
+  },
+  {
     ability: 'rain_of_arrows',
     style: 'archery',
     unlockLevel: 15,
     ranks: [
       { note: 'The sky falls harder.', damage: 11 },
-      { note: 'A wider patch of ruin, called sooner.', cooldownTicks: 200, radius: 2.4 },
+      { note: 'A wider patch of ruin, called sooner.', cooldownTicks: 190, radius: 2.4 },
       {
         note: 'Barbed heads — the wounds keep raining.',
         status: { status: 'bleed', power: 1, durationTicks: 60 },
       },
+    ],
+  },
+  {
+    ability: 'snare_shot',
+    style: 'archery',
+    unlockLevel: 20,
+    ranks: [
+      {
+        note: 'The snare waits longer.',
+        summon: { kind: 'snare_trap', durationTicks: 700, radius: 1.2, power: 1 },
+      },
+      { note: 'Another trap rides in the quiver sooner.', cooldownTicks: 220 },
+      {
+        note: 'It bites colder and reaches wider.',
+        summon: { kind: 'snare_trap', durationTicks: 700, radius: 1.6, power: 2 },
+      },
+    ],
+  },
+  {
+    ability: 'ricochet',
+    style: 'archery',
+    unlockLevel: 25,
+    ranks: [
+      { note: 'Each carom means it more.', damage: 9 },
+      { note: 'A third change of mind.', chainTargets: 3 },
+      { note: 'No wall ends the argument.', damage: 10, cooldownTicks: 150 },
     ],
   },
   {
@@ -1406,7 +1851,34 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ranks: [
       { note: 'Heavier shafts.', damage: 11 },
       { note: 'The pair returns to your hand sooner.', cooldownTicks: 170 },
-      { note: 'The shafts learn to seek their marks.', homing: 4.0 },
+      { note: 'Two arguments, one conclusion — heavier.', damage: 12 },
+    ],
+  },
+  {
+    ability: 'skyfall_shot',
+    style: 'archery',
+    unlockLevel: 35,
+    ranks: [
+      { note: 'It falls heavier.', damage: 14 },
+      { note: 'A wider shadow, called sooner.', radius: 2.2, cooldownTicks: 200 },
+      {
+        note: 'It lands barbed.',
+        status: { status: 'bleed', power: 1, durationTicks: 60 },
+      },
+    ],
+  },
+  {
+    ability: 'phantom_flight',
+    style: 'archery',
+    unlockLevel: 40,
+    ranks: [
+      { note: 'The ghost cuts deeper.', damage: 10 },
+      { note: 'It haunts you oftener.', cooldownTicks: 180 },
+      {
+        note: 'It comes home red, and leaves red behind.',
+        damage: 11,
+        status: { status: 'bleed', power: 1, durationTicks: 40 },
+      },
     ],
   },
   {
@@ -1424,6 +1896,16 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'arrow_tempest',
+    style: 'archery',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'Each shaft asks for more.', damage: 6 },
+      { note: 'The storm gathers again sooner.', cooldownTicks: 220 },
+      { note: 'A sixth shaft joins the storm.', projectiles: 6 },
+    ],
+  },
+  {
     ability: 'arc_bolt',
     style: 'magic',
     unlockLevel: 5,
@@ -1438,6 +1920,20 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'frost_lance',
+    style: 'magic',
+    unlockLevel: 10,
+    ranks: [
+      { note: 'The cold line lands harder.', damage: 10 },
+      { note: 'Winter answers sooner.', cooldownTicks: 160 },
+      {
+        note: 'Winter holds the line.',
+        damage: 13,
+        status: { status: 'chill', power: 1, durationTicks: 100 },
+      },
+    ],
+  },
+  {
     ability: 'blink',
     style: 'magic',
     unlockLevel: 15,
@@ -1445,6 +1941,29 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       { note: 'A longer stride between places.', dashTiles: 4.6 },
       { note: 'The door opens oftener.', cooldownTicks: 170 },
       { note: 'Distance stops being an argument.', dashTiles: 5.4, cooldownTicks: 150 },
+    ],
+  },
+  {
+    ability: 'ward_shell',
+    style: 'magic',
+    unlockLevel: 20,
+    ranks: [
+      { note: 'The shell thickens.', self: { shieldHp: 14, durationTicks: 160 } },
+      { note: 'The light gathers again sooner.', cooldownTicks: 280 },
+      { note: 'A shell that outlasts the storm.', self: { shieldHp: 18, durationTicks: 200 } },
+    ],
+  },
+  {
+    ability: 'ember_fan',
+    style: 'magic',
+    unlockLevel: 25,
+    ranks: [
+      { note: 'Each finger burns hotter.', damage: 7 },
+      { note: 'A fourth finger opens.', projectiles: 4 },
+      {
+        note: 'Every tongue leaves a lasting hunger.',
+        status: { status: 'burn', power: 2, durationTicks: 60 },
+      },
     ],
   },
   {
@@ -1461,6 +1980,32 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'stormcall',
+    style: 'magic',
+    unlockLevel: 35,
+    ranks: [
+      { note: 'Each strike asks for more.', damage: 6 },
+      { note: 'The appointment runs long, and wide.', radius: 2.6, fieldTicks: 120 },
+      { note: 'The sky keeps the appointment.', cooldownTicks: 220 },
+    ],
+  },
+  {
+    ability: 'mirror_image',
+    style: 'magic',
+    unlockLevel: 40,
+    ranks: [
+      {
+        note: 'The lie stands longer.',
+        summon: { kind: 'decoy', durationTicks: 220, radius: 5, power: 0 },
+      },
+      { note: 'You can step aside oftener.', cooldownTicks: 280 },
+      {
+        note: 'The double walks farther from the truth.',
+        summon: { kind: 'decoy', durationTicks: 260, radius: 7, power: 0 },
+      },
+    ],
+  },
+  {
     ability: 'maelstrom',
     style: 'magic',
     unlockLevel: 45,
@@ -1470,9 +2015,23 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       {
         note: 'The sea remembers longer, and nothing swims out.',
         damage: 13,
-        cooldownTicks: 240,
+        cooldownTicks: 230,
         knockback: -2.6,
         status: { status: 'chill', power: 1, durationTicks: 100 },
+      },
+    ],
+  },
+  {
+    ability: 'daybreak',
+    style: 'magic',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'Noon weighs more.', damage: 16 },
+      { note: 'A wider noon, delivered oftener.', radius: 2.8, cooldownTicks: 260 },
+      {
+        note: 'Noon arrives where you point, and stays to burn.',
+        damage: 18,
+        status: { status: 'burn', power: 1, durationTicks: 80 },
       },
     ],
   },
@@ -1487,6 +2046,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'ghost_step',
+    style: 'sneak',
+    unlockLevel: 10,
+    ranks: [
+      { note: 'The passing cut means it.', damage: 9 },
+      { note: 'A longer walk, told oftener.', dashTiles: 4.2, cooldownTicks: 150 },
+      {
+        note: 'You pass; the wound stays.',
+        status: { status: 'bleed', power: 2, durationTicks: 60 },
+      },
+    ],
+  },
+  {
     ability: 'smoke_bomb',
     style: 'sneak',
     unlockLevel: 15,
@@ -1497,6 +2069,33 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
         status: { status: 'chill', power: 1, durationTicks: 130 },
       },
       { note: 'A whole room, lost in gray.', radius: 3.2, cooldownTicks: 220 },
+    ],
+  },
+  {
+    ability: 'caltrops',
+    style: 'sneak',
+    unlockLevel: 20,
+    ranks: [
+      { note: 'The teeth bite deeper.', damage: 4 },
+      { note: 'More iron, sown wider, waiting longer.', radius: 2.2, fieldTicks: 160 },
+      {
+        note: 'Rusted barbs — the crossing is never forgotten.',
+        status: { status: 'bleed', power: 2, durationTicks: 40 },
+      },
+    ],
+  },
+  {
+    ability: 'fan_of_knives',
+    style: 'sneak',
+    unlockLevel: 25,
+    ranks: [
+      { note: 'Every edge asks for more.', damage: 8 },
+      { note: 'The fan opens wider, oftener.', radius: 2.6, cooldownTicks: 180 },
+      {
+        note: 'Every edge leaves its signature.',
+        damage: 9,
+        status: { status: 'bleed', power: 2, durationTicks: 60 },
+      },
     ],
   },
   {
@@ -1522,6 +2121,32 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'feint_double',
+    style: 'sneak',
+    unlockLevel: 35,
+    ranks: [
+      {
+        note: 'The lie stands longer.',
+        summon: { kind: 'decoy', durationTicks: 200, radius: 5, power: 0 },
+      },
+      { note: 'You can afford to lie oftener.', cooldownTicks: 260 },
+      {
+        note: 'A lie good enough to gather a crowd.',
+        summon: { kind: 'decoy', durationTicks: 240, radius: 7, power: 0 },
+      },
+    ],
+  },
+  {
+    ability: 'exposing_strike',
+    style: 'sneak',
+    unlockLevel: 40,
+    ranks: [
+      { note: 'The seam opens wider.', damage: 10 },
+      { note: 'You find it faster.', cooldownTicks: 150 },
+      { note: 'What is open, ends.', executeBelow: { frac: 0.4, mult: 2.2 } },
+    ],
+  },
+  {
     ability: 'night_fangs',
     style: 'sneak',
     unlockLevel: 45,
@@ -1531,6 +2156,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       {
         note: 'The bites stay open.',
         status: { status: 'bleed', power: 2, durationTicks: 60 },
+      },
+    ],
+  },
+  {
+    ability: 'thousand_cuts',
+    style: 'sneak',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'Each cut counts double.', damage: 4 },
+      { note: 'A sixth beat in the drumroll.', hits: 6, cooldownTicks: 200 },
+      {
+        note: 'Count them later.',
+        status: { status: 'bleed', power: 2, durationTicks: 40 },
       },
     ],
   },
