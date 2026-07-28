@@ -1055,6 +1055,135 @@ export declare class Renderer {
      * entities standing beside it; only the sky above them shows wall.
      */
     private cliffSideItem;
+    /** Memoized SPILL-LAW lookup (waterfalls.ts) — pure world data, so
+     *  results cache across frames and clear with the world, like
+     *  dockMemo. Keys quantize the normal but pass the TRUE normal
+     *  through: the diagonal start-tile offsets depend on it. */
+    private readonly fallMemo;
+    private fallMemoVersion;
+    private fallAt;
+    /** Organic water-region clip paths for the falls (world tile coords,
+     *  applied under the camera affine like the reflection composite) —
+     *  cached per fall run, cleared with the world like fallMemo. */
+    private readonly fallClipMemo;
+    private fallClipVersion;
+    private fallClip;
+    /** Clip the ctx to a world-coordinate region path lifted by `lift`
+     *  screen px — the reflection-composite idiom: transform, clip,
+     *  restore the transform but keep the clip. Callers wrap in
+     *  save()/restore(). */
+    private clipFallRegion;
+    /**
+     * THE MOUTH REGION — the feed channel's drawn water region EXTENDED
+     * through the dry rim strip to the crest by a VIRTUAL sampler: the
+     * spill columns' rim tiles count as water, so marching squares
+     * grows organic banks that CONTINUE the channel's own drawn banks
+     * exactly (the shared tile edges hash to the same crossings). The
+     * headrace tongue clipped to this region meets the authored water
+     * edge seamlessly — the alignment the straight tile-edge tongue
+     * never had. `axis` is the run's direction; (runA..runB) the tile
+     * range along it; `rim` the first dry tile row/col on the high
+     * side; `step` walks from the rim toward the feed water.
+     */
+    private mouthClipFor;
+    /** THE LANDING REGION — the real drawn water at the landing
+     *  elevation around a fall's foot. Pool dressing (outwash entering
+     *  the pool, rings, rafts, the strong mist veil) clips to it so
+     *  nothing paints onto drawn grass past the meandering shoreline. */
+    private landClipFor;
+    /** The contiguous spill run through a boundary column — the mouth
+     *  region must span the WHOLE run (per-segment virtual sets would
+     *  seam mid-channel). Walks quarter-point spill tests both ways. */
+    private fallRunColsX;
+    /** Smooth value noise over one world axis, level-salted — the falls'
+     *  anti-repetition lattice (the cliff-face world-keying law). */
+    private static fallNoise;
+    private fallTones;
+    /** Churn along a world line just past a fall's foot — the boil.
+     *  Three passes of tightly-packed irregular lobes (deep back
+     *  billows, main foam, sparse bright caps), each with its own
+     *  jitter and pulse so the mound never reads as a row of eggs.
+     *  (ox,oy) pushes the boil off the line toward the low side. */
+    private drawFallChurn;
+    /** Airborne life at a fall's landing: drifting mist motes and darting
+     *  spray, dt-gated per visible fall (the portal-emitter idiom).
+     *  Enhancement layer — rides the Water motion setting. */
+    private emitFallHaze;
+    /**
+     * Spill tests for one downhill face segment, emitting the curtain
+     * and its low-ground dressing. Halves are tested independently (the
+     * same quarter-offset law as ramp ownership) so the curtain starts
+     * and stops on the channel's tile edges, not the dual cell's.
+     */
+    private pushSouthFallItems;
+    /**
+     * THE WATERFALL CURTAIN — water continuing over a cliff face. One
+     * sheet hangs from the crest of `level` to the elevation the water
+     * truly lands at (landElev — through any stacked intermediate faces:
+     * only the top face of a sheer multi-level drop passes the spill
+     * law, and its curtain covers the whole wall). Inside the item, top
+     * to bottom: the HEADRACE (the glassy tongue that carries the water
+     * across the lip and the Cliff rim strip — authored channels stop a
+     * tile shy of the rim by the auto-fence law), the falling SHEET
+     * (clipped quad: depth-graded body, world-keyed standing column
+     * tones, accelerating foam threads at constant SCREEN speed — the
+     * phase rate divides by the drop height so a two-level fall doesn't
+     * cascade twice as fast), and the CREST ROLL (under-curl shadow +
+     * bright arris + break combs). Churn, outwash, rings and mist live
+     * in per-row items on the low ground (fallOutwashRowItem) so
+     * elevated landing rows — which blit as items at rowTy-0.01 —
+     * can't paint over them; diagonals, whose landing is a corner
+     * pocket rather than a row, draw their dressing right here. Every
+     * mark is keyed to WORLD coordinates (the cliff-face law): the
+     * sheet runs unbroken across segment seams and around 45° turns.
+     */
+    private waterfallItem;
+    /**
+     * One low-ground row of a straight fall's landing: the outwash
+     * tongue slice (spreading as it runs, whitest at impact); row 0 adds
+     * the churn mound over the sheet's foot; the last row adds pool
+     * rings (FLAT-law 0.6 ellipses), drifting foam rafts, the mist veil,
+     * and owns the haze particles. Per-row items because elevated
+     * landing rows blit as items at rowTy-0.01 — one spanning item
+     * would be painted over by every row after its own.
+     */
+    private fallOutwashRowItem;
+    /**
+     * THE SIDE FALL — water over a pure north-south rim. The face is
+     * edge-on (the cliffSideItem cheat strip), so the fall reads as a
+     * narrow ribbon hugging the rim line: crest fold at the top, scroll
+     * threads at constant screen speed, aerating body, churn stack at
+     * the landing. One item per contiguous water streak of the run —
+     * the sheet's motion needs the whole height, not row-sliced phases.
+     * Sorts at its FIRST row without the side item's early bias: every
+     * wall slice that can overlap sorts earlier by construction (their
+     * bias is the full crown lift), while bodies beside the rim still
+     * win against the wall line itself.
+     */
+    private fallRibbonItem;
+    /**
+     * A side fall's flat-ground dressing: the crown headrace running
+     * sideways into the rim line, the outwash fanning across the low
+     * ground, pool rings and the mist veil. Sorts after every crown and
+     * landing row blit it can touch ((r1-1)+0.03 beats rowTy-0.01).
+     */
+    private fallSideDressItem;
+    /**
+     * NORTH falls: the face looks away from the camera, so the visible
+     * story is the crown — the race running away toward the edge, the
+     * boil at the silhouette, the peeking top of the hidden sheet — and
+     * beyond the ridge, the far basin's churn (occluded by the lifted
+     * crown exactly where it should be) plus a rising plume. Diagonal
+     * back-bevels are skipped: the flanking cardinal faces carry them.
+     */
+    private pushNorthFallItems;
+    /** The crown half of a north fall: race away to the edge + the boil
+     *  line at the silhouette. Sorts after every crown row it crosses. */
+    private northFallRaceItem;
+    /** The far-basin half of a north fall: churn, rings and a small
+     *  veil at the landing, sorted to draw BEFORE the lifted crown rows
+     *  so the ridge occludes it exactly where it should. */
+    private northFallChurnItem;
     /** Descent direction of a Ramp tile: the cardinal neighbor a level down. */
     private rampDir;
     /** Deterministic per-stone jitter, world-keyed like the terrain bake. */

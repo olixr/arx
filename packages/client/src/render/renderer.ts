@@ -77,7 +77,13 @@ import {
 } from './ragdoll.js';
 import { BLOB_M, chamferRect, facetBlob, facetCircle, unitBlob } from './shapes.js';
 import { Particles } from './particles.js';
-import { spillAt, type SpillInfo } from './waterfalls.js';
+import {
+  FALL_LOOKAHEAD,
+  FALL_LOOKBACK,
+  isFallWater,
+  spillAt,
+  type SpillInfo,
+} from './waterfalls.js';
 import { Debris, type SmashKind } from './debris.js';
 import { Birds, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
@@ -6822,8 +6828,50 @@ export class Renderer {
           let fallInfo: SpillInfo | null = null;
           const flushFall = (rEnd: number): void => {
             if (!fallInfo) return;
-            items.push(this.fallRibbonItem(x, fallR0, rEnd, nx, level, fallInfo));
-            items.push(this.fallSideDressItem(x, fallR0, rEnd, nx, level, fallInfo));
+            const step = nx >= 0 ? -1 : 1;
+            const mouth = this.mouthClipFor(
+              game,
+              level,
+              'y',
+              fallR0,
+              rEnd - 1,
+              nx >= 0 ? x - 1 : x,
+              step,
+            );
+            const lc0 = nx >= 0 ? x - 1 : x - FALL_LOOKAHEAD - 4;
+            const lc1 = nx >= 0 ? x + FALL_LOOKAHEAD + 4 : x + 1;
+            const land = this.landClipFor(
+              game,
+              fallInfo.landElev,
+              lc0,
+              lc1,
+              fallR0 - 3,
+              rEnd + 3,
+            );
+            const apron = this.mouthClipFor(
+              game,
+              fallInfo.landElev,
+              'y',
+              fallR0,
+              rEnd - 1,
+              nx >= 0 ? x : x - 1,
+              nx >= 0 ? 1 : -1,
+            );
+            items.push(this.fallRibbonItem(x, fallR0, rEnd, nx, level, fallInfo, land));
+            items.push(
+              this.fallSideDressItem(
+                game,
+                x,
+                fallR0,
+                rEnd,
+                nx,
+                level,
+                fallInfo,
+                mouth,
+                land,
+                apron,
+              ),
+            );
             fallInfo = null;
           };
           for (let r = Math.floor(a); r < b; r++) {
@@ -7362,6 +7410,152 @@ export class Renderer {
     return v;
   }
 
+  /** Organic water-region clip paths for the falls (world tile coords,
+   *  applied under the camera affine like the reflection composite) —
+   *  cached per fall run, cleared with the world like fallMemo. */
+  private readonly fallClipMemo = new Map<string, Path2D | null>();
+  private fallClipVersion = -1;
+
+  private fallClip(game: ClientGame, key: string, build: () => Path2D | null): Path2D | null {
+    if (game.worldVersion !== this.fallClipVersion) {
+      this.fallClipMemo.clear();
+      this.fallClipVersion = game.worldVersion;
+    }
+    let p = this.fallClipMemo.get(key);
+    if (p === undefined) {
+      p = build();
+      this.fallClipMemo.set(key, p);
+    }
+    return p;
+  }
+
+  /** Clip the ctx to a world-coordinate region path lifted by `lift`
+   *  screen px — the reflection-composite idiom: transform, clip,
+   *  restore the transform but keep the clip. Callers wrap in
+   *  save()/restore(). */
+  private clipFallRegion(path: Path2D, lift: number): void {
+    const ctx = this.ctx;
+    const prior = ctx.getTransform();
+    const o = this.camera.worldToScreen(0, 0, this.w, this.h);
+    ctx.transform(
+      this.camera.scale,
+      0,
+      0,
+      this.camera.scale * this.camera.yScale,
+      o.x,
+      o.y - lift,
+    );
+    ctx.clip(path);
+    ctx.setTransform(prior);
+  }
+
+  /**
+   * THE MOUTH REGION — the feed channel's drawn water region EXTENDED
+   * through the dry rim strip to the crest by a VIRTUAL sampler: the
+   * spill columns' rim tiles count as water, so marching squares
+   * grows organic banks that CONTINUE the channel's own drawn banks
+   * exactly (the shared tile edges hash to the same crossings). The
+   * headrace tongue clipped to this region meets the authored water
+   * edge seamlessly — the alignment the straight tile-edge tongue
+   * never had. `axis` is the run's direction; (runA..runB) the tile
+   * range along it; `rim` the first dry tile row/col on the high
+   * side; `step` walks from the rim toward the feed water.
+   */
+  private mouthClipFor(
+    game: ClientGame,
+    level: number,
+    axis: 'x' | 'y',
+    runA: number,
+    runB: number,
+    rim: number,
+    step: number,
+  ): Path2D | null {
+    const key = `m:${axis}:${runA}:${runB}:${rim}:${step}:${level}`;
+    return this.fallClip(game, key, () => {
+      const ground = (tx: number, ty: number): number | undefined =>
+        game.world.elevAt(tx, ty) === level ? game.world.groundAt(tx, ty) : undefined;
+      // The virtual cells: for each run column, the dry tiles between
+      // the rim and its feed water (the scanHigh walk), plus a guard
+      // cell one past the crest so no south boundary is drawn there
+      // (the sheet's straight crest line owns that edge).
+      const virtual = new Set<string>();
+      for (let c = runA; c <= runB; c++) {
+        let found = -1;
+        for (let k = 0; k < FALL_LOOKBACK; k++) {
+          const tx = axis === 'x' ? c : rim + step * k;
+          const ty = axis === 'x' ? rim + step * k : c;
+          const g = ground(tx, ty);
+          if (g === undefined) break;
+          if (isFallWater(g)) {
+            found = k;
+            break;
+          }
+        }
+        if (found <= 0) continue;
+        for (let k = 0; k < found; k++) {
+          virtual.add(
+            axis === 'x' ? `${c},${rim + step * k}` : `${rim + step * k},${c}`,
+          );
+        }
+        virtual.add(axis === 'x' ? `${c},${rim - step}` : `${rim - step},${c}`);
+      }
+      if (virtual.size === 0) return null;
+      const sampler = (tx: number, ty: number): number | undefined =>
+        virtual.has(`${tx},${ty}`) ? Tile.Water : ground(tx, ty);
+      const lo = Math.min(rim - step, rim + step * FALL_LOOKBACK) - 2;
+      const hi = Math.max(rim - step, rim + step * FALL_LOOKBACK) + 2;
+      const bounds =
+        axis === 'x'
+          ? { minTx: runA - 2, maxTx: runB + 2, minTy: lo, maxTy: hi }
+          : { minTx: lo, maxTx: hi, minTy: runA - 2, maxTy: runB + 2 };
+      return waterRegionPath(sampler, bounds);
+    });
+  }
+
+  /** THE LANDING REGION — the real drawn water at the landing
+   *  elevation around a fall's foot. Pool dressing (outwash entering
+   *  the pool, rings, rafts, the strong mist veil) clips to it so
+   *  nothing paints onto drawn grass past the meandering shoreline. */
+  private landClipFor(
+    game: ClientGame,
+    landElev: number,
+    cx0: number,
+    cx1: number,
+    cy0: number,
+    cy1: number,
+  ): Path2D | null {
+    const key = `l:${cx0}:${cx1}:${cy0}:${cy1}:${landElev}`;
+    return this.fallClip(game, key, () => {
+      const ground = (tx: number, ty: number): number | undefined =>
+        game.world.elevAt(tx, ty) === landElev ? game.world.groundAt(tx, ty) : undefined;
+      return waterRegionPath(ground, { minTx: cx0, maxTx: cx1, minTy: cy0, maxTy: cy1 });
+    });
+  }
+
+  /** The contiguous spill run through a boundary column — the mouth
+   *  region must span the WHOLE run (per-segment virtual sets would
+   *  seam mid-channel). Walks quarter-point spill tests both ways. */
+  private fallRunColsX(
+    game: ClientGame,
+    col: number,
+    my: number,
+    nx: number,
+    ny: number,
+    level: number,
+  ): [number, number] {
+    let a = col;
+    let b = col;
+    for (let k = 1; k <= 32; k++) {
+      if (!this.fallAt(game, a - 1 + 0.25, my, nx, ny, level)) break;
+      a--;
+    }
+    for (let k = 1; k <= 32; k++) {
+      if (!this.fallAt(game, b + 1 + 0.25, my, nx, ny, level)) break;
+      b++;
+    }
+    return [a, b];
+  }
+
   /** Smooth value noise over one world axis, level-salted — the falls'
    *  anti-repetition lattice (the cliff-face world-keying law). */
   private static fallNoise(v: number, salt: number, level: number, ks: number): number {
@@ -7469,29 +7663,47 @@ export class Renderer {
   /** Airborne life at a fall's landing: drifting mist motes and darting
    *  spray, dt-gated per visible fall (the portal-emitter idiom).
    *  Enhancement layer — rides the Water motion setting. */
-  private emitFallHaze(x0: number, y0: number, x1: number, y1: number): void {
+  private emitFallHaze(
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    wet?: (wx: number, wy: number) => boolean,
+  ): void {
     if (!this.waterFxFull) return;
     const dt = this.frameDt;
     const span = Math.max(0.4, Math.hypot(x1 - x0, y1 - y0));
     if (Math.random() < dt * 2.2 * span) {
       const f = Math.random();
-      this.particles.burst(
-        x0 + (x1 - x0) * f,
-        y0 + (y1 - y0) * f + 0.1 + Math.random() * 0.4,
-        1,
-        ['#dcebf7', '#cfe3f4'],
-        { speed: 0.3, life: 1.3, size: 0.07, up: true, gravity: -0.25, drag: 1.1, grow: 0.12 },
-      );
+      const wx = x0 + (x1 - x0) * f;
+      const wy = y0 + (y1 - y0) * f + 0.1 + Math.random() * 0.4;
+      if (!wet || wet(wx, wy)) {
+        this.particles.burst(wx, wy, 1, ['#dcebf7', '#cfe3f4'], {
+          speed: 0.3,
+          life: 1.3,
+          size: 0.07,
+          up: true,
+          gravity: -0.25,
+          drag: 1.1,
+          grow: 0.12,
+        });
+      }
     }
     if (Math.random() < dt * 3.2 * span) {
       const f = Math.random();
-      this.particles.burst(
-        x0 + (x1 - x0) * f,
-        y0 + (y1 - y0) * f + 0.08,
-        2,
-        ['#f4fafe', '#bfe0f2'],
-        { speed: 1.5, life: 0.35, size: 0.05, up: true, gravity: 5.5, drag: 1.6, shape: 'streak' },
-      );
+      const wx = x0 + (x1 - x0) * f;
+      const wy = y0 + (y1 - y0) * f + 0.08;
+      if (!wet || wet(wx, wy)) {
+        this.particles.burst(wx, wy, 2, ['#f4fafe', '#bfe0f2'], {
+          speed: 1.5,
+          life: 0.35,
+          size: 0.05,
+          up: true,
+          gravity: 5.5,
+          drag: 1.6,
+          shape: 'streak',
+        });
+      }
     }
   }
 
@@ -7540,12 +7752,55 @@ export class Renderer {
     const edgeL = !this.fallAt(game, x0 - ux * 0.25, y0 - uy * 0.25, nx, ny, level);
     const edgeR = !this.fallAt(game, x1 + ux * 0.25, y1 + uy * 0.25, nx, ny, level);
     const diagonal = Math.abs(nx) > 0.01;
+    // The run-wide organic clips: the mouth region fuses the tongue
+    // to the channel's drawn banks, the landing region confines pool
+    // dressing to the drawn water (both cached, straight faces only).
+    let mouth: Path2D | null = null;
+    let land: Path2D | null = null;
+    let apron: Path2D | null = null;
+    let runX0 = x0;
+    let runX1 = x1;
+    if (!diagonal) {
+      const [runA, runB] = this.fallRunColsX(game, Math.floor(mx), ay, nx, ny, level);
+      runX0 = runA;
+      runX1 = runB + 1;
+      mouth = this.mouthClipFor(game, level, 'x', runA, runB, ay - 1, -1);
+      // The outwash corridor: the same virtual-region law pointed the
+      // other way — dry apron tiles under the run count as water at
+      // the landing elevation, so the rapid's banks grow organically
+      // and FUSE into the pool's drawn shoreline.
+      apron = this.mouthClipFor(game, info.landElev, 'x', runA, runB, ay, 1);
+      land = this.landClipFor(
+        game,
+        info.landElev,
+        runA - 3,
+        runB + 4,
+        ay - 1,
+        ay + FALL_LOOKAHEAD + 3,
+      );
+    }
     items.push(
-      this.waterfallItem(game, x0, y0, x1, y1, nx, ny, level, info, edgeL, edgeR, diagonal),
+      this.waterfallItem(
+        game,
+        x0,
+        y0,
+        x1,
+        y1,
+        nx,
+        ny,
+        level,
+        info,
+        edgeL,
+        edgeR,
+        diagonal,
+        mouth,
+      ),
     );
     if (!diagonal) {
       for (let r = 0; r <= info.drop; r++) {
-        items.push(this.fallOutwashRowItem(x0, x1, ay, r, info, level));
+        items.push(
+          this.fallOutwashRowItem(game, x0, x1, ay, r, info, level, land, apron, runX0, runX1),
+        );
       }
     }
   }
@@ -7584,6 +7839,7 @@ export class Renderer {
     edgeL: boolean,
     edgeR: boolean,
     diagonal: boolean,
+    mouth: Path2D | null,
   ): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
@@ -7617,47 +7873,48 @@ export class Renderer {
 
         // ---- the headrace ------------------------------------------
         if (!diagonal) {
-          const raceTop = ay - info.race;
-          const RS = Math.max(2, info.race * 3);
-          ctx.beginPath();
-          for (let k = 0; k <= RS; k++) {
-            const wy = raceTop + (k / RS) * info.race;
-            const u = k / RS;
-            const insetL = edgeL ? 0.04 + 0.06 * u + (vn(wy, 21, 0.9) - 0.5) * 0.08 : 0;
-            const p = this.camera.worldToScreen(ax + insetL, wy, this.w, this.h);
-            ctx.lineTo(p.x, p.y - topLift);
-          }
-          for (let k = RS; k >= 0; k--) {
-            const wy = raceTop + (k / RS) * info.race;
-            const u = k / RS;
-            const insetR = edgeR ? 0.04 + 0.06 * u + (vn(wy, 22, 0.9) - 0.5) * 0.08 : 0;
-            const p = this.camera.worldToScreen(bx - insetR, wy, this.w, this.h);
-            ctx.lineTo(p.x, p.y - topLift);
-          }
-          ctx.closePath();
-          const pT = this.camera.worldToScreen((ax + bx) / 2, raceTop, this.w, this.h);
-          const gr = ctx.createLinearGradient(0, pT.y - topLift, 0, A.y - topLift);
+          // THE MOUTH LAW: the tongue is a full-width near-opaque fill
+          // CLIPPED to the organic mouth region — the channel's own
+          // drawn banks extended over the rim strip by the virtual
+          // sampler, so the water's edge at the lip IS the authored
+          // shoreline continuing, never a straight tile seam. The old
+          // translucent free-edge insets let the rim's grass read
+          // through and left slivers against the drawn banks.
+          const raceTop = ay - info.race - 0.6;
+          ctx.save();
+          if (mouth) this.clipFallRegion(mouth, topLift);
+          const ovL = edgeL ? 0.3 : 0;
+          const ovR = edgeR ? 0.3 : 0;
+          const pTL = this.camera.worldToScreen(ax - ovL, raceTop, this.w, this.h);
+          const pBR = this.camera.worldToScreen(bx + ovR, ay, this.w, this.h);
+          const gr = ctx.createLinearGradient(0, pTL.y - topLift, 0, A.y - topLift);
           gr.addColorStop(0, 'rgba(73,121,184,0)');
-          gr.addColorStop(0.45, `rgba(63,108,170,${0.38 * tones.dim})`);
-          gr.addColorStop(1, `rgba(30,58,106,${0.55 * tones.dim})`);
+          gr.addColorStop(0.3, `rgba(66,112,174,${0.5 * tones.dim})`);
+          gr.addColorStop(0.62, `rgba(48,86,144,${0.78 * tones.dim})`);
+          gr.addColorStop(1, `rgba(28,54,102,${0.92 * tones.dim})`);
           ctx.fillStyle = gr;
-          ctx.fill();
+          ctx.fillRect(
+            pTL.x,
+            pTL.y - topLift,
+            pBR.x - pTL.x,
+            pBR.y - pTL.y,
+          );
           // Shear lines along the race's sides — the current pulling
           // off the banks as it gathers for the drop.
+          const RS = Math.max(3, Math.ceil(info.race * 3));
           ctx.strokeStyle = 'rgba(26,48,96,0.9)';
-          ctx.globalAlpha = 0.24 * tones.dim;
+          ctx.globalAlpha = 0.22 * tones.dim;
           ctx.lineWidth = Math.max(1.2, s * 0.03);
-          for (const [ex, salt, free] of [
-            [ax, 21, edgeL],
-            [bx, 22, edgeR],
+          for (const [ex, salt] of [
+            [ax, 21],
+            [bx, 22],
           ] as const) {
             ctx.beginPath();
             for (let k = 0; k <= RS; k++) {
-              const wy = raceTop + (k / RS) * info.race;
-              const u = k / RS;
-              const inset = free ? 0.04 + 0.06 * u + (vn(wy, salt, 0.9) - 0.5) * 0.08 : 0;
+              const wy = raceTop + (k / RS) * (ay - raceTop);
+              const inset = 0.09 + (vn(wy, salt, 0.9) - 0.5) * 0.06;
               const p = this.camera.worldToScreen(
-                ex === ax ? ax + inset + 0.03 : bx - inset - 0.03,
+                ex === ax ? ax + inset : bx - inset,
                 wy,
                 this.w,
                 this.h,
@@ -7673,11 +7930,11 @@ export class Renderer {
           for (let wx = Math.ceil((ax + 0.08) / 0.22) * 0.22; wx < bx - 0.05; wx += 0.22) {
             const idx = Math.round(wx / 0.22);
             const ph = (t * 1.5 * (0.8 + 0.4 * n01(idx, 31)) + n01(idx, 32)) % 1;
-            const wy0 = raceTop + Math.pow(ph, 1.6) * info.race;
+            const wy0 = raceTop + Math.pow(ph, 1.6) * (ay - raceTop);
             const wy1 = Math.min(ay, wy0 + 0.12 + 0.2 * ph);
             const p0 = this.camera.worldToScreen(wx, wy0, this.w, this.h);
             const p1 = this.camera.worldToScreen(wx, wy1, this.w, this.h);
-            ctx.globalAlpha = (0.14 + 0.3 * ph) * tones.dim;
+            ctx.globalAlpha = (0.18 + 0.32 * ph) * tones.dim;
             ctx.lineWidth = Math.max(1.2, s * 0.028);
             ctx.beginPath();
             ctx.moveTo(p0.x, p0.y - topLift);
@@ -7686,6 +7943,7 @@ export class Renderer {
           }
           ctx.globalAlpha = 1;
           ctx.lineCap = 'butt';
+          ctx.restore();
         } else {
           // Diagonal race: a short glassy tongue upstream along the
           // normal — the bevel's feed arrives cornerwise.
@@ -7847,11 +8105,15 @@ export class Renderer {
         // ---- diagonal landing dressing -----------------------------
         if (diagonal) {
           this.drawFallChurn(ax, ay, bx, by, nx, ny, landLift, level, t, tones);
+          const wet = (wx: number, wy: number): boolean =>
+            game.world.elevAt(Math.floor(wx), Math.floor(wy)) === info.landElev &&
+            isFallWater(game.world.groundAt(Math.floor(wx), Math.floor(wy)));
           this.emitFallHaze(
             ax + nx * (info.drop * 0.5 + 0.3),
             ay + ny * (info.drop * 0.5 + 0.3),
             bx + nx * (info.drop * 0.5 + 0.3),
             by + ny * (info.drop * 0.5 + 0.3),
+            wet,
           );
         }
       },
@@ -7868,18 +8130,30 @@ export class Renderer {
    * would be painted over by every row after its own.
    */
   private fallOutwashRowItem(
+    game: ClientGame,
     x0: number,
     x1: number,
     foot: number,
     r: number,
     info: SpillInfo,
     level: number,
+    land: Path2D | null,
+    apron: Path2D | null,
+    runX0: number,
+    runX1: number,
   ): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const landLift = info.landElev * ELEV_H * s;
     const rowY = foot + r;
     const last = r === info.drop;
+    // Run-level marks (the veils) draw once, from the segment holding
+    // the run's midpoint — per-segment veils stack into cones/banding.
+    const runMid = (runX0 + runX1) / 2;
+    const ownsVeil = runMid >= x0 && runMid < x1 + 0.001;
+    const wet = (wx: number, wy: number): boolean =>
+      game.world.elevAt(Math.floor(wx), Math.floor(wy)) === info.landElev &&
+      isFallWater(game.world.groundAt(Math.floor(wx), Math.floor(wy)));
     return {
       sortY: rowY + 0.0015,
       draw: () => {
@@ -7893,54 +8167,117 @@ export class Renderer {
           p.y -= landLift;
           return p;
         };
-        // The outwash tongue — spreads ~0.14 tiles per row it runs.
+        // The outwash tongue — the RAPID racing across the apron rock
+        // into the pool. Spreads gently as it runs; dry-row slices
+        // paint denser (rushing water over stone must read as water,
+        // not a wash stain), the shore row clips to the drawn pool.
         const spreadAt = (wy: number, side: number) =>
-          0.14 * (wy - foot) + (vn(wy, 25 + side, 0.7) - 0.5) * 0.1;
-        const depth = last ? 0.55 : 1;
-        const SS = 3;
-        ctx.beginPath();
-        for (let k = 0; k <= SS; k++) {
-          const wy = rowY + (k / SS) * depth;
-          const p = wts(x0 - spreadAt(wy, 0), wy);
-          ctx.lineTo(p.x, p.y);
-        }
-        for (let k = SS; k >= 0; k--) {
-          const wy = rowY + (k / SS) * depth;
-          const p = wts(x1 + spreadAt(wy, 1), wy);
-          ctx.lineTo(p.x, p.y);
-        }
-        ctx.closePath();
-        const aTop = Math.max(0.14, 0.5 - r * 0.13);
-        const aBot = last ? 0.05 : Math.max(0.12, 0.5 - (r + 1) * 0.13);
-        const g0 = wts((x0 + x1) / 2, rowY);
-        const g1 = wts((x0 + x1) / 2, rowY + depth);
-        const gr = ctx.createLinearGradient(0, g0.y, 0, g1.y);
-        gr.addColorStop(0, `${tones.wash}${aTop * tones.dim})`);
-        gr.addColorStop(1, `${tones.wash}${aBot * tones.dim})`);
-        ctx.fillStyle = gr;
-        ctx.fill();
-        // Streaming flow dashes.
-        ctx.strokeStyle = tones.foam;
-        ctx.lineCap = 'round';
-        for (let wx = Math.ceil((x0 + 0.1) / 0.33) * 0.33; wx < x1 - 0.05; wx += 0.33) {
-          const idx = Math.round(wx / 0.33);
-          const ph = (t * 1.25 * (0.85 + 0.3 * n01(idx, 33)) + n01(idx, 34)) % 1;
-          const wy0 = rowY + ph * depth;
-          const p0 = wts(wx, wy0);
-          const p1 = wts(wx, Math.min(rowY + depth, wy0 + 0.22));
-          ctx.globalAlpha = 0.3 * (1 - r * 0.18) * (1 - ph * 0.5) * tones.dim;
-          ctx.lineWidth = Math.max(1.2, s * 0.03);
+          0.1 * (wy - foot) + (vn(wy, 25 + side, 0.7) - 0.5) * 0.08;
+        const tonguePath = (depth: number): void => {
+          const SS = 3;
           ctx.beginPath();
-          ctx.moveTo(p0.x, p0.y);
-          ctx.lineTo(p1.x, p1.y);
-          ctx.stroke();
+          for (let k = 0; k <= SS; k++) {
+            const wy = rowY + (k / SS) * depth;
+            const p = wts(x0 - spreadAt(wy, 0), wy);
+            ctx.lineTo(p.x, p.y);
+          }
+          for (let k = SS; k >= 0; k--) {
+            const wy = rowY + (k / SS) * depth;
+            const p = wts(x1 + spreadAt(wy, 1), wy);
+            ctx.lineTo(p.x, p.y);
+          }
+          ctx.closePath();
+        };
+        const fillTongue = (depth: number, aTop: number, aBot: number): void => {
+          tonguePath(depth);
+          const g0 = wts((x0 + x1) / 2, rowY);
+          const g1 = wts((x0 + x1) / 2, rowY + depth);
+          const gr = ctx.createLinearGradient(0, g0.y, 0, g1.y);
+          gr.addColorStop(0, `${tones.wash}${aTop * tones.dim})`);
+          gr.addColorStop(1, `${tones.wash}${aBot * tones.dim})`);
+          ctx.fillStyle = gr;
+          ctx.fill();
+        };
+        const dashes = (depth: number): void => {
+          ctx.strokeStyle = tones.foam;
+          ctx.lineCap = 'round';
+          for (let wx = Math.ceil((x0 + 0.1) / 0.33) * 0.33; wx < x1 - 0.05; wx += 0.33) {
+            const idx = Math.round(wx / 0.33);
+            const ph = (t * 1.25 * (0.85 + 0.3 * n01(idx, 33)) + n01(idx, 34)) % 1;
+            const wy0 = rowY + ph * depth;
+            const p0 = wts(wx, wy0);
+            const p1 = wts(wx, Math.min(rowY + depth, wy0 + 0.22));
+            ctx.globalAlpha = 0.36 * (1 - r * 0.14) * (1 - ph * 0.5) * tones.dim;
+            ctx.lineWidth = Math.max(1.2, s * 0.03);
+            ctx.beginPath();
+            ctx.moveTo(p0.x, p0.y);
+            ctx.lineTo(p1.x, p1.y);
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+          ctx.lineCap = 'butt';
+        };
+        // The rapid clips to the OUTWASH CORRIDOR — the apron region
+        // whose organic banks fuse into the pool's drawn shoreline
+        // (the mouth law pointed downhill). It includes the pool, so
+        // the whole run-out is one clipped body of moving water.
+        ctx.save();
+        if (apron) this.clipFallRegion(apron, landLift);
+        // The water BED first: an opaque fill so the corridor reads
+        // as a channel cut through the bank, not foam on grass. The
+        // shore row's bed FADES into the pool (no tone step on the
+        // open water); overhang only at the run's free ends — abutting
+        // segment rects must not double-paint.
+        {
+          const ovL = Math.abs(x0 - runX0) < 0.01 ? 0.35 : 0;
+          const ovR = Math.abs(x1 - runX1) < 0.01 ? 0.35 : 0;
+          const depth = last ? 0.9 : 1;
+          const p0 = wts(x0 - ovL, rowY - 0.02);
+          const p1 = wts(x1 + ovR, rowY + depth);
+          const bed = this.sky.moonlit ? '56,84,128' : '96,150,192';
+          if (last) {
+            const gb = ctx.createLinearGradient(0, p0.y, 0, p1.y);
+            gb.addColorStop(0, `rgba(${bed},0.88)`);
+            gb.addColorStop(0.45, `rgba(${bed},0.55)`);
+            gb.addColorStop(1, `rgba(${bed},0)`);
+            ctx.fillStyle = gb;
+          } else {
+            ctx.fillStyle = `rgba(${bed},0.88)`;
+          }
+          ctx.fillRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
         }
-        ctx.globalAlpha = 1;
-        ctx.lineCap = 'butt';
-        if (r === 0) {
-          this.drawFallChurn(x0, foot, x1, foot, 0, 1, landLift, level, t, tones);
+        if (!last) {
+          // A dry apron slice: the full-depth rapid, with dark cut
+          // lines along its edges so the racing sheet owns its banks.
+          fillTongue(1, Math.max(0.3, 0.62 - r * 0.12), Math.max(0.26, 0.56 - r * 0.12));
+          ctx.strokeStyle = 'rgba(26,48,96,0.85)';
+          ctx.globalAlpha = 0.2 * tones.dim;
+          ctx.lineWidth = Math.max(1.2, s * 0.028);
+          for (const side of [0, 1] as const) {
+            ctx.beginPath();
+            for (let k = 0; k <= 3; k++) {
+              const wy = rowY + (k / 3) * 1;
+              const p =
+                side === 0
+                  ? wts(x0 - spreadAt(wy, 0), wy)
+                  : wts(x1 + spreadAt(wy, 1), wy);
+              if (k === 0) ctx.moveTo(p.x, p.y);
+              else ctx.lineTo(p.x, p.y);
+            }
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+          dashes(1);
+        } else {
+          fillTongue(0.95, Math.max(0.26, 0.54 - r * 0.12), 0.05);
+          dashes(0.95);
         }
+        ctx.restore();
         if (last) {
+          // Everything living ON the pool's surface — rings, rafts,
+          // the strong veil — clips to the drawn water region.
+          ctx.save();
+          if (land) this.clipFallRegion(land, landLift);
           // Pool rings — THE FLAT LAW (0.6 squash: this camera never
           // looks straight down).
           for (let wx = Math.ceil((x0 + 0.15) / 0.55) * 0.55; wx < x1; wx += 0.55) {
@@ -7971,24 +8308,45 @@ export class Renderer {
             ctx.fill();
           }
           ctx.globalAlpha = 1;
-          // The mist veil over the whole landing.
-          const mid = (x0 + x1) / 2;
-          const pm = wts(mid, foot + 0.3);
-          const rx =
-            ((x1 - x0) * 0.62 + 0.5) * s * (1 + 0.05 * Math.sin(t * 0.9 + mid));
-          const ry = s * 0.55;
-          const rg = ctx.createRadialGradient(pm.x, pm.y, 0, pm.x, pm.y, rx);
-          rg.addColorStop(0, `rgba(238,246,253,${0.15 * tones.dim})`);
-          rg.addColorStop(0.6, `rgba(238,246,253,${0.07 * tones.dim})`);
-          rg.addColorStop(1, 'rgba(238,246,253,0)');
-          ctx.save();
-          ctx.translate(pm.x, pm.y);
-          ctx.scale(1, ry / rx);
-          ctx.translate(-pm.x, -pm.y);
-          ctx.fillStyle = rg;
-          ctx.fillRect(pm.x - rx, pm.y - rx, rx * 2, rx * 2);
+          if (ownsVeil) {
+            // ONE veil for the whole run, over the pool it rises from.
+            const pm = wts(runMid, rowY + 0.35);
+            const rx =
+              ((runX1 - runX0) * 0.5 + 0.4) * s * (1 + 0.05 * Math.sin(t * 0.9 + runMid));
+            const ry = s * 0.55;
+            const rg = ctx.createRadialGradient(pm.x, pm.y, 0, pm.x, pm.y, rx);
+            rg.addColorStop(0, `rgba(238,246,253,${0.16 * tones.dim})`);
+            rg.addColorStop(0.6, `rgba(238,246,253,${0.08 * tones.dim})`);
+            rg.addColorStop(1, 'rgba(238,246,253,0)');
+            ctx.save();
+            ctx.translate(pm.x, pm.y);
+            ctx.scale(1, ry / rx);
+            ctx.translate(-pm.x, -pm.y);
+            ctx.fillStyle = rg;
+            ctx.fillRect(pm.x - rx, pm.y - rx, rx * 2, rx * 2);
+            ctx.restore();
+          }
           ctx.restore();
-          this.emitFallHaze(x0, foot + 0.25, x1, foot + 0.25);
+          if (ownsVeil) {
+            // The faint free mist — the only mark allowed past the
+            // banks, because air is.
+            const pmF = wts(runMid, rowY + 0.25);
+            const rxF = ((runX1 - runX0) * 0.3 + 0.25) * s;
+            const rgF = ctx.createRadialGradient(pmF.x, pmF.y, 0, pmF.x, pmF.y, rxF);
+            rgF.addColorStop(0, `rgba(238,246,253,${0.06 * tones.dim})`);
+            rgF.addColorStop(1, 'rgba(238,246,253,0)');
+            ctx.save();
+            ctx.translate(pmF.x, pmF.y);
+            ctx.scale(1, 0.55);
+            ctx.translate(-pmF.x, -pmF.y);
+            ctx.fillStyle = rgF;
+            ctx.fillRect(pmF.x - rxF, pmF.y - rxF, rxF * 2, rxF * 2);
+            ctx.restore();
+          }
+          this.emitFallHaze(x0, rowY + 0.3, x1, rowY + 0.3, wet);
+        }
+        if (r === 0) {
+          this.drawFallChurn(x0 + 0.06, foot, x1 - 0.06, foot, 0, 1, landLift, level, t, tones);
         }
       },
     };
@@ -8013,6 +8371,7 @@ export class Renderer {
     nx: number,
     level: number,
     info: SpillInfo,
+    land: Path2D | null,
   ): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
@@ -8076,7 +8435,10 @@ export class Renderer {
         }
         ctx.globalAlpha = 1;
         ctx.lineCap = 'butt';
-        // Churn stack along the vertical landing line.
+        // Churn stack along the vertical landing line — confined to
+        // the drawn plunge water so no boil rides the bank.
+        ctx.save();
+        if (land) this.clipFallRegion(land, landLift);
         const yFootTop = Math.round(A.y - landLift);
         for (let pass = 0; pass < 2; pass++) {
           ctx.fillStyle =
@@ -8103,6 +8465,7 @@ export class Renderer {
             ctx.fill();
           }
         }
+        ctx.restore();
       },
     };
   }
@@ -8114,12 +8477,16 @@ export class Renderer {
    * landing row blit it can touch ((r1-1)+0.03 beats rowTy-0.01).
    */
   private fallSideDressItem(
+    game: ClientGame,
     x: number,
     r0: number,
     r1: number,
     nx: number,
     level: number,
     info: SpillInfo,
+    mouth: Path2D | null,
+    land: Path2D | null,
+    apron: Path2D | null,
   ): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
@@ -8144,33 +8511,45 @@ export class Renderer {
           p.y -= landLift;
           return p;
         };
-        // Headrace: the sideways tongue from the feed to the rim line.
-        const feedX = x - dir * info.race;
-        const RS = Math.max(2, info.race * 3);
-        ctx.beginPath();
-        for (let k = 0; k <= RS; k++) {
-          const wx = feedX + (k / RS) * (x - feedX);
-          const u = k / RS;
-          const inset = 0.05 + 0.06 * u + (vn(wx, 21, 0.9) - 0.5) * 0.08;
-          const p = wtsT(wx, r0 + inset);
-          ctx.lineTo(p.x, p.y);
-        }
-        for (let k = RS; k >= 0; k--) {
-          const wx = feedX + (k / RS) * (x - feedX);
-          const u = k / RS;
-          const inset = 0.05 + 0.06 * u + (vn(wx, 22, 0.9) - 0.5) * 0.08;
-          const p = wtsT(wx, r1 - inset);
-          ctx.lineTo(p.x, p.y);
-        }
-        ctx.closePath();
-        const pF = wtsT(feedX, (r0 + r1) / 2);
-        const pR = wtsT(x, (r0 + r1) / 2);
-        const gr = ctx.createLinearGradient(pF.x, 0, pR.x, 0);
+        // Headrace: the sideways tongue from the feed to the rim line
+        // — full fill clipped to the organic mouth region (THE MOUTH
+        // LAW), so its banks continue the channel's drawn shoreline.
+        const feedX = x - dir * (info.race + 0.6);
+        ctx.save();
+        if (mouth) this.clipFallRegion(mouth, topLift);
+        const pF = wtsT(feedX, r0 - 0.3);
+        const pR = wtsT(x, r1 + 0.3);
+        const gr = ctx.createLinearGradient(pF.x, 0, wtsT(x, r0).x, 0);
         gr.addColorStop(0, 'rgba(73,121,184,0)');
-        gr.addColorStop(0.45, `rgba(63,108,170,${0.38 * tones.dim})`);
-        gr.addColorStop(1, `rgba(30,58,106,${0.55 * tones.dim})`);
+        gr.addColorStop(0.3, `rgba(66,112,174,${0.5 * tones.dim})`);
+        gr.addColorStop(0.62, `rgba(48,86,144,${0.78 * tones.dim})`);
+        gr.addColorStop(1, `rgba(28,54,102,${0.92 * tones.dim})`);
         ctx.fillStyle = gr;
-        ctx.fill();
+        ctx.fillRect(
+          Math.min(pF.x, pR.x),
+          Math.min(pF.y, pR.y),
+          Math.abs(pR.x - pF.x),
+          Math.abs(pR.y - pF.y),
+        );
+        // Shear lines where the current pulls off the banks.
+        ctx.strokeStyle = 'rgba(26,48,96,0.9)';
+        ctx.globalAlpha = 0.22 * tones.dim;
+        ctx.lineWidth = Math.max(1.2, s * 0.03);
+        const RS = Math.max(3, Math.ceil(info.race * 3));
+        for (const [ey, salt] of [
+          [r0, 21],
+          [r1, 22],
+        ] as const) {
+          ctx.beginPath();
+          for (let k = 0; k <= RS; k++) {
+            const wx = feedX + (k / RS) * (x - feedX);
+            const inset = 0.09 + (vn(wx, salt, 0.9) - 0.5) * 0.06;
+            const p = wtsT(wx, ey === r0 ? r0 + inset : r1 - inset);
+            if (k === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+          }
+          ctx.stroke();
+        }
         // Flow threads accelerating into the rim.
         ctx.strokeStyle = tones.foam;
         ctx.lineCap = 'round';
@@ -8181,7 +8560,7 @@ export class Renderer {
           const px1 = px0 + (x - px0) * Math.min(1, 0.25 + ph * 0.3);
           const p0 = wtsT(px0, wy);
           const p1 = wtsT(px1, wy);
-          ctx.globalAlpha = (0.14 + 0.3 * ph) * tones.dim;
+          ctx.globalAlpha = (0.18 + 0.32 * ph) * tones.dim;
           ctx.lineWidth = Math.max(1.2, s * 0.028);
           ctx.beginPath();
           ctx.moveTo(p0.x, p0.y);
@@ -8190,8 +8569,26 @@ export class Renderer {
         }
         ctx.globalAlpha = 1;
         ctx.lineCap = 'butt';
+        ctx.restore();
+        // The faint free mist — air overhangs the banks.
+        const pmF = wtsL(x + dir * 0.25, (r0 + r1) / 2);
+        const rxF = ((r1 - r0) * 0.3 + 0.25) * s;
+        const rgF = ctx.createRadialGradient(pmF.x, pmF.y, 0, pmF.x, pmF.y, rxF);
+        rgF.addColorStop(0, `rgba(238,246,253,${0.07 * tones.dim})`);
+        rgF.addColorStop(1, 'rgba(238,246,253,0)');
+        ctx.save();
+        ctx.translate(pmF.x, pmF.y);
+        ctx.scale(1, 0.7);
+        ctx.translate(-pmF.x, -pmF.y);
+        ctx.fillStyle = rgF;
+        ctx.fillRect(pmF.x - rxF, pmF.y - rxF, rxF * 2, rxF * 2);
+        ctx.restore();
+        // The fan clips to the outwash corridor (organic banks fused
+        // into the plunge water's drawn shoreline).
+        ctx.save();
+        if (apron) this.clipFallRegion(apron, landLift);
         // Outwash fan across the low ground.
-        const fanEnd = x + dir * (info.drop + 0.6);
+        const fanEnd = x + dir * (info.drop + 1.2);
         ctx.beginPath();
         const FS = 4;
         for (let k = 0; k <= FS; k++) {
@@ -8212,10 +8609,15 @@ export class Renderer {
         const pI = wtsL(x, (r0 + r1) / 2);
         const pE = wtsL(fanEnd, (r0 + r1) / 2);
         const gw = ctx.createLinearGradient(pI.x, 0, pE.x, 0);
-        gw.addColorStop(0, `${tones.wash}${0.5 * tones.dim})`);
+        gw.addColorStop(0, `${tones.wash}${0.55 * tones.dim})`);
         gw.addColorStop(1, `${tones.wash}${0.05 * tones.dim})`);
         ctx.fillStyle = gw;
         ctx.fill();
+        ctx.restore();
+        // Rings and the strong veil live ON the plunge water — they
+        // clip to the drawn water region proper.
+        ctx.save();
+        if (land) this.clipFallRegion(land, landLift);
         // Pool rings at the fan's end — THE FLAT LAW.
         for (let wy = r0 + 0.3; wy < r1; wy += 0.55) {
           const idx = Math.round(wy / 0.55);
@@ -8232,11 +8634,11 @@ export class Renderer {
           }
         }
         ctx.globalAlpha = 1;
-        // Mist veil at the ribbon's foot.
+        // The strong mist veil, confined to the water it rises from.
         const pm = wtsL(x + dir * 0.25, (r0 + r1) / 2);
         const rx = ((r1 - r0) * 0.5 + 0.5) * s;
         const rg = ctx.createRadialGradient(pm.x, pm.y, 0, pm.x, pm.y, rx);
-        rg.addColorStop(0, `rgba(238,246,253,${0.14 * tones.dim})`);
+        rg.addColorStop(0, `rgba(238,246,253,${0.15 * tones.dim})`);
         rg.addColorStop(1, 'rgba(238,246,253,0)');
         ctx.save();
         ctx.translate(pm.x, pm.y);
@@ -8245,7 +8647,17 @@ export class Renderer {
         ctx.fillStyle = rg;
         ctx.fillRect(pm.x - rx, pm.y - rx, rx * 2, rx * 2);
         ctx.restore();
-        this.emitFallHaze(x + dir * 0.25, r0 + 0.15, x + dir * 0.25, r1 - 0.15);
+        ctx.restore();
+        const wet = (wx: number, wy: number): boolean =>
+          game.world.elevAt(Math.floor(wx), Math.floor(wy)) === info.landElev &&
+          isFallWater(game.world.groundAt(Math.floor(wx), Math.floor(wy)));
+        this.emitFallHaze(
+          x + dir * (info.drop * 0.6 + 0.3),
+          r0 + 0.15,
+          x + dir * (info.drop * 0.6 + 0.3),
+          r1 - 0.15,
+          wet,
+        );
       },
     };
   }
@@ -8288,8 +8700,18 @@ export class Renderer {
             landElev: Math.min(iA.landElev, iB.landElev),
           }
         : (iA ?? iB)!;
-    items.push(this.northFallRaceItem(x0, x1, ay, level, info));
-    items.push(this.northFallChurnItem(x0, x1, ay, level, info));
+    const [runA, runB] = this.fallRunColsX(game, Math.floor(mx), ay, nx, ny, level);
+    const mouth = this.mouthClipFor(game, level, 'x', runA, runB, ay, 1);
+    const land = this.landClipFor(
+      game,
+      info.landElev,
+      runA - 3,
+      runB + 4,
+      ay - FALL_LOOKAHEAD - 4,
+      ay + 1,
+    );
+    items.push(this.northFallRaceItem(x0, x1, ay, level, info, mouth));
+    items.push(this.northFallChurnItem(game, x0, x1, ay, level, info, land));
   }
 
   /** The crown half of a north fall: race away to the edge + the boil
@@ -8300,6 +8722,7 @@ export class Renderer {
     yEdge: number,
     level: number,
     info: SpillInfo,
+    mouth: Path2D | null,
   ): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
@@ -8318,44 +8741,51 @@ export class Renderer {
           p.y -= topLift;
           return p;
         };
-        // The race, flowing AWAY (north) to the edge.
-        const raceEnd = yEdge + info.race;
-        const RS = Math.max(2, info.race * 3);
-        ctx.beginPath();
-        for (let k = 0; k <= RS; k++) {
-          const wy = raceEnd - (k / RS) * info.race;
-          const u = k / RS;
-          const inset = 0.04 + 0.06 * u + (vn(wy, 21, 0.9) - 0.5) * 0.08;
-          const p = wtsT(x0 + inset, wy);
-          ctx.lineTo(p.x, p.y);
-        }
-        for (let k = RS; k >= 0; k--) {
-          const wy = raceEnd - (k / RS) * info.race;
-          const u = k / RS;
-          const inset = 0.04 + 0.06 * u + (vn(wy, 22, 0.9) - 0.5) * 0.08;
-          const p = wtsT(x1 - inset, wy);
-          ctx.lineTo(p.x, p.y);
-        }
-        ctx.closePath();
-        const pS = wtsT((x0 + x1) / 2, raceEnd);
-        const pN = wtsT((x0 + x1) / 2, yEdge);
-        const gr = ctx.createLinearGradient(0, pS.y, 0, pN.y);
+        // The race, flowing AWAY (north) to the edge — full-width fill
+        // clipped to the organic mouth region (THE MOUTH LAW: the
+        // channel's drawn banks carry through the rim strip).
+        const raceEnd = yEdge + info.race + 0.6;
+        ctx.save();
+        if (mouth) this.clipFallRegion(mouth, topLift);
+        const pTL = wtsT(x0 - 0.3, yEdge);
+        const pBR = wtsT(x1 + 0.3, raceEnd);
+        const gr = ctx.createLinearGradient(0, pBR.y, 0, pTL.y);
         gr.addColorStop(0, 'rgba(73,121,184,0)');
-        gr.addColorStop(0.45, `rgba(63,108,170,${0.38 * tones.dim})`);
-        gr.addColorStop(1, `rgba(30,58,106,${0.55 * tones.dim})`);
+        gr.addColorStop(0.3, `rgba(66,112,174,${0.5 * tones.dim})`);
+        gr.addColorStop(0.62, `rgba(48,86,144,${0.78 * tones.dim})`);
+        gr.addColorStop(1, `rgba(28,54,102,${0.92 * tones.dim})`);
         ctx.fillStyle = gr;
-        ctx.fill();
+        ctx.fillRect(pTL.x, pTL.y, pBR.x - pTL.x, pBR.y - pTL.y);
+        // Shear lines where the current pulls off the banks.
+        ctx.strokeStyle = 'rgba(26,48,96,0.9)';
+        ctx.globalAlpha = 0.22 * tones.dim;
+        ctx.lineWidth = Math.max(1.2, s * 0.03);
+        const RS = Math.max(3, Math.ceil(info.race * 3));
+        for (const [ex, salt] of [
+          [x0, 21],
+          [x1, 22],
+        ] as const) {
+          ctx.beginPath();
+          for (let k = 0; k <= RS; k++) {
+            const wy = raceEnd - (k / RS) * (raceEnd - yEdge);
+            const inset = 0.09 + (vn(wy, salt, 0.9) - 0.5) * 0.06;
+            const p = wtsT(ex === x0 ? x0 + inset : x1 - inset, wy);
+            if (k === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+          }
+          ctx.stroke();
+        }
         // Flow threads accelerating toward the drop.
         ctx.strokeStyle = tones.foam;
         ctx.lineCap = 'round';
         for (let wx = Math.ceil((x0 + 0.08) / 0.3) * 0.3; wx < x1 - 0.05; wx += 0.3) {
           const idx = Math.round(wx / 0.3);
           const ph = (t * 1.5 * (0.8 + 0.4 * n01(idx, 31)) + n01(idx, 32)) % 1;
-          const wy0 = raceEnd - Math.pow(ph, 1.6) * info.race;
+          const wy0 = raceEnd - Math.pow(ph, 1.6) * (raceEnd - yEdge);
           const wy1 = Math.max(yEdge, wy0 - 0.12 - 0.2 * ph);
           const p0 = wtsT(wx, wy0);
           const p1 = wtsT(wx, wy1);
-          ctx.globalAlpha = (0.14 + 0.3 * ph) * tones.dim;
+          ctx.globalAlpha = (0.18 + 0.32 * ph) * tones.dim;
           ctx.lineWidth = Math.max(1.2, s * 0.028);
           ctx.beginPath();
           ctx.moveTo(p0.x, p0.y);
@@ -8364,6 +8794,7 @@ export class Renderer {
         }
         ctx.globalAlpha = 1;
         ctx.lineCap = 'butt';
+        ctx.restore();
         // The boil at the silhouette: the sheet's top peeking over.
         const pE0 = wtsT(x0, yEdge);
         const pE1 = wtsT(x1, yEdge);
@@ -8409,11 +8840,13 @@ export class Renderer {
    *  veil at the landing, sorted to draw BEFORE the lifted crown rows
    *  so the ridge occludes it exactly where it should. */
   private northFallChurnItem(
+    game: ClientGame,
     x0: number,
     x1: number,
     yEdge: number,
     level: number,
     info: SpillInfo,
+    land: Path2D | null,
   ): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
@@ -8425,13 +8858,29 @@ export class Renderer {
         const t = performance.now() / 1000;
         const tones = this.fallTones();
         const n01 = (a: number, sa: number) => Renderer.stone01(a, sa, 911 + level * 17);
-        this.drawFallChurn(x0, impactY, x1, impactY, 0, -1, landLift, level, t, tones);
-        // Rings pushing out into the basin.
         const wts = (wx: number, wy: number) => {
           const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
           p.y -= landLift;
           return p;
         };
+        // A faint free mist first — air overhangs the banks.
+        const pmF = wts((x0 + x1) / 2, impactY);
+        const rxF = ((x1 - x0) * 0.35 + 0.25) * s;
+        const rgF = ctx.createRadialGradient(pmF.x, pmF.y, 0, pmF.x, pmF.y, rxF);
+        rgF.addColorStop(0, `rgba(238,246,253,${0.07 * tones.dim})`);
+        rgF.addColorStop(1, 'rgba(238,246,253,0)');
+        ctx.save();
+        ctx.translate(pmF.x, pmF.y);
+        ctx.scale(1, 0.6);
+        ctx.translate(-pmF.x, -pmF.y);
+        ctx.fillStyle = rgF;
+        ctx.fillRect(pmF.x - rxF, pmF.y - rxF, rxF * 2, rxF * 2);
+        ctx.restore();
+        // Everything living on the basin's surface clips to the drawn
+        // water — churn, rings and the strong veil end at the shore.
+        ctx.save();
+        if (land) this.clipFallRegion(land, landLift);
+        this.drawFallChurn(x0, impactY, x1, impactY, 0, -1, landLift, level, t, tones);
         for (let wx = Math.ceil((x0 + 0.15) / 0.55) * 0.55; wx < x1; wx += 0.55) {
           const idx = Math.round(wx / 0.55);
           for (let k = 0; k < 2; k++) {
@@ -8458,6 +8907,7 @@ export class Renderer {
         ctx.translate(-pm.x, -pm.y);
         ctx.fillStyle = rg;
         ctx.fillRect(pm.x - rx, pm.y - rx, rx * 2, rx * 2);
+        ctx.restore();
         ctx.restore();
       },
     };
