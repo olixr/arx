@@ -36,6 +36,8 @@ export declare class Panels {
     private readonly identityInfo;
     /** Opens the Techniques codex (skill cards link into it). */
     private readonly onOpenArts;
+    /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
+    private readonly onCalling;
     private readonly invPanel;
     private readonly invGrid;
     private readonly equipAnatomy;
@@ -49,13 +51,22 @@ export declare class Panels {
     private readonly skillsPanel;
     private readonly skillsList;
     private readonly artsPanel;
+    private readonly artsWings;
     private readonly artsLoadout;
     private readonly artsSchools;
     private readonly artsDetail;
     /** The technique the codex bench is laying out (null = auto-pick). */
     private artsSel;
+    /** Which wing of the codex is open: the actives or the passives. */
+    private artsWing;
+    /** The Calling the bench is laying out (callings wing). */
+    private callingSel;
+    /** Answered Callings, mirrored from the server. */
+    private callings;
     /** Unlocked techniques the player has inspected — the NEW-pip ledger. */
     private readonly seenTech;
+    /** Unlocked Callings the player has inspected — the NEW-pip ledger. */
+    private readonly seenCallings;
     private readonly gearStrip;
     private readonly card;
     private readonly menu;
@@ -81,7 +92,9 @@ export declare class Panels {
         name?: string;
     }, 
     /** Opens the Techniques codex (skill cards link into it). */
-    onOpenArts?: () => void);
+    onOpenArts?: () => void, 
+    /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
+    onCalling?: (calling: string, on: boolean) => void);
     toggleInventory(): void;
     showInventory(): void;
     toggleSkills(): void;
@@ -139,6 +152,8 @@ export declare class Panels {
     private renderIdentity;
     /** Server-confirmed technique choices; re-renders whoever shows them. */
     setTechniques(chosen: Record<string, string>): void;
+    /** Server-confirmed answered Callings; re-renders whoever shows them. */
+    setCallings(answered: string[]): void;
     /** Build one skill card for the hall. */
     private skillCard;
     /**
@@ -159,10 +174,30 @@ export declare class Panels {
     private techState;
     /** Record that an unlocked art has been laid eyes on. */
     private markTechSeen;
-    /** The dock button's glint: any unlocked art not yet inspected. */
+    /** The dock button's glint: any unlocked art or Calling not yet inspected. */
     private updateArtsPip;
-    /** The codex, whole: loadout strip, school ladders, the bench. */
+    /** The two wings of the codex: Arts (actives) and Callings (passives). */
+    private renderArtsWingTabs;
+    /** The codex, whole: wing tabs, then whichever wing is open. */
     renderArts(): void;
+    /** Skills whose Callings may show — the hidden-skill law honored. */
+    private callingSkillIds;
+    private callingState;
+    private focusUsed;
+    /** Unlocked-but-never-inspected Callings (the NEW-pip ledger). */
+    private unseenCallings;
+    private markCallingSeen;
+    /**
+     * THE FOCUS LAW's meter: what the milestones have earned, what the
+     * answered set is holding — rendered where the loadout strip lives.
+     */
+    private renderFocusMeter;
+    /** The passives wing: the meter, every skill's two Callings, the bench. */
+    private renderCallingsWing;
+    /** One Calling as a chip: gem, name, and where it stands. */
+    private callingChip;
+    /** The bench: the chosen Calling laid out large, the answer button. */
+    private renderCallingBench;
     /** The live Q/E/R/T strip: every slot, its source, its ability. */
     private renderArtsLoadout;
     /** One school: its face, level, and the four-rung ladder. */

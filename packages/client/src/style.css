@@ -2362,6 +2362,206 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   margin-top: 2px;
 }
 
+/* THE CODEX WINGS: Arts (actives) and Callings (passives). */
+#arts-wings {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.wing-tab {
+  position: relative;
+  appearance: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  padding: 7px 18px;
+  color: var(--parchment-dim);
+  background: var(--sunk);
+  border: 1.5px solid var(--line);
+  border-radius: 5px;
+  cursor: pointer;
+  text-shadow: var(--punch-small);
+}
+
+.wing-tab.active {
+  color: var(--gold-bright);
+  background: color-mix(in srgb, var(--gold) 16%, var(--sunk));
+  border-color: var(--gold);
+}
+
+.wing-tab .new-pip {
+  position: absolute;
+  left: auto;
+  top: -7px;
+  right: -7px;
+}
+
+/* THE FOCUS METER — what the milestones earned, what answering holds. */
+.focus-nums {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--gold-bright);
+  text-shadow: var(--punch-small);
+}
+
+.focus-bar {
+  flex: 1;
+  height: 10px;
+  min-width: 120px;
+  background: var(--sunk);
+  border: 1.5px solid var(--line);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.focus-fill {
+  height: 100%;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 65%, #7a5a1a), var(--gold));
+  transition: width 200ms ease;
+}
+
+.focus-fill.full {
+  background: linear-gradient(90deg, #a8623a, #d98a5a);
+}
+
+.focus-teach {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+/* Calling rows: each skill's pair of passives. */
+.calling-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 10px;
+  border: 1.5px solid var(--line);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--sunk) 55%, transparent);
+}
+
+.calling-row-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 118px;
+}
+
+.calling-skill-name {
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: capitalize;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+}
+
+.calling-skill-name.secret {
+  color: var(--gold-bright);
+}
+
+.calling-skill-lv {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--parchment-dim);
+}
+
+.calling-chips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  flex: 1;
+}
+
+.call-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  appearance: none;
+  font-family: inherit;
+  text-align: left;
+  padding: 6px 10px;
+  background: var(--sunk);
+  border: 1.5px solid var(--line);
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--parchment);
+}
+
+.call-chip.answered {
+  background: color-mix(in srgb, var(--gold) 14%, var(--sunk));
+  border-color: var(--gold);
+}
+
+.call-chip.locked {
+  opacity: 0.55;
+}
+
+.call-chip.selected {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold) 45%, transparent);
+}
+
+.call-chip .new-pip {
+  position: absolute;
+  left: auto;
+  top: -7px;
+  right: -6px;
+}
+
+.call-gem {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff8a, var(--gem) 45%, #00000055);
+  border: 1.5px solid var(--line);
+}
+
+.call-gem.lg {
+  width: 34px;
+  height: 34px;
+  border-width: 2px;
+}
+
+.call-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: var(--punch-small);
+}
+
+.call-sub {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--parchment-dim);
+  white-space: nowrap;
+}
+
+.call-chip.answered .call-sub {
+  color: var(--gold-bright);
+}
+
+.bench-plate.call-plate {
+  display: grid;
+  place-items: center;
+}
+
+#arts-detail .act-btn.cant {
+  filter: saturate(0.4) brightness(0.75);
+}
+
 /* THE HONED-ART ledger: four rank seals, brass when attained. */
 .rank-ledger {
   display: flex;

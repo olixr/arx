@@ -340,6 +340,7 @@ const panels = new Panels(
   (style, hand) => game.setCarryStyle(style, hand),
   () => ({ name: game.ownName }),
   () => toggleScreen('arts'),
+  (calling, on) => game.sendCalling(calling, on),
 );
 
 /** Drop a whole pack slot onto the ground (drag-out / pad Ⓨ). */
@@ -886,6 +887,7 @@ dressPanel(el('social-panel'), {
 const hotbar = new Hotbar(input);
 hotbar.onReady = () => sfx.abilityReady();
 game.onTechniques = () => panels.setTechniques(game.techniques);
+game.onCallings = () => panels.setCallings(game.callings);
 
 // Committing to a cast: sound, hands, and a wind-up ring at the feet.
 game.onCastFx = (_slot, ab) => {

@@ -6,6 +6,7 @@ import {
   SKILL_IDS,
   TECHNIQUE_MAX_RANK,
   dungeonSpecFromRoll,
+  focusBudget,
   honedAbility,
   levelForXp,
   rankLevel,
@@ -24,6 +25,8 @@ import {
   ELEMENT_COLORS,
   abilityDef,
   aggregateGearStats,
+  callingDef,
+  callingsFor,
   describeEffect,
   effectiveReq,
   enchantDef,
@@ -33,6 +36,7 @@ import {
   rolledStats,
   techniquesFor,
   trinketPowerMult,
+  type CallingDef,
   type ItemDef,
 } from '@arx/content';
 import { itemIconUrl, slotGlyphUrl } from '../render/icons.js';
@@ -192,16 +196,34 @@ export class Panels {
   private readonly skillsPanel = document.getElementById('skills-panel')!;
   private readonly skillsList = document.getElementById('skills-list')!;
   private readonly artsPanel = document.getElementById('arts-panel')!;
+  private readonly artsWings = document.getElementById('arts-wings')!;
   private readonly artsLoadout = document.getElementById('arts-loadout')!;
   private readonly artsSchools = document.getElementById('arts-schools')!;
   private readonly artsDetail = document.getElementById('arts-detail')!;
   /** The technique the codex bench is laying out (null = auto-pick). */
   private artsSel: string | null = null;
+  /** Which wing of the codex is open: the actives or the passives. */
+  private artsWing: 'arts' | 'callings' = 'arts';
+  /** The Calling the bench is laying out (callings wing). */
+  private callingSel: string | null = null;
+  /** Answered Callings, mirrored from the server. */
+  private callings: string[] = [];
   /** Unlocked techniques the player has inspected — the NEW-pip ledger. */
   private readonly seenTech = new Set<string>(
     (() => {
       try {
         const raw = JSON.parse(localStorage.getItem('arx.techSeen') ?? '[]');
+        return Array.isArray(raw) ? (raw as string[]) : [];
+      } catch {
+        return [];
+      }
+    })(),
+  );
+  /** Unlocked Callings the player has inspected — the NEW-pip ledger. */
+  private readonly seenCallings = new Set<string>(
+    (() => {
+      try {
+        const raw = JSON.parse(localStorage.getItem('arx.callSeen') ?? '[]');
         return Array.isArray(raw) ? (raw as string[]) : [];
       } catch {
         return [];
@@ -249,6 +271,8 @@ export class Panels {
     private readonly identityInfo: () => { name?: string } = () => ({}),
     /** Opens the Techniques codex (skill cards link into it). */
     private readonly onOpenArts: () => void = () => {},
+    /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
+    private readonly onCalling: (calling: string, on: boolean) => void = () => {},
   ) {
     // Dock buttons are wired in main through the one screen-exclusivity
     // gate — no panel opens itself anymore.
@@ -1138,6 +1162,13 @@ export class Panels {
     if (this.artsOpen) this.renderArts();
   }
 
+  /** Server-confirmed answered Callings; re-renders whoever shows them. */
+  setCallings(answered: string[]): void {
+    this.callings = answered;
+    this.renderSkills(this.lastSkills);
+    if (this.artsOpen) this.renderArts();
+  }
+
   /** Build one skill card for the hall. */
   private skillCard(skill: SkillId, xp: SkillXp): HTMLElement {
     const hidden = HIDDEN_SKILLS[skill];
@@ -1246,6 +1277,40 @@ export class Panels {
       go.addEventListener('click', () => this.onOpenArts());
       row.appendChild(go);
       card.appendChild(row);
+    }
+
+    // Every skill points at its Callings — the quiet half of the build.
+    {
+      const defs = callingsFor(skill);
+      if (defs.length > 0) {
+        const row = document.createElement('div');
+        row.className = 'tech-link-row calling-link-row';
+        const title = document.createElement('span');
+        title.className = 'technique-title';
+        title.textContent = 'Callings';
+        row.appendChild(title);
+        const answered = defs.filter((d) => this.callings.includes(d.id));
+        const label = document.createElement('span');
+        label.className = answered.length > 0 ? 'tech-link-name' : 'tech-link-none';
+        label.textContent =
+          answered.length > 0 ? answered.map((d) => d.name).join(' · ') : 'None answered';
+        row.appendChild(label);
+        const go = document.createElement('button');
+        go.className = 'act-btn minor tech-link-go';
+        go.textContent = 'Open Callings';
+        go.dataset.nav = '';
+        go.dataset.navkey = `callgo:${skill}`;
+        go.dataset.acta = 'Open';
+        go.dataset.tipname = 'Callings';
+        go.dataset.tipsub = `The ${hidden ? hidden.name : skill} passives — answer them within your Focus.`;
+        go.addEventListener('click', () => {
+          this.artsWing = 'callings';
+          this.callingSel = defs[0]?.id ?? null;
+          this.onOpenArts();
+        });
+        row.appendChild(go);
+        card.appendChild(row);
+      }
     }
     return card;
   }
@@ -1370,19 +1435,56 @@ export class Panels {
     localStorage.setItem('arx.techSeen', JSON.stringify([...this.seenTech]));
   }
 
-  /** The dock button's glint: any unlocked art not yet inspected. */
+  /** The dock button's glint: any unlocked art or Calling not yet inspected. */
   private updateArtsPip(): void {
-    const unseen = this.artsSchoolIds().some((s) =>
-      techniquesFor(s).some((t) => {
-        const st = this.techState(s, t);
-        return (st === 'unlocked' || st === 'equipped') && !this.seenTech.has(t.ability);
-      }),
-    );
+    const unseen =
+      this.artsSchoolIds().some((s) =>
+        techniquesFor(s).some((t) => {
+          const st = this.techState(s, t);
+          return (st === 'unlocked' || st === 'equipped') && !this.seenTech.has(t.ability);
+        }),
+      ) || this.unseenCallings() > 0;
     document.getElementById('btn-arts')?.classList.toggle('has-new', unseen);
   }
 
-  /** The codex, whole: loadout strip, school ladders, the bench. */
+  /** The two wings of the codex: Arts (actives) and Callings (passives). */
+  private renderArtsWingTabs(): void {
+    this.artsWings.innerHTML = '';
+    for (const [wing, label] of [
+      ['arts', 'Arts'],
+      ['callings', 'Callings'],
+    ] as const) {
+      const tab = document.createElement('button');
+      tab.className = 'wing-tab' + (this.artsWing === wing ? ' active' : '');
+      tab.dataset.nav = '';
+      tab.dataset.navkey = `wing:${wing}`;
+      tab.dataset.acta = 'Open';
+      tab.textContent = label;
+      if (wing === 'callings') {
+        const unseen = this.unseenCallings();
+        if (unseen > 0) {
+          const pip = document.createElement('span');
+          pip.className = 'new-pip';
+          pip.textContent = 'NEW';
+          tab.appendChild(pip);
+        }
+      }
+      tab.addEventListener('click', () => {
+        if (this.artsWing === wing) return;
+        this.artsWing = wing;
+        this.renderArts();
+      });
+      this.artsWings.appendChild(tab);
+    }
+  }
+
+  /** The codex, whole: wing tabs, then whichever wing is open. */
   renderArts(): void {
+    this.renderArtsWingTabs();
+    if (this.artsWing === 'callings') {
+      this.renderCallingsWing();
+      return;
+    }
     const schools = this.artsSchoolIds();
     const all = schools.flatMap((s) => techniquesFor(s).map((t) => ({ style: s, t })));
 
@@ -1406,6 +1508,227 @@ export class Panels {
     for (const style of schools) this.artsSchools.appendChild(this.artsSchool(style));
     this.renderArtsBench(all);
     this.updateArtsPip();
+  }
+
+  // ---------------------------------------------- the Callings wing
+
+  /** Skills whose Callings may show — the hidden-skill law honored. */
+  private callingSkillIds(): SkillId[] {
+    return SKILL_IDS.filter((s) => !(HIDDEN_SKILLS[s] && this.lastSkills[s] === undefined));
+  }
+
+  private callingState(def: CallingDef): 'answered' | 'unlocked' | 'locked' {
+    if (this.callings.includes(def.id)) return 'answered';
+    const level = levelForXp(this.lastSkills[def.skill] ?? 0);
+    return level >= def.unlockLevel ? 'unlocked' : 'locked';
+  }
+
+  private focusUsed(): number {
+    let used = 0;
+    for (const id of this.callings) used += callingDef(id)?.focusCost ?? 0;
+    return used;
+  }
+
+  /** Unlocked-but-never-inspected Callings (the NEW-pip ledger). */
+  private unseenCallings(): number {
+    let n = 0;
+    for (const skill of this.callingSkillIds()) {
+      for (const def of callingsFor(skill)) {
+        if (this.callingState(def) !== 'locked' && !this.seenCallings.has(def.id)) n++;
+      }
+    }
+    return n;
+  }
+
+  private markCallingSeen(id: string | null): void {
+    if (!id || this.seenCallings.has(id)) return;
+    const def = callingDef(id);
+    if (!def || this.callingState(def) === 'locked') return;
+    this.seenCallings.add(id);
+    localStorage.setItem('arx.callSeen', JSON.stringify([...this.seenCallings]));
+  }
+
+  /**
+   * THE FOCUS LAW's meter: what the milestones have earned, what the
+   * answered set is holding — rendered where the loadout strip lives.
+   */
+  private renderFocusMeter(): void {
+    const budget = focusBudget(this.lastSkills);
+    const used = this.focusUsed();
+    this.artsLoadout.innerHTML = '';
+    const title = document.createElement('span');
+    title.className = 'load-title';
+    title.textContent = 'Focus';
+    const nums = document.createElement('span');
+    nums.className = 'focus-nums';
+    nums.textContent = `${used} / ${budget}`;
+    const bar = document.createElement('div');
+    bar.className = 'focus-bar';
+    const fill = document.createElement('div');
+    fill.className = 'focus-fill' + (used >= budget ? ' full' : '');
+    fill.style.width = `${budget > 0 ? Math.min(100, (used / budget) * 100) : 0}%`;
+    bar.appendChild(fill);
+    const teach = document.createElement('span');
+    teach.className = 'focus-teach';
+    teach.textContent =
+      used >= budget
+        ? 'Focus spent. Milestones at skill 50 and 99 deepen it.'
+        : 'Answered Callings hold Focus. Skills at 50 and 99 deepen it.';
+    this.artsLoadout.append(title, nums, bar, teach);
+  }
+
+  /** The passives wing: the meter, every skill's two Callings, the bench. */
+  private renderCallingsWing(): void {
+    const skills = this.callingSkillIds();
+    // Resolve the bench subject: keep the pick while it exists.
+    const allDefs = skills.flatMap((s) => callingsFor(s));
+    if (!this.callingSel || !allDefs.some((d) => d.id === this.callingSel)) {
+      this.callingSel =
+        allDefs.find((d) => this.callingState(d) === 'answered')?.id ??
+        allDefs.find((d) => this.callingState(d) === 'unlocked')?.id ??
+        allDefs[0]?.id ??
+        null;
+    }
+    this.markCallingSeen(this.callingSel);
+    this.renderFocusMeter();
+
+    this.artsSchools.innerHTML = '';
+    for (const skill of skills) {
+      const row = document.createElement('div');
+      row.className = 'calling-row';
+      const head = document.createElement('div');
+      head.className = 'calling-row-head';
+      const name = document.createElement('span');
+      name.className = 'calling-skill-name';
+      const hidden = HIDDEN_SKILLS[skill];
+      name.textContent = hidden ? hidden.name : skill;
+      if (hidden) name.classList.add('secret');
+      const lv = document.createElement('span');
+      lv.className = 'calling-skill-lv';
+      lv.textContent = `Lv ${levelForXp(this.lastSkills[skill] ?? 0)}`;
+      head.append(name, lv);
+      row.appendChild(head);
+      const chips = document.createElement('div');
+      chips.className = 'calling-chips';
+      for (const def of callingsFor(skill)) {
+        chips.appendChild(this.callingChip(def));
+      }
+      row.appendChild(chips);
+      this.artsSchools.appendChild(row);
+    }
+    this.renderCallingBench();
+    this.updateArtsPip();
+  }
+
+  /** One Calling as a chip: gem, name, and where it stands. */
+  private callingChip(def: CallingDef): HTMLElement {
+    const st = this.callingState(def);
+    const chip = document.createElement('button');
+    chip.className = `call-chip ${st}`;
+    if (this.callingSel === def.id) chip.classList.add('selected');
+    chip.dataset.nav = '';
+    chip.dataset.navkey = `call:${def.id}`;
+    chip.dataset.acta = 'Inspect';
+    const gem = document.createElement('span');
+    gem.className = 'call-gem';
+    gem.style.setProperty('--gem', def.color);
+    const name = document.createElement('span');
+    name.className = 'call-name';
+    name.textContent = def.name;
+    const sub = document.createElement('span');
+    sub.className = 'call-sub';
+    sub.textContent =
+      st === 'answered'
+        ? 'Answered'
+        : st === 'unlocked'
+          ? `${def.focusCost} Focus`
+          : `Lv ${def.unlockLevel}`;
+    chip.append(gem, name, sub);
+    if (st !== 'locked' && !this.seenCallings.has(def.id)) {
+      const pip = document.createElement('span');
+      pip.className = 'new-pip';
+      pip.textContent = 'NEW';
+      chip.appendChild(pip);
+    }
+    chip.addEventListener('click', () => {
+      this.callingSel = def.id;
+      this.renderArts();
+    });
+    return chip;
+  }
+
+  /** The bench: the chosen Calling laid out large, the answer button. */
+  private renderCallingBench(): void {
+    this.artsDetail.innerHTML = '';
+    const def = this.callingSel ? callingDef(this.callingSel) : undefined;
+    if (!def) {
+      const note = document.createElement('div');
+      note.className = 'bench-empty';
+      note.textContent = 'Raise a skill to 20 and its first Calling will gather here.';
+      this.artsDetail.appendChild(note);
+      return;
+    }
+    const st = this.callingState(def);
+    const hidden = HIDDEN_SKILLS[def.skill];
+    const skillName = hidden ? hidden.name : def.skill;
+
+    const head = document.createElement('div');
+    head.className = 'bench-head';
+    const well = document.createElement('div');
+    well.className = 'bench-plate call-plate';
+    const gem = document.createElement('span');
+    gem.className = 'call-gem lg';
+    gem.style.setProperty('--gem', def.color);
+    well.appendChild(gem);
+    const names = document.createElement('div');
+    names.className = 'bench-names';
+    const name = document.createElement('div');
+    name.className = 'bench-name';
+    name.textContent = def.name;
+    const line = document.createElement('div');
+    line.className = 'bench-line';
+    line.textContent = `${skillName} · Calling`;
+    names.append(name, line);
+    head.append(well, names);
+    this.artsDetail.appendChild(head);
+
+    const state = document.createElement('div');
+    state.className = `art-state ${st === 'answered' ? 'equipped' : st}`;
+    state.textContent =
+      st === 'answered'
+        ? `Answered — holding ${def.focusCost} Focus`
+        : st === 'unlocked'
+          ? `Ready to answer — holds ${def.focusCost} Focus`
+          : `Answers at ${skillName} level ${def.unlockLevel}`;
+    this.artsDetail.appendChild(state);
+
+    const desc = document.createElement('p');
+    desc.className = 'bench-desc';
+    desc.textContent = def.desc;
+    this.artsDetail.appendChild(desc);
+
+    const budget = focusBudget(this.lastSkills);
+    const used = this.focusUsed();
+    if (st === 'answered') {
+      this.artsDetail.appendChild(
+        bigButton('Set down', `calloff:${def.id}`, () => this.onCalling(def.id, false)),
+      );
+    } else if (st === 'unlocked') {
+      const btn = bigButton(
+        `Answer — ${def.focusCost} Focus`,
+        `callon:${def.id}`,
+        () => this.onCalling(def.id, true),
+      );
+      if (used + def.focusCost > budget) btn.classList.add('cant');
+      this.artsDetail.appendChild(btn);
+    }
+    const teach = document.createElement('div');
+    teach.className = 'bench-teach';
+    teach.textContent =
+      used + def.focusCost > budget && st === 'unlocked'
+        ? `Your Focus is ${used}/${budget}. Set another Calling down, or deepen it at skill 50 and 99.`
+        : 'Answering is always free to change. The budget is the only law.';
+    this.artsDetail.appendChild(teach);
   }
 
   /** The live Q/E/R/T strip: every slot, its source, its ability. */
