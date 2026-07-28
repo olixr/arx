@@ -7848,12 +7848,28 @@ export class GameServer {
           ? task.waypoints[Math.min(rc.wpIndex, task.waypoints.length - 1)]!
           : undefined;
 
+      // THE POST AT THE STATION: an authored target ON a solid tile
+      // (counter, loom, carving bench — "stand at the counter" is the
+      // natural way to author shopkeeping) can never be stood on: a
+      // body's center never gets closer than ~0.8 to a solid tile's
+      // center, the 0.3 arrive never fires, and the last-resort snap
+      // is (rightly) gated on walkable targets — so the walker paced
+      // the counter face forever (Tilo and Elowen, found live).
+      // Arrival at a solid target is STANDING BESIDE IT: 1.05 accepts
+      // any cardinal-adjacent stand or closer face-press and rejects
+      // diagonal corners. The linger hold-radius rides the same law
+      // or arrive/re-travel would flap at the counter.
+      const arriveR = this.world.isSolid(Math.floor(rc.targetX), Math.floor(rc.targetY))
+        ? 1.05
+        : GameServer.ROUTINE_ARRIVE;
+
       if (rc.phase === 'linger') {
         // Knocked (or leashed) off the spot? Walk back — the errand
         // re-establishes itself, never teleports.
         const ddx = rc.targetX - pos.x;
         const ddy = rc.targetY - pos.y;
-        if (ddx * ddx + ddy * ddy > 0.8 * 0.8) {
+        const holdR = arriveR + 0.5;
+        if (ddx * ddx + ddy * ddy > holdR * holdR) {
           rc.phase = 'travel';
           rc.stuckTicks = 0;
           rc.progressBest = Infinity;
@@ -7898,7 +7914,7 @@ export class GameServer {
       const dx = rc.targetX - pos.x;
       const dy = rc.targetY - pos.y;
       const dist = Math.hypot(dx, dy);
-      if (dist <= GameServer.ROUTINE_ARRIVE) {
+      if (dist <= arriveR) {
         rc.stuckTicks = 0;
         if (task.kind === 'path' && !(wp!.waitSec || (task.mode === 'once' && rc.wpIndex >= task.waypoints.length - 1))) {
           // A pass-through stop: no linger, straight to the next leg.
