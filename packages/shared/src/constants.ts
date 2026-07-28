@@ -18,7 +18,12 @@
 // v10: signs speak — S2CSigns streams the words on every board with the
 // chunk that carries it, and C2SSignEdit rewrites a player's own. A v9
 // client would show blank boards it can never read, so reject cleanly.
-export const PROTOCOL_VERSION = 10;
+// v11: the world learns to be charted — S2CExplored carries the login
+// fog-of-war snapshot, S2CDiscoveries/S2CDiscovery/S2CDiscoveryFade the
+// per-player place ledger, C2SWaypoint the one active waypoint, and
+// welcome grows waypoint + geo. A v10 client would strike out sending
+// waypoint and chart nothing, so reject cleanly.
+export const PROTOCOL_VERSION = 11;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;
@@ -65,6 +70,15 @@ export const BODY_RADIUS = 0.35;
  * 65-tile margin keeps streaming comfortably outside any viewport.
  */
 export const INTEREST_CHUNK_RADIUS = 2;
+
+/**
+ * The world's Y-bands. One continuous tile plane holds them all: the
+ * surface, the dark band (authored underground + delve mouths), and the
+ * far-off per-player dungeon instance slots. Map layers, respawn law,
+ * and fog persistence all split on these two lines.
+ */
+export const UNDERGROUND_Y = 512;
+export const DUNGEON_MIN_Y = 8192;
 
 /** Fixed-point scale for positions in binary snapshots. */
 export const POS_SCALE = 256;

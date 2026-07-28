@@ -290,6 +290,17 @@ export interface C2SSignEdit {
   lines: string[];
 }
 
+/**
+ * Set or clear the character's ONE active waypoint. Both coordinates
+ * absent = clear. The server stores it verbatim (integers, clamped by
+ * the validator) — it is pure navigation state, never gameplay truth.
+ */
+export interface C2SWaypoint {
+  t: 'waypoint';
+  x?: number;
+  y?: number;
+}
+
 export type C2SMessage =
   | C2SHello
   | C2SLogin
@@ -323,7 +334,8 @@ export type C2SMessage =
   | C2SFriendAccept
   | C2SFriendDecline
   | C2SFriendRemove
-  | C2SSignEdit;
+  | C2SSignEdit
+  | C2SWaypoint;
 
 // ---------------------------------------------------------------- S2C
 
@@ -358,6 +370,15 @@ export interface S2CWelcome {
    * content constants, present it replaces them wholesale.
    */
   anchors?: number[][];
+  /** The character's stored active waypoint, if one is set. */
+  waypoint?: { x: number; y: number };
+  /**
+   * The live geography plan (a GeographyDef snapshot — typed loosely
+   * here because shared cannot import content). The plan is editable
+   * data, so the map must not chart the bundled copy: the client feeds
+   * this to replaceGeography before its first terrain bake.
+   */
+  geo?: unknown;
 }
 
 /** The haven list changed (a waystation stood up or turned fallow). */
@@ -731,6 +752,52 @@ export interface S2CSigns {
   signs: SignInfo[];
 }
 
+/**
+ * Fog-of-war snapshot regions as [rx, ry, base64-bits] rows. Pushed in
+ * batches at bind time; after that the chart never travels — client and
+ * server both run the shared deterministic reveal (world/explored.ts).
+ */
+export interface S2CExplored {
+  t: 'explored';
+  regions: [number, number, string][];
+}
+
+/**
+ * One entry in a character's place ledger. `id` is the permanent key:
+ * 'zone:<zoneId>' for authored places, 'poi:<cx>,<cy>' for frontier
+ * sites, 'dungeon:<x>,<y>' for riftgates the character has delved.
+ * name/x/y are denormalized on purpose — when the frontier turns over,
+ * the ledger row keeps the place's name even after the world forgets.
+ */
+export interface DiscoveryWire {
+  id: string;
+  kind: 'town' | 'poi' | 'dungeon' | 'landmark';
+  name: string;
+  x: number;
+  y: number;
+  tier?: number;
+  /** The world rerolled this site — the marker reads as rumor now. */
+  faded?: boolean;
+}
+
+/** The full ledger, pushed once at bind. */
+export interface S2CDiscoveries {
+  t: 'discoveries';
+  list: DiscoveryWire[];
+}
+
+/** A LIVE first-ever discovery — the only trigger for the splash. */
+export interface S2CDiscovery {
+  t: 'discovery';
+  d: DiscoveryWire;
+}
+
+/** The frontier turned over: these ledger ids age to rumor. */
+export interface S2CDiscoveryFade {
+  t: 'discoveryfade';
+  ids: string[];
+}
+
 export type S2CMessage =
   | S2CWelcome
   | S2CReject
@@ -765,7 +832,11 @@ export type S2CMessage =
   | S2CHavens
   | S2CSocial
   | S2CFriendSearch
-  | S2CFriendEvent;
+  | S2CFriendEvent
+  | S2CExplored
+  | S2CDiscoveries
+  | S2CDiscovery
+  | S2CDiscoveryFade;
 
 // ------------------------------------------------------- validation
 
@@ -860,6 +931,16 @@ export function parseC2S(raw: string): C2SMessage | null {
         lines.push(line);
       }
       return { t: 'signedit', tx: msg.tx, ty: msg.ty, title: msg.title, lines };
+    }
+    case 'waypoint': {
+      const hasX = msg.x !== undefined;
+      const hasY = msg.y !== undefined;
+      if (hasX !== hasY) return null; // set needs both, clear needs neither
+      if (!hasX) return { t: 'waypoint' };
+      if (!isFiniteNum(msg.x) || !isFiniteNum(msg.y)) return null;
+      if (!Number.isInteger(msg.x) || !Number.isInteger(msg.y)) return null;
+      if (Math.abs(msg.x) > 1_000_000 || Math.abs(msg.y) > 1_000_000) return null;
+      return { t: 'waypoint', x: msg.x, y: msg.y };
     }
     case 'use': {
       if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot)) return null;

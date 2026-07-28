@@ -68,3 +68,19 @@ test('carrystyle sets a grip per fist, defaulting to the main hand', () => {
   assert.equal(parseC2S(JSON.stringify({ t: 'carrystyle', style: 'rogue', hand: 'left' })), null);
   assert.equal(parseC2S(JSON.stringify({ t: 'carrystyle', style: 'icepick' })), null);
 });
+
+test('waypoint sets with both integer coords or clears with neither', () => {
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'waypoint', x: 340, y: -20 })), {
+    t: 'waypoint',
+    x: 340,
+    y: -20,
+  });
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'waypoint' })), { t: 'waypoint' });
+  // Half a coordinate is neither a set nor a clear.
+  assert.equal(parseC2S(JSON.stringify({ t: 'waypoint', x: 12 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'waypoint', y: 12 })), null);
+  // Non-integers and hostile magnitudes reject.
+  assert.equal(parseC2S(JSON.stringify({ t: 'waypoint', x: 1.5, y: 2 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'waypoint', x: 2_000_000, y: 0 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'waypoint', x: 'a', y: 0 })), null);
+});
