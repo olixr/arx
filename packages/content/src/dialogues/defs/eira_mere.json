@@ -1,0 +1,58 @@
+{
+  "id": "eira_mere",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "queen_eira"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "You needn't bow — the forecourt does enough of that for everyone. You have road dust on you. Good. The interesting visitors always do.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Walk with me a moment. The court can spare me; it mostly needs me to have opinions later.",
+      "choices": [
+        {
+          "text": "You're from Amberford, aren't you?",
+          "next": "ford"
+        },
+        {
+          "text": "What does a queen actually do here?",
+          "next": "work"
+        },
+        {
+          "text": "Tell me about the Mirrormere.",
+          "next": "mere"
+        },
+        {
+          "text": "Grace to you, my Queen.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "ford",
+      "text": "Ford-born and proud of it. My mother pulled toll wagons out of the mud during the war years; I counted them through from the bank steps. When Halvard came down-mountain to sign the peace ledgers, he added his sums wrong twice and I corrected him twice, out loud, in front of his guards. He says that's when he decided. I say a queen who can audit a toll book is worth two who can dance.",
+      "next": "hub"
+    },
+    {
+      "id": "work",
+      "text": "I read everything before he signs it. Charters, tithes, the Waykeepers' muster, Odele's fifth-column reports. A crown is mostly arithmetic wearing jewelry. And at midday I walk to the mere and let the city pretend it doesn't see me — the fishmongers' gossip I overhear on the way is worth more than half the council's briefings.",
+      "next": "hub"
+    },
+    {
+      "id": "mere",
+      "text": "Everything below us — the falls, the Roaring Pool, the channel the whole city drinks from — starts as this one still sheet of water. The mountain holds it up like a mirror it's proud of. I walk there when I need reminding that quiet things run the loud ones. Sella would call that a sermon. I call it hydrology.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Grace to you, traveler. Spend your coin on Lantern Row — I'll hear about it if you don't."
+    }
+  ]
+}

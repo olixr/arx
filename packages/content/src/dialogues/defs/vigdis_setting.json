@@ -1,0 +1,77 @@
+{
+  "id": "vigdis_setting",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "silversmith_vigdis"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Welcome to the Silver Setting. Touch anything you like — the cases are locked and I enjoy watching people find that out gracefully.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Browsing, buying, or fishing for stories? All three are respectable.",
+      "choices": [
+        {
+          "text": "What comes off your bench?",
+          "next": "work"
+        },
+        {
+          "text": "Why assay-stamped silver only?",
+          "next": "stamp"
+        },
+        {
+          "text": "Show me your wares.",
+          "next": "browse"
+        },
+        {
+          "text": "Shine on, Silversmith.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "work",
+      "text": "Rings, settings, seals, circlets — the mountain made small enough to carry. Balla makes the mountain *useful*; I make it beautiful. We've argued thirty years over which is harder and neither of us wants to win, because the argument is the friendship. My furnace is the smallest flame on this mountain and I'd put my tolerances against the Great Forge's any pour-day.",
+      "choices": [
+        {
+          "text": "You've made things for the Crown?",
+          "next": "crown"
+        },
+        {
+          "text": "Something else.",
+          "next": "hub"
+        }
+      ]
+    },
+    {
+      "id": "stamp",
+      "text": "Runa's stamp or no sale — my one commandment. A stamped bar has a history: this vein, this pour, this weight, witnessed. Jewelry is *trust you can wear*; set a ring in rumor-silver and the whole shop's word debases with it. If someone in an alley offers you mountain silver without a stamp, congratulations — you've met the Rookery, and you should count your fingers after the handshake.",
+      "next": "hub"
+    },
+    {
+      "id": "crown",
+      "text": "The Queen's circlet — she asked for *plain*, and making plain look inevitable is the hardest work I've done. The toll-house seal at the ford came off this bench too; every stamped wagon south of here answers to a die I cut. And once, a matched pair of rings for the King, who paid full price and waited his turn behind a miner buying a wedding band. That's the Line for you.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "The cases, then. Everything stamped, everything priced, everything exactly what it claims — the only shop on the mountain where that's the *whole* inventory.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "vigdis_wares"
+        }
+      ]
+    },
+    {
+      "id": "bye",
+      "text": "Shine on. And do look at the Row's lamps on your way out — I polish my window so they have something to admire."
+    }
+  ]
+}

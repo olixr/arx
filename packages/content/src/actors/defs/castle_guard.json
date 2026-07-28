@@ -1,0 +1,50 @@
+{
+  "id": "castle_guard",
+  "name": "Castle Guard",
+  "title": "The King's Steel",
+  "examine": "Steel from crown to heel, polished past argument. The Line's livery makes the wearer look permanent.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 32,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 160,
+      "damage": 10,
+      "speed": 3.5,
+      "leashRange": 10
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 1,
+      "hairColor": 0,
+      "beard": 2,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "head": "steel_greathelm",
+    "body": "steel_platebody",
+    "legs": "steel_greaves",
+    "boots": "steel_sabatons",
+    "weapon": "steel_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 20
+    }
+  ],
+  "lines": [
+    "The hall is open when the banners are out. The Crown likes to be seen. We like the Crown to be seen from a respectful distance.",
+    "Third watch on the forecourt. The view's the pay, and up here the view pays well.",
+    "The King greets travelers who've earned the climb. The Queen remembers their names after. Between the two of them nothing gets past this door."
+  ]
+}

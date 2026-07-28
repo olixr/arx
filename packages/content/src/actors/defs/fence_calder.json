@@ -1,0 +1,42 @@
+{
+  "id": "fence_calder",
+  "name": "Calder",
+  "title": "Purveyor of Provenance",
+  "examine": "A pleasant face you will struggle to describe afterward. His counter is spotless. His ledgers do not exist.",
+  "disposition": "friendly",
+  "shop": "calder_goods",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 1,
+      "hairColor": 1,
+      "beard": 1,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 8,
+      "pants": 8
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "legs": "woven_trousers",
+    "boots": "wanderer_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 320
+    },
+    {
+      "item": "brass_key",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "Everything on this counter has a history. None of it is written down. That's the service.",
+    "Runa stamps silver. I un-stamp it. The mountain provides for everyone.",
+    "You didn't find this place. The alley let you in. There's a difference, and Pike keeps track of it."
+  ]
+}

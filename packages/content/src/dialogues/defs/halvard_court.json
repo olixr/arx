@@ -1,0 +1,72 @@
+{
+  "id": "halvard_court",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "king_halvard"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "The guards let you through, which means you climbed the High Road on your own feet. Come in, then. The Line has always had time for people who arrive the hard way.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Ask. Kings answer more honestly than people expect — nobody dares correct us, so we've no practice lying.",
+      "choices": [
+        {
+          "text": "What is the Silver Line?",
+          "next": "line"
+        },
+        {
+          "text": "Who really runs this mountain?",
+          "next": "maren"
+        },
+        {
+          "text": "Why open the Undercroft after twenty years?",
+          "next": "seal"
+        },
+        {
+          "text": "Long reign to you, Majesty.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "line",
+      "text": "Five kings, one name. The first Halvard was a quarry foreman who paid the shepherds' debts in silver and got called *king* for it, half as a joke. He kept the half that wasn't. We've ruled the same way since: the Crown pays first, pays fairest, and keeps the roads lit. The day a Halvard breaks that bargain, the mountain will find another foreman.",
+      "next": "hub"
+    },
+    {
+      "id": "maren",
+      "text": "I outrank everything on this mountain except the mountain, and Maren speaks for the mountain. She was Castellan under my father; she'll be Castellan under my heir if she consents to it. When she says a gallery is unsafe, the gallery closes before I've finished nodding. That isn't weakness. That's knowing what your throne is bolted to.",
+      "choices": [
+        {
+          "text": "You know about the Rookery, don't you.",
+          "next": "rookery"
+        },
+        {
+          "text": "Something else, Majesty.",
+          "next": "hub"
+        }
+      ]
+    },
+    {
+      "id": "rookery",
+      "text": "_A king who claims his city has no shadows is announcing he's stopped looking at it._ Yes. Behind the bank, past the scree. The Magpie's people were quarrymen before my family were kings — they have the older claim, if we're honest about it, and a king should occasionally be. They watch what my watch can't. I leave them their dark, and the dark stays civil.",
+      "next": "hub"
+    },
+    {
+      "id": "seal",
+      "text": "Twenty years my father kept his grief sealed behind Petra's grandfather's stonework, and the kobolds dug on regardless. Maren came to me with the surveys and said: *the seal keeps out miners, not monsters.* I gave the order the same hour. If the deep is going to be contested, I'd rather contest it with lamps lit and the Deep Market paying rent.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "And a good road to you. Mind the edge — royal decree."
+    }
+  ]
+}

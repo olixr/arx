@@ -1,0 +1,44 @@
+{
+  "id": "fall_fletcher",
+  "base": {
+    "kind": "post",
+    "dir": -1.5707963267948966,
+    "speed": 1.2,
+    "work": true
+  },
+  "slots": [
+    {
+      "from": 10,
+      "to": 11.5,
+      "task": {
+        "kind": "wander",
+        "x": 3,
+        "y": -6,
+        "radius": 2,
+        "speed": 1.2
+      }
+    },
+    {
+      "from": 16,
+      "to": 17,
+      "task": {
+        "kind": "post",
+        "x": 2,
+        "y": 4.1,
+        "dir": 1.5707963267948966,
+        "speed": 1.2
+      }
+    },
+    {
+      "from": 21.5,
+      "to": 6.5,
+      "task": {
+        "kind": "post",
+        "x": 3.5,
+        "y": 1,
+        "dir": 3.141592653589793,
+        "speed": 1.1
+      }
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "id": "fall_herbalist",
+  "id": "fall_silversmith",
   "base": {
     "kind": "post",
     "dir": 1.5707963267948966,
@@ -7,22 +7,11 @@
   },
   "slots": [
     {
-      "from": 7.5,
+      "from": 8.5,
       "to": 9.5,
       "task": {
-        "kind": "wander",
-        "x": 13,
-        "y": -13.8,
-        "radius": 2.5,
-        "speed": 1.2
-      }
-    },
-    {
-      "from": 13,
-      "to": 17,
-      "task": {
         "kind": "post",
-        "x": -2,
+        "x": 5,
         "y": 0,
         "dir": -1.5707963267948966,
         "speed": 1.2,
@@ -30,8 +19,31 @@
       }
     },
     {
-      "from": 21,
-      "to": 6.5,
+      "from": 13,
+      "to": 14,
+      "task": {
+        "kind": "post",
+        "x": 6,
+        "y": 0,
+        "dir": 0.0,
+        "speed": 1.2,
+        "work": true
+      }
+    },
+    {
+      "from": 18,
+      "to": 19.5,
+      "task": {
+        "kind": "wander",
+        "x": 2,
+        "y": -4.9,
+        "radius": 2.5,
+        "speed": 1.2
+      }
+    },
+    {
+      "from": 21.5,
+      "to": 7,
       "task": {
         "kind": "post",
         "x": 3,

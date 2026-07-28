@@ -992,7 +992,8 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   // The mountain's ladder: silver in numbers, the deep teases above.
   assert.ok(n(Tile.RockSilver) >= 8, 'Silverfall without silver');
   assert.ok(n(Tile.RockMithril) >= 1 && n(Tile.RockAdamant) >= 1 && n(Tile.RockGold) >= 1);
-  // Every profession works here: the full station roster.
+  // Every profession works here: the full station roster, at capital
+  // scale — the Emberway smelts, the Timberway carves, the Row sets.
   for (const [tile, name] of [
     [Tile.Furnace, 'furnace'],
     [Tile.Anvil, 'anvil'],
@@ -1006,41 +1007,60 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   ] as const) {
     assert.ok(n(tile) >= 1, `station missing: ${name}`);
   }
-  assert.ok(n(Tile.Furnace) >= 5 && n(Tile.Anvil) >= 3, 'the forge city smelts at scale');
-  // The bank, the markets, the waters, the high snow.
-  assert.ok(n(Tile.Vault) >= 4 && n(Tile.BankChest) >= 3, 'the mountain bank is short');
-  assert.ok(n(Tile.MarketStall) >= 7, 'galleria + gate market thinned');
+  assert.ok(n(Tile.Furnace) >= 6 && n(Tile.Anvil) >= 3, 'the forge city smelts at scale');
+  assert.ok(n(Tile.CarvingBench) >= 3, 'the Timberway lost its benches');
+  assert.ok(n(Tile.Stump) >= 5, 'the saw yard lost its log stacks');
+  // The bank, the tithe, the markets, the waters, the high snow.
+  assert.ok(n(Tile.Vault) >= 5 && n(Tile.BankChest) >= 3, 'the mountain bank is short');
+  assert.ok(n(Tile.MarketStall) >= 8, 'the stalls thinned');
   assert.ok(n(Tile.FishingSpot) >= 4, 'the mere and the pool must fish');
   assert.ok(n(Tile.ArchStone) >= 9, 'the gate arch fell');
   assert.ok(n(Tile.Snow) > 0, 'the high ground lost its snow');
   assert.ok(n(Tile.Brazier) >= 10, 'the stair burns by brazier');
-  // Rams only — the people arrive in Epic 6.
+  // The Rookery: hidden, unofficial, and holding the Undercroft mouth.
+  assert.ok(n(Tile.ChestMossy) >= 1, 'the Rookery lost its stash');
+  // Rams on the Greenstair pasture — the city's only livestock.
   const spawnKinds = new Map((z.spawns ?? []).map((s) => [s.npc, s.count]));
   assert.equal(spawnKinds.get('ram'), 3);
-  // The people pass: thirteen named keepers + the watch + the stalls.
+  // The capital's cast: the Crown, the districts' masters, the Row's
+  // keepers, the Rookery — and the pooled watch, guard, and stalls.
   const fallActors = z.actorSpawns ?? [];
-  assert.equal(fallActors.length, 21, 'Silverfall lost residents');
+  assert.equal(fallActors.length, 38, 'Silverfall lost residents');
   for (const slug of [
+    'king_halvard',
+    'queen_eira',
     'warden_maren',
+    'shrinekeeper_sella',
     'bursar_odele',
     'enchantress_solvei',
     'marshal_kestrel',
-    'forgemistress_balla',
-    'foreman_grettir',
+    'silversmith_vigdis',
     'weaver_ottilie',
-    'herbalist_wyn',
-    'cook_signy',
-    'hostler_osa',
+    'scrivener_tove',
+    'innkeep_ragna',
+    'foreman_grettir',
+    'smeltmaster_koll',
+    'assayer_runa',
+    'forgemistress_balla',
     'mason_petra',
+    'carpenter_stig',
+    'fletcher_haki',
+    'cooper_dagny',
+    'cook_signy',
+    'herbalist_wyn',
     'gardener_ivo',
-    'shrinekeeper_sella',
+    'hostler_osa',
+    'magpie_mab',
+    'fence_calder',
+    'lookout_pike',
   ]) {
     assert.ok(fallActors.some((a) => a.actor === slug), `${slug} missing from Silverfall`);
   }
-  assert.equal(fallActors.filter((a) => a.actor === 'silverfall_watch').length, 3);
+  assert.equal(fallActors.filter((a) => a.actor === 'silverfall_watch').length, 4);
+  assert.equal(fallActors.filter((a) => a.actor === 'castle_guard').length, 3);
   assert.equal(fallActors.filter((a) => a.actor === 'galleria_trader').length, 3);
   assert.equal(fallActors.filter((a) => a.actor === 'gate_monger').length, 2);
-  assert.equal(fallActors.filter((a) => a.routine).length, 21, 'every keeper keeps hours');
+  assert.equal(fallActors.filter((a) => a.routine).length, 38, 'every keeper keeps hours');
   // The editor JSON round trip holds WITH the elevation layer.
   const json = zoneToJson(z);
   assert.ok(json.elev !== undefined, 'the elevation layer must serialize');

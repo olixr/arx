@@ -258,6 +258,54 @@ const defs: ShopDef[] = [
       { item: 'bread', price: 11 },
     ],
   },
+  {
+    id: 'stig_patterns',
+    name: "Stig's Measures",
+    stock: [
+      ...trainerStock(['woodworking']),
+      { item: 'twine', price: 8 },
+    ],
+  },
+  {
+    id: 'solvei_craft',
+    name: "Solvei's Craft",
+    stock: [
+      ...trainerStock(['enchanting']),
+      { item: 'arcane_dust', price: 80 },
+    ],
+  },
+  {
+    id: 'vigdis_wares',
+    name: 'The Silver Setting',
+    stock: [
+      { item: 'silver_ring', price: 190 },
+      { item: 'gold_ring', price: 290 },
+      { item: 'silver_bar', price: 200 },
+      { item: 'cape_gilded', price: 900 },
+    ],
+  },
+  {
+    id: 'ragna_board',
+    name: 'The Silver Flagon',
+    stock: [
+      { item: 'hearty_stew', price: 26 },
+      { item: 'bread', price: 10 },
+      { item: 'cooked_beef', price: 24 },
+      { item: 'trout', price: 22 },
+      { item: 'milk', price: 9 },
+    ],
+  },
+  {
+    id: 'calder_goods',
+    name: "Calder's Counter",
+    stock: [
+      { item: 'brass_key', price: 650 },
+      { item: 'leather', price: 22 },
+      { item: 'twine', price: 5 },
+      { item: 'cape_midnight', price: 420 },
+      { item: 'silver_ore', price: 55 },
+    ],
+  },
   // The Deep Market's counters.
   {
     id: 'varga_ore',

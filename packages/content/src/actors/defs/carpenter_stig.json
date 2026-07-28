@@ -1,0 +1,33 @@
+{
+  "id": "carpenter_stig",
+  "name": "Master Carpenter Stig",
+  "title": "Master of the Timberway",
+  "examine": "Sawdust in the beard, a pencil behind each ear. He looks at you briefly, then at the nearest joint, longer.",
+  "disposition": "friendly",
+  "shop": "stig_patterns",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 7,
+      "hair": 2,
+      "hairColor": 2,
+      "beard": 6,
+      "eyes": 0,
+      "ears": 1,
+      "feature": 1,
+      "shirt": 6,
+      "pants": 8
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 60
+    }
+  ],
+  "lines": [
+    "I hung the castle doors and built the moot dais. The King thanked me for the dais. The doors thank me every winter, which is worth more.",
+    "Measure twice. Then measure the fellow who told you the first measurement.",
+    "Mountain pine fights you for forty years and then behaves forever. Same as apprentices."
+  ]
+}

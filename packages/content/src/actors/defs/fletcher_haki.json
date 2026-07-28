@@ -1,0 +1,35 @@
+{
+  "id": "fletcher_haki",
+  "name": "Fletcher Haki",
+  "title": "Fletcher to the Watch",
+  "examine": "A quiet man with feather-callused thumbs. Ten years a Waykeeper before the road gave him back.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 1,
+      "hairColor": 1,
+      "beard": 3,
+      "eyes": 2,
+      "ears": 1,
+      "feature": 2,
+      "shirt": 7,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "weapon": "shortbow"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 30
+    }
+  ],
+  "lines": [
+    "Ten years walking the High Road for Kestrel's order. Now I make the arrows and other people do the walking. Fair trade.",
+    "Straight grain, true flight. The saw yard keeps its best billets for me and the wolves down-mountain wish it didn't.",
+    "The watch shoots what I fletch. I fletch like their lives depend on it, because I remember when mine did."
+  ]
+}

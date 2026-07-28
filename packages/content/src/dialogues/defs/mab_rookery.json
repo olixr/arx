@@ -1,0 +1,78 @@
+{
+  "id": "mab_rookery",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "magpie_mab"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Sit if you like. Pike gave you one whistle, which is why you're having a conversation instead of an experience. I'm Mab. The city calls me the Magpie, because taking things that shine is supposed to be an insult.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Ask what you came to ask. In the Rookery, curiosity is the only coin we don't take — we just note who spends it.",
+      "choices": [
+        {
+          "text": "What is this place?",
+          "next": "rookery"
+        },
+        {
+          "text": "The Crown just... allows you?",
+          "next": "crown"
+        },
+        {
+          "text": "Coppin said the Deep Market floor was found swept.",
+          "next": "swept",
+          "requires": [
+            "dlg:coppin_reeve"
+          ],
+          "set": [
+            "mab_word"
+          ]
+        },
+        {
+          "text": "Shadows keep you, Mab.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "rookery",
+      "text": "Older than the castle, and I can prove it in stone. The first quarrymen pitched here — out of the wind, over the workings. Then a Halvard got called king, terraces got grand, and somebody drew the city's maps *around* us. We stopped minding. A quarter the maps forget is worth more than one they flatter. We're the grandchildren who found quieter work than quarrying. Mostly quieter.",
+      "next": "hub"
+    },
+    {
+      "id": "crown",
+      "text": "*Tolerates* is the castle's word. Mine is _arrangement_. The watch holds the wall and the road, but a city's real trouble comes up its alleys, and alleys are ours. When something moves in the dark that shouldn't, the castle hears about it before its own spies do. In exchange: no lamps back here, no ledgers, no questions at Calder's counter. Halvard's father shook on it. Halvard keeps it. Kings who keep their fathers' handshakes are rarer than honest fences.",
+      "choices": [
+        {
+          "text": "Why keep the Undercroft braziers fed?",
+          "next": "stair"
+        },
+        {
+          "text": "Something else.",
+          "next": "hub"
+        }
+      ]
+    },
+    {
+      "id": "stair",
+      "text": "Because we use it more than the miners ever did. The Undercroft's back ways were our roads for twenty sealed years — you can move a great deal through a mountain everyone believes is shut. Now the seal's broken and the Deep Market pays rent to the Crown, and my people still keep those braziers fed. Habits outlive their reasons. The good ones, anyway.",
+      "next": "hub"
+    },
+    {
+      "id": "swept",
+      "text": "...Coppin talks. *Twenty years* that floor stayed swept and the city calls it a mystery, as if the mountain did its own housekeeping. It was my people. Down the back ways, once a season, brooms and lamp-oil — my grandmother said you keep a road open by keeping it *swept*, and the Undercroft was always going to be needed again. Tell whoever you like. Nobody official will believe the rogues kept faith with the deep. That's rather the point of us.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Shadows keep you. Leave by the ledge if you want Pike to revise his opinion of you upward."
+    }
+  ]
+}

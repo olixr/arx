@@ -1,0 +1,42 @@
+{
+  "id": "magpie_mab",
+  "name": "The Magpie",
+  "title": "Mab of the Rookery",
+  "examine": "Small, still, and dressed like dusk. You notice her rings first, then that she has already finished noticing you.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 9,
+      "hair": 0,
+      "hairColor": 0,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 4,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "wayfarer_jerkin",
+    "legs": "wayfarer_chaps",
+    "boots": "wayfarer_boots",
+    "cape": "cape_midnight"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 400
+    },
+    {
+      "item": "silver_ring",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "The Rookery was here before the castle. Quarrymen's tents, then quarrymen's shacks, then quarrymen's grandchildren who found quieter work.",
+    "The Crown tolerates us because I let it see enough. The watch holds the wall. Somebody has to hold everything the wall can't see.",
+    "No lamps back here. A lamp tells the dark where you are, and the dark writes it down."
+  ]
+}

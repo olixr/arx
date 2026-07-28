@@ -1,0 +1,49 @@
+{
+  "id": "queen_eira",
+  "name": "Queen Eira",
+  "title": "The Silver Line",
+  "examine": "Ford-born and mountain-crowned. She watches a room the way a ferryman watches the water — pleasantly, and missing nothing.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 40,
+    "respawnSec": 120,
+    "stats": {
+      "maxHp": 260,
+      "damage": 12,
+      "speed": 3.6,
+      "leashRange": 10
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 3,
+      "hairColor": 3,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "dawnsworn_robe",
+    "legs": "dawnsworn_skirts",
+    "boots": "dawnsworn_slippers",
+    "cape": "cape_royal"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 300
+    }
+  ],
+  "lines": [
+    "I grew up at the ford, counting toll wagons. I married up the mountain and now I count everything else.",
+    "At midday I walk to the mere and let the city forget I'm a queen for an hour. It never quite manages. Neither do I.",
+    "Halvard signs the charters. I read them first. That is the whole secret of the Silver Line, and you may keep it."
+  ]
+}

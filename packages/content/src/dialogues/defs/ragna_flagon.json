@@ -1,0 +1,77 @@
+{
+  "id": "ragna_flagon",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "innkeep_ragna"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Welcome to the Silver Flagon — beds, board, and the news first. Wipe your boots; the mountain comes in on everyone's soles and I fight a daily war about it.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Sit, stand, or spend — the Flagon accommodates all three.",
+      "choices": [
+        {
+          "text": "What's the news, then?",
+          "next": "news"
+        },
+        {
+          "text": "Who lodges here?",
+          "next": "lodgers"
+        },
+        {
+          "text": "What's on the board?",
+          "next": "browse"
+        },
+        {
+          "text": "Warm hearths, Innkeep.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "news",
+      "text": "The news is free; that's the house rule that built this house. Today's: the galleria's pricing arcane dust like it's snowing coin, the kobolds below are digging *toward* something again if you believe the Deep Market talk, and the Queen walked the mere at noon and fed Sella's shrine fire with her own hand. Which of those is important I leave to the customer. That's also the house rule.",
+      "next": "hub"
+    },
+    {
+      "id": "lodgers",
+      "text": "Signy keeps my best room and pays in leftovers, which makes me the only innkeep in the province who *profits* on lodging a cook. Caravan masters, Guildhall clerks on audit season, the occasional Waykeeper too stiff for the chapter house cots. And once a year, quietly, somebody from the castle takes the corner room to hear what the city says when it thinks the Crown isn't renting.",
+      "choices": [
+        {
+          "text": "You know Dunna at the ford?",
+          "next": "dunna"
+        },
+        {
+          "text": "Back to the bar.",
+          "next": "hub"
+        }
+      ]
+    },
+    {
+      "id": "dunna",
+      "text": "Know her! Dunna keeps the inn at the bottom of the road and I keep the one at the top — we're the two ends of the same rope. We split the road's gossip at the middle waystation like honest smugglers, twice a season. Her mother Osa runs my caravanserai's rivals to shame down at our own gate, and the day those two are in one room, pull up a chair and learn something.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Stew that's met real beef, bread from Signy's ovens, and the milk comes from actual rams' neighbors, I'm assured. The board's short and none of it apologizes.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "ragna_board"
+        }
+      ]
+    },
+    {
+      "id": "bye",
+      "text": "Warm hearths. Door's never barred to a paying rumor."
+    }
+  ]
+}

@@ -19,6 +19,20 @@ import fallTrader from './defs/fall_trader.json';
 import fallWarden from './defs/fall_warden.json';
 import fallWatch from './defs/fall_watch.json';
 import fallWeaver from './defs/fall_weaver.json';
+import fallKing from './defs/fall_king.json';
+import fallQueen from './defs/fall_queen.json';
+import fallCastleGuard from './defs/fall_castle_guard.json';
+import fallSmeltmaster from './defs/fall_smeltmaster.json';
+import fallAssayer from './defs/fall_assayer.json';
+import fallCarpenter from './defs/fall_carpenter.json';
+import fallCooper from './defs/fall_cooper.json';
+import fallFletcher from './defs/fall_fletcher.json';
+import fallSilversmith from './defs/fall_silversmith.json';
+import fallScrivener from './defs/fall_scrivener.json';
+import fallInnkeep from './defs/fall_innkeep.json';
+import fallMagpie from './defs/fall_magpie.json';
+import fallFence from './defs/fall_fence.json';
+import fallLookout from './defs/fall_lookout.json';
 import amberArtisan from './defs/amber_artisan.json';
 import amberBanker from './defs/amber_banker.json';
 import amberCaptain from './defs/amber_captain.json';
@@ -69,6 +83,20 @@ const SOURCES: readonly unknown[] = [
   fallWarden,
   fallWatch,
   fallWeaver,
+  fallKing,
+  fallQueen,
+  fallCastleGuard,
+  fallSmeltmaster,
+  fallAssayer,
+  fallCarpenter,
+  fallCooper,
+  fallFletcher,
+  fallSilversmith,
+  fallScrivener,
+  fallInnkeep,
+  fallMagpie,
+  fallFence,
+  fallLookout,
   amberArtisan,
   amberBanker,
   amberCaptain,

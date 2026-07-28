@@ -1,0 +1,32 @@
+{
+  "id": "scrivener_tove",
+  "name": "Scrivener Tove",
+  "title": "Inks & Charts",
+  "examine": "Spectacles, ink to the second knuckle, and the serene confidence of somebody whose maps have never gotten anyone lost.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 2,
+      "hairColor": 5,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 3,
+      "shirt": 9,
+      "pants": 9
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 90
+    }
+  ],
+  "lines": [
+    "Deeds, charters, wills, and maps. Three of those are promises and one is a confession — I'll let you decide which.",
+    "Keep your own chart as you travel. A bought map shows where the cartographer went. Yours shows where you were brave.",
+    "The Guildhall's records room and I disagree about seventeen boundary stones. I'm right about sixteen and stubborn about the last."
+  ]
+}

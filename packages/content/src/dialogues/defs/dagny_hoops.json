@@ -1,0 +1,58 @@
+{
+  "id": "dagny_hoops",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "cooper_dagny"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Ha! A visitor! Grab a stave, or don't, but you're now morally involved in this barrel either way.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Talk while I work — the hoops don't ring themselves.",
+      "choices": [
+        {
+          "text": "Why so many barrels?",
+          "next": "barrels"
+        },
+        {
+          "text": "How does a barrel even work?",
+          "next": "craft"
+        },
+        {
+          "text": "Who taught you?",
+          "next": "taught"
+        },
+        {
+          "text": "Ring true, Cooper.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "barrels",
+      "text": "Count with me: the Flagon's cellar, Signy's stores, Koll's quench water, Wyn's steeping casks, every wagon on the High Road, and the ferry down at the ford ships its catch in *my* wet-casks. A city is mostly things that need holding, and I'm the one who teaches wood to hold them. Most important person you'll meet today, least famous. I've made peace with it. Loudly.",
+      "next": "hub"
+    },
+    {
+      "id": "craft",
+      "text": "You take thirty staves that have never met, bend each one against its own opinion, and bind the whole argument with an iron hoop until it agrees to be round. No glue, no nails — just geometry and stubbornness. Balla forges my hoops and swears coopering is smithing for people afraid of fire. I let her have that one. My barrels float; her anvils don't.",
+      "next": "hub"
+    },
+    {
+      "id": "taught",
+      "text": "My mother, on a coast you've never heard of, where a leaky cask meant a hungry winter. She'd have called this mountain posting soft — nobody drowns if I'm sloppy, they just get slightly wet silver. Then she'd have inspected every hoop in this shop anyway. I still build like she's coming by later. Best habit I own.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Ring true! And if you ever buy a barrel that leaks, it isn't mine — but bring it anyway, I'll fix the poor liar."
+    }
+  ]
+}

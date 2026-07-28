@@ -1,0 +1,32 @@
+{
+  "id": "assayer_runa",
+  "name": "Assayer Runa",
+  "title": "Keeper of the Crown's Scales",
+  "examine": "Ink-stained fingers, a jeweler's squint, and the posture of somebody who has never once rounded in your favor.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 0,
+      "hairColor": 0,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 3,
+      "shirt": 9,
+      "pants": 9
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 200
+    }
+  ],
+  "lines": [
+    "Every bar over this counter, every tenth one into the tithe vault. My scales have never been wrong. They have also never been kind.",
+    "Silver without an assay stamp is a story without a witness. I hear the Rookery tells lovely stories.",
+    "The Crown taxes the pour, not the miner. Grettir made me repeat that to his whole shift. Twice."
+  ]
+}

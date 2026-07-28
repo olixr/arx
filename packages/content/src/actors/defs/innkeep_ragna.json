@@ -1,0 +1,33 @@
+{
+  "id": "innkeep_ragna",
+  "name": "Innkeep Ragna",
+  "title": "The Silver Flagon",
+  "examine": "A bar rag over one shoulder and the whole city's news behind her eyes. Nothing said in the Flagon stays in the Flagon unless she decides it does.",
+  "disposition": "friendly",
+  "shop": "ragna_board",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 6,
+      "hair": 3,
+      "hairColor": 2,
+      "beard": 0,
+      "eyes": 0,
+      "ears": 1,
+      "feature": 1,
+      "shirt": 2,
+      "pants": 6
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 150
+    }
+  ],
+  "lines": [
+    "Beds, board, and the news first. The news is free. The beds are not, and don't let anyone tell you the board is.",
+    "Signy lodges in my guest wing and cooks in her own kitchen, and the day those two facts trade places this city falls apart.",
+    "Dunna keeps the inn at the ford and I keep the one at the top. We split the road's gossip at the middle waystation like honest smugglers."
+  ]
+}

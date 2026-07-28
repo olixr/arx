@@ -18,6 +18,18 @@ import sellaShrine from './defs/sella_shrine.json';
 import signyMess from './defs/signy_mess.json';
 import solveiArcanum from './defs/solvei_arcanum.json';
 import wynRemedies from './defs/wyn_remedies.json';
+import halvardCourt from './defs/halvard_court.json';
+import eiraMere from './defs/eira_mere.json';
+import kollPour from './defs/koll_pour.json';
+import runaScales from './defs/runa_scales.json';
+import stigGrain from './defs/stig_grain.json';
+import dagnyHoops from './defs/dagny_hoops.json';
+import hakiFlight from './defs/haki_flight.json';
+import vigdisSetting from './defs/vigdis_setting.json';
+import toveCharts from './defs/tove_charts.json';
+import ragnaFlagon from './defs/ragna_flagon.json';
+import mabRookery from './defs/mab_rookery.json';
+import calderCounter from './defs/calder_counter.json';
 import aldisGate from './defs/aldis_gate.json';
 import aldisWatchHeeded from './defs/aldis_watch_heeded.json';
 import aldisWatchWry from './defs/aldis_watch_wry.json';
@@ -74,6 +86,18 @@ const SOURCES: readonly unknown[] = [
   signyMess,
   solveiArcanum,
   wynRemedies,
+  halvardCourt,
+  eiraMere,
+  kollPour,
+  runaScales,
+  stigGrain,
+  dagnyHoops,
+  hakiFlight,
+  vigdisSetting,
+  toveCharts,
+  ragnaFlagon,
+  mabRookery,
+  calderCounter,
   aldisGate,
   aldisWatchHeeded,
   aldisWatchWry,

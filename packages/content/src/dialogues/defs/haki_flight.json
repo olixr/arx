@@ -1,0 +1,58 @@
+{
+  "id": "haki_flight",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "fletcher_haki"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "...One moment. A fletch set wrong kills someone eight weeks from now, far from here. There. Now — you have my whole attention, which people tell me is unsettling.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Ask, friend.",
+      "choices": [
+        {
+          "text": "You were a Waykeeper?",
+          "next": "road"
+        },
+        {
+          "text": "Who do you fletch for?",
+          "next": "watch"
+        },
+        {
+          "text": "What makes an arrow true?",
+          "next": "true"
+        },
+        {
+          "text": "Fly straight, Fletcher.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "road",
+      "text": "Ten years under Kestrel's banner, walking the High Road with a lamp and a bow. The road gave me back with a knee that predicts weather and a rule I've never broken since: _never send anyone into the dark with gear you wouldn't stake your own life on._ I couldn't walk the miles anymore, so now the miles come to my counter instead. Same oath. Better chair.",
+      "next": "hub"
+    },
+    {
+      "id": "watch",
+      "text": "The watch on the wall, the castle guard, Kestrel's sergeants, and any honest traveler with coin and sense. The wolfkin dens below the tree line taught this province what a missed shot costs. When a watchman on the night wall nocks one of mine, he's holding my signature. I fletch like their lives depend on it, because I remember when mine did.",
+      "next": "hub"
+    },
+    {
+      "id": "true",
+      "text": "Straight grain — the saw yard saves me its best billets and Stig pretends not to be jealous. Feathers matched from the *same wing*, or the arrow corkscrews like a lie unraveling. And patience at the end: the last touch is the one you'll answer for. You can tell a fletcher's character from one arrow. Mine says: slow, and doesn't miss twice.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Fly straight. And thank the goose — everyone forgets the goose."
+    }
+  ]
+}

@@ -23,6 +23,20 @@ import shrinekeeperSella from './defs/shrinekeeper_sella.json';
 import silverfallWatch from './defs/silverfall_watch.json';
 import wardenMaren from './defs/warden_maren.json';
 import weaverOttilie from './defs/weaver_ottilie.json';
+import kingHalvard from './defs/king_halvard.json';
+import queenEira from './defs/queen_eira.json';
+import castleGuard from './defs/castle_guard.json';
+import smeltmasterKoll from './defs/smeltmaster_koll.json';
+import assayerRuna from './defs/assayer_runa.json';
+import carpenterStig from './defs/carpenter_stig.json';
+import cooperDagny from './defs/cooper_dagny.json';
+import fletcherHaki from './defs/fletcher_haki.json';
+import silversmithVigdis from './defs/silversmith_vigdis.json';
+import scrivenerTove from './defs/scrivener_tove.json';
+import innkeepRagna from './defs/innkeep_ragna.json';
+import magpieMab from './defs/magpie_mab.json';
+import fenceCalder from './defs/fence_calder.json';
+import lookoutPike from './defs/lookout_pike.json';
 import bankerCormund from './defs/banker_cormund.json';
 import captainAldis from './defs/captain_aldis.json';
 import courierNib from './defs/courier_nib.json';
@@ -90,6 +104,20 @@ const SOURCES: readonly unknown[] = [
   silverfallWatch,
   wardenMaren,
   weaverOttilie,
+  kingHalvard,
+  queenEira,
+  castleGuard,
+  smeltmasterKoll,
+  assayerRuna,
+  carpenterStig,
+  cooperDagny,
+  fletcherHaki,
+  silversmithVigdis,
+  scrivenerTove,
+  innkeepRagna,
+  magpieMab,
+  fenceCalder,
+  lookoutPike,
   bankerCormund,
   captainAldis,
   courierNib,

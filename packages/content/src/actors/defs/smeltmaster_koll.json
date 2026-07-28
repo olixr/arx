@@ -1,0 +1,36 @@
+{
+  "id": "smeltmaster_koll",
+  "name": "Smeltmaster Koll",
+  "title": "Master of the Pour",
+  "examine": "Burn-freckled forearms and a squint calibrated in furnace-light. He judges everything by how it would pour.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 6,
+      "hair": 1,
+      "hairColor": 1,
+      "beard": 5,
+      "eyes": 0,
+      "ears": 1,
+      "feature": 2,
+      "shirt": 4,
+      "pants": 8
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 40
+    },
+    {
+      "item": "silver_bar",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "Three furnaces, one rule: the charge goes in clean or the day goes wrong. Everything else about smelting is opinion.",
+    "Balla gets first pick of my coal and pretends she doesn't. I get first pick of her scrap and pretend the same. The mountain runs on pretending.",
+    "Every tenth bar walks next door to Runa's counter for the Crown. I pour eleven so I never have to count in front of her."
+  ]
+}

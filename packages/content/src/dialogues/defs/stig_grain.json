@@ -1,0 +1,77 @@
+{
+  "id": "stig_grain",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "carpenter_stig"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Watch the sawdust — it gets in everything, including conversations. You've the look of someone who wants either a door or a lesson. I stock both.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Speak up over the benches. What'll it be?",
+      "choices": [
+        {
+          "text": "What does the Timberway make?",
+          "next": "make"
+        },
+        {
+          "text": "Teach me the trade.",
+          "next": "teach"
+        },
+        {
+          "text": "Show me your patterns.",
+          "next": "browse"
+        },
+        {
+          "text": "True grain to you, Master.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "make",
+      "text": "Everything the mountain can't smelt. Doors, carts, cradles, coffins — the honest procession of a life, all off these benches. The saw yard breaks the pine down, my hall joins it back up, Dagny bends the offcuts into barrels and Haki flights the straightest of it. One tree, four trades. That's the Timberway: nothing wasted but the bark, and Wyn takes the bark.",
+      "choices": [
+        {
+          "text": "You built for the castle?",
+          "next": "castle"
+        },
+        {
+          "text": "Something else.",
+          "next": "hub"
+        }
+      ]
+    },
+    {
+      "id": "castle",
+      "text": "The great doors, the moot dais, and the Queen's window box — which was the hardest of the three, because Her Majesty knows joinery and *checked*. The King thanked me for the dais. The doors thank me every winter by not warping, which is worth more. A carpenter's reputation is just his oldest work still shrugging off the weather.",
+      "next": "hub"
+    },
+    {
+      "id": "teach",
+      "text": "The patterns on my counter will start you: measures, joints, which grain forgives and which one files a grievance. After that it's ten thousand shavings and a temper you're willing to lose quietly. Mountain pine fights you for forty years and then behaves forever. Same as apprentices. I should know — Tilo down at the ford was mine, and look at him now.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Patterns, schematics, and the measures I trust. Priced fair — knowledge cuts truest secondhand.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "stig_patterns"
+        }
+      ]
+    },
+    {
+      "id": "bye",
+      "text": "True grain. And check your ladder rungs — that's free."
+    }
+  ]
+}

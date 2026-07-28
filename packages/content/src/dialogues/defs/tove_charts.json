@@ -1,0 +1,58 @@
+{
+  "id": "tove_charts",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "scrivener_tove"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Mind the wet ink — that's someone's inheritance drying. Welcome to Inks & Charts: deeds, charters, wills, and honest maps. Three of those are promises and one's a confession. I'll let you decide which.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "What can I draw up for you?",
+      "choices": [
+        {
+          "text": "What makes a map honest?",
+          "next": "maps"
+        },
+        {
+          "text": "You keep the city's papers?",
+          "next": "deeds"
+        },
+        {
+          "text": "Any advice for a traveler?",
+          "next": "advice"
+        },
+        {
+          "text": "Ink and luck, Scrivener.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "maps",
+      "text": "An honest map shows its ignorance. Mine have blank patches labeled *I have not been here and neither has anyone I trust* — you'd be amazed how rare that sentence is in cartography. A pretty map that guesses is worse than no map: it sends confident people into the Thornveil at dusk. The Guildhall buys my charts precisely because they admit what they don't know.",
+      "next": "hub"
+    },
+    {
+      "id": "deeds",
+      "text": "Every deed on Lantern Row, half the mining claims on the Emberway, and the boundary rolls the Guildhall's records room and I politely fight about. Seventeen disputed stones between us. I'm right about sixteen. The seventeenth I defend purely on principle, because the day I concede a stone without a survey is the day my ink stops meaning anything.",
+      "next": "hub"
+    },
+    {
+      "id": "advice",
+      "text": "Keep your own chart. Mark it as you walk. A bought map shows where the cartographer was brave; yours shows where *you* were, and no one can sell it, steal it, or argue with it. When you've filled a whole province with your own footsteps, come back and tell me what my maps got wrong. I'll pay in ink and gratitude. Mostly ink.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Ink and luck. The blank patches are waiting for somebody — might as well be you."
+    }
+  ]
+}

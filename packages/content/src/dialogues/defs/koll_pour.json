@@ -1,0 +1,58 @@
+{
+  "id": "koll_pour",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "smeltmaster_koll"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Mind the trough — slag holds its grudge longer than people do. You're between pours, which makes you lucky and me talkative.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Say your piece. Furnace two's got nine minutes in her.",
+      "choices": [
+        {
+          "text": "Walk me through the pour.",
+          "next": "pour"
+        },
+        {
+          "text": "You and Balla feud, I hear.",
+          "next": "balla"
+        },
+        {
+          "text": "What's the tithe like?",
+          "next": "tithe"
+        },
+        {
+          "text": "Keep your fires, Smeltmaster.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "pour",
+      "text": "Ore from Grettir's yard, coal from the south face, charge goes in *clean* — that's the whole scripture. Three furnaces, oldest to newest: the Widow, the Bride, and the one we don't name because naming them is what killed the first two's luck. Silver pours like moonlight and lies like it too — looks done long before it is. You learn patience here or you learn burns.",
+      "next": "hub"
+    },
+    {
+      "id": "balla",
+      "text": "Feud! Is that what they call it up the stair? Balla gets first pick of my coal and pretends she doesn't; I get first pick of her scrap and pretend the same. Thirty years of pretending. Her quenches run true and her steel's the best on the mountain, and if you tell her I said that I'll swear you misheard it over the bellows.",
+      "next": "hub"
+    },
+    {
+      "id": "tithe",
+      "text": "Every tenth bar walks next door to Runa's scales for the Crown. I'll say this for the Line — the tithe pays for the shoring, the braziers, and the watch on the wall, and Runa's never skimmed a gram in her life. I pour eleven bars a batch so I never have to count in front of her. That woman could weigh your conscience.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Aye. Mind the trough going out, too — it minds you."
+    }
+  ]
+}

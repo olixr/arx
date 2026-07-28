@@ -1,0 +1,58 @@
+{
+  "id": "runa_scales",
+  "start": "greet",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "assayer_runa"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Counter's for weighing, not leaning. State your business or state your curiosity — I process both, in that order.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Well? The scales don't balance themselves. Actually they do. It's everything else that needs me.",
+      "choices": [
+        {
+          "text": "What happens at this counter?",
+          "next": "assay"
+        },
+        {
+          "text": "What's in the vault?",
+          "next": "vault"
+        },
+        {
+          "text": "Ever been offered a bribe?",
+          "next": "bribe"
+        },
+        {
+          "text": "Weigh well, Assayer.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "assay",
+      "text": "Every bar the smelter pours crosses this counter. I weigh it, test it, stamp it, and every tenth one goes into the tithe vault for the Crown. The stamp is the mountain's word of honor — Vigdis won't touch silver without it, the bank won't vault it, the galleria won't price it. An unstamped bar isn't money. It's just a very heavy rumor.",
+      "next": "hub"
+    },
+    {
+      "id": "vault",
+      "text": "The Crown's tenth, until the quarter-day wagon takes it up to Odele under guard. One vault, one key, one me. The Rookery could tell you exactly how good that lock is, since I've caught their people *admiring* it twice. Nothing taken, both times. The Magpie keeps her side of whatever arrangement she has with the castle. I keep a second lock anyway.",
+      "next": "hub"
+    },
+    {
+      "id": "bribe",
+      "text": "Four times. Twice in coin, once in silver, once — and I respect the imagination — in a *very* good pie. The scales have never been wrong and never been kind, and neither have I. The pie fellow got his assay done honest and the pie handed back with one slice gone. Precision matters, but I'm not made of stone.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Weighed and logged. On your way."
+    }
+  ]
+}

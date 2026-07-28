@@ -1,0 +1,37 @@
+{
+  "id": "lookout_pike",
+  "name": "Pike",
+  "title": "The Rookery's Eyes",
+  "examine": "Perched on a crate with a whittling knife and a view of everything. The whittling never seems to produce anything. The view does.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 3,
+      "hairColor": 3,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 1,
+      "feature": 2,
+      "shirt": 8,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "body": "trapline_jerkin",
+    "legs": "trapline_chaps",
+    "boots": "trapline_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 15
+    }
+  ],
+  "lines": [
+    "You came up the alley. Everyone comes up the alley the first time. The interesting ones leave by the ledge.",
+    "Two whistles means watch. One means friendly. You got one. Don't make me revise it.",
+    "The Undercroft stair's behind the arch. Mab's people keep the braziers fed. We use it more than the miners ever did."
+  ]
+}

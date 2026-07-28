@@ -1,0 +1,37 @@
+{
+  "id": "silversmith_vigdis",
+  "name": "Silversmith Vigdis",
+  "title": "The Silver Setting",
+  "examine": "Precise as a hallmark. Her shop gleams the way a drawn blade does — beautifully, and on purpose.",
+  "disposition": "friendly",
+  "shop": "vigdis_wares",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 0,
+      "hairColor": 6,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 9,
+      "pants": 10
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 250
+    },
+    {
+      "item": "silver_ring",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "The Queen's circlet came off that bench. So did the toll-house seal at the ford. Small things that outrank large ones — that's the whole trade.",
+    "I buy assay-stamped silver only. Runa's stamp or no sale. If someone offers you mountain silver without it, you've met the Rookery.",
+    "Balla makes the mountain useful. I make it beautiful. We've argued thirty years about which is harder and neither of us wants to win."
+  ]
+}
