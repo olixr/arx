@@ -156,6 +156,7 @@ import {
   type DecalKind,
   type FxStyle,
 } from './abilityFx.js';
+import { SIGNATURES, type SigCtx } from './fxSignatures.js';
 
 /**
  * Signature style: shadows are solid and sharp — never blurred. They
@@ -1032,13 +1033,15 @@ export class Renderer {
           const ry = b.y + Math.sin(a) * b.r * 0.75 * Renderer.FX_SQUASH;
           this.particles.burst(rx, ry, 1, [b.deep, haze, b.mid], {
             speed: 0.9,
-            life: 1.1,
+            life: 1.2,
             size: 0.13,
             gravity: -0.5,
             dir: a,
             spread: 0.6,
             drag: 1.8,
             grow: 0.32,
+            shape: 'puff',
+            wobble: 0.5,
             ground: true,
           });
         }
@@ -1048,11 +1051,11 @@ export class Renderer {
         // air still remembers.
         this.particles.burst(b.x, b.y - 0.6, 6, [b.spark, b.mid], {
           speed: 0.5,
-          life: 1.3,
-          size: 0.06,
+          life: 1.4,
+          size: 0.09,
           gravity: 0.7,
           drag: 1.2,
-          flicker: 0.7,
+          shape: 'glint',
         });
       } else {
         this.addRing(b.x, b.y, b.mid, b.r);
@@ -23151,40 +23154,118 @@ export class Renderer {
    * TUMBLE under gravity, sparks streak, leaves flutter down, shadow
    * curls upward. The material read is half the identity.
    */
+  /**
+   * Build the per-frame context a bespoke signature hook receives.
+   * One small object per signature-bearing fx per stratum — bounded
+   * by the 48-fx cap, never per particle.
+   */
+  private makeSigCtx(
+    fx: { x: number; y: number; x2?: number; y2?: number; radius: number; kind: string; dir?: number },
+    st: FxStyle,
+    t: number,
+    age: number,
+    now: number,
+    seed: number,
+  ): SigCtx {
+    const sc = this.camera.scale;
+    const p = this.camera.worldToScreen(fx.x, fx.y, this.w, this.h);
+    p.y -= this.renderLift(fx.x, fx.y) * sc;
+    const wx2 = fx.x2 ?? fx.x;
+    const wy2 = fx.y2 ?? fx.y;
+    const q = this.camera.worldToScreen(wx2, wy2, this.w, this.h);
+    q.y -= this.renderLift(wx2, wy2) * sc;
+    return {
+      ctx: this.ctx,
+      st,
+      kind: fx.kind,
+      t,
+      age,
+      now,
+      seed,
+      sc,
+      squash: Renderer.FX_SQUASH,
+      frameDt: this.frameDt,
+      wx: fx.x,
+      wy: fx.y,
+      px: p.x,
+      py: p.y,
+      wx2,
+      wy2,
+      px2: q.x,
+      py2: q.y,
+      radius: fx.radius,
+      rPx: fx.radius * sc,
+      dir: fx.dir ?? 0,
+      particles: this.particles,
+      glow: (gx, gy, r, a) => this.queueGlow(gx, gy, r, st.glow, a),
+    };
+  }
+
   private fxDebris(x: number, y: number, st: FxStyle, count: number): void {
     const colors = [st.mid, st.spark, st.core];
     switch (st.debris) {
       case 'ember':
-        this.particles.burst(x, y - 0.2, count, colors, { speed: 3.2, life: 0.7, size: 0.1, gravity: -1.6, up: true, flicker: 0.8, drag: 0.8 });
-        this.particles.burst(x, y - 0.2, Math.ceil(count / 3), ['#3a3442', st.deep], { speed: 1.0, life: 1.0, size: 0.13, gravity: -1.0, drag: 1.4, grow: 0.25 });
+        // The fire itself: tongues of flame leap and gutter to soot.
+        this.particles.burst(x, y - 0.25, Math.ceil(count * 0.7), [st.mid, st.core, st.spark], {
+          speed: 2.2, life: 0.6, size: 0.13, gravity: -3.0, up: true, shape: 'lick', drag: 1.5, flicker: 0.3, fade: st.deep, wobble: 0.5,
+        });
+        // Soot shoulders up behind the tongues and darkens as it climbs.
+        this.particles.burst(x, y - 0.2, Math.ceil(count / 2.5), [st.deep, '#3a3442'], {
+          speed: 1.0, life: 1.25, size: 0.14, gravity: -1.1, drag: 1.5, grow: 0.28, shape: 'puff', fade: '#2a2431', wobble: 0.6,
+        });
+        // Sparks scratch the air, shedding soot motes along their arcs.
+        this.particles.burst(x, y - 0.25, Math.ceil(count / 2), [st.spark, st.core], {
+          speed: 3.6, life: 0.6, size: 0.07, gravity: 5, up: true, shape: 'streak', flicker: 0.6, trail: 8, trailColor: st.deep,
+        });
+        // Coals hop low and lie where they land, guttering out.
+        this.particles.burst(x, y - 0.1, Math.ceil(count / 3), [st.mid, st.deep], {
+          speed: 1.6, life: 1.4, size: 0.08, gravity: 7, up: true, flicker: 0.9, fade: st.deep, ground: true,
+        });
         break;
       case 'rock':
+        // Slabs tumble, chips streak, and the dust rolls out low.
         this.particles.burst(x, y - 0.2, count, [st.deep, st.mid, '#6a6375'], { speed: 3.6, life: 0.6, size: 0.13, gravity: 8, up: true, shape: 'shard', spin: 9 });
-        this.particles.burst(x, y - 0.1, Math.ceil(count / 2), ['#4a4252', '#3a3442'], { speed: 1.4, life: 0.9, size: 0.11, gravity: 0.5, drag: 1.8, grow: 0.3, ground: true });
+        this.particles.burst(x, y - 0.2, Math.ceil(count / 2), [st.mid, st.spark], { speed: 4.2, life: 0.35, size: 0.06, gravity: 6, up: true, shape: 'streak' });
+        this.particles.burst(x, y - 0.1, Math.ceil(count / 2), ['#4a4252', '#3a3442'], { speed: 1.4, life: 1.1, size: 0.12, gravity: 0.4, drag: 1.7, grow: 0.3, shape: 'puff', wobble: 0.4, ground: true });
         break;
       case 'ice':
-        this.particles.burst(x, y - 0.2, count, colors, { speed: 3.0, life: 0.55, size: 0.1, gravity: 6, up: true, shape: 'shard', spin: 11 });
-        this.particles.burst(x, y - 0.3, Math.ceil(count / 3), ['#ffffff', st.core], { speed: 1.2, life: 0.5, size: 0.05, gravity: 2, flicker: 0.5 });
+        // The shatter: facets tumble and catch light before steaming off.
+        this.particles.burst(x, y - 0.2, count, colors, { speed: 3.0, life: 0.6, size: 0.1, gravity: 6, up: true, shape: 'shard', spin: 11, fade: st.core });
+        // Twinkles hang where the shatter happened.
+        this.particles.burst(x, y - 0.35, Math.ceil(count / 2), ['#ffffff', st.core], { speed: 0.9, life: 0.8, size: 0.12, gravity: 0.4, drag: 2.2, shape: 'glint' });
+        // Freezing mist rolls low and pales as it settles.
+        this.particles.burst(x, y - 0.15, Math.ceil(count / 3), [st.mid, st.core], { speed: 0.8, life: 1.2, size: 0.13, gravity: 0.5, drag: 1.6, grow: 0.24, shape: 'puff', fade: '#ffffff', wobble: 0.4, ground: true });
         break;
       case 'leaf':
-        this.particles.burst(x, y - 0.3, count, colors, { speed: 2.4, life: 1.0, size: 0.11, gravity: 1.2, drag: 1.8, up: true, shape: 'shard', spin: 5 });
+        // Foliage flutters down while spores twinkle in the wake.
+        this.particles.burst(x, y - 0.3, count, colors, { speed: 2.4, life: 1.1, size: 0.11, gravity: 1.2, drag: 1.8, up: true, shape: 'shard', spin: 5, wobble: 0.7, fade: st.deep });
+        this.particles.burst(x, y - 0.4, Math.ceil(count / 3), [st.spark, st.core], { speed: 0.7, life: 0.9, size: 0.09, gravity: -0.3, drag: 1.6, shape: 'glint' });
         break;
       case 'bone':
+        // Splinters tumble; a pale grave-dust sighs out under them.
         this.particles.burst(x, y - 0.2, count, colors, { speed: 3.4, life: 0.6, size: 0.12, gravity: 7, up: true, shape: 'shard', spin: 8 });
+        this.particles.burst(x, y - 0.15, Math.ceil(count / 3), [st.mid, st.deep], { speed: 0.8, life: 1.0, size: 0.12, gravity: -0.3, drag: 1.7, grow: 0.22, shape: 'puff', wobble: 0.5 });
         break;
       case 'star':
-        this.particles.burst(x, y - 0.35, count, colors, { speed: 2.6, life: 0.7, size: 0.09, gravity: 0, drag: 2.4, flicker: 0.6 });
-        this.particles.burst(x, y - 0.35, Math.ceil(count / 3), ['#ffffff'], { speed: 3.4, life: 0.3, size: 0.06, gravity: 0, shape: 'streak', drag: 1.5 });
+        // Starlight: twinkles drift while white slivers streak through.
+        this.particles.burst(x, y - 0.35, count, colors, { speed: 2.2, life: 0.8, size: 0.13, gravity: 0, drag: 2.4, shape: 'glint', fade: st.spark });
+        this.particles.burst(x, y - 0.35, Math.ceil(count / 3), ['#ffffff'], { speed: 3.4, life: 0.35, size: 0.06, gravity: 0, shape: 'streak', drag: 1.5, trail: 7, trailColor: st.spark });
         break;
       case 'shadow':
-        this.particles.burst(x, y - 0.3, count, [st.deep, st.mid, st.spark], { speed: 1.8, life: 0.9, size: 0.13, gravity: -0.8, drag: 1.4, grow: 0.18 });
+        // Night billows and curls; dark tongues lick upward through it.
+        this.particles.burst(x, y - 0.3, count, [st.deep, st.mid, st.spark], { speed: 1.8, life: 1.0, size: 0.14, gravity: -0.8, drag: 1.4, grow: 0.18, shape: 'puff', fade: '#16121f', wobble: 0.8 });
+        this.particles.burst(x, y - 0.35, Math.ceil(count / 3), [st.mid, st.deep], { speed: 1.2, life: 0.7, size: 0.11, gravity: -1.8, up: true, shape: 'lick', drag: 1.3, fade: '#16121f', wobble: 0.6 });
         break;
       case 'blood':
-        this.particles.burst(x, y - 0.25, count, [st.mid, st.deep], { speed: 2.8, life: 0.5, size: 0.1, gravity: 9, up: true });
+        // The spray, the heavy droplets, and the spatter that dries dark.
+        this.particles.burst(x, y - 0.25, count, [st.mid, st.deep], { speed: 2.8, life: 0.5, size: 0.1, gravity: 9, up: true, fade: st.deep });
         this.particles.burst(x, y - 0.25, Math.ceil(count / 2), [st.mid], { speed: 3.4, life: 0.35, size: 0.06, gravity: 10, up: true, shape: 'streak' });
+        this.particles.burst(x, y, Math.ceil(count / 3), [st.deep, st.mid], { speed: 1.8, life: 1.5, size: 0.07, gravity: 4, up: true, fade: shade(st.deep, -14), ground: true });
         break;
       default:
+        // Raw energy: slivers with twinkling residue.
         this.particles.burst(x, y - 0.25, count, colors, { speed: 3.6, life: 0.4, size: 0.08, gravity: 0.5, shape: 'streak' });
+        this.particles.burst(x, y - 0.3, Math.ceil(count / 3), [st.spark, st.core], { speed: 1.0, life: 0.7, size: 0.1, gravity: 0, drag: 2.0, shape: 'glint' });
         break;
     }
   }
@@ -23998,9 +24079,16 @@ export class Renderer {
           ctx.beginPath();
           ctx.ellipse(p.x, p.y, rPx * 0.7, rPx * 0.7 * squash, 0, 0, Math.PI * 2);
           ctx.fill();
-          if (Math.random() < this.frameDt * 2.2) {
+          if (Math.random() < this.frameDt * 2.6) {
             this.particles.burst(d.x + (Math.random() - 0.5) * d.r, d.y + (Math.random() - 0.5) * d.r * 0.6, 1, ['#4a4252', '#3a3442'], {
-              speed: 0.25, life: 1.2, size: 0.1, gravity: -0.9, drag: 1.4, grow: 0.2,
+              speed: 0.25, life: 1.3, size: 0.11, gravity: -0.9, drag: 1.4, grow: 0.2, shape: 'puff', fade: '#2a2431', wobble: 0.6,
+            });
+          }
+          // The char still breathes fire: tiny flamelets stand up out
+          // of the hottest coals and die fast.
+          if (Math.random() < this.frameDt * 3.4 * active) {
+            this.particles.burst(d.x + (Math.random() - 0.5) * d.r * 0.8, d.y + (Math.random() - 0.5) * d.r * 0.5, 1, [d.mid, '#ffd24a'], {
+              speed: 0.3, life: 0.45, size: 0.09, gravity: -2.2, shape: 'lick', fade: '#3a3442', wobble: 0.4,
             });
           }
         }
@@ -24711,6 +24799,13 @@ export class Renderer {
         ap.y -= this.renderLift(ax, ay) * sc;
         this.fxMotifGround(ax, ay, ap.x, ap.y, Math.max(rPx, sc * 0.9), st, t, seed, now);
       }
+
+      // THE SIGNATURE LAW: the ability's bespoke ground set-piece
+      // crowns the grammar (telegraphs stay pure instrument).
+      if (fx.id && fx.kind !== 'telegraph') {
+        const sig = SIGNATURES[fx.id];
+        if (sig?.ground) sig.ground(this.makeSigCtx(fx, st, t, age, now, seed));
+      }
     }
   }
 
@@ -25063,7 +25158,7 @@ export class Renderer {
           const stEnd = fxStyleFor(fx.id, fx.color);
           this.addDecal(fx.x, fx.y, fx.radius * 0.75, stEnd);
           this.particles.burst(fx.x, fx.y - 0.2, 8, [stEnd.mid, stEnd.deep], {
-            speed: 0.8, life: 0.9, size: 0.11, gravity: -0.8, drag: 1.6, grow: 0.2,
+            speed: 0.8, life: 1.1, size: 0.12, gravity: -0.8, drag: 1.6, grow: 0.2, shape: 'puff', fade: stEnd.deep, wobble: 0.6,
           });
         }
         game.fx.splice(i, 1);
@@ -25386,8 +25481,10 @@ export class Renderer {
           if (!fx.spawned) {
             fx.spawned = true;
             this.fxDebris(fx.x, fx.y, st, 18);
-            // The smoke column billows and drifts.
-            this.particles.burst(fx.x, fx.y - 0.3, 6, [st.deep, '#3a3442'], { speed: 0.7, life: 1.1, size: 0.16, gravity: -1.2, drag: 1.6, grow: 0.35 });
+            // The smoke column: billow lobes that stagger upward and
+            // darken, with a late crown of guttering twinkles.
+            this.particles.burst(fx.x, fx.y - 0.3, 6, [st.deep, '#3a3442'], { speed: 0.7, life: 1.4, size: 0.16, gravity: -1.3, drag: 1.5, grow: 0.35, shape: 'puff', fade: '#2a2431', wobble: 0.7 });
+            this.particles.burst(fx.x, fx.y - 0.8, 3, [st.spark, st.core], { speed: 0.5, life: 1.0, size: 0.1, gravity: -0.6, drag: 1.5, shape: 'glint' });
             this.addDecal(fx.x, fx.y, fx.radius * 0.7, st);
             this.addRing(fx.x, fx.y, st.mid, fx.radius);
             this.queueBeat(now + 300, fx.x, fx.y, fx.radius * 1.1, 'dust', st);
@@ -25439,11 +25536,11 @@ export class Renderer {
             const px2 = fx.x + Math.cos(a) * rr;
             const py2 = fx.y + Math.sin(a) * rr * squash;
             if (st.debris === 'ember') {
-              this.particles.burst(px2, py2 - 0.1, 1, [st.mid, st.spark], { speed: 0.5, life: 0.6, size: 0.08, gravity: -2.4 });
+              this.particles.burst(px2, py2 - 0.1, 1, [st.mid, st.spark], { speed: 0.5, life: 0.6, size: 0.1, gravity: -2.4, shape: 'lick', fade: st.deep, wobble: 0.5 });
             } else if (st.debris === 'ice') {
-              this.particles.burst(px2, py2 - 0.5, 1, [st.core, st.mid], { speed: 0.3, life: 0.7, size: 0.07, gravity: 0.9 });
+              this.particles.burst(px2, py2 - 0.5, 1, [st.core, st.mid], { speed: 0.3, life: 0.7, size: 0.09, gravity: 0.9, shape: 'glint' });
             } else if (st.debris === 'shadow') {
-              this.particles.burst(px2, py2 - 0.1, 1, [st.deep, st.mid], { speed: 0.4, life: 0.8, size: 0.11, gravity: -1.2, drag: 1.4 });
+              this.particles.burst(px2, py2 - 0.1, 1, [st.deep, st.mid], { speed: 0.4, life: 0.8, size: 0.12, gravity: -1.2, drag: 1.4, shape: 'puff', fade: '#16121f', wobble: 0.7 });
             } else if (st.debris === 'spark') {
               this.particles.burst(px2, py2 - 0.3, 1, [st.core, st.spark], { speed: 2.4, life: 0.16, size: 0.06, gravity: 0 });
             } else {
@@ -25473,6 +25570,21 @@ export class Renderer {
         default:
           // telegraph lives in the ground pass; vanish is pure particles.
           break;
+      }
+
+      // THE SIGNATURE LAW: the bespoke crown — one-shot spawn matter
+      // the frame the cast arrives, then the per-frame air set-piece.
+      if (fx.id && fx.kind !== 'telegraph') {
+        const sig = SIGNATURES[fx.id];
+        if (sig) {
+          const sf = fx as typeof fx & { sigSpawned?: boolean };
+          const c = this.makeSigCtx(fx, st, t, age, now, seed);
+          if (!sf.sigSpawned) {
+            sf.sigSpawned = true;
+            sig.spawn?.(c);
+          }
+          sig.air?.(c);
+        }
       }
     }
   }

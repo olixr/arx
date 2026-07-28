@@ -1,0 +1,478 @@
+/**
+ * THE SIGNATURE LAW — per-ability bespoke choreography.
+ *
+ * The v3 grammar (rings, debris families, motifs) guarantees every
+ * ability a coherent face. This registry is the tier above it: a
+ * hand-authored set-piece NO OTHER ABILITY SHARES, composed on top
+ * of the grammar in the same three strata the renderer already
+ * paints. An ability with a signature stops being "a fire nova" and
+ * becomes THE fireburst.
+ *
+ * Three hooks per ability:
+ *  - spawn(c):  fires ONCE, the frame the fx arrives — the bespoke
+ *               detonation matter (the grammar's debris still runs).
+ *  - ground(c): every frame, painted UNDER the y-sorted world —
+ *               flat set-pieces bodies stand on.
+ *  - air(c):    every frame, painted OVER the scene — standing
+ *               flourishes, crowns, shimmer, canopies.
+ *
+ * Authoring laws (binding):
+ *  1. Hard edges only — no blur, no gradients, no shadowBlur.
+ *  2. Alpha discipline: save/restore around every hook body.
+ *  3. Ground ellipses squash by c.squash; air pieces lift ~0.4·sc.
+ *  4. Geometry comes from srand(c.seed ^ salt) — a cast re-renders
+ *     identically every frame. Per-frame randomness ONLY through
+ *     frameDt-gated emission (the rim-shed pattern).
+ *  5. Bounded: ≤ ~60 path ops per hook per frame; emission rates
+ *     that respect the particle cap. 120fps is a law.
+ *  6. The signature must SAY the mechanic — meaning first.
+ *  7. No two signatures share their centerpiece.
+ */
+
+import { shade } from './rig.js';
+import { srand, type FxStyle } from './abilityFx.js';
+import type { Particles } from './particles.js';
+
+// --------------------------------------------------------------- ctx
+
+export interface SigCtx {
+  ctx: CanvasRenderingContext2D;
+  st: FxStyle;
+  /** The wire kind that carried this cast (nova/blast/arc/dash/…). */
+  kind: string;
+  /** Life fraction 0..1. */
+  t: number;
+  /** Age in ms, and the wall clock. */
+  age: number;
+  now: number;
+  /** Stable per-cast seed — walk it with srand(seed ^ salt). */
+  seed: number;
+  /** Camera scale (px/tile), ground squash, and the frame's dt (s). */
+  sc: number;
+  squash: number;
+  frameDt: number;
+  /** The heart: world coords + lift-corrected screen coords. */
+  wx: number;
+  wy: number;
+  px: number;
+  py: number;
+  /** The far end (dash/bolt/beam); equals the heart otherwise. */
+  wx2: number;
+  wy2: number;
+  px2: number;
+  py2: number;
+  /** Radius in tiles and pixels; aim angle for arcs (else 0). */
+  radius: number;
+  rPx: number;
+  dir: number;
+  particles: Particles;
+  /** Queue an emissive wash at world (x,y), r tiles, strength a. */
+  glow(x: number, y: number, r: number, a: number): void;
+}
+
+export interface AbilitySig {
+  spawn?(c: SigCtx): void;
+  ground?(c: SigCtx): void;
+  air?(c: SigCtx): void;
+}
+
+// ------------------------------------------------------- exemplars
+
+/**
+ * FIREBURST — "the kiln cracks open."
+ * Molten gobbets comet out and land burning; the crater keeps a
+ * white-hot heart threaded by molten seams; a crown of true flame
+ * tongues stands over the impact while heat-shimmer slivers climb.
+ */
+const fireburst: AbilitySig = {
+  spawn(c) {
+    // Gobbets: heavy molten squares that arc out shedding soot.
+    const rand = srand(c.seed ^ 0x11);
+    for (let k = 0; k < 6; k++) {
+      const a = rand() * Math.PI * 2;
+      c.particles.burst(c.wx, c.wy - 0.3, 1, [c.st.spark, c.st.mid], {
+        speed: 2.2 + rand() * 1.6, life: 0.7, size: 0.1, gravity: 7,
+        dir: a, spread: 0.2, trail: 12, trailColor: c.st.deep,
+        fade: c.st.deep, up: false,
+      });
+    }
+    // The rim ignites: tongues leap where the shock passes.
+    for (let k = 0; k < 7; k++) {
+      const a = (k / 7) * Math.PI * 2 + rand() * 0.4;
+      c.particles.burst(
+        c.wx + Math.cos(a) * c.radius * 0.55,
+        c.wy + Math.sin(a) * c.radius * 0.55 * c.squash,
+        1, [c.st.mid, c.st.core], {
+          speed: 0.8, life: 0.55, size: 0.14, gravity: -3.4,
+          shape: 'lick', flicker: 0.3, fade: c.st.deep, wobble: 0.5,
+        },
+      );
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const rand = srand(c.seed ^ 0x12);
+    const fade = 1 - t;
+    ctx.save();
+    // The white-hot heart, cooling from the edge in.
+    if (t < 0.45) {
+      const ht = 1 - t / 0.45;
+      ctx.globalAlpha = ht * 0.75;
+      ctx.fillStyle = st.core;
+      ctx.beginPath();
+      ctx.ellipse(px, py, rPx * 0.3 * ht, rPx * 0.3 * ht * squash, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Molten seams: cracks of fire threading the crater, each on its
+    // own cooling clock.
+    for (let k = 0; k < 5; k++) {
+      const a = rand() * Math.PI * 2;
+      const r0 = rPx * (0.12 + rand() * 0.2);
+      const r1 = rPx * (0.5 + rand() * 0.45);
+      const bend = (rand() - 0.5) * 0.9;
+      const heat = Math.max(0, 1 - t / (0.5 + rand() * 0.4));
+      if (heat <= 0) continue;
+      const pulse = 0.6 + 0.4 * Math.sin(c.now / 150 + k * 2.1);
+      ctx.globalAlpha = heat * pulse;
+      ctx.strokeStyle = k % 2 === 0 ? st.spark : st.core;
+      ctx.lineWidth = Math.max(1.5, sc * 0.045 * heat);
+      ctx.beginPath();
+      ctx.moveTo(px + Math.cos(a) * r0, py + Math.sin(a) * r0 * squash);
+      const am = a + bend * 0.5;
+      ctx.lineTo(px + Math.cos(am) * (r0 + r1) * 0.5, py + Math.sin(am) * (r0 + r1) * 0.5 * squash);
+      ctx.lineTo(px + Math.cos(a + bend) * r1, py + Math.sin(a + bend) * r1 * squash);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = fade;
+    ctx.restore();
+    c.glow(c.wx, c.wy, c.radius * 1.1, 0.5 * fade);
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py, rPx } = c;
+    const rand = srand(c.seed ^ 0x13);
+    ctx.save();
+    // The flame crown: true tongues standing over the impact, each
+    // with a hot core wedge, shrinking as the burst spends itself.
+    if (t < 0.55) {
+      const ft = 1 - t / 0.55;
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * Math.PI * 2 + rand() * 0.5;
+        const bx = px + Math.cos(a) * rPx * (0.2 + rand() * 0.25);
+        const h = sc * (0.5 + rand() * 0.55) * ft;
+        const w = sc * (0.1 + rand() * 0.07) * (0.8 + 0.2 * Math.sin(c.now / 90 + k * 2.3));
+        const lean = Math.sin(c.now / 160 + k * 1.7) * w * 0.6;
+        ctx.globalAlpha = 0.9 * ft;
+        ctx.fillStyle = k % 2 === 0 ? st.mid : shade(st.mid, 14);
+        ctx.beginPath();
+        ctx.moveTo(bx - w, py);
+        ctx.lineTo(bx + lean, py - h);
+        ctx.lineTo(bx + w, py);
+        ctx.closePath();
+        ctx.fill();
+        // The hot core feeds from beneath.
+        ctx.fillStyle = st.core;
+        ctx.beginPath();
+        ctx.moveTo(bx - w * 0.45, py);
+        ctx.lineTo(bx + lean * 0.5, py - h * 0.55);
+        ctx.lineTo(bx + w * 0.45, py);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    // Heat shimmer: thin slivers climb and wriggle above the crater.
+    if (t < 0.85) {
+      const ht = 1 - t / 0.85;
+      ctx.globalAlpha = 0.4 * ht;
+      ctx.fillStyle = st.core;
+      for (let k = 0; k < 6; k++) {
+        const bx = px + (rand() - 0.5) * rPx * 1.3;
+        const by = py - sc * (0.3 + rand() * 0.9) - (c.age / 1000) * sc * 0.8;
+        const wig = Math.sin(c.now / 110 + k * 2.6) * sc * 0.05;
+        ctx.fillRect(bx + wig, by, Math.max(1.5, sc * 0.03), sc * 0.16);
+      }
+    }
+    ctx.restore();
+  },
+};
+
+/**
+ * FROST_NOVA — "the hoarfrost web."
+ * The shock does not burn outward, it CRYSTALLIZES: a lattice of
+ * frost chords grows node by node across the ground while mist
+ * banks roll off the rim and glints hang in the frozen air.
+ */
+const frost_nova: AbilitySig = {
+  spawn(c) {
+    // Mist banks roll outward along the rim, paling as they settle.
+    const rand = srand(c.seed ^ 0x21);
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2 + rand() * 0.5;
+      c.particles.burst(
+        c.wx + Math.cos(a) * c.radius * 0.5,
+        c.wy + Math.sin(a) * c.radius * 0.5 * c.squash,
+        1, [c.st.mid, c.st.core], {
+          speed: 1.1, life: 1.3, size: 0.13, gravity: 0.3, dir: a,
+          spread: 0.4, drag: 1.5, grow: 0.26, shape: 'puff',
+          fade: '#ffffff', wobble: 0.4, ground: true,
+        },
+      );
+    }
+    // The air freezes where the shock passed: hanging twinkles.
+    c.particles.burst(c.wx, c.wy - 0.5, 7, ['#ffffff', c.st.core], {
+      speed: 0.7, life: 1.1, size: 0.12, gravity: 0.25, drag: 2.4, shape: 'glint',
+    });
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const rand = srand(c.seed ^ 0x22);
+    const reach = Math.min(1, t / 0.55); // the web grows center-out
+    const fade = t < 0.7 ? 1 : (1 - t) / 0.3;
+    ctx.save();
+    ctx.lineCap = 'butt';
+    // Eight spokes, two chord rings: a web whose chords SNAP into
+    // place one by one as the frost claims the ground.
+    const n = 8;
+    const nodes: Array<{ x: number; y: number }> = [];
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + (c.seed % 5) * 0.3;
+      const rr = rPx * (0.82 + rand() * 0.18);
+      nodes.push({ x: px + Math.cos(a) * rr, y: py + Math.sin(a) * rr * squash });
+    }
+    for (let k = 0; k < n; k++) {
+      const grown = Math.min(1, Math.max(0, reach * 1.5 - (k / n) * 0.5));
+      if (grown <= 0) continue;
+      const nd = nodes[k]!;
+      // Spoke: center to node, drawn to its grown length.
+      ctx.globalAlpha = 0.65 * fade * grown;
+      ctx.strokeStyle = k % 2 === 0 ? st.mid : st.core;
+      ctx.lineWidth = Math.max(1.5, sc * 0.035);
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(px + (nd.x - px) * grown, py + (nd.y - py) * grown);
+      ctx.stroke();
+      // Chord to the next node, only once both ends exist.
+      if (grown >= 1) {
+        const nx = nodes[(k + 1) % n]!;
+        ctx.globalAlpha = 0.5 * fade;
+        ctx.strokeStyle = st.core;
+        ctx.lineWidth = Math.max(1, sc * 0.022);
+        ctx.beginPath();
+        ctx.moveTo(nd.x, nd.y);
+        // The chord sags toward center — a web, not a polygon.
+        ctx.lineTo((nd.x + nx.x) / 2 + (px - (nd.x + nx.x) / 2) * 0.18, (nd.y + nx.y) / 2 + (py - (nd.y + nx.y) / 2) * 0.18);
+        ctx.lineTo(nx.x, nx.y);
+        ctx.stroke();
+        // The node blooms a facet star where the chords meet.
+        const tw = 0.6 + 0.4 * Math.sin(c.now / 300 + k * 2.4);
+        ctx.globalAlpha = 0.85 * fade * tw;
+        ctx.fillStyle = '#ffffff';
+        const g = sc * 0.045;
+        ctx.fillRect(nd.x - g / 2, nd.y - g * 1.7, g, g * 3.4);
+        ctx.fillRect(nd.x - g * 1.7, nd.y - g / 2, g * 3.4, g);
+      }
+    }
+    ctx.restore();
+  },
+  air(c) {
+    // The frozen air remembers: glints keep winking in over the web
+    // while it lives, and mist motes sift down through them.
+    if (Math.random() < c.frameDt * 9 * (1 - c.t)) {
+      const a = Math.random() * Math.PI * 2;
+      const rr = Math.sqrt(Math.random()) * c.radius * 0.9;
+      c.particles.burst(c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * c.squash - 0.7, 1, ['#ffffff', c.st.core], {
+        speed: 0.15, life: 0.7, size: 0.1, gravity: 0.5, shape: 'glint',
+      });
+    }
+    c.glow(c.wx, c.wy, c.radius * 0.9, 0.3 * (1 - c.t));
+  },
+};
+
+/**
+ * WHIRLWIND — "the steel cyclone."
+ * Three blade crescents orbit at body height, shedding sparks off
+ * their tips; the turf below is scoured into a counter-rotating
+ * scar while chips and dust ride the column upward.
+ */
+const whirlwind: AbilitySig = {
+  spawn(c) {
+    // The column inhales: dust and chips lift INTO the spin.
+    const rand = srand(c.seed ^ 0x31);
+    for (let k = 0; k < 6; k++) {
+      const a = rand() * Math.PI * 2;
+      const rr = c.radius * (0.4 + rand() * 0.5);
+      c.particles.burst(c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * c.squash, 1, ['#8a8494', c.st.mid, c.st.deep], {
+        speed: 1.6, life: 0.7, size: 0.09, gravity: -3.2, dir: a + Math.PI * 0.55, spread: 0.3, shape: 'shard', spin: 12, drag: 0.8,
+      });
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const fade = 1 - t;
+    ctx.save();
+    // The scoured scar: two counter-rotating dashed grooves.
+    ctx.globalAlpha = 0.55 * fade;
+    ctx.strokeStyle = st.deep;
+    ctx.lineWidth = Math.max(2, sc * 0.06);
+    ctx.setLineDash([sc * 0.16, sc * 0.11]);
+    ctx.lineDashOffset = -c.now / 22;
+    ctx.beginPath();
+    ctx.ellipse(px, py, rPx * 0.88, rPx * 0.88 * squash, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 0.4 * fade;
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(1.5, sc * 0.04);
+    ctx.setLineDash([sc * 0.1, sc * 0.14]);
+    ctx.lineDashOffset = c.now / 28;
+    ctx.beginPath();
+    ctx.ellipse(px, py, rPx * 0.62, rPx * 0.62 * squash, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const fade = 1 - t;
+    const lift = sc * 0.45;
+    ctx.save();
+    ctx.lineCap = 'butt';
+    // Three blade crescents chase each other around the body, each a
+    // steel band with a white leading edge; higher crescents ride
+    // smaller radii — a cyclone, not a cylinder.
+    for (let k = 0; k < 3; k++) {
+      const a0 = c.now / 75 + (k * Math.PI * 2) / 3;
+      const rr = rPx * (0.82 - k * 0.16);
+      const lk = lift + sc * 0.22 * k;
+      ctx.globalAlpha = (0.75 - k * 0.12) * fade;
+      ctx.strokeStyle = k === 1 ? shade(st.mid, 10) : st.mid;
+      ctx.lineWidth = Math.max(2.5, sc * (0.11 - k * 0.02));
+      ctx.beginPath();
+      ctx.ellipse(px, py - lk, rr, rr * squash, 0, a0, a0 + 1.9);
+      ctx.stroke();
+      // The white edge leads the cut.
+      ctx.globalAlpha = 0.95 * fade;
+      ctx.strokeStyle = st.core;
+      ctx.lineWidth = Math.max(1.5, sc * 0.04);
+      ctx.beginPath();
+      ctx.ellipse(px, py - lk, rr, rr * squash, 0, a0 + 1.65, a0 + 1.9);
+      ctx.stroke();
+      // Sparks shed off the blade tip.
+      if (Math.random() < c.frameDt * 22 * fade) {
+        const tipA = a0 + 1.9;
+        c.particles.burst(c.wx + (Math.cos(tipA) * rr) / sc, c.wy + (Math.sin(tipA) * rr * squash) / sc, 1, [st.spark, st.core], {
+          speed: 2.8, life: 0.3, size: 0.06, gravity: 2.5, dir: tipA + Math.PI / 2, spread: 0.4, shape: 'streak',
+        });
+      }
+    }
+    ctx.restore();
+  },
+};
+
+/**
+ * SMOKE_BOMB — "the night bloom."
+ * One white slit of igniter flash, then a charcoal flower: billow
+ * lobes roil at body height, tendrils creep along the ground, and
+ * the canopy sheds soot as it thins.
+ */
+const smoke_bomb: AbilitySig = {
+  spawn(c) {
+    // The bloom: a dense charcoal shell that rolls out and up.
+    const rand = srand(c.seed ^ 0x41);
+    for (let k = 0; k < 10; k++) {
+      const a = (k / 10) * Math.PI * 2 + rand() * 0.6;
+      c.particles.burst(c.wx, c.wy - 0.35, 1, [c.st.deep, c.st.mid, '#3c3648'], {
+        speed: 1.5 + rand(), life: 1.2, size: 0.15, gravity: -0.7,
+        dir: a, spread: 0.25, drag: 1.7, grow: 0.3, shape: 'puff',
+        fade: '#16121f', wobble: 0.8,
+      });
+    }
+    // Dark tongues curl up through the shell.
+    c.particles.burst(c.wx, c.wy - 0.4, 4, [c.st.mid, c.st.deep], {
+      speed: 1.0, life: 0.8, size: 0.12, gravity: -1.9, up: true,
+      shape: 'lick', drag: 1.2, fade: '#16121f', wobble: 0.7,
+    });
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const rand = srand(c.seed ^ 0x42);
+    const fade = 1 - t;
+    ctx.save();
+    // Tendrils creep outward from the burst — smoke hunting along
+    // the ground, each arm a bent wedge on its own reach clock.
+    for (let k = 0; k < 5; k++) {
+      const a = rand() * Math.PI * 2;
+      const reach = Math.min(1, (t * 2.2) / (0.6 + rand() * 0.5));
+      const len = rPx * (0.7 + rand() * 0.5) * reach;
+      const bend = (rand() - 0.5) * 1.1;
+      const w = sc * (0.1 + rand() * 0.06) * (1 - reach * 0.4);
+      const mx = px + Math.cos(a + bend * 0.5) * len * 0.55;
+      const my = py + Math.sin(a + bend * 0.5) * len * 0.55 * squash;
+      const ex = px + Math.cos(a + bend) * len;
+      const ey = py + Math.sin(a + bend) * len * squash;
+      ctx.globalAlpha = 0.4 * fade;
+      ctx.fillStyle = k % 2 === 0 ? st.deep : '#221c2e';
+      ctx.beginPath();
+      ctx.moveTo(px - Math.sin(a) * w, py + Math.cos(a) * w * squash);
+      ctx.lineTo(mx - Math.sin(a + bend * 0.5) * w * 0.7, my + Math.cos(a + bend * 0.5) * w * 0.7 * squash);
+      ctx.lineTo(ex, ey);
+      ctx.lineTo(mx + Math.sin(a + bend * 0.5) * w * 0.7, my - Math.cos(a + bend * 0.5) * w * 0.7 * squash);
+      ctx.lineTo(px + Math.sin(a) * w, py - Math.cos(a) * w * squash);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const rand = srand(c.seed ^ 0x43);
+    ctx.save();
+    // The igniter flash: one white slit, gone in a blink.
+    if (t < 0.07) {
+      const ft = 1 - t / 0.07;
+      ctx.globalAlpha = ft;
+      ctx.fillStyle = '#ffffff';
+      ctx.save();
+      ctx.translate(px, py - sc * 0.4);
+      ctx.rotate((c.seed % 6) * 0.5);
+      ctx.fillRect(-sc * 0.42 * ft, -Math.max(1.5, sc * 0.035), sc * 0.84 * ft, Math.max(3, sc * 0.07));
+      ctx.restore();
+    }
+    // The canopy: billow lobes roil at body height, thinning late —
+    // each lobe breathes on its own clock and sags as the smoke dies.
+    const thin = t < 0.6 ? 1 : (1 - t) / 0.4;
+    for (let k = 0; k < 5; k++) {
+      const a = rand() * Math.PI * 2;
+      const rr = rPx * (0.2 + rand() * 0.55);
+      const breathe = 1 + 0.12 * Math.sin(c.now / 240 + k * 2.2);
+      const s = sc * (0.26 + rand() * 0.2) * breathe * (0.7 + t * 0.5);
+      const bx = px + Math.cos(a) * rr;
+      const by = py - sc * (0.35 + rand() * 0.5) + t * sc * 0.2;
+      ctx.globalAlpha = (0.4 - k * 0.05) * thin;
+      ctx.fillStyle = k % 2 === 0 ? st.deep : st.mid;
+      ctx.beginPath();
+      ctx.ellipse(bx, by, s, s * 0.8, Math.sin(c.now / 500 + k) * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // The canopy sheds: soot motes sift off its underside.
+    if (Math.random() < c.frameDt * 8 * thin) {
+      const a = Math.random() * Math.PI * 2;
+      c.particles.burst(c.wx + Math.cos(a) * c.radius * 0.5, c.wy + Math.sin(a) * c.radius * 0.3 * squash - 0.4, 1, [st.deep, '#221c2e'], {
+        speed: 0.3, life: 0.8, size: 0.08, gravity: 0.6, drag: 1.8, wobble: 0.5,
+      });
+    }
+    ctx.restore();
+  },
+};
+
+// -------------------------------------------------------- registry
+
+/**
+ * Every ability with a bespoke signature. The grammar keeps abilities
+ * without an entry fully dressed — this table is the crown, added
+ * wave by wave until the whole roster owns one.
+ */
+export const SIGNATURES: Record<string, AbilitySig> = {
+  fireburst,
+  frost_nova,
+  whirlwind,
+  smoke_bomb,
+};

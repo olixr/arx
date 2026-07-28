@@ -2014,6 +2014,12 @@ export declare class Renderer {
      * TUMBLE under gravity, sparks streak, leaves flutter down, shadow
      * curls upward. The material read is half the identity.
      */
+    /**
+     * Build the per-frame context a bespoke signature hook receives.
+     * One small object per signature-bearing fx per stratum — bounded
+     * by the 48-fx cap, never per particle.
+     */
+    private makeSigCtx;
     private fxDebris;
     /**
      * The signature layer, GROUND HALF — the parts of each ability's

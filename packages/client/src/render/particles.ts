@@ -2,10 +2,23 @@
  * Pooled particle engine — the combat-FX workhorse.
  *
  * Everything stays on brand: hard-edged quads, no blur, no gradients.
- * Three silhouettes cover the whole vocabulary:
+ * Six silhouettes cover the whole vocabulary:
  *  - square: the classic chunk (debris, dust, coals)
  *  - streak: a velocity-stretched sliver (sparks, rain, speed lines)
  *  - shard:  a spinning slab (ice, bone, leaves — tumbling matter)
+ *  - lick:   a tapered flame tongue riding its velocity, width
+ *            breathing on its own phase — fire that BURNS
+ *  - puff:   a three-lobe billow cluster — smoke and mist with
+ *            volume, still hard-edged
+ *  - glint:  a crossed-sliver twinkle that scale-pulses — frost
+ *            sparkle, starlight, arcane motes
+ *
+ * THE LIVING MATTER LAW: matter tells its whole life. `fade` hard-
+ * switches a particle to its cooling color late in life (ember →
+ * soot, ice → mist, blood dries dark); `trail` sheds micro-motes
+ * along the flight arc (gobbets become comets); `wobble` staggers
+ * rising smoke off its rails. All three are pool-friendly fields —
+ * no closures, no allocation.
  *
  * Perf discipline: live particles are swap-removed and dead objects
  * recycled through a free list — zero allocation once the pool warms.
@@ -39,6 +52,14 @@ export interface Particle {
   flicker: number;
   /** Deterministic phase so flicker never syncs across a burst. */
   phase: number;
+  /** Cooling color — hard band-switch at 55% life ('' = never). */
+  fade: string;
+  /** Micro-motes shed per second along the flight arc (0 = none). */
+  trail: number;
+  /** The shed motes' color ('' = the parent's own). */
+  trailColor: string;
+  /** Lateral sinusoidal drift amplitude, tiles/sec (rising smoke). */
+  wobble: number;
   /**
    * Ground-hugging particles (footfall dust) join the renderer's
    * y-sort as world items instead of the overlay pass — a trail left
@@ -62,15 +83,23 @@ export interface BurstOpts {
   grow?: number;
   /** Y-sort with the world (ground dust) instead of drawing on top. */
   ground?: boolean;
-  /** Silhouette: 'square' (default) | 'streak' | 'shard'. */
-  shape?: 'square' | 'streak' | 'shard';
+  /** Silhouette: 'square' (default) | 'streak' | 'shard' | 'lick' | 'puff' | 'glint'. */
+  shape?: 'square' | 'streak' | 'shard' | 'lick' | 'puff' | 'glint';
   /** Shard tumble rate, rad/s. */
   spin?: number;
   /** Strobe weight 0..1 — embers/arcs shimmer as they live. */
   flicker?: number;
+  /** Cooling color — the particle hard-switches to it at 55% life. */
+  fade?: string;
+  /** Micro-motes shed per second along the arc (comet tails). */
+  trail?: number;
+  /** Shed-mote color (defaults to the parent's own color). */
+  trailColor?: string;
+  /** Lateral sinusoidal stagger, tiles/sec — rising smoke, wisps. */
+  wobble?: number;
 }
 
-const SHAPE_ID = { square: 0, streak: 1, shard: 2 } as const;
+const SHAPE_ID = { square: 0, streak: 1, shard: 2, lick: 3, puff: 4, glint: 5 } as const;
 
 export class Particles {
   private readonly pool: Particle[] = [];
@@ -92,7 +121,8 @@ export class Particles {
     const fresh: Particle = {
       x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 1, size: 0.08,
       color: '#fff', gravity: 6, drag: 0, grow: 0, shape: 0,
-      spin: 0, rot: 0, flicker: 0, phase: 0, ground: false,
+      spin: 0, rot: 0, flicker: 0, phase: 0, fade: '', trail: 0,
+      trailColor: '', wobble: 0, ground: false,
     };
     this.pool.push(fresh);
     return fresh;
@@ -126,6 +156,10 @@ export class Particles {
       p.rot = Math.random() * Math.PI * 2;
       p.flicker = opts.flicker ?? 0;
       p.phase = Math.random() * Math.PI * 2;
+      p.fade = opts.fade ?? '';
+      p.trail = opts.trail ?? 0;
+      p.trailColor = opts.trailColor ?? '';
+      p.wobble = opts.wobble ?? 0;
       p.ground = opts.ground ?? false;
     }
   }
@@ -150,9 +184,42 @@ export class Particles {
       }
       p.x += p.vx * dt;
       p.y += p.vy * dt;
+      if (p.wobble > 0) p.x += Math.sin(p.life * 6.5 + p.phase) * p.wobble * dt;
       if (p.grow > 0) p.size += p.grow * dt;
       if (p.spin !== 0) p.rot += p.spin * dt;
+      if (p.trail > 0 && Math.random() < p.trail * dt) this.shedMote(p);
     }
+  }
+
+  /**
+   * A comet sheds: drop a micro-mote where the parent flies. The mote
+   * is a plain cooling square with high drag — it hangs a beat and
+   * dies. Spawned THROUGH the pool (cap law holds; appended motes
+   * are simply visited next frame).
+   */
+  private shedMote(parent: Particle): void {
+    const m = this.take();
+    m.x = parent.x;
+    m.y = parent.y;
+    m.vx = -parent.vx * 0.06 + (Math.random() - 0.5) * 0.3;
+    m.vy = -parent.vy * 0.06 + (Math.random() - 0.5) * 0.3;
+    m.life = 0;
+    m.maxLife = 0.22 + Math.random() * 0.16;
+    m.size = parent.size * 0.5;
+    m.color = parent.trailColor || parent.color;
+    m.gravity = 0;
+    m.drag = 3;
+    m.grow = 0;
+    m.shape = 0;
+    m.spin = 0;
+    m.rot = 0;
+    m.flicker = 0.4;
+    m.phase = Math.random() * Math.PI * 2;
+    m.fade = '';
+    m.trail = 0;
+    m.trailColor = '';
+    m.wobble = 0;
+    m.ground = parent.ground;
   }
 
   /** The overlay pass: everything airborne. Ground particles are
@@ -190,7 +257,9 @@ export class Particles {
       alpha *= 1 - p.flicker * (0.5 + 0.5 * Math.sin(p.life * 26 + p.phase)) * 0.6;
     }
     if (alpha < 1) ctx.globalAlpha = Math.max(0, alpha);
-    ctx.fillStyle = p.color;
+    // THE LIVING MATTER LAW: matter cools — a hard band-switch to the
+    // fade color late in life, never a soft blend.
+    ctx.fillStyle = p.fade !== '' && t > 0.55 ? p.fade : p.color;
     if (p.shape === 1) {
       // Streak: a sliver stretched along the flight line — projected
       // through the camera so diagonals lie on the true screen path.
@@ -211,6 +280,44 @@ export class Particles {
       ctx.rotate(p.rot);
       ctx.fillRect(-size * 0.7, -size * 0.4, size * 1.4, size * 0.8);
       ctx.restore();
+    } else if (p.shape === 3) {
+      // Lick: a tapered flame tongue riding its velocity, forked tail
+      // behind, width breathing on its own clock. Fire that BURNS.
+      const ang =
+        Math.abs(p.vx) + Math.abs(p.vy) > 0.05 ? Math.atan2(p.vy, p.vx) : -Math.PI / 2;
+      const breath = 0.72 + 0.28 * Math.sin(p.life * 18 + p.phase);
+      const len = size * 2.1;
+      const w = size * 0.85 * breath;
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.moveTo(len * 0.62, 0); // the tip
+      ctx.lineTo(-len * 0.28, -w * 0.5);
+      ctx.lineTo(-len * 0.5, -w * 0.16); // forked tail bites in
+      ctx.lineTo(-len * 0.38, 0);
+      ctx.lineTo(-len * 0.5, w * 0.16);
+      ctx.lineTo(-len * 0.28, w * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    } else if (p.shape === 4) {
+      // Puff: a three-lobe billow cluster — smoke with VOLUME. The
+      // lobes tumble together on rot so the cloud rolls, not slides.
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(p.rot + Math.sin(p.life * 2.2 + p.phase) * 0.2);
+      const s0 = size;
+      ctx.fillRect(-s0 * 0.5, -s0 * 0.5, s0, s0 * 0.85);
+      ctx.fillRect(-s0 * 0.92, -s0 * 0.18, s0 * 0.62, s0 * 0.55);
+      ctx.fillRect(s0 * 0.32, -s0 * 0.42, s0 * 0.55, s0 * 0.5);
+      ctx.restore();
+    } else if (p.shape === 5) {
+      // Glint: a crossed-sliver twinkle that pulses on its own phase.
+      const tw = 0.45 + 0.55 * Math.abs(Math.sin(p.life * 14 + p.phase));
+      const g = size * 0.38 * tw;
+      ctx.fillRect(s.x - g * 0.5, s.y - g * 2.1, g, g * 4.2);
+      ctx.fillRect(s.x - g * 2.1, s.y - g * 0.5, g * 4.2, g);
     } else {
       ctx.fillRect(s.x - size / 2, s.y - size / 2, size, size);
     }
