@@ -660,11 +660,19 @@ export class Renderer {
   private readonly relightCanvas = document.createElement('canvas');
   private readonly relightCtx = this.relightCanvas.getContext('2d')!;
   private relitLeft = 0;
-  /** Dominant-light stash filled by sampleExposure(wantDom=true). */
+  /** Top-two-light stash filled by sampleExposure(wantDom=true).
+   *  TWO slots, not one: a winner-take-all pick strobes when two
+   *  comparable flickering sources trade the crown frame to frame —
+   *  the rim pass draws each significant light by its own strength
+   *  instead, so rank swaps never change the picture. */
   private domK = 0;
   private domX = 0;
   private domY = 0;
   private domRgb: [number, number, number] = [255, 255, 255];
+  private dom2K = 0;
+  private dom2X = 0;
+  private dom2Y = 0;
+  private dom2Rgb: [number, number, number] = [255, 255, 255];
   /** Ground shadows batch here, composited once at the sky's alpha. */
   private readonly shadowLayer = document.createElement('canvas');
   private readonly shadowLayerCtx = this.shadowLayer.getContext('2d')!;
@@ -17010,7 +17018,10 @@ export class Renderer {
     const s = this.sky;
     const amb = (0.299 * s.ambient[0] + 0.587 * s.ambient[1] + 0.114 * s.ambient[2]) / 255;
     let dark = 1 - amb;
-    if (wantDom) this.domK = 0;
+    if (wantDom) {
+      this.domK = 0;
+      this.dom2K = 0;
+    }
     for (const L of this.lights) {
       if (L.intensity <= 0.01) continue;
       const dx = wx - L.x;
@@ -17025,11 +17036,22 @@ export class Renderer {
       const lum = (0.299 * L.rgb[0] + 0.587 * L.rgb[1] + 0.114 * L.rgb[2]) / 255;
       const li = Math.min(1, L.intensity * lum * Math.pow(1 - d / L.r, 1.3) * shade);
       dark *= 1 - li;
-      if (wantDom && li > this.domK) {
-        this.domK = li;
-        this.domX = L.x;
-        this.domY = L.y;
-        this.domRgb = L.rgb;
+      if (wantDom && li > this.dom2K) {
+        if (li > this.domK) {
+          this.dom2K = this.domK;
+          this.dom2X = this.domX;
+          this.dom2Y = this.domY;
+          this.dom2Rgb = this.domRgb;
+          this.domK = li;
+          this.domX = L.x;
+          this.domY = L.y;
+          this.domRgb = L.rgb;
+        } else {
+          this.dom2K = li;
+          this.dom2X = L.x;
+          this.dom2Y = L.y;
+          this.dom2Rgb = L.rgb;
+        }
       }
     }
     return 1 - dark;
@@ -17084,7 +17106,13 @@ export class Renderer {
     const delta = expBase - expBehind;
     const lift = delta > 0.045;
     const dim = delta < -0.07;
-    const rim = this.domK > 0.09;
+    // Rims fade IN over [0.07, 0.13] instead of popping at a hard
+    // threshold — a light drifting around the cutoff must ease, not
+    // blink. Both stashed lights qualify independently.
+    const RIM_LO = 0.07;
+    const RIM_HI = 0.13;
+    const rimFade = (k: number): number => Math.min(1, Math.max(0, (k - RIM_LO) / (RIM_HI - RIM_LO)));
+    const rim = this.domK > RIM_LO;
     if (!lift && !dim && !rim) return;
     this.relitLeft--;
     const rc = this.relightCtx;
@@ -17094,7 +17122,14 @@ export class Renderer {
     }
     const ctx = this.ctx;
     const baseAlpha = item.alpha ?? 1;
-    const [lr, lg, lb] = this.domRgb;
+    // The lift wears BOTH pools' colors, weighted by contribution —
+    // a color that argmax-flips between two flickering fires is the
+    // same strobe as the rim's.
+    const wSum = this.domK + this.dom2K;
+    const w2 = wSum > 0 ? this.dom2K / wSum : 0;
+    const lr = Math.round(this.domRgb[0] + (this.dom2Rgb[0] - this.domRgb[0]) * w2);
+    const lg = Math.round(this.domRgb[1] + (this.dom2Rgb[1] - this.domRgb[1]) * w2);
+    const lb = Math.round(this.domRgb[2] + (this.dom2Rgb[2] - this.domRgb[2]) * w2);
     if (lift || dim) {
       rc.setTransform(1, 0, 0, 1, 0, 0);
       rc.globalCompositeOperation = 'source-over';
@@ -17120,30 +17155,61 @@ export class Renderer {
       ctx.restore();
     }
     if (rim) {
-      // Screen-space direction AWAY from the dominant light; the
-      // shifted-copy erase leaves a crescent on the side FACING it.
-      let ax = (item.baseX - this.domX) * this.camera.scale;
-      let ay = (item.baseY - this.domY) * this.camera.scale * this.camera.yScale;
-      const al = Math.hypot(ax, ay) || 1;
+      // EVERY light that reaches the body rims it — a body between
+      // two fires is lit on both flanks, and each crescent's strength
+      // follows its OWN light's contribution, so two comparable
+      // flickering sources never fight over a single crescent (the
+      // old argmax pick strobed the rim side to side). Near-collinear
+      // seconds fade by angular overlap instead of doubling one edge.
+      const rims: Array<{ k: number; x: number; y: number; rgb: [number, number, number] }> = [
+        { k: this.domK, x: this.domX, y: this.domY, rgb: this.domRgb },
+      ];
+      if (this.dom2K > RIM_LO) {
+        rims.push({ k: this.dom2K, x: this.dom2X, y: this.dom2Y, rgb: this.dom2Rgb });
+      }
       const mag = Math.max(2, sw * 0.055);
-      ax = (ax / al) * mag;
-      ay = (ay / al) * mag;
-      rc.setTransform(1, 0, 0, 1, 0, 0);
-      rc.globalCompositeOperation = 'source-over';
-      rc.globalAlpha = 1;
-      rc.clearRect(0, 0, sw + 2, sh + 2);
-      for (const src of srcs) rc.drawImage(src, 0, 0, sw, sh, 0, 0, sw, sh);
-      rc.globalCompositeOperation = 'destination-out';
-      for (const src of srcs) rc.drawImage(src, 0, 0, sw, sh, ax, ay, sw, sh);
-      rc.globalCompositeOperation = 'source-in';
-      // Rim reads hot: the light's color pushed toward white.
-      rc.fillStyle = `rgb(${(lr + 255) >> 1}, ${(lg + 255) >> 1}, ${(lb + 255) >> 1})`;
-      rc.fillRect(0, 0, sw, sh);
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = baseAlpha * Math.min(0.42, this.domK * 1.35);
-      ctx.drawImage(this.relightCanvas, 0, 0, sw, sh, dx, dy, dw, dh);
-      ctx.restore();
+      let ux0 = 0;
+      let uy0 = 0;
+      for (let i = 0; i < rims.length; i++) {
+        const R = rims[i]!;
+        // Screen-space direction AWAY from this light; the
+        // shifted-copy erase leaves a crescent on the side FACING it.
+        let ax = (item.baseX - R.x) * this.camera.scale;
+        let ay = (item.baseY - R.y) * this.camera.scale * this.camera.yScale;
+        const al = Math.hypot(ax, ay) || 1;
+        const ux = ax / al;
+        const uy = ay / al;
+        let overlap = 1;
+        if (i === 0) {
+          ux0 = ux;
+          uy0 = uy;
+        } else {
+          // Same-side seconds collapse into the first crescent.
+          const dot = ux * ux0 + uy * uy0;
+          overlap = Math.min(1, Math.max(0, (1 - dot) * 1.6));
+          if (overlap <= 0.02) continue;
+        }
+        const alpha = baseAlpha * Math.min(0.42, R.k * 1.35) * rimFade(R.k) * overlap;
+        if (alpha <= 0.01) continue;
+        ax = ux * mag;
+        ay = uy * mag;
+        rc.setTransform(1, 0, 0, 1, 0, 0);
+        rc.globalCompositeOperation = 'source-over';
+        rc.globalAlpha = 1;
+        rc.clearRect(0, 0, sw + 2, sh + 2);
+        for (const src of srcs) rc.drawImage(src, 0, 0, sw, sh, 0, 0, sw, sh);
+        rc.globalCompositeOperation = 'destination-out';
+        for (const src of srcs) rc.drawImage(src, 0, 0, sw, sh, ax, ay, sw, sh);
+        rc.globalCompositeOperation = 'source-in';
+        // Rim reads hot: the light's color pushed toward white.
+        rc.fillStyle = `rgb(${(R.rgb[0] + 255) >> 1}, ${(R.rgb[1] + 255) >> 1}, ${(R.rgb[2] + 255) >> 1})`;
+        rc.fillRect(0, 0, sw, sh);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(this.relightCanvas, 0, 0, sw, sh, dx, dy, dw, dh);
+        ctx.restore();
+      }
     }
   }
 
