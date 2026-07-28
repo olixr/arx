@@ -1,4 +1,4 @@
-import { ChunkStore, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type EquippedItem, type S2CFx, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
+import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type DiscoveryWire, type EquippedItem, type S2CFx, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
@@ -232,6 +232,8 @@ export interface GameEvents {
         kind: 'request' | 'accepted' | 'declined' | 'removed' | 'online' | 'offline';
         name: string;
     }): void;
+    /** A LIVE first-ever discovery — the one trigger for the splash. */
+    onDiscovery?(d: DiscoveryWire): void;
 }
 export declare class ClientGame {
     private readonly input;
@@ -278,6 +280,21 @@ export declare class ClientGame {
     skills: SkillXp;
     /** Recipes known beyond the core set (server-owned; see 'recipes'). */
     knownRecipes: ReadonlySet<string>;
+    /**
+     * THE CHART: persistent fog-of-war, seeded by the login snapshot and
+     * cleared locally with the shared deterministic disc — the server
+     * marks the identical cells, so no reveal ever travels the wire.
+     */
+    readonly explored: ExploredMask;
+    /** The per-run dungeon chart (y >= DUNGEON_MIN_Y) — never persisted. */
+    readonly dungeonExplored: ExploredMask;
+    /** The place ledger, keyed by discovery id. */
+    readonly discoveries: Map<string, DiscoveryWire>;
+    /** The one active waypoint (optimistic; server keeps the durable copy). */
+    waypoint: Vec2 | null;
+    /** Bumped whenever fog, discoveries, or the waypoint change — map surfaces re-draw on it. */
+    chartVersion: number;
+    private lastRevealAt;
     equipment: Partial<Record<string, EquippedItem>>;
     /** Cosmetic idle weapon-carry preference (server-confirmed). */
     carryStyle: 'normal' | 'rogue';
@@ -492,6 +509,9 @@ export declare class ClientGame {
     nearestSign(radius?: number): SignInfo | null;
     /** Rewrite one of your own boards (the server judges ownership). */
     editSign(tx: number, ty: number, title: string, lines: string[]): void;
+    /** Pin the one active waypoint (optimistic; the server keeps the durable copy). */
+    setWaypoint(x: number, y: number): void;
+    clearWaypoint(): void;
     /** Send an interact intent for a specific world tile. */
     interact(tx: number, ty: number): void;
     /** Use (equip/eat) the item in an inventory slot. */

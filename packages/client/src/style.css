@@ -5388,3 +5388,43 @@ body.in-dialogue #hud {
   gap: 10px;
   padding: 4px 0 8px;
 }
+
+/* THE CHART TABLE — the fullscreen map (M). The chart wants room:
+   near-viewport case, canvas as the protagonist, one quiet rail. */
+.screen-map {
+  width: min(1480px, 92vw);
+  height: min(940px, 90vh);
+}
+
+.map-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-canvas {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 7px solid transparent;
+  border-image: var(--ui-socket) 35 fill / 7px;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.map-rail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.map-coords {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--ink-dim, #8d8471);
+  letter-spacing: 0.04em;
+}

@@ -12,6 +12,7 @@ import { StationPanels } from './ui/stationPanels.js';
 import { UiNav } from './ui/padUI.js';
 import { LootPanel } from './ui/lootPanel.js';
 import { SocialPanel } from './ui/socialPanel.js';
+import { MapScreen } from './ui/map/mapScreen.js';
 import { RiftgatePanel } from './ui/riftgate.js';
 import { showDungeonEntry } from './ui/dungeonBanner.js';
 import { Sfx } from './audio/sfx.js';
@@ -52,6 +53,7 @@ for (const [id, kind, tip, kbKey, padCls, padLabel] of [
   ['btn-craft', 'handiwork', 'Handiwork', 'C', 'ddown', '▼'],
   ['btn-build', 'build', 'Build', 'B', 'dright', '▶'],
   ['btn-social', 'social', 'Social', 'U', '', ''],
+  ['btn-map', 'map', 'Map', 'M', '', ''],
   ['btn-audio', 'sound', 'Sound', 'O', '', ''],
   ['touch-attack', 'attack', '', '', '', ''],
 ] as const) {
@@ -371,11 +373,12 @@ function closeAllUi(): void {
   riftgate.close();
   audioMenu.close();
   socialPanel.close();
+  mapScreen.close();
   signHud.close();
 }
 
 function toggleScreen(
-  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot' | 'social',
+  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot' | 'social' | 'map',
 ): void {
   // A conversation owns the stage: no screen may open over it, from
   // any device — hotkeys, dock clicks, and pad shortcuts all pass
@@ -396,7 +399,9 @@ function toggleScreen(
                 ? audioMenu.isOpen
                 : which === 'social'
                   ? socialPanel.isOpen
-                  : lootPanel.isOpen;
+                  : which === 'map'
+                    ? mapScreen.isOpen
+                    : lootPanel.isOpen;
   closeAllUi();
   if (wasOpen) return;
   switch (which) {
@@ -421,6 +426,9 @@ function toggleScreen(
     case 'social':
       socialPanel.open();
       break;
+    case 'map':
+      mapScreen.open();
+      break;
     case 'loot':
       if (game.nearbyLoot(2.4).length > 0) lootPanel.open();
       break;
@@ -434,6 +442,7 @@ document.getElementById('btn-craft')!.addEventListener('click', () => toggleScre
 document.getElementById('btn-build')!.addEventListener('click', () => toggleScreen('build'));
 document.getElementById('btn-audio')!.addEventListener('click', () => toggleScreen('audio'));
 document.getElementById('btn-social')!.addEventListener('click', () => toggleScreen('social'));
+document.getElementById('btn-map')!.addEventListener('click', () => toggleScreen('map'));
 
 function showLoginError(text: string): void {
   loginError.textContent = text;
@@ -689,6 +698,7 @@ const riftgate = new RiftgatePanel(game);
 
 // The fellowship ledger: nearby players, friends, and requests.
 const socialPanel = new SocialPanel(game);
+const mapScreen = new MapScreen(game);
 
 // Signage: the approach plaque over every board, and the sheet that
 // opens when you stop to read one properly.
@@ -1286,12 +1296,14 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyC') toggleScreen('craft');
   if (e.code === 'KeyB') toggleScreen('build');
   if (e.code === 'KeyU') toggleScreen('social');
+  if (e.code === 'KeyM') toggleScreen('map');
   if (e.code === 'Escape') {
     stationPanels.closeAll();
     panels.closeAll();
     lootPanel.close();
     riftgate.close();
     socialPanel.close();
+    mapScreen.close();
     signHud.close();
     buildMode = null;
     renderer.buildGhost = null;
@@ -1328,6 +1340,7 @@ const panelSeen = {
   audio: false,
   riftgate: false,
   social: false,
+  map: false,
   sign: false,
 };
 function panelAudioCues(): void {
@@ -1355,6 +1368,7 @@ function panelAudioCues(): void {
   cue('audio', vis('audio-panel'), () => sfx.uiOpen(), () => sfx.uiClose());
   cue('riftgate', vis('riftgate-panel'), () => sfx.uiOpen(), () => sfx.uiClose());
   cue('social', vis('social-panel'), () => sfx.parchment(), () => sfx.uiClose());
+  cue('map', vis('map-panel'), () => sfx.parchment(), () => sfx.uiClose());
   cue('sign', vis('sign-panel'), () => sfx.parchment(), () => sfx.uiClose());
 }
 

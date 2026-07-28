@@ -1,12 +1,16 @@
 import {
   CHUNK_SIZE,
+  CLIENT_REVEAL_MS,
   COMBO_GRACE_TICKS,
   COMBO_STAGES,
   ChunkStore,
   DRAW_FULL_TICKS,
   DRAW_MIN_TICKS,
+  DUNGEON_MIN_Y,
+  ExploredMask,
   HEAVY_BOLT_RECOVERY_MULT,
   INTERP_DELAY_MS,
+  b64ToU8,
   InputButton,
   hasButton,
   PLAYER_SPEED,
@@ -37,6 +41,7 @@ import {
   type InputFrame,
   type InvSlot,
   type ItemRoll,
+  type DiscoveryWire,
   type EquippedItem,
   type S2CFx,
   type S2CMessage,
@@ -47,7 +52,7 @@ import {
   type TilePatch,
   type Vec2,
 } from '@arx/shared';
-import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, isCropTile, abilityDef, itemDef, npcDef } from '@arx/content';
+import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, type GeographyDef } from '@arx/content';
 import { EntityKind } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 
@@ -198,6 +203,8 @@ export interface GameEvents {
     kind: 'request' | 'accepted' | 'declined' | 'removed' | 'online' | 'offline';
     name: string;
   }): void;
+  /** A LIVE first-ever discovery — the one trigger for the splash. */
+  onDiscovery?(d: DiscoveryWire): void;
 }
 
 export class ClientGame {
@@ -245,6 +252,21 @@ export class ClientGame {
   skills: SkillXp = {};
   /** Recipes known beyond the core set (server-owned; see 'recipes'). */
   knownRecipes: ReadonlySet<string> = new Set();
+  /**
+   * THE CHART: persistent fog-of-war, seeded by the login snapshot and
+   * cleared locally with the shared deterministic disc — the server
+   * marks the identical cells, so no reveal ever travels the wire.
+   */
+  readonly explored = new ExploredMask();
+  /** The per-run dungeon chart (y >= DUNGEON_MIN_Y) — never persisted. */
+  readonly dungeonExplored = new ExploredMask();
+  /** The place ledger, keyed by discovery id. */
+  readonly discoveries = new Map<string, DiscoveryWire>();
+  /** The one active waypoint (optimistic; server keeps the durable copy). */
+  waypoint: Vec2 | null = null;
+  /** Bumped whenever fog, discoveries, or the waypoint change — map surfaces re-draw on it. */
+  chartVersion = 0;
+  private lastRevealAt = 0;
   equipment: Partial<Record<string, EquippedItem>> = {};
   /** Cosmetic idle weapon-carry preference (server-confirmed). */
   carryStyle: 'normal' | 'rogue' = 'normal';
@@ -642,6 +664,20 @@ export class ClientGame {
         this.ownName = msg.name;
         this.worldSeed = msg.seed ?? null;
         this.setHavens(msg.havens ?? [], msg.anchors);
+        // The plan is editable data server-side — the map must chart
+        // the live truth, never the bundled copy.
+        if (msg.geo) {
+          try {
+            replaceGeography(msg.geo as GeographyDef);
+          } catch (err) {
+            console.warn('[map] welcome geo rejected:', err);
+          }
+        }
+        this.waypoint = msg.waypoint ?? null;
+        this.explored.clear();
+        this.dungeonExplored.clear();
+        this.discoveries.clear();
+        this.chartVersion++;
         this.ownLook = msg.look ?? null;
         this.token = msg.token;
         this.serverTick = msg.tick;
@@ -907,6 +943,9 @@ export class ClientGame {
         break;
       }
       case 'dungeon': {
+        // A fresh instance was cut — the old run's chart is gone with it.
+        this.dungeonExplored.clear();
+        this.chartVersion++;
         this.events.onDungeon?.({
           name: msg.name,
           sigil: msg.sigil,
@@ -983,6 +1022,33 @@ export class ClientGame {
         // itself changed. The danger field shifts under our feet,
         // and the music with it.
         this.setHavens(msg.list, msg.settled);
+        break;
+      }
+      case 'explored': {
+        for (const [rx, ry, b64] of msg.regions) {
+          this.explored.loadRegion(rx, ry, b64ToU8(b64));
+        }
+        this.chartVersion++;
+        break;
+      }
+      case 'discoveries': {
+        this.discoveries.clear();
+        for (const d of msg.list) this.discoveries.set(d.id, d);
+        this.chartVersion++;
+        break;
+      }
+      case 'discovery': {
+        this.discoveries.set(msg.d.id, msg.d);
+        this.chartVersion++;
+        this.events.onDiscovery?.(msg.d);
+        break;
+      }
+      case 'discoveryfade': {
+        for (const id of msg.ids) {
+          const d = this.discoveries.get(id);
+          if (d) d.faded = true;
+        }
+        this.chartVersion++;
         break;
       }
       case 'social': {
@@ -1139,6 +1205,21 @@ export class ClientGame {
   editSign(tx: number, ty: number, title: string, lines: string[]): void {
     const text = sanitizeSignText({ title, lines });
     this.conn?.send({ t: 'signedit', tx, ty, title: text.title, lines: text.lines });
+  }
+
+  /** Pin the one active waypoint (optimistic; the server keeps the durable copy). */
+  setWaypoint(x: number, y: number): void {
+    const wx = Math.round(x);
+    const wy = Math.round(y);
+    this.waypoint = { x: wx, y: wy };
+    this.chartVersion++;
+    this.conn?.send({ t: 'waypoint', x: wx, y: wy });
+  }
+
+  clearWaypoint(): void {
+    this.waypoint = null;
+    this.chartVersion++;
+    this.conn?.send({ t: 'waypoint' });
   }
 
   /** Send an interact intent for a specific world tile. */
@@ -1589,6 +1670,15 @@ export class ClientGame {
     this.lastUpdate = now;
 
     if (this.ownEid === null || !this.conn?.isOpen) return;
+
+    // Self-reveal: the same disc the server marks, cleared here with
+    // zero latency (the deterministic-reveal law).
+    if (now - this.lastRevealAt >= CLIENT_REVEAL_MS) {
+      this.lastRevealAt = now;
+      const pos = this.predictor.pos;
+      const mask = pos.y >= DUNGEON_MIN_Y ? this.dungeonExplored : this.explored;
+      if (mask.markDisc(pos.x, pos.y).length > 0) this.chartVersion++;
+    }
 
     this.accumulator += frameDt;
     while (this.accumulator >= TICK_MS) {

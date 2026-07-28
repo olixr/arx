@@ -4831,9 +4831,43 @@ type DockGlyphPainter = (c: CanvasRenderingContext2D) => void;
 /** The one ink every dock sigil is engraved in. */
 const GLYPH_INK = '#d8c08c';
 
-export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack';
+export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack' | 'map';
 
 const DOCK_GLYPHS: Record<DockGlyph, DockGlyphPainter> = {
+  // The folded chart: two panel creases, a dotted route wandering
+  // across, and the planted waypoint pin where the route ends.
+  map: (c) => {
+    c.lineWidth = 0.06;
+    c.beginPath();
+    c.moveTo(0.14, 0.28);
+    c.lineTo(0.38, 0.2);
+    c.lineTo(0.62, 0.28);
+    c.lineTo(0.86, 0.2);
+    c.lineTo(0.86, 0.72);
+    c.lineTo(0.62, 0.8);
+    c.lineTo(0.38, 0.72);
+    c.lineTo(0.14, 0.8);
+    c.closePath();
+    c.stroke();
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.moveTo(0.38, 0.2);
+    c.lineTo(0.38, 0.72);
+    c.moveTo(0.62, 0.28);
+    c.lineTo(0.62, 0.8);
+    c.stroke();
+    c.setLineDash([0.045, 0.05]);
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(0.2, 0.66);
+    c.quadraticCurveTo(0.42, 0.6, 0.5, 0.46);
+    c.quadraticCurveTo(0.58, 0.34, 0.72, 0.36);
+    c.stroke();
+    c.setLineDash([]);
+    c.beginPath();
+    c.arc(0.72, 0.36, 0.05, 0, Math.PI * 2);
+    c.fill();
+  },
   // The satchel: body, drooping flap, buckle strap, carry handle.
   pack: (c) => {
     c.lineWidth = 0.07;
