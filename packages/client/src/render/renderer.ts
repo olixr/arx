@@ -11785,14 +11785,18 @@ export class Renderer {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.18;
         // An iron fire-basket at the waist: three splayed legs under a
-        // riveted bowl, coals banked in an open top. The painted flame
-        // is the fixture's own story — its BLOOM lives in the light
-        // passes (collectStaticLights), never queued here.
+        // riveted bowl, a STANDING FIRE banked in the open top. The
+        // fire is always lit — a brazier is a tended flame (the
+        // campfire precedent), not a lamp on the dusk clock — so the
+        // painted blaze burns at noon while the lightmap punch stays
+        // flame-gated in collectStaticLights, where daylight rightly
+        // swallows it. Bounds reach past the smoke crown: a too-tight
+        // body clips the bake and rings the straight clip edge.
         const rimY = baseY - s * 0.72;
         const rw = s * 0.3; // rim half-width
         return {
           sortY: ty + 0.7,
-          body: stationBody(0.6, 1.35, 0.5),
+          body: stationBody(0.7, 2.1, 0.5),
           drawShadow: () => this.castBlob(p.x, baseY, 0.5, s * 0.2, h ^ 0x35),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx
@@ -11804,6 +11808,12 @@ export class Renderer {
             ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
             ctx.beginPath();
             ctx.ellipse(p.x, baseY, s * 0.3, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Firelight laps the ground through the legs — a faceted
+            // warm pool, deeper after dark (the campfire's floor law).
+            ctx.fillStyle = `rgba(232, 122, 51, ${(0.05 + 0.04 * flick) * (0.6 + lit * 0.4)})`;
+            ctx.beginPath();
+            facetCircle(ctx, p.x, baseY - s * 0.02, s * 0.46, 8, h * 0.3, 0.5);
             ctx.fill();
             // Three splayed legs: two forward, one behind the bowl —
             // wrought iron with clawed feet.
@@ -11863,9 +11873,10 @@ export class Renderer {
             ctx.beginPath();
             ctx.ellipse(p.x, rimY - s * 0.012, rw * 0.96, s * 0.12, 0, Math.PI, Math.PI * 2);
             ctx.fill();
-            // Coals: banked embers glowing from the bed. Cold iron
-            // holds char-dark lumps when the flame gate is shut.
-            ctx.fillStyle = lit > 0.05 ? '#7c3018' : '#241f2e';
+            // Coals: the banked bed glows ALWAYS — night lifts the
+            // painted heat a notch, out-of-phase pulses keep it alive.
+            const hot = 0.85 + lit * 0.15;
+            ctx.fillStyle = '#7c3018';
             ctx.beginPath();
             ctx.ellipse(p.x, rimY + s * 0.01, rw * 0.74, s * 0.095, 0, 0, Math.PI * 2);
             ctx.fill();
@@ -11873,38 +11884,83 @@ export class Renderer {
               const hc = hashCoords(67 + k, tx, ty);
               const cx = p.x + (((hc % 100) / 100 - 0.5) * rw * 1.1);
               const cy = rimY + s * 0.005 - ((hc >>> 6) % 8) / 100 * s;
+              const pulse = 0.5 + Math.sin(t * 3.1 + k * 2.2 + h) * 0.5;
               ctx.fillStyle =
-                lit > 0.05
-                  ? (hc & 1) === 0
-                    ? `rgba(232, 147, 60, ${0.75 + 0.25 * flick})`
-                    : `rgba(255, 180, 90, ${0.6 + 0.35 * flick})`
-                  : (hc & 1) === 0
-                    ? '#38313f'
-                    : '#463d50';
+                (hc & 1) === 0
+                  ? `rgba(232, 147, 60, ${(0.55 + 0.45 * pulse) * hot})`
+                  : `rgba(255, 196, 96, ${(0.45 + 0.5 * pulse) * hot})`;
               ctx.beginPath();
               facetCircle(ctx, cx, cy, s * (0.036 + ((hc >>> 9) % 4) * 0.007), 6, hc * 0.3);
               ctx.fill();
             }
-            if (lit > 0.05) {
-              // Small painted flame licks standing off the coal bed —
-              // static art; cadence sampling gives them their shimmer,
-              // and the live glow pass carries the actual light.
-              const lick = (cx: number, hgt: number, ph: number): void => {
-                const sway = Math.sin(t * 7 + ph) * s * 0.02;
-                ctx.beginPath();
-                ctx.moveTo(cx - s * 0.045, rimY);
-                ctx.quadraticCurveTo(cx - s * 0.03, rimY - hgt * 0.55, cx + sway, rimY - hgt);
-                ctx.quadraticCurveTo(cx + s * 0.035, rimY - hgt * 0.5, cx + s * 0.045, rimY);
-                ctx.closePath();
-                ctx.fill();
-              };
-              ctx.fillStyle = `rgba(232, 120, 44, ${0.75 * flick})`;
-              lick(p.x - s * 0.09, s * 0.26 * flick, h * 0.7);
-              lick(p.x + s * 0.1, s * 0.2 * flick, h * 1.3);
-              ctx.fillStyle = `rgba(255, 196, 96, ${0.85 * flick})`;
-              lick(p.x + s * 0.01, s * 0.32 * flick, h * 0.4);
-              ctx.fillStyle = `rgba(255, 240, 190, ${0.8 * flick})`;
-              lick(p.x, s * 0.16 * flick, h);
+            // THE STANDING FIRE: four banked layers of angular flame —
+            // deep ember sheath, orange body, gold heart, white-hot
+            // core — each a jagged low-poly silhouette swaying on its
+            // own phase, roots sunk behind the front lip. Chunky by
+            // design: straight facets, no soft curves, so the blaze
+            // speaks the same blocky dialect as the prop it rides.
+            // Cadence sampling gives it the stop-motion shimmer (the
+            // LampPost precedent); the live glow pass carries the
+            // actual light.
+            const fh = s * (0.5 + 0.07 * Math.sin(t * 3.7 + h)) * flick;
+            const blaze = (cx: number, bw: number, hgt: number, ph: number): void => {
+              const sw = Math.sin(t * 6.3 + ph) * s * 0.028 + Math.sin(t * 11.7 + ph * 2.1) * s * 0.014;
+              const tipX = cx + sw * 1.7;
+              ctx.beginPath();
+              ctx.moveTo(cx - bw, rimY + s * 0.02);
+              ctx.lineTo(cx - bw * 0.74, rimY - hgt * 0.3);
+              ctx.lineTo(cx - bw * 0.36 + sw * 0.5, rimY - hgt * 0.36);
+              ctx.lineTo(cx - bw * 0.52 + sw, rimY - hgt * 0.62);
+              ctx.lineTo(tipX - bw * 0.14, rimY - hgt * 0.7);
+              ctx.lineTo(tipX, rimY - hgt);
+              ctx.lineTo(tipX + bw * 0.18, rimY - hgt * 0.64);
+              ctx.lineTo(cx + bw * 0.54 + sw, rimY - hgt * 0.58);
+              ctx.lineTo(cx + bw * 0.32, rimY - hgt * 0.32);
+              ctx.lineTo(cx + bw * 0.8, rimY - hgt * 0.26);
+              ctx.lineTo(cx + bw, rimY + s * 0.02);
+              ctx.closePath();
+              ctx.fill();
+            };
+            ctx.fillStyle = `rgba(194, 74, 32, ${0.92 * hot})`;
+            blaze(p.x, rw * 0.78, fh * 1.2, h * 0.7);
+            ctx.fillStyle = `rgba(232, 130, 61, ${0.95 * hot})`;
+            blaze(p.x + s * 0.012, rw * 0.6, fh * 0.94, h * 1.3);
+            ctx.fillStyle = `rgba(242, 201, 76, ${0.95 * hot})`;
+            blaze(p.x - s * 0.014, rw * 0.42, fh * 0.66, h * 0.4);
+            ctx.fillStyle = `rgba(255, 243, 200, ${0.9 * hot})`;
+            blaze(p.x, rw * 0.24, fh * 0.4, h * 2.2);
+            // Ember motes: square chips shed off the crown, spiraling
+            // up and dimming — the fire's own weather.
+            for (let i = 0; i < 3; i++) {
+              const ph = (t * (0.5 + i * 0.17) + h * 0.11 + i * 0.37) % 1;
+              const es = s * (0.05 - ph * 0.022);
+              ctx.fillStyle =
+                (i & 1) === 0
+                  ? `rgba(255, 190, 110, ${(1 - ph) * 0.85 * hot})`
+                  : `rgba(242, 201, 76, ${(1 - ph) * 0.7 * hot})`;
+              ctx.fillRect(
+                p.x + Math.sin(t * 2.1 + i * 2.6 + h) * s * (0.08 + ph * 0.1) - es / 2,
+                rimY - fh * 0.8 - ph * s * 0.55,
+                es,
+                es,
+              );
+            }
+            // Smoke: faceted puffs climbing off the crown, swelling as
+            // they thin — the same gray the campfire breathes.
+            for (let i = 0; i < 2; i++) {
+              const sp = (t * (0.24 + i * 0.09) + h * 0.13 + i * 0.5) % 1;
+              ctx.fillStyle = `rgba(146, 140, 152, ${(1 - sp) * 0.2})`;
+              ctx.beginPath();
+              facetCircle(
+                ctx,
+                p.x + Math.sin(t * 0.9 + h + i * 2.4) * s * 0.06 + sp * s * 0.14,
+                rimY - fh * 1.15 - s * 0.08 - sp * s * 0.5,
+                s * (0.055 + sp * 0.085),
+                6,
+                sp * 2 + i,
+                0.82,
+              );
+              ctx.fill();
             }
             // Rim front lip reads over the flame roots.
             ctx.fillStyle = '#2c2836';
