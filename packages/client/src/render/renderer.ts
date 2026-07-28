@@ -8237,12 +8237,15 @@ export class Renderer {
           const bed = this.sky.moonlit ? '56,84,128' : '96,150,192';
           if (last) {
             const gb = ctx.createLinearGradient(0, p0.y, 0, p1.y);
-            gb.addColorStop(0, `rgba(${bed},0.88)`);
+            gb.addColorStop(0, `rgba(${bed},0.94)`);
             gb.addColorStop(0.45, `rgba(${bed},0.55)`);
             gb.addColorStop(1, `rgba(${bed},0)`);
             ctx.fillStyle = gb;
           } else {
-            ctx.fillStyle = `rgba(${bed},0.88)`;
+            // Dry apron rows read as SOLID water — any ground showing
+            // through the bed reads as spray on grass, the exact
+            // artifact the foot-water law exists to kill.
+            ctx.fillStyle = `rgb(${bed})`;
           }
           ctx.fillRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
         }

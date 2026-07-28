@@ -109,14 +109,21 @@ export function buildSilverfall(): ZoneDef {
   b.fillEllipse(100, 34, 4, 2, Tile.WaterShallow);
   b.fillRect(99, 33, 4, 30, Tile.Water); // to the lip at y62
   b.set(98, 33, Tile.WaterShallow).set(103, 33, Tile.WaterShallow);
+  b.fillRect(99, 32, 4, 1, Tile.WaterShallow); // basin tucks to the wall (foot-water law)
   // L1: plunge basin, then the working channel.
   b.fillEllipse(100, 66, 4, 2, Tile.WaterShallow);
   b.fillRect(99, 65, 4, 30, Tile.Water); // to the lip at y94
   b.set(98, 65, Tile.WaterShallow).set(103, 65, Tile.WaterShallow);
+  b.fillRect(99, 64, 4, 1, Tile.WaterShallow); // basin tucks to the wall (foot-water law)
   // L0: the ROARING POOL — the whole mountain's water lands here.
   b.fillEllipse(104, 102, 12, 6.5, Tile.WaterShallow);
   b.fillEllipse(104, 102, 10, 5.5, Tile.Water);
   b.fillEllipse(104, 101, 6, 3.5, Tile.WaterDeep);
+  // THE FOOT-WATER LAW: the plunge pocket tucks to the wall — the
+  // ellipse's tangent left the fall's west column landing on bank
+  // grass. A waterfall lands IN water; every south-facing spill is
+  // asserted drop-0 by silverfall.test.ts.
+  b.fillRect(98, 96, 6, 2, Tile.WaterShallow);
   // Bridges: the channel is crossed, never forded — and every bridge
   // lands on pavement, not lawn (the street law).
   for (let x = 98; x <= 103; x++) {
