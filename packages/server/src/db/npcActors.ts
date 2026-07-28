@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { DatabaseSync } from 'node:sqlite';
+import type { Db, Queryable } from './db.js';
 import {
   validateNpcActor,
   type NpcActorCombat,
@@ -7,11 +7,12 @@ import {
 } from '@arx/content';
 
 /**
- * NPC actors, DB-first: the relational tables (migration 18) are what
- * the server reads at boot and what dev tools will edit. Authored JSON
- * in content/actors/defs is the SEED — syncNpcActors reconciles it in
- * on every boot (content-as-code wins), hashing each def so unchanged
- * actors cost one indexed SELECT and no writes.
+ * NPC actors, DB-first: the relational tables (the Postgres baseline
+ * migration) are what the server reads at boot and what dev tools will
+ * edit. Authored JSON in content/actors/defs is the SEED —
+ * syncNpcActors reconciles it in on every boot (content-as-code wins),
+ * hashing each def so unchanged actors cost one indexed SELECT and no
+ * writes.
  *
  * loadNpcActors reassembles rows into the exact JSON interchange shape
  * and runs them back through validateNpcActor — the one validator
@@ -34,48 +35,49 @@ function actorHash(actor: NpcActorDef): string {
   return createHash('sha1').update(JSON.stringify(actor)).digest('hex');
 }
 
-function insertChildren(db: DatabaseSync, actor: NpcActorDef): void {
-  const eq = db.prepare(
-    'INSERT INTO npc_actor_equipment (actor_slug, slot, item_id) VALUES (?, ?, ?)',
-  );
+async function insertChildren(tx: Queryable, actor: NpcActorDef): Promise<void> {
+  const eq = 'INSERT INTO npc_actor_equipment (actor_slug, slot, item_id) VALUES (?, ?, ?)';
   for (const [slot, itemId] of Object.entries(actor.equipment ?? {})) {
-    eq.run(actor.id, slot, itemId);
+    await tx.run(eq, [actor.id, slot, itemId]);
   }
-  const inv = db.prepare(
-    'INSERT INTO npc_actor_inventory (actor_slug, idx, item_id, qty) VALUES (?, ?, ?, ?)',
-  );
-  (actor.inventory ?? []).forEach((row, i) => inv.run(actor.id, i, row.item, row.qty));
-  const line = db.prepare('INSERT INTO npc_actor_lines (actor_slug, idx, line) VALUES (?, ?, ?)');
-  (actor.lines ?? []).forEach((l, i) => line.run(actor.id, i, l));
+  const inv = 'INSERT INTO npc_actor_inventory (actor_slug, idx, item_id, qty) VALUES (?, ?, ?, ?)';
+  for (const [i, row] of (actor.inventory ?? []).entries()) {
+    await tx.run(inv, [actor.id, i, row.item, row.qty]);
+  }
+  const line = 'INSERT INTO npc_actor_lines (actor_slug, idx, line) VALUES (?, ?, ?)';
+  for (const [i, l] of (actor.lines ?? []).entries()) {
+    await tx.run(line, [actor.id, i, l]);
+  }
   if (actor.combat) {
     const c = actor.combat;
-    db.prepare(
+    await tx.run(
       `INSERT INTO npc_actor_combat
         (actor_slug, level, base_creature, respawn_sec, max_hp, damage, attack_range,
          attack_cooldown_ticks, aggro_range, leash_range, speed, xp_reward)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      actor.id,
-      c.level,
-      c.base ?? null,
-      c.respawnSec ?? null,
-      c.stats?.maxHp ?? null,
-      c.stats?.damage ?? null,
-      c.stats?.attackRange ?? null,
-      c.stats?.attackCooldownTicks ?? null,
-      c.stats?.aggroRange ?? null,
-      c.stats?.leashRange ?? null,
-      c.stats?.speed ?? null,
-      c.stats?.xpReward ?? null,
+      [
+        actor.id,
+        c.level,
+        c.base ?? null,
+        c.respawnSec ?? null,
+        c.stats?.maxHp ?? null,
+        c.stats?.damage ?? null,
+        c.stats?.attackRange ?? null,
+        c.stats?.attackCooldownTicks ?? null,
+        c.stats?.aggroRange ?? null,
+        c.stats?.leashRange ?? null,
+        c.stats?.speed ?? null,
+        c.stats?.xpReward ?? null,
+      ],
     );
-    const loot = db.prepare(
-      'INSERT INTO npc_actor_loot (actor_slug, idx, table_id) VALUES (?, ?, ?)',
-    );
-    (c.loot ?? []).forEach((t, i) => loot.run(actor.id, i, t));
+    const loot = 'INSERT INTO npc_actor_loot (actor_slug, idx, table_id) VALUES (?, ?, ?)';
+    for (const [i, t] of (c.loot ?? []).entries()) {
+      await tx.run(loot, [actor.id, i, t]);
+    }
   }
 }
 
-function deleteChildren(db: DatabaseSync, slug: string): void {
+async function deleteChildren(tx: Queryable, slug: string): Promise<void> {
   for (const table of [
     'npc_actor_equipment',
     'npc_actor_inventory',
@@ -83,19 +85,19 @@ function deleteChildren(db: DatabaseSync, slug: string): void {
     'npc_actor_combat',
     'npc_actor_loot',
   ]) {
-    db.prepare(`DELETE FROM ${table} WHERE actor_slug = ?`).run(slug);
+    await tx.run(`DELETE FROM ${table} WHERE actor_slug = ?`, [slug]);
   }
 }
 
 /** Write one actor's rows (parent upsert + children replace). */
-function writeActorRows(
-  db: DatabaseSync,
+async function writeActorRows(
+  tx: Queryable,
   actor: NpcActorDef,
   hash: string,
   authoredHash: string | null,
   keepAuthored: boolean,
-): void {
-  db.prepare(
+): Promise<void> {
+  await tx.run(
     `INSERT INTO npc_actors
       (slug, name, title, examine, disposition, protection, model_kind, creature_id, look,
        dialogue_id, shop_id, content_hash, authored_hash, updated_at)
@@ -109,24 +111,25 @@ function writeActorRows(
        content_hash = excluded.content_hash,
        authored_hash = ${keepAuthored ? 'npc_actors.authored_hash' : 'excluded.authored_hash'},
        updated_at = excluded.updated_at`,
-  ).run(
-    actor.id,
-    actor.name,
-    actor.title ?? null,
-    actor.examine ?? null,
-    actor.disposition,
-    actor.protection ?? null,
-    actor.model.kind,
-    actor.model.kind === 'creature' ? actor.model.creature : null,
-    actor.model.kind === 'humanoid' ? JSON.stringify(actor.model.look) : null,
-    actor.dialogue ?? null,
-    actor.shop ?? null,
-    hash,
-    authoredHash,
-    Date.now(),
+    [
+      actor.id,
+      actor.name,
+      actor.title ?? null,
+      actor.examine ?? null,
+      actor.disposition,
+      actor.protection ?? null,
+      actor.model.kind,
+      actor.model.kind === 'creature' ? actor.model.creature : null,
+      actor.model.kind === 'humanoid' ? JSON.stringify(actor.model.look) : null,
+      actor.dialogue ?? null,
+      actor.shop ?? null,
+      hash,
+      authoredHash,
+      Date.now(),
+    ],
   );
-  deleteChildren(db, actor.id);
-  insertChildren(db, actor);
+  await deleteChildren(tx, actor.id);
+  await insertChildren(tx, actor);
 }
 
 /**
@@ -135,10 +138,10 @@ function writeActorRows(
  * is recorded so they stop being re-weighed), and only untouched
  * seeds are pruned when their authored def retires.
  */
-export function syncNpcActors(
-  db: DatabaseSync,
+export async function syncNpcActors(
+  db: Db,
   actors: readonly NpcActorDef[],
-): NpcActorSyncResult {
+): Promise<NpcActorSyncResult> {
   const result: NpcActorSyncResult = {
     added: 0,
     updated: 0,
@@ -146,12 +149,13 @@ export function syncNpcActors(
     unchanged: 0,
     kept: 0,
   };
-  db.exec('BEGIN');
-  try {
+  await db.transaction(async (tx) => {
     const existing = new Map<string, { content: string; authored: string | null }>();
-    for (const row of db
-      .prepare('SELECT slug, content_hash, authored_hash FROM npc_actors')
-      .all() as Array<{ slug: string; content_hash: string; authored_hash: string | null }>) {
+    for (const row of await tx.query<{
+      slug: string;
+      content_hash: string;
+      authored_hash: string | null;
+    }>('SELECT slug, content_hash, authored_hash FROM npc_actors')) {
       existing.set(row.slug, { content: row.content_hash, authored: row.authored_hash });
     }
 
@@ -160,16 +164,16 @@ export function syncNpcActors(
       const prev = existing.get(actor.id);
       existing.delete(actor.id);
       if (!prev) {
-        writeActorRows(db, actor, hash, hash, false);
+        await writeActorRows(tx, actor, hash, hash, false);
         result.added++;
       } else if (prev.authored === hash) {
         result.unchanged++;
       } else if (prev.content === prev.authored) {
-        writeActorRows(db, actor, hash, hash, false);
+        await writeActorRows(tx, actor, hash, hash, false);
         result.updated++;
       } else {
         // Tool-owned: the DB wins; remember the new authored twin.
-        db.prepare('UPDATE npc_actors SET authored_hash = ? WHERE slug = ?').run(hash, actor.id);
+        await tx.run('UPDATE npc_actors SET authored_hash = ? WHERE slug = ?', [hash, actor.id]);
         result.kept++;
       }
     }
@@ -178,16 +182,11 @@ export function syncNpcActors(
     // tool-created or tool-edited rows survive.
     for (const [slug, prev] of existing) {
       if (prev.authored !== null && prev.content === prev.authored) {
-        db.prepare('DELETE FROM npc_actors WHERE slug = ?').run(slug);
+        await tx.run('DELETE FROM npc_actors WHERE slug = ?', [slug]);
         result.removed++;
       }
     }
-
-    db.exec('COMMIT');
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
-  }
+  });
   return result;
 }
 
@@ -196,18 +195,13 @@ export function syncNpcActors(
  * Returns the validator-normalized def (the index-stability law fills
  * Look defaults) — callers register THAT, never the raw input.
  */
-export function importNpcActor(db: DatabaseSync, raw: unknown): NpcActorDef {
+export async function importNpcActor(db: Db, raw: unknown): Promise<NpcActorDef> {
   const result = validateNpcActor(raw);
   if (!result.ok) throw new Error(result.errors.join('; '));
   const actor = result.actor;
-  db.exec('BEGIN');
-  try {
-    writeActorRows(db, actor, actorHash(actor), null, true);
-    db.exec('COMMIT');
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
-  }
+  await db.transaction(async (tx) => {
+    await writeActorRows(tx, actor, actorHash(actor), null, true);
+  });
   return actor;
 }
 
@@ -215,36 +209,28 @@ export function importNpcActor(db: DatabaseSync, raw: unknown): NpcActorDef {
  * Revert an actor: with its authored def, the row becomes a pure seed
  * again; a tool-born slug (no authored twin) is deleted outright.
  */
-export function revertNpcActor(
-  db: DatabaseSync,
+export async function revertNpcActor(
+  db: Db,
   slug: string,
   authored: NpcActorDef | null,
-): 'reverted' | 'deleted' {
-  db.exec('BEGIN');
-  try {
+): Promise<'reverted' | 'deleted'> {
+  return db.transaction(async (tx) => {
     if (authored) {
       const hash = actorHash(authored);
-      writeActorRows(db, authored, hash, hash, false);
-      db.exec('COMMIT');
+      await writeActorRows(tx, authored, hash, hash, false);
       return 'reverted';
     }
-    deleteChildren(db, slug);
-    db.prepare('DELETE FROM npc_actors WHERE slug = ?').run(slug);
-    db.exec('COMMIT');
+    await deleteChildren(tx, slug);
+    await tx.run('DELETE FROM npc_actors WHERE slug = ?', [slug]);
     return 'deleted';
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
-  }
+  });
 }
 
 /** Slugs whose rows diverged from their authored twin (CMS badges). */
-export function editedActorSlugs(db: DatabaseSync): Set<string> {
-  const rows = db
-    .prepare(
-      'SELECT slug FROM npc_actors WHERE authored_hash IS NULL OR content_hash != authored_hash',
-    )
-    .all() as Array<{ slug: string }>;
+export async function editedActorSlugs(db: Db): Promise<Set<string>> {
+  const rows = await db.query<{ slug: string }>(
+    'SELECT slug FROM npc_actors WHERE authored_hash IS NULL OR content_hash != authored_hash',
+  );
   return new Set(rows.map((r) => r.slug));
 }
 
@@ -255,7 +241,7 @@ export interface NpcActorLoadResult {
 }
 
 /** Load every actor from the DB, revalidated through the one validator. */
-export function loadNpcActors(db: DatabaseSync): NpcActorLoadResult {
+export async function loadNpcActors(db: Db): Promise<NpcActorLoadResult> {
   const actors: NpcActorDef[] = [];
   const errors: string[] = [];
 
@@ -286,35 +272,37 @@ export function loadNpcActors(db: DatabaseSync): NpcActorLoadResult {
     xp_reward: number | null;
   }
 
-  for (const row of db
-    .prepare('SELECT * FROM npc_actors ORDER BY slug')
-    .all() as unknown as ActorRow[]) {
+  for (const row of await db.query<ActorRow>('SELECT * FROM npc_actors ORDER BY slug')) {
     const equipment: Record<string, string> = {};
-    for (const eq of db
-      .prepare('SELECT slot, item_id FROM npc_actor_equipment WHERE actor_slug = ?')
-      .all(row.slug) as Array<{ slot: string; item_id: string }>) {
+    for (const eq of await db.query<{ slot: string; item_id: string }>(
+      'SELECT slot, item_id FROM npc_actor_equipment WHERE actor_slug = ?',
+      [row.slug],
+    )) {
       equipment[eq.slot] = eq.item_id;
     }
     const inventory = (
-      db
-        .prepare('SELECT item_id, qty FROM npc_actor_inventory WHERE actor_slug = ? ORDER BY idx')
-        .all(row.slug) as Array<{ item_id: string; qty: number }>
+      await db.query<{ item_id: string; qty: number }>(
+        'SELECT item_id, qty FROM npc_actor_inventory WHERE actor_slug = ? ORDER BY idx',
+        [row.slug],
+      )
     ).map((r) => ({ item: r.item_id, qty: r.qty }));
     const lines = (
-      db
-        .prepare('SELECT line FROM npc_actor_lines WHERE actor_slug = ? ORDER BY idx')
-        .all(row.slug) as Array<{ line: string }>
+      await db.query<{ line: string }>(
+        'SELECT line FROM npc_actor_lines WHERE actor_slug = ? ORDER BY idx',
+        [row.slug],
+      )
     ).map((r) => r.line);
 
     let combat: NpcActorCombat | undefined;
-    const c = db
-      .prepare('SELECT * FROM npc_actor_combat WHERE actor_slug = ?')
-      .get(row.slug) as unknown as CombatRow | undefined;
+    const c = await db.get<CombatRow>('SELECT * FROM npc_actor_combat WHERE actor_slug = ?', [
+      row.slug,
+    ]);
     if (c) {
       const loot = (
-        db
-          .prepare('SELECT table_id FROM npc_actor_loot WHERE actor_slug = ? ORDER BY idx')
-          .all(row.slug) as Array<{ table_id: string }>
+        await db.query<{ table_id: string }>(
+          'SELECT table_id FROM npc_actor_loot WHERE actor_slug = ? ORDER BY idx',
+          [row.slug],
+        )
       ).map((r) => r.table_id);
       // Only present columns become stat keys — the validator treats
       // an explicit `undefined` value as a bad number, rightly.

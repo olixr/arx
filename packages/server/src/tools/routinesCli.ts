@@ -20,11 +20,11 @@ import { importRoutine, loadRoutines } from '../db/routines.js';
  */
 
 const [, , command, ...args] = process.argv;
-const db = openDb();
+const db = await openDb();
 
 switch (command) {
   case 'list': {
-    const { routines, errors } = loadRoutines(db);
+    const { routines, errors } = await loadRoutines(db);
     for (const r of routines) {
       const windows = (r.slots ?? [])
         .map((s) => `${s.from}-${s.to}:${s.task.kind}`)
@@ -37,7 +37,7 @@ switch (command) {
   case 'export': {
     const outDir = args[0] ?? join(process.cwd(), 'data', 'routines-export');
     mkdirSync(outDir, { recursive: true });
-    const { routines, errors } = loadRoutines(db);
+    const { routines, errors } = await loadRoutines(db);
     for (const r of routines) {
       writeFileSync(join(outDir, `${r.id}.json`), `${JSON.stringify(r, null, 2)}\n`);
     }
@@ -53,7 +53,7 @@ switch (command) {
     let ok = 0;
     for (const file of args) {
       const raw: unknown = JSON.parse(readFileSync(file, 'utf8'));
-      const res = importRoutine(db, raw);
+      const res = await importRoutine(db, raw);
       if (res.ok) {
         ok++;
         console.log(`imported ${file}`);
@@ -68,3 +68,5 @@ switch (command) {
     console.error('usage: routines <list | export [outDir] | import <files...>>');
     process.exit(1);
 }
+
+await db.close();

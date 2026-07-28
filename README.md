@@ -3,9 +3,9 @@
 An open-world multiplayer RPG in the spirit of classic RuneScape —
 classless progression, gathering, crafting, real-time combat, dungeons,
 and building — built entirely in-house on web tech: TypeScript,
-Canvas 2D, WebSockets, and SQLite. No game engine, no frameworks beyond
-Vite (bundler) and `ws` (WebSocket transport). Live at
-[arx.gg](https://arx.gg).
+Canvas 2D, WebSockets, and PostgreSQL. No game engine, no frameworks
+beyond Vite (bundler), `ws` (WebSocket transport), and `pg` (Postgres
+driver). Live at [arx.gg](https://arx.gg).
 
 ## Quick start
 
@@ -13,6 +13,11 @@ Vite (bundler) and `ws` (WebSocket transport). Live at
 npm install
 npm run dev        # game server (ws://localhost:8787) + client (http://localhost:5173)
 ```
+
+Needs a local PostgreSQL running (`brew services start postgresql@17`
+or similar) — the server connects as your OS user and creates the
+`arx` database itself on first boot. `DATABASE_URL` overrides the
+connection.
 
 Open `http://localhost:5173`, create an account, and you wake in
 Dawnmead. Everyone on your network can join the same world by pointing
@@ -87,7 +92,7 @@ packages/
              buildables, zone builder + authored maps (town, dungeon)
   server/    authoritative 20 Hz simulation over ws: interest management
              (chunk-based), NPC AI, combat, gathering/crafting/building
-             actions, portals + delve instancing, SQLite persistence
+             actions, portals + delve instancing, Postgres persistence
              (accounts, characters, skills, inventory, bank, built tiles)
   client/    Canvas renderer (baked chunk layers, y-sorted hard-shadow
              pass, procedural character rig with stepping feet), client
@@ -109,5 +114,6 @@ Key netcode properties:
 - `FAKE_LAG_MS=150 FAKE_JITTER_MS=30 npm run dev:server` simulates a bad
   connection (order-preserving) for honest netcode testing.
 
-Server env knobs: `PORT`, `WORLD_SEED`, `MOTD`, `ALLOW_GUEST=0`,
-`DATA_DIR`, `FAKE_LAG_MS`, `FAKE_JITTER_MS`, `COMBAT_DEBUG=1`.
+Server env knobs: `PORT`, `HOST`, `DATABASE_URL`, `WORLD_SEED`, `MOTD`,
+`ALLOW_GUEST=0`, `DATA_DIR`, `FAKE_LAG_MS`, `FAKE_JITTER_MS`,
+`COMBAT_DEBUG=1`.

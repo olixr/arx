@@ -104,7 +104,8 @@ export class Session {
           this.ws.close();
           return;
         }
-        this.game.hello(this, { name: msg.name, token: msg.token });
+        void this.game.hello(this, { name: msg.name, token: msg.token })
+          .catch((err: Error) => console.error('[auth]', err.message));
         return;
       }
       case 'login': {
@@ -113,7 +114,8 @@ export class Session {
           this.sendJson({ t: 'authErr', reason: 'Too many attempts — wait a moment' });
           return;
         }
-        this.game.login(this, msg.user, msg.pass);
+        void this.game.login(this, msg.user, msg.pass)
+          .catch((err: Error) => console.error('[auth]', err.message));
         return;
       }
       case 'register': {
@@ -122,7 +124,8 @@ export class Session {
           this.sendJson({ t: 'authErr', reason: 'Too many attempts — wait a moment' });
           return;
         }
-        this.game.register(this, msg.user, msg.pass, msg.name);
+        void this.game.register(this, msg.user, msg.pass, msg.name)
+          .catch((err: Error) => console.error('[auth]', err.message));
         return;
       }
       case 'input': {
@@ -228,7 +231,8 @@ export class Session {
       case 'bank': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
-        this.game.bankOp(this.playerEid, msg.op, msg.item, msg.qty, msg.slot, msg.gearId);
+        void this.game.bankOp(this.playerEid, msg.op, msg.item, msg.qty, msg.slot, msg.gearId)
+          .catch((err: Error) => console.error('[bank]', err.message));
         return;
       }
       case 'shop': {

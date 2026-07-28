@@ -1,6 +1,6 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
-import type { DatabaseSync } from 'node:sqlite';
 import { isRarityTier, sanitizeLook, type ItemRoll, type Look } from '@arx/shared';
+import type { Db } from './db.js';
 
 /** NULL-tolerant roll reader for legacy rows (pre-migration-11). */
 function rowRoll(
@@ -44,14 +44,25 @@ export type AuthResult =
   | { ok: false; reason: string };
 
 /**
- * Accounts, sessions, and character records. Passwords are scrypt-hashed
- * with a per-account salt; session tokens persist so reconnects survive
- * server restarts.
+ * Accounts, sessions, and character records over Postgres. Passwords
+ * are scrypt-hashed with a per-account salt; session tokens persist so
+ * reconnects survive server restarts.
+ *
+ * The method split mirrors how the game calls in: READS are async
+ * (boot, login, panel snapshots — all promise-friendly contexts);
+ * WRITES from the 20Hz sim stay synchronous fire-and-forget — each
+ * takes its place in the Db FIFO, so a save enqueued before a load is
+ * always visible to that load, exactly the old SQLite ordering.
  */
 export class AccountStore {
-  constructor(private readonly db: DatabaseSync) {}
+  constructor(private readonly db: Db) {}
 
-  register(username: string, password: string, charName: string, spawn: { x: number; y: number }): AuthResult {
+  async register(
+    username: string,
+    password: string,
+    charName: string,
+    spawn: { x: number; y: number },
+  ): Promise<AuthResult> {
     const user = username.trim();
     const name = charName.trim();
     if (!/^[a-zA-Z0-9_]{3,20}$/.test(user)) {
@@ -63,29 +74,32 @@ export class AccountStore {
     if (!/^[\p{L}\p{N} _-]{2,16}$/u.test(name)) {
       return { ok: false, reason: 'Character name must be 2-16 characters' };
     }
-    const existing = this.db.prepare('SELECT id FROM accounts WHERE username = ?').get(user);
+    const existing = await this.db.get('SELECT id FROM accounts WHERE username = ?', [user]);
     if (existing) return { ok: false, reason: 'That username is taken' };
-    const nameTaken = this.db.prepare('SELECT id FROM characters WHERE name = ?').get(name);
+    const nameTaken = await this.db.get('SELECT id FROM characters WHERE name = ?', [name]);
     if (nameTaken) return { ok: false, reason: 'That character name is taken' };
 
     const salt = randomBytes(16);
     const hash = scryptSync(password, salt, SCRYPT_KEYLEN);
     const now = Date.now();
-    const acc = this.db
-      .prepare('INSERT INTO accounts (username, pass_hash, pass_salt, created_at) VALUES (?, ?, ?, ?)')
-      .run(user, hash, salt, now);
-    const accountId = Number(acc.lastInsertRowid);
-    const ch = this.db
-      .prepare(
-        'INSERT INTO characters (account_id, name, x, y, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?)',
-      )
-      .run(accountId, name, spawn.x, spawn.y, now, now);
+    const result = await this.db.transaction(async (tx) => {
+      const acc = await tx.get<{ id: number }>(
+        'INSERT INTO accounts (username, pass_hash, pass_salt, created_at) VALUES (?, ?, ?, ?) RETURNING id',
+        [user, hash, salt, now],
+      );
+      const ch = await tx.get<{ id: number }>(
+        'INSERT INTO characters (account_id, name, x, y, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
+        [acc!.id, name, spawn.x, spawn.y, now, now],
+      );
+      return { accountId: acc!.id, characterId: ch!.id };
+    });
+    this.nameCache.set(result.characterId, name);
     return {
       ok: true,
-      accountId,
+      accountId: result.accountId,
       character: {
-        id: Number(ch.lastInsertRowid),
-        account_id: accountId,
+        id: result.characterId,
+        account_id: result.accountId,
         name,
         x: spawn.x,
         y: spawn.y,
@@ -97,80 +111,92 @@ export class AccountStore {
     };
   }
 
-  login(username: string, password: string): AuthResult {
-    const acc = this.db
-      .prepare('SELECT id, pass_hash, pass_salt FROM accounts WHERE username = ?')
-      .get(username.trim()) as { id: number; pass_hash: Uint8Array; pass_salt: Uint8Array } | undefined;
+  async login(username: string, password: string): Promise<AuthResult> {
+    const acc = await this.db.get<{ id: number; pass_hash: Buffer; pass_salt: Buffer }>(
+      'SELECT id, pass_hash, pass_salt FROM accounts WHERE username = ?',
+      [username.trim()],
+    );
     if (!acc) return { ok: false, reason: 'Unknown username or wrong password' };
     const hash = scryptSync(password, acc.pass_salt, SCRYPT_KEYLEN);
     if (!timingSafeEqual(hash, acc.pass_hash)) {
       return { ok: false, reason: 'Unknown username or wrong password' };
     }
-    const character = this.db
-      .prepare('SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at FROM characters WHERE account_id = ? ORDER BY id LIMIT 1')
-      .get(acc.id) as CharacterRow | undefined;
+    const character = await this.db.get<CharacterRow>(
+      'SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at FROM characters WHERE account_id = ? ORDER BY id LIMIT 1',
+      [acc.id],
+    );
     if (!character) return { ok: false, reason: 'Account has no character' };
     return { ok: true, accountId: acc.id, character };
   }
 
-  createSession(accountId: number): string {
+  async createSession(accountId: number): Promise<string> {
     const token = randomBytes(24).toString('base64url');
     const now = Date.now();
-    this.db
-      .prepare('INSERT INTO sessions (token, account_id, created_at, expires_at) VALUES (?, ?, ?, ?)')
-      .run(token, accountId, now, now + SESSION_TTL_MS);
+    await this.db.run(
+      'INSERT INTO sessions (token, account_id, created_at, expires_at) VALUES (?, ?, ?, ?)',
+      [token, accountId, now, now + SESSION_TTL_MS],
+    );
     // Opportunistic cleanup of expired sessions.
-    this.db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(now);
+    this.db.fire('DELETE FROM sessions WHERE expires_at < ?', [now]);
     return token;
   }
 
-  resumeSession(token: string): AuthResult {
-    const row = this.db
-      .prepare('SELECT account_id FROM sessions WHERE token = ? AND expires_at > ?')
-      .get(token, Date.now()) as { account_id: number } | undefined;
+  async resumeSession(token: string): Promise<AuthResult> {
+    const row = await this.db.get<{ account_id: number }>(
+      'SELECT account_id FROM sessions WHERE token = ? AND expires_at > ?',
+      [token, Date.now()],
+    );
     if (!row) return { ok: false, reason: 'Session expired' };
-    const character = this.db
-      .prepare('SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at FROM characters WHERE account_id = ? ORDER BY id LIMIT 1')
-      .get(row.account_id) as CharacterRow | undefined;
+    const character = await this.db.get<CharacterRow>(
+      'SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at FROM characters WHERE account_id = ? ORDER BY id LIMIT 1',
+      [row.account_id],
+    );
     if (!character) return { ok: false, reason: 'Account has no character' };
     return { ok: true, accountId: row.account_id, character };
   }
 
   saveCharacter(id: number, x: number, y: number, hp: number): void {
-    this.db
-      .prepare('UPDATE characters SET x = ?, y = ?, hp = ?, last_seen = ? WHERE id = ?')
-      .run(x, y, hp, Date.now(), id);
+    this.db.fire('UPDATE characters SET x = ?, y = ?, hp = ?, last_seen = ? WHERE id = ?', [
+      x,
+      y,
+      hp,
+      Date.now(),
+      id,
+    ]);
   }
 
   /** Claim (or move) the home bed — written the moment it's claimed. */
   saveHome(id: number, tx: number, ty: number): void {
-    this.db.prepare('UPDATE characters SET home_x = ?, home_y = ? WHERE id = ?').run(tx, ty, id);
+    this.db.fire('UPDATE characters SET home_x = ?, home_y = ? WHERE id = ?', [tx, ty, id]);
   }
 
   /** The bed is gone — home dissolves with it. */
   clearHome(id: number): void {
-    this.db.prepare('UPDATE characters SET home_x = NULL, home_y = NULL WHERE id = ?').run(id);
+    this.db.fire('UPDATE characters SET home_x = NULL, home_y = NULL WHERE id = ?', [id]);
   }
 
   saveHearthAt(id: number, at: number): void {
-    this.db.prepare('UPDATE characters SET hearth_at = ? WHERE id = ?').run(at, id);
+    this.db.fire('UPDATE characters SET hearth_at = ? WHERE id = ?', [at, id]);
   }
 
-  loadSkills(characterId: number): Record<string, number> {
-    const rows = this.db
-      .prepare('SELECT skill, xp FROM character_skills WHERE character_id = ?')
-      .all(characterId) as Array<{ skill: string; xp: number }>;
+  async loadSkills(characterId: number): Promise<Record<string, number>> {
+    const rows = await this.db.query<{ skill: string; xp: number }>(
+      'SELECT skill, xp FROM character_skills WHERE character_id = ?',
+      [characterId],
+    );
     const out: Record<string, number> = {};
     for (const row of rows) out[row.skill] = row.xp;
     return out;
   }
 
   saveSkills(characterId: number, xp: Record<string, number>): void {
-    const stmt = this.db.prepare(
-      'INSERT INTO character_skills (character_id, skill, xp) VALUES (?, ?, ?) ' +
-        'ON CONFLICT(character_id, skill) DO UPDATE SET xp = excluded.xp',
-    );
-    for (const [skill, value] of Object.entries(xp)) stmt.run(characterId, skill, value);
+    for (const [skill, value] of Object.entries(xp)) {
+      this.db.fire(
+        'INSERT INTO character_skills (character_id, skill, xp) VALUES (?, ?, ?) ' +
+          'ON CONFLICT (character_id, skill) DO UPDATE SET xp = excluded.xp',
+        [characterId, skill, value],
+      );
+    }
   }
 
   /**
@@ -178,19 +204,19 @@ export class AccountStore {
    * a scroll is studied (knowledge must never be lost to a crash);
    * core recipes never appear here.
    */
-  loadRecipes(characterId: number): string[] {
-    const rows = this.db
-      .prepare('SELECT recipe FROM character_recipes WHERE character_id = ?')
-      .all(characterId) as Array<{ recipe: string }>;
+  async loadRecipes(characterId: number): Promise<string[]> {
+    const rows = await this.db.query<{ recipe: string }>(
+      'SELECT recipe FROM character_recipes WHERE character_id = ?',
+      [characterId],
+    );
     return rows.map((r) => r.recipe);
   }
 
   learnRecipe(characterId: number, recipe: string): void {
-    this.db
-      .prepare(
-        'INSERT OR IGNORE INTO character_recipes (character_id, recipe, learned_at) VALUES (?, ?, ?)',
-      )
-      .run(characterId, recipe, Date.now());
+    this.db.fire(
+      'INSERT INTO character_recipes (character_id, recipe, learned_at) VALUES (?, ?, ?) ON CONFLICT DO NOTHING',
+      [characterId, recipe, Date.now()],
+    );
   }
 
   /**
@@ -199,26 +225,27 @@ export class AccountStore {
    * set — a story beat must never be lost to a crash before the next
    * periodic save.
    */
-  loadFlags(characterId: number): Map<string, number> {
-    const rows = this.db
-      .prepare('SELECT flag, value FROM character_flags WHERE character_id = ?')
-      .all(characterId) as Array<{ flag: string; value: number }>;
+  async loadFlags(characterId: number): Promise<Map<string, number>> {
+    const rows = await this.db.query<{ flag: string; value: number }>(
+      'SELECT flag, value FROM character_flags WHERE character_id = ?',
+      [characterId],
+    );
     return new Map(rows.map((r) => [r.flag, r.value]));
   }
 
   setFlag(characterId: number, flag: string, value: number): void {
-    this.db
-      .prepare(
-        'INSERT INTO character_flags (character_id, flag, value, set_at) VALUES (?, ?, ?, ?) ' +
-          'ON CONFLICT(character_id, flag) DO UPDATE SET value = excluded.value, set_at = excluded.set_at',
-      )
-      .run(characterId, flag, value, Date.now());
+    this.db.fire(
+      'INSERT INTO character_flags (character_id, flag, value, set_at) VALUES (?, ?, ?, ?) ' +
+        'ON CONFLICT (character_id, flag) DO UPDATE SET value = excluded.value, set_at = excluded.set_at',
+      [characterId, flag, value, Date.now()],
+    );
   }
 
   clearFlag(characterId: number, flag: string): void {
-    this.db
-      .prepare('DELETE FROM character_flags WHERE character_id = ? AND flag = ?')
-      .run(characterId, flag);
+    this.db.fire('DELETE FROM character_flags WHERE character_id = ? AND flag = ?', [
+      characterId,
+      flag,
+    ]);
   }
 
   /**
@@ -229,149 +256,135 @@ export class AccountStore {
    * pending between two characters. All writes land the moment the
    * action happens (a friendship must never be lost to a crash).
    */
-  findCharacterByName(name: string): { id: number; name: string } | null {
-    // '=' on the COLLATE NOCASE column resolves any casing; the row
-    // echoes the canonical spelling back.
-    const row = this.db
-      .prepare('SELECT id, name FROM characters WHERE name = ?')
-      .get(name) as { id: number; name: string } | undefined;
+  async findCharacterByName(name: string): Promise<{ id: number; name: string } | null> {
+    // '=' on the CITEXT column resolves any casing; the row echoes the
+    // canonical spelling back.
+    const row = await this.db.get<{ id: number; name: string }>(
+      'SELECT id, name FROM characters WHERE name = ?',
+      [name],
+    );
     return row ?? null;
   }
 
   /**
    * The name behind a character id — the byline on a player's sign.
-   * Memoized: a sign's author never changes, and the alternative is a
-   * query per board per approach.
+   * Served from the boot-time preload (names never change), so the
+   * interest-stream hot path stays synchronous.
    */
   characterName(id: number): string | null {
     if (id <= 0) return null;
-    const cached = this.nameCache.get(id);
-    if (cached !== undefined) return cached;
-    const row = this.db.prepare('SELECT name FROM characters WHERE id = ?').get(id) as
-      | { name: string }
-      | undefined;
-    const name = row?.name ?? null;
-    this.nameCache.set(id, name);
-    return name;
+    return this.nameCache.get(id) ?? null;
+  }
+
+  /** Fill the name cache once at boot — signs address offline authors too. */
+  async preloadCharacterNames(): Promise<void> {
+    const rows = await this.db.query<{ id: number; name: string }>('SELECT id, name FROM characters');
+    for (const row of rows) this.nameCache.set(row.id, row.name);
   }
 
   private readonly nameCache = new Map<number, string | null>();
 
-  searchCharacters(prefix: string, excludeId: number, limit = 10): Array<{ id: number; name: string }> {
+  async searchCharacters(
+    prefix: string,
+    excludeId: number,
+    limit = 10,
+  ): Promise<Array<{ id: number; name: string }>> {
     const escaped = prefix.replace(/[\\%_]/g, (ch) => `\\${ch}`);
-    return this.db
-      .prepare(
-        "SELECT id, name FROM characters WHERE name LIKE ? ESCAPE '\\' AND id <> ? ORDER BY name LIMIT ?",
-      )
-      .all(`${escaped}%`, excludeId, limit) as Array<{ id: number; name: string }>;
+    return this.db.query<{ id: number; name: string }>(
+      "SELECT id, name FROM characters WHERE name LIKE ? ESCAPE '\\' AND id <> ? ORDER BY name LIMIT ?",
+      [`${escaped}%`, excludeId, limit],
+    );
   }
 
-  loadFriends(characterId: number): Array<{ id: number; name: string }> {
-    return this.db
-      .prepare(
-        'SELECT c.id, c.name FROM character_friends f JOIN characters c ON c.id = f.friend_id ' +
-          'WHERE f.character_id = ? ORDER BY c.name',
-      )
-      .all(characterId) as Array<{ id: number; name: string }>;
+  async loadFriends(characterId: number): Promise<Array<{ id: number; name: string }>> {
+    return this.db.query<{ id: number; name: string }>(
+      'SELECT c.id, c.name FROM character_friends f JOIN characters c ON c.id = f.friend_id ' +
+        'WHERE f.character_id = ? ORDER BY c.name',
+      [characterId],
+    );
   }
 
-  loadFriendRequests(characterId: number): {
+  async loadFriendRequests(characterId: number): Promise<{
     incoming: Array<{ id: number; name: string }>;
     outgoing: Array<{ id: number; name: string }>;
-  } {
-    const incoming = this.db
-      .prepare(
-        'SELECT c.id, c.name FROM friend_requests r JOIN characters c ON c.id = r.from_id ' +
-          'WHERE r.to_id = ? ORDER BY r.created_at',
-      )
-      .all(characterId) as Array<{ id: number; name: string }>;
-    const outgoing = this.db
-      .prepare(
-        'SELECT c.id, c.name FROM friend_requests r JOIN characters c ON c.id = r.to_id ' +
-          'WHERE r.from_id = ? ORDER BY r.created_at',
-      )
-      .all(characterId) as Array<{ id: number; name: string }>;
+  }> {
+    const incoming = await this.db.query<{ id: number; name: string }>(
+      'SELECT c.id, c.name FROM friend_requests r JOIN characters c ON c.id = r.from_id ' +
+        'WHERE r.to_id = ? ORDER BY r.created_at',
+      [characterId],
+    );
+    const outgoing = await this.db.query<{ id: number; name: string }>(
+      'SELECT c.id, c.name FROM friend_requests r JOIN characters c ON c.id = r.to_id ' +
+        'WHERE r.from_id = ? ORDER BY r.created_at',
+      [characterId],
+    );
     return { incoming, outgoing };
   }
 
-  areFriends(aId: number, bId: number): boolean {
-    return (
-      this.db
-        .prepare('SELECT 1 FROM character_friends WHERE character_id = ? AND friend_id = ?')
-        .get(aId, bId) !== undefined
+  async areFriends(aId: number, bId: number): Promise<boolean> {
+    const row = await this.db.get(
+      'SELECT 1 FROM character_friends WHERE character_id = ? AND friend_id = ?',
+      [aId, bId],
     );
+    return row !== undefined;
   }
 
-  hasFriendRequest(fromId: number, toId: number): boolean {
-    return (
-      this.db
-        .prepare('SELECT 1 FROM friend_requests WHERE from_id = ? AND to_id = ?')
-        .get(fromId, toId) !== undefined
-    );
+  async hasFriendRequest(fromId: number, toId: number): Promise<boolean> {
+    const row = await this.db.get('SELECT 1 FROM friend_requests WHERE from_id = ? AND to_id = ?', [
+      fromId,
+      toId,
+    ]);
+    return row !== undefined;
   }
 
-  countFriends(characterId: number): number {
-    const row = this.db
-      .prepare('SELECT COUNT(*) AS n FROM character_friends WHERE character_id = ?')
-      .get(characterId) as { n: number };
-    return row.n;
+  async countFriends(characterId: number): Promise<number> {
+    const row = await this.db.get<{ n: number }>(
+      'SELECT COUNT(*) AS n FROM character_friends WHERE character_id = ?',
+      [characterId],
+    );
+    return row?.n ?? 0;
   }
 
   createFriendRequest(fromId: number, toId: number): void {
-    this.db
-      .prepare('INSERT OR IGNORE INTO friend_requests (from_id, to_id, created_at) VALUES (?, ?, ?)')
-      .run(fromId, toId, Date.now());
+    this.db.fire(
+      'INSERT INTO friend_requests (from_id, to_id, created_at) VALUES (?, ?, ?) ON CONFLICT DO NOTHING',
+      [fromId, toId, Date.now()],
+    );
   }
 
-  deleteFriendRequest(fromId: number, toId: number): boolean {
-    const res = this.db
-      .prepare('DELETE FROM friend_requests WHERE from_id = ? AND to_id = ?')
-      .run(fromId, toId);
-    return Number(res.changes) > 0;
+  async deleteFriendRequest(fromId: number, toId: number): Promise<boolean> {
+    const res = await this.db.run('DELETE FROM friend_requests WHERE from_id = ? AND to_id = ?', [
+      fromId,
+      toId,
+    ]);
+    return res.rowCount > 0;
   }
 
   addFriendship(aId: number, bId: number): void {
     const now = Date.now();
-    this.db.exec('BEGIN');
-    try {
+    this.db.fireTransaction(async (tx) => {
       // Clear both pending directions, then lay both mirrored rows.
-      const clear = this.db.prepare('DELETE FROM friend_requests WHERE from_id = ? AND to_id = ?');
-      clear.run(aId, bId);
-      clear.run(bId, aId);
-      const insert = this.db.prepare(
-        'INSERT OR IGNORE INTO character_friends (character_id, friend_id, created_at) VALUES (?, ?, ?)',
-      );
-      insert.run(aId, bId, now);
-      insert.run(bId, aId, now);
-      this.db.exec('COMMIT');
-    } catch (err) {
-      this.db.exec('ROLLBACK');
-      throw err;
-    }
+      await tx.run('DELETE FROM friend_requests WHERE from_id = ? AND to_id = ?', [aId, bId]);
+      await tx.run('DELETE FROM friend_requests WHERE from_id = ? AND to_id = ?', [bId, aId]);
+      const insert =
+        'INSERT INTO character_friends (character_id, friend_id, created_at) VALUES (?, ?, ?) ON CONFLICT DO NOTHING';
+      await tx.run(insert, [aId, bId, now]);
+      await tx.run(insert, [bId, aId, now]);
+    });
   }
 
   removeFriendship(aId: number, bId: number): void {
-    this.db.exec('BEGIN');
-    try {
-      const stmt = this.db.prepare(
-        'DELETE FROM character_friends WHERE character_id = ? AND friend_id = ?',
-      );
-      stmt.run(aId, bId);
-      stmt.run(bId, aId);
-      this.db.exec('COMMIT');
-    } catch (err) {
-      this.db.exec('ROLLBACK');
-      throw err;
-    }
+    this.db.fireTransaction(async (tx) => {
+      await tx.run('DELETE FROM character_friends WHERE character_id = ? AND friend_id = ?', [aId, bId]);
+      await tx.run('DELETE FROM character_friends WHERE character_id = ? AND friend_id = ?', [bId, aId]);
+    });
   }
 
-  loadInventory(
+  async loadInventory(
     characterId: number,
     size: number,
-  ): Array<{ item: string; qty: number; roll?: ItemRoll } | null> {
-    const rows = this.db
-      .prepare('SELECT slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id FROM inventory_slots WHERE character_id = ?')
-      .all(characterId) as Array<{
+  ): Promise<Array<{ item: string; qty: number; roll?: ItemRoll } | null>> {
+    const rows = await this.db.query<{
       slot: number;
       item_id: string;
       qty: number;
@@ -381,7 +394,10 @@ export class AccountStore {
       coat_id: string | null;
       coat_until: number | null;
       ench_id: string | null;
-    }>;
+    }>(
+      'SELECT slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id FROM inventory_slots WHERE character_id = ?',
+      [characterId],
+    );
     const slots = new Array<{ item: string; qty: number; roll?: ItemRoll } | null>(size).fill(null);
     for (const row of rows) {
       if (row.slot >= 0 && row.slot < size) {
@@ -395,13 +411,11 @@ export class AccountStore {
     return slots;
   }
 
-  loadBuiltTiles(): Array<{ tx: number; ty: number; tile: number; owner: number; prevTile: number }> {
-    return (
-      this.db
-        .prepare(
-          'SELECT tx, ty, tile, owner_character_id AS owner, prev_tile AS prevTile FROM built_tiles',
-        )
-        .all() as Array<{ tx: number; ty: number; tile: number; owner: number; prevTile: number }>
+  async loadBuiltTiles(): Promise<
+    Array<{ tx: number; ty: number; tile: number; owner: number; prevTile: number }>
+  > {
+    return this.db.query<{ tx: number; ty: number; tile: number; owner: number; prevTile: number }>(
+      'SELECT tx, ty, tile, owner_character_id AS owner, prev_tile AS "prevTile" FROM built_tiles',
     );
   }
 
@@ -409,16 +423,15 @@ export class AccountStore {
     // On rebuild-over-a-build, prev_tile keeps the ORIGINAL ground the
     // conflict row captured — demolishing a replaced piece should still
     // return the natural terrain, not the intermediate construction.
-    this.db
-      .prepare(
-        'INSERT INTO built_tiles (tx, ty, tile, owner_character_id, created_at, prev_tile) VALUES (?, ?, ?, ?, ?, ?) ' +
-          'ON CONFLICT(tx, ty) DO UPDATE SET tile = excluded.tile, owner_character_id = excluded.owner_character_id',
-      )
-      .run(tx, ty, tile, owner, Date.now(), prevTile);
+    this.db.fire(
+      'INSERT INTO built_tiles (tx, ty, tile, owner_character_id, created_at, prev_tile) VALUES (?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (tx, ty) DO UPDATE SET tile = excluded.tile, owner_character_id = excluded.owner_character_id',
+      [tx, ty, tile, owner, Date.now(), prevTile],
+    );
   }
 
   deleteBuiltTile(tx: number, ty: number): void {
-    this.db.prepare('DELETE FROM built_tiles WHERE tx = ? AND ty = ?').run(tx, ty);
+    this.db.fire('DELETE FROM built_tiles WHERE tx = ? AND ty = ?', [tx, ty]);
   }
 
   // ------------------------------------------------- player signs
@@ -428,16 +441,16 @@ export class AccountStore {
    * the server holds them all in memory (the built_tiles pattern) and
    * this runs once at boot.
    */
-  loadSigns(): Array<{
-    tx: number;
-    ty: number;
-    title: string;
-    lines: string[];
-    owner: number;
-  }> {
-    const rows = this.db
-      .prepare('SELECT tx, ty, title, lines, owner_character_id AS owner FROM signs')
-      .all() as Array<{ tx: number; ty: number; title: string; lines: string; owner: number }>;
+  async loadSigns(): Promise<
+    Array<{ tx: number; ty: number; title: string; lines: string[]; owner: number }>
+  > {
+    const rows = await this.db.query<{
+      tx: number;
+      ty: number;
+      title: string;
+      lines: string;
+      owner: number;
+    }>('SELECT tx, ty, title, lines, owner_character_id AS owner FROM signs');
     return rows.map((r) => ({
       tx: r.tx,
       ty: r.ty,
@@ -451,39 +464,38 @@ export class AccountStore {
     // The owner is written ONCE. A conflict update carries the old
     // owner forward on purpose: whoever raised the post keeps the pen
     // even if the row is rewritten through some other path.
-    this.db
-      .prepare(
-        'INSERT INTO signs (tx, ty, title, lines, owner_character_id, updated_at) VALUES (?, ?, ?, ?, ?, ?) ' +
-          'ON CONFLICT(tx, ty) DO UPDATE SET title = excluded.title, lines = excluded.lines, ' +
-          'updated_at = excluded.updated_at',
-      )
-      .run(tx, ty, title, lines.join('\n'), owner, Date.now());
+    this.db.fire(
+      'INSERT INTO signs (tx, ty, title, lines, owner_character_id, updated_at) VALUES (?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (tx, ty) DO UPDATE SET title = excluded.title, lines = excluded.lines, ' +
+        'updated_at = excluded.updated_at',
+      [tx, ty, title, lines.join('\n'), owner, Date.now()],
+    );
   }
 
   deleteSign(tx: number, ty: number): void {
-    this.db.prepare('DELETE FROM signs WHERE tx = ? AND ty = ?').run(tx, ty);
+    this.db.fire('DELETE FROM signs WHERE tx = ? AND ty = ?', [tx, ty]);
   }
 
   // --------------------------------------------- world_pois ledger
 
-  loadPoiCells(): Array<{
-    cellX: number;
-    cellY: number;
-    epoch: number;
-    poiId: string | null;
-    prefabId: string | null;
-    tier: number | null;
-    anchorX: number | null;
-    anchorY: number | null;
-    clearedAt: number | null;
-  }> {
-    return this.db
-      .prepare(
-        'SELECT cell_x AS cellX, cell_y AS cellY, epoch, poi_id AS poiId, ' +
-          'prefab_id AS prefabId, tier, anchor_x AS anchorX, anchor_y AS anchorY, ' +
-          'cleared_at AS clearedAt FROM world_pois',
-      )
-      .all() as ReturnType<AccountStore['loadPoiCells']>;
+  async loadPoiCells(): Promise<
+    Array<{
+      cellX: number;
+      cellY: number;
+      epoch: number;
+      poiId: string | null;
+      prefabId: string | null;
+      tier: number | null;
+      anchorX: number | null;
+      anchorY: number | null;
+      clearedAt: number | null;
+    }>
+  > {
+    return this.db.query(
+      'SELECT cell_x AS "cellX", cell_y AS "cellY", epoch, poi_id AS "poiId", ' +
+        'prefab_id AS "prefabId", tier, anchor_x AS "anchorX", anchor_y AS "anchorY", ' +
+        'cleared_at AS "clearedAt" FROM world_pois',
+    ) as ReturnType<AccountStore['loadPoiCells']>;
   }
 
   /** Record a decided cell (poiId null = decided empty). Write-once per epoch. */
@@ -493,15 +505,13 @@ export class AccountStore {
     epoch: number,
     site: { poiId: string; prefabId: string; tier: number; anchorX: number; anchorY: number } | null,
   ): void {
-    this.db
-      .prepare(
-        'INSERT INTO world_pois (cell_x, cell_y, epoch, poi_id, prefab_id, tier, anchor_x, anchor_y, first_seen_at, cleared_at) ' +
-          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL) ' +
-          'ON CONFLICT(cell_x, cell_y) DO UPDATE SET epoch = excluded.epoch, ' +
-          'poi_id = excluded.poi_id, prefab_id = excluded.prefab_id, tier = excluded.tier, ' +
-          'anchor_x = excluded.anchor_x, anchor_y = excluded.anchor_y, cleared_at = NULL',
-      )
-      .run(
+    this.db.fire(
+      'INSERT INTO world_pois (cell_x, cell_y, epoch, poi_id, prefab_id, tier, anchor_x, anchor_y, first_seen_at, cleared_at) ' +
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL) ' +
+        'ON CONFLICT (cell_x, cell_y) DO UPDATE SET epoch = excluded.epoch, ' +
+        'poi_id = excluded.poi_id, prefab_id = excluded.prefab_id, tier = excluded.tier, ' +
+        'anchor_x = excluded.anchor_x, anchor_y = excluded.anchor_y, cleared_at = NULL',
+      [
         cellX,
         cellY,
         epoch,
@@ -511,31 +521,34 @@ export class AccountStore {
         site?.anchorX ?? null,
         site?.anchorY ?? null,
         Date.now(),
-      );
+      ],
+    );
   }
 
   /** Stamp the last full garrison wipe (the phase-3 fallow sweep reads it). */
   markPoiCleared(cellX: number, cellY: number): void {
-    this.db
-      .prepare('UPDATE world_pois SET cleared_at = ? WHERE cell_x = ? AND cell_y = ?')
-      .run(Date.now(), cellX, cellY);
+    this.db.fire('UPDATE world_pois SET cleared_at = ? WHERE cell_x = ? AND cell_y = ?', [
+      Date.now(),
+      cellX,
+      cellY,
+    ]);
   }
 
-  loadCrops(): Array<{
-    tx: number;
-    ty: number;
-    crop: string;
-    plantedAt: number;
-    boostMs: number;
-    watered: number;
-    owner: number;
-  }> {
-    return this.db
-      .prepare(
-        'SELECT tx, ty, crop, planted_at AS plantedAt, boost_ms AS boostMs, watered, ' +
-          'owner_character_id AS owner FROM crops',
-      )
-      .all() as ReturnType<AccountStore['loadCrops']>;
+  async loadCrops(): Promise<
+    Array<{
+      tx: number;
+      ty: number;
+      crop: string;
+      plantedAt: number;
+      boostMs: number;
+      watered: number;
+      owner: number;
+    }>
+  > {
+    return this.db.query(
+      'SELECT tx, ty, crop, planted_at AS "plantedAt", boost_ms AS "boostMs", watered, ' +
+        'owner_character_id AS owner FROM crops',
+    ) as ReturnType<AccountStore['loadCrops']>;
   }
 
   upsertCrop(
@@ -547,51 +560,47 @@ export class AccountStore {
     watered: number,
     owner: number,
   ): void {
-    this.db
-      .prepare(
-        'INSERT INTO crops (tx, ty, crop, planted_at, boost_ms, watered, owner_character_id) ' +
-          'VALUES (?, ?, ?, ?, ?, ?, ?) ' +
-          'ON CONFLICT(tx, ty) DO UPDATE SET crop = excluded.crop, ' +
-          'planted_at = excluded.planted_at, boost_ms = excluded.boost_ms, ' +
-          'watered = excluded.watered, owner_character_id = excluded.owner_character_id',
-      )
-      .run(tx, ty, crop, plantedAt, boostMs, watered, owner);
+    this.db.fire(
+      'INSERT INTO crops (tx, ty, crop, planted_at, boost_ms, watered, owner_character_id) ' +
+        'VALUES (?, ?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (tx, ty) DO UPDATE SET crop = excluded.crop, ' +
+        'planted_at = excluded.planted_at, boost_ms = excluded.boost_ms, ' +
+        'watered = excluded.watered, owner_character_id = excluded.owner_character_id',
+      [tx, ty, crop, plantedAt, boostMs, watered, owner],
+    );
   }
 
   deleteCrop(tx: number, ty: number): void {
-    this.db.prepare('DELETE FROM crops WHERE tx = ? AND ty = ?').run(tx, ty);
+    this.db.fire('DELETE FROM crops WHERE tx = ? AND ty = ?', [tx, ty]);
   }
 
-  loadBank(characterId: number): Record<string, number> {
-    const rows = this.db
-      .prepare('SELECT item_id, qty FROM bank_items WHERE character_id = ?')
-      .all(characterId) as Array<{ item_id: string; qty: number }>;
+  async loadBank(characterId: number): Promise<Record<string, number>> {
+    const rows = await this.db.query<{ item_id: string; qty: number }>(
+      'SELECT item_id, qty FROM bank_items WHERE character_id = ?',
+      [characterId],
+    );
     const out: Record<string, number> = {};
     for (const row of rows) out[row.item_id] = row.qty;
     return out;
   }
 
   saveBank(characterId: number, items: Record<string, number>): void {
-    this.db.exec('BEGIN');
-    try {
-      this.db.prepare('DELETE FROM bank_items WHERE character_id = ?').run(characterId);
-      const stmt = this.db.prepare(
-        'INSERT INTO bank_items (character_id, item_id, qty) VALUES (?, ?, ?)',
-      );
+    this.db.fireTransaction(async (tx) => {
+      await tx.run('DELETE FROM bank_items WHERE character_id = ?', [characterId]);
       for (const [item, qty] of Object.entries(items)) {
-        if (qty > 0) stmt.run(characterId, item, qty);
+        if (qty > 0) {
+          await tx.run('INSERT INTO bank_items (character_id, item_id, qty) VALUES (?, ?, ?)', [
+            characterId,
+            item,
+            qty,
+          ]);
+        }
       }
-      this.db.exec('COMMIT');
-    } catch (err) {
-      this.db.exec('ROLLBACK');
-      throw err;
-    }
+    });
   }
 
-  loadEquipment(characterId: number): Record<string, { id: string; roll?: ItemRoll }> {
-    const rows = this.db
-      .prepare('SELECT slot, item_id, rar, seed, pwr, coat_id, coat_until, ench_id FROM equipment WHERE character_id = ?')
-      .all(characterId) as Array<{
+  async loadEquipment(characterId: number): Promise<Record<string, { id: string; roll?: ItemRoll }>> {
+    const rows = await this.db.query<{
       slot: string;
       item_id: string;
       rar: string | null;
@@ -600,10 +609,16 @@ export class AccountStore {
       coat_id: string | null;
       coat_until: number | null;
       ench_id: string | null;
-    }>;
+    }>(
+      'SELECT slot, item_id, rar, seed, pwr, coat_id, coat_until, ench_id FROM equipment WHERE character_id = ?',
+      [characterId],
+    );
     const out: Record<string, { id: string; roll?: ItemRoll }> = {};
     for (const row of rows) {
-      out[row.slot] = { id: row.item_id, roll: rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id) };
+      out[row.slot] = {
+        id: row.item_id,
+        roll: rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id),
+      };
     }
     return out;
   }
@@ -612,27 +627,22 @@ export class AccountStore {
     characterId: number,
     equipment: Record<string, { id: string; roll?: ItemRoll } | undefined>,
   ): void {
-    this.db.exec('BEGIN');
-    try {
-      this.db.prepare('DELETE FROM equipment WHERE character_id = ?').run(characterId);
-      const stmt = this.db.prepare(
-        'INSERT INTO equipment (character_id, slot, item_id, rar, seed, pwr, coat_id, coat_until, ench_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      );
+    this.db.fireTransaction(async (tx) => {
+      await tx.run('DELETE FROM equipment WHERE character_id = ?', [characterId]);
       for (const [slot, worn] of Object.entries(equipment)) {
         if (worn) {
-          stmt.run(
-            characterId, slot, worn.id,
-            worn.roll?.rar ?? null, worn.roll?.seed ?? null, worn.roll?.pwr ?? null,
-            worn.roll?.coat?.id ?? null, worn.roll?.coat?.until ?? null,
-            worn.roll?.ench ?? null,
+          await tx.run(
+            'INSERT INTO equipment (character_id, slot, item_id, rar, seed, pwr, coat_id, coat_until, ench_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+              characterId, slot, worn.id,
+              worn.roll?.rar ?? null, worn.roll?.seed ?? null, worn.roll?.pwr ?? null,
+              worn.roll?.coat?.id ?? null, worn.roll?.coat?.until ?? null,
+              worn.roll?.ench ?? null,
+            ],
           );
         }
       }
-      this.db.exec('COMMIT');
-    } catch (err) {
-      this.db.exec('ROLLBACK');
-      throw err;
-    }
+    });
   }
 
   /**
@@ -640,10 +650,8 @@ export class AccountStore {
    * client addresses withdrawals by row id, so ids must stay stable
    * across every other operation.
    */
-  loadBankGear(characterId: number): Array<{ id: number; item: string; roll: ItemRoll }> {
-    const rows = this.db
-      .prepare('SELECT id, item_id, rar, seed, pwr, coat_id, coat_until, ench_id FROM bank_gear WHERE character_id = ? ORDER BY id')
-      .all(characterId) as Array<{
+  async loadBankGear(characterId: number): Promise<Array<{ id: number; item: string; roll: ItemRoll }>> {
+    const rows = await this.db.query<{
       id: number;
       item_id: string;
       rar: string;
@@ -652,7 +660,10 @@ export class AccountStore {
       coat_id: string | null;
       coat_until: number | null;
       ench_id: string | null;
-    }>;
+    }>(
+      'SELECT id, item_id, rar, seed, pwr, coat_id, coat_until, ench_id FROM bank_gear WHERE character_id = ? ORDER BY id',
+      [characterId],
+    );
     const out: Array<{ id: number; item: string; roll: ItemRoll }> = [];
     for (const row of rows) {
       const roll = rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id);
@@ -661,24 +672,30 @@ export class AccountStore {
     return out;
   }
 
-  insertBankGear(characterId: number, item: string, roll: ItemRoll): number {
-    const res = this.db
-      .prepare('INSERT INTO bank_gear (character_id, item_id, rar, seed, pwr, coat_id, coat_until, ench_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(characterId, item, roll.rar, roll.seed, roll.pwr ?? null, roll.coat?.id ?? null, roll.coat?.until ?? null, roll.ench ?? null);
-    return Number(res.lastInsertRowid);
+  async insertBankGear(characterId: number, item: string, roll: ItemRoll): Promise<number> {
+    const row = await this.db.get<{ id: number }>(
+      'INSERT INTO bank_gear (character_id, item_id, rar, seed, pwr, coat_id, coat_until, ench_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
+      [
+        characterId, item, roll.rar, roll.seed, roll.pwr ?? null,
+        roll.coat?.id ?? null, roll.coat?.until ?? null, roll.ench ?? null,
+      ],
+    );
+    return row!.id;
   }
 
-  deleteBankGear(id: number, characterId: number): boolean {
-    const res = this.db
-      .prepare('DELETE FROM bank_gear WHERE id = ? AND character_id = ?')
-      .run(id, characterId);
-    return res.changes > 0;
+  async deleteBankGear(id: number, characterId: number): Promise<boolean> {
+    const res = await this.db.run('DELETE FROM bank_gear WHERE id = ? AND character_id = ?', [
+      id,
+      characterId,
+    ]);
+    return res.rowCount > 0;
   }
 
-  loadLook(characterId: number): Look | null {
-    const row = this.db
-      .prepare('SELECT look FROM characters WHERE id = ?')
-      .get(characterId) as { look: string | null } | undefined;
+  async loadLook(characterId: number): Promise<Look | null> {
+    const row = await this.db.get<{ look: string | null }>(
+      'SELECT look FROM characters WHERE id = ?',
+      [characterId],
+    );
     if (!row?.look) return null;
     try {
       return sanitizeLook(JSON.parse(row.look));
@@ -688,18 +705,15 @@ export class AccountStore {
   }
 
   saveLook(characterId: number, look: Look): void {
-    this.db
-      .prepare('UPDATE characters SET look = ? WHERE id = ?')
-      .run(JSON.stringify(look), characterId);
+    this.db.fire('UPDATE characters SET look = ? WHERE id = ?', [JSON.stringify(look), characterId]);
   }
 
   /** Per-hand grip preferences: [main fist, off fist]. NULL = standard. */
-  loadCarryStyles(characterId: number): { main: 'normal' | 'rogue'; off: 'normal' | 'rogue' } {
-    const row = this.db
-      .prepare('SELECT carry_style, carry_style_off FROM characters WHERE id = ?')
-      .get(characterId) as
-      | { carry_style: string | null; carry_style_off: string | null }
-      | undefined;
+  async loadCarryStyles(characterId: number): Promise<{ main: 'normal' | 'rogue'; off: 'normal' | 'rogue' }> {
+    const row = await this.db.get<{ carry_style: string | null; carry_style_off: string | null }>(
+      'SELECT carry_style, carry_style_off FROM characters WHERE id = ?',
+      [characterId],
+    );
     return {
       main: row?.carry_style === 'rogue' ? 'rogue' : 'normal',
       off: row?.carry_style_off === 'rogue' ? 'rogue' : 'normal',
@@ -708,54 +722,50 @@ export class AccountStore {
 
   saveCarryStyle(characterId: number, hand: 'main' | 'off', style: 'normal' | 'rogue'): void {
     const col = hand === 'off' ? 'carry_style_off' : 'carry_style';
-    this.db
-      .prepare(`UPDATE characters SET ${col} = ? WHERE id = ?`)
-      .run(style === 'rogue' ? 'rogue' : null, characterId);
+    this.db.fire(`UPDATE characters SET ${col} = ? WHERE id = ?`, [
+      style === 'rogue' ? 'rogue' : null,
+      characterId,
+    ]);
   }
 
-  loadTechniques(characterId: number): Record<string, string> {
-    const rows = this.db
-      .prepare('SELECT style, ability FROM character_techniques WHERE character_id = ?')
-      .all(characterId) as Array<{ style: string; ability: string }>;
+  async loadTechniques(characterId: number): Promise<Record<string, string>> {
+    const rows = await this.db.query<{ style: string; ability: string }>(
+      'SELECT style, ability FROM character_techniques WHERE character_id = ?',
+      [characterId],
+    );
     const out: Record<string, string> = {};
     for (const row of rows) out[row.style] = row.ability;
     return out;
   }
 
   saveTechnique(characterId: number, style: string, ability: string): void {
-    this.db
-      .prepare(
-        `INSERT INTO character_techniques (character_id, style, ability) VALUES (?, ?, ?)
-         ON CONFLICT (character_id, style) DO UPDATE SET ability = excluded.ability`,
-      )
-      .run(characterId, style, ability);
+    this.db.fire(
+      'INSERT INTO character_techniques (character_id, style, ability) VALUES (?, ?, ?) ' +
+        'ON CONFLICT (character_id, style) DO UPDATE SET ability = excluded.ability',
+      [characterId, style, ability],
+    );
   }
 
   saveInventory(
     characterId: number,
     slots: Array<{ item: string; qty: number; roll?: ItemRoll } | null>,
   ): void {
-    this.db.exec('BEGIN');
-    try {
-      this.db.prepare('DELETE FROM inventory_slots WHERE character_id = ?').run(characterId);
-      const stmt = this.db.prepare(
-        'INSERT INTO inventory_slots (character_id, slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      );
+    this.db.fireTransaction(async (tx) => {
+      await tx.run('DELETE FROM inventory_slots WHERE character_id = ?', [characterId]);
       for (let i = 0; i < slots.length; i++) {
         const slot = slots[i];
         if (slot) {
-          stmt.run(
-            characterId, i, slot.item, slot.qty,
-            slot.roll?.rar ?? null, slot.roll?.seed ?? null, slot.roll?.pwr ?? null,
-            slot.roll?.coat?.id ?? null, slot.roll?.coat?.until ?? null,
-            slot.roll?.ench ?? null,
+          await tx.run(
+            'INSERT INTO inventory_slots (character_id, slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+              characterId, i, slot.item, slot.qty,
+              slot.roll?.rar ?? null, slot.roll?.seed ?? null, slot.roll?.pwr ?? null,
+              slot.roll?.coat?.id ?? null, slot.roll?.coat?.until ?? null,
+              slot.roll?.ench ?? null,
+            ],
           );
         }
       }
-      this.db.exec('COMMIT');
-    } catch (err) {
-      this.db.exec('ROLLBACK');
-      throw err;
-    }
+    });
   }
 }

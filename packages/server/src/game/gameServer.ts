@@ -904,7 +904,7 @@ export class GameServer {
    * tooling edits rows, then /routinereload swaps the live registry —
    * no restart between an edit and watching the new day unfold.
    */
-  routineSource: (() => { routines: RoutineDef[]; errors: string[] }) | null = null;
+  routineSource: (() => Promise<{ routines: RoutineDef[]; errors: string[] }>) | null = null;
   /**
    * Dialogue offers by bound actor slug — assembled from the BINDINGS
    * of DB-loaded trees. The tree stands alone; only bindings put words
@@ -918,7 +918,7 @@ export class GameServer {
    * tooling edits rows, then /dlgreload swaps the live registry — no
    * restart between an edit and hearing it spoken.
    */
-  dialogueSource: (() => { dialogues: DialogueDef[]; errors: string[] }) | null = null;
+  dialogueSource: (() => Promise<{ dialogues: DialogueDef[]; errors: string[] }>) | null = null;
 
   private readonly sessions = new Set<Session>();
   /** In-world players by character id (blocks duplicate logins). */
@@ -1411,9 +1411,9 @@ export class GameServer {
    * the next talk speaks the new truth. Shared by /dlgreload and the
    * Content Studio's save wire.
    */
-  reloadDialogues(): { count: number; errors: string[] } {
+  async reloadDialogues(): Promise<{ count: number; errors: string[] }> {
     if (!this.dialogueSource) return { count: 0, errors: ['no dialogue source wired'] };
-    const fresh = this.dialogueSource();
+    const fresh = await this.dialogueSource();
     this.dialoguesByActor.clear();
     this.dialogueNodes.clear();
     this.registerDialogues(fresh.dialogues);
@@ -1438,7 +1438,7 @@ export class GameServer {
 
   // ------------------------------------------------------------- auth
 
-  hello(session: Session, opts: { name?: string; token?: string }): void {
+  async hello(session: Session, opts: { name?: string; token?: string }): Promise<void> {
     if (opts.token) {
       // Guest reconnect within grace?
       const guestEid = this.guestTokens.get(opts.token);
@@ -1446,9 +1446,9 @@ export class GameServer {
         this.bindSession(session, guestEid);
         return;
       }
-      const res = this.accounts.resumeSession(opts.token);
+      const res = await this.accounts.resumeSession(opts.token);
       if (res.ok) {
-        this.enterWorld(session, res.character, res.accountId, opts.token);
+        await this.enterWorld(session, res.character, res.accountId, opts.token);
         return;
       }
       session.sendJson({ t: 'authErr', reason: res.reason });
@@ -1475,7 +1475,7 @@ export class GameServer {
         hearth_at: 0,
       };
       const token = randomBytes(18).toString('base64url');
-      const eid = this.enterWorld(session, character, null, token);
+      const eid = await this.enterWorld(session, character, null, token);
       if (eid !== null) this.guestTokens.set(token, eid);
       return;
     }
@@ -1483,33 +1483,33 @@ export class GameServer {
     session.sendJson({ t: 'authRequired' });
   }
 
-  login(session: Session, user: string, pass: string): void {
-    const res = this.accounts.login(user, pass);
+  async login(session: Session, user: string, pass: string): Promise<void> {
+    const res = await this.accounts.login(user, pass);
     if (!res.ok) {
       session.sendJson({ t: 'authErr', reason: res.reason });
       return;
     }
-    const token = this.accounts.createSession(res.accountId);
-    this.enterWorld(session, res.character, res.accountId, token);
+    const token = await this.accounts.createSession(res.accountId);
+    await this.enterWorld(session, res.character, res.accountId, token);
   }
 
-  register(session: Session, user: string, pass: string, name: string): void {
-    const res = this.accounts.register(user, pass, name, this.startSpawn);
+  async register(session: Session, user: string, pass: string, name: string): Promise<void> {
+    const res = await this.accounts.register(user, pass, name, this.startSpawn);
     if (!res.ok) {
       session.sendJson({ t: 'authErr', reason: res.reason });
       return;
     }
-    const token = this.accounts.createSession(res.accountId);
-    this.enterWorld(session, res.character, res.accountId, token);
+    const token = await this.accounts.createSession(res.accountId);
+    await this.enterWorld(session, res.character, res.accountId, token);
   }
 
   /** Spawn (or rebind to) the character's entity and send welcome. */
-  private enterWorld(
+  private async enterWorld(
     session: Session,
     character: CharacterRow,
     accountId: number | null,
     token: string,
-  ): EntityId | null {
+  ): Promise<EntityId | null> {
     const existing = this.characterEids.get(character.id);
     if (existing !== undefined && this.players.has(existing)) {
       const player = this.players.must(existing);
@@ -1524,9 +1524,9 @@ export class GameServer {
     let inventory: InvSlot[];
     let equipment: Partial<Record<EquipSlot, EquippedItem>> = {};
     if (character.id > 0) {
-      skills = this.accounts.loadSkills(character.id) as SkillXp;
-      inventory = this.accounts.loadInventory(character.id, 28);
-      equipment = this.accounts.loadEquipment(character.id) as Partial<
+      skills = (await this.accounts.loadSkills(character.id)) as SkillXp;
+      inventory = await this.accounts.loadInventory(character.id, 28);
+      equipment = (await this.accounts.loadEquipment(character.id)) as Partial<
         Record<EquipSlot, EquippedItem>
       >;
       if (Object.keys(skills).length === 0) {
@@ -1570,6 +1570,18 @@ export class GameServer {
       spawnY = safe.y;
     }
 
+    // The loads above awaited — re-check the double-login guard in case
+    // the same character finished entering while they were in flight.
+    {
+      const raced = this.characterEids.get(character.id);
+      if (raced !== undefined && this.players.has(raced)) {
+        const player = this.players.must(raced);
+        player.token = token;
+        this.bindSession(session, raced);
+        return raced;
+      }
+    }
+
     const eid = this.ecs.create();
     this.kinds.set(eid, EntityKind.Player);
     this.positions.set(eid, { x: spawnX, y: spawnY, dir: 0 });
@@ -1577,12 +1589,12 @@ export class GameServer {
     this.healths.set(eid, { hp: Math.min(character.hp, maxHp), maxHp });
     const grips =
       character.id > 0
-        ? this.accounts.loadCarryStyles(character.id)
+        ? await this.accounts.loadCarryStyles(character.id)
         : { main: 'normal' as CarryStyle, off: 'normal' as CarryStyle };
     this.players.set(eid, {
       name: character.name,
       speed: PLAYER_SPEED,
-      look: character.id > 0 ? this.accounts.loadLook(character.id) : null,
+      look: character.id > 0 ? await this.accounts.loadLook(character.id) : null,
       carryStyle: grips.main,
       carryOff: grips.off,
       characterId: character.id,
@@ -1595,7 +1607,7 @@ export class GameServer {
       skills,
       inventory,
       action: null,
-      bank: character.id > 0 ? this.accounts.loadBank(character.id) : null,
+      bank: character.id > 0 ? await this.accounts.loadBank(character.id) : null,
       bankDirty: false,
       equipment,
       gear,
@@ -1612,7 +1624,7 @@ export class GameServer {
       prevButtons: 0,
       castFreezeUntilTick: 0,
       buffs: [],
-      techniques: character.id > 0 ? this.accounts.loadTechniques(character.id) : {},
+      techniques: character.id > 0 ? await this.accounts.loadTechniques(character.id) : {},
       snapStage: 0,
       snapGraceUntilTick: 0,
       boltStage: 0,
@@ -1623,8 +1635,8 @@ export class GameServer {
       drawLockUntilTick: 0,
       sneakStillTicks: 0,
       hidden: false,
-      flags: character.id > 0 ? this.accounts.loadFlags(character.id) : new Map(),
-      knownRecipes: character.id > 0 ? new Set(this.accounts.loadRecipes(character.id)) : new Set(),
+      flags: character.id > 0 ? await this.accounts.loadFlags(character.id) : new Map(),
+      knownRecipes: character.id > 0 ? new Set(await this.accounts.loadRecipes(character.id)) : new Set(),
       dialogue: null,
       revealLockUntilTick: 0,
       sneakMoveAccum: 0,
@@ -1641,8 +1653,8 @@ export class GameServer {
     // A true arrival (reconnects within grace rebind without passing
     // here) — tell online friends, and surface any waiting asks.
     if (character.id > 0) {
-      this.social.notifyOnline(character.id, character.name);
-      const pending = this.social.pendingCount(character.id);
+      void this.social.notifyOnline(character.id, character.name).catch(() => undefined);
+      const pending = await this.social.pendingCount(character.id);
       if (pending > 0) {
         session.sendJson({
           t: 'chat',
@@ -1740,7 +1752,9 @@ export class GameServer {
     this.savePlayer(eid);
     this.characterEids.delete(player.characterId);
     // Only now — past the reconnect grace — do friends see "offline".
-    if (player.characterId > 0) this.social.notifyOffline(player.characterId, player.name);
+    if (player.characterId > 0) {
+      void this.social.notifyOffline(player.characterId, player.name).catch(() => undefined);
+    }
     if (player.accountId === null) {
       for (const [token, guestEid] of this.guestTokens) {
         if (guestEid === eid) this.guestTokens.delete(token);
@@ -1770,32 +1784,44 @@ export class GameServer {
 
   socialSnapshot(eid: EntityId, session: Session): void {
     const actor = this.socialActor(eid, session);
-    if (actor) this.social.snapshot(actor.id, (msg) => session.sendJson(msg));
+    if (actor) {
+      void this.social.snapshot(actor.id, (msg) => session.sendJson(msg)).catch((err: Error) => console.error('[social]', err.message));
+    }
   }
 
   friendSearch(eid: EntityId, session: Session, query: string): void {
     const actor = this.socialActor(eid, session);
-    if (actor) this.social.search(actor.id, query, (msg) => session.sendJson(msg));
+    if (actor) {
+      void this.social.search(actor.id, query, (msg) => session.sendJson(msg)).catch((err: Error) => console.error('[social]', err.message));
+    }
   }
 
   friendRequest(eid: EntityId, session: Session, name: string): void {
     const actor = this.socialActor(eid, session);
-    if (actor) this.social.request(actor.id, actor.name, name, (msg) => session.sendJson(msg));
+    if (actor) {
+      void this.social.request(actor.id, actor.name, name, (msg) => session.sendJson(msg)).catch((err: Error) => console.error('[social]', err.message));
+    }
   }
 
   friendAccept(eid: EntityId, session: Session, name: string): void {
     const actor = this.socialActor(eid, session);
-    if (actor) this.social.accept(actor.id, actor.name, name, (msg) => session.sendJson(msg));
+    if (actor) {
+      void this.social.accept(actor.id, actor.name, name, (msg) => session.sendJson(msg)).catch((err: Error) => console.error('[social]', err.message));
+    }
   }
 
   friendDecline(eid: EntityId, session: Session, name: string): void {
     const actor = this.socialActor(eid, session);
-    if (actor) this.social.decline(actor.id, actor.name, name, (msg) => session.sendJson(msg));
+    if (actor) {
+      void this.social.decline(actor.id, actor.name, name, (msg) => session.sendJson(msg)).catch((err: Error) => console.error('[social]', err.message));
+    }
   }
 
   friendRemove(eid: EntityId, session: Session, name: string): void {
     const actor = this.socialActor(eid, session);
-    if (actor) this.social.remove(actor.id, actor.name, name, (msg) => session.sendJson(msg));
+    if (actor) {
+      void this.social.remove(actor.id, actor.name, name, (msg) => session.sendJson(msg)).catch((err: Error) => console.error('[social]', err.message));
+    }
   }
 
   // ------------------------------------------------------ persistence
@@ -1878,7 +1904,7 @@ export class GameServer {
         sys('Guests cannot use the bank — make an account!');
         return;
       }
-      this.sendBank(player);
+      void this.sendBank(player).catch((err: Error) => console.error('[bank]', err.message));
       return;
     }
 
@@ -2830,18 +2856,23 @@ export class GameServer {
 
   // ------------------------------------------------------ bank & shop
 
-  bankOp(
+  async bankOp(
     eid: EntityId,
     op: 'deposit' | 'withdraw',
     item: string,
     qty: number,
     slot?: number,
     gearId?: number,
-  ): void {
+  ): Promise<void> {
     const player = this.players.get(eid);
     if (!player || player.session === null || player.bank === null) return;
     if (!this.nearTile(eid, Tile.BankChest)) return;
     if (!itemDef(item)) return;
+    // One bank op in flight per player: the awaits below yield, and a
+    // second op interleaving could double-count an instance.
+    if (this.bankOpBusy.has(eid)) return;
+    this.bankOpBusy.add(eid);
+    try {
 
     if (op === 'deposit') {
       // Rolled instances live in bank_gear rows (they can never stack);
@@ -2850,7 +2881,10 @@ export class GameServer {
       if (src && src.item === item && src.roll) {
         const taken = takeSlot(player.inventory, slot!, 1);
         if (taken?.roll && player.characterId > 0) {
-          this.accounts.insertBankGear(player.characterId, taken.item, taken.roll);
+          // Enqueued in FIFO order: the sendBank below sees this row.
+          void this.accounts
+            .insertBankGear(player.characterId, taken.item, taken.roll)
+            .catch((err: Error) => console.error('[bank]', err.message));
         }
       } else {
         const removed =
@@ -2865,10 +2899,10 @@ export class GameServer {
     } else if (gearId !== undefined) {
       // Withdraw an exact stored instance by its stable row id.
       if (player.characterId > 0 && hasSpaceFor(player.inventory, item)) {
-        const stored = this.accounts
-          .loadBankGear(player.characterId)
-          .find((g) => g.id === gearId && g.item === item);
-        if (stored && this.accounts.deleteBankGear(gearId, player.characterId)) {
+        const stored = (await this.accounts.loadBankGear(player.characterId)).find(
+          (g) => g.id === gearId && g.item === item,
+        );
+        if (stored && (await this.accounts.deleteBankGear(gearId, player.characterId))) {
           addItem(player.inventory, stored.item, 1, stored.roll);
         }
       }
@@ -2891,14 +2925,19 @@ export class GameServer {
         player.bankDirty = true;
       }
     }
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
-    this.sendBank(player);
+      player.session.sendJson({ t: 'inv', slots: player.inventory });
+      await this.sendBank(player);
+    } finally {
+      this.bankOpBusy.delete(eid);
+    }
   }
 
-  private sendBank(player: PlayerComp): void {
+  private readonly bankOpBusy = new Set<EntityId>();
+
+  private async sendBank(player: PlayerComp): Promise<void> {
     if (!player.session || player.bank === null) return;
     const gear =
-      player.characterId > 0 ? this.accounts.loadBankGear(player.characterId) : undefined;
+      player.characterId > 0 ? await this.accounts.loadBankGear(player.characterId) : undefined;
     player.session.sendJson({ t: 'bank', items: player.bank, gear });
   }
 
@@ -3234,7 +3273,7 @@ export class GameServer {
     }
   }
 
-  initPois(rows: ReturnType<AccountStore['loadPoiCells']>): void {
+  initPois(rows: Awaited<ReturnType<AccountStore['loadPoiCells']>>): void {
     this.poiPrefabs = loadPoiPrefabs(config.dataDir);
     let sites = 0;
     for (const row of rows) {
@@ -8824,35 +8863,41 @@ export class GameServer {
     }
     if (config.devCommands && text.startsWith('/dlgreload')) {
       if (!this.dialogueSource) return;
-      const fresh = this.reloadDialogues();
-      const errs = fresh.errors.length > 0 ? `, ${fresh.errors.length} invalid` : '';
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: `Dialogues reloaded: ${fresh.count}${errs}.`,
-      });
+      void this.reloadDialogues()
+        .then((fresh) => {
+          const errs = fresh.errors.length > 0 ? `, ${fresh.errors.length} invalid` : '';
+          player.session?.sendJson({
+            t: 'chat',
+            channel: 'system',
+            text: `Dialogues reloaded: ${fresh.count}${errs}.`,
+          });
+        })
+        .catch((err: Error) => console.error('[dlg]', err.message));
       return;
     }
     if (config.devCommands && text.startsWith('/routinereload')) {
       // /routinereload — swap in the DB's current routines, live.
       // Walking bodies re-resolve their schedule on the next tick.
       if (!this.routineSource) return;
-      const fresh = this.routineSource();
-      this.routineDefs.clear();
-      this.registerRoutines(fresh.routines);
-      for (const [, rc] of this.routines) {
-        const def = this.routineDefs.get(rc.def.id);
-        if (def) {
-          rc.def = def;
-          rc.slot = -2; // force a fresh schedule resolve
-        }
-      }
-      const errs = fresh.errors.length > 0 ? `, ${fresh.errors.length} invalid` : '';
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: `Routines reloaded: ${fresh.routines.length}${errs}.`,
-      });
+      void this.routineSource()
+        .then((fresh) => {
+          this.routineDefs.clear();
+          this.registerRoutines(fresh.routines);
+          for (const [, rc] of this.routines) {
+            const def = this.routineDefs.get(rc.def.id);
+            if (def) {
+              rc.def = def;
+              rc.slot = -2; // force a fresh schedule resolve
+            }
+          }
+          const errs = fresh.errors.length > 0 ? `, ${fresh.errors.length} invalid` : '';
+          player.session?.sendJson({
+            t: 'chat',
+            channel: 'system',
+            text: `Routines reloaded: ${fresh.routines.length}${errs}.`,
+          });
+        })
+        .catch((err: Error) => console.error('[routine]', err.message));
       return;
     }
     if (config.devCommands && text.startsWith('/routines')) {

@@ -1,45 +1,190 @@
-import { mkdirSync } from 'node:fs';
-import { join } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import pg from 'pg';
 import { config } from '../config.js';
 
 /**
- * SQLite via node:sqlite (no native deps). WAL mode; simple forward-only
- * migrations keyed by user_version. Every later phase appends a
- * migration rather than editing an old one.
+ * Postgres via node-postgres. ONE connection, and every statement is
+ * serialized through a FIFO promise chain — the layer above was born
+ * on synchronous SQLite and its correctness leans on total write
+ * ordering (a save enqueued before a load is visible to that load).
+ * A pool would let statements race; one ordered connection cannot.
+ *
+ * BIGINT columns hold ms timestamps and counts — all far below 2^53 —
+ * so int8 parses straight to Number.
  */
+pg.types.setTypeParser(20, (v: string) => Number(v));
+
+export interface RunResult {
+  rowCount: number;
+}
+
+/** The statement surface both Db and an open transaction expose. */
+export interface Queryable {
+  query<R extends object = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<R[]>;
+  get<R extends object = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<R | undefined>;
+  run(sql: string, params?: unknown[]): Promise<RunResult>;
+}
+
+/** `?` placeholders → `$1..$n` (no SQL in this codebase embeds a literal '?'). */
+const pgSqlCache = new Map<string, string>();
+function toPgSql(sql: string): string {
+  let out = pgSqlCache.get(sql);
+  if (out === undefined) {
+    let n = 0;
+    out = sql.replace(/\?/g, () => `$${++n}`);
+    pgSqlCache.set(sql, out);
+  }
+  return out;
+}
+
+/**
+ * Empty params must use pg's SIMPLE query protocol (it allows the
+ * multi-statement migration blocks); any params switch to extended.
+ */
+function rawQuery(client: pg.Client, sql: string, params: unknown[]): Promise<pg.QueryResult> {
+  return params.length > 0 ? client.query(toPgSql(sql), params) : client.query(sql);
+}
+
+class TxHandle implements Queryable {
+  constructor(private readonly client: pg.Client) {}
+  async query<R extends object = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<R[]> {
+    const res = await rawQuery(this.client, sql, params);
+    return res.rows as R[];
+  }
+  async get<R extends object = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<R | undefined> {
+    return (await this.query<R>(sql, params))[0];
+  }
+  async run(sql: string, params: unknown[] = []): Promise<RunResult> {
+    const res = await rawQuery(this.client, sql, params);
+    return { rowCount: res.rowCount ?? 0 };
+  }
+}
+
+export class Db implements Queryable {
+  /** The FIFO: each unit of work starts only after the previous settled. */
+  private chain: Promise<unknown> = Promise.resolve();
+
+  constructor(private readonly client: pg.Client) {
+    client.on('error', (err) => {
+      // A dead connection means every "durable at the handler" write
+      // silently vanishes — crash loud and let supervisor restart.
+      console.error('[db] connection lost:', err.message);
+      process.exit(1);
+    });
+  }
+
+  private enqueue<T>(task: () => Promise<T>): Promise<T> {
+    const run = () => task();
+    const next = this.chain.then(run, run);
+    this.chain = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
+  }
+
+  query<R extends object = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<R[]> {
+    return this.enqueue(async () => {
+      const res = await rawQuery(this.client, sql, params);
+      return res.rows as R[];
+    });
+  }
+
+  async get<R extends object = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<R | undefined> {
+    return (await this.query<R>(sql, params))[0];
+  }
+
+  run(sql: string, params: unknown[] = []): Promise<RunResult> {
+    return this.enqueue(async () => {
+      const res = await rawQuery(this.client, sql, params);
+      return { rowCount: res.rowCount ?? 0 };
+    });
+  }
+
+  /**
+   * Ordered fire-and-forget write — the sim loop's shape. The statement
+   * takes its place in the FIFO like any other; only the ERROR is
+   * swallowed (logged), so a failed save can never crash the tick.
+   */
+  fire(sql: string, params: unknown[] = []): void {
+    void this.run(sql, params).catch((err: Error) => {
+      console.error(`[db] write failed: ${err.message} — ${sql.slice(0, 80)}`);
+    });
+  }
+
+  /** One atomic unit: BEGIN..COMMIT occupies the FIFO end to end. */
+  transaction<T>(fn: (tx: Queryable) => Promise<T>): Promise<T> {
+    return this.enqueue(async () => {
+      await this.client.query('BEGIN');
+      try {
+        const result = await fn(new TxHandle(this.client));
+        await this.client.query('COMMIT');
+        return result;
+      } catch (err) {
+        await this.client.query('ROLLBACK');
+        throw err;
+      }
+    });
+  }
+
+  /** Fire-and-forget transaction (mirrored friendship rows, save batches). */
+  fireTransaction(fn: (tx: Queryable) => Promise<void>): void {
+    void this.transaction(fn).catch((err: Error) => {
+      console.error(`[db] transaction failed: ${err.message}`);
+    });
+  }
+
+  /** Settles when everything enqueued so far has hit the database. */
+  flush(): Promise<void> {
+    return this.enqueue(async () => undefined);
+  }
+
+  async close(): Promise<void> {
+    await this.flush();
+    await this.client.end();
+  }
+}
 
 const MIGRATIONS: string[] = [
-  // 1 — accounts, sessions, characters
+  // 1 — the Postgres baseline: the full schema as it stood at SQLite
+  // v28 (the epoch of the engine move). Later phases append migrations
+  // here, never edit this one. Conventions carried over: ms timestamps
+  // as BIGINT, 0/1 flags as INTEGER, JSON sockets as TEXT; CITEXT
+  // gives usernames and character names their COLLATE NOCASE law.
   `
+  CREATE EXTENSION IF NOT EXISTS citext;
+
   CREATE TABLE accounts (
-    id INTEGER PRIMARY KEY,
-    username TEXT NOT NULL UNIQUE COLLATE NOCASE,
-    pass_hash BLOB NOT NULL,
-    pass_salt BLOB NOT NULL,
-    created_at INTEGER NOT NULL
+    id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    username CITEXT NOT NULL UNIQUE,
+    pass_hash BYTEA NOT NULL,
+    pass_salt BYTEA NOT NULL,
+    created_at BIGINT NOT NULL
   );
   CREATE TABLE sessions (
     token TEXT PRIMARY KEY,
     account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    created_at INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL,
+    expires_at BIGINT NOT NULL
   );
   CREATE INDEX idx_sessions_account ON sessions(account_id);
   CREATE TABLE characters (
-    id INTEGER PRIMARY KEY,
+    id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
     account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
-    x REAL NOT NULL,
-    y REAL NOT NULL,
+    name CITEXT NOT NULL UNIQUE,
+    x DOUBLE PRECISION NOT NULL,
+    y DOUBLE PRECISION NOT NULL,
     hp INTEGER NOT NULL DEFAULT 10,
-    created_at INTEGER NOT NULL,
-    last_seen INTEGER NOT NULL
+    created_at BIGINT NOT NULL,
+    last_seen BIGINT NOT NULL,
+    look TEXT,
+    carry_style TEXT,
+    carry_style_off TEXT,
+    home_x INTEGER,
+    home_y INTEGER,
+    hearth_at BIGINT NOT NULL DEFAULT 0
   );
   CREATE INDEX idx_characters_account ON characters(account_id);
-  `,
-  // 2 — skills and inventory
-  `
+
   CREATE TABLE character_skills (
     character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
     skill TEXT NOT NULL,
@@ -51,162 +196,84 @@ const MIGRATIONS: string[] = [
     slot INTEGER NOT NULL,
     item_id TEXT NOT NULL,
     qty INTEGER NOT NULL,
+    rar TEXT,
+    seed BIGINT,
+    pwr INTEGER,
+    coat_id TEXT,
+    coat_until BIGINT,
+    ench_id TEXT,
     PRIMARY KEY (character_id, slot)
   );
-  `,
-  // 3 — worn equipment
-  `
   CREATE TABLE equipment (
     character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
     slot TEXT NOT NULL,
     item_id TEXT NOT NULL,
+    rar TEXT,
+    seed BIGINT,
+    pwr INTEGER,
+    coat_id TEXT,
+    coat_until BIGINT,
+    ench_id TEXT,
     PRIMARY KEY (character_id, slot)
   );
-  `,
-  // 4 — bank storage (everything stacks in the bank)
-  `
   CREATE TABLE bank_items (
     character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
     item_id TEXT NOT NULL,
     qty INTEGER NOT NULL,
     PRIMARY KEY (character_id, item_id)
   );
-  `,
-  // 5 — player-built world tiles (construction)
-  `
+  CREATE TABLE bank_gear (
+    id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    item_id TEXT NOT NULL,
+    rar TEXT NOT NULL,
+    seed BIGINT NOT NULL,
+    pwr INTEGER,
+    coat_id TEXT,
+    coat_until BIGINT,
+    ench_id TEXT
+  );
+  CREATE INDEX idx_bank_gear_character ON bank_gear(character_id);
+
   CREATE TABLE built_tiles (
     tx INTEGER NOT NULL,
     ty INTEGER NOT NULL,
     tile INTEGER NOT NULL,
     owner_character_id INTEGER NOT NULL,
-    created_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
+    prev_tile INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (tx, ty)
   );
-  `,
-  // 6 — chosen combat techniques (one per style, free respec)
-  `
   CREATE TABLE character_techniques (
     character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
     style TEXT NOT NULL,
     ability TEXT NOT NULL,
     PRIMARY KEY (character_id, style)
   );
-  `,
-  // 7 — chosen base look (JSON of palette indices; NULL = not chosen yet)
-  `
-  ALTER TABLE characters ADD COLUMN look TEXT;
-  `,
-  // 8 — planted crops (stage derives from planted_at + boost_ms at read time)
-  `
   CREATE TABLE crops (
     tx INTEGER NOT NULL,
     ty INTEGER NOT NULL,
     crop TEXT NOT NULL,
-    planted_at INTEGER NOT NULL,
-    boost_ms INTEGER NOT NULL DEFAULT 0,
+    planted_at BIGINT NOT NULL,
+    boost_ms BIGINT NOT NULL DEFAULT 0,
     watered INTEGER NOT NULL DEFAULT 0,
     owner_character_id INTEGER NOT NULL,
     PRIMARY KEY (tx, ty)
   );
-  `,
-  // 9 — cosmetic idle weapon-carry preference (NULL = standard)
-  `
-  ALTER TABLE characters ADD COLUMN carry_style TEXT;
-  `,
-  // 10 — the ground a construction replaced, so demolish can restore
-  // it instead of stamping Grass (default 1 = Tile.Grass, matching the
-  // old hardcoded behaviour for rows built before this migration)
-  `
-  ALTER TABLE built_tiles ADD COLUMN prev_tile INTEGER NOT NULL DEFAULT 1;
-  `,
-  // 11 — per-instance item rolls (rarity tier + derivation seed).
-  // NULL rar/seed = legacy row, read as no roll (derives common/seed-0).
-  // The bank needs its own gear table because bank_items stacks by
-  // item_id and rolled gear can never stack; rows keep stable ids so
-  // withdrawals can address an exact instance.
-  `
-  ALTER TABLE inventory_slots ADD COLUMN rar TEXT;
-  ALTER TABLE inventory_slots ADD COLUMN seed INTEGER;
-  ALTER TABLE equipment ADD COLUMN rar TEXT;
-  ALTER TABLE equipment ADD COLUMN seed INTEGER;
-  CREATE TABLE bank_gear (
-    id INTEGER PRIMARY KEY,
+  CREATE TABLE character_recipes (
     character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
-    item_id TEXT NOT NULL,
-    rar TEXT NOT NULL,
-    seed INTEGER NOT NULL
+    recipe TEXT NOT NULL,
+    learned_at BIGINT NOT NULL,
+    PRIMARY KEY (character_id, recipe)
   );
-  CREATE INDEX idx_bank_gear_character ON bank_gear(character_id);
-  `,
-  // 12 — content-boundary renames: the game never references witches
-  // or the demonic (hedgewitch set → hedgemage, witchlight → wisplight,
-  // hexthorn → gloomthorn). Stored ids follow so owned pieces survive.
-  `
-  UPDATE inventory_slots SET item_id = replace(item_id, 'hedgewitch_', 'hedgemage_') WHERE item_id LIKE 'hedgewitch_%';
-  UPDATE inventory_slots SET item_id = 'wisplight' WHERE item_id = 'witchlight';
-  UPDATE inventory_slots SET item_id = 'gloomthorn' WHERE item_id = 'hexthorn';
-  UPDATE equipment SET item_id = replace(item_id, 'hedgewitch_', 'hedgemage_') WHERE item_id LIKE 'hedgewitch_%';
-  UPDATE equipment SET item_id = 'wisplight' WHERE item_id = 'witchlight';
-  UPDATE equipment SET item_id = 'gloomthorn' WHERE item_id = 'hexthorn';
-  UPDATE bank_items SET item_id = replace(item_id, 'hedgewitch_', 'hedgemage_') WHERE item_id LIKE 'hedgewitch_%';
-  UPDATE bank_items SET item_id = 'wisplight' WHERE item_id = 'witchlight';
-  UPDATE bank_items SET item_id = 'gloomthorn' WHERE item_id = 'hexthorn';
-  UPDATE bank_gear SET item_id = replace(item_id, 'hedgewitch_', 'hedgemage_') WHERE item_id LIKE 'hedgewitch_%';
-  UPDATE bank_gear SET item_id = 'wisplight' WHERE item_id = 'witchlight';
-  UPDATE bank_gear SET item_id = 'gloomthorn' WHERE item_id = 'hexthorn';
-  `,
-  // 13 — item power (the recycling axis): a re-issued instance carries
-  // the level it dropped at; NULL = the def's native power (all
-  // existing rows read unchanged).
-  `
-  ALTER TABLE inventory_slots ADD COLUMN pwr INTEGER;
-  ALTER TABLE equipment ADD COLUMN pwr INTEGER;
-  ALTER TABLE bank_gear ADD COLUMN pwr INTEGER;
-  `,
-  // 14 — weapon oils live ON the instance: vial id + epoch-ms expiry.
-  // NULL = clean blade; expired oils are dropped at load.
-  `
-  ALTER TABLE inventory_slots ADD COLUMN coat_id TEXT;
-  ALTER TABLE inventory_slots ADD COLUMN coat_until INTEGER;
-  ALTER TABLE equipment ADD COLUMN coat_id TEXT;
-  ALTER TABLE equipment ADD COLUMN coat_until INTEGER;
-  ALTER TABLE bank_gear ADD COLUMN coat_id TEXT;
-  ALTER TABLE bank_gear ADD COLUMN coat_until INTEGER;
-  `,
-  // 15 — the trade split: generic 'crafting' becomes woodworking /
-  // leatherworking / tailoring. Every character inherits their old
-  // crafting xp into all three trades (they trained a mix of all of
-  // them under one name — nobody loses a recipe they could make
-  // yesterday). The legacy 'crafting' rows are kept, unread, so the
-  // split is reversible.
-  `
-  INSERT OR IGNORE INTO character_skills (character_id, skill, xp)
-    SELECT character_id, 'woodworking', xp FROM character_skills WHERE skill = 'crafting';
-  INSERT OR IGNORE INTO character_skills (character_id, skill, xp)
-    SELECT character_id, 'leatherworking', xp FROM character_skills WHERE skill = 'crafting';
-  INSERT OR IGNORE INTO character_skills (character_id, skill, xp)
-    SELECT character_id, 'tailoring', xp FROM character_skills WHERE skill = 'crafting';
-  `,
-  // 16 — enchantments live ON the instance: an EnchantDef id. NULL =
-  // unenchanted. Permanent (no expiry column — unlike oils, an enchant
-  // never dries).
-  `
-  ALTER TABLE inventory_slots ADD COLUMN ench_id TEXT;
-  ALTER TABLE equipment ADD COLUMN ench_id TEXT;
-  ALTER TABLE bank_gear ADD COLUMN ench_id TEXT;
-  `,
-  // 17 — grips are per-hand: the off fist gets its own carry preference
-  // (NULL = standard), so a dual wielder can run standard main / rogue off.
-  `
-  ALTER TABLE characters ADD COLUMN carry_style_off TEXT;
-  `,
-  // 18 — NPC actors: the identity layer of the NPC system, relational
-  // by design (db/npcActors.ts owns sync + load). Authored JSON
-  // (content/actors/defs) is the seed; these tables are what the
-  // server actually reads at boot, and what dev tools will edit.
-  // `look` is a JSON blob of palette indices — the exact encoding
-  // characters.look already uses (the index-stability law covers both).
-  `
+  CREATE TABLE character_flags (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    flag TEXT NOT NULL,
+    value INTEGER NOT NULL DEFAULT 1,
+    set_at BIGINT NOT NULL,
+    PRIMARY KEY (character_id, flag)
+  );
+
   CREATE TABLE npc_actors (
     slug TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -218,8 +285,10 @@ const MIGRATIONS: string[] = [
     look TEXT,
     dialogue_id TEXT,
     shop_id TEXT,
+    protection TEXT,
     content_hash TEXT NOT NULL,
-    updated_at INTEGER NOT NULL
+    authored_hash TEXT,
+    updated_at BIGINT NOT NULL
   );
   CREATE TABLE npc_actor_equipment (
     actor_slug TEXT NOT NULL REFERENCES npc_actors(slug) ON DELETE CASCADE,
@@ -244,14 +313,14 @@ const MIGRATIONS: string[] = [
     actor_slug TEXT PRIMARY KEY REFERENCES npc_actors(slug) ON DELETE CASCADE,
     level INTEGER NOT NULL,
     base_creature TEXT,
-    respawn_sec REAL,
+    respawn_sec DOUBLE PRECISION,
     max_hp INTEGER,
     damage INTEGER,
-    attack_range REAL,
+    attack_range DOUBLE PRECISION,
     attack_cooldown_ticks INTEGER,
-    aggro_range REAL,
-    leash_range REAL,
-    speed REAL,
+    aggro_range DOUBLE PRECISION,
+    leash_range DOUBLE PRECISION,
+    speed DOUBLE PRECISION,
     xp_reward INTEGER
   );
   CREATE TABLE npc_actor_loot (
@@ -260,82 +329,7 @@ const MIGRATIONS: string[] = [
     table_id TEXT NOT NULL,
     PRIMARY KEY (actor_slug, idx)
   );
-  `,
-  // 19 — dialogue trees + the character flag ledger. Dialogues follow
-  // the actor pattern: authored JSON (content/dialogues/defs) seeds
-  // these tables at boot (db/dialogues.ts), the runtime reads back
-  // from them, dev tools will edit them. Entities are relational
-  // (dialogue → nodes → choices); the small polymorphic value-lists
-  // (hooks, flag conditions) ride as JSON arrays in a column — they
-  // are open-ended sockets, not queryable relations. No FK to
-  // npc_actors: the one validator is the cross-reference gate, same
-  // as items/loot everywhere else.
-  //
-  // character_flags is the durable "this happened" ledger — dialogue
-  // completions (dlg:<id>), story choices, and soon quest/faction
-  // state all share it.
-  `
-  CREATE TABLE dialogues (
-    id TEXT PRIMARY KEY,
-    actor_slug TEXT NOT NULL,
-    start_node TEXT NOT NULL,
-    priority INTEGER NOT NULL DEFAULT 0,
-    once INTEGER NOT NULL DEFAULT 0,
-    requires TEXT,
-    forbids TEXT,
-    content_hash TEXT NOT NULL,
-    updated_at INTEGER NOT NULL
-  );
-  CREATE INDEX idx_dialogues_actor ON dialogues(actor_slug);
-  CREATE TABLE dialogue_nodes (
-    dialogue_id TEXT NOT NULL REFERENCES dialogues(id) ON DELETE CASCADE,
-    node_id TEXT NOT NULL,
-    idx INTEGER NOT NULL,
-    speaker TEXT,
-    text TEXT NOT NULL,
-    next_node TEXT,
-    hooks TEXT,
-    PRIMARY KEY (dialogue_id, node_id)
-  );
-  CREATE TABLE dialogue_choices (
-    dialogue_id TEXT NOT NULL REFERENCES dialogues(id) ON DELETE CASCADE,
-    node_id TEXT NOT NULL,
-    idx INTEGER NOT NULL,
-    text TEXT NOT NULL,
-    next_node TEXT,
-    requires TEXT,
-    forbids TEXT,
-    set_flags TEXT,
-    PRIMARY KEY (dialogue_id, node_id, idx)
-  );
-  CREATE TABLE character_flags (
-    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
-    flag TEXT NOT NULL,
-    value INTEGER NOT NULL DEFAULT 1,
-    set_at INTEGER NOT NULL,
-    PRIMARY KEY (character_id, flag)
-  );
-  `,
-  // 20 — dialogues v2: THE DATABASE IS THE TRUTH, and dialogues stand
-  // alone. Two structural changes over v19 (which shipped a day
-  // earlier, seed-data only — safe to rebuild):
-  //   1. The tree loses its actor column; a dialogue_bindings table
-  //      is the ONLY tie between a conversation and the world
-  //      (kind + target: 'actor' today, props/items later). One tree
-  //      can hang on many targets, each with its own priority.
-  //   2. Rows carry TWO hashes. content_hash = what the row holds
-  //      now; authored_hash = the shipped JSON that last seeded it.
-  //      While they match, the row is a pure seed and newer shipped
-  //      JSON may update it; the moment tooling edits a row (and
-  //      bumps content_hash), the pair diverges and no re-seed will
-  //      ever clobber the tool's work. authored_hash NULL = born in
-  //      the tooling, no shipped counterpart at all.
-  // JSON files remain the import/export envelope; db/dialogues.ts
-  // owns the seed/export logic.
-  `
-  DROP TABLE dialogue_choices;
-  DROP TABLE dialogue_nodes;
-  DROP TABLE dialogues;
+
   CREATE TABLE dialogues (
     id TEXT PRIMARY KEY,
     start_node TEXT NOT NULL,
@@ -344,7 +338,7 @@ const MIGRATIONS: string[] = [
     forbids TEXT,
     content_hash TEXT NOT NULL,
     authored_hash TEXT,
-    updated_at INTEGER NOT NULL
+    updated_at BIGINT NOT NULL
   );
   CREATE TABLE dialogue_nodes (
     dialogue_id TEXT NOT NULL REFERENCES dialogues(id) ON DELETE CASCADE,
@@ -375,78 +369,33 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (dialogue_id, kind, target)
   );
   CREATE INDEX idx_dialogue_bindings_target ON dialogue_bindings(kind, target);
-  `,
-  // 21 — actor combat protection: the safety switch over a
-  // disposition. 'invulnerable' = fights but every blow wards to
-  // zero; 'untargetable' = never gets a combat body, attacks pass
-  // straight through (talk stays safe). NULL = disposition alone
-  // rules, exactly as before.
-  `
-  ALTER TABLE npc_actors ADD COLUMN protection TEXT;
-  `,
-  // 22 — routines: the daily lives placed actors keep (content/
-  // routines). Same truth law as dialogues: shipped JSON seeds these
-  // tables, tooling edits them, the game reads only the DB, and the
-  // content_hash/authored_hash pair keeps tool edits sacred. Tasks
-  // are small polymorphic objects (post/path/wander) and ride as
-  // JSON TEXT sockets, not relations — one row per schedule window.
-  `
+
   CREATE TABLE routines (
     id TEXT PRIMARY KEY,
     base TEXT NOT NULL,
     content_hash TEXT NOT NULL,
     authored_hash TEXT,
-    updated_at INTEGER NOT NULL
+    updated_at BIGINT NOT NULL
   );
   CREATE TABLE routine_slots (
     routine_id TEXT NOT NULL REFERENCES routines(id) ON DELETE CASCADE,
     idx INTEGER NOT NULL,
-    from_hours REAL NOT NULL,
-    to_hours REAL NOT NULL,
+    from_hours DOUBLE PRECISION NOT NULL,
+    to_hours DOUBLE PRECISION NOT NULL,
     task TEXT NOT NULL,
     PRIMARY KEY (routine_id, idx)
   );
-  `,
-  // 23 — recipe knowledge: which non-core recipes a character has
-  // learned (trainer scrolls, chest finds). Row-presence IS the
-  // unlock, the same law character_skills uses for hidden skills —
-  // core recipes never get rows because everyone knows them.
-  `
-  CREATE TABLE character_recipes (
-    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
-    recipe TEXT NOT NULL,
-    learned_at INTEGER NOT NULL,
-    PRIMARY KEY (character_id, recipe)
-  );
-  `,
-  // 24 — the content CMS: bestiary defs and loot tables become
-  // DB-first docs under the dialogues two-hash truth law (content_hash
-  // = what the row holds, authored_hash = the shipped JSON that last
-  // seeded it; divergence marks a tool-owned row that re-seeds never
-  // clobber). Docs are whole JSON defs — the validators in content/
-  // are the schema. npc_actors joins the same law via authored_hash
-  // (existing rows are pure seeds, so it starts equal to content_hash).
-  `
+
   CREATE TABLE content_docs (
     kind TEXT NOT NULL,
     id TEXT NOT NULL,
     doc TEXT NOT NULL,
     content_hash TEXT NOT NULL,
     authored_hash TEXT,
-    updated_at INTEGER NOT NULL,
+    updated_at BIGINT NOT NULL,
     PRIMARY KEY (kind, id)
   );
-  ALTER TABLE npc_actors ADD COLUMN authored_hash TEXT;
-  UPDATE npc_actors SET authored_hash = content_hash;
-  `,
-  // 25 — the world_pois ledger: the procedural POI system stores only
-  // DEVIATIONS from determinism (the ledger-records-deviations law).
-  // A decided cell is written once — poi_id NULL means "decided
-  // empty", so it never re-rolls by accident; epoch is the
-  // regeneration lever (bumping it re-rolls the cell on fresh RNG
-  // streams); cleared_at records the last full garrison wipe for the
-  // phase-3 fallow sweep.
-  `
+
   CREATE TABLE world_pois (
     cell_x INTEGER NOT NULL,
     cell_y INTEGER NOT NULL,
@@ -456,91 +405,91 @@ const MIGRATIONS: string[] = [
     tier INTEGER,
     anchor_x INTEGER,
     anchor_y INTEGER,
-    first_seen_at INTEGER NOT NULL,
-    cleared_at INTEGER,
+    first_seen_at BIGINT NOT NULL,
+    cleared_at BIGINT,
     PRIMARY KEY (cell_x, cell_y)
   );
-  `,
-  // 26 — the claimed hearth: interacting with a bed makes it home
-  // (home_x/home_y are the bed's TILE, NULL = never claimed). Defeat
-  // wakes you beside it and /recall carries you back on a long
-  // cooldown; hearth_at stamps the last recall so the wait survives
-  // logout.
-  `
-  ALTER TABLE characters ADD COLUMN home_x INTEGER;
-  ALTER TABLE characters ADD COLUMN home_y INTEGER;
-  ALTER TABLE characters ADD COLUMN hearth_at INTEGER NOT NULL DEFAULT 0;
-  `,
-  // 27 — the social ledger: friendships are MUTUAL and stored as two
-  // mirrored rows written in one transaction, so "who are my friends"
-  // stays a single-key indexed SELECT (the row-presence house pattern).
-  // friend_requests is the directional pending edge; a mutual request
-  // auto-accepts at the handler, so between any two characters at most
-  // one direction ever holds a pending row.
-  `
+
   CREATE TABLE character_friends (
     character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
     friend_id    INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
-    created_at   INTEGER NOT NULL,
+    created_at   BIGINT NOT NULL,
     PRIMARY KEY (character_id, friend_id),
     CHECK (character_id <> friend_id)
   );
   CREATE TABLE friend_requests (
     from_id    INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
     to_id      INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
-    created_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
     PRIMARY KEY (from_id, to_id),
     CHECK (from_id <> to_id)
   );
   CREATE INDEX idx_friend_requests_to ON friend_requests(to_id);
-  `,
-  // 28 — player-written signs. The board is a built tile like any
-  // other (built_tiles owns the furniture); this row owns the WORDS,
-  // keyed by the same tile so the pair rises and falls together —
-  // demolishing the post deletes its text. owner_character_id is the
-  // edit right and never changes hands: only the hand that raised the
-  // sign may rewrite it. Lines are stored as one newline-joined blob
-  // because they are display copy, never queried.
-  `
+
   CREATE TABLE signs (
     tx INTEGER NOT NULL,
     ty INTEGER NOT NULL,
     title TEXT NOT NULL DEFAULT '',
     lines TEXT NOT NULL DEFAULT '',
     owner_character_id INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
+    updated_at BIGINT NOT NULL,
     PRIMARY KEY (tx, ty)
   );
   `,
 ];
 
-export function openDb(path?: string): DatabaseSync {
-  let dbPath = path;
-  if (!dbPath) {
-    mkdirSync(config.dataDir, { recursive: true });
-    dbPath = join(config.dataDir, 'arx.db');
+/**
+ * Open (and migrate) the game database. No URL = the configured one;
+ * a missing database is created on the fly so a fresh checkout boots
+ * with nothing but `postgres` running.
+ */
+export async function openDb(url?: string): Promise<Db> {
+  const target = url ?? config.databaseUrl;
+  let client = new pg.Client({ connectionString: target });
+  try {
+    await client.connect();
+  } catch (err) {
+    if ((err as { code?: string }).code !== '3D000') throw err; // not "database does not exist"
+    await createDatabase(target);
+    client = new pg.Client({ connectionString: target });
+    await client.connect();
   }
-  const db = new DatabaseSync(dbPath);
-  db.exec('PRAGMA journal_mode = WAL;');
-  db.exec('PRAGMA foreign_keys = ON;');
-  migrate(db);
+  const db = new Db(client);
+  await migrate(db);
   return db;
 }
 
-function migrate(db: DatabaseSync): void {
-  const row = db.prepare('PRAGMA user_version').get() as { user_version: number };
-  let version = row.user_version;
+async function createDatabase(target: string): Promise<void> {
+  const parsed = new URL(target);
+  const dbName = parsed.pathname.replace(/^\//, '');
+  if (!/^[a-z_][a-z0-9_]*$/i.test(dbName)) throw new Error(`cannot auto-create database '${dbName}'`);
+  parsed.pathname = '/postgres';
+  const admin = new pg.Client({ connectionString: parsed.toString() });
+  await admin.connect();
+  try {
+    await admin.query(`CREATE DATABASE "${dbName}"`);
+    console.log(`[db] created database '${dbName}'`);
+  } finally {
+    await admin.end();
+  }
+}
+
+async function migrate(db: Db): Promise<void> {
+  await db.run(
+    'CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at BIGINT NOT NULL)',
+  );
+  const row = await db.get<{ v: number | null }>('SELECT MAX(version) AS v FROM schema_migrations');
+  let version = row?.v ?? 0;
   while (version < MIGRATIONS.length) {
-    db.exec('BEGIN');
-    try {
-      db.exec(MIGRATIONS[version]!);
-      version++;
-      db.exec(`PRAGMA user_version = ${version}`);
-      db.exec('COMMIT');
-      console.log(`[db] migrated to schema v${version}`);
-    } catch (err) {
-      db.exec('ROLLBACK');
-      throw err;
-    }
+    const next = version + 1;
+    await db.transaction(async (tx) => {
+      await tx.run(MIGRATIONS[next - 1]!);
+      await tx.run('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)', [
+        next,
+        Date.now(),
+      ]);
+    });
+    version = next;
+    console.log(`[db] migrated to schema v${version}`);
   }
 }

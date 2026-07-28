@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import type { DatabaseSync } from 'node:sqlite';
+import type { Db } from '../db/db.js';
 import {
   AUTHORED_GEOGRAPHY,
   AUTHORED_LOOT_TABLES,
@@ -85,7 +85,7 @@ export type MapsApiHandler = (req: IncomingMessage, res: ServerResponse) => Prom
 export function createMapsApi(
   game: GameServer,
   builtinZones: ReadonlyMap<string, ZoneDef>,
-  db: DatabaseSync,
+  db: Db,
 ): MapsApiHandler {
   const mapsDir = join(config.dataDir, 'maps');
 
@@ -166,7 +166,7 @@ export function createMapsApi(
         const snap = game.worldSnapshot();
         const def = geographySnapshot();
         const edited =
-          loadContentDocs(db, 'geography').find((d) => d.id === 'world')?.edited ?? false;
+          (await loadContentDocs(db, 'geography')).find((d) => d.id === 'world')?.edited ?? false;
         sendJson(res, 200, {
           ...snap,
           geography: def,
@@ -194,7 +194,7 @@ export function createMapsApi(
         if (req.method === 'GET') {
           const def = geographySnapshot();
           const edited =
-            loadContentDocs(db, 'geography').find((d) => d.id === 'world')?.edited ?? false;
+            (await loadContentDocs(db, 'geography')).find((d) => d.id === 'world')?.edited ?? false;
           sendJson(res, 200, {
             def,
             edited,
@@ -215,14 +215,14 @@ export function createMapsApi(
             sendJson(res, 400, { error: result.errors.join('; ') });
             return true;
           }
-          importContentDoc(db, 'geography', 'world', result.def);
+          await importContentDoc(db, 'geography', 'world', result.def);
           const swept = game.reloadGeography(result.def);
           console.log(`[content] geography saved + live (world regenerating)`);
           sendJson(res, 200, { ok: true, swept, warnings: geographyWarnings(result.def) });
           return true;
         }
         if (req.method === 'DELETE') {
-          const outcome = revertContentDoc(db, 'geography', 'world', AUTHORED_GEOGRAPHY);
+          const outcome = await revertContentDoc(db, 'geography', 'world', AUTHORED_GEOGRAPHY);
           const swept = game.reloadGeography({
             routes: AUTHORED_GEOGRAPHY.routes.map((r) => ({ ...r, pts: r.pts.map((p) => ({ ...p })) })),
             sites: AUTHORED_GEOGRAPHY.sites.map((s) => ({ ...s })),
@@ -323,7 +323,7 @@ export function createMapsApi(
 
       if (url.pathname === '/dev/content/npcs' && req.method === 'GET') {
         const edited = new Set(
-          loadContentDocs(db, 'npc').filter((d) => d.edited).map((d) => d.id),
+          (await loadContentDocs(db, 'npc')).filter((d) => d.edited).map((d) => d.id),
         );
         sendJson(res, 200, {
           npcs: [...NPCS.values()].map((d) => ({
@@ -357,7 +357,7 @@ export function createMapsApi(
             sendJson(res, 400, { error: errors.join('; ') });
             return true;
           }
-          importContentDoc(db, 'npc', id, doc);
+          await importContentDoc(db, 'npc', id, doc);
           const next = new Map(NPCS);
           next.set(id, doc);
           replaceNpcDefs(next.values());
@@ -368,7 +368,7 @@ export function createMapsApi(
         }
         if (req.method === 'DELETE') {
           const authored = AUTHORED_NPCS.get(id) ?? null;
-          const outcome = revertContentDoc(db, 'npc', id, authored);
+          const outcome = await revertContentDoc(db, 'npc', id, authored);
           const next = new Map(NPCS);
           if (authored) next.set(id, authored);
           else next.delete(id);
@@ -382,7 +382,7 @@ export function createMapsApi(
 
       if (url.pathname === '/dev/content/loot' && req.method === 'GET') {
         const edited = new Set(
-          loadContentDocs(db, 'loot').filter((d) => d.edited).map((d) => d.id),
+          (await loadContentDocs(db, 'loot')).filter((d) => d.edited).map((d) => d.id),
         );
         sendJson(res, 200, {
           tables: [...LOOT_TABLES.values()].map((t) => ({
@@ -415,7 +415,7 @@ export function createMapsApi(
             sendJson(res, 400, { error: errors.join('; ') });
             return true;
           }
-          importContentDoc(db, 'loot', id, doc);
+          await importContentDoc(db, 'loot', id, doc);
           replaceLootTables(candidate.values());
           console.log(`[content] loot table '${id}' saved + live`);
           sendJson(res, 200, { ok: true });
@@ -433,7 +433,7 @@ export function createMapsApi(
             });
             return true;
           }
-          const outcome = revertContentDoc(db, 'loot', id, authored);
+          const outcome = await revertContentDoc(db, 'loot', id, authored);
           replaceLootTables(candidate.values());
           console.log(`[content] loot table '${id}' ${outcome}`);
           sendJson(res, 200, { ok: true, outcome });
@@ -442,8 +442,8 @@ export function createMapsApi(
       }
 
       if (url.pathname === '/dev/content/actors' && req.method === 'GET') {
-        const load = loadNpcActors(db);
-        const edited = editedActorSlugs(db);
+        const load = await loadNpcActors(db);
+        const edited = await editedActorSlugs(db);
         sendJson(res, 200, {
           actors: load.actors.map((a) => ({
             def: a,
@@ -469,7 +469,7 @@ export function createMapsApi(
           }
           let actor: NpcActorDef;
           try {
-            actor = importNpcActor(db, raw);
+            actor = await importNpcActor(db, raw);
           } catch (err) {
             sendJson(res, 400, { error: (err as Error).message });
             return true;
@@ -481,7 +481,7 @@ export function createMapsApi(
         }
         if (req.method === 'DELETE') {
           const authored = NPC_ACTORS.get(slug) ?? null;
-          const outcome = revertNpcActor(db, slug, authored);
+          const outcome = await revertNpcActor(db, slug, authored);
           game.reloadActorDef(slug, authored);
           console.log(`[content] actor '${slug}' ${outcome}`);
           sendJson(res, 200, { ok: true, outcome });
@@ -497,7 +497,7 @@ export function createMapsApi(
 
       if (url.pathname === '/dev/content/pois' && req.method === 'GET') {
         const edited = new Set(
-          loadContentDocs(db, 'poi').filter((d) => d.edited).map((d) => d.id),
+          (await loadContentDocs(db, 'poi')).filter((d) => d.edited).map((d) => d.id),
         );
         sendJson(res, 200, {
           pois: [...POI_DEFS.values()].map((d) => ({
@@ -527,7 +527,7 @@ export function createMapsApi(
             sendJson(res, 400, { error: result.errors.join('; ') });
             return true;
           }
-          importContentDoc(db, 'poi', id, result.def);
+          await importContentDoc(db, 'poi', id, result.def);
           const next = new Map(POI_DEFS);
           next.set(id, result.def);
           replacePoiDefs(next.values());
@@ -538,7 +538,7 @@ export function createMapsApi(
         }
         if (req.method === 'DELETE') {
           const authored = AUTHORED_POI_DEFS.get(id) ?? null;
-          const outcome = revertContentDoc(db, 'poi', id, authored);
+          const outcome = await revertContentDoc(db, 'poi', id, authored);
           const next = new Map(POI_DEFS);
           if (authored) next.set(id, authored);
           else next.delete(id);
@@ -635,8 +635,8 @@ export function createMapsApi(
       // breath — the next Talk speaks the edit.
 
       if (url.pathname === '/dev/content/dialogues' && req.method === 'GET') {
-        const load = loadDialogues(db, { actorIds: game.actorIds() });
-        const edited = editedDialogueIds(db);
+        const load = await loadDialogues(db, { actorIds: game.actorIds() });
+        const edited = await editedDialogueIds(db);
         sendJson(res, 200, {
           dialogues: load.dialogues.map((d) => ({
             def: d,
@@ -660,20 +660,20 @@ export function createMapsApi(
             sendJson(res, 400, { error: (err as Error).message });
             return true;
           }
-          const result = importDialogue(db, raw, { actorIds: game.actorIds() });
+          const result = await importDialogue(db, raw, { actorIds: game.actorIds() });
           if (!result.ok) {
             sendJson(res, 400, { error: result.errors.join('; ') });
             return true;
           }
-          const fresh = game.reloadDialogues();
+          const fresh = await game.reloadDialogues();
           console.log(`[content] dialogue '${id}' saved + live (${fresh.count} registered)`);
           sendJson(res, 200, { ok: true });
           return true;
         }
         if (req.method === 'DELETE') {
           const authored = DIALOGUES.get(id) ?? null;
-          const outcome = revertDialogue(db, id, authored);
-          game.reloadDialogues();
+          const outcome = await revertDialogue(db, id, authored);
+          await game.reloadDialogues();
           console.log(`[content] dialogue '${id}' ${outcome}`);
           sendJson(res, 200, { ok: true, outcome });
           return true;

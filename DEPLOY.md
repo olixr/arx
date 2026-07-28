@@ -12,9 +12,11 @@ Arx is two pieces on one domain:
 
 ## Requirements
 
-- **Node.js ≥ 22.13** on the server (the world DB uses the built-in
-  `node:sqlite` — no native deps). Pick Node 22 LTS when provisioning
-  in Forge, or install via nvm for the forge user.
+- **Node.js ≥ 22.13** on the server. Pick Node 22 LTS when
+  provisioning in Forge, or install via nvm for the forge user.
+- **PostgreSQL** (any supported version; 15+ recommended) — select it
+  when provisioning the Forge server, or install it later from the
+  server's Database panel.
 - No PHP, no MySQL/Redis needed.
 
 ## 1. Forge site
@@ -43,7 +45,14 @@ into the `server { }` block, above the default `location /`. They:
   refuses it in production),
 - long-cache `/assets/` (content-hashed filenames).
 
-## 3. Environment
+## 3. Database
+
+In Forge (server → **Database**) create a database named `arx` and a
+user (Forge's default `forge` user is fine) with a strong password.
+That's all — the server runs its own schema migrations at boot, and
+the `citext` extension it needs is trusted (no superuser required).
+
+## 4. Environment
 
 Paste the contents of `.env.production.example` into Forge's
 **Environment** tab for the site (it lands at `/home/forge/arx.gg/.env`
@@ -53,16 +62,16 @@ and Forge links it into each release), and create the data dir:
 mkdir -p /home/forge/arx-data
 ```
 
-Review the env — notably `DATA_DIR=/home/forge/arx-data` keeps the
-SQLite world **outside the repo** so no git operation can ever touch
-player data. The deploy script ships authored content (prefabs, map
-overrides) into it on every deploy.
+Review the env — set the real database password in `DATABASE_URL`.
+`DATA_DIR=/home/forge/arx-data` holds disk-authored content (map
+overrides, POI prefabs); the deploy script ships the repo's data/ into
+it on every deploy. All player data lives in Postgres.
 
 Production safety defaults: with `NODE_ENV=production`, dev chat
 commands, the `/dev` studio API, and guest (accountless) joins are all
 **off** unless explicitly enabled.
 
-## 4. Supervisor (the game-server process)
+## 5. Supervisor (the game-server process)
 
 Either install the shipped program (recommended — gives it the stable
 name `arx`):
@@ -88,7 +97,7 @@ scripts/arxctl.sh restart   # after every deploy
 scripts/arxctl.sh stop
 ```
 
-## 5. Forge deploy script
+## 6. Forge deploy script
 
 Release-based (Forge's default `$CREATE_RELEASE` scaffold, extended):
 
@@ -126,7 +135,7 @@ connected players for a couple of seconds — a single authoritative
 world process can't hand off live sessions, so deploy at quiet hours
 once there's a population.
 
-## 6. Verify
+## 7. Verify
 
 - `https://arx.gg` loads the game and the login panel.
 - `https://arx.gg/healthz` returns `{"ok":true,…}`.
@@ -142,7 +151,13 @@ once there's a population.
   SSH-tunnel instead: `ssh -L 8787:127.0.0.1:8787 forge@arx.gg`, run
   the studio locally against the tunnel with `DEV_COMMANDS=1` set on
   the server only for the session — or better, edit locally and deploy.
-- **Backups:** the whole world is `$DATA_DIR/arx.db` (plus `-wal`).
-  Forge scheduled job: `sqlite3 /home/forge/arx-data/arx.db ".backup /home/forge/backups/arx-$(date +\%F).db"`.
+- **Backups:** the whole world is the `arx` Postgres database. Forge
+  scheduled job (daily): `pg_dump -Fc arx > /home/forge/backups/arx-$(date +\%F).dump`
+  — restore with `pg_restore -d arx --clean`. Forge's own database
+  backup feature works too.
+- **Migrating an old SQLite world:** if you have a pre-Postgres
+  `arx.db`, copy it to the server and run
+  `npm run migrate:sqlite -w @arx/server -- /path/to/arx.db` once,
+  before opening the doors.
 - **Scaling:** one process = one world. Keep it on one box; move the
   client to a CDN later if asset bandwidth ever matters.

@@ -19,11 +19,11 @@ import { importDialogue, loadDialogues } from '../db/dialogues.js';
  */
 
 const [, , command, ...args] = process.argv;
-const db = openDb();
+const db = await openDb();
 
 switch (command) {
   case 'list': {
-    const { dialogues, errors } = loadDialogues(db);
+    const { dialogues, errors } = await loadDialogues(db);
     for (const d of dialogues) {
       const where = (d.bindings ?? []).map((b) => `${b.kind}:${b.target}`).join(', ') || 'UNBOUND';
       console.log(`${d.id}  (${d.nodes.length} nodes)  → ${where}`);
@@ -34,7 +34,7 @@ switch (command) {
   case 'export': {
     const outDir = args[0] ?? join(process.cwd(), 'data', 'dialogues-export');
     mkdirSync(outDir, { recursive: true });
-    const { dialogues, errors } = loadDialogues(db);
+    const { dialogues, errors } = await loadDialogues(db);
     for (const d of dialogues) {
       writeFileSync(join(outDir, `${d.id}.json`), `${JSON.stringify(d, null, 2)}\n`);
     }
@@ -50,7 +50,7 @@ switch (command) {
     let ok = 0;
     for (const file of args) {
       const raw: unknown = JSON.parse(readFileSync(file, 'utf8'));
-      const res = importDialogue(db, raw);
+      const res = await importDialogue(db, raw);
       if (res.ok) {
         ok++;
         console.log(`imported ${file}`);
@@ -66,3 +66,5 @@ switch (command) {
     console.error('usage: dialogues <list | export [outDir] | import <file.json ...>>');
     process.exit(1);
 }
+
+await db.close();

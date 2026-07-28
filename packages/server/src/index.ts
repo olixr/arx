@@ -73,8 +73,10 @@ try {
   // no data/maps directory — built-in zones only
 }
 
-const db = openDb();
+const db = await openDb();
 const accounts = new AccountStore(db);
+// Character names serve the sign-byline hot path synchronously.
+await accounts.preloadCharacterNames();
 
 // Bestiary + loot tables, DB-first under the two-hash truth law: the
 // shipped registries seed content_docs, the runtime reads BACK from
@@ -82,17 +84,17 @@ const accounts = new AccountStore(db);
 // resolves through them at call time. Invalid docs are reported and
 // the authored def stands in, so a bad tool edit can't brick a boot.
 {
-  const npcSeed = seedContentDocs(
+  const npcSeed = await seedContentDocs(
     db,
     'npc',
     [...AUTHORED_NPCS.values()].map((d) => ({ id: d.id, doc: d })),
   );
-  const lootSeed = seedContentDocs(
+  const lootSeed = await seedContentDocs(
     db,
     'loot',
     [...AUTHORED_LOOT_TABLES.values()].map((t) => ({ id: t.id, doc: t })),
   );
-  const lootDocs = loadContentDocs(db, 'loot');
+  const lootDocs = await loadContentDocs(db, 'loot');
   const lootDefs = lootDocs.map((d) => d.doc as LootTableDef);
   const lootProblems = lootTableErrors(lootDefs);
   if (lootProblems.length > 0) {
@@ -101,7 +103,7 @@ const accounts = new AccountStore(db);
     replaceLootTables(lootDefs);
   }
   const lootIds = new Set((lootProblems.length > 0 ? [...AUTHORED_LOOT_TABLES.keys()] : lootDefs.map((t) => t.id)));
-  const npcDocs = loadContentDocs(db, 'npc');
+  const npcDocs = await loadContentDocs(db, 'npc');
   const npcIds = new Set(npcDocs.map((d) => d.id));
   const goodNpcs: NpcDef[] = [];
   for (const docRow of npcDocs) {
@@ -124,12 +126,12 @@ const accounts = new AccountStore(db);
 
   // POI archetypes join the same law: authored JSON seeds, DB rows
   // load back through the one validator, the live registry swaps.
-  const poiSeed = seedContentDocs(
+  const poiSeed = await seedContentDocs(
     db,
     'poi',
     [...AUTHORED_POI_DEFS.values()].map((d) => ({ id: d.id, doc: d })),
   );
-  const poiDocs = loadContentDocs(db, 'poi');
+  const poiDocs = await loadContentDocs(db, 'poi');
   const goodPois: PoiDef[] = [];
   for (const docRow of poiDocs) {
     const res = validatePoiDef(docRow.doc);
@@ -151,8 +153,8 @@ const accounts = new AccountStore(db);
   // plan — roads, authored wild sites, anchors, landform fields,
   // planned rects. It MUST swap in before WorldSource exists: the
   // first generated chunk and every boot sweep read the live plan.
-  seedContentDocs(db, 'geography', [{ id: 'world', doc: AUTHORED_GEOGRAPHY }]);
-  const geoDocs = loadContentDocs(db, 'geography');
+  await seedContentDocs(db, 'geography', [{ id: 'world', doc: AUTHORED_GEOGRAPHY }]);
+  const geoDocs = await loadContentDocs(db, 'geography');
   const geoRow = geoDocs.find((d) => d.id === 'world');
   if (geoRow) {
     const res = validateGeographyDef(geoRow.doc);
@@ -170,13 +172,13 @@ const accounts = new AccountStore(db);
 }
 
 const world = new WorldSource(config.worldSeed, zones);
-for (const built of accounts.loadBuiltTiles()) {
+for (const built of await accounts.loadBuiltTiles()) {
   world.registerBuilt(built.tx, built.ty, built.tile, built.owner, built.prevTile);
 }
 const game = new GameServer(world, accounts);
-game.loadCrops(accounts.loadCrops());
-game.loadSigns(accounts.loadSigns());
-game.initPois(accounts.loadPoiCells());
+game.loadCrops(await accounts.loadCrops());
+game.loadSigns(await accounts.loadSigns());
+game.initPois(await accounts.loadPoiCells());
 for (const zone of zones) {
   if (zone.spawns && zone.spawns.length > 0) game.registerSpawns(zone.spawns, zone.id);
 }
@@ -184,16 +186,16 @@ for (const zone of zones) {
 // NPC actors, DB-first: authored JSON seeds the relational tables,
 // then the runtime roster is read BACK from the DB — the same tables
 // dev tools will edit. One validator guards both directions.
-const actorSync = syncNpcActors(db, [...NPC_ACTORS.values()]);
-const actorLoad = loadNpcActors(db);
+const actorSync = await syncNpcActors(db, [...NPC_ACTORS.values()]);
+const actorLoad = await loadNpcActors(db);
 for (const err of actorLoad.errors) console.warn(`[npc] invalid DB actor: ${err}`);
 game.registerActors(actorLoad.actors);
 
 // Routines, DB-first under the same truth law — registered BEFORE the
 // placements that reference them, so a dangling routine id warns at
 // boot instead of failing silently at spawn time.
-const rtnSeed = seedRoutines(db, [...ROUTINES.values()]);
-const rtnLoad = loadRoutines(db);
+const rtnSeed = await seedRoutines(db, [...ROUTINES.values()]);
+const rtnLoad = await loadRoutines(db);
 for (const err of rtnLoad.errors) console.warn(`[npc] invalid DB routine: ${err}`);
 game.registerRoutines(rtnLoad.routines);
 game.routineSource = () => loadRoutines(db); // /routinereload's live wire
@@ -214,8 +216,8 @@ console.log(
 
 // Dialogue trees — THE DATABASE IS THE TRUTH. Shipped JSON seeds it
 // (respecting every tool edit); the runtime reads only the DB.
-const dlgSeed = seedDialogues(db, [...DIALOGUES.values()]);
-const dlgLoad = loadDialogues(db, { actorIds: game.actorIds() });
+const dlgSeed = await seedDialogues(db, [...DIALOGUES.values()]);
+const dlgLoad = await loadDialogues(db, { actorIds: game.actorIds() });
 for (const err of dlgLoad.errors) console.warn(`[npc] invalid DB dialogue: ${err}`);
 game.registerDialogues(dlgLoad.dialogues);
 // The live wire for /dlgreload and the Content Studio — validated
@@ -287,7 +289,10 @@ function shutdown(): void {
   game.stop();
   wss.close();
   httpServer.close();
-  process.exit(0);
+  // stop() enqueued the final saves — let the FIFO drain before exit.
+  db.close()
+    .catch(() => undefined)
+    .finally(() => process.exit(0));
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);

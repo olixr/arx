@@ -8,15 +8,18 @@
     "start": "tsx src/index.ts",
     "test": "tsx --test 'src/**/*.test.ts'",
     "dialogues": "tsx src/tools/dialoguesCli.ts",
-    "routines": "tsx src/tools/routinesCli.ts"
+    "routines": "tsx src/tools/routinesCli.ts",
+    "migrate:sqlite": "tsx src/tools/migrateSqliteToPg.ts"
   },
   "dependencies": {
-    "@arx/shared": "*",
     "@arx/content": "*",
+    "@arx/shared": "*",
+    "pg": "^8.22.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.20.0",
     "@types/ws": "^8.5.0",
     "tsx": "^4.19.0"
   }
