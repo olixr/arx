@@ -29,12 +29,12 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/ws': {
-        target: 'ws://localhost:8787',
+        target: 'ws://localhost:8790',
         ws: true,
       },
       // The map editor's save/load/hot-reload API on the game server.
       '/dev': {
-        target: 'http://localhost:8787',
+        target: 'http://localhost:8790',
       },
     },
   },

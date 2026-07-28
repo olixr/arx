@@ -11,7 +11,7 @@ import {
 } from '@arx/shared';
 
 const count = Number.parseInt(process.argv[2] ?? '5', 10);
-const url = process.argv[3] ?? 'ws://localhost:8787/ws';
+const url = process.argv[3] ?? 'ws://localhost:8790/ws';
 
 function startBot(index: number): void {
   const ws = new WebSocket(url);

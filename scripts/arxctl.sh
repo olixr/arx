@@ -25,7 +25,7 @@ if [ -f "$ENV_FILE" ]; then
 fi
 
 PROGRAM="${ARX_PROGRAM:-arx}"
-PORT="${PORT:-8787}"
+PORT="${PORT:-8790}"
 ADDR="${HOST:-127.0.0.1}"
 [ "$ADDR" = "0.0.0.0" ] && ADDR="127.0.0.1"
 

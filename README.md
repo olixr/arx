@@ -11,7 +11,7 @@ driver). Live at [arx.gg](https://arx.gg).
 
 ```bash
 npm install
-npm run dev        # game server (ws://localhost:8787) + client (http://localhost:5173)
+npm run dev        # game server (ws://localhost:8790) + client (http://localhost:5173)
 ```
 
 Needs a local PostgreSQL running (`brew services start postgresql@17`

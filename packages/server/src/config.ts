@@ -17,7 +17,7 @@ function envFlag(name: string): boolean {
 }
 
 export const config = {
-  port: envInt('PORT', 8787),
+  port: envInt('PORT', 8790),
   /**
    * Postgres connection, one knob per part — credentials never ride
    * inside a URL. The defaults reach a local server as the OS user

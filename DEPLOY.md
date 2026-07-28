@@ -6,7 +6,7 @@ Arx is two pieces on one domain:
    `<repo>/public/`. Nginx serves it directly; that directory is the
    site's web root.
 2. **Game server** — a Node WebSocket process on loopback
-   (`127.0.0.1:8787`), kept alive by supervisor. Nginx proxies
+   (`127.0.0.1:8790`), kept alive by supervisor. Nginx proxies
    `wss://arx.gg/ws` to it. All client URLs are origin-relative
    (`wss://<host>/ws`), so nothing is domain-specific in the bundle.
 
@@ -149,7 +149,7 @@ once there's a population.
 - **Studios in production:** the map editor / Content Studio are not
   in the production bundle (`STUDIO=1 npm run build` includes them) and
   the `/dev` API is disabled and nginx-blocked. To edit the live world,
-  SSH-tunnel instead: `ssh -L 8787:127.0.0.1:8787 forge@arx.gg`, run
+  SSH-tunnel instead: `ssh -L 8790:127.0.0.1:8790 forge@arx.gg`, run
   the studio locally against the tunnel with `DEV_COMMANDS=1` set on
   the server only for the session — or better, edit locally and deploy.
 - **Backups:** the whole world is the `arx` Postgres database. Forge
