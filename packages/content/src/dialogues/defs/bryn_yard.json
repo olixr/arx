@@ -5,7 +5,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Yard's open. What do you need?",
+      "text": "Yard's open. Speak.",
       "choices": [
         { "text": "Remind me of the three schools.", "next": "recap" },
         {
@@ -21,23 +21,23 @@
     },
     {
       "id": "recap",
-      "text": "Blade wants rhythm — three cuts, the third lands heaviest, side-step what swings back. Bow wants patience — *hold the draw* until it sings, then loose. Staff wants neither, just aim. And whatever you carry, your abilities ride your bar and your techniques grow with the school. Now stop reciting and go hit something.",
+      "text": "Sword: three cuts, third lands hardest, dash what you can't trade. Bow: full draw or don't bother. Staff: aim, the spark does the rest. That's the drill. Now go use it.",
       "next": "hub"
     },
     {
       "id": "praise",
-      "text": "So it HAS stopped squeaking. Well cut, waker. You found the chest too, I hope — never leave a chest unopened, it's disrespectful. Here, take these: {item:arrow}. A quiet shed and a full quiver — that's as close to a medal as Dawnmead mints. When Rowan sends you east, you'll do fine.",
+      "text": "So it HAS gone quiet. Well cut, waker. You opened the chest too, I hope — never leave a chest shut. Here — {item:arrow}, thirty of them. That's as near a medal as this village mints. When Rowan sends you east, you'll do.",
       "hooks": [{ "kind": "give", "item": "arrow", "qty": 30 }],
       "next": "hub"
     },
     {
       "id": "beyond",
-      "text": "Inside our hedgerows nothing will trouble you — the land is settled and it knows it. Past them, the world gets braver the farther you walk: first stray wolves, then camps with watch-fires, and out where the maps go quiet… _things with names_. The wayfarers' waystations are the only friendly lights out there. Distance is the only warning the wild gives. Respect it.",
+      "text": "Inside the hedgerows, nothing will touch you. Past them it gets braver by the mile — stray wolves first, then camps with watch-fires, and out where the maps give up, _things with names_. The wayfarers' lanterns are the only friendly lights out there. Distance is the only warning the wild gives. Respect it.",
       "next": "hub"
     },
     {
       "id": "dismiss",
-      "text": "Then pass through. Mind the racks — edges on that side, splinters on the other."
+      "text": "Then pass through. Mind the racks."
     }
   ]
 }

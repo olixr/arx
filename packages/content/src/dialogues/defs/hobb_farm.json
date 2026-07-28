@@ -5,7 +5,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Mind the gate latch — Bess leans on it when she's bored. Something I can do for you?",
+      "text": "Mind the latch — Bess leans on it when she's bored. Something you need?",
       "choices": [
         { "text": "What do the animals give?", "next": "produce" },
         { "text": "Mind if I practice my swings out here?", "next": "practice" },
@@ -15,22 +15,22 @@
     },
     {
       "id": "produce",
-      "text": "Walk up to a cow with kind intentions and you'll come away with *milk* — Bess allows it, mostly. The hens drop *eggs* when the mood takes them; check the coop floor. Milk, eggs, berries from the brook — that's a breakfast nobody had to bleed for. The world will ask you to bleed for plenty later, so enjoy this part.",
+      "text": "Cow gives *milk* if you walk up gentle. Bess allows it, mostly. Hens drop *eggs* — check the coop floor, mornings are best. Berries by the brook. That's breakfast, and nothing had to bleed for it. Enjoy that while it lasts.",
       "next": "hub"
     },
     {
       "id": "practice",
-      "text": "Not on my girls, you don't — the hens have opinions and Bess holds grudges. Take it to the *old shed* past the ford; the rats there owe everyone in this village. And if a chicken squares up to you anyway… well. You'd win. Try to be gracious about it.",
+      "text": "Not on my animals. The *old shed* past the ford has rats in it — Bryn will tell you the same. If a hen squares up to you anyway, pay her no mind. She does that.",
       "next": "hub"
     },
     {
       "id": "pip",
-      "text": "That's Pip. Mine, allegedly, though I suspect the Ring left him too and the stones won't own up to it. If he asks you what being made of stones is like, I apologize in advance.",
+      "text": "That's Pip. Mine. He has questions for everyone who comes off the stones, and you'll hear them whether you answer or not. He means nothing by it.",
       "next": "hub"
     },
     {
       "id": "farewell",
-      "text": "Aye, it's a good little patch. Gate latch! — sorry. Habit."
+      "text": "Aye. It's a good little patch. — Latch! Sorry. Habit."
     }
   ]
 }

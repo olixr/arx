@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Welcome to the Greenstair \u2014 highest farm in the Dawnlands, and don't let the terraces fool you, the mountain fights for every row. What do you need?",
+      "text": "Oh — a visitor. Hello. Um. This is the Greenstair. Highest farm in the Dawnlands, that's… that's the interesting fact about it. Did you need something?",
       "choices": [
         {
           "text": "How do you farm a mountain?",
@@ -28,17 +28,17 @@
     },
     {
       "id": "how",
-      "text": "Terraces, stubbornness, and reading the sky like Signy reads a queue. Snow in the morning, sun by noon, wind with opinions all day. Lowland farmers get two harvests and no view; I get one harvest and *this* \u2014 he gestures at forty miles of world \u2014 and I've done the arithmetic. I'm ahead.",
+      "text": "Terraces, and patience. Snow in the morning, sun by noon, wind all day — you plant for the row, not the field. Each row has its own weather up here. Its own temper, really. That one by the fence sulks if the wheat crowds it. …People think I'm joking when I say that. The row knows I'm not.",
       "next": "hub"
     },
     {
       "id": "grow",
-      "text": "Wheat and cotton on the high pads, sagewort and moonbell for Wyn behind the fence, carrots that come up sweet as apology \u2014 cold ground does that, concentrates the sugar. The whole terrace eats off these rows and Signy turns the surplus into that immortal stew. If the ford's farmers ever get their cotton scheme going, I'll happily lose that trade and keep the carrots. Root vegetables are where the mountain shows off.",
+      "text": "Wheat and cotton on the high pads. Sagewort and moonbell behind the fence — those are for Wyn, the herbalist, she's particular and so are they, so it works. And carrots. Cold ground makes a carrot sweet — it concentrates the sugar. Signy's stew takes most of them. The carrots don't mind. They like Signy.",
       "next": "hub"
     },
     {
       "id": "bye",
-      "text": "Mind the rows \u2014 and take a carrot if one's leaning. The leaning ones have decided."
+      "text": "Mind the rows. And — take a carrot, if one's leaning. The leaning ones have decided."
     }
   ]
 }

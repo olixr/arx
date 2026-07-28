@@ -5,7 +5,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Still with us, waker? Good. The green suits you.",
+      "text": "There you are, waker. How's the day treating you?",
       "choices": [
         { "text": "Tell me about the Waking Ring.", "next": "ring" },
         { "text": "Who should I see before I go?", "next": "pointers" },
@@ -21,23 +21,23 @@
     },
     {
       "id": "ring",
-      "text": "Five stones, older than any map of them. They sleep for a week or a season, then one dawn the frost melts off them in a ring and someone new is standing where you stood. _Out in the deep wilds stand ruined gates that hum a colder note — cousins to our stones, I fear. One hums and one breathes, and I trust the one that breathes._",
+      "text": "Five stones, older than any map of them. They sleep for a week, sometimes a season — then one dawn the frost melts off them in a ring, and someone new is standing where you stood. _There are ruined gates in the deep wild that look like kin to our stones. I saw one once, years back. I didn't linger._",
       "next": "hub"
     },
     {
       "id": "pointers",
-      "text": "*Bryn* for your arms — south yard. *Iona* for your stomach — the fire by the cottage. *Fen* will talk your ear off about benches and what a log becomes if you ask it nicely. And *Hobb* will let you milk Bess if you stand there looking useful. Small village, full day.",
+      "text": "*Bryn's* in the south yard if your arms want work. *Iona's* at her fire. *Fen* will talk your ear off about his bench, bless him, and *Hobb* will find you something useful if you stand at his gate long enough. Small village. One good day covers it.",
       "next": "hub"
     },
     {
       "id": "road",
-      "text": "Then hear the send-off: you woke with nothing, and look at you — armed, fed, and upright. Take the lane east over the brook and keep the sunrise ahead of you. The frontier grows teeth the farther you walk, but the *wayfarers* keep lantern-lit waystations along the old ways — rest often. And take this — {item:coins} — every road is shorter with a jingle in it. The Ring chose a good one this time. Off you go.",
+      "text": "Then you're ready, and I won't keep you. The lane east crosses the brook and becomes the *First Road* — follow it and you'll raise Amberford, the ford town, inside a day's walk. Rest at the wayfarers' lanterns when the light goes. And take this — {item:coins} — bread money for the road. The Ring chose well this time. Go on, child.",
       "hooks": [{ "kind": "give", "item": "coins", "qty": 30 }],
       "next": "hub"
     },
     {
       "id": "road_again",
-      "text": "East over the bridge, past the last lamp, and the world is yours to name. Watch for wayfarer lanterns when the light goes. And eat something before you set out — pride is not a meal.",
+      "text": "East over the brook, and keep near the lamps after dark. Eat before you set out, too — the road is poor company on an empty stomach.",
       "next": "hub"
     }
   ]

@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Welcome to the *Wanderer's Rest* \u2014 beds, board, news, in whatever order you're hungriest for. Stew's on, fire's fed, and the first rumor's free.",
+      "text": "Welcome to the *Wanderer's Rest* — beds, board, and news, in whatever order you're hungriest for. Stew's on. First rumor's free.",
       "next": "hub"
     },
     {
@@ -44,7 +44,7 @@
           "next": "seal"
         },
         {
-          "text": "The roads \u2014 how are they running?",
+          "text": "The roads — how are they running?",
           "next": "roads"
         },
         {
@@ -55,27 +55,27 @@
     },
     {
       "id": "seal",
-      "text": "The big one: Silverfall's Masons broke the *Undercroft seal*. Twenty years shut and now there's a market down there again, they say \u2014 and kobolds past the rubble line, which they say quieter. Every third stool in this room has an opinion. Bretta's is the only one worth the wood it's sat on: ask her, not me.",
+      "text": "The big one: Silverfall's Masons broke the *Undercroft seal*. Twenty years shut, and now there's a market down there again — and kobolds past the rubble line, which folk say quieter. Every third stool in this room has an opinion on it. If you want one worth having, ask Bretta at the forge. She's mountain-born. She was *there*.",
       "next": "news"
     },
     {
       "id": "roads",
-      "text": "First Road's tame as a barn cat \u2014 hedgerows, wayshrines, the odd goblin scout getting above himself. The High Road is the High Road: fine to the Long Meadow, chancy to the Fork, and past *Edda's lamp* you'd best be the kind of trouble things regret finding. The Redmasks work the middle stretch. Travel mornings, travel loud.",
+      "text": "First Road's tame — hedgerows, wayshrines, the odd goblin scout getting above himself. The High Road is another matter: fine to the Long Meadow, chancy to the Fork, and past *Edda's lamp* you'd best be serious about yourself. The Redmasks work the middle stretch. Travel mornings. Travel loud.",
       "next": "news"
     },
     {
       "id": "strange",
-      "text": "Peld swears something big turned over in the millpond twice last month. Garton swears it was Peld's bell. Perl swears the cows have learnt to open her gate, and I *believe* Perl. Small town \u2014 our strange stays friendly. The road's strange is another jar entirely.",
+      "text": "Peld swears something big turned over in the millpond, twice last month. Garton swears it was Peld's own bell. Perl swears her cows have learnt to open the gate — and I believe *Perl*. Small town. Our strange stays friendly. The road's strange is another jar entirely.",
       "next": "news"
     },
     {
       "id": "osa",
-      "text": "Mam ran this room thirty years \u2014 *Osa*, ask anyone grey enough. When my father passed she said grief needed altitude, kissed the bar, and walked the High Road at sixty. Now she waters caravan mules under Silverfall's wall and writes me once a season to say my stew needs more thyme. She's right. Don't tell her.",
+      "text": "Mam ran this room thirty years — *Osa*, ask anyone grey enough. When my father passed she said grief needed altitude, kissed the bar, and walked the High Road at sixty. Now she waters caravan mules under Silverfall's wall, and writes once a season to say my stew wants more thyme. She's right. Don't you dare tell her.",
       "next": "hub"
     },
     {
       "id": "browse",
-      "text": "Stew, bread, roast, and cake that outsold the sermon last feast-day. Eat something before the road does its arithmetic on you.",
+      "text": "Stew, bread, roast, and a cake that outsold the sermon last feast-day. Sit. Eat. The road can wait an hour.",
       "hooks": [
         {
           "kind": "shop",

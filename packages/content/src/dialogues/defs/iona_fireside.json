@@ -5,7 +5,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Pot's warm, waker. What do you need?",
+      "text": "Pot's warm, love. What do you need?",
       "choices": [
         { "text": "What else can a fire do?", "next": "fires" },
         { "text": "Where do the berries grow?", "next": "where" },
@@ -20,23 +20,23 @@
     },
     {
       "id": "fires",
-      "text": "Anything you can catch or pull from the water, a fire will improve — chicken, beef, the brook's fish once you've the patience for the rod. Build your own fire out in the wild when you learn the knack, but any village hearth serves a traveller. Mine most of all.",
+      "text": "Anything you catch, a fire makes better — chicken, beef, the brook's fish once you've the patience for a rod. Any village fire will serve a traveller, and out in the wild you'll learn to build your own. It's the same knack everywhere.",
       "next": "hub"
     },
     {
       "id": "where",
-      "text": "Along the brook's near bank, south of the bridge — bushes, fibre, sageroot. Take a full pocket; the bank never begrudges it.",
+      "text": "South of the bridge, along the near bank — berries, fibre, sageroot. Take a full pocket. The bank never minds.",
       "next": "hub"
     },
     {
       "id": "spare",
-      "text": "For you? Once. {item:cooked_chicken} — mind, it's hot. After this you cook your own; that's how kindness works when it's doing its job.",
+      "text": "Go on then — once. {item:cooked_chicken} — careful, it's hot. After this you cook your own. That's not me being hard, love. That's me making sure you can.",
       "hooks": [{ "kind": "give", "item": "cooked_chicken", "qty": 1 }],
       "next": "hub"
     },
     {
       "id": "farewell",
-      "text": "Warm hands, full pack, dry boots. Two out of three and you'll live."
+      "text": "Warm hands, dry boots. Go on now."
     }
   ]
 }

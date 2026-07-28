@@ -12,12 +12,12 @@
  "nodes": [
   {
    "id": "truth",
-   "text": "Hold up. New face, north gate \u2014 you get the speech. Short version: this wall is where the polite world ends. The land runs in *bands* \u2014 every mile north of here is meaner than the last, and it does not grade on effort. Goblins in the foothills. Wolves and worse under the Thornveil. Past the Last Lamp, things I write reports about instead of names.",
+   "text": "Hold up. New face at the north gate — you get the speech. Short version: this wall is where the settled land ends. Every mile north is meaner than the last. Goblins in the foothills. Wolves under the Thornveil. Past the Last Lamp — things I don't name in reports. I number them.",
    "next": "ask"
   },
   {
    "id": "ask",
-   "text": "The Waykeepers keep three lamps on the way \u2014 Fernway, the Long Meadow, the Fork. Walk lamp to lamp, sleep behind their walls, and turn back the day the road stops being tired and starts being _interested_ in you. That's the truth as I post it. What you do with it is yours.",
+   "text": "The Waykeepers hold three walled lamps on the way north — *Fernway*, the *Long Meadow*, the *Fork*. Walk lamp to lamp. Sleep behind their walls. The day the road stops feeling tired and starts feeling _interested in you_, turn around. That's the speech. What you do with it is yours.",
    "choices": [
     {
      "text": "Understood, Captain. Lamp to lamp.",
@@ -37,11 +37,11 @@
   },
   {
    "id": "heeded",
-   "text": "Then you're already better equipped than most of the confident ones. See Hask before you go \u2014 tell him I said fix the boots. Road keep you, traveler."
+   "text": "Good. See Hask across the way before you go — sound boots have kept more travelers alive than sound swords. Road keep you."
   },
   {
    "id": "shrugged",
-   "text": "Mm. The confident ones all say that, and the road files them alphabetically. I'll keep a page free in the incident book. Prove me wrong \u2014 I'd genuinely enjoy it."
+   "text": "Mm. They all say that. I'll keep a page free in the incident book. Prove me wrong — I'd like that, honestly."
   }
  ]
 }

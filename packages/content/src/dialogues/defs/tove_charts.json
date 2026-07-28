@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Mind the wet ink — that's someone's inheritance drying. Welcome to Inks & Charts: deeds, charters, wills, and honest maps. Three of those are promises and one's a confession. I'll let you decide which.",
+      "text": "Mind the wet ink — that's someone's inheritance drying. Welcome to Inks & Charts: deeds, charters, wills, and honest maps. And before you ask — yes, the maps are the interesting part. They are ALWAYS the interesting part.",
       "next": "hub"
     },
     {
@@ -37,7 +37,7 @@
     },
     {
       "id": "maps",
-      "text": "An honest map shows its ignorance. Mine have blank patches labeled *I have not been here and neither has anyone I trust* — you'd be amazed how rare that sentence is in cartography. A pretty map that guesses is worse than no map: it sends confident people into the Thornveil at dusk. The Guildhall buys my charts precisely because they admit what they don't know.",
+      "text": "An honest map shows its ignorance. Mine have blank patches labeled *I have not been here, and neither has anyone I trust*. You would be amazed how rare that sentence is in this trade. A pretty map that guesses sends confident people into the Thornveil at dusk — three days' walk south-southwest, roughly, don't quote the roughly. The Guildhall buys my charts because they admit what they don't know.",
       "next": "hub"
     },
     {

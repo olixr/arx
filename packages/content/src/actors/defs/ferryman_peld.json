@@ -2,7 +2,7 @@
   "id": "ferryman_peld",
   "name": "Peld",
   "title": "Ferryman",
-  "examine": "Pond-water calm. His hands only look idle \u2014 they know every current in the millpond by name.",
+  "examine": "Pond-water calm. His hands only look idle — they know every current in the millpond by name.",
   "disposition": "friendly",
   "model": {
     "kind": "humanoid",
@@ -34,7 +34,7 @@
   ],
   "lines": [
     "P-pond's quiet today. Best kind of day.",
-    "I walked up from Saltmere country when I was small. One day I'll pole somebody all the way back down. The river remembers the way even if nobody else does.",
+    "I walked up from Saltmere country when I was small. One day I'll pole somebody the whole way back d-down.",
     "Garton grumbles about my bell. He also checks the pond every morning to make sure I'm on it. Don't tell him I noticed."
   ],
   "shop": "peld_catch"

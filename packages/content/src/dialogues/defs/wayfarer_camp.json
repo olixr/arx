@@ -9,7 +9,7 @@
   "nodes": [
     {
       "id": "fireside",
-      "text": "Sit if you're sitting, buy if you're buying. The fire doesn't care and neither do I — much.",
+      "text": "Sit if you're sitting, buy if you're buying. The fire's free either way.",
       "choices": [
         { "text": "Let me see your wares.", "next": "wares" },
         { "text": "What's out past the lamplight?", "next": "rumor" },
@@ -18,17 +18,17 @@
     },
     {
       "id": "wares",
-      "text": "Take your time. The shelf is honest even if the prices sting — *everything a road asks of you*, and a brass key for the chests that ask harder.",
+      "text": "Shelf's honest, prices aren't kind — carriage costs, this far out. Everything a road asks of you, and a *brass key* for the chests that ask harder.",
       "hooks": [{ "kind": "shop", "shop": "waystation_supplies" }]
     },
     {
       "id": "rumor",
-      "text": "Past the lamplight? Camps with teeth, stones with names, and doors _the land itself forgot it was keeping shut_. The further the road runs, the better it pays — and the fewer walk back to spend it.",
+      "text": "Camps on the rises. Old ruins that _don't stay quiet after dusk_. And further out, stones that folk hang names on. The road pays better the further it runs. Fewer walk back to spend it.",
       "next": "rumor2"
     },
     {
       "id": "rumor2",
-      "text": "You'll smell a camp before you see it — stumps, worn ruts, watchers on the rises. Read the ground and it will tell you what's waiting. Ignore it and, well. The Watch digs shallow graves this far out.",
+      "text": "You'll smell a camp before you see it — stumps, worn ruts, watchers on the high ground. Read the ground and it tells you what's waiting. Plenty didn't.",
       "choices": [
         { "text": "Let me see your wares.", "next": "wares" },
         { "text": "I'll take my chances." }

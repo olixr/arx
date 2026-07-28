@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Forge is hot, temper's even. What'll it be?",
+      "text": "Forge's hot. Speak.",
       "choices": [
         {
           "text": "Teach me smithing.",
@@ -32,17 +32,17 @@
     },
     {
       "id": "teach",
-      "text": "The scrolls on my shelf hold every pattern the guilds teach, jewellery to plate. Buy the one your hands are ready for \u2014 the metal will tell you if you've flattered yourself. Copper and tin first. *Everyone* starts at copper and tin, including the ones who are now statues.",
+      "text": "Scrolls on my shelf. Every pattern the guilds teach, jewellery to plate. Buy the one your hands are ready for — no higher. The metal will tell you if you've flattered yourself. Copper and tin first. Everyone starts at copper and tin.",
       "next": "hub"
     },
     {
       "id": "busy",
-      "text": "Two roads' worth of horseshoes, one bank's worth of hinges, and every plough blade from here to the hedgerows. And lately \u2014 arrowheads. More arrowheads than I like. When Hask doubles his order, the road is telling you something.",
+      "text": "Two roads' worth of horseshoes. A bank's worth of hinges. Every plough blade from here to the hedgerows. And lately — arrowheads. More than I like. Hask doubled his order last month. The road's telling you something. Listen to it.",
       "next": "hub"
     },
     {
       "id": "browse",
-      "text": "Take your time. The steel's not going anywhere it wasn't hammered to go.",
+      "text": "Take your time. The steel's not going anywhere.",
       "hooks": [
         {
           "kind": "shop",
@@ -52,7 +52,7 @@
     },
     {
       "id": "warm",
-      "text": "That's what the fire's for. That and the honest work of the whole world, but mostly the hands."
+      "text": "That's what the fire's for. Warm them, then put them to work."
     }
   ]
 }

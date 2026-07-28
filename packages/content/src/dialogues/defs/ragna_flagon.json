@@ -10,12 +10,12 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Welcome to the Silver Flagon — beds, board, and the news first. Wipe your boots; the mountain comes in on everyone's soles and I fight a daily war about it.",
+      "text": "Welcome to the Silver Flagon. Beds, board, and quiet — we keep all three. Wipe your boots, if you would.",
       "next": "hub"
     },
     {
       "id": "hub",
-      "text": "Sit, stand, or spend — the Flagon accommodates all three.",
+      "text": "What can the house do for you?",
       "choices": [
         {
           "text": "What's the news, then?",
@@ -37,12 +37,12 @@
     },
     {
       "id": "news",
-      "text": "The news is free; that's the house rule that built this house. Today's: the galleria's pricing arcane dust like it's snowing coin, the kobolds below are digging *toward* something again if you believe the Deep Market talk, and the Queen walked the mere at noon and fed Sella's shrine fire with her own hand. Which of those is important I leave to the customer. That's also the house rule.",
+      "text": "What I can repeat, freely: Lantern Row is pricing arcane dust like it's snowing coin. The Deep Market talk says the kobolds are digging *toward* something again. And the Queen walked the mere at noon and fed the shrine fire with her own hand. What I can't repeat — well. You'd have to lodge here longer.",
       "next": "hub"
     },
     {
       "id": "lodgers",
-      "text": "Signy keeps my best room and pays in leftovers, which makes me the only innkeep in the province who *profits* on lodging a cook. Caravan masters, Guildhall clerks on audit season, the occasional Waykeeper too stiff for the chapter house cots. And once a year, quietly, somebody from the castle takes the corner room to hear what the city says when it thinks the Crown isn't renting.",
+      "text": "Signy — the terrace cook — keeps my best room and pays half in leftovers, which suits us both. Caravan masters. Guildhall clerks in audit season. The occasional Waykeeper too stiff for the chapter house cots. And now and then someone takes the corner room, pays in advance, and asks no questions. I extend them the same courtesy.",
       "choices": [
         {
           "text": "You know Dunna at the ford?",
@@ -56,12 +56,12 @@
     },
     {
       "id": "dunna",
-      "text": "Know her! Dunna keeps the inn at the bottom of the road and I keep the one at the top — we're the two ends of the same rope. We split the road's gossip at the middle waystation like honest smugglers, twice a season. Her mother Osa runs my caravanserai's rivals to shame down at our own gate, and the day those two are in one room, pull up a chair and learn something.",
+      "text": "Dunna keeps the inn at the bottom of the road; I keep the one at the top. We trade the road's news through the caravans, twice a season, and never once put it in writing. Her mother Osa waters the mules at our own gate — you knew that? The day those two are in one room again, pull up a chair. Quietly.",
       "next": "hub"
     },
     {
       "id": "browse",
-      "text": "Stew that's met real beef, bread from Signy's ovens, and the milk comes from actual rams' neighbors, I'm assured. The board's short and none of it apologizes.",
+      "text": "Stew with real beef in it, bread from Signy's ovens, and a short board — a short board means nothing on it is old. Sit where you like.",
       "hooks": [
         {
           "kind": "shop",
@@ -71,7 +71,7 @@
     },
     {
       "id": "bye",
-      "text": "Warm hearths. Door's never barred to a paying rumor."
+      "text": "Warm hearths. The door's never barred before midnight."
     }
   ]
 }

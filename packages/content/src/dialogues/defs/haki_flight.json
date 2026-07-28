@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "...One moment. A fletch set wrong kills someone eight weeks from now, far from here. There. Now — you have my whole attention, which people tell me is unsettling.",
+      "text": "…One moment. A fletch set wrong kills someone eight weeks from now, far from here. …There. Done. Now — you have my whole attention.",
       "next": "hub"
     },
     {
@@ -37,17 +37,17 @@
     },
     {
       "id": "road",
-      "text": "Ten years under Kestrel's banner, walking the High Road with a lamp and a bow. The road gave me back with a knee that predicts weather and a rule I've never broken since: _never send anyone into the dark with gear you wouldn't stake your own life on._ I couldn't walk the miles anymore, so now the miles come to my counter instead. Same oath. Better chair.",
+      "text": "Ten years under Kestrel's banner, walking the High Road with a lamp and a bow. The road gave me back with a knee that predicts weather, and one rule: _never send anyone into the dark with gear you wouldn't stake your own life on._ I can't walk the miles anymore. So the miles come to my counter instead.",
       "next": "hub"
     },
     {
       "id": "watch",
-      "text": "The watch on the wall, the castle guard, Kestrel's sergeants, and any honest traveler with coin and sense. The wolfkin dens below the tree line taught this province what a missed shot costs. When a watchman on the night wall nocks one of mine, he's holding my signature. I fletch like their lives depend on it, because I remember when mine did.",
+      "text": "The watch on the wall. The castle guard. Kestrel's sergeants. Any honest traveler with coin and sense. When a watchman on the night wall nocks one of mine, he's holding my word that it flies true. I fletch like their lives depend on it. I remember when mine did.",
       "next": "hub"
     },
     {
       "id": "true",
-      "text": "Straight grain — the saw yard saves me its best billets and Stig pretends not to be jealous. Feathers matched from the *same wing*, or the arrow corkscrews like a lie unraveling. And patience at the end: the last touch is the one you'll answer for. You can tell a fletcher's character from one arrow. Mine says: slow, and doesn't miss twice.",
+      "text": "Straight grain — the saw yard saves me its best billets. Feathers matched from the *same wing*, or the arrow corkscrews. And patience at the finish — the last touch is the one somebody's life leans on. That's the whole craft. Grain, feather, patience.",
       "next": "hub"
     },
     {

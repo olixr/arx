@@ -51,7 +51,7 @@
     },
     {
       "id": "tools",
-      "text": "...Aye. Marked hafts, guild stamps, all of it, somewhere past the far warren where nobody's swept in twenty years. If some armored optimist ever clears that ground \u2014 bring whatever carries the mark to Grettir at the yard. Not to me. I did my carrying already. His brother does his counting up there in the daylight, and the daylight should get the homecoming.",
+      "text": "\u2026Aye. Marked hafts. Guild stamps. Somewhere past the far warren, where nobody's swept in twenty years. If anyone ever clears that ground \u2014 bring whatever carries the mark to Grettir, at the yard. Not to me. I did my carrying already. His brother counts up there in the daylight. The daylight should get the homecoming.",
       "next": "hub"
     },
     {
@@ -61,7 +61,7 @@
     },
     {
       "id": "kobolds",
-      "text": "Not wicked. *Thorough.* They dig for their own reasons on their own clock, and they were under this mountain before the guild ever chalked a line on it. The trouble twenty years back \u2014 that was two thorough peoples meeting in the same seam with no word for 'yours'. I don't hate the little diggers. I watch them. There's a difference, and the difference is what the young picks won't learn from anyone but me.",
+      "text": "Not wicked. *Thorough.* They dig for their own reasons, on their own clock, and they were under this mountain before the guild ever chalked a line on it. The trouble, twenty years back \u2014 that was two thorough peoples meeting in the same seam. With no word for 'yours'. \u2026I don't hate the little diggers. I watch them. There's a difference. The young picks won't learn it from anyone but me.",
       "next": "hub"
     },
     {

@@ -15,7 +15,7 @@
     },
     {
       "id": "hub",
-      "text": "Ask. Kings answer more honestly than people expect — nobody dares correct us, so we've no practice lying.",
+      "text": "Ask. I'm told kings are supposed to make people wait. My grandfather was a quarry foreman — waiting wastes daylight.",
       "choices": [
         {
           "text": "What is the Silver Line?",
@@ -37,12 +37,12 @@
     },
     {
       "id": "line",
-      "text": "Five kings, one name. The first Aeriex was a quarry foreman who paid the shepherds' debts in silver and got called *king* for it, half as a joke. He kept the half that wasn't. We've ruled the same way since: the Crown pays first, pays fairest, and keeps the roads lit. The day an Aeriex breaks that bargain, the mountain will find another foreman.",
+      "text": "Five kings, one name. The first Aeriex was a quarry foreman who paid the shepherds' debts in silver, and got called *king* for it — half as a joke. He kept the half that wasn't. The bargain hasn't changed since: the Crown pays first, pays fairest, and keeps the roads lit. The day an Aeriex breaks it, the mountain will find another foreman. It found the first one.",
       "next": "hub"
     },
     {
       "id": "maren",
-      "text": "I outrank everything on this mountain except the mountain, and Maren speaks for the mountain. She was Castellan under my father; she'll be Castellan under my heir if she consents to it. When she says a gallery is unsafe, the gallery closes before I've finished nodding. That isn't weakness. That's knowing what your throne is bolted to.",
+      "text": "I outrank everything on this mountain except the mountain. Maren speaks for the mountain. She was Castellan under my father; she'll be Castellan under my heir, if she consents to it. When she says a gallery is unsafe, it closes before I've finished nodding. That's not weakness. That's knowing what my throne is bolted to.",
       "choices": [
         {
           "text": "You know about the Rookery, don't you.",
@@ -61,7 +61,7 @@
     },
     {
       "id": "seal",
-      "text": "Twenty years my father kept his grief sealed behind Petra's grandfather's stonework, and the kobolds dug on regardless. Maren came to me with the surveys and said: *the seal keeps out miners, not monsters.* I gave the order the same hour. If the deep is going to be contested, I'd rather contest it with lamps lit and the Deep Market paying rent.",
+      "text": "Twenty years my father kept his grief sealed behind good stonework, and the kobolds dug on regardless. Maren came to me with the surveys and said: *the seal keeps out miners, not monsters.* I gave the order the same hour. If the deep is going to be contested, I'd rather contest it with the lamps lit.",
       "next": "hub"
     },
     {

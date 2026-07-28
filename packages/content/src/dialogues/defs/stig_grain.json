@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Watch the sawdust — it gets in everything, including conversations. You've the look of someone who wants either a door or a lesson. I stock both.",
+      "text": "Watch your step — shavings underfoot. Take your time, look at the benches. You'll want either a door or a lesson. I stock both.",
       "next": "hub"
     },
     {
@@ -51,17 +51,17 @@
     },
     {
       "id": "castle",
-      "text": "The great doors, the moot dais, and the Queen's window box — which was the hardest of the three, because Her Majesty knows joinery and *checked*. The King thanked me for the dais. The doors thank me every winter by not warping, which is worth more. A carpenter's reputation is just his oldest work still shrugging off the weather.",
+      "text": "The great doors, the moot dais, and the Queen's window box — the window box was hardest, because Her Majesty knows joinery, and *checked*. The King thanked me for the dais. The doors thank me every winter by not warping. That's worth more.",
       "next": "hub"
     },
     {
       "id": "teach",
-      "text": "The patterns on my counter will start you: measures, joints, which grain forgives and which one files a grievance. After that it's ten thousand shavings and a temper you're willing to lose quietly. Mountain pine fights you for forty years and then behaves forever. Same as apprentices. I should know — Tilo down at the ford was mine, and look at him now.",
+      "text": "The patterns on my counter will start you: measures, joints, which grain forgives and which doesn't. After that it's ten thousand shavings, and a temper you learn to lose quietly. Take the wood at its own pace and it behaves forever. Same with apprentices. Tilo down at the ford was mine — look at him now.",
       "next": "hub"
     },
     {
       "id": "browse",
-      "text": "Patterns, schematics, and the measures I trust. Priced fair — knowledge cuts truest secondhand.",
+      "text": "Patterns, schematics, and the measures I trust. Priced fair. Learn them slower than you want to.",
       "hooks": [
         {
           "kind": "shop",

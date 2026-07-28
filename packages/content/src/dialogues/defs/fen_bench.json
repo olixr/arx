@@ -5,7 +5,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Watch the sawdust — it gets in everything, including conversations. You've the look of someone who wants to MAKE something. Am I right?",
+      "text": "Hold still, you— no, not you, the vice. It slips. *Fen*. Tinker, whittler, mender of latches nobody thanks me for. You've the look of somebody who wants to MAKE something. Am I right?",
       "choices": [
         { "text": "What can I make out here?", "next": "make" },
         { "text": "Where does a crafter go to grow?", "next": "grow" },
@@ -15,22 +15,22 @@
     },
     {
       "id": "make",
-      "text": "This *workbench* answers to anyone — bring it logs from the axe, hides from the hunt, ore from the pick, and it'll show you what your hands already know how to shape. Iona's fire handles the food, my bench handles the rest. Between the two of them you could walk out of this village wearing nothing you didn't make. People have.",
+      "text": "This *workbench* answers to anyone. Bring it logs from the axe, hides from the hunt, ore from the pick — it'll show you what your hands can shape. Iona's fire does the food; my bench does the rest. You could walk out of this village wearing nothing you didn't make yourself. I have. This shirt's older than Pip.",
       "next": "hub"
     },
     {
       "id": "grow",
-      "text": "Out there? Better benches in stranger places — old forges in ruins, waystation kits, whatever you raise with your own two hands. And the patterns worth having ride in *chests* and the pockets of things that don't want to share. *Recipe scrolls*, friend: read one and your hands remember it forever. Start simple here, get greedy out east.",
+      "text": "Out there? Better benches in stranger places — old forges in ruins, waystation kits, whatever you raise with your own hands. And watch for *recipe scrolls* — read one and your hands keep it forever. Chests carry them. So do the pockets of things that… hm. Things you'll have to argue with first.",
       "next": "hub"
     },
     {
       "id": "twine",
-      "text": "Twine is civilization, friend. Fibre plant grows by the brook; twist it and suddenly bows have strings, hooks have lines, and half my repairs hold through winter. The humble ingredients are the ones the world runs on. Remember that when you're knee-deep in dragonbone or whatever the deep frontier is selling.",
+      "text": "Twine! Twine is— hand me that— thank you. *Fibre plant*, down by the brook. Twist it, and suddenly bows have strings, hooks have lines, and my winter repairs hold. Nobody sings about twine. Somebody should.",
       "next": "hub"
     },
     {
       "id": "farewell",
-      "text": "Bench is here when the urge strikes. It strikes everyone eventually."
+      "text": "Bench is here when the urge takes you. It takes everyone eventually."
     }
   ]
 }

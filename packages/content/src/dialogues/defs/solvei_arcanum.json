@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Careful with the door — the wards dislike drafts. Come in. You have questions; everyone who climbs this far does. I keep answers, theories, and one very patient enchanting table.",
+      "text": "Careful with the door — the wards dislike drafts. Come in, come in. You have questions. Everyone who climbs this far — hm. That's a stronger binding note than yesterday. Interesting. …Questions. Yes. Ask them.",
       "next": "hub"
     },
     {
@@ -37,7 +37,7 @@
     },
     {
       "id": "runes",
-      "text": "Four theories: thinner air, older stone, the starfall vein singing through the bedrock, or — my favorite — that altitude is simply *closer to where the runes are from*. Every enchanter who works a season up here brews stronger and burns brighter. The mountain participates. On what terms, I am still negotiating.",
+      "text": "Four theories. Thinner air. Older stone. The starfall vein singing through the bedrock — it does sing, that's measurement, not poetry. Or my favorite: that altitude is simply *closer to where the runes are from*. Every enchanter who works a season up here burns brighter. The mountain participates. On what terms, I'm — hm. Still negotiating.",
       "choices": [
         {
           "text": "Teach me. What do you sell?",
@@ -51,17 +51,17 @@
     },
     {
       "id": "seal",
-      "text": "Eleven years of petitions. I could feel the Riftgate through eighty feet of rock — a hum in a key I almost recognize, and *almost* is everything in my work. Now the way is open, the hum is louder, and my sleep files complaints. I was right to ask. I check that conclusion nightly, the way you check a lock.",
+      "text": "Eleven years of petitions. I could feel the Riftgate through eighty feet of rock — a hum, in a key I *almost* recognize. Almost is everything in my work. Now the way is open, and the hum is louder, and I sleep… differently. Was I right to ask for the breaking? Yes. I check that answer every night. So far it holds.",
       "next": "hub"
     },
     {
       "id": "rift",
-      "text": "The Masons found it already standing when they first cut the deep galleries — older than the city, older than the guild, patient as bedrock. Keys turn there and places answer; the deep folk treat it as furniture, which is the healthiest possible attitude. I treat it as a colleague whose references I am still checking.",
+      "text": "The Masons found it already standing when they first cut the deep galleries. Older than the city. Older than the guild. Keys turn there, and places answer — where ARE the places? That's the — sorry, I've wandered off again. The deep folk treat the gate as furniture. Honestly, that's the healthiest possible attitude, and I can't manage it.",
       "next": "hub"
     },
     {
       "id": "bye",
-      "text": "Mind the wards on your way out. They remember everyone, and they gossip."
+      "text": "Mind the wards on your way out. They remember everyone. …Not a figure of speech, incidentally."
     },
     {
       "id": "browse",

@@ -14,10 +14,10 @@
  "nodes": [
   {
    "id": "hub",
-   "text": "Well. Still upright. The incident book remains disappointed. What?",
+   "text": "Still upright, then. The incident book waits. What?",
    "choices": [
     {
-     "text": "Fine \u2014 tell me about the lamps.",
+     "text": "Fine — tell me about the lamps.",
      "next": "relent",
      "set": [
       "aldis_heeded"
@@ -35,17 +35,17 @@
   },
   {
    "id": "relent",
-   "text": "Ha. There it is. Fernway, the Long Meadow, the Fork \u2014 walk lamp to lamp, sleep behind their walls, and past Edda's light go armed, fed, and *morning-minded*. Took you long enough. The book forgives you; so, provisionally, do I.",
+   "text": "Ha. There it is. *Fernway*, the *Long Meadow*, the *Fork* — walk lamp to lamp, sleep behind walls, and past Edda's light go armed, fed, and rested. Took you long enough. The book forgives you. So do I. Provisionally.",
    "next": "hub"
   },
   {
    "id": "road",
-   "text": "Meaner than yesterday, kinder than tomorrow. The middle stretch has Redmask sign again. You want particulars, buy Dunna's stew and listen for whichever table's talking quietest \u2014 the quiet table always knows.",
+   "text": "Meaner than yesterday, kinder than tomorrow. Redmask sign on the middle stretch again. Want particulars? Buy a bowl at Dunna's and listen for whichever table talks quietest. The quiet table always knows.",
    "next": "hub"
   },
   {
    "id": "bye",
-   "text": "Try to stay off my paperwork."
+   "text": "Stay off my paperwork."
   }
  ]
 }

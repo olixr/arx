@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Helmets past the rope line \u2014 that includes helmets you don't own yet. Grettir. Foreman. If you're here to swing a pick, the mountain pays honest wages. If you're here to ask about the upper vein, we're done early.",
+      "text": "Helmets past the rope line. Grettir. Foreman. Here to swing a pick, the mountain pays honest wages. Here to ask about the upper vein \u2014 we're done early.",
       "next": "hub"
     },
     {
@@ -40,12 +40,12 @@
     },
     {
       "id": "vein",
-      "text": "The vein we don't discuss. Mithril, since you'll hear it from some coal boy anyway. It runs shallow at the top of the deep galleries, and every foreman before me left it alone, and I leave it alone, and the *reasons* are between me and the mountain. Dig your fortune anywhere else in my yard with my blessing.",
+      "text": "The one we don't discuss. Mithril — you'd hear it from some coal boy anyway. Runs shallow at the top of the deep galleries. Every foreman before me left it alone. I leave it alone. The reasons are between me and the mountain. Dig anywhere else in my yard with my blessing.",
       "next": "hub"
     },
     {
       "id": "mining",
-      "text": "Silver holds, iron's steady, coal does what coal does. My crews go down on my count and come up on my count, twenty years matched. Now the Undercroft's open below us and half my shift wants transfer papers to the deep galleries \u2014 better ore, worse neighbors. I sign them. I count them extra.",
+      "text": "Silver holds. Iron's steady. Coal does what coal does. My crews go down on my count and come up on my count \u2014 twenty years, every count matched. Now the deep's open again, half my shift wants transfer papers. Better ore down there. Worse neighbors. I sign the papers. I count them extra.",
       "next": "hub"
     },
     {

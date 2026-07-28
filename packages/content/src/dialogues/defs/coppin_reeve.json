@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Welcome below, traveler. *Mine-Reeve Coppin* \u2014 the Warden runs the mountain, I run what's under it. Market spine's swept and lit, guild law holds to the rubble line, and past that you're your own insurance. Questions are free; everything else has a price chalked on it.",
+      "text": "Welcome below, traveler. *Mine-Reeve Coppin* \u2014 the Castellan runs the mountain, I run what's under it. Market spine's swept and lit. Guild law holds to the rubble line. Past that, you're your own rescue party. Questions are free; everything else has a price chalked on it.",
       "next": "hub"
     },
     {
@@ -37,7 +37,7 @@
     },
     {
       "id": "market",
-      "text": "Varga brokers the ore, Ninebrass retails the strange, the spring waters the lot, and every night the take walks up the stair to Odele's fifth column. The guild sweeps to the rubble line, Signy's stew comes down at shift change, and the Riftgate vault stays lit at guild expense \u2014 the Warden's one standing order: _the deep stays lamped._ It's a town, traveler. Just one with a ceiling.",
+      "text": "Varga brokers the ore. Ninebrass retails the strange. The spring waters the lot, and every night the take walks up the stair to the bank under guard. Signy's stew comes down at shift change, and the Riftgate vault stays lit at guild expense \u2014 the Castellan's one standing order: _the deep stays lamped._ It's a town, traveler. Just one with a ceiling.",
       "next": "hub"
     },
     {

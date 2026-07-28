@@ -15,12 +15,12 @@
  "nodes": [
   {
    "id": "page",
-   "text": "You've been to Merra's shop. I can tell \u2014 people come from her wall to my book, and they always stand just where you're standing. Yes. *Edwin's* page is here. Signed north in his own hand, spring of the early wolves. No homecoming mark.",
+   "text": "You've been to Merra's shop. People come from her wall to my book, and they always stand just where you're standing. Yes. *Edwin's* page is here. Signed north in his own hand, the spring of the early wolves. No homecoming mark.",
    "next": "read"
   },
   {
    "id": "read",
-   "text": "I'll tell you what the registry knows that the cape doesn't: his caravan made the Fork. He gave his place at the palisade to a tinsmith's family and walked the last watch outside the wall. The sergeant's report says the lamps never went out that night. _He kept them lit._ In this order, that's not a footnote. That's the whole book.",
+   "text": "I'll tell you what the registry knows that the cape on her wall doesn't: his caravan made the Fork. He gave his place at the palisade to a tinsmith's family and stood the last watch outside the wall himself. The sergeant's report says the lamps never went out that night. _He kept them lit._ In this order, that is not a footnote.",
    "choices": [
     {
      "text": "Does Merra know?",
@@ -40,11 +40,11 @@
   },
   {
    "id": "knows",
-   "text": "She knows the shape of it; she's never asked for the page. Grief chooses its own reading pace. If she ever asks, the book is hers \u2014 until then, I read his name to the braziers each feast and she keeps the cape clean, and between us the man stays remembered from both ends. That arrangement doesn't need improving. But you asked, and the asking honors him. Thank you."
+   "text": "She knows the shape of it. She's never asked for the page — grief chooses its own reading pace. If she ever asks, the book is hers. Until then I read his name to the braziers each feast, and she keeps the cape clean, and between us the man stays remembered from both ends. But you asked. The asking honors him. Thank you."
   },
   {
    "id": "stand",
-   "text": "...The braziers do most of my talking at this end of the hall. Peace on his road, wherever it went. And on yours \u2014 signed and marked, if I have any say in it."
+   "text": "…The braziers do most of my talking, this end of the hall. Peace on his road, wherever it went. And on yours — signed and marked, if I have any say in it."
   }
  ]
 }

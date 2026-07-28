@@ -12,20 +12,20 @@
  "nodes": [
   {
    "id": "wake",
-   "text": "Easy now. Deep breaths. The Ring runs cold the first morning \u2014 it always does. There. You're standing, you're breathing, and you're *here*, which is more than most manage gracefully.",
+   "text": "There you are. Breathe slow — the Ring's cold lets go quicker if you don't fight it. Up now. Let's have a look at you.",
    "next": "stones"
   },
   {
    "id": "stones",
-   "text": "I'm *Rowan*. Elder of Dawnmead, keeper of the Waking Ring \u2014 those five old stones you just stepped out of. Folk have been arriving through them since my grandmother's grandmother kept this watch. _Where you were before you woke, nobody remembers. Not you, not any waker before you._ We've stopped asking. The stones don't answer.",
+   "text": "I'm *Rowan*. I keep this village, and I keep the Ring — the five stones behind you. Folk step out of them the way you just did, a few every season, going back longer than anyone's grandmother. _Where you were before this morning — that's gone. It's gone for all of you._ We stopped asking the stones long ago. They've never once answered.",
    "next": "hub"
   },
   {
    "id": "hub",
-   "text": "Ask what you like. First mornings are for questions.",
+   "text": "Ask your questions, child. Everyone has the same three, and I never tire of them.",
    "choices": [
     {
-     "text": "What is this place?",
+     "text": "Where am I?",
      "next": "village"
     },
     {
@@ -40,22 +40,22 @@
   },
   {
    "id": "village",
-   "text": "Dawnmead. A green, a brook, more chickens than people \u2014 and past our hedgerows, the *frontier*, as wide as your patience. They say there were more lights out there once. Now there's us, the wayfarers' lanterns along the old roads, and whatever you wakers raise next. Rest here a day, learn what your hands are for, then take the lane. You will too. They all do.",
+   "text": "Dawnmead. A green, a brook, and more chickens than people. We're the last soft ground before the frontier — east of our hedgerows the land runs wild for miles. Wakers rest here, learn their hands, then take the road. You will too. They all do.",
    "next": "hub"
   },
   {
    "id": "memory",
-   "text": "None of you do, child. You arrive with a pack on your back, strength in your limbs, and a name on your tongue \u2014 nothing else. _Some say the stones take the memories as toll. Some say you left them behind on purpose._ Either way: what you do NEXT is yours, and no toll can touch it.",
+   "text": "None of you can. You came through with a pack on your back, strength in your limbs, and your own name — nothing else. Some say the stones take memory as their toll. Old Hobb says you're likely better off without whatever it was. I say what you do *next* is yours entire, and no stone can touch that.",
    "next": "hub"
   },
   {
    "id": "guidance",
-   "text": "Three doors, then the road. *Warden Bryn* keeps the yard south of the Ring \u2014 she'll wake up those arms of yours. *Iona* tends the fire by the south cottage \u2014 she'll teach you to feed yourself. And your pack is already heavier than you think: axe, pick, blade, bow, and a staff with a little weather in it. Go look. Then come back to me before you take the lane.",
+   "text": "Three people, then the road. *Bryn* drills in the south yard — she'll wake up those arms. *Iona* keeps the fire by the cottages — she'll teach you to feed yourself. And look in your pack before you see either: axe, pick, blade, bow, and a staff. Heavier than you thought, isn't it? Go learn them. Then come back to me.",
    "next": "gift"
   },
   {
    "id": "gift",
-   "text": "Here \u2014 {item:bread}, baked before you were\u2026 well. Before this morning, at least. Welcome to the world, waker. It's mostly kind, out to the hedgerows anyway.",
+   "text": "And take this — {item:bread}. Baked this morning, which is more than either of us can say. Welcome to the world, waker. Most of it is kinder than it looks.",
    "hooks": [
     {
      "kind": "give",

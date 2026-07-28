@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Mind the trough — slag holds its grudge longer than people do. You're between pours, which makes you lucky and me talkative.",
+      "text": "Mind the trough. Slag holds a grudge eleven minutes after it looks cold — I've timed it. You've caught me between pours. That's the only time I talk.",
       "next": "hub"
     },
     {
@@ -37,7 +37,7 @@
     },
     {
       "id": "pour",
-      "text": "Ore from Grettir's yard, coal from the south face, charge goes in *clean* — that's the whole scripture. Three furnaces, oldest to newest: the Widow, the Bride, and the one we don't name because naming them is what killed the first two's luck. Silver pours like moonlight and lies like it too — looks done long before it is. You learn patience here or you learn burns.",
+      "text": "Ore from Grettir's yard. Coal from the south face. The charge goes in *clean* — that's the whole scripture. Three furnaces, oldest to newest: the Widow, the Bride, and the third one, which we don't name, because naming them is what spoiled the first two's luck. That's not superstition. That's furnace management. Silver looks done four minutes before it is. Count the four minutes.",
       "next": "hub"
     },
     {
