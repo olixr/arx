@@ -5936,17 +5936,20 @@ export class Renderer {
           if (!w) {
             o.moveTo(x0, cTop);
             o.lineTo(x0, sideBot);
-            // Flank teeth ring their own lifted boxes.
+            // Flank teeth ring their own boxes AT CROWN HEIGHT — the
+            // plan footprint lives in the lifted layer, so the ring
+            // carries the same -hs the painted tooth does (an unlifted
+            // ring prints phantom rectangles down the wall face).
             if (mh > s * 0.05)
               for (const c of cs)
-                o.rect(x0, p.y + syT * c - md / 2 - mh, mw, md + mh);
+                o.rect(x0, p.y + syT * c - md / 2 - hs - mh, mw, md + mh);
           }
           if (!e) {
             o.moveTo(x1, cTop);
             o.lineTo(x1, sideBot);
             if (mh > s * 0.05)
               for (const c of cs)
-                o.rect(x1 - mw, p.y + syT * c - md / 2 - mh, mw, md + mh);
+                o.rect(x1 - mw, p.y + syT * c - md / 2 - hs - mh, mw, md + mh);
           }
           if (!sw) {
             o.moveTo(x0, fBot);
@@ -6075,8 +6078,26 @@ export class Renderer {
         // exposed end verticals, teeth ringed as their own boxes.
         if (this.outlineOn) {
           const o = new Path2D();
-          o.moveTo(hypW[0], hypW[1] - hs);
-          o.lineTo(hypE[0], hypE[1] - hs);
+          // The lifted arris, drawn in SEGMENTS that stop at each
+          // parapet tooth and resume past it — a line struck straight
+          // through the teeth reads as a wire crossing the pillars.
+          const yAt = (x: number): number =>
+            hypW[1] + ((x - hypW[0]) / (hypE[0] - hypW[0])) * (hypE[1] - hypW[1]) - hs;
+          const cuts: Array<[number, number]> =
+            mh > s * 0.05
+              ? [0.25, 0.75].map((u) => {
+                  const cx = hypW[0] + (hypE[0] - hypW[0]) * u;
+                  return [cx - mw / 2, cx + mw / 2];
+                })
+              : [];
+          let segX = hypW[0];
+          for (const [c0, c1] of cuts) {
+            o.moveTo(segX, yAt(segX));
+            o.lineTo(c0, yAt(c0));
+            segX = c1;
+          }
+          o.moveTo(segX, yAt(segX));
+          o.lineTo(hypE[0], yAt(hypE[0]));
           if (mh > s * 0.05) {
             for (const u of [0.25, 0.75]) {
               const cx = hypW[0] + (hypE[0] - hypW[0]) * u;
@@ -6202,8 +6223,13 @@ export class Renderer {
     const ox0 = x0 + pw;
     const ox1 = x1 - pw;
     const ow = ox1 - ox0;
-    const springH = s * 1.6; // leaf head / arch spring line
-    const rise = Math.min(ow * 0.5, s * 0.8);
+    const springH = s * 1.75; // leaf head / arch spring line
+    // A SHALLOW SEGMENTAL ARCH — a gatehouse is a tall passage under a
+    // gently dressed head, never a dome: a half-round rise on a wide
+    // opening ballooned into "a big weird circle" (user verdict). The
+    // rise stays a fraction of the span, so the opening reads as gate
+    // at any width.
+    const rise = Math.min(ow * 0.22, s * 0.42);
     const archOn = hs > springH + rise + s * 0.5;
     const y0 = p.y - 0.25;
     const y1 = p.y + syT + 0.25;
@@ -6266,7 +6292,14 @@ export class Renderer {
           // dark melts as anyone nears the threshold (the door-veil
           // law) to show the road running through.
           const veil = this.doorVeil(game, tx + runLen / 2, ty + 0.5);
-          ctx.fillStyle = `rgba(12, 9, 18, ${0.24 + 0.42 * veil})`;
+          // PASSAGE DEPTH: the tunnel holds shadow up under its vault
+          // and opens toward the daylight at the threshold — one
+          // vertical grade, never a flat wash, melting as bodies near.
+          const tunnel = ctx.createLinearGradient(0, -springH - rise, 0, 0);
+          tunnel.addColorStop(0, `rgba(10, 8, 16, ${0.62 + 0.26 * veil})`);
+          tunnel.addColorStop(0.55, `rgba(12, 9, 18, ${0.3 + 0.38 * veil})`);
+          tunnel.addColorStop(1, `rgba(14, 10, 22, ${0.1 + 0.28 * veil})`);
+          ctx.fillStyle = tunnel;
           ctx.fill(arch);
           // Deep reveal shadows down the inner pier edges.
           ctx.fillStyle = 'rgba(10, 8, 16, 0.4)';
@@ -6278,7 +6311,10 @@ export class Renderer {
           // the shadowed passage and the road showing through it.
           ctx.save();
           ctx.clip(arch);
-          const tipY = -springH - rise * 0.2;
+          // Teeth hang just past the spring line into the passage —
+          // the raised grate reads over open air, and shut leaves
+          // (painted after, reaching the spring) tuck under it.
+          const tipY = -springH + s * 0.18;
           const barW = Math.max(1.5, s * 0.065);
           for (let bx = ox0 + s * 0.14; bx < ox1 - s * 0.08; bx += s * 0.23) {
             ctx.fillStyle = '#3d3950';
@@ -6323,7 +6359,7 @@ export class Renderer {
           // chain into one subpath and evenodd fills the whole
           // lunette) intersected with an above-the-spring rect.
           const cxA = (ox0 + ox1) / 2;
-          const ringW = s * 0.2;
+          const ringW = s * 0.16;
           ctx.save();
           ctx.beginPath();
           ctx.rect(x0, -hs, w2, hs - springH);
@@ -6346,15 +6382,23 @@ export class Renderer {
             ctx.stroke();
           }
           ctx.restore();
-          // Keystone, proud of the ring.
+          // Keystone, proud of the ring — sized to the shallow band.
           ctx.fillStyle = shade(Renderer.GAR_FACE, 26);
           ctx.beginPath();
-          ctx.moveTo(cxA - s * 0.14, -springH - rise + s * 0.02);
-          ctx.lineTo(cxA + s * 0.14, -springH - rise + s * 0.02);
-          ctx.lineTo(cxA + s * 0.09, -springH - rise - ringW - s * 0.04);
-          ctx.lineTo(cxA - s * 0.09, -springH - rise - ringW - s * 0.04);
+          ctx.moveTo(cxA - s * 0.11, -springH - rise + s * 0.02);
+          ctx.lineTo(cxA + s * 0.11, -springH - rise + s * 0.02);
+          ctx.lineTo(cxA + s * 0.075, -springH - rise - ringW - s * 0.03);
+          ctx.lineTo(cxA - s * 0.075, -springH - rise - ringW - s * 0.03);
           ctx.closePath();
           ctx.fill();
+          // Impost blocks where the arch springs from its jambs — the
+          // dressed shoulder every honest arch stands on.
+          ctx.fillStyle = shade(Renderer.GAR_FACE, 20);
+          ctx.fillRect(ox0 - s * 0.1, -springH - s * 0.06, s * 0.18, s * 0.13);
+          ctx.fillRect(ox1 - s * 0.08, -springH - s * 0.06, s * 0.18, s * 0.13);
+          ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+          ctx.fillRect(ox0 - s * 0.1, -springH + s * 0.07, s * 0.18, s * 0.035);
+          ctx.fillRect(ox1 - s * 0.08, -springH + s * 0.07, s * 0.18, s * 0.035);
           // MACHICOLATIONS: the corbelled drop-band under the parapet
           // — dark slots between stout corbel teeth, a defended gate's
           // brow. Only a full-standing gatehouse carries it.
