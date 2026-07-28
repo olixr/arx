@@ -36,6 +36,13 @@ export class Session {
   /** Chunk keys currently streamed to this client. */
   readonly knownChunks = new Set<string>();
 
+  /**
+   * The player's own chunk last tick — discovery checks run on this
+   * edge (a 32-tile cadence), never per tick. Null forces a check on
+   * the first interest pass after a bind.
+   */
+  lastCenterChunk: string | null = null;
+
   private readonly inputBucket = new TokenBucket(25, 50);
   private readonly chatBucket = new TokenBucket(1, 4);
   private readonly miscBucket = new TokenBucket(10, 20);

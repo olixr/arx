@@ -261,6 +261,7 @@ import { geographySnapshot, scaleNpcDef } from '@arx/content';
 import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem, takeSlot } from './inventory.js';
 import { DROP_MERGE_RADIUS, canMergeDrop } from './drops.js';
 import { SocialSystem } from './social.js';
+import { dungeonDiscoveryId, findDiscoveries } from './exploration.js';
 
 interface PositionComp {
   x: number;
@@ -1643,7 +1644,7 @@ export class GameServer {
         explored.loadRegion(row.rx, row.ry, row.bits);
       }
       for (const row of await this.accounts.loadDiscoveries(character.id)) {
-        discoveries.set(row.id, {
+        const d: DiscoveryWire = {
           id: row.id,
           kind: row.kind as DiscoveryWire['kind'],
           name: row.name,
@@ -1651,7 +1652,21 @@ export class GameServer {
           y: row.y,
           tier: row.tier ?? undefined,
           faded: row.faded ? true : undefined,
-        });
+        };
+        // Belt-and-braces: the frontier may have turned while this
+        // character slept through the live fade push. A 'poi:' marker
+        // whose cell no longer holds its epoch's site reads as rumor.
+        if (!d.faded && row.id.startsWith('poi:')) {
+          const cell = this.poiLedger.get(row.id.slice(4));
+          const stale =
+            cell !== undefined &&
+            (cell.site === null || (row.epoch !== null && cell.epoch !== row.epoch));
+          if (stale) {
+            d.faded = true;
+            this.accounts.fadeDiscovery(row.id);
+          }
+        }
+        discoveries.set(row.id, d);
       }
     }
 
@@ -1973,6 +1988,69 @@ export class GameServer {
       if (!player || !pos || pos.y >= DUNGEON_MIN_Y) continue;
       for (const key of player.explored.markDisc(pos.x, pos.y)) {
         player.exploredDirty.add(key);
+      }
+    }
+  }
+
+  // ----------------------------------------------------- discoveries
+
+  /**
+   * The place-ledger check, run on the center-chunk edge (32-tile
+   * cadence). Zones by containment, frontier sites by anchor proximity
+   * from the 3×3 ledger cells around the walker.
+   */
+  private checkDiscoveries(eid: EntityId): void {
+    const player = this.players.get(eid);
+    const pos = this.positions.get(eid);
+    if (!player || !pos || pos.y >= DUNGEON_MIN_Y) return;
+    const cellX = poiCellOf(pos.x);
+    const cellY = poiCellOf(pos.y);
+    const sites: { site: PoiSite; epoch: number }[] = [];
+    for (let cy = cellY - 1; cy <= cellY + 1; cy++) {
+      for (let cx = cellX - 1; cx <= cellX + 1; cx++) {
+        const row = this.poiLedger.get(poiCellKey(cx, cy));
+        if (row?.site) sites.push({ site: row.site, epoch: row.epoch });
+      }
+    }
+    const found = findDiscoveries(
+      pos.x,
+      pos.y,
+      this.world.zoneDefs,
+      sites,
+      (defId) => {
+        const def = POI_DEFS.get(defId);
+        return def ? { name: def.name, haven: def.haven !== undefined } : undefined;
+      },
+      player.discoveries,
+    );
+    for (const f of found) this.recordDiscovery(player, f.d, f.epoch);
+  }
+
+  /**
+   * Enter a place into the ledger and fire the one live splash. The
+   * DB write lands the moment of the footfall (a first discovery must
+   * never be lost to a crash); re-recording an id overwrites a faded
+   * marker with the fresh truth.
+   */
+  private recordDiscovery(player: PlayerComp, d: DiscoveryWire, epoch?: number): void {
+    player.discoveries.set(d.id, d);
+    if (player.characterId > 0) this.accounts.addDiscovery(player.characterId, d, epoch);
+    player.session?.sendJson({ t: 'discovery', d });
+  }
+
+  /**
+   * The frontier turned over at a cell: every character's marker for
+   * it ages to rumor — one cross-character UPDATE for the offline,
+   * an in-memory flip plus a thin push for the online.
+   */
+  private fadePoiDiscoveries(cellKey: string): void {
+    const id = `poi:${cellKey}`;
+    this.accounts.fadeDiscovery(id);
+    for (const player of this.players.values()) {
+      const d = player.discoveries.get(id);
+      if (d && !d.faded) {
+        d.faded = true;
+        player.session?.sendJson({ t: 'discoveryfade', ids: [id] });
       }
     }
   }
@@ -3540,6 +3618,7 @@ export class GameServer {
         console.warn(`[poi] authored site '${want.id}': no honest ground — stood nothing`);
         continue;
       }
+      if (row?.site) this.fadePoiDiscoveries(key);
       if (row) this.retirePoiCell(key);
       this.accounts.recordPoiCell(cellX, cellY, epoch, {
         poiId: site.defId,
@@ -3574,6 +3653,7 @@ export class GameServer {
       if (authored.has(key)) continue;
       if (row.site === null || !poiSiteBlocked(row.site, ctx)) continue;
       const { cellX, cellY } = row.site;
+      this.fadePoiDiscoveries(key);
       this.retirePoiCell(key);
       const epoch = row.epoch + 1;
       const site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx);
@@ -3625,6 +3705,7 @@ export class GameServer {
       if (authored.has(key)) continue;
       if (row.site === null || row.clearedAt === null || row.clearedAt >= cutoffMs) continue;
       const { cellX, cellY } = row.site;
+      this.fadePoiDiscoveries(key);
       this.retirePoiCell(key);
       const epoch = row.epoch + 1;
       const site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx);
@@ -3713,6 +3794,7 @@ export class GameServer {
         roadDistanceAt(config.worldSeed, row.site.anchorX, row.site.anchorY) <= ROAD_SHOULDER;
       if (!blocked && !orphan && !paved) continue;
       const { cellX, cellY } = row.site;
+      this.fadePoiDiscoveries(key);
       this.retirePoiCell(key);
       const epoch = row.epoch + 1;
       const site = orphan ? null : poiForCell(config.worldSeed, cellX, cellY, epoch, ctx);
@@ -3784,7 +3866,9 @@ export class GameServer {
     if (action === 'force' && defId !== undefined && !POI_DEFS.has(defId)) {
       return { ok: false, error: `unknown archetype '${defId}'` };
     }
-    const epoch = (this.poiLedger.get(key)?.epoch ?? 0) + 1;
+    const prior = this.poiLedger.get(key);
+    const epoch = (prior?.epoch ?? 0) + 1;
+    if (prior?.site) this.fadePoiDiscoveries(key);
     this.retirePoiCell(key);
     if (action === 'dissolve') {
       // Decided-empty at a fresh epoch: the cell stays quiet until a
@@ -4142,7 +4226,8 @@ export class GameServer {
     if (!player || !pos || player.session === null) return;
     const sys = (text: string) =>
       player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    if (!this.riftgateNear(pos)) {
+    const gate = this.riftgateNear(pos);
+    if (!gate) {
       sys('You need to stand at a Riftgate to turn a dungeon key.');
       return;
     }
@@ -4152,6 +4237,19 @@ export class GameServer {
       return;
     }
     const spec = dungeonSpecFromRoll(held.roll);
+    // A gate a key has turned at is a place worth keeping: pin it on
+    // the map forever. The threshold banner is the ceremony here — the
+    // client shows no discovery splash for the 'dungeon' kind.
+    const gateId = dungeonDiscoveryId(gate.x, gate.y);
+    if (!player.discoveries.has(gateId)) {
+      this.recordDiscovery(player, {
+        id: gateId,
+        kind: 'dungeon',
+        name: 'Riftgate',
+        x: gate.x,
+        y: gate.y,
+      });
+    }
     this.enterDungeon(eid, player, spec, { x: pos.x, y: pos.y });
   }
 
@@ -9931,6 +10029,16 @@ export class GameServer {
 
     const ccx = Math.floor(pos.x / CHUNK_SIZE);
     const ccy = Math.floor(pos.y / CHUNK_SIZE);
+
+    // Discovery runs on the center-chunk EDGE — the new-chunk branch
+    // below fires for chunks 2 away (64+ tiles out), far too early to
+    // shout "discovered" about anything.
+    const center = chunkKey(ccx, ccy);
+    if (session.lastCenterChunk !== center) {
+      session.lastCenterChunk = center;
+      this.checkDiscoveries(eid);
+    }
+
     const visible = new Set<EntityId>();
     const windowKeys = new Set<string>();
     for (let cy = ccy - INTEREST_CHUNK_RADIUS; cy <= ccy + INTEREST_CHUNK_RADIUS; cy++) {

@@ -243,9 +243,13 @@ export class AccountStore {
     d: { id: string; kind: string; name: string; x: number; y: number; tier?: number },
     epoch?: number,
   ): void {
+    // Upsert: rediscovering a faded marker refreshes what stands there
+    // now; discovered_at keeps the FIRST footfall.
     this.db.fire(
       'INSERT INTO character_discoveries (character_id, id, kind, name, x, y, tier, epoch, faded, discovered_at) ' +
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?) ON CONFLICT DO NOTHING',
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?) ' +
+        'ON CONFLICT (character_id, id) DO UPDATE SET kind = excluded.kind, name = excluded.name, ' +
+        'x = excluded.x, y = excluded.y, tier = excluded.tier, epoch = excluded.epoch, faded = 0',
       [characterId, d.id, d.kind, d.name, d.x, d.y, d.tier ?? null, epoch ?? null, Date.now()],
     );
   }
