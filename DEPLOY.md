@@ -21,11 +21,13 @@ Arx is two pieces on one domain:
 
 - Create the site for **arx.gg** with type **Static HTML** (or General
   PHP — the type only shapes the nginx template; we override the root).
-- **Web directory / root: `/home/forge/arx.gg/public`** ← this is the
-  answer to "what do I point the document root at". The repo checks out
-  at `/home/forge/arx.gg`; the build step creates `public/` inside it.
-- Install the repository on the site (Forge → site → Git Repository),
-  branch `main`.
+- **Web directory: `/public`.** With Forge's release-based deployments
+  the repo lives at `/home/forge/arx.gg/current` (a symlink swung on
+  each activation), so the effective document root is
+  `/home/forge/arx.gg/current/public` — the build step creates it
+  inside each release before activation.
+- Install the repository `olixr/arx` on the site (Forge → site → Git
+  Repository), branch `main`.
 - Enable SSL (LetsEncrypt) — the client automatically uses `wss://`
   on https pages.
 
@@ -43,12 +45,15 @@ into the `server { }` block, above the default `location /`. They:
 
 ## 3. Environment
 
+Paste the contents of `.env.production.example` into Forge's
+**Environment** tab for the site (it lands at `/home/forge/arx.gg/.env`
+and Forge links it into each release), and create the data dir:
+
 ```bash
-cp .env.production.example /home/forge/arx.gg/.env
 mkdir -p /home/forge/arx-data
 ```
 
-Review `.env` — notably `DATA_DIR=/home/forge/arx-data` keeps the
+Review the env — notably `DATA_DIR=/home/forge/arx-data` keeps the
 SQLite world **outside the repo** so no git operation can ever touch
 player data. The deploy script ships authored content (prefabs, map
 overrides) into it on every deploy.
@@ -68,10 +73,10 @@ sudo supervisorctl reread && sudo supervisorctl update
 ```
 
 …or create a **Forge Daemon** with command
-`bash /home/forge/arx.gg/scripts/arx-run.sh`, directory
-`/home/forge/arx.gg`, user `forge` — then set
-`ARX_PROGRAM="daemon-<id>:*"` in `.env` so the control script can
-address it.
+`bash /home/forge/arx.gg/current/scripts/arx-run.sh`, directory
+`/home/forge/arx.gg/current`, user `forge` — then set
+`ARX_PROGRAM="daemon-<id>:*"` in the environment so the control script
+can address it.
 
 Operate it with the control script:
 
@@ -85,27 +90,41 @@ scripts/arxctl.sh stop
 
 ## 5. Forge deploy script
 
-```bash
-cd /home/forge/arx.gg
-git pull origin $FORGE_SITE_BRANCH
+Release-based (Forge's default `$CREATE_RELEASE` scaffold, extended):
 
-npm ci
-npm run build                      # client bundle → public/
+```bash
+$CREATE_RELEASE()
+
+cd $FORGE_RELEASE_DIRECTORY
+
+# --include=dev is load-bearing: vite + tsx are devDependencies, and if
+# NODE_ENV=production leaks into this shell npm would otherwise skip them
+npm ci --include=dev
+npm run build                      # client bundle → <release>/public/
 
 # Ship authored content into the persistent data dir (one-way:
 # repo → server; the world DB itself is never touched).
-DATA_DIR=$(grep -E '^DATA_DIR=' .env | cut -d= -f2)
+ENV_FILE=".env"
+[ -f "$ENV_FILE" ] || ENV_FILE="/home/forge/arx.gg/.env"
+DATA_DIR=$(grep -E '^DATA_DIR=' "$ENV_FILE" | cut -d= -f2)
 if [ -n "$DATA_DIR" ]; then
   mkdir -p "$DATA_DIR"
   [ -d data/prefabs ] && rsync -a --delete data/prefabs/ "$DATA_DIR/prefabs/"
   [ -d data/maps ]    && rsync -a data/maps/ "$DATA_DIR/maps/"
 fi
 
-bash scripts/arxctl.sh restart
-bash scripts/arxctl.sh ping || echo "WARNING: server not answering /healthz yet"
+$ACTIVATE_RELEASE()
+
+# Swing the game server onto the new release and confirm it's alive.
+bash /home/forge/arx.gg/current/scripts/arxctl.sh restart
+sleep 2
+bash /home/forge/arx.gg/current/scripts/arxctl.sh ping || echo "WARNING: game server not answering /healthz"
 ```
 
-(DB migrations run automatically at server boot.)
+DB migrations run automatically at server boot. Note the restart drops
+connected players for a couple of seconds — a single authoritative
+world process can't hand off live sessions, so deploy at quiet hours
+once there's a population.
 
 ## 6. Verify
 

@@ -14,10 +14,13 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-if [ -f .env ]; then
+# <repo>/.env, or the site-level .env when the repo is <site>/current.
+ENV_FILE=".env"
+[ -f "$ENV_FILE" ] || ENV_FILE="../.env"
+if [ -f "$ENV_FILE" ]; then
   set -a
   # shellcheck disable=SC1091
-  . ./.env
+  . "$ENV_FILE"
   set +a
 fi
 

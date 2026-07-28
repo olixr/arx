@@ -6,10 +6,14 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # Production knobs live in <repo>/.env (see .env.production.example).
-if [ -f .env ]; then
+# Under Forge release deployments the repo is <site>/current, and the
+# site-level <site>/.env one directory up is the fallback.
+ENV_FILE=".env"
+[ -f "$ENV_FILE" ] || ENV_FILE="../.env"
+if [ -f "$ENV_FILE" ]; then
   set -a
   # shellcheck disable=SC1091
-  . ./.env
+  . "$ENV_FILE"
   set +a
 fi
 
