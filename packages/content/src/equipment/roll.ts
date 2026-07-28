@@ -208,7 +208,7 @@ export function emptyGearStats(): GearStats {
  * they are read at hit time from the weapon instance that landed
  * (weaponStrikeEffects below), never from the worn aggregate.
  */
-function foldEffect(out: GearStats, fx: EnchantEffect): void {
+export function foldEffect(out: GearStats, fx: EnchantEffect): void {
   switch (fx.kind) {
     case 'skill':
       out.skillBonus[fx.skill] = (out.skillBonus[fx.skill] ?? 0) + fx.amount;

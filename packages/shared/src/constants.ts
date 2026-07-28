@@ -23,7 +23,11 @@
 // per-player place ledger, C2SWaypoint the one active waypoint, and
 // welcome grows waypoint + geo. A v10 client would strike out sending
 // waypoint and chart nothing, so reject cleanly.
-export const PROTOCOL_VERSION = 11;
+// v12: the hand learns its Callings — S2CCallings carries the answered
+// toggleable skill passives on join + change, C2SCalling flips one.
+// A v11 client would never see the passive layer it is being served,
+// so reject cleanly.
+export const PROTOCOL_VERSION = 12;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;

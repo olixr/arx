@@ -225,6 +225,13 @@ export interface C2STechnique {
   ability: string;
 }
 
+/** Answer or set down a Calling (toggleable skill passive). */
+export interface C2SCalling {
+  t: 'calling';
+  calling: string;
+  on: boolean;
+}
+
 /** Choose the character's base look — accepted once, then locked. */
 export interface C2SSetLook {
   t: 'setlook';
@@ -324,6 +331,7 @@ export type C2SMessage =
   | C2SInteractNpc
   | C2SPickup
   | C2STechnique
+  | C2SCalling
   | C2SSetLook
   | C2SCarryStyle
   | C2SUseKey
@@ -627,6 +635,16 @@ export interface S2CTechniques {
   chosen: Record<string, string>;
 }
 
+/**
+ * The player's answered Callings (sent on join + change). Focus budget
+ * and costs are derived client-side from the shared law + content —
+ * the wire carries only the choices.
+ */
+export interface S2CCallings {
+  t: 'callings';
+  answered: string[];
+}
+
 /** One active consumable buff, for the HUD chip row. */
 export interface BuffInfo {
   /** Item id that granted it (drives the chip icon). */
@@ -824,6 +842,7 @@ export type S2CMessage =
   | S2CFx
   | S2CTime
   | S2CTechniques
+  | S2CCallings
   | S2CBuffs
   | S2CRiftgate
   | S2CDungeonEnter
@@ -1053,6 +1072,11 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (typeof msg.style !== 'string' || msg.style.length > 16) return null;
       if (typeof msg.ability !== 'string' || msg.ability.length > 64) return null;
       return { t: 'technique', style: msg.style, ability: msg.ability };
+    }
+    case 'calling': {
+      if (typeof msg.calling !== 'string' || msg.calling.length > 64) return null;
+      if (typeof msg.on !== 'boolean') return null;
+      return { t: 'calling', calling: msg.calling, on: msg.on };
     }
     case 'setlook': {
       const look = sanitizeLook(msg.look);

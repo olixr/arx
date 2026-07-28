@@ -125,3 +125,28 @@ export function combatLevel(skills: SkillXp): number {
 export function isSkillId(s: string): s is SkillId {
   return (SKILL_IDS as readonly string[]).includes(s);
 }
+
+// ------------------------------------------------------------- focus
+
+/** Base Focus every character carries before any milestone. */
+export const FOCUS_BASE = 2;
+/** Each skill at or past this BASE level grants +1 Focus... */
+export const FOCUS_MILESTONE_LEVEL = 50;
+/** ...and +1 more at mastery. */
+export const FOCUS_MASTERY_LEVEL = 99;
+
+/**
+ * THE FOCUS LAW: the account's capacity to hold Callings answered.
+ * Derived from base skill levels, never stored — the milestone IS the
+ * ledger. Breadth and depth both pay: +1 per skill at 50, +1 more at
+ * 99, so the completionist visibly runs a richer build.
+ */
+export function focusBudget(skills: SkillXp): number {
+  let focus = FOCUS_BASE;
+  for (const xp of Object.values(skills)) {
+    const level = levelForXp(xp ?? 0);
+    if (level >= FOCUS_MILESTONE_LEVEL) focus++;
+    if (level >= FOCUS_MASTERY_LEVEL) focus++;
+  }
+  return focus;
+}

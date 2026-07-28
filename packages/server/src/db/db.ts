@@ -482,6 +482,16 @@ const MIGRATIONS: string[] = [
   );
   ALTER TABLE accounts ADD COLUMN invite_code TEXT;
   `,
+  // v4: THE CALLING LAW — answered toggleable skill passives. Row
+  // presence = answered (the hidden-skill pattern); the Focus budget
+  // is derived from character_skills, never stored.
+  `
+  CREATE TABLE character_callings (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    calling TEXT NOT NULL,
+    PRIMARY KEY (character_id, calling)
+  );
+  `,
 ];
 
 /**

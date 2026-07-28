@@ -283,6 +283,12 @@ export class Session {
         this.game.setTechnique(this.playerEid, msg.style, msg.ability);
         return;
       }
+      case 'calling': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.setCalling(this.playerEid, msg.calling, msg.on);
+        return;
+      }
       case 'waypoint': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

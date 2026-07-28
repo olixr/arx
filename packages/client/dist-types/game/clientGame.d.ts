@@ -372,6 +372,8 @@ export declare class ClientGame {
     abilityMax: [number, number, number, number];
     /** Chosen technique ability per combat style (server-confirmed). */
     techniques: Record<string, string>;
+    /** Answered Callings (server truth; Focus derives from skills). */
+    callings: string[];
     /** Active consumable buffs (tonic/food) for the HUD chip row. */
     buffs: BuffInfo[];
     /** performance.now() when the buffs snapshot arrived (chips count down). */
@@ -382,6 +384,7 @@ export declare class ClientGame {
     onCastFx: ((slot: AbilitySlot, ab: AbilityDef) => void) | null;
     /** Fires when the technique loadout changes (UI refresh). */
     onTechniques: (() => void) | null;
+    onCallings: (() => void) | null;
     /** Fires for every arriving combat effect (audio/shake hooks). */
     onFx: ((fx: ActiveFx) => void) | null;
     /** Buttons of the previous outgoing frame — press-edge detection. */
@@ -432,6 +435,8 @@ export declare class ClientGame {
     slotAbilityDef(slot: AbilitySlot): AbilityDef | null;
     /** Choose a technique for a style (server validates the unlock). */
     sendTechnique(style: string, ability: string): void;
+    /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
+    sendCalling(calling: string, on: boolean): void;
     /** Remaining cooldown fraction for a hotbar slot, 0 = ready. */
     abilityCdFraction(slot: AbilitySlot, now?: number): number;
     /**

@@ -4,6 +4,7 @@
  * live here as typed data, validated at build time by tools/validate.
  */
 export * from './abilities.js';
+export * from './callings.js';
 export * from './items.js';
 export * from './equipment/types.js';
 export * from './equipment/enchants.js';

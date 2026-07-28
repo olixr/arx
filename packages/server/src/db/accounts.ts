@@ -872,6 +872,30 @@ export class AccountStore {
     );
   }
 
+  /** Answered Callings — row presence IS the answer. */
+  async loadCallings(characterId: number): Promise<string[]> {
+    const rows = await this.db.query<{ calling: string }>(
+      'SELECT calling FROM character_callings WHERE character_id = ?',
+      [characterId],
+    );
+    return rows.map((r) => r.calling);
+  }
+
+  saveCalling(characterId: number, calling: string): void {
+    this.db.fire(
+      'INSERT INTO character_callings (character_id, calling) VALUES (?, ?) ' +
+        'ON CONFLICT (character_id, calling) DO NOTHING',
+      [characterId, calling],
+    );
+  }
+
+  deleteCalling(characterId: number, calling: string): void {
+    this.db.fire('DELETE FROM character_callings WHERE character_id = ? AND calling = ?', [
+      characterId,
+      calling,
+    ]);
+  }
+
   saveInventory(
     characterId: number,
     slots: Array<{ item: string; qty: number; roll?: ItemRoll } | null>,

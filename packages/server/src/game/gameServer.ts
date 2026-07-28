@@ -12,11 +12,16 @@ import {
   TIME_NAMES,
   chunkKey,
   clockHoursAtTick,
+  SUNRISE,
+  SUNSET,
   ofsForHours,
   encodeChunk,
   encodeSnapshot,
   encodeTilePatch,
   combatLevel,
+  focusBudget,
+  FOCUS_MILESTONE_LEVEL,
+  FOCUS_MASTERY_LEVEL,
   isSkillId,
   levelForXp,
   honedAbility,
@@ -102,6 +107,10 @@ import {
   stageForElapsed,
   techniqueDef,
   techniquesFor,
+  callingDef,
+  callingsFor,
+  foldEffect,
+  isAggregateCallingEffect,
   tileForStage,
   type BuildableDef,
   type CropDef,
@@ -778,6 +787,12 @@ interface PlayerComp {
   buffs: PlayerBuff[];
   /** Chosen technique ability per combat style. */
   techniques: Record<string, string>;
+  /** Answered Callings (row-presence mirror of character_callings). */
+  callings: Set<string>;
+  /** One-site perk dials derived from answered Callings (recomputeGear). */
+  perks: Perks;
+  /** Consecutive ticks without movement, sneaking or not (Bulwark). */
+  stillTicks: number;
   /** Snap-shot rhythm: stage of the last snap and its grace window. */
   snapStage: number;
   snapGraceUntilTick: number;
@@ -882,6 +897,74 @@ function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): PlayerBuf
     ...partial,
   };
 }
+
+/**
+ * THE CALLING LAW's one-site dials, rebuilt by recomputeGear from the
+ * answered set. Every field is read at exactly one hook site (the
+ * PERK_DIALS registry in content/callings.ts names each); defaults are
+ * the no-calling behavior, so hooks never need an answered check.
+ */
+interface Perks {
+  foodHealMult: number;
+  foodBuffDurMult: number;
+  tonicBuffDurMult: number;
+  finisherBonusMult: number;
+  stillArmor: number;
+  shieldMult: number;
+  snapShotMult: number;
+  /** Floor on the bow-draw movement factor (0 = keep the base law). */
+  drawMoveFactor: number;
+  sneakFactorBonus: number;
+  backstabBonus: number;
+  offhandDelayTicks: number;
+  offhandFactorBonus: number;
+  undergroundGatherMult: number;
+  nightGatherMult: number;
+  burnChanceMult: number;
+  dotResistMult: number;
+  seedRefundChance: number;
+  doubleHarvestChance: number;
+  doubleProduceChance: number;
+  produceRestMult: number;
+  buildSpeedMult: number;
+  doubleGather: Partial<Record<SkillId, number>>;
+  gatherSpeed: Partial<Record<SkillId, number>>;
+  materialSave: Partial<Record<SkillId, number>>;
+  craftSpeed: Partial<Record<SkillId, number>>;
+}
+
+function defaultPerks(): Perks {
+  return {
+    foodHealMult: 1,
+    foodBuffDurMult: 1,
+    tonicBuffDurMult: 1,
+    finisherBonusMult: 1,
+    stillArmor: 0,
+    shieldMult: 1,
+    snapShotMult: 1,
+    drawMoveFactor: 0,
+    sneakFactorBonus: 0,
+    backstabBonus: 0,
+    offhandDelayTicks: OFFHAND_DELAY_TICKS,
+    offhandFactorBonus: 0,
+    undergroundGatherMult: 1,
+    nightGatherMult: 1,
+    burnChanceMult: 1,
+    dotResistMult: 1,
+    seedRefundChance: 0,
+    doubleHarvestChance: 0,
+    doubleProduceChance: 0,
+    produceRestMult: 1,
+    buildSpeedMult: 1,
+    doubleGather: {},
+    gatherSpeed: {},
+    materialSave: {},
+    craftSpeed: {},
+  };
+}
+
+/** Ticks of standing still before Bulwark's armor answers. */
+const STILL_ARMOR_TICKS = 12;
 
 const MAX_QUEUED_INPUTS = 8;
 /**
@@ -1738,6 +1821,9 @@ export class GameServer {
       castFreezeUntilTick: 0,
       buffs: [],
       techniques: character.id > 0 ? await this.accounts.loadTechniques(character.id) : {},
+      callings: character.id > 0 ? new Set(await this.accounts.loadCallings(character.id)) : new Set(),
+      perks: defaultPerks(),
+      stillTicks: 0,
       snapStage: 0,
       snapGraceUntilTick: 0,
       boltStage: 0,
@@ -1836,6 +1922,12 @@ export class GameServer {
     session.sendJson({ t: 'inv', slots: player.inventory });
     session.sendJson({ t: 'equip', equipment: player.equipment, carry: player.carryStyle, carryOff: player.carryOff });
     session.sendJson({ t: 'techniques', chosen: player.techniques });
+    // Answered Callings ride in after the skills that budget them; the
+    // sanitize is belt-and-braces (skills only rise) plus the guard
+    // against defs retired between sessions.
+    this.sanitizeCallings(player);
+    this.recomputeGear(eid, player);
+    session.sendJson({ t: 'callings', answered: [...player.callings] });
     session.sendJson({ t: 'time', ofs: this.timeOfsTicks });
     this.sendCooldowns(player);
     // The chart snapshot — after this, fog only ever clears locally on
@@ -2226,8 +2318,16 @@ export class GameServer {
     }
 
     // Faster with better tools, higher levels, and a gatherer's brew.
-    const speedup =
+    let speedup =
       (1 + (tool.power - 1) * 0.25 + (level - node.levelReq) * 0.01) * this.gatherSpeedOf(player);
+    // The gathering Callings: a per-trade pace (Heartwood/Verdant Eye),
+    // Deep Lungs below the dark band, Night Angler once the sun is down.
+    speedup *= player.perks.gatherSpeed[node.skill] ?? 1;
+    if (ty >= DARK_BAND_Y) speedup *= player.perks.undergroundGatherMult;
+    if (node.skill === 'fishing' && player.perks.nightGatherMult !== 1) {
+      const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
+      if (hours < SUNRISE || hours > SUNSET) speedup *= player.perks.nightGatherMult;
+    }
     const ticks = Math.max(GameServer.MIN_GATHER_TICKS, Math.round(node.baseTicks / speedup));
     player.action = { kind: 'gather', tx, ty, node, ticksLeft: ticks };
     this.poses.set(eid, PoseState.Gather);
@@ -2492,6 +2592,12 @@ export class GameServer {
       this.cancelAction(eid, player, 'full');
       return;
     }
+    // Prospector / Timber Sense / Patient Line / Gleaner: the trade's
+    // Calling sometimes hands the yield over double.
+    const doubleChance = player.perks.doubleGather[node.skill] ?? 0;
+    if (doubleChance > 0 && Math.random() < doubleChance) {
+      addItem(player.inventory, node.yieldItem, 1);
+    }
     this.grantXp(eid, player, node.skill, node.xp);
     // Occasional extra find (wild herbs shed seeds) — a single item or
     // a loot table rolled at the node's level (interaction loot).
@@ -2726,8 +2832,13 @@ export class GameServer {
         this.spawnDrop(item, qty - added, action.tx + 0.5, action.ty + 0.5, eid);
       }
     };
-    giveOrDrop(def.yield.item, roll(def.yield.min, def.yield.max));
-    const seeds = roll(def.seedReturn.min, def.seedReturn.max);
+    // Bounty doubles the basket some seasons; Green Thumb sometimes
+    // hands next season back with it.
+    let yieldQty = roll(def.yield.min, def.yield.max);
+    if (Math.random() < player.perks.doubleHarvestChance) yieldQty *= 2;
+    giveOrDrop(def.yield.item, yieldQty);
+    let seeds = roll(def.seedReturn.min, def.seedReturn.max);
+    if (Math.random() < player.perks.seedRefundChance) seeds += 1;
     if (seeds > 0) giveOrDrop(def.seedItem, seeds);
     this.grantXp(eid, player, 'farming', def.xp);
 
@@ -2857,9 +2968,15 @@ export class GameServer {
       sys("You don't have the materials.");
       return;
     }
-    player.action = { kind: 'craft', recipe, remaining: qty, ticksLeft: recipe.ticks };
+    const craftTicks = this.craftTicks(player, recipe);
+    player.action = { kind: 'craft', recipe, remaining: qty, ticksLeft: craftTicks };
     this.poses.set(eid, PoseState.Craft);
-    player.session.sendJson({ t: 'action', state: 'start', ticks: recipe.ticks });
+    player.session.sendJson({ t: 'action', state: 'start', ticks: craftTicks });
+  }
+
+  /** Master Grain and kin: the trade's Calling quickens the bench. */
+  private craftTicks(player: PlayerComp, recipe: { skill: SkillId; ticks: number }): number {
+    return Math.max(1, Math.round(recipe.ticks * (player.perks.craftSpeed[recipe.skill] ?? 1)));
   }
 
   private tickCraft(eid: EntityId, player: PlayerComp): void {
@@ -2877,10 +2994,24 @@ export class GameServer {
       return;
     }
     for (const input of recipe.inputs) removeItem(player.inventory, input.item, input.qty);
+    // Sparing Hammer / Clean Grain / Fine Seams / Salvager / Dust
+    // Thrift: the trade's Calling sometimes hands one input back.
+    const saveChance = player.perks.materialSave[recipe.skill] ?? 0;
+    if (saveChance > 0 && recipe.inputs.length > 0 && Math.random() < saveChance) {
+      const spared = recipe.inputs[Math.floor(Math.random() * recipe.inputs.length)]!;
+      addItem(player.inventory, spared.item, 1);
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `Your craft spares a ${itemDef(spared.item)?.name ?? spared.item}.`,
+      });
+    }
 
     const level = this.effectiveLevel(player, recipe.skill);
+    // Seasoned Palate scales what remains after skill has done its part.
     const burnChance = recipe.burnChance
-      ? Math.max(0, recipe.burnChance - (level - recipe.levelReq) * 0.015)
+      ? Math.max(0, recipe.burnChance - (level - recipe.levelReq) * 0.015) *
+        player.perks.burnChanceMult
       : 0;
     if (burnChance > 0 && Math.random() < burnChance) {
       addItem(player.inventory, recipe.burnResult ?? 'burnt_food', 1);
@@ -2913,8 +3044,9 @@ export class GameServer {
 
     action.remaining--;
     if (action.remaining > 0 && this.hasInputs(player, recipe)) {
-      action.ticksLeft = recipe.ticks;
-      player.session?.sendJson({ t: 'action', state: 'start', ticks: recipe.ticks });
+      const nextTicks = this.craftTicks(player, recipe);
+      action.ticksLeft = nextTicks;
+      player.session?.sendJson({ t: 'action', state: 'start', ticks: nextTicks });
     } else {
       this.cancelAction(eid, player, 'done');
     }
@@ -2972,9 +3104,11 @@ export class GameServer {
       return;
     }
 
-    player.action = { kind: 'build', buildable: def, tx, ty, ticksLeft: def.ticks };
+    // Homesteader: walls rise quickly for the practiced hand.
+    const buildTicks = Math.max(1, Math.round(def.ticks * player.perks.buildSpeedMult));
+    player.action = { kind: 'build', buildable: def, tx, ty, ticksLeft: buildTicks };
     this.poses.set(eid, PoseState.Gather);
-    player.session.sendJson({ t: 'action', state: 'start', ticks: def.ticks });
+    player.session.sendJson({ t: 'action', state: 'start', ticks: buildTicks });
   }
 
   private tickBuild(eid: EntityId, player: PlayerComp): void {
@@ -2993,6 +3127,17 @@ export class GameServer {
       return;
     }
     for (const m of def.materials) removeItem(player.inventory, m.item, m.qty);
+    // Salvager: the builder's Calling sometimes hands one piece back.
+    const buildSave = player.perks.materialSave[def.skill ?? 'construction'] ?? 0;
+    if (buildSave > 0 && def.materials.length > 0 && Math.random() < buildSave) {
+      const spared = def.materials[Math.floor(Math.random() * def.materials.length)]!;
+      addItem(player.inventory, spared.item, 1);
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `Your build spares a ${itemDef(spared.item)?.name ?? spared.item}.`,
+      });
+    }
 
     // A diagonal wall corner auto-orients to span the two
     // perpendicular wall neighbours present right now — the builder
@@ -3295,6 +3440,25 @@ export class GameServer {
     levelBefore: number,
     levelAfter: number,
   ): void {
+    // Callings and Focus milestones speak for EVERY skill.
+    for (const def of callingsFor(skill)) {
+      if (levelBefore < def.unlockLevel && levelAfter >= def.unlockLevel) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `A Calling answers to you now: ${def.name}.`,
+        });
+      }
+    }
+    for (const milestone of [FOCUS_MILESTONE_LEVEL, FOCUS_MASTERY_LEVEL]) {
+      if (levelBefore < milestone && levelAfter >= milestone) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `Your Focus deepens — ${focusBudget(player.skills)} to hold Callings with.`,
+        });
+      }
+    }
     if (!(COMBAT_STYLES as readonly string[]).includes(skill)) return;
     let ladderMoved = false;
     for (const tech of techniquesFor(skill)) {
@@ -4608,16 +4772,24 @@ export class GameServer {
       removeItem(player.inventory, slot.item, 1);
       if (def.heals) {
         const health = this.healths.must(eid);
-        health.hp = Math.min(health.maxHp, health.hp + def.heals);
+        health.hp = Math.min(
+          health.maxHp,
+          // Hearty Meals: the practiced constitution wastes no bite.
+          health.hp + Math.round(def.heals * player.perks.foodHealMult),
+        );
       }
       player.buffs = player.buffs.filter((x) => x.channel !== b.channel);
+      // Field Kitchen / Long Brew stretch their channel; Stonewall
+      // thickens any shield the cup or plate raises.
+      const durMult =
+        b.channel === 'food' ? player.perks.foodBuffDurMult : player.perks.tonicBuffDurMult;
       player.buffs.push(
         mkBuff({
           speedMult: b.speedMult ?? 1,
-          shieldHp: b.shieldHp ?? 0,
+          shieldHp: Math.round((b.shieldHp ?? 0) * player.perks.shieldMult),
           gatherSpeed: b.gatherSpeed ?? 1,
           regenPer4s: b.regenPer4s ?? 0,
-          untilTick: this.tickCount + b.durationSec * 20,
+          untilTick: this.tickCount + Math.round(b.durationSec * 20 * durMult),
           channel: b.channel,
           itemId: def.id,
           name: b.name,
@@ -4635,7 +4807,11 @@ export class GameServer {
         return;
       }
       removeItem(player.inventory, slot.item, 1);
-      health.hp = Math.min(health.maxHp, health.hp + def.heals);
+      health.hp = Math.min(
+          health.maxHp,
+          // Hearty Meals: the practiced constitution wastes no bite.
+          health.hp + Math.round(def.heals * player.perks.foodHealMult),
+        );
       player.session?.sendJson({ t: 'inv', slots: player.inventory });
       return;
     }
@@ -4885,8 +5061,12 @@ export class GameServer {
       this.cancelAction(eid, player, 'full');
       return;
     }
-    npc.nextProduceAt = Date.now() + produce.cooldownSec * 1000;
-    addItem(player.inventory, produce.item, 1);
+    // Drover's Bond shortens the animal's rest; Gentle Hand sometimes
+    // coaxes a second measure.
+    npc.nextProduceAt =
+      Date.now() + Math.round(produce.cooldownSec * 1000 * player.perks.produceRestMult);
+    const produceQty = 1 + (Math.random() < player.perks.doubleProduceChance ? 1 : 0);
+    addItem(player.inventory, produce.item, produceQty);
     this.grantXp(eid, player, 'beastcraft', produce.xp);
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
     sys(`You collect ${itemDef(produce.item)?.name.toLowerCase() ?? produce.item} from the ${npc.def.name.toLowerCase()}.`);
@@ -5101,14 +5281,127 @@ export class GameServer {
     }
   }
 
-  /** Re-aggregate worn-gear stats + re-derive max HP (clamped, never 0). */
+  /**
+   * Re-aggregate worn-gear stats + re-derive max HP (clamped, never 0).
+   * THE CALLING LAW folds here too: answered gear-kind Callings join
+   * the same aggregate the enchants use, perPiece Callings read the
+   * fresh classCounts, and the one-site perk dials rebuild — ONE
+   * recompute site serves the wardrobe and the character alike.
+   */
   private recomputeGear(eid: EntityId, player: PlayerComp): void {
     player.gear = aggregateGearStats(player.equipment);
+    const perks = defaultPerks();
+    for (const id of player.callings) {
+      const def = callingDef(id);
+      if (!def) continue;
+      const fx = def.effect;
+      switch (fx.kind) {
+        case 'gear':
+          if (isAggregateCallingEffect(fx)) foldEffect(player.gear, fx.effect);
+          break;
+        case 'perPiece': {
+          const count = player.gear.classCounts[fx.armorClass] ?? 0;
+          if (fx.speedPct) player.gear.speedMult *= 1 + (fx.speedPct * count) / 100;
+          if (fx.maxHp) player.gear.maxHp += fx.maxHp * count;
+          break;
+        }
+        case 'perk':
+          switch (fx.perk) {
+            case 'offhandDelayTicks':
+              perks.offhandDelayTicks = Math.min(perks.offhandDelayTicks, fx.magnitude);
+              break;
+            case 'drawMoveFactor':
+              perks.drawMoveFactor = Math.max(perks.drawMoveFactor, fx.magnitude);
+              break;
+            default:
+              perks[fx.perk] = fx.magnitude;
+          }
+          break;
+        case 'doubleGather':
+          perks.doubleGather[fx.skill] = Math.max(perks.doubleGather[fx.skill] ?? 0, fx.chance);
+          break;
+        case 'gatherSpeed':
+          perks.gatherSpeed[fx.skill] = Math.max(perks.gatherSpeed[fx.skill] ?? 1, fx.mult);
+          break;
+        case 'materialSave':
+          perks.materialSave[fx.skill] = Math.max(perks.materialSave[fx.skill] ?? 0, fx.chance);
+          break;
+        case 'craftSpeed':
+          perks.craftSpeed[fx.skill] = Math.min(perks.craftSpeed[fx.skill] ?? 1, fx.mult);
+          break;
+      }
+    }
+    player.perks = perks;
     const health = this.healths.get(eid);
     if (health) {
       health.maxHp = levelForXp(player.skills.vitality ?? 0) + player.gear.maxHp;
       health.hp = Math.max(1, Math.min(health.hp, health.maxHp));
     }
+  }
+
+  /** Focus spent by the currently answered set. */
+  private focusUsed(player: PlayerComp): number {
+    let used = 0;
+    for (const id of player.callings) used += callingDef(id)?.focusCost ?? 0;
+    return used;
+  }
+
+  /**
+   * Drop answers that no longer exist or no longer fit the budget —
+   * login belt-and-braces only; the toggle path enforces the law live.
+   */
+  private sanitizeCallings(player: PlayerComp): void {
+    const budget = focusBudget(player.skills);
+    for (const id of [...player.callings]) {
+      const def = callingDef(id);
+      const level = def ? levelForXp(player.skills[def.skill] ?? 0) : 0;
+      if (!def || level < def.unlockLevel || this.focusUsed(player) > budget) {
+        player.callings.delete(id);
+        if (player.characterId > 0) this.accounts.deleteCalling(player.characterId, id);
+      }
+    }
+  }
+
+  /**
+   * Answer or set down a Calling. Server-validated against the unlock
+   * (BASE level, like techniques) and THE FOCUS LAW's budget; toggling
+   * is always free — the budget is the only law.
+   */
+  setCalling(eid: EntityId, calling: string, on: boolean): void {
+    const player = this.players.get(eid);
+    if (!player) return;
+    const def = callingDef(calling);
+    if (!def) return;
+    if (on && !player.callings.has(calling)) {
+      const level = levelForXp(player.skills[def.skill] ?? 0);
+      if (level < def.unlockLevel) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `${def.name} answers at ${def.skill} level ${def.unlockLevel}.`,
+        });
+        return;
+      }
+      const budget = focusBudget(player.skills);
+      if (this.focusUsed(player) + def.focusCost > budget) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `Your Focus is spent (${this.focusUsed(player)}/${budget}). Set another Calling down first.`,
+        });
+        return;
+      }
+      player.callings.add(calling);
+      if (player.characterId > 0) this.accounts.saveCalling(player.characterId, calling);
+    } else if (!on && player.callings.has(calling)) {
+      player.callings.delete(calling);
+      if (player.characterId > 0) this.accounts.deleteCalling(player.characterId, calling);
+    } else {
+      return;
+    }
+    this.recomputeGear(eid, player);
+    player.session?.sendJson({ t: 'callings', answered: [...player.callings] });
+    this.sendCooldowns(player);
   }
 
   /**
@@ -5218,7 +5511,8 @@ export class GameServer {
         player,
         aim,
         weapon.range,
-        finisher ? Math.round(maxHit * FINISHER_DAMAGE_MULT) : maxHit,
+        // Follow-Through rides only the finisher — the rhythm's payoff.
+        finisher ? Math.round(maxHit * FINISHER_DAMAGE_MULT * player.perks.finisherBonusMult) : maxHit,
         finisher ? FINISHER_KNOCKBACK_MULT : stage === 1 ? 1.1 : 1,
         finisher, // the finisher sweeps everyone, not just the best target
         wasHidden,
@@ -5228,7 +5522,8 @@ export class GameServer {
       // half-beat later. Scheduled, not immediate — the one-two rhythm
       // IS the fantasy.
       if (this.offhandWeapon(player)) {
-        player.offhandEchoTicks = OFFHAND_DELAY_TICKS;
+        // Ambidexter tightens the echo's schedule.
+        player.offhandEchoTicks = player.perks.offhandDelayTicks;
         player.offhandEchoAim = aim;
       }
     } else {
@@ -5287,7 +5582,8 @@ export class GameServer {
         off.weapon.damage *
           powerMultFn(level, PLAYER_POWER_PER_LEVEL) *
           player.gear.styleDmgMult.melee *
-          offhandDamageFactor(dwLevel),
+          // Twin Tempo lifts the echo — the never-mirrors cap holds.
+          Math.min(0.85, offhandDamageFactor(dwLevel) + player.perks.offhandFactorBonus),
       ),
     );
     // NO pose here: the echo is pure client choreography (the rig's
@@ -5332,6 +5628,8 @@ export class GameServer {
     if (struckWeapon) {
       backstabMult += weaponStrikeEffects(struckWeapon.id, struckWeapon.roll).backstabBonus;
     }
+    // Opportunist: the turned back pays the practiced hand more.
+    backstabMult += player.perks.backstabBonus;
     const critPct = player.gear.critPct;
     // LAG COMP: test the swing against the world the ATTACKER saw —
     // NPC positions rewound by their view delay (see npcHist). Damage
@@ -6413,7 +6711,8 @@ export class GameServer {
       player.buffs.push(
         mkBuff({
           speedMult: self.speedMult ?? 1,
-          shieldHp: Math.round((self.shieldHp ?? 0) * powerMult),
+          // Stonewall thickens every shield the caster raises.
+          shieldHp: Math.round((self.shieldHp ?? 0) * powerMult * player.perks.shieldMult),
           meleeLifesteal: self.meleeLifesteal ?? 0,
           onHitStatus: self.onHitStatus,
           untilTick: this.tickCount + self.durationTicks,
@@ -6645,7 +6944,11 @@ export class GameServer {
           if (this.npcs.has(eid)) {
             this.dotNpc(eid, s.power, s.sourceEid, s.id as 'burn' | 'bleed' | 'venom');
           } else if (this.players.has(eid)) {
-            this.damagePlayer(eid, s.power, { pierceArmor: true });
+            // Bitter Blood: the herbalist's constitution dulls the drip.
+            const p = this.players.get(eid)!;
+            this.damagePlayer(eid, Math.max(1, Math.round(s.power * p.perks.dotResistMult)), {
+              pierceArmor: true,
+            });
           }
         }
         if (s.ticksLeft <= 0) list.splice(i, 1);
@@ -7347,7 +7650,10 @@ export class GameServer {
     const defLevel = this.effectiveLevel(player, 'defence');
     // The gear cache already sums rolled armor (rarity-scaled) plus
     // legacy flat armor — the per-hit loop over worn items is gone.
-    const armor = player.gear.armor;
+    // Bulwark answers only a planted stance: armor for held ground.
+    const armor =
+      player.gear.armor +
+      (player.stillTicks >= STILL_ARMOR_TICKS ? player.perks.stillArmor : 0);
     // THE THREAT LAW mitigation: percentage armor class from trained
     // defence + worn armor, pierced by the attacker's level. DoTs skip
     // it entirely — the wound is already inside the armor.
@@ -8693,7 +8999,12 @@ export class GameServer {
           // Sneaking shrinks how close this NPC lets you get — the whole
           // point of the skill below the invisibility tiers.
           if (player.sneaking) {
-            aggro *= sneakDetectionFactor(this.effectiveLevel(player, 'sneak'));
+            // Soft Step shaves the factor further; the hard floor holds.
+            aggro *= Math.max(
+              0.15,
+              sneakDetectionFactor(this.effectiveLevel(player, 'sneak')) -
+                player.perks.sneakFactorBonus,
+            );
           }
           if (dx * dx + dy * dy < aggro * aggro) {
             this.npcAggro(eid, npc, playerEid);
@@ -9878,7 +10189,8 @@ export class GameServer {
       }
       // Drawing a bow is a braced stance — same rule the client predicts.
       let speed = isDrawSlowed(frame, style)
-        ? player.speed * DRAW_MOVE_FACTOR
+        ? // Longstride raises the drawn-bow floor — walk your aim.
+          player.speed * Math.max(DRAW_MOVE_FACTOR, player.perks.drawMoveFactor)
         : player.speed;
       for (const b of player.buffs) speed *= b.speedMult;
       if (this.hasPassive(player, 'fleet_footed')) speed *= 1.08;
@@ -9965,6 +10277,8 @@ export class GameServer {
     // Rest yields to everything: a step, a crouch, or a running action
     // (gathering, crafting) ends the sit — no half-seated walkers.
     if (moved || player.sneaking || player.action) player.sitting = false;
+    // The planted-stance clock (Bulwark) counts sneaking or not.
+    player.stillTicks = moved ? 0 : player.stillTicks + 1;
     if (player.sneaking) {
       player.sneakStillTicks = moved ? 0 : player.sneakStillTicks + 1;
     } else {
@@ -10089,7 +10403,12 @@ export class GameServer {
       player.snapGraceUntilTick = this.tickCount + SNAP_RECOVERY_TICKS + SNAP_GRACE_TICKS;
       player.lastCombatAt = Date.now();
       this.setPose(eid, PoseState.Loose, 4);
-      const shot = snapShot(base, weapon.projectileSpeed ?? 12, weapon.range);
+      // Fletcher's Eye: the quick arrow stops being an apology.
+      const shot = snapShot(
+        Math.round(base * player.perks.snapShotMult),
+        weapon.projectileSpeed ?? 12,
+        weapon.range,
+      );
       fire(shot, aim, false);
       if (stage === 2) {
         // The rhythm reward: a second arrow rides the third tap.

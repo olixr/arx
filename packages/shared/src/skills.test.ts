@@ -42,3 +42,19 @@ test('combatLevel: only the best offense counts', () => {
 test('combatLevel: a pure skiller stays near 1', () => {
   assert.equal(combatLevel({ mining: xpForLevel(99), cooking: xpForLevel(99) }), 1);
 });
+
+// ------------------------------------------------------ THE FOCUS LAW
+
+import { FOCUS_BASE, focusBudget, xpForLevel as xpFor } from './skills.js';
+
+test('focusBudget: base 2, +1 per skill at 50, +1 more at 99', () => {
+  assert.equal(focusBudget({}), FOCUS_BASE);
+  assert.equal(focusBudget({ melee: xpFor(49) }), FOCUS_BASE, 'one shy pays nothing');
+  assert.equal(focusBudget({ melee: xpFor(50) }), FOCUS_BASE + 1);
+  assert.equal(focusBudget({ melee: xpFor(99) }), FOCUS_BASE + 2, 'mastery pays twice');
+  assert.equal(
+    focusBudget({ melee: xpFor(50), mining: xpFor(50), cooking: xpFor(99) }),
+    FOCUS_BASE + 4,
+    'breadth and depth both pay',
+  );
+});

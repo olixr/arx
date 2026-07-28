@@ -335,6 +335,8 @@ export class ClientGame {
   abilityMax: [number, number, number, number] = [0, 0, 0, 0];
   /** Chosen technique ability per combat style (server-confirmed). */
   techniques: Record<string, string> = {};
+  /** Answered Callings (server truth; Focus derives from skills). */
+  callings: string[] = [];
   /** Active consumable buffs (tonic/food) for the HUD chip row. */
   buffs: BuffInfo[] = [];
   /** performance.now() when the buffs snapshot arrived (chips count down). */
@@ -345,6 +347,7 @@ export class ClientGame {
   onCastFx: ((slot: AbilitySlot, ab: AbilityDef) => void) | null = null;
   /** Fires when the technique loadout changes (UI refresh). */
   onTechniques: (() => void) | null = null;
+  onCallings: (() => void) | null = null;
   /** Fires for every arriving combat effect (audio/shake hooks). */
   onFx: ((fx: ActiveFx) => void) | null = null;
   /** Buttons of the previous outgoing frame — press-edge detection. */
@@ -461,6 +464,11 @@ export class ClientGame {
   /** Choose a technique for a style (server validates the unlock). */
   sendTechnique(style: string, ability: string): void {
     this.conn?.send({ t: 'technique', style, ability });
+  }
+
+  /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
+  sendCalling(calling: string, on: boolean): void {
+    this.conn?.send({ t: 'calling', calling, on });
   }
 
   /** Remaining cooldown fraction for a hotbar slot, 0 = ready. */
@@ -1015,6 +1023,11 @@ export class ClientGame {
       case 'techniques': {
         this.techniques = msg.chosen;
         this.onTechniques?.();
+        break;
+      }
+      case 'callings': {
+        this.callings = msg.answered;
+        this.onCallings?.();
         break;
       }
       case 'buffs': {
