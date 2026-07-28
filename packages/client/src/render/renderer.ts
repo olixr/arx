@@ -6789,6 +6789,19 @@ export class Renderer {
     const diagonal = Math.abs(nx) > 0.01;
     // Tone by facing: S = base, SE-turn = shaded, SW-turn = sunlit.
     const tone = !diagonal ? 0 : nx > 0 ? -16 : 12;
+    // What tops the cliff decides its brow: sod spills over a grassy
+    // crown, bare rock keeps a plain undercut. Sampled once from the
+    // high side of the segment.
+    const hmx = (ax + bx) / 2;
+    const hmy = (ay + by) / 2;
+    let htx = Math.floor(hmx - nx * 0.4);
+    let hty = Math.floor(hmy - 0.4);
+    if (game.world.elevAt(htx, hty) < level) htx = Math.floor(hmx);
+    // The rim row itself is the Cliff strip — the ground that grows
+    // things starts behind it. Step north past the rock band.
+    for (let back = 0; back < 2 && game.world.groundAt(htx, hty) === Tile.Cliff; back++) hty--;
+    const aboveT = game.world.groundAt(htx, hty);
+    const turf = aboveT === Tile.Grass || aboveT === Tile.GrassTall;
 
     return {
       // DIAGONAL SORT LAW: a bevel's occlusion boundary varies with x,
@@ -6833,11 +6846,31 @@ export class Renderer {
         const yTopB = B.y - topLift - 1.5;
         const yBaseA = A.y - baseLift;
         const yBaseB = B.y - baseLift;
+        // EVERY mark below is keyed to WORLD x, never to segment-local
+        // fractions: beds, joints, blocks and tufts continue unbroken
+        // across curtain seams and around diagonal turns, and no two
+        // stretches of wall repeat. Segment-local detail is what made
+        // the old face read as fence posts.
+        const wxSpan = bx - ax;
+        const n01 = (a: number, sa: number) => Renderer.stone01(a, sa, level * 31 + 7);
+        const vnoise = (wx: number, salt: number, ks: number): number => {
+          const t = wx / ks;
+          const i = Math.floor(t);
+          const f = t - i;
+          const u = f * f * (3 - 2 * f);
+          return n01(i, salt) * (1 - u) + n01(i + 1, salt) * u;
+        };
+        const fOf = (wx: number) => (wx - ax) / wxSpan;
+        const sxAt = (f: number) => A.x + (B.x - A.x) * f;
+        const yTopAt = (f: number) => yTopA + (yTopB - yTopA) * f;
+        const yBaseAt = (f: number) => yBaseA + (yBaseB - yBaseA) * f;
+        const yAt = (f: number, frac: number) => yTopAt(f) + (yBaseAt(f) - yTopAt(f)) * frac;
+        const fine = s >= 26;
         // Rock body: vertical gradient, lit near the brink.
         const grad = ctx.createLinearGradient(0, Math.min(yTopA, yTopB), 0, Math.max(yBaseA, yBaseB));
-        grad.addColorStop(0, shade('#6d6577', tone));
-        grad.addColorStop(0.55, shade('#5d5568', tone));
-        grad.addColorStop(1, shade('#4b4556', tone));
+        grad.addColorStop(0, shade('#746c80', tone));
+        grad.addColorStop(0.45, shade('#5e5669', tone));
+        grad.addColorStop(1, shade('#453e51', tone));
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.moveTo(A.x, yTopA);
@@ -6846,47 +6879,263 @@ export class Renderer {
         ctx.lineTo(A.x, yBaseA + 0.5);
         ctx.closePath();
         ctx.fill();
-        // Bedded strata: constant world fractions -> beds run unbroken
-        // along straight runs AND diagonal turns.
-        const line = (f: number, w2: number, col: string): void => {
-          ctx.strokeStyle = col;
-          ctx.lineWidth = w2;
+        // Macro forms first: a slow full-height light/dark drift, so
+        // the cliff reads as great masses before any detail lands.
+        for (let wx0 = Math.floor(ax * 2) / 2; wx0 < bx; wx0 += 0.5) {
+          const x0 = Math.max(ax, wx0);
+          const x1 = Math.min(bx, wx0 + 0.5);
+          if (x1 - x0 < 0.02) continue;
+          const v = vnoise((x0 + x1) / 2, 6, 1.7) - 0.5;
+          if (Math.abs(v) < 0.1) continue;
+          ctx.fillStyle =
+            v > 0
+              ? `rgba(236, 232, 240, ${Math.min(0.06, v * 0.16)})`
+              : `rgba(26, 20, 36, ${Math.min(0.08, -v * 0.2)})`;
+          const f0 = fOf(x0);
+          const f1 = fOf(x1);
           ctx.beginPath();
-          ctx.moveTo(A.x, yTopA + (yBaseA - yTopA) * f);
-          ctx.lineTo(B.x, yTopB + (yBaseB - yTopB) * f);
+          ctx.moveTo(sxAt(f0), yTopAt(f0));
+          ctx.lineTo(sxAt(f1), yTopAt(f1));
+          ctx.lineTo(sxAt(f1), yBaseAt(f1) + 0.5);
+          ctx.lineTo(sxAt(f0), yBaseAt(f0) + 0.5);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // Bedded strata: three seams whose heights BREATHE along the
+        // run (value-noise over world x, salted per level). Beds still
+        // run unbroken along straight runs AND diagonal turns, but no
+        // two stretches of wall band at the same heights — and each
+        // seam is a shelf (lit lip above, shadow within), not a stripe.
+        const bedBase = [
+          0.24 + (n01(9001, 11) - 0.5) * 0.08,
+          0.5 + (n01(9002, 11) - 0.5) * 0.08,
+          0.76 + (n01(9003, 11) - 0.5) * 0.08,
+        ];
+        const bedAt = (wx: number, k: number): number => {
+          const f = bedBase[k]! + (vnoise(wx, 40 + k * 3, 2.3) - 0.5) * 0.17;
+          return Math.min(0.94, Math.max(0.1, f));
+        };
+        const browAt = (wx: number) => 0.045 + vnoise(wx, 20, 0.7) * 0.05;
+        const steps = Math.max(2, Math.ceil(wxSpan * 4));
+        // Bed seams draw DASHED — each step-span gated by its own
+        // noise — because a real bedding plane surfaces and buries
+        // itself; an unbroken line is a mortar course.
+        const bedPath = (frac: (wx: number) => number, lift2: number, gateSalt: number): void => {
+          ctx.beginPath();
+          for (let k2 = 0; k2 < steps; k2++) {
+            const f0 = k2 / steps;
+            const f1 = (k2 + 1) / steps;
+            const wxm = ax + wxSpan * (f0 + f1) * 0.5;
+            if (gateSalt >= 0 && vnoise(wxm, gateSalt, 0.9) < 0.28) continue;
+            ctx.moveTo(sxAt(f0), yAt(f0, frac(ax + wxSpan * f0)) + lift2);
+            ctx.lineTo(sxAt(f1), yAt(f1, frac(ax + wxSpan * f1)) + lift2);
+          }
           ctx.stroke();
         };
-        line(0.3, Math.max(1.5, s * 0.04), 'rgba(34, 27, 44, 0.32)');
-        line(0.62, Math.max(1.5, s * 0.05), 'rgba(34, 27, 44, 0.36)');
-        line(0.45, Math.max(2, s * 0.09), 'rgba(196, 150, 96, 0.12)');
-        line(0.84, Math.max(1.5, s * 0.035), 'rgba(34, 27, 44, 0.26)');
-        // A crack on some cells, jogging between beds.
-        if (h % 3 !== 0) {
-          const fx0 = 0.25 + ((h >> 5) % 50) / 100;
-          const cxA = A.x + (B.x - A.x) * fx0;
-          const cyT = yTopA + (yTopB - yTopA) * fx0;
-          const cyB = yBaseA + (yBaseB - yBaseA) * fx0;
-          const jog = s * (0.04 + ((h >> 9) % 8) / 150) * ((h >> 3) % 2 === 0 ? 1 : -1);
-          ctx.strokeStyle = 'rgba(26, 20, 36, 0.38)';
-          ctx.lineWidth = Math.max(1, s * 0.032);
-          ctx.beginPath();
-          ctx.moveTo(cxA, cyT + (cyB - cyT) * 0.1);
-          ctx.lineTo(cxA + jog, cyT + (cyB - cyT) * 0.5);
-          ctx.lineTo(cxA + jog * 0.4, cyT + (cyB - cyT) * 0.92);
-          ctx.stroke();
+        // One warm ochre seam per LEVEL (level-keyed, so the accent
+        // never pops in or out mid-run at a cell boundary).
+        const accent = Math.floor(n01(9010, 13) * 3);
+        for (let k = 0; k < 3; k++) {
+          const wj = (wx: number) => bedAt(wx, k);
+          if (k === accent) {
+            ctx.strokeStyle = 'rgba(196, 150, 96, 0.14)';
+            ctx.lineWidth = Math.max(2, s * 0.07);
+            bedPath(wj, 0, -1);
+          }
+          // A lit ledge only where the shelf actually surfaces (the
+          // accent bed and one hash-picked companion), gated with the
+          // seam's own dashes.
+          if (k === accent || Math.floor(n01(9011, 13) * 3) === k) {
+            ctx.strokeStyle = 'rgba(236, 232, 240, 0.09)';
+            ctx.lineWidth = Math.max(1, s * 0.03);
+            bedPath(wj, -Math.max(1.5, s * 0.045), 50 + k);
+          }
+          ctx.strokeStyle = 'rgba(30, 23, 42, 0.32)';
+          ctx.lineWidth = Math.max(1.5, s * 0.042);
+          bedPath(wj, 0, 50 + k);
         }
-        // Shade under the brink; AO where the face meets the ground.
-        line(0.035, Math.max(2, s * 0.07), 'rgba(24, 18, 34, 0.35)');
-        line(0.97, Math.max(2, s * 0.06), 'rgba(18, 12, 26, 0.3)');
+        if (fine) {
+          // Jointing: each bed band breaks into its own rhythm of
+          // blocks — staggered like natural fracture, never a grid.
+          // Tints are per-block; joints draw half-open on world x so
+          // curtain seams never double them.
+          for (let band = 0; band < 4; band++) {
+            const topF = (wx: number) => (band === 0 ? browAt(wx) : bedAt(wx, band - 1));
+            const botF = (wx: number) => (band === 3 ? 0.975 : bedAt(wx, band));
+            const bw = 0.7 + n01(60 + band, 17) * 0.5;
+            const off = n01(70 + band, 19) * bw;
+            const m1 = Math.floor((bx - off) / bw + 1);
+            for (let m = Math.floor((ax - off) / bw); m <= m1; m++) {
+              const jx0 = off + m * bw;
+              const x0 = Math.max(ax, jx0);
+              const x1 = Math.min(bx, jx0 + bw);
+              if (x1 - x0 < 0.03) continue;
+              const v = n01(m, 80 + band);
+              if (v < 0.38 || v > 0.62) {
+                // Facet tints carry the low-poly read — strong enough
+                // to register as planes, never enough to band. A share
+                // of the lit planes lean warm: sun-bleached sediment,
+                // not one purple repeated forever.
+                ctx.fillStyle =
+                  v > 0.62
+                    ? n01(m, 99 + band) > 0.6
+                      ? `rgba(224, 200, 164, ${0.05 + (v - 0.62) * 0.2})`
+                      : `rgba(236, 232, 240, ${0.04 + (v - 0.62) * 0.22})`
+                    : `rgba(26, 20, 36, ${0.04 + (0.38 - v) * 0.26})`;
+                const f0 = fOf(x0);
+                const f1 = fOf(x1);
+                const fm = (f0 + f1) / 2;
+                const xm = (x0 + x1) / 2;
+                ctx.beginPath();
+                ctx.moveTo(sxAt(f0), yAt(f0, topF(x0)));
+                ctx.lineTo(sxAt(fm), yAt(fm, topF(xm)));
+                ctx.lineTo(sxAt(f1), yAt(f1, topF(x1)));
+                ctx.lineTo(sxAt(f1), yAt(f1, botF(x1)));
+                ctx.lineTo(sxAt(fm), yAt(fm, botF(xm)));
+                ctx.lineTo(sxAt(f0), yAt(f0, botF(x0)));
+                ctx.closePath();
+                ctx.fill();
+              }
+              // Fractures, not mortar: only some block edges carry a
+              // joint, it leans, and it rarely spans its whole band.
+              if (jx0 > ax + 0.02 && jx0 < bx - 0.02 && n01(m, 95 + band) > 0.45) {
+                const fj = fOf(jx0);
+                const lean = (n01(m, 90 + band) - 0.5) * s * 0.09;
+                const ext = n01(m, 97 + band);
+                const t0 = topF(jx0) + 0.015 + (ext < 0.33 ? (botF(jx0) - topF(jx0)) * 0.35 : 0);
+                const b0 = botF(jx0) - 0.015 - (ext > 0.66 ? (botF(jx0) - topF(jx0)) * 0.35 : 0);
+                ctx.strokeStyle = 'rgba(26, 20, 36, 0.22)';
+                ctx.lineWidth = Math.max(1, s * 0.028);
+                ctx.beginPath();
+                ctx.moveTo(sxAt(fj), yAt(fj, t0));
+                ctx.lineTo(sxAt(fj) + lean, yAt(fj, b0));
+                ctx.stroke();
+              }
+            }
+          }
+          // A long crack on some cells: it crosses a bed with a jog —
+          // the one mark masonry can never make.
+          if (h % 7 < 3) {
+            const kBed = (h >> 3) % 2;
+            const wxC = ax + wxSpan * (0.25 + ((h >> 6) % 50) / 100);
+            if (wxC > ax + 0.06 && wxC < bx - 0.06) {
+              const fC = fOf(wxC);
+              const jog = s * (0.05 + ((h >> 10) % 7) / 130) * ((h >> 4) % 2 === 0 ? 1 : -1);
+              const yA2 = yAt(fC, bedAt(wxC, kBed) - 0.16);
+              const yMid = yAt(fC, bedAt(wxC, kBed));
+              const yB2 = yAt(fC, bedAt(wxC, kBed) + 0.19);
+              ctx.strokeStyle = 'rgba(22, 16, 32, 0.3)';
+              ctx.lineWidth = Math.max(1, s * 0.03);
+              ctx.beginPath();
+              ctx.moveTo(sxAt(fC), yA2);
+              ctx.lineTo(sxAt(fC) + jog * 0.4, yMid);
+              ctx.lineTo(sxAt(fC) + jog, yB2);
+              ctx.stroke();
+            }
+          }
+          // A protruding nose on some cells: one block shoulders out of
+          // the face, sunlit on top, pooling shadow beneath — the
+          // strongest depth cue a flat curtain can carry.
+          if (h % 5 < 2 && wxSpan > 0.4) {
+            const band = 1 + ((h >> 4) % 3);
+            const cW = 0.13 + ((h >> 7) % 12) / 100;
+            const cX = ax + wxSpan * (0.3 + ((h >> 9) % 40) / 100);
+            const x0 = Math.max(ax, cX - cW);
+            const x1 = Math.min(bx, cX + cW);
+            if (x1 - x0 > 0.12) {
+              const tF = (wx: number) => bedAt(wx, band - 1);
+              const bF = (wx: number) => (band === 3 ? 0.96 : bedAt(wx, band));
+              const f0 = fOf(x0);
+              const f1 = fOf(x1);
+              const fm = (f0 + f1) / 2;
+              const xm = (x0 + x1) / 2;
+              ctx.fillStyle = 'rgba(236, 232, 240, 0.09)';
+              ctx.beginPath();
+              ctx.moveTo(sxAt(f0), yAt(f0, tF(x0)));
+              ctx.lineTo(sxAt(f1), yAt(f1, tF(x1)));
+              ctx.lineTo(sxAt(f1), yAt(f1, bF(x1)));
+              ctx.lineTo(sxAt(f0), yAt(f0, bF(x0)));
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(255, 244, 214, 0.16)';
+              ctx.lineWidth = Math.max(1.5, s * 0.04);
+              ctx.beginPath();
+              ctx.moveTo(sxAt(f0), yAt(f0, tF(x0)));
+              ctx.lineTo(sxAt(fm), yAt(fm, tF(xm)));
+              ctx.lineTo(sxAt(f1), yAt(f1, tF(x1)));
+              ctx.stroke();
+              ctx.strokeStyle = 'rgba(18, 12, 26, 0.3)';
+              ctx.lineWidth = Math.max(2, s * 0.055);
+              ctx.beginPath();
+              ctx.moveTo(sxAt(f0), yAt(f0, bF(x0)));
+              ctx.lineTo(sxAt(fm), yAt(fm, bF(xm)));
+              ctx.lineTo(sxAt(f1), yAt(f1, bF(x1)));
+              ctx.stroke();
+            }
+          }
+        }
+        // The brow: the dark undercut where the crown overhangs its
+        // face, with a ragged lower edge. Turf spills over it when
+        // grass tops the cliff; bare rock keeps the plain shadow.
+        ctx.fillStyle = 'rgba(26, 19, 36, 0.42)';
+        ctx.beginPath();
+        ctx.moveTo(A.x, yTopA);
+        ctx.lineTo(B.x, yTopB);
+        for (let k2 = steps; k2 >= 0; k2--) {
+          const f = k2 / steps;
+          ctx.lineTo(sxAt(f), yAt(f, browAt(ax + wxSpan * f)));
+        }
+        ctx.closePath();
+        ctx.fill();
+        if (turf) {
+          ctx.fillStyle = 'rgba(74, 108, 50, 0.62)';
+          ctx.beginPath();
+          ctx.moveTo(A.x, yTopA);
+          ctx.lineTo(B.x, yTopB);
+          for (let k2 = steps; k2 >= 0; k2--) {
+            const f = k2 / steps;
+            ctx.lineTo(sxAt(f), yAt(f, browAt(ax + wxSpan * f) * 0.45));
+          }
+          ctx.closePath();
+          ctx.fill();
+          if (fine) {
+            // Hanging tufts where the sod overshoots the brink —
+            // lattice-keyed on world x, so a tuft never doubles (or
+            // vanishes) at a curtain seam.
+            const tw = Math.max(2.5, s * 0.075);
+            ctx.fillStyle = 'rgba(66, 98, 46, 0.7)';
+            for (let i2 = Math.ceil(ax / 0.45); i2 * 0.45 < bx; i2++) {
+              if (n01(i2, 33) < 0.45) continue;
+              const wxT = i2 * 0.45;
+              if (wxT <= ax + 0.02 || wxT >= bx - 0.02) continue;
+              const fT = fOf(wxT);
+              const yT2 = yAt(fT, browAt(wxT) * 0.45);
+              const drop = s * (0.08 + n01(i2, 35) * 0.08);
+              ctx.beginPath();
+              ctx.moveTo(sxAt(fT) - tw, yT2 - 1);
+              ctx.lineTo(sxAt(fT) + tw * 0.6, yT2 - 1);
+              ctx.lineTo(sxAt(fT) + (n01(i2, 37) - 0.5) * tw, yT2 + drop);
+              ctx.closePath();
+              ctx.fill();
+            }
+          }
+        }
+        // AO where the face meets the ground.
+        ctx.strokeStyle = 'rgba(18, 12, 26, 0.3)';
+        ctx.lineWidth = Math.max(2, s * 0.06);
+        ctx.beginPath();
+        ctx.moveTo(A.x, yBaseA - Math.max(1, s * 0.02));
+        ctx.lineTo(B.x, yBaseB - Math.max(1, s * 0.02));
+        ctx.stroke();
         // Scree at the foot of straight faces — pit floors included
         // (drawn in-sort, so the sunken floor rows can't erase it).
         if (!diagonal && level - 1 <= 0 && (h & 3) !== 0) {
-          ctx.fillStyle = shade('#6a6375', tone);
-          for (let k = 0; k < 2; k++) {
-            const f = 0.2 + ((h >> (7 + k * 5)) % 60) / 100;
+          for (let k = 0; k < 3; k++) {
+            const f = 0.14 + ((h >> (6 + k * 5)) % 70) / 100;
             const px2 = A.x + (B.x - A.x) * f;
             const py2 = yBaseA + (yBaseB - yBaseA) * f;
-            const pw = s * (0.06 + ((h >> (k * 4)) % 6) / 120);
+            const pw = s * (0.05 + ((h >> (k * 4)) % 8) / 110);
+            ctx.fillStyle = shade(k % 2 === 0 ? '#6a6375' : '#5b5468', tone);
             ctx.beginPath();
             chamferRect(ctx, px2, py2 - pw * 0.6, pw, pw * 0.7, pw * 0.3);
             ctx.fill();
