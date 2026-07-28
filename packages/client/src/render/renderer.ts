@@ -6185,71 +6185,122 @@ export class Renderer {
   }
 
   /**
-   * A half-height railing: posts, a top rail, baluster slats. Rails
-   * merge with rails only — a railing never joins a wall mass.
+   * THE RAILING — a hip-height terrace rail in the fence rebuild's
+   * dialect: one capped post per tile (the same foreshortened-cap
+   * grammar as the field fence, cut short), ONE top board with real
+   * thickness (lit plane over a front face) reaching half a tile
+   * toward every railing neighbour, and thin baluster slats seated
+   * under the board. Rails merge with rails only — a railing never
+   * joins a wall mass. N-S runs are the honest edge-on projection:
+   * the board's top plane marching up-screen through the posts, and
+   * every connected direction draws, so corners and T-junctions stay
+   * one continuous handrail.
    */
   private railItem(tx: number, ty: number, game: ClientGame): DrawItem {
-    const ctx = this.ctx;
     const s = this.camera.scale;
-    const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
-    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
-    // Hip height on the 1.15-tile body — a rail you'd rest a hand on.
-    const RAIL_H = 0.52;
-    const isRail = (t: number | undefined) => t === Tile.RailWood;
-    const rn = isRail(game.world.groundAt(tx, ty - 1));
-    const re = isRail(game.world.groundAt(tx + 1, ty));
-    const rs = isRail(game.world.groundAt(tx, ty + 1));
-    const rw = isRail(game.world.groundAt(tx - 1, ty));
-    const horizontal = re || rw || (!rn && !rs);
-    const post = '#6f4d26';
-    const rail = '#8a6534';
     const syT = s * this.camera.yScale;
-    const hr = RAIL_H * s;
-    const x0 = p.x - 0.25;
-    const x1 = p.x + s + 0.25;
+    const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const baseY = p.y + syT * 0.14;
+    const isRail = (x: number, y: number) => game.world.groundAt(x, y) === Tile.RailWood;
+    const cn = isRail(tx, ty - 1);
+    const ce = isRail(tx + 1, ty);
+    const cs = isRail(tx, ty + 1);
+    const cw = isRail(tx - 1, ty);
+    // An isolated piece still shows its build: a full E-W panel.
+    const isoEW = !cn && !ce && !cs && !cw;
+    // Board metrics as tile fractions: hip height (silhouette top of
+    // the lit plane), plane depth, and board-face height.
+    const RT = 0.55;
+    const PLANE = 0.05;
+    const FACE = 0.1;
+    const THICK = (PLANE + FACE) * s;
+    const xw = cw || isoEW ? p.x - s * 0.5 : p.x;
+    const xe = ce || isoEW ? p.x + s * 0.5 : p.x;
     return {
-      sortY: ty + 1,
-      drawShadow: horizontal
-        ? () => this.castEdgeQuad(x0, p.y + syT, x1, p.y + syT, RAIL_H)
-        : undefined,
+      sortY: ty + 0.8,
+      drawShadow: () => {
+        if (cw || ce || isoEW) this.castEdgeQuad(xw, baseY, xe, baseY, RT);
+        if (cn) this.castEdgeQuad(p.x, baseY - syT * 0.5, p.x, baseY, RT);
+        if (cs) this.castEdgeQuad(p.x, baseY, p.x, baseY + syT * 0.5, RT);
+        this.castEdgeQuad(p.x - s * 0.075, baseY, p.x + s * 0.075, baseY, 0.66);
+      },
       draw: () => {
-        const yBase = p.y + syT;
-        if (horizontal) {
-          // Balusters under the rail; end posts where the run stops.
-          ctx.fillStyle = post;
-          for (const fx of [0.28, 0.72]) {
-            ctx.fillRect(p.x + s * fx - s * 0.035, yBase - hr, s * 0.07, hr);
+        // Draw-time ctx capture: the outline pass swaps this.ctx.
+        const ctx = this.ctx;
+
+        // E-W: baluster slats seated under the board, then the board
+        // itself — lit top plane, front face, an under-edge shadow.
+        // End grain only at exposed ends; run ends die into posts.
+        const railEW = () => {
+          const yPlane = baseY - RT * s;
+          const yFace = yPlane + PLANE * s;
+          const yBot = yFace + FACE * s;
+          ctx.fillStyle = shade(FENCE_POST, -6);
+          const slat = (x: number) =>
+            ctx.fillRect(x - s * 0.021, yBot - s * 0.01, s * 0.042, baseY - yBot + s * 0.01);
+          if (cw || isoEW) {
+            slat(p.x - s * 0.33);
+            slat(p.x - s * 0.165);
           }
-          if (!rw) ctx.fillRect(x0, yBase - hr, s * 0.1, hr);
-          if (!re) ctx.fillRect(x1 - s * 0.1, yBase - hr, s * 0.1, hr);
-          // Top rail in the height frame so runs read as one member.
-          this.beginHeightLayer(RAIL_H);
-          ctx.fillStyle = rail;
-          ctx.beginPath();
-          chamferRect(ctx, x0, p.y + syT * 0.3, s + 0.5, syT * 0.4, s * 0.04);
-          ctx.fill();
-          ctx.fillStyle = shade(rail, 14);
-          ctx.fillRect(x0, p.y + syT * 0.3, s + 0.5, s * 0.045);
-          ctx.restore();
-        } else {
-          // North-south run marching in depth: the fence law at rail
-          // height — twin thin rails through chamfer-topped posts.
-          const cx = p.x + s * 0.5;
-          const cy = p.y + syT * 0.5;
-          const yTop = rn ? cy - syT : cy;
-          const yBot = rs ? cy + syT : cy;
-          const railT = Math.max(2, s * 0.07);
-          ctx.fillStyle = rail;
-          for (const rx of [-0.09, 0.09]) {
-            ctx.fillRect(cx + rx * s - railT / 2, yTop - hr * 0.88, railT, yBot - yTop + railT);
+          if (ce || isoEW) {
+            slat(p.x + s * 0.165);
+            slat(p.x + s * 0.33);
           }
-          ctx.fillStyle = post;
-          ctx.beginPath();
-          chamferRect(ctx, cx - s * 0.07, cy - hr, s * 0.14, hr, [s * 0.04, s * 0.04, 0, 0]);
-          ctx.fill();
-          ctx.fillStyle = shade(post, 16);
-          ctx.fillRect(cx - s * 0.05, cy - hr + s * 0.015, s * 0.1, s * 0.05);
-        }
+          ctx.fillStyle = shade(FENCE_RAIL, 20);
+          ctx.fillRect(xw, yPlane, xe - xw, PLANE * s);
+          ctx.fillStyle = FENCE_RAIL;
+          ctx.fillRect(xw, yFace, xe - xw, FACE * s);
+          ctx.fillStyle = shade(FENCE_RAIL, -20);
+          ctx.fillRect(xw, yBot - s * 0.02, xe - xw, s * 0.02);
+          if (isoEW) {
+            ctx.fillStyle = shade(FENCE_RAIL, -16);
+            ctx.fillRect(xw, yPlane, s * 0.03, yBot - yPlane);
+            ctx.fillRect(xe - s * 0.03, yPlane, s * 0.03, yBot - yPlane);
+          }
+          if (this.outlineOn) {
+            this.beginStructOutline();
+            ctx.beginPath();
+            ctx.moveTo(xw, yPlane);
+            ctx.lineTo(xe, yPlane);
+            ctx.moveTo(xw, yBot);
+            ctx.lineTo(xe, yBot);
+            if (isoEW) {
+              ctx.moveTo(xw, yPlane);
+              ctx.lineTo(xw, yBot);
+              ctx.moveTo(xe, yPlane);
+              ctx.lineTo(xe, yBot);
+            }
+            ctx.stroke();
+          }
+        };
+
+        // N-S half-strip: the board's top plane edge-on, a narrow
+        // strip marching up-screen with a sunlit west arris. Both
+        // strip ends always die under posts.
+        const railNS = (yN: number, yS: number) => {
+          const hw2 = s * 0.05;
+          ctx.fillStyle = shade(FENCE_RAIL, 14);
+          ctx.fillRect(p.x - hw2, yN - RT * s, hw2 * 2, yS - yN + THICK);
+          ctx.fillStyle = shade(FENCE_RAIL, 30);
+          ctx.fillRect(p.x - hw2, yN - RT * s, s * 0.016, yS - yN + THICK);
+          if (this.outlineOn) {
+            this.beginStructOutline();
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw2, yN - RT * s);
+            ctx.lineTo(p.x - hw2, yS - RT * s + THICK);
+            ctx.moveTo(p.x + hw2, yN - RT * s);
+            ctx.lineTo(p.x + hw2, yS - RT * s + THICK);
+            ctx.stroke();
+          }
+        };
+
+        // Back-to-front: the up-screen strip, the E-W panel, the post
+        // (covering every joint), then the down-screen strip.
+        if (cn) railNS(baseY - syT * 0.5, baseY);
+        if (cw || ce || isoEW) railEW();
+        this.drawFencePost(p.x, baseY, s * 0.15, s * 0.66);
+        if (cs) railNS(baseY, baseY + syT * 0.5);
       },
     };
   }
