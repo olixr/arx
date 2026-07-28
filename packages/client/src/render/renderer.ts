@@ -4168,11 +4168,38 @@ export class Renderer {
           continue;
         if (ground === Tile.Cliff) continue; // faces come from collectCliffFaces
         if (ground === Tile.Ramp) {
-          items.push(this.rampItem(tx, ty, game));
-          const landing = this.rampLandingItem(tx, ty, game);
-          if (landing) items.push(landing);
-          const apron = this.rampApronItem(tx, ty, game);
-          if (apron) items.push(apron);
+          // STAIR-RUN LAW: adjacent Ramp tiles at the same level
+          // descending the same way are ONE flight. N/S flights run
+          // E-W — walk to the west anchor and emit a single item
+          // spanning the whole width (runSeen dedupes; walking west
+          // catches runs whose anchor sits outside the viewport pad).
+          // Per-tile emission framed every tile in its own cheek pair:
+          // nine narrow slots where one grand staircase should stand.
+          // E/W flights stay per-row (each row is its own y-sort
+          // slice); rampItem itself drops the faces hidden rows would
+          // repaint.
+          const rdir = this.rampDir(game, tx, ty);
+          if (rdir[1] !== 0) {
+            const rlvl = game.world.elevAt(tx, ty);
+            const inRun = (x: number): boolean =>
+              game.world.groundAt(x, ty) === Tile.Ramp &&
+              game.world.elevAt(x, ty) === rlvl &&
+              this.rampDir(game, x, ty)[1] === rdir[1];
+            let ax = tx;
+            while (inRun(ax - 1)) ax--;
+            let runLen = 1;
+            while (inRun(ax + runLen)) runLen++;
+            const runKey = packTile(ax, ty);
+            if (runSeen.has(runKey)) continue;
+            runSeen.add(runKey);
+            items.push(this.rampItem(ax, ty, game, runLen));
+            const landing = this.rampLandingItem(ax, ty, game, runLen);
+            if (landing) items.push(landing);
+            const apron = this.rampApronItem(ax, ty, game, runLen);
+            if (apron) items.push(apron);
+          } else {
+            items.push(this.rampItem(tx, ty, game, 1));
+          }
           continue;
         }
         // Structural vocabulary routes before the generic wall/object
@@ -6950,6 +6977,22 @@ export class Renderer {
     };
   }
 
+  /** Descent direction of a Ramp tile: the cardinal neighbor a level down. */
+  private rampDir(game: ClientGame, tx: number, ty: number): [number, number] {
+    const lvl = game.world.elevAt(tx, ty);
+    for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) {
+      if (game.world.elevAt(tx + dx, ty + dy) < lvl) return [dx, dy];
+    }
+    return [0, 1];
+  }
+
+  /** Deterministic per-stone jitter, world-keyed like the terrain bake. */
+  private static stone01(a: number, b: number, c: number): number {
+    let t = (Math.imul(a, 374761393) + Math.imul(b, 668265263) + Math.imul(c, 974634599)) | 0;
+    t = Math.imul(t ^ (t >>> 13), 1274126177);
+    return ((t ^ (t >>> 16)) >>> 0) / 4294967296;
+  }
+
   /**
    * A stone stair crossing the cliff line - real STEPPED PRISMS, not a
    * striped slab. Flights climbing away from the camera show receding
@@ -6959,19 +7002,20 @@ export class Renderer {
    * lip on every tread nose. Entities still ride the smooth
    * renderLift() gradient - a half-step of float against the drawn
    * treads is invisible at gait speed.
+   *
+   * ONE FLIGHT PER RUN: the collector hands N/S flights their whole
+   * E-W run (see STAIR-RUN LAW at the call site), so cheek walls stand
+   * only at the two exposed ends and every tread is a single fitted
+   * course across the full width. Running-bond joints and per-block
+   * tint (stone01) keep a wide course from reading as an extruded
+   * slab; the joints land differently on every flight, so no two
+   * staircases in the world are pixel-identical.
    */
-  private rampItem(tx: number, ty: number, game: ClientGame): DrawItem {
+  private rampItem(tx: number, ty: number, game: ClientGame, runLen: number): DrawItem {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const lvl = game.world.elevAt(tx, ty);
-    // Descent direction: the cardinal neighbor a level down.
-    let dir: [number, number] = [0, 1];
-    for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) {
-      if (game.world.elevAt(tx + dx, ty + dy) < lvl) {
-        dir = [dx, dy];
-        break;
-      }
-    }
+    const dir = this.rampDir(game, tx, ty);
     const N = 5;
     const step = (ELEV_H * s) / N;
     const baseLift = (lvl - 1) * ELEV_H * s;
@@ -6980,6 +7024,34 @@ export class Renderer {
     const RISER = '#6a6375';
     const LIP = '#c2bcca';
 
+    // Running-bond masonry across a course: vertical block joints
+    // offset half a block every course, each block carrying a faint
+    // deterministic tint. Spans a tread AND its riser as one course of
+    // fitted stone (each step is one row of blocks, like real work).
+    const masonry = (bx0: number, bx1: number, y: number, h: number, course: number) => {
+      const w = bx1 - bx0;
+      if (w < 4 || h < 2) return;
+      const nBlocks = Math.max(1, Math.round(w / (s * 0.62)));
+      const bw = w / nBlocks;
+      const off = (course % 2) * bw * 0.5;
+      for (let bi = -1; bi <= nBlocks; bi++) {
+        const jx = bx0 + off + bi * bw;
+        const b0 = Math.max(bx0, jx);
+        const b1 = Math.min(bx1, jx + bw);
+        if (b1 - b0 >= 2) {
+          const v = Renderer.stone01(tx * 8 + bi, ty * 4 + course, lvl);
+          if (v > 0.6) {
+            ctx.fillStyle = v > 0.83 ? 'rgba(236, 232, 240, 0.05)' : 'rgba(26, 20, 36, 0.05)';
+            ctx.fillRect(b0, y, b1 - b0, h);
+          }
+        }
+        if (jx > bx0 + 1 && jx < bx1 - 1) {
+          ctx.fillStyle = 'rgba(26, 20, 36, 0.15)';
+          ctx.fillRect(Math.round(jx), y, 1, h);
+        }
+      }
+    };
+
     return {
       sortY: ty,
       draw: () => {
@@ -6987,72 +7059,140 @@ export class Renderer {
         // Rounded to whole pixels like the flanking curtains' endpoints,
         // so the flight meets its cheek walls without a hairline seam.
         const x0 = Math.round(wts(tx, ty).x);
-        const x1 = Math.round(wts(tx + 1, ty).x);
+        const x1 = Math.round(wts(tx + runLen, ty).x);
         const edgeW = Math.max(1.5, s * 0.04);
         if (dir[1] === 1) {
           // Climbing NORTH (away): a RECESSED stairwell, not stripes
           // painted on the wall plane. Cheek walls (the cut sides of
-          // the notch) frame a narrowed flight; a worn dirt apron
-          // spills from the mouth onto the low ground and a matching
-          // landing opens onto the crown (separate item) — the stair
-          // is carved into the terrain and attached to both grounds.
+          // the notch) frame the flight at the run's two exposed ends;
+          // a worn dirt apron spills from the mouth onto the low
+          // ground and a matching landing opens onto the crown
+          // (separate items) — the stair is carved into the terrain
+          // and attached to both grounds.
           const cw = Math.max(3, s * 0.11);
           const ix0 = x0 + cw;
           const ix1 = x1 - cw;
+          const iw = ix1 - ix0;
           const yTopFlight = wts(tx, ty).y - baseLift - ELEV_H * s;
           const yMouth = wts(tx, ty + 1).y - baseLift;
           // (The worn mouth apron is its own item — see rampApronItem —
           // because an elevated mouth's crown row would repaint it.)
           // Treads recede up-screen between the cheeks, each with a
-          // full riser face under its south nose.
+          // full riser face under its south nose. Higher courses sit
+          // deeper in the notch's bounce light — a gentle tone
+          // recession that reads as carved depth, not banding.
           for (let i = N - 1; i >= 0; i--) {
             const lift = baseLift + (i + 1) * step;
             const ySouth = wts(tx, ty + 1 - i / N).y - lift;
             const yNorth = wts(tx, ty + 1 - (i + 1) / N).y - lift;
-            ctx.fillStyle = i % 2 === 0 ? TOP_A : TOP_B;
-            ctx.fillRect(ix0, yNorth, ix1 - ix0, ySouth - yNorth + 0.5);
-            // Riser under the nose.
-            ctx.fillStyle = RISER;
-            ctx.fillRect(ix0, ySouth, ix1 - ix0, step + 0.5);
+            const sink = -Math.round((i / (N - 1)) * 7);
+            ctx.fillStyle = shade(i % 2 === 0 ? TOP_A : TOP_B, sink);
+            ctx.fillRect(ix0, yNorth, iw, ySouth - yNorth + 0.5);
+            // Riser under the nose, its base pooling dark where the
+            // step's own shadow gathers.
+            ctx.fillStyle = shade(RISER, sink);
+            ctx.fillRect(ix0, ySouth, iw, step + 0.5);
+            ctx.fillStyle = 'rgba(26, 20, 36, 0.18)';
+            ctx.fillRect(ix0, ySouth + step * 0.55, iw, step * 0.45);
+            // One course of fitted stone spans the tread and its riser.
+            masonry(ix0, ix1, yNorth + 1, ySouth + step - yNorth - 2, i);
             // Lit nose lip + shadow line under it.
             ctx.fillStyle = LIP;
-            ctx.fillRect(ix0, ySouth - edgeW, ix1 - ix0, edgeW);
+            ctx.fillRect(ix0, ySouth - edgeW, iw, edgeW);
             ctx.fillStyle = 'rgba(26, 20, 36, 0.3)';
-            ctx.fillRect(ix0, ySouth + step - edgeW, ix1 - ix0, edgeW);
+            ctx.fillRect(ix0, ySouth + step - edgeW, iw, edgeW);
           }
-          // Center wear: the path feet actually take, slightly lighter.
-          ctx.fillStyle = 'rgba(236, 232, 240, 0.08)';
-          ctx.fillRect((ix0 + ix1) / 2 - (ix1 - ix0) * 0.19, yTopFlight, (ix1 - ix0) * 0.38, yMouth - yTopFlight);
+          // Center wear: the path feet actually take. Two nested soft
+          // passes, capped so a grand flight shows one worn lane up
+          // its middle instead of tile-frequency banding.
+          const wearW = Math.min(iw * 0.38, s * 1.5);
+          const mid = (ix0 + ix1) / 2;
+          ctx.fillStyle = 'rgba(236, 232, 240, 0.05)';
+          ctx.fillRect(mid - wearW / 2, yTopFlight, wearW, yMouth - yTopFlight);
+          ctx.fillRect(mid - wearW * 0.3, yTopFlight, wearW * 0.6, yMouth - yTopFlight);
           // Cheek walls: the notch's cut sides. The west cheek shows
           // its east-facing (shaded) inner side, the east cheek its
-          // west-facing (sunlit) inner side. AO seam against treads.
+          // west-facing (sunlit) inner side; both are coursed at the
+          // tread rhythm so they read as built, not painted.
           ctx.fillStyle = '#443e52';
           ctx.fillRect(x0, yTopFlight, cw, yMouth - yTopFlight);
           ctx.fillStyle = '#5b5468';
           ctx.fillRect(ix1, yTopFlight, cw, yMouth - yTopFlight);
-          ctx.fillStyle = 'rgba(20, 15, 30, 0.35)';
-          ctx.fillRect(ix0 - 1.5, yTopFlight, 1.5, yMouth - yTopFlight);
-          ctx.fillRect(ix1, yTopFlight, 1.5, yMouth - yTopFlight);
+          ctx.fillStyle = 'rgba(26, 20, 36, 0.2)';
+          for (const cx of [x0, ix1]) {
+            for (let i = 1; i < N; i++) {
+              const jy = yTopFlight + ((yMouth - yTopFlight) * i) / N;
+              ctx.fillRect(cx, Math.round(jy), cw, 1);
+            }
+          }
+          // AO pooling onto the treads where they die into the cheeks:
+          // a two-band falloff, wider than the old hairline, so the
+          // recess visibly darkens toward its cut sides.
+          const ao = Math.max(1.5, s * 0.05);
+          ctx.fillStyle = 'rgba(20, 15, 30, 0.18)';
+          ctx.fillRect(ix0, yTopFlight, ao * 2, yMouth - yTopFlight);
+          ctx.fillRect(ix1 - ao * 2, yTopFlight, ao * 2, yMouth - yTopFlight);
+          ctx.fillStyle = 'rgba(20, 15, 30, 0.28)';
+          ctx.fillRect(ix0, yTopFlight, ao, yMouth - yTopFlight);
+          ctx.fillRect(ix1 - ao, yTopFlight, ao, yMouth - yTopFlight);
           // Lit caps where the cheeks meet the crown light.
           ctx.fillStyle = 'rgba(255, 244, 214, 0.22)';
           ctx.fillRect(x0, yTopFlight, cw, Math.max(1.5, s * 0.035));
           ctx.fillRect(ix1, yTopFlight, cw, Math.max(1.5, s * 0.035));
+          // Plinth blocks where the cheeks meet the low ground: a
+          // slightly proud, lit-topped footing, so the mouth reads
+          // finished from the avenue below.
+          const ph = Math.max(3, s * 0.12);
+          ctx.fillStyle = '#524b60';
+          ctx.fillRect(x0 - 1, yMouth - ph, cw + 2, ph);
+          ctx.fillStyle = '#6a6378';
+          ctx.fillRect(ix1 - 1, yMouth - ph, cw + 2, ph);
+          ctx.fillStyle = 'rgba(255, 244, 214, 0.18)';
+          ctx.fillRect(x0 - 1, yMouth - ph, cw + 2, 1.5);
+          ctx.fillRect(ix1 - 1, yMouth - ph, cw + 2, 1.5);
+          // Threshold sill: the crown paving's edge stone across the
+          // top of the flight.
+          ctx.fillStyle = '#b9b3c1';
+          ctx.fillRect(ix0, yTopFlight, iw, Math.max(1.5, s * 0.045));
         } else if (dir[1] === -1) {
           // Climbing SOUTH (toward camera): seen from behind-above -
           // receding tops with a hard drop edge at each step's back.
+          // Near (high, south) courses catch the most light; a kick
+          // light under each drop edge gives every step a rounded nose.
+          let yTopMin = Infinity;
+          let yBotMax = -Infinity;
           for (let i = 0; i < N; i++) {
             const lift = baseLift + (i + 1) * step;
             const yNorth = wts(tx, ty + i / N).y - lift;
             const ySouth = wts(tx, ty + (i + 1) / N).y - lift;
-            ctx.fillStyle = i % 2 === 0 ? TOP_A : TOP_B;
+            ctx.fillStyle = shade(i % 2 === 0 ? TOP_A : TOP_B, -Math.round((1 - i / (N - 1)) * 6));
             ctx.fillRect(x0, yNorth, x1 - x0, ySouth - yNorth + step + 0.5);
+            masonry(x0, x1, yNorth + edgeW, ySouth - yNorth + step - edgeW, i);
             ctx.fillStyle = 'rgba(26, 20, 36, 0.35)';
             ctx.fillRect(x0, yNorth, x1 - x0, edgeW);
+            ctx.fillStyle = 'rgba(236, 232, 240, 0.1)';
+            ctx.fillRect(x0, yNorth + edgeW, x1 - x0, edgeW * 0.8);
+            yTopMin = Math.min(yTopMin, yNorth);
+            yBotMax = Math.max(yBotMax, ySouth + step);
           }
+          // The flight's cut sides, edge-on: dark stringer lines tie
+          // the steps into one carved block instead of loose slabs.
+          const strW = Math.max(1.5, s * 0.04);
+          ctx.fillStyle = 'rgba(26, 20, 36, 0.3)';
+          ctx.fillRect(x0, yTopMin, strW, yBotMax - yTopMin);
+          ctx.fillRect(x1 - strW, yTopMin, strW, yBotMax - yTopMin);
         } else {
           // Climbing EAST or WEST: the south stringer is the read - a
           // zigzag of stepped faces, each tread nose lit, each drop
-          // edged. Tops ride above at their own lifts.
+          // edged. Tops ride above at their own lifts. Deep flights
+          // (several rows) show the stringer ONLY from the southmost
+          // row — northern rows are tread tops riding behind; the
+          // per-tile faces they used to paint were pure overdraw that
+          // scalloped wide flights with repeated seams.
+          const southSame =
+            game.world.groundAt(tx, ty + 1) === Tile.Ramp &&
+            game.world.elevAt(tx, ty + 1) === lvl &&
+            this.rampDir(game, tx, ty + 1)[0] === dir[0];
           const yFaceBase = wts(tx, ty + 1).y - baseLift;
           for (let i = 0; i < N; i++) {
             // Strip i counts from the LOW side.
@@ -7063,23 +7203,35 @@ export class Renderer {
             const lift = baseLift + (i + 1) * step;
             const yTopN = wts(tx, ty).y - lift;
             const yTopS = wts(tx, ty + 1).y - lift;
-            // South face of this tread's block, down to the low ground.
-            ctx.fillStyle = i % 2 === 0 ? RISER : shade(RISER, -8);
-            ctx.fillRect(sx0, yTopS, sx1 - sx0, yFaceBase - yTopS + 0.5);
+            if (!southSame) {
+              // South face of this tread's block, down to the low
+              // ground, coursed like the cheeks and pooling dark at
+              // its footing.
+              ctx.fillStyle = i % 2 === 0 ? RISER : shade(RISER, -8);
+              ctx.fillRect(sx0, yTopS, sx1 - sx0, yFaceBase - yTopS + 0.5);
+              ctx.fillStyle = 'rgba(26, 20, 36, 0.16)';
+              for (let c = 1; yTopS + c * step * 1.1 < yFaceBase - 1; c++) {
+                ctx.fillRect(sx0, Math.round(yTopS + c * step * 1.1), sx1 - sx0, 1);
+              }
+              ctx.fillStyle = 'rgba(20, 15, 30, 0.22)';
+              ctx.fillRect(sx0, yFaceBase - step * 0.8, sx1 - sx0, step * 0.8);
+              // Lit nose lip along the top of the face.
+              ctx.fillStyle = LIP;
+              ctx.fillRect(sx0, yTopS - edgeW * 0.6, sx1 - sx0, edgeW);
+            }
             // Tread top (foreshortened full tile depth).
-            ctx.fillStyle = i % 2 === 0 ? TOP_A : TOP_B;
+            ctx.fillStyle = shade(i % 2 === 0 ? TOP_A : TOP_B, -Math.round((i / (N - 1)) * 5));
             ctx.fillRect(sx0, yTopN, sx1 - sx0, yTopS - yTopN + 0.5);
-            // Lit nose lip along the top of the face.
-            ctx.fillStyle = LIP;
-            ctx.fillRect(sx0, yTopS - edgeW * 0.6, sx1 - sx0, edgeW);
             // Step-corner drop edge on the higher side of the strip.
             const hiX = dir[0] === 1 ? sx0 : sx1 - edgeW;
             ctx.fillStyle = 'rgba(26, 20, 36, 0.4)';
             ctx.fillRect(hiX, yTopN - step, edgeW, step + (yTopS - yTopN));
           }
-          // AO seam where the stringer meets the ground.
-          ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
-          ctx.fillRect(x0, yFaceBase - edgeW, x1 - x0, edgeW);
+          if (!southSame) {
+            // AO seam where the stringer meets the ground.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+            ctx.fillRect(x0, yFaceBase - edgeW, x1 - x0, edgeW);
+          }
         }
       },
     };
@@ -7093,7 +7245,12 @@ export class Renderer {
    * it must draw after that row's crown slice but BEFORE anything
    * standing on it.
    */
-  private rampLandingItem(tx: number, ty: number, game: ClientGame): DrawItem | null {
+  private rampLandingItem(
+    tx: number,
+    ty: number,
+    game: ClientGame,
+    runLen: number,
+  ): DrawItem | null {
     const lvl = game.world.elevAt(tx, ty);
     if (game.world.elevAt(tx, ty + 1) >= lvl) return null; // south-descending only
     const ctx = this.ctx;
@@ -7103,8 +7260,11 @@ export class Renderer {
       sortY: ty - 1 + 0.02,
       draw: () => {
         const wts = (wx: number, wy: number) => this.camera.worldToScreen(wx, wy, this.w, this.h);
+        // Spans the whole run: ONE worn patch across a grand flight's
+        // top, tapered only at its two ends (per-tile fans scalloped
+        // wide landings into a row of little arches).
         const x0 = Math.round(wts(tx, ty).x);
-        const x1 = Math.round(wts(tx + 1, ty).x);
+        const x1 = Math.round(wts(tx + runLen, ty).x);
         const yTop = wts(tx, ty).y - lift;
         const inset = s * 0.09;
         const reach = s * 0.32; // how far the worn patch spills north
@@ -7118,10 +7278,12 @@ export class Renderer {
         ctx.lineTo(x0 + inset * 1.6, yTop - reach * 0.6);
         ctx.closePath();
         ctx.fill();
-        // Center wear continuing the flight's path line.
+        // Center wear continuing the flight's path line, capped to a
+        // walking lane so wide flights keep one path, not a smear.
         ctx.fillStyle = 'rgba(126, 103, 80, 0.5)';
         const mid = (x0 + x1) / 2;
-        ctx.fillRect(mid - (x1 - x0) * 0.17, yTop - reach * 0.8, (x1 - x0) * 0.34, reach * 0.8);
+        const ww = Math.min((x1 - x0) * 0.34, s * 1.7);
+        ctx.fillRect(mid - ww / 2, yTop - reach * 0.8, ww, reach * 0.8);
         // Faint shade where the landing meets the top tread.
         ctx.fillStyle = 'rgba(38, 28, 22, 0.2)';
         ctx.fillRect(x0 + inset * 0.5, yTop, x1 - x0 - inset, Math.max(1.5, s * 0.035));
@@ -7135,7 +7297,12 @@ export class Renderer {
    * (mirror of the landing) — sorted just after the mouth row's ground
    * so it survives elevated shelves, but before anything standing on it.
    */
-  private rampApronItem(tx: number, ty: number, game: ClientGame): DrawItem | null {
+  private rampApronItem(
+    tx: number,
+    ty: number,
+    game: ClientGame,
+    runLen: number,
+  ): DrawItem | null {
     const lvl = game.world.elevAt(tx, ty);
     if (game.world.elevAt(tx, ty + 1) >= lvl) return null; // south-descending only
     const ctx = this.ctx;
@@ -7145,8 +7312,10 @@ export class Renderer {
       sortY: ty + 1 + 0.02,
       draw: () => {
         const wts = (wx: number, wy: number) => this.camera.worldToScreen(wx, wy, this.w, this.h);
+        // Spans the whole run — one fan of packed earth at a grand
+        // flight's mouth, flared only at its two ends.
         const x0 = Math.round(wts(tx, ty).x);
-        const x1 = Math.round(wts(tx + 1, ty).x);
+        const x1 = Math.round(wts(tx + runLen, ty).x);
         const yMouth = wts(tx, ty + 1).y - baseLift;
         const fan = s * 0.34;
         const flare = s * 0.12;
@@ -7161,12 +7330,14 @@ export class Renderer {
         ctx.closePath();
         ctx.fill();
         // Shade tucked under the bottom riser; center wear continuing
-        // the flight's path line out onto the ground.
+        // the flight's path line out onto the ground (capped to one
+        // walking lane on wide flights).
         ctx.fillStyle = 'rgba(38, 28, 22, 0.25)';
         ctx.fillRect(x0 - flare * 0.4, yMouth - 1, x1 - x0 + flare * 0.8, Math.max(1.5, s * 0.04));
         ctx.fillStyle = 'rgba(126, 103, 80, 0.5)';
         const mid = (x0 + x1) / 2;
-        ctx.fillRect(mid - (x1 - x0) * 0.17, yMouth, (x1 - x0) * 0.34, fan * 0.6);
+        const ww = Math.min((x1 - x0) * 0.34, s * 1.7);
+        ctx.fillRect(mid - ww / 2, yMouth, ww, fan * 0.6);
       },
     };
   }
