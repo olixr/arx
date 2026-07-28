@@ -195,6 +195,12 @@ export class Session {
         this.game.useItem(this.playerEid, msg.slot);
         return;
       }
+      case 'signedit': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.signEdit(this.playerEid, msg.tx, msg.ty, msg.title, msg.lines);
+        return;
+      }
       case 'unequip': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

@@ -238,6 +238,25 @@ export class AccountStore {
     return row ?? null;
   }
 
+  /**
+   * The name behind a character id — the byline on a player's sign.
+   * Memoized: a sign's author never changes, and the alternative is a
+   * query per board per approach.
+   */
+  characterName(id: number): string | null {
+    if (id <= 0) return null;
+    const cached = this.nameCache.get(id);
+    if (cached !== undefined) return cached;
+    const row = this.db.prepare('SELECT name FROM characters WHERE id = ?').get(id) as
+      | { name: string }
+      | undefined;
+    const name = row?.name ?? null;
+    this.nameCache.set(id, name);
+    return name;
+  }
+
+  private readonly nameCache = new Map<number, string | null>();
+
   searchCharacters(prefix: string, excludeId: number, limit = 10): Array<{ id: number; name: string }> {
     const escaped = prefix.replace(/[\\%_]/g, (ch) => `\\${ch}`);
     return this.db
@@ -400,6 +419,49 @@ export class AccountStore {
 
   deleteBuiltTile(tx: number, ty: number): void {
     this.db.prepare('DELETE FROM built_tiles WHERE tx = ? AND ty = ?').run(tx, ty);
+  }
+
+  // ------------------------------------------------- player signs
+
+  /**
+   * Every player-written sign in the world. Signs are few and tiny, so
+   * the server holds them all in memory (the built_tiles pattern) and
+   * this runs once at boot.
+   */
+  loadSigns(): Array<{
+    tx: number;
+    ty: number;
+    title: string;
+    lines: string[];
+    owner: number;
+  }> {
+    const rows = this.db
+      .prepare('SELECT tx, ty, title, lines, owner_character_id AS owner FROM signs')
+      .all() as Array<{ tx: number; ty: number; title: string; lines: string; owner: number }>;
+    return rows.map((r) => ({
+      tx: r.tx,
+      ty: r.ty,
+      title: r.title,
+      lines: r.lines === '' ? [] : r.lines.split('\n'),
+      owner: r.owner,
+    }));
+  }
+
+  saveSign(tx: number, ty: number, title: string, lines: string[], owner: number): void {
+    // The owner is written ONCE. A conflict update carries the old
+    // owner forward on purpose: whoever raised the post keeps the pen
+    // even if the row is rewritten through some other path.
+    this.db
+      .prepare(
+        'INSERT INTO signs (tx, ty, title, lines, owner_character_id, updated_at) VALUES (?, ?, ?, ?, ?, ?) ' +
+          'ON CONFLICT(tx, ty) DO UPDATE SET title = excluded.title, lines = excluded.lines, ' +
+          'updated_at = excluded.updated_at',
+      )
+      .run(tx, ty, title, lines.join('\n'), owner, Date.now());
+  }
+
+  deleteSign(tx: number, ty: number): void {
+    this.db.prepare('DELETE FROM signs WHERE tx = ? AND ty = ?').run(tx, ty);
   }
 
   // --------------------------------------------- world_pois ledger

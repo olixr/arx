@@ -1,4 +1,4 @@
-import { ChunkStore, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type EquippedItem, type S2CFx, type SkillXp, type StationType, type Vec2 } from '@devcraft/shared';
+import { ChunkStore, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type EquippedItem, type S2CFx, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@devcraft/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@devcraft/shared';
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
@@ -81,6 +81,12 @@ export type InteractTarget = {
     kind: 'bed';
     tx: number;
     ty: number;
+} | {
+    kind: 'sign';
+    tx: number;
+    ty: number;
+    mine: boolean;
+    blank: boolean;
 };
 import { InterpBuffer } from '../net/interpolation.js';
 import { Predictor } from '../net/prediction.js';
@@ -151,6 +157,8 @@ export interface GameEvents {
     }>): void;
     /** The Riftgate answered an interact — open the key panel over these pack slots. */
     onRiftgate?(keySlots: number[]): void;
+    /** A board's words arrived or changed — repaint whatever shows them. */
+    onSignChanged?(tx: number, ty: number): void;
     /** Crossed into a dungeon — everything the entry banner tells. */
     onDungeon?(d: {
         name: string;
@@ -461,6 +469,29 @@ export declare class ClientGame {
         tx: number;
         ty: number;
     } | null;
+    /**
+     * What every board in the streamed world says, by "tx,ty". Filled by
+     * the S2CSigns push that rides in with each chunk, so the words are
+     * already here when the player walks up — the approach plaque never
+     * waits on a round-trip.
+     */
+    readonly signs: Map<string, SignInfo>;
+    /** The words on the board at this tile, if any have arrived. */
+    signAt(tx: number, ty: number): SignInfo | undefined;
+    /**
+     * The nearest readable board within approach range, for the plaque.
+     *
+     * Deliberately NOT findNearbyTarget: reading is passive and must not
+     * compete for the interact slot. A shingle nailed beside a door
+     * still reads itself while the door owns the F key, and a blank
+     * board answers nobody but the hand that raised it.
+     *
+     * The range is wider than arm's reach (2.2) so the words arrive as
+     * you walk up rather than when you bump the post.
+     */
+    nearestSign(radius?: number): SignInfo | null;
+    /** Rewrite one of your own boards (the server judges ownership). */
+    editSign(tx: number, ty: number, title: string, lines: string[]): void;
     /** Send an interact intent for a specific world tile. */
     interact(tx: number, ty: number): void;
     /** Use (equip/eat) the item in an inventory slot. */

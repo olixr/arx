@@ -27,6 +27,7 @@ import { fxStyleFor } from './render/abilityFx.js';
 import { PORTAL_BURST_COLORS } from './render/portal.js';
 import { installChrome } from './ui/chrome.js';
 import { dressPanel } from './ui/panel.js';
+import { SignHud } from './ui/signs.js';
 import { LookCreator } from './ui/lookCreator.js';
 import { DialogueCinema } from './ui/dialogueCinema.js';
 
@@ -194,7 +195,7 @@ renderer.waterFxFull = localStorage.getItem('devcraft.waterfx') !== 'basic';
     localStorage.setItem('devcraft.waterfx', on ? 'full' : 'basic');
   });
 }
-input.setTypingCheck(() => chat.isTyping || looks.open || socialPanel.isTyping);
+input.setTypingCheck(() => chat.isTyping || looks.open || socialPanel.isTyping || signHud.isTyping);
 let buildMode: string | null = null;
 /** The bank chest tile that asked the server for the vault — anchors the panel. */
 let lastBankAnchor: { tx: number; ty: number } | null = null;
@@ -214,6 +215,7 @@ const PROMPT_LABELS: Record<string, string> = {
   alembic: 'Brew',
   plot: 'Plant',
   bed: 'Claim Home',
+  sign: 'Read Sign',
 };
 
 const stationPanels = new StationPanels(
@@ -369,6 +371,7 @@ function closeAllUi(): void {
   riftgate.close();
   audioMenu.close();
   socialPanel.close();
+  signHud.close();
 }
 
 function toggleScreen(
@@ -610,6 +613,14 @@ const game = new ClientGame(input, {
     stationPanels.openShop(shop);
     panels.showInventory();
   },
+  onSignChanged: (tx, ty) => {
+    signHud.onSignChanged(tx, ty);
+    // The painted board carries ink only when it HAS words — a freshly
+    // written sign must repaint now, not wait out the static ring's
+    // 240-frame heal.
+    const ground = game.world.groundAt(tx, ty);
+    if (ground !== undefined) renderer.invalidateProp(tx, ty, ground as Tile);
+  },
   onDungeon: (d) => {
     // A toast, not a screen — it overlays like the level-up card.
     showDungeonEntry(d);
@@ -679,6 +690,14 @@ const riftgate = new RiftgatePanel(game);
 // The fellowship ledger: nearby players, friends, and requests.
 const socialPanel = new SocialPanel(game);
 
+// Signage: the approach plaque over every board, and the sheet that
+// opens when you stop to read one properly.
+const signHud = new SignHud(game);
+renderer.signHasText = (tx, ty) => {
+  const sign = game.signAt(tx, ty);
+  return !!sign && (sign.title !== '' || sign.lines.some((l) => l !== ''));
+};
+
 // ---- one anatomy for every panel: icon plaque, title, hint, close ----
 const el = (id: string): HTMLElement => document.getElementById(id)!;
 dressPanel(el('inventory-panel'), {
@@ -722,6 +741,11 @@ dressPanel(el('riftgate-panel'), {
   icon: itemIconUrl('dungeon_key', 34),
   hint: 'Choose a key to turn — the same key always opens the same halls.',
   onClose: () => riftgate.close(),
+});
+dressPanel(el('sign-panel'), {
+  icon: uiIconUrl('signpost', 34),
+  hint: 'What the board says — and, on your own, what it will say next.',
+  onClose: () => signHud.close(),
 });
 dressPanel(el('loot-panel'), {
   icon: itemIconUrl('bones', 34),
@@ -1223,6 +1247,14 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       // The server decides: claim it, or refuse another builder's bed.
       game.interact(target.tx, target.ty);
       break;
+    case 'sign':
+      // The words are already here (they streamed in with the chunk),
+      // so the read opens locally and instantly. The server hears the
+      // interact too — it answers only the blank-board case.
+      closeAllUi();
+      signHud.open(target.tx, target.ty);
+      game.interact(target.tx, target.ty);
+      break;
     case 'npc':
       game.interactNpc(target.eid);
       break;
@@ -1240,7 +1272,7 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
 
 // Panel hotkeys + interact key.
 window.addEventListener('keydown', (e) => {
-  if (chat.isTyping || socialPanel.isTyping || game.ownEid === null) return;
+  if (chat.isTyping || socialPanel.isTyping || signHud.isTyping || game.ownEid === null) return;
   // A running cinematic owns the keyboard: advance, choose, or excuse
   // yourself — no screen may open over a conversation.
   if (cinema.open) {
@@ -1260,6 +1292,7 @@ window.addEventListener('keydown', (e) => {
     lootPanel.close();
     riftgate.close();
     socialPanel.close();
+    signHud.close();
     buildMode = null;
     renderer.buildGhost = null;
   }
@@ -1295,6 +1328,7 @@ const panelSeen = {
   audio: false,
   riftgate: false,
   social: false,
+  sign: false,
 };
 function panelAudioCues(): void {
   const vis = (id: string): boolean =>
@@ -1321,6 +1355,7 @@ function panelAudioCues(): void {
   cue('audio', vis('audio-panel'), () => sfx.uiOpen(), () => sfx.uiClose());
   cue('riftgate', vis('riftgate-panel'), () => sfx.uiOpen(), () => sfx.uiClose());
   cue('social', vis('social-panel'), () => sfx.parchment(), () => sfx.uiClose());
+  cue('sign', vis('sign-panel'), () => sfx.parchment(), () => sfx.uiClose());
 }
 
 // EVERY CONTROL ANSWERS: one delegated listener gives all buttons the
@@ -1567,6 +1602,27 @@ function frame(now: number): void {
 
   // World interact prompt: a glyph chip floating over whatever the
   // Interact button would use — the console-native "press Ⓧ" read.
+  // THE APPROACH READ: the nearest board within reach shows its words
+  // on its own, whatever the interact target is — a shingle beside a
+  // door must still be readable while the door owns the F key.
+  if (game.ownEid !== null && !buildMode && !cinema.open) {
+    const near = game.nearestSign();
+    if (near) {
+      const p = renderer.camera.worldToScreen(
+        near.tx + 0.5,
+        near.ty + 0.5,
+        window.innerWidth,
+        window.innerHeight,
+      );
+      p.y -= renderer.renderLift(near.tx + 0.5, near.ty + 0.5) * renderer.camera.scale;
+      signHud.update(near, p.x, p.y - renderer.camera.scale * 1.35);
+    } else {
+      signHud.update(null);
+    }
+  } else {
+    signHud.update(null);
+  }
+
   if (game.ownEid !== null && !uiOpen && !buildMode && !cinema.open) {
     const target = game.findNearbyTarget();
     if (target) {
@@ -1577,6 +1633,7 @@ function frame(now: number): void {
         : target.kind === 'npc' ? target.verb
         : target.kind === 'crop' ? (target.mature ? 'Harvest' : 'Tend')
         : target.kind === 'door' ? (target.open ? (target.gate ? 'Close Gate' : 'Close Door') : (target.gate ? 'Open Gate' : 'Open Door'))
+        : target.kind === 'sign' ? (target.blank ? 'Write Sign' : target.mine ? 'Read / Write' : 'Read Sign')
         : PROMPT_LABELS[target.kind];
       nav.setPrompt({ sx: p.x, sy: p.y - renderer.camera.scale * 1.5, label: label ?? 'Use' });
     } else {

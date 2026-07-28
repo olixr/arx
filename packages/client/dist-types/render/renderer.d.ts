@@ -1283,6 +1283,20 @@ export declare class Renderer {
      * to the live outline pass while streaming in faster than the bake
      * budget allows.
      */
+    /**
+     * Does the board at this tile carry words? Set by main.ts from the
+     * live sign store — the painter must not show ink on a blank post.
+     * A plain hook (not a renderer-owned copy of the data) keeps the one
+     * source of truth in the game state.
+     */
+    signHasText: ((tx: number, ty: number) => boolean) | null;
+    /**
+     * Drop a prop's baked sprite so its next frame repaints. The lever
+     * for art that depends on GAME STATE rather than time: writing on a
+     * sign changes what the board looks like, and the static ring's
+     * 240-frame heal is far too slow to feel like your own pen.
+     */
+    invalidateProp(tx: number, ty: number, tile: Tile): void;
     private drawPropOutlined;
     /** Pool-aware canvas acquisition shared by the world-prop sprite bakes. */
     private acquireSpriteCanvas;

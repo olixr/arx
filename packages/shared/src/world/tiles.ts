@@ -283,6 +283,16 @@ export enum Tile {
    */
   FenceDiagNE = 136,
   FenceDiagNW = 137,
+  /**
+   * A roadside signpost: a planted post carrying a plank board (and a
+   * pointing fingerboard below it). The hanging shingle names the
+   * building it hangs off; the POST stands free at a fork, a
+   * threshold, or a homestead gate and says where you are or where
+   * this road goes. Both carry words the same way — see signs.ts: the
+   * tile is only the furniture, the text lives in a record keyed by
+   * this tile's coordinates.
+   */
+  Signpost = 138,
 }
 
 export enum Detail {
@@ -492,6 +502,7 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.FenceGateShut]: { name: 'shut fence gate', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
   [Tile.FenceDiagNE]: { name: 'fence', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
   [Tile.FenceDiagNW]: { name: 'fence', solid: true, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
+  [Tile.Signpost]: { name: 'signpost', solid: true, color: '#6b4a24', raised: true, topColor: '#c2a068' },
 };
 
 /**

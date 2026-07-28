@@ -15,7 +15,10 @@
 // tracers hand off to the real entity) and C2SInput reports viewMs for
 // exact melee lag compensation — a v7 client would neither predict nor
 // be rewound correctly, so reject cleanly.
-export const PROTOCOL_VERSION = 9;
+// v10: signs speak — S2CSigns streams the words on every board with the
+// chunk that carries it, and C2SSignEdit rewrites a player's own. A v9
+// client would show blank boards it can never read, so reject cleanly.
+export const PROTOCOL_VERSION = 10;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;

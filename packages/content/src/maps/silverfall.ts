@@ -231,7 +231,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(76, 42, Tile.FlowerBox).set(81, 42, Tile.FlowerBox);
   b.set(77, 36, Tile.Bench).set(80, 36, Tile.Bench);
   b.set(77, 43, Tile.Bench).set(80, 43, Tile.Bench);
-  b.set(72, 37, Tile.HangingSign); // "THE GRAND COURT — moot days posted."
+  b.sign(72, 37, 'THE GRAND COURT', ['moot days posted here']);
   b.set(72, 33, Tile.BannerPole).set(95, 33, Tile.BannerPole);
   b.set(72, 47, Tile.LampPost).set(95, 47, Tile.LampPost);
   // The east court: a quiet planter nook off the guildhall bridge.
@@ -360,7 +360,7 @@ export function buildSilverfall(): ZoneDef {
   b.fillRect(35, 12, 3, 1, Tile.Snow).fillRect(40, 12, 2, 1, Tile.Snow);
   b.fillRect(36, 19, 5, 2, Tile.StoneFloor);
   b.set(36, 19, Tile.Brazier).set(40, 19, Tile.Brazier);
-  b.set(38, 21, Tile.HangingSign); // "THE UNDERCROFT — mind the step, mind the kobolds."
+  b.sign(38, 21, 'THE UNDERCROFT', ['mind the step,', 'mind the kobolds']);
   b.set(34, 20, Tile.CaveRubble).set(42, 20, Tile.CaveRubble);
   b.setDetail(35, 21, Detail.Pebbles).setDetail(41, 22, Detail.Pebbles);
   b.setDetail(33, 21, Detail.Pebbles);
@@ -425,7 +425,7 @@ export function buildSilverfall(): ZoneDef {
   b.setDetail(39, 79, Detail.Doormat).setDetail(40, 79, Detail.Doormat);
   b.setDetail(40, 71, Detail.Pebbles).setDetail(43, 73, Detail.Pebbles);
   b.fillRect(39, 79, 2, 3, Tile.Path); // doorstep to the lane
-  b.set(37, 80, Tile.HangingSign); // "THE SMELTER — pour days: all of them."
+  b.sign(37, 80, 'THE SMELTER', ['pour days: all of them']);
   // THE MASONS' YARD: stone stock on the west row, benches facing,
   // finished work crated, the rubble heap where it belongs.
   b.fillRect(32, 84, 15, 9, Tile.Dirt);
@@ -454,7 +454,7 @@ export function buildSilverfall(): ZoneDef {
   b.setDetail(63, 79, Detail.Doormat).setDetail(64, 79, Detail.Doormat);
   b.setDetail(60, 72, Detail.Pebbles).setDetail(65, 75, Detail.Pebbles);
   b.fillRect(63, 81, 2, 1, Tile.Path); // doorstep to the lane
-  b.set(60, 81, Tile.HangingSign); // "THE GREAT FORGE — silver worked, steel earned."
+  b.sign(60, 81, 'THE GREAT FORGE', ['silver worked, steel earned']);
   // The forge yard: the shift's rest — a true fire circle, racks by
   // the door, the stock stacked in one corner instead of everywhere.
   b.fillRect(76, 84, 18, 9, Tile.Dirt);
@@ -659,7 +659,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(56, 106, Tile.Campfire);
   b.set(54, 106, Tile.Bench).set(58, 106, Tile.Bench).set(56, 108, Tile.Bench);
   b.set(69, 107, Tile.Workbench).set(70, 108, Tile.ToolRack); // the farrier
-  b.set(51, 105, Tile.HangingSign); // "THE CARAVANSERAI — beasts watered, wheels mended."
+  b.sign(51, 105, 'THE CARAVANSERAI', ['beasts watered,', 'wheels mended']);
   b.fillRect(73, 103, 11, 2, Tile.Path); // the yard apron to the avenue
   // THE GATEHOUSE: the Waykeepers' desk at the door of the city —
   // duty desk facing the door, bunk for the night watch, mess table.
@@ -702,7 +702,7 @@ export function buildSilverfall(): ZoneDef {
   b.fillRect(86, 115, 5, 13, Tile.Path);
   b.set(84, 117, Tile.Brazier).set(92, 117, Tile.Brazier);
   b.set(84, 122, Tile.Brazier).set(92, 122, Tile.Brazier);
-  b.set(93, 119, Tile.HangingSign); // "SILVERFALL. You made it. Mind the edge."
+  b.sign(93, 119, 'SILVERFALL', ['You made it.', 'Mind the edge.'], Tile.Signpost);
 
   // ---------------------------------------------------------------
   // Mountain life and the soft edges.

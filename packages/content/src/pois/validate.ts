@@ -1,4 +1,4 @@
-import { Tile } from '@devcraft/shared';
+import { Tile, sanitizeSignText } from '@devcraft/shared';
 import { NPC_ACTORS } from '../actors/registry.js';
 import { DANGER_LAWS } from '../danger.js';
 import { LOOT_TABLES } from '../loot/tables.js';
@@ -330,6 +330,40 @@ export function validatePoiDef(
     errors.push('chestWarded needs a garrison — a ward with no keeper never breaks');
   }
 
+  // Sign copy: a pool of boards' words. The shared sanitizer is the
+  // only length law — it trims rather than rejects, so a def written
+  // by a tool can't fail validation over a stray character, but the
+  // SHAPE must be right or the words would never reach a board.
+  let signs: Array<{ title: string; lines?: string[] }> | undefined;
+  if (raw.signs !== undefined) {
+    if (!Array.isArray(raw.signs) || raw.signs.length === 0) {
+      errors.push('signs must be a non-empty array of {title, lines?}');
+    } else {
+      signs = [];
+      for (const entry of raw.signs) {
+        if (!isRecord(entry) || typeof entry.title !== 'string') {
+          errors.push('each sign needs a string title');
+          continue;
+        }
+        if (entry.lines !== undefined) {
+          if (!Array.isArray(entry.lines) || entry.lines.some((l) => typeof l !== 'string')) {
+            errors.push(`sign '${entry.title}': lines must be strings`);
+            continue;
+          }
+        }
+        const text = sanitizeSignText({
+          title: entry.title,
+          lines: (entry.lines as string[] | undefined) ?? [],
+        });
+        if (text.title === '' && text.lines.length === 0) {
+          errors.push('a sign with nothing on it is not content — drop the entry');
+          continue;
+        }
+        signs.push({ title: text.title, ...(text.lines.length > 0 ? { lines: text.lines } : {}) });
+      }
+    }
+  }
+
   // The cleared-flag hook.
   const clearedFlag =
     raw.clearedFlag === undefined
@@ -360,6 +394,7 @@ export function validatePoiDef(
       ...(chestLoot !== undefined ? { chestLoot } : {}),
       ...(chestWarded !== undefined ? { chestWarded } : {}),
       ...(clearedFlag !== undefined ? { clearedFlag } : {}),
+      ...(signs !== undefined && signs.length > 0 ? { signs } : {}),
     },
   };
 }

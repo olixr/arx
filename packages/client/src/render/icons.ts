@@ -4625,6 +4625,7 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   counter: { icon: 'counter', color: '#94693a' },
   hearth: { icon: 'hearth', color: '#e8823d' },
   hanging_sign: { icon: 'signpost', color: '#a5793f' },
+  signpost: { icon: 'signpost', color: '#c2a068' },
   flower_box: { icon: 'flowerbox', color: '#d977a8' },
   banner_pole: { icon: 'banner', color: '#7a3f8f' },
   stone_pillar: { icon: 'pillar', color: '#8c8798' },
@@ -4799,7 +4800,7 @@ export function sneakEyeUrl(state: 'sneaking' | 'hidden' | 'detected', size = 34
 
 /** Data URL for a UI glyph. */
 export function uiIconUrl(
-  kind: 'backpack' | 'scroll' | 'hammer' | 'house' | 'attack' | 'bell',
+  kind: 'backpack' | 'scroll' | 'hammer' | 'house' | 'attack' | 'bell' | 'signpost',
   size = 48,
 ): string {
   const colors: Record<string, string> = {
@@ -4809,6 +4810,7 @@ export function uiIconUrl(
     house: '#c98d4b',
     attack: '#c9ccd4',
     bell: '#d9b969',
+    signpost: '#c2a068',
   };
   return renderIcon(kind, colors[kind]!, size);
 }

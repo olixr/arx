@@ -1,24 +1,73 @@
 {
   "id": "wardens_outpost",
   "name": "Waykeepers' outpost",
-  "description": "A fortified watch on the wild marches — the sergeant keeps the fire, the watch keeps the road, and the pen out front keeps whatever they caught this week.",
-  "tiers": [2, 4],
+  "description": "A fortified watch on the wild marches \u2014 the sergeant keeps the fire, the watch keeps the road, and the pen out front keeps whatever they caught this week.",
+  "tiers": [
+    2,
+    4
+  ],
   "weight": 2,
-  "prefabs": ["poi_outpost_tower", "poi_outpost_ring"],
+  "prefabs": [
+    "poi_outpost_tower",
+    "poi_outpost_ring"
+  ],
   "garrison": [],
   "actors": [
     {
-      "pool": ["waykeeper_hale", "waykeeper_odessa", "waykeeper_brant"],
+      "pool": [
+        "waykeeper_hale",
+        "waykeeper_odessa",
+        "waykeeper_brant"
+      ],
       "post": "hearth",
       "routine": "waystation_keeper"
     },
-    { "pool": ["wayward_watch"], "post": "watch" },
-    { "pool": ["wayward_watch"], "post": "watch" }
+    {
+      "pool": [
+        "wayward_watch"
+      ],
+      "post": "watch"
+    },
+    {
+      "pool": [
+        "wayward_watch"
+      ],
+      "post": "watch"
+    }
   ],
-  "haven": { "safeR": 14 },
+  "haven": {
+    "safeR": 14
+  },
   "cues": {
     "clearing": 3,
     "approachPath": true,
-    "scatter": [{ "tile": "BannerPole", "count": 1 }]
-  }
+    "scatter": [
+      {
+        "tile": "BannerPole",
+        "count": 1
+      }
+    ]
+  },
+  "signs": [
+    {
+      "title": "WAYKEEPERS",
+      "lines": [
+        "the road's watch stands here",
+        "report what you saw"
+      ]
+    },
+    {
+      "title": "THE OUTPOST",
+      "lines": [
+        "fires banked at dusk",
+        "the pen is not for sleeping"
+      ]
+    },
+    {
+      "title": "BY ORDER OF THE WATCH",
+      "lines": [
+        "no blade drawn inside the ring"
+      ]
+    }
+  ]
 }

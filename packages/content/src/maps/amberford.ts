@@ -154,7 +154,7 @@ export function buildAmberford(): ZoneDef {
   b.set(17, 22, Tile.Basin); // the slack trough
   b.set(22, 22, Tile.Crate).set(23, 23, Tile.Barrel);
   b.setDetail(15, 23, Detail.Pebbles).setDetail(20, 22, Detail.Pebbles);
-  b.set(23, 9, Tile.HangingSign); // "IRONHEWN — smithing, shoeing, sharpening."
+  b.sign(23, 9, 'IRONHEWN', ['smithing, shoeing, sharpening']);
   b.set(14, 9, Tile.Dirt).set(15, 9, Tile.Dirt).set(21, 9, Tile.Dirt);
   // The artisan hall (Master Tilo): a cloth-and-carving shop up
   // front — counter, pattern books, bolts on display — and the work
@@ -180,7 +180,7 @@ export function buildAmberford(): ZoneDef {
   b.set(42, 17, Tile.Workbench);
   b.set(45, 16, Tile.Crate).set(45, 18, Tile.Barrel);
   b.setDetail(36, 16, Detail.Sawdust).setDetail(41, 16, Detail.Sawdust);
-  b.set(36, 9, Tile.HangingSign); // "TILO'S — cloth, carving, commissions."
+  b.sign(36, 9, "TILO'S", ['cloth, carving, commissions']);
   b.set(38, 9, Tile.Dirt).set(39, 9, Tile.Dirt);
   // The tanning pad, downwind off the east gable.
   b.fillRect(49, 12, 3, 3, Tile.Dirt);
@@ -213,7 +213,7 @@ export function buildAmberford(): ZoneDef {
   // The gate furniture: lamps where the lamplight ENDS, the sign that
   // tells you the truth, a rack for the watch's spare steel.
   b.set(52, 4, Tile.LampPost).set(56, 4, Tile.LampPost);
-  b.set(56, 5, Tile.HangingSign); // "SILVERFALL — the High Road. Go armed."
+  b.sign(56, 5, 'SILVERFALL', ['north, by the High Road', 'Go armed.'], Tile.Signpost);
   b.set(52, 6, Tile.WeaponRack);
   b.fillRect(53, 0, 3, 2, Tile.Path); // the mouth meets the carved High Road
   // The outfitter (Hask), the gate's east post: the last shop before
@@ -238,7 +238,7 @@ export function buildAmberford(): ZoneDef {
   b.set(66, 3, Tile.Crate).set(67, 3, Tile.CrateGoods).set(68, 4, Tile.Crate);
   b.set(66, 10, Tile.Barrel).set(67, 10, Tile.Barrel);
   b.setDetail(67, 6, Detail.Straw);
-  b.set(57, 4, Tile.HangingSign); // "HASK'S OUTFITTING — last chance."
+  b.sign(57, 4, "HASK'S OUTFITTING", ['last chance before the road']);
   b.set(56, 6, Tile.Dirt).set(57, 6, Tile.Dirt); // the worn step to the road
 
   // ---------------------------------------------------------------
@@ -279,7 +279,7 @@ export function buildAmberford(): ZoneDef {
     b.set(x, 21, x % 2 === 0 ? Tile.MoonbellMid : Tile.Tilled);
   }
   b.set(75, 21, Tile.WildSagewort).set(81, 16, Tile.WildMoonbell);
-  b.set(60, 17, Tile.HangingSign); // "ELOWEN — remedies, salves, sense."
+  b.sign(60, 17, 'ELOWEN', ['remedies, salves, sense']);
   b.set(60, 21, Tile.LampPost);
   for (let x = 57; x <= 60; x++) b.set(x, 19, Tile.Dirt); // her footpath
 
@@ -326,7 +326,7 @@ export function buildAmberford(): ZoneDef {
   b.setDetail(63, 45, Detail.Doormat).setDetail(64, 45, Detail.Doormat);
   // The inn yard: sign and lamp at the plaza door, the travelers'
   // bench on the lane side, the cellar deliveries along the gable.
-  b.set(61, 43, Tile.HangingSign); // "THE WANDERER'S REST — beds, board, news."
+  b.sign(61, 43, "THE WANDERER'S REST", ['beds, board, and the news']);
   b.set(66, 43, Tile.LampPost);
   b.set(70, 43, Tile.FlowerBox);
   b.set(63, 43, Tile.Dirt).set(64, 43, Tile.Dirt);
@@ -369,7 +369,7 @@ export function buildAmberford(): ZoneDef {
   b.set(72, 35, Tile.Counter).set(73, 35, Tile.Counter);
   b.set(78, 35, Tile.CrateGoods).set(79, 36, Tile.CrateGoods); // flour by the sack
   b.setDetail(74, 36, Detail.Doormat).setDetail(77, 34, Detail.Straw);
-  b.set(69, 36, Tile.HangingSign); // "GARTON'S MILL — flour, meal, gossip."
+  b.sign(69, 36, "GARTON'S MILL", ['flour, meal, and gossip']);
   // The docks: the pier planks, the mooring barrels, the catch — a
   // true jetty (Tile.Dock), suspended on piles, not a bridge.
   for (let x = 81; x <= 86; x++) {
@@ -408,7 +408,7 @@ export function buildAmberford(): ZoneDef {
     const cx = 90 + Math.round(Math.sin(y * 0.18) * 2.5);
     for (let x = cx - 2; x <= cx + 2; x++) b.set(x, y, Tile.Bridge);
   }
-  b.set(105, 58, Tile.HangingSign); // "EAST ROAD — the coast, eventually."
+  b.sign(105, 58, 'THE EAST ROAD', ['the coast, eventually'], Tile.Signpost);
   b.set(66, 59, Tile.LampPost).set(84, 59, Tile.LampPost);
 
   // ---------------------------------------------------------------
@@ -615,7 +615,7 @@ export function buildAmberford(): ZoneDef {
   // ---------------------------------------------------------------
   b.set(2, 50, Tile.PillarStone).set(2, 54, Tile.PillarStone);
   b.set(4, 49, Tile.LampPost).set(4, 55, Tile.LampPost);
-  b.set(6, 49, Tile.HangingSign); // "DAWNMEAD — the First Road."
+  b.sign(6, 49, 'DAWNMEAD', ['west, by the First Road'], Tile.Signpost);
   b.set(14, 49, Tile.LampPost).set(26, 49, Tile.LampPost);
   // The other spines' lamps: sparse, where corners turn dark.
   b.set(56, 13, Tile.LampPost).set(50, 26, Tile.LampPost);

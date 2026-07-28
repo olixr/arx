@@ -1,24 +1,57 @@
 {
   "id": "last_lamp",
   "name": "The Last Lamp",
-  "description": "The final light on the High Road before the Silverspine climb. Weight 0: this archetype never rolls on its own — the master plan pins it to the road (the authored-sites law), one lamp, one keeper, one warning.",
-  "tiers": [4, 5],
+  "description": "The final light on the High Road before the Silverspine climb. Weight 0: this archetype never rolls on its own \u2014 the master plan pins it to the road (the authored-sites law), one lamp, one keeper, one warning.",
+  "tiers": [
+    4,
+    5
+  ],
   "weight": 0,
-  "prefabs": ["poi_last_lamp"],
+  "prefabs": [
+    "poi_last_lamp"
+  ],
   "garrison": [],
   "actors": [
     {
-      "pool": ["lampkeeper_edda"],
+      "pool": [
+        "lampkeeper_edda"
+      ],
       "post": "hearth",
       "routine": "waystation_keeper"
     },
-    { "pool": ["wayward_watch"], "post": "watch" },
-    { "pool": ["wayward_watch"], "post": "watch" },
-    { "pool": ["wayward_watch"], "post": "watch" }
+    {
+      "pool": [
+        "wayward_watch"
+      ],
+      "post": "watch"
+    },
+    {
+      "pool": [
+        "wayward_watch"
+      ],
+      "post": "watch"
+    },
+    {
+      "pool": [
+        "wayward_watch"
+      ],
+      "post": "watch"
+    }
   ],
-  "haven": { "safeR": 22 },
+  "haven": {
+    "safeR": 22
+  },
   "cues": {
     "clearing": 4,
     "approachPath": true
-  }
+  },
+  "signs": [
+    {
+      "title": "THE LAST LAMP",
+      "lines": [
+        "beyond here no light but yours",
+        "turn back at dusk"
+      ]
+    }
+  ]
 }

@@ -20,6 +20,7 @@ export * from './dungeon/key.js';
 export * from './world/collision.js';
 export * from './world/danger.js';
 export * from './world/tiles.js';
+export * from './world/signs.js';
 export * from './world/chunk.js';
 export * from './world/pathfind.js';
 export * from './ecs/world.js';

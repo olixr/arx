@@ -370,6 +370,20 @@ const defs: BuildableDef[] = [
     ground: OUTDOOR_AND_FLOORS,
   },
   {
+    // The roadside post: cheap and early on purpose. Labelling your
+    // own ground — a homestead, a stash, a fork in the trail — is
+    // wayfinding the world can't author for you, so the gate is a
+    // beginner's one.
+    id: 'signpost',
+    name: 'Signpost',
+    tile: Tile.Signpost,
+    levelReq: 3,
+    xp: 30,
+    materials: [{ item: 'log', qty: 2 }],
+    ticks: 25,
+    ground: OUTDOOR_AND_FLOORS,
+  },
+  {
     id: 'counter',
     name: 'Counter',
     tile: Tile.Counter,

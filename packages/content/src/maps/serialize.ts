@@ -1,4 +1,4 @@
-import type { PortalDef, ZoneActorSpawn, ZoneDef, ZoneSpawn } from './types.js';
+import type { PortalDef, ZoneActorSpawn, ZoneDef, ZoneSign, ZoneSpawn } from './types.js';
 
 /**
  * Zone <-> JSON. Tile arrays are base64-encoded little-endian u16 so
@@ -23,6 +23,8 @@ export interface ZoneJson {
   portals?: PortalDef[];
   /** Respawning NPC clusters (world coords). */
   spawns?: ZoneSpawn[];
+  /** What the zone's sign tiles say (world coords), same plain-JSON law. */
+  signs?: ZoneSign[];
 }
 
 export function u16ToBase64(arr: Uint16Array): string {
@@ -88,6 +90,7 @@ export function zoneToJson(zone: ZoneDef): ZoneJson {
     // Empty lists serialize as absent so legacy files stay byte-identical.
     portals: zone.portals && zone.portals.length > 0 ? zone.portals : undefined,
     spawns: zone.spawns && zone.spawns.length > 0 ? zone.spawns : undefined,
+    signs: zone.signs && zone.signs.length > 0 ? zone.signs : undefined,
   };
 }
 
@@ -111,5 +114,6 @@ export function zoneFromJson(json: ZoneJson): ZoneDef {
     actorSpawns: json.actorSpawns,
     portals: json.portals,
     spawns: json.spawns,
+    signs: json.signs,
   };
 }

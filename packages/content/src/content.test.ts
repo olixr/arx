@@ -1,6 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Detail, PASSIVES, STATUS_IDS, Tile, TILE_DEFS } from '@devcraft/shared';
+import {
+  Detail,
+  PASSIVES,
+  SIGN_MAX_LINE,
+  SIGN_MAX_LINES,
+  SIGN_MAX_TITLE,
+  SIGN_TILES,
+  STATUS_IDS,
+  Tile,
+  TILE_DEFS,
+} from '@devcraft/shared';
+import type { ZoneSign } from './maps/types.js';
 import { ZoneBuilder } from './maps/builder.js';
 import { buildDawnmead } from './maps/dawnmead.js';
 import { buildAmberford } from './maps/amberford.js';
@@ -1294,3 +1305,58 @@ test('zone JSON round-trips signed elevation; flat zones export none', () => {
   assert.ok(zoneFromJson(json).elev!.every((v) => v === 0));
 });
 
+
+test('THE SIGN LAW: every authored board carries words, and every record has a board', () => {
+  const zones = [buildDawnmead(), buildAmberford(), buildSilverfall(), buildUndercroft()];
+  let total = 0;
+  for (const z of zones) {
+    const written = new Map<string, ZoneSign>();
+    for (const sign of z.signs ?? []) {
+      const key = `${sign.x},${sign.y}`;
+      assert.ok(!written.has(key), `${z.id}: two records fight over the board at ${key}`);
+      written.set(key, sign);
+      // A record with nothing on it is a board nobody can read.
+      assert.ok(
+        sign.title !== '' || (sign.lines ?? []).some((l) => l !== ''),
+        `${z.id}: the sign at ${key} says nothing`,
+      );
+      // The shared caps are the only truth about length — content that
+      // overruns them would be silently trimmed on the way to a player.
+      assert.ok(sign.title.length <= SIGN_MAX_TITLE, `${z.id}: title too long at ${key}`);
+      for (const line of sign.lines ?? []) {
+        assert.ok(line.length <= SIGN_MAX_LINE, `${z.id}: line too long at ${key}: "${line}"`);
+      }
+      assert.ok((sign.lines ?? []).length <= SIGN_MAX_LINES, `${z.id}: too many lines at ${key}`);
+    }
+    // ...and no blank boards: a sign tile the author never wrote on is
+    // furniture pretending to be information.
+    for (let i = 0; i < z.ground.length; i++) {
+      if (!SIGN_TILES.has(z.ground[i] as Tile)) continue;
+      const x = z.origin.x + (i % z.width);
+      const y = z.origin.y + Math.floor(i / z.width);
+      assert.ok(written.has(`${x},${y}`), `${z.id}: blank board standing at ${x},${y}`);
+      total++;
+    }
+  }
+  assert.ok(total >= 20, `the world should be signposted — only ${total} boards stand`);
+});
+
+test('the builder refuses a sign record whose board got stamped over', () => {
+  const b = new ZoneBuilder('t_sign', 'Sign Test', { x: 0, y: 4096 }, 16, 16, Tile.Grass);
+  b.spawn(8, 8);
+  b.sign(4, 4, 'HERE', ['a note']);
+  b.set(4, 4, Tile.Barrel); // a later stamp buries the board
+  assert.throws(() => b.build(), /has no sign tile under it/);
+});
+
+test('sign records survive the editor JSON round trip', () => {
+  const b = new ZoneBuilder('t_sign2', 'Sign Test', { x: 0, y: 4096 }, 16, 16, Tile.Grass);
+  b.spawn(8, 8);
+  b.sign(4, 4, 'DAWNMEAD', ['west, by the First Road'], Tile.Signpost);
+  b.sign(6, 4, 'TITLE ONLY');
+  const z = b.build();
+  assert.deepEqual(zoneToJson(zoneFromJson(zoneToJson(z))).signs, zoneToJson(z).signs);
+  // A title-only board stores no lines key at all (the absent-stays-
+  // absent law every placement keeps).
+  assert.equal(z.signs![1]!.lines, undefined);
+});

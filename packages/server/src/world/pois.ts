@@ -9,6 +9,8 @@ import {
   closedChestTile,
   dangerAt,
   hashCoords,
+  isSignTile,
+  sanitizeSignText,
   type DangerAnchor,
 } from '@devcraft/shared';
 import {
@@ -23,6 +25,7 @@ import {
   type PrefabDef,
   type ZoneActorSpawn,
   type ZoneDef,
+  type ZoneSign,
   type ZoneSpawn,
 } from '@devcraft/content';
 import { DARK_BAND_Y, groundProbeAt } from '@devcraft/content';
@@ -630,6 +633,28 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
     ...(p.delve !== undefined ? { delve: p.delve } : {}),
   }));
 
+  // A board in the sketch gets WORDS from the def's pool, hash-picked
+  // ONCE per site (the champion-name law) so two roadside crofts on
+  // the same road wear different signs and each keeps its own forever.
+  // A def with no pool leaves its boards blank, which reads as a
+  // weathered, unlettered plank — never as a bug.
+  const signs: ZoneSign[] = [];
+  if (def.signs && def.signs.length > 0) {
+    let nth = 0;
+    for (let i = 0; i < ground.length; i++) {
+      if (!isSignTile(ground[i]!)) continue;
+      const pick = def.signs[hashCoords(musterBase, 71 + nth, 13) % def.signs.length]!;
+      nth++;
+      const text = sanitizeSignText(pick);
+      signs.push({
+        x: originX + (i % zw),
+        y: originY + Math.floor(i / zw),
+        title: text.title,
+        ...(text.lines.length > 0 ? { lines: text.lines } : {}),
+      });
+    }
+  }
+
   return {
     id: poiZoneId(site.cellX, site.cellY),
     name: def.name,
@@ -642,6 +667,7 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
     spawns,
     ...(actorSpawns.length > 0 ? { actorSpawns } : {}),
     ...(portals.length > 0 ? { portals } : {}),
+    ...(signs.length > 0 ? { signs } : {}),
   };
 }
 

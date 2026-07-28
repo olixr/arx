@@ -3784,6 +3784,184 @@ body.pad-mode .hint-inline { display: none; }
   opacity: 0;
 }
 
+/* ---- the sign plaque + the board sheet ---- */
+
+/* THE PLAQUE: a small parchment card that floats over the board it
+   reads, anchored bottom-center on the sign with a little tail. Paper,
+   because signs are paper — the one HUD element that is ink on a page
+   rather than smoked glass. Fades in on approach, then bows away
+   (.bowed) once its dwell is spent so it never becomes furniture. */
+#sign-plaque {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 39;
+  max-width: 300px;
+  padding: 7px 13px 9px;
+  background: none;
+  border: 9px solid transparent;
+  border-image: var(--ui-sheet) 45 fill / 9px;
+  color: var(--sheet-ink);
+  text-align: center;
+  text-shadow: none;
+  pointer-events: none;
+  filter: drop-shadow(3px 4px 0 var(--shadow));
+  transition: opacity 0.5s ease;
+}
+
+#sign-plaque.bowed {
+  opacity: 0;
+}
+
+#sign-plaque .sign-title {
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  line-height: 1.15;
+}
+
+#sign-plaque .sign-title + .sign-line {
+  margin-top: 3px;
+}
+
+#sign-plaque .sign-line {
+  font-family: var(--serif);
+  font-size: 13.5px;
+  line-height: 1.35;
+  color: rgba(58, 47, 29, 0.9);
+}
+
+#sign-plaque .sign-blank,
+.sign-sheet .sign-blank {
+  font-style: italic;
+  color: rgba(58, 47, 29, 0.55);
+}
+
+#sign-plaque .sign-by {
+  margin-top: 5px;
+  font-size: 11px;
+  font-style: italic;
+  letter-spacing: 0.3px;
+  color: rgba(58, 47, 29, 0.6);
+}
+
+/* The tail: a paper corner pointing down at the board. */
+#sign-plaque .sign-tail {
+  position: absolute;
+  left: 50%;
+  bottom: -13px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: var(--parchment);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  filter: drop-shadow(2px 2px 0 var(--shadow));
+}
+
+/* THE SHEET: the deliberate read, and the pen for your own board. */
+#sign-panel {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 120px;
+  width: 430px;
+  max-width: calc(100vw - 32px);
+  pointer-events: auto;
+  padding: 8px 16px 14px;
+}
+
+.sign-sheet {
+  background: none;
+  border: 9px solid transparent;
+  border-image: var(--ui-sheet) 45 fill / 9px;
+  padding: 10px 14px 12px;
+  color: var(--sheet-ink);
+  text-align: center;
+  text-shadow: none;
+  filter: drop-shadow(4px 5px 0 var(--shadow));
+}
+
+.sign-sheet-title {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.sign-sheet-line {
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.sign-sheet-by {
+  margin-top: 8px;
+  font-size: 12px;
+  font-style: italic;
+  color: rgba(58, 47, 29, 0.62);
+}
+
+.sign-form {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 2px 0 10px;
+}
+
+.sign-field {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.sign-field-label {
+  flex: none;
+  width: 62px;
+  font-size: 12.5px;
+  letter-spacing: 0.6px;
+  color: var(--parchment-dim);
+  text-transform: uppercase;
+}
+
+.sign-field input {
+  flex: 1;
+  min-width: 0;
+  background: var(--sunk);
+  border: 1px solid var(--line);
+  border-radius: 0;
+  padding: 7px 9px;
+  font-family: var(--serif);
+  font-size: 15px;
+  color: var(--parchment);
+}
+
+.sign-field input:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+.sign-count {
+  flex: none;
+  width: 40px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--parchment-dim);
+}
+
+.sign-acts {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.sign-act {
+  margin-top: 4px;
+}
+
 /* ---- inventory drag & drop ---- */
 
 .inv-slot.drag-src {

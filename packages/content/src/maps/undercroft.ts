@@ -61,7 +61,7 @@ export function buildUndercroft(): ZoneDef {
   b.set(10, 30, Tile.PillarStone).set(10, 34, Tile.PillarStone);
   b.set(13, 30, Tile.PillarStone).set(13, 34, Tile.PillarStone);
   b.set(7, 30, Tile.Brazier).set(7, 34, Tile.Brazier);
-  b.set(16, 34, Tile.HangingSign); // "THE UNDERCROFT — the Masons' Guild keeps the stair."
+  b.sign(16, 34, 'THE UNDERCROFT', ["the Masons' Guild keeps", 'the stair']);
   b.set(6, 29, Tile.Crate).set(6, 35, Tile.Barrel);
   b.setDetail(11, 31, Detail.Pebbles).setDetail(14, 33, Detail.Pebbles);
 
@@ -89,7 +89,7 @@ export function buildUndercroft(): ZoneDef {
   b.set(36, 36, Tile.Brazier).set(51, 36, Tile.Brazier);
   b.set(39, 37, Tile.Bench).set(47, 37, Tile.Bench);
   b.set(54, 31, Tile.Crate).set(55, 33, Tile.Barrel).set(30, 33, Tile.CrateGoods);
-  b.set(30, 29, Tile.HangingSign); // "THE DEEP MARKET — weights honest, lamps lit."
+  b.sign(30, 29, 'THE DEEP MARKET', ['weights honest, lamps lit']);
   b.set(54, 26, Tile.Stalagmite).set(32, 38, Tile.Stalagmite).set(48, 24, Tile.Stalagmite);
 
   // ---------------------------------------------------------------
@@ -106,7 +106,7 @@ export function buildUndercroft(): ZoneDef {
   b.set(41, 9, Tile.Brazier).set(45, 9, Tile.Brazier);
   b.set(41, 13, Tile.Brazier).set(45, 13, Tile.Brazier);
   b.set(37, 11, Tile.Stalagmite).set(49, 11, Tile.Stalagmite);
-  b.set(44, 17, Tile.HangingSign); // "THE RIFTGATE — keys turn, places answer."
+  b.sign(44, 17, 'THE RIFTGATE', ['keys turn, places answer']);
 
   // ---------------------------------------------------------------
   // THE HIGH-ORE GALLERIES — east through the junction chamber.
@@ -154,7 +154,7 @@ export function buildUndercroft(): ZoneDef {
   // ---------------------------------------------------------------
   b.fillRect(56, 40, 8, 3, Tile.CaveFloor); // the choked way in
   b.set(57, 40, Tile.CaveRubble).set(59, 42, Tile.CaveRubble).set(61, 41, Tile.CaveRubble);
-  b.set(55, 39, Tile.HangingSign); // "Past the rubble the guild does not sweep."
+  b.sign(55, 39, 'BEYOND THIS MARK', ['the guild does not sweep', 'past the rubble']);
   b.fillEllipse(67, 45, 6, 5, Tile.CaveFloor); // the outer warren
   b.fillEllipse(78, 51, 7, 5, Tile.CaveFloor); // the deep warren
   b.fillEllipse(87, 46, 4, 3, Tile.CaveFloor); // the digmaster's dig

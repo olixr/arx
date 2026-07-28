@@ -175,6 +175,7 @@ for (const built of accounts.loadBuiltTiles()) {
 }
 const game = new GameServer(world, accounts);
 game.loadCrops(accounts.loadCrops());
+game.loadSigns(accounts.loadSigns());
 game.initPois(accounts.loadPoiCells());
 for (const zone of zones) {
   if (zone.spawns && zone.spawns.length > 0) game.registerSpawns(zone.spawns, zone.id);

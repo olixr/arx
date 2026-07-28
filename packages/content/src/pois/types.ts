@@ -141,6 +141,13 @@ export interface PoiDef {
    */
   chestLoot?: string;
   /**
+   * Words for the boards in this site's prefab — a POOL, hash-picked
+   * once per site so two crofts on the same road read differently and
+   * each keeps its own line forever. Absent = the boards stand blank,
+   * which reads as weathered, unlettered plank.
+   */
+  signs?: Array<{ title: string; lines?: string[] }>;
+  /**
    * The strongbox stays WARDED while any garrison body stands — the
    * champion's cache cannot be sneaked out from under him. Cleared
    * garrison = the ward breaks until the respawn clock refills it.

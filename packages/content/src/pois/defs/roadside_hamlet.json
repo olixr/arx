@@ -1,7 +1,7 @@
 {
   "id": "roadside_hamlet",
   "name": "Roadside hamlet",
-  "description": "A stubborn croft or two holding the verge — a lit fire, a fenced grain plot, and folk glad of any face that isn't a brigand's. The lamp of it pushes the dark back a little.",
+  "description": "A stubborn croft or two holding the verge \u2014 a lit fire, a fenced grain plot, and folk glad of any face that isn't a brigand's. The lamp of it pushes the dark back a little.",
   "tiers": [
     1,
     3
@@ -42,5 +42,33 @@
   "cues": {
     "clearing": 3,
     "approachPath": true
-  }
+  },
+  "signs": [
+    {
+      "title": "CROFTER'S GATE",
+      "lines": [
+        "eggs and milk if you knock",
+        "no trouble wanted"
+      ]
+    },
+    {
+      "title": "HOLDFAST CROFT",
+      "lines": [
+        "the fire is lit for travelers"
+      ]
+    },
+    {
+      "title": "MIND THE DOG",
+      "lines": [
+        "he is friendlier than he sounds"
+      ]
+    },
+    {
+      "title": "GRAIN PLOT",
+      "lines": [
+        "fenced against the wild",
+        "walk around, not through"
+      ]
+    }
+  ]
 }

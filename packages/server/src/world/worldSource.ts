@@ -7,7 +7,7 @@ import {
   type ChunkData,
   type Vec2,
 } from '@devcraft/shared';
-import type { PortalDef, ZoneDef } from '@devcraft/content';
+import type { PortalDef, ZoneDef, ZoneSign } from '@devcraft/content';
 import {
   DARK_BAND_Y,
   EDGE_BASIN_DAMP_RANGE,
@@ -25,6 +25,8 @@ import {
 export class WorldSource extends ChunkStore {
   private readonly zones: ZoneDef[];
   private readonly portals = new Map<string, PortalDef>();
+  /** Authored sign copy, addressed by the tile it stands on. */
+  private readonly signs = new Map<string, ZoneSign>();
 
   constructor(
     private readonly seed: number,
@@ -40,6 +42,7 @@ export class WorldSource extends ChunkStore {
     for (const portal of zone.portals ?? []) {
       this.portals.set(`${portal.x},${portal.y}`, portal);
     }
+    for (const sign of zone.signs ?? []) this.signs.set(`${sign.x},${sign.y}`, sign);
     this.refreshEdgeProfiles();
     this.dropZoneChunks(zone);
   }
@@ -51,6 +54,7 @@ export class WorldSource extends ChunkStore {
     for (const portal of zone!.portals ?? []) {
       this.portals.delete(`${portal.x},${portal.y}`);
     }
+    for (const sign of zone!.signs ?? []) this.signs.delete(`${sign.x},${sign.y}`);
     this.refreshEdgeProfiles();
     this.dropZoneChunks(zone!);
   }
@@ -70,10 +74,12 @@ export class WorldSource extends ChunkStore {
     for (const portal of old.portals ?? []) {
       this.portals.delete(`${portal.x},${portal.y}`);
     }
+    for (const sign of old.signs ?? []) this.signs.delete(`${sign.x},${sign.y}`);
     this.zones[idx] = zone;
     for (const portal of zone.portals ?? []) {
       this.portals.set(`${portal.x},${portal.y}`, portal);
     }
+    for (const sign of zone.signs ?? []) this.signs.set(`${sign.x},${sign.y}`, sign);
     this.refreshEdgeProfiles();
     // Old and new rects can differ (resize/move) — drop both.
     this.dropZoneChunks(old);
@@ -106,6 +112,31 @@ export class WorldSource extends ChunkStore {
 
   portalAt(tx: number, ty: number): PortalDef | undefined {
     return this.portals.get(`${tx},${ty}`);
+  }
+
+  /** The authored words on the sign tile at these coordinates, if any. */
+  signAt(tx: number, ty: number): ZoneSign | undefined {
+    return this.signs.get(`${tx},${ty}`);
+  }
+
+  /** Every authored sign inside a chunk — the streaming unit. */
+  signsInChunk(cx: number, cy: number): ZoneSign[] {
+    const x0 = cx * CHUNK_SIZE;
+    const y0 = cy * CHUNK_SIZE;
+    const out: ZoneSign[] = [];
+    // Signs are a few hundred world-wide at most: a scan beats keeping
+    // a second per-chunk index in sync with every zone swap.
+    for (const sign of this.signs.values()) {
+      if (
+        sign.x >= x0 &&
+        sign.x < x0 + CHUNK_SIZE &&
+        sign.y >= y0 &&
+        sign.y < y0 + CHUNK_SIZE
+      ) {
+        out.push(sign);
+      }
+    }
+    return out;
   }
 
   /**

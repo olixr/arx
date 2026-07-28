@@ -3,15 +3,17 @@ import {
   MAX_TERRAIN_LEVEL,
   MIN_TERRAIN_LEVEL,
   Rng,
+  SIGN_TILES,
   TILE_DEFS,
   Tile,
   hashString,
   isSolidTile,
+  sanitizeSignText,
   type Vec2,
 } from '@devcraft/shared';
 import { stampTemplate } from '../structures/stamp.js';
 import type { StructureTemplate } from '../structures/types.js';
-import type { PortalDef, ZoneActorSpawn, ZoneDef, ZoneSpawn } from './types.js';
+import type { PortalDef, ZoneActorSpawn, ZoneDef, ZoneSign, ZoneSpawn } from './types.js';
 
 /**
  * Authoring API for hand-made zones. Zones are built by carving shapes
@@ -31,6 +33,7 @@ export class ZoneBuilder {
   private readonly portals: PortalDef[] = [];
   private readonly zoneSpawns: ZoneSpawn[] = [];
   private readonly zoneActorSpawns: ZoneActorSpawn[] = [];
+  private readonly zoneSigns: ZoneSign[] = [];
   private readonly rng: Rng;
 
   constructor(
@@ -288,6 +291,30 @@ export class ZoneBuilder {
     return this;
   }
 
+  /**
+   * Stand a sign and write it (local coords; stored in world coords).
+   *
+   * One call places the furniture AND the words, because a sign tile
+   * with no record is a blank board nobody can read — the pair is the
+   * unit. `tile` picks the furniture: a hanging shingle off a
+   * building's wall (the default) or a free-standing roadside post.
+   */
+  sign(
+    x: number,
+    y: number,
+    title: string,
+    lines: string[] = [],
+    tile: Tile = Tile.HangingSign,
+  ): this {
+    this.set(x, y, tile);
+    const text = sanitizeSignText({ title, lines });
+    const record: ZoneSign = { x: this.origin.x + x, y: this.origin.y + y, title: text.title };
+    // Absent stays absent — the JSON round-trip law the placements keep.
+    if (text.lines.length > 0) record.lines = text.lines;
+    this.zoneSigns.push(record);
+    return this;
+  }
+
   /** Place a named NPC actor (local coords; stored in world coords). */
   actor(slug: string, x: number, y: number, dir?: number, routine?: string): this {
     // Absent fields stay absent — placements survive the zone JSON
@@ -420,6 +447,25 @@ export class ZoneBuilder {
   }
 
   /**
+   * Words need a board. A sign record whose tile got overwritten by a
+   * later stamp (a building dropped on top of it, a road paved over
+   * it) is copy nobody will ever read — fail the build rather than
+   * ship a ghost, the same standard the fence conflict keeps.
+   */
+  private validateSigns(): void {
+    for (const s of this.zoneSigns) {
+      const lx = s.x - this.origin.x;
+      const ly = s.y - this.origin.y;
+      if (!SIGN_TILES.has(this.get(lx, ly))) {
+        throw new Error(
+          `zone ${this.id}: sign "${s.title}" at ${s.x},${s.y} has no sign tile under it ` +
+            `(found ${TILE_DEFS[this.get(lx, ly)]?.name ?? 'void'}) — something stamped over it`,
+        );
+      }
+    }
+  }
+
+  /**
    * Every walkable off-level tile must be reachable from the zone spawn
    * crossing level changes only via Ramp — an unreachable dell floor is
    * a content bug worth failing the build over. Skipped when the zone
@@ -479,6 +525,9 @@ export class ZoneBuilder {
       this.autoFence();
       this.validateReachable();
     }
+    // Signage validates for EVERY zone: words with no board under them
+    // are dead copy whether or not the zone has elevation.
+    this.validateSigns();
     return {
       id: this.id,
       name: this.name,
@@ -493,6 +542,7 @@ export class ZoneBuilder {
       portals: this.portals,
       spawns: this.zoneSpawns,
       actorSpawns: this.zoneActorSpawns,
+      signs: this.zoneSigns,
     };
   }
 }

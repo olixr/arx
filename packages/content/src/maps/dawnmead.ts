@@ -210,7 +210,7 @@ export function buildDawnmead(): ZoneDef {
   // The lane east: a shingle sign where the village lets go of you,
   // and lamps so the walk to Bramblewick never feels like leaving
   // safety, because it isn't.
-  b.set(65, 30, Tile.HangingSign);
+  b.sign(65, 30, 'THE EAST LANE', ['Amberford, then the road', 'Keep to the lamps.'], Tile.Signpost);
   b.set(78, 30, Tile.LampPost);
   b.set(88, 34, Tile.LampPost);
 

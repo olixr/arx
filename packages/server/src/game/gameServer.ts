@@ -46,8 +46,11 @@ import {
   type DoorInfo,
   destructibleInfo,
   nearestFloorTile,
+  isSignTile,
+  sanitizeSignText,
   TILE_DEFS,
   type DestructibleInfo,
+  type SignInfo,
 } from '@devcraft/shared';
 import {
   BUILDABLES,
@@ -1135,6 +1138,133 @@ export class GameServer {
     }
   }
 
+  // ------------------------------------------------------------ signs
+
+  /**
+   * Player-written signs by "tx,ty" — the world's own signage lives in
+   * the zone defs (world.signAt) and never enters this map. Held whole
+   * in memory like built tiles: a few rows, read on every approach.
+   */
+  private readonly playerSigns = new Map<
+    string,
+    { tx: number; ty: number; title: string; lines: string[]; owner: number }
+  >();
+
+  /** Load persisted player signs at boot. */
+  loadSigns(
+    rows: Array<{ tx: number; ty: number; title: string; lines: string[]; owner: number }>,
+  ): void {
+    for (const row of rows) this.playerSigns.set(`${row.tx},${row.ty}`, row);
+  }
+
+  /**
+   * What the board at this tile says, for a given reader — the ONE
+   * place authored and player signage merge. A player's words win over
+   * authored copy on the same tile (they built over it), and `mine` is
+   * decided here, never by the client.
+   */
+  private signInfoAt(tx: number, ty: number, forCharacterId: number): SignInfo | null {
+    const own = this.playerSigns.get(`${tx},${ty}`);
+    if (own) {
+      const info: SignInfo = { tx, ty, title: own.title, lines: own.lines };
+      if (own.owner === forCharacterId && forCharacterId > 0) info.mine = true;
+      const by = this.accounts.characterName(own.owner);
+      if (by) info.by = by;
+      return info;
+    }
+    const authored = this.world.signAt(tx, ty);
+    if (!authored) return null;
+    return { tx, ty, title: authored.title, lines: authored.lines ?? [] };
+  }
+
+  /**
+   * Hand a session every sign inside a chunk as that chunk streams in —
+   * the words arrive WITH the board, so walking up to a sign never
+   * waits on a round-trip. Blank player boards ride along too: their
+   * owner needs the record to find the edit affordance.
+   */
+  private sendChunkSigns(session: Session, cx: number, cy: number): void {
+    const charId = this.players.get(session.playerEid!)?.characterId ?? -1;
+    const signs: SignInfo[] = [];
+    for (const authored of this.world.signsInChunk(cx, cy)) {
+      // A player sign on the same tile is emitted by the sweep below.
+      if (this.playerSigns.has(`${authored.x},${authored.y}`)) continue;
+      signs.push({
+        tx: authored.x,
+        ty: authored.y,
+        title: authored.title,
+        lines: authored.lines ?? [],
+      });
+    }
+    const x0 = cx * CHUNK_SIZE;
+    const y0 = cy * CHUNK_SIZE;
+    for (const own of this.playerSigns.values()) {
+      if (own.tx < x0 || own.tx >= x0 + CHUNK_SIZE) continue;
+      if (own.ty < y0 || own.ty >= y0 + CHUNK_SIZE) continue;
+      const info = this.signInfoAt(own.tx, own.ty, charId);
+      if (info) signs.push(info);
+    }
+    if (signs.length > 0) session.sendJson({ t: 'signs', signs });
+  }
+
+  /**
+   * Tell everyone who can see this tile what it now says. Each watcher
+   * gets their OWN record because `mine` differs per reader.
+   */
+  private broadcastSign(tx: number, ty: number, gone = false): void {
+    const key = chunkKey(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    for (const [eid, player] of this.players) {
+      const session = player.session;
+      if (!session || !session.knownChunks.has(key)) continue;
+      if (gone) {
+        session.sendJson({ t: 'signs', signs: [{ tx, ty, title: '', lines: [], gone: true }] });
+        continue;
+      }
+      const info = this.signInfoAt(tx, ty, this.players.get(eid)?.characterId ?? -1);
+      if (info) session.sendJson({ t: 'signs', signs: [info] });
+    }
+  }
+
+  /**
+   * Rewrite a board. THE HAND THAT RAISED IT HOLDS THE PEN: only the
+   * character who built the post may write on it, and the world's own
+   * authored signage answers to nobody in play — it is edited in Map
+   * Studio, where the words are content.
+   */
+  signEdit(eid: EntityId, tx: number, ty: number, title: string, lines: string[]): void {
+    const player = this.players.get(eid);
+    const pos = this.positions.get(eid);
+    if (!player || !pos || player.session === null) return;
+    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
+
+    const dx = tx + 0.5 - pos.x;
+    const dy = ty + 0.5 - pos.y;
+    if (dx * dx + dy * dy > 3 * 3) return; // out of arm's reach — silent
+    if (player.characterId < 0) {
+      sys('Guests cannot write on signs — make an account!');
+      return;
+    }
+    const built = this.world.builtAt(tx, ty);
+    if (!built || !isSignTile(built.tile)) {
+      sys('There is nothing here to write on.');
+      return;
+    }
+    if (built.owner !== player.characterId) {
+      sys("That sign isn't yours to write on.");
+      return;
+    }
+    const text = sanitizeSignText({ title, lines });
+    this.playerSigns.set(`${tx},${ty}`, {
+      tx,
+      ty,
+      title: text.title,
+      lines: text.lines,
+      owner: player.characterId,
+    });
+    this.accounts.saveSign(tx, ty, text.title, text.lines, player.characterId);
+    this.broadcastSign(tx, ty);
+  }
+
   /**
    * Per-zone placement bookkeeping for live map-editor reloads: which
    * spawnPoints/actorSpawnPoints indexes each authored zone owns. The
@@ -1752,6 +1882,17 @@ export class GameServer {
     const door = ground === undefined ? null : doorInfo(ground);
     if (door) {
       this.interactDoor(tx, ty, door, sys);
+      return;
+    }
+
+    // Signs: reading is a CLIENT act (the words already streamed in
+    // with the chunk), so the server only answers the case the client
+    // cannot decide alone — a board with nothing written on it.
+    if (isSignTile(ground)) {
+      const info = this.signInfoAt(tx, ty, player.characterId);
+      if (!info || (info.title === '' && info.lines.length === 0)) {
+        sys(info?.mine ? 'The board is blank — write something on it.' : 'The board is blank.');
+      }
       return;
     }
 
@@ -2616,6 +2757,20 @@ export class GameServer {
     this.accounts.saveBuiltTile(action.tx, action.ty, placed, player.characterId, ground);
     this.setWorldTile(action.tx, action.ty, placed);
     this.grantXp(eid, player, def.skill ?? 'construction', def.xp);
+    // A raised board starts BLANK and owned: the row exists from the
+    // first moment so the builder sees an edit affordance the instant
+    // the post lands, and everyone else sees an empty sign.
+    if (isSignTile(placed) && player.characterId > 0) {
+      this.playerSigns.set(`${action.tx},${action.ty}`, {
+        tx: action.tx,
+        ty: action.ty,
+        title: '',
+        lines: [],
+        owner: player.characterId,
+      });
+      this.accounts.saveSign(action.tx, action.ty, '', [], player.characterId);
+      this.broadcastSign(action.tx, action.ty);
+    }
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
     this.cancelAction(eid, player, 'done');
     // A depleted forage node may have queued a respawn for this very
@@ -2645,6 +2800,12 @@ export class GameServer {
       return;
     }
 
+    // The words fall with the post: no orphan record may outlive its
+    // board, or a rebuild on the same tile would inherit dead copy.
+    if (this.playerSigns.delete(`${tx},${ty}`)) {
+      this.accounts.deleteSign(tx, ty);
+      this.broadcastSign(tx, ty, true);
+    }
     this.world.unregisterBuilt(tx, ty);
     this.accounts.deleteBuiltTile(tx, ty);
     // Give back the ground the construction was built on — a wall cut
@@ -9155,6 +9316,8 @@ export class GameServer {
         if (!session.knownChunks.has(key)) {
           session.knownChunks.add(key);
           session.sendBinary(encodeChunk(this.world.ensure(cx, cy)));
+          // The words ride in with the board they belong to.
+          this.sendChunkSigns(session, cx, cy);
         }
         const set = this.chunks.get(key);
         if (set) for (const e of set) visible.add(e);

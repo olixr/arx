@@ -21,7 +21,10 @@ import {
   chestInfo,
   doorInfo,
   findPath,
+  isSignTile,
   nextComboStage,
+  sanitizeSignText,
+  signKey,
   snapShot,
   stationAtTile,
   Tile,
@@ -37,6 +40,7 @@ import {
   type EquippedItem,
   type S2CFx,
   type S2CMessage,
+  type SignInfo,
   type SkillXp,
   type Snapshot,
   type StationType,
@@ -85,7 +89,8 @@ export type InteractTarget =
   | { kind: 'loot'; tx: number; ty: number; eid: EntityId }
   | { kind: 'chest'; tx: number; ty: number; chest: ChestKind }
   | { kind: 'door'; tx: number; ty: number; open: boolean; gate: boolean }
-  | { kind: 'bed'; tx: number; ty: number };
+  | { kind: 'bed'; tx: number; ty: number }
+  | { kind: 'sign'; tx: number; ty: number; mine: boolean; blank: boolean };
 import { Connection } from '../net/connection.js';
 import { InterpBuffer } from '../net/interpolation.js';
 import { Predictor } from '../net/prediction.js';
@@ -149,6 +154,8 @@ export interface GameEvents {
   onBank(items: Record<string, number>, gear?: Array<{ id: number; item: string; roll: ItemRoll }>): void;
   /** The Riftgate answered an interact — open the key panel over these pack slots. */
   onRiftgate?(keySlots: number[]): void;
+  /** A board's words arrived or changed — repaint whatever shows them. */
+  onSignChanged?(tx: number, ty: number): void;
   /** Crossed into a dungeon — everything the entry banner tells. */
   onDungeon?(d: { name: string; sigil: string; tier: string; theme: string; power: number }): void;
   onHit(hit: { x: number; y: number; dmg: number; isOwn: boolean; crit: boolean; backstab?: boolean }): void;
@@ -884,6 +891,15 @@ export class ClientGame {
         this.events.onBank(msg.items, msg.gear);
         break;
       }
+      case 'signs': {
+        for (const sign of msg.signs) {
+          const key = signKey(sign.tx, sign.ty);
+          if (sign.gone) this.signs.delete(key);
+          else this.signs.set(key, sign);
+          this.events.onSignChanged?.(sign.tx, sign.ty);
+        }
+        break;
+      }
       case 'riftgate': {
         // The gate names the slots; the panel reads the keys' rolls
         // from our own pack (instance-addressing law).
@@ -1068,6 +1084,63 @@ export class ClientGame {
    */
   lastInteract: { tx: number; ty: number } | null = null;
 
+  /**
+   * What every board in the streamed world says, by "tx,ty". Filled by
+   * the S2CSigns push that rides in with each chunk, so the words are
+   * already here when the player walks up — the approach plaque never
+   * waits on a round-trip.
+   */
+  readonly signs = new Map<string, SignInfo>();
+
+  /** The words on the board at this tile, if any have arrived. */
+  signAt(tx: number, ty: number): SignInfo | undefined {
+    return this.signs.get(signKey(tx, ty));
+  }
+
+  /**
+   * The nearest readable board within approach range, for the plaque.
+   *
+   * Deliberately NOT findNearbyTarget: reading is passive and must not
+   * compete for the interact slot. A shingle nailed beside a door
+   * still reads itself while the door owns the F key, and a blank
+   * board answers nobody but the hand that raised it.
+   *
+   * The range is wider than arm's reach (2.2) so the words arrive as
+   * you walk up rather than when you bump the post.
+   */
+  nearestSign(radius = 2.9): SignInfo | null {
+    if (this.ownEid === null) return null;
+    const pos = this.predictor.pos;
+    const cx = Math.floor(pos.x);
+    const cy = Math.floor(pos.y);
+    const r = Math.ceil(radius);
+    let best: SignInfo | null = null;
+    let bestD = radius * radius;
+    for (let ty = cy - r; ty <= cy + r; ty++) {
+      for (let tx = cx - r; tx <= cx + r; tx++) {
+        if (!isSignTile(this.world.groundAt(tx, ty))) continue;
+        const sign = this.signs.get(signKey(tx, ty));
+        if (!sign) continue;
+        const blank = sign.title === '' && sign.lines.every((l) => l === '');
+        if (blank && !sign.mine) continue;
+        const dx = tx + 0.5 - pos.x;
+        const dy = ty + 0.5 - pos.y;
+        const d = dx * dx + dy * dy;
+        if (d < bestD) {
+          bestD = d;
+          best = sign;
+        }
+      }
+    }
+    return best;
+  }
+
+  /** Rewrite one of your own boards (the server judges ownership). */
+  editSign(tx: number, ty: number, title: string, lines: string[]): void {
+    const text = sanitizeSignText({ title, lines });
+    this.conn?.send({ t: 'signedit', tx, ty, title: text.title, lines: text.lines });
+  }
+
   /** Send an interact intent for a specific world tile. */
   interact(tx: number, ty: number): void {
     this.lastInteract = { tx, ty };
@@ -1113,6 +1186,15 @@ export class ClientGame {
     }
     if (ground === Tile.BankChest) return { kind: 'bank', tx, ty };
     if (ground === Tile.ShopCounter) return { kind: 'shop', tx, ty };
+    // Boards offer a read. A blank one is only a target for the hand
+    // that raised it (there is nothing there for anyone else to do),
+    // which is why the blankness rides on the target itself.
+    if (isSignTile(ground)) {
+      const sign = this.signs.get(signKey(tx, ty));
+      const blank = !sign || (sign.title === '' && sign.lines.length === 0);
+      if (blank && !sign?.mine) return null;
+      return { kind: 'sign', tx, ty, mine: sign?.mine === true, blank };
+    }
     // Beds offer the home claim — the server arbitrates ownership.
     if (ground === Tile.Bed) return { kind: 'bed', tx, ty };
     if (ground === Tile.PortalDown || ground === Tile.PortalUp) return { kind: 'portal', tx, ty };

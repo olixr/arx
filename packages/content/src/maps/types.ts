@@ -65,6 +65,28 @@ export interface ZoneActorSpawn {
 }
 
 /**
+ * WORDS ON A BOARD — the text a sign tile in this zone carries.
+ *
+ * The placement layer for signage, exactly parallel to ZoneActorSpawn:
+ * the tile (HangingSign / Signpost) is the furniture, this record is
+ * what it says. Coordinates are WORLD tiles and must land on a sign
+ * tile of this zone; a record without a tile under it is dead copy and
+ * the builder refuses it.
+ *
+ * Player-written signs never appear here — those live in the server's
+ * `signs` table, keyed the same way and owned by their builder.
+ */
+export interface ZoneSign {
+  /** World-tile position of the sign tile these words belong to. */
+  x: number;
+  y: number;
+  /** The heading, painted large (may be empty for an all-body note). */
+  title: string;
+  /** Body lines beneath it. Absent = a title-only board. */
+  lines?: string[];
+}
+
+/**
  * An authored zone: a rectangle of tiles stamped over the procedural
  * world. The overlay clips per chunk, so origin and size need no chunk
  * alignment — small zones stamp only their own rectangle.
@@ -93,4 +115,6 @@ export interface ZoneDef {
   spawns?: ZoneSpawn[];
   /** Placed NPC actors — the who-stands-where layer. */
   actorSpawns?: ZoneActorSpawn[];
+  /** What this zone's sign tiles say — the what-is-written-where layer. */
+  signs?: ZoneSign[];
 }

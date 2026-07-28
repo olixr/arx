@@ -276,6 +276,20 @@ export interface C2SFriendRemove {
   name: string;
 }
 
+/**
+ * Rewrite the words on a sign you raised. The server is the judge of
+ * ownership and of length — it re-sanitizes through the shared law and
+ * echoes the stored result back, so the board can never hold anything
+ * the client merely claimed.
+ */
+export interface C2SSignEdit {
+  t: 'signedit';
+  tx: number;
+  ty: number;
+  title: string;
+  lines: string[];
+}
+
 export type C2SMessage =
   | C2SHello
   | C2SLogin
@@ -308,7 +322,8 @@ export type C2SMessage =
   | C2SFriendRequest
   | C2SFriendAccept
   | C2SFriendDecline
-  | C2SFriendRemove;
+  | C2SFriendRemove
+  | C2SSignEdit;
 
 // ---------------------------------------------------------------- S2C
 
@@ -691,6 +706,31 @@ export interface S2CFriendEvent {
   name: string;
 }
 
+/**
+ * What a sign says. Pushed as chunks stream in (the words arrive with
+ * the board, so the approach plaque never waits on a round-trip) and
+ * again whenever one is written, raised, or torn down. `gone` marks a
+ * board that no longer exists; `mine` is the edit right, decided by
+ * the server and never inferred client-side.
+ */
+export interface SignInfo {
+  tx: number;
+  ty: number;
+  title: string;
+  lines: string[];
+  /** True when this client's character may rewrite it. */
+  mine?: boolean;
+  /** Who raised it — absent on authored (world) signage. */
+  by?: string;
+  /** The board is gone: drop any record held for this tile. */
+  gone?: boolean;
+}
+
+export interface S2CSigns {
+  t: 'signs';
+  signs: SignInfo[];
+}
+
 export type S2CMessage =
   | S2CWelcome
   | S2CReject
@@ -718,6 +758,7 @@ export type S2CMessage =
   | S2CBuffs
   | S2CRiftgate
   | S2CDungeonEnter
+  | S2CSigns
   | S2CDialogueOpen
   | S2CDialogueNode
   | S2CDialogueClose
@@ -805,6 +846,20 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;
       if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;
       return { t: 'interact', tx: msg.tx, ty: msg.ty };
+    }
+    case 'signedit': {
+      if (!isFiniteNum(msg.tx) || !isFiniteNum(msg.ty)) return null;
+      if (!Number.isInteger(msg.tx) || !Number.isInteger(msg.ty)) return null;
+      if (typeof msg.title !== 'string' || !Array.isArray(msg.lines)) return null;
+      // Bound the payload here; the shared sanitizer trims the content
+      // itself once the handler has an owner to trust.
+      if (msg.title.length > 200 || msg.lines.length > 16) return null;
+      const lines: string[] = [];
+      for (const line of msg.lines) {
+        if (typeof line !== 'string' || line.length > 200) return null;
+        lines.push(line);
+      }
+      return { t: 'signedit', tx: msg.tx, ty: msg.ty, title: msg.title, lines };
     }
     case 'use': {
       if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot)) return null;

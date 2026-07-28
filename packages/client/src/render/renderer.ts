@@ -8523,6 +8523,7 @@ export class Renderer {
     Tile.Cabinet,
     Tile.BannerPole,
     Tile.HangingSign,
+    Tile.Signpost,
     Tile.FlowerBox,
     Tile.ToolRack,
     Tile.WeaponRack,
@@ -8608,6 +8609,8 @@ export class Renderer {
     Tile.WeaponRack,
     Tile.Lectern,
     Tile.PillarStone,
+    // A driven post does not sway: the signpost's art is wholly still.
+    Tile.Signpost,
     // Dungeon statics — the glowshroom's painted art is still (its
     // breathing is all in the live light pass), so it idles here too.
     Tile.Stalagmite,
@@ -8819,6 +8822,24 @@ export class Renderer {
    * to the live outline pass while streaming in faster than the bake
    * budget allows.
    */
+  /**
+   * Does the board at this tile carry words? Set by main.ts from the
+   * live sign store — the painter must not show ink on a blank post.
+   * A plain hook (not a renderer-owned copy of the data) keeps the one
+   * source of truth in the game state.
+   */
+  signHasText: ((tx: number, ty: number) => boolean) | null = null;
+
+  /**
+   * Drop a prop's baked sprite so its next frame repaints. The lever
+   * for art that depends on GAME STATE rather than time: writing on a
+   * sign changes what the board looks like, and the static ring's
+   * 240-frame heal is far too slow to feel like your own pen.
+   */
+  invalidateProp(tx: number, ty: number, tile: Tile): void {
+    this.treeSprites.delete(Renderer.treeKey(tx + 0.5, ty + 0.5, tile));
+  }
+
   private drawPropOutlined(
     tile: Tile,
     tx: number,
@@ -13253,6 +13274,114 @@ export class Renderer {
             ctx.fillStyle = 'rgba(36, 22, 10, 0.35)';
             ctx.fillRect(-s * 0.055, s * 0.215, s * 0.1, s * 0.02);
             ctx.restore();
+          },
+        };
+      }
+
+      /**
+       * THE ROADSIDE POST — the sign that stands on its own.
+       *
+       * The shingle above hangs off a building and names it; this one
+       * is planted in the ground at a fork or a gate and carries a
+       * board you read head-on. Two planks (a wide name board and a
+       * narrower slat under it) on a squared post, each showing its
+       * foreshortened TOP plane so the casework reads 2.5D and not as
+       * flat elevation. Rigid by nature — a driven post does not sway
+       * — which is exactly why it can idle in the static ring cache.
+       *
+       * Ink strokes only appear on a board that HAS words (the
+       * renderer asks signHasText): a freshly raised, unwritten post
+       * must read blank, or a player would go read a sign that says
+       * nothing.
+       */
+      case Tile.Signpost: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        const ph = s * 1.18; // post height — board sits at head height
+        const written = this.signHasText?.(tx, ty) ?? false;
+        const POST = '#6b4a24';
+        const BOARD = '#c2a068';
+        return {
+          sortY: ty + 0.62,
+          body: stationBody(0.9, 1.9, 0.45),
+          drawShadow: () => this.castEdgeQuad(p.x - s * 0.06, baseY, p.x + s * 0.06, baseY, 1.15),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            // Contact shade + the little heap of earth it was driven into.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, s * 0.15, s * 0.06, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#5a4a34';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - s * 0.01, s * 0.11, s * 0.042, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // The post: lit west flank, shaded east flank (the sun law).
+            ctx.fillStyle = POST;
+            ctx.fillRect(p.x - s * 0.055, baseY - ph, s * 0.11, ph);
+            ctx.fillStyle = shade(POST, 14);
+            ctx.fillRect(p.x - s * 0.055, baseY - ph, s * 0.035, ph);
+            ctx.fillStyle = shade(POST, -16);
+            ctx.fillRect(p.x + s * 0.028, baseY - ph, s * 0.027, ph);
+            // Sawn cap: the post's own top plane, foreshortened.
+            ctx.fillStyle = shade(POST, 26);
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - ph, s * 0.055, s * 0.022, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            /** One plank: face, foreshortened top plane, nails, ink. */
+            const plank = (
+              cy: number,
+              hw: number,
+              hh: number,
+              inkRows: number,
+              inkWide: number,
+            ): void => {
+              const top = cy - hh;
+              // The top plane — a tilted bird's-eye sliver, the law
+              // every piece of tall casework here keeps.
+              ctx.fillStyle = shade(BOARD, 22);
+              ctx.beginPath();
+              ctx.moveTo(p.x - hw, top);
+              ctx.lineTo(p.x + hw, top);
+              ctx.lineTo(p.x + hw * 0.93, top - syT * 0.09);
+              ctx.lineTo(p.x - hw * 0.93, top - syT * 0.09);
+              ctx.closePath();
+              ctx.fill();
+              // The face.
+              ctx.fillStyle = BOARD;
+              ctx.beginPath();
+              chamferRect(ctx, p.x - hw, top, hw * 2, hh * 2, s * 0.035);
+              ctx.fill();
+              // Grain seam + the shaded under-lip that seats the plank.
+              ctx.fillStyle = shade(BOARD, -12);
+              ctx.fillRect(p.x - hw * 0.94, cy + hh - s * 0.035, hw * 1.88, s * 0.035);
+              ctx.fillStyle = shade(BOARD, -22);
+              ctx.fillRect(p.x + hw - s * 0.03, top + s * 0.02, s * 0.03, hh * 2 - s * 0.04);
+              // Two forged nails holding it to the post.
+              ctx.fillStyle = '#3f3730';
+              for (const nx of [-hw * 0.72, hw * 0.72]) {
+                ctx.beginPath();
+                ctx.arc(p.x + nx, cy, s * 0.018, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              if (!written) return;
+              // The writing: struck marks, never letters — real glyphs
+              // at world scale turn to mud. The HUD carries the words.
+              ctx.fillStyle = 'rgba(48, 32, 16, 0.62)';
+              for (let r = 0; r < inkRows; r++) {
+                const w = hw * inkWide * (r === 0 ? 1 : 0.78 - r * 0.06);
+                const ry = cy - hh * 0.42 + r * hh * 0.55;
+                ctx.fillRect(p.x - w, ry, w * 2, Math.max(1, s * (r === 0 ? 0.035 : 0.022)));
+              }
+            };
+
+            // Name board, then the narrower slat beneath it.
+            plank(baseY - ph + s * 0.22, s * 0.42, s * 0.18, 2, 0.62);
+            plank(baseY - ph + s * 0.58, s * 0.3, s * 0.1, 1, 0.5);
           },
         };
       }

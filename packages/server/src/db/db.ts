@@ -494,6 +494,24 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX idx_friend_requests_to ON friend_requests(to_id);
   `,
+  // 28 — player-written signs. The board is a built tile like any
+  // other (built_tiles owns the furniture); this row owns the WORDS,
+  // keyed by the same tile so the pair rises and falls together —
+  // demolishing the post deletes its text. owner_character_id is the
+  // edit right and never changes hands: only the hand that raised the
+  // sign may rewrite it. Lines are stored as one newline-joined blob
+  // because they are display copy, never queried.
+  `
+  CREATE TABLE signs (
+    tx INTEGER NOT NULL,
+    ty INTEGER NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    lines TEXT NOT NULL DEFAULT '',
+    owner_character_id INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (tx, ty)
+  );
+  `,
 ];
 
 export function openDb(path?: string): DatabaseSync {
