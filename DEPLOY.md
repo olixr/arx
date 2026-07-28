@@ -36,14 +36,53 @@ Arx is two pieces on one domain:
 ## 2. Nginx
 
 Edit the site's nginx config (Forge → site → Edit Nginx Configuration)
-and paste the location blocks from [`deploy/nginx-arx.conf`](deploy/nginx-arx.conf)
-into the `server { }` block, above the default `location /`. They:
+and paste the following into the `server { }` block Forge generated,
+**above** the default `location /` block (same content ships as
+[`deploy/nginx-arx.conf`](deploy/nginx-arx.conf)):
 
-- proxy `/ws` (WebSocket upgrade headers, long read timeout),
-- proxy `/healthz` (liveness JSON),
-- hard-404 `/dev` (studio API — defense in depth; the server also
-  refuses it in production),
-- long-cache `/assets/` (content-hashed filenames).
+```nginx
+# The game WebSocket — wss://arx.gg/ws → the Node game server on
+# loopback. The Upgrade/Connection pair is what makes the WebSocket
+# handshake survive the proxy; without it clients get a 400 and the
+# game never connects.
+location /ws {
+    proxy_pass http://127.0.0.1:8790;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    # A quiet-but-connected client should not be reaped mid-session.
+    proxy_read_timeout 1h;
+    proxy_send_timeout 1h;
+}
+
+# Liveness probe (safe to expose: static JSON, no state).
+location = /healthz {
+    proxy_pass http://127.0.0.1:8790;
+}
+
+# The dev studio API must never be reachable from the internet. The
+# server also refuses it when NODE_ENV=production, but belt + braces.
+location /dev {
+    return 404;
+}
+
+# Vite emits content-hashed filenames under /assets — cache hard.
+location /assets/ {
+    expires 30d;
+    add_header Cache-Control "public, immutable";
+}
+```
+
+What each piece does:
+
+- **`/ws`** proxies the WebSocket with upgrade headers and a 1-hour
+  read timeout so idle-but-connected players aren't dropped,
+- **`/healthz`** proxies the liveness JSON,
+- **`/dev`** hard-404s the studio API (defense in depth; the server
+  also refuses it in production),
+- **`/assets/`** long-caches the content-hashed bundle files.
 
 ## 3. Database
 
