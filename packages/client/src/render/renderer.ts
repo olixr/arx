@@ -2522,6 +2522,15 @@ export class Renderer {
       (this.viewShiftTargetX - this.viewShiftX) * (1 - Math.exp(-7 * frameDt));
     const own = game.predictor.renderPos();
     const k = 1 - Math.exp(-8 * frameDt);
+    // Elevation-true follow: sprites draw lifted by renderLift·scale
+    // screen px (liftedWTS), but the camera centers WORLD coords — on
+    // a plateau the body would ride a full level above center (and
+    // below it in pits). Convert the screen lift back to world-y by
+    // dividing out the pitch squash (the projAirWorldY law) so the
+    // camera centers the DRAWN body, not the footprint. renderLift
+    // interpolates across ramps/stairs, so the correction glides with
+    // the climb instead of popping at level boundaries.
+    const ownEyeY = own.y - this.renderLift(own.x, own.y) / this.camera.yScale;
     const cine = this.cineEid !== null ? game.entities.get(this.cineEid) : undefined;
     if (cine) {
       // Dialogue cinematic: pull PAST the player's zoom ceiling — an
@@ -2532,14 +2541,15 @@ export class Renderer {
       const last = cine.buffer.latest();
       const nx = last?.x ?? cine.meta.x;
       const ny = last?.y ?? cine.meta.y;
+      const cineEyeY = ny - this.renderLift(nx, ny) / this.camera.yScale;
       // Look below the midpoint so the figures ride the upper 2/3 —
       // the speech sheet owns the bottom of the screen.
       const lift = (this.h * 0.1) / (this.camera.scale * this.camera.yScale);
       this.camera.x += ((own.x + nx) / 2 - this.camera.x) * k;
-      this.camera.y += ((own.y + ny) / 2 + lift - this.camera.y) * k;
+      this.camera.y += ((ownEyeY + cineEyeY) / 2 + lift - this.camera.y) * k;
     } else {
       this.camera.x += (own.x + this.viewShiftX / this.camera.scale - this.camera.x) * k;
-      this.camera.y += (own.y - this.camera.y) * k;
+      this.camera.y += (ownEyeY - this.camera.y) * k;
     }
 
     this.shakeAmount *= Math.exp(-7 * frameDt);
