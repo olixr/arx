@@ -659,6 +659,11 @@ export class Renderer {
   /** Body-relight scratch (see relightBody) + per-frame budget. */
   private readonly relightCanvas = document.createElement('canvas');
   private readonly relightCtx = this.relightCanvas.getContext('2d')!;
+  /** The ART MASK scratch: the body's silhouette WITHOUT the outline
+   *  ring — relight paints clothing and skin, never the ring (a lit
+   *  ring reads as a detached pale halo outside the body). */
+  private readonly relightMask = document.createElement('canvas');
+  private readonly relightMaskCtx = this.relightMask.getContext('2d')!;
   private relitLeft = 0;
   /** Top-two-light stash filled by sampleExposure(wantDom=true).
    *  TWO slots, not one: a winner-take-all pick strobes when two
@@ -17084,7 +17089,8 @@ export class Renderer {
    */
   private relightBody(
     item: DrawItem,
-    srcs: CanvasImageSource[],
+    maskSrc: CanvasImageSource,
+    erodePx: number,
     sw: number,
     sh: number,
     dx: number,
@@ -17120,6 +17126,44 @@ export class Renderer {
       this.relightCanvas.width = Math.max(this.relightCanvas.width, sw);
       this.relightCanvas.height = Math.max(this.relightCanvas.height, sh);
     }
+    if (this.relightMask.width < sw || this.relightMask.height < sh) {
+      this.relightMask.width = Math.max(this.relightMask.width, sw);
+      this.relightMask.height = Math.max(this.relightMask.height, sh);
+    }
+    // ---- THE ART MASK: every overlay below is clipped to the body's
+    // ART, never the outline ring. Cached sprites arrive ring+art
+    // composited, and the ring IS a dilation of the art — so erosion
+    // by the ring radius recovers the art silhouette (closing; 4
+    // straight + 4 diagonal intersection taps, drawn from maskSrc so
+    // no self-referencing snapshot). The direct path hands the art
+    // scratch alone and skips the erode (erodePx 0). The alpha
+    // multiplication across taps also hardens antialiased edges —
+    // the mask lands on whole pixels, which is what keeps the
+    // overlays reading as paint on the sprite instead of a soft
+    // ghost around it.
+    const mc = this.relightMaskCtx;
+    mc.setTransform(1, 0, 0, 1, 0, 0);
+    mc.globalCompositeOperation = 'source-over';
+    mc.globalAlpha = 1;
+    mc.clearRect(0, 0, sw + 2, sh + 2);
+    mc.drawImage(maskSrc, 0, 0, sw, sh, 0, 0, sw, sh);
+    if (erodePx > 0) {
+      const rd = Math.max(1, Math.round(erodePx * 0.71));
+      mc.globalCompositeOperation = 'destination-in';
+      for (const [ox, oy] of [
+        [erodePx, 0],
+        [-erodePx, 0],
+        [0, erodePx],
+        [0, -erodePx],
+        [rd, rd],
+        [rd, -rd],
+        [-rd, rd],
+        [-rd, -rd],
+      ] as const) {
+        mc.drawImage(maskSrc, 0, 0, sw, sh, ox, oy, sw, sh);
+      }
+      mc.globalCompositeOperation = 'source-over';
+    }
     const ctx = this.ctx;
     const baseAlpha = item.alpha ?? 1;
     // The lift wears BOTH pools' colors, weighted by contribution —
@@ -17135,7 +17179,7 @@ export class Renderer {
       rc.globalCompositeOperation = 'source-over';
       rc.globalAlpha = 1;
       rc.clearRect(0, 0, sw + 2, sh + 2);
-      for (const src of srcs) rc.drawImage(src, 0, 0, sw, sh, 0, 0, sw, sh);
+      rc.drawImage(this.relightMask, 0, 0, sw, sh, 0, 0, sw, sh);
       rc.globalCompositeOperation = 'source-in';
       if (lift) {
         // The pool's own color climbs the body from the feet.
@@ -17167,18 +17211,23 @@ export class Renderer {
       if (this.dom2K > RIM_LO) {
         rims.push({ k: this.dom2K, x: this.dom2X, y: this.dom2Y, rgb: this.dom2Rgb });
       }
-      const mag = Math.max(2, sw * 0.055);
+      // A rim is a THIN lit edge, not a ghost copy: ~2% of the sprite
+      // (2-4 device px at normal zoom) where 5.5% read as an offset
+      // duplicate slab on blocky art. INTEGER shift only — a
+      // fractional offset bilinear-smears the crescent into a soft
+      // double image.
+      const mag = Math.max(2, Math.round(sw * 0.022));
       let ux0 = 0;
       let uy0 = 0;
       for (let i = 0; i < rims.length; i++) {
         const R = rims[i]!;
         // Screen-space direction AWAY from this light; the
         // shifted-copy erase leaves a crescent on the side FACING it.
-        let ax = (item.baseX - R.x) * this.camera.scale;
-        let ay = (item.baseY - R.y) * this.camera.scale * this.camera.yScale;
-        const al = Math.hypot(ax, ay) || 1;
-        const ux = ax / al;
-        const uy = ay / al;
+        const rx = (item.baseX - R.x) * this.camera.scale;
+        const ry = (item.baseY - R.y) * this.camera.scale * this.camera.yScale;
+        const al = Math.hypot(rx, ry) || 1;
+        const ux = rx / al;
+        const uy = ry / al;
         let overlap = 1;
         if (i === 0) {
           ux0 = ux;
@@ -17191,15 +17240,16 @@ export class Renderer {
         }
         const alpha = baseAlpha * Math.min(0.42, R.k * 1.35) * rimFade(R.k) * overlap;
         if (alpha <= 0.01) continue;
-        ax = ux * mag;
-        ay = uy * mag;
+        const ax = Math.round(ux * mag);
+        const ay = Math.round(uy * mag);
+        if (ax === 0 && ay === 0) continue;
         rc.setTransform(1, 0, 0, 1, 0, 0);
         rc.globalCompositeOperation = 'source-over';
         rc.globalAlpha = 1;
         rc.clearRect(0, 0, sw + 2, sh + 2);
-        for (const src of srcs) rc.drawImage(src, 0, 0, sw, sh, 0, 0, sw, sh);
+        rc.drawImage(this.relightMask, 0, 0, sw, sh, 0, 0, sw, sh);
         rc.globalCompositeOperation = 'destination-out';
-        for (const src of srcs) rc.drawImage(src, 0, 0, sw, sh, ax, ay, sw, sh);
+        rc.drawImage(this.relightMask, 0, 0, sw, sh, ax, ay, sw, sh);
         rc.globalCompositeOperation = 'source-in';
         // Rim reads hot: the light's color pushed toward white.
         rc.fillStyle = `rgb(${(R.rgb[0] + 255) >> 1}, ${(R.rgb[1] + 255) >> 1}, ${(R.rgb[2] + 255) >> 1})`;
@@ -17266,7 +17316,12 @@ export class Renderer {
     const dw = sp.wCss * k;
     const dh = sp.hCss * k;
     this.ctx.drawImage(sp.canvas, 0, 0, sp.w, sp.h, dx, dy, dw, dh);
-    if (item) this.relightBody(item, [sp.canvas], sp.w, sp.h, dx, dy, dw, dh);
+    if (item) {
+      // The ring radius the sprite was BAKED with (paintOutlineScratch
+      // r), in its own device pixels — what the mask erode must undo.
+      const erodePx = Math.max(1, Math.round(Math.max(1.25, sp.scale * 0.04) * sp.dpr));
+      this.relightBody(item, sp.canvas, erodePx, sp.w, sp.h, dx, dy, dw, dh);
+    }
   }
 
   /** Re-bake a keyed body: run the scratch pass, composite ring+art
@@ -17329,9 +17384,11 @@ export class Renderer {
     const geo = this.paintOutlineScratch(item);
     this.ctx.drawImage(this.outlineB, 0, 0, geo.w, geo.h, b.x - geo.m, b.y - geo.m, geo.w / dpr, geo.h / dpr);
     this.ctx.drawImage(this.outlineA, 0, 0, geo.w, geo.h, b.x - geo.m, b.y - geo.m, geo.w / dpr, geo.h / dpr);
+    // Art scratch alone — the ring never enters the mask, no erode.
     this.relightBody(
       item,
-      [this.outlineB, this.outlineA],
+      this.outlineA,
+      0,
       geo.w,
       geo.h,
       b.x - geo.m,
