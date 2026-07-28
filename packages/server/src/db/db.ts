@@ -467,6 +467,21 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX idx_character_discoveries_id ON character_discoveries(id);
   `,
+  // v3: the invite gate — registration spends a code from this ledger.
+  // CITEXT so a code survives being typed in any casing; max_uses NULL
+  // means unlimited. accounts.invite_code records which code opened
+  // each account (audit trail, never read on the hot path).
+  `
+  CREATE TABLE invite_codes (
+    code CITEXT PRIMARY KEY,
+    max_uses INTEGER,
+    uses INTEGER NOT NULL DEFAULT 0,
+    disabled INTEGER NOT NULL DEFAULT 0,
+    note TEXT NOT NULL DEFAULT '',
+    created_at BIGINT NOT NULL
+  );
+  ALTER TABLE accounts ADD COLUMN invite_code TEXT;
+  `,
 ];
 
 /**

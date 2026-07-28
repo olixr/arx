@@ -65,6 +65,7 @@ export class AccountStore {
     password: string,
     charName: string,
     spawn: { x: number; y: number },
+    invite?: { required: boolean; code?: string },
   ): Promise<AuthResult> {
     const user = username.trim();
     const name = charName.trim();
@@ -77,6 +78,19 @@ export class AccountStore {
     if (!/^[\p{L}\p{N} _-]{2,16}$/u.test(name)) {
       return { ok: false, reason: 'Character name must be 2-16 characters' };
     }
+    // The invite gate stands BEFORE the uniqueness checks on purpose:
+    // without a working code you learn nothing about taken usernames.
+    const code = (invite?.code ?? '').trim();
+    if (invite?.required) {
+      if (!code) return { ok: false, reason: 'An invite code is required to create an account' };
+      const row = await this.db.get<{ uses: number; max_uses: number | null; disabled: number }>(
+        'SELECT uses, max_uses, disabled FROM invite_codes WHERE code = ?',
+        [code],
+      );
+      if (!row || row.disabled !== 0 || (row.max_uses !== null && row.uses >= row.max_uses)) {
+        return { ok: false, reason: 'That invite code is not valid' };
+      }
+    }
     const existing = await this.db.get('SELECT id FROM accounts WHERE username = ?', [user]);
     if (existing) return { ok: false, reason: 'That username is taken' };
     const nameTaken = await this.db.get('SELECT id FROM characters WHERE name = ?', [name]);
@@ -86,9 +100,19 @@ export class AccountStore {
     const hash = scryptSync(password, salt, SCRYPT_KEYLEN);
     const now = Date.now();
     const result = await this.db.transaction(async (tx) => {
+      if (invite?.required) {
+        // Spend the code inside the transaction — the WHERE re-checks
+        // validity, so a code can never go past its use budget however
+        // many registrations race on it.
+        const spent = await tx.run(
+          'UPDATE invite_codes SET uses = uses + 1 WHERE code = ? AND disabled = 0 AND (max_uses IS NULL OR uses < max_uses)',
+          [code],
+        );
+        if (spent.rowCount === 0) return null;
+      }
       const acc = await tx.get<{ id: number }>(
-        'INSERT INTO accounts (username, pass_hash, pass_salt, created_at) VALUES (?, ?, ?, ?) RETURNING id',
-        [user, hash, salt, now],
+        'INSERT INTO accounts (username, pass_hash, pass_salt, created_at, invite_code) VALUES (?, ?, ?, ?, ?) RETURNING id',
+        [user, hash, salt, now, invite?.required ? code : null],
       );
       const ch = await tx.get<{ id: number }>(
         'INSERT INTO characters (account_id, name, x, y, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
@@ -96,6 +120,7 @@ export class AccountStore {
       );
       return { accountId: acc!.id, characterId: ch!.id };
     });
+    if (result === null) return { ok: false, reason: 'That invite code is not valid' };
     this.nameCache.set(result.characterId, name);
     return {
       ok: true,
@@ -114,6 +139,27 @@ export class AccountStore {
         waypoint_y: null,
       },
     };
+  }
+
+  /**
+   * Seed (or re-arm) an invite code — boot runs this for INVITE_CODE.
+   * Re-seeding an existing code clears `disabled` but keeps its use
+   * count; max_uses NULL means unlimited.
+   */
+  async upsertInviteCode(code: string, note = '', maxUses: number | null = null): Promise<void> {
+    await this.db.run(
+      'INSERT INTO invite_codes (code, max_uses, uses, disabled, note, created_at) VALUES (?, ?, 0, 0, ?, ?) ' +
+        'ON CONFLICT (code) DO UPDATE SET disabled = 0, max_uses = excluded.max_uses, note = excluded.note',
+      [code.trim(), maxUses, note, Date.now()],
+    );
+  }
+
+  /** Codes that can still open an account (the boot warning reads this). */
+  async countOpenInviteCodes(): Promise<number> {
+    const row = await this.db.get<{ n: number }>(
+      'SELECT COUNT(*) AS n FROM invite_codes WHERE disabled = 0 AND (max_uses IS NULL OR uses < max_uses)',
+    );
+    return row?.n ?? 0;
   }
 
   async login(username: string, password: string): Promise<AuthResult> {

@@ -102,6 +102,7 @@ const loginForm = document.getElementById('login-form') as HTMLFormElement;
 const loginUser = document.getElementById('login-user') as HTMLInputElement;
 const loginPass = document.getElementById('login-pass') as HTMLInputElement;
 const loginCharName = document.getElementById('login-charname') as HTMLInputElement;
+const loginInvite = document.getElementById('login-invite') as HTMLInputElement;
 const loginSubmit = document.getElementById('login-submit') as HTMLButtonElement;
 const loginToggle = document.getElementById('login-toggle') as HTMLButtonElement;
 const loginError = document.getElementById('login-error')!;
@@ -1184,6 +1185,9 @@ loginToggle.addEventListener('click', () => {
   registerMode = !registerMode;
   loginCharName.classList.toggle('hidden', !registerMode);
   loginCharName.required = registerMode;
+  // The invite field is not marked required — the server decides
+  // whether registration is gated (dev servers leave it open).
+  loginInvite.classList.toggle('hidden', !registerMode);
   loginSubmit.textContent = registerMode ? 'Create & Enter World' : 'Enter World';
   loginToggle.textContent = registerMode
     ? 'Have an account? Sign in'
@@ -1198,7 +1202,12 @@ loginForm.addEventListener('submit', (e) => {
   loginStatus.textContent = registerMode ? 'Creating your adventurer…' : 'Signing in…';
   loginStatus.classList.remove('hidden');
   if (registerMode) {
-    game.sendRegister(loginUser.value.trim(), loginPass.value, loginCharName.value.trim());
+    game.sendRegister(
+      loginUser.value.trim(),
+      loginPass.value,
+      loginCharName.value.trim(),
+      loginInvite.value.trim(),
+    );
   } else {
     game.sendLogin(loginUser.value.trim(), loginPass.value);
   }

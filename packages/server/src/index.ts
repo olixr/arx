@@ -38,6 +38,7 @@ import { loadDialogues, seedDialogues } from './db/dialogues.js';
 import { loadNpcActors, syncNpcActors } from './db/npcActors.js';
 import { loadRoutines, seedRoutines } from './db/routines.js';
 import { GameServer } from './game/gameServer.js';
+import { clientIp, ipGuard } from './net/ipGuard.js';
 import { Session } from './net/session.js';
 import { WorldSource } from './world/worldSource.js';
 
@@ -77,6 +78,19 @@ const db = await openDb();
 const accounts = new AccountStore(db);
 // Character names serve the sign-byline hot path synchronously.
 await accounts.preloadCharacterNames();
+
+// The invite gate. INVITE_CODE seeds/re-arms the one live code each
+// boot; the ledger can hold more, added straight in the table.
+if (config.inviteCode) {
+  await accounts.upsertInviteCode(config.inviteCode, 'seeded from INVITE_CODE env');
+}
+if (config.requireInvite) {
+  const open = await accounts.countOpenInviteCodes();
+  console.log(`[server] registration requires an invite code (${open} code(s) open)`);
+  if (open === 0) {
+    console.warn('[server] WARNING: invite required but NO open codes exist — nobody can register. Set INVITE_CODE in .env.');
+  }
+}
 
 // Bestiary + loot tables, DB-first under the two-hash truth law: the
 // shipped registries seed content_docs, the runtime reads BACK from
@@ -269,6 +283,15 @@ const wss = new WebSocketServer({
 });
 httpServer.listen(config.port, config.host);
 wss.on('connection', (ws, req) => {
+  // Overload fuse + per-IP budgets (concurrent cap, connect rate)
+  // BEFORE a Session exists — a refused socket costs us nothing more
+  // than the handshake it already spent.
+  const ip = clientIp(req);
+  if (wss.clients.size > config.maxConnections || !ipGuard.tryConnect(ip)) {
+    ws.close(1013, 'try again later');
+    return;
+  }
+  ws.on('close', () => ipGuard.disconnect(ip));
   // KILL NAGLE. Node sockets batch small writes by default; a 20Hz
   // stream of sub-MTU snapshots is Nagle's worst case — it can hold a
   // snapshot back until the previous one is ACKed (+RTT, up to ~40ms
@@ -276,7 +299,7 @@ wss.on('connection', (ws, req) => {
   // which is why it survives in dev. The single most important line
   // in the transport.
   req.socket.setNoDelay(true);
-  new Session(ws, game);
+  new Session(ws, game, ip);
 });
 
 console.log(`[server] Arx server listening on ws://${config.host}:${config.port}/ws`);

@@ -598,8 +598,8 @@ export class ClientGame {
     this.conn?.send({ t: 'login', user, pass });
   }
 
-  sendRegister(user: string, pass: string, name: string): void {
-    this.conn?.send({ t: 'register', user, pass, name });
+  sendRegister(user: string, pass: string, name: string, invite?: string): void {
+    this.conn?.send({ t: 'register', user, pass, name, invite: invite || undefined });
   }
 
   private openConnection(): void {

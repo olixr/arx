@@ -9,6 +9,7 @@ import {
   type S2CMessage,
 } from '@arx/shared';
 import { config } from '../config.js';
+import { ipGuard } from './ipGuard.js';
 import { TokenBucket } from './rateLimiter.js';
 import type { GameServer } from '../game/gameServer.js';
 
@@ -58,6 +59,7 @@ export class Session {
   constructor(
     private readonly ws: WebSocket,
     private readonly game: GameServer,
+    private readonly ip: string = 'local',
   ) {
     ws.on('message', (data, isBinary) => {
       if (isBinary) return; // clients only send JSON control messages
@@ -111,27 +113,24 @@ export class Session {
           this.ws.close();
           return;
         }
+        // A hello with a token or name does DB/spawn work — budgeted
+        // like any auth attempt. A bare hello just gets authRequired.
+        if ((msg.token || msg.name) && !this.allowAuthAttempt()) return;
         void this.game.hello(this, { name: msg.name, token: msg.token })
           .catch((err: Error) => console.error('[auth]', err.message));
         return;
       }
       case 'login': {
         if (this.playerEid !== null) return this.strike();
-        if (!this.authBucket.consume()) {
-          this.sendJson({ t: 'authErr', reason: 'Too many attempts — wait a moment' });
-          return;
-        }
+        if (!this.allowAuthAttempt()) return;
         void this.game.login(this, msg.user, msg.pass)
           .catch((err: Error) => console.error('[auth]', err.message));
         return;
       }
       case 'register': {
         if (this.playerEid !== null) return this.strike();
-        if (!this.authBucket.consume()) {
-          this.sendJson({ t: 'authErr', reason: 'Too many attempts — wait a moment' });
-          return;
-        }
-        void this.game.register(this, msg.user, msg.pass, msg.name)
+        if (!this.allowAuthAttempt()) return;
+        void this.game.register(this, msg.user, msg.pass, msg.name, msg.invite)
           .catch((err: Error) => console.error('[auth]', err.message));
         return;
       }
@@ -327,6 +326,18 @@ export class Session {
         return;
       }
     }
+  }
+
+  /**
+   * One auth attempt clears BOTH throttles or neither: the
+   * per-connection bucket stops single-socket hammering, the per-IP
+   * bucket (shared across this address's sockets, surviving
+   * reconnects) stops the reconnect-and-retry workaround.
+   */
+  private allowAuthAttempt(): boolean {
+    if (this.authBucket.consume() && ipGuard.allowAuth(this.ip)) return true;
+    this.sendJson({ t: 'authErr', reason: 'Too many attempts — wait a moment' });
+    return false;
   }
 
   /** Malformed/abusive traffic: three strikes and the socket closes. */

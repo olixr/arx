@@ -43,6 +43,60 @@ test('validation: short passwords and bad names rejected', async () => {
   assert.ok(!(await store.register('eric', 'hunter22', 'x', SPAWN)).ok);
 });
 
+test('invite gate: required registration spends a valid code', async () => {
+  const store = await makeStore();
+  await store.upsertInviteCode('SILVERFALL-2026', 'test');
+  const noCode = await store.register('eric', 'hunter22', 'Aeriek', SPAWN, { required: true });
+  assert.ok(!noCode.ok, 'no code is turned away');
+  const badCode = await store.register('eric', 'hunter22', 'Aeriek', SPAWN, {
+    required: true,
+    code: 'WRONG',
+  });
+  assert.ok(!badCode.ok, 'wrong code is turned away');
+  // CITEXT: the code survives any casing, and whitespace is trimmed.
+  const good = await store.register('eric', 'hunter22', 'Aeriek', SPAWN, {
+    required: true,
+    code: '  silverfall-2026 ',
+  });
+  assert.ok(good.ok, 'a valid code opens the door');
+  const login = await store.login('eric', 'hunter22');
+  assert.ok(login.ok, 'the invited account can sign in');
+});
+
+test('invite gate: max_uses caps a code; disabled and unknown codes never leak name availability', async () => {
+  const store = await makeStore();
+  await store.upsertInviteCode('ONE-SHOT', 'test', 1);
+  assert.ok((await store.register('first', 'hunter22', 'First', SPAWN, { required: true, code: 'ONE-SHOT' })).ok);
+  const spent = await store.register('second', 'hunter22', 'Second', SPAWN, {
+    required: true,
+    code: 'ONE-SHOT',
+  });
+  assert.ok(!spent.ok, 'a spent code is turned away');
+
+  // The invite check stands before uniqueness checks: probing with a
+  // bad code and a TAKEN username must report only the bad code.
+  const probe = await store.register('first', 'hunter22', 'Other', SPAWN, {
+    required: true,
+    code: 'NOPE',
+  });
+  assert.ok(!probe.ok);
+  assert.ok(!probe.ok && /invite/i.test(probe.reason), 'reason speaks only of the invite');
+
+  // Re-arming a code re-opens it without resetting its history.
+  await store.upsertInviteCode('ONE-SHOT', 'test', 2);
+  assert.ok((await store.register('second', 'hunter22', 'Second', SPAWN, { required: true, code: 'ONE-SHOT' })).ok);
+  assert.equal(await store.countOpenInviteCodes(), 0, 'both uses spent again');
+});
+
+test('invite gate: unrequired registration ignores codes entirely', async () => {
+  const store = await makeStore();
+  const res = await store.register('eric', 'hunter22', 'Aeriek', SPAWN, {
+    required: false,
+    code: 'ANYTHING',
+  });
+  assert.ok(res.ok, 'open registration never checks the ledger');
+});
+
 test('sessions resume and persist character position', async () => {
   const store = await makeStore();
   const reg = await store.register('eric', 'hunter22', 'Aeriek', SPAWN);

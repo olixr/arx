@@ -111,7 +111,37 @@ Everything stays inside the one site directory Forge manages:
 
 Production safety defaults: with `NODE_ENV=production`, dev chat
 commands, the `/dev` studio API, and guest (accountless) joins are all
-**off** unless explicitly enabled.
+**off** unless explicitly enabled — and **account creation requires an
+invite code** unless explicitly disabled (`REQUIRE_INVITE=0`).
+
+### The invite gate
+
+Set `INVITE_CODE` in the environment to a long random string (e.g.
+`openssl rand -hex 12`) — boot seeds it into the `invite_codes` table
+with unlimited uses, and only people who type it can create an
+account. Existing accounts sign in as always; guests are turned away.
+
+- **Rotate the code:** change `INVITE_CODE`, `arxctl restart`, then
+  disable the old one:
+  `UPDATE invite_codes SET disabled = 1 WHERE code = 'OLD-CODE';`
+- **Extra codes** (e.g. a 5-use code for a friend group) go straight
+  into the table:
+  `INSERT INTO invite_codes (code, max_uses, note, created_at) VALUES ('FRIENDS-XYZ', 5, 'for the crew', (extract(epoch from now())*1000)::bigint);`
+- **Audit:** `SELECT username, invite_code FROM accounts;` shows which
+  code opened each account; `invite_codes.uses` counts spends.
+
+Codes are case-insensitive (CITEXT). If the gate is on and no open
+codes exist, boot logs a loud warning — nobody can register.
+
+### Throttles
+
+Every auth attempt (session resume, sign-in, account creation) rides
+two token buckets — per-connection and per-IP (the per-IP one survives
+reconnects) — and each IP gets a bounded number of sockets and
+handshakes per second, with `MAX_CONNECTIONS` as the whole-box fuse.
+The nginx template adds matching `limit_conn`/`limit_req` rules in
+front (see `deploy/nginx-arx.conf` — the two zone directives go above
+the `server { }` block).
 
 ## 5. The game-server process (Forge Daemon)
 
@@ -195,6 +225,8 @@ deploy at quiet hours once there's a population.
 - `https://arx.gg` loads the game and the login panel.
 - `https://arx.gg/healthz` returns `{"ok":true,…}`.
 - `https://arx.gg/dev/maps` returns 404.
+- Creating an account WITHOUT the invite code is refused; with it,
+  registration works.
 - Create an account, walk around, `scripts/arxctl.sh restart`, log
   back in — position and inventory persist.
 

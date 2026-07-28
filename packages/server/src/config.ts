@@ -43,6 +43,24 @@ export const config = {
   motd: process.env.MOTD ?? 'Welcome to Arx!',
   /** Guest (accountless) joins — on in dev for bots; off in production. */
   allowGuest: envFlag('ALLOW_GUEST'),
+  /**
+   * Invite gate on account creation. Deliberately the INVERSE default
+   * of envFlag: this knob RESTRICTS rather than permits, so failing
+   * closed means ON when NODE_ENV=production and OFF in dev. Explicit
+   * REQUIRE_INVITE=0/1 always wins.
+   */
+  requireInvite:
+    process.env.REQUIRE_INVITE !== undefined
+      ? process.env.REQUIRE_INVITE !== '0'
+      : process.env.NODE_ENV === 'production',
+  /**
+   * Invite code seeded into the invite_codes ledger at boot (unlimited
+   * uses). The one live code ships in .env; more codes can be added
+   * straight in the table.
+   */
+  inviteCode: (process.env.INVITE_CODE ?? '').trim(),
+  /** Hard cap on simultaneous sockets — the box's overload fuse. */
+  maxConnections: envInt('MAX_CONNECTIONS', 300),
   worldSeed: envInt('WORLD_SEED', 1337),
   /**
    * Zone whose spawn point receives BRAND-NEW characters (the

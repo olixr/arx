@@ -459,7 +459,7 @@ export declare class ClientGame {
     /** Connect; the server answers welcome (valid token) or authRequired. */
     connect(token: string | null): void;
     sendLogin(user: string, pass: string): void;
-    sendRegister(user: string, pass: string, name: string): void;
+    sendRegister(user: string, pass: string, name: string, invite?: string): void;
     private openConnection;
     get sessionToken(): string | null;
     /**

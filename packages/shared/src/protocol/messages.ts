@@ -49,6 +49,8 @@ export interface C2SRegister {
   pass: string;
   /** Character display name. */
   name: string;
+  /** Invite code — required by the server when registration is gated. */
+  invite?: string;
 }
 
 export interface C2SInput {
@@ -882,7 +884,10 @@ export function parseC2S(raw: string): C2SMessage | null {
         return null;
       }
       if (msg.user.length > 64 || msg.pass.length > 128 || msg.name.length > 32) return null;
-      return { t: 'register', user: msg.user, pass: msg.pass, name: msg.name };
+      if (msg.invite !== undefined && (typeof msg.invite !== 'string' || msg.invite.length > 64)) {
+        return null;
+      }
+      return { t: 'register', user: msg.user, pass: msg.pass, name: msg.name, invite: msg.invite };
     }
     case 'input': {
       const f = msg.frame;

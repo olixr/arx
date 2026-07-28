@@ -1508,6 +1508,17 @@ export class GameServer {
       return;
     }
 
+    if (opts.name && !config.allowGuest) {
+      // Guest play is closed (production always; dev only if switched
+      // off): turn them away politely and show the account door.
+      session.sendJson({
+        t: 'authErr',
+        reason: 'Guest play is closed — sign in or create an account with an invite code.',
+      });
+      session.sendJson({ t: 'authRequired' });
+      return;
+    }
+
     if (opts.name && config.allowGuest) {
       const name = sanitizeName(opts.name);
       if (!name) {
@@ -1547,8 +1558,17 @@ export class GameServer {
     await this.enterWorld(session, res.character, res.accountId, token);
   }
 
-  async register(session: Session, user: string, pass: string, name: string): Promise<void> {
-    const res = await this.accounts.register(user, pass, name, this.startSpawn);
+  async register(
+    session: Session,
+    user: string,
+    pass: string,
+    name: string,
+    invite?: string,
+  ): Promise<void> {
+    const res = await this.accounts.register(user, pass, name, this.startSpawn, {
+      required: config.requireInvite,
+      code: invite,
+    });
     if (!res.ok) {
       session.sendJson({ t: 'authErr', reason: res.reason });
       return;
