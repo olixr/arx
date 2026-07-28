@@ -439,19 +439,21 @@ const MIGRATIONS: string[] = [
 ];
 
 /**
- * Open (and migrate) the game database. No URL = the configured one;
- * a missing database is created on the fly so a fresh checkout boots
- * with nothing but `postgres` running.
+ * Open (and migrate) the game database. Connection parts come from
+ * config.db (DB_HOST / DB_PORT / DB_DATABASE / DB_USERNAME /
+ * DB_PASSWORD) with per-call overrides; a missing database is created
+ * on the fly so a fresh checkout boots with nothing but `postgres`
+ * running.
  */
-export async function openDb(url?: string): Promise<Db> {
-  const target = url ?? config.databaseUrl;
-  let client = new pg.Client({ connectionString: target });
+export async function openDb(overrides?: pg.ClientConfig): Promise<Db> {
+  const cfg: pg.ClientConfig = { ...config.db, ...overrides };
+  let client = new pg.Client(cfg);
   try {
     await client.connect();
   } catch (err) {
     if ((err as { code?: string }).code !== '3D000') throw err; // not "database does not exist"
-    await createDatabase(target);
-    client = new pg.Client({ connectionString: target });
+    await createDatabase(cfg);
+    client = new pg.Client(cfg);
     await client.connect();
   }
   const db = new Db(client);
@@ -459,12 +461,10 @@ export async function openDb(url?: string): Promise<Db> {
   return db;
 }
 
-async function createDatabase(target: string): Promise<void> {
-  const parsed = new URL(target);
-  const dbName = parsed.pathname.replace(/^\//, '');
+async function createDatabase(cfg: pg.ClientConfig): Promise<void> {
+  const dbName = cfg.database ?? 'arx';
   if (!/^[a-z_][a-z0-9_]*$/i.test(dbName)) throw new Error(`cannot auto-create database '${dbName}'`);
-  parsed.pathname = '/postgres';
-  const admin = new pg.Client({ connectionString: parsed.toString() });
+  const admin = new pg.Client({ ...cfg, database: 'postgres' });
   await admin.connect();
   try {
     await admin.query(`CREATE DATABASE "${dbName}"`);

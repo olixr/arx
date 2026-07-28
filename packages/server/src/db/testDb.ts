@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { after } from 'node:test';
 import pg from 'pg';
+import { config } from '../config.js';
 import { openDb, type Db } from './db.js';
 
 /**
@@ -10,16 +11,17 @@ import { openDb, type Db } from './db.js';
  * call truncates all tables, so each test starts on clean ground —
  * the moral successor of `openDb(':memory:')`.
  *
- * Point TEST_DATABASE_URL at a maintenance DB if the default local
- * connection isn't right (it must be allowed to CREATE DATABASE).
+ * Connection parts come from the same DB_HOST / DB_PORT / DB_USERNAME /
+ * DB_PASSWORD envs the server uses; the admin connection rides the
+ * `postgres` maintenance DB and must be allowed to CREATE DATABASE.
  */
-const ADMIN_URL = process.env.TEST_DATABASE_URL ?? 'postgres://localhost:5432/postgres';
+const ADMIN_CFG: pg.ClientConfig = { ...config.db, database: 'postgres' };
 
 let shared: Db | null = null;
 let scratchName = '';
 
 async function adminQuery<T extends object>(sql: string): Promise<T[]> {
-  const admin = new pg.Client({ connectionString: ADMIN_URL });
+  const admin = new pg.Client(ADMIN_CFG);
   await admin.connect();
   try {
     const res = await admin.query(sql);
@@ -67,9 +69,7 @@ export async function freshDb(): Promise<Db> {
     await sweepOrphans();
     scratchName = `arx_test_${randomBytes(6).toString('hex')}`;
     await adminQuery(`CREATE DATABASE "${scratchName}"`);
-    const url = new URL(ADMIN_URL);
-    url.pathname = `/${scratchName}`;
-    shared = await openDb(url.toString());
+    shared = await openDb({ database: scratchName });
     process.once('beforeExit', () => {
       void dropScratch();
     });

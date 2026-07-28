@@ -19,10 +19,18 @@ function envFlag(name: string): boolean {
 export const config = {
   port: envInt('PORT', 8787),
   /**
-   * Postgres connection string. The default reaches a local server as
-   * the OS user and auto-creates the 'arx' database on first boot.
+   * Postgres connection, one knob per part — credentials never ride
+   * inside a URL. The defaults reach a local server as the OS user
+   * (peer/trust auth, no password) and the 'arx' database is
+   * auto-created on first boot.
    */
-  databaseUrl: process.env.DATABASE_URL ?? 'postgres://localhost:5432/arx',
+  db: {
+    host: process.env.DB_HOST ?? 'localhost',
+    port: envInt('DB_PORT', 5432),
+    database: process.env.DB_DATABASE ?? 'arx',
+    user: process.env.DB_USERNAME || undefined,
+    password: process.env.DB_PASSWORD || undefined,
+  },
   /**
    * Bind address. Dev binds all interfaces so LAN friends can join;
    * production should set HOST=127.0.0.1 and let nginx terminate TLS

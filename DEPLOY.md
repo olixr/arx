@@ -62,7 +62,8 @@ and Forge links it into each release), and create the data dir:
 mkdir -p /home/forge/arx-data
 ```
 
-Review the env — set the real database password in `DATABASE_URL`.
+Review the env — set the real credentials in `DB_USERNAME` /
+`DB_PASSWORD` (`DB_HOST`/`DB_PORT`/`DB_DATABASE` default sensibly).
 `DATA_DIR=/home/forge/arx-data` holds disk-authored content (map
 overrides, POI prefabs); the deploy script ships the repo's data/ into
 it on every deploy. All player data lives in Postgres.

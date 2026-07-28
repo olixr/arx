@@ -16,8 +16,9 @@ npm run dev        # game server (ws://localhost:8787) + client (http://localhos
 
 Needs a local PostgreSQL running (`brew services start postgresql@17`
 or similar) — the server connects as your OS user and creates the
-`arx` database itself on first boot. `DATABASE_URL` overrides the
-connection.
+`arx` database itself on first boot. `DB_HOST`, `DB_PORT`,
+`DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` override the
+connection parts.
 
 Open `http://localhost:5173`, create an account, and you wake in
 Dawnmead. Everyone on your network can join the same world by pointing
@@ -114,6 +115,6 @@ Key netcode properties:
 - `FAKE_LAG_MS=150 FAKE_JITTER_MS=30 npm run dev:server` simulates a bad
   connection (order-preserving) for honest netcode testing.
 
-Server env knobs: `PORT`, `HOST`, `DATABASE_URL`, `WORLD_SEED`, `MOTD`,
-`ALLOW_GUEST=0`, `DATA_DIR`, `FAKE_LAG_MS`, `FAKE_JITTER_MS`,
-`COMBAT_DEBUG=1`.
+Server env knobs: `PORT`, `HOST`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`,
+`DB_USERNAME`, `DB_PASSWORD`, `WORLD_SEED`, `MOTD`, `ALLOW_GUEST=0`,
+`DATA_DIR`, `FAKE_LAG_MS`, `FAKE_JITTER_MS`, `COMBAT_DEBUG=1`.
