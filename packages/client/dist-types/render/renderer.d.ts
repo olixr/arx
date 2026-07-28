@@ -553,9 +553,14 @@ export declare class Renderer {
      */
     private castFloraShadow;
     /**
-     * Screen → world with elevation: a click on a plateau top must land
-     * on the plateau, not on the (hidden) ground two tiles south. Try
-     * each level's inverse and accept the one whose terrain agrees.
+     * Screen → world: the exact inverse of liftedWTS. A click on a
+     * plateau top must land on the plateau, not on the (hidden) ground
+     * south of it — and a ramp flight, dock deck, or pit floor must
+     * resolve to THAT surface, fractional lift included.
+     *
+     * The solve itself (bracketed root-find, highest-surface-wins)
+     * lives in elevPick.ts — pure and unit-tested; this wires it to the
+     * live camera and terrain.
      */
     pickWorld(sx: number, sy: number): Vec2;
     /** Lifted plateau surfaces as y-sorted items (real occluders). */

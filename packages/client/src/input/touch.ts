@@ -56,13 +56,10 @@ export function setupTouch(
             const { clientX, clientY } = t;
             pendingTap = window.setTimeout(() => {
               pendingTap = null;
-              // Right-side tap: interact if usable, otherwise walk there.
-              const w = renderer.camera.screenToWorld(
-                clientX,
-                clientY,
-                canvas.clientWidth,
-                canvas.clientHeight,
-              );
+              // Right-side tap: interact if usable, otherwise walk
+              // there. pickWorld, not the flat inverse — a tap on a
+              // plateau, ramp, or dock deck must land on that surface.
+              const w = renderer.pickWorld(clientX, clientY);
               const tx = Math.floor(w.x);
               const ty = Math.floor(w.y);
               if (!onInteractTap(tx, ty)) game.walkTo(tx, ty);

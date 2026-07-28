@@ -108,6 +108,7 @@ import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
 import { UNDERGROUND_Y } from '../audio/zones.js';
 import { dealWoodSkin, type WoodSkin } from './woodSkins.js';
 import { drawPortalArch, drawPortalGround, spawnPortalFx, PORTAL_PLANE } from './portal.js';
+import { ELEV_H, solveLiftedY } from './elevPick.js';
 import {
   bakeElevated,
   bakeGutter,
@@ -226,14 +227,9 @@ const WALL_H = 2.05;
  * tall enough to still read as the wall's footprint.
  */
 const WALL_STUB = 0.62;
-/**
- * Height of ONE terrain elevation level, in tiles of screen rise.
- * Deliberately shorter than a story wall: a cliff STEP is a landform
- * increment (levels stack to any height), masonry is a built story.
- * Everything derives from this one number — lifted ground bands, cliff
- * faces, stair treads, and the rise of anything standing up there.
- */
-const ELEV_H = 1.35;
+// ELEV_H (one elevation level's screen rise) and the screen→world
+// elevation solve live in elevPick.ts so the solve stays pure and
+// testable; everything here still derives from that one number.
 /**
  * Horizontal lean per tile of height. ZERO: verticals rise straight on
  * screen, exactly like the billboard sprites — the classic 3/4-view
@@ -2016,23 +2012,22 @@ export class Renderer {
   }
 
   /**
-   * Screen → world with elevation: a click on a plateau top must land
-   * on the plateau, not on the (hidden) ground two tiles south. Try
-   * each level's inverse and accept the one whose terrain agrees.
+   * Screen → world: the exact inverse of liftedWTS. A click on a
+   * plateau top must land on the plateau, not on the (hidden) ground
+   * south of it — and a ramp flight, dock deck, or pit floor must
+   * resolve to THAT surface, fractional lift included.
+   *
+   * The solve itself (bracketed root-find, highest-surface-wins)
+   * lives in elevPick.ts — pure and unit-tested; this wires it to the
+   * live camera and terrain.
    */
   pickWorld(sx: number, sy: number): Vec2 {
-    const game = this.game;
-    const cam = this.camera;
-    // High levels first (nearer the camera), then pits; 0 is the
-    // fallback flat inverse.
-    for (const lvl of [3, 2, 1, -1, -2]) {
-      const wy = cam.y + (sy - this.h / 2 + lvl * ELEV_H * cam.scale) / (cam.scale * cam.yScale);
-      const wx = cam.x + (sx - this.w / 2) / cam.scale;
-      if (game && game.world.elevAt(Math.floor(wx), Math.floor(wy)) === lvl) {
-        return { x: wx, y: wy };
-      }
-    }
-    return cam.screenToWorld(sx, sy, this.w, this.h);
+    const flat = this.camera.screenToWorld(sx, sy, this.w, this.h);
+    if (!this.game) return flat;
+    return {
+      x: flat.x,
+      y: solveLiftedY(flat.y, this.camera.yScale, (wy) => this.renderLift(flat.x, wy)),
+    };
   }
 
   /** Lifted plateau surfaces as y-sorted items (real occluders). */
@@ -7728,15 +7723,12 @@ export class Renderer {
       this.oreNode(g4[0], g4[1], S * 0.28, -0.08 * m, pal);
       sites.push(g2, g3, g4);
       this.rubble(px, py, s, h, [pal.nug, '#6a6375']);
-      // The hoard glows: a slow warm pulse.
+      // The hoard glows: a slow warm pulse. (pickWorld: the glow
+      // reprojects through liftedWTS, so the inverse must ride the
+      // same lift — the flat inverse doubled it on mesas.)
       const pulse = 0.6 + Math.sin(tSec * 1.7 + (h % 10)) * 0.4;
-      this.queueGlow(
-        (px - this.w / 2) / s + this.camera.x,
-        (base - S * 0.6 - this.h / 2) / (s * this.camera.yScale) + this.camera.y,
-        0.7,
-        '242, 201, 76',
-        0.14 * pulse,
-      );
+      const gw = this.pickWorld(px, base - S * 0.6);
+      this.queueGlow(gw.x, gw.y, 0.7, '242, 201, 76', 0.14 * pulse);
     } else if (tile === Tile.RockSilver) {
       // THE SILVERSPUR — the rock's shoulder has BROKEN OPEN into a
       // crystal pocket, and the silver grows from inside it. The
@@ -8017,13 +8009,8 @@ export class Renderer {
       this.rubble(px, py, s, h, [pal.nug, '#6a6375']);
       // The cool halo rides the drift — the sky remembering its metal.
       const mPulse = 0.6 + Math.sin(tSec * 1.3 + (h % 10)) * 0.4;
-      this.queueGlow(
-        (px - this.w / 2) / s + this.camera.x,
-        (notchY - S * 0.6 - this.h / 2) / (s * this.camera.yScale) + this.camera.y,
-        0.6,
-        '143, 180, 228',
-        0.12 * mPulse,
-      );
+      const gw = this.pickWorld(px, notchY - S * 0.6);
+      this.queueGlow(gw.x, gw.y, 0.6, '143, 180, 228', 0.12 * mPulse);
     } else if (tile === Tile.RockAdamant) {
       // THE TWIN HORNS — two hard prongs leaning apart in a V, deep
       // green plates clipped into the tall horn, an adamant block
@@ -8119,13 +8106,8 @@ export class Renderer {
       this.oreNode(X(0.5 * S), base - S * 0.1, S * 0.22, 0.16 * m, pal);
       sites.push([X(-0.3 * S), base - S * f0 * 0.6], [X(0.1 * S), base - S * f1 * 0.7]);
       this.rubble(px, py, s, h, ['#241d30', '#3b3247']);
-      this.queueGlow(
-        (px - this.w / 2) / s + this.camera.x,
-        (base - S * 0.15 - this.h / 2) / (s * this.camera.yScale) + this.camera.y,
-        0.55,
-        '232, 104, 60',
-        0.12 * breathe,
-      );
+      const gw = this.pickWorld(px, base - S * 0.15);
+      this.queueGlow(gw.x, gw.y, 0.55, '232, 104, 60', 0.12 * breathe);
     } else {
       // THE FALLEN STAR — a scorched crater cupping a half-buried
       // core of starmetal: two dim shoulder blocks ring a fat bright
@@ -8163,13 +8145,8 @@ export class Renderer {
       this.rubble(px, py, s, h, [pal.nug, '#3b3648', pal.deep]);
       // Starlight never quite goes out: a pale violet pulse.
       const sPulse = 0.6 + Math.sin(tSec * 1.9 + (h % 10)) * 0.4;
-      this.queueGlow(
-        (px - this.w / 2) / s + this.camera.x,
-        (base - S * 0.42 - this.h / 2) / (s * this.camera.yScale) + this.camera.y,
-        0.75,
-        '214, 203, 246',
-        0.16 * sPulse,
-      );
+      const gw = this.pickWorld(px, base - S * 0.42);
+      this.queueGlow(gw.x, gw.y, 0.75, '214, 203, 246', 0.16 * sPulse);
     }
 
     // Idle shimmer: brief four-point twinkles over the crystal sites -
@@ -9327,11 +9304,12 @@ export class Renderer {
     if (bendOverride === undefined && grow >= 1 && Math.random() < 0.0009 * (0.5 + Math.abs(wind))) {
       const c = m.clusters[Math.floor(Math.random() * m.clusters.length)]!;
       const leaf = m.leaves[c.tone]!;
-      const wpt = this.camera.screenToWorld(
+      // pickWorld, not the flat inverse: particles draw through
+      // liftedWTS, so a flat round-trip would double the lift and
+      // shed leaves a level above elevated canopies.
+      const wpt = this.pickWorld(
         bx + (c.x + (Math.random() - 0.5) * c.r) * s,
         by + syT * 0.3 - (c.y - c.r * 0.4) * s,
-        this.w,
-        this.h,
       );
       this.particles.burst(wpt.x, wpt.y, 1, [shade(leaf, 24), '#c9a441'], {
         speed: 0.4 + Math.max(0, wind) * 0.5,
