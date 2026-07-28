@@ -1,4 +1,4 @@
-import { Tile, type Vec2 } from '@devcraft/shared';
+import { Tile, type Vec2 } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import { Particles } from './particles.js';
 import { Debris, type SmashKind } from './debris.js';

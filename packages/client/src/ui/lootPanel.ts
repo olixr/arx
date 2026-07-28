@@ -1,6 +1,6 @@
-import { RARITY_COLORS } from '@devcraft/shared';
-import type { EntityId } from '@devcraft/shared';
-import { instanceName } from '@devcraft/content';
+import { RARITY_COLORS } from '@arx/shared';
+import type { EntityId } from '@arx/shared';
+import { instanceName } from '@arx/content';
 import { itemIconUrl } from '../render/icons.js';
 import { bigButton, iconTile } from './panel.js';
 import { rarityColor } from './rarity.js';

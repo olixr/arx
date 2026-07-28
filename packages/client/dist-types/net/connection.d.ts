@@ -1,4 +1,4 @@
-import { type C2SMessage, type ChunkData, type S2CMessage, type Snapshot, type TilePatch } from '@devcraft/shared';
+import { type C2SMessage, type ChunkData, type S2CMessage, type Snapshot, type TilePatch } from '@arx/shared';
 export interface ConnectionHandlers {
     onMessage(msg: S2CMessage): void;
     onSnapshot(snap: Snapshot): void;

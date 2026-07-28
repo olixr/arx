@@ -1,4 +1,4 @@
-import { Tile, sanitizeSignText } from '@devcraft/shared';
+import { Tile, sanitizeSignText } from '@arx/shared';
 import { NPC_ACTORS } from '../actors/registry.js';
 import { DANGER_LAWS } from '../danger.js';
 import { LOOT_TABLES } from '../loot/tables.js';

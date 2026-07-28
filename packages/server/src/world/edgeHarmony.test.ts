@@ -1,13 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CHUNK_SIZE, Tile } from '@devcraft/shared';
+import { CHUNK_SIZE, Tile } from '@arx/shared';
 import {
   elevationAt,
   generateChunk,
   moistureAt,
   replaceZoneEdgeProfiles,
   type ZoneDef,
-} from '@devcraft/content';
+} from '@arx/content';
 import { WorldSource } from './worldSource.js';
 
 /**

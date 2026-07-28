@@ -1,4 +1,4 @@
-import type { S2CMessage } from '@devcraft/shared';
+import type { S2CMessage } from '@arx/shared';
 import type { AccountStore } from '../db/accounts.js';
 
 /** The most friends one ledger holds — a growth guard, not a feature. */

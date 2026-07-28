@@ -15,7 +15,7 @@
  * over its own pinned feet.
  */
 
-import { itemDef } from '@devcraft/content';
+import { itemDef } from '@arx/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import {
   bodyStyle,

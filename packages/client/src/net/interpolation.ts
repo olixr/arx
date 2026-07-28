@@ -1,4 +1,4 @@
-import { PoseState } from '@devcraft/shared';
+import { PoseState } from '@arx/shared';
 
 export interface InterpSample {
   /** Server timeline, ms (serverTick * TICK_MS). */

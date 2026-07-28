@@ -1,4 +1,4 @@
-import { dangerAt } from '@devcraft/shared';
+import { dangerAt } from '@arx/shared';
 import {
   replaceGeography,
   replaceZoneEdgeProfiles,
@@ -7,7 +7,7 @@ import {
   geographyWarnings,
   type GeographyDef,
   type PackedZoneEdgeProfile,
-} from '@devcraft/content';
+} from '@arx/content';
 import {
   adoptPoiCell,
   fetchWorld,

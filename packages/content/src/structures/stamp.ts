@@ -1,4 +1,4 @@
-import { Tile } from '@devcraft/shared';
+import { Tile } from '@arx/shared';
 import type { ZoneBuilder } from '../maps/builder.js';
 import type { StructureTemplate } from './types.js';
 

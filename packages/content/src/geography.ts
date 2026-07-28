@@ -1,4 +1,4 @@
-import { fbm, type Vec2, type DangerAnchor } from '@devcraft/shared';
+import { fbm, type Vec2, type DangerAnchor } from '@arx/shared';
 import { SETTLED_ANCHORS, replaceSettledAnchors } from './danger.js';
 
 /**

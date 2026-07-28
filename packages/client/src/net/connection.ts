@@ -9,7 +9,7 @@ import {
   type S2CMessage,
   type Snapshot,
   type TilePatch,
-} from '@devcraft/shared';
+} from '@arx/shared';
 
 export interface ConnectionHandlers {
   onMessage(msg: S2CMessage): void;

@@ -10,7 +10,7 @@ import {
   type CollisionSource,
   type InputFrame,
   type Vec2,
-} from '@devcraft/shared';
+} from '@arx/shared';
 
 /**
  * Client-side prediction for the local player. Inputs are applied

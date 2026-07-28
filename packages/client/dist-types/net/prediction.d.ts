@@ -1,4 +1,4 @@
-import { type CollisionSource, type InputFrame, type Vec2 } from '@devcraft/shared';
+import { type CollisionSource, type InputFrame, type Vec2 } from '@arx/shared';
 /**
  * Client-side prediction for the local player. Inputs are applied
  * immediately and kept until the server acknowledges them; on each

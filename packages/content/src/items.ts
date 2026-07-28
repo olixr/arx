@@ -1,4 +1,4 @@
-import type { EquipSlot, PassiveId, RarityTier, SkillId, StatusApply } from '@devcraft/shared';
+import type { EquipSlot, PassiveId, RarityTier, SkillId, StatusApply } from '@arx/shared';
 import { COMPILED_EQUIPMENT } from './equipment/defs.js';
 import { ELEMENT_COLORS, ENCHANT_DEFS, type EnchantEffect } from './equipment/enchants.js';
 import type { ArmorClass, GearSlot } from './equipment/types.js';

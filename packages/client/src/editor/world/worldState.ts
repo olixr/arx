@@ -1,4 +1,4 @@
-import type { GeographyDef } from '@devcraft/content';
+import type { GeographyDef } from '@arx/content';
 import type { MapListEntry, WorldCell, WorldSnapshot } from '../api.js';
 
 /**

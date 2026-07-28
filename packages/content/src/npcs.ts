@@ -1,4 +1,4 @@
-import type { StatusApply, StatusId } from '@devcraft/shared';
+import type { StatusApply, StatusId } from '@arx/shared';
 
 
 /** A telegraphed special attack, run through the ability interpreter. */

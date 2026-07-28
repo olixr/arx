@@ -1,4 +1,4 @@
-import { CHUNK_SIZE, Tile, dangerAt, tileDef } from '@devcraft/shared';
+import { CHUNK_SIZE, Tile, dangerAt, tileDef } from '@arx/shared';
 import {
   ROAD_HALF,
   TRAIL_HALF,
@@ -10,7 +10,7 @@ import {
   moistureAt,
   roadHitAt,
   type ZoneJson,
-} from '@devcraft/content';
+} from '@arx/content';
 import { fetchZone } from '../api.js';
 import { sameSel, type WorldSel, type WorldState } from './worldState.js';
 

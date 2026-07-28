@@ -1,4 +1,4 @@
-import { RARITY_TIERS, SKILL_IDS, isRarityTier } from '@devcraft/shared';
+import { RARITY_TIERS, SKILL_IDS, isRarityTier } from '@arx/shared';
 import type { GearInfo, ItemDef } from '../items.js';
 import type { RecipeDef } from '../recipes.js';
 import type { AffixStat, EquipmentDef } from './types.js';

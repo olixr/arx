@@ -28,7 +28,7 @@ import {
   type PoiDef,
   type ZoneDef,
   type ZoneJson,
-} from '@devcraft/content';
+} from '@arx/content';
 import { config } from './config.js';
 import { AccountStore } from './db/accounts.js';
 import { loadContentDocs, seedContentDocs } from './db/contentDocs.js';
@@ -232,12 +232,25 @@ game.start();
 // maps API (the map editor's save/load/hot-reload wire) answers under
 // /dev/maps on the same port.
 const mapsApi = createMapsApi(game, builtinZones, db);
+const bootedAt = Date.now();
 const httpServer = createServer((req, res) => {
+  // Liveness probe for supervisor/monitoring — no auth, no state.
+  if (req.url === '/healthz') {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        ok: true,
+        uptimeSec: Math.floor((Date.now() - bootedAt) / 1000),
+        players: game.playerCount(),
+      }),
+    );
+    return;
+  }
   mapsApi(req, res)
     .then((handled) => {
       if (!handled) {
         res.writeHead(404, { 'content-type': 'text/plain' });
-        res.end('devcraft server');
+        res.end('arx server');
       }
     })
     .catch((err: Error) => {
@@ -252,7 +265,7 @@ const wss = new WebSocketServer({
   // CPU + latency for nothing. Explicit so nobody "enables a win".
   perMessageDeflate: false,
 });
-httpServer.listen(config.port);
+httpServer.listen(config.port, config.host);
 wss.on('connection', (ws, req) => {
   // KILL NAGLE. Node sockets batch small writes by default; a 20Hz
   // stream of sub-MTU snapshots is Nagle's worst case — it can hold a
@@ -264,7 +277,7 @@ wss.on('connection', (ws, req) => {
   new Session(ws, game);
 });
 
-console.log(`[server] DevCraft server listening on ws://localhost:${config.port}/ws`);
+console.log(`[server] Arx server listening on ws://${config.host}:${config.port}/ws`);
 if (config.fakeLagMs > 0) {
   console.log(`[server] fake lag enabled: ${config.fakeLagMs}ms ± ${config.fakeJitterMs}ms jitter`);
 }

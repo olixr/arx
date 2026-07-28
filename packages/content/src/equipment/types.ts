@@ -1,4 +1,4 @@
-import type { PassiveId, RarityTier, SkillId, StationType } from '@devcraft/shared';
+import type { PassiveId, RarityTier, SkillId, StationType } from '@arx/shared';
 import type { WeaponStats } from '../items.js';
 import type { EnchantEffect } from './enchants.js';
 

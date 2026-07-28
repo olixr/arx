@@ -1,6 +1,6 @@
 /**
  * Headless bot client for load/soak testing.
- * Usage: npm run bot -w @devcraft/tools -- [count] [serverUrl]
+ * Usage: npm run bot -w @arx/tools -- [count] [serverUrl]
  */
 import WebSocket from 'ws';
 import {
@@ -8,7 +8,7 @@ import {
   TICK_MS,
   type C2SMessage,
   type S2CMessage,
-} from '@devcraft/shared';
+} from '@arx/shared';
 
 const count = Number.parseInt(process.argv[2] ?? '5', 10);
 const url = process.argv[3] ?? 'ws://localhost:8787/ws';

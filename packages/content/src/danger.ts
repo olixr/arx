@@ -1,4 +1,4 @@
-import { dangerAt, type ChestKind, type DangerAnchor } from '@devcraft/shared';
+import { dangerAt, type ChestKind, type DangerAnchor } from '@arx/shared';
 
 /**
  * THE SETTLED ANCHORS + DANGER LAWS — content's half of the danger

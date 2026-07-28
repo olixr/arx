@@ -1,4 +1,4 @@
-import type { NpcDef } from '@devcraft/content';
+import type { NpcDef } from '@arx/content';
 import { LegRig } from '../render/legs.js';
 import {
   beastSpec,

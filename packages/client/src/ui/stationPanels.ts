@@ -5,7 +5,7 @@ import {
   type ItemRoll,
   type SkillXp,
   type StationType,
-} from '@devcraft/shared';
+} from '@arx/shared';
 import {
   BUILDABLES,
   CROP_BY_SEED,
@@ -14,7 +14,7 @@ import {
   itemDef,
   recipesForStation,
   type RecipeDef,
-} from '@devcraft/content';
+} from '@arx/content';
 import { buildableIconUrl, itemIconUrl, uiIconUrl } from '../render/icons.js';
 import { bigButton, iconTile, levelBadge, needChip, sectionHead } from './panel.js';
 

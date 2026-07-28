@@ -10,7 +10,7 @@
  * level. Drop-unlock recipes never reach a shelf — the world hides
  * those on purpose.
  */
-import type { SkillId } from '@devcraft/shared';
+import type { SkillId } from '@arx/shared';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
 
 export interface ShopEntry {

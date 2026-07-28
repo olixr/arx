@@ -10,7 +10,7 @@ import {
   isSolidTile,
   sanitizeSignText,
   type Vec2,
-} from '@devcraft/shared';
+} from '@arx/shared';
 import { stampTemplate } from '../structures/stamp.js';
 import type { StructureTemplate } from '../structures/types.js';
 import type { PortalDef, ZoneActorSpawn, ZoneDef, ZoneSign, ZoneSpawn } from './types.js';

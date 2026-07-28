@@ -1,4 +1,4 @@
-import { Detail, Tile } from '@devcraft/shared';
+import { Detail, Tile } from '@arx/shared';
 import { AMBERFORD_RECT } from '../geography.js';
 import { MARKET_STALL } from '../structures/templates.js';
 import { ZoneBuilder } from './builder.js';

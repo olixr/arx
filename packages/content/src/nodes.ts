@@ -1,4 +1,4 @@
-import { Tile, type SkillId } from '@devcraft/shared';
+import { Tile, type SkillId } from '@arx/shared';
 import type { ToolType } from './items.js';
 
 /** A gatherable world tile: what it needs, gives, and becomes. */

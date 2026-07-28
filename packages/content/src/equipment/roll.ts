@@ -1,5 +1,5 @@
-import type { EquipSlot, ItemRoll, RarityTier, SkillId, StatusId } from '@devcraft/shared';
-import { Rng, hashCoords, hashString, rarityIndex } from '@devcraft/shared';
+import type { EquipSlot, ItemRoll, RarityTier, SkillId, StatusId } from '@arx/shared';
+import { Rng, hashCoords, hashString, rarityIndex } from '@arx/shared';
 import type { CombatStyle, MagicElement } from '../items.js';
 import { ITEMS, itemDef } from '../items.js';
 import type { EnchantEffect } from './enchants.js';

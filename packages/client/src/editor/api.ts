@@ -3,7 +3,7 @@ import type {
   PackedZoneEdgeProfile,
   PrefabJson,
   ZoneJson,
-} from '@devcraft/content';
+} from '@arx/content';
 
 /**
  * The editor's wire to the game server's dev maps API (/dev/maps on

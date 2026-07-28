@@ -1,4 +1,4 @@
-import { type ZoneDef } from '@devcraft/content';
+import { type ZoneDef } from '@arx/content';
 /**
  * The editor's validator IS the ZoneBuilder — the same laws every
  * shipped map passed at build time: flat two-tile border apron, the

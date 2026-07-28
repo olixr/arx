@@ -1,4 +1,4 @@
-import { RARITY_TIERS } from '@devcraft/shared';
+import { RARITY_TIERS } from '@arx/shared';
 import { HEIRLOOM_CHANCE } from '../equipment/tables.js';
 import { ITEMS } from '../items.js';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from '../recipes.js';

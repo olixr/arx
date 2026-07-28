@@ -1,4 +1,4 @@
-import { type SignInfo } from '@devcraft/shared';
+import { type SignInfo } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 export declare class SignHud {
     private readonly game;

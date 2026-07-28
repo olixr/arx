@@ -6,7 +6,7 @@ import type {
   PoiDef,
   PrefabJson,
   ZoneJson,
-} from '@devcraft/content';
+} from '@arx/content';
 
 /** Content Studio's wire to the running server's /dev/content API. */
 

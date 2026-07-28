@@ -1,4 +1,4 @@
-import { Detail, Tile, tileDef } from '@devcraft/shared';
+import { Detail, Tile, tileDef } from '@arx/shared';
 import {
   NPCS,
   NPC_ACTORS,
@@ -17,7 +17,7 @@ import {
   type StructureTemplate,
   type ZoneDef,
   type ZoneJson,
-} from '@devcraft/content';
+} from '@arx/content';
 import {
   deletePrefab,
   deleteZone,
@@ -68,7 +68,7 @@ import { WorldMode } from './world/worldMode.js';
 import type { WorldTool } from './world/worldState.js';
 
 /**
- * DevCraft Map Studio — the world and its zones in one studio. The
+ * Arx Map Studio — the world and its zones in one studio. The
  * WORLD view is the home screen: the whole plan (zones, roads,
  * landmarks, hearths, the frontier ledger) rendered through the real
  * worldgen and edited in place. The ZONE view is the tile editor,

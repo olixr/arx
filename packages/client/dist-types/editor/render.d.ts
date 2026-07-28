@@ -1,4 +1,4 @@
-import { Tile } from '@devcraft/shared';
+import { Tile } from '@arx/shared';
 import type { EditorState } from './state.js';
 /** Sentinel ground value marking a transparent ghost cell. */
 export declare const GHOST_SKIP = 65535;

@@ -1,5 +1,5 @@
-import { Detail, Tile } from '@devcraft/shared';
-import type { PrefabDef, ZoneDef } from '@devcraft/content';
+import { Detail, Tile } from '@arx/shared';
+import type { PrefabDef, ZoneDef } from '@arx/content';
 
 /** The editor's document + tool state. Plain and observable. */
 

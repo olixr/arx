@@ -7,8 +7,8 @@ import {
   dungeonSpecFromRoll,
   isSolidTile,
   type RarityTier,
-} from '@devcraft/shared';
-import { NPCS } from '@devcraft/content';
+} from '@arx/shared';
+import { NPCS } from '@arx/content';
 import { dungeonOrigin, generateDungeon } from './generate.js';
 
 const ORIGIN = { x: 8192, y: 8192 };

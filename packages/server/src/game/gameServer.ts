@@ -52,7 +52,7 @@ import {
   TILE_DEFS,
   type DestructibleInfo,
   type SignInfo,
-} from '@devcraft/shared';
+} from '@arx/shared';
 import {
   BUILDABLES,
   buildableGround,
@@ -130,7 +130,7 @@ import {
   roadDistanceAt,
   wildCandidates,
   type GeographyDef,
-} from '@devcraft/content';
+} from '@arx/content';
 import {
   POI_CELL,
   composePoi,
@@ -144,7 +144,7 @@ import {
   type PoiContext,
   type PoiSite,
 } from '../world/pois.js';
-import { DARK_BAND_Y, groundProbeAt } from '@devcraft/content';
+import { DARK_BAND_Y, groundProbeAt } from '@arx/content';
 import {
   COMBO_GRACE_TICKS,
   COMBO_STAGES,
@@ -227,7 +227,7 @@ import {
   type S2CFx,
   type StatusApply,
   type SteerMemory,
-} from '@devcraft/shared';
+} from '@arx/shared';
 import { config } from '../config.js';
 import { Session, sanitizeName } from '../net/session.js';
 import type { AccountStore, CharacterRow } from '../db/accounts.js';
@@ -243,8 +243,8 @@ import {
   type DangerAnchor,
   type DungeonSpec,
   type Vec2,
-} from '@devcraft/shared';
-import { scaleNpcDef } from '@devcraft/content';
+} from '@arx/shared';
+import { scaleNpcDef } from '@arx/content';
 import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem, takeSlot } from './inventory.js';
 import { DROP_MERGE_RADIUS, canMergeDrop } from './drops.js';
 import { SocialSystem } from './social.js';
@@ -3848,6 +3848,11 @@ export class GameServer {
   /** The live prefab-library ids — the /dev/content validator's refs. */
   poiPrefabIds(): ReadonlySet<string> {
     return new Set(this.poiPrefabs?.keys() ?? []);
+  }
+
+  /** In-world player count — the health endpoint's one gauge. */
+  playerCount(): number {
+    return this.players.size;
   }
 
   /** The live DB-loaded actor slugs — tool-born actors count too. */

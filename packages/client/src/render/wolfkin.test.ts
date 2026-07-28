@@ -8,7 +8,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NPCS, PACK_RALLY_RANGE } from '@devcraft/content';
+import { NPCS, PACK_RALLY_RANGE } from '@arx/content';
 import {
   DIREWOLF_LOOK,
   WOLF_LOOK,

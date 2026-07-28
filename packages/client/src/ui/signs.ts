@@ -1,4 +1,4 @@
-import { SIGN_MAX_LINE, SIGN_MAX_LINES, SIGN_MAX_TITLE, type SignInfo } from '@devcraft/shared';
+import { SIGN_MAX_LINE, SIGN_MAX_LINES, SIGN_MAX_TITLE, type SignInfo } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 
 /**

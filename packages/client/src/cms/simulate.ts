@@ -1,4 +1,4 @@
-import { rollLoot, type LootTableDef } from '@devcraft/content';
+import { rollLoot, type LootTableDef } from '@arx/content';
 import { state } from './cms.js';
 
 /**

@@ -1,5 +1,5 @@
-import { sameRoll } from '@devcraft/shared';
-import type { EntityId, ItemRoll, SkillId } from '@devcraft/shared';
+import { sameRoll } from '@arx/shared';
+import type { EntityId, ItemRoll, SkillId } from '@arx/shared';
 
 /**
  * How far (tiles) a landing drop reaches to join an existing pile.

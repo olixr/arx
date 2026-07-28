@@ -1,4 +1,4 @@
-import { type LootTableDef } from '@devcraft/content';
+import { type LootTableDef } from '@arx/content';
 /**
  * The loot laboratory: run the REAL roller — the same rollLoot the
  * server calls on a kill — against the studio's current (possibly

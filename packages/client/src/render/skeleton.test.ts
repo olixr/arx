@@ -8,7 +8,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NPCS } from '@devcraft/content';
+import { NPCS } from '@arx/content';
 import {
   SKELETON_LOOKS,
   paintRibcage,

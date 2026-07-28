@@ -1,4 +1,4 @@
-import type { ItemRoll } from '@devcraft/shared';
+import type { ItemRoll } from '@arx/shared';
 import { itemDef } from '../items.js';
 import { enchantDef } from './enchants.js';
 import { rolledStats } from './roll.js';

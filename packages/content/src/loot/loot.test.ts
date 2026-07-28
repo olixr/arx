@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rarityIndex } from '@devcraft/shared';
+import { rarityIndex } from '@arx/shared';
 import { ITEMS, itemDef } from '../items.js';
 import { HEIRLOOM_MIN_SURPLUS } from '../equipment/tables.js';
 import { NPCS } from '../npcs.js';

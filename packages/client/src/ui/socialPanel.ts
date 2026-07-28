@@ -1,6 +1,6 @@
-import { EQUIP_SLOTS, EntityKind } from '@devcraft/shared';
-import type { EntityId } from '@devcraft/shared';
-import { instanceName } from '@devcraft/content';
+import { EQUIP_SLOTS, EntityKind } from '@arx/shared';
+import type { EntityId } from '@arx/shared';
+import { instanceName } from '@arx/content';
 import { itemIconUrl } from '../render/icons.js';
 import { bigButton, iconTile, sectionHead } from './panel.js';
 import type { ClientGame } from '../game/clientGame.js';

@@ -14,7 +14,7 @@ import {
   applyHeritage,
   randomLook,
   type Look,
-} from '@devcraft/shared';
+} from '@arx/shared';
 import { lookBust } from './portraits.js';
 import { el } from './widgets.js';
 

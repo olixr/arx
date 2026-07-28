@@ -2,8 +2,8 @@
 import { spawn } from 'node:child_process';
 
 const procs = [
-  ['server', 'npm', ['run', 'dev', '-w', '@devcraft/server']],
-  ['client', 'npm', ['run', 'dev', '-w', '@devcraft/client']],
+  ['server', 'npm', ['run', 'dev', '-w', '@arx/server']],
+  ['client', 'npm', ['run', 'dev', '-w', '@arx/client']],
 ];
 
 const children = [];

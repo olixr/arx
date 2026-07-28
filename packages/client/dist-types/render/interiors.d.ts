@@ -21,7 +21,7 @@
  * world changes (worldVersion bump ⇒ full clear; recompute is bounded
  * by MAX_REGION and only runs for tiles actually asked about).
  */
-import { Tile } from '@devcraft/shared';
+import { Tile } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 export interface InteriorRegion {
     id: number;

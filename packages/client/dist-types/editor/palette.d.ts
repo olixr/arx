@@ -1,4 +1,4 @@
-import { Detail, Tile } from '@devcraft/shared';
+import { Detail, Tile } from '@arx/shared';
 import type { EditorState } from './state.js';
 /**
  * The tile palette: every paintable tile, grouped the way a builder

@@ -12,7 +12,7 @@ import {
   type ItemRoll,
   type SkillId,
   type SkillXp,
-} from '@devcraft/shared';
+} from '@arx/shared';
 import {
   ARMOR_CLASS_BLURB,
   ELEMENT_COLORS,
@@ -28,7 +28,7 @@ import {
   techniquesFor,
   trinketPowerMult,
   type ItemDef,
-} from '@devcraft/content';
+} from '@arx/content';
 import { itemIconUrl, slotGlyphUrl } from '../render/icons.js';
 import { abilityIconUrl, passiveIconUrl } from '../render/abilityIcons.js';
 import { bigButton, sectionHead, statPlaque } from './panel.js';
@@ -194,7 +194,7 @@ export class Panels {
   private readonly seenTech = new Set<string>(
     (() => {
       try {
-        const raw = JSON.parse(localStorage.getItem('devcraft.techSeen') ?? '[]');
+        const raw = JSON.parse(localStorage.getItem('arx.techSeen') ?? '[]');
         return Array.isArray(raw) ? (raw as string[]) : [];
       } catch {
         return [];
@@ -1347,7 +1347,7 @@ export class Panels {
     const st = this.techState(entry.style, entry.t);
     if (st !== 'unlocked' && st !== 'equipped') return;
     this.seenTech.add(ability);
-    localStorage.setItem('devcraft.techSeen', JSON.stringify([...this.seenTech]));
+    localStorage.setItem('arx.techSeen', JSON.stringify([...this.seenTech]));
   }
 
   /** The dock button's glint: any unlocked art not yet inspected. */

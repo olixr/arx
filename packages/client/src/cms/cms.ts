@@ -1,4 +1,4 @@
-import type { DialogueDef, LootTableDef, NpcActorDef, NpcDef, PoiDef } from '@devcraft/content';
+import type { DialogueDef, LootTableDef, NpcActorDef, NpcDef, PoiDef } from '@arx/content';
 import { iconImg } from '../editor/editorIcons.js';
 import { itemIconUrl } from '../render/icons.js';
 import {
@@ -32,7 +32,7 @@ import { creatureRender } from './gameRender.js';
 import { actorBust } from './portraits.js';
 
 /**
- * DevCraft Content Studio — the CMS over the running game's DB-first
+ * Arx Content Studio — the CMS over the running game's DB-first
  * content: bestiary archetypes, loot tables, and placed-actor
  * identities, with the item catalog as the reference shelf. Every
  * save validates on the server, lands in the database, hot-swaps the

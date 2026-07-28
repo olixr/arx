@@ -1,5 +1,5 @@
-import { EQUIP_SLOTS, PASSIVES, type AbilitySlot } from '@devcraft/shared';
-import { itemDef } from '@devcraft/content';
+import { EQUIP_SLOTS, PASSIVES, type AbilitySlot } from '@arx/shared';
+import { itemDef } from '@arx/content';
 import type { ClientGame } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
 import { itemIconUrl, sneakEyeUrl } from '../render/icons.js';

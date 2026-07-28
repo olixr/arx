@@ -24,7 +24,7 @@
  * portal so two gates never pulse in lockstep.
  */
 
-import { hashCoords } from '@devcraft/shared';
+import { hashCoords } from '@arx/shared';
 import { shade } from './rig.js';
 import type { Particles } from './particles.js';
 

@@ -1,4 +1,4 @@
-import type { GeographyDef, PackedZoneEdgeProfile, PrefabJson, ZoneJson } from '@devcraft/content';
+import type { GeographyDef, PackedZoneEdgeProfile, PrefabJson, ZoneJson } from '@arx/content';
 /**
  * The editor's wire to the game server's dev maps API (/dev/maps on
  * the game port, proxied by Vite in dev). Every save lands on disk

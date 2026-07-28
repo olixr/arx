@@ -1,17 +1,20 @@
 {
-  "name": "devcraft",
+  "name": "arx",
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "dev:server": "npm run dev -w @devcraft/server",
-    "dev:client": "npm run dev -w @devcraft/client",
-    "build": "npm run build -w @devcraft/client",
-    "start": "npm run start -w @devcraft/server",
+    "dev:server": "npm run dev -w @arx/server",
+    "dev:client": "npm run dev -w @arx/client",
+    "build": "npm run build -w @arx/client",
+    "start": "npm run start -w @arx/server",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "tsc -b packages/shared packages/content packages/server packages/client packages/tools"
   },

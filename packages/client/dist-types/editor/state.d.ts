@@ -1,5 +1,5 @@
-import { Detail, Tile } from '@devcraft/shared';
-import type { PrefabDef, ZoneDef } from '@devcraft/content';
+import { Detail, Tile } from '@arx/shared';
+import type { PrefabDef, ZoneDef } from '@arx/content';
 /** The editor's document + tool state. Plain and observable. */
 export type ToolId = 'paint' | 'erase' | 'line' | 'rect' | 'ellipse' | 'fill' | 'road' | 'select' | 'picker' | 'structure' | 'prefab' | 'portal' | 'cluster' | 'actor' | 'sign' | 'spawn';
 /** Which sidebar tab is showing. */

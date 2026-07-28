@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Tile } from '@devcraft/shared';
+import { Tile } from '@arx/shared';
 import { bridgeApronAt, deckFillAt, deckWalkIsVertical, fillCoversEdge } from './terrain.js';
 
 /**

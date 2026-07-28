@@ -1,4 +1,4 @@
-import { Tile, type SkillId } from '@devcraft/shared';
+import { Tile, type SkillId } from '@arx/shared';
 
 /** Something a player can construct in the open world. */
 export interface BuildableDef {

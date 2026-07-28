@@ -1,4 +1,4 @@
-import { InputButton, SNEAK_FACTOR, WALK_FACTOR } from '@devcraft/shared';
+import { InputButton, SNEAK_FACTOR, WALK_FACTOR } from '@arx/shared';
 
 const STICK_DEADZONE = 0.22;
 

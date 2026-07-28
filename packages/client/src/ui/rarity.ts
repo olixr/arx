@@ -1,6 +1,6 @@
-import type { ItemRoll, RarityTier } from '@devcraft/shared';
-import { RARITY_COLORS } from '@devcraft/shared';
-import { itemDef } from '@devcraft/content';
+import type { ItemRoll, RarityTier } from '@arx/shared';
+import { RARITY_COLORS } from '@arx/shared';
+import { itemDef } from '@arx/content';
 
 /**
  * Rarity display helpers. Tier data lives in shared/rarity.ts (the
@@ -11,8 +11,8 @@ import { itemDef } from '@devcraft/content';
  * - Everything else: derived from vendor value, so the economy keeps
  *   tinting relics, sigils, and capes without any new data.
  */
-export type { RarityTier } from '@devcraft/shared';
-export { RARITY_COLORS } from '@devcraft/shared';
+export type { RarityTier } from '@arx/shared';
+export { RARITY_COLORS } from '@arx/shared';
 
 /** Value-derived fallback tier for non-rolled items. */
 export function rarityOf(itemId: string): RarityTier {

@@ -27,7 +27,7 @@
  * chest — a field you visibly wade through.
  */
 
-import { Tile } from '@devcraft/shared';
+import { Tile } from '@arx/shared';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import { windScalarAt } from './grass.js';
 import {

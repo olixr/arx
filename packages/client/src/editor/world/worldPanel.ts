@@ -1,4 +1,4 @@
-import type { GeographyDef } from '@devcraft/content';
+import type { GeographyDef } from '@arx/content';
 import type { WorldCell } from '../api.js';
 import type { WorldSel, WorldState, WorldTool } from './worldState.js';
 

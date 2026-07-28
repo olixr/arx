@@ -1,5 +1,5 @@
 {
-  "name": "@devcraft/client",
+  "name": "@arx/client",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,8 +10,8 @@
     "test": "tsx --test 'src/**/*.test.ts'"
   },
   "dependencies": {
-    "@devcraft/shared": "*",
-    "@devcraft/content": "*"
+    "@arx/shared": "*",
+    "@arx/content": "*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

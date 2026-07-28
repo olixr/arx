@@ -36,7 +36,7 @@ import {
   type PrefabJson,
   type ZoneDef,
   type ZoneJson,
-} from '@devcraft/content';
+} from '@arx/content';
 import { config } from '../config.js';
 import {
   importContentDoc,

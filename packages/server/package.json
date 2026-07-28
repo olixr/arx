@@ -1,5 +1,5 @@
 {
-  "name": "@devcraft/server",
+  "name": "@arx/server",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,8 +11,8 @@
     "routines": "tsx src/tools/routinesCli.ts"
   },
   "dependencies": {
-    "@devcraft/shared": "*",
-    "@devcraft/content": "*",
+    "@arx/shared": "*",
+    "@arx/content": "*",
     "ws": "^8.18.0"
   },
   "devDependencies": {

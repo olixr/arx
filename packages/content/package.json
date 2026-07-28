@@ -1,5 +1,5 @@
 {
-  "name": "@devcraft/content",
+  "name": "@arx/content",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "test": "tsx --test 'src/**/*.test.ts'"
   },
   "dependencies": {
-    "@devcraft/shared": "*"
+    "@arx/shared": "*"
   },
   "devDependencies": {
     "tsx": "^4.19.0"

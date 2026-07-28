@@ -1,4 +1,4 @@
-import { Tile } from '@devcraft/shared';
+import { Tile } from '@arx/shared';
 
 /**
  * Authored dungeon set-pieces — the predefined half of the hybrid

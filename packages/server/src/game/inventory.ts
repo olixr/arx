@@ -1,5 +1,5 @@
-import type { InvSlot, ItemRoll } from '@devcraft/shared';
-import { itemDef, type ToolType } from '@devcraft/content';
+import type { InvSlot, ItemRoll } from '@arx/shared';
+import { itemDef, type ToolType } from '@arx/content';
 
 export const INVENTORY_SIZE = 28;
 

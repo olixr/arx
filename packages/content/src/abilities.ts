@@ -1,4 +1,4 @@
-import type { AbilityDef, TechniqueDef } from '@devcraft/shared';
+import type { AbilityDef, TechniqueDef } from '@arx/shared';
 
 /**
  * Every active ability in the game, as pure data. Weapon Arts are

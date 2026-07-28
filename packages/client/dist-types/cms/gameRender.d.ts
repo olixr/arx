@@ -1,4 +1,4 @@
-import type { NpcDef } from '@devcraft/content';
+import type { NpcDef } from '@arx/content';
 /**
  * Paint through the world's outline shader: art at 3× supersample on
  * a transparent stage, 8-tap ring in the world ink, shadow cast from

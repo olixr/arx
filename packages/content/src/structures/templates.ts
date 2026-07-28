@@ -1,4 +1,4 @@
-import { Detail, Tile } from '@devcraft/shared';
+import { Detail, Tile } from '@arx/shared';
 import { compileTemplate } from './stamp.js';
 import type { CellDef, StructureTemplate } from './types.js';
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ROUTINES, type RoutineDef } from '@devcraft/content';
+import { ROUTINES, type RoutineDef } from '@arx/content';
 import { openDb } from './db.js';
 import { exportRoutine, importRoutine, loadRoutines, seedRoutines } from './routines.js';
 

@@ -11,7 +11,7 @@ import {
   type DialogueHook,
   type DialogueNode,
   type NpcActorDef,
-} from '@devcraft/content';
+} from '@arx/content';
 import { itemIconUrl } from '../render/icons.js';
 import { iconImg } from '../editor/editorIcons.js';
 import { markDirty, persistence, setSection, state, toast, zoneAt } from './cms.js';

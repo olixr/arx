@@ -35,7 +35,7 @@
  * - QUARTER RES IS PLENTY. Light is low-frequency; the map renders at
  *   1/3 scale and stretches up. Gradients stay smooth, fills stay tiny.
  */
-import type { DaylightSample } from '@devcraft/shared';
+import type { DaylightSample } from '@arx/shared';
 
 /** A light living in the world, gathered fresh each frame. */
 export interface WorldLight {

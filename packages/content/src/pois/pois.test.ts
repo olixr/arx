@@ -3,7 +3,7 @@ import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
-import { TILE_SKIP, Tile, chestInfo } from '@devcraft/shared';
+import { TILE_SKIP, Tile, chestInfo } from '@arx/shared';
 import { DANGER_LAWS } from '../danger.js';
 import { NPCS } from '../npcs.js';
 import { AUTHORED_POI_DEFS, POI_DEFS } from './defs.js';

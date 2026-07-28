@@ -7,9 +7,9 @@ import { importDialogue, loadDialogues } from '../db/dialogues.js';
  * The managerial envelope for dialogue content — the DB is the truth,
  * these commands are how JSON moves in and out of it.
  *
- *   npm run dialogues -w @devcraft/server -- list
- *   npm run dialogues -w @devcraft/server -- export [outDir]
- *   npm run dialogues -w @devcraft/server -- import <file.json> [...]
+ *   npm run dialogues -w @arx/server -- list
+ *   npm run dialogues -w @arx/server -- export [outDir]
+ *   npm run dialogues -w @arx/server -- import <file.json> [...]
  *
  * Export writes one interchange file per tree (the exact shape the
  * shipped defs use — an exported file can be re-imported anywhere, or

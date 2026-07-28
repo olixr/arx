@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { EQUIP_SLOTS } from '@devcraft/shared';
+import { EQUIP_SLOTS } from '@arx/shared';
 import { ITEMS } from '../items.js';
 import { NPCS } from '../npcs.js';
 import { buildDawnmead } from '../maps/dawnmead.js';

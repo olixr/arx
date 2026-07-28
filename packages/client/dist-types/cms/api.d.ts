@@ -1,4 +1,4 @@
-import type { DialogueDef, LootTableDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, ZoneJson } from '@devcraft/content';
+import type { DialogueDef, LootTableDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, ZoneJson } from '@arx/content';
 /** Content Studio's wire to the running server's /dev/content API. */
 export interface Editable<T> {
     def: T;

@@ -1,4 +1,4 @@
-import type { EquipSlot, Look } from '@devcraft/shared';
+import type { EquipSlot, Look } from '@arx/shared';
 
 /**
  * NPC ACTORS — the people (and befriended beasts) of the world.

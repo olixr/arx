@@ -1,4 +1,4 @@
-import { type Look } from '@devcraft/shared';
+import { type Look } from '@arx/shared';
 export declare class LookCreator {
     private readonly onConfirm;
     private readonly panel;

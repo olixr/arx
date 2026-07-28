@@ -1,4 +1,4 @@
-import { type Look } from '@devcraft/shared';
+import { type Look } from '@arx/shared';
 /**
  * The studio's Hero's Mirror — the character-creation surface for
  * humanoid actors. Every choice is shown as the ART it produces:

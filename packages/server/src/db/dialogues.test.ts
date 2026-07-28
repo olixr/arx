@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DIALOGUES, type DialogueDef } from '@devcraft/content';
+import { DIALOGUES, type DialogueDef } from '@arx/content';
 import { AccountStore } from './accounts.js';
 import { openDb } from './db.js';
 import { exportDialogue, importDialogue, loadDialogues, seedDialogues } from './dialogues.js';

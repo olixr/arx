@@ -21,7 +21,7 @@
  * world changes (worldVersion bump ⇒ full clear; recompute is bounded
  * by MAX_REGION and only runs for tiles actually asked about).
  */
-import { INTERIOR_BOUNDARY_TILES, Tile, diagWallInfo, doorInfo, hashCoords } from '@devcraft/shared';
+import { INTERIOR_BOUNDARY_TILES, Tile, diagWallInfo, doorInfo, hashCoords } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 
 export interface InteriorRegion {

@@ -10,7 +10,7 @@
  * chrome (never .ui-tray: that class doubles as the "a panel is open"
  * input-gate selector).
  */
-import { RARITY_COLORS, isRarityTier } from '@devcraft/shared';
+import { RARITY_COLORS, isRarityTier } from '@arx/shared';
 import { itemIconUrl } from '../render/icons.js';
 
 let stage: HTMLElement | null = null;

@@ -1,5 +1,5 @@
 /**
- * The tree grower — DevCraft's forests, grown not authored.
+ * The tree grower — Arx's forests, grown not authored.
  *
  * Every tree on the map is GROWN from a species grammar + the tile's
  * hash: a deterministic skeleton (trunk spine, short boughs) under a
@@ -42,7 +42,7 @@
  * +y UP. Verticals paint at full tile scale (projection law).
  */
 
-import { Tile, hashCoords } from '@devcraft/shared';
+import { Tile, hashCoords } from '@arx/shared';
 import { BLOB_M, unitBlob } from './shapes.js';
 import { shade } from './rig.js';
 import { windScalarAt } from './grass.js';

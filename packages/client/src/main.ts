@@ -1,5 +1,5 @@
-import { EntityKind, HIDDEN_SKILLS, PoseState, ROCK_TILES, TREE_TILES, Tile, chestInfo, dangerAt, doorInfo, isSkillId, tileDef, treeOfSapling } from '@devcraft/shared';
-import { BUILDABLES, buildableGround, itemDef, npcDef } from '@devcraft/content';
+import { EntityKind, HIDDEN_SKILLS, PoseState, ROCK_TILES, TREE_TILES, Tile, chestInfo, dangerAt, doorInfo, isSkillId, tileDef, treeOfSapling } from '@arx/shared';
+import { BUILDABLES, buildableGround, itemDef, npcDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { InputManager } from './input/inputManager.js';
 import { Renderer } from './render/renderer.js';
@@ -113,13 +113,13 @@ const renderer = new Renderer(canvas);
 // Player zoom: restore the saved framing, then persist every change.
 // 1 = the classic distance; zooming in is the intimate mode (bigger,
 // more readable targets), a slight zoom-out widens the field.
-const storedZoom = parseFloat(localStorage.getItem('devcraft.zoom') ?? '');
+const storedZoom = parseFloat(localStorage.getItem('arx.zoom') ?? '');
 if (Number.isFinite(storedZoom)) {
   renderer.camera.setZoom(storedZoom);
   renderer.camera.zoom = renderer.camera.targetZoom;
 }
 const saveZoom = (): void =>
-  localStorage.setItem('devcraft.zoom', renderer.camera.targetZoom.toFixed(3));
+  localStorage.setItem('arx.zoom', renderer.camera.targetZoom.toFixed(3));
 
 // Mouse wheel: smooth, exponential — equal scroll = equal feel at any depth.
 canvas.addEventListener(
@@ -152,7 +152,7 @@ const chat = new ChatUI(
     // Client-side commands: render preferences never touch the server.
     if (text.trim().toLowerCase() === '/outline') {
       renderer.outlineOn = !renderer.outlineOn;
-      localStorage.setItem('devcraft.outline', renderer.outlineOn ? 'on' : 'off');
+      localStorage.setItem('arx.outline', renderer.outlineOn ? 'on' : 'off');
       chat.addLine({
         channel: 'system',
         text: renderer.outlineOn ? 'Outlines on.' : 'Outlines off — pure flat.',
@@ -163,14 +163,14 @@ const chat = new ChatUI(
   },
   () => !hud.classList.contains('hidden'),
 );
-renderer.outlineOn = localStorage.getItem('devcraft.outline') !== 'off';
+renderer.outlineOn = localStorage.getItem('arx.outline') !== 'off';
 
 // Water enhancements: ADDITIVE layers over the base water, so turning
 // one off only quiets the surface — nothing else changes. Persisted
 // like every other render preference, toggled in the menu's Display
 // section for anyone chasing frames.
-renderer.reflectionsOn = localStorage.getItem('devcraft.reflections') !== 'off';
-renderer.waterFxFull = localStorage.getItem('devcraft.waterfx') !== 'basic';
+renderer.reflectionsOn = localStorage.getItem('arx.reflections') !== 'off';
+renderer.waterFxFull = localStorage.getItem('arx.waterfx') !== 'basic';
 {
   const rows = document.getElementById('display-rows')!;
   const toggle = (label: string, initial: boolean, apply: (on: boolean) => void): void => {
@@ -188,11 +188,11 @@ renderer.waterFxFull = localStorage.getItem('devcraft.waterfx') !== 'basic';
   };
   toggle('Water reflections', renderer.reflectionsOn, (on) => {
     renderer.reflectionsOn = on;
-    localStorage.setItem('devcraft.reflections', on ? 'on' : 'off');
+    localStorage.setItem('arx.reflections', on ? 'on' : 'off');
   });
   toggle('Water motion', renderer.waterFxFull, (on) => {
     renderer.waterFxFull = on;
-    localStorage.setItem('devcraft.waterfx', on ? 'full' : 'basic');
+    localStorage.setItem('arx.waterfx', on ? 'full' : 'basic');
   });
 }
 input.setTypingCheck(() => chat.isTyping || looks.open || socialPanel.isTyping || signHud.isTyping);
@@ -463,9 +463,9 @@ const game = new ClientGame(input, {
     if (status === 'ingame') {
       loginOverlay.classList.add('hidden');
       hud.classList.remove('hidden');
-      if (game.sessionToken) localStorage.setItem('devcraft.token', game.sessionToken);
-      if (!localStorage.getItem('devcraft.tipsShown')) {
-        localStorage.setItem('devcraft.tipsShown', '1');
+      if (game.sessionToken) localStorage.setItem('arx.token', game.sessionToken);
+      if (!localStorage.getItem('arx.tipsShown')) {
+        localStorage.setItem('arx.tipsShown', '1');
         for (const tip of [
           'Move with WASD. Click or press F to chop, mine, fish, and use things. Q and E fire your abilities.',
           'Press I for your pack — click a tool or weapon to wield it.',
@@ -479,14 +479,14 @@ const game = new ClientGame(input, {
       authReady = true;
       loginOverlay.classList.remove('hidden');
       loginStatus.classList.add('hidden');
-      localStorage.removeItem('devcraft.token');
+      localStorage.removeItem('arx.token');
     } else if (status === 'authErr') {
       authReady = true;
       showLoginError(detail ?? 'authentication failed');
     } else if (status === 'rejected') {
       loginOverlay.classList.remove('hidden');
       showLoginError(detail ?? 'connection rejected');
-      localStorage.removeItem('devcraft.token');
+      localStorage.removeItem('arx.token');
     } else if (status === 'reconnecting') {
       chat.addLine({ channel: 'system', text: 'Connection lost — reconnecting…' });
     } else if (status === 'connecting') {
@@ -1148,7 +1148,7 @@ game.onLoose = (charge, aim) => {
 };
 
 // Dev/test hook: lets automated tests observe live game state.
-(window as unknown as Record<string, unknown>).__devcraft = {
+(window as unknown as Record<string, unknown>).__arx = {
   game,
   renderer,
   audio: { engine: audioEngine, music, ambience, sfx },
@@ -1429,7 +1429,7 @@ setupTouch(input, game, renderer, canvas, (tx, ty) => {
 }, saveZoom);
 
 // Connect immediately; a stored session token skips the login form.
-game.connect(localStorage.getItem('devcraft.token'));
+game.connect(localStorage.getItem('arx.token'));
 
 // ---------------------------------------------------------------- loop
 

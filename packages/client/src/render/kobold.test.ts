@@ -10,7 +10,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LOOT_TABLES, NPCS } from '@devcraft/content';
+import { LOOT_TABLES, NPCS } from '@arx/content';
 import {
   KOBOLD_LOOKS,
   koboldLook,

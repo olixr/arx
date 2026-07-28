@@ -3,7 +3,7 @@ import {
   EQUIP_SLOTS,
   sanitizeLook,
   type EquipSlot,
-} from '@devcraft/shared';
+} from '@arx/shared';
 import { ITEMS } from '../items.js';
 import { LOOT_TABLES } from '../loot/tables.js';
 import { NPCS } from '../npcs.js';

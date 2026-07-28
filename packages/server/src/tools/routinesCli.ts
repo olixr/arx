@@ -7,9 +7,9 @@ import { importRoutine, loadRoutines } from '../db/routines.js';
  * The managerial envelope for routine content — the DB is the truth,
  * these commands are how JSON moves in and out of it.
  *
- *   npm run routines -w @devcraft/server -- list
- *   npm run routines -w @devcraft/server -- export [outDir]
- *   npm run routines -w @devcraft/server -- import <file.json> [...]
+ *   npm run routines -w @arx/server -- list
+ *   npm run routines -w @arx/server -- export [outDir]
+ *   npm run routines -w @arx/server -- import <file.json> [...]
  *
  * Export writes one interchange file per routine (the exact shape the
  * shipped defs use — an exported file can be re-imported anywhere, or

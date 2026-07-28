@@ -6,7 +6,7 @@ import {
   fbm,
   hashCoords,
   type ChunkData,
-} from '@devcraft/shared';
+} from '@arx/shared';
 import {
   ROAD_APRON,
   ROAD_HALF,

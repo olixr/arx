@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { TILE_SKIP, Tile } from '@devcraft/shared';
+import { TILE_SKIP, Tile } from '@arx/shared';
 import {
   ZONE_EDGE_PROFILES,
   packZoneEdgeProfile,

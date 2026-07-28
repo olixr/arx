@@ -1,5 +1,5 @@
-import { DEFAULT_LOOK, type Look } from '@devcraft/shared';
-import type { NpcActorDef, NpcDisposition } from '@devcraft/content';
+import { DEFAULT_LOOK, type Look } from '@arx/shared';
+import type { NpcActorDef, NpcDisposition } from '@arx/content';
 import { markDirty, renderAll, state, toast } from './cms.js';
 import { creatureRender } from './gameRender.js';
 import { lookDesigner } from './lookDesigner.js';

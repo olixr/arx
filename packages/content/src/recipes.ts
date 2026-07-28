@@ -1,4 +1,4 @@
-import type { SkillId, StationType } from '@devcraft/shared';
+import type { SkillId, StationType } from '@arx/shared';
 import { COMPILED_EQUIPMENT } from './equipment/defs.js';
 import { ELEMENT_GEM, ELEMENT_REAGENT, ENCHANT_DEFS } from './equipment/enchants.js';
 

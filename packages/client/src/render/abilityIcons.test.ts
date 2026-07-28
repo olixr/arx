@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ABILITIES, TECHNIQUES } from '@devcraft/content';
-import { PASSIVES } from '@devcraft/shared';
+import { ABILITIES, TECHNIQUES } from '@arx/content';
+import { PASSIVES } from '@arx/shared';
 import { allAbilityIconIds, allPassiveIconIds } from './abilityIcons.js';
 
 /**

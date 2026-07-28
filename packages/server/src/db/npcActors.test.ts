@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { NPC_ACTORS, type NpcActorDef } from '@devcraft/content';
+import { NPC_ACTORS, type NpcActorDef } from '@arx/content';
 import { openDb } from './db.js';
 import { loadNpcActors, syncNpcActors } from './npcActors.js';
 

@@ -1,5 +1,5 @@
-import { ChunkStore, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type EquippedItem, type S2CFx, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@devcraft/shared';
-import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@devcraft/shared';
+import { ChunkStore, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type EquippedItem, type S2CFx, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
+import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
  * fire gate passes (the same mirrored gate the server applies), flown

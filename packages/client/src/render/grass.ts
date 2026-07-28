@@ -1,4 +1,4 @@
-import { Tile, hashCoords, valueNoise } from '@devcraft/shared';
+import { Tile, hashCoords, valueNoise } from '@arx/shared';
 
 /**
  * The bespoke grass system. The ground IS the game's biggest canvas, and

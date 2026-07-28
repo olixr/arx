@@ -1,4 +1,4 @@
-import { RARITY_TIERS, mintKeyPower, rarityIndex, type ItemRoll, type RarityTier } from '@devcraft/shared';
+import { RARITY_TIERS, mintKeyPower, rarityIndex, type ItemRoll, type RarityTier } from '@arx/shared';
 import { itemDef } from '../items.js';
 import { dropRarityWeights } from '../equipment/tables.js';
 import { heirloomFor, makeRoll, pickRarity } from '../equipment/roll.js';

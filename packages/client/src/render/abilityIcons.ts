@@ -1,4 +1,4 @@
-import { PASSIVES } from '@devcraft/shared';
+import { PASSIVES } from '@arx/shared';
 import { burstStarPath, fxStyleFor, jaggedRingPath, type FxStyle } from './abilityFx.js';
 import { paintedIconUrl } from './icons.js';
 import { shade } from './rig.js';

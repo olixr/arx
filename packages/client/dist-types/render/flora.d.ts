@@ -1,5 +1,5 @@
 /**
- * The forage flora — DevCraft's wild herbs, grown as LANDMARKS.
+ * The forage flora — Arx's wild herbs, grown as LANDMARKS.
  *
  * Every wild forage node (berry bush, fibre plant, wild sagewort,
  * wild moonbell) is GROWN from a species grammar + the tile's hash,
@@ -32,7 +32,7 @@
  * Colliders: TILE_COLLIDER_RADIUS entries for these tiles pair with
  * floraBaseRadius() — a test pins physics to the drawn base mass.
  */
-import { Tile } from '@devcraft/shared';
+import { Tile } from '@arx/shared';
 export declare const OUTLINE = "rgba(26, 20, 36, 0.45)";
 export interface FloraMass {
     x: number;

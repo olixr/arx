@@ -7,7 +7,7 @@ import {
   sanitizeInputFrame,
   type EntityId,
   type S2CMessage,
-} from '@devcraft/shared';
+} from '@arx/shared';
 import { config } from '../config.js';
 import { TokenBucket } from './rateLimiter.js';
 import type { GameServer } from '../game/gameServer.js';

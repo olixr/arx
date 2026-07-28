@@ -1,10 +1,11 @@
-# DevCraft
+# Arx
 
-A locally-hosted, open-world multiplayer RPG in the spirit of classic
-RuneScape — classless progression, gathering, crafting, real-time combat,
-dungeons, and building — built entirely in-house on web tech: TypeScript,
+An open-world multiplayer RPG in the spirit of classic RuneScape —
+classless progression, gathering, crafting, real-time combat, dungeons,
+and building — built entirely in-house on web tech: TypeScript,
 Canvas 2D, WebSockets, and SQLite. No game engine, no frameworks beyond
-Vite (bundler) and `ws` (WebSocket transport).
+Vite (bundler) and `ws` (WebSocket transport). Live at
+[arx.gg](https://arx.gg).
 
 ## Quick start
 
@@ -13,18 +14,26 @@ npm install
 npm run dev        # game server (ws://localhost:8787) + client (http://localhost:5173)
 ```
 
-Open `http://localhost:5173`, create an account, and you're in Bramblewick.
-Everyone on your network can join the same world by pointing a browser at
-your machine.
+Open `http://localhost:5173`, create an account, and you wake in
+Dawnmead. Everyone on your network can join the same world by pointing
+a browser at your machine.
 
 Other commands:
 
 ```bash
 npm test                            # simulation, codec, worldgen, pathfinding suites
 npm run typecheck                   # strict TS across all packages
-npm run build                       # production client bundle
-npm run bot -w @devcraft/tools -- 30   # 30-bot load/soak test
+npm run build                       # production client bundle → public/
+npm run bot -w @arx/tools -- 30     # 30-bot load/soak test
 ```
+
+## Production
+
+See [DEPLOY.md](DEPLOY.md) — static client served from `public/` by
+nginx, game server on loopback under supervisor, `/ws` proxied through
+the same origin (the client always connects to `wss://<host>/ws`, so
+no URLs are baked into the bundle). Operate the live server with
+`scripts/arxctl.sh {start|stop|restart|status|ping}`.
 
 The map editor lives at `http://localhost:5173/editor.html` — paint a zone,
 Save, and drop the JSON into `data/maps/` to load it on the server.
@@ -49,19 +58,18 @@ pack clicks deposit or sell instead.
 - **12 skills**, RS-style XP curve to 99: vitality, melee, defence, archery,
   magic, mining, woodcutting, fishing, smithing, crafting, cooking,
   construction. No classes — train what you like.
-- **Bramblewick**, a hand-authored starter town: bank, general store, smithy
-  (furnace + anvil), inn, campfire, farm pen, fishing pond — ringed by
-  procedurally generated wilderness that goes on forever.
+- **The Dawnlands**: hand-authored settlements — Dawnmead, Amberford,
+  Silverfall — linked by authored roads and ringed by procedurally
+  generated wilderness that goes on forever.
 - **Gathering**: trees, oaks, copper/iron rocks, fishing spots — nodes
   deplete and respawn for everyone in the shared world.
 - **Real-time combat**: swords swing in arcs, bows consume arrows, staves
   hurl bolts. Monsters aggro, chase, leash, and drop loot tables.
 - **Economy**: smelt → smith → wield; fish → cook (burns happen) → eat;
   bank storage; a general store.
-- **Gloomhollow Cave**: an authored dungeon beneath the rocks NE of the
-  plaza, ending at a **delve portal** that generates a personal procedural
-  dungeon (rooms, corridors, ore veins, a Skeleton Champion) — torn down
-  and re-rolled every visit.
+- **The Undercroft**: an authored underground beneath Silverfall, with
+  **delve portals** that generate personal procedural dungeons (rooms,
+  corridors, ore veins, champions) — torn down and re-rolled every visit.
 - **Construction**: build floors, walls, fences, campfires, workbenches,
   even furnaces and anvils on open ground. Constructions persist in the
   database and survive restarts. Only you can demolish yours.

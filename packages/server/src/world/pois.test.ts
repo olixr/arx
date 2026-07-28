@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { TILE_DEFS, TILE_SKIP, Tile, chestInfo, closedChestTile } from '@devcraft/shared';
+import { TILE_DEFS, TILE_SKIP, Tile, chestInfo, closedChestTile } from '@arx/shared';
 import {
   AMBERFORD_RECT,
   PLANNED_ZONE_RECTS,
@@ -8,8 +8,8 @@ import {
   POI_PREFABS,
   SETTLED_ANCHORS,
   dangerLaw,
-} from '@devcraft/content';
-import { DARK_BAND_Y, groundProbeAt } from '@devcraft/content';
+} from '@arx/content';
+import { DARK_BAND_Y, groundProbeAt } from '@arx/content';
 import {
   POI_CELL,
   composePoi,
@@ -469,7 +469,7 @@ test("the champion's tor crowns a stable name from the pool", () => {
 // ------------------------------------------------------------------
 
 test('every authored wild site finds honest ground and composes', async () => {
-  const { AUTHORED_WILD_SITES } = await import('@devcraft/content');
+  const { AUTHORED_WILD_SITES } = await import('@arx/content');
   const { findAuthoredAnchor, poiCellOf } = await import('./pois.js');
   const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS);
   for (const want of AUTHORED_WILD_SITES) {
@@ -507,7 +507,7 @@ test('every authored wild site finds honest ground and composes', async () => {
 });
 
 test('the Last Lamp composes with its lamps, its keeper, and its watch', async () => {
-  const { AUTHORED_WILD_SITES } = await import('@devcraft/content');
+  const { AUTHORED_WILD_SITES } = await import('@arx/content');
   const { findAuthoredAnchor, poiCellOf } = await import('./pois.js');
   const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS);
   const want = AUTHORED_WILD_SITES.find((s) => s.id === 'last_lamp')!;

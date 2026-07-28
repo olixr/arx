@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Tile, tileColliderRadius } from '@devcraft/shared';
+import { Tile, tileColliderRadius } from '@arx/shared';
 import { floraBaseRadius, floraModel, speciesOfFlora } from './flora.js';
 
 const FLORA = [Tile.BerryBush, Tile.FibrePlant, Tile.WildSagewort, Tile.WildMoonbell];

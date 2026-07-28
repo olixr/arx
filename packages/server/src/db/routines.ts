@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
-import { validateRoutine, type RoutineDef, type RoutineTask } from '@devcraft/content';
+import { validateRoutine, type RoutineDef, type RoutineTask } from '@arx/content';
 
 /**
  * Routines in the database — THE DATABASE IS THE TRUTH, exactly the

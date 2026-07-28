@@ -1,4 +1,4 @@
-import { type EquipSlot, type EquippedItem, type InvSlot, type SkillXp } from '@devcraft/shared';
+import { type EquipSlot, type EquippedItem, type InvSlot, type SkillXp } from '@arx/shared';
 /**
  * Every skill's face: an item that embodies the craft, and an accent
  * the card's plaque and meter wear. Pure data — a new skill is a row.

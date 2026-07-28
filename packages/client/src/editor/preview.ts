@@ -1,6 +1,6 @@
-import { CHUNK_SIZE, Detail, TILE_PX, Tile } from '@devcraft/shared';
-import type { PrefabDef, StructureTemplate } from '@devcraft/content';
-import { templateHeight, templateWidth } from '@devcraft/content';
+import { CHUNK_SIZE, Detail, TILE_PX, Tile } from '@arx/shared';
+import type { PrefabDef, StructureTemplate } from '@arx/content';
+import { templateHeight, templateWidth } from '@arx/content';
 import { bakeChunk, bakeGutter } from '../render/terrain.js';
 import { drawBlockTile, overlayKind, drawTreeSprite } from './render.js';
 

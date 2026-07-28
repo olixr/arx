@@ -1,4 +1,4 @@
-import type { Vec2 } from '@devcraft/shared';
+import type { Vec2 } from '@arx/shared';
 
 export interface PortalDef {
   /** World-tile position of the portal tile. */

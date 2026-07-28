@@ -1,5 +1,5 @@
-import { Detail, TILE_PX, TILE_SKIP, Tile, tileDef } from '@devcraft/shared';
-import { BUILDABLES } from '@devcraft/content';
+import { Detail, TILE_PX, TILE_SKIP, Tile, tileDef } from '@arx/shared';
+import { BUILDABLES } from '@arx/content';
 import { bakeChunk, bakeGutter } from '../render/terrain.js';
 import { buildableIconUrl } from '../render/icons.js';
 import { paintTree, treeModel } from '../render/trees.js';

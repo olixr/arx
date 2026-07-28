@@ -1,6 +1,6 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
-import { isRarityTier, sanitizeLook, type ItemRoll, type Look } from '@devcraft/shared';
+import { isRarityTier, sanitizeLook, type ItemRoll, type Look } from '@arx/shared';
 
 /** NULL-tolerant roll reader for legacy rows (pre-migration-11). */
 function rowRoll(

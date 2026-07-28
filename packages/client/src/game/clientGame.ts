@@ -46,10 +46,10 @@ import {
   type StationType,
   type TilePatch,
   type Vec2,
-} from '@devcraft/shared';
-import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, isCropTile, abilityDef, itemDef, npcDef } from '@devcraft/content';
-import { EntityKind } from '@devcraft/shared';
-import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@devcraft/shared';
+} from '@arx/shared';
+import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, isCropTile, abilityDef, itemDef, npcDef } from '@arx/content';
+import { EntityKind } from '@arx/shared';
+import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local

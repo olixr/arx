@@ -168,7 +168,7 @@ test('enchant ids ride every roll path: inventory, equipment, bank gear', () => 
   if (!reg.ok) return;
   const cid = reg.character.id;
 
-  const inv = new Array<{ item: string; qty: number; roll?: import('@devcraft/shared').ItemRoll } | null>(28).fill(null);
+  const inv = new Array<{ item: string; qty: number; roll?: import('@arx/shared').ItemRoll } | null>(28).fill(null);
   inv[0] = { item: 'bronze_sword', qty: 1, roll: { rar: 'rare', seed: 9, ench: 'inferno_edge' } };
   store.saveInventory(cid, inv);
   const loaded = store.loadInventory(cid, 28);

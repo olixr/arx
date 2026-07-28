@@ -1,4 +1,4 @@
-import { itemDef } from '@devcraft/content';
+import { itemDef } from '@arx/content';
 import { shade } from './rig.js';
 
 /**

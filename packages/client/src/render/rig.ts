@@ -1,5 +1,5 @@
-import { CLOTH_COLORS, HAIR_COLORS, PoseState, SKIN_TONES, type Look } from '@devcraft/shared';
-import { ELEMENT_COLORS, enchantDef, itemDef } from '@devcraft/content';
+import { CLOTH_COLORS, HAIR_COLORS, PoseState, SKIN_TONES, type Look } from '@arx/shared';
+import { ELEMENT_COLORS, enchantDef, itemDef } from '@arx/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import {
   bladeStyle,

@@ -1,5 +1,5 @@
 /**
- * The DevCraft shape language: sharp-angle brutalism. Forms are blocks
+ * The Arx shape language: sharp-angle brutalism. Forms are blocks
  * with 45° chamfered corners and low-poly facets — never soft pills.
  * Every painter builds from these two primitives so the whole world
  * speaks one dialect.

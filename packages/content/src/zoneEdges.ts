@@ -1,4 +1,4 @@
-import { TILE_SKIP, Tile, fbm, type Vec2 } from '@devcraft/shared';
+import { TILE_SKIP, Tile, fbm, type Vec2 } from '@arx/shared';
 import { distToRect } from './geography.js';
 
 /**

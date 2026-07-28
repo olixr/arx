@@ -7,7 +7,7 @@ import {
   saplingOf,
   tileColliderRadius,
   treeOfSapling,
-} from '@devcraft/shared';
+} from '@arx/shared';
 import { maxTrunkBaseRadius, speciesOf, treeModel } from './trees.js';
 
 const TREES = [Tile.Tree, Tile.TreeOak, Tile.TreeWillow, Tile.TreeYew];

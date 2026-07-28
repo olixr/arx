@@ -1,5 +1,5 @@
-import type { RarityTier } from '@devcraft/shared';
-import type { Rng } from '@devcraft/shared';
+import type { RarityTier } from '@arx/shared';
+import type { Rng } from '@arx/shared';
 import type { CombatStyle } from '../items.js';
 import type { ArmorClass } from './types.js';
 

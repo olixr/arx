@@ -518,7 +518,7 @@ export function openDb(path?: string): DatabaseSync {
   let dbPath = path;
   if (!dbPath) {
     mkdirSync(config.dataDir, { recursive: true });
-    dbPath = join(config.dataDir, 'devcraft.db');
+    dbPath = join(config.dataDir, 'arx.db');
   }
   const db = new DatabaseSync(dbPath);
   db.exec('PRAGMA journal_mode = WAL;');

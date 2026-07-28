@@ -26,7 +26,7 @@
  * ripe rows hip-high, wheat to the waist, sunflower/moonbell to the
  * chest — a field you visibly wade through.
  */
-import { Tile } from '@devcraft/shared';
+import { Tile } from '@arx/shared';
 import { type FloraFrame, type FloraMass, type FloraModel, type FloraStem } from './flora.js';
 /** A ripe carrot crown shouldering out of the soil. */
 interface CropCrown {

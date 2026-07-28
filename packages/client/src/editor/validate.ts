@@ -1,5 +1,5 @@
-import { TILE_SKIP, Tile } from '@devcraft/shared';
-import { ZoneBuilder, type ZoneDef } from '@devcraft/content';
+import { TILE_SKIP, Tile } from '@arx/shared';
+import { ZoneBuilder, type ZoneDef } from '@arx/content';
 
 /**
  * The editor's validator IS the ZoneBuilder — the same laws every

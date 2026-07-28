@@ -1,4 +1,4 @@
-import { hashCoords } from '@devcraft/shared';
+import { hashCoords } from '@arx/shared';
 
 /**
  * A timber building is cut from ONE stand of trees: every log wall,

@@ -14,7 +14,7 @@ import {
   applyHeritage,
   randomLook,
   type Look,
-} from '@devcraft/shared';
+} from '@arx/shared';
 import { drawHumanoid } from '../render/rig.js';
 
 /**

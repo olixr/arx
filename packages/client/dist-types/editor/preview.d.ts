@@ -1,4 +1,4 @@
-import type { PrefabDef, StructureTemplate } from '@devcraft/content';
+import type { PrefabDef, StructureTemplate } from '@arx/content';
 /**
  * REAL-ART MINI RENDERS. Structure cards, prefab cards, and any other
  * "show me the content" surface render through the exact pipeline the

@@ -1,4 +1,4 @@
-import type { Detail, Tile } from '@devcraft/shared';
+import type { Detail, Tile } from '@arx/shared';
 
 /**
  * One legend entry: what a single template character paints. A cell may

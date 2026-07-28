@@ -10,8 +10,8 @@ import {
   type DungeonSpec,
   type DungeonTheme,
   type Vec2,
-} from '@devcraft/shared';
-import type { PortalDef, ZoneDef, ZoneSpawn } from '@devcraft/content';
+} from '@arx/shared';
+import type { PortalDef, ZoneDef, ZoneSpawn } from '@arx/content';
 import {
   ARENA_CAVE,
   ARENA_HALL,

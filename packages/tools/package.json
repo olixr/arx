@@ -1,5 +1,5 @@
 {
-  "name": "@devcraft/tools",
+  "name": "@arx/tools",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,8 +8,8 @@
     "validate": "tsx src/validate/validate.ts"
   },
   "dependencies": {
-    "@devcraft/shared": "*",
-    "@devcraft/content": "*",
+    "@arx/shared": "*",
+    "@arx/content": "*",
     "ws": "^8.18.0"
   },
   "devDependencies": {

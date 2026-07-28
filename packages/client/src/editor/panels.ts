@@ -3,8 +3,8 @@ import {
   templateWidth,
   templateHeight,
   type ZoneDef,
-} from '@devcraft/content';
-import { SIGN_MAX_LINE, SIGN_MAX_LINES, SIGN_MAX_TITLE, Tile, sanitizeSignLine } from '@devcraft/shared';
+} from '@arx/content';
+import { SIGN_MAX_LINE, SIGN_MAX_LINES, SIGN_MAX_TITLE, Tile, sanitizeSignLine } from '@arx/shared';
 import type { PrefabListEntry, RegistrySnapshot } from './api.js';
 import { iconImg } from './editorIcons.js';
 import { placementLabel, sameRef } from './placements.js';

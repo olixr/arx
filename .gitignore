@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# Production client bundle (vite build) — the deploy web root
+/public/
 *.tsbuildinfo
 data/*.db
 data/*.db-*

@@ -6,15 +6,15 @@ import {
   tileIndex,
   type ChunkData,
   type Vec2,
-} from '@devcraft/shared';
-import type { PortalDef, ZoneDef, ZoneSign } from '@devcraft/content';
+} from '@arx/shared';
+import type { PortalDef, ZoneDef, ZoneSign } from '@arx/content';
 import {
   DARK_BAND_Y,
   EDGE_BASIN_DAMP_RANGE,
   generateChunk,
   replaceZoneEdgeProfiles,
   zoneEdgeProfileOf,
-} from '@devcraft/content';
+} from '@arx/content';
 
 /**
  * The server's world: procedural chunks with authored zones stamped on

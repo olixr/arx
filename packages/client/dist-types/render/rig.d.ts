@@ -1,4 +1,4 @@
-import { PoseState, type Look } from '@devcraft/shared';
+import { PoseState, type Look } from '@arx/shared';
 import { LegRig, type LegPose, type LegRigConfig } from './legs.js';
 export type { LegPose } from './legs.js';
 export declare class LegSolver extends LegRig {

@@ -8,7 +8,7 @@
 import type { AudioEngine, VolumeKind } from '../audio/engine.js';
 import type { TrackPlayer } from '../audio/tracks.js';
 
-const STORE_KEY = 'devcraft.audio.v1';
+const STORE_KEY = 'arx.audio.v1';
 
 const ROWS: Array<[VolumeKind, string]> = [
   ['master', 'Master'],

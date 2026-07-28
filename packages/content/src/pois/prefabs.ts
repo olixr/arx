@@ -1,4 +1,4 @@
-import { TILE_SKIP, Tile } from '@devcraft/shared';
+import { TILE_SKIP, Tile } from '@arx/shared';
 import type { PrefabDef, PrefabSpawn } from '../maps/prefab.js';
 import { validatePrefab } from '../maps/prefab.js';
 

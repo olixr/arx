@@ -1,4 +1,4 @@
-import type { SkillId, StatusId } from '@devcraft/shared';
+import type { SkillId, StatusId } from '@arx/shared';
 import type { CombatStyle, MagicElement } from '../items.js';
 import type { GearSlot } from './types.js';
 

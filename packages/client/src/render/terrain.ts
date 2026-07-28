@@ -8,7 +8,7 @@ import {
   nearestFloorTile,
   tileDef,
   valueNoise,
-} from '@devcraft/shared';
+} from '@arx/shared';
 import { chamferRect, facetCircle } from './shapes.js';
 import type { WoodSkin } from './woodSkins.js';
 

@@ -1,4 +1,4 @@
-import { type InvSlot, type ItemRoll, type SkillXp, type StationType } from '@devcraft/shared';
+import { type InvSlot, type ItemRoll, type SkillXp, type StationType } from '@arx/shared';
 export declare class StationPanels {
     private readonly onCraft;
     private readonly onBank;

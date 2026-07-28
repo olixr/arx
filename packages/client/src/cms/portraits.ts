@@ -1,6 +1,6 @@
 import { drawHumanoid } from '../render/rig.js';
-import type { Look } from '@devcraft/shared';
-import type { NpcActorDef } from '@devcraft/content';
+import type { Look } from '@arx/shared';
+import type { NpcActorDef } from '@arx/content';
 import { ringComposite } from './gameRender.js';
 
 /**

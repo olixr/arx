@@ -1,4 +1,4 @@
-import { Tile } from '@devcraft/shared';
+import { Tile } from '@arx/shared';
 
 /**
  * Farmable crops. A planted crop advances through three visual stages —

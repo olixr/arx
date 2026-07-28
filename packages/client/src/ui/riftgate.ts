@@ -1,5 +1,5 @@
-import { RARITY_COLORS, dungeonSpecFromRoll } from '@devcraft/shared';
-import { itemDef } from '@devcraft/content';
+import { RARITY_COLORS, dungeonSpecFromRoll } from '@arx/shared';
+import { itemDef } from '@arx/content';
 import { itemIconUrl } from '../render/icons.js';
 import { iconTile } from './panel.js';
 import type { ClientGame } from '../game/clientGame.js';

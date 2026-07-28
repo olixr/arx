@@ -1,5 +1,5 @@
-import { PASSIVES } from '@devcraft/shared';
-import { TECHNIQUES, abilityDef, itemDef } from '@devcraft/content';
+import { PASSIVES } from '@arx/shared';
+import { TECHNIQUES, abilityDef, itemDef } from '@arx/content';
 import {
   allIconBuildableIds,
   allIconItemIds,

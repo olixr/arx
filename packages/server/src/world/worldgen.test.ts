@@ -7,7 +7,7 @@ import {
   decodeChunk,
   encodeChunk,
   isSolidTile,
-} from '@devcraft/shared';
+} from '@arx/shared';
 import {
   AMBERFORD_RECT,
   ROAD_ROUTES,
@@ -19,14 +19,14 @@ import {
   buildUndercroft,
   roadDistanceAt,
   roadHitAt,
-} from '@devcraft/content';
+} from '@arx/content';
 import {
   basinFieldAt,
   elevationAt,
   generateChunk,
   levelAt,
   moistureAt,
-} from '@devcraft/content';
+} from '@arx/content';
 import { WorldSource } from './worldSource.js';
 
 /**

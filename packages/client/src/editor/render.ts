@@ -5,8 +5,8 @@ import {
   TILE_SKIP,
   Tile,
   tileDef,
-} from '@devcraft/shared';
-import type { ZoneDef } from '@devcraft/content';
+} from '@arx/shared';
+import type { ZoneDef } from '@arx/content';
 import { bakeChunk, bakeGutter } from '../render/terrain.js';
 import { paintTree, treeModel } from '../render/trees.js';
 import type { EditorState } from './state.js';

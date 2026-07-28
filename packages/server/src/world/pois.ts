@@ -12,7 +12,7 @@ import {
   isSignTile,
   sanitizeSignText,
   type DangerAnchor,
-} from '@devcraft/shared';
+} from '@arx/shared';
 import {
   PLANNED_ZONE_RECTS,
   POI_DEFS,
@@ -27,8 +27,8 @@ import {
   type ZoneDef,
   type ZoneSign,
   type ZoneSpawn,
-} from '@devcraft/content';
-import { DARK_BAND_Y, groundProbeAt } from '@devcraft/content';
+} from '@arx/content';
+import { DARK_BAND_Y, groundProbeAt } from '@arx/content';
 
 /**
  * THE POI SCAFFOLD — the wilderness sibling of the dungeon generator.

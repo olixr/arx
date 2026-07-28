@@ -1,4 +1,4 @@
-import type { ZoneDef } from '@devcraft/content';
+import type { ZoneDef } from '@arx/content';
 import type { PlacementRef } from './state.js';
 /**
  * Placement geometry: hit-testing and shared accessors for the

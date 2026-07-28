@@ -35,8 +35,8 @@ import {
   type ItemRoll,
   type Look,
   type Vec2,
-} from '@devcraft/shared';
-import { bandDy, enchantDef, instanceName, itemDef, npcDef, npcHitHeight } from '@devcraft/content';
+} from '@arx/shared';
+import { bandDy, enchantDef, instanceName, itemDef, npcDef, npcHitHeight } from '@arx/content';
 import type { ClientGame } from '../game/clientGame.js';
 import {
   ANVIL_CYCLE_MS,

@@ -1,4 +1,4 @@
-import { type LootTableDef, type NpcDef, type PoiDef } from '@devcraft/content';
+import { type LootTableDef, type NpcDef, type PoiDef } from '@arx/content';
 export declare function newNpcDef(id: string): NpcDef;
 export declare function newLootTable(id: string): LootTableDef;
 export declare function newPoiDef(id: string): PoiDef;

@@ -10,7 +10,7 @@ import {
   STATUS_IDS,
   Tile,
   TILE_DEFS,
-} from '@devcraft/shared';
+} from '@arx/shared';
 import type { ZoneSign } from './maps/types.js';
 import { ZoneBuilder } from './maps/builder.js';
 import { buildDawnmead } from './maps/dawnmead.js';

@@ -1,4 +1,4 @@
-import { DEFAULT_LOOK, RARITY_TIERS, STATUS_IDS, type Look, type RarityTier } from '@devcraft/shared';
+import { DEFAULT_LOOK, RARITY_TIERS, STATUS_IDS, type Look, type RarityTier } from '@arx/shared';
 import {
   ABILITIES,
   DANGER_LAWS,
@@ -15,7 +15,7 @@ import {
   type NpcDef,
   type PoiDef,
   type PoiGarrisonEntry,
-} from '@devcraft/content';
+} from '@arx/content';
 import { itemIconUrl } from '../render/icons.js';
 import { iconImg } from '../editor/editorIcons.js';
 import { markDirty, persistence, setSection, state, toast, zoneAt } from './cms.js';

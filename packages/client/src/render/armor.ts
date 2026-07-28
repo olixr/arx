@@ -1,4 +1,4 @@
-import { itemDef } from '@devcraft/content';
+import { itemDef } from '@arx/content';
 import { chamferRect } from './shapes.js';
 import { shade } from './rig.js';
 

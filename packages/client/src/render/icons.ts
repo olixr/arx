@@ -1,4 +1,4 @@
-import { ELEMENT_COLORS, ENCHANT_DEFS, UNLOCKABLE_RECIPES, itemDef, recipeScrollId } from '@devcraft/content';
+import { ELEMENT_COLORS, ENCHANT_DEFS, UNLOCKABLE_RECIPES, itemDef, recipeScrollId } from '@arx/content';
 import { shade } from './rig.js';
 import { BOW_STYLES, DAGGER_STYLES, STAFF_STYLES, SWORD_STYLES, drawBow, drawStaff, drawSword } from './weapons.js';
 import { TOOL_STYLES, drawTool } from './tools.js';

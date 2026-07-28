@@ -1,4 +1,4 @@
-import { itemDef, parseDialogueMarkup } from '@devcraft/content';
+import { itemDef, parseDialogueMarkup } from '@arx/content';
 import type { Sfx } from '../audio/sfx.js';
 import { itemIconUrl } from '../render/icons.js';
 

@@ -1,4 +1,4 @@
-import { type ZoneDef } from '@devcraft/content';
+import { type ZoneDef } from '@arx/content';
 import type { PrefabListEntry, RegistrySnapshot } from './api.js';
 import type { EditorState, PlacementRef } from './state.js';
 /**

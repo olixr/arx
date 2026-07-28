@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NPCS, npcLivestock } from '@devcraft/content';
+import { NPCS, npcLivestock } from '@arx/content';
 import { GameServer } from './gameServer.js';
 
 /**
@@ -11,7 +11,12 @@ import { GameServer } from './gameServer.js';
  * over plain maps, so they run here against a hand-built slate.
  */
 
-const proto = GameServer.prototype as unknown as Record<string, (...a: unknown[]) => unknown>;
+type WardFn = (...a: unknown[]) => unknown;
+const proto = GameServer.prototype as unknown as {
+  poiGarrisonStands: WardFn;
+  notePoiKill: WardFn;
+  poiSpawnFights: WardFn;
+};
 const GRACE_MS =
   (GameServer as unknown as { POI_RESPAWN_MIN_SEC: number }).POI_RESPAWN_MIN_SEC * 1000;
 

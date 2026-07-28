@@ -1,4 +1,4 @@
-import type { AppearanceData } from '@devcraft/shared';
+import type { AppearanceData } from '@arx/shared';
 import { NPCS, scaleNpcDef, type NpcDef } from '../npcs.js';
 import type { NpcActorDef } from './types.js';
 import { validateNpcActor } from './validate.js';

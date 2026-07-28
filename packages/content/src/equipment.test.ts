@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import type { ItemRoll, RarityTier } from '@devcraft/shared';
-import { RARITY_TIERS, Rng } from '@devcraft/shared';
+import type { ItemRoll, RarityTier } from '@arx/shared';
+import { RARITY_TIERS, Rng } from '@arx/shared';
 import { ITEMS, itemDef } from './items.js';
 import { RECIPES } from './recipes.js';
 import { COMPILED_EQUIPMENT, EQUIPMENT_DEFS } from './equipment/defs.js';
@@ -275,7 +275,7 @@ test('acquisition routes are honest: drops in loot tables, shop stock flagged', 
 
 test('instance names: dominant affix epithet, deterministic, plain when affixless', async () => {
   const { AFFIX_EPITHETS, instanceName, rollEpithet } = await import('./equipment/naming.js');
-  const { SKILL_IDS } = await import('@devcraft/shared');
+  const { SKILL_IDS } = await import('@arx/shared');
   // Every possible affix stat owns an epithet — no rolled piece can be nameless.
   for (const skill of SKILL_IDS) assert.ok(AFFIX_EPITHETS[skill], `no epithet for ${skill}`);
   assert.ok(AFFIX_EPITHETS.maxHp);
@@ -783,7 +783,7 @@ test('native gear effects ride the same vocabulary', async () => {
 });
 
 test('ItemRoll carries ench through guard and comparison', async () => {
-  const { isItemRoll, sameRoll } = await import('@devcraft/shared');
+  const { isItemRoll, sameRoll } = await import('@arx/shared');
   assert.ok(isItemRoll({ rar: 'rare', seed: 3, ench: 'keen_edge' }));
   assert.ok(!isItemRoll({ rar: 'rare', seed: 3, ench: '' }));
   assert.ok(!sameRoll({ rar: 'rare', seed: 3, ench: 'keen_edge' }, { rar: 'rare', seed: 3 }));

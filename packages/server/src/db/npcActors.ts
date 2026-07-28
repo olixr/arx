@@ -4,7 +4,7 @@ import {
   validateNpcActor,
   type NpcActorCombat,
   type NpcActorDef,
-} from '@devcraft/content';
+} from '@arx/content';
 
 /**
  * NPC actors, DB-first: the relational tables (migration 18) are what

@@ -1,4 +1,4 @@
-import type { RarityTier } from '@devcraft/shared';
+import type { RarityTier } from '@arx/shared';
 
 /**
  * Loot tables — the one vocabulary for "a source pays out items".
@@ -90,7 +90,7 @@ export interface LootTableDef {
 export interface LootDrop {
   item: string;
   qty: number;
-  roll?: import('@devcraft/shared').ItemRoll;
+  roll?: import('@arx/shared').ItemRoll;
 }
 
 /** What the source tells the resolver about itself. */

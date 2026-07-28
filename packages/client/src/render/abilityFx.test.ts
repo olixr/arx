@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ABILITIES } from '@devcraft/content';
+import { ABILITIES } from '@arx/content';
 import { FX_STYLES, fxStyleFor } from './abilityFx.js';
 
 /**

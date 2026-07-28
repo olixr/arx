@@ -1,5 +1,5 @@
 /**
- * @devcraft/content — data-driven game definitions.
+ * @arx/content — data-driven game definitions.
  * Items, NPCs, skills, recipes, loot tables, maps, and spawn tables all
  * live here as typed data, validated at build time by tools/validate.
  */

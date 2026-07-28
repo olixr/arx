@@ -7,7 +7,7 @@ import {
   type DialogueDef,
   type DialogueNode,
   type ValidateDialogueRefs,
-} from '@devcraft/content';
+} from '@arx/content';
 
 /**
  * Dialogues in the database — THE DATABASE IS THE TRUTH.

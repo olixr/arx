@@ -1,4 +1,4 @@
-import type { ZoneDef } from '@devcraft/content';
+import type { ZoneDef } from '@arx/content';
 
 /**
  * Undo/redo. Brush strokes coalesce into one op holding per-cell
