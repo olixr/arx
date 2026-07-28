@@ -130,6 +130,12 @@ const defs: ShopDef[] = [
       { item: 'flour', price: 9 },
       { item: 'twine', price: 7 },
       { item: 'plant_fibre', price: 4 },
+      // Seed for the Free Furrows — the grocer keeps the common
+      // ground planted, matching the Dawnmead general store's rates.
+      { item: 'carrot_seed', price: 5 },
+      { item: 'sunflower_seed', price: 15 },
+      { item: 'wheat_seed', price: 20 },
+      { item: 'cotton_seed', price: 30 },
     ],
   },
   {

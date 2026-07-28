@@ -23,9 +23,12 @@ import aldisWatchHeeded from './defs/aldis_watch_heeded.json';
 import aldisWatchWry from './defs/aldis_watch_wry.json';
 import anselHall from './defs/ansel_hall.json';
 import anselRegistry from './defs/ansel_registry.json';
+import anselTollwar from './defs/ansel_tollwar.json';
 import brettaForge from './defs/bretta_forge.json';
+import brettaDelf from './defs/bretta_delf.json';
 import brettaMountain from './defs/bretta_mountain.json';
 import cormundLedger from './defs/cormund_ledger.json';
+import dunnaHearthfire from './defs/dunna_hearthfire.json';
 import dunnaRest from './defs/dunna_rest.json';
 import elowenFolios from './defs/elowen_folios.json';
 import gartonFlour from './defs/garton_flour.json';
@@ -76,9 +79,12 @@ const SOURCES: readonly unknown[] = [
   aldisWatchWry,
   anselHall,
   anselRegistry,
+  anselTollwar,
   brettaForge,
+  brettaDelf,
   brettaMountain,
   cormundLedger,
+  dunnaHearthfire,
   dunnaRest,
   elowenFolios,
   gartonFlour,

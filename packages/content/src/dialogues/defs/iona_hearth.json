@@ -1,47 +1,64 @@
 {
-  "id": "iona_hearth",
-  "start": "warm",
-  "once": true,
-  "priority": 10,
-  "bindings": [{ "kind": "actor", "target": "hearthkeeper_iona" }],
-  "nodes": [
+ "id": "iona_hearth",
+ "start": "warm",
+ "once": true,
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "hearthkeeper_iona",
+   "priority": 10
+  }
+ ],
+ "nodes": [
+  {
+   "id": "warm",
+   "text": "Come stand by the fire \u2014 the Ring leaves a chill in new folk that takes half a day to shake. I'm *Iona*. I keep this hearth, and the first thing every waker learns at it is the same: the road runs on food, not courage.",
+   "next": "forage"
+  },
+  {
+   "id": "forage",
+   "text": "Easiest meal in the valley: the *berry banks* along the brook, just east of here. Walk up to a bush and pick it clean \u2014 it'll grow back before you miss it. Berries in your pocket mean a bad day is only ever a bad hour.",
+   "next": "cook"
+  },
+  {
+   "id": "cook",
+   "text": "Now the proper lesson. Take these \u2014 {item:raw_chicken} \u2014 and put them to my fire. Stand at the flames and cook; the bird will tell you when it's done. A cooked meal heals better than a raw hope, and every campfire in the world works like this one. Learn it here, use it everywhere.",
+   "hooks": [
     {
-      "id": "warm",
-      "text": "Come stand by the fire — the Ring leaves a chill in new folk that takes half a day to shake. I'm *Iona*. I keep this hearth, and the first thing every waker learns at it is the same: the road runs on food, not courage.",
-      "next": "forage"
-    },
-    {
-      "id": "forage",
-      "text": "Easiest meal in the valley: the *berry banks* along the brook, just east of here. Walk up to a bush and pick it clean — it'll grow back before you miss it. Berries in your pocket mean a bad day is only ever a bad hour.",
-      "next": "cook"
-    },
-    {
-      "id": "cook",
-      "text": "Now the proper lesson. Take these — {item:raw_chicken} — and put them to my fire. Stand at the flames and cook; the bird will tell you when it's done. A cooked meal heals better than a raw hope, and every campfire in the world works like this one. Learn it here, use it everywhere.",
-      "hooks": [{ "kind": "give", "item": "raw_chicken", "qty": 2 }],
-      "next": "burn"
-    },
-    {
-      "id": "burn",
-      "text": "And if you scorch the first one — good. Everyone does. _The fire keeps the first bird as tuition._ The second one you'll eat. Off you go, and come see me whenever the pot's on.",
-      "next": "hub"
-    },
-    {
-      "id": "hub",
-      "text": "Anything else before your fingers thaw?",
-      "choices": [
-        { "text": "Where were those berries again?", "next": "where" },
-        { "text": "Thanks, Iona. That's plenty.", "next": "farewell" }
-      ]
-    },
-    {
-      "id": "where",
-      "text": "East, toward the brook — you'll see the bushes heavy along the near bank, south of the bridge. Fibre plants and sageroot grow wild there too; Fen has uses for the one, and any herbalist you ever meet will bless you for the other. Pick what you pass.",
-      "next": "hub"
-    },
-    {
-      "id": "farewell",
-      "text": "Eat before you train and sleep before you travel. That's the whole of hearth-wisdom, free of charge."
+     "kind": "give",
+     "item": "raw_chicken",
+     "qty": 2
     }
-  ]
+   ],
+   "next": "burn"
+  },
+  {
+   "id": "burn",
+   "text": "And if you scorch the first one \u2014 good. Everyone does. _The fire keeps the first bird as tuition._ The second one you'll eat. Off you go, and come see me whenever the pot's on.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "Anything else before your fingers thaw?",
+   "choices": [
+    {
+     "text": "Where were those berries again?",
+     "next": "where"
+    },
+    {
+     "text": "Thanks, Iona. That's plenty.",
+     "next": "farewell"
+    }
+   ]
+  },
+  {
+   "id": "where",
+   "text": "East, toward the brook \u2014 you'll see the bushes heavy along the near bank, south of the bridge. Fibre plants and sageroot grow wild there too; Fen has uses for the one, and any herbalist you ever meet will bless you for the other. Pick what you pass.",
+   "next": "hub"
+  },
+  {
+   "id": "farewell",
+   "text": "Eat before you train and sleep before you travel. That's the whole of hearth-wisdom, free of charge."
+  }
+ ]
 }

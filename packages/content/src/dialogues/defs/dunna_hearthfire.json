@@ -1,0 +1,59 @@
+{
+ "id": "dunna_hearthfire",
+ "start": "sniff",
+ "once": true,
+ "requires": [
+  "dlg:dunna_rest"
+ ],
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "innkeep_dunna",
+   "priority": 6
+  }
+ ],
+ "nodes": [
+  {
+   "id": "sniff",
+   "text": "You smell that? Yard fire's going. Midday I do the stew out there — indoors hearth is for *warmth*, the yard fire is for *work*, and any innkeep who confuses the two serves ash and calls it seasoning.",
+   "next": "offer"
+  },
+  {
+   "id": "offer",
+   "text": "Here's the arrangement, same as I give every waker: the yard fire is yours whenever it's lit. Catch a trout off Peld's dock, cook it on my coals, no charge — first one you don't burn, you'll want to marry. Peld keeps his own fire down the shore if you'd rather smell like the pond. And when you're tired of your own cooking...",
+   "choices": [
+    {
+     "text": "Let's see the board, Dunna.",
+     "next": "board"
+    },
+    {
+     "text": "What should I learn to cook first?",
+     "next": "teach"
+    },
+    {
+     "text": "I'll go burn a trout, then."
+    }
+   ]
+  },
+  {
+   "id": "teach",
+   "text": "Trout, then bread. Trout teaches you the fire; bread teaches you *patience* — Garton's flour, water, and the nerve to leave it alone. After that, come ask me about stew and I'll pretend I'm not flattered. The board's here when the learning makes you hungry.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "dunna_board"
+    }
+   ]
+  },
+  {
+   "id": "board",
+   "text": "Sit, point, eat. The stew's the pride of the house and the cake is Perl's apples telling their best story.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "dunna_board"
+    }
+   ]
+  }
+ ]
+}

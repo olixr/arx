@@ -1,0 +1,69 @@
+{
+ "id": "bretta_delf",
+ "start": "look",
+ "once": true,
+ "requires": [
+  "dlg:bretta_forge"
+ ],
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "smith_bretta",
+   "priority": 8
+  }
+ ],
+ "nodes": [
+  {
+   "id": "look",
+   "text": "Back again. Good — the ones who come back are the ones worth teaching. Now, before you buy a single schematic off me, answer me this: where does a bar of bronze *start*?",
+   "choices": [
+    {
+     "text": "At the furnace?",
+     "next": "wrong"
+    },
+    {
+     "text": "In the ground.",
+     "next": "right"
+    }
+   ]
+  },
+  {
+   "id": "wrong",
+   "text": "At the— no. No, no. The furnace is the *middle*. It starts in the ground, same as everything honest in this town. Walk the north spine past Hask's, take the dirt trail east at the lamp — that's the *Amber Delf*. Copper in the west face, tin in the floor. I'm up there at first light most mornings; the town's whole bronze supply is an hour of swinging.",
+   "next": "lesson"
+  },
+  {
+   "id": "right",
+   "text": "*In the ground.* Ha! There's hope for you. The trail runs east off the north spine, past Hask's — the *Amber Delf*, the old cutting. Copper in the west face, tin in the floor. I'm up there at first light most mornings. An hour of swinging feeds this forge for a day.",
+   "next": "lesson"
+  },
+  {
+   "id": "lesson",
+   "text": "So here's your ladder, free of charge: dig copper and tin, smelt bronze at my furnace, hammer it on my spare anvil till your arms understand the work. And when you hit the north face — the gray one that laughs at bronze picks — that's *iron*. Iron wants a better pick, and a better pick wants a better smith. That's not a wall, waker. That's the whole point of walls.",
+   "choices": [
+    {
+     "text": "Show me your schematics, then.",
+     "next": "sell"
+    },
+    {
+     "text": "I'll go find the Delf first.",
+     "next": "send"
+    }
+   ]
+  },
+  {
+   "id": "sell",
+   "text": "Thought you'd never ask. Iron-grade patterns, priced at what they'll earn you back twice over. The paper remembers so your hands don't have to.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "trainer_smithing"
+    }
+   ]
+  },
+  {
+   "id": "send",
+   "text": "Better answer than the schematics, honestly. Off you go — and mind Holloway's cows on the way past. They've opinions about pickaxes."
+  }
+ ]
+}

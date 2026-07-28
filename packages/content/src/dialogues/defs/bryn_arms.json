@@ -1,43 +1,63 @@
 {
-  "id": "bryn_arms",
-  "start": "size_up",
-  "once": true,
-  "priority": 10,
-  "bindings": [{ "kind": "actor", "target": "warden_bryn" }],
-  "nodes": [
+ "id": "bryn_arms",
+ "start": "size_up",
+ "once": true,
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "warden_bryn",
+   "priority": 10
+  }
+ ],
+ "nodes": [
+  {
+   "id": "size_up",
+   "text": "Fresh off the stones, are you. Shoulders back \u2014 good. I'm *Bryn*. I keep the peace here, which mostly means keeping count of rats. Open that pack: the village put three teachers in it, and they all bite.",
+   "next": "melee"
+  },
+  {
+   "id": "melee",
+   "text": "First: the *bronze sword*. Equip it and swing \u2014 one cut calls the next, and the third swing lands heaviest, so stay in close and let the rhythm finish. When something swings back, *side-step* \u2014 a quick dash, any direction. Trust your feet more than your guard.",
+   "next": "ranged"
+  },
+  {
+   "id": "ranged",
+   "text": "Second: the *shortbow*. Different animal entirely. You don't tap a bow \u2014 you *draw and hold*, and the longer you hold, the harder the arrow argues. Loose early and you'll fumble it. Wait for the full pull, then let go. You'll feel the difference in your hand.",
+   "next": "magic"
+  },
+  {
+   "id": "magic",
+   "text": "Third: that *apprentice staff*. It throws a spark that doesn't care how strong your arm is. Spellwork earns its own tricks as you grow \u2014 your abilities sit on your bar, and there's a whole *codex of techniques* waiting once the schools warm to you. Blade, bow, spark: learn all three, favour one. That's the whole lesson.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "Want any of that again, or are you ready to hit something that squeaks?",
+   "choices": [
     {
-      "id": "size_up",
-      "text": "Fresh off the stones, are you. Shoulders back — good. I'm *Bryn*. I keep the peace here, which mostly means keeping count of rats. Open that pack: the village put three teachers in it, and they all bite.",
-      "next": "melee"
+     "text": "The sword again.",
+     "next": "melee"
     },
     {
-      "id": "melee",
-      "text": "First: the *bronze sword*. Equip it and swing — one cut calls the next, and the third swing lands heaviest, so stay in close and let the rhythm finish. When something swings back, *side-step* — a quick dash, any direction. Trust your feet more than your guard.",
-      "next": "ranged"
+     "text": "The bow again.",
+     "next": "ranged"
     },
     {
-      "id": "ranged",
-      "text": "Second: the *shortbow*. Different animal entirely. You don't tap a bow — you *draw and hold*, and the longer you hold, the harder the arrow argues. Loose early and you'll fumble it. Wait for the full pull, then let go. You'll feel the difference in your hand.",
-      "next": "magic"
+     "text": "The staff again.",
+     "next": "magic"
     },
     {
-      "id": "magic",
-      "text": "Third: that *apprentice staff*. It throws a spark that doesn't care how strong your arm is. Spellwork earns its own tricks as you grow — your abilities sit on your bar, and there's a whole *codex of techniques* waiting once the schools warm to you. Blade, bow, spark: learn all three, favour one. That's the whole lesson.",
-      "next": "hub"
-    },
-    {
-      "id": "hub",
-      "text": "Want any of that again, or are you ready to hit something that squeaks?",
-      "choices": [
-        { "text": "The sword again.", "next": "melee" },
-        { "text": "The bow again.", "next": "ranged" },
-        { "text": "The staff again.", "next": "magic" },
-        { "text": "Give me a real task.", "next": "task", "set": ["dawn_rats_task"] }
-      ]
-    },
-    {
-      "id": "task",
-      "text": "The *old shed* across the ford — south-east, past the berry banks — has rats in it the size of my regrets. Cross the shallow water, cull them, and try each weapon while you're at it. There's an old traveller's chest in there too; whatever it holds is yours. That's waker's wages. Come tell me when the shed stops squeaking."
+     "text": "Give me a real task.",
+     "next": "task",
+     "set": [
+      "dawn_rats_task"
+     ]
     }
-  ]
+   ]
+  },
+  {
+   "id": "task",
+   "text": "The *old shed* across the ford \u2014 south-east, past the berry banks \u2014 has rats in it the size of my regrets. Cross the shallow water, cull them, and try each weapon while you're at it. There's an old traveller's chest in there too; whatever it holds is yours. That's waker's wages. Come tell me when the shed stops squeaking."
+  }
+ ]
 }

@@ -1,50 +1,50 @@
 {
-  "id": "ansel_registry",
-  "start": "page",
-  "once": true,
-  "priority": 8,
-  "requires": [
-    "merra_edwin"
-  ],
-  "bindings": [
+ "id": "ansel_registry",
+ "start": "page",
+ "once": true,
+ "requires": [
+  "merra_edwin"
+ ],
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "keeper_ansel",
+   "priority": 8
+  }
+ ],
+ "nodes": [
+  {
+   "id": "page",
+   "text": "You've been to Merra's shop. I can tell \u2014 people come from her wall to my book, and they always stand just where you're standing. Yes. *Edwin's* page is here. Signed north in his own hand, spring of the early wolves. No homecoming mark.",
+   "next": "read"
+  },
+  {
+   "id": "read",
+   "text": "I'll tell you what the registry knows that the cape doesn't: his caravan made the Fork. He gave his place at the palisade to a tinsmith's family and walked the last watch outside the wall. The sergeant's report says the lamps never went out that night. _He kept them lit._ In this order, that's not a footnote. That's the whole book.",
+   "choices": [
     {
-      "kind": "actor",
-      "target": "keeper_ansel"
+     "text": "Does Merra know?",
+     "next": "knows",
+     "set": [
+      "ansel_edwin"
+     ]
+    },
+    {
+     "text": "(Stand with him a moment.)",
+     "next": "stand",
+     "set": [
+      "ansel_edwin"
+     ]
     }
-  ],
-  "nodes": [
-    {
-      "id": "page",
-      "text": "You've been to Merra's shop. I can tell \u2014 people come from her wall to my book, and they always stand just where you're standing. Yes. *Edwin's* page is here. Signed north in his own hand, spring of the early wolves. No homecoming mark.",
-      "next": "read"
-    },
-    {
-      "id": "read",
-      "text": "I'll tell you what the registry knows that the cape doesn't: his caravan made the Fork. He gave his place at the palisade to a tinsmith's family and walked the last watch outside the wall. The sergeant's report says the lamps never went out that night. _He kept them lit._ In this order, that's not a footnote. That's the whole book.",
-      "choices": [
-        {
-          "text": "Does Merra know?",
-          "next": "knows",
-          "set": [
-            "ansel_edwin"
-          ]
-        },
-        {
-          "text": "(Stand with him a moment.)",
-          "next": "stand",
-          "set": [
-            "ansel_edwin"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "knows",
-      "text": "She knows the shape of it; she's never asked for the page. Grief chooses its own reading pace. If she ever asks, the book is hers \u2014 until then, I read his name to the braziers each feast and she keeps the cape clean, and between us the man stays remembered from both ends. That arrangement doesn't need improving. But you asked, and the asking honors him. Thank you."
-    },
-    {
-      "id": "stand",
-      "text": "...The braziers do most of my talking at this end of the hall. Peace on his road, wherever it went. And on yours \u2014 signed and marked, if I have any say in it."
-    }
-  ]
+   ]
+  },
+  {
+   "id": "knows",
+   "text": "She knows the shape of it; she's never asked for the page. Grief chooses its own reading pace. If she ever asks, the book is hers \u2014 until then, I read his name to the braziers each feast and she keeps the cape clean, and between us the man stays remembered from both ends. That arrangement doesn't need improving. But you asked, and the asking honors him. Thank you."
+  },
+  {
+   "id": "stand",
+   "text": "...The braziers do most of my talking at this end of the hall. Peace on his road, wherever it went. And on yours \u2014 signed and marked, if I have any say in it."
+  }
+ ]
 }
