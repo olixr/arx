@@ -157,9 +157,11 @@ npm run build                      # client bundle → <release>/public/
 $ACTIVATE_RELEASE()
 
 # Swing the game server onto the new release and confirm it's alive.
-bash /home/forge/arx.gg/current/scripts/arxctl.sh restart
+# ($FORGE_RELEASE_DIRECTORY is the release `current` now points at —
+# no site path is hardcoded anywhere in this script.)
+bash "$FORGE_RELEASE_DIRECTORY/scripts/arxctl.sh" restart
 sleep 2
-bash /home/forge/arx.gg/current/scripts/arxctl.sh ping || echo "WARNING: game server not answering /healthz"
+bash "$FORGE_RELEASE_DIRECTORY/scripts/arxctl.sh" ping || echo "WARNING: game server not answering /healthz"
 ```
 
 There is no data-shipping step because the restart does it all:
