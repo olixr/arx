@@ -1310,24 +1310,230 @@ export function abilityDef(id: string): AbilityDef | undefined {
 /**
  * The technique ladder: which abilities each combat style unlocks and
  * when. Swapping among unlocked techniques is always free.
+ *
+ * THE HONED-ART LAW: each art carries three rank steps past Rank I,
+ * reached at +15/+30/+45 base levels over its unlock. Rank II sharpens
+ * numbers, Rank III adds a beat of utility, Rank IV is the signature —
+ * one visible, nameable flourish. Notes are player-facing bench copy.
+ * The ladder balance contract in ladder.test.ts keeps every art's
+ * mature cycle value inside its style's band — tune there, not by ear.
  */
 export const TECHNIQUES: readonly TechniqueDef[] = [
-  { ability: 'heavy_slam', style: 'melee', unlockLevel: 5 },
-  { ability: 'whirlwind', style: 'melee', unlockLevel: 15 },
-  { ability: 'bloodlust', style: 'melee', unlockLevel: 30 },
-  { ability: 'earthbreaker', style: 'melee', unlockLevel: 45 },
-  { ability: 'tumble_shot', style: 'archery', unlockLevel: 5 },
-  { ability: 'rain_of_arrows', style: 'archery', unlockLevel: 15 },
-  { ability: 'twin_strike', style: 'archery', unlockLevel: 30 },
-  { ability: 'storm_of_shafts', style: 'archery', unlockLevel: 45 },
-  { ability: 'arc_bolt', style: 'magic', unlockLevel: 5 },
-  { ability: 'blink', style: 'magic', unlockLevel: 15 },
-  { ability: 'meteor_shard', style: 'magic', unlockLevel: 30 },
-  { ability: 'maelstrom', style: 'magic', unlockLevel: 45 },
-  { ability: 'rend', style: 'sneak', unlockLevel: 5 },
-  { ability: 'smoke_bomb', style: 'sneak', unlockLevel: 15 },
-  { ability: 'envenom', style: 'sneak', unlockLevel: 30 },
-  { ability: 'night_fangs', style: 'sneak', unlockLevel: 45 },
+  {
+    ability: 'heavy_slam',
+    style: 'melee',
+    unlockLevel: 5,
+    ranks: [
+      { note: 'The blow lands heavier, and sooner.', damage: 12, cooldownTicks: 160 },
+      {
+        note: 'The swing opens wider; the follow-through frees your feet.',
+        arc: 1.35,
+        knockback: 3.4,
+        castFreezeTicks: 4,
+      },
+      {
+        note: 'The earth rings — struck foes reel.',
+        status: { status: 'shock', power: 1, durationTicks: 40 },
+      },
+    ],
+  },
+  {
+    ability: 'whirlwind',
+    style: 'melee',
+    unlockLevel: 15,
+    ranks: [
+      { note: 'Each cut bites deeper.', damage: 5 },
+      { note: 'The blade reaches a step farther.', radius: 2.1 },
+      { note: 'The storm turns a fourth time.', pulses: 4 },
+    ],
+  },
+  {
+    ability: 'bloodlust',
+    style: 'melee',
+    unlockLevel: 30,
+    ranks: [
+      {
+        note: 'The red joy holds for eight seconds.',
+        self: { meleeLifesteal: 0.4, durationTicks: 160 },
+      },
+      {
+        note: 'Every wound feeds you more.',
+        self: { meleeLifesteal: 0.55, durationTicks: 160 },
+      },
+      {
+        note: 'The hunger quickens your stride.',
+        self: { meleeLifesteal: 0.55, speedMult: 1.12, durationTicks: 160 },
+      },
+    ],
+  },
+  {
+    ability: 'earthbreaker',
+    style: 'melee',
+    unlockLevel: 45,
+    ranks: [
+      { note: 'You land heavier.', damage: 13 },
+      { note: 'The leap carries farther; the verdict spreads wider.', dashTiles: 5.5, radius: 2.5 },
+      { note: 'The mountain falls oftener, and harder.', cooldownTicks: 190, knockback: 3.0 },
+    ],
+  },
+  {
+    ability: 'tumble_shot',
+    style: 'archery',
+    unlockLevel: 5,
+    ranks: [
+      { note: 'The parting arrow means it.', damage: 9 },
+      { note: 'A longer roll, ready again sooner.', cooldownTicks: 140, dashTiles: -3.2 },
+      { note: 'Two shafts, loosed mid-tumble.', projectiles: 2, spreadArc: 0.1 },
+    ],
+  },
+  {
+    ability: 'rain_of_arrows',
+    style: 'archery',
+    unlockLevel: 15,
+    ranks: [
+      { note: 'The sky falls harder.', damage: 11 },
+      { note: 'A wider patch of ruin, called sooner.', cooldownTicks: 200, radius: 2.4 },
+      {
+        note: 'Barbed heads — the wounds keep raining.',
+        status: { status: 'bleed', power: 1, durationTicks: 60 },
+      },
+    ],
+  },
+  {
+    ability: 'twin_strike',
+    style: 'archery',
+    unlockLevel: 30,
+    ranks: [
+      { note: 'Heavier shafts.', damage: 11 },
+      { note: 'The pair returns to your hand sooner.', cooldownTicks: 170 },
+      { note: 'The shafts learn to seek their marks.', homing: 4.0 },
+    ],
+  },
+  {
+    ability: 'storm_of_shafts',
+    style: 'archery',
+    unlockLevel: 45,
+    ranks: [
+      { note: 'Every falling shaft bites harder.', damage: 5 },
+      { note: 'The schedule tightens; the patch grows.', pulseEveryTicks: 12, radius: 2.6 },
+      {
+        note: 'The storm outstays its welcome, and the caught walk slow.',
+        fieldTicks: 144,
+        status: { status: 'chill', power: 1, durationTicks: 40 },
+      },
+    ],
+  },
+  {
+    ability: 'arc_bolt',
+    style: 'magic',
+    unlockLevel: 5,
+    ranks: [
+      { note: 'A hotter crack.', damage: 8 },
+      { note: 'The sky reloads faster.', cooldownTicks: 140 },
+      {
+        note: 'One more throat to leap to, and the charge lingers.',
+        chainTargets: 4,
+        status: { status: 'shock', power: 1, durationTicks: 90 },
+      },
+    ],
+  },
+  {
+    ability: 'blink',
+    style: 'magic',
+    unlockLevel: 15,
+    ranks: [
+      { note: 'A longer stride between places.', dashTiles: 4.6 },
+      { note: 'The door opens oftener.', cooldownTicks: 170 },
+      { note: 'Distance stops being an argument.', dashTiles: 5.4, cooldownTicks: 150 },
+    ],
+  },
+  {
+    ability: 'meteor_shard',
+    style: 'magic',
+    unlockLevel: 30,
+    ranks: [
+      { note: 'A heavier shard.', damage: 15 },
+      { note: 'The burn spreads wider.', radius: 2.6 },
+      {
+        note: 'It keeps burning after it lands.',
+        status: { status: 'burn', power: 2, durationTicks: 60 },
+      },
+    ],
+  },
+  {
+    ability: 'maelstrom',
+    style: 'magic',
+    unlockLevel: 45,
+    ranks: [
+      { note: 'The drain pulls a deeper draught.', damage: 12 },
+      { note: 'The eye widens.', radius: 3.0 },
+      {
+        note: 'The sea remembers longer, and nothing swims out.',
+        damage: 13,
+        cooldownTicks: 240,
+        knockback: -2.6,
+        status: { status: 'chill', power: 1, durationTicks: 100 },
+      },
+    ],
+  },
+  {
+    ability: 'rend',
+    style: 'sneak',
+    unlockLevel: 5,
+    ranks: [
+      { note: 'The first cut earns its keep.', damage: 5 },
+      { note: 'A wider tear, oftener.', cooldownTicks: 140, arc: 1.05 },
+      { note: 'The faltering are finished.', executeBelow: { frac: 0.25, mult: 1.6 } },
+    ],
+  },
+  {
+    ability: 'smoke_bomb',
+    style: 'sneak',
+    unlockLevel: 15,
+    ranks: [
+      { note: 'The gray reaches farther.', radius: 2.8 },
+      {
+        note: 'The choke lingers.',
+        status: { status: 'chill', power: 1, durationTicks: 130 },
+      },
+      { note: 'A whole room, lost in gray.', radius: 3.2, cooldownTicks: 220 },
+    ],
+  },
+  {
+    ability: 'envenom',
+    style: 'sneak',
+    unlockLevel: 30,
+    ranks: [
+      {
+        note: 'The oil holds for ten seconds.',
+        self: {
+          onHitStatus: { status: 'venom', power: 1, durationTicks: 80 },
+          durationTicks: 200,
+        },
+      },
+      { note: 'The vial refills sooner.', cooldownTicks: 280 },
+      {
+        note: 'A crueler brew.',
+        self: {
+          onHitStatus: { status: 'venom', power: 2, durationTicks: 80 },
+          durationTicks: 200,
+        },
+      },
+    ],
+  },
+  {
+    ability: 'night_fangs',
+    style: 'sneak',
+    unlockLevel: 45,
+    ranks: [
+      { note: 'Sharper fangs.', damage: 6 },
+      { note: 'A fourth fang joins the hunt.', projectiles: 4 },
+      {
+        note: 'The bites stay open.',
+        status: { status: 'bleed', power: 2, durationTicks: 60 },
+      },
+    ],
+  },
 ];
 
 export function techniquesFor(style: string): TechniqueDef[] {

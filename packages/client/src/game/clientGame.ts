@@ -41,6 +41,9 @@ import {
   type InputFrame,
   type InvSlot,
   type ItemRoll,
+  honedAbility,
+  levelForXp,
+  techniqueRank,
   type DiscoveryWire,
   type EquippedItem,
   type S2CFx,
@@ -52,7 +55,7 @@ import {
   type TilePatch,
   type Vec2,
 } from '@arx/shared';
-import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, type GeographyDef } from '@arx/content';
+import { MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, isCropTile, abilityDef, itemDef, npcDef, replaceGeography, techniqueDef, type GeographyDef } from '@arx/content';
 import { EntityKind } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 
@@ -439,7 +442,14 @@ export class ClientGame {
         // Daggers reach the sneak ladder via techStyle — mirror the server.
         const w = this.equippedWeaponDef();
         const chosen = this.techniques[w?.techStyle ?? w?.style ?? 'melee'];
-        return chosen ? (abilityDef(chosen) ?? null) : null;
+        if (!chosen) return null;
+        const ab = abilityDef(chosen);
+        if (!ab) return null;
+        // THE HONED-ART LAW, mirrored: rank rides the BASE skill level.
+        const tech = techniqueDef(chosen);
+        if (!tech?.ranks) return ab;
+        const rank = techniqueRank(tech.unlockLevel, levelForXp(this.skills[tech.style] ?? 0));
+        return honedAbility(ab, tech.ranks, rank);
       }
       case 3: {
         const sigil = itemDef(this.equipment.sigil?.id ?? '');

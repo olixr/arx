@@ -2354,6 +2354,44 @@ body:has(#inventory-panel:not(.hidden)) #shop-panel {
   margin-top: 2px;
 }
 
+/* THE HONED-ART ledger: four rank seals, brass when attained. */
+.rank-ledger {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.rank-seal {
+  min-width: 34px;
+  padding: 4px 0;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--parchment-dim);
+  background: var(--sunk);
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
+  text-shadow: var(--punch-small);
+}
+
+.rank-seal.attained {
+  color: var(--gold-bright);
+  background: color-mix(in srgb, var(--gold) 14%, var(--sunk));
+  border-color: var(--gold);
+}
+
+.rank-seal.current {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold) 45%, transparent);
+}
+
+.bench-next {
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
 .bench-teach {
   margin-top: auto;
   padding-top: 10px;

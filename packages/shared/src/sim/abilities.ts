@@ -369,6 +369,87 @@ export interface TechniqueDef {
   ability: string;
   style: CombatStyleId;
   unlockLevel: number;
+  /**
+   * THE HONED-ART LAW: the steps this art climbs past Rank I, in
+   * order (index 0 = Rank II). Authored in content beside the ability.
+   */
+  ranks?: readonly RankStep[];
+}
+
+// ----------------------------------------------------------- honed arts
+
+/**
+ * One rank's worth of honing: a delta merged over the base AbilityDef.
+ * Values are absolute overrides, not additions — a step restates the
+ * field it sharpens (and object fields like `status`/`self` are
+ * replaced whole, so a step restates the full object it touches).
+ *
+ * Identity is un-honable by type: id, name, desc, color, code, and
+ * shape never fork by rank — the art stays the same art to the eye,
+ * the FX ledger, and the executor. Rank IV is where the signature
+ * flourish lands; the note is player-facing bench copy.
+ */
+export type RankStep = Partial<
+  Omit<AbilityDef, 'id' | 'name' | 'desc' | 'color' | 'code' | 'shape'>
+> & {
+  /** What this rank honed — one player-facing line. */
+  note: string;
+};
+
+export const TECHNIQUE_MAX_RANK = 4;
+
+/**
+ * Base-level surplus over unlockLevel required for each rank (index =
+ * rank - 1). The asymmetry IS the balance: an early art fully matures
+ * mid-game while a late art's higher ceiling takes until the 90s —
+ * at any level, a mastered old art and a growing new one are both
+ * correct choices.
+ */
+export const RANK_SURPLUS: readonly number[] = [0, 15, 30, 45];
+
+export const RANK_ROMAN: readonly string[] = ['', 'I', 'II', 'III', 'IV'];
+
+/**
+ * The rank an art stands at for a BASE skill level (gear never jumps
+ * a rank — mastery belongs to the hand, not the wardrobe). 0 = not
+ * yet unlocked.
+ */
+export function techniqueRank(unlockLevel: number, baseLevel: number): number {
+  if (baseLevel < unlockLevel) return 0;
+  const surplus = baseLevel - unlockLevel;
+  let rank = 1;
+  for (let i = 1; i < RANK_SURPLUS.length; i++) {
+    if (surplus >= (RANK_SURPLUS[i] ?? Infinity)) rank = i + 1;
+  }
+  return Math.min(rank, TECHNIQUE_MAX_RANK);
+}
+
+/** The base level at which an art reaches `rank` (1-based). */
+export function rankLevel(unlockLevel: number, rank: number): number {
+  return unlockLevel + (RANK_SURPLUS[rank - 1] ?? 0);
+}
+
+/**
+ * Resolve the ability an art actually casts at a rank: rank steps
+ * merged in order over the base def. Rank I (or an unranked art)
+ * returns the base object untouched — the resolver is the ONE place
+ * server casts and codex previews agree, so it must stay pure.
+ */
+export function honedAbility(
+  ab: AbilityDef,
+  ranks: readonly RankStep[] | undefined,
+  rank: number,
+): AbilityDef {
+  if (!ranks || ranks.length === 0 || rank <= 1) return ab;
+  let out = ab;
+  const steps = Math.min(rank - 1, ranks.length);
+  for (let i = 0; i < steps; i++) {
+    const step = ranks[i];
+    if (!step) continue;
+    const { note: _note, ...delta } = step;
+    out = { ...out, ...delta };
+  }
+  return out;
 }
 
 // ----------------------------------------------------------- passives

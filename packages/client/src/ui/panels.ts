@@ -2,9 +2,14 @@ import {
   DUNGEON_TIER_LAWS,
   PASSIVES,
   HIDDEN_SKILLS,
+  RANK_ROMAN,
   SKILL_IDS,
+  TECHNIQUE_MAX_RANK,
   dungeonSpecFromRoll,
+  honedAbility,
   levelForXp,
+  rankLevel,
+  techniqueRank,
   xpForLevel,
   type EquipSlot,
   type EquippedItem,
@@ -12,6 +17,7 @@ import {
   type ItemRoll,
   type SkillId,
   type SkillXp,
+  type TechniqueDef,
 } from '@arx/shared';
 import {
   ARMOR_CLASS_BLURB,
@@ -1316,8 +1322,6 @@ export class Panels {
   // ==================================================================
 
   /** Roman numerals for the four rungs of every school's ladder. */
-  private static readonly RANKS = ['I', 'II', 'III', 'IV'];
-
   /** Combat schools owning a technique ladder, hidden law honored. */
   private artsSchoolIds(): SkillId[] {
     return SKILL_IDS.filter(
@@ -1331,6 +1335,11 @@ export class Panels {
     const worn = this.lastEquipment.weapon;
     const w = worn ? itemDef(worn.id)?.weapon : undefined;
     return w?.techStyle ?? w?.style ?? 'melee';
+  }
+
+  /** THE HONED-ART LAW, mirrored: the rank the BASE level has earned. */
+  private techRank(style: SkillId, tech: TechniqueDef): number {
+    return techniqueRank(tech.unlockLevel, levelForXp(this.lastSkills[style] ?? 0));
   }
 
   /** A technique's rung state against the player's skill level. */
@@ -1502,7 +1511,7 @@ export class Panels {
 
     const rail = document.createElement('div');
     rail.className = 'tech-rail';
-    techniquesFor(style).forEach((tech, idx) => {
+    techniquesFor(style).forEach((tech) => {
       const ab = abilityDef(tech.ability);
       if (!ab) return;
       const st = this.techState(style, tech);
@@ -1542,11 +1551,12 @@ export class Panels {
       nameEl.textContent = st === 'veiled' ? '???' : ab.name;
       const sub = document.createElement('span');
       sub.className = 'tech-plate-sub';
+      const rank = this.techRank(style, tech);
       sub.textContent =
         st === 'equipped'
-          ? 'On your R'
+          ? `On your R · ${RANK_ROMAN[rank]}`
           : st === 'unlocked'
-            ? `Rank ${Panels.RANKS[idx]}`
+            ? `Rank ${RANK_ROMAN[rank]}`
             : `Lv ${tech.unlockLevel}`;
       btn.append(wellEl, nameEl, sub);
       btn.addEventListener('click', () => {
@@ -1560,9 +1570,7 @@ export class Panels {
   }
 
   /** The bench: the chosen art laid out large, stats told honestly. */
-  private renderArtsBench(
-    all: Array<{ style: SkillId; t: { ability: string; unlockLevel: number } }>,
-  ): void {
+  private renderArtsBench(all: Array<{ style: SkillId; t: TechniqueDef }>): void {
     this.artsDetail.innerHTML = '';
     const entry = all.find((e) => e.t.ability === this.artsSel);
     if (!entry) {
@@ -1573,9 +1581,12 @@ export class Panels {
       return;
     }
     const { style, t } = entry;
-    const ab = abilityDef(t.ability)!;
+    const base = abilityDef(t.ability)!;
     const st = this.techState(style, t);
-    const idx = techniquesFor(style).findIndex((x) => x.ability === t.ability);
+    const rank = this.techRank(style, t);
+    // Stats speak at the rank the hand has earned — the same resolver
+    // the server casts through, so the bench can never overpromise.
+    const ab = honedAbility(base, t.ranks, Math.max(rank, 1));
     const hidden = HIDDEN_SKILLS[style];
     const styleName = hidden ? hidden.name : style;
 
@@ -1601,7 +1612,10 @@ export class Panels {
     name.textContent = st === 'veiled' ? 'An unwritten page' : ab.name;
     const line = document.createElement('div');
     line.className = 'bench-line';
-    line.textContent = `${styleName} · Rank ${Panels.RANKS[idx] ?? '?'}`;
+    line.textContent =
+      st === 'unlocked' || st === 'equipped'
+        ? `${styleName} · Rank ${RANK_ROMAN[rank]}`
+        : styleName;
     names.append(name, line);
     head.append(well, names);
     this.artsDetail.appendChild(head);
@@ -1653,6 +1667,38 @@ export class Panels {
         add(statusName, `for ${secs(ab.status.durationTicks)}`, '#7ac46a');
       }
       this.artsDetail.appendChild(stats);
+    }
+
+    // THE HONED-ART LAW's ledger: four seals, one per rank. Attained
+    // seals tell what they honed; waiting seals tell when they wake.
+    if ((st === 'unlocked' || st === 'equipped') && t.ranks?.length) {
+      const ledger = document.createElement('div');
+      ledger.className = 'rank-ledger';
+      for (let r = 1; r <= TECHNIQUE_MAX_RANK; r++) {
+        const seal = document.createElement('span');
+        seal.className =
+          'rank-seal' + (r <= rank ? ' attained' : '') + (r === rank ? ' current' : '');
+        seal.textContent = RANK_ROMAN[r] ?? '?';
+        const note = r === 1 ? base.desc : (t.ranks[r - 2]?.note ?? '');
+        if (r <= rank) {
+          seal.dataset.tipname = `Rank ${RANK_ROMAN[r]}`;
+          seal.dataset.tipsub = note;
+        } else {
+          seal.dataset.tipname = `Rank ${RANK_ROMAN[r]} — ${styleName} Lv ${rankLevel(t.unlockLevel, r)}`;
+          seal.dataset.tipsub = 'Train on, and the art will sharpen itself.';
+        }
+        ledger.appendChild(seal);
+      }
+      this.artsDetail.appendChild(ledger);
+      if (rank < TECHNIQUE_MAX_RANK) {
+        const nextNote = t.ranks[rank - 1]?.note;
+        if (nextNote) {
+          const next = document.createElement('div');
+          next.className = 'bench-next';
+          next.textContent = `Rank ${RANK_ROMAN[rank + 1]} at ${styleName} ${rankLevel(t.unlockLevel, rank + 1)} — ${nextNote}`;
+          this.artsDetail.appendChild(next);
+        }
+      }
     }
 
     if (st === 'unlocked') {

@@ -149,11 +149,12 @@ export declare class Panels {
      */
     renderSkills(xp: SkillXp): void;
     /** Roman numerals for the four rungs of every school's ladder. */
-    private static readonly RANKS;
     /** Combat schools owning a technique ladder, hidden law honored. */
     private artsSchoolIds;
     /** The ladder the R key channels right now (bare hands = melee). */
     private wieldingStyle;
+    /** THE HONED-ART LAW, mirrored: the rank the BASE level has earned. */
+    private techRank;
     /** A technique's rung state against the player's skill level. */
     private techState;
     /** Record that an unlocked art has been laid eyes on. */

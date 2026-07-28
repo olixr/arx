@@ -19,6 +19,9 @@ import {
   combatLevel,
   isSkillId,
   levelForXp,
+  honedAbility,
+  techniqueRank,
+  RANK_ROMAN,
   stepMovement,
   xpForLevel,
   type EntityId,
@@ -98,6 +101,7 @@ import {
   stageEndMs,
   stageForElapsed,
   techniqueDef,
+  techniquesFor,
   tileForStage,
   type BuildableDef,
   type CropDef,
@@ -3275,7 +3279,49 @@ export class GameServer {
         const health = this.healths.must(eid);
         health.maxHp = levelAfter + player.gear.maxHp;
       }
+      this.announceLadderClimbs(player, skill, levelBefore, levelAfter);
     }
+  }
+
+  /**
+   * THE HONED-ART LAW's ceremony: crossing a rank threshold or a new
+   * rung is told to the climber alone — the world hears the level, the
+   * hand hears what it learned. A honed cooldown may have changed, so
+   * the radial mirror refreshes with it.
+   */
+  private announceLadderClimbs(
+    player: PlayerComp,
+    skill: SkillId,
+    levelBefore: number,
+    levelAfter: number,
+  ): void {
+    if (!(COMBAT_STYLES as readonly string[]).includes(skill)) return;
+    let ladderMoved = false;
+    for (const tech of techniquesFor(skill)) {
+      const name = abilityDef(tech.ability)?.name ?? tech.ability;
+      if (levelBefore < tech.unlockLevel && levelAfter >= tech.unlockLevel) {
+        ladderMoved = true;
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `A new art awaits in your codex: ${name}.`,
+        });
+        continue;
+      }
+      if (!tech.ranks) continue;
+      const before = techniqueRank(tech.unlockLevel, levelBefore);
+      const after = techniqueRank(tech.unlockLevel, levelAfter);
+      if (after > before && after >= 2) {
+        ladderMoved = true;
+        const step = tech.ranks[Math.min(after - 2, tech.ranks.length - 1)];
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `${name} is honed to Rank ${RANK_ROMAN[after]} — ${step?.note ?? ''}`,
+        });
+      }
+    }
+    if (ladderMoved) this.sendCooldowns(player);
   }
 
   /** Mutate the world and stream the patch to everyone nearby. */
@@ -5506,7 +5552,16 @@ export class GameServer {
       }
       case SLOT_TECHNIQUE: {
         const chosen = player.techniques[this.techniqueStyle(player)];
-        return chosen ? (abilityDef(chosen) ?? null) : null;
+        if (!chosen) return null;
+        const ab = abilityDef(chosen);
+        if (!ab) return null;
+        // THE HONED-ART LAW: the art casts at the rank the BASE skill
+        // level has earned (gear never jumps a rank). Resolving here
+        // means casts, cooldown mirrors, and codex previews agree.
+        const tech = techniqueDef(chosen);
+        if (!tech?.ranks) return ab;
+        const rank = techniqueRank(tech.unlockLevel, levelForXp(player.skills[tech.style] ?? 0));
+        return honedAbility(ab, tech.ranks, rank);
       }
       case SLOT_SIGIL: {
         const sigilItem = itemDef(player.equipment.sigil?.id ?? '');
@@ -5885,25 +5940,33 @@ export class GameServer {
           color: ab.color,
         });
         // Tumble Shot: the arrow flies at what you rolled away from.
+        // Honed arts may loose a small fan — spread across spreadArc
+        // exactly like projectile_fan, so the def never overpromises.
         if (ab.projectiles && maxHit > 0) {
-          const proj = this.ecs.create();
-          this.kinds.set(proj, EntityKind.Projectile);
-          this.positions.set(proj, { x: pos.x, y: pos.y, dir: aim });
-          this.projectiles.set(proj, {
-            ownerEid: casterEid,
-            style: ab.element ? 'magic' : style === 'magic' ? 'magic' : 'archery',
-            maxHit,
-            dirX: Math.cos(aim),
-            dirY: Math.sin(aim),
-            speed: ab.projectileSpeed ?? 14,
-            distLeft: ab.range ?? 6,
-            status: ab.status,
-            fromNpc,
-            attackerLevel: fromNpc ? level : undefined,
-            element: ab.element ?? (style === 'magic' ? element : undefined),
-            homingTurn: ab.homing,
-          });
-          this.updateChunkMembership(proj);
+          const count = ab.projectiles;
+          const spread = ab.spreadArc ?? 0;
+          for (let i = 0; i < count; i++) {
+            const shotAim =
+              count > 1 ? aim - spread / 2 + (spread * i) / (count - 1) : aim;
+            const proj = this.ecs.create();
+            this.kinds.set(proj, EntityKind.Projectile);
+            this.positions.set(proj, { x: pos.x, y: pos.y, dir: shotAim });
+            this.projectiles.set(proj, {
+              ownerEid: casterEid,
+              style: ab.element ? 'magic' : style === 'magic' ? 'magic' : 'archery',
+              maxHit,
+              dirX: Math.cos(shotAim),
+              dirY: Math.sin(shotAim),
+              speed: ab.projectileSpeed ?? 14,
+              distLeft: ab.range ?? 6,
+              status: ab.status,
+              fromNpc,
+              attackerLevel: fromNpc ? level : undefined,
+              element: ab.element ?? (style === 'magic' ? element : undefined),
+              homingTurn: ab.homing,
+            });
+            this.updateChunkMembership(proj);
+          }
         }
         break;
       }

@@ -102,3 +102,78 @@ test('spread reactions always spread a real DoT', () => {
     }
   }
 });
+
+// ------------------------------------------------------- THE HONED-ART LAW
+
+import {
+  RANK_SURPLUS,
+  TECHNIQUE_MAX_RANK,
+  honedAbility,
+  rankLevel,
+  techniqueRank,
+  type AbilityDef,
+  type RankStep,
+} from './abilities.js';
+
+const baseArt: AbilityDef = {
+  id: 'test_art',
+  name: 'Test Art',
+  desc: 'A bench fixture.',
+  color: '#fff',
+  code: 'Ta',
+  cooldownTicks: 200,
+  shape: 'melee_arc',
+  damage: 10,
+  range: 2,
+  status: { status: 'burn', power: 1, durationTicks: 60 },
+};
+
+const steps: RankStep[] = [
+  { note: 'Rank II', damage: 12 },
+  { note: 'Rank III', cooldownTicks: 180 },
+  { note: 'Rank IV', status: { status: 'burn', power: 2, durationTicks: 60 } },
+];
+
+test('techniqueRank: unlock boundary, surplus thresholds, and the cap', () => {
+  assert.equal(techniqueRank(5, 4), 0, 'below unlock = rank 0');
+  assert.equal(techniqueRank(5, 5), 1, 'at unlock = rank I');
+  assert.equal(techniqueRank(5, 19), 1, 'one shy of the step stays rank I');
+  assert.equal(techniqueRank(5, 20), 2, '+15 surplus = rank II');
+  assert.equal(techniqueRank(5, 35), 3, '+30 surplus = rank III');
+  assert.equal(techniqueRank(5, 50), 4, '+45 surplus = rank IV');
+  assert.equal(techniqueRank(5, 99), 4, 'rank caps at IV');
+  assert.equal(techniqueRank(45, 90), 4, 'the late art matures in the 90s');
+  assert.equal(RANK_SURPLUS.length, TECHNIQUE_MAX_RANK);
+});
+
+test('rankLevel mirrors techniqueRank at every threshold', () => {
+  for (const unlock of [5, 15, 30, 45]) {
+    for (let rank = 1; rank <= TECHNIQUE_MAX_RANK; rank++) {
+      const lvl = rankLevel(unlock, rank);
+      assert.equal(techniqueRank(unlock, lvl), rank);
+      assert.equal(techniqueRank(unlock, lvl - 1), rank - 1);
+    }
+  }
+});
+
+test('honedAbility merges steps in order and never mutates the base', () => {
+  const frozen = JSON.stringify(baseArt);
+  assert.equal(honedAbility(baseArt, steps, 1), baseArt, 'rank I returns the base object');
+  assert.equal(honedAbility(baseArt, undefined, 4), baseArt, 'unranked art never forks');
+  const r2 = honedAbility(baseArt, steps, 2);
+  assert.equal(r2.damage, 12);
+  assert.equal(r2.cooldownTicks, 200, 'later steps have not applied yet');
+  const r4 = honedAbility(baseArt, steps, 4);
+  assert.equal(r4.damage, 12);
+  assert.equal(r4.cooldownTicks, 180);
+  assert.equal(r4.status?.power, 2, 'object fields replace whole');
+  assert.equal(r4.id, baseArt.id, 'identity is un-honable');
+  assert.equal(r4.shape, baseArt.shape);
+  assert.ok(!('note' in r4), 'the note never leaks into the resolved def');
+  assert.equal(JSON.stringify(baseArt), frozen, 'base def untouched');
+});
+
+test('honedAbility clamps past the last authored step', () => {
+  const r9 = honedAbility(baseArt, steps, 9);
+  assert.deepEqual(r9, honedAbility(baseArt, steps, 4));
+});
