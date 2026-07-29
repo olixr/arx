@@ -441,6 +441,15 @@ export interface GreatWield {
  * the blade stays shouldered but levels a little into the drive, the
  * fist drops toward the ribs, and the off hand comes back to the
  * grip — nobody sprints with six feet of iron in one fist.
+ *
+ * THE PLANTED REST (the user's N/S verdict): the shoulder carry is a
+ * PROFILE pose — square to the camera it collapses to a centered
+ * vertical stick under a fist raised across the face. Standing still
+ * at the camera-line facings the blade goes to the classic ground
+ * rest instead: tip planted beside the boot, leaning a touch outward,
+ * fist low on the grip with the off hand stacked on the pommel above
+ * it. Blended by facing weight AND stillness — the first step lifts
+ * the steel back to the shoulder, and no facing change ever pops.
  */
 export function greatWield(
   dir: number,
@@ -460,16 +469,47 @@ export function greatWield(
   // shoulder — the charging carry — never toward vertical: a blade
   // walked upright to the chest reads as a candle, not a burden (the
   // lab's verdict on the first draft).
-  const pitch = Math.PI + 0.62 - rock + drive * 0.35;
+  const shoulderPitch = Math.PI + 0.62 - rock + drive * 0.35;
+  // The planted rest: how square to the camera, times how still. Any
+  // real movement (a walk's poleStrength saturates this) shoulders it.
+  // The facing window is NARROW and hugs the camera line (55°..80°
+  // off the profile axis): the user-approved shoulder carry holds at
+  // every profile AND diagonal facing, and only near-square-on does
+  // the blade go to ground — the descent's mid-poses (a level blade
+  // held out by one end) are not credible STANCES, so they live in
+  // the thin band between the approved poses, crossed in a blink.
+  const aOff = Math.asin(Math.min(1, Math.abs(Math.sin(dir))));
+  const plantK =
+    smooth(Math.max(0, Math.min(1, (aOff - 0.96) / 0.44))) * (1 - smooth(Math.min(1, m * 1.5)));
+  const side = sideS >= 0 ? 1 : -1;
+  // The route to the ground stays in the WORLD and picks its arc by
+  // hemisphere so the blade always plants tilted toward the CAMERA:
+  // facing the camera it wheels OVER THE TOP and down the front
+  // (pitch → 0.35, toward the facing); facing away it lowers down the
+  // BACK (pitch → 2π − 0.35, away from the facing — which IS toward
+  // the camera). Each route crosses the screen's vertical-flip zone
+  // where the facing still carries profile weight (traced), so the
+  // wheel stays a wheel and never a flip; at the hemisphere seam the
+  // routes coincide (plantK = 0 at pure E/W), so the split is
+  // invisible. Lateral-plane and single-route variants all whipped in
+  // some quadrant — this pairing is the one the trace cleared.
+  const target = Math.sin(dir) >= 0 ? 0.35 : Math.PI * 2 - 0.35;
+  const pitch = shoulderPitch + (target - shoulderPitch) * plantK;
   const p = projectCarry(dir, pitch);
+  const shoulderDx = sideS * (0.16 + 0.05 * drive);
+  const shoulderDy = -0.16 + 0.07 * drive;
   return {
-    dx: sideS * (0.16 + 0.05 * drive),
-    dy: -0.16 + 0.07 * drive,
+    // Planted, the fist settles low and OUT beside the hip — the blade
+    // leans against the day, not across the face.
+    dx: shoulderDx + (side * 0.26 - shoulderDx) * plantK,
+    dy: shoulderDy + (0.2 - shoulderDy) * plantK,
     angle: p.angle,
     fore: p.fore,
-    grip: 0.14 + 0.07 * drive,
+    grip: 0.14 + 0.07 * drive + (0.1 - (0.14 + 0.07 * drive)) * plantK,
     pumpK: 0.2 + 0.25 * drive,
-    offClaim: smooth(Math.min(1, runK * 1.7)) * m,
+    // The run welds the second fist on; the planted rest STACKS it on
+    // the pommel — either way the hand answers the steel.
+    offClaim: Math.max(smooth(Math.min(1, runK * 1.7)) * m, plantK * 0.9),
   };
 }
 

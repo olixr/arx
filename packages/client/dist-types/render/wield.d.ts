@@ -183,6 +183,15 @@ export interface GreatWield {
  * the blade stays shouldered but levels a little into the drive, the
  * fist drops toward the ribs, and the off hand comes back to the
  * grip — nobody sprints with six feet of iron in one fist.
+ *
+ * THE PLANTED REST (the user's N/S verdict): the shoulder carry is a
+ * PROFILE pose — square to the camera it collapses to a centered
+ * vertical stick under a fist raised across the face. Standing still
+ * at the camera-line facings the blade goes to the classic ground
+ * rest instead: tip planted beside the boot, leaning a touch outward,
+ * fist low on the grip with the off hand stacked on the pommel above
+ * it. Blended by facing weight AND stillness — the first step lifts
+ * the steel back to the shoulder, and no facing change ever pops.
  */
 export declare function greatWield(dir: number, sideS: number, moveK: number, runK: number, sw: number, px: number): GreatWield;
 /**
