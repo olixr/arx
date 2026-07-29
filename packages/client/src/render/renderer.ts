@@ -21161,15 +21161,23 @@ export class Renderer {
       // point, so wielded or stowed gear (weapon OR offhand) grows
       // the box to contain the whole arc. Unarmed civilians keep the
       // tight box — scratch area is the outline pass's cost.
+      //
+      // The GREAT tier: a greatweapon runs ~1.2s past the fist and its
+      // strikes bury the tip BELOW the ground point (the old box never
+      // grew the ground side at all — ry raised only the sky side, and
+      // a south-facing felling stroke cropped the head of the axe on a
+      // hard line, user screenshot). The mountain-falls finisher also
+      // pitches the blade past the sky margin at the top of its poise.
       body: (() => {
         const armed = e.equip.weapon !== undefined || e.equip.offhand !== undefined;
-        const rx = armed ? 1.0 : 0;
-        const ry = armed ? 1.2 : 0;
+        const rx = greatArms ? 1.4 : armed ? 1.0 : 0;
+        const ry = greatArms ? 1.5 : armed ? 1.2 : 0; // sky side
+        const rb = greatArms ? 0.6 : 0; // ground side: buried strikes
         return {
           x: p.x - (1.55 + rx) * s * capeK,
           y: p.y - (1.75 + ry) * s * capeK,
           w: (3.1 + rx * 2) * s * capeK,
-          h: (2.7 + ry) * s * capeK,
+          h: (2.7 + ry + rb) * s * capeK,
         };
       })(),
       drawLabel: () => {
