@@ -36,6 +36,7 @@ import fallLookout from './defs/fall_lookout.json';
 import amberArtisan from './defs/amber_artisan.json';
 import amberBanker from './defs/amber_banker.json';
 import amberCaptain from './defs/amber_captain.json';
+import amberWatch from './defs/amber_watch.json';
 import amberCourier from './defs/amber_courier.json';
 import amberFarmer from './defs/amber_farmer.json';
 import amberFarmwife from './defs/amber_farmwife.json';
@@ -100,6 +101,7 @@ const SOURCES: readonly unknown[] = [
   amberArtisan,
   amberBanker,
   amberCaptain,
+  amberWatch,
   amberCourier,
   amberFarmer,
   amberFarmwife,

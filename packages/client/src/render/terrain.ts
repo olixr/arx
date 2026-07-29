@@ -2,6 +2,7 @@ import {
   CHEST_TILES,
   CHUNK_SIZE,
   Detail,
+  GARRISON_TILES,
   Tile,
   diagWallInfo,
   hashCoords,
@@ -356,11 +357,22 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
       t === Tile.GateGarrison ||
       t === Tile.GateGarrisonShut
     ) {
-      const sT = ground(tx, ty + 1);
-      if (sT !== undefined && !tileDef(sT).solid) return sT;
-      const nT = ground(tx, ty - 1);
-      if (nT !== undefined && !tileDef(nT).solid) return nT;
-      return Tile.StoneFloor;
+      // A garrison-family neighbour is masonry, not ground — a gate
+      // tile inside a merged run must never lend its own skin. Side
+      // gates (N-S curtains) find their road on the E/W flanks. A
+      // Ramp is stair masonry, not ground either: a gate at a stair
+      // crown carries its terrace's paving, not a ramp sliver.
+      const pick = (tt: Tile | undefined): Tile | null =>
+        tt !== undefined && !tileDef(tt).solid && !GARRISON_TILES.has(tt) && tt !== Tile.Ramp
+          ? tt
+          : null;
+      return (
+        pick(ground(tx, ty + 1)) ??
+        pick(ground(tx, ty - 1)) ??
+        pick(ground(tx + 1, ty)) ??
+        pick(ground(tx - 1, ty)) ??
+        Tile.StoneFloor
+      );
     }
     // Walk-through structure: the ground continues under the frame —
     // a doorway's threshold carries the room's floor to the outside.

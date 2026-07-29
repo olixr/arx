@@ -39,6 +39,7 @@ import fenceCalder from './defs/fence_calder.json';
 import lookoutPike from './defs/lookout_pike.json';
 import bankerCormund from './defs/banker_cormund.json';
 import captainAldis from './defs/captain_aldis.json';
+import amberfordWatch from './defs/amberford_watch.json';
 import courierNib from './defs/courier_nib.json';
 import crofterBeck from './defs/crofter_beck.json';
 import crofterHolt from './defs/crofter_holt.json';
@@ -123,6 +124,7 @@ const SOURCES: readonly unknown[] = [
   lookoutPike,
   bankerCormund,
   captainAldis,
+  amberfordWatch,
   courierNib,
   crofterBeck,
   crofterHolt,

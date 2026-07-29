@@ -1,0 +1,36 @@
+{
+  "id": "amber_watch",
+  "base": {
+    "kind": "post",
+    "speed": 1.6
+  },
+  "slots": [
+    {
+      "from": 9,
+      "to": 10,
+      "task": {
+        "kind": "wander",
+        "radius": 2.5,
+        "speed": 1.5
+      }
+    },
+    {
+      "from": 14,
+      "to": 15,
+      "task": {
+        "kind": "wander",
+        "radius": 2.5,
+        "speed": 1.5
+      }
+    },
+    {
+      "from": 20,
+      "to": 21,
+      "task": {
+        "kind": "wander",
+        "radius": 2,
+        "speed": 1.4
+      }
+    }
+  ]
+}

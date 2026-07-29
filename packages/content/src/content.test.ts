@@ -856,20 +856,40 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   assert.equal(counts.get(Tile.RockIron) ?? 0, 1, 'the Delf keeps exactly one iron face');
   assert.ok((counts.get(Tile.FenceGate) ?? 0) >= 5, 'the town lost its gates');
   assert.ok((counts.get(Tile.FibrePlant) ?? 0) >= 5, 'the retting bank lost its flax');
-  assert.ok((counts.get(Tile.ArchStone) ?? 0) >= 6, 'the gate arches came down');
   assert.ok((counts.get(Tile.Tilled) ?? 0) >= 40, 'the Free Furrows went fallow');
+  // THE TOWN WALL (the garrison pass): a full curtain rings the town
+  // — three garrison gates on the three road mouths (3 + 3 + 2),
+  // and all four corners cut at 45 degrees.
+  assert.equal(counts.get(Tile.GateGarrison) ?? 0, 8, 'the town gates changed');
+  assert.ok((counts.get(Tile.WallGarrison) ?? 0) >= 300, 'the town wall came down');
+  const amberDiags =
+    (counts.get(Tile.WallGarrisonDiagNE) ?? 0) +
+    (counts.get(Tile.WallGarrisonDiagNW) ?? 0) +
+    (counts.get(Tile.WallGarrisonDiagSE) ?? 0) +
+    (counts.get(Tile.WallGarrisonDiagSW) ?? 0);
+  assert.equal(amberDiags, 10, 'the corner cuts changed');
+  // The gates sit tile-exact on the road mouths, standing open.
+  for (const y of [51, 52, 53]) assert.equal(at(2, y), Tile.GateGarrison);
+  for (const x of [53, 54, 55]) assert.equal(at(x, 1), Tile.GateGarrison);
+  for (const y of [60, 61]) assert.equal(at(110, y), Tile.GateGarrison);
   // Livestock only — the named people arrive in the people pass.
   const spawnKinds = new Map((z.spawns ?? []).map((s) => [s.npc, s.count]));
   assert.equal(spawnKinds.get('cow'), 3);
   assert.equal(spawnKinds.get('chicken'), 3);
   // The people pass: fifteen residents plus the two traveling
-  // traders on the produce row, every one on routine hours.
+  // traders on the produce row and the two town watch on the wall's
+  // far gates, every one on routine hours.
   const amberActors = z.actorSpawns ?? [];
-  assert.equal(amberActors.length, 17, 'Amberford lost residents');
+  assert.equal(amberActors.length, 19, 'Amberford lost residents');
   assert.equal(
     amberActors.filter((a) => a.actor === 'round_trader').length,
     2,
     'the produce row lost its traders',
+  );
+  assert.equal(
+    amberActors.filter((a) => a.actor === 'amberford_watch').length,
+    2,
+    'the wall lost its watch',
   );
   for (const slug of [
     'smith_bretta',
@@ -890,7 +910,7 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   ]) {
     assert.ok(amberActors.some((a) => a.actor === slug), `${slug} missing from Amberford`);
   }
-  assert.equal(amberActors.filter((a) => a.routine).length, 17, 'every resident keeps hours');
+  assert.equal(amberActors.filter((a) => a.routine).length, 19, 'every resident keeps hours');
   // The editor JSON round trip holds, flat-zone law included.
   const json = zoneToJson(z);
   assert.equal(json.elev, undefined, 'amberford is a flat zone');
@@ -1007,7 +1027,19 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   assert.ok(n(Tile.Vault) >= 5 && n(Tile.BankChest) >= 3, 'the mountain bank is short');
   assert.ok(n(Tile.MarketStall) >= 8, 'the stalls thinned');
   assert.ok(n(Tile.FishingSpot) >= 4, 'the mere and the pool must fish');
-  assert.ok(n(Tile.ArchStone) >= 9, 'the gate arch fell');
+  assert.ok(n(Tile.ArchStone) >= 1, 'the Undercroft mouth lost its arch');
+  // THE GARRISON PASS: the city curtain is true siege masonry now —
+  // the Silver Gate (5 wide) in the outer wall, the Court Gate
+  // (9 wide) at the avenue stair's crown, bastions and drum towers
+  // carrying the corner cuts.
+  assert.equal(n(Tile.GateGarrison), 14, 'the city gates changed');
+  assert.ok(n(Tile.WallGarrison) >= 140, 'the city curtain came down');
+  const fallDiags =
+    n(Tile.WallGarrisonDiagNE) + n(Tile.WallGarrisonDiagNW) +
+    n(Tile.WallGarrisonDiagSE) + n(Tile.WallGarrisonDiagSW);
+  assert.ok(fallDiags >= 16, 'the bastions lost their chamfers');
+  for (let x = 86; x <= 90; x++) assert.equal(at(x, 112), Tile.GateGarrison);
+  for (let x = 84; x <= 92; x++) assert.equal(at(x, 62), Tile.GateGarrison);
   assert.ok(n(Tile.Snow) > 0, 'the high ground lost its snow');
   assert.ok(n(Tile.Brazier) >= 10, 'the stair burns by brazier');
   // The Rookery: hidden, unofficial, and holding the Undercroft mouth.
@@ -1018,7 +1050,7 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   // The capital's cast: the Crown, the districts' masters, the Row's
   // keepers, the Rookery — and the pooled watch, guard, and stalls.
   const fallActors = z.actorSpawns ?? [];
-  assert.equal(fallActors.length, 38, 'Silverfall lost residents');
+  assert.equal(fallActors.length, 39, 'Silverfall lost residents');
   for (const slug of [
     'king_aeriex',
     'queen_kayri',
@@ -1049,11 +1081,11 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   ]) {
     assert.ok(fallActors.some((a) => a.actor === slug), `${slug} missing from Silverfall`);
   }
-  assert.equal(fallActors.filter((a) => a.actor === 'silverfall_watch').length, 4);
+  assert.equal(fallActors.filter((a) => a.actor === 'silverfall_watch').length, 5);
   assert.equal(fallActors.filter((a) => a.actor === 'castle_guard').length, 3);
   assert.equal(fallActors.filter((a) => a.actor === 'galleria_trader').length, 3);
   assert.equal(fallActors.filter((a) => a.actor === 'gate_monger').length, 2);
-  assert.equal(fallActors.filter((a) => a.routine).length, 38, 'every keeper keeps hours');
+  assert.equal(fallActors.filter((a) => a.routine).length, 39, 'every keeper keeps hours');
   // The editor JSON round trip holds WITH the elevation layer.
   const json = zoneToJson(z);
   assert.ok(json.elev !== undefined, 'the elevation layer must serialize');

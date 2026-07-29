@@ -1,0 +1,50 @@
+{
+  "id": "amberford_watch",
+  "name": "Town Watch",
+  "title": "Amberford Watch",
+  "examine": "Leather worn pale at the shoulder where the wall-stone rubs it, and eyes that count strangers out of habit.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 18,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 80,
+      "damage": 6,
+      "speed": 3.5,
+      "leashRange": 10
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 2,
+      "hairColor": 2,
+      "beard": 2,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 8,
+      "pants": 6
+    }
+  },
+  "equipment": {
+    "head": "iron_helm",
+    "body": "leather_body",
+    "legs": "leather_chaps",
+    "boots": "leather_boots",
+    "weapon": "iron_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 6
+    }
+  ],
+  "lines": [
+    "Mind the gate as you pass. She stands open most days. The day she doesn't, you'll be glad of her.",
+    "The ford called the road here. The road called the Redmasks. After that, the town called for stone.",
+    "Captain Aldis keeps the north tower. Anything worth reporting goes to her, not to me."
+  ]
+}

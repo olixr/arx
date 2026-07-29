@@ -44,6 +44,13 @@ import type { ZoneDef } from './types.js';
  *    the waystones say who this town is without a single quest
  *    marker: every plaque earns its place in the founding story.
  *
+ * THE WALL LAW (the garrison pass): the town is ringed by a single
+ * garrison curtain (tiles 139-145) with three true gates on the
+ * three road mouths and 45-degree corner cuts — see THE TOWN WALL
+ * section for the full reasoning. Gates stand open; only a hand
+ * shuts them; NPCs never open garrison gates (the fence-gate debt),
+ * so no routine may ever DEPEND on crossing a gate line.
+ *
  * The zone stamps into AMBERFORD_RECT exactly (geography.test pins
  * it), and the gates meet the carved worldgen roads tile-for-tile:
  * the First Road enters the Fordgate at world (105,36) = local
@@ -261,11 +268,11 @@ export function buildAmberford(): ZoneDef {
   b.sign(56, 5, 'SILVERFALL', ['north, by the High Road', 'Go armed.'], Tile.Signpost);
   b.set(52, 6, Tile.WeaponRack);
   b.fillRect(53, 0, 3, 2, Tile.Path); // the mouth meets the carved High Road
-  // The gate reads as a GATE now: a stone arch over the High Road's
-  // mouth, sprung from the tower to an answering pillar — the line a
-  // waker crosses knowing they crossed it.
-  b.set(53, 1, Tile.ArchStone).set(54, 1, Tile.ArchStone).set(55, 1, Tile.ArchStone);
-  b.set(56, 1, Tile.PillarStone).set(56, 2, Tile.PillarStone);
+  // The gate itself is real garrison work now — a three-tile arched
+  // gatehouse set in the town wall (laid in THE TOWN WALL section
+  // below), sprung from Aldis's tower to the curtain. The banners
+  // that flank it inside are the watch's colors.
+  b.set(52, 2, Tile.BannerPole).set(56, 2, Tile.BannerPole);
   // The outfitter (Hask), the gate's east post: the last shop before
   // the climb. Shop floor by the road — packs stacked, bows racked,
   // counter facing the door — and the storeroom walled off east.
@@ -672,6 +679,10 @@ export function buildAmberford(): ZoneDef {
   // ---------------------------------------------------------------
   b.outlineRect(3, 36, 19, 12, Tile.Fence);
   b.set(12, 47, Tile.FenceGate); // the field gate, standing open
+  // The west rail came down when the wall went up: the field runs to
+  // the rampart's foot now, headland against the masonry (the north
+  // and south rails butt into the curtain and seal the pen).
+  for (let y = 37; y <= 46; y++) b.set(3, y, Tile.Grass);
   for (let y = 38; y <= 46; y += 2) {
     for (let x = 5; x <= 19; x++) {
       if (x % 2 === 0) {
@@ -712,7 +723,12 @@ export function buildAmberford(): ZoneDef {
   // The pasture — the northeast grazing, trough by the west rail.
   // (Perl feuds with these cows. The cows are winning.)
   // ---------------------------------------------------------------
-  b.outlineRect(73, 2, 25, 9, Tile.Fence);
+  // The pen leans on the town wall now — the north rail IS the
+  // rampart (the wall the cows never asked for and got anyway); the
+  // side rails run up and die against the masonry.
+  b.fillRect(73, 2, 1, 9, Tile.Fence); // west rail, to the wall
+  b.fillRect(97, 2, 1, 9, Tile.Fence); // east rail, to the wall
+  b.fillRect(74, 10, 23, 1, Tile.Fence); // the south rail
   b.set(78, 10, Tile.FenceGate); // the gate, standing open
   b.set(75, 4, Tile.Basin);
   b.set(74, 3, Tile.Crate); // the milking corner
@@ -755,17 +771,13 @@ export function buildAmberford(): ZoneDef {
 
   // ---------------------------------------------------------------
   // The Fordgate — the warm way home — and the west spine's lamps.
+  // The old pillar-and-arch threshold gave way to the town wall's
+  // west gate (laid in THE TOWN WALL section below); what remains
+  // here is the welcome: lamps, the waystone, the watch's fires.
   // ---------------------------------------------------------------
-  b.set(2, 50, Tile.PillarStone).set(2, 54, Tile.PillarStone);
   b.set(4, 49, Tile.LampPost).set(4, 55, Tile.LampPost);
   b.sign(6, 49, 'DAWNMEAD', ['west, by the First Road'], Tile.Signpost);
   b.set(14, 49, Tile.LampPost).set(26, 49, Tile.LampPost);
-  // The Fordgate is a THRESHOLD now: the arch sprung between the
-  // pillars, wing walls into the meadow, and the waystone that says
-  // what this town is before a single door says anything else.
-  b.set(2, 51, Tile.ArchStone).set(2, 52, Tile.ArchStone).set(2, 53, Tile.ArchStone);
-  b.set(1, 49, Tile.WallStone).set(2, 49, Tile.WallStone).set(3, 49, Tile.WallStone);
-  b.set(1, 55, Tile.WallStone).set(2, 55, Tile.WallStone).set(3, 55, Tile.WallStone);
   b.sign(5, 55, 'AMBERFORD', ['the ford holds', 'the lamp stays lit'], Tile.Signpost);
   // The other spines' lamps: sparse, where corners turn dark.
   b.set(56, 16, Tile.LampPost).set(50, 26, Tile.LampPost);
@@ -773,6 +785,53 @@ export function buildAmberford(): ZoneDef {
   // The smiths' lunch oak, alone in the west meadow.
   b.set(29, 28, Tile.TreeOak);
   b.set(30, 29, Tile.Bench);
+
+  // ---------------------------------------------------------------
+  // THE TOWN WALL — the Toll War's long lesson, finally in stone.
+  // A single garrison curtain rings the whole town (the frontier
+  // grew bold; the town answered), with three gates standing open
+  // where the three roads always ran, and every corner cut at 45 —
+  // a wall raised by farmers follows its fields, not a straightedge.
+  // Laws at work here:
+  //  - SEPARATE MASONRY: the curtain dies honestly into Aldis's
+  //    stone watch tower at the North Gate — two constructions, one
+  //    defense; the pasture and Furrowfield lean their rails on it.
+  //  - THE CORNER CUTS chain diagonally (DiagSE/SW/NW/NE with the
+  //    solid triangle pointing INTO town); each hypotenuse meets the
+  //    next corner-to-corner, so the seal is geometric, not luck.
+  //  - Gates are authored OPEN (tile 144) and never auto-close
+  //    untouched; a shut gate is the town under threat, and only a
+  //    hand can make it so. The fen takes the stream under the wall
+  //    at the reed neck — one soggy tile, the mason's compromise.
+  // ---------------------------------------------------------------
+  // The west curtain, Fordgate in the middle of it.
+  b.fillRect(2, 4, 1, 47, Tile.WallGarrison); // y4-50
+  b.set(2, 51, Tile.GateGarrison).set(2, 52, Tile.GateGarrison).set(2, 53, Tile.GateGarrison);
+  b.fillRect(2, 54, 1, 22, Tile.WallGarrison); // y54-75
+  // The north curtain, jointed to the watch tower, North Gate east
+  // of it — the High Road passes under a true gatehouse arch.
+  b.fillRect(5, 1, 40, 1, Tile.WallGarrison); // x5-44, dies into the tower
+  b.set(52, 1, Tile.WallGarrison);
+  b.set(53, 1, Tile.GateGarrison).set(54, 1, Tile.GateGarrison).set(55, 1, Tile.GateGarrison);
+  b.fillRect(56, 1, 51, 1, Tile.WallGarrison); // x56-106, behind the pasture
+  // The east curtain: the Delf tucked inside the corner cut, the
+  // East Road let out through its own small gate.
+  b.fillRect(110, 5, 1, 55, Tile.WallGarrison); // y5-59
+  b.set(110, 60, Tile.GateGarrison).set(110, 61, Tile.GateGarrison);
+  b.fillRect(110, 62, 1, 13, Tile.WallGarrison); // y62-74
+  // The south curtain, wading the reed neck at x91.
+  b.fillRect(5, 78, 102, 1, Tile.WallGarrison); // x5-106
+  // The four corner cuts — northwest, northeast, southeast, southwest.
+  b.set(4, 2, Tile.WallGarrisonDiagSE).set(3, 3, Tile.WallGarrisonDiagSE);
+  b.set(107, 2, Tile.WallGarrisonDiagSW).set(108, 3, Tile.WallGarrisonDiagSW);
+  b.set(109, 4, Tile.WallGarrisonDiagSW);
+  b.set(109, 75, Tile.WallGarrisonDiagNW).set(108, 76, Tile.WallGarrisonDiagNW);
+  b.set(107, 77, Tile.WallGarrisonDiagNW);
+  b.set(3, 76, Tile.WallGarrisonDiagNE).set(4, 77, Tile.WallGarrisonDiagNE);
+  // The gates' furniture: watch fires at the Fordgate mouth, the
+  // east gate's lamp so the unfinished road still gets a light.
+  b.set(3, 50, Tile.Brazier).set(3, 54, Tile.Brazier);
+  b.set(108, 58, Tile.LampPost);
 
   // ---------------------------------------------------------------
   // Meadow life, then the town's soft edges.
@@ -819,6 +878,10 @@ export function buildAmberford(): ZoneDef {
   b.actor('keeper_ansel', 42.5, 69.5, Math.PI / 2, 'amber_keeper');
   b.actor('orchardist_perl', 74.5, 68.5, -Math.PI / 2, 'amber_orchardist');
   b.actor('courier_nib', 52.5, 44.5, 0, 'amber_courier');
+  // The town watch — two of Aldis's people on the wall's other
+  // gates: one at the Fordgate mouth, one by the East Road gate.
+  b.actor('amberford_watch', 4.5, 50.5, Math.PI, 'amber_watch');
+  b.actor('amberford_watch', 108.5, 59.5, 0, 'amber_watch');
   // The traveling traders: stalls on the produce row by day, the
   // inn's guest wing by night — the market finally has voices.
   b.actor('round_trader', 60.0, 28.8, Math.PI / 2, 'amber_trader_a');

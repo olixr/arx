@@ -11,8 +11,10 @@ import type { ZoneDef } from './types.js';
  * massif's mouth, and behind that gate the city rises in FOUR
  * TERRACES — and the climb is the social ladder:
  *
- *   L0  THE GATEFRONT — walls, twin gate towers, the caravanserai,
- *       the gate market, and the Roaring Pool where the falls land.
+ *   L0  THE GATEFRONT — the garrison curtain (tiles 139-145: a true
+ *       siege rampart, drum towers, chamfered gate bastions, and the
+ *       Silver Gate's carved arch), the caravanserai, the gate
+ *       market, and the Roaring Pool where the falls land.
  *       Travelers, wagons, and the watch's first questions.
  *   L1  THE TRADES TERRACE — split by the falls channel into two
  *       districts: THE EMBERWAY west (mine yard, smelter, assay
@@ -42,6 +44,15 @@ import type { ZoneDef } from './types.js';
  * foot-water law is asserted by silverfall.test.ts). Stairs face
  * south; the Silver Stair — three grand nine-wide flights on one
  * axis — carries the High Road from the gate to the Crown.
+ *
+ * THE FORTIFICATION LADDER (the garrison epic in a capital): the
+ * outer curtain closes the massif's mouth at L0; every terrace above
+ * is walled by the mountain itself (nested cliffs, three stairs);
+ * the COURT GATE arches the avenue stair where it crowns L2 — wings
+ * dying into the rim, side stairs left open so no shut leaf can ever
+ * strand a resident's errand (garrison gates share the fence-gate
+ * debt: NPCs do not open them). Gates are authored OPEN and never
+ * auto-close untouched — shutting them is the players' war-measure.
  *
  * TOWN-PLAN LAWS (Amberford's laws, kept):
  * - STREETS FIRST. Every working door fronts a street: the avenue,
@@ -94,7 +105,9 @@ export function buildSilverfall(): ZoneDef {
   b.fillRect(84, 26, 9, 5, Tile.StoneFloor); // crown landing
   // Brazier pairs light each landing — the stair burns, not lamps.
   b.set(83, 94, Tile.Brazier).set(93, 94, Tile.Brazier);
-  b.set(83, 62, Tile.Brazier).set(93, 62, Tile.Brazier);
+  // (The middle landing's pair stands at y61 — the Court Gate owns
+  // the y62 line there; see the L2 section.)
+  b.set(83, 61, Tile.Brazier).set(98, 61, Tile.Brazier);
   b.set(83, 30, Tile.Brazier).set(93, 30, Tile.Brazier);
   // Lamp pairs between the landings pace out the long stretches.
   b.set(83, 40, Tile.LampPost).set(93, 40, Tile.LampPost);
@@ -508,12 +521,26 @@ export function buildSilverfall(): ZoneDef {
   // The Row's lamps — the name is the promise.
   b.set(105, 62, Tile.LampPost).set(117, 62, Tile.LampPost);
   b.set(128, 62, Tile.LampPost).set(144, 62, Tile.LampPost);
-  b.set(97, 62, Tile.LampPost);
-  b.sign(94, 62, 'LANTERN ROW', ['shopfronts to the falls'], Tile.Signpost);
+  b.sign(104, 62, 'LANTERN ROW', ['shopfronts to the falls'], Tile.Signpost);
   // The east promenade: lamps and yews along the hall-terrace walk.
   b.set(141, 40, Tile.TreeYew).set(143, 45, Tile.TreeYew);
   b.set(134, 36, Tile.LampPost).set(141, 48, Tile.Bench);
   b.set(64, 51, Tile.TreeYew);
+
+  // ---------------------------------------------------------------
+  // THE COURT GATE — the inner ward's word. The civic terrace is a
+  // fortress the mountain built (a cliff on every side, three stairs
+  // for doors), so the Crown armors only its one grand tooth: nine
+  // tiles of garrison arch across the avenue where the Silver Stair
+  // tops out, short battlement wings dying into the rim — west a cut
+  // stub, east into the falls channel. The side stairs stay open
+  // working stairs on purpose: this arch is the law reading itself
+  // aloud to everyone who climbs, not a lock on the city's own feet.
+  // ---------------------------------------------------------------
+  b.fillRect(81, 62, 3, 1, Tile.WallGarrison); // west wing
+  b.fillRect(93, 62, 6, 1, Tile.WallGarrison); // east wing, to the water
+  for (let x = 84; x <= 92; x++) b.set(x, 62, Tile.GateGarrison);
+  b.sign(81, 60, 'THE COURT GATE', ['the Crown hears who climbs'], Tile.Signpost);
 
   // ---------------------------------------------------------------
   // L1 WEST — THE EMBERWAY: the smelting district. Silver first,
@@ -810,9 +837,13 @@ export function buildSilverfall(): ZoneDef {
       }
     }
   }
-  // The city wall — stone, two courses, tower to tower to crag.
-  b.fillRect(36, 112, 40, 2, Tile.WallStone);
-  b.fillRect(101, 112, 46, 2, Tile.WallStone);
+  // THE CITY CURTAIN — garrison masonry across the massif's mouth:
+  // the capital's outer word, laid AFTER the scree so both runs die
+  // into the ridges the mountain already built. A single honest
+  // rampart three bodies tall (the separate-masonry law made civic),
+  // battered talus to crenellated wall-walk, with drum towers proud
+  // of the line and the Silver Gate carved through the middle.
+  // (Laid below, after the scree ridges it must die into.)
   // The scree ridges: solid double-row rock where the wall ends,
   // scattering out toward the border. Nobody strolls around this.
   for (let x = 16; x <= 35; x++) {
@@ -834,28 +865,34 @@ export function buildSilverfall(): ZoneDef {
     else b.set(x, 113, Tile.Rock);
   }
   b.fillRect(20, 110, 3, 1, Tile.Snow).fillRect(155, 110, 3, 1, Tile.Snow);
-  // The GATE TOWERS: true octagons (the diagonal budget's flagship),
-  // the wall dying into their flanks.
-  for (const tx of [76, 93] as const) {
-    b.fillRect(tx + 1, 108, 6, 6, Tile.StoneFloor);
-    for (let x = tx + 2; x <= tx + 5; x++) b.set(x, 107, Tile.WallStone);
-    for (let x = tx + 2; x <= tx + 5; x++) b.set(x, 114, Tile.WallStone);
-    for (let y = 110; y <= 111; y++) b.set(tx, y, Tile.WallStone);
-    for (let y = 110; y <= 111; y++) b.set(tx + 7, y, Tile.WallStone);
-    b.set(tx + 1, 108, Tile.WallStoneDiagSE).set(tx, 109, Tile.WallStoneDiagSE);
-    b.set(tx + 6, 108, Tile.WallStoneDiagSW).set(tx + 7, 109, Tile.WallStoneDiagSW);
-    b.set(tx, 112, Tile.WallStoneDiagNE).set(tx + 1, 113, Tile.WallStoneDiagNE);
-    b.set(tx + 7, 112, Tile.WallStoneDiagNW).set(tx + 6, 113, Tile.WallStoneDiagNW);
-    b.set(tx + 3, 107, Tile.WallStoneWindow);
-    b.set(tx + 3, 114, Tile.DoorwayStone);
-    b.set(tx + 2, 109, Tile.WeaponRack).set(tx + 5, 109, Tile.WeaponRack);
-    b.set(tx + 2, 112, Tile.Brazier);
-    b.set(tx + 4, 111, Tile.Table).set(tx + 5, 111, Tile.Chair);
+  // The curtain runs: one course of garrison masonry, overwriting the
+  // scree's own y112 rocks at both ends so the wall visibly sinks
+  // into the ridges — nobody built a neat terminus up a mountain.
+  b.fillRect(84, 113, 9, 2, Tile.StoneFloor); // the gate threshold first
+  b.fillRect(26, 112, 55, 1, Tile.WallGarrison); // west run, into the scree
+  b.fillRect(96, 112, 55, 1, Tile.WallGarrison); // east run, into the scree
+  // The flanking towers: solid drums proud of the line to the south,
+  // shoulders cut at 45 — the curtain watches its own foot.
+  for (const tx of [40, 60, 110, 132] as const) {
+    b.fillRect(tx, 113, 3, 2, Tile.WallGarrison);
+    b.set(tx, 114, Tile.WallGarrisonDiagNE);
+    b.set(tx + 2, 114, Tile.WallGarrisonDiagNW);
   }
-  // The gate itself: an arch row over the avenue, banners inside.
-  for (let x = 84; x <= 92; x++) b.set(x, 112, Tile.ArchStone);
-  b.fillRect(84, 113, 9, 2, Tile.StoneFloor);
-  b.set(83, 111, Tile.BannerPole).set(93, 111, Tile.BannerPole);
+  // THE GATE BASTIONS: two five-square drums flanking the passage,
+  // all four corners chamfered — the old octagon towers reborn at
+  // siege scale, solid to the crown (a bailey has no ceiling to owe).
+  for (const bx of [81, 91] as const) {
+    b.fillRect(bx, 110, 5, 5, Tile.WallGarrison);
+    b.set(bx, 110, Tile.WallGarrisonDiagSE);
+    b.set(bx + 4, 110, Tile.WallGarrisonDiagSW);
+    b.set(bx, 114, Tile.WallGarrisonDiagNE);
+    b.set(bx + 4, 114, Tile.WallGarrisonDiagNW);
+  }
+  // THE SILVER GATE — the grand gatehouse: voussoir arch carved
+  // through the masonry, portcullis raised in the lunette, iron-bound
+  // leaves standing open. The High Road marches straight through.
+  for (let x = 86; x <= 90; x++) b.set(x, 112, Tile.GateGarrison);
+  b.set(83, 109, Tile.BannerPole).set(93, 109, Tile.BannerPole);
   // THE CARAVANSERAI: the road's last yard, laid out like it works —
   // three rail bays with straw and troughs, the cargo corner, the
   // travellers' fire circle, the farrier's bench.
@@ -969,10 +1006,15 @@ export function buildSilverfall(): ZoneDef {
   b.actor('bursar_odele', 53.5, 40.5, 0, 'fall_bursar');
   b.actor('enchantress_solvei', 37.5, 55.3, -Math.PI / 2, 'fall_enchantress');
   b.actor('marshal_kestrel', 71.5, 55.3, Math.PI / 2, 'fall_marshal');
-  b.actor('silverfall_watch', 79.5, 110.5, Math.PI / 2, 'fall_watch');
-  b.actor('silverfall_watch', 96.5, 110.5, Math.PI / 2, 'fall_watch');
+  // The gate watch stands OUTSIDE the Silver Gate, flanking the road
+  // mouth under the bastions — the first questions come before the
+  // arch, not after. A third keeps the gatehouse desk, a fourth the
+  // court, and a fifth holds the Court Gate at the stair crown.
+  b.actor('silverfall_watch', 85.5, 115.5, Math.PI / 2, 'fall_watch');
+  b.actor('silverfall_watch', 91.5, 115.5, Math.PI / 2, 'fall_watch');
   b.actor('silverfall_watch', 41.5, 105.5, 0, 'fall_watch');
   b.actor('silverfall_watch', 92.5, 33.5, Math.PI / 2, 'fall_watch');
+  b.actor('silverfall_watch', 82.5, 61.5, Math.PI / 2, 'fall_watch');
   // Lantern Row.
   b.actor('silversmith_vigdis', 54.5, 54.4, Math.PI / 2, 'fall_silversmith');
   b.actor('weaver_ottilie', 110.5, 56.4, Math.PI / 2, 'fall_weaver');
