@@ -32,6 +32,10 @@
 import { shade } from './rig.js';
 import { srand, type FxStyle } from './abilityFx.js';
 import type { Particles } from './particles.js';
+import { MELEE_SIGS } from './fxSigsMelee.js';
+import { SNEAK_SIGS } from './fxSigsSneak.js';
+import { ARCHERY_SIGS } from './fxSigsArchery.js';
+import { MAGIC_SIGS } from './fxSigsMagic.js';
 
 // --------------------------------------------------------------- ctx
 
@@ -463,6 +467,214 @@ const smoke_bomb: AbilitySig = {
   },
 };
 
+/**
+ * CRESCENT_SWEEP — "the second moon."
+ * The full spin hangs a bladed crescent in the air that chases the
+ * shockring once around the body and dissolves edge-first, shedding
+ * gold chips where it passed. The wound it leaves keeps bleeding:
+ * thin red flecks tick off the rim after the blade is gone.
+ */
+const crescent_sweep: AbilitySig = {
+  spawn(c) {
+    // The spin plants its heel: a boot-scuff of turf kicked both ways.
+    c.particles.burst(c.wx, c.wy, 5, ['#4a4252', '#5a5045'], {
+      speed: 1.1, life: 0.8, size: 0.1, gravity: -0.3, drag: 1.9, grow: 0.2, shape: 'puff', ground: true,
+    });
+  },
+  air(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const lift = sc * 0.42;
+    ctx.save();
+    ctx.lineCap = 'butt';
+    // The second moon: one bladed crescent lapping the body exactly
+    // once over the life of the ring, fat at the belly, honed at the
+    // horn — with a gold identity band under a white edge.
+    const a0 = -Math.PI / 2 + t * Math.PI * 2.35;
+    const rr = rPx * (0.72 + 0.2 * t);
+    const fade = t < 0.75 ? 1 : (1 - t) / 0.25;
+    ctx.globalAlpha = 0.8 * fade;
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(3, sc * 0.13);
+    ctx.beginPath();
+    ctx.ellipse(px, py - lift, rr, rr * squash, 0, a0, a0 + 1.5);
+    ctx.stroke();
+    ctx.globalAlpha = 0.95 * fade;
+    ctx.strokeStyle = st.core;
+    ctx.lineWidth = Math.max(1.5, sc * 0.045);
+    ctx.beginPath();
+    ctx.ellipse(px, py - lift, rr * 1.04, rr * 1.04 * squash, 0, a0 + 1.1, a0 + 1.5);
+    ctx.stroke();
+    // The horn sheds gold chips as it cuts.
+    if (Math.random() < c.frameDt * 20 * fade) {
+      const tip = a0 + 1.5;
+      c.particles.burst(c.wx + (Math.cos(tip) * rr) / sc, c.wy + (Math.sin(tip) * rr * squash) / sc, 1, [st.spark, st.mid], {
+        speed: 2.2, life: 0.35, size: 0.06, gravity: 3, dir: tip + Math.PI / 2, spread: 0.5, shape: 'shard', spin: 10,
+      });
+    }
+    // The wound remembers: bleed flecks tick off the rim, late.
+    if (t > 0.45 && Math.random() < c.frameDt * 9) {
+      const a = Math.random() * Math.PI * 2;
+      c.particles.burst(c.wx + Math.cos(a) * c.radius * 0.8, c.wy + Math.sin(a) * c.radius * 0.8 * squash, 1, ['#c4372a', '#6a1518'], {
+        speed: 0.7, life: 0.45, size: 0.05, gravity: 6, up: true, fade: '#6a1518',
+      });
+    }
+    ctx.restore();
+  },
+};
+
+/**
+ * LUNGE — "the needle."
+ * The dash is a single stitched line: chevrons collapse along the
+ * flight path toward the arrival, the departure keeps two heel
+ * scuffs, and the arrival point bursts THROUGH — a thin push of air
+ * continuing past the stop, the blade arriving before the body.
+ */
+const lunge: AbilitySig = {
+  spawn(c) {
+    const ang = Math.atan2(c.wy2 - c.wy, c.wx2 - c.wx);
+    // The burst-through: air and steel slivers carry past the stop.
+    c.particles.burst(c.wx2, c.wy2 - 0.35, 7, [c.st.core, c.st.mid], {
+      speed: 3.4, life: 0.3, size: 0.06, gravity: 1.5, dir: ang, spread: 0.35, shape: 'streak',
+    });
+    // Heel scuffs at the departure — the ground remembers the push-off.
+    c.particles.burst(c.wx, c.wy, 4, ['#4a4252', '#3a3442'], {
+      speed: 0.8, life: 0.7, size: 0.1, gravity: -0.3, drag: 2.0, grow: 0.2, dir: ang + Math.PI, spread: 0.5, shape: 'puff', ground: true,
+    });
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py, px2, py2 } = c;
+    const lift = sc * 0.42;
+    const dx = px2 - px;
+    const dy = py2 - py;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    const nx = -uy;
+    const ny = ux;
+    const fade = 1 - t;
+    ctx.save();
+    // Chevrons collapse toward the arrival: each arrowhead slides up
+    // the line and dies as the next takes its place — the stitch.
+    ctx.strokeStyle = st.core;
+    ctx.lineWidth = Math.max(1.5, sc * 0.05);
+    for (let k = 0; k < 4; k++) {
+      const f = Math.min(1, t * 1.8 + k * 0.18);
+      if (f >= 1) continue;
+      const bx = px + dx * f;
+      const by = py + dy * f - lift;
+      const s = sc * 0.16 * (1 - f * 0.5);
+      ctx.globalAlpha = (1 - f) * 0.9 * fade;
+      ctx.beginPath();
+      ctx.moveTo(bx - ux * s + nx * s * 0.8, by - uy * s + ny * s * 0.8);
+      ctx.lineTo(bx, by);
+      ctx.lineTo(bx - ux * s - nx * s * 0.8, by - uy * s - ny * s * 0.8);
+      ctx.stroke();
+    }
+    // The needle itself: one thin full-length line, sharpest early.
+    ctx.globalAlpha = 0.7 * fade * fade;
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(1, sc * 0.03);
+    ctx.beginPath();
+    ctx.moveTo(px, py - lift);
+    ctx.lineTo(px2, py2 - lift);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
+/**
+ * SHOCKWAVE — "the bell of earth."
+ * The slam rings the ground like struck bronze: a polygonal pressure
+ * front lags the main ring with hammered corner ticks, sod slabs
+ * flip along it, and the point of impact keeps a cracked boss —
+ * the dent the world took — until the tone dies.
+ */
+const shockwave: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x51);
+    // Sod slabs flip along the front — earth thrown, not sparks.
+    for (let k = 0; k < 7; k++) {
+      const a = (k / 7) * Math.PI * 2 + rand() * 0.5;
+      c.particles.burst(
+        c.wx + Math.cos(a) * c.radius * 0.4,
+        c.wy + Math.sin(a) * c.radius * 0.4 * c.squash,
+        1, ['#5a5045', '#4a4252', '#6a6375'], {
+          speed: 2.4, life: 0.6, size: 0.12, gravity: 8, dir: a, spread: 0.25, up: false, shape: 'shard', spin: 9,
+        },
+      );
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const fade = 1 - t;
+    ctx.save();
+    // The pressure front: a hexagonal second ring lagging the round
+    // one — bronze under white — with hammered ticks at the corners.
+    const lag = Math.max(0, t - 0.12);
+    const rr = rPx * Math.sqrt(lag);
+    if (rr > 1) {
+      ctx.globalAlpha = 0.7 * fade;
+      ctx.strokeStyle = st.mid;
+      ctx.lineWidth = Math.max(2.5, sc * 0.09 * fade + 1);
+      ctx.beginPath();
+      for (let k = 0; k <= 6; k++) {
+        const a = (c.seed % 5) * 0.3 + (k / 6) * Math.PI * 2;
+        const x = px + Math.cos(a) * rr;
+        const y = py + Math.sin(a) * rr * squash;
+        if (k === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fillStyle = st.core;
+      for (let k = 0; k < 6; k++) {
+        const a = (c.seed % 5) * 0.3 + (k / 6) * Math.PI * 2;
+        const g = sc * 0.05 * fade;
+        ctx.fillRect(px + Math.cos(a) * rr - g / 2, py + Math.sin(a) * rr * squash - g * 1.6, g, g * 3.2);
+      }
+    }
+    // The boss: the dent at the point of impact, cooling cracked.
+    if (t < 0.6) {
+      const bt = 1 - t / 0.6;
+      ctx.globalAlpha = bt * 0.8;
+      ctx.fillStyle = st.deep;
+      ctx.beginPath();
+      ctx.ellipse(px, py, rPx * 0.16, rPx * 0.16 * squash, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = st.core;
+      ctx.lineWidth = Math.max(1, sc * 0.025);
+      const rand = srand(c.seed ^ 0x52);
+      ctx.globalAlpha = bt * 0.9;
+      for (let k = 0; k < 4; k++) {
+        const a = rand() * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(px + Math.cos(a) * rPx * 0.1, py + Math.sin(a) * rPx * 0.1 * squash);
+        ctx.lineTo(px + Math.cos(a + (rand() - 0.5) * 0.5) * rPx * (0.3 + rand() * 0.2), py + Math.sin(a + (rand() - 0.5) * 0.5) * rPx * (0.3 + rand() * 0.2) * squash);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  },
+  air(c) {
+    // The tone: two thin air-rings shiver upward off the impact and
+    // die — sound made visible, briefly.
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    if (t > 0.5) return;
+    const ft = 1 - t / 0.5;
+    ctx.save();
+    for (let k = 0; k < 2; k++) {
+      const rise = sc * (0.25 + k * 0.22) * (1 - ft);
+      ctx.globalAlpha = ft * (0.4 - k * 0.15);
+      ctx.strokeStyle = st.core;
+      ctx.lineWidth = Math.max(1, sc * 0.03);
+      ctx.beginPath();
+      ctx.ellipse(px, py - sc * 0.3 - rise, rPx * 0.4 * (1 + k * 0.3), rPx * 0.16 * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+};
+
 // -------------------------------------------------------- registry
 
 /**
@@ -475,4 +687,11 @@ export const SIGNATURES: Record<string, AbilitySig> = {
   frost_nova,
   whirlwind,
   smoke_bomb,
+  crescent_sweep,
+  lunge,
+  shockwave,
+  ...MELEE_SIGS,
+  ...SNEAK_SIGS,
+  ...ARCHERY_SIGS,
+  ...MAGIC_SIGS,
 };

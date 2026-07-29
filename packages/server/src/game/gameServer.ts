@@ -558,6 +558,14 @@ interface ProjectileComp {
   executeBelow?: { frac: number; mult: number };
   /** Fraction of damage dealt healed back to the owner. */
   drainFrac?: number;
+  /**
+   * The ability that loosed this shot — rides to the impact fx so the
+   * client's bespoke signature fires WHERE THE ARROW LANDS, not just
+   * where it left the string. Basic attacks carry none.
+   */
+  abilityId?: string;
+  /** The ability's wire color, for the impact fx. */
+  abilityColor?: string;
 }
 
 /** A status riding an entity, remembering who put it there. */
@@ -6328,6 +6336,8 @@ export class GameServer {
               attackerLevel: fromNpc ? level : undefined,
               element: ab.element ?? (style === 'magic' ? element : undefined),
               homingTurn: ab.homing,
+              abilityId: ab.id,
+              abilityColor: ab.color,
             });
             this.updateChunkMembership(proj);
           }
@@ -6453,6 +6463,8 @@ export class GameServer {
             returns: ab.returns,
             executeBelow: ab.executeBelow,
             drainFrac: ab.drainFrac,
+            abilityId: ab.id,
+            abilityColor: ab.color,
           });
           this.updateChunkMembership(proj);
         }
@@ -7359,8 +7371,22 @@ export class GameServer {
               knockbackMult: proj.heavy ? HEAVY_BOLT_KNOCKBACK : proj.fullDraw ? 1.4 : 1,
             });
             this.drainHeal(proj.ownerEid, dmg, proj.drainFrac);
-            // Heavy orbs burst on impact, splashing everything close.
-            if (proj.splashRadius) {
+            // THE SIGNATURE LAW: an ability's shot announces its
+            // impact — the client's bespoke signature fires at the
+            // wound, not just where the arrow left the string. Basic
+            // attacks stay quiet; heavy wand bolts keep their old
+            // anonymous burst.
+            if (proj.abilityId && !proj.basic) {
+              this.broadcastFx({
+                t: 'fx',
+                kind: 'blast',
+                x: pos.x,
+                y: pos.y,
+                radius: proj.splashRadius ?? 0.55,
+                id: proj.abilityId,
+                color: proj.abilityColor,
+              });
+            } else if (proj.splashRadius) {
               this.broadcastFx({
                 t: 'fx',
                 kind: 'blast',
@@ -7369,6 +7395,9 @@ export class GameServer {
                 radius: proj.splashRadius,
                 color: '#b49af0',
               });
+            }
+            // Heavy orbs burst on impact, splashing everything close.
+            if (proj.splashRadius) {
               const splashHit = Math.max(1, Math.round(proj.maxHit * 0.5));
               for (const [otherEid, other] of this.npcs) {
                 if (otherEid === npcEid) continue;
