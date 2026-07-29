@@ -24,12 +24,22 @@ import { sightMass } from '../world/tiles.js';
 export const SIGHT_CLOSE_RANGE = 2.0;
 
 /**
+ * SEEING IS NOT CHARGING: the eye reaches this multiple of the
+ * posted aggroRange. The old circle conflated noticing with
+ * attacking; the cone separates them — a goblin SEES a stranger
+ * nine tiles up the road (and gets curious), it only commits to
+ * violence inside the sizing-up engage circle. Level never shrinks
+ * the eye, only the nerve.
+ */
+export const SIGHT_RANGE_MULT = 2.25;
+
+/**
  * Outside the cone the eye still keeps a dim all-round sense — a
  * presence at the edge of vision, a footfall — reaching this fraction
  * of sight range. It accumulates at half rate and can only ever make
  * a body SUSPICIOUS (turn and look), never lock it straight on.
  */
-export const SIGHT_PERIPHERAL_FRAC = 0.45;
+export const SIGHT_PERIPHERAL_FRAC = 0.55;
 export const PERIPHERAL_RATE = 0.5;
 
 /**
@@ -44,12 +54,23 @@ export const ALERT_SUS = 35;
 export const ALERT_MAX = 100;
 
 /**
- * Accumulation per tick: point-blank fills the meter in ~1.2s, the
- * cone's far edge in ~3.5s — distance literally IS time-to-react,
- * the window a bold approach gambles on.
+ * Accumulation per tick: point-blank fills the meter in about a
+ * second, the cone's far edge in ~3s — distance literally IS
+ * time-to-react, the window a bold approach gambles on. Tuned brisk:
+ * a watcher that clocks a stranger should LOOK within half a second,
+ * not blink at them for three.
  */
-export const ALERT_RATE_MAX = 4.2;
-export const ALERT_RATE_MIN = 1.4;
+export const ALERT_RATE_MAX = 5.0;
+export const ALERT_RATE_MIN = 1.6;
+
+/**
+ * THE WATCHFUL CAP: a quarry outside the engage circle (too far — or
+ * too plainly dangerous, by the sizing-up law) parks the meter one
+ * step shy of the lock. The body still climbs the whole curiosity
+ * ladder — stare, walk over, size them up — but the killing decision
+ * waits until the quarry is genuinely inside its nerve.
+ */
+export const ALERT_WATCH_CAP = ALERT_MAX - 1;
 
 /** Out of sight: a grace before doubt, then the memory drains ~8s. */
 export const ALERT_GRACE_TICKS = 30;

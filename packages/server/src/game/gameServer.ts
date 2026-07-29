@@ -234,9 +234,11 @@ import {
   ALERT_ICON_WARY,
   ALERT_MAX,
   ALERT_SUS,
+  ALERT_WATCH_CAP,
   DEFAULT_SIGHT_ARC,
   LOSE_SIGHT_FACTOR,
   SIGHT_CLOSE_RANGE,
+  SIGHT_RANGE_MULT,
   alertRate,
   sightLine,
   sightVisibility,
@@ -431,6 +433,12 @@ interface NpcComp {
   /** Last-known position of the interest — where every hunt goes. */
   alertX: number;
   alertY: number;
+  /**
+   * The interest's stride at last sight (tiles/tick) — "he went
+   * that way": a broken chase projects its search along this.
+   */
+  alertVelX: number;
+  alertVelY: number;
   /** Last tick the interest actually stood in view. */
   alertSeenTick: number;
   /** investigate/search: the whole hunt's give-up tick. */
@@ -9700,6 +9708,8 @@ export class GameServer {
       alertEid: null,
       alertX: 0,
       alertY: 0,
+      alertVelX: 0,
+      alertVelY: 0,
       alertSeenTick: 0,
       huntUntilTick: 0,
       huntWps: null,
@@ -9823,6 +9833,8 @@ export class GameServer {
         alertEid: null,
         alertX: 0,
         alertY: 0,
+        alertVelX: 0,
+        alertVelY: 0,
         alertSeenTick: 0,
         huntUntilTick: 0,
         huntWps: null,
@@ -9925,8 +9937,10 @@ export class GameServer {
   private static readonly MAX_PATHFINDS_PER_TICK = 4;
   /** Perception cadence: each body looks every 5th tick (4 Hz), staggered. */
   private static readonly PERCEPTION_PERIOD = 5;
-  /** Suspicious stand-and-stare before walking over to see (2s). */
-  private static readonly SUS_DWELL_TICKS = 40;
+  /** Suspicious stand-and-stare before walking over to see (1.2s). */
+  private static readonly SUS_DWELL_TICKS = 24;
+  /** An investigator that SEES its interest holds off at this range. */
+  private static readonly WATCH_STANDOFF = 3.2;
   /** An investigation's whole budget: walk, look, shrug (15s). */
   private static readonly INVESTIGATE_TICKS = 300;
   /** The hunt for a slipped quarry runs longer — it KNOWS you exist (20s). */
@@ -10570,9 +10584,12 @@ export class GameServer {
     npc.nextRepathTick = 0;
     npc.losUntilTick = 0;
     // The interest ledger opens with the fight: full awareness, eyes
-    // on the quarry, sight-loss clock freshly wound.
+    // on the quarry, sight-loss clock freshly wound, stride ledger
+    // cleared (a stale stride would fling the first search sideways).
     npc.alert = ALERT_MAX;
     npc.alertEid = targetEid;
+    npc.alertVelX = 0;
+    npc.alertVelY = 0;
     npc.alertSeenTick = this.tickCount;
     const tpos = this.positions.get(targetEid);
     if (tpos) {
@@ -10731,6 +10748,7 @@ export class GameServer {
     let bestEid: EntityId | null = null;
     let bestRate = 0;
     let bestZone: SightZone = 'peripheral';
+    let bestInReach = false;
     let bestX = 0;
     let bestY = 0;
     for (const [playerEid, player] of this.players) {
@@ -10740,10 +10758,15 @@ export class GameServer {
       if (!ppos) continue;
       const dx = ppos.x - pos.x;
       const dy = ppos.y - pos.y;
-      // THE SIZING-UP LAW: the posted range is for an even match.
-      // A beast that outclasses the waker marks them from much
-      // farther out; one they outgrew barely lifts its head.
-      let range =
+      // SEEING IS NOT CHARGING: the eye reaches SIGHT_RANGE_MULT ×
+      // the posted range regardless of who is looking back — a
+      // stranger up the road gets NOTICED either way. THE SIZING-UP
+      // LAW governs the smaller ENGAGE circle instead: the distance
+      // at which this body would actually commit to violence. A
+      // beast that outclasses the waker commits from far out; one
+      // they outgrew watches, follows, sizes up — and holds.
+      let sightRange = npc.def.aggroRange * SIGHT_RANGE_MULT;
+      let engageRange =
         npc.def.aggroRange * levelAggroFactor(npc.def.level, combatLevel(player.skills));
       let closeR = SIGHT_CLOSE_RANGE;
       if (player.sneaking) {
@@ -10753,14 +10776,15 @@ export class GameServer {
           sneakDetectionFactor(this.effectiveLevel(player, 'sneak')) -
             player.perks.sneakFactorBonus,
         );
-        range *= f;
+        sightRange *= f;
+        engageRange *= f;
         // The crouch thins the reflex ring too — floored, so point
         // blank never goes fully blind.
         closeR *= Math.max(f, 0.3);
       }
       const dist = Math.hypot(dx, dy);
-      if (dist > Math.max(range, closeR)) continue;
-      const zone = sightZone(dx, dy, dist, pos.dir, arcDeg, range, closeR);
+      if (dist > Math.max(sightRange, closeR)) continue;
+      const zone = sightZone(dx, dy, dist, pos.dir, arcDeg, sightRange, closeR);
       if (!zone) continue;
       // Zone survivor: now — and only now — the ray.
       const vis = sightVisibility(sightLine(this.world, pos.x, pos.y, ppos.x, ppos.y));
@@ -10777,11 +10801,12 @@ export class GameServer {
         this.npcAggro(eid, npc, playerEid);
         return;
       }
-      const rate = alertRate(dist, range, zone) * vis;
+      const rate = alertRate(dist, sightRange, zone) * vis;
       if (rate > bestRate) {
         bestRate = rate;
         bestEid = playerEid;
         bestZone = zone;
+        bestInReach = dist <= engageRange;
         bestX = ppos.x;
         bestY = ppos.y;
       }
@@ -10792,8 +10817,13 @@ export class GameServer {
       npc.alertX = bestX;
       npc.alertY = bestY;
       npc.alertSeenTick = this.tickCount;
-      // The peripheral band can make a body LOOK, never lock on.
-      const cap = bestZone === 'peripheral' ? ALERT_SUS : ALERT_MAX;
+      // The peripheral band can make a body LOOK, never lock on —
+      // and THE WATCHFUL CAP holds a quarry outside the engage
+      // circle one step shy of the lock: the whole curiosity ladder
+      // runs (stare, walk over, size up), the killing decision waits
+      // until the eye has them genuinely in reach.
+      const cap =
+        bestZone === 'peripheral' ? ALERT_SUS : bestInReach ? ALERT_MAX : ALERT_WATCH_CAP;
       if (npc.alert < cap) npc.alert = Math.min(cap, npc.alert + bestRate * dt);
       if (npc.alert >= ALERT_MAX && this.players.has(bestEid)) {
         this.npcAggro(eid, npc, bestEid);
@@ -10829,6 +10859,23 @@ export class GameServer {
     npc.huntWps = null;
     npc.huntIdx = 0;
     npc.huntWaitUntilTick = 0;
+    // "HE WENT THAT WAY": project the last-seen point along the
+    // quarry's last-seen stride (capped ~4 tiles), so the hunt
+    // carries past the corner instead of stopping dead at it. A
+    // projection that lands inside a solid falls back by halves.
+    const stride = Math.hypot(npc.alertVelX, npc.alertVelY);
+    if (stride > 0.02) {
+      const capK = Math.min(1, 4 / (stride * 30));
+      for (const k of [capK, capK / 2]) {
+        const px = npc.alertX + npc.alertVelX * 30 * k;
+        const py = npc.alertY + npc.alertVelY * 30 * k;
+        if (!circleHitsSolid(this.world, px, py, npc.def.radius)) {
+          npc.alertX = px;
+          npc.alertY = py;
+          break;
+        }
+      }
+    }
     // The hunt never outruns the leash: clamp the LKP into the circle.
     const ox = npc.alertX - npc.originX;
     const oy = npc.alertY - npc.originY;
@@ -11008,7 +11055,7 @@ export class GameServer {
           const sdy = tpos.y - pos.y;
           const sdist = Math.hypot(sdx, sdy);
           const loseRange = Math.max(
-            npc.def.aggroRange * LOSE_SIGHT_FACTOR,
+            npc.def.aggroRange * SIGHT_RANGE_MULT * LOSE_SIGHT_FACTOR,
             npc.def.attackRange + 6,
             SIGHT_CLOSE_RANGE,
           );
@@ -11016,6 +11063,13 @@ export class GameServer {
             sdist <= loseRange &&
             sightVisibility(sightLine(this.world, pos.x, pos.y, tpos.x, tpos.y)) > 0;
           if (seen) {
+            // A fresh pair of sightings yields the quarry's stride —
+            // the "he went that way" a broken chase projects along.
+            const dtT = this.tickCount - npc.alertSeenTick;
+            if (dtT > 0 && dtT <= 15) {
+              npc.alertVelX = (tpos.x - npc.alertX) / dtT;
+              npc.alertVelY = (tpos.y - npc.alertY) / dtT;
+            }
             npc.alertSeenTick = this.tickCount;
             npc.alertX = tpos.x;
             npc.alertY = tpos.y;
@@ -11118,7 +11172,11 @@ export class GameServer {
                 }
               }
             }
-          } else if (npc.def.ranged && dist < 2.2) {
+          } else if (
+            npc.def.ranged &&
+            dist < 2.2 &&
+            this.tickCount - npc.alertSeenTick <= GameServer.PERCEPTION_PERIOD
+          ) {
             // Throwers back away from anything closing the gap.
             pos.dir = Math.atan2(dy, dx);
             moveX = -dx / dist;
@@ -11128,7 +11186,13 @@ export class GameServer {
               npc.windupTicks = 8;
               this.setNpcPose(eid, npc, PoseState.Attack, 10);
             }
-          } else if (dist <= npc.def.attackRange + 0.3) {
+          } else if (
+            dist <= npc.def.attackRange + 0.3 &&
+            this.tickCount - npc.alertSeenTick <= GameServer.PERCEPTION_PERIOD
+          ) {
+            // NO SWINGING AT GHOSTS: a new windup wants the quarry
+            // actually in view — an unseen body a wall away is a
+            // spot on a map, not a thing you can hit.
             pos.dir = Math.atan2(dy, dx);
             if (npc.attackCooldown === 0) {
               npc.attackCooldown = npc.def.attackCooldownTicks;
@@ -11139,8 +11203,17 @@ export class GameServer {
           } else {
             // Navigate, don't beeline: the steer fan in the open, a
             // budgeted A* lane around anything the fan can't round —
-            // buildings, rock pockets, fence lines.
-            const h = this.npcNavToward(npc, pos, tpos.x, tpos.y);
+            // buildings, rock pockets, fence lines. THE HONEST
+            // PURSUIT: while the quarry stands in view the legs
+            // chase the quarry; the moment the eye loses them the
+            // legs run to WHERE THEY WERE LAST SEEN — never the
+            // true position the server knows and the body doesn't.
+            // Reaching that corner with nothing there is exactly
+            // how the grace runs out and the hunt begins.
+            const blind = this.tickCount - npc.alertSeenTick > GameServer.PERCEPTION_PERIOD;
+            const gx = blind ? npc.alertX : tpos.x;
+            const gy = blind ? npc.alertY : tpos.y;
+            const h = this.npcNavToward(npc, pos, gx, gy);
             moveX = h.mx;
             moveY = h.my;
             // Stall watch, closest-approach law: only a STATIONARY
@@ -11149,11 +11222,11 @@ export class GameServer {
             // Lane-aware yardstick: a proven lane rounding a building
             // counts remaining lane length, so the leg of the detour
             // that walks AWAY from the target is not "stalling".
-            const prog = this.navProgressDist(npc, pos, tpos.x, tpos.y);
+            const prog = this.navProgressDist(npc, pos, gx, gy);
             if (prog.freshLane) npc.navBest = Infinity;
-            if (Math.hypot(tpos.x - npc.navRefX, tpos.y - npc.navRefY) > 0.6) {
-              npc.navRefX = tpos.x;
-              npc.navRefY = tpos.y;
+            if (Math.hypot(gx - npc.navRefX, gy - npc.navRefY) > 0.6) {
+              npc.navRefX = gx;
+              npc.navRefY = gy;
               npc.navBest = prog.dist;
               npc.navStuck = 0;
             } else if (prog.dist < npc.navBest - 0.15) {
@@ -11254,7 +11327,22 @@ export class GameServer {
             this.npcEndHunt(npc);
           } else {
             const gd = Math.hypot(goal.x - pos.x, goal.y - pos.y);
-            if (gd < 0.8) {
+            const interestInView =
+              this.tickCount - npc.alertSeenTick <= GameServer.PERCEPTION_PERIOD * 2;
+            if (
+              npc.state === 'investigate' &&
+              npc.huntWps === null &&
+              interestInView &&
+              gd < GameServer.WATCH_STANDOFF
+            ) {
+              // THE WARY STANDOFF: it walked over, it can SEE the
+              // stranger, and the sizing-up law hasn't opened the
+              // engage circle — so it plants at a respectful few
+              // tiles and stares. The watchful cap holds the meter
+              // at the brink; step closer or linger in its nerve
+              // and the lock finishes on its own.
+              pos.dir = Math.atan2(npc.alertY - pos.y, npc.alertX - pos.x);
+            } else if (gd < 0.8) {
               this.npcNextHuntLeg(eid, npc);
             } else {
               const h = this.npcNavToward(npc, pos, goal.x, goal.y);

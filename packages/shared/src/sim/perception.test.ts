@@ -3,12 +3,16 @@ import { test } from 'node:test';
 import { NO_COLLISION, type CollisionSource } from '../world/collision.js';
 import { Tile } from '../world/tiles.js';
 import {
+  ALERT_MAX,
   ALERT_RATE_MAX,
   ALERT_RATE_MIN,
+  ALERT_SUS,
+  ALERT_WATCH_CAP,
   COVER_VIS_FACTOR,
   PERIPHERAL_RATE,
   SIGHT_CLOSE_RANGE,
   SIGHT_PERIPHERAL_FRAC,
+  SIGHT_RANGE_MULT,
   alertRate,
   sightLine,
   sightVisibility,
@@ -166,4 +170,8 @@ test('alertRate: the peripheral band runs at half attention', () => {
 test('constants stay sane as a set', () => {
   assert.ok(SIGHT_CLOSE_RANGE > 0);
   assert.ok(SIGHT_PERIPHERAL_FRAC > 0 && SIGHT_PERIPHERAL_FRAC < 1);
+  // Seeing is not charging: the eye must genuinely outreach the
+  // old engage circle, and the watchful cap must sit under the lock.
+  assert.ok(SIGHT_RANGE_MULT > 1);
+  assert.ok(ALERT_WATCH_CAP < ALERT_MAX && ALERT_WATCH_CAP > ALERT_SUS);
 });
