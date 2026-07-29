@@ -39,6 +39,7 @@ import {
   type StrikeTrail,
 } from './carriage.js';
 import { STOW_HANDOFF, sheathePhases, stowBack, stowBlade } from './sheath.js';
+import { STAFF_GUARD_CHOKE_S, armPump, bowWield, gaitK, staffWield } from './wield.js';
 import {
   drawShield,
   drawShieldStraps,
@@ -2759,6 +2760,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     heldAngle = Math.atan2(markY - mainY, markX - mainX);
   }
   let staffGrip = 0.34; // combat default: gripped low, business end forward
+  // THE STAFF IS TWO-HANDED: the off hand's claim on the shaft (set by
+  // the rest ladder at a run, and by the guard out of rest) and where
+  // it lands along the wood. The claim itself is applied AFTER the
+  // sheathe blend, so a stowing staff releases the second fist.
+  let staffTwoHand = 0;
+  let staffChokeS = STAFF_GUARD_CHOKE_S;
   let armSwingK = 1;
   let restSettle = 0;
   const restSide = Math.sign(fx) || 1;
@@ -2840,7 +2847,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   ) {
     restSettle = rig.restT * rig.restT * (3 - 2 * rig.restT);
     const wSide = sideS;
-    const runK = rig.runF;
+    // THE GAIT LADDER (wield.ts): idle → walk → run are three stances.
+    // A slow walk lifts every carry a fraction of the run delta the
+    // moment the feet move — the old two-stop blend held the full idle
+    // hang until the legs were sprinting, a stroll with statue arms.
+    const runK = gaitK(Math.min(1, rig.poleStrength), rig.runF);
     // THE HANG-WIDTH LAW: hands hang at shoulder width only in PROFILE
     // (where the near hand must clear the turned torso). Front-on and
     // back-on a relaxed arm tapers in from the shoulder to brush the
@@ -2886,36 +2897,39 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       }
     }
     if (isStaff) {
-      // Walking stick ↔ run carry, blended on the gait itself.
-      const carry = runK * runK * (3 - 2 * runK);
-      // Planted stick rocks with the steps — the stride works the staff
-      // (on the SMOOTHED swing, so the rock sweeps instead of hinging).
-      const rock = -swS * 0.2 * rig.poleX * (1 - carry) * Math.min(1, rig.poleStrength);
-      const up = -Math.PI / 2 + rock;
-      // Orb forward, held low — continuous in the facing weight, so the
-      // run carry levels fully at profile and stays near-upright when
-      // the travel is straight toward or away from the camera.
-      const level = -Math.PI / 2 + sideW * (Math.PI / 2 - 0.3);
-      hAngle = up + (level - up) * carry;
-      // Held at arm's distance — the planted staff stands clear of the
-      // torso silhouette, the way a person actually leans on a stick.
-      hx = rig.x + wSide * (0.27 + 0.02 * carry) * s * wS + fx * 0.05 * s;
-      hy = armY + (-0.04 + 0.2 * carry) * s;
-      staffGrip = 0.72 - 0.3 * carry; // high grip on the stick, mid on the carry
-      armSwingK = 0.3 + 0.7 * carry; // a planted hand doesn't pump
+      // THE STAFF LADDER (wield.ts): planted walking stick at idle,
+      // rocking with the stride at a walk — at EVERY facing now, the
+      // old rock rode the screen-x pole and died on a N/S road —
+      // leveling into the two-hand trail carry at a run, where the
+      // off hand joins the shaft (the claim lands below, after the
+      // pump, so the second fist rides the same wood the main moves).
+      const sf = staffWield(
+        wSide,
+        sideW,
+        Math.min(1, rig.poleStrength),
+        rig.runF,
+        swS,
+        rig.poleX,
+      );
+      hAngle = sf.angle;
+      hx = rig.x + sf.dx * s * wS + fx * 0.05 * s;
+      hy = armY + sf.dy * s;
+      staffGrip = sf.grip;
+      armSwingK = sf.pumpK;
+      staffTwoHand = sf.twoHandK * restSettle;
+      staffChokeS = sf.chokeS;
     } else if (isBow) {
-      // The walking carry, reference-true: gripped by the wood with
-      // the STRING facing the body (upper side) and the wooden belly
-      // curving down-forward — the bow leans half-ready, top limb
-      // toward the shoulder line, lower limb by the thigh, so raising
-      // it into the aim is one motion. drawHeldItem slides the grip
-      // wrap into the fist on the same settle blend.
-      // Continuous in the facing weight: at profile the full half-ready
-      // lean (0.85 rad), front/back a near-vertical hang at the side —
-      // and the old binary mirror snap at north/south is gone.
-      hAngle = Math.PI / 2 - sideW * (Math.PI / 2 - 0.85);
-      hx += sideW * 0.12 * s * wS;
-      hy = armY + 0.18 * s;
+      // The walking carry, reference-true (wield.ts): gripped by the
+      // wood with the STRING facing the body (upper side) and the
+      // wooden belly curving down-forward — the bow leans half-ready,
+      // top limb toward the shoulder line, lower limb by the thigh, so
+      // raising it into the aim is one motion. Continuous in the
+      // facing weight (no binary mirror snap at north/south), and the
+      // gait ladder firms the carry a hair toward ready on the run.
+      const bf = bowWield(sideW, Math.min(1, rig.poleStrength), rig.runF);
+      hAngle = bf.angle;
+      hx += bf.dx * s * wS;
+      hy = armY + bf.dy * s;
     }
     mainX += (hx - mainX) * restSettle;
     mainY += (hy - mainY) * restSettle;
@@ -2957,26 +2971,36 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   }
 
   // Walking: arms swing counter to the legs along the travel direction.
-  if (rig.pose === PoseState.Walk || rig.pose === PoseState.Idle) {
+  // Sneak walks the same law at a stalker's amplitude — the old gate
+  // froze a sneaking figure's arms dead from the first crouched step.
+  if (
+    rig.pose === PoseState.Walk ||
+    rig.pose === PoseState.Idle ||
+    rig.pose === PoseState.Sneak
+  ) {
     // The pump rides the SMOOTHED swing (clamped ±1 at the source):
     // the raw footfall drive hinges, the low-passed one sweeps.
     const sw = swS;
-    // Arms pump harder as the walk becomes a run — but a hand carrying
-    // a weapon keeps its vertical pump restrained, and MORE so facing
-    // north/south, where the screen pump is purely vertical and used
-    // to carry the fists toward chest height.
-    const amp = (0.07 + 0.055 * rig.runF) * s * Math.min(1, rig.poleStrength);
+    // THE HONEST PUMP (wield.ts): arms swing along the TRAVEL,
+    // foreshortened by the ground law — a north-south run keeps real
+    // fore/aft arm life (smaller on screen because the world says so),
+    // where the old front-on clamp suppressed armed hands near-dead.
+    const amp =
+      (0.07 + 0.055 * rig.runF) * s * Math.min(1, rig.poleStrength) * (1 - 0.45 * crouch);
     const armed = isSword || isBow || isStaff;
-    const pumpY = 0.5 - (armed ? (0.18 + 0.16 * (1 - profileK)) * restSettle : 0);
-    mainX += rig.poleX * sw * amp * armSwingK;
-    mainY += (rig.poleY * sw * amp * pumpY - Math.abs(sw) * rig.runF * 0.03 * s) * armSwingK;
+    const p = armPump(rig.poleX, rig.poleY, sw, amp, armed ? restSettle : 0);
+    // The per-footfall bounce is a shared bob channel on |sw| — the
+    // rig owns it so it can never cancel the alternating throw.
+    const bounce = Math.abs(sw) * rig.runF * 0.03 * s;
+    mainX += p.dx * armSwingK;
+    mainY += (p.dy - bounce) * armSwingK;
     const offSwingK = offBlade ? 0.85 : 1;
-    offX -= rig.poleX * sw * amp * offSwingK;
-    offY -= (rig.poleY * sw * amp * pumpY - Math.abs(sw) * rig.runF * 0.03 * s) * offSwingK;
-    // Front/back travel has no screen-x pump at all (poleX ≈ 0); a
-    // whisper of shared lateral sway — the torso counter-sway of a
-    // real gait — keeps the restrained vertical pump from freezing.
-    const sway = sw * (1 - profileK) * 0.018 * s * Math.min(1, rig.poleStrength);
+    offX -= p.dx * offSwingK;
+    offY -= (p.dy - bounce) * offSwingK;
+    // The torso counter-sway of a real gait, living wherever the
+    // fore/aft component leaves the screen (travel-true, not a
+    // facing patch) — shared by both hands, never mirrored.
+    const sway = p.sway * s * Math.min(1, rig.poleStrength);
     mainX += sway;
     offX += sway;
     // WRIST-FOLLOW: the blade angle rides the arm swing a few degrees
@@ -3060,11 +3084,23 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     lean += -sideS * profileK * (kneeUpSit ? 0.1 : 0.2) * sit;
   }
 
-  // Casting: the free hand punches a push toward the aim.
+  // Casting: the free hand punches a push toward the aim. The punch
+  // amount is remembered so the staff's two-hand claim below yields
+  // the fist for exactly as long as the spell owns it.
+  let castPunch = 0;
   if (rig.pose === PoseState.Cast && rig.poseT < 0.5) {
     const u = Math.sin((rig.poseT / 0.5) * Math.PI);
+    castPunch = u;
     offX = rig.x + fx * (0.14 + 0.18 * u) * s * wS;
     offY = armY + fy * (0.14 + 0.18 * u) * s;
+    // THE PRESENT: a staff LEVELS onto the aim line for the beat of
+    // the spell — crown at the mark, flaring — instead of hanging on
+    // the guard angle while the free hand does all the talking.
+    if (isStaff) {
+      heldAngle += angleDelta(heldAngle, rig.dir) * u;
+      mainX += fx * 0.08 * s * wS * u;
+      mainY += fy * 0.08 * s * u;
+    }
   }
 
   // Archery: the FRONT hand holds the bow at arm's length toward the
@@ -3151,6 +3187,26 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         offX = offStow.x + (offX - offStow.x) * ph.homeK;
         offY = offStow.y + (offY - offStow.y) * ph.homeK;
       }
+    }
+  }
+
+  // ---- THE STAFF IS TWO-HANDED. Out of rest the quarterstaff guard
+  // puts the off hand ON the wood ahead of the main fist (so every
+  // staff swing and thrust is a two-handed sweep); at a run the rest
+  // ladder's trail carry claims it the same way. The claim is placed
+  // AFTER the sheathe blend so a stowing staff releases the second
+  // fist, and it yields to everything with a better right to the hand:
+  // the cast punch (castPunch), the seat (sit), a busy off blade, the
+  // bow, and the shield's own claim below, which lands after and wins.
+  if (isStaff && !offBlade && !drawing && !loosing) {
+    const guardK = 1 - restSettle;
+    let claim = Math.max(staffTwoHand, guardK) * (1 - sit) * (1 - castPunch);
+    claim *= 1 - sheathePhases(sheath).grabK;
+    if (claim > 0) {
+      const cx = mainX + Math.cos(heldAngle) * staffChokeS * s * wS;
+      const cy = mainY + Math.sin(heldAngle) * staffChokeS * s + 0.02 * s;
+      offX += (cx - offX) * claim;
+      offY += (cy - offY) * claim;
     }
   }
 
@@ -3542,7 +3598,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     } else {
       drawHeldItem(ctx, weapon.id, weapon.color, mainX, mainY, heldAngle, s, rig, {
         grip: staffGrip,
-        carry: isBow ? restSettle : 0,
+        // THE BOW IS HELD BY THE WOOD — always. The old restSettle
+        // blend slid the fist onto the string line whenever the settle
+        // was partial: a hand carrying a bowstring like a suitcase.
+        carry: isBow ? 1 : 0,
         ench: rig.weaponEnch,
         flip: mainFlip,
       });
