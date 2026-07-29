@@ -132,6 +132,11 @@ export const DETAILS: Array<{ d: Detail; label: string }> = [
   { d: Detail.Mushroom, label: 'mushroom' },
   { d: Detail.Rug, label: 'rug' },
   { d: Detail.RugRound, label: 'round rug' },
+  { d: Detail.CarpetRoyal, label: 'royal carpet' },
+  { d: Detail.CarpetMoon, label: 'moonpale carpet' },
+  { d: Detail.BannerCrown, label: 'crown banner (on wall)' },
+  { d: Detail.BannerMoon, label: 'moon banner (on wall)' },
+  { d: Detail.Tapestry, label: 'tapestry (on wall)' },
   { d: Detail.Doormat, label: 'doormat' },
   { d: Detail.Sawdust, label: 'sawdust' },
   { d: Detail.Straw, label: 'straw' },
@@ -363,7 +368,11 @@ export function buildDetailThumbs(): Map<Detail, HTMLElement> {
     ground: e.d === Detail.Sawdust || e.d === Detail.Straw || e.d === Detail.Rug ||
       e.d === Detail.RugRound || e.d === Detail.Doormat
       ? Tile.WoodFloor
-      : Tile.Grass,
+      : e.d === Detail.CarpetRoyal || e.d === Detail.CarpetMoon
+        ? Tile.StoneFloor
+        : e.d === Detail.BannerCrown || e.d === Detail.BannerMoon || e.d === Detail.Tapestry
+          ? Tile.WallStone
+          : Tile.Grass,
     detail: e.d,
   }));
   const baked = bakeStrip(grounds);

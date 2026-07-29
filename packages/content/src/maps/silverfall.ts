@@ -189,8 +189,18 @@ export function buildSilverfall(): ZoneDef {
   // TRUE thrones now: the west seat gilded for the King, the east
   // silvered moonpale for the Queen (Tile.Throne's paired-seat law).
   b.set(65, 13, Tile.Throne).set(66, 13, Tile.Throne);
-  b.setDetail(64, 14, Detail.Rug).setDetail(65, 14, Detail.Rug);
-  b.setDetail(66, 14, Detail.Rug).setDetail(67, 14, Detail.Rug);
+  // THE PROCESSIONAL: crimson velvet from the gate to the dais — a
+  // 4-wide spread under the thrones narrowing to the 2-wide runner
+  // every petitioner walks. Fitted carpet (Detail.CarpetRoyal) knits
+  // seamlessly; braid and outline survive only on its free hem.
+  b.setDetail(64, 14, Detail.CarpetRoyal).setDetail(67, 14, Detail.CarpetRoyal);
+  for (let y = 14; y <= 27; y++) {
+    b.setDetail(65, y, Detail.CarpetRoyal).setDetail(66, y, Detail.CarpetRoyal);
+  }
+  // THE SIGILS OVER THE DAIS: the King's peaks west of the window,
+  // the Queen's arch east — the wall itself wears the house.
+  b.setDetail(63, 11, Detail.BannerCrown).setDetail(64, 11, Detail.BannerCrown);
+  b.setDetail(67, 11, Detail.BannerMoon).setDetail(68, 11, Detail.BannerMoon);
   b.set(69, 15, Tile.Lectern); // the herald reads the day's decrees
   for (let y = 18; y <= 23; y++) b.set(61, y, Tile.Table).set(70, y, Tile.Table);
   b.set(61, 17, Tile.Chair).set(61, 24, Tile.Chair);
@@ -199,11 +209,9 @@ export function buildSilverfall(): ZoneDef {
   b.set(62, 18, Tile.Chair).set(62, 21, Tile.Chair);
   b.set(69, 18, Tile.Chair).set(69, 21, Tile.Chair);
   b.set(71, 19, Tile.Chair).set(71, 22, Tile.Chair);
-  for (const y of [17, 20, 23]) {
-    b.setDetail(65, y, Detail.Rug).setDetail(66, y, Detail.Rug);
-  }
   b.set(63, 27, Tile.BannerPole).set(68, 27, Tile.BannerPole);
-  b.setDetail(65, 27, Detail.Doormat).setDetail(66, 27, Detail.Doormat);
+  // The Crown greets the forecourt: sigils flank the great gate.
+  b.setDetail(62, 28, Detail.BannerCrown).setDetail(69, 28, Detail.BannerMoon);
   // THE WEST WING (x50-56): armory north, guard hall south — the
   // castle guard eats and sleeps beside the steel it carries.
   for (let x = 50; x <= 56; x++) b.set(x, 20, Tile.WallStone);
@@ -217,19 +225,36 @@ export function buildSilverfall(): ZoneDef {
   b.set(55, 25, Tile.Bed).set(55, 26, Tile.Bed);
   b.set(53, 23, Tile.Table).set(52, 23, Tile.Chair).set(54, 23, Tile.Chair);
   b.set(56, 27, Tile.Brazier).set(50, 22, Tile.WeaponRack);
+  // The guard hall's one soft thing: a great rug between the bunks
+  // (the one-loom law weaves the 3x2 block into a single cloth), and
+  // the crown's banner over the mess — the steel serves the sigil.
+  for (let x = 52; x <= 54; x++) {
+    b.setDetail(x, 24, Detail.Rug).setDetail(x, 25, Detail.Rug);
+  }
+  b.setDetail(55, 20, Detail.BannerCrown);
   // THE ROYAL WING (x75-81): the chamber north, the solar south —
   // where the Crown is only a household.
   for (let x = 75; x <= 81; x++) b.set(x, 20, Tile.WallStone);
   b.set(78, 20, Tile.DoorwayStone);
   b.set(76, 13, Tile.Bed).set(76, 14, Tile.Bed);
   b.set(80, 13, Tile.Bed).set(80, 14, Tile.Bed);
+  // The Queen's floor: moonpale velvet laid between the royal beds.
+  for (let x = 77; x <= 79; x++) {
+    b.setDetail(x, 13, Detail.CarpetMoon).setDetail(x, 14, Detail.CarpetMoon);
+  }
   b.setDetail(78, 15, Detail.RugRound);
   b.set(81, 12, Tile.Cabinet).set(75, 17, Tile.Bookshelf);
   b.set(78, 12, Tile.FlowerBox); // the queen's window box
   b.set(78, 23, Tile.Table).set(77, 23, Tile.Chair).set(79, 23, Tile.Chair);
   b.set(75, 22, Tile.Bookshelf).set(75, 25, Tile.Bookshelf);
   b.set(81, 25, Tile.Hearth).set(81, 21, Tile.Cabinet);
-  b.setDetail(78, 25, Detail.Rug);
+  // The solar: the Silverfall weave hangs three tiles wide over a
+  // grand 5x3 medallion rug — the one room where the Crown sits soft.
+  b.setDetail(75, 20, Detail.Tapestry).setDetail(76, 20, Detail.Tapestry);
+  b.setDetail(77, 20, Detail.Tapestry);
+  for (let x = 76; x <= 80; x++) {
+    for (let y = 24; y <= 26; y++) b.setDetail(x, y, Detail.Rug);
+  }
   // The forecourt: the Crown's parade strip — the y29-30 rows are the
   // Crown terrace's only east-west walk, so NOTHING solid stands on
   // them (the sealed-pocket law; the banners live inside the hall).
@@ -542,6 +567,9 @@ export function buildSilverfall(): ZoneDef {
   b.fillRect(81, 62, 3, 1, Tile.WallGarrison); // west wing
   b.fillRect(93, 62, 6, 1, Tile.WallGarrison); // east wing, to the water
   for (let x = 84; x <= 92; x++) b.set(x, 62, Tile.GateGarrison);
+  // The Court Gate flies the pair: King's peaks west, Queen's arch
+  // east — the same order the thrones keep above.
+  b.setDetail(83, 62, Detail.BannerCrown).setDetail(93, 62, Detail.BannerMoon);
   b.sign(81, 60, 'THE COURT GATE', ['the Crown hears who climbs'], Tile.Signpost);
 
   // ---------------------------------------------------------------
@@ -895,6 +923,9 @@ export function buildSilverfall(): ZoneDef {
   // leaves standing open. The High Road marches straight through.
   for (let x = 86; x <= 90; x++) b.set(x, 112, Tile.GateGarrison);
   b.set(83, 109, Tile.BannerPole).set(93, 109, Tile.BannerPole);
+  // The bastions wear the crown: sigil drops on both drum faces —
+  // the first thing the road sees is whose city this is.
+  b.setDetail(83, 114, Detail.BannerCrown).setDetail(93, 114, Detail.BannerCrown);
   // THE CARAVANSERAI: the road's last yard, laid out like it works —
   // three rail bays with straw and troughs, the cargo corner, the
   // travellers' fire circle, the farrier's bench.

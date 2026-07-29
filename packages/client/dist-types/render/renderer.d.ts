@@ -872,6 +872,29 @@ export declare class Renderer {
      */
     private woodCrownPlate;
     /**
+     * THE HANGING LAW — wall-hung cloth. Detail.BannerCrown, BannerMoon,
+     * and Tapestry are authored ON a wall tile and painted by that
+     * wall's own face pass, inside the face frame: the cloth leans,
+     * sinks, and sorts with the masonry it hangs from, and like glazing
+     * it sheds when the reveal eases the wall below hanging height — a
+     * sinking wall drops its rod before the crown could swallow it. The
+     * ground bake draws nothing for these details (WALL_HUNG_DETAILS).
+     * Coordinates are face-local: x in screen px, y rising NEGATIVE
+     * from 0 at the wall's south base.
+     */
+    private wallHangings;
+    /**
+     * The grand tapestry — the Silverfall weave. Adjacent wall tiles of
+     * the same run carrying Detail.Tapestry merge into ONE wide hanging:
+     * every member computes the run's extent, draws the ENTIRE
+     * composition, and clips to its own face span, so the picture
+     * assembles seamlessly from identical geometry (the one-loom law,
+     * raised onto the wall). The scene is the city's own: the silver
+     * fall dropping from the ridge saddle past the keep to the water,
+     * under a gold sun.
+     */
+    private tapestryOnFace;
+    /**
      * A 45° wall corner tile. The mass fills one triangle (named by the
      * tile); the open triangle faces the exterior. NE/NW-mass variants
      * cut a building's camera-side corners and show their SLOPED

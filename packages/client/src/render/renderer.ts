@@ -16,6 +16,7 @@ import {
   TICK_MS,
   TILE_PX,
   Tile,
+  Detail,
   WALL_RUN_TILES,
   DIAG_WALL_TILES,
   GARRISON_TILES,
@@ -5086,6 +5087,9 @@ export class Renderer {
               ctx.fillRect(wx - s * 0.1, wy + wh2 + s * 0.1, ww + s * 0.2, s * 0.03);
             }
           }
+          // Wall-hung cloth (banners, tapestry) on the face — skipped
+          // on glazed walls, whose guard clip would eat the drop.
+          if (!window) this.wallHangings(game, tx, ty, p.x, s, whT, false);
           // Ambient-occlusion seam where the face meets the ground.
           ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
           ctx.fillRect(x0, -s * 0.06, x1 - x0, s * 0.06);
@@ -5244,6 +5248,334 @@ export class Renderer {
         ctx.fillRect(jx + s * 0.04, p.y + syT * 0.6, s * 0.042, s * 0.042);
       }
     }
+    ctx.restore();
+  }
+
+  /**
+   * THE HANGING LAW — wall-hung cloth. Detail.BannerCrown, BannerMoon,
+   * and Tapestry are authored ON a wall tile and painted by that
+   * wall's own face pass, inside the face frame: the cloth leans,
+   * sinks, and sorts with the masonry it hangs from, and like glazing
+   * it sheds when the reveal eases the wall below hanging height — a
+   * sinking wall drops its rod before the crown could swallow it. The
+   * ground bake draws nothing for these details (WALL_HUNG_DETAILS).
+   * Coordinates are face-local: x in screen px, y rising NEGATIVE
+   * from 0 at the wall's south base.
+   */
+  private wallHangings(
+    game: ClientGame,
+    tx: number,
+    ty: number,
+    px0: number,
+    s: number,
+    whT: number,
+    garrison: boolean,
+  ): void {
+    const d = game.world.detailAt(tx, ty);
+    if (d !== Detail.BannerCrown && d !== Detail.BannerMoon && d !== Detail.Tapestry) return;
+    if (whT < (garrison ? 2.7 : 1.9)) return;
+    if (d === Detail.Tapestry) {
+      this.tapestryOnFace(game, tx, ty, px0, s, garrison);
+      return;
+    }
+    const ctx = this.ctx;
+    // ---- The hanging banner: the house sigil on a swallowtail drop.
+    // The hoist hangs true; the tails trail a beat behind the breath
+    // of air off the hall floor, so the cloth ripples instead of
+    // stiffly tilting (the BannerPole's two-beat law).
+    const moon = d === Detail.BannerMoon;
+    const cloth = moon ? '#54689c' : '#7a2430';
+    const metal = moon ? '#b4c0d2' : '#c9962e';
+    const cx = px0 + s * 0.5;
+    const rodY = -s * (garrison ? 2.75 : 1.78);
+    const bw = s * (garrison ? 0.56 : 0.5);
+    const bl = s * (garrison ? 1.6 : 1.18);
+    const t = performance.now() / 1000;
+    const ph = tx * 1.7 + ty * 0.9;
+    const sway = Math.sin(t * 1.15 + ph) * s * 0.02;
+    const lag = Math.sin(t * 1.15 + ph - 0.9) * s * 0.03;
+    const yTop = rodY + s * 0.035;
+    const yMid = yTop + bl * 0.66;
+    const yBot = yTop + bl;
+    // The cloth stands a breath proud of the face — its own shadow
+    // seats it on the masonry.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+    ctx.fillRect(cx - bw / 2 + s * 0.04, yTop + s * 0.05, bw, bl - s * 0.1);
+    const path = new Path2D();
+    path.moveTo(cx - bw / 2, yTop);
+    path.lineTo(cx + bw / 2, yTop);
+    path.lineTo(cx + bw / 2 + sway, yMid);
+    path.lineTo(cx + bw / 2 + lag, yBot);
+    path.lineTo(cx + lag, yBot - s * 0.18);
+    path.lineTo(cx - bw / 2 + lag, yBot);
+    path.lineTo(cx - bw / 2 + sway, yMid);
+    path.closePath();
+    ctx.fillStyle = cloth;
+    ctx.fill(path);
+    // Everything ON the cloth clips to the cloth.
+    ctx.save();
+    ctx.clip(path);
+    // Header band under the rod, struck with a metal thread.
+    ctx.fillStyle = shade(cloth, 14);
+    ctx.fillRect(cx - bw / 2, yTop, bw, s * 0.07);
+    ctx.fillStyle = metal;
+    ctx.fillRect(cx - bw / 2, yTop + s * 0.07, bw, s * 0.022);
+    // Side trims falling the drop.
+    ctx.fillRect(cx - bw / 2 + s * 0.035, yTop + s * 0.1, s * 0.02, bl);
+    ctx.fillRect(cx + bw / 2 - s * 0.055, yTop + s * 0.1, s * 0.02, bl);
+    // Fold shading: the cloth is hung, not printed.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.14)';
+    ctx.fillRect(cx - bw * 0.2, yTop + s * 0.1, s * 0.045, bl * 0.78);
+    ctx.fillRect(cx + bw * 0.13, yTop + s * 0.1, s * 0.045, bl * 0.72);
+    // THE SIGIL, at the hoist's heart — the throne's own crown
+    // geometry, woven in the house metal.
+    const sy2 = yTop + bl * 0.34;
+    const w2 = bw * 0.62;
+    const h2 = w2 * 0.5;
+    ctx.fillStyle = metal;
+    if (moon) {
+      // The Queen's swept arch, the moonpale drop beneath its crest.
+      ctx.beginPath();
+      ctx.moveTo(cx - h2, sy2 + h2 * 0.42);
+      ctx.quadraticCurveTo(cx, sy2 - h2 * 0.75, cx + h2, sy2 + h2 * 0.42);
+      ctx.lineTo(cx + h2, sy2 + h2 * 0.6);
+      ctx.quadraticCurveTo(cx, sy2 - h2 * 0.45, cx - h2, sy2 + h2 * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#cfe0f0';
+      ctx.beginPath();
+      ctx.moveTo(cx, sy2 - h2 * 0.05);
+      ctx.quadraticCurveTo(cx + h2 * 0.24, sy2 + h2 * 0.5, cx, sy2 + h2 * 0.82);
+      ctx.quadraticCurveTo(cx - h2 * 0.24, sy2 + h2 * 0.5, cx, sy2 - h2 * 0.05);
+      ctx.fill();
+    } else {
+      // The King's three gilded peaks over their band.
+      ctx.beginPath();
+      ctx.moveTo(cx - h2, sy2 + h2 * 0.31);
+      ctx.lineTo(cx - h2 * 0.68, sy2 - h2 * 0.07);
+      ctx.lineTo(cx - h2 * 0.4, sy2 + h2 * 0.17);
+      ctx.lineTo(cx, sy2 - h2 * 0.55);
+      ctx.lineTo(cx + h2 * 0.4, sy2 + h2 * 0.17);
+      ctx.lineTo(cx + h2 * 0.68, sy2 - h2 * 0.07);
+      ctx.lineTo(cx + h2, sy2 + h2 * 0.31);
+      ctx.lineTo(cx + h2, sy2 + h2 * 0.62);
+      ctx.lineTo(cx - h2, sy2 + h2 * 0.62);
+      ctx.closePath();
+      ctx.fill();
+      // The house stone at the band, and a struck fillet.
+      ctx.fillStyle = shade(metal, 16);
+      ctx.fillRect(cx - h2 * 0.92, sy2 + h2 * 0.34, h2 * 1.84, h2 * 0.07);
+      ctx.fillStyle = '#7a2430';
+      ctx.beginPath();
+      ctx.moveTo(cx, sy2 + h2 * 0.38);
+      ctx.lineTo(cx + h2 * 0.11, sy2 + h2 * 0.49);
+      ctx.lineTo(cx, sy2 + h2 * 0.6);
+      ctx.lineTo(cx - h2 * 0.11, sy2 + h2 * 0.49);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.fillRect(cx - h2 * 0.05, sy2 - h2 * 0.4, h2 * 0.1, h2 * 0.1);
+    }
+    // Hem thread tracing the swallowtail.
+    ctx.strokeStyle = metal;
+    ctx.lineWidth = Math.max(1, s * 0.022);
+    ctx.beginPath();
+    ctx.moveTo(cx - bw / 2 + lag + s * 0.015, yBot - s * 0.05);
+    ctx.lineTo(cx + lag, yBot - s * 0.225);
+    ctx.lineTo(cx + bw / 2 + lag - s * 0.015, yBot - s * 0.05);
+    ctx.stroke();
+    ctx.restore();
+    // THE HOUSE OUTLINE around the silhouette.
+    ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+    ctx.lineWidth = Math.max(1, s * 0.028);
+    ctx.stroke(path);
+    // The iron rod over everything, gold-capped, strapped to the wall.
+    ctx.fillStyle = '#454052';
+    ctx.fillRect(cx - bw / 2 - s * 0.015, rodY - s * 0.06, s * 0.04, s * 0.045);
+    ctx.fillRect(cx + bw / 2 - s * 0.025, rodY - s * 0.06, s * 0.04, s * 0.045);
+    ctx.fillStyle = '#2c2836';
+    ctx.fillRect(cx - bw / 2 - s * 0.08, rodY - s * 0.022, bw + s * 0.16, s * 0.05);
+    // Hoist tabs looping the rod.
+    ctx.fillStyle = shade(cloth, -8);
+    for (const fx of [-bw * 0.38, 0, bw * 0.38])
+      ctx.fillRect(cx + fx - s * 0.034, rodY - s * 0.048, s * 0.068, s * 0.115);
+    ctx.fillStyle = metal;
+    ctx.beginPath();
+    facetCircle(ctx, cx - bw / 2 - s * 0.095, rodY, s * 0.042, 6, 0.3);
+    ctx.fill();
+    ctx.beginPath();
+    facetCircle(ctx, cx + bw / 2 + s * 0.095, rodY, s * 0.042, 6, 0.3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.fillRect(cx - bw / 2 - s * 0.108, rodY - s * 0.016, s * 0.015, s * 0.015);
+    ctx.fillRect(cx + bw / 2 + s * 0.082, rodY - s * 0.016, s * 0.015, s * 0.015);
+  }
+
+  /**
+   * The grand tapestry — the Silverfall weave. Adjacent wall tiles of
+   * the same run carrying Detail.Tapestry merge into ONE wide hanging:
+   * every member computes the run's extent, draws the ENTIRE
+   * composition, and clips to its own face span, so the picture
+   * assembles seamlessly from identical geometry (the one-loom law,
+   * raised onto the wall). The scene is the city's own: the silver
+   * fall dropping from the ridge saddle past the keep to the water,
+   * under a gold sun.
+   */
+  private tapestryOnFace(
+    game: ClientGame,
+    tx: number,
+    ty: number,
+    px0: number,
+    s: number,
+    garrison: boolean,
+  ): void {
+    const ctx = this.ctx;
+    const member = (x: number): boolean => {
+      if (garrison) {
+        if (!this.garrisonish(game, x, ty) || this.garrisonish(game, x, ty + 1)) return false;
+      } else {
+        const g2 = game.world.groundAt(x, ty);
+        if (g2 === undefined || !Renderer.WALL_TILES.has(g2) || Renderer.DOOR_TILES.has(g2))
+          return false;
+        if (this.wallish(game, x, ty + 1)) return false;
+      }
+      return game.world.detailAt(x, ty) === Detail.Tapestry;
+    };
+    let ax = tx;
+    while (member(ax - 1)) ax--;
+    let ex = tx;
+    while (member(ex + 1)) ex++;
+    const nT = ex - ax + 1;
+    const runL = px0 - (tx - ax) * s;
+    const W = nT * s - s * 0.36;
+    const x0 = runL + s * 0.18;
+    const rodY = -s * 1.88;
+    const yTop = rodY + s * 0.04;
+    const bl = s * 1.38;
+    const yBot = yTop + bl;
+    // Our own face span only — run-mates paint their own thirds of
+    // the same geometry, and the picture meets itself at the seams.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(px0 - 0.5, rodY - s * 0.4, s + 1, -rodY + s * 0.55);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+    ctx.fillRect(x0 + s * 0.045, yTop + s * 0.05, W, bl - s * 0.06);
+    // The madder guard border carries the whole cloth.
+    ctx.fillStyle = '#6e3440';
+    ctx.fillRect(x0, yTop, W, bl);
+    ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+    ctx.lineWidth = Math.max(1, s * 0.028);
+    ctx.strokeRect(x0, yTop, W, bl);
+    ctx.strokeStyle = 'rgba(240, 232, 210, 0.35)';
+    ctx.lineWidth = Math.max(1, s * 0.016);
+    ctx.strokeRect(x0 + s * 0.045, yTop + s * 0.045, W - s * 0.09, bl - s * 0.09);
+    // The scene field: an evening sky over the falls.
+    const fx0 = x0 + s * 0.1;
+    const fx1 = x0 + W - s * 0.1;
+    const fy0 = yTop + s * 0.1;
+    const fy1 = yBot - s * 0.1;
+    const fw = fx1 - fx0;
+    const fh = fy1 - fy0;
+    ctx.fillStyle = '#3a4668';
+    ctx.fillRect(fx0, fy0, fw, fh);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(fx0, fy0, fw, fh);
+    ctx.clip();
+    // The gold sun, ringed, high in the east.
+    const sunR = Math.min(fw * 0.09, s * 0.11);
+    ctx.strokeStyle = 'rgba(201, 150, 46, 0.45)';
+    ctx.lineWidth = Math.max(1, s * 0.02);
+    ctx.beginPath();
+    facetCircle(ctx, fx0 + fw * 0.76, fy0 + fh * 0.24, sunR * 1.55, 8, 0.4);
+    ctx.stroke();
+    ctx.fillStyle = '#c9962e';
+    ctx.beginPath();
+    facetCircle(ctx, fx0 + fw * 0.76, fy0 + fh * 0.24, sunR, 8, 0.4);
+    ctx.fill();
+    // The stepped ridge; the falls leave from the saddle.
+    const ry2 = fy0 + fh * 0.5;
+    ctx.fillStyle = '#4a4554';
+    ctx.beginPath();
+    ctx.moveTo(fx0, ry2 + fh * 0.1);
+    ctx.lineTo(fx0 + fw * 0.16, ry2 + fh * 0.1);
+    ctx.lineTo(fx0 + fw * 0.22, ry2 - fh * 0.12);
+    ctx.lineTo(fx0 + fw * 0.38, ry2 - fh * 0.12);
+    ctx.lineTo(fx0 + fw * 0.46, ry2);
+    ctx.lineTo(fx0 + fw * 0.66, ry2);
+    ctx.lineTo(fx0 + fw * 0.74, ry2 - fh * 0.06);
+    ctx.lineTo(fx0 + fw * 0.86, ry2 - fh * 0.06);
+    ctx.lineTo(fx0 + fw * 0.93, ry2 + fh * 0.08);
+    ctx.lineTo(fx1, ry2 + fh * 0.08);
+    ctx.lineTo(fx1, fy1);
+    ctx.lineTo(fx0, fy1);
+    ctx.closePath();
+    ctx.fill();
+    // The keep on the western shoulder — and one gold fleck flying.
+    ctx.fillStyle = '#2f2b3a';
+    const kx = fx0 + fw * 0.24;
+    const kw = fw * 0.11;
+    const kt = ry2 - fh * 0.12;
+    ctx.fillRect(kx, kt - fh * 0.17, kw * 0.32, fh * 0.17);
+    ctx.fillRect(kx + kw * 0.68, kt - fh * 0.17, kw * 0.32, fh * 0.17);
+    ctx.fillRect(kx, kt - fh * 0.09, kw, fh * 0.09);
+    ctx.fillStyle = '#c9962e';
+    ctx.fillRect(kx + kw * 0.06, kt - fh * 0.215, kw * 0.16, fh * 0.05);
+    // The silver fall, saddle to pool, streaked with white water.
+    const nx0 = fx0 + fw * 0.52;
+    const nx1 = fx0 + fw * 0.6;
+    ctx.fillStyle = '#b4c0d2';
+    ctx.fillRect(nx0, ry2, nx1 - nx0, fy1 - ry2);
+    ctx.fillStyle = 'rgba(240, 246, 252, 0.5)';
+    ctx.fillRect(nx0 + (nx1 - nx0) * 0.18, ry2, Math.max(1, s * 0.02), fy1 - ry2);
+    ctx.fillRect(nx0 + (nx1 - nx0) * 0.62, ry2 + fh * 0.06, Math.max(1, s * 0.02), fy1 - ry2 - fh * 0.06);
+    // The water the fall feeds, ticked with silver light.
+    ctx.fillStyle = '#54789c';
+    ctx.fillRect(fx0, fy1 - fh * 0.16, fw, fh * 0.16);
+    ctx.fillStyle = 'rgba(180, 192, 210, 0.6)';
+    for (let k = 0; k < 4; k++)
+      ctx.fillRect(
+        fx0 + fw * (0.08 + k * 0.24),
+        fy1 - fh * (0.09 + (k % 2) * 0.04),
+        fw * 0.09,
+        Math.max(1, s * 0.018),
+      );
+    ctx.fillStyle = 'rgba(240, 246, 252, 0.55)';
+    ctx.beginPath();
+    ctx.ellipse((nx0 + nx1) / 2, fy1 - fh * 0.145, (nx1 - nx0) * 0.9, fh * 0.035, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    // Weft texture across the whole cloth — a weave, not a print.
+    ctx.fillStyle = 'rgba(240, 232, 210, 0.04)';
+    for (let yy = yTop + s * 0.09; yy < yBot - s * 0.05; yy += s * 0.09)
+      ctx.fillRect(x0 + s * 0.03, yy, W - s * 0.06, Math.max(1, s * 0.014));
+    // Hanging folds at the thirds.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.1)';
+    ctx.fillRect(x0 + W / 3 - s * 0.025, yTop + s * 0.06, s * 0.05, bl - s * 0.12);
+    ctx.fillRect(x0 + (W * 2) / 3 - s * 0.025, yTop + s * 0.06, s * 0.05, bl - s * 0.12);
+    // Bottom fringe past the outline.
+    ctx.fillStyle = '#d8c9a0';
+    for (let xx = x0 + s * 0.05; xx < x0 + W - s * 0.05; xx += s * 0.06)
+      ctx.fillRect(xx, yBot + s * 0.016, s * 0.032, s * 0.052);
+    // The iron rod: strapped at every joint, gold orbs at the ends.
+    ctx.fillStyle = '#454052';
+    for (let k = 1; k < nT; k++)
+      ctx.fillRect(runL + k * s - s * 0.02, rodY - s * 0.058, s * 0.04, s * 0.042);
+    ctx.fillRect(x0 - s * 0.05, rodY - s * 0.058, s * 0.04, s * 0.042);
+    ctx.fillRect(x0 + W + s * 0.01, rodY - s * 0.058, s * 0.04, s * 0.042);
+    ctx.fillStyle = '#2c2836';
+    ctx.fillRect(x0 - s * 0.08, rodY - s * 0.024, W + s * 0.16, s * 0.05);
+    ctx.fillStyle = '#c9962e';
+    ctx.beginPath();
+    facetCircle(ctx, x0 - s * 0.1, rodY, s * 0.045, 6, 0.3);
+    ctx.fill();
+    ctx.beginPath();
+    facetCircle(ctx, x0 + W + s * 0.1, rodY, s * 0.045, 6, 0.3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.fillRect(x0 - s * 0.115, rodY - s * 0.018, s * 0.016, s * 0.016);
+    ctx.fillRect(x0 + W + s * 0.085, rodY - s * 0.018, s * 0.016, s * 0.016);
     ctx.restore();
   }
 
@@ -5850,6 +6182,8 @@ export class Renderer {
             whT,
             true,
           );
+          // The curtain flies the crown's cloth: banners on the keep.
+          this.wallHangings(game, tx, ty, p.x, s, whT, true);
           ctx.restore();
         }
         // REAR RISER: the interior back face exposed when the curtain

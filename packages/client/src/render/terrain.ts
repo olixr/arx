@@ -1530,9 +1530,14 @@ function drawTileDetail(
         // fringe off the two loom ends, and a hash-dealt motif —
         // medallion, kilim bands, or diamond lattice — so a town's
         // rugs read as sisters from one loom, never uniforms.
-        // MERGE LAW: adjacent Rug tiles weave into ONE great hall rug
-        // — border/fringe only on free edges, pattern and palette
-        // keyed to the block's NW anchor so every tile agrees.
+        // THE ONE-LOOM LAW: a rectangular block of Rug tiles is ONE
+        // cloth — every member computes the block's full extent and
+        // paints the ENTIRE grand composition (house outline, bound
+        // border, guard pinlines, block-scale medallion or diamond
+        // chain) clipped to its own square, so the great rug assembles
+        // seamlessly from identical geometry. Non-rectangular patches
+        // fall back to the seamed per-tile weave, border surviving on
+        // free edges only.
         const isRug = (x: number, y: number) => dAt?.(x, y) === Detail.Rug;
         const jn = isRug(tx, ty - 1);
         const je = isRug(tx + 1, ty);
@@ -1541,10 +1546,145 @@ function drawTileDetail(
         if (jn || je || js || jw) {
           let ax = tx;
           while (isRug(ax - 1, ty)) ax--;
+          let ex = tx;
+          while (isRug(ex + 1, ty)) ex++;
           let ay = ty;
           while (isRug(tx, ay - 1)) ay--;
+          let ey = ty;
+          while (isRug(tx, ey + 1)) ey++;
+          let rect = ex - ax < 15 && ey - ay < 15;
+          for (let y2 = ay; rect && y2 <= ey; y2++)
+            for (let x2 = ax; rect && x2 <= ex; x2++) if (!isRug(x2, y2)) rect = false;
           const ha = hashCoords(211, ax, ay);
           const [bord, field, accent] = RUG_PALETTES[ha % RUG_PALETTES.length]!;
+          if (rect) {
+            // The whole cloth in this tile's bake space; the clip grows
+            // past our square only on FREE rims (outline + fringe live
+            // there — no neighbour will ever draw them).
+            const rx = gx - (tx - ax) * px + px * 0.07;
+            const ry = gy - (ty - ay) * px + px * 0.09;
+            const rw = (ex - ax + 1) * px - px * 0.14;
+            const rh = (ey - ay + 1) * px - px * 0.18;
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(
+              gx - (jw ? 0 : px * 0.16),
+              gy - (jn ? 0 : px * 0.16),
+              px + (jw ? 0 : px * 0.16) + (je ? 0 : px * 0.16),
+              px + (jn ? 0 : px * 0.16) + (js ? 0 : px * 0.16),
+            );
+            ctx.clip();
+            const diamond = (dx: number, dy: number, r: number, el: number, tone: string): void => {
+              ctx.fillStyle = tone;
+              ctx.beginPath();
+              ctx.moveTo(dx, dy - r);
+              ctx.lineTo(dx + r * el, dy);
+              ctx.lineTo(dx, dy + r);
+              ctx.lineTo(dx - r * el, dy);
+              ctx.closePath();
+              ctx.fill();
+            };
+            // Seat the cloth: a whisper of shadow off the south hem.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.fillRect(rx + px * 0.01, ry + rh, rw - px * 0.02, px * 0.03);
+            // THE HOUSE OUTLINE: the bound dark edge every prop wears.
+            ctx.fillStyle = '#241a2e';
+            ctx.beginPath();
+            chamferRect(ctx, rx - px * 0.035, ry - px * 0.035, rw + px * 0.07, rh + px * 0.07, px * 0.085);
+            ctx.fill();
+            // Bound border band.
+            ctx.fillStyle = bord;
+            ctx.beginPath();
+            chamferRect(ctx, rx, ry, rw, rh, px * 0.055);
+            ctx.fill();
+            // Guard pinlines riding just inside every rim.
+            ctx.fillStyle = 'rgba(240, 232, 210, 0.3)';
+            ctx.fillRect(rx + px * 0.045, ry + px * 0.045, rw - px * 0.09, px * 0.022);
+            ctx.fillRect(rx + px * 0.045, ry + rh - px * 0.067, rw - px * 0.09, px * 0.022);
+            ctx.fillRect(rx + px * 0.045, ry + px * 0.045, px * 0.022, rh - px * 0.09);
+            ctx.fillRect(rx + rw - px * 0.067, ry + px * 0.045, px * 0.022, rh - px * 0.09);
+            const bw2 = px * 0.17;
+            // Diamond beads pacing the long border bands.
+            for (let xx = rx + px * 0.34; xx < rx + rw - px * 0.28; xx += px * 0.31) {
+              diamond(xx, ry + bw2 * 0.52, px * 0.036, 1.2, accent);
+              diamond(xx, ry + rh - bw2 * 0.52, px * 0.036, 1.2, accent);
+            }
+            // Corner blocks where the border bands meet.
+            ctx.fillStyle = accent;
+            for (const [ox, oy] of [
+              [bw2 * 0.52, bw2 * 0.52],
+              [rw - bw2 * 0.52, bw2 * 0.52],
+              [bw2 * 0.52, rh - bw2 * 0.52],
+              [rw - bw2 * 0.52, rh - bw2 * 0.52],
+            ] as const) {
+              ctx.fillRect(rx + ox - px * 0.048, ry + oy - px * 0.048, px * 0.096, px * 0.096);
+            }
+            // The field.
+            const fx0 = rx + bw2;
+            const fy0 = ry + bw2;
+            const fw = rw - bw2 * 2;
+            const fh = rh - bw2 * 2;
+            ctx.fillStyle = field;
+            ctx.fillRect(fx0, fy0, fw, fh);
+            // A dark settling line where field meets border.
+            ctx.strokeStyle = 'rgba(18, 12, 26, 0.22)';
+            ctx.lineWidth = Math.max(1, px * 0.018);
+            ctx.strokeRect(fx0, fy0, fw, fh);
+            const cx = rx + rw / 2;
+            const cy = ry + rh / 2;
+            const short = Math.min(fw, fh);
+            if (Math.max(fw, fh) > short * 1.9) {
+              // A long cloth: a diamond chain walks the runner's spine,
+              // linked by its warp thread.
+              const horiz = fw >= fh;
+              const span = horiz ? fw : fh;
+              ctx.fillStyle = accent;
+              if (horiz) ctx.fillRect(fx0 + px * 0.06, cy - px * 0.011, fw - px * 0.12, px * 0.022);
+              else ctx.fillRect(cx - px * 0.011, fy0 + px * 0.06, px * 0.022, fh - px * 0.12);
+              const n = Math.max(2, Math.round(span / (short * 0.85)));
+              for (let k = 0; k < n; k++) {
+                const t2 = (k + 0.5) / n;
+                const mx = horiz ? fx0 + fw * t2 : cx;
+                const my = horiz ? cy : fy0 + fh * t2;
+                diamond(mx, my, short * 0.21, 1.25, k % 2 === 0 ? accent : bord);
+                diamond(mx, my, short * 0.105, 1.25, k % 2 === 0 ? bord : field);
+                diamond(mx, my, short * 0.04, 1.25, accent);
+              }
+            } else {
+              // The grand medallion: stepped diamonds at the heart,
+              // gusset diamonds answering from the field's corners.
+              ctx.save();
+              ctx.beginPath();
+              ctx.rect(fx0, fy0, fw, fh);
+              ctx.clip();
+              for (const [gx2, gy2] of [
+                [fx0, fy0],
+                [fx0 + fw, fy0],
+                [fx0, fy0 + fh],
+                [fx0 + fw, fy0 + fh],
+              ] as const) {
+                diamond(gx2, gy2, short * 0.2, 1.3, bord);
+                diamond(gx2, gy2, short * 0.11, 1.3, accent);
+              }
+              ctx.restore();
+              diamond(cx, cy, short * 0.34, 1.3, bord);
+              diamond(cx, cy, short * 0.26, 1.3, accent);
+              diamond(cx, cy, short * 0.165, 1.3, field);
+              diamond(cx, cy, short * 0.065, 1.3, accent);
+            }
+            // Weave sheen: faint weft lines carried across the cloth.
+            ctx.fillStyle = 'rgba(240, 232, 210, 0.05)';
+            for (let yy = ry + px * 0.12; yy < ry + rh - px * 0.05; yy += px * 0.22)
+              ctx.fillRect(rx + px * 0.04, yy, rw - px * 0.08, px * 0.016);
+            // Knotted fringe off the two loom ends, past the outline.
+            ctx.fillStyle = '#d8c9a0';
+            for (let yy = ry + px * 0.06; yy < ry + rh - px * 0.04; yy += px * 0.13) {
+              ctx.fillRect(rx - px * 0.088, yy, px * 0.05, px * 0.024);
+              ctx.fillRect(rx + rw + px * 0.038, yy + px * 0.012, px * 0.05, px * 0.024);
+            }
+            ctx.restore();
+            return;
+          }
           const x0 = gx + (jw ? 0 : px * 0.06);
           const x1 = gx + (je ? px : px * 0.94);
           const y0 = gy + (jn ? 0 : px * 0.09);
@@ -1553,6 +1693,24 @@ function drawTileDetail(
             ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
             ctx.fillRect(x0 + px * 0.01, y1, x1 - x0 - px * 0.02, px * 0.025);
           }
+          // THE HOUSE OUTLINE on the cloth's free rim only — joined
+          // edges stay bare so the patch reads as one seamed cloth.
+          ctx.fillStyle = '#241a2e';
+          ctx.beginPath();
+          chamferRect(
+            ctx,
+            x0 - (jw ? 0 : px * 0.03),
+            y0 - (jn ? 0 : px * 0.03),
+            x1 - x0 + (jw ? 0 : px * 0.03) + (je ? 0 : px * 0.03),
+            y1 - y0 + (jn ? 0 : px * 0.03) + (js ? 0 : px * 0.03),
+            [
+              jn || jw ? 0 : px * 0.06,
+              jn || je ? 0 : px * 0.06,
+              js || je ? 0 : px * 0.06,
+              js || jw ? 0 : px * 0.06,
+            ],
+          );
+          ctx.fill();
           ctx.fillStyle = bord;
           ctx.beginPath();
           chamferRect(ctx, x0, y0, x1 - x0, y1 - y0, [
@@ -1634,6 +1792,11 @@ function drawTileDetail(
         // A whisper of ground shadow seats the cloth on the boards.
         ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
         ctx.fillRect(rx + px * 0.01, ry + rh, rw - px * 0.02, px * 0.025);
+        // THE HOUSE OUTLINE: the bound dark edge every prop wears.
+        ctx.fillStyle = '#241a2e';
+        ctx.beginPath();
+        chamferRect(ctx, rx - px * 0.03, ry - px * 0.03, rw + px * 0.06, rh + px * 0.06, px * 0.06);
+        ctx.fill();
         ctx.fillStyle = bord;
         ctx.beginPath();
         chamferRect(ctx, rx, ry, rw, rh, px * 0.045);
@@ -1732,6 +1895,11 @@ function drawTileDetail(
         ctx.beginPath();
         ctx.ellipse(cx, cy + px * 0.43, px * 0.36, px * 0.045, 0, 0, Math.PI * 2);
         ctx.fill();
+        // THE HOUSE OUTLINE ringing the bound rim.
+        ctx.fillStyle = '#241a2e';
+        ctx.beginPath();
+        facetCircle(ctx, cx, cy, px * 0.478, 10, 0.2);
+        ctx.fill();
         ctx.fillStyle = bord;
         ctx.beginPath();
         facetCircle(ctx, cx, cy, px * 0.45, 10, 0.2);
@@ -1770,6 +1938,166 @@ function drawTileDetail(
         ctx.beginPath();
         facetCircle(ctx, cx, cy, px * 0.045, 6, 0.3);
         ctx.fill();
+      } else if (d === Detail.CarpetRoyal || d === Detail.CarpetMoon) {
+        // FITTED VELVET: the state carpet. Braid, outline, and mitered
+        // corners live only on FREE edges — the field knits seamlessly
+        // through joined ones, so runs lay processional runners and
+        // blocks carpet whole state rooms. The diagonal nap sheen is
+        // keyed to (x − y) in bake space: chunk offsets are whole
+        // multiples of the stripe period, so the pile catches light
+        // continuously across every border by construction.
+        const moon = d === Detail.CarpetMoon;
+        const isC = (x: number, y: number) => dAt?.(x, y) === d;
+        const jn = isC(tx, ty - 1);
+        const je = isC(tx + 1, ty);
+        const js = isC(tx, ty + 1);
+        const jw = isC(tx - 1, ty);
+        const field = moon ? '#3f5580' : '#7e1f2e';
+        const braid = moon ? '#b4c0d6' : '#c9962e';
+        const ins = px * 0.05; // free-edge inset off the skirting
+        const o = px * 0.03; // house-outline weight
+        const bw = px * 0.105; // outline + braid band depth
+        const x0 = gx + (jw ? 0 : ins);
+        const x1 = gx + px - (je ? 0 : ins);
+        const y0 = gy + (jn ? 0 : ins);
+        const y1 = gy + px - (js ? 0 : ins);
+        // Seat the cloth off a free south hem.
+        if (!js) {
+          ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+          ctx.fillRect(x0 + px * 0.01, y1, x1 - x0 - px * 0.02, px * 0.025);
+        }
+        // THE HOUSE OUTLINE, free rim only; joined edges meet flush.
+        ctx.fillStyle = '#241a2e';
+        ctx.beginPath();
+        chamferRect(ctx, x0, y0, x1 - x0, y1 - y0, [
+          jn || jw ? 0 : px * 0.05,
+          jn || je ? 0 : px * 0.05,
+          js || je ? 0 : px * 0.05,
+          js || jw ? 0 : px * 0.05,
+        ]);
+        ctx.fill();
+        // The metal braid band inside the outline.
+        ctx.fillStyle = braid;
+        ctx.fillRect(
+          x0 + (jw ? 0 : o),
+          y0 + (jn ? 0 : o),
+          x1 - x0 - (jw ? 0 : o) - (je ? 0 : o),
+          y1 - y0 - (jn ? 0 : o) - (js ? 0 : o),
+        );
+        // The velvet field.
+        const fx0 = x0 + (jw ? 0 : bw);
+        const fx1 = x1 - (je ? 0 : bw);
+        const fy0 = y0 + (jn ? 0 : bw);
+        const fy1 = y1 - (js ? 0 : bw);
+        ctx.fillStyle = field;
+        ctx.fillRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
+        // Nap sheen: 45° pile stripes catching the light, with a
+        // fainter crushed counter-stripe between — clipped to the
+        // field so the braid stays struck metal.
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(fx0, fy0, fx1 - fx0, fy1 - fy0);
+        ctx.clip();
+        const step = px / 3;
+        const u0 = Math.floor((gx - gy - px) / step) * step;
+        const stripe = (off: number, w: number, tone: string): void => {
+          ctx.fillStyle = tone;
+          for (let u = u0; u < gx + px - gy + step; u += step) {
+            ctx.beginPath();
+            ctx.moveTo(u + off + gy - 1, gy - 1);
+            ctx.lineTo(u + off + gy - 1 + w, gy - 1);
+            ctx.lineTo(u + off + gy + px + 1 + w, gy + px + 1);
+            ctx.lineTo(u + off + gy + px + 1, gy + px + 1);
+            ctx.closePath();
+            ctx.fill();
+          }
+        };
+        stripe(0, px * 0.06, moon ? 'rgba(214, 228, 248, 0.06)' : 'rgba(255, 214, 170, 0.07)');
+        stripe(step * 0.5, px * 0.05, 'rgba(18, 12, 26, 0.05)');
+        // The odd crush-mark where feet have turned the pile.
+        if (hg % 3 === 0) {
+          const hh = hashCoords(233, tx, ty);
+          ctx.fillStyle = 'rgba(18, 12, 26, 0.06)';
+          ctx.beginPath();
+          ctx.ellipse(
+            gx + (0.25 + (hh % 50) / 100) * px,
+            gy + (0.25 + ((hh >> 6) % 50) / 100) * px,
+            px * 0.16,
+            px * 0.1,
+            ((hh >> 3) % 7) * 0.45,
+            0,
+            Math.PI * 2,
+          );
+          ctx.fill();
+        }
+        ctx.restore();
+        // A gold pinline echoing the braid just inside the field, and
+        // a braid knot at each free edge's midpoint — tailor's work.
+        ctx.fillStyle = moon ? 'rgba(180, 192, 214, 0.5)' : 'rgba(201, 150, 46, 0.5)';
+        const g2 = px * 0.045;
+        if (!jn) ctx.fillRect(fx0 + g2, fy0 + g2, fx1 - fx0 - g2 * 2, px * 0.018);
+        if (!js) ctx.fillRect(fx0 + g2, fy1 - g2 - px * 0.018, fx1 - fx0 - g2 * 2, px * 0.018);
+        if (!jw) ctx.fillRect(fx0 + g2, fy0 + g2, px * 0.018, fy1 - fy0 - g2 * 2);
+        if (!je) ctx.fillRect(fx1 - g2 - px * 0.018, fy0 + g2, px * 0.018, fy1 - fy0 - g2 * 2);
+        ctx.fillStyle = moon ? '#dae4f2' : '#e0b84a';
+        const knot = (kx: number, ky: number): void => {
+          ctx.beginPath();
+          ctx.moveTo(kx, ky - px * 0.026);
+          ctx.lineTo(kx + px * 0.026, ky);
+          ctx.lineTo(kx, ky + px * 0.026);
+          ctx.lineTo(kx - px * 0.026, ky);
+          ctx.closePath();
+          ctx.fill();
+        };
+        if (!jn) knot(gx + px * 0.5, y0 + o + (bw - o) * 0.5);
+        if (!js) knot(gx + px * 0.5, y1 - o - (bw - o) * 0.5);
+        if (!jw) knot(x0 + o + (bw - o) * 0.5, gy + px * 0.5);
+        if (!je) knot(x1 - o - (bw - o) * 0.5, gy + px * 0.5);
+        // Mitered braid seams where two free edges meet at a corner.
+        ctx.strokeStyle = 'rgba(18, 12, 26, 0.35)';
+        ctx.lineWidth = Math.max(1, px * 0.016);
+        const miter = (mx: number, my: number, dx: number, dy: number): void => {
+          ctx.beginPath();
+          ctx.moveTo(mx + dx * px * 0.04, my + dy * px * 0.04);
+          ctx.lineTo(mx + dx * bw, my + dy * bw);
+          ctx.stroke();
+        };
+        if (!jn && !jw) miter(x0, y0, 1, 1);
+        if (!jn && !je) miter(x1, y0, -1, 1);
+        if (!js && !jw) miter(x0, y1, 1, -1);
+        if (!js && !je) miter(x1, y1, -1, -1);
+      } else if (
+        d === Detail.BannerCrown ||
+        d === Detail.BannerMoon ||
+        d === Detail.Tapestry
+      ) {
+        // WALL-HUNG cloth is painted by the wall painters onto the
+        // south face — in game the ground under a wall is never seen,
+        // so this glyph exists for the Studio's flat map view only:
+        // authors see at a glance where cloth hangs.
+        const tap = d === Detail.Tapestry;
+        const crown = d === Detail.BannerCrown;
+        const cloth = tap ? '#6e3440' : crown ? '#7a2430' : '#5a6f9c';
+        const trim = crown ? '#c9962e' : '#b4c0d2';
+        ctx.fillStyle = '#241a2e';
+        ctx.fillRect(gx + px * 0.14, gy + px * 0.16, px * 0.72, px * 0.06);
+        ctx.fillStyle = cloth;
+        if (tap) {
+          ctx.fillRect(gx + px * 0.2, gy + px * 0.22, px * 0.6, px * 0.56);
+          ctx.fillStyle = trim;
+          ctx.fillRect(gx + px * 0.2, gy + px * 0.7, px * 0.6, px * 0.05);
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(gx + px * 0.3, gy + px * 0.22);
+          ctx.lineTo(gx + px * 0.7, gy + px * 0.22);
+          ctx.lineTo(gx + px * 0.7, gy + px * 0.72);
+          ctx.lineTo(gx + px * 0.5, gy + px * 0.6);
+          ctx.lineTo(gx + px * 0.3, gy + px * 0.72);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = trim;
+          ctx.fillRect(gx + px * 0.3, gy + px * 0.28, px * 0.4, px * 0.05);
+        }
       } else if (d === Detail.Doormat) {
         // A bound coir mat: woven crosshatch inside a stitched edge,
         // its middle scuffed pale by every boot that ever crossed it.

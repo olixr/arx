@@ -352,7 +352,40 @@ export enum Detail {
   Doormat = 7,
   Sawdust = 8,
   Straw = 9,
+  // THE FABRIC EPIC — royal cloth, floor and wall.
+  /**
+   * Fitted crimson velvet carpet with gold braid: adjacent tiles knit
+   * seamlessly (braid + outline survive only on free edges), so runs
+   * lay processional runners and fields carpet whole state rooms.
+   */
+  CarpetRoyal = 10,
+  /** The Queen's carpet: moonpale blue velvet under silver braid. */
+  CarpetMoon = 11,
+  /**
+   * WALL-HUNG cloth: these details are authored ON wall tiles and are
+   * painted by the wall painters onto the south face (they hang, sway,
+   * and sink with the wall) — the ground bake draws nothing for them.
+   */
+  /** The King's banner: three gilded peaks on crimson. */
+  BannerCrown = 12,
+  /** The Queen's banner: the silver arch and moonpale drop. */
+  BannerMoon = 13,
+  /**
+   * Grand pictorial tapestry — the Silverfall weave. Adjacent wall
+   * tiles carrying Tapestry merge into ONE wide hanging.
+   */
+  Tapestry = 14,
 }
+
+/**
+ * Details that hang on wall faces instead of lying on the ground —
+ * the terrain bake skips them; wall painters own their art.
+ */
+export const WALL_HUNG_DETAILS: ReadonlySet<Detail> = new Set([
+  Detail.BannerCrown,
+  Detail.BannerMoon,
+  Detail.Tapestry,
+]);
 
 export interface TileDef {
   name: string;
