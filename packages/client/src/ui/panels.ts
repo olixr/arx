@@ -99,6 +99,7 @@ export const SKILL_FACE: Record<string, { icon: string; color: string }> = {
   beastcraft: { icon: 'bones', color: '#c4b590' },
   sneak: { icon: 'bronze_dagger', color: '#8a7fae' },
   dualwield: { icon: 'bronze_dagger', color: '#d9a441' },
+  shield: { icon: 'tower_shield', color: '#9db6cc' },
 };
 
 /** One quiet line under each skill's name — what the craft IS. */
@@ -124,6 +125,7 @@ const SKILL_STORY: Record<string, string> = {
   beastcraft: 'Trophies worked from the hunt',
   sneak: 'Unseen, unheard, unhurried',
   dualwield: 'A blade in each fist',
+  shield: 'What the wall stops, the wall learns',
 };
 
 /**
@@ -149,7 +151,7 @@ const SKILL_WINGS: Array<{ title: string; skills: SkillId[] }> = [
       'beastcraft',
     ],
   },
-  { title: 'Secret Arts', skills: ['sneak', 'dualwield'] },
+  { title: 'Secret Arts', skills: ['sneak', 'dualwield', 'shield'] },
 ];
 
 /**

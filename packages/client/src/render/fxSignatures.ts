@@ -42,6 +42,7 @@ import { BLADE_SIGS } from './fxSigsBlade.js';
 import { ARCHMAGE_A_SIGS } from './fxSigsArchmageA.js';
 import { ARCHMAGE_B_SIGS } from './fxSigsArchmageB.js';
 import { RELIC_SIGS } from './fxSigsRelics.js';
+import { SHIELD_SIGS } from './fxSigsShield.js';
 
 // --------------------------------------------------------------- ctx
 
@@ -706,4 +707,5 @@ export const SIGNATURES: Record<string, AbilitySig> = {
   ...ARCHMAGE_A_SIGS,
   ...ARCHMAGE_B_SIGS,
   ...RELIC_SIGS,
+  ...SHIELD_SIGS,
 };

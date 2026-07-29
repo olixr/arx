@@ -1,5 +1,5 @@
 /**
- * The twenty visible skills (plus hidden arts below). Classless:
+ * The visible skills (plus hidden arts below). Classless:
  * everyone can train everything.
  *
  * Trade-skill law: there is no generic "crafting" skill. Every recipe
@@ -28,7 +28,8 @@ export type SkillId =
   | 'enchanting'
   | 'beastcraft'
   | 'sneak'
-  | 'dualwield';
+  | 'dualwield'
+  | 'shield';
 
 export const SKILL_IDS: readonly SkillId[] = [
   'vitality',
@@ -52,6 +53,7 @@ export const SKILL_IDS: readonly SkillId[] = [
   'beastcraft',
   'sneak',
   'dualwield',
+  'shield',
 ];
 
 /**
@@ -70,6 +72,12 @@ export const HIDDEN_SKILLS: Partial<Record<SkillId, { name: string; discovery: s
     discovery:
       'Secret skill discovered: Dual Wielding! Your off hand learns the blade — ' +
       'train it and the second edge will bite nearly as deep as the first.',
+  },
+  shield: {
+    name: 'Shield',
+    discovery:
+      'Secret skill discovered: Shield! The wall has a craft of its own — ' +
+      'every blow it turns will teach your arm to hold the next one better.',
   },
 };
 

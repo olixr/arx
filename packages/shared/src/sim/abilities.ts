@@ -256,6 +256,17 @@ export interface AbilitySelf {
   meleeLifesteal?: number;
   /** While active, every landed basic attack applies this status — the oil-on-the-blade stances. */
   onHitStatus?: StatusApply;
+  /**
+   * Flat bonus armor while active — folds into THE THREAT LAW's armor
+   * term at the mitigate site (unlike shieldHp, which soaks AFTER
+   * mitigation). The tank-stance rail.
+   */
+  armor?: number;
+  /**
+   * THE TURNED BLOW: fraction of post-mitigation damage taken that is
+   * returned to the striking NPC, dealt in the shield school.
+   */
+  reflectFrac?: number;
   durationTicks: number;
 }
 
@@ -336,6 +347,12 @@ export interface AbilityDef {
   executeBelow?: { frac: number; mult: number };
   /** Fraction of damage dealt returned to the caster as healing. */
   drainFrac?: number;
+  /**
+   * THE CHALLENGE: at the cast's final position, every hostile-capable
+   * NPC within this radius is forced onto the caster (the decoy
+   * force-switch, worn as a knight's shout). Tiles.
+   */
+  tauntRadius?: number;
 }
 
 /**
@@ -356,11 +373,18 @@ export type AbilitySlot = 0 | 1 | 2 | 3;
  * A combat school that owns a technique ladder. The school gates the
  * LEARNING (arts unlock by raising its skill) — never the hand: THE
  * FREE HAND slots any learned art whatever weapon is equipped.
- * `sneak` is the rogue's ladder, unlocked by the sneak skill.
+ * `sneak` is the rogue's ladder, unlocked by the sneak skill; `shield`
+ * is the wall's ladder, unlocked by the hidden shield skill.
  */
-export type CombatStyleId = 'melee' | 'archery' | 'magic' | 'sneak';
+export type CombatStyleId = 'melee' | 'archery' | 'magic' | 'sneak' | 'shield';
 
-export const COMBAT_STYLES: readonly CombatStyleId[] = ['melee', 'archery', 'magic', 'sneak'];
+export const COMBAT_STYLES: readonly CombatStyleId[] = [
+  'melee',
+  'archery',
+  'magic',
+  'sneak',
+  'shield',
+];
 
 /**
  * A learnable active: unlocked by raising the style's skill, then

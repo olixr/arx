@@ -51,7 +51,9 @@ export type PerkId =
   | 'doubleHarvestChance' // harvest: chance the yield doubles
   | 'doubleProduceChance' // beastcraft collect: chance the produce doubles
   | 'produceRestMult' //     beastcraft collect: animal readiness cooldown × mult
-  | 'buildSpeedMult'; //     build(): construction ticks × mult
+  | 'buildSpeedMult' //      build(): construction ticks × mult
+  | 'shieldArm' //           damagePlayer mitigate: +armor while a shield is raised
+  | 'shieldThorns'; //       npc strike thorns: +thorns while a shield is raised
 
 export type CallingEffect =
   | { kind: 'gear'; effect: EnchantEffect }
@@ -223,6 +225,27 @@ const defs: CallingDef[] = [
     desc: 'Two hands, one intention — the echo strikes harder.',
     color: '#a8927a',
     effect: { kind: 'perk', perk: 'offhandFactorBonus', magnitude: 0.05 },
+  },
+  // -------------------------------------------------------------- shield
+  {
+    id: 'shieldarm',
+    skill: 'shield',
+    unlockLevel: 20,
+    focusCost: 1,
+    name: 'Shieldarm',
+    desc: 'The arm and the wall stop being two things — armor while a shield is raised.',
+    color: '#8ea4b8',
+    effect: { kind: 'perk', perk: 'shieldArm', magnitude: 3 },
+  },
+  {
+    id: 'ironback',
+    skill: 'shield',
+    unlockLevel: 60,
+    focusCost: 2,
+    name: 'Ironback',
+    desc: 'The wall bites back — blows that land on the boss cost the striker.',
+    color: '#6a7484',
+    effect: { kind: 'perk', perk: 'shieldThorns', magnitude: 4 },
   },
   // -------------------------------------------------------------- mining
   {

@@ -44,7 +44,11 @@
 // camp's fuse). A v15 client would render an unknown fx as a mute
 // color puff and the raid telegraph would lose its voice, so reject
 // cleanly.
-export const PROTOCOL_VERSION = 17;
+// v18: THE SHIELD SKILL — S2CFx grows the 'block' kind (the rim spark
+// when a raised shield turns a blow). A v17 client would render it as
+// a mute color puff and the wall would block in silence, so reject
+// cleanly.
+export const PROTOCOL_VERSION = 18;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;

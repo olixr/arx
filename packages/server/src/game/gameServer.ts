@@ -199,6 +199,7 @@ import {
   PLAYER_POWER_PER_LEVEL,
   npcMaxHit,
   mitigate,
+  SHIELD_ARMOR_PER_LEVEL,
   powerMult as powerMultFn,
   scaledMaxHit,
   InputButton,
@@ -840,6 +841,8 @@ interface PlayerComp {
   /** Aim captured at the mainhand swing its echo mirrors. */
   offhandEchoAim: number;
   lastCombatAt: number;
+  /** Last tick a block spark flew — the rim speaks at most every few beats. */
+  lastBlockFxTick: number;
   poseUntilTick: number;
   lastDodgeSeq: number;
   /** Ticks the bow has been drawn; 0 = not drawing. */
@@ -944,6 +947,10 @@ interface PlayerBuff {
   speedMult: number;
   shieldHp: number;
   meleeLifesteal: number;
+  /** Flat bonus armor — folds into the mitigate site's armor term (tank stances). */
+  armor: number;
+  /** THE TURNED BLOW: fraction of post-mitigation damage returned to the striker. */
+  reflectFrac: number;
   /** Gathering speed multiplier (best across buffs wins). */
   gatherSpeed: number;
   /** HP restored every 4 seconds (best across buffs wins). */
@@ -969,6 +976,8 @@ function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): PlayerBuf
     speedMult: 1,
     shieldHp: 0,
     meleeLifesteal: 0,
+    armor: 0,
+    reflectFrac: 0,
     gatherSpeed: 1,
     regenPer4s: 0,
     ...partial,
@@ -1004,6 +1013,8 @@ interface Perks {
   doubleProduceChance: number;
   produceRestMult: number;
   buildSpeedMult: number;
+  shieldArm: number;
+  shieldThorns: number;
   doubleGather: Partial<Record<SkillId, number>>;
   gatherSpeed: Partial<Record<SkillId, number>>;
   materialSave: Partial<Record<SkillId, number>>;
@@ -1033,6 +1044,8 @@ function defaultPerks(): Perks {
     doubleProduceChance: 0,
     produceRestMult: 1,
     buildSpeedMult: 1,
+    shieldArm: 0,
+    shieldThorns: 0,
     doubleGather: {},
     gatherSpeed: {},
     materialSave: {},
@@ -1966,6 +1979,7 @@ export class GameServer {
       offhandEchoTicks: 0,
       offhandEchoAim: 0,
       lastCombatAt: 0,
+      lastBlockFxTick: 0,
       poseUntilTick: 0,
       lastDodgeSeq: -999,
       drawTicks: 0,
@@ -7562,6 +7576,18 @@ export class GameServer {
   }
 
   /**
+   * THE RAISED WALL: the offhand counts as a shield iff it is held in
+   * the fist and armors — quivers ride the back, off-blades are
+   * weapons, and neither is a wall.
+   */
+  private equippedShield(player: PlayerComp): boolean {
+    const off = player.equipment.offhand;
+    if (!off) return false;
+    const def = itemDef(off.id);
+    return !!def && !def.backMounted && !def.weapon && (def.armor ?? 0) > 0;
+  }
+
+  /**
    * Slot a Technique on R — THE FREE HAND: any learned art fits,
    * whatever the equipped weapon. Server-validated against the unlock
    * ladder (the art's OWN school); respec is always free.
@@ -7778,7 +7804,8 @@ export class GameServer {
     // any school-tuned element amplifier (Blazing Edge etc.). Gear has
     // no sneak axis — shadow arts swing melee steel, so they ride the
     // melee multiplier.
-    const gearStyle = style === 'sneak' ? 'melee' : style;
+    // Gear has no sneak or shield damage axis — both ride the melee mult.
+    const gearStyle = style === 'sneak' || style === 'shield' ? 'melee' : style;
     const gearMult = casterPlayer
       ? ((casterPlayer.gear.styleDmgMult as Record<string, number>)[gearStyle] ?? 1) *
         (style === 'magic' && element ? (casterPlayer.gear.elementDmgMult[element] ?? 1) : 1)
@@ -8351,6 +8378,21 @@ export class GameServer {
     // rider here, at the cast's final position (a leap shouts where it
     // LANDS, not where it left).
     if (ab.shape !== 'self_buff' && ab.self) this.applySelf(casterEid, ab, powerMult, pos);
+
+    // THE CHALLENGE: the cast dares the yard — every hostile-capable
+    // body in the ring is forced onto the caster. The decoy
+    // force-switch precedent, worn as a knight's shout; player casters
+    // only (an NPC cannot dare its own kind), and the town cast is
+    // deaf to it — a shout never turns the watch.
+    if (ab.tauntRadius && this.players.has(casterEid)) {
+      for (const [npcEid, npc] of this.npcs) {
+        const npos = this.positions.get(npcEid);
+        if (!npos) continue;
+        if (Math.hypot(npos.x - pos.x, npos.y - pos.y) > ab.tauntRadius) continue;
+        if (npc.def.damage <= 0 || this.actors.has(npcEid)) continue;
+        this.npcAggro(npcEid, npc, casterEid);
+      }
+    }
   }
 
   /**
@@ -8386,7 +8428,9 @@ export class GameServer {
       self.speedMult !== undefined ||
       self.shieldHp !== undefined ||
       self.meleeLifesteal !== undefined ||
-      self.onHitStatus !== undefined
+      self.onHitStatus !== undefined ||
+      self.armor !== undefined ||
+      self.reflectFrac !== undefined
     ) {
       player.buffs.push(
         mkBuff({
@@ -8394,6 +8438,9 @@ export class GameServer {
           // Stonewall thickens every shield the caster raises.
           shieldHp: Math.round((self.shieldHp ?? 0) * powerMult * player.perks.shieldMult),
           meleeLifesteal: self.meleeLifesteal ?? 0,
+          // The tank stances: buff armor mitigates, the turned blow repays.
+          armor: self.armor ?? 0,
+          reflectFrac: self.reflectFrac ?? 0,
           onHitStatus: self.onHitStatus,
           untilTick: this.tickCount + self.durationTicks,
         }),
@@ -9304,6 +9351,13 @@ export class GameServer {
         if (killer) this.grantArt(killer, 'riftwalker_step');
       }
     }
+    // THE UNWRITTEN PAGE: felling a champion with the wall still on
+    // your arm is the shield-bearer's deed (any *_champion, so future
+    // champions swear in automatically).
+    if (npc.def.id.endsWith('_champion')) {
+      const killer = this.players.get(killerEid);
+      if (killer && this.equippedShield(killer)) this.grantArt(killer, 'champions_wall');
+    }
     this.wildBodies.delete(npcEid);
     // A slain actor's post refills on the synthesized def's clock.
     const actorComp = this.actors.get(npcEid);
@@ -9368,18 +9422,72 @@ export class GameServer {
     if (raw > 0 && player.dialogue) this.dialogueClose(player);
 
     const defLevel = this.effectiveLevel(player, 'defence');
+    // THE RAISED WALL: only an offhand shield held in the fist counts.
+    const shieldUp = this.equippedShield(player);
     // The gear cache already sums rolled armor (rarity-scaled) plus
     // legacy flat armor — the per-hit loop over worn items is gone.
-    // Bulwark answers only a planted stance: armor for held ground.
+    // Bulwark answers only a planted stance: armor for held ground; the
+    // tank stances lend buff armor; the raised wall lends its trained
+    // craft (and Shieldarm's answered iron) only while the shield is up.
+    let buffArmor = 0;
+    let reflectFrac = 0;
+    for (const b of player.buffs) {
+      buffArmor += b.armor;
+      reflectFrac = Math.max(reflectFrac, b.reflectFrac);
+    }
     const armor =
       player.gear.armor +
-      (player.stillTicks >= STILL_ARMOR_TICKS ? player.perks.stillArmor : 0);
+      buffArmor +
+      (player.stillTicks >= STILL_ARMOR_TICKS ? player.perks.stillArmor : 0) +
+      (shieldUp
+        ? player.perks.shieldArm +
+          this.effectiveLevel(player, 'shield') * SHIELD_ARMOR_PER_LEVEL
+        : 0);
     // THE THREAT LAW mitigation: percentage armor class from trained
     // defence + worn armor, pierced by the attacker's level. DoTs skip
     // it entirely — the wound is already inside the armor.
     let dmg = opts.pierceArmor
       ? raw
       : mitigate(raw, defLevel, armor, opts.attackerLevel ?? 1);
+
+    // THE WALL'S LESSON: what gets through trains the flesh (below);
+    // what the wall stops trains the wall. DoTs teach nothing here and
+    // whiff-0 stays sacred — only a real blow, really turned, counts.
+    if (shieldUp && raw > 0 && !opts.pierceArmor) {
+      if (player.skills.shield === undefined) {
+        // THE DISCOVERED WALL: the first real blow on a raised shield
+        // reveals the craft (the dualwield discovery rail).
+        player.skills.shield = 0;
+        this.grantXp(eid, player, 'shield', 1);
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: HIDDEN_SKILLS.shield!.discovery,
+        });
+      }
+      const blocked = raw - dmg;
+      if (blocked > 0) {
+        this.grantXp(eid, player, 'shield', blocked * 3);
+        // The rim spark — throttled so a mob's flurry doesn't strobe.
+        if (blocked >= 2 && this.tickCount - player.lastBlockFxTick >= 8) {
+          player.lastBlockFxTick = this.tickCount;
+          const ppos = this.positions.get(eid);
+          const spos =
+            opts.sourceEid !== undefined ? this.positions.get(opts.sourceEid) : undefined;
+          if (ppos) {
+            this.broadcastFx({
+              t: 'fx',
+              kind: 'block',
+              x: ppos.x,
+              y: ppos.y,
+              radius: Math.min(0.85, 0.35 + blocked * 0.03),
+              dir: spos ? Math.atan2(ppos.y - spos.y, ppos.x - spos.x) : undefined,
+              id: 'shield_block',
+            });
+          }
+        }
+      }
+    }
     if (opts.status) this.applyStatusToPlayer(eid, opts.status, opts.sourceEid ?? 0);
     // Ability shields soak damage before flesh does.
     for (const b of player.buffs) {
@@ -9394,6 +9502,13 @@ export class GameServer {
 
     health.hp -= dmg;
     this.grantXp(eid, player, 'defence', dmg * 3);
+    // THE TURNED BLOW: the stance sends part of what landed back to
+    // whoever sent it, dealt in the shield school (the wall's own
+    // damage trains the wall — and credits the kill).
+    if (reflectFrac > 0 && opts.sourceEid !== undefined && this.npcs.has(opts.sourceEid)) {
+      const back = Math.round(dmg * reflectFrac);
+      if (back > 0) this.damageNpc(opts.sourceEid, back, eid, 'shield');
+    }
     player.sitting = false; // a landed blow ends the rest
     this.setPose(eid, PoseState.Hurt, 4);
     // Second Wind: fires only on the CROSSING into danger, so a string
@@ -10977,8 +11092,12 @@ export class GameServer {
         attackerLevel: npc.def.level,
       });
       // Thorns: biting the buckler costs a point; bristling enchants
-      // stack more points on top of the passive's one.
-      const thorns = (this.hasPassive(player, 'thorns') ? 1 : 0) + player.gear.thorns;
+      // stack more points on top of the passive's one — and Ironback
+      // answers only while the wall is actually raised.
+      const thorns =
+        (this.hasPassive(player, 'thorns') ? 1 : 0) +
+        player.gear.thorns +
+        (this.equippedShield(player) ? player.perks.shieldThorns : 0);
       if (thorns > 0) {
         this.damageNpc(npcEid, thorns, targetEid, 'defence', {});
       }

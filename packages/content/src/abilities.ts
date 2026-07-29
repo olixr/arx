@@ -1587,6 +1587,141 @@ const defs: AbilityDef[] = [
     status: { status: 'bleed', power: 1, durationTicks: 40 },
   },
 
+  // ----------------------------- THE SHIELD SKILL — the wall's ladder
+  // The school of the tank: control, protection, retribution. Damage
+  // arts run leaner than melee's — the wall's worth is what it stops.
+  {
+    id: 'shield_bash',
+    name: 'Shield Bash',
+    desc: 'Swing the wall itself. Few arguments survive it.',
+    color: '#8ea4b8',
+    code: 'Ba',
+    cooldownTicks: 160, // 8 s
+    shape: 'melee_arc',
+    damage: 9,
+    range: 1.9,
+    arc: 1.0,
+    knockback: 1.6,
+    status: { status: 'shock', power: 1, durationTicks: 30 },
+  },
+  {
+    id: 'set_the_wall',
+    name: 'Set the Wall',
+    desc: 'Plant your feet and become the thing they break against.',
+    color: '#7d8a9a',
+    code: 'Se',
+    cooldownTicks: 260, // 13 s
+    shape: 'self_buff',
+    damage: 0,
+    self: { armor: 8, durationTicks: 160 },
+  },
+  {
+    id: 'shield_rush',
+    name: 'Shield Rush',
+    desc: 'Boss first, and drive — the road opens where they were standing.',
+    color: '#9aa8b8',
+    code: 'Sr',
+    cooldownTicks: 180, // 9 s
+    shape: 'dash_strike',
+    damage: 8,
+    dashTiles: 3.6,
+    knockback: 2.2,
+  },
+  {
+    id: 'draw_iron',
+    name: 'Draw Iron',
+    desc: 'A shout with iron in it. Every blade in the yard turns to you.',
+    color: '#c9a45e',
+    code: 'Di',
+    cooldownTicks: 320, // 16 s
+    castFreezeTicks: 3,
+    shape: 'nova',
+    damage: 2, // the shout barely bruises — the TURNING is the payload
+    radius: 3.2,
+    tauntRadius: 3.2,
+  },
+  {
+    id: 'shield_roof',
+    name: 'Shield Roof',
+    desc: "Pull the sky down to arm's reach and wait out the rain of blows.",
+    color: '#8a7a5e',
+    code: 'Ro',
+    cooldownTicks: 340, // 17 s
+    shape: 'self_buff',
+    damage: 0,
+    self: { shieldHp: 16, speedMult: 0.85, durationTicks: 160 },
+  },
+  {
+    id: 'turned_blow',
+    name: 'Turned Blow',
+    desc: 'Angle the wall so the blow goes home to whoever sent it.',
+    color: '#b87a5e',
+    code: 'Tb',
+    cooldownTicks: 300, // 15 s
+    shape: 'self_buff',
+    damage: 0,
+    self: { reflectFrac: 0.3, durationTicks: 120 },
+  },
+  {
+    id: 'rampart_break',
+    name: 'Rampart Break',
+    desc: 'Drive the rim into the earth until the ground picks a side.',
+    color: '#7a8494',
+    code: 'Rb',
+    cooldownTicks: 220, // 11 s
+    castFreezeTicks: 5,
+    shape: 'ground_aoe',
+    damage: 12,
+    range: 4,
+    radius: 2.2,
+    fuseTicks: 8,
+    knockback: 1.5,
+    status: { status: 'chill', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'wheel_of_iron',
+    name: 'Wheel of Iron',
+    desc: 'Loose the wall spinning. It remembers your arm and comes back.',
+    color: '#aab6c4',
+    code: 'Wi',
+    cooldownTicks: 210, // 10.5 s
+    shape: 'projectile_fan',
+    damage: 9,
+    range: 9,
+    projectiles: 1,
+    projectileSpeed: 13,
+    pierce: true,
+    returns: true,
+    knockback: 1.4,
+  },
+  {
+    id: 'hold_the_line',
+    name: 'Hold the Line',
+    desc: 'Mark the ground you keep. Whoever crosses learns why it holds.',
+    color: '#8a94a4',
+    code: 'Hl',
+    cooldownTicks: 300, // 15 s
+    shape: 'ground_field',
+    damage: 4,
+    range: 2,
+    radius: 2.4,
+    fieldTicks: 140,
+    pulseEveryTicks: 20,
+    status: { status: 'chill', power: 1, durationTicks: 30 },
+  },
+  {
+    id: 'unbroken',
+    name: 'Unbroken',
+    desc: 'The great stand: the wall, the arm, and no step backward.',
+    color: '#e8d5a0',
+    code: 'Un',
+    cooldownTicks: 400, // 20 s
+    castFreezeTicks: 4,
+    shape: 'self_buff',
+    damage: 0,
+    self: { armor: 12, shieldHp: 20, reflectFrac: 0.35, durationTicks: 160 },
+  },
+
   // ------------------------- THE UNWRITTEN PAGE — deed-earned arts
   // These never sit on a rung: an `art:<id>` flag opens each, set by
   // a deed (never drop-luck). Invisible everywhere until earned.
@@ -1647,6 +1782,22 @@ const defs: AbilityDef[] = [
     homing: 7.0,
     element: 'void',
     status: { status: 'bleed', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'champions_wall',
+    name: "Champion's Wall",
+    desc: 'The wall a champion could not carry past you. It rings, and dares the rest.',
+    color: '#d8b76a',
+    code: 'Cw',
+    cooldownTicks: 260, // 13 s
+    castFreezeTicks: 4,
+    shape: 'pulse_nova',
+    damage: 6,
+    radius: 2.3,
+    pulses: 3,
+    pulseEveryTicks: 10,
+    knockback: 1.2,
+    tauntRadius: 4.0,
   },
 
   // ----------------------------------------------------------- sigils
@@ -2235,6 +2386,108 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
 
+  // --------------------------- THE SHIELD SKILL — the wall's rungs
+  {
+    ability: 'shield_bash',
+    style: 'shield',
+    unlockLevel: 5,
+    ranks: [
+      { note: 'The face lands heavier.', damage: 11 },
+      { note: 'The jolt of it holds them a beat longer.', status: { status: 'shock', power: 1, durationTicks: 45 } },
+      { note: 'The wall swings last — and once.', damage: 12, knockback: 2.6 },
+    ],
+  },
+  {
+    ability: 'set_the_wall',
+    style: 'shield',
+    unlockLevel: 10,
+    ranks: [
+      { note: 'The stance sets deeper.', self: { armor: 11, durationTicks: 160 } },
+      { note: 'A skin of iron over the iron.', self: { armor: 11, shieldHp: 6, durationTicks: 160 } },
+      { note: 'While the wall stands, so do you.', self: { armor: 14, shieldHp: 8, durationTicks: 180 } },
+    ],
+  },
+  {
+    ability: 'shield_rush',
+    style: 'shield',
+    unlockLevel: 15,
+    ranks: [
+      { note: 'The drive hits harder.', damage: 10 },
+      { note: 'A longer road, sooner open.', dashTiles: 4.4, cooldownTicks: 170 },
+      { note: 'They stagger cold from your road.', knockback: 3.4, status: { status: 'chill', power: 1, durationTicks: 40 } },
+    ],
+  },
+  {
+    ability: 'draw_iron',
+    style: 'shield',
+    unlockLevel: 20,
+    ranks: [
+      { note: 'The shout carries farther.', radius: 4.0, tauntRadius: 4.0, cooldownTicks: 300 },
+      { note: 'Iron answers those who answer.', radius: 4.0, tauntRadius: 4.0, cooldownTicks: 300, self: { armor: 6, durationTicks: 80 } },
+      { note: 'The whole yard hears its name.', radius: 5.0, tauntRadius: 5.0, cooldownTicks: 300, self: { armor: 8, durationTicks: 100 } },
+    ],
+  },
+  {
+    ability: 'shield_roof',
+    style: 'shield',
+    unlockLevel: 25,
+    ranks: [
+      { note: 'The roof bears more weather.', self: { shieldHp: 22, speedMult: 0.85, durationTicks: 160 } },
+      { note: 'The weight learns your shoulders.', self: { shieldHp: 22, speedMult: 0.95, durationTicks: 160 } },
+      { note: 'Let it rain.', self: { shieldHp: 30, speedMult: 0.95, durationTicks: 180 } },
+    ],
+  },
+  {
+    ability: 'turned_blow',
+    style: 'shield',
+    unlockLevel: 30,
+    ranks: [
+      { note: 'More of the blow goes home.', self: { reflectFrac: 0.45, durationTicks: 120 } },
+      { note: 'The angle hardens the arm that holds it.', self: { reflectFrac: 0.45, armor: 4, durationTicks: 120 } },
+      { note: 'The wall keeps nothing that was sent to it.', self: { reflectFrac: 0.6, armor: 4, durationTicks: 140 } },
+    ],
+  },
+  {
+    ability: 'rampart_break',
+    style: 'shield',
+    unlockLevel: 35,
+    ranks: [
+      { note: 'The rim bites deeper ground.', damage: 15 },
+      { note: 'The break spreads wider, oftener.', radius: 2.6, cooldownTicks: 200 },
+      { note: 'The yard breaks with them.', damage: 16, knockback: 2.4 },
+    ],
+  },
+  {
+    ability: 'wheel_of_iron',
+    style: 'shield',
+    unlockLevel: 40,
+    ranks: [
+      { note: 'The wheel spins heavier.', damage: 11 },
+      { note: 'A longer arc out, a shorter wait after.', range: 11, cooldownTicks: 190 },
+      { note: 'The rim rings them senseless.', knockback: 2.2, status: { status: 'shock', power: 1, durationTicks: 30 } },
+    ],
+  },
+  {
+    ability: 'hold_the_line',
+    style: 'shield',
+    unlockLevel: 45,
+    ranks: [
+      { note: 'The line argues harder.', damage: 6 },
+      { note: 'The ground holds it longer.', fieldTicks: 180 },
+      { note: 'This far. The ground itself agrees.', damage: 7, radius: 2.8, status: { status: 'chill', power: 1, durationTicks: 40 } },
+    ],
+  },
+  {
+    ability: 'unbroken',
+    style: 'shield',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'The stand holds more.', self: { armor: 14, shieldHp: 26, reflectFrac: 0.45, durationTicks: 160 } },
+      { note: 'The stand knits the arm that keeps it.', self: { armor: 14, shieldHp: 26, reflectFrac: 0.45, heal: 6, durationTicks: 160 } },
+      { note: 'Unbroken keeps its word.', self: { armor: 16, shieldHp: 32, reflectFrac: 0.5, heal: 10, durationTicks: 180 } },
+    ],
+  },
+
   // ------------------------- THE UNWRITTEN PAGE — deed-earned seats
   {
     ability: 'riftwalker_step',
@@ -2285,6 +2538,17 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
         note: 'The whisper keeps talking after it lands.',
         status: { status: 'bleed', power: 2, durationTicks: 80 },
       },
+    ],
+  },
+  {
+    ability: 'champions_wall',
+    style: 'shield',
+    unlockLevel: 0,
+    hidden: { anchorLevel: 30 },
+    ranks: [
+      { note: 'The wall rings louder.', damage: 7 },
+      { note: 'A fourth ring answers the third.', pulses: 4 },
+      { note: 'The dare carries to the back of the yard.', tauntRadius: 5.0, knockback: 2.0 },
     ],
   },
 ];

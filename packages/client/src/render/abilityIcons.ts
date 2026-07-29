@@ -371,6 +371,23 @@ function droplet(c: Ctx, x: number, y: number, s: number, st: FxStyle): void {
   c.restore();
 }
 
+/**
+ * The wall's own silhouette — a heater shield, front-on: dark binding,
+ * mid face, one lit top plane, a boss. The whole shield school speaks
+ * through this one shape (THE UNIT-SPACE LAW: relative widths only).
+ */
+function shieldFace(c: Ctx, x: number, y: number, s: number, st: FxStyle, rot = 0): void {
+  c.save();
+  c.translate(x, y);
+  c.rotate(rot);
+  c.scale(s, s);
+  poly(c, st.deep, [[-0.36, -0.42], [0.36, -0.42], [0.36, 0.02], [0, 0.46], [-0.36, 0.02]], 0.05);
+  fill(c, st.mid, [[-0.28, -0.34], [0.28, -0.34], [0.28, -0.02], [0, 0.34], [-0.28, -0.02]]);
+  fill(c, st.core, [[-0.28, -0.34], [0.28, -0.34], [0.22, -0.22], [-0.22, -0.22]]);
+  dot(c, st.spark, 0, -0.06, 0.07);
+  c.restore();
+}
+
 // ---------------------------------------------------------- painters
 
 /**
@@ -2301,8 +2318,135 @@ Object.assign(PLATES, {
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
+// ------------------------------- THE SHIELD SKILL — the wall's plates
+Object.assign(PLATES, {
+  // Shield Bash — the face of the wall meeting a jaw: impact star at
+  // the leading rim, arc crescents telling the swing.
+  shield_bash: (st) => (c) => {
+    c.translate(0.46, 0.5);
+    crescent(c, 0.06, 0, 0.4, 0.46, -0.9, 0.7, st.spark, 0.026);
+    shieldFace(c, -0.04, 0, 0.9, st, 0.22);
+    star4(c, 0.32, -0.12, 0.12, st.core, Math.PI / 4);
+    star4(c, 0.36, 0.1, 0.07, st.spark);
+  },
+  // Set the Wall — the planted stance: the shield square-on over a
+  // base line, halo arcs rising off the held ground.
+  set_the_wall: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    haloArcs(c, 0, -0.06, st);
+    poly(c, st.deep, [[-0.4, 0.4], [0.4, 0.4], [0.4, 0.34], [-0.4, 0.34]], 0.028);
+    shieldFace(c, 0, 0.0, 1.0, st);
+  },
+  // Shield Rush — boss-first drive: chevrons behind, the wall tilted
+  // into the road.
+  shield_rush: (st) => (c) => {
+    c.translate(0.54, 0.5);
+    chevrons(c, -0.36, 0.02, 0, st, 2, 1.1);
+    shieldFace(c, 0.06, 0, 0.94, st, Math.PI / 2 - 0.35);
+  },
+  // Draw Iron — the challenge: a jagged ring leaving the shield, the
+  // crown of the yard's attention above it.
+  draw_iron: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    novaRing(c, 0, -0.02, 0.42, st, 12, 0.24, 0.04);
+    shieldFace(c, 0, 0.02, 0.72, st);
+    crown(c, 0, -0.34, 0.26, st.mid, st.core);
+    star4(c, -0.34, 0.18, 0.06, st.spark);
+  },
+  // Shield Roof — the sky pulled to arm's reach: the wall overhead,
+  // blows raining and shearing off it.
+  shield_roof: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    // The roof: the shield seen edge-on above, a wide lit plank.
+    poly(c, st.deep, [[-0.42, -0.26], [0.42, -0.26], [0.36, -0.12], [-0.36, -0.12]], 0.04);
+    fill(c, st.core, [[-0.38, -0.24], [0.38, -0.24], [0.34, -0.19], [-0.34, -0.19]]);
+    dot(c, st.spark, 0, -0.19, 0.05);
+    // What it sheds.
+    for (const [x, a] of [[-0.3, 2.6], [0.02, 3.0], [0.32, 0.5]] as const) {
+      chevrons(c, x, -0.4, a + Math.PI / 2, st, 1, 0.7);
+    }
+    // Who it keeps: the figure-post beneath, dry.
+    poly(c, st.mid, [[-0.05, -0.06], [0.05, -0.06], [0.05, 0.34], [-0.05, 0.34]], 0.03);
+    dot(c, st.core, 0, -0.14, 0.08);
+  },
+  // Turned Blow — the angle that answers: a blow arriving, and the
+  // same blow leaving by the door it came through.
+  turned_blow: (st) => (c) => {
+    c.translate(0.52, 0.5);
+    shieldFace(c, 0.08, 0, 0.9, st, -0.3);
+    // In: a dark chevron. Out: a bright one, mirrored off the face.
+    chevrons(c, -0.38, -0.18, 0.5, st, 1, 0.9);
+    c.save();
+    c.globalAlpha = 0.9;
+    chevrons(c, -0.34, 0.24, -2.6, st, 1, 0.9);
+    c.restore();
+    star4(c, -0.06, -0.02, 0.1, st.spark, Math.PI / 4);
+  },
+  // Rampart Break — the rim driven into the earth: ground ellipse,
+  // fissures, the shield half-buried and standing anyway.
+  rampart_break: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    ground(c, 0, 0.4, st);
+    for (const [a, len] of [[0.3, 0.34], [1.4, 0.3], [2.4, 0.36], [-2.2, 0.3]] as const) {
+      c.strokeStyle = st.deep;
+      c.lineWidth = 0.03;
+      c.beginPath();
+      c.moveTo(Math.cos(a) * 0.12, 0.22 + Math.sin(a) * 0.05);
+      c.lineTo(Math.cos(a) * len, 0.22 + Math.sin(a) * len * 0.22);
+      c.stroke();
+    }
+    shieldFace(c, 0, -0.08, 0.86, st);
+    star4(c, 0.26, 0.2, 0.08, st.spark);
+    star4(c, -0.28, 0.24, 0.06, st.core);
+  },
+  // Wheel of Iron — the thrown wall, mid-spin, the return arc already
+  // written behind it.
+  wheel_of_iron: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, 0, 0.38, 0.44, 0.6, 2.6, st.spark, 0.024);
+    crescent(c, 0, 0, 0.38, 0.44, -2.4, -1.2, st.spark, 0.02);
+    shieldFace(c, 0, 0, 0.88, st, 0.9);
+    chevrons(c, 0.34, -0.28, -0.6, st, 1, 0.7);
+  },
+  // Hold the Line — the kept yard: a field patch, the wall upright on
+  // its line, and the line itself refusing.
+  hold_the_line: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    ground(c, 0, 0.42, st);
+    poly(c, st.deep, [[-0.42, 0.1], [-0.14, 0.1], [-0.14, 0.16], [-0.42, 0.16]], 0.026);
+    poly(c, st.deep, [[0.14, 0.1], [0.42, 0.1], [0.42, 0.16], [0.14, 0.16]], 0.026);
+    shieldFace(c, 0, -0.04, 0.84, st);
+  },
+  // Unbroken — the great stand: the wall wearing the light, rays of
+  // the stand behind it.
+  unbroken: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.035;
+    c.lineCap = 'round';
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+      c.beginPath();
+      c.moveTo(Math.cos(a) * 0.3, Math.sin(a) * 0.3);
+      c.lineTo(Math.cos(a) * 0.46, Math.sin(a) * 0.46);
+      c.stroke();
+    }
+    shieldFace(c, 0, 0.02, 0.96, st);
+    haloArcs(c, 0, -0.3, st);
+  },
+} satisfies Record<string, (st: FxStyle) => Painter>);
+
 // ---------------------------------------------- sigils & npc specials
 Object.assign(PLATES, {
+  // Champion's Wall — the trophy wall ringing: echo rings, the crown
+  // it was carried under, the bone it was won from.
+  champions_wall: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    novaRing(c, 0, 0, 0.44, st, 12, 0.2, 0.032);
+    novaRing(c, 0, 0, 0.32, st, 10, 0.2, 0.026);
+    shieldFace(c, 0, 0.02, 0.78, st);
+    crown(c, 0, -0.36, 0.24, st.mid, st.core);
+  },
   // Bone Tempest — the fallen champion answers: the trophy skull inside
   // its own grinding weather.
   bone_tempest: (st) => (c) => {

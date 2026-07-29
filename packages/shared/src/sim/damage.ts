@@ -73,6 +73,14 @@ export const MITIGATION_K_BASE = 60;
 export const MITIGATION_K_PER_LEVEL = 4;
 /** Reduction ceiling — tanky is tanky, invincible is forbidden. */
 export const MITIGATION_CAP = 0.75;
+/**
+ * THE RAISED WALL: bonus armor per shield-skill level, granted at the
+ * mitigate site ONLY while an offhand shield is equipped. The pipeline
+ * itself never changes — the wall is a contribution to the armor term
+ * (like Bulwark's planted stance), so the cap and the attacker-level
+ * pierce still govern. 0.5 armor/level = 1.5 rating/level raised.
+ */
+export const SHIELD_ARMOR_PER_LEVEL = 0.5;
 
 /** One number for the whole defensive kit: trained skill + worn metal. */
 export function armorRating(defenceLevel: number, armor: number): number {

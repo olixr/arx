@@ -305,11 +305,29 @@ export const FX_STYLES: Record<string, FxStyle> = {
   exposing_strike: BLOOD({ mid: '#9a6a8a', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'echo', punch: 0.5 }),
   thousand_cuts: STEEL({ core: '#ffffff', mid: '#c4b8d8', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'swarm', punch: 0.6, wash: 0.3 }),
 
+  // ------------------------ THE SHIELD SKILL — the wall's ladder
+  // The school speaks iron: STEEL voices with oak, heated-iron and
+  // brass accents. Guard arts glow low; the breaks and the great
+  // stand are the school's loud moments.
+  shield_bash: STEEL({ mid: '#8ea4b8', ring: 'teeth', debris: 'spark', decal: undefined, punch: 0.6, wash: 0.35 }),
+  set_the_wall: STEEL({ mid: '#7d8a9a', ring: 'halo', decal: undefined, motif: 'cage', punch: 0.2, wash: 0.25 }),
+  shield_rush: STEEL({ mid: '#9aa8b8', ring: 'shards', debris: 'spark', decal: undefined, motif: 'wave', punch: 0.55 }),
+  draw_iron: GOLD({ mid: '#c9a45e', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'crown', punch: 0.5, wash: 0.4 }),
+  shield_roof: STEEL({ mid: '#8a7a5e', deep: '#4a3f2e', ring: 'halo', decal: undefined, motif: 'echo', punch: 0.2, wash: 0.2 }),
+  turned_blow: STEEL({ mid: '#b87a5e', deep: '#6a4030', spark: '#ffd0a8', ring: 'shards', debris: 'ember', decal: undefined, motif: 'echo', punch: 0.4 }),
+  rampart_break: STEEL({ mid: '#7a8494', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.85, wash: 0.5 }),
+  wheel_of_iron: STEEL({ mid: '#aab6c4', ring: 'shards', debris: 'spark', decal: undefined, motif: 'vortex', punch: 0.5 }),
+  hold_the_line: STEEL({ mid: '#8a94a4', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'cage', punch: 0.4, wash: 0.3 }),
+  unbroken: GOLD({ mid: '#e8d5a0', ring: 'halo', debris: 'star', decal: 'glow', motif: 'rays', punch: 0.7, wash: 0.6 }),
+  // The rim spark — not an art, the block law's own voice.
+  shield_block: STEEL({ mid: '#c8d2dc', ring: 'shards', debris: 'spark', decal: undefined, punch: 0.15, wash: 0.1 }),
+
   // ------------------------- THE UNWRITTEN PAGE — deed-earned arts
   riftwalker_step: VOID({ ring: 'runes', debris: 'star', motif: 'tear', punch: 0.5, wash: 0.35 }),
   oathbound_edge: GOLD({ ring: 'halo', debris: 'star', motif: 'crown', punch: 0.7, wash: 0.55 }),
   warden_volley: VERDANT({ mid: '#8a9a78', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'rain', punch: 0.55 }),
   whisper_fang: SHADOW({ mid: '#6a5a88', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'wisps', punch: 0.45, wash: 0.15 }),
+  champions_wall: GOLD({ mid: '#d8b76a', ring: 'teeth', debris: 'bone', decal: 'cracks', motif: 'crown', punch: 0.7, wash: 0.45 }),
 
   // ------------------------------------------------------------ sigils
   bone_tempest: BONE({ motif: 'vortex', punch: 0.9, wash: 0.4 }),

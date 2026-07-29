@@ -605,7 +605,13 @@ export interface S2CFx {
      * patch to the floor follows), >0 = a crack — the prop shudders
      * and spits chips but stands.
      */
-    | 'smash';
+    | 'smash'
+    /**
+     * A raised shield eating a real bite of a blow at (x,y) — the rim
+     * spark. `dir` is the heading the blow came FROM (sparks shear off
+     * the face), `radius` scales with the bite. Throttled server-side.
+     */
+    | 'block';
   x: number;
   y: number;
   radius: number;
