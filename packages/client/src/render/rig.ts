@@ -3452,8 +3452,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const offSettlePoleX = -sideS * 0.45 * (1 - trailB) - rig.poleX * 0.6 * trailB;
   mainShX += (rig.x + sideS * tw * 0.85 * wS - mainShX) * settleK;
   offShX += (rig.x - sideS * tw * 0.85 * wS - offShX) * settleK;
-  // Aiming up-and-away puts the gear behind the body.
-  const weaponBehind = fy < -0.35;
+  // Aiming up-and-away puts the gear behind the body. And a LONG
+  // carry crossing the body goes behind it too: the staff's leveled
+  // run trail at a camera-facing heading swept its butt half up
+  // across the chest and FACE when painted in front (the user's
+  // catch) — the body belongs in front of the pole, crown showing
+  // beside the hip, butt hidden behind the shoulder. Gated on the
+  // run trail itself (a planted stick and the combat guard stay in
+  // front, where the business end lives).
+  const staffTrailBehind = isStaff && restSettle > 0.5 && rig.runF > 0.35 && fy > 0.08;
+  const weaponBehind = fy < -0.35 || staffTrailBehind;
   const cuff = bodySt?.sleeves === 'full' ? sleeve : undefined;
   const paintOffArm = (): void => {
     // DUAL WIELD: the off blade is the real weapon, carried by the off
