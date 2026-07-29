@@ -3059,8 +3059,18 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // foreshortened by the ground law — a north-south run keeps real
     // fore/aft arm life (smaller on screen because the world says so),
     // where the old front-on clamp suppressed armed hands near-dead.
+    // THE ALIGNMENT DAMP: the full throw belongs to a body running the
+    // way it faces. Strafing or backpedaling, the hands hang on the
+    // FACING side while the pump drives along the TRAVEL — at full
+    // amplitude that swings a fist across the shoulder line and folds
+    // the elbow inside-out. A sidestepping body pumps small.
+    const alignK = 0.5 + 0.5 * Math.max(0, rig.align);
     const amp =
-      (0.07 + 0.055 * rig.runF) * s * Math.min(1, rig.poleStrength) * (1 - 0.45 * crouch);
+      (0.07 + 0.055 * rig.runF) *
+      s *
+      Math.min(1, rig.poleStrength) *
+      (1 - 0.45 * crouch) *
+      alignK;
     const armed = isSword || isBow || isStaff;
     const p = armPump(rig.poleX, rig.poleY, sw, amp, armed ? restSettle : 0);
     // THE PENDULUM ARC: a hand swinging from a shoulder rises at both
@@ -3427,8 +3437,17 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // the travel. A runner's elbows trail; they never lead. (The rest
   // flare left the main elbow pointing AT the travel direction on a
   // profile run — the chicken-wing read the user caught.) Blended on
-  // the gait so the flare returns the moment the body stops.
-  const trailB = Math.min(1, rig.poleStrength) * (0.3 + 0.7 * rig.runF) * restSettle;
+  // the gait so the flare returns the moment the body stops — and
+  // gated on ALIGNMENT: trailing along the travel only makes sense
+  // when the body travels the way it faces. Strafing or backpedaling
+  // (facing one way, walking another) the arms belong to the BODY's
+  // frame, and an un-gated travel pole folded the elbows inside-out
+  // (the user's broken-elbow screenshot).
+  const trailB =
+    Math.min(1, rig.poleStrength) *
+    (0.3 + 0.7 * rig.runF) *
+    restSettle *
+    Math.max(0, rig.align);
   const mainSettlePoleX = sideS * 0.45 * (1 - trailB) - rig.poleX * 0.6 * trailB;
   const offSettlePoleX = -sideS * 0.45 * (1 - trailB) - rig.poleX * 0.6 * trailB;
   mainShX += (rig.x + sideS * tw * 0.85 * wS - mainShX) * settleK;
