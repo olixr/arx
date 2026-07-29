@@ -311,7 +311,12 @@ test('themed plate sets: five pieces each, coherent class and reqs', () => {
   const sets = ['warden', 'frostplate', 'bulwark', 'dreadforge', 'sunforged'];
   const bySlot = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
   for (const set of sets) {
-    const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`));
+    // A set is its five ARMOR pieces. A family may also carry a
+    // matching offhand (the greatshields), which is checked below on
+    // its own terms — it is not a sixth piece of plate.
+    const pieces = EQUIPMENT_DEFS.filter(
+      (d) => d.id.startsWith(`${set}_`) && d.slot !== 'offhand',
+    );
     assert.equal(pieces.length, 5, `${set} should have 5 pieces`);
     const slots = new Set(pieces.map((p) => p.slot));
     assert.deepEqual([...slots].sort(), ['body', 'boots', 'gloves', 'head', 'legs'], `${set} covers the armor slots`);
@@ -323,6 +328,29 @@ test('themed plate sets: five pieces each, coherent class and reqs', () => {
   }
   assert.ok(bySlot.get('tower_shield'));
   assert.ok(bySlot.get('steel_sabatons'));
+});
+
+test('the greatshield ladder: a matching wall for the plate sets, climbing in armor', () => {
+  // The tank's payoff line. Each rung gates higher than the last and
+  // gives more, and every one of them is named for the set it matches
+  // so a finished set finishes holding the right shield.
+  const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
+  const ladder = ['tower_shield', 'frostplate_greatshield', 'bulwark_bastion', 'sunforged_aegis'];
+  let prevLevel = 0;
+  let prevArmor = 0;
+  for (const id of ladder) {
+    const def = byId.get(id);
+    assert.ok(def, `${id} missing from the roster`);
+    if (!def) continue;
+    assert.equal(def.slot, 'offhand', `${id} is an offhand`);
+    const level = def.levelReq?.level ?? 0;
+    assert.equal(def.levelReq?.skill, 'defence', `${id} gates on defence`);
+    assert.ok(level > prevLevel, `${id} does not gate above the rung below it`);
+    const armor = def.armor ?? 0;
+    assert.ok(armor > prevArmor, `${id} gives no more than the rung below it`);
+    prevLevel = level;
+    prevArmor = armor;
+  }
 });
 
 test('themed leather sets: five pieces each, coherent class and reqs', () => {

@@ -4244,6 +4244,9 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   iron_sabatons: { icon: 'boots', color: '#8d9299' },
   steel_sabatons: { icon: 'boots', color: '#b8bec8' },
   tower_shield: { icon: 'shield', color: '#8d9299' },
+  frostplate_greatshield: { icon: 'shield', color: '#9db6cc' },
+  bulwark_bastion: { icon: 'shield', color: '#5a6270' },
+  sunforged_aegis: { icon: 'shield', color: '#d4a43c' },
   // Themed plate sets — family painters carry the shape, the palette
   // carries the identity.
   warden_helm: { icon: 'helm', color: '#4a7a5a' },

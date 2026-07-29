@@ -1,4 +1,12 @@
-export type ShieldShape = 'buckler' | 'round' | 'heater' | 'kite' | 'tower';
+/**
+ * THE GREATSHIELD CLASS. Above the pavise the roster stops sharing a
+ * silhouette: a tank's shield is the first thing anyone sees of them,
+ * and three top-tier walls that differ only in paint are three copies
+ * of the same shield. `wall`, `bastion` and `aegis` are all "a tower
+ * shield" to the equipment system, and three different objects to the
+ * eye — a calved slab, a battlement, and a crowned greatshield.
+ */
+export type ShieldShape = 'buckler' | 'round' | 'heater' | 'kite' | 'tower' | 'wall' | 'bastion' | 'aegis';
 /**
  * The material dialect. Wood is BUILT — staves, seams, a bound rim you
  * can count the rivets on. Metal is FORGED — one continuous face,

@@ -837,6 +837,12 @@ export const OFFHAND_STYLES: Record<string, OffhandStyle> = {
   tome_of_embers: { kind: 'tome', color: '#e8763c', trim: '#6b3a1e' },
   arcane_orb: { kind: 'orb', color: '#8f9ed6', trim: '#c9c4cf' },
   tower_shield: { kind: 'tower', color: '#9aa1ab', trim: '#5d6472', boss: '#cdd4de' },
+  // The greatshield class. `kind` only routes them into the shield
+  // dialect — each one's real silhouette and art come from its
+  // authored SHIELD_STYLES record.
+  frostplate_greatshield: { kind: 'tower', color: '#9db6cc', trim: '#dbe9f4', boss: '#eaf7ff' },
+  bulwark_bastion: { kind: 'tower', color: '#5a6270', trim: '#9c7c3a', boss: '#d8b76a' },
+  sunforged_aegis: { kind: 'tower', color: '#d4a43c', trim: '#f0e2bd', boss: '#fff8e4' },
   hunters_quiver: { kind: 'quiver', color: '#8a6a45', trim: '#3f6b3a' },
   scholars_tome: { kind: 'tome', color: '#4a5a9c', trim: '#c8cee8' },
 };

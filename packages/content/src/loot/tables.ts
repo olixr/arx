@@ -422,6 +422,7 @@ const defs: LootTableDef[] = [
       { item: 'emberweave_robe', chance: 0.08 },
       { item: 'frostplate_platebody', chance: 0.06 },
       { item: 'frostplate_greaves', chance: 0.05 },
+      { item: 'frostplate_greatshield', chance: 0.04 },
       { item: 'nightveil_jerkin', chance: 0.05 },
       { item: 'voidwhisper_robe', chance: 0.045 },
       ...setDrops('dreadforge', 0.04),

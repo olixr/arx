@@ -92,7 +92,23 @@ const SEAM = '#241a2e';
  */
 const BRASS = '#c9a45e';
 
-export type ShieldShape = 'buckler' | 'round' | 'heater' | 'kite' | 'tower';
+/**
+ * THE GREATSHIELD CLASS. Above the pavise the roster stops sharing a
+ * silhouette: a tank's shield is the first thing anyone sees of them,
+ * and three top-tier walls that differ only in paint are three copies
+ * of the same shield. `wall`, `bastion` and `aegis` are all "a tower
+ * shield" to the equipment system, and three different objects to the
+ * eye — a calved slab, a battlement, and a crowned greatshield.
+ */
+export type ShieldShape =
+  | 'buckler'
+  | 'round'
+  | 'heater'
+  | 'kite'
+  | 'tower'
+  | 'wall'
+  | 'bastion'
+  | 'aegis';
 
 /**
  * The material dialect. Wood is BUILT — staves, seams, a bound rim you
@@ -232,6 +248,91 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
     sig: 'pavise',
     tier: 3,
   },
+  /**
+   * RUNG FOUR — a slab of the glacier, carried. Where the pavise is a
+   * built thing, this one reads as CALVED: a squared wall of pale steel
+   * under a deep glacier chief, three icicle teeth hanging off the
+   * chief's edge into the field, and a rime-white star struck in the
+   * crown. The rim is the brightest metal on the ladder so far — the
+   * whole shield is cold light — and the umbo is a bead of clear ice.
+   */
+  frostplate_greatshield: {
+    shape: 'wall',
+    material: 'steel',
+    face: '#9db6cc',
+    faceAlt: '#2c4a6b',
+    field: 'chief',
+    rim: '#dbe9f4',
+    boss: '#eaf7ff',
+    device: 'star',
+    deviceColor: '#f2fbff',
+    studs: true,
+    curve: 0.28,
+    strapColor: '#3a4652',
+    sig: 'frost',
+    tier: 4,
+  },
+  /**
+   * RUNG FIVE — the fortress you wear. A battlemented crown steps down
+   * to the shoulders, the walls run dead straight, and the heel comes
+   * to a point you can set in the dirt and lean on. Brass-bound
+   * gunmetal, to the same recipe as the plate it is issued with, and
+   * across the whole face a broad brass cross — the bulwark's own
+   * daylight — with a brass umbo standing proud at the crossing.
+   */
+  bulwark_bastion: {
+    shape: 'bastion',
+    material: 'steel',
+    face: '#5a6270',
+    faceAlt: '#454d5a',
+    field: 'quarter',
+    // The binding is DARK brass and the cross is bright: both are the
+    // set's one warm metal, separated by value instead of hue, or the
+    // crenellated crown and the charge merge into one brass jumble
+    // exactly where the eye lands first.
+    rim: '#7d6330',
+    boss: '#d8b76a',
+    device: 'cross',
+    deviceColor: BRASS,
+    studs: true,
+    curve: 0.32,
+    strapColor: '#3f3830',
+    sig: 'bulwark',
+    tier: 5,
+  },
+  /**
+   * RUNG SIX — the last rung, and it is meant to stop conversation. A
+   * crowned greatshield: an apex at the crown, shoulders that FLARE
+   * wider than the crown does, and a long taper to a point at the
+   * heel — a silhouette no other shield in the game has. Eight rays of
+   * gold and ivory strike out from a white-hot umbo, four gilded rays
+   * escape the binding entirely at the quarters, and the rim is ivory
+   * so the whole thing carries its own daylight.
+   *
+   * This is the top of the ladder. Nothing above it is planned, and
+   * everything on it is spent on ONE idea — the sun — instead of on a
+   * fifth kind of fitting.
+   */
+  sunforged_aegis: {
+    shape: 'aegis',
+    material: 'steel',
+    face: '#d4a43c',
+    // The ivory ray is a shade UNDER the ivory binding on purpose: the
+    // rim has to stay the brightest metal on the piece, or the rays run
+    // straight into it and the shield loses its own edge.
+    faceAlt: '#e6d3a6',
+    field: 'quarter',
+    rim: '#f0e2bd',
+    boss: '#fff8e4',
+    device: 'star',
+    deviceColor: '#fff8e4',
+    studs: true,
+    spikes: true,
+    curve: 0.34,
+    strapColor: '#5a4a2a',
+    sig: 'sunforged',
+    tier: 6,
+  },
 };
 
 /**
@@ -301,6 +402,28 @@ const OUTLINES: Record<ShieldShape, number[]> = {
     0, -1, 0.72, -0.88, 1.0, -0.5, 1.0, 0.62, 0.7, 1, -0.7, 1, -1.0, 0.62,
     -1.0, -0.5, -0.72, -0.88,
   ],
+  // The calved slab: a flat crown, walls that never taper, a flat heel,
+  // and one clipped corner at each of the four turns. The squarest
+  // thing in the roster on purpose — it is a piece of a wall.
+  wall: [
+    -0.82, -1, 0.82, -1, 1.0, -0.78, 1.0, 0.8, 0.8, 1, -0.8, 1, -1.0, 0.8,
+    -1.0, -0.78,
+  ],
+  // The battlement: a raised center merlon between two dropped
+  // shoulders, straight walls, and a heel cut to a shallow point. The
+  // notch in the crown is the whole silhouette — it reads as
+  // architecture from across a field.
+  bastion: [
+    -0.56, -1, 0.56, -1, 0.56, -0.88, 1.0, -0.88, 1.0, 0.5, 0.62, 0.9, 0, 1.0,
+    -0.62, 0.9, -1.0, 0.5, -1.0, -0.88, -0.56, -0.88,
+  ],
+  // The crowned greatshield: an apex at the crown and shoulders that
+  // FLARE wider than the crown — the one outline here whose widest
+  // point is not its middle — falling in a long taper to a point.
+  aegis: [
+    0, -1, 0.46, -0.86, 1.0, -0.62, 0.92, -0.1, 0.66, 0.5, 0, 1, -0.66, 0.5,
+    -0.92, -0.1, -1.0, -0.62, -0.46, -0.86,
+  ],
 };
 
 /**
@@ -339,6 +462,13 @@ const METRIC: Record<
   heater: { hw: 0.16, hh: 0.21, hang: -0.19, depth: 0.05, strap: true, fwdK: 0, twistK: 0 },
   kite: { hw: 0.152, hh: 0.27, hang: -0.14, depth: 0.05, strap: true, fwdK: 0, twistK: 0 },
   tower: { hw: 0.185, hh: 0.315, hang: -0.09, depth: 0.06, strap: true, fwdK: -0.01, twistK: -0.04 },
+  // The greatshield class. Each rung is a little more shield than the
+  // last — measured against the rig, `aegis` spans shoulder line to
+  // mid-shin, which is as far as a shield can grow before the legs
+  // stop reading as legs.
+  wall: { hw: 0.205, hh: 0.33, hang: -0.07, depth: 0.062, strap: true, fwdK: -0.015, twistK: -0.05 },
+  bastion: { hw: 0.195, hh: 0.335, hang: -0.07, depth: 0.062, strap: true, fwdK: -0.015, twistK: -0.05 },
+  aegis: { hw: 0.2, hh: 0.35, hang: -0.06, depth: 0.064, strap: true, fwdK: -0.02, twistK: -0.05 },
 };
 
 /** The solved plane — everything the painters and the arm both need. */
@@ -834,7 +964,7 @@ export function drawShield(
   // local frame with its own dome height — at profile it survives as a
   // bump on the silhouette, which is exactly what a real boss does.
   if (st.boss && !fr.seeBack) drawBoss(ctx, st, fr, hxU, hyU, nxU, nyU, crown);
-  if (st.spikes && !hurt) drawSpikes(ctx, st, fr, hxU, hyU, nxU, nyU, crown);
+  if (st.spikes && !hurt) drawSpikes(ctx, st, fr, outline, hxU, hyU, nxU, nyU, crown);
   ctx.restore();
 }
 
@@ -857,6 +987,9 @@ const SIGNATURES: Record<string, FacePainter> = {
   buckler: sigBuckler,
   oak_kite: sigOakKite,
   pavise: sigPavise,
+  frost: sigFrost,
+  bulwark: sigBulwark,
+  sunforged: sigSunforged,
 };
 
 /**
@@ -1087,10 +1220,7 @@ function sigOakKite(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
  */
 function sigPavise(ctx: CanvasRenderingContext2D, st: ShieldStyle, fr: ShieldFrame, litU: number): void {
   // Three plates across the width, the middle one standing proud.
-  ctx.fillStyle = shade(st.face, litU > 0 ? -16 : 12);
-  ctx.fillRect(-1.2, -1.2, 1.2, 2.4);
-  ctx.fillStyle = shade(st.face, litU > 0 ? 12 : -16);
-  ctx.fillRect(0, -1.2, 1.2, 2.4);
+  plates(ctx, st, litU);
 
   const enamel = st.faceAlt ?? shade(st.face, -60);
   ctx.fillStyle = SEAM;
@@ -1111,23 +1241,185 @@ function sigPavise(ctx: CanvasRenderingContext2D, st: ShieldStyle, fr: ShieldFra
   // shadow. Riveted on, not painted on.
   const c = st.deviceColor ?? shade(st.rim, 40);
   const ty = -0.08;
-  const poly = (tone: string, pts: number[]): void => {
-    ctx.fillStyle = tone;
-    ctx.beginPath();
-    for (let i = 0; i < pts.length; i += 2) {
-      if (i === 0) ctx.moveTo(pts[i]!, pts[i + 1]!);
-      else ctx.lineTo(pts[i]!, pts[i + 1]!);
-    }
-    ctx.closePath();
-    ctx.fill();
-  };
   const R = 0.52;
   const W = 0.38;
-  poly(SEAM, [0, ty - R * 1.2, W * 1.2, ty, 0, ty + R * 1.2, -W * 1.2, ty]);
-  poly(c, [0, ty - R, W, ty, 0, ty + R, -W, ty]);
+  poly(ctx, SEAM, [0, ty - R * 1.2, W * 1.2, ty, 0, ty + R * 1.2, -W * 1.2, ty]);
+  poly(ctx, c, [0, ty - R, W, ty, 0, ty + R, -W, ty]);
   // ONE shadowed plane below the waist — the plate's second cut face.
-  poly(shade(c, -52), [-W, ty, W, ty, 0, ty + R]);
+  poly(ctx, shade(c, -52), [-W, ty, W, ty, 0, ty + R]);
 }
+
+/**
+ * The forged field: one plate to the light, one away. Every metal
+ * greatshield starts here, so the sun reads the same across the class
+ * before any of them says anything of its own.
+ */
+function plates(ctx: CanvasRenderingContext2D, st: ShieldStyle, litU: number): void {
+  ctx.fillStyle = shade(st.face, litU > 0 ? -16 : 12);
+  ctx.fillRect(-1.2, -1.2, 1.2, 2.4);
+  ctx.fillStyle = shade(st.face, litU > 0 ? 12 : -16);
+  ctx.fillRect(0, -1.2, 1.2, 2.4);
+}
+
+/** A flat polygon from a point list — the only shape the face knows. */
+function poly(ctx: CanvasRenderingContext2D, tone: string, pts: number[]): void {
+  ctx.fillStyle = tone;
+  ctx.beginPath();
+  for (let i = 0; i < pts.length; i += 2) {
+    if (i === 0) ctx.moveTo(pts[i]!, pts[i + 1]!);
+    else ctx.lineTo(pts[i]!, pts[i + 1]!);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+/**
+ * FROSTPLATE GREATSHIELD — a deep glacier CHIEF across the crown with
+ * a rime star struck in it, three icicle teeth hanging off its lower
+ * edge into the pale field, and nothing else. The teeth are the whole
+ * signature: they are the one place in the roster where a charge leaves
+ * its band and grows down into the field, and they cost three flat
+ * triangles.
+ */
+function sigFrost(
+  ctx: CanvasRenderingContext2D,
+  st: ShieldStyle,
+  fr: ShieldFrame,
+  litU: number,
+): void {
+  plates(ctx, st, litU);
+  // The chief: the crown of the shield in glacier blue, cut off by one
+  // hard seam. Ice over steel, not ice painted on steel.
+  const ice = st.faceAlt ?? shade(st.face, -60);
+  ctx.fillStyle = ice;
+  ctx.fillRect(-1.2, -1.2, 2.4, 0.78);
+  // ONE lit plane along the chief's top — the house's whole shading law.
+  ctx.fillStyle = shade(ice, 26);
+  ctx.fillRect(-1.2, -1.2, 2.4, 0.2);
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(-1.2, -0.42, 2.4, 0.05);
+  // The teeth: a curtain of ice hanging out of the chief and most of
+  // the way down the field. Uneven lengths — a matched set reads as a
+  // machined comb — and long, because the field below the chief is the
+  // biggest empty surface in the roster and this is what fills it.
+  const teeth: Array<[number, number, number]> = [
+    [-0.86, 0.13, 0.5],
+    [-0.5, 0.17, 1.02],
+    [-0.04, 0.2, 1.5],
+    [0.44, 0.16, 0.86],
+    [0.84, 0.13, 0.42],
+  ];
+  for (const [u, w, len] of teeth) {
+    poly(ctx, ice, [u - w, -0.4, u + w, -0.4, u, -0.4 + len]);
+    // The lit side of each tooth, one plane, always up-screen-lit.
+    poly(ctx, shade(ice, 30), [u - w * litU, -0.4, u, -0.4, u, -0.4 + len]);
+  }
+  // The charge, struck in the chief: a rime mullet in two planes.
+  const c = st.deviceColor ?? '#ffffff';
+  const ty = -0.79;
+  const r = 0.36;
+  const pts: number[] = [];
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+    const rr = i % 2 ? r * 0.42 : r;
+    pts.push(Math.cos(a) * rr, ty + Math.sin(a) * rr);
+  }
+  poly(ctx, c, pts);
+  poly(ctx, shade(c, -34), [-r * 0.42, ty, r * 0.42, ty, 0, ty + r]);
+}
+
+/**
+ * BULWARK BASTION — brass-bound gunmetal under a broad brass cross.
+ * Two bars, each with a dark shadow bar under it and one lit plane on
+ * top, four studs in the quarters the cross leaves empty, and the umbo
+ * lands on the crossing. The cross is the bulwark set's own device;
+ * the shield is where it finally gets room to be big.
+ */
+function sigBulwark(
+  ctx: CanvasRenderingContext2D,
+  st: ShieldStyle,
+  fr: ShieldFrame,
+  litU: number,
+): void {
+  plates(ctx, st, litU);
+  // The quartered field: the two panels the cross will divide, darkened
+  // on the diagonal so the brass has something to sit against.
+  const alt = st.faceAlt ?? shade(st.face, -18);
+  ctx.fillStyle = alt;
+  ctx.fillRect(-1.2, -1.2, 1.2, 1.2);
+  ctx.fillRect(0, 0, 1.2, 1.2);
+
+  const c = st.deviceColor ?? BRASS;
+  const w = 0.2; // half-width of a bar — narrow enough to clear the merlon
+  // Shadow first, then the bar, then the one lit plane along its
+  // up-screen edge. Painted vertical-then-horizontal so the horizontal
+  // laps OVER — which is how a real cross is riveted together.
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(-w - 0.05, -1.2, (w + 0.05) * 2, 2.4);
+  ctx.fillStyle = c;
+  ctx.fillRect(-w, -1.2, w * 2, 2.4);
+  ctx.fillStyle = shade(c, 30);
+  ctx.fillRect(litU > 0 ? w - 0.09 : -w, -1.2, 0.09, 2.4);
+
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(-1.2, -w - 0.19, 2.4, (w + 0.05) * 2);
+  ctx.fillStyle = c;
+  ctx.fillRect(-1.2, -w - 0.14, 2.4, w * 2);
+  ctx.fillStyle = shade(c, 30);
+  ctx.fillRect(-1.2, -w - 0.14, 2.4, 0.09);
+
+  // Four studs, one in each quarter — where the cross is bolted through
+  // the boards, and nowhere else.
+  for (const u of [-0.72, 0.72]) {
+    for (const t of [-0.7, 0.66]) stud(ctx, u, t, 0.085, shade(c, 40));
+  }
+}
+
+/**
+ * SUNFORGED AEGIS — the top of the ladder, spent entirely on one idea.
+ * Eight rays strike out of the center in alternating gold and ivory,
+ * a dark seat rings the middle so the white-hot umbo has somewhere to
+ * land, and that is the whole face. No bands, no plates, no pale: a
+ * sun does not need a second thought on top of it.
+ */
+function sigSunforged(
+  ctx: CanvasRenderingContext2D,
+  st: ShieldStyle,
+  fr: ShieldFrame,
+  litU: number,
+): void {
+  const ivory = st.faceAlt ?? '#f4ead2';
+  // The blazing sun: eight wedges struck from the umbo. Eight reads as
+  // a sunburst — which everywhere else in this file is the failure
+  // mode, and here is precisely the point.
+  for (let i = 0; i < 8; i++) {
+    const a0 = (i / 8) * Math.PI * 2 - Math.PI * 0.625;
+    const a1 = ((i + 1) / 8) * Math.PI * 2 - Math.PI * 0.625;
+    poly(ctx, i % 2 ? ivory : shade(st.face, 14), [
+      0, 0,
+      Math.cos(a0) * 2, Math.sin(a0) * 2,
+      Math.cos(a1) * 2, Math.sin(a1) * 2,
+    ]);
+  }
+  // The sun's own shading, honest to the screen: the away side of every
+  // ray falls off together, in ONE plane laid over the whole burst.
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(litU > 0 ? -1.2 : 0.34, -1.2, 0.86, 2.4);
+  ctx.globalAlpha = 1;
+  // The seat the umbo lands in — a dark RING, not a well. Cut wide it
+  // reads as a hole punched through the sun; it only has to be thick
+  // enough to give a white boss on a gold field an edge.
+  const seat: number[] = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+    seat.push(Math.cos(a) * 0.21, Math.sin(a) * 0.21);
+  }
+  poly(ctx, SEAM, seat);
+  // Nothing else. The rim's own studs are the only fitting on it: the
+  // whole rung is spent on the sun, not on a fifth kind of rivet.
+}
+
 /** The heraldic charge, cut in flat planes with one lit facet. */
 function drawDevice(ctx: CanvasRenderingContext2D, st: ShieldStyle, fr: ShieldFrame): void {
   const dev = st.device ?? 'none';
@@ -1137,7 +1429,7 @@ function drawDevice(ctx: CanvasRenderingContext2D, st: ShieldStyle, fr: ShieldFr
   const dk = shade(c, -34);
   // Charges sit high on a tall shield (the honor point), centered on a
   // round one — where a real device is placed to be seen over a rim.
-  const cy = fr.shape === 'kite' || fr.shape === 'tower' ? -0.34 : -0.04;
+  const cy = fr.shape === 'buckler' || fr.shape === 'round' ? -0.04 : -0.34;
   ctx.save();
   ctx.translate(0, cy);
   switch (dev) {
@@ -1502,11 +1794,44 @@ function drawBoss(
   ctx.restore();
 }
 
+/**
+ * How far the outline reaches in a design-space direction. Spikes are
+ * ROOTED IN THE BINDING, so they have to know where the binding
+ * actually is: placed on a circle instead, they sit correctly on a
+ * disc and float free of any shape that tapers — on the aegis, whose
+ * heel comes to a point, a spike at the lower quarters hung in the air
+ * a third of a shield away from the metal it is supposedly forged out
+ * of. One ray/edge intersection makes them right on every outline.
+ */
+function reachAlong(outline: number[], cu: number, ct: number): number {
+  const n = outline.length / 2;
+  let best = 0;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const ax = outline[i * 2]!;
+    const ay = outline[i * 2 + 1]!;
+    const ex = outline[j * 2]! - ax;
+    const ey = outline[j * 2 + 1]! - ay;
+    // Solve  k·(cu,ct) = a + s·e  for k, with s confined to the edge.
+    const den = cu * ey - ct * ex;
+    if (Math.abs(den) < 1e-9) continue;
+    const s = (ax * ct - ay * cu) / den;
+    if (s < 0 || s > 1) continue;
+    const k =
+      Math.abs(cu) > Math.abs(ct) ? (ax + s * ex) / cu : (ay + s * ey) / ct;
+    // The FARTHEST crossing: a concave outline (the bastion's crown) is
+    // pierced more than once, and a spike belongs on the outer wall.
+    if (k > best) best = k;
+  }
+  return best || 1;
+}
+
 /** Forged punch spikes on the quarters — the buckler's teeth. */
 function drawSpikes(
   ctx: CanvasRenderingContext2D,
   st: ShieldStyle,
   fr: ShieldFrame,
+  outline: number[],
   hxU: number,
   hyU: number,
   nxU: number,
@@ -1529,10 +1854,11 @@ function drawSpikes(
     // SHORT and narrow on purpose: a buckler's spikes are punched
     // studs, not a crown of blades, and long ones stop reading as part
     // of the shield the moment the plane turns.
-    const root = 0.9;
-    const tip = 1.2;
-    const wu = -ct2 * 0.125;
-    const wt = cu * 0.125;
+    const reach = reachAlong(outline, cu, ct2);
+    const root = reach * 0.86;
+    const tip = reach * 1.2;
+    const wu = -ct2 * 0.125 * reach;
+    const wt = cu * 0.125 * reach;
     ctx.fillStyle = c;
     ctx.beginPath();
     ctx.moveTo(px(cu * root + wu), py(cu * root + wu, ct2 * root + wt));

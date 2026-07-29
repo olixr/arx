@@ -48,6 +48,7 @@ function solve(st: ShieldStyle, dir: number, over: Partial<Record<string, number
 
 const KITE = SHIELD_STYLES.oak_kiteshield!;
 const TOWER = SHIELD_STYLES.tower_shield!;
+const AEGIS = SHIELD_STYLES.sunforged_aegis!;
 
 test('THE YAW LAW: the face turns with the body — open to the camera, edge-on at profile, back-on turned away', () => {
   // Facing the camera the face is square to us; at profile it is edge-on;
@@ -126,7 +127,7 @@ test('the plane stands UPRIGHT — it never rolls onto the forearm', () => {
 test('the fist grips from BEHIND the plane — never through its face', () => {
   for (let i = 0; i < 24; i++) {
     const dir = (i / 24) * Math.PI * 2;
-    for (const st of [KITE, TOWER, SHIELD_STYLES.spiked_buckler!]) {
+    for (const st of [KITE, TOWER, AEGIS, SHIELD_STYLES.spiked_buckler!]) {
       const fr = solve(st, dir);
       // The grip must sit on the bearer's side of the plane: its offset
       // from the center, projected on the face normal, points backward.
@@ -143,7 +144,7 @@ test('nothing pops: the carriage is continuous through a full turn', () => {
   // that teleports as the facing crosses an axis. Sweeping the facing in
   // fine steps (with the side held, as the rig's own eased flip does)
   // must move the plane smoothly.
-  for (const st of [KITE, TOWER]) {
+  for (const st of [KITE, TOWER, AEGIS]) {
     let prev = solve(st, -Math.PI / 2 + 0.001, { sideS: 1 });
     for (let i = 1; i <= 200; i++) {
       // Sweep the camera-facing half, where sideS is stable at +1.
@@ -230,7 +231,7 @@ test('THE NEAR-ARM LAW: at a dead profile the shield still paints in front', () 
   // fy is zero at profile, so a strict fy > 0 test dropped the plane
   // behind the torso — and an edge-on plane behind a body is a shield
   // the player cannot see at two of the eight facings.
-  for (const st of [KITE, TOWER]) {
+  for (const st of [KITE, TOWER, AEGIS]) {
     assert.ok(solve(st, 0).front, `${st.shape} vanished behind the body facing east`);
     assert.ok(solve(st, Math.PI).front, `${st.shape} vanished behind the body facing west`);
   }
@@ -270,6 +271,33 @@ test('THE UNIT-SPACE LAW: no stroke is wider than the shield it rings', () => {
       w > 0 && w < SIZE,
       `a stroke of ${w} in a shield of half-height ${SIZE} would swallow the icon`,
     );
+  }
+});
+
+test('THE GREATSHIELD CLASS: no two top-rung shields share a silhouette', () => {
+  // A tank's shield is the first thing anyone sees of them. Above the
+  // pavise, a new rung must be a new OUTLINE — three top-tier walls
+  // that differ only in paint are three copies of the same shield.
+  const top = Object.entries(SHIELD_STYLES).filter(([, s]) => (s.tier ?? 0) >= 3);
+  assert.ok(top.length >= 4, 'the ladder lost its top end');
+  const shapes = new Set<string>();
+  for (const [id, s] of top) {
+    assert.ok(!shapes.has(s.shape), `${id} reuses the silhouette "${s.shape}"`);
+    shapes.add(s.shape);
+  }
+});
+
+test('a greatshield fits the body it is carried on', () => {
+  // The class grows one rung at a time, and the ceiling is the rig
+  // itself: a shield that clears the head or drags on the ground stops
+  // being armor and starts being scenery. (The ground sits 0.414 s
+  // below the hip; the shoulder line 0.40 s above it.)
+  for (const id of ['frostplate_greatshield', 'bulwark_bastion', 'sunforged_aegis']) {
+    const st = SHIELD_STYLES[id]!;
+    const fr = solve(st, Math.PI / 2);
+    assert.ok(fr.hh * 2 > S * 0.6, `${id} is not a greatshield — it is ${(fr.hh * 2 / S).toFixed(2)} s tall`);
+    assert.ok(fr.cy + fr.hh < S * 0.414, `${id} drags its heel on the ground`);
+    assert.ok(fr.cy - fr.hh > -S * 0.52, `${id} stands taller than its bearer's head`);
   }
 });
 
