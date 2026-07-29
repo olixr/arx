@@ -15340,51 +15340,69 @@ export class Renderer {
         const isRun = (t2: number | undefined) => t2 === Tile.Bench;
         const je = isRun(game.world.groundAt(tx + 1, ty));
         const jw = isRun(game.world.groundAt(tx - 1, ty));
-        // Knee height — a seat, not a curb.
-        const th = s * 0.38;
+        // Knee height — a seat, not a curb. THE HONEST-ANGLE LAW (the
+        // chair's law) applies to the pew too: the seat is a receding
+        // quad between TWO floor lines, and each free end stands a
+        // NEAR trestle on the low line with a FAR trestle peeking in
+        // the under-seat gap behind it.
+        const th = s * 0.36;
+        const dz = syT * 0.34; // seat depth, foreshortened
+        const yNr = p.y + syT * 0.3; // near feet floor line
+        const yFr = yNr - dz; // far feet floor line
         const seatC = '#94693a';
         const legC = '#6f4d26';
         const xL = p.x - s * 0.5 + (jw ? -0.5 : s * 0.12);
         const xR = p.x + s * 0.5 + (je ? 0.5 : -s * 0.12);
-        const yB = p.y + syT * 0.22;
         return {
           sortY: ty + 0.68,
           body: je || jw ? undefined : stationBody(0.75, 0.75, 0.45),
-          drawShadow: () => this.castEdgeQuad(xL, yB + syT * 0.05, xR, yB + syT * 0.05, 0.28),
+          drawShadow: () => this.castEdgeQuad(xL, yNr, xR, yNr, 0.28),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx
             // to its scratch — the build-time capture would paint past it.
             const ctx = this.ctx;
-            // Splayed trestle ends — a pew stands on real feet. flip
+            // Splayed trestle ends — a pew stands on real feet, four
+            // of them, two per end on their own floor lines. flip
             // mirrors the splay so both ends lean outward.
-            const leg = (lx: number, flip: number) => {
-              ctx.fillStyle = legC;
+            const trestle = (lx: number, flip: number, footY: number, tone: string) => {
+              ctx.fillStyle = tone;
               ctx.beginPath();
-              ctx.moveTo(lx - s * 0.035 * flip, yB - th);
-              ctx.lineTo(lx + s * 0.045 * flip, yB - th);
-              ctx.lineTo(lx + s * 0.075 * flip, yB);
-              ctx.lineTo(lx - s * 0.005 * flip, yB);
+              ctx.moveTo(lx - s * 0.035 * flip, footY - th);
+              ctx.lineTo(lx + s * 0.045 * flip, footY - th);
+              ctx.lineTo(lx + s * 0.075 * flip, footY);
+              ctx.lineTo(lx - s * 0.005 * flip, footY);
               ctx.closePath();
               ctx.fill();
-              ctx.fillStyle = shade(legC, -14);
+              ctx.fillStyle = shade(tone, -14);
               const fx0 = flip > 0 ? lx - s * 0.01 : lx - s * 0.075;
-              ctx.fillRect(fx0, yB - s * 0.02, s * 0.085, s * 0.02);
+              ctx.fillRect(fx0, footY - s * 0.02, s * 0.085, s * 0.02);
             };
+            // Contact pool under the whole standing footprint.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
-            ctx.fillRect(xL + s * 0.02, yB + s * 0.005, xR - xL - s * 0.04, s * 0.035);
-            if (!jw) leg(xL + s * 0.05, 1);
-            if (!je) leg(xR - s * 0.05, -1);
-            // Stretcher rail under a lone bench.
+            ctx.beginPath();
+            ctx.ellipse((xL + xR) / 2, yNr - dz * 0.4, (xR - xL) * 0.52, dz * 0.58, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Far trestles first — their stubs live in the under-seat
+            // gap; the seat buries the rest.
+            if (!jw) trestle(xL + s * 0.05, 1, yFr, shade(legC, -10));
+            if (!je) trestle(xR - s * 0.05, -1, yFr, shade(legC, -10));
+            // Stretcher rails tie the ends: the near rail full, the
+            // far rail a dim line above it in the gap.
             if (!jw && !je) {
+              ctx.fillStyle = shade(legC, -14);
+              ctx.fillRect(xL + s * 0.1, yFr - th * 0.42, xR - xL - s * 0.2, s * 0.032);
               ctx.fillStyle = shade(legC, -8);
-              ctx.fillRect(xL + s * 0.1, yB - th * 0.5, xR - xL - s * 0.2, s * 0.04);
+              ctx.fillRect(xL + s * 0.1, yNr - th * 0.46, xR - xL - s * 0.2, s * 0.04);
             }
-            // The seat is a THICK slab: edge face below, top above.
+            if (!jw) trestle(xL + s * 0.05, 1, yNr, legC);
+            if (!je) trestle(xR - s * 0.05, -1, yNr, legC);
+            // The seat: a thick slab — edge face below, RECEDING top
+            // above, spanning the two floor lines.
             ctx.fillStyle = shade(seatC, -14);
-            ctx.fillRect(xL, yB - th, xR - xL, s * 0.07);
+            ctx.fillRect(xL, yNr - th, xR - xL, s * 0.065);
             ctx.fillStyle = seatC;
             ctx.beginPath();
-            chamferRect(ctx, xL, yB - th - syT * 0.22, xR - xL, syT * 0.22, [
+            chamferRect(ctx, xL, yNr - th - dz, xR - xL, dz, [
               jw ? 0 : s * 0.04,
               je ? 0 : s * 0.04,
               je ? 0 : s * 0.04,
@@ -15395,23 +15413,26 @@ export class Renderer {
             ctx.lineWidth = Math.max(1, s * 0.024);
             ctx.stroke();
             // End-grain caps at free ends; a seam runs with the grain;
-            // the front arris is sat-smooth and catches the light.
+            // the far rim falls to shade; the near arris is sat-smooth
+            // and catches the light.
             if (!jw) {
               ctx.fillStyle = shade(seatC, -8);
-              ctx.fillRect(xL, yB - th - syT * 0.22, s * 0.055, syT * 0.22);
+              ctx.fillRect(xL, yNr - th - dz, s * 0.055, dz);
             }
             if (!je) {
               ctx.fillStyle = shade(seatC, -8);
-              ctx.fillRect(xR - s * 0.055, yB - th - syT * 0.22, s * 0.055, syT * 0.22);
+              ctx.fillRect(xR - s * 0.055, yNr - th - dz, s * 0.055, dz);
             }
             ctx.fillStyle = 'rgba(36, 22, 10, 0.16)';
-            ctx.fillRect(xL + s * 0.06, yB - th - syT * 0.09, xR - xL - s * 0.12, s * 0.016);
+            ctx.fillRect(xL + s * 0.06, yNr - th - dz * 0.42, xR - xL - s * 0.12, s * 0.016);
+            ctx.fillStyle = 'rgba(36, 22, 10, 0.2)';
+            ctx.fillRect(xL, yNr - th - dz, xR - xL, s * 0.02);
             ctx.fillStyle = shade(seatC, 14);
             ctx.fillRect(
               xL + (jw ? 0 : s * 0.03),
-              yB - th - s * 0.038,
+              yNr - th - s * 0.036,
               xR - xL - (jw ? 0 : s * 0.03) - (je ? 0 : s * 0.03),
-              s * 0.038,
+              s * 0.036,
             );
           },
         };
@@ -15881,14 +15902,42 @@ export class Renderer {
         // tile plan so a sleeper fits between the boards.
         const frameC = '#6f4d26';
         const postC = '#5e3f1e';
+        const tickC = '#e8dfc8';
         const x0 = p.x - s * 0.46;
         const x1 = p.x + s * 0.46;
-        const yTop = p.y - syT * 0.5;
-        const yBot = p.y + syT * 0.48;
+        // THE HONEST-ANGLE LAW, bed edition: a bed is a RAISED DECK —
+        // the tick rides bedH above the floor, so the plan-view quilt
+        // sits on a visible south face (frame boards, an under-bed
+        // shadow gap, corner feet) instead of lying printed on the
+        // floorboards. The lift is also the CLIPPING fix: a footboard
+        // standing shin-high clears the crown of a reveal-sunken wall
+        // south of the bed, where the old floor-level foot art was
+        // legitimately occluded and read as cut off.
+        const bedH = s * 0.3;
+        const wallS = isWall(game.world.groundAt(tx, ty + 1));
+        const vert = head === 'n';
+        // Floor lines: the deck footprint. A lone bed overdraws south
+        // (the 1.15-tile body must fit) — unless a wall stands at the
+        // foot, where the bed stands OFF it so its base stays visible
+        // over the wall's sunken crown.
+        const yFf = vert ? p.y - syT * 0.5 : p.y - syT * 0.44;
+        const yFn = vert
+          ? bs
+            ? p.y + syT * 0.5
+            : wallS
+              ? p.y + syT * 0.4
+              : bn
+                ? p.y + syT * 0.48
+                : p.y + syT * 0.58
+          : wallS
+            ? p.y + syT * 0.42
+            : p.y + syT * 0.5;
+        const dTop = yFf - bedH;
+        const dBot = yFn - bedH;
         return {
           sortY: ty + 0.72,
           body: bn || bs ? undefined : stationBody(0.85, 1.35, 0.6),
-          drawShadow: bs ? undefined : () => this.castEdgeQuad(x0, yBot, x1, yBot, 0.3),
+          drawShadow: bs ? undefined : () => this.castEdgeQuad(x0, yFn, x1, yFn, 0.3),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx
             // to its scratch — the build-time capture would paint past
@@ -15924,80 +15973,96 @@ export class Renderer {
               ctx.fill();
             };
             if (head === 'n') {
-              // Run-aware bounds: merged halves reach the tile edge so
-              // the long bed joins seamlessly. A LONE bed overdraws
-              // south past its tile — a bed the 1.15-tile body fits,
-              // even on a one-tile footprint (y-sort keeps occlusion
-              // honest for anyone standing at its foot).
-              const yT2 = bn ? p.y - syT * 0.5 : yTop;
-              const yB2 = bs ? p.y + syT * 0.5 : bn ? yBot : p.y + syT * 0.62;
-              // The frame stands off the floor: under-dark + feet.
+              // FACING THE CAMERA. Everything soft rides the raised
+              // deck [dTop..dBot]; everything structural stands on the
+              // floor lines and shows honest height below the deck.
               if (!bs) {
+                // Contact pool + open under-bed shadow first — the
+                // gap under a real frame is darker than the room.
                 ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
-                ctx.fillRect(x0 - s * 0.01, yB2 + s * 0.1, x1 - x0 + s * 0.02, s * 0.05);
-                ctx.fillStyle = shade(frameC, -18);
-                ctx.fillRect(x0 - s * 0.02, yB2 + s * 0.08, s * 0.07, s * 0.07);
-                ctx.fillRect(x1 - s * 0.05, yB2 + s * 0.08, s * 0.07, s * 0.07);
+                ctx.fillRect(x0 - s * 0.01, yFn - s * 0.02, x1 - x0 + s * 0.02, s * 0.05);
+                ctx.fillStyle = 'rgba(18, 12, 26, 0.13)';
+                ctx.fillRect(x0 + s * 0.01, dBot + s * 0.15, x1 - x0 - s * 0.02, yFn - dBot - s * 0.16);
               }
-              // Side rails frame the tick.
-              const railH = yB2 - yT2 + (bs ? 0 : s * 0.1);
-              ctx.fillStyle = frameC;
-              ctx.fillRect(x0 - s * 0.055, yT2, s * 0.055, railH);
-              ctx.fillRect(x1, yT2, s * 0.055, railH);
-              ctx.fillStyle = shade(frameC, 10);
-              ctx.fillRect(x0 - s * 0.055, yT2, s * 0.02, railH);
-              ctx.fillStyle = shade(frameC, -12);
-              ctx.fillRect(x1 + s * 0.035, yT2, s * 0.02, railH);
-              // Dark rim outside each rail seats the frame on the
-              // floorboards.
-              ctx.fillStyle = 'rgba(26, 20, 36, 0.3)';
-              ctx.fillRect(x0 - s * 0.073, yT2, s * 0.018, railH);
-              ctx.fillRect(x1 + s * 0.055, yT2, s * 0.018, railH);
-              // Mattress, dimpled darker along the rails.
-              ctx.fillStyle = '#e8dfc8';
-              ctx.fillRect(x0, yT2, x1 - x0, yB2 - yT2);
-              ctx.fillStyle = shade('#e8dfc8', -8);
-              ctx.fillRect(x0, yT2, s * 0.045, yB2 - yT2);
-              ctx.fillRect(x1 - s * 0.045, yT2, s * 0.045, yB2 - yT2);
               if (!bn) {
-                // Headboard: finial posts flanking a board of matched
-                // planks — boards, not a void (a dark recess reads as
-                // an empty picture frame from this camera).
-                finialPost(x0 + s * 0.005, yTop + s * 0.06, s * 0.62);
-                finialPost(x1 - s * 0.005, yTop + s * 0.06, s * 0.62);
+                // Headboard first — the far plane. Posts stand ON the
+                // far floor line; the board of matched planks spans
+                // them (boards, not a void — a dark recess reads as an
+                // empty picture frame from this camera).
+                finialPost(x0 + s * 0.005, yFf, bedH + s * 0.62);
+                finialPost(x1 - s * 0.005, yFf, bedH + s * 0.62);
                 ctx.fillStyle = postC;
                 ctx.beginPath();
-                chamferRect(ctx, x0 + s * 0.02, yTop - s * 0.5, x1 - x0 - s * 0.04, s * 0.56, [s * 0.05, s * 0.05, 0, 0]);
+                chamferRect(ctx, x0 + s * 0.02, dTop - s * 0.58, x1 - x0 - s * 0.04, s * 0.62, [s * 0.05, s * 0.05, 0, 0]);
                 ctx.fill();
                 ctx.strokeStyle = 'rgba(26, 20, 36, 0.35)';
                 ctx.lineWidth = Math.max(1, s * 0.024);
                 ctx.stroke();
                 ctx.fillStyle = shade(postC, -5);
-                ctx.fillRect(x0 + s * 0.09, yTop - s * 0.4, x1 - x0 - s * 0.18, s * 0.34);
+                ctx.fillRect(x0 + s * 0.09, dTop - s * 0.48, x1 - x0 - s * 0.18, s * 0.38);
                 ctx.fillStyle = 'rgba(36, 22, 10, 0.35)';
                 for (const fx of [0.35, 0.53, 0.71] as const) {
-                  ctx.fillRect(x0 + (x1 - x0) * fx, yTop - s * 0.39, s * 0.018, s * 0.32);
+                  ctx.fillRect(x0 + (x1 - x0) * fx, dTop - s * 0.47, s * 0.018, s * 0.36);
                 }
                 // The board's top edge foreshortens into view.
                 ctx.fillStyle = shade(postC, 18);
-                ctx.fillRect(x0 + s * 0.04, yTop - s * 0.5, x1 - x0 - s * 0.08, s * 0.075);
+                ctx.fillRect(x0 + s * 0.04, dTop - s * 0.58, x1 - x0 - s * 0.08, s * 0.075);
+              }
+              // Side rails frame the tick along the deck, a lit lip
+              // proud of the mattress, rimmed dark so the frame
+              // separates from same-lumber floorboards.
+              const railH = dBot - dTop + (bs ? 0 : s * 0.02);
+              ctx.fillStyle = frameC;
+              ctx.fillRect(x0 - s * 0.055, dTop - s * 0.035, s * 0.055, railH + s * 0.035);
+              ctx.fillRect(x1, dTop - s * 0.035, s * 0.055, railH + s * 0.035);
+              ctx.fillStyle = shade(frameC, 10);
+              ctx.fillRect(x0 - s * 0.055, dTop - s * 0.035, s * 0.02, railH + s * 0.035);
+              ctx.fillStyle = shade(frameC, -12);
+              ctx.fillRect(x1 + s * 0.035, dTop - s * 0.035, s * 0.02, railH + s * 0.035);
+              ctx.fillStyle = 'rgba(26, 20, 36, 0.3)';
+              ctx.fillRect(x0 - s * 0.073, dTop - s * 0.03, s * 0.018, railH + s * 0.03);
+              ctx.fillRect(x1 + s * 0.055, dTop - s * 0.03, s * 0.018, railH + s * 0.03);
+              // Mattress on the deck, dimpled darker along the rails;
+              // the head end falls away into the board's shade.
+              ctx.fillStyle = tickC;
+              ctx.fillRect(x0, dTop, x1 - x0, dBot - dTop);
+              ctx.fillStyle = shade(tickC, -8);
+              ctx.fillRect(x0, dTop, s * 0.045, dBot - dTop);
+              ctx.fillRect(x1 - s * 0.045, dTop, s * 0.045, dBot - dTop);
+              if (!bn) {
+                ctx.fillStyle = 'rgba(36, 22, 10, 0.09)';
+                ctx.fillRect(x0, dTop, x1 - x0, (dBot - dTop) * 0.2);
+              }
+              if (!bn) {
                 // Pillow: plumped against the board, creased, casting
                 // its own soft line on the sheet.
                 ctx.fillStyle = '#f4efe0';
                 ctx.beginPath();
-                chamferRect(ctx, p.x - s * 0.24, yTop + syT * 0.05, s * 0.48, syT * 0.24, s * 0.06);
+                chamferRect(ctx, p.x - s * 0.24, dTop + syT * 0.05, s * 0.48, syT * 0.24, s * 0.06);
                 ctx.fill();
                 ctx.fillStyle = shade('#f4efe0', -9);
-                ctx.fillRect(p.x - s * 0.2, yTop + syT * 0.05 + syT * 0.19, s * 0.4, s * 0.026);
+                ctx.fillRect(p.x - s * 0.2, dTop + syT * 0.05 + syT * 0.19, s * 0.4, s * 0.026);
                 ctx.fillStyle = 'rgba(36, 22, 10, 0.1)';
-                ctx.fillRect(p.x - s * 0.24, yTop + syT * 0.05 + syT * 0.24, s * 0.48, s * 0.02);
+                ctx.fillRect(p.x - s * 0.24, dTop + syT * 0.05 + syT * 0.24, s * 0.48, s * 0.02);
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-                ctx.fillRect(p.x - s * 0.2, yTop + syT * 0.07, s * 0.14, s * 0.02);
+                ctx.fillRect(p.x - s * 0.2, dTop + syT * 0.07, s * 0.14, s * 0.02);
               }
-              // The quilt.
-              const drape = bs ? 0 : s * 0.1;
-              const yQ = bn ? yT2 : yT2 + (yB2 - yT2) * (bs ? 0.58 : 0.38);
-              quilt(x0 - s * 0.03, yQ, x1 - x0 + s * 0.06, yB2 - yQ + drape, 4, bs || bn ? 2 : 3);
+              // SOUTH FACE (the fix): below the deck's near edge the
+              // frame shows its boards, then the shadow gap, then
+              // corner feet standing on the near floor line.
+              if (!bs) {
+                ctx.fillStyle = shade(frameC, -4);
+                ctx.fillRect(x0 - s * 0.02, dBot, x1 - x0 + s * 0.04, s * 0.15);
+                ctx.fillStyle = 'rgba(36, 22, 10, 0.3)';
+                ctx.fillRect(x0 + (x1 - x0) * 0.36, dBot + s * 0.02, s * 0.018, s * 0.11);
+                ctx.fillRect(x0 + (x1 - x0) * 0.64, dBot + s * 0.02, s * 0.018, s * 0.11);
+                ctx.fillStyle = shade(frameC, -18);
+                ctx.fillRect(x0 - s * 0.015, yFn - s * 0.13, s * 0.065, s * 0.13);
+                ctx.fillRect(x1 - s * 0.05, yFn - s * 0.13, s * 0.065, s * 0.13);
+              }
+              // The quilt on the deck…
+              const yQ = bn ? dTop : dTop + (dBot - dTop) * (bs ? 0.55 : 0.4);
+              quilt(x0 - s * 0.03, yQ, x1 - x0 + s * 0.06, dBot - yQ, 4, bs || bn ? 2 : 3);
               if (!bn) {
                 // Fold-back sheet band at the quilt's head edge.
                 ctx.fillStyle = '#f4efe0';
@@ -16006,53 +16071,77 @@ export class Renderer {
                 ctx.fillRect(x0 - s * 0.03, yQ - s * 0.005, x1 - x0 + s * 0.06, s * 0.025);
               }
               if (!bs) {
-                // Hem shadow + the hanging corner at the foot.
-                ctx.fillStyle = shade(qDark, -12);
-                ctx.fillRect(x0 - s * 0.03, yB2 + drape - s * 0.03, x1 - x0 + s * 0.06, s * 0.03);
+                // …DRAPING over the south face — cloth falling over an
+                // edge is what makes the lift read.
+                ctx.fillStyle = shade(qMain, -10);
+                ctx.fillRect(x0 - s * 0.03, dBot, x1 - x0 + s * 0.06, s * 0.085);
+                ctx.fillStyle = shade(qDark, -14);
+                ctx.fillRect(x0 - s * 0.03, dBot + s * 0.085, x1 - x0 + s * 0.06, s * 0.028);
                 ctx.beginPath();
-                ctx.moveTo(x0 - s * 0.03, yB2 + drape);
-                ctx.lineTo(x0 + s * 0.08, yB2 + drape);
-                ctx.lineTo(x0 - s * 0.005, yB2 + drape + s * 0.07);
+                ctx.moveTo(x0 - s * 0.03, dBot + s * 0.06);
+                ctx.lineTo(x0 + s * 0.08, dBot + s * 0.06);
+                ctx.lineTo(x0 - s * 0.005, dBot + s * 0.16);
                 ctx.closePath();
                 ctx.fill();
-                // Footboard: a low rail between finial posts.
+                // Footboard: a low rail shin-high over the drape,
+                // between finial posts standing on the near floor —
+                // the piece of the bed that clears a sunken wall.
                 ctx.fillStyle = frameC;
-                ctx.fillRect(x0 - s * 0.01, yB2 + s * 0.02, x1 - x0 + s * 0.02, s * 0.075);
+                ctx.fillRect(x0 - s * 0.01, dBot - s * 0.13, x1 - x0 + s * 0.02, s * 0.065);
                 ctx.fillStyle = shade(frameC, 12);
-                ctx.fillRect(x0 - s * 0.01, yB2 + s * 0.02, x1 - x0 + s * 0.02, s * 0.026);
-                finialPost(x0 - s * 0.008, yB2 + s * 0.14, s * 0.2);
-                finialPost(x1 + s * 0.008, yB2 + s * 0.14, s * 0.2);
+                ctx.fillRect(x0 - s * 0.01, dBot - s * 0.13, x1 - x0 + s * 0.02, s * 0.024);
+                finialPost(x0 - s * 0.008, yFn, bedH + s * 0.22);
+                finialPost(x1 + s * 0.008, yFn, bedH + s * 0.22);
               }
             } else {
               // SIDE-ON: head against the east or west wall, the whole
-              // bed seen in profile — pillow at one end, quilt at the
-              // other, the south rail carrying the frame's depth.
+              // bed in profile — and still seen from above. The deck
+              // recedes between the floor lines, the long south rail
+              // carries the frame's height, and the head/foot boards
+              // are depth-true slabs whose LIT TOPS run away from the
+              // camera the bed's full width (the chair-side law).
               const sgn = head === 'e' ? 1 : -1;
               const hx = head === 'e' ? x1 : x0;
               const fx0 = head === 'e' ? x0 : x1;
-              // Under-dark + feet at the south corners.
+              // Contact pool + open under-bed shadow.
               ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
-              ctx.fillRect(x0 - s * 0.01, yBot + s * 0.1, x1 - x0 + s * 0.02, s * 0.05);
-              ctx.fillStyle = shade(frameC, -18);
-              ctx.fillRect(x0 - s * 0.02, yBot + s * 0.08, s * 0.07, s * 0.07);
-              ctx.fillRect(x1 - s * 0.05, yBot + s * 0.08, s * 0.07, s * 0.07);
-              // Far (north) rail behind the tick.
+              ctx.fillRect(x0 - s * 0.01, yFn - s * 0.02, x1 - x0 + s * 0.02, s * 0.05);
+              ctx.fillStyle = 'rgba(18, 12, 26, 0.13)';
+              ctx.fillRect(x0 + s * 0.01, dBot + s * 0.14, x1 - x0 - s * 0.02, yFn - dBot - s * 0.15);
+              // Far rail lip proud of the tick, then the FAR posts of
+              // both boards — their orbs peek over the slabs' lit tops
+              // from the high floor line.
               ctx.fillStyle = frameC;
-              ctx.fillRect(x0 - s * 0.02, yTop - s * 0.03, x1 - x0 + s * 0.04, s * 0.05);
-              // Mattress.
-              ctx.fillStyle = '#e8dfc8';
-              ctx.fillRect(x0, yTop, x1 - x0, yBot - yTop);
-              ctx.fillStyle = shade('#e8dfc8', -8);
-              ctx.fillRect(x0, yTop, x1 - x0, s * 0.04);
-              // Headboard edge-on: a real board column at the wall —
-              // wide enough to read as furniture, not a pole — its far
-              // post first, near post after the quilt.
-              finialPost(hx + sgn * s * 0.02, yTop + s * 0.04, s * 0.56);
+              ctx.fillRect(x0 - s * 0.02, dTop - s * 0.035, x1 - x0 + s * 0.04, s * 0.055);
+              finialPost(hx + sgn * s * 0.02, yFf, bedH + s * 0.56);
+              finialPost(fx0 - sgn * s * 0.005, yFf, bedH + s * 0.3);
+              // Mattress on the deck.
+              ctx.fillStyle = tickC;
+              ctx.fillRect(x0, dTop, x1 - x0, dBot - dTop);
+              ctx.fillStyle = shade(tickC, -8);
+              ctx.fillRect(x0, dTop, x1 - x0, s * 0.04);
+              // SOUTH LONG FACE: rail boards under the deck's near
+              // edge, a seam between them, feet at the corners.
+              ctx.fillStyle = shade(frameC, -4);
+              ctx.fillRect(x0 - s * 0.02, dBot, x1 - x0 + s * 0.04, s * 0.14);
+              ctx.fillStyle = 'rgba(36, 22, 10, 0.3)';
+              ctx.fillRect(x0 + (x1 - x0) * 0.5 - s * 0.009, dBot + s * 0.02, s * 0.018, s * 0.1);
+              ctx.fillStyle = shade(frameC, -18);
+              ctx.fillRect(x0 - s * 0.015, yFn - s * 0.12, s * 0.06, s * 0.12);
+              ctx.fillRect(x1 - s * 0.045, yFn - s * 0.12, s * 0.06, s * 0.12);
+              // The deck recedes: its far third falls away into shade
+              // — without this the raised plan reads as a flat one.
+              ctx.fillStyle = 'rgba(36, 22, 10, 0.09)';
+              ctx.fillRect(x0, dTop, x1 - x0, (dBot - dTop) * 0.32);
+              // Headboard: one broad slab from the far top corner to
+              // its near foot — the upper reach is the board's TOP, a
+              // lit ribbon the bed's whole depth, over the near
+              // end-grain cap; the deck tucks in beneath.
               ctx.fillStyle = postC;
               ctx.beginPath();
-              chamferRect(ctx, hx - s * 0.08, yTop - s * 0.52, s * 0.16, yBot - yTop + s * 0.52, [
-                s * 0.035,
-                s * 0.035,
+              chamferRect(ctx, hx - s * 0.1, dTop - s * 0.6, s * 0.2, yFn - dTop + s * 0.6, [
+                s * 0.04,
+                s * 0.04,
                 0,
                 0,
               ]);
@@ -16060,45 +16149,63 @@ export class Renderer {
               ctx.strokeStyle = 'rgba(26, 20, 36, 0.35)';
               ctx.lineWidth = Math.max(1, s * 0.024);
               ctx.stroke();
-              ctx.fillStyle = shade(postC, sgn > 0 ? 10 : -10);
-              ctx.fillRect(sgn > 0 ? hx - s * 0.08 : hx + s * 0.045, yTop - s * 0.5, s * 0.035, yBot - yTop + s * 0.48);
-              // Top edge of the board catches the sky.
               ctx.fillStyle = shade(postC, 18);
-              ctx.fillRect(hx - s * 0.08, yTop - s * 0.52, s * 0.16, s * 0.07);
-              // Pillow: stood vertical against the head end.
+              ctx.fillRect(hx - s * 0.1 + s * 0.016, dTop - s * 0.59, s * 0.2 - s * 0.032, dBot - dTop);
+              ctx.fillStyle = shade(postC, 4);
+              ctx.fillRect(hx - s * 0.1, dBot - s * 0.6, s * 0.2, s * 0.09);
+              // A plank seam down the near face, and the board's inner
+              // face catching the room's light on the mattress side.
+              ctx.fillStyle = 'rgba(36, 22, 10, 0.3)';
+              ctx.fillRect(hx - s * 0.009, dBot - s * 0.49, s * 0.018, s * 0.42);
+              ctx.fillStyle = shade(postC, 10);
+              ctx.fillRect(sgn > 0 ? hx - s * 0.1 : hx + s * 0.084, dBot - s * 0.5, s * 0.016, s * 0.42);
+              // Pillow: a plump bolster laid against the head end —
+              // wider than tall, creased where a head has been.
+              const pyMid = (dTop + dBot) / 2;
+              const pw2 = s * 0.27;
+              const ph3 = (dBot - dTop) * 0.52;
+              const px2 = hx - sgn * s * 0.33 - pw2 / 2;
               ctx.fillStyle = '#f4efe0';
               ctx.beginPath();
-              chamferRect(ctx, hx - sgn * s * 0.31 - s * 0.105, p.y - syT * 0.3, s * 0.21, syT * 0.6, s * 0.05);
+              chamferRect(ctx, px2, pyMid - ph3 * 0.58, pw2, ph3, s * 0.05);
               ctx.fill();
               ctx.fillStyle = shade('#f4efe0', -9);
-              ctx.fillRect(hx - sgn * s * 0.31 - (sgn > 0 ? s * 0.105 : -s * 0.06), p.y - syT * 0.26, s * 0.045, syT * 0.52);
+              ctx.fillRect(px2 + (sgn > 0 ? 0 : pw2 - s * 0.045), pyMid - ph3 * 0.5, s * 0.045, ph3 * 0.84);
+              ctx.fillStyle = 'rgba(36, 22, 10, 0.1)';
+              ctx.fillRect(px2 + s * 0.02, pyMid + ph3 * 0.42 - s * 0.02, pw2 - s * 0.04, s * 0.022);
               ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-              ctx.fillRect(hx - sgn * s * 0.31 - s * 0.02, p.y - syT * 0.24, s * 0.04, s * 0.03);
-              // The quilt claims the foot 58% of the bed.
+              ctx.fillRect(px2 + pw2 * 0.3, pyMid - ph3 * 0.44, s * 0.09, s * 0.024);
+              // The quilt claims the foot 58% of the deck…
               const qw2 = (x1 - x0) * 0.58;
               const qx0 = sgn > 0 ? fx0 - s * 0.02 : fx0 - qw2 + s * 0.02;
-              quilt(qx0, yTop - s * 0.02, qw2, yBot - yTop + s * 0.13, 3, 3);
+              quilt(qx0, dTop - s * 0.02, qw2, dBot - dTop + s * 0.02, 3, 3);
+              // …and recedes with the deck under the same far shade.
+              ctx.fillStyle = 'rgba(36, 22, 10, 0.09)';
+              ctx.fillRect(qx0, dTop - s * 0.02, qw2, (dBot - dTop) * 0.32);
               // Fold-back sheet band along the quilt's head edge.
               const bandX = sgn > 0 ? qx0 + qw2 - s * 0.01 : qx0 - s * 0.065;
               ctx.fillStyle = '#f4efe0';
-              ctx.fillRect(bandX, yTop - s * 0.02, s * 0.075, yBot - yTop + s * 0.13);
+              ctx.fillRect(bandX, dTop - s * 0.02, s * 0.075, dBot - dTop + s * 0.02);
               ctx.fillStyle = shade('#f4efe0', -11);
-              ctx.fillRect(bandX + (sgn > 0 ? s * 0.05 : 0), yTop - s * 0.02, s * 0.025, yBot - yTop + s * 0.13);
-              // Hem shadow + hanging corner over the south rail.
-              ctx.fillStyle = shade(qDark, -12);
-              ctx.fillRect(qx0, yBot + s * 0.08, qw2, s * 0.03);
+              ctx.fillRect(bandX + (sgn > 0 ? s * 0.05 : 0), dTop - s * 0.02, s * 0.025, dBot - dTop + s * 0.02);
+              // …and DRAPES over the south rail: hem shadow + the
+              // hanging corner falling down the face.
+              ctx.fillStyle = shade(qMain, -10);
+              ctx.fillRect(qx0, dBot, qw2, s * 0.08);
+              ctx.fillStyle = shade(qDark, -14);
+              ctx.fillRect(qx0, dBot + s * 0.08, qw2, s * 0.026);
               ctx.beginPath();
               const cnr = sgn > 0 ? qx0 + s * 0.02 : qx0 + qw2 - s * 0.02;
-              ctx.moveTo(cnr - s * 0.055, yBot + s * 0.11);
-              ctx.lineTo(cnr + s * 0.055, yBot + s * 0.11);
-              ctx.lineTo(cnr, yBot + s * 0.18);
+              ctx.moveTo(cnr - s * 0.055, dBot + s * 0.05);
+              ctx.lineTo(cnr + s * 0.055, dBot + s * 0.05);
+              ctx.lineTo(cnr, dBot + s * 0.15);
               ctx.closePath();
               ctx.fill();
-              // Footboard: a shorter board column at the foot end,
-              // then the near-corner posts drawn over everything.
+              // Footboard: the shorter slab at the foot end — same
+              // depth-true build, lit top ribbon over the end cap.
               ctx.fillStyle = frameC;
               ctx.beginPath();
-              chamferRect(ctx, fx0 - s * 0.055, yTop + s * 0.02, s * 0.11, yBot - yTop + s * 0.12, [
+              chamferRect(ctx, fx0 - s * 0.055, dTop - s * 0.3, s * 0.11, yFn - dTop + s * 0.3, [
                 s * 0.025,
                 s * 0.025,
                 0,
@@ -16108,10 +16215,14 @@ export class Renderer {
               ctx.strokeStyle = 'rgba(26, 20, 36, 0.3)';
               ctx.lineWidth = Math.max(1, s * 0.02);
               ctx.stroke();
-              ctx.fillStyle = shade(frameC, sgn > 0 ? 10 : -10);
-              ctx.fillRect(sgn > 0 ? fx0 - s * 0.055 : fx0 + s * 0.03, yTop + s * 0.04, s * 0.025, yBot - yTop + s * 0.08);
-              finialPost(fx0 - sgn * s * 0.005, yBot + s * 0.16, s * 0.38);
-              finialPost(hx + sgn * s * 0.02, yBot + s * 0.16, s * 0.6);
+              ctx.fillStyle = shade(frameC, 16);
+              ctx.fillRect(fx0 - s * 0.055 + s * 0.012, dTop - s * 0.29, s * 0.11 - s * 0.024, dBot - dTop);
+              ctx.fillStyle = shade(frameC, 2);
+              ctx.fillRect(fx0 - s * 0.055, dBot - s * 0.3, s * 0.11, s * 0.075);
+              // Near-corner posts stand over everything, feet on the
+              // low floor line.
+              finialPost(fx0 - sgn * s * 0.005, yFn, bedH + s * 0.34);
+              finialPost(hx + sgn * s * 0.02, yFn, bedH + s * 0.58);
             }
           },
         };
