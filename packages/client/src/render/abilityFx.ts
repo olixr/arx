@@ -322,12 +322,31 @@ export const FX_STYLES: Record<string, FxStyle> = {
   // The rim spark — not an art, the block law's own voice.
   shield_block: STEEL({ mid: '#c8d2dc', ring: 'shards', debris: 'spark', decal: undefined, punch: 0.15, wash: 0.1 }),
 
+  // ------------------------ THE GREAT SCHOOL — the colossus's ladder
+  // The school speaks forge-and-granite: hot iron mids over STEEL and
+  // EMBER voices, rock debris, quake grammar. Everything lands HEAVY —
+  // the school's punch floor sits higher than any other ladder's.
+  wide_swath: STEEL({ mid: '#c47a3d', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'wave', punch: 0.6, wash: 0.35 }),
+  haft_check: STEEL({ mid: '#8a7a68', ring: 'shards', debris: 'spark', decal: undefined, punch: 0.35, wash: 0.2 }),
+  iron_pendulum: STEEL({ mid: '#9a8a78', ring: 'shards', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.55, wash: 0.3 }),
+  fault_line: EMBER({ mid: '#a06a48', deep: '#4a3020', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.85, wash: 0.5 }),
+  colossus_stance: BLOOD({ mid: '#b85e3a', ring: 'halo', debris: 'ember', decal: undefined, motif: 'pillar', punch: 0.25, wash: 0.25 }),
+  skysunder: EMBER({ mid: '#c9924a', ring: 'teeth', debris: 'rock', decal: 'scorch', motif: 'pillar', punch: 0.9, wash: 0.6 }),
+  executioners_arc: BLOOD({ mid: '#8a5a4a', ring: 'shards', debris: 'blood', decal: 'stain', punch: 0.65, wash: 0.3 }),
+  avalanche: STEEL({ mid: '#b0a494', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'rain', punch: 0.7, wash: 0.35 }),
+  breaker_charge: STEEL({ mid: '#b06a30', ring: 'shards', debris: 'spark', decal: undefined, motif: 'wave', punch: 0.6, wash: 0.3 }),
+  titans_verdict: GOLD({ mid: '#e0a04c', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.95, wash: 0.6 }),
+  // The founding pair's Weapon Arts.
+  colossus_arc: STEEL({ mid: '#9aa2ac', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'wave', punch: 0.65, wash: 0.35 }),
+  quakefall: EMBER({ mid: '#7d7468', deep: '#3a342c', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 1.0, wash: 0.55 }),
+
   // ------------------------- THE UNWRITTEN PAGE — deed-earned arts
   riftwalker_step: VOID({ ring: 'runes', debris: 'star', motif: 'tear', punch: 0.5, wash: 0.35 }),
   oathbound_edge: GOLD({ ring: 'halo', debris: 'star', motif: 'crown', punch: 0.7, wash: 0.55 }),
   warden_volley: VERDANT({ mid: '#8a9a78', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'rain', punch: 0.55 }),
   whisper_fang: SHADOW({ mid: '#6a5a88', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'wisps', punch: 0.45, wash: 0.15 }),
   champions_wall: GOLD({ mid: '#d8b76a', ring: 'teeth', debris: 'bone', decal: 'cracks', motif: 'crown', punch: 0.7, wash: 0.45 }),
+  giantsfall: GOLD({ mid: '#d88a4a', ring: 'shards', debris: 'star', decal: 'cracks', motif: 'pillar', punch: 0.85, wash: 0.5 }),
 
   // ------------------------------------------------------------ sigils
   bone_tempest: BONE({ motif: 'vortex', punch: 0.9, wash: 0.4 }),

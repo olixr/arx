@@ -5,8 +5,10 @@ import {
   bladeStyle,
   bowStyle,
   drawBow,
+  drawGreatweapon,
   drawSword,
   drawStaff,
+  greatStyle,
   staffStyle,
   type BladeFx,
   type StaffFx,
@@ -40,10 +42,17 @@ import {
 } from './carriage.js';
 import { STOW_HANDOFF, sheathePhases, stowBack, stowBlade } from './sheath.js';
 import {
+  GREAT_FINISHER_PHASES,
+  GREAT_POMMEL_CHOKE_S,
   STAFF_GUARD_CHOKE_S,
   armPump,
   bowWield,
   gaitK,
+  greatFinisherLean,
+  greatFinisherPath,
+  greatStrikeFrame,
+  greatStrikeTrail,
+  greatWield,
   projectCarry,
   projectStrike,
   runnerLift,
@@ -2300,11 +2309,15 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const wornDef = itemDef(rig.weaponItem ?? '');
   const weapon = stowed ? undefined : wornDef;
   const isBow = weapon !== undefined && bowStyle(weapon.id) !== null;
+  // THE GREAT SCHOOL asks first — the check-great-first law: a
+  // 'greatsword'-shaped id also satisfies bladeStyle's '*sword'
+  // fallback, so the one-hand registry must never see it.
+  const isGreat = weapon !== undefined && greatStyle(weapon.id) !== null;
   // Blades — swords and daggers both — share the low carriage AND the
   // grip-aware strike vocabulary (incl. the reverse grip). Identity
   // comes from the style registries; roster ids (falchion, hush,
   // stormcaller, ...) don't all say 'sword'/'dagger'/'staff'.
-  const isSword = weapon !== undefined && bladeStyle(weapon.id) !== null;
+  const isSword = !isGreat && weapon !== undefined && bladeStyle(weapon.id) !== null;
   const isStaff = weapon !== undefined && staffStyle(weapon.id) !== null;
   // A reversed main fist changes the ATTACK choreography, not just the
   // carriage — tighter rakes, locked wrist, icepick finisher.
@@ -2377,6 +2390,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           : -1;
   // Icepick finisher path (reverse grip only) — set in stage 2 below.
   let ice: { r: number; lift: number } | null = null;
+  // THE MOUNTAIN FALLS (great finisher): the blade's world pitch
+  // through the overhead haul — projected for heldAngle below.
+  let greatFinPitch: number | null = null;
+  // The shoulder carry's run-claim on the off fist (greatWield).
+  let greatRunClaim = 0;
   if (meleeStage === 0 || meleeStage === 1) {
     const t = rig.poseT;
     if (isStaff) {
@@ -2392,6 +2410,20 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       staffStrikeGrip = f.grip;
       lean = f.lean;
       mainTrail = staffStrikeTrail(meleeStage as 0 | 1, t);
+    } else if (isGreat) {
+      // THE GREAT SCHOOL: the felling stroke and the wide reap —
+      // swung RADII with a heavy wrist lag (the mass answers late),
+      // both fists welded to the grip through the whole beat (the
+      // second-fist claim below), on the renderer's long clock. The
+      // wrist channel rides the same projection as the pole school's.
+      const f = greatStrikeFrame(meleeStage as 0 | 1, t);
+      swingOffset = f.arm;
+      strikeReachK = f.reach;
+      strikeLiftS = f.lift;
+      staffSpin = f.spin;
+      staffStrikeGrip = f.grip;
+      lean = f.lean;
+      mainTrail = greatStrikeTrail(meleeStage as 0 | 1, t);
     } else {
       const f = strikeFrame(rogueMelee ? 'rogue' : 'normal', meleeStage as 0 | 1, t);
       swingOffset = f.arm;
@@ -2411,12 +2443,23 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     swingOffset = 0;
     if (rogueMelee) {
       ice = icepickPath(t);
+    } else if (isGreat) {
+      // THE MOUNTAIN FALLS: both hands haul the blade straight
+      // overhead — the LIFT does the talking while the fist barely
+      // leaves the body — the longest poise in the game, then the
+      // drive buries the edge in the ground ahead. The blade's pitch
+      // is authored in the world and projected below.
+      const gp = greatFinisherPath(t);
+      thrustR = gp.r;
+      strikeLiftS = gp.lift;
+      greatFinPitch = gp.pitch;
+      staffStrikeGrip = 0.26;
     } else {
       const tp = thrustPath(t);
       thrustR = tp.r;
       strikeLiftS = tp.lift;
     }
-    lean = finisherLean(t) * Math.sign(fx || 1); // tip the torso along the strike
+    lean = (isGreat ? greatFinisherLean(t) : finisherLean(t)) * Math.sign(fx || 1); // tip the torso along the strike
   }
   // The echo rides every stage of the main combo when an off blade is
   // worn: it coils while the main blade cuts and cuts while the main
@@ -2806,6 +2849,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const markY = armY + fy * 0.6 * s + 0.26 * s;
     heldAngle = Math.atan2(markY - mainY, markX - mainX);
     mainFore = projectStrike(rig.dir).fore;
+  } else if (greatFinPitch !== null) {
+    // THE MOUNTAIN FALLS: the blade's overhead haul is a world pitch —
+    // straight up through the poise, crashing to down-forward at the
+    // bury — projected exactly like a carry.
+    const gp = projectCarry(rig.dir, greatFinPitch);
+    heldAngle = gp.angle;
+    mainFore = gp.fore;
   } else if (thrustR !== null) {
     // The lunge rams straight down the aim — angle target-true, the
     // blade honestly shorter when the aim runs into the screen.
@@ -2960,6 +3010,30 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         }
       }
     }
+    if (isGreat) {
+      // THE SHOULDER CARRY (wield.ts): the flat of the greatblade
+      // rests back over the trailing shoulder at every gait — the
+      // woodcutter's carry, one motion from the guard. The walk rocks
+      // the mass a beat behind the stride; the run levels the blade a
+      // little into the drive, drops the fist toward the ribs, and
+      // calls the off hand back to the grip (the second-fist claim
+      // below reads gf.offClaim).
+      const gf = greatWield(
+        rig.dir,
+        wSide,
+        Math.min(1, rig.poleStrength),
+        rig.runF,
+        swS,
+        rig.poleX,
+      );
+      hAngle = gf.angle;
+      hFore = gf.fore;
+      hx = rig.x + gf.dx * s * wS + fx * 0.04 * s;
+      hy = armY + gf.dy * s;
+      staffGrip = gf.grip;
+      armSwingK = gf.pumpK;
+      greatRunClaim = gf.offClaim;
+    }
     if (isStaff) {
       // THE STAFF LADDER v2 (wield.ts): planted walking stick at
       // idle, rocking with the stride at a walk (in the TRAVEL plane
@@ -3071,7 +3145,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       Math.min(1, rig.poleStrength) *
       (1 - 0.45 * crouch) *
       alignK;
-    const armed = isSword || isBow || isStaff;
+    const armed = isSword || isBow || isStaff || isGreat;
     const p = armPump(rig.poleX, rig.poleY, sw, amp, armed ? restSettle : 0);
     // THE PENDULUM ARC: a hand swinging from a shoulder rises at both
     // ends of its sweep — sw² is that arc. (|sw| had the same shape
@@ -3225,15 +3299,17 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Blades stow to the belt, bows and staffs sling across the back; the
   // spots live in sheath.ts (pure, test-pinned) and ride hipY/shoulderY,
   // so they duck with a crouch and settle with a sit for free.
+  const wornGreat = wornDef !== undefined && greatStyle(wornDef.id) !== null;
   const wornBow = wornDef !== undefined && bowStyle(wornDef.id) !== null;
   const wornStaff = wornDef !== undefined && staffStyle(wornDef.id) !== null;
-  const wornBack = wornBow || wornStaff;
+  const wornBack = wornBow || wornStaff || wornGreat;
   let mainStow: { x: number; y: number; angle: number } | null = null;
   if (wornDef) {
     if (wornBack) {
       // stowBack speaks painter space directly: staff angle = grip→
-      // crown along local +X, bow angle = the mirrored-sling law.
-      const spot = stowBack(wornBow ? 'bow' : 'staff', sideS);
+      // crown along local +X (the greatblade slings the same, lower
+      // and steeper), bow angle = the mirrored-sling law.
+      const spot = stowBack(wornBow ? 'bow' : wornGreat ? 'great' : 'staff', sideS);
       mainStow = {
         x: rig.x - fx * 0.14 * s + spot.dx * s * wS,
         y: shoulderY + spot.dy * s,
@@ -3294,6 +3370,28 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       const chokeS = STAFF_GUARD_CHOKE_S * mainFore;
       const cx = mainX + Math.cos(heldAngle) * chokeS * s * wS;
       const cy = mainY + Math.sin(heldAngle) * chokeS * s + 0.02 * s;
+      offX += (cx - offX) * claim;
+      offY += (cy - offY) * claim;
+    }
+  }
+
+  // ---- THE SECOND FIST (the great school). Both hands belong to the
+  // haft — but where the staff chokes the off hand up FRONT of the
+  // main fist, great steel takes the pommel end BEHIND it: the true
+  // two-hand hold. Combat welds it on (out of rest, through every
+  // strike); the run's shoulder carry calls it back too (greatWield's
+  // offClaim) — nobody sprints with six feet of iron in one fist.
+  // Same yield order as the staff guard: cast punch, seat, sheathe,
+  // and the shield claim below would win (a 2H stows the offhand, so
+  // in practice the hand is always free to take the grip).
+  if (isGreat && !offBlade && !drawing && !loosing) {
+    let claim = Math.max(1 - restSettle, greatRunClaim);
+    claim *= (1 - sit) * (1 - castPunch);
+    claim *= 1 - sheathePhases(sheath).grabK;
+    if (claim > 0) {
+      const chokeS = GREAT_POMMEL_CHOKE_S * mainFore;
+      const cx = mainX - Math.cos(heldAngle) * chokeS * s * wS;
+      const cy = mainY - Math.sin(heldAngle) * chokeS * s + 0.03 * s;
       offX += (cx - offX) * claim;
       offY += (cy - offY) * claim;
     }
@@ -3375,14 +3473,43 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     ctx.stroke();
     ctx.lineCap = 'butt';
   };
-  if (mainTrail && (weapon?.weapon?.style === 'melee' || isStaff)) {
+  if (mainTrail && (weapon?.weapon?.style === 'melee' || weapon?.weapon?.style === 'twohand' || isStaff)) {
     // A staff's WEAPON range is its spell reach — the sweep is an
     // arm's-length fact, so the crescent radius caps at melee reach.
-    drawCrescent(mainTrail, Math.min(weapon?.weapon?.range ?? 1.6, 2) * 0.27 * s, 1);
+    // A greatweapon's range IS its reach: the crescent earns the
+    // school's whole horizon (the biggest arcs in the game).
+    drawCrescent(mainTrail, Math.min(weapon?.weapon?.range ?? 1.6, isGreat ? 2.8 : 2) * 0.27 * s, 1);
   }
   if (echoTr && offBlade) {
     const offRange = itemDef(rig.offhandItem!)?.weapon?.range ?? 1.5;
     drawCrescent(echoTr, offRange * 0.27 * s * 0.8, 0.7);
+  }
+  if (meleeStage === 2 && isGreat) {
+    // THE MOUNTAIN FALLS leaves its own mark: a vertical smash streak
+    // dropping onto the strike point through the drive, dying through
+    // the buried hold — the fall, drawn.
+    const P = GREAT_FINISHER_PHASES;
+    const t = rig.poseT;
+    if (t >= P.hold + 0.02 && t < P.buried + 0.06) {
+      const fade = 1 - Math.max(0, (t - P.drive) / (P.buried + 0.06 - P.drive));
+      const reach = Math.min(weapon?.weapon?.range ?? 2.4, 2.8) * 0.3 * s;
+      const tx = rig.x + fx * reach * wS;
+      const ty = armY + fy * reach + 0.24 * s;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = `rgba(244, 239, 228, ${0.3 * fade})`;
+      ctx.lineWidth = 0.24 * s;
+      ctx.beginPath();
+      ctx.moveTo(rig.x + fx * 0.1 * s, armY - 0.75 * s);
+      ctx.lineTo(tx, ty - 0.15 * s);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(255, 252, 240, ${0.7 * fade})`;
+      ctx.lineWidth = 0.09 * s;
+      ctx.beginPath();
+      ctx.moveTo(rig.x + fx * 0.2 * s, armY - 0.45 * s);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
   }
   if (meleeStage === 2 && weapon?.weapon?.style === 'melee') {
     // The finisher streak, on the shared finisher clock: alive from
@@ -3461,7 +3588,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // run trail itself (a planted stick and the combat guard stay in
   // front, where the business end lives).
   const staffTrailBehind = isStaff && restSettle > 0.5 && rig.runF > 0.35 && fy > 0.08;
-  const weaponBehind = fy < -0.35 || staffTrailBehind;
+  // The shoulder carry lays the greatblade up-BACK over the trailing
+  // shoulder at EVERY gait — facing the camera, the body stands in
+  // front of it (the LONG CARRY GOES BEHIND law; strikes and the
+  // guard keep the business end in front).
+  const greatShoulderBehind = isGreat && restSettle > 0.5 && fy > 0.08;
+  const weaponBehind = fy < -0.35 || staffTrailBehind || greatShoulderBehind;
   const cuff = bodySt?.sleeves === 'full' ? sleeve : undefined;
   const paintOffArm = (): void => {
     // DUAL WIELD: the off blade is the real weapon, carried by the off
@@ -4547,9 +4679,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
 export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void {
   const st = rig.offhandItem ? offhandStyle(rig.offhandItem) : null;
   const worn = itemDef(rig.weaponItem ?? '');
+  const stowedGreat = worn !== undefined && greatStyle(worn.id) !== null;
   const stowedBow = worn !== undefined && bowStyle(worn.id) !== null;
   const stowedStaff = worn !== undefined && staffStyle(worn.id) !== null;
-  const sling = (rig.sheathT ?? 0) >= STOW_HANDOFF && (stowedBow || stowedStaff);
+  const sling = (rig.sheathT ?? 0) >= STOW_HANDOFF && (stowedBow || stowedStaff || stowedGreat);
   if (st?.kind !== 'quiver' && !sling) return;
   const k = rig.size ?? 1;
   const s = rig.scale * k;
@@ -4572,7 +4705,7 @@ export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // A stowed bow/staff straps over the cape exactly like the quiver.
   if (sling && worn) {
     const side = rig.depthMemory?.side ?? (Math.sign(fx) || 1);
-    const spot = stowBack(stowedBow ? 'bow' : 'staff', side);
+    const spot = stowBack(stowedBow ? 'bow' : stowedGreat ? 'great' : 'staff', side);
     drawHeldItem(
       ctx,
       worn.id,
@@ -4697,7 +4830,13 @@ function drawHeldItem(
   // fist, or the bow reads as resting on the wrist.
   if (extra?.carry) ctx.translate(-0.18 * s * extra.carry, 0);
 
-  if (bladeStyle(itemId, color)) {
+  if (greatStyle(itemId, color)) {
+    // THE GREAT SCHOOL asks first (the check-great-first law: a
+    // 'greatsword'-shaped id also satisfies bladeStyle's fallback).
+    // The grip slides with the carry exactly like the staff's — high
+    // on the shouldered rest, mid-haft through the cuts.
+    drawGreatweapon(ctx, greatStyle(itemId, color)!, s, rig.nowMs, rig.hurt, extra?.grip ?? 0.2);
+  } else if (bladeStyle(itemId, color)) {
     // The blade + rogue rosters: every sword AND dagger resolves a
     // style — bespoke silhouette, guard, pommel, living fx channel.
     // Unknown '*sword'/'*dagger' ids get color-derived fallbacks.

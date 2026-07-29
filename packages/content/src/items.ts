@@ -5,7 +5,7 @@ import type { ArmorClass, GearSlot } from './equipment/types.js';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
 
 export type ToolType = 'axe' | 'pickaxe' | 'rod';
-export type CombatStyle = 'melee' | 'archery' | 'magic';
+export type CombatStyle = 'melee' | 'archery' | 'magic' | 'twohand';
 
 /**
  * The elemental schools of magic. A staff's element rides its bolts —
@@ -996,9 +996,10 @@ export function itemDef(id: string): ItemDef | undefined {
 }
 
 /**
- * THE TWO-HANDS LAW: every bow needs a drawing hand and every staff a
- * channeling one — archery and magic weapons are two-handed, derived
- * from style rather than flagged per item so no def can forget it.
+ * THE TWO-HANDS LAW: every bow needs a drawing hand, every staff a
+ * channeling one, and every greatweapon a second fist on the haft —
+ * archery, magic, and twohand weapons are two-handed, derived from
+ * style rather than flagged per item so no def can forget it.
  * A two-handed weapon shares the body with nothing HELD in the off
  * fist: no off blade, no shield, no tome, no orb. Back-mounted
  * offhands (quivers) ride the shoulders and are exempt. If one-handed

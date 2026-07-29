@@ -1722,6 +1722,179 @@ const defs: AbilityDef[] = [
     self: { armor: 12, shieldHp: 20, reflectFrac: 0.35, durationTicks: 160 },
   },
 
+  // --------------------------- THE GREAT SCHOOL — the colossus's arts
+  // The school of weight: huge dies on slow beats, arcs that treat the
+  // crowd as one target, and momentum spent like coin. Damage runs
+  // hot and wide — a greatweapon's worth is what it ends.
+  {
+    id: 'wide_swath',
+    name: 'Wide Swath',
+    desc: 'One level stroke at hip height. The front rank stops being a rank.',
+    color: '#c47a3d',
+    code: 'Ws',
+    cooldownTicks: 170, // 8.5 s
+    shape: 'melee_arc',
+    damage: 10,
+    range: 2.8,
+    arc: 2.4,
+    knockback: 1.2,
+  },
+  {
+    id: 'haft_check',
+    name: 'Haft Check',
+    desc: 'The butt end, driven short and rude. It buys the next swing its room.',
+    color: '#8a7a68',
+    code: 'Hc',
+    cooldownTicks: 200, // 10 s
+    shape: 'melee_arc',
+    damage: 2, // the shove barely bruises — the STAGGER is the payload
+    range: 1.7,
+    arc: 1.1,
+    knockback: 2.4,
+    status: { status: 'shock', power: 1, durationTicks: 35 },
+  },
+  {
+    id: 'iron_pendulum',
+    name: 'Iron Pendulum',
+    desc: 'Two full swings, no apology between them.',
+    color: '#9a8a78',
+    code: 'Ip',
+    cooldownTicks: 210, // 10.5 s
+    shape: 'flurry',
+    damage: 8,
+    range: 2.5,
+    arc: 1.6,
+    hits: 2,
+    pulseEveryTicks: 8,
+    knockback: 1.1,
+  },
+  {
+    id: 'fault_line',
+    name: 'Fault Line',
+    desc: 'Bring the edge down until the ground takes a side.',
+    color: '#a06a48',
+    code: 'Fl',
+    cooldownTicks: 220, // 11 s
+    castFreezeTicks: 5,
+    shape: 'ground_aoe',
+    damage: 13,
+    range: 4,
+    radius: 2.0,
+    fuseTicks: 8,
+    knockback: 1.3,
+    status: { status: 'chill', power: 1, durationTicks: 50 },
+  },
+  {
+    id: 'colossus_stance',
+    name: 'Colossus Stance',
+    desc: 'Walk like something too big to argue with. What you touch stays hurt.',
+    color: '#b85e3a',
+    code: 'Cs',
+    cooldownTicks: 320, // 16 s
+    shape: 'self_buff',
+    damage: 0,
+    self: { speedMult: 1.1, onHitStatus: { status: 'bleed', power: 1, durationTicks: 60 }, durationTicks: 160 },
+  },
+  {
+    id: 'skysunder',
+    name: 'Skysunder',
+    desc: 'Leave the ground. Come back down with a verdict.',
+    color: '#c9924a',
+    code: 'Sk',
+    cooldownTicks: 260, // 13 s
+    castFreezeTicks: 4,
+    shape: 'leap_slam',
+    damage: 14,
+    dashTiles: 5.0,
+    radius: 2.2,
+    knockback: 1.8,
+  },
+  {
+    id: 'executioners_arc',
+    name: "Executioner's Arc",
+    desc: 'The stroke kept for the nearly-done. It finishes sentences.',
+    color: '#8a5a4a',
+    code: 'Ea',
+    cooldownTicks: 240, // 12 s
+    shape: 'melee_arc',
+    damage: 12,
+    range: 2.6,
+    arc: 1.5,
+    executeBelow: { frac: 0.35, mult: 2.0 },
+  },
+  {
+    id: 'avalanche',
+    name: 'Avalanche',
+    desc: 'Three blows downhill. Nothing shovels itself out.',
+    color: '#b0a494',
+    code: 'Av',
+    cooldownTicks: 260, // 13 s
+    shape: 'flurry',
+    damage: 7,
+    range: 2.5,
+    arc: 1.4,
+    hits: 3,
+    pulseEveryTicks: 9,
+    knockback: 1.2,
+  },
+  {
+    id: 'breaker_charge',
+    name: 'Breaker Charge',
+    desc: 'Shoulder the steel and go through, not around.',
+    color: '#c47a3d',
+    code: 'Bc',
+    cooldownTicks: 220, // 11 s
+    shape: 'dash_strike',
+    damage: 13,
+    dashTiles: 4.2,
+    knockback: 2.6,
+  },
+  {
+    id: 'titans_verdict',
+    name: "Titan's Verdict",
+    desc: 'Ring the earth three times. Let the rings do the talking.',
+    color: '#e0a04c',
+    code: 'Tv',
+    cooldownTicks: 340, // 17 s
+    castFreezeTicks: 5,
+    shape: 'pulse_nova',
+    damage: 9,
+    radius: 2.6,
+    pulses: 3,
+    pulseEveryTicks: 11,
+    knockback: 1.6,
+  },
+
+  // The founding pair's Weapon Arts (the Q axis — no rungs, no ranks).
+  {
+    id: 'colossus_arc',
+    name: 'Colossus Arc',
+    desc: "The greatblade's own word: one full turn, and the whole yard hears it.",
+    color: '#9aa2ac',
+    code: 'Ca',
+    cooldownTicks: 200, // 10 s
+    shape: 'melee_arc',
+    damage: 11,
+    range: 2.9,
+    arc: 2.6,
+    knockback: 1.5,
+  },
+  {
+    id: 'quakefall',
+    name: 'Quakefall',
+    desc: 'The maul goes up. The county comes down.',
+    color: '#7d7468',
+    code: 'Qf',
+    cooldownTicks: 260, // 13 s
+    castFreezeTicks: 5,
+    shape: 'ground_aoe',
+    damage: 14,
+    range: 3.5,
+    radius: 2.3,
+    fuseTicks: 10,
+    knockback: 2.0,
+  },
+
   // ------------------------- THE UNWRITTEN PAGE — deed-earned arts
   // These never sit on a rung: an `art:<id>` flag opens each, set by
   // a deed (never drop-luck). Invisible everywhere until earned.
@@ -1782,6 +1955,20 @@ const defs: AbilityDef[] = [
     homing: 7.0,
     element: 'void',
     status: { status: 'bleed', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'giantsfall',
+    name: 'Giantsfall',
+    desc: 'The stroke that felled the biggest thing you ever swung at. It remembers how.',
+    color: '#d88a4a',
+    code: 'Gf',
+    cooldownTicks: 240, // 12 s
+    castFreezeTicks: 4,
+    shape: 'melee_arc',
+    damage: 15,
+    range: 2.8,
+    arc: 0.7, // one mark, the whole weight
+    knockback: 2.0,
   },
   {
     id: 'champions_wall',
@@ -2488,6 +2675,108 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
 
+  // -------------------------- THE GREAT SCHOOL — the colossus's rungs
+  {
+    ability: 'wide_swath',
+    style: 'twohand',
+    unlockLevel: 5,
+    ranks: [
+      { note: 'The stroke lands heavier.', damage: 12 },
+      { note: 'A wider horizon, a shorter wait.', arc: 2.8, cooldownTicks: 160 },
+      { note: 'The front rank leaves the field.', damage: 14, cooldownTicks: 155, knockback: 1.8 },
+    ],
+  },
+  {
+    ability: 'haft_check',
+    style: 'twohand',
+    unlockLevel: 10,
+    ranks: [
+      { note: 'The shove learns its manners last.', knockback: 3.0 },
+      { note: 'The jolt holds them a beat longer.', status: { status: 'shock', power: 1, durationTicks: 50 } },
+      { note: 'Room enough for the whole next swing.', knockback: 3.4, status: { status: 'shock', power: 1, durationTicks: 60 } },
+    ],
+  },
+  {
+    ability: 'iron_pendulum',
+    style: 'twohand',
+    unlockLevel: 15,
+    ranks: [
+      { note: 'The pendulum swings heavier.', damage: 10 },
+      { note: 'The second swing comes sooner.', pulseEveryTicks: 6, cooldownTicks: 190 },
+      { note: 'Back and forth until the yard is quiet.', damage: 11, knockback: 1.4 },
+    ],
+  },
+  {
+    ability: 'fault_line',
+    style: 'twohand',
+    unlockLevel: 20,
+    ranks: [
+      { note: 'The ground breaks deeper.', damage: 15 },
+      { note: 'The crack runs wider.', radius: 2.4, cooldownTicks: 200 },
+      { note: 'Nobody keeps their feet on a fault.', damage: 16, knockback: 1.8 },
+    ],
+  },
+  {
+    ability: 'colossus_stance',
+    style: 'twohand',
+    unlockLevel: 25,
+    ranks: [
+      { note: 'The wounds you leave open wider.', self: { speedMult: 1.1, onHitStatus: { status: 'bleed', power: 2, durationTicks: 60 }, durationTicks: 160 } },
+      { note: 'The stride lengthens with the temper.', self: { speedMult: 1.18, onHitStatus: { status: 'bleed', power: 2, durationTicks: 60 }, durationTicks: 160 } },
+      { note: 'Too big to argue with. Most stop trying.', self: { speedMult: 1.18, onHitStatus: { status: 'bleed', power: 2, durationTicks: 80 }, durationTicks: 200 } },
+    ],
+  },
+  {
+    ability: 'skysunder',
+    style: 'twohand',
+    unlockLevel: 30,
+    ranks: [
+      { note: 'The verdict lands heavier.', damage: 17 },
+      { note: 'A longer leap, a shorter wait.', dashTiles: 6.0, cooldownTicks: 240 },
+      { note: 'The landing empties its own crater.', damage: 18, radius: 2.6, knockback: 2.2 },
+    ],
+  },
+  {
+    ability: 'executioners_arc',
+    style: 'twohand',
+    unlockLevel: 35,
+    ranks: [
+      { note: 'The stroke bites deeper.', damage: 14 },
+      { note: 'It reads the sentence earlier.', executeBelow: { frac: 0.4, mult: 2.0 } },
+      { note: 'Sentences end mid-word.', damage: 15, executeBelow: { frac: 0.4, mult: 2.4 } },
+    ],
+  },
+  {
+    ability: 'avalanche',
+    style: 'twohand',
+    unlockLevel: 40,
+    ranks: [
+      { note: 'Every blow falls heavier.', damage: 9 },
+      { note: 'The slide starts sooner, ends sooner.', pulseEveryTicks: 7, cooldownTicks: 240 },
+      { note: 'The mountain finishes what it starts.', damage: 10, knockback: 1.6 },
+    ],
+  },
+  {
+    ability: 'breaker_charge',
+    style: 'twohand',
+    unlockLevel: 45,
+    ranks: [
+      { note: 'The shoulder hits harder.', damage: 15 },
+      { note: 'A longer road, sooner open.', dashTiles: 5.0, cooldownTicks: 200 },
+      { note: 'Through is the only direction left.', damage: 16, knockback: 3.2 },
+    ],
+  },
+  {
+    ability: 'titans_verdict',
+    style: 'twohand',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'The rings strike heavier.', damage: 11 },
+      { note: 'The rings come quicker, and shove.', damage: 11, radius: 2.7, pulseEveryTicks: 9, knockback: 2.0 },
+      { note: 'The verdict stands. The earth signs it.', damage: 12, radius: 3.0, pulseEveryTicks: 9, knockback: 2.4 },
+    ],
+  },
+
   // ------------------------- THE UNWRITTEN PAGE — deed-earned seats
   {
     ability: 'riftwalker_step',
@@ -2549,6 +2838,17 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       { note: 'The wall rings louder.', damage: 7 },
       { note: 'A fourth ring answers the third.', pulses: 4 },
       { note: 'The dare carries to the back of the yard.', tauntRadius: 5.0, knockback: 2.0 },
+    ],
+  },
+  {
+    ability: 'giantsfall',
+    style: 'twohand',
+    unlockLevel: 0,
+    hidden: { anchorLevel: 30 },
+    ranks: [
+      { note: 'The memory swings heavier.', damage: 19 },
+      { note: 'It reaches the tall ones sooner.', range: 3.1, cooldownTicks: 220 },
+      { note: 'Everything falls the same height in the end.', damage: 21, knockback: 2.6 },
     ],
   },
 ];

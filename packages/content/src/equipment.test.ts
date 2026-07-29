@@ -530,7 +530,7 @@ test('early-game leather sets: four dye lots each, colorways mirror their base',
 test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates hold', async () => {
   const { ABILITIES } = await import('./abilities.js');
   const weapons = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
-  assert.equal(weapons.length, 150, 'swords 48 + daggers 45 + bows 29 + staves 28');
+  assert.equal(weapons.length, 152, 'swords 48 + daggers 45 + bows 29 + staves 28 + greatweapons 2');
   const swords = weapons.filter((d) => d.weapon?.style === 'melee');
   assert.equal(swords.length, 93, 'swords 48 + daggers 45');
   for (const s of swords) {

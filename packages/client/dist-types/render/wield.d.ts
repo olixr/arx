@@ -155,6 +155,91 @@ export interface StaffTrail {
 }
 /** The sweep's crescent, alive from the loosing through the extension. */
 export declare function staffStrikeTrail(stage: 0 | 1, t: number): StaffTrail | null;
+export interface GreatWield {
+    /** Main-hand offset from (x, armY), units of s (dx pre-squash). */
+    dx: number;
+    dy: number;
+    /** Weapon angle, fist→tip, screen radians (projected). */
+    angle: number;
+    /** Foreshortened length for the painter. */
+    fore: number;
+    /** Fraction of the weapon trailing behind the fist (painter grip). */
+    grip: number;
+    /** How much the carrying hand joins the arm pump (0 planted…1 free). */
+    pumpK: number;
+    /**
+     * How hard the run calls the off hand back to the hilt (0..1). The
+     * rig turns this into the second-fist claim; combat's own claim is
+     * separate and always full.
+     */
+    offClaim: number;
+}
+/**
+ * THE SHOULDER CARRY — the great school's whole rest ladder in one
+ * carry. Idle: the flat of the blade rests back over the trailing
+ * shoulder, fist at the chest, off hand free — the woodcutter's carry,
+ * one motion from the high guard. Walk: the same carry, the mass
+ * rocking a beat BEHIND the stride (heavy things answer late). Run:
+ * the blade stays shouldered but levels a little into the drive, the
+ * fist drops toward the ribs, and the off hand comes back to the
+ * grip — nobody sprints with six feet of iron in one fist.
+ */
+export declare function greatWield(dir: number, sideS: number, moveK: number, runK: number, sw: number, px: number): GreatWield;
+/**
+ * THE HIGH GUARD — combat's carry. Both fists on the long grip, blade
+ * up-forward at the ready diagonal; the main hand rides at the cross,
+ * the off hand takes the pommel end BEHIND it (the true two-hand
+ * hold — opposite the staff, which chokes the off hand up FRONT).
+ * Returned as the guard's world pitch for the rig to project.
+ */
+export declare const GREAT_GUARD_PITCH: number;
+/** Off-fist seat: this far BEHIND the main fist along the grip. */
+export declare const GREAT_POMMEL_CHOKE_S = 0.13;
+export interface GreatStrikeFrame {
+    /** Arm-angle offset from the aim; rests at 0.5 like the blades. */
+    arm: number;
+    /** Weapon angle relative to the arm ray — the heavy wrist lag. */
+    spin: number;
+    /** Reach multiplier (1 at both ends). */
+    reach: number;
+    /** Vertical hand offset, units of s (negative = raised). */
+    lift: number;
+    /** Torso lean along the cut. */
+    lean: number;
+    /** Weapon fraction behind the fist — cuts slide toward mid-grip. */
+    grip: number;
+}
+/** The great school's beat: long gather, LONG poise, honest snap. */
+export declare const GREAT_PHASES: {
+    coil: number;
+    hold: number;
+    impact: number;
+    ext: number;
+};
+export declare function greatStrikeFrame(stage: 0 | 1, t: number): GreatStrikeFrame;
+/** The great sweep's crescent — alive loosing→extension, like the pole's. */
+export declare function greatStrikeTrail(stage: 0 | 1, t: number): StaffTrail | null;
+/**
+ * THE MOUNTAIN FALLS — the finisher. Both hands haul the blade
+ * straight overhead (the fist barely leaves the body; the LIFT does
+ * the talking), the longest poise in the game, then the drive buries
+ * the edge in the ground ahead. `pitch` is the blade's world pitch
+ * for the projection law: crown-up through the haul, crashing through
+ * level to down-forward at the bury.
+ */
+export declare const GREAT_FINISHER_PHASES: {
+    coil: number;
+    hold: number;
+    drive: number;
+    buried: number;
+};
+export declare function greatFinisherPath(t: number): {
+    r: number;
+    lift: number;
+    pitch: number;
+};
+/** The finisher's torso: gather back, poise, tip HARD, press, ease. */
+export declare function greatFinisherLean(t: number): number;
 /**
  * THE BOW IS HELD BY THE WOOD. The rest carriage: string toward the
  * body, wooden belly curving down-forward, half-ready — one motion

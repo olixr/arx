@@ -28,6 +28,7 @@ export type SkillId =
   | 'enchanting'
   | 'beastcraft'
   | 'sneak'
+  | 'twohand'
   | 'dualwield'
   | 'shield';
 
@@ -52,6 +53,7 @@ export const SKILL_IDS: readonly SkillId[] = [
   'enchanting',
   'beastcraft',
   'sneak',
+  'twohand',
   'dualwield',
   'shield',
 ];
@@ -126,6 +128,7 @@ export function combatLevel(skills: SkillXp): number {
       levelForXp(skills.melee ?? 0),
       levelForXp(skills.archery ?? 0),
       levelForXp(skills.magic ?? 0),
+      levelForXp(skills.twohand ?? 0),
     ) / 2;
   return Math.max(1, Math.round(stay + strike));
 }

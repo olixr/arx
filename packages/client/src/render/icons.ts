@@ -1,6 +1,6 @@
 import { ELEMENT_COLORS, ENCHANT_DEFS, UNLOCKABLE_RECIPES, itemDef, recipeScrollId } from '@arx/content';
 import { shade } from './rig.js';
-import { BOW_STYLES, DAGGER_STYLES, STAFF_STYLES, SWORD_STYLES, drawBow, drawStaff, drawSword } from './weapons.js';
+import { BOW_STYLES, DAGGER_STYLES, GREAT_STYLES, STAFF_STYLES, SWORD_STYLES, drawBow, drawGreatweapon, drawStaff, drawSword } from './weapons.js';
 import { TOOL_STYLES, drawTool } from './tools.js';
 import { bodyStyle, bootStyle, gloveStyle, helmStyle, legStyle, offhandStyle } from './armor.js';
 import {
@@ -4585,6 +4585,23 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
       drawStaff(c, st, scale, 5234, false, 0.5, 0);
     };
     ITEM_ICON[id] = { icon: `staff:${id}`, color: st.gem ?? st.color };
+  }
+}
+
+// ---- the colossus's roster: every greatweapon's icon IS its world
+// painter on the sword diagonal, gripped at the balance point so the
+// long handle and the mass both make the box — the icon must say
+// "two hands" at a glance.
+{
+  for (const [id, st] of Object.entries(GREAT_STYLES)) {
+    PAINTERS[`great:${id}`] = (c) => {
+      c.translate(0.5, 0.5);
+      c.rotate(-Math.PI / 4);
+      c.scale(1 / 64, 1 / 64);
+      c.translate(-0.1 * 68, 0);
+      drawGreatweapon(c, st, 68, 5234, false, 0.42);
+    };
+    ITEM_ICON[id] = { icon: `great:${id}`, color: st.color };
   }
 }
 

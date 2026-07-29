@@ -82,14 +82,14 @@ export const ARMOR_CLASS_MODS: Record<
     cooldownPct: number;
   }
 > = {
-  plate: { dmgPct: { melee: 3, magic: -4 }, speedPct: -1, cooldownPct: 0 },
+  plate: { dmgPct: { melee: 3, twohand: 3, magic: -4 }, speedPct: -1, cooldownPct: 0 },
   leather: { dmgPct: { archery: 3 }, speedPct: 0.5, cooldownPct: 0 },
   cloth: { dmgPct: { magic: 4 }, speedPct: 0, cooldownPct: -2.5 },
 };
 
 /** Short player-facing blurb per class, shown on the item card. */
 export const ARMOR_CLASS_BLURB: Record<ArmorClass, string> = {
-  plate: 'Plate: +melee damage, −magic damage, slightly slower',
+  plate: 'Plate: +melee and two-handed damage, −magic damage, slightly slower',
   leather: 'Leather: +archery damage, slightly faster',
   cloth: 'Cloth: +magic damage, faster ability cooldowns',
 };

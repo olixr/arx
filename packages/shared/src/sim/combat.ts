@@ -113,6 +113,33 @@ export function nextComboStage(prevStage: number, withinGrace: boolean): number 
   return (prevStage + 1) % COMBO_STAGES;
 }
 
+// ------------------------------------------------------------ twohand
+
+/**
+ * THE GREAT SCHOOL — two-handed weapons. A greatweapon trades the
+ * sword's patter for weight: the die is huge, the beat is slow, and
+ * THE CLEAVE LAW makes every swing a sweep — every enemy in the arc
+ * eats its own independent roll (what was the melee finisher's crowd-
+ * clear privilege is a twohand BASIC). Balance lives in the cadence:
+ * per-swing impact towers while the long recovery keeps sustained
+ * single-target damage honest against the melee string. The style
+ * trains its own skill (`twohand`) and shares nothing with the off
+ * hand — both fists belong to the haft.
+ */
+/** Half-angle of the greatweapon sweep: ±75° (the sword cone is ±60°). */
+export const TWOHAND_ARC_HALF = 1.31;
+/** Even a basic greatblow shoves — mass arrives with the edge. */
+export const TWOHAND_KNOCKBACK_MULT = 1.25;
+/** The rising follow-through (stage 2) carries the turn's momentum. */
+export const TWOHAND_STAGE2_DAMAGE_MULT = 1.15;
+/** The finisher is the mountain falling — bigger payoff than a sword's. */
+export const TWOHAND_FINISHER_DAMAGE_MULT = 3.0;
+export const TWOHAND_FINISHER_KNOCKBACK_MULT = 2.2;
+/** The beat is already slow; the rest note stays proportionate. */
+export const TWOHAND_FINISHER_RECOVERY_MULT = 1.6;
+/** A heavy string breathes — longer grace to continue the chain. */
+export const TWOHAND_COMBO_GRACE_TICKS = 20;
+
 // ---------------------------------------------------------- dual wield
 
 /**

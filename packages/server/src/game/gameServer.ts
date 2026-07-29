@@ -211,6 +211,13 @@ import {
   SHEATHED_BIT,
   SNAP_GRACE_TICKS,
   SNAP_RECOVERY_TICKS,
+  TWOHAND_ARC_HALF,
+  TWOHAND_COMBO_GRACE_TICKS,
+  TWOHAND_FINISHER_DAMAGE_MULT,
+  TWOHAND_FINISHER_KNOCKBACK_MULT,
+  TWOHAND_FINISHER_RECOVERY_MULT,
+  TWOHAND_KNOCKBACK_MULT,
+  TWOHAND_STAGE2_DAMAGE_MULT,
   SNEAK_HIDDEN_BIT,
   SNEAK_DETECTED_BIT,
   SNEAK_HIDE_LEVEL,
@@ -1004,6 +1011,10 @@ interface Perks {
   backstabBonus: number;
   offhandDelayTicks: number;
   offhandFactorBonus: number;
+  /** Extra greatweapon reach, tiles (Farcleaver). */
+  greatReach: number;
+  /** Bonus damage fraction on greatblows vs the nearly-felled (Executioner). */
+  greatExecute: number;
   undergroundGatherMult: number;
   nightGatherMult: number;
   burnChanceMult: number;
@@ -1035,6 +1046,8 @@ function defaultPerks(): Perks {
     backstabBonus: 0,
     offhandDelayTicks: OFFHAND_DELAY_TICKS,
     offhandFactorBonus: 0,
+    greatReach: 0,
+    greatExecute: 0,
     undergroundGatherMult: 1,
     nightGatherMult: 1,
     burnChanceMult: 1,
@@ -6105,7 +6118,7 @@ export class GameServer {
       const c = def.coating;
       const worn = player.equipment.weapon;
       const style = worn ? itemDef(worn.id)?.weapon?.style : undefined;
-      if (!worn || (style !== 'melee' && style !== 'archery')) {
+      if (!worn || (style !== 'melee' && style !== 'twohand' && style !== 'archery')) {
         player.session?.sendJson({
           t: 'chat',
           channel: 'system',
@@ -7209,6 +7222,49 @@ export class GameServer {
         player.offhandEchoTicks = player.perks.offhandDelayTicks;
         player.offhandEchoAim = aim;
       }
+    } else if (weapon.style === 'twohand') {
+      // THE GREAT SCHOOL: the same three-beat string, a mountain
+      // slower. THE CLEAVE LAW — every swing sweeps the WHOLE arc
+      // (the melee finisher's crowd-clear privilege is a twohand
+      // basic), the arc runs wider than a sword's, and even ordinary
+      // blows shove. The payoff beat towers; the recovery is the
+      // weapon's own slow breath. Both fists belong to the haft, so
+      // there is no echo — the second hand already swung.
+      const stage = nextComboStage(
+        player.comboStage,
+        this.tickCount <= player.comboGraceUntilTick,
+      );
+      player.comboStage = stage;
+      const finisher = stage === COMBO_STAGES - 1;
+      if (finisher) {
+        player.attackCooldown = Math.round(weapon.cooldownTicks * TWOHAND_FINISHER_RECOVERY_MULT);
+      }
+      player.comboGraceUntilTick = this.tickCount + player.attackCooldown + TWOHAND_COMBO_GRACE_TICKS;
+      // The long clock: the client plays great cuts at 460ms and the
+      // finisher at 640ms — the pose must outlive its choreography.
+      this.setPose(
+        eid,
+        stage === 0 ? PoseState.Attack : stage === 1 ? PoseState.Attack2 : PoseState.Attack3,
+        finisher ? 14 : 10,
+      );
+      this.meleeSwing(
+        eid,
+        player,
+        aim,
+        // Farcleaver: the edge arrives before the argument.
+        weapon.range + player.perks.greatReach,
+        finisher
+          ? Math.round(maxHit * TWOHAND_FINISHER_DAMAGE_MULT * player.perks.finisherBonusMult)
+          : stage === 1
+            ? Math.round(maxHit * TWOHAND_STAGE2_DAMAGE_MULT)
+            : maxHit,
+        finisher ? TWOHAND_FINISHER_KNOCKBACK_MULT : TWOHAND_KNOCKBACK_MULT,
+        true, // THE CLEAVE LAW: every greatswing clears the crowd
+        wasHidden,
+        weapon.backstabMult ?? BACKSTAB_MULT_DEFAULT,
+        'twohand',
+        TWOHAND_ARC_HALF,
+      );
     } else {
       // Wand rhythm: bolt → bolt → HEAVY. The third cast is a fat slow
       // orb that splashes and shoves — the punch beat wands were missing.
@@ -7299,6 +7355,8 @@ export class GameServer {
     wasHidden = false,
     backstabMult = BACKSTAB_MULT_DEFAULT,
     xpStyle: SkillId = 'melee',
+    /** Sweep half-angle — swords cut a ±60° cone, greatweapons wider. */
+    arcHalf = Math.PI / 3,
   ): void {
     const pos = this.positions.must(eid);
     // Every swing sweeps the scenery too: destructible clutter in the
@@ -7332,12 +7390,13 @@ export class GameServer {
       const dy = npos.y - pos.y;
       const dist = Math.hypot(dx, dy) - npc.def.radius;
       if (dist > range) continue;
-      // Within a ~120° arc of the aim direction; anything practically
-      // touching the player is hittable regardless of aim (feel > sim).
+      // Within the weapon's sweep arc of the aim direction; anything
+      // practically touching the player is hittable regardless of aim
+      // (feel > sim).
       const angleTo = Math.atan2(dy, dx);
       let diff = Math.abs(angleTo - aim) % (Math.PI * 2);
       if (diff > Math.PI) diff = Math.PI * 2 - diff;
-      if (diff > Math.PI / 3 && dist > 0.9) continue;
+      if (diff > arcHalf && dist > 0.9) continue;
       inArc.push(npcEid);
       if (dist < bestDist) {
         bestDist = dist;
@@ -7348,7 +7407,12 @@ export class GameServer {
       // The finisher clears the crowd — everyone in the arc eats it.
       for (const npcEid of inArc) {
         const backstab = backstabs(this.npcPosAt(npcEid, rewind) ?? this.positions.must(npcEid));
-        const { dmg, crit } = rollBasic(backstab ? Math.round(maxHit * backstabMult) : maxHit, critPct);
+        let { dmg, crit } = rollBasic(backstab ? Math.round(maxHit * backstabMult) : maxHit, critPct);
+        // Executioner: greatblows bite deeper into the nearly-felled.
+        if (dmg > 0 && xpStyle === 'twohand' && player.perks.greatExecute > 0) {
+          const hp = this.healths.get(npcEid);
+          if (hp && hp.hp / hp.maxHp < 0.25) dmg = Math.round(dmg * (1 + player.perks.greatExecute));
+        }
         this.damageNpc(npcEid, dmg, eid, xpStyle, {
           crit,
           knockbackMult,
@@ -9352,11 +9416,16 @@ export class GameServer {
       }
     }
     // THE UNWRITTEN PAGE: felling a champion with the wall still on
-    // your arm is the shield-bearer's deed (any *_champion, so future
-    // champions swear in automatically).
+    // your arm is the shield-bearer's deed; felling one with great
+    // steel in both fists is the colossus's (any *_champion, so future
+    // champions swear in automatically — the same kill can earn both
+    // pages for nobody, since the hands disagree).
     if (npc.def.id.endsWith('_champion')) {
       const killer = this.players.get(killerEid);
       if (killer && this.equippedShield(killer)) this.grantArt(killer, 'champions_wall');
+      if (killer && this.equippedWeapon(killer)?.weapon.style === 'twohand') {
+        this.grantArt(killer, 'giantsfall');
+      }
     }
     this.wildBodies.delete(npcEid);
     // A slain actor's post refills on the synthesized def's clock.

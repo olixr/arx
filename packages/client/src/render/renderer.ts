@@ -67,6 +67,8 @@ import {
 } from './rig.js';
 import { LegRig } from './legs.js';
 import { FINISHER_PHASES, strikePhases } from './carriage.js';
+import { GREAT_FINISHER_PHASES, GREAT_PHASES } from './wield.js';
+import { greatStyle } from './weapons.js';
 import {
   BEAST_UPPER,
   HUMANOID_FEET,
@@ -20637,8 +20639,19 @@ export class Renderer {
     }
     // The finisher (and the wand's heavy bolt) rides its full 8-tick
     // pose — a heavier beat deserves its whole 400ms; everything else
-    // keeps the standard 280ms one-shot clock.
-    const poseMs = e.pose === PoseState.Attack3 ? 400 : 280;
+    // keeps the standard 280ms one-shot clock. THE GREAT SCHOOL owns
+    // a longer clock entirely: a greatweapon's cuts run 460ms and its
+    // finisher 640ms (the server holds the poses 10/14 ticks), because
+    // the slow beat IS the school — mass never moves on a sword's time.
+    const greatArms = greatStyle(e.equip.weapon) !== null;
+    const poseMs =
+      e.pose === PoseState.Attack3
+        ? greatArms
+          ? 640
+          : 400
+        : greatArms && (e.pose === PoseState.Attack || e.pose === PoseState.Attack2)
+          ? 460
+          : 280;
     const poseT = Math.min(1, (now - anim.poseStartedAt) / poseMs);
     // Rest-carriage clock: survives Idle↔Walk flips, resets only when
     // returning from a non-restful pose (combat, gathering, drawing).
@@ -20733,29 +20746,34 @@ export class Renderer {
     // landed weight through the extension, ease home with the recover.
     let lunge = 0;
     if (e.pose === PoseState.Attack || e.pose === PoseState.Attack2) {
-      const P = strikePhases(e.carry === 'rogue' ? 'rogue' : 'normal');
+      // The great school reads its own phase table — its lunge must
+      // land with greatStrikeFrame's beats or the body fights the arms.
+      const P = greatArms ? GREAT_PHASES : strikePhases(e.carry === 'rogue' ? 'rogue' : 'normal');
+      const punch = greatArms ? 0.24 : 0.17;
       lunge =
         poseT < P.hold
-          ? -0.05 * (poseT / P.hold)
+          ? -(greatArms ? 0.07 : 0.05) * (poseT / P.hold)
           : poseT < P.impact
-            ? -0.05 + 0.22 * ((poseT - P.hold) / (P.impact - P.hold))
+            ? -(greatArms ? 0.07 : 0.05) + (punch + (greatArms ? 0.07 : 0.05)) * ((poseT - P.hold) / (P.impact - P.hold))
             : poseT < P.ext
-              ? 0.17
-              : 0.17 * (1 - (poseT - P.ext) / (1 - P.ext));
+              ? punch
+              : punch * (1 - (poseT - P.ext) / (1 - P.ext));
     } else if (e.pose === PoseState.Attack3) {
       // Finisher, on the shared finisher clock: coil, poised hold,
-      // ram, buried hold, recover.
-      const F = FINISHER_PHASES;
+      // ram, buried hold, recover. The mountain falls deeper and
+      // presses longer than any lunge thrust.
+      const F = greatArms ? GREAT_FINISHER_PHASES : FINISHER_PHASES;
+      const drive = greatArms ? 0.56 : 0.49;
       lunge =
         poseT < F.coil
           ? -0.09 * (poseT / F.coil)
           : poseT < F.hold
             ? -0.09
             : poseT < F.drive
-              ? -0.09 + 0.49 * ((poseT - F.hold) / (F.drive - F.hold))
+              ? -0.09 + drive * ((poseT - F.hold) / (F.drive - F.hold))
               : poseT < F.buried
-                ? 0.4 - 0.05 * ((poseT - F.drive) / (F.buried - F.drive))
-                : 0.35 * (1 - (poseT - F.buried) / (1 - F.buried));
+                ? drive - 0.09 - 0.05 * ((poseT - F.drive) / (F.buried - F.drive))
+                : (drive - 0.14) * (1 - (poseT - F.buried) / (1 - F.buried));
     } else if (drawT > 0) {
       lunge = -0.05 * drawT; // braced back against the string
     } else if (e.pose === PoseState.Loose) {

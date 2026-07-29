@@ -36,6 +36,7 @@ export const AFFIX_EPITHETS: Record<AffixStat, string> = {
   enchanting: 'of the Sigil',
   beastcraft: 'of the Wildheart',
   sneak: 'of Shadows',
+  twohand: 'of the Colossus',
   // Hidden-skill law: dualwield/shield never roll in an affix pool —
   // the keys exist only because the epithet record is total over SkillId.
   dualwield: 'of Two Blades',

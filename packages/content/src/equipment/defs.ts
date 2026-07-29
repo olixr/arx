@@ -1004,6 +1004,15 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // Weapon Art — pure data on the one ability executor.
   ...swordDefs(),
 
+  // ================================================== the colossus's roster
+  // THE GREAT SCHOOL's founding pair. Greatweapons are their own style
+  // ('twohand'): both fists on the haft, a huge die on a slow beat, and
+  // THE CLEAVE LAW — every swing sweeps the whole arc. Launch carries
+  // exactly two (the school's mechanics ship first; the content pass
+  // will grow the roster): the smith-taught greatblade every would-be
+  // colossus can forge, and the drop-only maul the school aspires to.
+  ...greatweaponDefs(),
+
   // ===================================================== the rogue's roster
   // Twenty bespoke daggers. The thief's arsenal: sneak-gated, dialed on
   // backstabMult rather than raw damage, fastest cadences in the game.
@@ -2713,6 +2722,47 @@ function metalLine(
     if (m.meleeReq > 1) def.levelReq = { skill: 'melee', level: m.meleeReq };
     return def;
   });
+}
+
+function greatweaponDefs(): EquipmentDef[] {
+  // Every greatweapon leans on the school itself; the flavor stats say
+  // what kind of colossus carries it.
+  const COLOSSUS_POOL: AffixPoolEntry[] = [
+    { stat: 'twohand', w: 3 },
+    { stat: 'vitality' },
+    { stat: 'defence' },
+    { stat: 'maxHp' },
+  ];
+  return [
+    {
+      // The school's founding weapon: forgeable the moment a smith can
+      // work iron, swung well only by a hand that trains the school —
+      // a fresh twohand skill, not the item gate, is what a master
+      // swordsman pays to cross over.
+      id: 'iron_greatblade', name: 'Iron greatblade', slot: 'weapon',
+      weapon: { style: 'twohand', damage: 4, cooldownTicks: 12, range: 2.6, art: 'colossus_arc' },
+      affixPool: COLOSSUS_POOL,
+      acquisition: { craft: true, drop: true },
+      recipe: {
+        skill: 'smithing', levelReq: 20, xp: 210, station: 'anvil', ticks: 90,
+        inputs: [{ item: 'iron_bar', qty: 3 }, { item: 'oak_log', qty: 1 }],
+      },
+      value: 210, color: '#8d9299', code: 'Gb',
+      desc: 'Six feet of iron and an argument nobody wins. Both hands, or not at all.',
+    },
+    {
+      // The chase piece: a quarry-cracker's head on a war haft. Slower
+      // and crueler than the blade — the maul school in one item.
+      id: 'stonebreaker_maul', name: 'Stonebreaker maul', slot: 'weapon',
+      levelReq: { skill: 'twohand', level: 15 },
+      weapon: { style: 'twohand', damage: 6, cooldownTicks: 14, range: 2.3, art: 'quakefall' },
+      affixPool: COLOSSUS_POOL,
+      rarities: ['uncommon', 'rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 950, color: '#7d7468', code: 'Sm',
+      desc: 'It was breaking mountains before it met its first shield wall. It has not lost yet.',
+    },
+  ];
 }
 
 function swordDefs(): EquipmentDef[] {

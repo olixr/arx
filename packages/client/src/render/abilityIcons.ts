@@ -388,6 +388,36 @@ function shieldFace(c: Ctx, x: number, y: number, s: number, st: FxStyle, rot = 
   c.restore();
 }
 
+/**
+ * The colossus's silhouette — a greatblade drawn along +x: broad body,
+ * one lit edge plane, a wide crossguard and a grip LONG enough for two
+ * fists (the length of the handle is what says "two-handed" at plate
+ * size). The whole great school speaks through this one shape.
+ */
+function greatblade(c: Ctx, x: number, y: number, len: number, st: FxStyle, ang = 0): void {
+  c.save();
+  c.translate(x, y);
+  c.rotate(ang);
+  const h = len / 2;
+  // Blade: broader than the arming blade, a blunt-shouldered taper.
+  poly(c, st.mid, [
+    [-h * 0.3, -0.075], [h * 0.7, -0.075], [h, 0], [h * 0.7, 0.075], [-h * 0.3, 0.075],
+  ], 0.032);
+  fill(c, st.core, [[-h * 0.27, -0.06], [h * 0.66, -0.06], [h * 0.88, -0.005], [-h * 0.27, -0.005]]);
+  // The wide crossguard.
+  c.fillStyle = shade('#5b4028', 30);
+  c.fillRect(-h * 0.34, -0.13, 0.05, 0.26);
+  c.strokeStyle = OUTLINE;
+  c.lineWidth = 0.024;
+  c.strokeRect(-h * 0.34, -0.13, 0.05, 0.26);
+  // The two-fist grip, pommel-weighted.
+  c.fillStyle = '#5b4028';
+  c.fillRect(-h * 0.86, -0.04, h * 0.5, 0.08);
+  c.strokeRect(-h * 0.86, -0.04, h * 0.5, 0.08);
+  dot(c, st.mid, -h * 0.9, 0, 0.045);
+  c.restore();
+}
+
 // ---------------------------------------------------------- painters
 
 /**
@@ -2433,6 +2463,152 @@ Object.assign(PLATES, {
     }
     shieldFace(c, 0, 0.02, 0.96, st);
     haloArcs(c, 0, -0.3, st);
+  },
+} satisfies Record<string, (st: FxStyle) => Painter>);
+
+// --------------------------- THE GREAT SCHOOL — the colossus's plates
+Object.assign(PLATES, {
+  // Wide Swath — the level horizon cut: the greatblade across the
+  // whole frame, its own sweep crescent under it.
+  wide_swath: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, 0.1, 0.36, 0.44, 2.5, 0.64, st.spark, 0.028);
+    greatblade(c, 0, -0.06, 0.95, st, 0.06);
+    star4(c, 0.38, -0.02, 0.07, st.core);
+  },
+  // Haft Check — the rude end of the pole: grip leading, the jolt
+  // star where it lands, the blade trailing out of frame.
+  haft_check: (st) => (c) => {
+    c.translate(0.46, 0.5);
+    greatblade(c, 0.1, 0.02, 0.9, st, Math.PI + 0.12);
+    chevrons(c, -0.06, -0.24, 0.2, st, 1, 0.8);
+    star4(c, -0.34, 0.06, 0.11, st.core, Math.PI / 4);
+    star4(c, -0.38, -0.12, 0.06, st.spark);
+  },
+  // Iron Pendulum — two swings, no apology: mirrored crescents on
+  // opposite planes around the upright blade.
+  iron_pendulum: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, -0.08, 0.34, 0.4, -2.7, -0.5, st.spark, 0.028);
+    crescent(c, 0, 0.12, 0.34, 0.4, 0.5, 2.7, st.core, 0.028);
+    greatblade(c, 0, 0, 0.88, st, -Math.PI / 2 + 0.18);
+  },
+  // Fault Line — the ground takes a side: the blade buried point-
+  // down, fissures running from the wound.
+  fault_line: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    ground(c, 0, 0.4, st);
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.032;
+    for (const [a, len] of [[0.2, 0.4], [1.7, 0.26], [2.9, 0.38], [-1.9, 0.3]] as const) {
+      c.beginPath();
+      c.moveTo(Math.cos(a) * 0.08, 0.2 + Math.sin(a) * 0.04);
+      c.lineTo(Math.cos(a) * len, 0.2 + Math.sin(a) * len * 0.24);
+      c.stroke();
+    }
+    greatblade(c, 0, -0.14, 0.8, st, Math.PI / 2);
+    star4(c, 0.05, 0.2, 0.09, st.spark, Math.PI / 4);
+  },
+  // Colossus Stance — too big to argue with: the figure-post standing
+  // in its own rising pillar, blade shouldered.
+  colossus_stance: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    haloArcs(c, 0, 0.1, st);
+    poly(c, st.mid, [[-0.06, -0.1], [0.06, -0.1], [0.06, 0.36], [-0.06, 0.36]], 0.03);
+    dot(c, st.core, 0, -0.2, 0.09);
+    greatblade(c, 0.1, -0.22, 0.78, st, -0.6);
+  },
+  // Skysunder — the verdict comes down: the blade falling out of the
+  // sky into its own crater star.
+  skysunder: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    chevrons(c, -0.22, -0.34, Math.PI / 2, st, 2, 0.9);
+    greatblade(c, 0.08, -0.1, 0.92, st, Math.PI / 2 - 0.2);
+    ground(c, 0.02, 0.36, st);
+    star4(c, 0.0, 0.24, 0.12, st.core, Math.PI / 4);
+    star4(c, 0.24, 0.18, 0.06, st.spark);
+  },
+  // Executioner's Arc — sentences end: the low headsman's crescent,
+  // and the skull that heard it.
+  executioners_arc: (st) => (c) => {
+    c.translate(0.5, 0.48);
+    crescent(c, 0, 0.06, 0.36, 0.43, 0.4, 2.8, st.spark, 0.03);
+    greatblade(c, 0.02, -0.08, 0.9, st, 0.5);
+    skull(c, -0.26, 0.3, 0.5, st.core, st.deep);
+  },
+  // Avalanche — three blows downhill: stacked descending chevrons
+  // and the rockfall they bring with them.
+  avalanche: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    chevrons(c, -0.2, -0.3, Math.PI / 2, st, 3, 1.0);
+    greatblade(c, 0.12, 0.02, 0.86, st, Math.PI / 2 - 0.5);
+    dot(c, st.mid, -0.3, 0.22, 0.05);
+    dot(c, st.deep, -0.18, 0.32, 0.04);
+    dot(c, st.spark, 0.02, 0.36, 0.03);
+  },
+  // Breaker Charge — through, not around: speed chevrons behind the
+  // blade leveled at a shoulder's height.
+  breaker_charge: (st) => (c) => {
+    c.translate(0.54, 0.5);
+    chevrons(c, -0.4, 0.0, 0, st, 2, 1.1);
+    greatblade(c, 0.1, -0.02, 0.9, st, -0.08);
+    star4(c, 0.42, -0.04, 0.08, st.core);
+  },
+  // Titan's Verdict — the rings do the talking: three quake rings
+  // around the blade planted like a signature.
+  titans_verdict: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    novaRing(c, 0, 0.04, 0.44, st, 12, 0.22, 0.034);
+    novaRing(c, 0, 0.04, 0.3, st, 10, 0.22, 0.028);
+    greatblade(c, 0, -0.08, 0.84, st, Math.PI / 2);
+    star4(c, -0.3, 0.24, 0.07, st.spark);
+  },
+  // Colossus Arc — the whole yard hears it: one full turn, the sweep
+  // ring closed all the way around.
+  colossus_arc: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, 0.02, 0.38, 0.45, -2.9, 2.9, st.spark, 0.03);
+    greatblade(c, 0, -0.02, 0.92, st, 0.0);
+  },
+  // Quakefall — the county comes down: the maul mid-fall over its
+  // own fissured landing.
+  quakefall: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    ground(c, 0, 0.4, st);
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.03;
+    for (const [a, len] of [[0.5, 0.36], [2.6, 0.34], [-2.0, 0.28]] as const) {
+      c.beginPath();
+      c.moveTo(Math.cos(a) * 0.1, 0.22 + Math.sin(a) * 0.05);
+      c.lineTo(Math.cos(a) * len, 0.22 + Math.sin(a) * len * 0.22);
+      c.stroke();
+    }
+    // The maul: long haft, block head, lit top plane.
+    c.save();
+    c.translate(0.02, -0.08);
+    c.rotate(0.5);
+    poly(c, '#5b4028', [[-0.34, -0.028], [0.2, -0.028], [0.2, 0.028], [-0.34, 0.028]], 0.026);
+    poly(c, st.mid, [[0.14, -0.16], [0.34, -0.16], [0.34, 0.16], [0.14, 0.16]], 0.034);
+    fill(c, st.core, [[0.14, -0.16], [0.34, -0.16], [0.3, -0.08], [0.14, -0.08]]);
+    c.restore();
+    star4(c, 0.16, 0.22, 0.1, st.core, Math.PI / 4);
+  },
+  // Giantsfall — everything falls the same height: the blade at the
+  // top of the stroke, the long way down marked out beneath it.
+  giantsfall: (st) => (c) => {
+    c.translate(0.5, 0.48);
+    greatblade(c, 0, -0.2, 0.9, st, Math.PI / 2 - 0.12);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.03;
+    c.lineCap = 'round';
+    for (const x of [-0.22, 0.24] as const) {
+      c.beginPath();
+      c.moveTo(x, -0.3);
+      c.lineTo(x * 1.3, 0.26);
+      c.stroke();
+    }
+    ground(c, 0, 0.34, st);
+    star4(c, 0, 0.3, 0.11, st.core, Math.PI / 4);
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 

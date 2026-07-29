@@ -200,6 +200,8 @@ const defs: LootTableDef[] = [
   rack('goblin_arms', 'Camp ironwork and stolen hedge-magic.', 0.045, [
     { item: 'rustbite', chance: 0.03 },
     { item: 'gobsplitter', chance: 0.025 },
+    // Too big for any goblin to swing — looted, dragged home, hoarded.
+    { item: 'iron_greatblade', chance: 0.018 },
     { item: 'gobnail_warboard', chance: 0.025 },
     { item: 'shiv', chance: 0.025 },
     { item: 'stickbow', chance: 0.03 },
@@ -439,6 +441,7 @@ const defs: LootTableDef[] = [
     [
       { item: 'duelists_grace', chance: 0.06 },
       { item: 'bloodletter', chance: 0.04 },
+      { item: 'stonebreaker_maul', chance: 0.04 },
       { item: 'stormcall', chance: 0.05 },
       { item: 'sovereign', chance: 0.025 },
       { item: 'starfall', chance: 0.01 },

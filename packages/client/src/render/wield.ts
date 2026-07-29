@@ -400,6 +400,279 @@ export function staffStrikeTrail(stage: 0 | 1, t: number): StaffTrail | null {
   };
 }
 
+// ---------------------------------------------------- the great school
+//
+// THE MASS LAW: a greatweapon is the only held thing whose WEIGHT is
+// the identity — every carry and every cut must read as mass managed,
+// never mass ignored. The second fist is never far: the shoulder
+// carry frees it only at a standstill, the run calls it back to the
+// hilt, and combat welds both hands on. Where the staff fights from
+// the middle (tangent sweeps), great steel fights from the END of a
+// long lever — cuts are swung RADII with a heavy wrist lag, and every
+// beat runs slower than the sword schools because the renderer gives
+// this school its own, longer clock.
+
+export interface GreatWield {
+  /** Main-hand offset from (x, armY), units of s (dx pre-squash). */
+  dx: number;
+  dy: number;
+  /** Weapon angle, fist→tip, screen radians (projected). */
+  angle: number;
+  /** Foreshortened length for the painter. */
+  fore: number;
+  /** Fraction of the weapon trailing behind the fist (painter grip). */
+  grip: number;
+  /** How much the carrying hand joins the arm pump (0 planted…1 free). */
+  pumpK: number;
+  /**
+   * How hard the run calls the off hand back to the hilt (0..1). The
+   * rig turns this into the second-fist claim; combat's own claim is
+   * separate and always full.
+   */
+  offClaim: number;
+}
+
+/**
+ * THE SHOULDER CARRY — the great school's whole rest ladder in one
+ * carry. Idle: the flat of the blade rests back over the trailing
+ * shoulder, fist at the chest, off hand free — the woodcutter's carry,
+ * one motion from the high guard. Walk: the same carry, the mass
+ * rocking a beat BEHIND the stride (heavy things answer late). Run:
+ * the blade stays shouldered but levels a little into the drive, the
+ * fist drops toward the ribs, and the off hand comes back to the
+ * grip — nobody sprints with six feet of iron in one fist.
+ */
+export function greatWield(
+  dir: number,
+  sideS: number,
+  moveK: number,
+  runK: number,
+  sw: number,
+  px: number,
+): GreatWield {
+  const m = Math.max(0, Math.min(1, moveK));
+  const drive = smooth(runK);
+  // The late rock: the mass answers the stride at reduced amplitude —
+  // a greatblade never jiggles.
+  const rock = sw * (0.09 * Math.abs(px) + 0.05 * (1 - Math.abs(px))) * m;
+  // Shouldered: tip up and BACK over the trailing shoulder (pitch past
+  // π tilts away from the facing). The run lays it FLATTER across the
+  // shoulder — the charging carry — never toward vertical: a blade
+  // walked upright to the chest reads as a candle, not a burden (the
+  // lab's verdict on the first draft).
+  const pitch = Math.PI + 0.62 - rock + drive * 0.35;
+  const p = projectCarry(dir, pitch);
+  return {
+    dx: sideS * (0.16 + 0.05 * drive),
+    dy: -0.16 + 0.07 * drive,
+    angle: p.angle,
+    fore: p.fore,
+    grip: 0.14 + 0.07 * drive,
+    pumpK: 0.2 + 0.25 * drive,
+    offClaim: smooth(Math.min(1, runK * 1.7)) * m,
+  };
+}
+
+/**
+ * THE HIGH GUARD — combat's carry. Both fists on the long grip, blade
+ * up-forward at the ready diagonal; the main hand rides at the cross,
+ * the off hand takes the pommel end BEHIND it (the true two-hand
+ * hold — opposite the staff, which chokes the off hand up FRONT).
+ * Returned as the guard's world pitch for the rig to project.
+ */
+export const GREAT_GUARD_PITCH = Math.PI - 0.55;
+/** Off-fist seat: this far BEHIND the main fist along the grip. */
+export const GREAT_POMMEL_CHOKE_S = 0.13;
+
+// ------------------------------------------- the great school's cuts
+//
+// Three beats, all slower than any sword's (the renderer clocks this
+// school longer): THE FELLING STROKE, an overhead cleave that starts
+// above the head and ends in the ground's opinion; THE WIDE REAP, a
+// level full-circle harvest on the return plane; and the finisher,
+// THE MOUNTAIN FALLS — both hands haul the blade straight overhead,
+// POISE there longer than any telegraph in the game, and bring it
+// down. Same readability laws as every school: ease to a coil, HOLD,
+// snap with overshoot, hold the landed extension, recover. Every
+// channel neutral at both ends — blend-safe.
+
+export interface GreatStrikeFrame {
+  /** Arm-angle offset from the aim; rests at 0.5 like the blades. */
+  arm: number;
+  /** Weapon angle relative to the arm ray — the heavy wrist lag. */
+  spin: number;
+  /** Reach multiplier (1 at both ends). */
+  reach: number;
+  /** Vertical hand offset, units of s (negative = raised). */
+  lift: number;
+  /** Torso lean along the cut. */
+  lean: number;
+  /** Weapon fraction behind the fist — cuts slide toward mid-grip. */
+  grip: number;
+}
+
+/** The great school's beat: long gather, LONG poise, honest snap. */
+export const GREAT_PHASES = { coil: 0.3, hold: 0.42, impact: 0.52, ext: 0.72 };
+
+interface GreatSpec {
+  coilArm: number;
+  impactArm: number;
+  coilLift: number;
+  impactLift: number;
+  coilReach: number;
+  impactReach: number;
+  /** Wrist cock against the sweep at the coil — heavy, the mass lags. */
+  cock: number;
+  /** Wrist lead at impact — small; a lever this long barely whips. */
+  lead: number;
+  lean: number;
+}
+
+const GREAT_SPECS: [GreatSpec, GreatSpec] = [
+  // THE FELLING STROKE: hauled high over the shoulder, crashed down
+  // across the front — the vertical plane, read by the LIFT drop.
+  {
+    coilArm: -1.15, impactArm: 1.0,
+    coilLift: -0.44, impactLift: 0.16,
+    coilReach: 0.5, impactReach: 1.4,
+    cock: 1.05, lead: 0.32, lean: 0.2,
+  },
+  // THE WIDE REAP: coiled far around the other side, a level harvest
+  // dragged the whole way across — the horizontal plane.
+  {
+    coilArm: 1.7, impactArm: -1.55,
+    coilLift: 0.1, impactLift: -0.06,
+    coilReach: 0.62, impactReach: 1.3,
+    cock: 0.95, lead: 0.3, lean: 0.16,
+  },
+];
+
+const GREAT_REST_ARM = 0.5;
+
+export function greatStrikeFrame(stage: 0 | 1, t: number): GreatStrikeFrame {
+  const K = GREAT_SPECS[stage];
+  const P = GREAT_PHASES;
+  const sgn = Math.sign(K.impactArm - K.coilArm);
+  const ov = sgn * 0.08;
+  if (t < P.coil) {
+    const e = smooth(t / P.coil);
+    return {
+      arm: GREAT_REST_ARM + (K.coilArm - GREAT_REST_ARM) * e,
+      spin: -sgn * K.cock * e,
+      reach: 1 + (K.coilReach - 1) * e,
+      lift: K.coilLift * e,
+      lean: -sgn * K.lean * 0.6 * e,
+      grip: 0.2 + 0.1 * e,
+    };
+  }
+  if (t < P.hold) {
+    // The gathered mass — the longest cocked hold of any school.
+    return {
+      arm: K.coilArm,
+      spin: -sgn * K.cock,
+      reach: K.coilReach,
+      lift: K.coilLift,
+      lean: -sgn * K.lean * 0.6,
+      grip: 0.3,
+    };
+  }
+  if (t < P.impact) {
+    const e = smooth((t - P.hold) / (P.impact - P.hold));
+    return {
+      arm: K.coilArm + (K.impactArm + ov - K.coilArm) * e,
+      spin: -sgn * K.cock + sgn * (K.cock + K.lead) * e,
+      reach: K.coilReach + (K.impactReach - K.coilReach) * e,
+      lift: K.coilLift + (K.impactLift - K.coilLift) * e,
+      lean: -sgn * K.lean * 0.6 + sgn * K.lean * 1.7 * e,
+      grip: 0.3,
+    };
+  }
+  if (t < P.ext) {
+    // The landed weight, held — a greatblow STAYS landed.
+    const e = smooth((t - P.impact) / (P.ext - P.impact));
+    return {
+      arm: K.impactArm + ov * (1 - e),
+      spin: sgn * K.lead * (1 - 0.3 * e),
+      reach: K.impactReach,
+      lift: K.impactLift,
+      lean: sgn * K.lean * (1 - 0.2 * e),
+      grip: 0.3,
+    };
+  }
+  const e = smooth((t - P.ext) / (1 - P.ext));
+  return {
+    arm: K.impactArm + (GREAT_REST_ARM - K.impactArm) * e,
+    spin: sgn * K.lead * 0.7 * (1 - e),
+    reach: K.impactReach + (1 - K.impactReach) * e,
+    lift: K.impactLift * (1 - e),
+    lean: sgn * K.lean * 0.8 * (1 - e),
+    grip: 0.3 - 0.1 * e,
+  };
+}
+
+/** The great sweep's crescent — alive loosing→extension, like the pole's. */
+export function greatStrikeTrail(stage: 0 | 1, t: number): StaffTrail | null {
+  const P = GREAT_PHASES;
+  if (t < P.hold || t > P.ext) return null;
+  const K = GREAT_SPECS[stage];
+  const f = greatStrikeFrame(stage, t);
+  const alpha = t <= P.impact ? 1 : 1 - smooth((t - P.impact) / (P.ext - P.impact));
+  return {
+    from: K.coilArm,
+    to: f.arm,
+    alpha,
+    lift: (K.coilLift + K.impactLift) / 2,
+  };
+}
+
+/**
+ * THE MOUNTAIN FALLS — the finisher. Both hands haul the blade
+ * straight overhead (the fist barely leaves the body; the LIFT does
+ * the talking), the longest poise in the game, then the drive buries
+ * the edge in the ground ahead. `pitch` is the blade's world pitch
+ * for the projection law: crown-up through the haul, crashing through
+ * level to down-forward at the bury.
+ */
+export const GREAT_FINISHER_PHASES = { coil: 0.3, hold: 0.46, drive: 0.58, buried: 0.78 };
+
+export function greatFinisherPath(t: number): { r: number; lift: number; pitch: number } {
+  const P = GREAT_FINISHER_PHASES;
+  const UP = Math.PI + 0.12; // tip straight up, a hair behind vertical
+  const DOWN = Math.PI / 2 - 0.85; // buried: down-forward into the mark
+  if (t < P.coil) {
+    // The haul: fist to the chest, blade climbing to vertical.
+    const e = smooth(t / P.coil);
+    return { r: 0.22 - 0.1 * e, lift: -0.1 - 0.24 * e, pitch: Math.PI - 0.55 + (UP - (Math.PI - 0.55)) * e };
+  }
+  if (t < P.hold) {
+    // The poise: the mountain considers. Longest telegraph there is.
+    const e = (t - P.coil) / (P.hold - P.coil);
+    return { r: 0.12, lift: -0.34 - 0.03 * e, pitch: UP + 0.06 * e };
+  }
+  if (t < P.drive) {
+    // The fall: everything at once, straight through level.
+    const e = smooth((t - P.hold) / (P.drive - P.hold));
+    return { r: 0.12 + 0.4 * e, lift: -0.37 + 0.55 * e, pitch: UP + 0.06 + (DOWN - UP - 0.06) * e };
+  }
+  if (t < P.buried) {
+    // Buried: the edge in the earth, the weight still pressing.
+    const e = (t - P.drive) / (P.buried - P.drive);
+    return { r: 0.52 - 0.02 * e, lift: 0.18, pitch: DOWN - 0.04 * e };
+  }
+  const e = smooth((t - P.buried) / (1 - P.buried));
+  return { r: 0.5 - 0.28 * e, lift: 0.18 - 0.18 * e, pitch: DOWN - 0.04 + (Math.PI - 0.55 - DOWN + 0.04) * e };
+}
+
+/** The finisher's torso: gather back, poise, tip HARD, press, ease. */
+export function greatFinisherLean(t: number): number {
+  const P = GREAT_FINISHER_PHASES;
+  if (t < P.coil) return -0.1 * smooth(t / P.coil);
+  if (t < P.hold) return -0.1;
+  if (t < P.drive) return -0.1 + 0.34 * smooth((t - P.hold) / (P.drive - P.hold));
+  if (t < P.buried) return 0.24 - 0.04 * ((t - P.drive) / (P.buried - P.drive));
+  return 0.2 * (1 - smooth((t - P.buried) / (1 - P.buried)));
+}
+
 // ------------------------------------------------------------- bow
 
 /**

@@ -106,11 +106,18 @@ export function stowBlade(hand: 'main' | 'off', side: number, rake: number, sit 
  * other — so the left-lean sling is the MIRROR of the right-lean one
  * (π − base), never a π rotation. Rotating it instead turns the
  * string toward the camera and it reads as crossing the chest.
+ *
+ * GREAT: `angle` is grip→tip like the staff, but the sling rides
+ * LOWER and steeper — the crossguard must clear the shoulder line and
+ * the long grip hangs past the hip, the classic greatsword back-carry.
  */
-export function stowBack(kind: 'bow' | 'staff', side: number): StowSpot {
+export function stowBack(kind: 'bow' | 'staff' | 'great', side: number): StowSpot {
   const sd = firmSide(side);
   if (kind === 'staff') {
     return { dx: -sd * 0.05, dy: 0.3, angle: -Math.PI / 2 + sd * 0.5 };
+  }
+  if (kind === 'great') {
+    return { dx: -sd * 0.04, dy: 0.38, angle: -Math.PI / 2 + sd * 0.38 };
   }
   const lean = Math.abs(sd) * 0.42;
   return {

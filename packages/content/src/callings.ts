@@ -53,7 +53,9 @@ export type PerkId =
   | 'produceRestMult' //     beastcraft collect: animal readiness cooldown × mult
   | 'buildSpeedMult' //      build(): construction ticks × mult
   | 'shieldArm' //           damagePlayer mitigate: +armor while a shield is raised
-  | 'shieldThorns'; //       npc strike thorns: +thorns while a shield is raised
+  | 'shieldThorns' //        npc strike thorns: +thorns while a shield is raised
+  | 'greatReach' //          tryPlayerAttack (twohand): +reach, tiles
+  | 'greatExecute'; //       meleeSwing (twohand): +damage fraction vs targets under 25% hp
 
 export type CallingEffect =
   | { kind: 'gear'; effect: EnchantEffect }
@@ -204,6 +206,27 @@ const defs: CallingDef[] = [
     desc: 'A turned back is a signed invitation — backstabs cut deeper.',
     color: '#5a4a6a',
     effect: { kind: 'perk', perk: 'backstabBonus', magnitude: 0.25 },
+  },
+  // -------------------------------------------------------------- twohand
+  {
+    id: 'farcleaver',
+    skill: 'twohand',
+    unlockLevel: 20,
+    focusCost: 1,
+    name: 'Farcleaver',
+    desc: 'The edge arrives before the argument — greatweapon reach grows.',
+    color: '#c47a3d',
+    effect: { kind: 'perk', perk: 'greatReach', magnitude: 0.35 },
+  },
+  {
+    id: 'executioner',
+    skill: 'twohand',
+    unlockLevel: 60,
+    focusCost: 2,
+    name: 'Executioner',
+    desc: 'The nearly-felled are already spoken for — greatblows bite deeper into them.',
+    color: '#8a5a4a',
+    effect: { kind: 'perk', perk: 'greatExecute', magnitude: 0.3 },
   },
   // ----------------------------------------------------------- dualwield
   {

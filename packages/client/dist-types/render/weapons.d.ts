@@ -140,4 +140,43 @@ export declare function staffStyle(itemId: string | undefined, color?: string): 
  * the spell leaves.
  */
 export declare function drawStaff(ctx: CanvasRenderingContext2D, st: StaffStyle, s: number, nowMs: number, hurt?: boolean, grip?: number, castT?: number): void;
+/**
+ * A greatweapon's look. Two dialects share the frame: the GREATBLADE
+ * (a sword grown past apology — broad body, long two-fist grip, wide
+ * cross) and the MAUL (a quarry head on a war haft). Flat like
+ * everything else: base fill + one lit plane + one line; the renderer's
+ * dilate rings the body, so nothing here strokes its own outline.
+ */
+export interface GreatStyle {
+    kind: 'greatblade' | 'maul';
+    /** Steel / head color. */
+    color: string;
+    /** Lit edge or top plane; defaults shade(+34). */
+    edge?: string;
+    /** The one dark line (fuller / head seam); defaults shade(−24). */
+    fuller?: string;
+    guardColor: string;
+    grip?: string;
+    pommelColor?: string;
+    /** Length multiplier — 1 runs ~0.94 of a body scale, tip to pommel. */
+    len?: number;
+}
+export declare const GREAT_STYLES: Record<string, GreatStyle>;
+/**
+ * Resolve a greatweapon look. Registry first; unknown ids that read
+ * as great steel (`greatblade`/`greatsword`/`maul`/`warhammer`) get a
+ * cached color-derived fallback — degrade, never invisible. CHECK
+ * GREAT FIRST: 'greatsword' also satisfies bladeStyle's '*sword'
+ * fallback, so every dispatch site must ask this registry before the
+ * one-hand one.
+ */
+export declare function greatStyle(itemId: string | undefined, color?: string): GreatStyle | null;
+/**
+ * Paint a greatweapon in the held-item frame (origin at the MAIN fist,
+ * +x toward the tip). `grip` is the fraction of total length trailing
+ * behind the fist — the rig slides it through carries and strikes the
+ * way the staff does, and the long two-fist handle is the painter's
+ * whole argument that this weapon owns both hands.
+ */
+export declare function drawGreatweapon(ctx: CanvasRenderingContext2D, st: GreatStyle, s: number, nowMs: number, hurt?: boolean, grip?: number): void;
 //# sourceMappingURL=weapons.d.ts.map

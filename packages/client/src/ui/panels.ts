@@ -98,6 +98,7 @@ export const SKILL_FACE: Record<string, { icon: string; color: string }> = {
   enchanting: { icon: 'arcane_dust', color: '#b49af0' },
   beastcraft: { icon: 'bones', color: '#c4b590' },
   sneak: { icon: 'bronze_dagger', color: '#8a7fae' },
+  twohand: { icon: 'iron_greatblade', color: '#c47a3d' },
   dualwield: { icon: 'bronze_dagger', color: '#d9a441' },
   shield: { icon: 'tower_shield', color: '#9db6cc' },
 };
@@ -124,6 +125,7 @@ const SKILL_STORY: Record<string, string> = {
   enchanting: 'Power bound into gear',
   beastcraft: 'Trophies worked from the hunt',
   sneak: 'Unseen, unheard, unhurried',
+  twohand: 'Both hands, one argument',
   dualwield: 'A blade in each fist',
   shield: 'What the wall stops, the wall learns',
 };
@@ -133,7 +135,7 @@ const SKILL_STORY: Record<string, string> = {
  * skills only ever surface in the Secret Arts wing, by row-presence.
  */
 const SKILL_WINGS: Array<{ title: string; skills: SkillId[] }> = [
-  { title: 'Combat Arts', skills: ['vitality', 'melee', 'defence', 'archery', 'magic'] },
+  { title: 'Combat Arts', skills: ['vitality', 'melee', 'twohand', 'defence', 'archery', 'magic'] },
   {
     title: 'Fieldcraft',
     skills: ['mining', 'woodcutting', 'fishing', 'farming', 'foraging', 'herbalism'],
@@ -669,7 +671,7 @@ export class Panels {
     const w = def.weapon;
     if (w) {
       // Damage already leads the headline; the fine print starts here.
-      stat(w.style === 'melee' ? 'Reach' : 'Range', `${w.range} tiles`, '#c9a23c');
+      stat(w.style === 'melee' || w.style === 'twohand' ? 'Reach' : 'Range', `${w.range} tiles`, '#c9a23c');
       // The two-hands law, stated where you'd look before equipping.
       if (isTwoHanded(def)) stat('Hands', 'Two-handed', '#8d9299');
       if (w.ammo) stat('Ammo', itemDef(w.ammo)?.name ?? w.ammo, '#c4b590');

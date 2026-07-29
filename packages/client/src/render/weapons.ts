@@ -2776,3 +2776,180 @@ export function drawStaff(
     }
   }
 }
+
+// =================================================== the great school
+
+/**
+ * A greatweapon's look. Two dialects share the frame: the GREATBLADE
+ * (a sword grown past apology — broad body, long two-fist grip, wide
+ * cross) and the MAUL (a quarry head on a war haft). Flat like
+ * everything else: base fill + one lit plane + one line; the renderer's
+ * dilate rings the body, so nothing here strokes its own outline.
+ */
+export interface GreatStyle {
+  kind: 'greatblade' | 'maul';
+  /** Steel / head color. */
+  color: string;
+  /** Lit edge or top plane; defaults shade(+34). */
+  edge?: string;
+  /** The one dark line (fuller / head seam); defaults shade(−24). */
+  fuller?: string;
+  guardColor: string;
+  grip?: string;
+  pommelColor?: string;
+  /** Length multiplier — 1 runs ~0.94 of a body scale, tip to pommel. */
+  len?: number;
+}
+
+export const GREAT_STYLES: Record<string, GreatStyle> = {
+  // The founding blade: honest iron, oak grip long enough for both
+  // fists, a cross wide enough to catch a falling tree.
+  iron_greatblade: {
+    kind: 'greatblade', color: '#8d9299',
+    guardColor: '#5a5f66', grip: '#4a3a2a', pommelColor: '#9aa2ac',
+  },
+  // The chase maul: quarry granite banded in iron on a dark haft.
+  stonebreaker_maul: {
+    kind: 'maul', color: '#7d7468', edge: '#a89e8e',
+    guardColor: '#4a4554', grip: '#5b4028', len: 0.96,
+  },
+};
+
+const GREAT_FALLBACKS = new Map<string, GreatStyle>();
+
+/**
+ * Resolve a greatweapon look. Registry first; unknown ids that read
+ * as great steel (`greatblade`/`greatsword`/`maul`/`warhammer`) get a
+ * cached color-derived fallback — degrade, never invisible. CHECK
+ * GREAT FIRST: 'greatsword' also satisfies bladeStyle's '*sword'
+ * fallback, so every dispatch site must ask this registry before the
+ * one-hand one.
+ */
+export function greatStyle(itemId: string | undefined, color?: string): GreatStyle | null {
+  if (!itemId) return null;
+  const st = GREAT_STYLES[itemId];
+  if (st) return st;
+  const maul = itemId.includes('maul') || itemId.includes('warhammer');
+  if (!maul && !itemId.includes('greatblade') && !itemId.includes('greatsword')) return null;
+  let fb = GREAT_FALLBACKS.get(itemId);
+  if (!fb) {
+    fb = maul
+      ? { kind: 'maul', color: color ?? '#7d7468', guardColor: '#4a4554', grip: '#5b4028' }
+      : { kind: 'greatblade', color: color ?? '#8d9299', guardColor: '#5a5f66', grip: '#4a3a2a' };
+    GREAT_FALLBACKS.set(itemId, fb);
+  }
+  return fb;
+}
+
+/**
+ * Paint a greatweapon in the held-item frame (origin at the MAIN fist,
+ * +x toward the tip). `grip` is the fraction of total length trailing
+ * behind the fist — the rig slides it through carries and strikes the
+ * way the staff does, and the long two-fist handle is the painter's
+ * whole argument that this weapon owns both hands.
+ */
+export function drawGreatweapon(
+  ctx: CanvasRenderingContext2D,
+  st: GreatStyle,
+  s: number,
+  nowMs: number,
+  hurt?: boolean,
+  grip = 0.2,
+): void {
+  const LEN = 1.12 * s * (st.len ?? 1);
+  const butt = -grip * LEN;
+  const tip = (1 - grip) * LEN;
+  const steel = hurt ? '#ffffff' : st.color;
+  const edge = hurt ? '#ffffff' : (st.edge ?? shade(st.color, 34));
+  const dark = hurt ? '#ffffff' : (st.fuller ?? shade(st.color, -24));
+  const guard = hurt ? '#ffffff' : st.guardColor;
+  const gripC = hurt ? '#ffffff' : (st.grip ?? '#4a3a2a');
+
+  if (st.kind === 'maul') {
+    // The war haft: butt to collar.
+    const collar = tip - 0.3 * LEN;
+    ctx.strokeStyle = gripC;
+    ctx.lineWidth = Math.max(2.5, s * 0.055);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(butt, 0);
+    ctx.lineTo(collar, 0);
+    ctx.stroke();
+    // Iron collar where the head takes the haft.
+    ctx.fillStyle = guard;
+    ctx.fillRect(collar - 0.015 * s, -0.055 * s, 0.035 * s, 0.11 * s);
+    // The head: one granite block, slightly proud at the striking end.
+    const h0 = 0.075 * s;
+    const h1 = 0.088 * s;
+    ctx.fillStyle = steel;
+    ctx.beginPath();
+    ctx.moveTo(collar + 0.02 * s, -h0);
+    ctx.lineTo(tip, -h1);
+    ctx.lineTo(tip, h1);
+    ctx.lineTo(collar + 0.02 * s, h0);
+    ctx.closePath();
+    ctx.fill();
+    // Its lit top plane (sun law: bright on −y) and the one seam.
+    ctx.fillStyle = edge;
+    ctx.beginPath();
+    ctx.moveTo(collar + 0.02 * s, -h0);
+    ctx.lineTo(tip, -h1);
+    ctx.lineTo(tip, -h1 * 0.55);
+    ctx.lineTo(collar + 0.02 * s, -h0 * 0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = Math.max(1, s * 0.014);
+    ctx.beginPath();
+    ctx.moveTo(collar + 0.05 * s, h0 * 0.35);
+    ctx.lineTo(tip - 0.02 * s, h1 * 0.35);
+    ctx.stroke();
+    return;
+  }
+
+  // -------------------------------------------------- the greatblade
+  const gx = butt + 0.3 * LEN; // the cross sits 30% up from the butt
+  // Pommel: the counterweight both fists trust.
+  ctx.fillStyle = hurt ? '#ffffff' : (st.pommelColor ?? guard);
+  ctx.beginPath();
+  ctx.arc(butt, 0, 0.036 * s, 0, Math.PI * 2);
+  ctx.fill();
+  // The two-fist grip.
+  ctx.strokeStyle = gripC;
+  ctx.lineWidth = Math.max(2.5, s * 0.05);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(butt + 0.03 * s, 0);
+  ctx.lineTo(gx - 0.01 * s, 0);
+  ctx.stroke();
+  // The wide cross.
+  ctx.fillStyle = guard;
+  ctx.fillRect(gx - 0.016 * s, -0.105 * s, 0.038 * s, 0.21 * s);
+  // The blade: broad, blunt-shouldered, honest taper.
+  const bw = 0.046 * s;
+  ctx.fillStyle = steel;
+  ctx.beginPath();
+  ctx.moveTo(gx + 0.02 * s, -bw);
+  ctx.lineTo(tip - 0.09 * s, -bw * 0.82);
+  ctx.lineTo(tip, 0);
+  ctx.lineTo(tip - 0.09 * s, bw * 0.82);
+  ctx.lineTo(gx + 0.02 * s, bw);
+  ctx.closePath();
+  ctx.fill();
+  // One lit edge plane on −y (the sun law) and the one fuller line.
+  ctx.fillStyle = edge;
+  ctx.beginPath();
+  ctx.moveTo(gx + 0.02 * s, -bw);
+  ctx.lineTo(tip - 0.09 * s, -bw * 0.82);
+  ctx.lineTo(tip, 0);
+  ctx.lineTo(tip - 0.1 * s, -bw * 0.3);
+  ctx.lineTo(gx + 0.02 * s, -bw * 0.34);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = Math.max(1, s * 0.014);
+  ctx.beginPath();
+  ctx.moveTo(gx + 0.05 * s, bw * 0.22);
+  ctx.lineTo(tip - 0.14 * s, bw * 0.18);
+  ctx.stroke();
+}

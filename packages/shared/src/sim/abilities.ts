@@ -374,15 +374,17 @@ export type AbilitySlot = 0 | 1 | 2 | 3;
  * LEARNING (arts unlock by raising its skill) — never the hand: THE
  * FREE HAND slots any learned art whatever weapon is equipped.
  * `sneak` is the rogue's ladder, unlocked by the sneak skill; `shield`
- * is the wall's ladder, unlocked by the hidden shield skill.
+ * is the wall's ladder, unlocked by the hidden shield skill; `twohand`
+ * is the colossus's ladder, unlocked by swinging great steel.
  */
-export type CombatStyleId = 'melee' | 'archery' | 'magic' | 'sneak' | 'shield';
+export type CombatStyleId = 'melee' | 'archery' | 'magic' | 'sneak' | 'twohand' | 'shield';
 
 export const COMBAT_STYLES: readonly CombatStyleId[] = [
   'melee',
   'archery',
   'magic',
   'sneak',
+  'twohand',
   'shield',
 ];
 

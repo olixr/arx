@@ -73,6 +73,10 @@ export declare function stowBlade(hand: 'main' | 'off', side: number, rake: numb
  * other — so the left-lean sling is the MIRROR of the right-lean one
  * (π − base), never a π rotation. Rotating it instead turns the
  * string toward the camera and it reads as crossing the chest.
+ *
+ * GREAT: `angle` is grip→tip like the staff, but the sling rides
+ * LOWER and steeper — the crossguard must clear the shoulder line and
+ * the long grip hangs past the hip, the classic greatsword back-carry.
  */
-export declare function stowBack(kind: 'bow' | 'staff', side: number): StowSpot;
+export declare function stowBack(kind: 'bow' | 'staff' | 'great', side: number): StowSpot;
 //# sourceMappingURL=sheath.d.ts.map

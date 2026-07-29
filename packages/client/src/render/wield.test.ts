@@ -250,3 +250,133 @@ test('gaitK feeds bladeCarriage the same ladder gaitLift eases', () => {
   const direct = Math.PI / 2 - (0.32 + 0.6 * gaitLift(1, 0.4));
   assert.ok(Math.abs(viaCarriage.angle - direct) < 1e-9, 'one ladder, two entry points');
 });
+
+// ---- the great school ----
+
+import {
+  GREAT_FINISHER_PHASES,
+  GREAT_PHASES,
+  greatFinisherLean,
+  greatFinisherPath,
+  greatStrikeFrame,
+  greatStrikeTrail,
+  greatWield,
+} from './wield.js';
+import { strikePhases } from './carriage.js';
+
+test('shoulder carry: shouldered at idle, leveling a little at a run, never forward of the body', () => {
+  // Facing east, the resting blade points up and BACK (screen up-left):
+  // the shoulder carry, not a ready or a trail.
+  const idle = greatWield(0, 1, 0, 0, 0, 1);
+  assert.ok(Math.cos(idle.angle) < 0, 'idle tip trails behind the facing');
+  assert.ok(Math.sin(idle.angle) < 0, 'idle tip rides up over the shoulder');
+  const run = greatWield(0, 1, 1, 1, 0, 1);
+  // The run levels the carry toward the drive but the tip stays behind
+  // the body — a shouldered sprint, never a leveled lance.
+  assert.ok(Math.cos(run.angle) < 0.1, 'run tip never leads the body');
+  assert.ok(Math.sin(run.angle) < Math.sin(idle.angle) + 0.6, 'run keeps the blade up');
+  // The fist drops toward the ribs and the grip slides up the handle.
+  assert.ok(run.dy > idle.dy, 'the fist drops into the drive');
+  assert.ok(run.grip > idle.grip, 'the grip slides toward the cross');
+});
+
+test('shoulder carry: continuous through the gait ladder — the mass never pops', () => {
+  let prev = greatWield(1.2, 0.7, 0, 0, 0.3, 0.6);
+  for (let i = 1; i <= 20; i++) {
+    const k = i / 20;
+    const g = greatWield(1.2, 0.7, Math.min(1, k * 2), k, 0.3, 0.6);
+    assert.ok(Math.abs(g.dx - prev.dx) < 0.08, 'dx continuous');
+    assert.ok(Math.abs(g.dy - prev.dy) < 0.08, 'dy continuous');
+    assert.ok(Math.abs(g.grip - prev.grip) < 0.06, 'grip continuous');
+    assert.ok(Math.abs(g.offClaim - prev.offClaim) < 0.35, 'claim continuous');
+    prev = g;
+  }
+});
+
+test('the second fist: the run calls the off hand back to the hilt', () => {
+  assert.equal(greatWield(0, 1, 0, 0, 0, 1).offClaim, 0, 'idle frees the off hand');
+  const walk = greatWield(0, 1, 1, 0.2, 0, 1).offClaim;
+  const run = greatWield(0, 1, 1, 1, 0, 1).offClaim;
+  assert.ok(walk < run, 'the claim builds with the gait');
+  assert.ok(run > 0.95, 'a sprint welds both hands on');
+});
+
+test('great cuts: every channel neutral at both ends — blend-safe', () => {
+  for (const stage of [0, 1] as const) {
+    for (const t of [0, 1]) {
+      const f = greatStrikeFrame(stage, t);
+      assert.ok(Math.abs(f.arm - 0.5) < 1e-9, `stage ${stage} arm rests`);
+      assert.ok(Math.abs(f.spin) < 1e-9, `stage ${stage} spin unwinds`);
+      assert.ok(Math.abs(f.reach - 1) < 1e-9, `stage ${stage} reach home`);
+      assert.ok(Math.abs(f.lift) < 1e-9, `stage ${stage} lift home`);
+      assert.ok(Math.abs(f.lean) < 1e-9, `stage ${stage} lean home`);
+    }
+  }
+});
+
+test('the anticipation law: a HELD coil, wrist cocked against the coming cut', () => {
+  for (const stage of [0, 1] as const) {
+    const P = GREAT_PHASES;
+    const atCoil = greatStrikeFrame(stage, P.coil + 1e-6);
+    const midHold = greatStrikeFrame(stage, (P.coil + P.hold) / 2);
+    // The hold is frozen — the eye's registration frame.
+    assert.ok(Math.abs(atCoil.arm - midHold.arm) < 1e-6, 'the coil holds');
+    // Cocked against the sweep: spin sign opposes the arm's travel.
+    const impact = greatStrikeFrame(stage, P.impact);
+    const sweep = Math.sign(impact.arm - atCoil.arm);
+    assert.ok(Math.sign(midHold.spin) === -sweep, 'wrist lags the coming cut');
+    assert.ok(Math.abs(midHold.spin) > 0.7, 'the lag is HEAVY — mass answers late');
+  }
+});
+
+test('the plane law: the felling stroke drops, the wide reap runs level, directions alternate', () => {
+  const P = GREAT_PHASES;
+  const fell = greatStrikeFrame(0, P.coil);
+  const reap = greatStrikeFrame(1, P.coil);
+  assert.ok(fell.lift < -0.3, 'the felling stroke coils HIGH overhead');
+  assert.ok(Math.abs(reap.lift) < 0.15, 'the reap coils on the level line');
+  const fellSweep = Math.sign(greatStrikeFrame(0, P.impact).arm - fell.arm);
+  const reapSweep = Math.sign(greatStrikeFrame(1, P.impact).arm - reap.arm);
+  assert.ok(fellSweep !== reapSweep, 'consecutive cuts alternate direction');
+});
+
+test('the slow-beat law: the great phases run later than the sword school at every beat', () => {
+  const S = strikePhases('normal');
+  assert.ok(GREAT_PHASES.coil > S.coil && GREAT_PHASES.hold > S.hold, 'a longer gather');
+  assert.ok(GREAT_PHASES.impact > S.impact && GREAT_PHASES.ext > S.ext, 'a longer landing');
+  // But the SNAP law still holds: the cut itself is fast.
+  assert.ok(GREAT_PHASES.impact - GREAT_PHASES.hold <= 0.15, 'the cut is still a snap');
+});
+
+test('great trail: silent through the coil, alive through the cut, dead after the extension', () => {
+  for (const stage of [0, 1] as const) {
+    const P = GREAT_PHASES;
+    assert.equal(greatStrikeTrail(stage, P.coil / 2), null);
+    const mid = greatStrikeTrail(stage, (P.hold + P.impact) / 2);
+    assert.ok(mid !== null && mid.alpha > 0.9, 'full through the cut');
+    const late = greatStrikeTrail(stage, (P.impact + P.ext) / 2);
+    assert.ok(late !== null && late.alpha < 1, 'dying through the extension');
+    assert.equal(greatStrikeTrail(stage, P.ext + 0.05), null);
+  }
+});
+
+test('the mountain falls: overhead poise, the longest telegraph, then the bury', () => {
+  const F = GREAT_FINISHER_PHASES;
+  const poise = greatFinisherPath((F.coil + F.hold) / 2);
+  // Poised: the blade near vertical-up, the fist raised, barely reaching.
+  assert.ok(Math.abs(poise.pitch - Math.PI) < 0.25, 'the blade stands overhead');
+  assert.ok(poise.lift < -0.3, 'the fists are hauled high');
+  assert.ok(poise.r < 0.2, 'nothing reaches yet — all threat');
+  // The poise is the longest hold of any school's finisher.
+  assert.ok(F.hold - F.coil > 0.14, 'the mountain considers');
+  // Buried: pitch crashed through level to down-forward, reach out.
+  const buried = greatFinisherPath((F.drive + F.buried) / 2);
+  assert.ok(buried.pitch < Math.PI / 2, 'the edge ends down-forward');
+  assert.ok(buried.r > 0.4 && buried.lift > 0, 'buried at reach, weight pressing');
+  // Blend-safe at both ends.
+  const start = greatFinisherPath(0);
+  const end = greatFinisherPath(1);
+  assert.ok(Math.abs(start.r - end.r) < 0.15, 'reach comes home');
+  assert.ok(Math.abs(end.lift) < 0.05, 'lift comes home');
+  assert.ok(Math.abs(greatFinisherLean(0)) < 0.02 && Math.abs(greatFinisherLean(1)) < 0.02, 'lean home');
+});
