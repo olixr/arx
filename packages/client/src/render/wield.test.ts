@@ -1,10 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { bladeCarriage } from './carriage.js';
 import {
   WIELD_GROUND_K,
+  gaitK,
   gaitLift,
   armPump,
+  runnerLift,
+  projectCarry,
+  projectStrike,
   staffWield,
+  staffStrikeFrame,
+  staffStrikeTrail,
   bowWield,
 } from './wield.js';
 
@@ -22,7 +29,6 @@ test('gait ladder: walk sits strictly between idle and run', () => {
 test('gait ladder: continuous in both inputs (no stance pops)', () => {
   let prev = gaitLift(0, 0);
   for (let i = 1; i <= 40; i++) {
-    // Sweep idle → walk → run along one path.
     const u = i / 40;
     const moveK = Math.min(1, u * 2);
     const runK = Math.max(0, u * 2 - 1);
@@ -33,11 +39,61 @@ test('gait ladder: continuous in both inputs (no stance pops)', () => {
   }
 });
 
+// ---- the projection law ----
+
+test('projection: profile facings reproduce the carriage verdicts exactly', () => {
+  for (const grip of ['normal', 'rogue'] as const) {
+    for (const runK of [0, 0.5, 1]) {
+      const c = bladeCarriage(grip, 1, runK, 0);
+      const pitch = Math.PI / 2 - c.angle;
+      const p = projectCarry(0, pitch);
+      assert.ok(
+        Math.abs(p.angle - c.angle) < 1e-9,
+        `${grip}@${runK}: east projection is the carriage angle (${p.angle} vs ${c.angle})`,
+      );
+      assert.ok(Math.abs(p.fore - 1) < 1e-9, 'no foreshortening at profile');
+    }
+  }
+});
+
+test('projection: mirror symmetry across vertical', () => {
+  const e = projectCarry(0, 0.6);
+  const w = projectCarry(Math.PI, 0.6);
+  assert.ok(Math.abs(e.angle + w.angle - Math.PI) < 1e-9, 'angles mirror');
+  assert.ok(Math.abs(e.fore - w.fore) < 1e-9, 'lengths agree');
+});
+
+test('projection: camera-line carries foreshorten, screen-plane ones do not', () => {
+  const north = projectCarry(-Math.PI / 2, 1.2);
+  const east = projectCarry(0, 1.2);
+  assert.ok(north.fore < 0.85, `a north-leveled carry draws short (${north.fore.toFixed(3)})`);
+  assert.ok(Math.abs(east.fore - 1) < 1e-9, 'an east-leveled carry draws full');
+  assert.ok(north.fore >= 0.55, 'the floor keeps a stub readable');
+});
+
+test('projection: continuous through a full turn', () => {
+  let prev = projectCarry(0, 0.9);
+  for (let i = 1; i <= 64; i++) {
+    const yaw = (i / 64) * Math.PI * 2;
+    const p = projectCarry(yaw, 0.9);
+    const d = Math.atan2(Math.sin(p.angle - prev.angle), Math.cos(p.angle - prev.angle));
+    assert.ok(Math.abs(d) < 0.35, `angle step ${i} jumps ${d.toFixed(3)}`);
+    assert.ok(Math.abs(p.fore - prev.fore) < 0.12, `fore step ${i}`);
+    prev = p;
+  }
+});
+
+test('strike projection: softened, floored, profile-true', () => {
+  const e = projectStrike(0);
+  assert.ok(Math.abs(e.angle) < 1e-9 && Math.abs(e.fore - 1) < 1e-9, 'east untouched');
+  const s = projectStrike(Math.PI / 2);
+  assert.ok(Math.abs(s.angle - Math.PI / 2) < 1e-9, 'camera-line keeps its heading');
+  assert.ok(s.fore >= 0.7 && s.fore < 0.85, `depth strikes shorten but stay a blow (${s.fore})`);
+});
+
 // ---- the honest pump ----
 
 test('honest pump: N/S travel still moves an armed hand', () => {
-  // The old law suppressed the front-on pump to near-dead for armed
-  // hands; the ground law keeps it alive, just foreshortened.
   const ns = armPump(0, 1, 1, 0.12, 1);
   assert.ok(Math.abs(ns.dy) > 0.02, `vertical pump alive (${ns.dy.toFixed(3)})`);
 });
@@ -67,64 +123,130 @@ test('honest pump: a loaded hand restrains but never freezes', () => {
   assert.ok(Math.abs(armed.dy) > Math.abs(free.dy) * 0.4, 'quiet, not dead');
 });
 
-// ---- the two-handed staff ----
+test("runner's elbow: free fists rise only at speed", () => {
+  assert.equal(runnerLift(0, 0), 0, 'standing hands hang');
+  assert.ok(runnerLift(1, 0) < 0.02, 'a walk barely lifts them');
+  assert.ok(runnerLift(1, 1) > 0.08, 'a sprint carries them toward the ribs');
+});
 
-test('staff ladder: planted upright at idle and walk, level at run', () => {
-  const idle = staffWield(1, 1, 0, 0, 0, 1);
-  const walk = staffWield(1, 1, 1, 0, 0, 1);
-  const run = staffWield(1, 1, 1, 1, 0, 1);
+// ---- the staff ----
+
+test('staff ladder: planted upright at idle, one-hand level trail at a run', () => {
+  const idle = staffWield(0, 1, 0, 0, 0, 1);
+  const run = staffWield(0, 1, 1, 1, 0, 1);
   assert.ok(Math.abs(idle.angle + Math.PI / 2) < 0.01, 'idle: a true walking stick');
-  assert.ok(Math.abs(walk.angle + Math.PI / 2) < 0.35, 'walk: still planted (rock aside)');
-  assert.ok(run.angle > -Math.PI / 2 + 0.9, `run: leveled into the trail carry (${run.angle.toFixed(2)})`);
-  assert.ok(idle.grip > 0.6 && run.grip < 0.5, 'grip slides down the stick into the carry');
+  assert.ok(Math.abs(idle.fore - 1) < 0.01, 'an upright stick is unforeshortened');
+  assert.ok(run.angle > -0.4 && run.angle < 0.1, `run east: leveled, crown a touch high (${run.angle.toFixed(2)})`);
+  assert.ok(idle.grip > 0.6 && run.grip <= 0.5, 'grip slides to the balance point');
+});
+
+test('staff run: north foreshortens the trail carry — the depth read', () => {
+  const n = staffWield(-Math.PI / 2, 1, 1, 1, 0, 0);
+  assert.ok(n.fore < 0.75, `a north sprint draws the staff short (${n.fore.toFixed(3)})`);
+  assert.ok(Math.abs(Math.abs(n.angle) - Math.PI / 2) < 0.2, 'and along the camera line');
 });
 
 test('staff rock is alive at every facing while walking', () => {
-  const ew = staffWield(1, 1, 1, 0, 1, 1);
-  const ns = staffWield(1, 0.2, 1, 0, 1, 0);
+  const ew = staffWield(0, 1, 1, 0, 1, 1);
+  const ns = staffWield(-Math.PI / 2, 1, 1, 0, 1, 0);
   assert.ok(Math.abs(ew.angle + Math.PI / 2) > 0.05, 'E/W stride rocks the stick');
-  assert.ok(Math.abs(ns.angle + Math.PI / 2) > 0.015, 'N/S stride rocks it too (the old rock died here)');
-});
-
-test('staff second hand: free at idle/walk, on the shaft at run', () => {
-  assert.equal(staffWield(1, 1, 0, 0, 0, 1).twoHandK, 0, 'standing: one hand, stick planted');
-  assert.ok(staffWield(1, 1, 1, 0.1, 0, 1).twoHandK < 0.2, 'slow walk: still one hand');
-  const run = staffWield(1, 1, 1, 1, 0, 1);
-  assert.equal(run.twoHandK, 1, 'sprint: both hands on the wood');
-  assert.ok(run.chokeS > 0.15, 'the second hand chokes a real distance up the shaft');
+  assert.ok(
+    Math.abs(ns.angle + Math.PI / 2) > 0.008 || Math.abs(ns.fore - 1) > 0.02,
+    'N/S stride works it too — as depth (length breathing), not screen tilt',
+  );
 });
 
 test('staff channels are continuous through the ladder', () => {
-  let prev = staffWield(1, 1, 0, 0, 0.5, 1);
+  let prev = staffWield(0, 1, 0, 0, 0.5, 1);
   for (let i = 1; i <= 40; i++) {
     const u = i / 40;
     const moveK = Math.min(1, u * 2);
     const runK = Math.max(0, u * 2 - 1);
-    const f = staffWield(1, 1, moveK, runK, 0.5, 1);
-    assert.ok(Math.abs(f.angle - prev.angle) < 0.12, `angle step ${i}`);
-    assert.ok(Math.abs(f.twoHandK - prev.twoHandK) < 0.15, `claim step ${i}`);
+    const f = staffWield(0, 1, moveK, runK, 0.5, 1);
+    assert.ok(Math.abs(f.angle - prev.angle) < 0.14, `angle step ${i}`);
     assert.ok(Math.abs(f.grip - prev.grip) < 0.05, `grip step ${i}`);
+    assert.ok(Math.abs(f.fore - prev.fore) < 0.08, `fore step ${i}`);
     prev = f;
   }
 });
 
-test('staff planted hand sits out the pump, the carry hand rejoins it', () => {
-  assert.ok(staffWield(1, 1, 0, 0, 0, 1).pumpK < 0.4, 'planted: the stick holds the hand still');
-  assert.equal(staffWield(1, 1, 1, 1, 0, 1).pumpK, 1, 'run carry: the arm swings with the gait');
+test('staff planted hand sits out the pump, the run carry pumps with the arm', () => {
+  assert.ok(staffWield(0, 1, 0, 0, 0, 1).pumpK < 0.4, 'planted: the stick holds the hand still');
+  assert.equal(staffWield(0, 1, 1, 1, 0, 1).pumpK, 1, 'run carry: the arm swings with the gait');
+});
+
+// ---- the pole school ----
+
+test('pole school: every channel neutral at both ends of the beat', () => {
+  for (const stage of [0, 1] as const) {
+    for (const t of [0, 1]) {
+      const f = staffStrikeFrame(stage, t);
+      assert.ok(Math.abs(f.arm - 0.5) < 1e-6, `arm rests (s${stage} t${t})`);
+      assert.ok(Math.abs(f.spin) < 1e-6, `spin unwinds (s${stage} t${t})`);
+      assert.ok(Math.abs(f.reach - 1) < 1e-6, `reach home (s${stage} t${t})`);
+      assert.ok(Math.abs(f.lift) < 1e-6 && Math.abs(f.lean) < 1e-6, `lift/lean home (s${stage} t${t})`);
+    }
+  }
+});
+
+test('pole school: the shaft rides tangent through the cut', () => {
+  for (const stage of [0, 1] as const) {
+    const f = staffStrikeFrame(stage, 0.36); // mid-snap
+    assert.ok(
+      Math.abs(Math.abs(f.spin) - Math.PI / 2) < 0.6,
+      `s${stage}: a turning bar, not a swung radius (spin ${f.spin.toFixed(2)})`,
+    );
+    assert.ok(Math.abs(f.grip - 0.5) < 0.01, 'sweeps pivot at the middle');
+  }
+});
+
+test('pole school: stages alternate direction and line', () => {
+  const a = STAFFDIR(0);
+  const b = STAFFDIR(1);
+  assert.ok(a * b < 0, 'the moulinet and the butt cut sweep opposite ways');
+  const s0 = staffStrikeFrame(0, 0.24);
+  const s1 = staffStrikeFrame(1, 0.24);
+  assert.ok(s0.lift < 0 && s1.lift > 0, 'high coil answers low coil');
+  function STAFFDIR(stage: 0 | 1): number {
+    const f0 = staffStrikeFrame(stage, 0.24);
+    const f1 = staffStrikeFrame(stage, 0.42);
+    return f1.arm - f0.arm;
+  }
+});
+
+test('pole school: the trail lives from the loosing through the extension', () => {
+  assert.equal(staffStrikeTrail(0, 0.1), null, 'no trail in the windup');
+  const mid = staffStrikeTrail(0, 0.4);
+  assert.ok(mid !== null && mid.alpha > 0.9, 'full through the cut');
+  assert.equal(staffStrikeTrail(0, 0.7), null, 'gone after the extension');
 });
 
 // ---- the bow ----
 
 test('bow: the approved half-ready carry holds through the gait', () => {
-  const idle = bowWield(1, 0, 0);
-  const run = bowWield(1, 1, 1);
+  const idle = bowWield(0, 1, 0, 0);
+  const run = bowWield(0, 1, 1, 1);
   assert.ok(Math.abs(idle.angle - 0.85) < 1e-9, 'idle at the user-approved rake');
   assert.ok(run.angle < idle.angle, 'the run leans a hair further toward ready');
   assert.ok(Math.abs(run.angle - idle.angle) < 0.15, 'a hair, not a new pose');
 });
 
 test('bow: mirror symmetry through the facing weight', () => {
-  const r = bowWield(1, 0, 0).angle;
-  const l = bowWield(-1, 0, 0).angle;
+  const r = bowWield(0, 1, 0, 0).angle;
+  const l = bowWield(Math.PI, -1, 0, 0).angle;
   assert.ok(Math.abs(r + l - Math.PI) < 1e-9, 'angles mirror across vertical');
+});
+
+test('bow: the plane compresses toward the camera line, gently', () => {
+  const e = bowWield(0, 1, 0, 0);
+  const n = bowWield(-Math.PI / 2, 0.2, 0, 0);
+  assert.ok(Math.abs(e.fore - 1) < 1e-9, 'full at profile');
+  assert.ok(n.fore < 0.9 && n.fore > 0.7, `half the rod law's depth (${n.fore.toFixed(3)})`);
+});
+
+test('gaitK feeds bladeCarriage the same ladder gaitLift eases', () => {
+  const g = gaitK(1, 0.4);
+  const viaCarriage = bladeCarriage('normal', 1, g, 0);
+  const direct = Math.PI / 2 - (0.32 + 0.6 * gaitLift(1, 0.4));
+  assert.ok(Math.abs(viaCarriage.angle - direct) < 1e-9, 'one ladder, two entry points');
 });

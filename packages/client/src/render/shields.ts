@@ -776,7 +776,12 @@ export function solveShield(
   // dead in front of a receding body it hides behind its own bearer,
   // and a shield the player cannot see is a shield they stop trusting.
   lat += 0.12 * Math.max(0, -o.fy);
-  let lift = -0.03 * guard;
+  // THE FOREARM LAW: seen from behind, a carried shield rides where
+  // the forearm carries it — mid-torso, top rim by the shoulder — not
+  // hanging at the hip. Without this rise the away facings drew the
+  // boards over the LEGS, which read as a shield strapped to the
+  // bearer's back(side) instead of hanging off a bent arm.
+  let lift = -0.03 * guard - 0.16 * Math.max(0, -o.fy);
   // The deflecting angle: a carried shield sits turned off the line; a
   // raised one squares to the threat but keeps a slope to skate blows.
   // Kept modest — past ~0.4 rad the face turns so far out of the frame
@@ -872,7 +877,15 @@ export function solveShield(
   // the rig already says the off arm lives — and that separation is
   // what keeps an edge-on shield from merging into the sword sharing
   // its screen column. Only the forward REACH is trimmed (see above).
-  let cy = chestY + o.fy * fwd * s * CARRY_DROP + GROUND_K * Math.abs(o.fx) * lat * s + lift * s;
+  // The across-the-body depth drop is a NEAR-side fact: facing the
+  // camera the off arm is on the near side and the drop carries the
+  // shield toward the eye (down-screen). Facing AWAY the off arm is
+  // the FAR side — deeper into the scene — so the drop fades out
+  // rather than pulling the boards down over the legs (the away-
+  // diagonal bug: the shield read as strapped behind the knees).
+  const nearK = 1 + Math.min(0, o.fy) * 0.75;
+  let cy =
+    chestY + o.fy * fwd * s * CARRY_DROP + GROUND_K * Math.abs(o.fx) * lat * s * nearK + lift * s;
   // The stride's lateral lag: the mass trails the body a little.
   cx -= o.poleX * bob * 0.02 * s;
   cy -= o.poleY * bob * 0.02 * s * GROUND_K;

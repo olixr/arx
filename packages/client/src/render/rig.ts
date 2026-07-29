@@ -39,7 +39,18 @@ import {
   type StrikeTrail,
 } from './carriage.js';
 import { STOW_HANDOFF, sheathePhases, stowBack, stowBlade } from './sheath.js';
-import { STAFF_GUARD_CHOKE_S, armPump, bowWield, gaitK, staffWield } from './wield.js';
+import {
+  STAFF_GUARD_CHOKE_S,
+  armPump,
+  bowWield,
+  gaitK,
+  projectCarry,
+  projectStrike,
+  runnerLift,
+  staffStrikeFrame,
+  staffStrikeTrail,
+  staffWield,
+} from './wield.js';
 import {
   drawShield,
   drawShieldStraps,
@@ -2342,6 +2353,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   let strikeReachK = 1;
   let strikeLiftS = 0;
   let strikeBladeRel: number | null = null;
+  // THE POLE SCHOOL: a struck staff rides TANGENT to its sweep — its
+  // own wrist channel, never the blade's — and pivots at the middle.
+  let staffSpin: number | null = null;
+  let staffStrikeGrip: number | null = null;
   let mainTrail: StrikeTrail | null = null;
   // Dual-wield echo: the off blade's own cut on the back of the beat
   // (the ONE-TWO law) — channels + a ramp weight blending it out of
@@ -2364,13 +2379,28 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   let ice: { r: number; lift: number } | null = null;
   if (meleeStage === 0 || meleeStage === 1) {
     const t = rig.poseT;
-    const f = strikeFrame(rogueMelee ? 'rogue' : 'normal', meleeStage as 0 | 1, t);
-    swingOffset = f.arm;
-    strikeReachK = f.reach;
-    strikeLiftS = f.lift;
-    if (isSword) strikeBladeRel = f.blade;
-    lean = f.lean;
-    mainTrail = strikeTrail(rogueMelee ? 'rogue' : 'normal', meleeStage as 0 | 1, t);
+    if (isStaff) {
+      // THE POLE SCHOOL: the staff fights from the middle — the
+      // moulinet sweep and the butt cut, shaft tangent to the arc,
+      // both hands on the wood (the guard claim below rides the same
+      // choke through the whole beat).
+      const f = staffStrikeFrame(meleeStage as 0 | 1, t);
+      swingOffset = f.arm;
+      strikeReachK = f.reach;
+      strikeLiftS = f.lift;
+      staffSpin = f.spin;
+      staffStrikeGrip = f.grip;
+      lean = f.lean;
+      mainTrail = staffStrikeTrail(meleeStage as 0 | 1, t);
+    } else {
+      const f = strikeFrame(rogueMelee ? 'rogue' : 'normal', meleeStage as 0 | 1, t);
+      swingOffset = f.arm;
+      strikeReachK = f.reach;
+      strikeLiftS = f.lift;
+      if (isSword) strikeBladeRel = f.blade;
+      lean = f.lean;
+      mainTrail = strikeTrail(rogueMelee ? 'rogue' : 'normal', meleeStage as 0 | 1, t);
+    }
   } else if (meleeStage === 2) {
     // Finisher. Standard grip: haul the blade to the hip — tip on the
     // mark — then RAM it down the aim and hold it buried. Reverse
@@ -2744,28 +2774,45 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // leveling out into a low run carry as the gait becomes a sprint.
   // Everything blends on poseT, so a combat follow-through settles
   // into carriage over the same 280 ms every pose change uses.
+  // Foreshortening from the projection law — threaded to the painter
+  // so a weapon pointing into (or out of) the scene draws SHORT. The
+  // length change, not the angle, is what tells the eye the steel
+  // lives in the world's depth instead of rotating on a flat card.
+  let mainFore = 1;
+  let offFore = 1;
   let heldAngle = thrustR !== null ? rig.dir : mainAngle;
   if (strikeBladeRel !== null) {
     // THE WRIST LAW (strikeFrame's blade channel): the blade lags the
     // arm cocked through the coil and the hold, whips to a lead at
     // impact, settles straight — a whip-crack cut, not a windshield
     // wiper. The reverse grip runs the same beat around its π
-    // reversal, tight and locked — the grip never lies.
-    heldAngle = mainAngle + strikeBladeRel;
+    // reversal, tight and locked — the grip never lies. The cut
+    // sweeps the GROUND plane, so the strike projection bends the
+    // screen angle and shortens the steel along the depth axis.
+    const ps = projectStrike(mainAngle + strikeBladeRel);
+    heldAngle = ps.angle;
+    mainFore = ps.fore;
+  } else if (staffSpin !== null) {
+    // THE POLE SCHOOL's tangent hold, through the same projection.
+    const ps = projectStrike(mainAngle + staffSpin);
+    heldAngle = ps.angle;
+    mainFore = ps.fore;
   } else if (ice) {
     // The reversed blade stays pointed at the strike mark all the way
     // through the coil and the drive — menace through the whole beat.
+    // The mark is a SCREEN target, so the angle stays target-true; the
+    // depth read comes from the length alone.
     const markX = rig.x + fx * 0.6 * s * wS;
     const markY = armY + fy * 0.6 * s + 0.26 * s;
     heldAngle = Math.atan2(markY - mainY, markX - mainX);
+    mainFore = projectStrike(rig.dir).fore;
+  } else if (thrustR !== null) {
+    // The lunge rams straight down the aim — angle target-true, the
+    // blade honestly shorter when the aim runs into the screen.
+    mainFore = projectStrike(rig.dir).fore;
   }
   let staffGrip = 0.34; // combat default: gripped low, business end forward
-  // THE STAFF IS TWO-HANDED: the off hand's claim on the shaft (set by
-  // the rest ladder at a run, and by the guard out of rest) and where
-  // it lands along the wood. The claim itself is applied AFTER the
-  // sheathe blend, so a stowing staff releases the second fist.
-  let staffTwoHand = 0;
-  let staffChokeS = STAFF_GUARD_CHOKE_S;
+  if (staffStrikeGrip !== null) staffGrip = staffStrikeGrip;
   let armSwingK = 1;
   let restSettle = 0;
   const restSide = Math.sign(fx) || 1;
@@ -2837,8 +2884,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // blended on the same ramp weight as the fist, so the blade and the
   // hand leave (and rejoin) the guard together.
   if (echoF && echoW > 0) {
-    const eTarget = rig.dir + echoF.arm + echoF.blade;
-    offBladeAngle += angleDelta(offBladeAngle, eTarget) * echoW;
+    // The echo cut sweeps the same ground plane — same projection.
+    const ep = projectStrike(rig.dir + echoF.arm + echoF.blade);
+    offBladeAngle += angleDelta(offBladeAngle, ep.angle) * echoW;
+    offFore = 1 + (ep.fore - 1) * echoW;
   }
   if (
     (rig.pose === PoseState.Walk || rig.pose === PoseState.Idle || rig.pose === PoseState.Sneak) &&
@@ -2860,16 +2909,31 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // "hands come outward" read). Linear in profileK, so the stance
     // breathes continuously through every diagonal.
     const hangW = ww * 1.08 + (tw * 1.02 - ww * 1.08) * profileK;
+    // THE RUNNER'S ELBOW: an empty fist rises toward the ribs as the
+    // gait becomes a sprint — bent arms pumping with the legs, the
+    // shape every running reference draws. Armed fists keep their
+    // carriage heights (a carry law is a verdict).
+    const elbowLift = runnerLift(Math.min(1, rig.poleStrength), rig.runF) * s;
     let hx = rig.x + wSide * hangW * wS;
-    let hy = armY + 0.17 * s;
+    let hy = armY + 0.17 * s - elbowLift;
     let hAngle = Math.PI / 2 + sideW * (0.3 + 0.35 * runK); // tip down, trailing
+    let hFore = 1; // rest-carry foreshortening, blended in on the settle
     // How "at rest" the rest really is: flourishes and wrist life only
     // play when the figure is planted (no gait, no sneak crouch) —
     // a sneaking rogue does not twirl knives.
     const idleK = (1 - Math.min(1, rig.poleStrength)) * (1 - crouch);
     if (isSword) {
+      // Hand lanes ride the facing weight; the ANGLE rides the
+      // projection law — the carriage's profile rake is authored as a
+      // world pitch and projected, so at E/W the user-approved angles
+      // reproduce exactly while N/S carries genuinely foreshorten
+      // (the blade points into the scene and draws short) instead of
+      // being relaxed toward vertical by a screen-side floor.
       const c = bladeCarriage(mainGrip, sideW, runK, mainCompact);
-      hAngle = c.angle;
+      const canon = bladeCarriage(mainGrip, 1, runK, mainCompact);
+      const proj = projectCarry(rig.dir, Math.PI / 2 - canon.angle);
+      hAngle = proj.angle;
+      hFore = proj.fore;
       hx += c.dx * s * wS;
       hy = armY + (0.17 + c.dy) * s;
       // DUAL-WIELD PROFILE FLIP (position half): side-on you cannot see
@@ -2897,56 +2961,66 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       }
     }
     if (isStaff) {
-      // THE STAFF LADDER (wield.ts): planted walking stick at idle,
-      // rocking with the stride at a walk — at EVERY facing now, the
-      // old rock rode the screen-x pole and died on a N/S road —
-      // leveling into the two-hand trail carry at a run, where the
-      // off hand joins the shaft (the claim lands below, after the
-      // pump, so the second fist rides the same wood the main moves).
+      // THE STAFF LADDER v2 (wield.ts): planted walking stick at
+      // idle, rocking with the stride at a walk (in the TRAVEL plane
+      // now, alive at every facing), leveling into a ONE-hand balance
+      // carry at a run — the off hand is free and pumps with the legs
+      // (the user's verdict on the two-hand run: nobody crosses their
+      // body to double-grip a pole at a dead sprint). Two hands meet
+      // on the wood only in the quarterstaff guard and its strikes.
       const sf = staffWield(
+        rig.dir,
         wSide,
-        sideW,
         Math.min(1, rig.poleStrength),
         rig.runF,
         swS,
         rig.poleX,
       );
       hAngle = sf.angle;
+      hFore = sf.fore;
       hx = rig.x + sf.dx * s * wS + fx * 0.05 * s;
       hy = armY + sf.dy * s;
       staffGrip = sf.grip;
       armSwingK = sf.pumpK;
-      staffTwoHand = sf.twoHandK * restSettle;
-      staffChokeS = sf.chokeS;
     } else if (isBow) {
       // The walking carry, reference-true (wield.ts): gripped by the
       // wood with the STRING facing the body (upper side) and the
       // wooden belly curving down-forward — the bow leans half-ready,
       // top limb toward the shoulder line, lower limb by the thigh, so
       // raising it into the aim is one motion. Continuous in the
-      // facing weight (no binary mirror snap at north/south), and the
-      // gait ladder firms the carry a hair toward ready on the run.
-      const bf = bowWield(sideW, Math.min(1, rig.poleStrength), rig.runF);
+      // facing weight (no binary mirror snap at north/south), the gait
+      // ladder firms the carry toward ready on the run, and the
+      // projection law compresses the limbs gently at the camera-line
+      // facings — a plane's half-measure of the rod law's depth.
+      const bf = bowWield(rig.dir, sideW, Math.min(1, rig.poleStrength), rig.runF);
       hAngle = bf.angle;
+      hFore = bf.fore;
       hx += bf.dx * s * wS;
       hy = armY + bf.dy * s;
     }
     mainX += (hx - mainX) * restSettle;
     mainY += (hy - mainY) * restSettle;
     heldAngle += angleDelta(heldAngle, hAngle) * restSettle;
+    mainFore += (hFore - mainFore) * restSettle;
     // The off fist: bare hands hang; a dual wielder's second blade gets
     // the same grip vocabulary as the main — its own side, its own
     // grip, its own flourish phase (the two never twirl in sync). The
     // hand rides a touch higher and tighter than the main: the trailing
     // blade of a paired stance, not a mirror image.
     let ox = rig.x - wSide * hangW * wS;
-    let oy = armY + 0.17 * s;
+    let oy = armY + 0.17 * s - elbowLift;
     if (offBlade) {
       // The carriage mirrors on FACING, not on the hanging side — the
       // off fist trails the facing, so its outward push (dx) mirrors
       // while the blade angles stay true to forward/backward.
       const oc = bladeCarriage(offGrip, sideW, runK, offCompact);
-      let oAngle = oc.angle;
+      // The off blade rides the same projection law as the main: its
+      // profile rake becomes a world pitch, and N/S carries draw
+      // honestly short instead of relaxing to a screen vertical.
+      const oCanon = bladeCarriage(offGrip, 1, runK, offCompact);
+      const oProj = projectCarry(rig.dir, Math.PI / 2 - oCanon.angle);
+      let oAngle = oProj.angle;
+      offFore += (oProj.fore - offFore) * restSettle;
       // The off fist is the NEAR arm — visible at the side from every
       // facing; side-on it pulls part-way onto the body (where a near
       // arm actually hangs in profile) and the depth flip below paints
@@ -3190,21 +3264,24 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     }
   }
 
-  // ---- THE STAFF IS TWO-HANDED. Out of rest the quarterstaff guard
-  // puts the off hand ON the wood ahead of the main fist (so every
-  // staff swing and thrust is a two-handed sweep); at a run the rest
-  // ladder's trail carry claims it the same way. The claim is placed
-  // AFTER the sheathe blend so a stowing staff releases the second
-  // fist, and it yields to everything with a better right to the hand:
-  // the cast punch (castPunch), the seat (sit), a busy off blade, the
-  // bow, and the shield's own claim below, which lands after and wins.
+  // ---- THE QUARTERSTAFF GUARD. Out of rest the off hand belongs ON
+  // the wood ahead of the main fist, so every staff sweep and thrust
+  // is a two-handed cut — but ONLY in the fight: the rest ladder never
+  // claims it (a run is a one-hand balance carry; the user's verdict).
+  // The claim is placed AFTER the sheathe blend so a stowing staff
+  // releases the second fist, and it yields to everything with a
+  // better right to the hand: the cast punch (castPunch), the seat
+  // (sit), a busy off blade, the bow, and the shield's own claim
+  // below, which lands after and wins.
   if (isStaff && !offBlade && !drawing && !loosing) {
-    const guardK = 1 - restSettle;
-    let claim = Math.max(staffTwoHand, guardK) * (1 - sit) * (1 - castPunch);
+    let claim = (1 - restSettle) * (1 - sit) * (1 - castPunch);
     claim *= 1 - sheathePhases(sheath).grabK;
     if (claim > 0) {
-      const cx = mainX + Math.cos(heldAngle) * staffChokeS * s * wS;
-      const cy = mainY + Math.sin(heldAngle) * staffChokeS * s + 0.02 * s;
+      // The choke rides the drawn shaft — mainFore keeps the second
+      // fist on the foreshortened wood at the camera-line facings.
+      const chokeS = STAFF_GUARD_CHOKE_S * mainFore;
+      const cx = mainX + Math.cos(heldAngle) * chokeS * s * wS;
+      const cy = mainY + Math.sin(heldAngle) * chokeS * s + 0.02 * s;
       offX += (cx - offX) * claim;
       offY += (cy - offY) * claim;
     }
@@ -3260,6 +3337,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // return rings low) and fading through the held extension. The echo
   // draws its own smaller, fainter crescent — the second beat of the
   // one-two. The finishers fire a piston streak down the aim instead.
+  // THE GROUND-ARC LAW: a cut sweeps the ground plane around the
+  // body, so its trail is an ELLIPSE on screen — full width across,
+  // foreshortened along the depth axis — not a screen circle. A
+  // circular trail was the one element still telling the eye the
+  // fight happened on a flat card.
+  const TRAIL_K = 0.62;
   const drawCrescent = (tr: StrikeTrail, r0: number, k: number): void => {
     const a = Math.max(0, Math.min(1, tr.alpha)) * k;
     if (a <= 0) return;
@@ -3271,17 +3354,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     ctx.strokeStyle = `rgba(244, 239, 228, ${0.28 * a})`;
     ctx.lineWidth = 0.16 * s * k;
     ctx.beginPath();
-    ctx.arc(rig.x, cy, r0, from, to, ccw);
+    ctx.ellipse(rig.x, cy, r0, r0 * TRAIL_K, 0, from, to, ccw);
     ctx.stroke();
     ctx.strokeStyle = `rgba(255, 252, 240, ${0.75 * a})`;
     ctx.lineWidth = 0.055 * s * k;
     ctx.beginPath();
-    ctx.arc(rig.x, cy, r0 + 0.09 * s, from, to, ccw);
+    ctx.ellipse(rig.x, cy, r0 + 0.09 * s, (r0 + 0.09 * s) * TRAIL_K, 0, from, to, ccw);
     ctx.stroke();
     ctx.lineCap = 'butt';
   };
-  if (mainTrail && weapon?.weapon?.style === 'melee') {
-    drawCrescent(mainTrail, (weapon.weapon.range ?? 1.5) * 0.27 * s, 1);
+  if (mainTrail && (weapon?.weapon?.style === 'melee' || isStaff)) {
+    // A staff's WEAPON range is its spell reach — the sweep is an
+    // arm's-length fact, so the crescent radius caps at melee reach.
+    drawCrescent(mainTrail, Math.min(weapon?.weapon?.range ?? 1.6, 2) * 0.27 * s, 1);
   }
   if (echoTr && offBlade) {
     const offRange = itemDef(rig.offhandItem!)?.weapon?.range ?? 1.5;
@@ -3352,6 +3437,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       drawHeldItem(ctx, rig.offhandItem!, offSt.color, offX, offY, offBladeAngle, s, rig, {
         ench: rig.offhandEnch,
         flip: offFlip,
+        fore: offFore,
       });
     }
     // THE SHIELD'S OWN LAYER ORDER, and it is not the arm's. Turned
@@ -3604,6 +3690,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         carry: isBow ? 1 : 0,
         ench: rig.weaponEnch,
         flip: mainFlip,
+        fore: mainFore,
       });
     }
   };
@@ -4548,12 +4635,25 @@ function drawHeldItem(
     carry?: number;
     ench?: string;
     flip?: boolean;
+    /**
+     * THE PROJECTION LAW's length: 1 in the screen plane, shrinking as
+     * the carry points into (or out of) the scene. Rod classes
+     * compress along their long axis (local x); the bow — whose length
+     * runs local ±y — compresses across it. The foreshortening is what
+     * tells the eye the item lives in the world's depth.
+     */
+    fore?: number;
   },
 ): void {
   ctx.save();
   ctx.translate(hx, hy);
   ctx.rotate(angle);
   if (extra?.flip) ctx.scale(1, -1);
+  const fore = extra?.fore ?? 1;
+  if (fore !== 1) {
+    if (bowStyle(itemId) !== null) ctx.scale(1, fore);
+    else ctx.scale(fore, 1);
+  }
   // Mid-arc wood point: the bow's quadratic (tips 0.06s, belly control
   // 0.3s) passes through x = 0.18s at grip height — align THAT to the
   // fist, or the bow reads as resting on the wrist.

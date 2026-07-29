@@ -6,10 +6,10 @@
  * around that: how the whole body CARRIES a held thing through the
  * gait ladder — idle → walk → run are three stances, not two — how
  * the arms pump honestly along the direction of travel at every
- * facing, how a two-handed staff actually earns its second hand, and
- * how a bow is held by the wood at every gait. Pure functions, no
- * ctx, no rig state: both hands and the tests share one law source
- * (the carriage.ts pattern, grown to every class).
+ * facing, how a staff is carried and FOUGHT with, and how a bow is
+ * held by the wood at every gait. Pure functions, no ctx, no rig
+ * state: both hands and the tests share one law source (the
+ * carriage.ts pattern, grown to every class).
  *
  * Frame conventions match carriage.ts: screen radians with +y DOWN,
  * angles point fist→tip (π/2 straight down, −π/2 straight up),
@@ -19,10 +19,10 @@
 /**
  * THE GROUND LAW's foreshortening factor (the shield plane's own
  * GROUND_K): one unit of world-forward travel shows as ~0.52 units of
- * screen-vertical. Everything in this file that turns travel into
- * screen motion runs through it, so a north-south stride reads with
- * the same honesty as an east-west one — smaller on screen because it
- * is foreshortened, never because it was suppressed.
+ * screen-vertical. Everything in this file that turns world direction
+ * into screen direction runs through it, so a north-south carry reads
+ * with the same honesty as an east-west one — smaller on screen
+ * because it is foreshortened, never because it was suppressed.
  */
 export const WIELD_GROUND_K = 0.52;
 
@@ -53,6 +53,64 @@ export function gaitLift(moveK: number, runK: number): number {
   return smooth(gaitK(moveK, runK));
 }
 
+// ------------------------------------------------ the projection law
+//
+// THE HELD THING IS A VECTOR. A carry is authored in the WORLD — a
+// pitch off vertical, tilted toward (or away from) the facing — and
+// projected onto the screen through the ground law, exactly the way
+// the shield plane projects its normal. What falls out is not just a
+// screen angle but a LENGTH: a blade leveled north points into the
+// scene and draws foreshortened; leveled east it lies across the
+// screen at full length. That length change is what tells the eye the
+// weapon lives in the world's 3D space instead of rotating on a flat
+// card — and at the profile facings the projection reproduces the
+// user-approved carriage angles EXACTLY (h.y = 0 there, so the ground
+// factor never touches them).
+
+export interface CarryProjection {
+  /** Screen angle, fist→tip. */
+  angle: number;
+  /** Length multiplier for the painter — 1 in the screen plane. */
+  fore: number;
+}
+
+/**
+ * Project a held rod: `pitch` is the tilt off straight-down, positive
+ * toward the `yaw` heading, negative trailing away from it. Clamped
+ * fore keeps a fully camera-line carry from collapsing to a stub.
+ */
+export function projectCarry(yaw: number, pitch: number): CarryProjection {
+  const h = Math.sin(pitch);
+  const v = Math.cos(pitch);
+  const sx = Math.cos(yaw) * h;
+  const sy = Math.sin(yaw) * h * WIELD_GROUND_K + v;
+  const len = Math.hypot(sx, sy);
+  return {
+    angle: Math.atan2(sy, sx),
+    fore: Math.max(0.55, Math.min(1.06, len)),
+  };
+}
+
+/**
+ * The strike-plane projection: a cut sweeps the GROUND plane around
+ * the body, so a blade mid-sweep foreshortens as it points into (or
+ * out of) the screen. Softened against the pure ground factor — the
+ * held extension of a killing blow keeps enough length to read as a
+ * blow — with the same law shape: full length across the screen,
+ * honestly shorter along the depth axis.
+ */
+export function projectStrike(yaw: number): CarryProjection {
+  const K = 0.7;
+  const sx = Math.cos(yaw);
+  const sy = Math.sin(yaw) * K;
+  return {
+    angle: Math.atan2(sy, sx),
+    fore: Math.max(0.72, Math.hypot(sx, sy)),
+  };
+}
+
+// --------------------------------------------------- the honest pump
+
 export interface PumpFrame {
   /** Main-hand offset, units of s (off hand mirrors both channels). */
   dx: number;
@@ -66,17 +124,16 @@ export interface PumpFrame {
  * foreshortened by the ground law — never along a raw screen axis.
  * East-west that is the familiar fore/aft swing; north-south the
  * hands genuinely reach toward and away from the camera, smaller on
- * screen because the world says so. This replaces the old pair of
- * symptom patches (an extra front-on pump clamp that froze N/S arms
- * near-dead, and a bolt-on lateral sway) with one law: pump vector =
- * travel · groundK, armed hands restrain it uniformly, and the
- * counter-sway is the torso answering the stride wherever the
- * fore/aft component leaves the screen.
+ * screen because the world says so. One law replaces the old pair of
+ * symptom patches (the front-on pump clamp that froze N/S arms
+ * near-dead, and a bolt-on lateral sway).
  *
  * `sw` is the smoothed swing drive (±1), `amp` the caller's gait
- * amplitude in units of s, (`px`,`py`) the unit travel direction.
- * `armedK` 0..1 = how loaded the hand is (a weapon restrains the
- * vertical throw; a bare fist swings free).
+ * amplitude, (`px`,`py`) the unit travel direction. `armedK` 0..1 =
+ * how loaded the hand is (a weapon restrains the vertical throw; a
+ * bare fist swings free). The per-footfall bounce is a separate
+ * channel the rig owns: it rides |sw|, not sw, and mixing it in here
+ * would let the shared bob cancel the alternating throw.
  */
 export function armPump(
   px: number,
@@ -85,59 +142,62 @@ export function armPump(
   amp: number,
   armedK: number,
 ): PumpFrame {
-  // Vertical throw: foreshortened by the ground, then restrained by
-  // the load — a carried blade quiets the pump without killing it.
-  // (The per-footfall run bounce is a separate channel the rig owns:
-  // it rides |sw|, not sw, and mixing it in here would let the shared
-  // bob cancel the alternating throw it is supposed to sit on.)
   const vert = WIELD_GROUND_K * (1 - 0.45 * armedK);
   return {
     dx: px * sw * amp,
     dy: py * sw * amp * vert,
-    // The counter-sway lives where the travel leaves the screen: full
-    // on a N/S gait, gone at profile (|px| = 1), continuous between.
     sway: sw * (1 - Math.abs(px)) * 0.018,
   };
 }
+
+/**
+ * THE RUNNER'S ELBOW: a free hand does not dangle at a sprint — the
+ * elbow bends and the fist rises toward the ribs, pumping in unison
+ * with the legs (any running reference: hands carried at waist
+ * height, driving fore and aft). Returned as the lift OFF the relaxed
+ * hang, units of s, for the caller to subtract from the hang height.
+ * Armed hands keep their own carriage heights — a carry law is a
+ * verdict — so this applies to EMPTY fists only.
+ */
+export function runnerLift(moveK: number, runK: number): number {
+  return 0.11 * smooth(Math.max(0, Math.min(1, runK))) * Math.max(0, Math.min(1, moveK));
+}
+
+// ----------------------------------------------------------- staff
 
 export interface StaffWield {
   /** Main-hand offset from (x, armY), units of s (dx pre-squash). */
   dx: number;
   dy: number;
-  /** Staff angle, fist→crown, screen radians. */
+  /** Staff angle, fist→crown, screen radians (projected). */
   angle: number;
+  /** Foreshortened length for the painter. */
+  fore: number;
   /** Fraction of the shaft trailing behind the fist (painter grip). */
   grip: number;
   /** How much the planted hand sits out the arm pump (0 planted…1 free). */
   pumpK: number;
-  /**
-   * The second hand's claim on the shaft (0 = off hand free, 1 = both
-   * hands on the wood) and where it lands: `chokeS` units of s along
-   * the staff angle from the main fist, positive toward the crown.
-   */
-  twoHandK: number;
-  chokeS: number;
 }
 
 /**
- * THE STAFF IS TWO-HANDED — the walking-stick ladder.
+ * THE STAFF LADDER, second edition — one hand on the move.
  *
  * Idle: planted upright beside the body, the true walking stick, off
- * hand free at its hang. Walk: still the planted stick — it ROCKS
- * with the stride now at every facing (the old rock only worked E/W
- * because it rode the screen-x pole; it now rides the stride clock
- * itself, tipped along the travel). Run: the staff levels into the
- * two-hand trail carry and the OFF HAND JOINS THE SHAFT, choked
- * toward the crown — nobody sprints leaning on a stick. Every channel
- * is continuous in the ladder, so the second hand reaches for the
- * wood as the jog builds and lets go as it dies.
+ * hand free. Walk: still the planted stick, ROCKING with the stride
+ * in the travel plane (the rock is a pitch in the world now, so it
+ * projects honestly at every facing). Run: the staff LEVELS into a
+ * one-hand trail carry at the balance point — nobody sprints leaning
+ * on a stick, and nobody crosses their body to two-hand a pole at a
+ * dead run either (the user's verdict on edition one): the off hand
+ * is FREE and pumps with the legs. Both hands meet on the wood only
+ * where two hands belong — the quarterstaff guard and its strikes.
  *
- * `sideS`/`sideW` are the rig's smoothed side sign and facing weight,
- * `sw` the smoothed swing drive, `px` the unit travel x.
+ * The run carry rides the projection law: sprinting north the staff
+ * points up-screen and draws SHORT — the length change is the depth.
  */
 export function staffWield(
+  dir: number,
   sideS: number,
-  sideW: number,
   moveK: number,
   runK: number,
   sw: number,
@@ -145,59 +205,211 @@ export function staffWield(
 ): StaffWield {
   const carry = smooth(runK);
   const m = Math.max(0, Math.min(1, moveK));
-  // The stride works the planted stick: lateral rock where the travel
-  // is lateral, a small fore/aft pump (ground-foreshortened) where the
-  // travel runs at the camera — the stick is alive on a N/S walk too.
-  const rockLat = -sw * 0.2 * px;
-  const rockFwd = sw * 0.07 * (1 - Math.abs(px)) * WIELD_GROUND_K;
-  const rock = (rockLat + rockFwd) * (1 - carry) * m;
-  const up = -Math.PI / 2 + rock;
-  // Level trail carry — continuous in the facing weight (full level at
-  // profile, near-upright when the travel runs at the camera).
-  const level = -Math.PI / 2 + sideW * (Math.PI / 2 - 0.3);
+  // The stride works the planted stick: a pitch oscillation in the
+  // travel plane. Slightly stronger across the screen (the lateral
+  // rock the eye expects) than along the depth, but alive everywhere.
+  const rock = sw * (0.2 * Math.abs(px) + 0.11 * (1 - Math.abs(px))) * (1 - carry) * m;
+  // The crown points UP at rest — pitch π in the projection's from-
+  // vertical-down convention. Idle/walk: near-vertical, tip planted.
+  // Run: the crown levels toward the heading and stops a touch HIGH
+  // (π/2 + 0.15), butt trailing down-back — the balance carry of
+  // someone who means to plant the stick again when they stop.
+  const pitch = Math.PI - rock - carry * (Math.PI / 2 - 0.15);
+  const p = projectCarry(dir, pitch);
   return {
-    dx: sideS * (0.27 + 0.02 * carry),
-    dy: -0.04 + 0.2 * carry,
-    angle: up + (level - up) * carry,
-    grip: 0.72 - 0.3 * carry,
+    dx: sideS * (0.27 - 0.06 * carry),
+    dy: -0.04 + 0.17 * carry,
+    angle: p.angle,
+    fore: p.fore,
+    grip: 0.72 - 0.22 * carry,
     pumpK: 0.3 + 0.7 * carry,
-    // The second hand: reaches for the shaft as the jog builds. The
-    // claim leads the level slightly (smooth(runK) would have the hand
-    // arrive late) so the grab reads as PART of breaking into the run.
-    twoHandK: smooth(Math.min(1, runK * 1.6)) * m,
-    chokeS: 0.2 + 0.04 * carry,
   };
 }
 
 /**
  * THE QUARTERSTAFF GUARD — combat's two hands. Out of rest the staff
  * is gripped low (grip 0.34, business end forward) and the off hand
- * belongs ON the wood ahead of the main fist: the classic ready, both
- * hands spread mid-shaft. The claim is full in the guard and yields
- * to everything with a better right to the hand (the cast punch, a
- * shield, the seat, the sheathe — the rig orders those).
+ * belongs ON the wood ahead of the main fist: the classic ready. The
+ * claim is full in the guard and yields to everything with a better
+ * right to the hand (the cast punch, a shield, the seat, the sheathe
+ * — the rig orders those). The RUN never claims it any more.
  */
 export const STAFF_GUARD_CHOKE_S = 0.2;
+
+// ------------------------------------------- the staff's own strikes
+//
+// THE POLE SCHOOL: a staff is not a long sword — it fights from the
+// middle, both hands on the wood, and its cuts are SWEEPS: the shaft
+// rides TANGENT to the arc (a turning bar, not a swung radius). Two
+// stages plus the ram: the MOULINET, a level two-handed sweep across
+// the front; the BUTT CUT, the reverse sweep on a low line led by the
+// iron ferrule; and the finisher keeps the existing two-hand RAM
+// (thrustPath) — a spear-drive with the crown. Same readability laws
+// as the blade schools: ease into a cocked coil, HOLD it, snap the
+// sweep with overshoot, hold the landed extension, recover to the
+// guard. Every channel neutral at both ends, blend-safe.
+
+export interface StaffStrikeFrame {
+  /** Arm-angle offset from the aim (radians); rests at 0.5 like blades. */
+  arm: number;
+  /** Staff angle relative to the arm ray — ±π/2 is the tangent hold. */
+  spin: number;
+  /** Reach multiplier (1 at both ends). */
+  reach: number;
+  /** Vertical hand offset, units of s (negative = raised). */
+  lift: number;
+  /** Torso lean along the sweep. */
+  lean: number;
+  /** Shaft fraction behind the fist — sweeps pivot at the middle. */
+  grip: number;
+}
+
+const STAFF_PHASES = { coil: 0.24, hold: 0.3, impact: 0.42, ext: 0.58 };
+
+interface StaffSpec {
+  coilArm: number;
+  impactArm: number;
+  /** Tangent side: +1 crown leads the sweep, −1 the butt leads. */
+  tan: number;
+  coilLift: number;
+  impactLift: number;
+  coilReach: number;
+  impactReach: number;
+  lean: number;
+}
+
+const STAFF_SPECS: [StaffSpec, StaffSpec] = [
+  // THE MOULINET: wide level sweep, crown leading.
+  {
+    coilArm: -1.55, impactArm: 1.6, tan: 1,
+    coilLift: -0.07, impactLift: 0.03,
+    coilReach: 0.6, impactReach: 1.05,
+    lean: 0.13,
+  },
+  // THE BUTT CUT: reverse sweep, low line, ferrule leading.
+  {
+    coilArm: 1.4, impactArm: -1.45, tan: -1,
+    coilLift: 0.08, impactLift: -0.03,
+    coilReach: 0.55, impactReach: 1.0,
+    lean: 0.12,
+  },
+];
+
+/** The rest arm offset staff strikes leave from and land on. */
+const STAFF_REST_ARM = 0.5;
+
+export function staffStrikeFrame(stage: 0 | 1, t: number): StaffStrikeFrame {
+  const K = STAFF_SPECS[stage];
+  const P = STAFF_PHASES;
+  const sgn = Math.sign(K.impactArm - K.coilArm);
+  // The tangent hold: through the cut the shaft lies across the arc
+  // (±π/2 off the arm ray), cocked a little PAST tangent at the coil
+  // and whipping a little short of it at impact — the turning-bar
+  // read. It unwinds to zero at both ends so the guard blend is safe.
+  const tanHold = K.tan * sgn * (Math.PI / 2);
+  const cock = K.tan * sgn * 0.5;
+  const ov = sgn * 0.1;
+  if (t < P.coil) {
+    const e = smooth(t / P.coil);
+    return {
+      arm: STAFF_REST_ARM + (K.coilArm - STAFF_REST_ARM) * e,
+      spin: (tanHold + cock) * e,
+      reach: 1 + (K.coilReach - 1) * e,
+      lift: K.coilLift * e,
+      lean: -sgn * K.lean * 0.6 * e,
+      grip: 0.34 + 0.16 * e,
+    };
+  }
+  if (t < P.hold) {
+    return {
+      arm: K.coilArm,
+      spin: tanHold + cock,
+      reach: K.coilReach,
+      lift: K.coilLift,
+      lean: -sgn * K.lean * 0.6,
+      grip: 0.5,
+    };
+  }
+  if (t < P.impact) {
+    const e = smooth((t - P.hold) / (P.impact - P.hold));
+    return {
+      arm: K.coilArm + (K.impactArm + ov - K.coilArm) * e,
+      spin: tanHold + cock - (cock + K.tan * sgn * 0.4) * e,
+      reach: K.coilReach + (K.impactReach - K.coilReach) * e,
+      lift: K.coilLift + (K.impactLift - K.coilLift) * e,
+      lean: -sgn * K.lean * 0.6 + sgn * K.lean * 1.6 * e,
+      grip: 0.5,
+    };
+  }
+  if (t < P.ext) {
+    const e = smooth((t - P.impact) / (P.ext - P.impact));
+    return {
+      arm: K.impactArm + ov * (1 - e),
+      spin: tanHold - K.tan * sgn * 0.4 * (1 - 0.3 * e),
+      reach: K.impactReach,
+      lift: K.impactLift,
+      lean: sgn * K.lean * (1 - 0.25 * e),
+      grip: 0.5,
+    };
+  }
+  const e = smooth((t - P.ext) / (1 - P.ext));
+  return {
+    arm: K.impactArm + (STAFF_REST_ARM - K.impactArm) * e,
+    spin: (tanHold - K.tan * sgn * 0.28) * (1 - e),
+    reach: K.impactReach + (1 - K.impactReach) * e,
+    lift: K.impactLift * (1 - e),
+    lean: sgn * K.lean * 0.75 * (1 - e),
+    grip: 0.5 - 0.16 * e,
+  };
+}
+
+export interface StaffTrail {
+  from: number;
+  to: number;
+  alpha: number;
+  lift: number;
+}
+
+/** The sweep's crescent, alive from the loosing through the extension. */
+export function staffStrikeTrail(stage: 0 | 1, t: number): StaffTrail | null {
+  const P = STAFF_PHASES;
+  if (t < P.hold || t > P.ext) return null;
+  const K = STAFF_SPECS[stage];
+  const f = staffStrikeFrame(stage, t);
+  const alpha = t <= P.impact ? 1 : 1 - smooth((t - P.impact) / (P.ext - P.impact));
+  return {
+    from: K.coilArm,
+    to: f.arm,
+    alpha,
+    lift: (K.coilLift + K.impactLift) / 2,
+  };
+}
+
+// ------------------------------------------------------------- bow
 
 /**
  * THE BOW IS HELD BY THE WOOD. The rest carriage: string toward the
  * body, wooden belly curving down-forward, half-ready — one motion
- * from the aim (the user-approved verdict, unchanged). The gait only
- * firms the carry: at a run the bow presses a touch closer and leans
- * a hair further toward ready, and the grip NEVER leaves the wrap —
- * the old carry blend slid the fist onto the string line whenever the
- * settle was partial, which is a hand holding a bowstring like a
- * suitcase handle.
+ * from the aim (the user-approved verdict, unchanged; the angle blend
+ * keeps the BOW MIRROR law, which a raw projection would break by
+ * rotating instead of reflecting). The gait firms the carry a hair
+ * toward ready, and the projection law contributes the LENGTH: on a
+ * north-south run the limbs compress toward the camera line, half
+ * the depth read of the blades, because a bow is a plane, not a rod.
  */
 export function bowWield(
+  dir: number,
   sideW: number,
   moveK: number,
   runK: number,
-): { dx: number; dy: number; angle: number } {
+): { dx: number; dy: number; angle: number; fore: number } {
   const lift = gaitLift(moveK, runK);
+  const beta = 0.72 + 0.1 * lift;
+  const p = projectCarry(dir, beta);
   return {
     dx: sideW * (0.12 + 0.02 * lift),
     dy: 0.18 - 0.02 * lift,
     angle: Math.PI / 2 - sideW * (Math.PI / 2 - 0.85 + 0.1 * lift),
+    fore: 0.5 + 0.5 * p.fore,
   };
 }
