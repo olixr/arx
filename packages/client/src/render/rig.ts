@@ -39,6 +39,15 @@ import {
   type StrikeTrail,
 } from './carriage.js';
 import { STOW_HANDOFF, sheathePhases, stowBack, stowBlade } from './sheath.js';
+import {
+  drawShield,
+  drawShieldStraps,
+  isShieldKind,
+  shieldStyle,
+  solveShield,
+  type ShieldFrame,
+  type ShieldStyle,
+} from './shields.js';
 import { NPC_HAIR_STYLE, drawHairBack, drawHairFront, type HairCover } from './hair.js';
 import { drawBeard } from './beard.js';
 import {
@@ -1939,6 +1948,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const bootSt = rig.bootsItem ? bootStyle(rig.bootsItem) : null;
   const offSt = rig.offhandItem ? offhandStyle(rig.offhandItem) : null;
   const gloveSt = rig.glovesItem ? gloveStyle(rig.glovesItem) : null;
+  // A shield is not an item held in a fist — it is a PLANE the body
+  // stands behind, with its own dialect (shields.ts). Resolving it here
+  // takes the offhand out of the held-item vocabulary entirely.
+  const shieldSt: ShieldStyle | null =
+    offSt && rig.offhandItem && isShieldKind(offSt.kind)
+      ? shieldStyle(rig.offhandItem, offSt.kind, offSt.color, offSt.trim, offSt.boss)
+      : null;
 
   // Sneak crouch: dropping the hip line shortens the leg chain so the IK
   // bends the knees for free, and the whole arm frame (armY/shoulderY)
@@ -3138,6 +3154,51 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     }
   }
 
+  // ---- THE SHIELD LEADS THE ARM. Everything above solved a HAND and
+  // hung gear off it; a shield inverts that. The plane is placed first
+  // — upright, in front of the chest, square to the threat — and the
+  // off hand is then dragged to the grip behind it, elbow braced along
+  // the boards. That inversion is the whole difference between "a
+  // board taped to a wrist" and a body standing behind a wall.
+  // An archer's off hand is busy holding the bow: the shield sits the
+  // volley out (the existing law), and the arm keeps its own carriage.
+  const shieldArcher = drawing || loosing;
+  let shieldFr: ShieldFrame | null = null;
+  if (shieldSt && !shieldArcher) {
+    // The finisher's drive, normalized: the shield rams with the body.
+    const thrustK =
+      meleeStage === 2
+        ? Math.max(0, Math.min(1, (thrustR ?? (ice ? ice.r : 0)) / 0.55))
+        : 0;
+    shieldFr = solveShield(shieldSt, {
+      x: rig.x,
+      hipY,
+      shoulderY,
+      s,
+      wS,
+      fx,
+      fy,
+      sideS,
+      restSettle,
+      swing: swS,
+      runF: rig.runF,
+      poleX: rig.poleX,
+      poleY: rig.poleY,
+      poleStrength: rig.poleStrength,
+      crouch,
+      sling: Math.max(0, Math.min(1, (sheath - STOW_HANDOFF) / (1 - STOW_HANDOFF))),
+      melee: meleeStage,
+      poseT: rig.poseT,
+      thrust: thrustK,
+      nowMs: rig.nowMs,
+    });
+    // The fist closes on the grip — the arm now answers to the shield.
+    // Slung, the hand lets go and walks home to its own hang.
+    const claim = 1 - shieldFr.sling;
+    offX += (shieldFr.gripX - offX) * claim;
+    offY += (shieldFr.gripY - offY) * claim;
+  }
+
   // Slash trails: a crisp crescent chasing each blade through its cut,
   // centered on the cut's plane (a high cleave rings high, a rising
   // return rings low) and fading through the held extension. The echo
@@ -3237,15 +3298,31 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         flip: offFlip,
       });
     }
+    // THE SHIELD'S OWN LAYER ORDER, and it is not the arm's. Turned
+    // toward us, the boards cover the fist that holds them — arm, then
+    // shield. Turned away, we are looking at the shield's BACK, and
+    // the forearm is between us and it: shield first, then the arm,
+    // then the enarmes struck back over the sleeve so the limb reads
+    // as genuinely threaded through the straps.
+    const shieldBehindArm = shieldFr !== null && shieldFr.seeBack;
+    if (shieldSt && shieldFr && shieldBehindArm) {
+      drawShield(ctx, shieldSt, shieldFr, rig.hurt, rig.nowMs);
+    }
+    // The elbow braces along the boards when a shield claims the arm,
+    // and lets go again as the shield swings onto the back.
+    const freePoleX =
+      (archer ? fx * 0.2 : Math.cos(offAngle) * 0.4) * (1 - settleK) - sideS * 0.45 * settleK;
+    const claim = shieldFr ? 1 - shieldFr.sling : 0;
+    const armPoleX = freePoleX + (shieldFr ? (shieldFr.poleX - freePoleX) * claim : 0);
+    const armPoleY = 1 + (shieldFr ? (shieldFr.poleY - 1) * claim : 0);
     const joints = drawArm(
       ctx,
       offShX,
       shoulderY,
       offX,
       offY,
-      (archer ? fx * 0.2 : Math.cos(offAngle) * 0.4) * (1 - settleK) -
-        sideS * 0.45 * settleK,
-      1,
+      armPoleX,
+      armPoleY,
       sleeve,
       skin,
       s,
@@ -3254,10 +3331,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       rig.hurt,
       skel,
     );
+    if (shieldSt && shieldFr) {
+      if (shieldBehindArm) drawShieldStraps(ctx, shieldSt, shieldFr, rig.hurt);
+      else drawShield(ctx, shieldSt, shieldFr, rig.hurt, rig.nowMs);
+    }
     // Arm-carried offhand rides the solved forearm, same depth layer as
     // the arm itself so the strap never breaks. An archer's off hand is
     // busy holding the bow — the shield sits this one out.
-    if (offSt && offSt.kind !== 'quiver' && !archer && !offWeapon) {
+    if (offSt && offSt.kind !== 'quiver' && !archer && !offWeapon && !shieldSt) {
       drawOffhandOnArm(ctx, offSt, joints, s, profileK, rig.hurt);
     }
     // The far pauldron is a true shoulder joint: it caps THIS arm's
@@ -3489,7 +3570,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // for the opposite pole, with the same hysteresis pattern so aim
   // jitter at the boundary can never flicker the layering.
   const offFrontAt = mem ? (mem.offFront ? 0.28 : 0.4) : 0.34;
-  const offFront = !mainBehind && restSettle > 0.5 && fy > offFrontAt;
+  // A shield overrides the hand's depth rule with the PLANE's: the arm
+  // goes wherever its shield went, in or out of combat, so the boards
+  // and the fist behind them can never end up on opposite sides of the
+  // torso. The flip lands exactly at profile, where the shield is
+  // edge-on beside the body and the swap is invisible by construction.
+  const offFront = shieldFr
+    ? shieldFr.front
+    : !mainBehind && restSettle > 0.5 && fy > offFrontAt;
   if (mem) mem.offFront = offFront;
   if (mainBehind) {
     paintWeapon();

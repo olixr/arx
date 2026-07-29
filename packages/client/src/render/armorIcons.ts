@@ -1,4 +1,5 @@
 import { shade } from './rig.js';
+import { drawShieldAt, isShieldKind, shieldStyle } from './shields.js';
 import {
   drawHelmet,
   drawPauldron,
@@ -500,141 +501,36 @@ export function glovesIconPainter(st: GloveStyle): Painter {
 
 // -------------------------------------------------------------- shield
 
-export function offhandIconPainter(st: OffhandStyle): Painter {
+/**
+ * THE PRODUCT SHOT IS THE WORLD ART. A shield icon is the same painter
+ * the body wears, turned three-quarters on and lit by the same sun —
+ * so what a player studies in the pack is exactly what they see on
+ * their own arm. Nothing here is re-authored.
+ *
+ * Shields only: the caller gates tomes, orbs and quivers out to their
+ * own bespoke object painters before ever reaching this.
+ */
+export function offhandIconPainter(st: OffhandStyle, id = ''): Painter {
+  const sh = shieldStyle(
+    id,
+    isShieldKind(st.kind) ? st.kind : 'buckler',
+    st.color,
+    st.trim,
+    st.boss,
+  );
   return (ctx) => {
     ctx.translate(0.5, 0.5);
-    const col = st.color;
-    const trim = st.trim;
-    if (st.kind === 'tower') {
-      // The wall: tall rounded slab, banded frame, emblem.
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.roundRect(-0.26, -0.4, 0.52, 0.8, 0.07);
-      ctx.fill();
-      ctx.strokeStyle = trim;
-      ctx.lineWidth = 0.045;
-      ctx.beginPath();
-      ctx.roundRect(-0.215, -0.355, 0.43, 0.71, 0.05);
-      ctx.stroke();
-      ctx.fillStyle = shade(col, 14);
-      ctx.beginPath();
-      ctx.roundRect(-0.215, -0.355, 0.16, 0.71, 0.05);
-      ctx.fill();
-      drawEmblem(ctx, st, 0, 0);
-      // Rivet studs down the frame.
-      ctx.fillStyle = shade(trim, 22);
-      for (const y of [-0.3, 0, 0.3]) {
-        for (const x of [-0.19, 0.19]) {
-          ctx.beginPath();
-          ctx.arc(x, y, 0.022, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-    } else if (st.kind === 'kite') {
-      // The knight's teardrop.
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.moveTo(0, -0.38);
-      ctx.quadraticCurveTo(0.34, -0.36, 0.32, -0.08);
-      ctx.quadraticCurveTo(0.3, 0.22, 0, 0.42);
-      ctx.quadraticCurveTo(-0.3, 0.22, -0.32, -0.08);
-      ctx.quadraticCurveTo(-0.34, -0.36, 0, -0.38);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = trim;
-      ctx.lineWidth = 0.045;
-      ctx.beginPath();
-      ctx.moveTo(0, -0.335);
-      ctx.quadraticCurveTo(0.29, -0.315, 0.272, -0.075);
-      ctx.quadraticCurveTo(0.255, 0.185, 0, 0.365);
-      ctx.quadraticCurveTo(-0.255, 0.185, -0.272, -0.075);
-      ctx.quadraticCurveTo(-0.29, -0.315, 0, -0.335);
-      ctx.closePath();
-      ctx.stroke();
-      // Left-light facet.
-      ctx.fillStyle = shade(col, 14);
-      ctx.beginPath();
-      ctx.moveTo(-0.02, -0.33);
-      ctx.quadraticCurveTo(-0.24, -0.3, -0.245, -0.07);
-      ctx.quadraticCurveTo(-0.23, 0.16, -0.02, 0.34);
-      ctx.closePath();
-      ctx.fill();
-      drawEmblem(ctx, st, 0, -0.02);
-    } else {
-      // Buckler: the fist's little wall — domed round, bossed center.
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.arc(0, 0, 0.36, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = trim;
-      ctx.lineWidth = 0.05;
-      ctx.beginPath();
-      ctx.arc(0, 0, 0.315, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = shade(col, 14);
-      ctx.beginPath();
-      ctx.arc(-0.09, -0.09, 0.2, Math.PI * 0.65, Math.PI * 1.8);
-      ctx.arc(0, 0, 0.31, Math.PI * 1.32, Math.PI * 0.78, true);
-      ctx.fill();
-      const boss = st.boss ?? shade(trim, 18);
-      ctx.fillStyle = boss;
-      ctx.beginPath();
-      ctx.arc(0, 0, 0.105, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = shade(boss, 34);
-      ctx.beginPath();
-      ctx.arc(-0.028, -0.028, 0.038, 0, Math.PI * 2);
-      ctx.fill();
-      if (st.spikes) {
-        ctx.fillStyle = shade(trim, 26);
-        for (let i = 0; i < 4; i++) {
-          const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-          const px = Math.cos(a);
-          const py = Math.sin(a);
-          ctx.beginPath();
-          ctx.moveTo(px * 0.34 - py * 0.035, py * 0.34 + px * 0.035);
-          ctx.lineTo(px * 0.34 + py * 0.035, py * 0.34 - px * 0.035);
-          ctx.lineTo(px * 0.46, py * 0.46);
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
-    }
+    drawShieldAt(ctx, sh, {
+      cx: 0,
+      cy: 0,
+      size: 0.42,
+      // Turned off square: the icon shows a face AND an edge at once,
+      // which is what tells the eye this is a dished object in the
+      // world and not a sticker of one.
+      theta: 0.42,
+      tilt: -0.1,
+      oside: 1,
+    });
   };
 }
 
-function drawEmblem(ctx: CanvasRenderingContext2D, st: OffhandStyle, x: number, y: number): void {
-  const c = shade(st.trim, 24);
-  ctx.fillStyle = c;
-  if (st.emblem === 'diamond') {
-    ctx.beginPath();
-    ctx.moveTo(x, y - 0.13);
-    ctx.lineTo(x + 0.1, y);
-    ctx.lineTo(x, y + 0.13);
-    ctx.lineTo(x - 0.1, y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = shade(c, 22);
-    ctx.beginPath();
-    ctx.moveTo(x, y - 0.13);
-    ctx.lineTo(x + 0.1, y);
-    ctx.lineTo(x, y);
-    ctx.closePath();
-    ctx.fill();
-  } else if (st.emblem === 'chevron') {
-    ctx.beginPath();
-    ctx.moveTo(x - 0.13, y - 0.02);
-    ctx.lineTo(x, y - 0.12);
-    ctx.lineTo(x + 0.13, y - 0.02);
-    ctx.lineTo(x + 0.13, 0.06 + y);
-    ctx.lineTo(x, y - 0.04);
-    ctx.lineTo(x - 0.13, 0.06 + y);
-    ctx.closePath();
-    ctx.fill();
-  } else if (st.boss) {
-    ctx.fillStyle = st.boss;
-    ctx.beginPath();
-    ctx.arc(x, y, 0.08, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}

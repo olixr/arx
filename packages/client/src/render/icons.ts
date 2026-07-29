@@ -4610,7 +4610,7 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
     // Only true shields product-shot here; tomes/orbs/quivers keep
     // their bespoke object painters (the caller gates the kind).
     offhand: (id) => {
-      const p = offhandIconPainter(offhandStyle(id));
+      const p = offhandIconPainter(offhandStyle(id), id);
       return (c) => p(c);
     },
   };

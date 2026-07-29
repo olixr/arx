@@ -15,6 +15,7 @@
  * over its own pinned feet.
  */
 
+import { drawShieldAt, isShieldKind, shieldStyle } from './shields.js';
 import { itemDef } from '@arx/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import {
@@ -643,6 +644,22 @@ export function drawHumanoidRagdoll(
     const offSt = offhandStyle(gear.offhand);
     if (offSt.kind === 'weapon') {
       drawHandWeapon(H.elbowL, H.handL, gear.offhand, gear.offhandEnch);
+    } else if (isShieldKind(offSt.kind)) {
+      // A dropped shield does not lie flat on its face — it comes down
+      // on the arm that wore it and half-rolls onto its rim. It keeps
+      // the world painter, laid over on the forearm's own angle and
+      // turned steeply enough that the eye reads a fallen SHELL.
+      const el = P(f, g[H.elbowL]!);
+      const hd = P(f, g[H.handL]!);
+      const sh = shieldStyle(gear.offhand, offSt.kind, offSt.color, offSt.trim, offSt.boss);
+      drawShieldAt(ctx, sh, {
+        cx: (el.x + hd.x) / 2,
+        cy: (el.y + hd.y) / 2,
+        size: 0.24 * s,
+        theta: 1.08,
+        tilt: Math.atan2(hd.y - el.y, hd.x - el.x) + Math.PI / 2,
+        oside: hd.x >= el.x ? 1 : -1,
+      });
     } else if (offSt.kind !== 'quiver') {
       const el = P(f, g[H.elbowL]!);
       const hd = P(f, g[H.handL]!);
