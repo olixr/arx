@@ -2738,6 +2738,13 @@ export class Renderer {
       this.fadeBY1 = a.y + FADE_BODY_BELOW * s;
       const btx = Math.floor(this.ownPX);
       const bty = Math.floor(this.ownPY);
+      // THE RISING GROUND IS A WALL: higher terrain south of the body
+      // paints over it exactly like masonry (the elevated bands sort
+      // by world row), but a north-facing rise wears no face art and
+      // reads as flat ground swallowing the player. Measure the own
+      // plane CONTINUOUSLY (renderLift interpolates ramps) so the
+      // ember glides in on a climb instead of popping per level.
+      const ownLevelF = this.renderLift(this.ownPX, this.ownPY) / ELEV_H;
       for (let dyRow = 1; dyRow <= 3; dyRow++) {
         for (let dxCol = -1; dxCol <= 1; dxCol++) {
           const tx = btx + dxCol;
@@ -2747,9 +2754,16 @@ export class Renderer {
           // but the window's own edges still need the honest probe.
           const isWall = this.wallish(game, tx, ty);
           const isGar = !isWall && this.garrisonish(game, tx, ty);
-          if (!isWall && !isGar) continue;
+          let whT = 0;
+          if (isWall) whT = this.wallHeightAt(game, tx, ty);
+          else if (isGar) whT = this.garrisonHeightAt(game, tx, ty);
+          else {
+            const rise = (game.world.elevAt(tx, ty) ?? 0) - ownLevelF;
+            if (rise > 0.05) whT = rise * ELEV_H;
+          }
+          if (whT <= 0) continue;
           const k = wallCover(
-            isGar ? this.garrisonHeightAt(game, tx, ty) : this.wallHeightAt(game, tx, ty),
+            whT,
             ty + 1 - this.ownPY,
             Math.abs(tx + 0.5 - this.ownPX),
             this.camera.yScale,
@@ -8478,7 +8492,7 @@ export class Renderer {
           for (let r = Math.floor(a); r < b; r++) {
             const s0 = Math.max(a, r);
             const s1 = Math.min(b, r + 1);
-            items.push(this.cliffSideItem(x, s0, s1, nx, level, s0 === a, s1 === b));
+            items.push(this.cliffSideItem(x, s0, s1, nx, level, a, s0 === a, s1 === b));
             const fi = this.fallAt(game, x, r + 0.5, nx, 0, level);
             if (fi) {
               if (!fallInfo) {
@@ -8559,7 +8573,16 @@ export class Renderer {
       // whose feet share the segment's rows is in front by
       // construction and must win. Straight south faces (ay === by)
       // are unchanged by min().
-      sortY: Math.min(ay, by) + 0.001,
+      //
+      // THE FACE LOSES EVERY CONTEST (the armory-crop fix): behind a
+      // cliff face is the mountain — nothing can ever honestly stand
+      // there, so like the side strips the face sorts at its VISUAL
+      // TOP (base row minus the crown lift). A blade swung out over
+      // the rim, a body mid-lunge at the brink, or a climber on the
+      // ramp beside the wall now paints OVER the face instead of
+      // being cropped by it; entities at the foot still win (their
+      // feet row sorts past the base row regardless of the lift).
+      sortY: Math.min(ay, by) + 0.001 - (level * ELEV_H) / this.camera.yScale,
       drawShadow:
         level - 1 === 0
           ? () => {
@@ -8902,6 +8925,11 @@ export class Renderer {
    * flat fill tiles seamlessly. Each slice sorts EARLY — a zero-width
    * plane must lose every overlap contest against rocks, props and
    * entities standing beside it; only the sky above them shows wall.
+   * EVERY slice sorts at the RUN's north end (runTop), not its own
+   * row: a per-slice sort let a southern slice beat a body standing
+   * north of it and crop the blade it swung past the rim (the
+   * armory-crop fix) — the strip never honestly occludes anything,
+   * so the whole run loses together.
    */
   private cliffSideItem(
     x: number,
@@ -8909,6 +8937,7 @@ export class Renderer {
     s1: number,
     nx: number,
     level: number,
+    runTop: number,
     isTop: boolean,
     isBottom: boolean,
   ): DrawItem {
@@ -8917,7 +8946,7 @@ export class Renderer {
     const topLift = level * ELEV_H * s;
     const baseLift = (level - 1) * ELEV_H * s;
     return {
-      sortY: s0 - (level * ELEV_H) / this.camera.yScale,
+      sortY: runTop - (level * ELEV_H) / this.camera.yScale,
       drawShadow:
         level - 1 === 0
           ? () => {

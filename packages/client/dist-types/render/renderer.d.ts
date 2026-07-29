@@ -1196,6 +1196,11 @@ export declare class Renderer {
      * flat fill tiles seamlessly. Each slice sorts EARLY — a zero-width
      * plane must lose every overlap contest against rocks, props and
      * entities standing beside it; only the sky above them shows wall.
+     * EVERY slice sorts at the RUN's north end (runTop), not its own
+     * row: a per-slice sort let a southern slice beat a body standing
+     * north of it and crop the blade it swung past the rim (the
+     * armory-crop fix) — the strip never honestly occludes anything,
+     * so the whole run loses together.
      */
     private cliffSideItem;
     /** Memoized SPILL-LAW lookup (waterfalls.ts) — pure world data, so
