@@ -871,7 +871,21 @@ export function solveShield(
   // into the depth. (Reading it off the twisted plane instead shrank
   // the offset at the diagonals and swallowed the whole shield behind
   // its own bearer on the three-quarter-away facings.)
-  let cx = o.x + o.fx * fwd * s * o.wS + oside * Math.abs(o.fy) * lat * s * o.wS;
+  // THE CLEAR-OF-THE-RIBS LAW: in the mid-band between face-on and
+  // profile (the three-quarter camera facings) the forward reach runs
+  // diagonally ACROSS the screen while the |fy| across-term has gone
+  // small — the narrowing slab landed on the torso column and merged
+  // with the body's silhouette ("cutting off the body", the user's
+  // catch). A dedicated lateral clearance, peaking in that band and
+  // zero at both pure facings, keeps the boards beside the ribs where
+  // the carrying arm actually is.
+  const clearBand =
+    Math.max(0, Math.min(1, o.fy / 0.15)) * Math.max(0, Math.min(1, (0.7 - o.fy) / 0.25));
+  const clearX = 0.14 * Math.abs(o.fx) * clearBand;
+  let cx =
+    o.x +
+    o.fx * fwd * s * o.wS +
+    oside * (Math.abs(o.fy) * lat + clearX) * s * o.wS;
   // The across-the-body offset keeps the FULL ground drop: side-on it
   // is what carries the shield onto the near side of the body, where
   // the rig already says the off arm lives — and that separation is

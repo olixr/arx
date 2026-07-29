@@ -3063,9 +3063,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       (0.07 + 0.055 * rig.runF) * s * Math.min(1, rig.poleStrength) * (1 - 0.45 * crouch);
     const armed = isSword || isBow || isStaff;
     const p = armPump(rig.poleX, rig.poleY, sw, amp, armed ? restSettle : 0);
-    // The per-footfall bounce is a shared bob channel on |sw| — the
-    // rig owns it so it can never cancel the alternating throw.
-    const bounce = Math.abs(sw) * rig.runF * 0.03 * s;
+    // THE PENDULUM ARC: a hand swinging from a shoulder rises at both
+    // ends of its sweep — sw² is that arc. (|sw| had the same shape
+    // but a hard CORNER at every zero crossing: the hands visibly
+    // flicked twice a stride, the jitter the user caught.)
+    const bounce = sw * sw * rig.runF * 0.03 * s;
     mainX += p.dx * armSwingK;
     mainY += (p.dy - bounce) * armSwingK;
     const offSwingK = offBlade ? 0.85 : 1;
@@ -3420,6 +3422,15 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Seated counts as fully settled: arms hang (or plant) from their
   // anatomical roots even though Sit is not a "restful" pose.
   const settleK = Math.max(restSettle, sit);
+  // THE TRAILING ELBOW: a settled arm flares its elbow to its own
+  // side of the body — but on the move both elbows swing BACK along
+  // the travel. A runner's elbows trail; they never lead. (The rest
+  // flare left the main elbow pointing AT the travel direction on a
+  // profile run — the chicken-wing read the user caught.) Blended on
+  // the gait so the flare returns the moment the body stops.
+  const trailB = Math.min(1, rig.poleStrength) * (0.3 + 0.7 * rig.runF) * restSettle;
+  const mainSettlePoleX = sideS * 0.45 * (1 - trailB) - rig.poleX * 0.6 * trailB;
+  const offSettlePoleX = -sideS * 0.45 * (1 - trailB) - rig.poleX * 0.6 * trailB;
   mainShX += (rig.x + sideS * tw * 0.85 * wS - mainShX) * settleK;
   offShX += (rig.x - sideS * tw * 0.85 * wS - offShX) * settleK;
   // Aiming up-and-away puts the gear behind the body.
@@ -3453,7 +3464,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // The elbow braces along the boards when a shield claims the arm,
     // and lets go again as the shield swings onto the back.
     const freePoleX =
-      (archer ? fx * 0.2 : Math.cos(offAngle) * 0.4) * (1 - settleK) - sideS * 0.45 * settleK;
+      (archer ? fx * 0.2 : Math.cos(offAngle) * 0.4) * (1 - settleK) + offSettlePoleX * settleK;
     const claim = shieldFr ? 1 - shieldFr.sling : 0;
     const armPoleX = freePoleX + (shieldFr ? (shieldFr.poleX - freePoleX) * claim : 0);
     const armPoleY = 1 + (shieldFr ? (shieldFr.poleY - 1) * claim : 0);
@@ -3602,7 +3613,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       mainX,
       mainY,
       (archer ? -fx : Math.cos(mainAngle) * 0.4) * (1 - settleK) +
-        sideS * 0.45 * settleK,
+        mainSettlePoleX * settleK,
       archer ? -0.6 : 1,
       sleeve,
       skin,

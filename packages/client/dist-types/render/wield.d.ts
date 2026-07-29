@@ -46,8 +46,8 @@ export interface CarryProjection {
 }
 /**
  * Project a held rod: `pitch` is the tilt off straight-down, positive
- * toward the `yaw` heading, negative trailing away from it. Clamped
- * fore keeps a fully camera-line carry from collapsing to a stub.
+ * toward the `yaw` heading, negative trailing away from it. The angle
+ * is the honest projection; the length is softened by the depth law.
  */
 export declare function projectCarry(yaw: number, pitch: number): CarryProjection;
 /**

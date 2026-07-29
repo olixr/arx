@@ -75,9 +75,20 @@ export interface CarryProjection {
 }
 
 /**
+ * THE SOFT-DEPTH LAW: the raw projection is geometrically honest but
+ * PERCEPTUALLY wrong for a stylized rig — a staff at the pure ground
+ * factor collapsed to a twig ("not even the same item any more", the
+ * user's verdict). The eye needs a CUE, not the full compression: the
+ * length shrinks a restrained fraction of what the geometry says,
+ * floored so every weapon keeps its identity at every facing.
+ */
+const FORE_SOFT = 0.35;
+const FORE_FLOOR = 0.8;
+
+/**
  * Project a held rod: `pitch` is the tilt off straight-down, positive
- * toward the `yaw` heading, negative trailing away from it. Clamped
- * fore keeps a fully camera-line carry from collapsing to a stub.
+ * toward the `yaw` heading, negative trailing away from it. The angle
+ * is the honest projection; the length is softened by the depth law.
  */
 export function projectCarry(yaw: number, pitch: number): CarryProjection {
   const h = Math.sin(pitch);
@@ -85,9 +96,10 @@ export function projectCarry(yaw: number, pitch: number): CarryProjection {
   const sx = Math.cos(yaw) * h;
   const sy = Math.sin(yaw) * h * WIELD_GROUND_K + v;
   const len = Math.hypot(sx, sy);
+  const soft = 1 - (1 - Math.min(1.06, len)) * FORE_SOFT;
   return {
     angle: Math.atan2(sy, sx),
-    fore: Math.max(0.55, Math.min(1.06, len)),
+    fore: Math.max(FORE_FLOOR, soft),
   };
 }
 
@@ -103,9 +115,12 @@ export function projectStrike(yaw: number): CarryProjection {
   const K = 0.7;
   const sx = Math.cos(yaw);
   const sy = Math.sin(yaw) * K;
+  const len = Math.hypot(sx, sy);
   return {
     angle: Math.atan2(sy, sx),
-    fore: Math.max(0.72, Math.hypot(sx, sy)),
+    // The soft-depth law, held a shade higher: a killing blow keeps
+    // its steel. ~10% at the full camera line — a cue, never a stub.
+    fore: Math.max(0.85, 1 - (1 - len) * FORE_SOFT),
   };
 }
 

@@ -66,9 +66,9 @@ test('projection: mirror symmetry across vertical', () => {
 test('projection: camera-line carries foreshorten, screen-plane ones do not', () => {
   const north = projectCarry(-Math.PI / 2, 1.2);
   const east = projectCarry(0, 1.2);
-  assert.ok(north.fore < 0.85, `a north-leveled carry draws short (${north.fore.toFixed(3)})`);
+  assert.ok(north.fore < 0.95, `a north-leveled carry draws short (${north.fore.toFixed(3)})`);
   assert.ok(Math.abs(east.fore - 1) < 1e-9, 'an east-leveled carry draws full');
-  assert.ok(north.fore >= 0.55, 'the floor keeps a stub readable');
+  assert.ok(north.fore >= 0.8, 'THE SOFT-DEPTH LAW: a cue, never a twig');
 });
 
 test('projection: continuous through a full turn', () => {
@@ -88,7 +88,7 @@ test('strike projection: softened, floored, profile-true', () => {
   assert.ok(Math.abs(e.angle) < 1e-9 && Math.abs(e.fore - 1) < 1e-9, 'east untouched');
   const s = projectStrike(Math.PI / 2);
   assert.ok(Math.abs(s.angle - Math.PI / 2) < 1e-9, 'camera-line keeps its heading');
-  assert.ok(s.fore >= 0.7 && s.fore < 0.85, `depth strikes shorten but stay a blow (${s.fore})`);
+  assert.ok(s.fore >= 0.85 && s.fore < 0.95, `depth strikes shorten but stay a blow (${s.fore})`);
 });
 
 // ---- the honest pump ----
@@ -142,7 +142,7 @@ test('staff ladder: planted upright at idle, one-hand level trail at a run', () 
 
 test('staff run: north foreshortens the trail carry — the depth read', () => {
   const n = staffWield(-Math.PI / 2, 1, 1, 1, 0, 0);
-  assert.ok(n.fore < 0.75, `a north sprint draws the staff short (${n.fore.toFixed(3)})`);
+  assert.ok(n.fore > 0.8 && n.fore < 0.93, `a north sprint shortens the staff a restrained shade (${n.fore.toFixed(3)})`);
   assert.ok(Math.abs(Math.abs(n.angle) - Math.PI / 2) < 0.2, 'and along the camera line');
 });
 
@@ -151,7 +151,7 @@ test('staff rock is alive at every facing while walking', () => {
   const ns = staffWield(-Math.PI / 2, 1, 1, 0, 1, 0);
   assert.ok(Math.abs(ew.angle + Math.PI / 2) > 0.05, 'E/W stride rocks the stick');
   assert.ok(
-    Math.abs(ns.angle + Math.PI / 2) > 0.008 || Math.abs(ns.fore - 1) > 0.02,
+    Math.abs(ns.angle + Math.PI / 2) > 0.008 || Math.abs(ns.fore - 1) > 0.012,
     'N/S stride works it too — as depth (length breathing), not screen tilt',
   );
 });
@@ -241,7 +241,7 @@ test('bow: the plane compresses toward the camera line, gently', () => {
   const e = bowWield(0, 1, 0, 0);
   const n = bowWield(-Math.PI / 2, 0.2, 0, 0);
   assert.ok(Math.abs(e.fore - 1) < 1e-9, 'full at profile');
-  assert.ok(n.fore < 0.9 && n.fore > 0.7, `half the rod law's depth (${n.fore.toFixed(3)})`);
+  assert.ok(n.fore <= 0.95 && n.fore > 0.8, `half the rod law's depth (${n.fore.toFixed(3)})`);
 });
 
 test('gaitK feeds bladeCarriage the same ladder gaitLift eases', () => {
