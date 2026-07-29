@@ -492,6 +492,18 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (character_id, calling)
   );
   `,
+  // v5: THE FREE HAND — the technique slot unbinds from the weapon, so
+  // each character keeps ONE row under the reserved 'slot' key. Of the
+  // legacy per-style picks, the melee-first order keeps the art most
+  // mains were actually riding.
+  `
+  DELETE FROM character_techniques a
+  USING character_techniques b
+  WHERE a.character_id = b.character_id
+    AND (CASE a.style WHEN 'melee' THEN 0 WHEN 'archery' THEN 1 WHEN 'magic' THEN 2 WHEN 'sneak' THEN 3 ELSE 4 END)
+      > (CASE b.style WHEN 'melee' THEN 0 WHEN 'archery' THEN 1 WHEN 'magic' THEN 2 WHEN 'sneak' THEN 3 ELSE 4 END);
+  UPDATE character_techniques SET style = 'slot';
+  `,
 ];
 
 /**

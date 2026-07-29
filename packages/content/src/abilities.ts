@@ -1182,8 +1182,8 @@ const defs: AbilityDef[] = [
     fieldTicks: 120,
     pulseEveryTicks: 14,
   },
-  // The rogue's ladder: unlocked by the sneak skill, reached through any
-  // dagger (WeaponStats.techStyle) — the payoff of the shadow grind.
+  // The rogue's ladder: unlocked by the sneak skill — the payoff of
+  // the shadow grind, slottable from any hand (THE FREE HAND).
   {
     id: 'rend',
     name: 'Rend',

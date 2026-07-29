@@ -110,21 +110,6 @@ test('techniques resolve, ladder is sane, and each style has a tree', () => {
   }
 });
 
-test('the sneak ladder is reachable — daggers carry techStyle, the tanto abstains', () => {
-  const knives = [...ITEMS.values()].filter(
-    (i) => (i.weapon?.backstabMult ?? 0) >= 2.2 && !i.id.includes('tanto'),
-  );
-  assert.ok(knives.length >= 15, 'the rogue roster went missing');
-  for (const k of knives) {
-    assert.equal(k.weapon!.techStyle, 'sneak', `${k.id} cannot reach the sneak ladder`);
-  }
-  const tantos = [...ITEMS.values()].filter((i) => i.id.includes('tanto') && i.weapon);
-  assert.ok(tantos.length >= 1, 'the tanto line went missing');
-  for (const t of tantos) {
-    assert.equal(t.weapon!.techStyle, undefined, `${t.id} is the fighter's dagger — melee ladder`);
-  }
-});
-
 test('trade-skill law: every recipe belongs to a named trade, at that trade\'s station', () => {
   // No generic "crafting" — a recipe trains the profession that makes
   // its kind of thing, and each trade works at its own bench.

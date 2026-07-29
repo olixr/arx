@@ -854,21 +854,34 @@ export class AccountStore {
     ]);
   }
 
-  async loadTechniques(characterId: number): Promise<Record<string, string>> {
+  /**
+   * THE FREE HAND: one slotted technique per character, kept under the
+   * reserved 'slot' key. Legacy per-style rows (or a fresh sqlite
+   * import) are read as a fallback so an old character keeps a chosen
+   * art until their next save collapses it.
+   */
+  async loadTechnique(characterId: number): Promise<string | null> {
     const rows = await this.db.query<{ style: string; ability: string }>(
       'SELECT style, ability FROM character_techniques WHERE character_id = ?',
       [characterId],
     );
-    const out: Record<string, string> = {};
-    for (const row of rows) out[row.style] = row.ability;
-    return out;
+    const order = ['slot', 'melee', 'archery', 'magic', 'sneak'];
+    const rank = (s: string) => {
+      const i = order.indexOf(s);
+      return i < 0 ? order.length : i;
+    };
+    rows.sort((a, b) => rank(a.style) - rank(b.style));
+    return rows[0]?.ability ?? null;
   }
 
-  saveTechnique(characterId: number, style: string, ability: string): void {
+  saveTechnique(characterId: number, ability: string): void {
+    this.db.fire("DELETE FROM character_techniques WHERE character_id = ? AND style <> 'slot'", [
+      characterId,
+    ]);
     this.db.fire(
-      'INSERT INTO character_techniques (character_id, style, ability) VALUES (?, ?, ?) ' +
+      "INSERT INTO character_techniques (character_id, style, ability) VALUES (?, 'slot', ?) " +
         'ON CONFLICT (character_id, style) DO UPDATE SET ability = excluded.ability',
-      [characterId, style, ability],
+      [characterId, ability],
     );
   }
 

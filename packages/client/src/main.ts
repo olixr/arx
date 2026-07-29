@@ -312,7 +312,7 @@ const panels = new Panels(
     sfx.unequipGear();
     game.unequip(slot);
   },
-  (style, ability) => game.sendTechnique(style, ability),
+  (ability) => game.sendTechnique(ability),
   (from, to) => {
     sfx.stow();
     game.invMove(from, to);
@@ -886,7 +886,7 @@ dressPanel(el('social-panel'), {
 // Dodge dash feedback: whoosh + a streak of dust kicked out behind.
 const hotbar = new Hotbar(input);
 hotbar.onReady = () => sfx.abilityReady();
-game.onTechniques = () => panels.setTechniques(game.techniques, game.earnedArts);
+game.onTechniques = () => panels.setTechniques(game.technique, game.earnedArts);
 game.onCallings = () => panels.setCallings(game.callings);
 
 // Committing to a cast: sound, hands, and a wind-up ring at the feet.

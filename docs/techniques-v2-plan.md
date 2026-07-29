@@ -405,3 +405,34 @@ Style mean at Rank IV **2.36**, band [1.89, 2.84] — all damage arts inside.
 | Whisper Fang | page (anchor 30) | 1.40 | 1.61 | 1.80 | 2.64 |
 
 Style mean at Rank IV **2.40**, band [1.92, 2.88] — all damage arts inside.
+
+## Addendum — THE FREE HAND (2026-07-28, post-Phase 6)
+
+User mandate: the technique slot must not be gated by the equipped
+weapon. A technique is a LEARNED skill — once unlocked, it slots on R
+from any hand, mixing schools freely (bow in hand, melee art on R).
+
+The law, as shipped:
+
+- **One slot, any art.** `player.technique` holds a single ability id
+  (was one pick per style keyed off the weapon's `techStyle`). Server
+  validates only the unlock: the art's OWN school's BASE level (or the
+  deed flag for unwritten pages). Respec stays free.
+- **The school powers its art.** A technique cast scales by — and
+  trains — the school that owns it, not the weapon's stance: a magic
+  art cast sword-in-hand hits and earns XP as magic. Rank derivation
+  (HONED-ART) already worked this way; scaling and XP now agree.
+  Gear has no sneak damage axis, so shadow arts ride the melee
+  multiplier (they swing melee steel).
+- **`techStyle` is retired.** Daggers no longer need it to reach the
+  sneak ladder — the ladder is reachable from any hand. The field,
+  its dagger-roster assignment, and its content test are deleted.
+- **Wire + disk.** Protocol v13 (`S2CTechniques.chosen` becomes one id,
+  `C2STechnique` drops `style`). DB migration v5 collapses
+  `character_techniques` to one row per character under the reserved
+  `'slot'` key (melee-first preference keeps the art most mains rode).
+
+Balance note: cross-school combos (weapon art + off-school technique)
+are the point, not an exploit — each half still scales by its own
+school's level and gear axis, so the PAYOFF BRACKET's per-school
+cycle-value bands still hold; no art got stronger, only more portable.

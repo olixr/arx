@@ -42,12 +42,6 @@ export interface WeaponStats {
   art?: string;
   /** Backstab damage multiplier — daggers carry a big one; other melee falls back to the default. */
   backstabMult?: number;
-  /**
-   * Which technique ladder this weapon reaches (R slot). Defaults to the
-   * attack style; daggers point at 'sneak' — loadout-is-class, so the
-   * rogue's ladder rides the knife, not a menu.
-   */
-  techStyle?: 'melee' | 'archery' | 'magic' | 'sneak';
   /** Magic school (staves) — tints bolts, flashes, and impacts. */
   element?: MagicElement;
 }

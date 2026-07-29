@@ -218,10 +218,12 @@ export interface C2SPickup {
   eid: EntityId;
 }
 
-/** Choose the equipped Technique for a combat style (free respec). */
+/**
+ * Slot a Technique on R — THE FREE HAND: any learned art, whatever
+ * the equipped weapon (free respec, server validates the unlock).
+ */
 export interface C2STechnique {
   t: 'technique';
-  style: string;
   ability: string;
 }
 
@@ -630,13 +632,13 @@ export interface S2CTime {
 }
 
 /**
- * The player's chosen techniques per style (sent on join + change),
- * plus THE UNWRITTEN PAGE's earned hidden arts — the codex shows a
- * page only once the deed has filled it.
+ * The player's slotted technique (sent on join + change) — one free
+ * slot, any school — plus THE UNWRITTEN PAGE's earned hidden arts:
+ * the codex shows a page only once the deed has filled it.
  */
 export interface S2CTechniques {
   t: 'techniques';
-  chosen: Record<string, string>;
+  chosen: string | null;
   earned?: string[];
 }
 
@@ -1074,9 +1076,8 @@ export function parseC2S(raw: string): C2SMessage | null {
       return { t: 'pickup', eid: msg.eid };
     }
     case 'technique': {
-      if (typeof msg.style !== 'string' || msg.style.length > 16) return null;
       if (typeof msg.ability !== 'string' || msg.ability.length > 64) return null;
-      return { t: 'technique', style: msg.style, ability: msg.ability };
+      return { t: 'technique', ability: msg.ability };
     }
     case 'calling': {
       if (typeof msg.calling !== 'string' || msg.calling.length > 64) return null;

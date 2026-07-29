@@ -353,17 +353,19 @@ export type AbilitySlot = 0 | 1 | 2 | 3;
 // --------------------------------------------------------- techniques
 
 /**
- * A combat style that carries a technique loadout. `sneak` is the
- * rogue's ladder: unlocked by the sneak skill, reached through weapons
- * that declare `techStyle: 'sneak'` (the daggers) — loadout-is-class.
+ * A combat school that owns a technique ladder. The school gates the
+ * LEARNING (arts unlock by raising its skill) — never the hand: THE
+ * FREE HAND slots any learned art whatever weapon is equipped.
+ * `sneak` is the rogue's ladder, unlocked by the sneak skill.
  */
 export type CombatStyleId = 'melee' | 'archery' | 'magic' | 'sneak';
 
 export const COMBAT_STYLES: readonly CombatStyleId[] = ['melee', 'archery', 'magic', 'sneak'];
 
 /**
- * A learnable active: unlocked by raising the style's skill, chosen
- * freely among unlocked options (respec is always free — experiment!).
+ * A learnable active: unlocked by raising the style's skill, then
+ * slotted freely — the R slot takes ANY learned art regardless of the
+ * equipped weapon (respec is always free — experiment!).
  */
 export interface TechniqueDef {
   ability: string;

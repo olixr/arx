@@ -28,7 +28,11 @@
 // A v11 client would never see the passive layer it is being served,
 // so reject cleanly. (Same release: S2CTechniques grows `earned` for
 // THE UNWRITTEN PAGE's deed-earned hidden arts.)
-export const PROTOCOL_VERSION = 12;
+// v13: THE FREE HAND — the technique slot unbinds from the equipped
+// weapon. S2CTechniques.chosen becomes one ability id (was a per-style
+// record) and C2STechnique drops `style`; a v12 client would render an
+// empty R slot forever, so reject cleanly.
+export const PROTOCOL_VERSION = 13;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;

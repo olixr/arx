@@ -370,8 +370,8 @@ export declare class ClientGame {
     readonly abilityReadyAt: [number, number, number, number];
     /** Full cooldowns in ticks (0 = nothing equipped in that slot). */
     abilityMax: [number, number, number, number];
-    /** Chosen technique ability per combat style (server-confirmed). */
-    techniques: Record<string, string>;
+    /** THE FREE HAND: the one slotted technique (server-confirmed). */
+    technique: string | null;
     /** THE UNWRITTEN PAGE: hidden arts earned by deed (server truth). */
     earnedArts: string[];
     /** Answered Callings (server truth; Focus derives from skills). */
@@ -435,8 +435,8 @@ export declare class ClientGame {
     currentStyle(): string;
     /** The ability granted by a hotbar slot: Art, relic, technique, sigil. */
     slotAbilityDef(slot: AbilitySlot): AbilityDef | null;
-    /** Choose a technique for a style (server validates the unlock). */
-    sendTechnique(style: string, ability: string): void;
+    /** Slot a technique on R (server validates the unlock). */
+    sendTechnique(ability: string): void;
     /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
     sendCalling(calling: string, on: boolean): void;
     /** Remaining cooldown fraction for a hotbar slot, 0 = ready. */

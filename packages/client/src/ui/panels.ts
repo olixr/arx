@@ -34,6 +34,7 @@ import {
   isTwoHanded,
   itemDef,
   rolledStats,
+  techniqueDef,
   techniquesFor,
   trinketPowerMult,
   type CallingDef,
@@ -233,8 +234,8 @@ export class Panels {
   private readonly gearStrip = document.getElementById('gear-strip')!;
   private readonly card: HTMLElement;
   private readonly menu: HTMLElement;
-  /** The chosen technique per style, mirrored from the server. */
-  private techniques: Record<string, string> = {};
+  /** THE FREE HAND: the one slotted technique, mirrored from the server. */
+  private technique: string | null = null;
   /** Hidden arts earned by deed, mirrored from the server. */
   private earnedArts: string[] = [];
   private lastSkills: SkillXp = {};
@@ -257,7 +258,7 @@ export class Panels {
   constructor(
     private readonly onUseSlot: (slot: number) => void,
     private readonly onUnequip: (slot: EquipSlot) => void,
-    private readonly onTechnique: (style: string, ability: string) => void = () => {},
+    private readonly onTechnique: (ability: string) => void = () => {},
     private readonly onInvMove: (from: number, to: number) => void = () => {},
     private readonly onDropToWorld: (slot: number) => void = () => {},
     private readonly onSlotAction: (slot: number, action: SlotAction) => void = () => {},
@@ -1157,9 +1158,9 @@ export class Panels {
     this.identDeed.textContent = `Total level ${total.toLocaleString()}`;
   }
 
-  /** Server-confirmed technique choices; re-renders whoever shows them. */
-  setTechniques(chosen: Record<string, string>, earned: string[] = []): void {
-    this.techniques = chosen;
+  /** Server-confirmed technique choice; re-renders whoever shows it. */
+  setTechniques(chosen: string | null, earned: string[] = []): void {
+    this.technique = chosen;
     this.earnedArts = earned;
     this.renderSkills(this.lastSkills);
     if (this.artsOpen) this.renderArts();
@@ -1261,7 +1262,8 @@ export class Panels {
       title.className = 'technique-title';
       title.textContent = 'Technique';
       row.appendChild(title);
-      const chosen = this.techniques[skill];
+      // The card shows this school's art only when it is the one on R.
+      const chosen = techniqueDef(this.technique ?? '')?.style === skill ? this.technique : null;
       const ab = chosen ? abilityDef(chosen) : undefined;
       if (ab) {
         const plate = document.createElement('img');
@@ -1408,13 +1410,6 @@ export class Panels {
     );
   }
 
-  /** The ladder the R key channels right now (bare hands = melee). */
-  private wieldingStyle(): string {
-    const worn = this.lastEquipment.weapon;
-    const w = worn ? itemDef(worn.id)?.weapon : undefined;
-    return w?.techStyle ?? w?.style ?? 'melee';
-  }
-
   /** THE HONED-ART LAW, mirrored: the rank the BASE level has earned. */
   private techRank(style: SkillId, tech: TechniqueDef): number {
     return techniqueRankFor(tech, levelForXp(this.lastSkills[style] ?? 0));
@@ -1427,7 +1422,7 @@ export class Panels {
   ): 'equipped' | 'unlocked' | 'locked' | 'veiled' {
     const level = levelForXp(this.lastSkills[style] ?? 0);
     if (level >= tech.unlockLevel) {
-      return this.techniques[style] === tech.ability ? 'equipped' : 'unlocked';
+      return this.technique === tech.ability ? 'equipped' : 'unlocked';
     }
     const firstLocked = techniquesFor(style)
       .filter((t) => !t.hidden && level < t.unlockLevel)
@@ -1502,14 +1497,11 @@ export class Panels {
     const all = schools.flatMap((s) => this.visibleTechniques(s).map((t) => ({ style: s, t })));
 
     // Resolve the bench's subject: keep the player's pick if it still
-    // exists, else default to what the wielded ladder is running.
+    // exists, else default to what the R slot is running.
     if (!this.artsSel || !all.some((e) => e.t.ability === this.artsSel)) {
-      const wield = this.wieldingStyle();
       this.artsSel =
-        this.techniques[wield] ??
-        all.find(
-          (e) => e.style === wield && this.techState(e.style, e.t) === 'unlocked',
-        )?.t.ability ??
+        this.technique ??
+        all.find((e) => this.techState(e.style, e.t) === 'unlocked')?.t.ability ??
         all.find((e) => this.techState(e.style, e.t) !== 'veiled')?.t.ability ??
         all[0]?.t.ability ??
         null;
@@ -1750,7 +1742,6 @@ export class Panels {
     const w = worn ? itemDef(worn.id)?.weapon : undefined;
     const relic = itemDef(this.lastEquipment.relic?.id ?? '');
     const sigil = itemDef(this.lastEquipment.sigil?.id ?? '');
-    const wield = this.wieldingStyle();
     this.artsLoadout.innerHTML = '';
     const title = document.createElement('span');
     title.className = 'load-title';
@@ -1762,7 +1753,7 @@ export class Panels {
       {
         action: 'ability3',
         src: 'Technique',
-        ab: this.techniques[wield],
+        ab: this.technique ?? undefined,
         empty: 'Choose below',
         r: true,
       },
@@ -1835,12 +1826,12 @@ export class Panels {
     lv.className = 'arts-school-lv';
     lv.textContent = `Lv ${level}`;
     head.append(plaque, name, lv);
-    if (this.wieldingStyle() === style) {
+    if (techniqueDef(this.technique ?? '')?.style === style) {
       const hand = document.createElement('span');
       hand.className = 'in-hand';
-      hand.textContent = 'In hand';
-      hand.dataset.tipname = 'In hand';
-      hand.dataset.tipsub = 'Your equipped weapon channels this ladder — its pick rides R.';
+      hand.textContent = 'On R';
+      hand.dataset.tipname = 'On R';
+      hand.dataset.tipsub = 'This school owns the art riding your R key.';
       head.appendChild(hand);
     }
     block.appendChild(head);
@@ -2047,17 +2038,13 @@ export class Panels {
 
     if (st === 'unlocked') {
       this.artsDetail.appendChild(
-        bigButton('Slot on R', `artequip:${t.ability}`, () =>
-          this.onTechnique(style, t.ability),
-        ),
+        bigButton('Slot on R', `artequip:${t.ability}`, () => this.onTechnique(t.ability)),
       );
     }
     const teach = document.createElement('div');
     teach.className = 'bench-teach';
     teach.textContent =
-      (st === 'unlocked' || st === 'equipped') && this.wieldingStyle() !== style
-        ? `Swapping is always free. Takes effect with a ${styleName} weapon in hand.`
-        : 'Techniques ride the R key. Swapping among unlocked arts is always free.';
+      'Techniques ride the R key — any learned art, whatever you wield. Swapping is always free.';
     this.artsDetail.appendChild(teach);
   }
 }

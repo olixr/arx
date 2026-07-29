@@ -3295,8 +3295,6 @@ function daggerDefs(): EquipmentDef[] {
     },
   ];
 
-  // Every knife reaches the rogue's technique ladder — except the
-  // tanto, the fighter's dagger, which keeps the soldier's R.
   const roster = [
     ...dirks,
     ...sneakGate(stiletto, [4, 14, 28, 32, 42, 56, 70, 82]),
@@ -3304,7 +3302,6 @@ function daggerDefs(): EquipmentDef[] {
     ...crafts,
     ...finds,
   ];
-  for (const d of roster) if (d.weapon) d.weapon.techStyle = 'sneak';
   return [...roster, ...tanto];
 }
 

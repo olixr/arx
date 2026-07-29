@@ -333,8 +333,8 @@ export class ClientGame {
   readonly abilityReadyAt: [number, number, number, number] = [0, 0, 0, 0];
   /** Full cooldowns in ticks (0 = nothing equipped in that slot). */
   abilityMax: [number, number, number, number] = [0, 0, 0, 0];
-  /** Chosen technique ability per combat style (server-confirmed). */
-  techniques: Record<string, string> = {};
+  /** THE FREE HAND: the one slotted technique (server-confirmed). */
+  technique: string | null = null;
   /** THE UNWRITTEN PAGE: hidden arts earned by deed (server truth). */
   earnedArts: string[] = [];
   /** Answered Callings (server truth; Focus derives from skills). */
@@ -444,9 +444,8 @@ export class ClientGame {
         return relic?.relic ? (abilityDef(relic.relic) ?? null) : null;
       }
       case 2: {
-        // Daggers reach the sneak ladder via techStyle — mirror the server.
-        const w = this.equippedWeaponDef();
-        const chosen = this.techniques[w?.techStyle ?? w?.style ?? 'melee'];
+        // THE FREE HAND, mirrored: the slot ignores the equipped weapon.
+        const chosen = this.technique;
         if (!chosen) return null;
         const ab = abilityDef(chosen);
         if (!ab) return null;
@@ -463,9 +462,9 @@ export class ClientGame {
     }
   }
 
-  /** Choose a technique for a style (server validates the unlock). */
-  sendTechnique(style: string, ability: string): void {
-    this.conn?.send({ t: 'technique', style, ability });
+  /** Slot a technique on R (server validates the unlock). */
+  sendTechnique(ability: string): void {
+    this.conn?.send({ t: 'technique', ability });
   }
 
   /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
@@ -1023,7 +1022,7 @@ export class ClientGame {
         break;
       }
       case 'techniques': {
-        this.techniques = msg.chosen;
+        this.technique = msg.chosen;
         this.earnedArts = msg.earned ?? [];
         this.onTechniques?.();
         break;

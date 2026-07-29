@@ -796,8 +796,8 @@ interface PlayerComp {
   castFreezeUntilTick: number;
   /** Active self buffs (ability + passive sources stack). */
   buffs: PlayerBuff[];
-  /** Chosen technique ability per combat style. */
-  techniques: Record<string, string>;
+  /** THE FREE HAND: the one slotted technique — any learned art. */
+  technique: string | null;
   /** Answered Callings (row-presence mirror of character_callings). */
   callings: Set<string>;
   /** One-site perk dials derived from answered Callings (recomputeGear). */
@@ -1831,7 +1831,7 @@ export class GameServer {
       prevButtons: 0,
       castFreezeUntilTick: 0,
       buffs: [],
-      techniques: character.id > 0 ? await this.accounts.loadTechniques(character.id) : {},
+      technique: character.id > 0 ? await this.accounts.loadTechnique(character.id) : null,
       callings: character.id > 0 ? new Set(await this.accounts.loadCallings(character.id)) : new Set(),
       perks: defaultPerks(),
       stillTicks: 0,
@@ -5263,7 +5263,7 @@ export class GameServer {
   private sendTechniques(player: PlayerComp): void {
     player.session?.sendJson({
       t: 'techniques',
-      chosen: player.techniques,
+      chosen: player.technique,
       earned: this.earnedArts(player),
     });
   }
@@ -5892,16 +5892,6 @@ export class GameServer {
   }
 
   /**
-   * Which technique ladder the R slot reads. Damage/XP style stays the
-   * weapon's attack style — a dagger still cuts as melee — but knives
-   * declare techStyle 'sneak' and reach the rogue's ladder instead.
-   */
-  private techniqueStyle(player: PlayerComp): CombatStyleId {
-    const w = this.equippedWeapon(player)?.weapon;
-    return (w?.techStyle ?? w?.style ?? 'melee') as CombatStyleId;
-  }
-
-  /**
    * Resolve the ability in a hotbar slot. Each slot is a different
    * progression axis: Art = weapon (gear chase), relic (loot hunt),
    * technique (skill grind), sigil (boss trophies). No source, no
@@ -5918,7 +5908,9 @@ export class GameServer {
         return relicItem?.relic ? (abilityDef(relicItem.relic) ?? null) : null;
       }
       case SLOT_TECHNIQUE: {
-        const chosen = player.techniques[this.techniqueStyle(player)];
+        // THE FREE HAND: the slot holds any learned art — the equipped
+        // weapon never gates it.
+        const chosen = player.technique;
         if (!chosen) return null;
         const ab = abilityDef(chosen);
         if (!ab) return null;
@@ -5970,15 +5962,15 @@ export class GameServer {
   }
 
   /**
-   * Choose the equipped Technique for a style. Server-validated against
-   * the unlock ladder; respec is always free.
+   * Slot a Technique on R — THE FREE HAND: any learned art fits,
+   * whatever the equipped weapon. Server-validated against the unlock
+   * ladder (the art's OWN school); respec is always free.
    */
-  setTechnique(eid: EntityId, style: string, ability: string): void {
+  setTechnique(eid: EntityId, ability: string): void {
     const player = this.players.get(eid);
     if (!player) return;
-    if (!(COMBAT_STYLES as readonly string[]).includes(style)) return;
     const tech = techniqueDef(ability);
-    if (!tech || tech.style !== style) return;
+    if (!tech) return;
     if (tech.hidden) {
       // An unwritten page opens by deed, never by level.
       if (!player.flags.has(artFlag(ability))) return;
@@ -5993,8 +5985,8 @@ export class GameServer {
         return;
       }
     }
-    player.techniques[style] = ability;
-    if (player.characterId > 0) this.accounts.saveTechnique(player.characterId, style, ability);
+    player.technique = ability;
+    if (player.characterId > 0) this.accounts.saveTechnique(player.characterId, ability);
     this.sendTechniques(player);
     this.sendCooldowns(player);
   }
@@ -6062,7 +6054,14 @@ export class GameServer {
     if (player.action) this.cancelAction(eid, player, 'cast');
     this.setPose(eid, PoseState.Art, Math.max(6, (ab.castFreezeTicks ?? 0) + 4));
 
-    const style = this.currentStyle(player);
+    // A cast scales by (and trains) the school that owns it: Arts and
+    // trinkets ride the weapon's stance, but a technique is a learned
+    // skill — its own school powers it whatever the hand holds.
+    let style = this.currentStyle(player);
+    if (slot === SLOT_TECHNIQUE) {
+      const tech = techniqueDef(player.technique ?? '');
+      if (tech) style = tech.style;
+    }
     const level = this.effectiveLevel(player, style);
     // Trinket actives grow with the INSTANCE that grants them: the
     // relic's rolled rarity and drop power scale its ability — chasing
@@ -6176,9 +6175,12 @@ export class GameServer {
       ? this.equippedWeapon(casterPlayer)?.weapon.element
       : undefined;
     // Player casters carry their armor-class style multiplier in, plus
-    // any school-tuned element amplifier (Blazing Edge etc.).
+    // any school-tuned element amplifier (Blazing Edge etc.). Gear has
+    // no sneak axis — shadow arts swing melee steel, so they ride the
+    // melee multiplier.
+    const gearStyle = style === 'sneak' ? 'melee' : style;
     const gearMult = casterPlayer
-      ? ((casterPlayer.gear.styleDmgMult as Record<string, number>)[style] ?? 1) *
+      ? ((casterPlayer.gear.styleDmgMult as Record<string, number>)[gearStyle] ?? 1) *
         (style === 'magic' && element ? (casterPlayer.gear.elementDmgMult[element] ?? 1) : 1)
       : 1;
     // THE THREAT LAW: NPC casters climb the steeper NPC curve — the
