@@ -20,6 +20,7 @@ const proto = GameServer.prototype as unknown as {
   notePoiKill: WardFn;
   poiSpawnFights: WardFn;
   standDownGarrison: WardFn;
+  stampCalm: WardFn;
 };
 const GRACE_MS =
   (GameServer as unknown as { POI_RESPAWN_MIN_SEC: number }).POI_RESPAWN_MIN_SEC * 1000;
@@ -47,17 +48,24 @@ function slate(spawns: FakeSpawn[], opts: { authored?: boolean } = {}) {
           clearedAt: null as number | null,
           emberUntil: null as number | null,
           fallowUntil: null as number | null,
+          stage: 0,
+          stageAt: null as number | null,
+          originCell: null as string | null,
         },
       ],
     ]),
     players: new Map(),
+    frontierCalm: new Map<string, number>(),
     accounts: {
       markPoiCleared: (cx: number, cy: number, ember: number | null = null) =>
         cleared.push([cx, cy, ember]),
+      stampFrontierCalm: () => {},
+      setPoiEmber: () => {},
     },
     authoredCells: () => (opts.authored ? new Map([['3,4', 'test_site']]) : new Map()),
     poiSpawnFights: proto.poiSpawnFights,
     standDownGarrison: proto.standDownGarrison,
+    stampCalm: proto.stampCalm,
     cleared,
   };
 }
@@ -129,6 +137,8 @@ test('THE EMBER LAW: a procedural wipe stands the garrison down for good', () =>
   assert.equal(s.cleared[0]![2], row.emberUntil);
   // The broken ward stays broken.
   assert.equal(proto.poiGarrisonStands.call(s, '3,4'), false);
+  // And the wipe buys the valley its relax window.
+  assert.ok((s.frontierCalm.get('3,4') ?? 0) > Date.now());
 });
 
 test('authored landmarks keep the old covenant: grace window, no ember', () => {
@@ -159,4 +169,35 @@ test('an authored wipe never pulls an already-longer clock earlier', () => {
   const s = slate([brigand({ respawnAt: far })], { authored: true });
   proto.notePoiKill.call(s, 0);
   assert.equal(s.spawnPoints[0]!.respawnAt, far);
+});
+
+test('SOURCE-AND-KILL-SWITCH: breaking a core scatters its satellites without pay', () => {
+  const s = slate([brigand(), brigand()]);
+  // A standing satellite family: two live satellite rows point at '3,4'.
+  const satSpawn = { npc: 'brigand', eid: 7, respawnAt: 0, active: true };
+  (s as unknown as { spawnPoints: unknown[] }).spawnPoints.push(satSpawn);
+  s.poiLive.set('4,4', { spawnIdx: [2] });
+  s.poiLedger.set('4,4', {
+    epoch: 0,
+    site: {
+      cellX: 4, cellY: 4, epoch: 0, tier: 2,
+      defId: 'bandit_camp', prefabId: 'poi_bandit_hollow',
+      anchorX: 576, anchorY: 576,
+    } as never,
+    clearedAt: null,
+    emberUntil: null,
+    fallowUntil: null,
+    stage: 0,
+    stageAt: null,
+    originCell: '3,4',
+  });
+  const before = Date.now();
+  proto.notePoiKill.call(s, 0);
+  const sat = s.poiLedger.get('4,4')!;
+  // The satellite took a scatter ember: clock set, NO clear stamped —
+  // its later dissolve banks nothing (one clear is one victory).
+  assert.ok(sat.emberUntil !== null && sat.emberUntil > before);
+  assert.equal(sat.clearedAt, null);
+  // Its garrison stood down with the family.
+  assert.equal(satSpawn.active, false);
 });

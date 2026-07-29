@@ -519,6 +519,24 @@ const MIGRATIONS: string[] = [
     updated_at BIGINT NOT NULL
   );
   `,
+  // v7: THE BOLDNESS LADDER — a discovered, unanswered site climbs
+  // stage rungs on a real-time clock (stage_at = when the current rung
+  // began); satellites point at their core via origin_cell (the
+  // source-and-kill-switch law). frontier_calm holds the relax
+  // windows: cells near a garrison wipe see no new pressure while
+  // calm_until stands.
+  `
+  ALTER TABLE world_pois ADD COLUMN stage INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE world_pois ADD COLUMN stage_at BIGINT;
+  ALTER TABLE world_pois ADD COLUMN origin_cell TEXT;
+
+  CREATE TABLE frontier_calm (
+    cell_x INTEGER NOT NULL,
+    cell_y INTEGER NOT NULL,
+    calm_until BIGINT NOT NULL,
+    PRIMARY KEY (cell_x, cell_y)
+  );
+  `,
 ];
 
 /**

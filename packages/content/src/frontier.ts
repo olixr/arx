@@ -38,11 +38,46 @@ export const FRONTIER = {
   renewalRing: [64, 160] as const,
   /** Candidate cells probed per renewal attempt before the credit waits. */
   renewalTries: 6,
+  // ---- Phase 2: THE BOLDNESS LADDER ----
+  /**
+   * Real time a DISCOVERED, unanswered site stands before it climbs one
+   * boldness rung. [min, max] ms, hash-jittered per cell+stage so a
+   * frontier of camps never stages up in lockstep. Observation never
+   * escalates — only time does, and only after first discovery.
+   */
+  stageMs: [1.75 * 86_400_000, 2.25 * 86_400_000] as const,
+  /** The ladder's top — bounded escalation by construction. */
+  stageMax: 3,
+  /** Boldness rung at which a core may seed satellite camps. */
+  satelliteStage: 2,
+  /** Live satellites a core may keep at once. */
+  satelliteMax: 2,
+  /**
+   * How long a scattered satellite lingers after its core breaks —
+   * the family dissolves quickly once word spreads, but never in view.
+   * [min, max] ms.
+   */
+  scatterLingerMs: [2 * 60_000, 4 * 60_000] as const,
+  /**
+   * Regional escalation ceiling: at most this many stage-2+ cores per
+   * (2·regionCells+1)² cell neighborhood — the spiral has a roof.
+   */
+  regionBoldMax: 2,
+  /** Neighborhood radius (in POI cells) for the cap and the calm law. */
+  regionCells: 2,
+  /**
+   * THE RELAX WINDOW: real hours after ANY garrison wipe during which
+   * the surrounding cells see no stage-ups, no satellites, no fallow
+   * wakes, and no renewal landings — the player's victory audibly
+   * holds (the RimWorld/L4D cooldown-floor law).
+   */
+  calmMs: 12 * 3_600_000,
 } as const;
 
 /** Frontier RNG salts — the named-streams law (the ST_* family's kin). */
 const ST_EMBER = 0x501e5c;
 const ST_FALLOW = 0x501e5d;
+const ST_STAGE = 0x501e5e;
 
 function jitter(
   seed: number,
@@ -64,4 +99,19 @@ export function emberLingerFor(seed: number, cellX: number, cellY: number, epoch
 /** Fallow rest for a dissolved cell — pure, stable for the cell's epoch. */
 export function fallowRestFor(seed: number, cellX: number, cellY: number, epoch: number): number {
   return jitter(seed, ST_FALLOW, cellX, cellY, epoch, FRONTIER.fallowMs);
+}
+
+/** Time on the current rung before the next stage-up — pure per cell+stage. */
+export function stageWaitFor(
+  seed: number,
+  cellX: number,
+  cellY: number,
+  stage: number,
+): number {
+  return jitter(seed, ST_STAGE, cellX, cellY, stage, FRONTIER.stageMs);
+}
+
+/** Scatter linger for a satellite whose core broke — pure per cell. */
+export function scatterLingerFor(seed: number, cellX: number, cellY: number): number {
+  return jitter(seed, ST_EMBER ^ 0x5ca7, cellX, cellY, 0, FRONTIER.scatterLingerMs);
 }

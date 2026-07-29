@@ -805,6 +805,12 @@ export interface DiscoveryWire {
   tier?: number;
   /** The world rerolled this site — the marker reads as rumor now. */
   faded?: boolean;
+  /**
+   * The site's live boldness rung (0 or absent = base camp). Merged
+   * from the frontier ledger at send time — never stored per
+   * character; the chart draws stage pips from it.
+   */
+  stage?: number;
 }
 
 /** The full ledger, pushed once at bind. */
@@ -823,6 +829,18 @@ export interface S2CDiscovery {
 export interface S2CDiscoveryFade {
   t: 'discoveryfade';
   ids: string[];
+}
+
+/**
+ * A discovered site climbed a boldness rung — holders of the marker
+ * repaint its stage pips. No ceremony rides this (the rumor line
+ * travels as ordinary system chat); the DISCOVERED splash stays
+ * reserved for S2CDiscovery.
+ */
+export interface S2CDiscoveryStage {
+  t: 'discoverystage';
+  id: string;
+  stage: number;
 }
 
 export type S2CMessage =
@@ -864,7 +882,8 @@ export type S2CMessage =
   | S2CExplored
   | S2CDiscoveries
   | S2CDiscovery
-  | S2CDiscoveryFade;
+  | S2CDiscoveryFade
+  | S2CDiscoveryStage;
 
 // ------------------------------------------------------- validation
 

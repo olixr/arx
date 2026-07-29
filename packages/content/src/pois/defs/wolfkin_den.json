@@ -23,5 +23,27 @@
   "cues": {
     "clearing": 2,
     "scatter": [{ "tile": "BonePile", "count": 3 }]
+  },
+  "boldness": {
+    "stages": [
+      {
+        "garrison": [{ "npc": "wolf", "count": [1, 2], "role": "holdfast" }],
+        "scatter": [{ "tile": "BonePile", "count": 1 }]
+      },
+      {
+        "garrison": [
+          { "npc": "wolf", "count": [1, 1], "role": "sentry", "patrol": true },
+          { "npc": "worg", "count": [1, 1], "role": "holdfast", "minTier": 3 }
+        ]
+      },
+      {
+        "garrison": [
+          { "npc": "wolf", "count": [1, 2], "role": "holdfast" },
+          { "npc": "worg", "count": [1, 1], "role": "sentry", "patrol": true, "minTier": 3 }
+        ],
+        "scatter": [{ "tile": "BonePile", "count": 2 }]
+      }
+    ],
+    "satellites": true
   }
 }

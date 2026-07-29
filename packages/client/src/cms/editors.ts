@@ -2128,6 +2128,15 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
     ...(draft.clearedFlag !== undefined
       ? [pill(`flag: ${draft.clearedFlag}`, 'stamped on whoever fells the last garrison body', 'brass')]
       : []),
+    ...(draft.boldness !== undefined
+      ? [
+          pill(
+            `boldness ×${draft.boldness.stages.length}${draft.boldness.satellites ? ' + satellites' : ''}`,
+            'climbs rungs when discovered and left unanswered — busier, never deadlier',
+            'brass',
+          ),
+        ]
+      : []),
   ];
 
   body.appendChild(
@@ -2412,6 +2421,206 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
       'Garrison',
       'The muster recipe. Levels come from the tier band; holdfasts cluster at the heart, sentries take the townward ring — patrollers pace the whole of it.',
       garrisonBox,
+    ),
+  );
+
+  // ------------------------------------------------ the boldness ladder
+  // Phase-2 frontier law: a DISCOVERED, unanswered site climbs rungs on
+  // a real-day clock — each rung ADDS muster and dressing (the
+  // frequency law: never levels past the base garrison's own ceiling;
+  // the validator refuses more). Rungs are cumulative.
+  const boldBox = el('div', 'poi-garrison');
+  const parseScatter = (v: string): Array<{ tile: string; count: number }> =>
+    v
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => {
+        const [tile, n] = s.split(':').map((p) => p.trim());
+        return { tile: tile ?? '', count: Math.max(1, Number.parseInt(n ?? '1', 10) || 1) };
+      })
+      .filter((s) => s.tile.length > 0);
+  const rebuildBoldness = (): void => {
+    boldBox.innerHTML = '';
+    const b = draft.boldness;
+    if (!b) {
+      const arm = el('button', 'sm', '+ give this archetype a boldness ladder') as HTMLButtonElement;
+      arm.title =
+        'Discovered, unanswered sites climb rungs over real days — busier muster, wider dressing, never a deadlier band.';
+      arm.onclick = () => {
+        draft.boldness = {
+          stages: [
+            { garrison: [{ npc: draft.garrison[0]?.npc ?? 'goblin', count: [1, 2], role: 'holdfast' }] },
+          ],
+        };
+        markDirty();
+        rebuildBoldness();
+      };
+      boldBox.appendChild(arm);
+      return;
+    }
+    b.stages.forEach((st, si) => {
+      const rung = el('div', 'poi-grow');
+      rung.appendChild(el('span', 'lbl', `rung ${si + 1}`));
+      const rows = el('div', 'poi-garrison');
+      (st.garrison ?? []).forEach((g, gi) => {
+        const grow = el('div', 'poi-grow');
+        grow.appendChild(combobox(npcOptions, g.npc, (npc) => patchBold(si, gi, { npc })));
+        const roleSeg = el('div', 'seg-row mini-seg');
+        for (const role of ['holdfast', 'sentry'] as const) {
+          const btn = el('button', 'opt-btn' + (g.role === role ? ' active' : ''), role) as HTMLButtonElement;
+          btn.onclick = () =>
+            patchBold(si, gi, { role, ...(role === 'holdfast' ? { patrol: undefined } : {}) }, true);
+          roleSeg.appendChild(btn);
+        }
+        grow.appendChild(roleSeg);
+        if (g.role === 'sentry') {
+          grow.appendChild(
+            featureChip('patrols', g.patrol === true, 'Paces the perimeter ring', (on) =>
+              patchBold(si, gi, { patrol: on || undefined }, true),
+            ),
+          );
+        }
+        const countWrap = el('label', 'lbl', 'count');
+        countWrap.appendChild(
+          rangePair(g.count[0], g.count[1], 0, 12, (lo, hi) => patchBold(si, gi, { count: [lo, hi] })),
+        );
+        grow.appendChild(countWrap);
+        const tierWrap = el('label', 'lbl', 'from tier');
+        tierWrap.appendChild(
+          numIn(g.minTier ?? draft.tiers[0], (v) =>
+            patchBold(si, gi, { minTier: v <= draft.tiers[0] ? undefined : v }),
+          ),
+        );
+        grow.appendChild(tierWrap);
+        const offWrap = el('label', 'lbl', '+levels (≤ base cap)');
+        offWrap.appendChild(
+          numIn(g.levelOffset ?? 0, (v) => patchBold(si, gi, { levelOffset: v > 0 ? v : undefined })),
+        );
+        grow.appendChild(offWrap);
+        const del = el('button', 'danger sm', '✕') as HTMLButtonElement;
+        del.onclick = () => {
+          mutateStage(si, (s) => ({
+            ...s,
+            garrison: (s.garrison ?? []).filter((_, j) => j !== gi),
+          }));
+          rebuildBoldness();
+        };
+        grow.appendChild(del);
+        rows.appendChild(grow);
+      });
+      const addRow = el('button', 'sm', '+ rung muster') as HTMLButtonElement;
+      addRow.onclick = () => {
+        mutateStage(si, (s) => ({
+          ...s,
+          garrison: [
+            ...(s.garrison ?? []),
+            { npc: draft.garrison[0]?.npc ?? 'goblin', count: [1, 1], role: 'holdfast' as const },
+          ],
+        }));
+        rebuildBoldness();
+      };
+      rows.appendChild(addRow);
+      rung.appendChild(rows);
+      const scWrap = el('label', 'lbl', 'extra scatter (Tile:count, …)');
+      const scIn = textIn(
+        (st.scatter ?? []).map((s) => `${s.tile}:${s.count}`).join(', '),
+        (v) => {
+          const scatter = parseScatter(v);
+          mutateStage(si, (s) => ({
+            ...s,
+            ...(scatter.length > 0 ? { scatter } : { scatter: undefined }),
+          }));
+        },
+        'BannerPole:1, Crate:2…',
+      );
+      scWrap.appendChild(scIn);
+      rung.appendChild(scWrap);
+      const dropRung = el('button', 'danger sm', '✕ rung') as HTMLButtonElement;
+      dropRung.onclick = () => {
+        const stages = b.stages.filter((_, j) => j !== si);
+        draft.boldness = stages.length > 0 ? { ...b, stages } : undefined;
+        markDirty();
+        rebuildBoldness();
+      };
+      rung.appendChild(dropRung);
+      boldBox.appendChild(rung);
+    });
+    if (b.stages.length < 3) {
+      const addRung = el('button', 'sm', '+ rung') as HTMLButtonElement;
+      addRung.onclick = () => {
+        draft.boldness = {
+          ...b,
+          stages: [
+            ...b.stages,
+            { garrison: [{ npc: draft.garrison[0]?.npc ?? 'goblin', count: [1, 1], role: 'holdfast' as const }] },
+          ],
+        };
+        markDirty();
+        rebuildBoldness();
+      };
+      boldBox.appendChild(addRung);
+    }
+    boldBox.appendChild(
+      featureChip(
+        'satellites',
+        b.satellites === true,
+        'At rung 2+ the core seeds satellite camps townward — the family dies with the core',
+        (on) => {
+          draft.boldness = { ...b, ...(on ? { satellites: true } : { satellites: undefined }) };
+          markDirty();
+          rebuildBoldness();
+        },
+      ),
+    );
+  };
+  const mutateStage = (
+    si: number,
+    fn: (s: { garrison?: PoiGarrisonEntry[]; scatter?: Array<{ tile: string; count: number }> }) => {
+      garrison?: PoiGarrisonEntry[];
+      scatter?: Array<{ tile: string; count: number }> | undefined;
+    },
+  ): void => {
+    const b = draft.boldness;
+    if (!b) return;
+    const stages = b.stages.map((s, j) => {
+      if (j !== si) return s;
+      const next = fn({
+        garrison: (s.garrison ?? []).slice() as PoiGarrisonEntry[],
+        scatter: s.scatter ? s.scatter.slice() : undefined,
+      });
+      const clean: Record<string, unknown> = {};
+      if (next.garrison && next.garrison.length > 0) clean.garrison = next.garrison;
+      if (next.scatter && next.scatter.length > 0) clean.scatter = next.scatter;
+      return clean as typeof s;
+    });
+    draft.boldness = { ...b, stages };
+    markDirty();
+  };
+  const patchBold = (
+    si: number,
+    gi: number,
+    patch: Partial<PoiGarrisonEntry>,
+    rebuild = false,
+  ): void => {
+    mutateStage(si, (s) => {
+      const list = s.garrison ?? [];
+      const merged = { ...list[gi]!, ...patch } as PoiGarrisonEntry & Record<string, unknown>;
+      for (const k of Object.keys(merged)) {
+        if (merged[k] === undefined) delete merged[k];
+      }
+      list[gi] = merged;
+      return { ...s, garrison: list };
+    });
+    // The no-rebuild-on-keystroke law: only structural chips re-render.
+    if (rebuild) rebuildBoldness();
+  };
+  rebuildBoldness();
+  body.appendChild(
+    sect(
+      'The boldness ladder',
+      'What the site ADDS when it stands discovered and unanswered — rungs are cumulative, climbed over real days, and never raise levels past the base garrison’s own ceiling.',
+      boldBox,
     ),
   );
 

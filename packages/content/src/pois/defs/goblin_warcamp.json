@@ -76,5 +76,85 @@
         "count": 1
       }
     ]
+  },
+  "boldness": {
+    "stages": [
+      {
+        "garrison": [
+          {
+            "npc": "goblin",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          },
+          {
+            "npc": "goblin_thrower",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry"
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BannerPole",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "goblin",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry",
+            "patrol": true
+          },
+          {
+            "npc": "worg",
+            "count": [
+              1,
+              1
+            ],
+            "role": "holdfast",
+            "minTier": 2
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BannerPole",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "goblin",
+            "count": [
+              2,
+              3
+            ],
+            "role": "holdfast"
+          },
+          {
+            "npc": "goblin_thrower",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry",
+            "patrol": true
+          }
+        ]
+      }
+    ],
+    "satellites": true
   }
 }

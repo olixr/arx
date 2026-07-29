@@ -22,6 +22,7 @@ import {
   prefabToJson,
   roadBearingAt,
   type PoiDef,
+  type PoiGarrisonEntry,
   type PrefabDef,
   type ZoneActorSpawn,
   type ZoneDef,
@@ -242,7 +243,12 @@ function intersectsZones(
  * favoring the bearing toward settled land, because that's the way
  * players come.
  */
-export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDef | null {
+export function composePoi(
+  seed: number,
+  site: PoiSite,
+  ctx: PoiContext,
+  stage = 0,
+): ZoneDef | null {
   const def = ctx.defs.find((d) => d.id === site.defId);
   const prefab = ctx.prefabs.get(site.prefabId);
   if (!def || !prefab) return null;
@@ -250,6 +256,16 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
   const musterBase = stream(seed, ST_MUSTER, site.cellX, site.cellY, site.epoch);
   const levelRoll = (i: number): number =>
     law.npcLevel[0] + (hashCoords(musterBase, i, 7) % (law.npcLevel[1] - law.npcLevel[0] + 1));
+
+  // THE BOLDNESS LADDER (living frontier, phase 2): active rungs add
+  // muster and dressing ON TOP of the base composition. Every rung
+  // draws on a stage-folded stream and appends AFTER the base entries,
+  // so a standing camp's own bodies and posts never reshuffle when it
+  // grows — the named-streams law, held across stages.
+  const rungs = def.boldness
+    ? def.boldness.stages.slice(0, Math.max(0, Math.min(stage, def.boldness.stages.length)))
+    : [];
+  const boldScatter = rungs.flatMap((r) => r.scatter ?? []);
 
   // The approach bearing — the way players actually come. A carved
   // road within hailing distance wins (Epic 3's law: cues aim at
@@ -279,13 +295,16 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
   // enough to carry the approach cues; with no cues the pad is 0 and
   // the zone is exactly the footprint, as in phase 1.
   const cues = def.cues;
-  const pad = cues
-    ? Math.max(
-        cues.clearing ?? 0,
-        cues.approachPath ? 9 : 0,
-        cues.scatter && cues.scatter.length > 0 ? 7 : 0,
-      )
-    : 0;
+  const pad = Math.max(
+    cues
+      ? Math.max(
+          cues.clearing ?? 0,
+          cues.approachPath ? 9 : 0,
+          cues.scatter && cues.scatter.length > 0 ? 7 : 0,
+        )
+      : 0,
+    boldScatter.length > 0 ? 7 : 0,
+  );
   const zw = prefab.width + pad * 2;
   const zh = prefab.height + pad * 2;
   const originX = site.anchorX - Math.floor(prefab.width / 2) - pad;
@@ -376,7 +395,9 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
     }
   }
 
-  for (const [si, sc] of (cues?.scatter ?? []).entries()) {
+  // Boldness dressing appends AFTER the base cues, so the base
+  // placements keep their exact spots as the camp grows louder.
+  for (const [si, sc] of [...(cues?.scatter ?? []), ...boldScatter].entries()) {
     // Cue tiles on the approach cone — the bones before the ruin, the
     // banner before the camp. Hash-placed, standable-probed, and only
     // into still-transparent fringe (the path keeps its ruts).
@@ -433,6 +454,17 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
     patrol?: boolean;
     hours?: { from: number; to: number };
   }> = [];
+  // Boldness rungs collected up front only to size the sentry ring —
+  // their spawns append strictly AFTER the whole base composition
+  // (holdfasts, sentries, staff), so the standing camp's own bodies,
+  // posts, and level rolls are bit-identical at every stage.
+  const rungWants: Array<{ g: PoiGarrisonEntry; base: number; gi: number }> = [];
+  for (const [ri, rung] of rungs.entries()) {
+    const rungBase = hashCoords(musterBase, 0xb01d, ri + 1);
+    for (const [gi, g] of (rung.garrison ?? []).entries()) {
+      rungWants.push({ g, base: rungBase, gi });
+    }
+  }
   for (const [gi, g] of def.garrison.entries()) {
     if (g.minTier !== undefined && site.tier < g.minTier) continue;
     const count =
@@ -473,7 +505,11 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
   // because both are watching the same road.
   const staff = def.actors ?? [];
   const ring: Array<{ x: number; y: number; score: number }> = [];
-  if (sentryWants.length > 0 || staff.some((s) => s.post === 'watch')) {
+  if (
+    sentryWants.length > 0 ||
+    staff.some((s) => s.post === 'watch') ||
+    rungWants.some(({ g }) => g.role === 'sentry')
+  ) {
     const ringR = Math.max(prefab.width, prefab.height) / 2 + 5;
     for (let b = 0; b < 12; b++) {
       const ang = (b / 12) * Math.PI * 2;
@@ -620,6 +656,75 @@ export function composePoi(seed: number, site: PoiSite, ctx: PoiContext): ZoneDe
           dir: Math.atan2(ay, ax),
           ...(entry.routine !== undefined ? { routine: entry.routine } : {}),
         });
+      }
+    }
+  }
+
+  // ---- THE BOLDNESS MUSTER: rung bodies append after everything the
+  // base camp placed. Holdfasts crowd the heart; rung watchers take
+  // ring posts from the FAR end (the reinforcements watch the back
+  // door — base watchers and staff keep their townward posts
+  // untouched); rung patrollers walk the same round with their own
+  // start spread. Level rolls continue the counter AFTER the base, so
+  // base levels never move.
+  if (rungWants.length > 0) {
+    let rungWatchI = 0;
+    let rungPatrolI = 0;
+    for (const { g, base, gi } of rungWants) {
+      if (g.minTier !== undefined && site.tier < g.minTier) continue;
+      const count = g.count[0] + (hashCoords(base, gi, 13) % (g.count[1] - g.count[0] + 1));
+      if (count <= 0) continue;
+      const gname = g.names ? g.names[hashCoords(base, gi, 41) % g.names.length] : g.name;
+      if (g.role === 'holdfast') {
+        spawns.push({
+          npc: g.npc,
+          x: site.anchorX + 0.5,
+          y: site.anchorY + 0.5,
+          radius: holdR,
+          count,
+          level: levelRoll(n++) + (g.levelOffset ?? 0),
+          name: gname,
+          hours: g.hours,
+        });
+        continue;
+      }
+      for (let i = 0; i < count; i++) {
+        const level = levelRoll(n++) + (g.levelOffset ?? 0);
+        if (g.patrol && ring.length >= 3) {
+          const start =
+            (Math.floor((rungPatrolI * ring.length) / Math.max(1, count)) + rungPatrolI) %
+            ring.length;
+          rungPatrolI++;
+          const loop = [...ring.slice(start), ...ring.slice(0, start)].map((p) => ({
+            x: p.x,
+            y: p.y,
+          }));
+          spawns.push({
+            npc: g.npc,
+            x: loop[0]!.x,
+            y: loop[0]!.y,
+            radius: 1.2,
+            count: 1,
+            level,
+            name: gname,
+            patrol: loop,
+            hours: g.hours,
+          });
+        } else {
+          const post = byScore[byScore.length - 1 - (rungWatchI % Math.max(1, byScore.length))];
+          rungWatchI++;
+          if (!post) break; // no honest ring at all — the rung stays home
+          spawns.push({
+            npc: g.npc,
+            x: post.x,
+            y: post.y,
+            radius: 2,
+            count: 1,
+            level,
+            name: gname,
+            hours: g.hours,
+          });
+        }
       }
     }
   }

@@ -139,6 +139,25 @@ export function drawDiscoveryMarker(
       drawLandmark(ctx, r, ink);
       break;
   }
+  // THE STAGE PIPS (the boldness ladder): one monoline tick under the
+  // sigil per rung — the chart says "bolder than when you found it"
+  // at a glance, in the same one-ink dialect as the sigils. Rumor
+  // markers drop them: a faded marker's stage is itself a rumor.
+  if (!d.faded && d.stage !== undefined && d.stage > 0) {
+    const n = Math.min(d.stage, 3);
+    const w = r * 0.42;
+    const py = r * 1.25;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = Math.max(1.1, r * 0.16);
+    ctx.lineCap = 'round';
+    for (let i = 0; i < n; i++) {
+      const px = (i - (n - 1) / 2) * w;
+      ctx.beginPath();
+      ctx.moveTo(px - w * 0.28, py);
+      ctx.lineTo(px + w * 0.28, py);
+      ctx.stroke();
+    }
+  }
   ctx.restore();
 }
 

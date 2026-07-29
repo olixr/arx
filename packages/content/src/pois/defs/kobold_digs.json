@@ -23,5 +23,27 @@
     "clearing": 3,
     "approachPath": true,
     "scatter": [{ "tile": "CaveRubble", "count": 3 }]
+  },
+  "boldness": {
+    "stages": [
+      {
+        "garrison": [{ "npc": "kobold", "count": [1, 2], "role": "holdfast" }],
+        "scatter": [{ "tile": "CaveRubble", "count": 2 }]
+      },
+      {
+        "garrison": [
+          { "npc": "kobold", "count": [1, 1], "role": "sentry", "patrol": true },
+          { "npc": "kobold", "count": [1, 1], "role": "holdfast" }
+        ]
+      },
+      {
+        "garrison": [
+          { "npc": "kobold", "count": [1, 2], "role": "holdfast" },
+          { "npc": "kobold", "count": [1, 1], "role": "sentry" }
+        ],
+        "scatter": [{ "tile": "CaveRubble", "count": 2 }]
+      }
+    ],
+    "satellites": true
   }
 }

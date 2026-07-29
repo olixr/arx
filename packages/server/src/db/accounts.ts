@@ -617,12 +617,16 @@ export class AccountStore {
       clearedAt: number | null;
       emberUntil: number | null;
       fallowUntil: number | null;
+      stage: number;
+      stageAt: number | null;
+      originCell: string | null;
     }>
   > {
     return this.db.query(
       'SELECT cell_x AS "cellX", cell_y AS "cellY", epoch, poi_id AS "poiId", ' +
         'prefab_id AS "prefabId", tier, anchor_x AS "anchorX", anchor_y AS "anchorY", ' +
-        'cleared_at AS "clearedAt", ember_until AS "emberUntil", fallow_until AS "fallowUntil" ' +
+        'cleared_at AS "clearedAt", ember_until AS "emberUntil", fallow_until AS "fallowUntil", ' +
+        'stage, stage_at AS "stageAt", origin_cell AS "originCell" ' +
         'FROM world_pois',
     ) as ReturnType<AccountStore['loadPoiCells']>;
   }
@@ -639,14 +643,16 @@ export class AccountStore {
     epoch: number,
     site: { poiId: string; prefabId: string; tier: number; anchorX: number; anchorY: number } | null,
     fallowUntil: number | null = null,
+    originCell: string | null = null,
   ): void {
     this.db.fire(
-      'INSERT INTO world_pois (cell_x, cell_y, epoch, poi_id, prefab_id, tier, anchor_x, anchor_y, first_seen_at, cleared_at, ember_until, fallow_until) ' +
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?) ' +
+      'INSERT INTO world_pois (cell_x, cell_y, epoch, poi_id, prefab_id, tier, anchor_x, anchor_y, first_seen_at, cleared_at, ember_until, fallow_until, stage, stage_at, origin_cell) ' +
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, 0, NULL, ?) ' +
         'ON CONFLICT (cell_x, cell_y) DO UPDATE SET epoch = excluded.epoch, ' +
         'poi_id = excluded.poi_id, prefab_id = excluded.prefab_id, tier = excluded.tier, ' +
         'anchor_x = excluded.anchor_x, anchor_y = excluded.anchor_y, cleared_at = NULL, ' +
-        'ember_until = NULL, fallow_until = excluded.fallow_until',
+        'ember_until = NULL, fallow_until = excluded.fallow_until, ' +
+        'stage = 0, stage_at = NULL, origin_cell = excluded.origin_cell',
       [
         cellX,
         cellY,
@@ -658,8 +664,53 @@ export class AccountStore {
         site?.anchorY ?? null,
         Date.now(),
         fallowUntil,
+        originCell,
       ],
     );
+  }
+
+  /** Stamp a boldness rung (stage_at = when this rung began). */
+  markPoiStage(cellX: number, cellY: number, stage: number, stageAt: number): void {
+    this.db.fire('UPDATE world_pois SET stage = ?, stage_at = ? WHERE cell_x = ? AND cell_y = ?', [
+      stage,
+      stageAt,
+      cellX,
+      cellY,
+    ]);
+  }
+
+  // --------------------------------------------- frontier calm
+
+  /** Live relax windows (expired rows pruned by the sweep, not here). */
+  async loadFrontierCalm(): Promise<Array<{ cellX: number; cellY: number; calmUntil: number }>> {
+    return this.db.query(
+      'SELECT cell_x AS "cellX", cell_y AS "cellY", calm_until AS "calmUntil" FROM frontier_calm',
+    ) as ReturnType<AccountStore['loadFrontierCalm']>;
+  }
+
+  stampFrontierCalm(cellX: number, cellY: number, calmUntil: number): void {
+    this.db.fire(
+      'INSERT INTO frontier_calm (cell_x, cell_y, calm_until) VALUES (?, ?, ?) ' +
+        'ON CONFLICT (cell_x, cell_y) DO UPDATE SET calm_until = ' +
+        'GREATEST(frontier_calm.calm_until, excluded.calm_until)',
+      [cellX, cellY, calmUntil],
+    );
+  }
+
+  pruneFrontierCalm(now: number): void {
+    this.db.fire('DELETE FROM frontier_calm WHERE calm_until < ?', [now]);
+  }
+
+  /**
+   * Cell keys ('cx,cy') any character has a LIVE (unfaded) poi:
+   * discovery for — the boldness clock only runs for discovered sites,
+   * and this seeds the in-memory set at boot.
+   */
+  async loadDiscoveredPoiCells(): Promise<string[]> {
+    const rows = (await this.db.query(
+      "SELECT DISTINCT id FROM character_discoveries WHERE id LIKE 'poi:%' AND faded = 0",
+    )) as Array<{ id: string }>;
+    return rows.map((r) => r.id.slice(4));
   }
 
   /**

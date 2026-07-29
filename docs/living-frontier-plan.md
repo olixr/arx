@@ -178,6 +178,23 @@ credits → levers/tests. Each green.
 
 ## Phase 2 — The Boldness Ladder (ignored camps grow)
 
+**SHIPPED 2026-07-28.** Verified live: a discovered goblin warcamp forced to
+rung 2 recomposed from 9 to 13 bodies with its base muster bit-identical
+(the frequency law is pinned by a prefix-stability test the first draft
+FAILED — rung holdfasts were reshuffling base sentries until the composer
+was restructured to append rungs strictly after the whole base
+composition); the rumor line and the live stage pips landed on every
+marker holder; the natural 15 s cadence organically seeded **two townward
+satellites** of a tier-5 core (capped at satelliteMax) with `origin_cell`
+recorded; dissolving the core orphan-scattered both — ember with NO clear
+stamped — and they dissolved minutes later **without banking renewal
+credits**. The satellite bounds proved honest live: cores near Dawnmead
+refused all three townward cells (occupied / tier-0 / authored), readable
+via the `/frontier tick` refusal trace. Wipe-scatter, calm gating, the
+regional roof, and satellites-never-climb are pinned in the suites (656
+workspace tests green). Protocol v14; migration v7; the CMS bench grew
+the boldness ladder section.
+
 Goal: neglect has texture. The land develops; players read it and answer it.
 
 ### 2.1 Stage on the ledger

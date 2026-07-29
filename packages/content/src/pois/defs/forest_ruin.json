@@ -77,5 +77,75 @@
         "count": 3
       }
     ]
+  },
+  "boldness": {
+    "stages": [
+      {
+        "garrison": [
+          {
+            "npc": "skeleton",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "skeleton_archer",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry",
+            "minTier": 3
+          },
+          {
+            "npc": "skeleton",
+            "count": [
+              1,
+              1
+            ],
+            "role": "holdfast"
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "skeleton",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          },
+          {
+            "npc": "skeleton_guard",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry",
+            "minTier": 3
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 2
+          }
+        ]
+      }
+    ]
   }
 }

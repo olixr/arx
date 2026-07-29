@@ -1076,6 +1076,16 @@ export class ClientGame {
         this.chartVersion++;
         break;
       }
+      case 'discoverystage': {
+        // The site climbed a boldness rung — repaint its stage pips.
+        // The rumor line arrives as ordinary system chat; no ceremony.
+        const d = this.discoveries.get(msg.id);
+        if (d) {
+          d.stage = msg.stage;
+          this.chartVersion++;
+        }
+        break;
+      }
       case 'social': {
         this.events.onSocial?.({ friends: msg.friends, incoming: msg.incoming, outgoing: msg.outgoing });
         break;

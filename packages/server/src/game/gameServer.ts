@@ -145,6 +145,8 @@ import {
   emberLingerFor,
   fallowRestFor,
   pickWild,
+  scatterLingerFor,
+  stageWaitFor,
   replaceGeography,
   roadDistanceAt,
   wildCandidates,
@@ -1214,8 +1216,25 @@ export class GameServer {
       clearedAt: number | null;
       emberUntil: number | null;
       fallowUntil: number | null;
+      /** Boldness rung (0 = base camp) + when the current rung began. */
+      stage: number;
+      stageAt: number | null;
+      /** Satellite camps point at their core's cell key (the family law). */
+      originCell: string | null;
     }
   >();
+  /**
+   * Cells any character holds a LIVE poi: discovery for — the boldness
+   * clock's gate (an unseen camp costs nothing and threatens nobody;
+   * observation itself never escalates, only discovered time does).
+   */
+  private readonly discoveredPoiCells = new Set<string>();
+  /**
+   * THE RELAX WINDOWS by cell key: after a garrison wipe, cells within
+   * FRONTIER.regionCells of a stamp see no stage-ups, satellites,
+   * fallow wakes, or renewal landings until calm_until passes.
+   */
+  private readonly frontierCalm = new Map<string, number>();
   /**
    * THE CONSERVATION LAW's debt: sites the frontier owes the world
    * after ember dissolves. Spent by tickFrontier standing fresh rolls
@@ -1980,7 +1999,18 @@ export class GameServer {
       }
       if (batch.length > 0) session.sendJson({ t: 'explored', regions: batch });
     }
-    session.sendJson({ t: 'discoveries', list: [...player.discoveries.values()] });
+    // The ledger travels with each poi: marker's LIVE stage merged in —
+    // stage is world truth, refreshed at bind, never stored per character.
+    session.sendJson({
+      t: 'discoveries',
+      list: [...player.discoveries.values()].map((d) => {
+        if (!d.id.startsWith('poi:') || d.faded) return d;
+        const stage = this.poiLedger.get(d.id.slice(4))?.stage ?? 0;
+        if (stage > 0) d.stage = stage;
+        else delete d.stage;
+        return d;
+      }),
+    });
   }
 
   onSessionClosed(session: Session): void {
@@ -2183,6 +2213,15 @@ export class GameServer {
    * marker with the fresh truth.
    */
   private recordDiscovery(player: PlayerComp, d: DiscoveryWire, epoch?: number): void {
+    // A poi: footfall arms the boldness clock's gate and stamps the
+    // site's LIVE stage onto the wire (stage is world truth merged at
+    // send time — never stored per character).
+    if (d.id.startsWith('poi:')) {
+      const cellKey = d.id.slice(4);
+      this.discoveredPoiCells.add(cellKey);
+      const stage = this.poiLedger.get(cellKey)?.stage ?? 0;
+      if (stage > 0) d.stage = stage;
+    }
     player.discoveries.set(d.id, d);
     if (player.characterId > 0) this.accounts.addDiscovery(player.characterId, d, epoch);
     player.session?.sendJson({ t: 'discovery', d });
@@ -2195,6 +2234,7 @@ export class GameServer {
    */
   private fadePoiDiscoveries(cellKey: string): void {
     const id = `poi:${cellKey}`;
+    this.discoveredPoiCells.delete(cellKey); // the boldness gate closes with the site
     this.accounts.fadeDiscovery(id);
     for (const player of this.players.values()) {
       const d = player.discoveries.get(id);
@@ -3773,9 +3813,20 @@ export class GameServer {
     }
   }
 
-  initPois(rows: Awaited<ReturnType<AccountStore['loadPoiCells']>>, frontierCredits = 0): void {
+  initPois(
+    rows: Awaited<ReturnType<AccountStore['loadPoiCells']>>,
+    frontierCredits = 0,
+    extras: {
+      discovered?: readonly string[];
+      calm?: ReadonlyArray<{ cellX: number; cellY: number; calmUntil: number }>;
+    } = {},
+  ): void {
     this.poiPrefabs = loadPoiPrefabs(config.dataDir);
     this.frontierCredits = frontierCredits;
+    for (const key of extras.discovered ?? []) this.discoveredPoiCells.add(key);
+    for (const c of extras.calm ?? []) {
+      this.frontierCalm.set(poiCellKey(c.cellX, c.cellY), c.calmUntil);
+    }
     let sites = 0;
     for (const row of rows) {
       const site: PoiSite | null =
@@ -3798,6 +3849,9 @@ export class GameServer {
         clearedAt: row.clearedAt,
         emberUntil: row.emberUntil,
         fallowUntil: row.fallowUntil,
+        stage: row.stage,
+        stageAt: row.stageAt,
+        originCell: row.originCell,
       });
     }
     console.log(
@@ -3931,7 +3985,7 @@ export class GameServer {
         anchorX: site.anchorX,
         anchorY: site.anchorY,
       });
-      this.poiLedger.set(key, { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null });
+      this.poiLedger.set(key, { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null, stage: 0, stageAt: null, originCell: null });
       seeded++;
       console.log(
         `[poi] authored site '${want.id}' (${want.defId}) stands at ` +
@@ -3973,7 +4027,7 @@ export class GameServer {
           anchorY: site.anchorY,
         },
       );
-      this.poiLedger.set(key, { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null });
+      this.poiLedger.set(key, { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null, stage: 0, stageAt: null, originCell: null });
       evicted++;
     }
     if (evicted > 0) this.rebuildHavens();
@@ -4031,7 +4085,7 @@ export class GameServer {
           anchorY: site.anchorY,
         },
       );
-      this.poiLedger.set(key, { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null });
+      this.poiLedger.set(key, { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null, stage: 0, stageAt: null, originCell: null });
       turned++;
       if (site) rerolled++;
     }
@@ -4120,7 +4174,7 @@ export class GameServer {
           anchorY: site.anchorY,
         },
       );
-      this.poiLedger.set(key, { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null });
+      this.poiLedger.set(key, { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null, stage: 0, stageAt: null, originCell: null });
       if (orphan) orphaned++;
       else evicted++;
     }
@@ -4143,6 +4197,8 @@ export class GameServer {
       clearedAt: number | null;
       emberUntil: number | null;
       fallowUntil: number | null;
+      stage: number;
+      originCell: string | null;
       site: PoiSite | null;
       defName: string | null;
       zoneId: string | null;
@@ -4157,6 +4213,8 @@ export class GameServer {
       clearedAt: row.clearedAt,
       emberUntil: row.emberUntil,
       fallowUntil: row.fallowUntil,
+      stage: row.stage,
+      originCell: row.originCell,
       site: row.site ? { ...row.site } : null,
       defName: row.site ? (POI_DEFS.get(row.site.defId)?.name ?? row.site.defId) : null,
       zoneId: this.poiLive.get(key)?.zoneId ?? null,
@@ -4194,6 +4252,9 @@ export class GameServer {
         clearedAt: null,
         emberUntil: null,
         fallowUntil: null,
+        stage: 0,
+        stageAt: null,
+        originCell: null,
       });
       this.rebuildHavens();
       return { ok: true, site: null };
@@ -4263,8 +4324,19 @@ export class GameServer {
   private tickFrontier(): void {
     if (!this.poiPrefabs) return;
     const now = Date.now();
+    // Expired relax windows lift quietly (map first; one DB sweep).
+    let calmExpired = false;
+    for (const [key, until] of this.frontierCalm) {
+      if (until <= now) {
+        this.frontierCalm.delete(key);
+        calmExpired = true;
+      }
+    }
+    if (calmExpired) this.accounts.pruneFrontierCalm(now);
     if (this.dissolveOneEmber(now)) return;
     if (this.wakeOneFallow(now)) return;
+    if (this.stageOnePoi(now)) return;
+    if (this.seedOneSatellite(now)) return;
     this.spendRenewalCredit(now);
   }
 
@@ -4280,23 +4352,40 @@ export class GameServer {
   private dissolveOneEmber(now: number): boolean {
     const authored = this.authoredCells();
     for (const [key, row] of this.poiLedger) {
-      if (row.site === null || row.clearedAt === null) continue;
-      if (row.emberUntil === null || now < row.emberUntil) continue;
+      // An ember clock alone is enough — a cleared camp AND a scattered
+      // satellite (emberUntil without clearedAt) both dissolve here.
+      if (row.site === null || row.emberUntil === null || now < row.emberUntil) continue;
       if (authored.has(key)) continue; // landmarks never ember
       if (this.playerWithin(row.site.anchorX, row.site.anchorY, FRONTIER.dignityTiles)) continue;
       const { cellX, cellY, defId } = row.site;
+      const cleared = row.clearedAt !== null;
       const hadHaven = POI_DEFS.get(defId)?.haven !== undefined;
       this.fadePoiDiscoveries(key);
       this.retirePoiCell(key);
       const epoch = row.epoch + 1;
       const fallowUntil = now + fallowRestFor(config.worldSeed, cellX, cellY, epoch);
       this.accounts.recordPoiCell(cellX, cellY, epoch, null, fallowUntil);
-      this.poiLedger.set(key, { epoch, site: null, clearedAt: null, emberUntil: null, fallowUntil });
-      this.frontierCredits++;
-      this.accounts.saveFrontierCredits(this.frontierCredits);
+      this.poiLedger.set(key, {
+        epoch,
+        site: null,
+        clearedAt: null,
+        emberUntil: null,
+        fallowUntil,
+        stage: 0,
+        stageAt: null,
+        originCell: null,
+      });
+      // THE CONSERVATION LAW pays on PLAYER victories only: a wiped
+      // camp banks a credit; a satellite that merely scattered when
+      // its core broke does not — one clear is one victory, never a
+      // multiplier of trouble elsewhere.
+      if (cleared) {
+        this.frontierCredits++;
+        this.accounts.saveFrontierCredits(this.frontierCredits);
+      }
       if (hadHaven) this.rebuildHavens();
       console.log(
-        `[frontier] ember out: ${defId} at cell ${key} dissolves — ` +
+        `[frontier] ${cleared ? 'ember out' : 'scattered'}: ${defId} at cell ${key} dissolves — ` +
           `fallow ${Math.round((fallowUntil - now) / 60000)}m, ` +
           `renewal debt ${this.frontierCredits}`,
       );
@@ -4319,6 +4408,9 @@ export class GameServer {
       if (row.site !== null || row.fallowUntil === null || now < row.fallowUntil) continue;
       if (authored.has(key)) continue; // the seeder owns these
       const [cx, cy] = key.split(',').map(Number);
+      // THE RELAX WINDOW: a calmed valley stays quiet — the wake waits
+      // out the window rather than standing a new camp into it.
+      if (this.calmNear(cx!, cy!, now)) continue;
       const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
       const site = poiForCell(config.worldSeed, cx!, cy!, row.epoch, ctx);
       if (site && this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles)) {
@@ -4342,6 +4434,9 @@ export class GameServer {
         clearedAt: null,
         emberUntil: null,
         fallowUntil: null,
+        stage: 0,
+        stageAt: null,
+        originCell: null,
       });
       if (site) {
         this.poiLive.delete(key); // tickPois stands it when someone nears
@@ -4392,6 +4487,7 @@ export class GameServer {
       if (row?.fallowUntil !== null && row?.fallowUntil !== undefined && now < row.fallowUntil) {
         continue; // resting — the meadow heals first
       }
+      if (this.calmNear(cx, cy, now)) continue; // the relax window holds
       const epoch = (row?.epoch ?? 0) + 1;
       const site = poiForCell(config.worldSeed, cx, cy, epoch, ctx, true);
       if (!site) continue;
@@ -4409,6 +4505,9 @@ export class GameServer {
         clearedAt: null,
         emberUntil: null,
         fallowUntil: null,
+        stage: 0,
+        stageAt: null,
+        originCell: null,
       });
       this.poiLive.delete(key);
       this.frontierCredits--;
@@ -4419,6 +4518,238 @@ export class GameServer {
           `${site.anchorX},${site.anchorY} (cell ${key}) — renewal debt ${this.frontierCredits}`,
       );
       return true;
+    }
+    return false;
+  }
+
+  /** Is a relax window standing within the neighborhood of this cell? */
+  private calmNear(cellX: number, cellY: number, now: number): boolean {
+    for (const [key, until] of this.frontierCalm) {
+      if (until <= now) continue;
+      const [kx, ky] = key.split(',').map(Number);
+      if (
+        Math.abs(kx! - cellX) <= FRONTIER.regionCells &&
+        Math.abs(ky! - cellY) <= FRONTIER.regionCells
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Stamp a relax window at a cell (every garrison wipe lands here). */
+  private stampCalm(cellX: number, cellY: number): void {
+    const until = Date.now() + FRONTIER.calmMs;
+    const key = poiCellKey(cellX, cellY);
+    this.frontierCalm.set(key, Math.max(this.frontierCalm.get(key) ?? 0, until));
+    this.accounts.stampFrontierCalm(cellX, cellY, until);
+  }
+
+  /** Stage-2+ cores standing within the neighborhood (the regional roof). */
+  private boldCoresNear(cellKey: string): number {
+    const [cx, cy] = cellKey.split(',').map(Number);
+    let cores = 0;
+    for (const [key, row] of this.poiLedger) {
+      if (key === cellKey) continue;
+      if (row.site === null || row.originCell !== null) continue;
+      if (row.stage < FRONTIER.satelliteStage) continue;
+      const [kx, ky] = key.split(',').map(Number);
+      if (
+        Math.abs(kx! - cx!) <= FRONTIER.regionCells &&
+        Math.abs(ky! - cy!) <= FRONTIER.regionCells
+      ) {
+        cores++;
+      }
+    }
+    return cores;
+  }
+
+  /** The stage-up rumor + pip push to every online holder of the marker. */
+  private pushStageRumor(cellKey: string, defName: string, stage: number): void {
+    const id = `poi:${cellKey}`;
+    const lines = [
+      `Word from the road: ${defName} grows bolder — more fires burn there than before.`,
+      `${defName} musters in numbers now — its watchers walk a wider round.`,
+      `${defName} stands at full strength — the frontier waits for an answer.`,
+    ];
+    const text = lines[Math.min(stage, lines.length) - 1]!;
+    for (const player of this.players.values()) {
+      const d = player.discoveries.get(id);
+      if (!d || d.faded) continue;
+      d.stage = stage;
+      player.session?.sendJson({ t: 'discoverystage', id, stage });
+      player.session?.sendJson({ t: 'chat', channel: 'system', text });
+    }
+  }
+
+  /**
+   * THE BOLDNESS LADDER's clock: a DISCOVERED, standing, unanswered
+   * site climbs one rung after its stage wait — busier muster, wider
+   * dressing, never a deadlier band (the frequency law lives in the
+   * validator). The clock only starts at first discovery (an unseen
+   * camp costs nothing; walking past never escalates), holds through
+   * relax windows, respects the regional roof, and recomposes the
+   * standing camp only when nobody is close enough to watch tents
+   * pitch themselves.
+   */
+  private stageOnePoi(now: number): boolean {
+    const authored = this.authoredCells();
+    for (const [key, row] of this.poiLedger) {
+      if (row.site === null || row.clearedAt !== null || row.emberUntil !== null) continue;
+      if (row.originCell !== null) continue; // satellites never climb — only cores
+      if (authored.has(key)) continue;
+      const def = POI_DEFS.get(row.site.defId);
+      if (!def?.boldness) continue;
+      if (row.stage >= Math.min(FRONTIER.stageMax, def.boldness.stages.length)) continue;
+      if (!this.discoveredPoiCells.has(key)) continue;
+      const { cellX, cellY } = row.site;
+      if (row.stageAt === null) {
+        // First discovery arms the clock — from here, only time moves it.
+        row.stageAt = now;
+        this.accounts.markPoiStage(cellX, cellY, row.stage, now);
+        return true;
+      }
+      if (now - row.stageAt < stageWaitFor(config.worldSeed, cellX, cellY, row.stage)) continue;
+      if (this.calmNear(cellX, cellY, now)) continue;
+      if (
+        row.stage + 1 >= FRONTIER.satelliteStage &&
+        this.boldCoresNear(key) >= FRONTIER.regionBoldMax
+      ) {
+        continue; // the regional roof holds
+      }
+      if (this.playerWithin(row.site.anchorX, row.site.anchorY, FRONTIER.dignityTiles)) continue;
+      row.stage += 1;
+      row.stageAt = now;
+      this.accounts.markPoiStage(cellX, cellY, row.stage, now);
+      // Recompose in place: retire the standing carcass-free zone and
+      // let tickPois re-stand it from the ledger at the new stage.
+      this.retirePoiCell(key);
+      this.pushStageRumor(key, def.name, row.stage);
+      console.log(`[frontier] ${def.name} at cell ${key} climbs to stage ${row.stage}`);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * THE SPREAD, with a heart: a stage-2+ core may keep up to
+   * satelliteMax satellite camps of its own archetype in adjacent
+   * cells, biased townward — the pressure visibly creeps. Satellites
+   * die with the core (source-and-kill-switch, notePoiKill), never
+   * climb rungs, and never sprawl further. Orphans (core evicted by a
+   * studio sweep) scatter here. One accepted wart: origin points at a
+   * CELL, so a dev-lever reroll that stands a NEW camp in the core's
+   * cell quietly adopts the family — the stranger's outposts die with
+   * the stranger. Organic dissolves record the cell empty first, so
+   * the orphan watch always catches the real lifecycle.
+   */
+  /**
+   * Why the last satellite pass refused each candidate — surfaced by
+   * /frontier tick so a designer can read the bounds working ("all
+   * three townward cells occupied" is the system honest, not broken).
+   */
+  private satTrace: string[] = [];
+  private seedOneSatellite(now: number): boolean {
+    if (!this.poiPrefabs) return false;
+    this.satTrace = [];
+    const authored = this.authoredCells();
+    // Orphan watch first: a satellite whose core no longer stands
+    // scatters — the family law holds even when the core died to a
+    // sweep instead of a sword.
+    for (const [key, row] of this.poiLedger) {
+      if (row.originCell === null || row.site === null || row.emberUntil !== null) continue;
+      const core = this.poiLedger.get(row.originCell);
+      if (core?.site && core.clearedAt === null) continue; // the core stands
+      row.emberUntil =
+        now + scatterLingerFor(config.worldSeed, row.site.cellX, row.site.cellY);
+      this.standDownGarrison(this.poiLive.get(key)?.spawnIdx ?? []);
+      this.accounts.setPoiEmber(row.site.cellX, row.site.cellY, row.emberUntil);
+      console.log(`[frontier] orphan satellite at cell ${key} scatters`);
+      return true;
+    }
+    for (const [key, row] of this.poiLedger) {
+      if (row.site === null || row.clearedAt !== null || row.emberUntil !== null) continue;
+      if (row.originCell !== null) continue;
+      if (authored.has(key)) continue;
+      const def = POI_DEFS.get(row.site.defId);
+      if (!def?.boldness?.satellites) continue;
+      if (row.stage < FRONTIER.satelliteStage) continue;
+      let sats = 0;
+      for (const r of this.poiLedger.values()) {
+        if (r.originCell === key && r.site !== null && r.emberUntil === null) sats++;
+      }
+      if (sats >= FRONTIER.satelliteMax) continue;
+      const { cellX, cellY } = row.site;
+      if (this.calmNear(cellX, cellY, now)) continue;
+      // Adjacent cells ranked townward: the camp creeps toward the
+      // roads it means to prey on, never away into empty country.
+      const anchors = this.dangerAnchors();
+      const ranked = [
+        [-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1],
+      ]
+        .map(([dx, dy]) => {
+          const ncx = cellX + dx!;
+          const ncy = cellY + dy!;
+          const wx = ncx * POI_CELL + POI_CELL / 2;
+          const wy = ncy * POI_CELL + POI_CELL / 2;
+          let best = Infinity;
+          for (const a of anchors) best = Math.min(best, Math.hypot(a.x - wx, a.y - wy));
+          return { ncx, ncy, d: best };
+        })
+        .sort((a, b) => a.d - b.d);
+      const ctx = poiContext(anchors, this.world.zoneDefs, this.poiPrefabs);
+      for (const cand of ranked.slice(0, 3)) {
+        const nkey = poiCellKey(cand.ncx, cand.ncy);
+        if (authored.has(nkey)) { this.satTrace.push(`${nkey}:authored`); continue; }
+        const nrow = this.poiLedger.get(nkey);
+        if (nrow?.site) { this.satTrace.push(`${nkey}:occupied`); continue; }
+        if (nrow?.fallowUntil !== null && nrow?.fallowUntil !== undefined && now < nrow.fallowUntil)
+          { this.satTrace.push(`${nkey}:fallow`); continue; }
+        if (this.calmNear(cand.ncx, cand.ncy, now)) { this.satTrace.push(`${nkey}:calm`); continue; }
+        const epoch = (nrow?.epoch ?? 0) + 1;
+        const site = poiForCell(config.worldSeed, cand.ncx, cand.ncy, epoch, ctx, def.id);
+        if (!site) { this.satTrace.push(`${nkey}:noground`); continue; }
+        if (this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles)) { this.satTrace.push(`${nkey}:dignity`); continue; }
+        this.accounts.recordPoiCell(
+          cand.ncx,
+          cand.ncy,
+          epoch,
+          {
+            poiId: site.defId,
+            prefabId: site.prefabId,
+            tier: site.tier,
+            anchorX: site.anchorX,
+            anchorY: site.anchorY,
+          },
+          null,
+          key,
+        );
+        this.poiLedger.set(nkey, {
+          epoch,
+          site,
+          clearedAt: null,
+          emberUntil: null,
+          fallowUntil: null,
+          stage: 0,
+          stageAt: null,
+          originCell: key,
+        });
+        this.poiLive.delete(nkey);
+        for (const player of this.players.values()) {
+          const d = player.discoveries.get(`poi:${key}`);
+          if (!d || d.faded) continue;
+          player.session?.sendJson({
+            t: 'chat',
+            channel: 'system',
+            text: `${def.name}'s fires multiply — a second camp has risen nearby.`,
+          });
+        }
+        console.log(
+          `[frontier] satellite of ${def.name} (cell ${key}) rises at ` +
+            `${site.anchorX},${site.anchorY} (cell ${nkey})`,
+        );
+        return true;
+      }
     }
     return false;
   }
@@ -4442,7 +4773,7 @@ export class GameServer {
     if (!row || opts.epoch !== undefined) {
       const epoch = opts.epoch ?? 0;
       const site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx, opts.force);
-      row = { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null };
+      row = { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null, stage: 0, stageAt: null, originCell: null };
       // Deviations only: a settled cell writes no row (it is 0 by law).
       const centerTier = this.liveDangerTier(
         cellX * POI_CELL + POI_CELL / 2,
@@ -4472,7 +4803,7 @@ export class GameServer {
       this.poiLive.set(key, { spawnIdx: [] });
       return null;
     }
-    const zone = composePoi(config.worldSeed, row.site, ctx);
+    const zone = composePoi(config.worldSeed, row.site, ctx, row.stage);
     if (!zone) {
       // A ledger row referencing retired content — stand nothing, keep
       // the row (an edit or revert can bring it back).
@@ -4484,11 +4815,12 @@ export class GameServer {
     this.dropClientChunks(zone);
     const spawnIdx = this.registerSpawns(zone.spawns ?? [], zone.id);
     for (const i of spawnIdx) this.poiSpawnCells.set(i, key);
-    // THE EMBER LAW, restart-safe: a cleared cell re-materializes as
-    // the carcass it is — the zone stands (tents, cold fires, the
-    // opened chest), but the fighting garrison stays down. Livestock
-    // and staff keep their lives; only the broken muster is denied.
-    if (row.clearedAt !== null) this.standDownGarrison(spawnIdx);
+    // THE EMBER LAW, restart-safe: a cleared cell (or a scattered
+    // satellite — ember with no clear) re-materializes as the carcass
+    // it is — the zone stands (tents, cold fires, the opened chest),
+    // but the fighting garrison stays down. Livestock and staff keep
+    // their lives; only the broken muster is denied.
+    if (row.clearedAt !== null || row.emberUntil !== null) this.standDownGarrison(spawnIdx);
     // The friendly staff stands up through the actor machinery —
     // identity, disposition, protection, dialogue, and shop all ride
     // the same laws the town's own people keep.
@@ -4583,6 +4915,22 @@ export class GameServer {
       if (row) row.emberUntil = emberUntil;
       this.accounts.markPoiCleared(cx!, cy!, emberUntil);
     }
+    // THE RELAX WINDOW: every garrison wipe buys the valley real quiet —
+    // no stage-ups, satellites, wakes, or renewal landings near here
+    // while it holds. The player's victory audibly reads.
+    this.stampCalm(cx!, cy!);
+    // SOURCE-AND-KILL-SWITCH: breaking a CORE scatters its family —
+    // every standing satellite takes a short ember (no clearedAt, so
+    // no renewal credit: one clear is one victory) and stands down.
+    let scattered = 0;
+    for (const [skey, srow] of this.poiLedger) {
+      if (srow.originCell !== key || srow.site === null || srow.emberUntil !== null) continue;
+      srow.emberUntil =
+        Date.now() + scatterLingerFor(config.worldSeed, srow.site.cellX, srow.site.cellY);
+      this.standDownGarrison(this.poiLive.get(skey)?.spawnIdx ?? []);
+      this.accounts.setPoiEmber(srow.site.cellX, srow.site.cellY, srow.emberUntil);
+      scattered++;
+    }
     // THE STORY HOOK: the hand that felled the last body carries the
     // deed into the flag ledger — dialogue and quests read it from
     // there ("you broke the warcamp at the ford"). The moment gets a
@@ -4596,6 +4944,13 @@ export class GameServer {
         channel: 'system',
         text: `The last of them falls. ${def.name} is broken — word of it will travel.`,
       });
+      if (scattered > 0) {
+        killer.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: 'Word spreads — the outlying camps scatter.',
+        });
+      }
       // THE UNWRITTEN PAGE: breaking a garrison is the warden's deed.
       this.grantArt(killer, 'warden_volley');
     }
@@ -10411,15 +10766,20 @@ export class GameServer {
       const say = (t: string) =>
         player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
       if (sub === 'tick') {
+        // The full work ladder, one unit — mirrors tickFrontier exactly.
         const now = Date.now();
         const did = this.dissolveOneEmber(now)
           ? 'dissolved an ember'
           : this.wakeOneFallow(now)
             ? 'woke a fallow cell'
-            : this.spendRenewalCredit(now)
-              ? 'spent a renewal credit'
-              : 'nothing due';
-        say(`Frontier pass: ${did}.`);
+            : this.stageOnePoi(now)
+              ? 'moved the boldness clock'
+              : this.seedOneSatellite(now)
+                ? 'seeded (or scattered) a satellite'
+                : this.spendRenewalCredit(now)
+                  ? 'spent a renewal credit'
+                  : 'nothing due';
+        say(`Frontier pass: ${did}.${this.satTrace.length > 0 ? ` [sat: ${this.satTrace.join(' ')}]` : ''}`);
         return;
       }
       if (sub === 'ember') {
@@ -10441,27 +10801,81 @@ export class GameServer {
         say(`Renewal debt now ${this.frontierCredits}.`);
         return;
       }
+      if (sub === 'stage') {
+        // /frontier stage [n] — force this cell's boldness rung (staging).
+        const row = this.poiLedger.get(key);
+        const def = row?.site ? POI_DEFS.get(row.site.defId) : undefined;
+        if (!row?.site || !def) {
+          say('This cell holds no site to stage.');
+          return;
+        }
+        const max = Math.min(FRONTIER.stageMax, def.boldness?.stages.length ?? 0);
+        if (max === 0) {
+          say(`${def.name} carries no boldness ladder.`);
+          return;
+        }
+        const n = Number.parseInt(arg ?? '', 10);
+        const want = Number.isInteger(n)
+          ? Math.max(0, Math.min(n, max))
+          : Math.min(row.stage + 1, max);
+        row.stage = want;
+        row.stageAt = Date.now();
+        this.accounts.markPoiStage(cx, cy, want, row.stageAt);
+        this.retirePoiCell(key);
+        if (want > 0) this.pushStageRumor(key, def.name, want);
+        say(`${def.name} set to stage ${want}/${max} — it recomposes as the world streams back.`);
+        return;
+      }
+      if (sub === 'calm') {
+        // /frontier calm [clear] — inspect or lift the relax windows.
+        if (arg === 'clear') {
+          this.frontierCalm.clear();
+          this.accounts.pruneFrontierCalm(Number.MAX_SAFE_INTEGER);
+          say('All relax windows lifted.');
+          return;
+        }
+        say(
+          this.frontierCalm.size === 0
+            ? 'No relax windows standing.'
+            : [...this.frontierCalm.entries()]
+                .map(([k, u]) => `${k}: ${Math.max(0, Math.round((u - Date.now()) / 60000))}m`)
+                .join(' · '),
+        );
+        return;
+      }
       let embers = 0;
       let fallows = 0;
       for (const r of this.poiLedger.values()) {
-        if (r.site !== null && r.clearedAt !== null && r.emberUntil !== null) embers++;
+        // Cleared embers AND scattered satellites both count — any
+        // standing site with a dissolve clock is an ember.
+        if (r.site !== null && r.emberUntil !== null) embers++;
         if (r.site === null && r.fallowUntil !== null) fallows++;
       }
       const row = this.poiLedger.get(key);
       const now = Date.now();
+      const satTag = (r: NonNullable<ReturnType<typeof this.poiLedger.get>>): string =>
+        r.originCell !== null ? ` (satellite of ${r.originCell})` : r.stage > 0 ? ` (stage ${r.stage})` : '';
       const cellState =
         row === undefined
           ? 'undecided'
           : row.site && row.emberUntil !== null
-            ? `${row.site.defId} EMBER — dissolves in ~${Math.max(0, Math.round((row.emberUntil - now) / 60000))}m`
+            ? `${row.site.defId}${satTag(row)} EMBER — dissolves in ~${Math.max(0, Math.round((row.emberUntil - now) / 60000))}m`
             : row.site
-              ? `${row.site.defId} standing`
+              ? `${row.site.defId}${satTag(row)} standing`
               : row.fallowUntil !== null
                 ? `fallow — may host in ~${Math.max(0, Math.round((row.fallowUntil - now) / 60000))}m`
                 : `decided empty (epoch ${row.epoch})`;
+      let staged = 0;
+      let sats = 0;
+      for (const r of this.poiLedger.values()) {
+        if (r.site === null) continue;
+        if (r.originCell !== null) sats++;
+        else if (r.stage > 0) staged++;
+      }
       say(
-        `Frontier: ${embers} ember(s), ${fallows} fallow cell(s), renewal debt ${this.frontierCredits}. ` +
-          `Cell ${key}: ${cellState} — /frontier tick · /frontier ember [min] · /frontier credit [n]`,
+        `Frontier: ${embers} ember(s), ${fallows} fallow, ${staged} staged core(s), ` +
+          `${sats} satellite(s), ${this.frontierCalm.size} calm, debt ${this.frontierCredits}. ` +
+          `Cell ${key}: ${cellState} — /frontier tick · ember [min] · stage [n] · calm [clear] · credit [n]`,
       );
       return;
     }

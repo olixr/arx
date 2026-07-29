@@ -4,7 +4,14 @@ import { DANGER_LAWS } from '../danger.js';
 import { LOOT_TABLES } from '../loot/tables.js';
 import { NPCS } from '../npcs.js';
 import { ROUTINES } from '../routines/registry.js';
-import type { PoiActorEntry, PoiCues, PoiDef, PoiGarrisonEntry } from './types.js';
+import type {
+  PoiActorEntry,
+  PoiBoldness,
+  PoiBoldnessStage,
+  PoiCues,
+  PoiDef,
+  PoiGarrisonEntry,
+} from './types.js';
 
 /**
  * THE ONE VALIDATOR — every path a PoiDef can enter the game walks
@@ -109,13 +116,16 @@ export function validatePoiDef(
     }
   }
 
-  // Garrison.
-  const garrison: PoiGarrisonEntry[] = [];
-  if (raw.garrison !== undefined && !Array.isArray(raw.garrison)) {
-    errors.push('garrison must be an array');
-  } else {
-    for (const [i, g] of ((raw.garrison as unknown[]) ?? []).entries()) {
-      const at = `garrison[${i}]`;
+  // Garrison — one vetting law for the base muster AND every boldness
+  // rung (the boldness ladder may never invent laxer rules).
+  const vetGarrisonList = (rawList: unknown, listName: string): PoiGarrisonEntry[] => {
+    const out: PoiGarrisonEntry[] = [];
+    if (rawList !== undefined && !Array.isArray(rawList)) {
+      errors.push(`${listName} must be an array`);
+      return out;
+    }
+    for (const [i, g] of ((rawList as unknown[]) ?? []).entries()) {
+      const at = `${listName}[${i}]`;
       if (!isRecord(g)) {
         errors.push(`${at}: must be an object`);
         continue;
@@ -192,7 +202,7 @@ export function validatePoiDef(
         }
       }
       if (role) {
-        garrison.push({
+        out.push({
           npc,
           count,
           role,
@@ -205,7 +215,9 @@ export function validatePoiDef(
         });
       }
     }
-  }
+    return out;
+  };
+  const garrison = vetGarrisonList(raw.garrison, 'garrison');
 
   // Chest bonus.
   const chestTierBonus =
@@ -215,6 +227,35 @@ export function validatePoiDef(
           (raw.chestTierBonus as number) <= 2
         ? (raw.chestTierBonus as number)
         : (errors.push('chestTierBonus must be an integer 0..2'), undefined);
+
+  // Scatter vetting — shared by the base cues and the boldness rungs.
+  const vetScatter = (
+    rawList: unknown,
+    listName: string,
+  ): Array<{ tile: string; count: number }> => {
+    const out: Array<{ tile: string; count: number }> = [];
+    if (rawList === undefined) return out;
+    if (!Array.isArray(rawList)) {
+      errors.push(`${listName} must be an array`);
+      return out;
+    }
+    for (const [i, s] of rawList.entries()) {
+      if (!isRecord(s) || typeof s.tile !== 'string' || !Number.isInteger(s.count)) {
+        errors.push(`${listName}[${i}]: needs {tile: string, count: int}`);
+        continue;
+      }
+      if (!(s.tile in Tile) || typeof Tile[s.tile as keyof typeof Tile] !== 'number') {
+        errors.push(`${listName}[${i}]: unknown tile name '${s.tile}'`);
+        continue;
+      }
+      if ((s.count as number) < 1 || (s.count as number) > 8) {
+        errors.push(`${listName}[${i}]: count must be 1..8`);
+        continue;
+      }
+      out.push({ tile: s.tile, count: s.count as number });
+    }
+    return out;
+  };
 
   // Cues.
   let cues: PoiCues | undefined;
@@ -236,34 +277,69 @@ export function validatePoiDef(
           : typeof c.approachPath === 'boolean'
             ? c.approachPath
             : (errors.push('cues.approachPath must be a boolean'), undefined);
-      const scatter: Array<{ tile: string; count: number }> = [];
-      if (c.scatter !== undefined) {
-        if (!Array.isArray(c.scatter)) {
-          errors.push('cues.scatter must be an array');
-        } else {
-          for (const [i, s] of c.scatter.entries()) {
-            if (!isRecord(s) || typeof s.tile !== 'string' || !Number.isInteger(s.count)) {
-              errors.push(`cues.scatter[${i}]: needs {tile: string, count: int}`);
-              continue;
-            }
-            if (!(s.tile in Tile) || typeof Tile[s.tile as keyof typeof Tile] !== 'number') {
-              errors.push(`cues.scatter[${i}]: unknown tile name '${s.tile}'`);
-              continue;
-            }
-            if ((s.count as number) < 1 || (s.count as number) > 8) {
-              errors.push(`cues.scatter[${i}]: count must be 1..8`);
-              continue;
-            }
-            scatter.push({ tile: s.tile, count: s.count as number });
-          }
-        }
-      }
+      const scatter = vetScatter(c.scatter, 'cues.scatter');
       cues = {
         ...(clearing !== undefined ? { clearing } : {}),
         ...(approachPath !== undefined ? { approachPath } : {}),
         ...(scatter.length > 0 ? { scatter } : {}),
       };
       if (Object.keys(cues).length === 0) cues = undefined;
+    }
+  }
+
+  // The boldness ladder (the living frontier, phase 2). THE FREQUENCY
+  // LAW is enforced here: a rung's levelOffset may never exceed the
+  // base garrison's own ceiling — an emboldened camp grows busier,
+  // never silently deadlier at the same map dot.
+  let boldness: PoiBoldness | undefined;
+  if (raw.boldness !== undefined) {
+    if (!isRecord(raw.boldness)) {
+      errors.push('boldness must be an object');
+    } else {
+      const b = raw.boldness;
+      const stages: PoiBoldnessStage[] = [];
+      if (!Array.isArray(b.stages) || b.stages.length === 0 || b.stages.length > 3) {
+        errors.push('boldness.stages must be an array of 1..3 rungs');
+      } else {
+        const baseCap = garrison.reduce((m, g) => Math.max(m, g.levelOffset ?? 0), 0);
+        for (const [si, st] of b.stages.entries()) {
+          const at = `boldness.stages[${si}]`;
+          if (!isRecord(st)) {
+            errors.push(`${at}: must be an object`);
+            continue;
+          }
+          const stGarrison = vetGarrisonList(st.garrison, `${at}.garrison`);
+          const stScatter = vetScatter(st.scatter, `${at}.scatter`);
+          for (const g of stGarrison) {
+            if ((g.levelOffset ?? 0) > baseCap) {
+              errors.push(
+                `${at}: levelOffset ${g.levelOffset} exceeds the base garrison's ceiling ` +
+                  `${baseCap} — boldness adds bodies, never a deadlier camp (the frequency law)`,
+              );
+            }
+          }
+          if (stGarrison.length === 0 && stScatter.length === 0) {
+            errors.push(`${at}: an empty rung escalates nothing — give it garrison or scatter`);
+            continue;
+          }
+          stages.push({
+            ...(stGarrison.length > 0 ? { garrison: stGarrison } : {}),
+            ...(stScatter.length > 0 ? { scatter: stScatter } : {}),
+          });
+        }
+      }
+      const satellites =
+        b.satellites === undefined
+          ? undefined
+          : typeof b.satellites === 'boolean'
+            ? b.satellites
+            : (errors.push('boldness.satellites must be a boolean'), undefined);
+      if (garrison.length === 0) {
+        errors.push('boldness needs a garrison — a site with no muster has nothing to embolden');
+      }
+      if (stages.length > 0) {
+        boldness = { stages, ...(satellites !== undefined ? { satellites } : {}) };
+      }
     }
   }
 
@@ -389,6 +465,7 @@ export function validatePoiDef(
       garrison,
       ...(chestTierBonus !== undefined ? { chestTierBonus } : {}),
       ...(cues !== undefined ? { cues } : {}),
+      ...(boldness !== undefined ? { boldness } : {}),
       ...(actors.length > 0 ? { actors } : {}),
       ...(haven !== undefined ? { haven } : {}),
       ...(chestLoot !== undefined ? { chestLoot } : {}),

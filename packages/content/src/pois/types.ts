@@ -100,6 +100,34 @@ export interface PoiCues {
   scatter?: ReadonlyArray<{ tile: string; count: number }>;
 }
 
+/**
+ * One rung of the boldness ladder (the living frontier, phase 2) — what
+ * a site ADDS when it has stood discovered and unanswered long enough
+ * to grow bolder. Rungs are cumulative: a stage-2 site musters the base
+ * garrison plus rungs 1 and 2. THE FREQUENCY LAW: boldness adds bodies,
+ * patrols, and dressing — never levels past the def's own ceiling (the
+ * validator holds it); an emboldened camp is BUSIER, not silently
+ * deadlier at the same map dot.
+ */
+export interface PoiBoldnessStage {
+  /** Extra muster — same grammar as the base garrison. */
+  garrison?: readonly PoiGarrisonEntry[];
+  /** Extra approach dressing (more banners, more bones — the camp reads bolder). */
+  scatter?: ReadonlyArray<{ tile: string; count: number }>;
+}
+
+export interface PoiBoldness {
+  /** Rungs 1..3, in order; stage N applies stages[0..N-1]. */
+  stages: readonly PoiBoldnessStage[];
+  /**
+   * At stage 2+ the core may seed satellite camps of the same
+   * archetype in adjacent cells, biased townward — the pressure
+   * visibly creeps. Breaking the CORE scatters the whole family
+   * (source-and-kill-switch).
+   */
+  satellites?: boolean;
+}
+
 export interface PoiDef {
   id: string;
   name: string;
@@ -120,6 +148,12 @@ export interface PoiDef {
   chestTierBonus?: number;
   /** Approach cues stamped around the footprint at compose time. */
   cues?: PoiCues;
+  /**
+   * The boldness ladder — how this archetype grows when discovered and
+   * left unanswered (absent = the site never escalates). Only hostile
+   * defs with a garrison may carry it.
+   */
+  boldness?: PoiBoldness;
   /**
    * Friendly staff — placed semantically at compose time (hearth
    * cluster, townward watch posts). A def with actors is a civilized

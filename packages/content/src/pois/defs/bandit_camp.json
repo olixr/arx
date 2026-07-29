@@ -25,5 +25,27 @@
     "clearing": 4,
     "approachPath": true,
     "scatter": [{ "tile": "Crate", "count": 2 }]
+  },
+  "boldness": {
+    "stages": [
+      {
+        "garrison": [{ "npc": "brigand", "count": [1, 2], "role": "holdfast" }],
+        "scatter": [{ "tile": "Crate", "count": 1 }]
+      },
+      {
+        "garrison": [
+          { "npc": "brigand_archer", "count": [1, 1], "role": "sentry", "patrol": true },
+          { "npc": "brigand", "count": [1, 1], "role": "sentry" }
+        ]
+      },
+      {
+        "garrison": [
+          { "npc": "brigand", "count": [1, 2], "role": "holdfast" },
+          { "npc": "brigand_archer", "count": [1, 1], "role": "sentry" }
+        ],
+        "scatter": [{ "tile": "Crate", "count": 2 }]
+      }
+    ],
+    "satellites": true
   }
 }

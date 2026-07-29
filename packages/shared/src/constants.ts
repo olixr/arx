@@ -32,7 +32,11 @@
 // weapon. S2CTechniques.chosen becomes one ability id (was a per-style
 // record) and C2STechnique drops `style`; a v12 client would render an
 // empty R slot forever, so reject cleanly.
-export const PROTOCOL_VERSION = 13;
+// v14: THE BOLDNESS LADDER — DiscoveryWire carries the site's live
+// stage and S2CDiscoveryStage pushes rung climbs to marker holders.
+// A v13 client would drop the push unrecognized and draw stale pips
+// against a bolder world, so reject cleanly.
+export const PROTOCOL_VERSION = 14;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;

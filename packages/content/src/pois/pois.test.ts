@@ -236,3 +236,62 @@ test('phase-4 grammar: the validator vets staff, havens, wards, names, and flags
     assert.ok(!res.ok, `'${label}' passed validation`);
   }
 });
+
+test('THE FREQUENCY LAW: boldness rungs vet like garrisons and never out-level the base', () => {
+  const base = {
+    id: 'test_bold',
+    name: 'Test bold camp',
+    tiers: [1, 3] as [number, number],
+    weight: 2,
+    prefabs: ['poi_goblin_camp_ring'],
+    garrison: [
+      { npc: 'goblin', count: [1, 2], role: 'holdfast', levelOffset: 3 },
+    ],
+  };
+  const good = validatePoiDef({
+    ...base,
+    boldness: {
+      stages: [
+        { garrison: [{ npc: 'goblin', count: [1, 2], role: 'holdfast', levelOffset: 3 }] },
+        { scatter: [{ tile: 'BonePile', count: 2 }] },
+      ],
+      satellites: true,
+    },
+  });
+  assert.ok(good.ok, JSON.stringify(good));
+  if (good.ok) {
+    assert.equal(good.def.boldness?.stages.length, 2);
+    assert.equal(good.def.boldness?.satellites, true);
+  }
+  const badCases: Array<[string, unknown]> = [
+    [
+      'rung out-levels the base',
+      { stages: [{ garrison: [{ npc: 'goblin', count: [1, 1], role: 'holdfast', levelOffset: 4 }] }] },
+    ],
+    ['too many rungs', { stages: [{}, {}, {}, {}] }],
+    ['empty rung', { stages: [{}] }],
+    ['bad rung npc', { stages: [{ garrison: [{ npc: 'dragon_emperor', count: [1, 1], role: 'holdfast' }] }] }],
+  ];
+  for (const [label, boldness] of badCases) {
+    const res = validatePoiDef({ ...base, boldness });
+    assert.ok(!res.ok, `'${label}' passed validation`);
+  }
+  // A garrison-less def cannot be emboldened.
+  const noMuster = validatePoiDef({
+    ...base,
+    garrison: [],
+    boldness: { stages: [{ scatter: [{ tile: 'BonePile', count: 1 }] }] },
+  });
+  assert.ok(!noMuster.ok, 'boldness without a garrison passed validation');
+});
+
+test('the shipped escalating archetypes carry their ladders', () => {
+  for (const id of ['goblin_warcamp', 'bandit_camp', 'kobold_digs', 'wolfkin_den', 'forest_ruin']) {
+    const def = POI_DEFS.get(id);
+    assert.ok(def?.boldness, `${id} lost its boldness ladder`);
+    assert.ok(def!.boldness!.stages.length === 3, `${id} should carry 3 rungs`);
+  }
+  // The mindless dead deepen but never spread — thematic contrast, pinned.
+  assert.equal(POI_DEFS.get('forest_ruin')!.boldness!.satellites, undefined);
+  assert.equal(POI_DEFS.get('goblin_warcamp')!.boldness!.satellites, true);
+});
