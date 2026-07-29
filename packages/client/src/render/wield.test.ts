@@ -387,6 +387,10 @@ test('THE RESTING SHOULDER: square to the camera the blade leans over the should
     // neither the centered candle nor a level plank.
     assert.ok(Math.sin(g.angle) < -0.5, `dir ${dir}: the blade points up`);
     assert.ok(Math.abs(Math.cos(g.angle)) > 0.4, `dir ${dir}: the lean reads as a diagonal`);
+    // THE LEAN GOES INWARD: the tip crosses the shoulder line away
+    // from the hilt fist — a rest, never a brandish (leaning outward
+    // was the user-caught inversion).
+    assert.ok(Math.sign(Math.cos(g.angle)) === -Math.sign(g.dx), `dir ${dir}: the blade crosses IN over the shoulder`);
     assert.ok(g.fore > 0.9, `dir ${dir}: the rest keeps its steel`);
     // The hilt holds by the resting shoulder, chest height.
     assert.ok(g.dx > 0.2, 'the fist sits out by the shoulder');

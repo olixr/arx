@@ -3591,9 +3591,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // The shoulder carry lays the greatblade up-BACK over the trailing
   // shoulder at EVERY gait — facing the camera, the body stands in
   // front of it (the LONG CARRY GOES BEHIND law; strikes and the
-  // guard keep the business end in front).
+  // guard keep the business end in front). Facing AWAY the same rest
+  // lies on the NEAR side of the body — the blade crosses the BACK,
+  // which the camera sees — so the generic aim-away rule must not
+  // hide it behind the torso.
   const greatShoulderBehind = isGreat && restSettle > 0.5 && fy > 0.08;
-  const weaponBehind = fy < -0.35 || staffTrailBehind || greatShoulderBehind;
+  const greatRestFront = isGreat && restSettle > 0.5 && fy < -0.08;
+  const weaponBehind =
+    (fy < -0.35 && !greatRestFront) || staffTrailBehind || greatShoulderBehind;
   const cuff = bodySt?.sleeves === 'full' ? sleeve : undefined;
   const paintOffArm = (): void => {
     // DUAL WIELD: the off blade is the real weapon, carried by the off

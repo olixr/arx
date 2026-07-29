@@ -479,13 +479,18 @@ export function greatWield(
   // frame is itself a valid diagonal shoulder rest, so the weight can
   // run the full wide band with nothing to hide.
   const k = smooth(1 - Math.abs(Math.cos(dir)));
-  // The lean's world yaw flips with the hemisphere so the blade rests
-  // over the same SCREEN shoulder whether the body faces the camera
-  // or away; sideS (the smoothed rest side) keeps the shoulder swap
-  // continuous — the blade eases across the back of the neck instead
-  // of teleporting when the facing crosses the vertical.
+  // THE LEAN GOES INWARD (the user's angle verdict): square-on, the
+  // blade crosses from the hilt fist IN over the shoulder behind the
+  // neck — tip up on the far side of the head. Leaning OUTWARD from
+  // the fist read as brandishing the sword beside the body, not
+  // resting it: a rest must CROSS the shoulder line. The world yaw
+  // flips with the hemisphere so the cross reads the same on screen
+  // whether the body faces the camera or away; sideS (the smoothed
+  // rest side) keeps the shoulder swap continuous — the blade eases
+  // across the back of the neck instead of teleporting when the
+  // facing crosses the vertical.
   const hemi = Math.sin(dir) >= 0 ? 1 : -1;
-  const p = projectCarry(dir + sideS * hemi * (Math.PI / 2) * k, shoulderPitch);
+  const p = projectCarry(dir - sideS * hemi * (Math.PI / 2) * k, shoulderPitch);
   return {
     // Square-on, the hilt holds a little further out by the resting
     // shoulder — the bent elbow's read, not a fist across the chest.
