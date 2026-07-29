@@ -979,6 +979,8 @@ export function previewPoi(
   defId: string,
   tier: number,
   prefabId?: string,
+  /** Boldness rung to compose at — the bench's stage-ladder view. */
+  stage = 0,
 ): { site: PoiSite; zone: ZoneDef } | null {
   const def = ctx.defs.find((d) => d.id === defId);
   if (!def) return null;
@@ -1002,7 +1004,7 @@ export function previewPoi(
       prefabId !== undefined && ctx.prefabs.has(prefabId)
         ? { ...site, prefabId }
         : site;
-    const zone = composePoi(seed, shown, ctx);
+    const zone = composePoi(seed, shown, ctx, stage);
     if (zone) return { site: shown, zone };
   }
   return null;

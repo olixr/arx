@@ -500,6 +500,8 @@ export class WorldView {
       }
     }
 
+    this.drawClaimRings(ctx);
+    this.drawFamilyLines(ctx);
     this.drawCells(ctx, t0.x, t0.y, t1.x, t1.y);
     this.drawPlanned(ctx);
     this.drawZoneFrames(ctx, t0.x, t0.y, t1.x, t1.y);
@@ -507,6 +509,63 @@ export class WorldView {
     this.drawSites(ctx);
     this.drawAnchors(ctx);
     this.drawRouteDraft(ctx);
+  }
+
+  /**
+   * THE CLAIMED YARDS lens (Phase 6): every claim ring drawn honest —
+   * the exclusion mask exactly as the spawn paths read it, never a
+   * danger wash (rings calm nothing; they only refuse ground).
+   */
+  private drawClaimRings(ctx: CanvasRenderingContext2D): void {
+    if (!this.ws.show.rings) return;
+    for (const ring of this.ws.claimRings) {
+      const x = this.sx(ring.x);
+      const y = this.sy(ring.y);
+      const r = ring.r * this.scale;
+      if (x < -r || y < -r || x > this.canvas.clientWidth + r || y > this.canvas.clientHeight + r) {
+        continue;
+      }
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(111, 178, 217, 0.08)';
+      ctx.fill();
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = 'rgba(111, 178, 217, 0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // The hearth itself: a small house-dot at the bed.
+      ctx.beginPath();
+      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#6fb2d9';
+      ctx.fill();
+    }
+  }
+
+  /**
+   * THE FAMILY LINES (Phase 6): every satellite and toll drawn tied to
+   * its core — the source-and-kill-switch made visible. Hearth-tied
+   * squats (origin `hearth:<id>`) key on no cell and draw no line.
+   */
+  private drawFamilyLines(ctx: CanvasRenderingContext2D): void {
+    if (!this.ws.show.cells) return;
+    for (const c of this.ws.cells) {
+      if (!c.site || !c.originCell || c.originCell.startsWith('hearth:')) continue;
+      const comma = c.originCell.indexOf(',');
+      const ocx = Number(c.originCell.slice(0, comma));
+      const ocy = Number(c.originCell.slice(comma + 1));
+      const core = this.ws.cellAt(ocx, ocy);
+      if (!core?.site) continue;
+      ctx.beginPath();
+      ctx.moveTo(this.sx(core.site.anchorX), this.sy(core.site.anchorY));
+      ctx.lineTo(this.sx(c.site.anchorX), this.sy(c.site.anchorY));
+      ctx.setLineDash([3, 4]);
+      ctx.strokeStyle =
+        c.site.defId === 'road_toll' ? 'rgba(217, 111, 111, 0.6)' : 'rgba(217, 176, 108, 0.55)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
   }
 
   private isSel(sel: WorldSel): boolean {
@@ -543,8 +602,31 @@ export class WorldView {
         ctx.stroke();
       }
     }
+    const now = Date.now();
     for (const c of this.ws.cells) {
-      if (!c.site) continue;
+      if (!c.site) {
+        // A resting fallow cell: a faint hollow diamond at the cell's
+        // center — the meadow healing, readable at a glance.
+        if (c.fallowUntil !== null && c.fallowUntil > now) {
+          const fx = this.sx(c.cellX * cell + cell / 2);
+          const fy = this.sy(c.cellY * cell + cell / 2);
+          if (fx > -20 && fy > -20 && fx < this.canvas.clientWidth + 20 && fy < this.canvas.clientHeight + 20) {
+            ctx.save();
+            ctx.translate(fx, fy);
+            ctx.beginPath();
+            ctx.moveTo(0, -4);
+            ctx.lineTo(4, 0);
+            ctx.lineTo(0, 4);
+            ctx.lineTo(-4, 0);
+            ctx.closePath();
+            ctx.strokeStyle = 'rgba(138, 127, 106, 0.55)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+        continue;
+      }
       const x = this.sx(c.site.anchorX);
       const y = this.sy(c.site.anchorY);
       if (x < -40 || y < -40 || x > this.canvas.clientWidth + 40 || y > this.canvas.clientHeight + 40) {
@@ -553,13 +635,17 @@ export class WorldView {
       const sel: WorldSel = { kind: 'cell', cx: c.cellX, cy: c.cellY };
       const standing = c.zoneId !== null;
       const cleared = c.clearedAt !== null;
+      const embering = c.emberUntil !== null;
+      const friendly = c.site.defId === 'peddler_rest';
       const color = c.authoredId
         ? '#f2c94c'
         : cleared
           ? '#8a7f6a'
-          : standing
-            ? '#6fbf73'
-            : '#d9b06c';
+          : friendly
+            ? '#6fb2d9'
+            : standing
+              ? '#6fbf73'
+              : '#d9b06c';
       ctx.save();
       ctx.translate(x, y);
       const r = this.isSel(sel) || this.isHover(sel) ? 7 : 5;
@@ -576,6 +662,29 @@ export class WorldView {
       ctx.strokeStyle = '#241a2e';
       ctx.lineWidth = 1.5;
       ctx.stroke();
+      // THE EMBER CLOCK: a dissolving site wears a fading dashed ring.
+      if (embering) {
+        ctx.beginPath();
+        ctx.arc(0, 0, r + 3.5, 0, Math.PI * 2);
+        ctx.setLineDash([2, 3]);
+        ctx.strokeStyle = 'rgba(217, 140, 80, 0.85)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      // THE STAGE PIPS: one tick per boldness rung, under the sigil —
+      // the same monoline dialect the players' chart wears.
+      if (c.stage > 0) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < c.stage; i++) {
+          const px = (i - (c.stage - 1) / 2) * 5;
+          ctx.beginPath();
+          ctx.moveTo(px, r + 3);
+          ctx.lineTo(px, r + 7);
+          ctx.stroke();
+        }
+      }
       if (this.isSel(sel)) {
         ctx.beginPath();
         ctx.arc(0, 0, 11, 0, Math.PI * 2);

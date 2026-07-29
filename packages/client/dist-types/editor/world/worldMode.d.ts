@@ -70,7 +70,7 @@ export declare class WorldMode {
     /** Import a local geography JSON as the working draft. */
     importDraft(raw: unknown): void;
     revert(): void;
-    cellAction(cx: number, cy: number, action: 'reroll' | 'dissolve' | 'force', defId?: string): Promise<void>;
+    cellAction(cx: number, cy: number, action: 'reroll' | 'dissolve' | 'force' | 'stage' | 'ember', defId?: string): Promise<void>;
     adoptCell(cx: number, cy: number): void;
     select(sel: WorldSel | null): void;
     centerOn(sel: WorldSel): void;

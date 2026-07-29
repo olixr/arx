@@ -21,7 +21,7 @@ export interface WorldPanelActions {
   revert(): void;
   openZone(id: string): void;
   newZoneAt(rectId: string): void;
-  cellAction(cx: number, cy: number, action: 'reroll' | 'dissolve' | 'force', defId?: string): void;
+  cellAction(cx: number, cy: number, action: 'reroll' | 'dissolve' | 'force' | 'stage' | 'ember', defId?: string): void;
   adoptCell(cx: number, cy: number): void;
   openCellSite(cx: number, cy: number): void;
   toggleShow(key: keyof WorldState['show']): void;
@@ -442,9 +442,27 @@ function buildInspector(root: HTMLElement, deps: WorldPanelDeps): void {
     }
     case 'cell': {
       const c = ws.cellAt(sel.cx, sel.cy);
+      const now = Date.now();
+      const left = (until: number): string => {
+        const ms = until - now;
+        if (ms <= 0) return 'due';
+        if (ms < 3_600_000) return `~${Math.max(1, Math.round(ms / 60_000))}m`;
+        if (ms < 86_400_000) return `~${+(ms / 3_600_000).toFixed(1)}h`;
+        return `~${+(ms / 86_400_000).toFixed(1)}d`;
+      };
       box.appendChild(el('div', 'wp-title', `Frontier cell ${sel.cx},${sel.cy}`));
       if (!c || !c.site) {
-        box.appendChild(el('p', 'muted', c ? `Decided empty (epoch ${c.epoch}).` : 'Undecided — the frontier rolls it when someone walks near.'));
+        box.appendChild(
+          el(
+            'p',
+            'muted',
+            c
+              ? c.fallowUntil !== null && c.fallowUntil > now
+                ? `Resting fallow (epoch ${c.epoch}) — may host again in ${left(c.fallowUntil)}.`
+                : `Decided empty (epoch ${c.epoch}).`
+              : 'Undecided — the frontier rolls it when someone walks near.',
+          ),
+        );
         const btns = el('div', 'wp-btnrow');
         btns.appendChild(button('Roll it now', () => actions.cellAction(sel.cx, sel.cy, 'reroll')));
         box.appendChild(btns);
@@ -459,11 +477,42 @@ function buildInspector(root: HTMLElement, deps: WorldPanelDeps): void {
       if (c.authoredId) facts.appendChild(el('span', 'pill gold', `landmark: ${c.authoredId}`));
       if (c.zoneId) facts.appendChild(el('span', 'pill green', 'standing'));
       if (c.clearedAt) facts.appendChild(el('span', 'pill', 'cleared'));
+      // THE LIVING STATE (Phase 6): the cell's clocks and family ties.
+      if (c.stage > 0) {
+        facts.appendChild(el('span', 'pill brass', `stage ${c.stage}`));
+      }
+      if (c.emberUntil !== null) {
+        facts.appendChild(el('span', 'pill', `ember — dissolves ${left(c.emberUntil)}`));
+      }
+      if (c.originCell) {
+        facts.appendChild(
+          el(
+            'span',
+            'pill',
+            c.originCell.startsWith('hearth:')
+              ? `covets hearth ${c.originCell.slice(7)}`
+              : `family of ${c.originCell}`,
+          ),
+        );
+      }
+      const calmHere = ws.calm.find(
+        (k) => Math.abs(k.cellX - sel.cx) <= 2 && Math.abs(k.cellY - sel.cy) <= 2,
+      );
+      if (calmHere) {
+        facts.appendChild(el('span', 'pill green', `calm ${left(calmHere.calmUntil)}`));
+      }
       box.appendChild(facts);
       const btns = el('div', 'wp-btnrow');
       btns.appendChild(button('Open site', () => actions.openCellSite(sel.cx, sel.cy)));
       btns.appendChild(button('Re-roll', () => actions.cellAction(sel.cx, sel.cy, 'reroll')));
       box.appendChild(btns);
+      // The lifecycle verbs: play the whole living frontier from here.
+      const btns15 = el('div', 'wp-btnrow');
+      btns15.appendChild(button('Stage +1', () => actions.cellAction(sel.cx, sel.cy, 'stage')));
+      btns15.appendChild(
+        button('Light the ember', () => actions.cellAction(sel.cx, sel.cy, 'ember')),
+      );
+      box.appendChild(btns15);
       const btns2 = el('div', 'wp-btnrow');
       btns2.appendChild(button('Adopt as zone…', () => actions.adoptCell(sel.cx, sel.cy)));
       btns2.appendChild(button('Dissolve', () => actions.cellAction(sel.cx, sel.cy, 'dissolve'), 'danger'));
@@ -650,6 +699,18 @@ function buildFrontier(root: HTMLElement, deps: WorldPanelDeps): void {
   facts.appendChild(el('span', 'pill green', `${standing.length} standing`));
   facts.appendChild(el('span', 'pill', `${decided.length - standing.length} decided`));
   facts.appendChild(el('span', 'pill', `${cleared.length} cleared`));
+  // THE LIVING STATE (Phase 6): the weather's gauges at a glance.
+  const staged = decided.filter((c) => c.stage > 0 && !c.originCell).length;
+  const families = decided.filter((c) => c.originCell !== null).length;
+  const embers = decided.filter((c) => c.emberUntil !== null).length;
+  const fallow = ws.cells.filter((c) => !c.site && c.fallowUntil !== null && c.fallowUntil > Date.now()).length;
+  if (staged > 0) facts.appendChild(el('span', 'pill brass', `${staged} staged`));
+  if (families > 0) facts.appendChild(el('span', 'pill brass', `${families} family camps`));
+  if (embers > 0) facts.appendChild(el('span', 'pill', `${embers} embering`));
+  if (fallow > 0) facts.appendChild(el('span', 'pill', `${fallow} fallow`));
+  facts.appendChild(el('span', 'pill gold', `debt ${ws.credits}`));
+  if (ws.calm.length > 0) facts.appendChild(el('span', 'pill green', `${ws.calm.length} calm`));
+  if (ws.claimRings.length > 0) facts.appendChild(el('span', 'pill', `${ws.claimRings.length} claimed yard${ws.claimRings.length === 1 ? '' : 's'}`));
   root.appendChild(facts);
   const byDef = new Map<string, WorldCell[]>();
   for (const c of decided) {
@@ -693,6 +754,7 @@ function buildLenses(root: HTMLElement, deps: WorldPanelDeps): void {
   lens('sites', 'Landmarks');
   lens('anchors', 'Hearths');
   lens('cells', 'Frontier');
+  lens('rings', 'Claims');
   lens('danger', 'Danger');
   root.appendChild(box);
 }

@@ -60,6 +60,10 @@ export class WorldState {
   seed = 1337;
   poiCell = 128;
   cells: WorldCell[] = [];
+  /** THE LIVING STATE (Phase 6): credits owed, calm windows, claimed yards. */
+  credits = 0;
+  calm: WorldSnapshot['calm'] = [];
+  claimRings: WorldSnapshot['claimRings'] = [];
   zones: MapListEntry[] = [];
   poiDefs: WorldSnapshot['poiDefs'] = [];
   /** Server-side advisory warnings from the last read/save. */
@@ -86,6 +90,8 @@ export class WorldState {
     cells: true,
     danger: false,
     grid: false,
+    /** Claimed-hearth yards — the exclusion mask, drawn honest. */
+    rings: false,
   };
 
   private readonly undoStack: WorldOp[] = [];
@@ -111,6 +117,9 @@ export class WorldState {
     this.seed = snap.seed;
     this.poiCell = snap.poiCell;
     this.cells = snap.cells;
+    this.credits = snap.credits;
+    this.calm = snap.calm;
+    this.claimRings = snap.claimRings;
     this.poiDefs = snap.poiDefs;
     this.warnings = snap.warnings;
     this.edited = snap.geographyEdited;

@@ -21,7 +21,7 @@ export interface WorldPanelActions {
     revert(): void;
     openZone(id: string): void;
     newZoneAt(rectId: string): void;
-    cellAction(cx: number, cy: number, action: 'reroll' | 'dissolve' | 'force', defId?: string): void;
+    cellAction(cx: number, cy: number, action: 'reroll' | 'dissolve' | 'force' | 'stage' | 'ember', defId?: string): void;
     adoptCell(cx: number, cy: number): void;
     openCellSite(cx: number, cy: number): void;
     toggleShow(key: keyof WorldState['show']): void;

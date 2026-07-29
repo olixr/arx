@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Db } from '../db/db.js';
 import {
+  AUTHORED_FRONTIER,
   AUTHORED_GEOGRAPHY,
   AUTHORED_LOOT_TABLES,
   AUTHORED_NPCS,
@@ -13,9 +14,11 @@ import {
   LOOT_TABLES,
   NPCS,
   NPC_ACTORS,
+  FRONTIER,
   POI_DEFS,
   ZONE_EDGE_PROFILES,
   geographySnapshot,
+  replaceFrontier,
   geographyWarnings,
   packZoneEdgeProfile,
   lootTableErrors,
@@ -24,6 +27,7 @@ import {
   replaceLootTables,
   replaceNpcDefs,
   replacePoiDefs,
+  validateFrontier,
   validateGeographyDef,
   validateNpcDef,
   validatePoiDef,
@@ -238,11 +242,56 @@ export function createMapsApi(
         }
       }
 
+      // ------------------------------------------------ frontier dials
+      // THE WEATHER is ONE document under the two-hash law (Phase 6).
+      // Every consumer reads FRONTIER.x at call time, so a save needs
+      // no reload — the swap steers the very next frontier beat.
+      if (url.pathname === '/dev/content/frontier') {
+        if (req.method === 'GET') {
+          const edited =
+            (await loadContentDocs(db, 'frontier')).find((d) => d.id === 'world')?.edited ?? false;
+          sendJson(res, 200, { def: { ...FRONTIER }, edited });
+          return true;
+        }
+        if (req.method === 'PUT') {
+          let raw: unknown;
+          try {
+            raw = JSON.parse(await readBody(req));
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          const result = validateFrontier(raw);
+          if (!result.ok) {
+            sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          await importContentDoc(db, 'frontier', 'world', result.def);
+          replaceFrontier(result.def);
+          console.log('[content] frontier dials saved + live (no reload needed — call-time reads)');
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const outcome = await revertContentDoc(db, 'frontier', 'world', AUTHORED_FRONTIER);
+          replaceFrontier({ ...AUTHORED_FRONTIER });
+          console.log(`[content] frontier dials ${outcome} — shipped weather stands`);
+          sendJson(res, 200, { ok: true, outcome });
+          return true;
+        }
+      }
+
       // ------------------------------------------------ POI cells
       // The studio's levers over the frontier ledger — the /poi chat
       // commands' semantics behind an API.
       if (url.pathname === '/dev/pois/cell' && req.method === 'POST') {
-        let body: { cellX?: number; cellY?: number; action?: string; defId?: string };
+        let body: {
+          cellX?: number;
+          cellY?: number;
+          action?: string;
+          defId?: string;
+          stage?: number;
+        };
         try {
           body = JSON.parse((await readBody(req)) || '{}') as typeof body;
         } catch (err) {
@@ -253,12 +302,18 @@ export function createMapsApi(
         if (
           !Number.isInteger(cellX) ||
           !Number.isInteger(cellY) ||
-          (action !== 'reroll' && action !== 'dissolve' && action !== 'force')
+          (action !== 'reroll' &&
+            action !== 'dissolve' &&
+            action !== 'force' &&
+            action !== 'stage' &&
+            action !== 'ember')
         ) {
-          sendJson(res, 400, { error: "needs { cellX, cellY, action: 'reroll'|'dissolve'|'force' }" });
+          sendJson(res, 400, {
+            error: "needs { cellX, cellY, action: 'reroll'|'dissolve'|'force'|'stage'|'ember' }",
+          });
           return true;
         }
-        const result = game.poiCellAction(cellX!, cellY!, action, body.defId);
+        const result = game.poiCellAction(cellX!, cellY!, action, body.defId, body.stage);
         if (!result.ok) {
           sendJson(res, 400, { error: result.error });
           return true;
@@ -592,7 +647,7 @@ export function createMapsApi(
       // The bench's stage: a REAL composed site for an archetype at a
       // requested tier — cues, garrison, patrol ring and all.
       if (url.pathname === '/dev/pois/preview' && req.method === 'POST') {
-        let body: { id?: string; tier?: number; prefab?: string; draft?: unknown };
+        let body: { id?: string; tier?: number; prefab?: string; draft?: unknown; stage?: number };
         try {
           body = JSON.parse((await readBody(req)) || '{}') as typeof body;
         } catch (err) {
@@ -610,8 +665,9 @@ export function createMapsApi(
         }
         const defId = draft?.id ?? body.id;
         const tier = body.tier ?? 2;
-        if (typeof defId !== 'string' || !Number.isInteger(tier)) {
-          sendJson(res, 400, { error: 'needs { id or draft, tier }' });
+        const stage = body.stage ?? 0;
+        if (typeof defId !== 'string' || !Number.isInteger(tier) || !Number.isInteger(stage)) {
+          sendJson(res, 400, { error: 'needs { id or draft, tier, stage? }' });
           return true;
         }
         const ctx = game.poiBenchContext(draft);
@@ -619,7 +675,7 @@ export function createMapsApi(
           sendJson(res, 503, { error: 'poi system not initialized' });
           return true;
         }
-        const shown = previewPoi(config.worldSeed, ctx, defId, tier, body.prefab);
+        const shown = previewPoi(config.worldSeed, ctx, defId, tier, body.prefab, stage);
         if (!shown) {
           sendJson(res, 404, { error: `no honest tier-${tier} ground found for '${defId}'` });
           return true;

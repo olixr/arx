@@ -1,4 +1,4 @@
-import type { DialogueDef, LootTableDef, NpcActorDef, NpcDef, PoiDef } from '@arx/content';
+import type { DialogueDef, FrontierDef, LootTableDef, NpcActorDef, NpcDef, PoiDef } from '@arx/content';
 import { type Editable, type ItemRow, type SpawnSites, type ZoneRect } from './api.js';
 /**
  * Arx Content Studio — the CMS over the running game's DB-first
@@ -8,7 +8,7 @@ import { type Editable, type ItemRow, type SpawnSites, type ZoneRect } from './a
  * live registry, and retires standing bodies so the world plays the
  * new numbers within a tick.
  */
-export type Section = 'npcs' | 'loot' | 'actors' | 'dialogues' | 'pois' | 'items';
+export type Section = 'npcs' | 'loot' | 'actors' | 'dialogues' | 'pois' | 'frontier' | 'items';
 export interface CmsState {
     section: Section;
     selectedId: string | null;
@@ -20,6 +20,11 @@ export interface CmsState {
     pois: Array<Editable<PoiDef>>;
     /** The live POI prefab library's ids (pool pickers + validation). */
     poiPrefabIds: string[];
+    /** The living frontier's dial table — a singleton doc (Phase 6). */
+    frontier: {
+        def: FrontierDef;
+        edited: boolean;
+    } | null;
     items: ItemRow[];
     sites: SpawnSites;
     zones: ZoneRect[];
@@ -46,6 +51,8 @@ export declare const persistence: {
     revertLootDef(id: string): Promise<void>;
     savePoiDef(def: PoiDef): Promise<void>;
     revertPoiDef(id: string): Promise<void>;
+    saveFrontierDef(def: FrontierDef): Promise<void>;
+    revertFrontierDef(): Promise<void>;
     saveDialogueDef(def: DialogueDef): Promise<void>;
     revertDialogueDef(id: string): Promise<void>;
     saveActorDef(def: NpcActorDef): Promise<void>;

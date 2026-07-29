@@ -4344,6 +4344,10 @@ export class GameServer {
       zoneId: string | null;
       authoredId: string | null;
     }>;
+    /** THE LIVING STATE (Phase 6): the whole weather, one read. */
+    credits: number;
+    calm: Array<{ cellX: number; cellY: number; calmUntil: number }>;
+    claimRings: Array<{ x: number; y: number; r: number }>;
   } {
     const authored = this.authoredCells();
     const cells = [...this.poiLedger.entries()].map(([key, row]) => ({
@@ -4360,7 +4364,22 @@ export class GameServer {
       zoneId: this.poiLive.get(key)?.zoneId ?? null,
       authoredId: authored.get(key) ?? null,
     }));
-    return { seed: config.worldSeed, poiCell: POI_CELL, cells };
+    const now = Date.now();
+    const calm = [...this.frontierCalm.entries()]
+      .filter(([, until]) => until > now)
+      .map(([key, until]) => ({
+        cellX: Number(key.split(',')[0]),
+        cellY: Number(key.split(',')[1]),
+        calmUntil: until,
+      }));
+    return {
+      seed: config.worldSeed,
+      poiCell: POI_CELL,
+      cells,
+      credits: this.frontierCredits,
+      calm,
+      claimRings: this.claimRings().map((r) => ({ ...r })),
+    };
   }
 
   /**
@@ -4370,13 +4389,46 @@ export class GameServer {
   poiCellAction(
     cellX: number,
     cellY: number,
-    action: 'reroll' | 'dissolve' | 'force',
+    action: 'reroll' | 'dissolve' | 'force' | 'stage' | 'ember',
     defId?: string,
+    /** For 'stage': the rung to set (absent = climb one). */
+    stage?: number,
   ): { ok: true; site: PoiSite | null } | { ok: false; error: string } {
     if (!this.poiPrefabs) return { ok: false, error: 'poi system not initialized' };
     const key = poiCellKey(cellX, cellY);
     if (action === 'force' && defId !== undefined && !POI_DEFS.has(defId)) {
       return { ok: false, error: `unknown archetype '${defId}'` };
+    }
+    // THE LIFECYCLE VERBS (Phase 6): the bench plays the whole living
+    // frontier — force a rung, light the ember — with the exact
+    // semantics of the /frontier chat levers.
+    if (action === 'stage') {
+      const row = this.poiLedger.get(key);
+      const def = row?.site ? POI_DEFS.get(row.site.defId) : undefined;
+      if (!row?.site || !def) return { ok: false, error: 'this cell holds no site to stage' };
+      const max = Math.min(FRONTIER.stageMax, def.boldness?.stages.length ?? 0);
+      if (max === 0) return { ok: false, error: `${def.name} carries no boldness ladder` };
+      const want = Number.isInteger(stage)
+        ? Math.max(0, Math.min(stage!, max))
+        : Math.min(row.stage + 1, max);
+      row.stage = want;
+      row.stageAt = Date.now();
+      this.accounts.markPoiStage(cellX, cellY, want, row.stageAt);
+      this.retirePoiCell(key);
+      if (want > 0) this.pushStageRumor(key, def.name, want);
+      return { ok: true, site: row.site };
+    }
+    if (action === 'ember') {
+      const row = this.poiLedger.get(key);
+      if (!row?.site) return { ok: false, error: 'this cell holds no site to ember' };
+      // A staged wipe without the fight: the garrison stands down, the
+      // clear stamps, and the linger runs — the ember turn from here.
+      this.standDownGarrison(this.poiLive.get(key)?.spawnIdx ?? []);
+      row.clearedAt = Date.now();
+      row.emberUntil =
+        Date.now() + emberLingerFor(config.worldSeed, cellX, cellY, row.epoch);
+      this.accounts.markPoiCleared(cellX, cellY, row.emberUntil);
+      return { ok: true, site: row.site };
     }
     const prior = this.poiLedger.get(key);
     const epoch = (prior?.epoch ?? 0) + 1;

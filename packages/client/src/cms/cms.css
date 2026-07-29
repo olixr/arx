@@ -2732,6 +2732,59 @@ button.ghosted {
   align-items: center;
 }
 
+/* -------- the weather bench (frontier dials) */
+
+.frontier-dial {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink-dim) 18%, transparent);
+}
+
+.frontier-dial:last-child {
+  border-bottom: none;
+}
+
+.frontier-dial-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.frontier-dial-head b {
+  min-width: 130px;
+}
+
+.frontier-dial-head .muted {
+  font-size: 12px;
+}
+
+.frontier-dial-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.frontier-num {
+  width: 90px;
+}
+
+/* The boldness-ladder preview: one column per rung, side by side. */
+.poi-stage-ladder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.poi-stage-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
 .rh-tray-label {
   font-size: 10.5px;
   text-transform: uppercase;

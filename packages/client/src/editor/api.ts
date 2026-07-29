@@ -149,6 +149,11 @@ export interface WorldCell {
   cellY: number;
   epoch: number;
   clearedAt: number | null;
+  /** THE LIVING FRONTIER's clocks and ties (Phases 1-5). */
+  emberUntil: number | null;
+  fallowUntil: number | null;
+  stage: number;
+  originCell: string | null;
   site: PoiSiteWire | null;
   defName: string | null;
   zoneId: string | null;
@@ -159,6 +164,10 @@ export interface WorldSnapshot {
   seed: number;
   poiCell: number;
   cells: WorldCell[];
+  /** THE LIVING STATE (Phase 6): the whole weather, one read. */
+  credits: number;
+  calm: Array<{ cellX: number; cellY: number; calmUntil: number }>;
+  claimRings: Array<{ x: number; y: number; r: number }>;
   geography: GeographyDef;
   geographyEdited: boolean;
   warnings: string[];
@@ -201,13 +210,20 @@ export async function revertGeography(): Promise<GeographySaveResult> {
 export async function poiCellAction(
   cellX: number,
   cellY: number,
-  action: 'reroll' | 'dissolve' | 'force',
+  action: 'reroll' | 'dissolve' | 'force' | 'stage' | 'ember',
   defId?: string,
+  stage?: number,
 ): Promise<{ ok: boolean; site: PoiSiteWire | null }> {
   const res = await request('/dev/pois/cell', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ cellX, cellY, action, ...(defId ? { defId } : {}) }),
+    body: JSON.stringify({
+      cellX,
+      cellY,
+      action,
+      ...(defId ? { defId } : {}),
+      ...(stage !== undefined ? { stage } : {}),
+    }),
   });
   return (await res.json()) as { ok: boolean; site: PoiSiteWire | null };
 }

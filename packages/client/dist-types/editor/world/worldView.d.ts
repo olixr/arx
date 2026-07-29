@@ -61,6 +61,18 @@ export declare class WorldView {
     thumbUrl(id: string): Promise<string | null>;
     private dangerBlock;
     render(): void;
+    /**
+     * THE CLAIMED YARDS lens (Phase 6): every claim ring drawn honest —
+     * the exclusion mask exactly as the spawn paths read it, never a
+     * danger wash (rings calm nothing; they only refuse ground).
+     */
+    private drawClaimRings;
+    /**
+     * THE FAMILY LINES (Phase 6): every satellite and toll drawn tied to
+     * its core — the source-and-kill-switch made visible. Hearth-tied
+     * squats (origin `hearth:<id>`) key on no cell and draw no line.
+     */
+    private drawFamilyLines;
     private isSel;
     private isHover;
     private drawCells;

@@ -1,4 +1,4 @@
-import type { DialogueDef, LootTableDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, ZoneJson } from '@arx/content';
+import type { DialogueDef, FrontierDef, LootTableDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, ZoneJson } from '@arx/content';
 /** Content Studio's wire to the running server's /dev/content API. */
 export interface Editable<T> {
     def: T;
@@ -35,6 +35,15 @@ export declare function revertNpc(id: string): Promise<{
 export declare function listLoot(): Promise<Array<Editable<LootTableDef>>>;
 export declare function saveLoot(def: LootTableDef): Promise<void>;
 export declare function revertLoot(id: string): Promise<{
+    outcome: string;
+}>;
+/** The weather is a singleton: one doc, one 'world' id, two hashes. */
+export declare function getFrontier(): Promise<{
+    def: FrontierDef;
+    edited: boolean;
+}>;
+export declare function saveFrontier(def: FrontierDef): Promise<void>;
+export declare function revertFrontier(): Promise<{
     outcome: string;
 }>;
 export declare function listActors(): Promise<{
@@ -84,6 +93,7 @@ export declare function stagePoi(args: {
     draft?: PoiDef;
     tier: number;
     prefab?: string;
+    stage?: number;
 }): Promise<PoiStage>;
 export declare function fetchPrefab(id: string): Promise<PrefabJson>;
 export declare function listDialogues(): Promise<{

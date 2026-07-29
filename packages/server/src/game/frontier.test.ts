@@ -859,3 +859,67 @@ test('friendly sites are never news: no threat, no bounty mark, but peddler_near
     'a rolled waystation must never read as trouble',
   );
 });
+
+// ---------------------------------------------------------------- Phase 6
+
+const proto6 = GameServer.prototype as unknown as { poiCellAction: Fn };
+
+test('the bench plays the lifecycle: stage and ember verbs with lever semantics', () => {
+  const st = site({ tier: 3 });
+  const mkSlate = () => {
+    const s = slate([[KEY, row({ site: st })]]);
+    const clearedStamps: Array<[number, number, number | null]> = [];
+    Object.assign(s, { poiCellAction: proto6.poiCellAction });
+    s.accounts = {
+      ...s.accounts,
+      markPoiCleared: (cx: number, cy: number, ember: number | null = null) =>
+        clearedStamps.push([cx, cy, ember]),
+    } as never;
+    return Object.assign(s, { clearedStamps });
+  };
+  // Stage: climbs one rung by default, clamps to the def's ladder.
+  const s = mkSlate();
+  const act = (s as unknown as { poiCellAction: Fn }).poiCellAction.bind(s);
+  assert.deepEqual(act(CELL_X, CELL_Y, 'stage'), { ok: true, site: st });
+  assert.equal(s.poiLedger.get(KEY)!.stage, 1);
+  assert.deepEqual(s.retired, [KEY], 'the climb recomposes in place');
+  assert.deepEqual(act(CELL_X, CELL_Y, 'stage', undefined, 99), { ok: true, site: st });
+  assert.equal(s.poiLedger.get(KEY)!.stage, 3, 'clamped to the ladder top');
+  // Ember: a staged wipe without the fight — clear + linger stamped.
+  const before = Date.now();
+  assert.deepEqual(act(CELL_X, CELL_Y, 'ember'), { ok: true, site: st });
+  const r = s.poiLedger.get(KEY)!;
+  assert.ok(r.clearedAt !== null && r.clearedAt >= before);
+  assert.ok(
+    r.emberUntil !== null &&
+      r.emberUntil >= before + FRONTIER.emberLingerMs[0] &&
+      r.emberUntil <= Date.now() + FRONTIER.emberLingerMs[1],
+  );
+  assert.equal(s.clearedStamps.length, 1);
+  // The verbs refuse honest nothing.
+  const empty = mkSlate();
+  empty.poiLedger.clear();
+  const act2 = (empty as unknown as { poiCellAction: Fn }).poiCellAction.bind(empty);
+  assert.deepEqual(act2(9, 9, 'stage'), { ok: false, error: 'this cell holds no site to stage' });
+  assert.deepEqual(act2(9, 9, 'ember'), { ok: false, error: 'this cell holds no site to ember' });
+});
+
+test('worldSnapshot carries the living state: credits, calm, claimed yards', () => {
+  const proto6b = GameServer.prototype as unknown as { worldSnapshot: Fn };
+  const s = slate([[KEY, row({ site: site(), stage: 2 })]], { credits: 3 });
+  Object.assign(s, { worldSnapshot: proto6b.worldSnapshot });
+  s.frontierCalm.set('1,1', Date.now() + 3_600_000);
+  s.frontierCalm.set('2,2', Date.now() - 1); // expired — never reported
+  s.homesByCharacter.set(7, { x: 100, y: 100 });
+  const snap = (s as unknown as { worldSnapshot: Fn }).worldSnapshot.call(s) as {
+    credits: number;
+    calm: Array<{ cellX: number; cellY: number }>;
+    claimRings: Array<{ x: number; y: number; r: number }>;
+    cells: Array<{ stage: number; emberUntil: number | null }>;
+  };
+  assert.equal(snap.credits, 3);
+  assert.deepEqual(snap.calm, [{ cellX: 1, cellY: 1, calmUntil: s.frontierCalm.get('1,1')! }]);
+  assert.equal(snap.claimRings.length, 1);
+  assert.equal(snap.claimRings[0]!.x, 100);
+  assert.equal(snap.cells[0]!.stage, 2);
+});

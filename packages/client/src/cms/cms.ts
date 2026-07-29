@@ -1,8 +1,11 @@
-import type { DialogueDef, LootTableDef, NpcActorDef, NpcDef, PoiDef } from '@arx/content';
+import type { DialogueDef, FrontierDef, LootTableDef, NpcActorDef, NpcDef, PoiDef } from '@arx/content';
 import { iconImg } from '../editor/editorIcons.js';
 import { itemIconUrl } from '../render/icons.js';
 import {
   fetchSpawnSites,
+  getFrontier,
+  saveFrontier,
+  revertFrontier,
   listActors,
   listDialogues,
   listItems,
@@ -40,7 +43,7 @@ import { actorBust } from './portraits.js';
  * new numbers within a tick.
  */
 
-export type Section = 'npcs' | 'loot' | 'actors' | 'dialogues' | 'pois' | 'items';
+export type Section = 'npcs' | 'loot' | 'actors' | 'dialogues' | 'pois' | 'frontier' | 'items';
 
 export interface CmsState {
   section: Section;
@@ -53,6 +56,8 @@ export interface CmsState {
   pois: Array<Editable<PoiDef>>;
   /** The live POI prefab library's ids (pool pickers + validation). */
   poiPrefabIds: string[];
+  /** The living frontier's dial table — a singleton doc (Phase 6). */
+  frontier: { def: FrontierDef; edited: boolean } | null;
   items: ItemRow[];
   sites: SpawnSites;
   zones: ZoneRect[];
@@ -71,6 +76,7 @@ export const state: CmsState = {
   dialogues: [],
   pois: [],
   poiPrefabIds: [],
+  frontier: null,
   items: [],
   sites: { npcs: [], actors: [] },
   zones: [],
@@ -115,6 +121,8 @@ export async function reloadSection(section: Section): Promise<void> {
       const res = await listPois();
       state.pois = res.pois;
       state.poiPrefabIds = res.prefabIds;
+    } else if (section === 'frontier') {
+      state.frontier = await getFrontier();
     } else state.items = await listItems();
     state.online = true;
   } catch (err) {
@@ -126,7 +134,7 @@ export async function reloadSection(section: Section): Promise<void> {
 
 async function loadEverything(): Promise<void> {
   try {
-    const [npcs, loot, actors, dialogues, pois, items, sites, zones] = await Promise.all([
+    const [npcs, loot, actors, dialogues, pois, items, sites, zones, frontier] = await Promise.all([
       listNpcs(),
       listLoot(),
       listActors(),
@@ -135,6 +143,7 @@ async function loadEverything(): Promise<void> {
       listItems(),
       fetchSpawnSites(),
       listZoneRects(),
+      getFrontier(),
     ]);
     state.npcs = npcs;
     state.loot = loot;
@@ -145,6 +154,7 @@ async function loadEverything(): Promise<void> {
     state.items = items;
     state.sites = sites;
     state.zones = zones;
+    state.frontier = frontier;
     state.online = true;
     $('server-pill').textContent = 'connected';
     $('server-pill').className = 'pill ok';
@@ -209,6 +219,12 @@ const SECTIONS: Array<{ id: Section; label: string; icon: string; hint: string }
     hint: 'Wilderness archetypes — prefab pools, tier-scaled garrisons, and approach cues. Standing sites recompose on save.',
   },
   {
+    id: 'frontier',
+    label: 'Frontier',
+    icon: 'stamp',
+    hint: "The living frontier's weather — ember, boldness, calm, raids, and fortune. A save steers the very next beat; no restart, no reload.",
+  },
+  {
     id: 'items',
     label: 'Items',
     icon: 'picker',
@@ -258,7 +274,9 @@ function renderRail(): void {
               ? state.dialogues.length
               : s.id === 'pois'
                 ? state.pois.length
-                : state.items.length;
+                : s.id === 'frontier'
+                  ? (state.frontier ? Object.keys(state.frontier.def).length : 0)
+                  : state.items.length;
     const b = document.createElement('button');
     b.className = 'rail-tab' + (state.section === s.id ? ' active' : '');
     b.appendChild(iconImg(s.icon, 15));
@@ -418,6 +436,22 @@ function listEntries(): ListEntry[] {
         group: p.def.tiers[0] <= 1 ? 'Near frontier' : p.def.tiers[0] <= 3 ? 'Expedition line' : 'Deep frontier',
       }));
   }
+  if (state.section === 'frontier') {
+    const f = state.frontier;
+    return [
+      {
+        id: 'world',
+        title: 'The Weather',
+        sub: f
+          ? `${Object.keys(f.def).length} dials — ember, boldness, calm, raids, fortune`
+          : 'dial table not loaded',
+        badge: f?.edited ? 'edited' : 'authored',
+        badgeEdited: f?.edited ?? false,
+        ico: iconWrap(iconImg('stamp', 18)),
+        group: 'The living frontier',
+      },
+    ];
+  }
   return state.items
     .filter((i) => match(i.id, i.name))
     .sort(
@@ -492,7 +526,7 @@ export function renderAll(): void {
   buildDetail($('detail-body'), $('linkage-col'));
   const s = SECTIONS.find((x) => x.id === state.section)!;
   setHint(s.hint);
-  $('btn-new-entry').classList.toggle('hidden', state.section === 'items');
+  $('btn-new-entry').classList.toggle('hidden', state.section === 'items' || state.section === 'frontier');
   if (!state.dirty) setSaveState(state.online ? 'all changes saved' : 'offline');
 }
 
@@ -636,6 +670,20 @@ export const persistence = {
     if (outcome === 'deleted') state.selectedId = null;
     renderAll();
     toast(outcome === 'reverted' ? 'restored the shipped archetype' : 'deleted', 3000, 'success');
+  },
+  async saveFrontierDef(def: FrontierDef): Promise<void> {
+    await saveFrontier(def);
+    state.dirty = false;
+    await reloadSection('frontier');
+    setSaveState('all changes saved');
+    toast('the weather is set — the very next frontier beat obeys', 3000, 'success');
+  },
+  async revertFrontierDef(): Promise<void> {
+    await revertFrontier();
+    state.dirty = false;
+    await reloadSection('frontier');
+    renderAll();
+    toast('the shipped weather stands again', 3000, 'success');
   },
   async saveDialogueDef(def: DialogueDef): Promise<void> {
     await saveDialogue(def);

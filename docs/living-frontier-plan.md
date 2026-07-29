@@ -450,6 +450,33 @@ shop stock + rumor flag + VOICE lines → tests.
 
 ## Phase 6 — The Studio Owns the Weather
 
+**SHIPPED 2026-07-28 — THE EPIC IS COMPLETE.** Verified live end to
+end: the FRONTIER table became a live content doc (kind `frontier`, id
+`world`, the two-hash law) with one validator that bounds every dial
+and names its cross-laws ("satellites need a rung to stand on", "word
+travels farther than sight", "a loss earns the SHORTER mercy") — the
+wire refused a garbage PUT with the full 27-dial report. The proof the
+dial steers: a Studio PUT set ember linger to 60–90 s, the new bench
+`ember` verb lit a camp, the countdown read **86 s** (authored band is
+8–12 *minutes*), and the background watcher caught the dissolve
+banking its renewal credit — Studio → validator → in-place swap →
+call-time read → world, no restart anywhere. The **Weather bench**
+(CMS "Frontier · 27") renders every dial with derived readouts
+("a beat every 15s", "stage 3 in ~5.3d–6.8d", "~1 raid / 3.8h",
+"fortune ~1 in 6 credits") and Save▸Live / Revert-to-shipped. The
+**POI bench** grew the stage ladder — four pure `composePoi` calls
+side by side (verified: 12 → 14 → 16 → 19 bodies, base camp visibly
+identical in every column) plus event-archetype pills naming the hand
+that deals each weight-0 def. The **World Studio** became the living
+map: stage pips on the diamonds, ember rings, fallow ghosts, family
+lines core→satellite, a Claims lens drawing every yard as the pure
+exclusion mask it is, the frontier gauges (staged/embering/fallow/
+debt/calm/yards), and the cell inspector now plays the whole lifecycle
+(`Stage +1`, `Light the ember` joining reroll/force/dissolve/adopt,
+with `poiCellAction` verbs to match). Client `WorldCell` typing was
+also healed — it had silently dropped the Phase 2 fields the server
+already sent. 682 workspace tests green.
+
 Goal: every dial in this epic is content, and the bench can *see* the living map.
 
 - **FRONTIER constants → content doc** (`content_docs` kind `'frontier'`, one

@@ -8,6 +8,7 @@ import {
   expectedYield,
   prefabFromJson,
   zoneFromJson,
+  type FrontierDef,
   type LootEntryDef,
   type LootTableDef,
   type NpcActorCombatStats,
@@ -2137,6 +2138,32 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
           ),
         ]
       : []),
+    // Weight-0 archetypes are EVENTS: only a frontier system stands
+    // them, each with its own law. The pill names the hand that deals.
+    ...(draft.weight === 0
+      ? [
+          pill(
+            'event archetype',
+            `weight 0 — never rolls on its own; ${
+              {
+                raider_squat: 'stood by the covetous dice at a claimed hearth (THE HEARTH WATCH)',
+                road_toll: 'forked onto the townward road by an unanswered family (THE CREEP)',
+                peddler_rest: "dealt by the renewal path's fortune roll (THE ROAD'S FORTUNE)",
+              }[draft.id] ?? 'stood only by authored sites or frontier systems'
+            }`,
+            'brass',
+          ),
+        ]
+      : []),
+    ...(draft.id === 'peddler_rest'
+      ? [
+          pill(
+            'transient — hours, not days',
+            'the ember clock is stamped ON ARRIVAL (FRONTIER.peddlerLingerMs); she packs the cart and moves on',
+            'ok',
+          ),
+        ]
+      : []),
   ];
 
   body.appendChild(
@@ -2999,9 +3026,81 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
       stageSeg.appendChild(b);
     }
   };
+  /** One composed rung painted small — the ladder view's column. */
+  const stageColumn = async (stage: number): Promise<HTMLElement> => {
+    const col = el('div', 'poi-stage-col');
+    const shown = await stagePoi({ draft, tier: stageTier, stage });
+    const zone = zoneFromJson(shown.zone);
+    const layers: PreviewLayers = {
+      width: zone.width,
+      height: zone.height,
+      ground: zone.ground,
+      detail: zone.detail,
+      elev: zone.elev,
+    };
+    const canvas = renderLayersPreview(layers, 190);
+    drawPreviewPins(
+      canvas,
+      layers,
+      [
+        ...(zone.spawns ?? []).map((s) => ({
+          dx: Math.floor(s.x - zone.origin.x),
+          dy: Math.floor(s.y - zone.origin.y),
+          color: s.patrol ? '#6fb2d9' : '#d96f6f',
+        })),
+        ...(zone.actorSpawns ?? []).map((a) => ({
+          dx: Math.floor(a.x - zone.origin.x),
+          dy: Math.floor(a.y - zone.origin.y),
+          color: '#7fca6f',
+        })),
+      ],
+      190,
+    );
+    col.appendChild(canvas);
+    const bodies = (zone.spawns ?? []).reduce((n, s) => n + s.count, 0);
+    col.appendChild(
+      pill(
+        `stage ${stage} · ${bodies} bod${bodies === 1 ? 'y' : 'ies'}`,
+        stage === 0
+          ? 'the base camp, exactly as it first stands'
+          : `rung ${stage}: the same base camp bit-for-bit, plus its reinforcements (the frequency law)`,
+        stage === 0 ? 'ink' : 'brass',
+      ),
+    );
+    return col;
+  };
+
   const runStage = async (): Promise<void> => {
     stageBox.innerHTML = '';
     stageBox.appendChild(el('p', 'muted', 'Composing a real site…'));
+    // THE LADDER VIEW: a boldness-bearing archetype renders every rung
+    // side by side — four pure composePoi calls, the base camp visibly
+    // identical in each (the prefix-stability law, seen not trusted).
+    const rungCount = draft.boldness ? Math.min(3, draft.boldness.stages.length) : 0;
+    if (rungCount > 0) {
+      try {
+        const cols = await Promise.all(
+          Array.from({ length: rungCount + 1 }, (_, s) => stageColumn(s)),
+        );
+        stageBox.innerHTML = '';
+        const ladder = el('div', 'poi-stage-ladder');
+        for (const col of cols) ladder.appendChild(col);
+        stageBox.appendChild(ladder);
+        stageBox.appendChild(
+          el(
+            'p',
+            'muted',
+            'The boldness ladder at this tier, stage 0 → ' +
+              `${rungCount}. Rungs only ever ADD — the base muster never reshuffles. ` +
+              'Blue pins patrol; red hold; green are friendly staff.',
+          ),
+        );
+      } catch (err) {
+        stageBox.innerHTML = '';
+        stageBox.appendChild(el('p', 'muted empty', (err as Error).message));
+      }
+      return;
+    }
     try {
       const shown = await stagePoi({ draft, tier: stageTier });
       const zone = zoneFromJson(shown.zone);
@@ -3140,5 +3239,281 @@ export function buildDetail(body: HTMLElement, linkage: HTMLElement): void {
   else if (state.section === 'actors') actorDetail(body, linkage, id);
   else if (state.section === 'dialogues') dialogueDetail(body, linkage, id);
   else if (state.section === 'pois') poiDetail(body, linkage, id);
+  else if (state.section === 'frontier') frontierDetail(body, linkage);
   else itemDetail(body, linkage, id);
+}
+
+// ------------------------------------------------------ the weather
+
+/** A duration read the way a designer thinks: 45s, 12m, 3.5h, 2.1d. */
+function humanMs(ms: number): string {
+  if (ms < 60_000) return `${Math.round(ms / 1000)}s`;
+  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m`;
+  if (ms < 86_400_000) return `${+(ms / 3_600_000).toFixed(1)}h`;
+  return `${+(ms / 86_400_000).toFixed(1)}d`;
+}
+
+/**
+ * THE WEATHER BENCH (living-frontier Phase 6): every pacing dial of
+ * the frontier, editable, with the consequences derived beside the
+ * knobs — a designer reads "stage 2 in ~4 days", never "3.5e8 ms".
+ * Saves validate through the one validator and steer the very next
+ * frontier beat; nothing restarts, nothing reloads.
+ */
+function frontierDetail(body: HTMLElement, linkage: HTMLElement): void {
+  const row = state.frontier;
+  if (!row) {
+    body.appendChild(el('p', 'muted empty', 'The dial table has not loaded — is the server up?'));
+    return;
+  }
+  const draft: FrontierDef = {
+    ...row.def,
+    emberLingerMs: [...row.def.emberLingerMs] as [number, number],
+    fallowMs: [...row.def.fallowMs] as [number, number],
+    renewalRing: [...row.def.renewalRing] as [number, number],
+    stageMs: [...row.def.stageMs] as [number, number],
+    scatterLingerMs: [...row.def.scatterLingerMs] as [number, number],
+    creepMs: [...row.def.creepMs] as [number, number],
+    peddlerLingerMs: [...row.def.peddlerLingerMs] as [number, number],
+  };
+
+  const pills = (): HTMLElement[] => [
+    pill(
+      `ember ${humanMs(draft.emberLingerMs[0])}–${humanMs(draft.emberLingerMs[1])}`,
+      'how long a broken camp stands as your trophy before it dissolves',
+    ),
+    pill(
+      `stage ${draft.stageMax} in ~${humanMs(draft.stageMs[0] * draft.stageMax)}–${humanMs(draft.stageMs[1] * draft.stageMax)}`,
+      'a discovered, unanswered camp at the top of its ladder',
+      'brass',
+    ),
+    pill(
+      `calm ${humanMs(draft.calmMs)}`,
+      'the relax window every wipe buys the surrounding cells',
+      'ok',
+    ),
+    pill(
+      `~1 raid / ${humanMs(draft.raidChance > 0 ? draft.raidRollMs / draft.raidChance : Infinity)}`,
+      'expected covetous-dice success cadence per shard (raidRollMs ÷ raidChance)',
+      'brass',
+    ),
+    pill(
+      `fortune ~1 in ${draft.peddlerChance > 0 ? Math.round(1 / draft.peddlerChance) : '∞'} credits`,
+      'renewal credits that deal a peddler instead of trouble',
+      'ok',
+    ),
+  ];
+  const head = detailHead(
+    iconWrap27(iconImg('stamp', 34)),
+    'The Weather',
+    'frontier · world',
+    pills(),
+    row.edited,
+    true,
+    () =>
+      void persistence
+        .saveFrontierDef(draft)
+        .catch((err) => toast((err as Error).message, 5000, 'error')),
+    () =>
+      void persistence
+        .revertFrontierDef()
+        .catch((err) => toast((err as Error).message, 5000, 'error')),
+  );
+  body.appendChild(head);
+  const refreshPills = (): void => {
+    const holder = head.querySelector('.hero-pills');
+    if (holder) {
+      holder.innerHTML = '';
+      for (const p of pills()) holder.appendChild(p);
+    }
+  };
+
+  /** One dial row: label + hint, a control, and a live readout. */
+  const dial = (
+    label: string,
+    hint: string,
+    control: HTMLElement,
+    readout: () => string,
+  ): HTMLElement => {
+    const wrap = el('div', 'frontier-dial');
+    const head2 = el('div', 'frontier-dial-head');
+    head2.appendChild(el('b', '', label));
+    head2.appendChild(el('span', 'muted', hint));
+    const out = el('span', 'pill brass', readout());
+    const refresh = (): void => {
+      out.textContent = readout();
+      refreshPills();
+    };
+    (wrap as HTMLElement & { refreshReadout?: () => void }).refreshReadout = refresh;
+    control.addEventListener('input', refresh);
+    control.addEventListener('change', refresh);
+    wrap.appendChild(head2);
+    const rowEl = el('div', 'frontier-dial-row');
+    rowEl.appendChild(control);
+    rowEl.appendChild(out);
+    wrap.appendChild(rowEl);
+    return wrap;
+  };
+
+  /** A [min,max] ms band edited in a display unit (min/h/d). */
+  const bandDial = (
+    label: string,
+    hint: string,
+    key: 'emberLingerMs' | 'fallowMs' | 'stageMs' | 'scatterLingerMs' | 'creepMs' | 'peddlerLingerMs',
+    unitMs: number,
+    lo: number,
+    hi: number,
+    readout: () => string,
+  ): HTMLElement =>
+    dial(
+      label,
+      hint,
+      rangePair(
+        +(draft[key][0] / unitMs).toFixed(2),
+        +(draft[key][1] / unitMs).toFixed(2),
+        lo,
+        hi,
+        (a, b) => {
+          draft[key] = [Math.round(a * unitMs), Math.round(b * unitMs)];
+          markDirty();
+        },
+      ),
+      readout,
+    );
+
+  /** A scalar dial edited raw (tiles, counts, chances). */
+  const numDial = (
+    label: string,
+    hint: string,
+    key: keyof FrontierDef,
+    min: number,
+    max: number,
+    step: number,
+    readout: () => string,
+    unitMs = 1,
+  ): HTMLElement => {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = String(min);
+    input.max = String(max);
+    input.step = String(step);
+    input.value = String(+((draft[key as keyof FrontierDef] as number) / unitMs).toFixed(2));
+    input.className = 'frontier-num';
+    input.oninput = () => {
+      const v = Number(input.value);
+      if (Number.isFinite(v)) {
+        (draft as unknown as Record<string, unknown>)[key as string] = Math.round(v * unitMs * 100) / 100;
+        markDirty();
+      }
+    };
+    return dial(label, hint, input, readout);
+  };
+
+  const MINU = 60_000;
+  const HOUR = 3_600_000;
+  const DAY = 86_400_000;
+
+  body.appendChild(
+    sect(
+      'The ember turn',
+      'A cleared camp lingers, dissolves with dignity, rests fallow, and the debt stands trouble elsewhere.',
+      dial('frontier cadence', 'ticks between passes (20/s)', (() => {
+        const i = document.createElement('input');
+        i.type = 'number'; i.min = '20'; i.max = '12000'; i.step = '20';
+        i.value = String(draft.tickTicks); i.className = 'frontier-num';
+        i.oninput = () => { const v = Number(i.value); if (Number.isInteger(v)) { draft.tickTicks = v; markDirty(); } };
+        return i;
+      })(), () => `a beat every ${humanMs((draft.tickTicks / 20) * 1000)}`),
+      bandDial('ember linger', 'the broken trophy stands (minutes)', 'emberLingerMs', MINU, 0.2, 1440,
+        () => `dissolves in ${humanMs(draft.emberLingerMs[0])}–${humanMs(draft.emberLingerMs[1])}`),
+      bandDial('fallow rest', 'the meadow heals (hours)', 'fallowMs', HOUR, 0.02, 336,
+        () => `may host again in ${humanMs(draft.fallowMs[0])}–${humanMs(draft.fallowMs[1])}`),
+      numDial('dignity', 'no stand/dissolve within this many tiles of anyone', 'dignityTiles', 8, 256, 1,
+        () => `${draft.dignityTiles} tiles — past every screen`),
+      dial('renewal ring', 'where the debt stands its next site (tiles from a player)',
+        rangePair(draft.renewalRing[0], draft.renewalRing[1], 16, 1024, (a, b) => {
+          draft.renewalRing = [a, b]; markDirty();
+        }),
+        () => `${draft.renewalRing[0]}–${draft.renewalRing[1]} tiles out`),
+      numDial('renewal tries', 'candidate points per pass before the credit waits', 'renewalTries', 1, 64, 1,
+        () => `${draft.renewalTries} tries`),
+    ),
+  );
+  body.appendChild(
+    sect(
+      'The boldness ladder',
+      'Discovered, unanswered camps grow busier — never deadlier — and spread townward with a destroyable heart.',
+      bandDial('stage wait', 'real days per rung, after first discovery', 'stageMs', DAY, 0.001, 30,
+        () => `stage ${draft.stageMax} in ~${humanMs(draft.stageMs[0] * draft.stageMax)}–${humanMs(draft.stageMs[1] * draft.stageMax)}`),
+      numDial('ladder top', 'the highest rung (bounded escalation)', 'stageMax', 1, 3, 1,
+        () => `stages 0–${draft.stageMax}`),
+      numDial('satellite rung', 'the rung at which a core may spread', 'satelliteStage', 1, 3, 1,
+        () => `spreads at stage ${draft.satelliteStage}+`),
+      numDial('satellite cap', 'live satellites per core', 'satelliteMax', 0, 8, 1,
+        () => `≤${draft.satelliteMax} per family`),
+      bandDial('scatter linger', 'a scattered family fades (minutes)', 'scatterLingerMs', MINU, 0.2, 120,
+        () => `${humanMs(draft.scatterLingerMs[0])}–${humanMs(draft.scatterLingerMs[1])}`),
+      numDial('regional roof', 'stage-2+ cores per neighborhood', 'regionBoldMax', 1, 16, 1,
+        () => `≤${draft.regionBoldMax} bold cores near`),
+      numDial('region radius', 'neighborhood size for roofs and calm (cells)', 'regionCells', 1, 8, 1,
+        () => `±${draft.regionCells} cells (${(draft.regionCells * 2 + 1) ** 2} cell area)`),
+      numDial('relax window', 'quiet every wipe buys nearby (hours)', 'calmMs', 0, 168, 0.5,
+        () => `${humanMs(draft.calmMs)} of real quiet`, HOUR),
+    ),
+  );
+  body.appendChild(
+    sect(
+      'The town feels it',
+      "Guards answer from what stands within their watch; a full family in the marches forks the road.",
+      numDial('the watch', "how far a speaker's world: answers reach (tiles)", 'watchTiles', 16, 512, 1,
+        () => `${draft.watchTiles} tiles of credible knowing`),
+      numDial('the marches', 'town reach for tolls, relief, and peddler rumor (tiles)', 'marchTiles', 16, 1024, 1,
+        () => `${draft.marchTiles} tiles — word outruns sight`),
+      bandDial('creep wait', 'a full family holds this long before the toll forks (days)', 'creepMs', DAY, 0.001, 30,
+        () => `forks after ${humanMs(draft.creepMs[0])}–${humanMs(draft.creepMs[1])}`),
+    ),
+  );
+  body.appendChild(
+    sect(
+      'The hearth watch',
+      'Claimed yards exclude the wild; the covetous dice pick ONE attended settler, rarely, mercifully.',
+      numDial('base yard', "a claimed hearth's ring before any fence (tiles)", 'claimR', 4, 64, 1,
+        () => `${draft.claimR}-tile yard`),
+      numDial('claim reach', 'built tiles this far from the bed still grow the ring', 'claimReach', 4, 256, 1,
+        () => `flood counted to ${draft.claimReach} tiles`),
+      numDial('claim pad', 'padding past the farthest counted tile', 'claimPad', 0, 64, 1,
+        () => `+${draft.claimPad} tiles`),
+      numDial('raid roll', 'minutes between global dice rolls', 'raidRollMs', 1, 1440, 1,
+        () => `a roll every ${humanMs(draft.raidRollMs)}`, MINU),
+      numDial('raid chance', 'chance a roll picks anyone at all', 'raidChance', 0, 1, 0.01,
+        () => `~1 raid / ${draft.raidChance > 0 ? humanMs(draft.raidRollMs / draft.raidChance) : '∞'} per shard`),
+      numDial('raid quiet', 'hours of mercy after a squat is CLEARED', 'raidCooldownMs', 0, 336, 1,
+        () => `${humanMs(draft.raidCooldownMs)} of quiet`, HOUR),
+      numDial('loss mercy', 'hours of mercy after DYING to your coveter (the shorter stamp)', 'raidLossCooldownMs', 0, 336, 1,
+        () => `${humanMs(draft.raidLossCooldownMs)} — losses earn mercy`, HOUR),
+      numDial('standoff', 'the squat keeps this far past the ring edge (tiles)', 'raidStandoffTiles', 0, 128, 1,
+        () => `${draft.raidStandoffTiles} tiles past the fence`),
+    ),
+  );
+  body.appendChild(
+    sect(
+      "The road's fortune",
+      'Sometimes the spent debt deals a friendly cart instead — road-true, transient, and paid back on departure.',
+      numDial('fortune chance', 'renewal credits that deal a peddler instead of trouble', 'peddlerChance', 0, 1, 0.01,
+        () => `~1 cart per ${draft.peddlerChance > 0 ? Math.round(1 / draft.peddlerChance) : '∞'} credits`),
+      bandDial('cart hours', 'how long she parks before moving on (hours)', 'peddlerLingerMs', HOUR, 0.02, 24,
+        () => `parked ${humanMs(draft.peddlerLingerMs[0])}–${humanMs(draft.peddlerLingerMs[1])}`),
+    ),
+  );
+
+  linkage.appendChild(el('h3', '', 'The clockwork'));
+  linkage.appendChild(
+    el(
+      'p',
+      'muted',
+      'Every consumer reads these dials at call time — a save steers the very next frontier beat with no restart. ' +
+        'The cross-laws hold at save: satellites need a rung to stand on, the marches never narrow past the watch, ' +
+        'and a loss always earns the shorter mercy.',
+    ),
+  );
 }

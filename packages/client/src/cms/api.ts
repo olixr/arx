@@ -1,5 +1,6 @@
 import type {
   DialogueDef,
+  FrontierDef,
   LootTableDef,
   NpcActorDef,
   NpcDef,
@@ -93,6 +94,28 @@ export async function revertLoot(id: string): Promise<{ outcome: string }> {
   ).json()) as { outcome: string };
 }
 
+/** The weather is a singleton: one doc, one 'world' id, two hashes. */
+export async function getFrontier(): Promise<{ def: FrontierDef; edited: boolean }> {
+  return (await (await request('/dev/content/frontier')).json()) as {
+    def: FrontierDef;
+    edited: boolean;
+  };
+}
+
+export async function saveFrontier(def: FrontierDef): Promise<void> {
+  await request('/dev/content/frontier', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(def),
+  });
+}
+
+export async function revertFrontier(): Promise<{ outcome: string }> {
+  return (await (
+    await request('/dev/content/frontier', { method: 'DELETE' })
+  ).json()) as { outcome: string };
+}
+
 export async function listActors(): Promise<{
   actors: Array<Editable<NpcActorDef>>;
   errors: string[];
@@ -175,7 +198,7 @@ export interface PoiStage {
 
 /** The stage: a real composed site at the requested tier (draft included). */
 export async function stagePoi(
-  args: { id?: string; draft?: PoiDef; tier: number; prefab?: string },
+  args: { id?: string; draft?: PoiDef; tier: number; prefab?: string; stage?: number },
 ): Promise<PoiStage> {
   return (await (
     await request('/dev/pois/preview', {

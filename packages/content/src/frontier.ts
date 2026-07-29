@@ -1,15 +1,57 @@
 import { hashCoords } from '@arx/shared';
 
+/** A jitter band in ms: [min, max], inclusive. */
+export type FrontierRange = readonly [number, number];
+
+/**
+ * The whole dial table's shape — the Studio edits exactly this. Every
+ * field is REQUIRED: a frontier with a missing dial is a frontier with
+ * an undefined law, and the validator refuses it.
+ */
+export interface FrontierDef {
+  tickTicks: number;
+  emberLingerMs: FrontierRange;
+  fallowMs: FrontierRange;
+  dignityTiles: number;
+  renewalRing: FrontierRange;
+  renewalTries: number;
+  stageMs: FrontierRange;
+  stageMax: number;
+  satelliteStage: number;
+  satelliteMax: number;
+  scatterLingerMs: FrontierRange;
+  regionBoldMax: number;
+  regionCells: number;
+  calmMs: number;
+  watchTiles: number;
+  marchTiles: number;
+  creepMs: FrontierRange;
+  claimR: number;
+  claimReach: number;
+  claimPad: number;
+  raidRollMs: number;
+  raidChance: number;
+  raidCooldownMs: number;
+  raidLossCooldownMs: number;
+  raidStandoffTiles: number;
+  peddlerChance: number;
+  peddlerLingerMs: FrontierRange;
+}
+
 /**
  * THE FRONTIER DIALS — content's half of the living frontier
  * (docs/living-frontier-plan.md; the server's tickFrontier owns the
  * clockwork). Every pacing constant of the ember/fallow/renewal loop
  * lives HERE and nowhere else — the dial law: tuning the frontier is a
- * content edit, never a hunt through server literals. Phase 6 lifts
- * this table into a content doc; the shape ships now so nothing has to
- * move later.
+ * content edit, never a hunt through server literals. Phase 6 lifted
+ * the table into a live content doc (kind 'frontier', the two-hash
+ * law): the DB is the truth, this object is the shipped seed AND the
+ * live registry — replaceFrontier swaps the fields in place, so every
+ * consumer that reads FRONTIER.x at call time sees the Studio's edit
+ * on the very next beat. Never destructure a dial into a long-lived
+ * variable.
  */
-export const FRONTIER = {
+export const FRONTIER: FrontierDef = {
   /** Ticks between frontier passes (~15 s at 20 Hz). */
   tickTicks: 300,
   /**
@@ -18,12 +60,12 @@ export const FRONTIER = {
    * short enough that the world visibly moves on. [min, max] ms,
    * hash-jittered per site so camps never fade in lockstep.
    */
-  emberLingerMs: [8 * 60_000, 12 * 60_000] as const,
+  emberLingerMs: [8 * 60_000, 12 * 60_000],
   /**
    * How long a dissolved cell rests before it may host again — the
    * meadow heals before anything new moves in. [min, max] ms.
    */
-  fallowMs: [3 * 3_600_000, 6 * 3_600_000] as const,
+  fallowMs: [3 * 3_600_000, 6 * 3_600_000],
   /**
    * No site dissolves or stands within this many tiles of any player
    * (anchor distance). Comfortably past the screen at every zoom — the
@@ -35,7 +77,7 @@ export const FRONTIER = {
    * credit stands the frontier's next site: past dignity and the
    * screen, inside the materialization pad so it stands soon.
    */
-  renewalRing: [64, 160] as const,
+  renewalRing: [64, 160],
   /** Candidate cells probed per renewal attempt before the credit waits. */
   renewalTries: 6,
   // ---- Phase 2: THE BOLDNESS LADDER ----
@@ -45,7 +87,7 @@ export const FRONTIER = {
    * frontier of camps never stages up in lockstep. Observation never
    * escalates — only time does, and only after first discovery.
    */
-  stageMs: [1.75 * 86_400_000, 2.25 * 86_400_000] as const,
+  stageMs: [1.75 * 86_400_000, 2.25 * 86_400_000],
   /** The ladder's top — bounded escalation by construction. */
   stageMax: 3,
   /** Boldness rung at which a core may seed satellite camps. */
@@ -57,7 +99,7 @@ export const FRONTIER = {
    * the family dissolves quickly once word spreads, but never in view.
    * [min, max] ms.
    */
-  scatterLingerMs: [2 * 60_000, 4 * 60_000] as const,
+  scatterLingerMs: [2 * 60_000, 4 * 60_000],
   /**
    * Regional escalation ceiling: at most this many stage-2+ cores per
    * (2·regionCells+1)² cell neighborhood — the spiral has a roof.
@@ -94,7 +136,7 @@ export const FRONTIER = {
    * hash-jittered per cell. Towns are never sacked — the failure state
    * is MORE game on the road, not less town.
    */
-  creepMs: [1.0 * 86_400_000, 1.5 * 86_400_000] as const,
+  creepMs: [1.0 * 86_400_000, 1.5 * 86_400_000],
   // ---- Phase 4: THE HEARTH WATCH ----
   /**
    * A claimed hearth's base ring (tiles): the yard a home commands
@@ -143,8 +185,8 @@ export const FRONTIER = {
    * moves on — the ember clock is stamped ON ARRIVAL (no clear needed;
    * nobody "solves" a peddler). [min, max] ms, hash-jittered per site.
    */
-  peddlerLingerMs: [2 * 3_600_000, 4 * 3_600_000] as const,
-} as const;
+  peddlerLingerMs: [2 * 3_600_000, 4 * 3_600_000],
+};
 
 /** Frontier RNG salts — the named-streams law (the ST_* family's kin). */
 const ST_EMBER = 0x501e5c;
@@ -201,4 +243,141 @@ export function peddlerLingerFor(
   epoch: number,
 ): number {
   return jitter(seed, ST_EMBER ^ 0x9edd, cellX, cellY, epoch, FRONTIER.peddlerLingerMs);
+}
+
+// ------------------------------------------------- the Studio's half
+
+/** The authored dials exactly as shipped — the CMS revert target. */
+export const AUTHORED_FRONTIER: Readonly<FrontierDef> = Object.freeze({
+  ...FRONTIER,
+  emberLingerMs: [...FRONTIER.emberLingerMs] as [number, number],
+  fallowMs: [...FRONTIER.fallowMs] as [number, number],
+  renewalRing: [...FRONTIER.renewalRing] as [number, number],
+  stageMs: [...FRONTIER.stageMs] as [number, number],
+  scatterLingerMs: [...FRONTIER.scatterLingerMs] as [number, number],
+  creepMs: [...FRONTIER.creepMs] as [number, number],
+  peddlerLingerMs: [...FRONTIER.peddlerLingerMs] as [number, number],
+});
+
+export type ValidateFrontierResult =
+  | { ok: true; def: FrontierDef }
+  | { ok: false; errors: string[] };
+
+/**
+ * THE ONE VALIDATOR for the weather: every dial bounds-checked, every
+ * cross-law named. Runs on the authored seed at module load, on DB
+ * rows at boot, and on every Studio save — a frontier that could hang
+ * the clockwork (zero cadence, inverted band, a mercy stamp longer
+ * than the crime) never reaches the live registry.
+ */
+export function validateFrontier(raw: unknown): ValidateFrontierResult {
+  const errors: string[] = [];
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    return { ok: false, errors: ['frontier doc must be an object'] };
+  }
+  const doc = raw as Record<string, unknown>;
+  const num = (key: keyof FrontierDef, lo: number, hi: number, int = false): number => {
+    const v = doc[key];
+    if (typeof v !== 'number' || !Number.isFinite(v)) {
+      errors.push(`${key} must be a number`);
+      return lo;
+    }
+    if (int && !Number.isInteger(v)) errors.push(`${key} must be an integer`);
+    if (v < lo || v > hi) errors.push(`${key} must be in [${lo}, ${hi}]`);
+    return v;
+  };
+  const range = (key: keyof FrontierDef, lo: number, hi: number): [number, number] => {
+    const v = doc[key];
+    if (
+      !Array.isArray(v) ||
+      v.length !== 2 ||
+      typeof v[0] !== 'number' ||
+      typeof v[1] !== 'number' ||
+      !Number.isFinite(v[0]) ||
+      !Number.isFinite(v[1])
+    ) {
+      errors.push(`${key} must be a [min, max] pair of numbers`);
+      return [lo, lo];
+    }
+    if (v[0] < lo || v[1] > hi) errors.push(`${key} must sit inside [${lo}, ${hi}]`);
+    if (v[0] > v[1]) errors.push(`${key} min must not exceed max`);
+    return [v[0], v[1]];
+  };
+  const MIN = 60_000;
+  const HOUR = 3_600_000;
+  const DAY = 86_400_000;
+  const def: FrontierDef = {
+    tickTicks: num('tickTicks', 20, 12_000, true),
+    emberLingerMs: range('emberLingerMs', 10_000, 24 * HOUR),
+    fallowMs: range('fallowMs', MIN, 14 * DAY),
+    dignityTiles: num('dignityTiles', 8, 256),
+    renewalRing: range('renewalRing', 16, 1024),
+    renewalTries: num('renewalTries', 1, 64, true),
+    stageMs: range('stageMs', MIN, 30 * DAY),
+    stageMax: num('stageMax', 1, 3, true),
+    satelliteStage: num('satelliteStage', 1, 3, true),
+    satelliteMax: num('satelliteMax', 0, 8, true),
+    scatterLingerMs: range('scatterLingerMs', 10_000, 2 * HOUR),
+    regionBoldMax: num('regionBoldMax', 1, 16, true),
+    regionCells: num('regionCells', 1, 8, true),
+    calmMs: num('calmMs', 0, 7 * DAY),
+    watchTiles: num('watchTiles', 16, 512),
+    marchTiles: num('marchTiles', 16, 1024),
+    creepMs: range('creepMs', MIN, 30 * DAY),
+    claimR: num('claimR', 4, 64),
+    claimReach: num('claimReach', 4, 256),
+    claimPad: num('claimPad', 0, 64),
+    raidRollMs: num('raidRollMs', MIN, 24 * HOUR),
+    raidChance: num('raidChance', 0, 1),
+    raidCooldownMs: num('raidCooldownMs', 0, 14 * DAY),
+    raidLossCooldownMs: num('raidLossCooldownMs', 0, 14 * DAY),
+    raidStandoffTiles: num('raidStandoffTiles', 0, 128),
+    peddlerChance: num('peddlerChance', 0, 1),
+    peddlerLingerMs: range('peddlerLingerMs', MIN, 24 * HOUR),
+  };
+  // Unknown keys are refused loudly — a typoed dial must never sit in
+  // the doc pretending to steer anything.
+  const known = new Set(Object.keys(def));
+  for (const key of Object.keys(doc)) {
+    if (!known.has(key)) errors.push(`unknown dial '${key}'`);
+  }
+  // The cross-laws, named:
+  if (def.satelliteStage > def.stageMax) {
+    errors.push('satelliteStage must not exceed stageMax (satellites need a rung to stand on)');
+  }
+  if (def.marchTiles < def.watchTiles) {
+    errors.push('marchTiles must not be narrower than watchTiles (word travels farther than sight)');
+  }
+  if (def.raidLossCooldownMs > def.raidCooldownMs) {
+    errors.push('raidLossCooldownMs must not exceed raidCooldownMs (a loss earns the SHORTER mercy)');
+  }
+  if (def.claimReach < def.claimR) {
+    errors.push('claimReach must not be narrower than claimR (the flood grows the yard, never shrinks it)');
+  }
+  if (errors.length > 0) return { ok: false, errors };
+  return { ok: true, def };
+}
+
+/**
+ * THE CMS HOOK: swap the live dials in place — object identity stable,
+ * so every consumer that reads FRONTIER.x at call time sees the edit
+ * on the next beat, and nothing re-registers. Only ever runs against a
+ * validated doc.
+ */
+export function replaceFrontier(next: FrontierDef): void {
+  Object.assign(FRONTIER, next, {
+    emberLingerMs: [...next.emberLingerMs],
+    fallowMs: [...next.fallowMs],
+    renewalRing: [...next.renewalRing],
+    stageMs: [...next.stageMs],
+    scatterLingerMs: [...next.scatterLingerMs],
+    creepMs: [...next.creepMs],
+    peddlerLingerMs: [...next.peddlerLingerMs],
+  });
+}
+
+// The shipped seed must satisfy its own law — loudly, at build time.
+{
+  const res = validateFrontier(AUTHORED_FRONTIER);
+  if (!res.ok) throw new Error(`shipped FRONTIER dials invalid:\n  ${res.errors.join('\n  ')}`);
 }

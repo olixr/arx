@@ -259,17 +259,21 @@ export class WorldMode {
   async cellAction(
     cx: number,
     cy: number,
-    action: 'reroll' | 'dissolve' | 'force',
+    action: 'reroll' | 'dissolve' | 'force' | 'stage' | 'ember',
     defId?: string,
   ): Promise<void> {
     try {
       const res = await poiCellAction(cx, cy, action, defId);
       this.deps.toast(
-        res.site
-          ? `${res.site.defId} stands at ${res.site.anchorX},${res.site.anchorY}.`
-          : action === 'dissolve'
-            ? 'The cell is quiet ground now.'
-            : 'The cell rolled empty.',
+        action === 'stage'
+          ? 'The camp grows bolder — it recomposes as the world streams back.'
+          : action === 'ember'
+            ? 'The ember is lit — the site dissolves when its linger runs (dignity permitting).'
+            : res.site
+              ? `${res.site.defId} stands at ${res.site.anchorX},${res.site.anchorY}.`
+              : action === 'dissolve'
+                ? 'The cell is quiet ground now.'
+                : 'The cell rolled empty.',
         2800,
         'success',
       );

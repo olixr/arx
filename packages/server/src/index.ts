@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { WebSocketServer } from 'ws';
 import {
+  AUTHORED_FRONTIER,
   AUTHORED_GEOGRAPHY,
   AUTHORED_LOOT_TABLES,
   AUTHORED_NPCS,
@@ -15,10 +16,12 @@ import {
   buildSilverfall,
   buildUndercroft,
   lootTableErrors,
+  replaceFrontier,
   replaceGeography,
   replaceLootTables,
   replaceNpcDefs,
   replacePoiDefs,
+  validateFrontier,
   validateGeographyDef,
   validateNpcDef,
   validatePoiDef,
@@ -180,6 +183,30 @@ if (config.requireInvite) {
         `[content] geography: ${res.def.routes.length} routes · ${res.def.sites.length} wild sites · ` +
           `${res.def.anchors.length} anchors · ${res.def.planned.length} planned rects` +
           (geoRow.edited ? ' (tool-edited)' : ''),
+      );
+    }
+  }
+
+  // THE FRONTIER DIALS join the law (living-frontier Phase 6): one
+  // 'world' doc holding the whole weather — linger, fallow, stage
+  // days, satellite caps, calm windows, raid dice, peddler hours.
+  // Every consumer reads FRONTIER.x at call time, so the swap needs
+  // no reload hooks — the Studio's edit steers the very next beat.
+  await seedContentDocs(db, 'frontier', [{ id: 'world', doc: AUTHORED_FRONTIER }]);
+  const frontierDocs = await loadContentDocs(db, 'frontier');
+  const frontierRow = frontierDocs.find((d) => d.id === 'world');
+  if (frontierRow) {
+    const res = validateFrontier(frontierRow.doc);
+    if (!res.ok) {
+      console.warn(`[content] DB frontier dials invalid (${res.errors[0]}) — authored dials stand`);
+    } else {
+      replaceFrontier(res.def);
+      console.log(
+        `[content] frontier dials: ember ${Math.round(res.def.emberLingerMs[0] / 60000)}–` +
+          `${Math.round(res.def.emberLingerMs[1] / 60000)}m · stage ~` +
+          `${(res.def.stageMs[0] / 86_400_000).toFixed(1)}d · raid ${Math.round(res.def.raidRollMs / 60000)}m@` +
+          `${res.def.raidChance}` +
+          (frontierRow.edited ? ' (tool-edited)' : ''),
       );
     }
   }
