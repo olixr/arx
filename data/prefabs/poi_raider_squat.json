@@ -1,0 +1,31 @@
+{
+  "id": "poi_raider_squat",
+  "name": "Raider squat",
+  "width": 14,
+  "height": 8,
+  "ground": "/////////////wIAAgACAP////////////////////8CAAMAAwADAAMAAwADAAIA/////////////wIAAwABAFEAAQABAAMAAQADAAIA//////////8CAAMAAQABABgAAQABAAEAXAADAAIA////////AgADAAMAAQABAAEAbwABAAMAAgD//////////wIAAwABAFAAAQABAAMAAQADAAIA/////////////wIAAwADAAMAAwADAAMAAgD///////////////////////8CAAIA//////////////////8=",
+  "detail": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+  "spawns": [
+    {
+      "dx": 7,
+      "dy": 2,
+      "npc": "brigand",
+      "radius": 2.5,
+      "count": 1
+    },
+    {
+      "dx": 3,
+      "dy": 4,
+      "npc": "brigand",
+      "radius": 2.5,
+      "count": 1
+    },
+    {
+      "dx": 7,
+      "dy": 5,
+      "npc": "brigand_archer",
+      "radius": 2,
+      "count": 1
+    }
+  ]
+}

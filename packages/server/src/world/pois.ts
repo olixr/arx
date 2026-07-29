@@ -70,10 +70,26 @@ export interface PoiZoneRect {
   h: number;
 }
 
+/**
+ * A claimed homestead's yard (THE HEARTH WATCH, living-frontier
+ * Phase 4): center + radius in tiles. A PURE EXCLUSION MASK — rings
+ * reject materialization candidates and nothing else. Never a
+ * DangerAnchor (THE HAVEN LAW: an anchor re-origins the danger band;
+ * a bed in tier-4 country must not flatten fifty tiles of frontier —
+ * the land around a hearth stays exactly as wild as it was).
+ */
+export interface ClaimRing {
+  x: number;
+  y: number;
+  r: number;
+}
+
 export interface PoiContext {
   anchors: readonly DangerAnchor[];
   /** Authored-zone rects the scaffold must keep clear of. */
   zoneRects: readonly PoiZoneRect[];
+  /** Claimed-hearth yards — nothing materializes inside one. */
+  claimRings: readonly ClaimRing[];
   defs: readonly PoiDef[];
   prefabs: ReadonlyMap<string, PrefabDef>;
 }
@@ -184,6 +200,10 @@ export function poiForCell(
     const fx0 = tx - Math.floor(prefab.width / 2);
     const fy0 = ty - Math.floor(prefab.height / 2);
     if (intersectsZones(fx0, fy0, prefab.width, prefab.height, ctx.zoneRects)) continue;
+    // THE EXCLUSION LAW (Phase 4): a claimed yard refuses every
+    // materialization candidate — satellites, tolls, renewals, wakes
+    // and fresh rolls alike, since they all pass through this scan.
+    if (intersectsRings(fx0, fy0, prefab.width, prefab.height, ctx.claimRings)) continue;
     let score = 0;
     let ok = true;
     for (let dy = 0; dy < prefab.height && ok; dy++) {
@@ -234,6 +254,25 @@ function intersectsZones(
   return false;
 }
 
+/** Footprint rect vs claim rings — the yard-shaped twin of intersectsZones. */
+function intersectsRings(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  rings: readonly ClaimRing[],
+): boolean {
+  for (const ring of rings) {
+    // Closest point of the rect to the ring center, then one distance.
+    const cx = Math.max(x, Math.min(ring.x, x + w));
+    const cy = Math.max(y, Math.min(ring.y, y + h));
+    const dx = ring.x - cx;
+    const dy = ring.y - cy;
+    if (dx * dx + dy * dy <= ring.r * ring.r) return true;
+  }
+  return false;
+}
+
 /**
  * Compose a decided site into a stampable ZoneDef: prefab layers
  * verbatim (TILE_SKIP fringe passes through the overlay), strongboxes
@@ -248,6 +287,12 @@ export function composePoi(
   site: PoiSite,
   ctx: PoiContext,
   stage = 0,
+  /**
+   * THE HEARTH WATCH: a raid squat faces the CLAIM it covets, not the
+   * road — pass the coveted point and the one shared bearing reorients
+   * the worn track, the warning scatter, and the watch ring toward it.
+   */
+  face?: { x: number; y: number },
 ): ZoneDef | null {
   const def = ctx.defs.find((d) => d.id === site.defId);
   const prefab = ctx.prefabs.get(site.prefabId);
@@ -275,8 +320,12 @@ export function composePoi(
   // cues and the watchers.
   let ax = 0;
   let ay = -1;
-  const roadWard = roadBearingAt(site.anchorX, site.anchorY, 40);
-  if (roadWard) {
+  const roadWard = face ? null : roadBearingAt(site.anchorX, site.anchorY, 40);
+  if (face) {
+    const d = Math.max(1, Math.hypot(face.x - site.anchorX, face.y - site.anchorY));
+    ax = (face.x - site.anchorX) / d;
+    ay = (face.y - site.anchorY) / d;
+  } else if (roadWard) {
     ax = roadWard.x;
     ay = roadWard.y;
   } else {
@@ -964,11 +1013,15 @@ export function previewPoi(
  * planned zone rects (Amberford, Silverfall), so the frontier keeps
  * out of streets that haven't been built yet. A rect listed twice
  * (planned AND registered) costs one redundant intersection test.
+ * `claimRings` is REQUIRED (not defaulted) on purpose: an exclusion
+ * law with an optional mask is a law some call site forgets — the
+ * compiler holds every builder to it.
  */
 export function poiContext(
   anchors: readonly DangerAnchor[],
   zones: readonly ZoneDef[],
   prefabs: ReadonlyMap<string, PrefabDef>,
+  claimRings: readonly ClaimRing[],
 ): PoiContext {
   return {
     anchors,
@@ -978,6 +1031,7 @@ export function poiContext(
         .map((z) => ({ x: z.origin.x, y: z.origin.y, w: z.width, h: z.height })),
       ...PLANNED_ZONE_RECTS,
     ],
+    claimRings,
     defs: [...POI_DEFS.values()],
     prefabs,
   };

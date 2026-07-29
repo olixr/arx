@@ -1,0 +1,28 @@
+{
+  "id": "raider_squat",
+  "name": "Raider squat",
+  "description": "A covetous crew squatting past a settler's fence-line — THE HEARTH WATCH's event camp (living-frontier Phase 4). Never rolls on its own (weight 0); only the raid dice stand one, always tied to the hearth it covets (originCell hearth:<characterId>), facing the claim. Small, craven, and temporary by design: it harasses, it never breaches.",
+  "tiers": [1, 3],
+  "weight": 0,
+  "prefabs": ["poi_raider_squat"],
+  "garrison": [
+    { "npc": "brigand", "count": [1, 2], "role": "holdfast" },
+    { "npc": "brigand_archer", "count": [1, 1], "role": "sentry", "patrol": true },
+    {
+      "npc": "brigand_reaver",
+      "count": [1, 1],
+      "role": "holdfast",
+      "minTier": 2,
+      "levelOffset": 2,
+      "names": ["Covet Nan", "Sly Harrow", "Fence-Cutter Pell", "Greedy Wick", "Latch-Eye Moll"]
+    }
+  ],
+  "chestTierBonus": 1,
+  "chestWarded": true,
+  "clearedFlag": "poi_squat_broken",
+  "cues": {
+    "clearing": 3,
+    "approachPath": true,
+    "scatter": [{ "tile": "Crate", "count": 1 }]
+  }
+}

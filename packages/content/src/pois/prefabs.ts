@@ -437,6 +437,29 @@ const banditToll = sketch(
   brigandMarks,
 );
 
+/**
+ * THE COVETOUS CAMP (living-frontier Phase 4): a raider squat thrown
+ * up in a night — one fire, one stolen banner, packs still roped. It
+ * reads TEMPORARY on purpose: no pen, no stump-work, half the crates
+ * unopened. The worn track and the watchers all face the homestead it
+ * covets (composePoi's `face` override), never the road.
+ */
+const raiderSquat = sketch(
+  'poi_raider_squat',
+  'Raider squat',
+  [
+    '_____,,,______',
+    '__,::::::,____',
+    '_,:.c..1.:,___',
+    '_,:..f...n:,__',
+    '_,:2...W.:,___',
+    '_,:.a..3.:,___',
+    '__,::::::,____',
+    '_____,,_______',
+  ],
+  brigandMarks,
+);
+
 const hamletMarks: Record<string, Marker> = {
   '8': { npc: 'chicken', radius: 1.5, under: Tile.Grass, level: 1 },
   '9': { npc: 'cow', radius: 1, under: Tile.Grass, level: 3 },
@@ -928,5 +951,7 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     championsBarrow,
     waystationWalled,
     lastLamp,
+    // The Hearth Watch (living frontier, phase 4):
+    raiderSquat,
   ].map((p) => [p.id, p]),
 );

@@ -184,6 +184,14 @@ export declare class Sfx {
     propSmash(hollow?: boolean): void;
     /** The counter bell: two soft brass partials over a felt strike. */
     shopBell(): void;
+    /**
+     * THE RAID HORN — a stolen ox-horn, blown once past somebody's
+     * fence-line: a breathy attack sliding up into a long two-note hold
+     * (root + rough fifth), a beat, then a shorter answering blast. Low
+     * sawtooth body under a triangle head, so it reads brassy and cheap
+     * — raiders don't own good horns.
+     */
+    warHorn(): void;
     /** Stepping up to a station: a wooden tap and the tools shifting. */
     stationOpen(): void;
     /** Parchment unrolling — the skills scroll, the blueprint sheaf. */

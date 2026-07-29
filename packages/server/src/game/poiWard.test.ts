@@ -213,6 +213,7 @@ const proto3 = GameServer.prototype as unknown as {
 
 interface FakePlayer {
   characterId: number;
+  raidCalmUntil: number;
   flags: Map<string, number>;
   inventory: Array<{ item: string; qty: number } | null>;
   session: { sendJson: (m: { t: string; text?: string }) => void } | null;
@@ -221,6 +222,7 @@ interface FakePlayer {
 function fakePlayer(characterId: number, msgs: string[]): FakePlayer {
   return {
     characterId,
+    raidCalmUntil: 0,
     flags: new Map(),
     inventory: new Array<null>(28).fill(null),
     session: {
@@ -334,4 +336,41 @@ test('SOURCE-AND-KILL-SWITCH both ways: breaking the toll scatters the family', 
     assert.ok(r.emberUntil !== null && r.emberUntil > before, `${key} must scatter`);
     assert.equal(r.clearedAt, null, `${key} scatter is not a clear`);
   }
+});
+
+test('THE HEARTH WATCH: breaking the squat stamps the settler the full quiet', () => {
+  const s = slate([brigand(), brigand()]);
+  const row = s.poiLedger.get('3,4')!;
+  row.site = {
+    cellX: 3, cellY: 4, epoch: 0, tier: 1,
+    defId: 'raider_squat', prefabId: 'poi_raider_squat',
+    anchorX: 448, anchorY: 576,
+  } as never;
+  row.originCell = 'hearth:101';
+  const msgs: string[] = [];
+  const stamps: Array<[number, number]> = [];
+  const owner = fakePlayer(101, msgs);
+  Object.assign(s, {
+    players: new Map([[11, owner]]),
+    positions: new Map([[11, { x: 448, y: 576 }]]),
+    characterEids: new Map([[101, 11]]),
+    grantArt: () => {},
+    spawnDrop: () => {},
+    payBounty: proto3.payBounty,
+    setPlayerFlag: proto3.setPlayerFlag,
+    clearPlayerFlag: proto3.clearPlayerFlag,
+  });
+  s.accounts = {
+    ...s.accounts,
+    setFlag: () => {},
+    clearFlag: () => {},
+    saveRaidCalm: (id: number, until: number) => stamps.push([id, until]),
+  } as never;
+  const before = Date.now();
+  proto3.notePoiKill.call(s, 0);
+  assert.equal(stamps.length, 1);
+  assert.equal(stamps[0]![0], 101);
+  assert.ok(stamps[0]![1] >= before + 47 * 3_600_000, 'the full raid quiet, not the short one');
+  assert.ok((owner as { raidCalmUntil?: number }).raidCalmUntil! >= before + 47 * 3_600_000);
+  assert.ok(msgs.some((t) => t.includes('covetous fires go out')));
 });

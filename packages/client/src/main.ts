@@ -914,6 +914,12 @@ game.onFx = (fx) => {
     sfx.spatial(at, 'near', () => sfx.doorRattle());
     return;
   }
+  if (fx.kind === 'horn') {
+    // THE RAID HORN: the covetous camp announces itself, far-carrying
+    // and placed — you hear which side of the yard it stands on.
+    sfx.spatial(at, 'far', () => sfx.warHorn());
+    return;
+  }
   if (fx.kind === 'smash') {
     // A prop taking a blow. radius carries the durability fraction
     // still standing: >0 = a crack (shudder + chips, keep hitting),

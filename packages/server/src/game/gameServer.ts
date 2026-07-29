@@ -167,6 +167,7 @@ import {
   poiContext,
   poiForCell,
   poiSiteBlocked,
+  type ClaimRing,
   type PoiContext,
   type PoiSite,
 } from '../world/pois.js';
@@ -868,6 +869,10 @@ interface PlayerComp {
   home: { x: number; y: number } | null;
   /** Last hearth recall (ms since epoch) — the /recall cooldown clock. */
   hearthAt: number;
+  /** THE HEARTH WATCH: no raid covets this settler until this passes. */
+  raidCalmUntil: number;
+  /** The ward-the-hearth dial: true = the covetous dice skip them. */
+  hearthWarded: boolean;
   /**
    * THE CHART: this character's fog-of-war mask. The server marks the
    * same deterministic reveal disc the client draws, so the two never
@@ -1289,6 +1294,20 @@ export class GameServer {
   private readonly poiHavens = new Map<string, DangerAnchor>();
   private anchorCache: DangerAnchor[] | null = null;
   /**
+   * THE HEARTH WATCH: every claimed home bed in the world, offline
+   * settlers included — a camp must never materialize in an absent
+   * player's yard. Loaded at boot (allHomes), maintained by claim /
+   * unclaim / bed demolish.
+   */
+  private readonly homesByCharacter = new Map<number, { x: number; y: number }>();
+  /**
+   * Derived claim rings (bed + the owner's built flood within reach,
+   * padded). A PURE EXCLUSION MASK — rings reject materialization and
+   * nothing else; they never join dangerAnchors (THE HAVEN LAW: a bed
+   * in tier-4 country must not flatten the frontier around it).
+   */
+  private ringCache: ClaimRing[] | null = null;
+  /**
    * Strongbox overrides by world-tile key "tx,ty": POI chests whose
    * def re-tables the loot (the riftgate key faucet) or wards the lid
    * while the garrison stands (the champion's cache).
@@ -1708,6 +1727,8 @@ export class GameServer {
         hearth_at: 0,
         waypoint_x: null,
         waypoint_y: null,
+        raid_calm_until: 0,
+        hearth_warded: 0,
       };
       const token = randomBytes(18).toString('base64url');
       const eid = await this.enterWorld(session, character, null, token);
@@ -1927,6 +1948,8 @@ export class GameServer {
           ? { x: character.home_x, y: character.home_y }
           : null,
       hearthAt: character.hearth_at,
+      raidCalmUntil: character.raid_calm_until,
+      hearthWarded: character.hearth_warded !== 0,
       explored,
       exploredDirty: new Set(),
       discoveries,
@@ -2771,13 +2794,25 @@ export class GameServer {
       return;
     }
     if (player.home && player.home.x === tx && player.home.y === ty) {
-      sys('This bed is already your home.');
+      // THE HEARTH-SIDE DIAL (Phase 4.3): touching your own claimed
+      // bed tends the fire — warded hearths are never coveted by the
+      // raid dice. The choice is the player's, any hour, no menu.
+      player.hearthWarded = !player.hearthWarded;
+      if (player.characterId > 0) {
+        this.accounts.saveHearthWarded(player.characterId, player.hearthWarded);
+      }
+      sys(
+        player.hearthWarded
+          ? 'You bank the fire low and ward the hearth — raiders will not covet this place.'
+          : 'You let the hearth blaze bright again. Let them covet; let them come.',
+      );
       return;
     }
     player.home = { x: tx, y: ty };
     if (player.characterId > 0) this.accounts.saveHome(player.characterId, tx, ty);
+    this.noteHomeChanged(player.characterId, player.home);
     sys(
-      'You claim this bed as your home. Defeat wakes you here, and /recall carries you back (10 minute rest between recalls).',
+      'You claim this bed as your home. Defeat wakes you here, and /recall carries you back (10 minute rest between recalls). Touch it again to ward or unward the hearth.',
     );
   }
 
@@ -2793,6 +2828,7 @@ export class GameServer {
     if (this.world.groundAt(home.x, home.y) !== Tile.Bed) {
       player.home = null;
       if (player.characterId > 0) this.accounts.clearHome(player.characterId);
+      this.noteHomeChanged(player.characterId, null);
       return null;
     }
     // Cardinals first so you wake square beside the bed, corners as a
@@ -3288,6 +3324,8 @@ export class GameServer {
     this.world.registerBuilt(action.tx, action.ty, placed, player.characterId, ground);
     this.accounts.saveBuiltTile(action.tx, action.ty, placed, player.characterId, ground);
     this.setWorldTile(action.tx, action.ty, placed);
+    // A homestead grew — its claim ring re-derives on the next read.
+    if (this.homesByCharacter.has(player.characterId)) this.ringCache = null;
     this.grantXp(eid, player, def.skill ?? 'construction', def.xp);
     // A raised board starts BLANK and owned: the row exists from the
     // first moment so the builder sees an edit affordance the instant
@@ -3343,6 +3381,15 @@ export class GameServer {
     // Give back the ground the construction was built on — a wall cut
     // into a stone floor tears down to stone floor, not to grass.
     this.setWorldTile(tx, ty, built.prevTile);
+    if (this.homesByCharacter.has(player.characterId)) this.ringCache = null;
+    // Tearing down your own claimed bed dissolves the claim NOW —
+    // eagerly, not on the next bedside read — so the hearth watch
+    // never guards a yard whose hearth is gone.
+    if (player.home && player.home.x === tx && player.home.y === ty) {
+      player.home = null;
+      if (player.characterId > 0) this.accounts.clearHome(player.characterId);
+      this.noteHomeChanged(player.characterId, null);
+    }
   }
 
   // ------------------------------------------------------ bank & shop
@@ -3808,6 +3855,67 @@ export class GameServer {
     return dangerAt(config.worldSeed, tx, ty, this.dangerAnchors());
   }
 
+  // -------------------------------------------------- the hearth watch
+
+  /** Boot wiring: every claimed home bed, offline settlers included. */
+  initHomes(homes: ReadonlyArray<{ characterId: number; x: number; y: number }>): void {
+    for (const h of homes) this.homesByCharacter.set(h.characterId, { x: h.x, y: h.y });
+    this.ringCache = null;
+  }
+
+  /** A home claimed, moved, or dissolved — rings re-derive lazily. */
+  private noteHomeChanged(characterId: number, home: { x: number; y: number } | null): void {
+    if (home) this.homesByCharacter.set(characterId, home);
+    else this.homesByCharacter.delete(characterId);
+    this.ringCache = null;
+  }
+
+  /**
+   * The derived claim rings: one per claimed hearth — base yard
+   * (claimR) grown to cover the owner's built flood within claimReach
+   * of the bed, plus pad. Rebuilt lazily; builds and claims invalidate.
+   */
+  private claimRings(): readonly ClaimRing[] {
+    if (this.ringCache) return this.ringCache;
+    const rings: ClaimRing[] = [];
+    for (const [characterId, home] of this.homesByCharacter) {
+      let r: number = FRONTIER.claimR;
+      const keys = this.world.builtKeysOf(characterId);
+      if (keys) {
+        for (const key of keys) {
+          const comma = key.indexOf(',');
+          const dx = Number(key.slice(0, comma)) - home.x;
+          const dy = Number(key.slice(comma + 1)) - home.y;
+          const d = Math.hypot(dx, dy);
+          if (d > FRONTIER.claimReach) continue; // a far fence-post is its own risk
+          r = Math.max(r, d + FRONTIER.claimPad);
+        }
+      }
+      rings.push({ x: home.x, y: home.y, r });
+    }
+    this.ringCache = rings;
+    return rings;
+  }
+
+  /** Is a point inside any claimed yard? (tickWildSpawns' gate.) */
+  private inClaimRing(tx: number, ty: number): boolean {
+    for (const ring of this.claimRings()) {
+      const dx = ring.x - tx;
+      const dy = ring.y - ty;
+      if (dx * dx + dy * dy <= ring.r * ring.r) return true;
+    }
+    return false;
+  }
+
+  /**
+   * THE ONE CONTEXT BUILDER: every POI decision reads the same context
+   * — anchors, zone rects, prefab library, and the claim rings — so
+   * the exclusion law cannot be forgotten at any call site.
+   */
+  private poiCtx(): PoiContext {
+    return poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs!, this.claimRings());
+  }
+
   /** The haven list as wire triples for welcome + change broadcasts. */
   private havenWire(): number[][] {
     return [...this.poiHavens.values()].map((a) => [a.x, a.y, a.safeR]);
@@ -3963,7 +4071,7 @@ export class GameServer {
    */
   private seedAuthoredSites(): void {
     if (!this.poiPrefabs) return;
-    const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
+    const ctx = this.poiCtx();
     let seeded = 0;
     for (const want of AUTHORED_WILD_SITES) {
       const def = POI_DEFS.get(want.defId);
@@ -4033,7 +4141,7 @@ export class GameServer {
    */
   private zonePlanSweep(): number {
     if (!this.poiPrefabs) return 0;
-    const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
+    const ctx = this.poiCtx();
     const authored = this.authoredCells();
     let evicted = 0;
     for (const [key, row] of this.poiLedger) {
@@ -4090,7 +4198,7 @@ export class GameServer {
    */
   private fallowSweep(cutoffMs: number): { turned: number; rerolled: number } {
     if (!this.poiPrefabs) return { turned: 0, rerolled: 0 };
-    const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
+    const ctx = this.poiCtx();
     const authored = this.authoredCells();
     let turned = 0;
     let rerolled = 0;
@@ -4169,7 +4277,7 @@ export class GameServer {
    */
   private geographySweep(): { evicted: number; orphaned: number } {
     if (!this.poiPrefabs) return { evicted: 0, orphaned: 0 };
-    const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
+    const ctx = this.poiCtx();
     const authored = this.authoredCells();
     const authoredOnly = new Set(
       [...POI_DEFS.values()].filter((d) => d.weight === 0).map((d) => d.id),
@@ -4364,6 +4472,9 @@ export class GameServer {
       }
     }
     if (calmExpired) this.accounts.pruneFrontierCalm(now);
+    // The covetous camp knocks (theatre only — never a state change).
+    this.rattleSquatDoors();
+    if (this.tickRaidDice(now)) return;
     if (this.dissolveOneEmber(now)) return;
     if (this.wakeOneFallow(now)) return;
     if (this.stageOnePoi(now)) return;
@@ -4443,7 +4554,7 @@ export class GameServer {
       // THE RELAX WINDOW: a calmed valley stays quiet — the wake waits
       // out the window rather than standing a new camp into it.
       if (this.calmNear(cx!, cy!, now)) continue;
-      const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
+      const ctx = this.poiCtx();
       const site = poiForCell(config.worldSeed, cx!, cy!, row.epoch, ctx);
       if (site && this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles)) {
         return true; // someone is standing on the meadow — retry next pass
@@ -4502,7 +4613,7 @@ export class GameServer {
     if (surface.length === 0) return false;
     const around = this.positions.get(surface[Math.floor(Math.random() * surface.length)]!)!;
     const authored = this.authoredCells();
-    const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
+    const ctx = this.poiCtx();
     const [rMin, rMax] = FRONTIER.renewalRing;
     for (let t = 0; t < FRONTIER.renewalTries; t++) {
       const ang = Math.random() * Math.PI * 2;
@@ -4690,8 +4801,16 @@ export class GameServer {
     // sweep instead of a sword.
     for (const [key, row] of this.poiLedger) {
       if (row.originCell === null || row.site === null || row.emberUntil !== null) continue;
-      const core = this.poiLedger.get(row.originCell);
-      if (core?.site && core.clearedAt === null) continue; // the core stands
+      const hearthOwner = GameServer.hearthOwnerOf(row.originCell);
+      if (hearthOwner !== null) {
+        // A hearth-tied squat is orphaned when the CLAIM dissolves —
+        // unclaim (or lose) your bed and the covetous camp loses
+        // interest in a yard that no longer exists.
+        if (this.homesByCharacter.has(hearthOwner)) continue;
+      } else {
+        const core = this.poiLedger.get(row.originCell);
+        if (core?.site && core.clearedAt === null) continue; // the core stands
+      }
       row.emberUntil =
         now + scatterLingerFor(config.worldSeed, row.site.cellX, row.site.cellY);
       this.standDownGarrison(this.poiLive.get(key)?.spawnIdx ?? []);
@@ -4729,7 +4848,7 @@ export class GameServer {
           return { ncx, ncy, d: best };
         })
         .sort((a, b) => a.d - b.d);
-      const ctx = poiContext(anchors, this.world.zoneDefs, this.poiPrefabs);
+      const ctx = this.poiCtx();
       for (const cand of ranked.slice(0, 3)) {
         const nkey = poiCellKey(cand.ncx, cand.ncy);
         if (authored.has(nkey)) { this.satTrace.push(`${nkey}:authored`); continue; }
@@ -4853,7 +4972,7 @@ export class GameServer {
           return { ncx, ncy, score: dTown + dRoad * 3 };
         })
         .sort((a, b) => a.score - b.score);
-      const ctx = poiContext(anchors, this.world.zoneDefs, this.poiPrefabs);
+      const ctx = this.poiCtx();
       for (const cand of ranked.slice(0, 3)) {
         const nkey = poiCellKey(cand.ncx, cand.ncy);
         if (authored.has(nkey)) { this.tollTrace.push(`${nkey}:authored`); continue; }
@@ -4911,6 +5030,226 @@ export class GameServer {
     return false;
   }
 
+  // ------------------------------------------------ the covetous dice
+
+  /** The squat's family tie: originCell = the hearth it covets. */
+  private static hearthOrigin(characterId: number): string {
+    return `hearth:${characterId}`;
+  }
+
+  /** Parse a hearth-tied origin back to its settler, or null. */
+  private static hearthOwnerOf(originCell: string | null | undefined): number | null {
+    if (!originCell || !originCell.startsWith('hearth:')) return null;
+    const id = Number(originCell.slice(7));
+    return Number.isFinite(id) ? id : null;
+  }
+
+  /** When the global dice next roll (the Valheim law: one clock, one shard). */
+  private nextRaidRollAt = Date.now() + FRONTIER.raidRollMs;
+  /** Why the last raid pass refused — the /frontier raid lever reads it. */
+  private raidTrace: string[] = [];
+
+  /**
+   * THE COVETOUS CAMP (Phase 4.2): every raidRollMs, ONE roll per
+   * shard at raidChance — most rolls pass in silence. A success picks
+   * ONE qualifying settler (attended, near their own claim, ring in
+   * wild land, no mercy stamp, not warded, not already coveted) and
+   * stands a raider_squat in the nearest lawful cell at the claim's
+   * edge: outside the ring + standoff, outside anyone's view, facing
+   * the hearth it covets. Merciful by construction: never while the
+   * owner is away, never inside the yard, never destroys a tile —
+   * and the defender's bounty is stamped the moment the fuse lights.
+   */
+  private tickRaidDice(now: number, force = false): boolean {
+    if (!this.poiPrefabs) return false;
+    if (!force) {
+      if (now < this.nextRaidRollAt) return false;
+      this.nextRaidRollAt = now + FRONTIER.raidRollMs;
+      if (Math.random() >= FRONTIER.raidChance) return false; // silence
+    }
+    this.raidTrace = [];
+    const authored = this.authoredCells();
+    // The qualifying settlers — every gate is a mercy law.
+    const qualified: Array<{ eid: EntityId; player: PlayerComp }> = [];
+    for (const [eid, player] of this.players) {
+      const who = player.characterId;
+      if (player.session === null || who <= 0) continue; // attended only
+      const home = player.home;
+      if (!home) continue;
+      if (player.hearthWarded) {
+        this.raidTrace.push(`${who}:warded`);
+        continue;
+      }
+      if (now < player.raidCalmUntil) {
+        this.raidTrace.push(`${who}:calm`);
+        continue;
+      }
+      if (this.liveDangerTier(home.x, home.y) < 1) {
+        this.raidTrace.push(`${who}:settled`);
+        continue; // town claims are the town's problem, never raided
+      }
+      const pos = this.positions.get(eid);
+      if (!pos || Math.hypot(pos.x - home.x, pos.y - home.y) > FRONTIER.watchTiles) {
+        this.raidTrace.push(`${who}:away`);
+        continue; // the owner must be HOME — an empty house draws nobody
+      }
+      let coveted = false;
+      for (const r of this.poiLedger.values()) {
+        if (r.site !== null && r.emberUntil === null &&
+            GameServer.hearthOwnerOf(r.originCell) === who) {
+          coveted = true;
+          break;
+        }
+      }
+      if (coveted) {
+        this.raidTrace.push(`${who}:coveted`);
+        continue; // one squat at a time — never a siege
+      }
+      qualified.push({ eid, player });
+    }
+    if (qualified.length === 0) return false;
+    const pick = qualified[Math.floor(Math.random() * qualified.length)]!;
+    const home = pick.player.home!;
+    const who = pick.player.characterId;
+    const ring = this.claimRings().find((r) => r.x === home.x && r.y === home.y);
+    const ringR = ring?.r ?? FRONTIER.claimR;
+    // Candidate cells: the hearth's own cell and its 8 neighbors,
+    // nearest first — the squat stands at the edge, not the horizon.
+    const hcx = poiCellOf(home.x);
+    const hcy = poiCellOf(home.y);
+    const ranked: Array<{ cx: number; cy: number; d: number }> = [];
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const cx = hcx + dx;
+        const cy = hcy + dy;
+        ranked.push({
+          cx,
+          cy,
+          d: Math.hypot(cx * POI_CELL + POI_CELL / 2 - home.x, cy * POI_CELL + POI_CELL / 2 - home.y),
+        });
+      }
+    }
+    ranked.sort((a, b) => a.d - b.d);
+    const ctx = this.poiCtx();
+    for (const cand of ranked) {
+      const nkey = poiCellKey(cand.cx, cand.cy);
+      if (authored.has(nkey)) { this.raidTrace.push(`${nkey}:authored`); continue; }
+      const nrow = this.poiLedger.get(nkey);
+      if (nrow?.site) { this.raidTrace.push(`${nkey}:occupied`); continue; }
+      if (nrow?.fallowUntil !== null && nrow?.fallowUntil !== undefined && now < nrow.fallowUntil)
+        { this.raidTrace.push(`${nkey}:fallow`); continue; }
+      const epoch = (nrow?.epoch ?? 0) + 1;
+      // The ctx carries the claim rings, so the squat can never stand
+      // inside ANY yard — including the one it covets.
+      const site = poiForCell(config.worldSeed, cand.cx, cand.cy, epoch, ctx, 'raider_squat');
+      if (!site) { this.raidTrace.push(`${nkey}:noground`); continue; }
+      // MERCY BY CONSTRUCTION: a forced roll inherits the LAND's tier,
+      // but a squat is small and craven by charter — cap it at the
+      // def's own ceiling so a settler brave enough to bed down in
+      // tier-5 country gets a harassment, never a warcamp (a tier-5
+      // squat mustered seven bodies and killed its settler in testing).
+      site.tier = Math.min(site.tier, POI_DEFS.get('raider_squat')?.tiers[1] ?? site.tier);
+      const dHome = Math.hypot(site.anchorX - home.x, site.anchorY - home.y);
+      if (dHome < ringR + FRONTIER.raidStandoffTiles)
+        { this.raidTrace.push(`${nkey}:tooclose`); continue; }
+      if (this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles))
+        { this.raidTrace.push(`${nkey}:dignity`); continue; }
+      this.accounts.recordPoiCell(
+        cand.cx,
+        cand.cy,
+        epoch,
+        {
+          poiId: site.defId,
+          prefabId: site.prefabId,
+          tier: site.tier,
+          anchorX: site.anchorX,
+          anchorY: site.anchorY,
+        },
+        null,
+        GameServer.hearthOrigin(who),
+      );
+      this.poiLedger.set(nkey, {
+        epoch,
+        site,
+        clearedAt: null,
+        emberUntil: null,
+        fallowUntil: null,
+        stage: 0,
+        stageAt: null,
+        originCell: GameServer.hearthOrigin(who),
+      });
+      this.poiLive.delete(nkey);
+      // THE FUSE: the horn carries to everyone near the camp AND to
+      // the owner wherever they stand in their yard; the line names
+      // the bearing; the defender's bounty is stamped so breaking the
+      // squat pays through the one Phase 3 pipeline; and the chart
+      // takes the pip through the one discovery ceremony.
+      const horn: S2CFx = { t: 'fx', kind: 'horn', x: site.anchorX, y: site.anchorY, radius: 1 };
+      this.broadcastFx(horn);
+      const opos = this.positions.get(pick.eid);
+      if (opos && (Math.abs(opos.x - horn.x) >= 40 || Math.abs(opos.y - horn.y) >= 40)) {
+        pick.player.session?.sendJson(horn);
+      }
+      this.setPlayerFlag(pick.player, bountyFlag(nkey));
+      pick.player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text:
+          `Torchlight gathers past your fence-line, ${compass8(site.anchorX - home.x, site.anchorY - home.y)} — ` +
+          'someone covets what you have built.',
+      });
+      this.recordDiscovery(
+        pick.player,
+        {
+          id: `poi:${nkey}`,
+          kind: 'poi',
+          name: POI_DEFS.get('raider_squat')?.name ?? 'Raider squat',
+          x: site.anchorX,
+          y: site.anchorY,
+          tier: site.tier,
+        },
+        epoch,
+      );
+      console.log(`[frontier] raid squat covets hearth of character ${who} at cell ${nkey}`);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * THE HARASSMENT BEAT (never a breach): a squat body that has pushed
+   * up to the coveted homestead's shut door rattles it — theatre on
+   * the one fx wire; hostiles still never LEARN doors. Runs on the
+   * frontier cadence, bounded by the handful of standing squats.
+   */
+  private rattleSquatDoors(): void {
+    for (const [key, row] of this.poiLedger) {
+      const who = GameServer.hearthOwnerOf(row.originCell);
+      if (who === null || row.site === null || row.emberUntil !== null) continue;
+      const live = this.poiLive.get(key);
+      if (!live) continue;
+      for (const i of live.spawnIdx) {
+        const s = this.spawnPoints[i];
+        if (!s?.active || s.eid === null || !this.poiSpawnFights(s)) continue;
+        const bpos = this.positions.get(s.eid);
+        if (!bpos) continue;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const tx = Math.floor(bpos.x) + dx;
+            const ty = Math.floor(bpos.y) + dy;
+            const built = this.world.builtAt(tx, ty);
+            if (!built || built.owner !== who) continue;
+            const info = doorInfo(built.tile);
+            if (!info || info.open) continue;
+            if (Math.random() < 0.5) continue; // sometimes they just breathe
+            this.broadcastFx({ t: 'fx', kind: 'rattle', x: tx + 0.5, y: ty + 0.5, radius: 0.5 });
+            return; // one knock per beat is plenty of dread
+          }
+        }
+      }
+    }
+  }
+
   /**
    * Decide (or recall) a cell and stand its POI up as a tiny zone
    * through the SAME machinery authored zones use: addZone + client
@@ -4925,7 +5264,7 @@ export class GameServer {
   ): PoiSite | null {
     if (!this.poiPrefabs) return null;
     const key = poiCellKey(cellX, cellY);
-    const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
+    const ctx = this.poiCtx();
     let row = this.poiLedger.get(key);
     if (!row || opts.epoch !== undefined) {
       const epoch = opts.epoch ?? 0;
@@ -4960,7 +5299,11 @@ export class GameServer {
       this.poiLive.set(key, { spawnIdx: [] });
       return null;
     }
-    const zone = composePoi(config.worldSeed, row.site, ctx, row.stage);
+    // A hearth-tied squat faces the claim it covets — the worn track,
+    // the scatter, and the watchers all orient on the homestead.
+    const squatOwner = GameServer.hearthOwnerOf(row.originCell);
+    const face = squatOwner !== null ? this.homesByCharacter.get(squatOwner) : undefined;
+    const zone = composePoi(config.worldSeed, row.site, ctx, row.stage, face);
     if (!zone) {
       // A ledger row referencing retired content — stand nothing, keep
       // the row (an edit or revert can bring it back).
@@ -5103,6 +5446,24 @@ export class GameServer {
       for (const [skey, srow] of this.poiLedger) {
         if (srow.originCell !== coreKey || skey === key) continue;
         scatterCell(skey, srow);
+      }
+    }
+    // THE HEARTH WATCH resolution (Phase 4.3): a broken squat buys its
+    // settler the full raid quiet — online or off, participant or not
+    // (a friend clearing your fence-line still buys YOUR peace).
+    const hearthOwner = GameServer.hearthOwnerOf(row?.originCell);
+    if (hearthOwner !== null && row?.site?.defId === 'raider_squat') {
+      const until = Date.now() + FRONTIER.raidCooldownMs;
+      this.accounts.saveRaidCalm(hearthOwner, until);
+      const oeid = this.characterEids.get(hearthOwner);
+      const owner = oeid !== undefined ? this.players.get(oeid) : undefined;
+      if (owner) {
+        owner.raidCalmUntil = Math.max(owner.raidCalmUntil, until);
+        owner.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: 'The covetous fires go out. Nobody watches your fence-line now — the quiet is yours a while.',
+        });
       }
     }
     // THE STORY HOOK + THE BOUNTY (Phase 3.2): the wipe credit reaches
@@ -5270,7 +5631,7 @@ export class GameServer {
     if (!this.poiPrefabs) return null;
     const defs = new Map(POI_DEFS);
     if (draft) defs.set(draft.id, draft);
-    const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
+    const ctx = this.poiCtx();
     return { ...ctx, defs: [...defs.values()] };
   }
 
@@ -8814,6 +9175,19 @@ export class GameServer {
     }
 
     if (health.hp <= 0) {
+      // THE HEARTH WATCH's mercy: falling to the very camp that covets
+      // YOUR claim stamps the shorter quiet — losses earn mercy, never
+      // a chain-raid (the RimWorld adaptation, simplified).
+      if (player.characterId > 0 && opts.sourceEid !== undefined) {
+        const src = this.npcs.get(opts.sourceEid);
+        const cellKey = src ? this.poiSpawnCells.get(src.spawnIndex) : undefined;
+        const rrow = cellKey !== undefined ? this.poiLedger.get(cellKey) : undefined;
+        if (GameServer.hearthOwnerOf(rrow?.originCell) === player.characterId) {
+          const until = Date.now() + FRONTIER.raidLossCooldownMs;
+          player.raidCalmUntil = Math.max(player.raidCalmUntil, until);
+          this.accounts.saveRaidCalm(player.characterId, until);
+        }
+      }
       const pos = this.positions.must(eid);
       // The claimed home bed answers first; everyone else wakes at the
       // nearest settled spawn — with one hearth in the world that's
@@ -9027,6 +9401,9 @@ export class GameServer {
       // of the carved routes (danger tiers still apply on them — a
       // tier-4 road is quiet, never safe).
       if (roadDistanceAt(config.worldSeed, tx, ty) <= ROAD_CALM) continue;
+      // THE EXCLUSION LAW (Phase 4): nothing materializes in a claimed
+      // yard — the danger tier stays wild, but the spawn point moves on.
+      if (this.inClaimRing(tx, ty)) continue;
       const biome = groundProbeAt(config.worldSeed, tx, ty);
       if (biome !== 'grass' && biome !== 'forest') continue;
       const candidates = wildCandidates(spotTier, biome, hours);
@@ -11195,6 +11572,23 @@ export class GameServer {
         say(`Creep clock backdated — /frontier tick may fork the toll now (stage ${row.stage}).`);
         return;
       }
+      if (sub === 'raid') {
+        // /frontier raid — force the covetous dice NOW (qualification
+        // still applies; the trace tells you who refused and why).
+        // /frontier raid calm — lift your own mercy stamp (staging).
+        if (arg === 'calm') {
+          player.raidCalmUntil = 0;
+          if (player.characterId > 0) this.accounts.resetRaidCalm(player.characterId);
+          say('Your raid mercy stamp is lifted — the dice may pick you again.');
+          return;
+        }
+        const stood = this.tickRaidDice(Date.now(), true);
+        say(
+          `Raid dice (forced): ${stood ? 'a squat stands' : 'nothing stood'}.` +
+            (this.raidTrace.length > 0 ? ` [${this.raidTrace.join(' ')}]` : ''),
+        );
+        return;
+      }
       if (sub === 'watch') {
         // /frontier watch — the world answers, read from where you stand
         // (what a speaker HERE would know), plus your open bounty marks.
@@ -11294,16 +11688,19 @@ export class GameServer {
       let staged = 0;
       let sats = 0;
       let tolls = 0;
+      let squats = 0;
       for (const r of this.poiLedger.values()) {
         if (r.site === null) continue;
         if (r.site.defId === 'road_toll') tolls++;
+        else if (GameServer.hearthOwnerOf(r.originCell) !== null) squats++;
         else if (r.originCell !== null) sats++;
         else if (r.stage > 0) staged++;
       }
       say(
         `Frontier: ${embers} ember(s), ${fallows} fallow, ${staged} staged core(s), ` +
-          `${sats} satellite(s), ${tolls} toll(s), ${this.frontierCalm.size} calm, debt ${this.frontierCredits}. ` +
-          `Cell ${key}: ${cellState} — /frontier tick · ember [min] · stage [n] · creep · watch · calm [clear] · credit [n]`,
+          `${sats} satellite(s), ${tolls} toll(s), ${squats} squat(s), ${this.frontierCalm.size} calm, ` +
+          `debt ${this.frontierCredits}, rings ${this.claimRings().length}. ` +
+          `Cell ${key}: ${cellState} — /frontier tick · ember [min] · stage [n] · creep · raid [calm] · watch · calm [clear] · credit [n]`,
       );
       return;
     }

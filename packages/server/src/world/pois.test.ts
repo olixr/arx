@@ -28,6 +28,7 @@ const CTX: PoiContext = {
   zoneRects: [
     { x: -96, y: 16, w: 96, h: 64 }, // dawnmead
   ],
+  claimRings: [],
   defs: [...POI_DEFS.values()],
   prefabs: POI_PREFABS,
 };
@@ -53,7 +54,7 @@ test('the planned rects join the clearance list and flag stale sites', () => {
   // poiContext folds the master plan's rects in even when the live
   // zone list carries only Dawnmead — the frontier keeps out of
   // streets that haven't been built yet.
-  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS);
+  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, []);
   for (const rect of PLANNED_ZONE_RECTS) {
     assert.ok(
       ctx.zoneRects.some(
@@ -471,7 +472,7 @@ test("the champion's tor crowns a stable name from the pool", () => {
 test('every authored wild site finds honest ground and composes', async () => {
   const { AUTHORED_WILD_SITES } = await import('@arx/content');
   const { findAuthoredAnchor, poiCellOf } = await import('./pois.js');
-  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS);
+  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, []);
   for (const want of AUTHORED_WILD_SITES) {
     const def = POI_DEFS.get(want.defId);
     assert.ok(def, `${want.id}: unknown archetype '${want.defId}'`);
@@ -509,7 +510,7 @@ test('every authored wild site finds honest ground and composes', async () => {
 test('the Last Lamp composes with its lamps, its keeper, and its watch', async () => {
   const { AUTHORED_WILD_SITES } = await import('@arx/content');
   const { findAuthoredAnchor, poiCellOf } = await import('./pois.js');
-  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS);
+  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, []);
   const want = AUTHORED_WILD_SITES.find((s) => s.id === 'last_lamp')!;
   const prefab = POI_PREFABS.get('poi_last_lamp')!;
   const spot = findAuthoredAnchor(SEED, want.x!, want.y!, prefab, ctx)!;

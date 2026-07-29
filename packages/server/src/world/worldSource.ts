@@ -211,22 +211,41 @@ export class WorldSource extends ChunkStore {
 
   /** Player-built tiles, reapplied whenever a chunk regenerates. */
   private readonly builtTiles = new Map<string, { tile: number; owner: number; prevTile: number }>();
+  /**
+   * Owner → built-tile keys ("tx,ty") — THE HEARTH WATCH's index: a
+   * claim ring grows to cover its owner's homestead, so the flood of
+   * one settler's tiles must be readable without walking the world.
+   */
+  private readonly builtByOwner = new Map<number, Set<string>>();
 
   registerBuilt(tx: number, ty: number, tile: number, owner: number, prevTile: number): void {
     // Building over an existing construction (a wall onto your own
     // floor) keeps the FIRST capture: demolish returns the natural
     // ground, never an intermediate build that no longer exists.
-    const existing = this.builtTiles.get(`${tx},${ty}`);
-    this.builtTiles.set(`${tx},${ty}`, { tile, owner, prevTile: existing?.prevTile ?? prevTile });
+    const key = `${tx},${ty}`;
+    const existing = this.builtTiles.get(key);
+    if (existing && existing.owner !== owner) this.builtByOwner.get(existing.owner)?.delete(key);
+    this.builtTiles.set(key, { tile, owner, prevTile: existing?.prevTile ?? prevTile });
+    let mine = this.builtByOwner.get(owner);
+    if (!mine) this.builtByOwner.set(owner, (mine = new Set()));
+    mine.add(key);
     this.setGround(tx, ty, tile);
   }
 
   unregisterBuilt(tx: number, ty: number): void {
-    this.builtTiles.delete(`${tx},${ty}`);
+    const key = `${tx},${ty}`;
+    const existing = this.builtTiles.get(key);
+    if (existing) this.builtByOwner.get(existing.owner)?.delete(key);
+    this.builtTiles.delete(key);
   }
 
   builtAt(tx: number, ty: number): { tile: number; owner: number; prevTile: number } | undefined {
     return this.builtTiles.get(`${tx},${ty}`);
+  }
+
+  /** One settler's built-tile keys ("tx,ty"), or nothing. */
+  builtKeysOf(owner: number): ReadonlySet<string> | undefined {
+    return this.builtByOwner.get(owner);
   }
 
   /**

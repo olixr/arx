@@ -537,6 +537,15 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (cell_x, cell_y)
   );
   `,
+  // v8: THE HEARTH WATCH — the covetous dice's per-character mercy
+  // stamps. raid_calm_until: no raid squat covets this settler's claim
+  // while it stands (answered raids and losses both earn quiet).
+  // hearth_warded: the opt-out dial ("Ward the hearth") — 1 means the
+  // dice never pick this settler at all.
+  `
+  ALTER TABLE characters ADD COLUMN raid_calm_until BIGINT NOT NULL DEFAULT 0;
+  ALTER TABLE characters ADD COLUMN hearth_warded INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 /**

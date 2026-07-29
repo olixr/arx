@@ -40,6 +40,10 @@ export interface CharacterRow {
   /** The one active waypoint TILE; null when none is set. */
   waypoint_x: number | null;
   waypoint_y: number | null;
+  /** THE HEARTH WATCH: no raid covets this settler until this passes (ms). */
+  raid_calm_until: number;
+  /** The opt-out dial: 1 = warded, the covetous dice never pick them. */
+  hearth_warded: number;
 }
 
 export type AuthResult =
@@ -137,6 +141,8 @@ export class AccountStore {
         hearth_at: 0,
         waypoint_x: null,
         waypoint_y: null,
+        raid_calm_until: 0,
+        hearth_warded: 0,
       },
     };
   }
@@ -173,7 +179,7 @@ export class AccountStore {
       return { ok: false, reason: 'Unknown username or wrong password' };
     }
     const character = await this.db.get<CharacterRow>(
-      'SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at, waypoint_x, waypoint_y FROM characters WHERE account_id = ? ORDER BY id LIMIT 1',
+      'SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at, waypoint_x, waypoint_y, raid_calm_until, hearth_warded FROM characters WHERE account_id = ? ORDER BY id LIMIT 1',
       [acc.id],
     );
     if (!character) return { ok: false, reason: 'Account has no character' };
@@ -199,7 +205,7 @@ export class AccountStore {
     );
     if (!row) return { ok: false, reason: 'Session expired' };
     const character = await this.db.get<CharacterRow>(
-      'SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at, waypoint_x, waypoint_y FROM characters WHERE account_id = ? ORDER BY id LIMIT 1',
+      'SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at, waypoint_x, waypoint_y, raid_calm_until, hearth_warded FROM characters WHERE account_id = ? ORDER BY id LIMIT 1',
       [row.account_id],
     );
     if (!character) return { ok: false, reason: 'Account has no character' };
@@ -228,6 +234,36 @@ export class AccountStore {
 
   saveHearthAt(id: number, at: number): void {
     this.db.fire('UPDATE characters SET hearth_at = ? WHERE id = ?', [at, id]);
+  }
+
+  /**
+   * Every claimed home bed in the world — THE HEARTH WATCH derives the
+   * claim rings from this at boot, offline settlers included (a camp
+   * must never materialize in an absent player's yard).
+   */
+  async allHomes(): Promise<Array<{ characterId: number; x: number; y: number }>> {
+    return this.db.query<{ characterId: number; x: number; y: number }>(
+      'SELECT id AS "characterId", home_x AS x, home_y AS y FROM characters ' +
+        'WHERE home_x IS NOT NULL AND home_y IS NOT NULL',
+    );
+  }
+
+  /** Stamp raid quiet — GREATEST, so a stamp never shortens standing mercy. */
+  saveRaidCalm(id: number, until: number): void {
+    this.db.fire(
+      'UPDATE characters SET raid_calm_until = GREATEST(raid_calm_until, ?) WHERE id = ?',
+      [until, id],
+    );
+  }
+
+  /** Flip the ward-the-hearth dial. */
+  saveHearthWarded(id: number, warded: boolean): void {
+    this.db.fire('UPDATE characters SET hearth_warded = ? WHERE id = ?', [warded ? 1 : 0, id]);
+  }
+
+  /** Staging lever only: lift a mercy stamp (bypasses the GREATEST law). */
+  resetRaidCalm(id: number): void {
+    this.db.fire('UPDATE characters SET raid_calm_until = 0 WHERE id = ?', [id]);
   }
 
   /** Pin (or move) the one active waypoint — written the moment it's set. */

@@ -40,7 +40,11 @@
 // waypoint (a guard's bounty mark lands on the chart mid-conversation).
 // A v14 client would drop the push and stand there unmarked while the
 // guard says "your chart takes it", so reject cleanly.
-export const PROTOCOL_VERSION = 15;
+// v16: THE HEARTH WATCH — S2CFx grows the 'horn' kind (the covetous
+// camp's fuse). A v15 client would render an unknown fx as a mute
+// color puff and the raid telegraph would lose its voice, so reject
+// cleanly.
+export const PROTOCOL_VERSION = 16;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;

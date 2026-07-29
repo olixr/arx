@@ -95,6 +95,41 @@ export const FRONTIER = {
    * is MORE game on the road, not less town.
    */
   creepMs: [1.0 * 86_400_000, 1.5 * 86_400_000] as const,
+  // ---- Phase 4: THE HEARTH WATCH ----
+  /**
+   * A claimed hearth's base ring (tiles): the yard a home commands
+   * even before a fence goes up. One zone clearance — nothing may
+   * materialize inside it.
+   */
+  claimR: 24,
+  /**
+   * How far from the bed the owner's built tiles still grow the ring
+   * (tiles): the ring covers the whole homestead flood within reach,
+   * never a fence-post teleported across the map.
+   */
+  claimReach: 48,
+  /** Padding past the farthest counted built tile (tiles). */
+  claimPad: 8,
+  /**
+   * THE COVETOUS DICE (the Valheim law): one roll per shard on this
+   * cadence; most rolls pass in silence.
+   */
+  raidRollMs: 46 * 60_000,
+  /** Chance a roll picks anyone at all. */
+  raidChance: 0.2,
+  /**
+   * Real hours of raid quiet after a squat is answered — cleared, or
+   * paid for in blood (losses earn mercy, not a chain-raid).
+   */
+  raidCooldownMs: 48 * 3_600_000,
+  /** The shorter mercy stamp for dying to the squat. */
+  raidLossCooldownMs: 24 * 3_600_000,
+  /**
+   * The squat stands in a cell edge-adjacent to the claim ring but its
+   * anchor keeps at least this many tiles from the ring's edge — heard
+   * about, walked to, never looming over the fence.
+   */
+  raidStandoffTiles: 16,
 } as const;
 
 /** Frontier RNG salts — the named-streams law (the ST_* family's kin). */

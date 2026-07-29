@@ -192,6 +192,9 @@ for (const built of await accounts.loadBuiltTiles()) {
 const game = new GameServer(world, accounts);
 game.loadCrops(await accounts.loadCrops());
 game.loadSigns(await accounts.loadSigns());
+// THE HEARTH WATCH: claim rings derive from EVERY claimed bed, offline
+// settlers included — before the first POI decision reads the context.
+game.initHomes(await accounts.allHomes());
 game.initPois(await accounts.loadPoiCells(), await accounts.loadFrontierCredits(), {
   discovered: await accounts.loadDiscoveredPoiCells(),
   calm: await accounts.loadFrontierCalm(),

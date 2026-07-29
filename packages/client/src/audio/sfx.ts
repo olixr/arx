@@ -552,6 +552,25 @@ export class Sfx {
     this.tone(2340, 0.34, { type: 'sine', volume: 0.055, delay: 0.005, detune: false });
   }
 
+  /**
+   * THE RAID HORN — a stolen ox-horn, blown once past somebody's
+   * fence-line: a breathy attack sliding up into a long two-note hold
+   * (root + rough fifth), a beat, then a shorter answering blast. Low
+   * sawtooth body under a triangle head, so it reads brassy and cheap
+   * — raiders don't own good horns.
+   */
+  warHorn(): void {
+    // The wind-up breath.
+    this.noise(0.09, 0.08, 0, { band: 500 });
+    // First blast: rise into the held root, fifth stacked rough above.
+    this.tone(146, 0.85, { type: 'sawtooth', slide: 22, volume: 0.16 });
+    this.tone(150, 0.85, { type: 'triangle', slide: 22, volume: 0.12 });
+    this.tone(222, 0.7, { type: 'sawtooth', slide: 18, volume: 0.06, delay: 0.1 });
+    // The answering blast, shorter and a shade higher — a crew, not a man.
+    this.tone(164, 0.5, { type: 'sawtooth', slide: 14, volume: 0.13, delay: 1.05 });
+    this.tone(168, 0.5, { type: 'triangle', slide: 14, volume: 0.09, delay: 1.05 });
+  }
+
   /** Stepping up to a station: a wooden tap and the tools shifting. */
   stationOpen(): void {
     this.tone(200, 0.05, { type: 'triangle', slide: -70, volume: 0.16 });

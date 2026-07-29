@@ -40,6 +40,10 @@ const proto = GameServer.prototype as unknown as {
   standDownGarrison: Fn;
   poiSpawnFights: Fn;
   pushStageRumor: Fn;
+  poiCtx: Fn;
+  claimRings: Fn;
+  inClaimRing: Fn;
+  dangerAnchors: Fn;
 };
 
 interface LedgerRow {
@@ -104,7 +108,9 @@ function slate(rows: Array<[string, LedgerRow]>, opts: { credits?: number } = {}
     poiLedger: new Map(rows),
     poiLive: new Map<string, { spawnIdx: number[] }>(),
     poiPrefabs: POI_PREFABS,
-    world: { zoneDefs: [] as unknown[] },
+    world: { zoneDefs: [] as unknown[], builtKeysOf: () => undefined },
+    homesByCharacter: new Map<number, { x: number; y: number }>(),
+    ringCache: null as unknown,
     players: new Map<number, { session: unknown; disconnectedAt: number | null }>(),
     positions: new Map<number, { x: number; y: number }>(),
     spawnPoints: [] as Array<{ npc: string; eid: number | null; respawnAt: number; active: boolean }>,
@@ -135,6 +141,9 @@ function slate(rows: Array<[string, LedgerRow]>, opts: { credits?: number } = {}
     rebuildHavens: () => {},
     playerWithin: proto.playerWithin,
     authoredCells: proto.authoredCells,
+    poiCtx: proto.poiCtx,
+    claimRings: proto.claimRings,
+    inClaimRing: proto.inClaimRing,
     calmNear: proto.calmNear,
     boldCoresNear: proto.boldCoresNear,
     stampCalm: proto.stampCalm,
@@ -235,7 +244,7 @@ test('a rested fallow cell wakes to the SAME roll poiForCell decides', () => {
     CELL_X,
     CELL_Y,
     epoch,
-    poiContext(SETTLED_ANCHORS, [], POI_PREFABS),
+    poiContext(SETTLED_ANCHORS, [], POI_PREFABS, []),
   );
   assert.deepEqual(r.site, expected);
   const s2 = slate([[KEY, row({ epoch, fallowUntil: now + 60_000 })]]);
@@ -368,7 +377,7 @@ test('orphan satellites scatter when their core is gone', () => {
 
 test('composePoi stage: rungs add muster, the base camp never reshuffles', () => {
   const st = site({ tier: 3 });
-  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS);
+  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, []);
   const base = composePoi(config.worldSeed, st, ctx, 0);
   const staged2 = composePoi(config.worldSeed, st, ctx, 2);
   assert.ok(base && staged2);
@@ -546,4 +555,187 @@ test('THE CREEP ANSWERED: a full family in the marches forks a road-true toll', 
   assert.ok(Math.abs(tcx! - 3) <= 1 && Math.abs(tcy! - 0) <= 1 && tollKey !== coreKey);
   // One toll per family: a second pass forks nothing new.
   assert.equal(proto3.forkOneToll.call(s, now), false);
+});
+
+// ---------------------------------------------------------------- Phase 4
+
+const proto4 = GameServer.prototype as unknown as {
+  tickRaidDice: Fn;
+  inClaimRing: Fn;
+  claimRings: Fn;
+  liveDangerTier: Fn;
+  poiCtx: Fn;
+};
+const hearthOwnerOf = (
+  GameServer as unknown as { hearthOwnerOf: (o: string | null) => number | null }
+).hearthOwnerOf;
+const hearthOrigin = (
+  GameServer as unknown as { hearthOrigin: (id: number) => string }
+).hearthOrigin;
+
+test('the hearth tie round-trips and rejects strangers', () => {
+  assert.equal(hearthOwnerOf(hearthOrigin(42)), 42);
+  assert.equal(hearthOwnerOf('5,1'), null);
+  assert.equal(hearthOwnerOf(null), null);
+  assert.equal(hearthOwnerOf('hearth:nonsense'), null);
+});
+
+test('THE EXCLUSION LAW: a claimed yard refuses every materialization candidate', () => {
+  const ctxFree = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, []);
+  const stood = poiForCell(config.worldSeed, CELL_X, CELL_Y, 0, ctxFree);
+  assert.ok(stood, 'the control cell must host a site');
+  // A yard over the whole cell: the same roll now stands nothing.
+  const ring = { x: CELL_X * POI_CELL + 64, y: CELL_Y * POI_CELL + 64, r: 200 };
+  const ctxClaimed = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [ring]);
+  assert.equal(poiForCell(config.worldSeed, CELL_X, CELL_Y, 0, ctxClaimed), null);
+  // A small ring far away changes nothing.
+  const ctxFar = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [{ x: 0, y: 0, r: 24 }]);
+  assert.deepEqual(poiForCell(config.worldSeed, CELL_X, CELL_Y, 0, ctxFar), stood);
+});
+
+test('claim rings derive from the bed and the built flood within reach', () => {
+  const built = new Set(['140,100', '100,140']); // 40 out
+  built.add('180,100'); // 80 out — past claimReach, its own risk
+  const s = slate([]);
+  (s.world as unknown as { builtKeysOf: (o: number) => ReadonlySet<string> | undefined }).builtKeysOf =
+    (o: number) => (o === 7 ? built : undefined);
+  s.homesByCharacter.set(7, { x: 100, y: 100 });
+  s.homesByCharacter.set(8, { x: 500, y: 500 }); // bare bed, no builds
+  const rings = (proto4.claimRings.call(s) as Array<{ x: number; y: number; r: number }>)
+    .slice()
+    .sort((a, b) => a.x - b.x);
+  assert.equal(rings.length, 2);
+  assert.equal(rings[0]!.x, 100);
+  assert.equal(rings[0]!.r, 40 + FRONTIER.claimPad, 'grown over the flood, far post ignored');
+  assert.equal(rings[1]!.r, FRONTIER.claimR, 'a bare bed keeps the base yard');
+  // The point test agrees with the derived ring.
+  assert.equal(proto4.inClaimRing.call(s, 110, 100), true);
+  assert.equal(proto4.inClaimRing.call(s, 100 + 60, 100), false);
+});
+
+interface RaidPlayer {
+  characterId: number;
+  session: unknown;
+  disconnectedAt: number | null;
+  home: { x: number; y: number } | null;
+  hearthWarded: boolean;
+  raidCalmUntil: number;
+  flags: Map<string, number>;
+  discoveries: Map<string, unknown>;
+}
+
+function raidSlate(player: Partial<RaidPlayer> = {}) {
+  const s = slate([]);
+  const home = { x: CELL_X * POI_CELL + 64, y: CELL_Y * POI_CELL + 64 };
+  const p: RaidPlayer = {
+    characterId: 7,
+    session: { sendJson: () => {} },
+    disconnectedAt: null,
+    home,
+    hearthWarded: false,
+    raidCalmUntil: 0,
+    flags: new Map(),
+    discoveries: new Map(),
+    ...player,
+  };
+  const stamps: Array<[number, number]> = [];
+  const discovered: string[] = [];
+  const fx: string[] = [];
+  Object.assign(s, {
+    tickRaidDice: proto4.tickRaidDice,
+    liveDangerTier: proto4.liveDangerTier,
+    players: new Map([[11, p]]),
+    positions: new Map([[11, { x: p.home?.x ?? 0, y: p.home?.y ?? 0 }]]),
+    characterEids: new Map([[p.characterId, 11]]),
+    broadcastFx: (f: { kind: string }) => fx.push(f.kind),
+    setPlayerFlag: (pl: RaidPlayer, flag: string) => pl.flags.set(flag, 1),
+    recordDiscovery: (_pl: unknown, d: { id: string }) => discovered.push(d.id),
+    raidTrace: [] as string[],
+  });
+  if (p.home) s.homesByCharacter.set(p.characterId, p.home);
+  s.accounts = {
+    ...s.accounts,
+    saveRaidCalm: (id: number, until: number) => stamps.push([id, until]),
+  } as never;
+  return Object.assign(s, { raidPlayer: p, stamps, discovered, fx });
+}
+
+test('the covetous dice: every mercy gate refuses', () => {
+  const now = Date.now();
+  const cases: Array<[Partial<RaidPlayer>, string]> = [
+    [{ session: null }, 'attended only'],
+    [{ characterId: -1 }, 'guests never'],
+    [{ home: null }, 'no claim, no covet'],
+    [{ hearthWarded: true }, 'the dial holds'],
+    [{ raidCalmUntil: now + 60_000 }, 'mercy stands'],
+  ];
+  for (const [over, why] of cases) {
+    const s = raidSlate(over);
+    assert.equal(
+      (s as unknown as { tickRaidDice: Fn }).tickRaidDice.call(s, now, true),
+      false,
+      `must refuse: ${why}`,
+    );
+  }
+  // Away from home: the owner is not there to answer, so nobody comes.
+  const away = raidSlate();
+  away.positions.set(11, { x: 0, y: 0 });
+  assert.equal((away as unknown as { tickRaidDice: Fn }).tickRaidDice.call(away, now, true), false);
+  assert.ok((away as unknown as { raidTrace: string[] }).raidTrace.some((t) => t.endsWith(':away')));
+});
+
+test('a forced raid stands a hearth-tied squat at the edge, fuse lit', () => {
+  const now = Date.now();
+  const s = raidSlate();
+  const stood = (s as unknown as { tickRaidDice: Fn }).tickRaidDice.call(s, now, true) as boolean;
+  assert.equal(
+    stood,
+    true,
+    `no squat: [${(s as unknown as { raidTrace: string[] }).raidTrace.join(' ')}]`,
+  );
+  const squat = [...s.poiLedger.entries()].find(([, r]) => r.site?.defId === 'raider_squat');
+  assert.ok(squat, 'a raider_squat row must exist');
+  const [, srow] = squat!;
+  assert.equal(srow.originCell, hearthOrigin(7));
+  const home = s.raidPlayer.home!;
+  const d = Math.hypot(srow.site!.anchorX - home.x, srow.site!.anchorY - home.y);
+  assert.ok(
+    d >= FRONTIER.claimR + FRONTIER.raidStandoffTiles,
+    `standoff holds (${d.toFixed(1)} tiles out)`,
+  );
+  assert.ok(d >= FRONTIER.dignityTiles, 'never in view of the owner at their hearth');
+  // The fuse: horn, the stamped defender bounty, and the chart pip.
+  assert.deepEqual(s.fx, ['horn']);
+  assert.ok([...s.raidPlayer.flags.keys()].some((f) => f.startsWith('bounty:')));
+  assert.equal(s.discovered.length, 1);
+  // One squat at a time: the dice refuse while it stands.
+  assert.equal((s as unknown as { tickRaidDice: Fn }).tickRaidDice.call(s, now, true), false);
+  assert.ok(
+    (s as unknown as { raidTrace: string[] }).raidTrace.some((t) => t.endsWith(':coveted')),
+  );
+});
+
+test('an unclaimed hearth orphans its squat — the covetous camp loses interest', () => {
+  const now = Date.now();
+  const s = raidSlate();
+  assert.equal((s as unknown as { tickRaidDice: Fn }).tickRaidDice.call(s, now, true), true);
+  const [skey, srow] = [...s.poiLedger.entries()].find(
+    ([, r]) => r.site?.defId === 'raider_squat',
+  )!;
+  // The bed is gone: the home registry forgets the settler.
+  s.homesByCharacter.clear();
+  assert.equal(proto.seedOneSatellite.call(s, now), true, 'the orphan watch must act');
+  assert.ok(srow.emberUntil !== null && srow.emberUntil > now, `${skey} must scatter`);
+  assert.equal(srow.clearedAt, null, 'a scatter is not a clear');
+});
+
+test('composePoi face: the squat orients on the claim, deterministically', () => {
+  const st = site({ tier: 2, defId: 'raider_squat', prefabId: 'poi_raider_squat' });
+  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, []);
+  const toward = { x: st.anchorX + 100, y: st.anchorY };
+  const faced = composePoi(config.worldSeed, st, ctx, 0, toward);
+  const unfaced = composePoi(config.worldSeed, st, ctx, 0);
+  assert.ok(faced && unfaced);
+  assert.notDeepEqual(faced.ground, unfaced.ground, 'the cues must re-orient');
+  assert.deepEqual(composePoi(config.worldSeed, st, ctx, 0, toward), faced, 'faced compose is pure');
 });

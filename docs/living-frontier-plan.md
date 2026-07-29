@@ -324,6 +324,32 @@ Goal: settled land reacts; players are recruited, thanked, and paid.
 
 ## Phase 4 — The Hearth Watch (claims shape the land, and the land answers)
 
+**SHIPPED 2026-07-28.** Verified live end to end on a scripted homestead
+(floor + bed built in tier-2 wild, claimed): the frontier lens read
+**rings 1** the moment the bed was claimed; warding the hearth ("You
+bank the fire low…") made the forced dice refuse with `[21:warded]`;
+unwarding stood a squat with the full fuse — the **horn fx frame**, the
+line ("Torchlight gathers past your fence-line, west"), the chart
+ceremony, and a refusal trace showing three nearer cells lawfully
+occupied. The screenshot shows the squat's **worn track running toward
+the homestead** — `composePoi`'s one shared bearing re-oriented by the
+`face` override. Testing found and fixed a real mercy violation: a
+forced roll inherited **tier-5 land** and mustered seven bodies (named
+reaver included) that killed the level-96 settler — which organically
+proved the **death-mercy stamp** (`[21:calm]` after waking, persisted
+across reload); the squat's tier is now capped at the def's own ceiling
+(1–3). The re-staged tier-3 squat was answered: "The covetous fires go
+out…", **"The bounty is honored: 162 coins"** (the defender's bounty
+riding the Phase 3 pipeline), and the dice refusing `[21:calm]` for the
+full quiet. Demolishing the bed dropped **rings 0 instantly** (the
+eager-unclaim fix) and orphaned squats scatter by the unclaim law
+(unit-pinned). The exclusion law lives INSIDE `poiForCell`'s site scan
+(one required `claimRings` context field — the compiler holds every
+call site) plus one gate in `tickWildSpawns`; claim rings are a pure
+exclusion mask, never DangerAnchors (THE HAVEN LAW held). Protocol v16
+(the `horn` fx kind); migration v8 (`raid_calm_until`,
+`hearth_warded`); 673 workspace tests green.
+
 Goal: your cleared, built-upon valley is *yours* — and holding it is play.
 
 ### 4.1 The claim ring (derived, never authored)

@@ -592,6 +592,11 @@ export interface S2CFx {
     /** A locked door refusing at (x,y) — the leaf shudders in its frame. */
     | 'rattle'
     /**
+     * A raid horn at (x,y) — THE HEARTH WATCH's fuse (Phase 4): the
+     * covetous camp announces itself once, far-carrying, spatial.
+     */
+    | 'horn'
+    /**
      * A destructible prop taking a hit at (x,y). `dir` is the impact
      * heading (away from the smasher — debris flies WITH the blow),
      * `id` the DestructibleKind so the client picks its break-up kit
