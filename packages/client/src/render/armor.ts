@@ -831,12 +831,12 @@ export const GLOVE_STYLES: Record<string, GloveStyle> = {
 };
 
 export const OFFHAND_STYLES: Record<string, OffhandStyle> = {
-  spiked_buckler: { kind: 'buckler', color: '#8a744a', trim: '#6b5a38', boss: '#dde2ea', spikes: true },
-  oak_kiteshield: { kind: 'kite', color: '#6b4a26', trim: '#a4744b', emblem: 'chevron' },
+  spiked_buckler: { kind: 'buckler', color: '#8f7449', trim: '#3f4450', boss: '#e4e9f1', spikes: true },
+  oak_kiteshield: { kind: 'kite', color: '#79512a', trim: '#c08a4e', emblem: 'chevron' },
   frost_quiver: { kind: 'quiver', color: '#8ac4e8', trim: '#4a6a8a' },
   tome_of_embers: { kind: 'tome', color: '#e8763c', trim: '#6b3a1e' },
   arcane_orb: { kind: 'orb', color: '#8f9ed6', trim: '#c9c4cf' },
-  tower_shield: { kind: 'tower', color: '#8d9299', trim: '#6a6f7d', boss: '#b0b6be' },
+  tower_shield: { kind: 'tower', color: '#9aa1ab', trim: '#5d6472', boss: '#cdd4de' },
   hunters_quiver: { kind: 'quiver', color: '#8a6a45', trim: '#3f6b3a' },
   scholars_tome: { kind: 'tome', color: '#4a5a9c', trim: '#c8cee8' },
 };

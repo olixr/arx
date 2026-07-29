@@ -33,6 +33,18 @@ export interface ShieldStyle {
     curve?: number;
     /** Leather of the enarmes on the back. */
     strapColor?: string;
+    /**
+     * THE SIGNATURE LAW (see below): the bespoke face painter for THIS
+     * shield. Unset = the generic material dialect, which is what an
+     * unknown or derived shield falls back to.
+     */
+    sig?: string;
+    /**
+     * THE LADDER: 1 a footsoldier's kit → 4 a treasure. It buys fittings,
+     * not noise — a higher rung wears more real METAL, cut in more
+     * planes, and its charge is worked rather than painted on.
+     */
+    tier?: number;
 }
 export declare const SHIELD_STYLES: Record<string, ShieldStyle>;
 /**

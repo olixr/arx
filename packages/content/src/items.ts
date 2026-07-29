@@ -656,7 +656,7 @@ const defs: ItemDef[] = [
     armor: 1,
     passive: 'thorns',
     desc: 'Blocking with it is an attack of its own.',
-    color: '#8a744a',
+    color: '#8f7449',
     code: 'Sb',
   },
   {

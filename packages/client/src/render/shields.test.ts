@@ -166,6 +166,70 @@ test('the sling is a blend, not a switch — every step of it is small', () => {
   }
 });
 
+test('THE SIGNATURE LAW: every authored shield paints itself, and no two share a look', () => {
+  const ids = Object.keys(SHIELD_STYLES);
+  assert.ok(ids.length > 0);
+  const sigs = new Set<string>();
+  const looks = new Set<string>();
+  for (const id of ids) {
+    const st = SHIELD_STYLES[id]!;
+    assert.ok(st.sig, `${id} has no bespoke face painter — it would fall back to the generic dialect`);
+    assert.ok(!sigs.has(st.sig!), `${id} reuses the signature "${st.sig}"`);
+    sigs.add(st.sig!);
+    // Shape + material + face colour together are the across-the-room
+    // read. Two shields may share any one of them, never all three.
+    const look = `${st.shape}/${st.material}/${st.face}`;
+    assert.ok(!looks.has(look), `${id} is indistinguishable from another shield (${look})`);
+    looks.add(look);
+    assert.ok(st.tier && st.tier > 0, `${id} sits on no rung of the ladder`);
+  }
+});
+
+test('THE LADDER: a higher rung is never a plainer shield', () => {
+  // Rungs buy fittings. Whatever else changes, detail must not fall as
+  // the tier climbs — a top-tier shield that wears less than a starter
+  // one is the exact failure this roster is meant to avoid.
+  const byTier = Object.values(SHIELD_STYLES).sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0));
+  const fittings = (s: (typeof byTier)[number]): number =>
+    (s.studs ? 1 : 0) +
+    (s.boss ? 1 : 0) +
+    (s.spikes ? 1 : 0) +
+    (s.device && s.device !== 'none' ? 1 : 0) +
+    (s.faceAlt ? 1 : 0) +
+    (s.field && s.field !== 'plain' ? 1 : 0);
+  for (let i = 1; i < byTier.length; i++) {
+    assert.ok(
+      fittings(byTier[i]!) >= fittings(byTier[i - 1]!),
+      `tier ${byTier[i]!.tier} (${byTier[i]!.shape}) wears less than tier ${byTier[i - 1]!.tier}`,
+    );
+  }
+});
+
+test('THE SLAB PROPORTION: a shield is a board, never a block', () => {
+  // Thickness is authored in body units while the faces are not, so it
+  // is easy to leave a small shield nearly as thick as it is tall —
+  // which paints a heavy dark ring standing behind its own face. A
+  // buckler is legitimately chunkier than a pavise; what no shield may
+  // be is a block, and this is the line between the two.
+  for (const st of Object.values(SHIELD_STYLES)) {
+    const fr = solve(st, Math.PI / 2);
+    assert.ok(
+      fr.depth < fr.hh * 0.3,
+      `${st.shape}: shell is ${(fr.depth / fr.hh).toFixed(2)}× its half-height`,
+    );
+  }
+});
+
+test('THE NEAR-ARM LAW: at a dead profile the shield still paints in front', () => {
+  // fy is zero at profile, so a strict fy > 0 test dropped the plane
+  // behind the torso — and an edge-on plane behind a body is a shield
+  // the player cannot see at two of the eight facings.
+  for (const st of [KITE, TOWER]) {
+    assert.ok(solve(st, 0).front, `${st.shape} vanished behind the body facing east`);
+    assert.ok(solve(st, Math.PI).front, `${st.shape} vanished behind the body facing west`);
+  }
+});
+
 test('an unknown shield still resolves to a real shield in a coherent dialect', () => {
   const wood = shieldStyle('nobody_home', 'kite', '#8a5f31', '#4a3524');
   assert.equal(wood.material, 'wood', 'a warm face is built from staves');
