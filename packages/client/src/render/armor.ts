@@ -843,6 +843,11 @@ export const OFFHAND_STYLES: Record<string, OffhandStyle> = {
   frostplate_greatshield: { kind: 'tower', color: '#9db6cc', trim: '#dbe9f4', boss: '#eaf7ff' },
   bulwark_bastion: { kind: 'tower', color: '#5a6270', trim: '#9c7c3a', boss: '#d8b76a' },
   sunforged_aegis: { kind: 'tower', color: '#d4a43c', trim: '#f0e2bd', boss: '#fff8e4' },
+  gobnail_warboard: { kind: 'buckler', color: '#6b5233', trim: '#66513a', boss: '#9aa1ab', spikes: true },
+  wolfjaw_targe: { kind: 'buckler', color: '#7a5a38', trim: '#6a7080', boss: '#565c68', spikes: true },
+  bonespur_ward: { kind: 'tower', color: '#d9d2bd', trim: '#4a505c', boss: '#5a616e', spikes: true },
+  kingsward: { kind: 'kite', color: '#8a2431', trim: '#d8b76a', boss: '#dfe6f4' },
+  dreadforge_thornwall: { kind: 'tower', color: '#3a3d46', trim: '#c9a45e', boss: '#d8b76a', spikes: true },
   hunters_quiver: { kind: 'quiver', color: '#8a6a45', trim: '#3f6b3a' },
   scholars_tome: { kind: 'tome', color: '#4a5a9c', trim: '#c8cee8' },
 };

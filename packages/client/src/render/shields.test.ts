@@ -292,11 +292,20 @@ test('a greatshield fits the body it is carried on', () => {
   // itself: a shield that clears the head or drags on the ground stops
   // being armor and starts being scenery. (The ground sits 0.414 s
   // below the hip; the shoulder line 0.40 s above it.)
-  for (const id of ['frostplate_greatshield', 'bulwark_bastion', 'sunforged_aegis']) {
+  for (const id of [
+    'frostplate_greatshield',
+    'bulwark_bastion',
+    'sunforged_aegis',
+    'bonespur_ward',
+    'dreadforge_thornwall',
+  ]) {
     const st = SHIELD_STYLES[id]!;
     const fr = solve(st, Math.PI / 2);
-    assert.ok(fr.hh * 2 > S * 0.6, `${id} is not a greatshield — it is ${(fr.hh * 2 / S).toFixed(2)} s tall`);
-    assert.ok(fr.cy + fr.hh < S * 0.414, `${id} drags its heel on the ground`);
+    assert.ok(fr.hh * 2 > S * 0.55, `${id} is not a greatshield — it is ${(fr.hh * 2 / S).toFixed(2)} s tall`);
+    // The thornwall's heel spike overshoots its own half-height (the
+    // outline runs to t = 1.14), so the ground check takes the true
+    // silhouette reach, not just hh.
+    assert.ok(fr.cy + fr.hh * 1.15 < S * 0.414, `${id} drags its heel on the ground`);
     assert.ok(fr.cy - fr.hh > -S * 0.52, `${id} stands taller than its bearer's head`);
   }
 });

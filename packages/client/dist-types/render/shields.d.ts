@@ -6,7 +6,7 @@
  * shield" to the equipment system, and three different objects to the
  * eye — a calved slab, a battlement, and a crowned greatshield.
  */
-export type ShieldShape = 'buckler' | 'round' | 'heater' | 'kite' | 'tower' | 'wall' | 'bastion' | 'aegis';
+export type ShieldShape = 'buckler' | 'round' | 'heater' | 'kite' | 'tower' | 'wall' | 'bastion' | 'aegis' | 'targe' | 'ribwall' | 'thorn';
 /**
  * The material dialect. Wood is BUILT — staves, seams, a bound rim you
  * can count the rivets on. Metal is FORGED — one continuous face,
@@ -35,6 +35,21 @@ export interface ShieldStyle {
     studs?: boolean;
     /** Forged punch spikes (buckler dialect). */
     spikes?: boolean;
+    /**
+     * THE SPIKE PLAN. Spikes are not trim — they are the weapon half of
+     * a shield's character, and a goblin's bent nails, a wolf-earned
+     * fang crown and a champion's bone spurs must not all wear the same
+     * four studs on the quarters. Angles are design-space (−π/2 = the
+     * crown); unset = the quarters, which is the buckler's honest
+     * default. All of it still roots on the OUTLINE via reachAlong.
+     */
+    spikeAngles?: number[];
+    /** Tip reach past the binding, 1 = flush. Default 1.2. */
+    spikeLen?: number;
+    /** Half-width of a spike's root. Default 0.125. */
+    spikeW?: number;
+    /** Spike metal. Default: forged from the rim. Bone spurs are not. */
+    spikeColor?: string;
     /** Stave count for wood faces. */
     planks?: number;
     /** Dish depth, 0 flat → 1 deeply bowled. */

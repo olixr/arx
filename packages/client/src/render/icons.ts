@@ -4247,6 +4247,11 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   frostplate_greatshield: { icon: 'shield', color: '#9db6cc' },
   bulwark_bastion: { icon: 'shield', color: '#5a6270' },
   sunforged_aegis: { icon: 'shield', color: '#d4a43c' },
+  gobnail_warboard: { icon: 'shield', color: '#6b5233' },
+  wolfjaw_targe: { icon: 'shield', color: '#7a5a38' },
+  bonespur_ward: { icon: 'shield', color: '#d9d2bd' },
+  kingsward: { icon: 'shield', color: '#8a2431' },
+  dreadforge_thornwall: { icon: 'shield', color: '#3a3d46' },
   // Themed plate sets — family painters carry the shape, the palette
   // carries the identity.
   warden_helm: { icon: 'helm', color: '#4a7a5a' },

@@ -200,6 +200,7 @@ const defs: LootTableDef[] = [
   rack('goblin_arms', 'Camp ironwork and stolen hedge-magic.', 0.045, [
     { item: 'rustbite', chance: 0.03 },
     { item: 'gobsplitter', chance: 0.025 },
+    { item: 'gobnail_warboard', chance: 0.025 },
     { item: 'shiv', chance: 0.025 },
     { item: 'stickbow', chance: 0.03 },
     { item: 'knucklebow', chance: 0.025 },
@@ -462,6 +463,10 @@ const defs: LootTableDef[] = [
       { item: 'nightwell', chance: 0.02 },
       { item: 'tempest_crown', chance: 0.02 },
       { item: 'worldsplinter', chance: 0.005 },
+      // The Champion's own arm: the shield it grew, and the dreadforge
+      // wall from the armory it was buried with.
+      { item: 'bonespur_ward', chance: 0.035 },
+      { item: 'dreadforge_thornwall', chance: 0.02 },
     ],
   ),
 
@@ -630,6 +635,8 @@ const defs: LootTableDef[] = [
     entries: [
       { item: 'bones' },
       { item: 'direwolf_pelt', chance: 0.9 },
+      // The matriarch carries the pack's shield — she pays it best.
+      { item: 'wolfjaw_targe', chance: 0.06 },
       { item: 'wolf_fur', qty: [1, 2], chance: 0.6 },
       { item: 'coins', qty: [30, 80], chance: 0.7 },
       { item: 'crimson_essence', qty: [1, 3], chance: 0.35 },
@@ -640,6 +647,7 @@ const defs: LootTableDef[] = [
     ],
   },
   rack('wolf_arms', 'The pack’s blades, bows, and argued-over staves.', 0.04, [
+    { item: 'wolfjaw_targe', chance: 0.02 },
     { item: 'wolffang', chance: 0.03 },
     { item: 'frostbrand', chance: 0.01 },
     { item: 'fangtooth', chance: 0.03 },

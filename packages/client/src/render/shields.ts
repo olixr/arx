@@ -108,7 +108,10 @@ export type ShieldShape =
   | 'tower'
   | 'wall'
   | 'bastion'
-  | 'aegis';
+  | 'aegis'
+  | 'targe'
+  | 'ribwall'
+  | 'thorn';
 
 /**
  * The material dialect. Wood is BUILT — staves, seams, a bound rim you
@@ -149,6 +152,21 @@ export interface ShieldStyle {
   studs?: boolean;
   /** Forged punch spikes (buckler dialect). */
   spikes?: boolean;
+  /**
+   * THE SPIKE PLAN. Spikes are not trim — they are the weapon half of
+   * a shield's character, and a goblin's bent nails, a wolf-earned
+   * fang crown and a champion's bone spurs must not all wear the same
+   * four studs on the quarters. Angles are design-space (−π/2 = the
+   * crown); unset = the quarters, which is the buckler's honest
+   * default. All of it still roots on the OUTLINE via reachAlong.
+   */
+  spikeAngles?: number[];
+  /** Tip reach past the binding, 1 = flush. Default 1.2. */
+  spikeLen?: number;
+  /** Half-width of a spike's root. Default 0.125. */
+  spikeW?: number;
+  /** Spike metal. Default: forged from the rim. Bone spurs are not. */
+  spikeColor?: string;
   /** Stave count for wood faces. */
   planks?: number;
   /** Dish depth, 0 flat → 1 deeply bowled. */
@@ -219,6 +237,64 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
     strapColor: '#4a3524',
     sig: 'oak_kite',
     tier: 2,
+  },
+  /**
+   * THE GOBLIN'S — every nail bent twice, and it holds anyway. A round
+   * of scavenged boards, one of them visibly the wrong board, patched
+   * with a rusty plate that doesn't match and studded with SEVEN iron
+   * nails driven through from behind at whatever angle they went in.
+   * The dented pot-lid boss is the one piece of real metal on it.
+   * Crude is the craft: nothing here is parallel, and that is the
+   * signature.
+   */
+  gobnail_warboard: {
+    shape: 'round',
+    material: 'wood',
+    face: '#6b5233',
+    faceAlt: '#57422a',
+    rim: '#66513a',
+    boss: '#9aa1ab',
+    device: 'none',
+    studs: true,
+    spikes: true,
+    // Nails, not spikes: many, thin, and none of them agree on an
+    // angle — the plan IS the crookedness.
+    spikeAngles: [-1.9, -1.1, -0.4, 0.5, 1.3, 2.3, 3.0],
+    spikeLen: 1.16,
+    spikeW: 0.05,
+    spikeColor: '#7d838f',
+    planks: 3,
+    curve: 0.55,
+    strapColor: '#4a3524',
+    sig: 'warboard',
+    tier: 2,
+  },
+  /**
+   * WOLF-EARNED — the bite marks are the design. A leather-faced targe
+   * with a wedge already torn out of its edge, three claw-rake gashes
+   * across the face, and a crown of five bone fangs set around the top
+   * of the binding: the teeth that tried, kept. Drops from the packs
+   * and their matriarch, and looks like it was taken from them.
+   */
+  wolfjaw_targe: {
+    shape: 'targe',
+    material: 'wood',
+    face: '#7a5a38',
+    faceAlt: '#5f452c',
+    rim: '#6a7080',
+    boss: '#565c68',
+    device: 'none',
+    studs: true,
+    spikes: true,
+    // A fanged crown across the top arc — the maw read.
+    spikeAngles: [-2.5, -2.0, -1.57, -1.14, -0.64],
+    spikeLen: 1.34,
+    spikeW: 0.09,
+    spikeColor: '#e8e2d0',
+    curve: 0.5,
+    strapColor: '#4a3524',
+    sig: 'wolfjaw',
+    tier: 3,
   },
   /**
    * RUNG THREE — a door you carry into arguments, and the roster's
@@ -298,6 +374,88 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
     curve: 0.32,
     strapColor: '#3f3830',
     sig: 'bulwark',
+    tier: 5,
+  },
+  /**
+   * THE CHAMPION'S OWN — grown, not forged. The Skeleton Champion's
+   * wall: fused ribs standing in a scalloped silhouette (every bump on
+   * the edge is a rib end), a black iron band bolted across where a
+   * living smith repaired a dead thing's shield, twin dark fangs for a
+   * charge, and bone spurs at the shoulders and flanks that are still
+   * lengthening. Bone palette against black iron — nothing else in the
+   * roster is within a county of the look.
+   */
+  bonespur_ward: {
+    shape: 'ribwall',
+    material: 'iron',
+    face: '#d9d2bd',
+    faceAlt: '#b8ac8e',
+    rim: '#4a505c',
+    boss: '#5a616e',
+    device: 'fang',
+    deviceColor: '#3a3f4a',
+    studs: true,
+    spikes: true,
+    // Spurs off the shoulders and the mid flanks — where bone grows.
+    spikeAngles: [-2.62, -0.52, 0, Math.PI],
+    spikeLen: 1.3,
+    spikeW: 0.08,
+    spikeColor: '#e8e2d0',
+    curve: 0.35,
+    strapColor: '#3f3830',
+    sig: 'bonespur',
+    tier: 5,
+  },
+  /**
+   * THE ROYAL IMPALEMENT — Silverfall's own heraldry, carried. A
+   * knightly heater impaled per pale: the King's crimson on the dexter
+   * half, the Queen's moonpale on the sinister, a gold crown over the
+   * seam, and a hex-cut moonstone set at the heart where the two
+   * houses meet. Ivory-gold binding. No spikes, no teeth — this one is
+   * pure ceremony that happens to stop swords.
+   */
+  kingsward: {
+    shape: 'heater',
+    material: 'steel',
+    face: '#8a2431',
+    faceAlt: '#c9d2e4',
+    field: 'pale',
+    rim: '#d8b76a',
+    boss: '#dfe6f4',
+    device: 'crown',
+    deviceColor: '#e6c36a',
+    studs: true,
+    curve: 0.3,
+    strapColor: '#5a4a2a',
+    sig: 'kingsward',
+    tier: 5,
+  },
+  /**
+   * THE DREADFORGE THORNWALL — black steel and gold thorns, for the
+   * tank whose answer is the shield itself. A waisted angular wall
+   * with a ground-spike heel forged into the silhouette, gilded thorns
+   * at the shoulders and flanks, one broad gold bend across the black,
+   * and a black diamond riveted at the crossing. The dreadforge rule:
+   * everything bright on it is a warning.
+   */
+  dreadforge_thornwall: {
+    shape: 'thorn',
+    material: 'steel',
+    face: '#3a3d46',
+    faceAlt: '#23252c',
+    field: 'bend',
+    rim: BRASS,
+    boss: '#d8b76a',
+    device: 'diamond',
+    deviceColor: '#23252c',
+    studs: true,
+    spikes: true,
+    spikeAngles: [-2.44, -0.7, 0.15, 2.99],
+    spikeLen: 1.32,
+    spikeW: 0.1,
+    curve: 0.32,
+    strapColor: '#3f3830',
+    sig: 'thornwall',
     tier: 5,
   },
   /**
@@ -424,6 +582,27 @@ const OUTLINES: Record<ShieldShape, number[]> = {
     0, -1, 0.46, -0.86, 1.0, -0.62, 0.92, -0.1, 0.66, 0.5, 0, 1, -0.66, 0.5,
     -0.92, -0.1, -1.0, -0.62, -0.46, -0.86,
   ],
+  // The bitten targe: a rugged ten-facet round with a WEDGE torn out
+  // of the upper-right edge. The notch is the whole story — a shield
+  // something has already been at, and kept anyway.
+  targe: [
+    -0.17, -0.98, 0.5, -0.85, 0.38, -0.52, 0.92, -0.4, 1.0, 0.17, 0.6, 0.8,
+    0, 1.0, -0.6, 0.8, -1.0, 0.17, -0.92, -0.5,
+  ],
+  // The rib wall: a squared crown over SCALLOPED sides — every bump a
+  // rib end — tapering to a bone heel. The silhouette is the anatomy.
+  ribwall: [
+    -0.6, -1, 0.6, -1, 0.95, -0.72, 0.72, -0.4, 0.95, -0.08, 0.72, 0.24,
+    0.88, 0.55, 0.4, 0.9, 0, 1, -0.4, 0.9, -0.88, 0.55, -0.72, 0.24,
+    -0.95, -0.08, -0.72, -0.4, -0.95, -0.72,
+  ],
+  // The thornwall: a waisted angular wall whose walls step IN and back
+  // OUT — an aggressive silhouette even before the thorns land on it —
+  // ending in a ground-spike heel forged into the outline itself.
+  thorn: [
+    -0.7, -1, 0.7, -1, 1.0, -0.62, 0.86, 0.05, 1.0, 0.52, 0.5, 0.92,
+    0, 1.14, -0.5, 0.92, -1.0, 0.52, -0.86, 0.05, -1.0, -0.62,
+  ],
 };
 
 /**
@@ -469,6 +648,12 @@ const METRIC: Record<
   wall: { hw: 0.205, hh: 0.33, hang: -0.07, depth: 0.062, strap: true, fwdK: -0.015, twistK: -0.05 },
   bastion: { hw: 0.195, hh: 0.335, hang: -0.07, depth: 0.062, strap: true, fwdK: -0.015, twistK: -0.05 },
   aegis: { hw: 0.2, hh: 0.35, hang: -0.06, depth: 0.064, strap: true, fwdK: -0.02, twistK: -0.05 },
+  // The bitten targe carries like a round — fist-gripped, angled out.
+  targe: { hw: 0.165, hh: 0.165, hang: -0.22, depth: 0.036, strap: false, fwdK: 0.04, twistK: 0.12 },
+  // The Champion's rib wall: kite-tall, worn on the arm.
+  ribwall: { hw: 0.17, hh: 0.3, hang: -0.1, depth: 0.056, strap: true, fwdK: -0.01, twistK: -0.03 },
+  // The thornwall: bastion class, and its heel spike wants ground room.
+  thorn: { hw: 0.18, hh: 0.32, hang: -0.08, depth: 0.06, strap: true, fwdK: -0.015, twistK: -0.05 },
 };
 
 /** The solved plane — everything the painters and the arm both need. */
@@ -990,6 +1175,11 @@ const SIGNATURES: Record<string, FacePainter> = {
   frost: sigFrost,
   bulwark: sigBulwark,
   sunforged: sigSunforged,
+  warboard: sigWarboard,
+  wolfjaw: sigWolfjaw,
+  bonespur: sigBonespur,
+  kingsward: sigKingsward,
+  thornwall: sigThornwall,
 };
 
 /**
@@ -1420,6 +1610,152 @@ function sigSunforged(
   // whole rung is spent on the sun, not on a fifth kind of rivet.
 }
 
+/**
+ * GOBNAIL WARBOARD — crude is the craft. Three boards, one of them
+ * visibly the WRONG board (it sits crooked, its seams don't line up),
+ * and a rusty patch plate that matches nothing, held on with two
+ * studs. Nothing on this shield is parallel to anything else on it,
+ * and that is the signature. The nails and the pot-lid boss come from
+ * the substrate passes.
+ */
+function sigWarboard(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
+  staves(ctx, st, 3);
+  // The replacement board: a plank from some OTHER shield, nailed on
+  // at the angle it happened to land.
+  ctx.save();
+  ctx.rotate(0.07);
+  ctx.fillStyle = shade(st.face, 16);
+  ctx.fillRect(-0.55, -1.3, 0.42, 2.6);
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(-0.57, -1.3, 0.04, 2.6);
+  ctx.fillRect(-0.15, -1.3, 0.04, 2.6);
+  ctx.restore();
+  // The patch: a rusty plate over the split, one lit edge, two studs.
+  const rust = '#8a6a52';
+  ctx.save();
+  ctx.rotate(-0.1);
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(0.12, -0.28, 0.68, 0.6);
+  ctx.fillStyle = rust;
+  ctx.fillRect(0.16, -0.24, 0.6, 0.52);
+  ctx.fillStyle = shade(rust, 22);
+  ctx.fillRect(0.16, -0.24, 0.6, 0.12);
+  stud(ctx, 0.26, 0.02, 0.07, shade(rust, 40));
+  stud(ctx, 0.66, 0.02, 0.07, shade(rust, 40));
+  ctx.restore();
+}
+
+/**
+ * WOLFJAW TARGE — the bite marks are the design. Four leather panels,
+ * then three claw-rake gashes dragged across the face on one diagonal:
+ * each gash is a dark slit with a pale torn edge, cut clean through
+ * whatever panel it crosses. The bone fang crown and the torn-out
+ * notch live in the silhouette; the face only has to corroborate them.
+ */
+function sigWolfjaw(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
+  gores(ctx, st, 4);
+  ctx.save();
+  ctx.rotate(-0.55);
+  const pale = shade(st.face, 34);
+  for (const x of [-0.36, -0.02, 0.32]) {
+    // THE WOUND READS DARK. The slit is the mark and it dominates; the
+    // pale torn edge is a thin curl on ONE side of it. Weighted the
+    // other way round these painted as light streaks, and a shield of
+    // light streaks is decorated, not survived.
+    ctx.fillStyle = SEAM;
+    ctx.fillRect(x - 0.055, -0.82, 0.13, 1.64);
+    ctx.fillStyle = pale;
+    ctx.fillRect(x + 0.075, -0.72, 0.045, 1.44);
+  }
+  ctx.restore();
+}
+
+/**
+ * BONESPUR WARD — grown, not forged. Three fused ribs in alternating
+ * bone tones, a black iron repair band bolted across them, and the
+ * Champion's twin fangs in dark iron at the honor point. The scalloped
+ * silhouette and the growing spurs carry the anatomy; the face stays
+ * calm bone so the black iron reads like a scar across it.
+ */
+function sigBonespur(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
+  staves(ctx, st, 3);
+  // THE JAW. The Champion's charge is not the little heraldic fang —
+  // it is two broad black-iron fangs hanging from under the crown of
+  // the shield like the front of a bite, each with one lit inner
+  // facet. Sized to the shield, not to a kite's honor point.
+  // A fang is SHORT and broad — drawn long and narrow these hung like
+  // a pair of dark curtains off the crown instead of teeth.
+  const dark = st.deviceColor ?? '#3a3f4a';
+  for (const sx of [-1, 1]) {
+    poly(ctx, SEAM, [sx * 0.7, -1.2, sx * 0.05, -1.2, sx * 0.38, -0.3]);
+    poly(ctx, dark, [sx * 0.64, -1.2, sx * 0.11, -1.2, sx * 0.38, -0.4]);
+    poly(ctx, shade(dark, 26), [sx * 0.11, -1.2, sx * 0.38, -0.4, sx * 0.3, -1.2]);
+  }
+  band(ctx, st, 0.34, 0.18);
+  stud(ctx, -0.8, 0.43, 0.08, shade(st.rim, 30));
+  stud(ctx, 0.8, 0.43, 0.08, shade(st.rim, 30));
+}
+
+/**
+ * KINGSWARD — the royal impalement. The field is divided per pale:
+ * the King's crimson dexter, the Queen's moonpale sinister, one gold
+ * fillet standing where the houses meet. The crown rides the seam at
+ * the honor point; the moonstone boss (substrate pass) sets at the
+ * heart below it. Ceremony first, and not one plane more.
+ */
+function sigKingsward(
+  ctx: CanvasRenderingContext2D,
+  st: ShieldStyle,
+  fr: ShieldFrame,
+): void {
+  // The impalement: sinister half in the Queen's moonpale.
+  ctx.fillStyle = st.faceAlt ?? shade(st.face, 40);
+  ctx.fillRect(0, -1.2, 1.2, 2.4);
+  // One shadowed plane on each field so both halves read as cloth
+  // hung on the same board, lit by the same sun.
+  ctx.fillStyle = shade(st.face, -18);
+  ctx.fillRect(-1.2, -1.2, 0.22, 2.4);
+  ctx.fillStyle = shade(st.faceAlt ?? st.face, -14);
+  ctx.fillRect(0.98, -1.2, 0.22, 2.4);
+  // The gold fillet on the seam.
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(-0.075, -1.2, 0.15, 2.4);
+  ctx.fillStyle = st.deviceColor ?? shade(st.rim, 20);
+  ctx.fillRect(-0.045, -1.2, 0.09, 2.4);
+  drawDevice(ctx, st, fr);
+}
+
+/**
+ * DREADFORGE THORNWALL — black steel, gold warning. Two black plates,
+ * one broad gold bend across them with a dark shadow bar and one lit
+ * edge, and a black diamond riveted at the crossing. The thorns and
+ * the heel spike are silhouette work; the face keeps to the dreadforge
+ * rule that everything bright on it is a warning.
+ */
+function sigThornwall(
+  ctx: CanvasRenderingContext2D,
+  st: ShieldStyle,
+  fr: ShieldFrame,
+  litU: number,
+): void {
+  plates(ctx, st, litU);
+  const c = st.rim;
+  ctx.save();
+  ctx.rotate(-0.6);
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(-0.26, -1.7, 0.52, 3.4);
+  ctx.fillStyle = c;
+  ctx.fillRect(-0.21, -1.7, 0.42, 3.4);
+  ctx.fillStyle = shade(c, 30);
+  ctx.fillRect(-0.21, -1.7, 0.1, 3.4);
+  ctx.restore();
+  // The black diamond at the crossing: seat, face, one lit facet.
+  const dark = st.deviceColor ?? '#23252c';
+  poly(ctx, SEAM, [0, -0.52, 0.42, 0, 0, 0.52, -0.42, 0]);
+  poly(ctx, dark, [0, -0.44, 0.35, 0, 0, 0.44, -0.35, 0]);
+  poly(ctx, shade(dark, 26), [0, -0.44, 0, 0.44, -0.35, 0]);
+}
+
 /** The heraldic charge, cut in flat planes with one lit facet. */
 function drawDevice(ctx: CanvasRenderingContext2D, st: ShieldStyle, fr: ShieldFrame): void {
   const dev = st.device ?? 'none';
@@ -1840,14 +2176,21 @@ function drawSpikes(
 ): void {
   // Forged from the SHIELD's iron, never from the bright umbo — spikes
   // pitched at boss brightness read as white shards thrown off the
-  // face instead of teeth grown out of the rim.
-  const c = shade(st.rim, 18);
+  // face instead of teeth grown out of the rim. Organic spikes (bone
+  // fangs, spurs) override with their own material via the spike plan.
+  const c = st.spikeColor ?? shade(st.rim, 18);
   const bx = nxU * (crown + 0.3);
   const by = nyU * (crown + 0.3);
   const px = (u2: number): number => u2 * hxU + bx;
   const py = (u2: number, t2: number): number => u2 * hyU + t2 * fr.hh + by;
-  for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+  // The spike plan: bespoke angles when the style has a story to tell,
+  // the quarters when it doesn't.
+  const angles =
+    st.spikeAngles ??
+    [0, 1, 2, 3].map((i) => (i / 4) * Math.PI * 2 + Math.PI / 4);
+  const lenK = st.spikeLen ?? 1.2;
+  const wK = st.spikeW ?? 0.125;
+  for (const a of angles) {
     const cu = Math.cos(a);
     const ct2 = Math.sin(a);
     // Rooted under the binding and tipped a short way past it. Kept
@@ -1856,9 +2199,9 @@ function drawSpikes(
     // of the shield the moment the plane turns.
     const reach = reachAlong(outline, cu, ct2);
     const root = reach * 0.86;
-    const tip = reach * 1.2;
-    const wu = -ct2 * 0.125 * reach;
-    const wt = cu * 0.125 * reach;
+    const tip = reach * lenK;
+    const wu = -ct2 * wK * reach;
+    const wt = cu * wK * reach;
     ctx.fillStyle = c;
     ctx.beginPath();
     ctx.moveTo(px(cu * root + wu), py(cu * root + wu, ct2 * root + wt));
