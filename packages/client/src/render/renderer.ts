@@ -21169,10 +21169,14 @@ export class Renderer {
       // hard line, user screenshot). The mountain-falls finisher also
       // pitches the blade past the sky margin at the top of its poise.
       body: (() => {
+        // Measured worst case (bench: every strike pose × facing,
+        // + the 0.56s finisher lunge): up 2.58s, down 1.35s, sides
+        // 2.4s. The great tier clears each by ≥0.4s — margin bought
+        // deliberately after two user-caught crops.
         const armed = e.equip.weapon !== undefined || e.equip.offhand !== undefined;
-        const rx = greatArms ? 1.4 : armed ? 1.0 : 0;
-        const ry = greatArms ? 1.5 : armed ? 1.2 : 0; // sky side
-        const rb = greatArms ? 0.6 : 0; // ground side: buried strikes
+        const rx = greatArms ? 1.5 : armed ? 1.0 : 0;
+        const ry = greatArms ? 1.7 : armed ? 1.2 : 0; // sky side
+        const rb = greatArms ? 0.8 : 0; // ground side: buried strikes
         return {
           x: p.x - (1.55 + rx) * s * capeK,
           y: p.y - (1.75 + ry) * s * capeK,
