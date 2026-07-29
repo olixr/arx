@@ -279,29 +279,27 @@ function ngon(n: number, rot: number): number[] {
 }
 
 const OUTLINES: Record<ShieldShape, number[]> = {
-  // Faceted discs — low-poly by construction, flat facet dead top.
-  buckler: ngon(12, -Math.PI / 2 + Math.PI / 12),
-  round: ngon(14, -Math.PI / 2 + Math.PI / 14),
-  // The knightly heater: flat top, chamfered shoulders, a belly that
-  // converges on a soft point.
+  // Faceted discs — few, wide facets with a flat one dead top. An
+  // 8-gon reads as a shield; a 14-gon reads as a circle, and a circle
+  // is a smooth 3D form, which is not what this game is made of.
+  buckler: ngon(8, -Math.PI / 2 + Math.PI / 8),
+  round: ngon(10, -Math.PI / 2 + Math.PI / 10),
+  // The knightly heater: flat top, cut shoulders, the belly falling to
+  // a point in three straight runs.
   heater: [
-    -0.92, -1, 0.92, -1, 1.0, -0.86, 0.99, -0.42, 0.93, 0.0, 0.78, 0.42,
-    0.52, 0.74, 0.22, 0.94, 0, 1, -0.22, 0.94, -0.52, 0.74, -0.78, 0.42,
-    -0.93, 0.0, -0.99, -0.42, -1.0, -0.86,
+    -0.9, -1, 0.9, -1, 1.0, -0.55, 0.86, 0.16, 0.44, 0.74, 0, 1, -0.44, 0.74,
+    -0.86, 0.16, -1.0, -0.55,
   ],
-  // The Norman almond: a rounded crown over a long taper that actually
-  // arrives at a POINT — a kite that rounds off is just an oval.
+  // The Norman almond: a cut crown over a long taper that arrives at a
+  // real POINT. Ten vertices, every one of them a corner you can see.
   kite: [
-    0, -1, 0.42, -0.93, 0.74, -0.7, 0.9, -0.38, 0.95, -0.02, 0.84, 0.32,
-    0.62, 0.62, 0.34, 0.85, 0.12, 0.97, 0, 1, -0.12, 0.97, -0.34, 0.85,
-    -0.62, 0.62, -0.84, 0.32, -0.95, -0.02, -0.9, -0.38, -0.74, -0.7,
-    -0.42, -0.93,
+    0, -1, 0.62, -0.78, 0.95, -0.3, 0.82, 0.28, 0.44, 0.72, 0, 1, -0.44, 0.72,
+    -0.82, 0.28, -0.95, -0.3, -0.62, -0.78,
   ],
-  // The pavise: a shallow arched crown, straight walls, cut heels.
+  // The pavise: a cut crown, straight walls, clipped heels.
   tower: [
-    0, -1, 0.55, -0.95, 0.9, -0.86, 0.96, -0.72, 1.0, -0.2, 1.0, 0.55,
-    0.92, 0.86, 0.72, 1, -0.72, 1, -0.92, 0.86, -1.0, 0.55, -1.0, -0.2,
-    -0.96, -0.72, -0.9, -0.86, -0.55, -0.95,
+    0, -1, 0.72, -0.88, 1.0, -0.5, 1.0, 0.62, 0.7, 1, -0.7, 1, -1.0, 0.62,
+    -1.0, -0.5, -0.72, -0.88,
   ],
 };
 
@@ -694,6 +692,41 @@ export function drawShield(
     RING_NEAR[i * 2 + 1] = by + nyU * (dNear + dm);
   }
 
+  // ---- THE SHIELD WEARS ITS OWN OUTLINE.
+  //
+  // The renderer's outline "shader" dilates the whole BODY silhouette,
+  // so it rings the shield only where the shield sticks out past the
+  // bearer. Across the torso — which is most of a raised shield — the
+  // boards met the chest with no line at all and the two shapes read
+  // as one blob. A shield is a separate object held in front of a
+  // person, and in this game every separate object is ringed. So it
+  // strikes its own, in the world's outline colour, at the same weight
+  // the dilate uses: on the FAR ring before the wall buries it, and on
+  // the NEAR ring once the art is down.
+  // PROPORTIONAL ONLY — never an absolute pixel floor. The rig paints
+  // in screen pixels but the inventory icons paint in a UNIT SQUARE
+  // (renderIcon scales the whole context by the icon's size), so a
+  // `Math.max(1.3, …)` floor became a stroke wider than the entire
+  // icon and swallowed all three shields whole. Anything given a
+  // lineWidth in this file has to be expressed in the shield's own
+  // units for both callers to survive it.
+  const ol = fr.hh * 0.062;
+  const strokeRing = (ring: Float64Array): void => {
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      if (i === 0) ctx.moveTo(ring[0]!, ring[1]!);
+      else ctx.lineTo(ring[i * 2]!, ring[i * 2 + 1]!);
+    }
+    ctx.closePath();
+    ctx.stroke();
+  };
+  if (!hurt) {
+    ctx.strokeStyle = SEAM;
+    ctx.lineWidth = ol;
+    ctx.lineJoin = 'round';
+    strokeRing(RING_FAR);
+  }
+
   // ---- the far ring: the shell's other side, in shadow.
   ctx.fillStyle = hurt ? '#ffffff' : inner;
   ctx.beginPath();
@@ -738,30 +771,12 @@ export function drawShield(
   }
   ctx.fill();
 
-  // THE CREST. Turned far enough that the shell carries the
-  // silhouette, the near edge takes a hard line of light. Without it
-  // an edge-on shield is a dark strip that merges into the renderer's
-  // outline — and into whatever blade shares its screen column.
-  if (!hurt && fr.open < 0.4) {
-    ctx.strokeStyle = shade(st.rim, 56);
-    ctx.lineWidth = Math.max(1, fr.depth * 0.34);
-    ctx.globalAlpha = 1 - fr.open / 0.4;
-    ctx.beginPath();
-    for (let i = 0; i < n; i++) {
-      if (i === 0) ctx.moveTo(RING_NEAR[0]!, RING_NEAR[1]!);
-      else ctx.lineTo(RING_NEAR[i * 2]!, RING_NEAR[i * 2 + 1]!);
-    }
-    ctx.closePath();
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-  }
-
   // ---- the near ring. Edge-on there is no face left to paint: the
   // wall above IS the shield, and a bright crest line finishes it.
   if (fr.open < 0.07) {
     if (!hurt) {
       ctx.strokeStyle = shade(st.rim, 46);
-      ctx.lineWidth = Math.max(1, fr.depth * 0.3);
+      ctx.lineWidth = fr.depth * 0.3;
       ctx.beginPath();
       for (let i = 0; i < n; i++) {
         if (i === 0) ctx.moveTo(RING_NEAR[0]!, RING_NEAR[1]!);
@@ -801,12 +816,19 @@ export function drawShield(
   // is read off the h axis's direction, never off a design constant.
   const litU = hxU >= 0 ? -1 : 1;
   if (fr.seeBack) drawBack(ctx, st, fr, litU);
-  else drawFace(ctx, st, fr, litU, nowMs);
+  else drawFace(ctx, st, fr, litU);
   ctx.restore();
 
   // ---- the bound rim: a real band around the face, not a stroke.
-  drawRim(ctx, st, fr, outline, n, litU);
+  drawRim(ctx, st, fr, outline, n);
   ctx.restore();
+
+  if (!hurt) {
+    ctx.strokeStyle = SEAM;
+    ctx.lineWidth = ol;
+    ctx.lineJoin = 'round';
+    strokeRing(RING_NEAR);
+  }
 
   // ---- the umbo stands PROUD of the face, so it is projected in the
   // local frame with its own dome height — at profile it survives as a
@@ -829,7 +851,6 @@ type FacePainter = (
   st: ShieldStyle,
   fr: ShieldFrame,
   litU: number,
-  nowMs: number,
 ) => void;
 
 const SIGNATURES: Record<string, FacePainter> = {
@@ -838,108 +859,68 @@ const SIGNATURES: Record<string, FacePainter> = {
   pavise: sigPavise,
 };
 
-/** The face: field, signature (or the generic dialect), dish. */
+/**
+ * THE BUDGET. This game paints a sword as a base fill, ONE lit plane
+ * and ONE line. A shield is a bigger object, not a different game: a
+ * face gets its field, at most three structural planes, one charge cut
+ * from flat shapes, and the dish's two planes. That is the whole
+ * allowance. Stitch rings, hammer marks, grain ticks, glints and
+ * one-rivet-per-facet all lived here once and made the shields read as
+ * photographed 3D props standing in a flat vector world.
+ *
+ * Everything below is FLAT FILLS. No gradients, no strokes on the
+ * face, no soft edges anywhere.
+ */
 function drawFace(
   ctx: CanvasRenderingContext2D,
   st: ShieldStyle,
   fr: ShieldFrame,
   litU: number,
-  nowMs: number,
 ): void {
-  // The field, and its division.
   ctx.fillStyle = st.face;
-  ctx.fillRect(-1.1, -1.1, 2.2, 2.2);
+  ctx.fillRect(-1.15, -1.15, 2.3, 2.3);
   // THE GRAZING-ANGLE LAW: past a certain turn the face is a few
-  // pixels wide and every piece of detail on it — seams, charges,
-  // gores — collapses into the same one-pixel column and reads as
-  // shattered debris. Near edge-on the face keeps its field and its
-  // light, and nothing else. What sells the shield there is the SLAB,
-  // which the side-wall pass has already drawn.
+  // pixels wide and every piece of detail on it collapses into the
+  // same one-pixel column and reads as shattered debris. Near edge-on
+  // the face keeps its field and its light, and nothing else.
   if (fr.open < 0.24) {
-    ctx.globalAlpha = 0.16;
-    ctx.fillStyle = litU > 0 ? '#ffffff' : SEAM;
-    ctx.fillRect(0, -1.1, 1.1, 2.2);
-    ctx.fillStyle = litU > 0 ? SEAM : '#ffffff';
-    ctx.fillRect(-1.1, -1.1, 1.1, 2.2);
-    ctx.globalAlpha = 1;
+    ctx.fillStyle = shade(st.face, litU > 0 ? 22 : -26);
+    ctx.fillRect(litU > 0 ? 0 : -1.15, -1.15, 1.15, 2.3);
     return;
   }
-  drawField(ctx, st);
-
   const sig = st.sig ? SIGNATURES[st.sig] : undefined;
-  if (sig) sig(ctx, st, fr, litU, nowMs);
+  if (sig) sig(ctx, st, fr, litU);
   else {
     drawGenericDialect(ctx, st, fr);
     drawDevice(ctx, st, fr);
   }
-
   drawDish(ctx, litU);
-  drawGlint(ctx, nowMs);
-}
-
-/** Heraldic division of the field, under everything else. */
-function drawField(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
-  if (!st.faceAlt || !st.field || st.field === 'plain') return;
-  ctx.fillStyle = st.faceAlt;
-  if (st.field === 'pale') ctx.fillRect(-0.32, -1.1, 0.64, 2.2);
-  else if (st.field === 'chief') ctx.fillRect(-1.1, -1.1, 2.2, 0.62);
-  else if (st.field === 'quarter') {
-    ctx.fillRect(0, -1.1, 1.1, 1.1);
-    ctx.fillRect(-1.1, 0, 1.1, 1.1);
-  } else if (st.field === 'bend') {
-    ctx.beginPath();
-    ctx.moveTo(-1.1, 1.1);
-    ctx.lineTo(1.1, -1.1);
-    ctx.lineTo(1.1, 1.1);
-    ctx.closePath();
-    ctx.fill();
-  }
 }
 
 /**
- * THE DISH, sculpted. Not a stack of vertical bars: the terminator
- * LEANS, because the surface it crosses is a dome and the light comes
- * from up-screen. Three flat planes and one belly shadow, all quiet —
- * the dish is a hint of turn across a face whose real subject is its
- * own material and charge. Loud bands read as wet plastic and bury the
- * heraldry under a glare.
+ * THE DISH, in two planes. The light comes from up-screen, the surface
+ * is a dome, so one side of it turns into the light and the other
+ * falls away — one lit plane, one shadowed plane, both hard-edged and
+ * both leaning with the curve. Nothing else. Three chords and a belly
+ * band used to live here and they buried every charge under a glare.
  */
 function drawDish(ctx: CanvasRenderingContext2D, litU: number): void {
-  // A leaning chord: wide at the top where the dome faces the light,
-  // narrowing toward the belly as the surface rolls away.
-  const chord = (x0: number, x1: number, lean: number, alpha: number, tone: string): void => {
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = tone;
-    ctx.beginPath();
-    ctx.moveTo(litU * x0, -1.15);
-    ctx.lineTo(litU * x1, -1.15);
-    ctx.lineTo(litU * x1, 1.15);
-    ctx.lineTo(litU * (x0 + lean), 1.15);
-    ctx.closePath();
-    ctx.fill();
-  };
-  chord(0.44, 1.18, 0.34, 0.13, '#ffffff');
-  chord(0.06, 0.5, 0.3, 0.06, '#ffffff');
-  chord(-1.18, -0.72, -0.3, 0.19, SEAM);
-  // The lower belly always falls into shadow — the light is up-screen.
-  ctx.globalAlpha = 0.15;
-  ctx.fillStyle = SEAM;
-  ctx.fillRect(-1.15, 0.64, 2.3, 0.6);
-  ctx.globalAlpha = 1;
-}
-
-/** A slow travelling glint — the face is polished, and alive. */
-function drawGlint(ctx: CanvasRenderingContext2D, nowMs: number): void {
-  const g = (nowMs % 5600) / 5600;
-  if (g >= 0.16) return;
-  const u = g / 0.16;
-  ctx.globalAlpha = Math.sin(u * Math.PI) * 0.2;
+  ctx.globalAlpha = 0.12;
   ctx.fillStyle = '#ffffff';
   ctx.beginPath();
-  ctx.moveTo(-1.15 + u * 2.4, -1.15);
-  ctx.lineTo(-1.03 + u * 2.4, -1.15);
-  ctx.lineTo(-1.27 + u * 2.4, 1.15);
-  ctx.lineTo(-1.39 + u * 2.4, 1.15);
+  ctx.moveTo(litU * 0.42, -1.2);
+  ctx.lineTo(litU * 1.2, -1.2);
+  ctx.lineTo(litU * 1.2, 1.2);
+  ctx.lineTo(litU * 0.78, 1.2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 0.2;
+  ctx.fillStyle = SEAM;
+  ctx.beginPath();
+  ctx.moveTo(-litU * 1.2, -1.2);
+  ctx.lineTo(-litU * 0.72, -1.2);
+  ctx.lineTo(-litU * 0.96, 1.2);
+  ctx.lineTo(-litU * 1.2, 1.2);
   ctx.closePath();
   ctx.fill();
   ctx.globalAlpha = 1;
@@ -947,8 +928,7 @@ function drawGlint(ctx: CanvasRenderingContext2D, nowMs: number): void {
 
 /**
  * The floor: a coherent material read for a shield with no signature
- * of its own — a derived drop, a colorway, an NPC's kit. It must never
- * look like a slab, but it must never outshine an authored shield.
+ * of its own. Two planes and a seam — never more than an authored one.
  */
 function drawGenericDialect(
   ctx: CanvasRenderingContext2D,
@@ -956,135 +936,90 @@ function drawGenericDialect(
   fr: ShieldFrame,
 ): void {
   if (st.material === 'wood') {
-    staves(ctx, st, st.planks ?? 4);
-    ctx.fillStyle = shade(st.face, -24);
-    for (let i = 0; i < 7; i++) {
-      const u = -0.86 + i * 0.29;
-      const t = -0.62 + ((i * 37) % 13) * 0.1;
-      ctx.fillRect(u, t, 0.02, 0.5 + ((i * 17) % 5) * 0.08);
-    }
+    staves(ctx, st, 3);
     return;
   }
   if (fr.shape === 'buckler' || fr.shape === 'round') {
-    gores(ctx, st, 8);
+    gores(ctx, st, 4);
     return;
   }
-  // Tall forged shields get a spine and two riveted cross-bands.
-  ctx.fillStyle = shade(st.face, 20);
-  ctx.fillRect(-0.1, -1.1, 0.2, 2.2);
-  ctx.fillStyle = shade(st.face, -22);
-  ctx.fillRect(0.1, -1.1, 0.05, 2.2);
+  ctx.fillStyle = shade(st.face, 18);
+  ctx.fillRect(-0.12, -1.15, 0.24, 2.3);
   ctx.fillStyle = SEAM;
-  ctx.fillRect(-0.125, -1.1, 0.022, 2.2);
-  ctx.fillRect(0.152, -1.1, 0.022, 2.2);
-  for (const t of [-0.56, 0.42]) {
-    ctx.fillStyle = shade(st.rim, 12);
-    ctx.fillRect(-1.1, t, 2.2, 0.16);
-    ctx.fillStyle = SEAM;
-    ctx.fillRect(-1.1, t + 0.16, 2.2, 0.028);
-  }
+  ctx.fillRect(0.12, -1.15, 0.03, 2.3);
+  band(ctx, st, -0.5, 0.16);
+  band(ctx, st, 0.42, 0.16);
 }
 
 // ------------------------------------------------- shared face pieces
 
 /**
- * Riven staves: boards running the shield's height, each seam a hard
- * dark line. THE CROWNED STAVE — every board is a piece of a dished
- * shell, so it carries its own little bevel: lit on the side that
- * turns into the light, dark on the side that rolls away. This is what
- * separates a face made of boards from a face painted to look like it.
+ * Riven staves as BLOCKS. Three or four wide boards, each a flat tone
+ * with one hard seam — a board is a plane, and the eye reads planks
+ * from the seams between them, not from grain drawn on top of them.
  */
-function staves(ctx: CanvasRenderingContext2D, st: ShieldStyle, k: number, crown = 0): void {
-  const w = 2 / k;
+function staves(ctx: CanvasRenderingContext2D, st: ShieldStyle, k: number): void {
+  const w = 2.3 / k;
   for (let i = 0; i < k; i++) {
-    const u0 = -1 + w * i;
-    ctx.fillStyle = i % 2 ? shade(st.face, -13) : shade(st.face, 5);
+    const u0 = -1.15 + w * i;
+    ctx.fillStyle = i % 2 ? shade(st.face, -16) : shade(st.face, 6);
     ctx.fillRect(u0, -1.15, w, 2.3);
-    if (crown > 0) {
-      ctx.fillStyle = shade(st.face, crown);
-      ctx.fillRect(u0 + w * 0.14, -1.15, w * 0.26, 2.3);
-      ctx.fillStyle = shade(st.face, -crown);
-      ctx.fillRect(u0 + w * 0.74, -1.15, w * 0.2, 2.3);
+    if (i > 0) {
+      ctx.fillStyle = SEAM;
+      ctx.fillRect(u0 - 0.018, -1.15, 0.036, 2.3);
     }
-    ctx.fillStyle = SEAM;
-    ctx.fillRect(u0 - 0.012, -1.15, 0.024, 2.3);
   }
 }
 
 /**
  * Gores: the wedges a round shield is raised in, struck out from the
- * umbo. Alternating tones make a dome out of flat fills — the low-poly
- * way to curve steel without a single gradient.
+ * umbo. FOUR of them — big flat facets that turn a disc into a dome
+ * without a single gradient. Eight read as a sunburst decal.
  */
 function gores(ctx: CanvasRenderingContext2D, st: ShieldStyle, k: number): void {
   for (let i = 0; i < k; i++) {
-    const a0 = (i / k) * Math.PI * 2 - Math.PI / 2;
-    const a1 = ((i + 1) / k) * Math.PI * 2 - Math.PI / 2;
-    ctx.fillStyle = i % 2 ? shade(st.face, -14) : shade(st.face, 8);
+    const a0 = (i / k) * Math.PI * 2 - Math.PI * 0.75;
+    const a1 = ((i + 1) / k) * Math.PI * 2 - Math.PI * 0.75;
+    ctx.fillStyle = i % 2 ? shade(st.face, -18) : shade(st.face, 10);
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(a0) * 1.3, Math.sin(a0) * 1.3);
-    ctx.lineTo(Math.cos(a1) * 1.3, Math.sin(a1) * 1.3);
+    ctx.lineTo(Math.cos(a0) * 1.6, Math.sin(a0) * 1.6);
+    ctx.lineTo(Math.cos(a1) * 1.6, Math.sin(a1) * 1.6);
     ctx.closePath();
     ctx.fill();
   }
 }
 
-/** A riveted band across the face — the fitting every tier is built from. */
-function band(
-  ctx: CanvasRenderingContext2D,
-  st: ShieldStyle,
-  t: number,
-  h: number,
-  studs: number,
-  studColor?: string,
-): void {
+/** A band across the face: one plate, one lit top edge, one seam. */
+function band(ctx: CanvasRenderingContext2D, st: ShieldStyle, t: number, h: number): void {
   ctx.fillStyle = st.rim;
-  ctx.fillRect(-1.15, t, 2.3, h);
-  ctx.fillStyle = shade(st.rim, 26);
-  ctx.fillRect(-1.15, t, 2.3, h * 0.3);
+  ctx.fillRect(-1.2, t, 2.4, h);
+  ctx.fillStyle = shade(st.rim, 30);
+  ctx.fillRect(-1.2, t, 2.4, h * 0.32);
   ctx.fillStyle = SEAM;
-  ctx.fillRect(-1.15, t + h, 2.3, 0.026);
-  ctx.fillStyle = studColor ?? shade(st.rim, 44);
-  for (let i = 0; i < studs; i++) {
-    const u = -0.78 + (1.56 * i) / Math.max(1, studs - 1);
-    rivet(ctx, u, t + h * 0.52, 0.045);
-  }
+  ctx.fillRect(-1.2, t + h, 2.4, 0.03);
 }
 
 /**
- * One rivet: a lit diamond seated on its own shadow. The shadow is the
- * SAME diamond nudged down-screen — an earlier cut used a separate
- * triangle hanging below the head, and at every size in the game it
- * read as a little tick mark, so the shields wore rows of check marks
- * instead of rows of rivets.
+ * A stud: one flat diamond on a dark seat. Studs are spent by the
+ * HANDFUL, not one per facet — a countable few read as fixings, a ring
+ * of them reads as machine trim and drags the piece toward 3D.
  */
-function rivet(ctx: CanvasRenderingContext2D, u: number, t: number, r: number): void {
-  const head = ctx.fillStyle;
-  const dia = (du: number, dt: number, k: number): void => {
-    ctx.beginPath();
-    ctx.moveTo(u + du - r * k, t + dt);
-    ctx.lineTo(u + du, t + dt - r * k);
-    ctx.lineTo(u + du + r * k, t + dt);
-    ctx.lineTo(u + du, t + dt + r * k);
-    ctx.closePath();
-    ctx.fill();
-  };
-  // A CENTERED dark ring, never an offset drop-shadow: any dark shape
-  // hanging below a light head resolves, at gameplay size, into a tick
-  // mark, and a row of them turns a riveted band into a row of ticks.
+function stud(ctx: CanvasRenderingContext2D, u: number, t: number, r: number, c: string): void {
   ctx.fillStyle = SEAM;
-  dia(0, 0, 1.34);
-  ctx.fillStyle = head;
-  dia(0, 0, 1);
-  // The struck facet: rivets are peened, so each one holds a highlight
-  // on the same up-screen shoulder as everything else on the shield.
-  ctx.fillStyle = shade(typeof head === 'string' ? head : '#ffffff', 34);
+  ctx.beginPath();
+  ctx.moveTo(u - r * 1.4, t);
+  ctx.lineTo(u, t - r * 1.4);
+  ctx.lineTo(u + r * 1.4, t);
+  ctx.lineTo(u, t + r * 1.4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = c;
   ctx.beginPath();
   ctx.moveTo(u - r, t);
   ctx.lineTo(u, t - r);
-  ctx.lineTo(u, t - r * 0.4);
-  ctx.lineTo(u - r * 0.45, t);
+  ctx.lineTo(u + r, t);
+  ctx.lineTo(u, t + r);
   ctx.closePath();
   ctx.fill();
 }
@@ -1092,134 +1027,30 @@ function rivet(ctx: CanvasRenderingContext2D, u: number, t: number, r: number): 
 // -------------------------------------------------------- signatures
 
 /**
- * SPIKED BUCKLER — oiled hide stretched over a forged iron disc.
- * The whole design is the tension: the leather is pulled down onto the
- * umbo and CREASES radially out of it, a saddler runs a stitch line
- * around the edge to hold the facing to the boards, and the four
- * spikes are bedded on their own punched plates. Rung one, so nothing
- * here is precious — it is a well-made cheap thing, and it reads that
- * way on purpose.
+ * SPIKED BUCKLER — a forged disc in four struck facets, a dark iron
+ * band across it, and four studs on the quarters where the spikes are
+ * bedded. The umbo does the rest of the talking.
  */
-function sigBuckler(
-  ctx: CanvasRenderingContext2D,
-  st: ShieldStyle,
-  _fr: ShieldFrame,
-  litU: number,
-): void {
-  // The creases: thin wedges thrown out from under the umbo. They fan
-  // from a point, so they carry the dome without a single curve.
-  ctx.fillStyle = shade(st.face, -26);
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2 + Math.PI / 24;
-    const w = 0.05;
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(a) * 0.26, Math.sin(a) * 0.26);
-    ctx.lineTo(Math.cos(a + w) * 1.25, Math.sin(a + w) * 1.25);
-    ctx.lineTo(Math.cos(a - w) * 1.25, Math.sin(a - w) * 1.25);
-    ctx.closePath();
-    ctx.fill();
-  }
-  // Each crease throws its own thread of light on the lit side.
-  ctx.globalAlpha = 0.4;
-  ctx.fillStyle = shade(st.face, 30);
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2 + Math.PI / 24;
-    if (Math.cos(a) * litU < 0.1) continue;
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(a) * 0.28, Math.sin(a) * 0.28);
-    ctx.lineTo(Math.cos(a - 0.05) * 1.25, Math.sin(a - 0.05) * 1.25);
-    ctx.lineTo(Math.cos(a - 0.1) * 1.25, Math.sin(a - 0.1) * 1.25);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-  // The saddler's stitch: short tangential marks holding the hide down
-  // just inside the binding. It is the one detail that says "sewn".
-  ctx.fillStyle = shade(st.face, -44);
-  for (let i = 0; i < 20; i++) {
-    const a = (i / 20) * Math.PI * 2;
-    const cu = Math.cos(a);
-    const cs = Math.sin(a);
-    ctx.beginPath();
-    ctx.moveTo(cu * 0.82 - cs * 0.05, cs * 0.82 + cu * 0.05);
-    ctx.lineTo(cu * 0.82 + cs * 0.05, cs * 0.82 - cu * 0.05);
-    ctx.lineTo(cu * 0.88 + cs * 0.05, cs * 0.88 - cu * 0.05);
-    ctx.lineTo(cu * 0.88 - cs * 0.05, cs * 0.88 + cu * 0.05);
-    ctx.closePath();
-    ctx.fill();
-  }
-  // Punched plates bedding the four spikes — the spikes themselves are
-  // projected in the shell's own frame, past the rim, by drawSpikes.
+function sigBuckler(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
+  gores(ctx, st, 4);
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-    const cu = Math.cos(a) * 0.66;
-    const cs = Math.sin(a) * 0.66;
-    ctx.fillStyle = shade(st.rim, 22);
-    ctx.beginPath();
-    for (let k = 0; k < 6; k++) {
-      const b = (k / 6) * Math.PI * 2 + a;
-      const x = cu + Math.cos(b) * 0.19;
-      const y = cs + Math.sin(b) * 0.19;
-      if (k === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = shade(st.rim, 46);
-    rivet(ctx, cu, cs, 0.06);
+    stud(ctx, Math.cos(a) * 0.6, Math.sin(a) * 0.6, 0.1, shade(st.rim, 30));
   }
 }
 
 /**
- * OAK KITESHIELD — five riven staves under bright bronze.
- * The staves are CROWNED (each board carries its own bevel of light),
- * the grain runs their length, and the charge is a hammered bronze
- * chevron: two bars meeting at a peak, riveted at all three terminals
- * with a rondel washer capping the joint. Rung two buys real metal on
- * the face, and the bronze is pitched bright enough that the shield
- * never merges into the wood it is made of.
+ * OAK KITESHIELD — three wide boards and a bronze chevron. That is the
+ * entire shield: the boards are the material, the chevron is the
+ * charge, and the bound rim frames both.
  */
-function sigOakKite(
-  ctx: CanvasRenderingContext2D,
-  st: ShieldStyle,
-  _fr: ShieldFrame,
-  _litU: number,
-): void {
-  staves(ctx, st, st.planks ?? 5, 19);
-  // Grain: long ticks running with the boards, never across them.
-  ctx.fillStyle = shade(st.face, -26);
-  for (let i = 0; i < 9; i++) {
-    const u = -0.9 + i * 0.225;
-    const t = -0.72 + ((i * 37) % 13) * 0.11;
-    ctx.fillRect(u, t, 0.018, 0.46 + ((i * 17) % 5) * 0.1);
-  }
-  // A bronze foot-cap: the point of a kite is what gets driven into
-  // the mud, so it is the one place the binding doubles.
-  ctx.fillStyle = shade(st.rim, -14);
-  ctx.beginPath();
-  ctx.moveTo(-0.3, 0.74);
-  ctx.lineTo(0.3, 0.74);
-  ctx.lineTo(0.1, 1.15);
-  ctx.lineTo(-0.1, 1.15);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = shade(st.rim, 12);
-  ctx.beginPath();
-  ctx.moveTo(-0.3, 0.74);
-  ctx.lineTo(-0.06, 0.74);
-  ctx.lineTo(-0.1, 1.15);
-  ctx.closePath();
-  ctx.fill();
-
-  // ---- the chevron, hammered from bar stock.
-  // The bar is fitted INSIDE the binding: a kite narrows fast, so a
-  // chevron drawn to full width runs off the boards and welds itself
-  // to the rim. Arms end where the shield still has face to give them.
+function sigOakKite(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
+  staves(ctx, st, 3);
   const c = st.deviceColor ?? shade(st.rim, 30);
-  const peak = -0.36;
-  const arm = 0.4;
-  const ax = 0.88;
-  const w = 0.34;
+  const peak = -0.34;
+  const arm = 0.42;
+  const ax = 0.86;
+  const w = 0.36;
   const bar = (o: number, tone: string): void => {
     ctx.fillStyle = tone;
     ctx.beginPath();
@@ -1232,182 +1063,71 @@ function sigOakKite(
     ctx.closePath();
     ctx.fill();
   };
-  bar(0.06, SEAM); // the shadow the bar throws on the boards
-  bar(0, shade(c, -34));
-  // The lit top edge of the bar: a hammered face catches one plane.
-  ctx.fillStyle = shade(c, 26);
+  bar(0.07, SEAM);
+  bar(0, c);
+  // ONE lit plane along the bar's top — the house's whole shading law.
+  ctx.fillStyle = shade(c, 30);
   ctx.beginPath();
   ctx.moveTo(-ax, arm);
   ctx.lineTo(0, peak);
   ctx.lineTo(ax, arm);
-  ctx.lineTo(ax, arm + 0.1);
-  ctx.lineTo(0, peak + 0.15);
-  ctx.lineTo(-ax, arm + 0.1);
+  ctx.lineTo(ax, arm + 0.11);
+  ctx.lineTo(0, peak + 0.16);
+  ctx.lineTo(-ax, arm + 0.11);
   ctx.closePath();
   ctx.fill();
-  // Hammer marks: short facets stepping down each arm.
-  ctx.fillStyle = shade(c, -14);
-  for (let i = 1; i < 4; i++) {
-    const f = i / 4;
-    for (const sx of [-1, 1]) {
-      const x = sx * ax * f;
-      const y = arm + (peak - arm) * (1 - f);
-      ctx.fillRect(x - 0.035, y + 0.09, 0.07, 0.14);
-    }
-  }
-  // Rivets at both terminals, and the rondel capping the joint.
-  ctx.fillStyle = shade(c, 44);
-  rivet(ctx, -ax + 0.1, arm + 0.15, 0.065);
-  rivet(ctx, ax - 0.1, arm + 0.15, 0.065);
-  const rt = peak + 0.24;
-  const disc = (r: number, tone: string): void => {
-    ctx.fillStyle = tone;
-    ctx.beginPath();
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
-      const x = Math.cos(a) * r;
-      const y = rt + Math.sin(a) * r;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fill();
-  };
-  disc(0.22, SEAM);
-  disc(0.19, shade(c, -26));
-  disc(0.14, shade(c, 14));
-  ctx.fillStyle = shade(c, 50);
-  rivet(ctx, 0, rt, 0.055);
+  stud(ctx, 0, peak + 0.34, 0.1, shade(c, 44));
 }
 
 /**
- * TOWER SHIELD — the fluted pavise, and the top of the ladder.
- * Seven flutes run crown to heel so the steel turns the light seven
- * times across its width; a deep enamelled pale is painted down the
- * middle and a raised spine riveted along it; two cross-bands, a brow
- * band following the arch, and cornerplates bolted over all four
- * heels. Its charge is not painted on — it is a bright lozenge PLATE
- * riveted to the enamel, standing proud of everything around it.
+ * TOWER SHIELD — three steel planes, an enamelled pale down the
+ * middle, two riveted bands, and a lozenge plate. The flutes, brow
+ * band and cornerplates are gone: they were seven more edges arguing
+ * with a body drawn in four.
  */
-function sigPavise(
-  ctx: CanvasRenderingContext2D,
-  st: ShieldStyle,
-  _fr: ShieldFrame,
-  litU: number,
-): void {
-  // ---- the flutes. Alternating planes with a hard seam in every
-  // valley: this is how flat fills read as corrugated steel.
-  const k = 7;
-  const w = 2.3 / k;
-  for (let i = 0; i < k; i++) {
-    const u0 = -1.15 + w * i;
-    ctx.fillStyle = i % 2 ? shade(st.face, -24) : shade(st.face, 12);
-    ctx.fillRect(u0, -1.15, w, 2.3);
-    ctx.fillStyle = shade(st.face, 34);
-    ctx.fillRect(u0 + w * (litU > 0 ? 0.62 : 0.12), -1.15, w * 0.2, 2.3);
-    ctx.fillStyle = SEAM;
-    ctx.fillRect(u0 - 0.011, -1.15, 0.022, 2.3);
-  }
+function sigPavise(ctx: CanvasRenderingContext2D, st: ShieldStyle, fr: ShieldFrame, litU: number): void {
+  // Three plates across the width, the middle one standing proud.
+  ctx.fillStyle = shade(st.face, litU > 0 ? -16 : 12);
+  ctx.fillRect(-1.2, -1.2, 1.2, 2.4);
+  ctx.fillStyle = shade(st.face, litU > 0 ? 12 : -16);
+  ctx.fillRect(0, -1.2, 1.2, 2.4);
 
-  // ---- the enamelled pale, laid over the flutes and hard-edged.
   const enamel = st.faceAlt ?? shade(st.face, -60);
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(-0.42, -1.2, 0.84, 2.4);
   ctx.fillStyle = enamel;
-  ctx.fillRect(-0.34, -1.15, 0.68, 2.3);
-  ctx.fillStyle = shade(enamel, 20);
-  ctx.fillRect(-0.34, -1.15, 0.1, 2.3);
-  ctx.fillStyle = SEAM;
-  ctx.fillRect(-0.36, -1.15, 0.026, 2.3);
-  ctx.fillRect(0.334, -1.15, 0.026, 2.3);
-  // The raised spine down the enamel, holding one hard specular the
-  // whole height of the shield — the line the eye follows first.
-  ctx.fillStyle = shade(st.rim, 10);
-  ctx.fillRect(-0.09, -1.15, 0.18, 2.3);
-  ctx.fillStyle = shade(st.rim, 54);
-  ctx.fillRect(-0.075, -1.15, 0.06, 2.3);
-  ctx.fillStyle = SEAM;
-  ctx.fillRect(0.09, -1.15, 0.024, 2.3);
+  ctx.fillRect(-0.38, -1.2, 0.76, 2.4);
+  ctx.fillStyle = shade(enamel, 22);
+  ctx.fillRect(-0.38, -1.2, 0.16, 2.4);
 
-  // ---- the fittings.
-  band(ctx, st, -0.62, 0.15, 7, BRASS);
-  band(ctx, st, 0.5, 0.15, 7, BRASS);
-  // The brow: a band following the crown, where a pavise takes the
-  // blows it is actually raised against.
-  ctx.fillStyle = shade(st.rim, 8);
-  ctx.fillRect(-1.15, -1.0, 2.3, 0.17);
-  ctx.fillStyle = shade(st.rim, 32);
-  ctx.fillRect(-1.15, -1.0, 2.3, 0.05);
-  ctx.fillStyle = SEAM;
-  ctx.fillRect(-1.15, -0.83, 2.3, 0.026);
-  // Cornerplates over the four heels — bolted iron where a carried
-  // door gets set down and dragged.
-  for (const sx of [-1, 1]) {
-    for (const sy of [-1, 1]) {
-      ctx.fillStyle = shade(st.rim, sy < 0 ? 20 : -8);
-      ctx.beginPath();
-      ctx.moveTo(sx * 1.15, sy * 1.15);
-      ctx.lineTo(sx * 0.42, sy * 1.15);
-      ctx.lineTo(sx * 1.15, sy * 0.5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = SEAM;
-      ctx.beginPath();
-      ctx.moveTo(sx * 0.42, sy * 1.15);
-      ctx.lineTo(sx * 1.15, sy * 0.5);
-      ctx.lineTo(sx * 1.1, sy * 0.44);
-      ctx.lineTo(sx * 0.36, sy * 1.15);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = BRASS;
-      rivet(ctx, sx * 0.78, sy * 0.92, 0.05);
-    }
-  }
+  band(ctx, st, -0.62, 0.17);
+  band(ctx, st, 0.46, 0.17);
+  stud(ctx, -0.72, -0.53, 0.075, BRASS);
+  stud(ctx, 0.72, -0.53, 0.075, BRASS);
+  stud(ctx, -0.72, 0.55, 0.075, BRASS);
+  stud(ctx, 0.72, 0.55, 0.075, BRASS);
 
-  // ---- the charge: a lozenge plate, riveted on. Not heraldry painted
-  // onto a board — a piece of bright steel a smith cut and fixed.
+  // The charge: a lozenge plate in three flat planes — seat, face,
+  // shadow. Riveted on, not painted on.
   const c = st.deviceColor ?? shade(st.rim, 40);
-  const ty = -0.06;
-  const lozenge = (r: number, tone: string): void => {
+  const ty = -0.08;
+  const poly = (tone: string, pts: number[]): void => {
     ctx.fillStyle = tone;
     ctx.beginPath();
-    ctx.moveTo(0, ty - 0.46 * r);
-    ctx.lineTo(0.33 * r, ty);
-    ctx.lineTo(0, ty + 0.46 * r);
-    ctx.lineTo(-0.33 * r, ty);
+    for (let i = 0; i < pts.length; i += 2) {
+      if (i === 0) ctx.moveTo(pts[i]!, pts[i + 1]!);
+      else ctx.lineTo(pts[i]!, pts[i + 1]!);
+    }
     ctx.closePath();
     ctx.fill();
   };
-  lozenge(1.14, SEAM);
-  lozenge(1, shade(c, -46));
-  // The plate's two cut planes: lit up-screen, shadowed below.
-  ctx.fillStyle = c;
-  ctx.beginPath();
-  ctx.moveTo(0, ty - 0.46);
-  ctx.lineTo(0.33, ty);
-  ctx.lineTo(0, ty);
-  ctx.lineTo(-0.33, ty);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = shade(c, -44);
-  ctx.beginPath();
-  ctx.moveTo(-0.33, ty);
-  ctx.lineTo(0.33, ty);
-  ctx.lineTo(0, ty + 0.46);
-  ctx.closePath();
-  ctx.fill();
-  // A sunk centre, so the plate reads as struck rather than flat.
-  ctx.fillStyle = shade(c, -78);
-  ctx.beginPath();
-  ctx.moveTo(0, ty - 0.11);
-  ctx.lineTo(0.08, ty);
-  ctx.lineTo(0, ty + 0.11);
-  ctx.lineTo(-0.08, ty);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = shade(c, 30);
-  rivet(ctx, 0, ty - 0.36, 0.05);
-  rivet(ctx, 0, ty + 0.36, 0.05);
+  const R = 0.52;
+  const W = 0.38;
+  poly(SEAM, [0, ty - R * 1.2, W * 1.2, ty, 0, ty + R * 1.2, -W * 1.2, ty]);
+  poly(c, [0, ty - R, W, ty, 0, ty + R, -W, ty]);
+  // ONE shadowed plane below the waist — the plate's second cut face.
+  poly(shade(c, -52), [-W, ty, W, ty, 0, ty + R]);
 }
-
 /** The heraldic charge, cut in flat planes with one lit facet. */
 function drawDevice(ctx: CanvasRenderingContext2D, st: ShieldStyle, fr: ShieldFrame): void {
   const dev = st.device ?? 'none';
@@ -1561,74 +1281,52 @@ function drawBack(
   // The grazing-angle law holds on the inside too.
   if (fr.open < 0.24) return;
   if (st.material === 'wood') {
-    // Unplaned boards: the inside of a shield is where the carpentry
-    // shows, so the seams are wider and the battens are real timber
-    // with a lit top edge and a shadow thrown under them.
-    const k = st.planks ?? 4;
-    for (let i = 0; i < k; i++) {
-      const u0 = -1 + (2 * i) / k;
+    // The same three boards, seen from behind, plus the two battens
+    // without which they would fall apart. Two planes each, no pegs.
+    for (let i = 1; i < 3; i++) {
       ctx.fillStyle = SEAM;
-      ctx.fillRect(u0 - 0.015, -1.15, 0.03, 2.3);
+      ctx.fillRect(-1.15 + (2.3 / 3) * i - 0.018, -1.15, 0.036, 2.3);
     }
-    for (const t of [-0.52, 0.36]) {
+    for (const t of [-0.5, 0.38]) {
       ctx.fillStyle = SEAM;
-      ctx.fillRect(-1.15, t + 0.16, 2.3, 0.05);
-      ctx.fillStyle = shade(base, 14);
-      ctx.fillRect(-1.15, t, 2.3, 0.16);
-      ctx.fillStyle = shade(base, 34);
-      ctx.fillRect(-1.15, t, 2.3, 0.05);
-      // Pegs holding the batten into the boards.
-      ctx.fillStyle = shade(base, -18);
-      for (let i = 0; i < 4; i++) rivet(ctx, -0.66 + i * 0.44, t + 0.08, 0.04);
+      ctx.fillRect(-1.2, t + 0.18, 2.4, 0.05);
+      ctx.fillStyle = shade(base, 16);
+      ctx.fillRect(-1.2, t, 2.4, 0.18);
+      ctx.fillStyle = shade(base, 36);
+      ctx.fillRect(-1.2, t, 2.4, 0.055);
     }
   } else {
-    // A plate core, ribbed vertically — and the rivets that hold the
-    // face's fittings come THROUGH, peened flat on this side. The
-    // honesty of that is the whole reason to draw a back at all.
-    for (let i = 0; i < 5; i++) {
-      ctx.fillStyle = i % 2 ? shade(base, 16) : shade(base, -12);
-      ctx.fillRect(-1.15 + i * 0.46, -1.15, 0.46, 2.3);
-    }
-    ctx.fillStyle = shade(base, -20);
-    ctx.fillRect(-1.15, -0.1, 2.3, 0.2);
-    ctx.fillStyle = shade(base, 26);
-    for (const t of [-0.62, 0.5]) {
-      for (let i = 0; i < 7; i++) rivet(ctx, -0.78 + i * 0.26, t + 0.08, 0.04);
-    }
+    // A plate core in two planes with one hard seam down it.
+    ctx.fillStyle = shade(base, 14);
+    ctx.fillRect(-1.2, -1.2, 1.2, 2.4);
+    ctx.fillStyle = SEAM;
+    ctx.fillRect(-0.02, -1.2, 0.04, 2.4);
   }
+  // The inside is a bowl: one shadowed plane where the face carries a
+  // lit one. That inversion is the single tell that we are looking at
+  // the other side of the shield.
+  ctx.globalAlpha = 0.24;
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(litU > 0 ? -1.2 : 0.2, -1.2, 1.0, 2.4);
+  ctx.globalAlpha = 1;
   // THE HOLLOW UMBO. A fist-gripped shield is punched, not solid: the
-  // dome that stands proud of the face is a CAVITY on this side, and
-  // the hand lives inside it. Drawing that hollow is the difference
-  // between a back and the back of THIS shield.
+  // dome standing proud of the face is a CAVITY on this side, and the
+  // hand lives inside it.
   if (st.boss && !METRIC[fr.shape].strap) {
     const cup = (r: number, tone: string): void => {
       ctx.fillStyle = tone;
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
         const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
-        const x = Math.cos(a) * r;
-        const y = Math.sin(a) * r;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+        if (i === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+        else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
       }
       ctx.closePath();
       ctx.fill();
     };
-    // Kept small and read as METAL in shadow, not as a hole: a cavity
-    // pitched at the house dark punches a black window through the
-    // middle of the shield and swallows the grip bar crossing it.
-    cup(0.32, shade(st.rim, -12));
-    cup(0.26, shade(st.rim, -38));
+    cup(0.34, SEAM);
+    cup(0.28, shade(st.rim, -34));
   }
-  // The inside is a bowl: it darkens toward the middle, opposite the
-  // face's dish — the single tell that we are seeing the other side.
-  ctx.globalAlpha = 0.26;
-  ctx.fillStyle = SEAM;
-  ctx.fillRect(-0.6, -1.1, 1.2, 2.2);
-  ctx.globalAlpha = 0.18;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(litU > 0 ? 0.6 : -1.1, -1.1, 0.5, 2.2);
-  ctx.globalAlpha = 1;
   drawEnarmes(ctx, st, fr);
 }
 
@@ -1669,99 +1367,69 @@ function drawEnarmes(ctx: CanvasRenderingContext2D, st: ShieldStyle, fr: ShieldF
   ctx.restore();
 }
 
-/** The bound rim, as a real band of metal around the face. */
+/**
+ * The bound rim: ONE flat band and ONE dark seam under it. The band
+ * used to carry a clipped half-highlight and a second graduated
+ * under-seam and a stud at every facet corner — four passes making a
+ * bevelled 3D moulding out of what should be a flat frame.
+ */
 function drawRim(
   ctx: CanvasRenderingContext2D,
   st: ShieldStyle,
   fr: ShieldFrame,
   outline: number[],
   n: number,
-  litU: number,
 ): void {
-  const band = st.material === 'wood' ? 0.1 : 0.062;
+  const w = st.material === 'wood' ? 0.115 : 0.085;
+  const ring = (k: number): void => {
+    for (let i = 0; i < n; i++) {
+      const u = outline[i * 2]! * k;
+      const t = outline[i * 2 + 1]! * k;
+      if (i === 0) ctx.moveTo(u, t);
+      else ctx.lineTo(u, t);
+    }
+    ctx.closePath();
+  };
   ctx.beginPath();
-  for (let i = 0; i < n; i++) {
-    const u = outline[i * 2]!;
-    const t = outline[i * 2 + 1]!;
-    if (i === 0) ctx.moveTo(u, t);
-    else ctx.lineTo(u, t);
-  }
-  ctx.closePath();
+  ring(1);
   for (let i = n - 1; i >= 0; i--) {
-    const u = outline[i * 2]! * (1 - band);
-    const t = outline[i * 2 + 1]! * (1 - band);
+    const u = outline[i * 2]! * (1 - w);
+    const t = outline[i * 2 + 1]! * (1 - w);
     if (i === n - 1) ctx.moveTo(u, t);
     else ctx.lineTo(u, t);
   }
   ctx.closePath();
   ctx.fillStyle = st.rim;
   ctx.fill('evenodd');
-  // The binding's own light: the up-screen-lit quarter brighter, so
-  // the band reads as raised metal wrapping a curve. The ring path is
-  // REBUILT under the clip — clipping consumes the current path, and
-  // re-filling it after painted the clip rectangle itself across half
-  // the body (the white slab that ate the first pass).
-  ctx.save();
+  // One dark line where the metal laps over the field: without it the
+  // rim is a colour change, with it the rim is a separate PIECE.
   ctx.beginPath();
-  ctx.rect(litU > 0 ? 0 : -1.12, -1.12, 1.12, 1.5);
-  ctx.clip();
-  ctx.beginPath();
-  for (let i = 0; i < n; i++) {
-    const u = outline[i * 2]!;
-    const t = outline[i * 2 + 1]!;
-    if (i === 0) ctx.moveTo(u, t);
-    else ctx.lineTo(u, t);
-  }
-  ctx.closePath();
+  ring(1 - w);
   for (let i = n - 1; i >= 0; i--) {
-    const u = outline[i * 2]! * (1 - band);
-    const t = outline[i * 2 + 1]! * (1 - band);
-    if (i === n - 1) ctx.moveTo(u, t);
-    else ctx.lineTo(u, t);
-  }
-  ctx.closePath();
-  ctx.globalAlpha = 0.34;
-  ctx.fillStyle = '#ffffff';
-  ctx.fill('evenodd');
-  ctx.restore();
-  ctx.globalAlpha = 1;
-  // The seam under the binding: one dark line where the metal laps
-  // over the field. Without it the rim is a color change; with it the
-  // rim is a separate PIECE, bolted over the boards.
-  ctx.beginPath();
-  for (let i = 0; i < n; i++) {
-    const u = outline[i * 2]! * (1 - band);
-    const t = outline[i * 2 + 1]! * (1 - band);
-    if (i === 0) ctx.moveTo(u, t);
-    else ctx.lineTo(u, t);
-  }
-  ctx.closePath();
-  for (let i = n - 1; i >= 0; i--) {
-    const u = outline[i * 2]! * (1 - band - 0.035);
-    const t = outline[i * 2 + 1]! * (1 - band - 0.035);
+    const u = outline[i * 2]! * (1 - w - 0.045);
+    const t = outline[i * 2 + 1]! * (1 - w - 0.045);
     if (i === n - 1) ctx.moveTo(u, t);
     else ctx.lineTo(u, t);
   }
   ctx.closePath();
   ctx.fillStyle = SEAM;
-  ctx.globalAlpha = 0.55;
   ctx.fill('evenodd');
-  ctx.globalAlpha = 1;
-  // Rivets: one at every facet corner of the binding — the count IS
-  // the craftsmanship read, and it survives to small zooms.
+  // A handful of studs, on the corners the eye already reads — never
+  // one per facet. Four on a disc, four down a tall shield.
   if (st.studs) {
-    ctx.fillStyle = shade(st.rim, 34);
-    const r = 0.052;
-    for (let i = 0; i < n; i++) {
-      const u = outline[i * 2]! * (1 - band * 0.5);
-      const t = outline[i * 2 + 1]! * (1 - band * 0.5);
-      ctx.beginPath();
-      ctx.moveTo(u - r, t);
-      ctx.lineTo(u, t - r);
-      ctx.lineTo(u + r, t);
-      ctx.lineTo(u, t + r);
-      ctx.closePath();
-      ctx.fill();
+    const c = shade(st.rim, 36);
+    const k = 1 - w * 0.5;
+    if (fr.shape === 'buckler' || fr.shape === 'round') {
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+        stud(ctx, Math.cos(a) * k, Math.sin(a) * k, 0.075, c);
+      }
+    } else {
+      // Every other vertex of the binding, so the count stays low and
+      // the studs land where the frame actually turns a corner.
+      for (let i = 1; i < n; i += 2) {
+        stud(ctx, outline[i * 2]! * k, outline[i * 2 + 1]! * k, 0.075, c);
+      }
     }
   }
 }
@@ -1816,14 +1484,19 @@ function drawBoss(
   }
   ctx.closePath();
   ctx.fill();
-  // The crown facet: one hard highlight up-screen-left, the glint that
-  // tells the eye this is polished metal and not a painted circle.
-  ctx.fillStyle = shade(boss, 46);
+  // ONE lit facet across the dome's up-screen half — the same single
+  // shading plane every other piece of metal in the game gets.
+  ctx.fillStyle = shade(boss, 40);
   ctx.beginPath();
-  ctx.moveTo(-ax * 0.42, -ay * 0.42 - ry * 0.5);
-  ctx.lineTo(ax * 0.1, ay * 0.1 - ry * 0.62);
-  ctx.lineTo(-ax * 0.1, -ay * 0.1 - ry * 0.12);
-  ctx.lineTo(-ax * 0.5, -ay * 0.5 - ry * 0.06);
+  for (let i = 3; i <= 6; i++) {
+    const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+    const u = Math.cos(a);
+    const t = Math.sin(a);
+    const x = u * ax * 0.94;
+    const y = u * ay * 0.94 + t * ry * 0.94;
+    if (i === 3) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
   ctx.closePath();
   ctx.fill();
   ctx.restore();
@@ -1865,14 +1538,6 @@ function drawSpikes(
     ctx.moveTo(px(cu * root + wu), py(cu * root + wu, ct2 * root + wt));
     ctx.lineTo(px(cu * tip), py(cu * tip, ct2 * tip));
     ctx.lineTo(px(cu * root - wu), py(cu * root - wu, ct2 * root - wt));
-    ctx.closePath();
-    ctx.fill();
-    // A lit facet down one side: forged steel, never a paper triangle.
-    ctx.fillStyle = shade(c, 30);
-    ctx.beginPath();
-    ctx.moveTo(px(cu * root + wu), py(cu * root + wu, ct2 * root + wt));
-    ctx.lineTo(px(cu * tip), py(cu * tip, ct2 * tip));
-    ctx.lineTo(px(cu * root + wu * 0.15), py(cu * root + wu * 0.15, ct2 * root + wt * 0.15));
     ctx.closePath();
     ctx.fill();
   }

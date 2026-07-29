@@ -7,7 +7,13 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SHIELD_STYLES, shieldStyle, solveShield, type ShieldStyle } from './shields.js';
+import {
+  SHIELD_STYLES,
+  drawShieldAt,
+  shieldStyle,
+  solveShield,
+  type ShieldStyle,
+} from './shields.js';
 
 const S = 100;
 
@@ -227,6 +233,43 @@ test('THE NEAR-ARM LAW: at a dead profile the shield still paints in front', () 
   for (const st of [KITE, TOWER]) {
     assert.ok(solve(st, 0).front, `${st.shape} vanished behind the body facing east`);
     assert.ok(solve(st, Math.PI).front, `${st.shape} vanished behind the body facing west`);
+  }
+});
+
+test('THE UNIT-SPACE LAW: no stroke is wider than the shield it rings', () => {
+  // The rig paints in screen PIXELS; the inventory icons paint in a
+  // UNIT SQUARE (renderIcon scales the whole context by the icon's
+  // size). So any absolute pixel floor on a lineWidth — a perfectly
+  // reasonable `Math.max(1.3, …)` — becomes, in the icon, a stroke
+  // wider than the entire icon, and every shield disappears under its
+  // own outline. Widths in this file must be in the shield's units.
+  const widths: number[] = [];
+  const ctx = new Proxy(
+    { lineWidth: 1 },
+    {
+      get(t, p: string) {
+        if (p in t) return t[p as 'lineWidth'];
+        return () => undefined;
+      },
+      set(t, p: string, v) {
+        if (p === 'lineWidth') widths.push(v as number);
+        (t as Record<string, unknown>)[p] = v;
+        return true;
+      },
+    },
+  ) as unknown as CanvasRenderingContext2D;
+  const SIZE = 0.42; // exactly what offhandIconPainter asks for
+  for (const st of Object.values(SHIELD_STYLES)) {
+    for (const theta of [0, 0.42, 1.2, Math.PI / 2, 2.4, Math.PI]) {
+      drawShieldAt(ctx, st, { cx: 0, cy: 0, size: SIZE, theta, tilt: -0.1, oside: 1 });
+    }
+  }
+  assert.ok(widths.length > 0, 'nothing stroked — the outline pass went missing');
+  for (const w of widths) {
+    assert.ok(
+      w > 0 && w < SIZE,
+      `a stroke of ${w} in a shield of half-height ${SIZE} would swallow the icon`,
+    );
   }
 });
 
