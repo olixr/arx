@@ -394,6 +394,34 @@ function shieldFace(c: Ctx, x: number, y: number, s: number, st: FxStyle, rot = 
  * fists (the length of the handle is what says "two-handed" at plate
  * size). The whole great school speaks through this one shape.
  */
+/**
+ * The double-headed greataxe glyph — THE ARMORY's second silhouette.
+ * A war haft with twin mirrored bits flaring off the crown and a
+ * finishing spike past them; the two heads are the icon's whole
+ * argument that this is the axe school, not the blade.
+ */
+function greataxe(c: Ctx, x: number, y: number, len: number, st: FxStyle, ang = 0): void {
+  c.save();
+  c.translate(x, y);
+  c.rotate(ang);
+  const h = len / 2;
+  // The war haft, butt-weighted like the greatblade's grip.
+  c.fillStyle = '#5b4028';
+  c.fillRect(-h, -0.032, h * 1.86, 0.064);
+  c.strokeStyle = OUTLINE;
+  c.lineWidth = 0.024;
+  c.strokeRect(-h, -0.032, h * 1.86, 0.064);
+  // Twin bits: mirrored wedges flaring wide of the crown.
+  const cx = h * 0.56;
+  poly(c, st.mid, [[cx - 0.08, -0.05], [cx - 0.15, -0.28], [cx + 0.21, -0.3], [cx + 0.12, -0.05]], 0.03);
+  poly(c, st.mid, [[cx - 0.08, 0.05], [cx - 0.15, 0.28], [cx + 0.21, 0.3], [cx + 0.12, 0.05]], 0.03);
+  // One lit facet on the upper bit — the sun law at plate scale.
+  fill(c, st.core, [[cx - 0.15, -0.28], [cx + 0.21, -0.3], [cx + 0.15, -0.19], [cx - 0.13, -0.18]]);
+  // The finishing spike past the crown.
+  poly(c, st.mid, [[h * 0.84, -0.04], [h * 1.1, 0], [h * 0.84, 0.04]], 0.026);
+  c.restore();
+}
+
 function greatblade(c: Ctx, x: number, y: number, len: number, st: FxStyle, ang = 0): void {
   c.save();
   c.translate(x, y);
@@ -2609,6 +2637,119 @@ Object.assign(PLATES, {
     }
     ground(c, 0, 0.34, st);
     star4(c, 0, 0.3, 0.11, st.core, Math.PI / 4);
+  },
+
+  // ------------------------ THE ARMORY — the bespoke Weapon Arts
+  // Hewer's Wheel — the full round of the double head: the closed
+  // sweep ring with the axe leveled through its own circle.
+  hewers_wheel: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, 0.02, 0.37, 0.44, -2.9, 2.9, st.spark, 0.03);
+    greataxe(c, 0, -0.02, 0.9, st, 0.0);
+  },
+  // Reaver's Due — the toll arm: the blade swung flat, the shove
+  // chevrons carrying whoever argued off the road.
+  reavers_due: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    greatblade(c, -0.04, -0.04, 0.9, st, 0.1);
+    chevrons(c, 0.22, 0.2, 0, st, 2, 0.85);
+    dot(c, st.spark, -0.32, 0.24, 0.06);
+  },
+  // Mournfield — the marked plot: the blade planted as its own
+  // headstone inside the slow ground it keeps.
+  mournfield: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    ground(c, 0, 0.42, st);
+    haloArcs(c, 0, 0.14, st);
+    greatblade(c, 0, -0.12, 0.8, st, Math.PI / 2);
+  },
+  // Ash Harvest — the reap: the low crescent, the wave-edge above it,
+  // and the embers that finish the row.
+  ash_harvest: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, 0.08, 0.35, 0.42, 0.4, 2.7, st.spark, 0.03);
+    greatblade(c, 0, -0.06, 0.9, st, 0.4);
+    dot(c, st.core, -0.26, 0.02, 0.04);
+    dot(c, st.spark, -0.34, -0.12, 0.03);
+    dot(c, st.core, -0.18, -0.2, 0.025);
+  },
+  // Glacier Sunder — the cold from above: the blade mid-fall over a
+  // fissured landing, the frost star where it meets.
+  glacier_sunder: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    ground(c, 0, 0.4, st);
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.03;
+    for (const [a, len] of [[0.4, 0.34], [2.7, 0.3], [-2.1, 0.26]] as const) {
+      c.beginPath();
+      c.moveTo(Math.cos(a) * 0.08, 0.2 + Math.sin(a) * 0.04);
+      c.lineTo(Math.cos(a) * len, 0.2 + Math.sin(a) * len * 0.22);
+      c.stroke();
+    }
+    greatblade(c, 0.04, -0.12, 0.84, st, Math.PI / 2 - 0.16);
+    star4(c, 0, 0.2, 0.11, st.core);
+  },
+  // The Crown's Word — spoken twice: two nova rings off the upright
+  // blade, the crown over the pommel.
+  crowns_word: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    novaRing(c, 0, 0.02, 0.44, st, 12, 0.2, 0.03);
+    novaRing(c, 0, 0.02, 0.3, st, 10, 0.2, 0.026);
+    greatblade(c, 0, -0.06, 0.82, st, Math.PI / 2);
+    crown(c, 0, -0.38, 0.22, st.mid, st.core);
+  },
+  // Last Argument — the closing line: the blade across the whole
+  // frame, the widest sweep the plates own, the full stop at the tip.
+  last_argument: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, 0.04, 0.38, 0.46, -2.6, 2.6, st.spark, 0.032);
+    greatblade(c, 0, -0.04, 0.96, st, -0.06);
+    star4(c, 0.4, -0.08, 0.09, st.core);
+  },
+  // Barrow Bite — fed jaws: the axe over the skull that remembers,
+  // the bite crescent closing.
+  barrow_bite: (st) => (c) => {
+    c.translate(0.5, 0.48);
+    crescent(c, 0, 0.08, 0.34, 0.4, 0.5, 2.7, st.spark, 0.028);
+    greataxe(c, 0.02, -0.08, 0.88, st, 0.42);
+    skull(c, -0.26, 0.28, 0.5, st.core, st.deep);
+  },
+  // Thunderfell — the stroke and the storm: the axe mid-fall with the
+  // bolt landing beside it, neither first.
+  thunder_fell: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    ground(c, 0, 0.38, st);
+    poly(c, st.spark, [[-0.16, -0.42], [-0.26, -0.12], [-0.18, -0.14], [-0.32, 0.18]], 0.026);
+    greataxe(c, 0.1, -0.1, 0.86, st, Math.PI / 2 - 0.28);
+    star4(c, 0.02, 0.2, 0.1, st.core, Math.PI / 4);
+  },
+  // White Heat — the willing metal: the axe upright in its own rising
+  // forge pillar, sparks keeping the temper.
+  white_heat: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    haloArcs(c, 0, 0.1, st);
+    poly(c, st.mid, [[-0.05, -0.06], [0.05, -0.06], [0.05, 0.34], [-0.05, 0.34]], 0.028);
+    greataxe(c, 0.06, -0.18, 0.78, st, -0.5);
+    dot(c, st.core, -0.2, -0.1, 0.045);
+    dot(c, st.spark, -0.26, -0.26, 0.03);
+  },
+  // Pale Crescent — the quiet arc: one thin moon-wide band and the
+  // axe carried through it on the ebb.
+  pale_crescent: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, 0, 0.4, 0.45, -2.4, 0.6, st.spark, 0.024);
+    greataxe(c, 0, 0.02, 0.9, st, -0.24);
+    star4(c, -0.3, -0.3, 0.06, st.core);
+  },
+  // Horizon Fall — the brought mountain: the axe at the top of the
+  // leap, the long way down, the crater that ends the map.
+  horizon_fall: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    chevrons(c, -0.24, -0.32, Math.PI / 2, st, 2, 0.95);
+    greataxe(c, 0.08, -0.16, 0.88, st, Math.PI / 2 - 0.18);
+    ground(c, 0, 0.36, st);
+    star4(c, 0.02, 0.26, 0.13, st.core, Math.PI / 4);
+    star4(c, 0.26, 0.2, 0.06, st.spark);
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 

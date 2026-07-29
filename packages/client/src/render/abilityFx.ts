@@ -339,6 +339,21 @@ export const FX_STYLES: Record<string, FxStyle> = {
   // The founding pair's Weapon Arts.
   colossus_arc: STEEL({ mid: '#9aa2ac', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'wave', punch: 0.65, wash: 0.35 }),
   quakefall: EMBER({ mid: '#7d7468', deep: '#3a342c', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 1.0, wash: 0.55 }),
+  // THE ARMORY's Weapon Arts — every bespoke greatweapon speaks its
+  // own face over the school's forge-and-granite floor. Punches stay
+  // at the school's high floor; the palettes carry the identity.
+  hewers_wheel: STEEL({ mid: '#9a8a6a', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'vortex', punch: 0.6, wash: 0.3 }),
+  reavers_due: STEEL({ mid: '#6e7c92', ring: 'shards', debris: 'spark', decal: undefined, motif: 'wave', punch: 0.6, wash: 0.25 }),
+  mournfield: FROST({ mid: '#8a90a8', deep: '#3c4050', ring: 'halo', debris: 'shadow', decal: undefined, motif: 'cage', punch: 0.3, wash: 0.3 }),
+  ash_harvest: EMBER({ mid: '#c47444', ring: 'shards', debris: 'ember', decal: 'scorch', motif: 'wave', punch: 0.7, wash: 0.4 }),
+  glacier_sunder: FROST({ mid: '#9cc4e0', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.85, wash: 0.5 }),
+  crowns_word: GOLD({ mid: '#e0b054', ring: 'halo', debris: 'spark', decal: undefined, motif: 'crown', punch: 0.7, wash: 0.45 }),
+  last_argument: RADIANT({ mid: '#efe6cc', ring: 'teeth', debris: 'star', decal: 'glow', motif: 'wave', punch: 0.95, wash: 0.55 }),
+  barrow_bite: BONE({ mid: '#a89a84', ring: 'shards', debris: 'bone', decal: 'stain', motif: 'spikes', punch: 0.65, wash: 0.3 }),
+  thunder_fell: STORM({ mid: '#8ca0d4', ring: 'teeth', debris: 'rock', decal: 'scorch', motif: 'quake', punch: 0.85, wash: 0.5 }),
+  white_heat: EMBER({ mid: '#f0a050', deep: '#7a3c18', ring: 'halo', debris: 'ember', decal: undefined, motif: 'pillar', punch: 0.35, wash: 0.35 }),
+  pale_crescent: FROST({ mid: '#d8dce8', ring: 'halo', debris: 'star', decal: undefined, motif: 'wave', punch: 0.6, wash: 0.35 }),
+  horizon_fall: VOID({ mid: '#6a5e7a', deep: '#2c2438', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'pillar', punch: 1.0, wash: 0.55 }),
 
   // ------------------------- THE UNWRITTEN PAGE — deed-earned arts
   riftwalker_step: VOID({ ring: 'runes', debris: 'star', motif: 'tear', punch: 0.5, wash: 0.35 }),

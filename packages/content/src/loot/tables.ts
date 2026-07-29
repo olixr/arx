@@ -202,6 +202,8 @@ const defs: LootTableDef[] = [
     { item: 'gobsplitter', chance: 0.025 },
     // Too big for any goblin to swing — looted, dragged home, hoarded.
     { item: 'iron_greatblade', chance: 0.018 },
+    // The warband's own double-axe: two bent plow-blades, one haft.
+    { item: 'gobmangler', chance: 0.02 },
     { item: 'gobnail_warboard', chance: 0.025 },
     { item: 'shiv', chance: 0.025 },
     { item: 'stickbow', chance: 0.03 },
@@ -245,6 +247,8 @@ const defs: LootTableDef[] = [
     { item: 'hunters_quiver', chance: 0.02 },
     { item: 'oak_kiteshield', chance: 0.02 },
     { item: 'iron_helm', chance: 0.03 },
+    // The crew's toll-blade — the reaver keeps it; the crew dreams.
+    { item: 'reavers_toll', chance: 0.012 },
   ]),
   {
     // The reaver kept the crew's shares. Killing the name is the
@@ -257,6 +261,8 @@ const defs: LootTableDef[] = [
       { item: 'brass_key', chance: 0.14 },
       { item: 'dungeon_key', chance: 0.07 },
       { item: 'iron_dagger', chance: 0.05 },
+      // The name carries the toll-blade itself.
+      { item: 'reavers_toll', chance: 0.03 },
       { item: 'leather_hood', chance: 0.03 },
       ...setDrops('cutpurse', 0.012),
       { item: 'emberstone', chance: 0.02 },
@@ -364,6 +370,9 @@ const defs: LootTableDef[] = [
   rack('crypt_arms', 'Blades, bows, and staves the dead still carry.', 0.045, [
     { item: 'fenreaper', chance: 0.01 },
     { item: 'gravewhisper', chance: 0.012 },
+    // The great school's grave-goods: the buried blade and the jaws.
+    { item: 'gravewrought', chance: 0.01 },
+    { item: 'barrowmaw', chance: 0.008 },
     { item: 'bloodletter', chance: 0.008 },
     { item: 'bonepick', chance: 0.015 },
     { item: 'redhand', chance: 0.01 },
@@ -385,6 +394,8 @@ const defs: LootTableDef[] = [
       { item: 'bones', qty: [2, 4] },
       { item: 'coins', qty: [40, 120] },
       { item: 'iron_sword', chance: 0.12 },
+      // The Champion was buried with a greatsword. It kept that too.
+      { item: 'gravewrought', chance: 0.03 },
       { item: 'iron_bar', qty: [1, 2], chance: 0.4 },
       { item: 'gloomsilk_thread', qty: [2, 5], chance: 0.5 },
       { item: 'storm_bell', chance: 0.08 },
@@ -470,6 +481,13 @@ const defs: LootTableDef[] = [
       // wall from the armory it was buried with.
       { item: 'bonespur_ward', chance: 0.035 },
       { item: 'dreadforge_thornwall', chance: 0.02 },
+      // THE ARMORY's chase pieces: the great school's owned steel,
+      // and the two heirlooms that only exist legendary.
+      { item: 'ashrender', chance: 0.04 },
+      { item: 'frostfell', chance: 0.035 },
+      { item: 'stormhewer', chance: 0.035 },
+      { item: 'colossus_vow', chance: 0.005 },
+      { item: 'mountains_end', chance: 0.005 },
     ],
   ),
 

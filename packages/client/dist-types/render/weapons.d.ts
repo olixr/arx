@@ -141,14 +141,26 @@ export declare function staffStyle(itemId: string | undefined, color?: string): 
  */
 export declare function drawStaff(ctx: CanvasRenderingContext2D, st: StaffStyle, s: number, nowMs: number, hurt?: boolean, grip?: number, castT?: number): void;
 /**
- * A greatweapon's look. Two dialects share the frame: the GREATBLADE
- * (a sword grown past apology — broad body, long two-fist grip, wide
- * cross) and the MAUL (a quarry head on a war haft). Flat like
- * everything else: base fill + one lit plane + one line; the renderer's
- * dilate rings the body, so nothing here strokes its own outline.
+ * A greatweapon's look — THE ARMORY's vocabulary. Three dialects share
+ * the frame: the GREATBLADE (a sword grown past apology), the
+ * double-headed GREATAXE (twin bits arguing off one haft), and the
+ * MAUL (a quarry head on a war haft). Like the sword roster, every
+ * record is pure data over one painter vocabulary: a silhouette, a
+ * guard, fittings, and an optional living fx channel. Flat like
+ * everything else: each mass is a base fill + one lit plane + one
+ * line; the renderer's dilate rings the body, so nothing here strokes
+ * its own outline.
  */
+export type GreatbladeKind = 'colossus' | 'leaf' | 'cruciform' | 'spire' | 'cleaverback' | 'flamberge';
+export type GreataxeHead = 'crescent' | 'bearded' | 'jaws' | 'scrap' | 'halfmoon';
+export type GreatGuard = 'bar' | 'cross' | 'wing' | 'crown' | 'stub';
+export type GreatPommel = 'wheel' | 'ring' | 'coin' | 'star' | 'bone' | 'gem' | 'none';
 export interface GreatStyle {
-    kind: 'greatblade' | 'maul';
+    kind: 'greatblade' | 'maul' | 'greataxe';
+    /** Blade silhouette (greatblade dialect). Default 'colossus'. */
+    blade?: GreatbladeKind;
+    /** Head silhouette (greataxe dialect). Default 'crescent'. */
+    head?: GreataxeHead;
     /** Steel / head color. */
     color: string;
     /** Lit edge or top plane; defaults shade(+34). */
@@ -156,11 +168,31 @@ export interface GreatStyle {
     /** The one dark line (fuller / head seam); defaults shade(−24). */
     fuller?: string;
     guardColor: string;
+    /** Guard build (greatblade only). Default 'bar'. */
+    guard?: GreatGuard;
     grip?: string;
+    /** Wrap-band accent on the long grip / haft. */
+    wrap?: string;
+    pommel?: GreatPommel;
     pommelColor?: string;
-    /** Length multiplier — 1 runs ~0.94 of a body scale, tip to pommel. */
+    /** Jewel accent (gem pommels, the seated stone between axe heads). */
+    gem?: string;
+    /** Axe head-mount collar; defaults to guardColor. */
+    collar?: string;
+    /** Greataxe: a finishing spike past the crown. */
+    spike?: boolean;
+    /** Battle damage: dark bites knocked out of the working edge. */
+    notched?: boolean;
+    fx?: BladeFx;
+    fxColor?: string;
+    /** Length multiplier — 1 runs ~1.12 of a body scale, tip to pommel. */
     len?: number;
 }
+/**
+ * THE ARMORY — the great school's roster. Twenty-two weapons, no two
+ * silhouettes wearing the same clothes: the forge lines relearn the
+ * shape at every metal, and every owned find answers "who held this?"
+ */
 export declare const GREAT_STYLES: Record<string, GreatStyle>;
 /**
  * Resolve a greatweapon look. Registry first; unknown ids that read

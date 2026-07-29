@@ -678,6 +678,486 @@ const giantsfall: AbilitySig = {
   },
 };
 
+// ============================================= THE ARMORY's weapon arts
+
+/**
+ * HEWERS_WHEEL — "the round."
+ * The axe's answer to the colossus arc: the full circle, but rougher —
+ * the band judders (an axe bites where a blade glides) and wood-pale
+ * chips shear off the whole circumference instead of glints.
+ */
+const hewers_wheel: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x2d0);
+    for (let k = 0; k < 7; k++) {
+      const a = (k / 7) * Math.PI * 2 + rand() * 0.5;
+      c.particles.burst(
+        c.wx + Math.cos(a) * c.radius * 0.7,
+        c.wy + Math.sin(a) * c.radius * 0.7 * c.squash - 0.35,
+        1,
+        [c.st.mid, c.st.deep],
+        { speed: 1.6 + rand(), life: 0.45, size: 0.08, gravity: 6, dir: a + 0.5, spread: 0.4 },
+      );
+    }
+  },
+  air(c) {
+    if (c.t > 0.6) return;
+    sweepBand(c, c.dir - Math.PI, c.dir + Math.PI, c.t / 0.6, 0.74);
+  },
+};
+
+/**
+ * REAVERS_DUE — "the toll arm."
+ * A short flat shove of a sweep, then the payment: a handful of
+ * coin-bright glints thrown PAST the arc's end, the direction the
+ * argument left in.
+ */
+const reavers_due: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x2d1);
+    for (let k = 0; k < 5; k++) {
+      c.particles.burst(
+        c.wx + Math.cos(c.dir) * c.radius * 0.6,
+        c.wy + Math.sin(c.dir) * c.radius * 0.6 * c.squash - 0.4,
+        1,
+        [c.st.spark, c.st.core],
+        { speed: 2.4 + rand() * 1.2, life: 0.5, size: 0.06, gravity: 7, dir: c.dir, spread: 0.5, shape: 'glint' },
+      );
+    }
+  },
+  air(c) {
+    if (c.t > 0.45) return;
+    sweepBand(c, c.dir - 0.55, c.dir + 0.55, c.t / 0.45, 0.78);
+  },
+};
+
+/**
+ * MOURNFIELD — "the plot."
+ * Grave-quiet: a cold border breathes around the marked ground and
+ * slow pale wisps stand up out of it and hang. Nothing bursts —
+ * this is the school's one patient signature.
+ */
+const mournfield: AbilitySig = {
+  ground(c) {
+    const { ctx, st, t } = c;
+    const breathe = 0.86 + 0.08 * Math.sin(c.age * 2.4);
+    ctx.save();
+    ctx.globalAlpha = 0.4 * (1 - t * 0.6);
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(2, c.sc * 0.08);
+    ctx.beginPath();
+    ctx.ellipse(c.px, c.py, c.rPx * breathe, c.rPx * breathe * c.squash, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  },
+  air(c) {
+    if (c.frameDt <= 0 || c.t > 0.9) return;
+    if (srand(c.seed ^ (c.age * 7 | 0))() < c.frameDt * 5) {
+      const rand = srand(c.seed ^ 0x2d2 ^ (c.age * 13 | 0));
+      const a = rand() * Math.PI * 2;
+      c.particles.burst(
+        c.wx + Math.cos(a) * c.radius * rand() * 0.8,
+        c.wy + Math.sin(a) * c.radius * rand() * 0.8 * c.squash,
+        1,
+        [c.st.mid],
+        { speed: 0.25, life: 1.3, size: 0.1, gravity: -0.5, shape: 'puff', wobble: 0.2, fade: c.st.deep },
+      );
+    }
+  },
+};
+
+/**
+ * ASH_HARVEST — "the ember row."
+ * The reap leaves a row: embers keep standing up out of the swept
+ * ground for a beat after the stroke, born exactly where the band
+ * passed — the harvest smoulders where it fell.
+ */
+const ash_harvest: AbilitySig = {
+  air(c) {
+    if (c.t < 0.55) sweepBand(c, c.dir - 1.1, c.dir + 1.1, c.t / 0.55, 0.76);
+    if (c.frameDt <= 0 || c.t > 0.85) return;
+    if (srand(c.seed ^ (c.age * 9 | 0))() < c.frameDt * 10) {
+      const rand = srand(c.seed ^ 0x2d3 ^ (c.age * 11 | 0));
+      const a = c.dir + (rand() - 0.5) * 2.2;
+      c.particles.burst(
+        c.wx + Math.cos(a) * c.radius * 0.7,
+        c.wy + Math.sin(a) * c.radius * 0.7 * c.squash,
+        1,
+        [c.st.spark, c.st.core],
+        { speed: 0.5, life: 0.7, size: 0.07, gravity: -2.4, shape: 'lick', flicker: 0.4, fade: c.st.deep },
+      );
+    }
+  },
+};
+
+/**
+ * GLACIER_SUNDER — "the shelf calves."
+ * Not a point-fall like the skysunder — a whole flat SLAB of cold
+ * drops across the mark at once, and the landing throws pale shards
+ * and one hard frost ring.
+ */
+const glacier_sunder: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x2d4);
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 + rand() * 0.5;
+      c.particles.burst(
+        c.wx + Math.cos(a) * c.radius * 0.55,
+        c.wy + Math.sin(a) * c.radius * 0.55 * c.squash,
+        1,
+        [c.st.core, c.st.mid],
+        { speed: 1.5 + rand(), life: 0.55, size: 0.09, gravity: 6, dir: a, spread: 0.25, shape: 'glint' },
+      );
+    }
+  },
+  air(c) {
+    const { ctx, st, t, sc } = c;
+    if (t > 0.28) return;
+    const f = t / 0.28;
+    // The slab: wide and flat, arriving whole.
+    const h = sc * 2.6 * (1 - f);
+    ctx.save();
+    ctx.globalAlpha = 0.7 * (1 - f * 0.5);
+    ctx.fillStyle = st.core;
+    ctx.fillRect(c.px - c.rPx * 0.5, c.py - sc * 0.5 - h - sc * 0.35, c.rPx, sc * 0.35);
+    ctx.globalAlpha = 0.35 * (1 - f);
+    ctx.fillStyle = st.mid;
+    ctx.fillRect(c.px - c.rPx * 0.38, c.py - sc * 0.42 - h * 0.85 - sc * 0.5, c.rPx * 0.76, sc * 0.5);
+    ctx.restore();
+    c.glow(c.wx, c.wy, 1.1, 0.3 * (1 - f));
+  },
+  ground(c) {
+    const { ctx, st, t } = c;
+    if (t < 0.2 || t > 0.75) return;
+    const f = (t - 0.2) / 0.55;
+    ctx.save();
+    ctx.globalAlpha = 0.7 * (1 - f);
+    ctx.strokeStyle = st.core;
+    ctx.lineWidth = Math.max(2, c.sc * 0.09);
+    ctx.beginPath();
+    ctx.ellipse(c.px, c.py, c.rPx * (0.35 + 0.6 * f), c.rPx * (0.35 + 0.6 * f) * c.squash, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
+/**
+ * CROWNS_WORD — "spoken twice."
+ * Two gold rings, one per pulse, each cresting with a brief crown of
+ * upward sparks at its rim — the court hears it, then the stragglers.
+ */
+const crowns_word: AbilitySig = {
+  ground(c) {
+    const { ctx, st, t } = c;
+    for (const start of [0, 0.4] as const) {
+      if (t < start || t > start + 0.36) continue;
+      const f = (t - start) / 0.36;
+      ctx.save();
+      ctx.globalAlpha = 0.75 * (1 - f);
+      ctx.strokeStyle = st.spark;
+      ctx.lineWidth = Math.max(2, c.sc * 0.1);
+      ctx.beginPath();
+      ctx.ellipse(c.px, c.py, c.rPx * (0.3 + 0.65 * f), c.rPx * (0.3 + 0.65 * f) * c.squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  },
+  air(c) {
+    if (c.frameDt <= 0 || c.t > 0.8) return;
+    if (srand(c.seed ^ (c.age * 8 | 0))() < c.frameDt * 9) {
+      const rand = srand(c.seed ^ 0x2d5 ^ (c.age * 17 | 0));
+      const a = rand() * Math.PI * 2;
+      c.particles.burst(
+        c.wx + Math.cos(a) * c.radius * 0.8,
+        c.wy + Math.sin(a) * c.radius * 0.8 * c.squash,
+        1,
+        [c.st.spark],
+        { speed: 0.7, life: 0.45, size: 0.06, gravity: -3.2, shape: 'glint' },
+      );
+    }
+  },
+};
+
+/**
+ * LAST_ARGUMENT — "the closing line."
+ * The widest band the school draws, and at its end the full stop:
+ * one bright cross-flash where the sentence ends. Radiant glints
+ * shear off BOTH shoulders of the stroke.
+ */
+const last_argument: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x2d6);
+    for (const side of [-1, 1] as const) {
+      for (let k = 0; k < 3; k++) {
+        const a = c.dir + side * (0.9 + rand() * 0.5);
+        c.particles.burst(
+          c.wx + Math.cos(a) * c.radius * 0.75,
+          c.wy + Math.sin(a) * c.radius * 0.75 * c.squash - 0.4,
+          1,
+          [c.st.core, c.st.spark],
+          { speed: 1.8 + rand(), life: 0.5, size: 0.08, gravity: 5, dir: a + side * 0.4, spread: 0.3, shape: 'glint' },
+        );
+      }
+    }
+  },
+  air(c) {
+    const { ctx, st, t, sc } = c;
+    if (t > 0.6) return;
+    const f = t / 0.6;
+    sweepBand(c, c.dir - 1.35, c.dir + 1.35, f, 0.82);
+    if (f > 0.65) {
+      const p = groundPt(c, c.rPx * 0.82, c.dir + 1.35);
+      const ff = (f - 0.65) / 0.35;
+      ctx.save();
+      ctx.globalAlpha = 0.95 * (1 - ff);
+      ctx.strokeStyle = st.core;
+      ctx.lineWidth = Math.max(2, sc * 0.06);
+      const s = sc * 0.42 * (0.4 + ff);
+      ctx.beginPath();
+      ctx.moveTo(p.x - s, p.y - sc * 0.44);
+      ctx.lineTo(p.x + s, p.y - sc * 0.44);
+      ctx.moveTo(p.x, p.y - sc * 0.44 - s);
+      ctx.lineTo(p.x, p.y - sc * 0.44 + s);
+      ctx.stroke();
+      ctx.restore();
+      c.glow(c.wx + Math.cos(c.dir + 1.35) * c.radius * 0.8, c.wy + Math.sin(c.dir + 1.35) * c.radius * 0.8, 0.8, 0.35 * (1 - ff));
+    }
+  },
+};
+
+/**
+ * BARROW_BITE — "the closed jaws."
+ * Two short opposing crescents SNAP shut over the arc's heart — an
+ * upper and lower tooth-line meeting — and dry bone chips fall out
+ * of the bite.
+ */
+const barrow_bite: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x2d7);
+    for (let k = 0; k < 5; k++) {
+      c.particles.burst(
+        c.wx + Math.cos(c.dir) * c.radius * 0.6,
+        c.wy + Math.sin(c.dir) * c.radius * 0.6 * c.squash - 0.35,
+        1,
+        [c.st.core, c.st.deep],
+        { speed: 0.9 + rand() * 0.7, life: 0.55, size: 0.07, gravity: 8, dir: c.dir + (rand() - 0.5), spread: 0.6 },
+      );
+    }
+  },
+  air(c) {
+    const { ctx, st, t, sc } = c;
+    if (t > 0.4) return;
+    const f = t / 0.4;
+    const p = groundPt(c, c.rPx * 0.6, c.dir);
+    const gap = sc * 0.7 * (1 - f);
+    ctx.save();
+    ctx.globalAlpha = 0.85 * (1 - f * f);
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(2, sc * 0.09);
+    ctx.lineCap = 'round';
+    // Upper and lower tooth-lines closing on the heart.
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - sc * 0.4 - gap, sc * 0.36, 0.4, Math.PI - 0.4);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - sc * 0.4 + gap, sc * 0.36, Math.PI + 0.4, -0.4);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
+/**
+ * THUNDER_FELL — "the argument overhead."
+ * One hard bolt snaps down onto the mark in the first breath, then
+ * the fell: stones and a shock ring arrive while the bolt's afterglow
+ * is still deciding whether it was first.
+ */
+const thunder_fell: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x2d8);
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 + rand() * 0.5;
+      c.particles.burst(
+        c.wx + Math.cos(a) * c.radius * 0.5,
+        c.wy + Math.sin(a) * c.radius * 0.5 * c.squash,
+        1,
+        [c.st.mid, c.st.deep],
+        { speed: 1.6 + rand() * 1.1, life: 0.55, size: 0.1, gravity: 7, dir: a, spread: 0.25 },
+      );
+    }
+  },
+  air(c) {
+    const { ctx, st, t, sc } = c;
+    if (t > 0.22) return;
+    const f = t / 0.22;
+    // The bolt: a hard zigzag out of the top of the frame.
+    ctx.save();
+    ctx.globalAlpha = 0.95 * (1 - f);
+    ctx.strokeStyle = st.core;
+    ctx.lineWidth = Math.max(2, sc * 0.08);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(c.px + sc * 0.3, c.py - sc * 3.4);
+    ctx.lineTo(c.px - sc * 0.12, c.py - sc * 2.1);
+    ctx.lineTo(c.px + sc * 0.14, c.py - sc * 1.9);
+    ctx.lineTo(c.px - sc * 0.04, c.py - sc * 0.4);
+    ctx.stroke();
+    ctx.restore();
+    c.glow(c.wx, c.wy, 1.3, 0.4 * (1 - f));
+  },
+  ground(c) {
+    const { ctx, st, t } = c;
+    if (t < 0.1 || t > 0.6) return;
+    const f = (t - 0.1) / 0.5;
+    ctx.save();
+    ctx.globalAlpha = 0.7 * (1 - f);
+    ctx.strokeStyle = st.spark;
+    ctx.lineWidth = Math.max(2, c.sc * 0.09);
+    ctx.beginPath();
+    ctx.ellipse(c.px, c.py, c.rPx * (0.3 + 0.65 * f), c.rPx * (0.3 + 0.65 * f) * c.squash, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
+/**
+ * WHITE_HEAT — "the lit forge."
+ * The stance signature: a low warm ring underfoot and a steady rise
+ * of forge embers off the body for as long as the metal is willing.
+ */
+const white_heat: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x2d9);
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2 + rand() * 0.6;
+      c.particles.burst(
+        c.wx + Math.cos(a) * 0.4,
+        c.wy + Math.sin(a) * 0.4 * c.squash,
+        1,
+        [c.st.spark, c.st.core],
+        { speed: 0.5, life: 0.5, size: 0.09, gravity: -3.0, shape: 'lick', flicker: 0.4, fade: c.st.deep },
+      );
+    }
+  },
+  air(c) {
+    if (c.t > 0.85 || c.frameDt <= 0) return;
+    if (srand(c.seed ^ (c.age * 6 | 0))() < c.frameDt * 7) {
+      const rand = srand(c.seed ^ 0x2da ^ (c.age * 19 | 0));
+      c.particles.burst(c.wx + (rand() - 0.5) * 0.55, c.wy - rand() * 0.7, 1, [c.st.spark], {
+        speed: 0.4,
+        life: 0.6,
+        size: 0.07,
+        gravity: -2.2,
+        shape: 'lick',
+        flicker: 0.5,
+      });
+    }
+    c.glow(c.wx, c.wy, 0.9, 0.2 * (1 - c.t));
+  },
+};
+
+/**
+ * PALE_CRESCENT — "the ebb."
+ * One thin, slow, moon-wide band — the quietest stroke in the school
+ * — and where it has passed, still frost dots HANG instead of flying.
+ */
+const pale_crescent: AbilitySig = {
+  air(c) {
+    const { ctx, st, t, sc } = c;
+    if (t < 0.6) {
+      // A slimmer band than the school's shared one: quiet on purpose.
+      const f = t / 0.6;
+      const r = c.rPx * 0.8;
+      const head = c.dir - 1.2 + 2.4 * Math.min(1, f * 1.25);
+      ctx.save();
+      ctx.globalAlpha = 0.7 * (1 - f);
+      ctx.strokeStyle = st.core;
+      ctx.lineWidth = Math.max(1.5, sc * 0.06);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.ellipse(c.px, c.py - sc * 0.42, r, r * c.squash, 0, c.dir - 1.2, head);
+      ctx.stroke();
+      ctx.restore();
+    }
+    if (c.frameDt <= 0 || c.t > 0.8) return;
+    if (srand(c.seed ^ (c.age * 5 | 0))() < c.frameDt * 8) {
+      const rand = srand(c.seed ^ 0x2db ^ (c.age * 23 | 0));
+      const a = c.dir + (rand() - 0.5) * 2.2;
+      c.particles.burst(
+        c.wx + Math.cos(a) * c.radius * 0.75,
+        c.wy + Math.sin(a) * c.radius * 0.75 * c.squash - 0.3,
+        1,
+        [c.st.core],
+        { speed: 0.1, life: 0.9, size: 0.06, gravity: -0.2, shape: 'glint' },
+      );
+    }
+  },
+};
+
+/**
+ * HORIZON_FALL — "the brought mountain."
+ * The heaviest landing in the file: the skysunder's column but wider,
+ * TWO stone rings leaving the crater a beat apart, and a dust bank
+ * that stands and then lies down where the horizon used to be.
+ */
+const horizon_fall: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x2dc);
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2 + rand() * 0.4;
+      c.particles.burst(
+        c.wx + Math.cos(a) * c.radius * 0.55,
+        c.wy + Math.sin(a) * c.radius * 0.55 * c.squash,
+        1,
+        [c.st.mid, c.st.deep],
+        { speed: 2.0 + rand() * 1.4, life: 0.65, size: 0.12, gravity: 7, dir: a, spread: 0.2 },
+      );
+    }
+    for (let k = 0; k < 5; k++) {
+      const a = rand() * Math.PI * 2;
+      c.particles.burst(
+        c.wx + Math.cos(a) * c.radius * 0.8,
+        c.wy + Math.sin(a) * c.radius * 0.8 * c.squash,
+        1,
+        [c.st.deep],
+        { speed: 0.6, life: 1.2, size: 0.18, gravity: -0.3, shape: 'puff', wobble: 0.35, fade: c.st.deep },
+      );
+    }
+  },
+  air(c) {
+    const { ctx, st, t, sc } = c;
+    if (t > 0.3) return;
+    const f = t / 0.3;
+    const h = sc * 3.6 * (1 - f);
+    ctx.save();
+    ctx.globalAlpha = 0.8 * (1 - f * 0.5);
+    ctx.fillStyle = st.core;
+    ctx.fillRect(c.px - sc * 0.12, c.py - sc * 0.6 - h, sc * 0.24, h);
+    ctx.globalAlpha = 0.4 * (1 - f);
+    ctx.fillStyle = st.mid;
+    ctx.fillRect(c.px - sc * 0.26, c.py - sc * 0.5 - h * 0.85, sc * 0.52, h * 0.85);
+    ctx.restore();
+    c.glow(c.wx, c.wy, 1.4, 0.4 * (1 - f));
+  },
+  ground(c) {
+    const { ctx, st, t } = c;
+    const rand = srand(c.seed ^ 0x2dd);
+    // Two stone rings, a beat apart.
+    for (const [start, n] of [[0.06, 7], [0.24, 5]] as const) {
+      if (t < start || t > start + 0.55) continue;
+      const f = (t - start) / 0.55;
+      ctx.save();
+      ctx.globalAlpha = 0.8 * (1 - f);
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2 + rand() * 0.7;
+        const p = groundPt(c, c.rPx * (0.4 + 0.5 * f), a);
+        stone(ctx, p.x, p.y - c.sc * 0.24 * (1 - f), c.sc * (0.09 + rand() * 0.09), st.deep, st.mid, rand() * 1.4);
+      }
+      ctx.restore();
+    }
+  },
+};
+
 export const TWOHAND_SIGS: Record<string, AbilitySig> = {
   wide_swath,
   haft_check,
@@ -692,4 +1172,16 @@ export const TWOHAND_SIGS: Record<string, AbilitySig> = {
   colossus_arc,
   quakefall,
   giantsfall,
+  hewers_wheel,
+  reavers_due,
+  mournfield,
+  ash_harvest,
+  glacier_sunder,
+  crowns_word,
+  last_argument,
+  barrow_bite,
+  thunder_fell,
+  white_heat,
+  pale_crescent,
+  horizon_fall,
 };

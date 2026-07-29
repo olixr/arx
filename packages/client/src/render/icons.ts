@@ -4594,12 +4594,17 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
 // "two hands" at a glance.
 {
   for (const [id, st] of Object.entries(GREAT_STYLES)) {
+    // Axes grip at mid-haft so the double head owns the box — at
+    // balance-point grip the bits shrank to a wrench (bench verdict).
+    const axe = st.kind === 'greataxe';
+    const scale = axe ? 66 : 68;
+    const grip = axe ? 0.5 : 0.42;
     PAINTERS[`great:${id}`] = (c) => {
       c.translate(0.5, 0.5);
       c.rotate(-Math.PI / 4);
       c.scale(1 / 64, 1 / 64);
-      c.translate(-0.1 * 68, 0);
-      drawGreatweapon(c, st, 68, 5234, false, 0.42);
+      c.translate(axe ? -0.04 * scale : -0.1 * scale, 0);
+      drawGreatweapon(c, st, scale, 5234, false, grip);
     };
     ITEM_ICON[id] = { icon: `great:${id}`, color: st.color };
   }

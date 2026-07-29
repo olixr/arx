@@ -1284,7 +1284,7 @@ function drawPommel(
  */
 function drawBladeFx(
   ctx: CanvasRenderingContext2D,
-  st: SwordStyle,
+  st: Pick<SwordStyle, 'fx' | 'fxColor'>,
   bx: number,
   tip: number,
   s: number,
@@ -2780,14 +2780,48 @@ export function drawStaff(
 // =================================================== the great school
 
 /**
- * A greatweapon's look. Two dialects share the frame: the GREATBLADE
- * (a sword grown past apology — broad body, long two-fist grip, wide
- * cross) and the MAUL (a quarry head on a war haft). Flat like
- * everything else: base fill + one lit plane + one line; the renderer's
- * dilate rings the body, so nothing here strokes its own outline.
+ * A greatweapon's look — THE ARMORY's vocabulary. Three dialects share
+ * the frame: the GREATBLADE (a sword grown past apology), the
+ * double-headed GREATAXE (twin bits arguing off one haft), and the
+ * MAUL (a quarry head on a war haft). Like the sword roster, every
+ * record is pure data over one painter vocabulary: a silhouette, a
+ * guard, fittings, and an optional living fx channel. Flat like
+ * everything else: each mass is a base fill + one lit plane + one
+ * line; the renderer's dilate rings the body, so nothing here strokes
+ * its own outline.
  */
+
+export type GreatbladeKind =
+  | 'colossus'    // the founding slab — broad, blunt-shouldered, honest
+  | 'leaf'        // bronze-age waisted leaf, widest past the middle
+  | 'cruciform'   // long-fullered soldier steel, clean straight taper
+  | 'spire'       // slender high taper — elegance at six feet
+  | 'cleaverback' // straight spine, flared belly, clipped working nose
+  | 'flamberge';  // the wave edge — three bends and a point
+
+export type GreataxeHead =
+  | 'crescent'  // twin deep crescent bits with horns
+  | 'bearded'   // squared bits with hanging heel hooks
+  | 'jaws'      // tooth-rowed bite silhouettes
+  | 'scrap'     // mismatched bent plates — menace by neglect
+  | 'halfmoon'; // wide shallow half-moon sweeps
+
+export type GreatGuard =
+  | 'bar'    // the founding straight bar
+  | 'cross'  // flared quillons with struck tips
+  | 'wing'   // paired swept wings
+  | 'crown'  // crenellated bar — the court's cross
+  | 'stub';  // crude block
+
+export type GreatPommel =
+  | 'wheel' | 'ring' | 'coin' | 'star' | 'bone' | 'gem' | 'none';
+
 export interface GreatStyle {
-  kind: 'greatblade' | 'maul';
+  kind: 'greatblade' | 'maul' | 'greataxe';
+  /** Blade silhouette (greatblade dialect). Default 'colossus'. */
+  blade?: GreatbladeKind;
+  /** Head silhouette (greataxe dialect). Default 'crescent'. */
+  head?: GreataxeHead;
   /** Steel / head color. */
   color: string;
   /** Lit edge or top plane; defaults shade(+34). */
@@ -2795,20 +2829,170 @@ export interface GreatStyle {
   /** The one dark line (fuller / head seam); defaults shade(−24). */
   fuller?: string;
   guardColor: string;
+  /** Guard build (greatblade only). Default 'bar'. */
+  guard?: GreatGuard;
   grip?: string;
+  /** Wrap-band accent on the long grip / haft. */
+  wrap?: string;
+  pommel?: GreatPommel;
   pommelColor?: string;
-  /** Length multiplier — 1 runs ~0.94 of a body scale, tip to pommel. */
+  /** Jewel accent (gem pommels, the seated stone between axe heads). */
+  gem?: string;
+  /** Axe head-mount collar; defaults to guardColor. */
+  collar?: string;
+  /** Greataxe: a finishing spike past the crown. */
+  spike?: boolean;
+  /** Battle damage: dark bites knocked out of the working edge. */
+  notched?: boolean;
+  fx?: BladeFx;
+  fxColor?: string;
+  /** Length multiplier — 1 runs ~1.12 of a body scale, tip to pommel. */
   len?: number;
 }
 
+/**
+ * THE ARMORY — the great school's roster. Twenty-two weapons, no two
+ * silhouettes wearing the same clothes: the forge lines relearn the
+ * shape at every metal, and every owned find answers "who held this?"
+ */
 export const GREAT_STYLES: Record<string, GreatStyle> = {
+  // ---- the greatblade forge line.
   // The founding blade: honest iron, oak grip long enough for both
   // fists, a cross wide enough to catch a falling tree.
   iron_greatblade: {
-    kind: 'greatblade', color: '#8d9299',
-    guardColor: '#5a5f66', grip: '#4a3a2a', pommelColor: '#9aa2ac',
+    kind: 'greatblade', blade: 'colossus', color: '#8d9299',
+    guardColor: '#5a5f66', grip: '#4a3a2a', pommel: 'wheel', pommelColor: '#9aa2ac',
   },
-  // The chase maul: quarry granite banded in iron on a dark haft.
+  // The first lesson: a leaf of poured bronze on a rope-bound grip.
+  bronze_greatblade: {
+    kind: 'greatblade', blade: 'leaf', color: '#b8834f', edge: '#dca56a', fuller: '#7d5432',
+    guard: 'stub', guardColor: '#5b4028', grip: '#8a6a45', wrap: '#6b4a26',
+    pommel: 'wheel', pommelColor: '#5b4028',
+  },
+  // Clean soldier steel: the long fuller is the whole ornament.
+  steel_greatblade: {
+    kind: 'greatblade', blade: 'cruciform', color: '#b8bec8', edge: '#e2e6ee', fuller: '#7a8090',
+    guard: 'cross', guardColor: '#5a5f6a', grip: '#3a3540', wrap: '#b8bec8',
+    pommel: 'wheel', pommelColor: '#5a5f6a',
+  },
+  // Sky-metal drawn to a spire on swept wings.
+  mithril_greatblade: {
+    kind: 'greatblade', blade: 'spire', color: '#8fb4e4', edge: '#d8ecff', fuller: '#4a6a9c',
+    guard: 'wing', guardColor: '#3f5e8c', grip: '#2e3a4e', wrap: '#7fa8d9',
+    pommel: 'gem', pommelColor: '#3f5e8c', gem: '#d8ecff',
+  },
+  // The smith's proof: fallen-sky violet under a star.
+  starsteel_greatblade: {
+    kind: 'greatblade', blade: 'spire', len: 1.04, color: '#d6cbf6', edge: '#ffffff', fuller: '#a99ad8',
+    guard: 'wing', guardColor: '#7a6ab0', grip: '#3a3452', wrap: '#a99ad8',
+    pommel: 'star', pommelColor: '#f4f4ff', fx: 'star', fxColor: '#f4f4ff',
+  },
+
+  // ---- the owned blades.
+  // The road-crew's toll arm: working sea-iron, notched by argument,
+  // the first coin it ever took let into the pommel.
+  reavers_toll: {
+    kind: 'greatblade', blade: 'cleaverback', color: '#6e7c92', edge: '#98a6ba', fuller: '#46505e',
+    notched: true, guard: 'stub', guardColor: '#4a4554', grip: '#3a3540', wrap: '#8a6a45',
+    pommel: 'coin', pommelColor: '#d9a441', gem: '#b8863f',
+  },
+  // Black crypt iron wound in bone — buried with it, kept it anyway.
+  gravewrought: {
+    kind: 'greatblade', blade: 'colossus', len: 0.97, color: '#565a68', edge: '#7e8494', fuller: '#34384a',
+    notched: true, guard: 'bar', guardColor: '#3a3d48', grip: '#2e3038', wrap: '#a8a290',
+    pommel: 'ring', pommelColor: '#a8a290',
+  },
+  // The wave edge quenched in its own fire; the seam never went out.
+  ashrender: {
+    kind: 'greatblade', blade: 'flamberge', color: '#6a5f66', edge: '#a89aa2', fuller: '#ff8a3c',
+    guard: 'cross', guardColor: '#3a3238', grip: '#2e2a30', wrap: '#c4623c',
+    pommel: 'wheel', pommelColor: '#3a3238', fx: 'ember', fxColor: '#ffb060',
+  },
+  // Shelf ice with a crossbar — colder to hold than to face.
+  frostfell: {
+    kind: 'greatblade', blade: 'cruciform', len: 1.03, color: '#cfe2f0', edge: '#ffffff', fuller: '#8ac4e8',
+    guard: 'bar', guardColor: '#7a94ac', grip: '#3a4a5c', wrap: '#a8c8dc',
+    pommel: 'gem', pommelColor: '#7a94ac', gem: '#bfe4ff', fx: 'frost', fxColor: '#dff0ff',
+  },
+  // Gold over steel under a crenellated cross; the grip carries both
+  // thrones — crimson wound in moonpale (the PAIRED-SEAT law, worn).
+  crowns_argument: {
+    kind: 'greatblade', blade: 'cruciform', len: 1.02, color: '#ead9a8', edge: '#fff2cc', fuller: '#c9a23c',
+    guard: 'crown', guardColor: '#d9a441', grip: '#8a2a3a', wrap: '#dfe4f0',
+    pommel: 'gem', pommelColor: '#d9a441', gem: '#c4372a',
+  },
+  // The heirloom: white steel, the oath worked down the fuller in
+  // gold, and a gleam that walks the edge like a kept promise.
+  colossus_vow: {
+    kind: 'greatblade', blade: 'colossus', len: 1.06, color: '#eef0f4', edge: '#ffffff', fuller: '#d9c990',
+    guard: 'wing', guardColor: '#b8a86a', grip: '#2e3a5c', wrap: '#d9c990',
+    pommel: 'gem', pommelColor: '#b8a86a', gem: '#efe6cc', fx: 'gleam', fxColor: '#ffffff',
+  },
+
+  // ---- the greataxe forge line.
+  // Two bronze crescents on an ash haft — timber first, then whatever.
+  bronze_greataxe: {
+    kind: 'greataxe', head: 'crescent', color: '#b8834f', edge: '#dca56a', fuller: '#7d5432',
+    guardColor: '#5b4028', grip: '#8a6a45', wrap: '#6b4a26', pommel: 'none',
+  },
+  // Honest iron, bearded on both bits so nothing slips the hook.
+  iron_greataxe: {
+    kind: 'greataxe', head: 'bearded', color: '#8d9299', edge: '#b4bac2', fuller: '#565b64',
+    guardColor: '#4a4554', grip: '#5b4028', pommel: 'wheel', pommelColor: '#4a4554',
+  },
+  // Watch-pattern steel with a brass collar and a finishing spike —
+  // brass is the roster's one warm metal, spent here on purpose.
+  steel_greataxe: {
+    kind: 'greataxe', head: 'crescent', color: '#b8bec8', edge: '#e2e6ee', fuller: '#7a8090',
+    collar: '#c9a45e', spike: true, guardColor: '#5a5f6a', grip: '#3a3540', wrap: '#c9a45e',
+    pommel: 'wheel', pommelColor: '#5a5f6a',
+  },
+  // Deep-green adamant ground to two half-moons. It does not notch.
+  adamant_greataxe: {
+    kind: 'greataxe', head: 'halfmoon', color: '#6cb47a', edge: '#d2f0d0', fuller: '#2f5e3c',
+    collar: '#2f5e3c', spike: true, guardColor: '#2f5e3c', grip: '#26382c', wrap: '#5fa06a',
+    pommel: 'wheel', pommelColor: '#2f5e3c',
+  },
+
+  // ---- the owned axes.
+  // Two stolen plow-blades bent around one haft — crude is the craft.
+  gobmangler: {
+    kind: 'greataxe', head: 'scrap', len: 0.92, color: '#6e7a52', edge: '#98a474', fuller: '#4a5438',
+    notched: true, guardColor: '#4a3a2a', grip: '#4a3a2a', wrap: '#8a6a45', pommel: 'none',
+  },
+  // Rust-black tooth rows hafted in old bone — the jaws remember.
+  barrowmaw: {
+    kind: 'greataxe', head: 'jaws', color: '#7a7264', edge: '#a89a84', fuller: '#4a4438',
+    notched: true, collar: '#a8a290', guardColor: '#5a5448', grip: '#6a6254', wrap: '#a8a290',
+    pommel: 'bone', pommelColor: '#e8e2d0',
+  },
+  // The emberstone seated between the heads keeps the metal working.
+  forgewrath: {
+    kind: 'greataxe', head: 'crescent', color: '#5c5258', edge: '#8d8288', fuller: '#ff8a3c',
+    collar: '#b06a30', gem: '#ff8a3c', spike: true, guardColor: '#3a3238', grip: '#2e2a30',
+    wrap: '#c4623c', pommel: 'wheel', pommelColor: '#3a3238', fx: 'ember', fxColor: '#ffb060',
+  },
+  // Struck on the quench and sold as ruined; the buyer knew better.
+  stormhewer: {
+    kind: 'greataxe', head: 'halfmoon', color: '#7a8ab8', edge: '#c9d4f0', fuller: '#4a5a8a',
+    collar: '#e8e06a', spike: true, guardColor: '#2e3448', grip: '#2e3448', wrap: '#e8e06a',
+    pommel: 'wheel', pommelColor: '#4a5a8a', fx: 'storm', fxColor: '#fff2a0',
+  },
+  // The Queen's commission: moonpale half-moons in gold filigree.
+  moonhewn: {
+    kind: 'greataxe', head: 'halfmoon', len: 1.02, color: '#d8dce8', edge: '#ffffff', fuller: '#9aa4c0',
+    collar: '#d9a441', guardColor: '#3a4a6a', grip: '#3a4a6a', wrap: '#d9a441',
+    pommel: 'gem', pommelColor: '#d9a441', gem: '#dfe6f6', fx: 'gleam', fxColor: '#eef2ff',
+  },
+  // The heirloom: obsidian horns edged in starsteel, wisps trailing —
+  // somewhere a mountain is shorter than it used to be.
+  mountains_end: {
+    kind: 'greataxe', head: 'crescent', len: 1.05, color: '#4e4260', edge: '#cabdf2', fuller: '#2a2333',
+    collar: '#7a6ab0', spike: true, guardColor: '#332b40', grip: '#241d30', wrap: '#8a7ab8',
+    pommel: 'star', pommelColor: '#f4f4ff', fx: 'void', fxColor: '#b8a8d8',
+  },
+
+  // ---- the chase maul: quarry granite banded in iron on a dark haft.
   stonebreaker_maul: {
     kind: 'maul', color: '#7d7468', edge: '#a89e8e',
     guardColor: '#4a4554', grip: '#5b4028', len: 0.96,
@@ -2830,12 +3014,17 @@ export function greatStyle(itemId: string | undefined, color?: string): GreatSty
   const st = GREAT_STYLES[itemId];
   if (st) return st;
   const maul = itemId.includes('maul') || itemId.includes('warhammer');
-  if (!maul && !itemId.includes('greatblade') && !itemId.includes('greatsword')) return null;
+  // 'greataxe' exactly — a bare 'axe' substring would claim the
+  // woodcutter's hatchets out of the tool rack.
+  const axe = itemId.includes('greataxe');
+  if (!maul && !axe && !itemId.includes('greatblade') && !itemId.includes('greatsword')) return null;
   let fb = GREAT_FALLBACKS.get(itemId);
   if (!fb) {
     fb = maul
       ? { kind: 'maul', color: color ?? '#7d7468', guardColor: '#4a4554', grip: '#5b4028' }
-      : { kind: 'greatblade', color: color ?? '#8d9299', guardColor: '#5a5f66', grip: '#4a3a2a' };
+      : axe
+        ? { kind: 'greataxe', color: color ?? '#8d9299', guardColor: '#4a4554', grip: '#5b4028' }
+        : { kind: 'greatblade', color: color ?? '#8d9299', guardColor: '#5a5f66', grip: '#4a3a2a' };
     GREAT_FALLBACKS.set(itemId, fb);
   }
   return fb;
@@ -2907,14 +3096,16 @@ export function drawGreatweapon(
     return;
   }
 
+  if (st.kind === 'greataxe') {
+    drawGreataxeBody(ctx, st, s, butt, tip, steel, edge, dark, guard, gripC, hurt);
+    if (!hurt && st.fx) drawBladeFx(ctx, st, butt + 0.55 * LEN, tip, s, nowMs);
+    return;
+  }
+
   // -------------------------------------------------- the greatblade
   const gx = butt + 0.3 * LEN; // the cross sits 30% up from the butt
-  // Pommel: the counterweight both fists trust.
-  ctx.fillStyle = hurt ? '#ffffff' : (st.pommelColor ?? guard);
-  ctx.beginPath();
-  ctx.arc(butt, 0, 0.036 * s, 0, Math.PI * 2);
-  ctx.fill();
-  // The two-fist grip.
+  drawGreatPommel(ctx, st, s, butt, hurt);
+  // The two-fist grip — the long handle is the school's signature.
   ctx.strokeStyle = gripC;
   ctx.lineWidth = Math.max(2.5, s * 0.05);
   ctx.lineCap = 'round';
@@ -2922,34 +3113,619 @@ export function drawGreatweapon(
   ctx.moveTo(butt + 0.03 * s, 0);
   ctx.lineTo(gx - 0.01 * s, 0);
   ctx.stroke();
-  // The wide cross.
-  ctx.fillStyle = guard;
-  ctx.fillRect(gx - 0.016 * s, -0.105 * s, 0.038 * s, 0.21 * s);
-  // The blade: broad, blunt-shouldered, honest taper.
-  const bw = 0.046 * s;
+  if (!hurt && st.wrap) {
+    // Two wrap bands: the fists' stations, marked.
+    ctx.fillStyle = st.wrap;
+    const gl = gx - butt - 0.04 * s;
+    ctx.fillRect(butt + 0.03 * s + gl * 0.22, -0.028 * s, 0.018 * s, 0.056 * s);
+    ctx.fillRect(butt + 0.03 * s + gl * 0.62, -0.028 * s, 0.018 * s, 0.056 * s);
+  }
+  drawGreatbladeSilhouette(ctx, st, s, gx, tip, steel, edge, dark, hurt);
+  drawGreatGuard(ctx, st, s, gx, guard, hurt);
+  if (!hurt && st.fx) drawBladeFx(ctx, st, gx + 0.1 * s, tip, s, nowMs);
+}
+
+/**
+ * The greatblade silhouettes. Each is one closed mass wearing exactly
+ * one lit plane on −y (the sun law) and one dark line — the FLAT law
+ * measured against a sword, not against how good it could look alone.
+ */
+function drawGreatbladeSilhouette(
+  ctx: CanvasRenderingContext2D,
+  st: GreatStyle,
+  s: number,
+  gx: number,
+  tip: number,
+  steel: string,
+  edge: string,
+  dark: string,
+  hurt?: boolean,
+): void {
+  const bx = gx + 0.02 * s;
+  const len = tip - bx;
   ctx.fillStyle = steel;
+  switch (st.blade ?? 'colossus') {
+    case 'leaf': {
+      // Bronze-age waist: narrow at the cross, widest past the middle.
+      const bw = 0.042 * s;
+      const belly = bx + len * 0.55;
+      ctx.beginPath();
+      ctx.moveTo(bx, -bw * 0.62);
+      ctx.quadraticCurveTo(belly, -bw * 1.3, tip - 0.14 * s, -bw * 0.72);
+      ctx.lineTo(tip, 0);
+      ctx.lineTo(tip - 0.14 * s, bw * 0.72);
+      ctx.quadraticCurveTo(belly, bw * 1.3, bx, bw * 0.62);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(bx, -bw * 0.58);
+      ctx.quadraticCurveTo(belly, -bw * 1.22, tip - 0.14 * s, -bw * 0.66);
+      ctx.lineTo(tip - 0.05 * s, -bw * 0.1);
+      ctx.quadraticCurveTo(belly, -bw * 0.5, bx, -bw * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      // The cast midrib — poured, not forged.
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = Math.max(1, s * 0.016);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.03 * s, 0.012 * s);
+      ctx.lineTo(tip - 0.08 * s, 0.006 * s);
+      ctx.stroke();
+      break;
+    }
+    case 'cruciform': {
+      // Soldier steel: a clean straight taper to a real point, and the
+      // long fuller doing all the talking.
+      const bw = 0.04 * s;
+      ctx.beginPath();
+      ctx.moveTo(bx, -bw);
+      ctx.lineTo(tip - 0.13 * s, -bw * 0.5);
+      ctx.lineTo(tip, 0);
+      ctx.lineTo(tip - 0.13 * s, bw * 0.5);
+      ctx.lineTo(bx, bw);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(bx, -bw);
+      ctx.lineTo(tip - 0.13 * s, -bw * 0.5);
+      ctx.lineTo(tip, 0);
+      ctx.lineTo(tip - 0.13 * s, -bw * 0.16);
+      ctx.lineTo(bx, -bw * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = Math.max(1, s * 0.015);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.03 * s, bw * 0.2);
+      ctx.lineTo(tip - 0.18 * s, bw * 0.12);
+      ctx.stroke();
+      break;
+    }
+    case 'spire': {
+      // Elegance at six feet: a short ricasso, then one long draw to
+      // the finest point in the roster.
+      const bw = 0.041 * s;
+      const ric = bx + len * 0.17;
+      ctx.beginPath();
+      ctx.moveTo(bx, -bw);
+      ctx.lineTo(ric, -bw);
+      ctx.lineTo(tip, 0);
+      ctx.lineTo(ric, bw);
+      ctx.lineTo(bx, bw);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(bx, -bw);
+      ctx.lineTo(ric, -bw);
+      ctx.lineTo(tip, 0);
+      ctx.lineTo(ric, -bw * 0.28);
+      ctx.lineTo(bx, -bw * 0.32);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.02 * s, bw * 0.24);
+      ctx.lineTo(bx + len * 0.6, bw * 0.1);
+      ctx.stroke();
+      break;
+    }
+    case 'cleaverback': {
+      // The working blade: straight spine, flared belly, a nose
+      // clipped square because a point would be showing off.
+      const spine = -0.036 * s;
+      ctx.beginPath();
+      ctx.moveTo(bx, spine);
+      ctx.lineTo(tip - 0.03 * s, spine);
+      ctx.lineTo(tip, 0.012 * s);
+      ctx.quadraticCurveTo(bx + len * 0.62, 0.06 * s, bx, 0.036 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      // The cutting edge is the BELLY — light rides the underside.
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1.2, s * 0.02);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.02 * s, 0.032 * s);
+      ctx.quadraticCurveTo(bx + len * 0.62, 0.05 * s, tip - 0.02 * s, 0.008 * s);
+      ctx.stroke();
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = Math.max(1, s * 0.015);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.03 * s, spine + 0.017 * s);
+      ctx.lineTo(tip - 0.08 * s, spine + 0.017 * s);
+      ctx.stroke();
+      break;
+    }
+    case 'flamberge': {
+      // The wave edge: three bends a side, mirrored, dying into the
+      // taper — enough flame to read at gameplay size, no more.
+      const bw = 0.042 * s;
+      const wl = len * 0.72; // the waves live in the lower 72%
+      ctx.beginPath();
+      ctx.moveTo(bx, -bw);
+      for (let k = 0; k < 3; k++) {
+        const x0 = bx + (wl / 3) * k;
+        const x1 = bx + (wl / 3) * (k + 1);
+        const w0 = bw * (1 - 0.12 * k);
+        ctx.quadraticCurveTo((x0 + x1) / 2, -w0 - 0.02 * s, x1, -w0 * 0.82);
+      }
+      ctx.lineTo(tip, 0);
+      for (let k = 2; k >= 0; k--) {
+        const x0 = bx + (wl / 3) * (k + 1);
+        const x1 = bx + (wl / 3) * k;
+        const w0 = bw * (1 - 0.12 * k);
+        if (k === 2) ctx.lineTo(x0, w0 * 0.82);
+        ctx.quadraticCurveTo((x0 + x1) / 2, w0 + 0.02 * s, x1, k === 0 ? bw : bw * (1 - 0.12 * (k - 1)) * 0.82);
+      }
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      // One lit crest riding the upper waves.
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1.2, s * 0.018);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.01 * s, -bw * 0.88);
+      for (let k = 0; k < 3; k++) {
+        const x0 = bx + (wl / 3) * k;
+        const x1 = bx + (wl / 3) * (k + 1);
+        const w0 = bw * (1 - 0.12 * k);
+        ctx.quadraticCurveTo((x0 + x1) / 2, -w0 - 0.014 * s, x1, -w0 * 0.74);
+      }
+      ctx.stroke();
+      // The unquenched seam down the middle.
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = Math.max(1.2, s * 0.022);
+      ctx.beginPath();
+      ctx.moveTo(bx + 0.03 * s, 0);
+      ctx.lineTo(tip - 0.1 * s, 0);
+      ctx.stroke();
+      break;
+    }
+    default: {
+      // 'colossus' — the founding slab: broad, blunt-shouldered,
+      // honest taper. Byte-for-byte the shape the school shipped with.
+      const bw = 0.046 * s;
+      ctx.beginPath();
+      ctx.moveTo(bx, -bw);
+      ctx.lineTo(tip - 0.09 * s, -bw * 0.82);
+      ctx.lineTo(tip, 0);
+      ctx.lineTo(tip - 0.09 * s, bw * 0.82);
+      ctx.lineTo(bx, bw);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(bx, -bw);
+      ctx.lineTo(tip - 0.09 * s, -bw * 0.82);
+      ctx.lineTo(tip, 0);
+      ctx.lineTo(tip - 0.1 * s, -bw * 0.3);
+      ctx.lineTo(bx, -bw * 0.34);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      ctx.moveTo(gx + 0.05 * s, bw * 0.22);
+      ctx.lineTo(tip - 0.14 * s, bw * 0.18);
+      ctx.stroke();
+      break;
+    }
+  }
+  // Battle bites out of the working edge — owned steel wears its life.
+  if (!hurt && st.notched) {
+    ctx.fillStyle = shade(st.color, -52);
+    const edgeY = st.blade === 'cleaverback' ? 0.05 * s : 0.036 * s;
+    for (const [t, sy, d] of [[0.3, 1, 1], [0.62, 1, 0.7], [0.46, -1, 0.75]] as const) {
+      const nx = bx + len * t;
+      const ny = sy * (st.blade === 'cleaverback' && sy < 0 ? 0.03 * s : edgeY);
+      ctx.beginPath();
+      ctx.moveTo(nx - 0.022 * s, ny);
+      ctx.lineTo(nx + 0.022 * s, ny);
+      ctx.lineTo(nx, ny - sy * 0.032 * s * d);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+}
+
+/** The greatblade guards: one bar's worth of build, five builds. */
+function drawGreatGuard(
+  ctx: CanvasRenderingContext2D,
+  st: GreatStyle,
+  s: number,
+  gx: number,
+  guard: string,
+  hurt?: boolean,
+): void {
+  ctx.fillStyle = guard;
+  switch (st.guard ?? 'bar') {
+    case 'stub':
+      ctx.fillRect(gx - 0.016 * s, -0.062 * s, 0.036 * s, 0.124 * s);
+      break;
+    case 'cross': {
+      // Flared quillons: the bar swells at both tips.
+      ctx.fillRect(gx - 0.014 * s, -0.1 * s, 0.032 * s, 0.2 * s);
+      ctx.fillRect(gx - 0.02 * s, -0.112 * s, 0.044 * s, 0.026 * s);
+      ctx.fillRect(gx - 0.02 * s, 0.086 * s, 0.044 * s, 0.026 * s);
+      if (!hurt) {
+        // The struck tips catch the light.
+        ctx.fillStyle = shade(guard, 32);
+        ctx.fillRect(gx - 0.02 * s, -0.112 * s, 0.044 * s, 0.01 * s);
+      }
+      break;
+    }
+    case 'wing': {
+      // Paired swept wings raking toward the tip.
+      ctx.beginPath();
+      ctx.moveTo(gx - 0.012 * s, -0.03 * s);
+      ctx.lineTo(gx + 0.052 * s, -0.108 * s);
+      ctx.lineTo(gx + 0.024 * s, -0.028 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(gx - 0.012 * s, 0.03 * s);
+      ctx.lineTo(gx + 0.052 * s, 0.108 * s);
+      ctx.lineTo(gx + 0.024 * s, 0.028 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillRect(gx - 0.014 * s, -0.045 * s, 0.03 * s, 0.09 * s);
+      break;
+    }
+    case 'crown': {
+      // The court's cross: a bar wearing three merlons toward the tip.
+      ctx.fillRect(gx - 0.016 * s, -0.1 * s, 0.032 * s, 0.2 * s);
+      for (const y of [-0.085, -0.012, 0.061] as const) {
+        ctx.fillRect(gx + 0.016 * s, y * s, 0.018 * s, 0.024 * s);
+      }
+      break;
+    }
+    default:
+      // 'bar' — the founding wide cross.
+      ctx.fillRect(gx - 0.016 * s, -0.105 * s, 0.038 * s, 0.21 * s);
+      break;
+  }
+}
+
+/** The pommel rack: the counterweight both fists trust, seven ways. */
+function drawGreatPommel(
+  ctx: CanvasRenderingContext2D,
+  st: GreatStyle,
+  s: number,
+  butt: number,
+  hurt?: boolean,
+): void {
+  const kind = st.pommel ?? 'wheel';
+  if (kind === 'none') return;
+  const col = hurt ? '#ffffff' : (st.pommelColor ?? st.guardColor);
+  ctx.fillStyle = col;
+  switch (kind) {
+    case 'ring': {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = Math.max(1.6, s * 0.024);
+      ctx.beginPath();
+      ctx.arc(butt, 0, 0.032 * s, 0, Math.PI * 2);
+      ctx.stroke();
+      break;
+    }
+    case 'coin': {
+      // The first toll, let into the steel.
+      ctx.beginPath();
+      ctx.arc(butt, 0, 0.038 * s, 0, Math.PI * 2);
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = st.gem ?? shade(col, -30);
+        ctx.beginPath();
+        ctx.arc(butt, 0, 0.02 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
+    case 'star': {
+      const r = 0.05 * s;
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const rr = i % 2 === 0 ? r : r * 0.42;
+        ctx.lineTo(butt + Math.cos(a) * rr, Math.sin(a) * rr);
+      }
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+    case 'bone': {
+      // A knuckle end: two lobes of old bone.
+      ctx.beginPath();
+      ctx.arc(butt - 0.012 * s, -0.018 * s, 0.026 * s, 0, Math.PI * 2);
+      ctx.arc(butt - 0.012 * s, 0.018 * s, 0.026 * s, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'gem': {
+      ctx.beginPath();
+      ctx.arc(butt, 0, 0.036 * s, 0, Math.PI * 2);
+      ctx.fill();
+      if (!hurt && st.gem) {
+        ctx.fillStyle = st.gem;
+        ctx.beginPath();
+        ctx.arc(butt, 0, 0.019 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
+    default:
+      // 'wheel' — the founding disc.
+      ctx.beginPath();
+      ctx.arc(butt, 0, 0.036 * s, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+  }
+}
+
+/**
+ * The double-headed greataxe: a war haft with twin mirrored bits at
+ * the crown. The upper bit (−y) wears the lit strip — the sun law —
+ * and the lower bit runs a shade darker so the two read as planes of
+ * one head, not a butterfly. Head shapes carry the identity.
+ */
+function drawGreataxeBody(
+  ctx: CanvasRenderingContext2D,
+  st: GreatStyle,
+  s: number,
+  butt: number,
+  tip: number,
+  steel: string,
+  edge: string,
+  dark: string,
+  guard: string,
+  gripC: string,
+  hurt?: boolean,
+): void {
+  const L = tip - butt;
+  const hx = tip - 0.14 * L; // head mount center
+  const collar = hurt ? '#ffffff' : (st.collar ?? guard);
+  // The haft: butt through the crown.
+  ctx.strokeStyle = gripC;
+  ctx.lineWidth = Math.max(2.5, s * 0.05);
+  ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(gx + 0.02 * s, -bw);
-  ctx.lineTo(tip - 0.09 * s, -bw * 0.82);
-  ctx.lineTo(tip, 0);
-  ctx.lineTo(tip - 0.09 * s, bw * 0.82);
-  ctx.lineTo(gx + 0.02 * s, bw);
-  ctx.closePath();
-  ctx.fill();
-  // One lit edge plane on −y (the sun law) and the one fuller line.
-  ctx.fillStyle = edge;
-  ctx.beginPath();
-  ctx.moveTo(gx + 0.02 * s, -bw);
-  ctx.lineTo(tip - 0.09 * s, -bw * 0.82);
-  ctx.lineTo(tip, 0);
-  ctx.lineTo(tip - 0.1 * s, -bw * 0.3);
-  ctx.lineTo(gx + 0.02 * s, -bw * 0.34);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = dark;
-  ctx.lineWidth = Math.max(1, s * 0.014);
-  ctx.beginPath();
-  ctx.moveTo(gx + 0.05 * s, bw * 0.22);
-  ctx.lineTo(tip - 0.14 * s, bw * 0.18);
+  ctx.moveTo(butt, 0);
+  ctx.lineTo(tip - (st.spike ? 0.05 : 0.02) * L, 0);
   ctx.stroke();
+  if (!hurt && st.wrap) {
+    ctx.fillStyle = st.wrap;
+    const gl = hx - 0.1 * L - butt;
+    ctx.fillRect(butt + gl * 0.18, -0.028 * s, 0.018 * s, 0.056 * s);
+    ctx.fillRect(butt + gl * 0.52, -0.028 * s, 0.018 * s, 0.056 * s);
+  }
+  drawGreatPommel(ctx, st, s, butt, hurt);
+
+  // The heads, mirrored across the haft.
+  drawAxeBit(ctx, st, s, hx, -1, steel, edge, dark, hurt);
+  drawAxeBit(ctx, st, s, hx, 1, hurt ? '#ffffff' : shade(st.color, -12), edge, dark, hurt);
+
+  // The mount collar seats OVER the cheeks — the heads hang from it.
+  ctx.fillStyle = collar;
+  ctx.fillRect(hx - 0.032 * s, -0.052 * s, 0.064 * s, 0.104 * s);
+  if (!hurt && st.gem) {
+    // The seated stone between the heads.
+    ctx.fillStyle = st.gem;
+    ctx.beginPath();
+    ctx.arc(hx, 0, 0.02 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // The finishing spike past the crown.
+  if (st.spike) {
+    ctx.fillStyle = hurt ? '#ffffff' : steel;
+    ctx.beginPath();
+    ctx.moveTo(tip - 0.06 * L, -0.022 * s);
+    ctx.lineTo(tip, 0);
+    ctx.lineTo(tip - 0.06 * L, 0.022 * s);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/**
+ * One axe bit. `side` −1 paints the upper (−y, lit) head, +1 the
+ * lower. Shapes are authored for the upper head and mirrored by
+ * multiplying every y — the two bits are the same forging.
+ */
+function drawAxeBit(
+  ctx: CanvasRenderingContext2D,
+  st: GreatStyle,
+  s: number,
+  hx: number,
+  side: -1 | 1,
+  fill: string,
+  edge: string,
+  dark: string,
+  hurt?: boolean,
+): void {
+  const m = side;
+  const head = st.head ?? 'crescent';
+  ctx.fillStyle = fill;
+  switch (head) {
+    case 'bearded': {
+      // Squared bit; the heel drops a hanging hook toward the butt.
+      ctx.beginPath();
+      ctx.moveTo(hx + 0.045 * s, m * -0.048 * s);
+      ctx.lineTo(hx + 0.088 * s, m * -0.15 * s);
+      ctx.lineTo(hx - 0.078 * s, m * -0.162 * s);
+      ctx.lineTo(hx - 0.112 * s, m * -0.062 * s);
+      ctx.lineTo(hx - 0.058 * s, m * -0.098 * s);
+      ctx.lineTo(hx - 0.045 * s, m * -0.048 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt || m > 0) break;
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(hx + 0.088 * s, -0.15 * s);
+      ctx.lineTo(hx - 0.078 * s, -0.162 * s);
+      ctx.lineTo(hx - 0.07 * s, -0.128 * s);
+      ctx.lineTo(hx + 0.078 * s, -0.118 * s);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+    case 'jaws': {
+      // The bite: the working edge is a row of three teeth.
+      ctx.beginPath();
+      ctx.moveTo(hx + 0.05 * s, m * -0.048 * s);
+      ctx.lineTo(hx + 0.09 * s, m * -0.155 * s);
+      ctx.lineTo(hx + 0.045 * s, m * -0.125 * s);
+      ctx.lineTo(hx + 0.005 * s, m * -0.165 * s);
+      ctx.lineTo(hx - 0.038 * s, m * -0.125 * s);
+      ctx.lineTo(hx - 0.085 * s, m * -0.158 * s);
+      ctx.lineTo(hx - 0.05 * s, m * -0.048 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt || m > 0) break;
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(hx + 0.09 * s, -0.155 * s);
+      ctx.lineTo(hx + 0.045 * s, -0.125 * s);
+      ctx.lineTo(hx + 0.005 * s, -0.165 * s);
+      ctx.lineTo(hx + 0.01 * s, -0.135 * s);
+      ctx.lineTo(hx + 0.05 * s, -0.1 * s);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+    case 'scrap': {
+      // Mismatched plates: the upper bit is a bent trapezoid, the
+      // lower a smaller tilted shear — no two swings land the same.
+      if (m < 0) {
+        ctx.beginPath();
+        ctx.moveTo(hx + 0.052 * s, -0.048 * s);
+        ctx.lineTo(hx + 0.095 * s, -0.132 * s);
+        ctx.lineTo(hx + 0.02 * s, -0.168 * s);
+        ctx.lineTo(hx - 0.075 * s, -0.138 * s);
+        ctx.lineTo(hx - 0.045 * s, -0.048 * s);
+        ctx.closePath();
+        ctx.fill();
+        if (!hurt) {
+          ctx.fillStyle = edge;
+          ctx.beginPath();
+          ctx.moveTo(hx + 0.095 * s, -0.132 * s);
+          ctx.lineTo(hx + 0.02 * s, -0.168 * s);
+          ctx.lineTo(hx + 0.005 * s, -0.135 * s);
+          ctx.lineTo(hx + 0.078 * s, -0.105 * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(hx + 0.04 * s, 0.048 * s);
+        ctx.lineTo(hx + 0.06 * s, 0.125 * s);
+        ctx.lineTo(hx - 0.06 * s, 0.148 * s);
+        ctx.lineTo(hx - 0.055 * s, 0.048 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+      break;
+    }
+    case 'halfmoon': {
+      // One wide shallow sweep — the whole bit is edge — on a narrow
+      // taper of a cheek (a slab cheek made a T; bench verdict).
+      ctx.beginPath();
+      ctx.moveTo(hx - 0.032 * s, m * -0.048 * s);
+      ctx.lineTo(hx - 0.052 * s, m * -0.115 * s);
+      ctx.lineTo(hx + 0.052 * s, m * -0.115 * s);
+      ctx.lineTo(hx + 0.032 * s, m * -0.048 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(hx - 0.118 * s, m * -0.088 * s);
+      ctx.quadraticCurveTo(hx, m * -0.205 * s, hx + 0.118 * s, m * -0.088 * s);
+      ctx.quadraticCurveTo(hx, m * -0.108 * s, hx - 0.118 * s, m * -0.088 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt || m > 0) break;
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1.2, s * 0.018);
+      ctx.beginPath();
+      ctx.moveTo(hx - 0.108 * s, -0.09 * s);
+      ctx.quadraticCurveTo(hx, -0.195 * s, hx + 0.108 * s, -0.09 * s);
+      ctx.stroke();
+      break;
+    }
+    default: {
+      // 'crescent' — a TRUE crescent: a thin curved blade with horns,
+      // standing off the eye on its own neck. The fan-fill version
+      // read as a bowtie at gameplay scale (bench verdict); the neck
+      // runs a plane darker or blade and neck melt into a bell.
+      ctx.fillStyle = hurt ? '#ffffff' : shade(fill, -14);
+      ctx.beginPath();
+      ctx.moveTo(hx - 0.036 * s, m * -0.048 * s);
+      ctx.lineTo(hx - 0.048 * s, m * -0.152 * s);
+      ctx.lineTo(hx + 0.048 * s, m * -0.152 * s);
+      ctx.lineTo(hx + 0.036 * s, m * -0.048 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.moveTo(hx - 0.108 * s, m * -0.132 * s);
+      ctx.quadraticCurveTo(hx, m * -0.218 * s, hx + 0.108 * s, m * -0.135 * s);
+      ctx.quadraticCurveTo(hx, m * -0.15 * s, hx - 0.108 * s, m * -0.132 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt || m > 0) break;
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1.2, s * 0.02);
+      ctx.beginPath();
+      ctx.moveTo(hx - 0.098 * s, -0.135 * s);
+      ctx.quadraticCurveTo(hx, -0.208 * s, hx + 0.098 * s, -0.138 * s);
+      ctx.stroke();
+      break;
+    }
+  }
+  // The one seam: the lower head's cheek line ties the bits to the eye.
+  if (!hurt && m > 0) {
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = Math.max(1, s * 0.014);
+    ctx.beginPath();
+    ctx.moveTo(hx - 0.04 * s, 0.07 * s);
+    ctx.lineTo(hx + 0.04 * s, 0.07 * s);
+    ctx.stroke();
+  }
+  // Battle bites out of the upper working edge.
+  if (!hurt && st.notched && m < 0) {
+    ctx.fillStyle = shade(st.color, -52);
+    for (const t of [-0.045, 0.03] as const) {
+      ctx.beginPath();
+      ctx.moveTo(hx + (t - 0.018) * s, -0.15 * s);
+      ctx.lineTo(hx + (t + 0.018) * s, -0.155 * s);
+      ctx.lineTo(hx + t * s, -0.125 * s);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
 }

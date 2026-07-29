@@ -530,7 +530,7 @@ test('early-game leather sets: four dye lots each, colorways mirror their base',
 test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates hold', async () => {
   const { ABILITIES } = await import('./abilities.js');
   const weapons = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
-  assert.equal(weapons.length, 152, 'swords 48 + daggers 45 + bows 29 + staves 28 + greatweapons 2');
+  assert.equal(weapons.length, 172, 'swords 48 + daggers 45 + bows 29 + staves 28 + greatweapons 22');
   const swords = weapons.filter((d) => d.weapon?.style === 'melee');
   assert.equal(swords.length, 93, 'swords 48 + daggers 45');
   for (const s of swords) {
@@ -563,6 +563,60 @@ test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates 
   const common = rolledStats('dawnbreaker', { rar: 'common', seed: 1 })!;
   const legendary = rolledStats('dawnbreaker', { rar: 'legendary', seed: 1 })!;
   assert.ok(legendary.damage! > common.damage!, 'rarity multiplies the edge');
+});
+
+test('colossus roster: 22 greatweapons, both hands, ladders climb, heirlooms legendary-only', async () => {
+  const { ABILITIES } = await import('./abilities.js');
+  const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
+  const greats = [
+    // Blades: the forge line, the owned finds, the heirloom.
+    'iron_greatblade', 'bronze_greatblade', 'steel_greatblade', 'mithril_greatblade', 'starsteel_greatblade',
+    'reavers_toll', 'gravewrought', 'ashrender', 'frostfell', 'crowns_argument', 'colossus_vow',
+    // Axes: the double-headed line, the owned finds, the heirloom.
+    'bronze_greataxe', 'iron_greataxe', 'steel_greataxe', 'adamant_greataxe',
+    'gobmangler', 'barrowmaw', 'forgewrath', 'stormhewer', 'moonhewn', 'mountains_end',
+    // The chase maul.
+    'stonebreaker_maul',
+  ];
+  assert.equal(greats.length, 22, '2 founders + 10 blades + 10 axes');
+  for (const id of greats) {
+    const d = byId.get(id);
+    assert.ok(d, `${id} exists`);
+    // The great identity: the school's own style, a slow heavy cadence,
+    // reach past any one-hander, and a real story.
+    assert.equal(d!.weapon?.style, 'twohand', `${id} swings in the great school`);
+    assert.ok(d!.weapon!.cooldownTicks >= 12, `${id} keeps the heavy cadence`);
+    assert.ok(d!.weapon!.range >= 2.3, `${id} keeps the great reach`);
+    assert.ok(d!.weapon!.art && ABILITIES.has(d!.weapon!.art), `${id} art resolves`);
+    assert.ok(d!.desc && d!.desc.length > 20, `${id} carries a real story`);
+  }
+  // Both forge lines climb: damage, value, and the smithing gate.
+  const lines: Array<[string, string[]]> = [
+    ['greatblade', ['bronze_greatblade', 'iron_greatblade', 'steel_greatblade', 'mithril_greatblade', 'starsteel_greatblade']],
+    ['greataxe', ['bronze_greataxe', 'iron_greataxe', 'steel_greataxe', 'adamant_greataxe']],
+  ];
+  for (const [key, ids] of lines) {
+    const line = ids.map((id) => byId.get(id)!);
+    assert.ok(line.every(Boolean), `${key} line forged whole`);
+    for (let i = 1; i < line.length; i++) {
+      assert.ok(line[i]!.weapon!.damage > line[i - 1]!.weapon!.damage, `${key} damage climbs`);
+      assert.ok(line[i]!.value > line[i - 1]!.value, `${key} value climbs`);
+      assert.ok(line[i]!.recipe!.levelReq > line[i - 1]!.recipe!.levelReq, `${key} smithing climbs`);
+      assert.equal(line[i]!.weapon!.cooldownTicks, line[0]!.weapon!.cooldownTicks, `${key} keeps its cadence`);
+    }
+  }
+  // Every bespoke find carries its OWN weapon art — the item is the
+  // unlock; the ladder lines share their design art.
+  const bespokeArts = ['reavers_toll', 'gravewrought', 'ashrender', 'frostfell', 'crowns_argument',
+    'colossus_vow', 'barrowmaw', 'forgewrath', 'stormhewer', 'moonhewn', 'mountains_end']
+    .map((id) => byId.get(id)!.weapon!.art);
+  assert.equal(new Set(bespokeArts).size, bespokeArts.length, 'no two bespoke greats share a word');
+  // The chase steepens: one heirloom per school, legendary or nothing,
+  // and each heirloom DOES something beyond stats.
+  for (const id of ['colossus_vow', 'mountains_end']) {
+    assert.deepEqual(byId.get(id)!.rarities, ['legendary'], `${id} only exists legendary`);
+    assert.ok((byId.get(id)!.effects?.length ?? 0) > 0, `${id} carries a native effect`);
+  }
 });
 
 test('rogue roster: 20 dagger designs, sneak gates, backstab dial, ladders climb', async () => {
