@@ -83,6 +83,16 @@ export interface NpcDef {
    * Meaningless without a pack tag (nobody to run to).
    */
   craven?: boolean;
+  /**
+   * THE EYE'S ARC (degrees, full angle): how wide this body watches
+   * while at rest. aggroRange is the eye's REACH; this is its shape.
+   * Beasts read wide (ears and nose count), people read narrower,
+   * and 360 is the unsleeping watcher nothing walks behind. Absent =
+   * the shared DEFAULT_SIGHT_ARC. Sneaking past the arc's edge is
+   * the whole point — approach from behind and the watcher only
+   * gets its dim all-round peripheral sense.
+   */
+  sightArc?: number;
 }
 
 /** How far a pack answers a packmate's aggro (tiles). */
@@ -172,6 +182,7 @@ const defs: NpcDef[] = [
     attackRange: 0.8,
     attackCooldownTicks: 40,
     aggroRange: 3,
+    sightArc: 240,
     leashRange: 16,
     speed: 3.2,
     xpReward: 20,
@@ -190,6 +201,7 @@ const defs: NpcDef[] = [
     attackRange: 1.0,
     attackCooldownTicks: 50,
     aggroRange: 4,
+    sightArc: 150,
     leashRange: 24,
     speed: 3.6,
     xpReward: 50,
@@ -213,6 +225,7 @@ const defs: NpcDef[] = [
     attackRange: 5.5,
     attackCooldownTicks: 56,
     aggroRange: 6,
+    sightArc: 150,
     leashRange: 24,
     speed: 3.2,
     xpReward: 60,
@@ -241,6 +254,7 @@ const defs: NpcDef[] = [
     attackRange: 1.05,
     attackCooldownTicks: 46,
     aggroRange: 5,
+    sightArc: 160,
     leashRange: 26,
     speed: 3.6,
     xpReward: 95,
@@ -263,6 +277,7 @@ const defs: NpcDef[] = [
     attackRange: 6,
     attackCooldownTicks: 54,
     aggroRange: 7,
+    sightArc: 160,
     leashRange: 26,
     speed: 3.4,
     xpReward: 110,
@@ -286,6 +301,7 @@ const defs: NpcDef[] = [
     attackRange: 1.1,
     attackCooldownTicks: 42,
     aggroRange: 6,
+    sightArc: 160,
     leashRange: 28,
     speed: 3.7,
     xpReward: 210,
@@ -305,6 +321,7 @@ const defs: NpcDef[] = [
     attackRange: 0.95,
     attackCooldownTicks: 46,
     aggroRange: 4,
+    sightArc: 150,
     leashRange: 22,
     speed: 3.5,
     xpReward: 42,
@@ -331,6 +348,7 @@ const defs: NpcDef[] = [
     attackRange: 1.1,
     attackCooldownTicks: 52,
     aggroRange: 5,
+    sightArc: 150,
     leashRange: 24,
     speed: 3.3,
     xpReward: 150,
@@ -358,6 +376,7 @@ const defs: NpcDef[] = [
     attackRange: 1.0,
     attackCooldownTicks: 42,
     aggroRange: 5,
+    sightArc: 120,
     leashRange: 30,
     speed: 3.4,
     xpReward: 80,
@@ -381,6 +400,7 @@ const defs: NpcDef[] = [
     // the sword, is the threat.
     attackCooldownTicks: 50,
     aggroRange: 5,
+    sightArc: 120,
     leashRange: 24,
     speed: 2.9,
     xpReward: 170,
@@ -402,6 +422,7 @@ const defs: NpcDef[] = [
     attackRange: 1.2,
     attackCooldownTicks: 40,
     aggroRange: 6,
+    sightArc: 360,
     leashRange: 36,
     speed: 3.8,
     xpReward: 400,
@@ -424,6 +445,7 @@ const defs: NpcDef[] = [
     attackRange: 0.7,
     attackCooldownTicks: 46,
     aggroRange: 0,
+    sightArc: 300,
     leashRange: 8,
     speed: 2.2,
     xpReward: 18,
@@ -444,6 +466,7 @@ const defs: NpcDef[] = [
     attackRange: 0.8,
     attackCooldownTicks: 48,
     aggroRange: 0,
+    sightArc: 360,
     leashRange: 14,
     speed: 2.6,
     xpReward: 40,
@@ -467,6 +490,7 @@ const defs: NpcDef[] = [
     attackCooldownTicks: 44,
     // The halves come out angry — they hunt whoever broke the whole.
     aggroRange: 4,
+    sightArc: 360,
     leashRange: 20,
     speed: 3.0,
     xpReward: 10,
@@ -524,6 +548,7 @@ const defs: NpcDef[] = [
     attackRange: 0.9,
     attackCooldownTicks: 42,
     aggroRange: 0,
+    sightArc: 240,
     leashRange: 18,
     speed: 3.8,
     xpReward: 60,
@@ -543,6 +568,7 @@ const defs: NpcDef[] = [
     attackRange: 0.8,
     attackCooldownTicks: 50,
     aggroRange: 0,
+    sightArc: 300,
     leashRange: 14,
     speed: 2.8,
     xpReward: 55,
@@ -563,6 +589,7 @@ const defs: NpcDef[] = [
     attackRange: 0.8,
     attackCooldownTicks: 36,
     aggroRange: 4,
+    sightArc: 360,
     leashRange: 22,
     speed: 4.8,
     xpReward: 25,
@@ -582,6 +609,7 @@ const defs: NpcDef[] = [
     attackRange: 1.0,
     attackCooldownTicks: 40,
     aggroRange: 3,
+    sightArc: 200,
     leashRange: 16,
     speed: 3.6,
     xpReward: 85,
@@ -602,6 +630,7 @@ const defs: NpcDef[] = [
     attackRange: 1.0,
     attackCooldownTicks: 38,
     aggroRange: 5,
+    sightArc: 360,
     leashRange: 24,
     speed: 4.2,
     xpReward: 95,
@@ -624,6 +653,7 @@ const defs: NpcDef[] = [
     attackRange: 6.5,
     attackCooldownTicks: 52,
     aggroRange: 7,
+    sightArc: 120,
     leashRange: 30,
     speed: 3.4,
     xpReward: 100,
@@ -645,6 +675,7 @@ const defs: NpcDef[] = [
     attackRange: 1.2,
     attackCooldownTicks: 46,
     aggroRange: 5,
+    sightArc: 100,
     leashRange: 28,
     speed: 3.2,
     xpReward: 180,
@@ -666,6 +697,7 @@ const defs: NpcDef[] = [
     attackRange: 1.1,
     attackCooldownTicks: 42,
     aggroRange: 0,
+    sightArc: 240,
     leashRange: 24,
     speed: 4.0,
     xpReward: 220,
@@ -687,6 +719,7 @@ const defs: NpcDef[] = [
     attackRange: 1.0,
     attackCooldownTicks: 38,
     aggroRange: 6,
+    sightArc: 240,
     leashRange: 28,
     speed: 4.6,
     xpReward: 110,
@@ -710,6 +743,7 @@ const defs: NpcDef[] = [
     attackCooldownTicks: 36,
     // Cunning hunter: it marks you further out than anything its size.
     aggroRange: 7,
+    sightArc: 240,
     leashRange: 32,
     // The fastest pursuit in the wilds — you do not outrun a worg.
     speed: 5.0,
@@ -735,6 +769,7 @@ const defs: NpcDef[] = [
     // She presses faster than her pack — the matriarch sets the tempo.
     attackCooldownTicks: 34,
     aggroRange: 7,
+    sightArc: 240,
     // A roaming matriarch ranges wide of any one den.
     leashRange: 36,
     speed: 4.8,
@@ -853,6 +888,12 @@ export function validateNpcDef(
     if (d[f] !== undefined && typeof d[f] !== 'boolean') errors.push(`${f} must be a boolean`);
   }
   if (d.pack !== undefined && typeof d.pack !== 'string') errors.push('pack must be a string');
+  if (
+    d.sightArc !== undefined &&
+    (typeof d.sightArc !== 'number' || d.sightArc < 30 || d.sightArc > 360)
+  ) {
+    errors.push('sightArc must be a number in [30, 360] degrees');
+  }
   return errors;
 }
 

@@ -7,6 +7,9 @@ import {
   EntityKind,
   PoseState,
   SHEATHED_BIT,
+  ALERT_ICON_NONE,
+  ALERT_ICON_ENGAGED,
+  ALERT_ICON_HUNTING,
   STATUS_AMBIENCE_MASK,
   STATUS_BIT,
   LIGHT_BLOCKING_TILES,
@@ -19561,6 +19564,7 @@ export class Renderer {
         pose: PoseState.Idle,
         hpPct: 255,
         status: 0,
+        alert: 0,
       };
       const hurt = (remote.hurtUntil ?? 0) > now;
       if (s.status) this.statusAmbience(s.x, s.y, s.status);
@@ -19622,6 +19626,14 @@ export class Renderer {
           items.push(item);
           const pins = this.npcArrows.get(eid);
           if (pins && pins.length > 0) items.push(this.npcArrowsItem(pins, s));
+          const alertItem = this.alertIconItem(
+            eid,
+            s.alert ?? 0,
+            s,
+            remote.meta.appearance !== undefined,
+            npcDef(remote.meta.defId ?? '')?.radius ?? 0.45,
+          );
+          if (alertItem) items.push(alertItem);
           break;
         }
         case EntityKind.ItemDrop:
@@ -20398,6 +20410,69 @@ export class Renderer {
         if (e.hpPct < 255) {
           this.drawMiniHp(p.x, topY + s * 0.08, 0.7 * s, e.hpPct);
         }
+      },
+    };
+  }
+
+  /** Per-entity alert glyph animation state (icon + when it changed). */
+  private readonly alertAnim = new Map<number, { icon: number; since: number }>();
+
+  /**
+   * THE TELEGRAPH: the "?" / "!" over a wary or engaged head — the
+   * player-facing read of the perception ladder. Gold "?" = something
+   * has its attention (suspicious/investigating); ember "!" = the
+   * hunt is on; the hunting "?" pulses — the chain is broken but the
+   * body is still out there looking. Pops in on every transition so
+   * the moment reads at a glance. Nameplate-dialect glyph text drawn
+   * in the label pass (no outline ring), never emoji.
+   */
+  private alertIconItem(
+    eid: number,
+    icon: number,
+    s: { x: number; y: number },
+    humanoid: boolean,
+    radius: number,
+  ): DrawItem | null {
+    const prev = this.alertAnim.get(eid);
+    if (icon === ALERT_ICON_NONE) {
+      if (prev) this.alertAnim.delete(eid);
+      return null;
+    }
+    const now = performance.now();
+    if (!prev || prev.icon !== icon) this.alertAnim.set(eid, { icon, since: now });
+    const since = this.alertAnim.get(eid)!.since;
+    return {
+      sortY: s.y,
+      draw: () => {},
+      drawLabel: () => {
+        const ctx = this.ctx;
+        const sc = this.camera.scale;
+        const p = this.liftedWTS(s.x, s.y);
+        // Clear of the nameplate: a body's label caps ~1.32 body-
+        // heights up; the glyph floats a step above it.
+        const topY = humanoid ? p.y - 1.62 * sc : p.y - (radius * 2.6 + 0.55) * sc;
+        // Pop-in: 180ms ease-out-back — the snap of a head coming up.
+        const k = Math.min(1, (performance.now() - since) / 180);
+        const c1 = 1.70158;
+        const c3 = c1 + 1;
+        const ease = 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
+        const pop = 0.5 + 0.5 * ease;
+        let alpha = 1;
+        if (icon === ALERT_ICON_HUNTING) {
+          alpha = 0.62 + 0.3 * Math.sin(performance.now() / 260);
+        }
+        const engaged = icon === ALERT_ICON_ENGAGED;
+        const glyph = engaged ? '!' : '?';
+        const size = Math.max(13, sc * (engaged ? 0.52 : 0.46)) * pop;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.font = `700 ${size}px Georgia, 'Times New Roman', serif`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(24, 14, 32, 0.9)';
+        ctx.fillText(glyph, p.x + 1.5, topY + 1.5);
+        ctx.fillStyle = engaged ? '#f0655a' : '#e8b64c';
+        ctx.fillText(glyph, p.x, topY);
+        ctx.restore();
       },
     };
   }

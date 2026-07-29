@@ -8,6 +8,8 @@ export interface InterpSample {
     hpPct: number;
     /** STATUS_BIT bitfield (burn/chill/shock/bleed VFX). */
     status: number;
+    /** NPC alert telegraph (ALERT_ICON_*): the ?/! over the head. */
+    alert: number;
 }
 /**
  * Per-remote-entity buffer of authoritative samples. Rendering samples

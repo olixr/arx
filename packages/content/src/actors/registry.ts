@@ -198,6 +198,9 @@ export const HUMANOID_BASE: NpcDef = {
   attackRange: 1.0,
   attackCooldownTicks: 44,
   aggroRange: 0,
+  // A person on watch: a wide but honest field of view — the town
+  // guard can genuinely be slipped from behind.
+  sightArc: 160,
   leashRange: 20,
   speed: 3.6,
   xpReward: 90,

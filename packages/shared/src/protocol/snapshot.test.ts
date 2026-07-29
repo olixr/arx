@@ -9,9 +9,9 @@ test('snapshot round-trips through the binary codec', () => {
     serverTick: 123456,
     lastInputSeq: 789,
     entities: [
-      { eid: 1, x: 32.5, y: 48.25, dir: 1.5, pose: 1, hpPct: 255, status: 0 },
-      { eid: 99, x: -10.125, y: 0, dir: 6.1, pose: 4, hpPct: 128, status: 0b0101 },
-      { eid: 4_000_000, x: 1000.75, y: 2000.5, dir: 0, pose: 0, hpPct: 0, status: 255 },
+      { eid: 1, x: 32.5, y: 48.25, dir: 1.5, pose: 1, hpPct: 255, status: 0, alert: 0 },
+      { eid: 99, x: -10.125, y: 0, dir: 6.1, pose: 4, hpPct: 128, status: 0b0101, alert: 2 },
+      { eid: 4_000_000, x: 1000.75, y: 2000.5, dir: 0, pose: 0, hpPct: 0, status: 255, alert: 3 },
     ],
   };
   const buf = encodeSnapshot(snap);
@@ -34,6 +34,7 @@ test('snapshot round-trips through the binary codec', () => {
     assert.equal(b.pose, a.pose);
     assert.equal(b.hpPct, a.hpPct);
     assert.equal(b.status, a.status);
+    assert.equal(b.alert, a.alert);
   }
 });
 

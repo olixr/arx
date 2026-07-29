@@ -226,6 +226,22 @@ import {
   OFFHAND_DELAY_TICKS,
   offhandDamageFactor,
   sneakDetectionFactor,
+  ALERT_DECAY,
+  ALERT_GRACE_TICKS,
+  ALERT_ICON_ENGAGED,
+  ALERT_ICON_HUNTING,
+  ALERT_ICON_NONE,
+  ALERT_ICON_WARY,
+  ALERT_MAX,
+  ALERT_SUS,
+  DEFAULT_SIGHT_ARC,
+  LOSE_SIGHT_FACTOR,
+  SIGHT_CLOSE_RANGE,
+  alertRate,
+  sightLine,
+  sightVisibility,
+  sightZone,
+  type SightZone,
   STATION_TILES,
   STATUS_BIT,
   WALL_RUN_TILES,
@@ -391,13 +407,39 @@ interface NpcComp {
   originX: number;
   originY: number;
   /**
-   * 'seekhelp' is the craven break: still in the fight (the eye chip
-   * stays lit, the leash still binds), but running for a resting
-   * packmate instead of swinging — the shout on arrival re-enters
-   * 'chase' through npcAggro like every other path into combat.
+   * THE STATE LADDER (perception rebuild): 'suspicious' = the meter
+   * crossed ALERT_SUS — feet planted, eyes on the last-known spot;
+   * 'investigate' = the look didn't settle it, walk over and see;
+   * 'search' = an ENGAGED quarry slipped the eye — hunt the
+   * last-known position and a ring of nearby ground before giving
+   * up. 'seekhelp' is the craven break: still in the fight (the eye
+   * chip stays lit, the leash still binds), but running for a
+   * resting packmate instead of swinging — the shout on arrival
+   * re-enters 'chase' through npcAggro like every other path into
+   * combat.
    */
-  state: 'idle' | 'chase' | 'return' | 'seekhelp';
+  state: 'idle' | 'suspicious' | 'investigate' | 'chase' | 'return' | 'seekhelp' | 'search';
   targetEid: EntityId | null;
+  /**
+   * THE ONE INTEREST: awareness 0..ALERT_MAX toward alertEid — a
+   * body tracks exactly one thing at a time, and the newest
+   * strongest stimulus wins the slot (the last thing you notice is
+   * probably the most important).
+   */
+  alert: number;
+  alertEid: EntityId | null;
+  /** Last-known position of the interest — where every hunt goes. */
+  alertX: number;
+  alertY: number;
+  /** Last tick the interest actually stood in view. */
+  alertSeenTick: number;
+  /** investigate/search: the whole hunt's give-up tick. */
+  huntUntilTick: number;
+  /** Search ring around the LKP, minted on first arrival. */
+  huntWps: Array<{ x: number; y: number }> | null;
+  huntIdx: number;
+  /** Stand-and-look dwell between hunt legs. */
+  huntWaitUntilTick: number;
   /** Wander steering, re-rolled every few seconds. */
   wanderUntilTick: number;
   wanderX: number;
@@ -8546,7 +8588,12 @@ export class GameServer {
       // moment a chase begins the bit drops and the client plays the
       // draw. Plain bestiary mobs never stow.
       const npc = this.npcs.get(eid);
-      if (npc ? npc.sheathePref && npc.state === 'idle' : this.actors.has(eid)) {
+      // Wariness is not war: a suspicious or investigating guard
+      // keeps the blade on the hip — steel comes out for the chase
+      // and stays out through the search.
+      const stowed =
+        npc?.state === 'idle' || npc?.state === 'suspicious' || npc?.state === 'investigate';
+      if (npc ? npc.sheathePref && stowed : this.actors.has(eid)) {
         bits |= SHEATHED_BIT;
       }
     }
@@ -9022,7 +9069,7 @@ export class GameServer {
     // guard you swing at swings back.
     if (this.actors.get(npcEid)?.actor.protection === 'invulnerable') {
       this.broadcastHit(npcEid, 0, false, 0, 0, false, true);
-      if (npc.state === 'idle' && npc.def.damage > 0) {
+      if (this.npcAtPeace(npc) && npc.def.damage > 0) {
         this.npcAggro(npcEid, npc, attackerEid);
       }
       return;
@@ -9151,8 +9198,10 @@ export class GameServer {
       }
     }
 
-    // Fight back!
-    if (npc.state === 'idle' && npc.def.damage > 0) {
+    // Fight back! A wound interrupts any peacetime state — the
+    // suspicious, the investigator, and the searcher all wheel on
+    // whoever drew blood (pain outranks every meter).
+    if (this.npcAtPeace(npc) && npc.def.damage > 0) {
       this.npcAggro(npcEid, npc, attackerEid);
     }
 
@@ -9647,6 +9696,15 @@ export class GameServer {
       helpEid: null,
       helpUntilTick: 0,
       helpCalled: false,
+      alert: 0,
+      alertEid: null,
+      alertX: 0,
+      alertY: 0,
+      alertSeenTick: 0,
+      huntUntilTick: 0,
+      huntWps: null,
+      huntIdx: 0,
+      huntWaitUntilTick: 0,
       nav: null,
       progressLane: null,
       nextRepathTick: 0,
@@ -9761,6 +9819,15 @@ export class GameServer {
         helpEid: null,
         helpUntilTick: 0,
         helpCalled: false,
+        alert: 0,
+        alertEid: null,
+        alertX: 0,
+        alertY: 0,
+        alertSeenTick: 0,
+        huntUntilTick: 0,
+        huntWps: null,
+        huntIdx: 0,
+        huntWaitUntilTick: 0,
         nav: null,
         progressLane: null,
         nextRepathTick: 0,
@@ -9769,7 +9836,7 @@ export class GameServer {
         losGoalX: Infinity,
         losGoalY: Infinity,
         // A guard at peace keeps the blade on the hip; hostiles walk
-        // with steel out. The bit derives from this + state === 'idle'.
+        // with steel out. The bit derives from this + a peacetime state.
         sheathePref: actor.disposition !== 'hostile',
       });
     }
@@ -9856,6 +9923,16 @@ export class GameServer {
   private static readonly PATH_BOOST_EXPANSIONS = 4500;
   /** Global A* grants per tick — everyone else keeps the steer fan. */
   private static readonly MAX_PATHFINDS_PER_TICK = 4;
+  /** Perception cadence: each body looks every 5th tick (4 Hz), staggered. */
+  private static readonly PERCEPTION_PERIOD = 5;
+  /** Suspicious stand-and-stare before walking over to see (2s). */
+  private static readonly SUS_DWELL_TICKS = 40;
+  /** An investigation's whole budget: walk, look, shrug (15s). */
+  private static readonly INVESTIGATE_TICKS = 300;
+  /** The hunt for a slipped quarry runs longer — it KNOWS you exist (20s). */
+  private static readonly SEARCH_TICKS = 400;
+  /** Sight-loss grace before an engaged chase breaks to 'search' (2.5s). */
+  private static readonly LOSE_SIGHT_TICKS = 50;
 
   /** Pathfinder grants left this tick (reset at the top of tickNpcs). */
   private pathfindsLeft = 0;
@@ -10492,29 +10569,82 @@ export class GameServer {
     npc.progressLane = null;
     npc.nextRepathTick = 0;
     npc.losUntilTick = 0;
+    // The interest ledger opens with the fight: full awareness, eyes
+    // on the quarry, sight-loss clock freshly wound.
+    npc.alert = ALERT_MAX;
+    npc.alertEid = targetEid;
+    npc.alertSeenTick = this.tickCount;
+    const tpos = this.positions.get(targetEid);
+    if (tpos) {
+      npc.alertX = tpos.x;
+      npc.alertY = tpos.y;
+    }
+    npc.huntWps = null;
+    npc.huntIdx = 0;
+    npc.huntWaitUntilTick = 0;
     if (npc.def.pack && (opts.rally ?? true)) {
       this.rallyPack(eid, npc, targetEid, PACK_RALLY_RANGE);
     }
   }
 
+  /** States a fresh provocation may interrupt — everything shy of a fight. */
+  private npcAtPeace(npc: NpcComp): boolean {
+    return (
+      npc.state === 'idle' ||
+      npc.state === 'suspicious' ||
+      npc.state === 'investigate' ||
+      npc.state === 'search'
+    );
+  }
+
   /**
-   * The pack answers: idle packmates within `range` of the caller
-   * join its target. Sulking bodies (noAggroUntilTick) keep their
-   * eyes down — the give-up ledger outranks pack loyalty, or the
-   * trap-cheese the sulk exists to kill comes straight back through
-   * the packmate's aggro.
+   * The pack answers — BOUNDED. A cry is not a conscription: the
+   * nearest `maxJoin` resting packmates take up the fight, the next
+   * couple only LOOK (suspicious, facing the trouble — the second
+   * wave that wanders over late if the fight drags on). Everyone
+   * further keeps their post, which is what lets a careful player
+   * pull one or two bodies off a camp instead of the whole camp.
+   * Sulking bodies (noAggroUntilTick) keep their eyes down — the
+   * give-up ledger outranks pack loyalty, or the trap-cheese the
+   * sulk exists to kill comes straight back through the packmate's
+   * aggro.
    */
-  private rallyPack(eid: EntityId, npc: NpcComp, targetEid: EntityId, range: number): void {
+  private rallyPack(
+    eid: EntityId,
+    npc: NpcComp,
+    targetEid: EntityId,
+    range: number,
+    maxJoin = 2,
+  ): void {
     const pos = this.positions.get(eid);
     if (!pos) return;
+    const cands: Array<{ eid: EntityId; npc: NpcComp; d: number }> = [];
     for (const [oEid, other] of this.npcs) {
       if (oEid === eid || other.def.pack !== npc.def.pack) continue;
-      if (other.state !== 'idle' || other.def.damage <= 0) continue;
+      if (!this.npcAtPeace(other) || other.def.damage <= 0) continue;
       if (this.tickCount < other.noAggroUntilTick) continue;
       const opos = this.positions.get(oEid);
       if (!opos) continue;
-      if (Math.hypot(opos.x - pos.x, opos.y - pos.y) > range) continue;
-      this.npcAggro(oEid, other, targetEid, { rally: false });
+      const d = Math.hypot(opos.x - pos.x, opos.y - pos.y);
+      if (d > range) continue;
+      cands.push({ eid: oEid, npc: other, d });
+    }
+    cands.sort((a, b) => a.d - b.d);
+    const tpos = this.positions.get(targetEid);
+    for (let i = 0; i < cands.length && i < maxJoin + 2; i++) {
+      const c = cands[i]!;
+      if (i < maxJoin) {
+        this.npcAggro(c.eid, c.npc, targetEid, { rally: false });
+      } else if (c.npc.state === 'idle' && tpos) {
+        // Bystanders: heads turn toward the trouble, feet stay put.
+        c.npc.state = 'suspicious';
+        c.npc.alert = Math.max(c.npc.alert, ALERT_SUS);
+        c.npc.alertEid = targetEid;
+        c.npc.alertX = tpos.x;
+        c.npc.alertY = tpos.y;
+        c.npc.alertSeenTick = this.tickCount;
+        c.npc.huntUntilTick = this.tickCount + GameServer.SUS_DWELL_TICKS * 2;
+      }
     }
   }
 
@@ -10577,7 +10707,201 @@ export class GameServer {
     }
     npc.helpEid = null;
     this.npcAggro(eid, npc, targetEid, { rally: false });
-    this.rallyPack(eid, npc, targetEid, PACK_RALLY_RANGE + 2);
+    // A desperate scream buys one more answer than an ordinary rally.
+    this.rallyPack(eid, npc, targetEid, PACK_RALLY_RANGE + 2, 3);
+  }
+
+  /**
+   * THE PERCEPTION PASS — the eye replaces the circle. Runs for every
+   * body at peace (idle/suspicious/investigate/search) on the
+   * staggered 4 Hz cadence. Cheap-to-expensive, the shape every
+   * shipped stealth sim converges on: range gate, zone gate (facing
+   * cone / peripheral band / point-blank ring), then ONE sight ray
+   * for the survivors. What the eye resolves feeds the awareness
+   * meter; the meter drives the state ladder. THE SIZING-UP LAW
+   * rides the sight range exactly as it rode the old circle, and
+   * sneaking thins both the range and the reflex ring — the entire
+   * stealth surface lives in this method.
+   */
+  private npcPerception(eid: EntityId, npc: NpcComp, pos: { x: number; y: number; dir: number }): void {
+    const dt = GameServer.PERCEPTION_PERIOD;
+    // Only a body truly at rest is limited to its authored arc — a
+    // wary one is already turning its head everywhere.
+    const arcDeg = npc.state === 'idle' ? (npc.def.sightArc ?? DEFAULT_SIGHT_ARC) : 360;
+    let bestEid: EntityId | null = null;
+    let bestRate = 0;
+    let bestZone: SightZone = 'peripheral';
+    let bestX = 0;
+    let bestY = 0;
+    for (const [playerEid, player] of this.players) {
+      if (player.session === null && player.disconnectedAt !== null) continue;
+      if (player.hidden) continue;
+      const ppos = this.positions.get(playerEid);
+      if (!ppos) continue;
+      const dx = ppos.x - pos.x;
+      const dy = ppos.y - pos.y;
+      // THE SIZING-UP LAW: the posted range is for an even match.
+      // A beast that outclasses the waker marks them from much
+      // farther out; one they outgrew barely lifts its head.
+      let range =
+        npc.def.aggroRange * levelAggroFactor(npc.def.level, combatLevel(player.skills));
+      let closeR = SIGHT_CLOSE_RANGE;
+      if (player.sneaking) {
+        // Soft Step shaves the factor further; the hard floor holds.
+        const f = Math.max(
+          0.15,
+          sneakDetectionFactor(this.effectiveLevel(player, 'sneak')) -
+            player.perks.sneakFactorBonus,
+        );
+        range *= f;
+        // The crouch thins the reflex ring too — floored, so point
+        // blank never goes fully blind.
+        closeR *= Math.max(f, 0.3);
+      }
+      const dist = Math.hypot(dx, dy);
+      if (dist > Math.max(range, closeR)) continue;
+      const zone = sightZone(dx, dy, dist, pos.dir, arcDeg, range, closeR);
+      if (!zone) continue;
+      // Zone survivor: now — and only now — the ray.
+      const vis = sightVisibility(sightLine(this.world, pos.x, pos.y, ppos.x, ppos.y));
+      if (vis <= 0) continue;
+      if (zone === 'close') {
+        // Point blank in the open detects outright — no meter, no
+        // warning. The 170°×5ft lesson every stealth sim learned.
+        this.npcAggro(eid, npc, playerEid);
+        return;
+      }
+      if (npc.state === 'search' && zone === 'cone') {
+        // A hunter needs only one clean glimpse — the quarry is
+        // KNOWN, re-acquisition never ramps from zero.
+        this.npcAggro(eid, npc, playerEid);
+        return;
+      }
+      const rate = alertRate(dist, range, zone) * vis;
+      if (rate > bestRate) {
+        bestRate = rate;
+        bestEid = playerEid;
+        bestZone = zone;
+        bestX = ppos.x;
+        bestY = ppos.y;
+      }
+    }
+    if (bestEid !== null) {
+      // The newest strongest stimulus owns the one interest slot.
+      npc.alertEid = bestEid;
+      npc.alertX = bestX;
+      npc.alertY = bestY;
+      npc.alertSeenTick = this.tickCount;
+      // The peripheral band can make a body LOOK, never lock on.
+      const cap = bestZone === 'peripheral' ? ALERT_SUS : ALERT_MAX;
+      if (npc.alert < cap) npc.alert = Math.min(cap, npc.alert + bestRate * dt);
+      if (npc.alert >= ALERT_MAX && this.players.has(bestEid)) {
+        this.npcAggro(eid, npc, bestEid);
+        return;
+      }
+      if (npc.state === 'idle' && npc.alert >= ALERT_SUS) {
+        npc.state = 'suspicious';
+        npc.huntUntilTick = this.tickCount + GameServer.SUS_DWELL_TICKS;
+        npc.navBest = Infinity;
+        npc.navStuck = 0;
+      }
+    } else if (npc.alert > 0 && this.tickCount - npc.alertSeenTick > ALERT_GRACE_TICKS) {
+      // Nothing in view past the grace: doubt drains the meter, and
+      // the ladder steps DOWN through suspicious before it forgets —
+      // never snaps to zero (the capacitor rule).
+      npc.alert = Math.max(0, npc.alert - ALERT_DECAY * dt);
+    }
+  }
+
+  /**
+   * The quarry slipped the eye mid-fight: the chase becomes a HUNT.
+   * Feet go to the last-known ground, then a ring of nearby second
+   * looks, then the body gives it up and walks home. targetEid drops
+   * here — the DETECTED chip goes dark, which is exactly the
+   * player's signal that the chain is broken and hiding is working.
+   */
+  private npcStartSearch(eid: EntityId, npc: NpcComp): void {
+    npc.state = 'search';
+    npc.targetEid = null;
+    npc.windupTicks = 0;
+    npc.helpEid = null;
+    npc.huntUntilTick = this.tickCount + GameServer.SEARCH_TICKS;
+    npc.huntWps = null;
+    npc.huntIdx = 0;
+    npc.huntWaitUntilTick = 0;
+    // The hunt never outruns the leash: clamp the LKP into the circle.
+    const ox = npc.alertX - npc.originX;
+    const oy = npc.alertY - npc.originY;
+    const od = Math.hypot(ox, oy);
+    const maxR = Math.max(0, npc.def.leashRange - 1);
+    if (od > maxR && od > 0) {
+      npc.alertX = npc.originX + (ox / od) * maxR;
+      npc.alertY = npc.originY + (oy / od) * maxR;
+    }
+    npc.navBest = Infinity;
+    npc.navStuck = 0;
+    npc.steer.side = 0;
+    npc.steer.ticks = 0;
+    npc.nav = null;
+    npc.progressLane = null;
+    npc.nextRepathTick = 0;
+    npc.losUntilTick = 0;
+  }
+
+  /** The hunt shrugs: walk home with a residue of wariness, not a grudge. */
+  private npcEndHunt(npc: NpcComp): void {
+    npc.state = 'return';
+    npc.windupTicks = 0;
+    npc.huntWps = null;
+    // Below the suspicious threshold, or arrival would re-trip it.
+    npc.alert = Math.min(npc.alert, ALERT_SUS - 5);
+    npc.navBest = Infinity;
+    npc.navStuck = 0;
+  }
+
+  /** Arrived at (or gave up on) a hunt leg: dwell, look, then the next. */
+  private npcNextHuntLeg(eid: EntityId, npc: NpcComp): void {
+    npc.huntWaitUntilTick = this.tickCount + 30 + ((eid * 7) % 20);
+    npc.navBest = Infinity;
+    npc.navStuck = 0;
+    if (npc.huntWps === null) {
+      // First arrival — at the LKP itself — mints the ring of second
+      // looks. A search (a KNOWN quarry) checks more ground.
+      npc.huntWps = this.mintHuntRing(npc, npc.state === 'search' ? 3 : 2);
+      npc.huntIdx = 0;
+    } else {
+      npc.huntIdx++;
+    }
+    if (npc.huntWps.length === 0 || npc.huntIdx >= npc.huntWps.length) {
+      // Nothing left to check: one last look-around, then the shrug.
+      npc.huntUntilTick = Math.min(npc.huntUntilTick, npc.huntWaitUntilTick);
+    }
+  }
+
+  /**
+   * The ring of second looks: a few reachable spots around the LKP,
+   * inside the leash circle, none inside a solid. Random by design —
+   * a search should read as guessing, not sweeping a grid.
+   */
+  private mintHuntRing(npc: NpcComp, count: number): Array<{ x: number; y: number }> {
+    const wps: Array<{ x: number; y: number }> = [];
+    const maxR = Math.max(0, npc.def.leashRange - 1);
+    for (let attempt = 0; attempt < count * 5 && wps.length < count; attempt++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 2.5 + Math.random() * 2;
+      let x = npc.alertX + Math.cos(a) * r;
+      let y = npc.alertY + Math.sin(a) * r;
+      const ox = x - npc.originX;
+      const oy = y - npc.originY;
+      const od = Math.hypot(ox, oy);
+      if (od > maxR && od > 0) {
+        x = npc.originX + (ox / od) * maxR;
+        y = npc.originY + (oy / od) * maxR;
+      }
+      if (circleHitsSolid(this.world, x, y, npc.def.radius)) continue;
+      wps.push({ x, y });
+    }
+    return wps;
   }
 
   /** Resolve an NPC's chase target: a live player or a straw decoy. */
@@ -10653,43 +10977,18 @@ export class GameServer {
         continue;
       }
 
-      // Aggro scan (cheap: only when idle, every 5 ticks). A body
-      // still sulking from an abandoned chase keeps its eyes down —
-      // a direct hit re-arms it regardless, through damageNpc.
+      // THE PERCEPTION PASS (cheap: peacetime bodies only, every 5
+      // ticks, staggered). The eye replaced the circle — see
+      // npcPerception. A body still sulking from an abandoned chase
+      // keeps its eyes down — a direct hit re-arms it regardless,
+      // through damageNpc.
       if (
-        npc.state === 'idle' &&
+        this.npcAtPeace(npc) &&
         npc.def.aggroRange > 0 &&
         this.tickCount >= npc.noAggroUntilTick &&
-        (this.tickCount + eid) % 5 === 0
+        (this.tickCount + eid) % GameServer.PERCEPTION_PERIOD === 0
       ) {
-        for (const [playerEid, player] of this.players) {
-          if (player.session === null && player.disconnectedAt !== null) continue;
-          if (player.hidden) continue;
-          const ppos = this.positions.get(playerEid);
-          if (!ppos) continue;
-          const dx = ppos.x - pos.x;
-          const dy = ppos.y - pos.y;
-          // THE SIZING-UP LAW: the posted range is for an even match.
-          // A beast that outclasses the waker marks them from much
-          // farther out; one they outgrew barely lifts its head —
-          // deep zones get MORE dangerous, farmed zones get quieter.
-          let aggro =
-            npc.def.aggroRange * levelAggroFactor(npc.def.level, combatLevel(player.skills));
-          // Sneaking shrinks how close this NPC lets you get — the whole
-          // point of the skill below the invisibility tiers.
-          if (player.sneaking) {
-            // Soft Step shaves the factor further; the hard floor holds.
-            aggro *= Math.max(
-              0.15,
-              sneakDetectionFactor(this.effectiveLevel(player, 'sneak')) -
-                player.perks.sneakFactorBonus,
-            );
-          }
-          if (dx * dx + dy * dy < aggro * aggro) {
-            this.npcAggro(eid, npc, playerEid);
-            break;
-          }
-        }
+        this.npcPerception(eid, npc, pos);
       }
 
       let moveX = 0;
@@ -10698,12 +10997,43 @@ export class GameServer {
       if (npc.state === 'chase' && npc.targetEid !== null) {
         const tpos = this.npcTargetPos(npc.targetEid);
         const fromOrigin = Math.hypot(pos.x - npc.originX, pos.y - npc.originY);
-        if (!tpos || fromOrigin > npc.def.leashRange) {
+        // THE EYE ON THE QUARRY, sampled at scan cadence: seen — the
+        // ledger refreshes and the LKP rides the true position;
+        // unseen past the grace — the chase breaks to a HUNT at the
+        // last place the eye held it. Doors slammed, corners cut,
+        // groves crossed: the environment finally pays out.
+        let sightBroke = false;
+        if (tpos && (this.tickCount + eid) % GameServer.PERCEPTION_PERIOD === 0) {
+          const sdx = tpos.x - pos.x;
+          const sdy = tpos.y - pos.y;
+          const sdist = Math.hypot(sdx, sdy);
+          const loseRange = Math.max(
+            npc.def.aggroRange * LOSE_SIGHT_FACTOR,
+            npc.def.attackRange + 6,
+            SIGHT_CLOSE_RANGE,
+          );
+          const seen =
+            sdist <= loseRange &&
+            sightVisibility(sightLine(this.world, pos.x, pos.y, tpos.x, tpos.y)) > 0;
+          if (seen) {
+            npc.alertSeenTick = this.tickCount;
+            npc.alertX = tpos.x;
+            npc.alertY = tpos.y;
+          } else if (this.tickCount - npc.alertSeenTick >= GameServer.LOSE_SIGHT_TICKS) {
+            sightBroke = true;
+          }
+        }
+        if (fromOrigin > npc.def.leashRange) {
           npc.state = 'return';
           npc.targetEid = null;
           npc.windupTicks = 0;
           npc.navBest = Infinity;
           npc.navStuck = 0;
+        } else if (!tpos || sightBroke) {
+          // The quarry vanished — melted into stealth, slipped the
+          // eye, logged off, or the decoy burst. Nobody shrugs at
+          // that: hunt the last-known ground before walking home.
+          this.npcStartSearch(eid, npc);
         } else {
           const dx = tpos.x - pos.x;
           const dy = tpos.y - pos.y;
@@ -10725,10 +11055,10 @@ export class GameServer {
                 y: tpos.y,
               });
               // The howl carries further than sight: a pack leader's
-              // special re-gathers everyone in earshot mid-fight —
-              // leashed escorts turn back, stragglers converge.
+              // special re-gathers a few more mid-fight — bounded
+              // like every cry, so the camp never empties at once.
               if (npc.def.pack && npc.targetEid !== null) {
-                this.rallyPack(eid, npc, npc.targetEid, PACK_RALLY_RANGE + 4);
+                this.rallyPack(eid, npc, npc.targetEid, PACK_RALLY_RANGE + 4, 3);
               }
             }
           }
@@ -10881,6 +11211,68 @@ export class GameServer {
             }
           }
         }
+      } else if (npc.state === 'suspicious') {
+        // Something at the edge of sense: plant the feet, face the
+        // last-known spot, and let the meter decide — engage (the
+        // perception pass owns that door), go and look, or shrug.
+        pos.dir = Math.atan2(npc.alertY - pos.y, npc.alertX - pos.x);
+        if (npc.alert < ALERT_SUS * 0.6) {
+          npc.state = 'idle';
+        } else if (this.tickCount >= npc.huntUntilTick) {
+          // The stare didn't settle it. Go and see.
+          npc.state = 'investigate';
+          npc.huntUntilTick = this.tickCount + GameServer.INVESTIGATE_TICKS;
+          npc.huntWps = null;
+          npc.huntIdx = 0;
+          npc.huntWaitUntilTick = 0;
+          npc.navBest = Infinity;
+          npc.navStuck = 0;
+          npc.steer.side = 0;
+          npc.steer.ticks = 0;
+          npc.nav = null;
+          npc.progressLane = null;
+          npc.nextRepathTick = 0;
+          npc.losUntilTick = 0;
+        }
+      } else if (npc.state === 'investigate' || npc.state === 'search') {
+        // THE HUNT: walk to the last-known ground, then a ring of
+        // second looks, then give it up. The leash binds hunts like
+        // it binds chases; the give-up clock binds them harder.
+        const fromOrigin = Math.hypot(pos.x - npc.originX, pos.y - npc.originY);
+        if (this.tickCount >= npc.huntUntilTick || fromOrigin > npc.def.leashRange) {
+          this.npcEndHunt(npc);
+        } else if (this.tickCount < npc.huntWaitUntilTick) {
+          // A leg's dwell: stand and sweep the gaze — the slow turn
+          // reads as searching AND genuinely swings the cone.
+          pos.dir += 0.05;
+        } else {
+          const goal =
+            npc.huntWps === null
+              ? { x: npc.alertX, y: npc.alertY }
+              : npc.huntWps[npc.huntIdx];
+          if (!goal) {
+            this.npcEndHunt(npc);
+          } else {
+            const gd = Math.hypot(goal.x - pos.x, goal.y - pos.y);
+            if (gd < 0.8) {
+              this.npcNextHuntLeg(eid, npc);
+            } else {
+              const h = this.npcNavToward(npc, pos, goal.x, goal.y);
+              moveX = h.mx;
+              moveY = h.my;
+              // Closest-approach watchdog, homeward law: a leg that
+              // stops closing is sealed off — skip to the next look.
+              const prog = this.navProgressDist(npc, pos, goal.x, goal.y);
+              if (prog.freshLane) npc.navBest = Infinity;
+              if (prog.dist < npc.navBest - 0.15) {
+                npc.navBest = prog.dist;
+                npc.navStuck = 0;
+              } else if (++npc.navStuck >= GameServer.RETURN_STALL_TICKS) {
+                this.npcNextHuntLeg(eid, npc);
+              }
+            }
+          }
+        }
       } else if (npc.state === 'return') {
         const dx = npc.originX - pos.x;
         const dy = npc.originY - pos.y;
@@ -10892,6 +11284,11 @@ export class GameServer {
           // A fresh life makes the craven choice fresh too.
           npc.helpCalled = false;
           npc.helpEid = null;
+          // The walk home cools the blood: the meter settles under
+          // the suspicious line, so the next sighting climbs the
+          // ladder honestly instead of detonating a stale 100.
+          npc.alert = Math.min(npc.alert, ALERT_SUS - 5);
+          npc.alertEid = null;
         } else {
           // The walk home is the body's own errand: it may search WIDE
           // when the cheap lane can't complete (a long wall between
@@ -10986,11 +11383,13 @@ export class GameServer {
 
       if (moveX !== 0 || moveY !== 0) {
         // A craven runner flees at full chase speed — a stroll to
-        // fetch friends would read as a bug, not a plan.
-        let speed =
-          npc.state === 'chase' || npc.state === 'seekhelp'
-            ? npc.def.speed
-            : npc.def.speed * 0.6;
+        // fetch friends would read as a bug, not a plan. A hunter
+        // moves with purpose; an investigator only walks over to
+        // look; everything else ambles.
+        let speed = npc.def.speed * 0.6;
+        if (npc.state === 'chase' || npc.state === 'seekhelp') speed = npc.def.speed;
+        else if (npc.state === 'search') speed = npc.def.speed * 0.85;
+        else if (npc.state === 'investigate') speed = npc.def.speed * 0.7;
         if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
         // The polite step-aside: converging packmates fan out around
         // a target instead of stacking into one sprite; a returning
@@ -11413,7 +11812,8 @@ export class GameServer {
         const hp = this.healths.get(nEid);
         rows.push(
           `${npc.def.id}#${nEid} d=${d.toFixed(1)} ${npc.state} tgt=${npc.targetEid ?? '-'} ` +
-          `hp=${hp?.hp}/${hp?.maxHp} sulk=${Math.max(0, npc.noAggroUntilTick - this.tickCount)} ` +
+          `hp=${hp?.hp}/${hp?.maxHp} alert=${Math.round(npc.alert)}@${npc.alertEid ?? '-'} ` +
+          `sulk=${Math.max(0, npc.noAggroUntilTick - this.tickCount)} ` +
           `helpEid=${npc.helpEid ?? '-'} called=${npc.helpCalled}`,
         );
       }
@@ -12490,6 +12890,20 @@ export class GameServer {
     return meta;
   }
 
+  /**
+   * The overhead telegraph, a pure read of the state ladder: wary
+   * bodies wear the "?", engaged ones the "!", a hunter the pulsing
+   * "?" that says the chain is broken but the woods aren't safe yet.
+   */
+  private npcAlertByte(eid: EntityId): number {
+    const npc = this.npcs.get(eid);
+    if (!npc) return ALERT_ICON_NONE;
+    if (npc.state === 'chase' || npc.state === 'seekhelp') return ALERT_ICON_ENGAGED;
+    if (npc.state === 'search') return ALERT_ICON_HUNTING;
+    if (npc.state === 'suspicious' || npc.state === 'investigate') return ALERT_ICON_WARY;
+    return ALERT_ICON_NONE;
+  }
+
   private sendSnapshot(session: Session): void {
     const player = this.players.get(session.playerEid!);
     if (!player) return;
@@ -12506,6 +12920,7 @@ export class GameServer {
         pose: this.poses.get(eid) ?? PoseState.Idle,
         hpPct: health ? Math.round((health.hp / health.maxHp) * 255) : 255,
         status: this.statusBits(eid),
+        alert: this.npcAlertByte(eid),
       });
     }
     session.sendBinary(

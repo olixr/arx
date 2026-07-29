@@ -15,6 +15,11 @@ export interface SnapshotEntity {
   hpPct: number;
   /** STATUS_BIT bitfield — burn/chill/shock/bleed VFX flags. */
   status: number;
+  /**
+   * NPC alert telegraph (ALERT_ICON_*): 0 calm, 1 wary "?",
+   * 2 engaged "!", 3 hunting a lost quarry. Players always send 0.
+   */
+  alert: number;
 }
 
 export interface Snapshot {
@@ -27,7 +32,7 @@ export interface Snapshot {
 const TAU = Math.PI * 2;
 
 export function encodeSnapshot(snap: Snapshot): ArrayBuffer {
-  const w = new ByteWriter(16 + snap.entities.length * 16);
+  const w = new ByteWriter(16 + snap.entities.length * 17);
   w.u8(BinaryMsgType.Snapshot);
   w.u32(snap.serverTick >>> 0);
   w.u32(snap.lastInputSeq >>> 0);
@@ -40,6 +45,7 @@ export function encodeSnapshot(snap: Snapshot): ArrayBuffer {
     w.u8(e.pose & 0xff);
     w.u8(e.hpPct & 0xff);
     w.u8(e.status & 0xff);
+    w.u8(e.alert & 0xff);
   }
   return w.finish();
 }
@@ -58,6 +64,7 @@ export function decodeSnapshot(r: ByteReader): Snapshot {
       pose: r.u8(),
       hpPct: r.u8(),
       status: r.u8(),
+      alert: r.u8(),
     };
   }
   return { serverTick, lastInputSeq, entities };

@@ -924,6 +924,30 @@ export function tileColliderRadius(id: number): number | null {
 }
 
 /**
+ * THE SIGHT LAW — what a watching eye sees past. Three masses:
+ * 'wall' seals the sight-line outright: every lamplight blocker plus
+ * the cliff face (nobody looks through the hill). 'cover' is a
+ * centered trunk-mass the eye sees PAST but not cleanly THROUGH —
+ * trees, ore rocks, stalagmites, the berry bush: one on the line
+ * dulls the watcher, two seal it (a body deep in the grove is as
+ * good as gone). Fences, furniture, and waist-high clutter are
+ * 'clear' — sight is not walk-clearance, and a fence hides nobody.
+ */
+export type SightMass = 'clear' | 'cover' | 'wall';
+
+const SIGHT_WALL_TILES: ReadonlySet<Tile> = new Set([...LIGHT_BLOCKING_TILES, Tile.Cliff]);
+
+/** Trunk-masses slim enough to peek past but thick enough to matter. */
+const SIGHT_COVER_MIN_RADIUS = 0.25;
+
+export function sightMass(id: number): SightMass {
+  if (SIGHT_WALL_TILES.has(id as Tile)) return 'wall';
+  if (!isSolidTile(id)) return 'clear';
+  const r = tileColliderRadius(id);
+  return r !== null && r >= SIGHT_COVER_MIN_RADIUS ? 'cover' : 'clear';
+}
+
+/**
  * Tree regrowth staging: a felled tree leaves a stump, the stump
  * sprouts the species' sapling partway through the respawn wait, and
  * the sapling stands up into the full tree. One law source for the

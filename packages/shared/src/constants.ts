@@ -44,7 +44,7 @@
 // camp's fuse). A v15 client would render an unknown fx as a mute
 // color puff and the raid telegraph would lose its voice, so reject
 // cleanly.
-export const PROTOCOL_VERSION = 16;
+export const PROTOCOL_VERSION = 17;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;

@@ -1661,6 +1661,7 @@ export class ClientGame {
         pose: e.pose,
         hpPct: e.hpPct,
         status: e.status,
+        alert: e.alert,
       });
     }
   }

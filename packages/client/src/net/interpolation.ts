@@ -10,6 +10,8 @@ export interface InterpSample {
   hpPct: number;
   /** STATUS_BIT bitfield (burn/chill/shock/bleed VFX). */
   status: number;
+  /** NPC alert telegraph (ALERT_ICON_*): the ?/! over the head. */
+  alert: number;
 }
 
 const KEEP_MS = 2000;
@@ -84,6 +86,7 @@ export class InterpBuffer {
         pose: last.pose,
         hpPct: last.hpPct,
         status: last.status,
+        alert: last.alert,
       };
     }
 
@@ -104,6 +107,7 @@ export class InterpBuffer {
               : b.pose,
           hpPct: b.hpPct,
           status: b.status,
+          alert: b.alert,
         };
       }
     }

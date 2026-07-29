@@ -10,6 +10,7 @@ const sample = (t: number, x: number, y = 0) => ({
   pose: 1,
   hpPct: 255,
   status: 0,
+  alert: 0,
 });
 
 test('interpolates between bracketing samples', () => {

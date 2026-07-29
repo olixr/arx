@@ -50,3 +50,31 @@ test('validator: craven must be a boolean', () => {
     validateNpcDef({ ...base, craven: 'yes' }, refs).some((e) => e.includes('craven')),
   );
 });
+
+test("the eye's arc: every hostile authors a sane cone", () => {
+  for (const def of NPCS.values()) {
+    if (def.aggroRange <= 0) continue;
+    assert.ok(def.sightArc !== undefined, `${def.id} is hostile but authors no sightArc`);
+    assert.ok(def.sightArc! >= 30 && def.sightArc! <= 360, `${def.id} arc out of range`);
+  }
+});
+
+test("the eye's arc: landmarks — beasts wide, the dead narrow, the champion all-seeing", () => {
+  assert.equal(npcDef('wolf')?.sightArc, 240);
+  assert.equal(npcDef('skeleton')?.sightArc, 120);
+  assert.equal(npcDef('skeleton_champion')?.sightArc, 360);
+  assert.equal(npcDef('giant_spider')?.sightArc, 360);
+});
+
+test('validator: sightArc must sit in [30, 360]', () => {
+  const base = npcDef('goblin')!;
+  const refs = {
+    lootTables: new Set(base.loot),
+    npcIds: new Set(['goblin']),
+  };
+  assert.deepEqual(validateNpcDef({ ...base, sightArc: 360 }, refs), []);
+  assert.ok(validateNpcDef({ ...base, sightArc: 10 }, refs).some((e) => e.includes('sightArc')));
+  assert.ok(
+    validateNpcDef({ ...base, sightArc: 'wide' }, refs).some((e) => e.includes('sightArc')),
+  );
+});

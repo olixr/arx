@@ -1783,6 +1783,18 @@ export declare class Renderer {
      */
     private kickDust;
     private humanoidItem;
+    /** Per-entity alert glyph animation state (icon + when it changed). */
+    private readonly alertAnim;
+    /**
+     * THE TELEGRAPH: the "?" / "!" over a wary or engaged head — the
+     * player-facing read of the perception ladder. Gold "?" = something
+     * has its attention (suspicious/investigating); ember "!" = the
+     * hunt is on; the hunting "?" pulses — the chain is broken but the
+     * body is still out there looking. Pops in on every transition so
+     * the moment reads at a glance. Nameplate-dialect glyph text drawn
+     * in the label pass (no outline ring), never emoji.
+     */
+    private alertIconItem;
     private drawMiniHp;
     /** Eight-tap alpha dilate → tinted ring under the sprite. */
     private static readonly OUTLINE_TAPS;
