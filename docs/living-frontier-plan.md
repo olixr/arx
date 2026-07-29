@@ -93,6 +93,21 @@ push back**. The player's verdict driving it all:
 
 ## Phase 1 — The Ember Turn (clear → linger → dissolve → fallow)
 
+**SHIPPED 2026-07-28.** Verified live end to end on the running world: a
+tier-2 goblin warcamp at cell −2,1 was wiped in one 40 s sweep ("The last
+of them falls…"), entered EMBER with an ~11 m countdown, and **never
+restaffed** (zero goblins four minutes past the old 180 s floor); a due
+ember refused to dissolve while the player stood in the camp ("nothing
+due") and dissolved the moment they left; the chart marker faded to rumor
+live; the cell recorded fallow (~4.8 h, in-band); the banked renewal
+credit was spent by the 15 s cadence organically — a **wolfkin den** rose
+at cell −4,0, 110 tiles from the player (inside the [64,160] ring, past
+dignity), epoch-bumped, debt persisted to 0. Migration v6 applied to the
+live DB in place. 647 workspace tests green (poiWard rewritten for the
+ember/authored split + 8 new frontier pins). Along the way: unloadZone
+now purges pending respawnQueue tiles inside the unloaded rect (latent
+chest-reclose-onto-meadow bug, live since /poi reroll shipped).
+
 Goal: cleared camps stop being farms; the frontier gets its own heartbeat.
 
 ### 1.1 `tickFrontier` — the clock the world is missing

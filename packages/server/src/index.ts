@@ -192,7 +192,7 @@ for (const built of await accounts.loadBuiltTiles()) {
 const game = new GameServer(world, accounts);
 game.loadCrops(await accounts.loadCrops());
 game.loadSigns(await accounts.loadSigns());
-game.initPois(await accounts.loadPoiCells());
+game.initPois(await accounts.loadPoiCells(), await accounts.loadFrontierCredits());
 for (const zone of zones) {
   if (zone.spawns && zone.spawns.length > 0) game.registerSpawns(zone.spawns, zone.id);
 }

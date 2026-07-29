@@ -57,7 +57,7 @@ const ST_SITE = 0x501e5a;
 const ST_MUSTER = 0x501e5b;
 
 /** Tiles a POI footprint (and its stamps) must keep clear of zones. */
-const ZONE_CLEARANCE = 24;
+export const ZONE_CLEARANCE = 24;
 
 /** Candidate anchors probed per cell before giving up. */
 const SITE_TRIES = 24;

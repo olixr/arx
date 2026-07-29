@@ -504,6 +504,21 @@ const MIGRATIONS: string[] = [
       > (CASE b.style WHEN 'melee' THEN 0 WHEN 'archery' THEN 1 WHEN 'magic' THEN 2 WHEN 'sneak' THEN 3 ELSE 4 END);
   UPDATE character_techniques SET style = 'slot';
   `,
+  // v6: THE LIVING FRONTIER — the ember turn. A cleared site lingers
+  // as the player's broken trophy until ember_until, then dissolves;
+  // the cell rests until fallow_until before it may host again. The
+  // renewal debt (sites the frontier owes the world after dissolves)
+  // survives restarts in the one-row frontier_state.
+  `
+  ALTER TABLE world_pois ADD COLUMN ember_until BIGINT;
+  ALTER TABLE world_pois ADD COLUMN fallow_until BIGINT;
+
+  CREATE TABLE frontier_state (
+    id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    renewal_credits INTEGER NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL
+  );
+  `,
 ];
 
 /**

@@ -135,12 +135,15 @@ import {
   type PrefabDef,
   type PoiDef,
   AUTHORED_WILD_SITES,
+  FRONTIER,
   POI_DEFS,
   POI_PREFABS,
   ROAD_CALM,
   ROAD_SHOULDER,
   SETTLED_ANCHORS,
   dangerLaw,
+  emberLingerFor,
+  fallowRestFor,
   pickWild,
   replaceGeography,
   roadDistanceAt,
@@ -149,6 +152,7 @@ import {
 } from '@arx/content';
 import {
   POI_CELL,
+  ZONE_CLEARANCE,
   composePoi,
   findAuthoredAnchor,
   loadPoiPrefabs,
@@ -1196,11 +1200,29 @@ export class GameServer {
 
   // ------------------------------------------------- procedural POIs
 
-  /** Ledger cache by cell key: decided cells (site null = decided empty). */
+  /**
+   * Ledger cache by cell key: decided cells (site null = decided
+   * empty). clearedAt + emberUntil = the broken-camp linger window;
+   * fallowUntil on an empty row = the rest a dissolved cell takes
+   * before it may host again (the ember law).
+   */
   private readonly poiLedger = new Map<
     string,
-    { epoch: number; site: PoiSite | null; clearedAt: number | null }
+    {
+      epoch: number;
+      site: PoiSite | null;
+      clearedAt: number | null;
+      emberUntil: number | null;
+      fallowUntil: number | null;
+    }
   >();
+  /**
+   * THE CONSERVATION LAW's debt: sites the frontier owes the world
+   * after ember dissolves. Spent by tickFrontier standing fresh rolls
+   * in the offscreen ring around active players; persisted so a
+   * restart never forgives the debt.
+   */
+  private frontierCredits = 0;
   /** Cells handled this uptime (live zone or decided empty). */
   private readonly poiLive = new Map<string, { zoneId?: string; spawnIdx: number[] }>();
   /** spawnPoints index → owning POI cell key (cleared-wipe detection). */
@@ -3655,6 +3677,23 @@ export class GameServer {
     this.world.removeZone(zoneId);
     this.dropClientChunks(old);
     this.retireZonePlacements(zoneId);
+    // Purge pending tile respawns inside the unloaded rect — a chest
+    // reclose or smashed-prop regrow firing after the zone is gone
+    // would paint zone furniture onto bare procgen meadow (latent for
+    // /poi reroll; common once cleared camps dissolve on the ember
+    // clock). A reload paints its tiles fresh anyway, so the purge is
+    // right for every caller.
+    for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
+      const e = this.respawnQueue[i]!;
+      if (
+        e.tx >= old.origin.x &&
+        e.tx < old.origin.x + old.width &&
+        e.ty >= old.origin.y &&
+        e.ty < old.origin.y + old.height
+      ) {
+        this.respawnQueue.splice(i, 1);
+      }
+    }
   }
 
   private dropClientChunks(zone: ZoneDef | undefined): void {
@@ -3734,8 +3773,9 @@ export class GameServer {
     }
   }
 
-  initPois(rows: Awaited<ReturnType<AccountStore['loadPoiCells']>>): void {
+  initPois(rows: Awaited<ReturnType<AccountStore['loadPoiCells']>>, frontierCredits = 0): void {
     this.poiPrefabs = loadPoiPrefabs(config.dataDir);
+    this.frontierCredits = frontierCredits;
     let sites = 0;
     for (const row of rows) {
       const site: PoiSite | null =
@@ -3756,12 +3796,26 @@ export class GameServer {
         epoch: row.epoch,
         site,
         clearedAt: row.clearedAt,
+        emberUntil: row.emberUntil,
+        fallowUntil: row.fallowUntil,
       });
     }
     console.log(
       `[poi] ledger: ${rows.length} cells decided (${sites} sites) · ` +
         `${this.poiPrefabs.size} prefabs in the library`,
     );
+    // EMBER RECONCILE: rows cleared before the ember law shipped (or
+    // cleared while the clock column somehow never landed) get their
+    // linger stamped from load time — the broken camp dissolves shortly
+    // after boot instead of standing cleared forever.
+    const authoredAtBoot = this.authoredCells();
+    for (const [key, row] of this.poiLedger) {
+      if (row.site === null || row.clearedAt === null || row.emberUntil !== null) continue;
+      if (authoredAtBoot.has(key)) continue; // landmarks never ember
+      row.emberUntil =
+        Date.now() + emberLingerFor(config.worldSeed, row.site.cellX, row.site.cellY, row.epoch);
+      this.accounts.setPoiEmber(row.site.cellX, row.site.cellY, row.emberUntil);
+    }
     // The lamps light BEFORE the sweep: fallow re-decisions read the
     // field with every standing haven in it.
     this.rebuildHavens();
@@ -3877,7 +3931,7 @@ export class GameServer {
         anchorX: site.anchorX,
         anchorY: site.anchorY,
       });
-      this.poiLedger.set(key, { epoch, site, clearedAt: null });
+      this.poiLedger.set(key, { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null });
       seeded++;
       console.log(
         `[poi] authored site '${want.id}' (${want.defId}) stands at ` +
@@ -3919,14 +3973,20 @@ export class GameServer {
           anchorY: site.anchorY,
         },
       );
-      this.poiLedger.set(key, { epoch, site, clearedAt: null });
+      this.poiLedger.set(key, { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null });
       evicted++;
     }
     if (evicted > 0) this.rebuildHavens();
     return evicted;
   }
 
-  /** Real days a cleared cell lies fallow before the epoch turns it. */
+  /**
+   * Real days before the BOOT reconcile turns a cleared cell that
+   * somehow slipped the ember clock (legacy rows, downed clocks). The
+   * live cadence is tickFrontier's — a cleared site dissolves on its
+   * ember linger, minutes not days; this sweep is belt-and-braces and
+   * the /poi fallow lever's default.
+   */
   private static readonly POI_FALLOW_DAYS = 7;
 
   /**
@@ -3971,7 +4031,7 @@ export class GameServer {
           anchorY: site.anchorY,
         },
       );
-      this.poiLedger.set(key, { epoch, site, clearedAt: null });
+      this.poiLedger.set(key, { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null });
       turned++;
       if (site) rerolled++;
     }
@@ -4060,7 +4120,7 @@ export class GameServer {
           anchorY: site.anchorY,
         },
       );
-      this.poiLedger.set(key, { epoch, site, clearedAt: null });
+      this.poiLedger.set(key, { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null });
       if (orphan) orphaned++;
       else evicted++;
     }
@@ -4081,6 +4141,8 @@ export class GameServer {
       cellY: number;
       epoch: number;
       clearedAt: number | null;
+      emberUntil: number | null;
+      fallowUntil: number | null;
       site: PoiSite | null;
       defName: string | null;
       zoneId: string | null;
@@ -4093,6 +4155,8 @@ export class GameServer {
       cellY: row.site?.cellY ?? Number(key.split(',')[1]),
       epoch: row.epoch,
       clearedAt: row.clearedAt,
+      emberUntil: row.emberUntil,
+      fallowUntil: row.fallowUntil,
       site: row.site ? { ...row.site } : null,
       defName: row.site ? (POI_DEFS.get(row.site.defId)?.name ?? row.site.defId) : null,
       zoneId: this.poiLive.get(key)?.zoneId ?? null,
@@ -4124,7 +4188,13 @@ export class GameServer {
       // Decided-empty at a fresh epoch: the cell stays quiet until a
       // sweep or an explicit re-roll turns it again.
       this.accounts.recordPoiCell(cellX, cellY, epoch, null);
-      this.poiLedger.set(key, { epoch, site: null, clearedAt: null });
+      this.poiLedger.set(key, {
+        epoch,
+        site: null,
+        clearedAt: null,
+        emberUntil: null,
+        fallowUntil: null,
+      });
       this.rebuildHavens();
       return { ok: true, site: null };
     }
@@ -4182,6 +4252,178 @@ export class GameServer {
   }
 
   /**
+   * THE FRONTIER CLOCK (the living frontier, phase 1) — the slow pass
+   * the epoch turn was missing: fallowSweep only ever ran at boot, so
+   * a long-lived server never churned on its own. Every FRONTIER
+   * cadence beat, do at most ONE unit of time-driven frontier work
+   * (the sliced-job law): dissolve one burnt-out ember, wake one
+   * rested fallow cell, or spend one renewal credit. All pacing reads
+   * the FRONTIER dial table — never a literal here.
+   */
+  private tickFrontier(): void {
+    if (!this.poiPrefabs) return;
+    const now = Date.now();
+    if (this.dissolveOneEmber(now)) return;
+    if (this.wakeOneFallow(now)) return;
+    this.spendRenewalCredit(now);
+  }
+
+  /**
+   * THE EMBER LAW's second half: a cleared site whose linger has run
+   * out dissolves — but only with dignity (never in front of anyone).
+   * The dissolve fades every chart marker to rumor (rumor-law call
+   * site #8 — keep the fade roster in sync), retires the carcass,
+   * bumps the epoch, and leaves the cell resting fallow. Each
+   * dissolve banks one renewal credit: the trouble moves on, it does
+   * not vanish (the conservation law).
+   */
+  private dissolveOneEmber(now: number): boolean {
+    const authored = this.authoredCells();
+    for (const [key, row] of this.poiLedger) {
+      if (row.site === null || row.clearedAt === null) continue;
+      if (row.emberUntil === null || now < row.emberUntil) continue;
+      if (authored.has(key)) continue; // landmarks never ember
+      if (this.playerWithin(row.site.anchorX, row.site.anchorY, FRONTIER.dignityTiles)) continue;
+      const { cellX, cellY, defId } = row.site;
+      const hadHaven = POI_DEFS.get(defId)?.haven !== undefined;
+      this.fadePoiDiscoveries(key);
+      this.retirePoiCell(key);
+      const epoch = row.epoch + 1;
+      const fallowUntil = now + fallowRestFor(config.worldSeed, cellX, cellY, epoch);
+      this.accounts.recordPoiCell(cellX, cellY, epoch, null, fallowUntil);
+      this.poiLedger.set(key, { epoch, site: null, clearedAt: null, emberUntil: null, fallowUntil });
+      this.frontierCredits++;
+      this.accounts.saveFrontierCredits(this.frontierCredits);
+      if (hadHaven) this.rebuildHavens();
+      console.log(
+        `[frontier] ember out: ${defId} at cell ${key} dissolves — ` +
+          `fallow ${Math.round((fallowUntil - now) / 60000)}m, ` +
+          `renewal debt ${this.frontierCredits}`,
+      );
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * A rested fallow cell decides itself again on its post-dissolve
+   * epoch — fresh streams, so whatever stands is a NEW roll (different
+   * archetype, different anchor, or honest emptiness), never the old
+   * camp reborn. Deferred while anyone stands close enough to watch
+   * tents pitch themselves.
+   */
+  private wakeOneFallow(now: number): boolean {
+    if (!this.poiPrefabs) return false;
+    const authored = this.authoredCells();
+    for (const [key, row] of this.poiLedger) {
+      if (row.site !== null || row.fallowUntil === null || now < row.fallowUntil) continue;
+      if (authored.has(key)) continue; // the seeder owns these
+      const [cx, cy] = key.split(',').map(Number);
+      const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
+      const site = poiForCell(config.worldSeed, cx!, cy!, row.epoch, ctx);
+      if (site && this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles)) {
+        return true; // someone is standing on the meadow — retry next pass
+      }
+      this.accounts.recordPoiCell(
+        cx!,
+        cy!,
+        row.epoch,
+        site && {
+          poiId: site.defId,
+          prefabId: site.prefabId,
+          tier: site.tier,
+          anchorX: site.anchorX,
+          anchorY: site.anchorY,
+        },
+      );
+      this.poiLedger.set(key, {
+        epoch: row.epoch,
+        site,
+        clearedAt: null,
+        emberUntil: null,
+        fallowUntil: null,
+      });
+      if (site) {
+        this.poiLive.delete(key); // tickPois stands it when someone nears
+        if (POI_DEFS.get(site.defId)?.haven) this.rebuildHavens();
+        console.log(
+          `[frontier] fallow wakes: ${site.defId} rises at ` +
+            `${site.anchorX},${site.anchorY} (cell ${key})`,
+        );
+      }
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * THE CONSERVATION LAW's spend: a banked credit stands a fresh
+   * forced roll in the offscreen ring around a random online player —
+   * past dignity and the screen, inside the materialization pad, never
+   * on authored cells, standing sites, or resting fallow ground. No
+   * lawful candidate this pass = the debt waits; it never rushes a
+   * bad site.
+   */
+  private spendRenewalCredit(now: number): boolean {
+    if (this.frontierCredits <= 0 || !this.poiPrefabs) return false;
+    const surface: EntityId[] = [];
+    for (const [eid, player] of this.players) {
+      if (player.session === null && player.disconnectedAt !== null) continue;
+      const pos = this.positions.get(eid);
+      if (pos && pos.y < DARK_BAND_Y) surface.push(eid);
+    }
+    if (surface.length === 0) return false;
+    const around = this.positions.get(surface[Math.floor(Math.random() * surface.length)]!)!;
+    const authored = this.authoredCells();
+    const ctx = poiContext(this.dangerAnchors(), this.world.zoneDefs, this.poiPrefabs);
+    const [rMin, rMax] = FRONTIER.renewalRing;
+    for (let t = 0; t < FRONTIER.renewalTries; t++) {
+      const ang = Math.random() * Math.PI * 2;
+      const dist = rMin + Math.random() * (rMax - rMin);
+      const tx = Math.round(around.x + Math.cos(ang) * dist);
+      const ty = Math.round(around.y + Math.sin(ang) * dist);
+      if (ty >= DARK_BAND_Y - ZONE_CLEARANCE) continue;
+      const cx = poiCellOf(tx);
+      const cy = poiCellOf(ty);
+      const key = poiCellKey(cx, cy);
+      if (authored.has(key)) continue;
+      const row = this.poiLedger.get(key);
+      if (row?.site) continue; // already hosts
+      if (row?.fallowUntil !== null && row?.fallowUntil !== undefined && now < row.fallowUntil) {
+        continue; // resting — the meadow heals first
+      }
+      const epoch = (row?.epoch ?? 0) + 1;
+      const site = poiForCell(config.worldSeed, cx, cy, epoch, ctx, true);
+      if (!site) continue;
+      if (this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles)) continue;
+      this.accounts.recordPoiCell(cx, cy, epoch, {
+        poiId: site.defId,
+        prefabId: site.prefabId,
+        tier: site.tier,
+        anchorX: site.anchorX,
+        anchorY: site.anchorY,
+      });
+      this.poiLedger.set(key, {
+        epoch,
+        site,
+        clearedAt: null,
+        emberUntil: null,
+        fallowUntil: null,
+      });
+      this.poiLive.delete(key);
+      this.frontierCredits--;
+      this.accounts.saveFrontierCredits(this.frontierCredits);
+      if (POI_DEFS.get(site.defId)?.haven) this.rebuildHavens();
+      console.log(
+        `[frontier] the trouble moves on: ${site.defId} rises at ` +
+          `${site.anchorX},${site.anchorY} (cell ${key}) — renewal debt ${this.frontierCredits}`,
+      );
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Decide (or recall) a cell and stand its POI up as a tiny zone
    * through the SAME machinery authored zones use: addZone + client
    * chunk drop + tagged registerSpawns — retire is free by
@@ -4200,7 +4442,7 @@ export class GameServer {
     if (!row || opts.epoch !== undefined) {
       const epoch = opts.epoch ?? 0;
       const site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx, opts.force);
-      row = { epoch, site, clearedAt: null };
+      row = { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null };
       // Deviations only: a settled cell writes no row (it is 0 by law).
       const centerTier = this.liveDangerTier(
         cellX * POI_CELL + POI_CELL / 2,
@@ -4242,6 +4484,11 @@ export class GameServer {
     this.dropClientChunks(zone);
     const spawnIdx = this.registerSpawns(zone.spawns ?? [], zone.id);
     for (const i of spawnIdx) this.poiSpawnCells.set(i, key);
+    // THE EMBER LAW, restart-safe: a cleared cell re-materializes as
+    // the carcass it is — the zone stands (tents, cold fires, the
+    // opened chest), but the fighting garrison stays down. Livestock
+    // and staff keep their lives; only the broken muster is denied.
+    if (row.clearedAt !== null) this.standDownGarrison(spawnIdx);
     // The friendly staff stands up through the actor machinery —
     // identity, disposition, protection, dialogue, and shop all ride
     // the same laws the town's own people keep.
@@ -4284,12 +4531,28 @@ export class GameServer {
   }
 
   /**
+   * Stand a cell's fighting garrison down for good — the ember law's
+   * teeth. Deactivate-in-place (the retireZonePlacements convention):
+   * the spawn records stay tagged to the zone so retire stays free,
+   * but tickSpawns never re-stands them. Livestock and staff actors
+   * keep their lives — a freed cow grazing the wreck IS the story.
+   */
+  private standDownGarrison(spawnIdx: readonly number[]): void {
+    for (const i of spawnIdx) {
+      const s = this.spawnPoints[i];
+      if (s?.active && this.poiSpawnFights(s)) s.active = false;
+    }
+  }
+
+  /**
    * Garrison-wipe watch: when the LAST living FIGHTING body of a POI's
-   * spawn set falls, stamp cleared_at — the phase-3 fallow sweep reads
-   * it. The wipe also aligns the whole garrison's respawn clocks to
-   * one grace window (POI_RESPAWN_MIN_SEC from the wipe), so a cleared
-   * site stays cleared as a unit long enough to loot; a later re-wipe
-   * re-stamps (the ledger keeps the LATEST clear).
+   * spawn set falls, stamp cleared_at. THE EMBER LAW (the living
+   * frontier): a wiped procedural site never restaffs — its garrison
+   * stands down for good and the broken camp lingers until ember_until,
+   * when tickFrontier dissolves it and the trouble moves on. Authored
+   * landmarks keep the old covenant instead: one grace window
+   * (POI_RESPAWN_MIN_SEC from the wipe) to loot, then the veil's den
+   * musters anew — the plan's fixed points never churn.
    */
   private notePoiKill(spawnIndex: number, killerEid?: EntityId): void {
     const key = this.poiSpawnCells.get(spawnIndex);
@@ -4300,17 +4563,26 @@ export class GameServer {
       const s = this.spawnPoints[i];
       if (s?.active && s.eid !== null && this.poiSpawnFights(s)) return;
     }
-    const graceAt = Date.now() + GameServer.POI_RESPAWN_MIN_SEC * 1000;
-    for (const i of live.spawnIdx) {
-      const s = this.spawnPoints[i];
-      if (s?.active && s.eid === null && this.poiSpawnFights(s)) {
-        s.respawnAt = Math.max(s.respawnAt, graceAt);
-      }
-    }
     const [cx, cy] = key.split(',').map(Number);
-    this.accounts.markPoiCleared(cx!, cy!);
     const row = this.poiLedger.get(key);
     if (row) row.clearedAt = Date.now();
+    if (this.authoredCells().has(key)) {
+      const graceAt = Date.now() + GameServer.POI_RESPAWN_MIN_SEC * 1000;
+      for (const i of live.spawnIdx) {
+        const s = this.spawnPoints[i];
+        if (s?.active && s.eid === null && this.poiSpawnFights(s)) {
+          s.respawnAt = Math.max(s.respawnAt, graceAt);
+        }
+      }
+      this.accounts.markPoiCleared(cx!, cy!);
+    } else {
+      this.standDownGarrison(live.spawnIdx);
+      const emberUntil =
+        Date.now() +
+        emberLingerFor(config.worldSeed, cx!, cy!, row?.epoch ?? 0);
+      if (row) row.emberUntil = emberUntil;
+      this.accounts.markPoiCleared(cx!, cy!, emberUntil);
+    }
     // THE STORY HOOK: the hand that felled the last body carries the
     // deed into the flag ledger — dialogue and quests read it from
     // there ("you broke the warcamp at the ford"). The moment gets a
@@ -10120,7 +10392,76 @@ export class GameServer {
             `${row.site.anchorX},${row.site.anchorY}, epoch ${row.epoch}`) +
           (row?.clearedAt ? ` · cleared ${Math.round((Date.now() - row.clearedAt) / 60000)}m ago` : '') +
           (live?.zoneId ? ' · standing' : '') +
-          ' — /poi here [archetype] · /poi reroll · /poi fallow [days] · /poi havens',
+          ' — /poi here [archetype] · /poi reroll · /poi fallow [days] · /poi havens · /frontier',
+      );
+      return;
+    }
+    if (config.devCommands && text.startsWith('/frontier')) {
+      // The living-frontier lens + staging levers (the /poi family's kin):
+      //   /frontier          — credits + this cell's ember/fallow state + world counts
+      //   /frontier tick     — force one full frontier pass now
+      //   /frontier ember [minutes] — re-stamp the current cleared cell's linger
+      //   /frontier credit [n]      — grant renewal credits (staging)
+      const [, sub, arg] = text.split(/\s+/);
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      const cx = poiCellOf(pos.x);
+      const cy = poiCellOf(pos.y);
+      const key = poiCellKey(cx, cy);
+      const say = (t: string) =>
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      if (sub === 'tick') {
+        const now = Date.now();
+        const did = this.dissolveOneEmber(now)
+          ? 'dissolved an ember'
+          : this.wakeOneFallow(now)
+            ? 'woke a fallow cell'
+            : this.spendRenewalCredit(now)
+              ? 'spent a renewal credit'
+              : 'nothing due';
+        say(`Frontier pass: ${did}.`);
+        return;
+      }
+      if (sub === 'ember') {
+        const row = this.poiLedger.get(key);
+        if (!row?.site || row.clearedAt === null) {
+          say('This cell holds no cleared site to ember.');
+          return;
+        }
+        const mins = Number.parseFloat(arg ?? '0');
+        row.emberUntil = Date.now() + (Number.isFinite(mins) && mins >= 0 ? mins : 0) * 60_000;
+        this.accounts.setPoiEmber(cx, cy, row.emberUntil);
+        say(`Ember re-stamped: dissolves in ${Math.round((row.emberUntil - Date.now()) / 1000)}s (dignity permitting).`);
+        return;
+      }
+      if (sub === 'credit') {
+        const n = Number.parseInt(arg ?? '1', 10);
+        this.frontierCredits += Number.isFinite(n) ? n : 1;
+        this.accounts.saveFrontierCredits(this.frontierCredits);
+        say(`Renewal debt now ${this.frontierCredits}.`);
+        return;
+      }
+      let embers = 0;
+      let fallows = 0;
+      for (const r of this.poiLedger.values()) {
+        if (r.site !== null && r.clearedAt !== null && r.emberUntil !== null) embers++;
+        if (r.site === null && r.fallowUntil !== null) fallows++;
+      }
+      const row = this.poiLedger.get(key);
+      const now = Date.now();
+      const cellState =
+        row === undefined
+          ? 'undecided'
+          : row.site && row.emberUntil !== null
+            ? `${row.site.defId} EMBER — dissolves in ~${Math.max(0, Math.round((row.emberUntil - now) / 60000))}m`
+            : row.site
+              ? `${row.site.defId} standing`
+              : row.fallowUntil !== null
+                ? `fallow — may host in ~${Math.max(0, Math.round((row.fallowUntil - now) / 60000))}m`
+                : `decided empty (epoch ${row.epoch})`;
+      say(
+        `Frontier: ${embers} ember(s), ${fallows} fallow cell(s), renewal debt ${this.frontierCredits}. ` +
+          `Cell ${key}: ${cellState} — /frontier tick · /frontier ember [min] · /frontier credit [n]`,
       );
       return;
     }
@@ -10205,6 +10546,10 @@ export class GameServer {
     this.tickRegen(now);
     if (this.tickCount % 40 === 0) this.tickCrops(now);
     if (this.tickCount % 20 === 0) this.tickPois();
+    // The frontier clock: offset 7 so it never shares a beat with the
+    // %20/%40 passes (300 ≡ 0 mod 20 — a zero offset would stack it
+    // on tickPois every time).
+    if (this.tickCount % FRONTIER.tickTicks === 7) this.tickFrontier();
     if (this.tickCount % 40 === 20) this.tickWildSpawns();
     if (this.tickCount % SERVER_REVEAL_TICKS === 0) this.tickReveal();
 

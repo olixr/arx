@@ -20,6 +20,7 @@ export * from './loot/roll.js';
 export * from './loot/analyze.js';
 export * from './loot/serialize.js';
 export * from './danger.js';
+export * from './frontier.js';
 export * from './nodes.js';
 export * from './wilds.js';
 export * from './pois/types.js';
