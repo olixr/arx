@@ -1,0 +1,30 @@
+{
+  "id": "hale_watch_relief",
+  "start": "hub",
+  "requires": ["world:relief"],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_hale", "priority": 6 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Ledger's clean this morning. The camp's gone — burned out from the inside, the way I heard it. Your work?",
+      "choices": [
+        { "text": "Mine.", "next": "mine" },
+        { "text": "Word travels fast out here.", "next": "word" },
+        { "text": "Keep the ledger clean.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "mine",
+      "text": "Then the post owes you stew and silence. We're good for both."
+    },
+    {
+      "id": "word",
+      "text": "Fourteen miles of it, faster than carts. Sit if you like.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Easier job today than yesterday. Thanks to somebody."
+    }
+  ]
+}

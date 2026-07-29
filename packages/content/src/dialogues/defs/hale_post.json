@@ -1,0 +1,30 @@
+{
+  "id": "hale_post",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "waykeeper_hale" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Wardens' post. Fourteen miles of road, one lamp, two moods. Which do you need?",
+      "choices": [
+        { "text": "What holds the road?", "next": "holds" },
+        { "text": "Anything need doing?", "next": "doing" },
+        { "text": "Hold the post.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "holds",
+      "text": "Us, the lamps, and the fences, in that order. Brigands keep the toll bends, wolves keep the trail. I keep the ledger even.",
+      "next": "hub"
+    },
+    {
+      "id": "doing",
+      "text": "Always. Tonight it's the same as every night — hold fourteen miles with six hands. When something's stirring out there, come ask me and I'll point you at it.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "That's the job."
+    }
+  ]
+}

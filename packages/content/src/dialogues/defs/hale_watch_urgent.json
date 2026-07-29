@@ -1,0 +1,45 @@
+{
+  "id": "hale_watch_urgent",
+  "start": "hub",
+  "requires": ["world:threat_bold"],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_hale", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "It's grown. What was a camp is a garrison now, and garrisons don't pay toll — they charge it. Fourteen miles is about to get shorter.",
+      "choices": [
+        {
+          "text": "Where are they camped?",
+          "next": "mark",
+          "forbids": ["world:bounty_open"]
+        },
+        {
+          "text": "Say it again — where?",
+          "next": "remark",
+          "requires": ["world:bounty_open"]
+        },
+        { "text": "Can the post hold?", "next": "hold" },
+        { "text": "Lamp stays lit.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "mark",
+      "text": "Marked. Sergeant Odessa logs 'road holds' every dusk. Keep her honest.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "remark",
+      "text": "Mark stands. So do they. Fix the second part.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "hold",
+      "text": "We hold the post. The road between posts is what I can't promise — and that's where you come in.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "It does."
+    }
+  ]
+}

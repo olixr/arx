@@ -1,0 +1,30 @@
+{
+  "id": "aldis_watch_relief",
+  "start": "hub",
+  "requires": ["world:relief"],
+  "bindings": [{ "kind": "actor", "target": "captain_aldis", "priority": 6 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "The book got a good entry for once: camp broken, road open. By all accounts, your doing.",
+      "choices": [
+        { "text": "The road's yours again.", "next": "thanks" },
+        { "text": "Anything else stirring?", "next": "quiet" },
+        { "text": "Captain.", "next": "salute" }
+      ]
+    },
+    {
+      "id": "thanks",
+      "text": "It was never mine. It's the town's, and the town breathes easier tonight. I log the deed under your name — that's the coin I mint."
+    },
+    {
+      "id": "quiet",
+      "text": "Quiet, for now. I know better than to trust it. I'll take it anyway.",
+      "next": "hub"
+    },
+    {
+      "id": "salute",
+      "text": "Waker."
+    }
+  ]
+}

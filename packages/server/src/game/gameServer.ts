@@ -135,15 +135,19 @@ import {
   type PrefabDef,
   type PoiDef,
   AUTHORED_WILD_SITES,
+  BOUNTY_FLAG_PREFIX,
   FRONTIER,
   POI_DEFS,
   POI_PREFABS,
   ROAD_CALM,
   ROAD_SHOULDER,
   SETTLED_ANCHORS,
+  bountyFlag,
+  creepWaitFor,
   dangerLaw,
   emberLingerFor,
   fallowRestFor,
+  isWorldFlag,
   pickWild,
   scatterLingerFor,
   stageWaitFor,
@@ -1007,6 +1011,25 @@ const DRAW_LOCK_TICKS = 10;
  * Damage roll with a 10% base crit chance (guaranteed heavy hit).
  * `critBonusPct` — extra percentage points from gear effects/enchants.
  */
+/**
+ * Eight-way spoken bearing for a world-space offset (map north = -y),
+ * the quartermaster's dialect: "north-east", never degrees.
+ */
+function compass8(dx: number, dy: number): string {
+  const names = [
+    'east',
+    'south-east',
+    'south',
+    'south-west',
+    'west',
+    'north-west',
+    'north',
+    'north-east',
+  ];
+  const oct = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) & 7;
+  return names[oct]!;
+}
+
 function rollDamage(maxHit: number, critBonusPct = 0): { dmg: number; crit: boolean } {
   if (Math.random() < 0.1 + critBonusPct / 100) {
     return { dmg: maxHit + Math.ceil(maxHit * 0.5), crit: true };
@@ -1242,8 +1265,16 @@ export class GameServer {
    * restart never forgives the debt.
    */
   private frontierCredits = 0;
-  /** Cells handled this uptime (live zone or decided empty). */
-  private readonly poiLive = new Map<string, { zoneId?: string; spawnIdx: number[] }>();
+  /**
+   * Cells handled this uptime (live zone or decided empty). `fighters`
+   * is the participation ledger: every characterId that landed real
+   * damage on the garrison — the wipe credit and the bounty pay ALL of
+   * them, never just the last blow.
+   */
+  private readonly poiLive = new Map<
+    string,
+    { zoneId?: string; spawnIdx: number[]; fighters?: Set<number> }
+  >();
   /** spawnPoints index → owning POI cell key (cleared-wipe detection). */
   private readonly poiSpawnCells = new Map<number, string>();
   /** POI prefab library; null until initPois — tickPois no-ops before boot wiring. */
@@ -4337,6 +4368,7 @@ export class GameServer {
     if (this.wakeOneFallow(now)) return;
     if (this.stageOnePoi(now)) return;
     if (this.seedOneSatellite(now)) return;
+    if (this.forkOneToll(now)) return;
     this.spendRenewalCredit(now);
   }
 
@@ -4755,6 +4787,131 @@ export class GameServer {
   }
 
   /**
+   * THE CREEP ANSWERED (Phase 3.3): a FULL-strength family standing
+   * unanswered inside a town's marches past its creep wait never sacks
+   * the town — tier 0 is law. It forks the road instead: a road_toll
+   * micro-site stands in the most road-true townward cell at the
+   * family's edge, owned by the core (originCell), so breaking either
+   * the toll or the family resolves both (notePoiKill both ways). The
+   * failure state is more game on the road, never less town. One toll
+   * per family, towns' guards name it through world:toll_near.
+   */
+  private tollTrace: string[] = [];
+  private forkOneToll(now: number): boolean {
+    if (!this.poiPrefabs || !POI_DEFS.has('road_toll')) return false;
+    this.tollTrace = [];
+    const authored = this.authoredCells();
+    for (const [key, row] of this.poiLedger) {
+      if (row.site === null || row.clearedAt !== null || row.emberUntil !== null) continue;
+      if (row.originCell !== null) continue; // cores fork, families don't
+      if (authored.has(key)) continue;
+      const def = POI_DEFS.get(row.site.defId);
+      if (!def?.boldness?.satellites) continue; // only the spreading kinds
+      const top = Math.min(FRONTIER.stageMax, def.boldness.stages.length);
+      if (row.stage < top) continue; // full strength only
+      const { cellX, cellY, anchorX, anchorY } = row.site;
+      // Inside a town's marches? The toll answers a TOWN's road.
+      let town: { x: number; y: number } | null = null;
+      let townD = Infinity;
+      for (const a of SETTLED_ANCHORS) {
+        const d = Math.hypot(a.x - anchorX, a.y - anchorY);
+        if (d <= FRONTIER.marchTiles && d < townD) {
+          town = a;
+          townD = d;
+        }
+      }
+      if (!town) continue;
+      // The creep clock runs from the moment the top rung began.
+      if (row.stageAt === null) continue;
+      if (now - row.stageAt < creepWaitFor(config.worldSeed, cellX, cellY)) continue;
+      // One toll per family.
+      let hasToll = false;
+      for (const r of this.poiLedger.values()) {
+        if (r.originCell === key && r.site?.defId === 'road_toll' && r.emberUntil === null) {
+          hasToll = true;
+          break;
+        }
+      }
+      if (hasToll) continue;
+      if (this.calmNear(cellX, cellY, now)) continue;
+      // Candidate cells ranked toward THIS town, road-trueness first:
+      // the toll stands on the road it means to choke, at the family's
+      // townward edge.
+      const anchors = this.dangerAnchors();
+      const ranked = [
+        [-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1],
+      ]
+        .map(([dx, dy]) => {
+          const ncx = cellX + dx!;
+          const ncy = cellY + dy!;
+          const wx = ncx * POI_CELL + POI_CELL / 2;
+          const wy = ncy * POI_CELL + POI_CELL / 2;
+          const dTown = Math.hypot(town!.x - wx, town!.y - wy);
+          // Roads pull hard: a cell the road crosses beats a nearer
+          // trackless one — the bar goes where the carts go.
+          const dRoad = Math.min(roadDistanceAt(config.worldSeed, wx, wy), POI_CELL);
+          return { ncx, ncy, score: dTown + dRoad * 3 };
+        })
+        .sort((a, b) => a.score - b.score);
+      const ctx = poiContext(anchors, this.world.zoneDefs, this.poiPrefabs);
+      for (const cand of ranked.slice(0, 3)) {
+        const nkey = poiCellKey(cand.ncx, cand.ncy);
+        if (authored.has(nkey)) { this.tollTrace.push(`${nkey}:authored`); continue; }
+        const nrow = this.poiLedger.get(nkey);
+        if (nrow?.site) { this.tollTrace.push(`${nkey}:occupied`); continue; }
+        if (nrow?.fallowUntil !== null && nrow?.fallowUntil !== undefined && now < nrow.fallowUntil)
+          { this.tollTrace.push(`${nkey}:fallow`); continue; }
+        if (this.calmNear(cand.ncx, cand.ncy, now)) { this.tollTrace.push(`${nkey}:calm`); continue; }
+        const epoch = (nrow?.epoch ?? 0) + 1;
+        const site = poiForCell(config.worldSeed, cand.ncx, cand.ncy, epoch, ctx, 'road_toll');
+        if (!site) { this.tollTrace.push(`${nkey}:noground`); continue; }
+        if (this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles))
+          { this.tollTrace.push(`${nkey}:dignity`); continue; }
+        this.accounts.recordPoiCell(
+          cand.ncx,
+          cand.ncy,
+          epoch,
+          {
+            poiId: site.defId,
+            prefabId: site.prefabId,
+            tier: site.tier,
+            anchorX: site.anchorX,
+            anchorY: site.anchorY,
+          },
+          null,
+          key,
+        );
+        this.poiLedger.set(nkey, {
+          epoch,
+          site,
+          clearedAt: null,
+          emberUntil: null,
+          fallowUntil: null,
+          stage: 0,
+          stageAt: null,
+          originCell: key,
+        });
+        this.poiLive.delete(nkey);
+        for (const player of this.players.values()) {
+          const d = player.discoveries.get(`poi:${key}`);
+          if (!d || d.faded) continue;
+          player.session?.sendJson({
+            t: 'chat',
+            channel: 'system',
+            text: `${def.name} grows greedy — a toll bar has gone up on the townward road.`,
+          });
+        }
+        console.log(
+          `[frontier] ${def.name} (cell ${key}) forks the road — toll at ` +
+            `${site.anchorX},${site.anchorY} (cell ${nkey})`,
+        );
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Decide (or recall) a cell and stand its POI up as a tiny zone
    * through the SAME machinery authored zones use: addZone + client
    * chunk drop + tagged registerSpawns — retire is free by
@@ -4919,40 +5076,111 @@ export class GameServer {
     // no stage-ups, satellites, wakes, or renewal landings near here
     // while it holds. The player's victory audibly reads.
     this.stampCalm(cx!, cy!);
-    // SOURCE-AND-KILL-SWITCH: breaking a CORE scatters its family —
-    // every standing satellite takes a short ember (no clearedAt, so
-    // no renewal credit: one clear is one victory) and stands down.
+    // SOURCE-AND-KILL-SWITCH, both ways: breaking a CORE scatters its
+    // family — every standing satellite takes a short ember (no
+    // clearedAt, so no renewal credit: one clear is one victory) and
+    // stands down. Breaking a family's TOLL (Phase 3.3) breaks the
+    // family's nerve the same way: the core and every sibling scatter.
     let scattered = 0;
-    for (const [skey, srow] of this.poiLedger) {
-      if (srow.originCell !== key || srow.site === null || srow.emberUntil !== null) continue;
+    const scatterCell = (skey: string, srow: NonNullable<typeof row>): void => {
+      if (srow.site === null || srow.emberUntil !== null) return;
       srow.emberUntil =
         Date.now() + scatterLingerFor(config.worldSeed, srow.site.cellX, srow.site.cellY);
       this.standDownGarrison(this.poiLive.get(skey)?.spawnIdx ?? []);
       this.accounts.setPoiEmber(srow.site.cellX, srow.site.cellY, srow.emberUntil);
       scattered++;
+    };
+    for (const [skey, srow] of this.poiLedger) {
+      if (srow.originCell !== key || srow.site === null || srow.emberUntil !== null) continue;
+      scatterCell(skey, srow);
     }
-    // THE STORY HOOK: the hand that felled the last body carries the
-    // deed into the flag ledger — dialogue and quests read it from
-    // there ("you broke the warcamp at the ford"). The moment gets a
-    // line either way: a wiped site should FEEL wiped.
+    let tollBroke = false;
+    if (row?.originCell !== null && row?.originCell !== undefined && row.site?.defId === 'road_toll') {
+      tollBroke = true;
+      const coreKey = row.originCell;
+      const core = this.poiLedger.get(coreKey);
+      if (core?.site && core.clearedAt === null) scatterCell(coreKey, core);
+      for (const [skey, srow] of this.poiLedger) {
+        if (srow.originCell !== coreKey || skey === key) continue;
+        scatterCell(skey, srow);
+      }
+    }
+    // THE STORY HOOK + THE BOUNTY (Phase 3.2): the wipe credit reaches
+    // every hand that bled the garrison — the participation ledger,
+    // not just the last blow. Flags, the line, the deed-art, and any
+    // posted bounty pay per participant. The site STANDING paid
+    // nothing, ever — only the breaking pays (the anti-farm law).
     const def = row?.site ? POI_DEFS.get(row.site.defId) : undefined;
+    const parts = new Map<PlayerComp, EntityId>();
     const killer = killerEid !== undefined ? this.players.get(killerEid) : undefined;
-    if (def && killer) {
-      if (def.clearedFlag !== undefined) this.setPlayerFlag(killer, def.clearedFlag);
-      killer.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: `The last of them falls. ${def.name} is broken — word of it will travel.`,
-      });
-      if (scattered > 0) {
-        killer.session?.sendJson({
+    if (killer && killerEid !== undefined) parts.set(killer, killerEid);
+    for (const characterId of live.fighters ?? []) {
+      const feid = this.characterEids.get(characterId);
+      const p = feid !== undefined ? this.players.get(feid) : undefined;
+      if (p) parts.set(p, feid!);
+    }
+    live.fighters = undefined;
+    if (def) {
+      for (const [p, peid] of parts) {
+        if (def.clearedFlag !== undefined) this.setPlayerFlag(p, def.clearedFlag);
+        p.session?.sendJson({
           t: 'chat',
           channel: 'system',
-          text: 'Word spreads — the outlying camps scatter.',
+          text: `The last of them falls. ${def.name} is broken — word of it will travel.`,
         });
+        if (scattered > 0) {
+          p.session?.sendJson({
+            t: 'chat',
+            channel: 'system',
+            text: tollBroke
+              ? 'The toll falls — and the family that raised it loses its nerve. The camps scatter.'
+              : 'Word spreads — the outlying camps scatter.',
+          });
+        }
+        // THE UNWRITTEN PAGE: breaking a garrison is the warden's deed.
+        this.grantArt(p, 'warden_volley');
+        this.payBounty(peid, p, key, row);
       }
-      // THE UNWRITTEN PAGE: breaking a garrison is the warden's deed.
-      this.grantArt(killer, 'warden_volley');
+    }
+  }
+
+  /**
+   * Honor a posted bounty on a broken cell: coins by site tier, the
+   * rolled purse scaled by the boldness rung the camp died at (a
+   * bolder problem was a bigger favor). The mark lifts with the pay;
+   * marks whose camp dissolved without the player are pruned lazily by
+   * openBounties instead. Overflow coins land at the defender's feet.
+   */
+  private payBounty(
+    eid: EntityId,
+    player: PlayerComp,
+    cellKey: string,
+    row: { site: PoiSite | null; stage: number } | undefined,
+  ): void {
+    const flag = bountyFlag(cellKey);
+    if (!player.flags.has(flag)) return;
+    this.clearPlayerFlag(player, flag);
+    const site = row?.site;
+    if (!site) return;
+    const tier = Math.max(1, Math.min(5, site.tier));
+    const mult = 1 + (row?.stage ?? 0);
+    let paid = 0;
+    for (const drop of rollLoot(`bounty_t${tier}`, { level: tier * 10, rand: Math.random })) {
+      const qty = drop.qty * mult;
+      const added = addItem(player.inventory, drop.item, qty);
+      if (added < qty) {
+        const pos = this.positions.get(eid);
+        if (pos) this.spawnDrop(drop.item, qty - added, pos.x, pos.y, eid);
+      }
+      paid += qty;
+    }
+    if (paid > 0) {
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `The bounty is honored: ${paid} coins.`,
+      });
     }
   }
 
@@ -5597,7 +5825,7 @@ export class GameServer {
       // The dialogue system speaks first: the highest-priority tree
       // this player's flags make eligible opens the cinematic frame.
       const defs = this.dialoguesByActor.get(actorComp.actor.id);
-      const def = defs ? pickDialogue(defs, (f) => player.flags.has(f)) : null;
+      const def = defs ? pickDialogue(defs, this.dialogueHas(player, targetEid)) : null;
       if (def) {
         // The spoken-to turn to face you — small thing, reads as alive.
         npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
@@ -5718,6 +5946,85 @@ export class GameServer {
   // ------------------------------------------------------- dialogue
 
   /**
+   * THE WORLD ANSWERS (living-frontier Phase 3.1): the flag predicate
+   * every dialogue gate consults. Plain flags read the character's
+   * durable ledger; flags in the reserved `world:` namespace are
+   * answered LIVE from the frontier around the SPEAKER — the guard
+   * knows what stands within a watch of her post, never what stands
+   * anywhere. Nothing synthetic is ever stored.
+   */
+  private dialogueHas(player: PlayerComp, targetEid: EntityId): (flag: string) => boolean {
+    return (flag) => {
+      if (!isWorldFlag(flag)) return player.flags.has(flag);
+      const npos = this.positions.get(targetEid);
+      return npos ? this.worldFlagAnswer(flag, player, npos.x, npos.y) : false;
+    };
+  }
+
+  private worldFlagAnswer(flag: string, player: PlayerComp, sx: number, sy: number): boolean {
+    if (flag === 'world:bounty_open') {
+      // Reads through openBounties so a mark whose camp dissolved
+      // without the player lifts itself the next time anyone asks.
+      return this.openBounties(player).length > 0;
+    }
+    const watch = this.watchSurvey(sx, sy);
+    switch (flag) {
+      case 'world:threat_near':
+        return watch.near;
+      case 'world:threat_bold':
+        return watch.bold;
+      case 'world:toll_near':
+        return watch.toll;
+      case 'world:calm':
+        return !watch.near;
+      case 'world:relief':
+        // Calm AND a relax window still running within the marches —
+        // word of a broken camp travels farther than sight.
+        return !watch.near && this.calmWithinTiles(sx, sy, FRONTIER.marchTiles);
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * What stands within the speaker's watch. Only PROCEDURAL sites
+   * count — authored landmarks are the land's permanent character, not
+   * news, and counting them would leave some posts uneasy forever.
+   * Standing = staffed: cleared trophies and scattered embers are over.
+   */
+  private watchSurvey(sx: number, sy: number): { near: boolean; bold: boolean; toll: boolean } {
+    const authored = this.authoredCells();
+    const watch = FRONTIER.watchTiles;
+    const out = { near: false, bold: false, toll: false };
+    for (const [key, row] of this.poiLedger) {
+      if (row.site === null || row.clearedAt !== null || row.emberUntil !== null) continue;
+      if (authored.has(key)) continue;
+      const dx = row.site.anchorX - sx;
+      const dy = row.site.anchorY - sy;
+      if (dx * dx + dy * dy > watch * watch) continue;
+      out.near = true;
+      if (row.stage >= FRONTIER.satelliteStage) out.bold = true;
+      if (row.site.defId === 'road_toll') out.toll = true;
+    }
+    return out;
+  }
+
+  /** Any relax window still running within `reach` tiles of a point? */
+  private calmWithinTiles(sx: number, sy: number, reach: number): boolean {
+    const now = Date.now();
+    for (const [key, until] of this.frontierCalm) {
+      if (until <= now) continue;
+      const comma = key.indexOf(',');
+      const cx = (Number(key.slice(0, comma)) + 0.5) * POI_CELL;
+      const cy = (Number(key.slice(comma + 1)) + 0.5) * POI_CELL;
+      const dx = cx - sx;
+      const dy = cy - sy;
+      if (dx * dx + dy * dy <= reach * reach) return true;
+    }
+    return false;
+  }
+
+  /**
    * Enter a node: fire its hooks, filter its choices against the
    * player's flags, and send the beat. Reaching an authored ending
    * (no continuation, no offerable choices) records completion —
@@ -5733,10 +6040,11 @@ export class GameServer {
     }
     dlg.nodeId = nodeId;
     for (const hook of node.hooks ?? []) this.runDialogueHook(eid, player, hook);
+    // Choice gates consult the same predicate as tree selection, so a
+    // `world:` answer holds mid-conversation exactly as it did at the door.
+    const has = this.dialogueHas(player, dlg.targetEid);
     const eligible = (node.choices ?? []).filter(
-      (c) =>
-        !c.requires?.some((f) => !player.flags.has(f)) &&
-        !c.forbids?.some((f) => player.flags.has(f)),
+      (c) => !c.requires?.some((f) => !has(f)) && !c.forbids?.some((f) => has(f)),
     );
     dlg.choices = eligible;
     const last = node.next === undefined && eligible.length === 0;
@@ -5836,6 +6144,9 @@ export class GameServer {
         // Armed now, fired at a good ending (see dialogueAdvance).
         if (player.dialogue) player.dialogue.shop = hook.shop;
         break;
+      case 'bounty':
+        this.postBounty(eid, player);
+        break;
       case 'give': {
         const added = addItem(player.inventory, hook.item, hook.qty);
         if (added > 0) {
@@ -5857,8 +6168,76 @@ export class GameServer {
     }
   }
 
+  /**
+   * THE ASK MADE CONCRETE (Phase 3.2): the speaker points the player
+   * at the worst standing trouble within their watch — boldest rung
+   * first, then nearest. The waypoint lands on the chart live, the
+   * bounty mark stamps, and the quartermaster confirms with a bearing.
+   * Nothing pays until the camp breaks.
+   */
+  private postBounty(eid: EntityId, player: PlayerComp): void {
+    const dlg = player.dialogue;
+    const pos = this.positions.get(eid);
+    if (!dlg || !pos) return;
+    const spos = this.positions.get(dlg.targetEid);
+    if (!spos) return;
+    const authored = this.authoredCells();
+    const watch = FRONTIER.watchTiles;
+    let best: { key: string; site: PoiSite; stage: number; d2: number } | null = null;
+    for (const [key, row] of this.poiLedger) {
+      if (row.site === null || row.clearedAt !== null || row.emberUntil !== null) continue;
+      if (authored.has(key)) continue;
+      const dx = row.site.anchorX - spos.x;
+      const dy = row.site.anchorY - spos.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > watch * watch) continue;
+      if (!best || row.stage > best.stage || (row.stage === best.stage && d2 < best.d2)) {
+        best = { key, site: row.site, stage: row.stage, d2 };
+      }
+    }
+    const sys = (text: string) =>
+      player.session?.sendJson({ t: 'chat', channel: 'system', text });
+    if (!best) {
+      // The gate said threat, but it broke mid-conversation — honest.
+      sys('Nothing stands within the watch now — the word was stale.');
+      return;
+    }
+    const wx = Math.round(best.site.anchorX);
+    const wy = Math.round(best.site.anchorY);
+    this.setWaypoint(eid, wx, wy);
+    player.session?.sendJson({ t: 'waypoint', x: wx, y: wy });
+    this.setPlayerFlag(player, bountyFlag(best.key));
+    const def = POI_DEFS.get(best.site.defId);
+    sys(
+      `Your chart takes the mark: ${def?.name ?? 'the camp'}, ` +
+        `${compass8(wx - pos.x, wy - pos.y)}, ${Math.round(Math.hypot(wx - pos.x, wy - pos.y))} paces out.`,
+    );
+  }
+
+  /**
+   * The player's live bounty cells — lazily lifting marks whose camp
+   * no longer stands (dissolved, scattered, or wiped without them): a
+   * dead mark neither gates dialogue nor haunts the ledger.
+   */
+  private openBounties(player: PlayerComp): string[] {
+    const out: string[] = [];
+    for (const flag of [...player.flags.keys()]) {
+      if (!flag.startsWith(BOUNTY_FLAG_PREFIX)) continue;
+      const key = flag.slice(BOUNTY_FLAG_PREFIX.length);
+      const row = this.poiLedger.get(key);
+      const standing =
+        row !== undefined && row.site !== null && row.clearedAt === null && row.emberUntil === null;
+      if (standing) out.push(key);
+      else this.clearPlayerFlag(player, flag);
+    }
+    return out;
+  }
+
   /** Set a durable story flag; persisted immediately (guests: memory). */
   private setPlayerFlag(player: PlayerComp, flag: string, value = 1): void {
+    // The world answers; nobody writes it. (The validator already
+    // refuses authored writes — this holds the line for every caller.)
+    if (isWorldFlag(flag)) return;
     if (player.flags.get(flag) === value) return;
     player.flags.set(flag, value);
     if (player.characterId > 0) this.accounts.setFlag(player.characterId, flag, value);
@@ -5867,6 +6246,12 @@ export class GameServer {
     // flag choke point, so any authored path to the flag counts.
     const art = GameServer.DEED_FLAG_ARTS[flag];
     if (art) this.grantArt(player, art);
+  }
+
+  /** Lift a story flag (bounty marks are the one revolving door). */
+  private clearPlayerFlag(player: PlayerComp, flag: string): void {
+    if (!player.flags.delete(flag)) return;
+    if (player.characterId > 0) this.accounts.clearFlag(player.characterId, flag);
   }
 
   /**
@@ -8199,6 +8584,16 @@ export class GameServer {
     const attacker = this.players.get(attackerEid);
     if (attacker) {
       attacker.lastCombatAt = Date.now();
+      // The participation ledger: a landed wound on a garrison body
+      // writes your name into the cell's fight (whiffs never count —
+      // dmg <= 0 returned above). The wipe credit reads this.
+      if (attacker.characterId > 0) {
+        const cellKey = this.poiSpawnCells.get(npc.spawnIndex);
+        if (cellKey !== undefined) {
+          const live = this.poiLive.get(cellKey);
+          if (live) (live.fighters ??= new Set()).add(attacker.characterId);
+        }
+      }
       this.grantXp(attackerEid, attacker, style, dmg * 4);
       this.grantXp(attackerEid, attacker, 'vitality', dmg * 2);
       if (opts.backstab) {
@@ -10776,10 +11171,41 @@ export class GameServer {
               ? 'moved the boldness clock'
               : this.seedOneSatellite(now)
                 ? 'seeded (or scattered) a satellite'
-                : this.spendRenewalCredit(now)
-                  ? 'spent a renewal credit'
-                  : 'nothing due';
-        say(`Frontier pass: ${did}.${this.satTrace.length > 0 ? ` [sat: ${this.satTrace.join(' ')}]` : ''}`);
+                : this.forkOneToll(now)
+                  ? 'forked a road toll'
+                  : this.spendRenewalCredit(now)
+                    ? 'spent a renewal credit'
+                    : 'nothing due';
+        const traces =
+          (this.satTrace.length > 0 ? ` [sat: ${this.satTrace.join(' ')}]` : '') +
+          (this.tollTrace.length > 0 ? ` [toll: ${this.tollTrace.join(' ')}]` : '');
+        say(`Frontier pass: ${did}.${traces}`);
+        return;
+      }
+      if (sub === 'creep') {
+        // /frontier creep — backdate this cell's top-rung clock past
+        // its creep wait so the next pass may fork the toll (staging).
+        const row = this.poiLedger.get(key);
+        if (!row?.site) {
+          say('This cell holds no site to creep.');
+          return;
+        }
+        row.stageAt = Date.now() - creepWaitFor(config.worldSeed, cx, cy) - 1;
+        this.accounts.markPoiStage(cx, cy, row.stage, row.stageAt);
+        say(`Creep clock backdated — /frontier tick may fork the toll now (stage ${row.stage}).`);
+        return;
+      }
+      if (sub === 'watch') {
+        // /frontier watch — the world answers, read from where you stand
+        // (what a speaker HERE would know), plus your open bounty marks.
+        const s = this.watchSurvey(pos.x, pos.y);
+        const relief = !s.near && this.calmWithinTiles(pos.x, pos.y, FRONTIER.marchTiles);
+        const bounties = this.openBounties(player);
+        say(
+          `The world answers here: threat_near=${s.near} threat_bold=${s.bold} ` +
+            `toll_near=${s.toll} calm=${!s.near} relief=${relief}. ` +
+            `Open bounties: ${bounties.length > 0 ? bounties.join(' · ') : 'none'}.`,
+        );
         return;
       }
       if (sub === 'ember') {
@@ -10867,15 +11293,17 @@ export class GameServer {
                 : `decided empty (epoch ${row.epoch})`;
       let staged = 0;
       let sats = 0;
+      let tolls = 0;
       for (const r of this.poiLedger.values()) {
         if (r.site === null) continue;
-        if (r.originCell !== null) sats++;
+        if (r.site.defId === 'road_toll') tolls++;
+        else if (r.originCell !== null) sats++;
         else if (r.stage > 0) staged++;
       }
       say(
         `Frontier: ${embers} ember(s), ${fallows} fallow, ${staged} staged core(s), ` +
-          `${sats} satellite(s), ${this.frontierCalm.size} calm, debt ${this.frontierCredits}. ` +
-          `Cell ${key}: ${cellState} — /frontier tick · ember [min] · stage [n] · calm [clear] · credit [n]`,
+          `${sats} satellite(s), ${tolls} toll(s), ${this.frontierCalm.size} calm, debt ${this.frontierCredits}. ` +
+          `Cell ${key}: ${cellState} — /frontier tick · ember [min] · stage [n] · creep · watch · calm [clear] · credit [n]`,
       );
       return;
     }

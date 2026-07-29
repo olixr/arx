@@ -201,3 +201,137 @@ test('SOURCE-AND-KILL-SWITCH: breaking a core scatters its satellites without pa
   // Its garrison stood down with the family.
   assert.equal(satSpawn.active, false);
 });
+
+// ---------------------------------------------------------------- Phase 3
+
+const proto3 = GameServer.prototype as unknown as {
+  notePoiKill: WardFn;
+  payBounty: WardFn;
+  setPlayerFlag: WardFn;
+  clearPlayerFlag: WardFn;
+};
+
+interface FakePlayer {
+  characterId: number;
+  flags: Map<string, number>;
+  inventory: Array<{ item: string; qty: number } | null>;
+  session: { sendJson: (m: { t: string; text?: string }) => void } | null;
+}
+
+function fakePlayer(characterId: number, msgs: string[]): FakePlayer {
+  return {
+    characterId,
+    flags: new Map(),
+    inventory: new Array<null>(28).fill(null),
+    session: {
+      sendJson: (m) => {
+        if (m.t === 'chat' && m.text) msgs.push(m.text);
+      },
+    },
+  };
+}
+
+test('THE PARTICIPATION LEDGER: every hand that bled the garrison gets the credit', () => {
+  const s = slate([brigand(), brigand({ respawnAt: Date.now() + 35_000 })]);
+  s.poiLedger.get('3,4')!.site = {
+    cellX: 3, cellY: 4, epoch: 0, tier: 2,
+    defId: 'goblin_warcamp', prefabId: 'poi_goblin_camp_ring',
+    anchorX: 448, anchorY: 576,
+  } as never;
+  const msgsA: string[] = [];
+  const msgsB: string[] = [];
+  const a = fakePlayer(101, msgsA); // the last blow
+  const b = fakePlayer(102, msgsB); // bled it earlier, from the ledger
+  b.flags.set('bounty:3,4', 1); // and carries the bounty mark
+  const arts: Array<[number, string]> = [];
+  const flagWrites: Array<[number, string]> = [];
+  const cleared: Array<[number, string]> = [];
+  Object.assign(s, {
+    players: new Map([[11, a], [12, b]]),
+    positions: new Map([[11, { x: 448, y: 576 }], [12, { x: 449, y: 576 }]]),
+    characterEids: new Map([[101, 11], [102, 12]]),
+    grantArt: (p: FakePlayer, art: string) => arts.push([p.characterId, art]),
+    spawnDrop: () => {},
+    payBounty: proto3.payBounty,
+    setPlayerFlag: proto3.setPlayerFlag,
+    clearPlayerFlag: proto3.clearPlayerFlag,
+  });
+  s.accounts = {
+    ...s.accounts,
+    setFlag: (cid: number, flag: string) => flagWrites.push([cid, flag]),
+    clearFlag: (cid: number, flag: string) => cleared.push([cid, flag]),
+  } as never;
+  (s.poiLive.get('3,4') as { fighters?: Set<number> }).fighters = new Set([102]);
+  proto3.notePoiKill.call(s, 0, 11);
+  // Both participants: cleared flag, the line, the deed-art.
+  assert.equal(a.flags.has('poi_warcamp_broken'), true);
+  assert.equal(b.flags.has('poi_warcamp_broken'), true);
+  assert.ok(msgsA.some((t) => t.includes('is broken')));
+  assert.ok(msgsB.some((t) => t.includes('is broken')));
+  assert.deepEqual(arts.map(([cid]) => cid).sort(), [101, 102]);
+  // Only the marked hand is paid — and exactly once, mark lifted.
+  const coinsOf = (p: FakePlayer) =>
+    p.inventory.reduce((n, sl) => n + (sl?.item === 'coins' ? sl.qty : 0), 0);
+  assert.equal(coinsOf(a), 0, 'no mark, no purse');
+  const paid = coinsOf(b);
+  assert.ok(paid >= 60 && paid <= 110, `tier-2 purse pays 60..110, got ${paid}`);
+  assert.equal(b.flags.has('bounty:3,4'), false);
+  assert.deepEqual(cleared, [[102, 'bounty:3,4']]);
+  assert.ok(msgsB.some((t) => t.includes('bounty is honored')));
+});
+
+test('the purse scales with the boldness rung the camp died at', () => {
+  const s = slate([brigand()]);
+  const row = s.poiLedger.get('3,4')!;
+  row.site = {
+    cellX: 3, cellY: 4, epoch: 0, tier: 2,
+    defId: 'goblin_warcamp', prefabId: 'poi_goblin_camp_ring',
+    anchorX: 448, anchorY: 576,
+  } as never;
+  row.stage = 2;
+  const msgs: string[] = [];
+  const p = fakePlayer(0, msgs); // guest: nothing persists, coin still lands
+  p.flags.set('bounty:3,4', 1);
+  Object.assign(s, {
+    positions: new Map([[11, { x: 448, y: 576 }]]),
+    spawnDrop: () => {},
+    clearPlayerFlag: proto3.clearPlayerFlag,
+  });
+  (proto3.payBounty as (...a: unknown[]) => void).call(s, 11, p, '3,4', row);
+  const paid = p.inventory.reduce((n, sl) => n + (sl?.item === 'coins' ? sl.qty : 0), 0);
+  assert.ok(paid >= 180 && paid <= 330, `stage-2 triples the tier-2 purse, got ${paid}`);
+});
+
+test('SOURCE-AND-KILL-SWITCH both ways: breaking the toll scatters the family', () => {
+  // '3,4' holds the TOLL; its core '5,5' stands with a satellite '5,6'.
+  const s = slate([brigand(), brigand()]);
+  const mkSite = (cx: number, cy: number, defId: string) => ({
+    cellX: cx, cellY: cy, epoch: 0, tier: 2,
+    defId, prefabId: 'poi_bandit_toll',
+    anchorX: cx * 128 + 64, anchorY: cy * 128 + 64,
+  });
+  const tollRow = s.poiLedger.get('3,4')!;
+  tollRow.site = mkSite(3, 4, 'road_toll') as never;
+  tollRow.originCell = '5,5';
+  s.poiLedger.set('5,5', {
+    epoch: 0, site: mkSite(5, 5, 'goblin_warcamp') as never,
+    clearedAt: null, emberUntil: null, fallowUntil: null,
+    stage: 3, stageAt: 0, originCell: null,
+  });
+  s.poiLedger.set('5,6', {
+    epoch: 0, site: mkSite(5, 6, 'goblin_warcamp') as never,
+    clearedAt: null, emberUntil: null, fallowUntil: null,
+    stage: 0, stageAt: null, originCell: '5,5',
+  });
+  const before = Date.now();
+  proto3.notePoiKill.call(s, 0);
+  // The toll itself cleared properly (ember + clearedAt = a real victory)...
+  assert.ok(tollRow.clearedAt !== null && tollRow.emberUntil !== null);
+  // ...and the family lost its nerve: core and satellite scatter
+  // unpaid (ember set, NO clear stamped — their dissolves bank nothing).
+  for (const key of ['5,5', '5,6']) {
+    const r = s.poiLedger.get(key)!;
+    assert.ok(r.emberUntil !== null && r.emberUntil > before, `${key} must scatter`);
+    assert.equal(r.clearedAt, null, `${key} scatter is not a clear`);
+  }
+});

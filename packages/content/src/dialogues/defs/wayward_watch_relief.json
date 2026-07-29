@@ -1,0 +1,30 @@
+{
+  "id": "wayward_watch_relief",
+  "start": "hub",
+  "requires": ["world:relief"],
+  "bindings": [{ "kind": "actor", "target": "wayward_watch", "priority": 6 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Quiet night — first in a while. The camp out there went dark, and word says you did the darkening.",
+      "choices": [
+        { "text": "It's done.", "next": "done" },
+        { "text": "Stay sharp anyway.", "next": "sharp" },
+        { "text": "Enjoy the quiet.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "done",
+      "text": "Then the fire's yours and so is the good log: nothing happened, all night. Best watch I've stood in a month."
+    },
+    {
+      "id": "sharp",
+      "text": "Always are. Quiet's when we listen hardest.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Paid for. We will."
+    }
+  ]
+}

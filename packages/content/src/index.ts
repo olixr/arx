@@ -33,6 +33,7 @@ export * from './actors/types.js';
 export * from './actors/validate.js';
 export * from './actors/registry.js';
 export * from './dialogues/types.js';
+export * from './dialogues/worldFlags.js';
 export * from './dialogues/markup.js';
 export * from './dialogues/validate.js';
 export * from './dialogues/registry.js';

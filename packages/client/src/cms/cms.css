@@ -2740,6 +2740,17 @@ button.ghosted {
   margin-right: 4px;
 }
 
+/* The world answers: simulated frontier state, visually its own weather. */
+.rh-tray.world {
+  padding: 5px 8px;
+  border: 1px dashed color-mix(in srgb, var(--brass-soft) 45%, transparent);
+  border-radius: 6px;
+}
+
+.rh-tray.world .flag-chip.toggle.on {
+  border-color: var(--brass-soft);
+}
+
 .flag-chip.toggle {
   cursor: pointer;
 }

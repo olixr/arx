@@ -1,0 +1,45 @@
+{
+  "id": "wayward_watch_uneasy",
+  "start": "hub",
+  "requires": ["world:threat_near"],
+  "bindings": [{ "kind": "actor", "target": "wayward_watch", "priority": 7 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Fire's free, voice down. There's a camp out there we're watching instead of sleeping.",
+      "choices": [
+        {
+          "text": "Where are they camped?",
+          "next": "mark",
+          "forbids": ["world:bounty_open"]
+        },
+        {
+          "text": "Say the bearing again.",
+          "next": "remark",
+          "requires": ["world:bounty_open"]
+        },
+        { "text": "How long have they been there?", "next": "nights" },
+        { "text": "Sleep in shifts.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "mark",
+      "text": "There's your mark. Two of us hold this post, so it's yours or nobody's. The lamp stays lit.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "remark",
+      "text": "Chart's got it. Wind's got their smoke. Hard to miss either.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "nights",
+      "text": "Three nights. First night's a fire. Second's a fence. We don't talk much about what the third one usually is.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "We do."
+    }
+  ]
+}

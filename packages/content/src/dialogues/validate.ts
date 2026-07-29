@@ -2,6 +2,7 @@ import { ITEMS } from '../items.js';
 import { NPC_ACTORS } from '../actors/registry.js';
 import { SHOPS } from '../shop.js';
 import { parseDialogueMarkup } from './markup.js';
+import { WORLD_FLAGS, isWorldFlag } from './worldFlags.js';
 import type {
   DialogueBinding,
   DialogueChoice,
@@ -31,8 +32,12 @@ export interface ValidateDialogueRefs {
 }
 
 const SLUG_RE = /^[a-z][a-z0-9_]*$/;
-/** Flags may reference dialogue completions: `dlg:<dialogue_id>`. */
-const FLAG_RE = /^(dlg:)?[a-z][a-z0-9_]*$/;
+/**
+ * Flags may reference dialogue completions (`dlg:<dialogue_id>`) or the
+ * synthetic world answers (`world:<name>` — the living-frontier
+ * namespace, answered live at the Talk site, never stored).
+ */
+const FLAG_RE = /^(dlg:|world:)?[a-z][a-z0-9_]*$/;
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -47,7 +52,15 @@ function flagList(raw: unknown, name: string, errors: string[]): string[] | unde
   const out: string[] = [];
   for (const f of raw) {
     if (typeof f !== 'string' || !FLAG_RE.test(f) || f.length > 64) {
-      errors.push(`${name} flag '${String(f)}' must match ^(dlg:)?[a-z][a-z0-9_]*$ (max 64 chars)`);
+      errors.push(
+        `${name} flag '${String(f)}' must match ^(dlg:|world:)?[a-z][a-z0-9_]*$ (max 64 chars)`,
+      );
+      continue;
+    }
+    // The world: namespace is a closed roster — a typo here would gate
+    // a tree out forever in silence, so it dies in validation instead.
+    if (isWorldFlag(f) && !WORLD_FLAGS.has(f)) {
+      errors.push(`${name} flag '${f}' is not a known world answer (${[...WORLD_FLAGS].join(', ')})`);
       continue;
     }
     out.push(f);
@@ -90,8 +103,12 @@ function validateHooks(raw: unknown, where: string, errors: string[]): DialogueH
         continue;
       }
       out.push({ kind: 'shop', shop: h.shop });
+    } else if (h.kind === 'bounty') {
+      // Carries nothing — the world state at the moment of asking is
+      // the ask (the server picks the cell, plants the waypoint).
+      out.push({ kind: 'bounty' });
     } else {
-      errors.push(`${where}.hooks[${i}].kind must be 'flag', 'give', or 'shop'`);
+      errors.push(`${where}.hooks[${i}].kind must be 'flag', 'give', 'shop', or 'bounty'`);
     }
   }
   return out;
@@ -126,6 +143,10 @@ function validateChoices(
     choice.set = flagList(c.set, `${where}.choices[${i}].set`, errors);
     if (choice.set?.some((f) => f.startsWith('dlg:'))) {
       errors.push(`${where}.choices[${i}].set may not write dlg: flags (completions are automatic)`);
+      continue;
+    }
+    if (choice.set?.some((f) => isWorldFlag(f))) {
+      errors.push(`${where}.choices[${i}].set may not write world: flags (the world answers, nobody writes it)`);
       continue;
     }
     out.push(choice);

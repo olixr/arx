@@ -36,7 +36,11 @@
 // stage and S2CDiscoveryStage pushes rung climbs to marker holders.
 // A v13 client would drop the push unrecognized and draw stale pips
 // against a bolder world, so reject cleanly.
-export const PROTOCOL_VERSION = 14;
+// v15: THE TOWN FEELS IT — S2CWaypoint lets the server plant the one
+// waypoint (a guard's bounty mark lands on the chart mid-conversation).
+// A v14 client would drop the push and stand there unmarked while the
+// guard says "your chart takes it", so reject cleanly.
+export const PROTOCOL_VERSION = 15;
 
 /** Server simulation ticks per second. */
 export const TICK_RATE = 20;

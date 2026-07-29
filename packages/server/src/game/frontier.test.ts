@@ -415,3 +415,135 @@ test('a spent credit stands lawful ground: offscreen, unauthored, debt paid down
   assert.ok(d >= FRONTIER.dignityTiles, `anchor stood ${d.toFixed(1)} tiles from the player`);
   assert.ok(r.epoch >= 1);
 });
+
+// ---------------------------------------------------------------- Phase 3
+
+const proto3 = GameServer.prototype as unknown as {
+  watchSurvey: Fn;
+  worldFlagAnswer: Fn;
+  calmWithinTiles: Fn;
+  openBounties: Fn;
+  clearPlayerFlag: Fn;
+  forkOneToll: Fn;
+};
+
+/** Wire the Phase 3 methods onto a slate (they read the same fields). */
+function armPhase3(s: ReturnType<typeof slate>) {
+  return Object.assign(s, {
+    watchSurvey: proto3.watchSurvey,
+    worldFlagAnswer: proto3.worldFlagAnswer,
+    calmWithinTiles: proto3.calmWithinTiles,
+    openBounties: proto3.openBounties,
+    clearPlayerFlag: proto3.clearPlayerFlag,
+    forkOneToll: proto3.forkOneToll,
+    tollTrace: [] as string[],
+  });
+}
+
+test('THE WORLD ANSWERS: scoped to the watch, blind to authored land and embers', () => {
+  const st = site({ tier: 3 });
+  const s = armPhase3(slate([[KEY, row({ site: st, stage: 0 })]]));
+  const player = { characterId: 0, flags: new Map<string, number>() };
+  const at = (flag: string, x: number, y: number) =>
+    proto3.worldFlagAnswer.call(s, flag, player, x, y) as boolean;
+  // A standing camp within the watch: threat_near, not yet bold.
+  assert.equal(at('world:threat_near', st.anchorX + 40, st.anchorY), true);
+  assert.equal(at('world:threat_bold', st.anchorX + 40, st.anchorY), false);
+  assert.equal(at('world:calm', st.anchorX + 40, st.anchorY), false);
+  // Outside the watch: the guard cannot know.
+  assert.equal(at('world:threat_near', st.anchorX + FRONTIER.watchTiles + 60, st.anchorY), false);
+  // A bold camp answers bold; a road toll answers toll_near.
+  s.poiLedger.get(KEY)!.stage = FRONTIER.satelliteStage;
+  assert.equal(at('world:threat_bold', st.anchorX + 40, st.anchorY), true);
+  s.poiLedger.set(
+    poiCellKey(CELL_X + 1, CELL_Y),
+    row({ site: site({ cellX: CELL_X + 1, defId: 'road_toll', anchorX: st.anchorX + 100 }) }),
+  );
+  assert.equal(at('world:toll_near', st.anchorX + 40, st.anchorY), true);
+  // A cleared (ember) camp is no longer news.
+  s.poiLedger.get(KEY)!.clearedAt = Date.now();
+  s.poiLedger.get(KEY)!.emberUntil = Date.now() + 60_000;
+  assert.equal(at('world:threat_bold', st.anchorX + 40, st.anchorY), false);
+  // Authored landmarks are the land's character, never news: the same
+  // standing site in an authored cell answers nothing.
+  const authored = proto.authoredCells.call({}) as Map<string, string>;
+  const aKey = [...authored.keys()][0]!;
+  const [acx, acy] = aKey.split(',').map(Number);
+  const s2 = armPhase3(
+    slate([
+      [
+        aKey,
+        row({
+          site: site({
+            cellX: acx!,
+            cellY: acy!,
+            anchorX: acx! * POI_CELL + 64,
+            anchorY: acy! * POI_CELL + 64,
+          }),
+        }),
+      ],
+    ]),
+  );
+  assert.equal(
+    proto3.worldFlagAnswer.call(s2, 'world:threat_near', player, acx! * POI_CELL + 64, acy! * POI_CELL + 64),
+    false,
+  );
+});
+
+test('world:relief — calm within the marches, and only when nothing stands', () => {
+  const s = armPhase3(slate([]));
+  const player = { characterId: 0, flags: new Map<string, number>() };
+  const x = CELL_X * POI_CELL + 64;
+  const y = CELL_Y * POI_CELL + 64;
+  assert.equal(proto3.worldFlagAnswer.call(s, 'world:relief', player, x, y), false);
+  // A relax window one cell over: the road audibly breathes.
+  s.frontierCalm.set(poiCellKey(CELL_X + 1, CELL_Y), Date.now() + 3_600_000);
+  assert.equal(proto3.worldFlagAnswer.call(s, 'world:relief', player, x, y), true);
+  assert.equal(proto3.worldFlagAnswer.call(s, 'world:calm', player, x, y), true);
+  // A camp still standing kills the relief even inside the window.
+  s.poiLedger.set(KEY, row({ site: site() }));
+  assert.equal(proto3.worldFlagAnswer.call(s, 'world:relief', player, x, y), false);
+});
+
+test('world:bounty_open reads through the ledger and prunes dead marks', () => {
+  const s = armPhase3(slate([[KEY, row({ site: site() })]]));
+  const player = { characterId: 0, flags: new Map<string, number>([[`bounty:${KEY}`, 1]]) };
+  assert.equal(proto3.worldFlagAnswer.call(s, 'world:bounty_open', player, 0, 0), true);
+  // The camp dissolves without the player: the mark lifts itself.
+  s.poiLedger.get(KEY)!.site = null;
+  assert.equal(proto3.worldFlagAnswer.call(s, 'world:bounty_open', player, 0, 0), false);
+  assert.equal(player.flags.has(`bounty:${KEY}`), false, 'stale mark must be pruned');
+});
+
+test('THE CREEP ANSWERED: a full family in the marches forks a road-true toll', () => {
+  const now = Date.now();
+  // Cell 3,0 stands ~104 tiles from Amberford's anchor — inside the
+  // marches; the frontier test cell (6,1) is far outside them.
+  const coreKey = poiCellKey(3, 0);
+  const coreSite = site({ cellX: 3, cellY: 0, anchorX: 3 * POI_CELL + 64, anchorY: 64 });
+  const mk = (stage: number, stageAt: number | null) =>
+    armPhase3(slate([[coreKey, row({ site: coreSite, stage, stageAt })]]));
+  // Below full strength: never forks.
+  const sLow = mk(FRONTIER.stageMax - 1, now - 10 * 86_400_000);
+  assert.equal(proto3.forkOneToll.call(sLow, now), false);
+  // Full strength but the creep wait has not run: holds.
+  const sFresh = mk(FRONTIER.stageMax, now);
+  assert.equal(proto3.forkOneToll.call(sFresh, now), false);
+  // Outside the marches: the wild is the wild — no toll, ever.
+  const sFar = armPhase3(
+    slate([[KEY, row({ site: site(), stage: FRONTIER.stageMax, stageAt: now - 10 * 86_400_000 })]]),
+  );
+  assert.equal(proto3.forkOneToll.call(sFar, now), false);
+  // Due, in the marches, unanswered: the road forks.
+  const s = mk(FRONTIER.stageMax, now - 10 * 86_400_000);
+  assert.equal(proto3.forkOneToll.call(s, now), true, `no fork: [${(s as { tollTrace: string[] }).tollTrace.join(' ')}]`);
+  const toll = [...s.poiLedger.entries()].find(([, r]) => r.site?.defId === 'road_toll');
+  assert.ok(toll, 'a road_toll row must exist');
+  const [tollKey, tollRow] = toll!;
+  assert.equal(tollRow.originCell, coreKey, 'the toll belongs to its family');
+  assert.equal(s.recorded.at(-1)!.origin, coreKey);
+  const [tcx, tcy] = tollKey.split(',').map(Number);
+  assert.ok(Math.abs(tcx! - 3) <= 1 && Math.abs(tcy! - 0) <= 1 && tollKey !== coreKey);
+  // One toll per family: a second pass forks nothing new.
+  assert.equal(proto3.forkOneToll.call(s, now), false);
+});

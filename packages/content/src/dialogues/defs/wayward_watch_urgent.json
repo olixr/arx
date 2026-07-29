@@ -1,0 +1,45 @@
+{
+  "id": "wayward_watch_urgent",
+  "start": "hub",
+  "requires": ["world:threat_bold"],
+  "bindings": [{ "kind": "actor", "target": "wayward_watch", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "That camp's done being shy. Drums past midnight now, and we count more of them than of us.",
+      "choices": [
+        {
+          "text": "Where are they camped?",
+          "next": "mark",
+          "forbids": ["world:bounty_open"]
+        },
+        {
+          "text": "Say the bearing again.",
+          "next": "remark",
+          "requires": ["world:bounty_open"]
+        },
+        { "text": "Should you fall back to town?", "next": "stay" },
+        { "text": "Hold the fire.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "mark",
+      "text": "Marked. We'll hold the fire. You do the loud part.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "remark",
+      "text": "Same place, louder. Your chart remembers.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "stay",
+      "text": "And give them the mile? A post is a promise. We stay.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Lamp stays lit."
+    }
+  ]
+}

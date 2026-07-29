@@ -835,6 +835,42 @@ for (const [chest, trove, chance] of TROVE_IN_CHESTS) {
   t.entries.push({ table: trove, chance });
 }
 
+// ------------------------------------------------------ the bounty purse
+// THE TOWN PAYS FOR QUIET (living-frontier Phase 3.2): one purse per
+// site tier, paid to each participant when a bountied garrison breaks —
+// NEVER while it stands (the anti-farm law: rewards buy the breaking,
+// not the keeping). The server scales the rolled qty by the camp's
+// boldness stage (×1..×4); the flood law's analyzer sees the base
+// tables here like any other faucet. Coin-only by design: gear comes
+// from the camp itself (bodies + warded chest) — the town adds wages.
+defs.push(
+  {
+    id: 'bounty_t1',
+    desc: "A hamlet's thanks: pocket coin for a nuisance put down.",
+    entries: [{ item: 'coins', qty: [30, 60] }],
+  },
+  {
+    id: 'bounty_t2',
+    desc: 'A road bounty: honest wages for a camp broken.',
+    entries: [{ item: 'coins', qty: [60, 110] }],
+  },
+  {
+    id: 'bounty_t3',
+    desc: 'A town purse: real coin for real trouble ended.',
+    entries: [{ item: 'coins', qty: [100, 180] }],
+  },
+  {
+    id: 'bounty_t4',
+    desc: 'A garrison purse: the watch pays well past the safe roads.',
+    entries: [{ item: 'coins', qty: [160, 280] }],
+  },
+  {
+    id: 'bounty_t5',
+    desc: 'A crown purse: the deep frontier answered in full.',
+    entries: [{ item: 'coins', qty: [240, 420] }],
+  },
+);
+
 /**
  * Structural validation — run at module load and by the JSON path, so a
  * broken table (typoed item, dangling reference, cycle) fails the build

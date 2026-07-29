@@ -1,0 +1,49 @@
+{
+  "id": "aldis_watch_urgent",
+  "start": "hub",
+  "requires": ["world:threat_bold"],
+  "bindings": [{ "kind": "actor", "target": "captain_aldis", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "The camp has grown. My book calls that a muster. I don't have the spears to answer it.",
+      "choices": [
+        {
+          "text": "Where are they camped?",
+          "next": "mark",
+          "forbids": ["world:bounty_open"]
+        },
+        {
+          "text": "Say the bearing again.",
+          "next": "remark",
+          "requires": ["world:bounty_open"]
+        },
+        {
+          "text": "What's this about a toll?",
+          "next": "toll",
+          "requires": ["world:toll_near"]
+        },
+        { "text": "Carry on, Captain.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "mark",
+      "text": "Marked. Break it, and I'll write your name where the town reads it.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "remark",
+      "text": "Your chart holds the mark. Go while going still helps.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "toll",
+      "text": "They've put a bar across my road and they're charging for the crossing. The Redmasks did the same in the war — I was at this gate when the names went on the plaque. Break the toll or break the camp that feeds it. Either ends both.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Mind the road. I mean it more than usual."
+    }
+  ]
+}

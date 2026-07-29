@@ -62,6 +62,20 @@ import rowanAwakening from './defs/rowan_awakening.json';
 import rowanGreen from './defs/rowan_green.json';
 import wayfarerCamp from './defs/wayfarer_camp.json';
 import waywardRoad from './defs/wayward_road.json';
+import brynWatchUneasy from './defs/bryn_watch_uneasy.json';
+import brynWatchUrgent from './defs/bryn_watch_urgent.json';
+import brynWatchRelief from './defs/bryn_watch_relief.json';
+import aldisWatchUneasy from './defs/aldis_watch_uneasy.json';
+import aldisWatchUrgent from './defs/aldis_watch_urgent.json';
+import aldisWatchToll from './defs/aldis_watch_toll.json';
+import aldisWatchRelief from './defs/aldis_watch_relief.json';
+import waywardWatchUneasy from './defs/wayward_watch_uneasy.json';
+import waywardWatchUrgent from './defs/wayward_watch_urgent.json';
+import waywardWatchRelief from './defs/wayward_watch_relief.json';
+import halePost from './defs/hale_post.json';
+import haleWatchUneasy from './defs/hale_watch_uneasy.json';
+import haleWatchUrgent from './defs/hale_watch_urgent.json';
+import haleWatchRelief from './defs/hale_watch_relief.json';
 
 /**
  * Every authored dialogue JSON, registered here. A def that isn't
@@ -130,6 +144,24 @@ const SOURCES: readonly unknown[] = [
   rowanGreen,
   wayfarerCamp,
   waywardRoad,
+  // THE TOWN FEELS IT (living-frontier Phase 3): threat-gated watch
+  // trees layered by priority over each throat's standing voice —
+  // urgent (8, world:threat_bold) > uneasy (7, world:threat_near) >
+  // relief (6, world:relief) > the evergreen default.
+  brynWatchUneasy,
+  brynWatchUrgent,
+  brynWatchRelief,
+  aldisWatchUneasy,
+  aldisWatchUrgent,
+  aldisWatchToll,
+  aldisWatchRelief,
+  waywardWatchUneasy,
+  waywardWatchUrgent,
+  waywardWatchRelief,
+  halePost,
+  haleWatchUneasy,
+  haleWatchUrgent,
+  haleWatchRelief,
 ];
 
 function buildRegistry(): ReadonlyMap<string, DialogueDef> {

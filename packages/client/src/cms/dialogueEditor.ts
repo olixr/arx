@@ -41,7 +41,7 @@ import { combobox, el, pill, type ComboOption } from './widgets.js';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 const SLUG_RE = /^[a-z][a-z0-9_]*$/;
-const FLAG_RE = /^(dlg:)?[a-z][a-z0-9_]*$/;
+const FLAG_RE = /^(dlg:|world:)?[a-z][a-z0-9_]*$/;
 
 /** Per-dialogue UI memory that survives rebuilds within a session. */
 const selByDlg = new Map<string, string>();
@@ -610,8 +610,13 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
       } else if (hook.kind === 'give') {
         const name = state.items.find((i) => i.id === hook.item)?.name ?? hook.item;
         rhLog.push({ text: `given ${name} × ${hook.qty}`, cls: 'gift', icon: hook.item });
-      } else {
+      } else if (hook.kind === 'shop') {
         rhLog.push({ text: `arms shop '${hook.shop}' — opens on a good ending`, cls: 'shop' });
+      } else {
+        rhLog.push({
+          text: 'bounty posted — waypoint planted at the offending camp, paid when it breaks',
+          cls: 'flag',
+        });
       }
     }
   };
@@ -649,9 +654,7 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
     mine.add(dialogueDoneFlag(draft.id));
     for (const f of flags) mine.add(f);
 
-    const tray = el('div', 'rh-tray');
-    tray.appendChild(el('span', 'rh-tray-label', 'the scratch ledger'));
-    for (const f of [...mine].sort()) {
+    const chipFor = (f: string): HTMLButtonElement => {
       const on = flags.has(f);
       const chip = el('button', 'flag-chip toggle' + (on ? ' on' : ''), f) as HTMLButtonElement;
       chip.type = 'button';
@@ -665,7 +668,17 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
         renderRehearsal();
         renderLinkage();
       };
-      tray.appendChild(chip);
+      return chip;
+    };
+    // The world answers rehearse in their own tray: toggling one
+    // SIMULATES the frontier around the speaker — in the live game the
+    // server answers these and nobody writes them.
+    const worldMine = [...mine].filter((f) => f.startsWith('world:')).sort();
+    const tray = el('div', 'rh-tray');
+    tray.appendChild(el('span', 'rh-tray-label', 'the scratch ledger'));
+    for (const f of [...mine].sort()) {
+      if (f.startsWith('world:')) continue;
+      tray.appendChild(chipFor(f));
     }
     if (flags.size > 0) {
       const clear = el('button', 'mini', 'clear ledger') as HTMLButtonElement;
@@ -677,6 +690,12 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
       tray.appendChild(clear);
     }
     rhBox.appendChild(tray);
+    if (worldMine.length > 0) {
+      const wtray = el('div', 'rh-tray world');
+      wtray.appendChild(el('span', 'rh-tray-label', 'the world answers (simulated)'));
+      for (const f of worldMine) wtray.appendChild(chipFor(f));
+      rhBox.appendChild(wtray);
+    }
 
     // Would this tree even be offered?
     if (!dialogueEligible(draft, rhHas)) {
@@ -979,7 +998,7 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
           refreshLight();
         };
         row.appendChild(qty);
-      } else {
+      } else if (hook.kind === 'shop') {
         row.appendChild(el('span', 'hook-kind', 'opens shop'));
         row.appendChild(
           combobox(shopOptions, hook.shop, (v) => {
@@ -989,6 +1008,11 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
           }),
         );
         row.appendChild(el('span', 'muted', 'on a good ending'));
+      } else {
+        row.appendChild(el('span', 'hook-kind', 'posts bounty'));
+        row.appendChild(
+          el('span', 'muted', 'points at the nearest standing trouble within the watch'),
+        );
       }
       const del = el('button', 'mini danger', '×') as HTMLButtonElement;
       del.title = 'remove hook';
@@ -1026,6 +1050,11 @@ export function dialogueDetail(body: HTMLElement, linkage: HTMLElement, id: stri
         kind: 'shop',
         shop: [...SHOPS.keys()][0] ?? '',
       }));
+      mk(
+        '+ bounty',
+        'plant the waypoint at the nearest standing camp and stamp the bounty (pays when it breaks)',
+        () => ({ kind: 'bounty' }),
+      );
       box.appendChild(adds);
     }
     return box;

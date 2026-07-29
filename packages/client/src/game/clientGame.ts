@@ -1086,6 +1086,13 @@ export class ClientGame {
         }
         break;
       }
+      case 'waypoint': {
+        // The server plants the mark (a guard's bounty) — adopted
+        // exactly as if the player pinned it: pin, pill, chart redraw.
+        this.waypoint = msg.x !== undefined && msg.y !== undefined ? { x: msg.x, y: msg.y } : null;
+        this.chartVersion++;
+        break;
+      }
       case 'social': {
         this.events.onSocial?.({ friends: msg.friends, incoming: msg.incoming, outgoing: msg.outgoing });
         break;

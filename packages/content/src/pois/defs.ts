@@ -8,6 +8,7 @@ import goblinWarcamp from './defs/goblin_warcamp.json';
 import koboldDigs from './defs/kobold_digs.json';
 import lastLamp from './defs/last_lamp.json';
 import riftgateRuin from './defs/riftgate_ruin.json';
+import roadToll from './defs/road_toll.json';
 import roadsideHamlet from './defs/roadside_hamlet.json';
 import wardensOutpost from './defs/wardens_outpost.json';
 import watchtowerRuin from './defs/watchtower_ruin.json';
@@ -31,6 +32,7 @@ const SOURCES: readonly unknown[] = [
   koboldDigs,
   lastLamp,
   riftgateRuin,
+  roadToll,
   roadsideHamlet,
   wardensOutpost,
   watchtowerRuin,

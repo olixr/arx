@@ -72,6 +72,29 @@ export const FRONTIER = {
    * holds (the RimWorld/L4D cooldown-floor law).
    */
   calmMs: 12 * 3_600_000,
+  // ---- Phase 3: THE TOWN FEELS IT ----
+  /**
+   * The speaker's watch (tiles): how far a guard, warden, or keeper can
+   * credibly know about from their post. Every `world:` dialogue answer
+   * — threat_near, threat_bold, calm, relief, toll_near — is scoped to
+   * standing sites within this range of the SPEAKING actor.
+   */
+  watchTiles: 96,
+  /**
+   * A town's marches (tiles from its danger anchor): the reach within
+   * which a full-boldness family is close enough to answer the town's
+   * road. Wider than the watch — the toll forks before the guards can
+   * see the camp from the wall.
+   */
+  marchTiles: 192,
+  /**
+   * How long a stage-3 (full-strength) family inside a town's marches
+   * stands unanswered before the creep forks the road: a road_toll
+   * micro-site stands on the townward side. [min, max] ms,
+   * hash-jittered per cell. Towns are never sacked — the failure state
+   * is MORE game on the road, not less town.
+   */
+  creepMs: [1.0 * 86_400_000, 1.5 * 86_400_000] as const,
 } as const;
 
 /** Frontier RNG salts — the named-streams law (the ST_* family's kin). */
@@ -114,4 +137,9 @@ export function stageWaitFor(
 /** Scatter linger for a satellite whose core broke — pure per cell. */
 export function scatterLingerFor(seed: number, cellX: number, cellY: number): number {
   return jitter(seed, ST_EMBER ^ 0x5ca7, cellX, cellY, 0, FRONTIER.scatterLingerMs);
+}
+
+/** How long a stage-3 family in the marches waits before the toll forks. */
+export function creepWaitFor(seed: number, cellX: number, cellY: number): number {
+  return jitter(seed, ST_STAGE ^ 0xc4ee, cellX, cellY, 0, FRONTIER.creepMs);
 }

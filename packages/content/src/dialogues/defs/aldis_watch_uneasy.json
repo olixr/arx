@@ -1,0 +1,45 @@
+{
+  "id": "aldis_watch_uneasy",
+  "start": "hub",
+  "requires": ["world:threat_near"],
+  "bindings": [{ "kind": "actor", "target": "captain_aldis", "priority": 7 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "New entry in the incident book: camp sign off the road. Fresh, organized, wrong side of my gate.",
+      "choices": [
+        {
+          "text": "Where are they camped?",
+          "next": "mark",
+          "forbids": ["world:bounty_open"]
+        },
+        {
+          "text": "Say the bearing again.",
+          "next": "remark",
+          "requires": ["world:bounty_open"]
+        },
+        { "text": "How serious?", "next": "serious" },
+        { "text": "Carry on, Captain.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "mark",
+      "text": "Marked. The log will say I sent you. Make the next entry a short one.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "remark",
+      "text": "Check your chart. It hasn't moved. Neither have they.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "serious",
+      "text": "I've doubled the watch and I bar the gate at dusk now. That's my answer.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "text": "Mind the road."
+    }
+  ]
+}

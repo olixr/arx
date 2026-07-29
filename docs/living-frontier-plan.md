@@ -247,6 +247,34 @@ rows → satellite seeding + family break → relax windows + tests.
 
 ## Phase 3 — The Town Feels It (guards, bounties, the champion of balance)
 
+**SHIPPED 2026-07-28.** Verified live end to end at Amberford's North Gate:
+with a natural goblin warcamp standing 88 tiles out, Captain Aldis opened
+on the **uneasy tree** ("New entry in the incident book…"); the bounty
+choice fired the hook — **S2CWaypoint (protocol v15)** planted the mark
+live at the camp's exact anchor and the quartermaster's bearing was
+mathematically true ("Goblin warcamp, north, 89 paces out" — real
+distance 88.7). Mid-world the ask flipped to "Say the bearing again."
+(`world:bounty_open`). The wipe paid **"The bounty is honored: 33
+coins"** (tier-1 purse, in band), lifted the mark, stamped calm — and
+the next talk was the **relief tree** ("I log the deed under your name —
+that's the coin I mint"). The creep forked live: a stage-3 brigand core
+inside the marches, creep-clock due, stood a **road_toll in the most
+road-true townward cell** with an honest refusal trace (`[toll:
+2,-1:occupied 2,0:noground]` then the third candidate took the bar);
+`world:toll_near` flipped Aldis to the **toll tree** (priority 9, the
+Toll War in her own mouth), and breaking the toll's garrison scattered
+the whole family — "The toll falls — and the family that raised it
+loses its nerve" — the stage-3 core standing down to a scatter ember
+with no clear stamped. The world-answer laws are pinned in the suites
+(authored land is never news; embers are over; stale bounty marks prune
+themselves; the participation ledger pays every hand that bled the
+garrison, whiffs never count). The Studio grew the "world answers
+(simulated)" rehearsal tray + the `+ bounty` bench row; the voice
+ladder shows the whole threat stack. 13 new trees (Bryn, Aldis ×4, the
+Wayward Watch, Sergeant Hale's first words), 665 workspace tests green.
+One deliberate scope note: only Aldis carries a toll tree today (the
+Toll War is her story); other throats can gain one as pure content.
+
 Goal: settled land reacts; players are recruited, thanked, and paid.
 
 ### 3.1 Synthetic world flags (zero protocol, zero schema)

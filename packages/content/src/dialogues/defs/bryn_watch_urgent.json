@@ -1,0 +1,45 @@
+{
+  "id": "bryn_watch_urgent",
+  "start": "hub",
+  "requires": ["world:threat_bold"],
+  "bindings": [{ "kind": "actor", "target": "warden_bryn", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "They've stopped hiding their fires. That means numbers. Numbers mean they're deciding something.",
+      "choices": [
+        {
+          "text": "Where are they camped?",
+          "next": "mark",
+          "forbids": ["world:bounty_open"]
+        },
+        {
+          "text": "Say the bearing again.",
+          "next": "remark",
+          "requires": ["world:bounty_open"]
+        },
+        { "text": "What if no one goes?", "next": "noone" },
+        { "text": "Hold the yard.", "next": "hold" }
+      ]
+    },
+    {
+      "id": "mark",
+      "text": "Marked on your chart. Don't scout it. *End* it.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "remark",
+      "text": "Nothing's moved but their nerve. The mark stands. So should you — out there, not here.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "noone",
+      "text": "Then they get bolder. Then they come down the road. I've seen the order it happens in.",
+      "next": "hub"
+    },
+    {
+      "id": "hold",
+      "text": "Always."
+    }
+  ]
+}

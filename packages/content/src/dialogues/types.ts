@@ -67,11 +67,28 @@ export interface DialogueHookShop {
 }
 
 /**
+ * THE ASK MADE CONCRETE (living-frontier Phase 3.2): the speaker points
+ * the player at the nearest standing trouble within their watch. The
+ * server picks the offending cell, plants the player's waypoint at its
+ * anchor, stamps a per-character `bounty:<cell>` flag, and answers in
+ * the speaker's voice with a bearing. Breaking that camp pays the
+ * bounty and lifts the flag — the site standing pays NOTHING, ever.
+ * Carries no data: the world state at the moment of asking is the ask.
+ */
+export interface DialogueHookBounty {
+  kind: 'bounty';
+}
+
+/**
  * Node effects, executed server-side when the node is entered. This
  * union is THE open socket: quest grants, faction shifts, and shop
  * unlocks land here as new kinds without touching the walk logic.
  */
-export type DialogueHook = DialogueHookFlag | DialogueHookGive | DialogueHookShop;
+export type DialogueHook =
+  | DialogueHookFlag
+  | DialogueHookGive
+  | DialogueHookShop
+  | DialogueHookBounty;
 
 /** One answer the player may pick (at most 4 per node). */
 export interface DialogueChoice {

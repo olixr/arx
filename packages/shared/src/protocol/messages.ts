@@ -843,6 +843,19 @@ export interface S2CDiscoveryStage {
   stage: number;
 }
 
+/**
+ * The server plants (or lifts) the character's ONE waypoint — a
+ * guard's bounty mark landing on the chart (living-frontier Phase 3).
+ * Same shape as C2SWaypoint; both coordinates absent = clear. The
+ * client adopts it exactly as if the player had planted it: pin, pill,
+ * and persistence all follow the one waypoint slot.
+ */
+export interface S2CWaypoint {
+  t: 'waypoint';
+  x?: number;
+  y?: number;
+}
+
 export type S2CMessage =
   | S2CWelcome
   | S2CReject
@@ -883,7 +896,8 @@ export type S2CMessage =
   | S2CDiscoveries
   | S2CDiscovery
   | S2CDiscoveryFade
-  | S2CDiscoveryStage;
+  | S2CDiscoveryStage
+  | S2CWaypoint;
 
 // ------------------------------------------------------- validation
 

@@ -228,3 +228,65 @@ test('hub cycles are legal: a choice may loop back to its question', () => {
   });
   assert.ok(res.ok);
 });
+
+test('the world answers: a closed roster, readable everywhere, writable nowhere', () => {
+  const base = {
+    id: 'test_world',
+    start: 'a',
+    bindings: [{ kind: 'actor', target: 'elder_rowan' }],
+  };
+  // Every rostered world flag gates cleanly at def and choice level.
+  const ok = validateDialogue({
+    ...base,
+    requires: ['world:threat_near'],
+    nodes: [
+      {
+        id: 'a',
+        text: 'Trouble stands close.',
+        choices: [
+          { text: 'How close?', next: 'b', requires: ['world:threat_bold'] },
+          { text: 'Never mind.', forbids: ['world:bounty_open'] },
+        ],
+      },
+      { id: 'b', text: 'Close enough to smell the smoke.' },
+    ],
+  });
+  assert.ok(ok.ok, !ok.ok ? ok.errors.join(' | ') : '');
+  // A typoed world flag dies in validation, never silently gates.
+  const typo = validateDialogue({
+    ...base,
+    requires: ['world:threat_neat'],
+    nodes: [{ id: 'a', text: 'Hi.' }],
+  });
+  assert.ok(!typo.ok && typo.errors.some((e) => e.includes('not a known world answer')));
+  // Nobody writes the world: not a choice...
+  const setWorld = validateDialogue({
+    ...base,
+    nodes: [{ id: 'a', text: 'Pick.', choices: [{ text: 'Calm it.', set: ['world:calm'] }] }],
+  });
+  assert.ok(!setWorld.ok && setWorld.errors.some((e) => e.includes('nobody writes it')));
+  // ...and not a hook (hook flags stay plain slugs).
+  const hookWorld = validateDialogue({
+    ...base,
+    nodes: [{ id: 'a', text: 'Mark.', hooks: [{ kind: 'flag', flag: 'world:calm' }] }],
+  });
+  assert.ok(!hookWorld.ok);
+});
+
+test('the bounty hook: carries nothing, validates clean, unknown kinds still die', () => {
+  const base = {
+    id: 'test_bounty',
+    start: 'a',
+    bindings: [{ kind: 'actor', target: 'elder_rowan' }],
+  };
+  const ok = validateDialogue({
+    ...base,
+    nodes: [{ id: 'a', text: 'Marked. Go.', hooks: [{ kind: 'bounty' }] }],
+  });
+  assert.ok(ok.ok, !ok.ok ? ok.errors.join(' | ') : '');
+  const bad = validateDialogue({
+    ...base,
+    nodes: [{ id: 'a', text: 'Hm.', hooks: [{ kind: 'ransom' }] }],
+  });
+  assert.ok(!bad.ok && bad.errors.some((e) => e.includes("'bounty'")));
+});

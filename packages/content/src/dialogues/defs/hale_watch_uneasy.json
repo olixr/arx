@@ -1,0 +1,45 @@
+{
+  "id": "hale_watch_uneasy",
+  "start": "hub",
+  "requires": ["world:threat_near"],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_hale", "priority": 7 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Something's set up shop on my fourteen miles, uninvited. I keep a ledger of who works this road. They're not in it.",
+      "choices": [
+        {
+          "text": "Where are they camped?",
+          "next": "mark",
+          "forbids": ["world:bounty_open"]
+        },
+        {
+          "text": "Say it again — where?",
+          "next": "remark",
+          "requires": ["world:bounty_open"]
+        },
+        { "text": "Who are they?", "next": "who" },
+        { "text": "I'll pass.", "next": "pass" }
+      ]
+    },
+    {
+      "id": "mark",
+      "text": "There's your mark. The post can't leave the lamp, so the errand's yours. Bring me back a shorter ledger.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "remark",
+      "text": "Chart holds the mark. My patience holds less.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "who",
+      "text": "Fires say brigand, tracks say more than four. Past that I'd be inventing, and I don't invent on the road.",
+      "next": "hub"
+    },
+    {
+      "id": "pass",
+      "text": "Then walk the middle of the road and don't stop to look."
+    }
+  ]
+}
