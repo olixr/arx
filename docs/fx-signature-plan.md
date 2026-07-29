@@ -1,6 +1,13 @@
 # THE SIGNATURE EPIC — ability FX v4
 
-Status: **IN FLIGHT**
+Status: **ALL WAVES SHIPPED — FULL COVERAGE.** 6af1cd5 LIVING MATTER
++ registry + 7 in-house signatures; cfa307c the four style waves (45
+signatures) + impact-true projectiles; wave 3 the weapon-art rosters
+(blade/rogue/archer/archmage), relic actives, sigil, and npc specials.
+**121 FX faces, 121 bespoke signatures, zero missing** — every
+castable ability in Arx owns a named centerpiece no other shares.
+Registry: render/fxSignatures.ts spreads nine per-roster files;
+fxSignatures.test.ts enforces no orphan keys and no empty signatures.
 
 The v3 FX system is a shared grammar: every ability is a palette ×
 ring × debris × decal × motif combination, composed in three strata

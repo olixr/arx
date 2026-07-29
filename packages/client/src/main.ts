@@ -963,11 +963,24 @@ game.onFx = (fx) => {
   } else if (fx.kind === 'vanish') {
     // A stealth flip: a soft gray-violet puff where the body was (or
     // reappears) so the interest pop reads as intentional.
-    renderer.particles.burst(fx.x, fx.y - 0.5, 14, ['#8a7fae', '#b4aacb', '#5e5678'], {
-      speed: 1.4,
-      life: 0.55,
-      size: 0.1,
+    renderer.particles.burst(fx.x, fx.y - 0.5, 9, ['#8a7fae', '#b4aacb', '#5e5678'], {
+      speed: 1.2,
+      life: 0.7,
+      size: 0.12,
       gravity: -1.2,
+      drag: 1.4,
+      grow: 0.18,
+      shape: 'puff',
+      fade: '#3c3648',
+      wobble: 0.6,
+    });
+    renderer.particles.burst(fx.x, fx.y - 0.6, 3, ['#b4aacb', '#e8e0f4'], {
+      speed: 0.5,
+      life: 0.6,
+      size: 0.08,
+      gravity: -0.4,
+      drag: 1.6,
+      shape: 'glint',
     });
     renderer.addRing(fx.x, fx.y - 0.3, '#8a7fae', 0.5);
     sfx.spatial(at, 'near', () => sfx.dash());

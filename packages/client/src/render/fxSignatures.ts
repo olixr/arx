@@ -36,6 +36,12 @@ import { MELEE_SIGS } from './fxSigsMelee.js';
 import { SNEAK_SIGS } from './fxSigsSneak.js';
 import { ARCHERY_SIGS } from './fxSigsArchery.js';
 import { MAGIC_SIGS } from './fxSigsMagic.js';
+import { ARCHER_SIGS } from './fxSigsArcher.js';
+import { ROGUE_SIGS } from './fxSigsRogue.js';
+import { BLADE_SIGS } from './fxSigsBlade.js';
+import { ARCHMAGE_A_SIGS } from './fxSigsArchmageA.js';
+import { ARCHMAGE_B_SIGS } from './fxSigsArchmageB.js';
+import { RELIC_SIGS } from './fxSigsRelics.js';
 
 // --------------------------------------------------------------- ctx
 
@@ -694,4 +700,10 @@ export const SIGNATURES: Record<string, AbilitySig> = {
   ...SNEAK_SIGS,
   ...ARCHERY_SIGS,
   ...MAGIC_SIGS,
+  ...ARCHER_SIGS,
+  ...ROGUE_SIGS,
+  ...BLADE_SIGS,
+  ...ARCHMAGE_A_SIGS,
+  ...ARCHMAGE_B_SIGS,
+  ...RELIC_SIGS,
 };
