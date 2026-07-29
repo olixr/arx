@@ -539,9 +539,16 @@ test('foraging nodes, buildables, and shop stock resolve', () => {
  * scrolls — everyone already knows them.
  */
 test('recipe unlocks are honest: scrolls exist, shelves and troves cover them', () => {
-  // Which items each acquisition route can actually pay out.
+  // Which items each acquisition route can actually pay out. THE ONE
+  // SANCTIONED EXCEPTION to the no-drop-scrolls-on-shelves law: the
+  // peddler carts (THE ROAD'S FORTUNE, living-frontier Phase 5) — a
+  // shop that stands for two hours somewhere on the road is found
+  // knowledge, not scheduled knowledge. Town shelves stay honest.
   const shelved = new Set<string>();
-  for (const shop of SHOPS.values()) for (const e of shop.stock) shelved.add(e.item);
+  for (const shop of SHOPS.values()) {
+    if (shop.id.startsWith('peddler_')) continue;
+    for (const e of shop.stock) shelved.add(e.item);
+  }
   const lootable = new Set<string>();
   for (const t of LOOT_TABLES.values()) {
     for (const e of t.entries) if (e.item) lootable.add(e.item);

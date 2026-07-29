@@ -130,6 +130,20 @@ export const FRONTIER = {
    * about, walked to, never looming over the fence.
    */
   raidStandoffTiles: 16,
+  // ---- Phase 5: THE ROAD'S FORTUNE ----
+  /**
+   * When a renewal credit is spent, the chance the world deals fortune
+   * instead of trouble: a peddler's rest stands where a camp would
+   * have. Rare on purpose — a kindness you remember, not a shop you
+   * schedule around.
+   */
+  peddlerChance: 0.18,
+  /**
+   * How long a peddler's rest stands before she packs the cart and
+   * moves on — the ember clock is stamped ON ARRIVAL (no clear needed;
+   * nobody "solves" a peddler). [min, max] ms, hash-jittered per site.
+   */
+  peddlerLingerMs: [2 * 3_600_000, 4 * 3_600_000] as const,
 } as const;
 
 /** Frontier RNG salts — the named-streams law (the ST_* family's kin). */
@@ -177,4 +191,14 @@ export function scatterLingerFor(seed: number, cellX: number, cellY: number): nu
 /** How long a stage-3 family in the marches waits before the toll forks. */
 export function creepWaitFor(seed: number, cellX: number, cellY: number): number {
   return jitter(seed, ST_STAGE ^ 0xc4ee, cellX, cellY, 0, FRONTIER.creepMs);
+}
+
+/** How long a peddler's rest stands — pure per cell + epoch. */
+export function peddlerLingerFor(
+  seed: number,
+  cellX: number,
+  cellY: number,
+  epoch: number,
+): number {
+  return jitter(seed, ST_EMBER ^ 0x9edd, cellX, cellY, epoch, FRONTIER.peddlerLingerMs);
 }

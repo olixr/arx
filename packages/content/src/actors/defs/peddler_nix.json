@@ -1,0 +1,28 @@
+{
+  "id": "peddler_nix",
+  "name": "Nix",
+  "title": "Tinker",
+  "examine": "Every pocket has a tool in it and every tool has a name. The cart squeaks on purpose — she says a silent axle hides its faults.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 2,
+      "hairColor": 3,
+      "eyes": 1,
+      "shirt": 6,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "gloves": "padded_mitts",
+    "boots": "leather_boots"
+  },
+  "lines": [
+    "Two hands, one spanner. It's enough for most of the world.",
+    "A thing mended holds better than a thing new. Ask the thing.",
+    "The axle squeaks so I know it's honest."
+  ],
+  "shop": "peddler_tinker"
+}

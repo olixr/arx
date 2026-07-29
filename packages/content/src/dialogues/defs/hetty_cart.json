@@ -1,0 +1,26 @@
+{
+  "id": "hetty_cart",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "peddler_hetty" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Sit, love. The kettle's just come round, and everything on this cart grew somewhere kind.",
+      "choices": [
+        { "text": "Show me the cart.", "next": "browse" },
+        { "text": "What's good for the road?", "next": "advice" },
+        { "text": "Just warming my hands." }
+      ]
+    },
+    {
+      "id": "browse",
+      "text": "Roots, brews, and the writing-down of both. Look with your hands, not just your eyes.",
+      "hooks": [{ "kind": "shop", "shop": "peddler_herbwife" }]
+    },
+    {
+      "id": "advice",
+      "text": "Hobblebrew for what chases you. Salve for what catches you. And sleep — but nobody buys sleep from me.",
+      "next": "hub"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "peddler_hetty",
+  "name": "Hetty",
+  "title": "Herb-wife",
+  "examine": "Smells of crushed green and woodsmoke. The bundles on the cart are tied in knots only she can undo.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 4,
+      "hairColor": 2,
+      "eyes": 1,
+      "shirt": 3,
+      "pants": 9
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "lines": [
+    "Everything on this cart grew somewhere kind.",
+    "Roots know more than books. Books just sit still longer.",
+    "The kettle's just come round, love. Sit if you're sitting."
+  ],
+  "shop": "peddler_herbwife"
+}

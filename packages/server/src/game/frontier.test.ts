@@ -44,6 +44,8 @@ const proto = GameServer.prototype as unknown as {
   claimRings: Fn;
   inClaimRing: Fn;
   dangerAnchors: Fn;
+  standOnePeddler: Fn;
+  poiThreatens: Fn;
 };
 
 interface LedgerRow {
@@ -144,6 +146,8 @@ function slate(rows: Array<[string, LedgerRow]>, opts: { credits?: number } = {}
     poiCtx: proto.poiCtx,
     claimRings: proto.claimRings,
     inClaimRing: proto.inClaimRing,
+    standOnePeddler: proto.standOnePeddler,
+    poiThreatens: proto.poiThreatens,
     calmNear: proto.calmNear,
     boldCoresNear: proto.boldCoresNear,
     stampCalm: proto.stampCalm,
@@ -738,4 +742,120 @@ test('composePoi face: the squat orients on the claim, deterministically', () =>
   assert.ok(faced && unfaced);
   assert.notDeepEqual(faced.ground, unfaced.ground, 'the cues must re-orient');
   assert.deepEqual(composePoi(config.worldSeed, st, ctx, 0, toward), faced, 'faced compose is pure');
+});
+
+// ---------------------------------------------------------------- Phase 5
+
+const proto5 = GameServer.prototype as unknown as {
+  standOnePeddler: Fn;
+  poiThreatens: Fn;
+};
+
+test("THE ROAD'S FORTUNE: a peddler stands road-true with her ember stamped on arrival", () => {
+  const now = Date.now();
+  const s = slate([]);
+  Object.assign(s, { standOnePeddler: proto5.standOnePeddler });
+  const points = [
+    { tx: CELL_X * POI_CELL + 64, ty: CELL_Y * POI_CELL + 64 },
+    { tx: (CELL_X + 1) * POI_CELL + 64, ty: CELL_Y * POI_CELL + 64 },
+  ];
+  const stood = (s as unknown as { standOnePeddler: Fn }).standOnePeddler.call(s, points, now);
+  assert.ok(stood, 'a lawful verge must take the cart');
+  const entry = [...s.poiLedger.entries()].find(([, r]) => r.site?.defId === 'peddler_rest');
+  assert.ok(entry, 'a peddler_rest row must exist');
+  const [, prow] = entry!;
+  // The ember clock runs from ARRIVAL — nobody solves a peddler.
+  assert.ok(
+    prow.emberUntil !== null &&
+      prow.emberUntil >= now + FRONTIER.peddlerLingerMs[0] &&
+      prow.emberUntil <= now + FRONTIER.peddlerLingerMs[1],
+    'the linger is stamped on arrival, in band',
+  );
+  assert.equal(prow.clearedAt, null);
+  assert.equal(prow.originCell, null);
+  // One cart per region: a second stand in the same neighborhood refuses.
+  assert.equal(
+    (s as unknown as { standOnePeddler: Fn }).standOnePeddler.call(s, points, now),
+    null,
+  );
+});
+
+test('the cart reads the weather: never beside an active raid, calm about embers', () => {
+  const now = Date.now();
+  const raidKey = poiCellKey(CELL_X + 1, CELL_Y);
+  const mk = (emberUntil: number | null) => {
+    const s = slate([
+      [
+        raidKey,
+        row({
+          site: site({ cellX: CELL_X + 1, defId: 'raider_squat', prefabId: 'poi_raider_squat' }),
+          emberUntil,
+          originCell: 'hearth:7',
+        }),
+      ],
+    ]);
+    Object.assign(s, { standOnePeddler: proto5.standOnePeddler });
+    return s;
+  };
+  const points = [{ tx: CELL_X * POI_CELL + 64, ty: CELL_Y * POI_CELL + 64 }];
+  // An ACTIVE squat in the region: she keeps driving.
+  const active = mk(null);
+  assert.equal(
+    (active as unknown as { standOnePeddler: Fn }).standOnePeddler.call(active, points, now),
+    null,
+  );
+  // A scattered (embered) squat is over — the verge is fine.
+  const over = mk(now + 60_000);
+  assert.ok(
+    (over as unknown as { standOnePeddler: Fn }).standOnePeddler.call(over, points, now),
+  );
+});
+
+test('a peddler moving on RE-BANKS the renewal credit (a reprieve, not a payment)', () => {
+  const now = Date.now();
+  const s = slate([
+    [
+      KEY,
+      row({
+        site: site({ defId: 'peddler_rest', prefabId: 'poi_peddler_rest' }),
+        emberUntil: now - 1000,
+      }),
+    ],
+  ]);
+  assert.equal(proto.dissolveOneEmber.call(s, now), true);
+  assert.equal(s.frontierCredits, 1, 'the debt returns when fortune moves on');
+  assert.equal(s.poiLedger.get(KEY)!.site, null);
+});
+
+test('friendly sites are never news: no threat, no bounty mark, but peddler_near answers', () => {
+  const st = site({ tier: 2, defId: 'peddler_rest', prefabId: 'poi_peddler_rest' });
+  const s = armPhase3(slate([[KEY, row({ site: st, emberUntil: Date.now() + 3_600_000 })]]));
+  Object.assign(s, { poiThreatens: proto5.poiThreatens });
+  const player = { characterId: 0, flags: new Map<string, number>() };
+  const at = (flag: string) =>
+    proto3.worldFlagAnswer.call(s, flag, player, st.anchorX + 10, st.anchorY) as boolean;
+  assert.equal(at('world:threat_near'), false, 'a cart is not a camp');
+  assert.equal(at('world:calm'), true);
+  assert.equal(at('world:peddler_near'), true, 'fortune within the marches answers');
+  // Beyond the marches the word runs out.
+  assert.equal(
+    proto3.worldFlagAnswer.call(
+      s,
+      'world:peddler_near',
+      player,
+      st.anchorX + FRONTIER.marchTiles + 50,
+      st.anchorY,
+    ),
+    false,
+  );
+  // A standing WAYSTATION is friendly too — the survey stays quiet.
+  const s2 = armPhase3(
+    slate([[KEY, row({ site: site({ defId: 'waystation', prefabId: 'poi_waystation_camp' }) })]]),
+  );
+  Object.assign(s2, { poiThreatens: proto5.poiThreatens });
+  assert.equal(
+    proto3.worldFlagAnswer.call(s2, 'world:threat_near', player, st.anchorX, st.anchorY),
+    false,
+    'a rolled waystation must never read as trouble',
+  );
 });

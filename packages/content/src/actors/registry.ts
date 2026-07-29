@@ -64,6 +64,9 @@ import smithBretta from './defs/smith_bretta.json';
 import tinkerFen from './defs/tinker_fen.json';
 import wardenBryn from './defs/warden_bryn.json';
 import wayfarerDray from './defs/wayfarer_dray.json';
+import peddlerNix from './defs/peddler_nix.json';
+import peddlerHetty from './defs/peddler_hetty.json';
+import peddlerCoff from './defs/peddler_coff.json';
 import wayfarerPetch from './defs/wayfarer_petch.json';
 import wayfarerSenna from './defs/wayfarer_senna.json';
 import waykeeperBrant from './defs/waykeeper_brant.json';
@@ -152,6 +155,10 @@ const SOURCES: readonly unknown[] = [
   waykeeperOdessa,
   waywardWatch,
   youngPip,
+  // The Road's Fortune (living frontier, phase 5) — the peddler pool:
+  peddlerNix,
+  peddlerHetty,
+  peddlerCoff,
 ];
 
 function buildRegistry(): ReadonlyMap<string, NpcActorDef> {

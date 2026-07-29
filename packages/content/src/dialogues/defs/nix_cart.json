@@ -1,0 +1,26 @@
+{
+  "id": "nix_cart",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "peddler_nix" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Wheel's off, kettle's on. I'm parked till the axle says otherwise.",
+      "choices": [
+        { "text": "What do you sell?", "next": "browse" },
+        { "text": "Why trade out here?", "next": "why" },
+        { "text": "Safe roads, tinker." }
+      ]
+    },
+    {
+      "id": "browse",
+      "text": "Parts, keys, the odd sharp thing. Two hands' worth — have a look.",
+      "hooks": [{ "kind": "shop", "shop": "peddler_tinker" }]
+    },
+    {
+      "id": "why",
+      "text": "Town smiths fix what's broken. Out here things stay broken longer. Better custom.",
+      "next": "hub"
+    }
+  ]
+}

@@ -114,6 +114,39 @@ export const LAST_LAMP_STORES: readonly ShopEntry[] = [
 const defs: ShopDef[] = [
   { id: 'general_store', name: 'General Store', stock: GENERAL_STORE },
   { id: 'waystation_supplies', name: "The Wayfarer's Pack", stock: WAYSTATION_SUPPLIES },
+  // THE ROAD'S FORTUNE (living frontier, phase 5): the peddler carts.
+  // Each carries a thing or two town never sells — drop-unlock recipe
+  // scrolls (found knowledge, sold only on the road) and keys under
+  // town price. The stock IS the story: catch the cart or miss it.
+  {
+    id: 'peddler_tinker',
+    name: 'The Mended Cart',
+    stock: [
+      { item: 'brass_key', price: 48 },
+      { item: 'twine', price: 6 },
+      { item: 'arrow', price: 1 },
+      { item: 'mending_salve', price: 28 },
+    ],
+  },
+  {
+    id: 'peddler_herbwife',
+    name: 'Roots & Remedies',
+    stock: [
+      { item: 'recipe_brew_adderfang_oil', price: 260 },
+      { item: 'recipe_brew_hobble_brew', price: 420 },
+      { item: 'venom_gland', price: 25 },
+      { item: 'mending_salve', price: 26 },
+    ],
+  },
+  {
+    id: 'peddler_relics',
+    name: 'The Provenance Cart',
+    stock: [
+      { item: 'dungeon_key', price: 95 },
+      { item: 'recipe_brew_vipers_kiss', price: 700 },
+      { item: 'crimson_essence', price: 120 },
+    ],
+  },
   { id: 'hamlet_larder', name: 'The Croft Larder', stock: HAMLET_LARDER },
   { id: 'last_lamp_stores', name: "Edda's Stores", stock: LAST_LAMP_STORES },
   // Amberford's counters — every shopkeeper a person, every shelf a

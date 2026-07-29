@@ -1,91 +1,103 @@
 {
-  "id": "dunna_rest",
-  "start": "greet",
-  "bindings": [
+ "id": "dunna_rest",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "innkeep_dunna"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Welcome to the *Wanderer's Rest* — beds, board, and news, in whatever order you're hungriest for. Stew's on. First rumor's free.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "text": "What'll you have?",
+   "choices": [
     {
-      "kind": "actor",
-      "target": "innkeep_dunna"
+     "text": "Give me the news, then.",
+     "next": "news"
+    },
+    {
+     "text": "Your mother kept this bar before you?",
+     "next": "osa"
+    },
+    {
+     "text": "What's good tonight?",
+     "next": "browse"
+    },
+    {
+     "text": "Just the fire, thanks.",
+     "next": "fire"
     }
-  ],
-  "nodes": [
+   ]
+  },
+  {
+   "id": "news",
+   "text": "Pick your poison.",
+   "choices": [
     {
-      "id": "greet",
-      "text": "Welcome to the *Wanderer's Rest* — beds, board, and news, in whatever order you're hungriest for. Stew's on. First rumor's free.",
-      "next": "hub"
+     "text": "What's this about the mountain?",
+     "next": "seal"
     },
     {
-      "id": "hub",
-      "text": "What'll you have?",
-      "choices": [
-        {
-          "text": "Give me the news, then.",
-          "next": "news"
-        },
-        {
-          "text": "Your mother kept this bar before you?",
-          "next": "osa"
-        },
-        {
-          "text": "What's good tonight?",
-          "next": "browse"
-        },
-        {
-          "text": "Just the fire, thanks.",
-          "next": "fire"
-        }
-      ]
+     "text": "The roads — how are they running?",
+     "next": "roads"
     },
     {
-      "id": "news",
-      "text": "Pick your poison.",
-      "choices": [
-        {
-          "text": "What's this about the mountain?",
-          "next": "seal"
-        },
-        {
-          "text": "The roads — how are they running?",
-          "next": "roads"
-        },
-        {
-          "text": "Anything strange lately?",
-          "next": "strange"
-        }
-      ]
+     "text": "Anything strange lately?",
+     "next": "strange"
     },
     {
-      "id": "seal",
-      "text": "The big one: Silverfall's Masons broke the *Undercroft seal*. Twenty years shut, and now there's a market down there again — and kobolds past the rubble line, which folk say quieter. Every third stool in this room has an opinion on it. If you want one worth having, ask Bretta at the forge. She's mountain-born. She was *there*.",
-      "next": "news"
-    },
-    {
-      "id": "roads",
-      "text": "First Road's tame — hedgerows, wayshrines, the odd goblin scout getting above himself. The High Road is another matter: fine to the Long Meadow, chancy to the Fork, and past *Edda's lamp* you'd best be serious about yourself. The Redmasks work the middle stretch. Travel mornings. Travel loud.",
-      "next": "news"
-    },
-    {
-      "id": "strange",
-      "text": "Peld swears something big turned over in the millpond, twice last month. Garton swears it was Peld's own bell. Perl swears her cows have learnt to open the gate — and I believe *Perl*. Small town. Our strange stays friendly. The road's strange is another jar entirely.",
-      "next": "news"
-    },
-    {
-      "id": "osa",
-      "text": "Mam ran this room thirty years — *Osa*, ask anyone grey enough. When my father passed she said grief needed altitude, kissed the bar, and walked the High Road at sixty. Now she waters caravan mules under Silverfall's wall, and writes once a season to say my stew wants more thyme. She's right. Don't you dare tell her.",
-      "next": "hub"
-    },
-    {
-      "id": "browse",
-      "text": "Stew, bread, roast, and a cake that outsold the sermon last feast-day. Sit. Eat. The road can wait an hour.",
-      "hooks": [
-        {
-          "kind": "shop",
-          "shop": "dunna_board"
-        }
-      ]
-    },
-    {
-      "id": "fire",
-      "text": "Fire's free. Stories cost a listen. Sit long enough and you'll pay double."
+     "text": "Anything worth chasing?",
+     "next": "peddler",
+     "requires": [
+      "world:peddler_near"
+     ]
     }
-  ]
+   ]
+  },
+  {
+   "id": "peddler",
+   "text": "A peddler's cart went by at dawn, bells and all, and parked somewhere up the road. Carts don't wait, love — and neither does whoever's driving it.",
+   "next": "hub"
+  },
+  {
+   "id": "seal",
+   "text": "The big one: Silverfall's Masons broke the *Undercroft seal*. Twenty years shut, and now there's a market down there again — and kobolds past the rubble line, which folk say quieter. Every third stool in this room has an opinion on it. If you want one worth having, ask Bretta at the forge. She's mountain-born. She was *there*.",
+   "next": "news"
+  },
+  {
+   "id": "roads",
+   "text": "First Road's tame — hedgerows, wayshrines, the odd goblin scout getting above himself. The High Road is another matter: fine to the Long Meadow, chancy to the Fork, and past *Edda's lamp* you'd best be serious about yourself. The Redmasks work the middle stretch. Travel mornings. Travel loud.",
+   "next": "news"
+  },
+  {
+   "id": "strange",
+   "text": "Peld swears something big turned over in the millpond, twice last month. Garton swears it was Peld's own bell. Perl swears her cows have learnt to open the gate — and I believe *Perl*. Small town. Our strange stays friendly. The road's strange is another jar entirely.",
+   "next": "news"
+  },
+  {
+   "id": "osa",
+   "text": "Mam ran this room thirty years — *Osa*, ask anyone grey enough. When my father passed she said grief needed altitude, kissed the bar, and walked the High Road at sixty. Now she waters caravan mules under Silverfall's wall, and writes once a season to say my stew wants more thyme. She's right. Don't you dare tell her.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "text": "Stew, bread, roast, and a cake that outsold the sermon last feast-day. Sit. Eat. The road can wait an hour.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "dunna_board"
+    }
+   ]
+  },
+  {
+   "id": "fire",
+   "text": "Fire's free. Stories cost a listen. Sit long enough and you'll pay double."
+  }
+ ]
 }

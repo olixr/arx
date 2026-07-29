@@ -1,0 +1,29 @@
+{
+  "id": "peddler_coff",
+  "name": "Coff",
+  "title": "Relic-monger",
+  "examine": "Watches your hands, not your face. Everything on the cart is wrapped twice and priced once.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 1,
+      "hairColor": 1,
+      "beard": 2,
+      "eyes": 1,
+      "shirt": 11,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "gloves": "padded_mitts",
+    "boots": "leather_boots"
+  },
+  "lines": [
+    "Careful with your elbows. Half this cart is older than your village.",
+    "Provenance costs extra.",
+    "I don't ask where you got your coin. Extend the courtesy."
+  ],
+  "shop": "peddler_relics"
+}

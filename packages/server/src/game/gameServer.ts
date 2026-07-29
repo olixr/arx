@@ -148,6 +148,7 @@ import {
   emberLingerFor,
   fallowRestFor,
   isWorldFlag,
+  peddlerLingerFor,
   pickWild,
   scatterLingerFor,
   stageWaitFor,
@@ -4521,14 +4522,19 @@ export class GameServer {
       // THE CONSERVATION LAW pays on PLAYER victories only: a wiped
       // camp banks a credit; a satellite that merely scattered when
       // its core broke does not — one clear is one victory, never a
-      // multiplier of trouble elsewhere.
-      if (cleared) {
+      // multiplier of trouble elsewhere. THE ROAD'S FORTUNE (Phase 5)
+      // is the one addition: a peddler moving on RE-BANKS the credit
+      // her arrival spent — fortune was a reprieve, never a payment,
+      // and the world still owes its trouble.
+      const movedOn = defId === 'peddler_rest';
+      if (cleared || movedOn) {
         this.frontierCredits++;
         this.accounts.saveFrontierCredits(this.frontierCredits);
       }
       if (hadHaven) this.rebuildHavens();
       console.log(
-        `[frontier] ${cleared ? 'ember out' : 'scattered'}: ${defId} at cell ${key} dissolves — ` +
+        `[frontier] ${movedOn ? 'moved on' : cleared ? 'ember out' : 'scattered'}: ` +
+          `${defId} at cell ${key} dissolves — ` +
           `fallow ${Math.round((fallowUntil - now) / 60000)}m, ` +
           `renewal debt ${this.frontierCredits}`,
       );
@@ -4612,14 +4618,29 @@ export class GameServer {
     }
     if (surface.length === 0) return false;
     const around = this.positions.get(surface[Math.floor(Math.random() * surface.length)]!)!;
-    const authored = this.authoredCells();
-    const ctx = this.poiCtx();
     const [rMin, rMax] = FRONTIER.renewalRing;
+    const points: Array<{ tx: number; ty: number }> = [];
     for (let t = 0; t < FRONTIER.renewalTries; t++) {
       const ang = Math.random() * Math.PI * 2;
       const dist = rMin + Math.random() * (rMax - rMin);
-      const tx = Math.round(around.x + Math.cos(ang) * dist);
-      const ty = Math.round(around.y + Math.sin(ang) * dist);
+      points.push({
+        tx: Math.round(around.x + Math.cos(ang) * dist),
+        ty: Math.round(around.y + Math.sin(ang) * dist),
+      });
+    }
+    // THE ROAD'S FORTUNE (Phase 5): occasionally the spent credit deals
+    // fortune instead of trouble — a peddler's rest, road-true, rare,
+    // transient. When she refuses every candidate the credit falls back
+    // to ordinary trouble; the debt is honored either way, and her
+    // eventual dissolve RE-BANKS it (a reprieve, never a payment).
+    if (Math.random() < FRONTIER.peddlerChance && this.standOnePeddler(points, now)) {
+      this.frontierCredits--;
+      this.accounts.saveFrontierCredits(this.frontierCredits);
+      return true;
+    }
+    const authored = this.authoredCells();
+    const ctx = this.poiCtx();
+    for (const { tx, ty } of points) {
       if (ty >= DARK_BAND_Y - ZONE_CLEARANCE) continue;
       const cx = poiCellOf(tx);
       const cy = poiCellOf(ty);
@@ -4663,6 +4684,83 @@ export class GameServer {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Stand ONE peddler's rest at the most road-true lawful candidate —
+   * fortune walks the roads. Her laws: never on authored cells,
+   * standing sites, resting ground, or inside a relax window (the ctx
+   * rings keep her out of every claimed yard); at most one peddler per
+   * region; never in a region with an active raid (she reads the
+   * weather); dignity like everyone else. The ember clock is stamped
+   * ON ARRIVAL — nobody solves a peddler, she just moves on.
+   */
+  private standOnePeddler(
+    points: ReadonlyArray<{ tx: number; ty: number }>,
+    now: number,
+  ): PoiSite | null {
+    if (!this.poiPrefabs || !POI_DEFS.has('peddler_rest')) return null;
+    const authored = this.authoredCells();
+    const ctx = this.poiCtx();
+    const ranked = points
+      .map((p) => ({ ...p, road: roadDistanceAt(config.worldSeed, p.tx, p.ty) }))
+      .sort((a, b) => a.road - b.road);
+    for (const { tx, ty } of ranked) {
+      if (ty >= DARK_BAND_Y - ZONE_CLEARANCE) continue;
+      const cx = poiCellOf(tx);
+      const cy = poiCellOf(ty);
+      const key = poiCellKey(cx, cy);
+      if (authored.has(key)) continue;
+      const row = this.poiLedger.get(key);
+      if (row?.site) continue;
+      if (row?.fallowUntil !== null && row?.fallowUntil !== undefined && now < row.fallowUntil) {
+        continue;
+      }
+      if (this.calmNear(cx, cy, now)) continue;
+      // One cart per region; and she never parks beside an active raid.
+      let crowded = false;
+      for (const r of this.poiLedger.values()) {
+        if (r.site === null) continue;
+        const near =
+          Math.abs(r.site.cellX - cx) <= FRONTIER.regionCells &&
+          Math.abs(r.site.cellY - cy) <= FRONTIER.regionCells;
+        if (!near) continue;
+        if (r.site.defId === 'peddler_rest') crowded = true;
+        if (r.site.defId === 'raider_squat' && r.emberUntil === null) crowded = true;
+        if (crowded) break;
+      }
+      if (crowded) continue;
+      const epoch = (row?.epoch ?? 0) + 1;
+      const site = poiForCell(config.worldSeed, cx, cy, epoch, ctx, 'peddler_rest');
+      if (!site) continue;
+      if (this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles)) continue;
+      const emberUntil = now + peddlerLingerFor(config.worldSeed, cx, cy, epoch);
+      this.accounts.recordPoiCell(cx, cy, epoch, {
+        poiId: site.defId,
+        prefabId: site.prefabId,
+        tier: site.tier,
+        anchorX: site.anchorX,
+        anchorY: site.anchorY,
+      });
+      this.accounts.setPoiEmber(cx, cy, emberUntil);
+      this.poiLedger.set(key, {
+        epoch,
+        site,
+        clearedAt: null,
+        emberUntil,
+        fallowUntil: null,
+        stage: 0,
+        stageAt: null,
+        originCell: null,
+      });
+      this.poiLive.delete(key);
+      console.log(
+        `[frontier] fortune on the road: a peddler's rest stands at ` +
+          `${site.anchorX},${site.anchorY} (cell ${key}) for ~${Math.round((emberUntil - now) / 60000)}m`,
+      );
+      return site;
+    }
+    return null;
   }
 
   /** Is a relax window standing within the neighborhood of this cell? */
@@ -6328,6 +6426,18 @@ export class GameServer {
       // without the player lifts itself the next time anyone asks.
       return this.openBounties(player).length > 0;
     }
+    if (flag === 'world:peddler_near') {
+      // Fortune within the marches: a parked cart still counts while
+      // its ember runs — she is there until she is not.
+      const reach = FRONTIER.marchTiles;
+      for (const r of this.poiLedger.values()) {
+        if (r.site?.defId !== 'peddler_rest') continue;
+        const dx = r.site.anchorX - sx;
+        const dy = r.site.anchorY - sy;
+        if (dx * dx + dy * dy <= reach * reach) return true;
+      }
+      return false;
+    }
     const watch = this.watchSurvey(sx, sy);
     switch (flag) {
       case 'world:threat_near':
@@ -6348,6 +6458,19 @@ export class GameServer {
   }
 
   /**
+   * Does this archetype MENACE anyone? Friendly sites — waystations,
+   * shrines, groves, the peddler's cart — carry no fighting garrison
+   * and are never news, never threats, never bounty marks. (Phase 5
+   * fix: before the peddler existed this survey called every standing
+   * site a threat, which would have read a rolled waystation as
+   * trouble at its own keeper's post.)
+   */
+  private poiThreatens(defId: string): boolean {
+    const def = POI_DEFS.get(defId);
+    return (def?.garrison?.length ?? 0) > 0;
+  }
+
+  /**
    * What stands within the speaker's watch. Only PROCEDURAL sites
    * count — authored landmarks are the land's permanent character, not
    * news, and counting them would leave some posts uneasy forever.
@@ -6360,6 +6483,7 @@ export class GameServer {
     for (const [key, row] of this.poiLedger) {
       if (row.site === null || row.clearedAt !== null || row.emberUntil !== null) continue;
       if (authored.has(key)) continue;
+      if (!this.poiThreatens(row.site.defId)) continue;
       const dx = row.site.anchorX - sx;
       const dy = row.site.anchorY - sy;
       if (dx * dx + dy * dy > watch * watch) continue;
@@ -6548,6 +6672,7 @@ export class GameServer {
     for (const [key, row] of this.poiLedger) {
       if (row.site === null || row.clearedAt !== null || row.emberUntil !== null) continue;
       if (authored.has(key)) continue;
+      if (!this.poiThreatens(row.site.defId)) continue; // never a bounty on a friend
       const dx = row.site.anchorX - spos.x;
       const dy = row.site.anchorY - spos.y;
       const d2 = dx * dx + dy * dy;
@@ -11589,23 +11714,48 @@ export class GameServer {
         );
         return;
       }
+      if (sub === 'peddler') {
+        // /frontier peddler — deal fortune NOW at the most road-true
+        // lawful spot in the renewal ring around you (staging: same
+        // laws as the real fork, no credit spent).
+        const pts: Array<{ tx: number; ty: number }> = [];
+        const [pMin, pMax] = FRONTIER.renewalRing;
+        for (let t = 0; t < FRONTIER.renewalTries * 2; t++) {
+          const ang = Math.random() * Math.PI * 2;
+          const d = pMin + Math.random() * (pMax - pMin);
+          pts.push({
+            tx: Math.round(pos.x + Math.cos(ang) * d),
+            ty: Math.round(pos.y + Math.sin(ang) * d),
+          });
+        }
+        const parked = this.standOnePeddler(pts, Date.now());
+        say(
+          parked
+            ? `Fortune on the road: a peddler parks her cart at ${parked.anchorX},${parked.anchorY}.`
+            : 'No lawful verge for a cart this pass — try again.',
+        );
+        return;
+      }
       if (sub === 'watch') {
         // /frontier watch — the world answers, read from where you stand
         // (what a speaker HERE would know), plus your open bounty marks.
         const s = this.watchSurvey(pos.x, pos.y);
         const relief = !s.near && this.calmWithinTiles(pos.x, pos.y, FRONTIER.marchTiles);
+        const peddler = this.worldFlagAnswer('world:peddler_near', player, pos.x, pos.y);
         const bounties = this.openBounties(player);
         say(
           `The world answers here: threat_near=${s.near} threat_bold=${s.bold} ` +
-            `toll_near=${s.toll} calm=${!s.near} relief=${relief}. ` +
+            `toll_near=${s.toll} calm=${!s.near} relief=${relief} peddler_near=${peddler}. ` +
             `Open bounties: ${bounties.length > 0 ? bounties.join(' · ') : 'none'}.`,
         );
         return;
       }
       if (sub === 'ember') {
+        // Any standing ember clock may be re-stamped — cleared camps,
+        // scattered satellites, and a peddler's departure alike.
         const row = this.poiLedger.get(key);
-        if (!row?.site || row.clearedAt === null) {
-          say('This cell holds no cleared site to ember.');
+        if (!row?.site || (row.clearedAt === null && row.emberUntil === null)) {
+          say('This cell holds no ember clock to re-stamp.');
           return;
         }
         const mins = Number.parseFloat(arg ?? '0');
@@ -11689,18 +11839,20 @@ export class GameServer {
       let sats = 0;
       let tolls = 0;
       let squats = 0;
+      let peddlers = 0;
       for (const r of this.poiLedger.values()) {
         if (r.site === null) continue;
         if (r.site.defId === 'road_toll') tolls++;
+        else if (r.site.defId === 'peddler_rest') peddlers++;
         else if (GameServer.hearthOwnerOf(r.originCell) !== null) squats++;
         else if (r.originCell !== null) sats++;
         else if (r.stage > 0) staged++;
       }
       say(
         `Frontier: ${embers} ember(s), ${fallows} fallow, ${staged} staged core(s), ` +
-          `${sats} satellite(s), ${tolls} toll(s), ${squats} squat(s), ${this.frontierCalm.size} calm, ` +
-          `debt ${this.frontierCredits}, rings ${this.claimRings().length}. ` +
-          `Cell ${key}: ${cellState} — /frontier tick · ember [min] · stage [n] · creep · raid [calm] · watch · calm [clear] · credit [n]`,
+          `${sats} satellite(s), ${tolls} toll(s), ${squats} squat(s), ${peddlers} peddler(s), ` +
+          `${this.frontierCalm.size} calm, debt ${this.frontierCredits}, rings ${this.claimRings().length}. ` +
+          `Cell ${key}: ${cellState} — /frontier tick · ember [min] · stage [n] · creep · raid [calm] · peddler · watch · calm [clear] · credit [n]`,
       );
       return;
     }

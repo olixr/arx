@@ -30,6 +30,12 @@ export const WORLD_FLAGS: ReadonlySet<string> = new Set([
   'world:toll_near',
   /** The listening PLAYER carries an open bounty (any `bounty:` flag). */
   'world:bounty_open',
+  /**
+   * A peddler's rest stands within the marches — the road deals
+   * fortune both ways, and word of a good cart travels as far as word
+   * of a bad camp.
+   */
+  'world:peddler_near',
 ]);
 
 /** The reserved prefix — one place, so no seam spells it by hand. */

@@ -399,6 +399,31 @@ never picks offline/cooldown/opted-out; squat never lands in view or in ring).
 
 ## Phase 5 — The Road's Fortune (transient friendly lights)
 
+**SHIPPED 2026-07-28.** Verified live end to end: the fortune lever
+refused first under standing relax windows and then under the
+one-cart-per-region cap (both lawful, both traced), then parked a cart
+at printed coordinates; the camp reads *passing-through* — handcart
+crates between rail shafts, one fire, a worn approach path, **Hetty the
+Herb-wife** drawn from the pool. `world:threat_near` stayed FALSE
+beside her (the friendly-site fix — before this phase the watch survey
+would have read a rolled waystation as trouble at its own keeper's
+post, and a guard could even have marked one as a bounty; `poiThreatens`
+now gates both), while **`world:peddler_near` answered TRUE** at
+Amberford's inn from a cart in the marches. Her tree opened in voice
+("Sit, love…"), the shop rode the ends-well hook — **ROOTS & REMEDIES**
+with the drop-unlock formulas town never sells — and a live purchase
+paid exactly 260 coins for the Adderfang scroll. Dunna's news grew
+"Anything worth chasing?" gated on the world and answered in her own
+wit. Placement rides the renewal-credit path at `peddlerChance`,
+road-true (candidates sorted by `roadDistanceAt`), ember stamped ON
+ARRIVAL (2–4 h jittered), and her dissolve **re-banks the credit** —
+fortune is a reprieve, never a payment, so the world still owes its
+trouble. One sanctioned law amendment, named in the test: drop-unlock
+scrolls may stand on `peddler_*` shelves only — a shop that exists for
+two hours on a road is found knowledge, not scheduled knowledge. 677
+workspace tests green; no protocol change (everything rides existing
+wires, as planned).
+
 Goal: not every stranger is a blade. The road deals fortune both ways.
 
 - **The peddler's rest**: a friendly transient archetype — one trader actor

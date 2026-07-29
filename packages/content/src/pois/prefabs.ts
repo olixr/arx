@@ -460,6 +460,28 @@ const raiderSquat = sketch(
   brigandMarks,
 );
 
+/**
+ * THE PEDDLER'S REST (living-frontier Phase 5): a handcart pulled off
+ * the verge — goods crate and barrel between rail shafts, one small
+ * fire, no fence and no chest. It reads PASSING-THROUGH on purpose:
+ * she was not here yesterday and will not be here tonight. The actor
+ * pool (tinker / herb-wife / relic-monger) stands at the hearth.
+ */
+const peddlerRest = sketch(
+  'poi_peddler_rest',
+  "Peddler's rest",
+  [
+    '____,,,____',
+    '__,:::::,__',
+    '_,:.l.G.:,_',
+    '_,:..fc.:,_',
+    '_,:.l.a.:,_',
+    '__,:::::,__',
+    '____,,_____',
+  ],
+  {},
+);
+
 const hamletMarks: Record<string, Marker> = {
   '8': { npc: 'chicken', radius: 1.5, under: Tile.Grass, level: 1 },
   '9': { npc: 'cow', radius: 1, under: Tile.Grass, level: 3 },
@@ -953,5 +975,7 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     lastLamp,
     // The Hearth Watch (living frontier, phase 4):
     raiderSquat,
+    // The Road's Fortune (living frontier, phase 5):
+    peddlerRest,
   ].map((p) => [p.id, p]),
 );

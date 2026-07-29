@@ -73,6 +73,9 @@ import waywardWatchUneasy from './defs/wayward_watch_uneasy.json';
 import waywardWatchUrgent from './defs/wayward_watch_urgent.json';
 import waywardWatchRelief from './defs/wayward_watch_relief.json';
 import halePost from './defs/hale_post.json';
+import nixCart from './defs/nix_cart.json';
+import hettyCart from './defs/hetty_cart.json';
+import coffCart from './defs/coff_cart.json';
 import haleWatchUneasy from './defs/hale_watch_uneasy.json';
 import haleWatchUrgent from './defs/hale_watch_urgent.json';
 import haleWatchRelief from './defs/hale_watch_relief.json';
@@ -162,6 +165,10 @@ const SOURCES: readonly unknown[] = [
   haleWatchUneasy,
   haleWatchUrgent,
   haleWatchRelief,
+  // THE ROAD'S FORTUNE (living-frontier Phase 5): the peddler carts.
+  nixCart,
+  hettyCart,
+  coffCart,
 ];
 
 function buildRegistry(): ReadonlyMap<string, DialogueDef> {

@@ -1,0 +1,26 @@
+{
+  "id": "coff_cart",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "peddler_coff" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Careful with your elbows. Half this cart is older than your village and twice as breakable.",
+      "choices": [
+        { "text": "Let me see the goods.", "next": "browse" },
+        { "text": "Where do you find it all?", "next": "where" },
+        { "text": "Mind the roads." }
+      ]
+    },
+    {
+      "id": "browse",
+      "text": "Keys, essences, and one or two things I'll not name until they're paid for. Look.",
+      "hooks": [{ "kind": "shop", "shop": "peddler_relics" }]
+    },
+    {
+      "id": "where",
+      "text": "Places that stopped minding. A door minds less once it's off its hinges. Next question costs.",
+      "next": "hub"
+    }
+  ]
+}

@@ -9,6 +9,11 @@
       "choices": [
         { "text": "What holds the road?", "next": "holds" },
         { "text": "Anything need doing?", "next": "doing" },
+        {
+          "text": "Anything friendly out there?",
+          "next": "peddler",
+          "requires": ["world:peddler_near"]
+        },
         { "text": "Hold the post.", "next": "bye" }
       ]
     },
@@ -20,6 +25,11 @@
     {
       "id": "doing",
       "text": "Always. Tonight it's the same as every night — hold fourteen miles with six hands. When something's stirring out there, come ask me and I'll point you at it.",
+      "next": "hub"
+    },
+    {
+      "id": "peddler",
+      "text": "A cart with bells went up the road this morning and stopped. Friendly, by the ledger. Go quick — carts don't keep.",
       "next": "hub"
     },
     {
