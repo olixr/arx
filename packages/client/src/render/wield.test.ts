@@ -380,42 +380,56 @@ test('the mountain falls: overhead poise, the longest telegraph, then the bury',
   assert.ok(Math.abs(end.lift) < 0.05, 'lift comes home');
   assert.ok(Math.abs(greatFinisherLean(0)) < 0.02 && Math.abs(greatFinisherLean(1)) < 0.02, 'lean home');
 });
-
-test('THE PLANTED REST: square to the camera a still blade grounds beside the boot', () => {
+test('THE RESTING SHOULDER: square to the camera the blade leans over the shoulder, never vertical', () => {
   for (const dir of [Math.PI / 2, -Math.PI / 2]) {
     const g = greatWield(dir, 1, 0, 0, 0, 0);
-    assert.ok(Math.sin(g.angle) > 0.9, `dir ${dir}: tip points DOWN into the ground`);
-    assert.ok(g.dy > 0.1, 'the fist settles low on the grip');
-    assert.ok(g.dx > 0.2, 'the plant stands OUT beside the hip, not across the face');
-    assert.ok(g.offClaim > 0.7, 'the off hand stacks on the pommel');
-    // The first real movement lifts the steel back to the shoulder.
-    const walk = greatWield(dir, 1, 1, 0.2, 0, 0);
-    assert.ok(Math.sin(walk.angle) < 0, 'a moving carry is shouldered again');
-    assert.ok(walk.offClaim < 0.6, 'the walk frees the off hand');
+    // A readable screen diagonal: clearly up, clearly to the side —
+    // neither the centered candle nor a level plank.
+    assert.ok(Math.sin(g.angle) < -0.5, `dir ${dir}: the blade points up`);
+    assert.ok(Math.abs(Math.cos(g.angle)) > 0.4, `dir ${dir}: the lean reads as a diagonal`);
+    assert.ok(g.fore > 0.9, `dir ${dir}: the rest keeps its steel`);
+    // The hilt holds by the resting shoulder, chest height.
+    assert.ok(g.dx > 0.2, 'the fist sits out by the shoulder');
+    assert.ok(g.dy < 0, 'the fist stays at the chest');
+    assert.ok(g.offClaim < 0.05, 'the off hand stays free at a standstill');
   }
-  // The profile facings never plant — the approved shoulder carry holds.
-  const east = greatWield(0, 1, 0, 0, 0, 1);
-  assert.ok(Math.sin(east.angle) < 0, 'east idle stays shouldered');
 });
 
-test('THE PLANTED REST: continuous in facing — turning on the spot never pops the carry', () => {
+test('THE RESTING SHOULDER: the blade points up at EVERY facing and gait — nothing to clip the ground', () => {
+  for (let i = 0; i < 16; i++) {
+    const dir = (i / 16) * Math.PI * 2;
+    for (const [m, r] of [[0, 0], [1, 0.2], [1, 1]] as const) {
+      const g = greatWield(dir, 1, m, r, 0.3, Math.cos(dir));
+      assert.ok(Math.sin(g.angle) < -0.25, `dir ${dir.toFixed(2)} gait ${r}: tip above the fist`);
+    }
+  }
+});
+
+test('THE RESTING SHOULDER: continuous in facing — turning on the spot never pops the carry', () => {
   let prev = greatWield(0, 1, 0, 0, 0, 0);
   for (let i = 1; i <= 48; i++) {
     const g = greatWield((i / 48) * Math.PI * 2, 1, 0, 0, 0, 0);
     let d = (g.angle - prev.angle) % (Math.PI * 2);
     if (d > Math.PI) d -= Math.PI * 2;
     if (d < -Math.PI) d += Math.PI * 2;
-    // The plant band is deliberately NARROW (55°..80° off-profile, so
-    // every approved stance — profile, diagonal, square-on — is a
-    // real pose and the descent's mid-frames live between them), so
-    // the wheel is fast through the band: ~1.7 rad per 7.5° of facing
-    // at the steepest, monotone per quadrant, never a flip (a true
-    // pop reads ~π at a single step).
-    assert.ok(Math.abs(d) < 1.85, `step ${i}: angle continuous (${d.toFixed(2)})`);
-    // The hand lanes ride the same fast wheel through the narrow band.
-    assert.ok(Math.abs(g.dx - prev.dx) < 0.2, `step ${i}: dx continuous`);
-    assert.ok(Math.abs(g.dy - prev.dy) < 0.2, `step ${i}: dy continuous`);
-    assert.ok(Math.abs(g.offClaim - prev.offClaim) < 0.4, `step ${i}: the pommel claim eases`);
+    assert.ok(Math.abs(d) < 0.45, `step ${i}: angle continuous (${d.toFixed(2)})`);
+    assert.ok(Math.abs(g.dx - prev.dx) < 0.08, `step ${i}: dx continuous`);
+    assert.ok(Math.abs(g.dy - prev.dy) < 0.05, `step ${i}: dy continuous`);
+    prev = g;
+  }
+});
+
+test('THE RESTING SHOULDER: the side swap eases the blade across, never teleports it', () => {
+  // sideS easing through zero (the smoothed rest-side flip) must carry
+  // the lean smoothly from one shoulder to the other, square-on.
+  let prev = greatWield(Math.PI / 2, 1, 0, 0, 0, 0);
+  for (let i = 1; i <= 20; i++) {
+    const sideS = 1 - (i / 10);
+    const g = greatWield(Math.PI / 2, sideS, 0, 0, 0, 0);
+    let d = (g.angle - prev.angle) % (Math.PI * 2);
+    if (d > Math.PI) d -= Math.PI * 2;
+    if (d < -Math.PI) d += Math.PI * 2;
+    assert.ok(Math.abs(d) < 0.3, `step ${i}: the swap eases (${d.toFixed(2)})`);
     prev = g;
   }
 });
