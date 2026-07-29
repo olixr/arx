@@ -186,7 +186,9 @@ export function buildSilverfall(): ZoneDef {
   b.set(61, 13, Tile.BannerPole).set(70, 13, Tile.BannerPole);
   // The thrones stand TOGETHER — a hand's reach apart, at the King's
   // own order. Two seats, one dais, no space for protocol between.
-  b.set(65, 13, Tile.Chair).set(66, 13, Tile.Chair);
+  // TRUE thrones now: the west seat gilded for the King, the east
+  // silvered moonpale for the Queen (Tile.Throne's paired-seat law).
+  b.set(65, 13, Tile.Throne).set(66, 13, Tile.Throne);
   b.setDetail(64, 14, Detail.Rug).setDetail(65, 14, Detail.Rug);
   b.setDetail(66, 14, Detail.Rug).setDetail(67, 14, Detail.Rug);
   b.set(69, 15, Tile.Lectern); // the herald reads the day's decrees

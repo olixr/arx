@@ -91,7 +91,7 @@ export const TILE_CATEGORIES: TileCategory[] = [
     id: 'furniture',
     label: 'Furniture & Props',
     tiles: [
-      Tile.Table, Tile.Chair, Tile.Bench, Tile.Bed, Tile.Bookshelf, Tile.Cabinet,
+      Tile.Table, Tile.Chair, Tile.Throne, Tile.Bench, Tile.Bed, Tile.Bookshelf, Tile.Cabinet,
       Tile.Counter, Tile.Hearth, Tile.Barrel, Tile.Crate, Tile.CrateGoods,
       Tile.MarketStall, Tile.BannerPole, Tile.HangingSign, Tile.Signpost, Tile.FlowerBox,
       Tile.ToolRack, Tile.WeaponRack, Tile.Vault, Tile.Lectern, Tile.Basin,
@@ -226,7 +226,7 @@ const CAVE_TILES = new Set<Tile>([
   Tile.Brazier, Tile.GlowShroom,
 ]);
 const WOOD_GROUND_TILES = new Set<Tile>([
-  Tile.Table, Tile.Chair, Tile.Bench, Tile.Bed, Tile.Bookshelf, Tile.Cabinet,
+  Tile.Table, Tile.Chair, Tile.Throne, Tile.Bench, Tile.Bed, Tile.Bookshelf, Tile.Cabinet,
   Tile.Counter, Tile.Hearth, Tile.Barrel, Tile.Crate, Tile.CrateGoods,
   Tile.ToolRack, Tile.WeaponRack, Tile.Lectern, Tile.Vault,
 ]);

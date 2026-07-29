@@ -328,6 +328,14 @@ export enum Tile {
    */
   GateGarrison = 144,
   GateGarrisonShut = 145,
+  /**
+   * A high-backed royal throne — crown furniture, never harvestable.
+   * Thrones pair: in an E-W pair the WEST seat is the King's (gilded
+   * oak under crimson) and the EAST is the Queen's (silvered ash
+   * under moonpale blue); a lone throne stands in the King's dress.
+   * The back always addresses the hall — it faces the camera.
+   */
+  Throne = 146,
 }
 
 export enum Detail {
@@ -549,6 +557,7 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   // shut gate bars it with iron-bound leaves.
   [Tile.GateGarrison]: { name: 'garrison gate', solid: false, color: '#453f52', raised: true, topColor: '#716b80' },
   [Tile.GateGarrisonShut]: { name: 'shut garrison gate', solid: true, color: '#453f52', raised: true, topColor: '#716b80' },
+  [Tile.Throne]: { name: 'throne', solid: true, color: '#7a552e', raised: true, topColor: '#c9962e' },
 };
 
 /**

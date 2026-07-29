@@ -11910,6 +11910,7 @@ export class Renderer {
     Tile.Crate,
     Tile.CrateGoods,
     Tile.Chair,
+    Tile.Throne,
     Tile.Bookshelf,
     Tile.Cabinet,
     Tile.BannerPole,
@@ -11993,6 +11994,7 @@ export class Renderer {
     Tile.Counter,
     Tile.Bench,
     Tile.Chair,
+    Tile.Throne,
     Tile.Bed,
     Tile.Bookshelf,
     Tile.Cabinet,
@@ -15429,134 +15431,420 @@ export class Renderer {
               : isT(game.world.groundAt(tx - 1, ty))
                 ? 'e'
                 : 'n';
-        const baseY = p.y + syT * 0.2;
-        // Seat at the knee, crest rail at the shoulder blades.
-        const sw = s * 0.42;
-        const sh = s * 0.34;
-        const bhh = s * 0.86;
-        const wood = '#7a552e';
-        const dark = '#6f4d26';
-        // About half the chairs wear a tied cushion in a house dye.
+        // THE HONEST-ANGLE LAW: the camera is a tilted bird's eye
+        // (yScale 0.6), so every facing carries its foreshortened top
+        // planes — the seat is a receding quad in ALL FOUR views, near
+        // feet stand LOWER on screen than far feet, and a side-on
+        // crest rail shows its lit top running away from the camera.
+        // A pure-elevation chair is a paper cutout; these are joined
+        // casework seen from above.
+        const yNr = p.y + syT * 0.24; // near feet floor line
+        const dz = syT * 0.42; // seat depth, foreshortened
+        const yFr = yNr - dz; // far feet floor line
+        const sw = s * 0.46; // seat width
+        const sh = s * 0.34; // seat height — the knee
+        const bhh = s * 0.88; // crest height — the shoulder blades
+        // Three village builds, hash-dealt so no two rooms furnish
+        // alike: ladder-back, spindle-back, and a solid splat with a
+        // carved lozenge. About half wear a tied cushion in a house
+        // dye; the lumber tone drifts a hair per chair.
+        const kind = (h >> 5) % 3;
+        const toneDrift = (((h >> 9) % 3) - 1) * 5;
+        const wood = shade('#7a552e', toneDrift);
+        const dark = shade('#6f4d26', toneDrift);
         const CUSHIONS = ['#8a3d46', '#3d5a8a', '#4d6b3c', '#75588a'] as const;
         const cush = (h & 4) !== 0 ? CUSHIONS[(h >> 3) % 4]! : null;
         return {
           sortY: ty + 0.68,
           body: stationBody(0.6, 1.05, 0.5),
-          drawShadow: () => this.castEdgeQuad(p.x - sw / 2, baseY, p.x + sw / 2, baseY, 0.5),
+          drawShadow: () => this.castEdgeQuad(p.x - sw / 2, yNr, p.x + sw / 2, yNr, 0.5),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx
             // to its scratch — the build-time capture would paint past it.
             const ctx = this.ctx;
+            // The contact pool spans the honest footprint: four feet
+            // on two floor lines, not a rug under a cutout.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
             ctx.beginPath();
-            ctx.ellipse(p.x, baseY + s * 0.01, sw * 0.62, s * 0.055, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x, yNr - dz * 0.42, sw * 0.68, dz * 0.6, 0, 0, Math.PI * 2);
             ctx.fill();
-            // Joinery vocabulary: tapered legs, a spindled back under
-            // a chamfered crest rail. Every facing is its own honest
-            // silhouette — a chair from the side LOOKS side-on.
-            const leg = (lx: number, ly: number, hgt: number, tone: string) => {
-              ctx.fillStyle = tone;
+            // A tapered leg standing on its own floor line.
+            const leg = (lx: number, footY: number, hgt: number, c3: string) => {
+              ctx.fillStyle = c3;
               ctx.beginPath();
-              ctx.moveTo(lx - s * 0.028, ly - hgt);
-              ctx.lineTo(lx + s * 0.028, ly - hgt);
-              ctx.lineTo(lx + s * 0.02, ly);
-              ctx.lineTo(lx - s * 0.02, ly);
+              ctx.moveTo(lx - s * 0.028, footY - hgt);
+              ctx.lineTo(lx + s * 0.028, footY - hgt);
+              ctx.lineTo(lx + s * 0.019, footY);
+              ctx.lineTo(lx - s * 0.019, footY);
               ctx.closePath();
               ctx.fill();
             };
-            const crest = (bx: number, bw2: number) => {
-              ctx.fillStyle = wood;
-              ctx.beginPath();
-              chamferRect(ctx, bx, baseY - bhh, bw2, s * 0.11, [s * 0.035, s * 0.035, 0, 0]);
-              ctx.fill();
-              ctx.fillStyle = shade(wood, 12);
-              ctx.fillRect(bx + s * 0.02, baseY - bhh + s * 0.015, bw2 - s * 0.04, s * 0.03);
+            // A side stretcher runs front-to-back — near-vertical on
+            // screen, the depth cue tying the two floor lines.
+            const sideRail = (rx: number) => {
+              ctx.fillStyle = shade(dark, -4);
+              ctx.fillRect(rx - s * 0.014, yFr - sh * 0.44, s * 0.028, dz);
             };
-            const seatSlab = (sx0: number, sy0: number, w2: number) => {
-              // A thick slab: edge face below the chamfered top.
+            // The seat: a foreshortened top receding yNr->yFr over a
+            // thick front edge; the cushion sits INTO the frame.
+            const seatTop = (x0: number, w2: number) => {
               ctx.fillStyle = shade(wood, -12);
-              ctx.fillRect(sx0, sy0, w2, s * 0.06);
+              ctx.fillRect(x0, yNr - sh, w2, s * 0.055);
               ctx.fillStyle = shade(wood, 6);
               ctx.beginPath();
-              chamferRect(ctx, sx0 - s * 0.015, sy0 - syT * 0.2, w2 + s * 0.03, syT * 0.2, s * 0.03);
+              chamferRect(ctx, x0 - s * 0.012, yNr - sh - dz, w2 + s * 0.024, dz, s * 0.032);
               ctx.fill();
+              // The near arris is sat-smooth and catches the light;
+              // the far rim falls into the back's shade.
+              ctx.fillStyle = shade(wood, 16);
+              ctx.fillRect(x0 + s * 0.01, yNr - sh - s * 0.03, w2 - s * 0.02, s * 0.03);
+              ctx.fillStyle = 'rgba(36, 22, 10, 0.22)';
+              ctx.fillRect(x0, yNr - sh - dz, w2, s * 0.022);
               if (cush) {
                 ctx.fillStyle = cush;
                 ctx.beginPath();
-                chamferRect(ctx, sx0 + s * 0.01, sy0 - syT * 0.185, w2 - s * 0.02, syT * 0.17, s * 0.035);
+                chamferRect(ctx, x0 + s * 0.016, yNr - sh - dz + s * 0.03, w2 - s * 0.032, dz - s * 0.055, s * 0.035);
                 ctx.fill();
+                // Piped near edge, lit crown, one tie-button dimple.
                 ctx.fillStyle = shade(cush, -14);
-                ctx.fillRect(sx0 + s * 0.01, sy0 - syT * 0.045, w2 - s * 0.02, s * 0.028);
+                ctx.fillRect(x0 + s * 0.016, yNr - sh - s * 0.052, w2 - s * 0.032, s * 0.026);
                 ctx.fillStyle = shade(cush, 10);
-                ctx.fillRect(sx0 + s * 0.035, sy0 - syT * 0.185, w2 - s * 0.07, s * 0.02);
-                // The tie button dimples the middle.
+                ctx.fillRect(x0 + s * 0.045, yNr - sh - dz + s * 0.03, w2 - s * 0.09, s * 0.02);
                 ctx.fillStyle = shade(cush, -20);
-                ctx.fillRect(sx0 + w2 / 2 - s * 0.012, sy0 - syT * 0.1, s * 0.024, s * 0.02);
+                ctx.fillRect(x0 + w2 / 2 - s * 0.012, yNr - sh - dz * 0.52, s * 0.024, s * 0.018);
               } else {
-                // Bare wood keeps a sat-worn sheen line.
+                // Bare boards keep a sat-worn sheen line.
                 ctx.fillStyle = 'rgba(36, 22, 10, 0.18)';
-                ctx.fillRect(sx0 + s * 0.03, sy0 - syT * 0.1, w2 - s * 0.06, s * 0.015);
+                ctx.fillRect(x0 + s * 0.03, yNr - sh - dz * 0.46, w2 - s * 0.06, s * 0.015);
               }
             };
-            if (back === 'n') {
-              // Facing the camera: stiles rise behind the seat.
-              ctx.fillStyle = dark;
-              ctx.fillRect(p.x - sw / 2 + s * 0.005, baseY - bhh + s * 0.05, s * 0.05, bhh - sh - s * 0.02);
-              ctx.fillRect(p.x + sw / 2 - s * 0.055, baseY - bhh + s * 0.05, s * 0.05, bhh - sh - s * 0.02);
-              ctx.fillStyle = shade(dark, -6);
-              for (const fx of [0.32, 0.5, 0.68] as const) {
-                ctx.fillRect(p.x - sw / 2 + sw * fx - s * 0.014, baseY - bhh + s * 0.12, s * 0.028, bhh - sh - s * 0.26);
+            // The back panel's inner build between the stiles.
+            const panelArt = (x0: number, w2: number, yT2: number, yB2: number, c3: string) => {
+              ctx.fillStyle = c3;
+              if (kind === 0) {
+                // Ladder-back: three steam-bent slats.
+                for (const f of [0.14, 0.44, 0.74] as const) {
+                  ctx.fillRect(x0, yT2 + (yB2 - yT2) * f, w2, s * 0.055);
+                }
+              } else if (kind === 1) {
+                // Spindle-back: three turned spindles.
+                for (const f of [0.25, 0.5, 0.75] as const) {
+                  ctx.fillRect(x0 + w2 * f - s * 0.016, yT2 + s * 0.02, s * 0.032, yB2 - yT2 - s * 0.04);
+                }
+              } else {
+                // Splat-back: one shaped board, a lozenge carved at
+                // its heart.
+                ctx.beginPath();
+                chamferRect(ctx, x0 + w2 * 0.29, yT2, w2 * 0.42, yB2 - yT2, s * 0.022);
+                ctx.fill();
+                const mx = x0 + w2 / 2;
+                const my = (yT2 + yB2) / 2;
+                ctx.fillStyle = shade(c3, -16);
+                ctx.beginPath();
+                ctx.moveTo(mx, my - s * 0.052);
+                ctx.lineTo(mx + s * 0.038, my);
+                ctx.lineTo(mx, my + s * 0.052);
+                ctx.lineTo(mx - s * 0.038, my);
+                ctx.closePath();
+                ctx.fill();
               }
-              crest(p.x - sw / 2, sw);
-              // Lower back rail ties the stiles above the seat.
-              ctx.fillStyle = dark;
-              ctx.fillRect(p.x - sw / 2 + s * 0.01, baseY - sh - s * 0.16, sw - s * 0.02, s * 0.045);
-              seatSlab(p.x - sw / 2, baseY - sh, sw);
-              leg(p.x - sw / 2 + s * 0.04, baseY, sh, wood);
-              leg(p.x + sw / 2 - s * 0.04, baseY, sh, wood);
-              ctx.fillStyle = shade(wood, -8);
-              ctx.fillRect(p.x - sw / 2 + s * 0.05, baseY - sh * 0.4, sw - s * 0.1, s * 0.032);
-            } else if (back === 's') {
-              // Seen from behind: far legs, a seat sliver, then the
-              // full spindled back closest to the camera.
-              leg(p.x - sw / 2 + s * 0.045, baseY - s * 0.075, sh - s * 0.075, shade(dark, -6));
-              leg(p.x + sw / 2 - s * 0.045, baseY - s * 0.075, sh - s * 0.075, shade(dark, -6));
-              seatSlab(p.x - sw / 2, baseY - sh - s * 0.06, sw);
-              ctx.fillStyle = dark;
-              ctx.fillRect(p.x - sw / 2 + s * 0.005, baseY - bhh + s * 0.05, s * 0.05, bhh - s * 0.05);
-              ctx.fillRect(p.x + sw / 2 - s * 0.055, baseY - bhh + s * 0.05, s * 0.05, bhh - s * 0.05);
-              ctx.fillStyle = shade(dark, -6);
-              for (const fx of [0.32, 0.5, 0.68] as const) {
-                ctx.fillRect(p.x - sw / 2 + sw * fx - s * 0.014, baseY - bhh + s * 0.12, s * 0.028, bhh - sh - s * 0.2);
-              }
-              crest(p.x - sw / 2, sw);
-              ctx.fillStyle = shade(dark, -4);
-              ctx.fillRect(p.x - sw / 2 + s * 0.01, baseY - sh - s * 0.1, sw - s * 0.02, s * 0.05);
-            } else {
-              // Side-on: one back post away from the table, the crest
-              // overhanging toward the seat, legs at honest depths.
-              const sgn = back === 'e' ? 1 : -1;
-              const bx = p.x + sgn * sw * 0.34;
-              leg(p.x - sgn * sw * 0.28, baseY - s * 0.08, sh - s * 0.06, shade(dark, -6));
-              leg(p.x + sgn * sw * 0.3, baseY - s * 0.08, sh - s * 0.06, shade(dark, -6));
-              ctx.fillStyle = dark;
-              ctx.fillRect(bx - s * 0.032, baseY - bhh + s * 0.04, s * 0.064, bhh - s * 0.04);
+            };
+            // Crest rail under a lit top cap — the top plane is what
+            // says "you are ABOVE this chair"; every facing shows it.
+            const crest = (x0: number, w2: number, yT2: number) => {
               ctx.fillStyle = wood;
               ctx.beginPath();
-              chamferRect(ctx, bx - (sgn > 0 ? s * 0.115 : s * 0.065), baseY - bhh, s * 0.18, s * 0.09, [
-                s * 0.03,
-                s * 0.03,
-                0,
-                0,
-              ]);
+              chamferRect(ctx, x0, yT2, w2, s * 0.115, [s * 0.035, s * 0.035, 0, 0]);
               ctx.fill();
-              ctx.fillStyle = shade(wood, 12);
-              ctx.fillRect(bx - (sgn > 0 ? s * 0.1 : s * 0.05), baseY - bhh + s * 0.012, s * 0.15, s * 0.026);
-              seatSlab(p.x - sw * 0.42, baseY - sh, sw * 0.8);
-              leg(p.x - sgn * sw * 0.34, baseY, sh, wood);
-              leg(p.x + sgn * sw * 0.24, baseY, sh, wood);
+              ctx.fillStyle = shade(wood, 18);
+              ctx.fillRect(x0 + s * 0.018, yT2 + s * 0.012, w2 - s * 0.036, s * 0.036);
+            };
+            if (back === 'n') {
+              // FACING THE CAMERA. The rear stiles ARE the rear legs —
+              // one piece from the FAR floor line to the crest, the
+              // ladder-chair truth; the seat then buries their middles.
+              const bw = sw - s * 0.02;
+              ctx.fillStyle = shade(dark, -8);
+              ctx.fillRect(p.x - bw / 2, yFr - bhh + s * 0.06, s * 0.05, bhh - s * 0.06);
+              ctx.fillRect(p.x + bw / 2 - s * 0.05, yFr - bhh + s * 0.06, s * 0.05, bhh - s * 0.06);
+              panelArt(p.x - bw / 2 + s * 0.05, bw - s * 0.1, yFr - bhh + s * 0.135, yFr - sh - s * 0.07, shade(dark, -4));
+              crest(p.x - bw / 2 - s * 0.012, bw + s * 0.024, yFr - bhh);
+              // Lower back rail ties the stiles just above the seat.
+              ctx.fillStyle = dark;
+              ctx.fillRect(p.x - bw / 2 + s * 0.02, yFr - sh - s * 0.065, bw - s * 0.04, s * 0.042);
+              sideRail(p.x - sw / 2 + s * 0.045);
+              sideRail(p.x + sw / 2 - s * 0.045);
+              seatTop(p.x - sw / 2, sw);
+              leg(p.x - sw / 2 + s * 0.045, yNr, sh, wood);
+              leg(p.x + sw / 2 - s * 0.045, yNr, sh, wood);
+              // Front H-stretcher at the shins.
               ctx.fillStyle = shade(wood, -8);
-              ctx.fillRect(p.x - sw * 0.34, baseY - sh * 0.42, sw * 0.62, s * 0.03);
+              ctx.fillRect(p.x - sw / 2 + s * 0.055, yNr - sh * 0.44, sw - s * 0.11, s * 0.03);
+            } else if (back === 's') {
+              // SEEN FROM BEHIND. Far feet peek beneath the seat, the
+              // seat's flanks run a sliver proud of the back panel,
+              // and the panel's gaps glimpse the cushion — that
+              // layered read IS the depth.
+              const bw = sw - s * 0.06;
+              leg(p.x - sw / 2 + s * 0.045, yFr, sh, shade(dark, -10));
+              leg(p.x + sw / 2 - s * 0.045, yFr, sh, shade(dark, -10));
+              sideRail(p.x - sw / 2 + s * 0.045);
+              sideRail(p.x + sw / 2 - s * 0.045);
+              seatTop(p.x - sw / 2, sw);
+              // Here the stiles stand on the NEAR floor line — the
+              // whole back is the closest thing to the camera.
+              ctx.fillStyle = shade(dark, -6);
+              ctx.fillRect(p.x - bw / 2, yNr - bhh + s * 0.06, s * 0.05, bhh - s * 0.06);
+              ctx.fillRect(p.x + bw / 2 - s * 0.05, yNr - bhh + s * 0.06, s * 0.05, bhh - s * 0.06);
+              panelArt(p.x - bw / 2 + s * 0.05, bw - s * 0.1, yNr - bhh + s * 0.135, yNr - sh - s * 0.02, shade(dark, -10));
+              crest(p.x - bw / 2 - s * 0.012, bw + s * 0.024, yNr - bhh);
+              // The outward face sits in its own shade.
+              ctx.fillStyle = 'rgba(26, 20, 36, 0.12)';
+              ctx.fillRect(p.x - bw / 2, yNr - bhh + s * 0.05, bw, s * 0.09);
+            } else {
+              // SIDE-ON — and still seen from above: the crest's top
+              // runs AWAY from the camera as a tall lit ribbon, the
+              // seat recedes to meet it, and both leg pairs stand on
+              // their own floor lines. This is the view that used to
+              // read as a flat cutout.
+              const sgn = back === 'e' ? 1 : -1;
+              const bx = p.x + sgn * s * 0.24; // back-post center
+              const fx = p.x - sgn * s * 0.26; // front leg line
+              const sxA = fx - sgn * s * 0.04;
+              const sxB = bx + sgn * s * 0.03;
+              const x0 = Math.min(sxA, sxB);
+              const wSeat = Math.abs(sxB - sxA);
+              // Far pair first — feet on the high floor line.
+              leg(fx, yFr, sh, shade(dark, -10));
+              ctx.fillStyle = shade(dark, -8);
+              ctx.fillRect(x0 + s * 0.05, yFr - sh * 0.44, wSeat - s * 0.1, s * 0.026);
+              seatTop(x0, wSeat);
+              leg(fx, yNr, sh, wood);
+              // Near stretcher runs the chair's length at the shins.
+              ctx.fillStyle = shade(wood, -8);
+              ctx.fillRect(x0 + s * 0.045, yNr - sh * 0.44, wSeat - s * 0.09, s * 0.03);
+              // The back: one tall slab from the far crest corner to
+              // its near foot. Its upper reach is the CREST'S TOP —
+              // a lit ribbon the full depth of the chair — over the
+              // near end-grain cap; the seat tucks in beneath.
+              const bw2 = s * 0.1;
+              ctx.fillStyle = dark;
+              ctx.beginPath();
+              chamferRect(ctx, bx - bw2 / 2, yFr - bhh, bw2, bhh + dz, [s * 0.03, s * 0.03, 0, 0]);
+              ctx.fill();
+              ctx.fillStyle = shade(wood, 18);
+              ctx.fillRect(bx - bw2 / 2 + s * 0.014, yFr - bhh + s * 0.012, bw2 - s * 0.028, dz - s * 0.012);
+              ctx.fillStyle = wood;
+              ctx.fillRect(bx - bw2 / 2, yNr - bhh, bw2, s * 0.115);
+              // The crest horns over toward the sitter.
+              ctx.beginPath();
+              chamferRect(
+                ctx,
+                sgn > 0 ? bx - bw2 / 2 - s * 0.05 : bx + bw2 / 2,
+                yNr - bhh + s * 0.01,
+                s * 0.05,
+                s * 0.07,
+                [s * 0.02, s * 0.02, 0, 0],
+              );
+              ctx.fill();
+              // The panel's inner face catches the room's light on
+              // the seat side.
+              ctx.fillStyle = shade(dark, 10);
+              ctx.fillRect(
+                sgn > 0 ? bx - bw2 / 2 : bx + bw2 / 2 - s * 0.016,
+                yNr - bhh + s * 0.115,
+                s * 0.016,
+                bhh - sh - s * 0.175,
+              );
+            }
+          },
+        };
+      }
+
+      case Tile.Throne: {
+        const syT = s * this.camera.yScale;
+        const isTh = (t2: number | undefined) => t2 === Tile.Throne;
+        // THE PAIRED-SEAT LAW: thrones crown a dais in pairs — the
+        // WEST seat is the King's, gilded oak under crimson; the EAST
+        // the Queen's, silvered ash under moonpale blue. A lone
+        // throne stands in the King's dress. The back addresses the
+        // hall: a throne always faces the camera, and it is CROWN
+        // FURNITURE — never harvestable, never a chair with airs.
+        const queen = isTh(game.world.groundAt(tx - 1, ty)) && !isTh(game.world.groundAt(tx + 1, ty));
+        const frame = queen ? '#8b8b96' : '#8a6534';
+        const metal = queen ? '#b4c0d2' : '#c9962e';
+        const cloth = queen ? '#5a6f9c' : '#7a2430';
+        const gemC = queen ? '#cfe0f0' : '#e0b84a';
+        const yNr = p.y + syT * 0.3; // dais front floor line
+        const dz = syT * 0.5; // a throne is DEEP — the honest angle shows it
+        const yFr = yNr - dz;
+        const ph = s * 0.09; // plinth riser
+        const yP = yNr - ph; // plinth top, near edge
+        const sw = s * 0.62; // seat width between the arms
+        const sh = s * 0.4; // seat height above the plinth
+        const bw = s * 0.58; // back width
+        const bh = s * 1.5; // crest height — royal, not domestic
+        const backFoot = yFr - ph + s * 0.03;
+        const yCrest = backFoot - bh;
+        return {
+          // The tall back must stand BEHIND whoever holds the seat:
+          // the sitter (at tile center) sorts after the throne and
+          // paints over the cushion, framed by the crest — while a
+          // walker passing north still slips behind the whole piece.
+          sortY: ty + 0.42,
+          body: stationBody(0.85, 1.95, 0.6),
+          drawShadow: () => this.castEdgeQuad(p.x - s * 0.47, yNr, p.x + s * 0.47, yNr, 0.55),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+            ctx.fillRect(p.x - s * 0.48, yNr + s * 0.004, s * 0.96, s * 0.04);
+            // The plinth: one broad step claims the floor — a lit top
+            // plane receding to the back's foot over a shadowed riser,
+            // its nosing struck in the house metal.
+            ctx.fillStyle = shade(frame, -18);
+            ctx.fillRect(p.x - s * 0.46, yP, s * 0.92, ph);
+            ctx.fillStyle = shade(frame, -4);
+            ctx.beginPath();
+            chamferRect(ctx, p.x - s * 0.46, yFr - ph, s * 0.92, dz, s * 0.045);
+            ctx.fill();
+            ctx.fillStyle = shade(metal, -8);
+            ctx.fillRect(p.x - s * 0.44, yP - s * 0.02, s * 0.88, s * 0.02);
+            // The high back: framed stiles around a tufted panel.
+            ctx.fillStyle = shade(frame, -10);
+            ctx.beginPath();
+            chamferRect(ctx, p.x - bw / 2, yCrest, bw, backFoot - yCrest, [s * 0.05, s * 0.05, 0, 0]);
+            ctx.fill();
+            ctx.fillStyle = frame;
+            ctx.fillRect(p.x - bw / 2 + s * 0.012, yCrest + s * 0.06, s * 0.045, backFoot - yCrest - s * 0.09);
+            ctx.fillRect(p.x + bw / 2 - s * 0.057, yCrest + s * 0.06, s * 0.045, backFoot - yCrest - s * 0.09);
+            // The tufted panel: deep dye under a lit heart, buttons
+            // dimpled in a diamond walk.
+            const px0 = p.x - bw / 2 + s * 0.075;
+            const pw = bw - s * 0.15;
+            const py0 = yCrest + s * 0.1;
+            const phh = bh - sh - s * 0.08;
+            ctx.fillStyle = cloth;
+            ctx.beginPath();
+            chamferRect(ctx, px0, py0, pw, phh, s * 0.04);
+            ctx.fill();
+            ctx.fillStyle = shade(cloth, 8);
+            ctx.beginPath();
+            chamferRect(ctx, px0 + s * 0.05, py0 + s * 0.05, pw - s * 0.1, phh - s * 0.1, s * 0.03);
+            ctx.fill();
+            ctx.fillStyle = shade(cloth, -18);
+            for (let r2 = 0; r2 < 3; r2++) {
+              for (let c3 = 0; c3 < 2; c3++) {
+                const bxx = px0 + pw * (0.33 + c3 * 0.34);
+                const byy = py0 + phh * (0.22 + r2 * 0.28);
+                ctx.fillRect(bxx - s * 0.013, byy - s * 0.011, s * 0.026, s * 0.022);
+              }
+            }
+            // The crown of the piece: the King's back peaks in three
+            // gilded points; the Queen's sweeps one silver arch. Both
+            // carry the stone of the house at the heart.
+            ctx.fillStyle = metal;
+            if (queen) {
+              ctx.beginPath();
+              ctx.moveTo(p.x - bw / 2 + s * 0.02, yCrest + s * 0.06);
+              ctx.quadraticCurveTo(p.x, yCrest - s * 0.24, p.x + bw / 2 - s * 0.02, yCrest + s * 0.06);
+              ctx.lineTo(p.x + bw / 2 - s * 0.02, yCrest + s * 0.1);
+              ctx.lineTo(p.x - bw / 2 + s * 0.02, yCrest + s * 0.1);
+              ctx.closePath();
+              ctx.fill();
+            } else {
+              ctx.beginPath();
+              ctx.moveTo(p.x - bw / 2, yCrest + s * 0.09);
+              ctx.lineTo(p.x - bw * 0.34, yCrest - s * 0.02);
+              ctx.lineTo(p.x - bw * 0.2, yCrest + s * 0.05);
+              ctx.lineTo(p.x, yCrest - s * 0.16);
+              ctx.lineTo(p.x + bw * 0.2, yCrest + s * 0.05);
+              ctx.lineTo(p.x + bw * 0.34, yCrest - s * 0.02);
+              ctx.lineTo(p.x + bw / 2, yCrest + s * 0.09);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // A struck fillet where the crown meets the frame.
+            ctx.fillStyle = shade(metal, 14);
+            ctx.fillRect(p.x - bw / 2 + s * 0.03, yCrest + s * 0.055, bw - s * 0.06, s * 0.022);
+            // The house stone.
+            ctx.fillStyle = gemC;
+            ctx.beginPath();
+            if (queen) {
+              // The moonpale drop.
+              ctx.moveTo(p.x, yCrest - s * 0.15);
+              ctx.quadraticCurveTo(p.x + s * 0.05, yCrest - s * 0.03, p.x, yCrest + s * 0.04);
+              ctx.quadraticCurveTo(p.x - s * 0.05, yCrest - s * 0.03, p.x, yCrest - s * 0.15);
+            } else {
+              facetCircle(ctx, p.x, yCrest - s * 0.03, s * 0.05, 6, 0.3);
+            }
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+            ctx.fillRect(p.x - s * 0.026, yCrest - s * 0.06, s * 0.018, s * 0.018);
+            // Post finials — orbs in the house metal.
+            ctx.fillStyle = metal;
+            ctx.beginPath();
+            facetCircle(ctx, p.x - bw / 2 + s * 0.034, yCrest + s * 0.02, s * 0.048, 6, 0.3);
+            ctx.fill();
+            ctx.beginPath();
+            facetCircle(ctx, p.x + bw / 2 - s * 0.034, yCrest + s * 0.02, s * 0.048, 6, 0.3);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.fillRect(p.x - bw / 2 + s * 0.014, yCrest + s * 0.002, s * 0.016, s * 0.016);
+            ctx.fillRect(p.x + bw / 2 - s * 0.054, yCrest + s * 0.002, s * 0.016, s * 0.016);
+            // The seat: a deep cushion recedes to the back over a
+            // rolled front, braid struck in the metal, and a skirt of
+            // two carved panels dropping to the plinth.
+            const stN = yP - sh;
+            const stF = backFoot - sh;
+            ctx.fillStyle = cloth;
+            ctx.beginPath();
+            chamferRect(ctx, p.x - sw / 2, stF, sw, stN - stF, s * 0.035);
+            ctx.fill();
+            ctx.fillStyle = shade(cloth, 10);
+            ctx.fillRect(p.x - sw / 2 + s * 0.04, stF + s * 0.02, sw - s * 0.08, s * 0.03);
+            ctx.fillStyle = shade(cloth, -12);
+            ctx.fillRect(p.x - sw / 2, stN, sw, s * 0.05);
+            ctx.fillStyle = shade(metal, 6);
+            ctx.fillRect(p.x - sw / 2, stN + s * 0.05, sw, s * 0.02);
+            ctx.fillStyle = shade(frame, -8);
+            ctx.fillRect(p.x - sw / 2, stN + s * 0.07, sw, yP - stN - s * 0.07);
+            ctx.fillStyle = shade(frame, -18);
+            ctx.beginPath();
+            chamferRect(ctx, p.x - sw / 2 + s * 0.05, stN + s * 0.11, sw * 0.5 - s * 0.08, yP - stN - s * 0.16, s * 0.02);
+            ctx.fill();
+            ctx.beginPath();
+            chamferRect(ctx, p.x + s * 0.03, stN + s * 0.11, sw * 0.5 - s * 0.08, yP - stN - s * 0.16, s * 0.02);
+            ctx.fill();
+            // The arms ride toward the camera — twin lit top planes
+            // ending in scrolled fists, posts dropped to the plinth.
+            // Nothing sells the tilted bird's eye like an arm rail
+            // running its whole length AT you.
+            for (const sgn of [-1, 1] as const) {
+              const ax = p.x + sgn * (sw / 2 + s * 0.052);
+              const aw = s * 0.088;
+              const ah = s * 0.66; // arm height above the plinth
+              const aFar = backFoot - ah;
+              const aNear = yP - ah + s * 0.02;
+              ctx.fillStyle = shade(frame, -14);
+              ctx.fillRect(ax - aw / 2, aNear, aw, s * 0.05);
+              ctx.fillStyle = shade(frame, 14);
+              ctx.beginPath();
+              chamferRect(ctx, ax - aw / 2, aFar, aw, aNear - aFar, s * 0.03);
+              ctx.fill();
+              // The scrolled fist at the near end.
+              ctx.fillStyle = frame;
+              ctx.beginPath();
+              facetCircle(ctx, ax, aNear + s * 0.02, s * 0.058, 6, 0.3);
+              ctx.fill();
+              ctx.fillStyle = shade(frame, 18);
+              ctx.beginPath();
+              facetCircle(ctx, ax - sgn * s * 0.012, aNear + s * 0.008, s * 0.022, 6, 0.3);
+              ctx.fill();
+              // The support post drops to the plinth.
+              ctx.fillStyle = shade(frame, -10);
+              ctx.fillRect(ax - s * 0.03, aNear + s * 0.07, s * 0.06, yP - aNear - s * 0.07);
             }
           },
         };
