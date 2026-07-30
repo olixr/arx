@@ -14,7 +14,14 @@
 > the first binary upload door (base64-in-JSON), reference-guarded deletes,
 > prod-safe immutable GET /voice/<hash>.<ext>, nginx /voice proxy + deploy
 > shared/voice symlink. 871 tests green; upload→serve→guard→revert round
-> trip live-verified. Phases 3-6 pending.
+> trip live-verified. Phase 3 (The Spoken Line) SHIPPED 2026-07-30 (9f0ce9d) —
+> DialogueNode.voice end-to-end (validator strict at the Studio door only),
+> pure resolver at the beat door (blind {url,durMs,kind}, ghost refs =
+> silence), breadth-first prefetch + live duck dials on dlgopen, still-v21
+> additive wire, THE PACED WORD (stretch-only typewriter, scratch mutes,
+> skip fades the clip), GameServer live clip ledger re-registered by the
+> Studio routes. 876 tests green; live-verified in-world end to end.
+> Phases 4-6 pending.
 
 The world moves, asks, and remembers. This epic makes it **speak out loud**. Every
 throat that earned a voice card in the VOICE epic gets an actual voice: full spoken
