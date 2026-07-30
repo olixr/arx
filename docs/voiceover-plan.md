@@ -6,8 +6,15 @@
 > pure busLevel test-pinned), audio/voice.ts VoicePlayer (24 MB LRU buffer
 > cache, prefetch warming, supersession-tokened line playback with edge fades
 > and LINE_DUCK 0.45/0.45/0.75, capped spatial quips, canPlayType probe,
-> SILENCE IS VALID failure edges). Live-verified; 861 tests green. Phases 2-6
-> pending.
+> SILENCE IS VALID failure edges). Live-verified; 861 tests green. Phase 2
+> (The Clip Ledger) SHIPPED 2026-07-30 (da0bd87) — migration v13
+> (voice_clips two-hash rows, voice_banks weighted slot shuffles on the open
+> owner axis, dialogue_nodes.voice column), content/voice.ts grammar + the
+> 'voice' dials doc live at boot, content-addressed data/voice store behind
+> the first binary upload door (base64-in-JSON), reference-guarded deletes,
+> prod-safe immutable GET /voice/<hash>.<ext>, nginx /voice proxy + deploy
+> shared/voice symlink. 871 tests green; upload→serve→guard→revert round
+> trip live-verified. Phases 3-6 pending.
 
 The world moves, asks, and remembers. This epic makes it **speak out loud**. Every
 throat that earned a voice card in the VOICE epic gets an actual voice: full spoken
