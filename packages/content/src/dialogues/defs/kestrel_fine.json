@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "You're on my roll with a mark against you. Coin clears it. The roads don't care which way you choose.",
+      "text": "You're on my roll with a mark against you. Coin clears it.",
       "choices": [
         { "text": "How much?", "next": "quote" },
         { "text": "Clear it.", "next": "pay" },

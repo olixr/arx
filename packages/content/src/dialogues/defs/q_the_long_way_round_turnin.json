@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "paid",
-      "text": "You're BACK — Hale signed, Ragna didn't blink. I know because she never does. That's the route run and I didn't run it, which feels like a day off, which I've heard of. Wages! Real ones!",
+      "text": "You're BACK! Hale signed, Ragna didn't blink. She never does. That's the whole route run and I didn't run it. Feels like a day off. I've heard of those. Wages! Real ones!",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_long_way_round" }]
     }
   ]

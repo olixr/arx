@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Bank of Silverfall. Four vaults, one ledger, no exceptions. State your business \u2014 in figures, where possible.",
+      "text": "Bank of Silverfall. Four vaults, one ledger, no exceptions. State your business. In figures, where possible.",
       "next": "hub"
     },
     {
@@ -37,17 +37,17 @@
     },
     {
       "id": "vaults",
-      "text": "Deposit at any bank chest; withdraw at any other. Your holdings live in the ledger, not the box, which means brigands can steal a *box* and acquire nothing but the box. The vault row behind me is the ledger's teeth. Nothing in twenty years has gotten past it, including, on one memorable audit, me.",
+      "text": "Deposit at any bank chest; withdraw at any other. Your holdings live in the ledger, not the box. A brigand who steals a box has acquired a box. The vault row behind me guards the ledger itself, and nothing in twenty years has got past it.",
       "next": "hub"
     },
     {
       "id": "cormund",
-      "text": "Cormund of Amberford. Twelve pages a season, each one requiring a single line of reply. He frames the correspondence as professional necessity; I diagnose enthusiasm. His vault-work is nonetheless immaculate, and his Toll War chain hangs in his own vault as institutional memory. Sentiment, filed correctly, is indistinguishable from rigor.",
+      "text": "Cormund of Amberford. Twelve pages a season, each one requiring a single line of reply. He calls the letters bank business. I call them enthusiasm. His vault-work is immaculate all the same, and his Toll War chain hangs in his own vault.",
       "next": "hub"
     },
     {
       "id": "seal",
-      "text": "Materially. Deep Market silver moves through my counters now, the ore brokers below bank their take up here nightly, and I have opened a fifth column in a ledger that had not needed one since my predecessor's predecessor. Growth is turbulence that pays for itself. We are watching it with both eyes.",
+      "text": "Materially. Deep Market silver moves through my counters now, and the ore brokers below bank their take up here nightly. I have ruled a new column in a ledger that had not needed one since my predecessor's predecessor. We are watching it with both eyes.",
       "next": "hub"
     },
     {

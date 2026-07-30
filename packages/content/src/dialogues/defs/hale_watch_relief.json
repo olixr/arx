@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Ledger's clean this morning. The camp's gone — burned out from the inside, the way I heard it. Your work?",
+      "text": "Ledger's clean this morning. The camp's gone. Burned out from the inside, the way I heard it. Your work?",
       "choices": [
         { "text": "Mine.", "next": "mine" },
         { "text": "Word travels fast out here.", "next": "word" },

@@ -6,12 +6,12 @@
   "nodes": [
     {
       "id": "paid",
-      "text": "The Castellan sent one line: 'Sound.' From Maren that's a commendation with trumpets.",
+      "text": "The Castellan sent one line: 'Sound.' From Maren, that's high praise.",
       "next": "closed"
     },
     {
       "id": "closed",
-      "text": "The passes are clear and the Line owes you. So it pays — plate from the wardens' own pattern, struck in my armory. My grandfather's grandfather was a quarry foreman who paid other people's debts. Wear it, and you'll be keeping his books.",
+      "text": "The passes are clear and the Line owes you. So it pays: plate from the wardens' own pattern, struck in my armory. My grandfather's grandfather was a quarry foreman who paid other people's debts. Wear it, and you'll be keeping his books.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_silver_line" }]
     }
   ]

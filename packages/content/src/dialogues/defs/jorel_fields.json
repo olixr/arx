@@ -28,17 +28,17 @@
     },
     {
       "id": "croft",
-      "text": "We crofted out east once, past the hedges. Good soil. Bad neighbors. A bandit autumn came through and burnt the barn with the whole season in it — we watched from the treeline, holding the dog so he wouldn't bark. Tamsin's cousins still work the *Fernway* verges. Us, we came inside the walls. I don't regret it. I check the treeline some evenings, is all.",
+      "text": "We crofted out east once, past the hedges. Good soil. Bad neighbors. A bandit autumn came through and burnt the barn with the whole season in it. We watched from the treeline, holding the dog so he wouldn't bark. Tamsin's cousins still work the *Fernway* verges. Us, we came inside the walls. I don't regret it. I check the treeline some evenings, is all.",
       "next": "hub"
     },
     {
       "id": "crops",
-      "text": "Wheat for Garton's wheel. Carrots for Merra's shelf. Cotton, if Tamsin gets her way — and she will, she's already talked to the soil behind my back. Everything this town eats starts in one of three places, and I'm standing on the biggest one. That's grand enough work for me.",
+      "text": "Wheat for Garton's wheel. Carrots for Merra's shelf. Cotton, if Tamsin gets her way. And she will. She's already talked to the soil behind my back. Everything this town eats starts in one of three places, and I'm standing on the biggest one. That's grand enough work for me.",
       "next": "hub"
     },
     {
       "id": "bye",
-      "text": "Walk soft on the seed rows. Everything else forgives boots."
+      "text": "Walk soft on the seed rows. The rest can take a boot."
     }
   ]
 }

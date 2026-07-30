@@ -5,7 +5,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Hold still, you— no, not you, the vice. It slips. *Fen*. Tinker, whittler, mender of latches nobody thanks me for. You've the look of somebody who wants to MAKE something. Am I right?",
+      "text": "Hold still, you... no, not you, the vice. It slips. *Fen*. Tinker, whittler, mender of latches nobody thanks me for. You've the look of somebody who wants to MAKE something. Am I right?",
       "choices": [
         { "text": "What can I make out here?", "next": "make" },
         { "text": "Where does a crafter go to grow?", "next": "grow" },
@@ -15,7 +15,7 @@
     },
     {
       "id": "make",
-      "text": "This *workbench* answers to anyone. Bring it logs from the axe, hides from the hunt, ore from the pick — it'll show you what your hands can shape. Iona's fire does the food; my bench does the rest. You could walk out of this village wearing nothing you didn't make yourself. I have. This shirt's older than Pip.",
+      "text": "This *workbench* answers to anyone. Bring it logs from the axe, hides from the hunt, ore from the pick. It'll show you what your hands can shape. Iona's fire does the food; my bench does the rest. You could walk out of this village wearing nothing you didn't make yourself. I have. This shirt's older than Pip.",
       "choices": [
         { "text": "And if I want to build a house?", "next": "boards" },
         { "text": "Something else.", "next": "hub" }
@@ -23,22 +23,22 @@
     },
     {
       "id": "boards",
-      "text": "A wall wants *boards*, not whole trunks — hold the— there. Two logs make a sawhorse; the sawhorse makes any log three boards. Raise one where you fell timber, stack the boards flat, walk home light. Mine's just past the crate. The trees never… well. They never carry themselves.",
+      "text": "A wall wants *boards*, not whole trunks... hold the... there. Two logs make a sawhorse; the sawhorse makes any log three boards. Raise one where you fell timber, stack the boards flat, walk home light. Mine's just past the crate. The trees never... well. They never carry themselves.",
       "next": "hub"
     },
     {
       "id": "grow",
-      "text": "Out there? Better benches in stranger places — old forges in ruins, waystation kits, whatever you raise with your own hands. And watch for *recipe scrolls* — read one and your hands keep it forever. Chests carry them. So do the pockets of things that… hm. Things you'll have to argue with first.",
+      "text": "Out there? Better benches in stranger places: old forges in ruins, waystation kits, whatever you raise with your own hands. And watch for *recipe scrolls*. Read one and your hands keep it forever. Chests carry them. So do the pockets of things that... hm. Things you'll have to argue with first.",
       "next": "hub"
     },
     {
       "id": "twine",
-      "text": "Twine! Twine is— hand me that— thank you. *Fibre plant*, down by the brook. Twist it, and suddenly bows have strings, hooks have lines, and my winter repairs hold. Nobody sings about twine. Somebody should.",
+      "text": "Twine! Twine is... hand me that... thank you. *Fibre plant*, down by the brook. Twist it, and bows have strings, hooks have lines, and my winter repairs hold.",
       "next": "hub"
     },
     {
       "id": "farewell",
-      "text": "Bench is here when the urge takes you. It takes everyone eventually."
+      "text": "Bench is here when the urge takes you. Now hold still, you..."
     }
   ]
 }

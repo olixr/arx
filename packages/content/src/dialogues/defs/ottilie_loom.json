@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Welcome to the artisans' hall \u2014 looms left, carving right, commissions by appointment, opinions free of charge. I'm Ottilie. Mind the thread tension; it's set finer than most tempers.",
+      "text": "Welcome to the artisans' hall. Looms left, carving right, commissions by appointment. I'm Ottilie. Mind the thread tension.",
       "next": "hub"
     },
     {
@@ -33,17 +33,17 @@
     },
     {
       "id": "banners",
-      "text": "Every one. The Warden asked for 'something dignified' and I delivered dignity with one thread of arrogance woven through the field \u2014 silver on silver, visible only when the hall fires gutter. Twenty years and nobody's spotted it. Maren would approve, which is why I'll never tell her.",
+      "text": "Every one. The Warden asked for 'something dignified' and I delivered dignity with one thread of arrogance woven through the field: silver on silver, visible only when the hall fires gutter. Twenty years and nobody's spotted it. Maren would approve, which is why I'll never tell her.",
       "next": "hub"
     },
     {
       "id": "cloth",
-      "text": "Lowland cotton up the High Road. Mountain wool off the Greenstair rams. And lately, gloomsilk thread out of the deep \u2014 yes, spider-spun, and no, I will not apologize for it. It takes dye like nothing under the sun and drapes like falling water. The loom does not ask where thread has been. Neither, past a certain quality, do I.",
+      "text": "Lowland cotton up the High Road. Mountain wool off the Greenstair rams. And lately, gloomsilk thread out of the deep. Yes, spider-spun, and no, I will not apologize for it. It takes dye like nothing under the sun and drapes like falling water.",
       "next": "hub"
     },
     {
       "id": "browse",
-      "text": "Bolts and thread, mountain grade. If it frays before the year turns, bring it back and watch me not believe you.",
+      "text": "Bolts and thread, mountain grade. If it frays before the year turns, bring it back.",
       "hooks": [
         {
           "kind": "shop",

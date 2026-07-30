@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Your name's in the bad column. Ink doesn't move for sorry — it moves for work. Redmasks on the roads out from the ford. Five off their count.",
+      "text": "Your name's in the bad column. Sorry doesn't move ink. Work does. Redmasks on the roads out from the ford. Five off their count.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_bad_column" }],
       "choices": [
         { "text": "I'll do the work.", "next": "sworn" },

@@ -15,7 +15,7 @@
     },
     {
       "id": "sworn",
-      "text": "Camps drift. Ask the watch what stands near, or walk until the grass goes burned — that's their country. Report when it's four.",
+      "text": "Camps drift. Ask the watch what stands near, or walk until the grass goes burned. That's their country. Report when it's four.",
       "hooks": [{ "kind": "quest_accept", "quest": "word_on_the_road" }]
     },
     {

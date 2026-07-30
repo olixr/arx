@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "You want something washed. Tell me — what do you think a clean name costs, in a house that keeps its floors swept?",
+      "text": "You want something washed. Tell me: what do you think a clean name costs, in a house that keeps its floors swept?",
       "choices": [
         { "text": "You tell me.", "next": "quote" },
         { "text": "Whatever it is, I'll pay.", "next": "pay" },

@@ -15,7 +15,7 @@
  "nodes": [
   {
    "id": "notice",
-   "text": "You've walked past the pillar by the bank — everyone does, twice a day. Stone post, two braziers. I feed those braziers every evening at dusk, and I'll tell you why, if you've patience for the town's one true story.",
+   "text": "You've walked past the pillar by the bank. Everyone does, twice a day. Stone post, two braziers. I feed those braziers every evening at dusk. I'll tell you why, if you have the patience.",
    "choices": [
     {
      "text": "Tell me about the Toll War.",
@@ -28,17 +28,17 @@
   },
   {
    "id": "chain",
-   "text": "Before your time, the Redmask brigands chained the ford. A *chain*, across the shallows this town is named for — and a toll to cross it. Coin at first. Then coin and goods. Then whatever they fancied, from whoever looked least able to argue. A road that isn't free isn't a road. It's a leash.",
+   "text": "Before your time, the Redmask brigands chained the ford. A *chain*, across the shallows this town is named for, and a toll to cross it. Coin at first. Then coin and goods. Then whatever they fancied, from whoever looked least able to argue.",
    "next": "answer"
   },
   {
    "id": "answer",
-   "text": "The town answered. Farmers. The miller's boy. A sixteen-year-old gate runner named Aldis who wouldn't stay put — you've met her; she still won't. The chain came down, the ford ran free, and it cost us the names on that pillar. Cormund counted what the Redmasks had taken and built the bank so it could never be taken that way again.",
+   "text": "The town answered. Farmers. The miller's boy. A sixteen-year-old gate runner named Aldis, who would not stay put. She keeps the north gate now. The chain came down and the ford ran free, and it cost us the names on that pillar. Cormund counted what the Redmasks had taken and built the bank so it could never be taken that way again.",
    "next": "lamp"
   },
   {
    "id": "lamp",
-   "text": "So: two braziers, fed at dusk, for as long as this hall stands. Go stand at the pillar some evening — you'll have company. The Captain comes at the end of her watch. She'd deny it, so don't ask her. Just stand quietly. *The road stays free.* The names on the stone paid for that sentence."
+   "text": "So: two braziers, fed at dusk, for as long as this hall stands. Go stand at the pillar some evening. You'll have company. The Captain comes at the end of her watch. She'd deny it, so don't ask her. Just stand quietly. *The road stays free.* The names on the stone paid for it."
   }
  ]
 }

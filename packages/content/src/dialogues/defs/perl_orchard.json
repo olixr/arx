@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Shade's free, windfalls aren't \u2014 the cows have taught me to say that up front. What brings you under my trees?",
+      "text": "Shade's free, the windfalls aren't. The cows taught me to say that up front. What brings you under my trees?",
       "choices": [
         {
           "text": "Tell me about the orchard.",
@@ -38,17 +38,17 @@
     },
     {
       "id": "trees",
-      "text": "My Hollis planted the old oak at the east end the year we married \u2014 said a wedding wants a witness that'll outlive the gossip. I planted the rest around him when he passed, so he'd have company and I'd have somewhere to put my talking. Forty trees now. He always was a good listener; being an orchard's only improved him.",
+      "text": "My Hollis planted the old oak at the east end the year we married. Said a wedding ought to plant something that outlives it. I planted the rest around him when he passed, so he'd have company and I'd have somewhere to put my talking. Forty trees now. He always was a good listener. Being an orchard has only improved him.",
       "next": "hub"
     },
     {
       "id": "cows",
-      "text": "The pasture cows have declared my windfalls a public entitlement. I've been to the moot *twice*. Motion carried, fence approved \u2014 and the next morning that brindled matriarch had the gate latch open like she'd read the minutes. I respect her. I'm going to lose this war to her. But there'll be a record, and history will know I fought.",
+      "text": "The pasture cows have decided my windfalls belong to whoever reaches them first, meaning them. I've been to the moot about it *twice*. The fence was approved both times. Next morning that brindled old matriarch had the gate latch open, like she'd sat at the moot herself. I'll lose this war in the end. I mean to make her work for it, though.",
       "next": "hub"
     },
     {
       "id": "sweet",
-      "text": "Here \u2014 berry pressings and a slice of feast cake, because anybody polite enough to ask under the trees gets fed under them. {item:cake} Hollis's rule. The orchard enforces it now.",
+      "text": "Here, berry pressings and a slice of feast cake. Anybody polite enough to ask under the trees gets fed under them. {item:cake} That was Hollis's rule. I've kept it.",
       "hooks": [
         {
           "kind": "give",
@@ -65,7 +65,7 @@
     },
     {
       "id": "bye",
-      "text": "Mind where you step \u2014 windfalls underfoot, and every one of them legally contested."
+      "text": "Mind where you step. Windfalls underfoot, and the cows count every one."
     }
   ]
 }

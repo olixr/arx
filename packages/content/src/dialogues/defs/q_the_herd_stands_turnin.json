@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "paid",
-      "text": "Five. No red cloth since Tuesday, and the cows are eating like they know it. Here — a herd that stands is worth paying for.",
+      "text": "Five. No red cloth since Tuesday, and the cows are eating like they know it. Here. A herd that stands is worth paying for.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_herd_stands" }]
     }
   ]

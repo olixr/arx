@@ -12,12 +12,12 @@
  "nodes": [
   {
    "id": "wake",
-   "text": "There you are. Breathe slow — the Ring's cold lets go quicker if you don't fight it. Up now. Let's have a look at you.",
+   "text": "There you are. Breathe slow. The Ring's cold lets go quicker if you don't fight it. Up now. Let's have a look at you.",
    "next": "stones"
   },
   {
    "id": "stones",
-   "text": "I'm *Rowan*. I keep this village, and I keep the Ring — the five stones behind you. Folk step out of them the way you just did, a few every season, going back longer than anyone's grandmother. _Where you were before this morning — that's gone. It's gone for all of you._ We stopped asking the stones long ago. They've never once answered.",
+   "text": "I'm *Rowan*. I keep this village, and I keep the Ring: the five stones behind you. Folk step out of them the way you just did, a few every season, going back longer than anyone's grandmother. _Where you were before this morning is gone. It's gone for all of you._ We stopped asking the stones long ago. They've never once answered.",
    "next": "hub"
   },
   {
@@ -40,22 +40,22 @@
   },
   {
    "id": "village",
-   "text": "Dawnmead. A green, a brook, and more chickens than people. We're the last soft ground before the frontier — east of our hedgerows the land runs wild for miles. Wakers rest here, learn their hands, then take the road. You will too. They all do.",
+   "text": "Dawnmead. A green, a brook, and more chickens than people. We're the last soft ground before the frontier. East of our hedgerows the land runs wild for miles. Wakers rest here, learn their hands, then take the road. You will too. They all do.",
    "next": "hub"
   },
   {
    "id": "memory",
-   "text": "None of you can. You came through with a pack on your back, strength in your limbs, and your own name — nothing else. Some say the stones take memory as their toll. Old Hobb says you're likely better off without whatever it was. I say what you do *next* is yours entire, and no stone can touch that.",
+   "text": "None of you can. You came through with a pack on your back, strength in your limbs, and your own name, and nothing else. Some say the stones take memory as their toll. Old Hobb says you're likely better off without whatever it was. For my part, I mind what you do *next*, child. That part is yours entire.",
    "next": "hub"
   },
   {
    "id": "guidance",
-   "text": "Three people, then the road. *Bryn* drills in the south yard — she'll wake up those arms. *Iona* keeps the fire by the cottages — she'll teach you to feed yourself. And look in your pack before you see either: axe, pick, blade, bow, and a staff. Heavier than you thought, isn't it? Go learn them. Then come back to me.",
+   "text": "Three people, then the road. *Bryn* drills in the south yard. She'll wake up those arms. *Iona* keeps the fire by the cottages. She'll teach you to feed yourself. And look in your pack before you see either: axe, pick, blade, bow, and a staff. Heavier than you thought, isn't it? Go learn them. Then come back to me.",
    "next": "gift"
   },
   {
    "id": "gift",
-   "text": "And take this — {item:bread}. Baked this morning, which is more than either of us can say. Welcome to the world, waker. Most of it is kinder than it looks.",
+   "text": "And take this: {item:bread}. Baked fresh this morning. Welcome to the world, waker. Most of it is kinder than it looks.",
    "hooks": [
     {
      "kind": "give",

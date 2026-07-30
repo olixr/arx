@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Pot's low and the brook's generous — six trout, if your rod's willing. The fish bite where the water sounds busiest. There'll be a bowl in it for you. There always is.",
+      "text": "Pot's low and the brook's generous. Six trout, if your rod's willing. The fish bite where the water sounds busiest. There'll be a bowl in it for you. There always is.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_pot_never_rests" }],
       "choices": [
         { "text": "Six trout, coming up.", "next": "sworn" },
@@ -20,7 +20,7 @@
     },
     {
       "id": "declined",
-      "text": "Then come eat anyway. The pot doesn't keep grudges."
+      "text": "Then come by for a bowl anyway."
     }
   ]
 }

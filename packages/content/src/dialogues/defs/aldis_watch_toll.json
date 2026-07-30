@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "There's a bar across my road and it isn't mine. They're charging for the crossing — a _toll_. I don't say that word lightly in this town.",
+      "text": "There's a bar across my road and it isn't mine. They're charging for the crossing. A _toll_. I don't say that word lightly in this town.",
       "choices": [
         {
           "text": "Where's the toll?",
@@ -24,17 +24,17 @@
     },
     {
       "id": "mark",
-      "text": "Marked. Break the bar, or break the camp that feeds it — either way my road opens.",
+      "text": "Marked. Break the bar, or break the camp that feeds it. Either way my road opens.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "remark",
-      "text": "The mark stands. So does the bar. One of those is your errand.",
+      "text": "The mark stands. So does the bar. See to it.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "war",
-      "text": "The Redmasks chained the ford once. It cost this town names we still read at dusk. I was made at that gate — I won't stand for a second plaque.",
+      "text": "The Redmasks chained the ford once. It cost this town names we still read at dusk. I was made at that gate. I won't stand for a second plaque.",
       "next": "hub"
     },
     {

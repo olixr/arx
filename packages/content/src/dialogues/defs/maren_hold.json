@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "You've climbed a long way to stand in a drafty hall. Welcome to it. I'm *Maren*. Castellan of Castle Silverfall \u2014 the charter says High Warden. The work is the same under either name.",
+      "text": "You've climbed a long way to stand in a drafty hall. Welcome to it. I'm *Maren*. Castellan of Castle Silverfall. The charter says High Warden. The work is the same under either name.",
       "next": "hub"
     },
     {
@@ -37,41 +37,41 @@
     },
     {
       "id": "seal",
-      "text": "Because the upper veins are thinning. Because Solvei's surveys finally frightened me in the right direction. And because a city that lives by silver cannot spend a generation pretending its own cellar isn't there. The Masons counseled patience. I ordered the breaking, and Petra swung the pick \u2014 _through her own grandfather's stonework._ If the dark sends up more than ore, the account is mine to settle. I said so at the moot. I'll say it to you.",
+      "text": "The upper veins are thinning, and Solvei's surveys finally frightened me in the right direction. A city that lives by silver cannot spend a generation pretending its own cellar isn't there. The Masons counseled patience. I ordered the breaking, and Petra swung the pick _through her own grandfather's stonework._ If the dark sends up more than ore, the account is mine to settle. I said so at the moot.",
       "choices": [
         {
           "text": "And the kobolds?",
           "next": "kobolds"
         },
         {
-          "text": "A hard call, cleanly made.",
+          "text": "That was a hard call.",
           "next": "hard"
         }
       ]
     },
     {
       "id": "kobolds",
-      "text": "Still down there. We hold the market spine and the swept galleries. Past the rubble line, the warren holds itself. Grettir's crews go armed and come back counted. It is not a victory. It is a standing account, and for now it balances. Travelers who tilt it in our favor find the city grateful. In coin.",
+      "text": "Still down there. We hold the market spine and the swept galleries. Past the rubble line, the warren holds itself. Grettir's crews go armed and come back counted. For now the account balances. Travelers who tilt it in our favor find the city grateful. In coin.",
       "next": "hub"
     },
     {
       "id": "hard",
-      "text": "All the calls up here are hard. The trick is making them slowly enough to be right and quickly enough to matter. My predecessor told me the mountain doesn't mind mistakes \u2014 it keeps them. I try to hand it fewer. That's the whole of my philosophy, and I won't repeat it.",
+      "text": "All the calls up here are hard. I weigh them as long as the day allows, then I stand by them. I won't say more than that.",
       "next": "hub"
     },
     {
       "id": "city",
-      "text": "A mine that learnt manners. The terraces, the banners, the court \u2014 all of it is what the silver bought. But put your ear to any wall on a quiet night and you'll hear picks. That's the city's true heart. It has never once stopped beating.",
+      "text": "A mine that learnt manners. The terraces, the banners, the court: all of it is what the silver bought. Put your ear to any wall on a quiet night and you'll hear picks.",
       "next": "hub"
     },
     {
       "id": "hold",
-      "text": "The feast hall seats the moot; the armory arms the watch; the wardens' wing sleeps light. The Mirrormere behind us feeds the falls, the falls feed the pool, and the pool has caught three careless wardens that the histories admit to. *Mind the edge.* It's the city motto for excellent reasons.",
+      "text": "The feast hall seats the moot. The armory arms the watch, and the wardens' wing sleeps light. The Mirrormere behind us feeds the falls, the falls feed the pool, and the pool has caught three careless wardens that the histories admit to. *Mind the edge.* It's the city motto for good reason.",
       "next": "hub"
     },
     {
       "id": "bye",
-      "text": "The road down is easier than the road up. Almost everything is. Walk well."
+      "text": "The road down is easier than the road up. Walk well."
     }
   ]
 }

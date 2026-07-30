@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "New entry in the incident book: camp sign off the road. Fresh, organized, wrong side of my gate.",
+      "text": "New entry in the incident book: camp sign off the road. Fresh, orderly, wrong side of my gate.",
       "choices": [
         {
           "text": "Where are they camped?",
@@ -24,7 +24,7 @@
     },
     {
       "id": "mark",
-      "text": "Marked. The log will say I sent you. Make the next entry a short one.",
+      "text": "Marked. The log will say I sent you.",
       "hooks": [{ "kind": "bounty" }]
     },
     {

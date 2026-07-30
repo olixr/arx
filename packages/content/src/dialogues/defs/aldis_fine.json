@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Stop there. You're in the bad column, and the gate doesn't serve the bad column. The book has a price. Coin against the harm, counted to the point.",
+      "text": "Stop there. Your name's in the bad column, and the gate doesn't serve that column. The book sets a price: coin against the harm done.",
       "choices": [
         { "text": "How much?", "next": "quote" },
         { "text": "I'll pay it.", "next": "pay" },

@@ -2,7 +2,7 @@
   "id": "silversmith_vigdis",
   "name": "Silversmith Vigdis",
   "title": "The Silver Setting",
-  "examine": "Precise as a hallmark. Her shop gleams the way a drawn blade does — beautifully, and on purpose.",
+  "examine": "Precise as a hallmark. Her shop gleams the way a drawn blade does, beautifully and on purpose.",
   "disposition": "friendly",
   "shop": "vigdis_wares",
   "model": {
@@ -30,8 +30,8 @@
     }
   ],
   "lines": [
-    "The Queen's circlet came off that bench. So did the toll-house seal at the ford. Small things that outrank large ones — that's the whole trade.",
+    "The Queen's circlet came off that bench. So did the toll-house seal at the ford. Small work, long memory.",
     "I buy assay-stamped silver only. Runa's stamp or no sale. If someone offers you mountain silver without it, you've met the Rookery.",
-    "Balla makes the mountain useful. I make it beautiful. We've argued thirty years about which is harder and neither of us wants to win."
+    "Balla makes the mountain useful. I make it beautiful. Thirty years we've argued which is harder."
   ]
 }

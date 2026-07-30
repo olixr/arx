@@ -2,7 +2,7 @@
   "id": "galleria_trader",
   "name": "Galleria Trader",
   "title": "Stall Keeper",
-  "examine": "Fingerless gloves, mountain prices, and a scale that has never once erred in your favor.",
+  "examine": "Fingerless gloves, mountain prices, and a scale kept on his own side of the stall.",
   "disposition": "friendly",
   "model": {
     "kind": "humanoid",
@@ -33,9 +33,9 @@
     }
   ],
   "lines": [
-    "Upper market, upper prices, upper quality \u2014 two of those are promises.",
-    "Everything the mine digs and the road hauls crosses this stall eventually. Stand here long enough and you'll see the whole world by weight.",
-    "Silver rings, mountain cloth, honest scales. The galleria's reputation walks farther than its keepers do."
+    "Upper market, upper prices. Worth the climb, ask anyone.",
+    "Everything the mine digs and the road hauls crosses this stall eventually.",
+    "Silver rings, mountain cloth, honest scales. Have a look."
   ],
   "shop": "galleria_stalls"
 }

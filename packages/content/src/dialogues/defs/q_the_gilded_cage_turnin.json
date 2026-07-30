@@ -11,7 +11,7 @@
     },
     {
       "id": "closed",
-      "text": "The clasp still works. Somewhere there's a family that stopped waiting for this, and one of my quieter errands will un-stop them. That part isn't business. ... The ring is, though — payment, previously appreciated, now yours.",
+      "text": "The clasp still works. Somewhere there's a family that stopped waiting for this. One of my quieter errands will see it home. That part isn't business. The ring is, though: payment, previously appreciated, now yours.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_gilded_cage" }]
     }
   ]

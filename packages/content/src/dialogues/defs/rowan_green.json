@@ -16,28 +16,28 @@
           "forbids": ["dawn_road"],
           "set": ["dawn_road"]
         },
-        { "text": "About the road east…", "next": "road_again", "requires": ["dawn_road"] }
+        { "text": "About the road east.", "next": "road_again", "requires": ["dawn_road"] }
       ]
     },
     {
       "id": "ring",
-      "text": "Five stones, older than any map of them. They sleep for a week, sometimes a season — then one dawn the frost melts off them in a ring, and someone new is standing where you stood. _There are ruined gates in the deep wild that look like kin to our stones. I saw one once, years back. I didn't linger._",
+      "text": "Five stones, older than any map of them. They sleep for a week, sometimes a season. Then one dawn the frost melts off them in a ring, and someone new is standing where you stood. _There are ruined gates in the deep wild that look like kin to our stones. I saw one once, years back. I didn't linger._",
       "next": "hub"
     },
     {
       "id": "pointers",
-      "text": "*Bryn's* in the south yard if your arms want work. *Iona's* at her fire. *Fen* will talk your ear off about his bench, bless him, and *Hobb* will find you something useful if you stand at his gate long enough. Small village. One good day covers it.",
+      "text": "*Bryn's* in the south yard if your arms want work. *Iona's* at her fire. Fen will talk your ear off about his bench, bless him, and Hobb will find you something useful if you stand at his gate long enough. Small village. One good day covers it.",
       "next": "hub"
     },
     {
       "id": "road",
-      "text": "Then you're ready, and I won't keep you. The lane east crosses the brook and becomes the *First Road* — follow it and you'll raise Amberford, the ford town, inside a day's walk. Rest at the wayfarers' lanterns when the light goes. And take this — {item:coins} — bread money for the road. The Ring chose well this time. Go on, child.",
+      "text": "Then you're ready, and I won't keep you. The lane east crosses the brook and becomes the *First Road*. Follow it and you'll raise Amberford, the ford town, inside a day's walk. Rest at the wayfarers' lanterns when the light goes. And take this: {item:coins}. Bread money for the road. The Ring chose well this time. Go on, child.",
       "hooks": [{ "kind": "give", "item": "coins", "qty": 30 }],
       "next": "hub"
     },
     {
       "id": "road_again",
-      "text": "East over the brook, and keep near the lamps after dark. Eat before you set out, too — the road is poor company on an empty stomach.",
+      "text": "East over the brook, and keep near the lamps after dark. Eat before you set out, too. The road is poor company on an empty stomach.",
       "next": "hub"
     }
   ]

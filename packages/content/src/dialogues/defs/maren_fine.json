@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "You stand in the crown's debt. There is a number. Pay it, or carry it — those are the choices, and I've weighed both for you already.",
+      "text": "You stand in the crown's debt. There is a number. Pay it, or carry it.",
       "choices": [
         { "text": "What's the number?", "next": "quote" },
         { "text": "I'll pay it.", "next": "pay" },

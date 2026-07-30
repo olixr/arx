@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "When you walk the wilds — the old bones you find. Bring them here. Ten is a rite's worth. They shouldn't lie out in the weather.",
+      "text": "When you walk the wilds, bring back the old bones you find. Ten is a rite's worth. They shouldn't lie out in the weather.",
       "hooks": [{ "kind": "quest_offer", "quest": "bones_for_the_pyre" }],
       "choices": [
         { "text": "I'll gather them.", "next": "sworn" },

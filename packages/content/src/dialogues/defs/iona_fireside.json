@@ -20,17 +20,17 @@
     },
     {
       "id": "fires",
-      "text": "Anything you catch, a fire makes better — chicken, beef, the brook's fish once you've the patience for a rod. Any village fire will serve a traveller, and out in the wild you'll learn to build your own. It's the same knack everywhere.",
+      "text": "Anything you catch, a fire makes better: chicken, beef, the brook's fish once you've the patience for a rod. Any village fire will serve a traveller, and out in the wild you'll learn to build your own. It's the same knack everywhere.",
       "next": "hub"
     },
     {
       "id": "where",
-      "text": "South of the bridge, along the near bank — berries, fibre, sageroot. Take a full pocket. The bank never minds.",
+      "text": "South of the bridge, along the near bank: berries, fibre, sageroot. Take a full pocket. The bank never minds.",
       "next": "hub"
     },
     {
       "id": "spare",
-      "text": "Go on then — once. {item:cooked_chicken} — careful, it's hot. After this you cook your own. That's not me being hard, love. That's me making sure you can.",
+      "text": "Go on then, once. {item:cooked_chicken} Careful, it's hot. After this you cook your own. I'm not being hard on you, love. I just want you able to manage.",
       "hooks": [{ "kind": "give", "item": "cooked_chicken", "qty": 1 }],
       "next": "hub"
     },

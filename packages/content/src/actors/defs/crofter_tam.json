@@ -2,7 +2,7 @@
   "id": "crofter_tam",
   "name": "Tam",
   "title": "Crofter",
-  "examine": "Was a Waykeeper once — the limp says where, the garden says why. Grows more than anyone can eat and gives the difference to the road.",
+  "examine": "Was a Waykeeper once. The limp came off the road and the garden came after. Grows more than anyone can eat and gives the difference to the road.",
   "disposition": "friendly",
   "model": {
     "kind": "humanoid",

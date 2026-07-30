@@ -17,7 +17,7 @@
   },
   {
    "id": "father",
-   "text": "I swung my first hammer down there, under the mountain. Grand Forge apprentice — me and *Balla*, fighting over the same anvil. Then the kobolds came up through the deep galleries, and the Guild closed the whole district. My father's crew set the last stones of the seal. He set stone the way I set edges. Properly. _The seal was his._",
+   "text": "I swung my first hammer down there, under the mountain. Grand Forge apprentice, me and *Balla*, fighting over the same anvil. Then the kobolds came up through the deep galleries, and the Guild closed the whole district. My father's crew set the last stones of the seal. He set stone the way I set edges. Properly. _The seal was his._",
    "next": "choice"
   },
   {
@@ -40,17 +40,17 @@
   },
   {
    "id": "back",
-   "text": "Balla's asked. Every solstice letter, one line at the bottom: *the anvil's still here*. Maybe now the door's open I'll walk up and lose the trials to her again. Once. For the look on her face. If you pass the Grand Forge before I do — tell her Bretta says her quenches always ran cold.",
+   "text": "Balla's asked. Every solstice letter, one line at the bottom: *the anvil's still here*. Maybe now the door's open I'll walk up and lose the trials to her again. Once. For the look on her face. If you pass the Grand Forge before I do, tell her Bretta says her quenches always ran cold.",
    "next": "end"
   },
   {
    "id": "sorry",
-   "text": "So am I. Twenty years' practice at it now. He'd have liked this town, I think. He always said stone should hold something — coin, bread, people. This one holds all three.",
+   "text": "So am I. Twenty years' practice at it now. He'd have liked this town, I think. He always said stone should hold something: coin, bread, people. This one holds all three.",
    "next": "end"
   },
   {
    "id": "browse",
-   "text": "Schematics on the shelf, steel on the racks. Priced honest — I can't be bothered to haggle.",
+   "text": "Schematics on the shelf, steel on the racks. Priced honest. I can't be bothered to haggle.",
    "hooks": [
     {
      "kind": "shop",

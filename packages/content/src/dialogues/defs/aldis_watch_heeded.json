@@ -32,12 +32,12 @@
   },
   {
    "id": "road",
-   "text": "Quiet to the Meadow. Redmask sign on the middle stretch. And the Fork tower lit its brazier at the wrong hour twice this week — could be nothing. If you pass the wardens' outpost, tell the sergeant I want her count. You've a listening face. Use it out there.",
+   "text": "Quiet to the Meadow. Redmask sign on the middle stretch. And the Fork tower lit its brazier at the wrong hour twice this week. Could be nothing. If you pass the wardens' outpost, tell the sergeant I want her count.",
    "next": "hub"
   },
   {
    "id": "toll",
-   "text": "Before the bank existed, the ford toll sat in a wooden box. One autumn the Redmasks chained the ford — taxed this town at its own crossing. Three days. On the fourth we went out and took the chain down. It cost us the names on the pillar by the bank. Read them when you pass. The chain itself sits in Cormund's vault. He'll show you, if you ask him straight.",
+   "text": "Before the bank, the ford toll sat in a wooden box. One autumn the Redmasks chained the ford and taxed this town at its own crossing. Three days. On the fourth we went out and took the chain down. It cost us the names on the pillar by the bank. Read them when you pass. The chain itself sits in Cormund's vault. He'll show you, if you ask him straight.",
    "next": "hub"
   },
   {

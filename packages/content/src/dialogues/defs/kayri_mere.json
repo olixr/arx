@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "You needn't bow — the forecourt does enough of that for everyone. You have road dust on you. Good. The interesting visitors always do.",
+      "text": "You needn't bow. The forecourt does enough of that for everyone. You have road dust on you. Good. The interesting visitors always do.",
       "next": "hub"
     },
     {
@@ -40,7 +40,7 @@
       "text": "Ford-born and proud of it. My mother pulled toll wagons out of the mud during the war years; I counted them through from the bank steps. When Aeriex came down-mountain to sign the peace ledgers, he added his sums wrong twice and I corrected him twice, out loud, in front of his guards. He says that's when he decided. I say a queen who can audit a toll book is worth two who can dance.",
       "choices": [
         {
-          "text": "Peld and Perl have your word. Word for word.",
+          "text": "Peld and Perl have your word.",
           "next": "errand",
           "requires": [
             "queens_errand"
@@ -54,21 +54,21 @@
     },
     {
       "id": "work",
-      "text": "I read everything before he signs it. Charters, tithes, the Waykeepers' muster, Odele's quarter-ledgers. A crown is mostly arithmetic wearing jewelry. And at midday I walk to the mere and let the city pretend it doesn't see me — the gossip I overhear on the way is worth half the council's briefings, and it rhymes better.",
+      "text": "I read everything before he signs it. Charters, tithes, the Waykeepers' muster, Odele's quarter-ledgers. A crown is mostly arithmetic wearing jewelry. At midday I walk to the mere and let the city pretend it doesn't see me. The gossip I overhear on the way is worth half of what the council tells me, and it rhymes better.",
       "next": "hub"
     },
     {
       "id": "mere",
-      "text": "Everything below us — the falls, the Roaring Pool, the channel the whole city drinks from — starts as this one still sheet of water. I walk there when I need reminding that the quiet things run the loud ones. Sella would call that a sermon. I call it water, finding its level. We're both right, which annoys neither of us.",
+      "text": "Everything below us starts as this one still sheet of water: the falls, the Roaring Pool, the channel the whole city drinks from. I walk there when I need reminding that the quiet things run the loud ones. Sella would call that a sermon. I call it water finding its level.",
       "next": "hub"
     },
     {
       "id": "bye",
-      "text": "Grace to you, traveler. Spend your coin on Lantern Row — I'll hear about it if you don't."
+      "text": "Grace to you, traveler. Spend your coin on Lantern Row. I'll hear about it if you don't."
     },
     {
       "id": "errand",
-      "text": "I know — I audited your delivery through channels you needn't worry about. The sums came back whole. There aren't many I'd trust with childhood debts. Consider yourself entered in the good column.",
+      "text": "I know. I audited your delivery through channels you needn't worry about. The sums came back whole. There aren't many I'd trust with childhood debts. Consider yourself entered in the good column.",
       "next": "hub"
     }
   ]

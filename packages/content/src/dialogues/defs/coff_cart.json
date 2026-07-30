@@ -19,7 +19,7 @@
     },
     {
       "id": "where",
-      "text": "Places that stopped minding. A door minds less once it's off its hinges. Next question costs.",
+      "text": "Places that stopped minding. Next question costs.",
       "next": "hub"
     }
   ]

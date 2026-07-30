@@ -2,7 +2,7 @@
   "id": "king_aeriex",
   "name": "King Aeriex",
   "title": "The Silver Line",
-  "examine": "Winter-pale as the high snow, still as the mere. The crown sits on him the way snow sits on the mountain: quietly, heavily, and as if it had always been there.",
+  "examine": "Winter-pale as the high snow, still as the mere. The crown sits on him heavily, and looks as though it always has.",
   "disposition": "neutral",
   "protection": "invulnerable",
   "combat": {
@@ -42,8 +42,8 @@
     }
   ],
   "lines": [
-    "My grandfather cut the third terrace. My father paved the road you climbed. I sign papers. The Line, you'll notice, is getting comfortable.",
-    "The moonpale runs in the Line — my grandmother said the mountain keeps our color so we can't ever deny it's kin.",
-    "Ask Kayri anything I just told you. If our answers differ, hers is the true one. That arrangement has never once failed the realm."
+    "My grandfather cut the third terrace. My father paved the road you climbed. I sign papers.",
+    "The moonpale runs in the Line. My grandmother said the mountain keeps our color so we can never deny the kinship.",
+    "Ask the Queen anything I just told you. If our answers differ, hers is the true one."
   ]
 }

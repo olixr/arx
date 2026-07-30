@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Terrace kitchen! Miners eat first, smiths second, travelers wherever there's a bench-end going spare. You look like a bench-end sort. Sit \u2014 the stew's at the good stage.",
+      "text": "Terrace kitchen! Miners eat first, smiths second, travelers wherever there's a bench-end going spare. You look like a bench-end sort. Sit. The stew's at the good stage.",
       "next": "hub"
     },
     {
@@ -18,7 +18,7 @@
       "text": "What'll it be?",
       "choices": [
         {
-          "text": "Two hundred hands off two hearths \u2014 how?",
+          "text": "Two hundred hands off two hearths. How?",
           "next": "how"
         },
         {
@@ -33,17 +33,17 @@
     },
     {
       "id": "how",
-      "text": "Volume, timing, and fear. The stew never stops \u2014 same pot my predecessor lit, topped and tended, older than half the miners eating from it. Bread runs on Ivo's wheat, trout on the gate mongers. You \u2014 pass that ladle. Ta. Where was I. Yes: nobody argues with me, because nobody argues well on a full stomach, and I keep them full. Sit.",
+      "text": "Timing, mostly, and fear. The stew never stops. Same pot my predecessor lit, topped and tended, older than half the miners eating from it. Bread runs on Ivo's wheat, trout on the gate mongers. You there, pass that ladle. Ta. Where was I. Yes: nobody argues with me, because nobody argues well on a full stomach, and I keep them full. Sit.",
       "next": "hub"
     },
     {
       "id": "talk",
-      "text": "Deep talk, all of it. Who's transferred below, what the ore broker's paying, whether the digmaster's tunnel truly points at the starfall \u2014 and every third bowl, somebody's heard the spider's web creak personally. The mountain gossips upward, traveler. It all reaches my benches eventually, salted.",
+      "text": "Deep talk, all of it. Who's gone below, what the ore broker's paying, whether the digmaster's tunnel truly points at the starfall. And every third bowl, somebody's heard the spider's web creak personally. The mountain gossips upward. It all reaches my benches eventually.",
       "next": "hub"
     },
     {
       "id": "browse",
-      "text": "Stew, bread, roast, and pool trout done proper. Eat it while it's arguing.",
+      "text": "Stew, bread, roast, and pool trout done proper. Eat it while it's hot.",
       "hooks": [
         {
           "kind": "shop",

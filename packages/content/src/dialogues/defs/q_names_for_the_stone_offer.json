@@ -16,7 +16,7 @@
     },
     {
       "id": "who",
-      "text": "Petra. Mason's yard, up on the crafting terrace. She broke the seal. ... She'll want to do this. And Sella, at the shrine — a flame for them. That's all of it.",
+      "text": "Petra. Mason's yard, up on the crafting terrace. She broke the seal. ... She'll want to do this. And a flame from Sella, at the shrine. That's all of it.",
       "choices": [
         { "text": "Then I'll go.", "next": "sworn" },
         { "text": "Not today.", "next": "declined" }

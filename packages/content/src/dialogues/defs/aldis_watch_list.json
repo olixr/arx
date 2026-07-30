@@ -14,7 +14,7 @@
  "nodes": [
   {
    "id": "greet",
-   "text": "You're on the watch-list. Not my doing — the column your name sits in is yours.",
+   "text": "You're on the watch-list. Not my doing. You put your own name in that column.",
    "choices": [
     {
      "text": "I'll mind myself.",

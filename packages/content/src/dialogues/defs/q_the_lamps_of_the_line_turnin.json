@@ -6,12 +6,12 @@
   "nodes": [
     {
       "id": "paid",
-      "text": "Four posts, four reports, one pair of boots. Hale's quiet, Odessa's wolf tally, Brant watching the trees, and Edda still standing the worst mile like it owes her money. That's the line, held.",
+      "text": "Four posts, four reports. Hale's quiet, Odessa's counting wolves, Brant's watching the trees, and Edda's still standing the worst mile. That's the line, held.",
       "next": "closed"
     },
     {
       "id": "closed",
-      "text": "My grandmother said it once and we've been repeating it ever since: the lamp stays lit. ... She'd have rated you. She rated almost no one. Wages, walker.",
+      "text": "My grandmother said it once and we've been repeating it ever since: the lamp stays lit. She'd have liked you. She liked almost no one. Here's your wages.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_lamps_of_the_line" }]
     }
   ]

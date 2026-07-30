@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Your straps are holding. Good. Ready for the bigger cousins? Worgs are running with the packs northwest — a worg fang goes through cheap leather like wet paper, and I want four for buckle-work.",
+      "text": "Your straps are holding. Good. Ready for the bigger cousins? Worgs are running with the packs northwest. A worg fang goes through cheap leather like wet paper, and I want four for buckle-work.",
       "hooks": [{ "kind": "quest_offer", "quest": "worgsong" }],
       "choices": [
         { "text": "Four fangs. Done.", "next": "sworn" },
@@ -16,7 +16,7 @@
     },
     {
       "id": "find",
-      "text": "You won't. They find you — that's the song. You'll hear it start behind you and finish in front. Keep your back to a rock and swing at the second howl, not the first.",
+      "text": "You won't. They find you. That's the song. You'll hear it start behind you and finish in front. Keep your back to a rock and swing at the second howl, not the first.",
       "choices": [
         { "text": "Noted. I'm going.", "next": "sworn" },
         { "text": "Not yet.", "next": "declined" }
@@ -24,12 +24,12 @@
     },
     {
       "id": "sworn",
-      "text": "Thin the runners, take four good fangs. There's a snare kit in it — my own build, not the market's.",
+      "text": "Thin the runners, take four good fangs. There's a snare kit in it, my own build.",
       "hooks": [{ "kind": "quest_accept", "quest": "worgsong" }]
     },
     {
       "id": "declined",
-      "text": "Fair. The song's not going anywhere. Neither are the teeth."
+      "text": "Fair. The song's not going anywhere."
     }
   ]
 }

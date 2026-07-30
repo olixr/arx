@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "paid",
-      "text": "In off the west road, alone, standing straight. Rowan's mark, that — she still sends me the ones worth the walk. Amberford's yours to learn, waker. Gate stays open till the horn says otherwise.",
+      "text": "In off the west road, alone, standing straight. Rowan's mark, that. She still sends me the ones worth the walk. Amberford's yours to learn, waker. Gate stays open till the horn says otherwise.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_lay_of_the_land" }]
     }
   ]

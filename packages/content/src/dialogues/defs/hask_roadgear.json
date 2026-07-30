@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Stop. Boots. …Mm. They'll do to the Long Meadow. Past that, we should talk. Hask — outfitter, fletcher. Last shop before the High Road starts charging for its lessons.",
+      "text": "Stop. Boots. Mm. They'll do to the Long Meadow. Past that, we should talk. Hask. Outfitter, fletcher. Last shop before the High Road.",
       "next": "hub"
     },
     {
@@ -37,22 +37,22 @@
     },
     {
       "id": "kit",
-      "text": "Arrows — double what you brought. A snare kit, so dinner doesn't cost steel. Spare bowstring. Dry socks. And a healthy respect for nightfall. The road doesn't kill people. Going out *underprepared* kills people. I sell the difference.",
+      "text": "Arrows, double what you brought. A snare kit, so dinner doesn't cost steel. Spare bowstring. Dry socks. And be under a roof by nightfall. Most that die out there went out underprepared.",
       "next": "hub"
     },
     {
       "id": "waykeeper",
-      "text": "Fifteen years. Escort sergeant, Amberford to the Last Lamp and back, more times than I've got teeth left. Retired the winter the worgs came down on the Fork rest and took two of mine _inside the fence line_. I keep their names off my tongue. Every buckle in this shop is that winter's lesson.",
+      "text": "Fifteen years. Escort sergeant, Amberford to the Last Lamp and back, more times than I've got teeth left. Retired the winter the worgs came down on the Fork rest and took two of mine _inside the fence line_. I keep their names off my tongue.",
       "next": "hub"
     },
     {
       "id": "aldis",
-      "text": "Best cadet I ever shouted at. Only one who ever shouted back with better information. When the Toll War broke, she's the one who went out on the ice and broke the Redmask chain with a mattock. The town gave her the gate the same week. I'd claim I taught her everything she knows — but she'd hear about it, and correct me publicly.",
+      "text": "Best cadet I ever shouted at. Only one who ever shouted back and was right. When the Toll War broke, she's the one who went out on the ice and broke the Redmask chain with a mattock. The town gave her the gate the same week.",
       "next": "hub"
     },
     {
       "id": "browse",
-      "text": "Racks are yours. Buy for the road you're walking, not the one you're bragging about.",
+      "text": "Racks are yours. Buy for the road you're actually walking.",
       "hooks": [
         {
           "kind": "shop",

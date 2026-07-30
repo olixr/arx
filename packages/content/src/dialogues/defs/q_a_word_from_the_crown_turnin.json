@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "paid",
-      "text": "So you stood the court. Plain man, our king — his grandfather poured foundations, and it shows. I mean that kindly. Here: crown pays first. That's the whole bargain, and today you're the road.",
+      "text": "So you stood the court. Plain man, our king. His grandfather poured foundations, and it shows. I mean that kindly. Here. Crown pays first. Today that's you.",
       "hooks": [{ "kind": "quest_turnin", "quest": "a_word_from_the_crown" }]
     }
   ]

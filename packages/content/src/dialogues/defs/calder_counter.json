@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Welcome, welcome. No names needed — I find they clutter a transaction. Everything on this counter has a history and none of it is written down. That's the service.",
+      "text": "Welcome, welcome. No names needed. I find they clutter a sale. Everything on this counter has a history and none of it is written down. That's the service.",
       "next": "hub"
     },
     {
@@ -37,12 +37,12 @@
     },
     {
       "id": "goods",
-      "text": "From *around*. Caravans lighten themselves on the High Road; the Undercroft coughs up curiosities; estates get settled faster than lawyers like. I ask no questions coming in, so I can honestly answer none going out — symmetry is the soul of my trade. If provenance matters to you, Vigdis is up the walk and her prices reflect all that paperwork.",
+      "text": "From *around*. Caravans lighten themselves on the High Road, the Undercroft coughs up curiosities, estates get settled faster than the heirs expected. I ask no questions coming in, so I can honestly answer none going out. If provenance matters to you, Vigdis is up the walk, and she charges for all that paper.",
       "next": "hub"
     },
     {
       "id": "watch",
-      "text": "The watch doesn't come past the scree, per an arrangement above both our stations. And understand — Mab has rules stricter than any magistrate: nothing from city homes, nothing from the shrine, nothing that got anyone hurt on this mountain. Break those and you don't answer to the watch. You answer to *her*, and the watch would be a mercy.",
+      "text": "The watch doesn't come past the scree, per an arrangement above both our stations. And understand: Mab has rules stricter than any magistrate. Nothing from city homes, nothing from the shrine, nothing that got anyone hurt on this mountain. Break those and you don't answer to the watch. You answer to *her*.",
       "next": "hub"
     },
     {

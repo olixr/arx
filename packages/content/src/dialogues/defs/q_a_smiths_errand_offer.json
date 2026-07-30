@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Forge's hot. Yard's slow. Six iron, four coal — seams east of the ford if you swing a pick, Merra's counter if you don't. Fetching?",
+      "text": "Forge's hot. Yard's slow. Six iron, four coal. Seams east of the ford if you swing a pick, Merra's counter if you don't. Fetching?",
       "hooks": [{ "kind": "quest_offer", "quest": "a_smiths_errand" }],
       "choices": [
         { "text": "I'll fetch it.", "next": "sworn" },

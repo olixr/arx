@@ -2,7 +2,7 @@
   "id": "peddler_nix",
   "name": "Nix",
   "title": "Tinker",
-  "examine": "Every pocket has a tool in it and every tool has a name. The cart squeaks on purpose — she says a silent axle hides its faults.",
+  "examine": "Every pocket has a tool in it and every tool has a name. The cart squeaks on purpose. She says a silent axle hides its faults.",
   "disposition": "friendly",
   "model": {
     "kind": "humanoid",

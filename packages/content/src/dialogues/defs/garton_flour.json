@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Mind the dust — that's not dirt, that's *product*. Garton. Forty years at this wheel, boy and man. The pond hasn't missed a day's work yet. More than I can say for anyone else in this town.",
+      "text": "Mind the dust. That's good *flour*, not dirt. Garton. Forty years at this wheel, boy and man. The pond hasn't missed a day's work yet. More than I can say for anyone else in this town.",
       "next": "hub"
     },
     {
@@ -22,7 +22,7 @@
           "next": "bell"
         },
         {
-          "text": "Forty years — the town must have changed.",
+          "text": "Forty years. The town must have changed.",
           "next": "years"
         },
         {
@@ -30,19 +30,19 @@
           "next": "browse"
         },
         {
-          "text": "Nothing — just passing.",
+          "text": "Nothing, just passing.",
           "next": "pass"
         }
       ]
     },
     {
       "id": "bell",
-      "text": "Quarrel! It's not a quarrel, it's a *position*. That bell rings on a west wind whether there's a soul at the crossing or not, and it scares my herons off the shallows. I've raised it at the moot. Twice. …Mind, the boy checks my mooring lines every morning like it's nothing. So the bell and I have settled into a working hatred. Don't you go fixing it.",
+      "text": "Quarrel! It's not a quarrel, it's a *position*. That bell rings on a west wind whether there's a soul at the crossing or not, and it scares my herons off the shallows. I've raised it at the moot. Twice. Mind you, the boy checks my mooring lines every morning like it's nothing. So the bell stays. Don't you go fixing it.",
       "next": "hub"
     },
     {
       "id": "years",
-      "text": "Changed? When I started, the Round was mud, the bank was a toll box, and Silverfall silver came through four caravans a season. Then the mountain sealed its cellar, the caravans thinned, and this town learnt to feed itself — fields, pond, orchard. Now the cellar's open again and everyone's dreaming of silver. *Flour*, I tell them. You can't eat silver. Nobody listens.",
+      "text": "Changed? When I started, the Round was mud, the bank was a toll box, and Silverfall silver came through four caravans a season. Then the mountain sealed its cellar, the caravans thinned, and this town learnt to feed itself: fields, pond, orchard. Now the cellar's open again and everyone's dreaming of silver. *Flour*, I tell them. You can't eat silver. Nobody listens.",
       "next": "hub"
     },
     {
@@ -57,7 +57,7 @@
     },
     {
       "id": "pass",
-      "text": "Passing's free. The gossip's ground fine here too — cheaper than Dunna's, twice as reliable."
+      "text": "Passing's free. Gossip's free too, and mine's more reliable than what you'll hear at Dunna's inn."
     }
   ]
 }

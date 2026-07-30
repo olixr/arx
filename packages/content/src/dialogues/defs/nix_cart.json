@@ -14,7 +14,7 @@
     },
     {
       "id": "browse",
-      "text": "Parts, keys, the odd sharp thing. Two hands' worth — have a look.",
+      "text": "Parts, keys, the odd sharp thing. Two hands' worth. Have a look.",
       "hooks": [{ "kind": "shop", "shop": "peddler_tinker" }]
     },
     {

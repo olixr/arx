@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Before you ask: yes, the work is beautiful, and no, I don't take walk-in metal. Everything on this bench answers to one commandment — Runa's stamp settles it. If you want to supply the Setting, the Assayer knows your face first.",
+      "text": "The work is beautiful, and I don't take walk-in metal. Everything on this bench answers to one commandment: Runa's stamp settles it. If you want to supply the Setting, the Assayer knows your face first.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_silver_setting" }],
       "choices": [
         { "text": "Then introduce me.", "next": "sworn" },
@@ -24,7 +24,7 @@
     },
     {
       "id": "sworn",
-      "text": "Runa keeps the assay house on the crafting terrace, by the tithe vault. Present yourself. Don't attempt small talk — she weighs that too.",
+      "text": "Runa keeps the assay house on the crafting terrace, by the tithe vault. Present yourself. Don't attempt small talk. She weighs that too.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_silver_setting" }]
     },
     {

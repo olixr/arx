@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Curios! Oddments! Things the dark coughed up and I dusted off! Every piece has a story, half the stories are true, and the ratio is *reflected in the pricing*. What catches your eye?",
+      "text": "Curios! Oddments! Things the dark coughed up and I dusted off! Every piece has a story, half the stories are true, and the true ones cost extra! What catches your eye?",
       "choices": [
         {
           "text": "Where does your stock come from?",
@@ -28,12 +28,12 @@
     },
     {
       "id": "stock",
-      "text": "The grotto grows my lamp-shrooms! The cistern gives up blindfish bones carved prettier than they've any right to be! And the galleries produce what galleries produce \u2014 ember-stones, frost-shards, dust that remembers being magic. The miners bring it up, I dust it off, you carry it away. Everyone's richer, nobody's wiser. The deep provides, friend. The deep PROVIDES.",
+      "text": "The grotto grows my lamp-shrooms! The cistern gives up blindfish bones carved prettier than they've any right to be! And the galleries produce what galleries produce: ember-stones, frost-shards, dust that remembers being magic. The miners bring it up, I dust it off, you carry it away. The deep provides, friend. The deep PROVIDES.",
       "next": "hub"
     },
     {
       "id": "before",
-      "text": "Ahhh, THE question. Everyone asks; the price keeps going up. I'll say this much for free: the seal kept things OUT very well. It was never asked to keep things IN. The floor didn't sweep itself, the brazier in the old works didn't feed itself, and Ninebrass didn't teach himself to haggle in the dark. ...Or I walked down with the guild crews like everyone else and I'm salting my legend. That's the beauty of the deep, friend. _Both stories weigh the same._",
+      "text": "Ahhh, THE question. Everyone asks. The price keeps going up. I'll say this much for free: the seal was built to keep things out. Nobody ever asked it to keep things in. The floor didn't sweep itself, the brazier in the old works didn't feed itself, and Ninebrass didn't teach himself to haggle in the dark. Or I walked down with the guild crews like everyone else and I'm salting my legend. That's the beauty of the deep, friend. _Both stories weigh the same._",
       "next": "hub"
     },
     {

@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "A torn page finds its way home. That's rarer than the reverse, in my experience. Bank rule, my clerk's hand — and a _Redmask_ thumb on the margin.",
+      "text": "A torn page finds its way home. Bank rule, my clerk's hand, and a _Redmask_ thumb on the margin.",
       "next": "ask"
     },
     {

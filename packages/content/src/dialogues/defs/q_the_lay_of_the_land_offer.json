@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "You've your feet under you now, child — I can see it from the porch. Time you saw the ford-town. *Amberford*, east down the lane, where the river slows enough to argue with. Will you go?",
+      "text": "You've your feet under you now, child. I can see it from the porch. Time you saw the ford-town. *Amberford*, east down the lane, where the river slows enough to argue with. Will you go?",
       "hooks": [{ "kind": "quest_offer", "quest": "the_lay_of_the_land" }],
       "choices": [
         { "text": "I'll go. What's there?", "next": "sworn" },
@@ -15,7 +15,7 @@
     },
     {
       "id": "sworn",
-      "text": "A gate, a market, and more people than you've met all together. Find the North Gate and the captain who keeps it — *Aldis*. Tell her a waker walked the whole way. She'll know what that's worth.",
+      "text": "A gate, a market, and more people than you've met all together. Find the North Gate and the captain who keeps it, *Aldis*. Tell her a waker walked the whole way. She'll know what that's worth.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_lay_of_the_land" }]
     },
     {

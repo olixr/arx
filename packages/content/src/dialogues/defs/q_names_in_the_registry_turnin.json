@@ -11,7 +11,7 @@
     },
     {
       "id": "paid2",
-      "text": "Aye. I'll take it to the rolls myself. You walked it proper — that's worth knowing about a person.",
+      "text": "Aye. I'll take it to the rolls myself. You walked it proper. That's worth knowing about a person.",
       "hooks": [{ "kind": "quest_turnin", "quest": "names_in_the_registry" }]
     }
   ]

@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "paid",
-      "text": "Two keys, and Calder says you're promisingly unremarkable. High praise — do you know what remarkable people cost me in a year? ... No. Keep it that way. The Rookery knows your face now, which means officially no one does. Your coin's on the table.",
+      "text": "Two keys, and Calder says you're promisingly unremarkable. High praise. Keep it that way. The Rookery knows your face now. Your coin's on the table.",
       "hooks": [{ "kind": "quest_turnin", "quest": "a_quiet_word" }]
     }
   ]

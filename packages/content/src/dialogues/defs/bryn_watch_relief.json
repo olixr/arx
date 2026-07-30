@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Fires came up one short last night — the *right* kind of short. Word says that was you.",
+      "text": "Fires came up one short last night. The *right* kind of short. Word says that was you.",
       "choices": [
         { "text": "It was.", "next": "praise" },
         { "text": "Wasn't me.", "next": "someone" },

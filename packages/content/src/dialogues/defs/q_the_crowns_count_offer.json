@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "The crown counts service. Kobolds press the deep galleries below the city — six fewer would be service. I weighed easier terms. There aren't any.",
+      "text": "The crown counts service. Kobolds press the deep galleries below the city. Six fewer would be service. I weighed easier terms. There aren't any.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_crowns_count" }],
       "choices": [
         { "text": "Six, then.", "next": "sworn" },

@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Come in — mind the drying herbs. Sagewort on the left, moonbell on the right, and the smell in the middle is a tincture that is *supposed* to do that. Probably. Almost certainly.",
+      "text": "Come in. Mind the drying herbs. Sagewort on the left, moonbell on the right, and the smell in the middle is a tincture that is *supposed* to do that. Probably. Almost certainly.",
       "next": "hub"
     },
     {
@@ -37,22 +37,22 @@
     },
     {
       "id": "buy",
-      "text": "Sagewort, moonbell, any honest herb you pull from the verges — coin on the counter, no questions. Half this town's health walks in through that door in a forager's pocket. More than half, actually. I've counted.",
+      "text": "Sagewort, moonbell, any honest herb you pull from the verges. Coin on the counter, no questions. Half this town's health walks in through that door in a forager's pocket. More than half, actually. I've counted.",
       "next": "hub"
     },
     {
       "id": "came",
-      "text": "Down the High Road, twelve years back — eleven and a half, strictly — with one book and a moonbell cutting wrapped in a stocking. Where from? _Further than the road goes._ The cutting took to the soil here. So did I. That's the whole answer you'll get, and it's more than most.",
+      "text": "Down the High Road, twelve years back. Eleven and a half, strictly. One book and a moonbell cutting wrapped in a stocking. Where from? _Further than the road goes._ The cutting took to the soil here. So did I. That's the whole answer you'll get.",
       "next": "hub"
     },
     {
       "id": "advice",
-      "text": "Carry more tinctures than you think you need, and drink them *earlier* than you think you should — people die holding a full bottle. Pride is the one wound I can't brew for. And past the Last Lamp, walk mornings. Everything old up there sleeps late.",
+      "text": "Carry more tinctures than you think you need, and drink them *earlier* than you think you should. People die holding a full bottle. And past the Last Lamp, walk mornings. The old things up there sleep late.",
       "next": "hub"
     },
     {
       "id": "browse",
-      "text": "Brewing formulas and the enchanter's treatises — folios on the shelf. The knowledge keeps. See that you do the same.",
+      "text": "Brewing formulas and the enchanter's treatises, folios on the shelf. Take your time with them.",
       "hooks": [
         {
           "kind": "shop",

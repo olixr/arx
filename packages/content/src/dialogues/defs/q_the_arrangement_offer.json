@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "You've stood in the court. Tell me — did anyone up there mention how a city this clean keeps its shadows so tidy?",
+      "text": "You've stood in the court. Tell me. Did anyone up there mention how a city this clean keeps its shadows so tidy?",
       "hooks": [{ "kind": "quest_offer", "quest": "the_arrangement" }],
       "choices": [
         { "text": "There's an arrangement.", "next": "arrangement" },
@@ -16,9 +16,9 @@
     },
     {
       "id": "arrangement",
-      "text": "There's an understanding, and understandings need tending — by someone both sides can pretend they didn't send. Two calls. Bursar Odele, at the bank: ask if the tithe balances. Marshal Kestrel, at the chapter house: tell her the sweeping is done and the floor is clean.",
+      "text": "There's an understanding, and understandings need tending, by someone both sides can pretend they didn't send. Two calls. Bursar Odele, at the bank: ask if the tithe balances. Marshal Kestrel, at the chapter house: tell her the sweeping is done and the floor is clean.",
       "choices": [
-        { "text": "And they'll just... know?", "next": "know" },
+        { "text": "And they'll just know?", "next": "know" },
         { "text": "I'll make the calls.", "next": "sworn" },
         { "text": "I'd rather not know.", "next": "declined" }
       ]
@@ -33,7 +33,7 @@
     },
     {
       "id": "sworn",
-      "text": "Softly, colleague. This one's carried in the pocket, not on the sleeve.",
+      "text": "Softly, colleague. Keep this one in your pocket.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_arrangement" }]
     },
     {

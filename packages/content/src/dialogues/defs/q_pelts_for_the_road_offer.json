@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Winter cloaks want lining and I won't sell thin. Six wolf furs, clean ones. Wolves run the tree lines — and they don't come alone, so hear that part twice. Work you want?",
+      "text": "Winter cloaks want lining and I won't sell thin. Six wolf furs, clean ones. Wolves run the tree lines, and they don't come alone. Hear that part twice. Work you want?",
       "hooks": [{ "kind": "quest_offer", "quest": "pelts_for_the_road" }],
       "choices": [
         { "text": "Six furs. Done.", "next": "sworn" },
@@ -20,7 +20,7 @@
     },
     {
       "id": "declined",
-      "text": "Fair. Wolves think so too."
+      "text": "Fair enough."
     }
   ]
 }

@@ -15,7 +15,7 @@
  "nodes": [
   {
    "id": "look",
-   "text": "Back again. Good. The ones who come back are the ones worth teaching. Before you buy a single schematic off me — answer this. Where does a bar of bronze *start*?",
+   "text": "Back again. Good. The ones who come back are worth teaching. Before you buy a single schematic off me, answer this. Where does a bar of bronze *start*?",
    "choices": [
     {
      "text": "At the furnace?",
@@ -29,17 +29,17 @@
   },
   {
    "id": "wrong",
-   "text": "No. Furnace is the *middle*. It starts in the ground, same as everything honest in this town. North spine past Hask's, dirt trail east at the lamp — that's the *Amber Delf*, the old cutting. Copper in the west face. Tin in the floor. I'm up there at first light most mornings. An hour of swinging feeds this forge for a day.",
+   "text": "No. Furnace is the *middle*. It starts in the ground. North spine past Hask's, dirt trail east at the lamp: that's the *Amber Delf*, the old cutting. Copper in the west face. Tin in the floor. I'm up there at first light most mornings. An hour of swinging feeds this forge for a day.",
    "next": "lesson"
   },
   {
    "id": "right",
-   "text": "*In the ground.* Ha. There's hope for you. North spine past Hask's, dirt trail east at the lamp — the *Amber Delf*, the old cutting. Copper in the west face. Tin in the floor. I'm up there at first light most mornings. An hour of swinging feeds this forge for a day.",
+   "text": "*In the ground.* Ha. There's hope for you. North spine past Hask's, dirt trail east at the lamp: the *Amber Delf*, the old cutting. Copper in the west face. Tin in the floor. I'm up there at first light most mornings. An hour of swinging feeds this forge for a day.",
    "next": "lesson"
   },
   {
    "id": "lesson",
-   "text": "Your ladder, free of charge: dig copper and tin. Smelt bronze at my furnace. Hammer it on the spare anvil till your arms understand. And when you hit the north face — the gray one that laughs at bronze picks — that's *iron*. Iron wants a better pick. A better pick wants a better smith. That's not a wall. That's the ladder.",
+   "text": "Your ladder, free of charge: dig copper and tin. Smelt bronze at my furnace. Hammer it on the spare anvil till your arms understand. And when you hit the north face, the gray one that laughs at bronze picks, that's *iron*. Iron wants a better pick. A better pick wants a better smith.",
    "choices": [
     {
      "text": "Show me your schematics, then.",
@@ -53,7 +53,7 @@
   },
   {
    "id": "sell",
-   "text": "Thought you'd never ask. Priced at what they'll earn you back twice over. The paper remembers so your hands don't have to.",
+   "text": "Thought you'd never ask. Priced at what they'll earn you back twice over.",
    "hooks": [
     {
      "kind": "shop",
@@ -63,7 +63,7 @@
   },
   {
    "id": "send",
-   "text": "Better answer than the schematics. Go. And mind Holloway's cows on the way past — they've opinions about pickaxes."
+   "text": "Better answer than the schematics. Go. And mind Holloway's cows on the way past."
   }
  ]
 }

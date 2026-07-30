@@ -28,17 +28,17 @@
     },
     {
       "id": "mark",
-      "text": "Marked. Break it, and I'll write your name where the town reads it.",
+      "text": "Marked. Break the camp and I'll log it under your name.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "remark",
-      "text": "Your chart holds the mark. Go while going still helps.",
+      "text": "The mark's still on your chart. Go soon. They're growing.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "toll",
-      "text": "They've put a bar across my road and they're charging for the crossing. The Redmasks did the same in the war — I was at this gate when the names went on the plaque. Break the toll or break the camp that feeds it. Either ends both.",
+      "text": "They've put a bar across my road and they're charging for the crossing. The Redmasks did the same in the war. I was at this gate when the names went on the plaque. Break the toll or break the camp that feeds it. Either one ends both.",
       "next": "hub"
     },
     {

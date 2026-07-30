@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "A commission, since you're now a colleague. A locket — gold over brass, sentimental weight, considerable — was *orphaned* some years ago when a courier misjudged the first climb. It remains with the, ah, current residents of the watchtower there.",
+      "text": "A commission, since you're now a colleague. A locket, gold over brass, sentimental weight considerable, was *orphaned* some years ago when a courier misjudged the first climb. It remains with the, ah, current residents of the watchtower there.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_gilded_cage" }],
       "choices": [
         { "text": "Current residents?", "next": "residents" },
@@ -16,7 +16,7 @@
     },
     {
       "id": "residents",
-      "text": "The tower's old garrison. Previously alive. They observe traditional hours — sunset onward. By day you'll find swept stone and a view. _Go at night, and go armed._",
+      "text": "The tower's old garrison. Previously alive. They observe traditional hours: sunset onward. By day you'll find swept stone and a view. _Go at night, and go armed._",
       "choices": [
         { "text": "Night it is.", "next": "sworn" },
         { "text": "Find another colleague.", "next": "declined" }
@@ -24,7 +24,7 @@
     },
     {
       "id": "sworn",
-      "text": "The shielded ones keep the good things — the watch always did. Bring the locket whole and unopened. Provenance is my department.",
+      "text": "The shielded ones keep the good things. The watch always did. Bring the locket whole and unopened. Provenance is my trade.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_gilded_cage" }]
     },
     {

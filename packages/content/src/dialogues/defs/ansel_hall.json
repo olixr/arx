@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Peace on your road, traveler. The hall is open — it always is. Sit, if your feet have opinions. I'm *Ansel*. I keep the lamps, the benches, and the book.",
+      "text": "Peace on your road, traveler. The hall is open. It always is. Sit if you're footsore. I'm *Ansel*. I keep the lamps, the benches, and the book.",
       "next": "hub"
     },
     {
@@ -37,22 +37,22 @@
     },
     {
       "id": "faith",
-      "text": "Nothing you'd need a robe for. A lit lamp is a *promise* — somebody made it, somebody keeps it, somebody walks safer because of it. We keep the lamps. That's the whole creed. It fits on a lamppost, which is rather the point.",
+      "text": "Nothing you'd need a robe for. A lit lamp is a *promise*. Somebody keeps it, and somebody walks safer for it. We keep the lamps. That is the whole of the creed.",
       "next": "hub"
     },
     {
       "id": "book",
-      "text": "The registry. Every soul who walks north through our gate signs it, or I sign for them. Most names take a homecoming mark within the year. Some never do. On feast nights I read the unmarked names to the braziers. Somebody should say them aloud, somewhere, once a season. It may as well be me.",
+      "text": "The registry. Every soul who walks north through our gate signs it, or I sign for them. Most names take a homecoming mark within the year. Some never do. On feast nights I read the unmarked names to the braziers. Somebody should say them aloud once a season.",
       "next": "hub"
     },
     {
       "id": "order",
-      "text": "Founded on the mountain, in the bad years after Silverfall sealed its deeps and the roads went feral. Marshal Kestrel's grandmother built the first waystation out of her own crew's wages — the Marshal keeps the order still, from the chapter house up there. Sergeants at the stations, Edda at the Last Lamp, and me at the southern end. I lit lamps on the High Road for eleven years. My knees keep the record, in wet weather especially.",
+      "text": "Founded on the mountain, in the bad years after Silverfall sealed its deeps and the roads went feral. Marshal Kestrel's grandmother built the first waystation out of her own crew's wages. The Marshal keeps the order still, from the chapter house up there. Sergeants at the stations, Edda at the Last Lamp, and me at the southern end. I lit lamps on the High Road for eleven years, before the knees went.",
       "next": "hub"
     },
     {
       "id": "bye",
-      "text": "Peace on your road. Sign the book before you walk north — humor a keeper's arithmetic."
+      "text": "Peace on your road. Sign the book before you walk north."
     }
   ]
 }

@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "paid",
-      "text": "Ten. Under the flame tonight, then. Here — for the carrying.",
+      "text": "Ten. Under the flame tonight, then. Here, for the carrying.",
       "hooks": [{ "kind": "quest_turnin", "quest": "bones_for_the_pyre" }]
     }
   ]

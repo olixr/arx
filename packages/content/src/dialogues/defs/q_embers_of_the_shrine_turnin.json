@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "paid",
-      "text": "Six measures, and the tower stands quiet. The flame takes them — see how it leans toward you? It knows its own. Rest for them, light for us, and a little wage for you. That's a fair season's keeping.",
+      "text": "Six measures, and the tower stands quiet. The flame takes them. See how it leans toward you? It knows its own. Here, a little wage for the keeping.",
       "hooks": [{ "kind": "quest_turnin", "quest": "embers_of_the_shrine" }]
     }
   ]

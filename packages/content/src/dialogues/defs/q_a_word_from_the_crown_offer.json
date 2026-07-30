@@ -15,12 +15,12 @@
     },
     {
       "id": "sworn",
-      "text": "Crowns don't say why to the likes of us. Court Gate — your chart has it now. Don't polish anything. The king doesn't. Come tell me how he seemed, after.",
+      "text": "Crowns don't say why to the likes of us. Court Gate. Your chart has it now. Don't polish anything. The king doesn't. Come tell me how he seemed, after.",
       "hooks": [{ "kind": "quest_accept", "quest": "a_word_from_the_crown" }]
     },
     {
       "id": "declined",
-      "text": "Nobody is. That's rather the test. It'll keep — badly."
+      "text": "Nobody is. ... It'll keep."
     }
   ]
 }

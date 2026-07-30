@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "It's grown. What was a camp is a garrison now, and garrisons don't pay toll — they charge it. Fourteen miles is about to get shorter.",
+      "text": "It's grown. What was a camp is a garrison now, and garrisons don't pay toll, they charge it.",
       "choices": [
         {
           "text": "Where are they camped?",
@@ -14,7 +14,7 @@
           "forbids": ["world:bounty_open"]
         },
         {
-          "text": "Say it again — where?",
+          "text": "Say it again. Where?",
           "next": "remark",
           "requires": ["world:bounty_open"]
         },
@@ -29,12 +29,12 @@
     },
     {
       "id": "remark",
-      "text": "Mark stands. So do they. Fix the second part.",
+      "text": "Mark stands. So do they, last I looked.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "hold",
-      "text": "We hold the post. The road between posts is what I can't promise — and that's where you come in.",
+      "text": "We hold the post. The road between posts I can't promise. That part's yours.",
       "next": "hub"
     },
     {

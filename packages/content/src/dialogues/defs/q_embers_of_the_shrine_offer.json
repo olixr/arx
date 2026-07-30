@@ -6,19 +6,19 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "You carry the blessing, so I'll ask you a keeping. The old dead are walking where lamps used to burn — the tower on the first climb, after dark, and deeper places besides. They've stopped passing the light along.",
+      "text": "You carry the blessing, so I'll ask you a keeping. The old dead are walking where lamps used to burn: the tower on the first climb, after dark, and deeper places besides. They've stopped passing the light along.",
       "hooks": [{ "kind": "quest_offer", "quest": "embers_of_the_shrine" }],
       "choices": [
         { "text": "I'll see them to rest.", "next": "sworn" },
-        { "text": "What do you need besides?", "next": "besides" },
+        { "text": "What else do you need?", "next": "besides" },
         { "text": "Not this season.", "next": "declined" }
       ]
     },
     {
       "id": "besides",
-      "text": "Ember essence, six measures, for the relighting. The world carries fire in odd pockets — goblin camps, the kobold digs, road crews who robbed it off someone else. The flame doesn't ask where its kindling slept.",
+      "text": "Ember essence, six measures, for the relighting. Goblin camps carry it, and the kobold digs, and road crews who robbed it off someone else.",
       "choices": [
-        { "text": "Rest for them, embers for you.", "next": "sworn" },
+        { "text": "I'll see to both.", "next": "sworn" },
         { "text": "Not this season.", "next": "declined" }
       ]
     },

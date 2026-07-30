@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "M-morning. Or whatever it is by now. The pond keeps its own clock. I keep the pond's.",
+      "text": "M-morning. Or whatever it is by now. The pond keeps its own clock.",
       "next": "hub"
     },
     {
@@ -37,17 +37,17 @@
     },
     {
       "id": "saltmere",
-      "text": "Down to *Saltmere*. In the end. Salt flats, grey gulls, boats with eyes painted on them. \u2026I walked up from there, when I was small. One day I'll pole somebody the whole way back down. When the river and I have saved up the nerve between us.",
+      "text": "Down to *Saltmere*. In the end. Salt flats, grey gulls, boats with eyes painted on them. I walked up from there, when I was small. One day I'll pole somebody the whole way back down. When I've got the nerve.",
       "next": "hub"
     },
     {
       "id": "bell",
-      "text": "So the pond knows I'm here. And so *Garton* knows. He'd never ask. But his window faces the water, and the bell saves him the walk. \u2026The wind rings it sometimes, on its own. I let it.",
+      "text": "So the pond knows I'm here. And so *Garton* knows. He'd never ask. But his window faces the water, and the bell saves him the walk. The wind rings it sometimes, on its own. I let it.",
       "next": "hub"
     },
     {
       "id": "browse",
-      "text": "Trout, mostly \u2014 the pond's generous if you're p-patient. Rod's for sale too, if you'd rather argue with the fish yourself.",
+      "text": "Trout, mostly. The pond's generous if you're p-patient. Rod's for sale too, if you'd rather catch your own.",
       "hooks": [
         {
           "kind": "shop",
@@ -57,7 +57,7 @@
     },
     {
       "id": "bye",
-      "text": "You too. Mind the reeds if you swim \u2014 they're friendlier than they look, but they *are* clingy."
+      "text": "You too. Mind the reeds if you swim. They *are* clingy."
     }
   ]
 }

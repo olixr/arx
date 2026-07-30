@@ -11,12 +11,12 @@
     },
     {
       "id": "word",
-      "text": "... The flame's tended. Good. The bowl's a waste of soup.",
+      "text": "The flame's tended. Good. The bowl's a waste of soup.",
       "next": "closed"
     },
     {
       "id": "closed",
-      "text": "Tinctures. Take them. Road's bad past here. ... Tell her the lamp stays lit. She knows. Tell her anyway.",
+      "text": "Tinctures. Take them. Road's bad past here. Tell her the lamp stays lit. She knows. Tell her anyway.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_sisters_lamp" }]
     }
   ]

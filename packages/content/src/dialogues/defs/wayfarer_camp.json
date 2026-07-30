@@ -18,7 +18,7 @@
     },
     {
       "id": "wares",
-      "text": "Shelf's honest, prices aren't kind — carriage costs, this far out. Everything a road asks of you, and a *brass key* for the chests that ask harder.",
+      "text": "Shelf's honest, prices aren't kind. Carriage costs, this far out. Everything the road calls for, and a *brass key* for the locked chests out there.",
       "hooks": [{ "kind": "shop", "shop": "waystation_supplies" }]
     },
     {
@@ -28,7 +28,7 @@
     },
     {
       "id": "rumor2",
-      "text": "You'll smell a camp before you see it — stumps, worn ruts, watchers on the high ground. Read the ground and it tells you what's waiting. Plenty didn't.",
+      "text": "You'll smell a camp before you see it: stumps, worn ruts, watchers on the high ground. Read the ground and you'll know what's waiting.",
       "choices": [
         { "text": "Let me see your wares.", "next": "wares" },
         { "text": "I'll take my chances." }

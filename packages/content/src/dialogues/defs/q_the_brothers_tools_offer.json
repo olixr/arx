@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "You know about my brother. So. The kobolds carry the crew's tools — guild mark on every head. I want three back.",
+      "text": "You know about my brother. So. The kobolds carry the crew's tools. Guild mark on every head. I want three back.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_brothers_tools" }],
       "choices": [
         { "text": "I'll bring them back.", "next": "sworn" },

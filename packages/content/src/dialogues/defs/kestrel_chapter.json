@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Chapter house of the Waykeepers. If you walked the High Road to get here, then you've already met my order — every lamp, every palisade, every sergeant who checked the road behind you. Sit. Travelers' news pays for itself in this room.",
+      "text": "Chapter house of the Waykeepers. If you walked the High Road to get here, you've already met my order: the lamps, the palisades, the sergeants who checked the road behind you. Sit. Travelers' news is welcome in this room.",
       "next": "hub"
     },
     {
@@ -37,12 +37,12 @@
     },
     {
       "id": "founding",
-      "text": "My grandmother was a caravan mistress in the bad years after the seal — roads feral, lamps dark, every ford a toll and every toll a knife. She built the first waystation at her own crew's expense and posted one rule over the door: _the lamp stays lit._ The order is that rule, with better funding. Forty years, three stations, one Last Lamp, and a registry of everyone the road has kept.",
+      "text": "My grandmother was a caravan mistress in the bad years after the seal. Roads feral, lamps dark, every ford tolled at knife-point. She built the first waystation at her own crew's expense and posted one rule over the door: _the lamp stays lit._ The order is that rule, with better funding. Forty years, three stations, one Last Lamp, and a registry of everyone the road has kept.",
       "next": "hub"
     },
     {
       "id": "sergeants",
-      "text": "Sergeants Hale, Odessa, and Brant hold the stations by rotation. Edda holds the Last Lamp by force of personality. Keeper Ansel holds the ford end and the registry. Add every crofter who feeds a traveler and every watch that walks a wall — auxiliaries, sworn or not. Me, I move too few people along too much road, and I do the paperwork.",
+      "text": "Sergeants Hale, Odessa, and Brant hold the stations by rotation. Edda holds the Last Lamp and won't be relieved. Keeper Ansel holds the ford end and the registry. Add every crofter who feeds a traveler and every watch that walks a wall. Auxiliaries, sworn or not. Me, I move too few people along too much road, and I do the paperwork.",
       "choices": [
         {
           "text": "I took all four reports myself, remember.",
@@ -59,16 +59,16 @@
     },
     {
       "id": "hask",
-      "text": "*Sergeant Hask.* Fifteen years, the middle marches, and the worg winter that cost him two of his own inside the Fork's fence. He hung up the cloak and took up outfitting, and I'll tell you what I told the moot: the man still serves. Every traveler he equips properly is a report I never have to write. If he checked your boots, consider yourself inspected by the order.",
+      "text": "*Sergeant Hask.* Fifteen years, the middle marches, and the worg winter that cost him two of his own inside the Fork's fence. He hung up the cloak and took up outfitting, and I'll tell you what I told the moot: the man still serves.",
       "next": "hub"
     },
     {
       "id": "bye",
-      "text": "Road keep you. And if you pass a dark lamp anywhere on my road — *tell someone.* That's how the whole thing works."
+      "text": "Road keep you. And if you pass a dark lamp anywhere on my road, *tell someone.*"
     },
     {
       "id": "walked",
-      "text": "I remember. The muster-book has a mark by your name now — 'walked the line, full length'. There are sergeants without that mark. Don't tell them I said so.",
+      "text": "I remember. The muster-book has a mark by your name now: 'walked the line, full length'. There are sergeants without that mark. Don't tell them I said so.",
       "next": "hub"
     }
   ]

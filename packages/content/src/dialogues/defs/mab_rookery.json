@@ -10,19 +10,19 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Sit if you like. Pike gave you one whistle, which is why you're having a conversation instead of an experience. I'm Mab. The city calls me the Magpie, because taking things that shine is supposed to be an insult.",
+      "text": "Sit if you like. Pike gave you one whistle, so you get to talk to me. I'm Mab. The city calls me the Magpie. It thinks that stings. Now, what carried you up my ledge?",
       "next": "hub"
     },
     {
       "id": "hub",
-      "text": "Ask what you came to ask. In the Rookery, curiosity is the only coin we don't take — we just note who spends it.",
+      "text": "Ask what you came to ask. Curiosity is the only coin we don't take here. We just note who spends it.",
       "choices": [
         {
           "text": "What is this place?",
           "next": "rookery"
         },
         {
-          "text": "The Crown just... allows you?",
+          "text": "The Crown just allows you?",
           "next": "crown"
         },
         {
@@ -43,12 +43,12 @@
     },
     {
       "id": "rookery",
-      "text": "Older than the castle, and I can prove it in stone. The first quarrymen pitched camp here — out of the wind, over the workings. Then an Aeriex got called king, the terraces got grand, and somebody drew the city's maps *around* us. Do we mind? A quarter the maps forget is worth more than one they flatter. We're the quarrymen's grandchildren. We found quieter work. …Mostly quieter.",
+      "text": "Older than the castle, and I can prove it in stone. The first quarrymen pitched camp here, out of the wind, over the workings. Then an Aeriex got called king, the terraces got grand, and somebody drew the city's maps *around* us. Do we mind? A quarter the maps forget suits us well. We're the quarrymen's grandchildren. We found quieter work. Mostly.",
       "next": "hub"
     },
     {
       "id": "crown",
-      "text": "*Tolerates* is the castle's word. Mine is _arrangement_. The watch holds the wall and the road, but a city's real trouble comes up its alleys, and alleys are ours. When something moves in the dark that shouldn't, the castle hears about it before its own spies do. In exchange: no lamps back here, no ledgers, no questions at Calder's counter. Aeriex's father shook on it. Aeriex keeps it. Kings who keep their fathers' handshakes are rarer than honest fences.",
+      "text": "*Tolerates* is the castle's word. Mine is arrangement. The watch holds the wall and the road, but a city's real trouble comes up its alleys, and the alleys are ours. When something moves in the dark that shouldn't, the castle hears of it before its own spies do. In exchange: no lamps back here, no ledgers, no questions at Calder's counter. Aeriex's father shook on it. Aeriex keeps it.",
       "choices": [
         {
           "text": "I've carried the pocket-word myself. The floor stays swept.",
@@ -69,21 +69,21 @@
     },
     {
       "id": "stair",
-      "text": "Because we use it more than the miners ever did. The Undercroft's back ways were our roads for twenty sealed years — you can move a great deal through a mountain everyone believes is shut. Now the seal's broken and the Deep Market pays rent to the Crown, and my people still keep those braziers fed. Habits outlive their reasons. The good ones, anyway.",
+      "text": "Because we use it more than the miners ever did. The Undercroft's back ways were our roads for twenty sealed years. You can move a great deal through a mountain everyone believes is shut. Now the seal's broken and the Deep Market pays rent to the Crown, and my people still keep those braziers fed. Habits outlive their reasons.",
       "next": "hub"
     },
     {
       "id": "swept",
-      "text": "...Coppin talks. *Twenty years* that floor stayed swept and the city calls it a mystery, as if the mountain did its own housekeeping. It was my people. Down the back ways, once a season, brooms and lamp-oil — my grandmother said you keep a road open by keeping it *swept*, and the Undercroft was always going to be needed again. Tell whoever you like. Nobody official will believe the rogues kept faith with the deep. That's rather the point of us.",
+      "text": "So Coppin talks. Twenty years that floor stayed swept, and the city calls it a mystery, as if the mountain did its own housekeeping. It was my people. Down the back ways, once a season, with brooms and lamp-oil. My grandmother said you keep a road open by keeping it *swept*, and the Undercroft was always going to be needed again. Tell whoever you like. Nobody official will believe the rogues kept faith with the deep.",
       "next": "hub"
     },
     {
       "id": "bye",
-      "text": "Shadows keep you. Leave by the ledge if you want Pike to revise his opinion of you upward."
+      "text": "Shadows keep you. Leave by the ledge and Pike will think better of you."
     },
     {
       "id": "plumbing",
-      "text": "So you have. Do you know what that makes you? ... No, truly — I'm asking. Even I don't have a word for the ones who carry it and come back. 'Colleague' will do until something quieter turns up.",
+      "text": "So you have. Do you know what that makes you? No, truly, I'm asking. Even I don't have a word for the ones who carry it and come back. Colleague will do until something quieter turns up.",
       "next": "hub"
     }
   ]

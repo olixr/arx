@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "You've done the queen's errand and walked the Marshal's line. One more, and it's the heaviest. The high passes are turning bold — trolls off the scree, worgs on the shepherds' shoulders. The Line holds because someone does the work. This season, I'm asking you.",
+      "text": "You've done the queen's errand and walked the Marshal's line. One more, and it's the heaviest. The high passes are turning bold: trolls off the scree, worgs on the shepherds' shoulders. The Line holds because someone does the work. This season, I'm asking you.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_silver_line" }],
       "choices": [
         { "text": "I'll clear the passes.", "next": "sworn" },

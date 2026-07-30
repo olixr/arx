@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Mind the wet ink — that's someone's inheritance drying. Welcome to Inks & Charts: deeds, charters, wills, and honest maps. And before you ask — yes, the maps are the interesting part. They are ALWAYS the interesting part.",
+      "text": "Mind the wet ink, that's someone's inheritance drying. Welcome to Inks & Charts. Deeds, charters, wills, and honest maps. And yes, before you ask, the maps are the interesting part. They are ALWAYS the interesting part.",
       "next": "hub"
     },
     {
@@ -37,22 +37,22 @@
     },
     {
       "id": "maps",
-      "text": "An honest map shows its ignorance. Mine have blank patches labeled *I have not been here, and neither has anyone I trust*. You would be amazed how rare that sentence is in this trade. A pretty map that guesses sends confident people into the Thornveil at dusk — three days' walk south-southwest, roughly, don't quote the roughly. The Guildhall buys my charts because they admit what they don't know.",
+      "text": "An honest map shows its ignorance. Mine have blank patches labeled *I have not been here, and neither has anyone I trust*. A map that guesses sends confident people into the Thornveil at dusk. Three days' walk south-southwest, roughly. Don't quote the roughly. The Guildhall buys my charts because they admit what they don't know.",
       "next": "hub"
     },
     {
       "id": "deeds",
-      "text": "Every deed on Lantern Row, half the mining claims on the Emberway, and the boundary rolls the Guildhall's records room and I politely fight about. Seventeen disputed stones between us. I'm right about sixteen. The seventeenth I defend purely on principle, because the day I concede a stone without a survey is the day my ink stops meaning anything.",
+      "text": "Every deed on Lantern Row, half the mining claims on the Emberway, and the boundary rolls that the Guildhall's records room and I fight over, politely. Seventeen disputed stones between us. I'm right about sixteen. The seventeenth I defend on principle. I'll concede it after a survey and not before.",
       "next": "hub"
     },
     {
       "id": "advice",
-      "text": "Keep your own chart. Mark it as you walk. A bought map shows where the cartographer was brave; yours shows where *you* were, and no one can sell it, steal it, or argue with it. When you've filled a whole province with your own footsteps, come back and tell me what my maps got wrong. I'll pay in ink and gratitude. Mostly ink.",
+      "text": "Keep your own chart. Mark it as you walk. A bought map only shows where the mapmaker was willing to go. Yours shows where *you* went. When you've filled a whole province with your own footsteps, come back and tell me what my maps got wrong. I'll pay in ink and gratitude. Mostly ink.",
       "next": "hub"
     },
     {
       "id": "bye",
-      "text": "Ink and luck. The blank patches are waiting for somebody — might as well be you."
+      "text": "Ink and luck. Come back with corrections."
     }
   ]
 }

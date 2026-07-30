@@ -12,17 +12,17 @@
  "nodes": [
   {
    "id": "warm",
-   "text": "Come to the fire, love — the Ring leaves a chill in new folk, takes half a day to shake. I'm *Iona*. I keep this hearth, and I'll teach you the first thing worth knowing out here: how to feed yourself.",
+   "text": "Come to the fire, love. The Ring leaves a chill in new folk. Takes half a day to shake. I'm *Iona*. I keep this hearth, and I'll teach you the first thing worth knowing out here: how to feed yourself.",
    "next": "forage"
   },
   {
    "id": "forage",
-   "text": "Easiest meal there is: the *berry bushes* along the brook, just east of here. Walk up and pick — they grow back quicker than you'd think. Keep a pocketful and you're never far from all right.",
+   "text": "Easiest meal there is: the *berry bushes* along the brook, just east of here. Walk up and pick. They grow back quicker than you'd think. Keep a pocketful and you're never far from all right.",
    "next": "cook"
   },
   {
    "id": "cook",
-   "text": "Now the proper lesson. Take these — {item:raw_chicken} — and hold them to my fire. Stand at the flames and cook. You'll know it's done by the smell. Every campfire in the world works the same as this one. Learn it here, use it everywhere.",
+   "text": "Now the proper lesson. Take these, {item:raw_chicken}, and hold them to my fire. Stand at the flames and cook. You'll know it's done by the smell. Every campfire in the world works the same as this one.",
    "hooks": [
     {
      "kind": "give",
@@ -34,7 +34,7 @@
   },
   {
    "id": "burn",
-   "text": "You'll likely burn the first one. Everyone does — the fire takes one as its fee. The second you'll eat. Off you go, and come see me whenever the pot's on.",
+   "text": "You'll likely burn the first one. Everyone does. The fire takes one as its fee. The second you'll eat. Off you go, and come see me whenever the pot's on.",
    "next": "hub"
   },
   {
@@ -53,12 +53,12 @@
   },
   {
    "id": "where",
-   "text": "South of the bridge, along the near bank. Berries, and the tall *fibre plants* — Fen wants those for twine — and *sageroot*, which any healer will thank you for. Take what you pass.",
+   "text": "South of the bridge, along the near bank. Berries, and the tall *fibre plants*. Fen the tinker wants those for twine. And *sageroot*, which any healer will thank you for. Take what you pass.",
    "next": "hub"
   },
   {
    "id": "farewell",
-   "text": "Eat before you train, sleep before you travel. Off you go now."
+   "text": "Get a meal in you before the yard, and a night's sleep before the road. Off you go now."
   }
  ]
 }

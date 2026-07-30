@@ -16,7 +16,7 @@
     },
     {
       "id": "sworn",
-      "text": "Good. I'll sleep in the barn till it's done — don't tell Tamsin why.",
+      "text": "Good. I'll sleep in the barn till it's done. Don't tell Tamsin why.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_herd_stands" }]
     },
     {

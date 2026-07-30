@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "An entry wants carrying. Silverfall keeps its own rolls, and old *Skarn* — last man out of the deep galleries — should hear this name spoken before he reads it. Would you go up the mountain?",
+      "text": "An entry wants carrying. Silverfall keeps its own rolls, and old *Skarn* should hear this name spoken before he reads it. He was last man out of the deep galleries. Would you go up the mountain?",
       "hooks": [{ "kind": "quest_offer", "quest": "names_in_the_registry" }],
       "choices": [
         { "text": "I'll carry it. Where's Silverfall?", "next": "sworn" },
@@ -15,12 +15,12 @@
     },
     {
       "id": "sworn",
-      "text": "Above the great falls, north and west — you'll hear the city before you see it. Skarn drinks where old soldiers drink. Ask for the man with the bad leg and the good memory.",
+      "text": "Above the great falls, north and west. You'll hear the city before you see it. Skarn drinks where old soldiers drink. Ask for the man with the bad leg.",
       "hooks": [{ "kind": "quest_accept", "quest": "names_in_the_registry" }]
     },
     {
       "id": "declined",
-      "text": "Entries keep. That is rather the point of them."
+      "text": "Very well. The entry will keep."
     }
   ]
 }

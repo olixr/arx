@@ -2,7 +2,7 @@
   "id": "cooper_dagny",
   "name": "Cooper Dagny",
   "title": "Of Hoops and Staves",
-  "examine": "Forearms like bent staves and a laugh you can hear over a mallet. Every barrel in the province is on a first-name basis with her.",
+  "examine": "Forearms like bent staves and a laugh you can hear over a mallet. There is not a cask on the High Road she has not had her hands in.",
   "disposition": "friendly",
   "model": {
     "kind": "humanoid",
@@ -25,8 +25,8 @@
     }
   ],
   "lines": [
-    "The Flagon's cellar, the smelter's quench tubs, every cask on the High Road — mine, mine, and mine. I'm the most important person you'll meet today and the least famous.",
-    "A barrel is just a tree taught to hold its drink.",
-    "Stig sends me his straightest staves and keeps the crooked ones for chairs. That's friendship, in wood."
+    "The Flagon's cellar, the smelter's quench tubs, every cask on the High Road. All mine. Nobody ever remembers the cooper.",
+    "Staves, hoops, a tight head. Get one of the three wrong and you're mopping.",
+    "Stig sends me his straightest staves and keeps the crooked ones for his chairs."
   ]
 }

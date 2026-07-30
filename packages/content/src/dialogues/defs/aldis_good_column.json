@@ -14,7 +14,7 @@
  "nodes": [
   {
    "id": "greet",
-   "text": "Gate's quiet. Your name's in the good column — the watch reads that book every shift.",
+   "text": "Gate's quiet. Your name's in the good column. The watch reads that book every shift.",
    "choices": [
     {
      "text": "Anything need doing?",
@@ -28,7 +28,7 @@
   },
   {
    "id": "work",
-   "text": "My rounds are covered. Folk with work to give carry a mark over their heads — go and ask. The gate manages.",
+   "text": "My rounds are covered. Folk with work to give carry a mark over their heads. Go and ask.",
    "next": "greet"
   },
   {

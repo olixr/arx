@@ -16,7 +16,7 @@
     },
     {
       "id": "closed",
-      "text": "The yard owes you wages. Take them. And — thank you. Subject's closed.",
+      "text": "The yard owes you wages. Take them. And thank you. Subject's closed.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_brothers_tools" }]
     }
   ]

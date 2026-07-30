@@ -10,12 +10,12 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Sit if you like. Stew's Signy's, bench is the guild's, the watching is mine. *Skarn.* I was the youngest pick on the crew that cut these galleries, and I'm the only one still drawing wages against that fact.",
+      "text": "Sit if you like. Stew's Signy's. The bench is the guild's. *Skarn.* Youngest pick on the crew that cut these galleries. The only one left now.",
       "next": "hub"
     },
     {
       "id": "hub",
-      "text": "Ask, then. Old men keep long stock.",
+      "text": "Ask, then.",
       "choices": [
         {
           "text": "You were here when the galleries fell?",
@@ -37,7 +37,7 @@
     },
     {
       "id": "fell",
-      "text": "Ninth day of the eleven it took the guild to raise the seal, I came out — last one through, on this same bad leg. The digmaster's tunnels came up under the east gallery quiet as a held breath, and the foreman — Grettir's own brother — put his crew behind him and the mountain in front of him and bought the rest of us the stair. _The count went up unmatched._ Twenty years, and now the door's open again, and here I sit. Somebody from that count should be present.",
+      "text": "Ninth day of the eleven it took the guild to raise the seal, I came out. Last one through, on this leg. The digmaster's tunnels came up under the east gallery, quiet. The foreman, Grettir's own brother, put his crew behind him and bought the rest of us the stair. _The count went up unmatched._ Twenty years. Now the door's open again. Here I sit. Somebody from that count should be present.",
       "choices": [
         {
           "text": "Grettir has the tools back. Three of them.",
@@ -58,31 +58,31 @@
     },
     {
       "id": "tools",
-      "text": "…Aye. Marked hafts. Guild stamps. Somewhere past the far warren, where nobody's swept in twenty years. If anyone ever clears that ground — bring whatever carries the mark to Grettir, at the yard. Not to me. I did my carrying already. His brother counts up there in the daylight. The daylight should get the homecoming.",
+      "text": "Aye. Marked hafts, guild stamps, somewhere past the far warren. Nobody's swept that ground in twenty years. If it ever clears, bring anything with the mark to Grettir at the yard. Not me. I did my carrying already.",
       "next": "hub"
     },
     {
       "id": "bought",
-      "text": "Best purchase ever made below this mountain, and I've watched Varga's scales twenty years. Drink to him at Signy's if you're the drinking kind. She knows the name. Everyone up there does. It's down HERE the remembering wants doing.",
+      "text": "Aye, he did. Drink to him at Signy's if you're the drinking kind. She knows the name. Everyone up there does.",
       "next": "hub"
     },
     {
       "id": "kobolds",
-      "text": "Not wicked. *Thorough.* They dig for their own reasons, on their own clock, and they were under this mountain before the guild ever chalked a line on it. The trouble, twenty years back — that was two thorough peoples meeting in the same seam. With no word for 'yours'. …I don't hate the little diggers. I watch them. There's a difference. The young picks won't learn it from anyone but me.",
+      "text": "Not wicked. *Thorough.* They dig for their own reasons, in their own time, and they were under this mountain before the guild ever chalked a line on it. The trouble twenty years back was two thorough peoples meeting in the same seam. No word for yours between them. I don't hate the little diggers. I watch them. There's a difference.",
       "next": "hub"
     },
     {
       "id": "watch",
-      "text": "Because everyone else hurries past it. The reeve has her ledgers, the traders have their scales, and the rubble line just sits there being the most important architecture in the Dawnlands. The day it moves, somebody who remembers the last time needs to be sitting right here to say so. That's the whole job. The stew is the pension.",
+      "text": "Because everyone else hurries past it. The reeve has her ledgers, the traders have their scales. The day that line moves, somebody who remembers the last time should be sitting here to say so. That's the whole job.",
       "next": "hub"
     },
     {
       "id": "bye",
-      "text": "Mind the line, pick. Everything down here is arithmetic, and the warren counts too."
+      "text": "Mind the line, pick."
     },
     {
       "id": "home",
-      "text": "... Shallow on the upstroke, one of them. His brother never fixed that either. Runs in families, bad habits. ... Thank you for carrying them up.",
+      "text": "Shallow on the upstroke, one of them. His brother never fixed that either. Runs in families, bad habits. Thank you for carrying them up.",
       "next": "hub"
     }
   ]

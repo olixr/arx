@@ -23,17 +23,17 @@
     },
     {
       "id": "report",
-      "text": "Quiet at the fire. Loud everywhere else. Warcamps on the rises, ruins that _wake after dusk_, stones out deep with names on them. We hold the lamplight. Past that, the road belongs to whoever's holding it.",
+      "text": "Quiet at the fire. Loud everywhere else. Warcamps on the rises, ruins that _wake after dusk_, stones out deep with names on them. We hold the lamplight. Past that, no promises.",
       "next": "watchpost"
     },
     {
       "id": "respect_camp",
-      "text": "That was *you*? Then the east road breathes for a season. The Watch pays in respect and not much else — you've got mine.",
+      "text": "That was *you*? Then the east road breathes for a season. The Watch pays in respect and not much else. You've got mine.",
       "next": "watchpost"
     },
     {
       "id": "respect_champion",
-      "text": "We heard the name went quiet. Camps grow back by spring; named things take longer. You bought the frontier a real breath. Fire's yours tonight.",
+      "text": "We heard the name went quiet. Camps grow back by spring. Named things take longer. Fire's yours tonight.",
       "next": "watchpost"
     }
   ]

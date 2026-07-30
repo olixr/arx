@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Peace at the top of the road, traveler. This is the *Silver Shrine* \u2014 the mother-flame of every lamp in the Dawnlands. You've walked past a dozen of its children to stand here.",
+      "text": "Peace at the top of the road, traveler. This is the *Silver Shrine*. The mother-flame of every lamp in the Dawnlands. You've walked past a dozen of its children to stand here.",
       "next": "hub"
     },
     {
@@ -43,17 +43,17 @@
     },
     {
       "id": "flame",
-      "text": "Older than the city. The shepherds kept it on this shore before the first terrace was cut \u2014 a fire against the dark that has never gone out. Every road lamp from here to the ford was first lit from a wick carried down this hill. That's the whole of it, truly: _the dark is large, and we pass the light along._",
+      "text": "Older than the city. The shepherds kept it on this shore before the first terrace was cut. A fire against the dark that has never gone out. Every road lamp from here to the ford was first lit from a wick carried down this hill. That's the whole of it, truly: _the dark is large, and we pass the light along._",
       "next": "hub"
     },
     {
       "id": "edda",
-      "text": "My elder sister. The family stubbornness went to her, with interest. Forty years ago she carried a wick down the mountain and planted it at the worst mile of the road \u2014 on purpose. 'The flame belongs where the dark is thickest, Sella. Not where the view is nice.' She still writes twice a year to check I haven't let the mother go out. I answer politely. Both times.",
+      "text": "My elder sister. The family stubbornness went to her, with interest. Forty years ago she carried a wick down the mountain and planted it at the worst mile of the road. On purpose. 'The flame belongs where the dark is thickest, Sella. Not where the view is nice.' She still writes twice a year to check I haven't let the mother go out. I answer politely. Both times.",
       "next": "hub"
     },
     {
       "id": "bless",
-      "text": "Then light it. \u2026There. The flame doesn't grant things. That isn't its work. It *remembers you asked* \u2014 at every lamp you pass, in every window at dusk, all the way down the mountain. Travelers say the road feels shorter afterward. I don't argue with them.",
+      "text": "Then light it. There. The flame doesn't grant things. That isn't its work. It *remembers you asked*, at every lamp you pass, in every window at dusk, all the way down the mountain. Travelers say the road feels shorter afterward. I don't argue with them.",
       "next": "hub"
     },
     {

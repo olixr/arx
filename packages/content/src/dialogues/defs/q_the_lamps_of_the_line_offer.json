@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Muster stands at too few, same as last season. I need the whole line walked — every sergeant's report, taken in person, bottom of the road to the top. You've done crown work. This is the older kind.",
+      "text": "Muster stands at too few, same as last season. I need the whole line walked: every sergeant's report, taken in person, bottom of the road to the top. You've done crown work. This is the older kind.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_lamps_of_the_line" }],
       "choices": [
         { "text": "I'll walk the line.", "next": "sworn" },
@@ -24,7 +24,7 @@
     },
     {
       "id": "sworn",
-      "text": "Hale, first waystation out of Dawnmead. Odessa at the long meadow. Brant at the fork. Edda at the top — the *Last Lamp*. Say I sent you and nothing else. They'll know.",
+      "text": "Hale, first waystation out of Dawnmead. Odessa at the long meadow. Brant at the fork. Edda at the top, the *Last Lamp*. Say I sent you and nothing else. They'll know.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_lamps_of_the_line" }]
     },
     {

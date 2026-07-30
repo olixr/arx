@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "I'm going to say a thing I've only said twice, and I restocked for both of them after. There's a den in the deep wood off the hunter's trail. A matriarch runs it — dire, old, and every pack for miles answers her.",
+      "text": "I'm going to say a thing I've only said twice, and I restocked for both of them after. There's a den in the deep wood off the hunter's trail. A matriarch runs it: dire, old, and every pack for miles answers her.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_matriarch" }],
       "choices": [
         { "text": "You want her dead.", "next": "dead" },
@@ -16,7 +16,7 @@
     },
     {
       "id": "two",
-      "text": "One's lying in front of the den. The other doesn't hunt anymore. _I'm not selling you a story with a good ending. I'm telling you the price._",
+      "text": "One's lying in front of the den. The other doesn't hunt anymore. _Know that before you say yes._",
       "choices": [
         { "text": "I'll pay it. She dies.", "next": "dead" },
         { "text": "I like my straps and my life.", "next": "declined" }
@@ -24,7 +24,7 @@
     },
     {
       "id": "dead",
-      "text": "Break the packs between you and the den first, or you fight all of them at her door. Then her. Bring the pelt whole — not for coin. I'll work it into something worth what it cost.",
+      "text": "Break the packs between you and the den first, or you fight all of them at her door. Then her. Bring the pelt whole, not for coin. I'll work it into something worth what it cost.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_matriarch" }]
     },
     {

@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Quiet night — first in a while. The camp out there went dark, and word says you did the darkening.",
+      "text": "Quiet night. First in a while. The camp out there went dark, and word says that was you.",
       "choices": [
         { "text": "It's done.", "next": "done" },
         { "text": "Stay sharp anyway.", "next": "sharp" },

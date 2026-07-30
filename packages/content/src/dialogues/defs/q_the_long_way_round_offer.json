@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "You! You walk, don't you — everyone walks. I've two roads in my legs today and there's a *third*: word for Hale at the west post, then the Silver Flagon, up the capital. Can you take it? Say yes fast.",
+      "text": "You! You walk, don't you? Everyone walks. I've two roads in my legs today and there's a *third*: word for Hale at the west post, then the Silver Flagon, up the capital. Can you take it? Say yes fast.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_long_way_round" }],
       "choices": [
         { "text": "Yes. Slow down. Who first?", "next": "sworn" },
@@ -15,12 +15,12 @@
     },
     {
       "id": "sworn",
-      "text": "Hale first — Waykeeper, west road, lamp's always lit. Then Ragna at the Flagon. Don't ask her anything, she hears enough. I owe you! Probably a secret!",
+      "text": "Hale first. Waykeeper, west road, lamp's always lit. Then Ragna at the Flagon. Don't ask her anything, she hears enough. I owe you! Probably a secret!",
       "hooks": [{ "kind": "quest_accept", "quest": "the_long_way_round" }]
     },
     {
       "id": "declined",
-      "text": "No time to be sad about it — third road, here I come—"
+      "text": "No time to be sad about it. Third road, here I come!"
     }
   ]
 }

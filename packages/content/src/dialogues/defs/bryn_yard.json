@@ -26,13 +26,13 @@
     },
     {
       "id": "praise",
-      "text": "So it HAS gone quiet. Well cut, waker. You opened the chest too, I hope — never leave a chest shut. Here — {item:arrow}, thirty of them. That's as near a medal as this village mints. When Rowan sends you east, you'll do.",
+      "text": "So it HAS gone quiet. Well cut, waker. You opened the chest too, I hope. Never leave a chest shut. Here: {item:arrow}, thirty of them. That's as near a medal as this village gives. When Rowan sends you east, you'll do.",
       "hooks": [{ "kind": "give", "item": "arrow", "qty": 30 }],
       "next": "hub"
     },
     {
       "id": "beyond",
-      "text": "Inside the hedgerows, nothing will touch you. Past them it gets braver by the mile — stray wolves first, then camps with watch-fires, and out where the maps give up, _things with names_. The wayfarers' lanterns are the only friendly lights out there. Distance is the only warning the wild gives. Respect it.",
+      "text": "Inside the hedgerows, nothing will touch you. Past them it gets braver by the mile: stray wolves first, then camps with watch-fires, and out where the maps give up, _things with names_. The wayfarers' lanterns are the only friendly lights out there. Mind your distance.",
       "next": "hub"
     },
     {

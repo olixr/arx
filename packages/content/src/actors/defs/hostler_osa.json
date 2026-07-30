@@ -2,7 +2,7 @@
   "id": "hostler_osa",
   "name": "Osa",
   "title": "Hostler of the Caravanserai",
-  "examine": "Sixty-some years, most of them opinions. Mules trust her on sight, which is the best character reference there is.",
+  "examine": "Sixty-some years, most of them opinions. Mules trust her on sight.",
   "disposition": "friendly",
   "model": {
     "kind": "humanoid",
@@ -33,8 +33,8 @@
     }
   ],
   "lines": [
-    "Beasts watered, wheels mended, advice free and worth every penny.",
-    "I kept an inn at the ford for thirty years. My daughter keeps it now \u2014 Dunna, the Wanderer's Rest. Her stew wants thyme. You may quote me.",
-    "Walked the High Road at sixty, alone, uphill. Everyone said the road would kill me. The road and I had a nicer conversation than that."
+    "Beasts watered, wheels mended, advice free.",
+    "I kept an inn at the ford for thirty years. My daughter keeps it now, Dunna, at the Wanderer's Rest. Her stew wants thyme.",
+    "Walked the High Road at sixty, alone. Everyone said it would kill me. It didn't."
   ]
 }

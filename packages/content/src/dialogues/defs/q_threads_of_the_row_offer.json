@@ -6,30 +6,30 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "You sew. I can see it in how you stand near the looms — respectfully. Very well: I have a commission I decline to describe and a shortage I do not. Eight lengths of gloomsilk thread. Four bolts of linen.",
+      "text": "You sew. I can see it in how you stand near the looms. Respectfully. Very well. I have a commission I won't describe, and a shortage: eight lengths of gloomsilk thread, four bolts of linen.",
       "hooks": [{ "kind": "quest_offer", "quest": "threads_of_the_row" }],
       "choices": [
         { "text": "Gloomsilk. That means the dead.", "next": "dead" },
         { "text": "I'll bring the lot.", "next": "sworn" },
-        { "text": "Commission elsewhere, Master Weaver.", "next": "declined" }
+        { "text": "Find someone else, Master Weaver.", "next": "declined" }
       ]
     },
     {
       "id": "dead",
-      "text": "It means the crypts and the deep spiders, yes. Grave-spun, cold to the hand, drinks the light — and there is no substitute, which is why the commission pays. Beauty is labor. Some labor is dark.",
+      "text": "It means the crypts and the deep spiders, yes. Grave-spun, cold to the hand. There is no substitute, which is why the commission pays. Beauty is labor. Some labor is dark.",
       "choices": [
         { "text": "Then I'll labor.", "next": "sworn" },
-        { "text": "Commission elsewhere.", "next": "declined" }
+        { "text": "Find someone else.", "next": "declined" }
       ]
     },
     {
       "id": "sworn",
-      "text": "The linen you may weave from honest scrap like anyone else. Bring me both, and the Row will owe you — and the Row pays its debts in cloth worth wearing.",
+      "text": "The linen you may weave from honest scrap like anyone else. Bring me both, and the Row will pay you in cloth worth wearing.",
       "hooks": [{ "kind": "quest_accept", "quest": "threads_of_the_row" }]
     },
     {
       "id": "declined",
-      "text": "Hm. The shortage remains, and shortages, unlike commissions, do not take refusals."
+      "text": "Hm. The shortage remains. It does not care that you refused."
     }
   ]
 }

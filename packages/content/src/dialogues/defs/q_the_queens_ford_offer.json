@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "My husband sends you at brigands; I have a smaller sum. I'm ford-born — Amberford, before the arithmetic found me. Two people there are owed a word I can't deliver without it becoming a *procession*. Will you carry it plainly?",
+      "text": "My husband sends you at brigands; I have a smaller sum. I'm ford-born, Amberford, before the arithmetic found me. Two people there are owed a word I can't deliver without it becoming a *procession*. Will you carry it plainly?",
       "hooks": [{ "kind": "quest_offer", "quest": "the_queens_ford" }],
       "choices": [
         { "text": "I'll carry it.", "next": "sworn" },
@@ -16,7 +16,7 @@
     },
     {
       "id": "who",
-      "text": "Peld taught me the river's moods and never once charged me the crossing. Goodwife Perl's orchard fed me fruit that — audit the phrasing carefully — wasn't strictly mine. Childhood debts. The interest compounds.",
+      "text": "Peld taught me the river's moods and never once charged me the crossing. Goodwife Perl's orchard fed me fruit that, audit the phrasing carefully, wasn't strictly mine. Childhood debts. The interest compounds.",
       "choices": [
         { "text": "Then I'll settle them.", "next": "sworn" },
         { "text": "I'm no messenger.", "next": "declined" }

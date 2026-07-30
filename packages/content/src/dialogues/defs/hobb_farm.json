@@ -5,7 +5,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Mind the latch — Bess leans on it when she's bored. Something you need?",
+      "text": "Mind the latch. Bess leans on it when she's bored. Something you need?",
       "choices": [
         { "text": "What do the animals give?", "next": "produce" },
         { "text": "Mind if I practice my swings out here?", "next": "practice" },
@@ -15,12 +15,12 @@
     },
     {
       "id": "produce",
-      "text": "Cow gives *milk* if you walk up gentle. Bess allows it, mostly. Hens drop *eggs* — check the coop floor, mornings are best. Berries by the brook. That's breakfast, and nothing had to bleed for it. Enjoy that while it lasts.",
+      "text": "Cow gives *milk* if you walk up gentle. Bess allows it, mostly. Hens drop *eggs*. Check the coop floor, mornings are best. Berries by the brook. That's breakfast, and nothing had to bleed for it.",
       "next": "hub"
     },
     {
       "id": "practice",
-      "text": "Not on my animals. The *old shed* past the ford has rats in it — Bryn will tell you the same. If a hen squares up to you anyway, pay her no mind. She does that.",
+      "text": "Not on my animals. The *old shed* past the ford has rats in it. Bryn will tell you the same. If a hen squares up to you anyway, pay her no mind. She does that.",
       "next": "hub"
     },
     {
@@ -30,7 +30,7 @@
     },
     {
       "id": "farewell",
-      "text": "Aye. It's a good little patch. — Latch! Sorry. Habit."
+      "text": "Aye. It's a good little patch. Latch! Sorry. Habit."
     }
   ]
 }

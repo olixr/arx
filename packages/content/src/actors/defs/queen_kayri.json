@@ -2,7 +2,7 @@
   "id": "queen_kayri",
   "name": "Queen Kayri",
   "title": "The Silver Line",
-  "examine": "Pale as fresh snow on the Crown terrace, and never more than a glance from the King's side. She watches a room the way a ferryman watches the water — pleasantly, and missing nothing.",
+  "examine": "Pale as fresh snow on the Crown terrace, and never more than a glance from the King's side. She watches a room the way a ferryman watches water, pleasantly and missing nothing.",
   "disposition": "neutral",
   "protection": "invulnerable",
   "combat": {
@@ -43,7 +43,7 @@
   ],
   "lines": [
     "I grew up at the ford, counting toll wagons. I married up the mountain and now I count everything else.",
-    "The court gave us matching thrones and Aeriex had Stig move them together the same week. A hand's reach, he said, or what's the point of two.",
-    "Aeriex signs the charters. I read them first. That is the whole secret of the Silver Line, and you may keep it."
+    "The court gave us matching thrones and Aeriex had Stig the carpenter move them together the same week. A hand's reach, he said, or what's the point of two.",
+    "Aeriex signs the charters. I read them first. That is the whole secret of the Silver Line."
   ]
 }

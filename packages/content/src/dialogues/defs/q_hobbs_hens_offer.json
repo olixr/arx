@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Market day's coming and I'm eight eggs short. The hens know it, too. They lay where they please — coop, mostly. Long grass by the pasture when they're feeling clever. Fetch me eight?",
+      "text": "Market day's coming and I'm eight eggs short. The hens know it, too. They lay where they please. Coop, mostly. Long grass by the pasture, some days. Fetch me eight?",
       "hooks": [{ "kind": "quest_offer", "quest": "hobbs_hens" }],
       "choices": [
         { "text": "I'll find your eggs.", "next": "sworn" },

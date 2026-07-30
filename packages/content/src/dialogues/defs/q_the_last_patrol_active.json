@@ -6,17 +6,17 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "{item:weathered_letter} Give it here. ...",
+      "text": "{item:weathered_letter} Give it here.",
       "next": "read"
     },
     {
       "id": "read",
-      "text": "'Back before the thaw.' And the oath at the bottom, written small, the way you write a thing you mean. ... This is the winter patrol. Lost before my time. Not before my grandmother's.",
+      "text": "'Back before the thaw.' And the oath at the bottom, written small, the way you write a thing you mean. This is the winter patrol. Lost before my time. Not before my grandmother's.",
       "next": "ask"
     },
     {
       "id": "ask",
-      "text": "The dead that walk where they fell don't get to keep walking. The watch and their shieldmen — put them to rest, and I'll enter the letter in the rolls with the patrol marked home. That's the whole of what the order can still do for them. It's not nothing.",
+      "text": "The dead that walk where they fell don't get to keep walking. Put the watch and their shieldmen to rest, and I'll enter the letter in the rolls with the patrol marked home. That's the whole of what the order can still do for them. It's not nothing.",
       "choices": [
         { "text": "I'll see them to rest.", "next": "sworn" },
         { "text": "Where did they fall?", "next": "where" }
@@ -24,7 +24,7 @@
     },
     {
       "id": "where",
-      "text": "Where the old dead stand now — the ruined tower on the first climb keeps its garrison after dark, and the deeper crypts keep the rest. You'll know the watch by their shields. They kept those, at least.",
+      "text": "Where the old dead stand now. The ruined tower on the first climb keeps its garrison after dark, and the deeper crypts keep the rest. You'll know the watch by their shields. They kept those, at least.",
       "next": "sworn"
     },
     {

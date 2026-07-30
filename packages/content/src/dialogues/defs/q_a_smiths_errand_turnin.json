@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "paid",
-      "text": "Weighed true. That'll pour clean. You fetch like someone who's worked — take the wage.",
+      "text": "Weighed true. That'll pour clean. You fetch like someone who's worked. Take the wage.",
       "hooks": [{ "kind": "quest_turnin", "quest": "a_smiths_errand" }]
     }
   ]

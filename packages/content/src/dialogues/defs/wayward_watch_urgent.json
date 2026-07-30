@@ -29,12 +29,12 @@
     },
     {
       "id": "remark",
-      "text": "Same place, louder. Your chart remembers.",
+      "text": "Same place, louder. It's on your chart.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "stay",
-      "text": "And give them the mile? A post is a promise. We stay.",
+      "text": "And give them the mile? No. We stay.",
       "next": "hub"
     },
     {

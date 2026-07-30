@@ -15,7 +15,7 @@
     },
     {
       "id": "quote",
-      "text": "He turns the ledger so you can watch the arithmetic happen.",
+      "text": "He turns the ledger so you can see the figure.",
       "hooks": [{ "kind": "fine", "faction": "reavers", "quote": true }],
       "next": "greet"
     },

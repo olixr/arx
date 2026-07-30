@@ -2,7 +2,7 @@
   "id": "waykeeper_brant",
   "name": "Sergeant Brant",
   "title": "Waykeeper Sergeant",
-  "examine": "Youngest sergeant on the marches — promoted the night the fork waystation held against Redmask Orla's crew. Still writes his mother that it's quiet out here.",
+  "examine": "Youngest sergeant on the marches, promoted the night the fork waystation held against Redmask Orla's crew. Still writes his mother that it's quiet out here.",
   "disposition": "neutral",
   "protection": "invulnerable",
   "model": {
@@ -18,7 +18,7 @@
     "offhand": "oak_kiteshield"
   },
   "lines": [
-    "Redmask's crew tried the fork twice. There isn't going to be a third — she counts as well as we do.",
+    "Redmask Orla's crew tried the fork twice. No third try yet. She counts as well as we do.",
     "See a lamp burning where no lamp should be? Old line tower. Shelter by day. LEAVE by dusk.",
     "It is quiet out here. Between things."
   ],

@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "You kept the floor's secret. So — a question for you: do you know what a person who keeps secrets is worth in this city?",
+      "text": "You kept the floor's secret. So, a question for you: do you know what a person who keeps secrets is worth in this city?",
       "hooks": [{ "kind": "quest_offer", "quest": "a_quiet_word" }],
       "choices": [
         { "text": "Tell me.", "next": "worth" },
@@ -24,7 +24,7 @@
     },
     {
       "id": "sworn",
-      "text": "Mind the alley by the bank wall. Or don't — finding the other way in would also tell me something.",
+      "text": "Mind the alley by the bank wall. Or don't. Finding the other way in would also tell me something.",
       "hooks": [{ "kind": "quest_accept", "quest": "a_quiet_word" }]
     },
     {

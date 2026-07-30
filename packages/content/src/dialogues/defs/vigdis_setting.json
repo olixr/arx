@@ -10,12 +10,12 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Welcome to the Silver Setting. Touch anything you like — the cases are locked and I enjoy watching people find that out gracefully.",
+      "text": "Welcome to the Silver Setting. The cases are locked. Ask me and I'll open one.",
       "next": "hub"
     },
     {
       "id": "hub",
-      "text": "Browsing, buying, or fishing for stories? All three are respectable.",
+      "text": "Browsing, buying, or after stories?",
       "choices": [
         {
           "text": "What comes off your bench?",
@@ -37,7 +37,7 @@
     },
     {
       "id": "work",
-      "text": "Rings, settings, seals, circlets — the mountain made small enough to carry. Balla up at the Grand Forge makes the mountain *useful*; I make it beautiful. We've argued thirty years over which is harder. Neither of us wants to win. My furnace is the smallest flame on this mountain, and my tolerances would shame a pour-master's.",
+      "text": "Rings, settings, seals, circlets. Small work, held to closer measures than anything else on this mountain. My furnace is the smallest flame up here. Balla up at the Grand Forge makes the mountain useful. I make it beautiful. Thirty years we've argued over which is harder.",
       "choices": [
         {
           "text": "You've made things for the Crown?",
@@ -51,17 +51,17 @@
     },
     {
       "id": "stamp",
-      "text": "Runa's stamp or no sale — my one commandment. A stamped bar has a history: this vein, this pour, this weight, witnessed. Jewelry is *trust you can wear*; set a ring in rumor-silver and the whole shop's word debases with it. If someone in an alley offers you mountain silver without a stamp, congratulations — you've met the Rookery, and you should count your fingers after the handshake.",
+      "text": "Runa's stamp or no sale. That's my one commandment. Runa keeps the assay counter, and her stamp says a bar has a history: this vein, this pour, this weight, witnessed. Set one ring in unstamped silver and the whole shop's word goes with it. If a stranger in an alley offers you mountain silver without a stamp, you've met the Rookery. Count your fingers after the handshake.",
       "next": "hub"
     },
     {
       "id": "crown",
-      "text": "The Queen's circlet — she asked for *plain*, and making plain look inevitable is the hardest work I've done. The toll-house seal at the ford came off this bench too; every stamped wagon south of here answers to a die I cut. And once, a matched pair of rings for the King, who paid full price and waited his turn behind a miner buying a wedding band. That's the Line for you.",
+      "text": "The Queen's circlet. She asked for *plain*, and plain is the hardest work I've done. There's nowhere for a flaw to hide. The toll-house seal at the ford came off this bench too; every stamped wagon south of here answers to a die I cut. And once, a matched pair of rings for the King, who paid full price and waited his turn behind a miner buying a wedding band. That's the Line for you.",
       "next": "hub"
     },
     {
       "id": "browse",
-      "text": "The cases, then. Everything stamped, everything priced, everything exactly what it claims — the only shop on the mountain where that's the *whole* inventory.",
+      "text": "The cases, then. Everything stamped, everything priced, everything exactly what it claims.",
       "hooks": [
         {
           "kind": "shop",
@@ -71,7 +71,7 @@
     },
     {
       "id": "bye",
-      "text": "Shine on. And do look at the Row's lamps on your way out — I polish my window so they have something to admire."
+      "text": "Shine on. And have a look at the Row's lamps on your way out."
     }
   ]
 }

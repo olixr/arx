@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Counter's for weighing, not leaning. State your business or state your curiosity — I process both, in that order.",
+      "text": "Counter's for weighing, not leaning. State your business.",
       "next": "hub"
     },
     {
@@ -37,17 +37,17 @@
     },
     {
       "id": "assay",
-      "text": "Every bar the smelter pours crosses this counter. Weighed. Tested. Stamped. Every tenth goes to the tithe vault for the Crown. The stamp is the mountain's word — Vigdis won't touch silver without it, the bank won't vault it. An unstamped bar isn't money. It's a heavy rumor.",
+      "text": "Every bar the smelter pours crosses this counter. Weighed. Tested. Stamped. Every tenth goes to the tithe vault for the Crown. The stamp is the mountain's word. Vigdis won't touch silver without it. The bank won't vault it.",
       "next": "hub"
     },
     {
       "id": "vault",
-      "text": "The Crown's tenth, until the quarter-day wagon carries it up to the bank under guard. One vault. One key. One me. I've caught Rookery people *admiring* the lock twice. Nothing taken, either time — whatever arrangement the Magpie keeps with the castle, she keeps it. I keep a second lock anyway.",
+      "text": "The Crown's tenth, until the quarter-day wagon carries it up to the bank under guard. One vault, one key, and I hold the key. I've caught Rookery people at the lock twice. Nothing taken, either time. Whatever arrangement the Magpie has with the castle, she's kept it. I keep a second lock anyway.",
       "next": "hub"
     },
     {
       "id": "bribe",
-      "text": "Four times. Twice in coin. Once in silver. Once in a very good pie. All four assays came back exact. The pie went back with one slice gone. I'm precise. Not made of stone.",
+      "text": "Four times. Twice in coin. Once in silver. Once in a very good pie. All four assays came back exact. The pie went back with one slice gone.",
       "next": "hub"
     },
     {

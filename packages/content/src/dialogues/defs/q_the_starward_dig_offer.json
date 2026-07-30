@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Look at this chart. The kobold tunnels don't wander — they aim. Straight line to the deep chamber where the star-stone sits. I don't deal in why. I deal in galleries, and I want mine back working.",
+      "text": "Look at this chart. The kobold tunnels run straight for the deep chamber where the star-stone sits. I don't deal in why. I deal in galleries, and I want mine back working.",
       "hooks": [{ "kind": "quest_offer", "quest": "the_starward_dig" }],
       "choices": [
         { "text": "I'll clear the front.", "next": "sworn" },
@@ -16,7 +16,7 @@
     },
     {
       "id": "chamber",
-      "text": "The star-stone. And a nest — something with more legs than a work crew. The sweepers won't pass the junction anymore, which tells you the sweepers are sensible.",
+      "text": "The star-stone. And a nest, something with more legs than a work crew. The sweepers won't pass the junction anymore. Sensible of them.",
       "choices": [
         { "text": "I'll deal with all of it.", "next": "sworn" },
         { "text": "Not my depth.", "next": "declined" }
@@ -24,7 +24,7 @@
     },
     {
       "id": "sworn",
-      "text": "Clear the diggers, clear the nest, then cut me six of silver off the deep lodes so the book shows the galleries pay. Take a light past the junction. That's not advice, it's policy.",
+      "text": "Clear the diggers, clear the nest, then cut me six of silver off the deep lodes so the book shows the galleries pay. Take a light past the junction. That's policy.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_starward_dig" }]
     },
     {

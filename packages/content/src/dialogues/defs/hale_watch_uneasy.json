@@ -14,7 +14,7 @@
           "forbids": ["world:bounty_open"]
         },
         {
-          "text": "Say it again — where?",
+          "text": "Say it again. Where?",
           "next": "remark",
           "requires": ["world:bounty_open"]
         },
@@ -24,17 +24,17 @@
     },
     {
       "id": "mark",
-      "text": "There's your mark. The post can't leave the lamp, so the errand's yours. Bring me back a shorter ledger.",
+      "text": "There's your mark. The post can't leave the lamp, so the errand's yours.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "remark",
-      "text": "Chart holds the mark. My patience holds less.",
+      "text": "The mark's on your chart. It hasn't moved.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "who",
-      "text": "Fires say brigand, tracks say more than four. Past that I'd be inventing, and I don't invent on the road.",
+      "text": "Fires say brigand, tracks say more than four. Past that I'd be guessing.",
       "next": "hub"
     },
     {

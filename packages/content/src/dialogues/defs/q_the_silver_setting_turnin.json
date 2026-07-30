@@ -11,7 +11,7 @@
     },
     {
       "id": "closed",
-      "text": "The metal takes the mark. In three hundred years someone will hold what this becomes and know it was made honestly — that's you in the provenance now, unnamed but weighed. The ring is yours: my work, your silver's first cousin. Wear it somewhere Runa can see.",
+      "text": "The metal takes the mark. In three hundred years someone will hold what this becomes and know it was made honestly. Your hands are part of that now. The ring is yours: my work, set in your silver. Wear it.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_silver_setting" }]
     }
   ]

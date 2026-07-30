@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Guild yard \u2014 mind the stock, the pillars bite. Petra, master mason. Every course of every terrace you climbed today was guild work, so in a manner of speaking you've been standing on my family since the gate.",
+      "text": "Guild yard. Mind the stock, the pillars bite. Petra, master mason. Every course of every terrace you climbed today was guild work. Most of it my family's cutting.",
       "next": "hub"
     },
     {
@@ -37,22 +37,22 @@
     },
     {
       "id": "seal",
-      "text": "First pick, my own swing. The Warden gave the order, but the guild insisted the breaking be ours \u2014 my grandfather helped SET those stones, after the trouble took the deep crews. Twenty years the guild held that seal like a held breath. Breaking your own grandfather's best work with his own initials under your pick... there's no word for that feeling. 'Family trade' is as close as I've got.",
+      "text": "First pick, my own swing. The Warden gave the order, but the guild insisted the breaking be ours. My grandfather helped SET those stones, after the trouble took the deep crews. Twenty years the guild kept that seal pointed and tight. His initials were under my pick when I swung. I don't have a word for what that is. 'Family trade' is as close as I've got.",
       "next": "hub"
     },
     {
       "id": "below",
-      "text": "The old works, standing. Every bench where the crews left it, the stock still racked, one brazier the guild's kept fed by way of the ledge crack all these years \u2014 don't ask, guild secret, the answer's 'stubbornness'. And the market floor... swept. Twenty years sealed, and swept. Kobolds don't sweep. We put it in the report and none of us has mentioned it since, which tells you what the guild thinks of it.",
+      "text": "The old works, standing. Every bench where the crews left it, the stock still racked, one brazier the guild's kept fed by way of the ledge crack all these years. Don't ask. Guild secret. The answer is stubbornness. And the market floor was swept. Twenty years sealed, and swept. Kobolds don't sweep. We put it in the report and none of us has mentioned it since, which tells you what the guild thinks of it.",
       "next": "hub"
     },
     {
       "id": "guild",
-      "text": "The Masons raised the terraces in my great-great-grandmother's time \u2014 cut the stair, hung the arches, taught the mountain to hold a city. The guild law is one line: _stone outlasts the reasons._ Build so that when the reasons are forgotten, the work still deserves to stand. The Undercroft was our finest hour twice now \u2014 once building it, once sealing it. We'll see what the third time asks.",
+      "text": "The Masons raised the terraces in my great-great-grandmother's time. Cut the stair, hung the arches. The guild law is one line: _stone outlasts the reasons._ Build so the work still deserves to stand after the reasons are forgotten. The Undercroft was guild work twice over, the building and the sealing.",
       "next": "hub"
     },
     {
       "id": "bye",
-      "text": "Mind the edge on the stair \u2014 guild-cut, but gravity's not a member."
+      "text": "Mind the edge on the stair."
     }
   ]
 }

@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "paid",
-      "text": "The road reports quiet and the reaver's name is off the books. Good work, plainly done. My grandfather's grandfather paid the shepherds' debts with quarry wages — I pay road-work with the treasury. Same bargain, better coat.",
+      "text": "The road reports quiet and the reaver's name is off the books. Good work, plainly done. My grandfather's grandfather paid the shepherds' debts with quarry wages. I pay road-work with the treasury. Same bargain.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_kings_peace" }]
     }
   ]

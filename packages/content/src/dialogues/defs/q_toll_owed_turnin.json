@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "paid",
-      "text": "Counted once — the Company trusts road-friends to the coin. Your column improves.",
+      "text": "Counted once. The Company trusts road-friends to the coin. Your column improves.",
       "hooks": [{ "kind": "quest_turnin", "quest": "toll_owed" }]
     }
   ]

@@ -6,7 +6,7 @@
   "nodes": [
     {
       "id": "paid",
-      "text": "Landed clean — Calder's silence travels faster than most men's letters. Your name moves columns. Spend it wisely or don't; it spends either way.",
+      "text": "Landed clean. Calder's silence travels faster than most men's letters. Your name moves columns now.",
       "hooks": [{ "kind": "quest_turnin", "quest": "the_red_mark" }]
     }
   ]

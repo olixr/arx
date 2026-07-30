@@ -10,12 +10,12 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "You're new! I know everyone, so I'd know. I'm *Nib* \u2014 courier. Official. Mostly official. Message running, gate to gate, six sweeps a day, and I see EVERYTHING, which is a professional obligation and not nosiness, whatever Captain Aldis's face says.",
+      "text": "You're new! I know everyone, so I'd know. I'm *Nib*. Courier. Official. Mostly official. Message running, gate to gate, six sweeps a day, and I see EVERYTHING, which is my job and not nosiness, whatever Captain Aldis's face says.",
       "next": "hub"
     },
     {
       "id": "hub",
-      "text": "Want to know something? I always want to tell something.",
+      "text": "What do you want to know? I know loads.",
       "choices": [
         {
           "text": "Where is everyone this time of day?",
@@ -37,22 +37,22 @@
     },
     {
       "id": "where",
-      "text": "Mornings: Bretta's hammering, Merra's at her Round stall, Tamsin's in the fields, and Ansel's dusting the book. Midday: everyone eats \u2014 inn if they're social, benches if they're Hask. Evenings: Garton watches his pond, Tilo sits on the chair-that-isn't-finished, and the Captain walks her wall like the wall might wander off. I could draw you a chart. I HAVE a chart.",
+      "text": "Mornings: Bretta's hammering, Merra's at her Round stall, Tamsin's in the fields, and Ansel's dusting the book. Midday: everyone eats. Inn if they're social, benches if they're Hask. Evenings: Garton watches his pond, Tilo sits on the chair-that-isn't-finished, and the Captain walks her wall. I could draw you a chart. I HAVE a chart.",
       "next": "hub"
     },
     {
       "id": "story",
-      "text": "Came in on a caravan when I was little \u2014 fell asleep in the flour sacks at the back, woke up famous. Nobody came looking. Dunna said the box room was doing nothing anyway, Merra started 'accidentally' making too much breakfast, and Tilo made my satchel with my name burnt inside. So now I'm from here. Towns get to just DECIDE that, turns out. It's the best rule anywhere.",
+      "text": "Came in on a caravan when I was little. Fell asleep in the flour sacks at the back, woke up famous. Nobody came looking. Dunna said the box room was doing nothing anyway, Merra started 'accidentally' making too much breakfast, and Tilo made my satchel with my name burnt inside. So now I'm from here. Towns get to just DECIDE that, turns out. It's the best rule anywhere.",
       "next": "hub"
     },
     {
       "id": "seen",
-      "text": "Today? Two caravans in from the north gate talking about the mountain's cellar being open \u2014 the guards went all quiet-voiced about it, which means it's INTERESTING. Peld's bell rang itself at dawn again. And Perl's brindle cow was standing at the orchard gate just LOOKING at it. Working the latch out. I gave her a week.",
+      "text": "Today? Two caravans in from the north gate talking about the mountain's cellar being open. The guards went all quiet-voiced about it, which means it's INTERESTING. Peld's bell rang itself at dawn again. And Perl's brindle cow was standing at the orchard gate just LOOKING at it. Working the latch out. I gave her a week.",
       "next": "hub"
     },
     {
       "id": "bye",
-      "text": "Can't stop, won't stop! If anyone asks, you didn't see which way I went \u2014 professional courtesy!"
+      "text": "Can't stop! If anyone asks, you didn't see which way I went!"
     }
   ]
 }

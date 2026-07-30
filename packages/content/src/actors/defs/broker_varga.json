@@ -2,7 +2,7 @@
   "id": "broker_varga",
   "name": "Varga",
   "title": "Ore Broker",
-  "examine": "Scales calibrated to the grain, eyes calibrated finer. Every barrow of deep ore crosses her counter before it sees daylight.",
+  "examine": "Scales true to the grain, and an eye truer. Every barrow of deep ore crosses her counter before it sees daylight.",
   "disposition": "friendly",
   "model": {
     "kind": "humanoid",
@@ -38,8 +38,8 @@
     }
   ],
   "lines": [
-    "Ore bought, ore sold, ore weighed in front of you. The dark keeps honest scales \u2014 nothing to distract them.",
-    "Bursar Odele takes my ledger up the stair every night. The bank and I have never disagreed by so much as a pebble. We're both very proud and neither of us says so.",
+    "Ore bought, ore sold, weighed in front of you. Nothing down here to distract a scale.",
+    "Bursar Odele takes my ledger up the stair every night. We have never disagreed by so much as a pebble.",
     "Mithril? Adamant? Walk the galleries with your own pick. Starfall? Walk faster than the spider."
   ],
   "shop": "varga_ore"

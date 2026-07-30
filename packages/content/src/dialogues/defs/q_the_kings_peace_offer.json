@@ -24,7 +24,7 @@
     },
     {
       "id": "sworn",
-      "text": "Camps first, archers included. Then whoever keeps their shares — there's always one. The Crown pays when the road is quiet, not before.",
+      "text": "Camps first, archers included. Then whoever keeps their shares. There's always one. The Crown pays when the road is quiet, not before.",
       "hooks": [{ "kind": "quest_accept", "quest": "the_kings_peace" }]
     },
     {

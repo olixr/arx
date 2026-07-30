@@ -60,8 +60,8 @@ what makes them shine). Everyone else speaks plainly, in their own rhythm.
 - Barks: one short sentence, present tense, said in passing.
 
 ### Ground every name
-First mention of an off-screen person carries its handle: "Balla — she keeps
-the big forge up the stair —". Second mention onward, bare name. A player who
+First mention of an off-screen person carries its handle: "Ask Balla. She
+keeps the big forge up the stair." Second mention onward, bare name. A player who
 has met no one must still follow every sentence.
 
 ### Let them be people
@@ -75,6 +75,18 @@ Player choices are things a person would actually say, in plain words, ≤90
 chars but usually ≤40: "Who's Balla?", "What happened down there?", "Never
 mind." Never literary prompts ("A hard call, cleanly made"), never summaries
 of the answer you're about to get.
+
+### The dash ban
+No em dashes (—), en dashes (–), or double hyphens (--) in ANY player-facing
+text: dialogue, choices, barks, examine lines, signs, item flavor, UI prose.
+The dash is the loudest machine-writing tell there is, and nobody speaks one.
+Where a dash wants to go, do what a speaker does: end the sentence and start
+another, or use a comma, or a colon before a list. A trail-off or held pause
+is written "..." (ASCII, never the … character) and belongs ONLY to throats
+whose cards grant it: Fen and Solvei's drifts, Pike's unfinished warnings,
+Skarn's long pauses, Grettir near the subject he avoids. Everyone else just
+stops. Hyphens inside compound words are words, not dashes — mountain-born,
+feast-day, two-handed all stay.
 
 ### Diction of the Dawnlands
 Work-words, weather-words, stone and rope and lamp and ford. Say "count",
@@ -146,7 +158,7 @@ it dictates sentence shape. (Pooled actors share one card.)
   (never says who). Cadence: plain, kind, food-first. Homely comparisons only
   — bread, weather, the pot. No epigrams at all.
 - **Tinker Fen**: wants to see what you'll make; a little lonely. Talks to
-  tools and objects mid-sentence ("hold still, you—"). Cadence: distracted,
+  tools and objects mid-sentence ("hold still, you..."). Cadence: distracted,
   parenthetical, trails off, restarts.
 - **Farmer Hobb**: wants rain at the right time. The most gloriously boring
   man alive — and content. Cadence: short flat statements about immediate
@@ -205,7 +217,7 @@ it dictates sentence shape. (Pooled actors share one card.)
   house chair is half-finished on purpose. Cadence: soft-spoken, hands-first,
   apologizes for talking too long, then does.
 - **Elowen** (Sage of the Dispensary): wants ailments boring and books exciting.
-  Cadence: precise, faintly amused, corrects herself for accuracy ("well —
+  Cadence: precise, faintly amused, corrects herself for accuracy ("well,
   three days. Two and a half.").
 - **Jorel & Tamsin Furrowfield**: married farmers who finish and contradict
   each other's sentences. Jorel: slow, deliberate. Tamsin: quick, teasing.
@@ -310,8 +322,8 @@ it dictates sentence shape. (Pooled actors share one card.)
 ## 5. Surface rules
 
 - **Signs**: name + one line at most, in the sign-raiser's voice, not the
-  narrator's. A town sign is civic ("AMBERFORD — the ford is free; the
-  Redmasks made sure we'd never forget to say so"). A worksite sign is
+  narrator's. A town sign is civic ("AMBERFORD. The ford is free. The
+  Redmasks made sure we'd never forget to say so."). A worksite sign is
   practical. A warning sign warns.
 - **Plaques/memorials**: names first. Restraint. No poetry longer than a
   breath.
@@ -331,4 +343,6 @@ it dictates sentence shape. (Pooled actors share one card.)
 5. Any modern/office/manual vocabulary? → translate to work-words.
 6. Do all NPCs agree about everything? → let two disagree.
 7. grep the diff for witch|hex|demon|devil|infernal|occult|coven|warlock.
-8. Validator: node ≤480 chars, choice ≤90, 1–4 choices, markup balanced.
+8. grep the diff for em/en dashes and "--" — any hit in player-facing text
+   is a failure (the dash ban).
+9. Validator: node ≤480 chars, choice ≤90, 1–4 choices, markup balanced.
