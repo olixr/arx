@@ -2207,11 +2207,19 @@ export function bakeElevated(
   const rows: boolean[] = new Array(CHUNK_SIZE).fill(false);
   let any = false;
   if (level > 0) {
+    // A row participates only near a tile of EXACTLY this level (±1
+    // row for the half-tile contour bleed). Membership alone would
+    // also emit rows across every higher plateau — but that flattened
+    // copy is erased below, so those rows would blit nothing and the
+    // face curtains they used to hide behind now sort earlier anyway.
     for (let ly = 0; ly < CHUNK_SIZE; ly++) {
-      for (let lx = 0; lx < CHUNK_SIZE; lx++) {
-        if (member(baseX + lx, baseY + ly)) {
-          rows[ly] = true;
-          any = true;
+      scan: for (let wy = baseY + ly - 1; wy <= baseY + ly + 1; wy++) {
+        for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
+          if (elev(baseX + lx, wy) === level) {
+            rows[ly] = true;
+            any = true;
+            break scan;
+          }
         }
       }
     }
@@ -2365,6 +2373,49 @@ export function bakeElevated(
   ctx.lineCap = 'butt';
   ctx.lineJoin = 'miter';
   ctx.restore();
+
+  // THE HIGHER MASS IS NOT THIS LAYER'S TO PAINT: membership
+  // (elev >= level) keeps the marching-squares silhouette seamless at
+  // every level boundary, but it also painted a FLATTENED copy of
+  // every higher plateau into this layer. That copy only ever looked
+  // right because cliff faces sorted at their base row and repainted
+  // over it; faces now sort at their visual top (THE FACE LOSES EVERY
+  // CONTEST), so the copy surfaced as borrowed ground drawn over the
+  // stone. Erase everything strictly inside the level+1 mass — the
+  // erase contour is EXACTLY the level+1 silhouette (same marching
+  // squares, same stair squaring), so the cut lands on the very line
+  // the face curtain hangs from and no hairline can open at the seam.
+  // Decks draw after this on purpose: a lifted top may honestly
+  // overhang the cell north of it.
+  const memberUp = (tx: number, ty: number): boolean => elev(tx, ty) >= level + 1;
+  const rampUp = (tx: number, ty: number): boolean =>
+    ground(tx, ty) === Tile.Ramp && elev(tx, ty) === level + 1;
+  const nearStairUp = (i: number, j: number): boolean =>
+    rampUp(baseX + i - 1, baseY + j - 1) ||
+    rampUp(baseX + i, baseY + j - 1) ||
+    rampUp(baseX + i, baseY + j) ||
+    rampUp(baseX + i - 1, baseY + j);
+  const maskUpAt = (i: number, j: number): number =>
+    (memberUp(baseX + i - 1, baseY + j - 1) ? 1 : 0) |
+    (memberUp(baseX + i, baseY + j - 1) ? 2 : 0) |
+    (memberUp(baseX + i, baseY + j) ? 4 : 0) |
+    (memberUp(baseX + i - 1, baseY + j) ? 8 : 0);
+  const erase = new Path2D();
+  let anyUp = false;
+  for (let j = 0; j <= CHUNK_SIZE; j++) {
+    for (let i = 0; i <= CHUNK_SIZE; i++) {
+      const mask = maskUpAt(i, j);
+      if (mask === 0) continue;
+      anyUp = true;
+      if (nearStairUp(i, j)) maskQuadrants(erase, mask, (i - 0.5) * px, (j - 0.5) * px, px);
+      else maskPolygon(erase, mask, (i - 0.5) * px, (j - 0.5) * px, px);
+    }
+  }
+  if (anyUp) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fill(erase);
+    ctx.globalCompositeOperation = 'source-over';
+  }
 
   // Raised decks on THIS terrace: the same dock and bridge passes as
   // the ground floor, drawn unclipped (a lifted top reaches into the
