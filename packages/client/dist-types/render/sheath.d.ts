@@ -74,9 +74,12 @@ export declare function stowBlade(hand: 'main' | 'off', side: number, rake: numb
  * (π − base), never a π rotation. Rotating it instead turns the
  * string toward the camera and it reads as crossing the chest.
  *
- * GREAT: `angle` is grip→tip like the staff, but the sling rides
- * LOWER and steeper — the crossguard must clear the shoulder line and
- * the long grip hangs past the hip, the classic greatsword back-carry.
+ * GREAT: `angle` is grip→tip like the staff, but HILT UP — the grip
+ * and pommel ride above the shoulder beside the head (where a hand
+ * can reach them) and the blade runs down the back past the hip, the
+ * classic greatsword back-carry. Blade-up read as the weapon aimed at
+ * its own bearer's skull (user verdict) — never point the tip at the
+ * head again.
  */
 export declare function stowBack(kind: 'bow' | 'staff' | 'great', side: number): StowSpot;
 //# sourceMappingURL=sheath.d.ts.map

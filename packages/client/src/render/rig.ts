@@ -4835,17 +4835,25 @@ function drawHeldItem(
   // fist, or the bow reads as resting on the wrist.
   if (extra?.carry) ctx.translate(-0.18 * s * extra.carry, 0);
 
+  // The item-space envelope each roster's art can reach — the outline
+  // scratch is sized from this, so keep it tight per class (a bow is
+  // tall, a blade is long, and paying the widest box for every belt
+  // knife would bill the whole town).
+  let env: readonly [number, number, number];
+  let paint: (c: CanvasRenderingContext2D) => void;
   if (greatStyle(itemId, color)) {
     // THE GREAT SCHOOL asks first (the check-great-first law: a
     // 'greatsword'-shaped id also satisfies bladeStyle's fallback).
     // The grip slides with the carry exactly like the staff's — high
     // on the shouldered rest, mid-haft through the cuts.
-    drawGreatweapon(ctx, greatStyle(itemId, color)!, s, rig.nowMs, rig.hurt, extra?.grip ?? 0.2);
+    env = [-1.3, 1.3, 0.45];
+    paint = (c) => drawGreatweapon(c, greatStyle(itemId, color)!, s, rig.nowMs, rig.hurt, extra?.grip ?? 0.2);
   } else if (bladeStyle(itemId, color)) {
     // The blade + rogue rosters: every sword AND dagger resolves a
     // style — bespoke silhouette, guard, pommel, living fx channel.
     // Unknown '*sword'/'*dagger' ids get color-derived fallbacks.
-    drawSword(ctx, enchantedStyle(bladeStyle(itemId, color)!, extra?.ench, 'blade'), s, rig.nowMs, rig.hurt);
+    env = [-0.5, 1.2, 0.32];
+    paint = (c) => drawSword(c, enchantedStyle(bladeStyle(itemId, color)!, extra?.ench, 'blade'), s, rig.nowMs, rig.hurt);
   } else if (toolStyle(itemId, color) && !itemId.includes('rod')) {
     // The gatherer's roster: every axe and pickaxe resolves a style —
     // bespoke head, haft furniture, collar lashing, starsteel fx.
@@ -4853,16 +4861,20 @@ function drawHeldItem(
     // facing right sweeps clockwise, so mirror the head across the
     // haft there — the honed edge (not the poll) buries in the work
     // at the bite, whichever way the body faces.
-    ctx.save();
-    if (Math.cos(rig.dir) > 0) ctx.scale(1, -1);
-    drawTool(ctx, toolStyle(itemId, color)!, s, rig.nowMs, rig.hurt);
-    ctx.restore();
+    env = [-0.7, 1.0, 0.35];
+    paint = (c) => {
+      c.save();
+      if (Math.cos(rig.dir) > 0) c.scale(1, -1);
+      drawTool(c, toolStyle(itemId, color)!, s, rig.nowMs, rig.hurt);
+      c.restore();
+    };
   } else if (bowStyle(itemId, color)) {
     // The archer's roster: every bow resolves a style — limb kind,
     // wood, tip furniture, charms, and the living fx channel. The
     // painter keeps the classic behaviors: limbs flex with the pull,
     // the string hauls to the nock, release buzzes it straight.
-    drawBow(ctx, enchantedStyle(bowStyle(itemId, color)!, extra?.ench, 'blade'), s, rig.nowMs, rig.hurt, extra?.pull ?? 0, extra?.loose);
+    env = [-0.5, 0.7, 0.85];
+    paint = (c) => drawBow(c, enchantedStyle(bowStyle(itemId, color)!, extra?.ench, 'blade'), s, rig.nowMs, rig.hurt, extra?.pull ?? 0, extra?.loose);
   } else if (staffStyle(itemId, color)) {
     // The archmage's roster: every staff resolves a style — shaft
     // grammar, signature crown, element focus, living fx. The grip
@@ -4870,15 +4882,120 @@ function drawHeldItem(
     // mid-shaft when the business end levels at something — and the
     // focus flares while a cast leaves.
     const castT = rig.pose === PoseState.Cast ? rig.poseT : 0;
-    drawStaff(ctx, enchantedStyle(staffStyle(itemId, color)!, extra?.ench, 'staff'), s, rig.nowMs, rig.hurt, extra?.grip ?? 0.34, castT);
+    env = [-1.1, 1.5, 0.35];
+    paint = (c) => drawStaff(c, enchantedStyle(staffStyle(itemId, color)!, extra?.ench, 'staff'), s, rig.nowMs, rig.hurt, extra?.grip ?? 0.34, castT);
   } else if (itemId.includes('rod')) {
-    drawTool(ctx, toolStyle(itemId, color)!, s, rig.nowMs, rig.hurt);
+    env = [-0.7, 1.0, 0.35];
+    paint = (c) => drawTool(c, toolStyle(itemId, color)!, s, rig.nowMs, rig.hurt);
   } else {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.roundRect(0.04 * s, -0.05 * s, 0.16 * s, 0.1 * s, 0.03 * s);
-    ctx.fill();
+    env = [-0.1, 0.35, 0.18];
+    paint = (c) => {
+      c.fillStyle = color;
+      c.beginPath();
+      c.roundRect(0.04 * s, -0.05 * s, 0.16 * s, 0.1 * s, 0.03 * s);
+      c.fill();
+    };
   }
+  paintHeldOutlined(ctx, s, env, paint);
+  ctx.restore();
+}
+
+// ---- THE WEAPON WEARS ITS OWN OUTLINE (the shield law bd69422,
+// extended to everything a hand holds): the renderer's dilate rings
+// the composed BODY silhouette, so a weapon crossing the torso met the
+// shirt with no line at all and the two masses read as one blob. In
+// this game every separate object is ringed — so the held item strikes
+// its own ring, in the world's outline colour at the dilate's own
+// weight, from its own alpha: paint the art into scratch A under the
+// live transform, stamp eight tinted taps of it (scratch B) UNDER the
+// art, then the art itself. Device-pixel identity blits — the
+// bakeOutlineRing recipe, scratches module-scoped and grow-only.
+let heldOlA: HTMLCanvasElement | null = null;
+let heldOlACtx: CanvasRenderingContext2D | null = null;
+let heldOlB: HTMLCanvasElement | null = null;
+let heldOlBCtx: CanvasRenderingContext2D | null = null;
+const HELD_OL_TAPS: ReadonlyArray<readonly [number, number]> = [
+  [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1],
+];
+
+/**
+ * Paint a held item with its own outline ring. `env` is the item-space
+ * envelope [x0, x1, ±y] in units of s. Contexts without full canvas
+ * support (test stubs) fall back to ringless direct paint.
+ */
+function paintHeldOutlined(
+  ctx: CanvasRenderingContext2D,
+  s: number,
+  env: readonly [number, number, number],
+  paint: (c: CanvasRenderingContext2D) => void,
+): void {
+  if (!heldOlA && typeof document !== 'undefined' && typeof ctx.getTransform === 'function') {
+    heldOlA = document.createElement('canvas');
+    heldOlB = document.createElement('canvas');
+    heldOlACtx = heldOlA.getContext('2d');
+    heldOlBCtx = heldOlB.getContext('2d');
+  }
+  const a = heldOlACtx;
+  const b = heldOlBCtx;
+  if (!a || !b || typeof ctx.getTransform !== 'function') {
+    paint(ctx);
+    return;
+  }
+  const m = ctx.getTransform();
+  const x0 = env[0] * s;
+  const x1 = env[1] * s;
+  const ey = env[2] * s;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const [px, py] of [[x0, -ey], [x1, -ey], [x0, ey], [x1, ey]] as const) {
+    const dx = m.a * px + m.c * py + m.e;
+    const dy = m.b * px + m.d * py + m.f;
+    if (dx < minX) minX = dx;
+    if (dx > maxX) maxX = dx;
+    if (dy < minY) minY = dy;
+    if (dy > maxY) maxY = dy;
+  }
+  // Ring weight = the renderer's dilate in device pixels: the matrix
+  // norm carries dpr (and any bake scale) into the item's px scale.
+  const norm = Math.hypot(m.a, m.b) || 1;
+  const ring = Math.max(1.25, s * norm * 0.04);
+  const ri = Math.max(1, Math.round(ring));
+  const rd = Math.max(1, Math.round(ring * 0.71));
+  const pad = ri + 3;
+  const ox = Math.floor(minX) - pad;
+  const oy = Math.floor(minY) - pad;
+  const w = Math.ceil(maxX) + pad - ox;
+  const h = Math.ceil(maxY) + pad - oy;
+  if (w <= 0 || h <= 0 || w > 4096 || h > 4096) {
+    paint(ctx);
+    return;
+  }
+  if (heldOlA!.width < w) heldOlA!.width = w;
+  if (heldOlA!.height < h) heldOlA!.height = h;
+  if (heldOlB!.width < w) heldOlB!.width = w;
+  if (heldOlB!.height < h) heldOlB!.height = h;
+  a.setTransform(1, 0, 0, 1, 0, 0);
+  a.clearRect(0, 0, w, h);
+  a.setTransform(m.a, m.b, m.c, m.d, m.e - ox, m.f - oy);
+  paint(a);
+  a.setTransform(1, 0, 0, 1, 0, 0);
+  b.setTransform(1, 0, 0, 1, 0, 0);
+  b.globalCompositeOperation = 'source-over';
+  b.clearRect(0, 0, w, h);
+  for (const [tx, ty] of HELD_OL_TAPS) {
+    const diag = tx !== 0 && ty !== 0;
+    b.drawImage(heldOlA!, 0, 0, w, h, tx * (diag ? rd : ri), ty * (diag ? rd : ri), w, h);
+  }
+  b.globalCompositeOperation = 'source-in';
+  b.fillStyle = '#241a2e';
+  b.fillRect(0, 0, w, h);
+  b.globalCompositeOperation = 'source-over';
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(heldOlB!, 0, 0, w, h, ox, oy, w, h);
+  ctx.drawImage(heldOlA!, 0, 0, w, h, ox, oy, w, h);
   ctx.restore();
 }
 

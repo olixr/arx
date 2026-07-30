@@ -151,9 +151,9 @@ export declare function drawStaff(ctx: CanvasRenderingContext2D, st: StaffStyle,
  * line; the renderer's dilate rings the body, so nothing here strokes
  * its own outline.
  */
-export type GreatbladeKind = 'colossus' | 'leaf' | 'cruciform' | 'spire' | 'cleaverback' | 'flamberge';
+export type GreatbladeKind = 'colossus' | 'leaf' | 'cruciform' | 'spire' | 'cleaverback' | 'flamberge' | 'sawback';
 export type GreataxeHead = 'crescent' | 'bearded' | 'jaws' | 'scrap' | 'halfmoon';
-export type GreatGuard = 'bar' | 'cross' | 'wing' | 'crown' | 'stub';
+export type GreatGuard = 'bar' | 'cross' | 'wing' | 'crown' | 'thorn' | 'stub';
 export type GreatPommel = 'wheel' | 'ring' | 'coin' | 'star' | 'bone' | 'gem' | 'none';
 export interface GreatStyle {
     kind: 'greatblade' | 'maul' | 'greataxe';
@@ -177,6 +177,15 @@ export interface GreatStyle {
     pommelColor?: string;
     /** Jewel accent (gem pommels, the seated stone between axe heads). */
     gem?: string;
+    /**
+     * A living core channel down the blade's center — the vein of color
+     * every storied blade in the references carries. Replaces the dark
+     * fuller line (still one line's worth of budget, now the loudest
+     * thing on the steel).
+     */
+    core?: string;
+    /** Script ticks marching the fuller — worked, not glowing. */
+    runes?: string;
     /** Axe head-mount collar; defaults to guardColor. */
     collar?: string;
     /** Greataxe: a finishing spike past the crown. */

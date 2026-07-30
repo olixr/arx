@@ -2797,7 +2797,8 @@ export type GreatbladeKind =
   | 'cruciform'   // long-fullered soldier steel, clean straight taper
   | 'spire'       // slender high taper — elegance at six feet
   | 'cleaverback' // straight spine, flared belly, clipped working nose
-  | 'flamberge';  // the wave edge — three bends and a point
+  | 'flamberge'   // the wave edge — three bends and a point
+  | 'sawback';    // broad drop-nose chopper, teeth marching the spine
 
 export type GreataxeHead =
   | 'crescent'  // twin deep crescent bits with horns
@@ -2810,7 +2811,8 @@ export type GreatGuard =
   | 'bar'    // the founding straight bar
   | 'cross'  // flared quillons with struck tips
   | 'wing'   // paired swept wings
-  | 'crown'  // crenellated bar — the court's cross
+  | 'crown'  // pronged gold court cross, flared toward the tip
+  | 'thorn'  // layered swept spikes raking both ways
   | 'stub';  // crude block
 
 export type GreatPommel =
@@ -2838,6 +2840,15 @@ export interface GreatStyle {
   pommelColor?: string;
   /** Jewel accent (gem pommels, the seated stone between axe heads). */
   gem?: string;
+  /**
+   * A living core channel down the blade's center — the vein of color
+   * every storied blade in the references carries. Replaces the dark
+   * fuller line (still one line's worth of budget, now the loudest
+   * thing on the steel).
+   */
+  core?: string;
+  /** Script ticks marching the fuller — worked, not glowing. */
+  runes?: string;
   /** Axe head-mount collar; defaults to guardColor. */
   collar?: string;
   /** Greataxe: a finishing spike past the crown. */
@@ -2896,36 +2907,40 @@ export const GREAT_STYLES: Record<string, GreatStyle> = {
     notched: true, guard: 'stub', guardColor: '#4a4554', grip: '#3a3540', wrap: '#8a6a45',
     pommel: 'coin', pommelColor: '#d9a441', gem: '#b8863f',
   },
-  // Black crypt iron wound in bone — buried with it, kept it anyway.
+  // Black crypt iron under a thorn cross, grave-script down the
+  // fuller in old bone — buried with it, kept it anyway.
   gravewrought: {
-    kind: 'greatblade', blade: 'colossus', len: 0.97, color: '#565a68', edge: '#7e8494', fuller: '#34384a',
-    notched: true, guard: 'bar', guardColor: '#3a3d48', grip: '#2e3038', wrap: '#a8a290',
-    pommel: 'ring', pommelColor: '#a8a290',
+    kind: 'greatblade', blade: 'colossus', len: 0.97, color: '#4c505e', edge: '#787e8e', fuller: '#2c3040',
+    runes: '#a8a290', notched: true, guard: 'thorn', guardColor: '#343744', grip: '#2e3038',
+    wrap: '#a8a290', pommel: 'ring', pommelColor: '#a8a290',
   },
-  // The wave edge quenched in its own fire; the seam never went out.
+  // A slab of mountain-stone steel split down the middle by the fire
+  // it was quenched in; the sawback spine never stopped smoking.
   ashrender: {
-    kind: 'greatblade', blade: 'flamberge', color: '#6a5f66', edge: '#a89aa2', fuller: '#ff8a3c',
-    guard: 'cross', guardColor: '#3a3238', grip: '#2e2a30', wrap: '#c4623c',
-    pommel: 'wheel', pommelColor: '#3a3238', fx: 'ember', fxColor: '#ffb060',
+    kind: 'greatblade', blade: 'sawback', color: '#574e54', edge: '#948a92', core: '#ff8a3c',
+    guard: 'thorn', guardColor: '#332c32', grip: '#2e2a30', wrap: '#c4623c',
+    pommel: 'star', pommelColor: '#584a52', fx: 'ember', fxColor: '#ffb060',
   },
-  // Shelf ice with a crossbar — colder to hold than to face.
+  // Shelf ice on a crossbar, the old cold worked into the fuller in
+  // script no living smith reads — colder to hold than to face.
   frostfell: {
     kind: 'greatblade', blade: 'cruciform', len: 1.03, color: '#cfe2f0', edge: '#ffffff', fuller: '#8ac4e8',
-    guard: 'bar', guardColor: '#7a94ac', grip: '#3a4a5c', wrap: '#a8c8dc',
-    pommel: 'gem', pommelColor: '#7a94ac', gem: '#bfe4ff', fx: 'frost', fxColor: '#dff0ff',
+    core: '#5aa8dc', runes: '#eaf6ff', guard: 'cross', guardColor: '#7a94ac', grip: '#3a4a5c',
+    wrap: '#a8c8dc', pommel: 'gem', pommelColor: '#7a94ac', gem: '#bfe4ff', fx: 'frost', fxColor: '#dff0ff',
   },
-  // Gold over steel under a crenellated cross; the grip carries both
-  // thrones — crimson wound in moonpale (the PAIRED-SEAT law, worn).
+  // White steel carrying one crimson vein under a pronged gold cross;
+  // the grip carries both thrones — crimson wound in moonpale.
   crowns_argument: {
-    kind: 'greatblade', blade: 'cruciform', len: 1.02, color: '#ead9a8', edge: '#fff2cc', fuller: '#c9a23c',
-    guard: 'crown', guardColor: '#d9a441', grip: '#8a2a3a', wrap: '#dfe4f0',
+    kind: 'greatblade', blade: 'cruciform', len: 1.02, color: '#dfe3ec', edge: '#ffffff', fuller: '#9aa2b4',
+    core: '#c4372a', guard: 'crown', guardColor: '#d9a441', grip: '#8a2a3a', wrap: '#dfe4f0',
     pommel: 'gem', pommelColor: '#d9a441', gem: '#c4372a',
   },
-  // The heirloom: white steel, the oath worked down the fuller in
-  // gold, and a gleam that walks the edge like a kept promise.
+  // The heirloom: white steel, the oath worked down the center in a
+  // gold vein, spread gold wings — a gleam walks the edge like a kept
+  // promise.
   colossus_vow: {
-    kind: 'greatblade', blade: 'colossus', len: 1.06, color: '#eef0f4', edge: '#ffffff', fuller: '#d9c990',
-    guard: 'wing', guardColor: '#b8a86a', grip: '#2e3a5c', wrap: '#d9c990',
+    kind: 'greatblade', blade: 'colossus', len: 1.06, color: '#eef0f4', edge: '#ffffff', fuller: '#c8ccd6',
+    core: '#d9a441', guard: 'wing', guardColor: '#d9a441', grip: '#2e3a5c', wrap: '#d9c990',
     pommel: 'gem', pommelColor: '#b8a86a', gem: '#efe6cc', fx: 'gleam', fxColor: '#ffffff',
   },
 
@@ -3056,9 +3071,9 @@ export function drawGreatweapon(
 
   if (st.kind === 'maul') {
     // The war haft: butt to collar.
-    const collar = tip - 0.3 * LEN;
+    const collar = tip - 0.28 * LEN;
     ctx.strokeStyle = gripC;
-    ctx.lineWidth = Math.max(2.5, s * 0.055);
+    ctx.lineWidth = Math.max(2.5, s * 0.058);
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(butt, 0);
@@ -3066,33 +3081,42 @@ export function drawGreatweapon(
     ctx.stroke();
     // Iron collar where the head takes the haft.
     ctx.fillStyle = guard;
-    ctx.fillRect(collar - 0.015 * s, -0.055 * s, 0.035 * s, 0.11 * s);
-    // The head: one granite block, slightly proud at the striking end.
-    const h0 = 0.075 * s;
-    const h1 = 0.088 * s;
+    ctx.fillRect(collar - 0.018 * s, -0.075 * s, 0.042 * s, 0.15 * s);
+    // The head: one QUARRY block now — proud at the striking end,
+    // chamfered so the mass reads carved, not sawn.
+    const h0 = 0.105 * s;
+    const h1 = 0.128 * s;
+    const bx0 = collar + 0.024 * s;
     ctx.fillStyle = steel;
     ctx.beginPath();
-    ctx.moveTo(collar + 0.02 * s, -h0);
-    ctx.lineTo(tip, -h1);
-    ctx.lineTo(tip, h1);
-    ctx.lineTo(collar + 0.02 * s, h0);
+    ctx.moveTo(bx0, -h0);
+    ctx.lineTo(tip - 0.03 * s, -h1);
+    ctx.lineTo(tip, -h1 * 0.72);
+    ctx.lineTo(tip, h1 * 0.72);
+    ctx.lineTo(tip - 0.03 * s, h1);
+    ctx.lineTo(bx0, h0);
     ctx.closePath();
     ctx.fill();
     // Its lit top plane (sun law: bright on −y) and the one seam.
     ctx.fillStyle = edge;
     ctx.beginPath();
-    ctx.moveTo(collar + 0.02 * s, -h0);
-    ctx.lineTo(tip, -h1);
-    ctx.lineTo(tip, -h1 * 0.55);
-    ctx.lineTo(collar + 0.02 * s, -h0 * 0.5);
+    ctx.moveTo(bx0, -h0);
+    ctx.lineTo(tip - 0.03 * s, -h1);
+    ctx.lineTo(tip, -h1 * 0.72);
+    ctx.lineTo(tip - 0.005 * s, -h1 * 0.45);
+    ctx.lineTo(bx0, -h0 * 0.45);
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = dark;
-    ctx.lineWidth = Math.max(1, s * 0.014);
+    ctx.lineWidth = Math.max(1, s * 0.015);
     ctx.beginPath();
-    ctx.moveTo(collar + 0.05 * s, h0 * 0.35);
-    ctx.lineTo(tip - 0.02 * s, h1 * 0.35);
+    ctx.moveTo(bx0 + 0.03 * s, h0 * 0.4);
+    ctx.lineTo(tip - 0.03 * s, h1 * 0.38);
     ctx.stroke();
+    // Twin iron straps holding the quarry stone to the haft.
+    ctx.fillStyle = guard;
+    ctx.fillRect(bx0 + 0.028 * s, -h0 - 0.008 * s, 0.024 * s, 2 * h0 + 0.016 * s);
+    ctx.fillRect(tip - 0.062 * s, -h1 - 0.006 * s, 0.024 * s, 2 * h1 + 0.012 * s);
     return;
   }
 
@@ -3147,43 +3171,49 @@ function drawGreatbladeSilhouette(
   switch (st.blade ?? 'colossus') {
     case 'leaf': {
       // Bronze-age waist: narrow at the cross, widest past the middle.
-      const bw = 0.042 * s;
+      const bw = 0.064 * s;
       const belly = bx + len * 0.55;
       ctx.beginPath();
       ctx.moveTo(bx, -bw * 0.62);
-      ctx.quadraticCurveTo(belly, -bw * 1.3, tip - 0.14 * s, -bw * 0.72);
+      ctx.quadraticCurveTo(belly, -bw * 1.34, tip - 0.15 * s, -bw * 0.72);
       ctx.lineTo(tip, 0);
-      ctx.lineTo(tip - 0.14 * s, bw * 0.72);
-      ctx.quadraticCurveTo(belly, bw * 1.3, bx, bw * 0.62);
+      ctx.lineTo(tip - 0.15 * s, bw * 0.72);
+      ctx.quadraticCurveTo(belly, bw * 1.34, bx, bw * 0.62);
       ctx.closePath();
       ctx.fill();
       if (hurt) return;
       ctx.fillStyle = edge;
       ctx.beginPath();
       ctx.moveTo(bx, -bw * 0.58);
-      ctx.quadraticCurveTo(belly, -bw * 1.22, tip - 0.14 * s, -bw * 0.66);
+      ctx.quadraticCurveTo(belly, -bw * 1.26, tip - 0.15 * s, -bw * 0.66);
       ctx.lineTo(tip - 0.05 * s, -bw * 0.1);
       ctx.quadraticCurveTo(belly, -bw * 0.5, bx, -bw * 0.2);
       ctx.closePath();
       ctx.fill();
       // The cast midrib — poured, not forged.
-      ctx.strokeStyle = dark;
-      ctx.lineWidth = Math.max(1, s * 0.016);
-      ctx.beginPath();
-      ctx.moveTo(bx + 0.03 * s, 0.012 * s);
-      ctx.lineTo(tip - 0.08 * s, 0.006 * s);
-      ctx.stroke();
+      if (!st.core) {
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = Math.max(1, s * 0.016);
+        ctx.beginPath();
+        ctx.moveTo(bx + 0.03 * s, 0.012 * s);
+        ctx.lineTo(tip - 0.08 * s, 0.006 * s);
+        ctx.stroke();
+      }
       break;
     }
     case 'cruciform': {
-      // Soldier steel: a clean straight taper to a real point, and the
-      // long fuller doing all the talking.
-      const bw = 0.04 * s;
+      // Soldier steel gone to war: a broad straight body, then the
+      // tip flares one last shoulder before the point — the spear-cut
+      // silhouette every storied straight blade carries.
+      const bw = 0.06 * s;
+      const sh = tip - len * 0.2; // the tip-flare station
       ctx.beginPath();
       ctx.moveTo(bx, -bw);
-      ctx.lineTo(tip - 0.13 * s, -bw * 0.5);
+      ctx.lineTo(sh, -bw * 0.74);
+      ctx.lineTo(sh + 0.035 * s, -bw * 0.95);
       ctx.lineTo(tip, 0);
-      ctx.lineTo(tip - 0.13 * s, bw * 0.5);
+      ctx.lineTo(sh + 0.035 * s, bw * 0.95);
+      ctx.lineTo(sh, bw * 0.74);
       ctx.lineTo(bx, bw);
       ctx.closePath();
       ctx.fill();
@@ -3191,24 +3221,27 @@ function drawGreatbladeSilhouette(
       ctx.fillStyle = edge;
       ctx.beginPath();
       ctx.moveTo(bx, -bw);
-      ctx.lineTo(tip - 0.13 * s, -bw * 0.5);
+      ctx.lineTo(sh, -bw * 0.74);
+      ctx.lineTo(sh + 0.035 * s, -bw * 0.95);
       ctx.lineTo(tip, 0);
-      ctx.lineTo(tip - 0.13 * s, -bw * 0.16);
+      ctx.lineTo(sh + 0.02 * s, -bw * 0.24);
       ctx.lineTo(bx, -bw * 0.3);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = dark;
-      ctx.lineWidth = Math.max(1, s * 0.015);
-      ctx.beginPath();
-      ctx.moveTo(bx + 0.03 * s, bw * 0.2);
-      ctx.lineTo(tip - 0.18 * s, bw * 0.12);
-      ctx.stroke();
+      if (!st.core) {
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = Math.max(1, s * 0.015);
+        ctx.beginPath();
+        ctx.moveTo(bx + 0.03 * s, bw * 0.2);
+        ctx.lineTo(tip - 0.18 * s, bw * 0.12);
+        ctx.stroke();
+      }
       break;
     }
     case 'spire': {
       // Elegance at six feet: a short ricasso, then one long draw to
       // the finest point in the roster.
-      const bw = 0.041 * s;
+      const bw = 0.054 * s;
       const ric = bx + len * 0.17;
       ctx.beginPath();
       ctx.moveTo(bx, -bw);
@@ -3228,45 +3261,47 @@ function drawGreatbladeSilhouette(
       ctx.lineTo(bx, -bw * 0.32);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = dark;
-      ctx.lineWidth = Math.max(1, s * 0.014);
-      ctx.beginPath();
-      ctx.moveTo(bx + 0.02 * s, bw * 0.24);
-      ctx.lineTo(bx + len * 0.6, bw * 0.1);
-      ctx.stroke();
+      if (!st.core) {
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(bx + 0.02 * s, bw * 0.24);
+        ctx.lineTo(bx + len * 0.6, bw * 0.1);
+        ctx.stroke();
+      }
       break;
     }
     case 'cleaverback': {
-      // The working blade: straight spine, flared belly, a nose
-      // clipped square because a point would be showing off.
-      const spine = -0.036 * s;
+      // The working blade: straight spine, a real chopping belly, a
+      // nose clipped square because a point would be showing off.
+      const spine = -0.05 * s;
       ctx.beginPath();
       ctx.moveTo(bx, spine);
-      ctx.lineTo(tip - 0.03 * s, spine);
-      ctx.lineTo(tip, 0.012 * s);
-      ctx.quadraticCurveTo(bx + len * 0.62, 0.06 * s, bx, 0.036 * s);
+      ctx.lineTo(tip - 0.035 * s, spine);
+      ctx.lineTo(tip, 0.018 * s);
+      ctx.quadraticCurveTo(bx + len * 0.62, 0.088 * s, bx, 0.05 * s);
       ctx.closePath();
       ctx.fill();
       if (hurt) return;
       // The cutting edge is the BELLY — light rides the underside.
       ctx.strokeStyle = edge;
-      ctx.lineWidth = Math.max(1.2, s * 0.02);
+      ctx.lineWidth = Math.max(1.2, s * 0.022);
       ctx.beginPath();
-      ctx.moveTo(bx + 0.02 * s, 0.032 * s);
-      ctx.quadraticCurveTo(bx + len * 0.62, 0.05 * s, tip - 0.02 * s, 0.008 * s);
+      ctx.moveTo(bx + 0.02 * s, 0.046 * s);
+      ctx.quadraticCurveTo(bx + len * 0.62, 0.076 * s, tip - 0.02 * s, 0.012 * s);
       ctx.stroke();
       ctx.strokeStyle = dark;
-      ctx.lineWidth = Math.max(1, s * 0.015);
+      ctx.lineWidth = Math.max(1, s * 0.016);
       ctx.beginPath();
-      ctx.moveTo(bx + 0.03 * s, spine + 0.017 * s);
-      ctx.lineTo(tip - 0.08 * s, spine + 0.017 * s);
+      ctx.moveTo(bx + 0.03 * s, spine + 0.02 * s);
+      ctx.lineTo(tip - 0.08 * s, spine + 0.02 * s);
       ctx.stroke();
       break;
     }
     case 'flamberge': {
       // The wave edge: three bends a side, mirrored, dying into the
       // taper — enough flame to read at gameplay size, no more.
-      const bw = 0.042 * s;
+      const bw = 0.06 * s;
       const wl = len * 0.72; // the waves live in the lower 72%
       ctx.beginPath();
       ctx.moveTo(bx, -bw);
@@ -3274,7 +3309,7 @@ function drawGreatbladeSilhouette(
         const x0 = bx + (wl / 3) * k;
         const x1 = bx + (wl / 3) * (k + 1);
         const w0 = bw * (1 - 0.12 * k);
-        ctx.quadraticCurveTo((x0 + x1) / 2, -w0 - 0.02 * s, x1, -w0 * 0.82);
+        ctx.quadraticCurveTo((x0 + x1) / 2, -w0 - 0.026 * s, x1, -w0 * 0.82);
       }
       ctx.lineTo(tip, 0);
       for (let k = 2; k >= 0; k--) {
@@ -3282,7 +3317,7 @@ function drawGreatbladeSilhouette(
         const x1 = bx + (wl / 3) * k;
         const w0 = bw * (1 - 0.12 * k);
         if (k === 2) ctx.lineTo(x0, w0 * 0.82);
-        ctx.quadraticCurveTo((x0 + x1) / 2, w0 + 0.02 * s, x1, k === 0 ? bw : bw * (1 - 0.12 * (k - 1)) * 0.82);
+        ctx.quadraticCurveTo((x0 + x1) / 2, w0 + 0.026 * s, x1, k === 0 ? bw : bw * (1 - 0.12 * (k - 1)) * 0.82);
       }
       ctx.closePath();
       ctx.fill();
@@ -3296,27 +3331,57 @@ function drawGreatbladeSilhouette(
         const x0 = bx + (wl / 3) * k;
         const x1 = bx + (wl / 3) * (k + 1);
         const w0 = bw * (1 - 0.12 * k);
-        ctx.quadraticCurveTo((x0 + x1) / 2, -w0 - 0.014 * s, x1, -w0 * 0.74);
+        ctx.quadraticCurveTo((x0 + x1) / 2, -w0 - 0.018 * s, x1, -w0 * 0.74);
       }
       ctx.stroke();
       // The unquenched seam down the middle.
-      ctx.strokeStyle = dark;
-      ctx.lineWidth = Math.max(1.2, s * 0.022);
+      if (!st.core) {
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = Math.max(1.2, s * 0.022);
+        ctx.beginPath();
+        ctx.moveTo(bx + 0.03 * s, 0);
+        ctx.lineTo(tip - 0.1 * s, 0);
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'sawback': {
+      // The mountain cleaver: a slab that WIDENS toward the working
+      // nose, teeth marching the spine, the whole mass clipped on one
+      // long forward diagonal — the reference-wall silhouette.
+      const spine = -0.06 * s;
+      const belly = 0.082 * s;
       ctx.beginPath();
-      ctx.moveTo(bx + 0.03 * s, 0);
-      ctx.lineTo(tip - 0.1 * s, 0);
+      ctx.moveTo(bx, spine * 0.6);
+      ctx.lineTo(bx + len * 0.16, spine);
+      for (const [tp, te] of [[0.3, 0.4], [0.48, 0.58], [0.66, 0.76]] as const) {
+        ctx.lineTo(bx + len * tp, spine - 0.05 * s);
+        ctx.lineTo(bx + len * te, spine);
+      }
+      ctx.lineTo(tip - len * 0.07, spine);
+      ctx.lineTo(tip, belly * 0.3); // the angled working nose
+      ctx.quadraticCurveTo(bx + len * 0.55, belly * 1.18, bx, belly * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      if (hurt) return;
+      // Stone rim along the spine plane — the sun still finds it.
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1.2, s * 0.018);
+      ctx.beginPath();
+      ctx.moveTo(bx + len * 0.16, spine + 0.014 * s);
+      ctx.lineTo(tip - len * 0.09, spine + 0.014 * s);
       ctx.stroke();
       break;
     }
     default: {
-      // 'colossus' — the founding slab: broad, blunt-shouldered,
-      // honest taper. Byte-for-byte the shape the school shipped with.
-      const bw = 0.046 * s;
+      // 'colossus' — the founding slab, finally slab-wide: broad,
+      // blunt-shouldered, honest taper.
+      const bw = 0.074 * s;
       ctx.beginPath();
       ctx.moveTo(bx, -bw);
-      ctx.lineTo(tip - 0.09 * s, -bw * 0.82);
+      ctx.lineTo(tip - 0.1 * s, -bw * 0.8);
       ctx.lineTo(tip, 0);
-      ctx.lineTo(tip - 0.09 * s, bw * 0.82);
+      ctx.lineTo(tip - 0.1 * s, bw * 0.8);
       ctx.lineTo(bx, bw);
       ctx.closePath();
       ctx.fill();
@@ -3324,32 +3389,62 @@ function drawGreatbladeSilhouette(
       ctx.fillStyle = edge;
       ctx.beginPath();
       ctx.moveTo(bx, -bw);
-      ctx.lineTo(tip - 0.09 * s, -bw * 0.82);
+      ctx.lineTo(tip - 0.1 * s, -bw * 0.8);
       ctx.lineTo(tip, 0);
-      ctx.lineTo(tip - 0.1 * s, -bw * 0.3);
-      ctx.lineTo(bx, -bw * 0.34);
+      ctx.lineTo(tip - 0.11 * s, -bw * 0.28);
+      ctx.lineTo(bx, -bw * 0.32);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = dark;
-      ctx.lineWidth = Math.max(1, s * 0.014);
-      ctx.beginPath();
-      ctx.moveTo(gx + 0.05 * s, bw * 0.22);
-      ctx.lineTo(tip - 0.14 * s, bw * 0.18);
-      ctx.stroke();
+      if (!st.core) {
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(gx + 0.05 * s, bw * 0.22);
+        ctx.lineTo(tip - 0.15 * s, bw * 0.18);
+        ctx.stroke();
+      }
       break;
+    }
+  }
+  // The living core: one bright vein down the center — it spends the
+  // dark line's budget and carries the whole blade's story.
+  if (!hurt && st.core) {
+    const saw = st.blade === 'sawback';
+    ctx.strokeStyle = st.core;
+    ctx.lineWidth = Math.max(1.6, s * (saw ? 0.034 : 0.024));
+    ctx.lineCap = 'round';
+    const cy = saw ? 0.008 * s : 0;
+    ctx.beginPath();
+    ctx.moveTo(bx + 0.045 * s, cy);
+    ctx.lineTo(tip - (saw ? 0.1 : 0.16) * s, cy * 0.5);
+    ctx.stroke();
+  }
+  // Script ticks marching the fuller — worked into the steel.
+  if (!hurt && st.runes) {
+    ctx.strokeStyle = st.runes;
+    ctx.lineWidth = Math.max(1, s * 0.013);
+    ctx.lineCap = 'butt';
+    const rh = [1, 0.65, 0.85, 0.7] as const;
+    for (let i = 0; i < 4; i++) {
+      const x = bx + len * (0.14 + i * 0.13);
+      const h = 0.024 * s * (rh[i] ?? 1);
+      ctx.beginPath();
+      ctx.moveTo(x, -h);
+      ctx.lineTo(x + 0.014 * s, h);
+      ctx.stroke();
     }
   }
   // Battle bites out of the working edge — owned steel wears its life.
   if (!hurt && st.notched) {
     ctx.fillStyle = shade(st.color, -52);
-    const edgeY = st.blade === 'cleaverback' ? 0.05 * s : 0.036 * s;
+    const edgeY = st.blade === 'cleaverback' ? 0.072 * s : 0.058 * s;
     for (const [t, sy, d] of [[0.3, 1, 1], [0.62, 1, 0.7], [0.46, -1, 0.75]] as const) {
       const nx = bx + len * t;
-      const ny = sy * (st.blade === 'cleaverback' && sy < 0 ? 0.03 * s : edgeY);
+      const ny = sy * (st.blade === 'cleaverback' && sy < 0 ? 0.042 * s : edgeY);
       ctx.beginPath();
-      ctx.moveTo(nx - 0.022 * s, ny);
-      ctx.lineTo(nx + 0.022 * s, ny);
-      ctx.lineTo(nx, ny - sy * 0.032 * s * d);
+      ctx.moveTo(nx - 0.024 * s, ny);
+      ctx.lineTo(nx + 0.024 * s, ny);
+      ctx.lineTo(nx, ny - sy * 0.036 * s * d);
       ctx.closePath();
       ctx.fill();
     }
@@ -3368,48 +3463,100 @@ function drawGreatGuard(
   ctx.fillStyle = guard;
   switch (st.guard ?? 'bar') {
     case 'stub':
-      ctx.fillRect(gx - 0.016 * s, -0.062 * s, 0.036 * s, 0.124 * s);
+      ctx.fillRect(gx - 0.02 * s, -0.078 * s, 0.046 * s, 0.156 * s);
       break;
     case 'cross': {
-      // Flared quillons: the bar swells at both tips.
-      ctx.fillRect(gx - 0.014 * s, -0.1 * s, 0.032 * s, 0.2 * s);
-      ctx.fillRect(gx - 0.02 * s, -0.112 * s, 0.044 * s, 0.026 * s);
-      ctx.fillRect(gx - 0.02 * s, 0.086 * s, 0.044 * s, 0.026 * s);
+      // Flared quillons: a real bar, swelling hard at both tips.
+      ctx.fillRect(gx - 0.015 * s, -0.125 * s, 0.036 * s, 0.25 * s);
+      ctx.fillRect(gx - 0.026 * s, -0.145 * s, 0.058 * s, 0.032 * s);
+      ctx.fillRect(gx - 0.026 * s, 0.113 * s, 0.058 * s, 0.032 * s);
       if (!hurt) {
         // The struck tips catch the light.
         ctx.fillStyle = shade(guard, 32);
-        ctx.fillRect(gx - 0.02 * s, -0.112 * s, 0.044 * s, 0.01 * s);
+        ctx.fillRect(gx - 0.026 * s, -0.145 * s, 0.058 * s, 0.012 * s);
       }
       break;
     }
     case 'wing': {
-      // Paired swept wings raking toward the tip.
-      ctx.beginPath();
-      ctx.moveTo(gx - 0.012 * s, -0.03 * s);
-      ctx.lineTo(gx + 0.052 * s, -0.108 * s);
-      ctx.lineTo(gx + 0.024 * s, -0.028 * s);
-      ctx.closePath();
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(gx - 0.012 * s, 0.03 * s);
-      ctx.lineTo(gx + 0.052 * s, 0.108 * s);
-      ctx.lineTo(gx + 0.024 * s, 0.028 * s);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillRect(gx - 0.014 * s, -0.045 * s, 0.03 * s, 0.09 * s);
-      break;
-    }
-    case 'crown': {
-      // The court's cross: a bar wearing three merlons toward the tip.
-      ctx.fillRect(gx - 0.016 * s, -0.1 * s, 0.032 * s, 0.2 * s);
-      for (const y of [-0.085, -0.012, 0.061] as const) {
-        ctx.fillRect(gx + 0.016 * s, y * s, 0.018 * s, 0.024 * s);
+      // Spread wings: three fingers a side fanned off the boss, the
+      // tallest near-square to the blade — the paladin's gold.
+      for (const m of [-1, 1] as const) {
+        for (const [fx, fy, fw] of [
+          [0.03, 0.17, 0.032],
+          [0.075, 0.13, 0.03],
+          [0.112, 0.082, 0.028],
+        ] as const) {
+          ctx.beginPath();
+          ctx.moveTo(gx - 0.012 * s, m * 0.028 * s);
+          ctx.lineTo(gx + fx * s, m * fy * s);
+          ctx.lineTo(gx + (fx + fw) * s, m * fy * 0.66 * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      // The boss between the wings.
+      ctx.fillRect(gx - 0.02 * s, -0.055 * s, 0.05 * s, 0.11 * s);
+      if (!hurt) {
+        ctx.fillStyle = shade(guard, 30);
+        ctx.fillRect(gx - 0.02 * s, -0.055 * s, 0.05 * s, 0.02 * s);
       }
       break;
     }
+    case 'crown': {
+      // The court's cross: a gold bar throwing swept horn prongs
+      // toward the blade, and a center point riding the spine.
+      ctx.fillRect(gx - 0.018 * s, -0.13 * s, 0.04 * s, 0.26 * s);
+      for (const m of [-1, 1] as const) {
+        ctx.beginPath();
+        ctx.moveTo(gx - 0.006 * s, m * 0.095 * s);
+        ctx.lineTo(gx + 0.105 * s, m * 0.172 * s);
+        ctx.lineTo(gx + 0.026 * s, m * 0.082 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.moveTo(gx + 0.018 * s, -0.032 * s);
+      ctx.lineTo(gx + 0.105 * s, 0);
+      ctx.lineTo(gx + 0.018 * s, 0.032 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = shade(guard, 30);
+        ctx.fillRect(gx - 0.018 * s, -0.13 * s, 0.04 * s, 0.014 * s);
+      }
+      break;
+    }
+    case 'thorn': {
+      // Layered swept spikes raking both ways — the dark court's iron.
+      for (const m of [-1, 1] as const) {
+        // The long fore-thorn toward the blade.
+        ctx.beginPath();
+        ctx.moveTo(gx - 0.012 * s, m * 0.04 * s);
+        ctx.lineTo(gx + 0.118 * s, m * 0.148 * s);
+        ctx.lineTo(gx + 0.022 * s, m * 0.052 * s);
+        ctx.closePath();
+        ctx.fill();
+        // The tall outer thorn, near-vertical.
+        ctx.beginPath();
+        ctx.moveTo(gx - 0.024 * s, m * 0.03 * s);
+        ctx.lineTo(gx + 0.018 * s, m * 0.185 * s);
+        ctx.lineTo(gx + 0.014 * s, m * 0.042 * s);
+        ctx.closePath();
+        ctx.fill();
+        // The back-raked barb toward the pommel.
+        ctx.beginPath();
+        ctx.moveTo(gx - 0.008 * s, m * 0.048 * s);
+        ctx.lineTo(gx - 0.088 * s, m * 0.122 * s);
+        ctx.lineTo(gx - 0.028 * s, m * 0.034 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.fillRect(gx - 0.02 * s, -0.058 * s, 0.046 * s, 0.116 * s);
+      break;
+    }
     default:
-      // 'bar' — the founding wide cross.
-      ctx.fillRect(gx - 0.016 * s, -0.105 * s, 0.038 * s, 0.21 * s);
+      // 'bar' — the founding wide cross, now built like one.
+      ctx.fillRect(gx - 0.018 * s, -0.13 * s, 0.044 * s, 0.26 * s);
       break;
   }
 }
@@ -3533,21 +3680,21 @@ function drawGreataxeBody(
 
   // The mount collar seats OVER the cheeks — the heads hang from it.
   ctx.fillStyle = collar;
-  ctx.fillRect(hx - 0.032 * s, -0.052 * s, 0.064 * s, 0.104 * s);
+  ctx.fillRect(hx - 0.04 * s, -0.064 * s, 0.08 * s, 0.128 * s);
   if (!hurt && st.gem) {
     // The seated stone between the heads.
     ctx.fillStyle = st.gem;
     ctx.beginPath();
-    ctx.arc(hx, 0, 0.02 * s, 0, Math.PI * 2);
+    ctx.arc(hx, 0, 0.028 * s, 0, Math.PI * 2);
     ctx.fill();
   }
   // The finishing spike past the crown.
   if (st.spike) {
     ctx.fillStyle = hurt ? '#ffffff' : steel;
     ctx.beginPath();
-    ctx.moveTo(tip - 0.06 * L, -0.022 * s);
-    ctx.lineTo(tip, 0);
-    ctx.lineTo(tip - 0.06 * L, 0.022 * s);
+    ctx.moveTo(tip - 0.09 * L, -0.032 * s);
+    ctx.lineTo(tip + 0.015 * L, 0);
+    ctx.lineTo(tip - 0.09 * L, 0.032 * s);
     ctx.closePath();
     ctx.fill();
   }
@@ -3576,45 +3723,46 @@ function drawAxeBit(
     case 'bearded': {
       // Squared bit; the heel drops a hanging hook toward the butt.
       ctx.beginPath();
-      ctx.moveTo(hx + 0.045 * s, m * -0.048 * s);
-      ctx.lineTo(hx + 0.088 * s, m * -0.15 * s);
-      ctx.lineTo(hx - 0.078 * s, m * -0.162 * s);
-      ctx.lineTo(hx - 0.112 * s, m * -0.062 * s);
-      ctx.lineTo(hx - 0.058 * s, m * -0.098 * s);
-      ctx.lineTo(hx - 0.045 * s, m * -0.048 * s);
+      ctx.moveTo(hx + 0.06 * s, m * -0.048 * s);
+      ctx.lineTo(hx + 0.118 * s, m * -0.212 * s);
+      ctx.lineTo(hx - 0.105 * s, m * -0.228 * s);
+      ctx.lineTo(hx - 0.15 * s, m * -0.085 * s);
+      ctx.lineTo(hx - 0.078 * s, m * -0.135 * s);
+      ctx.lineTo(hx - 0.06 * s, m * -0.048 * s);
       ctx.closePath();
       ctx.fill();
       if (hurt || m > 0) break;
       ctx.fillStyle = edge;
       ctx.beginPath();
-      ctx.moveTo(hx + 0.088 * s, -0.15 * s);
-      ctx.lineTo(hx - 0.078 * s, -0.162 * s);
-      ctx.lineTo(hx - 0.07 * s, -0.128 * s);
-      ctx.lineTo(hx + 0.078 * s, -0.118 * s);
+      ctx.moveTo(hx + 0.118 * s, -0.212 * s);
+      ctx.lineTo(hx - 0.105 * s, -0.228 * s);
+      ctx.lineTo(hx - 0.094 * s, -0.182 * s);
+      ctx.lineTo(hx + 0.104 * s, -0.168 * s);
       ctx.closePath();
       ctx.fill();
       break;
     }
     case 'jaws': {
-      // The bite: the working edge is a row of three teeth.
+      // The bite: the working edge is a marching row of teeth.
       ctx.beginPath();
-      ctx.moveTo(hx + 0.05 * s, m * -0.048 * s);
-      ctx.lineTo(hx + 0.09 * s, m * -0.155 * s);
-      ctx.lineTo(hx + 0.045 * s, m * -0.125 * s);
-      ctx.lineTo(hx + 0.005 * s, m * -0.165 * s);
-      ctx.lineTo(hx - 0.038 * s, m * -0.125 * s);
-      ctx.lineTo(hx - 0.085 * s, m * -0.158 * s);
-      ctx.lineTo(hx - 0.05 * s, m * -0.048 * s);
+      ctx.moveTo(hx + 0.068 * s, m * -0.048 * s);
+      ctx.lineTo(hx + 0.125 * s, m * -0.215 * s);
+      ctx.lineTo(hx + 0.072 * s, m * -0.17 * s);
+      ctx.lineTo(hx + 0.03 * s, m * -0.232 * s);
+      ctx.lineTo(hx - 0.012 * s, m * -0.17 * s);
+      ctx.lineTo(hx - 0.058 * s, m * -0.225 * s);
+      ctx.lineTo(hx - 0.115 * s, m * -0.212 * s);
+      ctx.lineTo(hx - 0.065 * s, m * -0.048 * s);
       ctx.closePath();
       ctx.fill();
       if (hurt || m > 0) break;
       ctx.fillStyle = edge;
       ctx.beginPath();
-      ctx.moveTo(hx + 0.09 * s, -0.155 * s);
-      ctx.lineTo(hx + 0.045 * s, -0.125 * s);
-      ctx.lineTo(hx + 0.005 * s, -0.165 * s);
-      ctx.lineTo(hx + 0.01 * s, -0.135 * s);
-      ctx.lineTo(hx + 0.05 * s, -0.1 * s);
+      ctx.moveTo(hx + 0.125 * s, -0.215 * s);
+      ctx.lineTo(hx + 0.072 * s, -0.17 * s);
+      ctx.lineTo(hx + 0.03 * s, -0.232 * s);
+      ctx.lineTo(hx + 0.036 * s, -0.185 * s);
+      ctx.lineTo(hx + 0.068 * s, -0.14 * s);
       ctx.closePath();
       ctx.fill();
       break;
@@ -3624,29 +3772,29 @@ function drawAxeBit(
       // lower a smaller tilted shear — no two swings land the same.
       if (m < 0) {
         ctx.beginPath();
-        ctx.moveTo(hx + 0.052 * s, -0.048 * s);
-        ctx.lineTo(hx + 0.095 * s, -0.132 * s);
-        ctx.lineTo(hx + 0.02 * s, -0.168 * s);
-        ctx.lineTo(hx - 0.075 * s, -0.138 * s);
-        ctx.lineTo(hx - 0.045 * s, -0.048 * s);
+        ctx.moveTo(hx + 0.07 * s, -0.048 * s);
+        ctx.lineTo(hx + 0.128 * s, -0.182 * s);
+        ctx.lineTo(hx + 0.026 * s, -0.235 * s);
+        ctx.lineTo(hx - 0.102 * s, -0.192 * s);
+        ctx.lineTo(hx - 0.06 * s, -0.048 * s);
         ctx.closePath();
         ctx.fill();
         if (!hurt) {
           ctx.fillStyle = edge;
           ctx.beginPath();
-          ctx.moveTo(hx + 0.095 * s, -0.132 * s);
-          ctx.lineTo(hx + 0.02 * s, -0.168 * s);
-          ctx.lineTo(hx + 0.005 * s, -0.135 * s);
-          ctx.lineTo(hx + 0.078 * s, -0.105 * s);
+          ctx.moveTo(hx + 0.128 * s, -0.182 * s);
+          ctx.lineTo(hx + 0.026 * s, -0.235 * s);
+          ctx.lineTo(hx + 0.006 * s, -0.19 * s);
+          ctx.lineTo(hx + 0.105 * s, -0.148 * s);
           ctx.closePath();
           ctx.fill();
         }
       } else {
         ctx.beginPath();
-        ctx.moveTo(hx + 0.04 * s, 0.048 * s);
-        ctx.lineTo(hx + 0.06 * s, 0.125 * s);
-        ctx.lineTo(hx - 0.06 * s, 0.148 * s);
-        ctx.lineTo(hx - 0.055 * s, 0.048 * s);
+        ctx.moveTo(hx + 0.055 * s, 0.048 * s);
+        ctx.lineTo(hx + 0.082 * s, 0.172 * s);
+        ctx.lineTo(hx - 0.082 * s, 0.205 * s);
+        ctx.lineTo(hx - 0.075 * s, 0.048 * s);
         ctx.closePath();
         ctx.fill();
       }
@@ -3656,24 +3804,24 @@ function drawAxeBit(
       // One wide shallow sweep — the whole bit is edge — on a narrow
       // taper of a cheek (a slab cheek made a T; bench verdict).
       ctx.beginPath();
-      ctx.moveTo(hx - 0.032 * s, m * -0.048 * s);
-      ctx.lineTo(hx - 0.052 * s, m * -0.115 * s);
-      ctx.lineTo(hx + 0.052 * s, m * -0.115 * s);
-      ctx.lineTo(hx + 0.032 * s, m * -0.048 * s);
+      ctx.moveTo(hx - 0.04 * s, m * -0.048 * s);
+      ctx.lineTo(hx - 0.064 * s, m * -0.155 * s);
+      ctx.lineTo(hx + 0.064 * s, m * -0.155 * s);
+      ctx.lineTo(hx + 0.04 * s, m * -0.048 * s);
       ctx.closePath();
       ctx.fill();
       ctx.beginPath();
-      ctx.moveTo(hx - 0.118 * s, m * -0.088 * s);
-      ctx.quadraticCurveTo(hx, m * -0.205 * s, hx + 0.118 * s, m * -0.088 * s);
-      ctx.quadraticCurveTo(hx, m * -0.108 * s, hx - 0.118 * s, m * -0.088 * s);
+      ctx.moveTo(hx - 0.168 * s, m * -0.118 * s);
+      ctx.quadraticCurveTo(hx, m * -0.288 * s, hx + 0.168 * s, m * -0.118 * s);
+      ctx.quadraticCurveTo(hx, m * -0.148 * s, hx - 0.168 * s, m * -0.118 * s);
       ctx.closePath();
       ctx.fill();
       if (hurt || m > 0) break;
       ctx.strokeStyle = edge;
-      ctx.lineWidth = Math.max(1.2, s * 0.018);
+      ctx.lineWidth = Math.max(1.2, s * 0.02);
       ctx.beginPath();
-      ctx.moveTo(hx - 0.108 * s, -0.09 * s);
-      ctx.quadraticCurveTo(hx, -0.195 * s, hx + 0.108 * s, -0.09 * s);
+      ctx.moveTo(hx - 0.152 * s, -0.122 * s);
+      ctx.quadraticCurveTo(hx, -0.272 * s, hx + 0.152 * s, -0.122 * s);
       ctx.stroke();
       break;
     }
@@ -3684,25 +3832,25 @@ function drawAxeBit(
       // runs a plane darker or blade and neck melt into a bell.
       ctx.fillStyle = hurt ? '#ffffff' : shade(fill, -14);
       ctx.beginPath();
-      ctx.moveTo(hx - 0.036 * s, m * -0.048 * s);
-      ctx.lineTo(hx - 0.048 * s, m * -0.152 * s);
-      ctx.lineTo(hx + 0.048 * s, m * -0.152 * s);
-      ctx.lineTo(hx + 0.036 * s, m * -0.048 * s);
+      ctx.moveTo(hx - 0.042 * s, m * -0.048 * s);
+      ctx.lineTo(hx - 0.058 * s, m * -0.198 * s);
+      ctx.lineTo(hx + 0.058 * s, m * -0.198 * s);
+      ctx.lineTo(hx + 0.042 * s, m * -0.048 * s);
       ctx.closePath();
       ctx.fill();
       ctx.fillStyle = fill;
       ctx.beginPath();
-      ctx.moveTo(hx - 0.108 * s, m * -0.132 * s);
-      ctx.quadraticCurveTo(hx, m * -0.218 * s, hx + 0.108 * s, m * -0.135 * s);
-      ctx.quadraticCurveTo(hx, m * -0.15 * s, hx - 0.108 * s, m * -0.132 * s);
+      ctx.moveTo(hx - 0.152 * s, m * -0.172 * s);
+      ctx.quadraticCurveTo(hx, m * -0.295 * s, hx + 0.152 * s, m * -0.176 * s);
+      ctx.quadraticCurveTo(hx, m * -0.198 * s, hx - 0.152 * s, m * -0.172 * s);
       ctx.closePath();
       ctx.fill();
       if (hurt || m > 0) break;
       ctx.strokeStyle = edge;
-      ctx.lineWidth = Math.max(1.2, s * 0.02);
+      ctx.lineWidth = Math.max(1.2, s * 0.022);
       ctx.beginPath();
-      ctx.moveTo(hx - 0.098 * s, -0.135 * s);
-      ctx.quadraticCurveTo(hx, -0.208 * s, hx + 0.098 * s, -0.138 * s);
+      ctx.moveTo(hx - 0.138 * s, -0.176 * s);
+      ctx.quadraticCurveTo(hx, -0.282 * s, hx + 0.138 * s, -0.18 * s);
       ctx.stroke();
       break;
     }
@@ -3712,18 +3860,18 @@ function drawAxeBit(
     ctx.strokeStyle = dark;
     ctx.lineWidth = Math.max(1, s * 0.014);
     ctx.beginPath();
-    ctx.moveTo(hx - 0.04 * s, 0.07 * s);
-    ctx.lineTo(hx + 0.04 * s, 0.07 * s);
+    ctx.moveTo(hx - 0.05 * s, 0.092 * s);
+    ctx.lineTo(hx + 0.05 * s, 0.092 * s);
     ctx.stroke();
   }
   // Battle bites out of the upper working edge.
   if (!hurt && st.notched && m < 0) {
     ctx.fillStyle = shade(st.color, -52);
-    for (const t of [-0.045, 0.03] as const) {
+    for (const t of [-0.055, 0.04] as const) {
       ctx.beginPath();
-      ctx.moveTo(hx + (t - 0.018) * s, -0.15 * s);
-      ctx.lineTo(hx + (t + 0.018) * s, -0.155 * s);
-      ctx.lineTo(hx + t * s, -0.125 * s);
+      ctx.moveTo(hx + (t - 0.02) * s, -0.208 * s);
+      ctx.lineTo(hx + (t + 0.02) * s, -0.214 * s);
+      ctx.lineTo(hx + t * s, -0.172 * s);
       ctx.closePath();
       ctx.fill();
     }
