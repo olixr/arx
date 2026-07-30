@@ -4910,6 +4910,14 @@ function drawHeldItem(
 // live transform, stamp eight tinted taps of it (scratch B) UNDER the
 // art, then the art itself. Device-pixel identity blits — the
 // bakeOutlineRing recipe, scratches module-scoped and grow-only.
+//
+// THE RING NEVER DOUBLES: the renderer's body dilate rings whatever
+// alpha the rig leaves in its scratch — if this ring extended the
+// weapon's silhouette, the exposed edges would wear this ring PLUS the
+// body's ring around it (a 2r band against the body's r). So the ring
+// is stamped `source-atop`: it exists ONLY over pixels the rig has
+// already painted (the body the weapon crosses), and the exposed
+// silhouette stays bare for the body pass to ring exactly once.
 let heldOlA: HTMLCanvasElement | null = null;
 let heldOlACtx: CanvasRenderingContext2D | null = null;
 let heldOlB: HTMLCanvasElement | null = null;
@@ -4994,7 +5002,9 @@ function paintHeldOutlined(
   b.globalCompositeOperation = 'source-over';
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'source-atop';
   ctx.drawImage(heldOlB!, 0, 0, w, h, ox, oy, w, h);
+  ctx.globalCompositeOperation = 'source-over';
   ctx.drawImage(heldOlA!, 0, 0, w, h, ox, oy, w, h);
   ctx.restore();
 }
