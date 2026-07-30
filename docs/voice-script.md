@@ -41,7 +41,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Keeper of the Waking Ring, the first voice every new arrival hears. Grandmotherly and unhurried; she has welcomed hundreds of wakers and carries the ones who didn't come back. Full warm sentences, old-fashioned turns, calls you 'child' or 'waker'. Practical wisdom, never cosmic. Warm, low, steady pace.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.45 · cfg 0.55
+**Chatterbox casting:** `gran_ruth` *(provisional)* · exaggeration 0.45 · cfg 0.55
 
 ### Quips — short fillers, one file each
 
@@ -158,7 +158,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** The most gloriously boring man alive, and content. Wants rain at the right time. Short flat statements about immediate things: weather, hens, fence posts. Deliver absolutely deadpan; any wisdom is an accident and he'd deny it.
 
-**Chatterbox casting:** `stanley` *(provisional)* · exaggeration 0.3 · cfg 0.6
+**Chatterbox casting:** `slow_john` *(provisional)* · exaggeration 0.3 · cfg 0.6
 
 ### Quips — short fillers, one file each
 
@@ -251,7 +251,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Hearthkeeper; feeds everyone and lost someone to the road she never names. Plain, kind, food-first. Homely comparisons only: bread, weather, the pot. No cleverness at all; warmth is the whole instrument.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.45 · cfg 0.5
+**Chatterbox casting:** `hearth_kara` *(provisional)* · exaggeration 0.45 · cfg 0.5
 
 ### Quips — short fillers, one file each
 
@@ -374,7 +374,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Village tinker, a little lonely, happiest mid-repair. Talks to tools and objects mid-sentence ('hold still, you...'). Distracted, parenthetical, trails off and restarts. Let the pauses land where the '...' sits; he is not slow, his attention just wandered to the vice.
 
-**Chatterbox casting:** `edd` *(provisional)* · exaggeration 0.55 · cfg 0.4
+**Chatterbox casting:** `gentle_simon` *(provisional)* · exaggeration 0.55 · cfg 0.4
 
 ### Quips — short fillers, one file each
 
@@ -451,7 +451,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Dawnmead's drill-yard warden. Ex-soldier who misses real soldiering and hides fondness under bark. Imperatives, short. Counts things. 'Again.' 'Good.' Clipped delivery, never flowery, a smile buried deep in the throat.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.5 · cfg 0.55
+**Chatterbox casting:** `steel_cori` *(provisional)* · exaggeration 0.5 · cfg 0.55
 
 ### Quips — short fillers, one file each
 
@@ -632,7 +632,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** A kid who wants to be sent on errands like the big couriers. Fast, literal, too honest, asks questions back. Bright and quick; no adult irony anywhere.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.65 · cfg 0.4
+**Chatterbox casting:** `bright_karen` *(provisional)* · exaggeration 0.65 · cfg 0.4
 
 ### Quips — short fillers, one file each
 
@@ -683,7 +683,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Banker; built the bank out of the Toll War so the town would never be caught poor again. Measured, ledger-metaphors, real dry wit but one good line per talk. Comfortable, unhurried; money has made him patient, memory keeps him careful.
 
-**Chatterbox casting:** `farnsworth` *(provisional)* · exaggeration 0.4 · cfg 0.55
+**Chatterbox casting:** `hale_andy` *(provisional)* · exaggeration 0.4 · cfg 0.55
 
 ### Quips — short fillers, one file each
 
@@ -780,7 +780,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Captain of the North Gate, made by the Toll War. Watch-report clip; names the dead plainly; no glory talk. She remembers whether you listened to her. Steady command voice with the weight of a bad year behind it.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.4 · cfg 0.6
+**Chatterbox casting:** `steel_cori` *(provisional)* · exaggeration 0.4 · cfg 0.6
 
 ### Quips — short fillers, one file each
 
@@ -1075,7 +1075,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Grocer; wants everyone fed and everyone's news. Warm, nosy, kind. Runs sentences together, asks after people by name. Fast and friendly, barely a full stop in her.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.6 · cfg 0.4
+**Chatterbox casting:** `matron_michele` *(provisional)* · exaggeration 0.6 · cfg 0.4
 
 ### Quips — short fillers, one file each
 
@@ -1156,7 +1156,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Keeper of the Wanderer's Rest; Osa's daughter, working in her mam's shadow. Publican's timing: quick, hospitable, gossip in threes, mothers the roadworn. Bright and warm with a smart mouth.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.6 · cfg 0.45
+**Chatterbox casting:** `bright_karen` *(provisional)* · exaggeration 0.6 · cfg 0.45
 
 ### Quips — short fillers, one file each
 
@@ -1267,7 +1267,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Outfitter, ex-roads himself; nobody dies of a cheap strap on his watch. Practical, checks your gear with his eyes mid-sentence, blunt about danger, no drama. Even, seen-it-all delivery.
 
-**Chatterbox casting:** `david` *(provisional)* · exaggeration 0.4 · cfg 0.55
+**Chatterbox casting:** `plain_mark` *(provisional)* · exaggeration 0.4 · cfg 0.55
 
 ### Quips — short fillers, one file each
 
@@ -1420,7 +1420,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Bretta Ironhewn, Master Smith; came down-mountain after the Undercroft seal and does not discuss it. Terse metalwork imperatives, drops sentence subjects: 'Forge's hot. Speak.' Goes quiet when the mountain comes up; the silence IS the story. Low, level, zero performance.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.35 · cfg 0.6
+**Chatterbox casting:** `matron_michele` *(provisional)* · exaggeration 0.35 · cfg 0.6
 
 ### Quips — short fillers, one file each
 
@@ -1571,7 +1571,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Ferrick, the Company's Tongue at the Tollhouse. Courteous menace; never raises his voice, never threatens twice. Everything is a ledger entry, everyone an amount. A clerk's dry wit, spent sparingly. Smooth, unhurried, faintly amused.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.35 · cfg 0.65
+**Chatterbox casting:** `wry_peter` *(provisional)* · exaggeration 0.35 · cfg 0.65
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -1687,7 +1687,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Pooled toll guards, red cloth at the arm. Counted words, three to six per line, arithmetic diction. 'Ferrick talks. I count.' Flat, bored, immovable.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.25 · cfg 0.65
+**Chatterbox casting:** `king_bob` *(provisional)* · exaggeration 0.25 · cfg 0.65
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -1703,7 +1703,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Frontier crofter holding a claim against the wilds. Plain worried farm talk; grateful and a little embarrassed to need help.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.45 · cfg 0.5
+**Chatterbox casting:** `hearth_kara` *(provisional)* · exaggeration 0.45 · cfg 0.5
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -1719,7 +1719,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Frontier crofter. Stubborn, proud of the fence line, understates every danger.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.4 · cfg 0.55
+**Chatterbox casting:** `slow_john` *(provisional)* · exaggeration 0.4 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -1735,7 +1735,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Frontier crofter. Practical and dry; talks about raids the way other people talk about weather.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.4 · cfg 0.55
+**Chatterbox casting:** `steel_cori` *(provisional)* · exaggeration 0.4 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -1751,7 +1751,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Frontier crofter. Young for a claim-holder; more hope than sense, catching himself mid-boast.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.55 · cfg 0.45
+**Chatterbox casting:** `ember_tadhg` *(provisional)* · exaggeration 0.55 · cfg 0.45
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -1767,7 +1767,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Keeper of the Last Lamp on the worst mile of road; Sella's elder sister. BLUNT. Shortest sentences in the game. Kindness lives in deeds, never words. No warmth in the voice; all the warmth is in what she does.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.3 · cfg 0.65
+**Chatterbox casting:** `steel_cori` *(provisional)* · exaggeration 0.3 · cfg 0.65
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -1797,7 +1797,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Road peddler. Wagon-worn patter, cheerful about bad roads because bad roads are good business.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.55 · cfg 0.45
+**Chatterbox casting:** `folksy_phil` *(provisional)* · exaggeration 0.55 · cfg 0.45
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -1827,7 +1827,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Road peddler. Quick, warm, gossip travels in her wagon alongside the pans.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.55 · cfg 0.45
+**Chatterbox casting:** `bright_karen` *(provisional)* · exaggeration 0.55 · cfg 0.45
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -1857,7 +1857,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Road peddler. The quiet one of the three; short lines, sharp eyes, prices that end in odd numbers.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.4 · cfg 0.55
+**Chatterbox casting:** `ember_tadhg` *(provisional)* · exaggeration 0.4 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -1887,7 +1887,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Waystation keeper with peddler blood; prices everything, including opinions. Quick patter, friendly, always half-selling.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.55 · cfg 0.45
+**Chatterbox casting:** `folksy_phil` *(provisional)* · exaggeration 0.55 · cfg 0.45
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -1921,7 +1921,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Ex-quartermaster running a waystation; inventory brain, lists things in pairs. Practical, brisk, faintly proud of a well-kept store.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.4 · cfg 0.6
+**Chatterbox casting:** `plain_mark` *(provisional)* · exaggeration 0.4 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -1937,7 +1937,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Waystation keeper; steady, motherly to travelers, weather-wise. Calm and even; she has seen every kind of road trouble arrive at her fire.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.4 · cfg 0.55
+**Chatterbox casting:** `hearth_kara` *(provisional)* · exaggeration 0.4 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -1953,7 +1953,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Waykeeper sergeant. Report clip, dark humor rationed tighter than lamp oil. The youngest of the three sergeants and covering for it.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.45 · cfg 0.55
+**Chatterbox casting:** `ember_tadhg` *(provisional)* · exaggeration 0.45 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -1969,7 +1969,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Waykeeper sergeant far from relief. Report-speak, understatement, dark road humor kept short. 'The lamp stays lit' said like a password, not a poem. Tired but unbroken.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.4 · cfg 0.6
+**Chatterbox casting:** `plain_mark` *(provisional)* · exaggeration 0.4 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2069,7 +2069,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Waykeeper sergeant. Same school as Hale: report-speak, understatement, humor dry as hardtack. A shade sharper-edged than Hale.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.4 · cfg 0.6
+**Chatterbox casting:** `steel_cori` *(provisional)* · exaggeration 0.4 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2085,7 +2085,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Pooled Waykeeper watch voices on the wayward road. Soldier-plain, weather talk, short warnings. Deliver like someone glancing past your shoulder at the treeline.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.4 · cfg 0.55
+**Chatterbox casting:** `plain_mark` *(provisional)* · exaggeration 0.4 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2183,7 +2183,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Pooled Amberford watch. Gate-shift talk: short, civil, professionally unimpressed.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.35 · cfg 0.55
+**Chatterbox casting:** `plain_mark` *(provisional)* · exaggeration 0.35 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2199,7 +2199,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Courier who wants to be everywhere already. Breathless, arrives mid-thought, leaves before finishing, knows everyone's business a day early. Fast; clip the ends of lines like he's already turning away.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.65 · cfg 0.35
+**Chatterbox casting:** `ember_tadhg` *(provisional)* · exaggeration 0.65 · cfg 0.35
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2261,7 +2261,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Half of the Furrowfield marriage; slow and deliberate where Tamsin is quick. His sentences arrive like carts, fully loaded and on time. Incomplete without her version of the same story.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.35 · cfg 0.6
+**Chatterbox casting:** `slow_john` *(provisional)* · exaggeration 0.35 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2315,7 +2315,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** The other half of the Furrowfields; quick and teasing where Jorel is slow. Finishes and contradicts his sentences with obvious love.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.6 · cfg 0.45
+**Chatterbox casting:** `bright_karen` *(provisional)* · exaggeration 0.6 · cfg 0.45
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2353,7 +2353,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Ferryman; wants the river respected. Three-to-six-word answers, long pauses. When he says a full sentence it matters. Speak slow, low, and let the silence do the ferrying.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.25 · cfg 0.65
+**Chatterbox casting:** `slow_john` *(provisional)* · exaggeration 0.25 · cfg 0.65
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2395,7 +2395,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Keeper of the Waykeepers' Hall registry. Reverent, precise, a little dusty. Speaks in entries and dates; softens only at the memorial wall.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.35 · cfg 0.6
+**Chatterbox casting:** `wry_peter` *(provisional)* · exaggeration 0.35 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2493,7 +2493,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Master artisan chasing one perfect chair before he dies. Soft-spoken, hands-first, apologizes for talking too long, then does. Gentle, thoughtful, slightly embarrassed by his own enthusiasm.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.45 · cfg 0.45
+**Chatterbox casting:** `gentle_simon` *(provisional)* · exaggeration 0.45 · cfg 0.45
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2535,7 +2535,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Old miller; wants quiet, contradicts everyone on principle, especially Peld. Grumbles, short, 'in my day', secretly generous. Gravel and complaint with no real malice.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.45 · cfg 0.5
+**Chatterbox casting:** `king_bob` *(provisional)* · exaggeration 0.45 · cfg 0.5
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2577,7 +2577,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Goodwife Perl, orchardist; chatty gran who feeds everyone and suspects the cows of genius. Rambling, affectionate, digressions that circle back. Cozy and unhurried.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.55 · cfg 0.4
+**Chatterbox casting:** `gran_ruth` *(provisional)* · exaggeration 0.55 · cfg 0.4
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2615,7 +2615,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Pooled market traders of the Amberford round. Stall patter: short, bright, selling without pushing.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.55 · cfg 0.45
+**Chatterbox casting:** `folksy_phil` *(provisional)* · exaggeration 0.55 · cfg 0.45
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2631,7 +2631,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Sage of the Dispensary; wants ailments boring and books exciting. Precise, faintly amused, corrects herself for accuracy: 'well, three days. Two and a half.'
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.45 · cfg 0.55
+**Chatterbox casting:** `clear_liz` *(provisional)* · exaggeration 0.45 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2675,7 +2675,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Assayer; the scales beyond question. Few words, exact ones. States weights and facts; declines adjectives. Flat, final, unbothered.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.25 · cfg 0.7
+**Chatterbox casting:** `clear_liz` *(provisional)* · exaggeration 0.25 · cfg 0.7
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2717,7 +2717,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Bursar of the vaults; arithmetic unquestionable. Polite, exact, immovable. Numbers offered as courtesy, refusals delivered as arithmetic.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.3 · cfg 0.65
+**Chatterbox casting:** `clear_liz` *(provisional)* · exaggeration 0.3 · cfg 0.65
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2759,7 +2759,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Timberway carpenter; patient teacher, grain-metaphors, measured. Every line paced like a saw cut: no hurry, no waste.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.35 · cfg 0.6
+**Chatterbox casting:** `plain_mark` *(provisional)* · exaggeration 0.35 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2809,7 +2809,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Pooled castle guards. Steel courtesy: formal, brief, correct. The armor does the talking.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.3 · cfg 0.6
+**Chatterbox casting:** `king_bob` *(provisional)* · exaggeration 0.3 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2825,7 +2825,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Castle cook feeding the working terrace on time. Kitchen clatter: short, warm, orders disguised as offers. Always mid-task; lines said over a shoulder.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.55 · cfg 0.45
+**Chatterbox casting:** `hearth_kara` *(provisional)* · exaggeration 0.55 · cfg 0.45
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2863,7 +2863,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Timberway cooper; fast, practical, loudly competitive about the Timberway's pecking order. Energy up, elbows out, grin audible.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.6 · cfg 0.45
+**Chatterbox casting:** `bright_karen` *(provisional)* · exaggeration 0.6 · cfg 0.45
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2905,7 +2905,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Enchantress of the Arcanum; wants to know what the rift already knows. Drifts mid-sentence when a thought catches her, returns without apology; the '...' is a thought pulling her sideways. Abstracted, precise about the imprecise.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.45 · cfg 0.4
+**Chatterbox casting:** `stage_mil` *(provisional)* · exaggeration 0.45 · cfg 0.4
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -2951,7 +2951,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Fence, 'Purveyor of Provenance'. Euphemism as art form: everything 'found', 'orphaned', 'previously appreciated'. Silk-smooth, faintly delighted with his own vocabulary.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.45 · cfg 0.55
+**Chatterbox casting:** `sly_adrian` *(provisional)* · exaggeration 0.45 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3021,7 +3021,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Fletcher; Waykeeper veteran invalided off the road with a bad knee. Careful, oath-driven: every arrow is somebody's life. Understates his ten years on the road. Quiet pride, no bitterness aloud.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.35 · cfg 0.6
+**Chatterbox casting:** `plain_mark` *(provisional)* · exaggeration 0.35 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3063,7 +3063,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Yard foreman; his brother's crew was the count that never came back from the Undercroft. NEAR-SILENT. Two-line answers. Approaches the brother only sideways, and the '...' in his lines is him stepping around it. Low, guarded, closed.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.25 · cfg 0.65
+**Chatterbox casting:** `king_bob` *(provisional)* · exaggeration 0.25 · cfg 0.65
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3169,7 +3169,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Forgemistress; wants steel with no lies in it. LOUD, certain, generous with praise for work, never for people directly. The thirty-year feud with Koll is theatre both maintain. Big voice, big room.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.65 · cfg 0.45
+**Chatterbox casting:** `stage_mil` *(provisional)* · exaggeration 0.65 · cfg 0.45
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3235,7 +3235,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Pooled galleria stall traders. Polished patter for a polished arcade; brighter and smoother than a road market.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.55 · cfg 0.45
+**Chatterbox casting:** `showman_martin` *(provisional)* · exaggeration 0.55 · cfg 0.45
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3251,7 +3251,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Gardener of the Greenstair; talks to plants more easily than people. Quiet, halting with strangers, suddenly fluent about green things. Let the fluency switch on when the subject turns to growing.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.35 · cfg 0.5
+**Chatterbox casting:** `gentle_simon` *(provisional)* · exaggeration 0.35 · cfg 0.5
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3285,7 +3285,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Pooled pool-market criers at the gates. Market cries: loud, short, rhythmic.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.65 · cfg 0.4
+**Chatterbox casting:** `showman_martin` *(provisional)* · exaggeration 0.65 · cfg 0.4
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3301,7 +3301,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Herbalist; wants people to stop being stupid about mushrooms. Brisk, clinical, unexpectedly funny about symptoms. The humor is dry and entirely accidental-sounding.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.45 · cfg 0.55
+**Chatterbox casting:** `bright_karen` *(provisional)* · exaggeration 0.45 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3339,7 +3339,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Hostler; Dunna's mam, wants word from the ford more than she'll admit. Horse-first, people-second; gruff; melts at Dunna's name and pretends she didn't. Rough warmth badly hidden.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.4 · cfg 0.55
+**Chatterbox casting:** `stage_mil` *(provisional)* · exaggeration 0.4 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3381,7 +3381,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Keeper of the Silver Flagon; wants a quieter room than Dunna's and pretends not to compete. Composed, discreet, hears everything, repeats little. Smooth, level, professionally pleasant.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.35 · cfg 0.6
+**Chatterbox casting:** `clear_liz` *(provisional)* · exaggeration 0.35 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3427,7 +3427,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Fifth king of the Silver Line, a quarry foreman's grandson who knows it. PLAIN. Shorter and simpler than visitors expect from a king; that plainness is the character. No royal ornament, no boom. A working man's gravity.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.35 · cfg 0.6
+**Chatterbox casting:** `king_bob` *(provisional)* · exaggeration 0.35 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3525,7 +3525,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Rookery lookout; sees everything, says nothing. Minimal, sardonic, roof-slang; rarely finishes a warning, expects you to catch up. Half the line is in the shrug.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.35 · cfg 0.55
+**Chatterbox casting:** `wry_peter` *(provisional)* · exaggeration 0.35 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3569,7 +3569,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** The Magpie, mistress of the Rookery; the city's shadows kept orderly. Never answers a question first; asks one back. Soft, unhurried, everything a trade. Quiet enough that people lean in; that's the point.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.35 · cfg 0.6
+**Chatterbox casting:** `stage_mil` *(provisional)* · exaggeration 0.35 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3697,7 +3697,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Marshal of the Waykeepers, holding the roads with too few people. Muster-roll clip, tired, dry. Quotes her grandmother once, reluctantly. The exhaustion is real but never asks for sympathy.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.35 · cfg 0.6
+**Chatterbox casting:** `steel_cori` *(provisional)* · exaggeration 0.35 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3845,7 +3845,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Mason who swung the pick through her own grandfather's sealwork on Maren's order. Technical, defensive-precise; over-explains joints and loads when the real subject gets close. The engineering talk is armor.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.45 · cfg 0.55
+**Chatterbox casting:** `clear_liz` *(provisional)* · exaggeration 0.45 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3887,7 +3887,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Ford-born queen who audited the king's own arithmetic. The sharpest wit in the game. Quick, precise, auditor's eye; affection expressed as correction. Every line lands exactly where she aimed it.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.5 · cfg 0.55
+**Chatterbox casting:** `clear_liz` *(provisional)* · exaggeration 0.5 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -3965,7 +3965,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Scrivener of Inks and Charts; wants the world written down before it changes. Enthusiastic pedant; measures distance in days-walked; corrects maps mid-conversation. Delight is the engine.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.6 · cfg 0.45
+**Chatterbox casting:** `showman_martin` *(provisional)* · exaggeration 0.6 · cfg 0.45
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -4007,7 +4007,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Keeper of the Silver Shrine's mother-flame; Edda's younger sister. Gentle, few words, no sermons. Her one line of faith, 'the dark is large, and we pass the light along', is said like housekeeping, not scripture.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.3 · cfg 0.6
+**Chatterbox casting:** `matron_michele` *(provisional)* · exaggeration 0.3 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -4111,7 +4111,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Pooled city watch. Gate-watch weather talk; short, functional, alive.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.35 · cfg 0.55
+**Chatterbox casting:** `plain_mark` *(provisional)* · exaggeration 0.35 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -4127,7 +4127,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Silversmith; wants her mark to mean something in three hundred years. Exacting, aesthetic; one commandment: Runa's stamp settles everything. Cool precision with heat underneath.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.4 · cfg 0.6
+**Chatterbox casting:** `clear_liz` *(provisional)* · exaggeration 0.4 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -4201,7 +4201,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Smeltmaster; wants the pour clean. Numbers everything: minutes, bars, grudges. Workmanlike; furnace superstitions delivered completely deadpan.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.35 · cfg 0.6
+**Chatterbox casting:** `ember_tadhg` *(provisional)* · exaggeration 0.35 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -4263,7 +4263,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** High Warden, Castellan; ordered the Undercroft seal broken and lives with it. Measured, weighed words, never defends herself twice. Carries the cost visibly but silently. Slow, deliberate, controlled.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.3 · cfg 0.65
+**Chatterbox casting:** `steel_cori` *(provisional)* · exaggeration 0.3 · cfg 0.65
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -4351,7 +4351,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Master Weaver; beauty taken seriously as labor. Grand manner, earned. Declarative, slightly imperious, kind underneath. Project to the back of the gallery.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.55 · cfg 0.55
+**Chatterbox casting:** `stage_mil` *(provisional)* · exaggeration 0.55 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -4415,7 +4415,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Ore broker; every rumor priced. Quick, numeric, friendly the way scales are friendly. The smile is part of the transaction.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.5 · cfg 0.5
+**Chatterbox casting:** `hale_andy` *(provisional)* · exaggeration 0.5 · cfg 0.5
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -4449,7 +4449,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Curio barker, the one licensed showman below ground. Patter, invented provenance, self-mythology he may not believe either. Exclamatory, list-happy, every line a small performance for a crowd of one.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.7 · cfg 0.4
+**Chatterbox casting:** `showman_martin` *(provisional)* · exaggeration 0.7 · cfg 0.4
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -4483,7 +4483,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Mine-Reeve of the Deep Market; brisk administrator underground. Tallies, permits, lamp-oil; refuses to find the dark romantic. Efficient, faintly harried, proud of the ledgers.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.45 · cfg 0.55
+**Chatterbox casting:** `folksy_phil` *(provisional)* · exaggeration 0.45 · cfg 0.55
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
@@ -4573,7 +4573,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 **Who they are, and how to say it:** Last man out of the galleries when the kobolds broke through, on a bad leg. Slow, long pauses (the '...' is a pause, hold it), plain words. Never dramatizes the fall; understates it, which is worse. Low, worn, steady.
 
-**Chatterbox casting:** unassigned (the Chatterbox lane skips this character until a voice is set) · exaggeration 0.25 · cfg 0.6
+**Chatterbox casting:** `slow_john` *(provisional)* · exaggeration 0.25 · cfg 0.6
 
 ### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
 
