@@ -1,6 +1,13 @@
 # Voiceover — THE WORLD FINDS ITS VOICE
 
-> STATUS: PROPOSAL 2026-07-30. Not yet green-lit. No code has been written.
+> STATUS: GREEN-LIT 2026-07-30. Phase 1 (The Fifth Bus) SHIPPED 2026-07-30
+> (e1ad262) — engine `voice` bus + Voice slider (arx.audio.v1), THE DUCK RAIL
+> amendment (gain = BASE × userVol × duck, setDuck the one system multiplier,
+> pure busLevel test-pinned), audio/voice.ts VoicePlayer (24 MB LRU buffer
+> cache, prefetch warming, supersession-tokened line playback with edge fades
+> and LINE_DUCK 0.45/0.45/0.75, capped spatial quips, canPlayType probe,
+> SILENCE IS VALID failure edges). Live-verified; 861 tests green. Phases 2-6
+> pending.
 
 The world moves, asks, and remembers. This epic makes it **speak out loud**. Every
 throat that earned a voice card in the VOICE epic gets an actual voice: full spoken
