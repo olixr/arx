@@ -10108,8 +10108,13 @@ export class Renderer {
           const g = v * v;
           let d = 0;
           const span = Math.abs(wxSpan);
-          if (edgeL) d -= flare * g * Math.max(0, 1 - (f * span) / 0.9);
-          if (edgeR) d += flare * g * Math.max(0, 1 - ((1 - f) * span) / 0.9);
+          // The falloff reach CLAMPS to the segment span: an end
+          // segment shorter than the 0.9-tile reach must still hit
+          // exactly zero at its sealed seam, or the flare drags it
+          // off its neighbour and the wall grins through the crack.
+          const reach = Math.min(0.9, span) || 1;
+          if (edgeL) d -= flare * g * Math.max(0, 1 - (f * span) / reach);
+          if (edgeR) d += flare * g * Math.max(0, 1 - ((1 - f) * span) / reach);
           return d;
         };
         const xAt = (f: number, v: number) => sxAt(f) + flareAt(f, v);
