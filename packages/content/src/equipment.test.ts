@@ -393,6 +393,39 @@ test('themed cloth sets: five pieces each, coherent class and reqs', () => {
   assert.ok(byId.get('scholars_tome'));
 });
 
+test('the named wardrobe: six chase sets, owners keep them, rarity floors hold', () => {
+  // The vault-of-names law brought to armor: epic finds live at the
+  // bands players level THROUGH (a low level never means a plain
+  // reward), the legendary three never mint below their name, and
+  // every set is drop-only — hunted, never forged.
+  const SETS: Record<string, { cls: string; skill: string; floor: RarityTier[]; maxLevel: number }> = {
+    moonbell: { cls: 'cloth', skill: 'magic', floor: ['epic', 'legendary'], maxLevel: 13 },
+    riftweave: { cls: 'cloth', skill: 'magic', floor: ['legendary'], maxLevel: 33 },
+    adderfang: { cls: 'leather', skill: 'archery', floor: ['epic', 'legendary'], maxLevel: 13 },
+    broodsilk: { cls: 'leather', skill: 'sneak', floor: ['legendary'], maxLevel: 33 },
+    aurochs: { cls: 'plate', skill: 'defence', floor: ['epic', 'legendary'], maxLevel: 13 },
+    barrowking: { cls: 'plate', skill: 'defence', floor: ['legendary'], maxLevel: 33 },
+  };
+  for (const [set, want] of Object.entries(SETS)) {
+    const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`));
+    assert.equal(pieces.length, 5, `${set} should have 5 pieces`);
+    const slots = new Set(pieces.map((p) => p.slot));
+    assert.deepEqual(
+      [...slots].sort(),
+      ['body', 'boots', 'gloves', 'head', 'legs'],
+      `${set} covers the armor slots`,
+    );
+    for (const p of pieces) {
+      assert.equal(p.armorClass, want.cls, `${p.id} class`);
+      assert.equal(p.levelReq?.skill, want.skill, `${p.id} gate skill`);
+      assert.ok((p.levelReq?.level ?? 0) <= want.maxLevel, `${p.id} stays in its band`);
+      assert.deepEqual(p.rarities, want.floor, `${p.id} rarity floor`);
+      assert.ok(p.acquisition.drop && !p.acquisition.craft, `${p.id} is drop-only`);
+      assert.ok(p.affixPool.length >= 3, `${p.id} pool feeds legendary rolls`);
+    }
+  }
+});
+
 test('early-game cloth sets: four dye lots each, colorways mirror their base', () => {
   const SETS: Record<string, { dyes: string[]; pieces: string[] }> = {
     thistledown: { dyes: ['madder', 'woad', 'bracken'], pieces: ['hood', 'robe', 'skirts', 'slippers', 'wraps'] },

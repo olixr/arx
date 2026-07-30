@@ -1,3 +1,4 @@
+import type { RarityTier } from '@arx/shared';
 import { compileEquipment } from './compile.js';
 import type { AffixPoolEntry, EquipmentDef } from './types.js';
 
@@ -994,6 +995,15 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // mobs. Early never means humble — these are the showstoppers a new
   // knight marches around in.
   ...earlyPlateDefs(),
+
+  // ================================================= the named wardrobe
+  // Six CHASE sets with owners, spread across the leveling road — the
+  // vault-of-names law brought to armor. Epic finds live at the bands
+  // players actually level through (a low level never means a plain
+  // reward); the legendary three are the long hunts. All drop-only:
+  // the challenge is the owner, not the anvil. Epics mint at epic with
+  // a legendary jackpot; the legendary sets never mint below their name.
+  ...namedChaseDefs(),
 
   // ====================================================== the blade roster
   // Twenty bespoke one-handed swords. Three smithing DESIGNS each forged
@@ -4501,3 +4511,182 @@ export const GEM_BATTLESTAFFS: Record<string, string> = {
   stormpearl: 'storm_battlestaff',
   bloomstone: 'verdant_battlestaff',
 };
+
+// ------------------------------------------------- the named wardrobe
+// Six chase sets, two per class, spread across the leveling road. Each
+// set has an OWNER in the world (the foe or cache whose story it is)
+// and a hard rarity floor: epic finds jackpot to legendary, the
+// legendary three never mint below their name. Drop-only by law —
+// these are hunted, never forged.
+
+type ArmorSlot = 'head' | 'body' | 'legs' | 'gloves' | 'boots';
+
+function chasePiece(
+  base: {
+    class: 'cloth' | 'leather' | 'plate';
+    skill: 'magic' | 'archery' | 'sneak' | 'defence';
+    pool: AffixPoolEntry[];
+    color: string;
+    rarities: RarityTier[];
+  },
+  id: string, name: string, slot: ArmorSlot, level: number,
+  armor: number, value: number, code: string, desc: string,
+): EquipmentDef {
+  return {
+    id, name, slot, armorClass: base.class,
+    levelReq: { skill: base.skill, level }, armor, affixPool: base.pool,
+    acquisition: { drop: true }, value, color: base.color, code, desc,
+    rarities: base.rarities,
+  };
+}
+
+function namedChaseDefs(): EquipmentDef[] {
+  // MOONBELL — the meadow herb worn as vestment. Dusk cloth, silver
+  // bells, a glow the flower keeps for itself. Owner: the fen edge
+  // where moonbell grows — adders and the spiders above them.
+  const moonbell = {
+    class: 'cloth' as const, skill: 'magic' as const,
+    pool: [
+      { stat: 'magic', w: 2 },
+      { stat: 'herbalism', w: 2 },
+      { stat: 'regen' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#545a86',
+    rarities: ['epic', 'legendary'] as RarityTier[],
+  };
+  // RIFTWEAVE — cloth cut from the dark between doors. Night glass,
+  // one white seam, violet runes: the riftglass blade's own language.
+  // Owner: the riftgate and the Champion who guards the way down.
+  const riftweave = {
+    class: 'cloth' as const, skill: 'magic' as const,
+    pool: [
+      { stat: 'magic', w: 3 },
+      { stat: 'sneak' },
+      { stat: 'regen' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#2b2438',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // ADDERFANG — diamondback hide with the fangs still on it. Owner:
+  // the adder, plainly; the road crews pay for the skins they take.
+  const adderfang = {
+    class: 'leather' as const, skill: 'archery' as const,
+    pool: [
+      { stat: 'archery', w: 2 },
+      { stat: 'sneak', w: 2 },
+      { stat: 'herbalism' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#74683c',
+    rarities: ['epic', 'legendary'] as RarityTier[],
+  };
+  // BROODSILK — ink leather bound in moon-pale cord. Owner: the giant
+  // spider, whose silk it is; the crypt keeps a set for its own.
+  const broodsilk = {
+    class: 'leather' as const, skill: 'sneak' as const,
+    pool: [
+      { stat: 'sneak', w: 3 },
+      { stat: 'archery' },
+      { stat: 'regen' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#2c2a34',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // AUROCHS — a bull's chest in black bronze, brass ring in the nose.
+  // Owner: the bull. The pastures tell stories about the one that won.
+  const aurochs = {
+    class: 'plate' as const, skill: 'defence' as const,
+    pool: [
+      { stat: 'defence', w: 2 },
+      { stat: 'melee' },
+      { stat: 'vitality' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#4a3f36',
+    rarities: ['epic', 'legendary'] as RarityTier[],
+  };
+  // BARROWKING — barrow iron ribbed with ivory, crowned in old gold.
+  // Owner: the crypt's Champion; the hill kept its king, and the king
+  // kept his wardrobe.
+  const barrowking = {
+    class: 'plate' as const, skill: 'defence' as const,
+    pool: [
+      { stat: 'defence', w: 3 },
+      { stat: 'melee' },
+      { stat: 'vitality' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#3a4038',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  return [
+    chasePiece(moonbell, 'moonbell_hood', 'Moonbell hood', 'head', 8, 2, 380, 'Ma',
+      'Two pale blooms tucked at the brow. They open at dusk.'),
+    chasePiece(moonbell, 'moonbell_robe', 'Moonbell robe', 'body', 11, 3, 520, 'Mb',
+      'Dusk cloth hung with silver bells, rung too soft for anyone but you.'),
+    chasePiece(moonbell, 'moonbell_skirts', 'Moonbell skirts', 'legs', 10, 2, 440, 'Mc',
+      'The hem sways like a stem in wind.'),
+    chasePiece(moonbell, 'moonbell_slippers', 'Moonbell slippers', 'boots', 9, 2, 400, 'Md',
+      'Quiet as petals closing.'),
+    chasePiece(moonbell, 'moonbell_wraps', 'Moonbell wraps', 'gloves', 9, 2, 400, 'Mf',
+      'A faint glow at the knuckle. Pollen, maybe.'),
+
+    chasePiece(riftweave, 'riftweave_cowl', 'Riftweave cowl', 'head', 28, 4, 1050, 'Rd',
+      'Three slivers of night glass ride above the brow. Nothing holds them.'),
+    chasePiece(riftweave, 'riftweave_robe', 'Riftweave robe', 'body', 30, 5, 1400, 'Re',
+      'Cloth cut from the dark between doors. The white seam never fades.'),
+    chasePiece(riftweave, 'riftweave_skirts', 'Riftweave skirts', 'legs', 29, 4, 1200, 'Rf',
+      'The hem drinks torchlight and gives back one thin line.'),
+    chasePiece(riftweave, 'riftweave_slippers', 'Riftweave slippers', 'boots', 28, 3, 1100, 'Rg',
+      'Each step lands a little beside itself.'),
+    chasePiece(riftweave, 'riftweave_wraps', 'Riftweave wraps', 'gloves', 28, 3, 1100, 'Ri',
+      'Glass dust in the weave. It remembers the gate.'),
+
+    chasePiece(adderfang, 'adderfang_hood', 'Adderfang hood', 'head', 10, 3, 420, 'Aa',
+      'Two dry fangs at the mouth of the hood. The bite kept its promise.'),
+    chasePiece(adderfang, 'adderfang_jerkin', 'Adderfang jerkin', 'body', 13, 5, 560, 'Ab',
+      'Diamondback hide, still warm from the sun.'),
+    chasePiece(adderfang, 'adderfang_leggings', 'Adderfang leggings', 'legs', 12, 4, 480, 'Ac',
+      'Scaled where the grass whispers.'),
+    chasePiece(adderfang, 'adderfang_boots', 'Adderfang boots', 'boots', 11, 3, 440, 'Ad',
+      'They cross dry leaves without an opinion.'),
+    chasePiece(adderfang, 'adderfang_gloves', 'Adderfang gloves', 'gloves', 11, 3, 440, 'Af',
+      'Amber at the wrist, patience in the fingers.'),
+
+    chasePiece(broodsilk, 'broodsilk_cowl', 'Broodsilk cowl', 'head', 26, 4, 1000, 'Ba',
+      'A silk ruff spun in the dark. It never caught anything it let go.'),
+    chasePiece(broodsilk, 'broodsilk_jerkin', 'Broodsilk jerkin', 'body', 29, 7, 1350, 'Bb',
+      'Ink leather bound in pale cord. The web wears you back.'),
+    chasePiece(broodsilk, 'broodsilk_leggings', 'Broodsilk leggings', 'legs', 28, 5, 1150, 'Bc',
+      'Bound silent at every joint.'),
+    chasePiece(broodsilk, 'broodsilk_boots', 'Broodsilk boots', 'boots', 27, 4, 1050, 'Be',
+      'Eight legs of patience in two.'),
+    chasePiece(broodsilk, 'broodsilk_gloves', 'Broodsilk gloves', 'gloves', 27, 4, 1050, 'Bf',
+      'Silk to the fingertip. Nothing sticks but what you take.'),
+
+    chasePiece(aurochs, 'aurochs_helm', 'Aurochs helm', 'head', 9, 3, 460, 'Ua',
+      'Black bronze with a brass ring in the nose. Lower your head last.'),
+    chasePiece(aurochs, 'aurochs_platebody', 'Aurochs platebody', 'body', 11, 6, 600, 'Ud',
+      'A bull’s chest in metal. Doors give up first.'),
+    chasePiece(aurochs, 'aurochs_greaves', 'Aurochs greaves', 'legs', 10, 5, 520, 'Ue',
+      'They plant like hooves.'),
+    chasePiece(aurochs, 'aurochs_sabatons', 'Aurochs sabatons', 'boots', 9, 4, 480, 'Uf',
+      'The ground remembers where you stood.'),
+    chasePiece(aurochs, 'aurochs_gauntlets', 'Aurochs gauntlets', 'gloves', 9, 4, 480, 'Ui',
+      'Knuckles like a herd arriving.'),
+
+    chasePiece(barrowking, 'barrowking_helm', 'Barrowking helm', 'head', 31, 5, 1200, 'Wc',
+      'An iron cage crowned in old gold. The hill kept its king.'),
+    chasePiece(barrowking, 'barrowking_platebody', 'Barrowking platebody', 'body', 33, 9, 1500, 'We',
+      'Barrow iron ribbed with ivory. It has outlasted every heir.'),
+    chasePiece(barrowking, 'barrowking_greaves', 'Barrowking greaves', 'legs', 32, 7, 1300, 'Wf',
+      'Green black iron, cold at noon.'),
+    chasePiece(barrowking, 'barrowking_sabatons', 'Barrowking sabatons', 'boots', 31, 5, 1200, 'Wk',
+      'They sound like a door below the ground.'),
+    chasePiece(barrowking, 'barrowking_gauntlets', 'Barrowking gauntlets', 'gloves', 31, 5, 1200, 'Wm',
+      'Gold at the wrist, patient as the hill.'),
+  ];
+}

@@ -421,6 +421,12 @@ const defs: LootTableDef[] = [
       { item: 'arcane_dust', qty: [3, 6], chance: 0.6 },
       { item: 'storm_essence', qty: [1, 3], chance: 0.35 },
       { item: 'frost_essence', qty: [1, 3], chance: 0.35 },
+      // The crypt's own legends: the king's plate stayed with the
+      // Champion, the rift's cloth with the door he guards, and the
+      // brood's silk with whatever he feeds.
+      ...setDrops('barrowking', 0.006),
+      ...setDrops('riftweave', 0.006),
+      ...setDrops('broodsilk', 0.008),
     ],
   },
   {
@@ -589,6 +595,8 @@ const defs: LootTableDef[] = [
       { item: 'dungeon_key', chance: 0.05 },
       { table: 'crypt_arms', mult: 6 },
       { table: 'wolf_arms', mult: 6 },
+      // Moonbell grows over mossy lids; sometimes a set piece grew in.
+      ...setDrops('moonbell', 0.008),
     ],
   },
   {
@@ -604,6 +612,8 @@ const defs: LootTableDef[] = [
       { item: 'dungeon_key', chance: 0.6 },
       { item: 'arcane_dust', qty: [4, 8], chance: 0.8 },
       { item: 'crimson_essence', qty: [2, 4], chance: 0.5 },
+      // The king under the hill banked with the house he built.
+      ...setDrops('barrowking', 0.008),
     ],
   },
   {
@@ -619,6 +629,8 @@ const defs: LootTableDef[] = [
       { table: 'crypt_arms', mult: 8 },
       // Ground from a pane of this very gate.
       { item: 'riftglass', chance: 0.006 },
+      // Woven from the same dark the blade was ground from.
+      ...setDrops('riftweave', 0.006),
     ],
   },
 
@@ -744,6 +756,19 @@ const defs: LootTableDef[] = [
     ],
   },
   {
+    // The bull earns its own table the day it starts dropping plate:
+    // the Aurochs set is the pasture's legend, and the bull is the
+    // legend's keeper.
+    id: 'bull',
+    desc: 'Everything a bull is made of, and the black bronze it earned.',
+    entries: [
+      { item: 'raw_beef' },
+      { item: 'cowhide' },
+      { item: 'bones' },
+      ...setDrops('aurochs', 0.01),
+    ],
+  },
+  {
     id: 'boar',
     desc: 'Bristle, tusk, and a hearty cut.',
     entries: [
@@ -751,6 +776,8 @@ const defs: LootTableDef[] = [
       { item: 'raw_beef', chance: 0.5 },
       { item: 'scrap_hide', qty: [1, 3], chance: 0.8 },
       { item: 'crimson_essence', chance: 0.06 },
+      // The boar shares the bull's country; sometimes it wins.
+      ...setDrops('aurochs', 0.005),
     ],
   },
   {
@@ -778,6 +805,10 @@ const defs: LootTableDef[] = [
       { item: 'bones' },
       { item: 'venom_gland', chance: 0.6 },
       { item: 'scrap_hide', qty: [1, 2], chance: 0.4 },
+      // The adder owns the Adderfang set — the skins the road crews
+      // whisper about. Moonbell grows where the adders sun themselves.
+      ...setDrops('adderfang', 0.008),
+      ...setDrops('moonbell', 0.006),
     ],
   },
   {
@@ -787,6 +818,10 @@ const defs: LootTableDef[] = [
       { item: 'venom_gland', chance: 0.5 },
       { item: 'gloomsilk_thread', qty: [1, 2], chance: 0.4 },
       { item: 'crimson_essence', chance: 0.08 },
+      // The spider owns Broodsilk — its own silk, worn back at it.
+      // A long hunt: the web gives nothing up twice.
+      ...setDrops('broodsilk', 0.0025),
+      ...setDrops('moonbell', 0.005),
     ],
   },
   {

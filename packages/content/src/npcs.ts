@@ -167,7 +167,7 @@ const defs: NpcDef[] = [
     leashRange: 14,
     speed: 2.4,
     xpReward: 55,
-    loot: ['cow'],
+    loot: ['bull'],
     respawnSec: 30,
     color: '#63503f',
     radius: 0.38,
