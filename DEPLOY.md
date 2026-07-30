@@ -108,6 +108,9 @@ Everything stays inside the one site directory Forge manages:
   POI library) ships inside each release via git; the server reads the
   release's own `data/` directory by default. No `DATA_DIR`, nothing
   outside the repo.
+- **Uploaded voice clips** (`data/voice`) are the one runtime-written
+  disk store: the deploy script symlinks it to the site's
+  `shared/voice` directory so recordings persist across releases.
 
 Production safety defaults: with `NODE_ENV=production`, dev chat
 commands, the `/dev` studio API, and guest (accountless) joins are all
@@ -195,6 +198,12 @@ cd $FORGE_RELEASE_DIRECTORY
 npm ci --include=dev
 npm run build                      # client bundle → <release>/public/
 
+# Voice clips (THE CLIP LEDGER) are runtime-uploaded binaries — the one
+# piece of disk content releases do NOT ship. They live in one shared
+# store that every release links in, so a deploy never silences a throat.
+mkdir -p "$FORGE_SITE_DIRECTORY/shared/voice"
+ln -sfn "$FORGE_SITE_DIRECTORY/shared/voice" "$FORGE_RELEASE_DIRECTORY/data/voice"
+
 $ACTIVATE_RELEASE()
 
 # Swing the game server onto the new release. restart discovers the
@@ -215,6 +224,12 @@ There is no data-shipping step because the restart does it all:
   untouched.
 - **Zone overrides and prefabs** are simply read from the new
   release's own `data/` directory.
+- **Voice clip binaries** are the exception to "no data-shipping":
+  clip *metadata* lives in Postgres like all studio content, but the
+  audio files themselves sit in `data/voice` — which the deploy script
+  above symlinks to the site's `shared/voice` so uploads survive every
+  release. The server serves them read-only at `/voice/<hash>.<ext>`
+  (nginx proxies that path — see deploy/nginx-arx.conf).
 
 Note the restart drops connected players for a couple of seconds — a
 single authoritative world process can't hand off live sessions, so

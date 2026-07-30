@@ -36,6 +36,10 @@ export default defineConfig({
       '/dev': {
         target: 'http://localhost:8790',
       },
+      // Voice clips are served by the game server out of data/voice.
+      '/voice': {
+        target: 'http://localhost:8790',
+      },
     },
   },
 });

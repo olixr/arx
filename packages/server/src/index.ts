@@ -6,6 +6,7 @@ import {
   AUTHORED_FACTIONS,
   AUTHORED_FRONTIER,
   AUTHORED_GEOGRAPHY,
+  AUTHORED_VOICE,
   AUTHORED_LOOT_TABLES,
   AUTHORED_NPCS,
   AUTHORED_POI_DEFS,
@@ -24,11 +25,13 @@ import {
   replaceLootTables,
   replaceNpcDefs,
   replacePoiDefs,
+  replaceVoice,
   validateFactions,
   validateFrontier,
   validateGeographyDef,
   validateNpcDef,
   validatePoiDef,
+  validateVoice,
   zoneFromJson,
   type LootTableDef,
   type NpcDef,
@@ -40,8 +43,10 @@ import { config } from './config.js';
 import { AccountStore } from './db/accounts.js';
 import { loadContentDocs, seedContentDocs } from './db/contentDocs.js';
 import { createMapsApi } from './dev/mapsApi.js';
+import { serveVoiceFile } from './voice/store.js';
 import { openDb } from './db/db.js';
 import { loadDialogues, seedDialogues } from './db/dialogues.js';
+import { loadVoiceClips } from './db/voice.js';
 import { loadQuests, seedQuests } from './db/quests.js';
 import { loadNpcActors, syncNpcActors } from './db/npcActors.js';
 import { loadRoutines, seedRoutines } from './db/routines.js';
@@ -219,6 +224,31 @@ if (config.requireInvite) {
     }
   }
 
+  // THE CLIP LEDGER (voiceover-plan Phase 2): the voice dials are one
+  // 'world' doc under the same law — quip cadence, duck depths, and
+  // the upload cap all read at call time.
+  await seedContentDocs(db, 'voice', [{ id: 'world', doc: AUTHORED_VOICE }]);
+  const voiceDocs = await loadContentDocs(db, 'voice');
+  const voiceRow = voiceDocs.find((d) => d.id === 'world');
+  if (voiceRow) {
+    const res = validateVoice(voiceRow.doc);
+    if (!res.ok) {
+      console.warn(`[content] DB voice dials invalid (${res.errors[0]}) — authored dials stand`);
+    } else {
+      replaceVoice(res.def);
+      console.log(
+        `[content] voice dials: quip ${res.def.quipChance}@${Math.round(res.def.quipCooldownMs / 1000)}s · ` +
+          `duck ${res.def.duckLine}/${res.def.duckAmbience} · prefetch ${res.def.prefetchCap}` +
+          (voiceRow.edited ? ' (tool-edited)' : ''),
+      );
+    }
+  }
+  const voiceClipLoad = await loadVoiceClips(db);
+  for (const err of voiceClipLoad.errors) console.warn(`[content] invalid voice clip: ${err}`);
+  if (voiceClipLoad.clips.length > 0) {
+    console.log(`[content] voice clips: ${voiceClipLoad.clips.length} in the ledger`);
+  }
+
   await seedContentDocs(db, 'frontier', [{ id: 'world', doc: AUTHORED_FRONTIER }]);
   const frontierDocs = await loadContentDocs(db, 'frontier');
   const frontierRow = frontierDocs.find((d) => d.id === 'world');
@@ -334,6 +364,11 @@ const httpServer = createServer((req, res) => {
     );
     return;
   }
+  // Voice clips (read-only, prod-safe, immutable-cached) — the one
+  // static thing the game server serves: binaries live in data/voice,
+  // which survives deploys the way the Vite web root never does.
+  const pathname = (req.url ?? '/').split('?')[0] ?? '/';
+  if (serveVoiceFile(req, res, pathname)) return;
   mapsApi(req, res)
     .then((handled) => {
       if (!handled) {

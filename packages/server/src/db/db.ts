@@ -628,6 +628,39 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE inventory_slots ADD COLUMN stolen INTEGER;
   `,
+  // v13: THE CLIP LEDGER (docs/voiceover-plan.md Phase 2) — voice
+  // clips are two-hash rows whose binaries live content-addressed in
+  // data/voice (THE HASH IS THE FILE); banks hang weighted clip
+  // shuffles off an open owner axis (actor now; poi/zone/cutscene
+  // later); a dialogue node's full spoken line is one nullable clip
+  // id riding the node row (threaded end-to-end in Phase 3).
+  `
+  CREATE TABLE voice_clips (
+    id TEXT PRIMARY KEY,
+    file_hash TEXT NOT NULL,
+    ext TEXT NOT NULL,
+    dur_ms INTEGER NOT NULL,
+    bytes INTEGER NOT NULL,
+    transcript TEXT,
+    actor TEXT,
+    tags TEXT,
+    content_hash TEXT NOT NULL,
+    authored_hash TEXT,
+    updated_at BIGINT NOT NULL
+  );
+  CREATE INDEX idx_voice_clips_actor ON voice_clips (actor);
+  CREATE TABLE voice_banks (
+    owner_kind TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    slot TEXT NOT NULL,
+    idx INTEGER NOT NULL,
+    clip_id TEXT NOT NULL REFERENCES voice_clips(id),
+    weight INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (owner_kind, owner_id, slot, idx)
+  );
+  CREATE INDEX idx_voice_banks_clip ON voice_banks (clip_id);
+  ALTER TABLE dialogue_nodes ADD COLUMN voice TEXT;
+  `,
 ];
 
 /**

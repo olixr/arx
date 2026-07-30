@@ -35,8 +35,17 @@ import {
   validateGeographyDef,
   validateNpcDef,
   validatePoiDef,
+  validateVoice,
+  validateVoiceBank,
+  validateVoiceClip,
+  AUTHORED_VOICE,
+  VOICE,
+  VOICE_EXTS,
+  replaceVoice,
+  voiceClipUrl,
   zoneFromJson,
   zoneToJson,
+  type VoiceExt,
   type LootTableDef,
   type NpcActorDef,
   type NpcDef,
@@ -58,6 +67,15 @@ import {
   revertDialogue,
 } from '../db/dialogues.js';
 import { editedActorSlugs, importNpcActor, loadNpcActors, revertNpcActor } from '../db/npcActors.js';
+import {
+  deleteVoiceBank,
+  deleteVoiceClip,
+  importVoiceClip,
+  loadVoiceBanks,
+  loadVoiceClips,
+  saveVoiceBank,
+} from '../db/voice.js';
+import { saveVoiceFile, unlinkVoiceFile } from '../voice/store.js';
 import { previewPoi, simulatePoisSteps, type PoiSimStats } from '../world/pois.js';
 import type { GameServer } from '../game/gameServer.js';
 
@@ -77,6 +95,12 @@ import type { GameServer } from '../game/gameServer.js';
  *   GET    /dev/prefabs/<id>       one PrefabJson from data/prefabs/
  *   PUT    /dev/prefabs/<id>       validate + write data/prefabs/<id>.json
  *   DELETE /dev/prefabs/<id>       remove a prefab from the library
+ *   GET    /dev/content/voice      the whole clip ledger: clips + banks + dials
+ *   PUT    /dev/content/voice/clips/<id>   upload (JSON w/ base64 audio) or metadata edit
+ *   DELETE /dev/content/voice/clips/<id>   delete; 409s while referenced; orphans unlink
+ *   PUT    /dev/content/voice/banks/<kind>/<id>   replace an owner's whole bank card
+ *   DELETE /dev/content/voice/banks/<kind>/<id>   clear it
+ *   GET/PUT/DELETE /dev/content/voice/dials       the 'voice' singleton (frontier skeleton)
  *
  * Gated on config.devCommands — the same switch as the chat dev
  * commands — and open CORS, so the Vite-served editor can reach a
@@ -321,6 +345,210 @@ export function createMapsApi(
           replaceFrontier({ ...AUTHORED_FRONTIER });
           console.log(`[content] frontier dials ${outcome} — shipped weather stands`);
           sendJson(res, 200, { ok: true, outcome });
+          return true;
+        }
+      }
+
+      // ------------------------------------------------ the clip ledger
+      // THE CLIP LEDGER (voiceover-plan Phase 2). Clip metadata rides
+      // the two-hash law in voice_clips; binaries land content-
+      // addressed in data/voice via saveVoiceFile (THE HASH IS THE
+      // FILE — an upload carries base64 audio inside ordinary JSON so
+      // the one readBody door serves it). Banks are whole cards per
+      // owner; the dials are a 'voice' singleton on the frontier
+      // skeleton. Nothing here needs a game reload — the resolver
+      // (Phase 3) reads the ledger at call time.
+
+      if (url.pathname === '/dev/content/voice' && req.method === 'GET') {
+        const load = await loadVoiceClips(db);
+        const banks = await loadVoiceBanks(db);
+        const dialsEdited =
+          (await loadContentDocs(db, 'voice')).find((d) => d.id === 'world')?.edited ?? false;
+        sendJson(res, 200, {
+          clips: load.clips.map((c) => ({
+            def: c.def,
+            edited: c.edited,
+            url: voiceClipUrl(c.def),
+          })),
+          banks,
+          dials: { def: { ...VOICE }, edited: dialsEdited },
+          errors: load.errors,
+        });
+        return true;
+      }
+
+      if (url.pathname === '/dev/content/voice/dials') {
+        if (req.method === 'GET') {
+          const edited =
+            (await loadContentDocs(db, 'voice')).find((d) => d.id === 'world')?.edited ?? false;
+          sendJson(res, 200, { def: { ...VOICE }, edited });
+          return true;
+        }
+        if (req.method === 'PUT') {
+          let raw: unknown;
+          try {
+            raw = JSON.parse(await readBody(req));
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          const result = validateVoice(raw);
+          if (!result.ok) {
+            sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          await importContentDoc(db, 'voice', 'world', result.def);
+          replaceVoice(result.def);
+          console.log('[content] voice dials saved + live (call-time reads)');
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const outcome = await revertContentDoc(db, 'voice', 'world', AUTHORED_VOICE);
+          replaceVoice({ ...AUTHORED_VOICE });
+          console.log(`[content] voice dials ${outcome} — shipped dials stand`);
+          sendJson(res, 200, { ok: true, outcome });
+          return true;
+        }
+      }
+
+      const vclipMatch = /^\/dev\/content\/voice\/clips\/([^/]+)$/.exec(url.pathname);
+      if (vclipMatch) {
+        const id = vclipMatch[1]!;
+        if (req.method === 'PUT') {
+          interface ClipUpload {
+            id?: string;
+            ext?: string;
+            durMs?: number;
+            transcript?: string;
+            actor?: string;
+            tags?: string[];
+            /** Base64 audio — present on upload/replace, absent on a metadata edit. */
+            dataB64?: string;
+          }
+          let raw: ClipUpload;
+          try {
+            raw = JSON.parse(await readBody(req)) as ClipUpload;
+            if (raw.id !== id) throw new Error(`body id '${raw.id}' does not match URL '${id}'`);
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          let fileHash: string;
+          let bytes: number;
+          if (raw.dataB64 !== undefined) {
+            let buf: Buffer;
+            try {
+              buf = Buffer.from(raw.dataB64, 'base64');
+            } catch {
+              sendJson(res, 400, { error: 'dataB64 is not valid base64' });
+              return true;
+            }
+            if (buf.length === 0 || buf.length > VOICE.maxClipBytes) {
+              sendJson(res, 400, {
+                error: `audio must be 1..${VOICE.maxClipBytes} bytes (the maxClipBytes dial)`,
+              });
+              return true;
+            }
+            if (!VOICE_EXTS.includes(raw.ext as VoiceExt)) {
+              sendJson(res, 400, { error: `ext must be one of ${VOICE_EXTS.join('/')}` });
+              return true;
+            }
+            const saved = await saveVoiceFile(buf, raw.ext as VoiceExt);
+            fileHash = saved.fileHash;
+            bytes = buf.length;
+          } else {
+            // Metadata-only edit: the recording stays what it was.
+            const existing = (await loadVoiceClips(db)).clips.find((c) => c.def.id === id);
+            if (!existing) {
+              sendJson(res, 404, { error: `clip '${id}' does not exist (uploads need dataB64)` });
+              return true;
+            }
+            fileHash = existing.def.fileHash;
+            bytes = existing.def.bytes;
+            raw.ext = raw.ext ?? existing.def.ext;
+          }
+          const result = validateVoiceClip(
+            {
+              id,
+              fileHash,
+              ext: raw.ext,
+              durMs: raw.durMs,
+              bytes,
+              transcript: raw.transcript,
+              actor: raw.actor,
+              tags: raw.tags,
+            },
+            { actorIds: game.actorIds() },
+          );
+          if (!result.ok) {
+            sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          await importVoiceClip(db, result.def);
+          console.log(`[content] voice clip '${id}' saved (${result.def.durMs}ms, ${bytes}b)`);
+          sendJson(res, 200, { ok: true, def: result.def, url: voiceClipUrl(result.def) });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const outcome = await deleteVoiceClip(db, id);
+          if (!outcome.ok) {
+            if ('missing' in outcome) {
+              sendJson(res, 404, { error: `clip '${id}' does not exist` });
+            } else {
+              sendJson(res, 409, {
+                error: `clip '${id}' is still spoken`,
+                banks: outcome.refs.banks,
+                nodes: outcome.refs.nodes,
+              });
+            }
+            return true;
+          }
+          // Orphaned binary goes with its last row — dedupe kept it
+          // alive while any sharer remained.
+          if (outcome.fileOrphaned) await unlinkVoiceFile(outcome.fileHash, outcome.ext);
+          console.log(`[content] voice clip '${id}' deleted${outcome.fileOrphaned ? ' + file' : ''}`);
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+      }
+
+      const vbankMatch = /^\/dev\/content\/voice\/banks\/([^/]+)\/([^/]+)$/.exec(url.pathname);
+      if (vbankMatch) {
+        const [, ownerKind, ownerId] = vbankMatch;
+        if (req.method === 'PUT') {
+          let raw: { owner?: { kind?: string; id?: string } };
+          try {
+            raw = JSON.parse(await readBody(req)) as typeof raw;
+            if (raw.owner?.kind !== ownerKind || raw.owner?.id !== ownerId) {
+              throw new Error(`body owner does not match URL '${ownerKind}/${ownerId}'`);
+            }
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          const clipIds = new Set((await loadVoiceClips(db)).clips.map((c) => c.def.id));
+          const result = validateVoiceBank(raw, {
+            clipIds,
+            ownerIds: ownerKind === 'actor' ? game.actorIds() : undefined,
+          });
+          if (!result.ok) {
+            sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          const saved = await saveVoiceBank(db, result.def, clipIds);
+          if (!saved.ok) {
+            sendJson(res, 400, { error: saved.errors.join('; ') });
+            return true;
+          }
+          console.log(`[content] voice bank ${ownerKind}:${ownerId} saved`);
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const existed = await deleteVoiceBank(db, ownerKind!, ownerId!);
+          console.log(`[content] voice bank ${ownerKind}:${ownerId} ${existed ? 'deleted' : 'was empty'}`);
+          sendJson(res, 200, { ok: true, existed });
           return true;
         }
       }
