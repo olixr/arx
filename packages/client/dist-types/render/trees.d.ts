@@ -26,6 +26,22 @@
  *   (no edge strokes), painted BEFORE the trunk so the trunk body
  *   covers every join, and their tips end INSIDE the canopy.
  *
+ * THE WILLOW FALL (the weeping species' own law):
+ * - The cascade IS the tree. A willow grows a compact high crown and
+ *   pours a SKIRT of foliage curtains from under it to near the
+ *   ground — the skirt carries most of the silhouette, not the dome.
+ * - Depth is layered, back to front: one deep backdrop sheet painted
+ *   BEHIND the trunk (the bole stands inside the cascade), mid falls
+ *   over it, lit falls on the light side, thin withy streaks last —
+ *   each layer one batched fill, banded like the canopy.
+ * - Every fall ends in a chisel-cut fringe of staggered pointed
+ *   tips; every anchor is buried under the crown's underside so the
+ *   join can never show (seam law, downward).
+ * - Falls hang like cloth on the ONE wind field: anchored at the
+ *   crown, hems swinging with a pendulum lift. The deep sheet sways
+ *   least, the loose front falls most — differential motion is the
+ *   depth cue.
+ *
  * Scale law: the player reads ~1.2 tiles tall. Commons stand 3-4x
  * that, oaks and yews 4-5x. Trunk base half-widths are the physical
  * truth: `tileColliderRadius` in shared tiles.ts must stay a whisker
@@ -68,8 +84,28 @@ export interface TreeCluster {
     lit: boolean;
     /** Interior filler — young trees haven't grown these yet. */
     extra: boolean;
-    /** Hangs curtain strands below itself (willow). */
-    droop: boolean;
+}
+/**
+ * One curtain of weeping foliage (the willow's skirt). The polygon
+ * is final model-space geometry — faceted flanks and a chisel-cut
+ * fringe — plus a per-vertex swing weight so the paint pass can hang
+ * it like cloth off the wind field.
+ */
+export interface TreeCurtain {
+    /** Polygon in model tiles (y up), fringe cut into the hem. */
+    pts: Array<[number, number]>;
+    /** Per-vertex swing weight: 0 anchored top → ~1 free hem. */
+    drop: number[];
+    /** 0 = deep backdrop (paints BEHIND the trunk), 1 = mid fall,
+     *  2 = lit fall, 3 = bright withy streak. */
+    tone: number;
+    /** Anchor height fraction — rides the crown cantilever. */
+    hf: number;
+    seed: number;
+    /** Anchor x — wind-sampling offset (world phase, never screen). */
+    x0: number;
+    /** Anchor→hem drop, tiles — scales the swing throw. */
+    len: number;
 }
 export interface TreeModel {
     species: number;
@@ -84,10 +120,10 @@ export interface TreeModel {
     /** Light-band palette, dark → mid → lit. */
     leaves: [string, string, string];
     sides: number;
-    /** Curtain strands per drooping cluster (willow), 0 = none. */
-    strands: number;
     branches: TreeBranch[];
     clusters: TreeCluster[];
+    /** The weeping skirt — empty for every species but the willow. */
+    curtains: TreeCurtain[];
 }
 export declare function speciesOf(tile: Tile, h: number): number;
 /**

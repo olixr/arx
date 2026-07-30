@@ -14350,6 +14350,23 @@ export class Renderer {
       M.f = cyp;
       path.addPath(unitBlob(c.seed, m.sides), M);
     }
+    // The willow's skirt casts too: each fall's hull sheared flat
+    // along the same ray (streaks carry no mass; saplings haven't
+    // grown their falls yet).
+    if (g >= 0.7) {
+      for (const cu of m.curtains) {
+        if (cu.tone >= 3) continue;
+        const dx = bendT * Math.pow(cu.hf, 1.4);
+        for (let i = 0; i < cu.pts.length; i++) {
+          const [x, y] = cu.pts[i]!;
+          const px = bx + (x + dx) * g * s + kx * y * g * s;
+          const py = groundY + ky * y * g * s;
+          if (i === 0) path.moveTo(px, py);
+          else path.lineTo(px, py);
+        }
+        path.closePath();
+      }
+    }
     return path;
   }
 

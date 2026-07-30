@@ -86,16 +86,55 @@ test('the model is coherent: anchored tips, sorted crown, real spread', () => {
       // no cluster's nearest neighbour further than a fused join.
       for (let i = 0; i < m.clusters.length; i++) {
         const a = m.clusters[i]!;
-        if (a.droop) continue;
         let nearest = Infinity;
         for (let j = 0; j < m.clusters.length; j++) {
-          if (j === i || m.clusters[j]!.droop) continue;
+          if (j === i) continue;
           const b = m.clusters[j]!;
           nearest = Math.min(nearest, Math.hypot(a.x - b.x, a.y - b.y) - (a.r + b.r));
         }
         assert.ok(nearest < -0.05, `${Tile[tile]} h=${h} cluster ${i} floats ${nearest.toFixed(2)} clear of the mass`);
       }
       assert.ok(m.spread > 0.4 && m.spread < 3.2);
+    }
+  }
+});
+
+test('the willow weeps: a real skirt of falls, and only the willow', () => {
+  // The cascade IS the tree (THE WILLOW FALL law): a deep rear sheet,
+  // articulated mid falls, lit falls, and withy streaks — anchored
+  // under the crown, plunging to near the ground, never digging in,
+  // never streaming past the culling reach, always inside `spread`.
+  for (let h = 0; h < 120; h++) {
+    const m = treeModel(Tile.TreeWillow, h);
+    const byTone = [0, 0, 0, 0];
+    let lowest = Infinity;
+    for (const cu of m.curtains) {
+      byTone[cu.tone]!++;
+      let topY = -Infinity;
+      for (const [x, y] of cu.pts) {
+        lowest = Math.min(lowest, y);
+        topY = Math.max(topY, y);
+        assert.ok(y >= 0.09, `fall digs into the ground at y=${y.toFixed(2)}`);
+        assert.ok(Math.abs(x) <= 2.56, 'fall streams past the culling reach');
+        assert.ok(Math.abs(x) <= m.spread, 'spread must cover the whole skirt');
+      }
+      // Anchors buried under the crown mass (seam law, downward).
+      assert.ok(topY > m.height * 0.5, `a fall anchors in the open at y=${topY.toFixed(2)}`);
+      // Swing weights are sane: bounded, anchored at the top.
+      for (const d of cu.drop) assert.ok(d >= 0 && d <= 1.45);
+      assert.ok(cu.drop[0]! < 0.35, 'the anchor row must hang stiff');
+      assert.ok(cu.len > 0.35);
+    }
+    assert.equal(byTone[0], 1, 'exactly one rear sheet');
+    assert.ok(byTone[1]! >= 5, `only ${byTone[1]} mid falls`);
+    assert.ok(byTone[2]! >= 2, 'the light side carries lit falls');
+    assert.ok(byTone[3]! >= 3, 'withy streaks sell the close range');
+    assert.ok(lowest <= 0.95, `the skirt stops short at ${lowest.toFixed(2)} tiles`);
+  }
+  // Nothing else weeps.
+  for (const tile of [Tile.Tree, Tile.TreeOak, Tile.TreeYew]) {
+    for (let h = 0; h < 60; h++) {
+      assert.equal(treeModel(tile, h).curtains.length, 0, `${Tile[tile]} grew a skirt`);
     }
   }
 });

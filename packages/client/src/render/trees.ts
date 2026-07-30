@@ -26,6 +26,22 @@
  *   (no edge strokes), painted BEFORE the trunk so the trunk body
  *   covers every join, and their tips end INSIDE the canopy.
  *
+ * THE WILLOW FALL (the weeping species' own law):
+ * - The cascade IS the tree. A willow grows a compact high crown and
+ *   pours a SKIRT of foliage curtains from under it to near the
+ *   ground — the skirt carries most of the silhouette, not the dome.
+ * - Depth is layered, back to front: one deep backdrop sheet painted
+ *   BEHIND the trunk (the bole stands inside the cascade), mid falls
+ *   over it, lit falls on the light side, thin withy streaks last —
+ *   each layer one batched fill, banded like the canopy.
+ * - Every fall ends in a chisel-cut fringe of staggered pointed
+ *   tips; every anchor is buried under the crown's underside so the
+ *   join can never show (seam law, downward).
+ * - Falls hang like cloth on the ONE wind field: anchored at the
+ *   crown, hems swinging with a pendulum lift. The deep sheet sways
+ *   least, the loose front falls most — differential motion is the
+ *   depth cue.
+ *
  * Scale law: the player reads ~1.2 tiles tall. Commons stand 3-4x
  * that, oaks and yews 4-5x. Trunk base half-widths are the physical
  * truth: `tileColliderRadius` in shared tiles.ts must stay a whisker
@@ -74,8 +90,29 @@ export interface TreeCluster {
   lit: boolean;
   /** Interior filler — young trees haven't grown these yet. */
   extra: boolean;
-  /** Hangs curtain strands below itself (willow). */
-  droop: boolean;
+}
+
+/**
+ * One curtain of weeping foliage (the willow's skirt). The polygon
+ * is final model-space geometry — faceted flanks and a chisel-cut
+ * fringe — plus a per-vertex swing weight so the paint pass can hang
+ * it like cloth off the wind field.
+ */
+export interface TreeCurtain {
+  /** Polygon in model tiles (y up), fringe cut into the hem. */
+  pts: Array<[number, number]>;
+  /** Per-vertex swing weight: 0 anchored top → ~1 free hem. */
+  drop: number[];
+  /** 0 = deep backdrop (paints BEHIND the trunk), 1 = mid fall,
+   *  2 = lit fall, 3 = bright withy streak. */
+  tone: number;
+  /** Anchor height fraction — rides the crown cantilever. */
+  hf: number;
+  seed: number;
+  /** Anchor x — wind-sampling offset (world phase, never screen). */
+  x0: number;
+  /** Anchor→hem drop, tiles — scales the swing throw. */
+  len: number;
 }
 
 export interface TreeModel {
@@ -91,10 +128,10 @@ export interface TreeModel {
   /** Light-band palette, dark → mid → lit. */
   leaves: [string, string, string];
   sides: number;
-  /** Curtain strands per drooping cluster (willow), 0 = none. */
-  strands: number;
   branches: TreeBranch[]; // trunk LAST (it paints over the bough joins)
   clusters: TreeCluster[];
+  /** The weeping skirt — empty for every species but the willow. */
+  curtains: TreeCurtain[];
 }
 
 /** One species' growth grammar. Variants override any subset. */
@@ -115,8 +152,9 @@ interface Grow {
   crownW: number; // crown half-width, tiles
   crownR: [number, number]; // cluster radius range, tiles
   crownDx: number; // crown centre x-shift (windswept streaming)
-  droop: number; // hanging underside clusters (willow)
-  strands: number; // curtain strands per drooping cluster
+  fall: number; // willow skirt: lowest fringe-tip height, tiles (0 = none)
+  fallW: number; // skirt half-width at the belly, tiles
+  fallN: number; // mid-layer curtain count
   sides: number; // facet count for the low-poly clusters
 }
 
@@ -141,7 +179,7 @@ const SPECIES: SpeciesDef[] = [
       gnarl: 0.03, flare: 0.9, split: null,
       boughN: [2, 3], boughStart: 0.55,
       cBot: 0.44, crownW: 1.35, crownR: [0.5, 0.7], crownDx: 0,
-      droop: 0, strands: 0, sides: 8,
+      fall: 0, fallW: 0, fallN: 0, sides: 8,
     },
     variants: [
       {}, // classic dome
@@ -157,7 +195,7 @@ const SPECIES: SpeciesDef[] = [
       gnarl: 0.02, flare: 0.5, split: null,
       boughN: [1, 2], boughStart: 0.6,
       cBot: 0.5, crownW: 0.85, crownR: [0.4, 0.55], crownDx: 0,
-      droop: 0, strands: 0, sides: 7,
+      fall: 0, fallW: 0, fallN: 0, sides: 7,
     },
     variants: [
       {}, // straight and pale
@@ -173,7 +211,7 @@ const SPECIES: SpeciesDef[] = [
       gnarl: 0.04, flare: 0.85, split: 0.4,
       boughN: [0, 1], boughStart: 0.3,
       cBot: 0.52, crownW: 0.8, crownR: [0.46, 0.62], crownDx: 0,
-      droop: 0, strands: 0, sides: 8,
+      fall: 0, fallW: 0, fallN: 0, sides: 8,
     },
     variants: [
       {}, // classic Y
@@ -190,7 +228,7 @@ const SPECIES: SpeciesDef[] = [
       gnarl: 0.05, flare: 0.9, split: null,
       boughN: [1, 2], boughStart: 0.5,
       cBot: 0.45, crownW: 1.25, crownR: [0.48, 0.64], crownDx: 0.4,
-      droop: 0, strands: 0, sides: 8,
+      fall: 0, fallW: 0, fallN: 0, sides: 8,
     },
     variants: [
       {}, // streaming
@@ -206,7 +244,7 @@ const SPECIES: SpeciesDef[] = [
       gnarl: 0.04, flare: 1.1, split: null,
       boughN: [3, 4], boughStart: 0.45,
       cBot: 0.38, crownW: 1.55, crownR: [0.5, 0.68], crownDx: 0,
-      droop: 0, strands: 0, sides: 9,
+      fall: 0, fallW: 0, fallN: 0, sides: 9,
     },
     variants: [
       {}, // pavilion dome
@@ -223,7 +261,7 @@ const SPECIES: SpeciesDef[] = [
       gnarl: 0.1, flare: 1.25, split: null,
       boughN: [3, 4], boughStart: 0.45,
       cBot: 0.4, crownW: 1.85, crownR: [0.6, 0.82], crownDx: 0,
-      droop: 0, strands: 0, sides: 9,
+      fall: 0, fallW: 0, fallN: 0, sides: 9,
     },
     variants: [
       {}, // broad king
@@ -231,21 +269,23 @@ const SPECIES: SpeciesDef[] = [
       { split: 0.42, crownW: 0.95, gnarl: 0.12 }, // storm-split twin crown
     ],
   },
-  // 6 — Weeping willow: a soft dome spilling over its own underside,
-  // curtain strands swinging beneath.
+  // 6 — Weeping willow: THE FOUNTAIN. A compact high crown pours a
+  // full skirt of foliage falls to near the ground — the cascade is
+  // the tree, and the gnarled bole shows through a front part in the
+  // curtain. Pale silvered green against the harder forest tones.
   {
     base: {
-      bark: '#6f6448', leaves: ['#4d8045', '#659655', '#82ad6a'],
-      h: [3.7, 4.3], trunkW: 0.17, taper: 0.5, bow: 0.12, lean: 0.06,
-      gnarl: 0.07, flare: 1.0, split: null,
-      boughN: [2, 3], boughStart: 0.5,
-      cBot: 0.42, crownW: 1.45, crownR: [0.5, 0.66], crownDx: 0,
-      droop: 4, strands: 4, sides: 9,
+      bark: '#6f6448', leaves: ['#41713d', '#5d914f', '#7fac66'],
+      h: [4.0, 4.6], trunkW: 0.19, taper: 0.6, bow: 0.14, lean: 0.05,
+      gnarl: 0.09, flare: 1.15, split: null,
+      boughN: [2, 3], boughStart: 0.55,
+      cBot: 0.6, crownW: 1.02, crownR: [0.44, 0.58], crownDx: 0,
+      fall: 0.42, fallW: 1.6, fallN: 6, sides: 9,
     },
     variants: [
-      {}, // full curtain
-      { lean: 0.2, crownDx: 0.3 }, // riverbank lean
-      { h: [4.1, 4.7], droop: 6, strands: 5 }, // old weeper
+      {}, // the classic fountain
+      { lean: 0.22, crownDx: 0.28, h: [3.8, 4.4], crownW: 0.95, fallW: 1.48 }, // riverbank lean
+      { h: [4.4, 5.0], fall: 0.24, fallW: 1.8, fallN: 7, trunkW: 0.2, crownW: 1.12 }, // the old weeper
     ],
   },
   // 7 — Ancient yew: red-brown mass under a dense near-black dome.
@@ -256,7 +296,7 @@ const SPECIES: SpeciesDef[] = [
       gnarl: 0.12, flare: 1.2, split: null,
       boughN: [3, 4], boughStart: 0.4,
       cBot: 0.38, crownW: 1.6, crownR: [0.55, 0.75], crownDx: 0,
-      droop: 0, strands: 0, sides: 9,
+      fall: 0, fallW: 0, fallN: 0, sides: 9,
     },
     variants: [
       {}, // dense dome
@@ -353,7 +393,7 @@ export function treeModel(tile: Tile, h: number): TreeModel {
 
   const addCluster = (
     x: number, y: number, r: number, tone: number,
-    opts: { lit?: boolean; extra?: boolean; droop?: boolean } = {},
+    opts: { lit?: boolean; extra?: boolean } = {},
   ): number => {
     // Crown ceiling + reach: nothing tops out above H or streams past
     // the renderer's ±3-column culling pad (wind sway included).
@@ -362,7 +402,7 @@ export function treeModel(tile: Tile, h: number): TreeModel {
     clusters.push({
       x: cx, y: cy, r, hf: Math.min(1, cy / H),
       seed: hashCoords(59, h & 0xffff, clusters.length),
-      tone, lit: opts.lit ?? false, extra: opts.extra ?? false, droop: opts.droop ?? false,
+      tone, lit: opts.lit ?? false, extra: opts.extra ?? false,
     });
     return clusters.length - 1;
   };
@@ -446,12 +486,125 @@ export function treeModel(tile: Tile, h: number): TreeModel {
     branches.push({ pts: trunk, w0: g.trunkW, w1: g.trunkW * g.taper, flare: g.flare, tip: -1, level: 0 });
   }
 
-  // Willow: drooping underside clusters spilling below the dome edge.
-  for (let d = 0; d < g.droop; d++) {
-    const t = g.droop === 1 ? 0.5 : d / (g.droop - 1);
-    const dx2 = crownCx + (t - 0.5) * 2 * g.crownW * 0.85 + (rnd(70 + d) - 0.5) * 0.3;
-    const rr = lerp(g.crownR, rnd(72 + d)) * 0.7;
-    addCluster(dx2, crownBot - rr * (0.35 + (d % 2) * 0.5), rr, 0, { droop: true });
+  // --- THE WILLOW FALL: grow the weeping skirt (see the header law).
+  const curtains: TreeCurtain[] = [];
+  if (g.fall > 0) {
+    // The spill tier: mid-tone mounds dipping below the crown's dark
+    // underside, so the dome MELTS into the skirt instead of sitting
+    // on it — no straight shelf line across the tree.
+    for (let i = 0; i < 4; i++) {
+      const t = ((i + 0.5) / 4) * 2 - 1;
+      const sx2 = crownCx + t * g.crownW * 0.95 + (rnd(95 + i) - 0.5) * 0.2;
+      const rr = lerp(g.crownR, rnd(97 + i)) * 0.62;
+      addCluster(sx2, crownBot - rr * (0.2 + rnd(98 + i) * 0.4), rr, 1);
+    }
+    const skirtW = g.fallW;
+    const tipMax = 0.34; // deepest fringe tip below its seat, tiles
+
+    /**
+     * One curtain: anchor buried in the dome underside, an outward
+     * arch to the belly (the withies clearing the crown), then a
+     * sheer drop to a chisel-cut fringe of staggered pointed tips.
+     * Faceted flanks, no curves. `sway` scales the paint-time swing
+     * (the deep sheet is stiff, the loose front falls are not).
+     */
+    const addFall = (
+      x0: number, yTop: number, drape: number, seatY: number,
+      wTop: number, wBelly: number, wHem: number,
+      tone: number, sway: number, tipN: number, ri: number,
+    ): void => {
+      const len = Math.max(0.4, yTop - seatY);
+      // Centerline stations: anchor → shoulder → belly → hem seat.
+      const drift = [0, 0.5, 0.9, 1];
+      const yF = [0, 0.3, 0.62, 1];
+      const wF = [wTop, wBelly * 0.9, wBelly, wHem];
+      const st: Array<[number, number, number]> = [];
+      for (let i = 0; i < 4; i++) {
+        const jx = i === 0 ? 0 : (rnd(ri + i) - 0.5) * 0.1;
+        st.push([x0 + drape * drift[i]! + jx, yTop - len * yF[i]!, wF[i]!]);
+      }
+      const pts: Array<[number, number]> = [];
+      const drop: number[] = [];
+      const push = (x: number, y: number): void => {
+        // Reach + ground clearance: the skirt never streams past the
+        // culling pad and the fringe never digs into the grass.
+        pts.push([Math.sign(x) * Math.min(Math.abs(x), 2.55), Math.max(0.1, y)]);
+        drop.push(Math.pow(Math.min(1, Math.max(0, (yTop - y) / len)), 1.35) * sway);
+      };
+      // Down the left flank…
+      for (let i = 0; i < 4; i++) push(st[i]![0] - st[i]![2], st[i]![1]);
+      // …the fringe, left → right: pointed tips at staggered depths
+      // with shallow notches between…
+      const [hx, , hw] = st[3]!;
+      for (let k = 0; k < tipN; k++) {
+        const dTip = (0.55 + rnd(ri + 20 + k) * 0.45) * tipMax * Math.min(1, len * 0.55);
+        push(hx - hw + 2 * hw * ((k + 0.5) / tipN), seatY - dTip);
+        if (k < tipN - 1) push(hx - hw + 2 * hw * ((k + 1) / tipN), seatY - dTip * 0.3);
+      }
+      // …and back up the right flank.
+      for (let i = 3; i >= 0; i--) push(st[i]![0] + st[i]![2], st[i]![1]);
+      curtains.push({
+        pts, drop, tone, hf: Math.min(1, yTop / H),
+        seed: hashCoords(61, h & 0xffff, curtains.length), x0, len,
+      });
+    };
+
+    /** Hem seat height: staggered, outer falls hang a touch shorter. */
+    const seatOf = (t: number, j: number): number =>
+      g.fall + tipMax + rnd(120 + j) * 0.4 + Math.abs(t) * 0.3;
+
+    // The rear sheet: one deep backdrop spanning the whole skirt —
+    // the guarantee that no gap between falls ever shows background,
+    // and the wall the bole stands against (it paints PRE-trunk).
+    addFall(
+      crownCx, crownBot + 0.45, 0, g.fall + tipMax + 0.26,
+      skirtW * 0.78, skirtW * 0.98, skirtW * 0.9,
+      0, 0.55, 9, 100,
+    );
+    // Mid falls: the articulated bell, parting at the bole (the trunk
+    // window) — outer falls arch further outward and ride lower
+    // anchors, tucked under the dome's own silhouette.
+    let li = 0;
+    for (let side = -1; side <= 1; side += 2) {
+      const nS = side < 0 ? Math.ceil(g.fallN / 2) : Math.floor(g.fallN / 2);
+      for (let k = 0; k < nS; k++, li++) {
+        const t = side * (0.5 + 0.5 * ((k + 0.8) / nS)) + (rnd(130 + li) - 0.5) * 0.06;
+        const wB = 0.36 + rnd(140 + li) * 0.14;
+        // Anchors CLIMB the crown's flank with |t| — the outermost
+        // falls pour over the shoulder, not from under a flat brim.
+        addFall(
+          crownCx + t * (skirtW - 0.5), crownBot + 0.32 + Math.abs(t) * 0.5,
+          t * 0.38, seatOf(t, li),
+          wB * (0.75 - 0.25 * Math.abs(t)), wB, wB * 0.8,
+          1, 0.85 + rnd(150 + li) * 0.3, 3, 160 + li * 7,
+        );
+      }
+    }
+    // Lit falls: the west side of the bell catches the sun — looser,
+    // brighter curtains riding over the mid falls.
+    for (let k = 0; k < 2; k++) {
+      const t = -(0.5 + k * 0.32 + rnd(200 + k) * 0.1);
+      const wB = 0.26 + rnd(210 + k) * 0.08;
+      addFall(
+        crownCx + t * (skirtW - 0.5), crownBot + 0.3 + Math.abs(t) * 0.4, t * 0.4,
+        seatOf(t, 40 + k) + 0.12,
+        wB * 0.7, wB, wB * 0.78,
+        2, 1.0 + rnd(220 + k) * 0.2, 2, 230 + k * 9,
+      );
+    }
+    // Withy streaks: single bright strands over the falls — the
+    // detail that sells individual weeping branches up close.
+    const nStreak = 3 + (variant === 2 ? 1 : 0);
+    for (let k = 0; k < nStreak; k++) {
+      const side = k % 2 === 0 ? -1 : 1;
+      const t = side * (0.55 + rnd(240 + k) * 0.4);
+      addFall(
+        crownCx + t * (skirtW - 0.55) + (rnd(250 + k) - 0.5) * 0.12,
+        crownBot + 0.28 + Math.abs(t) * 0.4, t * 0.36, seatOf(t, 60 + k) + 0.3,
+        0.04, 0.045, 0.024,
+        3, 1.2, 1, 260 + k * 5,
+      );
+    }
   }
 
   let top = 0;
@@ -459,6 +612,9 @@ export function treeModel(tile: Tile, h: number): TreeModel {
   for (const c of clusters) {
     top = Math.max(top, c.y + c.r);
     spread = Math.max(spread, Math.abs(c.x) + c.r);
+  }
+  for (const cu of curtains) {
+    for (const p of cu.pts) spread = Math.max(spread, Math.abs(p[0]) + 0.06);
   }
 
   const model: TreeModel = {
@@ -470,9 +626,9 @@ export function treeModel(tile: Tile, h: number): TreeModel {
     barkDark: shade(g.bark, -18),
     leaves: g.leaves,
     sides: g.sides,
-    strands: g.strands,
     branches,
     clusters,
+    curtains,
   };
   modelCache.set(key, model);
   return model;
@@ -585,6 +741,55 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
     rb[i] = 1 + 0.02 * Math.sin(f.tSec * 1.9 + ph);
   }
 
+  // --- Curtain hang (willow): each fall samples the ONE field at its
+  // own anchor with a lag; the swing scales with the fall's length
+  // and looseness, and the hem lifts slightly as it swings — a
+  // pendulum of hanging cloth, never a flapping sheet.
+  const nc = m.curtains.length;
+  const cSw = nc > 0 && g >= 0.7 ? new Float32Array(nc) : null;
+  if (cSw) {
+    for (let i = 0; i < nc; i++) {
+      const cu = m.curtains[i]!;
+      const local = f.windOverride !== undefined
+        ? wind
+        : windScalarAt(f.wx + cu.x0 * 0.8, f.wy + 0.4, f.tSec - 0.22);
+      const ph = f.wx * 1.9 + f.wy * 1.45 + cu.x0 * 2.3;
+      const flut = Math.sin(f.tSec * (1.3 + (cu.seed % 5) * 0.11) + ph) * windy * 0.035;
+      cSw[i] = Math.max(-0.2, Math.min(0.2, local * 0.055 + flut)) * cu.len;
+    }
+  }
+
+  /** Batch every curtain of one tone into a single fill (band law). */
+  const fillFalls = (tone: number, color: string): void => {
+    if (!cSw) return;
+    const path = new Path2D();
+    let any = false;
+    for (let i = 0; i < nc; i++) {
+      const cu = m.curtains[i]!;
+      if (cu.tone !== tone) continue;
+      any = true;
+      const ax = disp(cu.hf);
+      const sw = cSw[i]!;
+      const lift = Math.abs(sw) * 0.18;
+      for (let k = 0; k < cu.pts.length; k++) {
+        const p = cu.pts[k]!;
+        const d = cu.drop[k]!;
+        const sx2 = X(p[0] + ax + sw * d);
+        const sy2 = Y(p[1] + lift * d);
+        if (k === 0) path.moveTo(sx2, sy2);
+        else path.lineTo(sx2, sy2);
+      }
+      path.closePath();
+    }
+    if (!any) return;
+    ctx.fillStyle = color;
+    ctx.fill(path);
+  };
+
+  // The rear sheet paints before any wood: the bole stands INSIDE
+  // the cascade, never pasted in front of it.
+  fillFalls(0, shade(m.leaves[0], -8));
+
   // --- Root flares (the trunk is the LAST branch — seam law).
   const trunk = m.branches[m.branches.length - 1]!;
   const w0px = trunk.w0 * wMul * s * g;
@@ -635,6 +840,13 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
     ctx.lineTo(sxp, Y(y) - s * 0.13 * g);
   }
   ctx.stroke();
+
+  // --- The skirt (willow): mid falls around the bole, lit falls on
+  // the light side, withy streaks last. The dome paints AFTER all of
+  // it — its underside spills over every anchor (seam law, downward).
+  fillFalls(1, m.leaves[1]);
+  fillFalls(2, m.leaves[2]);
+  fillFalls(3, shade(m.leaves[2], 10));
 
   // --- THE CANOPY MASS: every cluster contributes its blob to
   // batched tone paths — one shade layer beneath, three light bands,
@@ -691,33 +903,6 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
     // Sun facets on the crown.
     ctx.fillStyle = shade(m.leaves[2], 24);
     ctx.fill(litPath);
-  }
-
-  // Willow curtains: chisel-cut strands hanging off drooping
-  // clusters, tips swinging with the cluster's own rustle.
-  if (m.strands > 0) {
-    for (let i = 0; i < n; i++) {
-      const c = m.clusters[i]!;
-      if (!c.droop) continue;
-      const cx = X(c.x + rx[i]!);
-      const cy = Y(c.y + ry[i]!);
-      const cr = c.r * rMul * s * g;
-      ctx.fillStyle = shade(m.leaves[1], 6);
-      for (let k = 0; k < m.strands; k++) {
-        const t = m.strands === 1 ? 0.5 : k / (m.strands - 1);
-        const sx0 = cx + (t - 0.5) * cr * 1.5;
-        const sy0 = cy + cr * 0.4;
-        const len = cr * (1.15 + ((c.seed >> (k * 2)) % 4) * 0.16);
-        const swing = rx[i]! * s * 0.5 + Math.sin(f.tSec * 1.9 + t * 5 + c.seed) * windy * s * 0.03;
-        ctx.beginPath();
-        ctx.moveTo(sx0 - s * 0.035, sy0);
-        ctx.lineTo(sx0 + s * 0.035, sy0);
-        ctx.lineTo(sx0 + swing + s * 0.012, sy0 + len);
-        ctx.lineTo(sx0 + swing - s * 0.012, sy0 + len);
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
   }
 
   return wind;
