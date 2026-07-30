@@ -34,7 +34,15 @@
 > audition; Dials on the weather skeleton), Dialogue Studio beat voice
 > rows w/ the honest fallback pill + transcript-drift hint, rehearsal
 > speaks through the mirrored resolver, actor bench voice link. 879 tests
-> green; whole flow driven through the real Studio UI. Phase 6 pending.
+> green; whole flow driven through the real Studio UI. Phase 6 (The World
+> Speaks) SHIPPED 2026-07-30 (2ed7f91) — poi/zone owner kinds firing their
+> greet at the discovery ledger's one choke (quip at the discoverer's ear),
+> per-kind owner validation, THE MOOD MARK (db v14 node mood yes/no/hm,
+> unconditional slots, Studio picker), THE REEL LAW (≥45s lines stream via
+> cached MediaElementSource, prefetch skips reels). 883 tests green;
+> zone wind + mood beat + reel leg live-verified. Examine voicing waits on
+> its host feature (examine has no runtime surface yet).
+> THE EPIC IS COMPLETE.
 
 The world moves, asks, and remembers. This epic makes it **speak out loud**. Every
 throat that earned a voice card in the VOICE epic gets an actual voice: full spoken
