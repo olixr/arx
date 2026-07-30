@@ -25,7 +25,7 @@ export declare function slotGlyphUrl(slot: string, size?: number): string;
 export declare function sneakEyeUrl(state: 'sneaking' | 'hidden' | 'detected', size?: number): string;
 /** Data URL for a UI glyph. */
 export declare function uiIconUrl(kind: 'backpack' | 'scroll' | 'hammer' | 'house' | 'attack' | 'bell' | 'signpost', size?: number): string;
-export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack' | 'map';
+export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack' | 'map' | 'quest';
 /** Data URL for a dock sigil — monoline, muted brass, soft under-shade. */
 export declare function dockGlyphUrl(kind: DockGlyph, size?: number): string;
 //# sourceMappingURL=icons.d.ts.map

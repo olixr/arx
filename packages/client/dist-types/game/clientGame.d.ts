@@ -1,4 +1,4 @@
-import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type DiscoveryWire, type EquippedItem, type PartyMemberWire, type PartyRunWire, type S2CFx, type S2CPartyEvent, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
+import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type InvSlot, type ItemRoll, type DiscoveryWire, type QuestAvailWire, type QuestDoneWire, type QuestRewardsWire, type QuestWire, type EquippedItem, type PartyMemberWire, type PartyRunWire, type S2CFx, type S2CPartyEvent, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
@@ -191,6 +191,10 @@ export interface GameEvents {
     }): void;
     /** This character has never chosen a look — open the creator. */
     onNeedLook?(): void;
+    /** A timed action began — `ticks` server ticks to completion. */
+    onActionStart?(ticks: number): void;
+    /** The running action ended — `reason` says why ('done', 'blocked', 'occupied', 'materials', 'moved', …). */
+    onActionEnd?(reason?: string): void;
     /** A conversation began — raise the cinematic frame around `eid`. */
     onDialogueOpen?(o: {
         eid: EntityId;
@@ -246,6 +250,15 @@ export interface GameEvents {
     }): void;
     /** A LIVE first-ever discovery — the one trigger for the splash. */
     onDiscovery?(d: DiscoveryWire): void;
+    /** A LIVE quest ceremony — the ONLY trigger for banners and fanfare. */
+    onQuestEvent?(e: {
+        kind: 'accepted' | 'completed';
+        id: string;
+        name: string;
+        rewards?: QuestRewardsWire;
+    }): void;
+    /** The quest ledger changed shape (quiet) — repaint journal surfaces. */
+    onQuestsChanged?(): void;
 }
 export declare class ClientGame {
     private readonly input;
@@ -304,6 +317,14 @@ export declare class ClientGame {
     readonly discoveries: Map<string, DiscoveryWire>;
     /** The one active waypoint (optimistic; server keeps the durable copy). */
     waypoint: Vec2 | null;
+    /** THE QUEST LEDGER: active quests by id (status 'ready' = turn in). */
+    readonly quests: Map<string, QuestWire>;
+    /** The done shelf, by id. */
+    readonly questsDone: Map<string, QuestDoneWire>;
+    /** Offerable quests — the "!" over each giver resolves from this. */
+    questAvailable: QuestAvailWire[];
+    /** Bumped on every ledger change — journal surfaces re-read on it. */
+    questVersion: number;
     /** The party snapshot — empty members = partyless. Refetched on events. */
     party: {
         members: PartyMemberWire[];
@@ -542,6 +563,15 @@ export declare class ClientGame {
     editSign(tx: number, ty: number, title: string, lines: string[]): void;
     /** Pin the one active waypoint (optimistic; the server keeps the durable copy). */
     setWaypoint(x: number, y: number): void;
+    /** Walk away from an active quest (the journal's Abandon button). */
+    abandonQuest(id: string): void;
+    /**
+     * The overhead mark an actor wears FOR THIS PLAYER: 'ready' (a
+     * finished quest hands in here — the strongest pull) beats 'offer'
+     * (an offerable quest starts here). Resolved wholly client-side
+     * from the pushed ledger against EntityMeta.actor.
+     */
+    questMarkFor(actor: string | undefined): 'offer' | 'ready' | null;
     clearWaypoint(): void;
     /** Send an interact intent for a specific world tile. */
     interact(tx: number, ty: number): void;

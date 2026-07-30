@@ -45,6 +45,10 @@ import {
   levelForXp,
   techniqueRankFor,
   type DiscoveryWire,
+  type QuestAvailWire,
+  type QuestDoneWire,
+  type QuestRewardsWire,
+  type QuestWire,
   type EquippedItem,
   type PartyMemberWire,
   type PartyRunWire,
@@ -182,6 +186,10 @@ export interface GameEvents {
   }): void;
   /** This character has never chosen a look — open the creator. */
   onNeedLook?(): void;
+  /** A timed action began — `ticks` server ticks to completion. */
+  onActionStart?(ticks: number): void;
+  /** The running action ended — `reason` says why ('done', 'blocked', 'occupied', 'materials', 'moved', …). */
+  onActionEnd?(reason?: string): void;
   /** A conversation began — raise the cinematic frame around `eid`. */
   onDialogueOpen?(o: { eid: EntityId; name: string; title?: string }): void;
   /** One beat of conversation — typewriter it out. */
@@ -215,6 +223,10 @@ export interface GameEvents {
   onPartyEvent?(ev: { kind: S2CPartyEvent['kind']; name: string; detail?: string }): void;
   /** A LIVE first-ever discovery — the one trigger for the splash. */
   onDiscovery?(d: DiscoveryWire): void;
+  /** A LIVE quest ceremony — the ONLY trigger for banners and fanfare. */
+  onQuestEvent?(e: { kind: 'accepted' | 'completed'; id: string; name: string; rewards?: QuestRewardsWire }): void;
+  /** The quest ledger changed shape (quiet) — repaint journal surfaces. */
+  onQuestsChanged?(): void;
 }
 
 export class ClientGame {
@@ -274,6 +286,14 @@ export class ClientGame {
   readonly discoveries = new Map<string, DiscoveryWire>();
   /** The one active waypoint (optimistic; server keeps the durable copy). */
   waypoint: Vec2 | null = null;
+  /** THE QUEST LEDGER: active quests by id (status 'ready' = turn in). */
+  readonly quests = new Map<string, QuestWire>();
+  /** The done shelf, by id. */
+  readonly questsDone = new Map<string, QuestDoneWire>();
+  /** Offerable quests — the "!" over each giver resolves from this. */
+  questAvailable: QuestAvailWire[] = [];
+  /** Bumped on every ledger change — journal surfaces re-read on it. */
+  questVersion = 0;
   /** The party snapshot — empty members = partyless. Refetched on events. */
   party: { members: PartyMemberWire[]; invites: string[]; outgoing: string[] } | null = null;
   /** Fellow positions from the partypos ticker, keyed by name. */
@@ -710,6 +730,10 @@ export class ClientGame {
         this.dungeonExplored.clear();
         this.discoveries.clear();
         this.chartVersion++;
+        this.quests.clear();
+        this.questsDone.clear();
+        this.questAvailable = [];
+        this.questVersion++;
         this.ownLook = msg.look ?? null;
         this.token = msg.token;
         this.serverTick = msg.tick;
@@ -859,8 +883,10 @@ export class ClientGame {
       case 'action': {
         if (msg.state === 'start') {
           this.action = { startedAt: performance.now(), durationMs: (msg.ticks ?? 0) * TICK_MS };
+          this.events.onActionStart?.(msg.ticks ?? 0);
         } else {
           this.action = null;
+          this.events.onActionEnd?.(msg.reason);
         }
         break;
       }
@@ -1106,6 +1132,36 @@ export class ClientGame {
         this.chartVersion++;
         break;
       }
+      case 'quests': {
+        // The full ledger, once at bind.
+        this.quests.clear();
+        this.questsDone.clear();
+        for (const q of msg.active) this.quests.set(q.id, q);
+        for (const d of msg.done) this.questsDone.set(d.id, d);
+        this.questAvailable = msg.available;
+        this.questVersion++;
+        this.events.onQuestsChanged?.();
+        break;
+      }
+      case 'questupd': {
+        // A quiet patch — present fields apply, nothing celebrates.
+        if (msg.remove !== undefined) this.quests.delete(msg.remove);
+        if (msg.quest) this.quests.set(msg.quest.id, msg.quest);
+        if (msg.done) this.questsDone.set(msg.done.id, msg.done);
+        if (msg.available) this.questAvailable = msg.available;
+        this.questVersion++;
+        this.events.onQuestsChanged?.();
+        break;
+      }
+      case 'questevent': {
+        this.events.onQuestEvent?.({
+          kind: msg.kind,
+          id: msg.id,
+          name: msg.name,
+          rewards: msg.rewards,
+        });
+        break;
+      }
       case 'social': {
         this.events.onSocial?.({ friends: msg.friends, incoming: msg.incoming, outgoing: msg.outgoing });
         break;
@@ -1289,6 +1345,28 @@ export class ClientGame {
     this.waypoint = { x: wx, y: wy };
     this.chartVersion++;
     this.conn?.send({ t: 'waypoint', x: wx, y: wy });
+  }
+
+  /** Walk away from an active quest (the journal's Abandon button). */
+  abandonQuest(id: string): void {
+    this.conn?.send({ t: 'questabandon', quest: id });
+  }
+
+  /**
+   * The overhead mark an actor wears FOR THIS PLAYER: 'ready' (a
+   * finished quest hands in here — the strongest pull) beats 'offer'
+   * (an offerable quest starts here). Resolved wholly client-side
+   * from the pushed ledger against EntityMeta.actor.
+   */
+  questMarkFor(actor: string | undefined): 'offer' | 'ready' | null {
+    if (!actor) return null;
+    for (const q of this.quests.values()) {
+      if (q.status === 'ready' && q.turnIn === actor) return 'ready';
+    }
+    for (const a of this.questAvailable) {
+      if (a.giver === actor) return 'offer';
+    }
+    return null;
   }
 
   clearWaypoint(): void {

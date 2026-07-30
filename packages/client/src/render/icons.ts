@@ -4957,9 +4957,43 @@ type DockGlyphPainter = (c: CanvasRenderingContext2D) => void;
 /** The one ink every dock sigil is engraved in. */
 const GLYPH_INK = '#d8c08c';
 
-export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack' | 'map';
+export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack' | 'map' | 'quest';
 
 const DOCK_GLYPHS: Record<DockGlyph, DockGlyphPainter> = {
+  // The journal: a half-unrolled scroll — rolled ends top and bottom,
+  // three ruled entry lines, and the wax seal dot of a sworn errand.
+  quest: (c) => {
+    c.lineWidth = 0.055;
+    // The open sheet between the two rolls.
+    c.beginPath();
+    c.moveTo(0.24, 0.26);
+    c.lineTo(0.24, 0.74);
+    c.moveTo(0.76, 0.26);
+    c.lineTo(0.76, 0.74);
+    c.stroke();
+    // Rolled ends: shallow arcs curling past the sheet's edges.
+    c.beginPath();
+    c.moveTo(0.18, 0.3);
+    c.quadraticCurveTo(0.5, 0.14, 0.82, 0.3);
+    c.moveTo(0.18, 0.7);
+    c.quadraticCurveTo(0.5, 0.86, 0.82, 0.7);
+    c.stroke();
+    // Ruled entries.
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.moveTo(0.34, 0.4);
+    c.lineTo(0.66, 0.4);
+    c.moveTo(0.34, 0.51);
+    c.lineTo(0.66, 0.51);
+    c.moveTo(0.34, 0.62);
+    c.lineTo(0.52, 0.62);
+    c.stroke();
+    // The seal.
+    c.beginPath();
+    c.arc(0.63, 0.63, 0.045, 0, Math.PI * 2);
+    c.fillStyle = GLYPH_INK;
+    c.fill();
+  },
   // The folded chart: two panel creases, a dotted route wandering
   // across, and the planted waypoint pin where the route ends.
   map: (c) => {

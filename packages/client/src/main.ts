@@ -232,6 +232,10 @@ renderer.waterFxFull = localStorage.getItem('arx.waterfx') !== 'basic';
 }
 input.setTypingCheck(() => chat.isTyping || looks.open || socialPanel.isTyping || signHud.isTyping);
 let buildMode: string | null = null;
+/** A build click awaiting the server's answer — correlates the next action-start. */
+let sentBuild: { tx: number; ty: number; at: number } | null = null;
+/** The build the server accepted and is ticking down right now. */
+let activeBuild: { tx: number; ty: number } | null = null;
 /** The bank chest tile that asked the server for the vault — anchors the panel. */
 let lastBankAnchor: { tx: number; ty: number } | null = null;
 
@@ -562,6 +566,33 @@ const cinema = new DialogueCinema(sfx, {
 const game = new ClientGame(input, {
   onChat: (line) => chat.addLine(line),
   onNeedLook: () => looks.show(),
+  // A build click the server accepted becomes the active build; any
+  // other action-start (gather, craft) discards a stale claim.
+  onActionStart: () => {
+    if (sentBuild && performance.now() - sentBuild.at < 600) {
+      activeBuild = { tx: sentBuild.tx, ty: sentBuild.ty };
+    }
+    sentBuild = null;
+  },
+  // The honest thump: placement sound fires when the piece lands, and
+  // a build the world refused mid-swing says why instead of going mute.
+  onActionEnd: (reason) => {
+    if (!activeBuild) return;
+    activeBuild = null;
+    if (reason === 'done') {
+      sfx.buildThump();
+      return;
+    }
+    const line =
+      reason === 'blocked'
+        ? 'The footing changed.'
+        : reason === 'occupied'
+          ? 'Someone is in the way.'
+          : reason === 'materials'
+            ? 'Out of materials.'
+            : null;
+    if (line) chat.addLine({ channel: 'system', text: line });
+  },
   onStatus: (status, detail) => {
     if (status === 'ingame') {
       loginOverlay.classList.add('hidden');
@@ -1586,7 +1617,10 @@ canvas.addEventListener('mousedown', (e) => {
       game.demolishSend(tx, ty);
       return;
     }
-    sfx.buildThump();
+    // A light tap for the request — the thump belongs to the moment
+    // the piece actually lands (onActionEnd 'done'), not the click.
+    sfx.uiTap();
+    sentBuild = { tx, ty, at: performance.now() };
     game.buildSend(buildMode, tx, ty);
     return;
   }
@@ -1906,7 +1940,8 @@ function frame(now: number): void {
       tx = Math.floor(pos.x + padBuildCur.dx);
       ty = Math.floor(pos.y + padBuildCur.dy);
       if (padEdge(0) || padEdge(2)) {
-        sfx.buildThump();
+        sfx.uiTap();
+        sentBuild = { tx, ty, at: performance.now() };
         game.buildSend(buildMode, tx, ty);
       }
       if (padEdge(3)) game.demolishSend(tx, ty);

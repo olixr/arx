@@ -3562,15 +3562,9 @@ export class GameServer {
       return;
     }
     // Nobody standing on the target tile.
-    const chunkSet = this.chunks.get(this.chunkKeyOf(tx + 0.5, ty + 0.5));
-    if (chunkSet) {
-      for (const other of chunkSet) {
-        const opos = this.positions.get(other);
-        if (opos && Math.floor(opos.x) === tx && Math.floor(opos.y) === ty) {
-          sys('Someone is in the way.');
-          return;
-        }
-      }
+    if (this.tileHoldsBody(tx, ty)) {
+      sys('Someone is in the way.');
+      return;
     }
     if (!def.materials.every((m) => countItem(player.inventory, m.item) >= m.qty)) {
       sys("You don't have the materials.");
@@ -3584,6 +3578,17 @@ export class GameServer {
     player.session.sendJson({ t: 'action', state: 'start', ticks: buildTicks });
   }
 
+  /** Anyone — player or NPC — standing on this tile right now? */
+  private tileHoldsBody(tx: number, ty: number): boolean {
+    const chunkSet = this.chunks.get(this.chunkKeyOf(tx + 0.5, ty + 0.5));
+    if (!chunkSet) return false;
+    for (const other of chunkSet) {
+      const opos = this.positions.get(other);
+      if (opos && Math.floor(opos.x) === tx && Math.floor(opos.y) === ty) return true;
+    }
+    return false;
+  }
+
   private tickBuild(eid: EntityId, player: PlayerComp): void {
     const action = player.action! as BuildAction;
     if (--action.ticksLeft > 0) return;
@@ -3593,6 +3598,12 @@ export class GameServer {
     const ground = this.world.groundAt(action.tx, action.ty);
     if (ground === undefined || !buildableGround(def).includes(ground as Tile)) {
       this.cancelAction(eid, player, 'blocked');
+      return;
+    }
+    // Someone may have wandered onto the tile during the swing — the
+    // start-time check alone would finish the wall on top of them.
+    if (this.tileHoldsBody(action.tx, action.ty)) {
+      this.cancelAction(eid, player, 'occupied');
       return;
     }
     if (!def.materials.every((m) => countItem(player.inventory, m.item) >= m.qty)) {
@@ -12617,11 +12628,23 @@ export class GameServer {
       sys('Your pack has no room for that.');
       return;
     }
-    addItem(player.inventory, drop.item, drop.qty, drop.roll);
+    // A non-stackable pile can be bigger than the pack's free slots —
+    // take what fits and leave the rest lying where it was.
+    const got = addItem(player.inventory, drop.item, drop.qty, drop.roll);
+    if (got === 0) {
+      sys('Your pack has no room for that.');
+      return;
+    }
     if (drop.xpOnPickup) {
       this.grantXp(eid, player, drop.xpOnPickup.skill, drop.xpOnPickup.xp);
+      drop.xpOnPickup = undefined;
     }
     player.session.sendJson({ t: 'inv', slots: player.inventory });
+    if (got < drop.qty) {
+      drop.qty -= got;
+      sys('Your pack is full — the rest stays where it fell.');
+      return;
+    }
     this.removeFromChunks(dropEid);
     this.ecs.destroy(dropEid);
   }
@@ -12650,11 +12673,19 @@ export class GameServer {
         const dy = ppos.y - pos.y;
         if (dx * dx + dy * dy > 0.55 * 0.55) continue;
         if (!hasSpaceFor(player.inventory, drop.item)) continue;
-        addItem(player.inventory, drop.item, drop.qty, drop.roll);
+        // Partial fits leave the remainder on the ground — the vacuum
+        // must never destroy more than the pack actually held.
+        const got = addItem(player.inventory, drop.item, drop.qty, drop.roll);
+        if (got === 0) continue;
         if (drop.xpOnPickup) {
           this.grantXp(playerEid, player, drop.xpOnPickup.skill, drop.xpOnPickup.xp);
+          drop.xpOnPickup = undefined;
         }
         player.session.sendJson({ t: 'inv', slots: player.inventory });
+        if (got < drop.qty) {
+          drop.qty -= got;
+          break;
+        }
         this.removeFromChunks(eid);
         this.ecs.destroy(eid);
         break;
