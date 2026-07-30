@@ -67,7 +67,11 @@ export interface QuestRequires {
   quests?: string[];
   /** Skill floors ("this work needs hands that have done it"). */
   skills?: { skill: SkillId; level: number }[];
-  /** Story flags that must be set (plain or dlg: — never world:/quest:). */
+  /**
+   * Story flags that must be set (plain or dlg: — never world:/quest:).
+   * `faction:` band gates are legal here: they are speakerless and
+   * answered live from the asking player's standing ledger.
+   */
   flags?: string[];
 }
 
@@ -83,6 +87,13 @@ export interface QuestRewards {
   coins?: number;
   /** Story flags stamped at turn-in (plain slugs only). */
   flags?: string[];
+  /**
+   * Standing paid at turn-in (docs/factions-plan.md): each entry rides
+   * the server's ONE standing choke. Deltas are capped by the factions
+   * doc's questCap; authored deltas never auto-pay the opposition
+   * matrix — a quest that cuts both ways states both sides.
+   */
+  standing?: { faction: string; delta: number }[];
 }
 
 /**

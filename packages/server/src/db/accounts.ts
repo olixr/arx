@@ -469,6 +469,32 @@ export class AccountStore {
   }
 
   /**
+   * The standing ledger (docs/factions-plan.md): one integer per
+   * character per faction, written fire-and-forget the moment the ONE
+   * creditStanding choke moves it — a deed must survive a crash.
+   * Bands are derived from the live factions doc, never stored.
+   */
+  async loadStandings(characterId: number): Promise<Map<string, number>> {
+    const rows = await this.db.query<{ factionId: string; standing: number }>(
+      'SELECT faction_id AS "factionId", standing FROM character_faction_standing WHERE character_id = ?',
+      [characterId],
+    );
+    return new Map(rows.map((r) => [r.factionId, r.standing]));
+  }
+
+  saveStanding(characterId: number, factionId: string, standing: number): void {
+    this.db.fire(
+      'INSERT INTO character_faction_standing (character_id, faction_id, standing, updated_at) VALUES (?, ?, ?, ?) ' +
+        'ON CONFLICT (character_id, faction_id) DO UPDATE SET standing = excluded.standing, updated_at = excluded.updated_at',
+      [characterId, factionId, standing, Date.now()],
+    );
+  }
+
+  deleteStandings(characterId: number): void {
+    this.db.fire('DELETE FROM character_faction_standing WHERE character_id = ?', [characterId]);
+  }
+
+  /**
    * The social ledger. Friendships are mutual — two mirrored rows in
    * character_friends written in one transaction — so every load stays
    * a single-key SELECT. Requests are directional; the handler

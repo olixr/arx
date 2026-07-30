@@ -5086,9 +5086,42 @@ type DockGlyphPainter = (c: CanvasRenderingContext2D) => void;
 /** The one ink every dock sigil is engraved in. */
 const GLYPH_INK = '#d8c08c';
 
-export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack' | 'map' | 'quest';
+export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack' | 'map' | 'quest' | 'rep';
 
 const DOCK_GLYPHS: Record<DockGlyph, DockGlyphPainter> = {
+  // Standing: a hanging banner — pole ring, swallow-tailed cloth, and
+  // the mark stitched at its heart. The name you carry, on display.
+  rep: (c) => {
+    c.lineWidth = 0.055;
+    // The crossbar and its hanging rings.
+    c.beginPath();
+    c.moveTo(0.2, 0.2);
+    c.lineTo(0.8, 0.2);
+    c.stroke();
+    c.beginPath();
+    c.arc(0.3, 0.245, 0.035, 0, Math.PI * 2);
+    c.moveTo(0.735, 0.245);
+    c.arc(0.7, 0.245, 0.035, 0, Math.PI * 2);
+    c.stroke();
+    // The banner cloth, swallow-tailed at the foot.
+    c.beginPath();
+    c.moveTo(0.28, 0.29);
+    c.lineTo(0.72, 0.29);
+    c.lineTo(0.72, 0.74);
+    c.lineTo(0.5, 0.63);
+    c.lineTo(0.28, 0.74);
+    c.closePath();
+    c.stroke();
+    // The stitched mark: a diamond at the banner's heart.
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.moveTo(0.5, 0.36);
+    c.lineTo(0.585, 0.46);
+    c.lineTo(0.5, 0.56);
+    c.lineTo(0.415, 0.46);
+    c.closePath();
+    c.stroke();
+  },
   // The journal: a half-unrolled scroll — rolled ends top and bottom,
   // three ruled entry lines, and the wax seal dot of a sworn errand.
   quest: (c) => {

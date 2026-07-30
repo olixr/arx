@@ -3,6 +3,8 @@ import { ITEMS } from '../items.js';
 import { NPCS } from '../npcs.js';
 import { NPC_ACTORS } from '../actors/registry.js';
 import { parseDialogueMarkup } from '../dialogues/markup.js';
+import { FACTION_FLAG_RE, isFactionFlag } from '../factions/flags.js';
+import { FACTIONS, factionIds } from '../factions/factions.js';
 import type {
   QuestDef,
   QuestDrop,
@@ -235,7 +237,24 @@ function validateRequires(
       for (const f of raw.flags) {
         // Availability is answered anywhere, speakerless, and must
         // never recurse — so no world: (needs a speaker) and no
-        // quest: (requires.quests is the cross-quest gate).
+        // quest: (requires.quests is the cross-quest gate). faction:
+        // band gates ARE speakerless (the name is the player's) and
+        // pass under their own grammar + closed roster.
+        if (typeof f === 'string' && isFactionFlag(f)) {
+          const m = FACTION_FLAG_RE.exec(f);
+          if (!m) {
+            errors.push(
+              `requires.flags entry '${f}' must match faction:<id>:(atleast:|atmost:)?<band>`,
+            );
+            continue;
+          }
+          if (!factionIds().includes(m[1]!)) {
+            errors.push(`requires.flags entry '${f}' references unknown faction '${m[1]}'`);
+            continue;
+          }
+          out.flags.push(f);
+          continue;
+        }
         if (typeof f !== 'string' || !STORY_FLAG_RE.test(f) || f.length > 64) {
           errors.push(`requires.flags entry '${String(f)}' must be a plain or dlg: flag`);
           continue;
@@ -326,6 +345,30 @@ function validateRewards(
           continue;
         }
         out.flags.push(f);
+      }
+    }
+  }
+  if (raw.standing !== undefined) {
+    if (!Array.isArray(raw.standing) || raw.standing.length > 4) {
+      errors.push('rewards.standing must be an array of at most 4 entries');
+    } else {
+      out.standing = [];
+      for (const [i, s] of raw.standing.entries()) {
+        if (!isRecord(s) || typeof s.faction !== 'string' || !factionIds().includes(s.faction)) {
+          errors.push(`rewards.standing[${i}].faction is not a known faction`);
+          continue;
+        }
+        const cap = FACTIONS.deeds.questCap;
+        if (
+          typeof s.delta !== 'number' ||
+          !Number.isInteger(s.delta) ||
+          s.delta === 0 ||
+          Math.abs(s.delta) > cap
+        ) {
+          errors.push(`rewards.standing[${i}].delta must be a non-zero integer within ±${cap}`);
+          continue;
+        }
+        out.standing.push({ faction: s.faction, delta: s.delta });
       }
     }
   }

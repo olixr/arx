@@ -56,7 +56,11 @@
 // EntityMeta.actor (the slug quest marks resolve against). A v19
 // client would drop every quest push and see no "!" over any head,
 // so reject cleanly.
-export const PROTOCOL_VERSION = 20;
+// v21: THE LEDGER OF NAMES — the rep/repupd/repevent family (faction
+// standing full push at bind + quiet patches + band ceremonies) and
+// the live membership tables riding S2CRep. A v20 client would drop
+// every standing push and read no bands, so reject cleanly.
+export const PROTOCOL_VERSION = 21;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;

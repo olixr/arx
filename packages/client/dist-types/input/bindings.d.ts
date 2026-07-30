@@ -15,7 +15,7 @@
  * - PLAYER'S TABLE WINS. Custom bindings persist in localStorage and
  *   load before the first frame; resetting restores this file exactly.
  */
-export type ActionId = 'moveUp' | 'moveDown' | 'moveLeft' | 'moveRight' | 'attack' | 'ability1' | 'ability2' | 'ability3' | 'ability4' | 'dodge' | 'interact' | 'lootReveal' | 'buildRotate' | 'sit' | 'sheathe' | 'walkToggle' | 'sneakToggle' | 'screenPack' | 'screenSkills' | 'screenArts' | 'screenCraft' | 'screenBuild' | 'screenSocial' | 'screenMap' | 'screenQuests' | 'screenSettings' | 'screenLoot' | 'mapGlass' | 'zoomIn' | 'zoomOut' | 'zoomCycle';
+export type ActionId = 'moveUp' | 'moveDown' | 'moveLeft' | 'moveRight' | 'attack' | 'ability1' | 'ability2' | 'ability3' | 'ability4' | 'dodge' | 'interact' | 'lootReveal' | 'buildRotate' | 'sit' | 'sheathe' | 'walkToggle' | 'sneakToggle' | 'screenPack' | 'screenSkills' | 'screenArts' | 'screenCraft' | 'screenBuild' | 'screenSocial' | 'screenMap' | 'screenQuests' | 'screenRep' | 'screenSettings' | 'screenLoot' | 'mapGlass' | 'zoomIn' | 'zoomOut' | 'zoomCycle';
 export interface ActionDef {
     id: ActionId;
     /** Player-facing name — quiet quartermaster diction. */

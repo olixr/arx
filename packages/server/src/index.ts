@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { WebSocketServer } from 'ws';
 import {
+  AUTHORED_FACTIONS,
   AUTHORED_FRONTIER,
   AUTHORED_GEOGRAPHY,
   AUTHORED_LOOT_TABLES,
@@ -17,11 +18,13 @@ import {
   buildSilverfall,
   buildUndercroft,
   lootTableErrors,
+  replaceFactions,
   replaceFrontier,
   replaceGeography,
   replaceLootTables,
   replaceNpcDefs,
   replacePoiDefs,
+  validateFactions,
   validateFrontier,
   validateGeographyDef,
   validateNpcDef,
@@ -194,6 +197,28 @@ if (config.requireInvite) {
   // days, satellite caps, calm windows, raid dice, peddler hours.
   // Every consumer reads FRONTIER.x at call time, so the swap needs
   // no reload hooks — the Studio's edit steers the very next beat.
+  // THE LEDGER OF NAMES (docs/factions-plan.md Phase 1): the faction
+  // roster, bands, deed values, and opposition matrix are one 'world'
+  // doc under the same law — every consumer reads FACTIONS.x (or the
+  // membership indexes) at call time, so a Studio save re-draws the
+  // political map on the very next beat.
+  await seedContentDocs(db, 'factions', [{ id: 'world', doc: AUTHORED_FACTIONS }]);
+  const factionsDocs = await loadContentDocs(db, 'factions');
+  const factionsRow = factionsDocs.find((d) => d.id === 'world');
+  if (factionsRow) {
+    const res = validateFactions(factionsRow.doc);
+    if (!res.ok) {
+      console.warn(`[content] DB factions doc invalid (${res.errors[0]}) — authored roster stands`);
+    } else {
+      replaceFactions(res.def);
+      console.log(
+        `[content] factions: ${res.def.roster.map((f) => f.id).join(', ')} · ` +
+          `${res.def.roster.reduce((n, f) => n + f.members.length, 0)} members` +
+          (factionsRow.edited ? ' (tool-edited)' : ''),
+      );
+    }
+  }
+
   await seedContentDocs(db, 'frontier', [{ id: 'world', doc: AUTHORED_FRONTIER }]);
   const frontierDocs = await loadContentDocs(db, 'frontier');
   const frontierRow = frontierDocs.find((d) => d.id === 'world');

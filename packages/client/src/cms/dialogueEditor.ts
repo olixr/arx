@@ -41,7 +41,10 @@ import { combobox, el, pill, type ComboOption } from './widgets.js';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 const SLUG_RE = /^[a-z][a-z0-9_]*$/;
-const FLAG_RE = /^(dlg:|world:)?[a-z][a-z0-9_]*$/;
+// Mirrors content's grammar: plain/dlg:/world: slugs, quest: states,
+// and faction: band gates (the server validator is the final word).
+const FLAG_RE =
+  /^(?:(dlg:|world:)?[a-z][a-z0-9_]*|quest:[a-z][a-z0-9_]*:(?:available|active|ready|done|stage:[a-z][a-z0-9_]*)|faction:[a-z][a-z0-9_]*:(?:(?:atleast|atmost):)?(?:hunted|outlaw|suspect|neutral|known|trusted|champion))$/;
 
 /** Per-dialogue UI memory that survives rebuilds within a session. */
 const selByDlg = new Map<string, string>();

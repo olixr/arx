@@ -1139,6 +1139,45 @@ export interface S2CQuestEvent {
   rewards?: QuestRewardsWire;
 }
 
+/** One faction's standing as the owner reads it (bands server-derived). */
+export interface RepStandingWire {
+  faction: string;
+  name: string;
+  value: number;
+  band: string;
+}
+
+/**
+ * The full reputation ledger, pushed once at bind (docs/factions-plan.md).
+ * `members`/`prefixes` carry the LIVE membership tables so per-viewer
+ * resolution (nameplate tints, Phase 2 marks) follows Studio edits,
+ * never the client's shipped seed — the questMarkFor precedent: nothing
+ * personal ever rides the shared EntityMeta.
+ */
+export interface S2CRep {
+  t: 'rep';
+  standings: RepStandingWire[];
+  /** actor slug -> faction id. */
+  members: Record<string, string>;
+  /** bestiary id prefix -> faction id. */
+  prefixes: Record<string, string>;
+}
+
+/** A quiet standing patch — deltas tick. NO ceremony rides this. */
+export interface S2CRepUpd {
+  t: 'repupd';
+  standings: RepStandingWire[];
+}
+
+/** A band crossing — the ONLY trigger for standing ceremonies. */
+export interface S2CRepEvent {
+  t: 'repevent';
+  faction: string;
+  name: string;
+  band: string;
+  rose: boolean;
+}
+
 export type S2CMessage =
   | S2CWelcome
   | S2CReject
@@ -1187,7 +1226,10 @@ export type S2CMessage =
   | S2CWaypoint
   | S2CQuests
   | S2CQuestUpd
-  | S2CQuestEvent;
+  | S2CQuestEvent
+  | S2CRep
+  | S2CRepUpd
+  | S2CRepEvent;
 
 // ------------------------------------------------------- validation
 

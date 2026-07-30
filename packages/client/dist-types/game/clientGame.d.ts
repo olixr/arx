@@ -1,4 +1,4 @@
-import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type BuildOrient, type InvSlot, type ItemRoll, type DiscoveryWire, type QuestAvailWire, type QuestDoneWire, type QuestRewardsWire, type QuestWire, type EquippedItem, type PartyMemberWire, type PartyRunWire, type S2CFx, type S2CPartyEvent, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
+import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type BuildOrient, type InvSlot, type ItemRoll, type DiscoveryWire, type QuestAvailWire, type QuestDoneWire, type QuestRewardsWire, type QuestWire, type RepStandingWire, type EquippedItem, type PartyMemberWire, type PartyRunWire, type S2CFx, type S2CPartyEvent, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
@@ -266,6 +266,15 @@ export interface GameEvents {
     }): void;
     /** The quest ledger changed shape (quiet) — repaint journal surfaces. */
     onQuestsChanged?(): void;
+    /** A band crossing — the ONLY trigger for standing ceremonies. */
+    onRepEvent?(e: {
+        faction: string;
+        name: string;
+        band: string;
+        rose: boolean;
+    }): void;
+    /** The standing ledger moved (quiet) — repaint the Standing screen. */
+    onRepChanged?(): void;
 }
 export declare class ClientGame {
     private readonly input;
@@ -341,6 +350,17 @@ export declare class ClientGame {
     questAvailable: QuestAvailWire[];
     /** Bumped on every ledger change — journal surfaces re-read on it. */
     questVersion: number;
+    /**
+     * THE LEDGER OF NAMES: own standings by faction id, plus the LIVE
+     * membership tables (actor slug / bestiary prefix -> faction) from
+     * the bind push — per-viewer resolution (tints, marks) reads these,
+     * never the shipped content seed (the questMarkFor law).
+     */
+    readonly repStandings: Map<string, RepStandingWire>;
+    repMembers: Record<string, string>;
+    repPrefixes: Record<string, string>;
+    /** Bumped on every standing change — the Standing screen re-reads. */
+    repVersion: number;
     /** The party snapshot — empty members = partyless. Refetched on events. */
     party: {
         members: PartyMemberWire[];

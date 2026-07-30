@@ -82,6 +82,7 @@
         <button id="btn-build" title="Build (B)"></button>
         <button id="btn-social" title="Social (U)"></button>
         <button id="btn-quests" title="Journal (J)"></button>
+        <button id="btn-rep" title="Standing (L)"></button>
         <button id="btn-map" title="Map (M)"></button>
         <button id="btn-audio" title="Settings (O)"></button>
       </div>
@@ -225,6 +226,12 @@
            right; the body is built by ui/questLog.ts. -->
       <div id="quest-panel" class="ui-screen screen-quests hidden">
         <h3>Journal</h3>
+      </div>
+
+      <!-- STANDING — the name you carry (L). One banded row per
+           faction; the body is built by ui/repScreen.ts. -->
+      <div id="rep-panel" class="ui-screen screen-rep hidden">
+        <h3>Standing</h3>
       </div>
 
       <!-- THE RIFTGATE — the gate's question: which key turns? Each

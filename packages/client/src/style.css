@@ -6128,7 +6128,8 @@ body.pad-mode .map-reticle {
   color: #9a8f78;
 }
 
-#btn-quests.has-new::after {
+#btn-quests.has-new::after,
+#btn-rep.has-new::after {
   content: '';
   position: absolute;
   right: 3px;
@@ -6138,6 +6139,81 @@ body.pad-mode .map-reticle {
   border-radius: 50%;
   background: #ffd98a;
   box-shadow: 0 0 6px rgba(255, 217, 138, 0.8);
+}
+
+/* STANDING — the name you carry (docs/factions-plan.md Phase 1).
+   One banded row per faction: head, centered meter, meaning line. */
+.screen-rep {
+  width: min(680px, 94vw);
+  max-height: min(720px, 88vh);
+  display: flex;
+  flex-direction: column;
+}
+
+.rep-body {
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 6px;
+}
+
+.rep-row {
+  padding: 10px 12px;
+  background: rgba(30, 22, 14, 0.5);
+  border: 1px solid rgba(222, 190, 128, 0.14);
+  border-radius: 4px;
+}
+
+.rep-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rep-name {
+  font: 700 17px/1.2 Georgia, 'Times New Roman', serif;
+  color: #efe3c2;
+}
+
+.rep-band {
+  font: 700 12px/1 'Trebuchet MS', sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rep-meter {
+  position: relative;
+  margin-top: 8px;
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(222, 190, 128, 0.12);
+  overflow: hidden;
+}
+
+.rep-meter-notch {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(222, 190, 128, 0.5);
+}
+
+.rep-meter-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 3px;
+}
+
+.rep-word {
+  margin-top: 7px;
+  font: 500 12px/1.4 'Trebuchet MS', sans-serif;
+  color: #9a8f78;
 }
 
 /* THE ERRAND CARD — the tracked quest's smoked-glass face, top-right

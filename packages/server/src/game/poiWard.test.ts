@@ -212,12 +212,17 @@ const proto3 = GameServer.prototype as unknown as {
   payBounty: WardFn;
   setPlayerFlag: WardFn;
   clearPlayerFlag: WardFn;
+  creditDeed: WardFn;
+  creditStanding: WardFn;
+  factionForPlace: WardFn;
 };
 
 interface FakePlayer {
   characterId: number;
   raidCalmUntil: number;
   flags: Map<string, number>;
+  standing: Map<string, number>;
+  repSig: string;
   inventory: Array<{ item: string; qty: number } | null>;
   session: { sendJson: (m: { t: string; text?: string }) => void } | null;
 }
@@ -227,6 +232,8 @@ function fakePlayer(characterId: number, msgs: string[]): FakePlayer {
     characterId,
     raidCalmUntil: 0,
     flags: new Map(),
+    standing: new Map(),
+    repSig: '',
     inventory: new Array<null>(28).fill(null),
     session: {
       sendJson: (m) => {
@@ -234,6 +241,17 @@ function fakePlayer(characterId: number, msgs: string[]): FakePlayer {
       },
     },
   };
+}
+
+/** The standing rails, real — with the wire/persist edges stubbed. */
+function armStanding(s: object): void {
+  Object.assign(s, {
+    creditDeed: proto3.creditDeed,
+    creditStanding: proto3.creditStanding,
+    factionForPlace: proto3.factionForPlace,
+    pushRep: () => {},
+    pushQuestAvail: () => {},
+  });
 }
 
 test('THE PARTICIPATION LEDGER: every hand that bled the garrison gets the credit', () => {
@@ -261,10 +279,12 @@ test('THE PARTICIPATION LEDGER: every hand that bled the garrison gets the credi
     setPlayerFlag: proto3.setPlayerFlag,
     clearPlayerFlag: proto3.clearPlayerFlag,
   });
+  armStanding(s);
   s.accounts = {
     ...s.accounts,
     setFlag: (cid: number, flag: string) => flagWrites.push([cid, flag]),
     clearFlag: (cid: number, flag: string) => cleared.push([cid, flag]),
+    saveStanding: () => {},
   } as never;
   (s.poiLive.get('3,4') as { fighters?: Set<number> }).fighters = new Set([102]);
   proto3.notePoiKill.call(s, 0, 11);
@@ -283,6 +303,11 @@ test('THE PARTICIPATION LEDGER: every hand that bled the garrison gets the credi
   assert.equal(b.flags.has('bounty:3,4'), false);
   assert.deepEqual(cleared, [[102, 'bounty:3,4']]);
   assert.ok(msgsB.some((t) => t.includes('bounty is honored')));
+  // THE LEDGER OF NAMES: honoring a bounty pays standing — this camp
+  // stands beyond every town's marches, so the road's wardens credit
+  // it (the doc's roadFaction). Only the paid hand earns it.
+  assert.equal(b.standing.get('waykeepers'), 5);
+  assert.equal(a.standing.size, 0, 'no mark, no purse, no standing');
 });
 
 test('the purse scales with the boldness rung the camp died at', () => {
@@ -302,6 +327,8 @@ test('the purse scales with the boldness rung the camp died at', () => {
     spawnDrop: () => {},
     clearPlayerFlag: proto3.clearPlayerFlag,
   });
+  armStanding(s);
+  s.accounts = { ...s.accounts, saveStanding: () => {} } as never;
   (proto3.payBounty as (...a: unknown[]) => void).call(s, 11, p, '3,4', row);
   const paid = p.inventory.reduce((n, sl) => n + (sl?.item === 'coins' ? sl.qty : 0), 0);
   assert.ok(paid >= 180 && paid <= 330, `stage-2 triples the tier-2 purse, got ${paid}`);

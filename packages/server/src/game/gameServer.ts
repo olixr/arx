@@ -151,10 +151,18 @@ import {
   dangerLaw,
   emberLingerFor,
   fallowRestFor,
+  FACTIONS,
+  STANDING_CLAMP,
+  answerFactionFlag,
+  crossDeltas,
+  factionDef,
+  isFactionFlag,
   isQuestFlag,
   isWorldFlag,
+  parseFactionFlag,
   parseQuestFlag,
   questDoneFlag,
+  standingBand,
   peddlerLingerFor,
   pickWild,
   scatterLingerFor,
@@ -323,6 +331,7 @@ import {
   type QuestDoneWire,
   type QuestRewardsWire,
   type QuestWire,
+  type RepStandingWire,
   type Vec2,
 } from '@arx/shared';
 import { geographySnapshot, scaleNpcDef } from '@arx/content';
@@ -1027,6 +1036,14 @@ interface PlayerComp {
   questAvailSig: string;
   /** Last-sent live collect counts (the 500ms ticker's diff guard). */
   questCollectSig: string;
+  /**
+   * THE LEDGER OF NAMES (docs/factions-plan.md): standing per faction
+   * id, written ONLY by creditStanding — the one door. Absent = 0
+   * (neutral). Persisted the moment it moves; guests memory-only.
+   */
+  standing: Map<string, number>;
+  /** Last-sent standing signature — the quiet-wire diff guard. */
+  repSig: string;
 }
 
 /** A timed self-effect; multiple can ride at once (speeds multiply). */
@@ -2158,6 +2175,11 @@ export class GameServer {
       }
     }
 
+    // The standing ledger — rows for factions retired from the doc
+    // load anyway and sleep until the roster brings them back.
+    const standing =
+      character.id > 0 ? await this.accounts.loadStandings(character.id) : new Map<string, number>();
+
     const eid = this.ecs.create();
     this.kinds.set(eid, EntityKind.Player);
     this.positions.set(eid, { x: spawnX, y: spawnY, dir: 0 });
@@ -2237,6 +2259,8 @@ export class GameServer {
       quests,
       questAvailSig: '',
       questCollectSig: '',
+      standing,
+      repSig: '',
     });
     this.characterEids.set(character.id, eid);
     this.updateChunkMembership(eid);
@@ -2354,6 +2378,8 @@ export class GameServer {
     // The quest ledger, whole — the journal, the tracker, and every
     // overhead mark resolve from this one push.
     this.sendQuestsFull(player);
+    // The standing ledger + live membership tables, whole.
+    this.sendRepFull(player);
   }
 
   onSessionClosed(session: Session): void {
@@ -6139,6 +6165,12 @@ export class GameServer {
         // THE UNWRITTEN PAGE: breaking a garrison is the warden's deed.
         this.grantArt(p, 'warden_volley');
         this.payBounty(peid, p, key, row);
+        // A broken toll un-squeezes somebody's road — the charter
+        // remembers every hand (bounty or none; ending pays, standing
+        // never did).
+        if (tollBroke && row?.site) {
+          this.creditDeed(p, this.factionForPlace(row.site.anchorX, row.site.anchorY), 'tollBroken');
+        }
       }
     }
   }
@@ -6180,6 +6212,8 @@ export class GameServer {
         channel: 'system',
         text: `The bounty is honored: ${paid} coins.`,
       });
+      // The town that posted the ask remembers the hand that answered.
+      this.creditDeed(player, this.factionForPlace(site.anchorX, site.anchorY), 'bountyHonored');
     }
   }
 
@@ -7109,6 +7143,9 @@ export class GameServer {
           this.questCtx(player),
         );
       }
+      // The standing bands answer their namespace live — speakerless,
+      // because the name is the player's, not the speaker's.
+      if (isFactionFlag(flag)) return this.answerFactionGate(player, flag);
       if (!isWorldFlag(flag)) return player.flags.has(flag);
       const npos = this.positions.get(targetEid);
       return npos ? this.worldFlagAnswer(flag, player, npos.x, npos.y) : false;
@@ -7336,6 +7373,11 @@ export class GameServer {
       case 'bounty':
         this.postBounty(eid, player);
         break;
+      case 'standing':
+        // Authored story delta — never auto-pays the opposition
+        // matrix (an author states both sides explicitly).
+        this.creditStanding(player, hook.faction, hook.delta);
+        break;
       case 'quest_offer':
         // Pure presentation: dialogueEnterNode stages the chip on the
         // beat itself (the gifts pattern). Nothing happens here.
@@ -7439,7 +7481,9 @@ export class GameServer {
   private questCtx(player: PlayerComp): QuestPlayerCtx {
     return {
       quests: player.quests,
-      hasFlag: (f) => player.flags.has(f),
+      // faction: band gates are speakerless and legal in quest
+      // requires.flags — answered live, exactly like dialogueHas.
+      hasFlag: (f) => (isFactionFlag(f) ? this.answerFactionGate(player, f) : player.flags.has(f)),
       skillLevel: (s) => levelForXp(player.skills[s] ?? 0),
       hasDiscovered: (p) => {
         const d = player.discoveries.get(p);
@@ -7646,6 +7690,8 @@ export class GameServer {
     // The durable stamp: deed rails and plain dialogue gates read this.
     this.setPlayerFlag(player, questDoneFlag(def.id), q.completions);
     for (const f of def.rewards.flags ?? []) this.setPlayerFlag(player, f);
+    // Standing rides the one door; authored deltas never auto-cross.
+    for (const s of def.rewards.standing ?? []) this.creditStanding(player, s.faction, s.delta);
 
     player.session?.sendJson({
       t: 'questupd',
@@ -7809,8 +7855,9 @@ export class GameServer {
   private setPlayerFlag(player: PlayerComp, flag: string, value = 1): void {
     // The world answers; nobody writes it. (The validator already
     // refuses authored writes — this holds the line for every caller.)
-    // The quest ledger answers its own namespace the same way.
-    if (isWorldFlag(flag) || isQuestFlag(flag)) return;
+    // The quest ledger and the standing bands answer their own
+    // namespaces the same way.
+    if (isWorldFlag(flag) || isQuestFlag(flag) || isFactionFlag(flag)) return;
     if (player.flags.get(flag) === value) return;
     player.flags.set(flag, value);
     if (player.characterId > 0) this.accounts.setFlag(player.characterId, flag, value);
@@ -7827,6 +7874,136 @@ export class GameServer {
   private clearPlayerFlag(player: PlayerComp, flag: string): void {
     if (!player.flags.delete(flag)) return;
     if (player.characterId > 0) this.accounts.clearFlag(player.characterId, flag);
+  }
+
+  // ----------------------------------------------------- standing
+
+  /** Answer a `faction:` gate from the asking player's ledger. */
+  private answerFactionGate(player: PlayerComp, flag: string): boolean {
+    const parsed = parseFactionFlag(flag);
+    if (!parsed) return false;
+    return answerFactionFlag(player.standing.get(parsed.faction) ?? 0, parsed);
+  }
+
+  /**
+   * THE ONE DOOR (docs/factions-plan.md): every standing move in the
+   * game lands here — clamp, persist-on-mutation, the quiet ledger
+   * line, and the band-crossing ceremony (the ONLY repevent trigger).
+   * `cross: true` pays the opposition matrix under THE BORDER LAW;
+   * authored deltas (quest rewards, story hooks) omit it and state
+   * both sides themselves. Cross-pay never re-crosses.
+   */
+  private creditStanding(
+    player: PlayerComp,
+    factionId: string,
+    delta: number,
+    opts: { cross?: boolean } = {},
+  ): void {
+    const def = factionDef(factionId);
+    const applied = Math.round(delta);
+    if (!def || applied === 0) return;
+    const before = player.standing.get(factionId) ?? 0;
+    const after = Math.max(-STANDING_CLAMP, Math.min(STANDING_CLAMP, before + applied));
+    if (after !== before) {
+      player.standing.set(factionId, after);
+      if (player.characterId > 0) this.accounts.saveStanding(player.characterId, factionId, after);
+      const moved = after - before;
+      // THE DEED IS PUBLIC: every delta prints its quiet ledger line.
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `${def.name} ${moved > 0 ? '+' : '−'}${Math.abs(moved)} — ${
+          moved > 0 ? 'word of it travels well' : 'the deed is marked'
+        }.`,
+      });
+      const bandAfter = standingBand(after);
+      if (bandAfter !== standingBand(before)) {
+        player.session?.sendJson({
+          t: 'repevent',
+          faction: factionId,
+          name: def.name,
+          band: bandAfter,
+          rose: after > before,
+        });
+        // A band can open (or close) a quest gate or a tree.
+        this.pushQuestAvail(player);
+      }
+      this.pushRep(player);
+    }
+    if (opts.cross) {
+      for (const c of crossDeltas(factionId, applied, before)) {
+        this.creditStanding(player, c.faction, c.delta);
+      }
+    }
+  }
+
+  /** A systemic deed by name — value read from the live doc, matrix paid. */
+  private creditDeed(
+    player: PlayerComp,
+    factionId: string | null,
+    deed: 'bountyHonored' | 'tollBroken' | 'assaultEnforcer' | 'slayMember',
+  ): void {
+    if (factionId === null) return;
+    this.creditStanding(player, factionId, FACTIONS.deeds[deed], { cross: true });
+  }
+
+  /**
+   * Whose ground is this? The faction holding the nearest town anchor
+   * within the marches — beyond every march, the road's wardens (the
+   * doc's roadFaction). Read live: a Studio edit re-draws the map.
+   */
+  private factionForPlace(x: number, y: number): string | null {
+    let best: string | null = null;
+    let bestD = FRONTIER.marchTiles;
+    for (const f of FACTIONS.roster) {
+      for (const a of f.anchors) {
+        const d = Math.hypot(a.x - x, a.y - y);
+        if (d <= bestD) {
+          bestD = d;
+          best = f.id;
+        }
+      }
+    }
+    return best ?? (factionDef(FACTIONS.roadFaction) ? FACTIONS.roadFaction : null);
+  }
+
+  /** The owner's standings, every roster row (neutral rows included). */
+  private repWire(player: PlayerComp): RepStandingWire[] {
+    return FACTIONS.roster.map((f) => {
+      const value = player.standing.get(f.id) ?? 0;
+      return { faction: f.id, name: f.name, value, band: standingBand(value) };
+    });
+  }
+
+  private repSigOf(standings: RepStandingWire[]): string {
+    return standings.map((s) => `${s.faction}:${s.value}`).join(',');
+  }
+
+  /** Quiet standing patch, diff-guarded — the questupd twin. */
+  private pushRep(player: PlayerComp): void {
+    const standings = this.repWire(player);
+    const sig = this.repSigOf(standings);
+    if (sig === player.repSig) return;
+    player.repSig = sig;
+    player.session?.sendJson({ t: 'repupd', standings });
+  }
+
+  /**
+   * The full reputation push at bind: standings plus the LIVE
+   * membership tables, so per-viewer resolution follows Studio edits
+   * (the shared-meta law: nothing personal on EntityMeta).
+   */
+  private sendRepFull(player: PlayerComp): void {
+    if (!player.session) return;
+    const standings = this.repWire(player);
+    player.repSig = this.repSigOf(standings);
+    const members: Record<string, string> = {};
+    const prefixes: Record<string, string> = {};
+    for (const f of FACTIONS.roster) {
+      for (const m of f.members) members[m] = f.id;
+      for (const p of f.npcPrefixes) prefixes[p] = f.id;
+    }
+    player.session.sendJson({ t: 'rep', standings, members, prefixes });
   }
 
   /**
@@ -13273,6 +13450,65 @@ export class GameServer {
         this.setPlayerFlag(player, flag, Number.parseInt(valueRaw ?? '1', 10) || 1);
         player.session?.sendJson({ t: 'chat', channel: 'system', text: `Flag '${flag}' set.` });
       }
+      return;
+    }
+    if (config.devCommands && text.startsWith('/standing')) {
+      // /standing — list mine; /standing <faction> <value|band> — set;
+      // /standing reset — wipe the ledger (memory + rows).
+      const [, a, b] = text.split(/\s+/);
+      const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      if (!a) {
+        sys(
+          this.repWire(player)
+            .map((s) => `${s.faction}: ${s.value} (${s.band})`)
+            .join(' · '),
+        );
+        return;
+      }
+      if (a === 'reset') {
+        player.standing.clear();
+        if (player.characterId > 0) this.accounts.deleteStandings(player.characterId);
+        this.pushRep(player);
+        this.pushQuestAvail(player);
+        sys('Standing ledger wiped.');
+        return;
+      }
+      const def = factionDef(a);
+      if (!def || b === undefined) {
+        sys(`Usage: /standing [<faction> <value|band>] [reset] — factions: ${FACTIONS.roster.map((f) => f.id).join(', ')}`);
+        return;
+      }
+      const bandTargets: Record<string, number> = {
+        hunted: FACTIONS.bands.hunted,
+        outlaw: FACTIONS.bands.outlaw,
+        suspect: FACTIONS.bands.suspect,
+        neutral: 0,
+        known: FACTIONS.bands.known,
+        trusted: FACTIONS.bands.trusted,
+        champion: FACTIONS.bands.champion,
+      };
+      const target = b in bandTargets ? bandTargets[b]! : Number(b);
+      if (!Number.isFinite(target)) {
+        sys(`'${b}' is neither a value nor a band.`);
+        return;
+      }
+      // Route through the one door as a raw delta (no cross) so the
+      // ceremony/persist/push rails all fire exactly as in real play.
+      this.creditStanding(player, a, target - (player.standing.get(a) ?? 0));
+      sys(`${def.name}: ${player.standing.get(a) ?? 0} (${standingBand(player.standing.get(a) ?? 0)})`);
+      return;
+    }
+    if (config.devCommands && text.startsWith('/deed')) {
+      // /deed <bountyHonored|tollBroken|assaultEnforcer|slayMember> <faction>
+      const [, kind, fac] = text.split(/\s+/);
+      const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      const kinds = ['bountyHonored', 'tollBroken', 'assaultEnforcer', 'slayMember'] as const;
+      const k = kinds.find((x) => x === kind);
+      if (!k || !fac || !factionDef(fac)) {
+        sys(`Usage: /deed <${kinds.join('|')}> <faction>`);
+        return;
+      }
+      this.creditDeed(player, fac, k);
       return;
     }
     if (config.devCommands && text.startsWith('/quest')) {

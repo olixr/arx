@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Db } from '../db/db.js';
 import {
+  AUTHORED_FACTIONS,
   AUTHORED_FRONTIER,
   AUTHORED_GEOGRAPHY,
   AUTHORED_LOOT_TABLES,
@@ -14,10 +15,12 @@ import {
   LOOT_TABLES,
   NPCS,
   NPC_ACTORS,
+  FACTIONS,
   FRONTIER,
   POI_DEFS,
   ZONE_EDGE_PROFILES,
   geographySnapshot,
+  replaceFactions,
   replaceFrontier,
   geographyWarnings,
   packZoneEdgeProfile,
@@ -27,6 +30,7 @@ import {
   replaceLootTables,
   replaceNpcDefs,
   replacePoiDefs,
+  validateFactions,
   validateFrontier,
   validateGeographyDef,
   validateNpcDef,
@@ -238,6 +242,46 @@ export function createMapsApi(
           });
           console.log(`[content] geography ${outcome} — shipped plan stands`);
           sendJson(res, 200, { ok: true, outcome, swept });
+          return true;
+        }
+      }
+
+      // ------------------------------------------------ factions doc
+      // THE LEDGER OF NAMES is ONE document under the two-hash law
+      // (docs/factions-plan.md). Call-time reads + index rebuild in
+      // replaceFactions mean a save re-draws the political map with
+      // no reload.
+      if (url.pathname === '/dev/content/factions') {
+        if (req.method === 'GET') {
+          const edited =
+            (await loadContentDocs(db, 'factions')).find((d) => d.id === 'world')?.edited ?? false;
+          sendJson(res, 200, { def: JSON.parse(JSON.stringify(FACTIONS)), edited });
+          return true;
+        }
+        if (req.method === 'PUT') {
+          let raw: unknown;
+          try {
+            raw = JSON.parse(await readBody(req));
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          const result = validateFactions(raw);
+          if (!result.ok) {
+            sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          await importContentDoc(db, 'factions', 'world', result.def);
+          replaceFactions(result.def);
+          console.log('[content] factions doc saved + live (no reload needed — call-time reads)');
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const outcome = await revertContentDoc(db, 'factions', 'world', AUTHORED_FACTIONS);
+          replaceFactions(JSON.parse(JSON.stringify(AUTHORED_FACTIONS)) as typeof FACTIONS);
+          console.log(`[content] factions doc ${outcome} — shipped roster stands`);
+          sendJson(res, 200, { ok: true, outcome });
           return true;
         }
       }

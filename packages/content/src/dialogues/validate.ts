@@ -2,6 +2,8 @@ import { ITEMS } from '../items.js';
 import { NPC_ACTORS } from '../actors/registry.js';
 import { SHOPS } from '../shop.js';
 import { QUEST_FLAG_RE, isQuestFlag } from '../quests/flags.js';
+import { FACTION_FLAG_RE, isFactionFlag } from '../factions/flags.js';
+import { FACTIONS, factionIds } from '../factions/factions.js';
 import { parseDialogueMarkup } from './markup.js';
 import { WORLD_FLAGS, isWorldFlag } from './worldFlags.js';
 import type {
@@ -87,6 +89,23 @@ function flagList(
       out.push(f);
       continue;
     }
+    // The faction: namespace has its own grammar AND a closed roster —
+    // a typoed band or faction would gate a tree out forever in silence.
+    if (isFactionFlag(f)) {
+      const m = FACTION_FLAG_RE.exec(f);
+      if (!m) {
+        errors.push(
+          `${name} flag '${f}' must match faction:<id>:(atleast:|atmost:)?<band>`,
+        );
+        continue;
+      }
+      if (!factionIds().includes(m[1]!)) {
+        errors.push(`${name} flag '${f}' references unknown faction '${m[1]}'`);
+        continue;
+      }
+      out.push(f);
+      continue;
+    }
     if (!FLAG_RE.test(f)) {
       errors.push(
         `${name} flag '${String(f)}' must match ^(dlg:|world:)?[a-z][a-z0-9_]*$ (max 64 chars)`,
@@ -148,6 +167,22 @@ function validateHooks(
       // Carries nothing — the world state at the moment of asking is
       // the ask (the server picks the cell, plants the waypoint).
       out.push({ kind: 'bounty' });
+    } else if (h.kind === 'standing') {
+      if (typeof h.faction !== 'string' || !factionIds().includes(h.faction)) {
+        errors.push(`${where}.hooks[${i}] references unknown faction '${String(h.faction)}'`);
+        continue;
+      }
+      const cap = FACTIONS.deeds.storyCap;
+      if (
+        typeof h.delta !== 'number' ||
+        !Number.isInteger(h.delta) ||
+        h.delta === 0 ||
+        Math.abs(h.delta) > cap
+      ) {
+        errors.push(`${where}.hooks[${i}].delta must be a non-zero integer within ±${cap}`);
+        continue;
+      }
+      out.push({ kind: 'standing', faction: h.faction, delta: h.delta });
     } else if (h.kind === 'quest_offer' || h.kind === 'quest_accept' || h.kind === 'quest_turnin') {
       if (typeof h.quest !== 'string' || !SLUG_RE.test(h.quest) || h.quest.length > 48) {
         errors.push(`${where}.hooks[${i}].quest must be a quest id slug`);
@@ -160,7 +195,7 @@ function validateHooks(
       out.push({ kind: h.kind, quest: h.quest });
     } else {
       errors.push(
-        `${where}.hooks[${i}].kind must be 'flag', 'give', 'shop', 'bounty', 'quest_offer', 'quest_accept', or 'quest_turnin'`,
+        `${where}.hooks[${i}].kind must be 'flag', 'give', 'shop', 'bounty', 'standing', 'quest_offer', 'quest_accept', or 'quest_turnin'`,
       );
     }
   }
@@ -205,6 +240,10 @@ function validateChoices(
     }
     if (choice.set?.some((f) => isQuestFlag(f))) {
       errors.push(`${where}.choices[${i}].set may not write quest: flags (the ledger answers, nobody writes it)`);
+      continue;
+    }
+    if (choice.set?.some((f) => isFactionFlag(f))) {
+      errors.push(`${where}.choices[${i}].set may not write faction: flags (deeds write standing, the bands answer)`);
       continue;
     }
     out.push(choice);

@@ -112,6 +112,19 @@ export interface DialogueHookQuestTurnin {
 }
 
 /**
+ * An authored standing shift (docs/factions-plan.md Phase 1): the
+ * story's own hand on the ledger — a betrayal confided, a favor done
+ * off the books. Rides the server's ONE standing choke; the delta is
+ * capped by the doc's storyCap. Authored deltas never auto-pay the
+ * opposition matrix — an author states both sides explicitly.
+ */
+export interface DialogueHookStanding {
+  kind: 'standing';
+  faction: string;
+  delta: number;
+}
+
+/**
  * Node effects, executed server-side when the node is entered. This
  * union is THE open socket: quest grants, faction shifts, and shop
  * unlocks land here as new kinds without touching the walk logic.
@@ -121,6 +134,7 @@ export type DialogueHook =
   | DialogueHookGive
   | DialogueHookShop
   | DialogueHookBounty
+  | DialogueHookStanding
   | DialogueHookQuestOffer
   | DialogueHookQuestAccept
   | DialogueHookQuestTurnin;

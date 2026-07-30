@@ -608,6 +608,20 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (character_id, quest_id)
   );
   `,
+  // v11: THE LEDGER OF NAMES (docs/factions-plan.md Phase 1) — one
+  // integer standing per character per faction. Bands are derived at
+  // read time from the live factions doc, never stored; rows write
+  // fire-and-forget at the ONE creditStanding choke (the quest-row
+  // law: a deed must survive a crash).
+  `
+  CREATE TABLE character_faction_standing (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    faction_id TEXT NOT NULL,
+    standing INTEGER NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL,
+    PRIMARY KEY (character_id, faction_id)
+  );
+  `,
 ];
 
 /**

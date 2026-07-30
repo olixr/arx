@@ -1,5 +1,10 @@
 # Factions & Reputation — The Name You Carry
 
+> STATUS: GREEN-LIT 2026-07-30. Phase 1 (The Ledger of Names) SHIPPED
+> 2026-07-30 — protocol v21, db v11, content doc kind 'factions',
+> `faction:` namespace, the creditStanding one door + border law,
+> Standing screen (L). Phases 2-6 open.
+
 The world already *moves* (Living Frontier) and *asks* (Quest Ledger). This epic
 makes it **remember who you are**. Every deed writes on the player's name; every
 throat, gate, and counter in the Dawnlands reads it back. The mandate:

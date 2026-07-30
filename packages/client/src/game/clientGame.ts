@@ -50,6 +50,7 @@ import {
   type QuestDoneWire,
   type QuestRewardsWire,
   type QuestWire,
+  type RepStandingWire,
   type EquippedItem,
   type PartyMemberWire,
   type PartyRunWire,
@@ -231,6 +232,10 @@ export interface GameEvents {
   onQuestEvent?(e: { kind: 'accepted' | 'completed'; id: string; name: string; rewards?: QuestRewardsWire }): void;
   /** The quest ledger changed shape (quiet) — repaint journal surfaces. */
   onQuestsChanged?(): void;
+  /** A band crossing — the ONLY trigger for standing ceremonies. */
+  onRepEvent?(e: { faction: string; name: string; band: string; rose: boolean }): void;
+  /** The standing ledger moved (quiet) — repaint the Standing screen. */
+  onRepChanged?(): void;
 }
 
 export class ClientGame {
@@ -307,6 +312,17 @@ export class ClientGame {
   questAvailable: QuestAvailWire[] = [];
   /** Bumped on every ledger change — journal surfaces re-read on it. */
   questVersion = 0;
+  /**
+   * THE LEDGER OF NAMES: own standings by faction id, plus the LIVE
+   * membership tables (actor slug / bestiary prefix -> faction) from
+   * the bind push — per-viewer resolution (tints, marks) reads these,
+   * never the shipped content seed (the questMarkFor law).
+   */
+  readonly repStandings = new Map<string, RepStandingWire>();
+  repMembers: Record<string, string> = {};
+  repPrefixes: Record<string, string> = {};
+  /** Bumped on every standing change — the Standing screen re-reads. */
+  repVersion = 0;
   /** The party snapshot — empty members = partyless. Refetched on events. */
   party: { members: PartyMemberWire[]; invites: string[]; outgoing: string[] } | null = null;
   /** Fellow positions from the partypos ticker, keyed by name. */
@@ -749,6 +765,10 @@ export class ClientGame {
         this.questsDone.clear();
         this.questAvailable = [];
         this.questVersion++;
+        this.repStandings.clear();
+        this.repMembers = {};
+        this.repPrefixes = {};
+        this.repVersion++;
         this.ownLook = msg.look ?? null;
         this.token = msg.token;
         this.serverTick = msg.tick;
@@ -1180,6 +1200,32 @@ export class ClientGame {
           id: msg.id,
           name: msg.name,
           rewards: msg.rewards,
+        });
+        break;
+      }
+      case 'rep': {
+        // The full standing ledger + live membership tables, at bind.
+        this.repStandings.clear();
+        for (const s of msg.standings) this.repStandings.set(s.faction, s);
+        this.repMembers = msg.members;
+        this.repPrefixes = msg.prefixes;
+        this.repVersion++;
+        this.events.onRepChanged?.();
+        break;
+      }
+      case 'repupd': {
+        // A quiet patch — nothing celebrates.
+        for (const s of msg.standings) this.repStandings.set(s.faction, s);
+        this.repVersion++;
+        this.events.onRepChanged?.();
+        break;
+      }
+      case 'repevent': {
+        this.events.onRepEvent?.({
+          faction: msg.faction,
+          name: msg.name,
+          band: msg.band,
+          rose: msg.rose,
         });
         break;
       }

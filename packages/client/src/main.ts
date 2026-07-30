@@ -21,6 +21,7 @@ import { WaypointHud } from './ui/waypointHud.js';
 import { PartyHud } from './ui/partyHud.js';
 import { showDiscovery } from './ui/discoveryBanner.js';
 import { QuestLog } from './ui/questLog.js';
+import { RepScreen } from './ui/repScreen.js';
 import { ObjectiveTracker } from './ui/objectiveTracker.js';
 import { showQuestBanner } from './ui/questBanner.js';
 import { RiftgatePanel } from './ui/riftgate.js';
@@ -65,6 +66,7 @@ const DOCK_BUTTONS = [
   ['btn-build', 'build', 'Build', 'screenBuild'],
   ['btn-social', 'social', 'Social', 'screenSocial'],
   ['btn-quests', 'quest', 'Journal', 'screenQuests'],
+  ['btn-rep', 'rep', 'Standing', 'screenRep'],
   ['btn-map', 'map', 'Map', 'screenMap'],
   ['btn-audio', 'sound', 'Settings', 'screenSettings'],
 ] as const;
@@ -511,11 +513,12 @@ function closeAllUi(): void {
   socialPanel.close();
   mapScreen.close();
   questLog.close();
+  repScreen.close();
   signHud.close();
 }
 
 function toggleScreen(
-  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot' | 'social' | 'map' | 'quests',
+  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot' | 'social' | 'map' | 'quests' | 'rep',
 ): void {
   // A conversation owns the stage: no screen may open over it, from
   // any device — hotkeys, dock clicks, and pad shortcuts all pass
@@ -540,7 +543,9 @@ function toggleScreen(
                     ? mapScreen.isOpen
                     : which === 'quests'
                       ? questLog.isOpen
-                      : lootPanel.isOpen;
+                      : which === 'rep'
+                        ? repScreen.isOpen
+                        : lootPanel.isOpen;
   closeAllUi();
   if (wasOpen) return;
   switch (which) {
@@ -571,6 +576,10 @@ function toggleScreen(
     case 'quests':
       questLog.open();
       break;
+    case 'rep':
+      document.getElementById('btn-rep')?.classList.remove('has-new');
+      repScreen.open();
+      break;
     case 'loot':
       if (game.nearbyLoot(2.4).length > 0) lootPanel.open();
       break;
@@ -589,6 +598,7 @@ const SCREEN_ORDER = [
   'build',
   'social',
   'quests',
+  'rep',
   'map',
   'audio',
 ] as const;
@@ -601,6 +611,7 @@ function currentScreen(): (typeof SCREEN_ORDER)[number] | null {
   if (stationPanels.buildOpen) return 'build';
   if (socialPanel.isOpen) return 'social';
   if (questLog.isOpen) return 'quests';
+  if (repScreen.isOpen) return 'rep';
   if (mapScreen.isOpen) return 'map';
   if (audioMenu.isOpen) return 'audio';
   return null;
@@ -631,6 +642,7 @@ function screenAction(id: ActionId): void {
     screenSocial: 'social',
     screenMap: 'map',
     screenQuests: 'quests',
+    screenRep: 'rep',
     screenSettings: 'audio',
     screenLoot: 'loot',
   };
@@ -647,6 +659,7 @@ document.getElementById('btn-audio')!.addEventListener('click', () => toggleScre
 document.getElementById('btn-social')!.addEventListener('click', () => toggleScreen('social'));
 document.getElementById('btn-map')!.addEventListener('click', () => toggleScreen('map'));
 document.getElementById('btn-quests')!.addEventListener('click', () => toggleScreen('quests'));
+document.getElementById('btn-rep')!.addEventListener('click', () => toggleScreen('rep'));
 
 function showLoginError(text: string): void {
   loginError.textContent = text;
@@ -915,6 +928,20 @@ const game = new ClientGame(input, {
     const ready = [...game.quests.values()].some((q) => q.status === 'ready');
     document.getElementById('btn-quests')?.classList.toggle('has-new', ready);
   },
+  onRepEvent: (e) => {
+    // A band crossing — the ONLY standing ceremony (quiet repupd
+    // patches never celebrate; the server already spoke the delta).
+    chat.addLine({
+      channel: 'system',
+      text: e.rose
+        ? `Your name ${e.band === 'neutral' ? 'settles' : 'rises'} with ${e.name} — ${e.band}.`
+        : `Your name falls with ${e.name} — ${e.band}.`,
+    });
+    if (e.rose) sfx.questAccepted();
+    else sfx.uiClose();
+    document.getElementById('btn-rep')?.classList.add('has-new');
+  },
+  onRepChanged: () => repScreen.refresh(),
   onSocial: (snap) => socialPanel.onSnapshot(snap),
   onFriendSearch: (results) => socialPanel.onSearchResults(results),
   onFriendEvent: (ev) => {
@@ -1020,6 +1047,9 @@ const partyHud = new PartyHud();
 // errand's card (tracking is client-local — pure presentation).
 const questLog = new QuestLog(game);
 const objectiveTracker = new ObjectiveTracker(game, () => questLog.trackedId());
+
+// THE STANDING SCREEN: the name you carry, read back (L).
+const repScreen = new RepScreen(game);
 
 // Signage: the approach plaque over every board, and the sheet that
 // opens when you stop to read one properly.
@@ -1675,6 +1705,7 @@ const KB_SCREEN_ACTIONS: readonly ActionId[] = [
   'screenBuild',
   'screenSocial',
   'screenQuests',
+  'screenRep',
   'screenMap',
   'screenSettings',
   'screenLoot',
@@ -1748,6 +1779,7 @@ const panelSeen = {
   riftgate: false,
   social: false,
   map: false,
+  rep: false,
   sign: false,
 };
 function panelAudioCues(): void {
@@ -1776,6 +1808,7 @@ function panelAudioCues(): void {
   cue('riftgate', vis('riftgate-panel'), () => sfx.uiOpen(), () => sfx.uiClose());
   cue('social', vis('social-panel'), () => sfx.parchment(), () => sfx.uiClose());
   cue('map', vis('map-panel'), () => sfx.parchment(), () => sfx.uiClose());
+  cue('rep', vis('rep-panel'), () => sfx.parchment(), () => sfx.uiClose());
   cue('sign', vis('sign-panel'), () => sfx.parchment(), () => sfx.uiClose());
 }
 
