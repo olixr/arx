@@ -129,6 +129,9 @@ export function buildAmberford(): ZoneDef {
   b.set(34, 25, Tile.Vault).set(34, 28, Tile.Vault).set(34, 31, Tile.Vault);
   b.set(36, 25, Tile.Cabinet);
   b.set(35, 33, Tile.CrateGoods);
+  // The small-ledger box: the vault's loose coin, behind the one
+  // authored lock in town (factions Phase 5 — the pick's payoff).
+  b.set(35, 26, Tile.ChestWood);
   // The manager's office, walled into the northeast light.
   b.set(44, 25, Tile.WallStone).set(44, 27, Tile.WallStone);
   b.set(44, 26, Tile.DoorwayStone);

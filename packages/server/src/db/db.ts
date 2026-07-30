@@ -622,6 +622,12 @@ const MIGRATIONS: string[] = [
     PRIMARY KEY (character_id, faction_id)
   );
   `,
+  // v12: THE LIGHT FINGERS (factions-plan Phase 5) — stolen is a
+  // per-UNIT facet, so it rides the slot row beside the roll columns.
+  // NULL = honest goods; 1 = no lawful counter will touch it.
+  `
+  ALTER TABLE inventory_slots ADD COLUMN stolen INTEGER;
+  `,
 ];
 
 /**

@@ -713,7 +713,7 @@ export class AccountStore {
   async loadInventory(
     characterId: number,
     size: number,
-  ): Promise<Array<{ item: string; qty: number; roll?: ItemRoll } | null>> {
+  ): Promise<Array<{ item: string; qty: number; roll?: ItemRoll; stolen?: true } | null>> {
     const rows = await this.db.query<{
       slot: number;
       item_id: string;
@@ -724,17 +724,21 @@ export class AccountStore {
       coat_id: string | null;
       coat_until: number | null;
       ench_id: string | null;
+      stolen: number | null;
     }>(
-      'SELECT slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id FROM inventory_slots WHERE character_id = ?',
+      'SELECT slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id, stolen FROM inventory_slots WHERE character_id = ?',
       [characterId],
     );
-    const slots = new Array<{ item: string; qty: number; roll?: ItemRoll } | null>(size).fill(null);
+    const slots = new Array<{ item: string; qty: number; roll?: ItemRoll; stolen?: true } | null>(
+      size,
+    ).fill(null);
     for (const row of rows) {
       if (row.slot >= 0 && row.slot < size) {
         slots[row.slot] = {
           item: row.item_id,
           qty: row.qty,
           roll: rowRoll(row.rar, row.seed, row.pwr, row.coat_id, row.coat_until, row.ench_id),
+          ...(row.stolen ? { stolen: true as const } : {}),
         };
       }
     }
@@ -1210,7 +1214,7 @@ export class AccountStore {
 
   saveInventory(
     characterId: number,
-    slots: Array<{ item: string; qty: number; roll?: ItemRoll } | null>,
+    slots: Array<{ item: string; qty: number; roll?: ItemRoll; stolen?: true } | null>,
   ): void {
     this.db.fireTransaction(async (tx) => {
       await tx.run('DELETE FROM inventory_slots WHERE character_id = ?', [characterId]);
@@ -1218,12 +1222,13 @@ export class AccountStore {
         const slot = slots[i];
         if (slot) {
           await tx.run(
-            'INSERT INTO inventory_slots (character_id, slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO inventory_slots (character_id, slot, item_id, qty, rar, seed, pwr, coat_id, coat_until, ench_id, stolen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
               characterId, i, slot.item, slot.qty,
               slot.roll?.rar ?? null, slot.roll?.seed ?? null, slot.roll?.pwr ?? null,
               slot.roll?.coat?.id ?? null, slot.roll?.coat?.until ?? null,
               slot.roll?.ench ?? null,
+              slot.stolen ? 1 : null,
             ],
           );
         }

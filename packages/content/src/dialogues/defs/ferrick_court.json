@@ -9,6 +9,7 @@
       "choices": [
         { "text": "Who are you?", "next": "who" },
         { "text": "What is this place?", "next": "place" },
+        { "text": "Show me the ledger's other column.", "next": "counter" },
         { "text": "Nothing from you.", "next": "bye" }
       ]
     },
@@ -21,6 +22,11 @@
       "id": "place",
       "text": "A tollhouse. The bar goes up for friends of the road and down for everyone else. The wardens hang lamps and call it theirs — lamps burn out. A debt doesn't.",
       "next": "greet"
+    },
+    {
+      "id": "counter",
+      "text": "Buying and buying back — the Company's ledger runs both directions. Whatever arrives in your pack with a history stays off the page. Call it the rent on this chair.",
+      "hooks": [{ "kind": "shop", "shop": "company_post" }]
     },
     {
       "id": "bye",

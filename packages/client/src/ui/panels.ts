@@ -993,7 +993,12 @@ export class Panels {
         if (tier !== 'common') cell.classList.add(`rarity-${tier}`);
         cell.dataset.filled = '1';
         cell.dataset.family = Panels.packFamily(def);
-        cell.dataset.tipname = instanceName(slot.item, slot.roll);
+        cell.dataset.tipname = slot.stolen
+          ? `${instanceName(slot.item, slot.roll)} (stolen)`
+          : instanceName(slot.item, slot.roll);
+        // THE STOLEN TAG (factions Phase 5): goods with a history wear
+        // a small red corner tick — no honest counter will touch them.
+        if (slot.stolen) cell.classList.add('inv-stolen');
         cell.dataset.acta = def?.equipSlot ? 'Equip' : def?.heals ? 'Eat' : 'Use';
         // Click (no drag) fires in dragEnd; pointerdown arms both paths.
         cell.addEventListener('pointerdown', (e) => {

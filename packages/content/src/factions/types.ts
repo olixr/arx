@@ -80,10 +80,39 @@ export interface FactionDeedsDef {
   assaultEnforcer: number;
   /** A faction member slain. */
   slayMember: number;
+  /** A theft seen by a faction body (Phase 5) — unseen is unswayed. */
+  theftWitnessed: number;
   /** |delta| ceiling for QuestDef.rewards.standing entries. */
   questCap: number;
   /** |delta| ceiling for dialogue `standing` hooks. */
   storyCap: number;
+}
+
+/**
+ * THE LIGHT FINGERS (Phase 5) — every crime dial in one group. The
+ * roll is public arithmetic (theftChance), the witness law is a
+ * radius and a sightline, and the fence list names whose counters
+ * take stolen goods at all.
+ */
+export interface FactionTheftDef {
+  /** Success chance at equal sneak and mark level. */
+  base: number;
+  /** Chance moved per point of (sneak level − mark level). */
+  perLevel: number;
+  /** Coins skimmed per lift, at most — coin is coin, never stolen. */
+  coinCap: number;
+  /** The mark stays wary of the same hand this long. */
+  retrySec: number;
+  /** Tiles within which a faction body can witness a theft. */
+  witnessRadius: number;
+  /** Sneak level that works a town lock — deterministic, no roll. */
+  lockLevel: number;
+  /** Enforcers sharpen the sneak factor by this below neutral band. */
+  suspectEye: number;
+  /** What a fence pays for stolen goods, of the honest sell price. */
+  stolenSellMult: number;
+  /** Roster ids whose members' counters accept stolen goods. */
+  fences: string[];
 }
 
 /** Price multipliers by band (Phase 3); outlaw and below are refused. */
@@ -124,4 +153,6 @@ export interface FactionsDef {
   fineFloor: number;
   /** Daily drift toward 0; ships at 0 — time never launders a name. */
   driftPerDay: number;
+  /** The crime dials (Phase 5). */
+  theft: FactionTheftDef;
 }

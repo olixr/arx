@@ -5,6 +5,7 @@
   "examine": "He sits like a man who owns the road and rents it back by the mile. The ledger open in front of him has two columns and no headings.",
   "disposition": "neutral",
   "protection": "untargetable",
+  "shop": "company_post",
   "model": {
     "kind": "humanoid",
     "look": {

@@ -60,6 +60,9 @@
 // standing full push at bind + quiet patches + band ceremonies) and
 // the live membership tables riding S2CRep. A v20 client would drop
 // every standing push and read no bands, so reject cleanly.
+// (Same-day extensions, still v21: S2CShopOpen.priceMult, S2CRep
+// prices/enforcers/peaceBand, and InvSlot.stolen — the Phase-5 theft
+// facet; all additive optionals an early v21 client simply ignores.)
 export const PROTOCOL_VERSION = 21;
 
 /** The most souls one party can hold. */

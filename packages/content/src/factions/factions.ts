@@ -5,6 +5,7 @@ import type {
   FactionBandsDef,
   FactionDef,
   FactionsDef,
+  FactionTheftDef,
 } from './types.js';
 
 /**
@@ -188,6 +189,7 @@ export const FACTIONS: FactionsDef = {
     tollBroken: 8,
     assaultEnforcer: -8,
     slayMember: -30,
+    theftWitnessed: -6,
     questCap: 25,
     storyCap: 15,
   },
@@ -217,6 +219,22 @@ export const FACTIONS: FactionsDef = {
   fineFloor: -10,
   /** Ships at 0 — time never launders a name. Studio may disagree. */
   driftPerDay: 0,
+  /**
+   * THE LIGHT FINGERS (Phase 5). The LADDER CONTRACT pins the deed:
+   * five witnessed thefts = outlaw. Unseen is unswayed — the roll can
+   * fail in an empty lane and cost nothing but the mark's wariness.
+   */
+  theft: {
+    base: 0.35,
+    perLevel: 0.012,
+    coinCap: 25,
+    retrySec: 120,
+    witnessRadius: 10,
+    lockLevel: 20,
+    suspectEye: 1.5,
+    stolenSellMult: 1,
+    fences: ['rookery', 'reavers'],
+  },
 };
 
 /** Standing is clamped here forever — the meter has ends. */
@@ -289,6 +307,25 @@ export function answerFactionFlag(value: number, parsed: ParsedFactionFlag): boo
   if (parsed.cmp === 'exact') return band === parsed.band;
   if (parsed.cmp === 'atleast') return bandAtLeast(band, parsed.band);
   return bandAtLeast(parsed.band, band);
+}
+
+/**
+ * THE LIGHT FINGERS roll (Phase 5): the chance a lift goes unnoticed,
+ * clamped so no hand is ever sure and no mark is ever hopeless. Pure
+ * and doc-owned — the player can narrate the arithmetic back.
+ */
+export function theftChance(
+  sneakLevel: number,
+  markLevel: number,
+  doc: FactionsDef = FACTIONS,
+): number {
+  const raw = doc.theft.base + (sneakLevel - markLevel) * doc.theft.perLevel;
+  return Math.min(0.95, Math.max(0.05, raw));
+}
+
+/** Whether a faction's counters take stolen goods (Phase 5). */
+export function isFenceFaction(factionId: string | null, doc: FactionsDef = FACTIONS): boolean {
+  return factionId !== null && doc.theft.fences.includes(factionId);
 }
 
 /**
@@ -378,6 +415,7 @@ function deepCopyDoc(doc: FactionsDef): FactionsDef {
     finePerPoint: doc.finePerPoint,
     fineFloor: doc.fineFloor,
     driftPerDay: doc.driftPerDay,
+    theft: { ...doc.theft, fences: [...doc.theft.fences] },
   };
 }
 
@@ -580,6 +618,7 @@ export function validateFactions(
     tollBroken: num(deedsRaw, 'tollBroken', 1, 50),
     assaultEnforcer: num(deedsRaw, 'assaultEnforcer', -50, -1),
     slayMember: num(deedsRaw, 'slayMember', -100, -1),
+    theftWitnessed: num(deedsRaw, 'theftWitnessed', -50, -1),
     questCap: num(deedsRaw, 'questCap', 1, 50),
     storyCap: num(deedsRaw, 'storyCap', 1, 50),
   };
@@ -627,6 +666,37 @@ export function validateFactions(
   for (const extra of Object.keys(pricesRaw).filter((k) => !(k in prices))) {
     errors.push(`prices unknown field '${extra}'`);
   }
+  const theftRaw =
+    typeof doc.theft === 'object' && doc.theft !== null ? (doc.theft as Record<string, unknown>) : {};
+  if (typeof doc.theft !== 'object' || doc.theft === null) errors.push('theft must be an object');
+  const fences: string[] = [];
+  if (theftRaw.fences !== undefined) {
+    if (!Array.isArray(theftRaw.fences)) {
+      errors.push('theft.fences must be an array of roster ids');
+    } else {
+      for (const s of theftRaw.fences) {
+        if (typeof s !== 'string' || !ids.has(s)) {
+          errors.push(`theft.fences names '${String(s)}' which is not in the roster`);
+          continue;
+        }
+        fences.push(s);
+      }
+    }
+  }
+  const theft: FactionTheftDef = {
+    base: num(theftRaw, 'base', 0.01, 0.95),
+    perLevel: num(theftRaw, 'perLevel', 0, 0.05),
+    coinCap: num(theftRaw, 'coinCap', 1, 500),
+    retrySec: num(theftRaw, 'retrySec', 5, 3600),
+    witnessRadius: num(theftRaw, 'witnessRadius', 2, 32),
+    lockLevel: num(theftRaw, 'lockLevel', 1, 99),
+    suspectEye: num(theftRaw, 'suspectEye', 1, 4),
+    stolenSellMult: num(theftRaw, 'stolenSellMult', 0.1, 2),
+    fences,
+  };
+  for (const extra of Object.keys(theftRaw).filter((k) => !(k in theft))) {
+    errors.push(`theft unknown field '${extra}'`);
+  }
   const peaceBand = doc.peaceBand;
   if (typeof peaceBand !== 'string' || !BAND_SET.has(peaceBand)) {
     errors.push('peaceBand must be a band name');
@@ -650,6 +720,7 @@ export function validateFactions(
     finePerPoint: num(doc, 'finePerPoint', 1, 100),
     fineFloor: num(doc, 'fineFloor', -STANDING_CLAMP, 0),
     driftPerDay: num(doc, 'driftPerDay', 0, 10),
+    theft,
   };
   // Unknown top-level keys are refused loudly.
   const known = new Set([
@@ -664,6 +735,7 @@ export function validateFactions(
     'finePerPoint',
     'fineFloor',
     'driftPerDay',
+    'theft',
   ]);
   for (const key of Object.keys(doc)) {
     if (!known.has(key)) errors.push(`unknown dial '${key}'`);

@@ -15,14 +15,17 @@ export interface DropLike {
   ownerEid: EntityId | null;
   xpOnPickup?: { skill: SkillId; xp: number };
   roll?: ItemRoll;
+  /** The theft facet survives the ground (Phase 5). */
+  stolen?: true;
 }
 
 /**
  * May a landing drop fold into this existing pile? Only true twins
  * merge: same item, same instance roll (two rolled swords are two
  * swords), same owner claim (merging would otherwise transfer or
- * launder loot locks). XP-bearing drops (laid eggs) never merge —
- * each egg is its own find and its own reward.
+ * launder loot locks), same provenance (a stolen loaf never hides in
+ * an honest pile). XP-bearing drops (laid eggs) never merge — each
+ * egg is its own find and its own reward.
  */
 export function canMergeDrop(
   existing: DropLike,
@@ -30,9 +33,11 @@ export function canMergeDrop(
   roll: ItemRoll | undefined,
   ownerEid: EntityId | null,
   xpOnPickup: DropLike['xpOnPickup'],
+  stolen?: boolean,
 ): boolean {
   if (existing.item !== item) return false;
   if (existing.xpOnPickup || xpOnPickup) return false;
   if (existing.ownerEid !== ownerEid) return false;
+  if (!existing.stolen !== !stolen) return false;
   return sameRoll(existing.roll, roll);
 }

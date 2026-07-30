@@ -9,7 +9,12 @@ import type { SkillId, SkillXp } from '../skills.js';
  * One inventory slot on the wire; null = empty. `roll` is the instance
  * identity of rolled gear — stats derive from it, they never travel.
  */
-export type InvSlot = { item: string; qty: number; roll?: ItemRoll } | null;
+/**
+ * One pack slot. `stolen` is the Phase-5 theft facet — per UNIT, so it
+ * lives here beside the roll, never on ItemDef: a stolen loaf and an
+ * honest loaf are different stacks. Coins never carry it (coin is coin).
+ */
+export type InvSlot = { item: string; qty: number; roll?: ItemRoll; stolen?: true } | null;
 
 /** A worn item: id + the instance roll its stats derive from. */
 export interface EquippedItem {

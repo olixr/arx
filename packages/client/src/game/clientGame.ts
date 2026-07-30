@@ -1579,11 +1579,15 @@ export class ClientGame {
       if (remote.meta.kind !== EntityKind.Npc) continue;
       const def = npcDef(remote.meta.defId ?? '');
       // A voice (dialogue tree or barks) offers Talk even on fightable
-      // neutrals — the guard you COULD strike would rather chat.
+      // neutrals — the guard you COULD strike would rather chat. A
+      // crouched hand asks a different question (factions Phase 5):
+      // the same press is the pickpocket verb, and the prompt says so.
       const verb = def?.produce
         ? 'Milk'
         : remote.meta.talk || remote.meta.friendly
-          ? 'Talk'
+          ? this.isSneaking
+            ? 'Pickpocket'
+            : 'Talk'
           : null;
       if (!verb) continue;
       const latest = remote.buffer.latest();

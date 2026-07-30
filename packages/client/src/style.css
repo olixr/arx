@@ -1270,6 +1270,21 @@ h3 {
   border-radius: 4px;
 }
 
+/* THE STOLEN TAG (factions Phase 5): a red corner tick on goods with
+   a history — no honest counter will touch them. */
+.inv-stolen::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #c8483e;
+  box-shadow: 0 0 0 2px rgba(12, 8, 24, 0.85);
+  pointer-events: none;
+}
+
 /* ---- station pairing: talking to a bank chest or shop counter, the
    character screen steps aside into a right-hand PACK COLUMN so the
    deposit/sell conversation reads left-to-right as one composition.

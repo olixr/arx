@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem } from './inventory.js';
+import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem, takeSlot } from './inventory.js';
 
 test('stackables merge into one slot', () => {
   const inv = emptyInventory();
@@ -46,4 +46,40 @@ test('bestTool finds the strongest carried tool', () => {
 test('unknown items are rejected', () => {
   const inv = emptyInventory();
   assert.equal(addItem(inv, 'nonsense_item', 1), 0);
+});
+
+test('THE STOLEN FACET: stolen stacks apart from honest goods', () => {
+  const inv = emptyInventory();
+  assert.equal(addItem(inv, 'twine', 3), 3);
+  assert.equal(addItem(inv, 'twine', 2, undefined, true), 2);
+  const filled = inv.filter(Boolean);
+  assert.equal(filled.length, 2, 'a stolen loaf never hides in an honest pile');
+  assert.ok(filled.some((s) => s!.stolen === true && s!.qty === 2));
+  assert.ok(filled.some((s) => !s!.stolen && s!.qty === 3));
+});
+
+test('NO LAUNDERING: id-addressed verbs never see stolen slots', () => {
+  const inv = emptyInventory();
+  addItem(inv, 'twine', 2, undefined, true);
+  addItem(inv, 'twine', 3);
+  // countItem answers honest goods only, and removeItem takes only them.
+  assert.equal(countItem(inv, 'twine'), 3);
+  assert.equal(removeItem(inv, 'twine', 5), 3, 'the stolen stack is invisible');
+  const left = inv.filter(Boolean);
+  assert.equal(left.length, 1);
+  assert.equal(left[0]!.stolen, true);
+  assert.equal(left[0]!.qty, 2);
+});
+
+test('takeSlot carries the facet out with the goods', () => {
+  const inv = emptyInventory();
+  addItem(inv, 'twine', 2, undefined, true);
+  const idx = inv.findIndex((s) => s !== null);
+  const taken = takeSlot(inv, idx, 1);
+  assert.ok(taken);
+  assert.equal(taken.stolen, true);
+  const clean = emptyInventory();
+  addItem(clean, 'twine', 2);
+  const cidx = clean.findIndex((s) => s !== null);
+  assert.equal(takeSlot(clean, cidx, 1)?.stolen, undefined);
 });

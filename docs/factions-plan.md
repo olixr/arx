@@ -13,7 +13,13 @@
 > Roads) SHIPPED same day — the Tollhouse authored site with Ferrick the
 > Company's Tongue (low-road quests with authored opposition costs, the
 > blood-price), the opposed pair (lean_winter vs herd_stands via quest:
-> forbids), the Rookery ladder paying standing. Phases 5-6 open.
+> forbids), the Rookery ladder paying standing. Phase 5 (The Light
+> Fingers) SHIPPED same day — sneak-interact pickpocket over the
+> authored actor pockets, the witness law (sightLine or unswayed), the
+> per-unit stolen facet (no-laundering removeItem, fence factions =
+> rookery/reavers via Calder's counter + Ferrick's Company's Cut),
+> authored bank-vault locks picked at the sneak gate, town-chest theft,
+> and the suspect eye in the perception scan. Phase 6 open.
 
 The world already *moves* (Living Frontier) and *asks* (Quest Ledger). This epic
 makes it **remember who you are**. Every deed writes on the player's name; every

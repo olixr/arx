@@ -339,6 +339,19 @@ const defs: ShopDef[] = [
       { item: 'silver_ore', price: 55 },
     ],
   },
+  // The Tollhouse ledger's other column (factions Phase 5): Ferrick
+  // buys what honest counters won't — a fence by roster law, since
+  // his faction sits in the doc's theft.fences list.
+  {
+    id: 'company_post',
+    name: "The Company's Cut",
+    stock: [
+      { item: 'cutpurse_cowl', price: 260 },
+      { item: 'swiftness_tonic', price: 70 },
+      { item: 'leadfoot_oil', price: 95 },
+      { item: 'silver_ring', price: 150 },
+    ],
+  },
   // The Deep Market's counters.
   {
     id: 'varga_ore',

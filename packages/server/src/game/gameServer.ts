@@ -160,6 +160,8 @@ import {
   factionOfActor,
   factionOfNpc,
   isFactionFlag,
+  isFenceFaction,
+  theftChance,
   type FactionBand,
   isQuestFlag,
   isWorldFlag,
@@ -340,7 +342,7 @@ import {
   type RepStandingWire,
   type Vec2,
 } from '@arx/shared';
-import { geographySnapshot, scaleNpcDef } from '@arx/content';
+import { AUTHORED_LOCKS, geographySnapshot, scaleNpcDef } from '@arx/content';
 import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem, takeSlot } from './inventory.js';
 import { DROP_MERGE_RADIUS, canMergeDrop } from './drops.js';
 import { SocialSystem } from './social.js';
@@ -651,6 +653,8 @@ interface DropComp {
   xpOnPickup?: { skill: SkillId; xp: number };
   /** Instance roll for dropped gear — survives the round trip. */
   roll?: ItemRoll;
+  /** The theft facet survives the ground (Phase 5). */
+  stolen?: true;
 }
 
 interface ProjectileComp {
@@ -1050,6 +1054,12 @@ interface PlayerComp {
   standing: Map<string, number>;
   /** Last-sent standing signature — the quiet-wire diff guard. */
   repSig: string;
+  /**
+   * THE LIGHT FINGERS (Phase 5): marks this hand has tried lately,
+   * eid -> wall-clock ms until the mark relaxes. In-memory only — a
+   * wary mark forgets across a restart, and that's fine.
+   */
+  markWary: Map<EntityId, number>;
 }
 
 /** A timed self-effect; multiple can ride at once (speeds multiply). */
@@ -1570,6 +1580,18 @@ export class GameServer {
       },
       onMemberSevered: (characterId) => this.evictFromGuestDungeon(characterId),
     });
+    // THE AUTHORED LOCKS (factions Phase 5): every listed door boots
+    // locked — a restart re-arms every lock. The chunk must exist
+    // before the door can be read; guarded by doorInfo after that, so
+    // a redrawn map quietly retires a stale entry.
+    for (const l of AUTHORED_LOCKS) {
+      this.world.ensure(Math.floor(l.x / CHUNK_SIZE), Math.floor(l.y / CHUNK_SIZE));
+      const g = this.world.groundAt(l.x, l.y);
+      const info = g === undefined ? null : doorInfo(g);
+      if (!info) continue;
+      const unit = this.doorUnit(l.x, l.y, info);
+      this.doorLocks.add(`${unit.ax},${unit.ay}`);
+    }
   }
 
   /** Friends, requests, and presence pushes. */
@@ -2267,6 +2289,7 @@ export class GameServer {
       questCollectSig: '',
       standing,
       repSig: '',
+      markWary: new Map(),
     });
     this.characterEids.set(character.id, eid);
     this.updateChunkMembership(eid);
@@ -2776,7 +2799,7 @@ export class GameServer {
     // stands in the way), shut swings open (unless the lock holds).
     const door = ground === undefined ? null : doorInfo(ground);
     if (door) {
-      this.interactDoor(tx, ty, door, sys);
+      this.interactDoor(eid, tx, ty, door, sys);
       return;
     }
 
@@ -2960,6 +2983,14 @@ export class GameServer {
       ty,
       tile: closedChestTile(chest.kind),
     });
+    // THE LIGHT FINGERS (Phase 5): a town's stash is somebody's
+    // stash — the lid lifting on town ground, seen by a faction body,
+    // is a theft charged to the town's own ledger. Wilds and dungeon
+    // chests stay the ordinary loot loop; unseen is unswayed.
+    const townFid = this.townFactionAt(cx, cy);
+    if (townFid !== null) {
+      this.chargeTheft(eid, player, cx, cy, this.theftWitnesses(cx, cy, eid), townFid);
+    }
   }
 
   /** How long a hand-opened door stands before pulling itself to. */
@@ -3030,7 +3061,13 @@ export class GameServer {
    * a rattle fx and a system line. Opened doors queue an auto-close
    * on the respawn ladder (one entry at the unit anchor).
    */
-  private interactDoor(tx: number, ty: number, info: DoorInfo, sys: (text: string) => void): void {
+  private interactDoor(
+    eid: EntityId,
+    tx: number,
+    ty: number,
+    info: DoorInfo,
+    sys: (text: string) => void,
+  ): void {
     const unit = this.doorUnit(tx, ty, info);
     const lockKey = `${unit.ax},${unit.ay}`;
     const gate = info.material === 'fence' || info.material === 'garrison';
@@ -3054,15 +3091,38 @@ export class GameServer {
       return;
     }
     if (this.doorLocks.has(lockKey)) {
-      sys(gate ? 'Locked — the gate holds fast.' : 'Locked — the door holds fast.');
-      this.broadcastFx({
-        t: 'fx',
-        kind: 'rattle',
-        x: unit.ax + 0.5,
-        y: unit.ay + 0.5,
-        radius: 0.5,
-      });
-      return;
+      // THE PICK (Phase 5): a crouched hand works the latch instead
+      // of knocking — deterministic at the doc's sneak gate. On town
+      // ground a SEEN pick is a theft like any other; unseen is
+      // unswayed. The lock stays open until the next boot re-arms it.
+      const player = this.players.get(eid);
+      if (player?.sneaking) {
+        if (this.effectiveLevel(player, 'sneak') < FACTIONS.theft.lockLevel) {
+          sys('The pick wants a defter hand.');
+        } else {
+          this.doorLocks.delete(lockKey);
+          sys('The lock gives with a click.');
+          const cx = unit.ax + 0.5;
+          const cy = unit.ay + 0.5;
+          const townFid = this.townFactionAt(cx, cy);
+          if (townFid !== null) {
+            this.chargeTheft(eid, player, cx, cy, this.theftWitnesses(cx, cy, eid), townFid);
+          }
+          // The latch is worked — fall through and swing it open.
+        }
+      } else {
+        sys(gate ? 'Locked — the gate holds fast.' : 'Locked — the door holds fast.');
+      }
+      if (this.doorLocks.has(lockKey)) {
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'rattle',
+          x: unit.ax + 0.5,
+          y: unit.ay + 0.5,
+          radius: 0.5,
+        });
+        return;
+      }
     }
     for (const t of unit.tiles) {
       const g = this.world.groundAt(t.x, t.y);
@@ -3439,7 +3499,9 @@ export class GameServer {
     comp: Omit<DropComp, 'item' | 'qty'>,
   ): EntityId {
     for (const [eid, drop] of this.drops) {
-      if (!canMergeDrop(drop, item, comp.roll, comp.ownerEid, comp.xpOnPickup)) continue;
+      if (!canMergeDrop(drop, item, comp.roll, comp.ownerEid, comp.xpOnPickup, comp.stolen)) {
+        continue;
+      }
       const pos = this.positions.get(eid);
       if (!pos) continue;
       const dx = pos.x - x;
@@ -4089,6 +4151,13 @@ export class GameServer {
       }
     } else {
       if (item === 'coins') return;
+      // Quest items are worthless BY LAW (items.ts) — the counter
+      // finally honors it instead of paying a floor coin and
+      // destroying the thing you were asked to carry.
+      if (def.quest) {
+        sys("That's somebody's errand, not stock.");
+        return;
+      }
       // THE MIRROR LAW: the sell side reflects the buy multiplier
       // around parity — a keeper who discounts you also pays better.
       const sellMult = standingSellMult(band);
@@ -4097,10 +4166,24 @@ export class GameServer {
       // rolled instance is priced by its DERIVED value, not the base.
       const src = slot !== undefined ? player.inventory[slot] : undefined;
       if (src && src.item === item) {
+        // THE FENCE LAW (Phase 5): stolen goods burn an honest
+        // counter's hands — only the doc's fence factions buy them,
+        // at the doc's stolen multiplier over the ordinary mirror.
+        // (Id-addressed sales can't reach stolen slots at all —
+        // removeItem's no-laundering law.)
+        if (src.stolen && !isFenceFaction(shopFid)) {
+          sys('Not through this counter. Try a less curious one.');
+          return;
+        }
+        const stolenMult = src.stolen ? FACTIONS.theft.stolenSellMult : 1;
         const taken = takeSlot(player.inventory, slot!, qty);
         if (!taken) return;
         const each = rolledStats(taken.item, taken.roll)?.value ?? def.value;
-        addItem(player.inventory, 'coins', taken.qty * payFor(each));
+        addItem(
+          player.inventory,
+          'coins',
+          Math.max(1, Math.floor(taken.qty * payFor(each) * stolenMult)),
+        );
       } else {
         const sold = removeItem(player.inventory, item, qty);
         if (sold === 0) return;
@@ -6663,6 +6746,7 @@ export class GameServer {
       despawnAt: Date.now() + 12 * 60_000,
       pickupAfter: Date.now() + 2000,
       roll: taken.roll,
+      ...(taken.stolen ? { stolen: true as const } : {}),
     });
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
   }
@@ -7035,6 +7119,14 @@ export class GameServer {
 
     const actorComp = this.actors.get(targetEid);
     if (actorComp) {
+      // THE LIGHT FINGERS (docs/factions-plan.md Phase 5): a crouched
+      // hand asks a different question — sneak-interact is the
+      // pickpocket verb. It runs BEFORE the closed throat: a thief's
+      // trade never needed the talk.
+      if (player.sneaking) {
+        this.pickpocket(eid, player, pos, targetEid, actorComp, npos, sys);
+        return;
+      }
       // THE CLOSED THROAT (docs/factions-plan.md Phase 2): at outlaw
       // and below with the speaker's faction, the member refuses —
       // no tree, no shop, no bark, no quest talk credit. The ONE
@@ -8012,7 +8104,7 @@ export class GameServer {
   private creditDeed(
     player: PlayerComp,
     factionId: string | null,
-    deed: 'bountyHonored' | 'tollBroken' | 'assaultEnforcer' | 'slayMember',
+    deed: 'bountyHonored' | 'tollBroken' | 'assaultEnforcer' | 'slayMember' | 'theftWitnessed',
   ): void {
     if (factionId === null) return;
     this.creditStanding(player, factionId, FACTIONS.deeds[deed], { cross: true });
@@ -8114,6 +8206,23 @@ export class GameServer {
   }
 
   /**
+   * The faction whose TOWN ground this is (Phase 5) — null anywhere
+   * that isn't a settled town's streets. Wilds chests and dungeon
+   * doors stay the ordinary loot loop; theft is a town crime.
+   */
+  private townFactionAt(x: number, y: number): string | null {
+    for (const z of this.world.zoneDefs) {
+      if (x < z.origin.x || x >= z.origin.x + z.width) continue;
+      if (y < z.origin.y || y >= z.origin.y + z.height) continue;
+      if (z.id === 'dawnmead' || z.id === 'amberford' || z.id === 'silverfall') {
+        return this.factionForPlace(x, y);
+      }
+      return null;
+    }
+    return null;
+  }
+
+  /**
    * THE ROAD BACK (Phase 3): the fine counter behind the `fine` hook.
    * Quote answers the arithmetic; payment takes the coins and lifts
    * standing to EXACTLY the doc's fineFloor through the one door —
@@ -8159,6 +8268,144 @@ export class GameServer {
     const player = this.players.get(attackerEid);
     if (!player) return;
     this.creditDeed(player, this.npcEnforcerFid(npcEid), 'assaultEnforcer');
+  }
+
+  /**
+   * THE WITNESS LAW (Phase 5): the faction bodies that actually SAW
+   * a spot — inside the doc's radius, with an honest sightline (walls
+   * seal, cover counts — the perception epic's own ray). Civilians
+   * witness too: a grocer watching you rob the smith is a witness;
+   * only bodies with a combat brain can also turn suspicious.
+   */
+  private theftWitnesses(x: number, y: number, markEid: EntityId): Array<{ eid: EntityId; fid: string }> {
+    const out: Array<{ eid: EntityId; fid: string }> = [];
+    const r = FACTIONS.theft.witnessRadius;
+    const seen = (opos: { x: number; y: number }): boolean => {
+      const dx = opos.x - x;
+      const dy = opos.y - y;
+      if (dx * dx + dy * dy > r * r) return false;
+      return sightVisibility(sightLine(this.world, opos.x, opos.y, x, y)) > 0;
+    };
+    for (const [oEid, actor] of this.actors) {
+      if (oEid === markEid) continue;
+      const fid = factionOfActor(actor.actor.id);
+      if (fid === null) continue;
+      const opos = this.positions.get(oEid);
+      if (opos && seen(opos)) out.push({ eid: oEid, fid });
+    }
+    for (const [oEid, npc] of this.npcs) {
+      if (oEid === markEid || this.actors.has(oEid)) continue;
+      const fid = factionOfNpc(npc.def.id);
+      if (fid === null) continue;
+      const opos = this.positions.get(oEid);
+      if (opos && seen(opos)) out.push({ eid: oEid, fid });
+    }
+    return out;
+  }
+
+  /**
+   * A witnessed theft: the deed through the one door, then a bounded
+   * alarm — heads turn toward the spot, nobody rallies to a pocket
+   * the way they would to a scream over steel. Returns whether any
+   * faction body saw it (unseen is unswayed).
+   */
+  private chargeTheft(
+    thiefEid: EntityId,
+    player: PlayerComp,
+    x: number,
+    y: number,
+    witnesses: Array<{ eid: EntityId; fid: string }>,
+    chargeFid?: string,
+  ): boolean {
+    if (witnesses.length === 0) return false;
+    this.creditDeed(player, chargeFid ?? witnesses[0]!.fid, 'theftWitnessed');
+    let turned = 0;
+    for (const w of witnesses) {
+      if (turned >= 3) break;
+      const npc = this.npcs.get(w.eid);
+      if (!npc || npc.state !== 'idle') continue;
+      npc.state = 'suspicious';
+      npc.alert = Math.max(npc.alert, ALERT_SUS);
+      npc.alertEid = thiefEid;
+      npc.alertX = x;
+      npc.alertY = y;
+      npc.alertSeenTick = this.tickCount;
+      npc.huntUntilTick = this.tickCount + GameServer.SUS_DWELL_TICKS * 2;
+      turned++;
+    }
+    return true;
+  }
+
+  /**
+   * THE LIGHT FINGERS (Phase 5): the lift itself. The roll is public
+   * arithmetic (theftChance — the sneak hand against the mark),
+   * success skims one row of the mark's authored pockets (coins by
+   * the doc's cap and coin is coin, never stolen; goods carry the
+   * facet to the fence), and failure is a spun mark, a cry, and —
+   * only if a faction body truly saw it — the theftWitnessed deed.
+   * The mark stays wary either way: wariness, not pity, meters the
+   * take.
+   */
+  private pickpocket(
+    eid: EntityId,
+    player: PlayerComp,
+    pos: { x: number; y: number; dir: number },
+    targetEid: EntityId,
+    actorComp: ActorComp,
+    npos: { x: number; y: number; dir: number },
+    sys: (text: string) => void,
+  ): void {
+    const rows = actorComp.actor.inventory ?? [];
+    if (rows.length === 0) {
+      sys('Nothing worth lifting.');
+      return;
+    }
+    const now = Date.now();
+    if (now < (player.markWary.get(targetEid) ?? 0)) {
+      sys('Too soon — the mark is wary.');
+      return;
+    }
+    const row = rows[Math.floor(Math.random() * rows.length)]!;
+    if (!hasSpaceFor(player.inventory, row.item)) {
+      sys('Your pack has no room for other folk’s goods.');
+      return;
+    }
+    const markLevel = this.npcs.get(targetEid)?.def.level ?? 10;
+    const chance = theftChance(this.effectiveLevel(player, 'sneak'), markLevel);
+    player.markWary.set(targetEid, now + FACTIONS.theft.retrySec * 1000);
+    if (Math.random() < chance) {
+      const coins = row.item === 'coins';
+      const qty = coins ? Math.min(row.qty, FACTIONS.theft.coinCap) : 1;
+      const def = itemDef(row.item);
+      // Skimmed gear wears the shop-counter baseline — theft never
+      // mints rarity (the flood law keeps its border here too).
+      const roll = def && !def.stackable ? { rar: 'common' as const, seed: 0 } : undefined;
+      const got = addItem(player.inventory, row.item, qty, roll, !coins);
+      if (got === 0) return;
+      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      sys(
+        coins
+          ? `You slip away with ${got} coins.`
+          : `You slip away with: ${def?.name ?? row.item}.`,
+      );
+      this.grantXp(eid, player, 'sneak', 8 + markLevel);
+      return;
+    }
+    // Caught: the crouch is blown, the mark spins and cries.
+    this.revealPlayer(eid, player);
+    npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
+    const cries = ['Hey — my pocket!', 'Thief! A thief!', 'Hands! I felt hands!'];
+    const text = cries[(targetEid + this.tickCount) % cries.length]!;
+    for (const s of this.sessions) {
+      if (s.knownEntities.has(targetEid)) {
+        s.sendJson({ t: 'chat', channel: 'local', from: actorComp.actor.name, eid: targetEid, text });
+      }
+    }
+    sys('The grab misses.');
+    const witnesses = this.theftWitnesses(pos.x, pos.y, targetEid);
+    const markFid = factionOfActor(actorComp.actor.id);
+    if (markFid !== null) witnesses.unshift({ eid: targetEid, fid: markFid });
+    this.chargeTheft(eid, player, pos.x, pos.y, witnesses);
   }
 
   /**
@@ -11709,7 +11956,8 @@ export class GameServer {
       if (!info || info.open) continue;
       const unit = this.doorUnit(tx, ty, info);
       if (this.doorLocks.has(`${unit.ax},${unit.ay}`)) continue;
-      this.interactDoor(tx, ty, info, () => {});
+      // Routine hands are nobody's (locked units were skipped above).
+      this.interactDoor(-1 as EntityId, tx, ty, info, () => {});
     }
   }
 
@@ -12337,8 +12585,8 @@ export class GameServer {
       // peace band (the payoff of the whole dark road) — a blow
       // still answers through damageNpc's forced aggro.
       let baseRange = npc.def.aggroRange;
-      if (fid !== null) {
-        const band = this.playerBandWith(player, fid);
+      const band = fid !== null ? this.playerBandWith(player, fid) : null;
+      if (band !== null) {
         if (enforcerFid !== null) {
           if (!bandAtLeast(band, 'suspect')) {
             baseRange = Math.max(baseRange, FACTIONS.enforcerAggro);
@@ -12353,11 +12601,17 @@ export class GameServer {
       let closeR = SIGHT_CLOSE_RANGE;
       if (player.sneaking) {
         // Soft Step shaves the factor further; the hard floor holds.
-        const f = Math.max(
+        let f = Math.max(
           0.15,
           sneakDetectionFactor(this.effectiveLevel(player, 'sneak')) -
             player.perks.sneakFactorBonus,
         );
+        // THE SUSPECT EYE (Phase 5): an enforcer watches the crouch
+        // ITSELF on a name below neutral — a known thief sneaking
+        // past the gate is exactly what the watch is for.
+        if (enforcerFid !== null && band !== null && !bandAtLeast(band, 'neutral')) {
+          f = Math.min(1, f * FACTIONS.theft.suspectEye);
+        }
         sightRange *= f;
         engageRange *= f;
         // The crouch thins the reflex ring too — floored, so point
@@ -13195,7 +13449,7 @@ export class GameServer {
     }
     // A non-stackable pile can be bigger than the pack's free slots —
     // take what fits and leave the rest lying where it was.
-    const got = addItem(player.inventory, drop.item, drop.qty, drop.roll);
+    const got = addItem(player.inventory, drop.item, drop.qty, drop.roll, drop.stolen);
     if (got === 0) {
       sys('Your pack has no room for that.');
       return;
@@ -13240,7 +13494,7 @@ export class GameServer {
         if (!hasSpaceFor(player.inventory, drop.item)) continue;
         // Partial fits leave the remainder on the ground — the vacuum
         // must never destroy more than the pack actually held.
-        const got = addItem(player.inventory, drop.item, drop.qty, drop.roll);
+        const got = addItem(player.inventory, drop.item, drop.qty, drop.roll, drop.stolen);
         if (got === 0) continue;
         if (drop.xpOnPickup) {
           this.grantXp(playerEid, player, drop.xpOnPickup.skill, drop.xpOnPickup.xp);

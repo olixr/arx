@@ -13,10 +13,12 @@ import {
   crossDeltas,
   factionOfActor,
   factionOfNpc,
+  isFenceFaction,
   replaceFactions,
   standingBand,
   standingPriceMult,
   standingSellMult,
+  theftChance,
   validateFactions,
 } from './factions.js';
 import type { FactionsDef } from './types.js';
@@ -134,6 +136,24 @@ test('THE PRICE OF A NAME: band multipliers and the mirror law', () => {
   }
 });
 
+test('THE LIGHT FINGERS: the roll, the fence list, and the ladder', () => {
+  // The roll is public arithmetic, clamped so no hand is ever sure.
+  const t = FACTIONS.theft;
+  assert.equal(theftChance(10, 10), t.base);
+  assert.ok(theftChance(99, 1) <= 0.95);
+  assert.ok(theftChance(1, 99) >= 0.05);
+  assert.ok(theftChance(50, 10) > theftChance(10, 10));
+  // The fence list is roster law: the shadow poles buy, nobody else.
+  assert.ok(isFenceFaction('rookery'));
+  assert.ok(isFenceFaction('reavers'));
+  assert.ok(!isFenceFaction('fordgate'));
+  assert.ok(!isFenceFaction(null));
+  // LADDER CONTRACT addition: five witnessed thefts = outlaw, not four.
+  const per = FACTIONS.deeds.theftWitnessed;
+  assert.equal(standingBand(4 * per), 'suspect');
+  assert.equal(standingBand(5 * per), 'outlaw');
+});
+
 test('validator refuses the named illegal docs', () => {
   const bad = (mut: (d: FactionsDef) => void, needle: string): void => {
     const d = docCopy();
@@ -158,6 +178,11 @@ test('validator refuses the named illegal docs', () => {
     d.roster[4]!.members = [];
     d.roster[4]!.npcPrefixes = [];
   }, 'needs bodies');
+  bad(
+    (d) => ((d.theft as unknown as Record<string, unknown>).sly = 1),
+    "theft unknown field 'sly'",
+  );
+  bad((d) => d.theft.fences.push('shadow_cabal'), 'not in the roster');
 });
 
 test('replaceFactions swaps in place and rebuilds the indexes', () => {

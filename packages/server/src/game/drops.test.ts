@@ -72,3 +72,15 @@ test('xp-bearing drops (laid eggs) never merge', () => {
 test('merge radius is a local law, not a room-wide one', () => {
   assert.ok(DROP_MERGE_RADIUS >= 0.8 && DROP_MERGE_RADIUS <= 1.5);
 });
+
+test('THE STOLEN FACET: provenance splits piles', () => {
+  assert.equal(canMergeDrop(bones({}), 'bones', undefined, null, undefined, true), false);
+  assert.equal(
+    canMergeDrop(bones({ stolen: true }), 'bones', undefined, null, undefined, undefined),
+    false,
+  );
+  assert.equal(
+    canMergeDrop(bones({ stolen: true }), 'bones', undefined, null, undefined, true),
+    true,
+  );
+});

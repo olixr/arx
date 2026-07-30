@@ -397,6 +397,9 @@ export function buildSilverfall(): ZoneDef {
   b.set(49, 40, Tile.DoorwayStone);
   b.set(45, 35, Tile.Vault).set(45, 38, Tile.Vault).set(45, 41, Tile.Vault).set(45, 44, Tile.Vault);
   b.set(47, 34, Tile.CrateGoods).set(47, 46, Tile.CrateGoods).set(45, 47, Tile.Cabinet);
+  // The counting box: the vault's working coin, behind the authored
+  // lock (factions Phase 5 — the pick's payoff, if nobody sees).
+  b.set(47, 40, Tile.ChestMossy);
   // The working floor: teller desks and the ledger wall. The counter
   // BREAKS at y40 — teller gate, vault door, and front door align.
   for (const y of [37, 38, 39, 41, 42, 43]) b.set(54, y, Tile.Counter);
