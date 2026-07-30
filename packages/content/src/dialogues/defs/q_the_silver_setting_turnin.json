@@ -1,0 +1,18 @@
+{
+  "id": "q_the_silver_setting_turnin",
+  "start": "paid",
+  "requires": ["quest:the_silver_setting:ready"],
+  "bindings": [{ "kind": "actor", "target": "silversmith_vigdis", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Four bars, and Runa's word came ahead of you: 'plausible'. From her that's a parade.",
+      "next": "closed"
+    },
+    {
+      "id": "closed",
+      "text": "The metal takes the mark. In three hundred years someone will hold what this becomes and know it was made honestly — that's you in the provenance now, unnamed but weighed. The ring is yours: my work, your silver's first cousin. Wear it somewhere Runa can see.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_silver_setting" }]
+    }
+  ]
+}

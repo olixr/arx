@@ -10,7 +10,7 @@
   "nodes": [
     {
       "id": "greet",
-      "text": "Helmets past the rope line. Grettir. Foreman. Here to swing a pick, the mountain pays honest wages. Here to ask about the upper vein \u2014 we're done early.",
+      "text": "Helmets past the rope line. Grettir. Foreman. Here to swing a pick, the mountain pays honest wages. Here to ask about the upper vein — we're done early.",
       "next": "hub"
     },
     {
@@ -45,13 +45,20 @@
     },
     {
       "id": "mining",
-      "text": "Silver holds. Iron's steady. Coal does what coal does. My crews go down on my count and come up on my count \u2014 twenty years, every count matched. Now the deep's open again, half my shift wants transfer papers. Better ore down there. Worse neighbors. I sign the papers. I count them extra.",
+      "text": "Silver holds. Iron's steady. Coal does what coal does. My crews go down on my count and come up on my count — twenty years, every count matched. Now the deep's open again, half my shift wants transfer papers. Better ore down there. Worse neighbors. I sign the papers. I count them extra.",
       "next": "hub"
     },
     {
       "id": "below",
-      "text": "...You've talked to Coppin. Then you've stood in the old works. My brother's crew cut those galleries, before the trouble \u2014 he was setting shot-holes past the rubble line the day the kobolds came through, and the seal went up with the count *unmatched*. First unmatched count in the yard's books. If the reeve's crews ever clear the far warren... there'll be tools down there with our mark on the hafts. I'd want to know. That's all. I'd want to know.",
+      "text": "...You've talked to Coppin. Then you've stood in the old works. My brother's crew cut those galleries, before the trouble — he was setting shot-holes past the rubble line the day the kobolds came through, and the seal went up with the count *unmatched*. First unmatched count in the yard's books. If the reeve's crews ever clear the far warren... there'll be tools down there with our mark on the hafts. I'd want to know. That's all. I'd want to know.",
       "choices": [
+        {
+          "text": "The names are cut. Petra set them where the seal stood.",
+          "next": "named",
+          "requires": [
+            "stone_named"
+          ]
+        },
         {
           "text": "If I find anything with your mark, I'll bring word.",
           "next": "word",
@@ -71,11 +78,15 @@
     },
     {
       "id": "sorry",
-      "text": "Twenty years of practice at it. Go on now \u2014 the count doesn't keep itself."
+      "text": "Twenty years of practice at it. Go on now — the count doesn't keep itself."
     },
     {
       "id": "bye",
       "text": "Count yourself out at the rope. Everyone counts out. House rule."
+    },
+    {
+      "id": "named",
+      "text": "I know. I went up at night to read them. ... Fourteen names, good stone. Back to work."
     }
   ]
 }

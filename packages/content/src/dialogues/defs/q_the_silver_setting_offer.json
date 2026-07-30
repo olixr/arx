@@ -1,0 +1,35 @@
+{
+  "id": "q_the_silver_setting_offer",
+  "start": "hub",
+  "requires": ["quest:the_silver_setting:available"],
+  "bindings": [{ "kind": "actor", "target": "silversmith_vigdis", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Before you ask: yes, the work is beautiful, and no, I don't take walk-in metal. Everything on this bench answers to one commandment — Runa's stamp settles it. If you want to supply the Setting, the Assayer knows your face first.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_silver_setting" }],
+      "choices": [
+        { "text": "Then introduce me.", "next": "sworn" },
+        { "text": "What's the commission?", "next": "what" },
+        { "text": "Too many rules for me.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "what",
+      "text": "Four silver bars, true-smelted, for setting-work that will carry my mark. My mark has to mean something in three hundred years. That starts with whose hands touched the metal.",
+      "choices": [
+        { "text": "Mine will weigh true.", "next": "sworn" },
+        { "text": "Too many rules for me.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Runa keeps the assay house on the crafting terrace, by the tithe vault. Present yourself. Don't attempt small talk — she weighs that too.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_silver_setting" }]
+    },
+    {
+      "id": "declined",
+      "text": "The rules ARE the beauty. Come back when you see it."
+    }
+  ]
+}

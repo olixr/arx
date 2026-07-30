@@ -1,0 +1,35 @@
+{
+  "id": "q_the_gilded_cage_offer",
+  "start": "hub",
+  "requires": ["quest:the_gilded_cage:available"],
+  "bindings": [{ "kind": "actor", "target": "fence_calder", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "A commission, since you're now a colleague. A locket — gold over brass, sentimental weight, considerable — was *orphaned* some years ago when a courier misjudged the first climb. It remains with the, ah, current residents of the watchtower there.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_gilded_cage" }],
+      "choices": [
+        { "text": "Current residents?", "next": "residents" },
+        { "text": "I'll recover it.", "next": "sworn" },
+        { "text": "Find another colleague.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "residents",
+      "text": "The tower's old garrison. Previously alive. They observe traditional hours — sunset onward. By day you'll find swept stone and a view. _Go at night, and go armed._",
+      "choices": [
+        { "text": "Night it is.", "next": "sworn" },
+        { "text": "Find another colleague.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "The shielded ones keep the good things — the watch always did. Bring the locket whole and unopened. Provenance is my department.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_gilded_cage" }]
+    },
+    {
+      "id": "declined",
+      "text": "Pity. It was a *very* reasonable commission, considering the residents."
+    }
+  ]
+}

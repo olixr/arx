@@ -1,0 +1,23 @@
+{
+  "id": "q_the_sisters_lamp_turnin",
+  "start": "paid",
+  "requires": ["quest:the_sisters_lamp:ready"],
+  "bindings": [{ "kind": "actor", "target": "lampkeeper_edda", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "From Sella. Say it.",
+      "next": "word"
+    },
+    {
+      "id": "word",
+      "text": "... The flame's tended. Good. The bowl's a waste of soup.",
+      "next": "closed"
+    },
+    {
+      "id": "closed",
+      "text": "Tinctures. Take them. Road's bad past here. ... Tell her the lamp stays lit. She knows. Tell her anyway.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_sisters_lamp" }]
+    }
+  ]
+}

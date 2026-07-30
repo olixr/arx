@@ -1,0 +1,35 @@
+{
+  "id": "q_steel_for_the_stair_offer",
+  "start": "hub",
+  "requires": ["quest:steel_for_the_stair:available"],
+  "bindings": [{ "kind": "actor", "target": "forgemistress_balla", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "You there — hands. The stair rails are going to steel this season and my stock won't cover it. Six iron bars, eight of coal, on this bench, weighed. That's the whole commission.",
+      "hooks": [{ "kind": "quest_offer", "quest": "steel_for_the_stair" }],
+      "choices": [
+        { "text": "You'll have it.", "next": "sworn" },
+        { "text": "Smelted where?", "next": "where" },
+        { "text": "Find other hands.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "where",
+      "text": "Anywhere honest! Smelt it yourself at Koll's furnaces if your arms are up to it, or buy off Varga's scales in the Deep Market — half my stock walks up that stair anyway. I pay for weight, not for the story.",
+      "choices": [
+        { "text": "Weight it is.", "next": "sworn" },
+        { "text": "Find other hands.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Good. When I strike this steel it will NOT lie to me — see your iron doesn't either. There's a pattern in it for you. Buckler work. My best teaching piece.",
+      "hooks": [{ "kind": "quest_accept", "quest": "steel_for_the_stair" }]
+    },
+    {
+      "id": "declined",
+      "text": "Then stand clear of the sparks. The rails won't wait forever and neither do I."
+    }
+  ]
+}

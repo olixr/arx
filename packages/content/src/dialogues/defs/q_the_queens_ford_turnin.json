@@ -1,0 +1,23 @@
+{
+  "id": "q_the_queens_ford_turnin",
+  "start": "paid",
+  "requires": ["quest:the_queens_ford:ready"],
+  "bindings": [{ "kind": "actor", "target": "queen_kayri", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Report.",
+      "next": "word"
+    },
+    {
+      "id": "word",
+      "text": "Peld looked at the water, and Perl said the trees remember me taller than I was. ... That's her exactly. You didn't round it.",
+      "next": "closed"
+    },
+    {
+      "id": "closed",
+      "text": "The sum balances. Take the traveler's cape — ford wool, not court silk; I checked the provenance myself. You'll get more use from it than the court would.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_queens_ford" }]
+    }
+  ]
+}

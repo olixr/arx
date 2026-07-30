@@ -1,0 +1,13 @@
+{
+  "id": "q_a_quiet_word_turnin",
+  "start": "paid",
+  "requires": ["quest:a_quiet_word:ready"],
+  "bindings": [{ "kind": "actor", "target": "magpie_mab", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Two keys, and Calder says you're promisingly unremarkable. High praise — do you know what remarkable people cost me in a year? ... No. Keep it that way. The Rookery knows your face now, which means officially no one does. Your coin's on the table.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "a_quiet_word" }]
+    }
+  ]
+}

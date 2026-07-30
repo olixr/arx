@@ -38,7 +38,19 @@
     {
       "id": "ford",
       "text": "Ford-born and proud of it. My mother pulled toll wagons out of the mud during the war years; I counted them through from the bank steps. When Aeriex came down-mountain to sign the peace ledgers, he added his sums wrong twice and I corrected him twice, out loud, in front of his guards. He says that's when he decided. I say a queen who can audit a toll book is worth two who can dance.",
-      "next": "hub"
+      "choices": [
+        {
+          "text": "Peld and Perl have your word. Word for word.",
+          "next": "errand",
+          "requires": [
+            "queens_errand"
+          ]
+        },
+        {
+          "text": "Something else.",
+          "next": "hub"
+        }
+      ]
     },
     {
       "id": "work",
@@ -53,6 +65,11 @@
     {
       "id": "bye",
       "text": "Grace to you, traveler. Spend your coin on Lantern Row — I'll hear about it if you don't."
+    },
+    {
+      "id": "errand",
+      "text": "I know — I audited your delivery through channels you needn't worry about. The sums came back whole. There aren't many I'd trust with childhood debts. Consider yourself entered in the good column.",
+      "next": "hub"
     }
   ]
 }

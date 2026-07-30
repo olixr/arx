@@ -1,0 +1,35 @@
+{
+  "id": "q_worgsong_offer",
+  "start": "hub",
+  "requires": ["quest:worgsong:available"],
+  "bindings": [{ "kind": "actor", "target": "outfitter_hask", "priority": 6 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Your straps are holding. Good. Ready for the bigger cousins? Worgs are running with the packs northwest — a worg fang goes through cheap leather like wet paper, and I want four for buckle-work.",
+      "hooks": [{ "kind": "quest_offer", "quest": "worgsong" }],
+      "choices": [
+        { "text": "Four fangs. Done.", "next": "sworn" },
+        { "text": "How do I find them?", "next": "find" },
+        { "text": "Not yet.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "find",
+      "text": "You won't. They find you — that's the song. You'll hear it start behind you and finish in front. Keep your back to a rock and swing at the second howl, not the first.",
+      "choices": [
+        { "text": "Noted. I'm going.", "next": "sworn" },
+        { "text": "Not yet.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Thin the runners, take four good fangs. There's a snare kit in it — my own build, not the market's.",
+      "hooks": [{ "kind": "quest_accept", "quest": "worgsong" }]
+    },
+    {
+      "id": "declined",
+      "text": "Fair. The song's not going anywhere. Neither are the teeth."
+    }
+  ]
+}

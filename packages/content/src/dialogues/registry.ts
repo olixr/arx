@@ -109,6 +109,46 @@ import qWarrensOffer from './defs/q_thin_the_warrens_offer.json';
 import qWarrensTurnin from './defs/q_thin_the_warrens_turnin.json';
 import qLedgerActive from './defs/q_the_stolen_ledger_active.json';
 import qLedgerTurnin from './defs/q_the_stolen_ledger_turnin.json';
+import qToolsOffer from './defs/q_the_brothers_tools_offer.json';
+import qToolsTurnin from './defs/q_the_brothers_tools_turnin.json';
+import qDueOffer from './defs/q_the_digmasters_due_offer.json';
+import qDueTurnin from './defs/q_the_digmasters_due_turnin.json';
+import qStoneOffer from './defs/q_names_for_the_stone_offer.json';
+import qStoneTurnin from './defs/q_names_for_the_stone_turnin.json';
+import qStarwardOffer from './defs/q_the_starward_dig_offer.json';
+import qStarwardTurnin from './defs/q_the_starward_dig_turnin.json';
+import qPeaceOffer from './defs/q_the_kings_peace_offer.json';
+import qPeaceTurnin from './defs/q_the_kings_peace_turnin.json';
+import qFordOffer from './defs/q_the_queens_ford_offer.json';
+import qFordTurnin from './defs/q_the_queens_ford_turnin.json';
+import qLampsOffer from './defs/q_the_lamps_of_the_line_offer.json';
+import qLampsTurnin from './defs/q_the_lamps_of_the_line_turnin.json';
+import qLineOffer from './defs/q_the_silver_line_offer.json';
+import qLineTurnin from './defs/q_the_silver_line_turnin.json';
+import qQuietOffer from './defs/q_a_quiet_word_offer.json';
+import qQuietTurnin from './defs/q_a_quiet_word_turnin.json';
+import qCageOffer from './defs/q_the_gilded_cage_offer.json';
+import qCageTurnin from './defs/q_the_gilded_cage_turnin.json';
+import qArrangementOffer from './defs/q_the_arrangement_offer.json';
+import qArrangementTurnin from './defs/q_the_arrangement_turnin.json';
+import qEmbersOffer from './defs/q_embers_of_the_shrine_offer.json';
+import qEmbersTurnin from './defs/q_embers_of_the_shrine_turnin.json';
+import qSistersOffer from './defs/q_the_sisters_lamp_offer.json';
+import qSistersTurnin from './defs/q_the_sisters_lamp_turnin.json';
+import qWorgsongOffer from './defs/q_worgsong_offer.json';
+import qWorgsongTurnin from './defs/q_worgsong_turnin.json';
+import qMatriarchOffer from './defs/q_the_matriarch_offer.json';
+import qMatriarchTurnin from './defs/q_the_matriarch_turnin.json';
+import qBearOffer from './defs/q_the_bear_of_the_spine_offer.json';
+import qBearTurnin from './defs/q_the_bear_of_the_spine_turnin.json';
+import qStairOffer from './defs/q_steel_for_the_stair_offer.json';
+import qStairTurnin from './defs/q_steel_for_the_stair_turnin.json';
+import qThreadsOffer from './defs/q_threads_of_the_row_offer.json';
+import qThreadsTurnin from './defs/q_threads_of_the_row_turnin.json';
+import qSettingOffer from './defs/q_the_silver_setting_offer.json';
+import qSettingTurnin from './defs/q_the_silver_setting_turnin.json';
+import qPatrolActive from './defs/q_the_last_patrol_active.json';
+import qPatrolTurnin from './defs/q_the_last_patrol_turnin.json';
 
 /**
  * Every authored dialogue JSON, registered here. A def that isn't
@@ -233,6 +273,49 @@ const SOURCES: readonly unknown[] = [
   qWarrensTurnin,
   qLedgerActive,
   qLedgerTurnin,
+  // THE LEDGER GROWS: the six new arcs. Offers whose giver already
+  // pitches another quest ride priority 6 so the availability tie
+  // breaks deterministically (Grettir, Skarn, Sella ×2, Hask ×2).
+  qToolsOffer,
+  qToolsTurnin,
+  qDueOffer,
+  qDueTurnin,
+  qStoneOffer,
+  qStoneTurnin,
+  qStarwardOffer,
+  qStarwardTurnin,
+  qPeaceOffer,
+  qPeaceTurnin,
+  qFordOffer,
+  qFordTurnin,
+  qLampsOffer,
+  qLampsTurnin,
+  qLineOffer,
+  qLineTurnin,
+  qQuietOffer,
+  qQuietTurnin,
+  qCageOffer,
+  qCageTurnin,
+  qArrangementOffer,
+  qArrangementTurnin,
+  qEmbersOffer,
+  qEmbersTurnin,
+  qSistersOffer,
+  qSistersTurnin,
+  qWorgsongOffer,
+  qWorgsongTurnin,
+  qMatriarchOffer,
+  qMatriarchTurnin,
+  qBearOffer,
+  qBearTurnin,
+  qStairOffer,
+  qStairTurnin,
+  qThreadsOffer,
+  qThreadsTurnin,
+  qSettingOffer,
+  qSettingTurnin,
+  qPatrolActive,
+  qPatrolTurnin,
 ];
 
 function buildRegistry(): ReadonlyMap<string, DialogueDef> {

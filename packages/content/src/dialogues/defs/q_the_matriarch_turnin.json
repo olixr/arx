@@ -1,0 +1,23 @@
+{
+  "id": "q_the_matriarch_turnin",
+  "start": "paid",
+  "requires": ["quest:the_matriarch:ready"],
+  "bindings": [{ "kind": "actor", "target": "outfitter_hask", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "{item:direwolf_pelt} ... Whole. You brought it whole.",
+      "next": "targe"
+    },
+    {
+      "id": "targe",
+      "text": "The targe is wolfjaw work — her kin's own teeth set in the rim. Carry it and the packs will smell what it is. Some will think twice. The stupid ones won't, but that's what the targe is for.",
+      "next": "closed"
+    },
+    {
+      "id": "closed",
+      "text": "The traveler in front of the den can rest now. I'll see someone goes for him before the snow. ... Good work. The best kind of terrible work.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_matriarch" }]
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "id": "q_the_bear_of_the_spine_offer",
+  "start": "hub",
+  "requires": ["quest:the_bear_of_the_spine:available"],
+  "bindings": [{ "kind": "actor", "target": "lookout_pike", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "You. Den-breaker. Word climbs faster than people. ... Bears on the near shoulders. Trolls behind. Two and two, before the snow.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_bear_of_the_spine" }],
+      "choices": [
+        { "text": "Two bears, two trolls. On it.", "next": "sworn" },
+        { "text": "Who's asking — you, or the city?", "next": "who" },
+        { "text": "Find another pair of hands.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "who",
+      "text": "Roofs don't ask. Roofs see. What I see is a shepherd's kid on the high pasture and a bear that's stopped being shy, so—",
+      "choices": [
+        { "text": "So two and two. Going.", "next": "sworn" },
+        { "text": "Find another pair of hands.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "High ground around the city. Watch the scree line when the light goes flat, that's when they—. You'll see.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_bear_of_the_spine" }]
+    },
+    {
+      "id": "declined",
+      "text": "Hm. The snow won't wait on either of us."
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "q_steel_for_the_stair_turnin",
+  "start": "paid",
+  "requires": ["quest:steel_for_the_stair:ready"],
+  "bindings": [{ "kind": "actor", "target": "forgemistress_balla", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "On the bench. ... Weighed, and it's ALL true weight — no slag, no lies. THIS is stock! The rails will outlive the stair, the stair will outlive the city, and the work — the work was good. Take the buckler pattern and the coin. Now clear the bench, I have steel to make.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "steel_for_the_stair" }]
+    }
+  ]
+}

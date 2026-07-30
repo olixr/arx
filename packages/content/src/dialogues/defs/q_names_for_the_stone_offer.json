@@ -1,0 +1,35 @@
+{
+  "id": "q_names_for_the_stone_offer",
+  "start": "hub",
+  "requires": ["quest:names_for_the_stone:available"],
+  "bindings": [{ "kind": "actor", "target": "veteran_skarn", "priority": 6 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Coppin told me about the tin. ... Twenty years I've kept their count in my head. Head's a poor stone. I want the names cut where the seal stood. Will you carry the asking? My leg won't make the stair twice.",
+      "hooks": [{ "kind": "quest_offer", "quest": "names_for_the_stone" }],
+      "choices": [
+        { "text": "I'll carry it.", "next": "sworn" },
+        { "text": "Who does the cutting?", "next": "who" },
+        { "text": "Not today.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "who",
+      "text": "Petra. Mason's yard, up on the crafting terrace. She broke the seal. ... She'll want to do this. And Sella, at the shrine — a flame for them. That's all of it.",
+      "choices": [
+        { "text": "Then I'll go.", "next": "sworn" },
+        { "text": "Not today.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Tell Petra it's Skarn asking. She'll know the length of the list.",
+      "hooks": [{ "kind": "quest_accept", "quest": "names_for_the_stone" }]
+    },
+    {
+      "id": "declined",
+      "text": "... Aye. The stone's not going anywhere. Nor are they."
+    }
+  ]
+}

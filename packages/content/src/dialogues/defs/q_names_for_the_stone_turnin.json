@@ -1,0 +1,23 @@
+{
+  "id": "q_names_for_the_stone_turnin",
+  "start": "paid",
+  "requires": ["quest:names_for_the_stone:ready"],
+  "bindings": [{ "kind": "actor", "target": "veteran_skarn", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Petra took it. And the flame's set. ...",
+      "next": "count"
+    },
+    {
+      "id": "count",
+      "text": "Then the count's closed. Fourteen down, fourteen named. I was fifteen. ... Never could make that arithmetic sit right.",
+      "next": "closed"
+    },
+    {
+      "id": "closed",
+      "text": "You did a thing today most folk wouldn't reckon work. It was the heaviest kind. Here.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "names_for_the_stone" }]
+    }
+  ]
+}

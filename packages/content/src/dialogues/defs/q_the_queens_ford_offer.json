@@ -1,0 +1,35 @@
+{
+  "id": "q_the_queens_ford_offer",
+  "start": "hub",
+  "requires": ["quest:the_queens_ford:available"],
+  "bindings": [{ "kind": "actor", "target": "queen_kayri", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "My husband sends you at brigands; I have a smaller sum. I'm ford-born — Amberford, before the arithmetic found me. Two people there are owed a word I can't deliver without it becoming a *procession*. Will you carry it plainly?",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_queens_ford" }],
+      "choices": [
+        { "text": "I'll carry it.", "next": "sworn" },
+        { "text": "Who are they to you?", "next": "who" },
+        { "text": "I'm no messenger.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "who",
+      "text": "Peld taught me the river's moods and never once charged me the crossing. Goodwife Perl's orchard fed me fruit that — audit the phrasing carefully — wasn't strictly mine. Childhood debts. The interest compounds.",
+      "choices": [
+        { "text": "Then I'll settle them.", "next": "sworn" },
+        { "text": "I'm no messenger.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Peld first, at the ferry: Kayri still counts the crossings. Then Perl, among the oaks: the debt is remembered. Bring back what Perl says word for word. I'll know if you round it.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_queens_ford" }]
+    },
+    {
+      "id": "declined",
+      "text": "Mm. Neither was I, and look what they did with me."
+    }
+  ]
+}

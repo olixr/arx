@@ -1,0 +1,35 @@
+{
+  "id": "q_a_quiet_word_offer",
+  "start": "hub",
+  "requires": ["quest:a_quiet_word:available"],
+  "bindings": [{ "kind": "actor", "target": "magpie_mab", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "You kept the floor's secret. So — a question for you: do you know what a person who keeps secrets is worth in this city?",
+      "hooks": [{ "kind": "quest_offer", "quest": "a_quiet_word" }],
+      "choices": [
+        { "text": "Tell me.", "next": "worth" },
+        { "text": "Depends who's buying.", "next": "worth" },
+        { "text": "I don't deal in shadows.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "worth",
+      "text": "Neither do I, until I've seen their hands. Calder keeps a counter at the Broken Lantern, behind the scree. Go and be looked at. He'll have a small ask. Small asks are how I count.",
+      "choices": [
+        { "text": "I'll pay the visit.", "next": "sworn" },
+        { "text": "I don't deal in shadows.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Mind the alley by the bank wall. Or don't — finding the other way in would also tell me something.",
+      "hooks": [{ "kind": "quest_accept", "quest": "a_quiet_word" }]
+    },
+    {
+      "id": "declined",
+      "text": "No? Then who did I just watch keep one?"
+    }
+  ]
+}

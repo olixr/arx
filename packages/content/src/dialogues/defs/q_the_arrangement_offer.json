@@ -1,0 +1,44 @@
+{
+  "id": "q_the_arrangement_offer",
+  "start": "hub",
+  "requires": ["quest:the_arrangement:available"],
+  "bindings": [{ "kind": "actor", "target": "magpie_mab", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "You've stood in the court. Tell me — did anyone up there mention how a city this clean keeps its shadows so tidy?",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_arrangement" }],
+      "choices": [
+        { "text": "There's an arrangement.", "next": "arrangement" },
+        { "text": "No one mentioned shadows.", "next": "arrangement" },
+        { "text": "I'd rather not know.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "arrangement",
+      "text": "There's an understanding, and understandings need tending — by someone both sides can pretend they didn't send. Two calls. Bursar Odele, at the bank: ask if the tithe balances. Marshal Kestrel, at the chapter house: tell her the sweeping is done and the floor is clean.",
+      "choices": [
+        { "text": "And they'll just... know?", "next": "know" },
+        { "text": "I'll make the calls.", "next": "sworn" },
+        { "text": "I'd rather not know.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "know",
+      "text": "Odele will say the arithmetic is unquestionable. Kestrel will make a face. Both of those are answers. You'll bring me the second one.",
+      "choices": [
+        { "text": "Done.", "next": "sworn" },
+        { "text": "I'd rather not know.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Softly, colleague. This one's carried in the pocket, not on the sleeve.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_arrangement" }]
+    },
+    {
+      "id": "declined",
+      "text": "Wise, possibly. The floor stays swept either way."
+    }
+  ]
+}

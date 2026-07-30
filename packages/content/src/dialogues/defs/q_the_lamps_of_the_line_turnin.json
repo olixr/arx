@@ -1,0 +1,18 @@
+{
+  "id": "q_the_lamps_of_the_line_turnin",
+  "start": "paid",
+  "requires": ["quest:the_lamps_of_the_line:ready"],
+  "bindings": [{ "kind": "actor", "target": "marshal_kestrel", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Four posts, four reports, one pair of boots. Hale's quiet, Odessa's wolf tally, Brant watching the trees, and Edda still standing the worst mile like it owes her money. That's the line, held.",
+      "next": "closed"
+    },
+    {
+      "id": "closed",
+      "text": "My grandmother said it once and we've been repeating it ever since: the lamp stays lit. ... She'd have rated you. She rated almost no one. Wages, walker.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_lamps_of_the_line" }]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "q_the_starward_dig_turnin",
+  "start": "paid",
+  "requires": ["quest:the_starward_dig:ready"],
+  "bindings": [{ "kind": "actor", "target": "reeve_coppin", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Front's quiet, nest's empty, and this is deep-lode silver — I can hear it. The book gets a new page: galleries, working. First column entered under your name. Don't let it go to your head; the second column is expenses.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_starward_dig" }]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "q_embers_of_the_shrine_turnin",
+  "start": "paid",
+  "requires": ["quest:embers_of_the_shrine:ready"],
+  "bindings": [{ "kind": "actor", "target": "shrinekeeper_sella", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Six measures, and the tower stands quiet. The flame takes them — see how it leans toward you? It knows its own. Rest for them, light for us, and a little wage for you. That's a fair season's keeping.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "embers_of_the_shrine" }]
+    }
+  ]
+}

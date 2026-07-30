@@ -1,0 +1,35 @@
+{
+  "id": "q_the_brothers_tools_offer",
+  "start": "hub",
+  "requires": ["quest:the_brothers_tools:available"],
+  "bindings": [{ "kind": "actor", "target": "foreman_grettir", "priority": 6 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "You know about my brother. So. The kobolds carry the crew's tools — guild mark on every head. I want three back.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_brothers_tools" }],
+      "choices": [
+        { "text": "I'll bring them back.", "next": "sworn" },
+        { "text": "Where do I look?", "next": "where" },
+        { "text": "Not now.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "where",
+      "text": "Past the Deep Market. The choked tunnel, southeast. Warrens are through the gap.",
+      "choices": [
+        { "text": "I'll go.", "next": "sworn" },
+        { "text": "Not now.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Three. Enough that it isn't luck.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_brothers_tools" }]
+    },
+    {
+      "id": "declined",
+      "text": "Twenty years. It keeps."
+    }
+  ]
+}

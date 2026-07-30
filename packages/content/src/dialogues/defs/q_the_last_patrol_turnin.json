@@ -1,0 +1,23 @@
+{
+  "id": "q_the_last_patrol_turnin",
+  "start": "paid",
+  "requires": ["quest:the_last_patrol:ready"],
+  "bindings": [{ "kind": "actor", "target": "marshal_kestrel", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Done? ... Done. The rolls, then.",
+      "next": "rolls"
+    },
+    {
+      "id": "rolls",
+      "text": "'Winter patrol, whereabouts unknown' — struck. Entered instead: fell on the road, letter recovered, seen to rest by a friend of the order. Home, as the rolls count home.",
+      "next": "closed"
+    },
+    {
+      "id": "closed",
+      "text": "Somewhere my grandmother is satisfied, which she never said in life either. Wages from the chapter — the order pays its debts, even the old ones. *Especially* the old ones.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_last_patrol" }]
+    }
+  ]
+}

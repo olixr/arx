@@ -1,0 +1,13 @@
+{
+  "id": "q_the_digmasters_due_turnin",
+  "start": "paid",
+  "requires": ["quest:the_digmasters_due:ready"],
+  "bindings": [{ "kind": "actor", "target": "reeve_coppin", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "{item:crew_paytin} Dented. Full. Twenty years of interest nobody can pay. I'll enter it closed — crew's pay, recovered, holder unnamed. Skarn should hear it was found. He was last out; he keeps the count in his own way. Your wages are real ones, at least.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_digmasters_due" }]
+    }
+  ]
+}

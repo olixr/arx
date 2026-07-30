@@ -1,0 +1,18 @@
+{
+  "id": "q_the_gilded_cage_turnin",
+  "start": "paid",
+  "requires": ["quest:the_gilded_cage:ready"],
+  "bindings": [{ "kind": "actor", "target": "fence_calder", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "{item:gilded_locket} Whole, unopened. You'd be surprised how few manage the second part.",
+      "next": "closed"
+    },
+    {
+      "id": "closed",
+      "text": "The clasp still works. Somewhere there's a family that stopped waiting for this, and one of my quieter errands will un-stop them. That part isn't business. ... The ring is, though — payment, previously appreciated, now yours.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_gilded_cage" }]
+    }
+  ]
+}

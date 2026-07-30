@@ -51,6 +51,13 @@
       "text": "*Tolerates* is the castle's word. Mine is _arrangement_. The watch holds the wall and the road, but a city's real trouble comes up its alleys, and alleys are ours. When something moves in the dark that shouldn't, the castle hears about it before its own spies do. In exchange: no lamps back here, no ledgers, no questions at Calder's counter. Aeriex's father shook on it. Aeriex keeps it. Kings who keep their fathers' handshakes are rarer than honest fences.",
       "choices": [
         {
+          "text": "I've carried the pocket-word myself. The floor stays swept.",
+          "next": "plumbing",
+          "requires": [
+            "arrangement_kept"
+          ]
+        },
+        {
           "text": "Why keep the Undercroft braziers fed?",
           "next": "stair"
         },
@@ -73,6 +80,11 @@
     {
       "id": "bye",
       "text": "Shadows keep you. Leave by the ledge if you want Pike to revise his opinion of you upward."
+    },
+    {
+      "id": "plumbing",
+      "text": "So you have. Do you know what that makes you? ... No, truly — I'm asking. Even I don't have a word for the ones who carry it and come back. 'Colleague' will do until something quieter turns up.",
+      "next": "hub"
     }
   ]
 }

@@ -1,0 +1,23 @@
+{
+  "id": "q_the_brothers_tools_turnin",
+  "start": "paid",
+  "requires": ["quest:the_brothers_tools:ready"],
+  "bindings": [{ "kind": "actor", "target": "foreman_grettir", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Give them here.",
+      "next": "held"
+    },
+    {
+      "id": "held",
+      "text": "...That's his strike on this one. Shallow on the upstroke. He never fixed that.",
+      "next": "closed"
+    },
+    {
+      "id": "closed",
+      "text": "The yard owes you wages. Take them. And — thank you. Subject's closed.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_brothers_tools" }]
+    }
+  ]
+}

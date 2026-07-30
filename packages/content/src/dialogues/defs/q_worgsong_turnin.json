@@ -1,0 +1,13 @@
+{
+  "id": "q_worgsong_turnin",
+  "start": "paid",
+  "requires": ["quest:worgsong:ready"],
+  "bindings": [{ "kind": "actor", "target": "outfitter_hask", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Four fangs, no cracks, and you're standing square on both legs — that's the whole inspection passed. These'll buckle a strap a bear couldn't open. Kit's yours, coin's yours. And whatever you heard out there at the second howl... yeah. Everyone comes back with that look.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "worgsong" }]
+    }
+  ]
+}

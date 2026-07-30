@@ -1,0 +1,35 @@
+{
+  "id": "q_the_digmasters_due_offer",
+  "start": "hub",
+  "requires": ["quest:the_digmasters_due:available"],
+  "bindings": [{ "kind": "actor", "target": "reeve_coppin", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "You're the one who brought Grettir's tools up. Then you'll want this too: there's a count in my book twenty years open. A crew's pay, drawn, never spent. The digmaster's hoard has it — pay-tin, dented, theirs.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_digmasters_due" }],
+      "choices": [
+        { "text": "I'll close the count.", "next": "sworn" },
+        { "text": "Why does a tin matter?", "next": "why" },
+        { "text": "Another time.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "why",
+      "text": "Because a ledger with one open line isn't closed, it's waiting. I don't run a market on top of a waiting.",
+      "choices": [
+        { "text": "Fair. I'll get it.", "next": "sworn" },
+        { "text": "Another time.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Southeast, past the warrens — where the stolen crates are stacked. The big digger holds the hoard. Lamp-oil's on your own account.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_digmasters_due" }]
+    },
+    {
+      "id": "declined",
+      "text": "It's waited twenty years. It can wait for you."
+    }
+  ]
+}
