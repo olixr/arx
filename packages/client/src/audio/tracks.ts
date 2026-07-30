@@ -33,7 +33,7 @@ export const TRACK_LIBRARY: Record<TrackMood, string[]> = {
     'adventure_6', 'adventure_7',
   ],
   night: ['night_adventure_1', 'night_adventure_2'],
-  town: ['town_1', 'town_2', 'town_3', 'town_4'],
+  town: ['town_1', 'town_2', 'town_3', 'town_4', 'town_5', 'town_6', 'town_7'],
   /** The deep frontier (danger tier 4+): the land itself is the boss. */
   danger: ['boss_fight_1', 'boss_fight_2'],
 };
@@ -62,6 +62,9 @@ const TRACK_TRIM: Record<string, number> = {
   town_2: 1, // −15.3
   town_3: 0.76, // −12.9
   town_4: 0.76, // −12.9
+  town_5: 0.71, // −12.3
+  town_6: 0.8, // −13.4
+  town_7: 0.83, // −13.7
   boss_fight_1: 0.85, // −13.9
   boss_fight_2: 0.79, // −13.3
 };
